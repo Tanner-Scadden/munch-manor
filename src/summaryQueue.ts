@@ -1,7 +1,7 @@
 import { Effect, Option, Schedule, Schema, pipe } from 'effect'
 import type { Duration } from 'effect'
 
-import { type RunSummary, RunSummaryJson } from './analytics'
+import { PostedRunJson, type RunSummary, RunSummaryJson } from './analytics'
 import { sendRunSummary } from './analyticsBeacon'
 import { API_ORIGIN } from './apiOrigin'
 import { PlayerStore } from './store'
@@ -30,7 +30,9 @@ const queueRunSummary = (summary: RunSummary) =>
 // NOTE: a queued summary is taken out of the store before it is sent, so two
 // drains never send the same one. One that cannot be read any more (the
 // summary's version moved on) is dropped, and one that fails to send goes
-// back in the queue and stops the drain. Answers whether to send the next.
+// back in the queue and stops the drain. A version 1 summary, queued by a
+// build before co-op summaries, still goes: the Worker takes it. Answers
+// whether to send the next.
 const sendNextQueued = (origin: string) =>
   pipe(
     isOnline,
@@ -44,7 +46,7 @@ const sendNextQueued = (origin: string) =>
         onNone: () => Effect.succeed(false),
         onSome: body =>
           pipe(
-            Schema.decodeEffect(RunSummaryJson)(body),
+            Schema.decodeEffect(PostedRunJson)(body),
             Effect.matchEffect({
               onFailure: () => Effect.succeed(true),
               onSuccess: summary =>

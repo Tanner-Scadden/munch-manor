@@ -6,8 +6,10 @@ import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import {
   HEALTH_PATH,
   RUNS_PATH,
+  RUN_SUMMARY_VERSION,
   type RunSummary,
   RunSummaryJson,
+  SOLO_PARTY,
 } from '../../src/analytics'
 
 // Posts one made-up run summary to a deployed analytics Worker, the way the
@@ -26,7 +28,7 @@ class SmokeError extends Data.TaggedError('SmokeError')<{
 const SMOKE_BUILD = 'smoke-test'
 
 const smokeSummary = (visitId: string): RunSummary => ({
-  version: 1,
+  version: RUN_SUMMARY_VERSION,
   visitId,
   build: SMOKE_BUILD,
   mode: 'Campaign',
@@ -50,6 +52,7 @@ const smokeSummary = (visitId: string): RunSummary => ({
   device: 'KeyboardMouse',
   screenFit: 'Browser',
   frameTime: 'Under17Ms',
+  party: SOLO_PARTY,
 })
 
 const HEX_DIGITS = 16

@@ -9,7 +9,7 @@ import { countRunFrom, forgetNewEntriesFrom } from '../home'
 import { Message } from '../message'
 import type { Model } from '../model'
 import { cueMusicFrom } from '../musicPlan'
-import { isOnlineRun, runDifficultyOf } from '../onlineRun'
+import { runDifficultyOf } from '../onlineRun'
 import { sendOrQueueRunSummary } from '../summaryQueue'
 import { RUNNING_BUILD } from '../version'
 import {
@@ -44,12 +44,12 @@ export const SendRunSummary = makeCommand('SendRunSummary', {
 
 // NOTE: the summary is built here from the Model, so update stays pure. The
 // visit id comes from GenerateVisitId and the build id is a build constant.
-// An online co-op run sends none until RunSummary has co-op's fields
-// (MULTIPLAYER.md, Phase 6).
+// An online co-op run sends its own the same way: each player's client
+// sends one from its own seat, by its own sharing setting.
 const sendRunSummaryFrom =
   (before: Model): UpdateStep =>
   stepModel => {
-    if (stepModel.shareStats === 'Off' || isOnlineRun(before)) {
+    if (stepModel.shareStats === 'Off') {
       return { model: stepModel }
     }
 

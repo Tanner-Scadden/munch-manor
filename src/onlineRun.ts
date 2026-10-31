@@ -17,7 +17,7 @@ export const maybeRunRoom = (model: Model): Option.Option<CoopRoom> =>
   Option.filter(maybeRoomOf(model.coop), room => !isInLobby(room))
 
 // NOTE: a run is drawn from the room once its first World has come.
-export const isOnlineRun = (model: Model): boolean =>
+const isOnlineRun = (model: Model): boolean =>
   Option.exists(maybeRunRoom(model), room => Option.isSome(room.maybeWorld))
 
 // NOTE: the World a room run left in the root, after its room is gone.

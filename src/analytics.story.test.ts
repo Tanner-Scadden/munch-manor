@@ -4,12 +4,16 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 
 import { afterEach, describe, expect, it, test, vi } from '@effect/vitest'
+import { MAX_PLAYERS } from '@munch/netcode'
 
 import {
   CauseOfDeath,
+  MAX_CREW_SIZE,
   MAX_SUMMARY_BYTES,
+  PostedRunJson,
   type RunSummary,
   RunSummaryJson,
+  SOLO_PARTY,
   SummaryDevice,
   SummaryKind,
   SummaryMode,
@@ -103,7 +107,7 @@ const FRAME_MS = FIXED_STEP_MS
 const expectedSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 1,
+  version: 2,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -117,6 +121,7 @@ const expectedSummary = (
   device: 'Touch',
   screenFit: 'Installed',
   frameTime: 'Under17Ms',
+  party: SOLO_PARTY,
   ...overrides,
 })
 
@@ -143,8 +148,29 @@ describe('the run summary schema', () => {
     expect(
       decode(withField('outcome', { _tag: 'GameOver', killedBy: 'Ghost' })),
     ).toEqual(Option.none())
-    expect(decode(withField('version', 2))).toEqual(Option.none())
+    expect(decode(withField('version', 3))).toEqual(Option.none())
+    expect(
+      decode(
+        withField('party', {
+          _tag: 'Crew',
+          size: MAX_CREW_SIZE + 1,
+          seatKills: 0,
+          seatDowns: 0,
+          seatRevives: 0,
+        }),
+      ),
+    ).toEqual(Option.none())
     expect(decode('{"version":1,')).toEqual(Option.none())
+  })
+
+  test('a version 1 summary from a cached build still decodes, with no party', () => {
+    const { party: _party, ...older } = summary
+    const json = JSON.stringify({ ...older, version: 1 })
+    expect(Schema.decodeSync(PostedRunJson)(json)).toEqual({
+      ...older,
+      version: 1,
+    })
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
   })
 
   test("the shared literals still match the game's own", () => {
@@ -152,6 +178,7 @@ describe('the run summary schema', () => {
     expect(CauseOfDeath.literals).toEqual([...ZombieKind.literals, 'Unknown'])
     expect(SummaryMode.literals).toEqual(HomeMode.literals)
     expect(SummaryDevice.literals).toEqual(InputDevice.literals)
+    expect(MAX_CREW_SIZE).toBe(MAX_PLAYERS)
   })
 
   test('the frame time lands in a bucket by its average', () => {

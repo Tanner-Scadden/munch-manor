@@ -66,9 +66,10 @@ const heldShop = (own: ShopState, room: ShopState): ShopState =>
   isBrowsing(room) && !ShopState.isAnyOf(['Away'])(own) ? own : room
 
 // NOTE: the fields the room owns, from the World with this client's own
-// seat in the player fields. The rest stay the client's: its intent, the
-// run's stats and the gates, the save's difficulty, the money count-up,
-// the shop's open tab, and, while the room still has the player at the
+// seat in the player fields, and the room's difficulty beside the save's,
+// for the run's summary. The rest stay the client's: its intent, the run's
+// stats and the gates, the save's difficulty, the money count-up, the
+// shop's open tab, and, while the room still has the player at the
 // counter, their focused row or their own LEAVE on its way (heldShop).
 const takeRoomWorld = (
   model: Model,
@@ -100,6 +101,7 @@ const takeRoomWorld = (
     laserSight: () => world.laserSight,
     shop: shop => heldShop(shop, world.shop),
     party: () => world.party,
+    maybeRoomDifficulty: () => Option.some(world.difficulty.chosen),
   })
 
 const isFrozen = HitStop.isAnyOf(['Frozen'])

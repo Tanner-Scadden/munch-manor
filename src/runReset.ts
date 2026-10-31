@@ -81,6 +81,7 @@ export type RunFields = Pick<
   | 'hintBand'
   | 'stats'
   | 'runTally'
+  | 'maybeRoomDifficulty'
   | 'screenMs'
   | 'maybeShareCopiedAtMs'
   | 'isRunCardDropped'
@@ -140,6 +141,7 @@ export const freshRun = (model: Model): RunFields => ({
   hintBand: 'Top',
   stats: freshStats,
   runTally: RunTally.Uncounted(),
+  maybeRoomDifficulty: Option.none(),
   screenMs: 0,
   maybeShareCopiedAtMs: Option.none(),
   isRunCardDropped: false,

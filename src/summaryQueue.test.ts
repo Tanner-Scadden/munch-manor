@@ -14,7 +14,13 @@ import { modifyFields } from 'foldkit/struct'
 
 import { afterEach, describe, expect, it, vi } from '@effect/vitest'
 
-import { type RunSummary, RunSummaryJson } from './analytics'
+import {
+  RUN_SUMMARY_VERSION,
+  type RunSummary,
+  RunSummaryJson,
+  RunSummaryV1,
+  SOLO_PARTY,
+} from './analytics'
 import { initialModel } from './model'
 import { saveOf } from './save'
 import { PlayerStore } from './store'
@@ -24,7 +30,7 @@ import { asVeteran } from './veteran'
 const ORIGIN = 'https://api.example.test'
 
 const summary: RunSummary = {
-  version: 1,
+  version: RUN_SUMMARY_VERSION,
   visitId: '0123456789abcdef',
   build: 'test',
   mode: 'Campaign',
@@ -48,6 +54,7 @@ const summary: RunSummary = {
   device: 'Touch',
   screenFit: 'Installed',
   frameTime: 'Under17Ms',
+  party: SOLO_PARTY,
 }
 
 const bodyOf = (wave: number) =>
@@ -196,6 +203,31 @@ describe('run summaries sent or queued', () => {
         yield* TestClock.adjust('11 seconds')
         yield* Fiber.join(sending)
         expect(sendBeacon).toHaveBeenCalledTimes(1)
+        expect(yield* Ref.get(fake.waiting)).toEqual([])
+      }),
+  )
+
+  it.effect(
+    'a version 1 summary a build before co-op queued still goes, as it was',
+    () =>
+      Effect.gen(function* () {
+        const sendBeacon = stubNavigator(true)
+        const { party: _party, ...older } = summary
+        const olderBody = yield* Schema.encodeEffect(
+          Schema.fromJsonString(RunSummaryV1),
+        )({ ...older, version: 1 })
+        const fake = yield* fakeStore([olderBody], 'On')
+        const sending = yield* Effect.forkChild(
+          startSummaryQueue(ORIGIN).pipe(Effect.provide(fake.layer)),
+        )
+        yield* Effect.yieldNow
+        yield* TestClock.adjust('11 seconds')
+        yield* Fiber.join(sending)
+        expect(sendBeacon).toHaveBeenCalledTimes(1)
+        const sent = sendBeacon.mock.calls[0]?.[1] ?? null
+        expect(yield* Effect.promise(() => new Response(sent).text())).toBe(
+          olderBody,
+        )
         expect(yield* Ref.get(fake.waiting)).toEqual([])
       }),
   )
