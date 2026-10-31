@@ -10,7 +10,7 @@ import { modifyFields } from 'foldkit/struct'
 import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
 import { PARLOUR, levelOf } from './arena'
-import { type SoundEffect } from './audio'
+import type { SoundEffect } from './audio'
 import { ApplicationComposition } from './composition'
 import {
   FIXED_STEP_MS,
@@ -529,3 +529,12 @@ export const westPlank = Trap.Barricade({
   hp: TRAPS.Barricade.hp,
   hitRemainingMs: 0,
 })
+
+export const FRAME_MS = FIXED_STEP_MS
+// NOTE: hit-stop counts whole ticks: a freeze lasts its length rounded to
+// whole ticks, and the world does not step on any of them.
+export const freezeTicks = (freezeMs: number): number =>
+  Math.round(freezeMs / FRAME_MS)
+
+export const waitOutFreeze = (freezeMs: number) =>
+  ticks(freezeTicks(freezeMs), FRAME_MS)

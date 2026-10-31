@@ -61,9 +61,9 @@
         ]
       }
     ],
-    // NOTE: a ratchet, not a gate. A file past about 1200 lines holds two
-    // jobs. The files over it today are listed in an override below.
-    "max-lines": ["warn", { "max": 1200 }],
+    // NOTE: a file past 1200 lines holds two jobs: split it along its
+    // section headers (AGENTS.md "Code shape").
+    "max-lines": ["error", { "max": 1200 }],
 
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error",
@@ -188,9 +188,15 @@
       "rules": { "munch/seat-action-once": "error" }
     },
     {
-      // NOTE: tests may read guards, seed the legacy localStorage save,
-      // check the view size itself, and look at a dialog's own state.
-      "files": ["src/**/*.test.ts", "src/testing.ts", "src/vitest-setup.ts"],
+      // NOTE: tests and their fixtures may read guards, seed the legacy
+      // localStorage save, check the view size itself, and look at a
+      // dialog's own state.
+      "files": [
+        "src/**/*.test.ts",
+        "src/**/*.fixture.ts",
+        "src/testing.ts",
+        "src/vitest-setup.ts"
+      ],
       "rules": {
         "no-restricted-imports": "off",
         "munch/no-menu-field": "off",
@@ -372,15 +378,10 @@
       "rules": { "munch/no-raw-json": "off" }
     },
     {
-      // NOTE: known exceptions to max-lines today. Split one, then drop it here.
-      "files": [
-        "src/boss.story.test.ts",
-        "src/shop.story.test.ts",
-        "src/story.test.ts",
-        "tools/audit/harness/entry.ts",
-        "tools/balance/bot.ts",
-        "tools/heavy/decision.test.ts"
-      ],
+      // NOTE: the two scripts that cannot split by moving code: each keeps a
+      // run's state in module-level `let`s that its sections assign, and an
+      // import is read-only, so a split needs that state passed in first.
+      "files": ["tools/audit/harness/entry.ts", "tools/balance/bot.ts"],
       "rules": {
         "max-lines": "off"
       }
