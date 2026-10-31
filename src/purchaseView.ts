@@ -318,6 +318,22 @@ const placedOffer = (offer: Offer, tag: PriceTag): Offer =>
     }),
   })
 
+// NOTE: where an offer's tag hangs in the world, for the HTML button that
+// takes a click on it (src/purchaseHud.ts, ammoTagButtonView).
+export const tagBoxOf = (
+  model: Model,
+  offer: Offer,
+): Readonly<{ x: number; y: number; width: number; height: number }> => {
+  const tag = tagOf(model, offer)
+  const placed = placedOffer(offer, tag)
+  return {
+    x: tagLeft(placed, tag),
+    y: placed.spot.y,
+    width: tag.width,
+    height: tag.height,
+  }
+}
+
 // NOTE: what taking a prize gives up hangs under the TAKE tag, crossed
 // out: for the Clang Pan the knife, whose slot it takes; for a gun-slot
 // prize with both gun slots full, the gun in the player's hands.
@@ -410,6 +426,7 @@ const offerShapes =
           : [tagShape, ...prompt],
       Done: () => [tagShape],
       Spent: () => [tagShape, ...prompt],
+      Tapped: () => [tagShape],
     })
     return [...shapes, ...replaced]
   }

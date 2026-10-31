@@ -1,6 +1,7 @@
 import { Array, Option } from 'effect'
 import {
   Subscription,
+  click,
   expect,
   given,
   pointerDown,
@@ -25,8 +26,9 @@ import {
   Phase,
   initialModel,
 } from './model'
-import { inPortrait, pastTimedBreaks } from './model.fixture'
+import { inPortrait, midWaveAtStall, pastTimedBreaks } from './model.fixture'
 import { purchaseOverlayShapes } from './purchaseView'
+import { SHOP_ITEMS } from './shop'
 import {
   HOLD_TICKS,
   ROOT,
@@ -34,6 +36,7 @@ import {
   measureSurface,
 } from './testing'
 import { asVeteran } from './veteran'
+import { maxRounds } from './weapons'
 
 const atBoards = (device: InputDevice, balance: number): Model =>
   modifyFields(pastTimedBreaks(asVeteran(initialModel)), {
@@ -180,5 +183,45 @@ describe('the price tag in a zoomed phone window', () => {
   test('is not drawn over the HUD band once the window has followed the player away', () => {
     vitestExpect(cameraOf(upright(170)).y).toBeGreaterThan(40)
     vitestExpect(tagsFor(upright(170))).toHaveLength(0)
+  })
+})
+
+describe('the ammo tag', () => {
+  const ammoTag = selector('.ammo-tag-button')
+
+  test.each(['KeyboardMouse', 'Touch'] as const)(
+    'with %s, a click on the tag at the window buys at once',
+    device => {
+      scene(
+        ROOT,
+        given(
+          modifyFields(midWaveAtStall('Smg', maxRounds('Smg', 0) - 1), {
+            lastDevice: () => device,
+          }),
+        ),
+        measureSurface,
+        expect(ammoTag).toExist(),
+        expect(ammoTag).toHaveAttr(
+          'aria-label',
+          `Buy ammo for ${SHOP_ITEMS.SmgRounds.price} dollars`,
+        ),
+        click(ammoTag),
+        ...frames(1),
+        expect(ammoTag).toHaveAttr('aria-label', 'Your gun is full'),
+      )
+    },
+  )
+
+  test('away from the window there is no tag to click', () => {
+    scene(
+      ROOT,
+      given(
+        modifyFields(midWaveAtStall('Smg', 10), {
+          player: player => modifyFields(player, { x: () => 40 }),
+        }),
+      ),
+      measureSurface,
+      expect(ammoTag).toBeAbsent(),
+    )
   })
 })

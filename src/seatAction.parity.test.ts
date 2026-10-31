@@ -11,6 +11,7 @@ import { Message } from './message'
 import { BreakClock, type Model, Phase, ShopState } from './model'
 import {
   DISTANT_SPAWN,
+  midWaveAtStall,
   quietWave,
   readyModel,
   withArsenal,
@@ -154,6 +155,11 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
     from: inBreak,
     action: SeatAction.Ready(),
     presses: [Message.ClickedStartWaveButton()],
+  },
+  BuyAmmo: {
+    from: midWaveAtStall('Smg', 10),
+    action: SeatAction.BuyAmmo(),
+    presses: [Message.ClickedAmmoTag()],
   },
 }
 

@@ -41,7 +41,7 @@ import { isOpenBreak } from './onboarding'
 import { pauseHelpView } from './pauseHelp'
 import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from './powerups'
 import { profileView } from './profileView'
-import { purchaseAnnouncementView } from './purchaseHud'
+import { ammoTagButtonView, purchaseAnnouncementView } from './purchaseHud'
 import { questTrackerView } from './questView'
 import { landscapeFrameOffset, screenOf } from './screen'
 import { isShopOpenFor } from './shop'
@@ -296,6 +296,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         isCoopOpen(model) ? h.empty : homeMenuView(model, h),
         preparationControlsView(model, h),
         gunClusterView(model, h),
+        ammoTagButtonView(model, h),
         debutCardView(model, h),
         questTrackerView(model, h),
         modeChoiceView(model, h),

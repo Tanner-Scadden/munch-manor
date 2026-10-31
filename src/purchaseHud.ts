@@ -1,9 +1,11 @@
 import { Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
+import { screenCameraOf, worldToView } from './camera'
 import type { ApplicationViewBuilder } from './composition'
 import { exitName } from './exits'
 import { HOLD_ICON } from './icons'
+import { percentOf } from './menuParts'
 import { Message } from './message'
 import { type Model, Purchasable, Purchase } from './model'
 import { FRIDGE_NAME } from './names'
@@ -14,8 +16,11 @@ import {
   isSamePurchasable,
   maybeOfferInReach,
   maybeOfferOf,
+  maybeTapOffer,
   shortfallFor,
 } from './purchase'
+import { tagBoxOf } from './purchaseView'
+import { screenOf } from './screen'
 
 // NOTE: the kitchen tour's free boards and pull are read as free.
 const priceWords = (price: number): string =>
@@ -56,7 +61,7 @@ const labelOf = (offer: Offer): string =>
     Ammo: () =>
       offer.isFull
         ? 'Your gun is full'
-        : `Hold to buy ammo for ${priceWords(offer.price)}`,
+        : `Buy ammo for ${priceWords(offer.price)}`,
   })
 
 // NOTE: what the player is at: the offer in reach, or the one they still
@@ -71,6 +76,7 @@ const maybeShownOffer = (model: Model): Option.Option<Offer> =>
       ),
     Done: () => maybeOfferInReach(model),
     Spent: () => maybeOfferInReach(model),
+    Tapped: ({ target }) => maybeOfferOf(model, target),
   })
 
 const isRefusedAt = (model: Model, offer: Offer): boolean =>
@@ -82,6 +88,7 @@ const isRefusedAt = (model: Model, offer: Offer): boolean =>
       sinceMs < PURCHASE_RULES.refusedMs,
     Done: () => false,
     Spent: () => false,
+    Tapped: () => false,
   })
 
 const progressAt = (model: Model, offer: Offer): number =>
@@ -94,6 +101,7 @@ const progressAt = (model: Model, offer: Offer): number =>
     Refused: () => 0,
     Done: () => 0,
     Spent: () => 0,
+    Tapped: () => 0,
   })
 
 // NOTE: the button is held, not clicked: the finger that lands on it holds
@@ -160,12 +168,22 @@ export const holdButtonView = (
       })
     : h.empty
 
-const announcementOf = (model: Model, offer: Offer): string => {
-  const shortBy = shortfallFor(model, offer)
-  const how =
-    model.lastDevice === 'Touch'
+// NOTE: the ammo window buys on a tap (src/purchase.ts, tapToBuy); the
+// rest stand or hold.
+const howToBuy = (model: Model, offer: Offer): string => {
+  const isTouch = model.lastDevice === 'Touch'
+  if (Purchasable.isAnyOf(['Ammo'])(offer.target)) {
+    return isTouch ? 'Tap the tag or the button to buy.' : 'Press Enter to buy.'
+  } else {
+    return isTouch
       ? 'Stand still or hold the button to buy.'
       : 'Stand still or hold Enter to buy.'
+  }
+}
+
+const announcementOf = (model: Model, offer: Offer): string => {
+  const shortBy = shortfallFor(model, offer)
+  const how = howToBuy(model, offer)
   return shortBy > 0
     ? `${nameOf(offer.target)}, ${priceWords(offer.price)}. ${shortBy} dollars short.`
     : `${nameOf(offer.target)}, ${priceWords(offer.price)}. ${how}`
@@ -186,3 +204,60 @@ export const purchaseAnnouncementView = (
       }),
     ],
   )
+
+// THE AMMO TAG
+
+// NOTE: a click or a tap on the ammo window's tag buys there at once
+// (src/purchase.ts, tapToBuy). The canvas draws the tag; this clear button
+// lies over it, in screen units, only while the player is in its reach,
+// and outside the game surface, so a click on it is no shot and a tap on
+// it takes no stick.
+const TAG_HIT_PAD = 2
+
+const ammoTagButtonFor = (
+  model: Model,
+  offer: Offer,
+  h: ApplicationViewBuilder,
+): Html => {
+  const screen = screenOf(model)
+  const camera = screenCameraOf(model)
+  const box = tagBoxOf(model, offer)
+  const center = worldToView(camera, {
+    x: box.x + box.width / 2,
+    y: box.y + box.height / 2,
+  })
+  return h.div(
+    [h.Class('hud-tap-frame')],
+    [
+      h.div(
+        [h.Class('hud-tap-stage')],
+        [
+          h.button([
+            h.Type('button'),
+            h.Class('ammo-tag-button'),
+            h.AriaLabel(labelOf(offer)),
+            h.AriaKeyshortcuts('Enter'),
+            h.Style({
+              left: percentOf(center.x, screen.width),
+              top: percentOf(center.y, screen.height),
+              width: `max(40px, ${percentOf((box.width + TAG_HIT_PAD * 2) * camera.scale, screen.width)})`,
+              height: `max(40px, ${percentOf((box.height + TAG_HIT_PAD * 2) * camera.scale, screen.height)})`,
+            }),
+            h.OnClick(Message.ClickedAmmoTag(), {
+              focusSelector: '.game-surface',
+            }),
+          ]),
+        ],
+      ),
+    ],
+  )
+}
+
+export const ammoTagButtonView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): Html =>
+  Option.match(maybeTapOffer(model), {
+    onNone: () => h.empty,
+    onSome: offer => ammoTagButtonFor(model, offer, h),
+  })

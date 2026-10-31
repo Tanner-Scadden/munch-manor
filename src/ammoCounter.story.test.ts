@@ -6,16 +6,8 @@ import { describe, expect, test } from 'vitest'
 import { ammoCounterOffers, isAtAmmoWindow } from './ammoCounter'
 import { FIXED_STEP_MS } from './constants'
 import { update } from './main'
-import {
-  CounterSale,
-  type Model,
-  Phase,
-  Purchasable,
-  Purchase,
-  ShopState,
-  type WeaponKind,
-} from './model'
-import { DISTANT_SPAWN, freshRunModel } from './model.fixture'
+import { CounterSale, Phase, Purchasable, Purchase, ShopState } from './model'
+import { DISTANT_SPAWN, midWaveAtStall } from './model.fixture'
 import { PURCHASE_RULES, offersOf } from './purchase'
 import {
   SHOP_ITEMS,
@@ -33,38 +25,6 @@ import { Arsenal } from './worldSchema'
 
 const FRAME_MS = FIXED_STEP_MS
 const HOLD_TICKS = Math.ceil(PURCHASE_RULES.holdMs / FRAME_MS) + 1
-const BELOW_STALL = {
-  x: (STALL_BOX.left + STALL_BOX.right) / 2,
-  y: STALL_BOX.bottom + 6,
-}
-
-const holding = (kind: WeaponKind, rounds: number): Arsenal =>
-  Arsenal.HoldingSecond({
-    first: freshGun('Pistol'),
-    second: modifyFields(freshGun(kind), { rounds: () => rounds }),
-  })
-
-const midWaveAtStall = (
-  kind: WeaponKind,
-  rounds: number,
-  balance = 100,
-): Model =>
-  modifyFields(freshRunModel(), {
-    phase: () =>
-      Phase.Wave({
-        wave: 5,
-        elapsedMs: 20_000,
-        spawns: [DISTANT_SPAWN],
-      }),
-    wallet: () => ({ balance, earned: balance, shown: balance }),
-    player: player =>
-      modifyFields(player, {
-        x: () => BELOW_STALL.x,
-        y: () => BELOW_STALL.y,
-        arsenal: () => holding(kind, rounds),
-      }),
-  })
-
 const ammoOffers = (current: World) =>
   Array.filter(offersOf(current), offer =>
     Purchasable.isAnyOf(['Ammo'])(offer.target),
