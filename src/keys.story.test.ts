@@ -3,11 +3,11 @@ import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { PREPARATION_MS, RESTART_GRACE_MS } from './constants'
+import { RESTART_GRACE_MS } from './constants'
 import { update } from './main'
 import { Message } from './message'
 import { DebutCard, type Model, Phase, Reload, RunMode } from './model'
-import { DISTANT_SPAWN, readyModel } from './model.fixture'
+import { WAVE_2_BREAK, WAVE_2_FIGHT, readyModel } from './model.fixture'
 import { DEBUT_CARD_MIN_MS } from './onboarding'
 import {
   SHOTGUN,
@@ -21,30 +21,21 @@ import { STARTING_PISTOL } from './weapons'
 
 const FRAME_MS = 50
 
-const FIGHTING = Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [DISTANT_SPAWN] })
-
-const PREPARING = Phase.Preparation({
-  wave: 2,
-  remainingMs: 15_000,
-  durationMs: PREPARATION_MS,
-  spawns: [DISTANT_SPAWN],
-})
-
 const fighting: Model = modifyFields(readyModel, {
-  phase: () => FIGHTING,
+  phase: () => WAVE_2_FIGHT,
   player: player =>
     modifyFields(player, {
       arsenal: () => holdingFirst(SHOTGUN, { ...STARTING_PISTOL, loaded: 3 }),
     }),
 })
 
-const preparing: Model = modifyFields(fighting, { phase: () => PREPARING })
+const preparing: Model = modifyFields(fighting, { phase: () => WAVE_2_BREAK })
 
 const ROUNDS: ReadonlyArray<
-  readonly [Model, typeof FIGHTING | typeof PREPARING]
+  readonly [Model, typeof WAVE_2_FIGHT | typeof WAVE_2_BREAK]
 > = [
-  [fighting, FIGHTING],
-  [preparing, PREPARING],
+  [fighting, WAVE_2_FIGHT],
+  [preparing, WAVE_2_BREAK],
 ]
 
 const withDebutCard: Model = modifyFields(fighting, {
@@ -144,7 +135,7 @@ describe('one key per action: removed keys do nothing', () => {
       given(preparing),
       tap('Space'),
       model(({ phase }) => {
-        expect(phase).toEqual(PREPARING)
+        expect(phase).toEqual(WAVE_2_BREAK)
       }),
     )
     story(
@@ -165,7 +156,7 @@ describe('one key per action: removed keys do nothing', () => {
         tap('Escape'),
         tap(code),
         model(current => {
-          expect(current.phase).toEqual(Phase.Paused({ round: FIGHTING }))
+          expect(current.phase).toEqual(Phase.Paused({ round: WAVE_2_FIGHT }))
         }),
       ),
     )

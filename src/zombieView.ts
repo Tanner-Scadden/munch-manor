@@ -32,6 +32,7 @@ import {
   multiplyScales,
   progressBetween,
   squashPulse,
+  tellAlpha,
 } from './drawing'
 import { clamp } from './geometry'
 import {
@@ -1002,9 +1003,6 @@ export const zombieShadow = (
 
 const TELL_EDGE_COLOR = '#ff4a4f'
 const TELL_SWEEP_COLOR = '#ffe066'
-
-const tellAlpha = (faint: number, strong: number, progress: number): number =>
-  Math.round((faint + (strong - faint) * progress) * 100) / 100
 
 const tellFill = (progress: number): string =>
   `rgba(255, 58, 63, ${tellAlpha(0.1, 0.3, progress)})`

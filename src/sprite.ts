@@ -1,6 +1,7 @@
 import { Array, Match, Option, Record, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
+import { ZERO_VECTOR } from './geometry'
 import { type Fill, parseColor, pngDataUrl } from './png'
 import {
   type AtlasHit,
@@ -109,7 +110,7 @@ export const spriteWidth = (pixels: ReadonlyArray<string>): number =>
 
 export type Anchor = Readonly<{ x: number; y: number }>
 
-export const TOP_LEFT: Anchor = { x: 0, y: 0 }
+export const TOP_LEFT: Anchor = ZERO_VECTOR
 
 const centerAnchor = (pixels: ReadonlyArray<string>): Anchor => ({
   x: Math.floor(spriteWidth(pixels) / 2),

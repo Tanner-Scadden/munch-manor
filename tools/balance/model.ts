@@ -38,17 +38,12 @@ import { FINAL_WAVE } from '../../src/wavePlans'
 import { waveBonus } from '../../src/waves'
 import { UPGRADE_TIERS, WEAPONS, effectiveStats } from '../../src/weapons'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER, scaledHp } from '../../src/zombies'
+import { mean } from './summary'
 
 // GUNS
 
 export type Gun = 'Pistol' | 'Shotgun' | 'Smg'
 export type SpareGun = 'Shotgun' | 'Smg'
-
-export const GUNS: Array.NonEmptyReadonlyArray<Gun> = [
-  'Pistol',
-  'Shotgun',
-  'Smg',
-]
 
 // NOTE: only the fields the damage math reads, so tests can hand-make one.
 export type GunStats = Readonly<{
@@ -827,9 +822,6 @@ export const wavePay = (rolled: RolledWave, wave: number): number =>
     FRENZY_RULES.bonusPerZombie +
   waveBonus(wave)
 
-const meanOf = (values: ReadonlyArray<number>): number =>
-  values.length === 0 ? 0 : Number.sumAll(values) / values.length
-
 // THE MODEL
 
 export type WaveRow = Readonly<{
@@ -910,7 +902,7 @@ export const expectedPays = (
   lastWave: number,
 ): ReadonlyArray<number> =>
   Array.map(waveNumbers(lastWave), wave =>
-    meanOf(
+    mean(
       Array.map(assumptions.seeds, seed =>
         wavePay(rolledWave(seed, wave, 'Normal'), wave),
       ),
@@ -944,29 +936,29 @@ export const modelRows = (
         assumptions.peakWindowMs,
       ),
     )
-    const mean = (pick: (flow: WaveFlow) => number) =>
-      meanOf(Array.map(flows, pick))
-    const peakIncomingHps = mean(flow => flow.peakIncomingHps)
-    const meanIncomingHps = mean(flow => flow.meanIncomingHps)
+    const flowMean = (pick: (flow: WaveFlow) => number) =>
+      mean(Array.map(flows, pick))
+    const peakIncomingHps = flowMean(flow => flow.peakIncomingHps)
+    const meanIncomingHps = flowMean(flow => flow.meanIncomingHps)
     return {
       wave,
       difficulty,
-      zombies: meanOf(
+      zombies: mean(
         Array.map(
           rolls,
           ({ spawns, boss }) =>
             spawns.length + (boss._tag === 'Waiting' ? 1 : 0),
         ),
       ),
-      totalHp: mean(({ totalHp }) => totalHp),
+      totalHp: flowMean(({ totalHp }) => totalHp),
       pay: Option.getOrElse(Array.get(pays, wave - 1), () => 0),
       moneyOnArrival: visit.moneyOnArrival,
       bought: visit.bought,
       loadout: visit.loadout,
       dps,
-      lengthSeconds: mean(({ lengthMs }) => lengthMs) / 1000,
-      emptySeconds: mean(({ emptyMs }) => emptyMs) / 1000,
-      peakAlive: mean(({ peakAlive }) => peakAlive),
+      lengthSeconds: flowMean(({ lengthMs }) => lengthMs) / 1000,
+      emptySeconds: flowMean(({ emptyMs }) => emptyMs) / 1000,
+      peakAlive: flowMean(({ peakAlive }) => peakAlive),
       meanIncomingHps,
       peakIncomingHps,
       peakRatio: dps > 0 ? peakIncomingHps / dps : 0,

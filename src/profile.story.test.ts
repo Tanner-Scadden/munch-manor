@@ -15,13 +15,8 @@ import * as Character from './character'
 import { PartRadioGroupBlock } from './lookRadios'
 import { update } from './main'
 import { Message } from './message'
-import {
-  AudioState,
-  type Model,
-  Phase,
-  type ProfileTab,
-  initialModel,
-} from './model'
+import { AudioState, type Model, Phase, type ProfileTab } from './model'
+import { readyAfterRead } from './model.fixture'
 import { changesBetween } from './playerSync'
 import {
   DEFAULT_NAME,
@@ -37,15 +32,9 @@ import {
   shownName,
 } from './profile'
 import { saveOf } from './save'
-import { SURFACE, closeDialog, press, showDialog, writeSave } from './testing'
+import { closeDialog, press, showDialog, writeSave } from './testing'
 import { WriteSave } from './update/save'
 import { PlaySound } from './update/sound'
-import { asVeteran } from './veteran'
-
-const home: Model = modifyFields(asVeteran(initialModel), {
-  maybeSurface: () => Option.some(SURFACE),
-  saveStatus: () => 'Read',
-})
 
 const closeProfile = () =>
   steps(
@@ -89,7 +78,7 @@ const expectOpenOn = (tab: ProfileTab) =>
   })
 
 const openOn = (tab: ProfileTab): Model =>
-  modifyFields(home, {
+  modifyFields(readyAfterRead, {
     profile: profile => modifyFields(profile, { tab: () => tab }),
     profileDialog: dialog => modifyFields(dialog, { isOpen: () => true }),
   })
@@ -98,28 +87,28 @@ describe('the Profile', () => {
   test('the gear and O open it on Settings; the Character card, the player, and C open it on Look', () => {
     story(
       update,
-      given(home),
+      given(readyAfterRead),
       message(Message.ClickedSettingsButton()),
       showDialog(),
       expectOpenOn('Settings'),
     )
     story(
       update,
-      given(home),
+      given(readyAfterRead),
       press('KeyO'),
       showDialog(),
       expectOpenOn('Settings'),
     )
     story(
       update,
-      given(home),
+      given(readyAfterRead),
       message(Message.ClickedCharacterButton()),
       showDialog(),
       expectOpenOn('Look'),
     )
     story(
       update,
-      given(home),
+      given(readyAfterRead),
       press('KeyC'),
       showDialog(),
       expectOpenOn('Look'),
@@ -131,7 +120,7 @@ describe('the Profile', () => {
   })
 
   test('never opens mid-run, and the gear only from the menu itself', () => {
-    const fighting = modifyFields(home, {
+    const fighting = modifyFields(readyAfterRead, {
       phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
     })
     Array.forEach(
@@ -220,9 +209,9 @@ describe('the name', () => {
   test('falls back to the default when empty, and the join request carries the saved name', () => {
     expect(shownName('')).toBe(DEFAULT_NAME)
     expect(shownName('Gravy Dave')).toBe('Gravy Dave')
-    expect(joinName(modifyFields(home, { playerName: () => 'Zed Head' }))).toBe(
-      'Zed Head',
-    )
+    expect(
+      joinName(modifyFields(readyAfterRead, { playerName: () => 'Zed Head' })),
+    ).toBe('Zed Head')
   })
 
   test('typing shows on the stone and is kept, saved, and synced only once the player is done', () => {
@@ -300,7 +289,7 @@ describe('the name', () => {
     story(
       update,
       given(
-        modifyFields(home, {
+        modifyFields(readyAfterRead, {
           playerName: () => 'Baron Burp',
           profile: profile => modifyFields(profile, { nameDraft: () => 'x' }),
         }),
@@ -316,7 +305,7 @@ describe('the name', () => {
 
 describe('the name dice', () => {
   const rollFrom = (seed: number, name = ''): Model => {
-    const holder: { current: Model } = { current: home }
+    const holder: { current: Model } = { current: readyAfterRead }
     story(
       update,
       given(
@@ -341,7 +330,7 @@ describe('the name dice', () => {
     expect(again.playerName).toBe(first.playerName)
     expect(again.cosmeticRngState).toBe(first.cosmeticRngState)
     expect(first.cosmeticRngState).not.toBe(1234)
-    expect(first.rngState).toBe(home.rngState)
+    expect(first.rngState).toBe(readyAfterRead.rngState)
     expect(GOOFY_NAMES).toContain(first.playerName)
     expect(first.profile.nameDraft).toBe(first.playerName)
     expect(first.profile.fx).toBe('Spin')

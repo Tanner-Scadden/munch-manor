@@ -41,6 +41,7 @@ import {
   release,
   tick,
   tickCountFor,
+  zombieById,
   zombieOf,
 } from './testing'
 import { FocusShopItem } from './update/shop'
@@ -77,11 +78,6 @@ const fightingWith = (zombies: ReadonlyArray<Zombie>): Model =>
         facing: () => ({ x: 1, y: 0 }),
       }),
   })
-
-const zombieIn = (current: Model, id: number): Zombie =>
-  Option.getOrThrow(
-    Array.findFirst(current.zombies, zombie => zombie.id === id),
-  )
 
 const frames = (start: Model, count: number): ReadonlyArray<Model> =>
   Array.scan(
@@ -211,7 +207,7 @@ describe('the knife', () => {
       message(fire),
       tick(FRAME_MS),
       model(current => {
-        const hit = zombieIn(current, 900)
+        const hit = zombieById(current, 900)
         expect(hit.hp).toBe(99 - KNIFE_RULES.damage)
         expect(hit.knockback.x).toBeGreaterThan(0)
         expect(hit.knockback.x).toBeLessThanOrEqual(KNIFE_RULES.knockback)
@@ -234,9 +230,9 @@ describe('the knife', () => {
       message(fire),
       tick(FRAME_MS),
       model(current => {
-        expect(zombieIn(current, 900).hp).toBe(98)
-        expect(zombieIn(current, 901).hp).toBe(99)
-        expect(zombieIn(current, 902).hp).toBe(99)
+        expect(zombieById(current, 900).hp).toBe(98)
+        expect(zombieById(current, 901).hp).toBe(99)
+        expect(zombieById(current, 902).hp).toBe(99)
       }),
     )
   })
@@ -249,7 +245,7 @@ describe('the knife', () => {
       tickCountFor(KNIFE_RULES.intervalMs * 3 - FRAME_MS),
     )
     expect(stabsIn(seen)).toBe(3)
-    expect(zombieIn(lastOf(seen), 900).hp).toBe(99 - 3 * KNIFE_RULES.damage)
+    expect(zombieById(lastOf(seen), 900).hp).toBe(99 - 3 * KNIFE_RULES.damage)
   })
 
   test('letting go of fire stops the stabbing', () => {
@@ -371,7 +367,7 @@ describe('the knife', () => {
     )
     const stabbing = frames(pulled, tickCountFor(KNIFE_RULES.intervalMs))
     expect(stabsIn([...seen, ...stabbing])).toBeGreaterThan(0)
-    expect(zombieIn(lastOf(stabbing), 900).hp).toBeLessThan(99)
+    expect(zombieById(lastOf(stabbing), 900).hp).toBeLessThan(99)
   })
 
   test('it rests while the player browses the shop', () => {
@@ -385,7 +381,7 @@ describe('the knife', () => {
       message(fire),
       tick(FRAME_MS),
       model(current => {
-        expect(zombieIn(current, 900).hp).toBe(99)
+        expect(zombieById(current, 900).hp).toBe(99)
       }),
     )
   })

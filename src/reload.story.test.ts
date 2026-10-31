@@ -23,6 +23,7 @@ import {
 } from './model'
 import { DISTANT_SPAWN, withArsenal } from './model.fixture'
 import {
+  countdownTicks,
   holdFire,
   holdingFirst,
   holdingSecond,
@@ -39,14 +40,9 @@ import {
 import { WEAPONS } from './weapons'
 
 const FRAME_MS = FIXED_STEP_MS
-// NOTE: the ticks a countdown of `ms` takes to run out, counted the way the
-// game counts it down. Whole ticks of 1000/60 ms sum a hair short of a round
-// number, so 800 ms takes 49 ticks, not 48.
-const ticksOf = (ms: number): number =>
-  ms <= 0 ? 0 : 1 + ticksOf(ms - FRAME_MS)
-const TICKS_PER_SHOT = ticksOf(FIRE_INTERVAL_MS)
-const PISTOL_RELOAD_TICKS = ticksOf(PISTOL_RELOAD_MS)
-const SMG_FIRING_TICKS = ticksOf(3000)
+const TICKS_PER_SHOT = countdownTicks(FIRE_INTERVAL_MS)
+const PISTOL_RELOAD_TICKS = countdownTicks(PISTOL_RELOAD_MS)
+const SMG_FIRING_TICKS = countdownTicks(3000)
 
 // NOTE: a countdown of whole ticks of 1000/60 ms lands a hair off the
 // round number.
@@ -172,7 +168,9 @@ describe('magazines', () => {
   test('the pistol never runs out: it reloads magazine after magazine', () => {
     const magazines = 3
     const magazineTicks =
-      PISTOL_MAGAZINE * TICKS_PER_SHOT + PISTOL_RELOAD_TICKS + ticksOf(100)
+      PISTOL_MAGAZINE * TICKS_PER_SHOT +
+      PISTOL_RELOAD_TICKS +
+      countdownTicks(100)
     story(
       update,
       given(fighting),
@@ -201,7 +199,7 @@ describe('magazines', () => {
         )
         expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
       }),
-      ...ticks(ticksOf(WEAPONS.Smg.reloadMs), FRAME_MS),
+      ...ticks(countdownTicks(WEAPONS.Smg.reloadMs), FRAME_MS),
       model(({ player }) => {
         expect(spareRounds(player.arsenal)).toEqual(
           Option.some({ rounds: 10, loaded: 10 }),

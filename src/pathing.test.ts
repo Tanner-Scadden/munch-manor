@@ -24,12 +24,12 @@ import {
   playerDistancePx,
   steerToward,
 } from './pathing'
+import { PARLOUR_SPOT } from './testing'
 import { ZOMBIE_KINDS } from './zombies'
 
 // NOTE: the manor in both states a run sees it, boarded and open, with the
 // spots the player can stand in each: the parlour always, the kitchen once
 // it is open.
-const PARLOUR_SPOT: Vector = { x: 160, y: 90 }
 const KITCHEN_SPOT: Vector = { x: 100, y: -80 }
 const FRIDGE_SPOT: Vector = { x: 180, y: -104 }
 

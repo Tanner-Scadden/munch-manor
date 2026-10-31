@@ -19,6 +19,7 @@ import {
   ZOMBIE_MAX_HP,
 } from './constants'
 import { KITCHEN_EXIT } from './exits'
+import { FRIDGE_RULES } from './leftovers'
 import { PartRadioGroupBlock } from './lookRadios'
 import { update } from './main'
 import { Message } from './message'
@@ -29,6 +30,7 @@ import {
   type Model,
   Pierce,
   type RunStats,
+  type Vector,
   type Zombie,
   ZombieAction,
   type ZombieKind,
@@ -148,6 +150,15 @@ export const showDialogInScene = () => [
   ),
 ]
 
+// NOTE: a frame walks the player into the stall, which opens the shop.
+export const walkIntoStallInScene = () => [
+  Scene.Subscription.emit(
+    SCENE_SUBSCRIPTIONS.frame,
+    Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
+  ),
+  ...showDialogInScene(),
+]
+
 export const manorButton = Scene.role('button', { name: /^More:/ })
 
 // NOTE: deals the MANOR hand on the home menu.
@@ -217,9 +228,24 @@ export const ticksFor = (ms: number, frameMs: number) =>
 export const nextFrame = (current: Model): Model =>
   update(current, Message.TickedFrame({ deltaTime: FIXED_STEP_MS })).model
 
+// NOTE: the Model a Message leaves, for a test that starts from a Command's
+// result, which no Subscription emits.
+export const modelAfter = (model: Model, message: Message): Model =>
+  update(model, message).model
+
 // NOTE: how many fixed-step frames it takes to play at least `ms`.
 export const tickCountFor = (ms: number): number =>
   Math.ceil(ms / FIXED_STEP_MS)
+
+// NOTE: the ticks a countdown of `ms` takes to run out, counted the way the
+// game counts it down: whole ticks of 1000/60 ms sum a hair short of a
+// round number, so 800 ms takes 49 ticks, not 48.
+export const countdownTicks = (ms: number): number =>
+  ms <= 0 ? 0 : 1 + countdownTicks(ms - FIXED_STEP_MS)
+
+// NOTE: fixed-step frames until the fridge's door is open.
+export const FRIDGE_OPEN_TICKS =
+  Math.ceil(FRIDGE_RULES.openMs / FIXED_STEP_MS) + 1
 
 // NOTE: fixed-step frames that hold a stand-to-buy prompt until it buys.
 export const HOLD_TICKS = Math.ceil(PURCHASE_RULES.holdMs / FIXED_STEP_MS) + 1
@@ -259,6 +285,25 @@ export const finishSplash = Story.steps(
 )
 
 // READING A MODEL
+
+// NOTE: every event the Messages raise, frame by frame, in order.
+export const eventsOver = (
+  start: Model,
+  messages: ReadonlyArray<Message>,
+): ReadonlyArray<GameEvent> =>
+  Array.reduce(
+    messages,
+    { current: start, events: Array.empty<GameEvent>() },
+    ({ current, events }, sent) => {
+      const next = update(current, sent).model
+      return { current: next, events: [...events, ...next.frameEvents] }
+    },
+  ).events
+
+export const zombieById = (current: Model, id: number): Zombie =>
+  Option.getOrThrow(
+    Array.findFirst(current.zombies, zombie => zombie.id === id),
+  )
 
 export const hasEvent = (current: Model, tag: GameEvent['_tag']): boolean =>
   Array.some(current.frameEvents, event => event._tag === tag)
@@ -341,6 +386,10 @@ export const nodesOf = (root: VNodeLike): ReadonlyArray<VNodeLike> => {
 export const playButton = Scene.role('button', { name: 'Play' })
 
 export const closeButton = Scene.role('button', { name: 'Close' })
+
+export const settingsButton = Scene.role('button', { name: 'Settings' })
+
+export const profileDialog = Scene.role('dialog', { name: 'Profile' })
 
 export const modeButton = Scene.role('button', {
   name: 'Mode: Campaign. Switch to Endless',
@@ -516,6 +565,9 @@ export const BELOW_NORTH_DOOR = { x: 220, y: 27 }
 
 export const BELOW_KITCHEN_DOOR = { x: 70, y: 26 }
 
+// NOTE: a spot the player can always stand on: the parlour's middle.
+export const PARLOUR_SPOT: Vector = { x: 160, y: 90 }
+
 // NOTE: just right of the player at the parlour's center, where a shot
 // leaves the gun.
 export const MUZZLE_X = PARLOUR.width / 2 + 10
@@ -531,6 +583,9 @@ export const westPlank = Trap.Barricade({
 })
 
 export const FRAME_MS = FIXED_STEP_MS
+
+// NOTE: one fixed-step frame.
+export const FIXED_FRAME = Message.TickedFrame({ deltaTime: FRAME_MS })
 // NOTE: hit-stop counts whole ticks: a freeze lasts its length rounded to
 // whole ticks, and the world does not step on any of them.
 export const freezeTicks = (freezeMs: number): number =>

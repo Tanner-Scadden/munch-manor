@@ -24,12 +24,13 @@ import { bestsFor, withBests } from './home'
 import { update } from './main'
 import { shareHrefOf } from './menus'
 import { Message } from './message'
-import { AudioState, type Model, Phase, RunMode, initialModel } from './model'
+import { AudioState, type Model, Phase, RunMode } from './model'
+import { readyModel } from './model.fixture'
 import { seatCrew } from './party'
 import { noSavedRunRecords } from './playerData'
 import { mergeRunRecords } from './playerScope'
 import { GAME_URL, shareText, shareUrl } from './share'
-import { SURFACE, press, tick, zombieOf } from './testing'
+import { press, tick, zombieOf } from './testing'
 import {
   ClickShareLink,
   OpenShareLink,
@@ -38,14 +39,9 @@ import {
 } from './update/end'
 import { PlaySound } from './update/sound'
 import { RUNNING_BUILD } from './version'
-import { asVeteran } from './veteran'
 import { withWorld } from './world'
 
-const home: Model = modifyFields(asVeteran(initialModel), {
-  maybeSurface: () => Option.some(SURFACE),
-})
-
-const midRun: Model = modifyFields(home, {
+const midRun: Model = modifyFields(readyModel, {
   phase: () => Phase.Wave({ wave: 4, elapsedMs: 4000, spawns: [] }),
 })
 
@@ -59,7 +55,7 @@ const lastHeart = (base: Model): Model =>
   })
 
 const onEndScreen = (phase: Phase, screenMs: number): Model =>
-  modifyFields(home, {
+  modifyFields(readyModel, {
     phase: () => phase,
     screenMs: () => screenMs,
     mode: () => RunMode.Campaign(),
@@ -542,7 +538,7 @@ describe('sharing to X', () => {
   test('the boot finds the share sheet', () => {
     story(
       update,
-      given(home),
+      given(readyModel),
       message(Message.CompletedDetectShareSheet({ shareSheet: 'Available' })),
       model(after => {
         expect(after.shareSheet).toBe('Available')

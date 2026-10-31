@@ -22,10 +22,11 @@ import {
   DEFAULT_ROOM_SETTINGS,
   MOVE_SCALE,
   type OwnSeat,
+  ROOM_WORLD,
   type RoomWorld,
   actionCodeOf,
   heldAction,
-  roomWorldFor,
+  startRoomWorld,
   stepRoomWorld,
 } from './roomWorld'
 import { SeatAction } from './stepWorld'
@@ -35,7 +36,8 @@ import { Phase, type Vector, ZombieState } from './worldSchema'
 // the room stepped tick by tick, and a room with clients over a fake
 // network, every frame through the real codecs.
 
-export const ROOM_WORLD = roomWorldFor(DEFAULT_ROOM_SETTINGS)
+// NOTE: a room of two players from seed 7.
+export const TWO_SEAT_ROOM = startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS)
 
 // NOTE: each scripted player walks a square of its own, out of step with
 // the others, aims at the nearest walking zombie and holds the trigger

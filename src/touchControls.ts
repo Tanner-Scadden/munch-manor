@@ -19,7 +19,7 @@ import { percentOf } from './menuParts'
 import { Message, type PressedHudSlot } from './message'
 import {
   BreakClock,
-  type GunSlot,
+  GunSlot,
   type Model,
   Phase,
   Stick,
@@ -115,7 +115,7 @@ const keyBadgeView = (
 
 type SlotGun = Readonly<{ slot: GunSlot; name: string }>
 
-const SLOT_ORDER: ReadonlyArray<GunSlot> = ['First', 'Second']
+const SLOT_ORDER = GunSlot.literals
 
 const slotGuns = (model: Model): ReadonlyArray<SlotGun> =>
   Array.zipWith(SLOT_ORDER, gunsOf(model.player.arsenal), (slot, gun) => ({

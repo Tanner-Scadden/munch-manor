@@ -11,7 +11,7 @@ import {
 } from '@munch/netcode'
 
 import { closeButtonView } from '../dialogs'
-import { DIFFICULTIES } from '../difficulty'
+import { DIFFICULTIES, DIFFICULTY_ORDER } from '../difficulty'
 import {
   CAMPAIGN_ICON,
   ENDLESS_ICON,
@@ -53,7 +53,6 @@ import {
 } from './model'
 import {
   CODE_INPUT_ID,
-  DIFFICULTY_PICKS,
   MODE_PICKS,
   QUICK_PLAY_BUTTON_ID,
   READY_BUTTON_ID,
@@ -736,7 +735,7 @@ const modePickView = (
 
 const skullIndexOf = (difficulty: RoomDifficulty): number =>
   Option.getOrElse(
-    Array.findFirstIndex(DIFFICULTY_PICKS, level => level === difficulty),
+    Array.findFirstIndex(DIFFICULTY_ORDER, level => level === difficulty),
     () => 0,
   )
 
@@ -816,7 +815,7 @@ const picksView = (
           h.AriaLabel('Difficulty'),
         ],
         [
-          ...Array.map(DIFFICULTY_PICKS, difficulty =>
+          ...Array.map(DIFFICULTY_ORDER, difficulty =>
             skullPickView(room, lobby, difficulty, h),
           ),
           isPicking(room) ? keyCapView(inputs, 'X', h) : h.empty,

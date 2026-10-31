@@ -6,6 +6,7 @@ import { woundPlayer } from './combat'
 import { MS_PER_SECOND, PLAYER_RADIUS, ZOMBIE_HIT_PULSE_MS } from './constants'
 import {
   OUTWARD,
+  ZERO_VECTOR,
   directionBetween,
   distanceBetween,
   normalize,
@@ -106,8 +107,6 @@ const nearestThrowable = (
     Array.head,
   )
 
-const HOLD: Vector = { x: 0, y: 0 }
-
 // NOTE: a Big Leaguer hangs back once it is close enough to throw and waits for
 // a Groaner to wander past. It walks to fetch a Groaner it can see nearby,
 // and walks in to bite like any other zombie when there is none to throw.
@@ -128,10 +127,10 @@ export const maybeChuckerHeading = (
     ) {
       return Option.orElse(
         normalize({ x: groaner.x - chucker.x, y: groaner.y - chucker.y }),
-        () => Option.some(HOLD),
+        () => Option.some(ZERO_VECTOR),
       )
     } else if (distanceBetween(chucker, player) <= CHUCKER_RULES.hangPx) {
-      return Option.some(HOLD)
+      return Option.some(ZERO_VECTOR)
     } else {
       return Option.none()
     }

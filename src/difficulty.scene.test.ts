@@ -16,6 +16,7 @@ import { RESTART_GRACE_MS } from './constants'
 import { type Model, Phase, initialModel } from './model'
 import {
   ROOT,
+  closeButton,
   difficultyButton,
   lockedNightmare,
   measureSurface,
@@ -34,7 +35,6 @@ const hard = role('button', { name: 'Hard: They bite back' })
 const openNightmare = role('button', {
   name: 'Nightmare: No mercy. Bring snacks',
 })
-const done = role('button', { name: 'Close' })
 
 // NOTE: the attribute the Foldkit dialog focuses when it opens.
 const INITIAL_FOCUS = 'data-foldkit-dialog-initial-focus'
@@ -97,7 +97,7 @@ describe('the difficulty picker by PLAY', () => {
         expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
         expect(normal).toHaveAttr(INITIAL_FOCUS),
         expect(hard).not.toHaveAttr(INITIAL_FOCUS),
-        expect(done).not.toHaveAttr(INITIAL_FOCUS),
+        expect(closeButton).not.toHaveAttr(INITIAL_FOCUS),
       ),
     )
   })

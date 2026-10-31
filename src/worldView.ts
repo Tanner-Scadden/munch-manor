@@ -23,6 +23,7 @@ import {
   fridgeOverheadShapes,
   lidShadowShapes,
 } from './fridgeView'
+import { ZERO_VECTOR } from './geometry'
 import { ovenFlameShapes, ovenGlowShapes, padlockShapes } from './kitchenView'
 import {
   CounterSale,
@@ -85,12 +86,10 @@ import {
 
 // OFFSET
 
-const STILL: Vector = { x: 0, y: 0 }
-
 const shakeOffset = (model: Model): Vector =>
   isRoundActive(model.phase) && model.shakeSetting === 'On'
     ? model.shake.offset
-    : STILL
+    : ZERO_VECTOR
 
 export const worldOffset = (model: Model, camera: Camera): Vector =>
   sceneOffset(camera, shakeOffset(model))

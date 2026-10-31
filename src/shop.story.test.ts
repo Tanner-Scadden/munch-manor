@@ -29,13 +29,12 @@ import {
   Pierce,
   ShopState,
 } from './model'
-import { DISTANT_SPAWN, withArsenal } from './model.fixture'
+import { DISTANT_SPAWN, withArsenal, withPlayerAt } from './model.fixture'
 import { LASER_SIGHT_PRICE, SHOP_ITEMS, itemsIn, stallPrompt } from './shop'
 import {
   FRAMES_TO_STALL,
   GRACE_TICK_MS,
   SHOP_FRAME_MS,
-  at,
   besideStall,
   browsing,
   focusedOn,
@@ -245,7 +244,7 @@ describe('the shop stall', () => {
       update,
       given(
         killShot(
-          modifyFields(at(shopReady, 270, 144), {
+          modifyFields(withPlayerAt(shopReady, 270, 144), {
             phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
           }),
         ),
@@ -269,7 +268,9 @@ describe('the shop stall', () => {
     story(
       update,
       given(
-        modifyFields(at(shopReady, 270, 142), { phase: () => fighting(2) }),
+        modifyFields(withPlayerAt(shopReady, 270, 142), {
+          phase: () => fighting(2),
+        }),
       ),
       press('KeyS'),
       ...ticks(20, SHOP_FRAME_MS),
@@ -707,7 +708,7 @@ describe('the stall entrance', () => {
     story(
       update,
       given(
-        at(
+        withPlayerAt(
           modifyFields(shopReady, { phase: () => preparing(2) }),
           start.x,
           start.y,
@@ -740,7 +741,11 @@ describe('the stall entrance', () => {
     story(
       update,
       given(
-        at(modifyFields(shopReady, { phase: () => preparing(2) }), 251, 160),
+        withPlayerAt(
+          modifyFields(shopReady, { phase: () => preparing(2) }),
+          251,
+          160,
+        ),
       ),
       tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
@@ -777,7 +782,11 @@ describe('the stall entrance', () => {
     story(
       update,
       given(
-        at(modifyFields(shopReady, { phase: () => fighting(3) }), 240, 160),
+        withPlayerAt(
+          modifyFields(shopReady, { phase: () => fighting(3) }),
+          240,
+          160,
+        ),
       ),
       press('KeyD'),
       ...ticks(6, SHOP_FRAME_MS),
@@ -794,7 +803,7 @@ describe('the stall entrance', () => {
     const prepared = modifyFields(shopReady, { phase: () => preparing(2) })
     story(
       update,
-      given(at(prepared, 160, 90)),
+      given(withPlayerAt(prepared, 160, 90)),
       tick(SHOP_FRAME_MS),
       model(current => {
         expect(stallPrompt(current)).toBe('None')
@@ -802,7 +811,7 @@ describe('the stall entrance', () => {
     )
     story(
       update,
-      given(at(prepared, 225, 160)),
+      given(withPlayerAt(prepared, 225, 160)),
       tick(SHOP_FRAME_MS),
       model(current => {
         expect(stallPrompt(current)).toBe('WalkUp')
@@ -819,7 +828,11 @@ describe('the stall entrance', () => {
     story(
       update,
       given(
-        at(modifyFields(shopReady, { phase: () => preparing(1) }), 225, 160),
+        withPlayerAt(
+          modifyFields(shopReady, { phase: () => preparing(1) }),
+          225,
+          160,
+        ),
       ),
       tick(SHOP_FRAME_MS),
       model(current => {
@@ -834,7 +847,7 @@ describe('the stall entrance', () => {
         modifyFields(lessons, { shop: () => Lesson.Learned({ atMs: 0 }) }),
     })
     const near = (phase: Phase): Model =>
-      at(modifyFields(shopped, { phase: () => phase }), 225, 160)
+      withPlayerAt(modifyFields(shopped, { phase: () => phase }), 225, 160)
     story(
       update,
       given(near(preparing(2))),

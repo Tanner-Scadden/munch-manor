@@ -91,7 +91,7 @@ const symbolOf = (
     Option.getOrElse(() => TRANSPARENT),
   )
 
-const GUN_TIER_TRIMS: ReadonlyArray<Palette> = [
+export const GUN_TIER_TRIMS: ReadonlyArray<Palette> = [
   {},
   { H: '#9be3ff' },
   { H: '#ff9df0', M: '#7a3fa0' },

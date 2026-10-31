@@ -6,7 +6,6 @@ import {
   Fiber,
   Option,
   Ref,
-  Schedule,
   Schema,
   Scope,
   Stream,
@@ -37,6 +36,7 @@ import {
 import {
   Claimed,
   Counted,
+  FAST_TIMING,
   Notes,
   PLAYER,
   SCOPE,
@@ -68,14 +68,6 @@ const openDevice = (
     return { database, replica }
   })
 
-const TIMING = {
-  heartbeat: '40 millis',
-  silence: '250 millis',
-  resendEvery: '60 millis',
-  followerPoll: '20 millis',
-  backoff: Schedule.spaced('15 millis'),
-} as const
-
 const makeTestHost = () =>
   makeHost({
     definitions: [Notes],
@@ -96,7 +88,7 @@ const syncOver = (
       token: `${deviceId}:${player}`,
       clientId: deviceId,
     })),
-    ...TIMING,
+    ...FAST_TIMING,
   })
 
 const connect = (

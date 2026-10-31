@@ -248,10 +248,10 @@ export const gunSlotAction = (
 // NOTE: where a player's shop focus moves when they have no dialog, such as
 // player 2 on a shared keyboard: through the rows of the open category, and
 // on past either end into the next category.
-export const ShopStep = Schema.Literals(['Previous', 'Next'])
-export type ShopStep = typeof ShopStep.Type
+export const FocusStep = Schema.Literals(['Previous', 'Next'])
+export type FocusStep = typeof FocusStep.Type
 
-const categoryAfter = (world: World, step: ShopStep) => {
+const categoryAfter = (world: World, step: FocusStep) => {
   const index = Option.getOrElse(
     Array.findFirstIndex(
       SHOP_CATEGORY_ORDER,
@@ -269,7 +269,7 @@ const categoryAfter = (world: World, step: ShopStep) => {
   )
 }
 
-const stepFocus = (world: World, step: ShopStep): World => {
+const stepFocus = (world: World, step: FocusStep): World => {
   if (!ShopState.isAnyOf(['Browsing'])(world.shop)) {
     return world
   }
@@ -299,5 +299,5 @@ const stepFocus = (world: World, step: ShopStep): World => {
 export const stepShopFocus = (
   world: World,
   slot: PlayerSlot,
-  step: ShopStep,
+  step: FocusStep,
 ): World => withSeat(world, slot, seatWorld => stepFocus(seatWorld, step))

@@ -15,7 +15,7 @@ import { update } from './main'
 import { Message } from './message'
 import { AudioState, FridgeDoor, type Model, PrizeFlight } from './model'
 import { atFridge, fridgeSeededFor } from './model.fixture'
-import { HOLD_TICKS, press, release, ticks } from './testing'
+import { FIXED_FRAME, HOLD_TICKS, press, release, ticks } from './testing'
 import { PlaySound } from './update/sound'
 import { freshGun, maybeReplacedGun, takeGun } from './weapons'
 import { Arsenal } from './worldSchema'
@@ -62,13 +62,14 @@ const replay = (
     ]
   })
 
-const frame = Message.TickedFrame({ deltaTime: FRAME_MS })
-
 const pullMessages: ReadonlyArray<Message> = [
   Message.PressedKey({ code: 'Enter' }),
-  ...Array.makeBy(HOLD_TICKS, () => frame),
+  ...Array.makeBy(HOLD_TICKS, () => FIXED_FRAME),
   Message.ReleasedKey({ code: 'Enter' }),
-  ...Array.makeBy(Math.ceil(FRIDGE_RULES.openMs / FRAME_MS) + 2, () => frame),
+  ...Array.makeBy(
+    Math.ceil(FRIDGE_RULES.openMs / FRAME_MS) + 2,
+    () => FIXED_FRAME,
+  ),
 ]
 
 const firstStepWith = (

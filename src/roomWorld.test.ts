@@ -6,13 +6,13 @@ import { NEUTRAL_INPUT, makeReader, makeWriter } from '@munch/netcode'
 
 import { INTENSITY_PER_HEART } from './constants'
 import { maybePlayerAt, withSeat } from './party'
-import { ROOM_WORLD, playRoom, scriptedTicks } from './roomTesting'
+import { TWO_SEAT_ROOM, playRoom, scriptedTicks } from './roomTesting'
 import {
   AIM_REACH,
-  DEFAULT_ROOM_SETTINGS,
   FIRE_BUTTON,
   INTERACT_BUTTON,
   type OwnSeat,
+  ROOM_WORLD,
   type RoomWorld,
   actionCodeOf,
   heldAction,
@@ -24,7 +24,6 @@ import {
   roomSettingsOf,
   roomWorldFor,
   seatActionOf,
-  startRoomWorld,
   stepRoomWorld,
   writeRoomDiff,
   writeRoomSnapshot,
@@ -51,8 +50,6 @@ const diffOf = (prev: RoomWorld, next: RoomWorld): Uint8Array => {
   return writer.finish()
 }
 
-const start = startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS)
-
 // NOTE: wave 1 underway: its first zombies in, both players shooting.
 const WAVE_TICKS = 480
 
@@ -65,10 +62,10 @@ type Followed = Readonly<{
 }>
 
 const follow = (ticks: number): Followed => {
-  const sent = { at: start, client: readBack(start) }
+  const sent = { at: TWO_SEAT_ROOM, client: readBack(TWO_SEAT_ROOM) }
   const counts = { server: 0, client: 0 }
   const diffBytes: Array<number> = []
-  const server = playRoom(start, ticks, room => {
+  const server = playRoom(TWO_SEAT_ROOM, ticks, room => {
     counts.server += Array.reduce(
       Array.filter(room.events, entry => entry.tick === room.tick),
       0,
@@ -128,12 +125,15 @@ describe('the room World on the wire', () => {
 describe('inputs and presses', () => {
   test('a press applies once however long it is held', () => {
     const atStall = {
-      ...start,
-      world: withSeat(beginPreparation(start.world, 2, 20_000), 1, world =>
-        modifyFields(world, {
-          wallet: wallet => modifyFields(wallet, { balance: () => 1000 }),
-          shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
-        }),
+      ...TWO_SEAT_ROOM,
+      world: withSeat(
+        beginPreparation(TWO_SEAT_ROOM.world, 2, 20_000),
+        1,
+        world =>
+          modifyFields(world, {
+            wallet: wallet => modifyFields(wallet, { balance: () => 1000 }),
+            shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
+          }),
       ),
     }
     const buy = heldAction(actionCodeOf(SeatAction.Buy({ item: 'Shotgun' })), 1)
@@ -208,7 +208,7 @@ describe('inputs and presses', () => {
     ]
     Array.forEach(actions, action => {
       expect(
-        seatActionOf(start.world, heldAction(actionCodeOf(action), 14)),
+        seatActionOf(TWO_SEAT_ROOM.world, heldAction(actionCodeOf(action), 14)),
       ).toEqual(Option.some(action))
     })
   })
@@ -269,14 +269,14 @@ describe('inputs and presses', () => {
           rttMs: 0,
         },
       ])
-    const oneReady = step(step(start, [ready, 0]), [ready, 0])
+    const oneReady = step(step(TWO_SEAT_ROOM, [ready, 0]), [ready, 0])
     expect(Phase.isAnyOf(['Preparation'])(oneReady.world.phase)).toBe(true)
     const bothReady = step(step(oneReady, [ready, ready]), [ready, ready])
     expect(Phase.isAnyOf(['Wave'])(bothReady.world.phase)).toBe(true)
   })
 
   test('a player gone quiet is Away in the World', () => {
-    const away = stepRoomWorld(start, [
+    const away = stepRoomWorld(TWO_SEAT_ROOM, [
       {
         slot: 0,
         input: NEUTRAL_INPUT,
@@ -330,7 +330,7 @@ describe('own-player prediction', () => {
     }
     const room = Array.reduce(
       Array.makeBy(60, () => 0),
-      start,
+      TWO_SEAT_ROOM,
       current =>
         stepRoomWorld(current, [
           {
@@ -343,11 +343,11 @@ describe('own-player prediction', () => {
           { slot: 1, input: walk, presence: 'Here', viewLagTicks: 0, rttMs: 0 },
         ]),
     )
-    const own = Option.getOrThrow(ROOM_WORLD.own.of(start, 1))
+    const own = Option.getOrThrow(ROOM_WORLD.own.of(TWO_SEAT_ROOM, 1))
     const predicted = Array.reduce(
       Array.makeBy(60, () => 0),
       own,
-      current => predictOwn(current, walk, start),
+      current => predictOwn(current, walk, TWO_SEAT_ROOM),
     )
     const actual = Option.getOrThrow(ROOM_WORLD.own.of(room, 1))
     expect(predicted.player.x).toBeGreaterThan(own.player.x + 20)
@@ -361,7 +361,7 @@ describe('own-player prediction', () => {
       buttons: FIRE_BUTTON,
     }
     const ticks = Array.makeBy(40, () => 0)
-    const rooms = Array.scan(ticks, start, current =>
+    const rooms = Array.scan(ticks, TWO_SEAT_ROOM, current =>
       stepRoomWorld(current, [
         {
           slot: 0,
@@ -379,9 +379,9 @@ describe('own-player prediction', () => {
         },
       ]),
     )
-    const own = Option.getOrThrow(ROOM_WORLD.own.of(start, 1))
+    const own = Option.getOrThrow(ROOM_WORLD.own.of(TWO_SEAT_ROOM, 1))
     const predictions = Array.scan(ticks, own, current =>
-      predictOwn(current, trigger, start),
+      predictOwn(current, trigger, TWO_SEAT_ROOM),
     )
     const gunOf = (player: OwnSeat['player']) => ({
       recoil: player.recoilRemainingMs,
@@ -407,12 +407,12 @@ describe('own-player prediction', () => {
   })
 
   test('interpolating halfway puts a moving player halfway', () => {
-    const later = playRoom(start, 12)
-    const halfway = ROOM_WORLD.interpolate(start, later, 0.5)
+    const later = playRoom(TWO_SEAT_ROOM, 12)
+    const halfway = ROOM_WORLD.interpolate(TWO_SEAT_ROOM, later, 0.5)
     const xOf = (room: RoomWorld) =>
       Option.getOrThrow(maybePlayerAt(room.world, 0)).player.x
-    expect(xOf(halfway)).toBeCloseTo((xOf(start) + xOf(later)) / 2, 5)
-    expect(scriptedTicks(start).length).toBe(2)
+    expect(xOf(halfway)).toBeCloseTo((xOf(TWO_SEAT_ROOM) + xOf(later)) / 2, 5)
+    expect(scriptedTicks(TWO_SEAT_ROOM).length).toBe(2)
   })
 })
 
@@ -432,7 +432,7 @@ describe('the lobby picks', () => {
   })
 
   test('a won campaign keeps going into endless for the crew that won it', () => {
-    const won = modifyFields(start.world, {
+    const won = modifyFields(TWO_SEAT_ROOM.world, {
       phase: () => Phase.Victory(),
       elapsedMs: () => 600000,
     })
@@ -440,7 +440,7 @@ describe('the lobby picks', () => {
       roomSettingsOf('KeepGoing', 'Normal'),
       Option.some(won),
     )
-    expect(rules.isWon({ ...start, world: won })).toBe(true)
+    expect(rules.isWon({ ...TWO_SEAT_ROOM, world: won })).toBe(true)
     const kept = rules.start([0, 1], 99)
     expect(kept.tick).toBe(0)
     expect(kept.world.mode._tag).toBe('Endless')
@@ -458,7 +458,7 @@ describe('the lobby picks', () => {
 
 describe('the crew in the music', () => {
   test('a zombie close to any teammate, or a bitten teammate, raises the intensity', () => {
-    const apart = withSeat(start.world, 1, seatWorld =>
+    const apart = withSeat(TWO_SEAT_ROOM.world, 1, seatWorld =>
       modifyFields(seatWorld, {
         player: player => modifyFields(player, { x: () => 260, y: () => 135 }),
       }),
@@ -468,7 +468,7 @@ describe('the crew in the music', () => {
     const intensityWith = (zombieX: number, zombieY: number) =>
       stepRoomWorld(
         {
-          ...start,
+          ...TWO_SEAT_ROOM,
           world: modifyFields(apart, {
             zombies: () => [zombieAt(900, zombieX, zombieY)],
           }),
@@ -497,7 +497,7 @@ describe('the crew in the music', () => {
 })
 
 describe('latency', () => {
-  const apart = withSeat(start.world, 1, seatWorld =>
+  const apart = withSeat(TWO_SEAT_ROOM.world, 1, seatWorld =>
     modifyFields(seatWorld, {
       player: player => modifyFields(player, { x: () => 200, y: () => 120 }),
     }),
@@ -507,7 +507,7 @@ describe('latency', () => {
     const seen = { x: 230, y: 120 }
     const zombie = zombieAt(900, 230, 60)
     const room: RoomWorld = {
-      ...start,
+      ...TWO_SEAT_ROOM,
       tick: 20,
       world: modifyFields(apart, { zombies: () => [zombie] }),
       history: Array.makeBy(15, index => ({
@@ -555,7 +555,7 @@ describe('latency', () => {
   test('a zombie must keep touching a lagging player for their grace to bite', () => {
     const mate = Option.getOrThrow(maybePlayerAt(apart, 1)).player
     const touching: RoomWorld = {
-      ...start,
+      ...TWO_SEAT_ROOM,
       world: modifyFields(apart, {
         zombies: () => [zombieAt(901, mate.x + 6, mate.y)],
       }),

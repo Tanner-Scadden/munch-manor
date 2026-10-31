@@ -15,7 +15,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
-import { ticks, westPlank, zombieOf } from './testing'
+import { PARLOUR_SPOT, ticks, westPlank, zombieOf } from './testing'
 import { ZOMBIE_KINDS } from './zombies'
 
 // NOTE: seed 31677's wave 10 with the fridge on, as the balance bot left it
@@ -27,8 +27,6 @@ import { ZOMBIE_KINDS } from './zombies'
 // north door.
 const FRAME_MS = FIXED_STEP_MS
 const SECONDS = 40
-
-const PLAYER_AT = { x: 160, y: 90 }
 
 const speedOf = (zombie: Zombie): number => ZOMBIE_KINDS[zombie.kind].speedMin
 
@@ -52,8 +50,8 @@ const stuckInTheYard: Model = modifyFields(initialModel, {
   zombies: () => crowd,
   player: player =>
     modifyFields(player, {
-      x: () => PLAYER_AT.x,
-      y: () => PLAYER_AT.y,
+      x: () => PARLOUR_SPOT.x,
+      y: () => PARLOUR_SPOT.y,
       invulnerability: () =>
         Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
     }),

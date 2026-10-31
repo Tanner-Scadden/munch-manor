@@ -20,6 +20,7 @@ import {
   HAND_KEYS,
   HOME_BUTTONS,
   HOME_KEYS,
+  KEYED_HAND_CARDS,
   type KeyedHandCard,
   type LinkHandCard,
   SOURCE_URL,
@@ -856,13 +857,6 @@ const CARD_KEY_ACTIONS: Readonly<Record<KeyedHandCard, string>> = {
   HowToPlay: 'how to play',
 }
 
-const HAND_KEY_CARDS: ReadonlyArray<KeyedHandCard> = [
-  'Character',
-  'Munchopedia',
-  'WhatsNew',
-  'HowToPlay',
-]
-
 const menuKeysView = (h: ApplicationViewBuilder): Html =>
   h.section(
     [h.Class('menu-keys'), h.AriaLabelledBy(MENU_KEYS_TITLE_ID)],
@@ -883,7 +877,7 @@ const menuKeysView = (h: ApplicationViewBuilder): Html =>
               ],
             ),
           ),
-          ...Array.map(HAND_KEY_CARDS, card =>
+          ...Array.map(KEYED_HAND_CARDS, card =>
             h.li(
               [h.Class('help-extra-item')],
               [

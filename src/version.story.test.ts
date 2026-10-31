@@ -6,11 +6,11 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
-import { FIXED_STEP_MS, PREPARATION_MS, RESTART_GRACE_MS } from './constants'
+import { FIXED_STEP_MS, RESTART_GRACE_MS } from './constants'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, initialModel } from './model'
-import { fighting } from './model.fixture'
+import { WAVE_3_BREAK, fighting } from './model.fixture'
 import { isUsingServiceWorker } from './serviceWorker'
 import {
   maybePageShowMessage,
@@ -39,13 +39,6 @@ const NEWER_BUILD = 'newer-build'
 
 const onPhase = (phase: Phase): Model =>
   modifyFields(initialModel, { phase: () => phase })
-
-const BREAK = Phase.Preparation({
-  wave: 3,
-  remainingMs: 15_000,
-  durationMs: PREPARATION_MS,
-  spawns: [],
-})
 
 describe('checking for a new build', () => {
   test('the page coming back into view fetches the live build', () => {
@@ -231,7 +224,7 @@ describe('the update check subscriptions', () => {
 
   test('the five minute timer runs on quiet screens, never mid-wave', () => {
     expect(updateCheckActivity(initialModel)).toBe('Active')
-    expect(updateCheckActivity(onPhase(BREAK))).toBe('Active')
+    expect(updateCheckActivity(onPhase(WAVE_3_BREAK))).toBe('Active')
     expect(updateCheckActivity(onPhase(Phase.GameOver({ wave: 3 })))).toBe(
       'Active',
     )

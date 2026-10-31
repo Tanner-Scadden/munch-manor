@@ -1,6 +1,8 @@
 import { Clock, Duration, Effect, Schedule, Schema } from 'effect'
 import { type Browser, type Page, chromium } from 'playwright-core'
 
+import { Vector } from '@game/entitySchema'
+
 import { builtHarness, serveDir } from './harnessServer'
 import { evaluateAs } from './page'
 
@@ -567,11 +569,9 @@ export const toClient = (
   y: rect.top + y * rect.scale,
 })
 
-export const Spot = Schema.Struct({ x: Schema.Number, y: Schema.Number })
-
 // NOTE: the player and the zombies, as much of the Model as aiming needs.
 export const AimView = Schema.Struct({
-  player: Spot,
+  player: Vector,
   zombies: Schema.Array(
     Schema.Struct({
       x: Schema.Number,
@@ -584,7 +584,7 @@ export type AimView = typeof AimView.Type
 type AimZombie = AimView['zombies'][number]
 
 export const nearestZombie = (m: AimView): AimZombie | undefined => {
-  const distance = (z: typeof Spot.Type) =>
+  const distance = (z: Vector) =>
     Math.hypot(z.x - m.player.x, z.y - m.player.y)
   return m.zombies
     .filter(z => z.state._tag !== 'Dying')

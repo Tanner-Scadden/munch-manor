@@ -19,6 +19,7 @@ import {
   group,
   placeAt,
   spriteShapes,
+  spriteWidth,
 } from './sprite'
 
 // GLYPHS
@@ -126,14 +127,7 @@ export const glyphPixels = (glyph: Glyph): ReadonlyArray<string> =>
 export const toGlyph = (symbol: string): Option.Option<Glyph> =>
   Option.liftPredicate(symbol, isGlyph)
 
-const rowWidth = (pixels: ReadonlyArray<string>): number =>
-  pipe(
-    pixels,
-    Array.map(row => row.length),
-    Array.reduce(0, (widest, length) => Math.max(widest, length)),
-  )
-
-const glyphWidth = (glyph: Glyph): number => rowWidth(GLYPH_PIXELS[glyph])
+const glyphWidth = (glyph: Glyph): number => spriteWidth(GLYPH_PIXELS[glyph])
 
 type Mark =
   | Readonly<{ kind: 'Glyph'; glyph: Glyph }>
@@ -218,7 +212,7 @@ export const textPixels = (text: string): ReadonlyArray<string> => {
 const withDropShadow = (
   pixels: ReadonlyArray<string>,
 ): ReadonlyArray<string> => {
-  const width = rowWidth(pixels)
+  const width = spriteWidth(pixels)
   const isFilled = (x: number, y: number): boolean =>
     pipe(
       Array.get(pixels, y),

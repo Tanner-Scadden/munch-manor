@@ -6,21 +6,15 @@ import { describe, expect, test } from 'vitest'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, initialModel } from './model'
-import { loadingSave } from './model.fixture'
+import { loadingSave, readyAfterRead } from './model.fixture'
 import { decodeSave, encodeSave, restoreSave, saveOf } from './save'
-import { SURFACE, finishSplash } from './testing'
+import { finishSplash } from './testing'
 import { ApplyRotation } from './update/rotation'
 import { WriteSave } from './update/save'
 import { FetchBuild } from './update/version'
-import { asVeteran } from './veteran'
 
 const onPhone = (base: Model): Model =>
   modifyFields(base, { orientationLock: () => 'Supported' })
-
-const veteran: Model = modifyFields(asVeteran(initialModel), {
-  maybeSurface: () => Option.some(SURFACE),
-  saveStatus: () => 'Read',
-})
 
 const applied = (rotation: 'Landscape' | 'Auto') =>
   Command.resolve(ApplyRotation({ rotation }), Message.CompletedApplyRotation())
@@ -29,7 +23,7 @@ const savedWrite = Command.resolve(WriteSave, Message.CompletedWriteSave())
 
 describe('the rotation setting in the save', () => {
   test('round-trips through the save', () => {
-    const auto = modifyFields(veteran, { rotationSetting: () => 'Auto' })
+    const auto = modifyFields(readyAfterRead, { rotationSetting: () => 'Auto' })
     const save = saveOf(auto)
     expect(save.rotation).toBe('Auto')
     const raw = Option.getOrThrow(encodeSave(save))
@@ -40,7 +34,7 @@ describe('the rotation setting in the save', () => {
 
   test('a save from before the rotation loads locked to landscape', () => {
     const { rotation: _rotation, ...withoutRotation } = saveOf(
-      modifyFields(veteran, { shakeSetting: () => 'Off' }),
+      modifyFields(readyAfterRead, { shakeSetting: () => 'Off' }),
     )
     const versionSeven = JSON.stringify({ ...withoutRotation, version: 7 })
     const migrated = Option.getOrThrow(decodeSave(versionSeven))
@@ -52,7 +46,7 @@ describe('the rotation setting in the save', () => {
 describe('applying the rotation', () => {
   test('a loaded save on a phone that can lock applies its rotation', () => {
     const autoSave = {
-      ...saveOf(veteran),
+      ...saveOf(readyAfterRead),
       rotation: 'Auto' as const,
     }
     story(
@@ -70,7 +64,7 @@ describe('applying the rotation', () => {
   test('finding a phone that can lock locks it to landscape by default', () => {
     story(
       update,
-      given(veteran),
+      given(readyAfterRead),
       message(
         Message.CompletedDetectOrientationLock({
           orientationLock: 'Supported',
@@ -87,7 +81,7 @@ describe('applying the rotation', () => {
   test('ROTATE switches to Auto and back, applying and saving each', () => {
     story(
       update,
-      given(onPhone(veteran)),
+      given(onPhone(readyAfterRead)),
       message(Message.ClickedRotationButton()),
       applied('Auto'),
       savedWrite,
@@ -106,7 +100,7 @@ describe('applying the rotation', () => {
 
   test('full screen coming on and the page coming back apply it again', () => {
     const auto = onPhone(
-      modifyFields(veteran, { rotationSetting: () => 'Auto' }),
+      modifyFields(readyAfterRead, { rotationSetting: () => 'Auto' }),
     )
     story(
       update,
@@ -126,7 +120,7 @@ describe('applying the rotation', () => {
   test('a desktop or an iPhone never locks and ignores ROTATE', () => {
     story(
       update,
-      given(veteran),
+      given(readyAfterRead),
       message(Message.ClickedRotationButton()),
       message(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
       Command.expectNone(),

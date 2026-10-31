@@ -25,6 +25,7 @@ import {
   keepTopped,
 } from './powerups'
 import { type Seeded, between, generateMany, nextRandom } from './prng'
+import { isAtCounter } from './shop'
 import { countShots } from './stats'
 import {
   type WeaponStats,
@@ -237,9 +238,6 @@ const autoReload = (model: World, isTriggerHeld: boolean): World => {
   })
 }
 
-const isShopBrowsing = (model: World): boolean =>
-  ShopState.isAnyOf(['Browsing'])(model.shop)
-
 // NOTE: the stall shuts outside the break. A player still at the counter
 // when the wave starts (in co-op the break runs on while one shops) or the
 // run ends is sent off it, and their shop dialog follows
@@ -248,13 +246,13 @@ export const shutStallOutsideBreak = (model: World): World =>
   Phase.isAnyOf(['Preparation'])(model.phase)
     ? model
     : forEachSeat(model, seatWorld =>
-        isShopBrowsing(seatWorld)
+        isAtCounter(seatWorld.shop)
           ? modifyFields(seatWorld, { shop: () => ShopState.Dismissed() })
           : seatWorld,
       )
 
 const topUp = (model: World): World =>
-  isShopBrowsing(model)
+  isAtCounter(model.shop)
     ? model
     : modifyFields(model, {
         player: player => keepTopped(player, model.boosts),
@@ -283,7 +281,7 @@ export const fire = (stocked: World, deltaMs: number): World => {
   const isTriggerHeld = intent.trigger === 'Held'
 
   if (
-    isShopBrowsing(model) ||
+    isAtCounter(model.shop) ||
     (isReloading(player) && !isWieldingMelee(player))
   ) {
     return coolTrigger(withoutCharge(model), deltaMs, false)
@@ -304,7 +302,7 @@ export const fire = (stocked: World, deltaMs: number): World => {
 
 export const tickReload = (model: World, deltaMs: number): World => {
   const { player } = model
-  if (isShopBrowsing(model)) {
+  if (isAtCounter(model.shop)) {
     return model
   }
 

@@ -43,7 +43,7 @@ export const hideSplash = pipe(
   ),
 )
 
-const nextAnimationFrame: Effect.Effect<void> = Effect.callback<void>(
+export const nextAnimationFrame: Effect.Effect<void> = Effect.callback<void>(
   resume => {
     const handle = requestAnimationFrame(() => resume(Effect.void))
     return Effect.sync(() => cancelAnimationFrame(handle))

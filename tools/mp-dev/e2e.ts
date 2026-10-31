@@ -48,8 +48,7 @@ import {
 import { type Mutation, generateKey, makePlayerId } from '@munch/sync-engine'
 
 import { playersOf } from '../../src/party'
-import type { OwnSeat, RoomWorld } from '../../src/roomWorld'
-import { GAME } from './game'
+import { type OwnSeat, ROOM_WORLD, type RoomWorld } from '../../src/roomWorld'
 import { LOCAL_ORIGIN, startWorkerd } from './local'
 
 class CheckFailed extends Data.TaggedError('CheckFailed')<{
@@ -178,7 +177,7 @@ const joinGame = (player: Player, code: string) =>
           if (event._tag === 'Received') {
             const current = yield* Ref.get(player.play)
             const next = Session.receive(
-              GAME,
+              ROOM_WORLD,
               current,
               event.frame,
               event.bytes,
@@ -226,7 +225,12 @@ const drive = (player: Player, index: number) =>
   Effect.gen(function* () {
     const nowMs = yield* Clock.currentTimeMillis
     const current = yield* Ref.get(player.play)
-    const ticked = Session.tickInput(GAME, current, walk(index, nowMs), nowMs)
+    const ticked = Session.tickInput(
+      ROOM_WORLD,
+      current,
+      walk(index, nowMs),
+      nowMs,
+    )
     const room = yield* Ref.get(player.room)
     const sent = yield* Option.match(room, {
       onNone: () => Effect.succeed([]),
@@ -237,7 +241,7 @@ const drive = (player: Player, index: number) =>
       ticked.session,
       Session.countSent,
     )
-    const rendered = Session.render(GAME, counted, nowMs)
+    const rendered = Session.render(ROOM_WORLD, counted, nowMs)
     yield* Ref.set(player.play, rendered.session)
     yield* Option.match(rendered.world, {
       onNone: () => Effect.void,

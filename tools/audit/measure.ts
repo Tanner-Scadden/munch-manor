@@ -1,7 +1,9 @@
 import { Effect, Schema } from 'effect'
 import type { Browser, CDPSession, Page } from 'playwright-core'
 
-import { Spot, canvasRect, desktop, modelAs, toClient, wait } from './lib'
+import { Vector } from '@game/entitySchema'
+
+import { canvasRect, desktop, modelAs, toClient, wait } from './lib'
 import { evaluateAs } from './page'
 import { SCENARIOS } from './scenarios'
 
@@ -92,7 +94,7 @@ const round = (value: number, digits: number) => +value.toFixed(digits)
 // NOTE: the nearest zombie still standing, found in the page so the bot
 // reads two numbers each step instead of the whole Model.
 const aimTarget = (page: Page) =>
-  evaluateAs(page, Schema.UndefinedOr(Spot), () => {
+  evaluateAs(page, Schema.UndefinedOr(Vector), () => {
     const m = window.__model
     let best: { x: number; y: number } | undefined
     let bestDistance = Infinity

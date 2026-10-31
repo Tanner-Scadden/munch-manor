@@ -1,4 +1,12 @@
-import { Array, Context, Effect, Layer, Schema, type Scope } from 'effect'
+import {
+  Array,
+  Context,
+  Effect,
+  Layer,
+  Schedule,
+  Schema,
+  type Scope,
+} from 'effect'
 import { SqlClient } from 'effect/sql'
 
 import { SqliteClient } from '@munch/sqlite-wasm-effect'
@@ -148,3 +156,12 @@ export const openClientDatabase: Effect.Effect<
     role: Effect.succeed('Leader'),
   }
 })
+
+// NOTE: a sync engine's clocks sped up for tests.
+export const FAST_TIMING = {
+  heartbeat: '40 millis',
+  silence: '250 millis',
+  resendEvery: '60 millis',
+  followerPoll: '20 millis',
+  backoff: Schedule.spaced('15 millis'),
+} as const

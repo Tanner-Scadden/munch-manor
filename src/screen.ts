@@ -164,7 +164,10 @@ export const inLandscapeFrame = (
 
 type ScreenSize = Readonly<{ width: number; height: number }>
 
-const LANDSCAPE_SIZE: ScreenSize = { width: VIEW_WIDTH, height: VIEW_HEIGHT }
+export const LANDSCAPE_SIZE: ScreenSize = {
+  width: VIEW_WIDTH,
+  height: VIEW_HEIGHT,
+}
 
 const viewScale = (
   surface: SurfaceRectangle,

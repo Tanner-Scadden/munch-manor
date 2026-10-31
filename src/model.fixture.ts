@@ -7,10 +7,12 @@ import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf, openExitIn } from './arena'
+import { PREPARATION_MS } from './constants'
 import { KITCHEN_EXIT } from './exits'
 import { fridgeBoxOf, pickPrize, prizeWeights } from './leftovers'
 import {
   type Bullet,
+  DifficultyCard,
   type FridgePrize,
   Lesson,
   Loading,
@@ -45,6 +47,31 @@ export const plannedSpawn = (atMs: number): PlannedSpawn => ({
 // it stays in progress with only the zombies a test puts in the room.
 export const DISTANT_SPAWN: PlannedSpawn = plannedSpawn(1e9)
 
+// PHASES
+
+// NOTE: wave 2 under way, and the break before it, each holding a spawn
+// that never comes.
+export const WAVE_2_FIGHT = Phase.Wave({
+  wave: 2,
+  elapsedMs: 0,
+  spawns: [DISTANT_SPAWN],
+})
+
+export const WAVE_2_BREAK = Phase.Preparation({
+  wave: 2,
+  remainingMs: 15_000,
+  durationMs: PREPARATION_MS,
+  spawns: [DISTANT_SPAWN],
+})
+
+// NOTE: the break before wave 3, with nothing planned.
+export const WAVE_3_BREAK = Phase.Preparation({
+  wave: 3,
+  remainingMs: 15_000,
+  durationMs: PREPARATION_MS,
+  spawns: [],
+})
+
 // HOME
 
 // NOTE: a returning player on the home menu: the tutorial is done, so no
@@ -65,6 +92,20 @@ export const readyModel: Model = modifyFields(home, {
 // NOTE: a new player on a measured surface: the tutorial is still ahead.
 export const newPlayerReady: Model = modifyFields(initialModel, {
   maybeSurface: () => Option.some(SURFACE),
+})
+
+// NOTE: a new player on a measured surface who has picked a difficulty, so
+// the card does not come up.
+export const newPlayerCardSeen: Model = modifyFields(initialModel, {
+  difficultyCard: () => DifficultyCard.Seen(),
+  maybeSurface: () => Option.some(SURFACE),
+})
+
+// NOTE: a returning player on a measured surface once the save has been
+// read.
+export const readyAfterRead: Model = modifyFields(home, {
+  maybeSurface: () => Option.some(SURFACE),
+  saveStatus: () => 'Read',
 })
 
 // NOTE: the boot splash, still reading the save.
@@ -115,6 +156,11 @@ export const withActors = (
   modifyFields(base, {
     zombies: () => zombies,
     bullets: () => bullets,
+  })
+
+export const withPlayerAt = (base: Model, x: number, y: number): Model =>
+  modifyFields(base, {
+    player: player => modifyFields(player, { x: () => x, y: () => y }),
   })
 
 export const withArsenal = (base: Model, arsenal: Arsenal): Model =>

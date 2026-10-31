@@ -28,6 +28,7 @@ import {
 import {
   Claimed,
   Counted,
+  FAST_TIMING,
   Notes,
   PLAYER,
   Renamed,
@@ -82,14 +83,6 @@ const openDevice = (
     return { database, replica }
   })
 
-const FAST = {
-  heartbeat: '40 millis',
-  silence: '250 millis',
-  resendEvery: '60 millis',
-  followerPoll: '20 millis',
-  backoff: Schedule.spaced('15 millis'),
-} as const
-
 const connect = (
   host: Host,
   device: Device,
@@ -106,7 +99,7 @@ const connect = (
         token: `${deviceId}:${playerId}`,
         clientId: deviceId,
       }),
-      ...FAST,
+      ...FAST_TIMING,
     })
     return { net, sync }
   })

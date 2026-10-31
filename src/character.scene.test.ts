@@ -27,6 +27,7 @@ import {
   measureSurface,
   openHandInScene,
   pickCardInScene,
+  profileDialog,
 } from './testing'
 
 const characterButton = role('button', {
@@ -35,7 +36,6 @@ const characterButton = role('button', {
 const characterCard = role('button', {
   name: 'Character: change how you look',
 })
-const pickerDialog = role('dialog', { name: 'Profile' })
 const randomizeButton = role('button', { name: 'Roll a random look' })
 
 const group = (name: string) => role('radiogroup', { name })
@@ -93,9 +93,9 @@ describe('Character picker', () => {
       ...openHandInScene(),
       expect(characterCard).toHaveAttr('aria-keyshortcuts', 'C'),
       expect(within(characterCard, selector('.home-key'))).toHaveText('C'),
-      expect(pickerDialog).toBeAbsent(),
+      expect(profileDialog).toBeAbsent(),
       ...pickCardInScene('Character: change how you look'),
-      expect(pickerDialog).toExist(),
+      expect(profileDialog).toExist(),
       click(closeButton),
       ...closePicker(),
     )
@@ -108,7 +108,7 @@ describe('Character picker', () => {
       measureSurface,
       click(characterButton),
       ...showPicker(),
-      expect(pickerDialog).toExist(),
+      expect(profileDialog).toExist(),
       expect(role('tab', { name: 'Look' })).toHaveAttr('aria-selected', 'true'),
       ...Array.map(['Body', 'Hair', 'Outfit'], name =>
         expect(section(name)).toExist(),
@@ -177,7 +177,7 @@ describe('Character picker', () => {
       ).toExist(),
       click(closeButton),
       ...closePicker(),
-      expect(pickerDialog).toBeAbsent(),
+      expect(profileDialog).toBeAbsent(),
     )
   })
 
@@ -213,7 +213,7 @@ describe('Character picker', () => {
         Message.PressedKey({ code: 'KeyC' }),
       ),
       ...showPicker(),
-      expect(pickerDialog).toExist(),
+      expect(profileDialog).toExist(),
       keydown(optionIn('Body shape', 'Broad'), 'ArrowLeft'),
       resolveFocusOption(),
       expect(optionIn('Body shape', 'Slim')).toHaveAttr('aria-checked', 'true'),
@@ -244,7 +244,7 @@ describe('Character picker', () => {
       ...pick('Hair color', 'Grey'),
       click(closeButton),
       ...closePicker(),
-      expect(pickerDialog).toBeAbsent(),
+      expect(profileDialog).toBeAbsent(),
     )
   })
 
@@ -290,7 +290,7 @@ describe('Character picker', () => {
         SCENE_SUBSCRIPTIONS.keyboard,
         Message.PressedKey({ code: 'KeyC' }),
       ),
-      expect(pickerDialog).toBeAbsent(),
+      expect(profileDialog).toBeAbsent(),
     )
   })
 })

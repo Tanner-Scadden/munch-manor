@@ -5,7 +5,6 @@ import { maybeNewestNewsDay } from './changelog'
 import { FEEDBACK_LINE, RESTART_GRACE_MS } from './constants'
 import { IS_COOP_RELEASED } from './coop/release'
 import { hasJustWon } from './difficulty'
-import type { FocusStep } from './input'
 import {
   type DifficultyBests,
   type HandCard,
@@ -22,6 +21,7 @@ import {
 import { isDiscovered, newlyDiscovered } from './munchopedia'
 import { freshRun } from './runReset'
 import { addKills, killTotal, killsSince } from './stats'
+import type { FocusStep } from './stepWorld'
 import type { Difficulty } from './worldSchema'
 
 // BUTTONS
@@ -123,7 +123,7 @@ export const HAND_KEYS: Readonly<Record<KeyedHandCard, HomeKey>> = {
   HowToPlay: { code: 'KeyI', cap: 'I', name: 'I' },
 }
 
-const KEYED_HAND_CARDS: ReadonlyArray<KeyedHandCard> = [
+export const KEYED_HAND_CARDS: ReadonlyArray<KeyedHandCard> = [
   'Character',
   'Munchopedia',
   'WhatsNew',

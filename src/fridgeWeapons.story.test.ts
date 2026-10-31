@@ -28,6 +28,7 @@ import {
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import {
+  eventsOver,
   holdFire,
   holdingFirst,
   holdingSecond,
@@ -78,19 +79,6 @@ const nightmare = (current: Model): Model =>
 const zombieIn = (current: Model, id: number): Option.Option<Zombie> =>
   Array.findFirst(current.zombies, zombie => zombie.id === id)
 
-const eventsOf = (
-  start: Model,
-  messages: ReadonlyArray<Message>,
-): ReadonlyArray<GameEvent> =>
-  Array.reduce(
-    messages,
-    { current: start, events: Array.empty<GameEvent>() },
-    ({ current, events }, sent) => {
-      const next = update(current, sent).model
-      return { current: next, events: [...events, ...next.frameEvents] }
-    },
-  ).events
-
 const frames = (count: number): ReadonlyArray<Message> =>
   Array.makeBy(count, () => Message.TickedFrame({ deltaTime: FRAME_MS }))
 
@@ -138,7 +126,7 @@ describe('the Pressure Cooker', () => {
 
   test('the lid bursts on the first zombie it meets, killing and paying', () => {
     const groaner = zombieOf('Shambler', 900, PLAYER_X + 30, ROW_Y)
-    const events = eventsOf(holding(freshGun('Cooker'), [groaner]), [
+    const events = eventsOver(holding(freshGun('Cooker'), [groaner]), [
       press,
       ...frames(tickCountFor(COOKER_RULES.fullMs)),
       lift,
@@ -306,7 +294,7 @@ describe('the Clang Pan', () => {
           }),
       },
     )
-    const events = eventsOf(holding(freshGun('Pan'), [flying]), [
+    const events = eventsOver(holding(freshGun('Pan'), [flying]), [
       press,
       ...frames(2),
     ])
@@ -319,7 +307,7 @@ describe('the Clang Pan', () => {
     const target = zombieOf('Tank', 900, PLAYER_X + 12, ROW_Y, { hp: 999 })
     const swingsIn = (spare: CarriedGun, ms: number): number =>
       Array.filter(
-        eventsOf(holding(spare, [target]), [
+        eventsOver(holding(spare, [target]), [
           press,
           ...frames(tickCountFor(ms)),
         ]),
@@ -340,7 +328,7 @@ describe('the Clang Pan', () => {
 
   test('the 3000 turns a long hold into a ground smash all round', () => {
     const behind = zombieOf('Shambler', 900, PLAYER_X - 14, ROW_Y, { hp: 99 })
-    const events = eventsOf(
+    const events = eventsOver(
       holding(modifyFields(freshGun('Pan'), { tier: () => 3 }), [behind]),
       [press, ...frames(tickCountFor(PAN_RULES.smashHoldMs) + 30)],
     )
@@ -390,7 +378,7 @@ describe('Brain Freeze', () => {
           arsenal: () => holdingFirst(freshGun('Freeze')),
         }),
     })
-    const events = eventsOf(pistol, [press, ...frames(20)])
+    const events = eventsOver(pistol, [press, ...frames(20)])
     expect(Array.some(events, GameEvent.isAnyOf(['ZombieShattered']))).toBe(
       true,
     )

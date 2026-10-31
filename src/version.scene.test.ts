@@ -15,16 +15,17 @@ import { describe, test } from 'vitest'
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import { maybeNewestNewsDay, newsHeadline } from './changelog'
-import { PREPARATION_MS, RESTART_GRACE_MS } from './constants'
-import { update } from './main'
+import { RESTART_GRACE_MS } from './constants'
 import { Message } from './message'
 import { type Model, Phase, initialModel } from './model'
-import { fighting, withNewerBuild } from './model.fixture'
+import { WAVE_3_BREAK, fighting, withNewerBuild } from './model.fixture'
 import {
   ROOT,
   SCENE_SUBSCRIPTIONS,
+  closeButton,
   manorButton,
   measureSurface,
+  modelAfter,
   updateChip,
 } from './testing'
 import { ReloadPage, WaitForUnwrap } from './update/home'
@@ -33,26 +34,13 @@ import { pause } from './waves'
 
 const greeting = role('dialog', { name: 'Updated!' })
 const newsButton = role('button', { name: "WHAT'S NEW" })
-const closeGreeting = role('button', { name: 'Close' })
-// NOTE: the build check's answer is a Command's result, which no
-// Subscription emits, so a scene starts from the Model it leaves.
-const after = (model: Model, message: Message): Model =>
-  update(model, message).model
-
-const foundMidWave = after(
+const foundMidWave = modelAfter(
   fighting,
   Message.CompletedFetchBuild({ build: 'newer-build' }),
 )
 
 const onPhase = (phase: Phase): Model =>
   withNewerBuild(modifyFields(initialModel, { phase: () => phase }))
-
-const breakBetweenWaves = Phase.Preparation({
-  wave: 3,
-  remainingMs: 15_000,
-  durationMs: PREPARATION_MS,
-  spawns: [],
-})
 
 const SCREENS_WITHOUT_THE_CHIP: ReadonlyArray<readonly [string, Model]> = [
   ['the pause screen', withNewerBuild(pause(fighting))],
@@ -64,7 +52,7 @@ const SCREENS_WITHOUT_THE_CHIP: ReadonlyArray<readonly [string, Model]> = [
     }),
   ],
   ['Victory', onPhase(Phase.Victory())],
-  ['the break between waves', onPhase(breakBetweenWaves)],
+  ['the break between waves', onPhase(WAVE_3_BREAK)],
   ['a wave', withNewerBuild(fighting)],
 ]
 
@@ -138,7 +126,7 @@ const newestHeadline = Option.match(maybeNewestNewsDay, {
 
 // NOTE: the update marker is read by a Command at boot, so a scene starts
 // from the Model it leaves: the greeting already opening.
-const justUpdated = after(
+const justUpdated = modelAfter(
   initialModel,
   Message.CompletedReadUpdateMarker({ maybeBuild: Option.some(RUNNING_BUILD) }),
 )
@@ -160,7 +148,7 @@ describe('the greeting after an update', () => {
       expect(greeting).toExist(),
       expect(greeting).toContainText(newestHeadline),
       expect(newsButton).toExist(),
-      click(closeGreeting),
+      click(closeButton),
       Command.resolve(
         Dialog.test.CloseDialog,
         DialogBlock.Message.CompletedCloseDialog(),
@@ -189,7 +177,7 @@ describe('the greeting after an update', () => {
     scene(
       ROOT,
       given(
-        after(
+        modelAfter(
           initialModel,
           Message.CompletedReadUpdateMarker({ maybeBuild: Option.none() }),
         ),
@@ -200,7 +188,7 @@ describe('the greeting after an update', () => {
     scene(
       ROOT,
       given(
-        after(
+        modelAfter(
           initialModel,
           Message.CompletedReadUpdateMarker({
             maybeBuild: Option.some('an-older-build'),

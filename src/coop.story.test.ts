@@ -17,10 +17,10 @@ import {
 } from './coop/update'
 import { update } from './main'
 import { Message } from './message'
-import { Lesson, type Model, initialModel } from './model'
+import { Lesson, type Model } from './model'
+import { home } from './model.fixture'
 import { type Appearance, lookCodeOf } from './playerData'
 import { FocusHomeButton } from './update/home'
-import { asVeteran } from './veteran'
 
 const graduate = (current: Model): Model =>
   modifyFields(current, {
@@ -30,8 +30,7 @@ const graduate = (current: Model): Model =>
       }),
   })
 
-const newcomer = asVeteran(initialModel)
-const graduated = graduate(newcomer)
+const graduated = graduate(home)
 
 const PICKED_LOOK: Appearance = {
   body: 'Slim',
@@ -52,7 +51,7 @@ describe('co-op from home', () => {
   test('J and the CO-OP tile stay shut until the tutorial is done', () => {
     story(
       update,
-      given(newcomer),
+      given(home),
       message(Message.PressedKey({ code: 'KeyJ' })),
       message(Message.ClickedCoopButton()),
       model(current => {

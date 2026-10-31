@@ -21,7 +21,7 @@ import { PLAYER_MAX_HP, PLAYER_RADIUS, PLAYER_SPEED } from './constants'
 import { PICKUP_NAMES } from './names'
 import { forEachSeat, isCoop, isStanding, leadSeatOf } from './party'
 import { nextRandom } from './prng'
-import { earn } from './shop'
+import { earn, isAtCounter } from './shop'
 import type { SoundEffect } from './soundEffect'
 import { totalKills } from './stats'
 import { trapBlockers } from './traps'
@@ -48,7 +48,6 @@ import {
   Pierce,
   type Player,
   Prize,
-  ShopState,
   type Vector,
   type WeaponKind,
   type ZombieKind,
@@ -701,13 +700,16 @@ const dropLoot = (before: World, model: World, worldMs: number): World =>
 
 // FRAME
 
+// NOTE: a player at the stall's counter or an exit's offer holds still: in
+// single player the whole world does, in co-op only their own boosts and
+// grabs (decided row 8).
 export const advancePowerUps = (
   before: World,
   model: World,
   worldMs: number,
 ): World => {
   if (!isCoop(model)) {
-    return isAtCounterNow(model)
+    return isAtCounter(model.shop)
       ? model
       : pipe(
           tickBoosts(model, worldMs),
@@ -719,21 +721,15 @@ export const advancePowerUps = (
 
   return pipe(
     forEachSeat(model, seatWorld =>
-      isAtCounterNow(seatWorld) ? seatWorld : tickBoosts(seatWorld, worldMs),
+      isAtCounter(seatWorld.shop) ? seatWorld : tickBoosts(seatWorld, worldMs),
     ),
     ticked => agePickups(ticked, worldMs),
     aged =>
       forEachSeat(aged, seatWorld =>
-        isAtCounterNow(seatWorld) || !isStanding(leadSeatOf(seatWorld))
+        isAtCounter(seatWorld.shop) || !isStanding(leadSeatOf(seatWorld))
           ? seatWorld
           : grabPickups(seatWorld),
       ),
     grabbed => dropLoot(before, grabbed, worldMs),
   )
 }
-
-// NOTE: a player at the stall's counter or an exit's offer holds still: in
-// single player the whole world does, in co-op only their own boosts and
-// grabs (decided row 8).
-const isAtCounterNow = (model: World): boolean =>
-  ShopState.isAnyOf(['Browsing'])(model.shop)

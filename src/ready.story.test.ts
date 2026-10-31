@@ -7,7 +7,6 @@ import { FIXED_STEP_MS, RESTART_GRACE_MS } from './constants'
 import { update } from './main'
 import { Message } from './message'
 import {
-  DifficultyCard,
   Frenzy,
   type Model,
   Phase,
@@ -15,9 +14,8 @@ import {
   ZombieAction,
   type ZombieKind,
   ZombieState,
-  initialModel,
 } from './model'
-import { DISTANT_SPAWN } from './model.fixture'
+import { DISTANT_SPAWN, newPlayerCardSeen } from './model.fixture'
 import {
   hintIcons,
   hintWords,
@@ -49,11 +47,6 @@ const FIRE_TICKS = 30
 const SURFACE_VIEW_X = (clientX: number): number =>
   Option.getOrThrow(clientToView(SURFACE, { x: clientX, y: 200 })).x
 
-const readyModel: Model = modifyFields(initialModel, {
-  difficultyCard: () => DifficultyCard.Seen(),
-  maybeSurface: () => Option.some(SURFACE),
-})
-
 const hintTexts = (current: Model): ReadonlyArray<string> =>
   Array.map(shownHints(current), ({ id }) =>
     [
@@ -66,7 +59,7 @@ describe('input device', () => {
   test('switches between touch and keyboard and mouse with the last input used', () => {
     story(
       update,
-      given(readyModel),
+      given(newPlayerCardSeen),
       model(({ lastDevice }) => {
         expect(lastDevice).toBe('KeyboardMouse')
       }),
@@ -96,7 +89,7 @@ describe('input device', () => {
   test('a touch on a screen bigger than a phone acts like the mouse', () => {
     story(
       update,
-      given(readyModel),
+      given(newPlayerCardSeen),
       message(Message.CompletedDetectInputDevice({ touchControls: 'Blocked' })),
       model(({ lastDevice }) => {
         expect(lastDevice).toBe('KeyboardMouse')
@@ -132,7 +125,7 @@ describe('onboarding hints', () => {
   test('keyboard hints picture the keys and the mouse, then go once each is practised', () => {
     story(
       update,
-      given(readyModel),
+      given(newPlayerCardSeen),
       press('Enter'),
       release('Enter'),
       model(current => {
@@ -166,7 +159,7 @@ describe('onboarding hints', () => {
   test('on touch the ghost sticks teach moving and shooting, then a tap on START WAVE', () => {
     story(
       update,
-      given(readyModel),
+      given(newPlayerCardSeen),
       touchDown(1, 700, 200),
       message(Message.ReleasedPointer({ pointerId: 1 })),
       message(Message.ClickedCampaignButton()),
@@ -220,7 +213,7 @@ const standing = (id: number, kind: ZombieKind, x: number): Zombie => ({
   frenzy: Frenzy.Calm(),
 })
 
-const shootingGallery: Model = modifyFields(readyModel, {
+const shootingGallery: Model = modifyFields(newPlayerCardSeen, {
   phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
   player: player =>
     modifyFields(player, {

@@ -33,6 +33,8 @@ import {
   emitPressedKey,
   measureSurface,
   measureSurfaceAs,
+  profileDialog,
+  settingsButton,
   showDialogInScene,
 } from './testing'
 import { RequestLinkCode, WriteSave } from './update/save'
@@ -45,8 +47,6 @@ const synced: Model = modifyFields(homeAfterRead, {
   syncState: () => SyncState.Synced({ devices: 2 }),
 })
 
-const gear = role('button', { name: 'Settings' })
-const profile = role('dialog', { name: 'Profile' })
 const tab = (name: string) => role('tab', { name })
 const focusTab = (index: number) =>
   Command.resolve(
@@ -67,9 +67,9 @@ describe('the Profile', () => {
       ROOT,
       given(synced),
       measureSurface,
-      click(gear),
+      click(settingsButton),
       ...showDialogInScene(),
-      expect(profile).toExist(),
+      expect(profileDialog).toExist(),
       inside(
         role('tablist', { name: 'Profile' }),
         expectAll(all.role('tab')).toHaveCount(4),
@@ -92,7 +92,7 @@ describe('the Profile', () => {
       expect(role('button', { name: /^Devices/ })).toBeAbsent(),
       click(closeButton),
       ...closeDialogInScene(),
-      expect(profile).toBeAbsent(),
+      expect(profileDialog).toBeAbsent(),
     )
   })
 
@@ -148,7 +148,7 @@ describe('the Profile', () => {
         }),
       ),
       measureSurface,
-      click(gear),
+      click(settingsButton),
       ...showDialogInScene(),
       click(tab('Account')),
       focusTab(2),
@@ -171,7 +171,7 @@ describe('the Name tab', () => {
       ROOT,
       given(homeAfterRead),
       measureSurface,
-      click(gear),
+      click(settingsButton),
       ...showDialogInScene(),
       click(tab('Name')),
       focusTab(1),
@@ -192,7 +192,7 @@ describe('the Name tab', () => {
       ROOT,
       given(modifyFields(homeAfterRead, { cosmeticRngState: () => 99 })),
       measureSurface,
-      click(gear),
+      click(settingsButton),
       ...showDialogInScene(),
       click(tab('Name')),
       focusTab(1),
@@ -210,7 +210,7 @@ describe('the Account tab', () => {
       ROOT,
       given(synced),
       measureSurface,
-      click(gear),
+      click(settingsButton),
       ...showDialogInScene(),
       click(tab('Account')),
       focusTab(2),
@@ -227,7 +227,7 @@ describe('the Account tab', () => {
       ROOT,
       given(synced),
       measureSurface,
-      click(gear),
+      click(settingsButton),
       ...showDialogInScene(),
       click(tab('Account')),
       focusTab(2),
@@ -246,7 +246,7 @@ describe('the Account tab', () => {
       ROOT,
       given(modifyFields(synced, { linkFlow: () => LinkFlow.Linked() })),
       measureSurface,
-      click(gear),
+      click(settingsButton),
       ...showDialogInScene(),
       click(tab('Account')),
       focusTab(2),
@@ -263,7 +263,7 @@ describe('the Account tab', () => {
       ROOT,
       given(homeAfterRead),
       measureSurface,
-      click(gear),
+      click(settingsButton),
       ...showDialogInScene(),
       click(tab('Account')),
       focusTab(2),
@@ -282,7 +282,7 @@ describe('every entry point', () => {
   test('lands on its tab', () => {
     Array.forEach(
       [
-        { open: click(gear), tab: 'Settings' },
+        { open: click(settingsButton), tab: 'Settings' },
         { open: emitPressedKey('KeyO'), tab: 'Settings' },
         { open: emitPressedKey('KeyC'), tab: 'Look' },
         {

@@ -30,6 +30,7 @@ import { home } from './model.fixture'
 import { noSavedBests, restoreSave, saveOf } from './save'
 import {
   ROOT,
+  closeButton,
   closeDialogInScene,
   difficultyButton,
   emitPressedKey,
@@ -41,6 +42,7 @@ import {
   pickCardInScene,
   playButton,
   playEndlessButton,
+  settingsButton,
   showDialogInScene,
 } from './testing'
 import { FocusHandCard, FocusHomeButton } from './update/home'
@@ -50,7 +52,6 @@ import { pause } from './waves'
 
 const playCluster = role('group', { name: 'Play' })
 const hand = role('dialog', { name: 'The manor' })
-const closeHandButton = role('button', { name: 'Close' })
 const CARD_NAMES = {
   Character: 'Character: change how you look',
   Munchopedia: 'Munchopedia: every zombie you have splatted',
@@ -63,7 +64,6 @@ const whatsNewCard = role('button', { name: /^What's new:/ })
 const howToPlayCard = role('button', { name: CARD_NAMES.HowToPlay })
 const munchopediaName = /^Munchopedia:/
 const whatsNewName = /^What's new:/
-const settingsButton = role('button', { name: 'Settings' })
 const pauseMenuButton = role('button', { name: 'Menu: leave this run' })
 const endMenuButton = role('button', { name: 'Menu: back to the home screen' })
 const leaveQuestion = role('dialog', { name: 'Leave this run?' })
@@ -144,7 +144,7 @@ describe('Home menu', () => {
         expect(whatsNewCard).toHaveAttr('aria-keyshortcuts', 'L'),
         expect(howToPlayCard).toHaveAttr('aria-keyshortcuts', 'I'),
         expect(role('link', { name: /^Tip jar/ })).toBeAbsent(),
-        click(closeHandButton),
+        click(closeButton),
       ),
       ...closeDialogInScene(),
       expect(hand).toBeAbsent(),
@@ -495,7 +495,6 @@ describe('Home menu', () => {
       open: [click(difficultyButton), ...showDialogInScene()],
     },
   ])('$dialog (#$#) closes with the shared close X', ({ dialog, open }) => {
-    const closeButton = role('button', { name: 'Close' })
     scene(
       ROOT,
       given(home),

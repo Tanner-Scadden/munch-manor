@@ -29,6 +29,7 @@ import { freshRun } from './runReset'
 import {
   BELOW_KITCHEN_DOOR,
   HOLD_TICKS,
+  eventsOver,
   isKitchenOpen,
   press,
   release,
@@ -90,19 +91,6 @@ const awayFromDoor = (current: Model): Model =>
   modifyFields(current, {
     player: player => modifyFields(player, { y: () => 120 }),
   })
-
-const eventsOver = (
-  start: Model,
-  messages: ReadonlyArray<Message>,
-): ReadonlyArray<GameEvent> =>
-  Array.reduce(
-    messages,
-    { current: start, events: Array.empty<GameEvent>() },
-    ({ current, events }, sent) => {
-      const next = update(current, sent).model
-      return { current: next, events: [...events, ...next.frameEvents] }
-    },
-  ).events
 
 describe('holding to buy the kitchen open', () => {
   test('holding Enter at the boards for half a second buys it and smashes it open, with no dialog', () => {

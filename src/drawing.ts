@@ -13,6 +13,13 @@ export const QUARTER_TURN = Math.PI / 2
 export const FULL_TURN = Math.PI * 2
 export const AIMING_UP = -0.35
 
+// NOTE: an alpha from faint to strong as a tell fills, to two places.
+export const tellAlpha = (
+  faint: number,
+  strong: number,
+  progress: number,
+): number => Math.round((faint + (strong - faint) * progress) * 100) / 100
+
 export const placeSprite = (
   x: number,
   y: number,

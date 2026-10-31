@@ -1,14 +1,18 @@
 // NOTE: AGENTS.md "Code shape": helpers are shared, not copied. Fails when
-// two files of one kind declare the same top-level helper: the same name and
-// the same body, laid out any way, where every top-level name the body reads
-// (a constant or type of its own file, or an import) also means the same
-// thing. So two `ticksFor`s that divide by a FRAME_MS of 16 and of 50 are
-// different helpers, and two that divide by the same one are a copy.
+// two files of one kind declare the same top-level helper: the same body,
+// laid out any way, where every top-level name the body reads (a constant or
+// type of its own file, or an import) also means the same thing. So two
+// `ticksFor`s that divide by a FRAME_MS of 16 and of 50 are different
+// helpers, and two that divide by the same one are a copy. The name is no
+// part of it: a copy under a new name (`NO_PUSH` beside `ZERO_VECTOR`, a
+// function that calls itself by its own name) is a copy too, reported with
+// both names.
 //
 // A helper here is a function, or a constant built from something: an object,
 // an array, or a call (a Model, a spawn, a locator, a vector). Plain numbers,
 // strings, and arithmetic on names (`FRAME_MS = 50`, `CENTER_X =
-// PARLOUR.width / 2`) are a file's own tuning and may repeat.
+// PARLOUR.width / 2`) are a file's own tuning and may repeat, and so may a
+// `let` and a fresh cache (`createLazy()`), which are each file's own state.
 //
 // Two kinds of file are checked apart:
 //
@@ -97,6 +101,42 @@ const ALLOWED: ReadonlyArray<
     reason:
       'determinism:diff copies tools/determinism into an older checkout, so it imports only src and effect',
   },
+  {
+    file: 'tools/determinism/request.ts',
+    name: 'ScriptMode',
+    reason:
+      'the orchestrator loads request.ts without the game, and determinism:diff copies it into an older checkout',
+  },
+  {
+    file: 'src/analytics.ts',
+    name: 'SummaryKind',
+    reason:
+      'the analytics Worker bundles analytics.ts without the game; analytics.story.test.ts checks it matches ZombieKind',
+  },
+  {
+    file: 'src/analytics.ts',
+    name: 'SummaryMode',
+    reason:
+      'the analytics Worker bundles analytics.ts without the game; analytics.story.test.ts checks it matches HomeMode',
+  },
+  {
+    file: 'src/analytics.ts',
+    name: 'SummaryDevice',
+    reason:
+      'the analytics Worker bundles analytics.ts without the game; analytics.story.test.ts checks it matches InputDevice',
+  },
+  {
+    file: 'src/font.ts',
+    name: 'coinRect',
+    reason:
+      'src/drawing.ts imports font.ts, so the coin, built as font.ts loads, cannot take rect from it',
+  },
+  {
+    file: 'tools/sprites/manifest.ts',
+    name: 'SpriteKeys',
+    reason:
+      'a list of strings that means sprite keys here and power-up ids in SavedPowerUps: the same shape, not one value',
+  },
 ]
 
 const groupOf = (file: string): string =>
@@ -140,11 +180,12 @@ const childrenOf = (node: Node): ReadonlyArray<Node> =>
     Array.isArray(value) ? value.filter(isNode) : isNode(value) ? [value] : [],
   )
 
-const namesIn = (node: Node): ReadonlySet<string> => {
-  const names = new Set<string>()
+// NOTE: every identifier that reads a binding, never a property name.
+const readsIn = (node: Node): ReadonlyArray<Node> => {
+  const reads: Array<Node> = []
   const visit = (current: Node): void => {
     if (current.type === 'Identifier' && typeof current['name'] === 'string') {
-      names.add(current['name'])
+      reads.push(current)
     }
     // NOTE: `x.name` and `{ name: x }` do not read a binding called `name`.
     const skipped =
@@ -159,7 +200,27 @@ const namesIn = (node: Node): ReadonlySet<string> => {
       .forEach(visit)
   }
   visit(node)
-  return names
+  return reads
+}
+
+const namesIn = (node: Node): ReadonlySet<string> =>
+  new Set(readsIn(node).map(nameOf))
+
+// NOTE: a declaration's text with its own name taken out: a function
+// declaration's name and the places it calls itself, so a copy under a new
+// name has the same body.
+const bodyOf = (text: string, node: Node, name: string): string => {
+  const own = readsIn(node).filter(read => nameOf(read) === name)
+  // NOTE: from the end, so each cut leaves the offsets before it in place.
+  return [...own]
+    .sort((a, b) => b.start - a.start)
+    .reduce(
+      (body, read) =>
+        `${body.slice(0, read.start - node.start)}\u0000${body.slice(read.end - node.start)}`,
+      text.slice(node.start, node.end),
+    )
+    .replace(/\s+/g, '')
+    .replace(/,([)\]}>])/g, '$1')
 }
 
 // NOTE: a value with no structure of its own: a literal, a name, a member of
@@ -194,12 +255,23 @@ const isPlain = (node: Node): boolean => {
 
 // NOTE: a value that is its own file's, never a copy: what a script awaits
 // (its browser, its page), an empty list, object, or `new` to fill as it
-// runs, or anything read from `import.meta` (its own path), its arguments,
-// its environment, or its clock. A helper built on one is the file's own too.
+// runs, a fresh cache from a `create` call with no arguments (`createLazy()`),
+// or anything read from `import.meta` (its own path), its arguments, its
+// environment, or its clock. A helper built on one is the file's own too.
+const OWN_READS =
+  /import\.meta|process\.(argv|env)|performance\.now\(\)|nowMs\(\)/
+
 const isOwnState = (node: Node, body: string): boolean => {
   switch (node.type) {
     case 'AwaitExpression':
       return true
+    case 'CallExpression':
+      return (
+        (Array.isArray(node['arguments']) &&
+          node['arguments'].length === 0 &&
+          nameOf(node['callee']).startsWith('create')) ||
+        OWN_READS.test(body)
+      )
     case 'ArrayExpression':
       return Array.isArray(node['elements']) && node['elements'].length === 0
     case 'ObjectExpression':
@@ -212,7 +284,7 @@ const isOwnState = (node: Node, body: string): boolean => {
     case 'TSSatisfiesExpression':
       return isNode(node['expression']) && isOwnState(node['expression'], body)
     default:
-      return /import\.meta|process\.(argv|env)|performance\.now\(\)/.test(body)
+      return OWN_READS.test(body)
   }
 }
 
@@ -286,13 +358,18 @@ const helpersOf = (file: string, text: string): ReadonlyArray<Helper> => {
       helperNames.add(name)
     }
     if (statement.type === 'VariableDeclaration') {
+      // NOTE: a `let` is reassigned as the file runs: its own state.
+      const isReassigned = statement['kind'] !== 'const'
       for (const declarator of nodesIn(statement['declarations'])) {
         const id = declarator['id']
         const init = declarator['init']
         if (isNode(id) && id.type === 'Identifier' && isNode(init)) {
           const name = nameOf(id)
           record(values, name, init, declarator.start)
-          if (isOwnState(init, text.slice(init.start, init.end))) {
+          if (
+            isReassigned ||
+            isOwnState(init, text.slice(init.start, init.end))
+          ) {
             ownState.add(name)
           } else if (!isPlain(init)) {
             helperNames.add(name)
@@ -315,10 +392,7 @@ const helpersOf = (file: string, text: string): ReadonlyArray<Helper> => {
       return known
     }
     const inner = new Set([...seen, name])
-    const body = text
-      .slice(declaration.node.start, declaration.node.end)
-      .replace(/\s+/g, '')
-      .replace(/,([)\]}>])/g, '$1')
+    const body = bodyOf(text, declaration.node, name)
     const meanings = [...namesIn(declaration.node)]
       .filter(other => other !== name)
       .filter(other => isDeclared(other) || imports.has(other))
@@ -372,7 +446,8 @@ const copiesOf = async (kind: Kind): Promise<number> => {
         if (isAllowed(file, helper.name)) {
           continue
         }
-        const at = `${groupOf(file)}\n${helper.name}\n${helper.key}`
+        // NOTE: the key alone, so a copy under a new name is a copy too.
+        const at = `${groupOf(file)}\n${helper.key}`
         const list = copies.get(at) ?? []
         // NOTE: a file two patterns both match is read once.
         if (!list.some(other => other.file === file)) {
@@ -388,8 +463,13 @@ const copiesOf = async (kind: Kind): Promise<number> => {
 
   for (const list of repeated) {
     const [first, ...rest] = list
+    const copied = rest.map(({ file, line, name }) =>
+      name === first?.name
+        ? `${file}:${line}`
+        : `${file}:${line} as \`${name}\``,
+    )
     console.error(
-      `${first?.file}:${first?.line}: \`${first?.name}\` is copied in ${rest.map(({ file, line }) => `${file}:${line}`).join(', ')}`,
+      `${first?.file}:${first?.line}: \`${first?.name}\` is copied in ${copied.join(', ')}`,
     )
   }
   if (repeated.length > 0) {

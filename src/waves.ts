@@ -225,6 +225,9 @@ export const joinNewDoors = (
 export const isRoundActive = (phase: Phase): boolean =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase)
 
+export const isBreak = (model: World): boolean =>
+  Phase.isAnyOf(['Preparation'])(model.phase)
+
 const breakClockFor = (wave: number): BreakClock =>
   wave === OPEN_BREAK_WAVE
     ? BreakClock.Waiting({ elapsedMs: 0 })

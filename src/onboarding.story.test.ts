@@ -13,12 +13,12 @@ import { update } from './main'
 import { Message } from './message'
 import {
   DebutCard,
-  DifficultyCard,
   type Model,
   Phase,
   type ZombieKind,
   initialModel,
 } from './model'
+import { newPlayerCardSeen } from './model.fixture'
 import {
   DEBUT_CARD_MIN_MS,
   DEBUT_CARD_MS,
@@ -27,7 +27,6 @@ import {
 } from './onboarding'
 import {
   SHOWN_TICKS,
-  SURFACE,
   hintIds,
   holdFire,
   mouseDown,
@@ -45,10 +44,6 @@ import { asVeteran } from './veteran'
 const TICK_MS = 50
 const CARD_TICKS = Math.ceil(DEBUT_CARD_MIN_MS / TICK_MS)
 const AUTO_TICKS = Math.ceil(DEBUT_CARD_MS / TICK_MS)
-const freshModel: Model = modifyFields(initialModel, {
-  difficultyCard: () => DifficultyCard.Seen(),
-  maybeSurface: () => Option.some(SURFACE),
-})
 
 const touchUp = (pointerId: number) =>
   message(Message.ReleasedPointer({ pointerId }))
@@ -90,7 +85,7 @@ const introduced = (base: Model, kinds: ReadonlyArray<ZombieKind>): Model =>
 const atWaveStart = (kinds: ReadonlyArray<ZombieKind>): Model => {
   const [, spawns] = rollSpawns(1, 2)
   return update(
-    modifyFields(introduced(asVeteran(freshModel), kinds), {
+    modifyFields(introduced(asVeteran(newPlayerCardSeen), kinds), {
       phase: () =>
         Phase.Preparation({
           wave: 2,
@@ -107,7 +102,7 @@ describe('new zombie card', () => {
   test('wave 6 brings the Big Leaguer card and wave 7 the Ankle Biter card', () => {
     const startOf = (wave: number, kinds: ReadonlyArray<ZombieKind>) => {
       const [, spawns] = rollSpawns(1, wave)
-      return modifyFields(introduced(asVeteran(freshModel), kinds), {
+      return modifyFields(introduced(asVeteran(newPlayerCardSeen), kinds), {
         phase: () =>
           Phase.Preparation({
             wave,
@@ -140,7 +135,7 @@ describe('new zombie card', () => {
   test('stays out of Preparation and comes up when the wave starts', () => {
     story(
       update,
-      given(freshModel),
+      given(newPlayerCardSeen),
       tap('Enter'),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
@@ -162,7 +157,7 @@ describe('new zombie card', () => {
       given(
         clearingWave(
           3,
-          introduced(asVeteran(freshModel), ['Shambler', 'Runner']),
+          introduced(asVeteran(newPlayerCardSeen), ['Shambler', 'Runner']),
         ),
       ),
       // NOTE: one 60 Hz tick clears the wave; a 50 ms frame is three.
@@ -207,7 +202,7 @@ describe('new zombie card', () => {
       update,
       given(
         introduced(
-          modifyFields(freshModel, {
+          modifyFields(newPlayerCardSeen, {
             phase: () => Phase.GameOver({ wave: 1 }),
             screenMs: () => 1e6,
           }),
@@ -226,7 +221,7 @@ describe('new zombie card', () => {
   test('in endless, only kinds not yet introduced this session get a card', () => {
     const victorious = (kinds: ReadonlyArray<ZombieKind>): Model =>
       introduced(
-        modifyFields(asVeteran(freshModel), {
+        modifyFields(asVeteran(newPlayerCardSeen), {
           phase: () => Phase.Victory(),
           screenMs: () => 1e6,
         }),
@@ -365,7 +360,7 @@ describe('new zombie card', () => {
 })
 
 describe('touch first play', () => {
-  const touchPlayer: Model = modifyFields(freshModel, {
+  const touchPlayer: Model = modifyFields(newPlayerCardSeen, {
     lastDevice: () => 'Touch',
   })
 
@@ -413,7 +408,7 @@ describe('touch first play', () => {
   test('shows no ghosts on keyboard and mouse', () => {
     story(
       update,
-      given(freshModel),
+      given(newPlayerCardSeen),
       tap('Enter'),
       model(current => {
         expect(hintIds(current)).toEqual(['Move', 'Fire'])
@@ -427,7 +422,7 @@ describe('tutorial hints', () => {
   test('do not clear on unrelated input or a quick nudge', () => {
     story(
       update,
-      given(freshModel),
+      given(newPlayerCardSeen),
       tap('Enter'),
       tap('KeyQ'),
       tap('KeyM'),
@@ -452,7 +447,7 @@ describe('tutorial hints', () => {
   test('stay up for a minimum time even when the action is done at once', () => {
     story(
       update,
-      given(freshModel),
+      given(newPlayerCardSeen),
       tap('Enter'),
       press('KeyD'),
       ...ticks(10, TICK_MS),
@@ -473,7 +468,7 @@ describe('wave 1 practice gate', () => {
   test('wave 1 waits for the player to move, aim, and fire, and START WAVE skips it', () => {
     story(
       update,
-      given(freshModel),
+      given(newPlayerCardSeen),
       tap('Enter'),
       ...ticks(Math.ceil((FIRST_PREPARATION_MS * 3) / TICK_MS), TICK_MS),
       tap('KeyR'),
@@ -490,7 +485,7 @@ describe('wave 1 practice gate', () => {
   test('the countdown starts once both lessons are learned', () => {
     story(
       update,
-      given(freshModel),
+      given(newPlayerCardSeen),
       tap('Enter'),
       press('KeyD'),
       ...ticks(10, TICK_MS),
@@ -515,7 +510,7 @@ describe('wave 1 practice gate', () => {
     story(
       update,
       given(
-        modifyFields(introduced(freshModel, ['Shambler', 'Runner']), {
+        modifyFields(introduced(newPlayerCardSeen, ['Shambler', 'Runner']), {
           phase: () =>
             Phase.Preparation({
               wave: 2,

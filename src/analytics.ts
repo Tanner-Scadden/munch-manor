@@ -1,10 +1,14 @@
 import { Schema } from 'effect'
 
+import { Difficulty } from './playerData'
+
 // NOTE: this file is shared with the analytics Worker in infra/worker, which
 // bundles it against its own, newer Effect. It imports nothing but `effect`
-// and uses only Schema APIs both versions have. The literal lists repeat the
-// game's own (ZombieKind, Difficulty, and so on) so the Worker never pulls in
-// the game, and src/analytics.story.test.ts checks that they still match.
+// and src/playerData.ts, which is shared the same way, and uses only Schema
+// APIs both versions have. The literal lists the game keeps outside
+// playerData.ts (ZombieKind, HomeMode, InputDevice) are repeated here so the
+// Worker never pulls in the game, and src/analytics.story.test.ts checks that
+// they still match.
 
 // RUN SUMMARY
 
@@ -23,16 +27,8 @@ export const SummaryKind = Schema.Literals([
 ])
 export type SummaryKind = typeof SummaryKind.Type
 
-const SummaryMode = Schema.Literals(['Campaign', 'Endless'])
+export const SummaryMode = Schema.Literals(['Campaign', 'Endless'])
 type SummaryMode = typeof SummaryMode.Type
-
-export const SummaryDifficulty = Schema.Literals([
-  'Easy',
-  'Normal',
-  'Hard',
-  'Nightmare',
-])
-export type SummaryDifficulty = typeof SummaryDifficulty.Type
 
 export const SummaryDevice = Schema.Literals(['KeyboardMouse', 'Touch'])
 export type SummaryDevice = typeof SummaryDevice.Type
@@ -114,7 +110,7 @@ export const RunSummary = Schema.Struct({
   visitId: VisitId,
   build: BuildId,
   mode: SummaryMode,
-  difficulty: SummaryDifficulty,
+  difficulty: Difficulty,
   wave: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: MAX_WAVE })),
   outcome: RunOutcome,
   runMs: Schema.Int.check(
@@ -162,7 +158,7 @@ export const ShareEvent = Schema.Struct({
   build: BuildId,
   screen: ShareScreen,
   mode: SummaryMode,
-  difficulty: SummaryDifficulty,
+  difficulty: Difficulty,
   path: SharePath,
 })
 export type ShareEvent = typeof ShareEvent.Type
@@ -173,7 +169,7 @@ export const ShareEventV1 = Schema.Struct({
   build: BuildId,
   screen: ShareScreen,
   mode: SummaryMode,
-  difficulty: SummaryDifficulty,
+  difficulty: Difficulty,
 })
 export type ShareEventV1 = typeof ShareEventV1.Type
 

@@ -34,6 +34,7 @@ import { nextRandom } from './prng'
 import { PURCHASE_RULES, offersOf } from './purchase'
 import { stepWorld } from './stepWorld'
 import {
+  FRIDGE_OPEN_TICKS,
   HOLD_TICKS,
   holdingFirst,
   holdingSecond,
@@ -50,7 +51,6 @@ import { idleIntent, shutFridge } from './worldSchema'
 // with the hold to buy, and what comes out of it.
 
 const FRAME_MS = FIXED_STEP_MS
-const OPEN_TICKS = Math.ceil(FRIDGE_RULES.openMs / FRAME_MS) + 1
 
 const pull = [press('Enter'), ...ticks(HOLD_TICKS, FRAME_MS), release('Enter')]
 
@@ -77,7 +77,7 @@ describe('pulling from Mystery Leftovers', () => {
         ).toBe(true)
         expect(isFridgeOffered(current)).toBe(false)
       }),
-      ...ticks(OPEN_TICKS, FRAME_MS),
+      ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       model(current => {
         expect(FridgeDoor.isAnyOf(['Offering'])(current.fridge.door)).toBe(true)
         expect(isPrizeOffered(current)).toBe(true)
@@ -101,7 +101,7 @@ describe('pulling from Mystery Leftovers', () => {
         ),
       ),
       ...pull,
-      ...ticks(OPEN_TICKS, FRAME_MS),
+      ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       ...pull,
       model(current => {
         expect(current.player.arsenal).toEqual(
@@ -128,7 +128,7 @@ describe('pulling from Mystery Leftovers', () => {
         ),
       ),
       ...pull,
-      ...ticks(OPEN_TICKS, FRAME_MS),
+      ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       ...pull,
       model(current => {
         expect(current.player.arsenal).toEqual(guns)
@@ -154,7 +154,7 @@ describe('pulling from Mystery Leftovers', () => {
         ),
       ),
       ...pull,
-      ...ticks(OPEN_TICKS, FRAME_MS),
+      ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       model(current => {
         expect(isPrizeOffered(current)).toBe(true)
       }),
@@ -176,7 +176,7 @@ describe('pulling from Mystery Leftovers', () => {
       update,
       given(fridgeSeededFor(atFridge(100), 'Cooker')),
       ...pull,
-      ...ticks(OPEN_TICKS, FRAME_MS),
+      ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       ...ticks(Math.ceil(FRIDGE_RULES.offerMs / FRAME_MS) - 10, FRAME_MS),
       model(current => {
         expect(isPrizeOffered(current)).toBe(true)
@@ -294,7 +294,7 @@ describe('the fridge slams shut', () => {
       ),
       Message.ReleasedKey({ code: 'Enter' }),
       ...Array.makeBy(
-        OPEN_TICKS + Math.ceil(FRIDGE_RULES.offerMs / FRAME_MS) + 2,
+        FRIDGE_OPEN_TICKS + Math.ceil(FRIDGE_RULES.offerMs / FRAME_MS) + 2,
         () => Message.TickedFrame({ deltaTime: FRAME_MS }),
       ),
     ])
