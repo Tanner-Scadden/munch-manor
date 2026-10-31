@@ -180,6 +180,10 @@ export const fadeThenRelax = (atMs: number, relaxMs: number): Hold => ({
 
 const MIXED = mixOf(3, 2, 1.5)
 
+// NOTE: wave 7 already brings Ankle Biters, Big Lugs, and a Big Leaguer, so
+// its mixed packs carry half the Kaboomers of the others.
+const WAVE_7_MIX = mixOf(3, 2, 0.75)
+
 // NOTE: Each wave is two or three cycles of Build, Peak, Fade, and Relax. A
 // hold stops the wave clock at its time until fewer than its threshold are
 // alive, then rests for its relax time, so the times of every later group
@@ -408,23 +412,23 @@ export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
       chuckers(anyDoors(1), 1, 30000, 0),
       squads({
         packs: [2, 4, 3, 1, 2],
-        mix: MIXED,
+        mix: WAVE_7_MIX,
         from: anyDoors(3),
         startMs: 1000,
         everyMs: 3200,
       }),
       lug(anyDoors(1), 15500),
-      pincers({ packs: [5, 3], mix: MIXED, startMs: 17000, everyMs: 0 }),
+      pincers({ packs: [4, 3], mix: WAVE_7_MIX, startMs: 18000, everyMs: 0 }),
       squads({
         packs: [3, 2, 1],
         mix: only('Runner'),
         from: anyDoors(1),
-        startMs: 19500,
-        everyMs: 2400,
+        startMs: 22000,
+        everyMs: 2800,
       }),
       squads({
         packs: [4, 3, 5],
-        mix: MIXED,
+        mix: WAVE_7_MIX,
         from: anyDoors(2),
         startMs: 29200,
         everyMs: 3000,
@@ -433,7 +437,7 @@ export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
         count: 11,
         mix: mixOf(3, 1, 0),
         startMs: 33000,
-        everyMs: 1300,
+        everyMs: 1600,
       }),
       squads({
         packs: [2, 2],
@@ -445,12 +449,15 @@ export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
       lug(anyDoors(1), 46200),
       pincers({
         packs: [4, 2, 3, 3],
-        mix: MIXED,
+        mix: WAVE_7_MIX,
         startMs: 47200,
         everyMs: 3500,
       }),
     ],
-    holds: [fadeThenRelax(28000, 3000), fadeThenRelax(45000, 2500)],
+    holds: [
+      { atMs: 28000, releaseBelow: 4, relaxMs: 3000 },
+      { atMs: 45000, releaseBelow: 4, relaxMs: 2500 },
+    ],
   },
   // NOTE: waves 8 and 9 came with the kitchen. Their open groups draw from
   // every spawn door the level has, so once the kitchen is open its back
