@@ -5,14 +5,13 @@
 import { Array, Number, Option, Order, Record, Schema, pipe } from 'effect'
 
 import { Difficulty, HomeMode } from '../../src/model'
-import type { Kind, RunResult, WaveRun } from './bot'
+import type { Kind } from './bot/basics'
+import { Counts, type RunResult, type WaveRun } from './bot/results'
 
 // SCHEMAS
 
 const BotStyle = Schema.Literals(['Default', 'SwapsBack'])
 type BotStyle = typeof BotStyle.Type
-
-const Shares = Schema.Record(Schema.String, Schema.Number)
 
 export const CampaignSummary = Schema.TaggedStruct('Campaign', {
   difficulty: Difficulty,
@@ -30,7 +29,7 @@ export const CampaignSummary = Schema.TaggedStruct('Campaign', {
   diedShareByWave: Schema.Array(Schema.Number),
   heartsLostByWave: Schema.Array(Schema.Number),
   lengthSecondsByWave: Schema.Array(Schema.Number),
-  hurtShareByKind: Shares,
+  hurtShareByKind: Counts,
   kitchenShare: Schema.Number,
 })
 export type CampaignSummary = typeof CampaignSummary.Type
@@ -50,8 +49,8 @@ export const WaveSummary = Schema.Struct({
   worstQuietSeconds: Schema.Number,
   meanPressureSeconds: Schema.Number,
   meanPeakAlive: Schema.Number,
-  deathShareByKind: Shares,
-  hurtShareByKind: Shares,
+  deathShareByKind: Counts,
+  hurtShareByKind: Counts,
 })
 export type WaveSummary = typeof WaveSummary.Type
 
@@ -169,6 +168,33 @@ export const summarizeCampaign = (
       Array.filter(results, ({ kitchenWave }) => kitchenWave > 0).length,
       runs,
     ),
+  }
+}
+
+// NOTE: the shop visits before `wave` over a batch: the money each visit
+// arrived with, in run order, how many runs visited, and how many of those
+// visits bought each item, most first (ties in the order first bought).
+type ShopTally = Readonly<{
+  money: ReadonlyArray<number>
+  visits: number
+  bought: ReadonlyArray<readonly [string, number]>
+}>
+
+export const tallyShopVisits = (
+  results: ReadonlyArray<RunResult>,
+  wave: number,
+): ShopTally => {
+  const visits = Array.flatMap(results, ({ shopVisits }) =>
+    Array.filter(shopVisits, visit => visit.wave === wave),
+  )
+  const counts = new Map<string, number>()
+  visits.forEach(({ bought }) =>
+    bought.forEach(item => counts.set(item, (counts.get(item) ?? 0) + 1)),
+  )
+  return {
+    money: Array.map(visits, ({ money }) => money),
+    visits: visits.length,
+    bought: [...counts.entries()].sort((a, b) => b[1] - a[1]),
   }
 }
 

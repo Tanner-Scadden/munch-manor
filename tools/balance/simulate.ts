@@ -19,7 +19,7 @@
 // waiting jobs go in between; the report is the same as one unchunked
 // batch, since every run is seeded by its index. HEAVY_CHUNK_RUNS=n sets
 // the chunk, and 0 plays it whole. It drives the game's own init model and update with the bot in
-// tools/balance/bot.ts and prints survival per wave, run length, the money
+// tools/balance/bot.ts (its parts in tools/balance/bot/) and prints survival per wave, run length, the money
 // curve, and which zombie kinds cost the bot the most hearts. Nothing here
 // ships with the game.
 
@@ -29,13 +29,8 @@ import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 import { encodeJson, readJsonFile, writeJsonFile } from '../json'
-import type {
-  BossFight,
-  BotOptions,
-  NewKindLog,
-  RunResult,
-  WaveRun,
-} from './bot'
+import type { BotOptions } from './bot/basics'
+import type { BossFight, NewKindLog, RunResult, WaveRun } from './bot/results'
 
 const browserWindow = new Window()
 Object.assign(globalThis, {
@@ -44,17 +39,11 @@ Object.assign(globalThis, {
   __BUILD_ID__: 'dev',
 })
 
-const bot = await import('./bot')
-const {
-  DEFAULT_OPTIONS,
-  KINDS,
-  emptyHurt,
-  parseDifficulty,
-  playWavePass,
-  quietPartMs,
-  runOnce,
-  seedAt: seedFrom,
-} = bot
+const { DEFAULT_OPTIONS, parseDifficulty } = await import('./bot/basics')
+const { KINDS, emptyHurt, quietPartMs } = await import('./bot/logs')
+const { RunResults, WaveRuns } = await import('./bot/results')
+const { runOnce, seedAt: seedFrom } = await import('./bot')
+const { playWavePass } = await import('./bot/snapshots')
 const { FINAL_WAVE } = await import('../../src/wavePlans')
 const summary = await import('./summary')
 const turn = await import('../heavy/turn')
@@ -156,16 +145,10 @@ const waveList = (flag: string): Array<number> => {
 // WORKERS=n gives the same report as one process, only sooner. A campaign
 // worker plays a slice of the seeds, from:to. A wave worker plays the
 // snapshot slots whose index modulo the worker count is its own, index:count,
-// among the slots of its chunk, WORKER_SLOTS=from:to.
-// NOTE: a worker's output is read back by this same script, so beyond its
-// being a list of objects, its shape is the bot's own RunResult or WaveRun.
-const isListOf =
-  <A>(key: string) =>
-  (value: unknown): value is Array<A> =>
-    Array.isArray(value) &&
-    value.every(item => Predicate.isObject(item) && key in item)
-const RunResults = Schema.declare(isListOf<RunResult>('seed'))
-const WaveRuns = Schema.declare(isListOf<WaveRun>('waveSeed'))
+// among the slots of its chunk, WORKER_SLOTS=from:to. A worker writes its
+// RunResults or WaveRuns through their Schemas (bot/results.ts) and this
+// process decodes them with the same ones, so they read exactly as results
+// played in process.
 
 // NOTE: an env var holding from:to, two whole numbers.
 const rangeFrom = (text: string): readonly [number, number] => {
@@ -217,13 +200,13 @@ class WorkerFailed extends Data.TaggedError('WorkerFailed')<{
 // NOTE: plays one worker's share in a child process and reads back what it
 // wrote, decoded with `schema`.
 const runWorker = <A>(
-  schema: Schema.ConstraintDecoder<Array<A>>,
+  schema: Schema.ConstraintDecoder<ReadonlyArray<A>>,
   slice: string,
   index: number,
   slotRange?: string,
-): Promise<Array<A>> =>
+): Promise<ReadonlyArray<A>> =>
   Effect.runPromise(
-    Effect.callback<Array<A>, WorkerFailed>(resume => {
+    Effect.callback<ReadonlyArray<A>, WorkerFailed>(resume => {
       const out = `/tmp/simulate-${process.pid}-${index}.json`
       const child = spawn(process.execPath, [SELF, ...argv], {
         env: {
@@ -528,23 +511,15 @@ const quantile = (values: Array<number>, q: number): number => {
   return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0
 }
 for (let wave = 2; wave <= lastWave; wave++) {
-  const money = results.flatMap(r => r.moneyAtVisit[wave] ?? [])
-  const visits = results.filter(r => r.moneyAtVisit[wave] !== undefined)
-  if (visits.length === 0) {
+  const { money, visits, bought } = summary.tallyShopVisits(results, wave)
+  if (visits === 0) {
     continue
   }
-  const counts = new Map<string, number>()
-  visits.forEach(r =>
-    (r.boughtAtVisit[wave] ?? []).forEach(item =>
-      counts.set(item, (counts.get(item) ?? 0) + 1),
-    ),
-  )
-  const bought = [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([item, n]) => `${item} ${((100 * n) / visits.length).toFixed(0)}%`)
+  const shares = bought
+    .map(([item, n]) => `${item} ${((100 * n) / visits).toFixed(0)}%`)
     .join(', ')
   console.log(
-    `  before wave ${wave}: $${median(money)} ($${quantile(money, 0.25)} to $${quantile(money, 0.75)}), n=${visits.length}: ${bought}`,
+    `  before wave ${wave}: $${median([...money])} ($${quantile([...money], 0.25)} to $${quantile([...money], 0.75)}), n=${visits}: ${shares}`,
   )
 }
 const hurt = results.reduce((sum, r) => {
