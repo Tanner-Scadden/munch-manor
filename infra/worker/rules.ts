@@ -4,12 +4,14 @@ import * as Schema from 'effect/Schema'
 
 import {
   MAX_SUMMARY_BYTES,
+  PostedRunJson,
+  type PostedRunSummary,
   PostedShareJson,
-  type RunSummary,
-  RunSummaryJson,
   type ShareEvent,
   type ShareEventV1,
   SummaryKills,
+  type SummaryParty,
+  type SummaryPartyV2,
 } from '../../src/analytics.ts'
 
 // BODY SIZE
@@ -35,7 +37,9 @@ export const bodySize = (body: string): BodySize =>
 
 // DECODING
 
-export const decodeSummary = Schema.decodeUnknownEffect(RunSummaryJson)
+// NOTE: this version, or version 1 from a build cached before co-op
+// summaries, stored as a solo run.
+export const decodeSummary = Schema.decodeUnknownEffect(PostedRunJson)
 
 export const decodeShare = Schema.decodeUnknownEffect(PostedShareJson)
 
@@ -121,9 +125,52 @@ export type RunRow = Readonly<{
   screen_fit: string
   frame_time: string
   kills: string
+  party: string
+  crew_size: number
+  seat_kills: number | null
+  seat_downs: number | null
+  seat_revives: number | null
+  crew_key: string | null
 }>
 
-export const rowOf = (summary: RunSummary, nowMs: number): RunRow => ({
+type PartyColumns = Pick<
+  RunRow,
+  | 'party'
+  | 'crew_size'
+  | 'seat_kills'
+  | 'seat_downs'
+  | 'seat_revives'
+  | 'crew_key'
+>
+
+const SOLO_COLUMNS: PartyColumns = {
+  party: 'Solo',
+  crew_size: 1,
+  seat_kills: null,
+  seat_downs: null,
+  seat_revives: null,
+  crew_key: null,
+}
+
+// NOTE: a version 2 crew came before the run key, so its key is NULL and
+// the report counts its row as a game of its own.
+const partyColumnsOf = (party: SummaryParty | SummaryPartyV2): PartyColumns =>
+  party._tag === 'Solo'
+    ? SOLO_COLUMNS
+    : {
+        party: party._tag,
+        crew_size: party.size,
+        seat_kills: party.seatKills,
+        seat_downs: party.seatDowns,
+        seat_revives: party.seatRevives,
+        crew_key: 'runKey' in party ? party.runKey : null,
+      }
+
+// NOTE: a version 1 summary came before co-op sent any, so it was solo.
+const summaryPartyColumns = (summary: PostedRunSummary): PartyColumns =>
+  summary.version === 1 ? SOLO_COLUMNS : partyColumnsOf(summary.party)
+
+export const rowOf = (summary: PostedRunSummary, nowMs: number): RunRow => ({
   received_at: isoOf(nowMs),
   received_day: utcDay(nowMs),
   summary_version: summary.version,
@@ -144,6 +191,7 @@ export const rowOf = (summary: RunSummary, nowMs: number): RunRow => ({
   screen_fit: summary.screenFit,
   frame_time: summary.frameTime,
   kills: Schema.encodeSync(KillsJson)(summary.kills),
+  ...summaryPartyColumns(summary),
 })
 
 export type ShareRow = Readonly<{

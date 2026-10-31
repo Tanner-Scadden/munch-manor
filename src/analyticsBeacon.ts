@@ -3,9 +3,9 @@ import { FetchHttpClient, HttpClient, HttpClientRequest } from 'effect/http'
 
 import {
   MAX_SUMMARY_BYTES,
+  PostedRunJson,
+  type PostedRunSummary,
   RUNS_PATH,
-  type RunSummary,
-  RunSummaryJson,
   SHARES_PATH,
   type ShareEvent,
   ShareEventJson,
@@ -107,14 +107,14 @@ const sendTo = (
   )
 
 export const sendRunSummary = (
-  summary: RunSummary,
+  summary: PostedRunSummary,
   origin: string = API_ORIGIN,
 ): Effect.Effect<SummaryTransport, SummarySendError> =>
   Option.match(maybeRunsUrl(origin), {
     onNone: () => Effect.succeed<SummaryTransport>('Unconfigured'),
     onSome: url =>
       pipe(
-        Schema.encodeEffect(RunSummaryJson)(summary),
+        Schema.encodeEffect(PostedRunJson)(summary),
         Effect.mapError(toSendError),
         Effect.filterOrFail(
           body => new Blob([body]).size <= MAX_SUMMARY_BYTES,

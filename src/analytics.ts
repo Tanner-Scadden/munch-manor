@@ -12,7 +12,12 @@ import { Difficulty } from './playerData'
 
 // RUN SUMMARY
 
-export const RUN_SUMMARY_VERSION = 1
+// NOTE: version 2 adds `party`: single player, or an online co-op crew with
+// its size and this player's own seat's kills, downs, and revives. Version
+// 3 adds the crew's `runKey`, the same on every client in one co-op run, so
+// a report counts a game once. The Worker still takes version 1 from a
+// build cached before co-op, as Solo, and version 2 with no key.
+export const RUN_SUMMARY_VERSION = 3
 
 export const MAX_SUMMARY_BYTES = 8 * 1024
 
@@ -103,10 +108,52 @@ const BuildId = Schema.String.check(
   Schema.isMaxLength(MAX_BUILD_LENGTH),
 )
 
+// NOTE: the most players a co-op room seats, MAX_PLAYERS in
+// packages/netcode, repeated so the Worker never pulls in the netcode.
+export const MAX_CREW_SIZE = 4
+
+const SoloParty = Schema.TaggedStruct('Solo', {})
+
+// NOTE: an online co-op run, from this player's own client: the seats in
+// the run (a crew of one is a room played alone), and the kills credited
+// to their own seat, the times they went down, and the teammates they
+// revived. The summary's `kills` are the crew's, by kind.
+const crewFields = {
+  size: Schema.Int.check(
+    Schema.isBetween({ minimum: 1, maximum: MAX_CREW_SIZE }),
+  ),
+  seatKills: Count,
+  seatDowns: Count,
+  seatRevives: Count,
+}
+
+export const CREW_RUN_KEY_LENGTH = 16
+
+// NOTE: a hash every client in one co-op run makes alike, from the room's
+// lobby (src/analyticsRun.ts, crewRunKeyOf): it groups a game's summaries
+// and names no room or player.
+const CrewRunKey = Schema.String.check(Schema.isPattern(/^[0-9a-f]{16}$/))
+
+const CrewParty = Schema.TaggedStruct('Crew', {
+  ...crewFields,
+  runKey: CrewRunKey,
+})
+
+export const SummaryParty = Schema.Union([SoloParty, CrewParty])
+export type SummaryParty = typeof SummaryParty.Type
+
+// NOTE: a version 2 crew, from a build before the run key.
+const CrewPartyV2 = Schema.TaggedStruct('Crew', crewFields)
+
+const SummaryPartyV2 = Schema.Union([SoloParty, CrewPartyV2])
+export type SummaryPartyV2 = typeof SummaryPartyV2.Type
+
+export const SOLO_PARTY: SummaryParty = SoloParty.make({})
+
 // NOTE: nothing in a summary identifies a person. visitId is random per page
-// visit, made in a Command, and only groups one visit's runs.
-export const RunSummary = Schema.Struct({
-  version: Schema.Literal(RUN_SUMMARY_VERSION),
+// visit, made in a Command, and only groups one visit's runs. A co-op
+// summary names no teammate and no room: its run key is a hash.
+const runFields = {
   visitId: VisitId,
   build: BuildId,
   mode: SummaryMode,
@@ -124,8 +171,40 @@ export const RunSummary = Schema.Struct({
   device: SummaryDevice,
   screenFit: SummaryScreenFit,
   frameTime: FrameTimeBucket,
+}
+
+export const RunSummary = Schema.Struct({
+  version: Schema.Literal(RUN_SUMMARY_VERSION),
+  ...runFields,
+  party: SummaryParty,
 })
 export type RunSummary = typeof RunSummary.Type
+
+// NOTE: a summary from a build before the crew's run key.
+export const RunSummaryV2 = Schema.Struct({
+  version: Schema.Literal(2),
+  ...runFields,
+  party: SummaryPartyV2,
+})
+export type RunSummaryV2 = typeof RunSummaryV2.Type
+
+// NOTE: a summary from a build before co-op sent them: every one was solo.
+export const RunSummaryV1 = Schema.Struct({
+  version: Schema.Literal(1),
+  ...runFields,
+})
+export type RunSummaryV1 = typeof RunSummaryV1.Type
+
+// NOTE: what the Worker takes, and what the offline queue may hold: this
+// version, or version 2 or 1 from a build cached before it.
+export const PostedRunSummary = Schema.Union([
+  RunSummary,
+  RunSummaryV2,
+  RunSummaryV1,
+])
+export type PostedRunSummary = typeof PostedRunSummary.Type
+
+export const PostedRunJson = Schema.fromJsonString(PostedRunSummary)
 
 export const RunSummaryJson = Schema.fromJsonString(RunSummary)
 

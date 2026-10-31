@@ -118,6 +118,8 @@ export const FIELD_CLASSES = {
   panelDialog: 'Client',
   bests: 'Client',
   runTally: 'Client',
+  maybeRoomDifficulty: 'Client',
+  maybeCrewRunKey: 'Client',
   loading: 'Client',
   saveStatus: 'Client',
   tutorialReset: 'Client',
