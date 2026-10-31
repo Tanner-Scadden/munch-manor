@@ -57,8 +57,10 @@ import {
 // the trigger has rested with the gun in hand (`triggerRestMs`).
 // Version 14: a tap buys at the ammo window. A new action code (BuyAmmo)
 // marks a seat's purchase Tapped, a new case the next tick buys.
-export const PROTOCOL_VERSION = 14
-export const MIN_PROTOCOL_VERSION = 14
+// Version 15: the crew board on the end card. Each seat carries its own
+// revives, downs, and shots fired and landed beside its kills.
+export const PROTOCOL_VERSION = 15
+export const MIN_PROTOCOL_VERSION = 15
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

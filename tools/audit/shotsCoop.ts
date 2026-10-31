@@ -46,6 +46,9 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'arena', query: 'coop=arena' },
   { name: 'away', query: 'coop=away' },
   { name: 'ended', query: 'coop=ended' },
+  { name: 'card', query: 'coop=card' },
+  { name: 'cardwon', query: 'coop=cardwon' },
+  { name: 'cardduo', query: 'coop=cardduo' },
 ]
 
 const MIN_PHONE_TAP = 48

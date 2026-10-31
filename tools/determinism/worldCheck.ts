@@ -67,6 +67,7 @@ const FORBIDDEN_GAME_MODULES: ReadonlyArray<RegExp> = [
   /^src\/(commands|subscriptions|analyticsBeacon|support|changelog)\.ts$/,
   /^src\/(onboarding|runReset|frame|hud|menus|screens|juice)\.ts$/,
   /^src\/(particles|particlePhysics|particleBursts)\.ts$/,
+  /^src\/(crewAwards|tallyIcons)\.ts$/,
   /^src\/update\//,
   /^src\/coop\//,
   /^src\/roomTesting\.ts$/,

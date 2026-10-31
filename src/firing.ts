@@ -18,7 +18,7 @@ import {
 } from './fridgeWeapons'
 import { addVectors, scaleVector } from './geometry'
 import { resolveBulletHits } from './hits'
-import { firedBy, forEachSeat, shooterOf } from './party'
+import { creditShots, firedBy, forEachSeat, shooterOf } from './party'
 import {
   bulletGlaze,
   bulletPierce,
@@ -164,7 +164,7 @@ const shoot = (
       shooterOf(model),
     ),
   )
-  return modifyFields(model, {
+  const fired = modifyFields(model, {
     bullets: bullets => Array.takeRight([...bullets, ...pellets], BULLET_MAX),
     nextEntityId: id => id + pellets.length,
     rngState: () => rngState,
@@ -185,6 +185,10 @@ const shoot = (
         maybeShooter: shooterOf(model),
       }),
     ),
+  })
+  return Option.match(shooterOf(model), {
+    onNone: () => fired,
+    onSome: slot => creditShots(fired, slot, pellets.length, 0),
   })
 }
 

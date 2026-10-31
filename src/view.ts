@@ -7,8 +7,9 @@ import {
   type ApplicationViewBuilder,
 } from './composition'
 import { GAME_TITLE } from './constants'
+import { awardsOf, crewOf } from './crewAwards'
 import { DIFFICULTIES } from './difficulty'
-import { crewOf, isRunCardHeld, mvpOf } from './endBeat'
+import { isRunCardHeld } from './endBeat'
 import { bestsFor, feedbackSentence } from './home'
 import {
   homeMenuView,
@@ -37,6 +38,7 @@ import {
   type RunStats,
 } from './model'
 import { ListenForTouchTaps, MeasureGameSurface } from './mount'
+import { CREW_AWARD_NAMES } from './names'
 import { isOpenBreak } from './onboarding'
 import { pauseHelpView } from './pauseHelp'
 import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from './powerups'
@@ -133,11 +135,13 @@ const crewLabel = (model: Model): string => {
   return Array.isReadonlyArrayEmpty(crew)
     ? ''
     : ` ${Array.join(
-        Array.map(
-          crew,
-          member =>
-            `Player ${member.slot + 1}: ${member.kills} kills${Option.exists(mvpOf(crew), slot => slot === member.slot) ? ', MVP' : ''}.`,
-        ),
+        Array.map(crew, member => {
+          const awards = Array.map(
+            awardsOf(crew, member.slot),
+            award => CREW_AWARD_NAMES[award],
+          )
+          return `${member.name}: ${member.kills} kills, ${member.revives} revives, ${member.downs} downs, ${member.aim} percent aim, $${member.earned} earned${Array.isReadonlyArrayEmpty(awards) ? '' : `, ${Array.join(awards, ', ')}`}.`
+        }),
         ' ',
       )}`
 }

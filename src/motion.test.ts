@@ -97,6 +97,8 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'coop-hop': "players' heads",
   'coop-stamp': 'the READY stamp and picked icons, aria-hidden',
   'coop-count': 'the countdown word',
+  'coop-code-copied':
+    "the room code's COPIED! flash, aria-hidden text over the code button",
 }
 
 const MOVES = /(^|[\s;{])(transform|translate|scale|rotate)\s*:/

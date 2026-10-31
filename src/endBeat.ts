@@ -1,8 +1,9 @@
-import { Array, Option, Order, pipe } from 'effect'
+import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { SharePath } from './analytics'
 import type { SoundEffect } from './audio'
+import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards'
 import { isEndScreen, withBests } from './home'
 import {
   type DifficultyBests,
@@ -11,12 +12,12 @@ import {
   RunMode,
   type RunRecord,
 } from './model'
-import { isCoop, playersOf } from './party'
+import { isCoop, leadSeatOf } from './party'
 import type { Difficulty } from './playerData'
 import type { SharedRun } from './share'
 import { accuracyPercent, totalKills } from './stats'
+import type { TallyIcon } from './tallyIcons'
 import { roundWave } from './waves'
-import type { PlayerSlot } from './worldSchema'
 
 // The end of a run as a short beat, read from the end screen's own clock
 // (`screenMs`, from 0 when the round ends), so it is a pure function of the
@@ -89,8 +90,6 @@ export const easeOutBack = (t: number): number => {
 
 // TALLY
 
-export type TallyIcon = 'Wave' | 'Time' | 'Kills' | 'Streak' | 'Aim' | 'Cash'
-
 export type TallyRow = Readonly<{
   icon: TallyIcon
   label: string
@@ -108,7 +107,7 @@ const clockLabel = (ms: number): string => {
   return `${Math.floor(total / SECONDS_PER_MINUTE)}:${String(total % SECONDS_PER_MINUTE).padStart(2, '0')}`
 }
 
-const plain = (shown: number): string => `${shown}`
+export const plain = (shown: number): string => `${shown}`
 
 const isRecord = (model: Model, record: RunRecord): boolean =>
   Array.contains(model.runRecords, record)
@@ -177,15 +176,22 @@ export const rowLandMs = (kind: EndKind, index: number): number =>
 
 // NOTE: a row counts up from 0 to its value over ROW_MS once its turn
 // comes, eased so the last digits tick slower.
-export const shownValue = (
-  row: TallyRow,
+export const countedUp = (
+  value: number,
   kind: EndKind,
   index: number,
   screenMs: number,
 ): number =>
   Math.round(
-    row.value * easeOut(progressOf(screenMs, rowStartMs(kind, index), ROW_MS)),
+    value * easeOut(progressOf(screenMs, rowStartMs(kind, index), ROW_MS)),
   )
+
+export const shownValue = (
+  row: TallyRow,
+  kind: EndKind,
+  index: number,
+  screenMs: number,
+): number => countedUp(row.value, kind, index, screenMs)
 
 const ROWS = 5
 
@@ -194,19 +200,37 @@ const ROWS = 5
 export const doneMs = (kind: EndKind): number =>
   rowLandMs(kind, ROWS - 1) + BEST_POP_MS
 
+// NOTE: a crew's card (src/crewBoardView.ts) counts up the run's line and
+// then each of the crew board's stat rows, every player's column at once,
+// and then stamps the awards.
+const CREW_ROWS = 6
+const AWARD_GAP_MS = 120
+export const AWARD_STAMP_MS = 260
+
+export const awardsAtMs = (kind: EndKind): number =>
+  rowLandMs(kind, CREW_ROWS - 1) + AWARD_GAP_MS
+
+export const crewDoneMs = (kind: EndKind): number =>
+  awardsAtMs(kind) + AWARD_STAMP_MS
+
+const beatDoneMs = (model: Model, kind: EndKind): number =>
+  isCoop(model) ? crewDoneMs(kind) : doneMs(kind)
+
 export const isBeatOver = (model: Model): boolean =>
   Option.match(endKindOf(model), {
     onNone: () => true,
-    onSome: kind => model.screenMs >= doneMs(kind),
+    onSome: kind => model.screenMs >= beatDoneMs(model, kind),
   })
 
 export const skipBeat = (model: Model): Model =>
   Option.match(endKindOf(model), {
     onNone: () => model,
-    onSome: kind =>
-      model.screenMs >= doneMs(kind)
+    onSome: kind => {
+      const atMs = beatDoneMs(model, kind)
+      return model.screenMs >= atMs
         ? model
-        : modifyFields(model, { screenMs: () => doneMs(kind) }),
+        : modifyFields(model, { screenMs: () => atMs })
+    },
   })
 
 // SOUNDS
@@ -226,7 +250,11 @@ export const beatSounds = (
     onNone: () => [],
     onSome: kind => {
       const timeline = TIMELINES[kind]
+      const isCrew = isCoop(model)
       const rows = tallyRowsOf(model)
+      const landings = isCrew
+        ? Array.range(0, CREW_ROWS - 1)
+        : Array.map(rows, (_, index) => index)
       const isPast = (atMs: number): boolean => crossed(fromMs, toMs, atMs)
       const skulls = Array.range(0, skullCountOf(model.difficulty.chosen) - 1)
       return [
@@ -241,14 +269,19 @@ export const beatSounds = (
           'Pop',
         ),
         ...soundWhen(
-          Array.some(rows, (_, index) => isPast(rowLandMs(kind, index))),
+          Array.some(landings, index => isPast(rowLandMs(kind, index))),
           'Pop',
         ),
         ...soundWhen(
-          Array.some(
-            rows,
-            (row, index) => row.isBest && isPast(rowLandMs(kind, index)),
-          ),
+          !isCrew &&
+            Array.some(
+              rows,
+              (row, index) => row.isBest && isPast(rowLandMs(kind, index)),
+            ),
+          'PowerUp',
+        ),
+        ...soundWhen(
+          isCrew && isPast(awardsAtMs(kind)) && hasAwards(crewOf(model)),
           'PowerUp',
         ),
       ]
@@ -373,38 +406,6 @@ export const noteRecords = (
       })
     : after
 
-// THE CREW
-
-export type CrewMember = Readonly<{ slot: PlayerSlot; kills: number }>
-
-export const crewOf = (model: Model): ReadonlyArray<CrewMember> =>
-  isCoop(model)
-    ? Array.map(playersOf(model), ({ slot, seat }) => ({
-        slot,
-        kills: seat.kills,
-      }))
-    : []
-
-// NOTE: the most kills wears the crown; a tie goes to the lower seat, so
-// every player picks the same MVP.
-export const mvpOf = (
-  crew: ReadonlyArray<CrewMember>,
-): Option.Option<PlayerSlot> =>
-  pipe(
-    crew,
-    Array.sort(
-      Order.combine(
-        Order.flip(
-          Order.mapInput(Order.Number, (member: CrewMember) => member.kills),
-        ),
-        Order.mapInput(Order.Number, (member: CrewMember) => member.slot),
-      ),
-    ),
-    Array.head,
-    Option.filter(member => member.kills > 0),
-    Option.map(member => member.slot),
-  )
-
 // SHARING
 
 // NOTE: a browser with a share sheet shares through it, on any device; one
@@ -435,7 +436,28 @@ export const sharedRunOf = (
   difficulty: played,
   kills: totalKills(model.stats),
   crew: Math.max(1, crewOf(model).length),
+  ...crewBragsOf(model),
 })
+
+// NOTE: the MVP, and the sharer's own first award but MVP, which the MVP's
+// line already names.
+const crewBragsOf = (
+  model: Model,
+): Pick<SharedRun, 'maybeMvp' | 'maybeOwnAward'> => {
+  const crew = crewOf(model)
+  return {
+    maybeMvp: Option.flatMap(mvpOf(crew), slot =>
+      Option.map(
+        Array.findFirst(crew, member => member.slot === slot),
+        ({ name, kills }) => ({ name, kills }),
+      ),
+    ),
+    maybeOwnAward: Array.findFirst(
+      awardsOf(crew, leadSeatOf(model).slot),
+      award => award !== 'Mvp',
+    ),
+  }
+}
 
 // THE LENS
 

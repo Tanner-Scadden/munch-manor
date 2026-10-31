@@ -648,7 +648,9 @@ type Readiness = typeof Readiness.Type
 
 // NOTE: what co-op adds to a player: their seat, life, presence, READY for
 // the break, the traps they placed (one of each kind, decided row 21), and
-// the kills credited to them.
+// their run's own numbers for the end card's crew board (src/crewBoard.ts):
+// the kills credited to them, the teammates they revived, the times they
+// went down, and their shots fired and landed.
 // NOTE: `graceMs` is how long a zombie must keep touching this player
 // before its first bite lands, half their round trip and at most 100 ms
 // (MULTIPLAYER.md, "Latency"), so a dodge they made on their own screen
@@ -661,6 +663,10 @@ export const Seat = Schema.Struct({
   readiness: Readiness,
   trapIds: Schema.Array(Schema.Number),
   kills: Schema.Number,
+  revives: Schema.Number,
+  downs: Schema.Number,
+  shotsFired: Schema.Number,
+  shotsHit: Schema.Number,
   graceMs: MillisNumber,
   touchedMs: MillisNumber,
 })

@@ -76,6 +76,9 @@ type Link = typeof Link.Type
 export const Share = Schema.Literals(['Idle', 'Shared', 'Copied'])
 export type Share = typeof Share.Type
 
+export const CodeCopy = Schema.Literals(['Copied', 'Failed'])
+export type CodeCopy = typeof CodeCopy.Type
+
 const Departure = Schema.Literals(['Staying', 'Leaving'])
 type Departure = typeof Departure.Type
 
@@ -99,6 +102,8 @@ export const noPresses: Presses = {
   heldFrom: -1,
 }
 
+// NOTE: `codeCopies` counts the times the room code went to the clipboard,
+// so each copy flashes COPIED! afresh.
 // NOTE: `maybeWorld` is the World to draw this frame, everyone else about
 // 100 ms behind and your own player predicted; `frameEvents` are the
 // events the drawing reached this frame, each once, and `eventsTick` the
@@ -125,6 +130,7 @@ export const Room = Schema.Struct({
   hits: Schema.Struct({ looked: Schema.Number, confirmed: Schema.Number }),
   presses: Presses,
   share: Share,
+  codeCopies: Schema.Number,
   departure: Departure,
 })
 export type Room = typeof Room.Type

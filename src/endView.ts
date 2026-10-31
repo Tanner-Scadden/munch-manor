@@ -3,10 +3,15 @@ import type { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { FEEDBACK_LINE, VIEW_HEIGHT, VIEW_WIDTH } from './constants'
+import {
+  PANEL_EDGE,
+  PANEL_FILL,
+  crewBoardShapes,
+  sparkShapes,
+} from './crewBoardView'
 import { QUARTER_TURN, rect } from './drawing'
 import {
   BEST_POP_MS,
-  type CrewMember,
   type EndKind,
   FALL_MS,
   FALL_START_MS,
@@ -14,14 +19,10 @@ import {
   STAMP_MS,
   TIMELINES,
   TROPHY_DROP_MS,
-  type TallyIcon,
   type TallyRow,
-  crewOf,
-  doneMs,
   easeOut,
   easeOutBack,
   endKindOf,
-  mvpOf,
   progressOf,
   rowLandMs,
   rowStartMs,
@@ -32,7 +33,6 @@ import {
 } from './endBeat'
 import {
   type BakedText,
-  COIN_SPRITE,
   GLYPH_HEIGHT,
   type TextTone,
   bakeText,
@@ -48,94 +48,25 @@ import {
   TROPHY_PIXELS,
 } from './icons'
 import { Invulnerability, type Model, Phase, type Zombie } from './model'
-import { seatModelsOf } from './partyView'
+import { isCoop } from './party'
 import type { Difficulty } from './playerData'
-import { playerFootY, playerShapes } from './playerView'
+import { playerFootY } from './playerView'
 import { type Sprite, group, placeAt, spriteShapes } from './sprite'
 import { ZOMBIE_SPRITES } from './sprites/zombies'
 import { defeatQuip, victoryVerdict } from './stats'
+import { ICON_SHIFT, TALLY_ICONS, type TallyIcon } from './tallyIcons'
 import { roundWave } from './waves'
 import { ZOMBIE_KIND_ORDER } from './zombies'
 
 // The end of a run on the overlay canvas, in the landscape frame: the flash,
-// the stamp, the trophy and skulls, the tally card, the crew with its MVP
-// crown, and confetti. Every piece is placed by the end screen's clock
+// the stamp, the trophy and skulls, the tally card (a crew's board in
+// co-op, src/crewBoardView.ts), and confetti. Every piece is placed by the end screen's clock
 // (src/endBeat.ts), so a frame is a pure function of the Model.
 
 const CENTER_X = VIEW_WIDTH / 2
 const TITLE_SCALE = 2
 
 // ART
-
-const ROW_ICON_PALETTE = {
-  X: '#8a5a3a',
-  O: '#3a2418',
-  Y: '#ffd23f',
-  W: '#f4f1de',
-  R: '#ff4a4f',
-  F: '#ffa04d',
-  K: '#140c10',
-}
-
-const ROW_ICON_PIXELS: Readonly<
-  Record<Exclude<TallyIcon, 'Kills' | 'Cash'>, ReadonlyArray<string>>
-> = {
-  Wave: [
-    '.XXXXX.',
-    'XOOOOOX',
-    'XOOOOOX',
-    'XOOOYOX',
-    'XOOOOOX',
-    'XOOOOOX',
-    'XXXXXXX',
-  ],
-  Time: [
-    '.WWWWW.',
-    'WKKWKKW',
-    'WKKWKKW',
-    'WKKWWWW',
-    'WKKKKKW',
-    'WKKKKKW',
-    '.WWWWW.',
-  ],
-  Streak: [
-    '...R...',
-    '..RR...',
-    '.RRFR..',
-    '.RFFRR.',
-    'RRFYFRR',
-    'RFYYYFR',
-    '.RFYFR.',
-  ],
-  Aim: [
-    '...R...',
-    '.RRRRR.',
-    '.R...R.',
-    'RR.R.RR',
-    '.R...R.',
-    '.RRRRR.',
-    '...R...',
-  ],
-}
-
-const ROW_ICONS: Readonly<Record<TallyIcon, Sprite>> = {
-  Wave: spriteShapes(ROW_ICON_PIXELS.Wave, ROW_ICON_PALETTE),
-  Time: spriteShapes(ROW_ICON_PIXELS.Time, ROW_ICON_PALETTE),
-  Streak: spriteShapes(ROW_ICON_PIXELS.Streak, ROW_ICON_PALETTE),
-  Aim: spriteShapes(ROW_ICON_PIXELS.Aim, ROW_ICON_PALETTE),
-  Kills: ZOMBIE_SPRITES.Shambler.icon,
-  Cash: COIN_SPRITE,
-}
-
-// NOTE: the coin is drawn from its top left, the rest from their middle.
-const ICON_SHIFT: Readonly<Record<TallyIcon, number>> = {
-  Wave: 0,
-  Time: 0,
-  Kills: 0,
-  Streak: 0,
-  Aim: 0,
-  Cash: 3,
-}
 
 const TROPHY = spriteShapes(TROPHY_PIXELS, TROPHY_PALETTE)
 const TROPHY_SCALE = 2
@@ -150,11 +81,6 @@ const SKULLS: Readonly<Record<Difficulty, Sprite>> = {
   ),
 }
 const SKULL_OFF = spriteShapes(SKULL_OFF_ART.pixels, SKULL_OFF_ART.palette)
-
-const CROWN = spriteShapes(['Y..Y..Y', 'YY.Y.YY', 'YYYYYYY', 'YDYDYDY'], {
-  Y: '#ffd23f',
-  D: '#a87a1e',
-})
 
 // TEXT
 
@@ -197,10 +123,7 @@ const PANEL_LEFT = 82
 const PANEL_RIGHT = VIEW_WIDTH - PANEL_LEFT
 const PANEL_PAD = 5
 const ROW_PX = 10
-const PANEL_FILL = 'rgba(24, 14, 22, 0.94)'
-const PANEL_EDGE = '#5a3a4a'
 const KINDS_PX = 11
-const CREW_PX = 25
 const SKULL_STRIDE = 12
 const SKULL_SLOTS = 4
 
@@ -320,32 +243,6 @@ const skullShapes = (
 // TALLY
 
 const ROW_SLIDE_PX = 8
-const SPARKS = 8
-const SPARK_MS = 420
-const SPARK_REACH = 16
-
-const sparkShapes = (
-  x: number,
-  y: number,
-  ms: number,
-): ReadonlyArray<Canvas.Shape> => {
-  const t = progressOf(ms, 0, SPARK_MS)
-  if (t <= 0 || t >= 1) {
-    return []
-  }
-  const reach = SPARK_REACH * easeOut(t)
-  return Array.map(Array.range(0, SPARKS - 1), index => {
-    const angle = (index / SPARKS) * Math.PI * 2
-    return rect(
-      Math.round(x + Math.cos(angle) * reach),
-      Math.round(y + Math.sin(angle) * reach * 0.6),
-      2,
-      2,
-      index % 2 === 0 ? '#ffd23f' : '#ff8a3d',
-    )
-  })
-}
-
 const BLINK_MS = 600
 
 const bestShapes = (
@@ -399,7 +296,7 @@ const rowShapes =
       placeAt(
         PANEL_LEFT + PANEL_PAD + 3 - slide - ICON_SHIFT[row.icon],
         y + 3 - ICON_SHIFT[row.icon],
-        ROW_ICONS[row.icon],
+        TALLY_ICONS[row.icon],
       ),
       placeBaked(LABELS[row.label] ?? bakeText(row.label, 'Hint'), {
         x: PANEL_LEFT + PANEL_PAD + 11 - slide,
@@ -451,58 +348,6 @@ const kindShapes = (model: Model, y: number): ReadonlyArray<Canvas.Shape> => {
   })
 }
 
-// THE CREW
-
-const CREW_STRIDE = 34
-const CREW_FOOT_PX = 17
-const CROWN_DROP_PX = 10
-
-const crewShapes = (
-  model: Model,
-  kind: EndKind,
-  ms: number,
-  y: number,
-): ReadonlyArray<Canvas.Shape> => {
-  const crew = crewOf(model)
-  const maybeMvp = mvpOf(crew)
-  const seats = seatModelsOf(model)
-  const left = CENTER_X - ((crew.length - 1) * CREW_STRIDE) / 2
-  const crownMs = doneMs(kind) - BEST_POP_MS
-  return Array.flatMap(crew, (member: CrewMember, index) => {
-    const x = Math.round(left + index * CREW_STRIDE)
-    const footY = y + CREW_FOOT_PX
-    const isMvp = Option.exists(maybeMvp, slot => slot === member.slot)
-    const crownT = easeOutBack(progressOf(ms, crownMs, 260))
-    return [
-      ...Option.match(
-        Array.findFirst(seats, seat => seat.slot === member.slot),
-        {
-          onNone: () => [],
-          onSome: ({ model: seatModel }) => [
-            group({
-              translate: {
-                x: x - seatModel.player.x,
-                y: footY - seatModel.player.y - 5,
-              },
-              shapes: playerShapes(seatModel),
-            }),
-          ],
-        },
-      ),
-      ...(isMvp && ms >= crownMs
-        ? [placeAt(x, Math.round(y - CROWN_DROP_PX * (1 - crownT)), CROWN)]
-        : []),
-      ...textShapes(
-        `${member.kills}`,
-        isMvp ? 'Victory' : 'Kill',
-        x,
-        footY + 2,
-        'Center',
-      ),
-    ]
-  })
-}
-
 // THE CARD
 
 const quipOf = (model: Model, kind: EndKind): string =>
@@ -526,55 +371,50 @@ const cardShapes = (
     return []
   }
   const t = easeOut(progressOf(ms, cardAtMs, CARD_FADE_MS))
-  const rows = tallyRowsOf(model)
-  const isCrew = crewOf(model).length > 0
-  // NOTE: a crew's card gives the quip's line to the crew row below, so the
-  // MVP fits above the buttons on a phone on its side.
-  const top = isCrew ? layout.quipY - 1 : layout.panelTop
-  const footerTop = top + PANEL_PAD + rows.length * ROW_PX + 2
-  const bottom = footerTop + (isCrew ? CREW_PX : KINDS_PX) + PANEL_PAD - 2
-  return [
+  const rise = (shapes: ReadonlyArray<Canvas.Shape>): Canvas.Shape =>
     group({
       translate: { x: 0, y: Math.round(CARD_RISE_PX * (1 - t)) },
       opacity: t >= 1 ? undefined : t,
-      shapes: [
-        ...(isCrew
-          ? []
-          : textShapes(
-              quipOf(model, kind),
-              'Prompt',
-              CENTER_X,
-              layout.quipY,
-              'Center',
-            )),
-        rect(
-          PANEL_LEFT - 1,
-          top - 1,
-          PANEL_RIGHT - PANEL_LEFT + 2,
-          bottom - top + 2,
-          PANEL_EDGE,
-        ),
-        rect(
-          PANEL_LEFT,
-          top,
-          PANEL_RIGHT - PANEL_LEFT,
-          bottom - top,
-          PANEL_FILL,
-        ),
-        rect(
-          PANEL_LEFT + PANEL_PAD,
-          footerTop - 2,
-          PANEL_RIGHT - PANEL_LEFT - PANEL_PAD * 2,
-          1,
-          PANEL_EDGE,
-        ),
-        ...(isCrew
-          ? crewShapes(model, kind, ms, footerTop + 1)
-          : kindShapes(model, footerTop + 1)),
-      ],
-    }),
+      shapes,
+    })
+  if (isCoop(model)) {
+    // NOTE: a crew's board takes the quip's line too, so it fits above the
+    // buttons on a phone on its side.
+    const board = crewBoardShapes(model, kind, ms, layout.quipY - 1, CENTER_X)
+    return [rise(board.panel), ...board.rows]
+  }
+  const rows = tallyRowsOf(model)
+  const top = layout.panelTop
+  const footerTop = top + PANEL_PAD + rows.length * ROW_PX + 2
+  const bottom = footerTop + KINDS_PX + PANEL_PAD - 2
+  return [
+    rise([
+      ...textShapes(
+        quipOf(model, kind),
+        'Prompt',
+        CENTER_X,
+        layout.quipY,
+        'Center',
+      ),
+      rect(
+        PANEL_LEFT - 1,
+        top - 1,
+        PANEL_RIGHT - PANEL_LEFT + 2,
+        bottom - top + 2,
+        PANEL_EDGE,
+      ),
+      rect(PANEL_LEFT, top, PANEL_RIGHT - PANEL_LEFT, bottom - top, PANEL_FILL),
+      rect(
+        PANEL_LEFT + PANEL_PAD,
+        footerTop - 2,
+        PANEL_RIGHT - PANEL_LEFT - PANEL_PAD * 2,
+        1,
+        PANEL_EDGE,
+      ),
+      ...kindShapes(model, footerTop + 1),
+    ]),
     ...Array.flatMap(rows, rowShapes(kind, ms, top)),
-    ...(isCrew ? [] : noteShapes(model, ms, bottom + 5)),
+    ...noteShapes(model, ms, bottom + 5),
   ]
 }
 

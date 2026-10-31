@@ -5,40 +5,17 @@ import { type Camera, worldToView } from './camera'
 import { maybeRoomOf } from './coop/roomState'
 import { textShapes } from './font'
 import type { Model } from './model'
-import {
-  isBledOut,
-  isCoop,
-  isDowned,
-  leadSeatOf,
-  playersOf,
-} from './party'
+import { seatNamesOf } from './onlineRun'
+import { isBledOut, isCoop, isDowned, leadSeatOf, playersOf } from './party'
 import { NAME_LIFT_DOWNED_PX, seatColorOf } from './partyView'
 import { TOP_LEFT, bakeShapes, placeAt, spriteShapes } from './sprite'
 import { isBreak } from './waves'
-import type { PlayerSlot } from './worldSchema'
 
 // What an online co-op run adds over the players (MULTIPLAYER.md, Phase
 // 2): each teammate's name over their head, READY over everyone who is
 // ready in a break, and a teammate off screen as a small badge of their
 // seat's color at the screen's edge, toward them (decided 4, the one
 // exception to "No off-screen hints"). Zombies and doors get nothing.
-
-// NOTE: names come from the room's lobby; a seat nobody named is its
-// number, as the room names it.
-const namesOf = (model: Model): ReadonlyMap<PlayerSlot, string> =>
-  new Map(
-    Option.match(
-      Option.flatMap(maybeRoomOf(model.coop), room => room.maybeLobby),
-      {
-        onNone: () => [],
-        onSome: lobby =>
-          Array.map(
-            lobby.members,
-            member => [member.slot, member.name.toUpperCase()] as const,
-          ),
-      },
-    ),
-  )
 
 const isOnline = (model: Model): boolean =>
   isCoop(model) && Option.isSome(maybeRoomOf(model.coop))
@@ -188,7 +165,7 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
   if (!isOnline(model)) {
     return []
   }
-  const names = namesOf(model)
+  const names = seatNamesOf(model)
   const ownSlot = leadSeatOf(model).slot
   return Array.flatMap(playersOf(model), ({ slot, seat, player }) =>
     isBledOut(seat)
