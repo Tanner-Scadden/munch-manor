@@ -1,6 +1,6 @@
 import { Option } from 'effect'
 
-import { VIEW_HEIGHT, VIEW_WIDTH } from './constants'
+import { KNOCKBACK_REST_SPEED, VIEW_HEIGHT, VIEW_WIDTH } from './constants'
 import type { SurfaceRectangle, Vector } from './model'
 
 export const ZERO_VECTOR: Vector = { x: 0, y: 0 }
@@ -118,3 +118,16 @@ export const isLeftHalf = (
 // NOTE: a timer's time left after a frame, never below zero.
 export const countDown = (remainingMs: number, deltaMs: number): number =>
   Math.max(0, remainingMs - deltaMs)
+
+export const decayKnockback = (
+  knockback: Vector,
+  decayPerSecond: number,
+  seconds: number,
+): Vector => {
+  const decayed = scaleVector(knockback, Math.exp(-decayPerSecond * seconds))
+  if (vectorLength(decayed) < KNOCKBACK_REST_SPEED) {
+    return ZERO_VECTOR
+  } else {
+    return decayed
+  }
+}

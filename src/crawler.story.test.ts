@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest'
 import { PARLOUR, isSolidAt } from './arena'
 import { FIXED_STEP_MS } from './constants'
 import { CRAWLER_RULES, drawSurfacingSpot } from './crawler'
+import { doorCounts, floorCounts, rollSpawns } from './endlessWaves'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -19,7 +20,6 @@ import {
   initialModel,
 } from './model'
 import { bulletInto, hasEvent, tick, ticks } from './testing'
-import { doorCounts, floorCounts, rollSpawns } from './waves'
 
 const FRAME_MS = FIXED_STEP_MS
 const CENTER_X = PARLOUR.width / 2

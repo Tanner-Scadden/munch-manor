@@ -32,7 +32,7 @@ import { DebutCard, type Model, Phase, RunMode, type ZombieKind } from './model'
 import { canSkipDebutCard } from './onboarding'
 import { shareUrl } from './share'
 import { iconButtonView } from './touchControls'
-import { FINAL_WAVE } from './waves'
+import { FINAL_WAVE } from './wavePlans'
 import { ZOMBIE_KINDS } from './zombies'
 
 // TEXT

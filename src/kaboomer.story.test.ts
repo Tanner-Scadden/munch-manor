@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest'
 
 import { PARLOUR } from './arena'
 import { FIXED_STEP_MS, HIT_STOP_KILL_MAX_MS } from './constants'
+import { rollSpawns } from './endlessWaves'
 import { update } from './main'
 import { debutPitch } from './menus'
 import {
@@ -23,7 +24,6 @@ import { DISTANT_SPAWN } from './model.fixture'
 import { KABOOMER_FUSE_MAX } from './sprites/zombies'
 import { bulletInto, tick, ticks } from './testing'
 import { wavePreviewLabel } from './wavePreview'
-import { rollSpawns } from './waves'
 import {
   kaboomerFuseLength,
   kaboomerSparkMs,

@@ -6,12 +6,12 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { PREPARATION_MS } from './constants'
+import { rollSpawns } from './endlessWaves'
 import { frenzyPacksOf } from './frenzy'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, initialModel } from './model'
 import { asVeteran } from './veteran'
-import { rollSpawns } from './waves'
 
 describe('the Ankle Biter', () => {
   test('a wave with Ankle Biters, a Big Leaguer, and frenzied packs replays the same from the same seed', () => {

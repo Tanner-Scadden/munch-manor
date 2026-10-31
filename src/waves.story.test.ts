@@ -10,6 +10,7 @@ import {
   FIXED_STEP_MS,
   PREPARATION_MS,
 } from './constants'
+import { doorCounts, rollSpawns } from './endlessWaves'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, type PlannedSpawn, type Zombie } from './model'
@@ -27,13 +28,7 @@ import {
   ticks,
   zombieAt,
 } from './testing'
-import {
-  FINAL_WAVE,
-  type SpawnGroup,
-  WAVE_PLANS,
-  doorCounts,
-  rollSpawns,
-} from './waves'
+import { FINAL_WAVE, type SpawnGroup, WAVE_PLANS } from './wavePlans'
 import { ZOMBIE_KINDS } from './zombies'
 
 const FRAME_MS = 50

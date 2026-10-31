@@ -7,6 +7,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { PARLOUR, nearestDoor } from './arena'
+import { doorCounts, rollWave } from './endlessWaves'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -19,7 +20,7 @@ import {
   initialModel,
 } from './model'
 import { asVeteran } from './veteran'
-import { FINAL_WAVE, doorCounts, rollWave } from './waves'
+import { FINAL_WAVE } from './wavePlans'
 
 const FRAME_MS = 50
 

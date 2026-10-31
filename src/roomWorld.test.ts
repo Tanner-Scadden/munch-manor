@@ -31,7 +31,8 @@ import {
 } from './roomWorld'
 import { SeatAction } from './stepWorld'
 import { zombieAt } from './testing'
-import { FINAL_WAVE, beginPreparation } from './waves'
+import { FINAL_WAVE } from './wavePlans'
+import { beginPreparation } from './waves'
 import { isSameOnWire } from './worldCodec'
 import { Phase, ShopState, idleIntent } from './worldSchema'
 

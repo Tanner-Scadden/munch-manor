@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 
 import { PARLOUR } from './arena'
 import { FIXED_STEP_MS } from './constants'
+import { rollSpawns } from './endlessWaves'
 import { FRENZY_RULES, frenzyPace, frenzyPacksOf } from './frenzy'
 import { update } from './main'
 import {
@@ -18,7 +19,6 @@ import {
   initialModel,
 } from './model'
 import { bulletInto, tick, ticks, zombieAt } from './testing'
-import { rollSpawns } from './waves'
 
 const FRAME_MS = FIXED_STEP_MS
 const CENTER_X = PARLOUR.width / 2

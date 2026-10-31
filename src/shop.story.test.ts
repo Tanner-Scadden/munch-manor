@@ -64,7 +64,8 @@ import {
 } from './testing'
 import { FocusShopItem } from './update/shop'
 import { asVeteran } from './veteran'
-import { FINAL_WAVE, waveBonus } from './waves'
+import { FINAL_WAVE } from './wavePlans'
+import { waveBonus } from './waves'
 import { UPGRADE_TIERS, WEAPONS, magazineOf, startingRounds } from './weapons'
 
 const FRAME_MS = 50

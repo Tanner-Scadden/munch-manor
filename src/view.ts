@@ -62,7 +62,8 @@ import {
 import { TRAPS, TRAP_KIND_ORDER } from './traps'
 import { isCoopOpen } from './update/coop'
 import { updateGreetingView } from './updateGift'
-import { FINAL_WAVE, isRoundActive, roundWave } from './waves'
+import { FINAL_WAVE } from './wavePlans'
+import { isRoundActive, roundWave } from './waves'
 import {
   WEAPONS,
   hasEndlessRounds,

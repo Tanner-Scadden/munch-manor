@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest'
 import { PARLOUR, distanceToBox, isInsideRoomAt, nearestDoor } from './arena'
 import { PREPARATION_MS } from './constants'
 import { drawSurfacingSpot } from './crawler'
+import { doorCounts } from './endlessWaves'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -23,7 +24,6 @@ import {
 } from './model'
 import { ticks } from './testing'
 import { TRAPS, trapBox } from './traps'
-import { doorCounts } from './waves'
 
 const FRAME_MS = 50
 

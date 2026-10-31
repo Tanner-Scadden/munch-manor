@@ -55,7 +55,7 @@ const {
   runOnce,
   seedAt: seedFrom,
 } = bot
-const { FINAL_WAVE } = await import('../../src/waves')
+const { FINAL_WAVE } = await import('../../src/wavePlans')
 const summary = await import('./summary')
 const turn = await import('../heavy/turn')
 const { nextChunk } = await import('../heavy/decision')
@@ -65,7 +65,7 @@ const { nextChunk } = await import('../heavy/decision')
 // touching src. Bake the winning numbers into src afterwards.
 // NOTE: the tables a tune module may edit in place.
 const tuneTables = async () => ({
-  WAVE_PLANS: (await import('../../src/waves')).WAVE_PLANS,
+  WAVE_PLANS: (await import('../../src/wavePlans')).WAVE_PLANS,
   ZOMBIE_KINDS: (await import('../../src/zombies')).ZOMBIE_KINDS,
   SHOP_ITEMS: (await import('../../src/shop')).SHOP_ITEMS,
   WEAPONS: (await import('../../src/weapons')).WEAPONS,

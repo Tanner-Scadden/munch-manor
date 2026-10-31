@@ -12,6 +12,7 @@ import {
   ZOMBIE_BUMP_SPEED,
   ZOMBIE_KNOCKBACK_SPEED,
 } from './constants'
+import { rollSpawns } from './endlessWaves'
 import { vectorLength } from './geometry'
 import { update } from './main'
 import {
@@ -34,8 +35,7 @@ import {
   WAVE_PLANS,
   debutKinds,
   pickKind,
-  rollSpawns,
-} from './waves'
+} from './wavePlans'
 import {
   Behavior,
   ZOMBIE_KINDS,

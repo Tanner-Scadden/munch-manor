@@ -9,6 +9,7 @@ import { describe, expect, test } from 'vitest'
 
 import { PARLOUR, doorSpawnPoint, isSolidAt, nearestDoor } from './arena'
 import { DOOR_HALF_WIDTH_PX, FIXED_STEP_MS, PLAYER_RADIUS } from './constants'
+import { doorCounts, floorCounts, rollSpawns } from './endlessWaves'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -22,7 +23,7 @@ import {
 } from './model'
 import { quietWave, withActors } from './model.fixture'
 import { blastFrames, holdFire, recordTicks, ticks, zombieOf } from './testing'
-import { FINAL_WAVE, doorCounts, floorCounts, rollSpawns } from './waves'
+import { FINAL_WAVE } from './wavePlans'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from './zombies'
 
 const FRAME_MS = FIXED_STEP_MS
