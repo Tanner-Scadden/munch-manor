@@ -9,11 +9,10 @@ import {
   BOSS_ID,
   CENTER_X,
   CENTER_Y,
-  FRAME_MS,
   WAVE_8_HP_SCALE,
   bossAt,
   eventsTagged,
-  fighting,
+  fightingBoss,
   fightingWith,
   inWave,
   spawnAt,
@@ -35,7 +34,7 @@ import {
   type Model,
   type Zombie,
 } from './model'
-import { bulletInto, tick, ticks, zombieOf } from './testing'
+import { FRAME_MS, bulletInto, tick, ticks, zombieOf } from './testing'
 import { FINAL_WAVE } from './wavePlans'
 import { ZOMBIE_KINDS, scaledHp } from './zombies'
 
@@ -82,7 +81,7 @@ describe('telegraphed attacks', () => {
   test('a stomp winds up for its whole wind-up before it lands', () => {
     const boss = bossAt(CENTER_X + 20, CENTER_Y)
     const log = attackLog(
-      inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fighting(ready), [boss]),
+      inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(ready), [boss]),
       windUpFrames('Stomp') + 2,
     )
     const flat = Array.flatten(log)
@@ -106,7 +105,7 @@ describe('telegraphed attacks', () => {
         inWave(
           FINAL_WAVE,
           [spawnAt(1e9, 0)],
-          fighting(
+          fightingBoss(
             BossMove.WindingUp({
               attack: 'Stomp',
               remainingMs: 10,
@@ -140,7 +139,7 @@ describe('telegraphed attacks', () => {
         inWave(
           FINAL_WAVE,
           [spawnAt(1e9, 0)],
-          fighting(
+          fightingBoss(
             BossMove.WindingUp({
               attack: 'Stomp',
               remainingMs: 10,
@@ -206,7 +205,7 @@ describe('telegraphed attacks', () => {
         inWave(
           FINAL_WAVE,
           [spawnAt(1e9, 0)],
-          fighting(
+          fightingBoss(
             BossMove.WindingUp({
               attack: 'Belch',
               remainingMs: 10,
@@ -234,7 +233,7 @@ describe('telegraphed attacks', () => {
         inWave(
           FINAL_WAVE,
           [spawnAt(1e9, 0)],
-          fighting(
+          fightingBoss(
             BossMove.WindingUp({
               attack: 'Belch',
               remainingMs: 500,
@@ -290,7 +289,7 @@ describe('far attacks', () => {
   const framesOf = (ms: number): number => Math.ceil(ms / FRAME_MS)
 
   test('from far away he braces toward where the player stands, then rushes', () => {
-    const start = inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fighting(ready), [
+    const start = inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(ready), [
       bossAt(FAR_X, CENTER_Y),
     ])
     story(
@@ -329,7 +328,7 @@ describe('far attacks', () => {
           inWave(
             FINAL_WAVE,
             [spawnAt(1e9, 0)],
-            fighting(
+            fightingBoss(
               BossMove.Bracing({
                 target: PLAYER,
                 remainingMs: 10,
@@ -379,7 +378,7 @@ describe('far attacks', () => {
         inWave(
           FINAL_WAVE,
           [spawnAt(1e9, 0)],
-          fighting(
+          fightingBoss(
             BossMove.Bracing({
               target: PLAYER,
               remainingMs: 10,
@@ -415,7 +414,7 @@ describe('far attacks', () => {
         inWave(
           FINAL_WAVE,
           [spawnAt(1e9, 0)],
-          fighting(
+          fightingBoss(
             BossMove.Rushing({ direction: { x: 0, y: -1 }, remainingPx: 100 }),
           ),
           [wallBound],
@@ -620,7 +619,7 @@ describe('far attacks', () => {
             inWave(
               FINAL_WAVE,
               [spawnAt(1e9, 0)],
-              fighting(BossMove.Stalking({ cooldownMs: 60_000 })),
+              fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
               [bossAt(bossX, CENTER_Y)],
             ),
           ),
@@ -653,7 +652,7 @@ describe('enrage', () => {
     const quiet = BossMove.Stalking({ cooldownMs: 60_000 })
     story(
       update,
-      given(inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fighting(quiet), [calm])),
+      given(inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(quiet), [calm])),
       tick(FRAME_MS),
       model(current => {
         expect(fightOf(current).mood).toBe('Calm')
@@ -662,7 +661,9 @@ describe('enrage', () => {
     )
     story(
       update,
-      given(inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fighting(quiet), [angry])),
+      given(
+        inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(quiet), [angry]),
+      ),
       tick(FRAME_MS),
       model(current => {
         expect(fightOf(current).mood).toBe('Enraged')

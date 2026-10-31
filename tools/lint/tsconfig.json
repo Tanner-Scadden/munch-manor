@@ -6,6 +6,5 @@
     // NOTE: Bun's types come from tools/audit's install, as tools/video's do.
     "typeRoots": ["../audit/node_modules/@types"]
   },
-  // NOTE: munchPlugin.mjs is plain JavaScript over oxlint's untyped AST.
   "include": ["./**/*.ts"]
 }

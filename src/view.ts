@@ -19,6 +19,7 @@ import {
 import { homeScreenGuideView } from './installView'
 import { keyGrabToastView } from './keyGrab'
 import { gameStageView } from './layers'
+import { isPracticeGateHeld } from './lessons'
 import {
   cornerButtonsView,
   debutCardView,
@@ -36,7 +37,7 @@ import {
   type RunStats,
 } from './model'
 import { ListenForTouchTaps, MeasureGameSurface } from './mount'
-import { isOpenBreak, isPracticeGateHeld } from './onboarding'
+import { isOpenBreak } from './onboarding'
 import { pauseHelpView } from './pauseHelp'
 import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from './powerups'
 import { profileView } from './profileView'

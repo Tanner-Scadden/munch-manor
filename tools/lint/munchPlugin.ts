@@ -1,26 +1,38 @@
 // NOTE: the project's own oxlint rules (AGENTS.md "Code shape"), loaded as a
-// JS plugin by .oxlintrc.json. Plain JavaScript, so oxlint loads it in Node
-// with no build step.
+// JS plugin by .oxlintrc.json and infra's config. TypeScript over oxlint's
+// typed AST (`@oxlint/plugins`), so typecheck and lint cover it too; oxlint
+// loads it in Node, which strips the types, with no build step.
+// tools/lint/munchPlugin.test.ts runs every rule on code it must and must
+// not flag.
 
-const isTagMember = node =>
+import { definePlugin, defineRule } from '@oxlint/plugins'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
+
+type Node = ESTree.Node
+
+const isTagMember = (
+  node: Node | null | undefined,
+): node is ESTree.StaticMemberExpression =>
   node?.type === 'MemberExpression' &&
   !node.computed &&
   node.property.type === 'Identifier' &&
   node.property.name === '_tag'
 
-const unwrapChain = node =>
-  node?.type === 'ChainExpression' ? node.expression : node
+const unwrapChain = (node: ESTree.Expression): Node =>
+  node.type === 'ChainExpression' ? node.expression : node
 
-const isStringLiteral = node =>
+const isStringLiteral = (
+  node: Node | null | undefined,
+): node is ESTree.StringLiteral =>
   node?.type === 'Literal' && typeof node.value === 'string'
 
 // NOTE: the source text of X in `X._tag === 'Name'` (either side, === or
 // !==), or of the shared X in `X._tag === 'A' || X._tag === 'B'`, or of the
 // first X in `X._tag === 'A' && more`. Anything else has no subject.
-const tagSubject = (node, sourceCode) => {
-  if (node === null || node === undefined) {
-    return undefined
-  }
+const tagSubject = (
+  node: ESTree.Expression,
+  sourceCode: SourceCode,
+): string | undefined => {
   if (
     node.type === 'BinaryExpression' &&
     (node.operator === '===' || node.operator === '!==')
@@ -47,16 +59,15 @@ const tagSubject = (node, sourceCode) => {
   return undefined
 }
 
-const endsInReturn = node =>
+const endsInReturn = (node: ESTree.Statement): boolean =>
   node.type === 'ReturnStatement' ||
   (node.type === 'BlockStatement' &&
-    node.body.length > 0 &&
-    node.body[node.body.length - 1].type === 'ReturnStatement')
+    node.body.at(-1)?.type === 'ReturnStatement')
 
 const TAG_CHAIN_MESSAGE =
   'A chain of _tag checks on one value: match it exhaustively with the union\'s .match, Match.valueTags, or Match.tags (AGENTS.md "Code shape").'
 
-const noTagChain = {
+const noTagChain = defineRule({
   meta: {
     type: 'problem',
     docs: {
@@ -66,11 +77,32 @@ const noTagChain = {
   },
   create(context) {
     const sourceCode = context.sourceCode
+    // NOTE: `if (x._tag === 'A') { return … } if (x._tag === 'B') { return … }`
+    const checkBody = (body: ReadonlyArray<Node>): void => {
+      body.forEach((current, index) => {
+        const previous = body[index - 1]
+        if (
+          previous?.type !== 'IfStatement' ||
+          current.type !== 'IfStatement' ||
+          previous.alternate !== null ||
+          !endsInReturn(previous.consequent)
+        ) {
+          return
+        }
+        const subject = tagSubject(previous.test, sourceCode)
+        if (
+          subject !== undefined &&
+          tagSubject(current.test, sourceCode) === subject
+        ) {
+          context.report({ node: previous, message: TAG_CHAIN_MESSAGE })
+        }
+      })
+    }
     return {
       // NOTE: `if (x._tag === 'A') … else if (x._tag === 'B') …`
       IfStatement(node) {
         if (
-          node.parent?.type === 'IfStatement' &&
+          node.parent.type === 'IfStatement' &&
           node.parent.alternate === node
         ) {
           return
@@ -87,33 +119,13 @@ const noTagChain = {
           context.report({ node, message: TAG_CHAIN_MESSAGE })
         }
       },
-      // NOTE: `if (x._tag === 'A') { return … } if (x._tag === 'B') { return … }`
-      'BlockStatement, Program, StaticBlock'(node) {
-        const body = node.body
-        for (let index = 1; index < body.length; index++) {
-          const previous = body[index - 1]
-          const current = body[index]
-          if (
-            previous.type !== 'IfStatement' ||
-            current.type !== 'IfStatement' ||
-            previous.alternate !== null ||
-            !endsInReturn(previous.consequent)
-          ) {
-            continue
-          }
-          const subject = tagSubject(previous.test, sourceCode)
-          if (
-            subject !== undefined &&
-            tagSubject(current.test, sourceCode) === subject
-          ) {
-            context.report({ node: previous, message: TAG_CHAIN_MESSAGE })
-          }
-        }
-      },
+      BlockStatement: node => checkBody(node.body),
+      Program: node => checkBody(node.body),
+      StaticBlock: node => checkBody(node.body),
       // NOTE: `x._tag === 'A' ? a : x._tag === 'B' ? b : c`
       ConditionalExpression(node) {
         if (
-          node.parent?.type === 'ConditionalExpression' &&
+          node.parent.type === 'ConditionalExpression' &&
           node.parent.alternate === node
         ) {
           return
@@ -130,26 +142,28 @@ const noTagChain = {
       },
     }
   },
-}
+})
 
-const unwrapReadonly = node =>
+const unwrapReadonly = (
+  node: ESTree.TSType | undefined,
+): ESTree.TSType | undefined =>
   node?.type === 'TSTypeReference' &&
   node.typeName.type === 'Identifier' &&
   node.typeName.name === 'Readonly' &&
-  (node.typeArguments ?? node.typeParameters)?.params.length === 1
-    ? (node.typeArguments ?? node.typeParameters).params[0]
+  node.typeArguments?.params.length === 1
+    ? node.typeArguments.params[0]
     : node
 
-const hasTagMember = node =>
+const hasTagMember = (node: ESTree.TSType | undefined): boolean =>
   node?.type === 'TSTypeLiteral' &&
   node.members.some(
     member =>
       member.type === 'TSPropertySignature' &&
       ((member.key.type === 'Identifier' && member.key.name === '_tag') ||
-        (member.key.type === 'Literal' && member.key.value === '_tag')),
+        (isStringLiteral(member.key) && member.key.value === '_tag')),
   )
 
-const noExtractTag = {
+const noExtractTag = defineRule({
   meta: {
     type: 'suggestion',
     docs: {
@@ -160,7 +174,7 @@ const noExtractTag = {
   create(context) {
     return {
       TSTypeReference(node) {
-        const params = (node.typeArguments ?? node.typeParameters)?.params
+        const params = node.typeArguments?.params
         if (
           node.typeName.type === 'Identifier' &&
           node.typeName.name === 'Extract' &&
@@ -176,22 +190,22 @@ const noExtractTag = {
       },
     }
   },
-}
+})
 
 // NOTE: `JSON.parse` and `JSON.stringify`, or the same off `globalThis`.
 // oxlint's no-restricted-properties would do, but an override replaces its
 // whole list, so the files allowed raw JSON would have to repeat every
 // other restricted property. A rule of its own is turned off file by file.
-const isJsonObject = node =>
-  (node?.type === 'Identifier' && node.name === 'JSON') ||
-  (node?.type === 'MemberExpression' &&
+const isJsonObject = (node: ESTree.Expression): boolean =>
+  (node.type === 'Identifier' && node.name === 'JSON') ||
+  (node.type === 'MemberExpression' &&
     !node.computed &&
     node.object.type === 'Identifier' &&
     node.object.name === 'globalThis' &&
     node.property.type === 'Identifier' &&
     node.property.name === 'JSON')
 
-const propertyName = node =>
+const propertyName = (node: ESTree.MemberExpression): string | undefined =>
   node.computed
     ? isStringLiteral(node.property)
       ? node.property.value
@@ -200,9 +214,14 @@ const propertyName = node =>
       ? node.property.name
       : undefined
 
-const RAW_JSON_METHODS = new Set(['parse', 'stringify'])
+const hasName = (
+  names: ReadonlySet<string>,
+  name: string | undefined,
+): boolean => name !== undefined && names.has(name)
 
-const noRawJson = {
+const RAW_JSON_METHODS: ReadonlySet<string> = new Set(['parse', 'stringify'])
+
+const noRawJson = defineRule({
   meta: {
     type: 'problem',
     docs: {
@@ -215,7 +234,7 @@ const noRawJson = {
       MemberExpression(node) {
         if (
           isJsonObject(node.object) &&
-          RAW_JSON_METHODS.has(propertyName(node))
+          hasName(RAW_JSON_METHODS, propertyName(node))
         ) {
           context.report({
             node,
@@ -226,59 +245,65 @@ const noRawJson = {
       },
     }
   },
-}
+})
 
 // NOTE: the name m in `{ model: m }`, `{ model }`, or `unchanged(m)`: a
 // Step's result that changes nothing. Anything else has no name.
-const bareModelName = node => {
+const bareModelName = (node: ESTree.Expression): string | undefined => {
+  const only =
+    node.type === 'ObjectExpression' && node.properties.length === 1
+      ? node.properties[0]
+      : undefined
   if (
-    node.type === 'ObjectExpression' &&
-    node.properties.length === 1 &&
-    node.properties[0].type === 'Property' &&
-    !node.properties[0].computed &&
-    node.properties[0].key.type === 'Identifier' &&
-    node.properties[0].key.name === 'model' &&
-    node.properties[0].value.type === 'Identifier'
+    only?.type === 'Property' &&
+    !only.computed &&
+    only.key.type === 'Identifier' &&
+    only.key.name === 'model' &&
+    only.value.type === 'Identifier'
   ) {
-    return node.properties[0].value.name
+    return only.value.name
   }
   if (
     node.type === 'CallExpression' &&
     node.callee.type === 'Identifier' &&
     node.callee.name === 'unchanged' &&
     node.arguments.length === 1 &&
-    node.arguments[0].type === 'Identifier'
+    node.arguments[0]?.type === 'Identifier'
   ) {
     return node.arguments[0].name
   }
   return undefined
 }
 
-// NOTE: whether the name appears in the call's arguments, at any depth:
-// `step(m)`, `leaveFor(m, 'Kicked')`, `playSounds(cues)(keep(m))`.
-const mentions = (node, name) => {
-  if (node === null || typeof node !== 'object') {
+// NOTE: whether the name appears in the node, at any depth: `step(m)`,
+// `leaveFor(m, 'Kicked')`, `playSounds(cues)(keep(m))`. The walk reads each
+// field of a node as unknown, skipping the link back to its parent.
+const mentions = (value: unknown, name: string): boolean => {
+  if (Array.isArray(value)) {
+    return value.some((child: unknown) => mentions(child, name))
+  }
+  if (typeof value !== 'object' || value === null) {
     return false
   }
-  if (node.type === 'Identifier') {
-    return node.name === name
+  if ('type' in value && value.type === 'Identifier') {
+    return 'name' in value && value.name === name
   }
-  return Object.entries(node).some(
-    ([key, value]) =>
-      key !== 'parent' &&
-      (Array.isArray(value)
-        ? value.some(child => mentions(child, name))
-        : typeof value === 'object' && mentions(value, name)),
-  )
+  return Object.keys(value).some(key => {
+    const child: unknown = Reflect.get(value, key)
+    return key !== 'parent' && mentions(child, name)
+  })
 }
 
-const isStepCallOn = (node, name) =>
+const isStepCallOn = (
+  node: ESTree.Expression,
+  name: string | undefined,
+): boolean =>
   name !== undefined &&
   node.type === 'CallExpression' &&
   (node.arguments.some(argument => mentions(argument, name)) ||
-    (node.callee.type === 'CallExpression' && isStepCallOn(node.callee, name)))
+    isStepCallOn(node.callee, name))
 
-const noConditionalStep = {
+const noConditionalStep = defineRule({
   meta: {
     type: 'suggestion',
     docs: {
@@ -290,10 +315,9 @@ const noConditionalStep = {
     return {
       // NOTE: `cond ? step(m) : { model: m }`, either way round.
       ConditionalExpression(node) {
-        const { consequent, alternate } = node
         if (
-          isStepCallOn(consequent, bareModelName(alternate)) ||
-          isStepCallOn(alternate, bareModelName(consequent))
+          isStepCallOn(node.consequent, bareModelName(node.alternate)) ||
+          isStepCallOn(node.alternate, bareModelName(node.consequent))
         ) {
           context.report({
             node,
@@ -304,17 +328,19 @@ const noConditionalStep = {
       },
     }
   },
-}
+})
+
+const WORLD_NAME = /^world$|World$/
 
 // NOTE: a value named as a World: `world`, `nextWorld`, `x.world`.
-const isWorldNamed = node =>
-  (node.type === 'Identifier' && /^world$|World$/.test(node.name)) ||
+const isWorldNamed = (node: ESTree.Expression): boolean =>
+  (node.type === 'Identifier' && WORLD_NAME.test(node.name)) ||
   (node.type === 'MemberExpression' &&
     !node.computed &&
     node.property.type === 'Identifier' &&
-    /^world$|World$/.test(node.property.name))
+    WORLD_NAME.test(node.property.name))
 
-const noWorldSpread = {
+const noWorldSpread = defineRule({
   meta: {
     type: 'problem',
     docs: {
@@ -342,12 +368,12 @@ const noWorldSpread = {
       },
     }
   },
-}
+})
 
 // NOTE: the Model fields that say which menu is up. menuState in
 // src/menuState.ts reads them; everything else reads menuState. A new
 // dialog Binding joins this list and MenuState together.
-const DIALOG_FIELDS = new Set([
+const DIALOG_FIELDS: ReadonlySet<string> = new Set([
   'shopDialog',
   'profileDialog',
   'panelDialog',
@@ -356,14 +382,14 @@ const DIALOG_FIELDS = new Set([
   'updateGreeting',
 ])
 
-const memberName = node =>
-  node?.type === 'MemberExpression' &&
+const memberName = (node: Node): string | undefined =>
+  node.type === 'MemberExpression' &&
   !node.computed &&
   node.property.type === 'Identifier'
     ? node.property.name
     : undefined
 
-const noMenuField = {
+const noMenuField = defineRule({
   meta: {
     type: 'problem',
     docs: {
@@ -378,7 +404,7 @@ const noMenuField = {
         const name = memberName(node)
         const owner = memberName(node.object)
         if (
-          (name === 'isOpen' && DIALOG_FIELDS.has(owner)) ||
+          (name === 'isOpen' && hasName(DIALOG_FIELDS, owner)) ||
           (name === 'screen' && owner === 'coop')
         ) {
           context.report({
@@ -390,15 +416,18 @@ const noMenuField = {
       },
     }
   },
-}
+})
 
-// NOTE: `const X = makeCommand(...)` or `const X = Definition.makeCommand(...)`.
-const isMakeCommand = node =>
+// NOTE: `f(...)` or `Owner.f(...)` for the named f.
+const isCallOf = (
+  node: Node | null,
+  name: string,
+): node is ESTree.CallExpression =>
   node?.type === 'CallExpression' &&
-  ((node.callee.type === 'Identifier' && node.callee.name === 'makeCommand') ||
-    memberName(node.callee) === 'makeCommand')
+  ((node.callee.type === 'Identifier' && node.callee.name === name) ||
+    memberName(node.callee) === name)
 
-const commandBesideUpdate = {
+const commandBesideUpdate = defineRule({
   meta: {
     type: 'problem',
     docs: {
@@ -407,11 +436,15 @@ const commandBesideUpdate = {
     },
   },
   create(context) {
-    const commands = []
-    const called = new Set()
+    const commands: Array<ESTree.BindingIdentifier> = []
+    const called = new Set<string>()
     return {
+      // NOTE: `const X = makeCommand(...)` or `const X = Definition.makeCommand(...)`.
       VariableDeclarator(node) {
-        if (node.id.type === 'Identifier' && isMakeCommand(node.init)) {
+        if (
+          node.id.type === 'Identifier' &&
+          isCallOf(node.init, 'makeCommand')
+        ) {
           commands.push(node.id)
         }
       },
@@ -432,56 +465,71 @@ const commandBesideUpdate = {
       },
     }
   },
-}
+})
 
-// NOTE: the ways to run an Effect by hand. A test runs its Effect with
-// `it.effect` from @effect/vitest instead, which gives it a Scope and the
-// TestClock.
-const RUN_METHODS = new Set([
+// NOTE: the ways to run an Effect by hand: off `Effect`, a `Runtime`, or a
+// `ManagedRuntime` (`runtime.runPromise(...)`), or imported by name. A test
+// runs its Effect with `it.effect` from @effect/vitest instead, which gives
+// it a Scope and the TestClock.
+const RUN_METHODS: ReadonlySet<string> = new Set([
   'runPromise',
   'runPromiseExit',
   'runSync',
   'runSyncExit',
   'runFork',
+  'runCallback',
 ])
 
 const RUN_IN_TESTS_MESSAGE =
-  'A test runs its Effect with it.effect from @effect/vitest (it.live for real time, layer(...) to share a Layer), not by hand (AGENTS.md "Code shape").'
+  'A test runs its Effect with it.effect from @effect/vitest (it.live for real time, layer(...) to share a Layer), not by hand or through a runtime (AGENTS.md "Code shape").'
 
-const isEffectModule = source =>
-  source === 'effect' || source === 'effect/Effect'
+const EFFECT_MODULES = /^effect(\/(Effect|Runtime|ManagedRuntime))?$/
 
-const noRunInTests = {
+const importSource = (node: ESTree.ImportSpecifier): string | undefined =>
+  node.parent.type === 'ImportDeclaration'
+    ? node.parent.source.value
+    : undefined
+
+const importedName = (node: ESTree.ImportSpecifier): string =>
+  isStringLiteral(node.imported) ? node.imported.value : node.imported.name
+
+const noRunInTests = defineRule({
   meta: {
     type: 'problem',
     docs: {
       description:
-        "Run a test's Effect with it.effect from @effect/vitest, not Effect.runPromise, runSync, or runFork.",
+        "Run a test's Effect with it.effect from @effect/vitest, not Effect.runPromise, runSync, runFork, or a runtime's.",
     },
   },
   create(context) {
     return {
       MemberExpression(node) {
-        if (
-          node.object.type === 'Identifier' &&
-          node.object.name === 'Effect' &&
-          RUN_METHODS.has(propertyName(node))
-        ) {
+        if (hasName(RUN_METHODS, propertyName(node))) {
           context.report({ node, message: RUN_IN_TESTS_MESSAGE })
         }
       },
       ImportSpecifier(node) {
         if (
-          isEffectModule(node.parent.source.value) &&
-          node.imported.type === 'Identifier' &&
-          RUN_METHODS.has(node.imported.name)
+          EFFECT_MODULES.test(importSource(node) ?? '') &&
+          RUN_METHODS.has(importedName(node))
+        ) {
+          context.report({ node, message: RUN_IN_TESTS_MESSAGE })
+        }
+      },
+      // NOTE: a runtime of the test's own: `ManagedRuntime.make(layer)`.
+      CallExpression(node) {
+        if (
+          node.callee.type === 'MemberExpression' &&
+          node.callee.object.type === 'Identifier' &&
+          node.callee.object.name === 'ManagedRuntime' &&
+          propertyName(node.callee) === 'make'
         ) {
           context.report({ node, message: RUN_IN_TESTS_MESSAGE })
         }
       },
     }
   },
-}
+})
 
 // NOTE: a press acts on its OnClick. src/touchTaps.ts makes every touch tap
 // a click from that finger's own pointer events, so a button works with
@@ -490,7 +538,7 @@ const noRunInTests = {
 // in its place on one device only. OnPointerDown stays allowed: the game
 // surface, the HUD slots, and the hold-to-buy button act the moment a
 // finger lands, which no click can.
-const RELEASE_HANDLERS = new Set([
+const RELEASE_HANDLERS: ReadonlySet<string> = new Set([
   'OnTouchStart',
   'OnTouchEnd',
   'OnTouchCancel',
@@ -502,7 +550,7 @@ const RELEASE_HANDLERS = new Set([
 const TAP_BY_CLICK_MESSAGE =
   'Act on OnClick: src/touchTaps.ts turns every touch tap into a click, so the press works with another finger down and acts once. OnPointerDown is the one press handler for acting as a finger lands.'
 
-const tapByClick = {
+const tapByClick = defineRule({
   meta: {
     type: 'problem',
     docs: {
@@ -513,19 +561,19 @@ const tapByClick = {
   create(context) {
     return {
       MemberExpression(node) {
-        if (RELEASE_HANDLERS.has(propertyName(node))) {
+        if (hasName(RELEASE_HANDLERS, propertyName(node))) {
           context.report({ node, message: TAP_BY_CLICK_MESSAGE })
         }
       },
     }
   },
-}
+})
 
 // NOTE: a player action's rule lives once, in src/stepWorld.ts, where the
 // co-op room runs it; single player applies it through its lead seat
 // (src/update/action.ts). A client module that imports a rule's own steps,
 // or writes the fields a seat action owns, is deciding the action again.
-const SEAT_ACTION_STEPS = new Set([
+const SEAT_ACTION_STEPS: ReadonlySet<string> = new Set([
   'swapInHand',
   'drawMelee',
   'drawSlot',
@@ -540,7 +588,7 @@ const SEAT_ACTION_STEPS = new Set([
 
 const SEAT_ACTION_MODULES = /(^|\/)(weapons|traps|shop|waves|revive)$/
 
-const SEAT_ACTION_FIELDS = new Set([
+const SEAT_ACTION_FIELDS: ReadonlySet<string> = new Set([
   'player',
   'wallet',
   'traps',
@@ -551,12 +599,7 @@ const SEAT_ACTION_FIELDS = new Set([
 const SEAT_ACTION_MESSAGE =
   'A player action\'s rule lives once, in src/stepWorld.ts: apply it as a seat action (actAsLead or tryAsLead in src/update/action.ts) and wrap only the client cues around it (AGENTS.md "Code shape").'
 
-const isModifyFields = node =>
-  node?.type === 'CallExpression' &&
-  ((node.callee.type === 'Identifier' && node.callee.name === 'modifyFields') ||
-    memberName(node.callee) === 'modifyFields')
-
-const keyName = property =>
+const keyName = (property: ESTree.ObjectPropertyKind): string | undefined =>
   property.type === 'Property' && !property.computed
     ? property.key.type === 'Identifier'
       ? property.key.name
@@ -565,7 +608,7 @@ const keyName = property =>
         : undefined
     : undefined
 
-const seatActionOnce = {
+const seatActionOnce = defineRule({
   meta: {
     type: 'problem',
     docs: {
@@ -577,29 +620,31 @@ const seatActionOnce = {
     return {
       ImportSpecifier(node) {
         if (
-          SEAT_ACTION_MODULES.test(String(node.parent.source.value)) &&
-          node.imported.type === 'Identifier' &&
-          SEAT_ACTION_STEPS.has(node.imported.name)
+          SEAT_ACTION_MODULES.test(importSource(node) ?? '') &&
+          SEAT_ACTION_STEPS.has(importedName(node))
         ) {
           context.report({ node, message: SEAT_ACTION_MESSAGE })
         }
       },
       CallExpression(node) {
         const changes = node.arguments[1]
-        if (!isModifyFields(node) || changes?.type !== 'ObjectExpression') {
+        if (
+          !isCallOf(node, 'modifyFields') ||
+          changes?.type !== 'ObjectExpression'
+        ) {
           return
         }
         changes.properties
-          .filter(property => SEAT_ACTION_FIELDS.has(keyName(property)))
+          .filter(property => hasName(SEAT_ACTION_FIELDS, keyName(property)))
           .forEach(property =>
             context.report({ node: property, message: SEAT_ACTION_MESSAGE }),
           )
       },
     }
   },
-}
+})
 
-export default {
+export default definePlugin({
   meta: { name: 'munch' },
   rules: {
     'no-tag-chain': noTagChain,
@@ -613,4 +658,4 @@ export default {
     'tap-by-click': tapByClick,
     'seat-action-once': seatActionOnce,
   },
-}
+})

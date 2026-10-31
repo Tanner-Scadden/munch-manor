@@ -5,5 +5,12 @@
     "allowImportingTsExtensions": true,
     "lib": ["ES2022", "DOM"]
   },
-  "include": ["./**/*", "../../src/vite-env.d.ts"]
+  // NOTE: the build and test configs too, which run on the host as the
+  // tools do.
+  "include": [
+    "./**/*",
+    "../../src/vite-env.d.ts",
+    "../../vite.config.ts",
+    "../../vitest.config.ts"
+  ]
 }

@@ -4,7 +4,7 @@
   // and game rules, which are about the app.
   "plugins": ["eslint", "typescript", "unicorn", "oxc"],
   // NOTE: the project's own rules (AGENTS.md "Code shape").
-  "jsPlugins": ["../tools/lint/munchPlugin.mjs"],
+  "jsPlugins": ["../tools/lint/munchPlugin.ts"],
   "options": { "typeAware": true },
   "categories": {
     "correctness": "error",

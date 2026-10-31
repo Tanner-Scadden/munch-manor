@@ -2,7 +2,7 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "extends": ["./node_modules/@foldkit/oxlint-plugin/recommended.json"],
   // NOTE: the project's own rules (AGENTS.md "Code shape").
-  "jsPlugins": ["./tools/lint/munchPlugin.mjs"],
+  "jsPlugins": ["./tools/lint/munchPlugin.ts"],
   // NOTE: naming plugins replaces oxlint's defaults, so the defaults are listed
   // here with vitest added.
   "plugins": ["eslint", "typescript", "unicorn", "oxc", "vitest"],
@@ -284,9 +284,9 @@
       }
     },
     {
-      // NOTE: tools are host scripts, not Foldkit apps: the Foldkit rules do
+      // NOTE: tools and the build configs are host scripts, not Foldkit apps: the Foldkit rules do
       // not apply, and they wait on browsers and child processes one at a time.
-      "files": ["tools/**/*.ts"],
+      "files": ["tools/**/*.ts", "vite.config.ts", "vitest.config.ts"],
       "rules": {
         "foldkit/no-impure-call-at-decision-time": "off",
         "foldkit/no-module-level-mutable-state": "off",
@@ -300,7 +300,12 @@
       // outside update (AGENTS.md "Strictness"): time from Effect's Clock,
       // waits from Effect.sleep or a Schedule, requests through HttpClient,
       // and unions as Schema unions.
-      "files": ["tools/**/*.ts", "packages/**/*.ts"],
+      "files": [
+        "tools/**/*.ts",
+        "packages/**/*.ts",
+        "vite.config.ts",
+        "vitest.config.ts"
+      ],
       "rules": {
         "no-restricted-properties": [
           "error",
@@ -392,8 +397,6 @@
     "node_modules/",
     "repos/",
     "**/*.d.ts",
-    "vite.config.ts",
-    "vitest.config.ts",
     "**/*.config.js",
     "**/*.config.mjs"
   ]

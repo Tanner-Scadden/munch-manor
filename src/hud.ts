@@ -32,6 +32,7 @@ import {
 } from './font'
 import { clamp } from './geometry'
 import { isPending } from './lessons'
+import { isPracticeGateHeld } from './lessons'
 import {
   type CarriedGun,
   type Model,
@@ -42,11 +43,7 @@ import {
   TrapNotice,
   type WeaponKind,
 } from './model'
-import {
-  isCountdownBeckoning,
-  isOpenBreak,
-  isPracticeGateHeld,
-} from './onboarding'
+import { isCountdownBeckoning, isOpenBreak } from './onboarding'
 import { type SeatedPlayer, leadSeatOf, playersOf } from './party'
 import { seatColorOf } from './partyView'
 import { maybeMsSinceHurt } from './playerView'

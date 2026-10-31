@@ -1,3 +1,4 @@
+import { DateTime, Schema } from 'effect'
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
@@ -13,12 +14,18 @@ import {
   precacheList,
   serviceWorkerSource,
 } from './src/sw/precache.ts'
+import { encodeJson } from './tools/json.ts'
 import { spriteAtlas } from './tools/sprites/vitePlugin.ts'
 import { foldkitBrandingViews } from './tools/vite/viewIdentity.ts'
 
 const WORKER_SOURCE = resolve(import.meta.dirname, 'src/sw/worker.ts')
 
 const DEV_BUILD = 'dev'
+
+const nowMs = (): number => DateTime.toEpochMillis(DateTime.nowUnsafe())
+
+const nonEmpty = (value: string | undefined): value is string =>
+  value !== undefined && value !== ''
 
 const git = (...args: ReadonlyArray<string>): string | undefined => {
   try {
@@ -40,14 +47,17 @@ const commitBuild = (): string | undefined => {
   }
   return git('status', '--porcelain') === ''
     ? commit
-    : `${commit}-dirty-${Date.now()}`
+    : `${commit}-dirty-${nowMs()}`
 }
 
 const resolveBuild = (): string =>
-  process.env.BUILD_ID ||
-  process.env.GITHUB_SHA ||
-  commitBuild() ||
-  `time-${Date.now()}`
+  [process.env['BUILD_ID'], process.env['GITHUB_SHA'], commitBuild()].find(
+    nonEmpty,
+  ) ?? `time-${nowMs()}`
+
+const encodeString = encodeJson(Schema.String)
+
+const encodeVersion = encodeJson(Schema.Struct({ build: Schema.String }))
 
 // Stamps every production build with an id and writes it to version.json,
 // so an installed app can tell that a newer build is live.
@@ -60,14 +70,14 @@ const buildId = (): Plugin => {
     name: 'munch-manor:build-id',
     config: (_config, { command }) => {
       build.id = command === 'build' ? resolveBuild() : DEV_BUILD
-      return { define: { __BUILD_ID__: JSON.stringify(build.id) } }
+      return { define: { __BUILD_ID__: encodeString(build.id) } }
     },
     applyToEnvironment: environment => environment.name === 'client',
     generateBundle() {
       this.emitFile({
         type: 'asset',
         fileName: 'version.json',
-        source: `${JSON.stringify({ build: build.id })}\n`,
+        source: `${encodeVersion({ build: build.id })}\n`,
       })
     },
   }
@@ -90,7 +100,8 @@ const filesUnder = (directory: string): ReadonlyArray<string> =>
 // dist is written it checks the list against the files on disk and fails the
 // build if they drift. KILL_SERVICE_WORKER=1 writes the kill switch instead.
 const serviceWorker = (): Plugin => {
-  const state = { outDir: '', publicDir: '', precache: [] as Array<string> }
+  const state: { outDir: string; publicDir: string; precache: Array<string> } =
+    { outDir: '', publicDir: '', precache: [] }
   return {
     name: 'munch-manor:service-worker',
     apply: 'build',
@@ -106,7 +117,7 @@ const serviceWorker = (): Plugin => {
           ...precacheList(Object.keys(bundle), filesUnder(state.publicDir)),
         ]
         const isKilled =
-          IS_SERVICE_WORKER_KILLED || process.env.KILL_SERVICE_WORKER === '1'
+          IS_SERVICE_WORKER_KILLED || process.env['KILL_SERVICE_WORKER'] === '1'
         const worker = await transformWithOxc(
           readFileSync(WORKER_SOURCE, 'utf8'),
           WORKER_SOURCE,

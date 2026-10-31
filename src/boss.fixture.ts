@@ -7,7 +7,6 @@ import { modifyFields } from 'foldkit/struct'
 
 import { PARLOUR } from './arena'
 import { freshFight } from './boss'
-import { FIXED_STEP_MS } from './constants'
 import {
   Boss,
   type BossMove,
@@ -23,7 +22,6 @@ import { zombieOf } from './testing'
 import { FINAL_WAVE, WAVE_PLANS } from './wavePlans'
 import { ZOMBIE_KINDS, scaledHp } from './zombies'
 
-export const FRAME_MS = FIXED_STEP_MS
 export const CENTER_X = PARLOUR.width / 2
 export const CENTER_Y = PARLOUR.height / 2
 export const BOSS_ID = 777
@@ -58,7 +56,7 @@ export const bossAt = (x: number, y: number, hp = BOSS_HP): Zombie =>
     maxHp: () => BOSS_HP,
   })
 
-export const fighting = (move: BossMove): Boss => freshFight(BOSS_ID, move)
+export const fightingBoss = (move: BossMove): Boss => freshFight(BOSS_ID, move)
 
 export const fightingWith = (
   move: BossMove,
@@ -66,7 +64,7 @@ export const fightingWith = (
 ): Boss =>
   Boss.Fighting({
     ...Option.getOrThrow(
-      Option.liftPredicate(fighting(move), Boss.guards.Fighting),
+      Option.liftPredicate(fightingBoss(move), Boss.guards.Fighting),
     ),
     ...change,
   })

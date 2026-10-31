@@ -1,12 +1,16 @@
+import { Schema } from 'effect'
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 
 import tailwindcss from '@tailwindcss/vite'
 
+import { encodeJson } from '../../json.ts'
 import { spriteAtlas } from '../../sprites/vitePlugin.ts'
 import { foldkitBrandingViews } from '../../vite/viewIdentity.ts'
 
 const GAME = resolve(__dirname, '../../..')
+const encodeString = encodeJson(Schema.String)
+
 const isProfile = (process.env['PROFILE'] ?? '') !== ''
 
 export default defineConfig({
@@ -14,8 +18,8 @@ export default defineConfig({
   publicDir: `${GAME}/public`,
   plugins: [tailwindcss(), ...foldkitBrandingViews(), spriteAtlas()],
   define: {
-    __BUILD_ID__: JSON.stringify('dev'),
-    'import.meta.env.VITE_COOP': JSON.stringify('On'),
+    __BUILD_ID__: encodeString('dev'),
+    'import.meta.env.VITE_COOP': encodeString('On'),
   },
   resolve: { alias: { '@game': `${GAME}/src` } },
   server: { fs: { allow: [GAME, __dirname] } },
