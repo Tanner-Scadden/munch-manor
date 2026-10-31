@@ -75,14 +75,16 @@ import {
 } from './update/home'
 import {
   asAllowedPress,
+  clickNextTrap,
+  clickPause,
+  clickPlaceTrap,
+  clickStartWave,
   isDebutCardBlocking,
   isFreshRun,
   isSlotClickPassingThrough,
   isSlotPressAShot,
-  isTrapButtonHeld,
   notePageVisibility,
   orientationOf,
-  pauseRound,
   pauseWhenAway,
   pressGunSlot,
   pressMeleeSlot,
@@ -91,7 +93,6 @@ import {
   reloadFromButton,
   resumeFromPointer,
   skipDebutCardWhenUp,
-  startWaveFromButton,
   swapFromButton,
   tapSound,
   tickFrame,
@@ -126,6 +127,7 @@ import { type SaveWrite, afterMessage } from './update/settle'
 import { buy, focusShopItem, moveShopFocus } from './update/shop'
 import {
   ResumeAudio,
+  notePlayOutcome,
   playSounds,
   playStartSoundWhen,
   toggleMusic,
@@ -140,7 +142,6 @@ import {
   unchanged,
   withInput,
 } from './update/step'
-import { nextTrap, placeSelectedTrap } from './update/traps'
 import {
   checkForUpdate,
   recordRemoteBuild,
@@ -323,16 +324,7 @@ export const update = ApplicationComposition.makeUpdate({
 
   ClickedPauseButton: (model, message) =>
     Update.combineSteps(model, [
-      makeStep(
-        orInRun(
-          message,
-          makeStep(stepModel =>
-            isRoundActive(stepModel.phase)
-              ? Update.combineSteps([unlockAudio, pauseRound])
-              : unchanged,
-          ),
-        ),
-      ),
+      makeStep(orInRun(message, clickPause)),
       ...afterMessage(model),
     ]),
 
@@ -379,16 +371,7 @@ export const update = ApplicationComposition.makeUpdate({
 
   ClickedStartWaveButton: (model, message) =>
     Update.combineSteps(model, [
-      makeStep(
-        orInRun(
-          message,
-          makeStep(stepModel =>
-            isTrapButtonHeld(stepModel)
-              ? unchanged
-              : Update.combineSteps([startWaveFromButton, unlockAudio]),
-          ),
-        ),
-      ),
+      makeStep(orInRun(message, clickStartWave)),
       ...afterMessage(model),
     ]),
 
@@ -482,31 +465,13 @@ export const update = ApplicationComposition.makeUpdate({
 
   ClickedPlaceTrapButton: (model, message) =>
     Update.combineSteps(model, [
-      makeStep(
-        orInRun(
-          message,
-          makeStep(stepModel =>
-            isTrapButtonHeld(stepModel)
-              ? unchanged
-              : Update.combineSteps([unlockAudio, placeSelectedTrap]),
-          ),
-        ),
-      ),
+      makeStep(orInRun(message, clickPlaceTrap)),
       ...afterMessage(model),
     ]),
 
   ClickedNextTrapButton: (model, message) =>
     Update.combineSteps(model, [
-      makeStep(
-        orInRun(
-          message,
-          makeStep(stepModel =>
-            isTrapButtonHeld(stepModel)
-              ? unchanged
-              : Update.combineSteps([unlockAudio, nextTrap]),
-          ),
-        ),
-      ),
+      makeStep(orInRun(message, clickNextTrap)),
       ...afterMessage(model),
     ]),
 
@@ -568,17 +533,7 @@ export const update = ApplicationComposition.makeUpdate({
     }),
 
   CompletedPlaySound: (model, { outcome }) =>
-    settle(
-      model,
-      outcome === 'DroppedWhileSuspended' &&
-        AudioState.isAnyOf(['Ready'])(model.audio)
-        ? {
-            model: modifyFields(model, {
-              audio: () => AudioState.Suspended(),
-            }),
-          }
-        : { model },
-    ),
+    settle(model, notePlayOutcome(outcome)(model)),
 
   FailedPlaySound: model => settle(model, { model }),
 

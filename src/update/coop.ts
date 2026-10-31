@@ -5,6 +5,7 @@ import { NEUTRAL_INPUT } from '@munch/netcode'
 
 import { CoopBinding } from '../composition'
 import { IS_COOP_RELEASED } from '../coop/release'
+import { readRoomLink } from '../coop/roomState'
 import * as Coop from '../coop/update'
 import { isLeftFromRoom, maybeRunRoom, playRoomFrame } from '../coopPlay'
 import { makeCommand, makeStep } from '../definition'
@@ -30,7 +31,7 @@ export const ReadRoomLink = makeCommand('ReadRoomLink', {
     return () =>
       Effect.sync(() =>
         Message.CompletedReadRoomLink({
-          maybeCode: Coop.readRoomLink(location.search),
+          maybeCode: readRoomLink(location.search),
         }),
       )
   },

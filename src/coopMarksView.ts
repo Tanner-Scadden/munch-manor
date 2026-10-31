@@ -2,7 +2,7 @@ import { Array, Option, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { type Camera, worldToView } from './camera'
-import { maybeRoomOf } from './coop/update'
+import { maybeRoomOf } from './coop/roomState'
 import { textShapes } from './font'
 import type { Model } from './model'
 import { isBledOut, isCoop, leadSeatOf, playersOf } from './party'

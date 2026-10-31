@@ -27,6 +27,7 @@ import {
   emptyQueue,
   initialModel,
 } from './model'
+import { freshRoom } from './roomState'
 import { CODE, lobbyOf, memberOf, playingSession, stagedWorld } from './testing'
 import {
   AnswerOffer,
@@ -37,7 +38,6 @@ import {
   RememberRoom,
   RequestRoom,
   ShareRoomLink,
-  freshRoom,
   update,
 } from './update'
 import { view as coopView } from './view'

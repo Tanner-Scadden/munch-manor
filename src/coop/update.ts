@@ -1,37 +1,22 @@
-import {
-  Array,
-  Effect,
-  Layer,
-  Match,
-  Option,
-  Result,
-  Schema,
-  String,
-  pipe,
-} from 'effect'
+import { Array, Effect, Layer, Match, Option, Result, Schema } from 'effect'
 import { Dom, type Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import {
   ClientFrame,
   type Lobby,
-  type LobbyMember,
   Matchmaking,
   type PickedMode,
   type PlayerInput,
   type RoomDifficulty,
   ServerFrame,
   Session,
-  canHostPickNightmare,
   normalizeRoomCode,
 } from '@munch/netcode'
 import { QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
-import { CODE_ALPHABET } from '@munch/sync-engine'
 
-import { actionCodeOf, eventsBetween, heldAction } from '../roomWorld'
+import { eventsBetween } from '../roomWorld'
 import { stepWhen } from '../stepWhen'
-import type { SeatAction } from '../stepWorld'
-import type { Bullet } from '../worldSchema'
 import { CoopComposition } from './composition'
 import { makeCommand } from './definition'
 import { Message, OutMessage } from './message'
@@ -39,23 +24,48 @@ import {
   type CoopProblem,
   LobbyChange,
   type Model,
-  type Presses,
   type Queue,
   type Room,
   RoomRequest,
   Screen,
   emptyQueue,
-  noPresses,
 } from './model'
 import { CoopNet } from './net'
-import { type OwnPlayer, coopWorld } from './seam'
-
-// IDS
-
-export const QUICK_PLAY_BUTTON_ID = 'coop-quick'
-export const CODE_INPUT_ID = 'coop-code'
-export const READY_BUTTON_ID = 'coop-ready'
-export const ROOM_CODE_LENGTH = 5
+import {
+  CODE_INPUT_ID,
+  DIFFICULTY_KEY,
+  DIFFICULTY_PICKS,
+  ENTER,
+  ESCAPE,
+  MODE_KEY,
+  MODE_PICKS,
+  QUICK_PLAY_BUTTON_ID,
+  READY_BUTTON_ID,
+  ROOM_CODE_LENGTH,
+  ROOM_PARAM,
+  canPickDifficulty,
+  canPickMode,
+  cleanCode,
+  freshRoom,
+  hub,
+  isHost,
+  isInLobby,
+  isKickedFrom,
+  isPicking,
+  learnLobby,
+  linkOf,
+  maybeRoomOf,
+  meIn,
+  nextOf,
+  pickedModeOf,
+  pressAction,
+  pressFor,
+  shotsBetween,
+  startOfEvents,
+  withRoom,
+  withScreen,
+} from './roomState'
+import { coopWorld } from './seam'
 
 // COMMAND
 
@@ -153,16 +163,6 @@ export const ResyncRoom = makeCommand('ResyncRoom', {
   },
 })
 
-const ROOM_PARAM = 'room'
-
-const linkOf = (code: string): string => {
-  const url = new URL(location.href)
-  url.search = ''
-  url.hash = ''
-  url.searchParams.set(ROOM_PARAM, code)
-  return url.toString()
-}
-
 // NOTE: the phone's own share sheet where there is one, else the link on the
 // clipboard. Either way the button shows what happened with an icon.
 export const ShareRoomLink = makeCommand('ShareRoomLink', {
@@ -206,13 +206,6 @@ export const RememberRoom = makeCommand('RememberRoom', {
   },
 })
 
-// NOTE: the code a `?room=` link carries, read once as the game boots.
-export const readRoomLink = (search: string): Option.Option<string> =>
-  Option.flatMap(
-    Option.fromNullishOr(new URLSearchParams(search).get(ROOM_PARAM)),
-    normalizeRoomCode,
-  )
-
 // HELPERS
 
 // NOTE: the handlers co-op's Commands need; the CoopNet service they use
@@ -228,31 +221,6 @@ export type UpdateReturn = Update.ReturnWithOutMessage<
   CoopHandlers
 >
 
-const withScreen = (model: Model, screen: Screen): Model =>
-  modifyFields(model, { screen: () => screen })
-
-const hub = (model: Model, maybeProblem: Option.Option<CoopProblem>): Model =>
-  withScreen(model, Screen.Hub({ maybeProblem }))
-
-export const freshRoom = (code: string, slot: number): Room => ({
-  code,
-  slot,
-  maybePlayerId: Option.none(),
-  maybeLobby: Option.none(),
-  link: 'Connecting',
-  session: Session.makeSession(0),
-  maybeWorld: Option.none(),
-  frameEvents: [],
-  eventsTick: 0,
-  predictedShots: 0,
-  tracers: [],
-  tracerCount: 0,
-  hits: { looked: 0, confirmed: 0 },
-  presses: noPresses,
-  share: 'Idle',
-  departure: 'Staying',
-})
-
 const enterRoom = (model: Model, code: string, slot: number): UpdateReturn => ({
   model: withScreen(model, Screen.InRoom({ room: freshRoom(code, slot) })),
   commands: [
@@ -265,58 +233,6 @@ const ask = (model: Model, request: RoomRequest): UpdateReturn => ({
   model: withScreen(model, Screen.Asking({ request })),
   commands: [RequestRoom({ request, name: model.name, look: model.look })],
 })
-
-const isCodeSymbol = (symbol: string): boolean =>
-  String.includes(symbol)(CODE_ALPHABET)
-
-// NOTE: what a player types or pastes, kept to the pairing alphabet: any
-// case, a pasted link or spaces and dashes dropped, five symbols at most.
-export const cleanCode = (typed: string): string => {
-  const fromLink = Option.getOrElse(readRoomLinkOf(typed), () => typed)
-  return pipe(
-    globalThis.Array.from(fromLink.toUpperCase()),
-    Array.filter(isCodeSymbol),
-    Array.take(ROOM_CODE_LENGTH),
-    Array.join(''),
-  )
-}
-
-const readRoomLinkOf = (typed: string): Option.Option<string> =>
-  String.includes('?')(typed)
-    ? readRoomLink(typed.slice(typed.indexOf('?')))
-    : Option.none()
-
-const memberAt = (lobby: Lobby, slot: number): Option.Option<LobbyMember> =>
-  Array.findFirst(lobby.members, member => member.slot === slot)
-
-export const meIn = (room: Room): Option.Option<LobbyMember> =>
-  Option.flatMap(
-    Option.all([room.maybeLobby, room.maybePlayerId]),
-    ([lobby, id]) =>
-      Array.findFirst(lobby.members, member => member.playerId === id),
-  )
-
-export const isHost = (room: Room): boolean =>
-  Option.exists(
-    Option.all([room.maybeLobby, room.maybePlayerId]),
-    ([lobby, id]) => lobby.host === id,
-  )
-
-const withRoom = (model: Model, room: Room): Model =>
-  withScreen(model, Screen.InRoom({ room }))
-
-const learnLobby = (room: Room, lobby: Lobby): Room => {
-  const maybePlayerId = Option.orElse(room.maybePlayerId, () =>
-    Option.map(memberAt(lobby, room.slot), member => member.playerId),
-  )
-  return { ...room, maybeLobby: Option.some(lobby), maybePlayerId }
-}
-
-const isKickedFrom = (room: Room, lobby: Lobby): boolean =>
-  Option.exists(
-    room.maybePlayerId,
-    id => !Array.some(lobby.members, member => member.playerId === id),
-  )
 
 const leaveFor = (model: Model, problem: CoopProblem): UpdateReturn => ({
   model: hub(model, Option.some(problem)),
@@ -407,50 +323,6 @@ const receiveFrame = (
       )(model),
   })
 
-// NOTE: the next queued press takes over the held value once the one held
-// now has gone out on at least one input tick.
-const pressFor = (presses: Presses, inputTick: number): Presses =>
-  Array.match(presses.queued, {
-    onEmpty: () => presses,
-    onNonEmpty: ([next, ...rest]) =>
-      presses.held === 0 || inputTick > presses.heldFrom
-        ? {
-            queued: rest,
-            held: heldAction(next, presses.presses + 1),
-            presses: presses.presses + 1,
-            heldFrom: inputTick + 1,
-          }
-        : presses,
-  })
-
-// NOTE: events are counted from the tick the last frame reached. A room that
-// started its ticks again, a new run, counts from what it holds.
-const startOfEvents = (room: Room, frames: Room['session']['frames']) =>
-  Option.match(Array.last(frames), {
-    onNone: () => room.eventsTick,
-    onSome: newest =>
-      room.eventsTick > newest.tick
-        ? Option.match(Array.head(frames), {
-            onNone: () => 0,
-            onSome: oldest => oldest.tick,
-          })
-        : room.eventsTick,
-  })
-
-// NOTE: a shot resets the recoil to its full length, and no gun fires
-// twice in one frame's ticks, so a recoil higher than before is a shot.
-const shotsBetween = (
-  maybeBefore: Option.Option<OwnPlayer>,
-  maybeAfter: Option.Option<OwnPlayer>,
-): number =>
-  Option.exists(
-    Option.all([maybeBefore, maybeAfter]),
-    ([before, after]) =>
-      after.player.recoilRemainingMs > before.player.recoilRemainingMs,
-  )
-    ? 1
-    : 0
-
 // NOTE: one frame of the room: the parent's controls go in as this frame's
 // input with the held press, the session sends what it owes, and the World
 // to draw and the events it reached come out. The parent reads `maybeWorld`
@@ -503,44 +375,6 @@ export const tickRoom = (
       : { model: next }
   })
 
-// NOTE: this frame's own tracers, kept for the next, and how many were ever
-// fired, so each has its own id.
-export const keepTracers = (
-  model: Model,
-  tracers: ReadonlyArray<Bullet>,
-  fired: number,
-  looked: number,
-  confirmed: number,
-): Model =>
-  Option.match(maybeRoomOf(model), {
-    onNone: () => model,
-    onSome: room =>
-      withRoom(model, {
-        ...room,
-        tracers,
-        tracerCount: room.tracerCount + fired,
-        hits: {
-          looked: room.hits.looked + looked,
-          confirmed: room.hits.confirmed + confirmed,
-        },
-      }),
-  })
-
-// NOTE: a press for the room: a swap, a buy, READY, and the rest
-// (src/stepWorld.ts, SeatAction). It goes out with the next inputs.
-export const pressAction = (model: Model, action: SeatAction): Model =>
-  Option.match(maybeRoomOf(model), {
-    onNone: () => model,
-    onSome: room =>
-      withRoom(model, {
-        ...room,
-        presses: {
-          ...room.presses,
-          queued: Array.append(room.presses.queued, actionCodeOf(action)),
-        },
-      }),
-  })
-
 const toggleReady = (model: Model, room: Room): UpdateReturn =>
   Option.match(meIn(room), {
     onNone: () => ({ model }),
@@ -573,39 +407,6 @@ const close = (model: Model): UpdateReturn => ({
   outMessage: OutMessage.ClosedCoop(),
 })
 
-// PICKS
-
-export const MODE_PICKS: Array.NonEmptyReadonlyArray<PickedMode> = [
-  'Campaign',
-  'Endless',
-  'KeepGoing',
-]
-
-export const DIFFICULTY_PICKS: Array.NonEmptyReadonlyArray<RoomDifficulty> = [
-  'Easy',
-  'Normal',
-  'Hard',
-  'Nightmare',
-]
-
-export const pickedModeOf = (lobby: Lobby): PickedMode =>
-  lobby.mode === 'StandIn' ? 'Campaign' : lobby.mode
-
-// NOTE: KeepGoing is there only while the room keeps a won run, and
-// Nightmare only for a host the room found it unlocked for, on the server
-// (packages/netcode, Lobby.ts, canHostPickNightmare).
-export const canPickMode = (lobby: Lobby, mode: PickedMode): boolean =>
-  mode !== 'KeepGoing' || lobby.canKeepGoing
-
-export const canPickDifficulty = (
-  lobby: Lobby,
-  difficulty: RoomDifficulty,
-): boolean => difficulty !== 'Nightmare' || canHostPickNightmare(lobby)
-
-export const isPicking = (room: Room): boolean =>
-  isHost(room) &&
-  Option.exists(room.maybeLobby, lobby => lobby.status === 'Lobby')
-
 const pick = (
   model: Model,
   room: Room,
@@ -629,29 +430,6 @@ const pick = (
           }
         : { model },
   })
-
-const nextOf = <A>(
-  all: Array.NonEmptyReadonlyArray<A>,
-  current: A,
-  isAllowed: (value: A) => boolean,
-): A => {
-  const at = Option.getOrElse(
-    Array.findFirstIndex(all, value => value === current),
-    () => 0,
-  )
-  return Option.getOrElse(
-    Array.findFirst(
-      Array.makeBy(all.length - 1, step =>
-        Option.getOrElse(
-          Array.get(all, (at + step + 1) % all.length),
-          () => current,
-        ),
-      ),
-      isAllowed,
-    ),
-    () => current,
-  )
-}
 
 const pickFromKey = (model: Model, room: Room, code: string): UpdateReturn =>
   Option.match(room.maybeLobby, {
@@ -680,11 +458,6 @@ const pickFromKey = (model: Model, room: Room, code: string): UpdateReturn =>
       }
     },
   })
-
-const ESCAPE = 'Escape'
-const ENTER = 'Enter'
-const MODE_KEY = 'KeyE'
-const DIFFICULTY_KEY = 'KeyX'
 
 const keyOnScreen = (model: Model, code: string): UpdateReturn =>
   Screen.match<UpdateReturn>(model.screen, {
@@ -724,12 +497,6 @@ const keyOnScreen = (model: Model, code: string): UpdateReturn =>
         return pickFromKey(model, room, code)
       }
     },
-  })
-
-export const isInLobby = (room: Room): boolean =>
-  Option.match(room.maybeLobby, {
-    onNone: () => true,
-    onSome: lobby => lobby.status === 'Lobby',
   })
 
 const answer = (model: Model, queue: Queue, accept: boolean): UpdateReturn => ({
@@ -809,16 +576,6 @@ export const open = (
 
 export const isOpen = (model: Model): boolean =>
   !Screen.isAnyOf(['Closed'])(model.screen)
-
-export const maybeRoomOf = (model: Model): Option.Option<Room> =>
-  Screen.match(model.screen, {
-    Closed: () => Option.none(),
-    Hub: () => Option.none(),
-    Code: () => Option.none(),
-    Asking: () => Option.none(),
-    Queue: () => Option.none(),
-    InRoom: ({ room }) => Option.some(room),
-  })
 
 // UPDATE
 

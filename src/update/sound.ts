@@ -6,6 +6,7 @@ import { isTickingShot } from '../ammoWarning'
 import {
   type AudioEngine,
   type AudioEngineError,
+  type PlayOutcome,
   SoundEffect,
   acquireAudioEngine,
   playSound,
@@ -270,6 +271,20 @@ export const playStartSoundWhen = (isRoundStart: boolean): UpdateStep =>
 
 export const playSwapSoundWhen = (isSwap: boolean): UpdateStep =>
   playSounds(isSwap ? [uiCue('Swap')] : [])
+
+// NOTE: a sound dropped while the engine is suspended means the browser
+// suspended it under a Ready engine: the next tap resumes it.
+export const notePlayOutcome =
+  (outcome: PlayOutcome): UpdateStep =>
+  model =>
+    outcome === 'DroppedWhileSuspended' &&
+    AudioState.isAnyOf(['Ready'])(model.audio)
+      ? {
+          model: modifyFields(model, {
+            audio: () => AudioState.Suspended(),
+          }),
+        }
+      : { model }
 
 export const unlockAudio: UpdateStep = stepModel =>
   AudioState.match(stepModel.audio, {
