@@ -40,10 +40,13 @@ import { stepWhen } from './stepWhen'
 import { askForRoomLink, openCoop, tickRoomFrame } from './update/coop'
 import { orInRun } from './update/coopRun'
 import {
+  leaveRoomFromCard,
   retry,
+  runItBack,
   settleShare,
   shareFromButton,
   skipFromPointer,
+  toRoomLobby,
 } from './update/end'
 import { toggleFullscreen } from './update/fullscreen'
 import {
@@ -352,6 +355,27 @@ export const update = ApplicationComposition.makeUpdate({
 
   ClickedShareButton: model =>
     settle(model, combine(model, [unlockAudio, shareFromButton])),
+
+  ClickedRunItBackButton: model =>
+    Update.combineSteps(model, [
+      unlockAudio,
+      runItBack,
+      ...afterMessage(model),
+    ]),
+
+  ClickedRoomLobbyButton: model =>
+    Update.combineSteps(model, [
+      unlockAudio,
+      toRoomLobby,
+      ...afterMessage(model),
+    ]),
+
+  ClickedLeaveRoomButton: model =>
+    Update.combineSteps(model, [
+      unlockAudio,
+      leaveRoomFromCard,
+      ...afterMessage(model),
+    ]),
 
   ClickedCharacterButton: model =>
     Update.combineSteps(model, [

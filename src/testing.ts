@@ -16,6 +16,7 @@ import {
   FIXED_STEP_MS,
   RESTART_GRACE_MS,
   SCORE_PER_ZOMBIE,
+  STICK_RADIUS_PX,
   ZOMBIE_MAX_HP,
 } from './constants'
 import { KITCHEN_EXIT } from './exits'
@@ -87,18 +88,36 @@ export const release = (code: string) =>
 
 const FIRE_THUMB = 70
 
-export const holdFire = Story.message(
-  Message.PressedPointer({
-    pointerId: FIRE_THUMB,
-    device: 'Touch',
-    clientX: 600,
-    clientY: 200,
-  }),
-)
+// NOTE: a thumb that lands on the aim stick and pushes it all the way to
+// the right, the way a player faces at the start, so the trigger pulls
+// (src/input.ts, the fire zone).
+export const FIRE_PRESS = Message.PressedPointer({
+  pointerId: FIRE_THUMB,
+  device: 'Touch',
+  clientX: 600,
+  clientY: 200,
+})
 
-export const releaseFire = Story.message(
-  Message.ReleasedPointer({ pointerId: FIRE_THUMB }),
-)
+const firePushToward = (direction: Vector) =>
+  Message.MovedPointer({
+    pointerId: FIRE_THUMB,
+    clientX: 600 + direction.x * STICK_RADIUS_PX,
+    clientY: 200 + direction.y * STICK_RADIUS_PX,
+  })
+
+export const FIRE_PUSH = firePushToward({ x: 1, y: 0 })
+
+export const holdFireToward = (direction: Vector) =>
+  Story.steps(
+    Story.message(FIRE_PRESS),
+    Story.message(firePushToward(direction)),
+  )
+
+export const holdFire = holdFireToward({ x: 1, y: 0 })
+
+export const FIRE_LIFT = Message.ReleasedPointer({ pointerId: FIRE_THUMB })
+
+export const releaseFire = Story.message(FIRE_LIFT)
 
 // NOTE: The Foldkit rule against building a child's Messages skips *.test.ts
 // files. These helpers resolve the Dialog's Commands for those tests, so it is
@@ -430,6 +449,8 @@ export const keepGoingButton = Scene.role('button', {
 export const retryButton = Scene.role('button', {
   name: 'Retry: a new campaign of 10 waves',
 })
+
+export const endButtons = Scene.all.selector('.end-actions .end-button')
 
 export const updateChip = Scene.role('button', {
   name: 'Update ready: tap to get it',

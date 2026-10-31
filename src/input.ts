@@ -2,7 +2,7 @@ import { Array, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Camera, viewToWorld } from './camera'
-import { STICK_DEAD_ZONE, STICK_RADIUS_PX } from './constants'
+import { STICK_DEAD_ZONE, STICK_FIRE_ZONE, STICK_RADIUS_PX } from './constants'
 import {
   ZERO_VECTOR,
   addVectors,
@@ -40,6 +40,7 @@ const KEEP_GOING_KEY = 'KeyK'
 const CHARACTER_KEY = 'KeyC'
 const PAUSE_KEY = 'Escape'
 const MENU_KEY = 'KeyH'
+const LOBBY_KEY = 'KeyL'
 const PREVIOUS_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowLeft', 'ArrowUp']
 const NEXT_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowRight', 'ArrowDown']
 
@@ -54,6 +55,8 @@ export const maybeFocusStep = (code: string): Option.Option<FocusStep> => {
 }
 
 export const isMenuKey = (code: string): boolean => code === MENU_KEY
+
+export const isLobbyKey = (code: string): boolean => code === LOBBY_KEY
 
 export const isStartKey = (code: string): boolean => code === START_KEY
 
@@ -315,8 +318,14 @@ const mouseAim = (
     directionBetween(player, viewToWorld(camera, mouseInView)),
   )
 
+// NOTE: a thumb on the aim stick pulls the trigger only once it is pushed
+// past the fire zone. At the moment it lands the stick has no direction, so
+// a shot then flew where the player last faced, not where they meant to aim.
+const isAimStickFiring = (stick: Stick): boolean =>
+  vectorLength(stickDeflection(stick)) >= STICK_FIRE_ZONE
+
 const triggerOf = (input: Input): Trigger =>
-  Stick.isAnyOf(['Active'])(input.aimStick) ||
+  isAimStickFiring(input.aimStick) ||
   MouseButton.isAnyOf(['Held'])(input.mouseButton)
     ? 'Held'
     : 'Released'

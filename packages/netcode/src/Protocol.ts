@@ -53,8 +53,10 @@ import {
 // what is in the melee slot (`melee`, the knife or the Pan with its dents
 // and tier), the Pan no longer takes a gun slot, and the action that drew
 // the knife draws the melee slot, whatever is in it.
-export const PROTOCOL_VERSION = 12
-export const MIN_PROTOCOL_VERSION = 12
+// Version 13: the idle reload below Hard. Each player carries how long
+// the trigger has rested with the gun in hand (`triggerRestMs`).
+export const PROTOCOL_VERSION = 13
+export const MIN_PROTOCOL_VERSION = 13
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

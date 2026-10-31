@@ -1,3 +1,4 @@
+import { Array, Result, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { SHADOW_HEIGHT } from './constants'
@@ -110,6 +111,33 @@ export const footShadow = (
   const foot = footPosition(position, footOffset)
   return centeredRect(foot.x, foot.y, width, SHADOW_HEIGHT, fill)
 }
+
+// RINGS
+
+export type RingPixel = Readonly<{ x: number; y: number; turn: number }>
+
+// NOTE: the ring's pixels around a middle, each with how far round
+// it sits from the top, clockwise, as a fraction of a turn.
+export const ringPixels = (radius: number): ReadonlyArray<RingPixel> =>
+  pipe(
+    Array.makeBy((radius + 1) * 2 + 1, row => row - radius - 1),
+    Array.flatMap(dy =>
+      Array.filterMap(
+        Array.makeBy((radius + 1) * 2 + 1, column => column - radius - 1),
+        (dx): Result.Result<RingPixel, void> => {
+          const distance = Math.hypot(dx + 0.5, dy + 0.5)
+          const angle = Math.atan2(dx + 0.5, -(dy + 0.5))
+          return distance >= radius - 1.5 && distance <= radius + 0.5
+            ? Result.succeed({
+                x: dx,
+                y: dy,
+                turn: (angle < 0 ? angle + Math.PI * 2 : angle) / (Math.PI * 2),
+              })
+            : Result.failVoid
+        },
+      ),
+    ),
+  )
 
 // BARS
 

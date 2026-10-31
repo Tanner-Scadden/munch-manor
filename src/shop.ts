@@ -32,7 +32,6 @@ import {
   SIDEARM,
   WEAPONS,
   type WeaponTier,
-  cancelReload,
   freshGun,
   isCarrying,
   isHolding,
@@ -44,6 +43,7 @@ import {
   maybeCarried,
   maybeNextTier,
   maybeReplacedGun,
+  putGunInHand,
   startingRounds,
   statsAt,
   takeGun,
@@ -228,7 +228,7 @@ export const SHOP_ITEMS: Readonly<Record<FixedShopItemId, ShopItem>> = {
   Shotgun: {
     id: 'Shotgun',
     name: WEAPONS.Shotgun.name,
-    blurb: `Sprays five pellets and shoves hard, but only up close. Comes with ${startingRounds('Shotgun')} shells.`,
+    blurb: `Sprays seven pellets and shoves hard, but only up close. Comes with ${startingRounds('Shotgun')} shells.`,
     price: 35,
     good: ShopGood.Gun({ weapon: 'Shotgun' }),
   },
@@ -1009,7 +1009,7 @@ const grant = (model: World, good: ShopGood): World =>
   ShopGood.match(good, {
     Gun: ({ weapon }) =>
       equip(model, player =>
-        modifyFields(cancelReload(player), {
+        modifyFields(putGunInHand(player), {
           arsenal: arsenal => takeGun(arsenal, freshGun(weapon)),
           wield: () => 'Gun',
         }),

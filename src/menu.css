@@ -3238,6 +3238,46 @@ button.help-card:focus-visible {
   color: var(--menu-gold);
 }
 
+/* NOTE: an online room's card (src/menus.ts): LEAVE in red, LOBBY in co-op pink,
+   and RUN IT BACK with its crew's heads, each lit once they are in. Once
+   this player is in, the button sinks, pressed. */
+.end-button[data-look='Leave'] {
+  border-color: var(--menu-red);
+  color: var(--menu-red);
+}
+
+.end-button[data-look='Lobby'] {
+  border-color: var(--menu-pink);
+  color: var(--menu-pink);
+}
+
+.end-button[aria-pressed='true'] {
+  box-shadow: var(--menu-press);
+  filter: brightness(0.85);
+}
+
+.end-button-heads {
+  display: flex;
+  gap: 2px;
+}
+
+.end-button-head {
+  width: 14px;
+  height: 18px;
+  background: no-repeat center / contain;
+  image-rendering: pixelated;
+  opacity: 0.35;
+  filter: grayscale(1);
+  transition:
+    opacity 120ms linear,
+    filter 120ms linear;
+}
+
+.end-button-head[data-in='In'] {
+  opacity: 1;
+  filter: none;
+}
+
 .end-button-key {
   position: absolute;
   top: -9px;

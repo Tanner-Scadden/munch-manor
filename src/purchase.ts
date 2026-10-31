@@ -5,6 +5,7 @@ import { ammoCounterOffers, sellAmmo } from './ammoCounter'
 import { type Box, distanceToBox } from './arena'
 import { buyExit, exitOffers } from './exits'
 import { fridgeOffers, pullFridge, takePrize } from './leftovers'
+import { isStanding as isOnFeet, leadSeatOf } from './party'
 import type { World } from './world'
 import {
   GameEvent,
@@ -96,9 +97,12 @@ const reachOf = (world: World, offer: Offer): number =>
   distanceToBox(world.player, offer.box)
 
 // NOTE: the nearest offer the player stands within reach of.
+// NOTE: a downed or bled-out player buys nothing (src/simulation.ts,
+// visitStall), so nothing is in their reach: no lit tag, hold button, or
+// spoken price for them.
 export const maybeOfferInReach = (world: World): Option.Option<Offer> =>
   pipe(
-    offersOf(world),
+    isOnFeet(leadSeatOf(world)) ? offersOf(world) : [],
     Array.filter(offer => reachOf(world, offer) <= offer.reachPx),
     Array.match({
       onEmpty: () => Option.none(),

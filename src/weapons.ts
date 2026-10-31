@@ -86,16 +86,16 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
   Shotgun: {
     name: GUN_NAMES.Shotgun,
     roundsLabel: 'shells',
-    fireIntervalMs: 620,
+    fireIntervalMs: 580,
     magazine: 6,
-    reloadMs: 1300,
+    reloadMs: 1200,
     damage: 1,
-    pellets: 5,
-    spread: 0.75,
+    pellets: 7,
+    spread: 0.55,
     speedJitter: 0.15,
     bulletSpeed: 260,
-    bulletLifetimeMs: 320,
-    knockback: 200,
+    bulletLifetimeMs: 360,
+    knockback: 180,
     muzzleReach: 9,
     recoilMs: 190,
     recoilKickPx: 3,
@@ -648,10 +648,14 @@ export const beginReload = (player: Player): Player => {
   })
 }
 
-export const cancelReload = (player: Player): Player =>
-  isReloading(player)
-    ? modifyFields(player, { reload: () => Reload.Ready() })
-    : player
+// NOTE: a gun just put in hand: a reload of the last one stops, and the
+// trigger's rest starts over, so the idle reload below Hard waits its full
+// time on the new gun.
+export const putGunInHand = (player: Player): Player =>
+  modifyFields(player, {
+    reload: () => Reload.Ready(),
+    triggerRestMs: () => 0,
+  })
 
 const fillGun = (gun: CarriedGun): CarriedGun =>
   modifyFields(gun, {
@@ -785,7 +789,7 @@ export const drawSlot = (player: Player, slot: GunSlot): Player => {
   })
   return heldGun(drawn.arsenal) === heldGun(player.arsenal)
     ? drawn
-    : cancelReload(drawn)
+    : putGunInHand(drawn)
 }
 
 // NOTE: Q. With the melee weapon out it goes back to the last gun held;

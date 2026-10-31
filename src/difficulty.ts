@@ -18,13 +18,15 @@ type DifficultyStats = Readonly<{
   healthScale: number
   speedScale: number
   biteScale: number
+  reloadsWhenIdle: boolean
 }>
 
 // NOTE: the scales multiply every zombie's base health and speed, the boss
 // and his belched Groaners too, on top of the wave's own scales. A bite is
 // whole hearts, so it rounds and never drops below one. Normal is 1: the
 // Plank Pile's price, not Normal's scales, pays for how strong boarded doors
-// are.
+// are. Below Hard a gun also reloads by itself once the trigger rests
+// (src/firing.ts); Hard and Nightmare leave it to R.
 export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Easy: {
     name: 'Easy',
@@ -32,6 +34,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     healthScale: 0.85,
     speedScale: 0.9,
     biteScale: 0.5,
+    reloadsWhenIdle: true,
   },
   Normal: {
     name: 'Normal',
@@ -39,6 +42,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     healthScale: 1,
     speedScale: 1,
     biteScale: 1,
+    reloadsWhenIdle: true,
   },
   Hard: {
     name: 'Hard',
@@ -46,6 +50,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     healthScale: 1.08,
     speedScale: 1.02,
     biteScale: 1,
+    reloadsWhenIdle: false,
   },
   Nightmare: {
     name: 'Nightmare',
@@ -53,6 +58,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     healthScale: 1.16,
     speedScale: 1.02,
     biteScale: 1.25,
+    reloadsWhenIdle: false,
   },
 }
 
@@ -124,6 +130,9 @@ export const crowdSpawns = (
     )
   })
 }
+
+export const reloadsWhenIdle = (difficulty: Difficulty): boolean =>
+  DIFFICULTIES[difficulty].reloadsWhenIdle
 
 export const difficultySpeedScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].speedScale

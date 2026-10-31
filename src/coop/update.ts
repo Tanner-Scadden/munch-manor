@@ -795,6 +795,11 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
     RequestedKeepTracers: ({ tracers, fired, looked, confirmed }) => ({
       model: keepTracers(model, tracers, fired, looked, confirmed),
     }),
+
+    RequestedToggleReady: () =>
+      inRoom(model, room => toggleReady(model, room)),
+
+    RequestedLeave: () => inRoom(model, room => leave(model, room)),
   })
 
 // NOTE: a delivered Message that drops the room tells the parent, unless it
@@ -850,6 +855,8 @@ export const update = CoopComposition.makeUpdate({
   RequestedTickRoom: requested,
   RequestedPressAction: requested,
   RequestedKeepTracers: requested,
+  RequestedToggleReady: requested,
+  RequestedLeave: requested,
 })
 
 // HANDLERS

@@ -29,6 +29,9 @@ export const PLAYER_RECOIL_MS = 90
 export const FIRE_INTERVAL_MS = 150
 export const PISTOL_MAGAZINE = 14
 export const PISTOL_RELOAD_MS = 800
+// NOTE: below Hard, a gun with room in its magazine reloads by itself once
+// the trigger has rested this long with it in hand (src/firing.ts).
+export const IDLE_RELOAD_MS = 700
 export const BULLET_SPEED = 240
 export const BULLET_RADIUS = 1.5
 export const BULLET_LIFETIME_MS = 900
@@ -77,6 +80,10 @@ export const WAVE_BANNER_MS = 1600
 
 export const STICK_RADIUS_PX = 56
 export const STICK_DEAD_ZONE = 0.15
+// NOTE: the aim stick turns the player once it leaves the dead zone, but
+// pulls the trigger only past this share of its radius, so a thumb that
+// lands fires nowhere until it has pushed toward where it means to shoot.
+export const STICK_FIRE_ZONE = 0.4
 
 export const DEFAULT_SEED = 0x2f6b9a1d
 
