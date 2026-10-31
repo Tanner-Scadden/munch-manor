@@ -213,6 +213,14 @@ describe('upgrade tiers', () => {
     )
   })
 
+  test('every Barn Buster tier reloads faster than the one before', () => {
+    Array.forEach([1, 2, 3], tier => {
+      expect(statsAt('Shotgun', tier).reloadMs).toBeLessThan(
+        statsAt('Shotgun', tier - 1).reloadMs,
+      )
+    })
+  })
+
   test('a tier that raises the ammo cap lets a refill go past the old cap', () => {
     const baseCap = maxRounds('Smg', 0)
     const raisedCap = maxRounds('Smg', 2)

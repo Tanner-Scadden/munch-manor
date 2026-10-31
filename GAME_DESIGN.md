@@ -304,9 +304,9 @@ Each gun has three tiers, rows in `UPGRADE_TIERS` in `src/weapons.ts`. Tiers sta
 | Pop Pistol  | 1    | Beefy Pop Pistol   | $200  | Knockback +25, magazine 14 to 17                                         |
 | Pop Pistol  | 2    | Pop Pistol DELUXE  | $500  | Reload 0.8 to 0.5 s, 150 to 130 ms between shots                         |
 | Pop Pistol  | 3    | Pop Pistol 3000    | $750  | Damage 1 to 2, knockback +15                                             |
-| Barn Buster | 1    | Beefy Barn Buster  | $40   | 7 to 9 pellets, spray +0.1 radian                                        |
-| Barn Buster | 2    | Barn Buster DELUXE | $140  | 580 to 460 ms between shots, reload 1.2 to 0.9 s, knockback +40, cap +16 |
-| Barn Buster | 3    | Barn Buster 3000   | $320  | Damage 1 to 2 per pellet, cap +16                                        |
+| Barn Buster | 1    | Beefy Barn Buster  | $40   | 7 to 9 pellets, spray +0.1 radian, reload 1.2 to 1.05 s                  |
+| Barn Buster | 2    | Barn Buster DELUXE | $140  | Shots 580 to 460 ms apart, reload 1.05 to 0.9 s, knockback +40, cap +16  |
+| Barn Buster | 3    | Barn Buster 3000   | $320  | Damage 1 to 2 per pellet, reload 0.9 to 0.75 s, cap +16                  |
 | Chatterbox  | 1    | Beefy Chatterbox   | $60   | Spread 0.22 to 0.14, knockback +10                                       |
 | Chatterbox  | 2    | Chatterbox DELUXE  | $180  | 70 to 58 ms between shots, magazine 30 to 40, cap 360 to 480             |
 | Chatterbox  | 3    | Chatterbox 3000    | $350  | Damage 1 to 2                                                            |
