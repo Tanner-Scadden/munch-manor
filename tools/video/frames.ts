@@ -679,6 +679,7 @@ export const captureShot = (
       segments: shot.segments ?? [],
       taps: shot.taps ?? [],
       cards: shot.cards ?? [],
+      ...(shot.lobby === undefined ? {} : { lobby: shot.lobby }),
       ...(shot.coop === undefined ? {} : { coop: shot.coop }),
     })
     yield* onPage('start the shot', () =>
@@ -687,6 +688,13 @@ export const captureShot = (
     yield* awaitTick(page, 0)
     const skip = shot.skip ?? 0
     if (skip > 0) {
+      // NOTE: what is animating already, such as a co-op room's countdown
+      // or a dialog opening, starts on the shot's clock at tick 0, so the
+      // skipped ticks play it out too.
+      yield* onPage('start the animations', async () => {
+        await whenSettled(page)
+        await page.evaluate(holdAnimations, 0)
+      })
       yield* onPage('skip', () =>
         page.evaluate(n => window.__director.step(n), skip),
       )

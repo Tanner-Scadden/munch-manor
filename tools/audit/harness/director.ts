@@ -37,7 +37,12 @@ import { SeatAction } from '@game/stepWorld'
 import { PlaySound } from '@game/update/sound'
 import { Life } from '@game/worldSchema'
 import { isWalking } from '@game/zombies'
-import { NEUTRAL_INPUT, type PlayerInput, Room } from '@munch/netcode'
+import {
+  type LobbyMember,
+  NEUTRAL_INPUT,
+  type PlayerInput,
+  Room,
+} from '@munch/netcode'
 
 // THE DIRECTOR
 //
@@ -105,11 +110,21 @@ const Card = Schema.Struct({
 })
 export type Card = typeof Card.Type
 
+// NOTE: a lobby staged with its seats (such as `coop=host`) filling in on
+// cue: from `at`, the first `seats` members sit in it and the first
+// `ready` of them have pressed READY.
+const LobbyKey = Schema.Struct({
+  at: Schema.Finite,
+  seats: Schema.Finite,
+  ready: Schema.Finite,
+})
+
 export const Plan = Schema.Struct({
   segments: Schema.Array(Segment),
   taps: Schema.Array(Tap),
   coop: Schema.optionalKey(CoopPlan),
   cards: Schema.Array(Card),
+  lobby: Schema.optionalKey(Schema.Array(LobbyKey)),
 })
 export type Plan = typeof Plan.Type
 
@@ -250,6 +265,10 @@ const audible = (model: Model): Model =>
 // the music the scene's phase plays, and a co-op shot seats the room.
 export const startShot = (model: Model, next: Plan): Return => {
   plan = next
+  stagedMembers = Option.match(
+    Option.flatMap(roomOf(model), room => room.maybeLobby),
+    { onNone: () => [], onSome: lobby => lobby.members },
+  )
   tick = 0
   isShooting = true
   scriptedKeys.clear()
@@ -461,7 +480,31 @@ const withAim = (model: Model, segments: ReadonlyArray<Segment>): Model => {
   })
 }
 
-const soloTick = (model: Model, step: Step): Return => {
+// NOTE: the staged lobby's members as the scene seated them, so a lobby
+// script can seat them one by one.
+let stagedMembers: ReadonlyArray<LobbyMember> = []
+
+const withLobbyScript = (model: Model): Model =>
+  Option.match(
+    Array.findLast(plan.lobby ?? [], key => key.at <= tick),
+    {
+      onNone: () => model,
+      onSome: key =>
+        withRoomOf(model, room => ({
+          ...room,
+          maybeLobby: Option.map(room.maybeLobby, lobby => ({
+            ...lobby,
+            members: Array.map(
+              stagedMembers.slice(0, key.seats),
+              (member, index) => ({ ...member, ready: index < key.ready }),
+            ),
+          })),
+        })),
+    },
+  )
+
+const soloTick = (unscripted: Model, step: Step): Return => {
+  const model = withLobbyScript(unscripted)
   const segments = activeSegments(tick)
   const keyed = withKeys(
     model,

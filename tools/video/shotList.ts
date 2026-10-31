@@ -121,6 +121,15 @@ export const Caption = Schema.Struct({
 })
 export type Caption = typeof Caption.Type
 
+// NOTE: a staged co-op lobby (`coop=host`) seating its members on cue:
+// from `at`, the first `seats` sit in it and the first `ready` of them
+// have pressed READY.
+const LobbyKey = Schema.Struct({
+  at: Ticks,
+  seats: Positive,
+  ready: Ticks,
+})
+
 export const Shot = Schema.Struct({
   name: Schema.String,
   scene: Schema.String,
@@ -148,6 +157,7 @@ export const Shot = Schema.Struct({
   camera: Schema.optionalKey(Schema.NonEmptyArray(CameraKey)),
   cards: Schema.optionalKey(Schema.Array(Card)),
   devices: Schema.optionalKey(Devices),
+  lobby: Schema.optionalKey(Schema.Array(LobbyKey)),
 })
 export type Shot = typeof Shot.Type
 
@@ -195,6 +205,7 @@ const DirectorPlan = Schema.Struct({
   taps: Schema.Array(Tap),
   coop: Schema.optionalKey(CoopPlan),
   cards: Schema.Array(Card),
+  lobby: Schema.optionalKey(Schema.Array(LobbyKey)),
 })
 
 export const encodePlan = Schema.encodeEffect(
