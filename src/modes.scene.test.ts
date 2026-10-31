@@ -29,6 +29,8 @@ import {
   playButton,
   playEndlessButton,
   retryButton,
+  shareMountEnded,
+  shareMountSettles,
 } from './testing'
 import { asVeteran } from './veteran'
 
@@ -109,7 +111,9 @@ describe('Mode choice', () => {
       ),
       expect(keepGoingButton).toHaveAttr('aria-keyshortcuts', 'K'),
       expect(retryButton).toExist(),
+      shareMountSettles('Cancelled'),
       click(keepGoingButton),
+      shareMountEnded(),
       expect(role('status')).toHaveText(
         `Get ready for endless wave 11. ${START_PROMPT} The shop stall in the bottom right corner is open. Walk up to it from any side to browse.`,
       ),

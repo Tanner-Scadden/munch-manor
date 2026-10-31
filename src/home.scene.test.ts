@@ -25,6 +25,7 @@ import {
   measureSurface,
   openHandInScene,
   pickCardInScene,
+  shareMountSettles,
   showDialogInScene,
 } from './testing'
 
@@ -246,6 +247,7 @@ describe('the Munchopedia', () => {
         }),
       ),
       measureSurface,
+      shareMountSettles('Cancelled'),
       inside(
         selector('.new-entry-notice'),
         expect(text('NEW ENTRY!')).toExist(),

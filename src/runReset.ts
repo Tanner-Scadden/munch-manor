@@ -1,3 +1,5 @@
+import { Option } from 'effect'
+
 import { MANOR, startingLevel } from './arena'
 import { cameraFor } from './camera'
 import { PrizeFlight, RunTally, cosmeticSeedOf } from './clientSchema'
@@ -80,6 +82,7 @@ export type RunFields = Pick<
   | 'stats'
   | 'runTally'
   | 'screenMs'
+  | 'maybeShareCopiedAtMs'
   | 'runRecords'
   | 'bestStreak'
   | 'party'
@@ -137,6 +140,7 @@ export const freshRun = (model: Model): RunFields => ({
   stats: freshStats,
   runTally: RunTally.Uncounted(),
   screenMs: 0,
+  maybeShareCopiedAtMs: Option.none(),
   runRecords: [],
   bestStreak: 0,
   party: Party.Solo(),

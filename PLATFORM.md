@@ -162,17 +162,17 @@ Built on 2026-10-29 for phase 2. It runs in production and on every pull request
 
 ### Shares
 
-A tap on SHARE to X on an end screen is its own tiny event, `ShareEvent` in `src/analytics.ts` (version 2), added on 2026-10-31 at the owner's request. A run's summary is sent the moment the run ends, before the end card shows, so a share cannot ride on it.
+A tap on SHARE on an end screen is its own tiny event, `ShareEvent` in `src/analytics.ts` (version 2), added on 2026-10-31 at the owner's request. A run's summary is sent the moment the run ends, before the end card shows, so a share cannot ride on it.
 
-| Field                | What                                                    |
-| -------------------- | ------------------------------------------------------- |
-| `version`            | The event's own version, 2 since the share sheet        |
-| `visitId`, `build`   | The same as the run summaries                           |
-| `screen`             | `Death`, `Victory`, `CoopDeath`, or `CoopVictory`       |
-| `mode`, `difficulty` | The run's, the room's difficulty in an online co-op run |
-| `path`               | `Sheet` (a phone's share sheet) or `Link` (X's intent)  |
+| Field                | What                                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `version`            | The event's own version, 2 since the share sheet                                                            |
+| `visitId`, `build`   | The same as the run summaries                                                                               |
+| `screen`             | `Death`, `Victory`, `CoopDeath`, or `CoopVictory`                                                           |
+| `mode`, `difficulty` | The run's, the room's difficulty in an online co-op run                                                     |
+| `path`               | `Sheet` (the share sheet) or `Copy` (the clipboard); `Link` was X's intent, before 2026-10-31's plain SHARE |
 
-It is built in `update` (`shareEventOf` in `src/analyticsRun.ts`) and posted by the `SendShareEvent` Command the same way as a summary, to `POST /api/shares`. Nothing is sent when "Share anonymous play stats" is off, and nothing of the post's text goes with it. Co-op shares are counted though co-op runs send no summary yet. The Worker still takes a version 1 event from a cached build and stores it as `Link`; D1 migration `0003_add_share_path.sql` added the column.
+It is built in `update` (`shareEventOf` in `src/analyticsRun.ts`) and posted by the `SendShareEvent` Command the same way as a summary, to `POST /api/shares`. Nothing is sent when "Share anonymous play stats" is off, and nothing of the post's text goes with it. Co-op shares are counted though co-op runs send no summary yet. The Worker still takes a version 1 event from a cached build and stores it as `Link`; D1 migration `0003_add_share_path.sql` added the column. `Copy` needed no migration: the column is plain text.
 
 ### The Worker
 

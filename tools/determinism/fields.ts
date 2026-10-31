@@ -95,6 +95,7 @@ export const FIELD_CLASSES = {
   screenMs: 'Client',
   runRecords: 'Client',
   shareSheet: 'Client',
+  maybeShareCopiedAtMs: 'Client',
   stepCarryMs: 'Client',
   audio: 'Client',
   soundSetting: 'Client',
