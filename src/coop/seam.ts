@@ -5,6 +5,7 @@ import { Session, type World } from '@munch/netcode'
 import { playersOf, shopOf } from '../party'
 import { type OwnSeat, ROOM_WORLD, type RoomWorld } from '../roomWorld'
 import { STALL_BOX } from '../shop'
+import { ReadoutJson } from './readout'
 
 // THE SEAM
 //
@@ -54,11 +55,12 @@ export const WorldState = Schema.declare(
 
 // READOUT
 
-// NOTE: what the room's World holds, as one line of JSON on the arena's
-// hidden link element, for the audit harness (tools/audit/coop.ts): the
-// phase, the zombies, the stall, and each player.
+const encodeReadout = Schema.encodeSync(ReadoutJson)
+
+// NOTE: the World as the audit's readout, through its Schema
+// (src/coop/readout.ts).
 export const readoutOf = (room: WorldState): string =>
-  JSON.stringify({
+  encodeReadout({
     tick: room.tick,
     phase: room.world.phase._tag,
     mode: room.world.mode._tag,

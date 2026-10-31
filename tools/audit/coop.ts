@@ -1,3 +1,6 @@
+import { Schema } from 'effect'
+import type { BrowserContext, Page } from 'playwright-core'
+
 // Plays co-op through the real game UI, in headless Chrome, two to three
 // players each in their own browser context (their own device key, so
 // their own player), against a build whose VITE_API_ORIGIN has the room
@@ -29,12 +32,12 @@
 // nothing from the room), and resyncs (a message that would not apply).
 // Run it through the heavy guard, as a Shared job (one context per page):
 //   bun run heavy -- --shared bun tools/audit/coop.ts http://localhost:4398/ [players]
-import { Schema } from 'effect'
-import type { BrowserContext, Page } from 'playwright-core'
-
+import { PARLOUR, isWalkableTile, tileCoordinate } from '@game/arena'
+import { TILE_SIZE } from '@game/constants'
+import { type Readout, ReadoutJson } from '@game/coop/readout'
 import { Vector } from '@game/entitySchema'
 
-import { decodeJson, encodeJson } from '../json'
+import { encodeJson } from '../json'
 import {
   SHOTS_DIR,
   awaitGame,
@@ -281,35 +284,9 @@ const roomCodeOf = async (page: Page): Promise<string> => {
 
 // THE ROOM'S WORLD, AS THE PAGE DRAWS IT
 
-// NOTE: the readout src/coop/seam.ts `readoutOf` writes on the arena, the
-// fields this audit reads.
-const Seat = Schema.Struct({
-  slot: Schema.Number,
-  x: Schema.Number,
-  y: Schema.Number,
-  life: Schema.String,
-  kills: Schema.Number,
-  money: Schema.Number,
-  shop: Schema.String,
-})
-type Seat = typeof Seat.Type
-
-const Readout = Schema.Struct({
-  phase: Schema.String,
-  mode: Schema.String,
-  difficulty: Schema.String,
-  wave: Schema.Number,
-  stall: Schema.Struct({
-    left: Schema.Number,
-    top: Schema.Number,
-    right: Schema.Number,
-    bottom: Schema.Number,
-  }),
-  zombies: Schema.Array(Schema.Struct({ x: Schema.Number, y: Schema.Number })),
-  players: Schema.Array(Seat),
-})
-type Readout = typeof Readout.Type
-const decodeReadout = decodeJson(Readout)
+// NOTE: the readout src/coop/seam.ts `readoutOf` writes on the arena, in
+// the Schema both sides share (src/coop/readout.ts).
+type Seat = Readout['players'][number]
 
 const Net = Schema.Struct({
   slot: Schema.Number,
@@ -354,13 +331,18 @@ const netOf = (page: Page): Promise<Net | undefined> =>
     }
   })
 
-const readoutOf = async (page: Page): Promise<Readout | undefined> => {
-  const text = await page
-    .locator('.coop-net')
-    .getAttribute('data-world')
-    .catch(() => null)
-  return text === null || text === '' ? undefined : decodeReadout(text)
-}
+// NOTE: read at once, never waited for: off the arena (a party wipe sends
+// the room back to its lobby) there is no readout, and a locator would
+// wait 30 s for it on every poll.
+const readoutOf = (page: Page): Promise<Readout | undefined> =>
+  evaluateAs(page, Schema.UndefinedOr(ReadoutJson), () => {
+    const text =
+      document.querySelector<HTMLElement>('.coop-net')?.dataset['world']
+    return text === undefined || text === '' ? undefined : text
+  })
+
+const isOnArena = async (page: Page): Promise<boolean> =>
+  (await page.locator('.coop[data-screen="Arena"]').count()) === 1
 
 const slotOf = async (page: Page): Promise<number> =>
   (await netOf(page))?.slot ?? -1
@@ -441,6 +423,67 @@ const keysToward = (
   return keys
 }
 
+// NOTE: a walk across the parlour goes round its furniture, tile by tile,
+// on the game's own map: a straight line from one side to the other can
+// run into a crate or a table and hold the key against it until the step
+// times out. Each tile's distance to the goal's tile comes from one
+// breadth-first pass over the walkable tiles, four ways, and the player
+// heads for the middle of the next tile down that slope. On the goal's tile
+// it heads for the goal itself.
+type Point = Readonly<{ x: number; y: number }>
+
+const STEPS: ReadonlyArray<Point> = [
+  { x: 1, y: 0 },
+  { x: -1, y: 0 },
+  { x: 0, y: 1 },
+  { x: 0, y: -1 },
+]
+
+const tileKey = (column: number, row: number) => `${column},${row}`
+
+const distancesTo = (goal: Point): ReadonlyMap<string, number> => {
+  const start = { x: tileCoordinate(goal.x), y: tileCoordinate(goal.y) }
+  const distances = new Map([[tileKey(start.x, start.y), 0]])
+  const queue = [start]
+  for (const tile of queue) {
+    const distance = distances.get(tileKey(tile.x, tile.y)) ?? 0
+    for (const step of STEPS) {
+      const next = { x: tile.x + step.x, y: tile.y + step.y }
+      if (
+        isWalkableTile(PARLOUR, next.x, next.y) &&
+        !distances.has(tileKey(next.x, next.y))
+      ) {
+        distances.set(tileKey(next.x, next.y), distance + 1)
+        queue.push(next)
+      }
+    }
+  }
+  return distances
+}
+
+const routeKeys = (from: Point, goal: Point, near: number): Set<string> => {
+  const column = tileCoordinate(from.x)
+  const row = tileCoordinate(from.y)
+  const distances = distancesTo(goal)
+  const here = distances.get(tileKey(column, row))
+  if (here === undefined || here === 0) {
+    return keysToward(from, goal, near)
+  }
+  const next = STEPS.find(
+    step => distances.get(tileKey(column + step.x, row + step.y)) === here - 1,
+  )
+  return next === undefined
+    ? keysToward(from, goal, near)
+    : keysToward(
+        from,
+        {
+          x: (column + next.x + 0.5) * TILE_SIZE,
+          y: (row + next.y + 0.5) * TILE_SIZE,
+        },
+        2,
+      )
+}
+
 const nearestOf = (
   zombies: Readout['zombies'],
   at: Readonly<{ x: number; y: number }>,
@@ -464,11 +507,16 @@ const shootNearest = async (
   held: Held,
   readout: Readout,
   own: Seat,
+  isTarget: (zombie: Point) => boolean = () => true,
 ) => {
   const target = nearestOf(
     readout.zombies.filter(
       zombie =>
-        zombie.x > 0 && zombie.x < 320 && zombie.y > 0 && zombie.y < 180,
+        zombie.x > 0 &&
+        zombie.x < 320 &&
+        zombie.y > 0 &&
+        zombie.y < 180 &&
+        isTarget(zombie),
     ),
     own,
   )
@@ -496,7 +544,13 @@ const shootNearest = async (
   }
 }
 
-type Role = 'Fight' | 'Feed' | 'Revive' | 'Shop' | 'Idle'
+type Role = 'Fight' | 'Feed' | 'Guard' | 'Revive' | 'Shop' | 'Idle'
+
+const distance = (from: Point, to: Point) =>
+  Math.hypot(to.x - from.x, to.y - from.y)
+
+// NOTE: how near a zombie comes before a guard or a reviver turns on it.
+const THREAT_PX = 28
 
 const PARLOUR_MIDDLE = { x: 160, y: 96 }
 
@@ -531,17 +585,42 @@ const drive = async (
     return holdKeys(
       page,
       held,
-      keysToward(own, nearestOf(inside, own) ?? PARLOUR_MIDDLE, 2),
+      routeKeys(own, nearestOf(inside, own) ?? PARLOUR_MIDDLE, 2),
+    )
+  }
+  const mate = readout.players.find(seat => seat.slot === partner)
+  if (role === 'Guard') {
+    // NOTE: while the feeder walks into the zombies, the others stand still
+    // and shoot only what comes at them, never a zombie by the feeder: a
+    // teammate who took bites here had too few hearts left to revive.
+    await holdKeys(page, held, new Set())
+    return shootNearest(
+      page,
+      held,
+      readout,
+      own,
+      zombie =>
+        distance(zombie, own) < THREAT_PX &&
+        (mate === undefined || distance(zombie, mate) > THREAT_PX),
     )
   }
   if (role === 'Revive') {
-    const downed = readout.players.find(seat => seat.slot === partner)
-    const isClose =
-      downed !== undefined && Math.hypot(downed.x - own.x, downed.y - own.y) < 9
+    // NOTE: the reviver stands still and shoots while a zombie is near it
+    // or the downed player, and walks in only once that is clear: walking
+    // into the crowd that downed them got the reviver eaten too. Standing
+    // still in reach counts toward the revive either way.
+    const isThreatened = readout.zombies.some(
+      zombie =>
+        distance(zombie, own) < THREAT_PX ||
+        (mate !== undefined && distance(zombie, mate) < THREAT_PX),
+    )
+    const isClose = mate !== undefined && distance(mate, own) < 9
     await holdKeys(
       page,
       held,
-      downed === undefined || isClose ? new Set() : keysToward(own, downed, 3),
+      mate === undefined || isClose || isThreatened
+        ? new Set()
+        : routeKeys(own, mate, 3),
     )
     return shootNearest(page, held, readout, own)
   }
@@ -550,17 +629,16 @@ const drive = async (
       await page.mouse.up()
       held.firing = false
     }
-    const middleY = (readout.stall.top + readout.stall.bottom) / 2
-    const beside = { x: readout.stall.left - 12, y: middleY }
-    const isBeside = Math.abs(own.y - middleY) < 4 && own.x < readout.stall.left
+    // NOTE: the counter opens within SHOP_REACH_PX (12) of the stall, so a
+    // spot 6 px left of its middle is in reach.
+    const beside = {
+      x: readout.stall.left - 6,
+      y: (readout.stall.top + readout.stall.bottom) / 2,
+    }
     return holdKeys(
       page,
       held,
-      own.shop === 'Browsing'
-        ? new Set()
-        : isBeside
-          ? new Set([MOVE_KEYS.right])
-          : keysToward(own, beside, 2),
+      own.shop === 'Browsing' ? new Set() : routeKeys(own, beside, 1),
     )
   }
   const leg = Math.floor(nowMs() / 900 + slot) % 4
@@ -572,7 +650,7 @@ const drive = async (
   await holdKeys(
     page,
     held,
-    home ? keysToward(own, PARLOUR_MIDDLE) : new Set([drift]),
+    home ? routeKeys(own, PARLOUR_MIDDLE, 6) : new Set([drift]),
   )
   return shootNearest(page, held, readout, own)
 }
@@ -725,7 +803,7 @@ for (const [index, page] of everyone.entries()) {
     `player ${index + 1} plays the room's World in the game's own scene`,
     async () =>
       (await readoutOf(page))?.players.length === PLAYERS &&
-      (await page.locator('.coop[data-screen="Arena"]').count()) === 1 &&
+      (await isOnArena(page)) &&
       (await page.locator('.game-canvas').isVisible()),
   )
 }
@@ -756,24 +834,31 @@ let linkAtEnd: Awaited<ReturnType<typeof linkNow>> | undefined
 const positionsOn = async (page: Page) =>
   new Map((await readoutOf(page))?.players.map(seat => [seat.slot, seat]) ?? [])
 
+// NOTE: everyone holds their key until the guest's page draws every player
+// moved, not for a fixed time: on a slow link the others' steps come down
+// late, and a reading taken after a fixed wait missed them.
 const before = await positionsOn(firstGuest)
 await Promise.all(
   everyone.map((page, index) =>
     page.keyboard.down(index % 2 === 0 ? 'KeyD' : 'KeyA'),
   ),
 )
-await wait(1200)
+const movedOn = async (page: Page) =>
+  [...(await positionsOn(page)).values()].filter(
+    seat => Math.abs(seat.x - (before.get(seat.slot)?.x ?? seat.x)) > 10,
+  )
+const { last: moved } = await pollUntil(
+  () => movedOn(firstGuest).catch(() => []),
+  seats => seats.length === PLAYERS,
+  100,
+  10_000,
+)
 await Promise.all(
   everyone.map((page, index) =>
     page.keyboard.up(index % 2 === 0 ? 'KeyD' : 'KeyA'),
   ),
 )
-await wait(400)
-const after = await positionsOn(firstGuest)
 const guestSlot = await slotOf(firstGuest)
-const moved = [...after.values()].filter(
-  seat => Math.abs(seat.x - (before.get(seat.slot)?.x ?? seat.x)) > 10,
-)
 check(
   moved.filter(seat => seat.slot !== guestSlot).length === PLAYERS - 1,
   `a guest sees the ${PLAYERS - 1} others walk`,
@@ -844,12 +929,12 @@ if (isPhone) {
 
   const feeder = everyone.length - 1
   const feederSlot = await slotOf(lastGuest)
-  // NOTE: the others hold their fire meanwhile, or they shoot the zombies
-  // before any reaches the feeder.
+  // NOTE: the others guard meanwhile, firing only at what comes at them, or
+  // they shoot the zombies before any reaches the feeder.
   const downed = await playFor(
     everyone,
     helds,
-    index => (index === feeder ? 'Feed' : 'Idle'),
+    index => (index === feeder ? 'Feed' : 'Guard'),
     feederSlot,
     async () =>
       (await readoutOf(host))?.players.find(seat => seat.slot === feederSlot)
@@ -880,20 +965,25 @@ if (isPhone) {
 
   // THE BREAK, THE STALL, AND READY
 
-  // NOTE: the host clears the rest of the wave alone, so its kills pay for
-  // something at the stall.
-  const cleared = await playFor(
+  // NOTE: everyone clears the rest of the wave. A teammate left standing
+  // idle was eaten, and then the host alone, and the party wiped back to
+  // the lobby. The break's bonus pays for something at the stall. A wipe
+  // ends the step at once (no readout off the arena) and says so.
+  const isBreak = (readout: Readout | undefined) =>
+    readout?.phase === 'Preparation' && readout.wave === 2
+  await playFor(
     everyone,
     helds,
-    index => (index === 0 ? 'Fight' : 'Idle'),
+    () => 'Fight',
     -1,
-    async () => {
-      const readout = await readoutOf(host)
-      return readout?.phase === 'Preparation' && readout.wave === 2
-    },
+    async () => !(await isOnArena(host)) || isBreak(await readoutOf(host)),
     180_000,
   )
-  check(cleared, 'the wave is cleared and the next break opens')
+  check(await isOnArena(host), 'the party lives through wave 1')
+  check(
+    isBreak(await readoutOf(host)),
+    'the wave is cleared and the next break opens',
+  )
   await Promise.all(
     everyone.map((page, index) => stopAll(page, heldOf(helds, index))),
   )
@@ -933,7 +1023,12 @@ if (isPhone) {
         break
       }
       await tabs.nth(index).click()
-      await wait(200)
+      await until(
+        `shop tab ${index + 1} opens`,
+        async () =>
+          (await tabs.nth(index).getAttribute('aria-selected')) === 'true',
+        5000,
+      )
     }
     if ((await available.count()) > 0) {
       await shot(host, 'shop-tab')
@@ -959,7 +1054,10 @@ if (isPhone) {
   }
   await until(
     'READY over everyone shows, then wave 2 starts',
-    async () => (await readoutOf(host))?.phase === 'Wave',
+    async () => {
+      const readout = await readoutOf(host)
+      return readout?.phase === 'Wave' && readout.wave === 2
+    },
     6000,
   )
 }

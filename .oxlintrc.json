@@ -390,12 +390,6 @@
       "rules": { "munch/no-raw-json": "off" }
     },
     {
-      // NOTE: the arena's readout for the audit harness (tools/audit/coop.ts),
-      // a plain line no Schema reads.
-      "files": ["src/coop/seam.ts"],
-      "rules": { "munch/no-raw-json": "off" }
-    },
-    {
       // NOTE: the two scripts that cannot split by moving code: each keeps a
       // run's state in module-level `let`s that its sections assign, and an
       // import is read-only, so a split needs that state passed in first.
