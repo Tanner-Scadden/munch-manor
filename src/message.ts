@@ -175,6 +175,7 @@ export const Message = defineMessageUnion({
   },
   ClickedShareStatsButton: {},
   CompletedGenerateVisitId: { visitId: Schema.String },
+  CompletedStartSummaryQueue: {},
   CompletedSendRunSummary: {},
   FailedSendRunSummary: { reason: Schema.String },
   ClickedResetTutorialButton: {},

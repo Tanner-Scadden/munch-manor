@@ -79,6 +79,9 @@ export class PlayerStore extends Context.Service<
     readonly requestLinkCode: Effect.Effect<string, LinkError>
     readonly redeemLinkCode: (code: string) => Effect.Effect<void, LinkError>
     readonly roomAccess: Effect.Effect<Option.Option<RoomAccess>>
+    readonly queueSummary: (body: string) => Effect.Effect<void, StoreError>
+    readonly takeQueuedSummary: Effect.Effect<Option.Option<string>, StoreError>
+    readonly clearQueuedSummaries: Effect.Effect<void, StoreError>
   }
 >()('munch-manor/store/PlayerStore') {}
 
@@ -204,6 +207,19 @@ export const layer: Layer.Layer<PlayerStore> = Layer.effect(
           Effect.fail(new LinkError({ problem: 'Unavailable' })),
       }),
     )
+    // NOTE: summaries finished offline wait in SQLite only. Without it
+    // (the localStorage fallback) there is nowhere safe to keep them, so
+    // they are not queued, and the next run's summary is sent as usual.
+    const queued = <A>(
+      onSqlite: (opened: PlayerDatabase) => Effect.Effect<A, StoreError>,
+      onLocalStorage: A,
+    ): Effect.Effect<A, StoreError> =>
+      Effect.flatMap(backend, current =>
+        Backend.match(current, {
+          Sqlite: ({ database: opened }) => onSqlite(opened),
+          LocalStorage: () => Effect.succeed(onLocalStorage),
+        }),
+      )
     return {
       load: Effect.flatMap(backend, loadFrom),
       write: (save, changes) =>
@@ -238,6 +254,23 @@ export const layer: Layer.Layer<PlayerStore> = Layer.effect(
         Effect.flatMap(database, opened =>
           Effect.mapError(opened.redeemLinkCode(code), toLinkError),
         ),
+      queueSummary: body =>
+        Effect.asVoid(
+          queued(
+            opened => Effect.mapError(opened.queueSummary(body), toStoreError),
+            undefined,
+          ),
+        ),
+      takeQueuedSummary: queued(
+        opened => Effect.mapError(opened.takeQueuedSummary, toStoreError),
+        Option.none<string>(),
+      ),
+      clearQueuedSummaries: Effect.asVoid(
+        queued(
+          opened => Effect.mapError(opened.clearQueuedSummaries, toStoreError),
+          undefined,
+        ),
+      ),
       roomAccess: Effect.map(backend, current =>
         Backend.match(current, {
           Sqlite: ({ database: opened }) => opened.maybeRoomAccess,

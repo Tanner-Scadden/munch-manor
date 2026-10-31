@@ -36,10 +36,12 @@ import {
 import { isBehindWall, occludersOf } from './occluders'
 import { isGoodieBeckoning } from './onboarding'
 import {
-  isLeadShown,
+  isLeadArmed,
+  leadBodyShapes,
   mateDrawables,
   mateOverheadShapes,
   mateShadowShapes,
+  reviveRingGroundShapes,
 } from './partyView'
 import {
   playerFlashShapes,
@@ -146,7 +148,8 @@ const groundShapes = (
   ...hearthFireShapes(levelOf(model), model.elapsedMs),
   ...ovenGlowShapes(model),
   ...stallGroundShapes(look, model.elapsedMs),
-  ...(isLeadShown(model) ? [playerShadow(model.player)] : []),
+  ...reviveRingGroundShapes(model),
+  playerShadow(model.player),
   ...mateShadowShapes(model),
   ...zombieGroundShapes(zombies, model.elapsedMs),
   ...Array.filterMap(zombies, zombieShadow),
@@ -156,7 +159,7 @@ const groundShapes = (
   ...groundParticleShapes(model.particles),
   ...ghostShapes(model),
   ...doorRattleShapes(model),
-  ...aimSightShapes(model),
+  ...(isLeadArmed(model) ? aimSightShapes(model) : []),
   ...Array.flatMap(model.bullets, bulletShapes),
   ...lidShadowShapes(model),
 ]
@@ -200,18 +203,16 @@ const standingDrawables = (
         ? chompShapes(model, zombie, drawZombie(zombie))
         : drawZombie(zombie),
     })),
-    ...(isLeadShown(model)
-      ? [
-          {
-            footY: playerFootY(model.player),
-            rank: 'Player' as const,
-            shapes: toppleShapes(model, [
-              ...auraShapes(model.player, model.boosts, model.elapsedMs),
-              ...playerShapes(fallenOf(model)),
-            ]),
-          },
-        ]
-      : []),
+    {
+      footY: playerFootY(model.player),
+      rank: 'Player',
+      shapes: leadBodyShapes(model, () =>
+        toppleShapes(model, [
+          ...auraShapes(model.player, model.boosts, model.elapsedMs),
+          ...playerShapes(fallenOf(model)),
+        ]),
+      ),
+    },
     ...mateDrawables(model),
     ...fridgeDrawables(model),
   ]
@@ -231,7 +232,7 @@ const overheadShapes = (
   camera: Camera,
   zombies: ReadonlyArray<Zombie>,
 ): ReadonlyArray<Canvas.Shape> => [
-  ...playerFlashShapes(model.player),
+  ...(isLeadArmed(model) ? playerFlashShapes(model.player) : []),
   ...ovenFlameShapes(model),
   ...Array.flatMap(
     model.traps,
@@ -253,7 +254,7 @@ const overheadShapes = (
     onSome: door => doorArrowShapes(door, model.elapsedMs),
   }),
   ...Array.map(model.popups, popupShape(camera)),
-  ...reloadBarShapes(model.player),
+  ...(isLeadArmed(model) ? reloadBarShapes(model.player) : []),
   ...fridgeOverheadShapes(model),
   ...mateOverheadShapes(model),
   ...coopNameShapes(model),

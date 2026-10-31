@@ -14,6 +14,7 @@ import {
   LoadSave,
   LoadStyles,
   ReadUpdateMarker,
+  StartSummaryQueue,
 } from './boot'
 import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
 import { CueMusic } from './musicPlan'
@@ -92,6 +93,7 @@ export const CommandsLayer = Layer.mergeAll(
   RequestLinkCode.layer,
   RedeemLinkCode.layer,
   GenerateVisitId.layer,
+  StartSummaryQueue.layer,
   SendRunSummary.layer,
   FocusTutorialReset.layer,
   managedResources.layer,

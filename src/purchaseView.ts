@@ -1,9 +1,9 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { type AmmoItemId, maybeAmmoItemOf } from './ammoCounter'
 import { type Camera, worldToView } from './camera'
-import { rect } from './drawing'
+import { type RingPixel, rect, ringPixels } from './drawing'
 import { EXIT_RULES } from './exits'
 import {
   type BakedText,
@@ -104,31 +104,6 @@ const tagSprite = (
     placeBaked(text, { x: textLeft, y: TAG_PAD, align: 'Left' }),
   ]
 }
-
-type RingPixel = Readonly<{ x: number; y: number; turn: number }>
-
-// NOTE: the ring's pixels around the tag's middle, each with how far round
-// it sits from the top, clockwise, as a fraction of a turn.
-const ringPixels = (radius: number): ReadonlyArray<RingPixel> =>
-  pipe(
-    Array.makeBy((radius + 1) * 2 + 1, row => row - radius - 1),
-    Array.flatMap(dy =>
-      Array.filterMap(
-        Array.makeBy((radius + 1) * 2 + 1, column => column - radius - 1),
-        (dx): Result.Result<RingPixel, void> => {
-          const distance = Math.hypot(dx + 0.5, dy + 0.5)
-          const angle = Math.atan2(dx + 0.5, -(dy + 0.5))
-          return distance >= radius - 1.5 && distance <= radius + 0.5
-            ? Result.succeed({
-                x: dx,
-                y: dy,
-                turn: (angle < 0 ? angle + Math.PI * 2 : angle) / (Math.PI * 2),
-              })
-            : Result.failVoid
-        },
-      ),
-    ),
-  )
 
 const ringSprite = (pixels: ReadonlyArray<RingPixel>, filled: number): Sprite =>
   bakeShapes(
