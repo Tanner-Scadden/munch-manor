@@ -7,9 +7,7 @@ import {
   ZERO_VECTOR,
   addVectors,
   clampLength,
-  clientToView,
   directionBetween,
-  isLeftHalf,
   normalize,
   scaleVector,
   vectorLength,
@@ -27,6 +25,7 @@ import {
   type Trigger,
   type Vector,
 } from './model'
+import { clientToView, isLeftHalf } from './screen'
 
 // KEYS
 

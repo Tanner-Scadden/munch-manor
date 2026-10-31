@@ -18,7 +18,6 @@ import {
   bountyOf,
 } from './combat'
 import { PLAYER_MAX_HP, PLAYER_RADIUS, PLAYER_SPEED } from './constants'
-import type { Model } from './model'
 import { PICKUP_NAMES } from './names'
 import { forEachSeat, isCoop, isStanding, leadSeatOf } from './party'
 import { nextRandom } from './prng'
@@ -40,7 +39,6 @@ import {
   BoostTimer,
   type Boosts,
   type BulletGlaze,
-  type Callout,
   type CalloutLook,
   GameEvent,
   type Loot,
@@ -212,7 +210,6 @@ export const CALLOUT_LIFETIME_MS: Readonly<Record<CalloutLook, number>> = {
   Explained: 1600,
   Named: 1000,
 }
-const CALLOUT_MAX = 1
 
 export const BURP_RADIUS = 110
 export const BURP_DAMAGE = 5
@@ -391,20 +388,6 @@ const agePickups = (model: World, deltaMs: number): World => {
   })
 }
 
-const ageCallouts = (model: Model, deltaMs: number): Model =>
-  Array.isReadonlyArrayEmpty(model.callouts)
-    ? model
-    : modifyFields(model, {
-        callouts: callouts =>
-          Array.filterMap(callouts, callout =>
-            callout.ageMs + deltaMs < CALLOUT_LIFETIME_MS[callout.look]
-              ? Result.succeed(
-                  modifyFields(callout, { ageMs: ageMs => ageMs + deltaMs }),
-                )
-              : Result.failVoid,
-          ),
-      })
-
 // GRABBING
 
 const isWithinGrab =
@@ -461,39 +444,6 @@ const grab = (model: World, pickup: Pickup): World =>
       GameEvent.PickupGrabbed({ x: pickup.x, y: pickup.y, kind: pickup.kind }),
     ),
   })
-
-// CALLOUTS
-
-// NOTE: a kind is explained once, ever: the save keeps the kinds seen, so a
-// returning player only sees the name pop. The list keeps its reference
-// when nothing new is seen, so the save check sees nothing changed.
-const calloutFor = (model: Model, kind: PickupKind): Model => {
-  const isSeen = Array.contains(model.seenPowerUps, kind)
-  const callout: Callout = {
-    kind,
-    look: isSeen ? 'Named' : 'Explained',
-    x: model.player.x,
-    y: model.player.y,
-    ageMs: 0,
-  }
-  return modifyFields(model, {
-    seenPowerUps: seen => (isSeen ? seen : Array.append(seen, kind)),
-    callouts: callouts => Array.takeRight([...callouts, callout], CALLOUT_MAX),
-  })
-}
-
-// NOTE: a cosmetic, made after the step from the frame's grabs. Callouts
-// hold still while the shop is open, as the pickups do.
-export const advanceCallouts = (model: Model, worldMs: number): Model => {
-  const called = Array.reduce(model.frameEvents, model, (current, event) =>
-    GameEvent.isAnyOf(['PickupGrabbed'])(event)
-      ? calloutFor(current, event.kind)
-      : current,
-  )
-  return ShopState.isAnyOf(['Browsing'])(called.shop)
-    ? called
-    : ageCallouts(called, worldMs)
-}
 
 const grabPickups = (model: World): World => {
   if (Array.isReadonlyArrayEmpty(model.pickups)) {

@@ -14,6 +14,7 @@ import {
   ShopChatter,
   ShopItemId,
   ShopState,
+  TrapHint,
 } from '../model'
 import { learnShop } from '../onboarding'
 import { isRunOn } from '../onlineRun'
@@ -23,13 +24,12 @@ import {
   StockTag,
   isBrowsing,
   maybeDisplacedFocus,
-  selectShopCategory,
   shopItem,
   shopItemElementId,
   stockTag,
+  suggestedItem,
 } from '../shop'
 import { ActionRefusal, SeatAction } from '../stepWorld'
-import { showTrapHint } from '../traps'
 import { tryAsLead } from './action'
 import { type SoundCue, playSounds, uiCue } from './sound'
 import {
@@ -75,6 +75,21 @@ export const leaveShop = makeStep(model =>
       ])
     : leaveCounter,
 )
+
+const selectShopCategory = (model: Model, category: ShopCategory): Model =>
+  modifyFields(model, {
+    shopCategory: () => category,
+    shopChatter: () => ShopChatter.Greeting(),
+    shop: shop =>
+      ShopState.match(shop, {
+        Away: () => shop,
+        Browsing: () =>
+          ShopState.Browsing({
+            focusedItem: suggestedItem(model, category),
+          }),
+        Dismissed: () => shop,
+      }),
+  })
 
 export const selectCategory =
   (category: ShopCategory): UpdateStep =>
@@ -147,6 +162,17 @@ export const buy = (model: Model, item: ShopItemId): UpdateReturn =>
         [playSounds(purchaseCues(item)), refocusDisplacedRow],
       )
     },
+  })
+
+// NOTE: the first trap a player stocks brings up the hint for placing it.
+const showTrapHint = (model: Model): Model =>
+  modifyFields(model, {
+    trapHint: hint =>
+      TrapHint.match(hint, {
+        Unseen: () => TrapHint.Showing(),
+        Showing: () => hint,
+        Seen: () => hint,
+      }),
   })
 
 const withHint = (item: ShopItemId, model: Model): Model =>

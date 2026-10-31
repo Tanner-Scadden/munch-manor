@@ -1,8 +1,9 @@
 import { Array, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import type { DoorId, PackDoor, PlannedSpawn, Trap } from './model'
+import type { DoorId } from './entitySchema'
 import { barricadedDoors } from './traps'
+import type { PackDoor, PlannedSpawn, Trap } from './worldSchema'
 import { isFloorKind } from './zombies'
 
 // ORDER

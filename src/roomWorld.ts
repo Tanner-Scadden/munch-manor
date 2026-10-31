@@ -388,7 +388,7 @@ export const startRoomWorld = (
 // KEEP GOING
 
 // NOTE: a won campaign carried on into endless, as single player's KEEP
-// GOING does (src/waves.ts, keepGoing): the same crew with their money,
+// GOING does (src/update/run.ts, keepGoing): the same crew with their money,
 // guns, traps, and hearts, everyone out of the shop, the first endless
 // wave's break counting. The room's ticks start again from 0.
 const keepGoingWorld = (world: World): World =>

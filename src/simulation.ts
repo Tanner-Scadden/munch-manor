@@ -31,8 +31,8 @@ import {
   normalize,
   scaleVector,
 } from './geometry'
+import { stopForHits, thawTick } from './hitStop'
 import { resolveBulletHits, resolvePlayerContact } from './hits'
-import { stopForHits, thawTick } from './juice'
 import { advanceKitchen, soupSkid } from './kitchen'
 import { stabWithKnife } from './knife'
 import { advanceFridge } from './leftovers'

@@ -28,8 +28,8 @@ import { maybeBubbleKind } from './stallBubble'
 import { holdingFirst, showDialog, tap, tick, ticks } from './testing'
 import { SetFullscreen } from './update/fullscreen'
 import { ShowInstallPrompt } from './update/home'
+import { keepGoing } from './update/run'
 import { asVeteran } from './veteran'
-import { keepGoing } from './waves'
 import { STARTING_PISTOL } from './weapons'
 
 const TICK_MS = 50

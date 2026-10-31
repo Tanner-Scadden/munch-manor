@@ -6,11 +6,11 @@ import { describe, expect, test } from 'vitest'
 import { PARLOUR, ROOM_MAP, makeLevel } from './arena'
 import { cameraFor, cameraOf, viewToWorld, worldToView } from './camera'
 import { VIEW_HEIGHT, VIEW_WIDTH } from './constants'
-import { clientToView } from './geometry'
 import { deriveIntent } from './input'
 import { update } from './main'
 import { Message } from './message'
 import { type Input, type Model, Phase, initialModel } from './model'
+import { clientToView } from './screen'
 import { WIDE_SURFACE } from './testing'
 
 const WIDE_LEVEL = makeLevel(Array.map(ROOM_MAP, line => line + line))

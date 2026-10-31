@@ -3,8 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { SharePath } from './analytics'
 import type { SoundEffect } from './audio'
-import { withBests } from './difficulty'
-import { isEndScreen } from './home'
+import { isEndScreen, withBests } from './home'
 import {
   type DifficultyBests,
   type Model,

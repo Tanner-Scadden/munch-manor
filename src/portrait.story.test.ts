@@ -14,7 +14,6 @@ import {
 } from './camera'
 import { CAMERA_LEAN_PX, FIXED_STEP_MS, STICK_RADIUS_PX } from './constants'
 import { refreshIntent } from './frame'
-import { clientToView } from './geometry'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, Stick, initialModel } from './model'
@@ -25,6 +24,7 @@ import {
   PORTRAIT_HUD_PX,
   PORTRAIT_VIEW_ROWS,
   PORTRAIT_WIDTH,
+  clientToView,
   isPortrait,
   portraitHeightFor,
   portraitScreen,
