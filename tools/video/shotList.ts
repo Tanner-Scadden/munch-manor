@@ -140,6 +140,9 @@ export const Shot = Schema.Struct({
   // NOTE: ticks per captured frame: 1 is 60 frames a second.
   step: Schema.optionalKey(Positive),
   hideHud: Schema.optionalKey(Schema.Boolean),
+  // NOTE: the share of the screen's height from the top in which the HUD
+  // is not drawn, so its top band uncovers the world under it.
+  hudTop: Schema.optionalKey(Schema.Finite),
   segments: Schema.optionalKey(Schema.Array(Segment)),
   taps: Schema.optionalKey(Schema.Array(Tap)),
   clicks: Schema.optionalKey(Schema.Array(Click)),
