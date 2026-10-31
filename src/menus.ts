@@ -1,11 +1,18 @@
-import { Array, Option } from 'effect'
+import { Array, Option, Order } from 'effect'
 import type { Html } from 'foldkit/html'
 
+import type { LobbyMember } from '@munch/netcode'
+
 import type { ApplicationViewBuilder } from './composition'
-import { CHECK_ICON } from './coop/icons'
+import { CHECK_ICON, COOP_ICON, LEAVE_ICON, portraitOf } from './coop/icons'
+import { seatLookOf } from './coop/looks'
+import type { Room as CoopRoom } from './coop/model'
+import { maybeRoomOf, meIn, pickedModeOf } from './coop/roomState'
 import { isOpen as isCoopOpen } from './coop/update'
-import { isShareCopied, sharedRunOf } from './endBeat'
+import { isRunCardHeld, isShareCopied, sharedRunOf } from './endBeat'
 import {
+  END_LEAVE_ROOM_BUTTON_ID,
+  END_LOBBY_BUTTON_ID,
   END_MENU_BUTTON_ID,
   END_RETRY_BUTTON_ID,
   END_SHARE_BUTTON_ID,
@@ -187,14 +194,20 @@ const menuOnlyView = (model: Model, h: ApplicationViewBuilder): Html =>
 // RETRY (on Victory AGAIN, with KEEP GOING beside it), then SHARE. Each
 // pops in a beat after the one before it. SHARE has no key: the share
 // sheet and the clipboard want a tap or a click.
+//
+// NOTE: `heads` is RUN IT BACK's crew, each lit once they are in.
+type CrewHead = Readonly<{ slot: number; portrait: string; isIn: boolean }>
+
 type EndButton = Readonly<{
   id: string
-  look: 'Home' | 'Retry' | 'KeepGoing' | 'Share'
+  look: 'Home' | 'Retry' | 'KeepGoing' | 'Share' | 'Lobby' | 'Leave'
   icon: string
   label: string
   maybeKey: Option.Option<Readonly<{ cap: string; name: string }>>
   ariaLabel: string
   message: Message
+  maybePressed: Option.Option<boolean>
+  heads: ReadonlyArray<CrewHead>
 }>
 
 const HOME_BUTTON: EndButton = {
@@ -205,6 +218,8 @@ const HOME_BUTTON: EndButton = {
   maybeKey: Option.some({ cap: 'H', name: 'H' }),
   ariaLabel: 'Menu: back to the home screen',
   message: Message.ClickedMenuButton(),
+  maybePressed: Option.none(),
+  heads: [],
 }
 
 const retryButton = (model: Model): EndButton => ({
@@ -218,6 +233,8 @@ const retryButton = (model: Model): EndButton => ({
     Endless: () => 'Retry: a new endless run',
   }),
   message: Message.ClickedRetryButton(),
+  maybePressed: Option.none(),
+  heads: [],
 })
 
 const KEEP_GOING_BUTTON: EndButton = {
@@ -228,6 +245,8 @@ const KEEP_GOING_BUTTON: EndButton = {
   maybeKey: Option.some({ cap: 'K', name: 'K' }),
   ariaLabel: `Keep going: carry on into endless from wave ${FINAL_WAVE + 1} with your money, guns, and traps`,
   message: Message.ClickedKeepGoingButton(),
+  maybePressed: Option.none(),
+  heads: [],
 }
 
 // NOTE: a post that went to the clipboard flashes COPIED! with a tick.
@@ -241,6 +260,8 @@ const shareButton = (model: Model): EndButton => {
     maybeKey: Option.none(),
     ariaLabel: isCopied ? 'Share: copied' : 'Share your run',
     message: Message.ClickedShareButton(),
+    maybePressed: Option.none(),
+    heads: [],
   }
 }
 
@@ -257,6 +278,20 @@ const endButtonFace = (
     h.Style({ backgroundImage: button.icon }),
   ]),
   h.span([h.Class('end-button-label'), h.AriaHidden(true)], [button.label]),
+  ...(Array.isReadonlyArrayNonEmpty(button.heads)
+    ? [
+        h.span(
+          [h.Class('end-button-heads'), h.AriaHidden(true)],
+          Array.map(button.heads, head =>
+            h.keyed('span')(`head-${head.slot}`, [
+              h.Class('end-button-head'),
+              h.DataAttribute('in', head.isIn ? 'In' : 'Out'),
+              h.Style({ backgroundImage: head.portrait }),
+            ]),
+          ),
+        ),
+      ]
+    : []),
   ...(model.lastDevice === 'KeyboardMouse'
     ? Option.match(button.maybeKey, {
         onNone: () => [],
@@ -292,6 +327,10 @@ const endButtonView =
         h.DataAttribute('look', button.look),
         h.Style({ animationDelay: `${index * END_BUTTON_STAGGER_MS}ms` }),
         h.AriaLabel(button.ariaLabel),
+        ...Option.match(button.maybePressed, {
+          onNone: () => [],
+          onSome: isPressed => [h.AriaPressed(isPressed ? 'true' : 'false')],
+        }),
         ...Option.match(button.maybeKey, {
           onNone: () => [],
           onSome: ({ name }) => [h.AriaKeyshortcuts(name)],
@@ -305,11 +344,91 @@ const endButtonView =
       endButtonFace(model, button, h),
     )
 
+// AN ONLINE ROOM'S CARD
+
+const LEAVE_ROOM_BUTTON: EndButton = {
+  id: END_LEAVE_ROOM_BUTTON_ID,
+  look: 'Leave',
+  icon: LEAVE_ICON,
+  label: 'LEAVE',
+  maybeKey: Option.some({ cap: 'H', name: 'H' }),
+  ariaLabel: 'Leave the room',
+  message: Message.ClickedLeaveRoomButton(),
+  maybePressed: Option.none(),
+  heads: [],
+}
+
+const ROOM_LOBBY_BUTTON: EndButton = {
+  id: END_LOBBY_BUTTON_ID,
+  look: 'Lobby',
+  icon: COOP_ICON,
+  label: 'LOBBY',
+  maybeKey: Option.some({ cap: 'L', name: 'L' }),
+  ariaLabel: "Lobby: the room's seats and picks",
+  message: Message.ClickedRoomLobbyButton(),
+  maybePressed: Option.none(),
+  heads: [],
+}
+
+const crewHeadsOf = (model: Model, room: CoopRoom): ReadonlyArray<CrewHead> =>
+  Option.match(room.maybeLobby, {
+    onNone: () => [],
+    onSome: lobby =>
+      Array.map(
+        Array.sort(
+          lobby.members,
+          Order.mapInput(Order.Number, (member: LobbyMember) => member.slot),
+        ),
+        member => ({
+          slot: member.slot,
+          portrait: portraitOf(
+            seatLookOf(
+              model.appearance,
+              room.slot,
+              member.slot,
+              room.maybeLobby,
+            ),
+          ),
+          isIn: member.ready,
+        }),
+      ),
+  })
+
+// NOTE: RUN IT BACK is this player's READY in the room's lobby, so the same
+// crew plays the room's next pick (KEEP GOING after a win) once everyone is
+// in. Its heads light as each player says yes.
+const runItBackButton = (model: Model, room: CoopRoom): EndButton => {
+  const heads = crewHeadsOf(model, room)
+  const isKeepGoing = Option.exists(
+    room.maybeLobby,
+    lobby => pickedModeOf(lobby) === 'KeepGoing',
+  )
+  const inCount = Array.filter(heads, head => head.isIn).length
+  return {
+    id: END_RETRY_BUTTON_ID,
+    look: isKeepGoing ? 'KeepGoing' : 'Retry',
+    icon: isKeepGoing ? ENDLESS_ICON : RETRY_ICON,
+    label: isKeepGoing ? 'KEEP GOING' : 'RUN IT BACK',
+    maybeKey: Option.some({ cap: 'ENTER', name: 'Enter' }),
+    ariaLabel: `${isKeepGoing ? 'Keep going' : 'Run it back'} with this crew: ${inCount} of ${heads.length} in`,
+    message: Message.ClickedRunItBackButton(),
+    maybePressed: Option.some(Option.exists(meIn(room), me => me.ready)),
+    heads,
+  }
+}
+
 // NOTE: in an online co-op run the room's lobby comes next, so the card
-// offers only SHARE until the lobby takes over.
+// offers the room's choices (src/update/end.ts): LEAVE, RUN IT BACK, LOBBY,
+// and SHARE.
 const endButtonsOf = (model: Model): ReadonlyArray<EndButton> => {
-  if (isCoopOpen(model.coop)) {
-    return [shareButton(model)]
+  const maybeRoom = maybeRoomOf(model.coop)
+  if (Option.isSome(maybeRoom)) {
+    return [
+      LEAVE_ROOM_BUTTON,
+      runItBackButton(model, maybeRoom.value),
+      ROOM_LOBBY_BUTTON,
+      shareButton(model),
+    ]
   } else if (Phase.isAnyOf(['Victory'])(model.phase)) {
     return [
       HOME_BUTTON,
@@ -337,12 +456,16 @@ export const modeChoiceView = (
   h: ApplicationViewBuilder,
 ): Html => {
   const offer = endOffer(model)
-  if (offer === 'MenuOnly') {
-    return menuOnlyView(model, h)
-  } else if (offer === 'MenuAndModes') {
-    return endActionsView(model, h)
-  } else {
+  if (offer === 'Nothing') {
     return h.empty
+  } else if (isCoopOpen(model.coop)) {
+    // NOTE: an online room's card offers the room's choices, with or without
+    // a newer build waiting, until LOBBY lets the lobby in.
+    return isRunCardHeld(model) ? endActionsView(model, h) : h.empty
+  } else if (offer === 'MenuOnly') {
+    return menuOnlyView(model, h)
+  } else {
+    return endActionsView(model, h)
   }
 }
 

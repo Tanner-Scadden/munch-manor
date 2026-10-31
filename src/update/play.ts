@@ -334,7 +334,8 @@ export const pressedKey = (code: string) =>
     }
     if (isRunCardKey(keyed)) {
       return Update.combineSteps([
-        toModel(toggleAudioFromKey(runCardFromKey(keyed, code), code)),
+        toModel(toggleAudioFromKey(keyed, code)),
+        runCardFromKey(code),
         unlockAudio,
       ])
     }

@@ -1,11 +1,13 @@
 import { Array, Effect, Option } from 'effect'
+import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { ShareEvent } from '../analytics'
 import { sendShareEvent } from '../analyticsBeacon'
 import { shareEventOf } from '../analyticsRun'
+import { CoopBinding } from '../bindings'
 import { isOpen as isCoopOpen } from '../coop/update'
-import { makeCommand } from '../definition'
+import { makeCommand, makeStep } from '../definition'
 import {
   TIMELINES,
   beatSounds,
@@ -21,6 +23,7 @@ import {
   isCharacterKey,
   isEndlessKey,
   isKeepGoingKey,
+  isLobbyKey,
   isMenuKey,
   isStartKey,
 } from '../input'
@@ -33,7 +36,7 @@ import { stepWhen } from '../stepWhen'
 import { RUNNING_BUILD } from '../version'
 import { keepGoingWhenAllowed, startWhenAllowed } from './run'
 import { playSounds, uiCue } from './sound'
-import { type UpdateStep, combine } from './step'
+import { type UpdateStep, combine, toModel, unchanged } from './step'
 
 // The end of a run in update (the beat itself is src/endBeat.ts): its
 // frame, its keys and taps, RETRY, and sharing the run.
@@ -124,26 +127,60 @@ export const isBeatSkipKey = (model: Model, code: string): boolean =>
   !isBeatOver(model) &&
   (endOffer(model) === 'Nothing' || !isEndActionKey(code))
 
-// NOTE: a tap on the game skips the beat; in an online room, it then lets
-// the lobby in. It never starts a run (GAME_DESIGN.md, "No tap to start").
-export const skipFromPointer = (model: Model): Model => {
-  if (!isEndScreen(model.phase)) {
-    return model
-  } else if (isCoopOpen(model.coop)) {
-    return dropRunCard(model)
-  } else {
-    return skipBeat(model)
-  }
-}
+// NOTE: a tap on the game skips the beat, in an online room too. It never
+// starts a run (GAME_DESIGN.md, "No tap to start"); the card's buttons do.
+export const skipFromPointer = (model: Model): Model =>
+  isEndScreen(model.phase) ? skipBeat(model) : model
 
-// NOTE: keys while an online room's run card is up: M and N toggle the
-// sound, and any other key skips or lets the lobby in, so they never reach
-// the hidden lobby (Enter would ready up behind the card).
+// AN ONLINE ROOM'S CARD
+
+// NOTE: an online co-op run's end card offers the room's choices once the
+// restart grace is past (src/menus.ts, endButtonsOf): RUN IT BACK
+// toggles this player's READY in the room's lobby, so the same crew plays
+// again once everyone is in; LOBBY lets the lobby in (to change the picks
+// or kick); LEAVE leaves the room. Until the grace, a press only skips.
+const isRunCardOffered = (model: Model): boolean =>
+  isCoopOpen(model.coop) && endOffer(model) !== 'Nothing'
+
+export const runItBack = makeStep(model =>
+  isRunCardOffered(model)
+    ? Update.combineSteps([
+        toModel(skipBeat(model)),
+        CoopBinding.requestToggleReady(),
+      ])
+    : unchanged,
+)
+
+export const toRoomLobby = makeStep(model =>
+  isRunCardOffered(model) ? toModel(dropRunCard(model)) : unchanged,
+)
+
+export const leaveRoomFromCard = makeStep(model =>
+  isRunCardOffered(model) ? CoopBinding.requestLeave() : unchanged,
+)
+
+// NOTE: keys while an online room's run card is up: Enter is RUN IT BACK,
+// L is LOBBY, H is LEAVE, M and N toggle the sound (play.ts), and any
+// other key skips the beat, so none reaches the hidden lobby.
 export const isRunCardKey = (model: Model): boolean =>
   isCoopOpen(model.coop) && isEndScreen(model.phase) && isRunCardHeld(model)
 
-export const runCardFromKey = (model: Model, code: string): Model =>
-  Array.contains(AUDIO_KEYS, code) ? model : dropRunCard(model)
+export const runCardFromKey = (code: string) =>
+  makeStep(model => {
+    if (Array.contains(AUDIO_KEYS, code)) {
+      return unchanged
+    } else if (!isRunCardOffered(model)) {
+      return toModel(skipBeat(model))
+    } else if (isStartKey(code)) {
+      return runItBack
+    } else if (isLobbyKey(code)) {
+      return toRoomLobby
+    } else if (isMenuKey(code)) {
+      return leaveRoomFromCard
+    } else {
+      return toModel(skipBeat(model))
+    }
+  })
 
 // SHARE
 

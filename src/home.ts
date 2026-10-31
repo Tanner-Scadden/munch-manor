@@ -280,6 +280,8 @@ type EndOffer = 'Nothing' | 'MenuOnly' | 'MenuAndModes'
 export const END_MENU_BUTTON_ID = 'end-menu-button'
 export const END_RETRY_BUTTON_ID = 'end-retry-button'
 export const END_SHARE_BUTTON_ID = 'end-share-button'
+export const END_LOBBY_BUTTON_ID = 'end-lobby-button'
+export const END_LEAVE_ROOM_BUTTON_ID = 'end-leave-button'
 
 export const isEndScreen = Phase.isAnyOf(['Victory', 'GameOver'])
 

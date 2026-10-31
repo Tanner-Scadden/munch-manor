@@ -40,6 +40,7 @@ const KEEP_GOING_KEY = 'KeyK'
 const CHARACTER_KEY = 'KeyC'
 const PAUSE_KEY = 'Escape'
 const MENU_KEY = 'KeyH'
+const LOBBY_KEY = 'KeyL'
 const PREVIOUS_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowLeft', 'ArrowUp']
 const NEXT_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowRight', 'ArrowDown']
 
@@ -54,6 +55,8 @@ export const maybeFocusStep = (code: string): Option.Option<FocusStep> => {
 }
 
 export const isMenuKey = (code: string): boolean => code === MENU_KEY
+
+export const isLobbyKey = (code: string): boolean => code === LOBBY_KEY
 
 export const isStartKey = (code: string): boolean => code === START_KEY
 

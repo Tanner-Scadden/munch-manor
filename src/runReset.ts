@@ -83,6 +83,7 @@ export type RunFields = Pick<
   | 'runTally'
   | 'screenMs'
   | 'maybeShareCopiedAtMs'
+  | 'isRunCardDropped'
   | 'runRecords'
   | 'bestStreak'
   | 'party'
@@ -141,6 +142,7 @@ export const freshRun = (model: Model): RunFields => ({
   runTally: RunTally.Uncounted(),
   screenMs: 0,
   maybeShareCopiedAtMs: Option.none(),
+  isRunCardDropped: false,
   runRecords: [],
   bestStreak: 0,
   party: Party.Solo(),
