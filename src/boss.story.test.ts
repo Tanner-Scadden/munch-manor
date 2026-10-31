@@ -26,6 +26,7 @@ import {
   sturdy,
 } from './boss.fixture'
 import { cameraOf } from './camera'
+import { PACK_WARNING_MS } from './constants'
 import { DIFFICULTIES } from './difficulty'
 import { hpScaleFor, rollSpawns } from './endlessWaves'
 import { update } from './main'
@@ -41,7 +42,14 @@ import {
 } from './model'
 import { newPlayerReady } from './model.fixture'
 import { BOSS_ICON } from './sprites/zombies'
-import { FRAME_MS, bulletInto, tick, ticks, zombieOf } from './testing'
+import {
+  FRAME_MS,
+  bulletInto,
+  tick,
+  ticks,
+  ticksFor,
+  zombieOf,
+} from './testing'
 import { FINAL_WAVE, WAVE_PLANS } from './wavePlans'
 import { wavePreviewShapes } from './wavePreview'
 import { ZOMBIE_KINDS, scaledHp } from './zombies'
@@ -230,7 +238,7 @@ describe('the entrance', () => {
 describe('the boss has the floor', () => {
   const REJOIN_MS = 5000
 
-  test('the rest of the wave rejoins about 5 seconds after he walks in', () => {
+  test('the rest of the wave rejoins about 5 seconds after he walks in, warning first', () => {
     const soon = [spawnAt(200, 0), spawnAt(1e9, 1)]
     const arriving = Boss.Arriving({
       door: 'West',
@@ -256,10 +264,16 @@ describe('the boss has the floor', () => {
       model(current => {
         expect(waveClock(current)).toBe(0)
         expect(pending(current)).toBe(soon.length)
+        expect(current.pacing.warnedPacks).toEqual([])
       }),
       ...ticks(50, FRAME_MS),
       model(current => {
         expect(waveClock(current)).toBeGreaterThan(0)
+        expect(current.pacing.warnedPacks).toEqual([0])
+        expect(pending(current)).toBe(soon.length)
+      }),
+      ...ticksFor(PACK_WARNING_MS, FRAME_MS),
+      model(current => {
         expect(pending(current)).toBe(soon.length - 1)
       }),
     )
