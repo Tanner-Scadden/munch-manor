@@ -33,8 +33,11 @@ import {
 import {
   aliveCount,
   delayCampedPacks,
+  delayWaitingPacks,
   isAlive,
   isThroughDoor,
+  keepWarnedOnTime,
+  packsWaitingToWarn,
   quietAlarm,
   stepBeat,
   waitingCount,
@@ -477,15 +480,23 @@ const advanceWave = (
   )
   const clockMs = paced.clockMs
   const doors = levelOf(model).doorIds
-  const route = routeSpawns(
+  const onTime = keepWarnedOnTime(
     paced.spawns,
-    model.traps,
-    model.pacing.packDoors,
-    doors,
+    model.pacing.warnedPacks,
+    worldMs - (clockMs - elapsedMs),
   )
+  const waitingPacks = packsWaitingToWarn(
+    onTime,
+    model.pacing.warnedPacks,
+    model.zombies.length,
+    clockMs,
+    isWaveHeldByBoss(model.boss),
+  )
+  const delayed = delayWaitingPacks(onTime, waitingPacks, clockMs)
+  const route = routeSpawns(delayed, model.traps, model.pacing.packDoors, doors)
   const camped = delayCampedPacks(
     levelOf(model),
-    paced.spawns,
+    delayed,
     route,
     clockMs,
     pacedMs,
@@ -501,6 +512,7 @@ const advanceWave = (
     camped,
     routeSpawns(camped, model.traps, model.pacing.packDoors, doors),
     clockMs,
+    waitingPacks,
   )
   const released = releaseDue(
     warned,
