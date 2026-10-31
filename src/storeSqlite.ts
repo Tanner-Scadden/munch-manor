@@ -125,7 +125,25 @@ const PLAYER_MIGRATIONS = {
       value TEXT NOT NULL
     )`
   }),
+  // NOTE: run summaries finished with no network, waiting to be sent. This
+  // table is this device's alone: it is not in the player scope, so it never
+  // syncs and a linked device never sees it.
+  '0002_create_queued_summaries': Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient
+    yield* sql`CREATE TABLE queued_summaries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      body TEXT NOT NULL
+    )`
+  }),
 }
+
+// NOTE: a long trip offline keeps this many runs. The oldest go first.
+const MAX_QUEUED_SUMMARIES = 20
+
+const QueuedSummaryRow = Schema.Struct({
+  id: Schema.Number,
+  body: Schema.String,
+})
 
 const LEGACY_IMPORT_KEY = 'legacy-local-storage-import'
 const SYNC_SEED_KEY = 'sync-seed'
@@ -203,6 +221,14 @@ export interface PlayerDatabase {
     code: string,
   ) => Effect.Effect<void, PlayerDatabaseError>
   readonly maybeRoomAccess: Option.Option<RoomAccess>
+  readonly queueSummary: (
+    body: string,
+  ) => Effect.Effect<void, PlayerDatabaseError>
+  readonly takeQueuedSummary: Effect.Effect<
+    Option.Option<string>,
+    PlayerDatabaseError
+  >
+  readonly clearQueuedSummaries: Effect.Effect<void, PlayerDatabaseError>
 }
 
 class PlayerDatabaseError extends Data.TaggedError('PlayerDatabaseError')<{
@@ -317,6 +343,44 @@ const readMeta = (client: SqliteClientService, key: string) =>
 const markMeta = (client: SqliteClientService, key: string, value: string) =>
   client.sql`INSERT INTO store_meta ${client.sql.insert({ key, value })}
     ON CONFLICT (key) DO UPDATE SET value = excluded.value`
+
+// QUEUED SUMMARIES
+
+const queueSummaryRow = (client: SqliteClientService, body: string) =>
+  pipe(
+    Effect.all([
+      client.sql`INSERT INTO queued_summaries ${client.sql.insert({ body })}`,
+      client.sql`DELETE FROM queued_summaries WHERE id NOT IN (
+        SELECT id FROM queued_summaries ORDER BY id DESC
+        LIMIT ${MAX_QUEUED_SUMMARIES}
+      )`,
+    ]),
+    client.sql.withTransaction,
+    Effect.asVoid,
+    Effect.mapError(toDatabaseError),
+  )
+
+// NOTE: the oldest summary is deleted as it is taken, in one transaction, so
+// two tabs or two drains never send the same one twice.
+const takeSummaryRow = (client: SqliteClientService) =>
+  pipe(
+    Effect.gen(function* () {
+      const rows = yield* client.query(
+        QueuedSummaryRow,
+        client.sql`SELECT id, body FROM queued_summaries ORDER BY id LIMIT 1`,
+      )
+      return yield* Option.match(Array.head(rows), {
+        onNone: () => Effect.succeedNone,
+        onSome: row =>
+          Effect.as(
+            client.sql`DELETE FROM queued_summaries WHERE id = ${row.id}`,
+            Option.some(row.body),
+          ),
+      })
+    }),
+    client.sql.withTransaction,
+    Effect.mapError(toDatabaseError),
+  )
 
 // NOTE: the first load on a device finds no player row and no import mark,
 // so it reads the localStorage save, writes it as the row, and marks the
@@ -667,6 +731,13 @@ export const makePlayerDatabase = (
       ),
       redeemLinkCode,
       maybeRoomAccess,
+      queueSummary: body => queueSummaryRow(client, body),
+      takeQueuedSummary: takeSummaryRow(client),
+      clearQueuedSummaries: pipe(
+        client.sql`DELETE FROM queued_summaries`,
+        Effect.asVoid,
+        Effect.mapError(toDatabaseError),
+      ),
     }
   })
 

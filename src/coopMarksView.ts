@@ -5,8 +5,14 @@ import { type Camera, worldToView } from './camera'
 import { maybeRoomOf } from './coop/roomState'
 import { textShapes } from './font'
 import type { Model } from './model'
-import { isBledOut, isCoop, leadSeatOf, playersOf } from './party'
-import { seatColorOf } from './partyView'
+import {
+  isBledOut,
+  isCoop,
+  isDowned,
+  leadSeatOf,
+  playersOf,
+} from './party'
+import { NAME_LIFT_DOWNED_PX, seatColorOf } from './partyView'
 import { TOP_LEFT, bakeShapes, placeAt, spriteShapes } from './sprite'
 import { isBreak } from './waves'
 import type { PlayerSlot } from './worldSchema'
@@ -172,8 +178,8 @@ const nameTagShapes = (
   ]
 }
 
-// NOTE: the tag's bottom sits a pixel or two over the head, and READY
-// stands over the tag.
+// NOTE: the tag's bottom sits a pixel or two over the head, or over the
+// revive icon while they are down, and READY stands over the tag.
 const NAME_BOTTOM_LIFT_PX = 8
 const READY_LIFT_PX = 21
 
@@ -194,7 +200,8 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
                 names.get(slot) ?? `P${slot + 1}`,
                 seatColorOf(slot),
                 player.x,
-                player.y - NAME_BOTTOM_LIFT_PX,
+                player.y -
+                  (isDowned(seat) ? NAME_LIFT_DOWNED_PX : NAME_BOTTOM_LIFT_PX),
               )),
           ...(isBreak(model) && seat.readiness === 'Ready'
             ? textShapes(

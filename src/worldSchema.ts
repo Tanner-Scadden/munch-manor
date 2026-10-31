@@ -633,6 +633,7 @@ export const Life = defineTaggedUnion({
   BledOut: {},
 })
 export type Life = typeof Life.Type
+export type DownedLife = typeof Life.Downed.Type
 
 // NOTE: an Away player sent no input for a while (decided row 10): frozen
 // in place, and zombies can still hurt them.
