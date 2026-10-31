@@ -1,6 +1,8 @@
 import { Schema } from 'effect'
 import { readdirSync } from 'node:fs'
 
+import { Vector } from '@game/entitySchema'
+
 import { encodeJson } from '../json'
 import {
   SHOTS_DIR,
@@ -18,17 +20,15 @@ import {
 
 const TAG = tagOr('now')
 
-const Offset = Schema.Struct({ x: Schema.Number, y: Schema.Number })
-
 // NOTE: the Model's fields the log line reads.
 const SceneCounts = Schema.Struct({
-  shake: Schema.Struct({ offset: Offset }),
+  shake: Schema.Struct({ offset: Vector }),
   zombies: Schema.Array(Schema.Unknown),
   particles: Schema.Array(Schema.Unknown),
   decals: Schema.Array(Schema.Unknown),
 })
 
-const offsetJson = encodeJson(Offset)
+const offsetJson = encodeJson(Vector)
 
 const scenes: ReadonlyArray<
   Readonly<{ name: string; q: string; isMobile?: boolean }>

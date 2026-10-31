@@ -3,12 +3,7 @@ import { Array, Option, Schema, SchemaTransformation } from 'effect'
 import { Session, type World } from '@munch/netcode'
 
 import { playersOf, shopOf } from '../party'
-import {
-  DEFAULT_ROOM_SETTINGS,
-  type OwnSeat,
-  type RoomWorld,
-  roomWorldFor,
-} from '../roomWorld'
+import { type OwnSeat, ROOM_WORLD, type RoomWorld } from '../roomWorld'
 import { STALL_BOX } from '../shop'
 
 // THE SEAM
@@ -23,9 +18,7 @@ import { STALL_BOX } from '../shop'
 export type WorldState = RoomWorld
 export type OwnPlayer = OwnSeat
 
-export const coopWorld: World<WorldState, OwnPlayer> = roomWorldFor(
-  DEFAULT_ROOM_SETTINGS,
-)
+export const coopWorld: World<WorldState, OwnPlayer> = ROOM_WORLD
 
 // SCHEMAS
 

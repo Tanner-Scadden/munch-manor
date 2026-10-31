@@ -31,16 +31,11 @@ import {
   Pierce,
   initialModel,
 } from './model'
-import { DISTANT_SPAWN, quietWave } from './model.fixture'
+import { DISTANT_SPAWN, quietWave, withPlayerAt } from './model.fixture'
 import { UNREACHED_DISTANCE } from './pathing'
 import { press, tick, ticks, zombieAt } from './testing'
 
 const FRAME_MS = FIXED_STEP_MS
-
-const withPlayerAt = (base: Model, x: number, y: number): Model =>
-  modifyFields(base, {
-    player: player => modifyFields(player, { x: () => x, y: () => y }),
-  })
 
 const PIANO_RIGHT = 40
 const PIANO_BOTTOM = 40

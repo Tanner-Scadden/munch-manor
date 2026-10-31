@@ -31,7 +31,7 @@ import {
   ZombieState,
   initialModel,
 } from './model'
-import { DISTANT_SPAWN, pastFirstBreak } from './model.fixture'
+import { DISTANT_SPAWN, WAVE_2_FIGHT, pastFirstBreak } from './model.fixture'
 import {
   StockTag,
   Verdict,
@@ -44,6 +44,7 @@ import {
 import { scoreOf } from './stats'
 import {
   BELOW_NORTH_DOOR,
+  countdownTicks,
   holdFire,
   press,
   release,
@@ -58,11 +59,6 @@ import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from './zombies'
 const FRAME_MS = FIXED_STEP_MS
 const LONG_FRAME_MS = 50
 
-// NOTE: the ticks a countdown of `ms` takes to run out, counted the way the
-// game counts it down: whole ticks of 1000/60 ms sum a hair short of a
-// round number, so a countdown of a whole number of ticks takes one more.
-const countdownTicks = (ms: number): number =>
-  ms <= 0 ? 0 : 1 + countdownTicks(ms - FRAME_MS)
 const PEA_INTERVAL_MS = WEAPONS.Peashooter.fireIntervalMs
 
 const PLANNED_SPAWNS: ReadonlyArray<PlannedSpawn> = [
@@ -83,8 +79,6 @@ const preparing = (spawns: ReadonlyArray<PlannedSpawn> = [DISTANT_SPAWN]) =>
     durationMs: PREPARATION_MS,
     spawns,
   })
-
-const fighting = Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [DISTANT_SPAWN] })
 
 const withPlayer = (
   base: Model,
@@ -143,7 +137,7 @@ const fightingWith = (
   playerAt: Vector,
 ): Model =>
   modifyFields(withPlayer(readyModel, playerAt), {
-    phase: () => fighting,
+    phase: () => WAVE_2_FIGHT,
     traps: () => traps,
     zombies: () => zombies,
   })
@@ -314,7 +308,7 @@ describe('placing a barricade', () => {
 
     story(
       update,
-      given(modifyFields(stocked(1, 0), { phase: () => fighting })),
+      given(modifyFields(stocked(1, 0), { phase: () => WAVE_2_FIGHT })),
       press('KeyT'),
       model(current => {
         expect(current.traps).toEqual([])

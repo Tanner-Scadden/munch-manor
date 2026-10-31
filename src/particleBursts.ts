@@ -71,6 +71,7 @@ import {
   SPLINTER_SPEED_MIN,
   ZOMBIE_FOOT_OFFSET,
 } from './constants'
+import { ZERO_VECTOR } from './geometry'
 import type {
   Particle,
   ParticleKind,
@@ -518,8 +519,6 @@ export const killParticles = (
   ])
 }
 
-export const NO_PUSH: Vector = { x: 0, y: 0 }
-
 const PART_SPEED_MIN = 45
 const PART_SPEED_MAX = 80
 const PART_SPREAD = 1.1
@@ -710,13 +709,13 @@ export const blastParticles = (
       generateMany(
         drawState,
         MEAT_GIBS_PER_BLAST,
-        gib('MeatGib', ground, NO_PUSH),
+        gib('MeatGib', ground, ZERO_VECTOR),
       ),
     drawState =>
       generateMany(
         drawState,
         BOMB_SHARDS_PER_BLAST,
-        gib('BombShard', ground, NO_PUSH),
+        gib('BombShard', ground, ZERO_VECTOR),
       ),
   ])
 }

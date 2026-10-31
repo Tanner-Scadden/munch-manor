@@ -4,7 +4,7 @@
 
 import { Array, Number, Option, Order, Record, Schema, pipe } from 'effect'
 
-import { Difficulty } from '../../src/model'
+import { Difficulty, HomeMode } from '../../src/model'
 import type { Kind, RunResult, WaveRun } from './bot'
 
 // SCHEMAS
@@ -12,14 +12,11 @@ import type { Kind, RunResult, WaveRun } from './bot'
 const BotStyle = Schema.Literals(['Default', 'SwapsBack'])
 type BotStyle = typeof BotStyle.Type
 
-const RunKind = Schema.Literals(['Campaign', 'Endless'])
-type RunKind = typeof RunKind.Type
-
 const Shares = Schema.Record(Schema.String, Schema.Number)
 
 export const CampaignSummary = Schema.TaggedStruct('Campaign', {
   difficulty: Difficulty,
-  kind: RunKind,
+  kind: HomeMode,
   style: BotStyle,
   runs: Schema.Number,
   wallSeconds: Schema.Number,
@@ -73,7 +70,7 @@ export type Summary = typeof Summary.Type
 
 // STATISTICS
 
-const mean = (values: ReadonlyArray<number>): number =>
+export const mean = (values: ReadonlyArray<number>): number =>
   values.length === 0 ? 0 : Number.sumAll(values) / values.length
 
 const valueAt = (values: ReadonlyArray<number>, index: number): number =>
@@ -114,7 +111,7 @@ const hurtShares = (
 
 export type CampaignMeta = Readonly<{
   difficulty: Difficulty
-  kind: RunKind
+  kind: HomeMode
   style: BotStyle
   wallSeconds: number
   lastWave: number

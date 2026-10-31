@@ -3,7 +3,6 @@ import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { FIXED_STEP_MS } from './constants'
 import { MELEE_SLOT_INDEX, gunSlotBox } from './hud'
 import { update } from './main'
 import { Message } from './message'
@@ -16,7 +15,7 @@ import {
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { screenOf } from './screen'
-import { SURFACE, holdingFirst } from './testing'
+import { FIXED_FRAME, SURFACE, holdingFirst } from './testing'
 import { asVeteran } from './veteran'
 import { freshGun, heldWeapon } from './weapons'
 
@@ -25,7 +24,6 @@ import { freshGun, heldWeapon } from './weapons'
 // so a desktop player never changes guns by aiming low. A tap on a phone
 // still equips, and in a break a mouse click on a slot does too.
 
-const FRAME_MS = FIXED_STEP_MS
 const MOUSE = 1
 const FINGER = 7
 
@@ -88,8 +86,6 @@ const pressSlot = (
   })
 }
 
-const tickFrame = Message.TickedFrame({ deltaTime: FRAME_MS })
-
 const hasFired = (current: Model): boolean =>
   Array.some(current.frameEvents, GameEvent.isAnyOf(['Fired']))
 
@@ -107,7 +103,7 @@ describe('a press on a HUD slot', () => {
         expect(aim.x).toBeCloseTo(view.x)
         expect(aim.y).toBeCloseTo(view.y)
       }),
-      message(tickFrame),
+      message(FIXED_FRAME),
       model(current => {
         expect(hasFired(current)).toBe(true)
       }),
@@ -127,7 +123,7 @@ describe('a press on a HUD slot', () => {
       update,
       given(midWave),
       message(pressSlot(midWave, 1, 'Mouse', MOUSE)),
-      message(tickFrame),
+      message(FIXED_FRAME),
       model(current => {
         expect(hasFired(current)).toBe(true)
       }),
@@ -155,7 +151,7 @@ describe('a press on a HUD slot', () => {
       model(({ player }) => {
         expect(player.wield).toBe('Melee')
       }),
-      message(tickFrame),
+      message(FIXED_FRAME),
       model(current => {
         expect(hasFired(current)).toBe(false)
       }),
@@ -175,7 +171,7 @@ describe('a press on a HUD slot', () => {
       model(({ player }) => {
         expect(player.wield).toBe('Melee')
       }),
-      message(tickFrame),
+      message(FIXED_FRAME),
       model(current => {
         expect(hasFired(current)).toBe(false)
       }),

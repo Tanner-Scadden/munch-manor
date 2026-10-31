@@ -11,8 +11,8 @@ import {
   type RunSummary,
   RunSummaryJson,
   SummaryDevice,
-  SummaryDifficulty,
   SummaryKind,
+  SummaryMode,
 } from './analytics'
 import {
   generateVisitId,
@@ -26,8 +26,8 @@ import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from './constants'
 import { init, update } from './main'
 import { Message } from './message'
 import {
-  Difficulty,
   Frenzy,
+  HomeMode,
   InputDevice,
   type Model,
   Phase,
@@ -150,7 +150,7 @@ describe('the run summary schema', () => {
   test("the shared literals still match the game's own", () => {
     expect(SummaryKind.literals).toEqual(ZombieKind.literals)
     expect(CauseOfDeath.literals).toEqual([...ZombieKind.literals, 'Unknown'])
-    expect(SummaryDifficulty.literals).toEqual(Difficulty.literals)
+    expect(SummaryMode.literals).toEqual(HomeMode.literals)
     expect(SummaryDevice.literals).toEqual(InputDevice.literals)
   })
 

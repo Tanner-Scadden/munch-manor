@@ -18,6 +18,7 @@ import {
   RunMode,
   initialModel,
 } from './model'
+import { home } from './model.fixture'
 import {
   DEBUT_CARD_MIN_MS,
   DEBUT_CARD_MS,
@@ -29,17 +30,14 @@ import { holdingFirst, showDialog, tap, tick, ticks } from './testing'
 import { SetFullscreen } from './update/fullscreen'
 import { ShowInstallPrompt } from './update/home'
 import { keepGoing } from './update/run'
-import { asVeteran } from './veteran'
 import { STARTING_PISTOL } from './weapons'
 
 const TICK_MS = 50
 // NOTE: a 50 ms frame is three 60 Hz ticks; the moment a wave clears is
 // checked after a single tick, before the break's clock has run.
 
-const veteran: Model = asVeteran(initialModel)
-
 const clearingWave = (wave: number): Model =>
-  modifyFields(veteran, {
+  modifyFields(home, {
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [] }),
   })
 
@@ -136,14 +134,14 @@ describe('the first break waits', () => {
       }),
     )
     const keptGoing = keepGoing(
-      modifyFields(veteran, { phase: () => Phase.Victory() }),
+      modifyFields(home, { phase: () => Phase.Victory() }),
     )
     expect(breakClock(keptGoing)).toEqual(Option.some(BreakClock.Counting()))
   })
 })
 
 describe('the new zombie card', () => {
-  const carded: Model = modifyFields(veteran, {
+  const carded: Model = modifyFields(home, {
     phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
     debutCard: () => DebutCard.Showing({ kind: 'Runner', ageMs: 0 }),
   })
@@ -159,7 +157,7 @@ describe('the new zombie card', () => {
       message(Message.ClickedDebutCardButton()),
       model(current => {
         expect(current.debutCard._tag).toBe('Showing')
-        expect(current.player.x).toBe(veteran.player.x)
+        expect(current.player.x).toBe(home.player.x)
       }),
       tick(TICK_MS),
       tap('Enter'),
@@ -183,7 +181,7 @@ describe('the new zombie card', () => {
 })
 
 describe('gun slots on touch', () => {
-  const carrying: Model = modifyFields(veteran, {
+  const carrying: Model = modifyFields(home, {
     lastDevice: () => 'Touch',
     phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] }),
     player: player =>

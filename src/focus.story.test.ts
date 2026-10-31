@@ -4,7 +4,7 @@ import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { FIXED_STEP_MS, PREPARATION_MS, RESTART_GRACE_MS } from './constants'
+import { FIXED_STEP_MS, RESTART_GRACE_MS } from './constants'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -16,7 +16,7 @@ import {
   ShopState,
   Stick,
 } from './model'
-import { DISTANT_SPAWN, readyModel } from './model.fixture'
+import { WAVE_2_BREAK, WAVE_2_FIGHT, readyModel } from './model.fixture'
 import {
   type KeyDown,
   maybeKeyDownMessage,
@@ -28,25 +28,12 @@ const FRAME_MS = FIXED_STEP_MS
 const MOUSE_POINTER = 1
 const RIGHT_THUMB = 12
 
-const FIGHTING_PHASE: Phase = Phase.Wave({
-  wave: 2,
-  elapsedMs: 0,
-  spawns: [DISTANT_SPAWN],
-})
-
-const PREPARING_PHASE: Phase = Phase.Preparation({
-  wave: 2,
-  remainingMs: 15_000,
-  durationMs: PREPARATION_MS,
-  spawns: [DISTANT_SPAWN],
-})
-
 const fightingModel: Model = modifyFields(readyModel, {
-  phase: () => FIGHTING_PHASE,
+  phase: () => WAVE_2_FIGHT,
 })
 
 const pausedModel: Model = modifyFields(readyModel, {
-  phase: () => Phase.Paused({ round: FIGHTING_PHASE }),
+  phase: () => Phase.Paused({ round: WAVE_2_FIGHT }),
 })
 
 const blurWindow = message(Message.BlurredWindow())
@@ -90,14 +77,14 @@ describe('leaving the window', () => {
       mouseDown,
       blurWindow,
       model(({ phase, input, intent }) => {
-        expect(phase).toEqual(Phase.Paused({ round: FIGHTING_PHASE }))
+        expect(phase).toEqual(Phase.Paused({ round: WAVE_2_FIGHT }))
         expect(input.pressedKeys).toEqual([])
         expect(input.mouseButton).toEqual(MouseButton.Released())
         expect(intent.trigger).toBe('Released')
       }),
       tick(FRAME_MS),
       model(({ phase }) => {
-        expect(phase).toEqual(Phase.Paused({ round: FIGHTING_PHASE }))
+        expect(phase).toEqual(Phase.Paused({ round: WAVE_2_FIGHT }))
       }),
     )
   })
@@ -107,13 +94,13 @@ describe('leaving the window', () => {
       update,
       given(
         modifyFields(readyModel, {
-          phase: () => PREPARING_PHASE,
+          phase: () => WAVE_2_BREAK,
           shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
         }),
       ),
       blurWindow,
       model(({ phase, shop }) => {
-        expect(phase).toEqual(Phase.Paused({ round: PREPARING_PHASE }))
+        expect(phase).toEqual(Phase.Paused({ round: WAVE_2_BREAK }))
         expect(ShopState.guards.Browsing(shop)).toBe(false)
       }),
     )
@@ -170,7 +157,7 @@ describe('resuming', () => {
       given(pausedModel),
       mouseDown,
       model(({ phase, input, intent }) => {
-        expect(phase).toEqual(FIGHTING_PHASE)
+        expect(phase).toEqual(WAVE_2_FIGHT)
         expect(input.mouseButton).toEqual(MouseButton.Released())
         expect(intent.trigger).toBe('Released')
       }),
@@ -200,7 +187,7 @@ describe('resuming', () => {
         }),
       ),
       model(({ phase, input }) => {
-        expect(phase).toEqual(FIGHTING_PHASE)
+        expect(phase).toEqual(WAVE_2_FIGHT)
         expect(input.aimStick).toEqual(Stick.Idle())
       }),
     )
@@ -213,7 +200,7 @@ describe('resuming', () => {
       message(Message.PressedKey({ code: 'KeyD' })),
       message(Message.PressedKey({ code: 'Escape' })),
       model(({ phase, input, intent }) => {
-        expect(phase).toEqual(FIGHTING_PHASE)
+        expect(phase).toEqual(WAVE_2_FIGHT)
         expect(input.pressedKeys).toEqual(['KeyD'])
         expect(intent.trigger).toBe('Released')
         expect(intent.move).toEqual({ x: 1, y: 0 })

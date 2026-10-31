@@ -15,6 +15,7 @@ import {
 } from '@munch/netcode'
 import { QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
+import { DIFFICULTY_ORDER } from '../difficulty'
 import { eventsBetween } from '../roomWorld'
 import { stepWhen } from '../stepWhen'
 import { CoopComposition } from './composition'
@@ -34,7 +35,6 @@ import { CoopNet } from './net'
 import {
   CODE_INPUT_ID,
   DIFFICULTY_KEY,
-  DIFFICULTY_PICKS,
   ENTER,
   ESCAPE,
   MODE_KEY,
@@ -450,7 +450,7 @@ const pickFromKey = (model: Model, room: Room, code: string): UpdateReturn =>
           model,
           room,
           pickedModeOf(lobby),
-          nextOf(DIFFICULTY_PICKS, lobby.difficulty, difficulty =>
+          nextOf(DIFFICULTY_ORDER, lobby.difficulty, difficulty =>
             canPickDifficulty(lobby, difficulty),
           ),
         )

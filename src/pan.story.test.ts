@@ -40,6 +40,7 @@ import { purchase } from './shop'
 import { gunIcon } from './sprites/guns'
 import { SeatAction } from './stepWorld'
 import {
+  FRIDGE_OPEN_TICKS,
   SURFACE,
   holdFire,
   holdingSecond,
@@ -86,8 +87,6 @@ const groanerAhead = (id: number): Zombie =>
 const swungIn = (current: Model): boolean =>
   Array.some(current.frameEvents, GameEvent.isAnyOf(['PanSwung']))
 
-const PULL_TICKS = Math.ceil(FRIDGE_RULES.openMs / FRAME_MS) + 1
-
 describe('the Clang Pan in the melee slot', () => {
   test('taking it from the fridge keeps both guns and puts the Pan in hand', () => {
     const pullsPan = modifyFields(atFridge(100), {
@@ -107,7 +106,7 @@ describe('the Clang Pan in the melee slot', () => {
       update,
       given(pullsPan),
       press('Enter'),
-      ...ticks(PULL_TICKS, FRAME_MS),
+      ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       model(current => {
         expect(current.player.arsenal).toEqual(BOTH_GUNS)
         expect(current.player.melee).toEqual(withPan())

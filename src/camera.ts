@@ -1,16 +1,11 @@
 import { Option } from 'effect'
 
 import { type Level, levelOf } from './arena'
-import {
-  CAMERA_LEAN_EASE_MS,
-  CAMERA_LEAN_PX,
-  VIEW_HEIGHT,
-  VIEW_WIDTH,
-} from './constants'
+import { CAMERA_LEAN_EASE_MS, CAMERA_LEAN_PX } from './constants'
 import { couchFocus } from './couch'
 import { ZERO_VECTOR, clamp, scaleVector } from './geometry'
 import type { Model, Vector } from './model'
-import { type Box, type Screen, screenOf } from './screen'
+import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
 
 // CAMERA
 
@@ -32,8 +27,6 @@ export type Camera = Readonly<{
 
 type WindowSize = Readonly<{ width: number; height: number }>
 
-const LANDSCAPE_WINDOW: WindowSize = { width: VIEW_WIDTH, height: VIEW_HEIGHT }
-
 const followAxis = (
   focus: number,
   start: number,
@@ -54,7 +47,7 @@ const followAxis = (
 export const cameraFor = (
   level: Level,
   focus: Vector,
-  window: WindowSize = LANDSCAPE_WINDOW,
+  window: WindowSize = LANDSCAPE_SIZE,
 ): Camera => ({
   x: followAxis(
     focus.x,

@@ -1,7 +1,6 @@
 import { Option } from 'effect'
 import {
   Command,
-  Subscription,
   click,
   expect,
   given,
@@ -14,10 +13,9 @@ import {
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 
-import { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
+import { Tabs } from '@foldkit/ui'
 
-import { FIXED_STEP_MS, PREPARATION_MS } from './constants'
-import { Message } from './message'
+import { PREPARATION_MS } from './constants'
 import {
   type Arsenal,
   type Model,
@@ -29,9 +27,9 @@ import {
 import { ShopTabsBlock } from './shopTabs'
 import {
   ROOT,
-  SCENE_SUBSCRIPTIONS,
   holdingSecond,
   measureSurface,
+  walkIntoStallInScene,
 } from './testing'
 import { TRAPS } from './traps'
 
@@ -70,17 +68,6 @@ const atStall = (balance: number, arsenal: Arsenal): Model =>
 const holdingSmg = (rounds: number, tier: number): Arsenal =>
   holdingSecond({ kind: 'Smg', rounds, loaded: 30, tier })
 
-const openShop = [
-  Subscription.emit(
-    SCENE_SUBSCRIPTIONS.frame,
-    Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
-  ),
-  Command.resolve(
-    Dialog.test.ShowDialog,
-    DialogBlock.Message.SucceededShowDialog(),
-  ),
-]
-
 const keeper = role('img', { name: /^Rattles the skeleton/ })
 const bubble = selector('.shop-greeting')
 
@@ -91,7 +78,7 @@ describe('the shop at a glance', () => {
       ROOT,
       given(atStall(180, holdingSmg(200, 1))),
       measureSurface,
-      ...openShop,
+      ...walkIntoStallInScene(),
       expect(
         selector('[data-stock="Short"] #shop-item-PistolUpgrade'),
       ).toExist(),
@@ -118,7 +105,7 @@ describe('the shop at a glance', () => {
       ROOT,
       given(atStall(180, holdingSmg(360, 1))),
       measureSurface,
-      ...openShop,
+      ...walkIntoStallInScene(),
       expect(selector('[data-stock="Done"] #shop-item-SmgRounds')).toExist(),
       expect(within(drum, selector('.shop-tag'))).toHaveText('FULL'),
       expect(within(drum, selector('.shop-item-reason'))).toHaveClass(
@@ -133,7 +120,7 @@ describe('the shop at a glance', () => {
       ROOT,
       given(atStall(180, holdingSmg(200, 1))),
       measureSurface,
-      ...openShop,
+      ...walkIntoStallInScene(),
       expect(within(upgrade, selector('.shop-card-name'))).toHaveText(
         'Chatterbox DELUXE',
       ),
@@ -158,7 +145,7 @@ describe('the shop at a glance', () => {
       ROOT,
       given(atStall(180, holdingSmg(200, 1))),
       measureSurface,
-      ...openShop,
+      ...walkIntoStallInScene(),
       expect(keeper).toHaveAttr('data-mood', 'Grinning'),
       expect(selector('.shop-stamp')).toBeAbsent(),
       click(selector('#shop-item-SmgRounds')),
@@ -189,7 +176,7 @@ describe('the shop at a glance', () => {
       ROOT,
       given(atStall(5, holdingSmg(360, 1))),
       measureSurface,
-      ...openShop,
+      ...walkIntoStallInScene(),
       expect(keeper).toHaveAttr('data-mood', 'Sad'),
     )
   })
@@ -221,7 +208,7 @@ describe('repairing placed traps', () => {
       ROOT,
       given(withPlanks),
       measureSurface,
-      ...openShop,
+      ...walkIntoStallInScene(),
       expect(
         role('button', { name: 'Repair the Plank Pile at the West door, $10' }),
       ).toExist(),
@@ -248,7 +235,7 @@ describe('repairing placed traps', () => {
         }),
       ),
       measureSurface,
-      ...openShop,
+      ...walkIntoStallInScene(),
       expect(role('button', { name: /^Repair the/ })).toBeAbsent(),
       expect(role('button', { name: 'Buy Plank Pile for $40' })).toExist(),
     )
@@ -267,7 +254,7 @@ describe('what the shop teaches', () => {
         }),
       ),
       measureSurface,
-      ...openShop,
+      ...walkIntoStallInScene(),
       expect(selector('.shop-tab-new')).toHaveText('NEW'),
       expect(selector('.shop-row[data-fresh="true"]')).toExist(),
     )
@@ -283,7 +270,7 @@ describe('what the shop teaches', () => {
         }),
       ),
       measureSurface,
-      ...openShop,
+      ...walkIntoStallInScene(),
       expect(selector('.shop-tab-new')).toBeAbsent(),
       expect(selector('.shop-row[data-fresh="true"]')).toBeAbsent(),
     )
@@ -294,7 +281,7 @@ describe('what the shop teaches', () => {
       ROOT,
       given(atStall(100, holdingSmg(200, 0))),
       measureSurface,
-      ...openShop,
+      ...walkIntoStallInScene(),
       expect(selector('.shop-rounds.is-endless')).toHaveText('∞'),
       expect(selector('[data-held="true"] .shop-rounds')).toHaveText('200'),
     )

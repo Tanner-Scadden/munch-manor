@@ -222,13 +222,6 @@ export const MODE_PICKS: Array.NonEmptyReadonlyArray<PickedMode> = [
   'KeepGoing',
 ]
 
-export const DIFFICULTY_PICKS: Array.NonEmptyReadonlyArray<RoomDifficulty> = [
-  'Easy',
-  'Normal',
-  'Hard',
-  'Nightmare',
-]
-
 export const pickedModeOf = (lobby: Lobby): PickedMode =>
   lobby.mode === 'StandIn' ? 'Campaign' : lobby.mode
 

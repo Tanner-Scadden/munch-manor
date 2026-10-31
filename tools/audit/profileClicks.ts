@@ -18,6 +18,8 @@
 // against a deployed copy instead of the harness.
 import { type CDPSession, type Page, webkit } from 'playwright-core'
 
+import { PROFILE_TABS } from '@game/profile'
+
 import {
   DESKTOP_1280,
   type Log,
@@ -187,8 +189,6 @@ const attempt = async (
   return isDone
 }
 
-const TABS = ['Look', 'Name', 'Account', 'Settings']
-
 type Route = Readonly<{
   name: string
   presses: ReadonlyArray<readonly [string, string]>
@@ -283,8 +283,8 @@ const runRound = async (hand: Hand, tally: Tally, round: number) => {
     }
     await gap()
   }
-  const last = TABS[round % TABS.length] ?? 'Look'
-  const order = [...TABS.filter(tab => tab !== last), last]
+  const last = PROFILE_TABS[round % PROFILE_TABS.length] ?? 'Look'
+  const order = [...PROFILE_TABS.filter(tab => tab !== last), last]
   for (const tab of order) {
     await attempt(
       hand,

@@ -28,7 +28,7 @@ import {
   SPLINTERS_PER_HIT,
   ZOMBIE_FOOT_OFFSET,
 } from './constants'
-import { vectorLength } from './geometry'
+import { ZERO_VECTOR, vectorLength } from './geometry'
 import { type Decal, GameEvent, type Model, type Particle } from './model'
 import {
   BLOOD_SPEED,
@@ -49,7 +49,6 @@ import {
   LID_DUST,
   LID_SMOKE,
   LID_SPARKS,
-  NO_PUSH,
   OVEN_SMOKE,
   OVEN_SPARKS,
   PAN_SMASH_DUST,
@@ -274,7 +273,7 @@ const eventParticles = (
     ZombieFrozen: ({ x, y }) =>
       generateMany(state, FROZEN_FROST, frostBit({ x, y }, 0, Math.PI * 2)),
     ZombieShattered: ({ x, y }) =>
-      generateMany(state, SHATTER_ICE, gib('IceGib', { x, y }, NO_PUSH)),
+      generateMany(state, SHATTER_ICE, gib('IceGib', { x, y }, ZERO_VECTOR)),
     ZombieSlipped: ({ x, y }) =>
       generateMany(
         state,

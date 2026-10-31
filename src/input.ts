@@ -1,4 +1,4 @@
-import { Array, Option, Schema, pipe } from 'effect'
+import { Array, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Camera, viewToWorld } from './camera'
@@ -26,6 +26,7 @@ import {
   type Vector,
 } from './model'
 import { clientToView, isLeftHalf } from './screen'
+import type { FocusStep } from './stepWorld'
 
 // KEYS
 
@@ -41,9 +42,6 @@ const PAUSE_KEY = 'Escape'
 const MENU_KEY = 'KeyH'
 const PREVIOUS_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowLeft', 'ArrowUp']
 const NEXT_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowRight', 'ArrowDown']
-
-export const FocusStep = Schema.Literals(['Previous', 'Next'])
-export type FocusStep = typeof FocusStep.Type
 
 export const maybeFocusStep = (code: string): Option.Option<FocusStep> => {
   if (Array.contains(PREVIOUS_BUTTON_KEYS, code)) {

@@ -64,16 +64,17 @@ import { MANOR, levelOf } from '../../src/arena'
 import { playersOf } from '../../src/party'
 import {
   type OwnSeat,
+  ROOM_WORLD,
   type RoomWorld,
   actionCodeOf,
   heldAction,
 } from '../../src/roomWorld'
+import { nextAnimationFrame } from '../../src/splash'
 import { SeatAction } from '../../src/stepWorld'
-import { GAME } from './game'
 
 declare const __MP_API_ORIGIN__: string
 
-// NOTE: the game's own World (GAME), as the GameRoom runs it, drawn as
+// NOTE: the game's own World (ROOM_WORLD), as the GameRoom runs it, drawn as
 // dots: the manor's whole floor, players in their seat's color, zombies
 // green, and bullets as specks. The game itself draws it with its sprites.
 const ARENA_WIDTH = MANOR.width
@@ -642,11 +643,6 @@ const ratesOf = (samples: ReadonlyArray<Sample>) =>
 
 // ROOM
 
-const nextFrame: Effect.Effect<void> = Effect.callback<void>(resume => {
-  const handle = requestAnimationFrame(() => resume(Effect.void))
-  return Effect.sync(() => cancelAnimationFrame(handle))
-})
-
 const playRoom = (
   origin: string,
   code: string,
@@ -733,7 +729,7 @@ const playRoom = (
             Effect.gen(function* () {
               const current = yield* Ref.get(play)
               const next = Session.receive(
-                GAME,
+                ROOM_WORLD,
                 current,
                 received.frame,
                 received.bytes,
@@ -766,7 +762,7 @@ const playRoom = (
     )
 
     const frame = Effect.gen(function* () {
-      yield* nextFrame
+      yield* nextAnimationFrame
       const nowMs = yield* Clock.currentTimeMillis
       const before = yield* Ref.get(play)
       const input = inputNow(
@@ -775,14 +771,14 @@ const playRoom = (
         Option.map(Array.last(before.frames), latest => latest.world),
         nowMs,
       )
-      const ticked = Session.tickInput(GAME, before, input, nowMs)
+      const ticked = Session.tickInput(ROOM_WORLD, before, input, nowMs)
       const sent = yield* Effect.forEach(ticked.outgoing, room.send)
       const counted = Array.reduce(
         Array.getSomes(sent),
         ticked.session,
         Session.countSent,
       )
-      const rendered = Session.render(GAME, counted, nowMs)
+      const rendered = Session.render(ROOM_WORLD, counted, nowMs)
       yield* Ref.set(play, rendered.session)
       const currentLobby = yield* Ref.get(lobby)
       draw(rendered.world, rendered.session, currentLobby)

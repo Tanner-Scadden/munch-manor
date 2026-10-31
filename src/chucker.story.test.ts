@@ -20,7 +20,14 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
-import { bulletInto, hasEvent, tick, ticks, zombieOf } from './testing'
+import {
+  bulletInto,
+  hasEvent,
+  tick,
+  ticks,
+  zombieById,
+  zombieOf,
+} from './testing'
 import { ZOMBIE_KINDS } from './zombies'
 
 const FRAME_MS = FIXED_STEP_MS
@@ -50,11 +57,6 @@ const sceneWith = (zombies: ReadonlyArray<Zombie>): Model =>
     zombies: () => zombies,
   })
 
-const findById = (current: Model, id: number): Zombie =>
-  Option.getOrThrow(
-    Array.findFirst(current.zombies, zombie => zombie.id === id),
-  )
-
 const HEFT_FRAMES = framesFor(CHUCKER_RULES.heftMs)
 const FLIGHT_FRAMES = framesFor(CHUCKER_RULES.flightMs)
 
@@ -66,14 +68,14 @@ describe('the Big Leaguer', () => {
       tick(FRAME_MS),
       model(current => {
         expect(hasEvent(current, 'ZombieGrabbed')).toBe(true)
-        expect(findById(current, CHUCKER_ID).action).toEqual(
+        expect(zombieById(current, CHUCKER_ID).action).toEqual(
           ZombieAction.Hefting({
             victimId: GROANER_ID,
             remainingMs: CHUCKER_RULES.heftMs,
             durationMs: CHUCKER_RULES.heftMs,
           }),
         )
-        expect(findById(current, GROANER_ID).action).toEqual(
+        expect(zombieById(current, GROANER_ID).action).toEqual(
           ZombieAction.Carried({ byId: CHUCKER_ID }),
         )
       }),
@@ -81,23 +83,23 @@ describe('the Big Leaguer', () => {
       model(current => {
         expect(
           ZombieAction.isAnyOf(['Hefting'])(
-            findById(current, CHUCKER_ID).action,
+            zombieById(current, CHUCKER_ID).action,
           ),
         ).toBe(true)
-        const carried = findById(current, GROANER_ID)
+        const carried = zombieById(current, GROANER_ID)
         expect(ZombieAction.isAnyOf(['Carried'])(carried.action)).toBe(true)
-        expect(carried.x).toBe(findById(current, CHUCKER_ID).x)
+        expect(carried.x).toBe(zombieById(current, CHUCKER_ID).x)
       }),
       ...ticks(2, FRAME_MS),
       model(current => {
         expect(hasEvent(current, 'ZombieThrown')).toBe(true)
         expect(
           ZombieAction.isAnyOf(['Winded'])(
-            findById(current, CHUCKER_ID).action,
+            zombieById(current, CHUCKER_ID).action,
           ),
         ).toBe(true)
-        const chucker = findById(current, CHUCKER_ID)
-        expect(findById(current, GROANER_ID).action).toMatchObject({
+        const chucker = zombieById(current, CHUCKER_ID)
+        expect(zombieById(current, GROANER_ID).action).toMatchObject({
           _tag: 'Flying',
           to: { x: current.player.x, y: current.player.y },
           from: { x: chucker.x, y: chucker.y },
@@ -120,7 +122,7 @@ describe('the Big Leaguer', () => {
         expect(current.player.hp).toBe(PLAYER_MAX_HP)
         expect(
           ZombieAction.isAnyOf(['Flying'])(
-            findById(current, GROANER_ID).action,
+            zombieById(current, GROANER_ID).action,
           ),
         ).toBe(true)
       }),
@@ -128,7 +130,7 @@ describe('the Big Leaguer', () => {
       model(current => {
         expect(hasEvent(current, 'ZombieLanded')).toBe(true)
         expect(current.player.hp).toBe(PLAYER_MAX_HP - CHUCKER_RULES.landDamage)
-        const landed = findById(current, GROANER_ID)
+        const landed = zombieById(current, GROANER_ID)
         expect(ZombieAction.isAnyOf(['Dazed'])(landed.action)).toBe(true)
         expect(
           Math.hypot(landed.x - current.player.x, landed.y - current.player.y),
@@ -137,12 +139,14 @@ describe('the Big Leaguer', () => {
       ...ticks(framesFor(CHUCKER_RULES.dazedMs) - 1, FRAME_MS),
       model(current => {
         expect(
-          ZombieAction.isAnyOf(['Dazed'])(findById(current, GROANER_ID).action),
+          ZombieAction.isAnyOf(['Dazed'])(
+            zombieById(current, GROANER_ID).action,
+          ),
         ).toBe(true)
       }),
       ...ticks(framesFor(HIT_STOP_HURT_MS) + 2, FRAME_MS),
       model(current => {
-        expect(findById(current, GROANER_ID).action).toEqual(
+        expect(zombieById(current, GROANER_ID).action).toEqual(
           ZombieAction.Roaming(),
         )
       }),
@@ -159,7 +163,9 @@ describe('the Big Leaguer', () => {
       model(current => {
         expect(current.player.hp).toBe(PLAYER_MAX_HP)
         expect(
-          ZombieAction.isAnyOf(['Dazed'])(findById(current, GROANER_ID).action),
+          ZombieAction.isAnyOf(['Dazed'])(
+            zombieById(current, GROANER_ID).action,
+          ),
         ).toBe(true)
       }),
     )
@@ -192,10 +198,12 @@ describe('the Big Leaguer', () => {
       tick(FRAME_MS),
       model(current => {
         expect(
-          ZombieState.isAnyOf(['Dying'])(findById(current, CHUCKER_ID).state),
+          ZombieState.isAnyOf(['Dying'])(zombieById(current, CHUCKER_ID).state),
         ).toBe(true)
         expect(
-          ZombieAction.isAnyOf(['Dazed'])(findById(current, GROANER_ID).action),
+          ZombieAction.isAnyOf(['Dazed'])(
+            zombieById(current, GROANER_ID).action,
+          ),
         ).toBe(true)
         expect(hasEvent(current, 'ZombieThrown')).toBe(false)
       }),
@@ -212,10 +220,10 @@ describe('the Big Leaguer', () => {
       given(sceneWith([far])),
       ...ticks(30, FRAME_MS),
       model(current => {
-        expect(findById(current, CHUCKER_ID).x).toBeLessThan(far.x - 4)
+        expect(zombieById(current, CHUCKER_ID).x).toBeLessThan(far.x - 4)
         expect(
           ZombieAction.isAnyOf(['Roaming'])(
-            findById(current, CHUCKER_ID).action,
+            zombieById(current, CHUCKER_ID).action,
           ),
         ).toBe(true)
       }),
@@ -297,16 +305,16 @@ describe('the Big Leaguer shield', () => {
       tick(FRAME_MS),
       model(current => {
         expect(hasEvent(current, 'ShieldRaised')).toBe(true)
-        const raised = findById(current, LEAGUER_ID)
+        const raised = zombieById(current, LEAGUER_ID)
         expect(isShielding(raised)).toBe(true)
-        expect(findById(current, HELD_ID).action).toEqual(
+        expect(zombieById(current, HELD_ID).action).toEqual(
           ZombieAction.Shielded({ byId: LEAGUER_ID }),
         )
       }),
       tick(FRAME_MS),
       model(current => {
-        expect(findById(current, HELD_ID).x).toBeLessThan(
-          findById(current, LEAGUER_ID).x,
+        expect(zombieById(current, HELD_ID).x).toBeLessThan(
+          zombieById(current, LEAGUER_ID).x,
         )
       }),
     )
@@ -324,9 +332,9 @@ describe('the Big Leaguer shield', () => {
       given(atPlayer(sceneWith([leaguer, ...others]))),
       ...ticks(3, FRAME_MS),
       model(current => {
-        expect(isShielding(findById(current, LEAGUER_ID))).toBe(false)
+        expect(isShielding(zombieById(current, LEAGUER_ID))).toBe(false)
         Array.forEach(others, other =>
-          expect(findById(current, other.id).action).toEqual(
+          expect(zombieById(current, other.id).action).toEqual(
             ZombieAction.Roaming(),
           ),
         )
@@ -346,8 +354,8 @@ describe('the Big Leaguer shield', () => {
       ),
       ...ticks(2, FRAME_MS),
       model(current => {
-        expect(findById(current, LEAGUER_ID).hp).toBeLessThan(LEAGUER_HP)
-        expect(findById(current, LEAGUER_ID).action).toEqual(
+        expect(zombieById(current, LEAGUER_ID).hp).toBeLessThan(LEAGUER_HP)
+        expect(zombieById(current, LEAGUER_ID).action).toEqual(
           expect.objectContaining({ _tag: 'Shielding', victimId: 30 }),
         )
       }),
@@ -365,8 +373,8 @@ describe('the Big Leaguer shield', () => {
       ),
       tick(FRAME_MS),
       model(current => {
-        expect(findById(current, LEAGUER_ID).hp).toBe(LEAGUER_HP)
-        expect(findById(current, HELD_ID).hp).toBe(1)
+        expect(zombieById(current, LEAGUER_ID).hp).toBe(LEAGUER_HP)
+        expect(zombieById(current, HELD_ID).hp).toBe(1)
       }),
     )
   })
@@ -389,8 +397,8 @@ describe('the Big Leaguer shield', () => {
         given(withBullets(atPlayer(sceneWith([leaguer!, held!])), [shot])),
         tick(FRAME_MS),
         model(current => {
-          expect(findById(current, LEAGUER_ID).hp).toBe(LEAGUER_HP - 2)
-          expect(findById(current, HELD_ID).hp).toBe(3)
+          expect(zombieById(current, LEAGUER_ID).hp).toBe(LEAGUER_HP - 2)
+          expect(zombieById(current, HELD_ID).hp).toBe(3)
         }),
       ),
     )
@@ -409,8 +417,8 @@ describe('the Big Leaguer shield', () => {
       tick(FRAME_MS),
       model(current => {
         expect(hasEvent(current, 'Exploded')).toBe(true)
-        expect(findById(current, LEAGUER_ID).hp).toBeLessThan(LEAGUER_HP)
-        expect(findById(current, HELD_ID).hp).toBe(3)
+        expect(zombieById(current, LEAGUER_ID).hp).toBeLessThan(LEAGUER_HP)
+        expect(zombieById(current, HELD_ID).hp).toBe(3)
       }),
     )
   })
@@ -431,7 +439,7 @@ describe('the Big Leaguer shield', () => {
           model((current: Model) => {
             frames.push(
               ZombieAction.isAnyOf(['Hefting'])(
-                findById(current, LEAGUER_ID).action,
+                zombieById(current, LEAGUER_ID).action,
               ) || hasEvent(current, 'ZombieThrown'),
             )
           }),
@@ -453,17 +461,17 @@ describe('the Big Leaguer shield', () => {
       ),
       ...ticks(2, FRAME_MS),
       model(current => {
-        expect(findById(current, LEAGUER_ID).action).toEqual(
+        expect(zombieById(current, LEAGUER_ID).action).toEqual(
           expect.objectContaining({ _tag: 'Winded' }),
         )
       }),
       ...ticks(framesFor(CHUCKER_RULES.shieldCooldownMs) - 4, FRAME_MS),
       model(current => {
-        expect(isShielding(findById(current, LEAGUER_ID))).toBe(false)
+        expect(isShielding(zombieById(current, LEAGUER_ID))).toBe(false)
       }),
       ...ticks(6, FRAME_MS),
       model(current => {
-        expect(findById(current, LEAGUER_ID).action).toEqual(
+        expect(zombieById(current, LEAGUER_ID).action).toEqual(
           expect.objectContaining({ _tag: 'Shielding', victimId: 50 }),
         )
       }),
@@ -477,14 +485,14 @@ describe('the Big Leaguer shield', () => {
       given(atPlayer(sceneWith([leaguer!, held!]))),
       ...ticks(framesFor(CHUCKER_RULES.shieldMs) - 2, FRAME_MS),
       model(current => {
-        expect(isShielding(findById(current, LEAGUER_ID))).toBe(true)
+        expect(isShielding(zombieById(current, LEAGUER_ID))).toBe(true)
       }),
       ...ticks(3, FRAME_MS),
       model(current => {
-        expect(findById(current, LEAGUER_ID).action).toEqual(
+        expect(zombieById(current, LEAGUER_ID).action).toEqual(
           expect.objectContaining({ _tag: 'Winded' }),
         )
-        expect(findById(current, HELD_ID).action).toEqual(
+        expect(zombieById(current, HELD_ID).action).toEqual(
           expect.objectContaining({ _tag: 'Dazed' }),
         )
       }),

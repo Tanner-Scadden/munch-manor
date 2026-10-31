@@ -24,20 +24,11 @@ import {
   type Zombie,
   ZombieAction,
   ZombieState,
-  initialModel,
 } from './model'
-import { SURFACE, closeDialog, press, showDialog, tick } from './testing'
-import { asVeteran } from './veteran'
+import { newPlayerReady, readyModel } from './model.fixture'
+import { closeDialog, press, showDialog, tick } from './testing'
 import { FINAL_WAVE } from './wavePlans'
 import { ZOMBIE_KINDS } from './zombies'
-
-const firstVisit: Model = modifyFields(initialModel, {
-  maybeSurface: () => Option.some(SURFACE),
-})
-
-const veteran: Model = modifyFields(asVeteran(initialModel), {
-  maybeSurface: () => Option.some(SURFACE),
-})
 
 const pick = (difficulty: Difficulty) =>
   message(Message.ClickedDifficultyCardButton({ difficulty }))
@@ -62,7 +53,7 @@ describe('the first-time difficulty card', () => {
   test('the first PLAY asks, the pick starts the campaign, and it never asks again', () => {
     story(
       update,
-      given(firstVisit),
+      given(newPlayerReady),
       message(Message.ClickedCampaignButton()),
       showDialog(),
       model(current => {
@@ -88,7 +79,7 @@ describe('the first-time difficulty card', () => {
   test('E switches the mode, then Enter asks too, and the pick starts endless', () => {
     story(
       update,
-      given(firstVisit),
+      given(newPlayerReady),
       press('KeyE'),
       model(current => {
         expect(current.panelDialog.isOpen).toBe(false)
@@ -114,7 +105,7 @@ describe('the first-time difficulty card', () => {
   test('closing the card starts nothing, and the next PLAY asks again', () => {
     story(
       update,
-      given(firstVisit),
+      given(newPlayerReady),
       press('Enter'),
       showDialog(),
       message(
@@ -140,7 +131,7 @@ describe('the first-time difficulty card', () => {
   test('a veteran who has picked goes straight in', () => {
     story(
       update,
-      given(veteran),
+      given(readyModel),
       press('Enter'),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
@@ -152,7 +143,7 @@ describe('the first-time difficulty card', () => {
   test('Nightmare is locked until a Hard win', () => {
     story(
       update,
-      given(firstVisit),
+      given(newPlayerReady),
       press('Enter'),
       showDialog(),
       pick('Nightmare'),
@@ -175,7 +166,7 @@ describe('difficulty by PLAY', () => {
   test('the picker by PLAY changes the difficulty, but not Nightmare while locked', () => {
     story(
       update,
-      given(veteran),
+      given(readyModel),
       message(Message.ClickedDifficultyBadge()),
       showDialog(),
       message(Message.ClickedDifficultyCardButton({ difficulty: 'Nightmare' })),
@@ -196,7 +187,7 @@ describe('difficulty by PLAY', () => {
   test('X opens the picker on the home menu', () => {
     story(
       update,
-      given(veteran),
+      given(readyModel),
       press('KeyX'),
       showDialog(),
       model(current => {
@@ -210,7 +201,7 @@ describe('difficulty by PLAY', () => {
     story(
       update,
       given(
-        modifyFields(pickerOpen(veteran), {
+        modifyFields(pickerOpen(readyModel), {
           phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] }),
         }),
       ),
@@ -232,7 +223,7 @@ describe('unlocking Nightmare', () => {
   test('a Hard campaign win unlocks it, the next run settles it, and the picker can pick it', () => {
     story(
       update,
-      given(winning(withDifficulty(veteran, 'Hard'))),
+      given(winning(withDifficulty(readyModel, 'Hard'))),
       tick(FIXED_STEP_MS),
       model(current => {
         expect(Phase.guards.Victory(current.phase)).toBe(true)
@@ -248,7 +239,7 @@ describe('unlocking Nightmare', () => {
 
     story(
       update,
-      given(withDifficulty(veteran, 'Hard', 'JustUnlocked')),
+      given(withDifficulty(readyModel, 'Hard', 'JustUnlocked')),
       press('Enter'),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
@@ -258,7 +249,7 @@ describe('unlocking Nightmare', () => {
 
     story(
       update,
-      given(pickerOpen(withDifficulty(veteran, 'Hard', 'Unlocked'))),
+      given(pickerOpen(withDifficulty(readyModel, 'Hard', 'Unlocked'))),
       message(Message.ClickedDifficultyCardButton({ difficulty: 'Nightmare' })),
       closeDialog(),
       model(current => {
@@ -270,7 +261,7 @@ describe('unlocking Nightmare', () => {
   test('a Normal win leaves it locked', () => {
     story(
       update,
-      given(winning(veteran)),
+      given(winning(readyModel)),
       tick(FIXED_STEP_MS),
       model(current => {
         expect(Phase.guards.Victory(current.phase)).toBe(true)
@@ -283,7 +274,7 @@ describe('unlocking Nightmare', () => {
 describe('the multipliers', () => {
   const startedOn = (difficulty: Difficulty): Model =>
     update(
-      withDifficulty(veteran, difficulty, 'Unlocked'),
+      withDifficulty(readyModel, difficulty, 'Unlocked'),
       Message.PressedKey({ code: 'Enter' }),
     ).model
 
@@ -331,7 +322,7 @@ describe('the multipliers', () => {
     }
     const bitten = (difficulty: Difficulty): number =>
       update(
-        modifyFields(withDifficulty(veteran, difficulty, 'Unlocked'), {
+        modifyFields(withDifficulty(readyModel, difficulty, 'Unlocked'), {
           phase: () => Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [] }),
           zombies: () => [lug],
           player: player =>
@@ -343,7 +334,7 @@ describe('the multipliers', () => {
         }),
         Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
       ).model.player.hp
-    const full = veteran.player.hp
+    const full = readyModel.player.hp
     expect(full - bitten('Easy')).toBe(1)
     expect(full - bitten('Normal')).toBe(2)
     expect(full - bitten('Nightmare')).toBe(3)

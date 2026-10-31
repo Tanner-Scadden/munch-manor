@@ -22,7 +22,7 @@ import {
   ShopState,
   initialModel,
 } from './model'
-import { DISTANT_SPAWN, atSeat } from './model.fixture'
+import { DISTANT_SPAWN, atSeat, home } from './model.fixture'
 import {
   COOP_RULES,
   type SeatedPlayer,
@@ -36,7 +36,6 @@ import { PURCHASE_RULES } from './purchase'
 import { SHOP_ITEMS, STALL_BOX } from './shop'
 import { SeatAction, applySeatAction, soloInputs, stepWorld } from './stepWorld'
 import { SURFACE, ticks, zombieOf } from './testing'
-import { asVeteran } from './veteran'
 import { beginPreparation, waveBonus } from './waves'
 import { WEAPONS, freshGun, heldGun } from './weapons'
 import { type World, withWorld } from './world'
@@ -57,8 +56,6 @@ const LEFT_X = 60
 const RIGHT_X = 240
 const ROW_Y = 104
 
-const veteranModel = asVeteran(initialModel)
-
 const runningWave = Phase.Wave({
   wave: 3,
   elapsedMs: 0,
@@ -67,7 +64,7 @@ const runningWave = Phase.Wave({
 
 const crewOf = (count: number, phase: Phase = runningWave): Model =>
   withWorld(
-    modifyFields(veteranModel, {
+    modifyFields(home, {
       maybeSurface: () => Option.some(SURFACE),
       phase: () => phase,
     }),
@@ -643,7 +640,7 @@ describe('difficulty scales with the player count', () => {
 
   test('one player rolls the wave exactly as single player always did', () => {
     const solo = beginPreparation(
-      modifyFields(veteranModel, { phase: () => Phase.Ready() }),
+      modifyFields(home, { phase: () => Phase.Ready() }),
       4,
       30_000,
     )

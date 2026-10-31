@@ -1,8 +1,6 @@
 import { Array, Option, Order } from 'effect'
 import {
-  Command,
   Mount,
-  Subscription,
   all,
   click,
   expect,
@@ -18,17 +16,17 @@ import { describe, expect as expectValue, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { FIXED_STEP_MS, PREPARATION_MS } from './constants'
+import { PREPARATION_MS } from './constants'
 import * as Coop from './coop/model'
-import { Message } from './message'
+import type { Message } from './message'
 import { type Model, Phase, ShopState, initialModel } from './model'
 import { homeAfterRead } from './model.fixture'
 import {
   ROOT,
-  SCENE_SUBSCRIPTIONS,
   holdingSecond,
   measureSurface,
   nodesOf,
+  walkIntoStallInScene,
 } from './testing'
 
 // NOTE: every menu dialog is in the page on every frame, and a shut one is
@@ -128,24 +126,13 @@ const atStall: Model = modifyFields(initialModel, {
   wallet: () => ({ balance: 180, earned: 180, shown: 180 }),
 })
 
-const walkIntoStall = [
-  Subscription.emit(
-    SCENE_SUBSCRIPTIONS.frame,
-    Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
-  ),
-  Command.resolve(
-    Dialog.test.ShowDialog,
-    DialogBlock.Message.SucceededShowDialog(),
-  ),
-]
-
 describe('the shop dialog', () => {
   test('walking into the stall opens one shop, keyed on its id, and its buy buttons buy', () => {
     scene(
       ROOT,
       given(atStall),
       measureSurface,
-      ...walkIntoStall,
+      ...walkIntoStallInScene(),
       expectAll(all.selector('dialog#shop')).toHaveCount(1),
       expectAll(all.selector('dialog[open]')).toHaveCount(1),
       holdsDialogsApart,

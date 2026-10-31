@@ -4,7 +4,7 @@ import { Canvas } from 'foldkit'
 import { type Level, findStrike, levelOf } from './arena'
 import { BOSS_RULES, type BossBar, isEnraged, maybeStandingBoss } from './boss'
 import { VIEW_WIDTH } from './constants'
-import { FULL_TURN, HEALTH_BAR_BACK_COLOR } from './drawing'
+import { FULL_TURN, HEALTH_BAR_BACK_COLOR, tellAlpha } from './drawing'
 import { bakeText, placeBaked } from './font'
 import { clamp } from './geometry'
 import {
@@ -27,11 +27,8 @@ const RING_FILL_STRONG = 0.34
 const RING_EDGE_COLOR = '#ff4a4f'
 const RING_SWEEP_COLOR = '#ffe066'
 
-const alphaOf = (faint: number, strong: number, progress: number): number =>
-  Math.round((faint + (strong - faint) * progress) * 100) / 100
-
 const ringFill = (progress: number): string =>
-  `rgba(255, 58, 63, ${alphaOf(RING_FILL_FAINT, RING_FILL_STRONG, progress)})`
+  `rgba(255, 58, 63, ${tellAlpha(RING_FILL_FAINT, RING_FILL_STRONG, progress)})`
 
 const progressOf = (remainingMs: number, durationMs: number): number =>
   clamp(1 - remainingMs / Math.max(1, durationMs), 0, 1)
@@ -116,7 +113,7 @@ const arrowHead = (lane: Lane): ReadonlyArray<Canvas.PathInstruction> => {
 }
 
 const laneFill = (progress: number): string =>
-  `rgba(255, 58, 63, ${alphaOf(0.14, 0.32, progress)})`
+  `rgba(255, 58, 63, ${tellAlpha(0.14, 0.32, progress)})`
 
 const chargeLaneShapes = (
   lane: Lane,
@@ -194,7 +191,7 @@ const GLOB_RADIUS = 4
 const MOUTH_ABOVE_PX = 8
 
 const markerFill = (progress: number): string =>
-  `rgba(150, 230, 70, ${alphaOf(0.1, 0.35, progress)})`
+  `rgba(150, 230, 70, ${tellAlpha(0.1, 0.35, progress)})`
 
 const globPoint = (from: Vector, to: Vector, progress: number): Vector => ({
   x: from.x + (to.x - from.x) * progress,
@@ -237,7 +234,7 @@ const globGroundShapes = (glob: Glob): ReadonlyArray<Canvas.Shape> =>
       const x = Math.round(at.x)
       const y = Math.round(at.y)
       const radius = BOSS_RULES.puddleRadius
-      const goo = `rgba(84, 150, 44, ${alphaOf(0, PUDDLE_ALPHA, fade)})`
+      const goo = `rgba(84, 150, 44, ${tellAlpha(0, PUDDLE_ALPHA, fade)})`
       return [
         Canvas.Circle({ x, y, radius: radius - 1, fill: goo }),
         Canvas.Circle({
@@ -257,7 +254,7 @@ const globGroundShapes = (glob: Glob): ReadonlyArray<Canvas.Shape> =>
           y: y - 4,
           width: 3,
           height: 2,
-          fill: `rgba(200, 245, 130, ${alphaOf(0, PUDDLE_SHINE_ALPHA, fade)})`,
+          fill: `rgba(200, 245, 130, ${tellAlpha(0, PUDDLE_SHINE_ALPHA, fade)})`,
         }),
       ]
     },

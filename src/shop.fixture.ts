@@ -18,7 +18,7 @@ import {
   ShopState,
   initialModel,
 } from './model'
-import { DISTANT_SPAWN, pastFirstBreak } from './model.fixture'
+import { DISTANT_SPAWN, pastFirstBreak, withPlayerAt } from './model.fixture'
 import { holdingSecond } from './testing'
 import { FocusShopItem } from './update/shop'
 import { asVeteran } from './veteran'
@@ -50,7 +50,7 @@ export const preparing = (wave: number): Phase =>
   })
 
 export const besideStall = (phase: Phase): Model =>
-  modifyFields(at(shopReady, BESIDE_STALL.x, BESIDE_STALL.y), {
+  modifyFields(withPlayerAt(shopReady, BESIDE_STALL.x, BESIDE_STALL.y), {
     phase: () => phase,
   })
 
@@ -95,8 +95,3 @@ export const holdingSpare = (
 ) => holdingSecond(gun(kind, rounds))
 
 const BESIDE_STALL = { x: 241, y: 142 }
-
-export const at = (base: Model, x: number, y: number): Model =>
-  modifyFields(base, {
-    player: player => modifyFields(player, { x: () => x, y: () => y }),
-  })

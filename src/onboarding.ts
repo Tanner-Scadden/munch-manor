@@ -9,6 +9,7 @@ import type { Model } from './model'
 import { landscapeFrameOffset, screenOf } from './screen'
 import { TURRET_WEAPON, maybeSelectedKind } from './traps'
 import { isKitchenTourOn } from './tutorialRules'
+import { isBreak } from './waves'
 import {
   BreakClock,
   DebutCard,
@@ -340,9 +341,6 @@ type HintRule = Readonly<{
 const ageWhen = (isShown: boolean, ageMs: number): Option.Option<number> =>
   isShown ? Option.some(ageMs) : Option.none()
 
-const isPreparation = (model: Model): boolean =>
-  Phase.isAnyOf(['Preparation'])(model.phase)
-
 const isBreakWith = (
   model: Model,
   isWanted: (wave: number, clock: BreakClock) => boolean,
@@ -363,7 +361,7 @@ const isLaterTimedBreak = (model: Model): boolean =>
   isBreakWith(model, isTimedBreak)
 
 const isTrapHintFor = (model: Model, kind: 'Barricade' | 'Turret'): boolean =>
-  isPreparation(model) &&
+  isBreak(model) &&
   TrapHint.isAnyOf(['Showing'])(model.trapHint) &&
   Option.contains(maybeSelectedKind(model), kind)
 

@@ -60,7 +60,7 @@ import {
   FIRST_SHOP_CATEGORY,
   FixedShopItemId,
   type GameEvent,
-  type GunSlot,
+  GunSlot,
   type Intent,
   Party,
   Phase,
@@ -226,7 +226,7 @@ const SIMPLE_ACTIONS: ReadonlyArray<SeatAction> = [
 
 // NOTE: drawing a gun by its slot follows the simple actions' codes.
 const DRAW_BASE = 8
-const DRAW_SLOTS: ReadonlyArray<GunSlot> = ['First', 'Second']
+const DRAW_SLOTS = GunSlot.literals
 
 const drawCode = (slot: GunSlot): number =>
   DRAW_BASE + (slot === 'First' ? 0 : 1)
@@ -767,6 +767,10 @@ export const roomWorldFor = (
     blend: blendOwn,
   },
 })
+
+// NOTE: the room's World with the lobby's first settings, as the client
+// names it (src/coop/seam.ts), the dev page plays it, and tests step it.
+export const ROOM_WORLD = roomWorldFor(DEFAULT_ROOM_SETTINGS)
 
 // NOTE: the seat a client draws itself as: its own player in the World's
 // per-player fields (src/party.ts, focusSeat).

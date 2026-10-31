@@ -30,7 +30,12 @@ import { soloSeat } from './party'
 import { nextRandom } from './prng'
 import { forgetTutorial } from './save'
 import { maybeBubbleKind } from './stallBubble'
-import { BELOW_KITCHEN_DOOR, HOLD_TICKS, nextFrame } from './testing'
+import {
+  BELOW_KITCHEN_DOOR,
+  FRIDGE_OPEN_TICKS,
+  HOLD_TICKS,
+  nextFrame,
+} from './testing'
 import { isKitchenTourOn } from './tutorialRules'
 import { asTutorialDone } from './veteran'
 
@@ -40,7 +45,6 @@ import { asTutorialDone } from './veteran'
 // weapon, and the clock runs again once the fridge has been tried.
 
 const FRAME_MS = FIXED_STEP_MS
-const OPEN_FRAMES = Math.ceil(FRIDGE_RULES.openMs / FRAME_MS) + 1
 const OFFER_FRAMES = Math.ceil(FRIDGE_RULES.offerMs / FRAME_MS) + 2
 const BREAK_MS = 15_000
 
@@ -167,7 +171,7 @@ describe('the kitchen tour', () => {
   test('taking the prize ends it, and the clock runs', () => {
     const offered = frames(
       holdEnter(frames(atOpenFridge('Cooker'), 1)),
-      OPEN_FRAMES,
+      FRIDGE_OPEN_TICKS,
     )
     expect(FridgeDoor.isAnyOf(['Offering'])(offered.fridge.door)).toBe(true)
     const taken = frames(holdEnter(offered), 1)
@@ -178,7 +182,7 @@ describe('the kitchen tour', () => {
   test('walking away from the prize ends it, and the clock runs', () => {
     const offered = frames(
       holdEnter(frames(atOpenFridge('Pan'), 1)),
-      OPEN_FRAMES,
+      FRIDGE_OPEN_TICKS,
     )
     const left = frames(walkAway(offered), 3)
     expect(isTourDone(left)).toBe(true)
@@ -188,7 +192,7 @@ describe('the kitchen tour', () => {
   test('letting the prize time out ends it, and the clock runs', () => {
     const offered = frames(
       holdEnter(frames(atOpenFridge('Pan'), 1)),
-      OPEN_FRAMES,
+      FRIDGE_OPEN_TICKS,
     )
     const sunk = frames(offered, OFFER_FRAMES)
     expect(isTourDone(sunk)).toBe(true)
@@ -213,7 +217,7 @@ describe('the kitchen tour', () => {
           }),
       })
       expect(isKitchenTourOn(gagged)).toBe(true)
-      const shut = frames(gagged, OPEN_FRAMES)
+      const shut = frames(gagged, FRIDGE_OPEN_TICKS)
       expect(isTourDone(shut)).toBe(true)
       expect(remainingOf(frames(shut, 10))).toBeLessThan(BREAK_MS)
     },

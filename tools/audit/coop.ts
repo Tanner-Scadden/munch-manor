@@ -32,6 +32,8 @@
 import { Schema } from 'effect'
 import type { BrowserContext, Page } from 'playwright-core'
 
+import { Vector } from '@game/entitySchema'
+
 import { decodeJson, encodeJson } from '../json'
 import {
   SHOTS_DIR,
@@ -371,12 +373,10 @@ const ownSeatOf = async (page: Page): Promise<Seat | undefined> => {
 // NOTE: the parlour fills the 320 by 180 view while the kitchen is shut,
 // so the camera stands still and a world point is a fixed point on the
 // game canvas.
-const ClientPoint = Schema.Struct({ x: Schema.Number, y: Schema.Number })
-
 const toClient = async (page: Page, x: number, y: number) =>
   evaluateAs(
     page,
-    ClientPoint,
+    Vector,
     ([worldX, worldY]) => {
       const canvas = document.querySelector('.game-canvas')
       if (canvas === null) {

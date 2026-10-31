@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { type Writer, makeReader, makeWriter } from '@munch/netcode'
 
 import { freshFight } from './boss'
-import { playRoom } from './roomTesting'
+import { TWO_SEAT_ROOM, playRoom } from './roomTesting'
 import { DEFAULT_ROOM_SETTINGS, startRoomWorld } from './roomWorld'
 import { beginPreparation } from './waves'
 import { type WireHint, wireHintOf } from './wireNumber'
@@ -186,10 +186,8 @@ const RUSHING = BossMove.Rushing({
   remainingPx: 140.25,
 })
 
-const ROOM = startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS)
-
 const withBossMove = (move: BossMove): World => ({
-  ...ROOM.world,
+  ...TWO_SEAT_ROOM.world,
   boss: freshFight(BOSS_ID, move),
 })
 

@@ -18,6 +18,7 @@ import { isCoop } from './party'
 import { countPurchase } from './stats'
 import {
   TRAPS,
+  TRAP_KIND_ORDER,
   healthShare,
   isDamaged,
   ownedCount,
@@ -387,15 +388,10 @@ export type TrapShelf = Readonly<{
   repairs: ReadonlyArray<ShopItemId>
 }>
 
-const TRAP_SHELF_KINDS: Array.NonEmptyReadonlyArray<TrapKind> = [
-  'Barricade',
-  'Turret',
-]
-
 export const trapShelves = (
   model: World,
 ): Array.NonEmptyReadonlyArray<TrapShelf> =>
-  Array.map(TRAP_SHELF_KINDS, kind => ({
+  Array.map(TRAP_KIND_ORDER, kind => ({
     kind,
     item: kind,
     repairs: pipe(

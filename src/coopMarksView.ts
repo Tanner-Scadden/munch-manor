@@ -8,7 +8,8 @@ import type { Model } from './model'
 import { isBledOut, isCoop, leadSeatOf, playersOf } from './party'
 import { seatColorOf } from './partyView'
 import { TOP_LEFT, bakeShapes, placeAt, spriteShapes } from './sprite'
-import { Phase, type PlayerSlot } from './worldSchema'
+import { isBreak } from './waves'
+import type { PlayerSlot } from './worldSchema'
 
 // What an online co-op run adds over the players (MULTIPLAYER.md, Phase
 // 2): each teammate's name over their head, READY over everyone who is
@@ -175,9 +176,6 @@ const nameTagShapes = (
 // stands over the tag.
 const NAME_BOTTOM_LIFT_PX = 8
 const READY_LIFT_PX = 21
-
-const isBreak = (model: Model): boolean =>
-  Phase.isAnyOf(['Preparation'])(model.phase)
 
 // NOTE: in the world's own pixels, drawn with the players' overheads.
 export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {

@@ -4,20 +4,17 @@
 
 import { describe, expect, test } from 'vitest'
 
-import { update } from '../../src/main'
 import { Message } from '../../src/message'
 import type { Model } from '../../src/model'
+import { modelAfter } from '../../src/testing'
 import { firstDifference } from './diff'
 import { gameplayOf } from './fields'
 import { startedRun } from './script'
 
-const send = (model: Model, message: Message): Model =>
-  update(model, message).model
-
 const holding = (model: Model): Model =>
-  send(
-    send(
-      send(model, Message.PressedKey({ code: 'KeyD' })),
+  modelAfter(
+    modelAfter(
+      modelAfter(model, Message.PressedKey({ code: 'KeyD' })),
       Message.MovedMouse({ clientX: 300, clientY: 40 }),
     ),
     Message.PressedPointer({
@@ -44,13 +41,17 @@ const worldOf = (model: Model): Readonly<Record<string, unknown>> => {
 
 const playFor = (model: Model, seconds: number, hz: number): Model =>
   Array.from({ length: seconds * hz }).reduce<Model>(
-    current => send(current, Message.TickedFrame({ deltaTime: 1000 / hz })),
+    current =>
+      modelAfter(current, Message.TickedFrame({ deltaTime: 1000 / hz })),
     model,
   )
 
 describe('the fixed step', () => {
   const started = holding(
-    send(startedRun(3, 'Campaign'), Message.PressedKey({ code: 'Enter' })),
+    modelAfter(
+      startedRun(3, 'Campaign'),
+      Message.PressedKey({ code: 'Enter' }),
+    ),
   )
   const at60 = playFor(started, 4, 60)
 

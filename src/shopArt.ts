@@ -16,6 +16,7 @@ import {
   rattlesPixels,
 } from './shopkeeper'
 import type { Palette } from './sprite'
+import { GUN_TIER_TRIMS } from './sprites/guns'
 import { HEART_PIXELS } from './sprites/hearts'
 
 // NOTE: the shop's pictures are pixel maps turned into SVG once, at module
@@ -47,17 +48,10 @@ const GUN_BASE: Palette = {
   N: '#ff7ab8',
 }
 
-const GUN_TRIMS: ReadonlyArray<Palette> = [
-  {},
-  { H: '#9be3ff' },
-  { H: '#ff9df0', M: '#7a3fa0' },
-  { G: '#e0a92e', H: '#fff3a0', M: '#a8741a' },
-]
-
 const trimmed = (tier: number): Palette =>
   Record.union(
     GUN_BASE,
-    GUN_TRIMS[Math.min(tier, GUN_TRIMS.length - 1)] ?? {},
+    GUN_TIER_TRIMS[Math.min(tier, GUN_TIER_TRIMS.length - 1)] ?? {},
     (_base, trim) => trim,
   )
 
@@ -135,7 +129,7 @@ const PEA_COLORS: Palette = { P: '#4f9a32', Q: '#9be36a' }
 
 const GUN_ART: Readonly<Record<WeaponKind, ReadonlyArray<ShopArt>>> =
   Record.map(GUN_PIXELS, pixels =>
-    Array.makeBy(GUN_TRIMS.length, tier =>
+    Array.makeBy(GUN_TIER_TRIMS.length, tier =>
       artOf(
         pixels,
         Record.union(trimmed(tier), PEA_COLORS, (_a, b) => b),
@@ -144,7 +138,7 @@ const GUN_ART: Readonly<Record<WeaponKind, ReadonlyArray<ShopArt>>> =
   )
 
 export const gunArt = (weapon: WeaponKind, tier: number): ShopArt =>
-  GUN_ART[weapon][Math.min(tier, GUN_TRIMS.length - 1)] ??
+  GUN_ART[weapon][Math.min(tier, GUN_TIER_TRIMS.length - 1)] ??
   artOf(GUN_PIXELS[weapon], GUN_BASE)
 
 // GOODS
