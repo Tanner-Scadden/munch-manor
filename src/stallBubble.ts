@@ -3,6 +3,7 @@ import { Canvas } from 'foldkit'
 
 import { levelOf } from './arena'
 import { type Camera, viewBoxOf, worldToView } from './camera'
+import { AmmoTip, Tour } from './clientSchema'
 import { FULL_TURN, placeSprite } from './drawing'
 import { COIN_SPRITE, COIN_WIDTH } from './font'
 import { kitchenStepOf, maybeKitchenMark } from './kitchenTour'
@@ -14,11 +15,11 @@ import {
   type Palette,
   type Sprite,
   TOP_LEFT,
-  TRAP_ICONS,
   bakeShapes,
   spriteShapes,
 } from './sprite'
-import { AmmoTip, Tour, TrapHint, type Vector } from './worldSchema'
+import { TRAP_ICONS } from './sprites/traps'
+import { TrapHint, type Vector } from './worldSchema'
 
 // NOTE: Rattles calls from his stall with a speech bubble of pictures: a
 // coin and what he sells that the player needs now. Traps, in the breaks

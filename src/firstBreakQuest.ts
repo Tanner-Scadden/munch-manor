@@ -2,12 +2,13 @@ import { Array, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
+import { Tour } from './clientSchema'
 import { isPending } from './lessons'
 import type { Model } from './model'
 import { isCoop } from './party'
 import { isBrowsing, isShopOpenFor } from './shop'
 import { barricadedDoors } from './traps'
-import { type DoorId, Tour, TrapHint, type Vector } from './worldSchema'
+import { type DoorId, TrapHint, type Vector } from './worldSchema'
 
 // NOTE: the guided first break, from playtesters who wanted the game to walk
 // them to the shop after the first wave, as other games do. One step at a

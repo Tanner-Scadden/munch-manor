@@ -3,7 +3,8 @@ import type { Canvas } from 'foldkit'
 
 import type { KillCounts, Model, ZombieKind } from './model'
 import { ZOMBIE_NAMES } from './names'
-import { type WornFrames, ZOMBIE_SPRITES, standaloneSource } from './sprite'
+import { standaloneSource } from './sprite'
+import { type WornFrames, ZOMBIE_SPRITES } from './sprites/zombies'
 import { ZOMBIE_KINDS } from './zombies'
 
 // ENTRIES

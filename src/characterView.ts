@@ -51,7 +51,8 @@ import {
   type ProfileFx,
 } from './model'
 import { GUN_HOLD_PX } from './playerView'
-import { type Facing, frameAt, group, gunSprite } from './sprite'
+import { type Facing, frameAt, group } from './sprite'
+import { gunSprite } from './sprites/guns'
 
 // PARTS
 

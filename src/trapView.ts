@@ -28,17 +28,14 @@ import {
   type Vector,
 } from './model'
 import { MUZZLE_FLASHES } from './playerView'
+import { type Facing, type Sprite, type Tone, group } from './sprite'
+import { gunSprite } from './sprites/guns'
 import {
   BARRICADE_SPRITES,
-  type Facing,
   GNOME_HEIGHT,
   GNOME_SPRITES,
   type Lay,
-  type Sprite,
-  type Tone,
-  group,
-  gunSprite,
-} from './sprite'
+} from './sprites/traps'
 import {
   PlaceVerdict,
   TRAPS,

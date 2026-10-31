@@ -56,14 +56,13 @@ import {
   type Palette,
   type Sprite,
   TOP_LEFT,
-  ZOMBIE_SPRITES,
   frameAt,
   group,
-  gunSprite,
   placeAt,
-  showcaseWalk,
   spriteShapes,
 } from './sprite'
+import { gunSprite } from './sprites/guns'
+import { ZOMBIE_SPRITES, showcaseWalk } from './sprites/zombies'
 import {
   FINAL_WAVE,
   debutKinds,

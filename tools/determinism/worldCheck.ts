@@ -44,19 +44,24 @@ const WORKERD_PORT = 8796
 
 // NOTE: game modules a room must never carry: the client Model and its UI,
 // the views and art, the camera and raw input, audio, the store and sync,
-// analytics, onboarding's hints, the run reset, and the cosmetics.
+// analytics, onboarding's hints, the run reset, the cosmetics, and the
+// client's own Schemas.
 const FORBIDDEN_GAME_MODULES: ReadonlyArray<RegExp> = [
   /^src\/model\.ts$/,
+  /^src\/clientSchema\.ts$/,
   /^src\/main\.ts$/,
   /^src\/entry\.ts$/,
   /^src\/view\.ts$/,
   /View\.ts$/,
   /^src\/(camera|input|screen|touchControls|thumbArea)\.ts$/,
   /^src\/(sprite|spriteAtlas|png|font|icons|layers|drawing|room)\.ts$/,
-  /^src\/(audio|music|musicPlan)\.ts$/,
+  /^src\/sprites\//,
+  /^src\/(audio|audioRecipes|zombieRecipes|soundRecipe)\.ts$/,
+  /^src\/(music|musicPlan)\.ts$/,
   /^src\/(store|storeSqlite|save|playerScope|playerSync)\.ts$/,
   /^src\/(commands|subscriptions|analyticsBeacon|support|changelog)\.ts$/,
-  /^src\/(onboarding|runReset|frame|particles|hud|menus|screens)\.ts$/,
+  /^src\/(onboarding|runReset|frame|hud|menus|screens)\.ts$/,
+  /^src\/(particles|particlePhysics|particleBursts)\.ts$/,
   /^src\/update\//,
   /^src\/coop\//,
   /^src\/roomTesting\.ts$/,

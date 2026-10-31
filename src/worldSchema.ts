@@ -7,17 +7,43 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import { PARLOUR } from './arena'
 import { PISTOL_MAGAZINE, PLAYER_MAX_HP } from './constants'
-import type { Appearance } from './playerData'
-import { Difficulty } from './playerData'
 import {
-  Heading,
-  MillisNumber,
-  Point,
-  PositionNumber,
-  Push,
-  UnitNumber,
-  VelocityNumber,
-} from './wireNumber'
+  Arsenal,
+  BoostKind,
+  BoostTimer,
+  Boosts,
+  BossAttack,
+  BossMood,
+  BossMove,
+  Bullet,
+  Charge,
+  DoorId,
+  ExitId,
+  FarAttack,
+  Formation,
+  Fridge,
+  FridgeDoor,
+  FridgePrize,
+  Glob,
+  Intent,
+  Invulnerability,
+  LevelState,
+  Lob,
+  Loot,
+  Melee,
+  Pickup,
+  PickupKind,
+  Player,
+  Prize,
+  Reload,
+  TrapKind,
+  Vector,
+  WeaponKind,
+  Zombie,
+  ZombieKind,
+} from './entitySchema'
+import { Difficulty } from './playerData'
+import { Heading, MillisNumber, PositionNumber, UnitNumber } from './wireNumber'
 
 export {
   Appearance,
@@ -31,614 +57,7 @@ export {
   ShirtColor,
   SkinTone,
 } from './playerData'
-
-export const Vector = Schema.Struct({ x: Schema.Number, y: Schema.Number })
-export type Vector = typeof Vector.Type
-
-export const SurfaceRectangle = Schema.Struct({
-  left: Schema.Number,
-  top: Schema.Number,
-  width: Schema.Number,
-  height: Schema.Number,
-})
-export type SurfaceRectangle = typeof SurfaceRectangle.Type
-
-export const Stick = defineTaggedUnion({
-  Idle: {},
-  Active: {
-    pointerId: Schema.Number,
-    originX: Schema.Number,
-    originY: Schema.Number,
-    currentX: Schema.Number,
-    currentY: Schema.Number,
-  },
-})
-export type Stick = typeof Stick.Type
-
-export const MouseButton = defineTaggedUnion({
-  Released: {},
-  Held: { pointerId: Schema.Number },
-})
-export type MouseButton = typeof MouseButton.Type
-
-// NOTE: a finger holding the touch HUD's hold-to-buy button, by its pointer,
-// so lifting that finger lets go and no other finger does.
-export const HoldButton = defineTaggedUnion({
-  Released: {},
-  Held: { pointerId: Schema.Number },
-})
-export type HoldButton = typeof HoldButton.Type
-
-export const PointerDevice = Schema.Literals(['Mouse', 'Touch'])
-export type PointerDevice = typeof PointerDevice.Type
-
-export const InputDevice = Schema.Literals(['KeyboardMouse', 'Touch'])
-export type InputDevice = typeof InputDevice.Type
-
-export const TouchControls = Schema.Literals(['Allowed', 'Blocked'])
-export type TouchControls = typeof TouchControls.Type
-
-export const Orientation = Schema.Literals(['Landscape', 'Portrait'])
-export type Orientation = typeof Orientation.Type
-
-export const Trigger = Schema.Literals(['Released', 'Held'])
-export type Trigger = typeof Trigger.Type
-
-// NOTE: what the click after a press on a HUD gun or knife slot does. A
-// mouse press there mid-wave is a shot at the world beneath, so its click
-// passes through; a touch, or a mouse outside a wave, acts on the slot.
-export const SlotClick = Schema.Literals(['Acts', 'PassesThrough'])
-export type SlotClick = typeof SlotClick.Type
-
-export const Input = Schema.Struct({
-  pressedKeys: Schema.Array(Schema.String),
-  maybeMouseInView: Schema.Option(Vector),
-  mouseButton: MouseButton,
-  moveStick: Stick,
-  aimStick: Stick,
-  holdButton: HoldButton,
-  slotClick: SlotClick,
-})
-export type Input = typeof Input.Type
-
-// NOTE: `interact` is the interact key or the touch hold button, held to
-// buy what the player stands at (src/purchase.ts). With the knife in hand
-// the trigger stabs instead of shooting (src/knife.ts).
-export const Intent = Schema.Struct({
-  move: Heading,
-  maybeAim: Schema.Option(Heading),
-  trigger: Trigger,
-  interact: Trigger,
-})
-export type Intent = typeof Intent.Type
-
-export const Invulnerability = defineTaggedUnion({
-  Vulnerable: {},
-  Invulnerable: { remainingMs: MillisNumber, durationMs: MillisNumber },
-})
-export type Invulnerability = typeof Invulnerability.Type
-
-// NOTE: the Cooker, the Pan, and Brain Freeze come only out of the Mystery
-// Leftovers fridge (src/leftovers.ts); Rattles never sells them.
-export const WeaponKind = Schema.Literals([
-  'Pistol',
-  'Shotgun',
-  'Smg',
-  'Peashooter',
-  'Cooker',
-  'Pan',
-  'Freeze',
-])
-export type WeaponKind = typeof WeaponKind.Type
-
-export const CarriedGun = Schema.Struct({
-  kind: WeaponKind,
-  rounds: Schema.Number,
-  loaded: Schema.Number,
-  tier: Schema.Number,
-})
-export type CarriedGun = typeof CarriedGun.Type
-
-// NOTE: the player's two gun slots (GAME_DESIGN.md, "The knife and two gun
-// slots"). A run starts with the Pop Pistol alone in the first slot; the
-// first gun bought or taken fills the second, and after that a new gun
-// replaces the one in the player's hands. The pistol is a gun like any
-// other: it can be traded away, and Rattles sells it back for $0.
-export const Arsenal = defineTaggedUnion({
-  OneGun: { first: CarriedGun },
-  HoldingFirst: { first: CarriedGun, second: CarriedGun },
-  HoldingSecond: { first: CarriedGun, second: CarriedGun },
-})
-export type Arsenal = typeof Arsenal.Type
-
-// NOTE: the third slot, right of the guns (GAME_DESIGN.md, "The knife and
-// two gun slots"): the knife every run starts with, or the Clang Pan from
-// the Mystery Leftovers fridge, which takes the knife's place for the rest
-// of the run. The Pan's `loaded` is its dent meter, as in src/weapons.ts.
-export const Melee = defineTaggedUnion({
-  Knife: {},
-  Pan: { pan: CarriedGun },
-})
-export type Melee = typeof Melee.Type
-
-// NOTE: what the player has in hand: the arsenal's held gun, or the third
-// slot, the melee weapon. With the melee weapon out the arsenal still names
-// the last gun held, which Q goes back to.
-const Wield = Schema.Literals(['Gun', 'Melee'])
-type Wield = typeof Wield.Type
-
-export const Reload = defineTaggedUnion({
-  Ready: {},
-  Reloading: { remainingMs: MillisNumber, durationMs: MillisNumber },
-})
-export type Reload = typeof Reload.Type
-
-// NOTE: the Pressure Cooker's trigger (src/fridgeWeapons.ts). Building
-// counts how long fire has been held and keeps the aim it was held at, so a
-// thumb lifting off the stick still throws where it pointed. Spent is a
-// lid that popped in the player's hands: nothing builds until fire is let go.
-export const Charge = defineTaggedUnion({
-  Idle: {},
-  Building: { heldMs: MillisNumber, aim: Point },
-  Spent: {},
-})
-export type Charge = typeof Charge.Type
-
-export const Player = Schema.Struct({
-  x: PositionNumber,
-  y: PositionNumber,
-  hp: Schema.Number,
-  facing: Heading,
-  fireCooldownMs: MillisNumber,
-  knockback: Push,
-  invulnerability: Invulnerability,
-  recoilRemainingMs: MillisNumber,
-  arsenal: Arsenal,
-  reload: Reload,
-  charge: Charge,
-  knifeCooldownMs: MillisNumber,
-  melee: Melee,
-  wield: Wield,
-})
-export type Player = typeof Player.Type
-
-export const ZombieKind = Schema.Literals([
-  'Shambler',
-  'Runner',
-  'Tank',
-  'Exploder',
-  'Thrower',
-  'Crawler',
-  'Boss',
-])
-export type ZombieKind = typeof ZombieKind.Type
-
-export const ZombieState = defineTaggedUnion({
-  Walking: {},
-  Fusing: { remainingMs: MillisNumber },
-  Dying: { remainingMs: MillisNumber, direction: Heading },
-})
-export type ZombieState = typeof ZombieState.Type
-
-// NOTE: an action is what a living zombie is busy with, apart from whether it
-// is alive. A Big Leaguer heaves a Groaner, which is Carried, then Flying, then
-// Dazed where it lands. An Ankle Biter waits Burrowed under the floor, then
-// clings to the player's ankles. Winded walks like Roaming but cannot grab.
-export const ZombieAction = defineTaggedUnion({
-  Roaming: {},
-  Winded: { remainingMs: MillisNumber },
-  Hefting: {
-    victimId: Schema.Number,
-    remainingMs: MillisNumber,
-    durationMs: MillisNumber,
-  },
-  Carried: { byId: Schema.Number },
-  Shielding: {
-    victimId: Schema.Number,
-    remainingMs: MillisNumber,
-    aim: Schema.Number,
-  },
-  Shielded: { byId: Schema.Number },
-  Flying: {
-    from: Point,
-    to: Point,
-    remainingMs: MillisNumber,
-    durationMs: MillisNumber,
-  },
-  Dazed: { remainingMs: MillisNumber, durationMs: MillisNumber },
-  Burrowed: { remainingMs: MillisNumber, durationMs: MillisNumber },
-  Clinging: { remainingMs: MillisNumber },
-  // NOTE: the fridge weapons' (src/fridgeWeapons.ts). Frozen is a small
-  // zombie iced solid by Brain Freeze: it stands still and the next hit
-  // shatters it. Chilled is a big one only slowed. Reeling is a small one
-  // the Clang Pan rang: it gets up Winded, so the Pan cannot daze it again
-  // at once.
-  Frozen: { remainingMs: MillisNumber, durationMs: MillisNumber },
-  Chilled: { remainingMs: MillisNumber },
-  Reeling: { remainingMs: MillisNumber, durationMs: MillisNumber },
-})
-export type ZombieAction = typeof ZombieAction.Type
-
-// NOTE: a pack of four or more that comes in together is Frenzied while its
-// members stay close. A member that drifts away from the rest Fades, then is
-// Spent for good. The pack id stays on it, so its kill still counts toward
-// the bonus for wiping out the whole pack.
-export const Frenzy = defineTaggedUnion({
-  Calm: {},
-  Frenzied: { pack: Schema.Number, apartMs: MillisNumber },
-  Fading: { pack: Schema.Number, remainingMs: MillisNumber },
-  Spent: { pack: Schema.Number },
-})
-export type Frenzy = typeof Frenzy.Type
-
-export const Zombie = Schema.Struct({
-  id: Schema.Number,
-  kind: ZombieKind,
-  x: PositionNumber,
-  y: PositionNumber,
-  speed: Schema.Number,
-  hp: Schema.Number,
-  maxHp: Schema.Number,
-  knockback: Push,
-  hitRemainingMs: MillisNumber,
-  state: ZombieState,
-  action: ZombieAction,
-  frenzy: Frenzy,
-})
-export type Zombie = typeof Zombie.Type
-
-export const BossAttack = Schema.Literals(['Stomp', 'Belch', 'Spit', 'Charge'])
-export type BossAttack = typeof BossAttack.Type
-
-export const PlantedAttack = Schema.Literals(['Stomp', 'Belch', 'Spit'])
-export type PlantedAttack = typeof PlantedAttack.Type
-
-// NOTE: a charge locks its target when the brace starts, so the line on the
-// floor never follows the player. The rush runs past the target by the
-// overshoot, and remainingPx counts down what is left of it.
-export const BossMove = defineTaggedUnion({
-  Stalking: { cooldownMs: MillisNumber },
-  WindingUp: {
-    attack: PlantedAttack,
-    remainingMs: MillisNumber,
-    durationMs: MillisNumber,
-  },
-  Bracing: {
-    target: Point,
-    remainingMs: MillisNumber,
-    durationMs: MillisNumber,
-  },
-  Rushing: { direction: Heading, remainingPx: PositionNumber },
-  Dazed: { remainingMs: MillisNumber, durationMs: MillisNumber },
-  Recovering: { remainingMs: MillisNumber, cooldownMs: MillisNumber },
-})
-export type BossMove = typeof BossMove.Type
-
-const BossMood = Schema.Literals(['Calm', 'Enraged'])
-type BossMood = typeof BossMood.Type
-
-const FarAttack = Schema.Literals(['Charge', 'Spit'])
-type FarAttack = typeof FarAttack.Type
-
-export const Glob = defineTaggedUnion({
-  Flying: {
-    from: Point,
-    to: Point,
-    remainingMs: MillisNumber,
-    durationMs: MillisNumber,
-  },
-  Pooled: { at: Point, remainingMs: MillisNumber, durationMs: MillisNumber },
-})
-export type Glob = typeof Glob.Type
-
-export const BulletGlaze = Schema.Literals(['Plain', 'Spicy', 'Mean', 'Skewer'])
-export type BulletGlaze = typeof BulletGlaze.Type
-
-export const Pierce = defineTaggedUnion({
-  Stops: {},
-  Skewers: { left: Schema.Number, struck: Schema.Array(Schema.Number) },
-})
-export type Pierce = typeof Pierce.Type
-
-export const Bullet = Schema.Struct({
-  id: Schema.Number,
-  x: PositionNumber,
-  y: PositionNumber,
-  velocityX: VelocityNumber,
-  velocityY: VelocityNumber,
-  remainingMs: MillisNumber,
-  weapon: WeaponKind,
-  damage: Schema.Number,
-  knockback: VelocityNumber,
-  glaze: BulletGlaze,
-  pierce: Pierce,
-  // NOTE: the slot of the player or the gnome's owner who fired it, set
-  // only in co-op, so a single player World is the same record it was.
-  shooter: Schema.optionalKey(Schema.Number),
-})
-export type Bullet = typeof Bullet.Type
-
-export const ParticleKind = Schema.Literals([
-  'Blood',
-  'MeatGib',
-  'RotGib',
-  'Shell',
-  'Hull',
-  'Link',
-  'Dust',
-  'Chip',
-  'Coin',
-  'BoneGib',
-  'HideGib',
-  'Goo',
-  'Spark',
-  'Splinter',
-  'Plank',
-  'Clip',
-  'GreenLimb',
-  'GreenScalp',
-  'HairScalp',
-  'BlueLimb',
-  'BlueChunk',
-  'BombShard',
-  'LimeLimb',
-  'RedCap',
-  'PinkLimb',
-  'PinkChunk',
-  'TealLimb',
-  'TealScalp',
-  'PaleScalp',
-  'PotLid',
-  'StopSign',
-  'Bucket',
-  'Smoke',
-  'Frost',
-  'IceGib',
-  'Fog',
-])
-export type ParticleKind = typeof ParticleKind.Type
-
-export const Particle = Schema.Struct({
-  kind: ParticleKind,
-  x: Schema.Number,
-  y: Schema.Number,
-  z: Schema.Number,
-  velocityX: Schema.Number,
-  velocityY: Schema.Number,
-  velocityZ: Schema.Number,
-  size: Schema.Number,
-  remainingMs: MillisNumber,
-})
-export type Particle = typeof Particle.Type
-
-export const DecalKind = Schema.Literals([
-  'Blood',
-  'Meat',
-  'Rot',
-  'Shell',
-  'Hull',
-  'Bone',
-  'Hide',
-  'Goo',
-  'Scorch',
-  'Wood',
-  'Clip',
-  'GreenLimb',
-  'GreenScalp',
-  'HairScalp',
-  'BlueLimb',
-  'BlueChunk',
-  'BombShard',
-  'LimeLimb',
-  'RedCap',
-  'PinkLimb',
-  'PinkChunk',
-  'TealLimb',
-  'TealScalp',
-  'PaleScalp',
-  'PotLid',
-  'StopSign',
-  'Bucket',
-])
-export type DecalKind = typeof DecalKind.Type
-
-export const Decal = Schema.Struct({
-  kind: DecalKind,
-  x: Schema.Number,
-  y: Schema.Number,
-  width: Schema.Number,
-  height: Schema.Number,
-})
-export type Decal = typeof Decal.Type
-
-export const TrapKind = Schema.Literals(['Barricade', 'Turret'])
-export type TrapKind = typeof TrapKind.Type
-
-export const DoorId = Schema.Literals([
-  'North',
-  'West',
-  'East',
-  'South',
-  'Back',
-  'Window',
-])
-export type DoorId = typeof DoorId.Type
-
-export const LevelId = Schema.Literals(['Parlour', 'Manor'])
-export type LevelId = typeof LevelId.Type
-
-export const ExitId = Schema.String
-export type ExitId = typeof ExitId.Type
-
-// NOTE: which level the run is in and which of its boarded exits are open.
-// The built Level, with its tile lookups and doors, comes from levelOf.
-export const LevelState = Schema.Struct({
-  id: LevelId,
-  openExits: Schema.Array(ExitId),
-})
-export type LevelState = typeof LevelState.Type
-
-export const Formation = Schema.Literals([
-  'Trickle',
-  'Squad',
-  'Pincer',
-  'Horde',
-])
-export type Formation = typeof Formation.Type
-
-export const BoostKind = Schema.Literals([
-  'RapidFire',
-  'Damage',
-  'Speed',
-  'Pierce',
-])
-export type BoostKind = typeof BoostKind.Type
-
-export const PickupKind = Schema.Literals([
-  'RapidFire',
-  'Damage',
-  'Speed',
-  'Pierce',
-  'Burp',
-  'Heart',
-])
-export type PickupKind = typeof PickupKind.Type
-
-export const Pickup = Schema.Struct({
-  id: Schema.Number,
-  kind: PickupKind,
-  x: PositionNumber,
-  y: PositionNumber,
-  ageMs: MillisNumber,
-})
-export type Pickup = typeof Pickup.Type
-
-export const BoostTimer = defineTaggedUnion({
-  Off: {},
-  On: { remainingMs: MillisNumber, durationMs: MillisNumber },
-})
-export type BoostTimer = typeof BoostTimer.Type
-
-export const Boosts = Schema.Struct({
-  RapidFire: BoostTimer,
-  Damage: BoostTimer,
-  Speed: BoostTimer,
-  Pierce: BoostTimer,
-})
-export type Boosts = typeof Boosts.Type
-
-export const Prize = defineTaggedUnion({
-  Settled: {},
-  Owed: {},
-})
-export type Prize = typeof Prize.Type
-
-// NOTE: `fridgeRngState` is the Mystery Leftovers fridge's own stream
-// (src/leftovers.ts), apart from the drops' and the waves', so a pull never
-// changes what drops or which zombies come.
-export const Loot = Schema.Struct({
-  rngState: Schema.Number,
-  dryMs: MillisNumber,
-  prize: Prize,
-  fridgeRngState: Schema.Number,
-})
-export type Loot = typeof Loot.Type
-
-// NOTE: the first grab of a kind explains it with its blurb. Every later
-// grab only names it, in a shorter pop.
-export const CalloutLook = Schema.Literals(['Explained', 'Named'])
-export type CalloutLook = typeof CalloutLook.Type
-
-// THE FRIDGE
-
-// NOTE: what a pull of Mystery Leftovers gives: a fridge-only weapon, a
-// moldy Sandwich that heals a heart, or a Dud (a fish skeleton) that burps
-// half the price back.
-export const FridgePrize = Schema.Literals([
-  'Cooker',
-  'Pan',
-  'Freeze',
-  'Sandwich',
-  'Dud',
-])
-export type FridgePrize = typeof FridgePrize.Type
-
-// NOTE: Open is a pull: the door creaks open, fog rolls out, and the prize
-// pops up: a gag flies to the seat that pulled, a weapon goes on Offering. Slammed is the fridge resting
-// after its last pull of the batch; it takes no money until it is Shut.
-export const FridgeDoor = defineTaggedUnion({
-  Shut: {},
-  Open: {
-    prize: FridgePrize,
-    slot: Schema.Number,
-    remainingMs: MillisNumber,
-    durationMs: MillisNumber,
-  },
-  Slammed: { remainingMs: MillisNumber, durationMs: MillisNumber },
-  // NOTE: take it or leave it (owner, 2026-10-30): a weapon prize floats
-  // in the open door until the puller holds to take it, walks off, or its
-  // time runs out; left, it sinks back into the fridge.
-  Offering: {
-    prize: FridgePrize,
-    slot: Schema.Number,
-    remainingMs: MillisNumber,
-    durationMs: MillisNumber,
-  },
-})
-export type FridgeDoor = typeof FridgeDoor.Type
-
-// NOTE: `pulls` counts the pulls since the fridge last slammed; `luck`
-// counts its slams, each raising the rare prize's odds a little.
-export const Fridge = Schema.Struct({
-  door: FridgeDoor,
-  pulls: Schema.Number,
-  luck: Schema.Number,
-})
-export type Fridge = typeof Fridge.Type
-
-// NOTE: a Pressure Cooker lid in flight, from where it was thrown to where
-// it lands; `charge` (0 to 1) and `tier` size its blast. It names the seat
-// that threw it, as a bullet does, only in co-op.
-export const Lob = Schema.Struct({
-  id: Schema.Number,
-  x: PositionNumber,
-  y: PositionNumber,
-  from: Point,
-  to: Point,
-  remainingMs: MillisNumber,
-  durationMs: MillisNumber,
-  charge: Schema.Number,
-  tier: Schema.Number,
-  shooter: Schema.optionalKey(Schema.Number),
-})
-export type Lob = typeof Lob.Type
-
-export const Callout = Schema.Struct({
-  kind: PickupKind,
-  look: CalloutLook,
-  x: Schema.Number,
-  y: Schema.Number,
-  ageMs: MillisNumber,
-})
-export type Callout = typeof Callout.Type
-
-// NOTE: a cosmetic: a fridge weapon the player just took, flying from the
-// fridge's door (`from`, in the world) into its HUD gun slot, which then
-// pulses (src/fridgeReveal.ts). Never part of the World.
-export const PrizeFlight = defineTaggedUnion({
-  Grounded: {},
-  Flying: { prize: WeaponKind, from: Vector, ageMs: Schema.Number },
-})
-export type PrizeFlight = typeof PrizeFlight.Type
-
-// NOTE: a cosmetic: Rattles sliding a box of rounds across the ammo
-// window's counter after a sale mid-wave, with `line` picking what he says
-// (src/ammoCounter.ts). Never part of the World.
-export const CounterSale = defineTaggedUnion({
-  Quiet: {},
-  Selling: { ageMs: Schema.Number, line: Schema.Number },
-})
-export type CounterSale = typeof CounterSale.Type
+export * from './entitySchema'
 
 // NOTE: a shot names the seat that fired it (a PlayerSlot), so a co-op
 // client can tell its own shots, which it predicts, from the room's; a
@@ -796,83 +215,8 @@ export const Streak = defineTaggedUnion({
 })
 export type Streak = typeof Streak.Type
 
-export const AudioState = defineTaggedUnion({
-  Locked: {},
-  Unlocking: {},
-  Suspended: {},
-  Ready: {},
-  Unavailable: {},
-})
-export type AudioState = typeof AudioState.Type
-
 export const GunSlot = Schema.Literals(['First', 'Second'])
 export type GunSlot = typeof GunSlot.Type
-
-// NOTE: whether this device can lock how the page turns: a touch screen
-// whose browser has screen.orientation.lock. Desktops and iPhones cannot.
-export const OrientationLock = Schema.Literals(['Supported', 'Unsupported'])
-export type OrientationLock = typeof OrientationLock.Type
-
-export const ScreenFit = Schema.Literals([
-  'Unknown',
-  'Fullscreen',
-  'HomeScreen',
-  'Installed',
-  'Unavailable',
-])
-export type ScreenFit = typeof ScreenFit.Type
-
-// NOTE: whether the browser offered to install the game: Chrome's
-// beforeinstallprompt, held by src/install.ts until the install tile asks.
-export const InstallOffer = Schema.Literals(['None', 'Ready', 'Installed'])
-export type InstallOffer = typeof InstallOffer.Type
-
-export const InstallOutcome = Schema.Literals([
-  'Accepted',
-  'Dismissed',
-  'Unavailable',
-])
-export type InstallOutcome = typeof InstallOutcome.Type
-
-// NOTE: the update gift on the home menu, wrapped until a tap unwraps it
-// and the page reloads onto the newer build.
-export const UpdateGift = Schema.Literals(['Wrapped', 'Unwrapping'])
-export type UpdateGift = typeof UpdateGift.Type
-
-export const FullscreenSetting = Schema.Literals(['Off', 'On'])
-export type FullscreenSetting = typeof FullscreenSetting.Type
-
-export const HomeButton = Schema.Literals([
-  'Play',
-  'Mode',
-  'Difficulty',
-  'Coop',
-  'Manor',
-  'Support',
-  'Settings',
-])
-export type HomeButton = typeof HomeButton.Type
-
-// NOTE: the cards the MANOR button deals. Code links to the game's public
-// source on GitHub. The tip jar's coffee is not a card: it stands in the
-// home menu's corner (HomeButton Support).
-export const HandCard = Schema.Literals([
-  'Character',
-  'Munchopedia',
-  'WhatsNew',
-  'HowToPlay',
-  'Code',
-])
-export type HandCard = typeof HandCard.Type
-
-export const MenuPanel = Schema.Literals([
-  'HowToPlay',
-  'LeaveRun',
-  'Difficulty',
-  'WhatsNew',
-  'Munchopedia',
-])
-export type MenuPanel = typeof MenuPanel.Type
 
 // NOTE: JustUnlocked is the run that won Hard and its end screen. It
 // settles to Unlocked when the next run starts.
@@ -912,118 +256,6 @@ export const KillCounts = Schema.Struct({
   Boss: Schema.Number,
 })
 export type KillCounts = typeof KillCounts.Type
-
-// NOTE: the bests are kept in the on-device save (src/save.ts): one set for
-// each difficulty, plus the runs played and the zombies splatted in all and
-// per kind. They are plain data on purpose: they move into the SQLite player
-// scope from PLATFORM.md as personal bests.
-export const PlayerBests = Schema.Struct({
-  runsPlayed: Schema.Number,
-  totalKills: Schema.Number,
-  killsByKind: KillCounts,
-  byDifficulty: Schema.Struct({
-    Easy: DifficultyBests,
-    Normal: DifficultyBests,
-    Hard: DifficultyBests,
-    Nightmare: DifficultyBests,
-  }),
-})
-export type PlayerBests = typeof PlayerBests.Type
-
-// NOTE: a run is added to the bests when it ends. Counted holds the kills
-// already added, so a win that goes on into endless adds only its new kills
-// when it ends again.
-export const RunTally = defineTaggedUnion({
-  Uncounted: {},
-  Counted: { kills: KillCounts },
-})
-export type RunTally = typeof RunTally.Type
-
-// HOME MENU
-
-export const HomeMode = Schema.Literals(['Campaign', 'Endless'])
-export type HomeMode = typeof HomeMode.Type
-
-export const MunchopediaPage = defineTaggedUnion({
-  List: {},
-  Entry: { kind: ZombieKind },
-})
-export type MunchopediaPage = typeof MunchopediaPage.Type
-
-// NOTE: the home menu's own state. The mode toggle and the open pages last
-// for the page session. The newest What's New day seen and the Munchopedia
-// entries opened are kept in the on-device save (src/save.ts). newEntries are
-// the kinds unlocked by the last counted run, for the NEW ENTRY pop.
-export const HomeMenu = Schema.Struct({
-  mode: HomeMode,
-  maybeSeenNewsDay: Schema.Option(Schema.String),
-  newsPage: Schema.Number,
-  munchopediaPage: MunchopediaPage,
-  openedEntries: Schema.Array(ZombieKind),
-  newEntries: Schema.Array(ZombieKind),
-})
-export type HomeMenu = typeof HomeMenu.Type
-
-export const freshHomeMenu: HomeMenu = {
-  mode: 'Campaign',
-  maybeSeenNewsDay: Option.none(),
-  newsPage: 0,
-  munchopediaPage: MunchopediaPage.List(),
-  openedEntries: [],
-  newEntries: [],
-}
-
-export const LoadStep = Schema.Literals([
-  'Save',
-  'Styles',
-  'Fonts',
-  'FirstFrame',
-  'Sprites',
-])
-export type LoadStep = typeof LoadStep.Type
-
-export const Loading = defineTaggedUnion({
-  Loading: { pending: Schema.Array(LoadStep) },
-  Loaded: {},
-})
-export type Loading = typeof Loading.Type
-
-// NOTE: nothing is written until the save has been read, so the defaults
-// from before the load never overwrite a player's save.
-export const SaveStatus = Schema.Literals(['Unread', 'Read'])
-export type SaveStatus = typeof SaveStatus.Type
-
-// NOTE: a save from sync that arrived while this device was still writing
-// its own change is Stale: taking it would undo that change for a moment.
-// The store's view is read again once the writes land.
-export const SyncedSaveState = Schema.Literals(['Current', 'Stale'])
-export type SyncedSaveState = typeof SyncedSaveState.Type
-
-export const TutorialReset = Schema.Literals(['Idle', 'Asking', 'Done'])
-export type TutorialReset = typeof TutorialReset.Type
-
-export const PageVisibility = Schema.Literals(['Visible', 'Hidden'])
-export type PageVisibility = typeof PageVisibility.Type
-
-export const LookPart = Schema.Literals([
-  'Body',
-  'HairStyle',
-  'HairColor',
-  'SkinTone',
-  'ShirtColor',
-  'Outfit',
-  'Print',
-])
-export type LookPart = typeof LookPart.Type
-
-// NOTE: the look's two on and off parts, each one tap.
-export const LookToggle = Schema.Literals(['Beard', 'Glasses'])
-export type LookToggle = typeof LookToggle.Type
-
-// NOTE: the Look tab's little tabs: the body, skin, beard, and glasses; the
-// hair; and the outfit.
-export const LookSection = Schema.Literals(['Body', 'Hair', 'Outfit'])
-export type LookSection = typeof LookSection.Type
 
 export const PlannedSpawn = Schema.Struct({
   atMs: MillisNumber,
@@ -1075,15 +307,6 @@ export const RunMode = defineTaggedUnion({
   Endless: {},
 })
 export type RunMode = typeof RunMode.Type
-
-// NOTE: the first PLAY or ENDLESS of the session asks for a difficulty.
-// Asking holds the mode to start once one is picked.
-export const DifficultyCard = defineTaggedUnion({
-  Unseen: {},
-  Asking: { mode: RunMode },
-  Seen: {},
-})
-export type DifficultyCard = typeof DifficultyCard.Type
 
 export const Phase = defineTaggedUnion({
   Ready: {},
@@ -1339,28 +562,6 @@ export const TrapHint = defineTaggedUnion({
 })
 export type TrapHint = typeof TrapHint.Type
 
-// NOTE: Rattles' call about ammo: the first time a gun that can run dry
-// runs low, a bubble from the stall shows a coin and a box of rounds for a
-// few seconds. Once seen it never shows again, saved on the device.
-export const AmmoTip = defineTaggedUnion({
-  Unseen: {},
-  Showing: { remainingMs: MillisNumber },
-  Seen: {},
-})
-export type AmmoTip = typeof AmmoTip.Type
-
-// NOTE: a chapter of the guided tutorial (src/firstBreakQuest.ts, the
-// first break, and src/kitchenTour.ts, the kitchen and the fridge): waiting
-// for its break, running through its steps, done with its tick shown for a
-// moment, or over for this session.
-export const Tour = defineTaggedUnion({
-  Waiting: {},
-  Running: {},
-  Done: { ageMs: MillisNumber },
-  Over: {},
-})
-export type Tour = typeof Tour.Type
-
 export const TrapNotice = defineTaggedUnion({
   Quiet: {},
   Refused: { reason: Schema.String, remainingMs: MillisNumber },
@@ -1396,9 +597,6 @@ export const DebutCard = defineTaggedUnion({
   Showing: { kind: ZombieKind, ageMs: MillisNumber },
 })
 export type DebutCard = typeof DebutCard.Type
-
-export const HintBand = Schema.Literals(['Top', 'Bottom'])
-export type HintBand = typeof HintBand.Type
 
 export const RunStats = Schema.Struct({
   kills: KillCounts,
@@ -1561,25 +759,7 @@ export const initialPlayer: Player = {
 
 export const emptyWallet: Wallet = { balance: 0, earned: 0, shown: 0 }
 
-export const SHOP_DIALOG_ID = 'shop'
-
-export const HOME_SCREEN_STEPS_ID = 'home-screen-steps'
-
-export const UPDATE_GREETING_ID = 'update-greeting'
-
-export const SHOP_TABS_ID = 'shop-tabs'
-
 export const FIRST_SHOP_CATEGORY: ShopCategory = 'Guns'
-
-export const idleInput: Input = {
-  pressedKeys: [],
-  maybeMouseInView: Option.none(),
-  mouseButton: MouseButton.Released(),
-  moveStick: Stick.Idle(),
-  aimStick: Stick.Idle(),
-  holdButton: HoldButton.Released(),
-  slotClick: 'Acts',
-}
 
 export const idleIntent: Intent = {
   move: { x: 0, y: 0 },
@@ -1589,17 +769,6 @@ export const idleIntent: Intent = {
 }
 
 export const emptyTrapStock: TrapCounts = { Barricade: 0, Turret: 0 }
-
-export const freshLessons: Lessons = {
-  move: Lesson.Pending(),
-  fire: Lesson.Pending(),
-  startWave: Lesson.Pending(),
-  shop: Lesson.Pending(),
-  swap: Lesson.Pending(),
-  pickup: Lesson.Pending(),
-  timedBreaks: Lesson.Pending(),
-  openBreak: Lesson.Pending(),
-}
 
 export const noPractice: Practice = { movedPx: 0, aimedShots: 0 }
 
@@ -1660,27 +829,6 @@ export const shutFridge: Fridge = {
   luck: 0,
 }
 
-// NOTE: particles, shake, popups, coin bursts, trap dust, and the random
-// look draw from their own stream, never from `rngState`, so how many
-// cosmetics a frame makes never changes what spawns next. A room that makes
-// none and a phone that makes fewer play the same game (MULTIPLAYER.md).
-const COSMETIC_SEED_SALT = 0x0c05e71c
-
-export const cosmeticSeedOf = (seed: number): number =>
-  (seed ^ COSMETIC_SEED_SALT) >>> 0
-
 export const initialHitStop: HitStop = HitStop.Running({ cooldownMs: 0 })
 
 export const stillShake: Shake = { trauma: 0, offset: { x: 0, y: 0 } }
-
-export const defaultAppearance: Appearance = {
-  body: 'Broad',
-  hairStyle: 'Short',
-  hairColor: 'Brown',
-  skinTone: 'Light',
-  shirtColor: 'Blue',
-  outfit: 'Tee',
-  print: 'Plain',
-  beard: false,
-  glasses: false,
-}

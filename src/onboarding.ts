@@ -2,6 +2,7 @@ import { Array, Option, Result, Schema, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { screenCameraOf, worldToView } from './camera'
+import { type HintBand, type InputDevice, Stick, Tour } from './clientSchema'
 import { vectorLength } from './geometry'
 import { isPending, isTimedBreak, learn } from './lessons'
 import type { Model } from './model'
@@ -12,14 +13,10 @@ import {
   BreakClock,
   DebutCard,
   GameEvent,
-  type HintBand,
-  type InputDevice,
   Lesson,
   type Lessons,
   Phase,
   type Practice,
-  Stick,
-  Tour,
   TrapHint,
   type ZombieKind,
 } from './worldSchema'

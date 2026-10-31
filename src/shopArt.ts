@@ -16,7 +16,7 @@ import {
   rattlesPixels,
 } from './shopkeeper'
 import type { Palette } from './sprite'
-import { HEART_PIXELS } from './sprite'
+import { HEART_PIXELS } from './sprites/hearts'
 
 // NOTE: the shop's pictures are pixel maps turned into SVG once, at module
 // scope, like the HTML buttons' icons. Each keeps its size in pixels so CSS

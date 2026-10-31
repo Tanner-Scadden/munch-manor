@@ -51,13 +51,8 @@ import { Invulnerability, type Model, Phase, type Zombie } from './model'
 import { seatModelsOf } from './partyView'
 import type { Difficulty } from './playerData'
 import { playerFootY, playerShapes } from './playerView'
-import {
-  type Sprite,
-  ZOMBIE_SPRITES,
-  group,
-  placeAt,
-  spriteShapes,
-} from './sprite'
+import { type Sprite, group, placeAt, spriteShapes } from './sprite'
+import { ZOMBIE_SPRITES } from './sprites/zombies'
 import { defeatQuip, victoryVerdict } from './stats'
 import { roundWave } from './waves'
 import { ZOMBIE_KIND_ORDER } from './zombies'

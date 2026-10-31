@@ -16,7 +16,8 @@ import {
   type Vector,
   type Zombie,
 } from './model'
-import { BOSS_ICON, group } from './sprite'
+import { group } from './sprite'
+import { BOSS_ICON } from './sprites/zombies'
 import { ZOMBIE_KINDS } from './zombies'
 
 // STOMP RING

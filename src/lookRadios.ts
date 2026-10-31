@@ -1,6 +1,6 @@
 import { RadioGroup } from '@foldkit/ui'
 
-import type { LookSection } from './worldSchema'
+import type { LookSection } from './clientSchema'
 
 // NOTE: the Look tab's radio groups. They live apart from src/character.ts
 // so the Model can hold their state without importing the picker.

@@ -2,6 +2,7 @@ import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
+import { Tour } from './clientSchema'
 import { KITCHEN_EXIT, exitBoxOf } from './exits'
 import { isKitchenOpen } from './kitchen'
 import { fridgeBoxOf, fridgeSpot } from './leftovers'
@@ -9,7 +10,7 @@ import { learnTimedBreaks } from './lessons'
 import type { Model } from './model'
 import { isFridgeTried, isKitchenTourOn } from './tutorialRules'
 import { withWorld } from './world'
-import { FridgeDoor, Tour, type Vector } from './worldSchema'
+import { FridgeDoor, type Vector } from './worldSchema'
 
 // NOTE: chapter 2 of the guided tutorial, from the owner (2026-10-30): in a
 // new save's first timed break, when the kitchen's boards first go on

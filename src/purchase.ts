@@ -1,8 +1,8 @@
 import { Array, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { type Box, distanceToBox } from './arena'
 import { ammoCounterOffers, sellAmmo } from './ammoCounter'
+import { type Box, distanceToBox } from './arena'
 import { buyExit, exitOffers } from './exits'
 import { fridgeOffers, pullFridge, takePrize } from './leftovers'
 import type { World } from './world'

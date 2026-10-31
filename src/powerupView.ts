@@ -25,13 +25,8 @@ import {
   PICKUP_BLINK_MS,
   PICKUP_LIFETIME_MS,
 } from './powerups'
-import {
-  PICKUP_SPRITES,
-  TOP_LEFT,
-  group,
-  placeAt,
-  spriteShapes,
-} from './sprite'
+import { TOP_LEFT, group, placeAt, spriteShapes } from './sprite'
+import { PICKUP_SPRITES } from './sprites/pickups'
 
 // COLORS
 

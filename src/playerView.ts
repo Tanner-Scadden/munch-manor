@@ -50,9 +50,8 @@ import {
   type Tone,
   frameAt,
   group,
-  gunSprite,
-  knifeSprite,
 } from './sprite'
+import { gunSprite, knifeSprite } from './sprites/guns'
 import {
   type MuzzleFlash,
   type WeaponStats,

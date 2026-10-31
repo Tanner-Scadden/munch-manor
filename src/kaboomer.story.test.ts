@@ -20,7 +20,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
-import { KABOOMER_FUSE_MAX } from './sprite'
+import { KABOOMER_FUSE_MAX } from './sprites/zombies'
 import { bulletInto, tick, ticks } from './testing'
 import { wavePreviewLabel } from './wavePreview'
 import { rollSpawns } from './waves'

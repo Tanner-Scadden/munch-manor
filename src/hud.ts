@@ -54,17 +54,19 @@ import { boostChipShapes } from './powerupView'
 import { type Box, type Screen, thumbAreaTop } from './screen'
 import { waveLabel } from './screens'
 import {
-  EMPTY_HEART_SPRITE,
-  FLASH_HEART_SPRITE,
-  HEART_SPRITE,
   type Palette,
   type Sprite,
   TOP_LEFT,
-  TRAP_ICONS,
   group,
-  gunIcon,
   spriteShapes,
 } from './sprite'
+import { gunIcon } from './sprites/guns'
+import {
+  EMPTY_HEART_SPRITE,
+  FLASH_HEART_SPRITE,
+  HEART_SPRITE,
+} from './sprites/hearts'
+import { TRAP_ICONS } from './sprites/traps'
 import { kitchenBubbleShapes, stallBubbleShapes } from './stallBubble'
 import { scoreOf } from './stats'
 import { TRAP_KIND_ORDER, maybeSelectedKind } from './traps'
