@@ -238,8 +238,9 @@ describe("the boss's charge on the wire", () => {
 // values to positions); protocol 11 added each player's `wield`, the knife
 // or a gun in hand; protocol 12 added each player's `melee`, the knife or
 // the Clang Pan in the melee slot; protocol 13 added each player's
-// `triggerRestMs`, the idle reload's clock; protocol 14 added each seat's
-// revives, downs, and shots for the crew board. The wire must not change
+// `triggerRestMs`, the idle reload's clock; protocol 14 added the ammo window's
+// tap; protocol 15 added each seat's revives, downs, and shots for the crew
+// board. The wire must not change
 // without a protocol bump. A change to how the room plays moves the bytes
 // with no change to the wire, as zombies coming in promptly after their
 // warning did.

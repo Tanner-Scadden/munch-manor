@@ -484,7 +484,9 @@ export type Purchasable = typeof Purchasable.Type
 // Refused is a press the wallet could not cover, shaking for a moment;
 // Done waits for the key to be let go after a buy, so one hold buys once;
 // Spent waits for a player who bought and stands still to move before
-// standing buys again, so one buy never chains into the next.
+// standing buys again, so one buy never chains into the next. Tapped is a
+// tap at the ammo window (SeatAction.BuyAmmo), bought on the next tick with
+// no hold, so the tick's events carry its sound and Rattles' line.
 export const Purchase = defineTaggedUnion({
   Idle: {},
   Holding: { target: Purchasable, heldMs: MillisNumber },
@@ -495,6 +497,7 @@ export const Purchase = defineTaggedUnion({
   },
   Done: {},
   Spent: {},
+  Tapped: { target: Purchasable },
 })
 export type Purchase = typeof Purchase.Type
 

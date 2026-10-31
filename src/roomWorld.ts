@@ -231,6 +231,9 @@ const DRAW_SLOTS = GunSlot.literals
 const drawCode = (slot: GunSlot): number =>
   DRAW_BASE + (slot === 'First' ? 0 : 1)
 
+// NOTE: a tap at the ammo window (protocol version 14) follows the draws.
+const BUY_AMMO_CODE = DRAW_BASE + DRAW_SLOTS.length
+
 const FIXED_ITEMS = FixedShopItemId.literals
 
 const simpleCode = (tag: SeatAction['_tag']): number =>
@@ -260,6 +263,7 @@ export const actionCodeOf = (action: SeatAction): number =>
     Buy: ({ item }) => itemCode(item),
     LeaveCounter: () => simpleCode('LeaveCounter'),
     Ready: () => simpleCode('Ready'),
+    BuyAmmo: () => BUY_AMMO_CODE,
   })
 
 // NOTE: the held value for the `press`th press of an action: never zero.
@@ -287,6 +291,8 @@ export const seatActionOf = (
     return Option.map(Array.get(FIXED_ITEMS, code - BUY_BASE), item =>
       SeatAction.Buy({ item }),
     )
+  } else if (code === BUY_AMMO_CODE) {
+    return Option.some(SeatAction.BuyAmmo())
   } else if (code >= DRAW_BASE) {
     return Option.map(Array.get(DRAW_SLOTS, code - DRAW_BASE), slot =>
       SeatAction.Draw({ slot }),

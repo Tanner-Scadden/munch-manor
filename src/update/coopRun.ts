@@ -8,6 +8,7 @@ import { playerKeyAction } from '../keyActions'
 import { Message } from '../message'
 import { type Model, type PageVisibility, type ShopItemId } from '../model'
 import { isRunOn } from '../onlineRun'
+import { maybeTapOffer } from '../purchase'
 import { isAtCounter } from '../shop'
 import { SeatAction, gunSlotAction, trySeatAction } from '../stepWorld'
 import { pressInRoom } from './coop'
@@ -67,6 +68,14 @@ const keyInRun = (code: string) =>
         }),
   )
 
+// NOTE: a tap at the ammo window goes to the room as BuyAmmo, which buys
+// there at once (src/purchase.ts); the room's tick makes its sound.
+const tapInRun = makeStep(model =>
+  Option.isSome(maybeTapOffer(model))
+    ? pressInRun(SeatAction.BuyAmmo())
+    : unchanged,
+)
+
 const blurInRun = modelStep(model => withInput(model, releaseAll))
 
 const pageVisibilityInRun = (visibility: PageVisibility) =>
@@ -94,6 +103,8 @@ type RunMessage =
   | typeof Message.ClickedNextTrapButton.Type
   | typeof Message.ClickedBuyButton.Type
   | typeof Message.PressedBuyKey.Type
+  | typeof Message.PressedHoldButton.Type
+  | typeof Message.ClickedAmmoTag.Type
 
 // NOTE: Message.match, exhaustive over just these Messages. Effect's
 // Match would unify the Steps' types and drop the Binding evidence
@@ -114,6 +125,8 @@ const inRun = (model: Model, message: RunMessage) =>
     ClickedNextTrapButton: () => pressInRun(SeatAction.NextTrap()),
     ClickedBuyButton: ({ item }) => buyInRun(item),
     PressedBuyKey: ({ item }) => buyInRun(item),
+    PressedHoldButton: () => tapInRun,
+    ClickedAmmoTag: () => tapInRun,
   })
 
 // NOTE: the Message's Step in an online run, or the single player Step

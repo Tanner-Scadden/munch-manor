@@ -228,6 +228,29 @@ body {
   cursor: not-allowed;
 }
 
+/* THE AMMO TAG: a clear button over the ammo window's tag on the canvas,
+   so a click or a tap on the tag buys at once. Centered on the tag, never
+   smaller than a fingertip. */
+
+.ammo-tag-button {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ammo-tag-button:focus-visible {
+  outline: 2px solid #ffe066;
+}
+
 /* HOLD TO BUY: the touch button at a purchasable. A gold ring fills round
    it while the finger holds (--hold, 0 to 1); a press the wallet cannot
    cover shakes it red. */

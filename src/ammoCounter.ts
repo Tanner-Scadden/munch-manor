@@ -15,8 +15,9 @@ import {
 
 // The ammo window (decided with the owner on 2026-10-30): mid-wave, the
 // stall's CLOSED sign becomes a small window where Rattles sells the ammo of
-// the gun in the player's hands, at the shop's price, by the same stand or
-// hold as any purchase in the world (src/purchase.ts). It sells nothing
+// the gun in the player's hands, at the shop's price, by a tap there (since
+// 2026-10-31) or the same stand or hold as any purchase in the world
+// (src/purchase.ts, tapToBuy). It sells nothing
 // else mid-wave: guns, traps, upgrades, hearts, and repairs wait for the
 // break, when the full shop opens. A gun with nothing to refill (the Pop
 // Pistol, the Clang Pan, Brain Freeze) gets no offer; a full one shows FULL.
