@@ -13,6 +13,7 @@ import {
   markLoadStep,
 } from './splash'
 import { PlayerStore } from './store'
+import { startSummaryQueue } from './summaryQueue'
 import { readUpdateMarker } from './version'
 
 // NOTE: the Commands init starts, and only those. Every other Command sits
@@ -264,6 +265,19 @@ export const GenerateVisitId = makeCommand('GenerateVisitId', {
   },
 })
 
+// NOTE: run summaries that ended offline on an earlier visit are sent now, in
+// the background, spaced out, so the Command is done at once.
+export const StartSummaryQueue = makeCommand('StartSummaryQueue', {
+  messages: [Message.CompletedStartSummaryQueue],
+  handler: function* () {
+    return () =>
+      Effect.as(
+        Effect.forkDetach(startSummaryQueue()),
+        Message.CompletedStartSummaryQueue(),
+      )
+  },
+})
+
 // BOOT
 
 // NOTE: a share sheet is there when the browser has navigator.share; only a
@@ -287,6 +301,7 @@ export const bootCommands = () => [
   LoadSave(),
   GenerateSeed(),
   GenerateVisitId(),
+  StartSummaryQueue(),
   DetectInputDevice(),
   DetectShareSheet(),
   DetectScreenFit(),

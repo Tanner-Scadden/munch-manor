@@ -2,7 +2,6 @@ import { Effect, Option, pipe } from 'effect'
 import { Update } from 'foldkit'
 
 import { RunSummary } from '../analytics'
-import { sendRunSummary } from '../analyticsBeacon'
 import { maybeRunOutcome, runSummaryOf } from '../analyticsRun'
 import { makeCommand } from '../definition'
 import { noteRecords, reachRecords } from '../endBeat'
@@ -11,6 +10,7 @@ import { Message } from '../message'
 import type { Model } from '../model'
 import { cueMusicFrom } from '../musicPlan'
 import { isOnlineRun, runDifficultyOf } from '../onlineRun'
+import { sendOrQueueRunSummary } from '../summaryQueue'
 import { RUNNING_BUILD } from '../version'
 import {
   focusEndMenuFrom,
@@ -29,7 +29,7 @@ export const SendRunSummary = makeCommand('SendRunSummary', {
   handler: function* () {
     return ({ summary }) =>
       pipe(
-        sendRunSummary(summary),
+        sendOrQueueRunSummary(summary),
         Effect.as(Message.CompletedSendRunSummary()),
         Effect.catch(error =>
           Effect.succeed(

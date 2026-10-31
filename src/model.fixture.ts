@@ -7,7 +7,7 @@ import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf, openExitIn } from './arena'
-import { PREPARATION_MS } from './constants'
+import { PLAYER_MAX_HP, PREPARATION_MS } from './constants'
 import { KITCHEN_EXIT } from './exits'
 import { fridgeBoxOf, pickPrize, prizeWeights } from './leftovers'
 import {
@@ -22,13 +22,13 @@ import {
   type Zombie,
   initialModel,
 } from './model'
-import { withSeat } from './party'
+import { seatCrew, withSeat } from './party'
 import { nextRandom } from './prng'
 import { freshRun } from './runReset'
 import { PHONE_PORTRAIT, SURFACE } from './testing'
 import { asVeteran } from './veteran'
 import { type World, withWorld } from './world'
-import type { Arsenal } from './worldSchema'
+import type { Arsenal, Life } from './worldSchema'
 
 // SPAWNS
 
@@ -261,3 +261,52 @@ export const withZombies = (
   base: Model,
   zombies: ReadonlyArray<Zombie>,
 ): Model => modifyFields(base, { zombies: () => zombies })
+
+// CO-OP CREWS
+
+// NOTE: wave 3 under way with a spawn that never comes, for a crew's tests.
+const CREW_WAVE = Phase.Wave({
+  wave: 3,
+  elapsedMs: 0,
+  spawns: [DISTANT_SPAWN],
+})
+
+// NOTE: a crew of `count` seats in one World, on a surface, mid-wave.
+export const crewInWave = (count: number, phase: Phase = CREW_WAVE): Model =>
+  withWorld(
+    modifyFields(home, {
+      maybeSurface: () => Option.some(SURFACE),
+      phase: () => phase,
+    }),
+    world => seatCrew(world, count),
+  )
+
+export const placeSeat =
+  (slot: number, x: number, y: number, hp = PLAYER_MAX_HP) =>
+  (current: Model): Model =>
+    atSeat(current, slot, world =>
+      modifyFields(world, {
+        player: player =>
+          modifyFields(player, { x: () => x, y: () => y, hp: () => hp }),
+      }),
+    )
+
+export const withSeatLife =
+  (slot: number, life: Life) =>
+  (current: Model): Model =>
+    atSeat(current, slot, world =>
+      modifyFields(world, {
+        party: party =>
+          party._tag === 'Crew'
+            ? modifyFields(party, {
+                lead: lead => modifyFields(lead, { life: () => life }),
+              })
+            : party,
+      }),
+    )
+
+// NOTE: changes made to a Model one after another, in order.
+export const pipeline =
+  (...steps: ReadonlyArray<(current: Model) => Model>) =>
+  (start: Model): Model =>
+    Array.reduce(steps, start, (current, step) => step(current))
