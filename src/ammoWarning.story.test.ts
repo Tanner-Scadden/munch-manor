@@ -26,7 +26,7 @@ import { DISTANT_SPAWN } from './model.fixture'
 import { SavedOnboarding } from './playerData'
 import { restoreSave, saveOf } from './save'
 import { maybeBubbleKind } from './stallBubble'
-import { SURFACE } from './testing'
+import { FIRE_PRESS, FIRE_PUSH, SURFACE } from './testing'
 import { PlaySound } from './update/sound'
 import { STARTING_PISTOL, freshGun } from './weapons'
 
@@ -89,15 +89,7 @@ describe('how low a gun is', () => {
 // NOTE: one frame through the game's own update, firing, so the sound
 // Commands of that frame can be read.
 const firedFrame = (start: Model) => {
-  const pressed = update(
-    start,
-    Message.PressedPointer({
-      pointerId: 7,
-      device: 'Touch',
-      clientX: 600,
-      clientY: 200,
-    }),
-  ).model
+  const pressed = update(update(start, FIRE_PRESS).model, FIRE_PUSH).model
   return update(pressed, Message.TickedFrame({ deltaTime: FRAME_MS }))
 }
 

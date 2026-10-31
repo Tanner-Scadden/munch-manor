@@ -22,6 +22,7 @@ import { update } from './main'
 import { Message } from './message'
 import {
   type Bullet,
+  type CarriedGun,
   GameEvent,
   Lesson,
   type Model,
@@ -60,6 +61,7 @@ import {
   tick,
   ticks,
   zombieAt,
+  zombieById,
 } from './testing'
 import { FINAL_WAVE } from './wavePlans'
 import { waveBonus } from './waves'
@@ -547,7 +549,7 @@ describe('carrying two guns', () => {
     )
   })
 
-  test('the shotgun spends one shell for five pellets', () => {
+  test('the shotgun spends one shell for seven pellets', () => {
     story(
       update,
       given(withArsenal(armed, holdingSpare(16))),
@@ -555,7 +557,7 @@ describe('carrying two guns', () => {
       tick(SHORT_FRAME_MS),
       model(({ bullets, player, frameEvents }) => {
         expect(bullets).toHaveLength(WEAPONS.Shotgun.pellets)
-        expect(bullets).toHaveLength(5)
+        expect(bullets).toHaveLength(7)
         expect(Array.every(bullets, ({ weapon }) => weapon === 'Shotgun')).toBe(
           true,
         )
@@ -631,7 +633,7 @@ describe('shotgun spread', () => {
     const first = blastWith(1234)
     expect(blastWith(1234)).toEqual(first)
     expect(blastWith(98765)).not.toEqual(first)
-    expect(first).toHaveLength(5)
+    expect(first).toHaveLength(7)
     expect(
       Array.every(
         first,
@@ -642,7 +644,7 @@ describe('shotgun spread', () => {
     ).toBe(true)
     expect(
       Array.dedupe(Array.map(first, ({ velocityY }) => velocityY)),
-    ).toHaveLength(5)
+    ).toHaveLength(7)
   })
 
   test('the bullet count stays capped when the room is full of pellets', () => {
@@ -673,8 +675,66 @@ describe('shotgun spread', () => {
         expect(bullets).toHaveLength(BULLET_MAX)
         expect(
           Array.filter(bullets, ({ weapon }) => weapon === 'Shotgun'),
-        ).toHaveLength(5)
+        ).toHaveLength(7)
       }),
+    )
+  })
+})
+
+describe('the Barn Buster up close', () => {
+  const CLOSE_PX = 24
+  const BLASTS_MS = 2000
+
+  // NOTE: the damage a gun deals to a Groaner that cannot die, standing
+  // CLOSE_PX in front of the player, over BLASTS_MS of held fire.
+  const damageUpClose = (kind: CarriedGun['kind']): number => {
+    const start = withArsenal(shopReady, holdingSpare(48, kind))
+    const target = zombieAt(100, start.player.x + CLOSE_PX, start.player.y, {
+      hp: 99,
+    })
+    const hpLeft: Array<number> = []
+    story(
+      update,
+      given(
+        modifyFields(start, {
+          phase: () => fighting(2),
+          rngState: () => 1234,
+          zombies: () => [target],
+        }),
+      ),
+      holdFire,
+      ...ticks(Math.round(BLASTS_MS / SHORT_FRAME_MS), SHORT_FRAME_MS),
+      model(current => {
+        hpLeft.push(zombieById(current, target.id).hp)
+      }),
+    )
+    return target.hp - Option.getOrThrow(Array.head(hpLeft))
+  }
+
+  test("one blast drops a Groaner at arm's length", () => {
+    const start = withArsenal(shopReady, holdingSpare(16))
+    const groaner = zombieAt(100, start.player.x + CLOSE_PX, start.player.y)
+    story(
+      update,
+      given(
+        modifyFields(start, {
+          phase: () => fighting(2),
+          rngState: () => 1234,
+          zombies: () => [groaner],
+        }),
+      ),
+      holdFire,
+      ...ticks(8, SHORT_FRAME_MS),
+      model(({ stats }) => {
+        expect(stats.shotsFired).toBe(WEAPONS.Shotgun.pellets)
+        expect(stats.kills.Shambler).toBe(1)
+      }),
+    )
+  })
+
+  test('up close it out-hits the Pop Pistol', () => {
+    expect(damageUpClose('Shotgun')).toBeGreaterThan(
+      damageUpClose('Pistol') * 1.2,
     )
   })
 })

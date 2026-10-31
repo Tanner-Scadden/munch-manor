@@ -33,7 +33,11 @@ import {
 import { SHOP_ITEMS, verdictFor } from './shop'
 import { SeatAction } from './stepWorld'
 import {
+  FIRE_LIFT,
+  FIRE_PRESS,
+  FIRE_PUSH,
   SURFACE,
+  holdFire,
   holdingFirst,
   holdingSecond,
   pistolOnly,
@@ -102,17 +106,6 @@ const stabsIn = (seen: ReadonlyArray<Model>): number =>
 
 const tough = (id: number, x: number, y = ROW_Y): Zombie =>
   zombieOf('Shambler', id, x, y, { hp: 99 })
-
-const FIRE_THUMB = 70
-
-const fire = Message.PressedPointer({
-  pointerId: FIRE_THUMB,
-  device: 'Touch',
-  clientX: 600,
-  clientY: 200,
-})
-
-const letGoOfFire = Message.ReleasedPointer({ pointerId: FIRE_THUMB })
 
 const send = (start: Model, ...messages: ReadonlyArray<Message>): Model =>
   Array.reduce(messages, start, (current, next) => update(current, next).model)
@@ -184,7 +177,7 @@ describe('the knife', () => {
 
   test('with a gun in hand, fire shoots and never stabs', () => {
     const seen = frames(
-      send(fightingWith([tough(900, PLAYER_X + 10)]), fire),
+      send(fightingWith([tough(900, PLAYER_X + 10)]), FIRE_PRESS, FIRE_PUSH),
       3,
     )
     expect(stabsIn(seen)).toBe(0)
@@ -204,7 +197,7 @@ describe('the knife', () => {
     story(
       update,
       given(knifed([tough(900, PLAYER_X + 10)])),
-      message(fire),
+      holdFire,
       tick(FRAME_MS),
       model(current => {
         const hit = zombieById(current, 900)
@@ -227,7 +220,7 @@ describe('the knife', () => {
     story(
       update,
       given(knifed([near, farther, behind])),
-      message(fire),
+      holdFire,
       tick(FRAME_MS),
       model(current => {
         expect(zombieById(current, 900).hp).toBe(98)
@@ -239,7 +232,7 @@ describe('the knife', () => {
 
   test('fire held stabs on repeat, one stab per cooldown and no faster', () => {
     const lug = zombieOf('Tank', 900, PLAYER_X + 12, ROW_Y, { hp: 99 })
-    const held = send(knifed([lug]), fire)
+    const held = send(knifed([lug]), FIRE_PRESS, FIRE_PUSH)
     const seen = frames(
       held,
       tickCountFor(KNIFE_RULES.intervalMs * 3 - FRAME_MS),
@@ -250,9 +243,12 @@ describe('the knife', () => {
 
   test('letting go of fire stops the stabbing', () => {
     const firstStab = lastOf(
-      frames(send(knifed([tough(900, PLAYER_X + 10)]), fire), 1),
+      frames(
+        send(knifed([tough(900, PLAYER_X + 10)]), FIRE_PRESS, FIRE_PUSH),
+        1,
+      ),
     )
-    const letGo = send(firstStab, letGoOfFire)
+    const letGo = send(firstStab, FIRE_LIFT)
     expect(
       stabsIn(frames(letGo, tickCountFor(KNIFE_RULES.intervalMs * 3))),
     ).toBe(0)
@@ -261,7 +257,8 @@ describe('the knife', () => {
   test('another finger lifting does not let go of the trigger', () => {
     const held = send(
       knifed([tough(900, PLAYER_X + 10)]),
-      fire,
+      FIRE_PRESS,
+      FIRE_PUSH,
       Message.ReleasedPointer({ pointerId: 7 }),
     )
     expect(
@@ -359,7 +356,7 @@ describe('the knife', () => {
             holdingSecond(dry(freshGun('Shotgun')), dry(freshGun('Smg'))),
         }),
     })
-    const seen = frames(send(allDry, fire), 1)
+    const seen = frames(send(allDry, FIRE_PRESS, FIRE_PUSH), 1)
     const pulled = lastOf(seen)
     expect(pulled.player.wield).toBe('Melee')
     expect(Array.some(pulled.frameEvents, GameEvent.isAnyOf(['RanDry']))).toBe(
@@ -378,7 +375,7 @@ describe('the knife', () => {
           shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
         }),
       ),
-      message(fire),
+      holdFire,
       tick(FRAME_MS),
       model(current => {
         expect(zombieById(current, 900).hp).toBe(99)
@@ -391,7 +388,7 @@ describe('the knife', () => {
     story(
       update,
       given(knifed([doomed])),
-      message(fire),
+      holdFire,
       tick(FRAME_MS),
       model(current => {
         expect(current.wallet.earned).toBeGreaterThan(0)
