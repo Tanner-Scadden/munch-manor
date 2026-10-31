@@ -4,7 +4,7 @@
 // writes it, so nothing of one run leaks into the next.
 
 import type { BotOptions, Model, Vector } from './basics'
-import { type FridgeLog, emptyFridgeLog } from './logs'
+import { type FridgeLog, type ShopVisitLog, emptyFridgeLog } from './logs'
 
 // THE FRIDGE WEAPONS' PLAN
 
@@ -46,7 +46,8 @@ export type BotState = {
   spentOnUpgrades: number
   gnomeTries: number
   gnomesPlaced: number
-  boughtLog: Array<Array<string>>
+  // Each break it found the shop open in, and what it bought there.
+  shopVisits: Array<ShopVisitLog>
 }
 
 // A run's state before its first frame: the hand's stream starts at the
@@ -62,5 +63,5 @@ export const freshState = (seed: number, options: BotOptions): BotState => ({
   spentOnUpgrades: 0,
   gnomeTries: 0,
   gnomesPlaced: 0,
-  boughtLog: [],
+  shopVisits: [],
 })

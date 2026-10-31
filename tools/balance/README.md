@@ -44,7 +44,8 @@ The baseline is written when it is missing or with `--update-baseline`. `--exten
 | `bot.ts`                | A campaign run: the bot's frame loop and what it logs, and the seeds                                                    |
 | `bot/basics.ts`         | The Model, the bot's options, its keys, and what it sees                                                                |
 | `bot/state.ts`          | `BotState`, the plans and logs one run carries, made fresh for each run                                                 |
-| `bot/logs.ts`           | `RunResult` and the logs a run fills, and the wave timeline                                                             |
+| `bot/logs.ts`           | The logs a run fills as it plays, and the wave timeline                                                                 |
+| `bot/results.ts`        | `RunResult` and `WaveRun` as Schemas: what a run reports, and what a worker writes and the main process decodes         |
 | `bot/dodging.ts`        | Pickups, the floor's and the boss's tells, kiting and engaging                                                          |
 | `bot/route.ts`          | The way between the parlour and the kitchen                                                                             |
 | `bot/guns.ts`           | The guns it carries and which one a new gun replaces                                                                    |

@@ -60,11 +60,9 @@ import {
   weakerGun,
 } from './bot/guns'
 import {
-  type BossBlame,
   type BossLog,
   PRESSURE_CROWD,
   PRESSURE_PX,
-  type RunResult,
   type WaveLog,
   type WaveTimeline,
   emptyBossBlame,
@@ -76,6 +74,7 @@ import {
   pendingSpawns,
   recordTimeline,
 } from './bot/logs'
+import type { BossBlame, RunResult } from './bot/results'
 import { routeTo } from './bot/route'
 import {
   AMMO_WINDOW_NEAR_PX,
@@ -211,7 +210,6 @@ export const play = (
   let maxAlive = 0
   let minHp = model.player.hp
   const waves: Array<WaveLog> = []
-  const moneyAtVisit: Array<number | undefined> = []
   const dropped: Record<string, number> = {}
   const grabbed: Record<string, number> = {}
   let boostedMs = 0
@@ -239,9 +237,9 @@ export const play = (
     if (
       model.phase._tag === 'Preparation' &&
       isShopOpenFor(model.phase) &&
-      moneyAtVisit[wave] === undefined
+      !state.shopVisits.some(visit => visit.wave === wave)
     ) {
-      moneyAtVisit[wave] = model.wallet.balance
+      state.shopVisits.push({ wave, money: model.wallet.balance, bought: [] })
     }
     if (model.shop._tag === 'Browsing') {
       model = shop(state, model)
@@ -652,9 +650,8 @@ export const play = (
     upgradeSpend: state.spentOnUpgrades,
     minHp,
     waves,
-    moneyAtVisit,
+    shopVisits: state.shopVisits,
     gnomesPlaced: state.gnomesPlaced,
-    boughtAtVisit: state.boughtLog,
     dropped,
     grabbed,
     boostedMs,

@@ -1,63 +1,23 @@
-// What a run of the balance bot reports: its result, the logs it fills
-// as it plays, and the wave timeline. simulate.ts and summary.ts read them.
+// The logs a run of the balance bot fills as it plays, and the wave
+// timeline. What it reports is in results.ts, as Schemas.
 
-import { Record as EffectRecord, Schema } from 'effect'
+import { Record as EffectRecord, Schema, type Types } from 'effect'
 
 import { ZombieKind } from '../../../src/model'
 import { ZOMBIE_KINDS } from '../../../src/zombies'
 import { FRAME_MS, type Kind, type Model } from './basics'
+import type * as Results from './results'
+import type { BossBlame, EmptyStretch } from './results'
 
-export type RunResult = {
-  seed: number
-  cleared: number
-  killedBy: Kind | undefined
-  victory: boolean
-  runMs: number
-  moneyAfterWave: Array<number>
-  hurtBy: Record<Kind, number>
-  maxAlive: number
-  pistolTier: number
-  spareTier: number
-  upgradeSpend: number
-  minHp: number
-  waves: Array<WaveLog>
-  moneyAtVisit: Array<number | undefined>
-  gnomesPlaced: number
-  boughtAtVisit: Array<Array<string>>
-  dropped: Record<string, number>
-  grabbed: Record<string, number>
-  boostedMs: number
-  waveMs: number
-  timelines: Array<WaveTimeline>
-  boss: BossLog
-  newKinds: NewKindLog
-  // The wave whose break the kitchen was bought in, or 0 when it never was.
-  kitchenWave: number
-  fridge: FridgeLog
-}
-
-// What the bot pulled from the Mystery Leftovers fridge and what it did
-// with the fridge weapons: lids thrown and popped, Pan swings and the ones
-// that connected, sprays, and frozen zombies shattered.
-export type FridgeLog = {
-  pulls: number
-  firstPullWave: number
-  prizes: Record<string, number>
-  lids: number
-  pops: number
-  swings: number
-  clangs: number
-  sprays: number
-  shatters: number
-  // The fridge weapon carried when the run ended, or 'None'.
-  endedWith: string
-  // Weapons taken from the fridge, and the knife's stabs and hits.
-  taken: number
-  stabs: number
-  stabHits: number
-  // Refills bought at the ammo window mid-wave.
-  counterBuys: number
-}
+// NOTE: the logs a run fills in place as it plays: the Schemas' types
+// (results.ts), made mutable.
+export type FridgeLog = Types.DeepMutable<Results.FridgeLog>
+export type NewKindLog = Types.DeepMutable<Results.NewKindLog>
+type BossFight = Types.DeepMutable<Results.BossFight>
+export type BossLog = Array<BossFight>
+export type WaveTimeline = Types.DeepMutable<Results.WaveTimeline>
+export type WaveLog = Types.DeepMutable<Results.WaveLog>
+export type ShopVisitLog = Types.DeepMutable<Results.ShopVisit>
 
 export const emptyFridgeLog = (): FridgeLog => ({
   counterBuys: 0,
@@ -76,19 +36,6 @@ export const emptyFridgeLog = (): FridgeLog => ({
   endedWith: 'None',
 })
 
-// What the Big Leaguer, the Ankle Biter, and frenzied packs did in a run.
-export type NewKindLog = {
-  throws: number
-  shields: number
-  throwHits: number
-  grabs: number
-  surfaced: number
-  frenzies: number
-  wipes: number
-  wipeBonus: number
-  heartsWhileClung: number
-}
-
 export const emptyNewKinds = (): NewKindLog => ({
   throws: 0,
   shields: 0,
@@ -101,76 +48,12 @@ export const emptyNewKinds = (): NewKindLog => ({
   heartsWhileClung: 0,
 })
 
-// Each boss wave the run reached: whether the boss walked in, whether it
-// fell, how long it stood, and whether the run ended while it stood.
-export type BossFight = {
-  wave: number
-  arrived: boolean
-  felled: boolean
-  fightMs: number
-  diedToIt: boolean
-  stomps: number
-  stompHits: number
-  belches: number
-  charges: number
-  chargeHits: number
-  bonks: number
-  spits: number
-  spitHits: number
-  enraged: boolean
-  heartsLost: number
-  heartsByAttack: Record<BossBlame, number>
-  damageTaken: number
-  aimedMs: number
-}
-
-export type BossBlame = 'Stomp' | 'Charge' | 'Glob' | 'Bite'
-
 export const emptyBossBlame = (): Record<BossBlame, number> => ({
   Stomp: 0,
   Charge: 0,
   Glob: 0,
   Bite: 0,
 })
-
-export type BossLog = Array<BossFight>
-
-// The timeline of one wave in wall time from its start: every pack as it
-// walks in, and the stretches with no zombie alive. A stretch is announced
-// while a warned pack still waits at its door or the dinner bell rings.
-type PackArrival = {
-  atMs: number
-  pack: number
-  door: string
-  size: number
-  kinds: Array<string>
-  formation: string
-}
-
-export type EmptyStretch = { fromMs: number; ms: number; announcedMs: number }
-
-export type WaveTimeline = {
-  packs: Array<PackArrival>
-  empty: Array<EmptyStretch>
-  restMs: Array<number>
-  lengthMs: number
-}
-
-// Per wave: hearts lost, seconds with 6 or more zombies within 48 px
-// (pressure), seconds with none alive (relax), seconds with none alive,
-// none announced, and spawns still to come (quiet, the dead air the pacing
-// rules forbid) and its longest stretch, its length, and the most alive at
-// once.
-export type WaveLog = {
-  heartsLost: number
-  pressureMs: number
-  relaxMs: number
-  quietMs: number
-  quietRunMs: number
-  longestQuietMs: number
-  lengthMs: number
-  peakAlive: number
-}
 
 export const PRESSURE_PX = 48
 export const PRESSURE_CROWD = 6

@@ -4,8 +4,9 @@ import { modifyFields } from 'foldkit/struct'
 import { beginPreparation } from '../../../src/waves'
 import { withWorld } from '../../../src/world'
 import { play, seedAt, startedRun, waveSeedAt } from '../bot'
-import { type BotOptions, type Kind, type Model } from './basics'
+import { type BotOptions, type Model } from './basics'
 import { emptyWaveLog } from './logs'
+import type { WaveOutcome, WaveRun } from './results'
 
 // WAVE SNAPSHOTS
 
@@ -84,24 +85,6 @@ export const rerolled = (model: Model, waveSeed: number): Model => {
         beginPreparation(world, phase.wave, phase.durationMs, phase.clock),
       )
     : model
-}
-
-type WaveOutcome = 'Cleared' | 'Died' | 'TimedOut'
-
-export type WaveRun = {
-  wave: number
-  snapshotSeed: number
-  waveSeed: number
-  outcome: WaveOutcome
-  heartsLost: number
-  lengthMs: number
-  emptyMs: number
-  quietMs: number
-  longestQuietMs: number
-  pressureMs: number
-  peakAlive: number
-  killedBy: Kind | undefined
-  hurtBy: Record<Kind, number>
 }
 
 export const playSnapshot = (

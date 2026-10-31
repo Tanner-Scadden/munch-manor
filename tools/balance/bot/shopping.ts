@@ -456,11 +456,12 @@ export const shop = (state: BotState, model: Model): Model => {
   if (item.endsWith('Upgrade')) {
     state.spentOnUpgrades += model.wallet.balance - bought.wallet.balance
   }
+  const { phase } = model
   if (
     bought.wallet.balance !== model.wallet.balance &&
-    model.phase._tag === 'Preparation'
+    phase._tag === 'Preparation'
   ) {
-    ;(state.boughtLog[model.phase.wave] ??= []).push(item)
+    state.shopVisits.find(visit => visit.wave === phase.wave)?.bought.push(item)
   }
   return bought.wallet.balance === model.wallet.balance
     ? send(bought, closeShopDialog())
