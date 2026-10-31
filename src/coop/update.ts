@@ -189,6 +189,22 @@ export const ShareRoomLink = makeCommand('ShareRoomLink', {
   },
 })
 
+// NOTE: a tap on the lobby's room code puts the code on the clipboard, to
+// paste in a chat. A browser with no clipboard (an insecure page) fails.
+export const CopyRoomCode = makeCommand('CopyRoomCode', {
+  args: { code: Schema.String },
+  messages: [Message.CompletedCopyRoomCode],
+  handler: function* () {
+    return ({ code }) =>
+      Effect.tryPromise(() => navigator.clipboard.writeText(code)).pipe(
+        Effect.as(Message.CompletedCopyRoomCode({ copy: 'Copied' })),
+        Effect.catch(() =>
+          Effect.succeed(Message.CompletedCopyRoomCode({ copy: 'Failed' })),
+        ),
+      )
+  },
+})
+
 // NOTE: the room's code rides in the address, so a reload rejoins the same
 // seat and the address bar is itself the invite.
 export const RememberRoom = makeCommand('RememberRoom', {
@@ -774,6 +790,20 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
         model: withRoom(model, { ...room, share }),
       })),
 
+    ClickedRoomCode: () =>
+      inRoom(model, room => ({
+        model,
+        commands: [CopyRoomCode({ code: room.code })],
+      })),
+
+    CompletedCopyRoomCode: ({ copy }) =>
+      inRoom(model, room => ({
+        model:
+          copy === 'Copied'
+            ? withRoom(model, { ...room, codeCopies: room.codeCopies + 1 })
+            : model,
+      })),
+
     CompletedRememberRoom: () => ({ model }),
 
     CompletedFocusCoopElement: () => ({ model }),
@@ -796,8 +826,7 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
       model: keepTracers(model, tracers, fired, looked, confirmed),
     }),
 
-    RequestedToggleReady: () =>
-      inRoom(model, room => toggleReady(model, room)),
+    RequestedToggleReady: () => inRoom(model, room => toggleReady(model, room)),
 
     RequestedLeave: () => inRoom(model, room => leave(model, room)),
   })
@@ -847,6 +876,8 @@ export const update = CoopComposition.makeUpdate({
   CompletedResyncRoom: delivered,
   ClickedShareButton: delivered,
   CompletedShareRoomLink: delivered,
+  ClickedRoomCode: delivered,
+  CompletedCopyRoomCode: delivered,
   CompletedRememberRoom: delivered,
   CompletedFocusCoopElement: delivered,
   RequestedOpen: requested,
@@ -870,6 +901,7 @@ export const CommandsLayer = Layer.mergeAll(
   SendRoomFrames.layer,
   LeaveRoom.layer,
   ShareRoomLink.layer,
+  CopyRoomCode.layer,
   RememberRoom.layer,
   ResyncRoom.layer,
 )

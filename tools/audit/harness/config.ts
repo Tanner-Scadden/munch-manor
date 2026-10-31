@@ -301,6 +301,9 @@ export const HarnessConfig = Schema.Struct({
     'arena',
     'away',
     'ended',
+    'card',
+    'cardwon',
+    'cardduo',
   ]),
   // Measuring
   freeze: MaybeNum,

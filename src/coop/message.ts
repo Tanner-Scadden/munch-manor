@@ -6,7 +6,7 @@ import { LobbyEvent, QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
 import { SeatAction } from '../stepWorld'
 import { Bullet } from '../worldSchema'
-import { CoopProblem, Share } from './model'
+import { CodeCopy, CoopProblem, Share } from './model'
 
 // NOTE: this client's controls for one room frame, the shape of netcode's
 // PlayerInput. PlayerInput's own Schema checks each field's wire range, and
@@ -55,6 +55,8 @@ export const Message = defineMessageUnion({
   CompletedResyncRoom: {},
   ClickedShareButton: {},
   CompletedShareRoomLink: { share: Share },
+  ClickedRoomCode: {},
+  CompletedCopyRoomCode: { copy: CodeCopy },
   CompletedRememberRoom: {},
   CompletedFocusCoopElement: {},
   RequestedOpen: {

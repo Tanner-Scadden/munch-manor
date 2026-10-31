@@ -33,6 +33,7 @@ import {
   AnswerOffer,
   CancelQuickPlay,
   ChangeLobby,
+  CopyRoomCode,
   FocusCoopElement,
   LeaveRoom,
   RememberRoom,
@@ -344,7 +345,9 @@ describe('the lobby', () => {
     scene(
       { update, view },
       given(lobbyRoom([memberOf(0, 'Ana')])),
-      expect(selector('[aria-label="Room code M N C H 7"]')).toExist(),
+      expect(
+        role('button', { name: 'Room code M N C H 7, tap to copy' }),
+      ).toExist(),
       click(role('button', { name: 'Share the room link' })),
       Command.resolve(
         ShareRoomLink({ code: CODE }),
@@ -357,6 +360,44 @@ describe('the lobby', () => {
       Command.resolve(RememberRoom, Message.CompletedRememberRoom()),
       Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
       expect(quickPlayButton).toExist(),
+    )
+  })
+})
+
+describe('the room code', () => {
+  const codeButton = role('button', { name: /^Room code M N C H 7/ })
+
+  test('a tap copies it, and COPIED! flashes afresh for each copy', () => {
+    scene(
+      { update, view },
+      given(lobbyRoom([memberOf(0, 'Ana')])),
+      expect(selector('.coop-room-code-copied')).toBeAbsent(),
+      click(codeButton),
+      Command.resolve(
+        CopyRoomCode({ code: CODE }),
+        Message.CompletedCopyRoomCode({ copy: 'Copied' }),
+      ),
+      expect(selector('.coop-room-code-copied')).toHaveText('COPIED!'),
+      expect(codeButton).toHaveAccessibleName('Room code M N C H 7, copied'),
+      click(codeButton),
+      Command.resolve(
+        CopyRoomCode({ code: CODE }),
+        Message.CompletedCopyRoomCode({ copy: 'Copied' }),
+      ),
+      expect(selector('.coop-room-code-copied')).toHaveText('COPIED!'),
+    )
+  })
+
+  test('a clipboard that refuses shows nothing', () => {
+    scene(
+      { update, view },
+      given(lobbyRoom([memberOf(0, 'Ana')])),
+      click(codeButton),
+      Command.resolve(
+        CopyRoomCode({ code: CODE }),
+        Message.CompletedCopyRoomCode({ copy: 'Failed' }),
+      ),
+      expect(selector('.coop-room-code-copied')).toBeAbsent(),
     )
   })
 })

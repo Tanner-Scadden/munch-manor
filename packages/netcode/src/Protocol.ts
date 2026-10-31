@@ -55,8 +55,10 @@ import {
 // the knife draws the melee slot, whatever is in it.
 // Version 13: the idle reload below Hard. Each player carries how long
 // the trigger has rested with the gun in hand (`triggerRestMs`).
-export const PROTOCOL_VERSION = 13
-export const MIN_PROTOCOL_VERSION = 13
+// Version 14: the crew board on the end card. Each seat carries its own
+// revives, downs, and shots fired and landed beside its kills.
+export const PROTOCOL_VERSION = 14
+export const MIN_PROTOCOL_VERSION = 14
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

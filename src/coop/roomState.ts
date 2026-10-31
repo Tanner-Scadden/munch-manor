@@ -77,6 +77,7 @@ export const freshRoom = (code: string, slot: number): Room => ({
   hits: { looked: 0, confirmed: 0 },
   presses: noPresses,
   share: 'Idle',
+  codeCopies: 0,
   departure: 'Staying',
 })
 

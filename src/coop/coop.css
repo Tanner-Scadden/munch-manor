@@ -682,8 +682,47 @@
 }
 
 .coop-room-code {
+  position: relative;
   display: flex;
+  align-items: center;
   gap: clamp(3px, 1 * var(--coop-unit), 8px);
+  min-height: var(--menu-tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* NOTE: a copy's COPIED! pops over the code and fades in place. */
+.coop-room-code-copied {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  translate: -50% -50%;
+  padding: 4px 8px;
+  border: 2px solid var(--menu-green);
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-green-deep);
+  color: var(--menu-green);
+  font: bold clamp(12px, 3.5 * var(--coop-unit), 18px) / 1 var(--menu-font);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: coop-code-copied 1400ms ease-out forwards;
+}
+
+@keyframes coop-code-copied {
+  0% {
+    opacity: 0;
+    scale: 1.4;
+  }
+  15%,
+  70% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1;
+  }
 }
 
 .coop-room-code-symbol {
