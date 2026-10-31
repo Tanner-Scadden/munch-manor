@@ -243,8 +243,8 @@ describe("the boss's charge on the wire", () => {
 // board. The wire must not change
 // without a protocol bump. A change to how the room plays moves the bytes
 // with no change to the wire, as zombies coming in promptly after their
-// warning did.
-const GOLDEN_DIGEST = '65551:d00771facd686cb0'
+// warning did, and Normal's eased health and speed (2026-10-31) did.
+const GOLDEN_DIGEST = '60291:12f5ed901a1239fe'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

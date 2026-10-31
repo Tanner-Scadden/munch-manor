@@ -47,6 +47,13 @@ import {
   telegraphDodge,
 } from './dodging'
 import { isSpent } from './guns'
+import {
+  IS_SHARP,
+  humanSight,
+  isNoticed,
+  nextBotRandom,
+  stickyTarget,
+} from './hand'
 import { isInKitchen, routeTo } from './route'
 import { type BotState, type Zombie } from './state'
 
@@ -144,10 +151,12 @@ export const kite = (state: BotState, model: Model): Vector => {
     distance(player, zombie) -
     (zombie.kind === 'Boss' ? BOSS_BERTH_PX : 0) -
     (zombie.frenzy._tag === 'Frenzied' ? frenzyBerthPx() : 0)
-  // A zombie frozen solid by Brain Freeze cannot bite, so it is not fled.
+  // A zombie frozen solid by Brain Freeze cannot bite, so it is not fled,
+  // and the human bot flees only what it has noticed.
   const nearest = walking(model)
     .filter(zombie => !KITES || zombie.kind !== 'Boss')
     .filter(zombie => zombie.action._tag !== 'Frozen')
+    .filter(zombie => isNoticed(state, model, zombie))
     .sort((a, b) => reach(a) - reach(b))[0]
   if (nearest !== undefined && reach(nearest) < FLEE_PX) {
     return steerToward(nearest, player)
@@ -173,15 +182,14 @@ export const kite = (state: BotState, model: Model): Vector => {
 }
 
 // The bot is a fair player, not an aimbot: it re-aims only every few
-// frames, aims where the target was a moment ago, and its hand shakes.
+// frames and its hand shakes. The human bot (bot/hand.ts) also reacts late,
+// trails and overshoots its target, and steps a little less often; AIM=sharp
+// is the old bot, whose only miss is AIM_NOISE.
 export const AIM_EVERY_FRAMES = Number(process.env['AIM_EVERY'] ?? 5)
 const AIM_NOISE_RADIANS = Number(process.env['AIM_NOISE'] ?? 0.22)
-export const MOVE_EVERY_FRAMES = Number(process.env['MOVE_EVERY'] ?? 4)
-
-const nextBotRandom = (state: BotState) => {
-  state.botRandom = (state.botRandom * 1103515245 + 12345) >>> 0
-  return state.botRandom / 0xffffffff
-}
+export const MOVE_EVERY_FRAMES = Number(
+  process.env['MOVE_EVERY'] ?? (IS_SHARP ? 4 : 6),
+)
 
 // It shoots the nearest zombie it can see, but while the boss stands it
 // shoots him unless something else is within FOCUS_PX, and it always shoots
@@ -279,16 +287,19 @@ export const holdAssistedAim = (state: BotState, model: Model): Model => {
   return send(model, Message.MovedMouse({ clientX: point.x, clientY: point.y }))
 }
 
-// Points the mouse at target, with the hand's shake, and returns the
-// screen point it aimed at.
+// Points the mouse at target, with the sharp hand's shake or the human
+// hand's error, and returns the screen point it aimed at.
 export const aimAt = (
   state: BotState,
   model: Model,
   target: Vector,
+  humanError?: number,
 ): { model: Model; point: Vector } => {
   const angle =
     Math.atan2(target.y - model.player.y, target.x - model.player.x) +
-    (nextBotRandom(state) + nextBotRandom(state) - 1) * AIM_NOISE_RADIANS
+    (humanError ??
+      (nextBotRandom(state) + nextBotRandom(state) - 1) * AIM_NOISE_RADIANS)
+  state.maybeAimAngle = angle
   // The mouse lives in screen pixels, so the aim point goes through the
   // camera, which scrolls once the kitchen is open.
   const rawPoint = worldToView(screenCameraOf(model), {
@@ -333,10 +344,30 @@ export const aimAndFire = (
   if (frame % AIM_EVERY_FRAMES !== 0) {
     return holdAssistedAim(state, model)
   }
-  const target = maybeTarget ?? nearestVisible(model)
+  const target =
+    maybeTarget ?? stickyTarget(state, model, nearestVisible(model))
   if (target === undefined) {
     return topOff(holdFire(model))
   }
-  const aimed = aimAt(state, model, target)
+  return aimAndShoot(state, model, target, frame)
+}
+
+// Aims at target and pulls the trigger, once the human hand has reacted to
+// it; until then the trigger rests.
+export const aimAndShoot = (
+  state: BotState,
+  model: Model,
+  target: Zombie,
+  frame: number,
+): Model => {
+  if (IS_SHARP) {
+    const aimed = aimAt(state, model, target)
+    return pressFire(aimed.model, aimed.point)
+  }
+  const sight = humanSight(state, target, frame)
+  if (sight === undefined) {
+    return holdFire(model)
+  }
+  const aimed = aimAt(state, model, sight.at, sight.error)
   return pressFire(aimed.model, aimed.point)
 }

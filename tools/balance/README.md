@@ -13,6 +13,12 @@ Three layers of balance checks, cheapest first. Run the heavy ones through the g
 | `bun run balance:nightly`                      | Everything     | About 20 minutes           |
 | `bun run balance:nightly -- --update-baseline` | Everything     | Also rewrites the baseline |
 
+## The human bot and AIM=sharp
+
+The default bot plays like a person (`bot/hand.ts`, decided 2026-10-31: real players lost far more than the bot, on waves 1 to 4, to Groaners and Hotfoots). It waits about 300 ms after picking a target before it fires, its first flick misses by up to about 0.35 radians and settles over about 0.4 s, it aims where it saw a moving target a moment ago (fast sideways movers get away), it keeps its target unless another is much nearer or about to bite, it steps every 6 frames instead of 4, and it flees only the zombies near its aim or within earshot. Every limit is seeded, so a run replays exactly. `REACTION_MS`, `HUMAN_SHAKE`, `OVERSHOOT`, `SETTLE_FRAMES`, `LAG_FRAMES`, `SWITCH_RATIO`, `PANIC_PX`, `NOTICE_PX`, and `NOTICE_DEGREES` tune it.
+
+`AIM=sharp` plays the old bot, which re-aims at once with only a little shake and knows where every zombie is: a skilled player's stand-in. Easy and Normal are tuned on the human bot, Hard and Nightmare on `AIM=sharp`, and the nightly sets `AIM` for every job.
+
 ## Portrait view
 
 `VIEW=portrait` (for example `VIEW=portrait bun run balance -- --wave all --runs 100`) makes the bot see only the zombies inside the portrait camera's window on a 390x844 phone, 96 by 128 of the room, which follows it and leans toward its aim, the way a phone held upright shows the room. It does not shoot or flee what it cannot see. It gets the touch aim assist (`src/aimAssist.ts`) every tick its trigger is held, the way a phone does. `VIEW=touch` sees only the landscape phone's window, 240 by 135 of the room at 4/3, as a phone on its side plays, with the same aim assist. `NO_ASSIST=1` plays either without it. The nightly plays two portrait campaign passes (see below). See "Portrait play" in `GAME_DESIGN.md` for the comparison.
@@ -31,7 +37,7 @@ Snapshots are derived by playing, not saved as fixtures. A fixture would be a wh
 
 ## The nightly suite
 
-`nightly.ts` runs these jobs one after another, each through `simulate.ts --json` with the guard's `WORKERS`: Normal default, Normal `SWAP=1`, Easy, Hard, Nightmare, endless on Normal, the portrait passes (200 runs each), and the snapshot pass for every wave on Normal (100 runs a wave). It decodes each summary with the Schemas in `summary.ts`, adds the model's numbers, judges the targets in `targets.ts`, compares everything with `baseline.json`, and writes `reports/<YYYY-MM-DD>.md` (gitignored). The summary at the top lists what is in target, what drifted past its noise tolerance, what is out of target, and which portrait passes win too far from landscape. It exits 0 and prints the report's path. `--runs n` and `--wave-runs n` shrink the jobs for a quick try. Every job sets `VIEW`, so a `VIEW` in your shell does not leak into the landscape jobs.
+`nightly.ts` runs these jobs one after another, each through `simulate.ts --json` with the guard's `WORKERS`: Normal default, Normal `SWAP=1`, Easy, Hard, Nightmare, endless on Normal, the portrait passes (200 runs each), and the snapshot pass for every wave on Normal (100 runs a wave). Easy, Normal, endless, the portrait passes, and the snapshots play the human bot; Hard and Nightmare play `AIM=sharp`. It decodes each summary with the Schemas in `summary.ts`, adds the model's numbers, judges the targets in `targets.ts`, compares everything with `baseline.json`, and writes `reports/<YYYY-MM-DD>.md` (gitignored). The summary at the top lists what is in target, what drifted past its noise tolerance, what is out of target, and which portrait passes win too far from landscape. It exits 0 and prints the report's path. `--runs n` and `--wave-runs n` shrink the jobs for a quick try. Every job sets `VIEW`, so a `VIEW` in your shell does not leak into the landscape jobs.
 
 The portrait passes are Normal default and Easy, each with `VIEW=portrait` (`PORTRAIT_PAIRS` in `targets.ts`). Each is held to the same win target as its landscape twin, and the report's Portrait section puts them side by side: their table, a line per pair with the win gap, and deaths by wave for both. A gap over 8 points (`PORTRAIT_GAP_TOLERANCE`, about two standard errors of the difference of two 200 run shares) is listed in the summary. Each pass costs over two minutes, so `SWAP=1` stays landscape only, and Hard and Nightmare do too, since their win shares are too close to zero to show a gap in 200 runs. For a one-off portrait check of another bot, run it by hand: `VIEW=portrait SWAP=1 bun run balance 200`.
 
@@ -46,6 +52,7 @@ The baseline is written when it is missing or with `--update-baseline`. `--exten
 | `bot/state.ts`          | `BotState`, the plans and logs one run carries, made fresh for each run                                                 |
 | `bot/logs.ts`           | The logs a run fills as it plays, and the wave timeline                                                                 |
 | `bot/results.ts`        | `RunResult` and `WaveRun` as Schemas: what a run reports, and what a worker writes and the main process decodes         |
+| `bot/hand.ts`           | The human hand: reaction time, aim that trails and overshoots, sticky targets, what it notices; `AIM=sharp` skips it    |
 | `bot/dodging.ts`        | Pickups, the floor's and the boss's tells, kiting and engaging                                                          |
 | `bot/route.ts`          | The way between the parlour and the kitchen                                                                             |
 | `bot/guns.ts`           | The guns it carries and which one a new gun replaces                                                                    |

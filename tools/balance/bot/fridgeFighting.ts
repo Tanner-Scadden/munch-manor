@@ -22,6 +22,7 @@ import { BOSS_BERTH_PX } from './dodging'
 import {
   AIM_EVERY_FRAMES,
   aimAndFire,
+  aimAndShoot,
   aimAt,
   holdAssistedAim,
   holdFire,
@@ -206,8 +207,7 @@ export const swingPan = (
   if (frame % AIM_EVERY_FRAMES !== 0 || target === undefined) {
     return holdAssistedAim(state, drawn)
   }
-  const aimed = aimAt(state, drawn, target)
-  return pressFire(aimed.model, aimed.point)
+  return aimAndShoot(state, drawn, target, frame)
 }
 
 // The Pan out with no target to swing at goes back to the last gun at
@@ -263,10 +263,10 @@ export const fightWithFridge = (
   if (target === undefined) {
     return holdFire(swapped)
   }
-  const aimed = aimAt(state, swapped, target)
   if (spare.kind !== 'Cooker') {
-    return pressFire(aimed.model, aimed.point)
+    return aimAndShoot(state, swapped, target, frame)
   }
+  const aimed = aimAt(state, swapped, target)
   const { charge, fireCooldownMs } = aimed.model.player
   return charge._tag === 'Idle' && fireCooldownMs <= 0
     ? pressFire(aimed.model, aimed.point)

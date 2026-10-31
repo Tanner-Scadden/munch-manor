@@ -28,7 +28,12 @@ import {
   type Zombie,
   ZombieState,
 } from './model'
-import { playingModel, readyModel, withZombies } from './model.fixture'
+import {
+  NORMAL_BITE_GRACE,
+  playingModel,
+  readyModel,
+  withZombies,
+} from './model.fixture'
 import { scoreOf } from './stats'
 import {
   FRAME_MS,
@@ -351,8 +356,8 @@ describe('zombies', () => {
         expect(player.knockback.x).toBeLessThan(0)
         expect(player.invulnerability).toEqual(
           Invulnerability.Invulnerable({
-            remainingMs: PLAYER_INVULNERABLE_MS,
-            durationMs: PLAYER_INVULNERABLE_MS,
+            remainingMs: PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE,
+            durationMs: PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE,
           }),
         )
         expect(Phase.guards.Wave(phase)).toBe(true)
@@ -366,7 +371,9 @@ describe('zombies', () => {
   })
 
   test('contact during invulnerability costs nothing, and contact after it ends hurts again', () => {
-    const invulnerableTicks = Math.round(PLAYER_INVULNERABLE_MS / FRAME_MS)
+    const invulnerableTicks = Math.round(
+      (PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE) / FRAME_MS,
+    )
 
     story(
       update,

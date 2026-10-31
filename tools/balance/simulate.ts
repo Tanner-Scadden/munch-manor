@@ -4,6 +4,7 @@
 //   MODE=endless bun run balance [runs] [firstSeed]
 //   WORKERS=4 bun run balance 200   (splits the runs over processes, capped)
 //   TIMELINE=1 bun run balance 40   (adds the wave timeline audit)
+//   AIM=sharp bun run balance 200   (the old bot, without the human limits)
 //   KITE=1 bun run balance 200   (runs from the boss, never dodges)
 //   NO_DODGE=1 bun run balance 200   (ignores every floor tell)
 //   DIFFICULTY=hard bun run balance 200   (easy, normal, hard, or nightmare)

@@ -144,8 +144,17 @@ const pickDoor = (doors: ReadonlyArray<DoorId>, roll: number): DoorId =>
     () => 'North',
   )
 
+// NOTE: the largest health scale among the wave's spawns, which carries the
+// level's, so a level below ×1 (Easy, Normal) lowers him too. A wave with
+// no spawns keeps him at full health.
 const wavePlanHpScale = (spawns: ReadonlyArray<PlannedSpawn>): number =>
-  Array.reduce(spawns, 1, (largest, { hpScale }) => Math.max(largest, hpScale))
+  Array.match(spawns, {
+    onEmpty: () => 1,
+    onNonEmpty: ([first, ...rest]) =>
+      Array.reduce(rest, first.hpScale, (largest, { hpScale }) =>
+        Math.max(largest, hpScale),
+      ),
+  })
 
 export const planBoss = (
   doors: ReadonlyArray<DoorId>,

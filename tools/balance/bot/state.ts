@@ -29,6 +29,19 @@ export const GUN_PLAN: FridgePlan = {
   panTarget: undefined,
 }
 
+// THE HUMAN HAND
+
+// The target the human hand holds (bot/hand.ts): when it picked it, where
+// and when it last saw it, how fast it moves, and the first flick's miss.
+type HumanAim = {
+  targetId: number
+  sinceFrame: number
+  seenAt: Vector
+  seenFrame: number
+  velocity: Vector
+  bias: number
+}
+
 // THE RUN'S STATE
 
 export type BotState = {
@@ -40,6 +53,9 @@ export type BotState = {
   botRandom: number
   // Where the bot last pointed, which the touch aim assist bends.
   maybeRawAim: Vector | undefined
+  // The human hand's target, and the angle it last aimed at.
+  maybeHumanAim: HumanAim | undefined
+  maybeAimAngle: number | undefined
   // The wave whose break the kitchen was bought in, or 0 when it never was.
   kitchenWave: number
   fridgeLog: FridgeLog
@@ -58,6 +74,8 @@ export const freshState = (seed: number, options: BotOptions): BotState => ({
   panPlanNow: GUN_PLAN,
   botRandom: seed,
   maybeRawAim: undefined,
+  maybeHumanAim: undefined,
+  maybeAimAngle: undefined,
   kitchenWave: 0,
   fridgeLog: emptyFridgeLog(),
   spentOnUpgrades: 0,

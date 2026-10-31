@@ -40,6 +40,7 @@ import {
   calmPacing,
   initialModel,
 } from './model'
+import { NORMAL_BITE_GRACE } from './model.fixture'
 import { tick, ticks, ticksFor } from './testing'
 import { FINAL_WAVE, debutKinds } from './wavePlans'
 
@@ -537,15 +538,15 @@ describe('mercy', () => {
     expect(lastHeart.player.hp).toBe(1)
     expect(lastHeart.player.invulnerability).toEqual(
       Invulnerability.Invulnerable({
-        remainingMs: LAST_HEART_INVULNERABLE_MS,
-        durationMs: LAST_HEART_INVULNERABLE_MS,
+        remainingMs: LAST_HEART_INVULNERABLE_MS * NORMAL_BITE_GRACE,
+        durationMs: LAST_HEART_INVULNERABLE_MS * NORMAL_BITE_GRACE,
       }),
     )
     expect(LAST_HEART_INVULNERABLE_MS).toBe(PLAYER_INVULNERABLE_MS * 1.5)
     expect(roomy.player.invulnerability).toEqual(
       Invulnerability.Invulnerable({
-        remainingMs: PLAYER_INVULNERABLE_MS,
-        durationMs: PLAYER_INVULNERABLE_MS,
+        remainingMs: PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE,
+        durationMs: PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE,
       }),
     )
     expect(lastHeart.rngState).toBe(roomy.rngState)

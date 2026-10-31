@@ -62,39 +62,60 @@ const campaignJob = (
   args: [`${sizes.campaignRuns}`, '1'],
 })
 
+// NOTE: every job sets AIM too. Easy and Normal are tuned on the human bot
+// (tools/balance/bot/hand.ts), Hard and Nightmare on the sharp one, a
+// skilled player's stand-in (decided 2026-10-31).
+const HUMAN = { AIM: 'human' }
+const SHARP = { AIM: 'sharp' }
+
 export const nightlyJobs = (sizes: JobSizes): ReadonlyArray<Job> => [
-  campaignJob('normal', 'Normal, default bot', { DIFFICULTY: 'normal' }, sizes),
+  campaignJob(
+    'normal',
+    'Normal, default bot',
+    { DIFFICULTY: 'normal', ...HUMAN },
+    sizes,
+  ),
   campaignJob(
     'normal-swap',
     'Normal, SWAP=1',
-    { DIFFICULTY: 'normal', SWAP: '1' },
+    { DIFFICULTY: 'normal', SWAP: '1', ...HUMAN },
     sizes,
   ),
-  campaignJob('easy', 'Easy, default bot', { DIFFICULTY: 'easy' }, sizes),
-  campaignJob('hard', 'Hard, default bot', { DIFFICULTY: 'hard' }, sizes),
+  campaignJob(
+    'easy',
+    'Easy, default bot',
+    { DIFFICULTY: 'easy', ...HUMAN },
+    sizes,
+  ),
+  campaignJob(
+    'hard',
+    'Hard, AIM=sharp',
+    { DIFFICULTY: 'hard', ...SHARP },
+    sizes,
+  ),
   campaignJob(
     'nightmare',
-    'Nightmare, default bot',
-    { DIFFICULTY: 'nightmare' },
+    'Nightmare, AIM=sharp',
+    { DIFFICULTY: 'nightmare', ...SHARP },
     sizes,
   ),
   campaignJob(
     'endless',
     'Endless on Normal, default bot',
-    { DIFFICULTY: 'normal', MODE: 'endless' },
+    { DIFFICULTY: 'normal', MODE: 'endless', ...HUMAN },
     sizes,
   ),
   campaignJob(
     'portrait-normal',
     'Portrait, Normal, default bot',
-    { DIFFICULTY: 'normal' },
+    { DIFFICULTY: 'normal', ...HUMAN },
     sizes,
     'Portrait',
   ),
   campaignJob(
     'portrait-easy',
     'Portrait, Easy, default bot',
-    { DIFFICULTY: 'easy' },
+    { DIFFICULTY: 'easy', ...HUMAN },
     sizes,
     'Portrait',
   ),
@@ -102,7 +123,7 @@ export const nightlyJobs = (sizes: JobSizes): ReadonlyArray<Job> => [
     id: 'waves',
     title: 'Wave snapshots on Normal, every wave',
     view: 'Landscape',
-    env: { DIFFICULTY: 'normal', ...viewEnv('Landscape') },
+    env: { DIFFICULTY: 'normal', ...HUMAN, ...viewEnv('Landscape') },
     args: ['--wave', 'all', '--runs', `${sizes.waveRuns}`],
   },
 ]
@@ -381,8 +402,19 @@ export const wavePassMetrics = (
     ]
   })
 
-export const modelMetrics = (model: BalanceModel): ReadonlyArray<Metric> =>
-  Array.flatMap(model.Normal, row => [
+// NOTE: the sawtooth's peaks are held on Hard (see PEAK_RATIO_TARGET in
+// targets.ts); Normal's rows stay for the record.
+export const modelMetrics = (model: BalanceModel): ReadonlyArray<Metric> => [
+  ...Array.map(model.Hard, row =>
+    metric(
+      `model.hard.peakRatio.w${row.wave}`,
+      `Model: wave ${row.wave} peak incoming hp/s over dps (Hard)`,
+      row.peakRatio,
+      'modelRatio',
+      'Ratio',
+    ),
+  ),
+  ...Array.flatMap(model.Normal, row => [
     metric(
       `model.normal.peakRatio.w${row.wave}`,
       `Model: wave ${row.wave} peak incoming hp/s over dps (Normal)`,
@@ -404,7 +436,8 @@ export const modelMetrics = (model: BalanceModel): ReadonlyArray<Metric> =>
       'modelDps',
       'Ratio',
     ),
-  ])
+  ]),
+]
 
 // TARGETS
 

@@ -100,13 +100,17 @@ export const killEvent = (zombie: Zombie, direction: Vector): GameEvent =>
 const invulnerableMsAt = (hp: number): number =>
   hp === 1 ? LAST_HEART_INVULNERABLE_MS : PLAYER_INVULNERABLE_MS
 
+// NOTE: graceScale stretches the blink after the wound; a bite passes the
+// level's (src/difficulty.ts), so Easy and Normal forgive a crowd's bites
+// longer.
 export const woundPlayer = (
   player: Player,
   damage: number,
   direction: Vector,
+  graceScale = 1,
 ): Player => {
   const hp = Math.max(0, player.hp - damage)
-  const durationMs = invulnerableMsAt(hp)
+  const durationMs = invulnerableMsAt(hp) * graceScale
   return modifyFields(player, {
     hp: () => hp,
     knockback: () => scaleVector(direction, PLAYER_KNOCKBACK_SPEED),
