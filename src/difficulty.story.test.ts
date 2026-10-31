@@ -27,7 +27,7 @@ import {
 } from './model'
 import { SURFACE, closeDialog, press, showDialog, tick } from './testing'
 import { asVeteran } from './veteran'
-import { FINAL_WAVE } from './waves'
+import { FINAL_WAVE } from './wavePlans'
 import { ZOMBIE_KINDS } from './zombies'
 
 const firstVisit: Model = modifyFields(initialModel, {

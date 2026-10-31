@@ -37,6 +37,7 @@ import { CHUCKER_RULES, maybeShieldFor } from '../../src/chucker'
 import { ShopDialogBinding } from '../../src/composition'
 import { PLAYER_MAX_HP, PLAYER_RADIUS } from '../../src/constants'
 import { CRAWLER_RULES } from '../../src/crawler'
+import { doorCounts } from '../../src/endlessWaves'
 import { EXIT_RULES, KITCHEN_EXIT, isExitOfferOpenFor } from '../../src/exits'
 import { FRENZY_RULES } from '../../src/frenzy'
 import {
@@ -66,7 +67,7 @@ import {
   verdictFor,
 } from '../../src/shop'
 import { asTutorialDone, asVeteran } from '../../src/veteran'
-import { beginPreparation, doorCounts } from '../../src/waves'
+import { beginPreparation } from '../../src/waves'
 import {
   canReload,
   freshGun,

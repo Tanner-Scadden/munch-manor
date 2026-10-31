@@ -45,7 +45,7 @@ import { SURFACE, closeDialog, showDialog } from './testing'
 import { WriteSave } from './update/save'
 import { SendRunSummary } from './update/settle'
 import { asVeteran } from './veteran'
-import { FINAL_WAVE } from './waves'
+import { FINAL_WAVE } from './wavePlans'
 import { pause } from './waves'
 
 const VISIT_ID = '0123456789abcdef'

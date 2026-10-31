@@ -18,6 +18,7 @@ import {
   QUIET_HURRY_MS,
   RELAX_EXTEND_MAX_MS,
 } from './constants'
+import { rollSpawns, rollWave } from './endlessWaves'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -38,7 +39,7 @@ import {
   initialModel,
 } from './model'
 import { tick, ticks, ticksFor } from './testing'
-import { FINAL_WAVE, debutKinds, rollSpawns, rollWave } from './waves'
+import { FINAL_WAVE, debutKinds } from './wavePlans'
 
 const FRAME_MS = 50
 

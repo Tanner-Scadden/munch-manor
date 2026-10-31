@@ -21,6 +21,7 @@ import {
   ZOMBIE_ALIVE_MAX,
 } from './constants'
 import { DIFFICULTIES } from './difficulty'
+import { hpScaleFor, rollSpawns } from './endlessWaves'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -40,8 +41,8 @@ import {
 import { newPlayerReady } from './model.fixture'
 import { BOSS_ICON } from './sprites/zombies'
 import { bulletInto, tick, ticks, zombieOf } from './testing'
+import { FINAL_WAVE, WAVE_PLANS } from './wavePlans'
 import { wavePreviewShapes } from './wavePreview'
-import { FINAL_WAVE, WAVE_PLANS, hpScaleFor, rollSpawns } from './waves'
 import { ZOMBIE_KINDS, scaledHp } from './zombies'
 
 const FRAME_MS = FIXED_STEP_MS

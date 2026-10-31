@@ -23,7 +23,7 @@ import { SURFACE, resolvePlayed, tick } from './testing'
 import { PlaySound, ResumeAudio } from './update/sound'
 import { FetchBuild } from './update/version'
 import { asVeteran } from './veteran'
-import { FINAL_WAVE } from './waves'
+import { FINAL_WAVE } from './wavePlans'
 
 const FRAME_MS = FIXED_STEP_MS
 const FAR_AWAY_SPAWN: PlannedSpawn = {

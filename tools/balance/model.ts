@@ -5,8 +5,7 @@
 // a second, holds and quiet hurries included. Run it with
 // `bun tools/balance/model.ts`. It is instant, so it runs in `bun run test`.
 
-import type { Record } from 'effect'
-import { Array, Match, Number, Option, Order, pipe } from 'effect'
+import { Array, Match, Number, Option, Order, type Record, pipe } from 'effect'
 
 import { BOSS_RULES, hasBoss } from '../../src/boss'
 import {
@@ -22,6 +21,7 @@ import {
   DIFFICULTY_ORDER,
   toughenSpawns,
 } from '../../src/difficulty'
+import { rollWave } from '../../src/endlessWaves'
 import { EXIT_RULES } from '../../src/exits'
 import { FRENZY_RULES, frenzyPacksOf } from '../../src/frenzy'
 import type {
@@ -34,7 +34,8 @@ import type {
 import { STRAGGLER_KINDS } from '../../src/pacing'
 import { SHOP_ITEMS } from '../../src/shop'
 import { TRAPS } from '../../src/traps'
-import { FINAL_WAVE, rollWave, waveBonus } from '../../src/waves'
+import { FINAL_WAVE } from '../../src/wavePlans'
+import { waveBonus } from '../../src/waves'
 import { UPGRADE_TIERS, WEAPONS, effectiveStats } from '../../src/weapons'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER, scaledHp } from '../../src/zombies'
 

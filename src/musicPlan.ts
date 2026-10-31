@@ -11,7 +11,7 @@ import {
   isSoundAudible,
 } from './update/sound'
 import type { UpdateStep } from './update/step'
-import { FINAL_WAVE } from './waves'
+import { FINAL_WAVE } from './wavePlans'
 
 // COMMAND
 

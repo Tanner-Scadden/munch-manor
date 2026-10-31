@@ -13,6 +13,7 @@ import {
   WAVE_CLEARED_BANNER_MS,
 } from './constants'
 import { endOverlayShapes } from './endView'
+import { endlessDepth, hpScaleFor } from './endlessWaves'
 import {
   type BakedText,
   GLYPH_HEIGHT,
@@ -63,13 +64,8 @@ import {
 } from './sprite'
 import { gunSprite } from './sprites/guns'
 import { ZOMBIE_SPRITES, showcaseWalk } from './sprites/zombies'
-import {
-  FINAL_WAVE,
-  debutKinds,
-  endlessDepth,
-  hpScaleFor,
-  waveBonus,
-} from './waves'
+import { FINAL_WAVE, debutKinds } from './wavePlans'
+import { waveBonus } from './waves'
 import { ZOMBIE_KINDS } from './zombies'
 
 // SHARED

@@ -4,13 +4,13 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { cameraOf } from './camera'
+import { rollSpawns } from './endlessWaves'
 import { hudStripShapes } from './hud'
 import { sceneShapes } from './layers'
 import { type Model, Phase, RunMode, initialModel } from './model'
 import { startOrResume } from './runFlow'
 import { screenOf } from './screen'
 import { wavePreviewShapes } from './wavePreview'
-import { rollSpawns } from './waves'
 
 const preparing = (wave: number): Model => {
   const started = startOrResume(initialModel, RunMode.Campaign())

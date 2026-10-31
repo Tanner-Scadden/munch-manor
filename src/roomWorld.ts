@@ -18,6 +18,7 @@ import {
   FIXED_STEP_MS,
   PREPARATION_MS,
 } from './constants'
+import { type ZombieAt, catchUpShots, zombiesAt } from './firing'
 import { normalize } from './geometry'
 import { freshOvens } from './kitchen'
 import { settledLessons } from './lessons'
@@ -36,15 +37,11 @@ import {
   withSeat,
 } from './party'
 import { flowFieldToward } from './pathing'
-import {
-  type ZombieAt,
-  catchUpShots,
-  predictLeadSeat,
-  zombiesAt,
-} from './simulation'
+import { predictLeadSeat } from './simulation'
 import { SeatAction, applySeatAction, stepWorld } from './stepWorld'
 import { TURRET_WEAPON } from './traps'
-import { FINAL_WAVE, beginPreparation } from './waves'
+import { FINAL_WAVE } from './wavePlans'
+import { beginPreparation } from './waves'
 import type { World } from './world'
 import {
   readEvent,

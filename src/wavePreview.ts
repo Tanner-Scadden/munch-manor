@@ -7,6 +7,14 @@ import { maybeBossDoor } from './boss'
 import { type Camera, worldToView } from './camera'
 import type { ApplicationViewBuilder } from './composition'
 import { FULL_TURN, placeSprite } from './drawing'
+import {
+  type DoorCount,
+  type KindCount,
+  doorCounts,
+  endlessDepth,
+  floorCounts,
+  hpScaleFor,
+} from './endlessWaves'
 import { exitBoxOf } from './exits'
 import {
   COUNT_SPRITES,
@@ -29,15 +37,7 @@ import {
 import { type Box, screenOf } from './screen'
 import { group } from './sprite'
 import { BOSS_ICON, ZOMBIE_SPRITES } from './sprites/zombies'
-import {
-  type DoorCount,
-  type KindCount,
-  debutKinds,
-  doorCounts,
-  endlessDepth,
-  floorCounts,
-  hpScaleFor,
-} from './waves'
+import { debutKinds } from './wavePlans'
 import { ZOMBIE_KINDS } from './zombies'
 
 // DOOR MARKERS

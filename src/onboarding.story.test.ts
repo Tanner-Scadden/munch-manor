@@ -8,6 +8,7 @@ import {
   FIXED_STEP_MS,
   PREPARATION_MS,
 } from './constants'
+import { rollSpawns } from './endlessWaves'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -40,7 +41,6 @@ import {
   touchMove,
 } from './testing'
 import { asVeteran } from './veteran'
-import { rollSpawns } from './waves'
 
 const TICK_MS = 50
 const CARD_TICKS = Math.ceil(DEBUT_CARD_MIN_MS / TICK_MS)

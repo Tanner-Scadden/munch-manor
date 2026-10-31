@@ -16,6 +16,7 @@ import {
   POPUP_MAX,
   ZOMBIE_ALIVE_MAX,
 } from './constants'
+import { rollSpawns } from './endlessWaves'
 import { KITCHEN_EXIT } from './exits'
 import { WARM_UP_CLASS, sceneShapes } from './layers'
 import { update } from './main'
@@ -68,7 +69,7 @@ import {
 } from './testing'
 import { asVeteran } from './veteran'
 import { view } from './view'
-import { FINAL_WAVE, rollSpawns } from './waves'
+import { FINAL_WAVE } from './wavePlans'
 import { freshGun } from './weapons'
 import { ZOMBIE_KINDS } from './zombies'
 

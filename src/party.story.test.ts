@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 
 import { levelOf } from './arena'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from './constants'
+import { rollSpawns } from './endlessWaves'
 import { EXIT_RULES, KITCHEN_EXIT } from './exits'
 import { update } from './main'
 import {
@@ -36,7 +37,7 @@ import { SHOP_ITEMS, STALL_BOX } from './shop'
 import { SeatAction, applySeatAction, soloInputs, stepWorld } from './stepWorld'
 import { SURFACE, ticks, zombieOf } from './testing'
 import { asVeteran } from './veteran'
-import { beginPreparation, rollSpawns, waveBonus } from './waves'
+import { beginPreparation, waveBonus } from './waves'
 import { WEAPONS, freshGun, heldGun } from './weapons'
 import { type World, withWorld } from './world'
 import {

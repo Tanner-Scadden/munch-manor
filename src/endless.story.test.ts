@@ -6,6 +6,12 @@ import { describe, expect, test } from 'vitest'
 import { PARLOUR } from './arena'
 import { PREPARATION_MS, ZOMBIE_ALIVE_MAX, ZOMBIE_MAX_HP } from './constants'
 import { DIFFICULTIES, bestsFor, withBests } from './difficulty'
+import {
+  endlessTankCount,
+  endlessZombieCount,
+  hpScaleFor,
+  rollSpawns,
+} from './endlessWaves'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -32,13 +38,7 @@ import {
   tick,
   zombieAt,
 } from './testing'
-import {
-  FINAL_WAVE,
-  endlessTankCount,
-  endlessZombieCount,
-  hpScaleFor,
-  rollSpawns,
-} from './waves'
+import { FINAL_WAVE } from './wavePlans'
 import { STARTING_PISTOL } from './weapons'
 import { ZOMBIE_KINDS } from './zombies'
 

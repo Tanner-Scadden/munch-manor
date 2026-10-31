@@ -7,6 +7,7 @@ import { CoopBinding } from './composition'
 import type { Room as CoopRoom } from './coop/model'
 import { isInLobby, keepTracers, maybeRoomOf } from './coop/update'
 import { makeStep } from './definition'
+import { aimTracers, flyTracers } from './firing'
 import {
   advanceCosmetics,
   clampFrameDelta,
@@ -21,7 +22,6 @@ import { isCoop, shopOf } from './party'
 import { inputOfIntent, ownWorldOf } from './roomWorld'
 import { freshRun } from './runReset'
 import { isBrowsing } from './shop'
-import { aimTracers, flyTracers } from './simulation'
 import { tallyFrame } from './stats'
 import { TURRET_WEAPON } from './traps'
 import { syncShopDialog } from './update/shop'

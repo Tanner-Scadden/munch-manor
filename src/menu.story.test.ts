@@ -34,7 +34,7 @@ import { maybeKeyDownMessage } from './subscriptions'
 import { scoring, showDialog } from './testing'
 import { ReadRoomLink } from './update/coop'
 import { HideSplash, ShowLoadProgress } from './update/save'
-import { FINAL_WAVE } from './waves'
+import { FINAL_WAVE } from './wavePlans'
 import { pause } from './waves'
 
 const withEndlessBest = (base: Model, wave: number): Model =>

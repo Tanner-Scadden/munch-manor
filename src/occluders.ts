@@ -3,7 +3,8 @@ import { Canvas } from 'foldkit'
 
 import { type Level, type Tile, isWalkableTile, tileIndex } from './arena'
 import { TILE_SIZE } from './constants'
-import { FACE_TOP, roomShapes } from './room'
+import { roomShapes } from './room'
+import { FACE_TOP } from './roomPalette'
 
 // NOTE: the room is one image on the floor canvas, under everything, but the
 // wall face over a doorway in a top wall stands up off the floor. Something

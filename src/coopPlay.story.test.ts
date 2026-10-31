@@ -17,6 +17,7 @@ import {
   freshRoom,
   maybeRoomOf,
 } from './coop/update'
+import { aimTracers } from './firing'
 import { update } from './main'
 import { Message } from './message'
 import { AudioState, Lesson, type Model, initialModel } from './model'
@@ -28,7 +29,6 @@ import {
   ownWorldOf,
   startRoomWorld,
 } from './roomWorld'
-import { aimTracers } from './simulation'
 import { SeatAction } from './stepWorld'
 import { PlaySound } from './update/sound'
 import { asVeteran } from './veteran'

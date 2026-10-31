@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest'
 import { MANOR, levelOf, openExitIn, startingLevel } from './arena'
 import { cameraFor } from './camera'
 import { FIXED_STEP_MS } from './constants'
+import { doorCounts, rollSpawns } from './endlessWaves'
 import { EXIT_RULES, KITCHEN_EXIT } from './exits'
 import { OVEN_RULES, flameBoxOf, ovenBoxesOf } from './kitchen'
 import { update } from './main'
@@ -35,13 +36,7 @@ import {
   ticks,
   zombieOf,
 } from './testing'
-import {
-  JOIN_LEAD_MS,
-  beginPreparation,
-  doorCounts,
-  joinNewDoors,
-  rollSpawns,
-} from './waves'
+import { JOIN_LEAD_MS, beginPreparation, joinNewDoors } from './waves'
 
 const FRAME_MS = FIXED_STEP_MS
 const base: Model = pastTimedBreaks(freshRunModel())
