@@ -78,6 +78,8 @@ import {
 } from './update/home'
 import {
   asAllowedPress,
+  buyAmmoFromHoldButton,
+  clickAmmoTag,
   clickNextTrap,
   clickPause,
   clickPlaceTrap,
@@ -268,15 +270,25 @@ export const update = ApplicationComposition.makeUpdate({
       unlockAudio(withInput(model, input => releasePointer(input, pointerId))),
     ),
 
-  PressedHoldButton: (model, { pointerId }) =>
-    settle(
-      model,
-      unlockAudio(
-        withInput(useDevice(model, 'Touch'), input =>
-          pressHoldButton(input, pointerId),
+  // NOTE: the finger holds the interact until it lifts, and at the ammo
+  // window its landing buys at once.
+  PressedHoldButton: (model, message) =>
+    Update.combineSteps(model, [
+      modelStep(held =>
+        withInput(useDevice(held, 'Touch'), input =>
+          pressHoldButton(input, message.pointerId),
         ),
       ),
-    ),
+      unlockAudio,
+      makeStep(orInRun(message, buyAmmoFromHoldButton)),
+      ...afterMessage(model),
+    ]),
+
+  ClickedAmmoTag: (model, message) =>
+    Update.combineSteps(model, [
+      makeStep(orInRun(message, clickAmmoTag)),
+      ...afterMessage(model),
+    ]),
 
   CancelledPointer: (model, { pointerId }) =>
     settle(model, {

@@ -23,7 +23,8 @@ import {
 // second, the way a teammate revives (src/revive.ts); either fills the same
 // ring, and the key fills it twice as fast. Letting go, walking off, firing,
 // or stabbing cancels. A press the wallet cannot cover is refused at once;
-// standing there short of it does nothing.
+// standing there short of it does nothing. The ammo window alone buys on a
+// tap, with no ring (TAP TO BUY below).
 //
 // Standing never buys by accident: it counts only while the player neither
 // moves, fires, nor stabs, never while the shop is open or in the first
@@ -138,6 +139,7 @@ export const holdProgress = (purchase: Purchase): number =>
     Refused: () => 0,
     Done: () => 1,
     Spent: () => 0,
+    Tapped: () => 1,
   })
 
 // NOTE: standing still to buy: not moving, firing, or stabbing (the
@@ -245,8 +247,44 @@ export const advancePurchase = (world: World, deltaMs: number): World => {
         : isStanding
           ? world
           : withPurchase(world, Purchase.Idle()),
+    Tapped: ({ target }) =>
+      Option.match(
+        Option.filter(maybeOfferInReach(world), offer =>
+          isSamePurchasable(offer.target, target),
+        ),
+        {
+          onNone: () => withPurchase(world, Purchase.Idle()),
+          onSome: offer =>
+            offer.isFull || shortfallFor(world, offer) > 0
+              ? refuse(world, offer)
+              : complete(world, offer),
+        },
+      ),
   })
 }
+
+// TAP TO BUY
+
+// NOTE: decided with the owner on 2026-10-31 ("make it so you can tap to
+// buy ammo mid round instead of waiting for the timer"): at the ammo
+// window a tap buys at once, with no ring to fill. A press of the interact
+// key, a tap of the touch hold button, or a click on the tag is the seat
+// action BuyAmmo (src/stepWorld.ts), which marks the purchase Tapped; the
+// next tick buys it, or refuses it as any press is refused, so its events
+// reach the sounds and Rattles. Standing still at the window still fills
+// the ring, so walking past never buys. Only the ammo window is tapped:
+// the boards and the fridge still hold, as a big buy should be a choice.
+const isTappable = (offer: Offer): boolean =>
+  Purchasable.isAnyOf(['Ammo'])(offer.target)
+
+// NOTE: the offer in reach a tap buys at once, if any.
+export const maybeTapOffer = (world: World): Option.Option<Offer> =>
+  Option.filter(maybeOfferInReach(world), isTappable)
+
+export const tapToBuy = (world: World): Option.Option<World> =>
+  Option.map(maybeTapOffer(world), offer =>
+    withPurchase(world, Purchase.Tapped({ target: offer.target })),
+  )
 
 // NOTE: whether the interact key belongs to a purchasable right now, so a
 // press there holds to buy instead of starting the wave.

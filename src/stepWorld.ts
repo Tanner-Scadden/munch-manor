@@ -11,6 +11,7 @@ import {
   leadSeatOf,
   withSeat,
 } from './party'
+import { tapToBuy } from './purchase'
 import { markReady } from './revive'
 import {
   SHOP_CATEGORY_ORDER,
@@ -113,7 +114,8 @@ export const stepWorld = (
 // seat's presses between ticks; single player applies its own presses to
 // its lead seat (src/update/action.ts) and wraps its cues around them.
 // A purchasable in the world is no press: it is bought by holding the
-// intent's interact, in the tick (src/purchase.ts).
+// intent's interact, in the tick (src/purchase.ts). The ammo window is the
+// one press among them: BuyAmmo, a tap that buys there at once.
 export const SeatAction = defineTaggedUnion({
   Swap: {},
   Melee: {},
@@ -124,6 +126,7 @@ export const SeatAction = defineTaggedUnion({
   Buy: { item: ShopItemId },
   LeaveCounter: {},
   Ready: {},
+  BuyAmmo: {},
 })
 export type SeatAction = typeof SeatAction.Type
 
@@ -206,6 +209,14 @@ const ready = (world: World): ActionResult =>
     ? Result.succeed(isCoop(world) ? markReady(world) : startWaveEarly(world))
     : notNow
 
+// NOTE: a tap at the ammo window mid-wave buys there on the next tick, with
+// no hold (src/purchase.ts, tapToBuy). Away from it there is nothing to tap.
+const buyAmmo = (world: World): ActionResult =>
+  Option.match(tapToBuy(world), {
+    onNone: () => notNow,
+    onSome: Result.succeed,
+  })
+
 // NOTE: an action on a seat World's lead seat (party.ts, withSeat): the
 // World it makes, or why it made none.
 export const trySeatAction = (
@@ -222,6 +233,7 @@ export const trySeatAction = (
     Buy: ({ item }) => buy(seatWorld, item),
     LeaveCounter: () => leaveCounter(seatWorld),
     Ready: () => ready(seatWorld),
+    BuyAmmo: () => buyAmmo(seatWorld),
   })
 
 export const applySeatAction = (
