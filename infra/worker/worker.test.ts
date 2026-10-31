@@ -21,6 +21,13 @@ import {
   ShareEventJson,
 } from '../../src/analytics.ts'
 import {
+  COOP_DEATH_WAVES,
+  COOP_GAMES,
+  COOP_PLAYERS,
+  COOP_WIN_RATE,
+  ENDS,
+} from '../../tools/analytics/queries.ts'
+import {
   type RateLimiter,
   WorkerEnv,
   deleteExpiredRuns,
@@ -66,18 +73,29 @@ const summary: RunSummary = {
   party: SOLO_PARTY,
 }
 
+// NOTE: a co-op crew as a build before the run key sent it.
+const crewPartyV2 = {
+  _tag: 'Crew',
+  size: 3,
+  seatKills: 21,
+  seatDowns: 2,
+  seatRevives: 1,
+} as const
+
+const CREW_KEY = '00ff00ff00ff00ff'
+
 // NOTE: one player's own summary of an online co-op run.
 const crewSummary: RunSummary = {
   ...summary,
   difficulty: 'Hard',
-  party: {
-    _tag: 'Crew',
-    size: 3,
-    seatKills: 21,
-    seatDowns: 2,
-    seatRevives: 1,
-  },
+  party: { ...crewPartyV2, runKey: CREW_KEY },
 }
+
+const crewV2SummaryJson = toJson({
+  ...crewSummary,
+  version: 2,
+  party: crewPartyV2,
+})
 
 // NOTE: a summary from a build before co-op summaries: no party.
 const { party: _party, ...olderFields } = summary
@@ -282,20 +300,59 @@ describe('POST /api/runs', () => {
         expect(
           yield* query(
             setup,
-            'SELECT summary_version, difficulty, party, crew_size, seat_kills, seat_downs, seat_revives FROM runs',
+            'SELECT summary_version, difficulty, party, crew_size, seat_kills, seat_downs, seat_revives, crew_key FROM runs',
           ),
         ).toEqual([
           {
-            summary_version: 2,
+            summary_version: 3,
             difficulty: 'Hard',
             party: 'Crew',
             crew_size: 3,
             seat_kills: 21,
             seat_downs: 2,
             seat_revives: 1,
+            crew_key: CREW_KEY,
           },
         ])
       }),
+  )
+
+  it.effect(
+    'a version 2 co-op summary from a cached build stores with no crew key',
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp()
+        expect((yield* post(setup, crewV2SummaryJson)).status).toBe(202)
+        expect(
+          yield* query(
+            setup,
+            'SELECT summary_version, party, crew_size, seat_kills, crew_key FROM runs',
+          ),
+        ).toEqual([
+          {
+            summary_version: 2,
+            party: 'Crew',
+            crew_size: 3,
+            seat_kills: 21,
+            crew_key: null,
+          },
+        ])
+      }),
+  )
+
+  it.effect('a co-op summary with a malformed crew key is refused', () =>
+    Effect.gen(function* () {
+      const setup = yield* setUp()
+      const response = yield* post(
+        setup,
+        toJson({
+          ...crewSummary,
+          party: { ...crewSummary.party, runKey: 'room-ABCD' },
+        }),
+      )
+      expect(response.status).toBe(400)
+      expect(yield* rowCount(setup)).toBe(0)
+    }),
   )
 
   it.effect(
@@ -308,16 +365,17 @@ describe('POST /api/runs', () => {
         expect(
           yield* query(
             setup,
-            'SELECT summary_version, party, crew_size, seat_kills, seat_downs, seat_revives FROM runs ORDER BY id',
+            'SELECT summary_version, party, crew_size, seat_kills, seat_downs, seat_revives, crew_key FROM runs ORDER BY id',
           ),
         ).toEqual([
           {
-            summary_version: 2,
+            summary_version: 3,
             party: 'Solo',
             crew_size: 1,
             seat_kills: null,
             seat_downs: null,
             seat_revives: null,
+            crew_key: null,
           },
           {
             summary_version: 1,
@@ -326,6 +384,7 @@ describe('POST /api/runs', () => {
             seat_kills: null,
             seat_downs: null,
             seat_revives: null,
+            crew_key: null,
           },
         ])
       }),
@@ -596,5 +655,76 @@ describe('the 90 day retention', () => {
       expect(yield* cleanUp(setup, now)).toBe(0)
       expect(yield* rowCount(setup)).toBe(0)
     }),
+  )
+})
+
+// THE REPORT
+
+// NOTE: a co-op game is one row per player who shares, so the report's
+// per game tables count one crew_key once (tools/analytics/queries.ts).
+const crewRowJson = (
+  runKey: string | null,
+  outcome: RunSummary['outcome'],
+  wave: number,
+  seatKills: number,
+): string =>
+  runKey === null
+    ? toJson({
+        ...crewSummary,
+        version: 2,
+        outcome,
+        wave,
+        party: { ...crewPartyV2, seatKills },
+      })
+    : encodeSummary({
+        ...crewSummary,
+        outcome,
+        wave,
+        party: { ...crewPartyV2, seatKills, runKey },
+      })
+
+const BITTEN: RunSummary['outcome'] = { _tag: 'GameOver', killedBy: 'Tank' }
+
+describe("the report's co-op counts", () => {
+  it.effect(
+    'count a game once by its key, a keyless row as its own, and players by row',
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp(20, 20)
+        const rows = [
+          crewRowJson(CREW_KEY, BITTEN, 5, 10),
+          crewRowJson(CREW_KEY, BITTEN, 5, 20),
+          crewRowJson(CREW_KEY, { _tag: 'Quit' }, 3, 3),
+          crewRowJson('aaaaaaaaaaaaaaaa', { _tag: 'Victory' }, 10, 40),
+          crewRowJson('aaaaaaaaaaaaaaaa', { _tag: 'Quit' }, 6, 7),
+          crewRowJson(null, BITTEN, 4, 5),
+          crewRowJson(null, BITTEN, 4, 15),
+        ]
+        yield* Effect.forEach(rows, row => post(setup, row))
+        expect(yield* rowCount(setup)).toBe(rows.length)
+        expect(yield* query(setup, COOP_GAMES)).toEqual([
+          { crew_size: 3, runs: 4, wins: 1, losses: 3, quits: 0 },
+        ])
+        expect(yield* query(setup, COOP_WIN_RATE)).toEqual([
+          { difficulty: 'Hard', runs: 4, wins: 1, losses: 3, quits: 0 },
+        ])
+        expect(yield* query(setup, COOP_DEATH_WAVES)).toEqual([
+          { mode: 'Campaign', crew_size: 3, wave: 4, deaths: 2 },
+          { mode: 'Campaign', crew_size: 3, wave: 5, deaths: 1 },
+        ])
+        expect(yield* query(setup, COOP_PLAYERS)).toEqual([
+          {
+            crew_size: 3,
+            players: 7,
+            kills: 100 / 7,
+            downs: 2,
+            revives: 1,
+          },
+        ])
+        expect(yield* query(setup, `${ENDS} ORDER BY party, outcome`)).toEqual([
+          { party: 'Crew', outcome: 'GameOver', runs: 3 },
+          { party: 'Crew', outcome: 'Victory', runs: 1 },
+        ])
+      }),
   )
 })

@@ -1,6 +1,9 @@
 import { Option } from 'effect'
 
+import type { Lobby } from '@munch/netcode'
+
 import {
+  CREW_RUN_KEY_LENGTH,
   type FrameTimeBucket,
   LostRun,
   QuitRun,
@@ -99,11 +102,50 @@ export const maybeRunOutcome = (
 const finalRun = (before: Model, after: Model, outcome: RunOutcome): Model =>
   outcome._tag === 'Quit' ? before : after
 
+// CREW RUN KEY
+
+const HALF_KEY_LENGTH = CREW_RUN_KEY_LENGTH / 2
+const HEX = 16
+
+// NOTE: a deterministic 64 bit string hash (two 32 bit lanes, mixed at the
+// end), not cryptographic: it only has to keep different runs apart.
+const hashKey = (text: string): string => {
+  let first = 0xdeadbeef
+  let second = 0x41c6ce57
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index)
+    first = Math.imul(first ^ code, 0x9e3779b1)
+    second = Math.imul(second ^ code, 0x5f356495)
+  }
+  first = Math.imul(first ^ (first >>> 16), 0x85ebca6b)
+  first ^= Math.imul(second ^ (second >>> 13), 0xc2b2ae35)
+  second = Math.imul(second ^ (second >>> 16), 0x85ebca6b)
+  second ^= Math.imul(first ^ (first >>> 13), 0xc2b2ae35)
+  const lane = (value: number): string =>
+    (value >>> 0).toString(HEX).padStart(HALF_KEY_LENGTH, '0')
+  return `${lane(second)}${lane(first)}`
+}
+
+// NOTE: one online co-op run's key, alike on every client in it, from the
+// room's lobby as its replica has it: the code, when the room was made,
+// and the round, which each start (RUN IT BACK and KEEP GOING too) counts
+// up. A code used again later is another room made at another time. Only
+// the hash is sent, so a summary names no room. A run is drawn only once
+// the lobby has left its Lobby status for the round (src/onlineRun.ts,
+// maybeRunRoom), so a replica a round behind never keys it.
+export const crewRunKeyOf = (lobby: Lobby): string =>
+  hashKey(`${lobby.code}:${lobby.createdMs}:${lobby.round}`)
+
+// NOTE: a crew run that never drew a room's lobby (couch play, `?local=N`)
+// is keyed by its own visit and length, so the report counts it alone.
+const ownRunKey = (visitId: string, run: Model): string =>
+  hashKey(`visit:${visitId}:${run.stats.runMs}`)
+
 // NOTE: an online co-op run's own seat is the lead in the Model (the
 // client draws it as the player, src/coopPlay.ts), so its numbers are this
 // player's. The crew's size counts every seat in the run, one who dropped
 // out too.
-const partyOf = (run: Model): SummaryParty => {
+const partyOf = (run: Model, visitId: string): SummaryParty => {
   if (!isCoop(run)) {
     return SOLO_PARTY
   }
@@ -114,6 +156,9 @@ const partyOf = (run: Model): SummaryParty => {
     seatKills: seat.kills,
     seatDowns: seat.downs,
     seatRevives: seat.revives,
+    runKey: Option.getOrElse(run.maybeCrewRunKey, () =>
+      ownRunKey(visitId, run),
+    ),
   }
 }
 
@@ -148,7 +193,7 @@ export const runSummaryOf = (
     device: run.lastDevice,
     screenFit: summaryScreenFit(run.screenFit),
     frameTime: frameTimeBucket(stats),
-    party: partyOf(run),
+    party: partyOf(run, visitId),
   }
 }
 

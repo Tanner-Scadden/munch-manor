@@ -3,7 +3,10 @@ import { modifyFields } from 'foldkit/struct'
 import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
+import type { Lobby } from '@munch/netcode'
+
 import { RunSummary } from './analytics'
+import { crewRunKeyOf } from './analyticsRun'
 import { CoopBinding } from './bindings'
 import { Message as CoopMessage } from './coop/message'
 import { Screen } from './coop/model'
@@ -60,7 +63,20 @@ const player: Model = modifyFields(asVeteran(initialModel), {
   maybeVisitId: () => Option.some(VISIT_ID),
 })
 
-const inRoom = (model: Model, world: RoomWorld): Model =>
+const playingLobby: Lobby = lobbyOf(
+  [memberOf(0, 'Ana'), memberOf(1, 'Bo'), memberOf(2, 'Cy')],
+  'Playing',
+)
+
+type Seated = Readonly<{ slot: number; lobby: Lobby }>
+
+const OWN_SEAT: Seated = { slot: OWN_SLOT, lobby: playingLobby }
+
+const inRoom = (
+  model: Model,
+  world: RoomWorld,
+  { slot, lobby }: Seated = OWN_SEAT,
+): Model =>
   modifyFields(model, {
     coop: coop =>
       modifyFields(coop, {
@@ -68,20 +84,16 @@ const inRoom = (model: Model, world: RoomWorld): Model =>
           Screen.InRoom({
             room: Option.match(maybeRoomOf(coop), {
               onNone: () => ({
-                ...freshRoom(CODE, OWN_SLOT),
-                maybePlayerId: Option.some(`player-${OWN_SLOT}`),
-                maybeLobby: Option.some(
-                  lobbyOf(
-                    [memberOf(0, 'Ana'), memberOf(1, 'Bo'), memberOf(2, 'Cy')],
-                    'Playing',
-                  ),
-                ),
+                ...freshRoom(CODE, slot),
+                maybePlayerId: Option.some(`player-${slot}`),
+                maybeLobby: Option.some(lobby),
                 link: 'Online' as const,
-                session: playingSession(world, OWN_SLOT),
+                session: playingSession(world, slot),
               }),
               onSome: room => ({
                 ...room,
-                session: playingSession(world, OWN_SLOT),
+                maybeLobby: Option.some(lobby),
+                session: playingSession(world, slot),
               }),
             }),
           }),
@@ -89,8 +101,26 @@ const inRoom = (model: Model, world: RoomWorld): Model =>
   })
 
 // NOTE: the run under way, drawn from the room once.
-const midRun = (model: Model = player): Model =>
-  update(inRoom(model, fighting), Message.TickedRoomFrame({ nowMs: 100 })).model
+const midRun = (model: Model = player, seated: Seated = OWN_SEAT): Model =>
+  update(
+    inRoom(model, fighting, seated),
+    Message.TickedRoomFrame({ nowMs: 100 }),
+  ).model
+
+// NOTE: the run key a seat's client sends at Game Over.
+const keyAtGameOver = (seated: Seated): string | undefined => {
+  const [summary] = summariesOf(
+    update(
+      inRoom(
+        midRun(player, seated),
+        endedAs(Phase.GameOver({ wave: 1 })),
+        seated,
+      ),
+      Message.TickedRoomFrame({ nowMs: 200 }),
+    ),
+  )
+  return summary?.party._tag === 'Crew' ? summary.party.runKey : undefined
+}
 
 const summariesOf = (
   result: ReturnType<typeof update>,
@@ -112,6 +142,7 @@ const crewOfThree = {
   seatKills: 12,
   seatDowns: 2,
   seatRevives: 1,
+  runKey: crewRunKeyOf(playingLobby),
 }
 
 describe("an online co-op run's summary", () => {
@@ -137,7 +168,7 @@ describe("an online co-op run's summary", () => {
     const summaries = summariesOf(result)
     expect(summaries).toHaveLength(1)
     expect(summaries[0]).toMatchObject({
-      version: 2,
+      version: 3,
       visitId: VISIT_ID,
       mode: 'Campaign',
       difficulty: 'Hard',
@@ -205,5 +236,48 @@ describe("an online co-op run's summary", () => {
         ),
       ),
     ).toEqual([])
+  })
+
+  test('every client in one run sends the same run key', () => {
+    const own = keyAtGameOver(OWN_SEAT)
+    expect(own).toMatch(/^[0-9a-f]{16}$/)
+    expect(keyAtGameOver({ ...OWN_SEAT, slot: 0 })).toBe(own)
+    expect(keyAtGameOver({ ...OWN_SEAT, slot: 2 })).toBe(own)
+  })
+
+  test('a rematch in the room, or another room, sends another key', () => {
+    const own = keyAtGameOver(OWN_SEAT)
+    const keyIn = (lobby: Partial<Lobby>) =>
+      keyAtGameOver({ ...OWN_SEAT, lobby: { ...playingLobby, ...lobby } })
+    expect(keyIn({ round: playingLobby.round + 1 })).not.toBe(own)
+    expect(keyIn({ code: 'ZZZZ' })).not.toBe(own)
+    expect(keyIn({ createdMs: 1 })).not.toBe(own)
+  })
+
+  test('the room closing as the run ends keeps the run key', () => {
+    const closed: Seated = {
+      ...OWN_SEAT,
+      lobby: { ...playingLobby, status: 'Closed' },
+    }
+    const [summary] = summariesOf(
+      update(
+        inRoom(midRun(), endedAs(Phase.GameOver({ wave: 1 })), closed),
+        Message.TickedRoomFrame({ nowMs: 200 }),
+      ),
+    )
+    expect(summary?.party).toMatchObject({
+      runKey: keyAtGameOver(OWN_SEAT),
+    })
+  })
+
+  test('leaving mid-run sends the key the run had', () => {
+    const left = update(
+      midRun(),
+      toParentMessage(CoopBinding, CoopMessage.CompletedLeaveRoom()),
+    )
+    const [summary] = summariesOf(left)
+    expect(summary?.party).toMatchObject({
+      runKey: keyAtGameOver(OWN_SEAT),
+    })
   })
 })
