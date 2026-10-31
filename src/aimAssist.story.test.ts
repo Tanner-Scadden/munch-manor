@@ -1,12 +1,14 @@
 import { Option } from 'effect'
-import { given, model, story } from 'foldkit/story'
+import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { AIM_ASSIST } from './aimAssist'
+import { screenCameraOf, worldToView } from './camera'
 import { FIXED_STEP_MS, STICK_RADIUS_PX } from './constants'
 import { update } from './main'
-import { type Model, Phase, Stick, initialModel } from './model'
+import { Message } from './message'
+import { type Model, MouseButton, Phase, Stick, initialModel } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { PHONE_LANDSCAPE, PHONE_PORTRAIT, tick, zombieOf } from './testing'
 import { asVeteran } from './veteran'
@@ -56,11 +58,46 @@ const aimAngleOf = (current: Model): number =>
     onSome: ({ x, y }) => Math.atan2(y, x),
   })
 
-describe('aim assist upright', () => {
-  test('a held aim a few degrees off a zombie lands on it', () => {
+// NOTE: the same zombie and the same aim, with a mouse held on the
+// zombie's side of the player instead of a thumb on the stick.
+const mouseAimingRight = (zombieAngle: number): Model => {
+  const touching = aimingRight('Landscape', zombieAngle)
+  const mousing = modifyFields(touching, {
+    lastDevice: () => 'KeyboardMouse',
+    maybeSurface: () => Option.none(),
+  })
+  return modifyFields(mousing, {
+    input: input =>
+      modifyFields(input, {
+        aimStick: () => Stick.Idle(),
+        mouseButton: () => MouseButton.Held({ pointerId: 1 }),
+        maybeMouseInView: () =>
+          Option.some(
+            worldToView(screenCameraOf(mousing), {
+              x: PLAYER.x + ZOMBIE_DISTANCE_PX,
+              y: PLAYER.y,
+            }),
+          ),
+      }),
+  })
+}
+
+describe('aim assist on touch', () => {
+  test('held upright, a held aim a few degrees off a zombie lands on it', () => {
     story(
       update,
       given(aimingRight('Portrait', 0.06)),
+      tick(FIXED_STEP_MS),
+      model(current => {
+        expect(aimAngleOf(current)).toBeCloseTo(0.06, 5)
+      }),
+    )
+  })
+
+  test('held sideways, a held aim a few degrees off a zombie lands on it', () => {
+    story(
+      update,
+      given(aimingRight('Landscape', 0.06)),
       tick(FIXED_STEP_MS),
       model(current => {
         expect(aimAngleOf(current)).toBeCloseTo(0.06, 5)
@@ -72,7 +109,7 @@ describe('aim assist upright', () => {
     const between = (AIM_ASSIST.innerRadians + AIM_ASSIST.outerRadians) / 2
     story(
       update,
-      given(aimingRight('Portrait', between)),
+      given(aimingRight('Landscape', between)),
       tick(FIXED_STEP_MS),
       model(current => {
         expect(aimAngleOf(current)).toBeCloseTo(between / 2, 5)
@@ -88,12 +125,25 @@ describe('aim assist upright', () => {
     )
   })
 
-  test('held sideways, the aim goes exactly where the thumb points', () => {
+  test('a held mouse goes exactly where it points', () => {
+    story(
+      update,
+      given(mouseAimingRight(0.06)),
+      tick(FIXED_STEP_MS),
+      model(current => {
+        expect(aimAngleOf(current)).toBeCloseTo(0, 5)
+      }),
+    )
+  })
+
+  test('a key press hands the aim back to the player, untouched', () => {
     story(
       update,
       given(aimingRight('Landscape', 0.06)),
+      message(Message.PressedKey({ code: 'KeyW' })),
       tick(FIXED_STEP_MS),
       model(current => {
+        expect(current.lastDevice).toBe('KeyboardMouse')
         expect(aimAngleOf(current)).toBeCloseTo(0, 5)
       }),
     )

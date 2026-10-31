@@ -7,9 +7,9 @@ import { ZombieAction, ZombieState } from './worldSchema'
 
 // AIM ASSIST
 
-// NOTE: a phone held upright sees a narrow, zoomed window, and a thumb on a
-// stick aims coarser than a mouse, so in the portrait layout a held trigger
-// bends the aim a few degrees onto the zombie it is already almost on. Only
+// NOTE: a phone sees a zoomed window, and a thumb on a stick aims coarser
+// than a mouse, so on touch, upright or on its side, a held trigger bends
+// the aim a few degrees onto the zombie it is already almost on. Only
 // a zombie inside the camera's view, in the line of sight, and within reach
 // pulls. Inside innerRadians the aim lands on it; from there to
 // outerRadians the pull fades to nothing, so the aim never jumps. It reads
