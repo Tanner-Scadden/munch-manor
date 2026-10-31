@@ -130,3 +130,23 @@ export const SHOP_GOOD_NAMES: Readonly<Record<OwnShopGood | 'Repair', string>> =
     Heart: 'Pickled Heart',
     Repair: 'Glue and Nails',
   }
+
+// THE CREW BOARD
+
+// NOTE: the awards a co-op end card hands out (src/crewAwards.ts), each a
+// title under the winner's column. The ids live here, apart from the
+// client module that hands them out, since the room's modules read names.
+export type CrewAward =
+  | 'Mvp'
+  | 'Medic'
+  | 'Sharpshooter'
+  | 'BigSpender'
+  | 'MostMunched'
+
+export const CREW_AWARD_NAMES: Readonly<Record<CrewAward, string>> = {
+  Mvp: 'MVP',
+  Medic: 'Medic',
+  Sharpshooter: 'Sharpshooter',
+  BigSpender: 'Big Spender',
+  MostMunched: 'Most Munched',
+}

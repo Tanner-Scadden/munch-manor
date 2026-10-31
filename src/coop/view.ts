@@ -481,15 +481,37 @@ const queueView = (
 
 // LOBBY
 
-const roomCodeView = (code: string, h: HtmlBuilder<Message>): Html =>
-  h.span(
+const ROOM_CODE_COPIED = 'COPIED!'
+
+// NOTE: a tap on the code copies it, and COPIED! flashes over it, afresh
+// for each copy (keyed by the count), fading in place.
+const roomCodeView = (room: Room, h: HtmlBuilder<Message>): Html =>
+  h.button(
     [
+      h.Type('button'),
       h.Class('coop-room-code'),
-      h.AriaLabel(`Room code ${code.split('').join(' ')}`),
+      h.AriaLabel(
+        `Room code ${room.code.split('').join(' ')}${room.codeCopies > 0 ? ', copied' : ', tap to copy'}`,
+      ),
+      h.OnClick(Message.ClickedRoomCode()),
     ],
-    Array.map(code.split(''), symbol =>
-      h.span([h.Class('coop-room-code-symbol'), h.AriaHidden(true)], [symbol]),
-    ),
+    [
+      ...Array.map(room.code.split(''), symbol =>
+        h.span(
+          [h.Class('coop-room-code-symbol'), h.AriaHidden(true)],
+          [symbol],
+        ),
+      ),
+      ...(room.codeCopies > 0
+        ? [
+            h.keyed('span')(
+              `copied-${room.codeCopies}`,
+              [h.Class('coop-room-code-copied'), h.AriaHidden(true)],
+              [ROOM_CODE_COPIED],
+            ),
+          ]
+        : []),
+    ],
   )
 
 const shareButtonView = (room: Room, h: HtmlBuilder<Message>): Html =>
@@ -836,7 +858,7 @@ const lobbyView = (
         [h.Class('coop-lobby-top')],
         [
           leaveButtonView(room, h),
-          roomCodeView(room.code, h),
+          roomCodeView(room, h),
           shareButtonView(room, h),
         ],
       ),

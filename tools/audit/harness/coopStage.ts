@@ -15,7 +15,9 @@ import {
 } from '@game/coop/testing'
 import { update } from '@game/main'
 import { Message } from '@game/message'
-import { Lesson, type Model } from '@game/model'
+import { Lesson, type Model, Phase } from '@game/model'
+import { modifyLeadSeat, withSeat } from '@game/party'
+import type { RoomWorld } from '@game/roomWorld'
 import { Session } from '@munch/netcode'
 
 import { type HarnessConfig } from './config'
@@ -53,12 +55,72 @@ const coopRoom = (
     hits: { looked: 0, confirmed: 0 },
     presses: CoopModel.noPresses,
     share: 'Idle',
+    codeCopies: 0,
     departure: 'Staying',
     ...extra,
   }
 }
 
 const COOP_NAMES = ['Tanner', 'Mo', 'Pip', 'Grumbles']
+
+// NOTE: each staged player's run for the end card's crew board: kills,
+// revives, downs, shots fired and landed, money earned and left.
+const COOP_RUNS = [
+  [212, 1, 2, 640, 410, 2450, 180],
+  [148, 4, 1, 520, 230, 1800, 40],
+  [96, 0, 5, 300, 220, 1210, 600],
+  [171, 2, 0, 900, 380, 2900, 15],
+]
+
+const withRuns = (room: RoomWorld, phase: Phase): RoomWorld => ({
+  ...room,
+  world: COOP_RUNS.reduce(
+    (world, [kills, revives, downs, fired, hit, earned, balance], slot) =>
+      withSeat(world, slot, seatWorld =>
+        modifyLeadSeat(
+          modifyFields(seatWorld, {
+            wallet: wallet => ({
+              ...wallet,
+              earned: earned ?? 0,
+              balance: balance ?? 0,
+            }),
+          }),
+          seat => ({
+            ...seat,
+            kills: kills ?? 0,
+            revives: revives ?? 0,
+            downs: downs ?? 0,
+            shotsFired: fired ?? 0,
+            shotsHit: hit ?? 0,
+          }),
+        ),
+      ),
+    modifyFields(room.world, { phase: () => phase }),
+  ),
+})
+
+// NOTE: a run that just ended on the end card, the room's lobby still on
+// Playing, as the root sees it before LOBBY.
+const endedRoom = (
+  members: ReadonlyArray<ReturnType<typeof memberOf>>,
+  phase: Phase,
+): CoopModel.Room => {
+  const room = coopRoom(members, 'Playing')
+  return Option.match(room.maybeWorld, {
+    onNone: () => room,
+    onSome: world => {
+      const ended = withRuns(world, phase)
+      return {
+        ...room,
+        maybeWorld: Option.some(ended),
+        session: {
+          ...room.session,
+          frames: [{ tick: ended.tick, world: ended, atMs: 0 }],
+        },
+      }
+    },
+  })
+}
 
 // NOTE: the looks the staged teammates sent with their joins; the first
 // seat is the page's own player, who wears the page's own look.
@@ -192,6 +254,18 @@ const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
       return Screen.InRoom({
         room: coopRoom(members(3), 'Playing', { link: 'Reconnecting' }),
       })
+    case 'card':
+      return Screen.InRoom({
+        room: endedRoom(members(4, 1), Phase.GameOver({ wave: 7 })),
+      })
+    case 'cardwon':
+      return Screen.InRoom({
+        room: endedRoom(members(3, 2), Phase.Victory()),
+      })
+    case 'cardduo':
+      return Screen.InRoom({
+        room: endedRoom(members(2), Phase.GameOver({ wave: 3 })),
+      })
     case 'ended': {
       const room = coopRoom(members(3), 'Playing')
       return Screen.InRoom({
@@ -221,5 +295,8 @@ export const withCoop = (config: HarnessConfig, model: Model): Model => {
     }),
     coop: coop => ({ ...coop, screen: coopScreen(stage) }),
   })
-  return update(staged, Message.TickedRoomFrame({ nowMs: 0 })).model
+  const drawn = update(staged, Message.TickedRoomFrame({ nowMs: 0 })).model
+  return stage === 'card' || stage === 'cardwon' || stage === 'cardduo'
+    ? modifyFields(drawn, { screenMs: () => 60_000 })
+    : drawn
 }

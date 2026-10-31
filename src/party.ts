@@ -55,6 +55,10 @@ export const soloSeat: Seat = {
   readiness: 'Waiting',
   trapIds: [],
   kills: 0,
+  revives: 0,
+  downs: 0,
+  shotsFired: 0,
+  shotsHit: 0,
   graceMs: 0,
   touchedMs: 0,
 }
@@ -359,16 +363,44 @@ export const payShared = (world: World, amount: number): World => {
   })
 }
 
+// NOTE: a change to the seat at `slot`, wherever it sits.
+const modifySeatAt = (
+  world: World,
+  slot: PlayerSlot,
+  change: (seat: Seat) => Seat,
+): World =>
+  withSeat(world, slot, seatWorld => modifyLeadSeat(seatWorld, change))
+
 export const creditKills = (
   world: World,
   slot: PlayerSlot,
   kills: number,
 ): World =>
   kills > 0
-    ? withSeat(world, slot, seatWorld =>
-        modifyLeadSeat(seatWorld, seat =>
-          modifyFields(seat, { kills: count => count + kills }),
-        ),
+    ? modifySeatAt(world, slot, seat =>
+        modifyFields(seat, { kills: count => count + kills }),
+      )
+    : world
+
+export const creditRevive = (world: World, slot: PlayerSlot): World =>
+  modifySeatAt(world, slot, seat =>
+    modifyFields(seat, { revives: count => count + 1 }),
+  )
+
+// NOTE: shots fired and landed by the seat at `slot`, for its aim on the
+// crew board. Single player counts its own in the run stats.
+export const creditShots = (
+  world: World,
+  slot: PlayerSlot,
+  fired: number,
+  hit: number,
+): World =>
+  isCoop(world) && (fired > 0 || hit > 0)
+    ? modifySeatAt(world, slot, seat =>
+        modifyFields(seat, {
+          shotsFired: count => count + fired,
+          shotsHit: count => count + hit,
+        }),
       )
     : world
 

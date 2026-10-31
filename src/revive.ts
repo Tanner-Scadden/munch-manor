@@ -7,6 +7,7 @@ import { ZERO_VECTOR, circlesOverlap, closestPointOnSegment } from './geometry'
 import {
   COOP_RULES,
   type SeatedPlayer,
+  creditRevive,
   forEachSeat,
   isCoop,
   isDowned,
@@ -60,6 +61,7 @@ const fall = (world: World): World =>
         life: () =>
           Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 }),
         readiness: () => 'Waiting',
+        downs: count => count + 1,
       }),
     ),
     {
@@ -95,15 +97,23 @@ const standUp = (world: World, hearts: number): World =>
     },
   )
 
+// NOTE: every teammate standing still beside a player when they get up
+// counts the revive, for the crew board.
 const bleed = (
   world: World,
   life: Readonly<{ bleedMs: number; reviveMs: number }>,
-  isBeingRevived: boolean,
+  revivers: ReadonlyArray<SeatedPlayer>,
   deltaMs: number,
 ): World => {
-  const reviveMs = isBeingRevived ? life.reviveMs + deltaMs : 0
+  const reviveMs = Array.isReadonlyArrayNonEmpty(revivers)
+    ? life.reviveMs + deltaMs
+    : 0
   if (reviveMs >= COOP_RULES.reviveMs) {
-    return standUp(world, COOP_RULES.reviveHearts)
+    return Array.reduce(
+      revivers,
+      standUp(world, COOP_RULES.reviveHearts),
+      (current, reviver) => creditRevive(current, reviver.slot),
+    )
   }
   const bleedMs = life.bleedMs - deltaMs
   return modifyLeadSeat(world, seat =>
@@ -124,7 +134,7 @@ const advanceSeat =
         bleed(
           world,
           life,
-          Array.some(
+          Array.filter(
             revivers,
             isReviver({ slot: seat.slot, player: world.player }),
           ),

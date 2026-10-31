@@ -15,7 +15,6 @@ import {
   doneMs,
   isShareCopied,
   lensOf,
-  mvpOf,
   rowLandMs,
   rowStartMs,
   sharePathOf,
@@ -436,19 +435,6 @@ describe('the run records', () => {
   })
 })
 
-describe('the crew', () => {
-  test('the most kills wears the crown, and a tie goes to the lower seat', () => {
-    expect(
-      mvpOf([
-        { slot: 0, kills: 5 },
-        { slot: 1, kills: 9 },
-        { slot: 2, kills: 9 },
-      ]),
-    ).toEqual(Option.some(1))
-    expect(mvpOf([{ slot: 0, kills: 0 }])).toEqual(Option.none())
-  })
-})
-
 describe('sharing a run', () => {
   const base = {
     isEndless: false,
@@ -456,6 +442,8 @@ describe('sharing a run', () => {
     difficulty: 'Normal' as const,
     kills: 87,
     crew: 1,
+    maybeMvp: Option.none(),
+    maybeOwnAward: Option.none(),
   }
 
   test('a death says the wave and the kills, with a skull', () => {
@@ -488,6 +476,32 @@ describe('sharing a run', () => {
     )
     expect(shareText({ ...base, outcome: 'Munched', crew: 2 })).toBe(
       '💀 Our crew of 2 got munched on wave 4 in Munch Manor. 87 zombies splatted together. Bring snacks.',
+    )
+  })
+
+  test('a crew crowns its MVP and brags about your own award', () => {
+    expect(
+      shareText({
+        ...base,
+        outcome: 'Won',
+        crew: 3,
+        kills: 900,
+        maybeMvp: Option.some({ name: 'ANA', kills: 412 }),
+        maybeOwnAward: Option.some('Medic'),
+      }),
+    ).toBe(
+      '🧟 Our crew of 3 beat Munch Manor on Normal! 900 zombies splatted together. 👑 MVP: ANA with 412. I was the Medic 🩹.',
+    )
+    expect(
+      shareText({
+        ...base,
+        outcome: 'Munched',
+        crew: 2,
+        maybeMvp: Option.some({ name: 'BO', kills: 50 }),
+        maybeOwnAward: Option.some('MostMunched'),
+      }),
+    ).toBe(
+      '💀 Our crew of 2 got munched on wave 4 in Munch Manor. 87 zombies splatted together. 👑 MVP: BO with 50. I got Most Munched 🍖. Bring snacks.',
     )
   })
 

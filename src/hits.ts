@@ -26,6 +26,7 @@ import {
 } from './geometry'
 import {
   creditKills,
+  creditShots,
   isCoop,
   leadSeatOf,
   maybePlayerAt,
@@ -300,7 +301,7 @@ export const resolveBulletHits = (
   })
   return resolveFriendlyFire(
     isCoop(model)
-      ? payKillers(struck, hits, killedZombies)
+      ? payKillers(creditLanded(struck, hits), hits, killedZombies)
       : modifyFields(struck, { wallet: wallet => earn(wallet, bounty) }),
     seconds,
     freshShots.from,
@@ -326,6 +327,24 @@ const freshShotsOf = (model: World, firstFreshId: number): FreshShots => ({
         )
     : () => model.player,
 })
+
+// NOTE: each shooter's shots that landed, for their aim on the crew
+// board. A gnome's peas are its owner's trap, not their aim.
+const creditLanded = (model: World, hits: ReadonlyArray<BulletHit>): World => {
+  const shooters = Array.filterMap(hits, ({ weapon, maybeShooter }) =>
+    weapon === TURRET_WEAPON
+      ? Result.failVoid
+      : Result.fromOption(maybeShooter, () => undefined),
+  )
+  return Array.reduce(Array.dedupe(shooters), model, (current, slot) =>
+    creditShots(
+      current,
+      slot,
+      0,
+      Array.filter(shooters, shooter => shooter === slot).length,
+    ),
+  )
+}
 
 const payKillers = (
   model: World,

@@ -1,11 +1,11 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 
 import type { Room as CoopRoom } from './coop/model'
 import { isInLobby, maybeRoomOf } from './coop/roomState'
 import { type Model, Phase } from './model'
 import { isCoop } from './party'
 import { isRoundActive } from './waves'
-import type { Difficulty } from './worldSchema'
+import type { Difficulty, PlayerSlot } from './worldSchema'
 
 // What the root reads about an online co-op run (MULTIPLAYER.md, Phase 2):
 // whether one is on, its room, and its difficulty. Pure reads of the Model,
@@ -43,3 +43,20 @@ export const runDifficultyOf = (model: Model): Difficulty =>
 // NOTE: an online run in a round: its presses and frames go to the room.
 export const isRunOn = (model: Model): boolean =>
   isOnlineRun(model) && isRoundActive(model.phase)
+
+// NOTE: each seat's name from the room's lobby, in capitals. A seat nobody
+// named is its number, as the room names it.
+export const seatNamesOf = (model: Model): ReadonlyMap<PlayerSlot, string> =>
+  new Map(
+    Option.match(
+      Option.flatMap(maybeRoomOf(model.coop), room => room.maybeLobby),
+      {
+        onNone: () => [],
+        onSome: lobby =>
+          Array.map(
+            lobby.members,
+            member => [member.slot, member.name.toUpperCase()] as const,
+          ),
+      },
+    ),
+  )
