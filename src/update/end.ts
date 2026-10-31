@@ -1,5 +1,4 @@
-import { Array, Data, Effect, Option, Schema } from 'effect'
-import { Dom } from 'foldkit'
+import { Array, Effect, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { ShareEvent } from '../analytics'
@@ -15,10 +14,9 @@ import {
   isBeatOver,
   isRunCardHeld,
   sharePathOf,
-  sharedRunOf,
   skipBeat,
 } from '../endBeat'
-import { END_SHARE_BUTTON_ID, endOffer, isEndScreen } from '../home'
+import { endOffer, isEndScreen } from '../home'
 import {
   isCharacterKey,
   isEndlessKey,
@@ -28,10 +26,9 @@ import {
 } from '../input'
 import { advanceJuice } from '../juice'
 import { Message } from '../message'
-import { type Model, Phase, RunMode, type ShareSheetOutcome } from '../model'
+import { type Model, Phase, RunMode, type ShareOutcome } from '../model'
 import { runDifficultyOf } from '../onlineRun'
 import { advanceParticles } from '../particles'
-import { shareSheetData, shareUrl } from '../share'
 import { stepWhen } from '../stepWhen'
 import { RUNNING_BUILD } from '../version'
 import { keepGoingWhenAllowed, startWhenAllowed } from './run'
@@ -39,7 +36,7 @@ import { playSounds, uiCue } from './sound'
 import { type UpdateStep, combine } from './step'
 
 // The end of a run in update (the beat itself is src/endBeat.ts): its
-// frame, its keys and taps, RETRY, and sharing the run to X.
+// frame, its keys and taps, RETRY, and sharing the run.
 
 const MS_PER_SECOND = 1000
 
@@ -47,9 +44,6 @@ const MS_PER_SECOND = 1000
 // motion, then at full speed, so it settles while the card tallies.
 const SLOW_MOTION_RATE = 0.3
 const STAMP_TRAUMA = 0.7
-const X_KEY = 'KeyX'
-
-const isShareKey = (code: string): boolean => code === X_KEY
 
 // FRAME
 
@@ -119,7 +113,6 @@ const isEndActionKey = (code: string): boolean =>
   isEndlessKey(code) ||
   isKeepGoingKey(code) ||
   isMenuKey(code) ||
-  isShareKey(code) ||
   Array.contains(AUDIO_KEYS, code)
 
 // NOTE: a press that only skips the beat to the finished card: any key
@@ -143,80 +136,16 @@ export const skipFromPointer = (model: Model): Model => {
   }
 }
 
-// NOTE: keys while an online room's run card is up: X shares, M and N
-// toggle the sound, and any other key skips or lets the lobby in, so they
-// never reach the hidden lobby (Enter would ready up behind the card).
+// NOTE: keys while an online room's run card is up: M and N toggle the
+// sound, and any other key skips or lets the lobby in, so they never reach
+// the hidden lobby (Enter would ready up behind the card).
 export const isRunCardKey = (model: Model): boolean =>
   isCoopOpen(model.coop) && isEndScreen(model.phase) && isRunCardHeld(model)
 
 export const runCardFromKey = (model: Model, code: string): Model =>
-  isShareKey(code) || Array.contains(AUDIO_KEYS, code)
-    ? model
-    : dropRunCard(model)
+  Array.contains(AUDIO_KEYS, code) ? model : dropRunCard(model)
 
 // SHARE
-
-// NOTE: on a keyboard (and anywhere without a share sheet) SHARE is X's
-// intent link (src/menus.ts), so the browser opens it on the click itself.
-// X clicks that same link from the key's own Command, inside the key
-// press's activation, and the click sends ClickedShareButton like a tap.
-export const ClickShareLink = makeCommand('ClickShareLink', {
-  messages: [Message.CompletedClickShareLink],
-  handler: function* () {
-    return () =>
-      Dom.clickElement(`#${END_SHARE_BUTTON_ID}`).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedClickShareLink()),
-      )
-  },
-})
-
-class ShareSheetClosed extends Data.TaggedError('ShareSheetClosed')<{
-  readonly outcome: 'Cancelled' | 'Refused'
-}> {}
-
-const isAbort = (error: unknown): boolean =>
-  error instanceof DOMException && error.name === 'AbortError'
-
-// NOTE: on a touch screen with a share sheet, SHARE opens it with the post's
-// words and the game, so the player picks X and X's own composer opens
-// filled in. It runs right after the tap, still inside the tap's user
-// activation. A player who closes the sheet is Cancelled; a browser that
-// refuses it (NotAllowedError) or fails is Refused, and the link takes over.
-export const OpenShareSheet = makeCommand('OpenShareSheet', {
-  args: { text: Schema.String, url: Schema.String },
-  messages: [Message.SettledShareSheet],
-  handler: function* () {
-    return ({ text, url }) =>
-      Effect.tryPromise({
-        try: () => navigator.share({ text, url }),
-        catch: error =>
-          new ShareSheetClosed({
-            outcome: isAbort(error) ? 'Cancelled' : 'Refused',
-          }),
-      }).pipe(
-        Effect.as(Message.SettledShareSheet({ outcome: 'Shared' })),
-        Effect.catch(({ outcome }) =>
-          Effect.succeed(Message.SettledShareSheet({ outcome })),
-        ),
-      )
-  },
-})
-
-// NOTE: the fallback when the share sheet is refused: X's intent link in a
-// new tab. It may come too late for a strict popup blocker, but the next tap
-// on SHARE is the link itself (shareSheet is Unavailable from then on).
-export const OpenShareLink = makeCommand('OpenShareLink', {
-  args: { url: Schema.String },
-  messages: [Message.CompletedOpenShareLink],
-  handler: function* () {
-    return ({ url }) =>
-      Effect.sync(() => window.open(url, '_blank', 'noopener,noreferrer')).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedOpenShareLink()),
-      )
-  },
-})
 
 // NOTE: a tap on SHARE, sent like a run summary, as an anonymous event.
 export const SendShareEvent = makeCommand('SendShareEvent', {
@@ -255,45 +184,26 @@ const shareEventCommands = (model: Model) =>
       })
     : []
 
-// NOTE: the share sheet's Command on its path; the link opens by itself.
-const sheetCommands = (model: Model) =>
-  sharePathOf(model) === 'Sheet'
-    ? [
-        OpenShareSheet(
-          shareSheetData(sharedRunOf(model, runDifficultyOf(model))),
-        ),
-      ]
-    : []
-
-const countShare: UpdateStep = stepWhen(
-  (model: Model) => isEndScreen(model.phase),
-  model => ({
-    model,
-    commands: [...sheetCommands(model), ...shareEventCommands(model)],
-  }),
-)
-
-export const shareFromKey = (code: string): UpdateStep =>
-  stepWhen(
-    (model: Model) => isShareKey(code) && isEndScreen(model.phase),
-    model => ({ model, commands: [ClickShareLink()] }),
-  )
-
+// NOTE: the share itself runs in the button's own click (ShareFromClick in
+// src/mount.ts), so the tap here only skips the beat and counts it.
 export const shareFromButton: UpdateStep = model =>
-  combine(skipBeat(model), [countShare])
+  combine(skipBeat(model), [
+    stepWhen(
+      (skipped: Model) => isEndScreen(skipped.phase),
+      skipped => ({ model: skipped, commands: shareEventCommands(skipped) }),
+    ),
+  ])
 
-// NOTE: a refused share sheet falls back to the intent link now and on
-// every later tap. Shared and Cancelled need nothing more.
-export const settleShareSheet =
-  (outcome: ShareSheetOutcome): UpdateStep =>
+// NOTE: a post that went to the clipboard flashes COPIED! on SHARE, timed
+// by the end screen's clock. A share sheet shows itself, and a failure
+// leaves SHARE as it was, ready for another tap.
+export const settleShare =
+  (outcome: ShareOutcome): UpdateStep =>
   model =>
-    outcome === 'Refused'
+    outcome === 'Copied'
       ? {
-          model: modifyFields(model, { shareSheet: () => 'Unavailable' }),
-          commands: [
-            OpenShareLink({
-              url: shareUrl(sharedRunOf(model, runDifficultyOf(model))),
-            }),
-          ],
+          model: modifyFields(model, {
+            maybeShareCopiedAtMs: () => Option.some(model.screenMs),
+          }),
         }
       : { model }

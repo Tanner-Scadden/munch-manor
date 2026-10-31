@@ -133,12 +133,13 @@ export const RUNS_PATH = '/api/runs'
 
 // SHARE EVENT
 
-// NOTE: a tap on SHARE to X, counted apart from the run, since the run's
+// NOTE: a tap on SHARE, counted apart from the run, since the run's
 // summary is sent the moment it ends, before the end card shows. It says
 // which end screen it came from and what the run was, and nothing about
 // who: the same visitId as the summaries, and no text of the post.
-// NOTE: version 2 adds `path`: the share sheet or X's intent link. The
-// Worker still takes version 1 from a build cached before it.
+// NOTE: version 2 adds `path`: the share sheet, the clipboard, or (from
+// older builds) X's intent link. The Worker still takes version 1 from a
+// build cached before it.
 export const SHARE_EVENT_VERSION = 2
 
 export const ShareScreen = Schema.Literals([
@@ -149,7 +150,9 @@ export const ShareScreen = Schema.Literals([
 ])
 export type ShareScreen = typeof ShareScreen.Type
 
-export const SharePath = Schema.Literals(['Sheet', 'Link'])
+// NOTE: Link was X's intent link, sent by builds before SHARE copied the
+// post where there is no share sheet; a cached build may still send it.
+export const SharePath = Schema.Literals(['Sheet', 'Copy', 'Link'])
 export type SharePath = typeof SharePath.Type
 
 export const ShareEvent = Schema.Struct({

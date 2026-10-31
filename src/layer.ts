@@ -16,16 +16,11 @@ import {
   ReadUpdateMarker,
   StartSummaryQueue,
 } from './boot'
-import { ListenForTouchTaps, MeasureGameSurface } from './mount'
+import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
 import { CueMusic } from './musicPlan'
 import { subscriptions } from './subscriptions'
 import { ReadRoomLink } from './update/coop'
-import {
-  ClickShareLink,
-  OpenShareLink,
-  OpenShareSheet,
-  SendShareEvent,
-} from './update/end'
+import { SendShareEvent } from './update/end'
 import { SetFullscreen } from './update/fullscreen'
 import {
   ClickSupportLink,
@@ -82,10 +77,7 @@ export const CommandsLayer = Layer.mergeAll(
   FocusHomeButton.layer,
   FocusHandCard.layer,
   FocusEndMenuButton.layer,
-  ClickShareLink.layer,
   ClickSupportLink.layer,
-  OpenShareSheet.layer,
-  OpenShareLink.layer,
   SendShareEvent.layer,
   LoadStyles.layer,
   LoadFonts.layer,
@@ -108,11 +100,12 @@ export const CommandsLayer = Layer.mergeAll(
 )
 
 // NOTE: the root's own handlers: its Commands and the audio resource, its
-// Subscriptions, and its Mount. Each child Block brings its own through its
+// Subscriptions, and its Mounts. Each child Block brings its own through its
 // Binding (src/composition.ts).
 export const EffectsLayer = Layer.mergeAll(
   CommandsLayer,
   subscriptions.layer,
   MeasureGameSurface.layer,
   ListenForTouchTaps.layer,
+  ShareFromClick.layer,
 )

@@ -53,9 +53,17 @@ declare global {
     // from navigation, by name), and the long tasks as [start, duration].
     __splashTimes?: Record<string, number>
     __longTasks?: Array<[number, number]>
-    // NOTE: shots43.ts's stand-in navigator.share: the data it was handed,
-    // and whether the tap's user activation was still live then.
-    __sheet?: ShareData & { isActive: boolean }
+    // NOTE: shots43.ts's stand-ins for navigator.share and the clipboard:
+    // what each was handed, whether the tap's user activation was still
+    // live, and whether the click was still being dispatched.
+    __shared?: Array<
+      Readonly<{
+        call: 'Sheet' | 'Copy'
+        text: string
+        isActive: boolean
+        isInClick: boolean
+      }>
+    >
   }
 }
 

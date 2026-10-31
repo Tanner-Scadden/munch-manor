@@ -15,8 +15,8 @@ import {
   PageVisibility,
   PointerDevice,
   ScreenFit,
+  ShareOutcome,
   ShareSheet,
-  ShareSheetOutcome,
   ShopItemId,
   TouchControls,
   ZombieKind,
@@ -151,10 +151,8 @@ export const Message = defineMessageUnion({
   BlurredHomeButton: {},
   CompletedFocusHomeButton: {},
   CompletedFocusEndMenuButton: {},
-  CompletedClickShareLink: {},
   CompletedClickSupportLink: {},
-  SettledShareSheet: { outcome: ShareSheetOutcome },
-  CompletedOpenShareLink: {},
+  SettledShare: { outcome: ShareOutcome },
   CompletedSendShareEvent: {},
   FailedSendShareEvent: { reason: Schema.String },
   CompletedLoadStyles: {},
@@ -228,5 +226,6 @@ export type CancelledPointer = typeof Message.CancelledPointer.Type
 export type ReleasedEveryTouch = typeof Message.ReleasedEveryTouch.Type
 export type MeasuredGameSurface = typeof Message.MeasuredGameSurface.Type
 export type TappedWithTouch = typeof Message.TappedWithTouch.Type
+export type SettledShare = typeof Message.SettledShare.Type
 export type PressedPointer = typeof Message.PressedPointer.Type
 export type PressedHudSlot = typeof Message.PressedHudSlot.Type

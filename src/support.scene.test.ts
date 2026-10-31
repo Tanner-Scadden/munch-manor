@@ -28,6 +28,7 @@ import {
   measureSurface,
   measureSurfaceAs,
   openHandInScene,
+  settleEndShareOf,
 } from './testing'
 import { ClickSupportLink } from './update/home'
 import { view } from './view'
@@ -69,6 +70,7 @@ describe('the coffee button', () => {
         { update, view },
         given(withoutLink(model)),
         measureSurface,
+        ...settleEndShareOf(model),
         expect(coffeeLink).toBeAbsent(),
       )
     },
@@ -79,6 +81,7 @@ describe('the coffee button', () => {
       { update, view },
       given(withLink(model)),
       measureSurface,
+      ...settleEndShareOf(model),
       expect(coffeeLink).toExist(),
       expect(coffeeLink).toHaveAttr('href', TEST_LINK),
       expect(coffeeLink).toHaveAttr('target', '_blank'),
@@ -91,6 +94,7 @@ describe('the coffee button', () => {
       { update, view },
       given(model),
       measureSurface,
+      ...settleEndShareOf(model),
       expect(coffeeLink).toBeAbsent(),
       expect(homeCoffee).toBeAbsent(),
     )

@@ -407,12 +407,21 @@ export const mvpOf = (
 
 // SHARING
 
-// NOTE: a touch screen with a share sheet shares through it; a keyboard,
-// a mouse, or a browser without one gets X's intent link.
+// NOTE: a browser with a share sheet shares through it, on any device; one
+// without copies the post (ShareFromClick in src/mount.ts decides the same
+// way at the tap).
 export const sharePathOf = (model: Model): SharePath =>
-  model.lastDevice === 'Touch' && model.shareSheet === 'Available'
-    ? 'Sheet'
-    : 'Link'
+  model.shareSheet === 'Available' ? 'Sheet' : 'Copy'
+
+// NOTE: how long SHARE says COPIED! after the post goes to the clipboard.
+export const SHARE_COPIED_MS = 1500
+
+export const isShareCopied = (model: Model): boolean =>
+  Option.match(model.maybeShareCopiedAtMs, {
+    onNone: () => false,
+    onSome: atMs =>
+      model.screenMs >= atMs && model.screenMs - atMs < SHARE_COPIED_MS,
+  })
 
 // NOTE: `played` is the run's difficulty: the player's own, or in an online
 // co-op run the room's.

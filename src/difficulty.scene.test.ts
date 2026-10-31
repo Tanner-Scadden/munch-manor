@@ -21,6 +21,7 @@ import {
   lockedNightmare,
   measureSurface,
   playButton,
+  shareMountSettles,
   showDialogInScene,
 } from './testing'
 import { asVeteran } from './veteran'
@@ -122,6 +123,7 @@ describe('the end screens', () => {
         ),
       ),
       measureSurface,
+      shareMountSettles('Cancelled'),
       expect(role('status')).toContainText('Difficulty: Hard.'),
     )
   })
@@ -139,6 +141,7 @@ describe('the end screens', () => {
         ),
       ),
       measureSurface,
+      shareMountSettles('Cancelled'),
       expect(role('status')).toContainText(
         'Difficulty: Hard. Nightmare unlocked!',
       ),

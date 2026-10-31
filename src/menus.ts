@@ -1,9 +1,10 @@
-import { Array } from 'effect'
+import { Array, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from './composition'
+import { CHECK_ICON } from './coop/icons'
 import { isOpen as isCoopOpen } from './coop/update'
-import { sharePathOf, sharedRunOf } from './endBeat'
+import { isShareCopied, sharedRunOf } from './endBeat'
 import {
   END_MENU_BUTTON_ID,
   END_RETRY_BUTTON_ID,
@@ -21,16 +22,17 @@ import {
   MUSIC_ON_ICON,
   PAUSE_ICON,
   RETRY_ICON,
+  SHARE_ICON,
   SOUND_OFF_ICON,
   SOUND_ON_ICON,
-  X_LOGO_ICON,
 } from './icons'
 import { isProfileOpen } from './menuState'
 import { Message } from './message'
 import { DebutCard, type Model, Phase, RunMode, type ZombieKind } from './model'
+import { SHARE_TEXT_DATA, ShareFromClick } from './mount'
 import { canSkipDebutCard } from './onboarding'
 import { runDifficultyOf } from './onlineRun'
-import { shareUrl } from './share'
+import { shareText } from './share'
 import { iconButtonView } from './touchControls'
 import { FINAL_WAVE } from './wavePlans'
 import { ZOMBIE_KINDS } from './zombies'
@@ -181,16 +183,16 @@ const menuOnlyView = (model: Model, h: ApplicationViewBuilder): Html =>
     ],
   )
 
-// NOTE: the end card's buttons, icon first: HOME, then the big RETRY (on
-// Victory AGAIN, with KEEP GOING beside it), then SHARE to X. Each pops in
-// a beat after the one before it.
+// NOTE: the end card's buttons, icon first and all one size: HOME, then
+// RETRY (on Victory AGAIN, with KEEP GOING beside it), then SHARE. Each
+// pops in a beat after the one before it. SHARE has no key: the share
+// sheet and the clipboard want a tap or a click.
 type EndButton = Readonly<{
   id: string
   look: 'Home' | 'Retry' | 'KeepGoing' | 'Share'
   icon: string
   label: string
-  key: string
-  keyName: string
+  maybeKey: Option.Option<Readonly<{ cap: string; name: string }>>
   ariaLabel: string
   message: Message
 }>
@@ -200,8 +202,7 @@ const HOME_BUTTON: EndButton = {
   look: 'Home',
   icon: HOME_ICON,
   label: 'HOME',
-  key: 'H',
-  keyName: 'H',
+  maybeKey: Option.some({ cap: 'H', name: 'H' }),
   ariaLabel: 'Menu: back to the home screen',
   message: Message.ClickedMenuButton(),
 }
@@ -211,8 +212,7 @@ const retryButton = (model: Model): EndButton => ({
   look: 'Retry',
   icon: RETRY_ICON,
   label: Phase.isAnyOf(['Victory'])(model.phase) ? 'AGAIN' : 'RETRY',
-  key: 'ENTER',
-  keyName: 'Enter',
+  maybeKey: Option.some({ cap: 'ENTER', name: 'Enter' }),
   ariaLabel: RunMode.match(model.mode, {
     Campaign: () => `Retry: a new campaign of ${FINAL_WAVE} waves`,
     Endless: () => 'Retry: a new endless run',
@@ -225,21 +225,23 @@ const KEEP_GOING_BUTTON: EndButton = {
   look: 'KeepGoing',
   icon: ENDLESS_ICON,
   label: 'KEEP GOING',
-  key: 'K',
-  keyName: 'K',
+  maybeKey: Option.some({ cap: 'K', name: 'K' }),
   ariaLabel: `Keep going: carry on into endless from wave ${FINAL_WAVE + 1} with your money, guns, and traps`,
   message: Message.ClickedKeepGoingButton(),
 }
 
-const SHARE_BUTTON: EndButton = {
-  id: END_SHARE_BUTTON_ID,
-  look: 'Share',
-  icon: X_LOGO_ICON,
-  label: 'SHARE',
-  key: 'X',
-  keyName: 'X',
-  ariaLabel: 'Share your run on X. Opens in a new tab',
-  message: Message.ClickedShareButton(),
+// NOTE: a post that went to the clipboard flashes COPIED! with a tick.
+const shareButton = (model: Model): EndButton => {
+  const isCopied = isShareCopied(model)
+  return {
+    id: END_SHARE_BUTTON_ID,
+    look: 'Share',
+    icon: isCopied ? CHECK_ICON : SHARE_ICON,
+    label: isCopied ? 'COPIED!' : 'SHARE',
+    maybeKey: Option.none(),
+    ariaLabel: isCopied ? 'Share: copied' : 'Share your run',
+    message: Message.ClickedShareButton(),
+  }
 }
 
 const END_BUTTON_STAGGER_MS = 70
@@ -256,62 +258,67 @@ const endButtonFace = (
   ]),
   h.span([h.Class('end-button-label'), h.AriaHidden(true)], [button.label]),
   ...(model.lastDevice === 'KeyboardMouse'
-    ? [h.span([h.Class('end-button-key'), h.AriaHidden(true)], [button.key])]
+    ? Option.match(button.maybeKey, {
+        onNone: () => [],
+        onSome: ({ cap }) => [
+          h.span([h.Class('end-button-key'), h.AriaHidden(true)], [cap]),
+        ],
+      })
     : []),
 ]
 
-// NOTE: X's post intent for this run, the room's difficulty in an online
-// co-op run. The words are src/share.ts's.
-export const shareHrefOf = (model: Model): string =>
-  shareUrl(sharedRunOf(model, runDifficultyOf(model)))
+// NOTE: this run's post, the room's difficulty in an online co-op run. The
+// words are src/share.ts's.
+export const shareTextOf = (model: Model): string =>
+  shareText(sharedRunOf(model, runDifficultyOf(model)))
 
-// NOTE: on a keyboard, a mouse, or a phone without a share sheet, SHARE is
-// a real link, so the browser opens X on the click itself and no popup
-// blocker can stop it; its click still sends its Message, which counts the
-// share and never prevents the link. On a touch screen with a share sheet it
-// is a button, and its Message opens the sheet (src/update/end.ts).
+// NOTE: SHARE carries its post and the ShareFromClick Mount, which opens
+// the share sheet (or copies the post) in the click itself; its OnClick
+// counts the share (src/update/end.ts).
+const shareAttributes = (model: Model, h: ApplicationViewBuilder) => [
+  h.DataAttribute(SHARE_TEXT_DATA, shareTextOf(model)),
+  h.OnMount(ShareFromClick()),
+]
+
 const endButtonView =
   (model: Model, h: ApplicationViewBuilder) =>
-  (button: EndButton, index: number): Html => {
-    const shared = [
-      h.Id(button.id),
-      h.Class('end-button'),
-      h.DataAttribute('look', button.look),
-      h.Style({ animationDelay: `${index * END_BUTTON_STAGGER_MS}ms` }),
-      h.AriaLabel(button.ariaLabel),
-      h.AriaKeyshortcuts(button.keyName),
-      h.OnClick(button.message, {
-        focusSelector: '.game-surface',
-        propagation: 'Stop',
-      }),
-    ]
-    return button.look === 'Share' && sharePathOf(model) === 'Link'
-      ? h.keyed('a')(
-          button.id,
-          [
-            ...shared,
-            h.Href(shareHrefOf(model)),
-            h.Target('_blank'),
-            h.Rel('noopener noreferrer'),
-          ],
-          endButtonFace(model, button, h),
-        )
-      : h.keyed('button')(
-          button.id,
-          [h.Type('button'), ...shared],
-          endButtonFace(model, button, h),
-        )
-  }
+  (button: EndButton, index: number): Html =>
+    h.keyed('button')(
+      button.id,
+      [
+        h.Type('button'),
+        h.Id(button.id),
+        h.Class('end-button'),
+        h.DataAttribute('look', button.look),
+        h.Style({ animationDelay: `${index * END_BUTTON_STAGGER_MS}ms` }),
+        h.AriaLabel(button.ariaLabel),
+        ...Option.match(button.maybeKey, {
+          onNone: () => [],
+          onSome: ({ name }) => [h.AriaKeyshortcuts(name)],
+        }),
+        h.OnClick(button.message, {
+          focusSelector: '.game-surface',
+          propagation: 'Stop',
+        }),
+        ...(button.look === 'Share' ? shareAttributes(model, h) : []),
+      ],
+      endButtonFace(model, button, h),
+    )
 
 // NOTE: in an online co-op run the room's lobby comes next, so the card
 // offers only SHARE until the lobby takes over.
 const endButtonsOf = (model: Model): ReadonlyArray<EndButton> => {
   if (isCoopOpen(model.coop)) {
-    return [SHARE_BUTTON]
+    return [shareButton(model)]
   } else if (Phase.isAnyOf(['Victory'])(model.phase)) {
-    return [HOME_BUTTON, retryButton(model), KEEP_GOING_BUTTON, SHARE_BUTTON]
+    return [
+      HOME_BUTTON,
+      retryButton(model),
+      KEEP_GOING_BUTTON,
+      shareButton(model),
+    ]
   } else {
-    return [HOME_BUTTON, retryButton(model), SHARE_BUTTON]
+    return [HOME_BUTTON, retryButton(model), shareButton(model)]
   }
 }
 

@@ -56,7 +56,6 @@ import {
   isBeatSkipKey,
   isRunCardKey,
   runCardFromKey,
-  shareFromKey,
 } from './end'
 import {
   difficultyCardFromKey,
@@ -337,7 +336,6 @@ export const pressedKey = (code: string) =>
       return Update.combineSteps([
         toModel(toggleAudioFromKey(runCardFromKey(keyed, code), code)),
         unlockAudio,
-        shareFromKey(code),
       ])
     }
     if (isCoopOpen(keyed)) {
@@ -399,7 +397,6 @@ export const pressedKey = (code: string) =>
       homeFromKey(code),
       trapFromKey(code),
       reloadFromKey(code),
-      shareFromKey(code),
       playStartSoundWhen(startsRun(model, pressed)),
       playSwapSoundWhen(changedWeapon(model, pressed)),
     ])

@@ -552,15 +552,6 @@ export const GITHUB_MARK_ICON = `url("data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#ffffff" d="${GITHUB_MARK_PATH}"/></svg>`,
 )}")`
 
-// NOTE: X's own logo, white and unchanged as X's brand rules ask, on the
-// end screens' share button.
-const X_LOGO_PATH =
-  'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z'
-
-export const X_LOGO_ICON = `url("data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#ffffff" d="${X_LOGO_PATH}"/></svg>`,
-)}")`
-
 // NOTE: the end screens' RETRY, a round arrow, and HOME, a little house.
 export const RETRY_ICON = pixelIconUrl(
   [

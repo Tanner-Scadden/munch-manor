@@ -1,6 +1,7 @@
 import { Array, Option } from 'effect'
 import {
   Command,
+  Mount,
   Subscription,
   all,
   click,
@@ -22,11 +23,13 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 
 import { RESTART_GRACE_MS } from './constants'
+import { SHARE_COPIED_MS } from './endBeat'
 import { update } from './main'
-import { shareHrefOf } from './menus'
+import { shareTextOf } from './menus'
 import { Message } from './message'
 import { type Model, Phase, initialModel } from './model'
 import { withNewerBuild } from './model.fixture'
+import { ShareFromClick } from './mount'
 import {
   ROOT,
   SCENE_SUBSCRIPTIONS,
@@ -35,9 +38,10 @@ import {
   manorButton,
   measureSurface,
   retryButton,
+  shareMountSettles,
   updateChip,
 } from './testing'
-import { OpenShareLink, OpenShareSheet, SendShareEvent } from './update/end'
+import { SendShareEvent } from './update/end'
 import { FocusEndMenuButton } from './update/home'
 import { asVeteran } from './veteran'
 
@@ -50,9 +54,8 @@ const tickPastGrace = () =>
   )
 
 const menuButton = role('button', { name: /^Menu: back/ })
-const shareButton = role('link', {
-  name: 'Share your run on X. Opens in a new tab',
-})
+const shareButton = role('button', { name: 'Share your run' })
+const copiedButton = role('button', { name: 'Share: copied' })
 const updateNote = selector('.mode-button-gift')
 const endButtons = all.selector('.end-actions .end-button')
 const menuOnlyButtons = all.selector('.mode-choice .mode-button')
@@ -79,7 +82,9 @@ describe('the end screens', () => {
       expect(menuButton).toHaveAttr('aria-keyshortcuts', 'H'),
       expect(retryButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
       expect(retryButton).toHaveText('RETRYENTER'),
-      expect(shareButton).toHaveAttr('aria-keyshortcuts', 'X'),
+      expect(shareButton).not.toHaveAttr('aria-keyshortcuts'),
+      expect(shareButton).toHaveText('SHARE'),
+      shareMountSettles('Shared'),
       expect(updateNote).toBeAbsent(),
     )
   })
@@ -95,23 +100,24 @@ describe('the end screens', () => {
       expect(keepGoingButton).toExist(),
       expect(shareButton).toExist(),
       expect(updateNote).toBeAbsent(),
+      shareMountSettles('Cancelled'),
     )
   })
 
-  test('SHARE is a link to X post intent that opens in a new tab', () => {
+  test('SHARE carries the run post and the Mount that shares it in the click', () => {
     const gameOver = onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)
     scene(
       ROOT,
       given(gameOver),
       measureSurface,
-      expect(shareButton).toHaveAttr('href', shareHrefOf(gameOver)),
-      expect(shareButton).toHaveAttr('target', '_blank'),
-      expect(shareButton).toHaveAttr('rel', 'noopener noreferrer'),
-      expect(selector('a#end-share-button')).toExist(),
+      expect(shareButton).toHaveAttr('data-share-text', shareTextOf(gameOver)),
+      expect(selector('a#end-share-button')).toBeAbsent(),
+      Mount.expectHas(ShareFromClick),
+      shareMountSettles('Cancelled'),
     )
   })
 
-  test('a tap on the SHARE link skips the beat and counts the share', () => {
+  test('a tap on SHARE skips the beat and counts the share', () => {
     scene(
       ROOT,
       given(
@@ -124,87 +130,33 @@ describe('the end screens', () => {
         ),
       ),
       measureSurface,
+      shareMountSettles('Shared'),
       click(shareButton),
       Command.expectHas(SendShareEvent),
       Command.resolve(SendShareEvent, Message.CompletedSendShareEvent()),
+      expect(shareButton).toHaveText('SHARE'),
     )
   })
 
-  // NOTE: a phone whose browser has a share sheet.
-  const onPhoneWithSheet = (model: Model): Model =>
-    modifyFields(model, {
-      lastDevice: () => 'Touch' as const,
-      shareSheet: () => 'Available' as const,
-    })
-
-  const shareSheetButton = role('button', {
-    name: 'Share your run on X. Opens in a new tab',
-  })
-
-  test('on a phone with a share sheet, SHARE is a button that opens the sheet', () => {
-    const gameOver = onPhoneWithSheet(
-      onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS),
-    )
-    scene(
-      ROOT,
-      given(gameOver),
-      measureSurface,
-      expect(selector('a#end-share-button')).toBeAbsent(),
-      expect(selector('button#end-share-button')).toExist(),
-      click(shareSheetButton),
-      Command.expectHas(OpenShareSheet),
-      Command.resolve(
-        OpenShareSheet,
-        Message.SettledShareSheet({ outcome: 'Cancelled' }),
-      ),
-      expect(selector('button#end-share-button')).toExist(),
-    )
-  })
-
-  test('a refused share sheet turns SHARE back into the link', () => {
-    const gameOver = onPhoneWithSheet(
-      onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS),
-    )
-    scene(
-      ROOT,
-      given(gameOver),
-      measureSurface,
-      click(shareSheetButton),
-      Command.resolve(
-        OpenShareSheet,
-        Message.SettledShareSheet({ outcome: 'Refused' }),
-      ),
-      Command.resolve(OpenShareLink, Message.CompletedOpenShareLink()),
-      expect(selector('a#end-share-button')).toExist(),
-    )
-  })
-
-  test('on a phone without a share sheet, and on a desktop with one, SHARE is the link', () => {
-    const atEnd = onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)
-    scene(
-      ROOT,
-      given(
-        modifyFields(atEnd, {
-          lastDevice: () => 'Touch' as const,
-          shareSheet: () => 'Unavailable' as const,
-        }),
-      ),
-      measureSurface,
-      expect(shareButton).toHaveAttr('href', shareHrefOf(atEnd)),
-    )
-    scene(
-      ROOT,
-      given(
-        modifyFields(atEnd, {
-          lastDevice: () => 'KeyboardMouse' as const,
-          shareSheet: () => 'Available' as const,
-        }),
-      ),
-      measureSurface,
-      expect(shareButton).toHaveAttr('href', shareHrefOf(atEnd)),
-      expect(selector('button#end-share-button')).toBeAbsent(),
-    )
-  })
+  test.each(END_PHASES)(
+    'a post copied on %s flashes COPIED! on SHARE, then SHARE comes back',
+    (_name, phase) => {
+      scene(
+        ROOT,
+        given(onEndScreen(phase, RESTART_GRACE_MS)),
+        measureSurface,
+        shareMountSettles('Copied'),
+        expect(copiedButton).toHaveText('COPIED!'),
+        ...Array.makeBy(Math.ceil(SHARE_COPIED_MS / 50), () =>
+          Subscription.emit(
+            SCENE_SUBSCRIPTIONS.frame,
+            Message.TickedFrame({ deltaTime: 50 }),
+          ),
+        ),
+        expect(shareButton).toHaveText('SHARE'),
+      )
+    },
+  )
 
   test.each(END_PHASES)(
     '%s with a new version waiting offers only MENU, wearing a gift, and it lands on the gift',
@@ -261,7 +213,13 @@ describe('the end screens', () => {
   test('a new version found on Game Over swaps the choices for MENU', () => {
     const gameOver = onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)
     const found = Message.CompletedFetchBuild({ build: 'newer-build' })
-    scene(ROOT, given(gameOver), measureSurface, expect(retryButton).toExist())
+    scene(
+      ROOT,
+      given(gameOver),
+      measureSurface,
+      expect(retryButton).toExist(),
+      shareMountSettles('Cancelled'),
+    )
     story(
       update,
       storyGiven(gameOver),
