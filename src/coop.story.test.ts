@@ -7,13 +7,13 @@ import { describe, expect, test } from 'vitest'
 import { CoopBinding } from './composition'
 import { Message as CoopMessage } from './coop/message'
 import { LobbyChange, RoomRequest, Screen } from './coop/model'
+import { freshRoom } from './coop/roomState'
 import { CODE, lobbyOf, memberOf } from './coop/testing'
 import {
   ChangeLobby,
   FocusCoopElement,
   RememberRoom,
   RequestRoom,
-  freshRoom,
 } from './coop/update'
 import { update } from './main'
 import { Message } from './message'

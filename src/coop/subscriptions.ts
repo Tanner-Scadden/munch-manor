@@ -4,7 +4,7 @@ import { makeSubscriptions } from './definition'
 import { Message } from './message'
 import { type Model, Screen } from './model'
 import { CoopNet } from './net'
-import { maybeRoomOf } from './update'
+import { maybeRoomOf } from './roomState'
 
 // NOTE: co-op's streams, each running while the Model needs it: the QUICK
 // PLAY socket while queued, and the lobby and the game socket while in a

@@ -5,7 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { levelOf } from './arena'
 import { CoopBinding } from './composition'
 import type { Room as CoopRoom } from './coop/model'
-import { isInLobby, keepTracers, maybeRoomOf } from './coop/update'
+import { isInLobby, keepTracers, maybeRoomOf } from './coop/roomState'
 import { makeStep } from './definition'
 import { aimTracers, flyTracers } from './firing'
 import {

@@ -92,7 +92,7 @@ import {
   unchanged,
   withInput,
 } from './step'
-import { trapFromKey } from './traps'
+import { nextTrap, placeSelectedTrap, trapFromKey } from './traps'
 import { checkForUpdate } from './version'
 
 // The Steps the root's handlers (src/main.ts) are made of: the frame, the
@@ -234,11 +234,18 @@ const reloadFromKey = (code: string): UpdateStep =>
 
 // PAUSE
 
-export const pauseRound = makeStep(() =>
+const pauseRound = makeStep(() =>
   Update.combineSteps([
     closeShop,
     modelStep(model => withInput(pause(model), releaseAll)),
   ]),
+)
+
+// NOTE: the pause button pauses a round under way and does nothing else.
+export const clickPause = makeStep(model =>
+  isRoundActive(model.phase)
+    ? Update.combineSteps([unlockAudio, pauseRound])
+    : unchanged,
 )
 
 export const pauseWhenAway = makeStep(model =>
@@ -459,9 +466,29 @@ export const pressMeleeSlot: UpdateStep = stepWhen(
 )
 
 // NOTE: the counter and the new zombie card hold the round's buttons.
-export const isTrapButtonHeld = (model: Model): boolean =>
+const isTrapButtonHeld = (model: Model): boolean =>
   isAtCounter(model.shop) || isDebutCardBlocking(model)
 
-export const startWaveFromButton: UpdateStep = model => ({
+const startWaveFromButton: UpdateStep = model => ({
   model: learnStartWaveWhen(model, startWave(model)),
 })
+
+// NOTE: START WAVE and the trap buttons wait while the counter or the new
+// zombie card holds the round's buttons.
+export const clickStartWave = makeStep(model =>
+  isTrapButtonHeld(model)
+    ? unchanged
+    : Update.combineSteps([startWaveFromButton, unlockAudio]),
+)
+
+export const clickPlaceTrap = makeStep(model =>
+  isTrapButtonHeld(model)
+    ? unchanged
+    : Update.combineSteps([unlockAudio, placeSelectedTrap]),
+)
+
+export const clickNextTrap = makeStep(model =>
+  isTrapButtonHeld(model)
+    ? unchanged
+    : Update.combineSteps([unlockAudio, nextTrap]),
+)

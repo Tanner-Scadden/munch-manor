@@ -3,7 +3,7 @@ import { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { seatLookOf } from './coop/looks'
-import { maybeRoomOf } from './coop/update'
+import { maybeRoomOf } from './coop/roomState'
 import type { Drawable } from './depth'
 import type { Model } from './model'
 import {

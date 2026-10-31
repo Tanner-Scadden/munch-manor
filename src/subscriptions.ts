@@ -1,7 +1,7 @@
 import { Array, Clock, Effect, Option, Queue, Schema, Stream } from 'effect'
 import { Dom } from 'foldkit'
 
-import { maybeRoomOf } from './coop/update'
+import { maybeRoomOf } from './coop/roomState'
 import { makeSubscriptions } from './definition'
 import { isTrackingPointer } from './input'
 import { InstallPrompt } from './install'

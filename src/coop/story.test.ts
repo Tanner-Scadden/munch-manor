@@ -32,6 +32,7 @@ import {
   emptyQueue,
   initialModel,
 } from './model'
+import { cleanCode, freshRoom, maybeRoomOf, pressAction } from './roomState'
 import { coopWorld } from './seam'
 import {
   CODE,
@@ -50,11 +51,7 @@ import {
   RequestRoom,
   ResyncRoom,
   SendRoomFrames,
-  cleanCode,
-  freshRoom,
-  maybeRoomOf,
   open,
-  pressAction,
   pressKey,
   tickRoom,
   update,

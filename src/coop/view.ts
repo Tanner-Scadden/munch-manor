@@ -51,7 +51,6 @@ import {
   type Room,
   Screen,
 } from './model'
-import { readoutOf } from './seam'
 import {
   CODE_INPUT_ID,
   DIFFICULTY_PICKS,
@@ -66,7 +65,8 @@ import {
   isPicking,
   meIn,
   pickedModeOf,
-} from './update'
+} from './roomState'
+import { readoutOf } from './seam'
 
 // INPUTS
 

@@ -10,13 +10,9 @@ import { positionVariation } from './audio'
 import { CoopBinding, ShopDialogBinding } from './composition'
 import { Message as CoopMessage } from './coop/message'
 import { Screen } from './coop/model'
+import { freshRoom, maybeRoomOf } from './coop/roomState'
 import { CODE, lobbyOf, memberOf, playingSession } from './coop/testing'
-import {
-  FocusCoopElement,
-  RememberRoom,
-  freshRoom,
-  maybeRoomOf,
-} from './coop/update'
+import { FocusCoopElement, RememberRoom } from './coop/update'
 import { aimTracers } from './firing'
 import { update } from './main'
 import { Message } from './message'
