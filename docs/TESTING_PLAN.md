@@ -95,7 +95,7 @@ How the 60 test files in `src/` build their Models:
 - `modifyFields(initialModel | fighting, ...)` is spelled out 75 times, and `asVeteran` is used 73 times.
 - Zombie builders: `zombieOf` and `zombieAt` are used 126 times, and files still declare their own copies (`kaboomerAt` in `kaboomer.story.test.ts` restates every field of `zombieOf`).
 - Other helpers repeated across files: `withKills` (4 files), `touchDown` (4), `playButton` (4), `spawnAt` (3), `mouseDown` (3), `mainMenu` (3), and `closeDialog` (3).
-- The harness in `tools/audit/harness/entry.ts` has its own 850 lines of Model building (`roomModel`, `scenarioModel`), driven by the `HarnessConfig` query string. It is a third fixture vocabulary, alongside `testing.ts` and the per-file helpers, and it reads `window` at module load, so tests cannot import it.
+- The harness in `tools/audit/harness/` has its own 1300 lines of Model building (`roomModel` in `room.ts`, `scenarioModel` in `scenario.ts`), driven by the `HarnessConfig` query string. It is a third fixture vocabulary, alongside `testing.ts` and the per-file helpers, and it lives with the page's own setup, so tests do not import it.
 
 There are 559 `story(` calls and 138 `scene(` calls. Only 23 tests call `update` directly, so nearly every test already follows the Story or Scene style. What is missing is a shared vocabulary for the Given part, and steps sized in game time instead of spread frame arrays.
 
@@ -288,7 +288,7 @@ gameStory('...', given(...), forMs(800, blasts), then(() => expect(blasts.atMs()
 
 The harness's `HarnessConfig` Schema (`?wave=8&start=wave&crowd=30&gun=smg`) already is a fixture language, decoded and validated. The plan:
 
-- **Move the Model building into `src/test/`.** Take `roomModel` and `scenarioModel` out of `tools/audit/harness/entry.ts` and into `src/test/scenario.ts` as one pure function, `scenarioModel(config: HarnessConfig): Model`, with no `window`. The harness calls it. Tests call it too: `given(Scenario.of('wave=8&start=wave&crowd=30'))`, or `given(Scenario.make({ wave: 8, start: 'wave', crowd: 30 }))`.
+- **Move the Model building into `src/test/`.** Take `roomModel` and `scenarioModel` out of `tools/audit/harness/room.ts` and `scenario.ts` and into `src/test/scenario.ts` as one pure function, `scenarioModel(config: HarnessConfig): Model`, with no `window`. The harness calls it. Tests call it too: `given(Scenario.of('wave=8&start=wave&crowd=30'))`, or `given(Scenario.make({ wave: 8, start: 'wave', crowd: 30 }))`.
 - **One fixture behind the test and the screenshot.** A failing Story or Scene test and a screenshot of the same state then come from the same fixture. An audit scene (`shots34`'s "boss fight") and a Scene test of the boss band start from the same line of data.
 - **Name the scenarios.** Shared scenarios go in a table, `src/test/scenarios.ts`, so `ONLY=boss` in an audit and `Scenario.named('boss')` in a test mean the same room.
 

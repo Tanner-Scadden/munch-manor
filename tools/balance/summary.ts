@@ -5,7 +5,9 @@
 import { Array, Number, Option, Order, Record, Schema, pipe } from 'effect'
 
 import { Difficulty, HomeMode } from '../../src/model'
-import type { Kind, RunResult, WaveRun } from './bot'
+import type { Kind } from './bot/basics'
+import type { RunResult } from './bot/logs'
+import type { WaveRun } from './bot/snapshots'
 
 // SCHEMAS
 

@@ -19,7 +19,7 @@
 // waiting jobs go in between; the report is the same as one unchunked
 // batch, since every run is seeded by its index. HEAVY_CHUNK_RUNS=n sets
 // the chunk, and 0 plays it whole. It drives the game's own init model and update with the bot in
-// tools/balance/bot.ts and prints survival per wave, run length, the money
+// tools/balance/bot.ts (its parts in tools/balance/bot/) and prints survival per wave, run length, the money
 // curve, and which zombie kinds cost the bot the most hearts. Nothing here
 // ships with the game.
 
@@ -29,13 +29,9 @@ import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 import { encodeJson, readJsonFile, writeJsonFile } from '../json'
-import type {
-  BossFight,
-  BotOptions,
-  NewKindLog,
-  RunResult,
-  WaveRun,
-} from './bot'
+import type { BotOptions } from './bot/basics'
+import type { BossFight, NewKindLog, RunResult } from './bot/logs'
+import type { WaveRun } from './bot/snapshots'
 
 const browserWindow = new Window()
 Object.assign(globalThis, {
@@ -44,17 +40,10 @@ Object.assign(globalThis, {
   __BUILD_ID__: 'dev',
 })
 
-const bot = await import('./bot')
-const {
-  DEFAULT_OPTIONS,
-  KINDS,
-  emptyHurt,
-  parseDifficulty,
-  playWavePass,
-  quietPartMs,
-  runOnce,
-  seedAt: seedFrom,
-} = bot
+const { DEFAULT_OPTIONS, parseDifficulty } = await import('./bot/basics')
+const { KINDS, emptyHurt, quietPartMs } = await import('./bot/logs')
+const { runOnce, seedAt: seedFrom } = await import('./bot')
+const { playWavePass } = await import('./bot/snapshots')
 const { FINAL_WAVE } = await import('../../src/wavePlans')
 const summary = await import('./summary')
 const turn = await import('../heavy/turn')

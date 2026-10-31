@@ -388,15 +388,6 @@
       // JavaScript literals into its source, not JSON to be read back.
       "files": ["src/sw/precache.ts"],
       "rules": { "munch/no-raw-json": "off" }
-    },
-    {
-      // NOTE: the two scripts that cannot split by moving code: each keeps a
-      // run's state in module-level `let`s that its sections assign, and an
-      // import is read-only, so a split needs that state passed in first.
-      "files": ["tools/audit/harness/entry.ts", "tools/balance/bot.ts"],
-      "rules": {
-        "max-lines": "off"
-      }
     }
   ],
   "ignorePatterns": [

@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'vitest'
 
+import { waveSeedAt } from './bot'
+import { DEFAULT_OPTIONS } from './bot/basics'
 import {
-  DEFAULT_OPTIONS,
   playSnapshot,
   playWavePass,
   rerolled,
   snapshotFor,
-  waveSeedAt,
   waveStarts,
-} from './bot'
+} from './bot/snapshots'
 import { summarizeWave } from './summary'
 
 // NOTE: the smoke pass plays wave 2 from two snapshot slots, three runs, so
