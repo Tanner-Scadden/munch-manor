@@ -707,6 +707,8 @@ export const update = ApplicationComposition.makeUpdate({
       model: modifyFields(model, { maybeVisitId: () => Option.some(visitId) }),
     }),
 
+  CompletedStartSummaryQueue: model => settle(model, { model }),
+
   CompletedSendRunSummary: model => settle(model, { model }),
 
   FailedSendRunSummary: model => settle(model, { model }),

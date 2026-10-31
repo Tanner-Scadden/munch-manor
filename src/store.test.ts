@@ -2,6 +2,7 @@
 import {
   Context,
   Effect,
+  Array as EffectArray,
   Layer,
   Option,
   Ref,
@@ -927,6 +928,68 @@ describe('two devices syncing one player', () => {
         expect(yield* write(local, legacySave, played)).toEqual(Option.none())
       }),
     ),
+  )
+})
+
+describe('run summaries queued with no network', () => {
+  const takeAll = (database: PlayerDatabase) =>
+    Effect.gen(function* () {
+      const taken: Array<string> = []
+      for (;;) {
+        const maybeBody = yield* database.takeQueuedSummary
+        if (Option.isNone(maybeBody)) {
+          return taken
+        }
+        taken.push(maybeBody.value)
+      }
+    })
+
+  it.effect('come out oldest first, and each only once', () =>
+    Effect.gen(function* () {
+      const legacy = yield* makeLegacy(Option.none())
+      const local = yield* openOn(yield* makeHub(), legacy.legacy)
+      yield* local.queueSummary('first')
+      yield* local.queueSummary('second')
+      expect(yield* local.takeQueuedSummary).toEqual(Option.some('first'))
+      expect(yield* takeAll(local)).toEqual(['second'])
+      expect(yield* local.takeQueuedSummary).toEqual(Option.none())
+    }),
+  )
+
+  it.effect('wait through a reload, on the same device', () =>
+    Effect.gen(function* () {
+      const legacy = yield* makeLegacy(Option.none())
+      const hub = yield* makeHub()
+      const before = yield* openOn(hub, legacy.legacy)
+      yield* before.queueSummary('flight home')
+      const after = yield* openOn(hub, legacy.legacy)
+      expect(yield* takeAll(after)).toEqual(['flight home'])
+    }),
+  )
+
+  it.effect('keep only the newest few when a trip is long', () =>
+    Effect.gen(function* () {
+      const legacy = yield* makeLegacy(Option.none())
+      const local = yield* openOn(yield* makeHub(), legacy.legacy)
+      yield* Effect.forEach(EffectArray.range(1, 25), run =>
+        local.queueSummary(`run ${run}`),
+      )
+      const taken = yield* takeAll(local)
+      expect(taken).toHaveLength(20)
+      expect(taken[0]).toBe('run 6')
+      expect(taken[19]).toBe('run 25')
+    }),
+  )
+
+  it.effect('can all be cleared', () =>
+    Effect.gen(function* () {
+      const legacy = yield* makeLegacy(Option.none())
+      const local = yield* openOn(yield* makeHub(), legacy.legacy)
+      yield* local.queueSummary('one')
+      yield* local.queueSummary('two')
+      yield* local.clearQueuedSummaries
+      expect(yield* takeAll(local)).toEqual([])
+    }),
   )
 })
 
