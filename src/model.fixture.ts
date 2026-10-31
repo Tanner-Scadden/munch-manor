@@ -198,3 +198,20 @@ export const fridgeSeededFor = (current: Model, prize: FridgePrize): Model => {
     loot: loot => modifyFields(loot, { fridgeRngState: () => seed }),
   })
 }
+
+// NOTE: typed as the Wave it is, not as any Phase, so a test can pause it
+// as a round.
+export const FIGHTING_PHASE = Phase.Wave({
+  wave: 1,
+  elapsedMs: 0,
+  spawns: [DISTANT_SPAWN],
+})
+
+export const playingModel: Model = modifyFields(readyModel, {
+  phase: () => FIGHTING_PHASE,
+})
+
+export const withZombies = (
+  base: Model,
+  zombies: ReadonlyArray<Zombie>,
+): Model => modifyFields(base, { zombies: () => zombies })

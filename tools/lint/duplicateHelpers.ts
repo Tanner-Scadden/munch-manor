@@ -13,9 +13,9 @@
 // Two kinds of file are checked apart:
 //
 // - Test files, against each other and the shared test homes
-//   (`src/testing.ts`, `src/model.fixture.ts`, a package's
-//   `test/fixtures.ts`, infra's `worker/testing.ts`), so a copy of what is
-//   already shared fails as well.
+//   (`src/testing.ts`, `src/model.fixture.ts` and the other `*.fixture.ts`
+//   files, a package's `test/fixtures.ts`, infra's `worker/testing.ts`), so a
+//   copy of what is already shared fails as well.
 // - Game modules, the rest of `src`, each package's `src`, and infra's
 //   Worker: a canvas helper belongs in `src/drawing.ts`, a menu helper in
 //   `src/menuParts.ts`, and anything else in the module it is about.
@@ -38,7 +38,8 @@ const ROOT = join(
 // NOTE: test support that is no test file but is shared like one.
 const TEST_HOMES: ReadonlyArray<string> = [
   'src/testing.ts',
-  'src/model.fixture.ts',
+  'src/**/*.fixture.ts',
+  'tools/**/*.fixture.ts',
   'packages/*/test/fixtures.ts',
   'infra/worker/testing.ts',
 ]
@@ -54,7 +55,7 @@ const isTestSupport = (file: string): boolean =>
   file.endsWith('.test.ts') ||
   file.includes('/test/') ||
   file === 'src/testing.ts' ||
-  file === 'src/model.fixture.ts' ||
+  file.endsWith('.fixture.ts') ||
   file === 'src/vitest-setup.ts' ||
   file === 'infra/worker/testing.ts'
 

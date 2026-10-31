@@ -20,6 +20,8 @@
         "destructuredArrayIgnorePattern": "^_"
       }
     ],
+    // NOTE: a file past 1200 lines holds two jobs, as in the root config.
+    "max-lines": ["error", { "max": 1200 }],
     "typescript/no-explicit-any": "error",
     "typescript/consistent-type-assertions": [
       "error",

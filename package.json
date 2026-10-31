@@ -24,7 +24,7 @@
     "balance:nightly": "bun tools/heavy/main.ts -- bun tools/balance/nightly.ts",
     "balance:model": "bun tools/balance/model.ts",
     "video": "bun tools/heavy/main.ts -- --cpu bun tools/video/video.ts",
-    "lint": "oxlint src tools/heavy tools/vite tools/balance tools/analytics tools/determinism tools/audit tools/video tools/sprites tools/mp-dev tools/lint/duplicateHelpers.ts tools/json.ts packages/sqlite-wasm-effect packages/sync-engine packages/netcode && effect-tsgo oxlint --config .oxlintrc.effect.json --deny-warnings src tools/heavy tools/vite tools/balance tools/analytics tools/determinism tools/audit tools/video tools/sprites tools/mp-dev tools/lint/duplicateHelpers.ts tools/json.ts packages/sqlite-wasm-effect packages/sync-engine packages/netcode && sh tools/lint/noEmDash.sh && bun tools/lint/duplicateHelpers.ts && knip --no-progress"
+    "lint": "oxlint src tools/heavy tools/vite tools/balance tools/analytics tools/determinism tools/audit tools/video tools/sprites tools/mp-dev tools/lint/duplicateHelpers.ts tools/lint/fileTable.ts tools/json.ts packages/sqlite-wasm-effect packages/sync-engine packages/netcode && effect-tsgo oxlint --config .oxlintrc.effect.json --deny-warnings src tools/heavy tools/vite tools/balance tools/analytics tools/determinism tools/audit tools/video tools/sprites tools/mp-dev tools/lint/duplicateHelpers.ts tools/lint/fileTable.ts tools/json.ts packages/sqlite-wasm-effect packages/sync-engine packages/netcode && sh tools/lint/noEmDash.sh && bun tools/lint/duplicateHelpers.ts && bun tools/lint/fileTable.ts && knip --no-progress"
   },
   "dependencies": {
     "@effect/platform-browser": "4.0.6",
