@@ -450,6 +450,8 @@ export const retryButton = Scene.role('button', {
   name: 'Retry: a new campaign of 10 waves',
 })
 
+export const endButtons = Scene.all.selector('.end-actions .end-button')
+
 export const updateChip = Scene.role('button', {
   name: 'Update ready: tap to get it',
 })

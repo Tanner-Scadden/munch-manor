@@ -394,7 +394,7 @@ describe('the arena', () => {
     )
   })
 
-  test('the lobby waits behind the run end card, then crowns the MVP', () => {
+  test('the lobby waits behind the run end card, drawing nothing over it, then crowns the MVP', () => {
     const back = modifyFields(initialModel, {
       screen: () =>
         Screen.InRoom({
@@ -425,7 +425,8 @@ describe('the arena', () => {
       given(back),
       expect(selector('#coop-ready')).toBeAbsent(),
       expect(role('listitem', { name: 'Bo: 9, MVP' })).toBeAbsent(),
-      expect(role('button', { name: /^Leave/ })).toExist(),
+      expect(role('button', { name: /^Leave/ })).toBeAbsent(),
+      expect(selector('.coop[data-screen="RunCard"]')).toExist(),
     )
     scene(
       { update, view },
