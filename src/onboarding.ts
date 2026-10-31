@@ -100,8 +100,8 @@ export const learnFromFrame = (before: Model, after: Model): Model => {
 
 // DEBUT CARD
 
-export const DEBUT_CARD_MIN_MS = 1500
-export const DEBUT_CARD_MS = 5500
+export const DEBUT_CARD_MIN_MS = 600
+export const DEBUT_CARD_MS = 3000
 
 const maybeDebutKind = (model: Model): Option.Option<ZombieKind> =>
   Phase.match(model.phase, {

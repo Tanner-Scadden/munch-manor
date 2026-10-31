@@ -147,8 +147,8 @@ describe('the new zombie card', () => {
   })
 
   test('stays up 5.5 seconds and cannot be skipped in its first 1.5', () => {
-    expect(DEBUT_CARD_MS).toBe(5500)
-    expect(DEBUT_CARD_MIN_MS).toBe(1500)
+    expect(DEBUT_CARD_MS).toBe(3000)
+    expect(DEBUT_CARD_MIN_MS).toBe(600)
     story(
       update,
       given(carded),

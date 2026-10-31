@@ -82,7 +82,7 @@ Built on 2026-10-28 after a first-time phone player said the right stick was nev
 - **Hints clear on practice.** The move hint clears after 24 px of the player's own movement, the aim and fire hint after 3 aimed shots, neither before 2.5 s of play. Other input leaves them alone.
 - **Touch teaches both thumbs.** During wave 1, pulsing ghost sticks sit on each half of the screen until that thumb's lesson is learned.
 - **The practice gate.** Wave 1's countdown waits until the player has moved and aimed and fired. START WAVE (Enter) skips it. A returning player never sees it.
-- **The new zombie card.** The moment a wave starts, the first kind in it not yet introduced gets a band across the screen: its walk cycle large, its name, and a one-line pitch. The world holds still for 5.5 s; after 1.5 s a tap, a click, or Enter skips it. Each kind is introduced once, saved on the device. During Preparation the door preview already tags the door with NEW, so the card is never the first warning.
+- **The new zombie card.** The moment a wave starts, the first kind in it not yet introduced gets a band across the screen: its walk cycle large, its name, and a one-line pitch. The world holds still for 3 s; after 0.6 s a tap, a click, or Enter skips it (shortened from 5.5 s and 1.5 s on 2026-10-31 after a playtester found it slow). Each kind is introduced once, saved on the device. During Preparation the door preview already tags the door with NEW, so the card is never the first warning.
 
 | Kind        | Card pitch                                             |
 | ----------- | ------------------------------------------------------ |
