@@ -4,8 +4,11 @@ import { ApplicationDefinition } from './definition'
 import {
   type MeasuredGameSurface,
   Message,
+  type SettledShare,
   type TappedWithTouch,
 } from './message'
+import type { ShareOutcome } from './model'
+import { GAME_URL, type SharePost, copiedLineOf } from './share'
 import { listenForTouchTaps } from './touchTaps'
 
 const measure = (element: Element): MeasuredGameSurface => {
@@ -74,4 +77,81 @@ export const ListenForTouchTaps = ApplicationDefinition.makeMountStream(
   },
 )
 
-export const mounts = [MeasureGameSurface, ListenForTouchTaps]
+// SHARE
+
+// NOTE: the end screen's SHARE button carries its post's words here, read
+// at the tap, so the post is always the run on screen
+// (`data-share-text`).
+export const SHARE_TEXT_DATA = 'share-text'
+
+const isAbort = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'AbortError'
+
+// NOTE: no share sheet, or one the browser refused: the post goes to the
+// clipboard. A browser with no clipboard (an insecure page) throws.
+const copyPost = (post: SharePost): Promise<ShareOutcome> => {
+  try {
+    return navigator.clipboard.writeText(copiedLineOf(post)).then(
+      (): ShareOutcome => 'Copied',
+      (): ShareOutcome => 'Failed',
+    )
+  } catch {
+    return Promise.resolve('Failed')
+  }
+}
+
+// NOTE: the share sheet where the browser has one, else the clipboard. A
+// player who closes the sheet is Cancelled; a sheet the browser refuses
+// (NotAllowedError) or that fails copies instead.
+const sharePost = (post: SharePost): Promise<ShareOutcome> =>
+  typeof navigator.share === 'function'
+    ? navigator.share(post).then(
+        (): ShareOutcome => 'Shared',
+        (error: unknown) =>
+          isAbort(error) ? Promise.resolve('Cancelled') : copyPost(post),
+      )
+    : copyPost(post)
+
+// NOTE: listens on SHARE until the returned function is called, and calls
+// `onSettled` with how each tap ended. navigator.share and the clipboard
+// both need the tap's user activation, and iOS Safari, the owner's phone
+// and installed app, refused navigator.share from the Command that ran a
+// microtask after update. So the call is made here, on the click's own
+// stack: the tap (src/touchTaps.ts makes it a click), a mouse click, or
+// Enter on the focused button. The button's OnClick still sends
+// ClickedShareButton, which counts the share.
+export const listenForShareClicks = (
+  element: Element,
+  onSettled: (outcome: ShareOutcome) => void,
+): (() => void) => {
+  const onClick = (): void => {
+    const text = element.getAttribute(`data-${SHARE_TEXT_DATA}`) ?? ''
+    void sharePost({ text, url: GAME_URL }).then(onSettled)
+  }
+  element.addEventListener('click', onClick)
+  return () => {
+    element.removeEventListener('click', onClick)
+  }
+}
+
+export const ShareFromClick = ApplicationDefinition.makeMountStream(
+  'ShareFromClick',
+  {
+    messages: [Message.SettledShare],
+    handler: function* () {
+      return ({ element }) =>
+        Stream.callback<SettledShare>(queue =>
+          Effect.acquireRelease(
+            Effect.sync(() =>
+              listenForShareClicks(element, outcome => {
+                Queue.offerUnsafe(queue, Message.SettledShare({ outcome }))
+              }),
+            ),
+            stopListening => Effect.sync(stopListening),
+          ).pipe(Effect.flatMap(() => Effect.never)),
+        )
+    },
+  },
+)
+
+export const mounts = [MeasureGameSurface, ListenForTouchTaps, ShareFromClick]

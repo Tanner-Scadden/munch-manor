@@ -6,9 +6,9 @@
 // played with the harness's director (tools/audit/harness/director.ts), so
 // its frames are the same on every run: it steps until the player falls,
 // then shoots the beat at fixed ticks after. It checks that the end card
-// shows its RETRY, HOME, and SHARE buttons once the beat is over, that a
-// tap on SHARE (and X on a keyboard) opens X's post intent in a new tab, and
-// exits with 1 on any miss.
+// shows its RETRY, HOME, and SHARE buttons once the beat is over, all one
+// size, that a tap on SHARE opens the share sheet (or copies the post and
+// flashes COPIED!) in the tap itself, and exits with 1 on any miss.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shots43.ts
 // ONLY picks scenes, such as `ONLY=death`, and VIEWPORTS picks screens.
 import { Schema } from 'effect'
@@ -156,133 +156,154 @@ const shootDeath = async (
   await page.context().close()
 }
 
-// NOTE: SHARE is a link, so a tap (or X on a keyboard, which clicks it)
-// must open X's post intent in a new tab by itself. x.com is answered here,
-// so nothing reaches X.
-const X_INTENT = /^https:\/\/x\.com\/intent\/tweet\?text=.+&url=/
+// NOTE: headless Chrome has no share sheet, so SHARE is checked on fresh
+// pages with stand-ins. `Sheet` gives the page a navigator.share, `Refused`
+// one that throws NotAllowedError as a browser that will not share does,
+// and `Copy` none at all, so SHARE copies the post. Each stand-in records
+// what it was handed, whether the tap's user activation was live, and
+// whether the click was still being dispatched (window.event), as iOS
+// Safari's share sheet needs. A tap on a phone goes through the game's own
+// touch taps (src/touchTaps.ts); a desktop clicks.
+const ShareMode = Schema.Literals(['Sheet', 'Refused', 'Copy'])
+type ShareMode = typeof ShareMode.Type
 
-const opensX = async (page: Page, act: () => Promise<void>) => {
-  await page
-    .context()
-    .route('https://x.com/**', route =>
-      route.fulfill({ status: 200, body: 'share' }),
-    )
-  const opening = page
-    .context()
-    .waitForEvent('page', { timeout: 5_000 })
-    .catch(() => null)
-  await act()
-  const tab = await opening
-  if (tab === null) {
-    return ''
-  }
-  await tab.waitForLoadState('domcontentloaded').catch(() => undefined)
-  const url = tab.url()
-  await tab.close()
-  return url
+const Shared = Schema.Struct({
+  call: Schema.Literals(['Sheet', 'Copy']),
+  text: Schema.String,
+  isActive: Schema.Boolean,
+  isInClick: Schema.Boolean,
+})
+const sharedJson = encodeJson(Shared)
+
+const SHARE_SCENE = `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&tick=400`
+
+const EXPECTED: Readonly<
+  Record<ShareMode, Readonly<{ call: 'Sheet' | 'Copy'; label: string }>>
+> = {
+  Sheet: { call: 'Sheet', label: 'SHARE' },
+  Refused: { call: 'Copy', label: 'COPIED!' },
+  Copy: { call: 'Copy', label: 'COPIED!' },
 }
 
 const checkShare = async (
-  page: Page,
-  label: string,
-  isKeyboard: boolean,
-  problems: Array<string>,
-) => {
-  const tapped = await opensX(page, () =>
-    page.locator('a#end-share-button').click(),
-  )
-  if (!X_INTENT.test(tapped)) {
-    problems.push(`${label}: tapping SHARE opened ${tapped || 'nothing'}`)
-  }
-  const shares = await page.evaluate(
-    () =>
-      window.__messages.filter(message => message === 'ClickedShareButton')
-        .length,
-  )
-  if (shares < 1) {
-    problems.push(`${label}: tapping SHARE sent no ClickedShareButton`)
-  }
-  if (isKeyboard) {
-    await page.locator('.game-surface').focus()
-    const keyed = await opensX(page, () => page.keyboard.press('KeyX'))
-    if (!X_INTENT.test(keyed)) {
-      problems.push(`${label}: X opened ${keyed || 'nothing'}`)
-    }
-  }
-}
-
-// NOTE: headless Chrome has no share sheet, so a phone's sheet path is
-// checked on a fresh page with a stand-in navigator.share. It records the
-// data and whether the tap's user activation was still live when the
-// Command called it, as a real share sheet needs. `refuse` makes it throw
-// NotAllowedError, as a browser that will not share does, so SHARE falls
-// back to the link.
-// NOTE: what the stand-in share was handed, as the game passes it.
-const Sheet = Schema.Struct({
-  text: Schema.optionalKey(Schema.String),
-  url: Schema.optionalKey(Schema.String),
-  isActive: Schema.Boolean,
-})
-const sheetJson = encodeJson(Sheet)
-
-const SHEET_SCENE = `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&tick=400`
-
-const checkSheet = async (
   viewport: (typeof SHOT_VIEWPORTS)[number],
   problems: Array<string>,
 ) => {
-  for (const refuse of [false, true]) {
+  for (const mode of ShareMode.literals) {
     const page = await openPage(browser, viewport)
-    const label = `${viewport.name} share sheet${refuse ? ' refused' : ''}`
-    await page.addInitScript(isRefused => {
-      navigator.share = (data?: ShareData) => {
-        window.__sheet = {
-          ...data,
-          isActive: navigator.userActivation.isActive,
-        }
-        return isRefused
-          ? Promise.reject(new DOMException('no', 'NotAllowedError'))
-          : Promise.resolve()
+    const label = `${viewport.name} share ${mode}`
+    await page.addInitScript(picked => {
+      const record = (call: 'Sheet' | 'Copy', text: string) => {
+        window.__shared = [
+          ...(window.__shared ?? []),
+          {
+            call,
+            text,
+            isActive: navigator.userActivation.isActive,
+            isInClick: window.event?.type === 'click',
+          },
+        ]
       }
-    }, refuse)
-    await page.goto(harnessUrl(SHEET_SCENE, 'nodev', 'device=touch'))
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: (line: string) => {
+            record('Copy', line)
+            return Promise.resolve()
+          },
+        },
+      })
+      if (picked === 'Copy') {
+        Reflect.deleteProperty(Navigator.prototype, 'share')
+      } else {
+        navigator.share = (data?: ShareData) => {
+          record('Sheet', `${data?.text ?? ''} ${data?.url ?? ''}`)
+          return picked === 'Refused'
+            ? Promise.reject(new DOMException('no', 'NotAllowedError'))
+            : Promise.resolve()
+        }
+      }
+    }, mode)
+    await page.goto(harnessUrl(SHARE_SCENE, 'nodev', deviceQuery(viewport)))
     await waitForReady(page)
     await settleAnimations(page)
-    const sheetButton = page.locator('button#end-share-button')
-    if ((await sheetButton.count()) === 0) {
-      problems.push(`${label}: SHARE is not the share sheet button`)
+    const button = page.locator('button#end-share-button')
+    if ((await button.count()) === 0) {
+      problems.push(`${label}: no SHARE button`)
       await page.context().close()
       continue
     }
-    const opened = await opensX(page, () => sheetButton.tap())
-    await page.waitForFunction(() => window.__sheet !== undefined, {
+    await (viewport.isPhone ? button.tap() : button.click())
+    await page.waitForFunction(() => window.__shared !== undefined, {
       timeout: 5_000,
     })
-    const sheet = await evaluateAs(page, Sheet, () => window.__sheet)
-    if (!sheet.isActive) {
-      problems.push(`${label}: the share sheet was called outside the tap`)
+    await whenSettled(page)
+    const calls = await evaluateAs(
+      page,
+      Schema.Array(Shared),
+      () => window.__shared,
+    )
+    const [first] = calls
+    const last = calls.at(-1)
+    if (first === undefined || last === undefined) {
+      problems.push(`${label}: nothing was shared`)
+      await page.context().close()
+      continue
+    }
+    // NOTE: a refused sheet copies after the refusal, so only the first
+    // call must come in the tap.
+    if (!first.isInClick || !first.isActive) {
+      problems.push(`${label}: shared outside the tap: ${sharedJson(first)}`)
     }
     if (
-      !(sheet.text ?? '').includes('Munch Manor') ||
-      sheet.url === undefined ||
-      sheet.url === ''
+      !first.text.includes('Munch Manor') ||
+      !first.text.includes('https://munchmanor.com')
     ) {
-      problems.push(`${label}: the share sheet got ${sheetJson(sheet)}`)
+      problems.push(`${label}: shared ${sharedJson(first)}`)
     }
-    await whenSettled(page)
-    const isLinkNow = (await page.locator('a#end-share-button').count()) === 1
-    if (refuse && !isLinkNow) {
-      problems.push(`${label}: SHARE did not fall back to the link`)
+    const expected = EXPECTED[mode]
+    if (last.call !== expected.call) {
+      problems.push(`${label}: ended with ${last.call}, not ${expected.call}`)
     }
-    if (!refuse && (isLinkNow || opened !== '')) {
-      problems.push(
-        `${label}: a shared sheet also opened ${opened || 'the link'}`,
-      )
+    const shown = (await button.innerText()).replace(/\s+/g, ' ')
+    if (!shown.includes(expected.label)) {
+      problems.push(`${label}: SHARE reads ${shown}, not ${expected.label}`)
+    }
+    const shares = await page.evaluate(
+      () =>
+        window.__messages.filter(message => message === 'ClickedShareButton')
+          .length,
+    )
+    if (shares !== 1) {
+      problems.push(`${label}: ${shares} ClickedShareButton, not 1`)
+    }
+    if (mode !== 'Sheet') {
+      await shot(page, `s43-${TAG}-${viewport.name}-share-copied`)
     }
     console.log(
-      `${label}: activation ${sheet.isActive ? 'live' : 'gone'}, fallback ${isLinkNow ? 'link' : 'none'}`,
+      `${label}: ${last.call}, in the click ${first.isInClick ? 'yes' : 'no'}, reads ${shown}`,
     )
     await page.context().close()
+  }
+}
+
+// NOTE: every end button is one size: the same width and height, to the
+// pixel.
+const checkEqualButtons = async (
+  page: Page,
+  label: string,
+  problems: Array<string>,
+) => {
+  const sizes = await page.evaluate(() =>
+    Array.from(
+      document.querySelectorAll('.end-actions .end-button'),
+      element => {
+        const { width, height } = element.getBoundingClientRect()
+        return `${Math.round(width)}x${Math.round(height)}`
+      },
+    ),
+  )
+  if (new Set(sizes).size > 1) {
+    problems.push(`${label}: end buttons differ in size: ${sizes.join(', ')}`)
   }
 }
 
@@ -294,8 +315,8 @@ for (const viewport of SHOT_VIEWPORTS) {
   if (isPickedScene('death')) {
     await shootDeath(browser, viewport, problems)
   }
-  if (TAG !== 'before' && viewport.isPhone && isPickedScene('sheet')) {
-    await checkSheet(viewport, problems)
+  if (TAG !== 'before' && isPickedScene('share')) {
+    await checkShare(viewport, problems)
   }
   for (const scene of SCENES) {
     if (!isPickedScene(scene.name)) {
@@ -321,19 +342,8 @@ for (const viewport of SHOT_VIEWPORTS) {
     }
     await shot(page, `s43-${TAG}-${viewport.name}-${scene.name}`)
     console.log(`shot ${label}`)
-    // NOTE: a phone whose browser has a share sheet (Chrome's phone
-    // emulation has one) shows the sheet's button; checkSheet covers it.
-    const isLink = (await page.locator('a#end-share-button').count()) === 1
-    if (TAG !== 'before' && scene.name === 'gameover' && isLink) {
-      await checkShare(page, label, !viewport.isPhone, problems)
-    }
-    if (
-      TAG !== 'before' &&
-      scene.name === 'gameover' &&
-      !isLink &&
-      !viewport.isPhone
-    ) {
-      problems.push(`${label}: SHARE is not the link on a desktop`)
+    if (TAG !== 'before' && scene.buttons !== undefined) {
+      await checkEqualButtons(page, label, problems)
     }
     pages.release(page)
   }

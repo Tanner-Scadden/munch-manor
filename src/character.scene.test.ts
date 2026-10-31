@@ -28,6 +28,7 @@ import {
   openHandInScene,
   pickCardInScene,
   profileDialog,
+  shareMountSettles,
 } from './testing'
 
 const characterButton = role('button', {
@@ -276,6 +277,7 @@ describe('Character picker', () => {
       expect(
         role('button', { name: 'Menu: back to the home screen' }),
       ).toExist(),
+      shareMountSettles('Cancelled'),
     )
     scene(
       ROOT,

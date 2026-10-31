@@ -43,6 +43,8 @@ import {
   playButton,
   playEndlessButton,
   settingsButton,
+  shareMountEnded,
+  shareMountSettles,
   showDialogInScene,
 } from './testing'
 import { FocusHandCard, FocusHomeButton } from './update/home'
@@ -673,15 +675,19 @@ describe('Menu from a run', () => {
         ROOT,
         given(afterGrace(phase)),
         measureSurface,
+        shareMountSettles('Cancelled'),
         expect(endMenuButton).toHaveAttr('aria-keyshortcuts', 'H'),
         click(endMenuButton),
+        shareMountEnded(),
         expect(manorButton).toExist(),
       )
       scene(
         ROOT,
         given(afterGrace(phase)),
         measureSurface,
+        shareMountSettles('Cancelled'),
         emitPressedKey('KeyH'),
+        shareMountEnded(),
         expect(manorButton).toExist(),
       )
     })

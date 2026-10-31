@@ -3164,11 +3164,15 @@ button.help-card:focus-visible {
 
 /* END BUTTONS
 
-   NOTE: the end card's buttons, icon first: HOME, the big RETRY, KEEP
-   GOING on Victory, and SHARE with X's own logo on X's black. They pop in
-   one after another once the card is up (src/menus.ts). */
-.end-actions {
-  align-items: flex-end;
+   NOTE: the end card's buttons, icon first and all one size: HOME, RETRY in
+   green, KEEP GOING on Victory, and SHARE. Equal columns as wide as the
+   widest, and one row as tall as the tallest. They pop in one after another
+   once the card is up (src/menus.ts). */
+.mode-choice.end-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  align-items: stretch;
 }
 
 .end-button {
@@ -3179,8 +3183,9 @@ button.help-card:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  min-width: 76px;
-  min-height: var(--menu-tap);
+  box-sizing: border-box;
+  min-width: 96px;
+  min-height: 60px;
   padding: 6px 12px;
   border: 2px solid var(--menu-line-strong);
   border-radius: var(--menu-radius);
@@ -3214,17 +3219,12 @@ button.help-card:focus-visible {
 }
 
 .end-button[data-look='Retry'] {
-  min-width: 140px;
-  min-height: 60px;
   border-color: var(--menu-green);
   background: var(--menu-green);
   color: var(--menu-sunken);
-  font-size: var(--menu-title-size);
 }
 
 .end-button[data-look='Retry'] .end-button-icon {
-  width: 28px;
-  height: 28px;
   animation: end-retry-spin 2.4s ease-in-out infinite;
 }
 
@@ -3234,16 +3234,8 @@ button.help-card:focus-visible {
 }
 
 .end-button[data-look='Share'] {
-  border-color: #ffffff;
-  background: #000000;
-  color: #ffffff;
-}
-
-.end-button[data-look='Share'] .end-button-icon {
-  width: 20px;
-  height: 20px;
-  margin: 2px;
-  image-rendering: auto;
+  border-color: var(--menu-gold);
+  color: var(--menu-gold);
 }
 
 .end-button-key {
@@ -3295,21 +3287,14 @@ button.help-card:focus-visible {
   }
 }
 
+/* NOTE: upright, the row spans the card and its columns share it evenly. */
 .game-root[data-layout='Portrait'] .mode-choice.end-actions {
-  flex-direction: row;
-  align-items: flex-end;
-  justify-content: center;
   gap: var(--menu-gap);
 }
 
 .game-root[data-layout='Portrait'] .end-button {
-  flex: 1 1 0;
   min-width: 0;
   padding: 6px 4px;
-}
-
-.game-root[data-layout='Portrait'] .end-button[data-look='Retry'] {
-  flex: 1.6 1 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

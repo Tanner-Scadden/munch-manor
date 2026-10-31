@@ -108,7 +108,7 @@ const RUNS_PER_DAY = `
   SELECT received_day, count(*) AS runs FROM runs
   GROUP BY received_day ORDER BY received_day DESC LIMIT 30`
 
-// NOTE: taps on SHARE to X by end screen, against the runs that ended
+// NOTE: taps on SHARE by end screen, against the runs that ended
 // there, so the share rate reads at a glance.
 const ShareRow = Schema.Struct({
   screen: Schema.String,
@@ -261,7 +261,7 @@ const program = Effect.gen(function* () {
           ]),
         ),
         section(
-          'Shares to X by end screen (solo runs only send summaries)',
+          'Shares by end screen (solo runs only send summaries)',
           ['screen', 'path', 'shares', 'visits', 'per solo end'],
           Array.map(shares, row => [
             row.screen,

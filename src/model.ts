@@ -169,20 +169,22 @@ const ProfilePanel = Schema.Struct({
 })
 type ProfilePanel = typeof ProfilePanel.Type
 
-// NOTE: whether the browser has a share sheet (navigator.share). On a touch
-// screen SHARE opens it, so the player picks X and X's own composer opens
-// with the post filled in; elsewhere SHARE is X's intent link.
+// NOTE: whether the browser has a share sheet (navigator.share). SHARE
+// opens it where there is one and copies the post everywhere else; the
+// share event counts which (src/analytics.ts, SharePath).
 export const ShareSheet = Schema.Literals(['Available', 'Unavailable'])
 export type ShareSheet = typeof ShareSheet.Type
 
-// NOTE: how a share sheet ended: shared, cancelled by the player (nothing
-// more happens), or refused by the browser (SHARE falls back to the link).
-export const ShareSheetOutcome = Schema.Literals([
+// NOTE: how a tap on SHARE ended: the sheet shared it or the player closed
+// it, or the post went to the clipboard (no sheet, or a refused one), or
+// nothing worked. Only Copied shows: SHARE flashes COPIED!.
+export const ShareOutcome = Schema.Literals([
   'Shared',
   'Cancelled',
-  'Refused',
+  'Copied',
+  'Failed',
 ])
-export type ShareSheetOutcome = typeof ShareSheetOutcome.Type
+export type ShareOutcome = typeof ShareOutcome.Type
 
 // NOTE: a record the run that just ended broke, for its NEW BEST: the
 // deepest endless wave, or the fastest win (src/endBeat.ts).
@@ -225,6 +227,7 @@ export const Model = Schema.Struct({
   screenMs: Schema.Number,
   runRecords: Schema.Array(RunRecord),
   shareSheet: ShareSheet,
+  maybeShareCopiedAtMs: Schema.Option(Schema.Number),
   audio: AudioState,
   soundSetting: SoundSetting,
   musicSetting: MusicSetting,
@@ -407,6 +410,7 @@ export const initialModel: Model = {
   screenMs: 0,
   runRecords: [],
   shareSheet: 'Unavailable',
+  maybeShareCopiedAtMs: Option.none(),
   audio: AudioState.Locked(),
   soundSetting: 'On',
   musicSetting: 'On',

@@ -1,16 +1,11 @@
 import type { Difficulty } from './playerData'
 
-// Share to X from the end of a run: the post's text and the link to X's post
-// intent. Every word a shared post says lives here, so the owner can tweak
-// the voice in one place. The link carries the game's address and nothing
-// else: no tracking parameters and no tokens.
+// Sharing a run from its end screen: the post's words and the game's link.
+// Every word a shared post says lives here, so the owner can tweak the voice
+// in one place. The link is the game's address and nothing else: no
+// tracking parameters and no tokens.
 
 export const GAME_URL = 'https://munchmanor.com'
-
-// NOTE: X's documented Web Intent (docs.x.com, "Web Intents"). The X apps
-// open their composer from it; the undocumented /intent/post opened the app
-// and bounced back to the browser.
-const X_POST_INTENT = 'https://x.com/intent/tweet'
 
 // NOTE: what a post is built from: how the run ended, its wave, difficulty,
 // and kills, and how many players were in it (1 alone).
@@ -49,14 +44,16 @@ const crewText = (run: SharedRun): string =>
 export const shareText = (run: SharedRun): string =>
   run.crew > 1 ? crewText(run) : soloText(run)
 
-// NOTE: what a share sheet gets: the post's words and the game, apart, so
-// the app the player picks (X among them) lays them out itself.
-export const shareSheetData = (
-  run: SharedRun,
-): Readonly<{ text: string; url: string }> => ({
+// NOTE: what the share sheet gets: the post's words and the game, apart, so
+// the app the player picks lays them out itself.
+export type SharePost = Readonly<{ text: string; url: string }>
+
+export const sharePostOf = (run: SharedRun): SharePost => ({
   text: shareText(run),
   url: GAME_URL,
 })
 
-export const shareUrl = (run: SharedRun): string =>
-  `${X_POST_INTENT}?text=${encodeURIComponent(shareText(run))}&url=${encodeURIComponent(GAME_URL)}`
+// NOTE: what the clipboard gets where there is no share sheet: the words,
+// then the link.
+export const copiedLineOf = ({ text, url }: SharePost): string =>
+  `${text} ${url}`

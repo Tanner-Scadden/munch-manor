@@ -41,7 +41,7 @@ import { askForRoomLink, openCoop, tickRoomFrame } from './update/coop'
 import { orInRun } from './update/coopRun'
 import {
   retry,
-  settleShareSheet,
+  settleShare,
   shareFromButton,
   skipFromPointer,
 } from './update/end'
@@ -650,13 +650,10 @@ export const update = ApplicationComposition.makeUpdate({
 
   CompletedFocusEndMenuButton: model => settle(model, { model }),
 
-  CompletedClickShareLink: model => settle(model, { model }),
-
   CompletedClickSupportLink: model => settle(model, { model }),
-  SettledShareSheet: (model, { outcome }) =>
-    settle(model, settleShareSheet(outcome)(model)),
 
-  CompletedOpenShareLink: model => settle(model, { model }),
+  SettledShare: (model, { outcome }) =>
+    settle(model, settleShare(outcome)(model)),
 
   CompletedDetectShareSheet: (model, { shareSheet }) =>
     settle(model, {

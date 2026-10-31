@@ -19,6 +19,7 @@ import {
   ZOMBIE_MAX_HP,
 } from './constants'
 import { KITCHEN_EXIT } from './exits'
+import { endOffer } from './home'
 import { FRIDGE_RULES } from './leftovers'
 import { PartRadioGroupBlock } from './lookRadios'
 import { update } from './main'
@@ -30,13 +31,14 @@ import {
   type Model,
   Pierce,
   type RunStats,
+  type ShareOutcome,
   type Vector,
   type Zombie,
   ZombieAction,
   type ZombieKind,
   ZombieState,
 } from './model'
-import { ListenForTouchTaps, MeasureGameSurface } from './mount'
+import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
 import { type HintId, LESSON_MIN_SHOWN_MS, shownHints } from './onboarding'
 import { PURCHASE_RULES } from './purchase'
 import { subscriptions } from './subscriptions'
@@ -142,6 +144,20 @@ export const measureSurfaceAs = (
   )
 
 export const measureSurface = measureSurfaceAs(SURFACE)
+
+// NOTE: SHARE on an end screen carries a Mount (ShareFromClick) that
+// reports how each tap's share ended.
+export const shareMountSettles = (outcome: ShareOutcome) =>
+  Scene.Mount.resolve(ShareFromClick, Message.SettledShare({ outcome }))
+
+// NOTE: leaving an end screen ends SHARE's Mount. A fresh step each time:
+// one acknowledgement step acknowledges once.
+export const shareMountEnded = () => Scene.Mount.expectEnded(ShareFromClick)
+
+// NOTE: a Scene given an end screen with its buttons up settles SHARE's
+// Mount as a share that changed nothing; any other Model has no SHARE.
+export const settleEndShareOf = (model: Model) =>
+  endOffer(model) === 'MenuAndModes' ? [shareMountSettles('Cancelled')] : []
 
 export const showDialogInScene = () => [
   Scene.Command.resolve(
