@@ -20,6 +20,7 @@ import {
   Pierce,
   type PlannedSpawn,
   ShopState,
+  Trap,
   initialModel,
 } from './model'
 import { DISTANT_SPAWN, atSeat, home } from './model.fixture'
@@ -36,6 +37,7 @@ import { PURCHASE_RULES } from './purchase'
 import { SHOP_ITEMS, STALL_BOX } from './shop'
 import { SeatAction, applySeatAction, soloInputs, stepWorld } from './stepWorld'
 import { SURFACE, ticks, zombieOf } from './testing'
+import { TRAPS } from './traps'
 import { beginPreparation, waveBonus } from './waves'
 import { WEAPONS, freshGun, heldGun } from './weapons'
 import { type World, withWorld } from './world'
@@ -548,6 +550,39 @@ describe('traps per player', () => {
     )
     const leadBought = act(lead, 0, SeatAction.Buy({ item: 'Barricade' }))
     expect(seatedAt(leadBought, 0).wallet.balance).toBeLessThan(500)
+  })
+
+  test('planks board at most half the open doors, however many players', () => {
+    const { thresholds } = levelOf(shopping)
+    const east = thresholds.East.box
+    const twoBoarded = pipeline(
+      current =>
+        modifyFields(current, {
+          traps: () => [
+            Trap.Barricade({
+              id: 1,
+              door: 'North',
+              hp: TRAPS.Barricade.hp,
+              hitRemainingMs: 0,
+            }),
+            Trap.Barricade({
+              id: 2,
+              door: 'West',
+              hp: TRAPS.Barricade.hp,
+              hitRemainingMs: 0,
+            }),
+          ],
+        }),
+      placed(1, (east.left + east.right) / 2, (east.top + east.bottom) / 2),
+    )(act(shopping, 1, SeatAction.Buy({ item: 'Barricade' })))
+    const tried = act(
+      act(twoBoarded, 1, SeatAction.LeaveCounter()),
+      1,
+      SeatAction.PlaceTrap(),
+    )
+    expect(levelOf(tried).doorIds).toHaveLength(4)
+    expect(tried.traps).toHaveLength(2)
+    expect(seatOf(tried, 1).trapIds).toEqual([])
   })
 
   test('the trap a player places is theirs', () => {

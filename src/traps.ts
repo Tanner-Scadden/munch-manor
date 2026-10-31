@@ -644,6 +644,17 @@ const maybeDoorInReach = (
     Array.head,
   )
 
+// At most half the room's open doors take planks, so a full co-op crew
+// cannot board up the whole room: 2 of the parlour's 4, 3 of 6 with the
+// kitchen open. Solo's own cap of two never reaches it.
+const isHalfBoarded = (model: World): boolean => {
+  const { doorIds } = levelOf(model)
+  const boarded = Array.filter(barricadedDoors(model.traps), door =>
+    Array.contains(doorIds, door),
+  )
+  return boarded.length >= Math.floor(doorIds.length / 2)
+}
+
 const barricadePlacement = (model: World, isBetweenWaves: boolean) =>
   Option.match(maybeDoorInReach(levelOf(model), model.player), {
     onNone: (): Placement => ({
@@ -661,6 +672,7 @@ const barricadePlacement = (model: World, isBetweenWaves: boolean) =>
       verdict: firstReason([
         [!isBetweenWaves, 'Traps go down between waves'],
         [isAtLimit(model, 'Barricade'), TRAPS.Barricade.placeLimitNote],
+        [isHalfBoarded(model), 'Half the doors are boarded'],
         [
           Array.contains(barricadedDoors(model.traps), door),
           'This doorway is already boarded up',
