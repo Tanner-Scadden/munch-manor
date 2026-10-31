@@ -349,6 +349,27 @@ if (WAVE_FLAG !== undefined) {
     wallSeconds: (performance.now() - started) / 1000,
   })
   console.log(summary.formatWavePass(pass))
+  waves.forEach(wave => {
+    const fights = waveRuns.flatMap(({ boss, outcome, ...run }) =>
+      run.wave === wave && boss?.arrived === true
+        ? [{ fight: boss, cleared: outcome === 'Cleared' }]
+        : [],
+    )
+    if (fights.length === 0) {
+      return
+    }
+    const kills = fights
+      .filter(({ fight, cleared }) => cleared && fight.felled)
+      .map(({ fight }) => fight.fightMs / 1000)
+    const sumOf = (pick: (fight: BossFight) => number) =>
+      fights.reduce((total, { fight }) => total + pick(fight), 0)
+    console.log(
+      `\nBoss on wave ${wave}: arrived in ${fights.length}, felled in ${fights.filter(({ fight }) => fight.felled).length}, died with him standing ${fights.filter(({ fight }) => fight.diedToIt).length}, enraged in ${fights.filter(({ fight }) => fight.enraged).length}`,
+    )
+    console.log(
+      `  kill time in cleared runs: median ${summary.median(kills).toFixed(1)} s (p25 ${summary.quantile(kills, 0.25).toFixed(1)}, p75 ${summary.quantile(kills, 0.75).toFixed(1)}, n=${kills.length}); health taken a second aimed at him ${(sumOf(fight => fight.damageTaken) / Math.max(1, sumOf(fight => fight.aimedMs) / 1000)).toFixed(2)}, a second of fight ${(sumOf(fight => fight.damageTaken) / Math.max(1, sumOf(fight => fight.fightMs) / 1000)).toFixed(2)}; hearts lost while he stood ${(sumOf(fight => fight.heartsLost) / fights.length).toFixed(2)} a fight`,
+    )
+  })
   writeJson(pass)
   process.exit(0)
 }

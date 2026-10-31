@@ -7,7 +7,7 @@
 
 import { Array, Match, Number, Option, Order, type Record, pipe } from 'effect'
 
-import { BOSS_RULES, hasBoss } from '../../src/boss'
+import { BOSS_RULES, bossHp, hasBoss } from '../../src/boss'
 import {
   FADE_MAX_MS,
   PACK_WARNING_MS,
@@ -767,9 +767,6 @@ export type RolledWave = Readonly<{
   boss: FlowBoss
 }>
 
-const bossHpScale = (spawns: ReadonlyArray<PlannedSpawn>): number =>
-  Array.reduce(spawns, 1, (largest, { hpScale }) => Math.max(largest, hpScale))
-
 export const rolledWave = (
   seed: number,
   wave: number,
@@ -786,7 +783,7 @@ export const rolledWave = (
           waitBelow: Math.round(
             spawns.length * (1 - BOSS_RULES.arriveAfterShare),
           ),
-          hp: scaledHp(ZOMBIE_KINDS.Boss.hp, bossHpScale(spawns)),
+          hp: bossHp(difficulty, spawns),
         }
       : { _tag: 'Absent' },
   }

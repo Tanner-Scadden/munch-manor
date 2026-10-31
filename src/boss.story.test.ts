@@ -107,6 +107,38 @@ describe('planning the boss', () => {
     )
   })
 
+  test.each(['Hard', 'Nightmare'] as const)(
+    'on %s he takes his own boss health on top of the level health',
+    level => {
+      story(
+        update,
+        given(
+          modifyFields(clearing(FINAL_WAVE - 1), {
+            difficulty: setting =>
+              modifyFields(setting, { chosen: () => level }),
+          }),
+        ),
+        tick(FRAME_MS),
+        model(current => {
+          const waiting = Option.getOrThrow(
+            Option.liftPredicate(current.boss, Boss.guards.Waiting),
+          )
+          const { healthScale, bossHealthScale } = DIFFICULTIES[level]
+          expect(bossHealthScale).toBeGreaterThan(1)
+          expect(waiting.hp).toBe(
+            scaledHp(
+              ZOMBIE_KINDS.Boss.hp,
+              (WAVE_PLANS[FINAL_WAVE - 1]?.hpScale ?? 1) *
+                healthScale *
+                bossHealthScale,
+            ),
+          )
+          expect(waiting.hp).toBe({ Hard: 146, Nightmare: 167 }[level])
+        }),
+      )
+    },
+  )
+
   test('endless brings him back every tenth wave with the wave health bonus', () => {
     story(
       update,
@@ -143,7 +175,13 @@ describe('planning the boss', () => {
   test('the same seed draws the same boss door, and seeds differ across doors', () => {
     const doorFor = (seed: number): DoorId => {
       const [state, spawns] = rollSpawns(seed, FINAL_WAVE)
-      const [, boss] = planBoss(PARLOUR.doorIds, state, FINAL_WAVE, spawns)
+      const [, boss] = planBoss(
+        PARLOUR.doorIds,
+        state,
+        FINAL_WAVE,
+        spawns,
+        'Normal',
+      )
       return Option.getOrThrow(maybeBossDoor(boss))
     }
     expect(doorFor(42)).toBe(doorFor(42))

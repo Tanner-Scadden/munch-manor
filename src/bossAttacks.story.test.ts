@@ -23,6 +23,7 @@ import {
   PLAYER_MAX_HP,
   ZOMBIE_ALIVE_MAX,
 } from './constants'
+import { DIFFICULTIES } from './difficulty'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -189,6 +190,46 @@ describe('telegraphed attacks', () => {
         ).toBe(true)
         expect(fightOf(current).belchMs).toBeGreaterThan(
           BOSS_RULES.belchEveryMs - 2 * FRAME_MS,
+        )
+      }),
+    )
+  })
+
+  test("on Hard his Groaners take the level's health but not his boss health", () => {
+    const { healthScale, bossHealthScale } = DIFFICULTIES.Hard
+    const hardBossHp = scaledHp(
+      ZOMBIE_KINDS.Boss.hp,
+      WAVE_8_HP_SCALE * healthScale * bossHealthScale,
+    )
+    const boss = modifyFields(bossAt(CENTER_X + 60, CENTER_Y, hardBossHp), {
+      maxHp: () => hardBossHp,
+    })
+    const start = modifyFields(
+      inWave(
+        FINAL_WAVE,
+        [spawnAt(1e9, 0)],
+        fightingWith(ready, { belchMs: 0 }),
+        [boss],
+      ),
+      {
+        difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
+      },
+    )
+    story(
+      update,
+      given(start),
+      ...ticks(windUpFrames('Belch') + 2, FRAME_MS),
+      model(current => {
+        const groaners = Array.filter(
+          current.zombies,
+          ({ kind }) => kind === 'Shambler',
+        )
+        expect(groaners).toHaveLength(BOSS_RULES.belchCount)
+        expect(Array.map(groaners, ({ hp }) => hp)).toEqual(
+          Array.replicate(
+            scaledHp(ZOMBIE_KINDS.Shambler.hp, WAVE_8_HP_SCALE * healthScale),
+            BOSS_RULES.belchCount,
+          ),
         )
       }),
     )

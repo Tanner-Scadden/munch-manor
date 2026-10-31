@@ -526,7 +526,7 @@ A part flies off as a tumbling particle with blood and a pop sound and lands as 
 Reworked on 2026-10-28 from owner feedback: "Should feel like a challenge, not something you can just run around." The rules are `BOSS_RULES` in `src/boss.ts`.
 
 - **Who.** A hulking pot-bellied zombie with a tiny head and a tiny green party hat, about twice a Big Lug each way.
-- **Numbers.** Health 90 times the wave's health scale (99 on wave 8). Slow, but 1.6 times as fast while the player is more than 70 px away. A bite costs 2 hearts. Bounty $150, and his kill always drops a goodie.
+- **Numbers.** Health 90 times the wave's health scale, the level's health, and the level's own boss health (on wave 10: 54 on Easy, 68 on Normal, 146 on Hard, 167 on Nightmare). His belched Groaners take the wave's and the level's health, not his boss health. Slow, but 1.6 times as fast while the player is more than 70 px away. A bite costs 2 hearts. Bounty $150, and his kill always drops a goodie.
 - **Range decides the attack.** Within 44 px he stomps; beyond 70 px he charges and spits in turn; between, he walks in and belches. Standing near him and stepping out of the stomp is the safe way to fight him.
 - **Stomp.** A 34 px red ring fills around him for 1 s, then costs 1 heart and shoves.
 - **Charge.** A red lane fills toward where the player stood, then he rushes along it for 2 hearts. A wall, a crate, or a barricade stops him with a bonk, and he is dazed and takes double damage for 1.8 s.
@@ -540,6 +540,18 @@ Reworked on 2026-10-28 from owner feedback: "Should feel like a challenge, not s
 #### Boss balance
 
 The bot dodges every tell and shoots him unless another zombie is within 60 px. Kept on 2026-10-28 after 21 tries: health 90, with a median kill of 40 s in winning runs; most of what he costs is the time the horde has while he stands. The finale's health scale went from ×1.21 to ×1.1 so the boss is the step up. `KITE=1` (running away) wins about 1%, as intended.
+
+**Tougher on Hard and Nightmare, 2026-10-31.** The owner: "the boss has wayyyy too little HP on hard. Should make it better." On Hard he had 97 health (90 × the level's ×1.08; the finale's wave scale is ×1), so a late loadout melted him: the Chatterbox 3000 alone fires about 34 damage a second, so a skilled player who focuses him drops him in a few seconds. Each level now has its own boss health (`bossHealthScale` in `src/difficulty.ts`), on top of the level's health, so he becomes the finale without a tougher crowd: Easy and Normal ×1 (as the easing left them, which already lowers him to 54 and 68), Hard ×1.5 (146), Nightmare ×1.6 (167, at least as tough as Hard). Co-op's crowd scale (×1.1 to ×1.3 by player count) still multiplies on top. Endless brings him back every tenth wave with the same scales.
+
+Measured with the wave 10 snapshots on Hard, `AIM=sharp`, 100 runs from the same 10 snapshots and seeds (the wave pass now prints a boss line):
+
+| Boss health | His health | Wave 10 cleared | Median kill (p25 to p75) in cleared runs | Enraged | Hearts lost while he stands |
+| ----------- | ---------- | --------------- | ---------------------------------------- | ------- | --------------------------- |
+| ×1 (before) | 97         | 60%             | 34.7 s (26.0 to 41.6)                    | 76%     | 2.6                         |
+| ×1.5        | 146        | 48%             | 39.0 s (31.4 to 49.0)                    | 66%     | 3.3                         |
+| ×2          | 194        | 30%             | 43.0 s (36.4 to 57.1)                    | 54%     | 3.8                         |
+
+The sharp bot lands only about 6 to 8 of his health a second while it aims at him, and aims at him about a third of the fight (it turns to any zombie within 60 px), so its fights are long already and its kill time grows slowly with his health while its losses grow fast. A person with the same guns lands far more, which is why he felt like nothing. ×1.5 keeps the bot's kill in the 35 to 60 s band, enrages him in most fights, and costs Hard about a fifth of its finale clears; ×2 halved them, which would put Hard wins near 2%. Nightmare was not measured on snapshots (too few sharp runs reach wave 10); its ×1.6 follows Hard's.
 
 ### Character
 
@@ -635,12 +647,14 @@ From owner feedback on 2026-10-29 ("zombies are spawning behind the windows that
 
 Four levels scale zombie health, speed, and bites on top of the wave's scales, the boss and endless too, and stretch the blink after a bite (1 s, 1.5 s on the last heart, on Hard). Kinds, doors, and timing are the same on every level, so the preview stays exact.
 
-| Level     | Health | Speed | Bite  | Bite blink | Groaner bite | Big Lug and boss bite |
-| --------- | ------ | ----- | ----- | ---------- | ------------ | --------------------- |
-| Easy      | ×0.6   | ×0.8  | ×0.5  | ×2         | 1 heart      | 1 heart               |
-| Normal    | ×0.75  | ×0.84 | ×1    | ×1.5       | 1 heart      | 2 hearts              |
-| Hard      | ×1.08  | ×1.02 | ×1    | ×1         | 1 heart      | 2 hearts              |
-| Nightmare | ×1.16  | ×1.02 | ×1.25 | ×1         | 1 heart      | 3 hearts              |
+| Level     | Health | Boss health | Speed | Bite  | Bite blink | Groaner bite | Big Lug and boss bite |
+| --------- | ------ | ----------- | ----- | ----- | ---------- | ------------ | --------------------- |
+| Easy      | ×0.6   | ×1          | ×0.8  | ×0.5  | ×2         | 1 heart      | 1 heart               |
+| Normal    | ×0.75  | ×1          | ×0.84 | ×1    | ×1.5       | 1 heart      | 2 hearts              |
+| Hard      | ×1.08  | ×1.5        | ×1.02 | ×1    | ×1         | 1 heart      | 2 hearts              |
+| Nightmare | ×1.16  | ×1.6        | ×1.02 | ×1.25 | ×1         | 1 heart      | 3 hearts              |
+
+Boss health is Uncle Chunk's own, on top of the level's health (see "Boss balance").
 
 Health rounds to whole hit points, so on Normal a Groaner takes 2 shots instead of 3 on every wave, and on Easy a Hotfoot takes 1.
 

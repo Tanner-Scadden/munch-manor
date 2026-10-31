@@ -83,7 +83,7 @@ export const median = (values: ReadonlyArray<number>): number => {
     : valueAt(sorted, middle)
 }
 
-const quantile = (values: ReadonlyArray<number>, q: number): number => {
+export const quantile = (values: ReadonlyArray<number>, q: number): number => {
   const sorted = Array.sort(values, Order.Number)
   return valueAt(
     sorted,
