@@ -414,13 +414,13 @@ export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
         everyMs: 3200,
       }),
       lug(anyDoors(1), 15500),
-      pincers({ packs: [5, 3], mix: MIXED, startMs: 17000, everyMs: 0 }),
+      pincers({ packs: [4, 3], mix: MIXED, startMs: 17000, everyMs: 0 }),
       squads({
         packs: [3, 2, 1],
         mix: only('Runner'),
         from: anyDoors(1),
-        startMs: 19500,
-        everyMs: 2400,
+        startMs: 21000,
+        everyMs: 2800,
       }),
       squads({
         packs: [4, 3, 5],
@@ -450,7 +450,10 @@ export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
         everyMs: 3500,
       }),
     ],
-    holds: [fadeThenRelax(28000, 3000), fadeThenRelax(45000, 2500)],
+    holds: [
+      fadeThenRelax(28000, 3000),
+      { atMs: 45000, releaseBelow: 4, relaxMs: 2500 },
+    ],
   },
   // NOTE: waves 8 and 9 came with the kitchen. Their open groups draw from
   // every spawn door the level has, so once the kitchen is open its back

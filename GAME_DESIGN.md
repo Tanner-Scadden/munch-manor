@@ -150,10 +150,12 @@ Each wave is learn, test, combine, or twist, built from packs on the sawtooth (s
 | 4    | 66      | 220    | 2      | NEW: Kaboomer, three alone from one drawn door, while Groaner packs come from two others. Pincer peaks at 15.5 s and 38 s |
 | 5    | 62      | 221    | 2      | NEW: Big Lug, alone from the north with escorts behind. Mixed squads, then a second Big Lug leads a pincer                |
 | 6    | 63      | 235    | 2      | NEW: Big Leaguer, two 16 s apart. A Big Lug and a frenzied pincer, then a third Big Lug and a horde from every door       |
-| 7    | 71      | 282    | 3      | NEW: Ankle Biter, three 9 s apart. Big Lugs with pincers, a Big Leaguer, a stream of stragglers, a mixed rush             |
+| 7    | 70      | 279    | 3      | NEW: Ankle Biter, three 9 s apart. Big Lugs with pincers, a Big Leaguer, a stream of stragglers, a mixed rush             |
 | 8    | 53      | 262    | 3      | The finale. Squads and pincers, two Ankle Biters and a Big Leaguer, three Big Lugs, a one-volley horde, and Uncle Chunk   |
 
 A wave is a list of groups and holds. When Preparation begins the seeded generator shuffles each group's pack sizes, draws its doors, and rolls every spawn's kind and timing, so the door preview shows exactly what will come and the same seed rolls the same wave. A kind's debut group is only that kind, from one door, so the NEW card never promises a zombie the roll left out. Most groups draw their doors per run, and stragglers (packs of one with up to 1.5 s of jitter) wander in between packs from wave 3.
+
+Wave 7 was eased on 2026-10-31 after warned packs started coming through their doors promptly, which made its first peak much hotter (Normal campaign, 100 runs, the same seeds: 80% of runs reaching wave 7 cleared it before that change, 58% after). Its first pincer is 4 and 3 (was 5 and 3), the Hotfoot rush behind it starts 1.5 s later with its packs 2.8 s apart (were 2.4 s), and the second hold waits for fewer than 4 alive (was 6) so the last Big Lug and pincer meet a cleaner room. Measured: the wave 7 snapshot pass (100 runs) cleared 82%, up from 66%; the campaign (100 runs) cleared 62% of the runs reaching wave 7 (53 of 86), short of the 75 to 80% aimed for.
 
 #### Packs and pacing
 
