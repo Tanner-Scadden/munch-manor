@@ -41,6 +41,10 @@ export const ZOMBIE_RADIUS = 4
 export const ZOMBIE_SPEED_MIN = 16
 export const ZOMBIE_SPEED_MAX = 28
 export const ZOMBIE_SPAWN_MARGIN = 10
+// NOTE: the least a zombie walks while it is still outside the room, where
+// nothing is drawn, so even a Big Lug is in its doorway a beat after its
+// door's warning ends instead of most of a second later.
+export const ZOMBIE_ENTRY_SPEED = 50
 export const SCORE_PER_ZOMBIE = 10
 export const ZOMBIE_MAX_HP = 3
 export const ZOMBIE_HIT_PULSE_MS = 160
@@ -76,6 +80,10 @@ export const WAVE_BANNER_MS = 1600
 
 export const STICK_RADIUS_PX = 56
 export const STICK_DEAD_ZONE = 0.15
+// NOTE: the aim stick turns the player once it leaves the dead zone, but
+// pulls the trigger only past this share of its radius, so a thumb that
+// lands fires nowhere until it has pushed toward where it means to shoot.
+export const STICK_FIRE_ZONE = 0.4
 
 export const DEFAULT_SEED = 0x2f6b9a1d
 

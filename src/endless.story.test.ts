@@ -4,7 +4,13 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { PARLOUR } from './arena'
-import { PREPARATION_MS, ZOMBIE_ALIVE_MAX, ZOMBIE_MAX_HP } from './constants'
+import {
+  PACK_WARNING_MS,
+  PREPARATION_MS,
+  ZOMBIE_ALIVE_MAX,
+  ZOMBIE_DYING_MS,
+  ZOMBIE_MAX_HP,
+} from './constants'
 import { DIFFICULTIES } from './difficulty'
 import {
   endlessTankCount,
@@ -37,6 +43,7 @@ import {
   press,
   scoring,
   tick,
+  ticksFor,
   zombieAt,
 } from './testing'
 import { FINAL_WAVE } from './wavePlans'
@@ -289,13 +296,18 @@ describe('campaign and endless after wave 8', () => {
     )
   })
 
-  test('a queued zombie walks in as soon as a place frees up', () => {
+  test('a pack waits to warn while the room is full, then warns as soon as a place frees up and walks in when the warning ends', () => {
     const full = Array.makeBy(ZOMBIE_ALIVE_MAX, index =>
       zombieAt(index + 1, 30 + (index % 6) * 8, 30 + index, {
         hp: ZOMBIE_MAX_HP,
       }),
     )
     const victim = zombieAt(999, MUZZLE_X, PARLOUR.height / 2, { hp: 1 })
+    const pending = (phase: Phase): Option.Option<number> =>
+      Option.map(
+        Option.liftPredicate(phase, Phase.guards.Wave),
+        ({ spawns }) => spawns.length,
+      )
     story(
       update,
       given(
@@ -312,22 +324,19 @@ describe('campaign and endless after wave 8', () => {
         }),
       ),
       tick(FRAME_MS),
-      model(({ phase }) => {
-        expect(
-          Option.map(
-            Option.liftPredicate(phase, Phase.guards.Wave),
-            ({ spawns }) => spawns.length,
-          ),
-        ).toEqual(Option.some(1))
+      model(({ phase, pacing }) => {
+        expect(pending(phase)).toEqual(Option.some(1))
+        expect(pacing.warnedPacks).toEqual([])
       }),
-      ...Array.makeBy(20, () => tick(FRAME_MS)),
+      ...ticksFor(ZOMBIE_DYING_MS + FRAME_MS, FRAME_MS),
+      model(({ phase, pacing, zombies }) => {
+        expect(zombies.length).toBe(ZOMBIE_ALIVE_MAX - 1)
+        expect(pacing.warnedPacks).toEqual([0])
+        expect(pending(phase)).toEqual(Option.some(1))
+      }),
+      ...ticksFor(PACK_WARNING_MS, FRAME_MS),
       model(({ phase, zombies }) => {
-        expect(
-          Option.map(
-            Option.liftPredicate(phase, Phase.guards.Wave),
-            ({ spawns }) => spawns.length,
-          ),
-        ).toEqual(Option.some(0))
+        expect(pending(phase)).toEqual(Option.some(0))
         expect(zombies.length).toBe(ZOMBIE_ALIVE_MAX)
       }),
     )

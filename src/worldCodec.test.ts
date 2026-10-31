@@ -240,8 +240,10 @@ describe("the boss's charge on the wire", () => {
 // the Clang Pan in the melee slot; protocol 13 added each player's
 // `triggerRestMs`, the idle reload's clock; protocol 14 added each seat's
 // revives, downs, and shots for the crew board. The wire must not change
-// without a protocol bump.
-const GOLDEN_DIGEST = '65392:733ff9aadc362620'
+// without a protocol bump. A change to how the room plays moves the bytes
+// with no change to the wire, as zombies coming in promptly after their
+// warning did.
+const GOLDEN_DIGEST = '65551:d00771facd686cb0'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

@@ -19,8 +19,10 @@ import {
   RELAX_QUIET_MAX_MS,
   RELAX_TRICKLE_MAX,
   RESTLESS_QUIET_MAX_MS,
+  ZOMBIE_ALIVE_MAX,
 } from './constants'
 import { isFrenzyPack } from './frenzy'
+import { bySpawnTime } from './wavePacks'
 import type { World } from './world'
 import {
   Alarm,
@@ -266,7 +268,8 @@ const rest = (
 
 // NOTE: The wave clock only runs while the beat is Flowing. Fading and
 // Resting stop it, so every planned spawn after a hold waits out the fade and
-// the relax on top of its planned time. A fade gives up after FADE_MAX_MS so
+// the relax on top of its planned time, but for a pack already warned,
+// which keeps its time (keepWarnedOnTime). A fade gives up after FADE_MAX_MS so
 // a zombie stuck out of reach cannot stall the wave. An empty room with no
 // pack at a door is quiet. A relax that turns quiet for RELAX_QUIET_MAX_MS
 // trickles in a straggler, then ends, and once the clock flows after
@@ -363,20 +366,113 @@ const plannedDoorOf = (
     }),
   )
 
+const isWarned =
+  (warnedPacks: ReadonlyArray<number>) =>
+  (spawn: PlannedSpawn): boolean =>
+    Array.contains(warnedPacks, spawn.pack)
+
+const isDueToWarn =
+  (warnedPacks: ReadonlyArray<number>, clockMs: number) =>
+  (spawn: PlannedSpawn): boolean =>
+    spawn.atMs <= clockMs + PACK_WARNING_MS &&
+    isThroughDoor(spawn) &&
+    !isWarned(warnedPacks)(spawn)
+
+// NOTE: a warned pack keeps its time while the wave clock stands still for
+// a fade, a relax, or the boss's entrance: its spawns come stalledMs sooner
+// on the clock, so it walks in when its warning ends. Only timing changes,
+// never a door or a kind, so the preview stays exact.
+export const keepWarnedOnTime = (
+  spawns: ReadonlyArray<PlannedSpawn>,
+  warnedPacks: ReadonlyArray<number>,
+  stalledMs: number,
+): ReadonlyArray<PlannedSpawn> =>
+  stalledMs <= 0 || Array.isReadonlyArrayEmpty(warnedPacks)
+    ? spawns
+    : Array.map(spawns, spawn =>
+        isThroughDoor(spawn) && isWarned(warnedPacks)(spawn)
+          ? modifyFields(spawn, { atMs: atMs => atMs - stalledMs })
+          : spawn,
+      )
+
+const noPacks: ReadonlyArray<number> = []
+
+// NOTE: the packs due to warn that may not warn yet. While the boss holds
+// the wave, none may: he has the floor. Otherwise the alive cap decides:
+// every zombie in the room and every one of a warned pack still to come
+// takes a place, and a pack warns, in time order, while one is left for its
+// first zombie. So a door only rattles for a pack that can come in.
+export const packsWaitingToWarn = (
+  spawns: ReadonlyArray<PlannedSpawn>,
+  warnedPacks: ReadonlyArray<number>,
+  zombieCount: number,
+  clockMs: number,
+  isHeld: boolean,
+): ReadonlyArray<number> => {
+  const packs = pipe(
+    spawns,
+    Array.filter(isDueToWarn(warnedPacks, clockMs)),
+    Array.sort(bySpawnTime),
+    firstOfEachPack,
+  )
+  if (isHeld) {
+    return Array.map(packs, ({ pack }) => pack)
+  }
+
+  const coming = Array.filter(
+    spawns,
+    spawn => isThroughDoor(spawn) && isWarned(warnedPacks)(spawn),
+  ).length
+  return Array.reduce(
+    packs,
+    { places: ZOMBIE_ALIVE_MAX - zombieCount - coming, waiting: noPacks },
+    ({ places, waiting }, { pack }) =>
+      places > 0
+        ? {
+            places:
+              places -
+              Array.filter(spawns, spawn => spawn.pack === pack).length,
+            waiting,
+          }
+        : { places, waiting: Array.append(waiting, pack) },
+  ).waiting
+}
+
+// NOTE: a pack waiting to warn stays a whole warning away on the clock, its
+// first zombie PACK_WARNING_MS ahead and the rest at their gaps behind it,
+// so once it may warn it walks in when the warning ends.
+export const delayWaitingPacks = (
+  spawns: ReadonlyArray<PlannedSpawn>,
+  waiting: ReadonlyArray<number>,
+  clockMs: number,
+): ReadonlyArray<PlannedSpawn> =>
+  Array.isReadonlyArrayEmpty(waiting)
+    ? spawns
+    : Array.map(spawns, spawn => {
+        if (!Array.contains(waiting, spawn.pack)) {
+          return spawn
+        }
+        const firstMs = Array.reduce(spawns, spawn.atMs, (soonest, other) =>
+          other.pack === spawn.pack ? Math.min(soonest, other.atMs) : soonest,
+        )
+        const shiftMs = Math.max(0, clockMs + PACK_WARNING_MS - firstMs)
+        return modifyFields(spawn, { atMs: atMs => atMs + shiftMs })
+      })
+
 export const warnPacks = (
   model: World,
   spawns: ReadonlyArray<PlannedSpawn>,
   routed: ReadonlyArray<PlannedSpawn>,
   clockMs: number,
+  waiting: ReadonlyArray<number>,
 ): World => {
   const warnedPacks = model.pacing.warnedPacks
   const fresh = pipe(
     routed,
     Array.filter(
       spawn =>
-        spawn.atMs <= clockMs + PACK_WARNING_MS &&
-        isThroughDoor(spawn) &&
-        !Array.contains(warnedPacks, spawn.pack),
+        isDueToWarn(warnedPacks, clockMs)(spawn) &&
+        !Array.contains(waiting, spawn.pack),
     ),
     firstOfEachPack,
   )

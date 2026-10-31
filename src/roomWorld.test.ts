@@ -51,7 +51,7 @@ const diffOf = (prev: RoomWorld, next: RoomWorld): Uint8Array => {
 }
 
 // NOTE: wave 1 underway: its first zombies in, both players shooting.
-const WAVE_TICKS = 480
+const WAVE_TICKS = 600
 
 type Followed = Readonly<{
   server: RoomWorld

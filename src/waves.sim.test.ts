@@ -11,7 +11,7 @@ import { update } from './main'
 import { type Model, Phase } from './model'
 import { readyModel } from './model.fixture'
 import { scoreOf } from './stats'
-import { holdFire, press, release, tick, ticks } from './testing'
+import { holdFireToward, press, release, tick, ticks } from './testing'
 
 const FRAME_MS = 50
 
@@ -36,7 +36,7 @@ describe('a full wave', () => {
       tick(FRAME_MS),
       release('KeyW'),
       press('Enter'),
-      holdFire,
+      holdFireToward({ x: 0, y: -1 }),
       ...Array.flatMap(
         ticks((SECONDS_PER_RUN * 1000) / FRAME_MS, FRAME_MS),
         frame => [frame, record],
