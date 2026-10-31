@@ -9,6 +9,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 💀 Getting munched is a moment now: you topple, the zombies pile on, MUNCHED! slams down, and your run counts up. Go further or splat more than ever for a NEW BEST!
 - 🏆 Winning rains confetti (and a little gore) and crowns the MVP in co-op. Hit SHARE to brag anywhere: it opens your phone's share sheet, or copies your brag to paste. And no more walling the room shut: planks board up half the doors at most.
 - 🔍 Phones zoom in closer, so zombies are easier to spot, and your thumb's aim gets a little zombie magnet held sideways too. Taps land where you mean them too: the settings X closes every time, buttons answer with another finger down, a mid-wave mouse click on a gun slot shoots the zombie behind it, and on phones your guns sit centered with a reload button by your melee slot.
+- ⏩ Fresh feedback from the trenches: new zombie cards get out of your way faster.
 - 🏠 Munch Manor has a real address now: munchmanor.com. Swing by the steaming mug next to the gear to buy Rattles a coffee.
 
 ## October 30, 2026: Bring your friends
