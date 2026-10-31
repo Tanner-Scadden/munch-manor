@@ -83,6 +83,9 @@ export const STALL_BELOW: Vector = {
 // bot that never buys a Plank Pile, to check planks help without carrying.
 const NO_GNOME = process.env['NO_GNOME'] !== undefined
 const NO_PLANKS = process.env['NO_PLANKS'] !== undefined
+// NOTE: GUN=shotgun plays a Barn Buster run: the bot buys the shotgun as its
+// gun, never trades it for the Chatterbox, and upgrades it as it would any gun.
+const IS_SHOTGUN_RUN = process.env['GUN'] === 'shotgun'
 const RESERVE = Number(process.env['RESERVE'] ?? 30)
 
 type ItemId = Parameters<typeof priceFor>[1]
@@ -151,7 +154,7 @@ export const wantedPurchase = (
     firearm === undefined &&
     (fridge === undefined || (isSpent(fridge) && isAvailable('Smg')))
   ) {
-    if (isAvailable('Smg')) {
+    if (!IS_SHOTGUN_RUN && isAvailable('Smg')) {
       return 'Smg'
     }
     if (isAvailable('Shotgun')) {
@@ -162,7 +165,12 @@ export const wantedPurchase = (
   if (spare === undefined) {
     return undefined
   }
-  if (spare.kind === 'Shotgun' && spare.tier === 0 && isAvailable('Smg')) {
+  if (
+    !IS_SHOTGUN_RUN &&
+    spare.kind === 'Shotgun' &&
+    spare.tier === 0 &&
+    isAvailable('Smg')
+  ) {
     return 'Smg'
   }
   const refills = [firearm, fridge].flatMap(gun => {
