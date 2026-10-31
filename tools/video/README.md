@@ -42,5 +42,7 @@ A JSON file of clips (see `shotList.ts` for the Schema and `shots/devlog.json` f
 - `camera`: keys of `at`, `zoom` (1 is the whole frame), and the center `x`, `y` in game pixels of the screen (320x180, or 180x320 upright).
 - `cards`: `Title`, `End`, or `Couch` over a span of ticks; `devices`: the split screen over a span; `crossfade`: frames dissolved over the last shot.
 - `coop.god` keeps every seat standing, and `coop.revive` downs a seat on purpose (`down`, at `at`, after walking to `spot`), sets its bleed out clock to `bleedMs`, and from `walkAt` sends the `reviver` to stand beside it.
+- `lobby`: keys of `at`, `seats`, and `ready` that seat a staged lobby (`coop=host`) one player at a time and light their READY.
+- `skip` also plays out what is already animating, such as a co-op room's 3, 2, 1, GO!, on the shot's clock, so the first frame is past it.
 
 A clip can carry its own `score`: music cues by clip frame in place of what the game cued, with the tune's `bpm`, and the render prints how far each cut lands from a beat. `loop` dissolves the clip's last frames into its first, so it plays round with no seam.
