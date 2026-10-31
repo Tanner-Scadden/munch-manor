@@ -79,6 +79,7 @@
     "munch/no-world-spread": "error",
     "munch/tap-by-click": "error",
     "munch/live-test-note": "error",
+    "munch/disable-needs-reason": "error",
     "typescript/no-unnecessary-condition": "error",
     "typescript/no-misused-spread": "error",
     "typescript/no-unsafe-argument": "error",

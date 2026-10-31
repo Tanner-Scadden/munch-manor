@@ -150,3 +150,21 @@ tester.run('no-tag-chain on a tag string', ruleOf('no-tag-chain'), {
     one("if (kindTag === 'A') { a() } else if (kindTag === 'B') { b() }"),
   ],
 })
+
+tester.run('disable-needs-reason', ruleOf('disable-needs-reason'), {
+  valid: [
+    '// NOTE: the page owns this timer.\n// oxlint-disable-next-line no-restricted-globals\nsetTimeout(run, 10)',
+    '// oxlint-disable-next-line no-shadow -- Effect names the interface after its namespace\ninterface Annotations {}',
+  ],
+  invalid: [
+    one(
+      '// oxlint-disable-next-line no-restricted-globals\nsetTimeout(run, 10)',
+    ),
+    // NOTE: written in two parts, so the Effect language service does not
+    // read the string as a directive of this file's own.
+    one(
+      '// @effect-' +
+        'diagnostics-next-line globalDate:off\nconst now = Date.now()',
+    ),
+  ],
+})
