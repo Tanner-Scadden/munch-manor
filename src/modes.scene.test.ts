@@ -221,7 +221,9 @@ describe('Upgrades in the shop', () => {
       ),
       expect(role('heading', { name: 'Barn Buster DELUXE' })).toExist(),
       expect(
-        text('Hits for 2 instead of 1. Holds 80 shells instead of 64.'),
+        text(
+          'Hits for 2 instead of 1. Reloads in 0.75 s instead of 0.9. Holds 80 shells instead of 64.',
+        ),
       ).toExist(),
       expect(role('img', { name: 'Tier 2 of 3' })).toExist(),
       expect(
