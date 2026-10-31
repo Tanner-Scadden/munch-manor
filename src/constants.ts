@@ -76,6 +76,10 @@ export const WAVE_BANNER_MS = 1600
 
 export const STICK_RADIUS_PX = 56
 export const STICK_DEAD_ZONE = 0.15
+// NOTE: the aim stick turns the player once it leaves the dead zone, but
+// pulls the trigger only past this share of its radius, so a thumb that
+// lands fires nowhere until it has pushed toward where it means to shoot.
+export const STICK_FIRE_ZONE = 0.4
 
 export const DEFAULT_SEED = 0x2f6b9a1d
 

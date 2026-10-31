@@ -1,14 +1,15 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { FIXED_STEP_MS, STICK_RADIUS_PX } from './constants'
+import { FIXED_STEP_MS, STICK_FIRE_ZONE, STICK_RADIUS_PX } from './constants'
 import { update } from './main'
 import { Message } from './message'
-import { MouseButton, Phase, Stick } from './model'
+import { type Bullet, MouseButton, Phase, Stick } from './model'
 import { FIGHTING_PHASE, playingModel, readyModel } from './model.fixture'
-import { tick, touchDown, touchMove } from './testing'
+import { holdingSecond, tick, touchDown, touchMove } from './testing'
+import { WEAPONS, freshGun } from './weapons'
 
 const LEFT_THUMB = 11
 const RIGHT_THUMB = 12
@@ -59,6 +60,50 @@ describe('touch sticks', () => {
         expect(Stick.guards.Active(input.aimStick)).toBe(true)
         expect(intent.move).toEqual({ x: 0, y: 0 })
         expect(intent.trigger).toBe('Held')
+      }),
+    )
+  })
+
+  test('a thumb that lands on the aim stick fires only once pushed, and the shot goes where it points', () => {
+    const shotgunInHand = modifyFields(playingModel, {
+      player: player =>
+        modifyFields(player, {
+          facing: () => ({ x: 1, y: 0 }),
+          arsenal: () => holdingSecond(freshGun('Shotgun')),
+        }),
+    })
+    const isUpward = ({ velocityX, velocityY }: Bullet): boolean =>
+      Math.abs(Math.atan2(velocityY, velocityX) + Math.PI / 2) <=
+      WEAPONS.Shotgun.spread / 2 + 0.01
+
+    story(
+      update,
+      given(shotgunInHand),
+      touchDown(RIGHT_THUMB, 700, 300),
+      tick(FIXED_STEP_MS),
+      model(({ intent, bullets, player }) => {
+        expect(intent.trigger).toBe('Released')
+        expect(bullets).toEqual([])
+        expect(player.facing).toEqual({ x: 1, y: 0 })
+      }),
+      touchMove(RIGHT_THUMB, 700, 300 - STICK_RADIUS_PX * 0.3),
+      tick(FIXED_STEP_MS),
+      model(({ intent, bullets, player }) => {
+        expect(intent.maybeAim).toEqual(Option.some({ x: 0, y: -1 }))
+        expect(intent.trigger).toBe('Released')
+        expect(bullets).toEqual([])
+        expect(player.facing).toEqual({ x: 0, y: -1 })
+      }),
+      touchMove(
+        RIGHT_THUMB,
+        700,
+        300 - STICK_RADIUS_PX * (STICK_FIRE_ZONE + 0.05),
+      ),
+      tick(FIXED_STEP_MS),
+      model(({ intent, bullets }) => {
+        expect(intent.trigger).toBe('Held')
+        expect(bullets).toHaveLength(WEAPONS.Shotgun.pellets)
+        expect(Array.every(bullets, isUpward)).toBe(true)
       }),
     )
   })

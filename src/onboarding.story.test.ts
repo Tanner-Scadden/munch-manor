@@ -377,7 +377,7 @@ describe('touch first play', () => {
       touchDown(2, 700, 200),
       ...ticks(10, TICK_MS),
       model(current => {
-        expect(current.stats.shotsFired).toBeGreaterThan(0)
+        expect(current.stats.shotsFired).toBe(0)
         expect(shownGhostSticks(current)).toEqual(['Move'])
       }),
       touchUp(2),

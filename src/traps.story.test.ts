@@ -46,6 +46,7 @@ import {
   BELOW_NORTH_DOOR,
   countdownTicks,
   holdFire,
+  holdFireToward,
   press,
   release,
   tick,
@@ -729,7 +730,7 @@ describe('barricade damage', () => {
         ),
       ),
       press('KeyA'),
-      holdFire,
+      holdFireToward({ x: -1, y: 0 }),
       ...ticks(Math.ceil(FIRE_INTERVAL_MS / FRAME_MS) + 2, FRAME_MS),
       model(({ player, frameEvents, bullets }) => {
         expect(player.x).toBeCloseTo(
