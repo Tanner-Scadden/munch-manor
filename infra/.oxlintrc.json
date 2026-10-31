@@ -44,6 +44,7 @@
     "munch/no-tag-chain": "error",
     "munch/no-extract-tag": "error",
     "munch/no-raw-json": "error",
+    "munch/live-test-note": "error",
     "typescript/no-unnecessary-condition": "error",
     "typescript/no-misused-spread": "error",
     "typescript/no-unsafe-argument": "error",

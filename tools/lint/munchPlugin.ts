@@ -18,6 +18,10 @@ const isTagMember = (
   node.property.type === 'Identifier' &&
   node.property.name === '_tag'
 
+// NOTE: a variable holding a tag itself: `tag`, `kindTag`.
+const isTagName = (node: Node): node is ESTree.IdentifierReference =>
+  node.type === 'Identifier' && /^tag$|Tag$/.test(node.name)
+
 const unwrapChain = (node: ESTree.Expression): Node =>
   node.type === 'ChainExpression' ? node.expression : node
 
@@ -26,8 +30,8 @@ const isStringLiteral = (
 ): node is ESTree.StringLiteral =>
   node?.type === 'Literal' && typeof node.value === 'string'
 
-// NOTE: the source text of X in `X._tag === 'Name'` (either side, === or
-// !==), or of the shared X in `X._tag === 'A' || X._tag === 'B'`, or of the
+// NOTE: the source text of X in `X._tag === 'Name'` or of a tag held in
+// a variable, `tag === 'Name'` (either side, === or !==), or of the shared X in `X._tag === 'A' || X._tag === 'B'`, or of the
 // first X in `X._tag === 'A' && more`. Anything else has no subject.
 const tagSubject = (
   node: ESTree.Expression,
@@ -41,11 +45,15 @@ const tagSubject = (
     const right = unwrapChain(node.right)
     const member =
       isTagMember(left) && isStringLiteral(right)
-        ? left
+        ? left.object
         : isTagMember(right) && isStringLiteral(left)
-          ? right
-          : undefined
-    return member === undefined ? undefined : sourceCode.getText(member.object)
+          ? right.object
+          : isTagName(left) && isStringLiteral(right)
+            ? left
+            : isTagName(right) && isStringLiteral(left)
+              ? right
+              : undefined
+    return member === undefined ? undefined : sourceCode.getText(member)
   }
   if (node.type === 'LogicalExpression' && node.operator === '||') {
     const left = tagSubject(node.left, sourceCode)
@@ -644,6 +652,115 @@ const seatActionOnce = defineRule({
   },
 })
 
+// NOTE: READY's key is the interact key, held to buy at a purchasable, so
+// only the one key table (src/keyActions.ts) asks whether the interact is
+// taken. A key handler that asks itself is mapping keys to actions again.
+const keyActionOnce = defineRule({
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Map a key to a seat action through src/keyActions.ts, the one key table.',
+    },
+  },
+  create(context) {
+    return {
+      ImportSpecifier(node) {
+        if (importedName(node) === 'isInteractTaken') {
+          context.report({
+            node,
+            message:
+              'A key presses a seat action through keyActionOf or playerKeyAction in src/keyActions.ts, which also keeps READY\'s key from starting a wave at a purchasable (AGENTS.md "Code shape").',
+          })
+        }
+      },
+    }
+  },
+})
+
+// NOTE: the Model fields a child Block lives on through its Binding
+// (src/composition.ts). The root asks the child through its operations and
+// never writes the field itself. A new Binding joins this list.
+const BINDING_FIELDS: ReadonlySet<string> = new Set([
+  ...DIALOG_FIELDS,
+  'profileTabs',
+  'shopTabs',
+  'character',
+  'coop',
+])
+
+const noBindingFieldWrite = defineRule({
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        "Change a child Block's state through its Binding's operations, never by writing its field.",
+    },
+  },
+  create(context) {
+    return {
+      CallExpression(node) {
+        const changes = node.arguments[1]
+        if (
+          !isCallOf(node, 'modifyFields') ||
+          changes?.type !== 'ObjectExpression'
+        ) {
+          return
+        }
+        changes.properties
+          .filter(property => hasName(BINDING_FIELDS, keyName(property)))
+          .forEach(property =>
+            context.report({
+              node: property,
+              message:
+                'A child Block\'s field changes only through its Binding: call an operation (CoopBinding.requestKeepTracers(...)) from a makeStep (AGENTS.md "Blocks and Bindings").',
+            }),
+          )
+      },
+    }
+  },
+})
+
+// NOTE: `it.live(...)` runs a test on the real clock, which a loaded
+// machine can slow into a timeout. The TestClock is the default, so a live
+// test says why it needs real time in a NOTE right above it.
+const isItLive = (node: ESTree.Expression): boolean =>
+  node.type === 'MemberExpression' &&
+  !node.computed &&
+  node.object.type === 'Identifier' &&
+  node.object.name === 'it' &&
+  propertyName(node) === 'live'
+
+const liveTestNote = defineRule({
+  meta: {
+    type: 'suggestion',
+    docs: {
+      description:
+        'A test on the real clock (it.live) says why in a NOTE right above it.',
+    },
+  },
+  create(context) {
+    return {
+      ExpressionStatement(node) {
+        const call = node.expression
+        if (call.type !== 'CallExpression' || !isItLive(call.callee)) {
+          return
+        }
+        const hasNote = context.sourceCode
+          .getCommentsBefore(node)
+          .some(comment => comment.value.trim().startsWith('NOTE:'))
+        if (!hasNote) {
+          context.report({
+            node,
+            message:
+              'it.live runs on the real clock: use it.effect and the TestClock (settle, first), or say why this needs real time in a // NOTE: right above it (AGENTS.md "Code shape").',
+          })
+        }
+      },
+    }
+  },
+})
+
 export default definePlugin({
   meta: { name: 'munch' },
   rules: {
@@ -657,5 +774,8 @@ export default definePlugin({
     'no-run-in-tests': noRunInTests,
     'tap-by-click': tapByClick,
     'seat-action-once': seatActionOnce,
+    'key-action-once': keyActionOnce,
+    'no-binding-field-write': noBindingFieldWrite,
+    'live-test-note': liveTestNote,
   },
 })

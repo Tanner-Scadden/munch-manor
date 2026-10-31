@@ -5,6 +5,7 @@ import { PickedMode, RoomDifficulty } from '@munch/netcode'
 import { LobbyEvent, QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
 import { SeatAction } from '../stepWorld'
+import { Bullet } from '../worldSchema'
 import { CoopProblem, Share } from './model'
 
 // NOTE: this client's controls for one room frame, the shape of netcode's
@@ -69,6 +70,12 @@ export const Message = defineMessageUnion({
     isPictureHeld: Schema.Boolean,
   },
   RequestedPressAction: { action: SeatAction },
+  RequestedKeepTracers: {
+    tracers: Schema.Array(Bullet),
+    fired: Schema.Number,
+    looked: Schema.Number,
+    confirmed: Schema.Number,
+  },
 })
 export type Message = typeof Message.Type
 

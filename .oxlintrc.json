@@ -75,6 +75,7 @@
     "munch/no-conditional-step": "error",
     "munch/no-world-spread": "error",
     "munch/tap-by-click": "error",
+    "munch/live-test-note": "error",
     "typescript/no-unnecessary-condition": "error",
     "typescript/no-misused-spread": "error",
     "typescript/no-unsafe-argument": "error",
@@ -97,6 +98,8 @@
         "no-console": "error",
         "munch/no-menu-field": "error",
         "munch/command-beside-update": "error",
+        "munch/key-action-once": "error",
+        "munch/no-binding-field-write": "error",
         "no-restricted-properties": [
           "error",
           {
@@ -200,6 +203,7 @@
       "rules": {
         "no-restricted-imports": "off",
         "munch/no-menu-field": "off",
+        "munch/no-binding-field-write": "off",
         "no-restricted-properties": [
           "error",
           {
@@ -347,6 +351,12 @@
       // the one place that reads them (munch/no-menu-field).
       "files": ["src/menuState.ts"],
       "rules": { "munch/no-menu-field": "off" }
+    },
+    {
+      // NOTE: the one key table, the one place that asks whether READY's
+      // key is held to buy (munch/key-action-once).
+      "files": ["src/keyActions.ts"],
+      "rules": { "munch/key-action-once": "off" }
     },
     {
       // NOTE: tests and their shared setup run Effects with it.effect from

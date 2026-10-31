@@ -5,7 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { levelOf } from './arena'
 import { CoopBinding } from './composition'
 import type { Room as CoopRoom } from './coop/model'
-import { isInLobby, keepTracers, maybeRoomOf } from './coop/roomState'
+import { isInLobby, maybeRoomOf } from './coop/roomState'
 import { makeStep } from './definition'
 import { aimTracers, flyTracers } from './firing'
 import {
@@ -210,8 +210,10 @@ const traceOwnShots = (
 }
 
 // NOTE: the drawing of one frame. A run starting (or the next one after the
-// end screen) resets the client's run fields first. While the client's own
-// hit-stop holds, the picture stays, and the events wait in the session.
+// end screen) resets the client's run fields first. This frame's own
+// tracers go to the co-op Block through `requestKeepTracers`. While the
+// client's own hit-stop holds, the picture stays, and the events wait in
+// the session.
 const drawRoom = (frameMs: number, maybeShopBefore: Option.Option<ShopState>) =>
   makeStep(stepModel =>
     Option.match(maybeDrawnOf(stepModel), {
@@ -222,88 +224,125 @@ const drawRoom = (frameMs: number, maybeShopBefore: Option.Option<ShopState>) =>
         const base = isStart
           ? { ...stepModel, ...freshRun(stepModel) }
           : stepModel
-        const thaw = thawTick(base.hitStop, frameMs)
         const events = heardBy(world.player, room.frameEvents)
         const shot = traceOwnShots(base, room, world, frameMs)
-        const traced = modifyFields(base, {
-          cosmeticRngState: () => shot.cosmeticRngState,
-          coop: coop =>
-            keepTracers(
-              coop,
-              shot.tracers,
-              shot.fired,
-              shot.struck,
-              Array.filter(
-                events,
-                event =>
-                  GameEvent.isAnyOf(['ZombieHit'])(event) &&
-                  Option.exists(
-                    event.maybeShooter,
-                    shooter => shooter === room.slot,
-                  ),
-              ).length,
-            ),
-        })
-        if (isFrozen(thaw.hitStop)) {
-          return toModel(
-            modifyFields(traced, {
-              hitStop: () => thaw.hitStop,
-              frameEvents: () => [],
-            }),
-          )
-        }
-        const applied = withWorld(
-          takeRoomWorld(
-            modifyFields(traced, { hitStop: () => thaw.hitStop }),
-            modifyFields(world, {
-              bullets: bullets => [
-                ...Array.filter(
-                  bullets,
-                  bullet => !isOwnGunBullet(bullet, room.slot),
-                ),
-                ...shot.tracers,
-              ],
-            }),
-            events,
-          ),
-          taken => stopForHits(taken, frameMs),
-        )
-        const drawn = launchPrize(
-          base,
-          ageDebutCard(
-            endRoundOnClient(
-              base,
-              raiseDebutCardFrom(
-                base,
-                leanFor(
-                  advanceCosmetics(
-                    tallyFrame(base, applied, frameMs),
-                    frameMs,
-                    frameMs,
-                  ),
-                  frameMs,
-                ),
-              ),
-              runDifficultyOf(base),
-            ),
-            frameMs,
-          ),
-        )
         return Update.combineSteps([
-          toModel(drawn),
-          playSounds([
-            ...(room.predictedShots > 0 ? [shotSoundCue(world.player)] : []),
-            ...frameSoundCues(
-              Array.filter(events, event => !isOwnShot(event, room.slot)),
-            ),
-            ...fridgeLandCues(base, drawn),
-          ]),
-          playStartSoundWhen(isStart),
-          syncShopDialog(Option.exists(maybeShopBefore, isBrowsing)),
+          toModel(
+            modifyFields(base, {
+              cosmeticRngState: () => shot.cosmeticRngState,
+            }),
+          ),
+          CoopBinding.requestKeepTracers({
+            tracers: shot.tracers,
+            fired: shot.fired,
+            looked: shot.struck,
+            confirmed: Array.filter(
+              events,
+              event =>
+                GameEvent.isAnyOf(['ZombieHit'])(event) &&
+                Option.exists(
+                  event.maybeShooter,
+                  shooter => shooter === room.slot,
+                ),
+            ).length,
+          }),
+          drawTraced({
+            frameMs,
+            maybeShopBefore,
+            base,
+            room,
+            world,
+            events,
+            tracers: shot.tracers,
+            isStart,
+          }),
         ])
       },
     }),
   )
+
+type Traced = Readonly<{
+  frameMs: number
+  maybeShopBefore: Option.Option<ShopState>
+  base: Model
+  room: CoopRoom
+  world: World
+  events: ReadonlyArray<GameEvent>
+  tracers: ReadonlyArray<Bullet>
+  isStart: boolean
+}>
+
+// NOTE: the rest of the frame, once the co-op Block keeps the tracers.
+const drawTraced = ({
+  frameMs,
+  maybeShopBefore,
+  base,
+  room,
+  world,
+  events,
+  tracers,
+  isStart,
+}: Traced) =>
+  makeStep(traced => {
+    const thaw = thawTick(base.hitStop, frameMs)
+    if (isFrozen(thaw.hitStop)) {
+      return toModel(
+        modifyFields(traced, {
+          hitStop: () => thaw.hitStop,
+          frameEvents: () => [],
+        }),
+      )
+    }
+    const applied = withWorld(
+      takeRoomWorld(
+        modifyFields(traced, { hitStop: () => thaw.hitStop }),
+        modifyFields(world, {
+          bullets: bullets => [
+            ...Array.filter(
+              bullets,
+              bullet => !isOwnGunBullet(bullet, room.slot),
+            ),
+            ...tracers,
+          ],
+        }),
+        events,
+      ),
+      taken => stopForHits(taken, frameMs),
+    )
+    const drawn = launchPrize(
+      base,
+      ageDebutCard(
+        endRoundOnClient(
+          base,
+          raiseDebutCardFrom(
+            base,
+            leanFor(
+              advanceCosmetics(
+                tallyFrame(base, applied, frameMs),
+                frameMs,
+                frameMs,
+              ),
+              frameMs,
+            ),
+          ),
+          runDifficultyOf(base),
+        ),
+        frameMs,
+      ),
+    )
+    return Update.combineSteps([
+      toModel(drawn),
+      playSounds([
+        ...(room.predictedShots > 0 ? [shotSoundCue(world.player)] : []),
+        ...frameSoundCues(
+          Array.filter(events, event => !isOwnShot(event, room.slot)),
+        ),
+        ...fridgeLandCues(base, drawn),
+      ]),
+      playStartSoundWhen(isStart),
+      syncShopDialog(Option.exists(maybeShopBefore, isBrowsing)),
+    ])
+  })
 
 // NOTE: one frame of an online run: the controls go to the room through
 // the co-op Block's `requestTickRoom`, then the root draws what came back.

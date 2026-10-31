@@ -297,6 +297,7 @@ describe('two sessions on one database, like two tabs', () => {
     ),
   )
 
+  // NOTE: real time: the idle timeout rolls the open transaction back.
   it.live('a transaction left idle is rolled back so others can go on', () =>
     withHub(
       hub =>
@@ -358,6 +359,7 @@ describe('two sessions on one database, like two tabs', () => {
       ),
   )
 
+  // NOTE: real time: the call waits in line behind a transaction that sleeps.
   it.live('an interrupted call waiting in line is cancelled', () =>
     withHub(
       hub =>

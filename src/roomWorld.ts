@@ -213,14 +213,15 @@ const REPAIR_BASE = 64
 const REPAIR_SPAN = ACTION_SPAN - REPAIR_BASE
 const REPAIR_PREFIX = 'Repair-'
 
-const SIMPLE_ACTIONS: ReadonlyArray<SeatAction['_tag']> = [
-  'Swap',
-  'Reload',
-  'PlaceTrap',
-  'NextTrap',
-  'LeaveCounter',
-  'Ready',
-  'Melee',
+// NOTE: the actions with no fields, in their wire codes' order (1 up).
+const SIMPLE_ACTIONS: ReadonlyArray<SeatAction> = [
+  SeatAction.Swap(),
+  SeatAction.Reload(),
+  SeatAction.PlaceTrap(),
+  SeatAction.NextTrap(),
+  SeatAction.LeaveCounter(),
+  SeatAction.Ready(),
+  SeatAction.Melee(),
 ]
 
 // NOTE: drawing a gun by its slot follows the simple actions' codes.
@@ -234,7 +235,7 @@ const FIXED_ITEMS = FixedShopItemId.literals
 
 const simpleCode = (tag: SeatAction['_tag']): number =>
   Option.getOrElse(
-    Array.findFirstIndex(SIMPLE_ACTIONS, simple => simple === tag),
+    Array.findFirstIndex(SIMPLE_ACTIONS, simple => simple._tag === tag),
     () => -1,
   ) + 1
 
@@ -265,26 +266,6 @@ export const actionCodeOf = (action: SeatAction): number =>
 export const heldAction = (code: number, press: number): number =>
   ((press % PRESS_COUNTS) + 1) * ACTION_SPAN + code
 
-const simpleAction = (tag: SeatAction['_tag']): Option.Option<SeatAction> => {
-  if (tag === 'Swap') {
-    return Option.some(SeatAction.Swap())
-  } else if (tag === 'Reload') {
-    return Option.some(SeatAction.Reload())
-  } else if (tag === 'PlaceTrap') {
-    return Option.some(SeatAction.PlaceTrap())
-  } else if (tag === 'NextTrap') {
-    return Option.some(SeatAction.NextTrap())
-  } else if (tag === 'LeaveCounter') {
-    return Option.some(SeatAction.LeaveCounter())
-  } else if (tag === 'Ready') {
-    return Option.some(SeatAction.Ready())
-  } else if (tag === 'Melee') {
-    return Option.some(SeatAction.Melee())
-  } else {
-    return Option.none()
-  }
-}
-
 const trapId = (trap: Trap): number => trap.id
 
 export const seatActionOf = (
@@ -311,7 +292,7 @@ export const seatActionOf = (
       SeatAction.Draw({ slot }),
     )
   } else {
-    return Option.flatMap(Array.get(SIMPLE_ACTIONS, code - 1), simpleAction)
+    return Array.get(SIMPLE_ACTIONS, code - 1)
   }
 }
 

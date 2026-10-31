@@ -114,3 +114,39 @@ tester.run('seat-action-once', ruleOf('seat-action-once'), {
     one('const next = modifyFields(model, { wallet: () => wallet })'),
   ],
 })
+
+tester.run('key-action-once', ruleOf('key-action-once'), {
+  valid: ["import { playerKeyAction } from '../keyActions'"],
+  invalid: [one("import { isInteractTaken } from '../purchase'")],
+})
+
+tester.run('no-binding-field-write', ruleOf('no-binding-field-write'), {
+  valid: [
+    'const step = CoopBinding.requestKeepTracers(shot)',
+    'const next = modifyFields(model, { cosmeticRngState: () => state })',
+  ],
+  invalid: [
+    one(
+      'const next = modifyFields(model, { coop: coop => keepTracers(coop) })',
+    ),
+    one('const next = modifyFields(model, { shopDialog: () => closed })'),
+  ],
+})
+
+tester.run('live-test-note', ruleOf('live-test-note'), {
+  valid: [
+    "it.effect('waits on the TestClock', () => program)",
+    "// NOTE: real document events.\nit.live('hears a release', () => program)",
+  ],
+  invalid: [one("it.live('hears a release', () => program)")],
+})
+
+tester.run('no-tag-chain on a tag string', ruleOf('no-tag-chain'), {
+  valid: ["if (tag === 'Swap') { swap() }"],
+  invalid: [
+    one(
+      "function f(tag) { if (tag === 'Swap') { return 1 } if (tag === 'Reload') { return 2 } return 0 }",
+    ),
+    one("if (kindTag === 'A') { a() } else if (kindTag === 'B') { b() }"),
+  ],
+})

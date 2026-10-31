@@ -111,6 +111,7 @@ describe('stuck sticks', () => {
     )
   })
 
+  // NOTE: real document events, heard on a real timer (firstReleaseMessage).
   it.live('releases are heard while no pointer is tracked', () =>
     Effect.gen(function* () {
       expect(isTrackingPointer(initialModel.input)).toBe(false)
@@ -125,6 +126,7 @@ describe('stuck sticks', () => {
     }),
   )
 
+  // NOTE: real document events, heard on a real timer (firstReleaseMessage).
   it.live('cancels are heard while no pointer is tracked', () =>
     Effect.gen(function* () {
       const messages = yield* firstReleaseMessage(() => {

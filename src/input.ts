@@ -38,13 +38,7 @@ const ENDLESS_KEY = 'KeyE'
 const KEEP_GOING_KEY = 'KeyK'
 const CHARACTER_KEY = 'KeyC'
 const PAUSE_KEY = 'Escape'
-const START_WAVE_KEY = 'Enter'
-const INTERACT_KEY = 'Enter'
-const RELOAD_KEY = 'KeyR'
-const SWAP_KEY = 'KeyQ'
-const KNIFE_KEY = 'KeyF'
-const PLACE_TRAP_KEY = 'KeyT'
-const NEXT_TRAP_KEY = 'KeyG'
+export const INTERACT_KEY = 'Enter'
 const MENU_KEY = 'KeyH'
 const PREVIOUS_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowLeft', 'ArrowUp']
 const NEXT_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowRight', 'ArrowDown']
@@ -64,19 +58,6 @@ export const maybeFocusStep = (code: string): Option.Option<FocusStep> => {
 
 export const isMenuKey = (code: string): boolean => code === MENU_KEY
 
-export const TrapChoice = Schema.Literals(['Place', 'Next'])
-export type TrapChoice = typeof TrapChoice.Type
-
-export const maybeTrapChoice = (code: string): Option.Option<TrapChoice> => {
-  if (code === PLACE_TRAP_KEY) {
-    return Option.some('Place')
-  } else if (code === NEXT_TRAP_KEY) {
-    return Option.some('Next')
-  } else {
-    return Option.none()
-  }
-}
-
 export const isStartKey = (code: string): boolean => code === START_KEY
 
 export const isEndlessKey = (code: string): boolean => code === ENDLESS_KEY
@@ -86,15 +67,6 @@ export const isKeepGoingKey = (code: string): boolean => code === KEEP_GOING_KEY
 export const isCharacterKey = (code: string): boolean => code === CHARACTER_KEY
 
 export const isPauseKey = (code: string): boolean => code === PAUSE_KEY
-
-export const isStartWaveKey = (code: string): boolean => code === START_WAVE_KEY
-
-export const isReloadKey = (code: string): boolean => code === RELOAD_KEY
-
-export const isSwapKey = (code: string): boolean => code === SWAP_KEY
-
-// NOTE: F draws the knife, the third slot; the trigger then stabs.
-export const isKnifeKey = (code: string): boolean => code === KNIFE_KEY
 
 const axis = (isNegative: boolean, isPositive: boolean): number =>
   (isPositive ? 1 : 0) - (isNegative ? 1 : 0)
