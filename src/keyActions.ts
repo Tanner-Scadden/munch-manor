@@ -1,6 +1,6 @@
 import { Array, Option } from 'effect'
 
-import { isInteractTaken } from './purchase'
+import { isInteractTaken, maybeTapOffer } from './purchase'
 import { SeatAction } from './stepWorld'
 import type { World } from './world'
 
@@ -9,8 +9,8 @@ import type { World } from './world'
 // its own key for each action: player 1 the usual keys, a couch player a
 // block of their own (src/couch.ts).
 
-// NOTE: held to buy at a purchasable (src/purchase.ts) and pressed for
-// READY elsewhere.
+// NOTE: held to buy at a purchasable (src/purchase.ts), pressed to buy at
+// the ammo window, and pressed for READY elsewhere.
 export const INTERACT_KEY = 'Enter'
 
 export type ActionKeys = Readonly<{
@@ -38,13 +38,22 @@ const ACTIONS: ReadonlyArray<readonly [keyof ActionKeys, SeatAction]> = [
   ['placeTrap', SeatAction.PlaceTrap()],
   ['nextTrap', SeatAction.NextTrap()],
   ['ready', SeatAction.Ready()],
+  ['ready', SeatAction.BuyAmmo()],
 ]
 
 // NOTE: at a purchasable the interact key is held to buy (src/purchase.ts),
-// so READY's key, the same key, starts nothing there. `seat` is the World
-// as the pressing seat sees it.
-const isTaken = (seat: World, key: keyof ActionKeys): boolean =>
-  key === 'ready' && isInteractTaken(seat)
+// so READY's key, the same key, starts nothing there; at the ammo window a
+// press of it buys at once. `seat` is the World as the pressing seat sees
+// it.
+const isOpenTo = (seat: World, action: SeatAction): boolean =>
+  SeatAction.matchOrElse(
+    action,
+    {
+      Ready: () => !isInteractTaken(seat),
+      BuyAmmo: () => Option.isSome(maybeTapOffer(seat)),
+    },
+    () => true,
+  )
 
 // NOTE: the seat action a key presses for a seat with these keys, if any.
 export const keyActionOf = (
@@ -55,7 +64,7 @@ export const keyActionOf = (
   Option.map(
     Array.findFirst(
       ACTIONS,
-      ([key]) => keys[key] === code && !isTaken(seat, key),
+      ([key, action]) => keys[key] === code && isOpenTo(seat, action),
     ),
     ([, action]) => action,
   )

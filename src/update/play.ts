@@ -41,6 +41,7 @@ import {
 } from '../onboarding'
 import { dropClip } from '../particles'
 import { isCoop } from '../party'
+import { maybeTapOffer } from '../purchase'
 import { startWave } from '../runFlow'
 import { isAtCounter, isBrowsing } from '../shop'
 import { tallyFrame } from '../stats'
@@ -235,6 +236,25 @@ const reloadHeldGun: UpdateStep = model => {
 const reloadFromKey = (code: string): UpdateStep =>
   stepWhen(model => isKeyFor(model, code, ['Reload']), reloadHeldGun)
 
+// TAP TO BUY
+
+// NOTE: a tap at the ammo window buys there at once (src/purchase.ts,
+// tapToBuy): Enter, the touch hold button, or a click on the tag. The tick
+// after it makes the sale's sound, coins, and Rattles' line, or the
+// refusal's shake.
+const buyAmmo = modelStep(actInHand(SeatAction.BuyAmmo()))
+
+const buyAmmoFromKey = (code: string): UpdateStep =>
+  stepWhen(model => isKeyFor(model, code, ['BuyAmmo']), buyAmmo)
+
+export const buyAmmoFromHoldButton: UpdateStep = stepWhen(
+  model => Option.isSome(maybeTapOffer(model)),
+  buyAmmo,
+)
+
+export const clickAmmoTag: UpdateStep = model =>
+  combine(model, [unlockAudio, buyAmmo])
+
 // PAUSE
 
 const pauseRound = makeStep(() =>
@@ -398,6 +418,7 @@ export const pressedKey = (code: string) =>
       homeFromKey(code),
       trapFromKey(code),
       reloadFromKey(code),
+      buyAmmoFromKey(code),
       playStartSoundWhen(startsRun(model, pressed)),
       playSwapSoundWhen(changedWeapon(model, pressed)),
     ])

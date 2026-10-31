@@ -58,6 +58,7 @@ export const Message = defineMessageUnion({
   },
   ReleasedPointer: { pointerId: Schema.Number },
   PressedHoldButton: { pointerId: Schema.Number },
+  ClickedAmmoTag: {},
   CancelledPointer: { pointerId: Schema.Number },
   ReleasedEveryTouch: {},
   MovedMouse: { clientX: Schema.Number, clientY: Schema.Number },

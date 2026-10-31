@@ -25,10 +25,12 @@ import {
 import { seatCrew, withSeat } from './party'
 import { nextRandom } from './prng'
 import { freshRun } from './runReset'
+import { STALL_BOX } from './shop'
 import { PHONE_PORTRAIT, SURFACE } from './testing'
 import { asVeteran } from './veteran'
+import { freshGun } from './weapons'
 import { type World, withWorld } from './world'
-import type { Arsenal, Life } from './worldSchema'
+import { Arsenal, type Life, type WeaponKind } from './worldSchema'
 
 // SPAWNS
 
@@ -225,6 +227,42 @@ export const atFridge = (balance: number, wave = 5): Model =>
     wallet: () => ({ balance, earned: balance, shown: balance }),
     player: player =>
       modifyFields(player, { x: () => AT_FRIDGE.x, y: () => AT_FRIDGE.y }),
+  })
+
+// THE AMMO WINDOW
+
+const BELOW_STALL = {
+  x: (STALL_BOX.left + STALL_BOX.right) / 2,
+  y: STALL_BOX.bottom + 6,
+}
+
+// NOTE: the Pop Pistol first and `kind` in the hands with `rounds` left.
+const holdingSecond = (kind: WeaponKind, rounds: number): Arsenal =>
+  Arsenal.HoldingSecond({
+    first: freshGun('Pistol'),
+    second: modifyFields(freshGun(kind), { rounds: () => rounds }),
+  })
+
+// NOTE: mid-wave at the stall's ammo window (src/ammoCounter.ts).
+export const midWaveAtStall = (
+  kind: WeaponKind,
+  rounds: number,
+  balance = 100,
+): Model =>
+  modifyFields(freshRunModel(), {
+    phase: () =>
+      Phase.Wave({
+        wave: 5,
+        elapsedMs: 20_000,
+        spawns: [DISTANT_SPAWN],
+      }),
+    wallet: () => ({ balance, earned: balance, shown: balance }),
+    player: player =>
+      modifyFields(player, {
+        x: () => BELOW_STALL.x,
+        y: () => BELOW_STALL.y,
+        arsenal: () => holdingSecond(kind, rounds),
+      }),
   })
 
 // NOTE: a fridge whose stream's next draw lands on `prize`, found by trying
