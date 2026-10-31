@@ -1,9 +1,9 @@
 import { Array, Option, Result, pipe } from 'effect'
 
 import { ZERO_VECTOR, normalize } from './geometry'
+import { type ActionKeys, keyActionOf } from './keyActions'
 import type { Model } from './model'
 import { focusSeat, leadSeatOf, playersOf, shopOf } from './party'
-import { isInteractTaken } from './purchase'
 import {
   type InputsByPlayer,
   SeatAction,
@@ -27,19 +27,14 @@ import {
 // move keys step through the rows, fire buys, and swap walks away. Their
 // READY key is their interact key too: held at a purchasable, it buys.
 
-type CouchKeys = Readonly<{
-  up: string
-  down: string
-  left: string
-  right: string
-  fire: string
-  knife: string
-  swap: string
-  reload: string
-  placeTrap: string
-  nextTrap: string
-  ready: string
-}>
+type CouchKeys = ActionKeys &
+  Readonly<{
+    up: string
+    down: string
+    left: string
+    right: string
+    fire: string
+  }>
 
 const COUCH_KEYS: ReadonlyMap<PlayerSlot, CouchKeys> = new Map([
   [
@@ -205,35 +200,16 @@ const buyActionOf = (model: Model, slot: PlayerSlot): SeatAction =>
       }),
   })
 
-const ACTION_KEYS: ReadonlyArray<readonly [keyof CouchKeys, () => SeatAction]> =
-  [
-    ['swap', () => SeatAction.Swap()],
-    ['knife', () => SeatAction.Melee()],
-    ['reload', () => SeatAction.Reload()],
-    ['placeTrap', () => SeatAction.PlaceTrap()],
-    ['nextTrap', () => SeatAction.NextTrap()],
-    ['ready', () => SeatAction.Ready()],
-  ]
-
-const isReadyTaken = (model: Model, slot: PlayerSlot, key: string): boolean =>
-  key === 'ready' && isInteractTaken(focusSeat(model, slot))
-
 const fieldPress = (
   model: Model,
   { slot, couch }: CouchPress,
   code: string,
 ): Model =>
-  Option.match(
-    Array.findFirst(
-      ACTION_KEYS,
-      ([key]) => couch[key] === code && !isReadyTaken(model, slot, key),
-    ),
-    {
-      onNone: () => model,
-      onSome: ([, action]) =>
-        withWorld(model, world => applySeatAction(world, slot, action())),
-    },
-  )
+  Option.match(keyActionOf(focusSeat(model, slot), couch, code), {
+    onNone: () => model,
+    onSome: action =>
+      withWorld(model, world => applySeatAction(world, slot, action)),
+  })
 
 // NOTE: a couch player's key, held for their intent and applied as their
 // seat's action.

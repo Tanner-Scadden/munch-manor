@@ -4,19 +4,10 @@ import { modifyFields } from 'foldkit/struct'
 
 import { isOnlineRun } from '../coopPlay'
 import { makeStep } from '../definition'
-import {
-  isKnifeKey,
-  isPauseKey,
-  isReloadKey,
-  isStartWaveKey,
-  isSwapKey,
-  maybeTrapChoice,
-  pressKey,
-  releaseAll,
-} from '../input'
+import { isPauseKey, pressKey, releaseAll } from '../input'
+import { playerKeyAction } from '../keyActions'
 import { Message } from '../message'
 import { type Model, type PageVisibility, type ShopItemId } from '../model'
-import { isInteractTaken } from '../purchase'
 import { isAtCounter } from '../shop'
 import { SeatAction, gunSlotAction, trySeatAction } from '../stepWorld'
 import { isRoundActive } from '../waves'
@@ -56,24 +47,6 @@ const buyInRun = (item: ShopItemId) =>
     ]),
   )
 
-// NOTE: at a purchasable the interact key is held to buy, and rides in the
-// intent rather than as a press (src/purchase.ts).
-const keyAction = (model: Model, code: string): Option.Option<SeatAction> => {
-  if (isSwapKey(code)) {
-    return Option.some(SeatAction.Swap())
-  } else if (isKnifeKey(code)) {
-    return Option.some(SeatAction.Melee())
-  } else if (isReloadKey(code)) {
-    return Option.some(SeatAction.Reload())
-  } else if (isStartWaveKey(code) && !isInteractTaken(model)) {
-    return Option.some(SeatAction.Ready())
-  } else {
-    return Option.map(maybeTrapChoice(code), choice =>
-      choice === 'Place' ? SeatAction.PlaceTrap() : SeatAction.NextTrap(),
-    )
-  }
-}
-
 const holdKey =
   (code: string): UpdateStep =>
   stepModel => ({
@@ -91,7 +64,7 @@ const keyInRun = (code: string) =>
   makeStep(model =>
     isAtCounter(model.shop)
       ? Update.combineSteps([holdKey(code), unlockAudio])
-      : Option.match(keyAction(model, code), {
+      : Option.match(playerKeyAction(model, code), {
           onNone: () => Update.combineSteps([holdKey(code), unlockAudio]),
           onSome: action =>
             Update.combineSteps([holdKey(code), pressInRun(action)]),

@@ -14,7 +14,8 @@ import type { SqlClient, SqlError } from 'effect/sql'
 import { describe, expect, it } from '@effect/vitest'
 
 import { type Host, type NetworkOptions, makeHost } from '../src/InProcess'
-import { type Sync, startSync } from '../src/Sync'
+import { startSync } from '../src/Sync'
+import { first, settle } from '../src/Testing'
 import {
   Actor,
   type Envelope,
@@ -120,29 +121,30 @@ const makeTestHost = (
     ...options,
   })
 
-// NOTE: waits, on the real clock, until every device has nothing pending
-// and has confirmed the server's head. The tests that sync run with
-// it.live: they play a network with delays and heartbeats on real time, as
-// a device does. The status tests cover the same sync on the TestClock.
+// NOTE: waits until every device has nothing pending and has confirmed
+// the server's head. Every test runs on it.effect's TestClock: settle
+// moves it, so the network's delays, heartbeats, and resends elapse only as
+// the test waits, and a loaded machine cannot time a session out.
 const settled = (host: Host, devices: ReadonlyArray<Device>) =>
-  Effect.gen(function* () {
-    const server = yield* host.server(SCOPE)
-    const head = yield* server.head
-    const states = yield* Effect.forEach(devices, device =>
-      Effect.all([device.replica.pending, device.replica.confirmedSeq]),
-    )
-    return Array.every(
-      states,
-      ([pending, confirmed]) =>
-        Array.isReadonlyArrayEmpty(pending) && confirmed === head,
-    )
-  }).pipe(
-    Effect.orDie,
-    Effect.repeat({
-      until: done => done,
-      schedule: Schedule.spaced('20 millis'),
-    }),
-    Effect.timeout('20 seconds'),
+  settle(
+    Effect.gen(function* () {
+      const server = yield* host.server(SCOPE)
+      const head = yield* server.head
+      const states = yield* Effect.forEach(devices, device =>
+        Effect.all([device.replica.pending, device.replica.confirmedSeq]),
+      )
+      return Array.every(
+        states,
+        ([pending, confirmed]) =>
+          Array.isReadonlyArrayEmpty(pending) && confirmed === head,
+      )
+    }).pipe(
+      Effect.orDie,
+      Effect.repeat({
+        until: done => done,
+        schedule: Schedule.spaced('20 millis'),
+      }),
+    ),
   )
 
 const serverState = (host: Host) =>
@@ -277,9 +279,9 @@ describe('the server', () => {
         deviceId: 'a',
       })
       const once = yield* envelope('mutation-0001', 4)
-      const first = yield* server.push(owner, [once, once])
+      const firstTry = yield* server.push(owner, [once, once])
       const again = yield* server.push(owner, [once])
-      expect(first.deltas).toHaveLength(1)
+      expect(firstTry.deltas).toHaveLength(1)
       expect(again.deltas).toHaveLength(0)
       expect(again.replies).toEqual([
         { _tag: 'Acked', id: 'mutation-0001', seq: 1 },
@@ -342,15 +344,15 @@ describe('the server', () => {
     Effect.gen(function* () {
       const host = yield* makeTestHost()
       const server = yield* host.server(SCOPE)
-      const first = yield* server.runServer(Stamped, {}, 'server-stamp-1')
+      const firstTry = yield* server.runServer(Stamped, {}, 'server-stamp-1')
       const again = yield* server.runServer(Stamped, {}, 'server-stamp-1')
-      expect(first._tag).toBe('Applied')
+      expect(firstTry._tag).toBe('Applied')
       expect(again._tag).toBe('Duplicate')
       expect(yield* server.head).toBe(1)
     }),
   )
 
-  it.live(
+  it.effect(
     'a far behind client joins with a snapshot, and the log is trimmed',
     () =>
       Effect.gen(function* () {
@@ -456,14 +458,14 @@ describe('convergence over a bad network', () => {
       )
     })
 
-  it.live(
+  it.effect(
     'two devices, drops, duplicates, reorders, and a long offline spell',
     () => scenario(7),
   )
 
-  it.live('the same with another seed', () => scenario(42))
+  it.effect('the same with another seed', () => scenario(42))
 
-  it.live(
+  it.effect(
     'a stranger cannot join, and a follower tab leaves syncing to the leader',
     () =>
       Effect.gen(function* () {
@@ -482,9 +484,11 @@ describe('convergence over a bad network', () => {
           replica: { ...device.replica, role: Effect.succeed('Follower') },
         }
         const following = yield* connect(host, follower, 'tab-2')
-        yield* Effect.sleep('80 millis')
-        const status: Sync['current'] = following.sync.current
-        expect((yield* status)._tag).toBe('Following')
+        const status = yield* first(
+          following.sync.status,
+          current => current._tag === 'Following',
+        )
+        expect(status._tag).toBe('Following')
       }),
   )
 })

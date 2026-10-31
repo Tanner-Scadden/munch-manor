@@ -1,3 +1,4 @@
+import { Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -11,16 +12,13 @@ import { advanceGame, clampFrameDelta, refreshIntent } from '../frame'
 import { isEndScreen } from '../home'
 import {
   type PointerPress,
-  isKnifeKey,
   isPauseKey,
-  isReloadKey,
   isStartKey,
-  isStartWaveKey,
-  isSwapKey,
   pressKey,
   releaseAll,
   releaseKey,
 } from '../input'
+import { playerKeyAction } from '../keyActions'
 import { advanceKitchenTour } from '../kitchenTour'
 import {
   type GunSlot,
@@ -43,7 +41,6 @@ import {
 } from '../onboarding'
 import { dropClip } from '../particles'
 import { isCoop } from '../party'
-import { isInteractTaken } from '../purchase'
 import { startWave } from '../runFlow'
 import { isAtCounter, isBrowsing } from '../shop'
 import { tallyFrame } from '../stats'
@@ -129,12 +126,19 @@ const learnStartWaveWhen = (before: Model, after: Model): Model =>
 const learnSwapWhen = (before: Model, after: Model): Model =>
   changedWeapon(before, after) ? learnSwap(after) : after
 
-// NOTE: at a purchasable the interact key holds to buy (src/purchase.ts),
-// so the same key starts the wave only away from one.
+// NOTE: whether the key presses one of these seat actions, read from the
+// one key table (src/keyActions.ts).
+const isKeyFor = (
+  model: Model,
+  code: string,
+  tags: ReadonlyArray<SeatAction['_tag']>,
+): boolean =>
+  Option.exists(playerKeyAction(model, code), SeatAction.isAnyOf(tags))
+
 const preparationFromKey = (model: Model, code: string): Model => {
   if (isPauseKey(code)) {
     return pause(model)
-  } else if (isStartWaveKey(code) && !isInteractTaken(model)) {
+  } else if (isKeyFor(model, code, ['Ready'])) {
     return startWave(model)
   } else {
     return model
@@ -159,9 +163,9 @@ const swapGun = actInHand(SeatAction.Swap())
 const equipMelee = actInHand(SeatAction.Melee())
 
 const swapFromKey = (model: Model, code: string): Model => {
-  if (isSwapKey(code)) {
+  if (isKeyFor(model, code, ['Swap'])) {
     return swapGun(model)
-  } else if (isKnifeKey(code)) {
+  } else if (isKeyFor(model, code, ['Melee'])) {
     return equipMelee(model)
   } else {
     return model
@@ -230,7 +234,7 @@ const reloadHeldGun: UpdateStep = model => {
 }
 
 const reloadFromKey = (code: string): UpdateStep =>
-  stepWhen(() => isReloadKey(code), reloadHeldGun)
+  stepWhen(model => isKeyFor(model, code, ['Reload']), reloadHeldGun)
 
 // PAUSE
 

@@ -52,6 +52,7 @@ import {
   isInLobby,
   isKickedFrom,
   isPicking,
+  keepTracers,
   learnLobby,
   linkOf,
   maybeRoomOf,
@@ -790,6 +791,10 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
     RequestedPressAction: ({ action }) => ({
       model: pressAction(model, action),
     }),
+
+    RequestedKeepTracers: ({ tracers, fired, looked, confirmed }) => ({
+      model: keepTracers(model, tracers, fired, looked, confirmed),
+    }),
   })
 
 // NOTE: a delivered Message that drops the room tells the parent, unless it
@@ -844,6 +849,7 @@ export const update = CoopComposition.makeUpdate({
   RequestedReleaseKey: requested,
   RequestedTickRoom: requested,
   RequestedPressAction: requested,
+  RequestedKeepTracers: requested,
 })
 
 // HANDLERS

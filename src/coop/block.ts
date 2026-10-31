@@ -25,6 +25,7 @@ const prepare = () =>
       requestReleaseKey: Message.RequestedReleaseKey,
       requestTickRoom: Message.RequestedTickRoom,
       requestPressAction: Message.RequestedPressAction,
+      requestKeepTracers: Message.RequestedKeepTracers,
     },
   })
 export const CoopBlock: Block.FromAssemblyWithViewAndOutMessage<

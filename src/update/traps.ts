@@ -3,7 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from '../arena'
 import { SHAKE_TRAUMA_MAX, TRAP_PLACE_TRAUMA } from '../constants'
-import { type TrapChoice, maybeTrapChoice } from '../input'
+import { playerKeyAction } from '../keyActions'
 import type { Model } from '../model'
 import { puffDust } from '../particles'
 import { ActionRefusal, SeatAction } from '../stepWorld'
@@ -49,15 +49,18 @@ export const nextTrap = (model: Model): UpdateReturn => {
   )(cycled)
 }
 
-const TRAP_CHOICES: Readonly<
-  Record<TrapChoice, (model: Model) => UpdateReturn>
-> = {
-  Place: placeSelectedTrap,
-  Next: nextTrap,
-}
-
+// NOTE: T places the selected trap and G picks the next, read from the one
+// key table (src/keyActions.ts).
 export const trapFromKey: (code: string) => UpdateStep = code => stepModel =>
-  Option.match(maybeTrapChoice(code), {
+  Option.match(playerKeyAction(stepModel, code), {
     onNone: () => ({ model: stepModel }),
-    onSome: choice => TRAP_CHOICES[choice](stepModel),
+    onSome: action =>
+      SeatAction.matchOrElse(
+        action,
+        {
+          PlaceTrap: () => placeSelectedTrap(stepModel),
+          NextTrap: () => nextTrap(stepModel),
+        },
+        () => ({ model: stepModel }),
+      ),
   })

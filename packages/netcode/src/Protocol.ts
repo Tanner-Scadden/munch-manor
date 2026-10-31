@@ -366,17 +366,17 @@ const writeClientFrame = (writer: Writer, frame: ClientFrame) => {
 
 // NOTE: plain objects in the frame's encoded shape, for the Schema to
 // check. Counts are read before their items so a short frame fails fast.
-const readClientFrame = (reader: Reader): unknown => {
-  const tag = pick(CLIENT_TAGS, reader.u8())
-  if (tag === 'Hello') {
-    return {
-      _tag: tag,
-      minVersion: reader.u8(),
-      maxVersion: reader.u8(),
-      token: reader.text(MAX_TOKEN_LENGTH),
-    }
-  }
-  if (tag === 'Input') {
+// NOTE: each tag's reader, exhaustive over the union's tags.
+const CLIENT_READERS: {
+  readonly [Tag in ClientFrame['_tag']]: (reader: Reader) => unknown
+} = {
+  Hello: reader => ({
+    _tag: 'Hello',
+    minVersion: reader.u8(),
+    maxVersion: reader.u8(),
+    token: reader.text(MAX_TOKEN_LENGTH),
+  }),
+  Input: reader => {
     const seq = reader.varint()
     const tick = reader.varint()
     const seen = reader.varint()
@@ -386,7 +386,7 @@ const readClientFrame = (reader: Reader): unknown => {
       throw new WireError({ reason: `${count} samples` })
     }
     return {
-      _tag: tag,
+      _tag: 'Input',
       seq,
       tick,
       seen,
@@ -396,12 +396,17 @@ const readClientFrame = (reader: Reader): unknown => {
         input: readInput(reader),
       })),
     }
-  }
-  if (tag === 'Ping') {
-    return { _tag: tag, nonce: reader.varint(), rttMs: reader.varint() }
-  }
-  return { _tag: tag }
+  },
+  Ping: reader => ({
+    _tag: 'Ping',
+    nonce: reader.varint(),
+    rttMs: reader.varint(),
+  }),
+  Leave: () => ({ _tag: 'Leave' }),
 }
+
+const readClientFrame = (reader: Reader): unknown =>
+  CLIENT_READERS[pick(CLIENT_TAGS, reader.u8())](reader)
 
 const decodeClientSchema = Schema.decodeUnknownResult(ClientFrame)
 
@@ -469,31 +474,30 @@ const writeServerFrame = (writer: Writer, frame: ServerFrame) => {
   })
 }
 
-const readServerFrame = (reader: Reader): ServerFrame => {
-  const tag = pick(SERVER_TAGS, reader.u8())
-  if (tag === 'Welcome') {
-    return ServerFrame.cases.Welcome.make({
+// NOTE: each tag's reader, exhaustive over the union's tags.
+const SERVER_READERS: {
+  readonly [Tag in ServerFrame['_tag']]: (reader: Reader) => ServerFrame
+} = {
+  Welcome: reader =>
+    ServerFrame.cases.Welcome.make({
       version: reader.u8(),
       slot: reader.u8(),
       state: pick(ROOM_STATES, reader.u8()),
       tick: reader.varint(),
-    })
-  }
-  if (tag === 'Refused') {
-    return ServerFrame.cases.Refused.make({
+    }),
+  Refused: reader =>
+    ServerFrame.cases.Refused.make({
       reason: pick(REFUSED_REASONS, reader.u8()),
       minVersion: reader.u8(),
       maxVersion: reader.u8(),
-    })
-  }
-  if (tag === 'Snapshot') {
-    return ServerFrame.cases.Snapshot.make({
+    }),
+  Snapshot: reader =>
+    ServerFrame.cases.Snapshot.make({
       tick: reader.varint(),
       ack: reader.varint(),
       world: reader.rest(),
-    })
-  }
-  if (tag === 'Delta') {
+    }),
+  Delta: reader => {
     const tick = reader.varint()
     const back = reader.varint()
     if (back > tick) {
@@ -515,26 +519,23 @@ const readServerFrame = (reader: Reader): ServerFrame => {
       pings,
       diff: reader.rest(),
     })
-  }
-  if (tag === 'Pong') {
-    return ServerFrame.cases.Pong.make({
+  },
+  Pong: reader =>
+    ServerFrame.cases.Pong.make({
       nonce: reader.varint(),
       tick: reader.varint(),
-    })
-  }
-  if (tag === 'Away') {
-    return ServerFrame.cases.Away.make({ slot: reader.u8() })
-  }
-  if (tag === 'Back') {
-    return ServerFrame.cases.Back.make({ slot: reader.u8() })
-  }
-  if (tag === 'Kicked') {
-    return ServerFrame.cases.Kicked.make({})
-  }
-  return ServerFrame.cases.RoomClosed.make({
-    reason: pick(CLOSED_REASONS, reader.u8()),
-  })
+    }),
+  Away: reader => ServerFrame.cases.Away.make({ slot: reader.u8() }),
+  Back: reader => ServerFrame.cases.Back.make({ slot: reader.u8() }),
+  Kicked: () => ServerFrame.cases.Kicked.make({}),
+  RoomClosed: reader =>
+    ServerFrame.cases.RoomClosed.make({
+      reason: pick(CLOSED_REASONS, reader.u8()),
+    }),
 }
+
+const readServerFrame = (reader: Reader): ServerFrame =>
+  SERVER_READERS[pick(SERVER_TAGS, reader.u8())](reader)
 
 export const encodeServerFrame = (
   frame: ServerFrame,
