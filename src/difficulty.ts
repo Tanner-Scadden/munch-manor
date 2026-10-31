@@ -18,6 +18,7 @@ type DifficultyStats = Readonly<{
   healthScale: number
   speedScale: number
   biteScale: number
+  biteGraceScale: number
   reloadsWhenIdle: boolean
 }>
 
@@ -26,22 +27,26 @@ type DifficultyStats = Readonly<{
 // whole hearts, so it rounds and never drops below one. Normal is 1: the
 // Plank Pile's price, not Normal's scales, pays for how strong boarded doors
 // are. Below Hard a gun also reloads by itself once the trigger rests
-// (src/firing.ts); Hard and Nightmare leave it to R.
+// (src/firing.ts); Hard and Nightmare leave it to R. biteGraceScale
+// stretches the blink after a bite (1 s, 1.5 s on the last heart), so a
+// crowd's bites come further apart below Hard.
 export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Easy: {
     name: 'Easy',
     blurb: 'Just here for the vibes',
-    healthScale: 0.85,
-    speedScale: 0.9,
+    healthScale: 0.6,
+    speedScale: 0.8,
     biteScale: 0.5,
+    biteGraceScale: 2,
     reloadsWhenIdle: true,
   },
   Normal: {
     name: 'Normal',
     blurb: "The way it's meant to be played",
-    healthScale: 1,
-    speedScale: 1,
+    healthScale: 0.75,
+    speedScale: 0.84,
     biteScale: 1,
+    biteGraceScale: 1.5,
     reloadsWhenIdle: true,
   },
   Hard: {
@@ -50,6 +55,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     healthScale: 1.08,
     speedScale: 1.02,
     biteScale: 1,
+    biteGraceScale: 1,
     reloadsWhenIdle: false,
   },
   Nightmare: {
@@ -58,6 +64,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     healthScale: 1.16,
     speedScale: 1.02,
     biteScale: 1.25,
+    biteGraceScale: 1,
     reloadsWhenIdle: false,
   },
 }
@@ -136,6 +143,9 @@ export const reloadsWhenIdle = (difficulty: Difficulty): boolean =>
 
 export const difficultySpeedScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].speedScale
+
+export const biteGraceScale = (difficulty: Difficulty): number =>
+  DIFFICULTIES[difficulty].biteGraceScale
 
 export const biteDamage = (difficulty: Difficulty, damage: number): number =>
   Math.max(1, Math.round(damage * DIFFICULTIES[difficulty].biteScale))

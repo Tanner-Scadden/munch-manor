@@ -185,7 +185,7 @@ These guide tuning. The code does not enforce them.
 - **Telegraph every threat.** Surprise comes from what a warning means, never from a zombie with no warning.
 - **Invisible mercy.** Small hidden help at the edge of death makes close calls more common than deaths.
 - **No rubber banding.** What comes, and from where, is fixed by the seed when Preparation begins.
-- **Measure with the bot, then playtest.** The targets are for the bot, not for people.
+- **Measure with the bot, then playtest.** The targets are for the bot, not for people. Since 2026-10-31 the default bot plays like a person (late reactions, trailing aim, a narrow eye) for Easy and Normal, and the old sharp bot (`AIM=sharp`) stands in for a skilled player on Hard and Nightmare.
 
 #### How balance is checked
 
@@ -197,15 +197,17 @@ Added on 2026-10-29. Three layers, cheapest first. The commands are in `AGENTS.m
 
 **The targets** (in `tools/balance/targets.ts`):
 
-- **Wins.** Normal: the default bot 15 to 25%, `SWAP=1` 30 to 45%. Easy 55 to 70%, Hard about 5 to 12%, Nightmare about 1 to 4%. Portrait is held to the same targets.
+- **Wins.** Normal: the human bot 20 to 35%, `SWAP=1` 30 to 45% (not yet measured on the human bot). Easy 60 to 75% on the human bot. Hard about 5 to 12% and Nightmare about 1 to 4% on `AIM=sharp`. Portrait is held to the same targets. Why these (2026-10-31): the human bot on the old tables lost about as often as real players did (Easy 1%, Normal 0%, against 7% and 4% in production), so Easy should be won by most people who finish a run and Normal by a solid quarter to a third of them, with Hard a real step up for players who aim well.
 - **Where runs die.** Under 3% in waves 1 and 2, under 10% in 3 and 4, about 25 to 35% in 5 and 6, and the most in 7 and 8, with the finale the biggest single wall.
 - **Feel.** A median win of 7 to 9 minutes for today's campaign. 30 to 50% of wins are close calls (down to 1 heart).
 - **Wave length.** The median wave in the snapshot pass: wave 1 at most 40 s, waves 2 to 4 at most 75 s, waves 5 to 7 at most 90 s, wave 8 with the boss at most 120 s.
 - **Dead air.** At most 3 quiet seconds a wave on the mean run and no stretch over 1.2 s in any run. A Story test holds a perfect killer's longest quiet stretch to 1 s.
 
-**Where it stands** (nightly, 2026-10-30, 200 runs a row, after the balance pass: the portrait aim assist, an easier Hard and Nightmare, the Chatter Drum at $20, and rooms bought mid-wave): Easy 56.5%, Normal 16% (`SWAP=1` 46.5%, close calls 41%, median win 10.2 min), Hard 4.5%, Nightmare 0.5%, portrait Normal 14.5% and Easy 54%. 41 of 47 targets in target; the six misses are each within about 2.5 points: `SWAP=1`, Hard, Nightmare, both portrait passes, and Normal deaths in waves 5 and 6 (22.5%). Before that (nightly, 2026-10-29, 200 runs a row): Easy 67%, Normal 16% (`SWAP=1` 37%, close calls 34%, median win 7.9 min), Hard 7%, Nightmare 0%. Out of target: Nightmare (it loses 23% of runs on wave 3's frenzied pincer; try Nightmare speed ×1.02 or a gentler wave 3 on Nightmare only) and Normal deaths in waves 5 and 6 (23%). The bot that never buys planks wins 4.5% on Normal, so planks earn their keep without carrying the game. The latest numbers are in `tools/balance/baseline.json` and each nightly report.
+**Where it stands** (2026-10-31, 100 run batches of the human bot, not yet a nightly): on the old tables Easy 1% and Normal 0% (Normal died on wave 3 in 43% of runs; hearts lost 50% to Groaners, 38% to Hotfoots). After the easing: Easy 65% (before the boss's health fix, which only helps), Normal 29% (deaths by wave 0, 0, 1, 5, 6, 12, 20, 4, 10, 13%; median win 10.1 min; close calls 66%). Out of target or unmeasured: Normal deaths in waves 5 and 6 (18% against 25 to 35%), close calls (66% against 30 to 50%), `SWAP=1`, the portrait passes, and Hard and Nightmare on `AIM=sharp` (their tables did not change). The baseline is from the sharp bot until the next nightly rewrites it.
 
-**The bot** (`tools/balance/simulate.ts`, always through `bun run balance`). It keeps away from the nearest zombie within 36 px, re-aims every 5 frames with some hand shake, shops from a fixed list, boards the busiest doors, sets gnomes near the middle, and starts each wave at once. It dodges every floor tell and focuses the boss unless a zombie is close. Switches such as `SWAP=1`, `NO_GNOME=1`, `NO_PLANKS=1`, `KITE=1`, `DIFFICULTY=`, `VIEW=portrait`, `TIMELINE=1`, and `TUNE=file.ts` are in `tools/balance/README.md`.
+Before that (nightly, 2026-10-30, the sharp bot, 200 runs a row, after the balance pass: the portrait aim assist, an easier Hard and Nightmare, the Chatter Drum at $20, and rooms bought mid-wave): Easy 56.5%, Normal 16% (`SWAP=1` 46.5%, close calls 41%, median win 10.2 min), Hard 4.5%, Nightmare 0.5%, portrait Normal 14.5% and Easy 54%. 41 of 47 targets in target; the six misses are each within about 2.5 points: `SWAP=1`, Hard, Nightmare, both portrait passes, and Normal deaths in waves 5 and 6 (22.5%). Before that (nightly, 2026-10-29, 200 runs a row): Easy 67%, Normal 16% (`SWAP=1` 37%, close calls 34%, median win 7.9 min), Hard 7%, Nightmare 0%. Out of target: Nightmare (it loses 23% of runs on wave 3's frenzied pincer; try Nightmare speed ×1.02 or a gentler wave 3 on Nightmare only) and Normal deaths in waves 5 and 6 (23%). The bot that never buys planks wins 4.5% on Normal, so planks earn their keep without carrying the game. The latest numbers are in `tools/balance/baseline.json` and each nightly report.
+
+**The bot** (`tools/balance/simulate.ts`, always through `bun run balance`). It plays like a person (`tools/balance/bot/hand.ts`): about 300 ms from picking a target to its first shot, a first flick that misses and settles, aim that trails a moving target, sticky targets, a step every 200 ms, and it flees only the zombies near its aim or within earshot. `AIM=sharp` drops those limits. It keeps away from the nearest zombie within 36 px, re-aims every 5 frames with some hand shake, shops from a fixed list, boards the busiest doors, sets gnomes near the middle, and starts each wave at once. It dodges every floor tell and focuses the boss unless a zombie is close. Switches such as `SWAP=1`, `NO_GNOME=1`, `NO_PLANKS=1`, `KITE=1`, `DIFFICULTY=`, `VIEW=portrait`, `TIMELINE=1`, and `TUNE=file.ts` are in `tools/balance/README.md`.
 
 - **Caveats.** The bot never stands in a doorway, plays Preparation in seconds, steps off every landing mark at once, and backs off anything within 36 px. A person feels the peaks, the Big Leaguer's throws, and the Ankle Biter's grabs far more. Playtest before trusting any of it.
 
@@ -631,16 +633,20 @@ From owner feedback on 2026-10-29 ("zombies are spawning behind the windows that
 
 #### Difficulty levels
 
-Four levels scale zombie health, speed, and bites on top of the wave's scales, the boss and endless too. Kinds, doors, and timing are the same on every level, so the preview stays exact.
+Four levels scale zombie health, speed, and bites on top of the wave's scales, the boss and endless too, and stretch the blink after a bite (1 s, 1.5 s on the last heart, on Hard). Kinds, doors, and timing are the same on every level, so the preview stays exact.
 
-| Level     | Health | Speed | Bite  | Groaner bite | Big Lug and boss bite |
-| --------- | ------ | ----- | ----- | ------------ | --------------------- |
-| Easy      | ×0.85  | ×0.9  | ×0.5  | 1 heart      | 1 heart               |
-| Normal    | ×1     | ×1    | ×1    | 1 heart      | 2 hearts              |
-| Hard      | ×1.08  | ×1.02 | ×1    | 1 heart      | 2 hearts              |
-| Nightmare | ×1.16  | ×1.02 | ×1.25 | 1 heart      | 3 hearts              |
+| Level     | Health | Speed | Bite  | Bite blink | Groaner bite | Big Lug and boss bite |
+| --------- | ------ | ----- | ----- | ---------- | ------------ | --------------------- |
+| Easy      | ×0.6   | ×0.8  | ×0.5  | ×2         | 1 heart      | 1 heart               |
+| Normal    | ×0.75  | ×0.84 | ×1    | ×1.5       | 1 heart      | 2 hearts              |
+| Hard      | ×1.08  | ×1.02 | ×1    | ×1         | 1 heart      | 2 hearts              |
+| Nightmare | ×1.16  | ×1.02 | ×1.25 | ×1         | 1 heart      | 3 hearts              |
 
-From owner feedback on 2026-10-29 ("make planks more expensive instead of tweaking Normal"): Normal stays ×1, and the Plank Pile costs $40.
+Health rounds to whole hit points, so on Normal a Groaner takes 2 shots instead of 3 on every wave, and on Easy a Hotfoot takes 1.
+
+**Eased for people, 2026-10-31** (the owner: Easy/Normal are too hard, and the balance bot has aim bot). Production's first 91 solo runs over three days: Easy won 1 of 15, Normal 1 of 51, Hard 3 of 22; runs died mostly on waves 1 to 4 (13, 7, 16, and 6 deaths), the last bite a Groaner's 54% of the time and a Hotfoot's 43%. The bot won 56.5% on Easy and 16% on Normal, and almost never died before wave 5. So the bot became a person (see "How balance is checked"): with the old tables it won 1% on Easy and 0% on Normal, died on wave 3 in 43% of Normal runs, and lost half its hearts to Groaners and most of the rest to Hotfoots, as real players do. Easy and Normal were then eased on it: health ×0.85 to ×0.6 and ×1 to ×0.75, speed ×0.9 to ×0.8 and ×1 to ×0.84, and a longer blink after a bite (×2 and ×1.5). The boss now takes the level's health below ×1 too (before, a level under ×1 left him at 90). Hard and Nightmare keep their feel and are measured on the sharp bot.
+
+From owner feedback on 2026-10-29 ("make planks more expensive instead of tweaking Normal"): Normal stayed ×1 (until 2026-10-31, above), and the Plank Pile costs $40.
 
 Eased on 2026-10-30 in the balance pass, with the owner's approval: Hard health ×1.12 to ×1.08 (Kaboomers 7 hp to 6, the same as Normal) and Nightmare health ×1.18 to ×1.16 and speed ×1.04 to ×1.02 (×1.18 rounded every Groaner from 3 hp to 4 on every wave; ×1.16 keeps 3 outside waves 7 and 8). Hard won 4.5% and Nightmare 0%; in 100 run sorts they won 10% and 1%, and in the 2026-10-30 nightly (200 runs, with the $20 Chatter Drum) 4.5% and 0.5%, still just under their targets. Fewer runs die early (Hard waves 5 and 6: 35.5% to 24%; Nightmare waves 3 and 4: 35.5% to 2%), and more now reach the later walls.
 

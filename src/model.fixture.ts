@@ -8,6 +8,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { levelOf, openExitIn } from './arena'
 import { PLAYER_MAX_HP, PREPARATION_MS } from './constants'
+import { biteGraceScale } from './difficulty'
 import { KITCHEN_EXIT } from './exits'
 import { fridgeBoxOf, pickPrize, prizeWeights } from './leftovers'
 import {
@@ -31,6 +32,10 @@ import { asVeteran } from './veteran'
 import { freshGun } from './weapons'
 import { type World, withWorld } from './world'
 import { Arsenal, type Life, type WeaponKind } from './worldSchema'
+
+// The stretch of the blink after a bite on Normal, where the named Models
+// play: a bite's invulnerability is the base times this.
+export const NORMAL_BITE_GRACE = biteGraceScale('Normal')
 
 // SPAWNS
 

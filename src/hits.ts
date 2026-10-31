@@ -16,7 +16,7 @@ import {
   PLAYER_RADIUS,
   ZOMBIE_BUMP_SPEED,
 } from './constants'
-import { biteDamage } from './difficulty'
+import { biteDamage, biteGraceScale } from './difficulty'
 import {
   ZERO_VECTOR,
   circlesOverlap,
@@ -387,6 +387,7 @@ const bitePlayer = (model: World, attacker: Zombie): World => {
         player,
         biteDamage(model.difficulty.chosen, statsOf(attacker).contactDamage),
         direction,
+        biteGraceScale(model.difficulty.chosen),
       ),
     zombies: Array.map(bumpAttacker(attacker, direction)),
     frameEvents: Array.append(

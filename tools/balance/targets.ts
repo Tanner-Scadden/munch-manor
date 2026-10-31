@@ -43,7 +43,9 @@ const TARGETS_SECTION = 'How balance is checked: the targets'
 const PRINCIPLES = 'Difficulty principles: sawtooth intensity'
 
 // NOTE: the incoming health a second at a peak, against the player's damage
-// a second, as the analytical model measures it on Normal.
+// a second, as the analytical model measures it on Hard. Since 2026-10-31
+// Easy and Normal scale the waves down for the human bot, whose misses the
+// model's hit shares leave out, so the waves' sawtooth is held on Hard.
 export const PEAK_RATIO_TARGET: Readonly<{ min: number; max: number }> = {
   min: 1.5,
   max: 2.5,
@@ -116,12 +118,14 @@ export const PORTRAIT_PAIRS: ReadonlyArray<PortraitPair> = [
 // two of those.
 export const PORTRAIT_GAP_TOLERANCE = 0.08
 
+// NOTE: Easy and Normal are held on the human bot, Hard and Nightmare on
+// AIM=sharp (decided 2026-10-31, see suite.ts's jobs).
 const WIN_TARGETS: ReadonlyArray<Target> = [
   between(
     'normal.wins',
     'Normal wins (default bot)',
-    0.15,
-    0.25,
+    0.2,
+    0.35,
     TARGETS_SECTION,
   ),
   between(
@@ -131,9 +135,15 @@ const WIN_TARGETS: ReadonlyArray<Target> = [
     0.45,
     TARGETS_SECTION,
   ),
-  between('easy.wins', 'Easy wins', 0.55, 0.7, TARGETS_SECTION),
-  between('hard.wins', 'Hard wins', 0.05, 0.12, TARGETS_SECTION),
-  between('nightmare.wins', 'Nightmare wins', 0.01, 0.04, TARGETS_SECTION),
+  between('easy.wins', 'Easy wins', 0.6, 0.75, TARGETS_SECTION),
+  between('hard.wins', 'Hard wins (AIM=sharp)', 0.05, 0.12, TARGETS_SECTION),
+  between(
+    'nightmare.wins',
+    'Nightmare wins (AIM=sharp)',
+    0.01,
+    0.04,
+    TARGETS_SECTION,
+  ),
 ]
 
 // NOTE: portrait is judged against the same win targets as landscape.
@@ -195,8 +205,8 @@ export const TARGETS: ReadonlyArray<Target> = [
   ),
   ...PEAK_RATIO_WAVES.map(wave =>
     between(
-      `model.normal.peakRatio.w${wave}`,
-      `Model: wave ${wave} peak incoming hp/s over player dps (Normal)`,
+      `model.hard.peakRatio.w${wave}`,
+      `Model: wave ${wave} peak incoming hp/s over player dps (Hard)`,
       PEAK_RATIO_TARGET.min,
       PEAK_RATIO_TARGET.max,
       PRINCIPLES,

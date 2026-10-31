@@ -206,10 +206,15 @@ describe('a wave as a flow of health', () => {
 
 const MODEL = balanceModel()
 const normal = MODEL.Normal
+// NOTE: the sawtooth is held on Hard, whose scales are the waves' own feel
+// for a sharp player (the AIM=sharp bot). Since 2026-10-31 Easy and Normal
+// scale the same waves down for the human bot, whose misses the model's
+// hit shares do not count, so their peaks read low against its damage.
+const sawtooth = MODEL.Hard
 const ratioOf = (wave: number): number =>
   Option.getOrElse(
     Option.map(
-      Array.findFirst(normal, row => row.wave === wave),
+      Array.findFirst(sawtooth, row => row.wave === wave),
       ({ peakRatio }) => peakRatio,
     ),
     () => 0,
@@ -252,7 +257,7 @@ const sumOf = (values: ReadonlyArray<number>) => Number.sumAll(values)
 describe('guardrails from GAME_DESIGN.md', () => {
   PEAK_RATIO_WAVES.forEach(wave =>
     guardrail(
-      `wave ${wave} peak incoming hp/s is ${PEAK_RATIO_TARGET.min} to ${PEAK_RATIO_TARGET.max} times the player's dps on Normal`,
+      `wave ${wave} peak incoming hp/s is ${PEAK_RATIO_TARGET.min} to ${PEAK_RATIO_TARGET.max} times the player's dps on Hard`,
       PEAK_STANDING[wave] ?? 'NotYet',
       ratioOf(wave).toFixed(2),
       () => inPeakRange(ratioOf(wave)),
@@ -275,10 +280,10 @@ describe('guardrails from GAME_DESIGN.md', () => {
     () => sumOf([1, 2, 3, 4].map(ratioOf)) < sumOf([5, 6, 7, 8].map(ratioOf)),
   )
 
-  const drops = normal
+  const drops = sawtooth
     .slice(1)
     .flatMap((row, index) =>
-      row.peakRatio + 0.05 < (normal[index]?.peakRatio ?? 0)
+      row.peakRatio + 0.05 < (sawtooth[index]?.peakRatio ?? 0)
         ? [`wave ${row.wave} ${row.peakRatio.toFixed(2)}`]
         : [],
     )
