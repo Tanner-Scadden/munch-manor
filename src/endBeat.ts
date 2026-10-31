@@ -462,23 +462,13 @@ export const lensOf = (model: Model): Option.Option<Lens> =>
 // AN ONLINE ROOM
 
 // NOTE: in an online co-op run the room is back in its lobby as soon as the
-// run ends, so the lobby waits behind the end card for the beat and a few
-// seconds more, or until a press lets it in. Every player sees the same.
-const RUN_CARD_HOLD_MS = 6000
-
-const runCardEndMs = (kind: EndKind): number => doneMs(kind) + RUN_CARD_HOLD_MS
-
+// run ends, so the lobby waits behind the end card until the player picks:
+// RUN IT BACK readies them from the card, LOBBY lets the lobby in, and
+// LEAVE leaves the room. The card holds until then, so its buttons never
+// vanish under a finger; a next run started from it ends it too.
 export const isRunCardHeld = (model: Model): boolean =>
-  Option.exists(endKindOf(model), kind => model.screenMs < runCardEndMs(kind))
+  Option.isSome(endKindOf(model)) && !model.isRunCardDropped
 
-// NOTE: a press skips the beat first, and then lets the lobby in.
+// NOTE: LOBBY lets the lobby in, beat or no beat.
 export const dropRunCard = (model: Model): Model =>
-  Option.match(endKindOf(model), {
-    onNone: () => model,
-    onSome: kind =>
-      isBeatOver(model)
-        ? modifyFields(model, {
-            screenMs: screenMs => Math.max(screenMs, runCardEndMs(kind)),
-          })
-        : skipBeat(model),
-  })
+  modifyFields(model, { isRunCardDropped: () => true })

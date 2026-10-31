@@ -34,6 +34,7 @@ import {
   ROOT,
   SCENE_SUBSCRIPTIONS,
   emitPressedKey,
+  endButtons,
   keepGoingButton,
   manorButton,
   measureSurface,
@@ -57,7 +58,6 @@ const menuButton = role('button', { name: /^Menu: back/ })
 const shareButton = role('button', { name: 'Share your run' })
 const copiedButton = role('button', { name: 'Share: copied' })
 const updateNote = selector('.mode-button-gift')
-const endButtons = all.selector('.end-actions .end-button')
 const menuOnlyButtons = all.selector('.mode-choice .mode-button')
 
 const END_PHASES: ReadonlyArray<readonly [string, Phase]> = [

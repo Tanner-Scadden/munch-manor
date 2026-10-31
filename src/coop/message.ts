@@ -70,6 +70,8 @@ export const Message = defineMessageUnion({
     isPictureHeld: Schema.Boolean,
   },
   RequestedPressAction: { action: SeatAction },
+  RequestedToggleReady: {},
+  RequestedLeave: {},
   RequestedKeepTracers: {
     tracers: Schema.Array(Bullet),
     fired: Schema.Number,

@@ -69,8 +69,8 @@ import { readoutOf } from './seam'
 
 // INPUTS
 
-// NOTE: `isRunCardUp` while the root's end card plays a run's end, so the
-// lobby waits behind it and every player sees the same beat first.
+// NOTE: `isRunCardUp` while the root's end card shows a run's end, so the
+// lobby waits behind it until the player picks one of the card's buttons.
 export type ViewInputs = Readonly<{
   look: Appearance
   isKeyboard: boolean
@@ -982,38 +982,41 @@ const arenaView = (room: Room, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
+// NOTE: while the root's end card is up the room's choices are its buttons
+// (RUN IT BACK, LOBBY, LEAVE in src/menus.ts), so co-op draws nothing over
+// it: no scrim, and nothing to take a tap.
 const roomView = (
   room: Room,
   inputs: ViewInputs,
   h: HtmlBuilder<Message>,
 ): Html => {
-  if (!isInLobby(room)) {
+  if (inputs.isRunCardUp) {
+    return h.empty
+  } else if (!isInLobby(room)) {
     return arenaView(room, h)
-  } else if (inputs.isRunCardUp) {
-    return holdView(room, h)
   } else {
     return lobbyView(room, inputs, h)
   }
 }
 
-// NOTE: the run's end card stays up a moment after the room is back in its
-// lobby, with only LEAVE over it.
-const holdView = (room: Room, h: HtmlBuilder<Message>): Html =>
-  h.div(
-    [h.Class('coop-arena')],
-    [h.div([h.Class('coop-arena-hud')], [leaveButtonView(room, h)])],
-  )
-
 // VIEW
 
-const screenName = (model: Model): string =>
+const roomScreenName = (room: Room, inputs: ViewInputs): string => {
+  if (inputs.isRunCardUp) {
+    return 'RunCard'
+  } else {
+    return isInLobby(room) ? 'Lobby' : 'Arena'
+  }
+}
+
+const screenName = (model: Model, inputs: ViewInputs): string =>
   Screen.match(model.screen, {
     Closed: () => 'Closed',
     Hub: () => 'Hub',
     Code: () => 'Code',
     Asking: () => 'Asking',
     Queue: () => 'Queue',
-    InRoom: ({ room }) => (isInLobby(room) ? 'Lobby' : 'Arena'),
+    InRoom: ({ room }) => roomScreenName(room, inputs),
   })
 
 export const view = CoopComposition.makeView.withInputs<ViewInputs>(
@@ -1023,7 +1026,7 @@ export const view = CoopComposition.makeView.withInputs<ViewInputs>(
       : h.section(
           [
             h.Class('coop'),
-            h.DataAttribute('screen', screenName(model)),
+            h.DataAttribute('screen', screenName(model, inputs)),
             h.AriaLabel('Co-op'),
           ],
           [

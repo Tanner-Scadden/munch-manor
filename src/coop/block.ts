@@ -25,6 +25,8 @@ const prepare = () =>
       requestReleaseKey: Message.RequestedReleaseKey,
       requestTickRoom: Message.RequestedTickRoom,
       requestPressAction: Message.RequestedPressAction,
+      requestToggleReady: Message.RequestedToggleReady,
+      requestLeave: Message.RequestedLeave,
       requestKeepTracers: Message.RequestedKeepTracers,
     },
   })
