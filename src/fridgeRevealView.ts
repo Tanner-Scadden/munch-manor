@@ -23,11 +23,11 @@ import {
   type Sprite,
   bakeShapes,
   group,
-  gunIcon,
   placeAt,
   placeScaled,
   spriteShapes,
 } from './sprite'
+import { gunIcon } from './sprites/guns'
 import { heldSlotOf } from './weapons'
 
 // What a fridge pull looks like (src/fridgeReveal.ts), drawn on the overlay

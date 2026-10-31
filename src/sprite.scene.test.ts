@@ -9,10 +9,7 @@ import { COIN_SPRITE, GLYPH_SPRITES } from './font'
 import type { Message } from './message'
 import { defaultAppearance } from './model'
 import {
-  BARRICADE_SPRITES,
-  PICKUP_SPRITES,
   type Palette,
-  ZOMBIE_SPRITES,
   bakeShapes,
   group,
   placeAt,
@@ -20,6 +17,9 @@ import {
   spriteShapes,
 } from './sprite'
 import { standInKeyOf, useSpriteAtlas, useSpriteMode } from './spriteAtlas'
+import { PICKUP_SPRITES } from './sprites/pickups'
+import { BARRICADE_SPRITES } from './sprites/traps'
+import { ZOMBIE_SPRITES } from './sprites/zombies'
 import { decodePng, hexOf } from './testPng'
 import { imagesIn } from './testing'
 

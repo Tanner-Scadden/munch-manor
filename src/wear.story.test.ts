@@ -25,12 +25,12 @@ import {
   ZombieKind,
 } from './model'
 import { quietWave } from './model.fixture'
+import { frameAt } from './sprite'
 import {
   KABOOMER_FUSE_MAX,
   ZOMBIE_SPRITES,
-  frameAt,
   kaboomerFuseTip,
-} from './sprite'
+} from './sprites/zombies'
 import { bulletInto, tick, zombieOf } from './testing'
 import { PlaySound } from './update/sound'
 import { zombieHealthBarShapes } from './zombieView'

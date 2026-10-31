@@ -38,7 +38,7 @@ import {
   type Zombie,
 } from './model'
 import { newPlayerReady } from './model.fixture'
-import { BOSS_ICON } from './sprite'
+import { BOSS_ICON } from './sprites/zombies'
 import { bulletInto, tick, ticks, zombieOf } from './testing'
 import { wavePreviewShapes } from './wavePreview'
 import { FINAL_WAVE, WAVE_PLANS, hpScaleFor, rollSpawns } from './waves'

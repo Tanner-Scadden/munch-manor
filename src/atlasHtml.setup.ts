@@ -24,6 +24,9 @@ useSpriteAtlas({
   sources: [ATLAS_SHEET],
   entries: new Proxy<Record<string, AtlasEntry>>(
     {},
-    { get: (_entries, key) => (typeof key === 'string' ? placeOf(key) : undefined) },
+    {
+      get: (_entries, key) =>
+        typeof key === 'string' ? placeOf(key) : undefined,
+    },
   ),
 })

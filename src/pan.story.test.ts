@@ -37,7 +37,7 @@ import {
   stepRoomWorld,
 } from './roomWorld'
 import { purchase } from './shop'
-import { gunIcon } from './sprite'
+import { gunIcon } from './sprites/guns'
 import { SeatAction } from './stepWorld'
 import {
   SURFACE,

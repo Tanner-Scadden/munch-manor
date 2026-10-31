@@ -3,6 +3,7 @@ import type { Html } from 'foldkit/html'
 
 import { levelOf } from './arena'
 import { cameraOf, viewBoxOf, worldToView } from './camera'
+import { Tour } from './clientSchema'
 import type { ApplicationViewBuilder } from './composition'
 import {
   QUEST_STEPS,
@@ -28,7 +29,7 @@ import { fridgeBoxOf } from './leftovers'
 import { Message } from './message'
 import type { Model } from './model'
 import { STALL_BOX } from './shop'
-import { Tour, type Vector } from './worldSchema'
+import type { Vector } from './worldSchema'
 
 // NOTE: the guided tutorial's tracker, in the corner under the hearts: a
 // chapter's steps as icons, the current one lit with its one word, the done

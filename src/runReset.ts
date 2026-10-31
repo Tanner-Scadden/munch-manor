@@ -1,5 +1,6 @@
 import { MANOR, startingLevel } from './arena'
 import { cameraFor } from './camera'
+import { PrizeFlight, RunTally, cosmeticSeedOf } from './clientSchema'
 import { ZERO_VECTOR } from './geometry'
 import { deriveIntent } from './input'
 import { freshOvens } from './kitchen'
@@ -11,14 +12,11 @@ import {
   DebutCard,
   FIRST_SHOP_CATEGORY,
   Party,
-  PrizeFlight,
   Purchase,
-  RunTally,
   ShopState,
   Streak,
   TrapNotice,
   calmPacing,
-  cosmeticSeedOf,
   emptyTrapStock,
   emptyWallet,
   freshLoot,

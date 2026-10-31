@@ -27,7 +27,8 @@ import {
   type ZombieKind,
 } from './model'
 import { type Box, screenOf } from './screen'
-import { BOSS_ICON, ZOMBIE_SPRITES, group } from './sprite'
+import { group } from './sprite'
+import { BOSS_ICON, ZOMBIE_SPRITES } from './sprites/zombies'
 import {
   type DoorCount,
   type KindCount,

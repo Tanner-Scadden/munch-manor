@@ -48,20 +48,22 @@ import {
 } from './model'
 import {
   type Facing,
-  KABOOMER_FUSE_MAX,
   type Sprite,
   type SpriteFrames,
   type SpriteSet,
   type Tone,
-  ZOMBIE_SPRITES,
   bakeShapes,
   frameAt,
   group,
+  placeAt,
+} from './sprite'
+import {
+  KABOOMER_FUSE_MAX,
+  ZOMBIE_SPRITES,
   kaboomerFuseSprite,
   kaboomerFuseTip,
-  placeAt,
   wornFramesAt,
-} from './sprite'
+} from './sprites/zombies'
 import {
   Behavior,
   type DeathStyle,

@@ -374,17 +374,12 @@
     {
       // NOTE: known exceptions to max-lines today. Split one, then drop it here.
       "files": [
-        "src/audio.ts",
         "src/boss.story.test.ts",
-        "src/particles.ts",
         "src/room.ts",
-        "src/screens.ts",
         "src/shop.story.test.ts",
         "src/simulation.ts",
-        "src/sprite.ts",
         "src/story.test.ts",
         "src/waves.ts",
-        "src/worldSchema.ts",
         "tools/audit/harness/entry.ts",
         "tools/balance/bot.ts",
         "tools/heavy/decision.test.ts"

@@ -1,6 +1,7 @@
 import { Array, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { AmmoTip } from './clientSchema'
 import type { Model } from './model'
 import { isCoop } from './party'
 import {
@@ -11,13 +12,7 @@ import {
   magazineOf,
   startingRounds,
 } from './weapons'
-import {
-  AmmoTip,
-  type CarriedGun,
-  GameEvent,
-  Phase,
-  type Player,
-} from './worldSchema'
+import { type CarriedGun, GameEvent, Phase, type Player } from './worldSchema'
 
 // NOTE: how close a gun with limited ammo is to running out, from a
 // playtest where a player traded up to the Chatterbox and died the first

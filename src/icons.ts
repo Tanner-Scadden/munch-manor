@@ -1,7 +1,8 @@
 import { Array, Record, pipe } from 'effect'
 
 import type { Difficulty, TrapKind } from './model'
-import { type Palette, TRAP_ICON_PIXELS, pixelRuns } from './sprite'
+import { type Palette, pixelRuns } from './sprite'
+import { TRAP_ICON_PIXELS } from './sprites/traps'
 
 // PIXEL ICONS
 

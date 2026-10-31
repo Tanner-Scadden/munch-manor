@@ -3,16 +3,14 @@ import { Array, Option, String, pipe } from 'effect'
 import { textPixels } from './font'
 import type { HintIcon } from './onboarding'
 import {
-  GNOME_PALETTE,
-  GNOME_PIXELS,
   type Palette,
   type Sprite,
   TOP_LEFT,
-  TRAP_ICON_PIXELS,
   bakeShapes,
   group,
   spriteRects,
 } from './sprite'
+import { GNOME_PALETTE, GNOME_PIXELS, TRAP_ICON_PIXELS } from './sprites/traps'
 
 // NOTE: the tutorial's pictures. Each icon is a few frames of pixel art,
 // every frame baked once into one sprite image as the game loads, and the

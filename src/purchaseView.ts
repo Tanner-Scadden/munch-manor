@@ -29,10 +29,10 @@ import {
   TOP_LEFT,
   bakeShapes,
   group,
-  gunIcon,
   placeAt,
   spriteShapes,
 } from './sprite'
+import { gunIcon } from './sprites/guns'
 import { AMMO_BOX, AMMO_BOX_WIDTH } from './stallBubble'
 import { hasPan, heldGun, maybeReplacedGun } from './weapons'
 import { FridgeDoor } from './worldSchema'

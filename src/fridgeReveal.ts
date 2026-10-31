@@ -2,6 +2,7 @@ import { Array, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
+import { PrizeFlight } from './clientSchema'
 import { FRIDGE_SPIN_STEPS_MS } from './constants'
 import { FRIDGE_RULES, PRIZE_ORDER, fridgeBoxOf } from './leftovers'
 import type { Model } from './model'
@@ -13,7 +14,6 @@ import {
   FridgeDoor,
   type FridgePrize,
   GameEvent,
-  PrizeFlight,
   type Vector,
   type WeaponKind,
 } from './worldSchema'
