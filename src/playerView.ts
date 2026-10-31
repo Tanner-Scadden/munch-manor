@@ -1,7 +1,7 @@
 import { Array, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
-import { playerSprites } from './appearance'
+import { PLAYER_WIDTH, playerSprites } from './appearance'
 import {
   MUZZLE_FLASH_BIG_MS,
   MUZZLE_FLASH_CORE_COLOR,
@@ -25,6 +25,7 @@ import {
 } from './constants'
 import {
   AIMING_UP,
+  QUARTER_TURN,
   UNIT_SCALE,
   centeredRect,
   footPosition,
@@ -280,6 +281,56 @@ export const playerShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
     shapes: heldSprite(player, weapon, tier, angle + swingTurn(weapon, recoil)),
   })
   return player.facing.y < AIMING_UP ? [gun, body] : [body, gun]
+}
+
+// KNOCKED OVER
+
+// NOTE: how a co-op player who is out of the fight lies on the floor:
+// Downed, crawling on (decided row 4), or BledOut, a still body until the
+// break brings them back.
+export type Lying = 'Downed' | 'BledOut'
+
+// NOTE: the body's middle over its feet, and how far it drops once turned
+// a quarter, so the lying body rests on the floor where the player stood.
+const BODY_MIDDLE_PX = 6
+const LYING_DROP_PX = BODY_MIDDLE_PX - PLAYER_WIDTH / 2
+const CRAWL_FRAME_MS = PLAYER_WALK_FRAME_MS * 2
+const BLED_OUT_OPACITY = 0.55
+
+const lyingFrames = (model: Model, lying: Lying): SpriteSet => {
+  const sprites = playerSprites(model.appearance)
+  return lying === 'Downed' && vectorLength(model.intent.move) > 0
+    ? frameAt(sprites.walk, Math.floor(model.elapsedMs / CRAWL_FRAME_MS))
+    : frameAt(sprites.idle, 0)
+}
+
+// NOTE: the player's own sprites turned a quarter about the body's middle,
+// head toward where they face, with no gun in hand: the same images, so
+// nothing new is baked. Crawling plays the walk slower; a bled-out body
+// lies still and faded.
+export const lyingShapes = (
+  model: Model,
+  lying: Lying,
+): ReadonlyArray<Canvas.Shape> => {
+  const { player } = model
+  const facing: Facing = player.facing.x < 0 ? 'Left' : 'Right'
+  const foot = footPosition(player, PLAYER_FOOT_OFFSET)
+  return [
+    group({
+      translate: { x: foot.x, y: foot.y - BODY_MIDDLE_PX + LYING_DROP_PX },
+      rotate: facing === 'Left' ? -QUARTER_TURN : QUARTER_TURN,
+      opacity: lying === 'BledOut' ? BLED_OUT_OPACITY : playerOpacity(player),
+      shapes: [
+        group({
+          translate: { x: 0, y: BODY_MIDDLE_PX },
+          shapes:
+            lyingFrames(model, lying)[
+              lying === 'BledOut' ? 'Normal' : playerTone(player)
+            ][facing],
+        }),
+      ],
+    }),
+  ]
 }
 
 // NOTE: the knife in hand rests where the gun would; mid-slash the thrust
