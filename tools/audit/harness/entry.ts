@@ -177,7 +177,7 @@ type InitCommand = Command.Command<
 const asInitCommands = (
   commands: ReadonlyArray<Director.GameCommand>,
 ): ReadonlyArray<InitCommand> =>
-  // oxlint-disable-next-line typescript/consistent-type-assertions
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- init Commands typed with root Messages only (NOTE above)
   commands as ReadonlyArray<InitCommand>
 
 const harnessInit = ApplicationComposition.makeInit(() => {

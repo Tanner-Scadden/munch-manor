@@ -761,6 +761,51 @@ const liveTestNote = defineRule({
   },
 })
 
+// NOTE: a comment that silences a rule: oxlint's or the Effect language
+// service's.
+const SILENCER = /^\s*(oxlint-disable|@effect-diagnostics)/
+
+// NOTE: how far above a silencer its NOTE may sit, so a NOTE over a short
+// expression still covers the disable inside it.
+const NOTE_REACH_LINES = 6
+
+const disableNeedsReason = defineRule({
+  meta: {
+    type: 'suggestion',
+    docs: {
+      description:
+        'A comment that silences a rule says why: a NOTE just above it, or a reason after `--`.',
+    },
+  },
+  create(context) {
+    const sourceCode = context.sourceCode
+    return {
+      Program() {
+        const comments = sourceCode.getAllComments()
+        const noteEnds = comments
+          .filter(comment => comment.value.trim().startsWith('NOTE:'))
+          .map(comment => sourceCode.getLoc(comment).end.line)
+        comments
+          .filter(comment => SILENCER.test(comment.value))
+          .filter(comment => !/\s--\s*\S/.test(comment.value))
+          .filter(comment => {
+            const line = sourceCode.getLoc(comment).start.line
+            return !noteEnds.some(
+              end => end <= line && line - end <= NOTE_REACH_LINES,
+            )
+          })
+          .forEach(comment =>
+            context.report({
+              loc: sourceCode.getLoc(comment),
+              message:
+                'A silenced rule needs its reason: a // NOTE: just above, or `-- why` after the rule (AGENTS.md "Strictness").',
+            }),
+          )
+      },
+    }
+  },
+})
+
 export default definePlugin({
   meta: { name: 'munch' },
   rules: {
@@ -777,5 +822,6 @@ export default definePlugin({
     'key-action-once': keyActionOnce,
     'no-binding-field-write': noBindingFieldWrite,
     'live-test-note': liveTestNote,
+    'disable-needs-reason': disableNeedsReason,
   },
 })

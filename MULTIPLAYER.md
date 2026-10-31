@@ -656,6 +656,7 @@ Two channels, one object. A room's lobby and record are a **sync scope**; the ga
 - **A phone locking.** iOS suspends the page: the player goes Away, then rejoins by keyframe when the page comes back.
 - **TCP hitches.** A lost packet on a phone holds back a message by a round trip. The interpolation buffer hides most of it; Phase 4 measures it on throttled 4G with loss.
 - **Balance for 1 to 4 players.** The balance bot plays one player today.
+- **A buy's cues online.** An online run's buy plays only Purchase or Denied. Single player also bursts coins, has Rattles answer, and refocuses a row the buy displaced. They are cues, not rules (the rule is the seat action's), so the client could play them from the room's purchase event.
 
 ## Security and safety
 
@@ -668,7 +669,7 @@ Two channels, one object. A room's lobby and record are a **sync scope**; the ga
 
 ## The spike
 
-The measuring tools behind this file lived in `tools/mp-spike`. The deterministic Math, the scripted player, and a faster gameplay hash were promoted to `tools/determinism`, the permanent harness (see its `README.md`), and the rest was deleted once nothing used it (cleanup slice 9b). The numbers above stand as measured. To run the spike again, check out `tools/mp-spike` from the commit before that change: `scenario.ts` (the scripted run and timing summary), `measure.ts` (frame time, sizes, and the 20 Hz wire), `wire.ts` (the binary delta size estimate), `cost.ts` (the monthly Durable Object bill), `build.ts`, `hashes.ts`, `worker.ts` with `workerd.capnp`, `crossEngine.ts`, and the Math probe (`mathCases.ts`, `mathProbe.ts`). workerd is not used for timing: it only advances its clock on I/O, so `performance.now()` stands still inside a request.
+The measuring tools behind this file lived in `tools/mp-spike`. The deterministic Math, the scripted player, and a faster gameplay hash were promoted to `tools/determinism`, the permanent harness (see its `README.md`), and the rest was deleted once nothing used it. The numbers above stand as measured. To run the spike again, check out `tools/mp-spike` from the commit before that change: `scenario.ts` (the scripted run and timing summary), `measure.ts` (frame time, sizes, and the 20 Hz wire), `wire.ts` (the binary delta size estimate), `cost.ts` (the monthly Durable Object bill), `build.ts`, `hashes.ts`, `worker.ts` with `workerd.capnp`, `crossEngine.ts`, and the Math probe (`mathCases.ts`, `mathProbe.ts`). workerd is not used for timing: it only advances its clock on I/O, so `performance.now()` stands still inside a request.
 
 ## Sources
 
