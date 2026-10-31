@@ -22,13 +22,6 @@ import {
 } from './worldSchema'
 import { ZOMBIE_KIND_ORDER } from './zombies'
 
-export {
-  isPracticeGateHeld,
-  isTimedBreak,
-  learnOpenBreak,
-  learnTimedBreaks,
-} from './lessons'
-
 // LESSONS
 
 const learnWhen = (isDone: boolean, atMs: number) => (lesson: Lesson) =>

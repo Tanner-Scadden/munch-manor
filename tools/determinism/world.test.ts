@@ -2,8 +2,6 @@
 // a World alone, with no client field in it, the way a co-op room holds
 // it, and play exactly what the client's frame loop plays.
 
-/* oxlint-disable foldkit/no-child-message-construction-in-root */
-
 import { Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
 

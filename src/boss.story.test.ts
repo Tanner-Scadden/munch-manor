@@ -17,10 +17,9 @@ import {
   BOSS_HP,
   CENTER_X,
   CENTER_Y,
-  FRAME_MS,
   bossAt,
   eventsTagged,
-  fighting,
+  fightingBoss,
   fightingWith,
   inWave,
   spawnAt,
@@ -42,7 +41,7 @@ import {
 } from './model'
 import { newPlayerReady } from './model.fixture'
 import { BOSS_ICON } from './sprites/zombies'
-import { bulletInto, tick, ticks, zombieOf } from './testing'
+import { FRAME_MS, bulletInto, tick, ticks, zombieOf } from './testing'
 import { FINAL_WAVE, WAVE_PLANS } from './wavePlans'
 import { wavePreviewShapes } from './wavePreview'
 import { ZOMBIE_KINDS, scaledHp } from './zombies'
@@ -273,7 +272,7 @@ describe('the health bar', () => {
     const start = inWave(
       FINAL_WAVE,
       [spawnAt(1e9, 0)],
-      fighting(BossMove.Stalking({ cooldownMs: 60_000 })),
+      fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
       [boss],
     )
     expect(maybeBossBar(start)).toEqual(
@@ -336,7 +335,7 @@ describe('victory', () => {
           inWave(
             FINAL_WAVE,
             [],
-            fighting(BossMove.Stalking({ cooldownMs: 60_000 })),
+            fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
             [lastLegs],
           ),
           { bullets: () => [bulletInto(1, lastLegs)] },
@@ -368,7 +367,7 @@ describe('victory', () => {
           inWave(
             FINAL_WAVE,
             [],
-            fighting(BossMove.Stalking({ cooldownMs: 60_000 })),
+            fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
             [lastLegs, straggler],
           ),
           { bullets: () => [bulletInto(1, lastLegs)] },

@@ -72,12 +72,5 @@
       ],
       "project": ["**/*.ts"],
     },
-  },
-  // TODO(cleanup slice 9c): other changes were editing these files when knip
-  // landed. Drop the export (or the dead code) and the file's line here once
-  // its change is in (cleanup.md, slice 9c).
-  "ignoreIssues": {
-    // The phone zoom.
-    "src/onboarding.ts": ["exports"],
-  },
+  }
 }

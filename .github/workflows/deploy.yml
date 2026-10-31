@@ -29,6 +29,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.13
+      # NOTE: oxlint runs in Node and loads the project's own rules
+      # (tools/lint/munchPlugin.ts) as TypeScript, which Node strips natively
+      # from 22.18 on.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
         working-directory: infra

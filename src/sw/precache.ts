@@ -89,7 +89,7 @@ export const serviceWorkerSource = (
 // NOTE: the kill switch. Set this to true and push to ship it; a source
 // change also makes the deploy rebuild, where an env var alone would not.
 // KILL_SERVICE_WORKER=1 does the same for one local build.
-export const IS_SERVICE_WORKER_KILLED = false
+export const IS_SERVICE_WORKER_KILLED: boolean = false
 
 // With the kill switch on, sw.js takes over
 // at once, deletes every cache the game made, unregisters itself, and reloads

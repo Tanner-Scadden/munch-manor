@@ -131,8 +131,6 @@ describe('the update gift', () => {
   })
 })
 
-/* oxlint-disable foldkit/no-child-message-construction-in-root */
-
 const newestHeadline = Option.match(maybeNewestNewsDay, {
   onNone: () => '',
   onSome: day => newsHeadline(day.bullets[0].text),

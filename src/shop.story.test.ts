@@ -33,8 +33,8 @@ import { DISTANT_SPAWN, withArsenal } from './model.fixture'
 import { LASER_SIGHT_PRICE, SHOP_ITEMS, itemsIn, stallPrompt } from './shop'
 import {
   FRAMES_TO_STALL,
-  FRAME_MS,
   GRACE_TICK_MS,
+  SHOP_FRAME_MS,
   at,
   besideStall,
   browsing,
@@ -42,9 +42,9 @@ import {
   gun,
   holdingSpare,
   preparing,
-  readyModel,
   resolveFocusShopItem,
   resolveShowShop,
+  shopReady,
   withHp,
   withMoney,
 } from './shop.fixture'
@@ -93,7 +93,7 @@ describe('money', () => {
   test('a Shambler kill pays its bounty and shows it as a coin pop', () => {
     story(
       update,
-      given(killShot(modifyFields(readyModel, { phase: () => fighting(1) }))),
+      given(killShot(modifyFields(shopReady, { phase: () => fighting(1) }))),
       tick(SHORT_FRAME_MS),
       model(({ wallet, popups, frameEvents }) => {
         expect(wallet.balance).toBe(SHAMBLER_BOUNTY)
@@ -124,7 +124,7 @@ describe('money', () => {
       update,
       given(
         killShot(
-          modifyFields(readyModel, {
+          modifyFields(shopReady, {
             phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [] }),
           }),
         ),
@@ -153,7 +153,7 @@ describe('money', () => {
       update,
       given(
         killShot(
-          modifyFields(readyModel, {
+          modifyFields(shopReady, {
             phase: () =>
               Phase.Wave({ wave: FINAL_WAVE, elapsedMs: 0, spawns: [] }),
             wallet: () => ({ balance: 10, earned: 200, shown: 10 }),
@@ -183,7 +183,7 @@ describe('money', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
+        modifyFields(shopReady, {
           phase: () => preparing(2),
           wallet: () => ({ balance: 60, earned: 60, shown: 0 }),
         }),
@@ -207,11 +207,11 @@ describe('the shop stall', () => {
       update,
       given(besideStall(preparing(2))),
       press('KeyD'),
-      ...ticks(FRAMES_TO_STALL - 1, FRAME_MS),
+      ...ticks(FRAMES_TO_STALL - 1, SHOP_FRAME_MS),
       model(({ shop }) => {
         expect(shop).toEqual(ShopState.Away())
       }),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
       model(({ shop, shopDialog, input }) => {
@@ -228,7 +228,7 @@ describe('the shop stall', () => {
         update,
         given(besideStall(phase)),
         press('KeyD'),
-        ...ticks(FRAMES_TO_STALL + 2, FRAME_MS),
+        ...ticks(FRAMES_TO_STALL + 2, SHOP_FRAME_MS),
         Command.expectNone(),
         model(({ shop, shopDialog }) => {
           expect(shop).toEqual(ShopState.Away())
@@ -245,7 +245,7 @@ describe('the shop stall', () => {
       update,
       given(
         killShot(
-          modifyFields(at(readyModel, 270, 144), {
+          modifyFields(at(shopReady, 270, 144), {
             phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
           }),
         ),
@@ -255,7 +255,7 @@ describe('the shop stall', () => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(shop).toEqual(ShopState.Away())
       }),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
       model(({ shop, shopDialog }) => {
@@ -269,10 +269,10 @@ describe('the shop stall', () => {
     story(
       update,
       given(
-        modifyFields(at(readyModel, 270, 142), { phase: () => fighting(2) }),
+        modifyFields(at(shopReady, 270, 142), { phase: () => fighting(2) }),
       ),
       press('KeyS'),
-      ...ticks(20, FRAME_MS),
+      ...ticks(20, SHOP_FRAME_MS),
       model(({ player }) => {
         expect(player.y).toBeCloseTo(146)
       }),
@@ -285,7 +285,7 @@ describe('the shop stall', () => {
       update,
       given(besideStall(preparing(2))),
       press('KeyD'),
-      ...ticks(FRAMES_TO_STALL, FRAME_MS),
+      ...ticks(FRAMES_TO_STALL, SHOP_FRAME_MS),
       resolveShowShop,
       model(current => {
         frozen.push(current)
@@ -293,7 +293,7 @@ describe('the shop stall', () => {
       press('KeyD'),
       holdFire,
       press('Enter'),
-      ...ticks(10, FRAME_MS),
+      ...ticks(10, SHOP_FRAME_MS),
       model(({ phase, player, bullets, elapsedMs, intent }) => {
         const opened = Option.getOrThrow(Array.head(frozen))
         expect(preparationRemainingMs(phase)).toBe(
@@ -302,7 +302,7 @@ describe('the shop stall', () => {
         expect(player.x).toBe(opened.player.x)
         expect(bullets).toEqual([])
         expect(intent.trigger).toBe('Released')
-        expect(elapsedMs).toBeCloseTo(opened.elapsedMs + 10 * FRAME_MS)
+        expect(elapsedMs).toBeCloseTo(opened.elapsedMs + 10 * SHOP_FRAME_MS)
       }),
     )
   })
@@ -312,7 +312,7 @@ describe('the shop stall', () => {
       update,
       given(besideStall(preparing(2))),
       press('KeyD'),
-      ...ticks(FRAMES_TO_STALL, FRAME_MS),
+      ...ticks(FRAMES_TO_STALL, SHOP_FRAME_MS),
       resolveShowShop,
       release('KeyD'),
       message(
@@ -325,28 +325,28 @@ describe('the shop stall', () => {
       model(({ shop }) => {
         expect(shop).toEqual(ShopState.Dismissed())
       }),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       model(({ phase }) => {
         expect(preparationRemainingMs(phase)).toBeLessThan(15_000)
       }),
       press('KeyD'),
-      ...ticks(2, FRAME_MS),
+      ...ticks(2, SHOP_FRAME_MS),
       release('KeyD'),
       Command.expectNone(),
       press('KeyA'),
-      ...ticks(4, FRAME_MS),
+      ...ticks(4, SHOP_FRAME_MS),
       model(({ shop }) => {
         expect(shop).toEqual(ShopState.Dismissed())
       }),
-      ...ticks(2, FRAME_MS),
+      ...ticks(2, SHOP_FRAME_MS),
       release('KeyA'),
       model(({ shop }) => {
         expect(shop).toEqual(ShopState.Away())
       }),
       press('KeyD'),
-      ...ticks(3, FRAME_MS),
+      ...ticks(3, SHOP_FRAME_MS),
       Command.expectNone(),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
       model(({ shop }) => {
@@ -356,7 +356,7 @@ describe('the shop stall', () => {
   })
 
   test('Escape and the start wave keys do nothing to the game while the shop is open', () => {
-    const shopping = browsing(withMoney(readyModel, 0))
+    const shopping = browsing(withMoney(shopReady, 0))
     story(
       update,
       given(shopping),
@@ -377,7 +377,7 @@ describe('buying', () => {
   test('buying a gun deducts its price, puts it in the second slot, and bursts coins', () => {
     story(
       update,
-      given(browsing(withMoney(readyModel, 100))),
+      given(browsing(withMoney(shopReady, 100))),
       message(Message.ClickedBuyButton({ item: 'Shotgun' })),
       resolveFocusShopItem,
       model(({ wallet, player, particles }) => {
@@ -403,7 +403,7 @@ describe('buying', () => {
       update,
       given(
         withArsenal(
-          browsing(withMoney(readyModel, 200)),
+          browsing(withMoney(shopReady, 200)),
           holdingSecond(gun('Shotgun', 3)),
         ),
       ),
@@ -420,7 +420,7 @@ describe('buying', () => {
   test('a heart heals one and is refused at full hearts', () => {
     story(
       update,
-      given(withHp(browsing(withMoney(readyModel, 60)), PLAYER_MAX_HP - 1)),
+      given(withHp(browsing(withMoney(shopReady, 60)), PLAYER_MAX_HP - 1)),
       message(Message.ClickedBuyButton({ item: 'Heart' })),
       model(({ player, wallet }) => {
         expect(player.hp).toBe(PLAYER_MAX_HP)
@@ -447,23 +447,23 @@ describe('buying', () => {
         }),
       )
 
-    refused(withHp(browsing(withMoney(readyModel, 24)), 2), 'Heart')
-    refused(browsing(withMoney(readyModel, 500)), 'ShotgunShells')
+    refused(withHp(browsing(withMoney(shopReady, 24)), 2), 'Heart')
+    refused(browsing(withMoney(shopReady, 500)), 'ShotgunShells')
     refused(
-      withArsenal(browsing(withMoney(readyModel, 500)), holdingSpare(48)),
+      withArsenal(browsing(withMoney(shopReady, 500)), holdingSpare(48)),
       'ShotgunShells',
     )
     refused(
-      withArsenal(browsing(withMoney(readyModel, 500)), holdingSpare(5)),
+      withArsenal(browsing(withMoney(shopReady, 500)), holdingSpare(5)),
       'Shotgun',
     )
-    refused(withMoney(readyModel, 500), 'Shotgun')
+    refused(withMoney(shopReady, 500), 'Shotgun')
   })
 
   test('the laser sight is dear, fits once, lists last under GUNS, and goes with the run', () => {
     story(
       update,
-      given(browsing(withMoney(readyModel, LASER_SIGHT_PRICE - 1))),
+      given(browsing(withMoney(shopReady, LASER_SIGHT_PRICE - 1))),
       model(current => {
         expect(Array.last(itemsIn(current, 'Guns'))).toEqual(
           Option.some('LaserSight'),
@@ -477,7 +477,7 @@ describe('buying', () => {
     )
     story(
       update,
-      given(browsing(withMoney(readyModel, LASER_SIGHT_PRICE + 10))),
+      given(browsing(withMoney(shopReady, LASER_SIGHT_PRICE + 10))),
       message(Message.ClickedBuyButton({ item: 'LaserSight' })),
       model(({ laserSight, wallet }) => {
         expect(laserSight).toBe('Fitted')
@@ -495,7 +495,7 @@ describe('buying', () => {
       update,
       given(
         focusedOn(
-          withArsenal(browsing(withMoney(readyModel, 100)), holdingSpare(40)),
+          withArsenal(browsing(withMoney(shopReady, 100)), holdingSpare(40)),
           'ShotgunShells',
         ),
       ),
@@ -509,7 +509,7 @@ describe('buying', () => {
 
 describe('carrying two guns', () => {
   const armed = modifyFields(
-    withArsenal(readyModel, holdingFirst(gun('Shotgun', 16))),
+    withArsenal(shopReady, holdingFirst(gun('Shotgun', 16))),
     { phase: () => fighting(2) },
   )
 
@@ -537,7 +537,7 @@ describe('carrying two guns', () => {
   test('with only the pistol there is nothing to swap to', () => {
     story(
       update,
-      given(modifyFields(readyModel, { phase: () => fighting(1) })),
+      given(modifyFields(shopReady, { phase: () => fighting(1) })),
       press('KeyQ'),
       message(Message.ClickedSwapButton()),
       model(({ player }) => {
@@ -612,7 +612,7 @@ describe('shotgun spread', () => {
     story(
       update,
       given(
-        modifyFields(withArsenal(readyModel, holdingSpare(16)), {
+        modifyFields(withArsenal(shopReady, holdingSpare(16)), {
           phase: () => fighting(2),
           rngState: () => seed,
         }),
@@ -661,7 +661,7 @@ describe('shotgun spread', () => {
     story(
       update,
       given(
-        modifyFields(withArsenal(readyModel, holdingSpare(16)), {
+        modifyFields(withArsenal(shopReady, holdingSpare(16)), {
           phase: () => fighting(2),
           bullets: () => parked,
         }),
@@ -684,7 +684,7 @@ describe('zombies still need two pistol shots', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
+        modifyFields(shopReady, {
           phase: () => fighting(1),
           zombies: () => [tough],
           bullets: () => [bulletInto(500, tough)],
@@ -708,18 +708,18 @@ describe('the stall entrance', () => {
       update,
       given(
         at(
-          modifyFields(readyModel, { phase: () => preparing(2) }),
+          modifyFields(shopReady, { phase: () => preparing(2) }),
           start.x,
           start.y,
         ),
       ),
       press(key),
-      ...ticks(2, FRAME_MS),
+      ...ticks(2, SHOP_FRAME_MS),
       Command.expectNone(),
       model(({ shop }) => {
         expect(shop).toEqual(ShopState.Away())
       }),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
       model(({ shop }) => {
@@ -740,9 +740,9 @@ describe('the stall entrance', () => {
     story(
       update,
       given(
-        at(modifyFields(readyModel, { phase: () => preparing(2) }), 251, 160),
+        at(modifyFields(shopReady, { phase: () => preparing(2) }), 251, 160),
       ),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
       message(
@@ -752,20 +752,20 @@ describe('the stall entrance', () => {
         ),
       ),
       resolveCloseShop,
-      ...ticks(10, FRAME_MS),
+      ...ticks(10, SHOP_FRAME_MS),
       Command.expectNone(),
       press('KeyA'),
-      ...ticks(3, FRAME_MS),
+      ...ticks(3, SHOP_FRAME_MS),
       release('KeyA'),
       press('KeyD'),
-      ...ticks(3, FRAME_MS),
+      ...ticks(3, SHOP_FRAME_MS),
       release('KeyD'),
       Command.expectNone(),
       model(({ shop }) => {
         expect(shop).toEqual(ShopState.Dismissed())
       }),
       press('KeyA'),
-      ...ticks(8, FRAME_MS),
+      ...ticks(8, SHOP_FRAME_MS),
       release('KeyA'),
       model(({ shop }) => {
         expect(shop).toEqual(ShopState.Away())
@@ -777,10 +777,10 @@ describe('the stall entrance', () => {
     story(
       update,
       given(
-        at(modifyFields(readyModel, { phase: () => fighting(3) }), 240, 160),
+        at(modifyFields(shopReady, { phase: () => fighting(3) }), 240, 160),
       ),
       press('KeyD'),
-      ...ticks(6, FRAME_MS),
+      ...ticks(6, SHOP_FRAME_MS),
       Command.expectNone(),
       model(current => {
         expect(current.shop).toEqual(ShopState.Away())
@@ -791,11 +791,11 @@ describe('the stall entrance', () => {
   })
 
   test('a prompt asks the player to walk up only while they are near an open stall', () => {
-    const prepared = modifyFields(readyModel, { phase: () => preparing(2) })
+    const prepared = modifyFields(shopReady, { phase: () => preparing(2) })
     story(
       update,
       given(at(prepared, 160, 90)),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       model(current => {
         expect(stallPrompt(current)).toBe('None')
       }),
@@ -803,13 +803,13 @@ describe('the stall entrance', () => {
     story(
       update,
       given(at(prepared, 225, 160)),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       model(current => {
         expect(stallPrompt(current)).toBe('WalkUp')
       }),
       press('KeyD'),
-      ...ticks(6, FRAME_MS),
-      tick(FRAME_MS),
+      ...ticks(6, SHOP_FRAME_MS),
+      tick(SHOP_FRAME_MS),
       resolveShowShop,
       model(current => {
         expect(ShopState.guards.Browsing(current.shop)).toBe(true)
@@ -819,9 +819,9 @@ describe('the stall entrance', () => {
     story(
       update,
       given(
-        at(modifyFields(readyModel, { phase: () => preparing(1) }), 225, 160),
+        at(modifyFields(shopReady, { phase: () => preparing(1) }), 225, 160),
       ),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       model(current => {
         expect(stallPrompt(current)).toBe('ClosedUntilFirstClear')
       }),
@@ -829,7 +829,7 @@ describe('the stall entrance', () => {
   })
 
   test('once the player has shopped, the stall shows no words, only its sign and beacon', () => {
-    const shopped = modifyFields(readyModel, {
+    const shopped = modifyFields(shopReady, {
       lessons: lessons =>
         modifyFields(lessons, { shop: () => Lesson.Learned({ atMs: 0 }) }),
     })
@@ -838,7 +838,7 @@ describe('the stall entrance', () => {
     story(
       update,
       given(near(preparing(2))),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       model(current => {
         expect(ShopState.guards.Away(current.shop)).toBe(true)
         expect(stallPrompt(current)).toBe('None')
@@ -847,7 +847,7 @@ describe('the stall entrance', () => {
     story(
       update,
       given(near(fighting(3))),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       model(current => {
         expect(stallPrompt(current)).toBe('None')
       }),
@@ -855,7 +855,7 @@ describe('the stall entrance', () => {
     story(
       update,
       given(near(preparing(1))),
-      tick(FRAME_MS),
+      tick(SHOP_FRAME_MS),
       model(current => {
         expect(stallPrompt(current)).toBe('None')
       }),

@@ -1,4 +1,7 @@
+import { Schema } from 'effect'
 import { defineConfig } from 'vitest/config'
+
+import { encodeJson } from './tools/json.ts'
 
 // The test tiers (docs/TESTING_PLAN.md). Each project is one tier or one
 // kind of file:
@@ -24,7 +27,7 @@ const SCENE = 'src/**/{*.,}scene.test.ts'
 const ATLAS_HTML = 'src/atlasHtml.scene.test.ts'
 
 export default defineConfig({
-  define: { __BUILD_ID__: JSON.stringify('test') },
+  define: { __BUILD_ID__: encodeJson(Schema.String)('test') },
   test: {
     // Some sim tests replay whole waves for many seeds. They take a few
     // seconds locally and passed 5 seconds on a busy CI runner.
@@ -54,6 +57,7 @@ export default defineConfig({
             'tools/vite/**/*.test.ts',
             'tools/balance/**/*.test.ts',
             'tools/determinism/**/*.test.ts',
+            'tools/lint/**/*.test.ts',
           ],
           exclude: [SCENE, SIM],
         },

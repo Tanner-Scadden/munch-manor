@@ -2,8 +2,6 @@
 // whole 60 Hz ticks whatever the display's rate, so the same held inputs
 // over the same time play the same game at 30, 60, and 120 Hz.
 
-/* oxlint-disable foldkit/no-child-message-construction-in-root */
-
 import { describe, expect, test } from 'vitest'
 
 import { update } from '../../src/main'

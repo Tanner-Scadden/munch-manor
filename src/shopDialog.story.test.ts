@@ -30,17 +30,17 @@ import {
 } from './shop'
 import {
   FRAMES_TO_STALL,
-  FRAME_MS,
   GRACE_TICK_MS,
+  SHOP_FRAME_MS,
   besideStall,
   browsing,
   focusedOn,
   gun,
   holdingSpare,
   preparing,
-  readyModel,
   resolveFocusShopItem,
   resolveShowShop,
+  shopReady,
   withHp,
   withMoney,
 } from './shop.fixture'
@@ -82,7 +82,7 @@ describe('shop categories', () => {
   test('choosing a tab shows its items, focuses its first item, and moves keyboard focus to the tab', () => {
     story(
       update,
-      given(browsing(withMoney(readyModel, 100))),
+      given(browsing(withMoney(shopReady, 100))),
       model(({ shopCategory }) => {
         expect(shopCategory).toBe('Guns')
       }),
@@ -105,7 +105,7 @@ describe('shop categories', () => {
   test('the shop reopens on the last tab chosen in the run, and a new run starts on Guns', () => {
     story(
       update,
-      given(browsing(withMoney(readyModel, 100))),
+      given(browsing(withMoney(shopReady, 100))),
       selectTab('Health'),
       resolveFocusTab,
       message(
@@ -116,7 +116,7 @@ describe('shop categories', () => {
       ),
       // NOTE: the fixture browses with the dialog already down, which the
       // next frame takes as a dialog that failed to show.
-      ...ticks(1, FRAME_MS),
+      ...ticks(1, SHOP_FRAME_MS),
       model(({ shop, shopCategory }) => {
         expect(shop).toEqual(ShopState.Dismissed())
         expect(shopCategory).toBe('Health')
@@ -131,7 +131,7 @@ describe('shop categories', () => {
         }),
       ),
       press('KeyD'),
-      ...ticks(FRAMES_TO_STALL, FRAME_MS),
+      ...ticks(FRAMES_TO_STALL, SHOP_FRAME_MS),
       resolveShowShop,
       model(({ shop, shopCategory }) => {
         expect(shopCategory).toBe('Traps')
@@ -142,7 +142,7 @@ describe('shop categories', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
+        modifyFields(shopReady, {
           phase: () => Phase.GameOver({ wave: 4 }),
           shopCategory: () => 'Traps',
         }),
@@ -160,7 +160,7 @@ describe('shop categories', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
+        modifyFields(shopReady, {
           phase: () => preparing(2),
           shop: () => ShopState.Away(),
         }),
@@ -175,7 +175,7 @@ describe('shop categories', () => {
   })
 
   test('each tab counts what the player can buy right now', () => {
-    const firstVisit = browsing(withMoney(readyModel, WAVE_ONE_PAY))
+    const firstVisit = browsing(withMoney(shopReady, WAVE_ONE_PAY))
     expect(affordableCount(firstVisit, 'Guns')).toBe(1)
     expect(affordableCount(firstVisit, 'Health')).toBe(0)
     expect(affordableCount(firstVisit, 'Traps')).toBe(0)
@@ -194,7 +194,7 @@ describe('shop categories', () => {
   test('the money from a clean wave 1 buys a first gun at the first visit', () => {
     story(
       update,
-      given(browsing(withMoney(readyModel, WAVE_ONE_PAY))),
+      given(browsing(withMoney(shopReady, WAVE_ONE_PAY))),
       message(Message.ClickedBuyButton({ item: 'Shotgun' })),
       resolveFocusShopItem,
       model(({ wallet, player }) => {
@@ -228,7 +228,7 @@ describe('shop categories', () => {
 
 describe('ammo and upgrades under the gun', () => {
   test('guns always go pistol, shotgun, machine gun, whether owned, in hand, or for sale', () => {
-    const unarmed = browsing(withMoney(readyModel, 100))
+    const unarmed = browsing(withMoney(shopReady, 100))
     const weaponOrder = (current: Model): ReadonlyArray<WeaponKind> =>
       Array.map(gunShelves(current), ({ weapon }) => weapon)
     const PISTOL_FIRST: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
@@ -275,7 +275,7 @@ describe('ammo and upgrades under the gun', () => {
   test('buying a gun moves focus to its ammo, and buying ammo leaves focus where it is', () => {
     story(
       update,
-      given(browsing(withMoney(readyModel, 200))),
+      given(browsing(withMoney(shopReady, 200))),
       message(Message.PressedBuyKey({ item: 'Shotgun' })),
       Command.expectExact(FocusShopItem({ item: 'ShotgunShells' })),
       resolveFocusShopItem,
@@ -300,7 +300,7 @@ describe('ammo and upgrades under the gun', () => {
       update,
       given(
         focusedOn(
-          withArsenal(browsing(withMoney(readyModel, 200)), holdingSpare(20)),
+          withArsenal(browsing(withMoney(shopReady, 200)), holdingSpare(20)),
           'Smg',
         ),
       ),
@@ -319,7 +319,7 @@ describe('ammo and upgrades under the gun', () => {
   test('a refused purchase leaves focus alone', () => {
     story(
       update,
-      given(browsing(withMoney(readyModel, 10))),
+      given(browsing(withMoney(shopReady, 10))),
       message(Message.PressedBuyKey({ item: 'Shotgun' })),
       Command.expectNone(),
       model(({ shop }) => {
@@ -336,7 +336,7 @@ describe('the row the shop opens on', () => {
       update,
       given(base),
       press('KeyD'),
-      ...ticks(FRAMES_TO_STALL, FRAME_MS),
+      ...ticks(FRAMES_TO_STALL, SHOP_FRAME_MS),
       resolveShowShop,
       model(({ shop }) => {
         focused.push(
@@ -381,7 +381,7 @@ describe('what Rattles says', () => {
       given(
         withHp(
           withArsenal(
-            browsing(withMoney(readyModel, 30)),
+            browsing(withMoney(shopReady, 30)),
             holdingSecond(gun('Shotgun', 48)),
           ),
           3,

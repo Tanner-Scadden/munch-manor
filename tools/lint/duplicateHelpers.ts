@@ -400,7 +400,56 @@ const copiesOf = async (kind: Kind): Promise<number> => {
   return repeated.length
 }
 
-let total = 0
+// NOTE: the names a module exports from its own declarations.
+const exportedNames = (file: string, text: string): ReadonlyArray<string> =>
+  nodesIn(parseSync(file, text).program.body)
+    .filter(statement => statement.type === 'ExportNamedDeclaration')
+    .flatMap(statement => {
+      const declaration = statement['declaration']
+      if (!isNode(declaration)) {
+        return []
+      }
+      return declaration.type === 'VariableDeclaration'
+        ? nodesIn(declaration['declarations']).map(declarator =>
+            nameOf(declarator['id']),
+          )
+        : [nameOf(declaration['id'])]
+    })
+    .filter(name => name !== '')
+
+// NOTE: two shared test homes of one code base that export the same name,
+// as `readyModel` once meant one Model in src/model.fixture.ts and another
+// in src/shop.fixture.ts, and `FRAME_MS` 16.7 ms in src/testing.ts and 50
+// in src/shop.fixture.ts. A test that imports the name gets whichever file
+// it happened to name, so each shared name lives in one home, and a
+// different value gets a name that says which.
+const sharedNameClashes = async (): Promise<number> => {
+  const homes = new Map<string, Array<string>>()
+  for (const pattern of TEST_HOMES) {
+    for await (const file of new Glob(pattern).scan({ cwd: ROOT })) {
+      if (file.includes('node_modules')) {
+        continue
+      }
+      const text = await Bun.file(`${ROOT}${file}`).text()
+      for (const name of exportedNames(file, text)) {
+        const at = `${groupOf(file)}\n${name}`
+        const files = homes.get(at) ?? []
+        if (!files.includes(file)) {
+          homes.set(at, [...files, file])
+        }
+      }
+    }
+  }
+  const clashes = [...homes.entries()].filter(([, files]) => files.length > 1)
+  for (const [at, files] of clashes) {
+    console.error(
+      `\`${at.split('\n')[1]}\` is exported by more than one shared test home: ${files.join(', ')}. Keep one, or give the other a name that says which.`,
+    )
+  }
+  return clashes.length
+}
+
+let total = await sharedNameClashes()
 for (const kind of KINDS) {
   total += await copiesOf(kind)
 }

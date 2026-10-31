@@ -8,6 +8,7 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 // @vitest-environment happy-dom
 import { FIXED_STEP_MS } from './constants'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from './home'
+import { isPracticeGateHeld } from './lessons'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -26,7 +27,7 @@ import {
   noKills,
 } from './model'
 import { DISTANT_SPAWN, loadingSave } from './model.fixture'
-import { isPracticeGateHeld, shownHints } from './onboarding'
+import { shownHints } from './onboarding'
 import { noSavedRunRecords } from './playerData'
 import { PlayerChange, changesBetween } from './playerSync'
 import {

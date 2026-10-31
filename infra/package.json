@@ -7,7 +7,7 @@
     "plan": "alchemy plan",
     "destroy": "alchemy destroy",
     "typecheck": "effect-tsgo tsrs --noEmit",
-    "lint": "oxlint . && effect-tsgo oxlint --config .oxlintrc.effect.json --deny-warnings .",
+    "lint": "oxlint --report-unused-disable-directives-severity=error . && effect-tsgo oxlint --config .oxlintrc.effect.json --deny-warnings .",
     "test": "bun --bun vitest run"
   },
   "dependencies": {

@@ -9,11 +9,6 @@
 // It imports only the game, effect, and foldkit: no DOM, no Node, no Bun, so
 // it runs the same in Bun, Node, Chrome, and workerd.
 
-// NOTE: The Foldkit rule against building a child's Messages skips *.test.ts
-// files. This script plays the game the way a test does, so it is off here
-// too.
-/* oxlint-disable foldkit/no-child-message-construction-in-root */
-
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_MAX_HP } from '../../src/constants'

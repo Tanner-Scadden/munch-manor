@@ -24,10 +24,10 @@ import { FocusShopItem } from './update/shop'
 import { asVeteran } from './veteran'
 import { magazineOf } from './weapons'
 
-export const FRAME_MS = 50
+export const SHOP_FRAME_MS = 50
 export const FRAMES_TO_STALL = 3
 
-export const readyModel: Model = modifyFields(
+export const shopReady: Model = modifyFields(
   pastFirstBreak(asVeteran(initialModel)),
   {
     maybeSurface: () =>
@@ -50,7 +50,7 @@ export const preparing = (wave: number): Phase =>
   })
 
 export const besideStall = (phase: Phase): Model =>
-  modifyFields(at(readyModel, BESIDE_STALL.x, BESIDE_STALL.y), {
+  modifyFields(at(shopReady, BESIDE_STALL.x, BESIDE_STALL.y), {
     phase: () => phase,
   })
 

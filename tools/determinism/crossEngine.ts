@@ -24,10 +24,6 @@
 // makes JavaScriptCore and V8 disagree within the first two seconds, so
 // without --det-math that is expected (see README.md).
 
-// NOTE: a command-line tool, not part of the Foldkit program, so it reads
-// the clock to say how long each engine took.
-/* oxlint-disable foldkit/no-impure-call-at-decision-time */
-
 import { Option, Schema } from 'effect'
 import { HttpClientRequest } from 'effect/http'
 import { spawn, spawnSync } from 'node:child_process'
