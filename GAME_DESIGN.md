@@ -591,6 +591,8 @@ From owner feedback on 2026-10-28, all approved. Built, not yet playtested. The 
 
 At most two Plank Piles, counting placed and carried. A third is refused with a short reason. With planks cheap, boarding every door was the answer to everything; two still close the two busiest doors.
 
+And at most half the room's open doors take planks, whoever placed them (owner, 2026-10-31: a co-op crew of four could board up the whole parlour). That is 2 of the parlour's 4 doors and 3 of 6 with the kitchen open; a plank past it is refused with "Half the doors are boarded". Solo's cap of two never reaches it. The rule is `isHalfBoarded` in `src/traps.ts`.
+
 #### Boarded doors are not spawn points
 
 From owner feedback on 2026-10-29 ("zombies are spawning behind the windows that are boarded up").

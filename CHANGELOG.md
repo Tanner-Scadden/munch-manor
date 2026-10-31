@@ -7,7 +7,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 🧭 New here? Your first breaks walk you through it: a free Plank Pile from Rattles, then a free kitchen and a free fridge roll, with the clock on hold. Confetti included.
 - 🔫 Your gun now yells before it runs dry: the ammo blinks amber, then red, the last shots tick, and Rattles hollers from his stall, where his AMMO window now sells you more mid-wave. Out of everything? Out comes the knife, or the Clang Pan, which now takes the knife's slot so you keep both guns.
 - 💀 Getting munched is a moment now: you topple, the zombies pile on, MUNCHED! slams down, and your run counts up. Go further or splat more than ever for a NEW BEST!
-- 🏆 Winning rains confetti (and a little gore) and crowns the MVP in co-op. Hit SHARE to brag on X.
+- 🏆 Winning rains confetti (and a little gore) and crowns the MVP in co-op. Hit SHARE to brag on X. And no more walling the room shut: planks board up half the doors at most.
 - 🔍 Phones zoom in closer, so zombies are easier to spot, and your thumb's aim gets a little zombie magnet held sideways too. Taps land where you mean them too: the settings X closes every time, buttons answer with another finger down, a mid-wave mouse click on a gun slot shoots the zombie behind it, and on phones your guns sit centered with a reload button by your melee slot.
 - 🏠 Munch Manor has a real address now: munchmanor.com. Swing by the steaming mug next to the gear to buy Rattles a coffee.
 
