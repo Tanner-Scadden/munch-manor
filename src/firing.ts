@@ -7,8 +7,10 @@ import {
   BULLET_MAX,
   DRY_FIRE_DELAY_MS,
   FIXED_STEP_MS,
+  IDLE_RELOAD_MS,
   MS_PER_SECOND,
 } from './constants'
+import { reloadsWhenIdle } from './difficulty'
 import {
   dropCharge,
   fireFridgeWeapon,
@@ -238,6 +240,28 @@ const autoReload = (model: World, isTriggerHeld: boolean): World => {
   })
 }
 
+// NOTE: the trigger's rest starts over while fire is held or the melee
+// weapon is out, and otherwise counts up to IDLE_RELOAD_MS, where it stays.
+const restTrigger = (model: World, deltaMs: number): World =>
+  modifyFields(model, {
+    player: player =>
+      modifyFields(player, {
+        triggerRestMs: rest =>
+          model.intent.trigger === 'Held' || isWieldingMelee(player)
+            ? 0
+            : Math.min(IDLE_RELOAD_MS, rest + deltaMs),
+      }),
+  })
+
+// NOTE: below Hard (src/difficulty.ts), a gun with room in its magazine
+// and rounds to load reloads by itself once the trigger has rested
+// IDLE_RELOAD_MS (GAME_DESIGN.md, "Reloading"). Hard and Nightmare wait
+// for an empty magazine or R.
+const isIdleReloadDue = (model: World): boolean =>
+  reloadsWhenIdle(model.difficulty.chosen) &&
+  model.player.triggerRestMs >= IDLE_RELOAD_MS &&
+  canReload(model.player)
+
 // NOTE: the stall shuts outside the break. A player still at the counter
 // when the wave starts (in co-op the break runs on while one shops) or the
 // run ends is sent off it, and their shop dialog follows
@@ -267,9 +291,10 @@ const withoutCharge = (model: World): World =>
 // (src/fridgeWeapons.ts). The stall and a reload let go of a charge. With
 // the knife in hand the trigger stabs (src/knife.ts) and the gun rests;
 // with the Clang Pan drawn from the melee slot it swings, and a reload of
-// the last gun carries on meanwhile.
+// the last gun carries on meanwhile. Below Hard a rested trigger reloads
+// a gun that has room for more (isIdleReloadDue).
 export const fire = (stocked: World, deltaMs: number): World => {
-  const topped = topUp(stocked)
+  const topped = topUp(restTrigger(stocked, deltaMs))
   if (isWieldingKnife(topped.player)) {
     return coolTrigger(withoutCharge(topped), deltaMs, false)
   }
@@ -293,6 +318,8 @@ export const fire = (stocked: World, deltaMs: number): World => {
     return autoReload(model, isTriggerHeld)
   } else if (isTriggerHeld) {
     return pullTrigger(model, deltaMs)
+  } else if (isIdleReloadDue(model)) {
+    return autoReload(model, false)
   } else {
     return coolTrigger(model, deltaMs, isTriggerHeld)
   }

@@ -18,7 +18,7 @@ import { leadSeatOf, maybePlayerAt } from './party'
 import { nextRandom } from './prng'
 import type { Offer } from './purchase'
 import { isKitchenTourOn } from './tutorialRules'
-import { cancelReload, freshGun, isCarrying, takeGun, takePan } from './weapons'
+import { freshGun, isCarrying, putGunInHand, takeGun, takePan } from './weapons'
 import type { World } from './world'
 import {
   type Fridge,
@@ -247,7 +247,7 @@ const giveWeapon = (player: Player, kind: WeaponKind): Player =>
     ? modifyFields(takePan(dropCharge(player), freshGun(kind)), {
         fireCooldownMs: () => 0,
       })
-    : modifyFields(dropCharge(cancelReload(player)), {
+    : modifyFields(dropCharge(putGunInHand(player)), {
         arsenal: arsenal => takeGun(arsenal, freshGun(kind)),
         wield: () => 'Gun',
         fireCooldownMs: () => 0,

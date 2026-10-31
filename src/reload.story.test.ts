@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest'
 import {
   FIRE_INTERVAL_MS,
   FIXED_STEP_MS,
+  IDLE_RELOAD_MS,
   PISTOL_MAGAZINE,
   PISTOL_RELOAD_MS,
   PREPARATION_MS,
@@ -15,6 +16,7 @@ import { Message } from './message'
 import {
   Arsenal,
   type CarriedGun,
+  type Difficulty,
   type Model,
   Phase,
   Reload,
@@ -361,6 +363,160 @@ describe('swapping', () => {
         expect(Arsenal.isAnyOf(['HoldingFirst'])(player.arsenal)).toBe(true)
         expect(pistolOf(player).loaded).toBe(3)
         expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
+      }),
+    )
+  })
+})
+
+describe('the idle reload below Hard', () => {
+  const IDLE_TICKS = countdownTicks(IDLE_RELOAD_MS)
+
+  const on = (base: Model, chosen: Difficulty): Model =>
+    modifyFields(base, {
+      difficulty: difficulty =>
+        modifyFields(difficulty, { chosen: () => chosen }),
+    })
+
+  const isReloadingNow = ({ player }: Model) =>
+    Reload.isAnyOf(['Reloading'])(player.reload)
+
+  test('on Easy and Normal a part-empty gun reloads once the trigger rests', () => {
+    Array.forEach(['Easy', 'Normal'] as const, chosen =>
+      story(
+        update,
+        given(on(withPistolLoaded(fighting, 3), chosen)),
+        ...ticks(IDLE_TICKS - 1, FRAME_MS),
+        model(current => {
+          expect(isReloadingNow(current)).toBe(false)
+        }),
+        tick(FRAME_MS),
+        model(current => {
+          expect(tagsOf(current.frameEvents)).toContain('ReloadStarted')
+          expect(tagsOf(current.frameEvents)).not.toContain('DryFired')
+          expect(reloadingMs(current.player.reload)).toEqual(
+            Option.some(PISTOL_RELOAD_MS),
+          )
+        }),
+        ...ticks(PISTOL_RELOAD_TICKS, FRAME_MS),
+        model(({ player }) => {
+          expect(pistolOf(player).loaded).toBe(PISTOL_MAGAZINE)
+          expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
+        }),
+      ),
+    )
+  })
+
+  test('on Hard and Nightmare a part-empty gun waits for R', () => {
+    Array.forEach(['Hard', 'Nightmare'] as const, chosen =>
+      story(
+        update,
+        given(on(withPistolLoaded(fighting, 3), chosen)),
+        ...ticks(IDLE_TICKS * 3, FRAME_MS),
+        model(current => {
+          expect(isReloadingNow(current)).toBe(false)
+          expect(pistolOf(current.player).loaded).toBe(3)
+        }),
+      ),
+    )
+  })
+
+  test('the rest starts when the trigger lets go, not while it fires', () => {
+    story(
+      update,
+      given(withPistolLoaded(fighting, PISTOL_MAGAZINE)),
+      holdFire,
+      ...ticks(IDLE_TICKS * 2, FRAME_MS),
+      model(current => {
+        expect(current.stats.shotsFired).toBeGreaterThan(1)
+        expect(pistolOf(current.player).loaded).toBeGreaterThan(0)
+        expect(isReloadingNow(current)).toBe(false)
+      }),
+      releaseFire,
+      ...ticks(IDLE_TICKS - 1, FRAME_MS),
+      model(current => {
+        expect(isReloadingNow(current)).toBe(false)
+      }),
+      tick(FRAME_MS),
+      model(current => {
+        expect(isReloadingNow(current)).toBe(true)
+      }),
+    )
+  })
+
+  test('a full magazine, or one with nothing left to load, stays put', () => {
+    const noLooseRounds = withArsenal(fighting, holdingSecond(smg(8, 8)))
+    Array.forEach([fighting, noLooseRounds], start =>
+      story(
+        update,
+        given(start),
+        ...ticks(IDLE_TICKS * 2, FRAME_MS),
+        model(current => {
+          expect(isReloadingNow(current)).toBe(false)
+        }),
+      ),
+    )
+  })
+
+  test('the knife in hand keeps the rest from counting', () => {
+    story(
+      update,
+      given(withPistolLoaded(fighting, 3)),
+      press('KeyF'),
+      release('KeyF'),
+      ...ticks(IDLE_TICKS * 2, FRAME_MS),
+      model(current => {
+        expect(current.player.wield).toBe('Melee')
+        expect(isReloadingNow(current)).toBe(false)
+      }),
+      press('KeyQ'),
+      release('KeyQ'),
+      ...ticks(IDLE_TICKS - 1, FRAME_MS),
+      model(current => {
+        expect(current.player.wield).toBe('Gun')
+        expect(isReloadingNow(current)).toBe(false)
+      }),
+      tick(FRAME_MS),
+      model(current => {
+        expect(isReloadingNow(current)).toBe(true)
+      }),
+    )
+  })
+
+  test('a gun swapped into hand waits its own full rest', () => {
+    story(
+      update,
+      given(
+        withPistolLoaded(withArsenal(fighting, holdingSecond(smg(90, 30))), 3),
+      ),
+      ...ticks(IDLE_TICKS * 2, FRAME_MS),
+      press('KeyQ'),
+      release('KeyQ'),
+      ...ticks(IDLE_TICKS - 1, FRAME_MS),
+      model(current => {
+        expect(Arsenal.isAnyOf(['HoldingFirst'])(current.player.arsenal)).toBe(
+          true,
+        )
+        expect(isReloadingNow(current)).toBe(false)
+      }),
+      tick(FRAME_MS),
+      model(current => {
+        expect(isReloadingNow(current)).toBe(true)
+      }),
+    )
+  })
+
+  test('nothing reloads at the counter', () => {
+    const shopping = modifyFields(withPistolLoaded(preparing, 3), {
+      shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
+      shopDialog: dialog => ({ ...dialog, isOpen: true }),
+    })
+    story(
+      update,
+      given(shopping),
+      ...ticks(IDLE_TICKS * 2, FRAME_MS),
+      model(current => {
+        expect(isReloadingNow(current)).toBe(false)
+        expect(pistolOf(current.player).loaded).toBe(3)
       }),
     )
   })

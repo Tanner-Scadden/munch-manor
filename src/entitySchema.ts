@@ -114,6 +114,9 @@ export const Player = Schema.Struct({
   recoilRemainingMs: MillisNumber,
   arsenal: Arsenal,
   reload: Reload,
+  // NOTE: how long the trigger has rested with this gun in hand, held at
+  // IDLE_RELOAD_MS (src/firing.ts, the idle reload below Hard).
+  triggerRestMs: MillisNumber,
   charge: Charge,
   knifeCooldownMs: MillisNumber,
   melee: Melee,
