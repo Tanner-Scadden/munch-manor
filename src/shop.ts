@@ -32,7 +32,6 @@ import {
   SIDEARM,
   WEAPONS,
   type WeaponTier,
-  cancelReload,
   freshGun,
   isCarrying,
   isHolding,
@@ -44,6 +43,7 @@ import {
   maybeCarried,
   maybeNextTier,
   maybeReplacedGun,
+  putGunInHand,
   startingRounds,
   statsAt,
   takeGun,
@@ -1009,7 +1009,7 @@ const grant = (model: World, good: ShopGood): World =>
   ShopGood.match(good, {
     Gun: ({ weapon }) =>
       equip(model, player =>
-        modifyFields(cancelReload(player), {
+        modifyFields(putGunInHand(player), {
           arsenal: arsenal => takeGun(arsenal, freshGun(weapon)),
           wield: () => 'Gun',
         }),

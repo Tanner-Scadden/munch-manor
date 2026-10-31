@@ -648,10 +648,14 @@ export const beginReload = (player: Player): Player => {
   })
 }
 
-export const cancelReload = (player: Player): Player =>
-  isReloading(player)
-    ? modifyFields(player, { reload: () => Reload.Ready() })
-    : player
+// NOTE: a gun just put in hand: a reload of the last one stops, and the
+// trigger's rest starts over, so the idle reload below Hard waits its full
+// time on the new gun.
+export const putGunInHand = (player: Player): Player =>
+  modifyFields(player, {
+    reload: () => Reload.Ready(),
+    triggerRestMs: () => 0,
+  })
 
 const fillGun = (gun: CarriedGun): CarriedGun =>
   modifyFields(gun, {
@@ -785,7 +789,7 @@ export const drawSlot = (player: Player, slot: GunSlot): Player => {
   })
   return heldGun(drawn.arsenal) === heldGun(player.arsenal)
     ? drawn
-    : cancelReload(drawn)
+    : putGunInHand(drawn)
 }
 
 // NOTE: Q. With the melee weapon out it goes back to the last gun held;

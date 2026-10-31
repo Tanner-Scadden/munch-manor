@@ -126,7 +126,7 @@ describe('the wire packs numbers by their Schema', () => {
         names: ['hpScale', 'intensity', 'speedScale', 'x', 'y'],
       },
       Millis: {
-        count: 118,
+        count: 120,
         names: [
           'ageMs',
           'apartMs',
@@ -150,6 +150,7 @@ describe('the wire packs numbers by their Schema', () => {
           'sinceMs',
           'standingMs',
           'touchedMs',
+          'triggerRestMs',
           'waitedMs',
         ],
       },
@@ -236,9 +237,10 @@ describe("the boss's charge on the wire", () => {
 // the boss's bytes (its brace target and rush length went from unit
 // values to positions); protocol 11 added each player's `wield`, the knife
 // or a gun in hand; protocol 12 added each player's `melee`, the knife or
-// the Clang Pan in the melee slot. The wire must not change without a
-// protocol bump.
-const GOLDEN_DIGEST = '63722:f4af162d1bd084a7'
+// the Clang Pan in the melee slot; protocol 13 added each player's
+// `triggerRestMs`, the idle reload's clock. The wire must not change
+// without a protocol bump.
+const GOLDEN_DIGEST = '65015:d0ca86770621ba09'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

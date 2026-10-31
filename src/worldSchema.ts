@@ -752,6 +752,7 @@ export const initialPlayer: Player = {
     first: { kind: 'Pistol', rounds: 0, loaded: PISTOL_MAGAZINE, tier: 0 },
   }),
   reload: Reload.Ready(),
+  triggerRestMs: 0,
   charge: Charge.Idle(),
   knifeCooldownMs: 0,
   melee: Melee.Knife(),
