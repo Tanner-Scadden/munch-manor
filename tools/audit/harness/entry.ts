@@ -39,10 +39,10 @@ import {
   quietCoopNet,
   stagedWorld,
 } from '@game/coop/testing'
-import { withBests } from '@game/difficulty'
 import { noteRecords } from '@game/endBeat'
 import { rollSpawns } from '@game/endlessWaves'
 import { KITCHEN_EXIT } from '@game/exits'
+import { withBests } from '@game/home'
 import { pressHoldButton, pressKey, releaseAll } from '@game/input'
 import { quietLayer as quietInstallPrompt } from '@game/install'
 import { EffectsLayer } from '@game/layer'

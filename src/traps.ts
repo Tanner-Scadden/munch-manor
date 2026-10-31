@@ -26,7 +26,6 @@ import {
   PLAYER_RADIUS,
   TRAP_BLAST_RADIUS,
   TRAP_HIT_PULSE_MS,
-  TRAP_NOTICE_MS,
   TRAP_REACH_PX,
   TRAP_REPAIR_SHARE,
   TURRET_PLACE_REACH_PX,
@@ -38,7 +37,6 @@ import {
   directionBetween,
   scaleVector,
 } from './geometry'
-import type { Model } from './model'
 import { TRAP_NAMES } from './names'
 import {
   COOP_RULES,
@@ -62,9 +60,7 @@ import {
   type Toll,
   Trap,
   type TrapCounts,
-  TrapHint,
   type TrapKind,
-  TrapNotice,
   type Turret,
   TurretGun,
   type Vector,
@@ -513,24 +509,6 @@ export const advanceTraps = (
     deltaMs,
   )
 
-// NOTE: a refused placement's notice fades on world time, on the client.
-export const ageTrapNotice = (model: Model, worldMs: number): Model =>
-  TrapNotice.isAnyOf(['Quiet'])(model.trapNotice)
-    ? model
-    : modifyFields(model, {
-        trapNotice: notice =>
-          TrapNotice.match(notice, {
-            Quiet: () => notice,
-            Refused: ({ reason, remainingMs }) =>
-              remainingMs > worldMs
-                ? TrapNotice.Refused({
-                    reason,
-                    remainingMs: remainingMs - worldMs,
-                  })
-                : TrapNotice.Quiet(),
-          }),
-      })
-
 // STOCK
 
 export const placedCount = (
@@ -591,17 +569,6 @@ export const stockTrap = (model: World, kind: TrapKind): World =>
   modifyFields(model, {
     trapStock: stock => addStock(stock, kind, 1),
     selectedTrap: selected => (model.trapStock[selected] > 0 ? selected : kind),
-  })
-
-// NOTE: the first trap a player stocks brings up the hint for placing it.
-export const showTrapHint = (model: Model): Model =>
-  modifyFields(model, {
-    trapHint: hint =>
-      TrapHint.match(hint, {
-        Unseen: () => TrapHint.Showing(),
-        Showing: () => hint,
-        Seen: () => hint,
-      }),
   })
 
 // PLACEMENT
@@ -908,19 +875,6 @@ export const placeTrapIn = (
             },
           }),
       }),
-  })
-
-// NOTE: a trap placed settles its hint and quiets the notice.
-export const notePlacement = (model: Model): Model =>
-  modifyFields(model, {
-    trapHint: () => TrapHint.Seen(),
-    trapNotice: () => TrapNotice.Quiet(),
-  })
-
-export const refusePlacement = (model: Model, reason: string): Model =>
-  modifyFields(model, {
-    trapNotice: () =>
-      TrapNotice.Refused({ reason, remainingMs: TRAP_NOTICE_MS }),
   })
 
 // REPAIR

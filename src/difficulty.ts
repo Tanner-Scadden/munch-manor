@@ -1,11 +1,10 @@
 import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import type { Model } from './model'
 import { COOP_RULES } from './party'
+import { type World, modifyWorldFields } from './world'
 import {
   type Difficulty,
-  type DifficultyBests,
   type DifficultySetting,
   Phase,
   type PlannedSpawn,
@@ -134,20 +133,20 @@ export const biteDamage = (difficulty: Difficulty, damage: number): number =>
 
 // CHOOSING
 
-export const chooseDifficulty = (
-  model: Model,
+export const chooseDifficulty = <M extends World>(
+  model: M,
   difficulty: Difficulty,
-): Model =>
+): M =>
   isLocked(model.difficulty, difficulty)
     ? model
-    : modifyFields(model, {
+    : modifyWorldFields(model, {
         difficulty: setting =>
           modifyFields(setting, { chosen: () => difficulty }),
       })
 
-export const settleNightmare = (model: Model): Model =>
+export const settleNightmare = <M extends World>(model: M): M =>
   model.difficulty.nightmare === 'JustUnlocked'
-    ? modifyFields(model, {
+    ? modifyWorldFields(model, {
         difficulty: setting =>
           modifyFields(setting, { nightmare: () => 'Unlocked' }),
       })
@@ -155,49 +154,23 @@ export const settleNightmare = (model: Model): Model =>
 
 // UNLOCKING
 
-export const hasJustWon = (before: Model, after: Model): boolean =>
+export const hasJustWon = (before: World, after: World): boolean =>
   !Phase.isAnyOf(['Victory'])(before.phase) &&
   Phase.isAnyOf(['Victory'])(after.phase)
 
 // NOTE: `played` is the run's difficulty: the player's own pick, or in an
 // online co-op run the one the room's host picked.
 export const isNightmareUnlockedBy = (
-  before: Model,
-  after: Model,
+  before: World,
+  after: World,
   played: Difficulty = after.difficulty.chosen,
 ): boolean =>
   hasJustWon(before, after) &&
   played === 'Hard' &&
   after.difficulty.nightmare === 'Locked'
 
-export const unlockNightmare = (model: Model): Model =>
-  modifyFields(model, {
+export const unlockNightmare = <M extends World>(model: M): M =>
+  modifyWorldFields(model, {
     difficulty: setting =>
       modifyFields(setting, { nightmare: () => 'JustUnlocked' }),
   })
-
-// BESTS
-
-export const bestsFor = (model: Model): DifficultyBests =>
-  model.bests.byDifficulty[model.difficulty.chosen]
-
-export const withBests = (
-  model: Model,
-  toBests: (bests: DifficultyBests) => DifficultyBests,
-  chosen: Difficulty = model.difficulty.chosen,
-): Model => {
-  return modifyFields(model, {
-    bests: bests =>
-      modifyFields(bests, {
-        byDifficulty: byDifficulty =>
-          modifyFields(byDifficulty, {
-            Easy: current => (chosen === 'Easy' ? toBests(current) : current),
-            Normal: current =>
-              chosen === 'Normal' ? toBests(current) : current,
-            Hard: current => (chosen === 'Hard' ? toBests(current) : current),
-            Nightmare: current =>
-              chosen === 'Nightmare' ? toBests(current) : current,
-          }),
-      }),
-  })
-}

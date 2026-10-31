@@ -4,9 +4,10 @@ import { modifyFields } from 'foldkit/struct'
 import { maybeNewestNewsDay } from './changelog'
 import { FEEDBACK_LINE, RESTART_GRACE_MS } from './constants'
 import { IS_COOP_RELEASED } from './coop/release'
-import { hasJustWon, withBests } from './difficulty'
+import { hasJustWon } from './difficulty'
 import type { FocusStep } from './input'
 import {
+  type DifficultyBests,
   type HandCard,
   type HomeButton,
   type HomeMode,
@@ -303,6 +304,30 @@ export const returnHome = (model: Model): Model => ({
 })
 
 // BESTS
+
+export const bestsFor = (model: Model): DifficultyBests =>
+  model.bests.byDifficulty[model.difficulty.chosen]
+
+export const withBests = (
+  model: Model,
+  toBests: (bests: DifficultyBests) => DifficultyBests,
+  chosen: Difficulty = model.difficulty.chosen,
+): Model => {
+  return modifyFields(model, {
+    bests: bests =>
+      modifyFields(bests, {
+        byDifficulty: byDifficulty =>
+          modifyFields(byDifficulty, {
+            Easy: current => (chosen === 'Easy' ? toBests(current) : current),
+            Normal: current =>
+              chosen === 'Normal' ? toBests(current) : current,
+            Hard: current => (chosen === 'Hard' ? toBests(current) : current),
+            Nightmare: current =>
+              chosen === 'Nightmare' ? toBests(current) : current,
+          }),
+      }),
+  })
+}
 
 const fasterWin = (
   maybeFastestMs: Option.Option<number>,

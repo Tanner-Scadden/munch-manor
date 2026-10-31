@@ -159,3 +159,38 @@ export const inLandscapeFrame = (
   screen.layout === 'Landscape' || Array.isReadonlyArrayEmpty(shapes)
     ? shapes
     : [group({ translate: landscapeFrameOffset(screen), shapes })]
+
+// SCREEN TO VIEW
+
+type ScreenSize = Readonly<{ width: number; height: number }>
+
+const LANDSCAPE_SIZE: ScreenSize = { width: VIEW_WIDTH, height: VIEW_HEIGHT }
+
+const viewScale = (
+  surface: SurfaceRectangle,
+  screen: ScreenSize = LANDSCAPE_SIZE,
+): number =>
+  Math.min(surface.width / screen.width, surface.height / screen.height)
+
+export const clientToView = (
+  surface: SurfaceRectangle,
+  client: Vector,
+  screen: ScreenSize = LANDSCAPE_SIZE,
+): Option.Option<Vector> => {
+  const scale = viewScale(surface, screen)
+  if (scale <= 0) {
+    return Option.none()
+  }
+
+  const viewLeft = surface.left + (surface.width - screen.width * scale) / 2
+  const viewTop = surface.top + (surface.height - screen.height * scale) / 2
+  return Option.some({
+    x: (client.x - viewLeft) / scale,
+    y: (client.y - viewTop) / scale,
+  })
+}
+
+export const isLeftHalf = (
+  surface: SurfaceRectangle,
+  clientX: number,
+): boolean => clientX < surface.left + surface.width / 2

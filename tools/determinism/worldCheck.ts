@@ -6,9 +6,13 @@
 // 1. Bundles worldWorker.ts (stepWorld, the co-op room's adapter and binary
 //    wire, and detMath) into out/ and fails on any forbidden module the
 //    bundle pulls in, or on any runtime code of the netcode package.
-// 2. Plays a World 600 ticks in Bun and in a local workerd from infra's
+// 2. Lists the files infra's typecheck sees (its own effect-tsgo, with
+//    --listFilesOnly) and fails on any of the same game modules there: an
+//    `import type` the bundle drops still pulls the client into the
+//    Worker's types.
+// 3. Plays a World 600 ticks in Bun and in a local workerd from infra's
 //    binary (or WORKERD), and fails unless both give the same World.
-// 3. Plays a co-op room's World from its seats the same way.
+// 4. Plays a co-op room's World from its seats the same way.
 //
 //   bun run world:check
 
@@ -61,11 +65,19 @@ const FORBIDDEN_GAME_MODULES: ReadonlyArray<RegExp> = [
   /^src\/(music|musicPlan)\.ts$/,
   /^src\/(store|storeSqlite|save|playerScope|playerSync)\.ts$/,
   /^src\/(commands|subscriptions|analyticsBeacon|support|changelog)\.ts$/,
-  /^src\/(onboarding|runReset|frame|hud|menus|screens)\.ts$/,
+  /^src\/(onboarding|runReset|frame|hud|menus|screens|juice)\.ts$/,
   /^src\/(particles|particlePhysics|particleBursts)\.ts$/,
   /^src\/update\//,
   /^src\/coop\//,
   /^src\/roomTesting\.ts$/,
+  /^packages\//,
+]
+
+// NOTE: what infra's typecheck may see that a room may not carry: the
+// player scope the sync Worker serves (infra/tsconfig.json includes it), and
+// the packages the Worker is built on.
+const INFRA_OWN_MODULES: ReadonlyArray<RegExp> = [
+  /^src\/playerScope\.ts$/,
   /^packages\//,
 ]
 
@@ -105,20 +117,57 @@ const problemsOf = (inputs: ReadonlyArray<string>): ReadonlyArray<string> =>
       : FORBIDDEN_GAME_MODULES.some(forbidden => forbidden.test(path)),
   )
 
-const workerdBinary = (): string | undefined => {
+// NOTE: a binary from infra's packages, in this checkout or, from a
+// worktree with none installed, in the main one.
+const infraBinary = (name: string, override?: string): string | undefined => {
   const commonDir = spawnSync(
     'git',
     ['rev-parse', '--path-format=absolute', '--git-common-dir'],
     { cwd: root, encoding: 'utf8' },
   ).stdout.trim()
   return [
-    process.env['WORKERD'],
-    resolve(root, 'infra/node_modules/.bin/workerd'),
+    override,
+    resolve(root, `infra/node_modules/.bin/${name}`),
     commonDir === ''
       ? undefined
-      : resolve(commonDir, '../infra/node_modules/.bin/workerd'),
+      : resolve(commonDir, `../infra/node_modules/.bin/${name}`),
   ].find(path => path !== undefined && existsSync(path))
 }
+
+const workerdBinary = (): string | undefined =>
+  infraBinary('workerd', process.env['WORKERD'])
+
+// NOTE: every file of the repo infra's typecheck reads, by type or at run
+// time, from its own TypeScript and tsconfig.
+const infraTypeFiles = (): ReadonlyArray<string> => {
+  const binary = infraBinary('effect-tsgo')
+  if (binary === undefined) {
+    throw new Error('no effect-tsgo: run bun install in infra/')
+  }
+  const listed = spawnSync(binary, ['tsrs', '--noEmit', '--listFilesOnly'], {
+    cwd: resolve(root, 'infra'),
+    encoding: 'utf8',
+  })
+  if (listed.status !== 0) {
+    console.error(listed.stdout, listed.stderr)
+    throw new Error("infra's typecheck did not list its files")
+  }
+  return listed.stdout
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line !== '' && !line.includes('/node_modules/'))
+    .map(relativeOf)
+}
+
+const infraTypeProblemsOf = (
+  files: ReadonlyArray<string>,
+): ReadonlyArray<string> =>
+  files.filter(
+    path =>
+      path.startsWith('src/') &&
+      !INFRA_OWN_MODULES.some(own => own.test(path)) &&
+      FORBIDDEN_GAME_MODULES.some(forbidden => forbidden.test(path)),
+  )
 
 // NOTE: the requests as JSON for the worker, which reads them back
 // (worldWorker.ts).
@@ -177,6 +226,19 @@ if (problems.length > 0) {
 console.log(
   'No UI, art, audio, camera, input, store, sync, or netcode module in it.',
 )
+
+const typeFiles = infraTypeFiles()
+const typeProblems = infraTypeProblemsOf(typeFiles)
+console.log(
+  `Infra's typecheck: ${typeFiles.filter(path => path.startsWith('src/')).length} game modules, ${typeFiles.length} files of the repo in all.`,
+)
+if (typeProblems.length > 0) {
+  console.error(
+    `Its types reach modules a room must not carry (import the World's own types, not the client's):\n  ${typeProblems.join('\n  ')}`,
+  )
+  process.exit(1)
+}
+console.log('No client module in its types either.')
 
 // NOTE: a World mid-wave, with zombies about, from the scripted player.
 const played = Array.from({ length: 900 }).reduce(

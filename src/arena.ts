@@ -7,8 +7,14 @@ import {
   TILE_SIZE,
   ZOMBIE_SPAWN_MARGIN,
 } from './constants'
+import type {
+  DoorId,
+  ExitId,
+  LevelId,
+  LevelState,
+  Vector,
+} from './entitySchema'
 import { addVectors, clamp, scaleVector, vectorLength } from './geometry'
-import type { DoorId, ExitId, LevelId, LevelState, Vector } from './model'
 
 // MAP
 

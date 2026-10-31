@@ -8,7 +8,8 @@ import { DialogBlock } from '@foldkit/ui'
 
 import { PanelDialogBinding } from './bindings'
 import { FIXED_STEP_MS } from './constants'
-import { bestsFor, biteDamage } from './difficulty'
+import { biteDamage } from './difficulty'
+import { bestsFor } from './home'
 import { update } from './main'
 import { Message } from './message'
 import {

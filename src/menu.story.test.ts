@@ -16,8 +16,7 @@ import {
   LoadStyles,
 } from './boot'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from './constants'
-import { bestsFor, withBests } from './difficulty'
-import { returnHome } from './home'
+import { bestsFor, returnHome, withBests } from './home'
 import { init, update } from './main'
 import { Message } from './message'
 import {

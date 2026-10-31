@@ -58,7 +58,7 @@ So the game is deterministic in each engine, and across engines only the transce
 
 ## The World in workerd
 
-`bun run world:check` (`worldCheck.ts`, in CI) bundles `worldWorker.ts`, which holds only `stepWorld`, its wire, and `detMath.ts`, and fails if the bundle pulls in a client, UI, art, audio, camera, input, store, or sync module. Then it plays a World mid-wave 600 ticks in Bun and in a local workerd (`worldWorkerd.capnp`), both with `detMath.ts`, with 1, 2, and 4 players (teammates seated mid-wave, each walking and firing their own way), and fails unless the two Worlds are the same.
+`bun run world:check` (`worldCheck.ts`, in CI) bundles `worldWorker.ts`, which holds only `stepWorld`, its wire, and `detMath.ts`, and fails if the bundle pulls in a client, UI, art, audio, camera, input, store, or sync module. It lists the files infra's typecheck reads (infra's own `effect-tsgo tsrs --listFilesOnly`) and fails on the same modules there, since an `import type` the bundle drops still pulls the client into the Worker's types. Then it plays a World mid-wave 600 ticks in Bun and in a local workerd (`worldWorkerd.capnp`), both with `detMath.ts`, with 1, 2, and 4 players (teammates seated mid-wave, each walking and firing their own way), and fails unless the two Worlds are the same.
 
 ## Files
 

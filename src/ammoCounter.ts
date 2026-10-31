@@ -1,20 +1,15 @@
 import { Array, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
 import { SHOP_NEAR_PX, SHOP_REACH_PX } from './constants'
-import type { Model } from './model'
 import type { Offer } from './purchase'
 import { STALL_BOX, priceFor, purchase } from './shop'
 import { heldGun, maxRounds } from './weapons'
 import type { World } from './world'
 import {
   type CarriedGun,
-  CounterSale,
   type FixedShopItemId,
-  GameEvent,
   Phase,
   Purchasable,
-  type Vector,
   type WeaponKind,
 } from './worldSchema'
 
@@ -86,8 +81,6 @@ export const sellAmmo = (world: World): Option.Option<World> =>
 
 // THE SALE
 
-const COUNTER_SALE_MS = 1400
-
 // NOTE: what Rattles says as he slides the rounds across, a different line
 // each sale. Kept here, away from the shop dialog's lines, so the World's
 // purchase step never loads the views.
@@ -98,43 +91,6 @@ export const COUNTER_LINES: Array.NonEmptyReadonlyArray<string> = [
   'HURRY BACK!',
   "DON'T WASTE EM",
 ]
-
-const isBesideStall = ({ x, y }: Vector): boolean =>
-  Math.hypot(
-    Math.max(STALL_BOX.left - x, 0, x - STALL_BOX.right),
-    Math.max(STALL_BOX.top - y, 0, y - STALL_BOX.bottom),
-  ) <= SHOP_NEAR_PX
-
-// NOTE: a cosmetic, made after the step from the frame's events: a buy
-// beside the stall mid-wave is a sale at the window, so Rattles wakes, slides
-// the rounds across, and says a line, a different one each sale.
-export const advanceCounterSale = (model: Model, frameMs: number): Model => {
-  const isSale =
-    isCounterOpen(model) &&
-    Array.some(
-      model.frameEvents,
-      event => GameEvent.isAnyOf(['Purchased'])(event) && isBesideStall(event),
-    )
-  if (isSale) {
-    return modifyFields(model, {
-      counterSale: () =>
-        CounterSale.Selling({
-          ageMs: 0,
-          line: model.stats.purchases % COUNTER_LINES.length,
-        }),
-    })
-  }
-  return CounterSale.match(model.counterSale, {
-    Quiet: () => model,
-    Selling: sale =>
-      modifyFields(model, {
-        counterSale: () =>
-          sale.ageMs + frameMs >= COUNTER_SALE_MS
-            ? CounterSale.Quiet()
-            : CounterSale.Selling({ ...sale, ageMs: sale.ageMs + frameMs }),
-      }),
-  })
-}
 
 // NOTE: a player standing at the window wakes Rattles up.
 export const isAtAmmoWindow = (world: World): boolean =>

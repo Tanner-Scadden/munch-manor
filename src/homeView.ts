@@ -12,7 +12,6 @@ import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
   NIGHTMARE_LOCK_NOTE,
-  bestsFor,
   isLocked,
 } from './difficulty'
 import { munchopediaBodyView, munchopediaText } from './guideView'
@@ -24,6 +23,7 @@ import {
   type KeyedHandCard,
   type LinkHandCard,
   SOURCE_URL,
+  bestsFor,
   handCardId,
   homeButtonId,
   isEndScreen,

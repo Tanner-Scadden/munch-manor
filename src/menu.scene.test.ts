@@ -19,8 +19,11 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test, expect as vitestExpect } from 'vitest'
 
 import { RESTART_GRACE_MS } from './constants'
-import { withBests } from './difficulty'
-import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from './home'
+import {
+  KEEP_TUTORIAL_BUTTON_ID,
+  RESET_TUTORIAL_BUTTON_ID,
+  withBests,
+} from './home'
 import { Message } from './message'
 import { type HandCard, type Model, Phase } from './model'
 import { home } from './model.fixture'

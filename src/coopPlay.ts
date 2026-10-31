@@ -10,11 +10,12 @@ import { aimTracers, flyTracers } from './firing'
 import {
   advanceCosmetics,
   clampFrameDelta,
+  endRoundOnClient,
   leanFor,
   refreshIntent,
 } from './frame'
 import { launchPrize } from './fridgeReveal'
-import { stopForHits, thawTick } from './juice'
+import { stopForHits, thawTick } from './hitStop'
 import type { Model } from './model'
 import { ageDebutCard, raiseDebutCardFrom } from './onboarding'
 import { maybeRunRoom, runDifficultyOf } from './onlineRun'
@@ -34,7 +35,7 @@ import {
   shotSoundCue,
 } from './update/sound'
 import { toModel, unchanged } from './update/step'
-import { endRoundOnClient, isRoundActive } from './waves'
+import { isRoundActive } from './waves'
 import { type World, withWorld } from './world'
 import {
   type Bullet,

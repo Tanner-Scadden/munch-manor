@@ -13,7 +13,6 @@ import {
   SHOP_REACH_PX,
   TILE_SIZE,
 } from './constants'
-import type { Model } from './model'
 import { SHOP_GOOD_NAMES } from './names'
 import { isCoop } from './party'
 import { countPurchase } from './stats'
@@ -60,7 +59,6 @@ import {
   type Player,
   type RepairItemId,
   type ShopCategory,
-  ShopChatter,
   ShopItemId,
   ShopState,
   Trap,
@@ -1120,24 +1118,6 @@ const arriveAtStall = (model: World): ShopState =>
         focusedItem: suggestedItem(model, model.shopCategory),
       })
     : ShopState.Away()
-
-export const selectShopCategory = (
-  model: Model,
-  category: ShopCategory,
-): Model =>
-  modifyFields(model, {
-    shopCategory: () => category,
-    shopChatter: () => ShopChatter.Greeting(),
-    shop: shop =>
-      ShopState.match(shop, {
-        Away: () => shop,
-        Browsing: () =>
-          ShopState.Browsing({
-            focusedItem: suggestedItem(model, category),
-          }),
-        Dismissed: () => shop,
-      }),
-  })
 
 // NOTE: walking into the stall opens the shop. It stays shut after it is
 // left until the player steps away.

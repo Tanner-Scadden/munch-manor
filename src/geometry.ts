@@ -1,7 +1,7 @@
 import { Option } from 'effect'
 
-import { KNOCKBACK_REST_SPEED, VIEW_HEIGHT, VIEW_WIDTH } from './constants'
-import type { SurfaceRectangle, Vector } from './model'
+import { KNOCKBACK_REST_SPEED } from './constants'
+import type { Vector } from './entitySchema'
 
 export const ZERO_VECTOR: Vector = { x: 0, y: 0 }
 
@@ -81,39 +81,6 @@ export const closestPointOnSegment = (
   )
   return { x: from.x + segmentX * along, y: from.y + segmentY * along }
 }
-
-type ScreenSize = Readonly<{ width: number; height: number }>
-
-const LANDSCAPE_SIZE: ScreenSize = { width: VIEW_WIDTH, height: VIEW_HEIGHT }
-
-const viewScale = (
-  surface: SurfaceRectangle,
-  screen: ScreenSize = LANDSCAPE_SIZE,
-): number =>
-  Math.min(surface.width / screen.width, surface.height / screen.height)
-
-export const clientToView = (
-  surface: SurfaceRectangle,
-  client: Vector,
-  screen: ScreenSize = LANDSCAPE_SIZE,
-): Option.Option<Vector> => {
-  const scale = viewScale(surface, screen)
-  if (scale <= 0) {
-    return Option.none()
-  }
-
-  const viewLeft = surface.left + (surface.width - screen.width * scale) / 2
-  const viewTop = surface.top + (surface.height - screen.height * scale) / 2
-  return Option.some({
-    x: (client.x - viewLeft) / scale,
-    y: (client.y - viewTop) / scale,
-  })
-}
-
-export const isLeftHalf = (
-  surface: SurfaceRectangle,
-  clientX: number,
-): boolean => clientX < surface.left + surface.width / 2
 
 // NOTE: a timer's time left after a frame, never below zero.
 export const countDown = (remainingMs: number, deltaMs: number): number =>

@@ -2,7 +2,7 @@ import { Array, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { MS_PER_SECOND, SCORE_PER_ZOMBIE } from './constants'
-import type { Model } from './model'
+import { type World, modifyWorldFields } from './world'
 import {
   GameEvent,
   type KillCounts,
@@ -48,12 +48,12 @@ const lastHurtBy = (
     Option.map(({ source }) => source),
   )
 
-export const tallyFrame = (
-  before: Model,
-  after: Model,
+export const tallyFrame = <M extends World>(
+  before: World,
+  after: M,
   deltaMs: number,
-): Model =>
-  modifyFields(after, {
+): M =>
+  modifyWorldFields(after, {
     stats: stats =>
       modifyFields(stats, {
         kills: kills =>

@@ -4,7 +4,6 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from './constants'
-import { clientToView } from './geometry'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -26,6 +25,7 @@ import {
   shownGhostSticks,
   shownHints,
 } from './onboarding'
+import { clientToView } from './screen'
 import { accuracyPercent, totalKills } from './stats'
 import {
   SHOWN_TICKS,

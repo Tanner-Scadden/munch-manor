@@ -5,13 +5,14 @@ import { describe, expect, test } from 'vitest'
 
 import { PARLOUR } from './arena'
 import { PREPARATION_MS, ZOMBIE_ALIVE_MAX, ZOMBIE_MAX_HP } from './constants'
-import { DIFFICULTIES, bestsFor, withBests } from './difficulty'
+import { DIFFICULTIES } from './difficulty'
 import {
   endlessTankCount,
   endlessZombieCount,
   hpScaleFor,
   rollSpawns,
 } from './endlessWaves'
+import { bestsFor, withBests } from './home'
 import { update } from './main'
 import { Message } from './message'
 import {

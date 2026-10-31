@@ -19,7 +19,7 @@ import {
   ZOMBIE_ALIVE_MAX,
 } from './constants'
 import { burrowed, drawSurfacingSpot } from './crawler'
-import { crowdSpawns, toughenSpawns, withBests } from './difficulty'
+import { crowdSpawns, toughenSpawns } from './difficulty'
 import { routeSpawns } from './doorRoute'
 import { rollWave } from './endlessWaves'
 import { frenzyOnArrival, frenzyPacksOf } from './frenzy'
@@ -30,7 +30,6 @@ import {
   learnOpenBreak,
   learnTimedBreaks,
 } from './lessons'
-import type { Model } from './model'
 import {
   aliveCount,
   delayCampedPacks,
@@ -54,17 +53,15 @@ import { isEveryoneReady, returnFallen } from './revive'
 import { isKitchenTourOn } from './tutorialRules'
 import { GROUP_ID_STRIDE, PACK_ID_STRIDE, bySpawnTime } from './wavePacks'
 import { FINAL_WAVE, planFor } from './wavePlans'
-import { type World, withWorld } from './world'
+import { type World, modifyWorldFields } from './world'
 import {
   Alarm,
   Beat,
   BreakClock,
-  type Difficulty,
   type DoorId,
   GameEvent,
   Phase,
   type PlannedSpawn,
-  Purchase,
   type Round,
   RunMode,
   ShopState,
@@ -278,31 +275,18 @@ export const beginPreparation = (
   })
 }
 
-export const keepGoing = (model: Model): Model =>
-  Phase.isAnyOf(['Victory'])(model.phase)
-    ? withWorld(
-        modifyFields(model, {
-          mode: () => RunMode.Endless(),
-          shop: () => ShopState.Away(),
-          purchase: () => Purchase.Idle(),
-          screenMs: () => 0,
-        }),
-        world => beginPreparation(world, FINAL_WAVE + 1, PREPARATION_MS),
-      )
-    : model
-
-const isEndless = (model: World): boolean =>
+export const isEndless = (model: World): boolean =>
   RunMode.isAnyOf(['Endless'])(model.mode)
 
-export const pause = (model: Model): Model =>
+export const pause = <M extends World>(model: M): M =>
   Phase.match(model.phase, {
     Ready: () => model,
     Preparation: preparation =>
-      modifyFields(model, {
+      modifyWorldFields(model, {
         phase: () => Phase.Paused({ round: preparation }),
       }),
     Wave: wave =>
-      modifyFields(model, { phase: () => Phase.Paused({ round: wave }) }),
+      modifyWorldFields(model, { phase: () => Phase.Paused({ round: wave }) }),
     Paused: () => model,
     Victory: () => model,
     GameOver: () => model,
@@ -595,28 +579,6 @@ export const roundWave = (phase: Phase): number =>
     GameOver: ({ wave }) => wave,
   })
 
-const recordBestWave = (
-  model: Model,
-  wave: number,
-  played: Difficulty,
-): Model =>
-  isEndless(model)
-    ? withBests(
-        model,
-        bests =>
-          modifyFields(bests, {
-            maybeBestEndlessWave: maybeBest =>
-              Option.some(
-                Option.match(maybeBest, {
-                  onNone: () => wave,
-                  onSome: best => Math.max(best, wave),
-                }),
-              ),
-          }),
-        played,
-      )
-    : model
-
 // NOTE: in co-op the run ends when everyone is down (decided row 4).
 const isDefeated = (model: World): boolean =>
   isCoop(model)
@@ -631,26 +593,6 @@ export const endWhenDefeated = (model: World): World => {
   return modifyFields(model, {
     phase: () => Phase.GameOver({ wave: roundWave(model.phase) }),
   })
-}
-
-// NOTE: the client's half of a round ending on a tick: the end screen's
-// clock starts, and a lost endless run records its best wave, under the
-// difficulty it was played on (an online co-op run's is the room's).
-export const endRoundOnClient = (
-  before: Model,
-  after: Model,
-  played: Difficulty = after.difficulty.chosen,
-): Model => {
-  if (
-    !isRoundActive(before.phase) ||
-    !Phase.isAnyOf(['Victory', 'GameOver'])(after.phase)
-  ) {
-    return after
-  }
-  const shown = modifyFields(after, { screenMs: () => 0 })
-  return Phase.isAnyOf(['GameOver'])(after.phase)
-    ? recordBestWave(shown, roundWave(after.phase), played)
-    : shown
 }
 
 export const zombiesRemaining = (

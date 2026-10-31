@@ -24,6 +24,7 @@ import {
   TILE_SIZE,
   ZOMBIE_SPAWN_MARGIN,
 } from './constants'
+import type { DoorId, Vector } from './entitySchema'
 import {
   ZERO_VECTOR,
   addVectors,
@@ -32,7 +33,7 @@ import {
   normalize,
   scaleVector,
 } from './geometry'
-import type { DoorId, FlowField, Toll, Vector } from './model'
+import type { FlowField, Toll } from './worldSchema'
 
 // PER LEVEL
 

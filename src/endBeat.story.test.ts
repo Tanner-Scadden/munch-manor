@@ -9,7 +9,6 @@ import {
   MAX_FRAME_DELTA_MS,
   RESTART_GRACE_MS,
 } from './constants'
-import { bestsFor, withBests } from './difficulty'
 import {
   TIMELINES,
   doneMs,
@@ -21,6 +20,7 @@ import {
   shownValue,
   tallyRowsOf,
 } from './endBeat'
+import { bestsFor, withBests } from './home'
 import { update } from './main'
 import { shareHrefOf } from './menus'
 import { Message } from './message'

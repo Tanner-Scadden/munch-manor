@@ -16,7 +16,7 @@ import { describe, test } from 'vitest'
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import { FIXED_STEP_MS, PREPARATION_MS, RESTART_GRACE_MS } from './constants'
-import { withBests } from './difficulty'
+import { withBests } from './home'
 import { Message } from './message'
 import { type Model, Phase, RunMode, initialModel } from './model'
 import {

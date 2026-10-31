@@ -7,9 +7,9 @@ import {
   type ApplicationViewBuilder,
 } from './composition'
 import { GAME_TITLE } from './constants'
-import { DIFFICULTIES, bestsFor } from './difficulty'
+import { DIFFICULTIES } from './difficulty'
 import { crewOf, isRunCardHeld, mvpOf } from './endBeat'
-import { feedbackSentence } from './home'
+import { bestsFor, feedbackSentence } from './home'
 import {
   homeMenuView,
   manorHandView,
