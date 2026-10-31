@@ -13,8 +13,10 @@ import { describe, expect, it } from '@effect/vitest'
 
 import {
   MAX_SUMMARY_BYTES,
+  RUN_SUMMARY_VERSION,
   type RunSummary,
   RunSummaryJson,
+  SOLO_PARTY,
   type ShareEvent,
   ShareEventJson,
 } from '../../src/analytics.ts'
@@ -37,7 +39,7 @@ import {
 import { fromJson, memory, toJson } from './testing.ts'
 
 const summary: RunSummary = {
-  version: 1,
+  version: RUN_SUMMARY_VERSION,
   visitId: '0123456789abcdef',
   build: 'abc1234',
   mode: 'Campaign',
@@ -61,7 +63,25 @@ const summary: RunSummary = {
   device: 'Touch',
   screenFit: 'Browser',
   frameTime: 'Under17Ms',
+  party: SOLO_PARTY,
 }
+
+// NOTE: one player's own summary of an online co-op run.
+const crewSummary: RunSummary = {
+  ...summary,
+  difficulty: 'Hard',
+  party: {
+    _tag: 'Crew',
+    size: 3,
+    seatKills: 21,
+    seatDowns: 2,
+    seatRevives: 1,
+  },
+}
+
+// NOTE: a summary from a build before co-op summaries: no party.
+const { party: _party, ...olderFields } = summary
+const olderSummaryJson = toJson({ ...olderFields, version: 1 })
 
 const encodeSummary = Schema.encodeSync(RunSummaryJson)
 
@@ -188,6 +208,16 @@ describe('the rules', () => {
         true,
       )
       expect(Exit.isFailure(yield* Effect.exit(decodeSummary('{')))).toBe(true)
+      expect(yield* decodeSummary(encodeSummary(crewSummary))).toEqual(
+        crewSummary,
+      )
+      const crewOfFive = toJson({
+        ...crewSummary,
+        party: { ...crewSummary.party, size: 5 },
+      })
+      expect(
+        Exit.isFailure(yield* Effect.exit(decodeSummary(crewOfFive))),
+      ).toBe(true)
     }),
   )
 
@@ -240,6 +270,65 @@ describe('POST /api/runs', () => {
         wave: 5,
       })
     }),
+  )
+
+  it.effect(
+    "a co-op summary stores the crew's size and the seat's own numbers",
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp()
+        const response = yield* post(setup, encodeSummary(crewSummary))
+        expect(response.status).toBe(202)
+        expect(
+          yield* query(
+            setup,
+            'SELECT summary_version, difficulty, party, crew_size, seat_kills, seat_downs, seat_revives FROM runs',
+          ),
+        ).toEqual([
+          {
+            summary_version: 2,
+            difficulty: 'Hard',
+            party: 'Crew',
+            crew_size: 3,
+            seat_kills: 21,
+            seat_downs: 2,
+            seat_revives: 1,
+          },
+        ])
+      }),
+  )
+
+  it.effect(
+    'a solo summary, and a version 1 one from a cached build, store as solo',
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp()
+        expect((yield* post(setup, summaryJson)).status).toBe(202)
+        expect((yield* post(setup, olderSummaryJson)).status).toBe(202)
+        expect(
+          yield* query(
+            setup,
+            'SELECT summary_version, party, crew_size, seat_kills, seat_downs, seat_revives FROM runs ORDER BY id',
+          ),
+        ).toEqual([
+          {
+            summary_version: 2,
+            party: 'Solo',
+            crew_size: 1,
+            seat_kills: null,
+            seat_downs: null,
+            seat_revives: null,
+          },
+          {
+            summary_version: 1,
+            party: 'Solo',
+            crew_size: 1,
+            seat_kills: null,
+            seat_downs: null,
+            seat_revives: null,
+          },
+        ])
+      }),
   )
 
   it.effect('no column holds the address or its hash', () =>

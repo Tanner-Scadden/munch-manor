@@ -311,7 +311,7 @@ On 2026-10-30, in one pull request of increments: the room plays the game's own 
 | The binary codec         | `src/worldCodec.ts`                                             | Read off the World's Schemas, so a new field travels with no codec change: each number packed as its Schema's `wire` annotation says (`src/wireNumber.ts`), positions in eighths of a pixel, velocities in eighths, directions and scales in 4096ths, timers in whole ms, and a number with no annotation exactly; tags and literals as indexes; entity lists (zombies, bullets, pickups, traps, teammates) keyed by id; nested field masks; list diffs that name only what left or changed. Seeds, flow fields, stats, and the gates stay home |
 | The client               | `src/coopPlay.ts`, `src/update/coopRun.ts`, `src/coop/`         | Each frame: intent from the client's own input and camera, the Session's input and render, then the room's World with the client's seat focused (`focusSeat`) in the root's World fields, so every view, the HUD, the shop, and the touch controls draw it with its own camera. Cosmetics and sounds from the events the drawing reached, each once; hit-stop holds only the client's picture while the events wait                                                                                                                             |
 | Teammates                | `src/coopMarksView.ts`, `src/partyView.ts`, `src/coop/looks.ts` | Each teammate in their seat's look, their name as a small tag tight over their head (a 3 by 4 pixel font on a dark plate, underlined in their seat's color), READY over everyone ready in a break, and a badge of their seat's color at the screen's edge when off screen (decided 4). START WAVE reads READY in co-op, READY! once pressed                                                                                                                                                                                                     |
-| The rules around the run | `src/update/coopRun.ts`, `src/main.ts`                          | No pause (the corner holds LEAVE), the stall's dialog opens when the room puts the player at the counter and closing it tells the room, a run counts toward the player's own bests and Munchopedia kills when it ends (the team's kills by kind; the room credits each seat's kills for the lobby's scores), no analytics summary until RunSummary has co-op fields, leaving the room goes home                                                                                                                                                 |
+| The rules around the run | `src/update/coopRun.ts`, `src/main.ts`                          | No pause (the corner holds LEAVE), the stall's dialog opens when the room puts the player at the counter and closing it tells the room, a run counts toward the player's own bests and Munchopedia kills when it ends (the team's kills by kind; the room credits each seat's kills for the lobby's scores), each player's client sends its own analytics summary from its own seat when the run ends or they leave (RunSummary version 2's `party`, see "Analytics" in `PLATFORM.md`), leaving the room goes home                              |
 | The last world           | `packages/netcode/src/Room.ts`                                  | A run that ends between messages sends its last world before RoomClosed, so every player sees how it ended                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 **Measured.** Four scripted players over a simulated 60 ms round trip, every message through the real codecs, 100 s into wave 3 with 500 hearts each so they last (`src/roomWorld.sim.test.ts`):
@@ -330,7 +330,7 @@ That is under the estimate of "The wire at 20 Hz" (5.7 mean, 7.4 crowded, 11.2 a
 Left for later:
 
 - **Feel (Phase 4).** Throttled 4G on real phones is not measured yet.
-- **Co-op analytics and balance (Phase 6).** RunSummary has no co-op fields, so an online run sends none.
+- **Co-op balance (Phase 6).** Online runs send summaries since 2026-10-31 (RunSummary's `party`: the crew's size and the seat's own kills, downs, and revives), and `tools/analytics/report.ts` has a co-op section. Purchases and traps placed are not counted in a co-op summary yet.
 
 ### The lobby picks
 
@@ -418,7 +418,7 @@ Move rooms into shards of 6 (see "Sharding rooms" for the tradeoffs): a per-regi
 
 ### Phase 6: balance and ship
 
-Teach the balance bot to play several bots in one room, add the per-count targets to `tools/balance/targets.ts`, tune the decided scaling and the split bonus, add co-op fields to the analytics `RunSummary`, switch the account to Workers Paid, and ship behind the home menu.
+Teach the balance bot to play several bots in one room, add the per-count targets to `tools/balance/targets.ts`, tune the decided scaling and the split bonus, switch the account to Workers Paid, and ship behind the home menu.
 
 ## The models, compared
 

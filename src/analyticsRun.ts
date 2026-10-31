@@ -8,9 +8,11 @@ import {
   type RunOutcome,
   type RunSummary,
   SHARE_EVENT_VERSION,
+  SOLO_PARTY,
   type ShareEvent,
   type SharePath,
   type ShareScreen,
+  type SummaryParty,
   type SummaryScreenFit,
   UNKNOWN_CAUSE,
   WonRun,
@@ -23,7 +25,7 @@ import {
   type RunStats,
   type ScreenFit,
 } from './model'
-import { isCoop } from './party'
+import { isCoop, leadSeatOf, playersOf } from './party'
 import type { Difficulty } from './playerData'
 import { roundWave } from './waves'
 
@@ -61,9 +63,11 @@ const summaryScreenFit = (screenFit: ScreenFit): SummaryScreenFit =>
 
 // RUN END
 
-// NOTE: a run ends at Game Over, at Victory, or when the player leaves it
-// from the pause MENU. Keeping going after a win starts no new run: when that
-// run ends it reports again, as Endless, with the whole run's stats.
+// NOTE: a run ends at Game Over, at Victory, or when the player leaves it:
+// from the pause MENU, or, online, by leaving the room or losing it, which
+// goes home (src/update/coop.ts, leftRoom). Keeping going after a win
+// starts no new run: when that run ends it reports again, as Endless, with
+// the whole run's stats.
 export const maybeRunOutcome = (
   before: Model,
   after: Model,
@@ -95,6 +99,29 @@ export const maybeRunOutcome = (
 const finalRun = (before: Model, after: Model, outcome: RunOutcome): Model =>
   outcome._tag === 'Quit' ? before : after
 
+// NOTE: an online co-op run's own seat is the lead in the Model (the
+// client draws it as the player, src/coopPlay.ts), so its numbers are this
+// player's. The crew's size counts every seat in the run, one who dropped
+// out too.
+const partyOf = (run: Model): SummaryParty => {
+  if (!isCoop(run)) {
+    return SOLO_PARTY
+  }
+  const seat = leadSeatOf(run)
+  return {
+    _tag: 'Crew',
+    size: playersOf(run).length,
+    seatKills: seat.kills,
+    seatDowns: seat.downs,
+    seatRevives: seat.revives,
+  }
+}
+
+// NOTE: an online run plays on the room's difficulty, kept with the run
+// (maybeRoomDifficulty) so a LEAVE, which drops the room, still has it.
+const playedDifficultyOf = (run: Model): Difficulty =>
+  Option.getOrElse(run.maybeRoomDifficulty, () => run.difficulty.chosen)
+
 export const runSummaryOf = (
   before: Model,
   after: Model,
@@ -109,7 +136,7 @@ export const runSummaryOf = (
     visitId,
     build,
     mode: RunMode.isAnyOf(['Endless'])(run.mode) ? 'Endless' : 'Campaign',
-    difficulty: run.difficulty.chosen,
+    difficulty: playedDifficultyOf(run),
     wave: roundWave(run.phase),
     outcome,
     runMs: Math.round(stats.runMs),
@@ -121,6 +148,7 @@ export const runSummaryOf = (
     device: run.lastDevice,
     screenFit: summaryScreenFit(run.screenFit),
     frameTime: frameTimeBucket(stats),
+    party: partyOf(run),
   }
 }
 

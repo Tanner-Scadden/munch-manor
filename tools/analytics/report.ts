@@ -45,13 +45,16 @@ const WinRow = Schema.Struct({
   quits: Count,
 })
 
-const WIN_RATE = `
+// NOTE: a row's party is 'Solo' or 'Crew' (an online co-op run). Every
+// player in a crew who shares stats sends their own summary, so a co-op
+// run is one row per such player, not one per crew.
+const winRate = (party: string) => `
   SELECT difficulty,
     count(*) AS runs,
     sum(outcome = 'Victory') AS wins,
     sum(outcome = 'GameOver') AS losses,
     sum(outcome = 'Quit') AS quits
-  FROM runs WHERE mode = 'Campaign'
+  FROM runs WHERE mode = 'Campaign' AND party = '${party}'
   GROUP BY difficulty ORDER BY difficulty`
 
 const WaveRow = Schema.Struct({
@@ -62,8 +65,44 @@ const WaveRow = Schema.Struct({
 
 const DEATH_WAVES = `
   SELECT mode, wave, count(*) AS deaths FROM runs
-  WHERE outcome = 'GameOver'
+  WHERE outcome = 'GameOver' AND party = 'Solo'
   GROUP BY mode, wave ORDER BY mode, wave`
+
+const CrewWaveRow = Schema.Struct({
+  mode: Schema.String,
+  crew_size: Count,
+  wave: Count,
+  deaths: Count,
+})
+
+const COOP_DEATH_WAVES = `
+  SELECT mode, crew_size, wave, count(*) AS deaths FROM runs
+  WHERE outcome = 'GameOver' AND party = 'Crew'
+  GROUP BY mode, crew_size, wave ORDER BY mode, crew_size, wave`
+
+const CrewRow = Schema.Struct({
+  crew_size: Count,
+  runs: Count,
+  wins: Count,
+  losses: Count,
+  quits: Count,
+  kills: Schema.NullOr(Count),
+  downs: Schema.NullOr(Count),
+  revives: Schema.NullOr(Count),
+})
+
+// NOTE: kills, downs, and revives are each player's own seat's, averaged.
+const COOP_CREWS = `
+  SELECT crew_size,
+    count(*) AS runs,
+    sum(outcome = 'Victory') AS wins,
+    sum(outcome = 'GameOver') AS losses,
+    sum(outcome = 'Quit') AS quits,
+    avg(seat_kills) AS kills,
+    avg(seat_downs) AS downs,
+    avg(seat_revives) AS revives
+  FROM runs WHERE party = 'Crew'
+  GROUP BY crew_size ORDER BY crew_size`
 
 const KillerRow = Schema.Struct({
   killed_by: Schema.String,
@@ -72,7 +111,7 @@ const KillerRow = Schema.Struct({
 
 const DEADLIEST = `
   SELECT killed_by, count(*) AS deaths FROM runs
-  WHERE outcome = 'GameOver'
+  WHERE outcome = 'GameOver' AND party = 'Solo'
   GROUP BY killed_by ORDER BY deaths DESC`
 
 const MedianRow = Schema.Struct({
@@ -121,16 +160,44 @@ const SHARES = `
   SELECT screen, path, count(*) AS shares, count(DISTINCT visit_id) AS visits
   FROM shares GROUP BY screen, path ORDER BY shares DESC`
 
-const EndRow = Schema.Struct({ outcome: Schema.String, runs: Count })
+const EndRow = Schema.Struct({
+  party: Schema.String,
+  outcome: Schema.String,
+  runs: Count,
+})
 
 const ENDS = `
-  SELECT outcome, count(*) AS runs FROM runs
-  WHERE outcome IN ('GameOver', 'Victory') GROUP BY outcome`
+  SELECT party, outcome, count(*) AS runs FROM runs
+  WHERE outcome IN ('GameOver', 'Victory') GROUP BY party, outcome`
 
 // FORMATTING
 
 const percent = (part: number, whole: number): string =>
   whole > 0 ? `${Math.round((100 * part) / whole)}%` : '-'
+
+const average = (value: number | null): string =>
+  value === null ? '-' : value.toFixed(1)
+
+type WinRow = typeof WinRow.Type
+
+const winRows = (rows: ReadonlyArray<WinRow>) =>
+  Array.map(rows, row => [
+    row.difficulty,
+    `${row.runs}`,
+    `${row.wins}`,
+    `${row.losses}`,
+    `${row.quits}`,
+    percent(row.wins, row.wins + row.losses),
+  ])
+
+const WIN_HEADERS = [
+  'difficulty',
+  'runs',
+  'wins',
+  'losses',
+  'quits',
+  'win rate',
+]
 
 const MS_PER_SECOND = 1000
 const SECONDS_PER_MINUTE = 60
@@ -186,23 +253,42 @@ const program = Effect.gen(function* () {
   const run = <S extends Schema.Top>(sql: string, row: S) =>
     query(token, account, database, sql, row)
 
-  const [wins, waves, killers, medians, devices, days, shares, ends] =
-    yield* Effect.all([
-      run(WIN_RATE, WinRow),
-      run(DEATH_WAVES, WaveRow),
-      run(DEADLIEST, KillerRow),
-      run(MEDIAN_LENGTH, MedianRow),
-      run(DEVICES, DeviceRow),
-      run(RUNS_PER_DAY, DayRow),
-      run(SHARES, ShareRow),
-      run(ENDS, EndRow),
-    ])
-  const endedAs = (outcome: string): number =>
+  const [
+    wins,
+    waves,
+    killers,
+    medians,
+    devices,
+    days,
+    shares,
+    ends,
+    crews,
+    crewWins,
+    crewWaves,
+  ] = yield* Effect.all([
+    run(winRate('Solo'), WinRow),
+    run(DEATH_WAVES, WaveRow),
+    run(DEADLIEST, KillerRow),
+    run(MEDIAN_LENGTH, MedianRow),
+    run(DEVICES, DeviceRow),
+    run(RUNS_PER_DAY, DayRow),
+    run(SHARES, ShareRow),
+    run(ENDS, EndRow),
+    run(COOP_CREWS, CrewRow),
+    run(winRate('Crew'), WinRow),
+    run(COOP_DEATH_WAVES, CrewWaveRow),
+  ])
+  const endedAs = (party: string, outcome: string): number =>
     Array.reduce(ends, 0, (sum, row) =>
-      row.outcome === outcome ? sum + row.runs : sum,
+      row.party === party && row.outcome === outcome ? sum + row.runs : sum,
     )
+  // NOTE: a co-op end screen's shares are against the co-op runs that
+  // ended there, each player's own.
   const runsEndedOn = (screen: string): number =>
-    screen.endsWith('Victory') ? endedAs('Victory') : endedAs('GameOver')
+    endedAs(
+      screen.startsWith('Coop') ? 'Crew' : 'Solo',
+      screen.endsWith('Victory') ? 'Victory' : 'GameOver',
+    )
 
   const totalRuns = Array.reduce(medians, 0, (sum, { runs }) => sum + runs)
   const totalDeaths = Array.reduce(
@@ -216,24 +302,17 @@ const program = Effect.gen(function* () {
       [
         `Munch Manor analytics: stage ${stage} (D1 ${name}), ${totalRuns} runs`,
         section(
-          'Campaign win rate by difficulty (wins out of finished runs)',
-          ['difficulty', 'runs', 'wins', 'losses', 'quits', 'win rate'],
-          Array.map(wins, row => [
-            row.difficulty,
-            `${row.runs}`,
-            `${row.wins}`,
-            `${row.losses}`,
-            `${row.quits}`,
-            percent(row.wins, row.wins + row.losses),
-          ]),
+          'Solo campaign win rate by difficulty (wins out of finished runs)',
+          WIN_HEADERS,
+          winRows(wins),
         ),
         section(
-          'Wave of death',
+          'Solo wave of death',
           ['mode', 'wave', 'deaths'],
           Array.map(waves, row => [row.mode, `${row.wave}`, `${row.deaths}`]),
         ),
         section(
-          'Deadliest kinds (what landed the last bite)',
+          'Solo deadliest kinds (what landed the last bite)',
           ['kind', 'deaths', 'share'],
           Array.map(killers, row => [
             row.killed_by,
@@ -261,16 +340,54 @@ const program = Effect.gen(function* () {
           ]),
         ),
         section(
-          'Shares by end screen (solo runs only send summaries)',
-          ['screen', 'path', 'shares', 'visits', 'per solo end'],
+          'Co-op runs by crew size (one row per player; own seat averages)',
+          [
+            'crew',
+            'runs',
+            'wins',
+            'losses',
+            'quits',
+            'win rate',
+            'kills',
+            'downs',
+            'revives',
+          ],
+          Array.map(crews, row => [
+            `${row.crew_size}`,
+            `${row.runs}`,
+            `${row.wins}`,
+            `${row.losses}`,
+            `${row.quits}`,
+            percent(row.wins, row.wins + row.losses),
+            average(row.kills),
+            average(row.downs),
+            average(row.revives),
+          ]),
+        ),
+        section(
+          "Co-op campaign win rate by difficulty (the room's)",
+          WIN_HEADERS,
+          winRows(crewWins),
+        ),
+        section(
+          'Co-op wave of death',
+          ['mode', 'crew', 'wave', 'deaths'],
+          Array.map(crewWaves, row => [
+            row.mode,
+            `${row.crew_size}`,
+            `${row.wave}`,
+            `${row.deaths}`,
+          ]),
+        ),
+        section(
+          'Shares by end screen',
+          ['screen', 'path', 'shares', 'visits', 'per end'],
           Array.map(shares, row => [
             row.screen,
             row.path,
             `${row.shares}`,
             `${row.visits}`,
-            row.screen.startsWith('Coop')
-              ? '-'
-              : percent(row.shares, runsEndedOn(row.screen)),
+            percent(row.shares, runsEndedOn(row.screen)),
           ]),
         ),
         section(

@@ -51,6 +51,7 @@ import { flowFieldToward } from './pathing'
 import {
   Appearance,
   CursorSetting,
+  Difficulty,
   HomeScreenTip,
   MusicSetting,
   PlayerName,
@@ -268,6 +269,9 @@ export const Model = Schema.Struct({
   handDialog: DialogBlock.Model,
   bests: PlayerBests,
   runTally: RunTally,
+  // NOTE: the room's difficulty while an online co-op run is drawn, kept
+  // with the run so its summary has it after the room is gone (a LEAVE).
+  maybeRoomDifficulty: Schema.Option(Difficulty),
   loading: Loading,
   saveStatus: SaveStatus,
   tutorialReset: TutorialReset,
@@ -449,6 +453,7 @@ export const initialModel: Model = {
   handDialog: closedDialog(HAND_DIALOG_ID),
   bests: noBests,
   runTally: RunTally.Uncounted(),
+  maybeRoomDifficulty: Option.none(),
   loading: Loading.Loaded(),
   saveStatus: 'Unread',
   tutorialReset: 'Idle',
