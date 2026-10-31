@@ -4,6 +4,10 @@ Things the game is blocked on until the owner does or decides them. Agents add a
 
 ## To do
 
+- [ ] **Playtest the sideways aim assist on a phone.** A phone on its side now gets the same gentle pull onto the nearest zombie as upright. The balance bot wins 42% on Normal with it against 25% without, far more than upright gained, but the bot's shaky aim is not a thumb's.
+  1. On the phone, open https://munchmanor.com, hold it sideways, and play a Normal campaign to wave 5 or so.
+  2. Expected: holding fire a hair off a zombie lands the shots on it; aiming well away from a zombie goes where your thumb points.
+  3. Reply "feels right", "too easy", or "too sticky". If too easy or sticky, an agent shrinks the cone (`outerRadians`) or the reach (`reachPx`) in `src/aimAssist.ts` for sideways play.
 - [ ] **Turn off Cloudflare Web Analytics on munchmanor.com.** Cloudflare injects its own analytics beacon (`static.cloudflareinsights.com/beacon.min.js`) into pages on the new domain. That breaks offline play's "same build" check and adds a third-party tracker the game's own privacy rules don't allow (analytics only go through the game's opt-in run summary). In the Cloudflare dashboard: munchmanor.com, then Analytics & Logs, then Web Analytics, and turn off automatic setup (or remove the site). Reply "done" and an agent re-runs the offline audit.
 - [ ] **Retest SHARE on your phone.** It now opens the phone's share sheet instead of a link (the link opened the X app without a draft).
   1. On the phone, open https://munchmanor.com in the browser, and play until you die.

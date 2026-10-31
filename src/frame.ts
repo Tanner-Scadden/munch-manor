@@ -26,7 +26,6 @@ import {
 import { raiseDebutCardFrom } from './onboarding'
 import { advanceParticles } from './particles'
 import { advanceCallouts } from './powerups'
-import { isPortrait } from './screen'
 import { soloInputs, stepWorld } from './stepWorld'
 import { ageTrapNotice } from './traps'
 import { endRoundOnClient, isRoundActive } from './waves'
@@ -39,11 +38,13 @@ import { withWorld } from './world'
 export const clampFrameDelta = (deltaTime: number): number =>
   clamp(deltaTime, 0, MAX_FRAME_DELTA_MS)
 
-// NOTE: in the portrait layout a held trigger's aim bends onto the zombie
-// it is almost on (src/aimAssist.ts). It is part of the intent, so the world
-// steps the same with or without it, given the same intent.
+// NOTE: on a touch phone, upright or on its side, a held trigger's aim
+// bends onto the zombie it is almost on (src/aimAssist.ts). The last input
+// decides, as it does the phone's zoom, so a mouse never gets it. It is part
+// of the intent, so the world steps the same with or without it, given the
+// same intent.
 const withAimAssist = (model: Model, intent: Intent): Intent =>
-  isPortrait(model) && intent.trigger === 'Held'
+  model.lastDevice === 'Touch' && intent.trigger === 'Held'
     ? modifyFields(intent, {
         maybeAim: Option.map(aim =>
           assistAim(

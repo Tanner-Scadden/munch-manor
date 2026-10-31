@@ -420,9 +420,7 @@ const OUT_OF_REACH = new Set(['Burrowed', 'Carried', 'Flying'])
 // zombies inside the portrait camera's window, which follows it and leans
 // toward its aim like the game's. Zombies out of view are not shot or fled.
 // VIEW=touch plays as a phone on its side would, through the landscape
-// phone's zoomed window, with no aim assist, as in the game.
-const SEES_PORTRAIT_ONLY = process.env['VIEW'] === 'portrait'
-
+// phone's zoomed window. Both get the touch aim assist, as in the game.
 const maybeWindowScreen =
   process.env['VIEW'] === 'portrait'
     ? DEFAULT_PORTRAIT_SCREEN
@@ -432,9 +430,6 @@ const maybeWindowScreen =
 
 const windowCamera = (model: Model, screen: Screen) =>
   cameraFor(levelOf(model), cameraFocus(model), worldWindowOf(screen))
-
-const portraitCamera = (model: Model) =>
-  windowCamera(model, DEFAULT_PORTRAIT_SCREEN)
 
 const isInView = (model: Model, zombie: Model['zombies'][number]) => {
   if (maybeWindowScreen === undefined) {
@@ -990,22 +985,26 @@ const topOff = (model: Model): Model => {
     : model
 }
 
-// VIEW=portrait also gets the portrait layout's aim assist
+// VIEW=portrait and VIEW=touch also get the touch aim assist
 // (src/aimAssist.ts) the way the game gives it to a phone: every tick the
 // trigger is held, the aim from where the bot last pointed bends onto the
-// zombie it is almost on. NO_ASSIST=1 plays portrait without it.
-const IS_AIM_ASSISTED =
-  SEES_PORTRAIT_ONLY && process.env['NO_ASSIST'] === undefined
+// zombie it is almost on, in view of the phone's window. NO_ASSIST=1 plays
+// either without it.
+const maybeAssistScreen =
+  process.env['NO_ASSIST'] === undefined ? maybeWindowScreen : undefined
 const AIM_REACH_PX = 40
 let maybeRawAim: Vector | undefined
 
 const assistedPoint = (model: Model, rawPoint: Vector): Vector => {
+  if (maybeAssistScreen === undefined) {
+    return rawPoint
+  }
   const camera = screenCameraOf(model)
   const raw = viewToWorld(camera, rawPoint)
   const length = Math.max(1e-6, distance(model.player, raw))
   const aim = assistAim(
     levelOf(model),
-    portraitCamera(model),
+    windowCamera(model, maybeAssistScreen),
     model.player,
     model.zombies,
     {
@@ -1021,7 +1020,7 @@ const assistedPoint = (model: Model, rawPoint: Vector): Vector => {
 
 const holdAssistedAim = (model: Model): Model => {
   if (
-    !IS_AIM_ASSISTED ||
+    maybeAssistScreen === undefined ||
     maybeRawAim === undefined ||
     model.input.mouseButton._tag !== 'Held'
   ) {
@@ -1047,7 +1046,7 @@ const aimAt = (
     y: model.player.y + Math.sin(angle) * AIM_REACH_PX,
   })
   maybeRawAim = rawPoint
-  const point = IS_AIM_ASSISTED ? assistedPoint(model, rawPoint) : rawPoint
+  const point = assistedPoint(model, rawPoint)
   return {
     model: send(
       model,
