@@ -2,6 +2,7 @@ import { Array, Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { crewRunKeyOf } from './analyticsRun'
 import { levelOf } from './arena'
 import { CoopBinding } from './bindings'
 import type { Room as CoopRoom } from './coop/model'
@@ -269,7 +270,11 @@ const drawTraced = ({
     }
     const applied = withWorld(
       takeRoomWorld(
-        modifyFields(traced, { hitStop: () => thaw.hitStop }),
+        modifyFields(traced, {
+          hitStop: () => thaw.hitStop,
+          maybeCrewRunKey: key =>
+            Option.orElse(Option.map(room.maybeLobby, crewRunKeyOf), () => key),
+        }),
         modifyFields(world, {
           bullets: bullets => [
             ...Array.filter(

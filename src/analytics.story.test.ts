@@ -107,7 +107,7 @@ const FRAME_MS = FIXED_STEP_MS
 const expectedSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 2,
+  version: 3,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -124,6 +124,18 @@ const expectedSummary = (
   party: SOLO_PARTY,
   ...overrides,
 })
+
+const CREW_KEY = '0123456789abcdef'
+
+const CREW_V2 = {
+  _tag: 'Crew',
+  size: 2,
+  seatKills: 5,
+  seatDowns: 1,
+  seatRevives: 0,
+} as const
+
+const CREW = { ...CREW_V2, runKey: CREW_KEY }
 
 describe('the run summary schema', () => {
   const summary = expectedSummary({
@@ -148,7 +160,7 @@ describe('the run summary schema', () => {
     expect(
       decode(withField('outcome', { _tag: 'GameOver', killedBy: 'Ghost' })),
     ).toEqual(Option.none())
-    expect(decode(withField('version', 3))).toEqual(Option.none())
+    expect(decode(withField('version', 4))).toEqual(Option.none())
     expect(
       decode(
         withField('party', {
@@ -157,10 +169,31 @@ describe('the run summary schema', () => {
           seatKills: 0,
           seatDowns: 0,
           seatRevives: 0,
+          runKey: CREW_KEY,
         }),
       ),
     ).toEqual(Option.none())
+    expect(
+      decode(withField('party', { ...CREW, runKey: 'not-a-key' })),
+    ).toEqual(Option.none())
+    expect(decode(withField('party', CREW_V2))).toEqual(Option.none())
     expect(decode('{"version":1,')).toEqual(Option.none())
+  })
+
+  test('a crew summary round trips with its run key', () => {
+    const crew = { ...summary, party: CREW }
+    const json = Schema.encodeSync(RunSummaryJson)(crew)
+    expect(Schema.decodeSync(RunSummaryJson)(json)).toEqual(crew)
+  })
+
+  test('a version 2 crew summary from a cached build still decodes, with no key', () => {
+    const json = JSON.stringify({ ...summary, version: 2, party: CREW_V2 })
+    expect(Schema.decodeSync(PostedRunJson)(json)).toEqual({
+      ...summary,
+      version: 2,
+      party: CREW_V2,
+    })
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
   })
 
   test('a version 1 summary from a cached build still decodes, with no party', () => {

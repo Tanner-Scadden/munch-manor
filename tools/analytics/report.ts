@@ -11,6 +11,20 @@ import {
   databaseName,
   query,
 } from './cloudflare'
+import {
+  COOP_DEATH_WAVES,
+  COOP_GAMES,
+  COOP_PLAYERS,
+  COOP_WIN_RATE,
+  DEADLIEST,
+  DEATH_WAVES,
+  DEVICES,
+  ENDS,
+  MEDIAN_LENGTH,
+  RUNS_PER_DAY,
+  SHARES,
+  SOLO_WIN_RATE,
+} from './queries'
 
 // Prints what real players did, from a stage's analytics D1 database:
 //
@@ -45,28 +59,11 @@ const WinRow = Schema.Struct({
   quits: Count,
 })
 
-// NOTE: a row's party is 'Solo' or 'Crew' (an online co-op run). Every
-// player in a crew who shares stats sends their own summary, so a co-op
-// run is one row per such player, not one per crew.
-const winRate = (party: string) => `
-  SELECT difficulty,
-    count(*) AS runs,
-    sum(outcome = 'Victory') AS wins,
-    sum(outcome = 'GameOver') AS losses,
-    sum(outcome = 'Quit') AS quits
-  FROM runs WHERE mode = 'Campaign' AND party = '${party}'
-  GROUP BY difficulty ORDER BY difficulty`
-
 const WaveRow = Schema.Struct({
   mode: Schema.String,
   wave: Count,
   deaths: Count,
 })
-
-const DEATH_WAVES = `
-  SELECT mode, wave, count(*) AS deaths FROM runs
-  WHERE outcome = 'GameOver' AND party = 'Solo'
-  GROUP BY mode, wave ORDER BY mode, wave`
 
 const CrewWaveRow = Schema.Struct({
   mode: Schema.String,
@@ -75,44 +72,28 @@ const CrewWaveRow = Schema.Struct({
   deaths: Count,
 })
 
-const COOP_DEATH_WAVES = `
-  SELECT mode, crew_size, wave, count(*) AS deaths FROM runs
-  WHERE outcome = 'GameOver' AND party = 'Crew'
-  GROUP BY mode, crew_size, wave ORDER BY mode, crew_size, wave`
-
+// NOTE: per game: a co-op game is one crew_key (tools/analytics/queries.ts).
 const CrewRow = Schema.Struct({
   crew_size: Count,
   runs: Count,
   wins: Count,
   losses: Count,
   quits: Count,
+})
+
+// NOTE: per player: each row is one player's own seat.
+const CrewPlayerRow = Schema.Struct({
+  crew_size: Count,
+  players: Count,
   kills: Schema.NullOr(Count),
   downs: Schema.NullOr(Count),
   revives: Schema.NullOr(Count),
 })
 
-// NOTE: kills, downs, and revives are each player's own seat's, averaged.
-const COOP_CREWS = `
-  SELECT crew_size,
-    count(*) AS runs,
-    sum(outcome = 'Victory') AS wins,
-    sum(outcome = 'GameOver') AS losses,
-    sum(outcome = 'Quit') AS quits,
-    avg(seat_kills) AS kills,
-    avg(seat_downs) AS downs,
-    avg(seat_revives) AS revives
-  FROM runs WHERE party = 'Crew'
-  GROUP BY crew_size ORDER BY crew_size`
-
 const KillerRow = Schema.Struct({
   killed_by: Schema.String,
   deaths: Count,
 })
-
-const DEADLIEST = `
-  SELECT killed_by, count(*) AS deaths FROM runs
-  WHERE outcome = 'GameOver' AND party = 'Solo'
-  GROUP BY killed_by ORDER BY deaths DESC`
 
 const MedianRow = Schema.Struct({
   mode: Schema.String,
@@ -120,35 +101,14 @@ const MedianRow = Schema.Struct({
   median_ms: Schema.NullOr(Count),
 })
 
-const MEDIAN_LENGTH = `
-  WITH ordered AS (
-    SELECT mode, run_ms,
-      row_number() OVER (PARTITION BY mode ORDER BY run_ms) AS position,
-      count(*) OVER (PARTITION BY mode) AS runs
-    FROM runs
-  )
-  SELECT mode, max(runs) AS runs, avg(run_ms) AS median_ms FROM ordered
-  WHERE position IN ((runs + 1) / 2, (runs + 2) / 2)
-  GROUP BY mode ORDER BY mode`
-
 const DeviceRow = Schema.Struct({
   device: Schema.String,
   screen_fit: Schema.String,
   runs: Count,
 })
 
-const DEVICES = `
-  SELECT device, screen_fit, count(*) AS runs FROM runs
-  GROUP BY device, screen_fit ORDER BY runs DESC`
-
 const DayRow = Schema.Struct({ received_day: Schema.String, runs: Count })
 
-const RUNS_PER_DAY = `
-  SELECT received_day, count(*) AS runs FROM runs
-  GROUP BY received_day ORDER BY received_day DESC LIMIT 30`
-
-// NOTE: taps on SHARE by end screen, against the runs that ended
-// there, so the share rate reads at a glance.
 const ShareRow = Schema.Struct({
   screen: Schema.String,
   path: Schema.String,
@@ -156,19 +116,11 @@ const ShareRow = Schema.Struct({
   visits: Count,
 })
 
-const SHARES = `
-  SELECT screen, path, count(*) AS shares, count(DISTINCT visit_id) AS visits
-  FROM shares GROUP BY screen, path ORDER BY shares DESC`
-
 const EndRow = Schema.Struct({
   party: Schema.String,
   outcome: Schema.String,
   runs: Count,
 })
-
-const ENDS = `
-  SELECT party, outcome, count(*) AS runs FROM runs
-  WHERE outcome IN ('GameOver', 'Victory') GROUP BY party, outcome`
 
 // FORMATTING
 
@@ -263,10 +215,11 @@ const program = Effect.gen(function* () {
     shares,
     ends,
     crews,
+    crewPlayers,
     crewWins,
     crewWaves,
   ] = yield* Effect.all([
-    run(winRate('Solo'), WinRow),
+    run(SOLO_WIN_RATE, WinRow),
     run(DEATH_WAVES, WaveRow),
     run(DEADLIEST, KillerRow),
     run(MEDIAN_LENGTH, MedianRow),
@@ -274,16 +227,18 @@ const program = Effect.gen(function* () {
     run(RUNS_PER_DAY, DayRow),
     run(SHARES, ShareRow),
     run(ENDS, EndRow),
-    run(COOP_CREWS, CrewRow),
-    run(winRate('Crew'), WinRow),
+    run(COOP_GAMES, CrewRow),
+    run(COOP_PLAYERS, CrewPlayerRow),
+    run(COOP_WIN_RATE, WinRow),
     run(COOP_DEATH_WAVES, CrewWaveRow),
   ])
   const endedAs = (party: string, outcome: string): number =>
     Array.reduce(ends, 0, (sum, row) =>
       row.party === party && row.outcome === outcome ? sum + row.runs : sum,
     )
-  // NOTE: a co-op end screen's shares are against the co-op runs that
-  // ended there, each player's own.
+  // NOTE: a co-op end screen's shares are against the co-op games that
+  // ended there (ENDS counts a crew's game once), so a crew of three that
+  // all share reads as 3 per game.
   const runsEndedOn = (screen: string): number =>
     endedAs(
       screen.startsWith('Coop') ? 'Crew' : 'Solo',
@@ -300,7 +255,7 @@ const program = Effect.gen(function* () {
   yield* Console.log(
     Array.join(
       [
-        `Munch Manor analytics: stage ${stage} (D1 ${name}), ${totalRuns} runs`,
+        `Munch Manor analytics: stage ${stage} (D1 ${name}), ${totalRuns} summaries (a co-op game sends one per player)`,
         section(
           'Solo campaign win rate by difficulty (wins out of finished runs)',
           WIN_HEADERS,
@@ -340,18 +295,8 @@ const program = Effect.gen(function* () {
           ]),
         ),
         section(
-          'Co-op runs by crew size (one row per player; own seat averages)',
-          [
-            'crew',
-            'runs',
-            'wins',
-            'losses',
-            'quits',
-            'win rate',
-            'kills',
-            'downs',
-            'revives',
-          ],
+          'Co-op games by crew size (per game: one per crew_key; a version 2 row with no key counts as its own game)',
+          ['crew', 'games', 'wins', 'losses', 'quits', 'win rate'],
           Array.map(crews, row => [
             `${row.crew_size}`,
             `${row.runs}`,
@@ -359,18 +304,26 @@ const program = Effect.gen(function* () {
             `${row.losses}`,
             `${row.quits}`,
             percent(row.wins, row.wins + row.losses),
+          ]),
+        ),
+        section(
+          'Co-op players by crew size (per player: own seat averages)',
+          ['crew', 'players', 'kills', 'downs', 'revives'],
+          Array.map(crewPlayers, row => [
+            `${row.crew_size}`,
+            `${row.players}`,
             average(row.kills),
             average(row.downs),
             average(row.revives),
           ]),
         ),
         section(
-          "Co-op campaign win rate by difficulty (the room's)",
+          "Co-op campaign win rate by difficulty (per game, the room's difficulty)",
           WIN_HEADERS,
           winRows(crewWins),
         ),
         section(
-          'Co-op wave of death',
+          'Co-op wave of death (per game: the furthest wave any player saw)',
           ['mode', 'crew', 'wave', 'deaths'],
           Array.map(crewWaves, row => [
             row.mode,
@@ -380,7 +333,7 @@ const program = Effect.gen(function* () {
           ]),
         ),
         section(
-          'Shares by end screen',
+          'Shares by end screen (per end: solo runs, co-op games)',
           ['screen', 'path', 'shares', 'visits', 'per end'],
           Array.map(shares, row => [
             row.screen,

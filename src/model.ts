@@ -272,6 +272,9 @@ export const Model = Schema.Struct({
   // NOTE: the room's difficulty while an online co-op run is drawn, kept
   // with the run so its summary has it after the room is gone (a LEAVE).
   maybeRoomDifficulty: Schema.Option(Difficulty),
+  // NOTE: the online co-op run's key, the same on every client in it, kept
+  // with the run so its summary has it after the room is gone (a LEAVE).
+  maybeCrewRunKey: Schema.Option(Schema.String),
   loading: Loading,
   saveStatus: SaveStatus,
   tutorialReset: TutorialReset,
@@ -454,6 +457,7 @@ export const initialModel: Model = {
   bests: noBests,
   runTally: RunTally.Uncounted(),
   maybeRoomDifficulty: Option.none(),
+  maybeCrewRunKey: Option.none(),
   loading: Loading.Loaded(),
   saveStatus: 'Unread',
   tutorialReset: 'Idle',

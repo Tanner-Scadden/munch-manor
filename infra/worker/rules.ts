@@ -11,6 +11,7 @@ import {
   type ShareEventV1,
   SummaryKills,
   type SummaryParty,
+  type SummaryPartyV2,
 } from '../../src/analytics.ts'
 
 // BODY SIZE
@@ -129,11 +130,17 @@ export type RunRow = Readonly<{
   seat_kills: number | null
   seat_downs: number | null
   seat_revives: number | null
+  crew_key: string | null
 }>
 
 type PartyColumns = Pick<
   RunRow,
-  'party' | 'crew_size' | 'seat_kills' | 'seat_downs' | 'seat_revives'
+  | 'party'
+  | 'crew_size'
+  | 'seat_kills'
+  | 'seat_downs'
+  | 'seat_revives'
+  | 'crew_key'
 >
 
 const SOLO_COLUMNS: PartyColumns = {
@@ -142,9 +149,12 @@ const SOLO_COLUMNS: PartyColumns = {
   seat_kills: null,
   seat_downs: null,
   seat_revives: null,
+  crew_key: null,
 }
 
-const partyColumnsOf = (party: SummaryParty): PartyColumns =>
+// NOTE: a version 2 crew came before the run key, so its key is NULL and
+// the report counts its row as a game of its own.
+const partyColumnsOf = (party: SummaryParty | SummaryPartyV2): PartyColumns =>
   party._tag === 'Solo'
     ? SOLO_COLUMNS
     : {
@@ -153,6 +163,7 @@ const partyColumnsOf = (party: SummaryParty): PartyColumns =>
         seat_kills: party.seatKills,
         seat_downs: party.seatDowns,
         seat_revives: party.seatRevives,
+        crew_key: 'runKey' in party ? party.runKey : null,
       }
 
 // NOTE: a version 1 summary came before co-op sent any, so it was solo.
