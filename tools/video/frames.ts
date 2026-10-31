@@ -675,6 +675,17 @@ export const captureShot = (
         page.addStyleTag({ content: HIDE_HUD_CSS }).then(() => undefined),
       )
     }
+    const hudTop = shot.hudTop
+    if (hudTop !== undefined) {
+      // NOTE: the HUD's canvas cut off above a share of the screen, so the
+      // band at the top (wave, counts, money) no longer covers what is
+      // under it, while what the HUD draws lower, such as the fridge's
+      // reel, stays.
+      const css = `.overlay-layer-canvas { clip-path: inset(${hudTop * 100}% 0 0 0); }`
+      yield* onPage('cut the HUD band', () =>
+        page.addStyleTag({ content: css }).then(() => undefined),
+      )
+    }
     const plan = yield* encodePlan({
       segments: shot.segments ?? [],
       taps: shot.taps ?? [],

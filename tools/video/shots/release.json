@@ -279,21 +279,22 @@
         },
         {
           "name": "fridge",
-          "scene": "wave=3&kitchen&money=200&gun=smg&prep=14000&px=180&py=-100&hold&fridgeseed=2&seed=3&seen=all&learned=move,fire,startWave,shop,swap,pickup,timedBreaks,openBreak",
+          "scene": "wave=3&start=wave&elapsed=9000&kitchen&money=200&gun=smg&god&px=180&py=-100&hold&fridgeseed=2&seed=3&seen=all&learned=move,fire,startWave,shop,swap,pickup,timedBreaks,openBreak",
           "skip": 20,
           "ticks": 115,
+          "hudTop": 0.12,
           "camera": [
             {
               "at": 20,
-              "zoom": 2.6,
-              "x": 205,
-              "y": 52
+              "zoom": 1.8,
+              "x": 157,
+              "y": 50
             },
             {
               "at": 115,
-              "zoom": 2.9,
-              "x": 205,
-              "y": 50
+              "zoom": 1.86,
+              "x": 158,
+              "y": 48
             }
           ]
         },
@@ -742,21 +743,22 @@
         },
         {
           "name": "fridge",
-          "scene": "wave=3&kitchen&money=200&gun=smg&prep=14000&px=180&py=-100&hold&fridgeseed=2&seed=3&seen=all&learned=move,fire,startWave,shop,swap,pickup,timedBreaks,openBreak",
+          "scene": "wave=3&start=wave&elapsed=9000&kitchen&money=200&gun=smg&god&px=180&py=-100&hold&fridgeseed=2&seed=3&seen=all&learned=move,fire,startWave,shop,swap,pickup,timedBreaks,openBreak",
           "skip": 20,
           "ticks": 115,
+          "hudTop": 0.13,
           "camera": [
             {
               "at": 20,
-              "zoom": 1.65,
+              "zoom": 1.6,
               "x": 110,
-              "y": 130
+              "y": 140
             },
             {
               "at": 115,
-              "zoom": 1.8,
+              "zoom": 1.64,
               "x": 110,
-              "y": 128
+              "y": 138
             }
           ]
         },
