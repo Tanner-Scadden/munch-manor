@@ -3,9 +3,9 @@ import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
 
+import { UpdateGreetingBinding } from './bindings'
 import { type NewsBullet, maybeNewestNewsDay, newsHeadline } from './changelog'
 import type { ApplicationViewBuilder } from './composition'
-import { UpdateGreetingBinding } from './composition'
 import { closeButtonView, dialogShell } from './dialogs'
 import { isUpdateGiftShown } from './home'
 import {

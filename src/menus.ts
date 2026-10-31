@@ -3,7 +3,6 @@ import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from './composition'
 import { isOpen as isCoopOpen } from './coop/update'
-import { runDifficultyOf } from './coopPlay'
 import { sharePathOf, sharedRunOf } from './endBeat'
 import {
   END_MENU_BUTTON_ID,
@@ -30,6 +29,7 @@ import { isProfileOpen } from './menuState'
 import { Message } from './message'
 import { DebutCard, type Model, Phase, RunMode, type ZombieKind } from './model'
 import { canSkipDebutCard } from './onboarding'
+import { runDifficultyOf } from './onlineRun'
 import { shareUrl } from './share'
 import { iconButtonView } from './touchControls'
 import { FINAL_WAVE } from './wavePlans'

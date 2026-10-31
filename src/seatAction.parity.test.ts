@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest'
 
 import { DialogBlock } from '@foldkit/ui'
 
-import { ShopDialogBinding } from './composition'
+import { ShopDialogBinding } from './bindings'
 import { update } from './main'
 import { Message } from './message'
 import { BreakClock, type Model, Phase, ShopState } from './model'

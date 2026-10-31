@@ -7,6 +7,7 @@ import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
+import { PanelDialogBinding } from './bindings'
 import {
   AwaitFirstFrame,
   DecodeSprites,
@@ -14,7 +15,6 @@ import {
   LoadSave,
   LoadStyles,
 } from './boot'
-import { PanelDialogBinding } from './composition'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from './constants'
 import { bestsFor, withBests } from './difficulty'
 import { returnHome } from './home'

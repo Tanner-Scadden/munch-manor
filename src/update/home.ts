@@ -2,14 +2,13 @@ import { Array, Duration, Effect, Option, Schema, pipe } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { NEWS_DAYS } from '../changelog'
 import {
   HandDialogBinding,
   HomeScreenStepsBinding,
   PanelDialogBinding,
   UpdateGreetingBinding,
-} from '../composition'
-import { runDifficultyOf } from '../coopPlay'
+} from '../bindings'
+import { NEWS_DAYS } from '../changelog'
 import { makeCommand, makeStep } from '../definition'
 import {
   chooseDifficulty,
@@ -69,6 +68,7 @@ import {
   MunchopediaPage,
   type RunMode,
 } from '../model'
+import { runDifficultyOf } from '../onlineRun'
 import { activateNewBuild } from '../serviceWorker'
 import { stepWhen } from '../stepWhen'
 import { reloadOnto } from '../version'

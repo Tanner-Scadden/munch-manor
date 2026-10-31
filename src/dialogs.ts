@@ -9,14 +9,16 @@ import {
 import type { Dialog, DialogBlock } from '@foldkit/ui'
 
 import type {
-  ApplicationAttribute,
-  ApplicationViewBuilder,
   HandDialogBinding,
   HomeScreenStepsBinding,
   PanelDialogBinding,
   ProfileDialogBinding,
   ShopDialogBinding,
   UpdateGreetingBinding,
+} from './bindings'
+import type {
+  ApplicationAttribute,
+  ApplicationViewBuilder,
 } from './composition'
 import { CLOSE_ICON } from './icons'
 

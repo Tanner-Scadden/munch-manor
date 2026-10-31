@@ -1,7 +1,7 @@
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { ProfileDialogBinding } from '../composition'
+import { ProfileDialogBinding } from '../bindings'
 import { makeStep } from '../definition'
 import { isCharacterKey, releaseAll } from '../input'
 import { MenuState, isProfileOpen, menuState } from '../menuState'

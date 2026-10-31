@@ -6,7 +6,6 @@ import { ShareEvent } from '../analytics'
 import { sendShareEvent } from '../analyticsBeacon'
 import { shareEventOf } from '../analyticsRun'
 import { isOpen as isCoopOpen } from '../coop/update'
-import { runDifficultyOf } from '../coopPlay'
 import { makeCommand } from '../definition'
 import {
   TIMELINES,
@@ -30,6 +29,7 @@ import {
 import { advanceJuice } from '../juice'
 import { Message } from '../message'
 import { type Model, Phase, RunMode, type ShareSheetOutcome } from '../model'
+import { runDifficultyOf } from '../onlineRun'
 import { advanceParticles } from '../particles'
 import { shareSheetData, shareUrl } from '../share'
 import { stepWhen } from '../stepWhen'

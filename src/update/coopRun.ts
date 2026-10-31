@@ -2,15 +2,14 @@ import { Option, Result } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { isOnlineRun } from '../coopPlay'
 import { makeStep } from '../definition'
 import { isPauseKey, pressKey, releaseAll } from '../input'
 import { playerKeyAction } from '../keyActions'
 import { Message } from '../message'
 import { type Model, type PageVisibility, type ShopItemId } from '../model'
+import { isRunOn } from '../onlineRun'
 import { isAtCounter } from '../shop'
 import { SeatAction, gunSlotAction, trySeatAction } from '../stepWorld'
-import { isRoundActive } from '../waves'
 import { pressInRoom } from './coop'
 import { playSounds, toggleAudioFromKey, uiCue, unlockAudio } from './sound'
 import { type UpdateStep, modelStep, unchanged, withInput } from './step'
@@ -23,9 +22,6 @@ import { type UpdateStep, modelStep, unchanged, withInput } from './step'
 // the menus, audio, the save) runs as it does in single player. Each
 // of these handlers in src/main.ts wraps its single player Step in
 // `orInRun`, which checks isRunOn once and matches the Message.
-
-export const isRunOn = (model: Model): boolean =>
-  isOnlineRun(model) && isRoundActive(model.phase)
 
 const pressInRun = (action: SeatAction) =>
   makeStep(() => Update.combineSteps([unlockAudio, pressInRoom(action)]))

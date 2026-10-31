@@ -4,7 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
-import { CoopBinding } from './composition'
+import { CoopBinding } from './bindings'
 import { Message as CoopMessage } from './coop/message'
 import { LobbyChange, RoomRequest, Screen } from './coop/model'
 import { freshRoom } from './coop/roomState'
