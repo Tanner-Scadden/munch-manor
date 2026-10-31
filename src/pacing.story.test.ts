@@ -3,7 +3,7 @@ import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { PARLOUR, nearestDoor } from './arena'
+import { PARLOUR, isInsideRoomAt, levelOf, nearestDoor } from './arena'
 import {
   DINNER_BELL_MS,
   FADE_RELEASE_BELOW,
@@ -17,6 +17,7 @@ import {
   PLAYER_INVULNERABLE_MS,
   QUIET_HURRY_MS,
   RELAX_EXTEND_MAX_MS,
+  ZOMBIE_ALIVE_MAX,
 } from './constants'
 import { rollSpawns, rollWave } from './endlessWaves'
 import { update } from './main'
@@ -34,6 +35,7 @@ import {
   type PlannedSpawn,
   type Zombie,
   ZombieAction,
+  type ZombieKind,
   ZombieState,
   calmPacing,
   initialModel,
@@ -320,6 +322,112 @@ describe('telegraphs', () => {
       ...ticksFor(1000, FRAME_MS),
       model(current => {
         expect(sortedDoors(arrivedDoors(current))).toEqual(['North', 'West'])
+      }),
+    )
+  })
+})
+
+// NOTE: a warned zombie stands in its doorway no later than this after its
+// warning ends, whatever its kind and door.
+const ARRIVAL_BEAT_MS = 300
+
+const kindAt = (
+  kind: ZombieKind,
+  atMs: number,
+  door: DoorId,
+  pack: number,
+): PlannedSpawn => modifyFields(spawnAt(atMs, door, pack), { kind: () => kind })
+
+const newcomersInRoom = (current: Model): ReadonlyArray<Zombie> =>
+  Array.filter(
+    current.zombies,
+    zombie =>
+      zombie.id < LINGERER_ID && isInsideRoomAt(levelOf(current), zombie),
+  )
+
+const holdAt = (atMs: number): Pacing =>
+  modifyFields(calmPacing, {
+    holds: () => [{ atMs, releaseBelow: FADE_RELEASE_BELOW, relaxMs: 2500 }],
+  })
+
+describe('from warning to doorway', () => {
+  const cases: ReadonlyArray<readonly [ZombieKind, DoorId]> = [
+    ['Tank', 'North'],
+    ['Tank', 'West'],
+    ['Shambler', 'North'],
+    ['Shambler', 'South'],
+    ['Thrower', 'East'],
+  ]
+  test.each(cases)(
+    'a %s at the %s door is in its doorway a beat after its warning ends',
+    (kind, door) => {
+      story(
+        update,
+        given(
+          waveModel([kindAt(kind, PACK_WARNING_MS, door, 1)], calmPacing, [
+            lingerer,
+          ]),
+        ),
+        tick(FRAME_MS),
+        model(current => {
+          expect(current.pacing.warnedPacks).toEqual([1])
+        }),
+        ...ticksFor(PACK_WARNING_MS - FRAME_MS, FRAME_MS),
+        model(current => {
+          expect(newcomersInRoom(current)).toEqual([])
+        }),
+        ...ticksFor(ARRIVAL_BEAT_MS, FRAME_MS),
+        model(current => {
+          expect(
+            Array.map(newcomersInRoom(current), zombie => zombie.kind),
+          ).toEqual([kind])
+        }),
+      )
+    },
+  )
+
+  test('a pack warned just before a hold walks in when its warning ends, not after the fade', () => {
+    story(
+      update,
+      given(
+        waveModel(
+          [spawnAt(PACK_WARNING_MS, 'West', 1)],
+          holdAt(500),
+          crowdOf(FADE_RELEASE_BELOW + 2),
+        ),
+      ),
+      tick(FRAME_MS),
+      model(current => {
+        expect(current.pacing.warnedPacks).toEqual([1])
+      }),
+      ...ticksFor(PACK_WARNING_MS - FRAME_MS + ARRIVAL_BEAT_MS, FRAME_MS),
+      model(current => {
+        expect(Beat.isAnyOf(['Fading'])(current.pacing.beat)).toBe(true)
+        expect(waveClock(current)).toBe(500)
+        expect(
+          Array.map(
+            newcomersInRoom(current),
+            zombie => nearestDoor(PARLOUR, zombie).id,
+          ),
+        ).toEqual(['West'])
+      }),
+    )
+  })
+
+  test('a pack waits to warn while the alive cap has no place for it', () => {
+    story(
+      update,
+      given(
+        waveModel(
+          [spawnAt(PACK_WARNING_MS, 'West', 1)],
+          calmPacing,
+          crowdOf(ZOMBIE_ALIVE_MAX),
+        ),
+      ),
+      ...ticksFor(3000, FRAME_MS),
+      model(current => {
+        expect(current.pacing.warnedPacks).toEqual([])
+        expect(current.zombies.length).toBe(ZOMBIE_ALIVE_MAX)
       }),
     )
   })

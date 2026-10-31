@@ -161,9 +161,9 @@ Proposed, not decided. The packs are in `src/waves.ts`, the beats, telegraphs, a
 - **Packs.** Zombies come in packs, not a drizzle: a Squad from one door, a Pincer from opposite doors 1.5 to 3 s apart, a Horde from every door, a Trickle of one.
 - **Sawtooth.** A wave runs two or three cycles of Build, Peak (5 to 8 s), Fade, and Relax. At a hold the wave clock stops until fewer than 6 zombies are alive and nothing waits at a door, then rests 2 to 3 s. A fade gives up after 20 s. The last peak is the biggest.
 - **Tighter waves.** From owner feedback on 2026-10-29 ("Waves shouldn't be super long or have periods where no zombies are on screen"). After 0.5 s of quiet (no zombie alive, nothing at a door) the clock skips to the next pack's warning. A relax that goes quiet lets in up to two stragglers, then ends. The restless extension is at most 2 s. Endless relaxes are 3 s, falling 0.1 s a wave to 2 s.
-- **Telegraphs.** Every pack warns about 1 s before it enters: its door rattles with red eyes, dust puffs, and a groan plays. A horde rings the DINNER BELL instead.
+- **Telegraphs.** Every pack warns about 1 s before it enters: its door rattles with red eyes, dust puffs, and a groan plays. A horde rings the DINNER BELL instead. The pack is in its doorway a beat after the warning ends, about 1.2 s in all for every kind and door: outside the room, where nothing is drawn, a zombie walks at least 50 px/s. A warned pack keeps its time while the wave clock stops for a fade, a relax, or the boss, and a pack the alive cap has no place for waits to warn instead of rattling its door.
 - **Doorway camping.** A pack due while the player stands within 16 px of its doorway waits until the player steps away. Only timing changes, never a door or a kind, so the preview stays exact.
-- **The alive cap.** At most 20 zombies in the room in every mode; the rest wait at their doors. It is the phone's frame budget.
+- **The alive cap.** At most 20 zombies in the room in every mode; the rest wait to warn until a place frees up, and a warned pack's stragglers wait at its door. It is the phone's frame budget.
 
 #### Mercy rules
 

@@ -14,6 +14,7 @@ import {
   CONTACT_ALLOWANCE_PX,
   PLAYER_RADIUS,
   SEPARATION_SPEED,
+  ZOMBIE_ENTRY_SPEED,
   ZOMBIE_KNOCKBACK_DECAY_PER_SECOND,
 } from './constants'
 import { frenzyPace, isFrenzied } from './frenzy'
@@ -206,6 +207,17 @@ const heading = (
     },
   )
 
+// NOTE: a zombie still outside the room is not drawn, so it walks at least
+// ZOMBIE_ENTRY_SPEED until it reaches its doorway: it shows up a beat after
+// its door's warning ends, whatever its own pace. In the room it walks at
+// its own.
+const walkingSpeed = (zombie: Zombie, level: Level, pace: number): number => {
+  const speed = zombie.speed * pace * frenzyPace(zombie) * chillPace(zombie)
+  return isInsideRoomAt(level, zombie)
+    ? speed
+    : Math.max(speed, ZOMBIE_ENTRY_SPEED)
+}
+
 const steeringVelocity = (
   zombie: Zombie,
   flowFields: FlowFields,
@@ -220,7 +232,7 @@ const steeringVelocity = (
         ? ZERO_VECTOR
         : scaleVector(
             heading(zombie, flowFields, target, obstacles),
-            zombie.speed * pace * frenzyPace(zombie) * chillPace(zombie),
+            walkingSpeed(zombie, obstacles.level, pace),
           ),
     Fusing: () => ZERO_VECTOR,
     Dying: () => ZERO_VECTOR,

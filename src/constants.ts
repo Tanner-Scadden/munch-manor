@@ -38,6 +38,10 @@ export const ZOMBIE_RADIUS = 4
 export const ZOMBIE_SPEED_MIN = 16
 export const ZOMBIE_SPEED_MAX = 28
 export const ZOMBIE_SPAWN_MARGIN = 10
+// NOTE: the least a zombie walks while it is still outside the room, where
+// nothing is drawn, so even a Big Lug is in its doorway a beat after its
+// door's warning ends instead of most of a second later.
+export const ZOMBIE_ENTRY_SPEED = 50
 export const SCORE_PER_ZOMBIE = 10
 export const ZOMBIE_MAX_HP = 3
 export const ZOMBIE_HIT_PULSE_MS = 160

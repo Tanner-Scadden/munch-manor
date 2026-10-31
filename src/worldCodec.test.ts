@@ -237,8 +237,9 @@ describe("the boss's charge on the wire", () => {
 // values to positions); protocol 11 added each player's `wield`, the knife
 // or a gun in hand; protocol 12 added each player's `melee`, the knife or
 // the Clang Pan in the melee slot. The wire must not change without a
-// protocol bump.
-const GOLDEN_DIGEST = '63722:f4af162d1bd084a7'
+// protocol bump. A change to how the room plays moves the bytes with no
+// change to the wire, as zombies coming in promptly after their warning did.
+const GOLDEN_DIGEST = '64970:802f11053bfd833f'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {
