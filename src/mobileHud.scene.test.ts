@@ -26,7 +26,7 @@ import { describe, test, expect as vitestExpect } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { HomeScreenStepsBinding } from './composition'
+import { HomeScreenStepsBinding } from './bindings'
 import { PREPARATION_MS } from './constants'
 import { update } from './main'
 import { Message } from './message'

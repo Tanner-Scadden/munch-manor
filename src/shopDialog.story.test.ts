@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest'
 
 import { DialogBlock, Tabs } from '@foldkit/ui'
 
-import { ShopDialogBinding, ShopTabsBinding } from './composition'
+import { ShopDialogBinding, ShopTabsBinding } from './bindings'
 import { PLAYER_MAX_HP, SHAMBLER_BOUNTY } from './constants'
 import { update } from './main'
 import { Message } from './message'

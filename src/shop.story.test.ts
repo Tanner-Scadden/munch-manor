@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { ShopDialogBinding } from './composition'
+import { ShopDialogBinding } from './bindings'
 import {
   BULLET_MAX,
   COINS_PER_PURCHASE,

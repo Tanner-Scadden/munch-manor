@@ -4,8 +4,8 @@
   // NOTE: the project's own rules (AGENTS.md "Code shape").
   "jsPlugins": ["./tools/lint/munchPlugin.ts"],
   // NOTE: naming plugins replaces oxlint's defaults, so the defaults are listed
-  // here with vitest added.
-  "plugins": ["eslint", "typescript", "unicorn", "oxc", "vitest"],
+  // here with vitest added, and import for import/no-cycle.
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "vitest", "import"],
   // NOTE: type-aware rules run through oxlint-tsgolint.
   "options": { "typeAware": true },
   "categories": {
@@ -13,6 +13,9 @@
     "perf": "error"
   },
   "rules": {
+    // NOTE: no module imports one that imports it back, type imports too
+    // (AGENTS.md "Code shape").
+    "import/no-cycle": "error",
     "no-unused-vars": [
       "error",
       {

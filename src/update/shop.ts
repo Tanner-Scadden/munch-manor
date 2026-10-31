@@ -2,7 +2,7 @@ import { Effect, Option, Result } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { CoopBinding, ShopDialogBinding } from '../composition'
+import { CoopBinding, ShopDialogBinding } from '../bindings'
 import { makeCommand, makeStep } from '../definition'
 import { refreshIntent } from '../frame'
 import { releaseAll } from '../input'
@@ -16,6 +16,7 @@ import {
   ShopState,
 } from '../model'
 import { learnShop } from '../onboarding'
+import { isRunOn } from '../onlineRun'
 import { burstCoins } from '../particles'
 import {
   ShopGood,
@@ -30,7 +31,6 @@ import {
 import { ActionRefusal, SeatAction } from '../stepWorld'
 import { showTrapHint } from '../traps'
 import { tryAsLead } from './action'
-import { isRunOn } from './coopRun'
 import { type SoundCue, playSounds, uiCue } from './sound'
 import {
   type UpdateReturn,

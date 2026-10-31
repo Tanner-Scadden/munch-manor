@@ -25,8 +25,8 @@ import {
   playerSprites,
   randomAppearance,
 } from './appearance'
+import { CharacterBinding } from './bindings'
 import * as Character from './character'
-import { CharacterBinding } from './composition'
 import { RESTART_GRACE_MS } from './constants'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from './lookRadios'
 import { update } from './main'

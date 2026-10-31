@@ -1,10 +1,10 @@
 import { Array, Option, Result, pipe } from 'effect'
 import type { Document, Html } from 'foldkit/html'
 
+import { CoopBinding } from './bindings'
 import {
   ApplicationComposition,
   type ApplicationViewBuilder,
-  CoopBinding,
 } from './composition'
 import { GAME_TITLE } from './constants'
 import { DIFFICULTIES, bestsFor } from './difficulty'

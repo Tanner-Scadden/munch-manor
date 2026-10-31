@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest'
 
 import { DialogBlock } from '@foldkit/ui'
 
-import { PanelDialogBinding } from './composition'
+import { PanelDialogBinding } from './bindings'
 import { FIXED_STEP_MS } from './constants'
 import { bestsFor, biteDamage } from './difficulty'
 import { update } from './main'

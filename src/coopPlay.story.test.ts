@@ -7,7 +7,7 @@ import { describe, expect, test } from 'vitest'
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import { positionVariation } from './audio'
-import { CoopBinding, ShopDialogBinding } from './composition'
+import { CoopBinding, ShopDialogBinding } from './bindings'
 import { Message as CoopMessage } from './coop/message'
 import { Screen } from './coop/model'
 import { freshRoom, maybeRoomOf } from './coop/roomState'

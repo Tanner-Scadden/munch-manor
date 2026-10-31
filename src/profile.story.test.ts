@@ -6,12 +6,12 @@ import { describe, expect, test } from 'vitest'
 
 import { DialogBlock, RadioGroup, Tabs } from '@foldkit/ui'
 
-import * as Character from './character'
 import {
   CharacterBinding,
   ProfileDialogBinding,
   ProfileTabsBinding,
-} from './composition'
+} from './bindings'
+import * as Character from './character'
 import { PartRadioGroupBlock } from './lookRadios'
 import { update } from './main'
 import { Message } from './message'

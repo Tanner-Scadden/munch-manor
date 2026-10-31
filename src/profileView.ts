@@ -7,7 +7,7 @@ import {
   CharacterBinding,
   ProfileDialogBinding,
   ProfileTabsBinding,
-} from './composition'
+} from './bindings'
 import type { ApplicationViewBuilder } from './composition'
 import { closeButtonView, dialogShell } from './dialogs'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from './home'

@@ -3,8 +3,8 @@ import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
 
+import { HomeScreenStepsBinding } from './bindings'
 import type { ApplicationViewBuilder } from './composition'
-import { HomeScreenStepsBinding } from './composition'
 import { closeButtonView, dialogShell } from './dialogs'
 import { isInstallTileShown } from './home'
 import {

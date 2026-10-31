@@ -3,8 +3,8 @@ import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
 
+import { HandDialogBinding, PanelDialogBinding } from './bindings'
 import type { ApplicationViewBuilder } from './composition'
-import { HandDialogBinding, PanelDialogBinding } from './composition'
 import { COOP_ICON } from './coop/icons'
 import { IS_COOP_RELEASED } from './coop/release'
 import { closeButtonView, dialogShell } from './dialogs'

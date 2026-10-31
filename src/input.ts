@@ -14,6 +14,7 @@ import {
   scaleVector,
   vectorLength,
 } from './geometry'
+import { INTERACT_KEY } from './keyActions'
 import {
   HoldButton,
   type Input,
@@ -38,7 +39,6 @@ const ENDLESS_KEY = 'KeyE'
 const KEEP_GOING_KEY = 'KeyK'
 const CHARACTER_KEY = 'KeyC'
 const PAUSE_KEY = 'Escape'
-export const INTERACT_KEY = 'Enter'
 const MENU_KEY = 'KeyH'
 const PREVIOUS_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowLeft', 'ArrowUp']
 const NEXT_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowRight', 'ArrowDown']

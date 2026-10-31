@@ -1,6 +1,5 @@
 import { Array, Option } from 'effect'
 
-import { INTERACT_KEY } from './input'
 import { isInteractTaken } from './purchase'
 import { SeatAction } from './stepWorld'
 import type { World } from './world'
@@ -9,6 +8,10 @@ import type { World } from './world'
 // single player, co-op's client, and the couch all read. Each seat names
 // its own key for each action: player 1 the usual keys, a couch player a
 // block of their own (src/couch.ts).
+
+// NOTE: held to buy at a purchasable (src/purchase.ts) and pressed for
+// READY elsewhere.
+export const INTERACT_KEY = 'Enter'
 
 export type ActionKeys = Readonly<{
   swap: string

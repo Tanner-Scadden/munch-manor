@@ -3,9 +3,8 @@ import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
-import { CoopBinding } from './composition'
+import { CoopBinding } from './bindings'
 import type { Room as CoopRoom } from './coop/model'
-import { isInLobby, maybeRoomOf } from './coop/roomState'
 import { makeStep } from './definition'
 import { aimTracers, flyTracers } from './firing'
 import {
@@ -16,9 +15,10 @@ import {
 } from './frame'
 import { launchPrize } from './fridgeReveal'
 import { stopForHits, thawTick } from './juice'
-import { type Model, Phase } from './model'
+import type { Model } from './model'
 import { ageDebutCard, raiseDebutCardFrom } from './onboarding'
-import { isCoop, shopOf } from './party'
+import { maybeRunRoom, runDifficultyOf } from './onlineRun'
+import { shopOf } from './party'
 import { inputOfIntent, ownWorldOf } from './roomWorld'
 import { freshRun } from './runReset'
 import { isBrowsing } from './shop'
@@ -38,7 +38,6 @@ import { endRoundOnClient, isRoundActive } from './waves'
 import { type World, withWorld } from './world'
 import {
   type Bullet,
-  type Difficulty,
   GameEvent,
   HitStop,
   ShopState,
@@ -56,34 +55,6 @@ import { footfallNearness } from './zombies'
 // then makes particles, shake, popups, and sounds from the events with its
 // own cosmetic stream, and freezes its own picture for hit-stop. The room
 // alone decides hits, money, and deaths.
-
-// NOTE: a room whose run is on, its lobby Playing.
-export const maybeRunRoom = (model: Model): Option.Option<CoopRoom> =>
-  Option.filter(maybeRoomOf(model.coop), room => !isInLobby(room))
-
-// NOTE: a run is drawn from the room once its first World has come.
-export const isOnlineRun = (model: Model): boolean =>
-  Option.exists(maybeRunRoom(model), room => Option.isSome(room.maybeWorld))
-
-// NOTE: the World a room run left in the root, after its room is gone.
-export const isLeftFromRoom = (model: Model): boolean =>
-  isCoop(model) &&
-  model.localPlayers <= 1 &&
-  !Phase.isAnyOf(['Ready'])(model.phase) &&
-  Option.isNone(maybeRoomOf(model.coop))
-
-// NOTE: the difficulty a run plays on: the room's, which its host picked,
-// while the player is in a room that has sent a World, else their own.
-export const runDifficultyOf = (model: Model): Difficulty =>
-  Option.getOrElse(
-    Option.flatMap(maybeRoomOf(model.coop), room =>
-      Option.map(
-        room.maybeWorld,
-        roomWorld => roomWorld.world.difficulty.chosen,
-      ),
-    ),
-    () => model.difficulty.chosen,
-  )
 
 // THE ROOM'S WORLD IN THE ROOT
 

@@ -34,7 +34,7 @@ import {
   worldWindowOf,
 } from '../../src/camera'
 import { CHUCKER_RULES, maybeShieldFor } from '../../src/chucker'
-import { ShopDialogBinding } from '../../src/composition'
+import { ShopDialogBinding } from '../../src/bindings'
 import { PLAYER_MAX_HP, PLAYER_RADIUS } from '../../src/constants'
 import { CRAWLER_RULES } from '../../src/crawler'
 import { doorCounts } from '../../src/endlessWaves'
