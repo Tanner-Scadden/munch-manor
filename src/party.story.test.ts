@@ -4,13 +4,19 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { levelOf } from './arena'
-import { FIXED_STEP_MS, PLAYER_MAX_HP } from './constants'
+import {
+  FIXED_STEP_MS,
+  IDLE_RELOAD_MS,
+  PISTOL_MAGAZINE,
+  PLAYER_MAX_HP,
+} from './constants'
 import { rollSpawns } from './endlessWaves'
 import { EXIT_RULES, KITCHEN_EXIT } from './exits'
 import { update } from './main'
 import {
   Arsenal,
   type Bullet,
+  type Difficulty,
   GameEvent,
   HitStop,
   Invulnerability,
@@ -19,6 +25,7 @@ import {
   Phase,
   Pierce,
   type PlannedSpawn,
+  Reload,
   ShopState,
   Trap,
   initialModel,
@@ -36,7 +43,7 @@ import {
 import { PURCHASE_RULES } from './purchase'
 import { SHOP_ITEMS, STALL_BOX } from './shop'
 import { SeatAction, applySeatAction, soloInputs, stepWorld } from './stepWorld'
-import { SURFACE, ticks, zombieOf } from './testing'
+import { SURFACE, countdownTicks, ticks, withPistol, zombieOf } from './testing'
 import { TRAPS } from './traps'
 import { beginPreparation, waveBonus } from './waves'
 import { WEAPONS, freshGun, heldGun } from './weapons'
@@ -650,6 +657,62 @@ describe('friendly fire', () => {
         expect(current.player.hp).toBe(PLAYER_MAX_HP)
       }),
     )
+  })
+})
+
+describe('the idle reload per seat', () => {
+  const partEmpty =
+    (slot: number, loaded: number) =>
+    (current: Model): Model =>
+      atSeat(current, slot, world =>
+        modifyFields(world, {
+          player: player =>
+            withPistol(player, pistol => ({ ...pistol, loaded })),
+        }),
+      )
+
+  const restingTwo = (chosen: Difficulty): Model =>
+    pipeline(
+      placed(0, LEFT_X, ROW_Y),
+      placed(1, RIGHT_X, ROW_Y),
+      partEmpty(0, PISTOL_MAGAZINE - 1),
+      partEmpty(1, 3),
+      world =>
+        modifyFields(world, {
+          difficulty: difficulty =>
+            modifyFields(difficulty, { chosen: () => chosen }),
+        }),
+    )(crewOf(2))
+
+  const firingSeatZero = new Map<number, Intent>([
+    [0, { ...idleIntent, trigger: 'Held' }],
+  ])
+
+  const stepped = (current: Model): Model =>
+    withWorld(current, world =>
+      Array.reduce(
+        Array.makeBy(countdownTicks(IDLE_RELOAD_MS), () => firingSeatZero),
+        world,
+        (stepping, inputs) => stepWorld(stepping, inputs).world,
+      ),
+    )
+
+  const isSeatReloading = (current: World, slot: number): boolean =>
+    Reload.isAnyOf(['Reloading'])(seatedAt(current, slot).player.reload)
+
+  test('on Normal the resting seat reloads while the one firing does not', () => {
+    const after = stepped(restingTwo('Normal'))
+    expect(seatedAt(after, 0).player.arsenal).not.toEqual(
+      seatedAt(restingTwo('Normal'), 0).player.arsenal,
+    )
+    expect(isSeatReloading(after, 0)).toBe(false)
+    expect(isSeatReloading(after, 1)).toBe(true)
+  })
+
+  test('on Hard neither seat reloads early', () => {
+    const after = stepped(restingTwo('Hard'))
+    expect(isSeatReloading(after, 0)).toBe(false)
+    expect(isSeatReloading(after, 1)).toBe(false)
   })
 })
 
