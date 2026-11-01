@@ -87,6 +87,7 @@ const learnedSave: PlayerSave = {
     beard: true,
     glasses: true,
     hat: 'None',
+    gunSkin: 'Stock',
   },
   difficulty: { chosen: 'Hard', card: 'Seen', nightmare: 'Unlocked' },
   bests: {
@@ -122,7 +123,8 @@ const learnedSave: PlayerSave = {
     spentBones: 5,
   },
   calling: 'TrackStar',
-  boughtHats: [],
+  boughtCosmetics: [],
+  seenUnlocks: [],
 }
 
 // NOTE: the look as saves before version 10 kept it, a Female or Male
@@ -147,6 +149,7 @@ const MIGRATED_LOOK: PlayerSave['appearance'] = {
   beard: false,
   glasses: false,
   hat: 'None',
+  gunSkin: 'Stock',
 }
 
 const versionNineSave = { ...learnedSave, appearance: LEGACY_LOOK }
@@ -360,6 +363,7 @@ describe('the schema', () => {
         beard: true,
         glasses: true,
         hat: 'None',
+        gunSkin: 'Stock',
       }),
     )
     const plain = JSON.stringify({
@@ -388,6 +392,7 @@ describe('the schema', () => {
         beard: false,
         glasses: false,
         hat: 'None',
+        gunSkin: 'Stock',
       }),
     )
     const { appearance: _look, ...rest } = learnedSave

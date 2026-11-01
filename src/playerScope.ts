@@ -11,15 +11,16 @@ import {
 
 import {
   Appearance,
+  COSMETIC_PRICES,
   Calling,
   CursorSetting,
   Difficulty,
-  HAT_PRICES,
   HomeScreenTip,
   MusicSetting,
   PlayerName,
   PlayerSave,
   RotationSetting,
+  SEEN_BASELINE,
   SavedBestsByDifficulty,
   SavedCard,
   type SavedDifficultyBests,
@@ -29,6 +30,7 @@ import {
   SavedPowerUps,
   type SavedRunRecord,
   SavedRunRecords,
+  SavedSeenUnlocks,
   SavedSettings,
   ShakeSetting,
   ShareStatsSetting,
@@ -69,6 +71,7 @@ export const PlayerRow = Schema.Struct({
   difficulty_bests: Schema.fromJsonString(SavedBestsByDifficulty),
   home: Schema.fromJsonString(SavedHome),
   seen_power_ups: Schema.fromJsonString(SavedPowerUps),
+  seen_unlocks: Schema.fromJsonString(SavedSeenUnlocks),
   cursor: CursorSetting,
   rotation: RotationSetting,
   name: PlayerName,
@@ -105,6 +108,7 @@ export const PLAYER_COLUMNS = Array.make(
   'difficulty_bests',
   'home',
   'seen_power_ups',
+  'seen_unlocks',
   'cursor',
   'rotation',
   'name',
@@ -134,6 +138,7 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   difficulty_bests: save.bests.byDifficulty,
   home: save.home,
   seen_power_ups: save.seenPowerUps,
+  seen_unlocks: save.seenUnlocks,
   cursor: save.settings.cursor,
   rotation: save.rotation,
   name: save.name,
@@ -151,7 +156,7 @@ export const BoughtRow = Schema.Struct({ id: Schema.String })
 export type BoughtRow = typeof BoughtRow.Type
 
 export const boughtRowsOfSave = (save: PlayerSave): ReadonlyArray<BoughtRow> =>
-  Array.map(save.boughtHats, id => ({ id }))
+  Array.map(save.boughtCosmetics, id => ({ id }))
 
 export const killsRowsOfSave = (save: PlayerSave): ReadonlyArray<KillsRow> =>
   Array.map(Record.toEntries(save.bests.killsByKind), ([kind, kills]) => ({
@@ -195,7 +200,7 @@ const updatePlayer = (
 // (save version 15).
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 12,
+  version: 13,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -246,14 +251,14 @@ export const ChangedSettings = defineMutation({
     }),
 })
 
-// NOTE: version 4 carries the hat (version 3 the simple look, 2 the
-// many-part one). The row may still hold an older look until the first
-// change, so it is read as StoredAppearance. A worn hat is not checked
-// against what the player owns here: a look in a hat it does not own is
-// shown bare headed (lookInOwnedHat in src/closet.ts).
+// NOTE: version 5 carries the gun skin (version 4 the hat, 3 the simple
+// look, 2 the many-part one). The row may still hold an older look until the
+// first change, so it is read as StoredAppearance. A look worn but not owned
+// is not checked against what the player owns here: it is shown as stock
+// (lookInOwned in src/closet.ts).
 export const ChangedAppearance = defineMutation({
   name: 'ChangedAppearance',
-  version: 4,
+  version: 5,
   args: Schema.Struct({ appearance: Appearance }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -421,6 +426,51 @@ export const SawPowerUps = defineMutation({
         toRejected,
       )
       yield* updatePlayer(context, { seen_power_ups: json })
+    }),
+})
+
+const UnlocksRow = Schema.Struct({
+  seen_unlocks: Schema.fromJsonString(SavedSeenUnlocks),
+})
+
+const encodeUnlocks = Schema.encodeEffect(
+  Schema.fromJsonString(SavedSeenUnlocks),
+)
+
+// NOTE: the unlocks a device saw (src/unlocks.ts), added to the ones the
+// player has seen on any device. A union, so two devices offline at once
+// both keep what they saw, in whatever order the server gets them. The
+// baseline mark of a row from before NEW badges goes, as the ids it stood for
+// come with the first load.
+export const SawUnlocks = defineMutation({
+  name: 'SawUnlocks',
+  version: 1,
+  args: Schema.Struct({ ids: SavedSeenUnlocks }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ ids }, context) =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      const rows =
+        yield* sql`SELECT seen_unlocks FROM ${context.table('player')} WHERE id = 1`
+      const maybeSeen = pipe(
+        Array.head(rows),
+        Option.flatMap(Schema.decodeUnknownOption(UnlocksRow)),
+        Option.map(row => row.seen_unlocks),
+      )
+      if (Option.isNone(maybeSeen)) {
+        return
+      }
+      const json = yield* Effect.mapError(
+        encodeUnlocks(
+          Array.filter(
+            Array.union(maybeSeen.value, ids),
+            id => id !== SEEN_BASELINE,
+          ),
+        ),
+        toRejected,
+      )
+      yield* updatePlayer(context, { seen_unlocks: json })
     }),
 })
 
@@ -657,7 +707,7 @@ export const BoughtCosmetic = defineMutation({
   writer: 'Owner',
   apply: ({ id }, context) =>
     Effect.gen(function* () {
-      const maybePrice = Record.get<string, number>(HAT_PRICES, id)
+      const maybePrice = Record.get<string, number>(COSMETIC_PRICES, id)
       if (Option.isNone(maybePrice)) {
         return
       }
@@ -722,6 +772,7 @@ export const PlayerScope = defineScope({
     ChangedOnboarding,
     ChangedHome,
     SawPowerUps,
+    SawUnlocks,
     ForgotPowerUps,
     RecordedRun,
     ReachedRecords,
@@ -849,6 +900,14 @@ export const PlayerScope = defineScope({
         yield* sql`CREATE TABLE IF NOT EXISTS ${sql(table('bought_cosmetics'))} (
           id TEXT PRIMARY KEY
         )`
+      }),
+    // NOTE: NEW badges came after the closet. A player from before them has
+    // seen the baseline mark: every unlock reached by the first load.
+    '0012_add_seen_unlocks': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN seen_unlocks TEXT NOT NULL DEFAULT '["*"]'`
       }),
   },
 })

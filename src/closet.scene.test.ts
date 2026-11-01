@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import {
   Command,
   all,
@@ -9,28 +10,35 @@ import {
   role,
   scene,
   selector,
+  within,
 } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 
-import { Tabs } from '@foldkit/ui'
+import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import { Message } from './message'
 import type { Model } from './model'
 import { homeAfterRead } from './model.fixture'
-import { ProfileTabsBlock } from './profile'
 import { noRank, pointsForRank } from './rank'
 import {
   ROOT,
+  closeButton,
   emitPressedKey,
+  lookGroup,
+  lookOptionIn,
+  lookSection,
   measureSurface,
+  openLookSection,
+  resolveFocusOptionInScene,
   showDialogInScene,
 } from './testing'
-import { FocusClosetCard } from './update/closet'
+import { unlocksAt } from './unlocks'
 import { WriteSave } from './update/save'
 
-// The Closet tab (src/closetView.ts): a card for every hat in one of four
-// states, taps that wear and buy, and the arrow keys.
+// The Look tab's rows of earned looks (src/characterView.ts,
+// src/lookGearView.ts): an option in one of four states, a pick that wears
+// or buys, the arrow keys that only move, and the NEW badges.
 
 const closet: Model = modifyFields(homeAfterRead, {
   rank: () => ({
@@ -39,96 +47,288 @@ const closet: Model = modifyFields(homeAfterRead, {
     earnedBones: 140,
     spentBones: 50,
   }),
-  boughtHats: () => ['Fez'],
+  boughtCosmetics: () => ['Fez'],
+  seenUnlocks: () => unlocksAt(5),
   appearance: look => ({ ...look, hat: 'Fez' }),
 })
 
-const openCloset = () => [
-  emitPressedKey('KeyC'),
-  ...showDialogInScene(),
-  click(role('tab', { name: 'Closet' })),
+const closeLook = () => [
+  click(closeButton),
   Command.resolve(
-    Tabs.test.FocusTab({ id: 'profile-tabs', index: 1 }),
-    ProfileTabsBlock.Message.CompletedFocusTab(),
+    Dialog.test.CloseDialog,
+    DialogBlock.Message.CompletedCloseDialog(),
   ),
 ]
 
-const card = (hat: string) => selector(`#closet-card-${hat.toLowerCase()}`)
+const openLook = () => [emitPressedKey('KeyC'), ...showDialogInScene()]
 
-describe('the closet tab', () => {
-  test('every hat is a card: worn, owned, for sale, or a locked gift', () => {
+const balance = selector('.profile-rank .rank-bones-count')
+
+describe('the gear rows', () => {
+  test('every hat is an option: worn, owned, for sale, or a locked gift', () => {
     scene(
       ROOT,
       given(closet),
       measureSurface,
-      ...openCloset(),
-      expectAll(all.selector('.closet-card')).toHaveCount(16),
-      expect(card('Fez')).toHaveAttr('data-standing', 'Worn'),
-      expect(card('Fez')).toHaveAttr('aria-pressed', 'true'),
-      expect(card('PartyHat')).toHaveAttr('data-standing', 'Owned'),
-      expect(card('PomBeanie')).toHaveAttr('data-standing', 'Owned'),
-      expect(card('Colander')).toHaveAttr('data-standing', 'ForSale'),
-      expect(card('PumpkinHead')).toHaveAttr('data-standing', 'ForSale'),
-      expect(card('PropellerCap')).toHaveAttr('data-standing', 'Locked'),
-      expect(card('TrafficCone')).toHaveAttr('data-standing', 'Locked'),
-      expect(role('group', { name: 'Hats' })).toExist(),
-      expect(selector('.closet-bones')).toExist(),
+      ...openLook(),
+      ...openLookSection('Gear'),
+      expectAll(
+        all.selector('[role="radio"][id^="look-hat-option-"]'),
+      ).toHaveCount(17),
+      expect(lookOptionIn('Hat', 'Fez')).toHaveAttr('data-standing', 'Worn'),
+      expect(lookOptionIn('Hat', 'Fez')).toHaveAttr('aria-checked', 'true'),
+      expect(lookOptionIn('Hat', 'No hat')).toHaveAttr(
+        'data-standing',
+        'Owned',
+      ),
+      expect(lookOptionIn('Hat', 'Party Hat')).toHaveAttr(
+        'data-standing',
+        'Owned',
+      ),
+      expect(lookOptionIn('Hat', 'Colander')).toHaveAttr(
+        'data-standing',
+        'ForSale',
+      ),
+      expect(lookOptionIn('Hat', 'Top Hat')).toHaveAttr(
+        'data-standing',
+        'Locked',
+      ),
+      expect(lookOptionIn('Hat', 'Top Hat')).toHaveAttr(
+        'aria-checked',
+        'false',
+      ),
+      expectAll(
+        all.selector('[role="radio"][id^="look-gun-skin-option-"]'),
+      ).toHaveCount(6),
+      expect(lookOptionIn('Gun skin', 'Stock')).toHaveAttr(
+        'data-standing',
+        'Worn',
+      ),
+      expect(lookOptionIn('Gun skin', 'Candy')).toHaveAttr(
+        'data-standing',
+        'ForSale',
+      ),
+      expect(lookOptionIn('Gun skin', 'Gold')).toHaveAttr(
+        'data-standing',
+        'Locked',
+      ),
     )
   })
 
-  test('a tap buys the hat for sale and wears it, and the balance drops', () => {
+  test('the colors and prints show the earned ones beside the free ones', () => {
     scene(
       ROOT,
       given(closet),
       measureSurface,
-      ...openCloset(),
-      click(card('Colander')),
+      ...openLook(),
+      ...openLookSection('Outfit'),
+      expectAll(
+        all.selector('[role="radio"][id^="look-shirt-color-option-"]'),
+      ).toHaveCount(10),
+      expect(lookOptionIn('Outfit color', 'Blue')).toHaveAttr(
+        'aria-checked',
+        'true',
+      ),
+      expect(lookOptionIn('Outfit color', 'Red')).toHaveAttr(
+        'data-standing',
+        'Owned',
+      ),
+      expect(lookOptionIn('Outfit color', 'Midnight')).toHaveAttr(
+        'data-standing',
+        'ForSale',
+      ),
+      expect(lookOptionIn('Outfit color', 'Gold')).toHaveAttr(
+        'data-standing',
+        'Locked',
+      ),
+      expectAll(
+        all.selector('[role="radio"][id^="look-print-option-"]'),
+      ).toHaveCount(7),
+      expect(lookOptionIn('Print', 'Skull')).toHaveAttr(
+        'data-standing',
+        'ForSale',
+      ),
+      expect(lookOptionIn('Print', 'Polka')).toHaveAttr(
+        'data-standing',
+        'Locked',
+      ),
+    )
+  })
+
+  test('a pick buys the look for sale and wears it, and the balance drops', () => {
+    scene(
+      ROOT,
+      given(closet),
+      measureSurface,
+      ...openLook(),
+      ...openLookSection('Gear'),
+      expect(balance).toHaveText('90'),
+      click(lookOptionIn('Hat', 'Colander')),
       Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      expect(card('Colander')).toHaveAttr('data-standing', 'Worn'),
-      expect(card('Fez')).toHaveAttr('data-standing', 'Owned'),
-      expect(card('Colander')).toHaveAttr('data-cue', 'Bought'),
-      expect(selector('.closet-bones .rank-bones-count')).toHaveText('50'),
+      expect(lookOptionIn('Hat', 'Colander')).toHaveAttr(
+        'aria-checked',
+        'true',
+      ),
+      expect(lookOptionIn('Hat', 'Colander')).toHaveAttr('data-cue', 'Bought'),
+      expect(lookOptionIn('Hat', 'Fez')).toHaveAttr('data-standing', 'Owned'),
+      expect(balance).toHaveText('50'),
     )
   })
 
-  test('a hat the Bones do not cover shakes its price and stays for sale', () => {
+  test('a gun skin is bought the same way, for 60', () => {
+    scene(
+      ROOT,
+      given(closet),
+      measureSurface,
+      ...openLook(),
+      ...openLookSection('Gear'),
+      click(lookOptionIn('Gun skin', 'Candy')),
+      Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      expect(lookOptionIn('Gun skin', 'Candy')).toHaveAttr(
+        'aria-checked',
+        'true',
+      ),
+      expect(balance).toHaveText('30'),
+    )
+  })
+
+  test('a look the Bones do not cover shakes its price and is not selected', () => {
     scene(
       ROOT,
       given(
-        modifyFields(closet, {
-          rank: rank => ({ ...rank, earnedBones: 60 }),
-        }),
+        modifyFields(closet, { rank: rank => ({ ...rank, earnedBones: 60 }) }),
       ),
       measureSurface,
-      ...openCloset(),
-      click(card('Plunger')),
-      expect(card('Plunger')).toHaveAttr('data-standing', 'ForSale'),
-      expect(card('Plunger')).toHaveAttr('data-cue', 'Short'),
-      expect(selector('.closet-bones .rank-bones-count')).toHaveText('10'),
+      ...openLook(),
+      ...openLookSection('Gear'),
+      click(lookOptionIn('Hat', 'Plunger')),
+      expect(lookOptionIn('Hat', 'Plunger')).toHaveAttr(
+        'aria-checked',
+        'false',
+      ),
+      expect(lookOptionIn('Hat', 'Plunger')).toHaveAttr('data-cue', 'Short'),
+      expect(lookOptionIn('Hat', 'Fez')).toHaveAttr('aria-checked', 'true'),
+      expect(balance).toHaveText('10'),
     )
   })
 
-  test('the arrow keys move between the cards, across and down the grid', () => {
+  test('a locked gift shakes and is not selected', () => {
     scene(
       ROOT,
       given(closet),
       measureSurface,
-      ...openCloset(),
-      keydown(card('PartyHat'), 'ArrowRight'),
-      Command.resolve(
-        FocusClosetCard({ hat: 'BucketHat' }),
-        Message.CompletedFocusClosetCard(),
+      ...openLook(),
+      ...openLookSection('Gear'),
+      click(lookOptionIn('Hat', 'Top Hat')),
+      expect(lookOptionIn('Hat', 'Top Hat')).toHaveAttr(
+        'aria-checked',
+        'false',
       ),
-      keydown(card('BucketHat'), 'ArrowDown'),
-      Command.resolve(
-        FocusClosetCard({ hat: 'TrafficCone' }),
-        Message.CompletedFocusClosetCard(),
+      expect(lookOptionIn('Hat', 'Top Hat')).toHaveAttr('data-cue', 'Short'),
+      expect(lookOptionIn('Hat', 'Fez')).toHaveAttr('aria-checked', 'true'),
+    )
+  })
+
+  test('the arrow keys only move between the options, and never buy', () => {
+    scene(
+      ROOT,
+      given(closet),
+      measureSurface,
+      ...openLook(),
+      ...openLookSection('Gear'),
+      keydown(lookOptionIn('Hat', 'Fez'), 'ArrowRight'),
+      resolveFocusOptionInScene(),
+      keydown(lookOptionIn('Hat', 'Fez'), 'ArrowRight'),
+      resolveFocusOptionInScene(),
+      keydown(lookOptionIn('Hat', 'Fez'), 'End'),
+      resolveFocusOptionInScene(),
+      expect(lookOptionIn('Hat', 'Fez')).toHaveAttr('aria-checked', 'true'),
+      expect(lookOptionIn('Hat', 'Pumpkin Head')).toHaveAttr(
+        'data-standing',
+        'ForSale',
       ),
-      keydown(card('PartyHat'), 'ArrowLeft'),
-      Command.resolve(
-        FocusClosetCard({ hat: 'PumpkinHead' }),
-        Message.CompletedFocusClosetCard(),
+      expect(balance).toHaveText('90'),
+    )
+  })
+
+  test('works by touch and mouse: a pick is a click', () => {
+    scene(
+      ROOT,
+      given(modifyFields(closet, { lastDevice: () => 'Touch' })),
+      measureSurface,
+      ...openLook(),
+      ...openLookSection('Gear'),
+      click(lookOptionIn('Hat', 'No hat')),
+      Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      expect(lookOptionIn('Hat', 'No hat')).toHaveAttr('aria-checked', 'true'),
+      ...closeLook(),
+    )
+  })
+})
+
+describe('NEW badges', () => {
+  const reached = modifyFields(homeAfterRead, {
+    rank: () => ({ ...noRank, earnedPoints: pointsForRank(16) }),
+    seenUnlocks: () => ['hat:PartyHat'],
+  })
+
+  const newBadge = (groupName: string, name: string) =>
+    within(lookOptionIn(groupName, name), selector('.look-new'))
+
+  test('the MORE button pips the Character card until the Look tab opens', () => {
+    scene(
+      ROOT,
+      given(reached),
+      measureSurface,
+      expect(selector('.manor-pip[data-card="Character"]')).toExist(),
+      ...openLook(),
+      expect(selector('.manor-pip[data-card="Character"]')).toBeAbsent(),
+      Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      expect(
+        within(role('tab', { name: 'Look' }), selector('.new-pip')),
+      ).toBeAbsent(),
+    )
+  })
+
+  test('opening the Look tab shows the badge on what was unlocked, once', () => {
+    scene(
+      ROOT,
+      given(reached),
+      measureSurface,
+      ...openLook(),
+      Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      ...openLookSection('Outfit'),
+      expect(newBadge('Outfit color', 'Gold')).toExist(),
+      expect(newBadge('Outfit color', 'Blue')).toBeAbsent(),
+      expect(newBadge('Outfit color', 'Glow')).toBeAbsent(),
+      ...openLookSection('Gear'),
+      expect(newBadge('Hat', 'Bucket Hat')).toExist(),
+      expect(newBadge('Hat', 'Party Hat')).toBeAbsent(),
+      expect(newBadge('Hat', 'Fez')).toBeAbsent(),
+      ...closeLook(),
+      ...openLook(),
+      ...openLookSection('Outfit'),
+      expect(newBadge('Outfit color', 'Gold')).toBeAbsent(),
+      ...openLookSection('Gear'),
+      expect(newBadge('Hat', 'Bucket Hat')).toBeAbsent(),
+    )
+  })
+})
+
+describe('the sections', () => {
+  test('there are four, and the Gear one holds the hat and the gun', () => {
+    scene(
+      ROOT,
+      given(closet),
+      measureSurface,
+      ...openLook(),
+      ...Array.map(['Body', 'Hair', 'Outfit', 'Gear'], name =>
+        expect(lookSection(name)).toExist(),
       ),
+      expect(lookGroup('Hat')).toBeAbsent(),
+      ...openLookSection('Gear'),
+      expect(lookGroup('Hat')).toExist(),
+      expect(lookGroup('Gun skin')).toExist(),
     )
   })
 })

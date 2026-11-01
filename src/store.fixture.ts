@@ -83,7 +83,8 @@ export const legacySave: PlayerSave = {
   records: noSavedRunRecords,
   rank: noRank,
   calling: 'You',
-  boughtHats: [],
+  boughtCosmetics: [],
+  seenUnlocks: [],
 }
 
 export interface FakeLegacy {

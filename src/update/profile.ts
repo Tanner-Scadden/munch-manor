@@ -22,6 +22,7 @@ import {
   unchanged,
   withInput,
 } from './step'
+import { markLooksSeen } from './unlocks'
 
 // NAME
 
@@ -89,7 +90,7 @@ const canOpenProfile = (model: Model): boolean =>
   )
 
 const showTab = (model: Model, tab: ProfileTab): Model =>
-  modifyFields(model, {
+  modifyFields(tab === 'Look' ? markLooksSeen(model) : model, {
     tutorialReset: () => 'Idle',
     profile: profile =>
       modifyFields(profile, { tab: () => tab, fx: () => 'Still' }),

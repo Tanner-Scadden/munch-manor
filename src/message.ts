@@ -22,7 +22,7 @@ import {
   ZombieKind,
 } from './model'
 import { MusicMood } from './music'
-import { Calling, Hat } from './playerData'
+import { Calling } from './playerData'
 import {
   LinkProblem,
   PlayerChange,
@@ -211,9 +211,6 @@ export const Message = defineMessageUnion({
   ClickedNewEntryButton: { kind: ZombieKind },
   ClickedDifficultyBadge: {},
   ClickedCallingBadge: {},
-  ClickedClosetCard: { hat: Hat },
-  SteppedClosetFocus: { hat: Hat },
-  CompletedFocusClosetCard: {},
   ClickedManorButton: {},
   SteppedHandFocus: { card: HandCard },
   CompletedFocusHandCard: {},

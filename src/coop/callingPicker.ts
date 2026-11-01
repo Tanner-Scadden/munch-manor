@@ -84,6 +84,7 @@ export const callingPickerView = (
                   look,
                   chosen: callingOfMember(me),
                   rank: me.rank,
+                  fresh: [],
                   attributesOf: calling => [
                     h.OnClick(Message.ClickedCallingPick({ calling })),
                   ],

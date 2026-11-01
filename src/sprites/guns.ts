@@ -1,6 +1,7 @@
 import { Array, Option, Record, String, pipe } from 'effect'
 
 import type { WeaponKind } from '../model'
+import type { GunSkin } from '../playerData'
 import {
   type Anchor,
   type Palette,
@@ -98,11 +99,75 @@ export const GUN_TIER_TRIMS: ReadonlyArray<Palette> = [
   { G: '#e0a92e', H: '#fff3a0', M: '#a8741a' },
 ]
 
-const gunPalette = (tier: number): Palette =>
+// NOTE: a gun skin (the Look tab's gear row) swaps the guns' body colors:
+// the metal (G, H, M), the wood (W, V), the Peashooter's green (P, Q), and
+// the Pan's black (D). The outline (K) and the shotgun's red tip stay. A
+// tier's trim lies over a skin, so a skinned gun still shows its tier.
+type SkinnedGunSkin = Exclude<GunSkin, 'Stock'>
+
+const GUN_SKIN_TRIMS: Readonly<Record<SkinnedGunSkin, Palette>> = {
+  Gold: {
+    G: '#d9a521',
+    H: '#fff1a8',
+    M: '#a8741a',
+    W: '#c78d1e',
+    V: '#8a5a12',
+    P: '#d9a521',
+    Q: '#fff1a8',
+    D: '#a8741a',
+  },
+  Candy: {
+    G: '#e8484a',
+    H: '#ffffff',
+    M: '#ffc9d2',
+    W: '#ffffff',
+    V: '#d8423a',
+    P: '#e8484a',
+    Q: '#ffffff',
+    D: '#b52a34',
+  },
+  Slime: {
+    G: '#59c23a',
+    H: '#d6ff9a',
+    M: '#2f8a2a',
+    W: '#7ed957',
+    V: '#2f8a2a',
+    P: '#2f8a2a',
+    Q: '#d6ff9a',
+    D: '#2f8a2a',
+  },
+  Bone: {
+    G: '#e8e2cc',
+    H: '#fffdf2',
+    M: '#bfb69a',
+    W: '#d8d0b4',
+    V: '#a39a7c',
+    P: '#d8d0b4',
+    Q: '#fffdf2',
+    D: '#bfb69a',
+  },
+  Neon: {
+    G: '#ff4fc3',
+    H: '#9ff9ff',
+    M: '#19d3e6',
+    W: '#19d3e6',
+    V: '#0fa0b3',
+    P: '#ff4fc3',
+    Q: '#ffa8e6',
+    D: '#b2308f',
+  },
+}
+
+const withTrim = (base: Palette, trim: Palette): Palette =>
+  Record.union(base, trim, (_base, trimmed) => trimmed)
+
+const skinPalette = (skin: GunSkin): Palette =>
+  skin === 'Stock' ? GUN_PALETTE : withTrim(GUN_PALETTE, GUN_SKIN_TRIMS[skin])
+
+const gunPalette = (tier: number, skin: GunSkin = 'Stock'): Palette =>
   Option.match(Array.get(GUN_TIER_TRIMS, tier), {
-    onNone: () => GUN_PALETTE,
-    onSome: trim =>
-      Record.union(GUN_PALETTE, trim, (_base, trimmed) => trimmed),
+    onNone: () => skinPalette(skin),
+    onSome: trim => withTrim(skinPalette(skin), trim),
   })
 
 const rotatedGun = (
@@ -165,38 +230,10 @@ const KNIFE_IN_HAND: GunPixels = {
 
 const KNIFE_TURNS = gunTurns(KNIFE_IN_HAND, GUN_PALETTE)
 
-export const knifeSprite = (angle: number): Sprite => {
-  const step = (Math.PI * 2) / GUN_DIRECTIONS
-  const index =
-    ((Math.round(angle / step) % GUN_DIRECTIONS) + GUN_DIRECTIONS) %
-    GUN_DIRECTIONS
-  return Option.getOrElse(Array.get(KNIFE_TURNS, index), () =>
-    Array.headNonEmpty(KNIFE_TURNS),
-  )
-}
-
-const GUN_ICONS: Readonly<Record<WeaponKind, ReadonlyArray<Sprite>>> =
-  Record.map(GUN_PIXELS, ({ pixels }) =>
-    Array.map(GUN_TIERS, tier => spriteShapes(pixels, gunPalette(tier))),
-  )
-
-export const gunIcon = (kind: WeaponKind, tier: number): Sprite =>
-  pipe(
-    Array.get(GUN_ICONS[kind], tier),
-    Option.orElse(() => Array.head(GUN_ICONS[kind])),
-    Option.getOrElse(() => []),
-  )
-
-export const gunSprite = (
-  kind: WeaponKind,
-  tier: number,
+const turnAt = (
+  turns: Array.NonEmptyReadonlyArray<Sprite>,
   angle: number,
 ): Sprite => {
-  const turns = Option.getOrElse(Array.get(GUN_SPRITES[kind], tier), () =>
-    Option.getOrElse(Array.head(GUN_SPRITES[kind]), () =>
-      gunTurns(GUN_PIXELS[kind], GUN_PALETTE),
-    ),
-  )
   const step = (Math.PI * 2) / GUN_DIRECTIONS
   const index =
     ((Math.round(angle / step) % GUN_DIRECTIONS) + GUN_DIRECTIONS) %
@@ -205,3 +242,92 @@ export const gunSprite = (
     Array.headNonEmpty(turns),
   )
 }
+
+// NOTE: a skinned gun's turns are built the first time they are held, as the
+// player's own look is. The stock guns are built when this module loads, so
+// the sprite atlas has them.
+const skinnedTurns = new Map<string, Array.NonEmptyReadonlyArray<Sprite>>()
+
+const skinnedTurnsOf = (
+  key: string,
+  gun: GunPixels,
+  palette: Palette,
+): Array.NonEmptyReadonlyArray<Sprite> =>
+  Option.getOrElse(Option.fromNullishOr(skinnedTurns.get(key)), () => {
+    const built = gunTurns(gun, palette)
+    skinnedTurns.set(key, built)
+    return built
+  })
+
+export const knifeSprite = (angle: number, skin: GunSkin = 'Stock'): Sprite =>
+  turnAt(
+    skin === 'Stock'
+      ? KNIFE_TURNS
+      : skinnedTurnsOf(`${skin}.Knife`, KNIFE_IN_HAND, skinPalette(skin)),
+    angle,
+  )
+
+const GUN_ICONS: Readonly<Record<WeaponKind, ReadonlyArray<Sprite>>> =
+  Record.map(GUN_PIXELS, ({ pixels }) =>
+    Array.map(GUN_TIERS, tier => spriteShapes(pixels, gunPalette(tier))),
+  )
+
+// NOTE: a gun's icon, flat: the stock one is made as the module loads.
+const skinnedIcons = new Map<string, Sprite>()
+
+export const gunIcon = (
+  kind: WeaponKind,
+  tier: number,
+  skin: GunSkin = 'Stock',
+): Sprite => {
+  if (skin !== 'Stock') {
+    const key = `${skin}.${kind}.${tier}`
+    return Option.getOrElse(Option.fromNullishOr(skinnedIcons.get(key)), () => {
+      const built = spriteShapes(
+        GUN_PIXELS[kind].pixels,
+        gunPalette(tier, skin),
+      )
+      skinnedIcons.set(key, built)
+      return built
+    })
+  }
+  return pipe(
+    Array.get(GUN_ICONS[kind], tier),
+    Option.orElse(() => Array.head(GUN_ICONS[kind])),
+    Option.getOrElse(() => []),
+  )
+}
+
+export const gunSprite = (
+  kind: WeaponKind,
+  tier: number,
+  angle: number,
+  skin: GunSkin = 'Stock',
+): Sprite => {
+  if (skin !== 'Stock') {
+    return turnAt(
+      skinnedTurnsOf(
+        `${skin}.${kind}.${tier}`,
+        GUN_PIXELS[kind],
+        gunPalette(tier, skin),
+      ),
+      angle,
+    )
+  }
+  const turns = Option.getOrElse(Array.get(GUN_SPRITES[kind], tier), () =>
+    Option.getOrElse(Array.head(GUN_SPRITES[kind]), () =>
+      gunTurns(GUN_PIXELS[kind], GUN_PALETTE),
+    ),
+  )
+  return turnAt(turns, angle)
+}
+
+// NOTE: a gun as pixels and colors, for the Look tab's option: the Pop
+// Pistol in a skin.
+export const gunPictureOf = (
+  kind: WeaponKind,
+  skin: GunSkin,
+): Readonly<{ rows: ReadonlyArray<string>; palette: Palette }> => ({
+  rows: GUN_PIXELS[kind].pixels,
+  palette: gunPalette(0, skin),
+})

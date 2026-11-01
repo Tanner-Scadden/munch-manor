@@ -3,7 +3,7 @@ import { Effect, Option } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { HAT_PRICES, type SoldHat } from './playerData'
+import { type Appearance, COSMETIC_PRICES, type SoldHat } from './playerData'
 import { PlayerChange } from './playerSync'
 import { bonesBalanceOf, noRank } from './rank'
 import type { PlayerSave } from './save'
@@ -19,15 +19,22 @@ const withBones = (bones: number): PlayerSave => ({
   rank: { ...noRank, earnedPoints: bones * 10, earnedBones: bones },
 })
 
-const afterBuying = (before: PlayerSave, hat: SoldHat): PlayerSave => ({
+const afterBuyingId = (
+  before: PlayerSave,
+  id: string,
+  wearing: Partial<Appearance>,
+): PlayerSave => ({
   ...before,
-  appearance: { ...before.appearance, hat },
-  boughtHats: [...before.boughtHats, hat],
+  appearance: { ...before.appearance, ...wearing },
+  boughtCosmetics: [...before.boughtCosmetics, id],
   rank: {
     ...before.rank,
-    spentBones: before.rank.spentBones + HAT_PRICES[hat],
+    spentBones: before.rank.spentBones + (COSMETIC_PRICES[id] ?? 0),
   },
 })
+
+const afterBuying = (before: PlayerSave, hat: SoldHat): PlayerSave =>
+  afterBuyingId(before, hat, { hat })
 
 const sees =
   (
@@ -52,6 +59,123 @@ const pairWith = (bones: number) =>
     return { phone, laptop, funded }
   })
 
+describe('a gun skin bought with Bones', () => {
+  it.effect('reaches the other linked device, with what it cost', () =>
+    synced(
+      Effect.gen(function* () {
+        const { phone, laptop, funded } = yield* pairWith(100)
+        yield* write(
+          phone,
+          funded,
+          afterBuyingId(funded, 'skin:Candy', { gunSkin: 'Candy' }),
+        )
+        const isBought = sees(
+          save =>
+            save.boughtCosmetics.length === 1 &&
+            save.boughtCosmetics[0] === 'skin:Candy' &&
+            save.rank.spentBones === 60 &&
+            save.appearance.gunSkin === 'Candy',
+        )
+        expect(isBought(yield* until(laptop.load, isBought))).toBe(true)
+        expect(isBought(yield* until(phone.load, isBought))).toBe(true)
+      }),
+    ),
+  )
+
+  it.effect('bought on both devices at once, is paid for once', () =>
+    synced(
+      Effect.gen(function* () {
+        const { phone, laptop, funded } = yield* pairWith(100)
+        const bought = afterBuyingId(funded, 'skin:Neon', { gunSkin: 'Neon' })
+        yield* Effect.all(
+          [write(phone, funded, bought), write(laptop, funded, bought)],
+          { concurrency: 'unbounded' },
+        )
+        const isPaidOnce = sees(
+          save =>
+            save.boughtCosmetics.length === 1 && save.rank.spentBones === 60,
+        )
+        expect(isPaidOnce(yield* until(phone.load, isPaidOnce))).toBe(true)
+        expect(isPaidOnce(yield* until(laptop.load, isPaidOnce))).toBe(true)
+      }),
+    ),
+  )
+
+  it.effect('does nothing for a skin the Bones do not cover or a gift', () =>
+    synced(
+      Effect.gen(function* () {
+        const { phone, funded } = yield* pairWith(50)
+        yield* phone.write(funded, [
+          PlayerChange.BoughtCosmetic({ id: 'skin:Bone' }),
+          PlayerChange.BoughtCosmetic({ id: 'skin:Gold' }),
+          PlayerChange.BoughtCosmetic({ id: 'shirt:Gold' }),
+        ])
+        const view = yield* settledView(phone)
+        expect(view.boughtCosmetics).toEqual([])
+        expect(view.rank.spentBones).toBe(0)
+      }),
+    ),
+  )
+
+  it.effect('a shirt color and a print are paid for the same way', () =>
+    synced(
+      Effect.gen(function* () {
+        const { phone, funded } = yield* pairWith(30)
+        yield* phone.write(funded, [
+          PlayerChange.BoughtCosmetic({ id: 'shirt:Midnight' }),
+          PlayerChange.BoughtCosmetic({ id: 'print:Skull' }),
+        ])
+        const view = yield* settledView(phone)
+        expect(view.boughtCosmetics).toEqual(['shirt:Midnight'])
+        expect(view.rank.spentBones).toBe(20)
+      }),
+    ),
+  )
+})
+
+describe('the unlocks seen', () => {
+  it.effect('add up across linked devices, whatever the order', () =>
+    synced(
+      Effect.gen(function* () {
+        const { phone, laptop, funded } = yield* pairWith(0)
+        yield* Effect.all(
+          [
+            write(phone, funded, { ...funded, seenUnlocks: ['hat:PartyHat'] }),
+            write(laptop, funded, {
+              ...funded,
+              seenUnlocks: ['calling:Handyman', 'hat:PartyHat'],
+            }),
+          ],
+          { concurrency: 'unbounded' },
+        )
+        const hasBoth = sees(
+          save =>
+            save.seenUnlocks.length === 2 &&
+            save.seenUnlocks.includes('hat:PartyHat') &&
+            save.seenUnlocks.includes('calling:Handyman'),
+        )
+        expect(hasBoth(yield* until(phone.load, hasBoth))).toBe(true)
+        expect(hasBoth(yield* until(laptop.load, hasBoth))).toBe(true)
+      }),
+    ),
+  )
+
+  it.effect(
+    'never keep the baseline mark of a row from before NEW badges',
+    () =>
+      synced(
+        Effect.gen(function* () {
+          const { phone, funded } = yield* pairWith(0)
+          yield* phone.write(funded, [
+            PlayerChange.SawUnlocks({ ids: ['*', 'hat:PartyHat'] }),
+          ])
+          const view = yield* settledView(phone)
+          expect(view.seenUnlocks).toEqual(['hat:PartyHat'])
+        }),
+      ),
+  )
+})
+
 describe('a hat bought with Bones', () => {
   it.effect('reaches the other linked device, with what it cost', () =>
     synced(
@@ -60,8 +184,8 @@ describe('a hat bought with Bones', () => {
         yield* write(phone, funded, afterBuying(funded, 'Fez'))
         const isBought = sees(
           save =>
-            save.boughtHats.length === 1 &&
-            save.boughtHats[0] === 'Fez' &&
+            save.boughtCosmetics.length === 1 &&
+            save.boughtCosmetics[0] === 'Fez' &&
             save.rank.spentBones === 50 &&
             save.appearance.hat === 'Fez',
         )
@@ -82,8 +206,8 @@ describe('a hat bought with Bones', () => {
         )
         const isPaidOnce = sees(
           save =>
-            save.boughtHats.length === 1 &&
-            save.boughtHats[0] === 'Fez' &&
+            save.boughtCosmetics.length === 1 &&
+            save.boughtCosmetics[0] === 'Fez' &&
             save.rank.spentBones === 50,
         )
         expect(isPaidOnce(yield* until(phone.load, isPaidOnce))).toBe(true)
@@ -116,16 +240,16 @@ describe('a hat bought with Bones', () => {
           const [onPhone, onLaptop] = yield* until(
             bothViews,
             ([a, b]) =>
-              a.boughtHats.length === 1 &&
-              b.boughtHats.length === 1 &&
-              a.boughtHats[0] === b.boughtHats[0],
+              a.boughtCosmetics.length === 1 &&
+              b.boughtCosmetics.length === 1 &&
+              a.boughtCosmetics[0] === b.boughtCosmetics[0],
           )
-          expect(onPhone.boughtHats).toEqual(onLaptop.boughtHats)
+          expect(onPhone.boughtCosmetics).toEqual(onLaptop.boughtCosmetics)
           expect(onPhone.rank.spentBones).toBe(onLaptop.rank.spentBones)
-          const [hat] = onPhone.boughtHats
+          const [hat] = onPhone.boughtCosmetics
           expect(onPhone.rank.spentBones).toBe(hat === 'Fez' ? 50 : 40)
           expect(bonesBalanceOf(onPhone.rank)).toBeGreaterThanOrEqual(0)
-          expect(onPhone.boughtHats).toHaveLength(1)
+          expect(onPhone.boughtCosmetics).toHaveLength(1)
         }),
       ),
   )
@@ -143,9 +267,9 @@ describe('a hat bought with Bones', () => {
         )
         const isBoth = sees(
           save =>
-            save.boughtHats.length === 2 &&
-            save.boughtHats.includes('Fez') &&
-            save.boughtHats.includes('Colander') &&
+            save.boughtCosmetics.length === 2 &&
+            save.boughtCosmetics.includes('Fez') &&
+            save.boughtCosmetics.includes('Colander') &&
             save.rank.spentBones === 90,
         )
         expect(isBoth(yield* until(phone.load, isBoth))).toBe(true)
@@ -162,7 +286,7 @@ describe('a hat bought with Bones', () => {
           PlayerChange.BoughtCosmetic({ id: 'Plunger' }),
         ])
         const view = yield* settledView(phone)
-        expect(view.boughtHats).toEqual([])
+        expect(view.boughtCosmetics).toEqual([])
         expect(view.rank.spentBones).toBe(0)
       }),
     ),
@@ -178,7 +302,7 @@ describe('a hat bought with Bones', () => {
           PlayerChange.BoughtCosmetic({ id: '' }),
         ])
         const view = yield* settledView(phone)
-        expect(view.boughtHats).toEqual([])
+        expect(view.boughtCosmetics).toEqual([])
         expect(view.rank.spentBones).toBe(0)
       }),
     ),
@@ -193,7 +317,7 @@ describe('a hat bought with Bones', () => {
           PlayerChange.BoughtCosmetic({ id: 'Fez' }),
         ])
         const view = yield* settledView(phone)
-        expect(view.boughtHats).toEqual(['Fez'])
+        expect(view.boughtCosmetics).toEqual(['Fez'])
         expect(view.rank.spentBones).toBe(50)
       }),
     ),

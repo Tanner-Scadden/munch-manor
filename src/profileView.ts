@@ -9,7 +9,6 @@ import {
   ProfileTabsBinding,
 } from './bindings'
 import { startingCallingOf } from './callingPick'
-import { closetTabView } from './closetView'
 import type { ApplicationViewBuilder } from './composition'
 import { closeButtonView, dialogShell } from './dialogs'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from './home'
@@ -18,7 +17,6 @@ import {
   AIM_ICON,
   CHARACTER_ICON,
   CLOCK_ICON,
-  CLOSET_ICON,
   DICE_ICON,
   FULLSCREEN_ICON,
   KEYPAD_ICON,
@@ -38,6 +36,7 @@ import {
   TURN_PHONE_ICON,
   ZAP_ICON,
 } from './icons'
+import { newPipView } from './lookGearView'
 import { iconView, isKeyboard, keyCapView } from './menuParts'
 import { Message } from './message'
 import type { Model, ProfileTab } from './model'
@@ -56,8 +55,10 @@ import {
   nameLength,
   shownName,
 } from './profile'
+import { rankOf, totalPointsOf } from './rank'
 import { rankPlateView } from './rankBadgeView'
 import { isPortrait } from './screen'
+import { hasUnseenLook } from './unlocks'
 
 // SHARED
 
@@ -70,7 +71,6 @@ type TabLook = Readonly<{ word: string; icon: string }>
 // grey Settings.
 const TAB_LOOKS: Readonly<Record<ProfileTab, TabLook>> = {
   Look: { word: 'Look', icon: CHARACTER_ICON },
-  Closet: { word: 'Closet', icon: CLOSET_ICON },
   Name: { word: 'Name', icon: NAME_ICON },
   Account: { word: 'Account', icon: ACCOUNT_ICON },
   Settings: { word: 'Settings', icon: SETTINGS_ICON },
@@ -79,6 +79,7 @@ const TAB_LOOKS: Readonly<Record<ProfileTab, TabLook>> = {
 const tabButtonView = (
   tab: Tabs.TabInfo<ProfileTab>,
   initialFocus: Dialog.RenderInfo['initialFocus'],
+  isNew: boolean,
   h: ApplicationViewBuilder,
 ): Html =>
   h.button(
@@ -91,6 +92,7 @@ const tabButtonView = (
     [
       iconView('profile-tab-icon', TAB_LOOKS[tab.value].icon, h),
       h.span([h.Class('profile-tab-word')], [TAB_LOOKS[tab.value].word]),
+      ...(isNew && tab.value === 'Look' ? [newPipView(h)] : []),
     ],
   )
 
@@ -107,6 +109,10 @@ const lookTabView = (model: Model, h: ApplicationViewBuilder): Html =>
         screenMs: model.screenMs,
         fx: model.profile.fx,
         fxCount: model.profile.fxCount,
+        bought: model.boughtCosmetics,
+        rank: model.rank,
+        fresh: model.freshUnlocks,
+        cue: model.profile.closetCue,
       },
     }),
   )
@@ -841,12 +847,6 @@ const lookPageView = (
   h: ApplicationViewBuilder,
 ): Html => h.div(pageAttributes(panel, 'Look', h), [lookTabView(model, h)])
 
-const closetPageView = (
-  model: Model,
-  panel: PageAttributes,
-  h: ApplicationViewBuilder,
-): Html => h.div(pageAttributes(panel, 'Closet', h), [closetTabView(model, h)])
-
 const namePageView = (
   model: Model,
   panel: PageAttributes,
@@ -874,7 +874,6 @@ const PAGE_VIEWS: Readonly<
   >
 > = {
   Look: lookPageView,
-  Closet: closetPageView,
   Name: namePageView,
   Account: accountPageView,
   Settings: settingsPageView,
@@ -900,7 +899,17 @@ const tabsView = (
             [
               h.div(
                 [...tablist, h.Class('profile-tabs')],
-                Array.map(tabs, tab => tabButtonView(tab, initialFocus, h)),
+                Array.map(tabs, tab =>
+                  tabButtonView(
+                    tab,
+                    initialFocus,
+                    hasUnseenLook(
+                      rankOf(totalPointsOf(model.rank)),
+                      model.seenUnlocks,
+                    ),
+                    h,
+                  ),
+                ),
               ),
               ...pipe(
                 tabs,

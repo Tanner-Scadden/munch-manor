@@ -18,9 +18,11 @@ import {
   SKIN_TONES,
   STRIPE_WHITE,
   appearanceKey,
+  hatHeadRows,
   playerPalette,
   playerPixels,
   playerSprites,
+  printSwatchRows,
 } from './appearance'
 import { startingGunKind } from './calling'
 import {
@@ -33,9 +35,11 @@ import {
   SectionsBinding,
   chooseLook,
   flipLook,
+  gearOf,
   isToggleOn,
   partGroupOf,
 } from './character'
+import { type Standing, standingOf } from './closet'
 import {
   PLAYER_FOOT_OFFSET,
   PLAYER_WALK_FRAME_MS,
@@ -43,24 +47,41 @@ import {
 } from './constants'
 import { DICE_ICON, pixelIconUrl } from './icons'
 import {
+  cueAttributes,
+  gearNote,
+  gearTagView,
+  newBadgeView,
+} from './lookGearView'
+import {
   type Appearance,
   type CharacterPicker,
+  type ClosetCueKind,
   type LookPart,
   LookSection,
   type LookToggle,
   type Print,
   type ProfileFx,
 } from './model'
-import type { Calling } from './playerData'
+import { HAT_NAMES, hatNameOf } from './names'
+import {
+  type Calling,
+  type CosmeticKind,
+  GunSkin,
+  Hat,
+  type SavedBoughtCosmetics,
+  type SavedRank,
+} from './playerData'
 import { GUN_HOLD_PX } from './playerView'
+import { rankOf, totalPointsOf } from './rank'
 import { type Facing, frameAt, group } from './sprite'
-import { gunSprite } from './sprites/guns'
+import { gunPictureOf, gunSprite } from './sprites/guns'
+import { lookUnlockId } from './unlocks'
 
 // PARTS
 
 // NOTE: how an option shows: the character in it (the whole figure, or the
 // head and shoulders), or a swatch of its color or print.
-type OptionLook = 'Figure' | 'Head' | 'Swatch' | 'Flag'
+type OptionLook = 'Figure' | 'Head' | 'Swatch' | 'Flag' | 'Hat' | 'Gun'
 
 type PartView = Readonly<{
   label: string
@@ -75,6 +96,9 @@ const noSwatch = (): string => 'none'
 
 const isPrint = (value: string): value is Print =>
   Array.some(PRINTS, print => print === value)
+
+const isSkin = (value: string): value is GunSkin =>
+  Array.some(GunSkin.literals, skin => skin === value)
 
 const FLAG_WIDTH = 30
 const FLAG_HEIGHT = 20
@@ -107,9 +131,14 @@ const printSwatch = (print: Print, appearance: Appearance): string => {
   const shirt = SHIRT_SHADES[appearance.shirtColor].base
   const key = `${print}.${shirt}`
   return Option.getOrElse(Option.fromNullishOr(swatchCache.get(key)), () => {
-    const url = stripesUrl(
-      print === 'Plain' ? [shirt] : [shirt, STRIPE_WHITE, shirt],
-    )
+    const url =
+      print === 'Plain' || print === 'Stripes'
+        ? stripesUrl(print === 'Plain' ? [shirt] : [shirt, STRIPE_WHITE, shirt])
+        : pixelIconUrl(
+            printSwatchRows(print),
+            playerPalette(appearance),
+            'Stretch',
+          )
     swatchCache.set(key, url)
     return url
   })
@@ -125,6 +154,12 @@ const swatchOf =
       ),
       () => 'none',
     )
+
+// NOTE: the Pop Pistol held large, in a skin: what a gun skin option shows.
+const gunOptionUrl = (skin: GunSkin): string => {
+  const { rows, palette } = gunPictureOf('Pistol', skin)
+  return pixelIconUrl(rows, palette)
+}
 
 const PART_VIEWS: Readonly<Record<LookPart, PartView>> = {
   Body: {
@@ -184,6 +219,22 @@ const PART_VIEWS: Readonly<Record<LookPart, PartView>> = {
     swatch: (value, appearance) =>
       isPrint(value) ? printSwatch(value, appearance) : 'none',
   },
+  Hat: {
+    label: 'Hat',
+    ariaLabel: 'Hat',
+    options: Hat.literals,
+    selected: appearance => appearance.hat,
+    look: 'Hat',
+    swatch: noSwatch,
+  },
+  GunSkin: {
+    label: 'Gun',
+    ariaLabel: 'Gun skin',
+    options: GunSkin.literals,
+    selected: appearance => appearance.gunSkin,
+    look: 'Gun',
+    swatch: value => (isSkin(value) ? gunOptionUrl(value) : 'none'),
+  },
 }
 
 const lookDescription = (appearance: Appearance): string =>
@@ -197,6 +248,8 @@ const lookDescription = (appearance: Appearance): string =>
     ...(appearance.glasses ? ['glasses'] : []),
     `${appearance.shirtColor} ${appearance.outfit}`,
     ...(appearance.print === 'Plain' ? [] : [`${appearance.print} print`]),
+    ...(appearance.hat === 'None' ? [] : [HAT_NAMES[appearance.hat]]),
+    ...(appearance.gunSkin === 'Stock' ? [] : [`${appearance.gunSkin} gun`]),
   ]
     .join(', ')
     .toLowerCase()
@@ -223,6 +276,19 @@ const partIconOf = (worn: Appearance, crop: 'Figure' | 'Head'): string => {
       crop === 'Head' ? rows.slice(HEAD_ROWS.from, HEAD_ROWS.to) : rows,
       playerPalette(look),
     )
+    if (iconCache.size >= ICON_CACHE_LIMIT) {
+      iconCache.clear()
+    }
+    iconCache.set(key, url)
+    return url
+  })
+}
+
+// NOTE: a hat option's picture: the head under that hat, drawn the same way.
+const hatIconOf = (worn: Appearance): string => {
+  const key = `Hat.${appearanceKey(worn)}`
+  return Option.getOrElse(Option.fromNullishOr(iconCache.get(key)), () => {
+    const url = pixelIconUrl(hatHeadRows(worn), playerPalette(worn))
     if (iconCache.size >= ICON_CACHE_LIMIT) {
       iconCache.clear()
     }
@@ -272,6 +338,7 @@ const previewShapes = (
         startingGunKind(calling),
         0,
         facing === 'Right' ? 0 : Math.PI,
+        appearance.gunSkin,
       ),
     }),
   ]
@@ -387,6 +454,21 @@ const SECTION_LOOKS: Readonly<Record<LookSection, SectionLook>> = {
       SECTION_ICON_PALETTE,
     ),
   },
+  Gear: {
+    word: 'Gear',
+    icon: pixelIconUrl(
+      [
+        '...XXX...',
+        '..XXXXX..',
+        '..XXXXX..',
+        'XXXXXXXXX',
+        '.........',
+        'XXXX.....',
+        'X..XXXXXX',
+      ],
+      SECTION_ICON_PALETTE,
+    ),
+  },
   Outfit: {
     word: 'Outfit',
     icon: pixelIconUrl(
@@ -404,7 +486,23 @@ const SECTION_LOOKS: Readonly<Record<LookSection, SectionLook>> = {
   },
 }
 
-const sectionsView = (picker: CharacterPicker, h: CharacterViewBuilder): Html =>
+// NOTE: a little tab wears a dot while a look inside it is new, so the
+// player knows which tab to open.
+const hasNewLook = (
+  section: LookSection,
+  fresh: ReadonlyArray<string>,
+): boolean =>
+  Array.some(SECTION_PARTS[section], part =>
+    Option.exists(gearOf(part), ({ kind }) =>
+      Array.some(fresh, id => id.startsWith(`${kind.toLowerCase()}:`)),
+    ),
+  )
+
+const sectionsView = (
+  picker: CharacterPicker,
+  fresh: ReadonlyArray<string>,
+  h: CharacterViewBuilder,
+): Html =>
   h.block(
     SectionsBinding.embedView({
       slotId: picker.sections.id,
@@ -424,6 +522,9 @@ const sectionsView = (picker: CharacterPicker, h: CharacterViewBuilder): Html =>
                   h.Key(option.value),
                   h.Class('look-section'),
                   h.DataAttribute('section', option.value),
+                  ...(hasNewLook(option.value, fresh)
+                    ? [h.DataAttribute('new', 'true')]
+                    : []),
                 ],
                 [
                   h.span([
@@ -447,9 +548,9 @@ const sectionsView = (picker: CharacterPicker, h: CharacterViewBuilder): Html =>
 
 // ROWS
 
-// NOTE: six options fit across the narrowest phone, so a longer list takes
+// NOTE: seven small options fit across the narrowest phone, so a longer list takes
 // as few lines as it needs, filled as evenly as it can be.
-const MOST_COLUMNS = 6
+const MOST_COLUMNS = 7
 
 const balancedColumns = (count: number): number => {
   const lines = Math.ceil(count / MOST_COLUMNS)
@@ -463,6 +564,22 @@ const optionFace = (
   h: CharacterViewBuilder,
 ): Html => {
   const partView = PART_VIEWS[part]
+  if (partView.look === 'Hat') {
+    return h.span([
+      h.Class('look-hat-icon'),
+      h.AriaHidden(true),
+      h.Style({
+        backgroundImage: hatIconOf(chooseLook(appearance, part, value)),
+      }),
+    ])
+  }
+  if (partView.look === 'Gun') {
+    return h.span([
+      h.Class('look-gun-icon'),
+      h.AriaHidden(true),
+      h.Style({ backgroundImage: partView.swatch(value, appearance) }),
+    ])
+  }
   if (partView.look === 'Figure' || partView.look === 'Head') {
     return h.span([
       h.Class(
@@ -488,33 +605,82 @@ const optionFace = (
   ])
 }
 
+// NOTE: what an option of an earned part is, for the standing it shows.
+type GearOption = Readonly<{
+  kind: CosmeticKind
+  standing: Standing
+  isNew: boolean
+}>
+
 const optionView = (
   part: LookPart,
   appearance: Appearance,
   option: RadioGroup.OptionInfo,
+  maybeGear: Option.Option<GearOption>,
+  cue: ViewInputs['cue'],
   h: CharacterViewBuilder,
-): Html =>
-  h.button(
-    [
-      ...option.option,
-      h.Key(option.value),
-      h.Class(`look-option look-${PART_VIEWS[part].look.toLowerCase()}-option`),
-    ],
-    [
-      optionFace(part, option.value, appearance, h),
-      h.span([...option.label, h.Class('sr-only')], [option.value]),
-    ],
-  )
+): Html => {
+  const partView = PART_VIEWS[part]
+  const face = optionFace(part, option.value, appearance, h)
+  return Option.match(maybeGear, {
+    onNone: () =>
+      h.button(
+        [
+          ...option.option,
+          h.Key(option.value),
+          h.Class(`look-option look-${partView.look.toLowerCase()}-option`),
+        ],
+        [face, h.span([...option.label, h.Class('sr-only')], [option.value])],
+      ),
+    onSome: ({ kind, standing, isNew }) => {
+      const shown = part === 'Hat' ? hatNameOf(option.value) : option.value
+      const isCued = cue.part === part && cue.value === option.value
+      return h.button(
+        [
+          ...option.option,
+          h.Key(option.value),
+          h.Class(`look-option look-${partView.look.toLowerCase()}-option`),
+          h.DataAttribute('standing', standing),
+          ...(isNew ? [h.DataAttribute('new', 'true')] : []),
+          ...(isCued ? cueAttributes(cue, h) : []),
+          h.OnClick(Message.ClickedGearOption({ part, value: option.value })),
+        ],
+        [
+          face,
+          ...Option.match(gearTagView(kind, option.value, standing, h), {
+            onNone: () => [],
+            onSome: tag => [tag],
+          }),
+          ...(isNew ? [newBadgeView(h)] : []),
+          h.span([...option.label, h.Class('sr-only')], [shown]),
+          h.span(
+            [...option.description, h.Class('sr-only')],
+            [gearNote(kind, option.value, standing, isNew)],
+          ),
+        ],
+      )
+    },
+  })
+}
 
 const lookRowView = (
   picker: CharacterPicker,
   part: LookPart,
-  appearance: Appearance,
+  inputs: ViewInputs,
   h: CharacterViewBuilder,
 ): Html => {
+  const { appearance } = inputs
   const partView = PART_VIEWS[part]
   const groupModel = partGroupOf(picker, part)
   const selected = partView.selected(appearance)
+  const maybeKind = Option.map(gearOf(part), ({ kind }) => kind)
+  const rankNumber = rankOf(totalPointsOf(inputs.rank))
+  const gearOption = (value: string): Option.Option<GearOption> =>
+    Option.map(maybeKind, kind => ({
+      kind,
+      standing: standingOf(kind, value, selected, inputs.bought, rankNumber),
+      isNew: Array.contains(inputs.fresh, lookUnlockId(kind, value)),
+    }))
   return h.div(
     [h.Class('look-row'), h.Key(part)],
     [
@@ -522,7 +688,10 @@ const lookRowView = (
         [h.Class('look-row-heading'), h.AriaHidden(true)],
         [
           h.span([h.Class('look-row-label')], [partView.label]),
-          h.span([h.Class('look-row-value')], [selected]),
+          h.span(
+            [h.Class('look-row-value')],
+            [part === 'Hat' ? hatNameOf(selected) : selected],
+          ),
         ],
       ),
       h.block(
@@ -534,6 +703,8 @@ const lookRowView = (
             selectedValue: Option.some(selected),
             ariaLabel: partView.ariaLabel,
             orientation: 'Horizontal',
+            isReadOnly: Option.isSome(maybeKind),
+            hasOptionDescription: () => Option.isSome(maybeKind),
             toView: ({ group: groupAttributes, options }) =>
               h.div(
                 [
@@ -544,7 +715,14 @@ const lookRowView = (
                   }),
                 ],
                 Array.map(options, option =>
-                  optionView(part, appearance, option, h),
+                  optionView(
+                    part,
+                    appearance,
+                    option,
+                    gearOption(option.value),
+                    inputs.cue,
+                    h,
+                  ),
                 ),
               ),
           },
@@ -621,6 +799,15 @@ type ViewInputs = Readonly<{
   screenMs: number
   fx: ProfileFx
   fxCount: number
+  bought: SavedBoughtCosmetics
+  rank: SavedRank
+  fresh: ReadonlyArray<string>
+  cue: Readonly<{
+    part: LookPart
+    value: string
+    kind: ClosetCueKind
+    count: number
+  }>
 }>
 
 export const view = CharacterComposition.makeView.withInputs<ViewInputs>(
@@ -632,7 +819,7 @@ export const view = CharacterComposition.makeView.withInputs<ViewInputs>(
         h.div(
           [h.Class('look-controls')],
           [
-            sectionsView(picker, h),
+            sectionsView(picker, inputs.fresh, h),
             h.div(
               [
                 h.Class('look-rows'),
@@ -641,7 +828,7 @@ export const view = CharacterComposition.makeView.withInputs<ViewInputs>(
               ],
               [
                 ...Array.map(SECTION_PARTS[picker.section], part =>
-                  lookRowView(picker, part, inputs.appearance, h),
+                  lookRowView(picker, part, inputs, h),
                 ),
                 ...togglesView(
                   SECTION_TOGGLES[picker.section],

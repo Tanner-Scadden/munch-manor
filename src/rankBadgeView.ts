@@ -54,10 +54,10 @@ export const rankChipView = (model: Model, h: ApplicationViewBuilder): Html => {
 
 // NOTE: a pixel bone and a count, `scale` times its pixels, for the Bones
 // the plate holds and the closet spends.
-export const boneCountView = (
+export const boneCountView = <Message>(
   count: number,
   className: string,
-  h: ApplicationViewBuilder,
+  h: HtmlBuilder<Message>,
 ): Html =>
   h.span(
     [h.Class(className), h.AriaHidden(true)],

@@ -5,11 +5,13 @@ import { CALLINGS, UNLOCK_RANKS, isCallingUnlocked } from './calling'
 import { type Special, specialsNoteOf, specialsOf } from './callingSpecials'
 import { portraitOf } from './coop/icons'
 import { PADLOCK_ICON } from './icons'
+import { newBadgeView } from './lookGearView'
 import { iconView } from './menuParts'
 import type { Appearance } from './model'
 import { CALLING_NAMES, SPECIAL_LINES } from './names'
 import type { Calling } from './playerData'
 import { rankMarkView } from './rankBadgeView'
+import { callingUnlockId } from './unlocks'
 
 // The picker's cards, one per hero (GAME_DESIGN.md, "Rank and Bones"),
 // shared by the home menu's picker and co-op's lobby picker: the player's own
@@ -24,6 +26,8 @@ export type CardsInput<Message> = Readonly<{
   look: Appearance
   chosen: Calling
   rank: number
+  // NOTE: the unlock ids that wear a NEW badge (src/unlocks.ts).
+  fresh: ReadonlyArray<string>
   // NOTE: what the caller adds to a card: its click, and the initial focus
   // on the chosen one.
   attributesOf: (
@@ -60,6 +64,7 @@ const cardView = <Message>(
   const isChosen = calling === input.chosen
   const need = UNLOCK_RANKS[calling]
   const specials = specialsOf(calling)
+  const isNew = Array.contains(input.fresh, callingUnlockId(calling))
   return h.button(
     [
       ...input.attributesOf(calling, isChosen),
@@ -68,6 +73,7 @@ const cardView = <Message>(
       h.DataAttribute('calling', calling),
       h.DataAttribute('lock', isOpen ? 'Open' : 'Locked'),
       ...(isChosen ? [h.DataAttribute('chosen', 'Chosen')] : []),
+      ...(isNew ? [h.DataAttribute('new', 'true')] : []),
       h.AriaLabel(
         isOpen
           ? `${CALLING_NAMES[calling]}. ${specialsNoteOf(calling)}`
@@ -92,6 +98,7 @@ const cardView = <Message>(
             [h.Class('calling-head')],
             [
               h.span([h.Class('calling-name')], [CALLING_NAMES[calling]]),
+              ...(isNew ? [newBadgeView(h)] : []),
               isOpen
                 ? h.empty
                 : h.span(
