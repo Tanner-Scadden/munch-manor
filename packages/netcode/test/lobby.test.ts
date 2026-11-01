@@ -29,6 +29,7 @@ import {
   type Lobby,
   RecordedRoomResult,
   RoomScope,
+  cleanRank,
   displayName,
   isOpenToQuickPlay,
   lobbyOfSnapshot,
@@ -101,6 +102,7 @@ const seat = (server: ScopeServer, playerId: string) =>
         playerId,
         name: `  ${playerId}\u0000  the   great one `,
         look: playerId === BO ? 'Female.Bun.Pink.Tan.Teal' : 'not a <look>',
+        rank: playerId === BO ? 12 : playerId === CY ? 5000 : 3,
         nightmare: playerId === CY,
       },
       `joined-room-${counter}`,
@@ -118,6 +120,7 @@ const createdBy = (hostNightmare: boolean) =>
         host: ANA,
         hostName: 'Ana',
         hostLook: 'Male.Crop.Brown.Light.Blue',
+        hostRank: 40,
         hostNightmare,
         mode: 'Campaign',
         visibility: 'Private',
@@ -188,7 +191,49 @@ describe('the room scope', () => {
           '',
           '',
         ])
+        // NOTE: a rank is for show, so the scope only keeps it in range.
+        expect(lobby.members.map(member => member.rank)).toEqual([
+          40, 12, 999, 3,
+        ])
       }),
+  )
+
+  it('cleanRank keeps a whole number from 1 to 999', () => {
+    expect(
+      [0, -5, 1, 7.9, 999, 1000, Number.NaN, Infinity].map(cleanRank),
+    ).toEqual([1, 1, 1, 7, 999, 999, 1, 1])
+  })
+
+  // NOTE: a member row written before the rank column (a room already open
+  // when the migration ran) is seated as rank 1 by the column's default.
+  it.effect('a member row from before ranks reads as rank 1', () =>
+    Effect.gen(function* () {
+      const sql = yield* openDatabase()
+      const server = yield* Effect.provideService(
+        makeScopeServer({ definition: RoomScope, scope: SCOPE }),
+        SqlClient.SqlClient,
+        sql,
+      )
+      yield* server.addMember(ANA)
+      yield* server.runServer(
+        CreatedRoom,
+        {
+          code: CODE,
+          host: ANA,
+          hostName: 'Ana',
+          hostLook: '',
+          hostRank: 9,
+          hostNightmare: false,
+          mode: 'Campaign',
+          visibility: 'Private',
+        },
+        'created-room',
+      )
+      yield* sql`INSERT INTO members (player_id, name, slot, ready, joined_ms)
+        VALUES ('old', 'Old', 1, 0, 5)`
+      const lobby = yield* lobbyOf(server)
+      expect(lobby.members.map(member => member.rank)).toEqual([9, 1])
+    }),
   )
 
   it.effect('a player sets only their own READY', () =>
@@ -435,6 +480,7 @@ describe('the room scope', () => {
             host: ANA,
             hostName: 'Ana',
             hostLook: 'Male.Crop.Brown.Light.Blue',
+            hostRank: 1,
             hostNightmare: false,
             mode: 'Campaign',
             visibility: 'Public',
@@ -496,6 +542,7 @@ describe('the room scope', () => {
           host: ANA,
           hostName: 'Ana',
           hostLook: 'Male.Crop.Brown.Light.Blue',
+          hostRank: 1,
           hostNightmare: false,
           mode: 'Campaign',
           visibility: 'Private',

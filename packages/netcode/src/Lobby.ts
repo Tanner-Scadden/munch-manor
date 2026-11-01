@@ -127,6 +127,22 @@ export const LookInput = Schema.String.check(Schema.isMaxLength(MAX_LOOK_INPUT))
 export const cleanLook = (raw: string): string =>
   raw.length <= MAX_LOOK_INPUT && LOOK_PATTERN.test(raw) ? raw : ''
 
+// RANKS
+
+// NOTE: a player's rank as the game works it out from their points
+// (src/rank.ts): a whole number from 1. The scope keeps what the client
+// says and cannot check it, so it clamps nonsense: a missing, fractional,
+// or non-finite number reads as 1, and nothing goes above MAX_RANK_INPUT.
+// It is for show beside a name: QUICK PLAY never groups by it.
+export const MAX_RANK_INPUT = 999
+
+export const RankInput = Schema.Number
+
+export const cleanRank = (raw: number): number =>
+  Number.isFinite(raw)
+    ? Math.min(MAX_RANK_INPUT, Math.max(1, Math.floor(raw)))
+    : 1
+
 // ROWS
 
 export const RoomStatus = Schema.Literals(['Lobby', 'Playing', 'Closed'])
@@ -199,6 +215,7 @@ export const MemberRow = Schema.Struct({
   player_id: Schema.String,
   name: Schema.String,
   look: Schema.String,
+  rank: Schema.Number,
   nightmare: Schema.Number,
   slot: Schema.Number,
   ready: Schema.Number,
@@ -219,6 +236,7 @@ export const LobbyMember = Schema.Struct({
   playerId: Schema.String,
   name: Schema.String,
   look: Schema.String,
+  rank: Schema.Number,
   canNightmare: Schema.Boolean,
   slot: Schema.Number,
   ready: Schema.Boolean,
@@ -271,6 +289,7 @@ export const lobbyOfRows = (
       playerId: member.player_id,
       name: member.name,
       look: member.look,
+      rank: member.rank,
       canNightmare: member.nightmare !== 0,
       slot: member.slot,
       ready: member.ready !== 0,
@@ -316,7 +335,7 @@ export const readLobby = (
     )
     const members = yield* rejectBadRows(
       decodeMemberRows(
-        yield* sql`SELECT player_id, name, look, nightmare, slot, ready, ping_ms, joined_ms
+        yield* sql`SELECT player_id, name, look, rank, nightmare, slot, ready, ping_ms, joined_ms
           FROM ${context.table('members')}`,
       ),
     )
@@ -428,12 +447,13 @@ const picksAfter = (
 
 export const CreatedRoom = defineMutation({
   name: 'CreatedRoom',
-  version: 3,
+  version: 4,
   args: Schema.Struct({
     code: RoomCode,
     host: Schema.String,
     hostName: NameInput,
     hostLook: LookInput,
+    hostRank: RankInput,
     hostNightmare: Schema.Boolean,
     mode: RoomMode,
     visibility: RoomVisibility,
@@ -441,7 +461,16 @@ export const CreatedRoom = defineMutation({
   scopes: [ROOM_SCOPE_KIND],
   writer: 'ServerOnly',
   apply: (
-    { code, host, hostName, hostLook, hostNightmare, mode, visibility },
+    {
+      code,
+      host,
+      hostName,
+      hostLook,
+      hostRank,
+      hostNightmare,
+      mode,
+      visibility,
+    },
     context,
   ) =>
     Effect.gen(function* () {
@@ -467,6 +496,7 @@ export const CreatedRoom = defineMutation({
         player_id: host,
         name: displayName(hostName, 0),
         look: cleanLook(hostLook),
+        rank: cleanRank(hostRank),
         nightmare: hostNightmare ? 1 : 0,
         slot: 0,
         ready: 0,
@@ -477,16 +507,17 @@ export const CreatedRoom = defineMutation({
 
 export const JoinedRoom = defineMutation({
   name: 'JoinedRoom',
-  version: 3,
+  version: 4,
   args: Schema.Struct({
     playerId: Schema.String,
     name: NameInput,
     look: LookInput,
+    rank: RankInput,
     nightmare: Schema.Boolean,
   }),
   scopes: [ROOM_SCOPE_KIND],
   writer: 'ServerOnly',
-  apply: ({ playerId, name, look, nightmare }, context) =>
+  apply: ({ playerId, name, look, rank, nightmare }, context) =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient
       const lobby = yield* requireLobby(context)
@@ -506,6 +537,7 @@ export const JoinedRoom = defineMutation({
         player_id: playerId,
         name: displayName(name, slot),
         look: cleanLook(look),
+        rank: cleanRank(rank),
         nightmare: nightmare ? 1 : 0,
         slot,
         ready: 0,
@@ -757,6 +789,12 @@ export const RoomScope = defineScope({
         yield* sql`ALTER TABLE ${sql(table('members'))}
           ADD COLUMN ping_ms INTEGER NOT NULL DEFAULT 0`
       }),
+    '0006_ranks': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('members'))}
+          ADD COLUMN rank INTEGER NOT NULL DEFAULT 1`
+      }),
   },
 })
 
@@ -775,11 +813,13 @@ export const JoinRequest = Schema.Struct({
   code: Schema.String,
   name: NameInput,
   look: Schema.optionalKey(LookInput),
+  rank: Schema.optionalKey(RankInput),
 })
 
 export const CreateRequest = Schema.Struct({
   name: NameInput,
   look: Schema.optionalKey(LookInput),
+  rank: Schema.optionalKey(RankInput),
 })
 export type CreateRequest = typeof CreateRequest.Type
 export type JoinRequest = typeof JoinRequest.Type

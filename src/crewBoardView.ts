@@ -37,6 +37,8 @@ import { CREW_AWARD_NAMES, type CrewAward } from './names'
 import { leadSeatOf } from './party'
 import { seatColorOf, seatModelsOf } from './partyView'
 import { playerShapes } from './playerView'
+import { badgeTierOf } from './rank'
+import { badgeSprite } from './rankArt'
 import { type Sprite, group, placeAt } from './sprite'
 import {
   AWARD_ICONS,
@@ -67,7 +69,7 @@ const STATS_Y = 29
 const TITLE_Y = STATS_Y + 5 * ROW + 1
 const BOTTOM = TITLE_Y + GLYPH_HEIGHT + 1
 const BADGE_STRIDE = 8
-// NOTE: badges go right of the player, then left, two to a side.
+// NOTE: badges go right of the player, two to a row.
 const BADGE_SIDE_PX = 10
 
 export const PANEL_FILL = 'rgba(24, 14, 22, 0.94)'
@@ -248,6 +250,37 @@ const runLineShapes = (
 const isAwarded = (board: Board, ms: number): boolean =>
   ms >= awardsAtMs(board.kind)
 
+// NOTE: a player's badge and rank number at the top left of their column,
+// beside the figure, so the board is no taller for it. The rank is the one
+// they joined the room with, so every card shows the same. Award badges
+// stack on the right.
+const BADGE_WIDTH = 11
+const BADGE_GAP = 2
+const RANK_LEFT_PX = 27
+const RANK_Y = 9
+
+const rankShapes = (
+  x: number,
+  centerY: number,
+  rank: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const left = x - RANK_LEFT_PX
+  return [
+    placeAt(
+      left + Math.floor(BADGE_WIDTH / 2),
+      centerY,
+      badgeSprite(badgeTierOf(rank)),
+    ),
+    ...textShapes(
+      `${rank}`,
+      'Plain',
+      left + BADGE_WIDTH + BADGE_GAP,
+      centerY - Math.floor(GLYPH_HEIGHT / 2),
+      'Left',
+    ),
+  ]
+}
+
 const headShapes = (
   model: Model,
   board: Board,
@@ -283,6 +316,7 @@ const headShapes = (
       1,
       seatColorOf(member.slot),
     ),
+    ...rankShapes(x, crewTop + RANK_Y, member.rank),
   ]
 }
 
@@ -368,7 +402,7 @@ const awardShapes = (
       : []),
     ...Array.map(badges, (award, badge) =>
       placeAt(
-        x + (badge % 2 === 0 ? BADGE_SIDE_PX : -BADGE_SIDE_PX),
+        x + BADGE_SIDE_PX + (badge % 2) * BADGE_SIDE_PX,
         Math.round(
           crewTop + 3 + Math.floor(badge / 2) * BADGE_STRIDE - 6 * (1 - drop),
         ),

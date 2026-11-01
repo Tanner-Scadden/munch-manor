@@ -155,6 +155,7 @@ describe('co-op hub', () => {
           request: RoomRequest.Join({ code: CODE }),
           name: '',
           look: '',
+          rank: 1,
         }),
         Message.FailedRequestRoom({ problem: 'NoRoom' }),
       ),
@@ -173,7 +174,12 @@ describe('co-op hub', () => {
       given(onHub),
       message(Message.ClickedCreateButton()),
       Command.resolve(
-        RequestRoom({ request: RoomRequest.Create(), name: '', look: '' }),
+        RequestRoom({
+          request: RoomRequest.Create(),
+          name: '',
+          look: '',
+          rank: 1,
+        }),
         Message.SucceededRequestRoom({ code: CODE, slot: 0 }),
       ),
       resolveRemember(),
@@ -835,6 +841,7 @@ describe('the network service', () => {
             request: RoomRequest.Join({ code: CODE }),
             name: 'Ana',
             look: 'Male.Curls.Black.Deep.Yellow',
+            rank: 42,
           }).effect,
           Layer.provide(RequestRoom.layer, fake.layer),
         )
@@ -845,6 +852,7 @@ describe('the network service', () => {
             request: RoomRequest.Join({ code: CODE }),
             name: 'Ana',
             look: 'Male.Curls.Black.Deep.Yellow',
+            rank: 42,
           },
         ])
       }),

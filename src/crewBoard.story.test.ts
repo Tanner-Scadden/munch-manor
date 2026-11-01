@@ -1,9 +1,13 @@
-import { Array, Option } from 'effect'
+import { Array, Match, Option } from 'effect'
+import type { Canvas } from 'foldkit'
 import { given, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS } from './constants'
+import { Screen } from './coop/model'
+import { freshRoom } from './coop/roomState'
+import { CODE, lobbyOf, memberOf } from './coop/testing'
 import {
   type CrewMember,
   SHARPSHOOTER_MIN_SHOTS,
@@ -12,6 +16,7 @@ import {
   hasAwards,
   mvpOf,
 } from './crewAwards'
+import { crewBoardShapes } from './crewBoardView'
 import {
   awardsAtMs,
   beatSounds,
@@ -32,6 +37,7 @@ import {
   withSeatLife,
 } from './model.fixture'
 import { COOP_RULES, maybePlayerAt, modifyLeadSeat, playersOf } from './party'
+import { badgeSprite } from './rankArt'
 import { stepWorld } from './stepWorld'
 import { ticks, zombieOf } from './testing'
 import { WEAPONS } from './weapons'
@@ -152,6 +158,7 @@ const member = (
 ): CrewMember => ({
   slot,
   name: `P${slot + 1}`,
+  rank: 1,
   kills: 0,
   revives: 0,
   downs: 0,
@@ -223,6 +230,68 @@ const crewCard = pipeline(
       screenMs: () => 0,
     }),
 )(crewInWave(2))
+
+// NOTE: the lobby's ranks, as each player sent them when they joined.
+const withLobbyRanks = (current: Model): Model =>
+  modifyFields(current, {
+    coop: coop =>
+      modifyFields(coop, {
+        screen: () =>
+          Screen.InRoom({
+            room: {
+              ...freshRoom(CODE, 0),
+              maybeLobby: Option.some(
+                lobbyOf([
+                  memberOf(0, 'Ana', false, '', false, 4),
+                  memberOf(1, 'Bo', false, '', false, 27),
+                ]),
+              ),
+            },
+          }),
+      }),
+  })
+
+const imageSources = (
+  shapes: ReadonlyArray<Canvas.Shape>,
+): ReadonlyArray<string> =>
+  Array.flatMap(shapes, shape =>
+    Match.value(shape).pipe(
+      Match.tag('Image', image => [image.src]),
+      Match.tag('Group', inner => imageSources(inner.shapes)),
+      Match.orElse(() => []),
+    ),
+  )
+
+const boardImages = (current: Model): ReadonlyArray<string> => {
+  const drawn = crewBoardShapes(
+    current,
+    'Munched',
+    crewDoneMs('Munched'),
+    30,
+    160,
+  )
+  return imageSources([...drawn.panel, ...drawn.rows])
+}
+
+describe("each player's rank on the board", () => {
+  test('the crew reads each rank off the lobby, and 1 without one', () => {
+    expect(Array.map(crewOf(crewCard), ({ rank }) => rank)).toEqual([1, 1])
+    expect(
+      Array.map(crewOf(withLobbyRanks(crewCard)), ({ rank }) => rank),
+    ).toEqual([4, 27])
+  })
+
+  test("the board draws each player's badge by their rank's tier", () => {
+    const wood = imageSources(badgeSprite('Wood'))
+    const bronze = imageSources(badgeSprite('Bronze'))
+    const bare = boardImages(crewCard)
+    const ranked = boardImages(withLobbyRanks(crewCard))
+    expect(bare.filter(src => wood.includes(src))).toHaveLength(2)
+    expect(bare.filter(src => bronze.includes(src))).toHaveLength(0)
+    expect(ranked.filter(src => wood.includes(src))).toHaveLength(1)
+    expect(ranked.filter(src => bronze.includes(src))).toHaveLength(1)
+  })
+})
 
 describe("the crew's card", () => {
   test('reads every seat off the World', () => {

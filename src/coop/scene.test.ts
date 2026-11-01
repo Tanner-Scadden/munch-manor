@@ -15,6 +15,7 @@ import { describe, test } from 'vitest'
 
 import { defaultAppearance } from '../model'
 import { type Appearance, lookCodeOf } from '../playerData'
+import { badgeImage } from '../rankArt'
 import { portraitOf } from './icons'
 import { seatLook } from './looks'
 import { Message } from './message'
@@ -96,7 +97,12 @@ describe('the hub', () => {
       click(role('button', { name: 'Make a room for friends' })),
       expect(role('status', { name: 'Finding the room' })).toExist(),
       Command.resolve(
-        RequestRoom({ request: RoomRequest.Create(), name: '', look: '' }),
+        RequestRoom({
+          request: RoomRequest.Create(),
+          name: '',
+          look: '',
+          rank: 1,
+        }),
         Message.SucceededRequestRoom({ code: CODE, slot: 0 }),
       ),
       Command.resolve(RememberRoom, Message.CompletedRememberRoom()),
@@ -120,6 +126,7 @@ describe('the code', () => {
           request: RoomRequest.Join({ code: CODE }),
           name: '',
           look: '',
+          rank: 1,
         }),
         Message.FailedRequestRoom({ problem: 'Full' }),
       ),
@@ -293,6 +300,38 @@ describe('the lobby', () => {
       expect(
         selector('[aria-label="Ana, you, host"] .coop-seat-head'),
       ).toHaveStyle('background-image', portraitOf(defaultAppearance)),
+    )
+  })
+
+  test("each seat shows its player's rank badge and number beside the name", () => {
+    const woodSrc = Option.getOrThrow(badgeImage('Wood')).src
+    const silverSrc = Option.getOrThrow(badgeImage('Silver')).src
+    scene(
+      { update, view },
+      given(
+        lobbyRoom([
+          memberOf(0, 'Ana'),
+          memberOf(1, 'Bo', false, '', false, 12),
+          memberOf(2, 'Cy', false, '', false, 33),
+          memberOf(3, 'Dee', false, '', false, 999),
+        ]),
+      ),
+      expect(selector('[aria-label="Ana, you, host"] .coop-rank')).toHaveText(
+        '1',
+      ),
+      expect(selector('[aria-label="Bo"] .coop-rank')).toHaveText('12'),
+      expect(selector('[aria-label="Dee"] .coop-rank')).toHaveText('999'),
+      expect(
+        selector('[aria-label="Ana, you, host"] .coop-rank img'),
+      ).toHaveAttr('src', woodSrc),
+      expect(selector('[aria-label="Cy"] .coop-rank')).toHaveAttr(
+        'data-tier',
+        'Silver',
+      ),
+      expect(selector('[aria-label="Cy"] .coop-rank img')).toHaveAttr(
+        'src',
+        silverSrc,
+      ),
     )
   })
 
@@ -475,6 +514,7 @@ describe('the arena', () => {
       expect(role('listitem', { name: 'Bo: 9, MVP' })).toExist(),
       expect(role('listitem', { name: 'Ana: 3' })).toExist(),
       expect(selector('.coop-result-crown')).toExist(),
+      expect(selector('[aria-label="Bo: 9, MVP"] .coop-result-rank')).toExist(),
     )
   })
 })

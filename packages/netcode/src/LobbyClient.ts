@@ -47,6 +47,7 @@ import {
   RoomRefusal,
   RoomScope,
   RoomTicket,
+  cleanRank,
   lobbyOfSnapshot,
   roomScopeId,
 } from './Lobby'
@@ -131,6 +132,7 @@ export const createRoom = (
   token: string,
   name: string,
   look = '',
+  rank = 1,
 ): Effect.Effect<RoomTicket, RoomRequestFailed> =>
   roomCall(
     new URL(ROOM_PATHS.create, origin).toString(),
@@ -139,6 +141,7 @@ export const createRoom = (
     CreateRequest.make({
       name: name.slice(0, MAX_NAME_INPUT),
       look: look.slice(0, MAX_LOOK_INPUT),
+      rank: cleanRank(rank),
     }),
   )
 
@@ -148,6 +151,7 @@ export const joinRoom = (
   code: string,
   name: string,
   look = '',
+  rank = 1,
 ): Effect.Effect<RoomTicket, RoomRequestFailed> =>
   roomCall(
     new URL(ROOM_PATHS.join, origin).toString(),
@@ -157,6 +161,7 @@ export const joinRoom = (
       code,
       name: name.slice(0, MAX_NAME_INPUT),
       look: look.slice(0, MAX_LOOK_INPUT),
+      rank: cleanRank(rank),
     }),
   )
 
@@ -373,6 +378,7 @@ export interface QuickPlayOptions {
   readonly origin: string
   readonly name: string
   readonly look?: string
+  readonly rank?: number
   readonly token: Effect.Effect<string, TokenUnavailable>
 }
 
@@ -419,6 +425,7 @@ export const startQuickPlay = (
           token,
           name: options.name.slice(0, MAX_NAME_INPUT),
           look: (options.look ?? '').slice(0, MAX_LOOK_INPUT),
+          rank: cleanRank(options.rank ?? 1),
         }),
       )
       yield* Stream.runForEach(socket.messages, data =>

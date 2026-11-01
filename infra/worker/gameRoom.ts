@@ -641,6 +641,7 @@ export class GameRoom {
             body.playerId,
             body.name,
             body.look ?? '',
+            body.rank ?? 1,
             nightmare,
             body.code,
             body.visibility,
@@ -668,6 +669,7 @@ export class GameRoom {
             body.playerId,
             body.name,
             body.look ?? '',
+            body.rank ?? 1,
             nightmare,
             everyone,
           ),
@@ -1109,6 +1111,10 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
           onNone: () => '',
           onSome: body => body.look ?? '',
         }),
+        Option.match(maybeBody, {
+          onNone: () => 1,
+          onSome: body => body.rank ?? 1,
+        }),
         'Private',
         continentOf(request),
       )
@@ -1130,6 +1136,7 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
         playerId,
         maybeBody.value.name,
         maybeBody.value.look ?? '',
+        maybeBody.value.rank ?? 1,
       )
       return answer(called.status, called.text)
     }

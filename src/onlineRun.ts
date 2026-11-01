@@ -60,3 +60,20 @@ export const seatNamesOf = (model: Model): ReadonlyMap<PlayerSlot, string> =>
       },
     ),
   )
+
+// NOTE: each seat's rank from the room's lobby, as the player sent it when
+// they joined. A seat the lobby does not know reads as rank 1.
+export const seatRanksOf = (model: Model): ReadonlyMap<PlayerSlot, number> =>
+  new Map(
+    Option.match(
+      Option.flatMap(maybeRoomOf(model.coop), room => room.maybeLobby),
+      {
+        onNone: () => [],
+        onSome: lobby =>
+          Array.map(
+            lobby.members,
+            member => [member.slot, member.rank] as const,
+          ),
+      },
+    ),
+  )

@@ -17,6 +17,7 @@ import { isLearned } from '../onboarding'
 import { isLeftFromRoom, maybeRunRoom } from '../onlineRun'
 import { lookCodeOf } from '../playerData'
 import { joinName } from '../profile'
+import { rankOf, totalPointsOf } from '../rank'
 import { stepWhen } from '../stepWhen'
 import type { SeatAction } from '../stepWorld'
 import { FocusHomeButton, goHome } from './home'
@@ -121,6 +122,7 @@ export const openCoop = (maybeCode: Option.Option<string>) =>
             name: joinName(model),
             maybeCode,
             look: lookCodeOf(model.appearance),
+            rank: rankOf(totalPointsOf(model.rank)),
           }),
         ])
       : unchanged,
