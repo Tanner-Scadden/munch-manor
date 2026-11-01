@@ -17,6 +17,8 @@ const ReadoutSeat = Schema.Struct({
   kills: Schema.Number,
   money: Schema.Number,
   shop: Schema.String,
+  // NOTE: the calling the room seated, as its word, so the audit can check it.
+  calling: Schema.String,
 })
 
 export const Readout = Schema.Struct({

@@ -125,24 +125,25 @@
 
 .look-new {
   position: absolute;
-  top: -8px;
-  right: -7px;
+  top: 1px;
+  right: 1px;
   z-index: 2;
-  padding: 0 4px;
-  border-radius: 4px;
+  padding: 0 3px;
+  border-radius: 3px;
   background: var(--look-new);
   color: #fff;
-  font: bold 9px / 13px var(--menu-font);
-  letter-spacing: 0.04em;
-  rotate: 8deg;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+  font: bold 8px / 11px var(--menu-font);
+  letter-spacing: 0.03em;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
   pointer-events: none;
   animation: look-new-blink 0.8s steps(2) infinite;
 }
 
-.calling-card .look-new {
-  top: -9px;
-  right: -6px;
+/* NOTE: on a hero's card the badge sits in the name row, in the flow. */
+.calling-head .look-new {
+  position: static;
+  flex: none;
+  margin-left: 4px;
 }
 
 .new-pip {

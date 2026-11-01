@@ -6,6 +6,7 @@ import * as SqlClient from 'effect/sql/SqlClient'
 
 import { describe, expect, it } from '@effect/vitest'
 import {
+  ChangedMemberCalling,
   ChangedReady,
   type ClientFrame,
   KickedPlayer,
@@ -210,6 +211,52 @@ describe('the room host', () => {
           { slot: 3, calling: 'PennyPincher' },
         ])
       }),
+  )
+
+  // NOTE: a calling changed in the lobby reaches the room's own members, and
+  // the start seats it only when it reads back as one of the game's callings
+  // (a made-up word is dropped, so that slot plays YOU), the same check a calling sent at create and join gets.
+  it.effect('a calling changed in the lobby is seated at the start', () =>
+    Effect.gen(function* () {
+      const host = yield* roomHost
+      yield* host.create(ANA, 'Ana', '', 1, 'TrackStar', false, CODE, 'Private')
+      yield* host.join(BO, 'Bo', '', 1, 'You', false, [])
+      yield* host.join(CY, 'Cy', '', 1, 'You', false, [])
+      const bo = fakeSocket()
+      yield* host.scope.onMessage(bo, hello(yield* tokenOf(BO)), [bo])
+      yield* host.scope.onMessage(
+        bo,
+        yield* pushOf(
+          ChangedMemberCalling,
+          { by: BO, calling: 'LineCook' },
+          'calling-bo-0001',
+        ),
+        [bo],
+      )
+      const cy = fakeSocket()
+      yield* host.scope.onMessage(cy, hello(yield* tokenOf(CY)), [cy])
+      yield* host.scope.onMessage(
+        cy,
+        yield* pushOf(
+          ChangedMemberCalling,
+          { by: CY, calling: 'Wizard' },
+          'calling-cy-0001',
+        ),
+        [cy],
+      )
+      const lobby = yield* lobbyOf(host)
+      expect(lobby.members.map(member => member.calling)).toEqual([
+        'TrackStar',
+        'LineCook',
+        'Wizard',
+      ])
+      expect(
+        roomSettingsOf('Campaign', 'Normal', lobby.members).callings,
+      ).toEqual([
+        { slot: 0, calling: 'TrackStar' },
+        { slot: 1, calling: 'LineCook' },
+      ])
+    }),
   )
 
   // NOTE: a rank is a claim the Worker cannot check, so it only keeps it in

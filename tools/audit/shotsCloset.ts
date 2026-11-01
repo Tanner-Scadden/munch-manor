@@ -49,6 +49,7 @@ type Scene = Readonly<{
   name: string
   query: string
   isLook?: boolean
+  open?: string
   ticks?: ReadonlyArray<number>
 }>
 
@@ -82,6 +83,11 @@ const SCENES: ReadonlyArray<Scene> = [
     name: 'look-outfit-gold',
     query: `profile=look&looksection=Outfit&rank=5100&bones=200&look=,,,,Gold,,Polka`,
     isLook: true,
+  },
+  {
+    name: 'picker-fresh',
+    query: 'rank=1800&fresh',
+    open: '#home-calling',
   },
   { name: 'home-fresh', query: `rank=${RANK_16}&fresh` },
   { name: 'home-skin', query: 'rank=5100&skin=Gold&look=,,,,Glow,,Checker' },
@@ -280,6 +286,10 @@ for (const viewport of SHOT_VIEWPORTS) {
         ),
       )
       await settleAnimations(page)
+      if (scene.open !== undefined) {
+        await page.locator(scene.open).click()
+        await settleAnimations(page)
+      }
       if (scene.isLook === true) {
         await checkLook(page, where)
       }

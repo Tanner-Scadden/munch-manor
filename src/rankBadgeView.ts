@@ -24,7 +24,7 @@ const badgeView = <Message>(rank: number, h: HtmlBuilder<Message>): Html =>
   rankBadgeImgView(rank, ART_SCALE, h)
 
 // NOTE: the badge a rank wears and its number, for a card that says which
-// rank it needs (src/callingView.ts).
+// rank it needs (src/callingCards.ts).
 export const rankMarkView = <Message>(
   rank: number,
   h: HtmlBuilder<Message>,

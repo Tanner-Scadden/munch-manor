@@ -2,12 +2,13 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
-## November 1, 2026: Pick your calling
+## November 1, 2026: Pick your hero
 
-- 🎩 Rank up and you can pick a calling beside the difficulty: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Reach rank 3 to meet the first.
+- 🎩 Rank up and you can pick a hero beside the difficulty: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Every card says what it gives (+) and costs (-). Reach rank 3 to meet the first.
 - 🎩 Spend your Bones on hats in your Look tab, and rank up to be gifted a few for free: a party hat, a cowboy hat, a witch hat, even a traffic cone.
+- 🎒 Your hero comes along in co-op: everyone in the room starts as the hero they picked, and the prop shows by their name in the lobby.
+- 🎒 Swap your hero right in the co-op lobby.
 - 👕 New shirts, prints, and gun skins to earn or buy in your Look tab, with a NEW badge on what you just unlocked.
-- 🎒 Your calling comes along in co-op: everyone in the room starts as the calling they picked, and the prop shows by their name in the lobby.
 
 ## October 31, 2026: Rattles has notes
 

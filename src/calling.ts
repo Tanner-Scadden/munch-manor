@@ -3,6 +3,11 @@ import { Array } from 'effect'
 import { PLAYER_MAX_HP } from './constants'
 import { Calling } from './playerData'
 
+// NOTE: players read "hero" (plural "heroes") for what the code calls a
+// calling, renamed 2026-11-01 by the owner. The code keeps `calling`, as
+// `Character` already names the Look tab, so every word a player sees lives
+// in src/names.ts and the views.
+
 // Callings (GAME_DESIGN.md, "Rank and Bones"): what a player brings to a
 // run, picked at home and unlocked by rank. YOU has no quirk. Every other
 // calling is a trade-off, never a straight boost. These are the pure rules,

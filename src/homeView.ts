@@ -868,7 +868,7 @@ const MENU_KEY_ACTIONS: Readonly<Record<HomeButton, string>> = {
   Play: 'play',
   Mode: 'mode',
   Difficulty: 'difficulty',
-  Calling: 'calling',
+  Calling: 'hero',
   Coop: 'co-op',
   Manor: 'manor',
   Support: 'coffee',
@@ -1142,10 +1142,7 @@ const panelView = (
 // NOTE: the difficulty picker opened beside PLAY hangs just above that
 // cluster. The first-run question before a first run stays centered.
 const panelAnchor = (model: Model): string =>
-  (model.panel === 'Difficulty' && !isAskingFirst(model)) ||
-  model.panel === 'Calling'
-    ? 'Play'
-    : 'Center'
+  model.panel === 'Difficulty' && !isAskingFirst(model) ? 'Play' : 'Center'
 
 export const menuPanelView = (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(
