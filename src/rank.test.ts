@@ -111,8 +111,8 @@ describe('badges', () => {
     expect(badgeTierOf(21)).toBe('Bronze')
     expect(badgeTierOf(31)).toBe('Silver')
     expect(badgeTierOf(41)).toBe('Gold')
-    expect(badgeTierOf(51)).toBe('Drumstick')
-    expect(badgeTierOf(500)).toBe('Drumstick')
+    expect(badgeTierOf(51)).toBe('Skull')
+    expect(badgeTierOf(500)).toBe('Skull')
   })
 })
 
