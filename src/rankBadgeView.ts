@@ -49,6 +49,34 @@ export const rankChipView = (model: Model, h: ApplicationViewBuilder): Html => {
   )
 }
 
+// NOTE: a pixel bone and a count, `scale` times its pixels, for the Bones
+// the plate holds and the closet spends.
+export const boneCountView = (
+  count: number,
+  className: string,
+  h: ApplicationViewBuilder,
+): Html =>
+  h.span(
+    [h.Class(className), h.AriaHidden(true)],
+    [
+      ...Option.match(BONE_IMAGE, {
+        onNone: () => [],
+        onSome: image => [
+          h.img([
+            h.Class('rank-bone-img'),
+            h.Src(image.src),
+            h.Alt(''),
+            h.Style({
+              width: `${image.width * ART_SCALE}px`,
+              height: `${image.height * ART_SCALE}px`,
+            }),
+          ]),
+        ],
+      }),
+      h.span([h.Class('rank-bones-count')], [`${count}`]),
+    ],
+  )
+
 // NOTE: the Profile's plate: the badge and rank, the bar filled by how far
 // into the rank the points are, and the Bones balance by a pixel bone.
 export const rankPlateView = (
@@ -83,26 +111,7 @@ export const rankPlateView = (
           ]),
         ],
       ),
-      h.span(
-        [h.Class('rank-bones'), h.AriaHidden(true)],
-        [
-          ...Option.match(BONE_IMAGE, {
-            onNone: () => [],
-            onSome: image => [
-              h.img([
-                h.Class('rank-bone-img'),
-                h.Src(image.src),
-                h.Alt(''),
-                h.Style({
-                  width: `${image.width * ART_SCALE}px`,
-                  height: `${image.height * ART_SCALE}px`,
-                }),
-              ]),
-            ],
-          }),
-          h.span([h.Class('rank-bones-count')], [`${bones}`]),
-        ],
-      ),
+      boneCountView(bones, 'rank-bones', h),
     ],
   )
 }

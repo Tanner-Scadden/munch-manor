@@ -625,6 +625,26 @@ export const NAME_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
+// NOTE: a coat hanger for the Closet tab.
+export const CLOSET_ICON = pixelIconUrl(
+  [
+    '....YYY....',
+    '...Y...Y...',
+    '.......Y...',
+    '.....X.....',
+    '...XXXXX...',
+    '.XXX...XXX.',
+    'XXXXXXXXXXX',
+  ],
+  PROFILE_PALETTE,
+)
+
+// NOTE: a check for the hat that is worn.
+export const CHECK_ICON = pixelIconUrl(
+  ['......G', '.....GG', 'G...GG.', 'GG.GG..', '.GGG...', '..G....'],
+  PROFILE_PALETTE,
+)
+
 // NOTE: a phone and a laptop joined by a spark, for the Account tab.
 export const ACCOUNT_ICON = pixelIconUrl(
   [

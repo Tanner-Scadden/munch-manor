@@ -62,7 +62,7 @@ const measureUpright = measureSurfaceAs({
 })
 
 describe('the Profile', () => {
-  test('the gear opens it on Settings: four tabs, sound and friends, and no devices or stats sharing', () => {
+  test('the gear opens it on Settings: five tabs, sound and friends, and no devices or stats sharing', () => {
     scene(
       ROOT,
       given(synced),
@@ -72,9 +72,10 @@ describe('the Profile', () => {
       expect(profileDialog).toExist(),
       inside(
         role('tablist', { name: 'Profile' }),
-        expectAll(all.role('tab')).toHaveCount(4),
+        expectAll(all.role('tab')).toHaveCount(5),
       ),
       expect(tab('Look')).toExist(),
+      expect(tab('Closet')).toExist(),
       expect(tab('Name')).toExist(),
       expect(tab('Account')).toExist(),
       expect(tab('Settings')).toHaveAttr('aria-selected', 'true'),
@@ -108,16 +109,19 @@ describe('the Profile', () => {
       expect(role('radiogroup', { name: 'Body shape' })).toExist(),
       keydown(tab('Look'), 'ArrowDown'),
       focusTab(1),
+      expect(tab('Closet')).toHaveAttr('aria-selected', 'true'),
+      keydown(tab('Closet'), 'ArrowDown'),
+      focusTab(2),
       expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
       expect(role('textbox', { name: 'Your name' })).toExist(),
       keydown(tab('Name'), 'ArrowDown'),
-      focusTab(2),
+      focusTab(3),
       expect(tab('Account')).toHaveAttr('aria-selected', 'true'),
       keydown(tab('Account'), 'ArrowUp'),
-      focusTab(1),
+      focusTab(2),
       expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
       keydown(tab('Name'), 'End'),
-      focusTab(3),
+      focusTab(4),
       expect(tab('Settings')).toHaveAttr('aria-selected', 'true'),
     )
   })
@@ -135,7 +139,7 @@ describe('the Profile', () => {
       ),
       keydown(tab('Look'), 'ArrowRight'),
       focusTab(1),
-      expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
+      expect(tab('Closet')).toHaveAttr('aria-selected', 'true'),
     )
   })
 
@@ -151,7 +155,7 @@ describe('the Profile', () => {
       click(settingsButton),
       ...showDialogInScene(),
       click(tab('Account')),
-      focusTab(2),
+      focusTab(3),
       expect(tab('Account')).toHaveAttr('aria-selected', 'true'),
       expect(role('list', { name: 'Your 2 devices' })).toExist(),
       expect(role('status')).toExist(),
@@ -174,7 +178,7 @@ describe('the Name tab', () => {
       click(settingsButton),
       ...showDialogInScene(),
       click(tab('Name')),
-      focusTab(1),
+      focusTab(2),
       expect(stone).toHaveText('Survivor'),
       expect(nameField).toHaveAttr('placeholder', 'Survivor'),
       expect(role('img', { name: '12 letters left' })).toExist(),
@@ -195,7 +199,7 @@ describe('the Name tab', () => {
       click(settingsButton),
       ...showDialogInScene(),
       click(tab('Name')),
-      focusTab(1),
+      focusTab(2),
       click(role('button', { name: 'Roll a goofy name' })),
       Command.resolve(WriteSave, Message.CompletedWriteSave()),
       expect(stone).not.toHaveText('Survivor'),
@@ -213,7 +217,7 @@ describe('the Account tab', () => {
       click(settingsButton),
       ...showDialogInScene(),
       click(tab('Account')),
-      focusTab(2),
+      focusTab(3),
       expect(text(LINK_TAKES_PROGRESS_NOTE)).toBeAbsent(),
       click(role('button', { name: 'Use a code' })),
       expect(text(LINK_TAKES_PROGRESS_NOTE)).toExist(),
@@ -230,7 +234,7 @@ describe('the Account tab', () => {
       click(settingsButton),
       ...showDialogInScene(),
       click(tab('Account')),
-      focusTab(2),
+      focusTab(3),
       click(role('button', { name: 'Link another device' })),
       Command.resolve(
         RequestLinkCode,
@@ -249,7 +253,7 @@ describe('the Account tab', () => {
       click(settingsButton),
       ...showDialogInScene(),
       click(tab('Account')),
-      focusTab(2),
+      focusTab(3),
       expect(selector('.account-zap')).toExist(),
       expect(
         text("Linked! This device now uses your other device's progress."),
@@ -266,7 +270,7 @@ describe('the Account tab', () => {
       click(settingsButton),
       ...showDialogInScene(),
       click(tab('Account')),
-      focusTab(2),
+      focusTab(3),
       expect(shareToggle).toHaveAttr('aria-pressed', 'true'),
       expect(shareToggle).toHaveAttr('aria-describedby', 'share-stats-note'),
       expect(text(SHARE_STATS_NOTE)).toExist(),

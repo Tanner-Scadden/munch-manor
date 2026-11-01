@@ -37,6 +37,7 @@ import { skipDebutCard } from './onboarding'
 import { LinkFlow } from './playerSync'
 import { forgetTutorial } from './save'
 import { stepWhen } from './stepWhen'
+import { stepClosetFocus, tapHat } from './update/closet'
 import { askForRoomLink, openCoop, tickRoomFrame } from './update/coop'
 import { orInRun } from './update/coopRun'
 import {
@@ -913,6 +914,16 @@ export const update = ApplicationComposition.makeUpdate({
       openHand,
       ...afterMessage(model),
     ]),
+
+  ClickedClosetCard: (model, { hat }) =>
+    hat === 'None'
+      ? settle(model, { model })
+      : Update.combineSteps(model, [tapHat(hat), ...afterMessage(model)]),
+
+  SteppedClosetFocus: (model, { hat }) =>
+    settle(model, stepClosetFocus(model, hat)),
+
+  CompletedFocusClosetCard: model => settle(model, { model }),
 
   SteppedHandFocus: (model, { card }) =>
     settle(model, stepHandFocus(model, card)),

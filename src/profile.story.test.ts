@@ -115,8 +115,14 @@ describe('the Profile', () => {
     )
   })
 
-  test('the tabs are data, in order: Look, Name, Account, Settings', () => {
-    expect(PROFILE_TABS).toEqual(['Look', 'Name', 'Account', 'Settings'])
+  test('the tabs are data, in order: Look, Closet, Name, Account, Settings', () => {
+    expect(PROFILE_TABS).toEqual([
+      'Look',
+      'Closet',
+      'Name',
+      'Account',
+      'Settings',
+    ])
   })
 
   test('never opens mid-run, and the gear only from the menu itself', () => {

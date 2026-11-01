@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import callingCss from './calling.css?raw'
+import closetCss from './closet.css?raw'
 import coopCss from './coop/coop.css?raw'
 import menuCss from './menu.css?raw'
 import profileCss from './profile.css?raw'
@@ -25,6 +26,7 @@ const CSS_FILES: ReadonlyArray<readonly [string, string]> = [
   ['src/menu.css', menuCss],
   ['src/profile.css', profileCss],
   ['src/calling.css', callingCss],
+  ['src/closet.css', closetCss],
   ['src/shop.css', shopCss],
   ['src/coop/coop.css', coopCss],
 ]
@@ -82,6 +84,13 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'zap-right': 'the link animation',
   'zap-strike': 'the link animation',
   'confirm-wobble': "the reset question's text, beside its buttons",
+  // closet.css
+  'closet-hop-a': "a hat card's figure, inside its button",
+  'closet-hop-b': "a hat card's figure, inside its button",
+  'closet-poof-a': "a hat card's poof, a pseudo-element",
+  'closet-poof-b': "a hat card's poof, a pseudo-element",
+  'closet-shake-a': "a hat card's price or padlock, inside its button",
+  'closet-shake-b': "a hat card's price or padlock, inside its button",
   // shop.css
   'shop-new-bob': "a tab's NEW badge",
   'shop-rise': 'the upgrade arrow art',
