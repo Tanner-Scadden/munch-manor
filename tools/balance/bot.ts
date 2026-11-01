@@ -14,6 +14,7 @@ import { modifyFields } from 'foldkit/struct'
 import { boxCenter, levelOf } from '../../src/arena'
 import { Message } from '../../src/message'
 import { initialModel } from '../../src/model'
+import { noRank } from '../../src/rank'
 import { isShopOpenFor } from '../../src/shop'
 import { asTutorialDone, asVeteran } from '../../src/veteran'
 import { heldGun, maybeOtherGun } from '../../src/weapons'
@@ -159,12 +160,18 @@ const blame = (
   return kind
 }
 
+// NOTE: points enough for any calling's rank, so the bot starts the one it
+// plays.
+const BOT_RANK_POINTS = 100_000
+
 // The model of a fresh run on the title, already started.
 export const startedRun = (seed: number, options: BotOptions): Model => {
   const ready = send(
     modifyFields(asTutorialDone(asVeteran(initialModel)), {
       rngState: () => seed,
       difficulty: () => ({ chosen: options.difficulty, nightmare: 'Unlocked' }),
+      calling: () => options.calling,
+      rank: () => ({ ...noRank, earnedPoints: BOT_RANK_POINTS }),
     }),
     Message.MeasuredGameSurface(SURFACE),
   )

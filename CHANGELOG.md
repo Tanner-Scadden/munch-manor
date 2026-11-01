@@ -2,6 +2,10 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 1, 2026: Pick your calling
+
+- 🎩 Rank up and you can pick a calling beside the difficulty: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Reach rank 3 to meet the first.
+
 ## October 31, 2026: Rattles has notes
 
 - 🧭 New here? Your first breaks walk you through it: a free Plank Pile from Rattles, then a free kitchen and a free fridge roll, with the clock on hold. Confetti included.

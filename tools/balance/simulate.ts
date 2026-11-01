@@ -40,7 +40,8 @@ Object.assign(globalThis, {
   __BUILD_ID__: 'dev',
 })
 
-const { DEFAULT_OPTIONS, parseDifficulty } = await import('./bot/basics')
+const { DEFAULT_OPTIONS, parseCalling, parseDifficulty } =
+  await import('./bot/basics')
 const { KINDS, emptyHurt, quietPartMs } = await import('./bot/logs')
 const { RunResults, WaveRuns } = await import('./bot/results')
 const { runOnce, seedAt: seedFrom } = await import('./bot')
@@ -108,6 +109,7 @@ const OPTIONS: BotOptions = {
   mode: IS_ENDLESS ? 'Endless' : 'Campaign',
   swapsBack: process.env['SWAP'] !== undefined,
   noUpgrades: process.env['NO_UPGRADES'] !== undefined,
+  calling: parseCalling(process.env['CALLING']),
 }
 const DIFFICULTY = OPTIONS.difficulty
 const SWAPS_BACK = OPTIONS.swapsBack
