@@ -21,6 +21,7 @@ import {
 } from '@game/model'
 import { stepWhen } from '@game/stepWhen'
 import { withInput } from '@game/update/step'
+import { markLooksSeen } from '@game/update/unlocks'
 import { RUNNING_BUILD } from '@game/version'
 import { freshGun, mapGuns } from '@game/weapons'
 
@@ -238,7 +239,7 @@ export const gameUpdate = (
 const openProfileOn = (model: Model, tab: ProfileTab): HarnessReturn =>
   update(
     withInput(
-      modifyFields(model, {
+      modifyFields(tab === 'Look' ? markLooksSeen(model) : model, {
         tutorialReset: () => 'Idle',
         profile: profile =>
           modifyFields(profile, {
@@ -270,15 +271,13 @@ export const sceneOf = (
     current =>
       openProfileOn(
         modifyFields(current, { screenMs: () => 99999 }),
-        profileTab === 'closet'
-          ? 'Closet'
-          : profileTab === 'name'
-            ? 'Name'
-            : profileTab === 'account'
-              ? 'Account'
-              : profileTab === 'settings'
-                ? 'Settings'
-                : 'Look',
+        profileTab === 'name'
+          ? 'Name'
+          : profileTab === 'account'
+            ? 'Account'
+            : profileTab === 'settings'
+              ? 'Settings'
+              : 'Look',
       ),
   )(seeded)
   const lookSection = config.looksection

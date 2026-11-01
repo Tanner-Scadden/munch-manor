@@ -13,6 +13,7 @@ import {
   type Model,
   type TutorialReset,
 } from '../model'
+import { SEEN_BASELINE } from '../playerData'
 import {
   LastRunSync,
   LinkFlow,
@@ -208,8 +209,13 @@ export const loadSave = (
   const loaded = finishLoading(granted, 'Save')
   // NOTE: a player with no save has nothing to write yet: their first write
   // seeds the store with the whole save, the grant in it. A save from before
-  // rank writes the grant it was just given, as the change it is.
-  return Option.isSome(maybeSave) && !restored.rank.isVeteranGranted
+  // rank writes the grant it was just given, as the change it is. A row from
+  // before NEW badges writes the unlocks its baseline mark stood for.
+  const isBaseline = Option.exists(maybeSave, save =>
+    Array.contains(save.seenUnlocks, SEEN_BASELINE),
+  )
+  return Option.isSome(maybeSave) &&
+    (!restored.rank.isVeteranGranted || isBaseline)
     ? {
         model: modifyFields(loaded.model, {
           writesInFlight: count => count + 1,
@@ -218,7 +224,12 @@ export const loadSave = (
           ...(loaded.commands ?? []),
           WriteSave({
             save: saveOf(granted),
-            changes: changesBetween(saveOf(restored), saveOf(granted)),
+            changes: [
+              ...changesBetween(saveOf(restored), saveOf(granted)),
+              ...(isBaseline
+                ? [PlayerChange.SawUnlocks({ ids: granted.seenUnlocks })]
+                : []),
+            ],
           }),
         ],
       }

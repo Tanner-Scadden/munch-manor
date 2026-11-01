@@ -222,6 +222,26 @@ export const closeDialogInScene = () => [
   ),
 ]
 
+// NOTE: the Look tab's radio groups in a Scene: a group by its label, an
+// option in it by name, and its little tabs.
+export const lookGroup = (name: string) => Scene.role('radiogroup', { name })
+
+export const lookOptionIn = (groupName: string, name: string) =>
+  Scene.within(lookGroup(groupName), Scene.role('radio', { name }))
+
+export const lookSection = (name: string) => lookOptionIn('Parts', name)
+
+export const resolveFocusOptionInScene = () =>
+  Scene.Command.resolve(
+    RadioGroup.test.FocusOption,
+    PartRadioGroupBlock.Message.CompletedFocusOption(),
+  )
+
+export const openLookSection = (name: string) => [
+  Scene.click(lookSection(name)),
+  resolveFocusOptionInScene(),
+]
+
 export const resolveFocusOption = () =>
   Story.Command.resolve(
     RadioGroup.test.FocusOption,

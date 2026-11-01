@@ -20,6 +20,7 @@ const iconWidth = (pixels: ReadonlyArray<string>): number =>
 export const pixelIconUrl = (
   pixels: ReadonlyArray<string>,
   palette: Palette,
+  fit: 'Keep' | 'Stretch' = 'Keep',
 ): string => {
   const rects = pipe(
     pixelRuns(pixels, palette),
@@ -29,7 +30,7 @@ export const pixelIconUrl = (
     ),
     Array.join(''),
   )
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${iconWidth(pixels)} ${pixels.length}" shape-rendering="crispEdges">${rects}</svg>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${iconWidth(pixels)} ${pixels.length}"${fit === 'Stretch' ? ' preserveAspectRatio="none"' : ''} shape-rendering="crispEdges">${rects}</svg>`
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }
 
@@ -622,26 +623,6 @@ export const NAME_ICON = pixelIconUrl(
     'YXXXXXXXXXY',
     'YYYYYYYYYYY',
   ],
-  PROFILE_PALETTE,
-)
-
-// NOTE: a coat hanger for the Closet tab.
-export const CLOSET_ICON = pixelIconUrl(
-  [
-    '....YYY....',
-    '...Y...Y...',
-    '.......Y...',
-    '.....X.....',
-    '...XXXXX...',
-    '.XXX...XXX.',
-    'XXXXXXXXXXX',
-  ],
-  PROFILE_PALETTE,
-)
-
-// NOTE: a check for the hat that is worn.
-export const CHECK_ICON = pixelIconUrl(
-  ['......G', '.....GG', 'G...GG.', 'GG.GG..', '.GGG...', '..G....'],
   PROFILE_PALETTE,
 )
 

@@ -349,6 +349,8 @@ export const LookPart = Schema.Literals([
   'ShirtColor',
   'Outfit',
   'Print',
+  'Hat',
+  'GunSkin',
 ])
 export type LookPart = typeof LookPart.Type
 
@@ -357,8 +359,8 @@ export const LookToggle = Schema.Literals(['Beard', 'Glasses'])
 export type LookToggle = typeof LookToggle.Type
 
 // NOTE: the Look tab's little tabs: the body, skin, beard, and glasses; the
-// hair; and the outfit.
-export const LookSection = Schema.Literals(['Body', 'Hair', 'Outfit'])
+// hair; the outfit; and the gear, a hat and a gun skin.
+export const LookSection = Schema.Literals(['Body', 'Hair', 'Outfit', 'Gear'])
 export type LookSection = typeof LookSection.Type
 
 // NOTE: the first PLAY or ENDLESS of the session asks for a difficulty.
@@ -444,4 +446,5 @@ export const defaultAppearance: Appearance = {
   beard: false,
   glasses: false,
   hat: 'None',
+  gunSkin: 'Stock',
 }

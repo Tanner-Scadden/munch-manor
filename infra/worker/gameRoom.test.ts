@@ -307,11 +307,35 @@ describe('the room host', () => {
     expect(lookOfRequest('Broad.Bald.Grey.Fair.Purple.DAAA.Q')).toBe(
       'Broad.Bald.Grey.Fair.Purple.DAAA.Q',
     )
+    // NOTE: a gun skin is an eighth word, the letter of its place in the
+    // game's skins (F is Neon), the seventh then being the hat's, A for
+    // none. Stock is left off, so the code stays the shortest it can be.
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.A.F')).toBe(
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.A.F',
+    )
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.M.F')).toBe(
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.F',
+    )
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.M.A')).toBe(
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M',
+    )
+    // NOTE: the earned shirt colors and prints are placed at the end of their
+    // lists, so an older code reads the same and a new one reads back whole.
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Midnight.CGBB.Q.D')).toBe(
+      'Slim.Mohawk.Pink.Deep.Midnight.CGBB.Q.D',
+    )
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Gold.ADAA')).toBe(
+      'Slim.Mohawk.Pink.Deep.Gold.ADAA',
+    )
     const junks = [
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.Z',
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.AA',
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.A.A',
+      'Slim.Mohawk.Pink.Deep.Magenta.CCBB',
+      'Slim.Mohawk.Pink.Deep.Teal.CHBB',
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.R',
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.MM',
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.m',
-      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.A',
       'Slim.Mohawk.Pink.Deep.Teal.CCBA.AAAA.A',
       'Female.Ponytail.Pink.Tan.Plaid',
       'Robot',
@@ -319,7 +343,7 @@ describe('the room host', () => {
       'Slim.Mohawk.Pink.Deep.Teal',
       'Slim.Mohawk.Pink.Deep.Teal.CCBC',
       'Slim.Mohawk.Pink.Deep.Teal.ECAA',
-      'Slim.Mohawk.Pink.Deep.Teal.ADAA',
+      'Slim.Mohawk.Pink.Deep.Teal.AHAA',
       'Slim.Mohawk.Pink.Deep.Teal.AAA',
       'Slim.Mohawk.Pink.Deep.Teal.aaaa',
       'Medium.Short.Pink.Deep.Teal.AAAA',

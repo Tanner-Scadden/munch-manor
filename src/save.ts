@@ -12,7 +12,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { callingForRun } from './calling'
 import { playerOfCalling } from './callingPlayer'
-import { lookInOwnedHat } from './closet'
+import { lookInOwned } from './closet'
 import {
   AmmoTip,
   DebutCard,
@@ -37,9 +37,12 @@ import {
   PlayerName,
   PlayerSave,
   PreHatAppearance,
+  PreSkinAppearance,
   RotationSetting,
   SAVE_VERSION,
+  SEEN_BASELINE,
   SavedBests,
+  SavedBoughtCosmetics,
   SavedDifficulty,
   type SavedDifficultyBests,
   SavedHome,
@@ -60,6 +63,7 @@ import {
 } from './playerData'
 import { cleanName } from './profile'
 import { noRank, rankOf, totalPointsOf } from './rank'
+import { unlocksAt } from './unlocks'
 
 export {
   PlayerSave,
@@ -250,6 +254,27 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 15 is the save before gun skins and the other earned looks:
+// its look has a hat and no skin, and its bought list is the hats.
+const PlayerSaveV15 = Schema.Struct({
+  version: Schema.Literal(15),
+  onboarding: SavedOnboarding,
+  homeScreenTip: HomeScreenTip,
+  settings: SavedSettings,
+  appearance: PreSkinAppearance,
+  difficulty: SavedDifficulty,
+  bests: SavedBests,
+  home: SavedHome,
+  seenPowerUps: SavedPowerUps,
+  rotation: RotationSetting,
+  name: PlayerName,
+  records: SavedRunRecords,
+  rank: SavedRank,
+  calling: Calling,
+  boughtHats: SavedBoughtCosmetics,
+})
+type PlayerSaveV15 = typeof PlayerSaveV15.Type
+
 // NOTE: version 14 is the save before hats.
 const PlayerSaveV14 = Schema.Struct({
   version: Schema.Literal(14),
@@ -307,6 +332,7 @@ type PlayerSaveV12 = typeof PlayerSaveV12.Type
 const PlayerSaveJson = Schema.fromJsonString(PlayerSave)
 
 const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
+const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
 
 const PlayerSaveV13Json = Schema.fromJsonString(PlayerSaveV13)
 
@@ -527,15 +553,26 @@ const migrateV13 = (save: PlayerSaveV13): PlayerSaveV14 => ({
 })
 
 // NOTE: a save from before hats is bare headed and has bought none.
-const migrateV14 = (save: PlayerSaveV14): PlayerSave => ({
+const migrateV14 = (save: PlayerSaveV14): PlayerSaveV15 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 15,
   appearance: { ...save.appearance, hat: 'None' },
   boughtHats: [],
 })
 
+// NOTE: a save from before gun skins has the stock guns, and its bought
+// hats are the first of the cosmetics bought. It has seen every unlock it
+// had reached, so NEW badges start fresh from here.
+const migrateV15 = ({ boughtHats, ...save }: PlayerSaveV15): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  appearance: { ...save.appearance, gunSkin: 'Stock' },
+  boughtCosmetics: boughtHats,
+  seenUnlocks: unlocksAt(rankOf(totalPointsOf(save.rank))),
+})
+
 const fromV13 = (save: PlayerSaveV13): PlayerSave =>
-  migrateV14(migrateV13(save))
+  migrateV15(migrateV14(migrateV13(save)))
 
 const fromV12 = (save: PlayerSaveV12): PlayerSave => fromV13(migrateV12(save))
 
@@ -571,9 +608,16 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 15,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV15Json)(raw), migrateV15),
+  },
+  {
     version: 14,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV14Json)(raw), migrateV14),
+      Option.map(Schema.decodeOption(PlayerSaveV14Json)(raw), save =>
+        migrateV15(migrateV14(save)),
+      ),
   },
   {
     version: 13,
@@ -711,7 +755,8 @@ export const SAVED_FIELDS = [
   'playerName',
   'rank',
   'calling',
-  'boughtHats',
+  'boughtCosmetics',
+  'seenUnlocks',
 ] as const satisfies ReadonlyArray<keyof Model>
 
 export const hasSaveFieldsChanged = (before: Model, after: Model): boolean =>
@@ -761,7 +806,8 @@ export const saveOf = (model: Model): PlayerSave => ({
   records: savedRunRecords(model.bests),
   rank: model.rank,
   calling: model.calling,
-  boughtHats: model.boughtHats,
+  boughtCosmetics: model.boughtCosmetics,
+  seenUnlocks: model.seenUnlocks,
 })
 
 // INTO THE MODEL
@@ -866,12 +912,12 @@ export const restoreSave = (model: Model, save: PlayerSave): Model =>
     shakeSetting: () => save.settings.shake,
     shareStats: () => save.settings.shareStats,
     cursorSetting: () => save.settings.cursor,
-    // NOTE: a hat worn but not owned (a purchase another device's Bones
+    // NOTE: a look worn but not owned (a purchase another device's Bones
     // outran) comes off.
     appearance: () =>
-      lookInOwnedHat(
+      lookInOwned(
         save.appearance,
-        save.boughtHats,
+        save.boughtCosmetics,
         rankOf(totalPointsOf(save.rank)),
       ),
     difficulty: setting =>
@@ -896,7 +942,19 @@ export const restoreSave = (model: Model, save: PlayerSave): Model =>
     playerName: () => cleanName(save.name),
     rank: () => save.rank,
     calling: () => save.calling,
-    boughtHats: () => save.boughtHats,
+    boughtCosmetics: () => save.boughtCosmetics,
+    // NOTE: unlocks seen on any device stay seen. The baseline mark of a row
+    // from before NEW badges stands for every unlock reached now.
+    seenUnlocks: seen =>
+      Array.union(
+        seen,
+        Array.contains(save.seenUnlocks, SEEN_BASELINE)
+          ? [
+              ...Array.filter(save.seenUnlocks, id => id !== SEEN_BASELINE),
+              ...unlocksAt(rankOf(totalPointsOf(save.rank))),
+            ]
+          : save.seenUnlocks,
+      ),
     // NOTE: the player at home wears the calling the next run starts with.
     // A save that syncs in mid-run leaves the run's player alone.
     player: player =>

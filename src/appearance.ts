@@ -1,16 +1,19 @@
 import { Array, Option, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { shownHatOf } from './closet'
+import { isOwned, shownHatOf } from './closet'
 import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, NO_HAT } from './hatArt'
 import {
   type Appearance,
   Body,
   type Calling,
+  FreePrint,
+  FreeShirtColor,
   HairColor,
   HairStyle,
   Outfit,
   Print,
+  type SavedBoughtCosmetics,
   ShirtColor,
   SkinTone,
 } from './playerData'
@@ -86,6 +89,10 @@ export const SHIRT_SHADES: Readonly<Record<ShirtColor, ShirtShade>> = {
   Teal: { base: '#2bb0a0', dark: '#1d7e74' },
   Pink: { base: '#e46aa6', dark: '#b2447c' },
   Purple: { base: '#8c5cd6', dark: '#6340a4' },
+  Gold: { base: '#d8a418', dark: '#94640c' },
+  Glow: { base: '#7dff3a', dark: '#3fae1c' },
+  Midnight: { base: '#27315f', dark: '#141a3a' },
+  Coral: { base: '#ff7f6e', dark: '#c9503f' },
 }
 
 // NOTE: the Rainbow print, the six stripes of the pride flag in their real
@@ -112,6 +119,7 @@ const HARD_HAT_COLOR = '#f2c230'
 const HARD_HAT_SHADE = '#b8861c'
 const VISOR_COLOR = '#2f9e57'
 const COIN_COLOR = '#ffd23f'
+const FLAME_COLOR = '#ff7a1a'
 const TOQUE_BAND_COLOR = '#c9c3ad'
 
 const channel = (color: string, index: number): number =>
@@ -158,6 +166,7 @@ export const playerPalette = (appearance: Appearance): Palette => {
     Z: HARD_HAT_SHADE,
     V: VISOR_COLOR,
     C: COIN_COLOR,
+    F: FLAME_COLOR,
     N: TOQUE_BAND_COLOR,
     ...HAT_COLORS,
     ...Object.fromEntries(
@@ -396,8 +405,46 @@ const withHat = (rows: Rows, look: Appearance, calling: Calling): Rows => {
 
 // PRINTS
 
+// NOTE: the pixels of a print that is a picture, on the shirt's six columns
+// and three rows: `.` leaves the shirt's own pixel, W is white, K the dark of
+// a skull's eyes, F and C the flames' orange and yellow.
+const PRINT_TILES: Readonly<
+  Record<'Polka' | 'Checker' | 'Skull' | 'Flames', Rows>
+> = {
+  Polka: ['.W..W.', 'W..W..', '.W..W.'],
+  Checker: ['W.W.W.', '.W.W.W', 'W.W.W.'],
+  Skull: ['.WWWW.', '.WKKW.', '..WW..'],
+  Flames: ['......', '.F.CF.', 'FCFFCF'],
+}
+
+const isTilePrint = (print: Print): print is keyof typeof PRINT_TILES =>
+  print in PRINT_TILES
+
+// NOTE: the symbol a print puts on the shirt's pixel at a torso row and
+// column, or the shirt's own symbol where the print leaves it.
+const printSymbolAt = (
+  print: Print,
+  torsoRow: number,
+  column: number,
+  shirt: string,
+): string => {
+  if (print === 'Plain') {
+    return shirt
+  }
+  if (print === 'Stripes') {
+    return torsoRow === 1 ? 'W' : 'B'
+  }
+  if (print === 'Rainbow') {
+    return RAINBOW_SYMBOLS.charAt(Math.min(5, Math.max(0, column)))
+  }
+  const tile = isTilePrint(print) ? PRINT_TILES[print] : []
+  const symbol = (tile[torsoRow] ?? '').charAt(column)
+  return symbol === '' || symbol === TRANSPARENT ? shirt : symbol
+}
+
 // NOTE: a print paints the shirt's own pixels (B and D) on the torso rows:
-// Stripes a white band across the middle row, Rainbow a stripe per column.
+// Stripes a white band across the middle row, Rainbow a stripe per column,
+// and the rest a small picture.
 const withPrint = (
   rows: Rows,
   torsoRowOf: (y: number) => number,
@@ -412,18 +459,23 @@ const withPrint = (
         const torsoRow = torsoRowOf(y - TORSO_ROW)
         return pipe(
           String.split(row, ''),
-          Array.map((symbol, x) => {
-            if (symbol !== 'B' && symbol !== 'D') {
-              return symbol
-            }
-            if (print === 'Stripes') {
-              return torsoRow === 1 ? 'W' : 'B'
-            }
-            return RAINBOW_SYMBOLS.charAt(Math.min(5, Math.max(0, x - 1)))
-          }),
+          Array.map((symbol, x) =>
+            symbol !== 'B' && symbol !== 'D'
+              ? symbol
+              : printSymbolAt(print, torsoRow, x - 1, symbol),
+          ),
           Array.join(''),
         )
       })
+
+// NOTE: a print as a patch of the shirt: its three rows on the shirt's own
+// base, for the Look tab's swatch.
+export const printSwatchRows = (print: Print): Rows =>
+  Array.makeBy(3, torsoRow =>
+    Array.makeBy(6, column => printSymbolAt(print, torsoRow, column, 'B')).join(
+      '',
+    ),
+  )
 
 // FRAMES
 
@@ -494,22 +546,20 @@ export const playerPixels = (
   }
 }
 
-// NOTE: a closet card's picture, from the room over the tallest hat down to
-// the hips: the standing figure with the look's hat, its top padded so every
-// hat sits at the same height from the figure's feet, and nothing under the
-// torso. Rows are the standing frame's, so the hat sits as it does in a run.
-// NOTE: the blank row over the head, the face's six rows, and the torso's
-// three.
-const HEAD_AND_TORSO_ROWS = 10
+// NOTE: a hat option's picture: the head under the tallest hat's room, its
+// top padded so every hat sits at the same height from the chin, and nothing
+// under the face. Rows are the standing frame's, so the hat sits as it does
+// in a run. The blank row over the head and the face's six rows are seven.
+const HEAD_ROWS = 7
 
-export const closetRows = (look: Appearance): Rows => {
+export const hatHeadRows = (look: Appearance): Rows => {
   const grown = look.hat === 'None' ? 0 : HAT_ART[look.hat].above
   return Array.take(
     [
       ...Array.makeBy(MAX_HAT_ABOVE - grown, () => BLANK_ROW),
       ...playerPixels(look).idle[0],
     ],
-    MAX_HAT_ABOVE + HEAD_AND_TORSO_ROWS,
+    MAX_HAT_ABOVE + HEAD_ROWS,
   )
 }
 
@@ -617,18 +667,42 @@ const nextOption = <A>(options: Array.NonEmptyReadonlyArray<A>, current: A) => {
 
 // NOTE: the dice draws every part from its full list, each as likely as the
 // next, from the cosmetic generator in the Model, and never lands on the
-// look already showing.
+// look already showing. The earned shirt colors and prints are in the draw
+// only once the player owns them, and the hat and gun skin stay as worn.
+const ownedOptions = <A extends string>(
+  kind: 'Shirt' | 'Print',
+  options: Array.NonEmptyReadonlyArray<A>,
+  free: Array.NonEmptyReadonlyArray<A>,
+  bought: SavedBoughtCosmetics,
+  rank: number,
+): Array.NonEmptyReadonlyArray<A> => {
+  const owned = Array.filter(options, option =>
+    isOwned(kind, option, bought, rank),
+  )
+  return Array.isReadonlyArrayNonEmpty(owned) ? owned : free
+}
+
 export const randomAppearance = (
   state: number,
   current: Appearance,
+  bought: SavedBoughtCosmetics,
+  rank: number,
 ): Seeded<Appearance> => {
+  const shirtColors = ownedOptions(
+    'Shirt',
+    SHIRT_COLORS,
+    FreeShirtColor.literals,
+    bought,
+    rank,
+  )
+  const prints = ownedOptions('Print', PRINTS, FreePrint.literals, bought, rank)
   const [afterBody, body] = pickFrom(BODIES, state)
   const [afterStyle, hairStyle] = pickFrom(HAIR_STYLES, afterBody)
   const [afterHair, hairColor] = pickFrom(HAIR_COLORS, afterStyle)
   const [afterSkin, skinTone] = pickFrom(SKIN_TONES, afterHair)
-  const [afterShirt, shirtColor] = pickFrom(SHIRT_COLORS, afterSkin)
+  const [afterShirt, shirtColor] = pickFrom(shirtColors, afterSkin)
   const [afterOutfit, outfit] = pickFrom(OUTFITS, afterShirt)
-  const [afterPrint, print] = pickFrom(PRINTS, afterOutfit)
+  const [afterPrint, print] = pickFrom(prints, afterOutfit)
   const [afterBeard, beard] = pickFrom(ON_OFF, afterPrint)
   const [afterGlasses, glasses] = pickFrom(ON_OFF, afterBeard)
   const rolled: Appearance = {
@@ -642,12 +716,13 @@ export const randomAppearance = (
     beard,
     glasses,
     hat: current.hat,
+    gunSkin: current.gunSkin,
   }
   return [
     afterGlasses,
     appearanceKey(rolled) === appearanceKey(current)
       ? modifyFields(rolled, {
-          shirtColor: () => nextOption(SHIRT_COLORS, shirtColor),
+          shirtColor: () => nextOption(shirtColors, shirtColor),
         })
       : rolled,
   ]
