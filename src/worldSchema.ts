@@ -766,6 +766,7 @@ export const initialPlayer: Player = {
   knifeCooldownMs: 0,
   melee: Melee.Knife(),
   wield: 'Gun',
+  calling: 'You',
 }
 
 export const emptyWallet: Wallet = { balance: 0, earned: 0, shown: 0 }

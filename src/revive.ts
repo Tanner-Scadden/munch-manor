@@ -1,6 +1,7 @@
 import { Array, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { maxHpOf } from './calling'
 import { bulletDirection, woundPlayer } from './combat'
 import { BULLET_RADIUS, PLAYER_RADIUS } from './constants'
 import { ZERO_VECTOR, circlesOverlap, closestPointOnSegment } from './geometry'
@@ -84,7 +85,7 @@ const standUp = (world: World, hearts: number): World =>
     {
       player: player =>
         modifyFields(player, {
-          hp: () => hearts,
+          hp: () => Math.min(hearts, maxHpOf(player)),
           invulnerability: () =>
             Invulnerability.Invulnerable({
               remainingMs: COOP_RULES.revivedInvulnerableMs,

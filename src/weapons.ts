@@ -1,6 +1,7 @@
 import { Array, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { magazineFor } from './calling'
 import {
   BULLET_LIFETIME_MS,
   BULLET_SPEED,
@@ -15,6 +16,7 @@ import {
   ZOMBIE_KNOCKBACK_SPEED,
 } from './constants'
 import { GUN_NAMES, KNIFE_NAME, gunTierName } from './names'
+import type { Calling } from './playerData'
 import type { SoundEffect } from './soundEffect'
 import {
   Arsenal,
@@ -480,14 +482,35 @@ export const maxRounds = (kind: WeaponKind, tier: number): number =>
 export const magazineOf = (kind: WeaponKind, tier: number): number =>
   statsAt(kind, tier).magazine
 
-export const freshGun = (kind: WeaponKind): CarriedGun => ({
-  kind,
-  rounds: startingRounds(kind),
-  loaded: hasEndlessRounds(kind)
-    ? magazineOf(kind, 0)
-    : Math.min(startingRounds(kind), magazineOf(kind, 0)),
-  tier: 0,
-})
+// NOTE: the magazine a player's gun holds: the gun's own, smaller for the
+// Track Star (src/calling.ts). The Pan's dents and Brain Freeze's charges
+// are not magazines a hand reloads, so a calling leaves them whole.
+const magazineWith = (
+  calling: Calling,
+  kind: WeaponKind,
+  tier: number,
+): number =>
+  isReloadable(kind)
+    ? magazineFor(calling, magazineOf(kind, tier))
+    : magazineOf(kind, tier)
+
+export const carriedMagazine = (calling: Calling, gun: CarriedGun): number =>
+  magazineWith(calling, gun.kind, gun.tier)
+
+export const freshGun = (
+  kind: WeaponKind,
+  calling: Calling = 'You',
+): CarriedGun => {
+  const magazine = magazineWith(calling, kind, 0)
+  return {
+    kind,
+    rounds: startingRounds(kind),
+    loaded: hasEndlessRounds(kind)
+      ? magazine
+      : Math.min(startingRounds(kind), magazine),
+    tier: 0,
+  }
+}
 
 export const heldGun = (arsenal: Arsenal): CarriedGun =>
   Arsenal.match(arsenal, {
@@ -635,7 +658,7 @@ export const canReload = (player: Player): boolean => {
   return (
     isReloadable(gun.kind) &&
     !isReloading(player) &&
-    gun.loaded < heldStats(player).magazine &&
+    gun.loaded < carriedMagazine(player.calling, gun) &&
     looseRounds(gun) > 0
   )
 }
@@ -657,18 +680,18 @@ export const putGunInHand = (player: Player): Player =>
     triggerRestMs: () => 0,
   })
 
-const fillGun = (gun: CarriedGun): CarriedGun =>
+const fillGun = (gun: CarriedGun, calling: Calling): CarriedGun =>
   modifyFields(gun, {
     loaded: () =>
       hasEndlessRounds(gun.kind)
-        ? magazineOf(gun.kind, gun.tier)
-        : Math.min(gun.rounds, magazineOf(gun.kind, gun.tier)),
+        ? carriedMagazine(calling, gun)
+        : Math.min(gun.rounds, carriedMagazine(calling, gun)),
   })
 
 export const finishReload = (player: Player): Player =>
   modifyFields(player, {
     reload: () => Reload.Ready(),
-    arsenal: arsenal => mapHeld(arsenal, fillGun),
+    arsenal: arsenal => mapHeld(arsenal, gun => fillGun(gun, player.calling)),
   })
 
 export const spendRound = (player: Player): Player =>

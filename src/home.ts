@@ -34,13 +34,23 @@ import type { Difficulty } from './worldSchema'
 // (homeButtonsOf).
 export const HOME_BUTTONS: Array.NonEmptyReadonlyArray<HomeButton> =
   IS_COOP_RELEASED
-    ? ['Play', 'Mode', 'Difficulty', 'Coop', 'Manor', 'Support', 'Settings']
-    : ['Play', 'Mode', 'Difficulty', 'Manor', 'Support', 'Settings']
+    ? [
+        'Play',
+        'Mode',
+        'Difficulty',
+        'Calling',
+        'Coop',
+        'Manor',
+        'Support',
+        'Settings',
+      ]
+    : ['Play', 'Mode', 'Difficulty', 'Calling', 'Manor', 'Support', 'Settings']
 
 const HOME_BUTTON_IDS: Readonly<Record<HomeButton, string>> = {
   Play: 'home-play',
   Mode: 'home-mode',
   Difficulty: 'home-difficulty',
+  Calling: 'home-calling',
   Coop: 'home-coop',
   Manor: 'home-manor',
   Support: 'home-support',
@@ -59,13 +69,14 @@ export const homeButtonsOf = (model: Model): ReadonlyArray<HomeButton> =>
 type HomeKey = Readonly<{ code: string; cap: string; name: string }>
 
 // NOTE: one key per action. Enter, E, C, L, Z, I, and O were already the
-// home keys. X picks the difficulty, J joins up for co-op, V opens the
+// home keys. X picks the difficulty, Y the calling, J joins up for co-op, V opens the
 // MANOR hand, and B buys Rattles a coffee, letters no other screen uses, so
 // WASD, R, Q, T, G, H, K, M, and N keep their one meaning.
 export const HOME_KEYS: Readonly<Record<HomeButton, HomeKey>> = {
   Play: { code: 'Enter', cap: 'ENTER', name: 'Enter' },
   Mode: { code: 'KeyE', cap: 'E', name: 'E' },
   Difficulty: { code: 'KeyX', cap: 'X', name: 'X' },
+  Calling: { code: 'KeyY', cap: 'Y', name: 'Y' },
   Coop: { code: 'KeyJ', cap: 'J', name: 'J' },
   Manor: { code: 'KeyV', cap: 'V', name: 'V' },
   Support: { code: 'KeyB', cap: 'B', name: 'B' },
@@ -76,6 +87,9 @@ export const isModeKey = (code: string): boolean => code === HOME_KEYS.Mode.code
 
 export const isDifficultyKey = (code: string): boolean =>
   code === HOME_KEYS.Difficulty.code
+
+export const isCallingKey = (code: string): boolean =>
+  code === HOME_KEYS.Calling.code
 
 export const isCoopKey = (code: string): boolean => code === HOME_KEYS.Coop.code
 

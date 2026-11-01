@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import {
   type Appearance,
   Body,
+  type Calling,
   HairColor,
   HairStyle,
   Outfit,
@@ -105,6 +106,11 @@ const DENIM_COLOR = '#4a74c4'
 const SHOE_COLOR = '#141414'
 const STRAP_COLOR = '#9aa3ad'
 const FRAME_COLOR = '#e8443a'
+const HARD_HAT_COLOR = '#f2c230'
+const HARD_HAT_SHADE = '#b8861c'
+const VISOR_COLOR = '#2f9e57'
+const COIN_COLOR = '#ffd23f'
+const TOQUE_BAND_COLOR = '#c9c3ad'
 
 const channel = (color: string, index: number): number =>
   Number.parseInt(color.slice(1 + index * 2, 3 + index * 2), 16)
@@ -146,6 +152,11 @@ export const playerPalette = (appearance: Appearance): Palette => {
     G: STRAP_COLOR,
     W: STRIPE_WHITE,
     R: FRAME_COLOR,
+    Y: HARD_HAT_COLOR,
+    Z: HARD_HAT_SHADE,
+    V: VISOR_COLOR,
+    C: COIN_COLOR,
+    N: TOQUE_BAND_COLOR,
     ...Object.fromEntries(
       Array.map(RAINBOW_STRIPES, (color, index) => [
         RAINBOW_SYMBOLS.charAt(index),
@@ -330,6 +341,21 @@ const BEARD: Rows = ['', '', '', '', '.H....H.', '.HHHHHH.', '..HHHH..']
 // gun points.
 const GLASSES: Rows = ['', '', '', '', '.RERRER.']
 
+// CALLING PROPS
+
+// NOTE: the small prop each calling wears over the player's own look, so
+// the Look tab still decides the face: the Handyman's hard hat, the Track
+// Star's sweatband, the Penny Pincher's green visor with a coin on it, and
+// the Line Cook's toque. YOU wears nothing. Rows start at the face's first
+// row and lay over the hair and glasses.
+const CALLING_PROPS: Readonly<Record<Calling, Rows>> = {
+  You: [],
+  Handyman: ['..YYYY..', '.ZYYYYZ.'],
+  TrackStar: ['', '', '.RRRRRR.'],
+  PennyPincher: ['', '..VCCV..', '.VVVVVV.'],
+  LineCook: ['.WWWWWW.', '.NNNNNN.'],
+}
+
 const overlayRow = (base: string, top: string): string =>
   pipe(
     String.split(base, ''),
@@ -385,7 +411,10 @@ type FramePixels = Array.NonEmptyReadonlyArray<Rows>
 
 type PlayerPixels = Readonly<{ walk: FramePixels; idle: FramePixels }>
 
-export const playerPixels = (appearance: Appearance): PlayerPixels => {
+export const playerPixels = (
+  appearance: Appearance,
+  calling: Calling = 'You',
+): PlayerPixels => {
   const shape = BODY_SHAPES[appearance.body]
   const outfit = OUTFIT_ART[appearance.outfit]
   const hair = HAIR_ART[appearance.hairStyle]
@@ -400,7 +429,8 @@ export const playerPixels = (appearance: Appearance): PlayerPixels => {
     )
     const bearded = appearance.beard ? overlayRows(printed, BEARD) : printed
     const haired = overlayRows(bearded, hair)
-    return appearance.glasses ? overlayRows(haired, GLASSES) : haired
+    const glassed = appearance.glasses ? overlayRows(haired, GLASSES) : haired
+    return overlayRows(glassed, CALLING_PROPS[calling])
   }
   const legs = (rows: Rows) => shape.legs(rows)
   return {
@@ -447,8 +477,11 @@ type PlayerSprites = Readonly<{
   idle: SpriteFrames
 }>
 
-const buildPlayerSprites = (appearance: Appearance): PlayerSprites => {
-  const pixels = playerPixels(appearance)
+const buildPlayerSprites = (
+  appearance: Appearance,
+  calling: Calling,
+): PlayerSprites => {
+  const pixels = playerPixels(appearance, calling)
   const palette = playerPalette(appearance)
   return {
     walk: spriteFrames(pixels.walk, palette, PLAYER_WIDTH / 2),
@@ -456,8 +489,12 @@ const buildPlayerSprites = (appearance: Appearance): PlayerSprites => {
   }
 }
 
-export const appearanceKey = (appearance: Appearance): string =>
+export const appearanceKey = (
+  appearance: Appearance,
+  calling: Calling = 'You',
+): string =>
   [
+    calling,
     appearance.body,
     appearance.hairStyle,
     appearance.hairColor,
@@ -477,14 +514,17 @@ const spriteCache = new Map<string, PlayerSprites>()
 // means composing the pixel maps and turning them into shapes, so each look
 // is built once and kept here, and the oldest look is dropped once more than
 // a handful have been tried, such as by pressing Randomize over and over.
-export const playerSprites = (appearance: Appearance): PlayerSprites => {
-  const key = appearanceKey(appearance)
+export const playerSprites = (
+  appearance: Appearance,
+  calling: Calling = 'You',
+): PlayerSprites => {
+  const key = appearanceKey(appearance, calling)
   const maybeCached = Option.fromNullishOr(spriteCache.get(key))
   if (Option.isSome(maybeCached)) {
     return maybeCached.value
   }
 
-  const built = buildPlayerSprites(appearance)
+  const built = buildPlayerSprites(appearance, calling)
   spriteCache.set(key, built)
   if (spriteCache.size > SPRITE_CACHE_SIZE) {
     Option.map(Option.fromNullishOr(spriteCache.keys().next().value), oldest =>

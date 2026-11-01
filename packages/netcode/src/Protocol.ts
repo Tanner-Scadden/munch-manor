@@ -59,8 +59,12 @@ import {
 // marks a seat's purchase Tapped, a new case the next tick buys.
 // Version 15: the crew board on the end card. Each seat carries its own
 // revives, downs, and shots fired and landed beside its kills.
-export const PROTOCOL_VERSION = 15
-export const MIN_PROTOCOL_VERSION = 15
+// Version 16: callings. Each player carries the calling they brought to the
+// run (`calling`, YOU or one of the four that rank unlocks), and every quirk
+// reads it. The room seats every player as YOU until the lobby carries a
+// calling.
+export const PROTOCOL_VERSION = 16
+export const MIN_PROTOCOL_VERSION = 16
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

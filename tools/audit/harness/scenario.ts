@@ -5,6 +5,7 @@
 import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { playerOfCalling } from '@game/callingPlayer'
 import { isEndScreen, withBests } from '@game/home'
 import {
   DifficultyCard,
@@ -210,6 +211,18 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       })),
       { bests: bests => ({ ...bests, totalKills: 341 }) },
     )
+  }
+  const { calling } = config
+  if (calling !== undefined) {
+    model = modifyFields(model, {
+      calling: () => calling,
+      player: player => ({
+        ...playerOfCalling(calling),
+        x: player.x,
+        y: player.y,
+        facing: player.facing,
+      }),
+    })
   }
   const { rank: rankPoints, rankgain: rankGain } = config
   if (rankPoints !== undefined) {

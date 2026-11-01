@@ -221,7 +221,7 @@ const feelIntensity = (before: World, after: World, deltaMs: number): World =>
 // clings to drags their feet. In single player any clinging Ankle Biter is
 // on the one player's ankles.
 const speedOf = (model: World): number =>
-  playerSpeed(model.boosts) *
+  playerSpeed(model.boosts, model.player) *
   puddleSlowAt(model.boss, model.player) *
   (isCoop(model)
     ? ankleSlowNear(model.zombies, model.player) *

@@ -101,7 +101,7 @@ describe('Home menu', () => {
       measureSurface,
       inside(
         playCluster,
-        expectAll(all.role('button')).toHaveCount(4),
+        expectAll(all.role('button')).toHaveCount(5),
         expect(playButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
         expect(
           role('button', { name: 'Co-op: finish the tutorial to unlock' }),
@@ -121,7 +121,7 @@ describe('Home menu', () => {
           'B',
         ),
       ),
-      expectAll(all.selector('.home-stage .home-key')).toHaveCount(7),
+      expectAll(all.selector('.home-stage .home-key')).toHaveCount(8),
       expect(
         role('button', { name: 'Your character: change how you look' }),
       ).toHaveAttr('aria-haspopup', 'dialog'),
@@ -285,7 +285,7 @@ describe('Home menu', () => {
       ROOT,
       given(modifyFields(home, { lastDevice: () => 'Touch' })),
       measureSurface,
-      inside(playCluster, expectAll(all.role('button')).toHaveCount(4)),
+      inside(playCluster, expectAll(all.role('button')).toHaveCount(5)),
       expect(manorButton).toExist(),
       expect(settingsButton).toExist(),
       expect(selector('.home-key')).toBeAbsent(),
@@ -446,6 +446,7 @@ describe('Home menu', () => {
         [
           'Mode',
           'Difficulty',
+          'Calling',
           'Coop',
           'Manor',
           'Support',

@@ -50,6 +50,7 @@ import {
   type Print,
   type ProfileFx,
 } from './model'
+import type { Calling } from './playerData'
 import { GUN_HOLD_PX } from './playerView'
 import { type Facing, frameAt, group } from './sprite'
 import { gunSprite } from './sprites/guns'
@@ -237,6 +238,7 @@ const previewFacing = (screenMs: number): Facing =>
 
 const previewShapes = (
   appearance: Appearance,
+  calling: Calling,
   screenMs: number,
 ): ReadonlyArray<Canvas.Shape> => {
   const facing = previewFacing(screenMs)
@@ -253,7 +255,7 @@ const previewShapes = (
     group({
       translate: { x: centerX, y: PREVIEW_FOOT_Y },
       shapes: frameAt(
-        playerSprites(appearance).walk,
+        playerSprites(appearance, calling).walk,
         Math.floor(screenMs / PLAYER_WALK_FRAME_MS),
       ).Normal[facing],
     }),
@@ -269,6 +271,7 @@ const previewShapes = (
 
 const previewView = (
   appearance: Appearance,
+  calling: Calling,
   screenMs: number,
   h: CharacterViewBuilder,
 ): Html =>
@@ -283,7 +286,7 @@ const previewView = (
         {
           width: PREVIEW_SIZE,
           height: PREVIEW_SIZE,
-          shapes: previewShapes(appearance, screenMs),
+          shapes: previewShapes(appearance, calling, screenMs),
           className: 'look-preview-canvas',
         },
         h,
@@ -304,7 +307,7 @@ const stageChildren = (
   h.span([h.Class('look-floor'), h.AriaHidden(true)]),
   h.div(
     [h.Class('look-bounce')],
-    [previewView(inputs.appearance, inputs.screenMs, h)],
+    [previewView(inputs.appearance, inputs.calling, inputs.screenMs, h)],
   ),
   h.span([h.Class('look-poof'), h.AriaHidden(true)]),
   h.button(
@@ -606,6 +609,7 @@ const togglesView = (
 
 type ViewInputs = Readonly<{
   appearance: Appearance
+  calling: Calling
   screenMs: number
   fx: ProfileFx
   fxCount: number

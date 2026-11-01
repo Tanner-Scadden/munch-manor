@@ -3,6 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { SharePath } from './analytics'
 import type { SoundEffect } from './audio'
+import { callingsOpenedBy } from './calling'
 import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards'
 import { isEndScreen, withBests } from './home'
 import {
@@ -13,8 +14,8 @@ import {
   type RunRecord,
 } from './model'
 import { isCoop, leadSeatOf } from './party'
-import type { Difficulty } from './playerData'
-import { isRankUp } from './rank'
+import type { Calling, Difficulty } from './playerData'
+import { isRankUp, rankOf } from './rank'
 import type { SharedRun } from './share'
 import { accuracyPercent, totalKills } from './stats'
 import type { TallyIcon } from './tallyIcons'
@@ -235,10 +236,22 @@ export const isRankedUp = (model: Model): boolean =>
     isRankUp(pointsBefore, gained),
   )
 
+// NOTE: a rank up that opens a calling flips its card after the badge pops:
+// the newest one it opened, if it opened several.
+export const CALLING_FLIP_MS = 420
+
+export const maybeOpenedCalling = (model: Model): Option.Option<Calling> =>
+  Option.flatMap(model.maybeRankGain, ({ pointsBefore, gained }) =>
+    Array.last(
+      callingsOpenedBy(rankOf(pointsBefore), rankOf(pointsBefore + gained)),
+    ),
+  )
+
 export const rankDoneMs = (model: Model, kind: EndKind): number =>
   rankStripAtMs(model, kind) +
   RANK_FILL_MS +
-  (isRankedUp(model) ? RANK_POP_MS : 0)
+  (isRankedUp(model) ? RANK_POP_MS : 0) +
+  (Option.isSome(maybeOpenedCalling(model)) ? CALLING_FLIP_MS : 0)
 
 const beatDoneMs = (model: Model, kind: EndKind): number =>
   hasRankStrip(model)

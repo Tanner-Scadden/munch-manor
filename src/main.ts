@@ -61,6 +61,7 @@ import {
   openPanel,
   openSettingsFromGear,
   openWhatsNew,
+  pickCalling,
   pickFromCard,
   pressInstall,
   reloadOntoNewerBuild,
@@ -666,6 +667,9 @@ export const update = ApplicationComposition.makeUpdate({
 
   ClickedShakeButton: model => settle(model, { model: toggleShake(model) }),
 
+  ClickedCallingCardButton: (model, { calling }) =>
+    Update.combineSteps(model, [pickCalling(calling), ...afterMessage(model)]),
+
   ClickedDifficultyCardButton: (model, { difficulty }) =>
     Update.combineSteps(model, [
       pickFromCard(difficulty),
@@ -891,6 +895,14 @@ export const update = ApplicationComposition.makeUpdate({
       unlockAudio,
       tapSound,
       openPanel('Difficulty'),
+      ...afterMessage(model),
+    ]),
+
+  ClickedCallingBadge: model =>
+    Update.combineSteps(model, [
+      unlockAudio,
+      tapSound,
+      openPanel('Calling'),
       ...afterMessage(model),
     ]),
 

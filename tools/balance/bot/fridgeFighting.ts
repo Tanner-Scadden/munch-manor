@@ -30,7 +30,7 @@ import {
   isPannable,
   pressFire,
 } from './fighting'
-import { type FridgeSpare, panOf } from './guns'
+import { type FridgeSpare, gunsOfBot, panOf } from './guns'
 import { type BotState, type FridgePlan, GUN_PLAN, type Zombie } from './state'
 
 // FIGHTING WITH A FRIDGE WEAPON
@@ -78,6 +78,19 @@ const cookerPlan = (model: Model, spare: FridgeSpare): FridgePlan => {
   const { player } = model
   const seen = visibleZombies(model)
   const nearest = nearestOf(player, seen)
+  // NOTE: a Line Cook's first gun is the Cooker alone, so with no other gun
+  // to shoot it lobs at the nearest zombie, as a player with only a pot
+  // would, until the first purchase gives it a firearm.
+  if (gunsOfBot(model).length === 1) {
+    return nearest === undefined
+      ? gunPlan()
+      : {
+          useSpare: true,
+          target: nearest,
+          lobMs: lobHoldMs(distance(player, nearest), spare.tier),
+          panTarget: undefined,
+        }
+  }
   if (nearest !== undefined && distance(player, nearest) < LOB_SAFE_PX) {
     return gunPlan()
   }

@@ -118,6 +118,7 @@ export const FIELD_CLASSES = {
   panelDialog: 'Client',
   bests: 'Client',
   rank: 'Client',
+  calling: 'Client',
   rankPaid: 'Client',
   maybeRankGain: 'Client',
   runTally: 'Client',

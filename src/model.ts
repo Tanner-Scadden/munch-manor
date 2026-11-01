@@ -53,6 +53,7 @@ import { PartRadioGroupBlock, SectionRadioGroupBlock } from './lookRadios'
 import { flowFieldToward } from './pathing'
 import {
   Appearance,
+  Calling,
   CursorSetting,
   Difficulty,
   HomeScreenTip,
@@ -277,6 +278,9 @@ export const Model = Schema.Struct({
   rankPaid: RankPaid,
   maybeRankGain: Schema.Option(RankGain),
   rank: SavedRank,
+  // NOTE: the calling picked for the next run (src/callingPick.ts). A run
+  // starts with it only if its rank is reached.
+  calling: Calling,
   // NOTE: the room's difficulty while an online co-op run is drawn, kept
   // with the run so its summary has it after the room is gone (a LEAVE).
   maybeRoomDifficulty: Schema.Option(Difficulty),
@@ -467,6 +471,7 @@ export const initialModel: Model = {
   rankPaid: noRankPaid,
   maybeRankGain: Option.none(),
   rank: noRank,
+  calling: 'You',
   maybeRoomDifficulty: Option.none(),
   maybeCrewRunKey: Option.none(),
   loading: Loading.Loaded(),

@@ -3,6 +3,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import {
   Appearance,
+  Calling,
   Difficulty,
   HomeScreenTip,
   PlayerName,
@@ -46,6 +47,7 @@ export const PlayerChange = defineTaggedUnion({
     bests: SavedBestsByDifficulty,
   },
   ReachedRecords: { records: SavedRunRecords },
+  ChangedCalling: { calling: Calling },
   EarnedRank: { points: Schema.Number, bones: Schema.Number },
   GrantedVeteranRank: { points: Schema.Number, bones: Schema.Number },
 })
@@ -156,6 +158,9 @@ export const changesBetween = (
       changeWhen(!sameRecords(before.records, after.records), () =>
         PlayerChange.ReachedRecords({ records: after.records }),
       ),
+      changeWhen(before.calling !== after.calling, () =>
+        PlayerChange.ChangedCalling({ calling: after.calling }),
+      ),
       changeWhen(
         after.rank.earnedPoints > before.rank.earnedPoints ||
           after.rank.earnedBones > before.rank.earnedBones,
@@ -218,6 +223,8 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
       PlayerChange.RecordedRun({ ...run, bests: save.bests.byDifficulty }),
     ReachedRecords: () =>
       PlayerChange.ReachedRecords({ records: save.records }),
+    ChangedCalling: () =>
+      PlayerChange.ChangedCalling({ calling: save.calling }),
     EarnedRank: () => change,
     GrantedVeteranRank: () =>
       PlayerChange.GrantedVeteranRank({

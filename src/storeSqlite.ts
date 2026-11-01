@@ -44,6 +44,7 @@ import { API_ORIGIN } from './apiOrigin'
 import { type RoomAccess, makeRoomAccess } from './coop/roomReplica'
 import {
   ChangedAppearance,
+  ChangedCalling,
   ChangedDifficulty,
   ChangedHome,
   ChangedName,
@@ -195,6 +196,7 @@ const saveOfRow = (
   seenPowerUps: row.seen_power_ups,
   rotation: row.rotation,
   name: row.name,
+  calling: row.calling,
   records: row.run_records,
   rank: {
     earnedPoints: row.rank_points,
@@ -490,6 +492,7 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     RecordedRun: ({ runs, totalKills, kills, bests }) =>
       replica.run(RecordedRun, { runs, totalKills, kills, bests }),
     ReachedRecords: ({ records }) => replica.run(ReachedRecords, { records }),
+    ChangedCalling: ({ calling }) => replica.run(ChangedCalling, { calling }),
     EarnedRank: ({ points, bones }) =>
       replica.run(EarnedRank, { points, bones }),
     GrantedVeteranRank: ({ points, bones }) =>

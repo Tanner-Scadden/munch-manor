@@ -19,6 +19,10 @@ The default bot plays like a person (`bot/hand.ts`, decided 2026-10-31: real pla
 
 `AIM=sharp` plays the old bot, which re-aims at once with only a little shake and knows where every zombie is: a skilled player's stand-in. Easy and Normal are tuned on the human bot, Hard and Nightmare on `AIM=sharp`, and the nightly sets `AIM` for every job.
 
+## Callings
+
+`CALLING=Handyman` (or `TrackStar`, `PennyPincher`, `LineCook`; `You` is the default) plays that calling, with rank enough to start it. For example `CALLING=TrackStar bun run balance 100`. The Line Cook starts with the Cooker alone, so the bot lobs it at the nearest zombie and makes its first buy a firearm. A calling should land within about 5 points of YOU's win share on Normal; see "Rank and Bones" in `GAME_DESIGN.md` for the last measure.
+
 ## Portrait view
 
 `VIEW=portrait` (for example `VIEW=portrait bun run balance -- --wave all --runs 100`) makes the bot see only the zombies inside the portrait camera's window on a 390x844 phone, 120 by 160 of the room at 3/2, which follows it and leans toward its aim, the way a phone held upright shows the room. It does not shoot what it cannot see, and flees only what it sees or what is within earshot (`NOTICE_PX`) past the window's edge. It gets the touch aim assist (`src/aimAssist.ts`) every tick its trigger is held, the way a phone does. `VIEW=touch` sees only the landscape phone's window, 240 by 135 of the room at 4/3, as a phone on its side plays, with the same aim assist. `NO_ASSIST=1` plays either without it. The nightly plays two portrait campaign passes (see below). See "Portrait play" in `GAME_DESIGN.md` for the comparison.

@@ -11,7 +11,7 @@ import { isCounterOpen, maybeAmmoItemOf } from '../../../src/ammoCounter'
 import { ammoLevelOf } from '../../../src/ammoWarning'
 import { distanceToBox, levelOf } from '../../../src/arena'
 import { ShopDialogBinding } from '../../../src/bindings'
-import { PLAYER_MAX_HP } from '../../../src/constants'
+import { maxHpOf } from '../../../src/calling'
 import { doorCounts } from '../../../src/endlessWaves'
 import {
   EXIT_RULES,
@@ -150,9 +150,13 @@ export const wantedPurchase = (
     return 'Pistol'
   }
   // A spent fridge weapon is as good as no spare at all.
+  // NOTE: a Line Cook starts with the Cooker and no pistol, so its first
+  // buy is a firearm, as a player would make it, with the pot kept as a spare.
+  const isCook =
+    state.options.calling === 'LineCook' && pistolOf(model) === undefined
   if (
     firearm === undefined &&
-    (fridge === undefined || (isSpent(fridge) && isAvailable('Smg')))
+    (fridge === undefined || isCook || (isSpent(fridge) && isAvailable('Smg')))
   ) {
     if (!IS_SHOTGUN_RUN && isAvailable('Smg')) {
       return 'Smg'
@@ -422,7 +426,7 @@ export const isOfferedToBot = (model: Model): boolean =>
 
 const fridgeReserve = (state: BotState, model: Model): number => {
   const heart =
-    model.player.hp <= 4 && model.player.hp < PLAYER_MAX_HP
+    model.player.hp <= 4 && model.player.hp < maxHpOf(model.player)
       ? priceFor(model, 'Heart')
       : 0
   const want = wantedPurchase(state, model)

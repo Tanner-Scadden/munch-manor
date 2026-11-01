@@ -11,17 +11,18 @@ import {
   levelOf,
   roomAt,
 } from './arena'
+import { maxHpOf, speedScaleOf } from './calling'
 import {
   type BlastSpec,
   ZOMBIE_BLAST_TARGET,
   blastAll,
   bountyOf,
 } from './combat'
-import { PLAYER_MAX_HP, PLAYER_RADIUS, PLAYER_SPEED } from './constants'
+import { PLAYER_RADIUS, PLAYER_SPEED } from './constants'
 import { PICKUP_NAMES } from './names'
-import { forEachSeat, isCoop, isStanding, leadSeatOf } from './party'
+import { earnKill, forEachSeat, isCoop, isStanding, leadSeatOf } from './party'
 import { nextRandom } from './prng'
-import { earn, isAtCounter } from './shop'
+import { isAtCounter } from './shop'
 import type { SoundEffect } from './soundEffect'
 import { totalKills } from './stats'
 import { trapBlockers } from './traps'
@@ -285,8 +286,10 @@ export const firingStats = (
   tier: number,
 ): WeaponStats => boostWeapon(statsAt(kind, tier), boosts)
 
-export const playerSpeed = (boosts: Boosts): number =>
-  PLAYER_SPEED * productOf(boosts, ({ speedScale }) => speedScale)
+export const playerSpeed = (boosts: Boosts, player: Player): number =>
+  PLAYER_SPEED *
+  speedScaleOf(player) *
+  productOf(boosts, ({ speedScale }) => speedScale)
 
 export const isAmmoFree = (boosts: Boosts): boolean =>
   Array.some(activeBoosts(boosts), ({ ammo }) => ammo === 'Free')
@@ -405,9 +408,8 @@ const burpAt = (model: World, at: Vector): World => {
     knockback: BURP_KNOCKBACK,
   }
   const outcome = blastAll(blast, model.zombies, ZOMBIE_BLAST_TARGET)
-  return modifyFields(model, {
+  return modifyFields(earnKill(model, bountyOf(outcome.events)), {
     zombies: () => outcome.targets,
-    wallet: wallet => earn(wallet, bountyOf(outcome.events)),
     frameEvents: frameEvents => [
       ...frameEvents,
       GameEvent.Burped({ x: at.x, y: at.y, radius: BURP_RADIUS }),
@@ -432,7 +434,7 @@ const applyEffect = (model: World, effect: PickupEffect): World =>
       modifyFields(model, {
         player: player =>
           modifyFields(player, {
-            hp: hp => Math.min(PLAYER_MAX_HP, hp + hearts),
+            hp: hp => Math.min(maxHpOf(player), hp + hearts),
           }),
       }),
   })
@@ -523,7 +525,7 @@ const eligibleKinds = (player: Player): ReadonlyArray<PickupKind> =>
     PICKUP_KIND_ORDER,
     kind =>
       !PickupEffect.isAnyOf(['Heal'])(PICKUPS[kind].effect) ||
-      player.hp < PLAYER_MAX_HP,
+      player.hp < maxHpOf(player),
   )
 
 const pickKindAt = (

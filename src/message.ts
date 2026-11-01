@@ -22,6 +22,7 @@ import {
   ZombieKind,
 } from './model'
 import { MusicMood } from './music'
+import { Calling } from './playerData'
 import {
   LinkProblem,
   PlayerChange,
@@ -151,6 +152,7 @@ export const Message = defineMessageUnion({
   ClickedStayButton: {},
   ClickedShakeButton: {},
   ClickedDifficultyCardButton: { difficulty: Difficulty },
+  ClickedCallingCardButton: { calling: Calling },
   FocusedHomeButton: { button: HomeButton },
   BlurredHomeButton: {},
   CompletedFocusHomeButton: {},
@@ -208,6 +210,7 @@ export const Message = defineMessageUnion({
   ClickedMunchopediaListButton: {},
   ClickedNewEntryButton: { kind: ZombieKind },
   ClickedDifficultyBadge: {},
+  ClickedCallingBadge: {},
   ClickedManorButton: {},
   SteppedHandFocus: { card: HandCard },
   CompletedFocusHandCard: {},

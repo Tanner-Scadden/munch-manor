@@ -2,6 +2,7 @@ import { Array, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
+import type { Calling } from './playerData'
 import type {
   FixedShopItemId,
   FridgePrize,
@@ -149,4 +150,25 @@ export const CREW_AWARD_NAMES: Readonly<Record<CrewAward, string>> = {
   Sharpshooter: 'Sharpshooter',
   BigSpender: 'Big Spender',
   MostMunched: 'Most Munched',
+}
+
+// CALLINGS
+
+// NOTE: what a player brings to a run (src/calling.ts). The cards show the
+// quirks as pictures; the notes are only read aloud.
+export const CALLING_NAMES: Readonly<Record<Calling, string>> = {
+  You: 'YOU',
+  Handyman: 'Handyman',
+  TrackStar: 'Track Star',
+  PennyPincher: 'Penny Pincher',
+  LineCook: 'Line Cook',
+}
+
+export const CALLING_NOTES: Readonly<Record<Calling, string>> = {
+  You: 'No quirk',
+  Handyman:
+    'Plank Piles cost half, repairs are free, a longer breather after a bite, one fewer heart',
+  TrackStar: 'Runs 10 percent faster, magazines 10 percent smaller',
+  PennyPincher: 'Rattles charges 15 percent less, kills pay less',
+  LineCook: 'Starts with the Pressure Cooker, no Pop Pistol',
 }

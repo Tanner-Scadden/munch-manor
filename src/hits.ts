@@ -27,6 +27,7 @@ import {
 import {
   creditKills,
   creditShots,
+  earnKill,
   isCoop,
   leadSeatOf,
   maybePlayerAt,
@@ -35,7 +36,6 @@ import {
   payTo,
 } from './party'
 import { resolveFriendlyFire } from './revive'
-import { earn } from './shop'
 import { countHits } from './stats'
 import { TURRET_WEAPON } from './traps'
 import type { World } from './world'
@@ -302,7 +302,7 @@ export const resolveBulletHits = (
   return resolveFriendlyFire(
     isCoop(model)
       ? payKillers(creditLanded(struck, hits), hits, killedZombies)
-      : modifyFields(struck, { wallet: wallet => earn(wallet, bounty) }),
+      : earnKill(struck, bounty),
     seconds,
     freshShots.from,
     firstFreshId,

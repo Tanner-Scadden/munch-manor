@@ -1,0 +1,178 @@
+/* CALLINGS: the pill by the difficulty on the home menu, and its picker. */
+
+.home-pick-row {
+  display: flex;
+  gap: var(--menu-gap-sm);
+}
+
+.home-pick-row .home-difficulty {
+  flex: 1;
+}
+
+.home-calling {
+  flex: 0 0 auto;
+  width: var(--pick-h);
+  border-color: var(--menu-pink);
+}
+
+.home-calling[data-calling='You'] {
+  border-color: var(--menu-line-strong);
+}
+
+.home-calling-icon {
+  width: max(22px, 8 * var(--a));
+  height: max(22px, 8 * var(--a));
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.game-root[data-layout='Portrait'] .home-pick-row {
+  display: contents;
+}
+
+.game-root[data-layout='Portrait'] .home-calling {
+  flex: 0 0 52px;
+  width: 52px;
+  min-height: 52px;
+}
+
+.panel-dialog[data-panel='Calling'] .panel {
+  width: min(560px, calc(100vw - 16px));
+}
+
+.calling-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--menu-gap-sm);
+}
+
+.calling-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 132px;
+  padding: 8px 4px;
+  border: 2px solid var(--menu-line);
+  border-radius: var(--menu-radius);
+  background: var(--menu-sunken);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
+  color: var(--menu-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.calling-card[data-chosen='Chosen'] {
+  border-color: var(--menu-gold);
+  background: var(--menu-surface-hi);
+  box-shadow:
+    0 0 0 2px var(--menu-gold),
+    0 0 14px rgba(255, 210, 63, 0.4),
+    0 4px 0 rgba(0, 0, 0, 0.45);
+}
+
+.calling-card:focus-visible {
+  outline: 3px solid var(--menu-gold);
+  outline-offset: 2px;
+}
+
+.calling-card[data-lock='Locked'] {
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+.calling-figure {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  pointer-events: none;
+}
+
+.calling-figure-img {
+  width: 100%;
+  height: 64px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.calling-card[data-lock='Locked'] .calling-figure-img {
+  filter: brightness(0);
+  opacity: 0.7;
+}
+
+.calling-need {
+  flex-wrap: nowrap !important;
+  min-height: 24px !important;
+}
+
+.calling-quirks,
+.calling-need {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 6px;
+  min-height: 40px;
+  pointer-events: none;
+}
+
+.calling-quirk {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.calling-quirk-icon {
+  width: 20px;
+  height: 20px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.calling-quirk-sign {
+  color: var(--menu-gold);
+  font: bold 12px var(--menu-font);
+}
+
+.calling-lock-icon {
+  width: 16px;
+  height: 16px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+@media (max-height: 500px) {
+  .calling-card {
+    min-height: 0;
+    padding: 4px;
+  }
+
+  .calling-figure-img {
+    height: 40px;
+  }
+
+  .calling-quirks {
+    min-height: 24px;
+  }
+}
+
+.game-root[data-layout='Portrait'] .calling-cards {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.game-root[data-layout='Portrait'] .calling-card {
+  min-height: 140px;
+}
+
+/* NOTE: the rank chip is placed under the home player by default; on a card
+   it sits in the flow beside the padlock. */
+.calling-need .rank-chip {
+  position: static;
+  translate: none;
+}

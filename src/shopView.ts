@@ -6,8 +6,9 @@ import { Button } from '@foldkit/ui'
 
 import { levelOf } from './arena'
 import { ShopDialogBinding, ShopTabsBinding } from './bindings'
+import { maxHpOf } from './calling'
 import type { ApplicationViewBuilder } from './composition'
-import { PLAYER_MAX_HP, TILE_SIZE } from './constants'
+import { TILE_SIZE } from './constants'
 import { closeButtonView, dialogShell } from './dialogs'
 import { COIN_SYMBOL } from './font'
 import { ROUNDS_ICON } from './icons'
@@ -232,7 +233,7 @@ const barsView = (
 const heartsView = (model: Model, h: ApplicationViewBuilder): Html =>
   h.span(
     [h.Class('shop-hearts'), h.AriaHidden(true)],
-    Array.makeBy(PLAYER_MAX_HP, index =>
+    Array.makeBy(maxHpOf(model.player), index =>
       artView(
         index < model.player.hp ? HEART_FULL : HEART_EMPTY,
         index === model.player.hp ? 'shop-heart is-next' : 'shop-heart',

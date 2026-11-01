@@ -35,6 +35,19 @@ export type ShareStatsSetting = typeof ShareStatsSetting.Type
 export const RotationSetting = Schema.Literals(['Landscape', 'Auto'])
 export type RotationSetting = typeof RotationSetting.Type
 
+// NOTE: a calling (GAME_DESIGN.md, "Rank and Bones"): what a player brings
+// to a run. YOU is the default and has no quirk; the others unlock by rank
+// (src/calling.ts). It lives here, with the save's other Schemas, because
+// the save keeps the one picked and the World keeps each player's.
+export const Calling = Schema.Literals([
+  'You',
+  'Handyman',
+  'TrackStar',
+  'PennyPincher',
+  'LineCook',
+])
+export type Calling = typeof Calling.Type
+
 export const Difficulty = Schema.Literals([
   'Easy',
   'Normal',
@@ -510,7 +523,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 13
+export const SAVE_VERSION = 14
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -660,7 +673,8 @@ export type PlayerName = typeof PlayerName.Type
 // NOTE: version 8 added the rotation, kept apart from the other settings so
 // it syncs as its own last-write-wins change. Version 9 added the display
 // name, synced the same way. Version 10 is the many-part look, and version
-// 11 the simpler look the owner chose (LOOK above).
+// 11 the simpler look the owner chose (LOOK above). Version 14 added the
+// calling picked for the next run, synced the same way.
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -675,5 +689,6 @@ export const PlayerSave = Schema.Struct({
   name: PlayerName,
   records: SavedRunRecords,
   rank: SavedRank,
+  calling: Calling,
 })
 export type PlayerSave = typeof PlayerSave.Type

@@ -4,9 +4,15 @@ import { modifyFields } from 'foldkit/struct'
 
 import { PARLOUR, SHOP_STALL_SYMBOL, tilesWithSymbol } from './arena'
 import {
+  isPistolBarred,
+  isRepairFree,
+  maxHpOf,
+  plankPriceFor,
+  shopPriceFor,
+} from './calling'
+import {
   MONEY_TICK_PER_SECOND,
   MS_PER_SECOND,
-  PLAYER_MAX_HP,
   SHOP_FIRST_WAVE,
   SHOP_LEAVE_PX,
   SHOP_NEAR_PX,
@@ -365,7 +371,7 @@ export const SHOP_CATEGORIES: Readonly<Record<ShopCategory, ShopCategoryInfo>> =
     },
     Health: {
       label: 'Health',
-      blurb: () => `One heart at a time, up to ${PLAYER_MAX_HP}.`,
+      blurb: () => 'One heart at a time.',
     },
     Traps: {
       label: 'Traps',
@@ -606,25 +612,41 @@ export const isFirstPlankFree = (model: World, kind: TrapKind): boolean =>
   model.phase.wave === SHOP_FIRST_WAVE &&
   ownedCount(model, 'Barricade') === 0
 
-export const priceFor = (model: World, id: ShopItemId): number =>
-  ShopGood.match(shopItem(id).good, {
-    Gun: () => shopItem(id).price,
-    Ammo: () => shopItem(id).price,
+// NOTE: what Rattles charges the acting player: the list price as the
+// calling changes it (the Handyman's Plank Piles, the Penny Pincher's
+// discount). The first plank of the guided break stays free, and a price
+// of nothing stays nothing.
+export const priceFor = (model: World, id: ShopItemId): number => {
+  const { calling } = model.player
+  return ShopGood.match(shopItem(id).good, {
+    Gun: () => shopPriceFor(calling, shopItem(id).price),
+    Ammo: () => shopPriceFor(calling, shopItem(id).price),
     Upgrade: ({ weapon }) =>
       Option.match(nextTierFor(model, weapon), {
         onNone: () => 0,
-        onSome: ({ price }) => price,
+        onSome: ({ price }) => shopPriceFor(calling, price),
       }),
-    Heart: () => shopItem(id).price,
+    Heart: () => shopPriceFor(calling, shopItem(id).price),
     Trap: ({ kind }) =>
-      isFirstPlankFree(model, kind) ? 0 : shopItem(id).price,
+      isFirstPlankFree(model, kind)
+        ? 0
+        : shopPriceFor(
+            calling,
+            kind === 'Barricade'
+              ? plankPriceFor(calling, shopItem(id).price)
+              : shopItem(id).price,
+          ),
     Repair: () =>
       Option.match(maybeRepairTrap(model, id), {
         onNone: () => 0,
-        onSome: trap => repairPrice([trap]),
+        onSome: trap =>
+          isRepairFree(calling)
+            ? 0
+            : shopPriceFor(calling, repairPrice([trap])),
       }),
-    Sight: () => shopItem(id).price,
+    Sight: () => shopPriceFor(calling, shopItem(id).price),
   })
+}
 
 const isMaxedUpgrade = (model: World, id: ShopItemId): boolean =>
   ShopGood.match(shopItem(id).good, {
@@ -738,10 +760,15 @@ const block = (reason: string, tag: string): Option.Option<Block> =>
 const blockedBy = (model: World, good: ShopGood): Option.Option<Block> => {
   const { player } = model
   return ShopGood.match(good, {
-    Gun: ({ weapon }) =>
-      isCarrying(player, weapon)
-        ? block('You already carry it', 'OWNED')
-        : Option.none(),
+    Gun: ({ weapon }) => {
+      if (isCarrying(player, weapon)) {
+        return block('You already carry it', 'OWNED')
+      } else if (weapon === SIDEARM && isPistolBarred(player.calling)) {
+        return block('Rattles will not sell you that', 'NO')
+      } else {
+        return Option.none()
+      }
+    },
     Ammo: ({ weapon }) =>
       Option.match(maybeCarried(player, weapon), {
         onNone: () => block(`Needs the ${gunName(model, weapon)}`, 'NO GUN'),
@@ -760,7 +787,7 @@ const blockedBy = (model: World, good: ShopGood): Option.Option<Block> => {
       }
     },
     Heart: () =>
-      player.hp >= PLAYER_MAX_HP
+      player.hp >= maxHpOf(player)
         ? block('Your hearts are full', 'FULL')
         : Option.none(),
     Trap: ({ kind }) =>
@@ -964,7 +991,7 @@ export const ownedNote = (model: World, id: ShopItemId): string => {
       !isCarrying(player, weapon)
         ? `Buy the ${gunName(model, weapon)} first`
         : `Tier ${tierOf(player, weapon)} of ${maxTier(weapon)}`,
-    Heart: () => `Hearts ${player.hp} of ${PLAYER_MAX_HP}`,
+    Heart: () => `Hearts ${player.hp} of ${maxHpOf(player)}`,
     Trap: ({ kind }) =>
       `${model.trapStock[kind]} ready to place, ${placedCount(model.traps, kind)} placed, up to ${TRAPS[kind].limit}`,
     Repair: () =>
@@ -1010,7 +1037,8 @@ const grant = (model: World, good: ShopGood): World =>
     Gun: ({ weapon }) =>
       equip(model, player =>
         modifyFields(putGunInHand(player), {
-          arsenal: arsenal => takeGun(arsenal, freshGun(weapon)),
+          arsenal: arsenal =>
+            takeGun(arsenal, freshGun(weapon, player.calling)),
           wield: () => 'Gun',
         }),
       ),
@@ -1023,7 +1051,7 @@ const grant = (model: World, good: ShopGood): World =>
     Upgrade: ({ weapon }) => equip(model, player => upgrade(player, weapon)),
     Heart: () =>
       equip(model, player =>
-        modifyFields(player, { hp: hp => Math.min(PLAYER_MAX_HP, hp + 1) }),
+        modifyFields(player, { hp: hp => Math.min(maxHpOf(player), hp + 1) }),
       ),
     Trap: ({ kind }) => stockTrap(model, kind),
     Repair: ({ trapId }) =>

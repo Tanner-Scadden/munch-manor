@@ -2,6 +2,7 @@ import { Array, Option, Order, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
+import { woundGraceScaleOf } from './calling'
 import {
   LAST_HEART_INVULNERABLE_MS,
   MAX_BLASTS_PER_FRAME,
@@ -18,7 +19,7 @@ import {
   normalize,
   scaleVector,
 } from './geometry'
-import { forEachSeatWhere, isStanding, payShared } from './party'
+import { forEachSeatWhere, isStanding, payKillShared } from './party'
 import { trapBlastTarget } from './traps'
 import type { World } from './world'
 import {
@@ -110,7 +111,8 @@ export const woundPlayer = (
   graceScale = 1,
 ): Player => {
   const hp = Math.max(0, player.hp - damage)
-  const durationMs = invulnerableMsAt(hp) * graceScale
+  const durationMs =
+    invulnerableMsAt(hp) * graceScale * woundGraceScaleOf(player)
   return modifyFields(player, {
     hp: () => hp,
     knockback: () => scaleVector(direction, PLAYER_KNOCKBACK_SPEED),
@@ -291,7 +293,7 @@ const detonate = (model: World, bomberId: number): World => {
         }),
         blast,
       )
-      return payShared(
+      return payKillShared(
         modifyFields(scorched, {
           zombies: () => zombieOutcome.targets,
           traps: () => trapOutcome.targets,

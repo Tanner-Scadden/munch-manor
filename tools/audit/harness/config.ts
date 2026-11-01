@@ -9,6 +9,7 @@ import {
 } from '@game/model'
 import {
   Body,
+  Calling,
   Difficulty,
   HairColor,
   HairStyle,
@@ -266,6 +267,8 @@ export const HarnessConfig = Schema.Struct({
   openexits: Schema.optionalKey(ListOf(Schema.String)),
   ask: Flag,
   difficulty: Schema.optionalKey(Difficulty),
+  // The calling picked and worn, whatever the rank
+  calling: Schema.optionalKey(Calling),
   nightmare: Schema.optionalKey(NightmareLock),
   // The home menu and the save
   best: MaybeNum,

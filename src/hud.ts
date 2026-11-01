@@ -4,6 +4,7 @@ import { Canvas } from 'foldkit'
 import { ammoLevelOf, isOutOfGuns } from './ammoWarning'
 import { maybeBossBar } from './boss'
 import { bossBarShapes } from './bossView'
+import { maxHpOf } from './calling'
 import { type Camera, viewBoxOf, worldToView } from './camera'
 import {
   HEART_FLASH_MS,
@@ -270,7 +271,7 @@ const heartShapes = (player: Player): ReadonlyArray<Canvas.Shape> => {
     maybeMsSinceHurt(player),
     msSinceHurt => msSinceHurt < HEART_PULSE_MS,
   )
-  return Array.makeBy(PLAYER_MAX_HP, heartShape(player.hp, maybeHeartPulseMs))
+  return Array.makeBy(maxHpOf(player), heartShape(player.hp, maybeHeartPulseMs))
 }
 
 export const secondsLeft = (remainingMs: number): number =>
@@ -672,7 +673,7 @@ const ammoLook = (
   isHeld: boolean,
   gun: CarriedGun,
 ): AmmoLook => {
-  const level = ammoLevelOf(gun)
+  const level = ammoLevelOf(gun, player.calling)
   if (isHeld && isReloading(player)) {
     return 'Reloading'
   } else if (gun.loaded <= 0) {
@@ -895,7 +896,7 @@ const mateRowShapes = (
       height: 3,
       fill: seatColorOf(mate.slot),
     }),
-    ...Array.makeBy(PLAYER_MAX_HP, index =>
+    ...Array.makeBy(maxHpOf(mate.player), index =>
       placeSprite(
         HUD_MARGIN + 9 + index * HEART_SPACING,
         y + 3,
@@ -905,7 +906,7 @@ const mateRowShapes = (
     ...textShapes(
       `$${mate.wallet.balance}`,
       'Coin',
-      HUD_MARGIN + 9 + PLAYER_MAX_HP * HEART_SPACING,
+      HUD_MARGIN + 9 + maxHpOf(mate.player) * HEART_SPACING,
       y,
       'Left',
     ),

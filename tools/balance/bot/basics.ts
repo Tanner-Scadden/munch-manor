@@ -3,10 +3,12 @@
 // the zombies in its view.
 
 import { levelOf } from '../../../src/arena'
+import { CALLINGS } from '../../../src/calling'
 import { cameraFocus, cameraFor, worldWindowOf } from '../../../src/camera'
 import { update } from '../../../src/main'
 import { Message } from '../../../src/message'
 import type { Difficulty, ZombieKind, initialModel } from '../../../src/model'
+import type { Calling } from '../../../src/playerData'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_TOUCH_SCREEN,
@@ -29,6 +31,7 @@ export type BotOptions = {
   mode: BotMode
   swapsBack: boolean
   noUpgrades: boolean
+  calling: Calling
 }
 
 export const DEFAULT_OPTIONS: BotOptions = {
@@ -36,6 +39,18 @@ export const DEFAULT_OPTIONS: BotOptions = {
   mode: 'Campaign',
   swapsBack: false,
   noUpgrades: false,
+  calling: 'You',
+}
+
+// CALLING=Handyman, TrackStar, PennyPincher, or LineCook (any case, spaces
+// allowed) plays that calling, with rank enough to start it.
+export const parseCalling = (raw: string | undefined): Calling => {
+  const name = (raw ?? 'you').toLowerCase().replaceAll(/[\s_-]/g, '')
+  const found = CALLINGS.find(calling => calling.toLowerCase() === name)
+  if (found === undefined) {
+    throw new Error(`CALLING must be one of ${CALLINGS.join(', ')}`)
+  }
+  return found
 }
 
 export const parseDifficulty = (raw: string | undefined): Difficulty => {

@@ -4,12 +4,13 @@ import { modifyFields } from 'foldkit/struct'
 import { AmmoTip } from './clientSchema'
 import type { Model } from './model'
 import { isCoop } from './party'
+import type { Calling } from './playerData'
 import {
+  carriedMagazine,
   gunsOf,
   hasEndlessRounds,
   heldGun,
   isReloadable,
-  magazineOf,
   startingRounds,
 } from './weapons'
 import { type CarriedGun, GameEvent, Phase, type Player } from './worldSchema'
@@ -22,11 +23,16 @@ import { type CarriedGun, GameEvent, Phase, type Player } from './worldSchema'
 // Freeze, never reloaded, is Low at half its charges and Last at a quarter.
 export type AmmoLevel = 'Plenty' | 'Low' | 'Last' | 'Dry'
 
-export const ammoLevelOf = (gun: CarriedGun): AmmoLevel => {
+// NOTE: the thresholds read the magazine the player's own calling gives
+// the gun (the Track Star's are smaller).
+export const ammoLevelOf = (
+  gun: CarriedGun,
+  calling: Calling = 'You',
+): AmmoLevel => {
   if (hasEndlessRounds(gun.kind) || gun.kind === 'Pan') {
     return 'Plenty'
   }
-  const magazine = magazineOf(gun.kind, gun.tier)
+  const magazine = carriedMagazine(calling, gun)
   const lastAt = isReloadable(gun.kind) ? magazine : Math.ceil(magazine / 4)
   const lowAt = isReloadable(gun.kind)
     ? Math.max(magazine * 2, Math.ceil(startingRounds(gun.kind) / 4))
@@ -42,8 +48,11 @@ export const ammoLevelOf = (gun: CarriedGun): AmmoLevel => {
   }
 }
 
-export const isRunningLow = (gun: CarriedGun): boolean => {
-  const level = ammoLevelOf(gun)
+export const isRunningLow = (
+  gun: CarriedGun,
+  calling: Calling = 'You',
+): boolean => {
+  const level = ammoLevelOf(gun, calling)
   return level === 'Low' || level === 'Last'
 }
 
@@ -56,7 +65,7 @@ export const isTickingShot = (
   events: ReadonlyArray<GameEvent>,
 ): boolean => {
   const gun = heldGun(player.arsenal)
-  const level = ammoLevelOf(gun)
+  const level = ammoLevelOf(gun, player.calling)
   return (
     (level === 'Last' || level === 'Dry') &&
     gun.rounds < TICK_ROUNDS &&
@@ -72,7 +81,7 @@ export const isTickingShot = (
 export const isOutOfGuns = (player: Player): boolean =>
   pipe(
     gunsOf(player.arsenal),
-    Array.every(gun => ammoLevelOf(gun) === 'Dry'),
+    Array.every(gun => ammoLevelOf(gun, player.calling) === 'Dry'),
   )
 
 // RATTLES' CALL
@@ -82,7 +91,7 @@ export const AMMO_TIP_MS = 4500
 const isTipWorthy = (model: Model): boolean =>
   Phase.isAnyOf(['Wave', 'Preparation'])(model.phase) &&
   !isCoop(model) &&
-  isRunningLow(heldGun(model.player.arsenal))
+  isRunningLow(heldGun(model.player.arsenal), model.player.calling)
 
 // NOTE: the first time ever the held gun runs low, Rattles calls from the
 // stall for a few seconds. The frame's own time drains it, so a pause holds

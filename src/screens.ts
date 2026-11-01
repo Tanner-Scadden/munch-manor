@@ -52,6 +52,7 @@ import {
   msIntoPhase,
   shownHints,
 } from './onboarding'
+import type { Calling } from './playerData'
 import { type Screen, landscapeFrameOffset } from './screen'
 import {
   type Palette,
@@ -66,6 +67,8 @@ import { gunSprite } from './sprites/guns'
 import { ZOMBIE_SPRITES, showcaseWalk } from './sprites/zombies'
 import { FINAL_WAVE, debutKinds } from './wavePlans'
 import { waveBonus } from './waves'
+import { heldGun } from './weapons'
+import type { WeaponKind } from './worldSchema'
 import { ZOMBIE_KINDS } from './zombies'
 
 // SHARED
@@ -929,6 +932,8 @@ const HERO_GUN_PX = 2
 
 const runnerShapes = (
   appearance: Appearance,
+  calling: Calling,
+  gun: WeaponKind,
   screenMs: number,
 ): ReadonlyArray<Canvas.Shape> => [
   Canvas.Rect({
@@ -943,12 +948,12 @@ const runnerShapes = (
     scale: { x: HERO_SCALE, y: HERO_SCALE },
     shapes: [
       ...frameAt(
-        playerSprites(appearance).walk,
+        playerSprites(appearance, calling).walk,
         Math.floor(screenMs / PLAYER_WALK_FRAME_MS),
       ).Normal.Left,
       group({
         translate: { x: -HERO_GUN_PX, y: -PLAYER_FOOT_OFFSET },
-        shapes: gunSprite('Pistol', 0, Math.PI),
+        shapes: gunSprite(gun, 0, Math.PI),
       }),
     ],
   }),
@@ -958,7 +963,12 @@ const runnerShapes = (
 const readyShapes = (model: Model): ReadonlyArray<Canvas.Shape> => [
   TITLE_BACKDROP,
   ...paradeShapes(model.screenMs),
-  ...runnerShapes(model.appearance, model.screenMs),
+  ...runnerShapes(
+    model.appearance,
+    model.player.calling,
+    heldGun(model.player.arsenal).kind,
+    model.screenMs,
+  ),
   ...logoShapes(model.screenMs),
   ...ALPHA_CHIP,
 ]
