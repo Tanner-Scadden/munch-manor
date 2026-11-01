@@ -175,17 +175,22 @@ export const TARGETS: ReadonlyArray<Target> = [
     0.1,
     TARGETS_SECTION,
   ),
+  // NOTE: restated for the human bot on 2026-10-31. It dies over the whole
+  // back half (waves 6, 7, 9, and 10 each take 10 to 21% of runs), not in
+  // one band the way the sharp bot did, so waves 5 and 6 hold less and the
+  // deadliest wave may be 7 as well as the finale. Of the runs that reach
+  // it, the finale still kills the most.
   between(
     'normal.died.w5-6',
     'Normal deaths in waves 5 and 6',
-    0.25,
-    0.35,
+    0.15,
+    0.3,
     TARGETS_SECTION,
   ),
   between(
     'normal.died.peakWave',
     'Normal wave with the most deaths',
-    10,
+    7,
     10,
     TARGETS_SECTION,
   ),
@@ -196,11 +201,14 @@ export const TARGETS: ReadonlyArray<Target> = [
     12,
     TARGETS_SECTION,
   ),
+  // NOTE: restated for the human bot on 2026-10-31: it takes bites it never
+  // saw coming, so its wins scrape by more often than the sharp bot's did
+  // (30 to 50%). The ceiling keeps Normal from turning into a coin flip.
   between(
     'normal.closeCalls',
     'Normal close calls (share of wins at 1 heart)',
-    0.3,
-    0.5,
+    0.4,
+    0.65,
     TARGETS_SECTION,
   ),
   ...PEAK_RATIO_WAVES.map(wave =>
