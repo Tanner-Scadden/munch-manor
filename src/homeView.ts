@@ -77,6 +77,7 @@ import {
 } from './munchopedia'
 import { MODE_NAMES } from './names'
 import { helpLabel, howToPlayView } from './pauseHelp'
+import { rankChipView } from './rankBadgeView'
 import { isPortrait } from './screen'
 import { durationLabel } from './stats'
 import { hasFinishedTutorial } from './update/coop'
@@ -612,15 +613,18 @@ const bestsView = (model: Model, h: ApplicationViewBuilder): Html =>
 // the canvas by screens.ts. This button sits over them, so a tap on your
 // character opens the picker. The hand's Character card is the one a
 // keyboard or a screen reader reaches.
-const heroButtonView = (h: ApplicationViewBuilder): Html =>
-  h.button([
-    h.Type('button'),
-    h.Class('home-hero'),
-    h.Tabindex(-1),
-    h.AriaLabel('Your character: change how you look'),
-    h.AriaHasPopup('dialog'),
-    h.OnClick(Message.ClickedCharacterButton(), { propagation: 'Stop' }),
-  ])
+const heroButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
+  h.button(
+    [
+      h.Type('button'),
+      h.Class('home-hero'),
+      h.Tabindex(-1),
+      h.AriaLabel('Your character: change how you look'),
+      h.AriaHasPopup('dialog'),
+      h.OnClick(Message.ClickedCharacterButton(), { propagation: 'Stop' }),
+    ],
+    [rankChipView(model, h)],
+  )
 
 // CORNER
 
@@ -785,7 +789,7 @@ export const homeMenuView = (model: Model, h: ApplicationViewBuilder): Html =>
               playClusterView(model, h),
               manorButtonView(model, h),
               bestsView(model, h),
-              heroButtonView(h),
+              heroButtonView(model, h),
               newEntryButtonView(model, h),
               turnHintView(model, h),
               h.div(

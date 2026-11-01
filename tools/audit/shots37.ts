@@ -78,6 +78,9 @@ const SCENES: ReadonlyArray<Scene> = [
     name: 'account-failed',
     query: 'profile=account&sync=synced&link=failed',
   },
+  // NOTE: rank on the plate: a Wood badge part way up, then a long way up.
+  { name: 'look-rank', query: `profile=look&${LOOK}&rank=1850` },
+  { name: 'name-rank-high', query: 'profile=name&name=Dr. Chomp&rank=52000' },
   { name: 'settings', query: 'profile=settings&fit=full&rotate' },
   {
     name: 'settings-reset',

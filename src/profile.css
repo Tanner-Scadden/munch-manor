@@ -1502,3 +1502,123 @@
     animation: none !important;
   }
 }
+
+/* RANK: the badge, the rank number, the bar to the next rank, and the Bones.
+   The chip sits under the player on the home menu; the plate stands at the
+   bottom of the Profile, under the tabs on a phone on its side and across
+   the bottom upright. Pictures and numbers only. */
+
+.rank-badge-img,
+.rank-bone-img {
+  display: block;
+  flex: none;
+  image-rendering: pixelated;
+}
+
+.rank-number,
+.rank-bones-count {
+  font: bold var(--menu-text-size) / 1 var(--menu-font);
+  color: var(--menu-gold);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+}
+
+.home-stage .home-hero {
+  overflow: visible;
+}
+
+.rank-chip {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 4px;
+  border-radius: 999px;
+  background: rgba(20, 12, 16, 0.78);
+  pointer-events: none;
+}
+
+.profile-rank {
+  position: absolute;
+  left: -12px;
+  bottom: 12px;
+  box-sizing: border-box;
+  width: 88px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 8px;
+  padding: 6px 4px;
+  border: 3px solid var(--profile-stone);
+  border-radius: 12px;
+  background: var(--profile-stone-deep);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.rank-head,
+.rank-bones {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rank-bar {
+  box-sizing: border-box;
+  flex: 1 1 100%;
+  height: 10px;
+  padding: 2px;
+  border-radius: 5px;
+  background: #140c10;
+  box-shadow: 0 0 0 2px #5a3a4a;
+}
+
+.rank-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(#fff2a8 0 25%, #ffd23f 25%);
+  transition: width 400ms ease-out;
+}
+
+.game-root[data-layout='Portrait'] .profile-rank {
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  width: auto;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 6px 12px;
+}
+
+.game-root[data-layout='Portrait'] .rank-bar {
+  flex: 1 1 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rank-bar-fill {
+    transition: none;
+  }
+}
+
+/* NOTE: on a phone on its side the rank plate stands under the tabs, so the
+   tabs close up a little to leave it room. */
+@media (max-height: 460px) and (orientation: landscape) {
+  .profile-tabs {
+    gap: 6px;
+  }
+
+  .profile-tab {
+    min-height: 50px;
+  }
+
+  .profile-rank {
+    bottom: 2px;
+    gap: 0 8px;
+    padding: 2px 4px;
+  }
+}
