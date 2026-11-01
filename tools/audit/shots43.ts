@@ -96,6 +96,16 @@ const SCENES: ReadonlyArray<Scene> = [
     buttons: BUTTONS,
   },
   {
+    name: 'coop-win-rank-4',
+    query: `wave=10&phase=victory&stats&party=4&${LEARNED}&rank=2400&rankgain=95&tick=400`,
+    buttons: BUTTONS,
+  },
+  {
+    name: 'coop-wipe-rank-2',
+    query: `wave=5&phase=gameover&stats&party=2&crowd=10&${LEARNED}&rank=240&rankgain=95&tick=400`,
+    buttons: BUTTONS,
+  },
+  {
     name: 'coop-wipe',
     query: `wave=5&phase=gameover&stats&party=3&crowd=10&${LEARNED}&tick=400`,
     buttons: BUTTONS,

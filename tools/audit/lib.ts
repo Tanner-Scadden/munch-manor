@@ -148,6 +148,11 @@ export const SHOT_VIEWPORTS = pickViewports([
   { ...DESKTOP_1280, name: 'd1280' },
   { ...PHONE_844, name: 'l844' },
   { ...UPRIGHT_390, name: 'p390' },
+  // NOTE: a narrower, shorter upright phone (360 by 780), taken only when
+  // asked for with VIEWPORTS=p360.
+  ...(PICKED_VIEWPORTS?.includes('p360') === true
+    ? [{ ...UPRIGHT_360, width: 360, height: 780, name: 'p360' }]
+    : []),
 ])
 
 // CONCURRENCY
@@ -584,8 +589,7 @@ export type AimView = typeof AimView.Type
 type AimZombie = AimView['zombies'][number]
 
 export const nearestZombie = (m: AimView): AimZombie | undefined => {
-  const distance = (z: Vector) =>
-    Math.hypot(z.x - m.player.x, z.y - m.player.y)
+  const distance = (z: Vector) => Math.hypot(z.x - m.player.x, z.y - m.player.y)
   return m.zombies
     .filter(z => z.state._tag !== 'Dying')
     .reduce<AimZombie | undefined>(

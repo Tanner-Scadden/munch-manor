@@ -37,6 +37,9 @@ import { CREW_AWARD_NAMES, type CrewAward } from './names'
 import { leadSeatOf } from './party'
 import { seatColorOf, seatModelsOf } from './partyView'
 import { playerShapes } from './playerView'
+import { badgeTierOf } from './rank'
+import { badgeSprite } from './rankArt'
+import { isPortrait } from './screen'
 import { type Sprite, group, placeAt } from './sprite'
 import {
   AWARD_ICONS,
@@ -67,15 +70,39 @@ const STATS_Y = 29
 const TITLE_Y = STATS_Y + 5 * ROW + 1
 const BOTTOM = TITLE_Y + GLYPH_HEIGHT + 1
 const BADGE_STRIDE = 8
-// NOTE: badges go right of the player, then left, two to a side.
+// NOTE: badges go right of the player, two to a row.
 const BADGE_SIDE_PX = 10
 
 export const PANEL_FILL = 'rgba(24, 14, 22, 0.94)'
 export const PANEL_EDGE = '#5a3a4a'
 const OWN_FILL = 'rgba(255, 240, 200, 0.07)'
 
+// NOTE: upright, the frame shows only 180 of the board's width (the end
+// card is drawn in the landscape frame), so three or four players sit two
+// to a row, a row of columns under another. A row is BLOCK_STEP below the
+// one above.
+const PORTRAIT_COLUMNS = 2
+const BLOCK_STEP = BOTTOM + 4
+
+export const crewBoardColumns = (model: Model, count: number): number =>
+  isPortrait(model) && count > PORTRAIT_COLUMNS ? PORTRAIT_COLUMNS : count
+
+const rowsOf = (count: number, columns: number): number =>
+  Math.max(1, Math.ceil(count / Math.max(1, columns)))
+
 // NOTE: the board's height below its top, from the panel's edge to edge.
-export const CREW_BOARD_PX = CREW_TOP + BOTTOM
+export const crewBoardHeightPx = (model: Model): number => {
+  const count = crewOf(model).length
+  return (
+    CREW_TOP +
+    BOTTOM +
+    (rowsOf(count, crewBoardColumns(model, count)) - 1) * BLOCK_STEP
+  )
+}
+
+// NOTE: the board's width, so a test can hold it inside the screen.
+export const crewBoardWidthPx = (model: Model): number =>
+  crewBoardWidth(crewBoardColumns(model, crewOf(model).length))
 
 // THE ROWS
 
@@ -186,10 +213,20 @@ type Board = Readonly<{
   left: number
   crew: ReadonlyArray<CrewMember>
   centerX: number
+  columns: number
 }>
 
 const columnX = (board: Board, index: number): number =>
-  Math.round(board.left + PAD + GUTTER + index * COLUMN + COLUMN / 2)
+  Math.round(
+    board.left + PAD + GUTTER + (index % board.columns) * COLUMN + COLUMN / 2,
+  )
+
+const rowOf = (board: Board, index: number): number =>
+  Math.floor(index / board.columns)
+
+// NOTE: where a player's block starts: the top of their column.
+const blockTopOf = (board: Board, index: number): number =>
+  board.top + CREW_TOP + rowOf(board, index) * BLOCK_STEP
 
 // THE RUN'S LINE
 
@@ -248,6 +285,37 @@ const runLineShapes = (
 const isAwarded = (board: Board, ms: number): boolean =>
   ms >= awardsAtMs(board.kind)
 
+// NOTE: a player's badge and rank number at the top left of their column,
+// beside the figure, so the board is no taller for it. The rank is the one
+// they joined the room with, so every card shows the same. Award badges
+// stack on the right.
+const BADGE_WIDTH = 11
+const BADGE_GAP = 2
+const RANK_LEFT_PX = 27
+const RANK_Y = 9
+
+const rankShapes = (
+  x: number,
+  centerY: number,
+  rank: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const left = x - RANK_LEFT_PX
+  return [
+    placeAt(
+      left + Math.floor(BADGE_WIDTH / 2),
+      centerY,
+      badgeSprite(badgeTierOf(rank)),
+    ),
+    ...textShapes(
+      `${rank}`,
+      'Plain',
+      left + BADGE_WIDTH + BADGE_GAP,
+      centerY - Math.floor(GLYPH_HEIGHT / 2),
+      'Left',
+    ),
+  ]
+}
+
 const headShapes = (
   model: Model,
   board: Board,
@@ -255,7 +323,7 @@ const headShapes = (
   index: number,
 ): ReadonlyArray<Canvas.Shape> => {
   const x = columnX(board, index)
-  const crewTop = board.top + CREW_TOP
+  const crewTop = blockTopOf(board, index)
   const footY = crewTop + FOOT
   const maybeSeat = Array.findFirst(
     seatModelsOf(model),
@@ -283,6 +351,7 @@ const headShapes = (
       1,
       seatColorOf(member.slot),
     ),
+    ...rankShapes(x, crewTop + RANK_Y, member.rank),
   ]
 }
 
@@ -301,7 +370,7 @@ const ownPlateShapes = (
       onSome: index => [
         rect(
           columnX(board, index) - COLUMN / 2 + 1,
-          board.top + CREW_TOP - 3,
+          blockTopOf(board, index) - 3,
           COLUMN - 2,
           BOTTOM + 1,
           OWN_FILL,
@@ -320,28 +389,45 @@ const statShapes = (
       return []
     }
     const slide = slideOf(board.kind, tallyIndex, board.ms)
-    const y = board.top + CREW_TOP + STATS_Y + rowIndex * ROW
     const isGold = (member: CrewMember): boolean =>
       isAwarded(board, board.ms) &&
       Option.exists(row.maybeAward, award => winners.get(award) === member.slot)
-    return [
-      placeAt(
-        board.left + PAD + 4 - slide - row.shift,
-        y + 3 - row.shift,
-        row.icon,
-      ),
-      ...Array.flatMap(board.crew, (member, index) =>
-        textShapes(
-          row.format(
-            countedUp(row.value(member), board.kind, tallyIndex, board.ms),
+    return Array.flatMap(
+      Array.range(0, rowsOf(board.crew.length, board.columns) - 1),
+      blockRow => {
+        const y =
+          board.top +
+          CREW_TOP +
+          blockRow * BLOCK_STEP +
+          STATS_Y +
+          rowIndex * ROW
+        return [
+          placeAt(
+            board.left + PAD + 4 - slide - row.shift,
+            y + 3 - row.shift,
+            row.icon,
           ),
-          isGold(member) ? 'Victory' : row.tone,
-          columnX(board, index) - slide,
-          y,
-          'Center',
-        ),
-      ),
-    ]
+          ...Array.flatMap(board.crew, (member, index) =>
+            rowOf(board, index) === blockRow
+              ? textShapes(
+                  row.format(
+                    countedUp(
+                      row.value(member),
+                      board.kind,
+                      tallyIndex,
+                      board.ms,
+                    ),
+                  ),
+                  isGold(member) ? 'Victory' : row.tone,
+                  columnX(board, index) - slide,
+                  y,
+                  'Center',
+                )
+              : [],
+          ),
+        ]
+      },
+    )
   })
 
 const CROWN_DROP_PX = 10
@@ -357,7 +443,7 @@ const awardShapes = (
   }
   const awards = awardsOf(board.crew, member.slot)
   const x = columnX(board, index)
-  const crewTop = board.top + CREW_TOP
+  const crewTop = blockTopOf(board, index)
   const drop = easeOutBack(progressOf(board.ms, atMs, AWARD_STAMP_MS))
   const pop = 1 + 1.2 * (1 - drop)
   const isMvp = Option.exists(mvpOf(board.crew), slot => slot === member.slot)
@@ -368,7 +454,7 @@ const awardShapes = (
       : []),
     ...Array.map(badges, (award, badge) =>
       placeAt(
-        x + (badge % 2 === 0 ? BADGE_SIDE_PX : -BADGE_SIDE_PX),
+        x + BADGE_SIDE_PX + (badge % 2) * BADGE_SIDE_PX,
         Math.round(
           crewTop + 3 + Math.floor(badge / 2) * BADGE_STRIDE - 6 * (1 - drop),
         ),
@@ -427,16 +513,33 @@ export const crewBoardShapes = (
   rows: ReadonlyArray<Canvas.Shape>
 }> => {
   const crew = crewOf(model)
-  const width = crewBoardWidth(crew.length)
+  const columns = crewBoardColumns(model, crew.length)
+  const width = crewBoardWidth(columns)
+  const height = crewBoardHeightPx(model)
   const left = Math.round(centerX - width / 2)
-  const board: Board = { kind, ms, top, left, crew, centerX }
+  const board: Board = { kind, ms, top, left, crew, centerX, columns }
   const winners = winnersOf(crew)
   return {
     panel: [
-      rect(left - 1, top - 1, width + 2, CREW_BOARD_PX + 2, PANEL_EDGE),
-      rect(left, top, width, CREW_BOARD_PX, PANEL_FILL),
+      rect(left - 1, top - 1, width + 2, height + 2, PANEL_EDGE),
+      rect(left, top, width, height, PANEL_FILL),
       ...ownPlateShapes(model, board),
       rect(left + PAD, top + CREW_TOP - 5, width - PAD * 2, 1, PANEL_EDGE),
+      ...Array.map(
+        // NOTE: makeBy and range never make fewer than one, so a board of
+        // one row asks for none itself.
+        rowsOf(crew.length, columns) > 1
+          ? Array.makeBy(rowsOf(crew.length, columns) - 1, row => row + 1)
+          : [],
+        blockRow =>
+          rect(
+            left + PAD,
+            top + CREW_TOP + blockRow * BLOCK_STEP - 3,
+            width - PAD * 2,
+            1,
+            PANEL_EDGE,
+          ),
+      ),
       ...Array.flatMap(crew, (member, index) =>
         headShapes(model, board, member, index),
       ),
