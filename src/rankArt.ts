@@ -20,35 +20,35 @@ import {
 // once at module scope, with the shine frames baked beside them.
 
 const WOOD = [
-  '....OOOOO....',
-  '..OOLLLLLOO..',
-  '.OLLFFFFFFFO.',
-  '.OLFFFFFFFDO.',
-  'OLFFFFFFFFFDO',
-  'OLFFFOOOFFFDO',
-  'OLFFFOKOFFFDO',
-  'OLFFFOOOFFFDO',
-  'OFFFFFFFFFDDO',
-  '.ODFFFFFFFDO.',
-  '.ODDFFFFFDDO.',
-  '..OODDDDDOO..',
-  '....OOOOO....',
+  '.OOOOOOOOOOO.',
+  'OLLLLLLLLLLDO',
+  'OLFFDFKFDFFDO',
+  'OLFFDFFFDFFDO',
+  'OLFFDFKFDFFDO',
+  'OLFFDKKKDFFDO',
+  'OLFFDFKFDFFDO',
+  'OLFFDFFFDFFDO',
+  '.OFFDFKFDFDO.',
+  '..OFDFFFDFO..',
+  '...ODFFFDO...',
+  '....ODFDO....',
+  '.....OOO.....',
 ]
 
 const TIN = [
-  '...OOOOOOO...',
-  '..OLLLLLLLO..',
+  '......O......',
+  '.....OLO.....',
+  '....OLFDO....',
+  'OOOOOLFDOOOOO',
+  'OLLLLLFFFDDDO',
   '.OLFFFFFFFDO.',
-  'OLFFFFFFFFFDO',
-  'OLFFFFFFFFFDO',
-  'OLFFOOOOOFFDO',
-  'OLFFOKKKOFFDO',
-  'OLFFOOOOOFFDO',
-  'OLFFFFFFFFFDO',
-  'OFFFFFFFFFDDO',
-  '.ODFFFFFFFDO.',
-  '..ODDDDDDDO..',
-  '...OOOOOOO...',
+  '..OLFFKFFDO..',
+  '...OLFFFDO...',
+  '..OLFOOOFDO..',
+  '.OLFFO.OFFDO.',
+  '.ODDO...ODDO.',
+  '.OOO.....OOO.',
+  '.............',
 ]
 
 const BRONZE = [
@@ -248,7 +248,7 @@ export const BONE: Sprite = spriteShapes(
     'ODWWOOOWDDO',
     '.OOO...OOO.',
   ],
-  { O: '#3a2a1c', L: '#ffffff', W: '#f4f1de', D: '#b8ad8c' },
+  { O: '#2a1408', L: '#ffffff', W: '#f4f1de', D: '#b8ad8c' },
 )
 
 export const BONE_IMAGE = imageOf(BONE)
