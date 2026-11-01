@@ -24,6 +24,7 @@ import {
   lidShadowShapes,
 } from './fridgeView'
 import { ZERO_VECTOR } from './geometry'
+import { hatRiseOf } from './hatArt'
 import { ovenFlameShapes, ovenGlowShapes, padlockShapes } from './kitchenView'
 import {
   CounterSale,
@@ -254,7 +255,12 @@ const overheadShapes = (
     onSome: door => doorArrowShapes(door, model.elapsedMs),
   }),
   ...Array.map(model.popups, popupShape(camera)),
-  ...(isLeadArmed(model) ? reloadBarShapes(model.player) : []),
+  ...(isLeadArmed(model)
+    ? reloadBarShapes(
+        model.player,
+        hatRiseOf(model.appearance, model.player.calling),
+      )
+    : []),
   ...fridgeOverheadShapes(model),
   ...mateOverheadShapes(model),
   ...coopNameShapes(model),

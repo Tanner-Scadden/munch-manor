@@ -143,7 +143,7 @@ const COOP_RANKS = [7, 18, 33, 62]
 
 // NOTE: and the callings, so the shots show a prop for the Handyman and the
 // hats the others wear: a calling's prop takes a hat's place.
-const COOP_CALLINGS = ['You', 'You', 'Handyman', 'You']
+const COOP_CALLINGS = ['You', 'You', 'You', 'LineCook']
 
 const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
   const Screen = CoopModel.Screen

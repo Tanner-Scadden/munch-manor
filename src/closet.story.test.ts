@@ -14,9 +14,10 @@ import {
   isHatOwned,
   lookInOwnedHat,
 } from './closet'
-import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE } from './hatArt'
+import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, hatRiseOf } from './hatArt'
 import { update } from './main'
 import { Message } from './message'
+import { Reload } from './model'
 import { type Model, defaultAppearance } from './model'
 import { readyAfterRead } from './model.fixture'
 import {
@@ -26,6 +27,7 @@ import {
   type SavedRank,
 } from './playerData'
 import { PlayerChange } from './playerSync'
+import { reloadBarShapes } from './playerView'
 import { bonesBalanceOf, noRank, pointsForRank, rankOf } from './rank'
 import { restoreSave, saveOf } from './save'
 import { writeSave } from './testing'
@@ -398,5 +400,33 @@ describe('the hat on the sprite', () => {
         })
       })
     })
+  })
+})
+
+describe('the marks over a hat', () => {
+  test('rise by what the sprite grew, and by nothing for a bare head or a calling', () => {
+    expect(hatRiseOf(withHat('None'), 'You')).toBe(0)
+    CLOSET_HATS.forEach(hat => {
+      const grown =
+        playerPixels(withHat(hat)).idle[0].length -
+        playerPixels(withHat('None')).idle[0].length
+      expect(hatRiseOf(withHat(hat), 'You')).toBeGreaterThan(grown)
+      expect(hatRiseOf(withHat(hat), 'Handyman')).toBe(0)
+    })
+    expect(hatRiseOf(withHat('WitchHat'), 'You')).toBeGreaterThan(
+      hatRiseOf(withHat('Fez'), 'You'),
+    )
+  })
+
+  test('the reload bar stands that much higher', () => {
+    const reloading = {
+      ...readyAfterRead.player,
+      reload: Reload.Reloading({ remainingMs: 500, durationMs: 1000 }),
+    }
+    const yOf = (rise: number) => {
+      const [back] = reloadBarShapes(reloading, rise)
+      return back?._tag === 'Rect' ? back.y : Number.NaN
+    }
+    expect(yOf(0) - yOf(6)).toBe(6)
   })
 })
