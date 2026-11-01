@@ -4,7 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { bountyOf, hitEvent, killEvent, strikeZombie } from './combat'
 import { PLAYER_RADIUS } from './constants'
 import { directionBetween } from './geometry'
-import { earn, isCoop, modifyLeadSeat } from './party'
+import { earnKill, isCoop, modifyLeadSeat } from './party'
 import type { World } from './world'
 import {
   GameEvent,
@@ -180,10 +180,7 @@ export const payStriker = (
 ): World => {
   const bounty = bountyOf(events)
   const kills = countKills(events)
-  const paid =
-    bounty > 0
-      ? modifyFields(world, { wallet: wallet => earn(wallet, bounty) })
-      : world
+  const paid = bounty > 0 ? earnKill(world, bounty) : world
   return isCoop(paid) && kills > 0
     ? modifyLeadSeat(paid, seat =>
         modifyFields(seat, { kills: count => count + kills }),

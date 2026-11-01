@@ -120,6 +120,7 @@ const learnedSave: PlayerSave = {
     isVeteranGranted: true,
     spentBones: 5,
   },
+  calling: 'TrackStar',
 }
 
 // NOTE: the look as saves before version 10 kept it, a Female or Male
@@ -153,6 +154,7 @@ const migratedSave: PlayerSave = {
   appearance: MIGRATED_LOOK,
   records: noSavedRunRecords,
   rank: noRank,
+  calling: 'You',
 }
 
 const { name: _name, ...versionEightSave } = versionNineSave
@@ -390,7 +392,12 @@ describe('the schema', () => {
         return others
       }),
     ).toEqual(
-      Option.some({ ...rest, records: noSavedRunRecords, rank: noRank }),
+      Option.some({
+        ...rest,
+        records: noSavedRunRecords,
+        rank: noRank,
+        calling: 'You',
+      }),
     )
   })
 
@@ -1077,5 +1084,30 @@ describe('the veteran grant', () => {
       bests: bests => modifyFields(bests, { totalKills: () => 500 }),
     })
     expect(saveOf(later).rank.veteranPoints).toBe(0)
+  })
+})
+
+describe('the calling in the save', () => {
+  test('round trips through the model', () => {
+    expect(saveOf(restoreSave(initialModel, learnedSave)).calling).toBe(
+      'TrackStar',
+    )
+  })
+
+  test('a save from before callings picks YOU', () => {
+    const { calling: _calling, ...rest } = learnedSave
+    const json = JSON.stringify({ ...rest, version: 13 })
+    const migrated = Option.getOrThrow(decodeSave(json))
+    expect(migrated.calling).toBe('You')
+    expect(migrated.version).toBe(SAVE_VERSION)
+  })
+
+  test('a synced pick the rank has not reached still starts as YOU', () => {
+    const synced = restoreSave(
+      modifyFields(initialModel, { saveStatus: () => 'Read' }),
+      { ...learnedSave, calling: 'LineCook', rank: noRank },
+    )
+    expect(synced.calling).toBe('LineCook')
+    expect(synced.player.calling).toBe('You')
   })
 })

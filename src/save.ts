@@ -10,6 +10,8 @@ import {
 } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { callingForRun } from './calling'
+import { playerOfCalling } from './callingPlayer'
 import {
   AmmoTip,
   DebutCard,
@@ -43,6 +45,7 @@ import {
   type SavedLessons,
   SavedOnboarding,
   SavedPowerUps,
+  SavedRank,
   type SavedRunRecord,
   SavedRunRecords,
   SavedSettings,
@@ -54,7 +57,7 @@ import {
   noSavedRunRecords,
 } from './playerData'
 import { cleanName } from './profile'
-import { noRank } from './rank'
+import { noRank, rankOf, totalPointsOf } from './rank'
 
 export {
   PlayerSave,
@@ -245,6 +248,24 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 13 is the save before callings.
+const PlayerSaveV13 = Schema.Struct({
+  version: Schema.Literal(13),
+  onboarding: SavedOnboarding,
+  homeScreenTip: HomeScreenTip,
+  settings: SavedSettings,
+  appearance: Appearance,
+  difficulty: SavedDifficulty,
+  bests: SavedBests,
+  home: SavedHome,
+  seenPowerUps: SavedPowerUps,
+  rotation: RotationSetting,
+  name: PlayerName,
+  records: SavedRunRecords,
+  rank: SavedRank,
+})
+type PlayerSaveV13 = typeof PlayerSaveV13.Type
+
 // NOTE: version 12 is the save before rank.
 const PlayerSaveV12 = Schema.Struct({
   version: Schema.Literal(12),
@@ -263,6 +284,8 @@ const PlayerSaveV12 = Schema.Struct({
 type PlayerSaveV12 = typeof PlayerSaveV12.Type
 
 const PlayerSaveJson = Schema.fromJsonString(PlayerSave)
+
+const PlayerSaveV13Json = Schema.fromJsonString(PlayerSaveV13)
 
 const PlayerSaveV12Json = Schema.fromJsonString(PlayerSaveV12)
 
@@ -467,14 +490,23 @@ const migrateV11 = (save: PlayerSaveV11): PlayerSaveV12 => ({
 // NOTE: a save from before rank has earned none and has not been granted
 // the veteran start yet: the first load after the update grants it from the
 // kills the save holds (grantVeteranFrom in src/rankRun.ts), once.
-const migrateV12 = (save: PlayerSaveV12): PlayerSave => ({
+const migrateV12 = (save: PlayerSaveV12): PlayerSaveV13 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 13,
   rank: noRank,
 })
 
-const fromV11 = (save: PlayerSaveV11): PlayerSave =>
-  migrateV12(migrateV11(save))
+// NOTE: a save from before callings picks YOU, the calling with no quirk.
+const migrateV13 = (save: PlayerSaveV13): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  calling: 'You',
+})
+
+const fromV12 = (save: PlayerSaveV12): PlayerSave =>
+  migrateV13(migrateV12(save))
+
+const fromV11 = (save: PlayerSaveV11): PlayerSave => fromV12(migrateV11(save))
 
 const fromV9 = (save: PlayerSaveV9): PlayerSave => fromV11(migrateV9(save))
 
@@ -506,9 +538,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 13,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV13Json)(raw), migrateV13),
+  },
+  {
     version: 12,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV12Json)(raw), migrateV12),
+      Option.map(Schema.decodeOption(PlayerSaveV12Json)(raw), fromV12),
   },
   {
     version: 11,
@@ -635,6 +672,7 @@ export const SAVED_FIELDS = [
   'rotationSetting',
   'playerName',
   'rank',
+  'calling',
 ] as const satisfies ReadonlyArray<keyof Model>
 
 export const hasSaveFieldsChanged = (before: Model, after: Model): boolean =>
@@ -683,6 +721,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   name: model.playerName,
   records: savedRunRecords(model.bests),
   rank: model.rank,
+  calling: model.calling,
 })
 
 // INTO THE MODEL
@@ -809,6 +848,15 @@ export const restoreSave = (model: Model, save: PlayerSave): Model =>
     rotationSetting: () => save.rotation,
     playerName: () => cleanName(save.name),
     rank: () => save.rank,
+    calling: () => save.calling,
+    // NOTE: the player at home wears the calling the next run starts with.
+    // A save that syncs in mid-run leaves the run's player alone.
+    player: player =>
+      model.phase._tag === 'Ready'
+        ? playerOfCalling(
+            callingForRun(save.calling, rankOf(totalPointsOf(save.rank))),
+          )
+        : player,
   })
 
 // RESET

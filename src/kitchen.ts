@@ -16,7 +16,7 @@ import {
 import { ZOMBIE_BLAST_TARGET, bountyOf } from './combat'
 import { BULLET_STEP_PX } from './constants'
 import { KITCHEN_EXIT, boxAround } from './exits'
-import { payShared } from './party'
+import { payKillShared } from './party'
 import type { World } from './world'
 import {
   GameEvent,
@@ -186,7 +186,7 @@ const scorch = (model: World, oven: Box): World => {
   const events = Array.flatMap(outcomes, outcome => outcome.events)
   return Array.isReadonlyArrayEmpty(events)
     ? model
-    : payShared(
+    : payKillShared(
         modifyFields(model, {
           zombies: () => Array.map(outcomes, ({ target }) => target),
           frameEvents: frameEvents => [...frameEvents, ...events],

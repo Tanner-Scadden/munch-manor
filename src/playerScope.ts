@@ -11,6 +11,7 @@ import {
 
 import {
   Appearance,
+  Calling,
   CursorSetting,
   Difficulty,
   HomeScreenTip,
@@ -70,6 +71,7 @@ export const PlayerRow = Schema.Struct({
   cursor: CursorSetting,
   rotation: RotationSetting,
   name: PlayerName,
+  calling: Calling,
   run_records: Schema.fromJsonString(SavedRunRecords),
   rank_points: Schema.Number,
   rank_bones: Schema.Number,
@@ -105,6 +107,7 @@ export const PLAYER_COLUMNS = Array.make(
   'cursor',
   'rotation',
   'name',
+  'calling',
   'run_records',
   'rank_points',
   'rank_bones',
@@ -133,6 +136,7 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   cursor: save.settings.cursor,
   rotation: save.rotation,
   name: save.name,
+  calling: save.calling,
   run_records: save.records,
   rank_points: save.rank.earnedPoints,
   rank_bones: save.rank.earnedBones,
@@ -179,10 +183,11 @@ const updatePlayer = (
 // player (a device that linked to another device's player) it does nothing,
 // so linking never overwrites the player it joined. Version 8 is the save
 // with the simple look (save version 11), and 9 the save with the run
-// records (save version 12), and 10 the save with rank (save version 13).
+// records (save version 12), 10 the save with rank (save version 13), and
+// 11 the save with the calling (save version 14).
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 10,
+  version: 11,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -339,6 +344,19 @@ export const ChangedRotation = defineMutation({
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
   apply: ({ rotation }, context) => updatePlayer(context, { rotation }),
+})
+
+// NOTE: the calling picked for the next run. The last device to change it
+// wins, like the settings. Whether its rank is reached is not checked here:
+// a run starts YOU for a calling its player has not unlocked
+// (callingForRun in src/calling.ts), so a pick never skips a rank.
+export const ChangedCalling = defineMutation({
+  name: 'ChangedCalling',
+  version: 1,
+  args: Schema.Struct({ calling: Calling }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ calling }, context) => updatePlayer(context, { calling }),
 })
 
 // NOTE: the display name, already cleaned by the device that set it. The
@@ -641,6 +659,7 @@ export const PlayerScope = defineScope({
     ForgotPowerUps,
     RecordedRun,
     ReachedRecords,
+    ChangedCalling,
     EarnedRank,
     GrantedVeteranRank,
     LinkedDevices,
@@ -746,6 +765,13 @@ export const PlayerScope = defineScope({
           ADD COLUMN veteran_granted INTEGER NOT NULL DEFAULT 0`
         yield* sql`ALTER TABLE ${sql(table('player'))}
           ADD COLUMN spent_bones INTEGER NOT NULL DEFAULT 0`
+      }),
+    // NOTE: callings came after rank. A player from before them picks YOU.
+    '0010_add_calling': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN calling TEXT NOT NULL DEFAULT 'You'`
       }),
   },
 })

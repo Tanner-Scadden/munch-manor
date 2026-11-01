@@ -18,7 +18,7 @@ import {
   normalize,
   scaleVector,
 } from './geometry'
-import { forEachSeatWhere, isStanding, payShared } from './party'
+import { forEachSeatWhere, isStanding, payKillShared } from './party'
 import { trapBlastTarget } from './traps'
 import type { World } from './world'
 import {
@@ -291,7 +291,7 @@ const detonate = (model: World, bomberId: number): World => {
         }),
         blast,
       )
-      return payShared(
+      return payKillShared(
         modifyFields(scorched, {
           zombies: () => zombieOutcome.targets,
           traps: () => trapOutcome.targets,

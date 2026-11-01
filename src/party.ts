@@ -1,6 +1,7 @@
 import { Array, Option, Order, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { killPayFor } from './calling'
 import { FIXED_STEP_MS } from './constants'
 import type { World } from './world'
 import {
@@ -328,6 +329,12 @@ export const earn = (wallet: Wallet, amount: number): Wallet =>
 const earnInWorld = (world: World, amount: number): World =>
   modifyFields(world, { wallet: wallet => earn(wallet, amount) })
 
+// NOTE: kill money for the player standing in the World's per-player
+// fields, as their calling pays it (the Penny Pincher's kills pay less).
+// A bonus is not a kill, so it goes through earnInWorld whole.
+export const earnKill = (world: World, amount: number): World =>
+  earnInWorld(world, killPayFor(world.player.calling, amount))
+
 // NOTE: kill money goes to the killer (decided 5). A kill with no single
 // killer, such as a Kaboomer's chain or an oven's fire, is shared.
 export const payTo = (
@@ -339,15 +346,28 @@ export const payTo = (
     onNone: () => payShared(world, amount),
     onSome: slot =>
       isCoop(world)
-        ? withSeat(world, slot, seatWorld => earnInWorld(seatWorld, amount))
-        : earnInWorld(world, amount),
+        ? withSeat(world, slot, seatWorld => earnKill(seatWorld, amount))
+        : earnKill(world, amount),
   })
 
 // NOTE: a bonus split evenly among the players (decided 5): whole dollars,
 // with the odd ones to the lowest seats, so the split adds up to the bonus.
-export const payShared = (world: World, amount: number): World => {
+export const payShared = (world: World, amount: number): World =>
+  splitAmong(world, amount, earnInWorld)
+
+// NOTE: kill money with no single killer (a Kaboomer's chain, an oven's
+// fire, a trap's blast), split the same way, each player paid as their own
+// calling pays kills.
+export const payKillShared = (world: World, amount: number): World =>
+  splitAmong(world, amount, earnKill)
+
+const splitAmong = (
+  world: World,
+  amount: number,
+  earnWith: (seatWorld: World, amount: number) => World,
+): World => {
   if (!isCoop(world)) {
-    return earnInWorld(world, amount)
+    return earnWith(world, amount)
   }
   const slots = slotsOf(world)
   const share = Math.floor(amount / slots.length)
@@ -358,7 +378,7 @@ export const payShared = (world: World, amount: number): World => {
       () => 0,
     )
     return withSeat(current, slot, seatWorld =>
-      earnInWorld(seatWorld, share + (order < odd ? 1 : 0)),
+      earnWith(seatWorld, share + (order < odd ? 1 : 0)),
     )
   })
 }

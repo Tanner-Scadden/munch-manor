@@ -10,7 +10,7 @@ import {
   tileBox,
   tilesWithSymbol,
 } from './arena'
-import { PLAYER_MAX_HP } from './constants'
+import { maxHpOf } from './calling'
 import { boxAround } from './exits'
 import { dropCharge, isFridgeWeapon } from './fridgeWeapons'
 import { isKitchenOpen } from './kitchen'
@@ -248,7 +248,7 @@ const giveWeapon = (player: Player, kind: WeaponKind): Player =>
         fireCooldownMs: () => 0,
       })
     : modifyFields(dropCharge(putGunInHand(player)), {
-        arsenal: arsenal => takeGun(arsenal, freshGun(kind)),
+        arsenal: arsenal => takeGun(arsenal, freshGun(kind, player.calling)),
         wield: () => 'Gun',
         fireCooldownMs: () => 0,
       })
@@ -262,7 +262,7 @@ const givePrize = (world: World, prize: FridgePrize): World =>
         ? modifyFields(world, {
             player: player =>
               modifyFields(player, {
-                hp: hp => Math.min(PLAYER_MAX_HP, hp + 1),
+                hp: hp => Math.min(maxHpOf(player), hp + 1),
               }),
           })
         : modifyFields(world, {

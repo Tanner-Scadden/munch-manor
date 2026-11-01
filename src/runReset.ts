@@ -1,6 +1,8 @@
 import { Option } from 'effect'
 
 import { MANOR, startingLevel } from './arena'
+import { startingCallingOf } from './callingPick'
+import { playerOfCalling } from './callingPlayer'
 import { cameraFor } from './camera'
 import {
   PrizeFlight,
@@ -103,7 +105,7 @@ export const freshRun = (model: Model): RunFields => ({
   boss: Boss.Absent(),
   frenzyPacks: [],
   intensity: 0,
-  player: initialPlayer,
+  player: playerOfCalling(startingCallingOf(model)),
   cameraLean: ZERO_VECTOR,
   zombies: [],
   bullets: [],

@@ -5,6 +5,7 @@
 import { Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
+import { Calling } from './playerData'
 import {
   Heading,
   MillisNumber,
@@ -121,6 +122,9 @@ export const Player = Schema.Struct({
   knifeCooldownMs: MillisNumber,
   melee: Melee,
   wield: Wield,
+  // NOTE: what this player brought to the run (src/calling.ts). Each co-op
+  // seat has its own, so every quirk reads the acting player's.
+  calling: Calling,
 })
 export type Player = typeof Player.Type
 
