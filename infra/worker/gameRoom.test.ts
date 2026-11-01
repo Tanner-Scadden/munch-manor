@@ -6,7 +6,7 @@ import * as SqlClient from 'effect/sql/SqlClient'
 
 import { describe, expect, it } from '@effect/vitest'
 import {
-  ChangedCalling,
+  ChangedMemberCalling,
   ChangedReady,
   type ClientFrame,
   KickedPlayer,
@@ -227,7 +227,7 @@ describe('the room host', () => {
       yield* host.scope.onMessage(
         bo,
         yield* pushOf(
-          ChangedCalling,
+          ChangedMemberCalling,
           { by: BO, calling: 'LineCook' },
           'calling-bo-0001',
         ),
@@ -238,7 +238,7 @@ describe('the room host', () => {
       yield* host.scope.onMessage(
         cy,
         yield* pushOf(
-          ChangedCalling,
+          ChangedMemberCalling,
           { by: CY, calling: 'Wizard' },
           'calling-cy-0001',
         ),

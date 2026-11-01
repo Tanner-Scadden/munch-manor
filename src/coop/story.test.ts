@@ -491,7 +491,7 @@ describe('picking a hero in the lobby', () => {
       expectOutMessage(OutMessage.ChoseCalling({ calling: 'Handyman' })),
       Command.resolve(
         ChangeLobby({
-          change: LobbyChange.ChangedCalling({ calling: 'Handyman' }),
+          change: LobbyChange.ChangedMemberCalling({ calling: 'Handyman' }),
         }),
         Message.CompletedChangeLobby(),
       ),

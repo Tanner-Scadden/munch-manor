@@ -657,8 +657,8 @@ export const ChangedPicks = defineMutation({
 // its own callings when the host starts, and the Worker cannot check the
 // rank reached it, as with the rank itself. Nobody's READY changes: the pick
 // is the player's own and takes nothing back from the others.
-export const ChangedCalling = defineMutation({
-  name: 'ChangedCalling',
+export const ChangedMemberCalling = defineMutation({
+  name: 'ChangedMemberCalling',
   version: 1,
   args: Schema.Struct({ by: Schema.String, calling: CallingInput }),
   scopes: [ROOM_SCOPE_KIND],
@@ -799,7 +799,7 @@ export const RoomScope = defineScope({
     JoinedRoom,
     ChangedReady,
     ChangedPicks,
-    ChangedCalling,
+    ChangedMemberCalling,
     EndedGame,
     RecordedRoomResult,
     KickedPlayer,

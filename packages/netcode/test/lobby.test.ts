@@ -19,7 +19,7 @@ import { makeHost } from '@munch/sync-engine/in-process'
 import { first, settle } from '@munch/sync-engine/testing'
 
 import {
-  ChangedCalling,
+  ChangedMemberCalling,
   ChangedPicks,
   ChangedReady,
   CreatedRoom,
@@ -420,7 +420,7 @@ describe('the room scope', () => {
         )
         yield* push(server, BO, ChangedReady, { by: BO, ready: true })
         expect(
-          yield* push(server, BO, ChangedCalling, {
+          yield* push(server, BO, ChangedMemberCalling, {
             by: BO,
             calling: 'LineCook',
           }),
@@ -432,19 +432,19 @@ describe('the room scope', () => {
         ).toEqual([false, true])
         // NOTE: a word that is not one short word is cleaned to YOU, as at
         // create and join; the Worker decodes the rest when the host starts.
-        yield* push(server, BO, ChangedCalling, {
+        yield* push(server, BO, ChangedMemberCalling, {
           by: BO,
           calling: 'not a calling!',
         })
         expect(yield* callings).toEqual(['Handyman', 'You'])
         expect(
-          yield* push(server, ANA, ChangedCalling, {
+          yield* push(server, ANA, ChangedMemberCalling, {
             by: BO,
             calling: 'LineCook',
           }),
         ).not.toBe('Acked')
         expect(
-          yield* push(server, CY, ChangedCalling, {
+          yield* push(server, CY, ChangedMemberCalling, {
             by: CY,
             calling: 'LineCook',
           }),
@@ -452,7 +452,7 @@ describe('the room scope', () => {
         yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
         expect((yield* lobbyOf(server)).status).toBe('Playing')
         expect(
-          yield* push(server, BO, ChangedCalling, {
+          yield* push(server, BO, ChangedMemberCalling, {
             by: BO,
             calling: 'TrackStar',
           }),

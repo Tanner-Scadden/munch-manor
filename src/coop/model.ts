@@ -34,7 +34,7 @@ export type CoopProblem = typeof CoopProblem.Type
 export const LobbyChange = defineTaggedUnion({
   ChangedReady: { ready: Schema.Boolean, pingMs: Schema.Number },
   ChangedPicks: { mode: PickedMode, difficulty: RoomDifficulty },
-  ChangedCalling: { calling: Calling },
+  ChangedMemberCalling: { calling: Calling },
   KickedPlayer: { playerId: Schema.String },
 })
 export type LobbyChange = typeof LobbyChange.Type
