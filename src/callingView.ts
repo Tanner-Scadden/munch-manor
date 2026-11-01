@@ -1,29 +1,24 @@
-import { Array } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
 
-import { CALLINGS, UNLOCK_RANKS } from './calling'
-import { PROP_ICONS, QUIRK_MARKS } from './callingArt'
-import { isPickable } from './callingPick'
+import { PROP_ICONS } from './callingArt'
+import { callingCardsView } from './callingCards'
+import { specialsNoteOf } from './callingSpecials'
 import type { ApplicationViewBuilder } from './composition'
-import { portraitOf } from './coop/icons'
-import { PADLOCK_ICON } from './icons'
 import { iconView } from './menuParts'
 import { Message } from './message'
 import type { Model } from './model'
-import { CALLING_NAMES, CALLING_NOTES } from './names'
-import type { Calling } from './playerData'
-import { rankMarkView } from './rankBadgeView'
+import { CALLING_NAMES } from './names'
+import { rankOf, totalPointsOf } from './rank'
 
-// The calling pill by the difficulty on the home menu, and the picker it
-// opens: five cards, each the player's own look wearing the calling's prop
-// with its quirk as pictures, and the locked ones as dark shapes with the
-// rank that opens them. Pictures and numbers only; the words are read aloud.
+// The hero pill by the difficulty on the home menu, and the picker it
+// opens (src/callingCards.ts): five cards, each the player's own look
+// wearing the hero's prop, with its specials.
 
 type ButtonAttributes = Parameters<ApplicationViewBuilder['button']>[0]
 
-// NOTE: the pill shows the chosen calling's prop, the one the next run
+// NOTE: the pill shows the chosen hero's prop, the one the next run
 // starts with.
 export const callingButtonView = (
   model: Model,
@@ -37,7 +32,7 @@ export const callingButtonView = (
       h.Class('home-pick home-calling'),
       h.DataAttribute('calling', model.calling),
       h.AriaLabel(
-        `Calling: ${CALLING_NAMES[model.calling]}. ${CALLING_NOTES[model.calling]}. Change it`,
+        `Hero: ${CALLING_NAMES[model.calling]}. ${specialsNoteOf(model.calling)}. Change it`,
       ),
       h.AriaHasPopup('dialog'),
       h.OnClick(Message.ClickedCallingBadge(), { propagation: 'Stop' }),
@@ -49,77 +44,9 @@ export const callingPanelText = (): Readonly<{
   title: string
   blurb: string
 }> => ({
-  title: 'Calling',
-  blurb: 'Pick what you bring to a run.',
+  title: 'Hero',
+  blurb: 'Pick who you play.',
 })
-
-const quirkView = (
-  mark: (typeof QUIRK_MARKS)[Calling][number],
-  h: ApplicationViewBuilder,
-): Html =>
-  h.span(
-    [h.Class('calling-quirk'), h.AriaHidden(true)],
-    [
-      iconView('calling-quirk-icon', mark.art, h),
-      ...(mark.label === ''
-        ? []
-        : [h.span([h.Class('calling-quirk-sign')], [mark.label])]),
-    ],
-  )
-
-const cardView = (
-  model: Model,
-  calling: Calling,
-  renderInfo: Dialog.RenderInfo,
-  h: ApplicationViewBuilder,
-): Html => {
-  const isOpen = isPickable(model, calling)
-  const isChosen = calling === model.calling
-  const need = UNLOCK_RANKS[calling]
-  return h.button(
-    [
-      ...(isChosen ? renderInfo.initialFocus : []),
-      h.Type('button'),
-      h.Class('calling-card'),
-      h.DataAttribute('calling', calling),
-      h.DataAttribute('lock', isOpen ? 'Open' : 'Locked'),
-      ...(isChosen ? [h.DataAttribute('chosen', 'Chosen')] : []),
-      h.AriaLabel(
-        isOpen
-          ? `${CALLING_NAMES[calling]}: ${CALLING_NOTES[calling]}`
-          : `Locked. Reach rank ${need} to unlock`,
-      ),
-      ...(isOpen ? [] : [h.AriaDisabled(true)]),
-      h.OnClick(Message.ClickedCallingCardButton({ calling }), {
-        focusSelector: '.game-surface',
-        propagation: 'Stop',
-      }),
-    ],
-    [
-      h.span(
-        [h.Class('calling-figure'), h.AriaHidden(true)],
-        [
-          h.span([
-            h.Class('calling-figure-img'),
-            h.Style({ backgroundImage: portraitOf(model.appearance, calling) }),
-          ]),
-        ],
-      ),
-      isOpen
-        ? h.span(
-            [h.Class('calling-quirks')],
-            Array.map(QUIRK_MARKS[calling], mark => quirkView(mark, h)),
-          )
-        : h.span(
-            [h.Class('calling-need'), h.AriaHidden(true)],
-            [
-              iconView('calling-lock-icon', PADLOCK_ICON, h),
-              rankMarkView(need, h),
-            ],
-          ),
-    ],
-  )
-}
 
 export const callingBodyView = (
   model: Model,
@@ -127,9 +54,20 @@ export const callingBodyView = (
   done: Html,
   h: ApplicationViewBuilder,
 ): ReadonlyArray<Html> => [
-  h.div(
-    [h.Class('calling-cards')],
-    Array.map(CALLINGS, calling => cardView(model, calling, renderInfo, h)),
+  callingCardsView(
+    {
+      look: model.appearance,
+      chosen: model.calling,
+      rank: rankOf(totalPointsOf(model.rank)),
+      attributesOf: (calling, isChosen) => [
+        ...(isChosen ? renderInfo.initialFocus : []),
+        h.OnClick(Message.ClickedCallingCardButton({ calling }), {
+          focusSelector: '.game-surface',
+          propagation: 'Stop',
+        }),
+      ],
+    },
+    h,
   ),
   h.div([h.Class('panel-actions')], [done]),
 ]

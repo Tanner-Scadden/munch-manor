@@ -1,4 +1,4 @@
-/* CALLINGS: the pill by the difficulty on the home menu, and its picker. */
+/* HEROES: the pill by the difficulty on the home menu, and its picker. */
 
 .home-pick-row {
   display: flex;
@@ -38,30 +38,34 @@
 }
 
 .panel-dialog[data-panel='Calling'] .panel {
-  width: min(560px, calc(100vw - 16px));
+  width: min(760px, calc(100vw - 16px));
 }
 
+/* NOTE: two columns of wide cards, a figure beside its name and its
+   specials: perks in green with a plus, drawbacks in red with a minus. The
+   same cards sit in the co-op lobby's picker. */
 .calling-cards {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: var(--menu-gap-sm);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--menu-gap);
 }
 
 .calling-card {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 10px;
   box-sizing: border-box;
-  min-height: 132px;
-  padding: 8px 4px;
+  min-height: 92px;
+  padding: 8px 10px;
   border: 2px solid var(--menu-line);
   border-radius: var(--menu-radius);
   background: var(--menu-sunken);
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
   color: var(--menu-ink);
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -87,16 +91,15 @@
 
 .calling-figure {
   display: flex;
-  flex: 1;
+  flex: 0 0 52px;
   align-items: center;
   justify-content: center;
-  width: 100%;
   pointer-events: none;
 }
 
 .calling-figure-img {
-  width: 100%;
-  height: 64px;
+  width: 52px;
+  height: 72px;
   background: center / contain no-repeat;
   image-rendering: pixelated;
 }
@@ -106,38 +109,80 @@
   opacity: 0.7;
 }
 
-.calling-need {
-  flex-wrap: nowrap !important;
-  min-height: 24px !important;
-}
-
-.calling-quirks,
-.calling-need {
+.calling-body {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 4px 6px;
-  min-height: 40px;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
   pointer-events: none;
 }
 
-.calling-quirk {
+.calling-head {
   display: flex;
   align-items: center;
-  gap: 2px;
+  justify-content: space-between;
+  gap: 6px;
 }
 
-.calling-quirk-icon {
-  width: 20px;
-  height: 20px;
+.calling-name {
+  font: bold var(--menu-text-size) var(--menu-font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.calling-need {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.calling-specials {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calling-special {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: var(--menu-small-size) var(--menu-font);
+  line-height: 1.2;
+}
+
+.calling-special[data-sign='Perk'] .calling-special-sign,
+.calling-special[data-sign='Perk'] .calling-special-line {
+  color: var(--menu-green);
+}
+
+.calling-special[data-sign='Drawback'] .calling-special-sign,
+.calling-special[data-sign='Drawback'] .calling-special-line {
+  color: var(--menu-red);
+}
+
+.calling-special-none {
+  color: var(--menu-ink-faint);
+}
+
+.calling-special-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
   background: center / contain no-repeat;
   image-rendering: pixelated;
 }
 
-.calling-quirk-sign {
-  color: var(--menu-gold);
-  font: bold 12px var(--menu-font);
+.calling-special-sign {
+  flex: 0 0 auto;
+  font-weight: bold;
+}
+
+.calling-card[data-lock='Locked'] .calling-specials {
+  opacity: 0.55;
 }
 
 .calling-lock-icon {
@@ -147,27 +192,35 @@
   image-rendering: pixelated;
 }
 
+/* NOTE: a short phone on its side keeps two columns and tighter cards. */
 @media (max-height: 500px) {
   .calling-card {
     min-height: 0;
-    padding: 4px;
+    padding: 4px 8px;
+  }
+
+  .calling-figure {
+    flex-basis: 36px;
   }
 
   .calling-figure-img {
-    height: 40px;
+    width: 36px;
+    height: 48px;
   }
 
-  .calling-quirks {
-    min-height: 24px;
+  .calling-special-icon {
+    flex-basis: 12px;
+    width: 12px;
+    height: 12px;
+  }
+
+  .calling-special {
+    font-size: 10px;
   }
 }
 
 .game-root[data-layout='Portrait'] .calling-cards {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.game-root[data-layout='Portrait'] .calling-card {
-  min-height: 140px;
+  grid-template-columns: 1fr;
 }
 
 /* NOTE: the rank chip is placed under the home player by default; on a card
@@ -175,4 +228,75 @@
 .calling-need .rank-chip {
   position: static;
   translate: none;
+}
+
+/* CO-OP LOBBY: the hero pill beside the mode and difficulty, and the
+   picker over the lobby with the same cards. */
+
+.coop-calling-pill {
+  position: relative;
+  border-color: var(--menu-pink);
+  cursor: pointer;
+}
+
+.coop-calling-pill[data-calling='You'] {
+  border-color: var(--menu-line-strong);
+}
+
+.coop-calling-pill-icon {
+  width: 60%;
+  height: 60%;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.coop-calling-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--menu-gap);
+  box-sizing: border-box;
+  padding: 12px max(12px, 4%);
+  overflow-y: auto;
+  background: rgba(12, 9, 16, 0.95);
+}
+
+.coop-calling-picker-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--menu-tap);
+}
+
+.coop-calling-picker-title {
+  color: var(--menu-gold);
+  font: bold var(--menu-title-size) var(--menu-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.coop-calling-picker .coop-close {
+  top: 0;
+  right: 0;
+}
+
+.coop-calling-picker .calling-cards {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+@media (max-height: 500px) {
+  .coop-calling-picker {
+    gap: 4px;
+    padding-block: 6px;
+  }
+
+  .coop-calling-picker-head {
+    min-height: 40px;
+  }
 }

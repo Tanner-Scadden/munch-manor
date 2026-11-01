@@ -26,7 +26,12 @@ import { mounts } from './mount'
 import { ProfileTabsBlock } from './profile'
 import { ShopTabsBlock } from './shopTabs'
 import { chooseLook, flipLook, rollLook } from './update/character'
-import { closedCoop, leftRoom, neededNewerBuild } from './update/coop'
+import {
+  choseCalling,
+  closedCoop,
+  leftRoom,
+  neededNewerBuild,
+} from './update/coop'
 import { forgetAskedMode } from './update/home'
 import { keepName, switchTab } from './update/profile'
 import { afterMessage, settled } from './update/settle'
@@ -119,6 +124,7 @@ const CoopBindingWithOutMessagePolicy = CoopBinding.withOutMessagePolicy({
     ClosedCoop: () => settled(closedCoop),
     NeededNewerBuild: () => settled(neededNewerBuild),
     LeftRoom: () => settled(leftRoom),
+    ChoseCalling: ({ calling }) => settled(choseCalling(calling)),
   }),
 })
 

@@ -19,8 +19,8 @@ import {
   startsWithCooker,
   woundGraceScaleOf,
 } from './calling'
-import { QUIRK_MARKS } from './callingArt'
 import { playerOfCalling } from './callingPlayer'
+import { specialsOf } from './callingSpecials'
 import { PLAYER_MAX_HP } from './constants'
 import { defaultAppearance } from './model'
 import { heldGun } from './weapons'
@@ -139,14 +139,39 @@ describe('the gun in the Look preview', () => {
   })
 })
 
-describe('the quirks as pictures', () => {
-  test("the Handyman's card has a mark for each quirk: fewer hearts, half price planks, and the longer breather", () => {
-    const marks = QUIRK_MARKS.Handyman
-    expect(marks.map(mark => mark.label)).toEqual(['-1', '1/2', '+'])
-    expect(new Set(marks.map(mark => mark.art)).size).toBe(marks.length)
+describe('the specials as short lines', () => {
+  test('the Handyman reads his own numbers, perks and drawbacks apart', () => {
+    expect(
+      specialsOf('Handyman').map(({ isPerk, line }) => [isPerk, line]),
+    ).toEqual([
+      [true, 'Planks 50% off'],
+      [true, 'Free repairs'],
+      [true, 'Bite blink 50% longer'],
+      [false, `${PLAYER_MAX_HP - 1} max hearts`],
+    ])
+  })
+
+  test('the Track Star and the Penny Pincher read theirs', () => {
+    expect(specialsOf('TrackStar').map(({ line }) => line)).toEqual([
+      'Runs 10% faster',
+      'Mags 10% smaller',
+    ])
+    expect(specialsOf('PennyPincher').map(({ line }) => line)).toEqual([
+      'Rattles 15% off',
+      'Kills pay 20% less',
+    ])
+  })
+
+  test('the Line Cook starts with the Cooker and has no Pop Pistol', () => {
+    expect(
+      specialsOf('LineCook').map(({ isPerk, line }) => [isPerk, line]),
+    ).toEqual([
+      [true, 'Starts with Pressure Cooker'],
+      [false, 'No Pop Pistol'],
+    ])
   })
 
   test('YOU has none', () => {
-    expect(QUIRK_MARKS.You).toEqual([])
+    expect(specialsOf('You')).toEqual([])
   })
 })
