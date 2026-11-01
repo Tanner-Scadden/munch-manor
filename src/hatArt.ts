@@ -1,5 +1,4 @@
-import { shownHatOf } from './closet'
-import type { Appearance, Calling, Hat } from './playerData'
+import type { Appearance, Hat } from './playerData'
 
 // The closet's hats as pixel maps (GAME_DESIGN.md, "Rank and Bones"), all
 // original. A hat is eight pixels wide like the figure. Its rows start
@@ -24,9 +23,9 @@ export const MAX_HAT_ABOVE = 5
 // NOTE: how many pixels a hat stands over the head the marks were placed
 // for (a name tag, READY, the seat mark, the reload bar): the rows it adds
 // at the top, and the empty row over the head that it fills. 0 for a bare
-// head, and for a calling, whose prop takes the hat's place.
-export const hatRiseOf = (look: Appearance, calling: Calling): number => {
-  const hat = shownHatOf(look, calling)
+// head. A worn hat shows for every calling (2026-11-01).
+export const hatRiseOf = (look: Appearance): number => {
+  const hat = look.hat
   return hat === 'None' ? 0 : HAT_ART[hat].above + 1
 }
 

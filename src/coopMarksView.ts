@@ -180,17 +180,14 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
                 player.y -
                   (isDowned(seat)
                     ? NAME_LIFT_DOWNED_PX
-                    : NAME_BOTTOM_LIFT_PX +
-                      seatHatRiseOf(model, slot, player.calling)),
+                    : NAME_BOTTOM_LIFT_PX + seatHatRiseOf(model, slot)),
               )),
           ...(isBreak(model) && seat.readiness === 'Ready'
             ? textShapes(
                 'READY',
                 'Title',
                 player.x,
-                player.y -
-                  READY_LIFT_PX -
-                  seatHatRiseOf(model, slot, player.calling),
+                player.y - READY_LIFT_PX - seatHatRiseOf(model, slot),
                 'Center',
               )
             : []),

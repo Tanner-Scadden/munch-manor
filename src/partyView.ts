@@ -20,7 +20,6 @@ import {
   leadSeatOf,
   playersOf,
 } from './party'
-import type { Calling } from './playerData'
 import {
   type Lying,
   lyingShapes,
@@ -113,11 +112,7 @@ export const mateShadowShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
 
 // NOTE: the pixels a seat's hat stands over its head, from the look it
 // wears (a teammate's from the lobby), for the marks drawn over it.
-export const seatHatRiseOf = (
-  model: Model,
-  slot: PlayerSlot,
-  calling: Calling,
-): number => {
+export const seatHatRiseOf = (model: Model, slot: PlayerSlot): number => {
   const maybeRoom = maybeRoomOf(model.coop)
   const look = Option.isSome(maybeRoom)
     ? seatLookOf(
@@ -127,7 +122,7 @@ export const seatHatRiseOf = (
         Option.flatMap(maybeRoom, room => room.maybeLobby),
       )
     : model.appearance
-  return hatRiseOf(look, calling)
+  return hatRiseOf(look)
 }
 
 const mateBodyShapes = ({
@@ -336,7 +331,7 @@ const seatMarkShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
             slot,
             player.x,
             player.y,
-            seatHatRiseOf(model, slot, player.calling),
+            seatHatRiseOf(model, slot),
           )
         }
         return Option.match(maybeDownedOf(seat), {
@@ -368,10 +363,7 @@ export const mateOverheadShapes = (
           isStanding(seat)
             ? [
                 ...playerFlashShapes(mate.player),
-                ...reloadBarShapes(
-                  mate.player,
-                  hatRiseOf(mate.appearance, mate.player.calling),
-                ),
+                ...reloadBarShapes(mate.player, hatRiseOf(mate.appearance)),
               ]
             : [],
         ),

@@ -1,7 +1,7 @@
 import { Array, Option, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { isOwned, shownHatOf } from './closet'
+import { isOwned } from './closet'
 import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, NO_HAT } from './hatArt'
 import {
   type Appearance,
@@ -356,7 +356,7 @@ const GLASSES: Rows = ['', '', '', '', '.RERRER.']
 // CALLING PROPS
 
 // NOTE: the small prop each calling wears over the player's own look, so
-// the Look tab still decides the face: the Handyman's hard hat, the Track
+// the Look tab still decides the face (a worn hat hides the prop): the Handyman's hard hat, the Track
 // Star's sweatband, the Penny Pincher's green visor with a coin on it, and
 // the Line Cook's toque. YOU wears nothing. Rows start at the face's first
 // row and lay over the hair and glasses.
@@ -390,10 +390,11 @@ const overlayRows = (base: Rows, top: Rows): Rows =>
 
 // NOTE: a hat sits over the hair and glasses. It reaches above the head, so
 // the figure's rows grow at the top and nothing below them moves: the sprite
-// is anchored at its feet. A calling's prop takes the hat's place, so only
-// YOU wears one (shownHatOf).
-const withHat = (rows: Rows, look: Appearance, calling: Calling): Rows => {
-  const hat = shownHatOf(look, calling)
+// is anchored at its feet. A worn hat shows for every calling and the
+// calling's prop (CALLING_PROPS) is left off under it, so the two never draw
+// on top of each other (owner decision, 2026-11-01).
+const withHat = (rows: Rows, look: Appearance): Rows => {
+  const hat = look.hat
   const art = hat === 'None' ? NO_HAT : HAT_ART[hat]
   return Array.isReadonlyArrayEmpty(art.rows)
     ? rows
@@ -503,9 +504,10 @@ export const playerPixels = (
     const haired = overlayRows(bearded, hair)
     const glassed = appearance.glasses ? overlayRows(haired, GLASSES) : haired
     return withHat(
-      overlayRows(glassed, CALLING_PROPS[calling]),
+      appearance.hat === 'None'
+        ? overlayRows(glassed, CALLING_PROPS[calling])
+        : glassed,
       appearance,
-      calling,
     )
   }
   const legs = (rows: Rows) => shape.legs(rows)
@@ -597,7 +599,7 @@ export const appearanceKey = (
     appearance.print,
     appearance.beard ? 'Beard' : 'Shaven',
     appearance.glasses ? 'Glasses' : 'Bare',
-    shownHatOf(appearance, calling),
+    appearance.hat,
   ].join('.')
 
 const SPRITE_CACHE_SIZE = 16

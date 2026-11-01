@@ -29,6 +29,8 @@ export const Message = defineMessageUnion({
   // by this click and not by the radio group, which is read only there: an
   // arrow key only moves focus, so walking a row never buys anything.
   ClickedGearOption: { part: LookPart, value: Schema.String },
+  // NOTE: the BUY pill by the figure, for the look being tried on.
+  ClickedBuyButton: {},
 })
 export type Message = typeof Message.Type
 
@@ -36,6 +38,7 @@ const OutMessage = defineMessageUnion({
   ChoseLook: { part: LookPart, value: Schema.String },
   FlippedLook: { toggle: LookToggle },
   RequestedRandomLook: {},
+  RequestedBuy: {},
 })
 type OutMessage = typeof OutMessage.Type
 
@@ -317,6 +320,9 @@ export const update = CharacterComposition.makeUpdate({
   ),
   ClickedDiceButton: CharacterDefinition.makeOutMessageStep(() =>
     OutMessage.RequestedRandomLook(),
+  ),
+  ClickedBuyButton: CharacterDefinition.makeOutMessageStep(() =>
+    OutMessage.RequestedBuy(),
   ),
   ClickedGearOption: CharacterDefinition.makeOutMessageStep.fromMessage(
     ({ part, value }) => OutMessage.ChoseLook({ part, value }),

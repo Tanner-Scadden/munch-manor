@@ -33,3 +33,12 @@ export const markLooksSeen = markSeen(lookUnlocksAt, isLookId)
 
 // NOTE: the hero picker opened: its callings.
 export const markCallingsSeen = markSeen(callingUnlocksAt, id => !isLookId(id))
+
+// NOTE: an unlock the player picked: its NEW badge goes at once, whatever is
+// still open. It was marked seen when its surface opened.
+export const withoutFresh = (model: Model, id: string): Model =>
+  Array.contains(model.freshUnlocks, id)
+    ? modifyFields(model, {
+        freshUnlocks: fresh => Array.filter(fresh, other => other !== id),
+      })
+    : model

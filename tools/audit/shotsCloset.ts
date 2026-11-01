@@ -7,7 +7,8 @@
 // 1280x720 desktop, an 844x390 phone on its side, and a 390x844 phone held
 // upright, as `s50-<TAG>-<viewport>-<scene>.png`, `s50-<TAG>-looks-<body>.png`,
 // and `s50-<TAG>-skins.png`. It exits with 1 when a Look tab row runs past
-// its panel, an option is under 40 px, or a pick does not buy.
+// its panel, an option is under 40 px, or a pick does not try on and the BUY
+// pill does not buy.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsCloset.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
 import { Array } from 'effect'
@@ -58,6 +59,23 @@ const SCENES: ReadonlyArray<Scene> = [
     name: 'look-gear',
     query: `profile=look&looksection=Gear&${MIXED}&hat=Fez`,
     isLook: true,
+  },
+  {
+    name: 'look-hero-hat',
+    query: `profile=look&looksection=Gear&${MIXED}&hat=Fez&calling=Handyman`,
+    isLook: true,
+  },
+  {
+    name: 'look-preview',
+    query: `profile=look&looksection=Gear&${MIXED}&hat=Fez&calling=Handyman`,
+    isLook: true,
+    open: '.look-option[data-look-option="Hat.Colander"]',
+  },
+  {
+    name: 'look-preview-short',
+    query: `profile=look&looksection=Gear&rank=600&bones=30&spent=0&bought=Fez&hat=Fez`,
+    isLook: true,
+    open: '.look-option[data-look-option="Hat.Colander"]',
   },
   {
     name: 'look-gear-skin',
@@ -241,25 +259,39 @@ const checkLook = async (page: Page, where: string) => {
   }
 }
 
-// NOTE: buys the first look for sale that the Bones cover, by a pick.
-const checkBuying = async (page: Page, where: string) => {
+// NOTE: tries on the first look for sale, which spends nothing and shows the
+// BUY pill (shot as look-tryon), then buys it by the pill.
+const checkBuying = async (page: Page, where: string, tryOnShot: string) => {
   const sale = page.locator('.look-option[data-standing="ForSale"]').first()
   if ((await sale.count()) === 0) {
     return
   }
-  const before = await page
-    .locator('.profile-rank .rank-bones-count')
-    .innerText()
+  const bones = page.locator('.profile-rank .rank-bones-count')
+  const before = await bones.innerText()
   await sale.click()
   await settleAnimations(page)
-  const after = await page
-    .locator('.profile-rank .rank-bones-count')
-    .innerText()
+  const pill = page.locator('.look-buy')
+  if (
+    (await pill.count()) === 0 ||
+    (await bones.innerText()) !== before ||
+    (await sale.getAttribute('aria-checked')) === 'true'
+  ) {
+    problems.push(`${where}: a pick on a look for sale did not only try it on`)
+    return
+  }
+  await shot(page, tryOnShot)
+  await pill.click()
+  await settleAnimations(page)
+  const after = await bones.innerText()
   const bought = page.locator('.look-option[data-cue="Bought"]').first()
   const isWorn = (await bought.getAttribute('aria-checked')) === 'true'
-  if (Number(after) >= Number(before) || !isWorn) {
+  if (
+    Number(after) >= Number(before) ||
+    !isWorn ||
+    (await page.locator('.look-buy').count()) !== 0
+  ) {
     problems.push(
-      `${where}: a pick on a look for sale left ${before} Bones as ${after} and the option ${isWorn ? 'worn' : 'not worn'}`,
+      `${where}: the BUY pill left ${before} Bones as ${after} and the option ${isWorn ? 'worn' : 'not worn'}`,
     )
   }
 }
@@ -298,7 +330,7 @@ for (const viewport of SHOT_VIEWPORTS) {
         `s50-${TAG}-${viewport.name}-${scene.name}${tick === undefined ? '' : `-${tick}`}`,
       )
       if (scene.name === 'look-gear') {
-        await checkBuying(page, where)
+        await checkBuying(page, where, `s50-${TAG}-${viewport.name}-look-tryon`)
         await shot(page, `s50-${TAG}-${viewport.name}-look-bought`)
       }
       pages.release(page)

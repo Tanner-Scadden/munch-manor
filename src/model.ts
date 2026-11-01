@@ -192,12 +192,17 @@ export const HelpCard = Schema.Literals([
 ])
 export type HelpCard = typeof HelpCard.Type
 
+// NOTE: a look for sale being tried on in the Look tab: shown on the
+// figure and never worn, saved, or synced until it is bought.
+const LookPreview = Schema.Struct({ part: LookPart, value: Schema.String })
+
 const ProfilePanel = Schema.Struct({
   tab: ProfileTab,
   nameDraft: Schema.String,
   fx: ProfileFx,
   fxCount: Schema.Number,
   closetCue: ClosetCue,
+  maybePreview: Schema.Option(LookPreview),
 })
 type ProfilePanel = typeof ProfilePanel.Type
 
@@ -348,6 +353,7 @@ const closedProfile: ProfilePanel = {
   fx: 'Still',
   fxCount: 0,
   closetCue: { part: 'Hat', value: 'None', kind: 'Still', count: 0 },
+  maybePreview: Option.none(),
 }
 
 const closedCharacterPicker: CharacterPicker = {

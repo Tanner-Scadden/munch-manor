@@ -318,3 +318,72 @@
 .game-root[data-layout='Portrait'] .look-tab {
   --menu-tap: 40px;
 }
+
+/* TRYING ON: the option being tried on glows, and the BUY pill sits in the
+   stage's top left corner (the dice is in the top right) */
+
+.look-option[data-previewed='true'] {
+  outline: 2px solid #ffe066;
+  outline-offset: 1px;
+}
+
+.look-buy {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 10px 0 12px;
+  border: 2px solid #ffe066;
+  border-radius: 999px;
+  background: #140c10;
+  color: #ffe066;
+  font: bold 14px / 1 var(--menu-font);
+  cursor: pointer;
+  animation: closet-pill-in 160ms ease-out both;
+}
+
+.look-buy-price {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.look-buy-price .rank-bone-img {
+  width: 12px !important;
+  height: auto !important;
+}
+
+.look-buy-price .rank-bones-count {
+  font: bold 14px / 1 var(--menu-font);
+}
+
+.look-buy[data-short='true'] {
+  border-color: #5a3a4a;
+  color: #b9a7b0;
+  cursor: default;
+  opacity: 0.85;
+}
+
+.look-buy[data-short='true'] .rank-bones-count {
+  color: #ff5a4a;
+}
+
+@keyframes closet-pill-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .look-buy {
+    animation: none !important;
+  }
+}
