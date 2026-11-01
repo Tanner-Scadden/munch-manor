@@ -21,6 +21,7 @@ import {
   changesBetween,
   withUnsavedChanges,
 } from '../playerSync'
+import { grantVeteran } from '../rankRun'
 import {
   PlayerSave,
   hasSaveFieldsChanged,
@@ -196,17 +197,33 @@ export const finishLoading = (model: Model, step: LoadStep): UpdateReturn =>
 export const loadSave = (
   model: Model,
   maybeSave: Option.Option<PlayerSave>,
-): UpdateReturn =>
-  finishLoading(
-    modifyFields(
-      Option.match(maybeSave, {
-        onNone: () => model,
-        onSome: save => restoreSave(model, save),
-      }),
-      { saveStatus: () => 'Read' },
-    ),
-    'Save',
-  )
+): UpdateReturn => {
+  const restored = Option.match(maybeSave, {
+    onNone: () => model,
+    onSome: save => restoreSave(model, save),
+  })
+  const granted = modifyFields(grantVeteran(restored), {
+    saveStatus: () => 'Read',
+  })
+  const loaded = finishLoading(granted, 'Save')
+  // NOTE: a player with no save has nothing to write yet: their first write
+  // seeds the store with the whole save, the grant in it. A save from before
+  // rank writes the grant it was just given, as the change it is.
+  return Option.isSome(maybeSave) && !restored.rank.isVeteranGranted
+    ? {
+        model: modifyFields(loaded.model, {
+          writesInFlight: count => count + 1,
+        }),
+        commands: [
+          ...(loaded.commands ?? []),
+          WriteSave({
+            save: saveOf(granted),
+            changes: changesBetween(saveOf(restored), saveOf(granted)),
+          }),
+        ],
+      }
+    : loaded
+}
 
 // NOTE: a save that arrived from sync is already in the store, so taking
 // it into the Model writes nothing back. Every other change to the save is

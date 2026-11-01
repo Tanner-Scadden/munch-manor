@@ -33,6 +33,7 @@ import { defaultAppearance } from './model'
 import { noSavedRunRecords } from './playerData'
 import { LinkedDevices, PlayerScope } from './playerScope'
 import { PlayerChange, StoreEvent, changesBetween } from './playerSync'
+import { grantedVeteran, noRank } from './rank'
 import {
   type PlayerSave,
   SAVE_KEY,
@@ -91,6 +92,7 @@ const legacySave: PlayerSave = {
   rotation: 'Landscape',
   name: 'Lil Gnaw',
   records: noSavedRunRecords,
+  rank: noRank,
 }
 
 interface FakeLegacy {
@@ -617,6 +619,33 @@ const until = <A, E>(probe: Effect.Effect<A, E>, done: (value: A) => boolean) =>
     }),
   )
 
+// NOTE: a phone with the legacy save, and a laptop linked to its player.
+const linkedPair = () =>
+  Effect.gen(function* () {
+    const server = yield* makeServer()
+    const network = yield* server.host.network()
+    const setup = Option.some<SyncSetup>({
+      identityApi: server.api,
+      transports: [network.transport],
+    })
+    const phone = yield* openOn(
+      yield* makeHub(),
+      (yield* makeLegacy(Option.some(legacySave))).legacy,
+      setup,
+    )
+    const laptop = yield* openOn(
+      yield* makeHub(),
+      (yield* makeLegacy(Option.none())).legacy,
+      setup,
+    )
+    yield* phone.load
+    yield* laptop.redeemLinkCode(yield* phone.requestLinkCode)
+    yield* until(laptop.load, maybeSave =>
+      Option.exists(maybeSave, save => save.appearance.hairColor === 'Red'),
+    )
+    return { phone, laptop }
+  })
+
 describe('two devices syncing one player', () => {
   it.effect(
     'a linked device gets the look and kills, and its change comes back',
@@ -799,29 +828,7 @@ describe('two devices syncing one player', () => {
   it.effect('run records from two devices merge to the larger of each', () =>
     synced(
       Effect.gen(function* () {
-        const server = yield* makeServer()
-        const network = yield* server.host.network()
-        const setup = Option.some<SyncSetup>({
-          identityApi: server.api,
-          transports: [network.transport],
-        })
-        const phone = yield* openOn(
-          yield* makeHub(),
-          (yield* makeLegacy(Option.some(legacySave))).legacy,
-          setup,
-        )
-        const laptop = yield* openOn(
-          yield* makeHub(),
-          (yield* makeLegacy(Option.none())).legacy,
-          setup,
-        )
-        yield* phone.load
-        const code = yield* phone.requestLinkCode
-        yield* laptop.redeemLinkCode(code)
-        yield* until(laptop.load, maybeSave =>
-          Option.exists(maybeSave, save => save.appearance.hairColor === 'Red'),
-        )
-
+        const { phone, laptop } = yield* linkedPair()
         const withNormal = (
           furthestWave: number,
           mostKills: number,
@@ -832,8 +839,8 @@ describe('two devices syncing one player', () => {
             Normal: { furthestWave, mostKills },
           },
         })
-        // NOTE: the phone sets the higher records first, then the laptop,
-        // offline all along, writes lower ones it reached. The larger stay.
+        // NOTE: the phone sets higher records, the laptop lower ones; the
+        // larger stay.
         const isHigh = (maybeSave: Option.Option<PlayerSave>) =>
           Option.exists(
             maybeSave,
@@ -860,6 +867,55 @@ describe('two devices syncing one player', () => {
         expect(isHigh(onLaptop)).toBe(true)
       }),
     ),
+  )
+
+  it.effect('rank earned on two linked devices both count', () =>
+    synced(
+      Effect.gen(function* () {
+        const { phone, laptop } = yield* linkedPair()
+        const earned = (points: number, bones: number): PlayerSave => ({
+          ...legacySave,
+          rank: { ...noRank, earnedPoints: points, earnedBones: bones },
+        })
+        // NOTE: two runs from the same save are increments: 60 and 100 add.
+        yield* write(phone, legacySave, earned(60, 6))
+        yield* write(laptop, legacySave, earned(100, 10))
+        const isBoth = (maybeSave: Option.Option<PlayerSave>) =>
+          Option.exists(
+            maybeSave,
+            save =>
+              save.rank.earnedPoints === 160 && save.rank.earnedBones === 16,
+          )
+        expect(isBoth(yield* until(phone.load, isBoth))).toBe(true)
+        expect(isBoth(yield* until(laptop.load, isBoth))).toBe(true)
+      }),
+    ),
+  )
+
+  it.effect(
+    'the veteran grant from two linked devices keeps the larger, not the sum',
+    () =>
+      synced(
+        Effect.gen(function* () {
+          const { phone, laptop } = yield* linkedPair()
+          const granted = (points: number): PlayerSave => ({
+            ...legacySave,
+            rank: grantedVeteran(noRank, points),
+          })
+          yield* write(phone, legacySave, granted(300))
+          yield* write(laptop, legacySave, granted(250))
+          const isLarger = (maybeSave: Option.Option<PlayerSave>) =>
+            Option.exists(
+              maybeSave,
+              save =>
+                save.rank.isVeteranGranted &&
+                save.rank.veteranPoints === 300 &&
+                save.rank.veteranBones === 30,
+            )
+          expect(isLarger(yield* until(phone.load, isLarger))).toBe(true)
+          expect(isLarger(yield* until(laptop.load, isLarger))).toBe(true)
+        }),
+      ),
   )
 
   it.effect(
@@ -1096,6 +1152,7 @@ const migratedLiveSave: PlayerSave = {
   rotation: 'Landscape',
   name: '',
   records: noSavedRunRecords,
+  rank: noRank,
 }
 
 const realLegacy: LegacySave = {

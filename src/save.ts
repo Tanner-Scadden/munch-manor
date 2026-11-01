@@ -44,7 +44,7 @@ import {
   SavedOnboarding,
   SavedPowerUps,
   type SavedRunRecord,
-  type SavedRunRecords,
+  SavedRunRecords,
   SavedSettings,
   type SavedTrapHint,
   ShakeSetting,
@@ -54,6 +54,7 @@ import {
   noSavedRunRecords,
 } from './playerData'
 import { cleanName } from './profile'
+import { noRank } from './rank'
 
 export {
   PlayerSave,
@@ -244,7 +245,26 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 12 is the save before rank.
+const PlayerSaveV12 = Schema.Struct({
+  version: Schema.Literal(12),
+  onboarding: SavedOnboarding,
+  homeScreenTip: HomeScreenTip,
+  settings: SavedSettings,
+  appearance: Appearance,
+  difficulty: SavedDifficulty,
+  bests: SavedBests,
+  home: SavedHome,
+  seenPowerUps: SavedPowerUps,
+  rotation: RotationSetting,
+  name: PlayerName,
+  records: SavedRunRecords,
+})
+type PlayerSaveV12 = typeof PlayerSaveV12.Type
+
 const PlayerSaveJson = Schema.fromJsonString(PlayerSave)
+
+const PlayerSaveV12Json = Schema.fromJsonString(PlayerSaveV12)
 
 const PlayerSaveV11Json = Schema.fromJsonString(PlayerSaveV11)
 
@@ -438,13 +458,25 @@ const migrateV9 = (save: PlayerSaveV9): PlayerSaveV11 => ({
 
 // NOTE: a save from before the run records has none yet, so its first
 // records are set without a NEW BEST.
-const migrateV11 = (save: PlayerSaveV11): PlayerSave => ({
+const migrateV11 = (save: PlayerSaveV11): PlayerSaveV12 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 12,
   records: noSavedRunRecords,
 })
 
-const fromV9 = (save: PlayerSaveV9): PlayerSave => migrateV11(migrateV9(save))
+// NOTE: a save from before rank has earned none and has not been granted
+// the veteran start yet: the first load after the update grants it from the
+// kills the save holds (grantVeteranFrom in src/rankRun.ts), once.
+const migrateV12 = (save: PlayerSaveV12): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  rank: noRank,
+})
+
+const fromV11 = (save: PlayerSaveV11): PlayerSave =>
+  migrateV12(migrateV11(save))
+
+const fromV9 = (save: PlayerSaveV9): PlayerSave => fromV11(migrateV9(save))
 
 const fromV8 = (save: PlayerSaveV8): PlayerSave => fromV9(migrateV8(save))
 
@@ -474,9 +506,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 12,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV12Json)(raw), migrateV12),
+  },
+  {
     version: 11,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV11Json)(raw), migrateV11),
+      Option.map(Schema.decodeOption(PlayerSaveV11Json)(raw), fromV11),
   },
   {
     version: 10,
@@ -597,6 +634,7 @@ export const SAVED_FIELDS = [
   'seenPowerUps',
   'rotationSetting',
   'playerName',
+  'rank',
 ] as const satisfies ReadonlyArray<keyof Model>
 
 export const hasSaveFieldsChanged = (before: Model, after: Model): boolean =>
@@ -644,6 +682,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   rotation: model.rotationSetting,
   name: model.playerName,
   records: savedRunRecords(model.bests),
+  rank: model.rank,
 })
 
 // INTO THE MODEL
@@ -769,6 +808,7 @@ export const restoreSave = (model: Model, save: PlayerSave): Model =>
     seenPowerUps: seen => Array.union(seen, knownPowerUps(save.seenPowerUps)),
     rotationSetting: () => save.rotation,
     playerName: () => cleanName(save.name),
+    rank: () => save.rank,
   })
 
 // RESET

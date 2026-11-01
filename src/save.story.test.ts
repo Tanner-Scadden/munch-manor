@@ -30,6 +30,7 @@ import { DISTANT_SPAWN, loadingSave } from './model.fixture'
 import { shownHints } from './onboarding'
 import { noSavedRunRecords } from './playerData'
 import { PlayerChange, changesBetween } from './playerSync'
+import { grantedVeteran, noRank } from './rank'
 import {
   type PlayerSave,
   SAVED_FIELDS,
@@ -111,6 +112,14 @@ const learnedSave: PlayerSave = {
     Hard: { furthestWave: 4, mostKills: 66 },
     Nightmare: { furthestWave: null, mostKills: null },
   },
+  rank: {
+    earnedPoints: 340,
+    earnedBones: 34,
+    veteranPoints: 150,
+    veteranBones: 15,
+    isVeteranGranted: true,
+    spentBones: 5,
+  },
 }
 
 // NOTE: the look as saves before version 10 kept it, a Female or Male
@@ -143,6 +152,7 @@ const migratedSave: PlayerSave = {
   ...learnedSave,
   appearance: MIGRATED_LOOK,
   records: noSavedRunRecords,
+  rank: noRank,
 }
 
 const { name: _name, ...versionEightSave } = versionNineSave
@@ -379,7 +389,9 @@ describe('the schema', () => {
         const { appearance: _migrated, ...others } = save
         return others
       }),
-    ).toEqual(Option.some({ ...rest, records: noSavedRunRecords }))
+    ).toEqual(
+      Option.some({ ...rest, records: noSavedRunRecords, rank: noRank }),
+    )
   })
 
   test('a version 9 save with a look no build ever made reads as no save', () => {
@@ -836,6 +848,7 @@ describe('writing the save', () => {
   test('the power-ups seen last across a reload', () => {
     const grabbed = modifyFields(read, {
       seenPowerUps: () => ['Damage', 'Heart'],
+      rank: rank => grantedVeteran(rank, 0),
     })
     const json = Option.getOrThrow(encodeSave(saveOf(grabbed)))
     story(
@@ -1006,5 +1019,63 @@ describe('reset tutorial', () => {
         expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
       }),
     )
+  })
+})
+
+describe('the veteran grant', () => {
+  const loaded = (maybeSave: Option.Option<PlayerSave>) =>
+    update(loadingSave, Message.CompletedLoadSave({ maybeSave }))
+
+  const writesOf = (result: ReturnType<typeof update>) =>
+    (result.commands ?? []).filter(command => command.name === WriteSave.name)
+
+  // NOTE: a save from before rank, as the previous build wrote it.
+  const beforeRank = (killsByKind: Record<string, number>) => {
+    const { rank: _rank, ...rest } = learnedSave
+    const json = JSON.stringify({
+      ...rest,
+      version: 12,
+      bests: { ...learnedSave.bests, killsByKind },
+    })
+    return decodeSave(json)
+  }
+
+  test('a save from before rank is granted a point per kill, and writes the grant', () => {
+    const result = loaded(beforeRank({ Shambler: 200, Runner: 141 }))
+    expect(result.model.rank).toEqual({
+      earnedPoints: 0,
+      earnedBones: 0,
+      veteranPoints: 341,
+      veteranBones: 34,
+      isVeteranGranted: true,
+      spentBones: 0,
+    })
+    const [write] = writesOf(result)
+    expect(write?.args).toMatchObject({
+      changes: [{ _tag: 'GrantedVeteranRank', points: 341, bones: 34 }],
+    })
+  })
+
+  test('the grant stops at the points for rank 10', () => {
+    const result = loaded(beforeRank({ Shambler: 9000 }))
+    expect(result.model.rank.veteranPoints).toBe(1800)
+    expect(result.model.rank.veteranBones).toBe(180)
+  })
+
+  test('a save that was granted keeps its grant and writes nothing', () => {
+    const result = loaded(Option.some(learnedSave))
+    expect(result.model.rank).toEqual(learnedSave.rank)
+    expect(writesOf(result)).toEqual([])
+  })
+
+  test('a new player is granted 0 once, so later kills never become a grant', () => {
+    const result = loaded(Option.none())
+    expect(result.model.rank.isVeteranGranted).toBe(true)
+    expect(result.model.rank.veteranPoints).toBe(0)
+    expect(writesOf(result)).toEqual([])
+    const later = modifyFields(result.model, {
+      bests: bests => modifyFields(bests, { totalKills: () => 500 }),
+    })
+    expect(saveOf(later).rank.veteranPoints).toBe(0)
   })
 })

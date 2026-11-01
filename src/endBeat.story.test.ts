@@ -3,7 +3,6 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { PARLOUR } from './arena'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
@@ -25,12 +24,12 @@ import { bestsFor, withBests } from './home'
 import { update } from './main'
 import { Message } from './message'
 import { AudioState, type Model, Phase, RunMode } from './model'
-import { readyModel } from './model.fixture'
+import { lastHeart, readyModel } from './model.fixture'
 import { seatCrew } from './party'
 import { noSavedRunRecords } from './playerData'
 import { mergeRunRecords } from './playerScope'
 import { GAME_URL, copiedLineOf, sharePostOf, shareText } from './share'
-import { press, tick, zombieOf } from './testing'
+import { press, tick } from './testing'
 import { SendShareEvent } from './update/end'
 import { PlaySound } from './update/sound'
 import { RUNNING_BUILD } from './version'
@@ -39,15 +38,6 @@ import { withWorld } from './world'
 const midRun: Model = modifyFields(readyModel, {
   phase: () => Phase.Wave({ wave: 4, elapsedMs: 4000, spawns: [] }),
 })
-
-// NOTE: one heart left and a zombie on the player, so the next tick bites.
-const lastHeart = (base: Model): Model =>
-  modifyFields(base, {
-    player: player => modifyFields(player, { hp: () => 1 }),
-    zombies: () => [
-      zombieOf('Runner', 100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
-    ],
-  })
 
 const onEndScreen = (phase: Phase, screenMs: number): Model =>
   modifyFields(readyModel, {

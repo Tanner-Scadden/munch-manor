@@ -50,7 +50,9 @@ import {
   ChangedOnboarding,
   ChangedRotation,
   ChangedSettings,
+  EarnedRank,
   ForgotPowerUps,
+  GrantedVeteranRank,
   KillsRow,
   PLAYER_COLUMNS,
   PlayerRow,
@@ -194,6 +196,14 @@ const saveOfRow = (
   rotation: row.rotation,
   name: row.name,
   records: row.run_records,
+  rank: {
+    earnedPoints: row.rank_points,
+    earnedBones: row.rank_bones,
+    veteranPoints: row.veteran_points,
+    veteranBones: row.veteran_bones,
+    isVeteranGranted: row.veteran_granted === 1,
+    spentBones: row.spent_bones,
+  },
 })
 
 // LEGACY
@@ -480,6 +490,10 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     RecordedRun: ({ runs, totalKills, kills, bests }) =>
       replica.run(RecordedRun, { runs, totalKills, kills, bests }),
     ReachedRecords: ({ records }) => replica.run(ReachedRecords, { records }),
+    EarnedRank: ({ points, bones }) =>
+      replica.run(EarnedRank, { points, bones }),
+    GrantedVeteranRank: ({ points, bones }) =>
+      replica.run(GrantedVeteranRank, { points, bones }),
   })
 
 const sameSyncState = Schema.toEquivalence(SyncState)

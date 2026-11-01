@@ -245,6 +245,34 @@ export const RunTally = defineTaggedUnion({
 })
 export type RunTally = typeof RunTally.Type
 
+// NOTE: what a run has already been paid in rank (src/rankRun.ts): the
+// waves cleared, bosses felled, awards won, and revives made so far. A win that keeps going into
+// endless is paid again when it ends, and only for what it did after.
+export const RankPaid = Schema.Struct({
+  wavesPaid: Schema.Number,
+  bossesPaid: Schema.Number,
+  awardsPaid: Schema.Number,
+  revivesPaid: Schema.Number,
+})
+export type RankPaid = typeof RankPaid.Type
+
+export const noRankPaid: RankPaid = {
+  wavesPaid: 0,
+  bossesPaid: 0,
+  awardsPaid: 0,
+  revivesPaid: 0,
+}
+
+// NOTE: what the run on the end card paid, for its rank strip: the total
+// points before it (so the bar fills from there), the points it paid, and
+// the Bones.
+export const RankGain = Schema.Struct({
+  pointsBefore: Schema.Number,
+  gained: Schema.Number,
+  bonesGained: Schema.Number,
+})
+export type RankGain = typeof RankGain.Type
+
 // HOME MENU
 
 export const HomeMode = Schema.Literals(['Campaign', 'Endless'])

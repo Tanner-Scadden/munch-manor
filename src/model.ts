@@ -26,6 +26,8 @@ import {
   Particle,
   PlayerBests,
   PrizeFlight,
+  RankGain,
+  RankPaid,
   RunTally,
   SHOP_DIALOG_ID,
   SHOP_TABS_ID,
@@ -43,6 +45,7 @@ import {
   freshHomeMenu,
   freshLessons,
   idleInput,
+  noRankPaid,
 } from './clientSchema'
 import { DEFAULT_SEED } from './constants'
 import * as Coop from './coop/model'
@@ -56,6 +59,7 @@ import {
   MusicSetting,
   PlayerName,
   RotationSetting,
+  SavedRank,
   ShakeSetting,
   ShareStatsSetting,
   SoundSetting,
@@ -68,6 +72,7 @@ import {
   SyncState,
 } from './playerSync'
 import { ProfileTabsBlock } from './profile'
+import { noRank } from './rank'
 import { ShopTabsBlock } from './shopTabs'
 import { SUPPORT_URL, maybeSupportUrlOf } from './support'
 import {
@@ -269,6 +274,9 @@ export const Model = Schema.Struct({
   handDialog: DialogBlock.Model,
   bests: PlayerBests,
   runTally: RunTally,
+  rankPaid: RankPaid,
+  maybeRankGain: Schema.Option(RankGain),
+  rank: SavedRank,
   // NOTE: the room's difficulty while an online co-op run is drawn, kept
   // with the run so its summary has it after the room is gone (a LEAVE).
   maybeRoomDifficulty: Schema.Option(Difficulty),
@@ -456,6 +464,9 @@ export const initialModel: Model = {
   handDialog: closedDialog(HAND_DIALOG_ID),
   bests: noBests,
   runTally: RunTally.Uncounted(),
+  rankPaid: noRankPaid,
+  maybeRankGain: Option.none(),
+  rank: noRank,
   maybeRoomDifficulty: Option.none(),
   maybeCrewRunKey: Option.none(),
   loading: Loading.Loaded(),

@@ -71,6 +71,12 @@ export const PlayerRow = Schema.Struct({
   rotation: RotationSetting,
   name: PlayerName,
   run_records: Schema.fromJsonString(SavedRunRecords),
+  rank_points: Schema.Number,
+  rank_bones: Schema.Number,
+  veteran_points: Schema.Number,
+  veteran_bones: Schema.Number,
+  veteran_granted: Schema.Number,
+  spent_bones: Schema.Number,
 })
 export type PlayerRow = typeof PlayerRow.Type
 
@@ -100,6 +106,12 @@ export const PLAYER_COLUMNS = Array.make(
   'rotation',
   'name',
   'run_records',
+  'rank_points',
+  'rank_bones',
+  'veteran_points',
+  'veteran_bones',
+  'veteran_granted',
+  'spent_bones',
 )
 
 export const rowOfSave = (save: PlayerSave): PlayerRow => ({
@@ -122,6 +134,12 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   rotation: save.rotation,
   name: save.name,
   run_records: save.records,
+  rank_points: save.rank.earnedPoints,
+  rank_bones: save.rank.earnedBones,
+  veteran_points: save.rank.veteranPoints,
+  veteran_bones: save.rank.veteranBones,
+  veteran_granted: save.rank.isVeteranGranted ? 1 : 0,
+  spent_bones: save.rank.spentBones,
 })
 
 export const killsRowsOfSave = (save: PlayerSave): ReadonlyArray<KillsRow> =>
@@ -161,10 +179,10 @@ const updatePlayer = (
 // player (a device that linked to another device's player) it does nothing,
 // so linking never overwrites the player it joined. Version 8 is the save
 // with the simple look (save version 11), and 9 the save with the run
-// records (save version 12).
+// records (save version 12), and 10 the save with rank (save version 13).
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 9,
+  version: 10,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -533,6 +551,59 @@ export const ReachedRecords = defineMutation({
     }),
 })
 
+const MAX_POINTS_PER_RUN = 20000
+const MAX_BONES_PER_RUN = MAX_POINTS_PER_RUN / 10
+
+const Points = Count.check(Schema.isLessThanOrEqualTo(MAX_POINTS_PER_RUN))
+
+const Bones = Count.check(Schema.isLessThanOrEqualTo(MAX_BONES_PER_RUN))
+
+// NOTE: a finished run's rank points and Bones, as increments, applied once
+// per mutation id, so runs on two linked devices both count and a retry
+// never counts one twice. The server refuses a run that pays more than a
+// run can.
+export const EarnedRank = defineMutation({
+  name: 'EarnedRank',
+  version: 1,
+  args: Schema.Struct({ points: Points, bones: Bones }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ points, bones }, context) =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`UPDATE ${context.table('player')} SET
+        rank_points = rank_points + ${points},
+        rank_bones = rank_bones + ${bones}
+        WHERE id = 1`
+    }),
+})
+
+const MAX_VETERAN_POINTS = 1800
+
+// NOTE: the veteran start for a player from before rank, from the kills
+// their save held. It is merged as the larger of each, never added, so two
+// devices that both grant it (each from the same kills) leave one grant,
+// and the player is marked granted for good. Capped at rank 10's points.
+export const GrantedVeteranRank = defineMutation({
+  name: 'GrantedVeteranRank',
+  version: 1,
+  args: Schema.Struct({
+    points: Count.check(Schema.isLessThanOrEqualTo(MAX_VETERAN_POINTS)),
+    bones: Count.check(Schema.isLessThanOrEqualTo(MAX_VETERAN_POINTS / 10)),
+  }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ points, bones }, context) =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`UPDATE ${context.table('player')} SET
+        veteran_points = MAX(veteran_points, ${points}),
+        veteran_bones = MAX(veteran_bones, ${bones}),
+        veteran_granted = 1
+        WHERE id = 1`
+    }),
+})
+
 // NOTE: written by the server when a device links to this player, so every
 // device can say how many are linked.
 export const LinkedDevices = defineMutation({
@@ -570,6 +641,8 @@ export const PlayerScope = defineScope({
     ForgotPowerUps,
     RecordedRun,
     ReachedRecords,
+    EarnedRank,
+    GrantedVeteranRank,
     LinkedDevices,
   ],
   migrations: {
@@ -654,6 +727,25 @@ export const PlayerScope = defineScope({
         yield* sql`ALTER TABLE ${sql(table('player'))}
           ADD COLUMN run_records TEXT NOT NULL
           DEFAULT '{"Easy":{"furthestWave":null,"mostKills":null},"Normal":{"furthestWave":null,"mostKills":null},"Hard":{"furthestWave":null,"mostKills":null},"Nightmare":{"furthestWave":null,"mostKills":null}}'`
+      }),
+    // NOTE: rank came after the run records. A player from before it has
+    // earned nothing and has not been granted the veteran start, so the
+    // first device to load grants it. Spent Bones are for the closet.
+    '0009_add_rank': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN rank_points INTEGER NOT NULL DEFAULT 0`
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN rank_bones INTEGER NOT NULL DEFAULT 0`
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN veteran_points INTEGER NOT NULL DEFAULT 0`
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN veteran_bones INTEGER NOT NULL DEFAULT 0`
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN veteran_granted INTEGER NOT NULL DEFAULT 0`
+        yield* sql`ALTER TABLE ${sql(table('player'))}
+          ADD COLUMN spent_bones INTEGER NOT NULL DEFAULT 0`
       }),
   },
 })

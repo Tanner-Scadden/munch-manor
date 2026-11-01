@@ -10,6 +10,7 @@ import { Message } from '../message'
 import type { Model } from '../model'
 import { cueMusicFrom } from '../musicPlan'
 import { runDifficultyOf } from '../onlineRun'
+import { earnRank } from '../rankRun'
 import { sendOrQueueRunSummary } from '../summaryQueue'
 import { RUNNING_BUILD } from '../version'
 import {
@@ -91,6 +92,9 @@ export const afterMessage = (
   applyRotationFrom(before),
   settleNightmareFrom(before),
   unlockNightmareFrom(before),
+  stepModel => ({
+    model: earnRank(before, stepModel),
+  }),
   stepModel => ({
     model: countRunFrom(
       before,

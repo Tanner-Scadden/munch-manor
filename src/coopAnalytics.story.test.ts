@@ -281,3 +281,37 @@ describe("an online co-op run's summary", () => {
     })
   })
 })
+
+// NOTE: rank (src/rankRun.ts): each client pays its own seat. The crew's
+// waves are the run's, on the room's difficulty (Hard here); the awards and
+// revives are the player's own. Seat 1 has the most kills, the revive, and
+// the most downs, so it wins the MVP, Medic, and Most Munched awards.
+describe("an online co-op run's rank", () => {
+  // NOTE: the client tallies its own stats from the room's events, so the
+  // four waves cleared are on its Model.
+  const clearedFour = (model: Model): Model =>
+    modifyFields(model, {
+      stats: stats => modifyFields(stats, { wavesCleared: () => 4 }),
+    })
+
+  test("Game Over pays the crew's waves on the room's difficulty, plus the seat's awards and revives", () => {
+    const ended = update(
+      inRoom(clearedFour(midRun()), endedAs(Phase.GameOver({ wave: 5 }))),
+      Message.TickedRoomFrame({ nowMs: 200 }),
+    ).model
+    // NOTE: 4 waves x 10 x 1.5 = 60, 3 awards x 10, 1 revive x 5.
+    expect(ended.rank).toMatchObject({ earnedPoints: 95, earnedBones: 9 })
+    expect(ended.maybeRankGain).toEqual(
+      Option.some({ pointsBefore: 0, gained: 95, bonesGained: 9 }),
+    )
+  })
+
+  test('leaving mid-run pays the revives made, and no awards', () => {
+    const left = update(
+      midRun(),
+      toParentMessage(CoopBinding, CoopMessage.CompletedLeaveRoom()),
+    ).model
+    expect(left.phase._tag).toBe('Ready')
+    expect(left.rank).toMatchObject({ earnedPoints: 5, earnedBones: 0 })
+  })
+})

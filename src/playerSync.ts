@@ -46,6 +46,8 @@ export const PlayerChange = defineTaggedUnion({
     bests: SavedBestsByDifficulty,
   },
   ReachedRecords: { records: SavedRunRecords },
+  EarnedRank: { points: Schema.Number, bones: Schema.Number },
+  GrantedVeteranRank: { points: Schema.Number, bones: Schema.Number },
 })
 export type PlayerChange = typeof PlayerChange.Type
 
@@ -154,6 +156,32 @@ export const changesBetween = (
       changeWhen(!sameRecords(before.records, after.records), () =>
         PlayerChange.ReachedRecords({ records: after.records }),
       ),
+      changeWhen(
+        after.rank.earnedPoints > before.rank.earnedPoints ||
+          after.rank.earnedBones > before.rank.earnedBones,
+        () =>
+          PlayerChange.EarnedRank({
+            points: Math.max(
+              0,
+              after.rank.earnedPoints - before.rank.earnedPoints,
+            ),
+            bones: Math.max(
+              0,
+              after.rank.earnedBones - before.rank.earnedBones,
+            ),
+          }),
+      ),
+      changeWhen(
+        after.rank.isVeteranGranted &&
+          (!before.rank.isVeteranGranted ||
+            after.rank.veteranPoints !== before.rank.veteranPoints ||
+            after.rank.veteranBones !== before.rank.veteranBones),
+        () =>
+          PlayerChange.GrantedVeteranRank({
+            points: after.rank.veteranPoints,
+            bones: after.rank.veteranBones,
+          }),
+      ),
     ],
     Array.flatten,
   )
@@ -190,15 +218,24 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
       PlayerChange.RecordedRun({ ...run, bests: save.bests.byDifficulty }),
     ReachedRecords: () =>
       PlayerChange.ReachedRecords({ records: save.records }),
+    EarnedRank: () => change,
+    GrantedVeteranRank: () =>
+      PlayerChange.GrantedVeteranRank({
+        points: save.rank.veteranPoints,
+        bones: save.rank.veteranBones,
+      }),
   })
 
 // NOTE: a finished run counts each time it is sent, and the power-ups seen
 // and forgotten must keep their order, so those are all kept. Every other
 // change sets its field to what it holds now, so one of each is enough.
 const isSetOnce = (change: PlayerChange): boolean =>
-  !PlayerChange.isAnyOf(['RecordedRun', 'SawPowerUps', 'ForgotPowerUps'])(
-    change,
-  )
+  !PlayerChange.isAnyOf([
+    'RecordedRun',
+    'SawPowerUps',
+    'ForgotPowerUps',
+    'EarnedRank',
+  ])(change)
 
 export const withUnsavedChanges = (
   unsaved: ReadonlyArray<PlayerChange>,
