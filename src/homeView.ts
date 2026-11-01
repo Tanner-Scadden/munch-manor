@@ -82,9 +82,11 @@ import {
 } from './munchopedia'
 import { MODE_NAMES } from './names'
 import { helpLabel, howToPlayView } from './pauseHelp'
+import { rankOf, totalPointsOf } from './rank'
 import { rankChipView } from './rankBadgeView'
 import { isPortrait } from './screen'
 import { durationLabel } from './stats'
+import { hasUnseenLook } from './unlocks'
 import { hasFinishedTutorial } from './update/coop'
 import { updateGiftView } from './updateGift'
 import { whatsNewBodyView, whatsNewText } from './whatsNewView'
@@ -337,7 +339,9 @@ const CARD_MESSAGES: Readonly<Record<KeyedHandCard, Message>> = {
 }
 
 const hasNews = (model: Model, card: HandCard): boolean => {
-  if (card === 'WhatsNew') {
+  if (card === 'Character') {
+    return hasUnseenLook(rankOf(totalPointsOf(model.rank)), model.seenUnlocks)
+  } else if (card === 'WhatsNew') {
     return isNewsUnseen(model)
   } else if (card === 'Munchopedia') {
     return hasUnopenedEntry(model)
@@ -864,7 +868,7 @@ const MENU_KEY_ACTIONS: Readonly<Record<HomeButton, string>> = {
   Play: 'play',
   Mode: 'mode',
   Difficulty: 'difficulty',
-  Calling: 'calling',
+  Calling: 'hero',
   Coop: 'co-op',
   Manor: 'manor',
   Support: 'coffee',
@@ -1138,10 +1142,7 @@ const panelView = (
 // NOTE: the difficulty picker opened beside PLAY hangs just above that
 // cluster. The first-run question before a first run stays centered.
 const panelAnchor = (model: Model): string =>
-  (model.panel === 'Difficulty' && !isAskingFirst(model)) ||
-  model.panel === 'Calling'
-    ? 'Play'
-    : 'Center'
+  model.panel === 'Difficulty' && !isAskingFirst(model) ? 'Play' : 'Center'
 
 export const menuPanelView = (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(

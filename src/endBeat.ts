@@ -1,11 +1,11 @@
-import { Array, Option } from 'effect'
+import { Array, Option, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
 import type { SharePath } from './analytics'
 import type { SoundEffect } from './audio'
 import { callingsOpenedBy } from './calling'
-import { hatsGiftedBy } from './closet'
+import { giftsOpenedBy } from './closet'
 import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards'
 import { isEndScreen, withBests } from './home'
 import {
@@ -16,7 +16,7 @@ import {
   type RunRecord,
 } from './model'
 import { isCoop, leadSeatOf } from './party'
-import { Calling, type Difficulty, Hat } from './playerData'
+import { Calling, CosmeticKind, type Difficulty } from './playerData'
 import { isRankUp, rankOf } from './rank'
 import type { SharedRun } from './share'
 import { accuracyPercent, totalKills } from './stats'
@@ -238,15 +238,15 @@ export const isRankedUp = (model: Model): boolean =>
     isRankUp(pointsBefore, gained),
   )
 
-// NOTE: a rank up that opens a calling or a gift hat flips a card for each
-// after the badge pops: the callings first, then the hats, one card at a
+// NOTE: a rank up that opens a calling or a gift look flips a card for each
+// after the badge pops: the callings first, then the gifts by rank, one card at a
 // time, each held a moment before the next flips over it. The last stays.
 export const CALLING_FLIP_MS = 420
 export const UNLOCK_HOLD_MS = 500
 
 export const EndUnlock = defineTaggedUnion({
   Calling: { calling: Calling },
-  Hat: { hat: Hat },
+  Gift: { kind: CosmeticKind, name: Schema.String },
 })
 export type EndUnlock = typeof EndUnlock.Type
 
@@ -260,8 +260,8 @@ export const unlocksOf = (model: Model): ReadonlyArray<EndUnlock> =>
         ...Array.map(callingsOpenedBy(before, after), calling =>
           EndUnlock.Calling({ calling }),
         ),
-        ...Array.map(hatsGiftedBy(before, after), hat =>
-          EndUnlock.Hat({ hat }),
+        ...Array.map(giftsOpenedBy(before, after), ({ kind, name }) =>
+          EndUnlock.Gift({ kind, name }),
         ),
       ]
     },

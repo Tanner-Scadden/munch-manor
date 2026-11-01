@@ -20,6 +20,8 @@ import {
   ZombieAction,
 } from '@game/model'
 import { LinkFlow, PlayerScopeStatus, SyncState } from '@game/playerSync'
+import { rankOf, totalPointsOf } from '@game/rank'
+import { unlocksAt } from '@game/unlocks'
 
 import { withCoop } from './coopStage'
 import { CALM, ROAMING, roomModel } from './room'
@@ -235,7 +237,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       }),
     })
   }
-  const { bones, spent, bought, hat } = config
+  const { bones, spent, bought, hat, skin } = config
   if (bones !== undefined || spent !== undefined) {
     model = modifyFields(model, {
       rank: rank => ({
@@ -247,11 +249,21 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     })
   }
   if (bought !== undefined) {
-    model = modifyFields(model, { boughtHats: () => bought })
+    model = modifyFields(model, { boughtCosmetics: () => bought })
   }
   if (hat !== undefined) {
     model = modifyFields(model, {
       appearance: look => modifyFields(look, { hat: () => hat }),
+    })
+  }
+  if (skin !== undefined) {
+    model = modifyFields(model, {
+      appearance: look => modifyFields(look, { gunSkin: () => skin }),
+    })
+  }
+  if (!config.fresh) {
+    model = modifyFields(model, {
+      seenUnlocks: () => unlocksAt(rankOf(totalPointsOf(model.rank))),
     })
   }
   if (rankGain !== undefined && isEndScreen(model.phase)) {
@@ -491,6 +503,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
         beard: beard === 'Beard' || a.beard,
         glasses: glasses === 'Glasses' || a.glasses,
         hat: a.hat,
+        gunSkin: a.gunSkin,
       }),
     })
   }

@@ -11,6 +11,7 @@ import { describe, expect, test } from 'vitest'
 
 import { PARLOUR } from './arena'
 import { DECAL_MAX, FIXED_STEP_MS, PARTICLE_MAX } from './constants'
+import { healthBarShapes } from './healthBarView'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -393,16 +394,20 @@ describe('the Kaboomer health bar', () => {
     expect(zombieHealthBarShapes(kaboomer)).toEqual([])
     const hurt = modifyFields(kaboomer, { hp: () => 3 })
     const bar = zombieHealthBarShapes(hurt)
-    expect(bar).toHaveLength(2)
-    const fill = bar[1]
-    expect(fill?._tag).toBe('Rect')
-    expect(fill?._tag === 'Rect' ? fill.width : 0).toBe(6)
+    expect(bar).toHaveLength(1)
     const back = bar[0]
+    const atOrigin = healthBarShapes('Small', 'Zombie', 0, 0, 0.5)[0]
+    expect(back?._tag === 'Image' ? back.src : '').toBe(
+      atOrigin?._tag === 'Image' ? atOrigin.src : 'none',
+    )
+    expect(back?._tag === 'Image' ? back.crop : 'none').toEqual(
+      atOrigin?._tag === 'Image' ? atOrigin.crop : 'other',
+    )
     const fuseTipY =
       Math.round(hurt.y) +
       ZOMBIE_KINDS.Exploder.footOffset +
       kaboomerFuseTip(KABOOMER_FUSE_MAX, 0, 'Right').y
-    const barBottom = back?._tag === 'Rect' ? back.y + back.height : 0
+    const barBottom = back?._tag === 'Image' ? back.y + back.height : 0
     expect(barBottom).toBeLessThan(fuseTipY - SPARK_REACH_PX)
   })
 })

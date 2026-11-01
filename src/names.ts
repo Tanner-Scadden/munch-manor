@@ -2,7 +2,7 @@ import { Array, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
-import type { Calling, Hat } from './playerData'
+import { type Calling, type CosmeticKind, Hat } from './playerData'
 import type {
   FixedShopItemId,
   FridgePrize,
@@ -154,8 +154,8 @@ export const CREW_AWARD_NAMES: Readonly<Record<CrewAward, string>> = {
 
 // CALLINGS
 
-// NOTE: what a player brings to a run (src/calling.ts). The cards show the
-// quirks as pictures; the notes are only read aloud.
+// NOTE: what a player brings to a run (src/calling.ts). Players read
+// "hero": the code keeps `calling`, as the Look tab is `Character`.
 export const CALLING_NAMES: Readonly<Record<Calling, string>> = {
   You: 'YOU',
   Handyman: 'Handyman',
@@ -185,11 +185,40 @@ export const HAT_NAMES: Readonly<Record<Hat, string>> = {
   PumpkinHead: 'Pumpkin Head',
 }
 
-export const CALLING_NOTES: Readonly<Record<Calling, string>> = {
-  You: 'No quirk',
-  Handyman:
-    'Plank Piles cost half, repairs are free, a longer breather after a bite, one fewer heart',
-  TrackStar: 'Runs 10 percent faster, magazines 10 percent smaller',
-  PennyPincher: 'Rattles charges 15 percent less, kills pay less',
-  LineCook: 'Starts with the Pressure Cooker, no Pop Pistol',
-}
+// NOTE: an earned look as a card on the end screen names it: a hat by its
+// name, a shirt color and a gun skin with what they dress, and a print
+// alone.
+export const hatNameOf = (name: string): string =>
+  Option.getOrElse(
+    Option.map(
+      Array.findFirst(Hat.literals, hat => hat === name),
+      hat => HAT_NAMES[hat],
+    ),
+    () => name,
+  )
+
+export const giftName = (kind: CosmeticKind, name: string): string =>
+  kind === 'Hat'
+    ? hatNameOf(name)
+    : kind === 'Shirt'
+      ? `${name} Shirt`
+      : kind === 'Skin'
+        ? `${name} Gun`
+        : name
+
+// NOTE: the short line beside each special on a hero's card, read from
+// src/callingSpecials.ts with the numbers the rules hold (src/calling.ts), so
+// a balance change moves the words too. About 24 characters each.
+export const SPECIAL_LINES = {
+  planksOff: (percent: number): string => `Planks ${percent}% off`,
+  freeRepairs: 'Free repairs',
+  longerBlink: (percent: number): string => `Bite blink ${percent}% longer`,
+  maxHearts: (hearts: number): string => `${hearts} max hearts`,
+  fasterRuns: (percent: number): string => `Runs ${percent}% faster`,
+  smallerMagazines: (percent: number): string => `Mags ${percent}% smaller`,
+  shopOff: (percent: number): string => `Rattles ${percent}% off`,
+  lessKillPay: (percent: number): string => `Kills pay ${percent}% less`,
+  startsWithCooker: `Starts with ${GUN_NAMES.Cooker}`,
+  noPistol: `No ${GUN_NAMES.Pistol}`,
+  noSpecials: 'No specials',
+} as const

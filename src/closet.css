@@ -1,265 +1,205 @@
-/* THE CLOSET: the Profile's hat tab. A grid of cards, each the player's own
-   figure in a hat: worn (gold, checked), owned, for sale (a price in
-   Bones), or a gift not reached yet (a dark shape, a padlock, and a rank).
-   Only art moves, never a card (src/motion.test.ts). */
+/* THE EARNED LOOKS: the Look tab's rows of hats, shirt colors, prints, and
+   gun skins. An option is worn (the selected one, gold), owned, for sale (a
+   bone and a price on its foot), or a gift not reached yet (a dark shape, a
+   padlock, and the rank). NEW badges and pips mark what was just unlocked.
+   Only art moves, never an option (src/motion.test.ts). */
 
 :root {
-  --profile-closet: #ff9a5a;
-  --closet-px: 6px;
+  --look-new: #ff4a4f;
 }
 
-.profile-dialog[data-tab='Closet'] {
-  --tab-color: var(--profile-closet);
+.look-option[data-standing],
+.look-section,
+.profile-tab,
+.home-calling {
+  position: relative;
 }
 
-.profile-tab[data-tab='Closet'] {
-  --tab-color: var(--profile-closet);
+/* THE FACES: a hat on its head, and the Pop Pistol in a skin */
+
+.look-hat-option,
+.look-gun-option {
+  width: var(--menu-tap);
+  padding: 0;
 }
 
-.closet-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 100%;
+.look-hat-icon {
+  width: 30px;
+  height: 36px;
+  background: center bottom / contain no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
 }
 
-.closet-head {
-  display: flex;
-  justify-content: flex-end;
+.look-gun-icon {
+  width: 32px;
+  height: 22px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
 }
 
-.closet-bones {
+.look-option[data-standing='ForSale'] > :first-child {
+  opacity: 0.85;
+}
+
+.look-option[data-standing='Locked'] {
+  border-style: dashed;
+  cursor: default;
+}
+
+.look-option[data-standing='Locked'] > :first-child {
+  filter: brightness(0);
+  opacity: 0.7;
+}
+
+/* THE TAG: a price, or a padlock and a rank, on the foot of the option */
+
+.look-tag {
+  position: absolute;
+  right: -3px;
+  bottom: -9px;
+  left: -3px;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.look-price,
+.look-need {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px 0 3px;
   border-radius: 999px;
   background: #140c10;
   box-shadow: 0 0 0 2px #5a3a4a;
 }
 
-.closet-grid {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 8px 6px;
-}
-
-.closet-card {
-  position: relative;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  min-width: 0;
-  margin: 0;
-  padding: 8px 2px 4px;
-  border: 2px solid var(--menu-line);
-  border-radius: var(--menu-radius);
-  background: var(--menu-sunken);
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
-  color: var(--menu-ink);
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.closet-card[data-standing='Worn'] {
-  border-color: var(--menu-gold);
-  background: var(--menu-surface-hi);
-  box-shadow:
-    0 0 0 2px var(--menu-gold),
-    0 0 12px rgba(255, 210, 63, 0.4),
-    0 3px 0 rgba(0, 0, 0, 0.45);
-}
-
-.closet-card[data-standing='Locked'] {
-  cursor: default;
-}
-
-.closet-card:focus-visible {
-  outline: var(--menu-focus);
-  outline-offset: 2px;
-}
-
-@media (hover: hover) {
-  .closet-card:not([data-standing='Locked']):hover {
-    filter: brightness(1.15);
-  }
-}
-
-.closet-card:active:not([data-standing='Locked']) {
-  filter: brightness(0.9);
-}
-
-.closet-figure {
-  display: block;
-  flex: none;
-  width: calc(8 * var(--closet-px));
-  height: calc(15 * var(--closet-px));
-  pointer-events: none;
-}
-
-.closet-figure-img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: center bottom / contain no-repeat;
-  image-rendering: pixelated;
-}
-
-.closet-card[data-standing='Locked'] .closet-figure-img {
-  filter: brightness(0);
-  opacity: 0.7;
-}
-
-/* THE TAG: a check, a price, or a padlock and a rank */
-
-.closet-tag {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 22px;
-  pointer-events: none;
-}
-
-.closet-check {
-  width: 18px;
-  height: 16px;
-  background: center / contain no-repeat;
-  image-rendering: pixelated;
-}
-
-.closet-price {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.closet-price .rank-bone-img {
-  width: 14px !important;
-  height: auto !important;
-}
-
-.closet-price .rank-bones-count {
-  font-size: var(--menu-small-size);
-}
-
-.closet-need {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.closet-need .rank-chip {
-  position: static;
-  translate: none;
-  padding: 1px 3px 1px 2px;
-  gap: 2px;
-}
-
-.closet-need .rank-badge-img {
+.look-price .rank-bone-img {
   width: 10px !important;
   height: auto !important;
 }
 
-.closet-need .rank-number {
-  font-size: var(--menu-small-size);
+.look-price .rank-bones-count {
+  font: bold 10px / 14px var(--menu-font);
 }
 
-.closet-lock-icon {
-  width: 11px;
-  height: 11px;
+.look-need {
+  padding: 0 3px;
+}
+
+.look-need .rank-chip {
+  position: static;
+  translate: none;
+  padding: 0 2px 0 1px;
+  gap: 1px;
+  background: none;
+  box-shadow: none;
+}
+
+.look-need .rank-badge-img {
+  width: 9px !important;
+  height: auto !important;
+}
+
+.look-need .rank-number {
+  font: bold 10px / 14px var(--menu-font);
+}
+
+.look-lock-icon {
+  width: 9px;
+  height: 9px;
   background: center / contain no-repeat;
   image-rendering: pixelated;
 }
 
-/* THE NAME: only on focus or hover, over the top of the card */
+.look-option[data-cue='Short'] .rank-bones-count {
+  color: #ff5a4a;
+}
 
-.closet-name {
+/* NEW: a badge on an option that was just unlocked, a dot on a tab or a
+   button that holds one */
+
+.look-new {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  right: 2px;
+  top: 1px;
+  right: 1px;
   z-index: 2;
-  display: none;
-  padding: 2px 1px;
-  border-radius: 6px;
-  background: rgba(20, 12, 16, 0.9);
-  color: var(--menu-ink);
-  font: bold 9px / 1.1 var(--menu-font);
-  text-align: center;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--look-new);
+  color: #fff;
+  font: bold 8px / 11px var(--menu-font);
+  letter-spacing: 0.03em;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: look-new-blink 0.8s steps(2) infinite;
+}
+
+/* NOTE: on a hero's card the badge sits in the name row, in the flow. */
+.calling-head .look-new {
+  position: static;
+  flex: none;
+  margin-left: 4px;
+}
+
+.new-pip {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  z-index: 2;
+  width: 11px;
+  height: 11px;
+  border: 2px solid #140c10;
+  border-radius: 999px;
+  background: var(--look-new);
+  pointer-events: none;
+  animation: look-new-blink 0.8s steps(2) infinite;
+}
+
+.look-section[data-new='true']::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid #140c10;
+  border-radius: 999px;
+  background: var(--look-new);
   pointer-events: none;
 }
 
-.closet-card:focus-visible .closet-name {
-  display: block;
-}
-
-@media (hover: hover) {
-  .closet-card:not([data-standing='Locked']):hover .closet-name {
-    display: block;
+@keyframes look-new-blink {
+  50% {
+    opacity: 0.55;
   }
 }
 
-/* WHAT A TAP DID: the figure hops, the price or the padlock shakes red. A
+/* WHAT A PICK DID: the face hops, the price or the padlock shakes red. A
    second copy of each keyframe lets the same cue play twice in a row. */
 
-.closet-card[data-cue='Bought'] .closet-figure-img,
-.closet-card[data-cue='Worn'] .closet-figure-img {
+.look-option[data-cue='Bought'] > :first-child {
   transform-origin: center bottom;
 }
 
-.closet-card[data-cue='Worn'][data-parity='0'] .closet-figure-img {
-  animation: closet-hop-a 260ms ease-out both;
-}
-
-.closet-card[data-cue='Worn'][data-parity='1'] .closet-figure-img {
-  animation: closet-hop-b 260ms ease-out both;
-}
-
-.closet-card[data-cue='Bought'][data-parity='0'] .closet-figure-img {
+.look-option[data-cue='Bought'][data-parity='0'] > :first-child {
   animation: closet-hop-a 460ms cubic-bezier(0.2, 1.8, 0.4, 1) both;
 }
 
-.closet-card[data-cue='Bought'][data-parity='1'] .closet-figure-img {
+.look-option[data-cue='Bought'][data-parity='1'] > :first-child {
   animation: closet-hop-b 460ms cubic-bezier(0.2, 1.8, 0.4, 1) both;
 }
 
-.closet-card[data-cue='Bought'][data-parity='0']::after {
-  animation: closet-poof-a 460ms ease-out both;
-}
-
-.closet-card[data-cue='Bought'][data-parity='1']::after {
-  animation: closet-poof-b 460ms ease-out both;
-}
-
-.closet-card[data-cue='Bought']::after {
-  content: '';
-  position: absolute;
-  inset: 4px 6px 28px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.9),
-    rgba(255, 210, 63, 0.5) 45%,
-    transparent 70%
-  );
-  opacity: 0;
-  pointer-events: none;
-}
-
-.closet-card[data-cue='Short'][data-parity='0'] .closet-tag {
+.look-option[data-cue='Short'][data-parity='0'] .look-tag > * {
   animation: closet-shake-a 360ms linear both;
 }
 
-.closet-card[data-cue='Short'][data-parity='1'] .closet-tag {
+.look-option[data-cue='Short'][data-parity='1'] .look-tag > * {
   animation: closet-shake-b 360ms linear both;
-}
-
-.closet-card[data-cue='Short'] .rank-bones-count {
-  color: #ff5a4a;
 }
 
 @keyframes closet-hop-a {
@@ -270,7 +210,7 @@
 
   35% {
     scale: 0.9 1.15;
-    translate: 0 -8px;
+    translate: 0 -6px;
   }
 
   70% {
@@ -291,7 +231,7 @@
 
   35% {
     scale: 0.9 1.15;
-    translate: 0 -8px;
+    translate: 0 -6px;
   }
 
   70% {
@@ -304,30 +244,6 @@
   }
 }
 
-@keyframes closet-poof-a {
-  0% {
-    opacity: 1;
-    scale: 0.4;
-  }
-
-  100% {
-    opacity: 0;
-    scale: 1.5;
-  }
-}
-
-@keyframes closet-poof-b {
-  0% {
-    opacity: 1;
-    scale: 0.4;
-  }
-
-  100% {
-    opacity: 0;
-    scale: 1.5;
-  }
-}
-
 @keyframes closet-shake-a {
   0%,
   100% {
@@ -336,12 +252,12 @@
 
   20%,
   60% {
-    translate: -4px 0;
+    translate: -3px 0;
   }
 
   40%,
   80% {
-    translate: 4px 0;
+    translate: 3px 0;
   }
 }
 
@@ -353,54 +269,52 @@
 
   20%,
   60% {
-    translate: -4px 0;
+    translate: -3px 0;
   }
 
   40%,
   80% {
-    translate: 4px 0;
+    translate: 3px 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .closet-card .closet-figure-img,
-  .closet-card .closet-tag,
-  .closet-card::after {
+  .look-option > *,
+  .look-tag > *,
+  .look-new,
+  .new-pip {
     animation: none !important;
   }
 }
 
-/* A SHORT PHONE ON ITS SIDE: smaller figures and a tighter grid */
+/* THE ROWS NEED ROOM: the Look tab holds up to five lines of options, so a
+   phone on its side takes smaller options and an upright one a shorter
+   stage. */
 
-@media (max-height: 460px) {
-  :root {
-    --closet-px: 4px;
-  }
-
-  .closet-tab {
-    gap: 4px;
-  }
-
-  .closet-grid {
-    gap: 6px 4px;
-  }
-
-  .closet-card {
-    padding-top: 4px;
-  }
-
-  .closet-tag {
-    min-height: 18px;
+@media (max-height: 460px) and (orientation: landscape) {
+  .look-tab {
+    --menu-tap: 40px;
   }
 }
 
-/* PORTRAIT: four across */
-
-.game-root[data-layout='Portrait'] {
-  --closet-px: 4px;
+.game-root[data-layout='Portrait'] .look-stage {
+  height: 120px;
 }
 
-.game-root[data-layout='Portrait'] .closet-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px 8px;
+.game-root[data-layout='Portrait'] .look-stage .look-preview,
+.game-root[data-layout='Portrait'] .look-stage .look-preview-canvas {
+  width: 96px;
+  height: 96px;
+}
+
+.game-root[data-layout='Portrait'] .look-bounce {
+  bottom: 8px;
+}
+
+.look-row:has(.look-tag) {
+  padding-bottom: 6px;
+}
+
+.game-root[data-layout='Portrait'] .look-tab {
+  --menu-tap: 40px;
 }

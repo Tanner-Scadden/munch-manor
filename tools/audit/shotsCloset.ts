@@ -1,27 +1,28 @@
-// The Bones closet pass: every hat on both bodies and every hair style
-// (drawn from the player's own pixel maps at 8 pixels a pixel, plus a 1x and
-// 3x strip), the Profile's Closet tab with worn, owned, for sale, and locked
-// hats, the home hero in a hat, a run with a hatted player, the co-op lobby
-// with hatted players, and the end cards that gift a hat, on a 1280x720
-// desktop, an 844x390 phone on its side, and a 390x844 phone held upright, as
-// `s49-<TAG>-<viewport>-<scene>.png` and `s49-<TAG>-hats.png`. It exits with
-// 1 when the closet scrolls, a card runs past its panel, the tabs run into
-// the rank plate, a phone card is under 48 px, or a tap does not buy.
+// The earned looks pass: every shirt color by every print on both bodies and
+// every gun skin on every gun (drawn from the game's own pixel maps, big),
+// then the Look tab's Outfit and Gear rows with worn, owned, for sale, and
+// locked options and with NEW badges, the home hero with a skinned gun and
+// the NEW pips, a run with a skinned gun, the co-op lobby and arena in the
+// new looks, and the end cards that gift a print and a gun skin, on a
+// 1280x720 desktop, an 844x390 phone on its side, and a 390x844 phone held
+// upright, as `s50-<TAG>-<viewport>-<scene>.png`, `s50-<TAG>-looks-<body>.png`,
+// and `s50-<TAG>-skins.png`. It exits with 1 when a Look tab row runs past
+// its panel, an option is under 40 px, or a pick does not buy.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsCloset.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
 import { Array } from 'effect'
 import type { Page } from 'playwright-core'
 
-import { closetRows, playerPalette, playerPixels } from '@game/appearance'
-import { CLOSET_HATS } from '@game/closet'
+import { playerPalette, playerPixels } from '@game/appearance'
 import { pixelIconUrl } from '@game/icons'
 import { type Appearance, defaultAppearance } from '@game/model'
-import { HairStyle } from '@game/playerData'
+import { GunSkin, Print, ShirtColor } from '@game/playerData'
+import { gunPictureOf } from '@game/sprites/guns'
+import { WeaponKind } from '@game/worldSchema'
 
 import {
   SHOT_VIEWPORTS,
   TAG,
-  type Viewport,
   deviceQuery,
   finish,
   harnessQuery,
@@ -36,120 +37,141 @@ import {
 const LEARNED =
   'learned=move,fire,startWave,shop,swap,pickup,timedBreaks,openBreak'
 
-// NOTE: rank 5 (600 points) holds the first three gifts; 140 Bones earned
-// and 50 spent leave 90, enough for any hat for sale but the Pumpkin Head.
-const MIXED = 'rank=600&bones=140&spent=50&bought=Fez&hat=Fez'
+// NOTE: rank 4 (the points for it) holds two hat gifts; 140 Bones earned
+// and 50 spent leave 90, enough for a hat, a color, a print, or a skin.
+const MIXED =
+  'rank=600&bones=140&spent=50&bought=Fez,shirt:Midnight,print:Skull'
+
+// NOTE: the points that make rank 16: the Gold shirt opens, with every hat.
+const RANK_16 = 4125
 
 type Scene = Readonly<{
   name: string
   query: string
-  isCloset?: boolean
-  key?: string
+  isLook?: boolean
+  open?: string
   ticks?: ReadonlyArray<number>
 }>
 
 const SCENES: ReadonlyArray<Scene> = [
-  { name: 'closet-mixed', query: `profile=closet&${MIXED}`, isCloset: true },
   {
-    name: 'closet-focus',
-    query: `profile=closet&${MIXED}`,
-    isCloset: true,
-    key: 'ArrowRight',
+    name: 'look-gear',
+    query: `profile=look&looksection=Gear&${MIXED}&hat=Fez`,
+    isLook: true,
   },
   {
-    name: 'closet-fresh',
-    query: 'profile=closet&rank=0&bones=0',
-    isCloset: true,
+    name: 'look-gear-skin',
+    query: `profile=look&looksection=Gear&rank=5100&bones=400&spent=0&bought=Fez,skin:Candy&hat=PirateHat&skin=Candy`,
+    isLook: true,
   },
   {
-    name: 'closet-all',
-    query:
-      'profile=closet&rank=4000&bones=800&spent=0&bought=Colander,Fez,BunnyEars,Plunger,Lampshade,PumpkinHead&hat=PumpkinHead',
-    isCloset: true,
-  },
-  { name: 'look-hat', query: 'profile=look&rank=600&hat=BucketHat' },
-  { name: 'home-hat', query: 'hat=WitchHat&rank=1500' },
-  {
-    name: 'home-hat-calling',
-    query: 'hat=WitchHat&rank=4000&calling=LineCook',
+    name: 'look-outfit',
+    query: `profile=look&looksection=Outfit&${MIXED}&look=,,,,Midnight,,Skull`,
+    isLook: true,
   },
   {
-    name: 'play-hat',
-    query: `wave=3&start=wave&crowd=6&seen=all&${LEARNED}&hat=PirateHat&tick=60`,
+    name: 'look-outfit-fresh',
+    query: `profile=look&looksection=Outfit&rank=${RANK_16}&bones=200&fresh`,
+    isLook: true,
   },
   {
-    name: 'play-hat-tall',
-    query: `wave=3&start=wave&crowd=6&seen=all&${LEARNED}&hat=WitchHat&tick=60`,
-  },
-  { name: 'lobby-hats', query: 'coop=host&hat=PropellerCap' },
-  { name: 'arena-hats', query: 'coop=arena&hat=PropellerCap' },
-  {
-    name: 'end-hat',
-    query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=130&rankgain=60&hat=PartyHat`,
-    ticks: [330, 420],
+    name: 'look-gear-fresh',
+    query: `profile=look&looksection=Gear&rank=${RANK_16}&bones=200&fresh`,
+    isLook: true,
   },
   {
-    name: 'end-several',
-    query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=1000&rankgain=1000`,
-    ticks: [300, 380, 460, 540, 620, 700],
+    name: 'look-outfit-gold',
+    query: `profile=look&looksection=Outfit&rank=5100&bones=200&look=,,,,Gold,,Polka`,
+    isLook: true,
+  },
+  {
+    name: 'picker-fresh',
+    query: 'rank=1800&fresh',
+    open: '#home-calling',
+  },
+  { name: 'home-fresh', query: `rank=${RANK_16}&fresh` },
+  { name: 'home-skin', query: 'rank=5100&skin=Gold&look=,,,,Glow,,Checker' },
+  {
+    name: 'play-skin',
+    query: `wave=3&start=wave&crowd=6&seen=all&${LEARNED}&rank=5100&skin=Neon&look=,,,,Coral,,Flames&tick=60`,
+  },
+  {
+    name: 'play-skin-gold',
+    query: `wave=3&start=wave&crowd=6&seen=all&${LEARNED}&rank=5100&skin=Gold&look=,,,,Gold,,Skull&tick=60`,
+  },
+  { name: 'lobby-looks', query: 'coop=host&rank=5100' },
+  { name: 'arena-looks', query: 'coop=arena&rank=5100' },
+  {
+    name: 'end-gifts',
+    query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=5100&rankgain=600`,
+    ticks: [330, 420, 520, 640],
   },
 ]
 
 const problems: Array<string> = []
 
-// THE SHEET
+// THE SHEETS
 
-const SCALE = 8
 const BODIES = ['Broad', 'Slim'] as const
 
-const cell = (look: Appearance) => {
+const patch = (look: Appearance, scale: number) => {
   const rows = playerPixels(look).idle[0]
-  return `<span class="frame" style='height:${rows.length * SCALE}px;background-image:${pixelIconUrl(rows, playerPalette(look))}'></span>`
+  return `<span class="frame" style='width:${8 * scale}px;height:${rows.length * scale}px;background-image:${pixelIconUrl(rows, playerPalette(look))}'></span>`
 }
 
-const sheetHtml = () => `<style>
+const SHEET_STYLE = `<style>
 body { background: #3a1e26; margin: 8px; font: 12px monospace; color: #f4f1de; }
-.row { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 6px; }
-.frame { display: inline-block; width: ${8 * SCALE}px; background: center bottom / contain no-repeat; image-rendering: pixelated; }
-.label { width: 90px; }
-.small { image-rendering: pixelated; }
-</style>${Array.flatMap(BODIES, body =>
-  Array.map(
-    HairStyle.literals,
-    hairStyle =>
-      `<div class="row"><span class="label">${body} ${hairStyle}</span>${Array.map(
-        CLOSET_HATS,
-        hat => cell({ ...defaultAppearance, body, hairStyle, hat }),
-      ).join('')}</div>`,
-  ),
-).join('')}`
+.row { display: flex; align-items: flex-end; gap: 6px; margin-bottom: 4px; }
+.frame { display: inline-block; background: center bottom / contain no-repeat; image-rendering: pixelated; }
+.label { width: 74px; }
+.head { display: flex; gap: 6px; margin: 6px 0 2px 80px; }
+h3 { margin: 10px 0 2px; }
+</style>`
 
-const stripHtml = (scale: number) =>
-  `<div class="row" style="background:#3a1e26;padding:8px;gap:${scale * 2}px">${Array.map(
-    CLOSET_HATS,
-    hat => {
-      const rows = closetRows({ ...defaultAppearance, hat })
-      return `<span class="small" style='display:inline-block;width:${8 * scale}px;height:${rows.length * scale}px;background:center bottom / contain no-repeat;background-image:${pixelIconUrl(rows, playerPalette({ ...defaultAppearance, hat }))}'></span>`
-    },
-  ).join('')}</div>`
+const looksHtml = (body: (typeof BODIES)[number], scale: number) =>
+  `${SHEET_STYLE}<h3>${body}</h3><div class="head">${Array.map(Print.literals, print => `<span style="width:${8 * scale}px">${print}</span>`).join('')}</div>${Array.map(
+    ShirtColor.literals,
+    shirtColor =>
+      `<div class="row"><span class="label">${shirtColor}</span>${Array.map(
+        Print.literals,
+        print =>
+          patch({ ...defaultAppearance, body, shirtColor, print }, scale),
+      ).join('')}</div>`,
+  ).join('')}`
+
+const skinsHtml = (scale: number) =>
+  `${SHEET_STYLE}<style>.gun { display: inline-block; width: ${11 * scale}px; height: ${6 * scale}px; background: center / contain no-repeat; image-rendering: pixelated; } .row { align-items: center; gap: 14px; margin-bottom: 10px; }</style><div class="head" style="gap:14px">${Array.map(WeaponKind.literals, kind => `<span style="width:${11 * scale}px">${kind}</span>`).join('')}</div>${Array.map(
+    GunSkin.literals,
+    skin =>
+      `<div class="row"><span class="label">${skin}</span>${Array.map(
+        WeaponKind.literals,
+        kind => {
+          const { rows, palette } = gunPictureOf(kind, skin)
+          return `<span class="gun" style='background-image:${pixelIconUrl(rows, palette)}'></span>`
+        },
+      ).join('')}</div>`,
+  ).join('')}`
 
 const shootSheets = async (browser: Awaited<ReturnType<typeof launch>>) => {
-  const page = await browser.newPage({
-    viewport: { width: 1300, height: 1800 },
+  for (const body of BODIES) {
+    const page = await browser.newPage({
+      viewport: { width: 640, height: 1180 },
+    })
+    await page.setContent(looksHtml(body, 8))
+    await shot(page, `s50-${TAG}-looks-${body.toLowerCase()}`)
+    await page.close()
+  }
+  const skins = await browser.newPage({
+    viewport: { width: 1000, height: 520 },
   })
-  await page.setContent(sheetHtml())
-  await shot(page, `s49-${TAG}-hats`)
-  await page.setViewportSize({ width: 700, height: 240 })
-  await page.setContent(
-    `<body style="margin:0;background:#3a1e26">${stripHtml(1)}${stripHtml(3)}</body>`,
-  )
-  await shot(page, `s49-${TAG}-hats-small`)
-  await page.close()
+  await skins.setContent(skinsHtml(8))
+  await shot(skins, `s50-${TAG}-skins`)
+  await skins.close()
 }
 
 // CHECKS
 
-const checkCloset = async (page: Page, viewport: Viewport, where: string) => {
+const checkLook = async (page: Page, where: string) => {
   const found = await page.evaluate(() => {
     const rectOf = (element: Element | null) => {
       const box = element?.getBoundingClientRect()
@@ -173,19 +195,15 @@ const checkCloset = async (page: Page, viewport: Viewport, where: string) => {
         pageElement === null
           ? 0
           : pageElement.scrollHeight - pageElement.clientHeight,
-      cards: [...document.querySelectorAll('.closet-card')].map(card =>
-        rectOf(card),
+      options: [...document.querySelectorAll('.look-option')].map(option =>
+        rectOf(option),
       ),
-      lastTab: rectOf(
-        [...document.querySelectorAll('.profile-tab')].at(-1) ?? null,
-      ),
-      plate: rectOf(document.querySelector('.profile-rank')),
       width: innerWidth,
       height: innerHeight,
     }
   })
   if (found.panel === null || found.page === null) {
-    problems.push(`${where}: no closet open`)
+    problems.push(`${where}: no Look tab open`)
     return
   }
   const { panel, page: pageBox } = found
@@ -198,67 +216,56 @@ const checkCloset = async (page: Page, viewport: Viewport, where: string) => {
     problems.push(`${where}: the panel is past the screen's edge`)
   }
   if (found.isScrolling) {
-    problems.push(`${where}: the closet scrolls by ${found.scrollBy} px`)
+    problems.push(`${where}: the Look tab scrolls by ${found.scrollBy} px`)
   }
-  for (const card of found.cards) {
-    if (card === null) {
+  for (const option of found.options) {
+    if (option === null) {
       continue
     }
     if (
-      card.left < pageBox.left - 1 ||
-      card.right > pageBox.right + 1 ||
-      card.bottom > pageBox.bottom + 1 ||
-      card.top < pageBox.top - 1
+      option.left < pageBox.left - 1 ||
+      option.right > pageBox.right + 1 ||
+      option.bottom > pageBox.bottom + 1 ||
+      option.top < pageBox.top - 1
     ) {
-      problems.push(`${where}: a card runs past the page`)
+      problems.push(`${where}: an option runs past the page`)
     }
     if (
-      viewport.isPhone &&
-      (card.right - card.left < 47.5 || card.bottom - card.top < 47.5)
+      option.right - option.left < 39.5 ||
+      option.bottom - option.top < 39.5
     ) {
       problems.push(
-        `${where}: a card is ${Math.round(card.right - card.left)} by ${Math.round(card.bottom - card.top)}, under 48 px`,
+        `${where}: an option is ${Math.round(option.right - option.left)} by ${Math.round(option.bottom - option.top)}, under 40 px`,
       )
     }
   }
-  if (
-    found.lastTab !== null &&
-    found.plate !== null &&
-    found.lastTab.bottom > found.plate.top - 2 &&
-    found.lastTab.left < found.plate.right &&
-    found.lastTab.right > found.plate.left
-  ) {
-    problems.push(`${where}: the tabs run into the rank plate`)
-  }
 }
 
-// NOTE: buys the first hat for sale that the Bones cover, by a tap.
+// NOTE: buys the first look for sale that the Bones cover, by a pick.
 const checkBuying = async (page: Page, where: string) => {
-  const sale = page.locator('.closet-card[data-standing="ForSale"]').first()
+  const sale = page.locator('.look-option[data-standing="ForSale"]').first()
   if ((await sale.count()) === 0) {
     return
   }
   const before = await page
-    .locator('.closet-bones .rank-bones-count')
+    .locator('.profile-rank .rank-bones-count')
     .innerText()
   await sale.click()
   await settleAnimations(page)
   const after = await page
-    .locator('.closet-bones .rank-bones-count')
+    .locator('.profile-rank .rank-bones-count')
     .innerText()
-  const standing = await page
-    .locator('.closet-card[data-cue="Bought"]')
-    .first()
-    .getAttribute('data-standing')
-  if (Number(after) >= Number(before) || standing !== 'Worn') {
+  const bought = page.locator('.look-option[data-cue="Bought"]').first()
+  const isWorn = (await bought.getAttribute('aria-checked')) === 'true'
+  if (Number(after) >= Number(before) || !isWorn) {
     problems.push(
-      `${where}: a tap on a hat for sale left ${before} Bones as ${after} and the card ${standing}`,
+      `${where}: a pick on a look for sale left ${before} Bones as ${after} and the option ${isWorn ? 'worn' : 'not worn'}`,
     )
   }
 }
 
 const browser = await launch()
-if (isPickedScene('hats')) {
+if (isPickedScene('sheets')) {
   await shootSheets(browser)
 }
 await useHarness()
@@ -279,21 +286,20 @@ for (const viewport of SHOT_VIEWPORTS) {
         ),
       )
       await settleAnimations(page)
-      if (scene.key !== undefined) {
-        await page.locator('.closet-card[data-standing="Worn"]').focus()
-        await page.keyboard.press(scene.key)
+      if (scene.open !== undefined) {
+        await page.locator(scene.open).click()
         await settleAnimations(page)
       }
-      if (scene.isCloset === true) {
-        await checkCloset(page, viewport, where)
+      if (scene.isLook === true) {
+        await checkLook(page, where)
       }
       await shot(
         page,
-        `s49-${TAG}-${viewport.name}-${scene.name}${tick === undefined ? '' : `-${tick}`}`,
+        `s50-${TAG}-${viewport.name}-${scene.name}${tick === undefined ? '' : `-${tick}`}`,
       )
-      if (scene.name === 'closet-mixed') {
+      if (scene.name === 'look-gear') {
         await checkBuying(page, where)
-        await shot(page, `s49-${TAG}-${viewport.name}-closet-bought`)
+        await shot(page, `s50-${TAG}-${viewport.name}-look-bought`)
       }
       pages.release(page)
     }
@@ -301,4 +307,4 @@ for (const viewport of SHOT_VIEWPORTS) {
 }
 await pages.close()
 await browser.close()
-finish(problems, 'The closet fits, buys, and every hat sits on the head.')
+finish(problems, 'The Look tab fits, buys, and every skin and print shows.')

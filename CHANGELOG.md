@@ -2,12 +2,13 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
-## November 1, 2026: Pick your calling
+## November 1, 2026: Pick your hero
 
-- 🎩 Rank up and you can pick a calling beside the difficulty: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Reach rank 3 to meet the first.
-- 🎩 Spend your Bones on hats in the new Closet tab in your Profile, and rank up to be gifted a few for free: a party hat, a cowboy hat, a witch hat, even a traffic cone.
-- 👹 Uncle Chunk fights dirtier on Hard and Nightmare: much tougher, and he attacks more often.
-- 🎒 Your calling comes along in co-op: everyone in the room starts as the calling they picked, and the prop shows by their name in the lobby.
+- 🎩 Rank up and you can pick a hero beside the difficulty: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Every card says what it gives (+) and costs (-). Reach rank 3 to meet the first.
+- 🎩 Spend your Bones on hats in your Look tab, and rank up to be gifted a few for free: a party hat, a cowboy hat, a witch hat, even a traffic cone.
+- 🎒 Your hero comes along in co-op: everyone in the room starts as the hero they picked, and the prop shows by their name in the lobby, where you can swap it too.
+- 👕 New shirts, prints, and gun skins to earn or buy in your Look tab, with a NEW badge on what you just unlocked.
+- ❤️ Crunchier health bars: zombies, Uncle Chunk, and bleeding teammates get outlined, chunked bars with a shiny top edge. On Hard and Nightmare, Uncle Chunk takes way more to drop, and attacks more often.
 
 ## October 31, 2026: Rattles has notes
 

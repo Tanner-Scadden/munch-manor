@@ -41,6 +41,7 @@ import {
   initialModel,
 } from './model'
 import { home } from './model.fixture'
+import { FreePrint, FreeShirtColor } from './playerData'
 import { playerShapes } from './playerView'
 import { imageColors } from './testPng'
 import { resolveFocusOption } from './testing'
@@ -65,6 +66,10 @@ const partMessage = (part: LookPart, partGroupMessage: PartMessage) => {
       return toParentMessage(Character.OutfitBinding, partGroupMessage)
     case 'Print':
       return toParentMessage(Character.PrintBinding, partGroupMessage)
+    case 'Hat':
+      return toParentMessage(Character.HatBinding, partGroupMessage)
+    case 'GunSkin':
+      return toParentMessage(Character.GunSkinBinding, partGroupMessage)
   }
 }
 
@@ -95,6 +100,7 @@ const PICKED: Appearance = {
   beard: true,
   glasses: true,
   hat: 'None',
+  gunSkin: 'Stock',
 }
 
 const flip = (toggle: 'Beard' | 'Glasses') =>
@@ -188,6 +194,7 @@ describe('Character', () => {
       beard: false,
       glasses: false,
       hat: 'None',
+      gunSkin: 'Stock',
     })
   })
 
@@ -282,7 +289,7 @@ describe('Character', () => {
       'Print',
     ])
     const listed = Array.flatten(Object.values(Character.SECTION_PARTS))
-    expect(Array.dedupe(listed).length).toBe(7)
+    expect(Array.dedupe(listed).length).toBe(9)
     expect(Character.SECTION_TOGGLES.Body).toEqual(['Beard', 'Glasses'])
   })
 
@@ -366,8 +373,8 @@ describe('Character', () => {
 
   test('the dice never hands back the look you already have', () => {
     Array.forEach(Array.range(0, 300), seed => {
-      const [, firstRoll] = randomAppearance(seed, defaultAppearance)
-      const [, reroll] = randomAppearance(seed, firstRoll)
+      const [, firstRoll] = randomAppearance(seed, defaultAppearance, [], 1)
+      const [, reroll] = randomAppearance(seed, firstRoll, [], 1)
       expect(appearanceKey(reroll)).not.toBe(appearanceKey(firstRoll))
     })
   })
@@ -376,7 +383,7 @@ describe('Character', () => {
     const rolls = pipe(
       Array.range(0, 1999),
       Array.map(
-        seed => randomAppearance(seed * 7919 + 1, defaultAppearance)[1],
+        seed => randomAppearance(seed * 7919 + 1, defaultAppearance, [], 1)[1],
       ),
     )
     Array.forEach(rolls, rolled => {
@@ -388,9 +395,9 @@ describe('Character', () => {
     expect(seen(look => look.hairStyle)).toBe(HAIR_STYLES.length)
     expect(seen(look => look.hairColor)).toBe(HAIR_COLORS.length)
     expect(seen(look => look.skinTone)).toBe(SKIN_TONES.length)
-    expect(seen(look => look.shirtColor)).toBe(SHIRT_COLORS.length)
+    expect(seen(look => look.shirtColor)).toBe(FreeShirtColor.literals.length)
     expect(seen(look => look.outfit)).toBe(OUTFITS.length)
-    expect(seen(look => look.print)).toBe(PRINTS.length)
+    expect(seen(look => look.print)).toBe(FreePrint.literals.length)
     expect(seen(look => `${look.beard}`)).toBe(ON_OFF.length)
     expect(seen(look => `${look.glasses}`)).toBe(ON_OFF.length)
   })
@@ -484,6 +491,7 @@ describe('Character', () => {
         beard: true,
         glasses: true,
         hat: 'None',
+        gunSkin: 'Stock',
       },
     ]
     const frameSizes = (appearance: Appearance) =>

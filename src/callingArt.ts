@@ -172,29 +172,18 @@ const crossedOut = (pixels: ReadonlyArray<string>): ReadonlyArray<string> =>
 
 const NO_PISTOL_ICON = icon(crossedOut(PISTOL_PIXELS))
 
-export type QuirkMark = Readonly<{ art: string; label: string }>
-
-// NOTE: a quirk is a picture and, at most, a sign: a heart with -1, a plank
-// with a half, a shield with a plus (the longer breather), a shoe with a plus, a magazine with a minus, a price tag and
-// a coin with -15%, the pot, and a pistol crossed out.
-export const QUIRK_MARKS: Readonly<Record<Calling, ReadonlyArray<QuirkMark>>> =
-  {
-    You: [],
-    Handyman: [
-      { art: HEART_ICON, label: '-1' },
-      { art: PLANK_ICON, label: '1/2' },
-      { art: SHIELD_ICON, label: '+' },
-    ],
-    TrackStar: [
-      { art: SHOE_ICON, label: '+' },
-      { art: MAGAZINE_ICON, label: '-' },
-    ],
-    PennyPincher: [
-      { art: TAG_ICON, label: '-15%' },
-      { art: COIN_ICON, label: '-' },
-    ],
-    LineCook: [
-      { art: POT_ICON, label: '' },
-      { art: NO_PISTOL_ICON, label: '' },
-    ],
-  }
+// NOTE: the picture beside each special's line on a card (src/callingView.ts,
+// src/callingSpecials.ts): a heart, a plank, a shield for the longer
+// breather, a shoe, a magazine, a price tag, a coin, the pot, and a pistol
+// crossed out.
+export const QUIRK_ICONS = {
+  Heart: HEART_ICON,
+  Plank: PLANK_ICON,
+  Shield: SHIELD_ICON,
+  Shoe: SHOE_ICON,
+  Magazine: MAGAZINE_ICON,
+  Tag: TAG_ICON,
+  Coin: COIN_ICON,
+  Pot: POT_ICON,
+  NoPistol: NO_PISTOL_ICON,
+} as const

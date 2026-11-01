@@ -14,9 +14,8 @@ import {
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 
-import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
+import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { PartRadioGroupBlock } from './lookRadios'
 import { Message } from './message'
 import { Phase } from './model'
 import { home } from './model.fixture'
@@ -24,10 +23,15 @@ import {
   ROOT,
   SCENE_SUBSCRIPTIONS,
   closeButton,
+  lookGroup,
+  lookOptionIn,
+  lookSection,
   measureSurface,
   openHandInScene,
+  openLookSection,
   pickCardInScene,
   profileDialog,
+  resolveFocusOptionInScene,
   shareMountSettles,
 } from './testing'
 
@@ -39,10 +43,6 @@ const characterCard = role('button', {
 })
 const randomizeButton = role('button', { name: 'Roll a random look' })
 
-const group = (name: string) => role('radiogroup', { name })
-const optionIn = (groupName: string, name: string) =>
-  within(group(groupName), role('radio', { name }))
-
 const preview = (description: string) =>
   role('img', { name: `Preview: ${description}` })
 
@@ -50,14 +50,6 @@ const DEFAULT_LOOK = 'broad build, light skin, brown short hair, blue tee'
 
 const beardButton = role('button', { name: 'Beard' })
 const glassesButton = role('button', { name: 'Glasses' })
-
-const section = (name: string) =>
-  within(group('Parts'), role('radio', { name }))
-
-const openSection = (name: string) => [
-  click(section(name)),
-  resolveFocusOption(),
-]
 
 const showPicker = () => [
   Command.resolve(
@@ -73,15 +65,15 @@ const closePicker = () => [
   ),
 ]
 
-const resolveFocusOption = () =>
-  Command.resolve(
-    RadioGroup.test.FocusOption,
-    PartRadioGroupBlock.Message.CompletedFocusOption(),
-  )
-
 const pick = (groupName: string, name: string) => [
-  click(optionIn(groupName, name)),
-  resolveFocusOption(),
+  click(lookOptionIn(groupName, name)),
+  resolveFocusOptionInScene(),
+]
+
+// NOTE: the rows of earned looks pick by a click of their own, with no
+// focus Command, as the radio group is read only there.
+const pickGear = (groupName: string, name: string) => [
+  click(lookOptionIn(groupName, name)),
 ]
 
 describe('Character picker', () => {
@@ -111,39 +103,39 @@ describe('Character picker', () => {
       ...showPicker(),
       expect(profileDialog).toExist(),
       expect(role('tab', { name: 'Look' })).toHaveAttr('aria-selected', 'true'),
-      ...Array.map(['Body', 'Hair', 'Outfit'], name =>
-        expect(section(name)).toExist(),
+      ...Array.map(['Body', 'Hair', 'Outfit', 'Gear'], name =>
+        expect(lookSection(name)).toExist(),
       ),
-      expect(section('Body')).toHaveAttr('aria-checked', 'true'),
-      expect(group('Body shape')).toExist(),
-      expect(group('Skin')).toExist(),
-      expect(group('Hair')).toBeAbsent(),
-      expect(optionIn('Body shape', 'Broad')).toHaveAttr(
+      expect(lookSection('Body')).toHaveAttr('aria-checked', 'true'),
+      expect(lookGroup('Body shape')).toExist(),
+      expect(lookGroup('Skin')).toExist(),
+      expect(lookGroup('Hair')).toBeAbsent(),
+      expect(lookOptionIn('Body shape', 'Broad')).toHaveAttr(
         'aria-checked',
         'true',
       ),
-      expect(optionIn('Body shape', 'Slim')).toHaveAttr(
+      expect(lookOptionIn('Body shape', 'Slim')).toHaveAttr(
         'aria-checked',
         'false',
       ),
-      expect(optionIn('Skin', 'Light')).toHaveAttr('aria-checked', 'true'),
+      expect(lookOptionIn('Skin', 'Light')).toHaveAttr('aria-checked', 'true'),
       expect(beardButton).toHaveAttr('aria-pressed', 'false'),
       expect(glassesButton).toHaveAttr('aria-pressed', 'false'),
-      ...openSection('Hair'),
-      expect(group('Body shape')).toBeAbsent(),
-      expect(optionIn('Hair', 'Short')).toHaveAttr('aria-checked', 'true'),
-      expect(optionIn('Hair color', 'Brown')).toHaveAttr(
+      ...openLookSection('Hair'),
+      expect(lookGroup('Body shape')).toBeAbsent(),
+      expect(lookOptionIn('Hair', 'Short')).toHaveAttr('aria-checked', 'true'),
+      expect(lookOptionIn('Hair color', 'Brown')).toHaveAttr(
         'aria-checked',
         'true',
       ),
-      ...openSection('Outfit'),
-      expect(optionIn('Outfit', 'Tee')).toHaveAttr('aria-checked', 'true'),
-      expect(optionIn('Outfit color', 'Blue')).toHaveAttr(
+      ...openLookSection('Outfit'),
+      expect(lookOptionIn('Outfit', 'Tee')).toHaveAttr('aria-checked', 'true'),
+      expect(lookOptionIn('Outfit color', 'Blue')).toHaveAttr(
         'aria-checked',
         'true',
       ),
-      expect(optionIn('Print', 'Plain')).toHaveAttr('aria-checked', 'true'),
-      expect(optionIn('Print', 'Rainbow')).toExist(),
+      expect(lookOptionIn('Print', 'Plain')).toHaveAttr('aria-checked', 'true'),
+      expect(lookOptionIn('Print', 'Rainbow')).toExist(),
       expect(preview(DEFAULT_LOOK)).toExist(),
       expect(randomizeButton).toExist(),
       click(closeButton),
@@ -159,18 +151,21 @@ describe('Character picker', () => {
       click(characterButton),
       ...showPicker(),
       ...pick('Body shape', 'Slim'),
-      expect(optionIn('Body shape', 'Slim')).toHaveAttr('aria-checked', 'true'),
+      expect(lookOptionIn('Body shape', 'Slim')).toHaveAttr(
+        'aria-checked',
+        'true',
+      ),
       ...pick('Skin', 'Deep'),
       click(beardButton),
       click(glassesButton),
       expect(beardButton).toHaveAttr('aria-pressed', 'true'),
-      ...openSection('Hair'),
+      ...openLookSection('Hair'),
       ...pick('Hair', 'Mohawk'),
       ...pick('Hair color', 'Pink'),
-      ...openSection('Outfit'),
+      ...openLookSection('Outfit'),
       ...pick('Outfit', 'Dress'),
-      ...pick('Outfit color', 'Purple'),
-      ...pick('Print', 'Rainbow'),
+      ...pickGear('Outfit color', 'Purple'),
+      ...pickGear('Print', 'Rainbow'),
       expect(
         preview(
           'slim build, deep skin, pink mohawk hair, beard, glasses, purple dress, rainbow print',
@@ -189,16 +184,19 @@ describe('Character picker', () => {
       measureSurface,
       click(characterButton),
       ...showPicker(),
-      ...openSection('Hair'),
+      ...openLookSection('Hair'),
       ...pick('Hair color', 'Pink'),
-      ...openSection('Outfit'),
-      expect(optionIn('Outfit color', 'Pink')).toHaveAttr(
+      ...openLookSection('Outfit'),
+      expect(lookOptionIn('Outfit color', 'Pink')).toHaveAttr(
         'aria-checked',
         'false',
       ),
-      ...pick('Outfit color', 'Purple'),
-      ...openSection('Hair'),
-      expect(optionIn('Hair color', 'Pink')).toHaveAttr('aria-checked', 'true'),
+      ...pickGear('Outfit color', 'Purple'),
+      ...openLookSection('Hair'),
+      expect(lookOptionIn('Hair color', 'Pink')).toHaveAttr(
+        'aria-checked',
+        'true',
+      ),
       click(closeButton),
       ...closePicker(),
     )
@@ -215,15 +213,18 @@ describe('Character picker', () => {
       ),
       ...showPicker(),
       expect(profileDialog).toExist(),
-      keydown(optionIn('Body shape', 'Broad'), 'ArrowLeft'),
-      resolveFocusOption(),
-      expect(optionIn('Body shape', 'Slim')).toHaveAttr('aria-checked', 'true'),
-      keydown(section('Body'), 'ArrowRight'),
-      resolveFocusOption(),
-      expect(section('Hair')).toHaveAttr('aria-checked', 'true'),
-      keydown(optionIn('Hair', 'Short'), 'End'),
-      resolveFocusOption(),
-      expect(optionIn('Hair', 'Bald')).toHaveAttr('aria-checked', 'true'),
+      keydown(lookOptionIn('Body shape', 'Broad'), 'ArrowLeft'),
+      resolveFocusOptionInScene(),
+      expect(lookOptionIn('Body shape', 'Slim')).toHaveAttr(
+        'aria-checked',
+        'true',
+      ),
+      keydown(lookSection('Body'), 'ArrowRight'),
+      resolveFocusOptionInScene(),
+      expect(lookSection('Hair')).toHaveAttr('aria-checked', 'true'),
+      keydown(lookOptionIn('Hair', 'Short'), 'End'),
+      resolveFocusOptionInScene(),
+      expect(lookOptionIn('Hair', 'Bald')).toHaveAttr('aria-checked', 'true'),
       expect(preview('slim build, light skin, bald, blue tee')).toExist(),
       click(closeButton),
       ...closePicker(),
@@ -240,7 +241,7 @@ describe('Character picker', () => {
       ).toBeAbsent(),
       click(characterButton),
       ...showPicker(),
-      ...openSection('Hair'),
+      ...openLookSection('Hair'),
       ...pick('Hair', 'Long'),
       ...pick('Hair color', 'Grey'),
       click(closeButton),

@@ -23,9 +23,10 @@ import {
 } from '../icons'
 import { callingPropView, iconView, rankTagView } from '../menuParts'
 import type { Appearance } from '../model'
-import { MODE_NAMES } from '../names'
+import { CALLING_NAMES, MODE_NAMES } from '../names'
 import { seatColorOf } from '../partyView'
 import type { Calling } from '../playerData'
+import { callingPickerView, callingPillView } from './callingPicker'
 import { CoopComposition } from './composition'
 import {
   AWAY_ICON,
@@ -573,6 +574,23 @@ const seatView = (
     },
   )
 
+// NOTE: a seat read aloud: who, their rank, their hero (nothing for
+// YOU), and READY. The prop and the badge are pictures.
+const seatLabelOf = (
+  member: LobbyMember,
+  { isMe, isTheHost }: Readonly<{ isMe: boolean; isTheHost: boolean }>,
+): string => {
+  const calling = callingOfMember(member)
+  return [
+    member.name,
+    ...(isMe ? ['you'] : []),
+    ...(isTheHost ? ['host'] : []),
+    `rank ${member.rank}`,
+    ...(calling === 'You' ? [] : [CALLING_NAMES[calling]]),
+    ...(member.ready ? ['ready'] : []),
+  ].join(', ')
+}
+
 const memberSeatView = (
   room: Room,
   lobby: Lobby,
@@ -583,7 +601,7 @@ const memberSeatView = (
   const isMe = Option.exists(room.maybePlayerId, id => id === member.playerId)
   const isTheHost = lobby.host === member.playerId
   const canKick = isHost(room) && !isMe && lobby.status === 'Lobby'
-  const label = `${member.name}${isMe ? ', you' : ''}${isTheHost ? ', host' : ''}${member.ready ? ', ready' : ''}`
+  const label = seatLabelOf(member, { isMe, isTheHost })
   return h.keyed('li')(
     member.playerId,
     [
@@ -666,9 +684,7 @@ const resultView = (
                   score.playerId,
                   [
                     h.Class('coop-result-score'),
-                    h.AriaLabel(
-                      `${nameAt(lobby, score.slot)}: ${score.score}${index === 0 && score.score > 0 ? ', MVP' : ''}`,
-                    ),
+                    h.AriaLabel(scoreLabelOf(lobby, score, index)),
                   ],
                   [
                     index === 0 && score.score > 0
@@ -700,6 +716,21 @@ const resultView = (
         ],
       ),
   })
+
+// NOTE: a score read aloud: who, their rank, their hero (nothing for
+// YOU), the points, and the MVP.
+const scoreLabelOf = (
+  lobby: Lobby,
+  score: RoomScore,
+  index: number,
+): string => {
+  const calling = callingAt(lobby, score.slot)
+  return [
+    `${nameAt(lobby, score.slot)}: rank ${rankAt(lobby, score.slot)}`,
+    ...(calling === 'You' ? [] : [CALLING_NAMES[calling]]),
+    `${score.score}${index === 0 && score.score > 0 ? ', MVP' : ''}`,
+  ].join(', ')
+}
 
 const BY_SCORE_DESCENDING = Order.flip(
   Order.mapInput(Order.Number, (score: RoomScore) => score.score),
@@ -886,6 +917,10 @@ const picksView = (
           isPicking(room) ? keyCapView(inputs, 'X', h) : h.empty,
         ],
       ),
+      h.div(
+        [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Hero')],
+        [callingPillView(room, [keyCapView(inputs, 'Y', h)], h)],
+      ),
     ],
   )
 
@@ -924,6 +959,10 @@ const lobbyView = (
         onSome: lobby => picksView(room, lobby, inputs, h),
       }),
       readyButtonView(room, inputs, h),
+      Option.match(meIn(room), {
+        onNone: () => h.empty,
+        onSome: me => callingPickerView(room, lookOf(inputs, room, me.slot), h),
+      }),
     ],
   )
 

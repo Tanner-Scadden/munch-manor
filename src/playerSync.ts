@@ -15,6 +15,7 @@ import {
   SavedOnboarding,
   SavedPowerUps,
   SavedRunRecords,
+  SavedSeenUnlocks,
   SavedSettings,
 } from './playerData'
 
@@ -39,6 +40,7 @@ export const PlayerChange = defineTaggedUnion({
   },
   ChangedHome: { home: SavedHome },
   SawPowerUps: { kinds: SavedPowerUps },
+  SawUnlocks: { ids: SavedSeenUnlocks },
   ForgotPowerUps: {},
   RecordedRun: {
     runs: Schema.Number,
@@ -148,6 +150,14 @@ export const changesBetween = (
         PlayerChange.ChangedHome({ home: after.home }),
       ),
       powerUpChanges(before.seenPowerUps, after.seenPowerUps),
+      Array.isReadonlyArrayNonEmpty(
+        Array.filter(
+          after.seenUnlocks,
+          id => !Array.contains(before.seenUnlocks, id),
+        ),
+      )
+        ? [PlayerChange.SawUnlocks({ ids: after.seenUnlocks })]
+        : [],
       changeWhen(isRunRecorded, () =>
         PlayerChange.RecordedRun({
           runs: Math.max(runs, 0),
@@ -179,8 +189,8 @@ export const changesBetween = (
       ),
       Array.map(
         Array.filter(
-          after.boughtHats,
-          hat => !Array.contains(before.boughtHats, hat),
+          after.boughtCosmetics,
+          hat => !Array.contains(before.boughtCosmetics, hat),
         ),
         id => PlayerChange.BoughtCosmetic({ id }),
       ),
@@ -226,6 +236,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
       }),
     ChangedHome: () => PlayerChange.ChangedHome({ home: save.home }),
     SawPowerUps: () => PlayerChange.SawPowerUps({ kinds: save.seenPowerUps }),
+    SawUnlocks: () => PlayerChange.SawUnlocks({ ids: save.seenUnlocks }),
     ForgotPowerUps: () => change,
     RecordedRun: run =>
       PlayerChange.RecordedRun({ ...run, bests: save.bests.byDifficulty }),

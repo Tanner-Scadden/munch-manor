@@ -78,6 +78,7 @@ export const readoutOf = (room: WorldState): string =>
         x: Math.round(player.x * 10) / 10,
         y: Math.round(player.y * 10) / 10,
         hp: player.hp,
+        calling: player.calling,
         life: seat.life._tag,
         ready: seat.readiness,
         kills: seat.kills,
