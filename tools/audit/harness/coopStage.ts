@@ -29,7 +29,10 @@ const coopRoom = (
   status: 'Lobby' | 'Playing',
   extra: Partial<CoopModel.Room> = {},
 ): CoopModel.Room => {
-  const world = stagedWorld(members.map(member => member.slot))
+  const world = stagedWorld(
+    members.map(member => member.slot),
+    members,
+  )
   return {
     code: COOP_CODE,
     slot: 0,
@@ -138,6 +141,9 @@ const COOP_LOOKS = [
 // golden drumstick, so the shots show the badges' tiers.
 const COOP_RANKS = [7, 18, 33, 62]
 
+// NOTE: and the callings, so the shots show a prop for each and none for YOU.
+const COOP_CALLINGS = ['PennyPincher', 'Handyman', 'LineCook', 'TrackStar']
+
 const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
   const Screen = CoopModel.Screen
   const queue = (
@@ -166,6 +172,7 @@ const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
           COOP_LOOKS[slot] ?? '',
           false,
           COOP_RANKS[slot] ?? 1,
+          COOP_CALLINGS[slot] ?? 'You',
         ),
         { pingMs: () => COOP_PINGS[slot] ?? 0 },
       ),

@@ -251,7 +251,10 @@ describe('the lobby', () => {
           slot: 1,
           maybePlayerId: Option.some('player-1'),
           maybeLobby: Option.some({
-            ...lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')]),
+            ...lobbyOf([
+              memberOf(0, 'Ana'),
+              memberOf(1, 'Bo', false, '', false, 1, 'TrackStar'),
+            ]),
             mode: 'KeepGoing',
             canKeepGoing: true,
             difficulty: 'Hard',
@@ -333,6 +336,41 @@ describe('the lobby', () => {
       expect(selector('[aria-label="Cy"] .coop-rank img')).toHaveAttr(
         'src',
         silverSrc,
+      ),
+    )
+  })
+
+  test("each seat shows its player's calling prop beside the rank, YOU none", () => {
+    scene(
+      { update, view },
+      given(
+        lobbyRoom([
+          memberOf(0, 'Ana'),
+          memberOf(1, 'Bo', false, '', false, 4, 'Handyman'),
+          memberOf(2, 'Cy', false, '', false, 16, 'LineCook'),
+          memberOf(3, 'Dee', false, '', false, 7, 'Wizard'),
+        ]),
+      ),
+      expect(
+        selector('[aria-label="Ana, you, host"] .coop-calling'),
+      ).toBeAbsent(),
+      expect(selector('[aria-label="Bo"] .coop-calling')).toHaveAttr(
+        'data-calling',
+        'Handyman',
+      ),
+      expect(selector('[aria-label="Cy"] .coop-calling')).toHaveAttr(
+        'data-calling',
+        'LineCook',
+      ),
+      expect(selector('[aria-label="Dee"] .coop-calling')).toBeAbsent(),
+      // NOTE: the portrait wears the prop too; a word that is no calling does not.
+      expect(selector('[aria-label="Bo"] .coop-seat-head')).toHaveStyle(
+        'background-image',
+        portraitOf(seatLook(1), 'Handyman'),
+      ),
+      expect(selector('[aria-label="Dee"] .coop-seat-head')).toHaveStyle(
+        'background-image',
+        portraitOf(seatLook(3)),
       ),
     )
   })
@@ -483,7 +521,10 @@ describe('the arena', () => {
           room: {
             ...freshRoom(CODE, 0),
             maybeLobby: Option.some({
-              ...lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')]),
+              ...lobbyOf([
+                memberOf(0, 'Ana'),
+                memberOf(1, 'Bo', false, '', false, 1, 'TrackStar'),
+              ]),
               result: Option.some({
                 round: 1,
                 reason: 'GameOver' as const,
@@ -517,6 +558,12 @@ describe('the arena', () => {
       expect(role('listitem', { name: 'Ana: 3' })).toExist(),
       expect(selector('.coop-result-crown')).toExist(),
       expect(selector('[aria-label="Bo: 9, MVP"] .coop-result-rank')).toExist(),
+      expect(
+        selector('[aria-label="Bo: 9, MVP"] .coop-result-calling'),
+      ).toHaveAttr('data-calling', 'TrackStar'),
+      expect(
+        selector('[aria-label="Ana: 3"] .coop-result-calling'),
+      ).toBeAbsent(),
     )
   })
 })

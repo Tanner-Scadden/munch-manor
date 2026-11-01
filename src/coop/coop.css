@@ -165,6 +165,24 @@
   font-size: clamp(10px, 2.2 * var(--coop-unit), 14px);
 }
 
+/* NOTE: a player's calling prop beside their rank: a picture, no words. */
+.coop-calling,
+.coop-result-calling {
+  flex: none;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.coop-calling {
+  width: clamp(16px, 3.6 * var(--coop-unit), 24px);
+  height: clamp(16px, 3.6 * var(--coop-unit), 24px);
+}
+
+.coop-result-calling {
+  width: clamp(14px, 3.2 * var(--coop-unit), 20px);
+  height: clamp(14px, 3.2 * var(--coop-unit), 20px);
+}
+
 .coop-nameplate:empty {
   visibility: hidden;
 }

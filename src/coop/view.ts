@@ -21,10 +21,11 @@ import {
   SKULL_OFF_ICON,
   TROPHY_ICON,
 } from '../icons'
-import { iconView, rankTagView } from '../menuParts'
+import { callingPropView, iconView, rankTagView } from '../menuParts'
 import type { Appearance } from '../model'
 import { MODE_NAMES } from '../names'
 import { seatColorOf } from '../partyView'
+import type { Calling } from '../playerData'
 import { CoopComposition } from './composition'
 import {
   AWAY_ICON,
@@ -42,7 +43,7 @@ import {
   WAIT_ICON,
   portraitOf,
 } from './icons'
-import { seatLook, seatLookOf } from './looks'
+import { callingOfMember, seatLook, seatLookOf } from './looks'
 import { Message } from './message'
 import {
   type CoopProblem,
@@ -95,7 +96,8 @@ const portraitView = (
   look: Appearance,
   className: string,
   h: HtmlBuilder<Message>,
-): Html => iconView(`coop-portrait ${className}`, portraitOf(look), h)
+  calling: Calling = 'You',
+): Html => iconView(`coop-portrait ${className}`, portraitOf(look, calling), h)
 
 const coopCloseView = (h: HtmlBuilder<Message>): Html =>
   closeButtonView(
@@ -591,7 +593,12 @@ const memberSeatView = (
       h.AriaLabel(label),
     ],
     [
-      portraitView(lookOf(inputs, room, member.slot), 'coop-seat-head', h),
+      portraitView(
+        lookOf(inputs, room, member.slot),
+        'coop-seat-head',
+        h,
+        callingOfMember(member),
+      ),
       isTheHost ? iconView('coop-crown', CROWN_ICON, h) : h.empty,
       member.ready
         ? h.span(
@@ -603,6 +610,7 @@ const memberSeatView = (
         [h.Class('coop-nameline')],
         [
           rankTagView('coop-rank', member.rank, 2, h),
+          callingPropView('coop-calling', callingOfMember(member), h),
           h.span(
             [h.Class('coop-nameplate'), h.AriaHidden(true)],
             [member.name],
@@ -670,11 +678,17 @@ const resultView = (
                       lookOf(inputs, room, score.slot),
                       'coop-result-head',
                       h,
+                      callingAt(lobby, score.slot),
                     ),
                     rankTagView(
                       'coop-result-rank',
                       rankAt(lobby, score.slot),
                       1,
+                      h,
+                    ),
+                    callingPropView(
+                      'coop-result-calling',
+                      callingAt(lobby, score.slot),
                       h,
                     ),
                     h.span([h.AriaHidden(true)], [`${score.score}`]),
@@ -702,6 +716,13 @@ const rankAt = (lobby: Lobby, slot: number): number =>
   Option.match(
     Array.findFirst(lobby.members, member => member.slot === slot),
     { onNone: () => 1, onSome: member => member.rank },
+  )
+
+// NOTE: a seat's calling from the lobby; a seat that left has none.
+const callingAt = (lobby: Lobby, slot: number): Calling =>
+  Option.match(
+    Array.findFirst(lobby.members, member => member.slot === slot),
+    { onNone: (): Calling => 'You', onSome: callingOfMember },
   )
 
 const readyButtonView = (

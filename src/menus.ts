@@ -5,7 +5,7 @@ import type { LobbyMember } from '@munch/netcode'
 
 import type { ApplicationViewBuilder } from './composition'
 import { CHECK_ICON, COOP_ICON, LEAVE_ICON, portraitOf } from './coop/icons'
-import { seatLookOf } from './coop/looks'
+import { callingOfMember, seatLookOf } from './coop/looks'
 import type { Room as CoopRoom } from './coop/model'
 import { maybeRoomOf, meIn, pickedModeOf } from './coop/roomState'
 import { isOpen as isCoopOpen } from './coop/update'
@@ -388,6 +388,7 @@ const crewHeadsOf = (model: Model, room: CoopRoom): ReadonlyArray<CrewHead> =>
               member.slot,
               room.maybeLobby,
             ),
+            callingOfMember(member),
           ),
           isIn: member.ready,
         }),
