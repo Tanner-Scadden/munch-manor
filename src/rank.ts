@@ -109,6 +109,20 @@ export const rankProgressOf = (points: number): RankProgress => {
   return { rank, into, cost, fraction: Math.min(1, into / cost) }
 }
 
+// THE STRIP
+
+// NOTE: the end card's rank strip reads everything from the points it is
+// showing, so a bar that fills past a rank's end turns into the next rank's
+// bar, and the number and the badge change as it goes.
+export const shownPointsOf = (
+  pointsBefore: number,
+  gained: number,
+  t: number,
+): number => pointsBefore + Math.round(gained * Math.min(1, Math.max(0, t)))
+
+export const isRankUp = (pointsBefore: number, gained: number): boolean =>
+  rankOf(pointsBefore + gained) > rankOf(pointsBefore)
+
 // BADGES
 
 export type BadgeTier =

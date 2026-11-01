@@ -64,6 +64,37 @@ const SCENES: ReadonlyArray<Scene> = [
     name: 'victory-confetti',
     query: `wave=10&phase=victory&stats&difficulty=Hard&${LEARNED}&tick=90`,
   },
+  // NOTE: the rank strip: a bar part way through a rank, mid fill into a new
+  // rank, the finished rank up, a win into the next badge, and a crew's.
+  {
+    name: 'gameover-rank',
+    query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=162&rankgain=60&tick=400`,
+    buttons: BUTTONS,
+  },
+  {
+    name: 'gameover-rankmid',
+    query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=130&rankgain=60&tick=195`,
+  },
+  {
+    name: 'gameover-rankup',
+    query: `wave=6&phase=gameover&stats&crowd=10&${LEARNED}&rank=130&rankgain=60&tick=400`,
+    buttons: BUTTONS,
+  },
+  {
+    name: 'victory-rankup',
+    query: `wave=10&phase=victory&stats&difficulty=Hard&${LEARNED}&rank=1900&rankgain=250&tick=400`,
+    buttons: BUTTONS,
+  },
+  {
+    name: 'coop-win-rank',
+    query: `wave=10&phase=victory&stats&party=3&${LEARNED}&rank=2400&rankgain=95&tick=400`,
+    buttons: BUTTONS,
+  },
+  {
+    name: 'coop-wipe-rank',
+    query: `wave=5&phase=gameover&stats&party=4&crowd=10&${LEARNED}&rank=240&rankgain=95&tick=400`,
+    buttons: BUTTONS,
+  },
   {
     name: 'coop-wipe',
     query: `wave=5&phase=gameover&stats&party=3&crowd=10&${LEARNED}&tick=400`,

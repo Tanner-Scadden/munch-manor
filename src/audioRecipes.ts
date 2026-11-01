@@ -837,6 +837,31 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
+  // NOTE: the rank up fanfare on the end card: a bright climb that lands on
+  // a held chord.
+  RankUp: {
+    variationCents: 0,
+    tones: [
+      ...Array.map([523, 659, 784, 1046], (frequency, index) => ({
+        wave: 'square' as const,
+        pitch: [at(0, frequency), at(0.08, frequency)],
+        envelope: envelope(0.11, 0.002, 0.09, index * 0.08),
+      })),
+      ...Array.map([1046, 1318, 1568], frequency => ({
+        wave: 'triangle' as const,
+        pitch: [at(0, frequency), at(0.55, frequency)],
+        envelope: envelope(0.1, 0.004, 0.55, 0.34),
+      })),
+    ],
+    noises: [
+      {
+        filter: 'highpass',
+        quality: 1,
+        cutoff: [at(0, 6000), at(0.5, 9000)],
+        envelope: envelope(0.06, 0.01, 0.45, 0.34),
+      },
+    ],
+  },
   PrizeChomp: {
     variationCents: 0,
     tones: [

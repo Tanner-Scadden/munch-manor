@@ -14,6 +14,7 @@ import {
 } from './model'
 import { isCoop, leadSeatOf } from './party'
 import type { Difficulty } from './playerData'
+import { isRankUp } from './rank'
 import type { SharedRun } from './share'
 import { accuracyPercent, totalKills } from './stats'
 import type { TallyIcon } from './tallyIcons'
@@ -213,8 +214,38 @@ export const awardsAtMs = (kind: EndKind): number =>
 export const crewDoneMs = (kind: EndKind): number =>
   awardsAtMs(kind) + AWARD_STAMP_MS
 
+// RANK STRIP
+
+// NOTE: after the tally (or, for a crew, the awards) the rank strip fills
+// its bar from the points before the run to the points after, counts the
+// Bones, and, on a rank up, pops the badge with a fanfare. A run that paid
+// no rank (the practice gate) has no strip.
+const RANK_GAP_MS = 140
+export const RANK_FILL_MS = 800
+export const RANK_POP_MS = 360
+
+export const hasRankStrip = (model: Model): boolean =>
+  Option.isSome(model.maybeRankGain)
+
+export const rankStripAtMs = (model: Model, kind: EndKind): number =>
+  (isCoop(model) ? crewDoneMs(kind) : doneMs(kind)) + RANK_GAP_MS
+
+export const isRankedUp = (model: Model): boolean =>
+  Option.exists(model.maybeRankGain, ({ pointsBefore, gained }) =>
+    isRankUp(pointsBefore, gained),
+  )
+
+export const rankDoneMs = (model: Model, kind: EndKind): number =>
+  rankStripAtMs(model, kind) +
+  RANK_FILL_MS +
+  (isRankedUp(model) ? RANK_POP_MS : 0)
+
 const beatDoneMs = (model: Model, kind: EndKind): number =>
-  isCoop(model) ? crewDoneMs(kind) : doneMs(kind)
+  hasRankStrip(model)
+    ? rankDoneMs(model, kind)
+    : isCoop(model)
+      ? crewDoneMs(kind)
+      : doneMs(kind)
 
 export const isBeatOver = (model: Model): boolean =>
   Option.match(endKindOf(model), {
@@ -283,6 +314,15 @@ export const beatSounds = (
         ...soundWhen(
           isCrew && isPast(awardsAtMs(kind)) && hasAwards(crewOf(model)),
           'PowerUp',
+        ),
+        ...soundWhen(
+          hasRankStrip(model) && isPast(rankStripAtMs(model, kind)),
+          'Pop',
+        ),
+        ...soundWhen(
+          isRankedUp(model) &&
+            isPast(rankStripAtMs(model, kind) + RANK_FILL_MS),
+          'RankUp',
         ),
       ]
     },
