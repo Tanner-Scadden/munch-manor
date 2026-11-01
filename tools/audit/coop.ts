@@ -297,8 +297,8 @@ const filledSeats = (page: Page) =>
   page.locator('.coop-seat:not([data-state="Empty"])').count()
 
 const roomCodeOf = async (page: Page): Promise<string> => {
-  const label = await page.locator('.coop-room-code').getAttribute('aria-label')
-  return (label ?? '').replace('Room code ', '').replaceAll(' ', '')
+  const symbols = await page.locator('.coop-room-code-symbol').allTextContents()
+  return symbols.join('')
 }
 
 // THE ROOM'S WORLD, AS THE PAGE DRAWS IT
