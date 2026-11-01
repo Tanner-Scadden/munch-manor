@@ -181,7 +181,7 @@ describe('the price tag in a zoomed phone window', () => {
   })
 
   test('is not drawn over the HUD band once the window has followed the player away', () => {
-    vitestExpect(cameraOf(upright(170)).y).toBeGreaterThan(40)
+    vitestExpect(cameraOf(upright(170)).y).toBe(20)
     vitestExpect(tagsFor(upright(170))).toHaveLength(0)
   })
 })

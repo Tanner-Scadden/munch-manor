@@ -10,7 +10,15 @@
 // early waves to Groaners and Hotfoots the way real players do.
 
 import { hasLineOfSight, levelOf } from '../../../src/arena'
-import { FRAME_MS, type Model, type Vector, distance, walking } from './basics'
+import {
+  FRAME_MS,
+  type Model,
+  type Vector,
+  distance,
+  isInView,
+  standing,
+  walking,
+} from './basics'
 import { type BotState, type Zombie } from './state'
 
 export const IS_SHARP = process.env['AIM'] === 'sharp'
@@ -162,3 +170,12 @@ export const isNoticed = (
   )
   return apart <= NOTICE_RADIANS
 }
+
+// What it may flee: the zombies in its view, and any close enough to hear
+// even out of a phone's window, where the screen's edge sits nearer than
+// earshot behind a leaning camera.
+export const withinSenses = (model: Model): ReadonlyArray<Zombie> =>
+  standing(model).filter(
+    zombie =>
+      isInView(model, zombie) || distance(model.player, zombie) < NOTICE_PX,
+  )

@@ -53,6 +53,7 @@ import {
   isNoticed,
   nextBotRandom,
   stickyTarget,
+  withinSenses,
 } from './hand'
 import { isInKitchen, routeTo } from './route'
 import { type BotState, type Zombie } from './state'
@@ -152,8 +153,8 @@ export const kite = (state: BotState, model: Model): Vector => {
     (zombie.kind === 'Boss' ? BOSS_BERTH_PX : 0) -
     (zombie.frenzy._tag === 'Frenzied' ? frenzyBerthPx() : 0)
   // A zombie frozen solid by Brain Freeze cannot bite, so it is not fled,
-  // and the human bot flees only what it has noticed.
-  const nearest = walking(model)
+  // and the human bot flees only what it has noticed: in view, or heard.
+  const nearest = withinSenses(model)
     .filter(zombie => !KITES || zombie.kind !== 'Boss')
     .filter(zombie => zombie.action._tag !== 'Frozen')
     .filter(zombie => isNoticed(state, model, zombie))

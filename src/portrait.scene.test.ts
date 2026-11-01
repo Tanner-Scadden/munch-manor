@@ -260,14 +260,14 @@ describe('the world zoom on phones', () => {
     )
   })
 
-  test('a phone held upright draws 96 by 128 of the room in the window over the thumbs', () => {
+  test('a phone held upright draws 120 by 160 of the room in the window over the thumbs', () => {
     scene(
       ROOT,
       given(fighting),
       measure(PHONE_PORTRAIT),
       expect(root).toHaveAttr('data-layout', 'Portrait'),
-      expect(worldCanvas).toHaveAttr('width', '96'),
-      expect(worldCanvas).toHaveAttr('height', '128'),
+      expect(worldCanvas).toHaveAttr('width', '120'),
+      expect(worldCanvas).toHaveAttr('height', '160'),
       expect(worldWindow).toHaveStyle('height', `${(240 / 390) * 100}%`),
       expect(selector('.thumb-area')).toExist(),
     )

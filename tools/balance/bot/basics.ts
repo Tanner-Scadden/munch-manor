@@ -92,7 +92,7 @@ export const maybeWindowScreen =
 export const windowCamera = (model: Model, screen: Screen) =>
   cameraFor(levelOf(model), cameraFocus(model), worldWindowOf(screen))
 
-const isInView = (model: Model, zombie: Model['zombies'][number]) => {
+export const isInView = (model: Model, zombie: Model['zombies'][number]) => {
   if (maybeWindowScreen === undefined) {
     return true
   }
@@ -105,13 +105,17 @@ const isInView = (model: Model, zombie: Model['zombies'][number]) => {
   )
 }
 
-export const walking = (model: Model) =>
+// The zombies standing in the room, in view or not.
+export const standing = (model: Model) =>
   model.zombies.filter(
     zombie =>
-      zombie.state._tag === 'Walking' &&
-      !OUT_OF_REACH.has(zombie.action._tag) &&
-      isInView(model, zombie),
+      zombie.state._tag === 'Walking' && !OUT_OF_REACH.has(zombie.action._tag),
   )
+
+// The zombies standing in the bot's view: the whole room, or the phone's
+// window under VIEW.
+export const walking = (model: Model) =>
+  standing(model).filter(zombie => isInView(model, zombie))
 
 export const distance = (a: Vector, b: Vector) =>
   Math.hypot(a.x - b.x, a.y - b.y)
