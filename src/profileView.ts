@@ -112,6 +112,7 @@ const lookTabView = (model: Model, h: ApplicationViewBuilder): Html =>
         bought: model.boughtCosmetics,
         rank: model.rank,
         fresh: model.freshUnlocks,
+        maybePreview: model.profile.maybePreview,
         cue: model.profile.closetCue,
       },
     }),

@@ -1,13 +1,18 @@
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
+import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
+import { CharacterBinding } from './bindings'
+import { chooseCalling } from './callingPick'
+import * as Character from './character'
 import { update } from './main'
 import { Message } from './message'
 import { homeAfterRead } from './model.fixture'
 import { noRank, pointsForRank } from './rank'
+import { writeSave } from './testing'
 import { callingUnlocksAt, hasUnseenLook, lookUnlocksAt } from './unlocks'
 import { WriteSave } from './update/save'
 
@@ -42,6 +47,43 @@ describe('the unlocks reached', () => {
   test('make a pip while any is unseen', () => {
     expect(hasUnseenLook(16, ['hat:PartyHat'])).toBe(true)
     expect(hasUnseenLook(2, ['hat:PartyHat'])).toBe(false)
+  })
+})
+
+describe('picking an unlock', () => {
+  test('clears its own badge at once and leaves the other badges', () => {
+    story(
+      update,
+      given(reached),
+      message(Message.ClickedCharacterButton()),
+      showDialog(),
+      Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      message(
+        toParentMessage(
+          CharacterBinding,
+          Character.Message.ClickedGearOption({
+            part: 'ShirtColor',
+            value: 'Gold',
+          }),
+        ),
+      ),
+      model(current => {
+        expect(current.appearance.shirtColor).toBe('Gold')
+        expect(current.freshUnlocks).not.toContain('shirt:Gold')
+        expect(current.freshUnlocks).toContain('hat:TrafficCone')
+        expect(current.seenUnlocks).toContain('shirt:Gold')
+      }),
+      writeSave(),
+    )
+  })
+
+  test('a hero picked clears its badge', () => {
+    const fresh = modifyFields(reached, {
+      freshUnlocks: () => ['calling:Handyman', 'calling:TrackStar'],
+    })
+    const after = chooseCalling(fresh, 'Handyman')
+    expect(after.calling).toBe('Handyman')
+    expect(after.freshUnlocks).toEqual(['calling:TrackStar'])
   })
 })
 

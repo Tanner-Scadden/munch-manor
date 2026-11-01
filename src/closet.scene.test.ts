@@ -34,6 +34,7 @@ import {
   showDialogInScene,
 } from './testing'
 import { unlocksAt } from './unlocks'
+import { FocusLookOption } from './update/character'
 import { WriteSave } from './update/save'
 
 // The Look tab's rows of earned looks (src/characterView.ts,
@@ -63,6 +64,8 @@ const closeLook = () => [
 const openLook = () => [emitPressedKey('KeyC'), ...showDialogInScene()]
 
 const balance = selector('.profile-rank .rank-bones-count')
+
+const buyPill = selector('.look-buy')
 
 describe('the gear rows', () => {
   test('every hat is an option: worn, owned, for sale, or a locked gift', () => {
@@ -155,7 +158,7 @@ describe('the gear rows', () => {
     )
   })
 
-  test('a pick buys the look for sale and wears it, and the balance drops', () => {
+  test('a pick tries the look for sale on, and the BUY pill buys and wears it', () => {
     scene(
       ROOT,
       given(closet),
@@ -163,8 +166,23 @@ describe('the gear rows', () => {
       ...openLook(),
       ...openLookSection('Gear'),
       expect(balance).toHaveText('90'),
+      expect(buyPill).toBeAbsent(),
       click(lookOptionIn('Hat', 'Colander')),
+      expect(lookOptionIn('Hat', 'Colander')).toHaveAttr(
+        'aria-checked',
+        'false',
+      ),
+      expect(lookOptionIn('Hat', 'Fez')).toHaveAttr('aria-checked', 'true'),
+      expect(selector('.look-preview')).toHaveAttr(
+        'aria-label',
+        'Preview: broad build, light skin, brown short hair, blue tee, colander',
+      ),
+      expect(buyPill).toHaveText('BUY40'),
+      expect(balance).toHaveText('90'),
+      click(buyPill),
+      Command.resolve(FocusLookOption, Message.CompletedFocusLookOption()),
       Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      expect(buyPill).toBeAbsent(),
       expect(lookOptionIn('Hat', 'Colander')).toHaveAttr(
         'aria-checked',
         'true',
@@ -175,14 +193,30 @@ describe('the gear rows', () => {
     )
   })
 
-  test('a gun skin is bought the same way, for 60', () => {
+  test('a hero shows the hat tried on, and the BUY pill gives the gun skin for 60', () => {
     scene(
       ROOT,
-      given(closet),
+      given(modifyFields(closet, { calling: () => 'Handyman' })),
       measureSurface,
       ...openLook(),
       ...openLookSection('Gear'),
       click(lookOptionIn('Gun skin', 'Candy')),
+      expect(lookOptionIn('Gun skin', 'Candy')).toHaveAttr(
+        'data-previewed',
+        'true',
+      ),
+      click(lookOptionIn('Hat', 'Colander')),
+      expect(lookOptionIn('Gun skin', 'Candy')).not.toHaveAttr(
+        'data-previewed',
+        'true',
+      ),
+      expect(buyPill).toHaveText('BUY40'),
+      click(lookOptionIn('Hat', 'Fez')),
+      expect(buyPill).toBeAbsent(),
+      click(lookOptionIn('Gun skin', 'Candy')),
+      expect(buyPill).toHaveText('BUY60'),
+      click(buyPill),
+      Command.resolve(FocusLookOption, Message.CompletedFocusLookOption()),
       Command.resolve(WriteSave, Message.CompletedWriteSave()),
       expect(lookOptionIn('Gun skin', 'Candy')).toHaveAttr(
         'aria-checked',
@@ -192,7 +226,7 @@ describe('the gear rows', () => {
     )
   })
 
-  test('a look the Bones do not cover shakes its price and is not selected', () => {
+  test('a look the Bones do not cover is tried on, and BUY waits disabled', () => {
     scene(
       ROOT,
       given(
@@ -206,7 +240,8 @@ describe('the gear rows', () => {
         'aria-checked',
         'false',
       ),
-      expect(lookOptionIn('Hat', 'Plunger')).toHaveAttr('data-cue', 'Short'),
+      expect(buyPill).toHaveAttr('data-short', 'true'),
+      expect(buyPill).toHaveText('BUY60'),
       expect(lookOptionIn('Hat', 'Fez')).toHaveAttr('aria-checked', 'true'),
       expect(balance).toHaveText('10'),
     )
@@ -311,6 +346,40 @@ describe('NEW badges', () => {
       expect(newBadge('Outfit color', 'Gold')).toBeAbsent(),
       ...openLookSection('Gear'),
       expect(newBadge('Hat', 'Bucket Hat')).toBeAbsent(),
+    )
+  })
+})
+
+describe('a NEW badge', () => {
+  const reachedGold = modifyFields(homeAfterRead, {
+    rank: () => ({ ...noRank, earnedPoints: pointsForRank(16) }),
+    seenUnlocks: () => ['hat:PartyHat'],
+  })
+
+  test('goes at once when its look is picked, the others stay', () => {
+    scene(
+      ROOT,
+      given(reachedGold),
+      measureSurface,
+      ...openLook(),
+      Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      ...openLookSection('Outfit'),
+      expect(
+        within(lookOptionIn('Outfit color', 'Gold'), selector('.look-new')),
+      ).toExist(),
+      click(lookOptionIn('Outfit color', 'Gold')),
+      Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      expect(
+        within(lookOptionIn('Outfit color', 'Gold'), selector('.look-new')),
+      ).toBeAbsent(),
+      expect(lookOptionIn('Outfit color', 'Gold')).toHaveAttr(
+        'aria-checked',
+        'true',
+      ),
+      ...openLookSection('Gear'),
+      expect(
+        within(lookOptionIn('Hat', 'Bucket Hat'), selector('.look-new')),
+      ).toExist(),
     )
   })
 })

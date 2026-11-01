@@ -4,13 +4,11 @@ import {
   type Appearance,
   COSMETIC_GIFT_RANKS,
   COSMETIC_PRICES,
-  type Calling,
   type CosmeticKind,
   GiftGunSkin,
   GiftHat,
   GiftPrint,
   GiftShirtColor,
-  type Hat,
   type SavedBoughtCosmetics,
   type SavedRank,
   cosmeticIdOf,
@@ -140,7 +138,8 @@ export const standingOf = (
 
 // BUYING
 
-const canAfford = (
+// NOTE: whether the Bones cover a look for sale.
+export const canAfford = (
   rank: SavedRank,
   kind: CosmeticKind,
   name: string,
@@ -150,17 +149,15 @@ const canAfford = (
 }
 
 // NOTE: what picking a look does, read from its standing: nothing for the
-// one worn, put on one owned, buy and wear one for sale (or fail to, short of
-// Bones), and nothing for a locked gift. Short and Locked leave the selection
-// where it was.
-export type GearTap = 'Stay' | 'Wear' | 'Buy' | 'Short' | 'Locked'
+// one worn, put on one owned, try on one for sale (bought by its BUY pill,
+// not by the pick), and nothing for a locked gift.
+export type GearTap = 'Stay' | 'Wear' | 'Preview' | 'Locked'
 
 export const gearTapOf = (
   kind: CosmeticKind,
   name: string,
   worn: string,
   bought: SavedBoughtCosmetics,
-  rank: SavedRank,
   rankNumber: number,
 ): GearTap => {
   const standing = standingOf(kind, name, worn, bought, rankNumber)
@@ -170,9 +167,7 @@ export const gearTapOf = (
       ? 'Wear'
       : standing === 'Locked'
         ? 'Locked'
-        : canAfford(rank, kind, name)
-          ? 'Buy'
-          : 'Short'
+        : 'Preview'
 }
 
 // NOTE: the price of a look for sale, none for any other.
@@ -183,8 +178,3 @@ export const priceOf = (
   const source = sourceOf(kind, name)
   return source.kind === 'Sold' ? Option.some(source.price) : Option.none()
 }
-
-// NOTE: a calling's prop sits where the hat would, so the player wears the
-// prop and not the hat; YOU has no prop and shows the hat.
-export const shownHatOf = (look: Appearance, calling: Calling): Hat =>
-  calling === 'You' ? look.hat : 'None'

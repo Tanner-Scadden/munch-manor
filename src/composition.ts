@@ -25,7 +25,7 @@ import {
 import { mounts } from './mount'
 import { ProfileTabsBlock } from './profile'
 import { ShopTabsBlock } from './shopTabs'
-import { chooseLook, flipLook, rollLook } from './update/character'
+import { buyPreview, chooseLook, flipLook, rollLook } from './update/character'
 import {
   choseCalling,
   closedCoop,
@@ -114,6 +114,7 @@ const CharacterBindingWithOutMessagePolicy =
       ChoseLook: ({ part, value }) => settled(chooseLook(part, value)),
       FlippedLook: ({ toggle }) => settled(flipLook(toggle)),
       RequestedRandomLook: () => settled(rollLook),
+      RequestedBuy: () => settled(buyPreview),
     }),
   })
 

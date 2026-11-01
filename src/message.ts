@@ -116,6 +116,7 @@ export const Message = defineMessageUnion({
   MovedShopFocus: { item: ShopItemId },
   FocusedShopItem: { item: ShopItemId },
   CompletedFocusShopItem: {},
+  CompletedFocusLookOption: {},
   AcquiredAudioEngine: {},
   FailedAcquireAudioEngine: { reason: Schema.String },
   ReleasedAudioEngine: {},

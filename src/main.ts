@@ -539,6 +539,7 @@ export const update = ApplicationComposition.makeUpdate({
     settle(model, { model: focusShopItem(model, item) }),
 
   CompletedFocusShopItem: model => settle(model, { model }),
+  CompletedFocusLookOption: model => settle(model, { model }),
 
   AcquiredAudioEngine: model =>
     settle(model, {

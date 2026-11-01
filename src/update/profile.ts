@@ -1,3 +1,4 @@
+import { Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -93,7 +94,11 @@ const showTab = (model: Model, tab: ProfileTab): Model =>
   modifyFields(tab === 'Look' ? markLooksSeen(model) : model, {
     tutorialReset: () => 'Idle',
     profile: profile =>
-      modifyFields(profile, { tab: () => tab, fx: () => 'Still' }),
+      modifyFields(profile, {
+        tab: () => tab,
+        fx: () => 'Still',
+        maybePreview: () => Option.none(),
+      }),
   })
 
 const prepareProfile =

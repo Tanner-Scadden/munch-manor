@@ -10,7 +10,7 @@ import { boneCountView, rankMarkView } from './rankBadgeView'
 
 // The earned looks in the Look tab's rows: a hat, shirt color, print, or gun
 // skin is worn (the selected one), owned (a pick wears it), for sale (a bone
-// and the price on it; a pick buys and wears it), or a gift not reached yet
+// and the price on it; a pick tries it on, and the BUY pill buys it), or a gift not reached yet
 // (dark, a padlock and the rank). Pictures and numbers only.
 
 // NOTE: the spoken note of an option, which the screen reader hears after
@@ -65,6 +65,33 @@ export const gearTagView = <Message>(
         )
       : Option.none()
 }
+
+// NOTE: the BUY pill by the figure while a look for sale is tried on: BUY,
+// a bone, and the price. Short of Bones it is disabled and the price is red,
+// the same red as a short price in the rows.
+export const buyPillView = <Message>(
+  pill: Readonly<{ price: number; isShort: boolean; onClick: Message }>,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.button(
+    [
+      h.Type('button'),
+      h.Key('look-buy'),
+      h.Class('look-buy'),
+      h.AriaLabel(
+        pill.isShort
+          ? `Buy for ${pill.price} Bones, too few`
+          : `Buy for ${pill.price} Bones`,
+      ),
+      ...(pill.isShort
+        ? [h.Disabled(true), h.DataAttribute('short', 'true')]
+        : [h.OnClick(pill.onClick)]),
+    ],
+    [
+      h.span([h.Class('look-buy-word'), h.AriaHidden(true)], ['BUY']),
+      boneCountView(pill.price, 'look-buy-price', h),
+    ],
+  )
 
 export const newBadgeView = <Message>(h: HtmlBuilder<Message>): Html =>
   h.span([h.Class('look-new'), h.AriaHidden(true)], ['NEW'])

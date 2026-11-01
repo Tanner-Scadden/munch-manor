@@ -256,10 +256,7 @@ const overheadShapes = (
   }),
   ...Array.map(model.popups, popupShape(camera)),
   ...(isLeadArmed(model)
-    ? reloadBarShapes(
-        model.player,
-        hatRiseOf(model.appearance, model.player.calling),
-      )
+    ? reloadBarShapes(model.player, hatRiseOf(model.appearance))
     : []),
   ...fridgeOverheadShapes(model),
   ...mateOverheadShapes(model),

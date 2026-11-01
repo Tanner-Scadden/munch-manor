@@ -39,7 +39,7 @@ import {
   isToggleOn,
   partGroupOf,
 } from './character'
-import { type Standing, standingOf } from './closet'
+import { type Standing, canAfford, priceOf, standingOf } from './closet'
 import {
   PLAYER_FOOT_OFFSET,
   PLAYER_WALK_FRAME_MS,
@@ -47,6 +47,7 @@ import {
 } from './constants'
 import { DICE_ICON, pixelIconUrl } from './icons'
 import {
+  buyPillView,
   cueAttributes,
   gearNote,
   gearTagView,
@@ -374,6 +375,42 @@ const previewView = (
 // NOTE: the character walks on the spot in a spotlight with a little idle
 // bounce, all CSS. A new part puffs a poof, and the dice spins the stage
 // like a slot machine.
+// NOTE: the look on the figure: the worn one, or with the look being tried
+// on (src/update/character.ts) over it. The worn look never changes.
+const shownLookOf = (inputs: ViewInputs): Appearance =>
+  Option.match(inputs.maybePreview, {
+    onNone: () => inputs.appearance,
+    onSome: ({ part, value }) => chooseLook(inputs.appearance, part, value),
+  })
+
+// NOTE: the BUY pill with the price, while a look for sale is tried on. Short
+// of Bones it stays, red, and shakes when pressed.
+const buyPillOf = (
+  inputs: ViewInputs,
+  h: CharacterViewBuilder,
+): ReadonlyArray<Html> =>
+  Option.match(inputs.maybePreview, {
+    onNone: () => [],
+    onSome: ({ part, value }) =>
+      Option.match(gearOf(part), {
+        onNone: () => [],
+        onSome: ({ kind }) =>
+          Option.match(priceOf(kind, value), {
+            onNone: () => [],
+            onSome: price => [
+              buyPillView(
+                {
+                  price,
+                  isShort: !canAfford(inputs.rank, kind, value),
+                  onClick: Message.ClickedBuyButton(),
+                },
+                h,
+              ),
+            ],
+          }),
+      }),
+  })
+
 const stageChildren = (
   inputs: ViewInputs,
   h: CharacterViewBuilder,
@@ -382,8 +419,9 @@ const stageChildren = (
   h.span([h.Class('look-floor'), h.AriaHidden(true)]),
   h.div(
     [h.Class('look-bounce')],
-    [previewView(inputs.appearance, inputs.calling, inputs.screenMs, h)],
+    [previewView(shownLookOf(inputs), inputs.calling, inputs.screenMs, h)],
   ),
+  ...buyPillOf(inputs, h),
   h.span([h.Class('look-poof'), h.AriaHidden(true)]),
   h.button(
     [
@@ -618,6 +656,7 @@ const optionView = (
   option: RadioGroup.OptionInfo,
   maybeGear: Option.Option<GearOption>,
   cue: ViewInputs['cue'],
+  isPreviewed: boolean,
   h: CharacterViewBuilder,
 ): Html => {
   const partView = PART_VIEWS[part]
@@ -641,6 +680,8 @@ const optionView = (
           h.Key(option.value),
           h.Class(`look-option look-${partView.look.toLowerCase()}-option`),
           h.DataAttribute('standing', standing),
+          h.DataAttribute('look-option', `${part}.${option.value}`),
+          ...(isPreviewed ? [h.DataAttribute('previewed', 'true')] : []),
           ...(isNew ? [h.DataAttribute('new', 'true')] : []),
           ...(isCued ? cueAttributes(cue, h) : []),
           h.OnClick(Message.ClickedGearOption({ part, value: option.value })),
@@ -721,6 +762,11 @@ const lookRowView = (
                     option,
                     gearOption(option.value),
                     inputs.cue,
+                    Option.exists(
+                      inputs.maybePreview,
+                      preview =>
+                        preview.part === part && preview.value === option.value,
+                    ),
                     h,
                   ),
                 ),
@@ -802,6 +848,7 @@ type ViewInputs = Readonly<{
   bought: SavedBoughtCosmetics
   rank: SavedRank
   fresh: ReadonlyArray<string>
+  maybePreview: Option.Option<Readonly<{ part: LookPart; value: string }>>
   cue: Readonly<{
     part: LookPart
     value: string
