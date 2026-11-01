@@ -38,7 +38,7 @@ export default defineConfig({
     // NOTE: a test reads a stylesheet's text with `?raw` (the corner's tap
     // sizes in src/support.scene.test.ts, the moving animations in
     // src/motion.test.ts). Vitest hands every other CSS file over empty.
-    css: { include: [/(menu|profile|shop|styles|coop)\.css/] },
+    css: { include: [/(menu|profile|shop|styles|coop|calling)\.css/] },
     server: {
       deps: {
         inline: ['foldkit', '@foldkit/ui', '@foldkit/devtools'],

@@ -1,23 +1,27 @@
 import { Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
+import { playerSprites } from './appearance'
 import { sparkShapes } from './crewBoardView'
 import { rect } from './drawing'
 import {
+  CALLING_FLIP_MS,
   type EndKind,
   RANK_FILL_MS,
   RANK_POP_MS,
   easeOut,
   easeOutBack,
   isRankedUp,
+  maybeOpenedCalling,
   progressOf,
   rankStripAtMs,
 } from './endBeat'
 import { GLYPH_HEIGHT, textShapes, textWidth } from './font'
 import type { Model } from './model'
+import { CALLING_NAMES } from './names'
 import { badgeTierOf, rankProgressOf, shownPointsOf } from './rank'
 import { BONE, BONE_SIZE, badgeSprite } from './rankArt'
-import { group, placeAt } from './sprite'
+import { frameAt, group, placeAt } from './sprite'
 
 // The rank strip on the end card, in the landscape frame: the badge, the
 // rank number, a bar that fills from the points before the run to the points
@@ -59,6 +63,63 @@ const barShapes = (
       : []),
   ]
 }
+
+const CARD_WIDTH = 62
+const CARD_HEIGHT = 40
+const CARD_EDGE = '#ffd23f'
+const CARD_FILL = '#2a1a2e'
+const CARD_LIFT_PX = 7
+
+// NOTE: the card a rank up that opens a calling flips over above the strip:
+// the player in the calling's prop, and its name. It narrows to a line and
+// opens again, as a card turns.
+const callingCardShapes = (
+  model: Model,
+  ms: number,
+  flipAtMs: number,
+  centerX: number,
+  centerY: number,
+): ReadonlyArray<Canvas.Shape> =>
+  Option.match(maybeOpenedCalling(model), {
+    onNone: () => [],
+    onSome: calling => {
+      if (ms < flipAtMs) {
+        return []
+      }
+      const turn = easeOutBack(progressOf(ms, flipAtMs, CALLING_FLIP_MS))
+      const scaleX = Math.max(0.04, Math.min(1, turn))
+      const top = centerY - CARD_LIFT_PX - CARD_HEIGHT
+      const sprite = frameAt(playerSprites(model.appearance, calling).idle, 0)
+      return [
+        group({
+          translate: { x: centerX, y: top },
+          scale: { x: scaleX, y: 1 },
+          shapes: [
+            rect(
+              -CARD_WIDTH / 2 - 1,
+              -1,
+              CARD_WIDTH + 2,
+              CARD_HEIGHT + 2,
+              CARD_EDGE,
+            ),
+            rect(-CARD_WIDTH / 2, 0, CARD_WIDTH, CARD_HEIGHT, CARD_FILL),
+            group({
+              translate: { x: 0, y: 26 },
+              scale: { x: 2, y: 2 },
+              shapes: sprite.Normal.Right,
+            }),
+            ...textShapes(
+              CALLING_NAMES[calling].toUpperCase(),
+              'Plain',
+              0,
+              CARD_HEIGHT - GLYPH_HEIGHT - 2,
+              'Center',
+            ),
+          ],
+        }),
+      ]
+    },
+  })
 
 // NOTE: `left` and `width` are the strip's room, `centerY` its middle.
 export const rankStripShapes = (
@@ -131,6 +192,13 @@ export const rankStripShapes = (
             ...(isPopping
               ? sparkShapes(left + BADGE_X, centerY, ms - popAtMs)
               : []),
+            ...callingCardShapes(
+              model,
+              ms,
+              popAtMs + (isRankedUp(model) ? RANK_POP_MS : 0),
+              left + width / 2,
+              centerY,
+            ),
           ],
         }),
       ]

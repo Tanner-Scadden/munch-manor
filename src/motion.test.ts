@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
+import callingCss from './calling.css?raw'
 import coopCss from './coop/coop.css?raw'
 import menuCss from './menu.css?raw'
 import profileCss from './profile.css?raw'
@@ -23,6 +24,7 @@ const CSS_FILES: ReadonlyArray<readonly [string, string]> = [
   ['src/styles.css', stylesCss],
   ['src/menu.css', menuCss],
   ['src/profile.css', profileCss],
+  ['src/calling.css', callingCss],
   ['src/shop.css', shopCss],
   ['src/coop/coop.css', coopCss],
 ]

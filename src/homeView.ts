@@ -4,6 +4,11 @@ import type { Html } from 'foldkit/html'
 import type { Dialog } from '@foldkit/ui'
 
 import { HandDialogBinding, PanelDialogBinding } from './bindings'
+import {
+  callingBodyView,
+  callingButtonView,
+  callingPanelText,
+} from './callingView'
 import type { ApplicationViewBuilder } from './composition'
 import { COOP_ICON } from './coop/icons'
 import { IS_COOP_RELEASED } from './coop/release'
@@ -261,7 +266,18 @@ const playClusterView = (model: Model, h: ApplicationViewBuilder): Html =>
         [h.Class('home-loadout')],
         [
           modeButtonView(model, h),
-          difficultyButtonView(model, h),
+          h.div(
+            [h.Class('home-pick-row')],
+            [
+              difficultyButtonView(model, h),
+              callingButtonView(
+                model,
+                homeButtonAttributes('Calling', h),
+                keyBadgeView(model, 'Calling', h),
+                h,
+              ),
+            ],
+          ),
           IS_COOP_RELEASED ? coopButtonView(model, h) : h.empty,
         ],
       ),
@@ -848,6 +864,7 @@ const MENU_KEY_ACTIONS: Readonly<Record<HomeButton, string>> = {
   Play: 'play',
   Mode: 'mode',
   Difficulty: 'difficulty',
+  Calling: 'calling',
   Coop: 'co-op',
   Manor: 'manor',
   Support: 'coffee',
@@ -980,6 +997,8 @@ const panelText = (model: Model, panel: MenuPanel): PanelText => {
           title: 'Difficulty',
           blurb: 'Pick how tough the zombies are.',
         }
+  } else if (panel === 'Calling') {
+    return callingPanelText()
   } else if (panel === 'WhatsNew') {
     return whatsNewText(model)
   } else if (panel === 'Munchopedia') {
@@ -1032,6 +1051,13 @@ const panelBodyView = (
     return whatsNewBodyView(model, doneButtonView(renderInfo, h), h)
   } else if (model.panel === 'Munchopedia') {
     return munchopediaBodyView(model, doneButtonView(renderInfo, h), h)
+  } else if (model.panel === 'Calling') {
+    return callingBodyView(
+      model,
+      renderInfo,
+      doneButtonView(renderInfo, h, 'LeavesInitialFocus'),
+      h,
+    )
   } else if (model.panel === 'Difficulty') {
     return [
       h.div(
@@ -1112,7 +1138,10 @@ const panelView = (
 // NOTE: the difficulty picker opened beside PLAY hangs just above that
 // cluster. The first-run question before a first run stays centered.
 const panelAnchor = (model: Model): string =>
-  model.panel === 'Difficulty' && !isAskingFirst(model) ? 'Play' : 'Center'
+  (model.panel === 'Difficulty' && !isAskingFirst(model)) ||
+  model.panel === 'Calling'
+    ? 'Play'
+    : 'Center'
 
 export const menuPanelView = (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(

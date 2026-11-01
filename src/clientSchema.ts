@@ -191,6 +191,7 @@ export const HomeButton = Schema.Literals([
   'Play',
   'Mode',
   'Difficulty',
+  'Calling',
   'Coop',
   'Manor',
   'Support',
@@ -214,6 +215,7 @@ export const MenuPanel = Schema.Literals([
   'HowToPlay',
   'LeaveRun',
   'Difficulty',
+  'Calling',
   'WhatsNew',
   'Munchopedia',
 ])

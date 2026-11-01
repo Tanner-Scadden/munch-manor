@@ -72,7 +72,7 @@ export const maybeMsSinceHurt = (player: Player): Option.Option<number> =>
   })
 
 const playerFrames = (model: Model): SpriteSet => {
-  const sprites = playerSprites(model.appearance)
+  const sprites = playerSprites(model.appearance, model.player.calling)
   return vectorLength(model.intent.move) > 0
     ? frameAt(sprites.walk, Math.floor(model.elapsedMs / PLAYER_WALK_FRAME_MS))
     : frameAt(
@@ -298,7 +298,7 @@ const CRAWL_FRAME_MS = PLAYER_WALK_FRAME_MS * 2
 const BLED_OUT_OPACITY = 0.55
 
 const lyingFrames = (model: Model, lying: Lying): SpriteSet => {
-  const sprites = playerSprites(model.appearance)
+  const sprites = playerSprites(model.appearance, model.player.calling)
   return lying === 'Downed' && vectorLength(model.intent.move) > 0
     ? frameAt(sprites.walk, Math.floor(model.elapsedMs / CRAWL_FRAME_MS))
     : frameAt(sprites.idle, 0)
@@ -323,10 +323,9 @@ export const lyingShapes = (
       shapes: [
         group({
           translate: { x: 0, y: BODY_MIDDLE_PX },
-          shapes:
-            lyingFrames(model, lying)[
-              lying === 'BledOut' ? 'Normal' : playerTone(player)
-            ][facing],
+          shapes: lyingFrames(model, lying)[
+            lying === 'BledOut' ? 'Normal' : playerTone(player)
+          ][facing],
         }),
       ],
     }),

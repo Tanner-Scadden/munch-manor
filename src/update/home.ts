@@ -8,6 +8,7 @@ import {
   PanelDialogBinding,
   UpdateGreetingBinding,
 } from '../bindings'
+import { chooseCalling, isPickable } from '../callingPick'
 import { NEWS_DAYS } from '../changelog'
 import { makeCommand, makeStep } from '../definition'
 import {
@@ -25,6 +26,7 @@ import {
   handCardId,
   homeButtonId,
   homeButtonsOf,
+  isCallingKey,
   isDifficultyKey,
   isEndScreen,
   isInstallTileShown,
@@ -69,6 +71,7 @@ import {
   type RunMode,
 } from '../model'
 import { runDifficultyOf } from '../onlineRun'
+import type { Calling } from '../playerData'
 import { activateNewBuild } from '../serviceWorker'
 import { stepWhen } from '../stepWhen'
 import { reloadOnto } from '../version'
@@ -369,6 +372,8 @@ export const homeFromKey = (code: string) =>
       return modelStep(switchMode)
     } else if (isDifficultyKey(code)) {
       return openPanel('Difficulty')
+    } else if (isCallingKey(code)) {
+      return openPanel('Calling')
     } else if (isManorKey(code)) {
       return openHand
     } else if (isSupportKey(code)) {
@@ -454,6 +459,20 @@ export const pickFromCard = (difficulty: Difficulty) =>
               startWithMode(mode),
             ]),
     }),
+  )
+
+// NOTE: a calling is picked from the home menu's picker, never in a run,
+// and only once its rank is reached.
+export const pickCalling = (calling: Calling) =>
+  makeStep(model =>
+    isPanelOpen(model, 'Calling') &&
+    isOnHome(model.phase) &&
+    isPickable(model, calling)
+      ? Update.combineSteps([
+          modelStep(stepModel => chooseCalling(stepModel, calling)),
+          closePanel,
+        ])
+      : unchanged,
   )
 
 export const settleNightmareFrom =

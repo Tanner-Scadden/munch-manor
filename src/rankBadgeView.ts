@@ -35,6 +35,18 @@ const badgeView = (rank: number, h: ApplicationViewBuilder): Html =>
       ]),
   })
 
+// NOTE: the badge a rank wears and its number, for a card that says which
+// rank it needs (src/callingView.ts).
+export const rankMarkView = (rank: number, h: ApplicationViewBuilder): Html =>
+  h.span(
+    [
+      h.Class('rank-chip'),
+      h.DataAttribute('tier', badgeTierOf(rank)),
+      h.AriaHidden(true),
+    ],
+    [badgeView(rank, h), h.span([h.Class('rank-number')], [`${rank}`])],
+  )
+
 // NOTE: the badge and its number, a small chip under the player on the
 // home menu.
 export const rankChipView = (model: Model, h: ApplicationViewBuilder): Html => {

@@ -3,6 +3,7 @@ import { Option } from 'effect'
 import { appearanceKey, playerPalette, playerPixels } from '../appearance'
 import { pixelIconUrl } from '../icons'
 import type { Appearance } from '../model'
+import type { Calling } from '../playerData'
 
 // NOTE: co-op's own pixel icons, the same chunky SVG pixels as the home
 // menu's (src/icons.ts).
@@ -153,10 +154,16 @@ const portraits = new Map<string, string>()
 
 // NOTE: a player's look, standing, as an image for the lobby and the queue.
 // Each look is drawn once and kept.
-export const portraitOf = (look: Appearance): string => {
-  const key = appearanceKey(look)
+export const portraitOf = (
+  look: Appearance,
+  calling: Calling = 'You',
+): string => {
+  const key = appearanceKey(look, calling)
   return Option.getOrElse(Option.fromNullishOr(portraits.get(key)), () => {
-    const url = pixelIconUrl(playerPixels(look).idle[0], playerPalette(look))
+    const url = pixelIconUrl(
+      playerPixels(look, calling).idle[0],
+      playerPalette(look),
+    )
     portraits.set(key, url)
     return url
   })
