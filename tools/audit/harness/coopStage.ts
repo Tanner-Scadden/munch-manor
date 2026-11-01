@@ -60,6 +60,7 @@ const coopRoom = (
     share: 'Idle',
     codeCopies: 0,
     departure: 'Staying',
+    isPickingCalling: false,
     ...extra,
   }
 }
@@ -143,7 +144,7 @@ const COOP_RANKS = [7, 18, 33, 62]
 
 // NOTE: and the callings, so the shots show a prop for the Handyman and the
 // hats the others wear: a calling's prop takes a hat's place.
-const COOP_CALLINGS = ['You', 'You', 'You', 'LineCook']
+const COOP_CALLINGS = ['You', 'Handyman', 'You', 'LineCook']
 
 const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
   const Screen = CoopModel.Screen
@@ -199,6 +200,10 @@ const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
       return Screen.InRoom({ room: coopRoom(members(2), 'Lobby') })
     case 'host':
       return Screen.InRoom({ room: coopRoom(members(4, 1), 'Lobby') })
+    case 'heroes': {
+      const room = coopRoom(members(3, 1), 'Lobby')
+      return Screen.InRoom({ room: { ...room, isPickingCalling: true } })
+    }
     case 'picks': {
       const room = coopRoom(members(2, 1), 'Lobby')
       return Screen.InRoom({

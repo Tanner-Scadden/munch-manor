@@ -34,6 +34,7 @@ import type { OwnPlayer } from './seam'
 export const QUICK_PLAY_BUTTON_ID = 'coop-quick'
 export const CODE_INPUT_ID = 'coop-code'
 export const READY_BUTTON_ID = 'coop-ready'
+export const CALLING_PILL_ID = 'coop-calling-pill'
 export const ROOM_CODE_LENGTH = 5
 
 export const ROOM_PARAM = 'room'
@@ -79,6 +80,7 @@ export const freshRoom = (code: string, slot: number): Room => ({
   share: 'Idle',
   codeCopies: 0,
   departure: 'Staying',
+  isPickingCalling: false,
 })
 
 const isCodeSymbol = (symbol: string): boolean =>
@@ -268,6 +270,7 @@ export const ESCAPE = 'Escape'
 export const ENTER = 'Enter'
 export const MODE_KEY = 'KeyE'
 export const DIFFICULTY_KEY = 'KeyX'
+export const CALLING_KEY = 'KeyY'
 
 export const isInLobby = (room: Room): boolean =>
   Option.match(room.maybeLobby, {

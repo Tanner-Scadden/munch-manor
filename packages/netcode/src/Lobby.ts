@@ -652,6 +652,42 @@ export const ChangedPicks = defineMutation({
     }),
 })
 
+// NOTE: a player picks their own calling while the room is in its lobby. The
+// scope keeps the word as text (cleanCalling): the game decodes it against
+// its own callings when the host starts, and the Worker cannot check the
+// rank reached it, as with the rank itself. Nobody's READY changes: the pick
+// is the player's own and takes nothing back from the others.
+export const ChangedMemberCalling = defineMutation({
+  name: 'ChangedMemberCalling',
+  version: 1,
+  args: Schema.Struct({ by: Schema.String, calling: CallingInput }),
+  scopes: [ROOM_SCOPE_KIND],
+  writer: 'Members',
+  authorize: (args, actor) => isSender(args, actor),
+  apply: ({ by, calling }, context) =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      const lobby = yield* requireLobby(context)
+      yield* requireMember(lobby, by)
+      if (lobby.status !== 'Lobby') {
+        return yield* reject('Not in the lobby')
+      }
+      const cleaned = cleanCalling(calling)
+      if (
+        Array.some(
+          lobby.members,
+          member => member.playerId === by && member.calling === cleaned,
+        )
+      ) {
+        return
+      }
+      yield* sql`UPDATE ${context.table('members')}
+        SET calling = ${cleaned}
+        WHERE player_id = ${by}`
+      yield* touch(context, {})
+    }),
+})
+
 export const EndedGame = defineMutation({
   name: 'EndedGame',
   version: 1,
@@ -763,6 +799,7 @@ export const RoomScope = defineScope({
     JoinedRoom,
     ChangedReady,
     ChangedPicks,
+    ChangedMemberCalling,
     EndedGame,
     RecordedRoomResult,
     KickedPlayer,

@@ -1,12 +1,22 @@
 import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
+import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { makeReader, makeWriter } from '@munch/netcode'
 
+import { CoopBinding } from './bindings'
 import { COOK_STARTING_LIDS } from './calling'
 import { PLAYER_MAX_HP } from './constants'
+import { Message as CoopMessage } from './coop/message'
+import { Screen as CoopScreen } from './coop/model'
+import { freshRoom } from './coop/roomState'
+import { CODE, lobbyOf, memberOf } from './coop/testing'
+import { update } from './main'
+import type { Model } from './model'
+import { readyAfterRead } from './model.fixture'
 import { maybePlayerAt } from './party'
+import { pointsForRank } from './rank'
 import {
   DEFAULT_ROOM_SETTINGS,
   readRoomSnapshot,
@@ -109,5 +119,52 @@ describe('KEEP GOING', () => {
       'LineCook',
     ])
     expect(seatOf(kept, 0).hp).toBe(seatOf(room, 0).hp)
+  })
+})
+
+describe('picking a hero in the lobby', () => {
+  const pointed = (rank: number): Model =>
+    modifyFields(readyAfterRead, {
+      rank: current => ({ ...current, earnedPoints: pointsForRank(rank) }),
+      coop: coop => ({
+        ...coop,
+        rank,
+        screen: CoopScreen.InRoom({
+          room: {
+            ...freshRoom(CODE, 0),
+            maybePlayerId: Option.some('player-0'),
+            maybeLobby: Option.some(
+              lobbyOf([memberOf(0, 'Ana', false, '', false, rank)]),
+            ),
+            isPickingCalling: true,
+          },
+        }),
+      }),
+    })
+
+  test("is the player's pick at home too, and saved", () => {
+    const result = update(
+      pointed(4),
+      toParentMessage(
+        CoopBinding,
+        CoopMessage.ClickedCallingPick({ calling: 'Handyman' }),
+      ),
+    )
+    expect(result.model.calling).toBe('Handyman')
+    expect(result.model.player.calling).toBe('Handyman')
+    expect(Array.map(result.commands ?? [], command => command.name)).toContain(
+      'Application/WriteSave',
+    )
+  })
+
+  test('a hero the rank has not reached changes nothing at home', () => {
+    const result = update(
+      pointed(4),
+      toParentMessage(
+        CoopBinding,
+        CoopMessage.ClickedCallingPick({ calling: 'LineCook' }),
+      ),
+    )
+    expect(result.model.calling).toBe(pointed(4).calling)
   })
 })
