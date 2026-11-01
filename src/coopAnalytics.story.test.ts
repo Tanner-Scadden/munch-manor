@@ -15,6 +15,7 @@ import { CODE, lobbyOf, memberOf, playingSession } from './coop/testing'
 import { update } from './main'
 import { Message } from './message'
 import { Lesson, type Model, initialModel } from './model'
+import { WAVE_3_BREAK } from './model.fixture'
 import { modifyLeadSeat, withSeat } from './party'
 import { type RoomWorld, startRoomWorld } from './roomWorld'
 import { SendRunSummary } from './update/settle'
@@ -304,6 +305,71 @@ describe("an online co-op run's rank", () => {
     expect(ended.maybeRankGain).toEqual(
       Option.some({ pointsBefore: 0, gained: 95, bonesGained: 9 }),
     )
+  })
+
+  test('keeping going after a win pays the endless waves only: the revives and awards were paid at Victory', () => {
+    const won = update(
+      inRoom(clearedFour(midRun()), endedAs(Phase.Victory())),
+      Message.TickedRoomFrame({ nowMs: 200 }),
+    ).model
+    // NOTE: 4 waves and the win on Hard (60 + 150), 3 awards, 1 revive.
+    expect(won.rank.earnedPoints).toBe(245)
+    // NOTE: the same World goes on into endless, its seats keeping their
+    // revives, and the client's own stats start over.
+    const going: RoomWorld = {
+      ...endedAs(Phase.Victory()),
+      tick: 2,
+      world: modifyFields(endedAs(Phase.Victory()).world, {
+        mode: () => RunMode.Endless(),
+        phase: () => WAVE_3_BREAK,
+      }),
+    }
+    const kept = update(
+      inRoom(won, going),
+      Message.TickedRoomFrame({ nowMs: 300 }),
+    ).model
+    expect(kept.rankPaid).toMatchObject({ awardsPaid: 3, revivesPaid: 1 })
+    const endlessEnd: RoomWorld = {
+      ...going,
+      tick: 3,
+      world: modifyFields(going.world, {
+        phase: () => Phase.GameOver({ wave: 13 }),
+      }),
+    }
+    const ended = update(
+      inRoom(
+        modifyFields(kept, {
+          stats: stats => modifyFields(stats, { wavesCleared: () => 2 }),
+        }),
+        endlessEnd,
+      ),
+      Message.TickedRoomFrame({ nowMs: 400 }),
+    ).model
+    // NOTE: 2 endless waves on Hard is 30, and nothing again for the revive
+    // and the awards: 245 + 30.
+    expect(ended.rank.earnedPoints).toBe(275)
+  })
+
+  test('a new run in the room starts from nothing paid', () => {
+    const won = update(
+      inRoom(clearedFour(midRun()), endedAs(Phase.Victory())),
+      Message.TickedRoomFrame({ nowMs: 200 }),
+    ).model
+    const again: RoomWorld = {
+      ...started,
+      tick: 5,
+      world: startWaveEarly(started.world),
+    }
+    const fresh = update(
+      inRoom(won, again),
+      Message.TickedRoomFrame({ nowMs: 500 }),
+    ).model
+    expect(fresh.rankPaid).toEqual({
+      wavesPaid: 0,
+      bossesPaid: 0,
+      awardsPaid: 0,
+      revivesPaid: 0,
+    })
   })
 
   test('leaving mid-run pays the revives made, and no awards', () => {

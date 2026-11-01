@@ -430,13 +430,7 @@ const cardShapes = (
     footerTop + KINDS_PX + PANEL_PAD - 2 + (hasStrip ? STRIP_PX + 2 : 0)
   return [
     rise([
-      ...textShapes(
-        quipOf(model, kind),
-        'Prompt',
-        CENTER_X,
-        layout.quipY,
-        'Center',
-      ),
+      ...lineShapes(model, kind, ms, layout.quipY),
       rect(
         PANEL_LEFT - 1,
         top - 1,
@@ -474,11 +468,25 @@ const cardShapes = (
       stripTop + 2 + Math.floor(STRIP_PX / 2),
       PANEL_RIGHT - PANEL_LEFT - PANEL_PAD * 2,
     ),
-    ...noteShapes(model, ms, bottom + 5),
   ]
 }
 
 const UNLOCK_BLINK_MS = 400
+
+// NOTE: the line over the tally is the quip, or, when there is news (Nightmare
+// unlocked, or the first runs' ask for feedback), the news in its place. Under
+// the card there is no room: on a phone on its side the buttons start there.
+const lineShapes = (
+  model: Model,
+  kind: EndKind,
+  ms: number,
+  y: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const note = noteShapes(model, ms, y)
+  return Array.isReadonlyArrayNonEmpty(note)
+    ? note
+    : textShapes(quipOf(model, kind), 'Prompt', CENTER_X, y, 'Center')
+}
 
 const noteShapes = (
   model: Model,
