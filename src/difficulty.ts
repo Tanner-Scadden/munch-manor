@@ -16,6 +16,7 @@ type DifficultyStats = Readonly<{
   name: string
   blurb: string
   healthScale: number
+  bossHealthScale: number
   speedScale: number
   biteScale: number
   biteGraceScale: number
@@ -29,12 +30,15 @@ type DifficultyStats = Readonly<{
 // are. Below Hard a gun also reloads by itself once the trigger rests
 // (src/firing.ts); Hard and Nightmare leave it to R. biteGraceScale
 // stretches the blink after a bite (1 s, 1.5 s on the last heart), so a
-// crowd's bites come further apart below Hard.
+// crowd's bites come further apart below Hard. bossHealthScale is Uncle
+// Chunk's own, on top of healthScale (src/boss.ts): a finale on Hard and
+// Nightmare, where a late loadout melted him, without a tougher crowd.
 export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Easy: {
     name: 'Easy',
     blurb: 'Just here for the vibes',
     healthScale: 0.6,
+    bossHealthScale: 1,
     speedScale: 0.8,
     biteScale: 0.5,
     biteGraceScale: 2,
@@ -44,6 +48,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     name: 'Normal',
     blurb: "The way it's meant to be played",
     healthScale: 0.75,
+    bossHealthScale: 1,
     speedScale: 0.84,
     biteScale: 1,
     biteGraceScale: 1.5,
@@ -53,6 +58,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     name: 'Hard',
     blurb: 'They bite back',
     healthScale: 1.08,
+    bossHealthScale: 1.5,
     speedScale: 1.02,
     biteScale: 1,
     biteGraceScale: 1,
@@ -62,6 +68,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     name: 'Nightmare',
     blurb: 'No mercy. Bring snacks',
     healthScale: 1.16,
+    bossHealthScale: 1.6,
     speedScale: 1.02,
     biteScale: 1.25,
     biteGraceScale: 1,
@@ -143,6 +150,9 @@ export const reloadsWhenIdle = (difficulty: Difficulty): boolean =>
 
 export const difficultySpeedScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].speedScale
+
+export const bossHealthScale = (difficulty: Difficulty): number =>
+  DIFFICULTIES[difficulty].bossHealthScale
 
 export const biteGraceScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].biteGraceScale

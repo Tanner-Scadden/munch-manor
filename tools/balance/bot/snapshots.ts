@@ -119,6 +119,7 @@ export const playSnapshot = (
     peakAlive: log.peakAlive,
     killedBy: result.killedBy,
     hurtBy: result.hurtBy,
+    boss: result.boss.find(fight => fight.wave === snapshot.wave),
   }
 }
 

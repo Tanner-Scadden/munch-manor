@@ -180,6 +180,8 @@ export const WaveRun = Schema.Struct({
   peakAlive: Schema.Number,
   killedBy: Schema.optional(ZombieKind),
   hurtBy: ByKind,
+  // NOTE: the boss fight on a boss wave, for the wave pass's boss lines.
+  boss: Schema.optional(BossFight),
 })
 export type WaveRun = typeof WaveRun.Type
 

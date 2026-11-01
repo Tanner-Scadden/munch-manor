@@ -197,13 +197,13 @@ Added on 2026-10-29. Three layers, cheapest first. The commands are in `AGENTS.m
 
 **The targets** (in `tools/balance/targets.ts`):
 
-- **Wins.** Normal: the human bot 20 to 35%, `SWAP=1` 30 to 45% (not yet measured on the human bot). Easy 60 to 75% on the human bot. Hard about 5 to 12% and Nightmare about 1 to 4% on `AIM=sharp`. Portrait is held to the same targets. Why these (2026-10-31): the human bot on the old tables lost about as often as real players did (Easy 1%, Normal 0%, against 7% and 4% in production), so Easy should be won by most people who finish a run and Normal by a solid quarter to a third of them, with Hard a real step up for players who aim well.
-- **Where runs die.** Under 3% in waves 1 and 2, under 10% in 3 and 4, about 25 to 35% in 5 and 6, and the most in 7 and 8, with the finale the biggest single wall.
-- **Feel.** A median win of 7 to 9 minutes for today's campaign. 30 to 50% of wins are close calls (down to 1 heart).
+- **Wins.** Normal: the human bot 20 to 35%, `SWAP=1` 30 to 45% (kept: the human bot with `SWAP=1` won 42% on 2026-10-31). Easy 60 to 75% on the human bot. Hard about 5 to 12% and Nightmare about 1 to 4% on `AIM=sharp`. Portrait is held to the same targets. Why these (2026-10-31): the human bot on the old tables lost about as often as real players did (Easy 1%, Normal 0%, against 7% and 4% in production), so Easy should be won by most people who finish a run and Normal by a solid quarter to a third of them, with Hard a real step up for players who aim well.
+- **Where runs die.** Under 3% in waves 1 and 2, under 10% in 3 and 4, about 15 to 30% in 5 and 6, and the most in 7 to 10, with the finale the biggest single wall for the runs that reach it. Restated on 2026-10-31 for the human bot, which dies over the whole back half instead of in one band (it was 25 to 35% in 5 and 6 and the most on the finale): on Normal it dies on waves 6, 7, 9, and 10 in 16, 21, 10, and 14% of runs, and the finale kills 35% of the runs that reach it against wave 7's 32%.
+- **Feel.** A median win of 9 to 12 minutes for today's campaign. 40 to 65% of wins on Normal are close calls (down to 1 heart), restated on 2026-10-31 from 30 to 50%: the human bot takes bites it never saw coming, so its wins scrape by more often (62%) than the sharp bot's did (41%).
 - **Wave length.** The median wave in the snapshot pass: wave 1 at most 40 s, waves 2 to 4 at most 75 s, waves 5 to 7 at most 90 s, wave 8 with the boss at most 120 s.
 - **Dead air.** At most 3 quiet seconds a wave on the mean run and no stretch over 1.2 s in any run. A Story test holds a perfect killer's longest quiet stretch to 1 s.
 
-**Where it stands** (2026-10-31, 100 run batches of the human bot, not yet a nightly): on the old tables Easy 1% and Normal 0% (Normal died on wave 3 in 43% of runs; hearts lost 50% to Groaners, 38% to Hotfoots). After the easing: Easy 65% (before the boss's health fix, which only helps), Normal 29% (deaths by wave 0, 0, 1, 5, 6, 12, 20, 4, 10, 13%; median win 10.1 min; close calls 66%). Out of target or unmeasured: Normal deaths in waves 5 and 6 (18% against 25 to 35%), close calls (66% against 30 to 50%), `SWAP=1`, the portrait passes, and Hard and Nightmare on `AIM=sharp` (their tables did not change). The baseline is from the sharp bot until the next nightly rewrites it.
+**Where it stands** (nightly, 2026-10-31, 200 runs a row, after the easing and the boss's health on Hard and Nightmare; the baseline was rewritten from it, so it now holds the human bot's numbers): Easy 67.5% (close calls 21%), Normal 26% (deaths by wave 0, 0, 2, 5, 6, 16, 21, 3, 10, 14%; median win 10.1 min; close calls 62%), Normal `SWAP=1` 42% (close calls 35%), Hard 10.5% and Nightmare 0.5% on `AIM=sharp`, portrait Normal 13.5% and portrait Easy 32.5%. 40 of 47 targets in target before the restatements above. Out of target: Nightmare (0.5%, 1 of the 12 runs that reached the finale felled the boss), both portrait passes (12.5 and 35 points under landscape, see "Portrait play"), and wave 10's longest quiet stretch (1.53 s in one snapshot run against 1.2). Before that, in 100 run batches of the human bot: on the old tables Easy 1% and Normal 0% (Normal died on wave 3 in 43% of runs; hearts lost 50% to Groaners, 38% to Hotfoots); after the easing Easy 65% (before the boss took the level's health) and Normal 29%.
 
 Before that (nightly, 2026-10-30, the sharp bot, 200 runs a row, after the balance pass: the portrait aim assist, an easier Hard and Nightmare, the Chatter Drum at $20, and rooms bought mid-wave): Easy 56.5%, Normal 16% (`SWAP=1` 46.5%, close calls 41%, median win 10.2 min), Hard 4.5%, Nightmare 0.5%, portrait Normal 14.5% and Easy 54%. 41 of 47 targets in target; the six misses are each within about 2.5 points: `SWAP=1`, Hard, Nightmare, both portrait passes, and Normal deaths in waves 5 and 6 (22.5%). Before that (nightly, 2026-10-29, 200 runs a row): Easy 67%, Normal 16% (`SWAP=1` 37%, close calls 34%, median win 7.9 min), Hard 7%, Nightmare 0%. Out of target: Nightmare (it loses 23% of runs on wave 3's frenzied pincer; try Nightmare speed ×1.02 or a gentler wave 3 on Nightmare only) and Normal deaths in waves 5 and 6 (23%). The bot that never buys planks wins 4.5% on Normal, so planks earn their keep without carrying the game. The latest numbers are in `tools/balance/baseline.json` and each nightly report.
 
@@ -462,7 +462,7 @@ Built on 2026-10-29, owner-approved: "so phone players do not have to turn the p
 - **The door preview.** A marker for a door out of the window is pinned to the window's edge with a small arrow, between waves only, as "No off-screen hints" allows. During a wave no marker or arrow shows.
 - **The home menu** keeps the same slots, rearranged: the MORE deck at the bottom left, beside it the mode tiles and the skull meter over a wide PLAY, and the hand deals its cards in two rows. A tipping pixel phone, no words (owner, 2026-10-29), suggests turning sideways, since portrait plays harder; a screen reader hears its line.
 - **Dialogs** fit a portrait phone without the page scrolling.
-- **Balance.** The bot with `VIEW=portrait` sees only the window. Nightly, 2026-10-29, 390x844: Normal default 11% against 16% in landscape, Easy 49% against 66.5% (most of the gap on wave 8). With the aim assist (nightly, 2026-10-30, 200 runs): Normal 14.5% against 16% in landscape, Easy 54% against 56.5%, both within 3 points of their twins and about a point under their targets.
+- **Balance.** The bot with `VIEW=portrait` sees only the window. Nightly, 2026-10-29, 390x844: Normal default 11% against 16% in landscape, Easy 49% against 66.5% (most of the gap on wave 8). With the aim assist (nightly, 2026-10-30, 200 runs): Normal 14.5% against 16% in landscape, Easy 54% against 56.5%, both within 3 points of their twins and about a point under their targets. On the human bot (nightly, 2026-10-31): Normal 13.5% against 26% in landscape, Easy 32.5% against 67.5%. The targets stay the landscape twins' (portrait should play as fair as landscape), so both are out of target. Not tuned yet: the human bot only fires at what it notices near its aim or hears, and the window shows a third of what a phone on its side does, so the gap may be more the bot than the game. Follow-up: check the human bot's notice rules against the portrait window, then playtest upright on Easy before easing portrait.
 
 ### The home menu, the loading splash, and taps
 
@@ -526,7 +526,7 @@ A part flies off as a tumbling particle with blood and a pop sound and lands as 
 Reworked on 2026-10-28 from owner feedback: "Should feel like a challenge, not something you can just run around." The rules are `BOSS_RULES` in `src/boss.ts`.
 
 - **Who.** A hulking pot-bellied zombie with a tiny head and a tiny green party hat, about twice a Big Lug each way.
-- **Numbers.** Health 90 times the wave's health scale (99 on wave 8). Slow, but 1.6 times as fast while the player is more than 70 px away. A bite costs 2 hearts. Bounty $150, and his kill always drops a goodie.
+- **Numbers.** Health 90 times the wave's health scale, the level's health, and the level's own boss health (on wave 10: 54 on Easy, 68 on Normal, 146 on Hard, 167 on Nightmare). His belched Groaners take the wave's and the level's health, not his boss health. Slow, but 1.6 times as fast while the player is more than 70 px away. A bite costs 2 hearts. Bounty $150, and his kill always drops a goodie.
 - **Range decides the attack.** Within 44 px he stomps; beyond 70 px he charges and spits in turn; between, he walks in and belches. Standing near him and stepping out of the stomp is the safe way to fight him.
 - **Stomp.** A 34 px red ring fills around him for 1 s, then costs 1 heart and shoves.
 - **Charge.** A red lane fills toward where the player stood, then he rushes along it for 2 hearts. A wall, a crate, or a barricade stops him with a bonk, and he is dazed and takes double damage for 1.8 s.
@@ -540,6 +540,20 @@ Reworked on 2026-10-28 from owner feedback: "Should feel like a challenge, not s
 #### Boss balance
 
 The bot dodges every tell and shoots him unless another zombie is within 60 px. Kept on 2026-10-28 after 21 tries: health 90, with a median kill of 40 s in winning runs; most of what he costs is the time the horde has while he stands. The finale's health scale went from ×1.21 to ×1.1 so the boss is the step up. `KITE=1` (running away) wins about 1%, as intended.
+
+**Tougher on Hard and Nightmare, 2026-10-31.** The owner: "the boss has wayyyy too little HP on hard. Should make it better." On Hard he had 97 health (90 × the level's ×1.08; the finale's wave scale is ×1), so a late loadout melted him: the Chatterbox 3000 alone fires about 34 damage a second, so a skilled player who focuses him drops him in a few seconds. Each level now has its own boss health (`bossHealthScale` in `src/difficulty.ts`), on top of the level's health, so he becomes the finale without a tougher crowd: Easy and Normal ×1 (as the easing left them, which already lowers him to 54 and 68), Hard ×1.5 (146), Nightmare ×1.6 (167, at least as tough as Hard). Co-op's crowd scale (×1.1 to ×1.3 by player count) still multiplies on top. Endless brings him back every tenth wave with the same scales.
+
+Measured with the wave 10 snapshots on Hard, `AIM=sharp`, 100 runs from the same 10 snapshots and seeds (the wave pass now prints a boss line):
+
+| Boss health | His health | Wave 10 cleared | Median kill (p25 to p75) in cleared runs | Enraged | Hearts lost while he stands |
+| ----------- | ---------- | --------------- | ---------------------------------------- | ------- | --------------------------- |
+| ×1 (before) | 97         | 60%             | 34.7 s (26.0 to 41.6)                    | 76%     | 2.6                         |
+| ×1.5        | 146        | 48%             | 39.0 s (31.4 to 49.0)                    | 66%     | 3.3                         |
+| ×2          | 194        | 30%             | 43.0 s (36.4 to 57.1)                    | 54%     | 3.8                         |
+
+The sharp bot lands only about 6 to 8 of his health a second while it aims at him, and aims at him about a third of the fight (it turns to any zombie within 60 px), so its fights are long already and its kill time grows slowly with his health while its losses grow fast. A person with the same guns lands far more, which is why he felt like nothing. ×1.5 keeps the bot's kill in the 35 to 60 s band, enrages him in most fights, and costs Hard about a fifth of its finale clears; ×2 halved them, which would put Hard wins near 2%. Nightmare was not measured on snapshots (too few sharp runs reach wave 10); its ×1.6 follows Hard's.
+
+In the 2026-10-31 nightly (200 campaign runs a level): Hard on `AIM=sharp` won 10.5% (target 5 to 12%); 51 runs reached the finale, 22 felled him with a median kill of 35.9 s in the runs that cleared it (27.6 to 41.4 s), he enraged in 61% of fights, and 29 of the 31 finale deaths came while he stood. Nightmare won 0.5% (1 of the 12 runs that reached him), just under its 1 to 4%, as before the change. Easy and Normal stay at ×1: on the human bot he falls in a median of 25 s on Easy and 30 s on Normal, enrages in 84 to 95% of fights, and the finale still kills the largest share of the Normal runs that reach it (35%), so the numbers give no reason to move them.
 
 ### Character
 
@@ -635,12 +649,14 @@ From owner feedback on 2026-10-29 ("zombies are spawning behind the windows that
 
 Four levels scale zombie health, speed, and bites on top of the wave's scales, the boss and endless too, and stretch the blink after a bite (1 s, 1.5 s on the last heart, on Hard). Kinds, doors, and timing are the same on every level, so the preview stays exact.
 
-| Level     | Health | Speed | Bite  | Bite blink | Groaner bite | Big Lug and boss bite |
-| --------- | ------ | ----- | ----- | ---------- | ------------ | --------------------- |
-| Easy      | ×0.6   | ×0.8  | ×0.5  | ×2         | 1 heart      | 1 heart               |
-| Normal    | ×0.75  | ×0.84 | ×1    | ×1.5       | 1 heart      | 2 hearts              |
-| Hard      | ×1.08  | ×1.02 | ×1    | ×1         | 1 heart      | 2 hearts              |
-| Nightmare | ×1.16  | ×1.02 | ×1.25 | ×1         | 1 heart      | 3 hearts              |
+| Level     | Health | Boss health | Speed | Bite  | Bite blink | Groaner bite | Big Lug and boss bite |
+| --------- | ------ | ----------- | ----- | ----- | ---------- | ------------ | --------------------- |
+| Easy      | ×0.6   | ×1          | ×0.8  | ×0.5  | ×2         | 1 heart      | 1 heart               |
+| Normal    | ×0.75  | ×1          | ×0.84 | ×1    | ×1.5       | 1 heart      | 2 hearts              |
+| Hard      | ×1.08  | ×1.5        | ×1.02 | ×1    | ×1         | 1 heart      | 2 hearts              |
+| Nightmare | ×1.16  | ×1.6        | ×1.02 | ×1.25 | ×1         | 1 heart      | 3 hearts              |
+
+Boss health is Uncle Chunk's own, on top of the level's health (see "Boss balance").
 
 Health rounds to whole hit points, so on Normal a Groaner takes 2 shots instead of 3 on every wave, and on Easy a Hotfoot takes 1.
 

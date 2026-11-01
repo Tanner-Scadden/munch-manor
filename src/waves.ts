@@ -257,6 +257,7 @@ export const beginPreparation = (
     waveState,
     wave,
     spawns,
+    model.difficulty.chosen,
   )
   return modifyFields(returnFallen(model), {
     boss: () => boss,

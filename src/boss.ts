@@ -10,7 +10,7 @@ import {
 } from './arena'
 import { woundPlayer } from './combat'
 import { MS_PER_SECOND, PLAYER_RADIUS, ZOMBIE_ALIVE_MAX } from './constants'
-import { difficultySpeedScale } from './difficulty'
+import { bossHealthScale, difficultySpeedScale } from './difficulty'
 import {
   OUTWARD,
   circlesOverlap,
@@ -26,6 +26,7 @@ import {
   Boss,
   type BossAttack,
   BossMove,
+  type Difficulty,
   type DoorId,
   GameEvent,
   Glob,
@@ -145,8 +146,8 @@ const pickDoor = (doors: ReadonlyArray<DoorId>, roll: number): DoorId =>
   )
 
 // NOTE: the largest health scale among the wave's spawns, which carries the
-// level's, so a level below ×1 (Easy, Normal) lowers him too. A wave with
-// no spawns keeps him at full health.
+// level's and co-op's crowd, so a level below ×1 (Easy, Normal) lowers him
+// too. A wave with no spawns keeps him at full health.
 const wavePlanHpScale = (spawns: ReadonlyArray<PlannedSpawn>): number =>
   Array.match(spawns, {
     onEmpty: () => 1,
@@ -156,11 +157,22 @@ const wavePlanHpScale = (spawns: ReadonlyArray<PlannedSpawn>): number =>
       ),
   })
 
+// His health: the wave's scale times the level's own boss scale.
+export const bossHp = (
+  difficulty: Difficulty,
+  spawns: ReadonlyArray<PlannedSpawn>,
+): number =>
+  scaledHp(
+    ZOMBIE_KINDS.Boss.hp,
+    wavePlanHpScale(spawns) * bossHealthScale(difficulty),
+  )
+
 export const planBoss = (
   doors: ReadonlyArray<DoorId>,
   state: number,
   wave: number,
   spawns: ReadonlyArray<PlannedSpawn>,
+  difficulty: Difficulty,
 ): Seeded<Boss> => {
   if (!hasBoss(wave)) {
     return [state, Boss.Absent()]
@@ -172,7 +184,7 @@ export const planBoss = (
     Boss.Waiting({
       door: pickDoor(doors, doorDraw.value),
       waitBelow: Math.round(spawns.length * (1 - BOSS_RULES.arriveAfterShare)),
-      hp: scaledHp(ZOMBIE_KINDS.Boss.hp, wavePlanHpScale(spawns)),
+      hp: bossHp(difficulty, spawns),
     }),
   ]
 }
@@ -631,8 +643,13 @@ const belchPoint = (
   return isSolidAt(levelOf(model), point) ? { x: boss.x, y: boss.y } : point
 }
 
-const belchedHp = (boss: Zombie): number =>
-  scaledHp(ZOMBIE_KINDS.Shambler.hp, boss.maxHp / ZOMBIE_KINDS.Boss.hp)
+// NOTE: his Groaners take the wave's scale, read back off his health, but
+// not the level's boss scale, which is his alone.
+const belchedHp = (boss: Zombie, difficulty: Difficulty): number =>
+  scaledHp(
+    ZOMBIE_KINDS.Shambler.hp,
+    boss.maxHp / (ZOMBIE_KINDS.Boss.hp * bossHealthScale(difficulty)),
+  )
 
 const belchOne =
   (boss: Zombie, toward: Vector) =>
@@ -646,7 +663,7 @@ const belchOne =
           at: belchPoint(model, boss, toward, index),
           speedRoll: speedDraw.value,
           speedScale: difficultySpeedScale(model.difficulty.chosen),
-          hp: belchedHp(boss),
+          hp: belchedHp(boss, model.difficulty.chosen),
         }),
       ),
       nextEntityId: id => id + 1,

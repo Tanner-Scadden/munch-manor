@@ -447,6 +447,7 @@ export const roomModel = (settings: SceneSettings): Model => {
       model.rngState,
       wave,
       planned,
+      model.difficulty.chosen,
     )
     model = modifyFields(model, {
       boss: () => plannedBoss,
