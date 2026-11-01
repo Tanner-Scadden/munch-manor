@@ -10,7 +10,11 @@ import {
 } from './arena'
 import { woundPlayer } from './combat'
 import { MS_PER_SECOND, PLAYER_RADIUS, ZOMBIE_ALIVE_MAX } from './constants'
-import { bossHealthScale, difficultySpeedScale } from './difficulty'
+import {
+  bossAttackPace,
+  bossHealthScale,
+  difficultySpeedScale,
+} from './difficulty'
 import {
   OUTWARD,
   circlesOverlap,
@@ -326,8 +330,12 @@ const emit =
 export const isEnraged = (boss: Boss): boolean =>
   Boss.isAnyOf(['Fighting'])(boss) && boss.mood === 'Enraged'
 
-const gapScale = (fight: Fight): number =>
-  fight.mood === 'Enraged' ? BOSS_RULES.enrageGapScale : 1
+// NOTE: the gap between attacks, never a tell's wind-up: rage and the
+// difficulty's pace both shorten how long he rests, so a faster boss gives
+// the same warning for each attack and less time between them.
+const gapScale = (model: World, fight: Fight): number =>
+  (fight.mood === 'Enraged' ? BOSS_RULES.enrageGapScale : 1) *
+  bossAttackPace(model.difficulty.chosen)
 
 export const isRooted = (boss: Boss, zombie: Zombie): boolean =>
   Boss.isAnyOf(['Fighting'])(boss) &&
@@ -597,7 +605,7 @@ const recover = (model: World, fight: Fight, attack: BossAttack): World =>
     model,
     BossMove.Recovering({
       remainingMs: BOSS_RULES.recoverMs[attack],
-      cooldownMs: BOSS_RULES.cooldownMs[attack] * gapScale(fight),
+      cooldownMs: BOSS_RULES.cooldownMs[attack] * gapScale(model, fight),
     }),
   )
 
@@ -690,7 +698,10 @@ const belch = (model: World, fight: Fight, boss: Zombie): World => {
         ),
       ),
       current =>
-        modifyFields(current, { belchMs: () => BOSS_RULES.belchEveryMs }),
+        modifyFields(current, {
+          belchMs: () =>
+            BOSS_RULES.belchEveryMs * bossAttackPace(model.difficulty.chosen),
+        }),
     ),
     fight,
     'Belch',
@@ -919,7 +930,7 @@ const stepMove = (
         : setMove(
             model,
             BossMove.Stalking({
-              cooldownMs: BOSS_RULES.cooldownMs.Charge * gapScale(fight),
+              cooldownMs: BOSS_RULES.cooldownMs.Charge * gapScale(model, fight),
             }),
           ),
     Recovering: ({ remainingMs, cooldownMs }) =>

@@ -17,6 +17,7 @@ type DifficultyStats = Readonly<{
   blurb: string
   healthScale: number
   bossHealthScale: number
+  bossAttackPace: number
   speedScale: number
   biteScale: number
   biteGraceScale: number
@@ -39,6 +40,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     blurb: 'Just here for the vibes',
     healthScale: 0.6,
     bossHealthScale: 1,
+    bossAttackPace: 1,
     speedScale: 0.8,
     biteScale: 0.5,
     biteGraceScale: 2,
@@ -49,6 +51,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     blurb: "The way it's meant to be played",
     healthScale: 0.75,
     bossHealthScale: 1,
+    bossAttackPace: 1,
     speedScale: 0.84,
     biteScale: 1,
     biteGraceScale: 1.5,
@@ -58,7 +61,8 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     name: 'Hard',
     blurb: 'They bite back',
     healthScale: 1.08,
-    bossHealthScale: 1.5,
+    bossHealthScale: 2.2,
+    bossAttackPace: 0.8,
     speedScale: 1.02,
     biteScale: 1,
     biteGraceScale: 1,
@@ -68,7 +72,8 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     name: 'Nightmare',
     blurb: 'No mercy. Bring snacks',
     healthScale: 1.16,
-    bossHealthScale: 1.6,
+    bossHealthScale: 3.2,
+    bossAttackPace: 0.65,
     speedScale: 1.02,
     biteScale: 1.25,
     biteGraceScale: 1,
@@ -153,6 +158,11 @@ export const difficultySpeedScale = (difficulty: Difficulty): number =>
 
 export const bossHealthScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].bossHealthScale
+
+// NOTE: the gap before his next attack and his belch timer are multiplied by
+// this, so below 1 he attacks more often. Wind-ups and recoveries stay.
+export const bossAttackPace = (difficulty: Difficulty): number =>
+  DIFFICULTIES[difficulty].bossAttackPace
 
 export const biteGraceScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].biteGraceScale

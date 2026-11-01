@@ -557,6 +557,16 @@ The sharp bot lands only about 6 to 8 of his health a second while it aims at hi
 
 In the 2026-10-31 nightly (200 campaign runs a level): Hard on `AIM=sharp` won 10.5% (target 5 to 12%); 51 runs reached the finale, 22 felled him with a median kill of 35.9 s in the runs that cleared it (27.6 to 41.4 s), he enraged in 61% of fights, and 29 of the 31 finale deaths came while he stood. Nightmare won 0.5% (1 of the 12 runs that reached him), just under its 1 to 4%, as before the change. Easy and Normal stay at ×1: on the human bot he falls in a median of 25 s on Easy and 30 s on Normal, enrages in 84 to 95% of fights, and the finale still kills the largest share of the Normal runs that reach it (35%), so the numbers give no reason to move them.
 
+**Fiercer on Hard and Nightmare, 2026-11-01.** The owner: "For the boss, let's have him use his power ups more often as you increase difficulty, and make his HP much higher for hard/nightmare. Shouldn't be a 5 second kill in nightmare." Two fields in the difficulty table (`src/difficulty.ts`): `bossAttackPace` multiplies the rest between his attacks (every cooldown, enraged ones too) and his burp timer, and `bossHealthScale` is his health. Wind-ups, recoveries, and the entrance never change, so each tell warns as long as before and only the gaps shrink. Easy and Normal stay as they were (pace ×1, health ×1).
+
+| Level     | Boss health | Boss health (points) | Attack pace | Stomp rest |
+| --------- | ----------- | -------------------- | ----------- | ---------- |
+| Normal    | ×1          | 68                   | ×1          | 1.6 s      |
+| Hard      | ×2.2 (was ×1.5) | 214 (was 146)    | ×0.8        | 1.28 s     |
+| Nightmare | ×3.2 (was ×1.6) | 334 (was 167)    | ×0.65       | 1.04 s     |
+
+Measured with the sharp bot (`AIM=sharp`). Hard, 200 campaign runs: 16 won (8%, target 5 to 12%; 10.5% in the 2026-10-31 nightly), 51 reached him, 16 felled him with a median kill of 40.2 s in cleared runs (35.4 to 44.5), 41% enraged. Before this change the Hard wave 10 snapshots gave 39.0 s with 48% cleared; with 100 runs at ×2.4 the kill was 49.8 s but only 21% of snapshots cleared and the campaign won 4%, so Hard is held at ×2.2. Hard at ×2 won 8.5% with a 39.8 s kill. The bot's kill time is cut short by its own deaths (it dies with him standing in 35 of 36 deaths), so the real fight length for a person who lives is longer. Nightmare: the sharp bot rarely reaches wave 10 and almost never fells him (50 snapshot runs: 1 kill, 85.5 s; he enraged in 6), so ×3.2 is set from Hard's rate (about 5 health a second aimed) to land near 75 to 100 s, not confirmed. The model's guardrail for wave 10's peak on Hard is `NotYet` now, as the model counts his health as incoming. Co-op's crowd scale still multiplies on top. Chaining attacks on Nightmare is not built.
+
 ### Character
 
 From a playtester on 2026-10-28: "She wants to be able to select a female/male for the character!" Reworked with the owner on 2026-10-30: first "make the character builder more inclusive of LGBTQ", then, after a many-part version shipped for a few hours, "that is over inclusive LOL. Let's keep it simple please." Built, not yet playtested.
@@ -691,8 +701,8 @@ Four levels scale zombie health, speed, and bites on top of the wave's scales, t
 | --------- | ------ | ----------- | ----- | ----- | ---------- | ------------ | --------------------- |
 | Easy      | ×0.6   | ×1          | ×0.8  | ×0.5  | ×2         | 1 heart      | 1 heart               |
 | Normal    | ×0.75  | ×1          | ×0.84 | ×1    | ×1.5       | 1 heart      | 2 hearts              |
-| Hard      | ×1.08  | ×1.5        | ×1.02 | ×1    | ×1         | 1 heart      | 2 hearts              |
-| Nightmare | ×1.16  | ×1.6        | ×1.02 | ×1.25 | ×1         | 1 heart      | 3 hearts              |
+| Hard      | ×1.08  | ×2.2        | ×1.02 | ×1    | ×1         | 1 heart      | 2 hearts              |
+| Nightmare | ×1.16  | ×3.2        | ×1.02 | ×1.25 | ×1         | 1 heart      | 3 hearts              |
 
 Boss health is Uncle Chunk's own, on top of the level's health (see "Boss balance").
 
