@@ -15,12 +15,14 @@ import {
 } from '@munch/netcode'
 import { QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
+import { isCallingUnlocked } from '../calling'
 import { DIFFICULTY_ORDER } from '../difficulty'
 import { Calling } from '../playerData'
 import { eventsBetween } from '../roomWorld'
 import { stepWhen } from '../stepWhen'
 import { CoopComposition } from './composition'
 import { makeCommand } from './definition'
+import { callingOfMember } from './looks'
 import { Message, OutMessage } from './message'
 import {
   type CoopProblem,
@@ -34,6 +36,8 @@ import {
 } from './model'
 import { CoopNet } from './net'
 import {
+  CALLING_KEY,
+  CALLING_PILL_ID,
   CODE_INPUT_ID,
   DIFFICULTY_KEY,
   ENTER,
@@ -280,7 +284,12 @@ const lobbyUpdated = (model: Model, room: Room, lobby: Lobby): UpdateReturn => {
   } else if (isKickedFrom(learned, lobby)) {
     return leaveFor(model, 'Kicked')
   } else {
-    return { model: withRoom(model, learned) }
+    return {
+      model: withRoom(model, {
+        ...learned,
+        isPickingCalling: learned.isPickingCalling && lobby.status === 'Lobby',
+      }),
+    }
   }
 }
 
@@ -465,6 +474,58 @@ const pick = (
         : { model },
   })
 
+// NOTE: a player picks their own hero in the lobby, once their rank has
+// reached it. The pick goes to the room's lobby for the others to see and to
+// seat at the start, and up to the parent, which saves it as the player's
+// pick at home too. Nobody's READY changes. Picking the one already worn only
+// closes the picker.
+const pickCalling = (
+  model: Model,
+  room: Room,
+  calling: Calling,
+): UpdateReturn =>
+  Option.match(meIn(room), {
+    onNone: () => ({ model }),
+    onSome: me => {
+      const closed = {
+        model: withRoom(model, { ...room, isPickingCalling: false }),
+        commands: [FocusCoopElement({ id: CALLING_PILL_ID })],
+      }
+      if (!isInLobby(room) || !isCallingUnlocked(calling, me.rank)) {
+        return { model }
+      } else if (callingOfMember(me) === calling) {
+        return closed
+      } else {
+        return {
+          model: modifyFields(closed.model, { calling: () => calling }),
+          commands: [
+            ChangeLobby({ change: LobbyChange.ChangedCalling({ calling }) }),
+            ...closed.commands,
+          ],
+          outMessage: OutMessage.ChoseCalling({ calling }),
+        }
+      }
+    },
+  })
+
+const togglePicker = (model: Model, room: Room): UpdateReturn =>
+  isInLobby(room) && Option.isSome(meIn(room))
+    ? {
+        model: withRoom(model, {
+          ...room,
+          isPickingCalling: !room.isPickingCalling,
+        }),
+      }
+    : { model }
+
+// NOTE: with the picker open the other lobby keys wait: Enter belongs to the
+// card in focus, and Escape or the pill's key closes it.
+const keyInPicker = (model: Model, room: Room, code: string): UpdateReturn =>
+  stepWhen<Model, UpdateReturn>(
+    () => code === ESCAPE || code === CALLING_KEY,
+    picked => togglePicker(picked, room),
+  )(model)
+
 const pickFromKey = (model: Model, room: Room, code: string): UpdateReturn =>
   Option.match(room.maybeLobby, {
     onNone: () => ({ model }),
@@ -525,6 +586,10 @@ const keyOnScreen = (model: Model, code: string): UpdateReturn =>
     InRoom: ({ room }) => {
       if (!isInLobby(room)) {
         return { model }
+      } else if (room.isPickingCalling) {
+        return keyInPicker(model, room, code)
+      } else if (code === CALLING_KEY) {
+        return togglePicker(model, room)
       } else if (code === ENTER) {
         return toggleReady(model, room)
       } else {
@@ -784,6 +849,19 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
         }),
       ),
 
+    ClickedCallingPill: () => inRoom(model, room => togglePicker(model, room)),
+
+    ClickedCallingPick: ({ calling }) =>
+      inRoom(model, room => pickCalling(model, room, calling)),
+
+    ClickedCallingDone: () =>
+      inRoom(model, room =>
+        stepWhen<Model, UpdateReturn>(
+          () => room.isPickingCalling,
+          picked => togglePicker(picked, room),
+        )(model),
+      ),
+
     CompletedChangeLobby: () => ({ model }),
 
     FailedChangeLobby: () => ({ model }),
@@ -890,6 +968,9 @@ export const update = CoopComposition.makeUpdate({
   ClickedKickButton: delivered,
   ClickedModePick: delivered,
   ClickedDifficultyPick: delivered,
+  ClickedCallingPill: delivered,
+  ClickedCallingPick: delivered,
+  ClickedCallingDone: delivered,
   CompletedChangeLobby: delivered,
   FailedChangeLobby: delivered,
   ClickedLeaveButton: delivered,

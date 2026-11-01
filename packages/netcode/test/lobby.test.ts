@@ -19,6 +19,7 @@ import { makeHost } from '@munch/sync-engine/in-process'
 import { first, settle } from '@munch/sync-engine/testing'
 
 import {
+  ChangedCalling,
   ChangedPicks,
   ChangedReady,
   CreatedRoom,
@@ -403,6 +404,57 @@ describe('the room scope', () => {
             by: ANA,
             mode: 'Campaign',
             difficulty: 'Easy',
+          }),
+        ).toMatch(/Not in the lobby/)
+      }),
+  )
+
+  it.effect(
+    'a player picks their own calling in the lobby, and only theirs',
+    () =>
+      Effect.gen(function* () {
+        const server = yield* created
+        yield* seat(server, BO)
+        const callings = Effect.map(lobbyOf(server), lobby =>
+          lobby.members.map(member => member.calling),
+        )
+        yield* push(server, BO, ChangedReady, { by: BO, ready: true })
+        expect(
+          yield* push(server, BO, ChangedCalling, {
+            by: BO,
+            calling: 'LineCook',
+          }),
+        ).toBe('Acked')
+        expect(yield* callings).toEqual(['Handyman', 'LineCook'])
+        // NOTE: the pick is the player's own, so nobody's READY goes.
+        expect(
+          (yield* lobbyOf(server)).members.map(member => member.ready),
+        ).toEqual([false, true])
+        // NOTE: a word that is not one short word is cleaned to YOU, as at
+        // create and join; the Worker decodes the rest when the host starts.
+        yield* push(server, BO, ChangedCalling, {
+          by: BO,
+          calling: 'not a calling!',
+        })
+        expect(yield* callings).toEqual(['Handyman', 'You'])
+        expect(
+          yield* push(server, ANA, ChangedCalling, {
+            by: BO,
+            calling: 'LineCook',
+          }),
+        ).not.toBe('Acked')
+        expect(
+          yield* push(server, CY, ChangedCalling, {
+            by: CY,
+            calling: 'LineCook',
+          }),
+        ).toMatch(/Not in this room|member/i)
+        yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
+        expect((yield* lobbyOf(server)).status).toBe('Playing')
+        expect(
+          yield* push(server, BO, ChangedCalling, {
+            by: BO,
+            calling: 'TrackStar',
           }),
         ).toMatch(/Not in the lobby/)
       }),

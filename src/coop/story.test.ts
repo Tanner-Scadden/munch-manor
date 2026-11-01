@@ -20,7 +20,12 @@ import {
 import { RoomEvent } from '@munch/netcode/browser'
 
 import { playRoom } from '../roomTesting'
-import { AIM_REACH, FIRE_BUTTON, seatActionOf } from '../roomWorld'
+import {
+  AIM_REACH,
+  FIRE_BUTTON,
+  roomSettingsOf,
+  seatActionOf,
+} from '../roomWorld'
 import { SeatAction } from '../stepWorld'
 import { Message, OutMessage } from './message'
 import {
@@ -449,6 +454,100 @@ describe('the lobby', () => {
         )
       }),
     )
+  })
+})
+
+describe('picking a hero in the lobby', () => {
+  const ANA_RANK_4 = memberOf(0, 'Ana', true, '', false, 4)
+  const BO = memberOf(1, 'Bo')
+  const lobbyAt4 = lobbyOf([ANA_RANK_4, BO])
+  const opened = (): Model =>
+    update(
+      update(inRoom(0), lobbyUpdate(lobbyAt4)).model,
+      Message.ClickedCallingPill(),
+    ).model
+
+  test('the pill and Y open the picker, and Y or Escape close it', () => {
+    const lobbied = update(inRoom(0), lobbyUpdate(lobbyAt4)).model
+    expect(roomOf(lobbied).isPickingCalling).toBe(false)
+    const byKey = pressKey(lobbied, 'KeyY').model
+    expect(roomOf(byKey).isPickingCalling).toBe(true)
+    expect(roomOf(pressKey(byKey, 'KeyY').model).isPickingCalling).toBe(false)
+    expect(roomOf(pressKey(byKey, 'Escape').model).isPickingCalling).toBe(false)
+    expect(roomOf(opened()).isPickingCalling).toBe(true)
+  })
+
+  test('Enter and the picks wait while it is open', () => {
+    const up = opened()
+    expect(pressKey(up, 'Enter').commands).toBeUndefined()
+    expect(picked(up, 'KeyE')).toEqual([])
+  })
+
+  test('a hero the rank reached goes to the lobby and the parent, and READY stays', () => {
+    story(
+      update,
+      given(opened()),
+      message(Message.ClickedCallingPick({ calling: 'Handyman' })),
+      expectOutMessage(OutMessage.ChoseCalling({ calling: 'Handyman' })),
+      Command.resolve(
+        ChangeLobby({
+          change: LobbyChange.ChangedCalling({ calling: 'Handyman' }),
+        }),
+        Message.CompletedChangeLobby(),
+      ),
+      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+      model(current => {
+        expect(roomOf(current).isPickingCalling).toBe(false)
+        expect(current.calling).toBe('Handyman')
+        expect(
+          Option.exists(roomOf(current).maybeLobby, lobby =>
+            lobby.members.every(member => member.ready === (member.slot === 0)),
+          ),
+        ).toBe(true)
+      }),
+    )
+  })
+
+  test('a hero the rank has not reached, or the one already worn, sends nothing', () => {
+    story(
+      update,
+      given(opened()),
+      message(Message.ClickedCallingPick({ calling: 'LineCook' })),
+      Command.expectNone(),
+      model(current => {
+        expect(roomOf(current).isPickingCalling).toBe(true)
+      }),
+      message(Message.ClickedCallingPick({ calling: 'You' })),
+      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+      model(current => {
+        expect(roomOf(current).isPickingCalling).toBe(false)
+      }),
+    )
+  })
+
+  test('a hero changed in the lobby is the one the start seats', () => {
+    const changed = update(
+      update(inRoom(0), lobbyUpdate(lobbyAt4)).model,
+      lobbyUpdate({
+        ...lobbyAt4,
+        members: [{ ...ANA_RANK_4, calling: 'Handyman' }, BO],
+      }),
+    ).model
+    const lobby = Option.getOrThrow(roomOf(changed).maybeLobby)
+    expect(
+      roomSettingsOf('Campaign', 'Normal', lobby.members).callings,
+    ).toEqual([
+      { slot: 0, calling: 'Handyman' },
+      { slot: 1, calling: 'You' },
+    ])
+  })
+
+  test('a started run closes the picker', () => {
+    const playing = update(
+      opened(),
+      lobbyUpdate({ ...lobbyAt4, status: 'Playing' }),
+    )
+    expect(roomOf(playing.model).isPickingCalling).toBe(false)
   })
 })
 

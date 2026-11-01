@@ -13,7 +13,7 @@ import {
   showDialogInScene,
 } from './testing'
 
-// The calling pill by the difficulty and its picker (src/callingView.ts).
+// The hero pill by the difficulty and its picker (src/callingView.ts).
 
 const callingPill = (name: string | RegExp) => role('button', { name })
 
@@ -29,17 +29,17 @@ describe('the calling pill', () => {
       ROOT,
       given(atRank(3, 'Handyman')),
       measureSurface,
-      expect(callingPill(/^Calling: Handyman\./)).toHaveAttr(
+      expect(callingPill(/^Hero: Handyman\./)).toHaveAttr(
         'aria-keyshortcuts',
         'Y',
       ),
-      expect(callingPill(/^Calling: Handyman\./)).toHaveAttr(
+      expect(callingPill(/^Hero: Handyman\./)).toHaveAttr(
         'aria-haspopup',
         'dialog',
       ),
-      click(callingPill(/^Calling: Handyman\./)),
+      click(callingPill(/^Hero: Handyman\./)),
       ...showDialogInScene(),
-      expect(role('dialog', { name: 'Calling' })).toExist(),
+      expect(role('dialog', { name: 'Hero' })).toExist(),
     )
   })
 
@@ -50,7 +50,7 @@ describe('the calling pill', () => {
       measureSurface,
       emitPressedKey('KeyY'),
       ...showDialogInScene(),
-      expect(role('dialog', { name: 'Calling' })).toExist(),
+      expect(role('dialog', { name: 'Hero' })).toExist(),
     )
   })
 })
@@ -61,19 +61,44 @@ describe('the picker', () => {
       ROOT,
       given(atRank(3, 'You')),
       measureSurface,
-      click(callingPill(/^Calling: YOU\./)),
+      click(callingPill(/^Hero: YOU\./)),
       ...showDialogInScene(),
       expect(selector(".calling-card[data-lock='Open']")).toExist(),
       expect(
-        role('button', { name: /^Handyman: Plank Piles cost half/ }),
+        role('button', { name: /^Handyman\. Plus: Planks 50% off/ }),
       ).toExist(),
       expect(
-        role('button', { name: 'Locked. Reach rank 6 to unlock' }),
+        role('button', { name: /^Track Star, locked\. Reach rank 6 to unlock/ }),
       ).toHaveAttr('aria-disabled', 'true'),
       expect(
-        role('button', { name: 'Locked. Reach rank 15 to unlock' }),
+        role('button', { name: /^Line Cook, locked\. Reach rank 15 to unlock/ }),
       ).toExist(),
       expect(selector('.calling-need .rank-chip')).toExist(),
+    )
+  })
+
+  test('each card reads its specials, perks and drawbacks, locked or not', () => {
+    scene(
+      ROOT,
+      given(atRank(3, 'You')),
+      measureSurface,
+      click(callingPill(/^Hero: YOU\./)),
+      ...showDialogInScene(),
+      expect(
+        selector(
+          ".calling-card[data-calling='Handyman'] [data-sign='Perk'] .calling-special-line",
+        ),
+      ).toHaveText('Planks 50% off'),
+      expect(
+        selector(
+          ".calling-card[data-calling='Handyman'] [data-sign='Drawback'] .calling-special-line",
+        ),
+      ).toHaveText('4 max hearts'),
+      expect(
+        selector(
+          ".calling-card[data-calling='TrackStar'][data-lock='Locked'] [data-sign='Drawback'] .calling-special-line",
+        ),
+      ).toHaveText('Mags 10% smaller'),
     )
   })
 
@@ -82,11 +107,11 @@ describe('the picker', () => {
       ROOT,
       given(atRank(3, 'You')),
       measureSurface,
-      click(callingPill(/^Calling: YOU\./)),
+      click(callingPill(/^Hero: YOU\./)),
       ...showDialogInScene(),
-      click(role('button', { name: /^Handyman:/ })),
+      click(role('button', { name: /^Handyman\./ })),
       ...closeDialogInScene(),
-      expect(callingPill(/^Calling: Handyman\./)).toExist(),
+      expect(callingPill(/^Hero: Handyman\./)).toExist(),
     )
   })
 
@@ -95,12 +120,12 @@ describe('the picker', () => {
       ROOT,
       given(atRank(3, 'You')),
       measureSurface,
-      click(callingPill(/^Calling: YOU\./)),
+      click(callingPill(/^Hero: YOU\./)),
       ...showDialogInScene(),
       expect(
-        role('button', { name: 'Locked. Reach rank 6 to unlock' }),
+        role('button', { name: /^Track Star, locked\. Reach rank 6 to unlock/ }),
       ).toHaveAttr('aria-disabled', 'true'),
-      expect(callingPill(/^Calling: YOU\./)).toExist(),
+      expect(callingPill(/^Hero: YOU\./)).toExist(),
     )
   })
 })

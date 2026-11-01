@@ -10,6 +10,7 @@ import {
 } from 'effect'
 
 import {
+  ChangedCalling,
   ChangedPicks,
   ChangedReady,
   type ClientFrame,
@@ -126,6 +127,8 @@ const writeChange = <E>(
               ready,
               pingMs: Math.max(0, Math.min(60_000, Math.round(pingMs))),
             }),
+          ChangedCalling: ({ calling }) =>
+            write(ChangedCalling, { by, calling }),
           ChangedPicks: ({ mode, difficulty }) =>
             write(ChangedPicks, { by, mode, difficulty }),
           KickedPlayer: ({ playerId }) => write(KickedPlayer, { by, playerId }),

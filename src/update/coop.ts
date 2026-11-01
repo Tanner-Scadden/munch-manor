@@ -4,7 +4,7 @@ import { Update } from 'foldkit'
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
 import { CoopBinding } from '../bindings'
-import { startingCallingOf } from '../callingPick'
+import { chooseCalling, startingCallingOf } from '../callingPick'
 import { IS_COOP_RELEASED } from '../coop/release'
 import { readRoomLink } from '../coop/roomState'
 import * as Coop from '../coop/update'
@@ -16,13 +16,19 @@ import { Message } from '../message'
 import type { Model } from '../model'
 import { isLearned } from '../onboarding'
 import { isLeftFromRoom, maybeRunRoom } from '../onlineRun'
-import { lookCodeOf } from '../playerData'
+import { type Calling, lookCodeOf } from '../playerData'
 import { joinName } from '../profile'
 import { rankOf, totalPointsOf } from '../rank'
 import { stepWhen } from '../stepWhen'
 import type { SeatAction } from '../stepWorld'
 import { FocusHomeButton, goHome } from './home'
-import { type UpdateStep, combine, releaseInput, unchanged } from './step'
+import {
+  type UpdateStep,
+  combine,
+  modelStep,
+  releaseInput,
+  unchanged,
+} from './step'
 import { FetchBuild } from './version'
 
 // COMMAND
@@ -60,6 +66,12 @@ export const isCoopOpen = (model: Model): boolean => Coop.isOpen(model.coop)
 // gone. Co-op says so with LeftRoom, and every co-op OutMessage checks it,
 // as NeededNewerBuild also drops the room.
 export const leftRoom = stepWhen(isLeftFromRoom, goHome)
+
+// NOTE: a hero picked in the lobby is the player's pick at home too, so
+// the two agree, saved as any pick is (the rank was checked in the lobby, and
+// `chooseCalling` checks it again).
+export const choseCalling = (calling: Calling): UpdateStep =>
+  modelStep(model => chooseCalling(model, calling))
 
 export const closedCoop: UpdateStep = stepModel =>
   combine(stepModel, [
