@@ -12,6 +12,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { callingForRun } from './calling'
 import { playerOfCalling } from './callingPlayer'
+import { lookInOwnedHat } from './closet'
 import {
   AmmoTip,
   DebutCard,
@@ -30,11 +31,12 @@ import {
   noPractice,
 } from './model'
 import {
-  Appearance,
+  Calling,
   HomeScreenTip,
   MusicSetting,
   PlayerName,
   PlayerSave,
+  PreHatAppearance,
   RotationSetting,
   SAVE_VERSION,
   SavedBests,
@@ -238,7 +240,7 @@ const PlayerSaveV11 = Schema.Struct({
   onboarding: SavedOnboarding,
   homeScreenTip: HomeScreenTip,
   settings: SavedSettings,
-  appearance: Appearance,
+  appearance: PreHatAppearance,
   difficulty: SavedDifficulty,
   bests: SavedBests,
   home: SavedHome,
@@ -248,13 +250,32 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 14 is the save before hats.
+const PlayerSaveV14 = Schema.Struct({
+  version: Schema.Literal(14),
+  onboarding: SavedOnboarding,
+  homeScreenTip: HomeScreenTip,
+  settings: SavedSettings,
+  appearance: PreHatAppearance,
+  difficulty: SavedDifficulty,
+  bests: SavedBests,
+  home: SavedHome,
+  seenPowerUps: SavedPowerUps,
+  rotation: RotationSetting,
+  name: PlayerName,
+  records: SavedRunRecords,
+  rank: SavedRank,
+  calling: Calling,
+})
+type PlayerSaveV14 = typeof PlayerSaveV14.Type
+
 // NOTE: version 13 is the save before callings.
 const PlayerSaveV13 = Schema.Struct({
   version: Schema.Literal(13),
   onboarding: SavedOnboarding,
   homeScreenTip: HomeScreenTip,
   settings: SavedSettings,
-  appearance: Appearance,
+  appearance: PreHatAppearance,
   difficulty: SavedDifficulty,
   bests: SavedBests,
   home: SavedHome,
@@ -272,7 +293,7 @@ const PlayerSaveV12 = Schema.Struct({
   onboarding: SavedOnboarding,
   homeScreenTip: HomeScreenTip,
   settings: SavedSettings,
-  appearance: Appearance,
+  appearance: PreHatAppearance,
   difficulty: SavedDifficulty,
   bests: SavedBests,
   home: SavedHome,
@@ -284,6 +305,8 @@ const PlayerSaveV12 = Schema.Struct({
 type PlayerSaveV12 = typeof PlayerSaveV12.Type
 
 const PlayerSaveJson = Schema.fromJsonString(PlayerSave)
+
+const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 
 const PlayerSaveV13Json = Schema.fromJsonString(PlayerSaveV13)
 
@@ -497,14 +520,24 @@ const migrateV12 = (save: PlayerSaveV12): PlayerSaveV13 => ({
 })
 
 // NOTE: a save from before callings picks YOU, the calling with no quirk.
-const migrateV13 = (save: PlayerSaveV13): PlayerSave => ({
+const migrateV13 = (save: PlayerSaveV13): PlayerSaveV14 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 14,
   calling: 'You',
 })
 
-const fromV12 = (save: PlayerSaveV12): PlayerSave =>
-  migrateV13(migrateV12(save))
+// NOTE: a save from before hats is bare headed and has bought none.
+const migrateV14 = (save: PlayerSaveV14): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+  appearance: { ...save.appearance, hat: 'None' },
+  boughtHats: [],
+})
+
+const fromV13 = (save: PlayerSaveV13): PlayerSave =>
+  migrateV14(migrateV13(save))
+
+const fromV12 = (save: PlayerSaveV12): PlayerSave => fromV13(migrateV12(save))
 
 const fromV11 = (save: PlayerSaveV11): PlayerSave => fromV12(migrateV11(save))
 
@@ -538,9 +571,14 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 14,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV14Json)(raw), migrateV14),
+  },
+  {
     version: 13,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV13Json)(raw), migrateV13),
+      Option.map(Schema.decodeOption(PlayerSaveV13Json)(raw), fromV13),
   },
   {
     version: 12,
@@ -673,6 +711,7 @@ export const SAVED_FIELDS = [
   'playerName',
   'rank',
   'calling',
+  'boughtHats',
 ] as const satisfies ReadonlyArray<keyof Model>
 
 export const hasSaveFieldsChanged = (before: Model, after: Model): boolean =>
@@ -722,6 +761,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   records: savedRunRecords(model.bests),
   rank: model.rank,
   calling: model.calling,
+  boughtHats: model.boughtHats,
 })
 
 // INTO THE MODEL
@@ -826,7 +866,14 @@ export const restoreSave = (model: Model, save: PlayerSave): Model =>
     shakeSetting: () => save.settings.shake,
     shareStats: () => save.settings.shareStats,
     cursorSetting: () => save.settings.cursor,
-    appearance: () => save.appearance,
+    // NOTE: a hat worn but not owned (a purchase another device's Bones
+    // outran) comes off.
+    appearance: () =>
+      lookInOwnedHat(
+        save.appearance,
+        save.boughtHats,
+        rankOf(totalPointsOf(save.rank)),
+      ),
     difficulty: setting =>
       modifyFields(setting, {
         chosen: () => save.difficulty.chosen,
@@ -849,6 +896,7 @@ export const restoreSave = (model: Model, save: PlayerSave): Model =>
     playerName: () => cleanName(save.name),
     rank: () => save.rank,
     calling: () => save.calling,
+    boughtHats: () => save.boughtHats,
     // NOTE: the player at home wears the calling the next run starts with.
     // A save that syncs in mid-run leaves the run's player alone.
     player: player =>

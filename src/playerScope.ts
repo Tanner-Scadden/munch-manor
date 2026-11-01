@@ -14,6 +14,7 @@ import {
   Calling,
   CursorSetting,
   Difficulty,
+  HAT_PRICES,
   HomeScreenTip,
   MusicSetting,
   PlayerName,
@@ -146,6 +147,12 @@ export const rowOfSave = (save: PlayerSave): PlayerRow => ({
   spent_bones: save.rank.spentBones,
 })
 
+export const BoughtRow = Schema.Struct({ id: Schema.String })
+export type BoughtRow = typeof BoughtRow.Type
+
+export const boughtRowsOfSave = (save: PlayerSave): ReadonlyArray<BoughtRow> =>
+  Array.map(save.boughtHats, id => ({ id }))
+
 export const killsRowsOfSave = (save: PlayerSave): ReadonlyArray<KillsRow> =>
   Array.map(Record.toEntries(save.bests.killsByKind), ([kind, kills]) => ({
     kind,
@@ -183,11 +190,12 @@ const updatePlayer = (
 // player (a device that linked to another device's player) it does nothing,
 // so linking never overwrites the player it joined. Version 8 is the save
 // with the simple look (save version 11), and 9 the save with the run
-// records (save version 12), 10 the save with rank (save version 13), and
-// 11 the save with the calling (save version 14).
+// records (save version 12), 10 the save with rank (save version 13), 11
+// the save with the calling (save version 14), and 12 the save with hats
+// (save version 15).
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 11,
+  version: 12,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -210,6 +218,14 @@ export const SeededPlayer = defineMutation({
             sql`INSERT INTO ${context.table('kills_by_kind')} ${sql.insert(rows)}`,
           ),
       })
+      yield* sql`DELETE FROM ${context.table('bought_cosmetics')}`
+      yield* Array.match(boughtRowsOfSave(save), {
+        onEmpty: () => Effect.void,
+        onNonEmpty: rows =>
+          Effect.asVoid(
+            sql`INSERT INTO ${context.table('bought_cosmetics')} ${sql.insert(rows)}`,
+          ),
+      })
     }),
 })
 
@@ -230,12 +246,14 @@ export const ChangedSettings = defineMutation({
     }),
 })
 
-// NOTE: version 3 carries the simple look (version 2 the many-part one).
-// The row may still hold an older look until the first change, so it is
-// read as StoredAppearance.
+// NOTE: version 4 carries the hat (version 3 the simple look, 2 the
+// many-part one). The row may still hold an older look until the first
+// change, so it is read as StoredAppearance. A worn hat is not checked
+// against what the player owns here: a look in a hat it does not own is
+// shown bare headed (lookInOwnedHat in src/closet.ts).
 export const ChangedAppearance = defineMutation({
   name: 'ChangedAppearance',
-  version: 3,
+  version: 4,
   args: Schema.Struct({ appearance: Appearance }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -622,6 +640,54 @@ export const GrantedVeteranRank = defineMutation({
     }),
 })
 
+const BalanceRow = Schema.Struct({ balance: Schema.Number })
+
+// NOTE: a cosmetic bought with Bones, by id (a hat today). The apply reads
+// the price from the catalog (HAT_PRICES in src/playerData.ts), never from
+// the args, and does nothing unless the id is for sale, not owned yet, and
+// the Bones balance (earned + veteran - spent) covers it. So two devices
+// that buy the same hat offline spend once, and two that buy different hats
+// with Bones for one keep whichever applies first. A gift hat is owned by
+// rank and is not for sale, so it does nothing here.
+export const BoughtCosmetic = defineMutation({
+  name: 'BoughtCosmetic',
+  version: 1,
+  args: Schema.Struct({ id: Schema.String }),
+  scopes: [PLAYER_SCOPE_KIND],
+  writer: 'Owner',
+  apply: ({ id }, context) =>
+    Effect.gen(function* () {
+      const maybePrice = Record.get<string, number>(HAT_PRICES, id)
+      if (Option.isNone(maybePrice)) {
+        return
+      }
+      const sql = yield* SqlClient.SqlClient
+      const owned =
+        yield* sql`SELECT 1 AS here FROM ${context.table('bought_cosmetics')} WHERE id = ${id}`
+      if (Array.isReadonlyArrayNonEmpty(owned)) {
+        return
+      }
+      const rows = yield* sql`SELECT
+        rank_bones + veteran_bones - spent_bones AS balance
+        FROM ${context.table('player')} WHERE id = 1`
+      const maybeBalance = pipe(
+        Array.head(rows),
+        Option.flatMap(Schema.decodeUnknownOption(BalanceRow)),
+        Option.map(row => row.balance),
+      )
+      if (
+        Option.isNone(maybeBalance) ||
+        maybeBalance.value < maybePrice.value
+      ) {
+        return
+      }
+      yield* sql`INSERT INTO ${context.table('bought_cosmetics')} (id) VALUES (${id})`
+      yield* sql`UPDATE ${context.table('player')} SET
+        spent_bones = spent_bones + ${maybePrice.value}
+        WHERE id = 1`
+    }),
+})
+
 // NOTE: written by the server when a device links to this player, so every
 // device can say how many are linked.
 export const LinkedDevices = defineMutation({
@@ -642,7 +708,7 @@ export const LinkedDevices = defineMutation({
 
 export const PlayerScope = defineScope({
   kind: PLAYER_SCOPE_KIND,
-  tables: ['player', 'kills_by_kind', 'linked_devices'],
+  tables: ['player', 'kills_by_kind', 'linked_devices', 'bought_cosmetics'],
   readers: 'Owner',
   replica: 'ReadWrite',
   mutations: [
@@ -662,6 +728,7 @@ export const PlayerScope = defineScope({
     ChangedCalling,
     EarnedRank,
     GrantedVeteranRank,
+    BoughtCosmetic,
     LinkedDevices,
   ],
   migrations: {
@@ -772,6 +839,16 @@ export const PlayerScope = defineScope({
         const sql = yield* SqlClient.SqlClient
         yield* sql`ALTER TABLE ${sql(table('player'))}
           ADD COLUMN calling TEXT NOT NULL DEFAULT 'You'`
+      }),
+    // NOTE: the closet came after callings. The hat is part of the look's
+    // JSON (a look from before reads bare headed), so the only new thing is
+    // the table of hats bought with Bones.
+    '0011_closet': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`CREATE TABLE IF NOT EXISTS ${sql(table('bought_cosmetics'))} (
+          id TEXT PRIMARY KEY
+        )`
       }),
   },
 })

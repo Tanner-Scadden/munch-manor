@@ -42,7 +42,10 @@ import {
 
 import { API_ORIGIN } from './apiOrigin'
 import { type RoomAccess, makeRoomAccess } from './coop/roomReplica'
+import { Hat } from './playerData'
 import {
+  BoughtCosmetic,
+  BoughtRow,
   ChangedAppearance,
   ChangedCalling,
   ChangedDifficulty,
@@ -63,6 +66,7 @@ import {
   SawPowerUps,
   SeededPlayer,
   UnlockedNightmare,
+  boughtRowsOfSave,
   killsRowsOfSave,
   playerScopeId,
   rowOfSave,
@@ -161,9 +165,15 @@ const MetaRow = Schema.Struct({ value: Schema.String })
 
 const DevicesRow = Schema.Struct({ count: Schema.Number })
 
+const decodeHat = Schema.decodeUnknownOption(Hat)
+
+const boughtHatsOf = (rows: ReadonlyArray<BoughtRow>): ReadonlyArray<Hat> =>
+  Array.getSomes(Array.map(rows, ({ id }) => decodeHat(id)))
+
 const saveOfRow = (
   row: PlayerRow,
   kills: ReadonlyArray<KillsRow>,
+  bought: ReadonlyArray<BoughtRow>,
 ): PlayerSave => ({
   version: SAVE_VERSION,
   onboarding: row.onboarding,
@@ -197,6 +207,7 @@ const saveOfRow = (
   rotation: row.rotation,
   name: row.name,
   calling: row.calling,
+  boughtHats: boughtHatsOf(bought),
   records: row.run_records,
   rank: {
     earnedPoints: row.rank_points,
@@ -274,6 +285,12 @@ const readKills = (client: SqliteClientService) =>
     Effect.catchTag('SchemaError', () => Effect.succeed([])),
   )
 
+const readBought = (client: SqliteClientService) =>
+  pipe(
+    client.query(BoughtRow, client.sql`SELECT id FROM bought_cosmetics`),
+    Effect.catchTag('SchemaError', () => Effect.succeed([])),
+  )
+
 const readView = (client: SqliteClientService) =>
   Effect.gen(function* () {
     const sql = client.sql
@@ -289,7 +306,8 @@ const readView = (client: SqliteClientService) =>
       return Option.none<PlayerSave>()
     }
     const kills = yield* readKills(client)
-    return Option.some(saveOfRow(maybeRow.value, kills))
+    const bought = yield* readBought(client)
+    return Option.some(saveOfRow(maybeRow.value, kills, bought))
   })
 
 const readDevices = (client: SqliteClientService) =>
@@ -335,6 +353,12 @@ const writeWhole = (
           onEmpty: () => Effect.void,
           onNonEmpty: rows =>
             sql`INSERT INTO kills_by_kind ${sql.insert(rows)}`,
+        }),
+        sql`DELETE FROM bought_cosmetics`,
+        Array.match(boughtRowsOfSave(save), {
+          onEmpty: () => Effect.void,
+          onNonEmpty: rows =>
+            sql`INSERT INTO bought_cosmetics ${sql.insert(rows)}`,
         }),
       ]),
     ),
@@ -495,6 +519,7 @@ const runChange = (replica: Replica, change: PlayerChange) =>
     ChangedCalling: ({ calling }) => replica.run(ChangedCalling, { calling }),
     EarnedRank: ({ points, bones }) =>
       replica.run(EarnedRank, { points, bones }),
+    BoughtCosmetic: ({ id }) => replica.run(BoughtCosmetic, { id }),
     GrantedVeteranRank: ({ points, bones }) =>
       replica.run(GrantedVeteranRank, { points, bones }),
   })

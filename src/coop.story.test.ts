@@ -43,6 +43,7 @@ const PICKED_LOOK: Appearance = {
   print: 'Rainbow',
   beard: true,
   glasses: false,
+  hat: 'None',
 }
 
 const resolveFocusCoop = () =>

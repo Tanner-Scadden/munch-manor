@@ -443,4 +443,5 @@ export const defaultAppearance: Appearance = {
   print: 'Plain',
   beard: false,
   glasses: false,
+  hat: 'None',
 }

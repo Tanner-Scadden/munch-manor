@@ -20,6 +20,7 @@ export const SEAT_LOOKS: Array.NonEmptyReadonlyArray<Appearance> = [
     print: 'Plain',
     beard: false,
     glasses: false,
+    hat: 'None',
   },
   {
     body: 'Slim',
@@ -31,6 +32,7 @@ export const SEAT_LOOKS: Array.NonEmptyReadonlyArray<Appearance> = [
     print: 'Plain',
     beard: false,
     glasses: true,
+    hat: 'None',
   },
   {
     body: 'Broad',
@@ -42,6 +44,7 @@ export const SEAT_LOOKS: Array.NonEmptyReadonlyArray<Appearance> = [
     print: 'Plain',
     beard: true,
     glasses: false,
+    hat: 'None',
   },
   {
     body: 'Slim',
@@ -53,6 +56,7 @@ export const SEAT_LOOKS: Array.NonEmptyReadonlyArray<Appearance> = [
     print: 'Stripes',
     beard: false,
     glasses: false,
+    hat: 'None',
   },
 ]
 

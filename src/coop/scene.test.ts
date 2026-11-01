@@ -284,6 +284,7 @@ describe('the lobby', () => {
       print: 'Stripes',
       beard: true,
       glasses: true,
+      hat: 'None',
     }
     scene(
       { update, view },

@@ -56,10 +56,12 @@ import {
   Calling,
   CursorSetting,
   Difficulty,
+  Hat,
   HomeScreenTip,
   MusicSetting,
   PlayerName,
   RotationSetting,
+  SavedBoughtHats,
   SavedRank,
   ShakeSetting,
   ShareStatsSetting,
@@ -136,6 +138,7 @@ export type CharacterPicker = typeof CharacterPicker.Type
 // Stats, is one more literal here and one more entry in src/profile.ts.
 export const ProfileTab = Schema.Literals([
   'Look',
+  'Closet',
   'Name',
   'Account',
   'Settings',
@@ -146,6 +149,24 @@ export type ProfileTab = typeof ProfileTab.Type
 // part, a slot-machine spin for a dice roll, or nothing.
 export const ProfileFx = Schema.Literals(['Still', 'Poof', 'Spin'])
 export type ProfileFx = typeof ProfileFx.Type
+
+// NOTE: the last thing a closet card did, for the card to play: a hat bought
+// (a poof), put on (a hop), or wanted with too few Bones (the price shakes
+// red). The count moves on every time, and the view reads only its parity,
+// so the same cue twice in a row still replays.
+export const ClosetCueKind = Schema.Literals([
+  'Still',
+  'Bought',
+  'Worn',
+  'Short',
+])
+export type ClosetCueKind = typeof ClosetCueKind.Type
+
+const ClosetCue = Schema.Struct({
+  hat: Hat,
+  kind: ClosetCueKind,
+  count: Schema.Number,
+})
 
 // NOTE: the Profile dialog: the open tab, the name as it is being typed,
 // and the last effect. The view reads fxCount only for its parity, so the
@@ -173,6 +194,7 @@ const ProfilePanel = Schema.Struct({
   nameDraft: Schema.String,
   fx: ProfileFx,
   fxCount: Schema.Number,
+  closetCue: ClosetCue,
 })
 type ProfilePanel = typeof ProfilePanel.Type
 
@@ -281,6 +303,9 @@ export const Model = Schema.Struct({
   // NOTE: the calling picked for the next run (src/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
+  // NOTE: the sold hats bought with Bones (src/closet.ts). A gift hat is
+  // owned by rank and is never here.
+  boughtHats: SavedBoughtHats,
   // NOTE: the room's difficulty while an online co-op run is drawn, kept
   // with the run so its summary has it after the room is gone (a LEAVE).
   maybeRoomDifficulty: Schema.Option(Difficulty),
@@ -314,6 +339,7 @@ const closedProfile: ProfilePanel = {
   nameDraft: '',
   fx: 'Still',
   fxCount: 0,
+  closetCue: { hat: 'None', kind: 'Still', count: 0 },
 }
 
 const closedCharacterPicker: CharacterPicker = {
@@ -472,6 +498,7 @@ export const initialModel: Model = {
   maybeRankGain: Option.none(),
   rank: noRank,
   calling: 'You',
+  boughtHats: [],
   maybeRoomDifficulty: Option.none(),
   maybeCrewRunKey: Option.none(),
   loading: Loading.Loaded(),

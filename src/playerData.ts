@@ -120,9 +120,70 @@ export type Outfit = typeof Outfit.Type
 export const Print = Schema.Literals(['Plain', 'Stripes', 'Rainbow'])
 export type Print = typeof Print.Type
 
-// NOTE: plain data on purpose: the player scope stores it whole, through
-// the ChangedAppearance mutation in src/playerScope.ts.
-export const Appearance = Schema.Struct({
+// NOTE: hats (GAME_DESIGN.md, "Rank and Bones"): the closet's stock. A gift
+// hat is free once the player's rank reaches its rank; a sold hat costs
+// Bones, once. Each list only grows at its end: the look code carries the
+// hat by its place in `Hat`. The catalog lives here, with the Schemas, so
+// the player scope can read a price when it applies a purchase.
+export const GiftHat = Schema.Literals([
+  'PartyHat',
+  'BucketHat',
+  'PomBeanie',
+  'PropellerCap',
+  'CowboyHat',
+  'HornedHelmet',
+  'TopHat',
+  'PirateHat',
+  'WitchHat',
+  'TrafficCone',
+])
+export type GiftHat = typeof GiftHat.Type
+
+export const SoldHat = Schema.Literals([
+  'Colander',
+  'Fez',
+  'BunnyEars',
+  'Plunger',
+  'Lampshade',
+  'PumpkinHead',
+])
+export type SoldHat = typeof SoldHat.Type
+
+export const Hat = Schema.Literals([
+  'None',
+  ...GiftHat.literals,
+  ...SoldHat.literals,
+])
+export type Hat = typeof Hat.Type
+
+// NOTE: the rank a gift hat is free at. They sit between the callings'
+// ranks (3, 6, 10, and 15).
+export const HAT_GIFT_RANKS: Readonly<Record<GiftHat, number>> = {
+  PartyHat: 2,
+  BucketHat: 4,
+  PomBeanie: 5,
+  PropellerCap: 7,
+  CowboyHat: 8,
+  HornedHelmet: 9,
+  TopHat: 11,
+  PirateHat: 12,
+  WitchHat: 13,
+  TrafficCone: 14,
+}
+
+export const HAT_PRICES: Readonly<Record<SoldHat, number>> = {
+  Colander: 40,
+  Fez: 50,
+  BunnyEars: 50,
+  Plunger: 60,
+  Lampshade: 70,
+  PumpkinHead: 80,
+}
+
+// NOTE: the look before hats (save versions 11 to 14, ChangedAppearance
+// version 3, six word co-op codes with four letters). It reads as the same
+// look bare headed.
+export const PreHatAppearance = Schema.Struct({
   body: Body,
   hairStyle: HairStyle,
   hairColor: HairColor,
@@ -132,6 +193,14 @@ export const Appearance = Schema.Struct({
   print: Print,
   beard: Schema.Boolean,
   glasses: Schema.Boolean,
+})
+export type PreHatAppearance = typeof PreHatAppearance.Type
+
+// NOTE: plain data on purpose: the player scope stores it whole, through
+// the ChangedAppearance mutation in src/playerScope.ts.
+export const Appearance = Schema.Struct({
+  ...PreHatAppearance.fields,
+  hat: Hat,
 })
 export type Appearance = typeof Appearance.Type
 
@@ -189,6 +258,7 @@ const appearanceOfLegacy = (look: LegacyAppearance): Appearance => ({
   print: 'Plain',
   beard: false,
   glasses: false,
+  hat: 'None',
 })
 
 const legacyOfAppearance = (look: Appearance): LegacyAppearance => ({
@@ -394,6 +464,7 @@ const appearanceOfManyParts = (look: ManyPartAppearance): Appearance => ({
     look.facialHair === 'Goatee' ||
     look.facialHair === 'Mustache',
   glasses: look.extra === 'Glasses' || look.extra === 'Shades',
+  hat: 'None',
 })
 
 const manyPartsOfAppearance = (look: Appearance): ManyPartAppearance => ({
@@ -411,6 +482,28 @@ const manyPartsOfAppearance = (look: Appearance): ManyPartAppearance => ({
 
 // NOTE: the encodings only let the older shapes sit in a union: a union
 // encodes through its first member that fits, which is always Appearance.
+const preHatOfAppearance = (look: Appearance): PreHatAppearance => ({
+  body: look.body,
+  hairStyle: look.hairStyle,
+  hairColor: look.hairColor,
+  skinTone: look.skinTone,
+  shirtColor: look.shirtColor,
+  outfit: look.outfit,
+  print: look.print,
+  beard: look.beard,
+  glasses: look.glasses,
+})
+
+const PreHatToAppearance = PreHatAppearance.pipe(
+  Schema.decodeTo(Appearance, {
+    decode: SchemaGetter.transform((look: PreHatAppearance): Appearance => ({
+      ...look,
+      hat: 'None',
+    })),
+    encode: SchemaGetter.transform(preHatOfAppearance),
+  }),
+)
+
 const LegacyToAppearance = LegacyAppearance.pipe(
   Schema.decodeTo(Appearance, {
     decode: SchemaGetter.transform(appearanceOfLegacy),
@@ -430,6 +523,7 @@ const ManyPartsToAppearance = ManyPartAppearance.pipe(
 // shape until the look next changes; writing always gives the current one.
 export const StoredAppearance = Schema.Union([
   Appearance,
+  PreHatToAppearance,
   ManyPartsToAppearance,
   LegacyToAppearance,
 ])
@@ -440,10 +534,13 @@ export const StoredAppearance = Schema.Union([
 // LookInput): the first five parts as words, then one word with a letter
 // per newer part, the letter of its place in its list (A for the first;
 // for beard and glasses, A without and B with), joined by dots, such as
-// `Slim.Mohawk.Pink.Tan.Teal.CCBA`. That keeps it inside the lobby's eight
-// words and 64 characters. Older codes, five words from the first look or
-// six with five letters from the many-part look, read as their closest
-// current look. Anything else is none.
+// `Slim.Mohawk.Pink.Tan.Teal.CCBA`. A hat adds one more word, the letter of
+// its place in `Hat`, and only when there is one, so a bare headed look has
+// the code it always had and a code without the word reads as no hat. That
+// keeps it inside the lobby's eight words and 64 characters. Older codes,
+// five words from the first look or six with five letters from the
+// many-part look, read as their closest current look. Anything else is
+// none.
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 const letterOf = (options: ReadonlyArray<string>, value: string): string =>
@@ -453,7 +550,7 @@ const partOfLetter = (
   options: ReadonlyArray<string>,
   letter: string,
 ): string | undefined => {
-  const index = LETTERS.indexOf(letter)
+  const index = letter.length === 1 ? LETTERS.indexOf(letter) : -1
   return index < 0 ? undefined : options[index]
 }
 
@@ -469,10 +566,14 @@ export const lookCodeOf = (look: Appearance): string => {
     look.beard ? FLAG[1] : FLAG[0],
     look.glasses ? FLAG[1] : FLAG[0],
   ].join('')
-  return `${look.body}.${look.hairStyle}.${look.hairColor}.${look.skinTone}.${look.shirtColor}.${letters}`
+  const code = `${look.body}.${look.hairStyle}.${look.hairColor}.${look.skinTone}.${look.shirtColor}.${letters}`
+  return look.hat === 'None'
+    ? code
+    : `${code}.${letterOf(Hat.literals, look.hat)}`
 }
 
 const decodeAppearance = Schema.decodeUnknownOption(Appearance)
+const decodeHat = Schema.decodeUnknownOption(Hat)
 const decodeManyParts = Schema.decodeUnknownOption(ManyPartAppearance)
 const decodeLegacyAppearance = Schema.decodeUnknownOption(LegacyAppearance)
 
@@ -484,8 +585,9 @@ const MANY_PART_LETTERS: ReadonlyArray<ReadonlyArray<string>> = [
   V10_EXTRAS,
 ]
 
-export const lookOfCode = (code: string): Option.Option<Appearance> => {
-  const words = code.split('.')
+const lookWithoutHatOfCode = (
+  words: ReadonlyArray<string>,
+): Option.Option<Appearance> => {
   const firstFive = {
     body: words[0],
     hairStyle: words[1],
@@ -493,13 +595,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
     skinTone: words[3],
     shirtColor: words[4],
   }
-  if (words.length === 5) {
-    return Option.map(decodeLegacyAppearance(firstFive), appearanceOfLegacy)
-  }
   const letters = (words[5] ?? '').split('')
-  if (words.length !== 6) {
-    return Option.none()
-  }
   if (letters.length === MANY_PART_LETTERS.length) {
     const partAt = (index: number) =>
       partOfLetter(MANY_PART_LETTERS[index] ?? [], letters[index] ?? '')
@@ -522,13 +618,40 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
         print: partOfLetter(Print.literals, letters[1] ?? ''),
         beard: flagOfLetter(letters[2] ?? ''),
         glasses: flagOfLetter(letters[3] ?? ''),
+        hat: 'None',
       })
     : Option.none()
 }
 
+export const lookOfCode = (code: string): Option.Option<Appearance> => {
+  const words = code.split('.')
+  if (words.length === 5) {
+    return Option.map(
+      decodeLegacyAppearance({
+        body: words[0],
+        hairStyle: words[1],
+        hairColor: words[2],
+        skinTone: words[3],
+        shirtColor: words[4],
+      }),
+      appearanceOfLegacy,
+    )
+  }
+  if (words.length !== 6 && words.length !== 7) {
+    return Option.none()
+  }
+  const maybeHat =
+    words.length === 7
+      ? decodeHat(partOfLetter(Hat.literals, words[6] ?? ''))
+      : Option.some<Hat>('None')
+  return Option.flatMap(lookWithoutHatOfCode(words), look =>
+    Option.map(maybeHat, hat => ({ ...look, hat })),
+  )
+}
+
 // SAVED
 
-export const SAVE_VERSION = 14
+export const SAVE_VERSION = 15
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -655,6 +778,13 @@ export const SavedRank = Schema.Struct({
 })
 export type SavedRank = typeof SavedRank.Type
 
+// NOTE: version 15 added the closet: the sold hats the player has bought,
+// by hat. Bones spent live in SavedRank. The hats worn is `hat` on the look;
+// a gift hat is owned by rank and never stored here. Kept as a set, merged
+// as a union across linked devices.
+export const SavedBoughtHats = Schema.Array(Hat)
+export type SavedBoughtHats = typeof SavedBoughtHats.Type
+
 // NOTE: version 4 added the home menu: the newest What's New day seen, by
 // its date, and the Munchopedia entries opened, by kind id.
 export const SavedHome = Schema.Struct({
@@ -679,7 +809,8 @@ export type PlayerName = typeof PlayerName.Type
 // it syncs as its own last-write-wins change. Version 9 added the display
 // name, synced the same way. Version 10 is the many-part look, and version
 // 11 the simpler look the owner chose (LOOK above). Version 14 added the
-// calling picked for the next run, synced the same way.
+// calling picked for the next run, synced the same way. Version 15 added
+// the hat on the look and the hats bought.
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,
@@ -695,5 +826,6 @@ export const PlayerSave = Schema.Struct({
   records: SavedRunRecords,
   rank: SavedRank,
   calling: Calling,
+  boughtHats: SavedBoughtHats,
 })
 export type PlayerSave = typeof PlayerSave.Type
