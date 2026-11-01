@@ -8,6 +8,7 @@ import { maybeRoomOf } from './coop/roomState'
 import type { Drawable } from './depth'
 import { rect, ringPixels } from './drawing'
 import { hatRiseOf } from './hatArt'
+import { barWidthOf, healthBarShapes } from './healthBarView'
 import type { Model } from './model'
 import {
   COOP_RULES,
@@ -166,9 +167,7 @@ export const seatColorOf = (slot: PlayerSlot): string =>
   )
 
 const MARK_LIFT_PX = 15
-const BAR_WIDTH = 12
 const BAR_BACK = '#1a0f14'
-const BLEED_COLOR = '#ff3b3b'
 const REVIVE_COLOR = '#8cff5a'
 
 const markShapes = (slot: PlayerSlot, x: number, y: number, rise: number) => {
@@ -196,29 +195,14 @@ const markShapes = (slot: PlayerSlot, x: number, y: number, rise: number) => {
 // draining red as they bleed out.
 const BLEED_BAR_LIFT_PX = 7
 
-const bleedBarShapes = (x: number, y: number, share: number) => {
-  const left = Math.round(x - BAR_WIDTH / 2)
-  const top = Math.round(y) - BLEED_BAR_LIFT_PX
-  return [
-    Canvas.Rect({
-      x: left - 1,
-      y: top - 1,
-      width: BAR_WIDTH + 2,
-      height: 3,
-      fill: BAR_BACK,
-    }),
-    Canvas.Rect({
-      x: left,
-      y: top,
-      width: Math.max(
-        1,
-        Math.round(BAR_WIDTH * Math.min(1, Math.max(0, share))),
-      ),
-      height: 1,
-      fill: BLEED_COLOR,
-    }),
-  ]
-}
+const bleedBarShapes = (x: number, y: number, share: number) =>
+  healthBarShapes(
+    'Small',
+    'Ally',
+    Math.round(x - barWidthOf('Small') / 2),
+    Math.round(y) - BLEED_BAR_LIFT_PX,
+    share,
+  )
 
 // THE REVIVE ICON
 

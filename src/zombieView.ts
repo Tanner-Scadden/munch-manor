@@ -23,7 +23,6 @@ import {
 import { surfacingProgress } from './crawler'
 import {
   FULL_TURN,
-  HEALTH_BAR_BACK_COLOR,
   HEALTH_BAR_GAP,
   QUARTER_TURN,
   facingToward,
@@ -35,6 +34,7 @@ import {
   tellAlpha,
 } from './drawing'
 import { clamp } from './geometry'
+import { barWidthOf, healthBarShapes } from './healthBarView'
 import {
   Boss,
   BossMove,
@@ -214,9 +214,7 @@ const fuseShapes = (
   ]
 }
 
-const HEALTH_BAR_WIDTH = 12
 const FUSE_CLEARANCE_PX = 5
-const HEALTH_BAR_COLOR = '#ff3b3f'
 
 export const zombieHealthBarShapes = (
   zombie: Zombie,
@@ -235,26 +233,13 @@ export const zombieHealthBarShapes = (
     GAITS[zombie.kind].fuseTellPx > 0 ? FUSE_CLEARANCE_PX : 0
   const top =
     foot.y - ZOMBIE_SPRITES[zombie.kind].height - HEALTH_BAR_GAP - fuseClearance
-  const left = foot.x - HEALTH_BAR_WIDTH / 2
-  return [
-    Canvas.Rect({
-      x: left - 1,
-      y: top - 1,
-      width: HEALTH_BAR_WIDTH + 2,
-      height: 3,
-      fill: HEALTH_BAR_BACK_COLOR,
-    }),
-    Canvas.Rect({
-      x: left,
-      y: top,
-      width: Math.max(
-        1,
-        Math.round((HEALTH_BAR_WIDTH * zombie.hp) / zombie.maxHp),
-      ),
-      height: 1,
-      fill: HEALTH_BAR_COLOR,
-    }),
-  ]
+  return healthBarShapes(
+    'Small',
+    'Zombie',
+    foot.x - barWidthOf('Small') / 2,
+    top - 1,
+    zombie.hp / zombie.maxHp,
+  )
 }
 
 // BOSS POSES
