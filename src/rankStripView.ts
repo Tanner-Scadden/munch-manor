@@ -2,6 +2,8 @@ import { Array, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { playerSprites } from './appearance'
+import { PART_OF_KIND, chooseLook } from './character'
+import { PLAYER_FOOT_OFFSET } from './constants'
 import { sparkShapes } from './crewBoardView'
 import { rect } from './drawing'
 import {
@@ -21,10 +23,12 @@ import {
 } from './endBeat'
 import { GLYPH_HEIGHT, textShapes, textWidth } from './font'
 import type { Model } from './model'
-import { CALLING_NAMES, HAT_NAMES } from './names'
+import { CALLING_NAMES, giftName } from './names'
+import { GUN_HOLD_PX } from './playerView'
 import { badgeTierOf, rankProgressOf, shownPointsOf } from './rank'
 import { BONE, BONE_SIZE, badgeSprite } from './rankArt'
 import { frameAt, group, placeAt } from './sprite'
+import { gunSprite } from './sprites/guns'
 
 // The rank strip on the end card, in the landscape frame: the badge, the
 // rank number, a bar that fills from the points before the run to the points
@@ -87,11 +91,23 @@ const unlockFigureOf = (
         .Right,
       name: CALLING_NAMES[calling],
     }),
-    Hat: ({ hat }) => ({
-      figure: frameAt(playerSprites({ ...model.appearance, hat }).idle, 0)
-        .Normal.Right,
-      name: HAT_NAMES[hat],
-    }),
+    Gift: ({ kind, name }) => {
+      const look = chooseLook(model.appearance, PART_OF_KIND[kind], name)
+      return {
+        figure: [
+          ...frameAt(playerSprites(look).idle, 0).Normal.Right,
+          ...(kind === 'Skin'
+            ? [
+                group({
+                  translate: { x: GUN_HOLD_PX, y: -PLAYER_FOOT_OFFSET },
+                  shapes: gunSprite('Pistol', 0, 0, look.gunSkin),
+                }),
+              ]
+            : []),
+        ],
+        name: giftName(kind, name),
+      }
+    },
   })
 
 // NOTE: each card a rank up opened flips over above the strip in turn: the

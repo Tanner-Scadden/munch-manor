@@ -9,12 +9,15 @@ import { isPickable } from './callingPick'
 import type { ApplicationViewBuilder } from './composition'
 import { portraitOf } from './coop/icons'
 import { PADLOCK_ICON } from './icons'
+import { newBadgeView, newPipView } from './lookGearView'
 import { iconView } from './menuParts'
 import { Message } from './message'
 import type { Model } from './model'
 import { CALLING_NAMES, CALLING_NOTES } from './names'
 import type { Calling } from './playerData'
+import { rankOf, totalPointsOf } from './rank'
 import { rankMarkView } from './rankBadgeView'
+import { callingUnlockId, hasUnseenCalling } from './unlocks'
 
 // The calling pill by the difficulty on the home menu, and the picker it
 // opens: five cards, each the player's own look wearing the calling's prop
@@ -30,20 +33,29 @@ export const callingButtonView = (
   attributes: ButtonAttributes,
   keyBadge: ReadonlyArray<Html>,
   h: ApplicationViewBuilder,
-): Html =>
-  h.button(
+): Html => {
+  const isNew = hasUnseenCalling(
+    rankOf(totalPointsOf(model.rank)),
+    model.seenUnlocks,
+  )
+  return h.button(
     [
       ...attributes,
       h.Class('home-pick home-calling'),
       h.DataAttribute('calling', model.calling),
       h.AriaLabel(
-        `Calling: ${CALLING_NAMES[model.calling]}. ${CALLING_NOTES[model.calling]}. Change it`,
+        `Calling: ${CALLING_NAMES[model.calling]}. ${CALLING_NOTES[model.calling]}. Change it${isNew ? '. Something new' : ''}`,
       ),
       h.AriaHasPopup('dialog'),
       h.OnClick(Message.ClickedCallingBadge(), { propagation: 'Stop' }),
     ],
-    [iconView('home-calling-icon', PROP_ICONS[model.calling], h), ...keyBadge],
+    [
+      iconView('home-calling-icon', PROP_ICONS[model.calling], h),
+      ...keyBadge,
+      ...(isNew ? [newPipView(h)] : []),
+    ],
   )
+}
 
 export const callingPanelText = (): Readonly<{
   title: string
@@ -76,6 +88,7 @@ const cardView = (
   const isOpen = isPickable(model, calling)
   const isChosen = calling === model.calling
   const need = UNLOCK_RANKS[calling]
+  const isNew = Array.contains(model.freshUnlocks, callingUnlockId(calling))
   return h.button(
     [
       ...(isChosen ? renderInfo.initialFocus : []),
@@ -84,6 +97,7 @@ const cardView = (
       h.DataAttribute('calling', calling),
       h.DataAttribute('lock', isOpen ? 'Open' : 'Locked'),
       ...(isChosen ? [h.DataAttribute('chosen', 'Chosen')] : []),
+      ...(isNew ? [h.DataAttribute('new', 'true')] : []),
       h.AriaLabel(
         isOpen
           ? `${CALLING_NAMES[calling]}: ${CALLING_NOTES[calling]}`
@@ -117,6 +131,7 @@ const cardView = (
               rankMarkView(need, h),
             ],
           ),
+      ...(isNew ? [newBadgeView(h)] : []),
     ],
   )
 }

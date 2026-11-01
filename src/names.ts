@@ -2,7 +2,7 @@ import { Array, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
-import type { Calling, Hat } from './playerData'
+import { type Calling, type CosmeticKind, Hat } from './playerData'
 import type {
   FixedShopItemId,
   FridgePrize,
@@ -184,6 +184,27 @@ export const HAT_NAMES: Readonly<Record<Hat, string>> = {
   Lampshade: 'Lampshade',
   PumpkinHead: 'Pumpkin Head',
 }
+
+// NOTE: an earned look as a card on the end screen names it: a hat by its
+// name, a shirt color and a gun skin with what they dress, and a print
+// alone.
+export const hatNameOf = (name: string): string =>
+  Option.getOrElse(
+    Option.map(
+      Array.findFirst(Hat.literals, hat => hat === name),
+      hat => HAT_NAMES[hat],
+    ),
+    () => name,
+  )
+
+export const giftName = (kind: CosmeticKind, name: string): string =>
+  kind === 'Hat'
+    ? hatNameOf(name)
+    : kind === 'Shirt'
+      ? `${name} Shirt`
+      : kind === 'Skin'
+        ? `${name} Gun`
+        : name
 
 export const CALLING_NOTES: Readonly<Record<Calling, string>> = {
   You: 'No quirk',

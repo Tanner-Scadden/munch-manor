@@ -44,6 +44,7 @@ import {
   type Vector,
   type WeaponKind,
 } from './model'
+import type { GunSkin } from './playerData'
 import {
   type Facing,
   type Sprite,
@@ -278,7 +279,13 @@ export const playerShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
       y: Math.round(bodyY + player.facing.y * GUN_HOLD_PX),
     },
     opacity: playerOpacity(player),
-    shapes: heldSprite(player, weapon, tier, angle + swingTurn(weapon, recoil)),
+    shapes: heldSprite(
+      player,
+      weapon,
+      tier,
+      angle + swingTurn(weapon, recoil),
+      model.appearance.gunSkin,
+    ),
   })
   return player.facing.y < AIMING_UP ? [gun, body] : [body, gun]
 }
@@ -339,11 +346,12 @@ const heldSprite = (
   weapon: WeaponKind,
   tier: number,
   angle: number,
+  skin: GunSkin,
 ): Sprite => {
   if (!isWieldingKnife(player)) {
-    return gunSprite(weapon, tier, angle)
+    return gunSprite(weapon, tier, angle, skin)
   }
-  return Option.isSome(maybeSlashShare(player)) ? [] : knifeSprite(angle)
+  return Option.isSome(maybeSlashShare(player)) ? [] : knifeSprite(angle, skin)
 }
 
 // THE KNIFE

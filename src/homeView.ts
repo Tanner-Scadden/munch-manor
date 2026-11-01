@@ -82,9 +82,11 @@ import {
 } from './munchopedia'
 import { MODE_NAMES } from './names'
 import { helpLabel, howToPlayView } from './pauseHelp'
+import { rankOf, totalPointsOf } from './rank'
 import { rankChipView } from './rankBadgeView'
 import { isPortrait } from './screen'
 import { durationLabel } from './stats'
+import { hasUnseenLook } from './unlocks'
 import { hasFinishedTutorial } from './update/coop'
 import { updateGiftView } from './updateGift'
 import { whatsNewBodyView, whatsNewText } from './whatsNewView'
@@ -337,7 +339,9 @@ const CARD_MESSAGES: Readonly<Record<KeyedHandCard, Message>> = {
 }
 
 const hasNews = (model: Model, card: HandCard): boolean => {
-  if (card === 'WhatsNew') {
+  if (card === 'Character') {
+    return hasUnseenLook(rankOf(totalPointsOf(model.rank)), model.seenUnlocks)
+  } else if (card === 'WhatsNew') {
     return isNewsUnseen(model)
   } else if (card === 'Munchopedia') {
     return hasUnopenedEntry(model)
