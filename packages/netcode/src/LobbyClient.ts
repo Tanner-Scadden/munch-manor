@@ -39,6 +39,7 @@ import { httpIdentityApi } from '@munch/sync-engine/browser'
 
 import {
   CreateRequest,
+  DEFAULT_CALLING,
   JoinRequest,
   Lobby,
   MAX_LOOK_INPUT,
@@ -47,6 +48,7 @@ import {
   RoomRefusal,
   RoomScope,
   RoomTicket,
+  cleanCalling,
   cleanRank,
   lobbyOfSnapshot,
   roomScopeId,
@@ -133,6 +135,7 @@ export const createRoom = (
   name: string,
   look = '',
   rank = 1,
+  calling = DEFAULT_CALLING,
 ): Effect.Effect<RoomTicket, RoomRequestFailed> =>
   roomCall(
     new URL(ROOM_PATHS.create, origin).toString(),
@@ -142,6 +145,7 @@ export const createRoom = (
       name: name.slice(0, MAX_NAME_INPUT),
       look: look.slice(0, MAX_LOOK_INPUT),
       rank: cleanRank(rank),
+      calling: cleanCalling(calling),
     }),
   )
 
@@ -152,6 +156,7 @@ export const joinRoom = (
   name: string,
   look = '',
   rank = 1,
+  calling = DEFAULT_CALLING,
 ): Effect.Effect<RoomTicket, RoomRequestFailed> =>
   roomCall(
     new URL(ROOM_PATHS.join, origin).toString(),
@@ -162,6 +167,7 @@ export const joinRoom = (
       name: name.slice(0, MAX_NAME_INPUT),
       look: look.slice(0, MAX_LOOK_INPUT),
       rank: cleanRank(rank),
+      calling: cleanCalling(calling),
     }),
   )
 
@@ -379,6 +385,7 @@ export interface QuickPlayOptions {
   readonly name: string
   readonly look?: string
   readonly rank?: number
+  readonly calling?: string
   readonly token: Effect.Effect<string, TokenUnavailable>
 }
 
@@ -426,6 +433,7 @@ export const startQuickPlay = (
           name: options.name.slice(0, MAX_NAME_INPUT),
           look: (options.look ?? '').slice(0, MAX_LOOK_INPUT),
           rank: cleanRank(options.rank ?? 1),
+          calling: cleanCalling(options.calling ?? DEFAULT_CALLING),
         }),
       )
       yield* Stream.runForEach(socket.messages, data =>

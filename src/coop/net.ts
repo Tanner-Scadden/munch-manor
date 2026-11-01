@@ -33,6 +33,7 @@ import {
 import type { Mutation } from '@munch/sync-engine'
 
 import { API_ORIGIN } from '../apiOrigin'
+import type { Calling } from '../playerData'
 import { PlayerStore } from '../store'
 import {
   type CoopProblem,
@@ -58,11 +59,13 @@ export class CoopNet extends Context.Service<
       name: string,
       look: string,
       rank: number,
+      calling: Calling,
     ) => Effect.Effect<RoomTicket, CoopProblem>
     readonly quickPlay: (
       name: string,
       look: string,
       rank: number,
+      calling: Calling,
     ) => Stream.Stream<QuickPlayEvent>
     readonly answerOffer: (accept: boolean) => Effect.Effect<void>
     readonly cancelQuickPlay: Effect.Effect<void>
@@ -225,21 +228,22 @@ const liveOf = (maybeAccess: Option.Option<RoomAccess>) =>
       Effect.mapError(access.token, (): CoopProblem => 'Offline')
 
     return CoopNet.of({
-      requestRoom: (request, name, look, rank) =>
+      requestRoom: (request, name, look, rank, calling) =>
         withAccess(access =>
           Effect.flatMap(tokenOf(access), token =>
             pipe(
               RoomRequest.match(request, {
-                Create: () => createRoom(API_ORIGIN, token, name, look, rank),
+                Create: () =>
+                  createRoom(API_ORIGIN, token, name, look, rank, calling),
                 Join: ({ code }) =>
-                  joinRoom(API_ORIGIN, token, code, name, look, rank),
+                  joinRoom(API_ORIGIN, token, code, name, look, rank, calling),
               }),
               Effect.mapError(error => problemOfRefusal(error.refusal)),
             ),
           ),
         ),
 
-      quickPlay: (name, look, rank) =>
+      quickPlay: (name, look, rank, calling) =>
         streamWithAccess(
           access =>
             Stream.unwrap(
@@ -249,6 +253,7 @@ const liveOf = (maybeAccess: Option.Option<RoomAccess>) =>
                   name,
                   look,
                   rank,
+                  calling,
                   token: access.token,
                 })
                 yield* Ref.set(handles.quick, Option.some(quick))
@@ -341,10 +346,10 @@ export const layer: Layer.Layer<CoopNet, never, PlayerStore> = Layer.effect(
       run: (net: CoopNet['Service']) => Stream.Stream<A>,
     ): Stream.Stream<A> => Stream.unwrap(Effect.map(live, run))
     return CoopNet.of({
-      requestRoom: (request, name, look, rank) =>
-        use(net => net.requestRoom(request, name, look, rank)),
-      quickPlay: (name, look, rank) =>
-        useStream(net => net.quickPlay(name, look, rank)),
+      requestRoom: (request, name, look, rank, calling) =>
+        use(net => net.requestRoom(request, name, look, rank, calling)),
+      quickPlay: (name, look, rank, calling) =>
+        useStream(net => net.quickPlay(name, look, rank, calling)),
       answerOffer: accept => use(net => net.answerOffer(accept)),
       cancelQuickPlay: use(net => net.cancelQuickPlay),
       lobby: code => useStream(net => net.lobby(code)),

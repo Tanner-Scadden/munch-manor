@@ -1,6 +1,7 @@
 import { Array, Option, Order, Schema, pipe } from 'effect'
 
 import {
+  CallingInput,
   LookInput,
   MAX_PLAYERS,
   NameInput,
@@ -45,6 +46,7 @@ export const QuickClient = Schema.TaggedUnion({
     name: NameInput,
     look: Schema.optionalKey(LookInput),
     rank: Schema.optionalKey(RankInput),
+    calling: Schema.optionalKey(CallingInput),
   },
   Answer: { accept: Schema.Boolean },
   Cancel: {},
@@ -81,6 +83,7 @@ export interface Queued {
   readonly name: string
   readonly look?: string
   readonly rank?: number
+  readonly calling?: string
   // NOTE: the continent the player connected from, as Cloudflare names it
   // (NA, EU, AS, ...); '' when unknown.
   readonly region?: string
@@ -115,6 +118,7 @@ const QueuedSchema = Schema.Struct({
   name: Schema.String,
   look: Schema.optionalKey(Schema.String),
   rank: Schema.optionalKey(Schema.Number),
+  calling: Schema.optionalKey(Schema.String),
   region: Schema.optionalKey(Schema.String),
   queuedMs: Schema.Number,
 })

@@ -10,10 +10,12 @@ import type {
   WebSocket as WorkersWebSocket,
 } from '@cloudflare/workers-types'
 import {
+  DEFAULT_CALLING,
   Matchmaking,
   ROOM_PATHS,
   RoomRefusal,
   type RoomTicket,
+  cleanCalling,
   cleanRank,
 } from '@munch/netcode'
 import { PING_JSON, PONG_JSON, verifyToken } from '@munch/sync-engine'
@@ -52,6 +54,7 @@ const Attachment = Schema.TaggedUnion({
     name: Schema.String,
     look: Schema.optionalKey(Schema.String),
     rank: Schema.optionalKey(Schema.Number),
+    calling: Schema.optionalKey(Schema.String),
     region: Schema.optionalKey(Schema.String),
   },
 })
@@ -112,6 +115,7 @@ export class Matchmaker {
           first.name,
           first.look ?? '',
           first.rank ?? 1,
+          first.calling ?? DEFAULT_CALLING,
           'Public',
           first.region ?? '',
         ),
@@ -129,6 +133,7 @@ export class Matchmaker {
             player.name,
             player.look ?? '',
             player.rank ?? 1,
+            player.calling ?? DEFAULT_CALLING,
           ),
           called => ({
             socket: player.socket,
@@ -194,6 +199,7 @@ export class Matchmaker {
                     player.name,
                     player.look ?? '',
                     player.rank ?? 1,
+                    player.calling ?? DEFAULT_CALLING,
                   ).pipe(
                     Effect.map(ticketOf),
                     Effect.catchTag('SyncCallFailed', () =>
@@ -328,6 +334,7 @@ export class Matchmaker {
           name: said.name,
           look: said.look ?? '',
           rank: cleanRank(said.rank ?? 1),
+          calling: cleanCalling(said.calling ?? DEFAULT_CALLING),
           region: attachment.region ?? '',
         }),
       )
@@ -337,6 +344,7 @@ export class Matchmaker {
         name: said.name,
         look: said.look ?? '',
         rank: cleanRank(said.rank ?? 1),
+        calling: cleanCalling(said.calling ?? DEFAULT_CALLING),
         region: attachment.region ?? '',
         queuedMs: nowMs,
       }

@@ -7,8 +7,10 @@ import * as Schema from 'effect/Schema'
 import type * as SqlClient from 'effect/sql/SqlClient'
 
 import {
+  CallingInput,
   type ClientFrame,
   CreatedRoom,
+  DEFAULT_CALLING,
   DEFAULT_MODE,
   JoinedRoom,
   KickedPlayer,
@@ -41,7 +43,7 @@ import {
   verifyToken,
 } from '@munch/sync-engine'
 
-import { lookCodeOf, lookOfCode } from '../../src/playerData.ts'
+import { callingOfCode, lookCodeOf, lookOfCode } from '../../src/playerData.ts'
 import {
   type ScopeHost,
   type ScopeHostFailed,
@@ -71,6 +73,7 @@ export interface RoomHost {
     name: string,
     look: string,
     rank: number,
+    calling: string,
     nightmare: boolean,
     code: string,
     visibility: RoomVisibility,
@@ -80,6 +83,7 @@ export interface RoomHost {
     name: string,
     look: string,
     rank: number,
+    calling: string,
     nightmare: boolean,
     everyone: ReadonlyArray<Socket>,
   ) => Effect.Effect<Result.Result<RoomTicket, RoomRefusal>>
@@ -154,6 +158,7 @@ export const makeRoomHost = (
       name: string,
       look: string,
       rank: number,
+      calling: string,
       nightmare: boolean,
       code: string,
       visibility: RoomVisibility,
@@ -172,6 +177,7 @@ export const makeRoomHost = (
               hostName: name.slice(0, MAX_NAME_INPUT),
               hostLook: lookOfRequest(look),
               hostRank: cleanRank(rank),
+              hostCalling: callingOfRequest(calling),
               hostNightmare: nightmare,
               mode: DEFAULT_MODE,
               visibility,
@@ -190,6 +196,7 @@ export const makeRoomHost = (
       name: string,
       look: string,
       rank: number,
+      calling: string,
       nightmare: boolean,
       everyone: ReadonlyArray<Socket>,
     ) =>
@@ -221,6 +228,7 @@ export const makeRoomHost = (
               name: name.slice(0, MAX_NAME_INPUT),
               look: lookOfRequest(look),
               rank: cleanRank(rank),
+              calling: callingOfRequest(calling),
               nightmare,
             },
             `joined-room-${head}-${playerId}`,
@@ -299,6 +307,16 @@ export const lookOfRequest = (look: string): string =>
   Option.match(lookOfCode(look), {
     onNone: () => '',
     onSome: lookCodeOf,
+  })
+
+// NOTE: a calling a player sent is kept only when it reads back as one of
+// the game's callings (src/playerData.ts); anything else seats them as YOU.
+// The Worker cannot check the player's rank reached it: like the rank, it
+// is for show and for the seat's gun and hearts, never for scoring.
+const callingOfRequest = (calling: string): string =>
+  Option.match(callingOfCode(calling), {
+    onNone: () => DEFAULT_CALLING,
+    onSome: known => known,
   })
 
 // REACTIONS
@@ -420,6 +438,7 @@ export const InternalCreate = Schema.fromJsonString(
     name: NameInput,
     look: Schema.optionalKey(LookInput),
     rank: Schema.optionalKey(RankInput),
+    calling: Schema.optionalKey(CallingInput),
     code: Schema.String,
     visibility: RoomVisibilitySchema,
   }),
@@ -430,6 +449,7 @@ export const InternalJoin = Schema.fromJsonString(
     name: NameInput,
     look: Schema.optionalKey(LookInput),
     rank: Schema.optionalKey(RankInput),
+    calling: Schema.optionalKey(CallingInput),
   }),
 )
 

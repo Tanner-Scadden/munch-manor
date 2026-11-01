@@ -4,6 +4,7 @@ import { Update } from 'foldkit'
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
 import { CoopBinding } from '../bindings'
+import { startingCallingOf } from '../callingPick'
 import { IS_COOP_RELEASED } from '../coop/release'
 import { readRoomLink } from '../coop/roomState'
 import * as Coop from '../coop/update'
@@ -123,6 +124,7 @@ export const openCoop = (maybeCode: Option.Option<string>) =>
             maybeCode,
             look: lookCodeOf(model.appearance),
             rank: rankOf(totalPointsOf(model.rank)),
+            calling: startingCallingOf(model),
           }),
         ])
       : unchanged,

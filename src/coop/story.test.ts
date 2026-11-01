@@ -156,6 +156,7 @@ describe('co-op hub', () => {
           name: '',
           look: '',
           rank: 1,
+          calling: 'You',
         }),
         Message.FailedRequestRoom({ problem: 'NoRoom' }),
       ),
@@ -179,6 +180,7 @@ describe('co-op hub', () => {
           name: '',
           look: '',
           rank: 1,
+          calling: 'You',
         }),
         Message.SucceededRequestRoom({ code: CODE, slot: 0 }),
       ),
@@ -842,6 +844,7 @@ describe('the network service', () => {
             name: 'Ana',
             look: 'Male.Curls.Black.Deep.Yellow',
             rank: 42,
+            calling: 'Handyman',
           }).effect,
           Layer.provide(RequestRoom.layer, fake.layer),
         )
@@ -853,6 +856,7 @@ describe('the network service', () => {
             name: 'Ana',
             look: 'Male.Curls.Black.Deep.Yellow',
             rank: 42,
+            calling: 'Handyman',
           },
         ])
       }),

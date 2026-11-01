@@ -48,6 +48,11 @@ export const Calling = Schema.Literals([
 ])
 export type Calling = typeof Calling.Type
 
+// NOTE: a calling as the co-op lobby carries it, as text: the calling it
+// names, or nothing when it names none of ours.
+export const callingOfCode = (code: string): Option.Option<Calling> =>
+  Schema.decodeUnknownOption(Calling)(code)
+
 export const Difficulty = Schema.Literals([
   'Easy',
   'Normal',

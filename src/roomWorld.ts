@@ -13,6 +13,7 @@ import type {
 } from '@munch/netcode'
 
 import { MANOR, startingLevel } from './arena'
+import { seatedAs } from './callingPlayer'
 import {
   FIRST_PREPARATION_MS,
   FIXED_STEP_MS,
@@ -37,6 +38,7 @@ import {
   withSeat,
 } from './party'
 import { flowFieldToward } from './pathing'
+import { type Calling, callingOfCode } from './playerData'
 import { predictLeadSeat } from './simulation'
 import { SeatAction, applySeatAction, stepWorld } from './stepWorld'
 import { TURRET_WEAPON } from './traps'
@@ -125,7 +127,13 @@ export type RoomWorld = Readonly<{
 // NOTE: your own part of the World, for prediction: your slot and player.
 export type OwnSeat = Readonly<{ slot: PlayerSlot; player: Player }>
 
-export type RoomSettings = Readonly<{ difficulty: Difficulty; mode: RunMode }>
+// NOTE: `callings` is what each seat brings, by slot (the lobby's members,
+// Lobby.ts); a slot with none plays YOU.
+export type RoomSettings = Readonly<{
+  difficulty: Difficulty
+  mode: RunMode
+  callings: ReadonlyArray<Readonly<{ slot: PlayerSlot; calling: Calling }>>
+}>
 
 // NOTE: what the lobby picked (packages/netcode, Lobby.ts) as the run's
 // settings. KeepGoing plays endless, carrying on a kept run when the room
@@ -133,12 +141,19 @@ export type RoomSettings = Readonly<{ difficulty: Difficulty; mode: RunMode }>
 export const roomSettingsOf = (
   mode: RoomMode,
   difficulty: RoomDifficulty,
+  members: ReadonlyArray<Readonly<{ slot: number; calling: string }>> = [],
 ): RoomSettings => ({
   difficulty,
   mode:
     mode === 'Endless' || mode === 'KeepGoing'
       ? RunMode.Endless()
       : RunMode.Campaign(),
+  callings: Array.filterMap(members, ({ slot, calling }) =>
+    Option.match(callingOfCode(calling), {
+      onNone: () => Result.failVoid,
+      onSome: known => Result.succeed({ slot, calling: known }),
+    }),
+  ),
 })
 
 // NOTE: the furthest back a shot is checked, 250 ms; the room caps each
@@ -375,6 +390,18 @@ const seatSlots = (world: World, slots: ReadonlyArray<PlayerSlot>): World => {
   })
 }
 
+// NOTE: each seat starts as its calling makes it, hearts and gun (the same
+// `seatedAs` single player's run reset uses); a slot with no calling plays YOU.
+const seatCallings = (
+  world: World,
+  callings: RoomSettings['callings'],
+): World =>
+  Array.reduce(callings, world, (current, { slot, calling }) =>
+    withSeat(current, slot, seatWorld =>
+      modifyFields(seatWorld, { player: player => seatedAs(player, calling) }),
+    ),
+  )
+
 export const startRoomWorld = (
   slots: ReadonlyArray<PlayerSlot>,
   seed: number,
@@ -382,7 +409,10 @@ export const startRoomWorld = (
 ): RoomWorld => ({
   tick: 0,
   world: beginPreparation(
-    seatSlots(freshWorld(seed, settings), slots),
+    seatCallings(
+      seatSlots(freshWorld(seed, settings), slots),
+      settings.callings,
+    ),
     1,
     FIRST_PREPARATION_MS,
   ),
@@ -732,6 +762,7 @@ const scoresOf = (world: World): ReadonlyArray<Score> =>
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   difficulty: 'Normal',
   mode: RunMode.Campaign(),
+  callings: [],
 }
 
 // NOTE: the room's World for one run: a fresh run with the lobby's

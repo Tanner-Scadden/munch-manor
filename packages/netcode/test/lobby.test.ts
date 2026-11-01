@@ -29,6 +29,7 @@ import {
   type Lobby,
   RecordedRoomResult,
   RoomScope,
+  cleanCalling,
   cleanRank,
   displayName,
   isOpenToQuickPlay,
@@ -103,6 +104,12 @@ const seat = (server: ScopeServer, playerId: string) =>
         name: `  ${playerId}\u0000  the   great one `,
         look: playerId === BO ? 'Female.Bun.Pink.Tan.Teal' : 'not a <look>',
         rank: playerId === BO ? 12 : playerId === CY ? 5000 : 3,
+        calling:
+          playerId === BO
+            ? 'LineCook'
+            : playerId === CY
+              ? 'not a <calling>'
+              : 'TrackStar',
         nightmare: playerId === CY,
       },
       `joined-room-${counter}`,
@@ -121,6 +128,7 @@ const createdBy = (hostNightmare: boolean) =>
         hostName: 'Ana',
         hostLook: 'Male.Crop.Brown.Light.Blue',
         hostRank: 40,
+        hostCalling: 'Handyman',
         hostNightmare,
         mode: 'Campaign',
         visibility: 'Private',
@@ -195,8 +203,29 @@ describe('the room scope', () => {
         expect(lobby.members.map(member => member.rank)).toEqual([
           40, 12, 999, 3,
         ])
+        // NOTE: a calling is text the scope keeps when it is one short
+        // word; the Worker checks it against the game's callings.
+        expect(lobby.members.map(member => member.calling)).toEqual([
+          'Handyman',
+          'LineCook',
+          'You',
+          'TrackStar',
+        ])
       }),
   )
+
+  it('cleanCalling keeps one short word and else reads as YOU', () => {
+    expect(
+      [
+        'Handyman',
+        'LineCook',
+        '',
+        'two words',
+        'Line.Cook',
+        'x'.repeat(25),
+      ].map(cleanCalling),
+    ).toEqual(['Handyman', 'LineCook', 'You', 'You', 'You', 'You'])
+  })
 
   it('cleanRank keeps a whole number from 1 to 999', () => {
     expect(
@@ -204,9 +233,10 @@ describe('the room scope', () => {
     ).toEqual([1, 1, 1, 7, 999, 999, 1, 1])
   })
 
-  // NOTE: a member row written before the rank column (a room already open
-  // when the migration ran) is seated as rank 1 by the column's default.
-  it.effect('a member row from before ranks reads as rank 1', () =>
+  // NOTE: a member row written before the rank and calling columns (a room
+  // already open when the migrations ran) is seated as rank 1 and YOU by the
+  // columns' defaults.
+  it.effect('a member row from before ranks reads as rank 1 and YOU', () =>
     Effect.gen(function* () {
       const sql = yield* openDatabase()
       const server = yield* Effect.provideService(
@@ -223,6 +253,7 @@ describe('the room scope', () => {
           hostName: 'Ana',
           hostLook: '',
           hostRank: 9,
+          hostCalling: 'LineCook',
           hostNightmare: false,
           mode: 'Campaign',
           visibility: 'Private',
@@ -233,6 +264,10 @@ describe('the room scope', () => {
         VALUES ('old', 'Old', 1, 0, 5)`
       const lobby = yield* lobbyOf(server)
       expect(lobby.members.map(member => member.rank)).toEqual([9, 1])
+      expect(lobby.members.map(member => member.calling)).toEqual([
+        'LineCook',
+        'You',
+      ])
     }),
   )
 
@@ -481,6 +516,7 @@ describe('the room scope', () => {
             hostName: 'Ana',
             hostLook: 'Male.Crop.Brown.Light.Blue',
             hostRank: 1,
+            hostCalling: 'You',
             hostNightmare: false,
             mode: 'Campaign',
             visibility: 'Public',
@@ -543,6 +579,7 @@ describe('the room scope', () => {
           hostName: 'Ana',
           hostLook: 'Male.Crop.Brown.Light.Blue',
           hostRank: 1,
+          hostCalling: 'You',
           hostNightmare: false,
           mode: 'Campaign',
           visibility: 'Private',

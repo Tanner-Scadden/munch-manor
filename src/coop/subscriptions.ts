@@ -1,5 +1,6 @@
 import { Clock, Effect, Option, Schema, Stream } from 'effect'
 
+import { Calling } from '../playerData'
 import { makeSubscriptions } from './definition'
 import { Message } from './message'
 import { type Model, Screen } from './model'
@@ -16,15 +17,23 @@ const MaybeJoiner = Schema.Option(
     name: Schema.String,
     look: Schema.String,
     rank: Schema.Number,
+    calling: Calling,
   }),
 )
 const MaybeCode = Schema.Option(Schema.String)
 
 const maybeQueueJoiner = (
   model: Model,
-): Option.Option<Readonly<{ name: string; look: string; rank: number }>> =>
+): Option.Option<
+  Readonly<{ name: string; look: string; rank: number; calling: Calling }>
+> =>
   Screen.isAnyOf(['Queue'])(model.screen)
-    ? Option.some({ name: model.name, look: model.look, rank: model.rank })
+    ? Option.some({
+        name: model.name,
+        look: model.look,
+        rank: model.rank,
+        calling: model.calling,
+      })
     : Option.none()
 
 const maybeRoomCode = (model: Model): Option.Option<string> =>
@@ -48,8 +57,8 @@ export const subscriptions = makeSubscriptions(entry => ({
       handler: function* () {
         const net = yield* CoopNet
         return ({ maybeJoiner }) =>
-          whenSome(maybeJoiner, ({ name, look, rank }) =>
-            Stream.map(net.quickPlay(name, look, rank), event =>
+          whenSome(maybeJoiner, ({ name, look, rank, calling }) =>
+            Stream.map(net.quickPlay(name, look, rank, calling), event =>
               Message.ReceivedQuickPlayEvent({ event }),
             ),
           )

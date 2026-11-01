@@ -9,6 +9,7 @@ import {
   Session,
 } from '@munch/netcode'
 
+import type { Calling } from '../playerData'
 import type { CoopProblem, LobbyChange, RoomRequest, RoomTicket } from './model'
 import { CoopNet } from './net'
 import { type RoomSession, type WorldState, coopWorld } from './seam'
@@ -25,6 +26,7 @@ export type FakeCall =
       name: string
       look: string
       rank: number
+      calling: Calling
     }>
   | Readonly<{ _tag: 'AnswerOffer'; accept: boolean }>
   | Readonly<{ _tag: 'CancelQuickPlay' }>
@@ -48,9 +50,16 @@ export const makeFakeCoopNet = (
       layer: Layer.succeed(
         CoopNet,
         CoopNet.of({
-          requestRoom: (request, name, look, rank) =>
+          requestRoom: (request, name, look, rank, calling) =>
             Effect.andThen(
-              record({ _tag: 'RequestRoom', request, name, look, rank }),
+              record({
+                _tag: 'RequestRoom',
+                request,
+                name,
+                look,
+                rank,
+                calling,
+              }),
               answer(request),
             ),
           quickPlay: () => Stream.never,
@@ -99,11 +108,13 @@ export const memberOf = (
   look = '',
   canNightmare = false,
   rank = 1,
+  calling = 'You',
 ): LobbyMember => ({
   playerId: `player-${slot}`,
   name,
   look,
   rank,
+  calling,
   canNightmare,
   slot,
   ready,
