@@ -11,7 +11,8 @@ import { rankOf, totalPointsOf } from './rank'
 // player's own rank has reached it, so a synced save from another device
 // can never start a calling this one has not unlocked.
 
-const rankOfPlayer = (model: Model): number => rankOf(totalPointsOf(model.rank))
+const rankOfPlayer = (model: Model): number =>
+  rankOf(totalPointsOf(model.rank))
 
 export const isPickable = (model: Model, calling: Calling): boolean =>
   isCallingUnlocked(calling, rankOfPlayer(model))

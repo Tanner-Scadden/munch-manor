@@ -119,16 +119,13 @@ describe('who the zombies hunt', () => {
     story(
       update,
       given(
-        pipeline(
-          placeSeat(0, LEFT_X, ROW_Y),
-          placeSeat(1, RIGHT_X, ROW_Y),
-          current =>
-            modifyFields(current, {
-              zombies: () => [
-                zombieOf('Shambler', 900, LEFT_X + 40, ROW_Y, { speed: 30 }),
-                zombieOf('Shambler', 901, RIGHT_X - 40, ROW_Y, { speed: 30 }),
-              ],
-            }),
+        pipeline(placeSeat(0, LEFT_X, ROW_Y), placeSeat(1, RIGHT_X, ROW_Y), current =>
+          modifyFields(current, {
+            zombies: () => [
+              zombieOf('Shambler', 900, LEFT_X + 40, ROW_Y, { speed: 30 }),
+              zombieOf('Shambler', 901, RIGHT_X - 40, ROW_Y, { speed: 30 }),
+            ],
+          }),
         )(crewInWave(2)),
       ),
       ...ticks(30, TICK_MS),
@@ -193,10 +190,7 @@ describe('downed, revived, and bled out', () => {
   const downedBeside = pipeline(
     placeSeat(0, RIGHT_X - 8, ROW_Y),
     placeSeat(1, RIGHT_X, ROW_Y, 0),
-    withSeatLife(
-      1,
-      Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 }),
-    ),
+    withSeatLife(1, Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 })),
   )(crewInWave(2))
 
   const reviveTicks = Math.ceil(COOP_RULES.reviveMs / TICK_MS)
@@ -783,13 +777,10 @@ describe('the world never pauses in co-op', () => {
 describe('away and pickups', () => {
   test('an away player stands frozen and can still be hurt', () => {
     const away = setPresence(
-      pipeline(
-        placeSeat(0, LEFT_X, ROW_Y),
-        placeSeat(1, RIGHT_X, ROW_Y),
-        current =>
-          modifyFields(current, {
-            zombies: () => [zombieOf('Shambler', 900, RIGHT_X + 5, ROW_Y)],
-          }),
+      pipeline(placeSeat(0, LEFT_X, ROW_Y), placeSeat(1, RIGHT_X, ROW_Y), current =>
+        modifyFields(current, {
+          zombies: () => [zombieOf('Shambler', 900, RIGHT_X + 5, ROW_Y)],
+        }),
       )(crewInWave(2)),
       1,
       'Away',
@@ -826,9 +817,7 @@ describe('single player', () => {
     expect(initialModel.party._tag).toBe('Solo')
     expect(playersOf(crewInWave(1))).toHaveLength(1)
     expect(
-      Invulnerability.isAnyOf(['Vulnerable'])(
-        crewInWave(1).player.invulnerability,
-      ),
+      Invulnerability.isAnyOf(['Vulnerable'])(crewInWave(1).player.invulnerability),
     ).toBe(true)
     expect(Arsenal.isAnyOf(['OneGun'])(crewInWave(1).player.arsenal)).toBe(true)
   })
