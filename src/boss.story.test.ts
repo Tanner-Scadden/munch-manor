@@ -133,7 +133,7 @@ describe('planning the boss', () => {
                 bossHealthScale,
             ),
           )
-          expect(waiting.hp).toBe({ Hard: 146, Nightmare: 167 }[level])
+          expect(waiting.hp).toBe({ Hard: 214, Nightmare: 334 }[level])
         }),
       )
     },

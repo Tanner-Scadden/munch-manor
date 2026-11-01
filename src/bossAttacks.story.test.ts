@@ -884,3 +884,66 @@ describe('one tell at a time', () => {
     expect(tags).toContain('BossBelched')
   })
 })
+
+describe('attack pace by difficulty', () => {
+  const ready = BossMove.Stalking({ cooldownMs: 0 })
+
+  const cooldownAfterStomp = (difficulty: 'Normal' | 'Hard' | 'Nightmare') => {
+    let cooldownMs = -1
+    const start = modifyFields(
+      inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(ready), [
+        bossAt(CENTER_X + 20, CENTER_Y),
+      ]),
+      {
+        difficulty: setting =>
+          modifyFields(setting, { chosen: () => difficulty }),
+      },
+    )
+    story(
+      update,
+      given(sturdy(start)),
+      ...ticks(Math.ceil(BOSS_RULES.windUpMs.Stomp / FRAME_MS) + 2, FRAME_MS),
+      model(current => {
+        const { move } = fightOf(current)
+        expect(move._tag).toBe('Recovering')
+        cooldownMs = BossMove.isAnyOf(['Recovering'])(move)
+          ? move.cooldownMs
+          : -1
+      }),
+    )
+    return cooldownMs
+  }
+
+  test('Normal keeps the table cooldown exactly', () => {
+    expect(DIFFICULTIES.Normal.bossAttackPace).toBe(1)
+    expect(BOSS_RULES.cooldownMs).toEqual({
+      Stomp: 1600,
+      Belch: 1200,
+      Spit: 4500,
+      Charge: 3000,
+    })
+    expect(cooldownAfterStomp('Normal')).toBe(BOSS_RULES.cooldownMs.Stomp)
+  })
+
+  test('Hard and Nightmare rest for less, by the difficulty table', () => {
+    expect(DIFFICULTIES.Hard.bossAttackPace).toBeLessThan(1)
+    expect(DIFFICULTIES.Nightmare.bossAttackPace).toBeLessThan(
+      DIFFICULTIES.Hard.bossAttackPace,
+    )
+    expect(cooldownAfterStomp('Hard')).toBeCloseTo(
+      BOSS_RULES.cooldownMs.Stomp * DIFFICULTIES.Hard.bossAttackPace,
+    )
+    expect(cooldownAfterStomp('Nightmare')).toBeCloseTo(
+      BOSS_RULES.cooldownMs.Stomp * DIFFICULTIES.Nightmare.bossAttackPace,
+    )
+  })
+
+  test('a faster pace leaves the tells alone', () => {
+    expect(BOSS_RULES.windUpMs).toEqual({
+      Stomp: 1000,
+      Belch: 800,
+      Spit: 500,
+      Charge: 800,
+    })
+  })
+})

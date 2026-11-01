@@ -6,6 +6,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 - 🎩 Rank up and you can pick a calling beside the difficulty: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Reach rank 3 to meet the first.
 - 🎩 Spend your Bones on hats in the new Closet tab in your Profile, and rank up to be gifted a few for free: a party hat, a cowboy hat, a witch hat, even a traffic cone.
+- 👹 Uncle Chunk fights dirtier on Hard and Nightmare: much tougher, and he attacks more often.
 - 🎒 Your calling comes along in co-op: everyone in the room starts as the calling they picked, and the prop shows by their name in the lobby.
 
 ## October 31, 2026: Rattles has notes
