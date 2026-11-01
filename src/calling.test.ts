@@ -146,14 +146,14 @@ describe('the specials as short lines', () => {
     ).toEqual([
       [true, 'Planks 50% off'],
       [true, 'Free repairs'],
-      [true, 'Bite blink 50% longer'],
+      [true, 'Bite blink 100% longer'],
       [false, `${PLAYER_MAX_HP - 1} max hearts`],
     ])
   })
 
   test('the Track Star and the Penny Pincher read theirs', () => {
     expect(specialsOf('TrackStar').map(({ line }) => line)).toEqual([
-      'Runs 10% faster',
+      'Runs 20% faster',
       'Mags 10% smaller',
     ])
     expect(specialsOf('PennyPincher').map(({ line }) => line)).toEqual([
