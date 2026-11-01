@@ -4,14 +4,19 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import {
+  CALLING_FLIP_MS,
   RANK_FILL_MS,
   RANK_POP_MS,
+  UNLOCK_HOLD_MS,
   beatSounds,
   doneMs,
   isBeatOver,
   rankDoneMs,
   rankStripAtMs,
   skipBeat,
+  unlockFlipAtMs,
+  unlockStartMs,
+  unlocksOf,
 } from './endBeat'
 import { endOverlayShapes } from './endView'
 import { type Model, Phase, RunMode } from './model'
@@ -51,8 +56,9 @@ describe('the end card beat with a rank strip', () => {
     expect(rankDoneMs(ended(sameRank), 'Munched')).toBe(
       stripAt(sameRank) + RANK_FILL_MS,
     )
+    // NOTE: rank 2 gifts the Party Hat, whose card flips after the pop.
     expect(rankDoneMs(ended(rankUp), 'Munched')).toBe(
-      stripAt(rankUp) + RANK_FILL_MS + RANK_POP_MS,
+      stripAt(rankUp) + RANK_FILL_MS + RANK_POP_MS + CALLING_FLIP_MS,
     )
     expect(isBeatOver(ended(sameRank, doneMs('Munched')))).toBe(false)
     expect(isBeatOver(ended(noGain, doneMs('Munched')))).toBe(true)
@@ -113,5 +119,88 @@ describe('the strip sounds', () => {
   test('the strip arrives with a pop', () => {
     const start = stripAt(sameRank)
     expect(across(sameRank, start - 5, start + 5)).toContain('Pop')
+  })
+})
+
+describe('the cards a rank up flips', () => {
+  // NOTE: rank 1 to 2 gifts the Party Hat.
+  const hatGift: Gain = rankUp
+  // NOTE: 1000 points is rank 7: the Handyman (rank 3) and the Track Star
+  // (rank 6) open, and the hats gifted at ranks 2, 4, 5, and 7.
+  const several: Gain = Option.some({
+    pointsBefore: 0,
+    gained: 1000,
+    bonesGained: 100,
+  })
+  const tag = (model: Model) => unlocksOf(model).map(unlock => unlock._tag)
+
+  test('a rank that reaches a gift flips the hat, none when it does not', () => {
+    expect(unlocksOf(ended(hatGift))).toEqual([
+      { _tag: 'Hat', hat: 'PartyHat' },
+    ])
+    expect(unlocksOf(ended(sameRank))).toEqual([])
+    expect(unlocksOf(ended(noGain))).toEqual([])
+  })
+
+  test('several ranks at once flip the callings first, then the hats', () => {
+    expect(tag(ended(several))).toEqual([
+      'Calling',
+      'Calling',
+      'Hat',
+      'Hat',
+      'Hat',
+      'Hat',
+    ])
+    expect(
+      unlocksOf(ended(several)).map(unlock =>
+        unlock._tag === 'Hat' ? unlock.hat : '',
+      ),
+    ).toEqual(['', '', 'PartyHat', 'BucketHat', 'PomBeanie', 'PropellerCap'])
+  })
+
+  test('each card flips after the last was held a moment, and a press skips them all', () => {
+    expect(unlockStartMs(1) - unlockStartMs(0)).toBe(
+      CALLING_FLIP_MS + UNLOCK_HOLD_MS,
+    )
+    const model = ended(several, 500)
+    expect(rankDoneMs(model, 'Munched')).toBe(
+      unlockFlipAtMs(model, 'Munched') + unlockStartMs(5) + CALLING_FLIP_MS,
+    )
+    expect(skipBeat(model).screenMs).toBe(rankDoneMs(model, 'Munched'))
+  })
+
+  test('the card in view is the one whose turn it is', () => {
+    const at = (card: number, extraMs: number) => {
+      const model = ended(several)
+      return JSON.stringify(
+        endOverlayShapes(
+          modifyFields(model, {
+            screenMs: () =>
+              unlockFlipAtMs(model, 'Munched') + unlockStartMs(card) + extraMs,
+          }),
+        ),
+      )
+    }
+    const settled = CALLING_FLIP_MS + 10
+    expect(at(0, settled)).not.toBe(at(1, settled))
+    expect(at(2, settled)).not.toBe(at(3, settled))
+    // NOTE: before the first card flips there is none to show.
+    expect(at(0, -10)).not.toBe(at(0, settled))
+  })
+
+  test('each card flips with a sound', () => {
+    const model = ended(several)
+    const flipAt = unlockFlipAtMs(model, 'Munched')
+    expect(beatSounds(model, flipAt - 5, flipAt + 5)).toContain('LootPop')
+    expect(
+      beatSounds(
+        model,
+        flipAt + unlockStartMs(2) - 5,
+        flipAt + unlockStartMs(2) + 5,
+      ),
+    ).toContain('LootPop')
+    expect(beatSounds(ended(sameRank), flipAt - 5, flipAt + 5)).not.toContain(
+      'LootPop',
+    )
   })
 })
