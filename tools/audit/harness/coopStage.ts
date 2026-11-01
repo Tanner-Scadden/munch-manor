@@ -132,9 +132,9 @@ const COOP_PINGS = [48, 140, 260, 90]
 
 const COOP_LOOKS = [
   '',
-  'Broad.Curly.Blonde.Deep.Red.AAAA.H',
-  'Slim.Long.Black.Fair.Yellow.ABAB.J',
-  'Broad.Short.Pink.Medium.Purple.CBAA.N',
+  'Broad.Curly.Blonde.Deep.Coral.AAAA.H.D',
+  'Slim.Long.Black.Fair.Gold.AGAB.J.B',
+  'Broad.Short.Pink.Medium.Glow.CDAA.N.F',
 ]
 
 // NOTE: the ranks the staged teammates sent: wood, tin, silver, and the
