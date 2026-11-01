@@ -310,6 +310,7 @@ export const HarnessConfig = Schema.Struct({
     'lobby',
     'host',
     'picks',
+    'heroes',
     'keep',
     'ready',
     'result',

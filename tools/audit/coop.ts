@@ -29,6 +29,7 @@
 // nothing from the room), and resyncs (a message that would not apply).
 // Run it through the heavy guard, as a Shared job (one context per page):
 //   bun run heavy -- --shared bun tools/audit/coop.ts http://localhost:4398/ [players]
+import { Array, Order, Schema, pipe } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { type Readout } from '@game/coop/readout'
@@ -55,8 +56,47 @@ import {
   shot,
   until,
 } from './coop/players'
-import { isOnArena, netOf, ownSeatOf, readoutOf, slotOf } from './coop/readouts'
+import {
+  type Seat,
+  isOnArena,
+  netOf,
+  ownSeatOf,
+  readoutOf,
+  slotOf,
+} from './coop/readouts'
 import { awaitGame, finish, nowMs, pollUntil, wait } from './lib'
+import { evaluateAs } from './page'
+
+// HEROES
+
+// NOTE: each page plays a different hero, unlocked by the rank its save holds
+// (RANKS 3, 8, 10 reach the Handyman at 3, the Track Star at 6, the Penny
+// Pincher at 10). The host picks at home, through the home menu's pill and
+// picker; each guest picks in the lobby, through the lobby's own pill. Every
+// page must then see the others' prop icons in the lobby, and the room must
+// seat each slot as its hero.
+const HEROES = ['Handyman', 'TrackStar', 'PennyPincher'] as const
+
+const pickAtHome = async (page: Page, hero: string) => {
+  await page.click('.home-calling')
+  await page.click(`.calling-card[data-calling="${hero}"]`)
+}
+
+const pickInLobby = async (page: Page, hero: string) => {
+  await page.click('#coop-calling-pill')
+  await page.click(`.coop-calling-picker .calling-card[data-calling="${hero}"]`)
+}
+
+// NOTE: the hero each filled seat shows, in seat order; YOU shows none.
+const heroesSeenBy = (page: Page) =>
+  evaluateAs(page, Schema.Array(Schema.String), () =>
+    globalThis.Array.from(
+      document.querySelectorAll('.coop-seat:not([data-state="Empty"])'),
+      seat =>
+        seat.querySelector('.coop-calling')?.getAttribute('data-calling') ??
+        'You',
+    ),
+  )
 
 // ROOM BY CODE
 
@@ -66,6 +106,7 @@ console.log(
 const host = await openPlayer('host')
 await host.goto(BASE)
 await awaitGame(host)
+await pickAtHome(host, HEROES[0])
 await host.click('#home-coop')
 await until('the CO-OP tile opens the hub', () =>
   host.getByRole('button', { name: /Quick play/ }).isVisible(),
@@ -84,7 +125,10 @@ check(
 )
 
 const guests: Array<Page> = []
-for (const index of Array.from({ length: PLAYERS - 1 }, (_, i) => i)) {
+for (const index of globalThis.Array.from(
+  { length: PLAYERS - 1 },
+  (_, i) => i,
+)) {
   const guest = await openPlayer(`guest ${index + 1}`, index + 1)
   const link = new URL(BASE)
   link.searchParams.set('room', code)
@@ -107,6 +151,16 @@ for (const [index, page] of everyone.entries()) {
   await until(
     `player ${index + 1} sees ${PLAYERS} seats filled`,
     async () => (await filledSeats(page)) === PLAYERS,
+  )
+}
+for (const [index, page] of guests.entries()) {
+  await pickInLobby(page, HEROES[index + 1] ?? 'Handyman')
+}
+for (const [index, page] of everyone.entries()) {
+  await until(
+    `player ${index + 1} sees every hero's prop in the lobby`,
+    async () =>
+      (await heroesSeenBy(page)).join() === HEROES.slice(0, PLAYERS).join(),
   )
 }
 check(
@@ -184,6 +238,21 @@ for (const [index, page] of everyone.entries()) {
       (await readoutOf(page))?.players.length === PLAYERS &&
       (await isOnArena(page)) &&
       (await page.locator('.game-canvas').isVisible()),
+  )
+}
+for (const [index, page] of everyone.entries()) {
+  const maybeReadout = await readoutOf(page)
+  const seated =
+    maybeReadout === undefined
+      ? undefined
+      : pipe(
+          maybeReadout.players,
+          Array.sort(Order.mapInput(Order.Number, (seat: Seat) => seat.slot)),
+          Array.map(seat => seat.calling),
+        )
+  check(
+    seated?.join() === HEROES.slice(0, PLAYERS).join(),
+    `player ${index + 1} sees the room seat ${HEROES.slice(0, PLAYERS).join(', ')} (${seated?.join(', ')})`,
   )
 }
 if (PICK_MODE !== undefined && PICK_DIFFICULTY !== undefined) {
@@ -394,7 +463,7 @@ if (isPhone) {
       '.shop-dialog[open] li[data-verdict="available"] button',
     )
     const tabs = host.locator('.shop-dialog[open] .shop-tab')
-    for (const index of Array.from(
+    for (const index of globalThis.Array.from(
       { length: await tabs.count() },
       (_, i) => i,
     )) {
