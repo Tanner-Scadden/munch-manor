@@ -212,7 +212,10 @@ const HEAD_ROWS = { from: 1, to: 9 }
 
 const iconCache = new Map<string, string>()
 
-const partIconOf = (look: Appearance, crop: 'Figure' | 'Head'): string => {
+const partIconOf = (worn: Appearance, crop: 'Figure' | 'Head'): string => {
+  // NOTE: the options are drawn bare headed: a hat changes the rows the
+  // crop counts, and the Look tab is not about hats (the closet is).
+  const look: Appearance = { ...worn, hat: 'None' }
   const key = `${crop}.${appearanceKey(look)}`
   return Option.getOrElse(Option.fromNullishOr(iconCache.get(key)), () => {
     const rows = Array.headNonEmpty(playerPixels(look).idle)
