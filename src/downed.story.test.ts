@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS } from './constants'
 import { QUARTER_TURN } from './drawing'
+import { healthBarShapes } from './healthBarView'
 import { sceneShapes } from './layers'
 import { update } from './main'
 import { Arsenal, Life, type Model, Reload } from './model'
@@ -33,7 +34,6 @@ const TICK_MS = FIXED_STEP_MS
 const LEFT_X = 60
 const RIGHT_X = 240
 const ROW_Y = 104
-const BLEED_COLOR = '#ff3b3b'
 
 const allShapes = (
   shapes: ReadonlyArray<Canvas.Shape>,
@@ -60,11 +60,25 @@ const isDrawn = (current: Model, wanted: Canvas.Shape): boolean => {
   )
 }
 
-const hasFill = (current: Model, fill: string): boolean =>
-  Array.some(
-    allShapes(sceneShapes(current)),
-    shape => shape._tag === 'Rect' && shape.fill === fill,
+const isImage = (shape: Canvas.Shape): shape is Canvas.Image =>
+  shape._tag === 'Image'
+
+// NOTE: a full bleed bar is one baked image; another bar's image differs.
+const hasBleedBar = (current: Model): boolean => {
+  const wanted = Array.filter(
+    healthBarShapes('Small', 'Ally', 0, 0, 1),
+    isImage,
   )
+  return Array.some(allShapes(sceneShapes(current)), shape =>
+    Array.some(
+      wanted,
+      bar =>
+        isImage(shape) &&
+        shape.src === bar.src &&
+        JSON.stringify(shape.crop) === JSON.stringify(bar.crop),
+    ),
+  )
+}
 
 const downedAt = (slot: number) =>
   withSeatLife(
@@ -86,7 +100,7 @@ describe('a downed teammate', () => {
       ...ticks(1, TICK_MS),
       model(current => {
         expect(lyingBodies(current)).toHaveLength(1)
-        expect(hasFill(current, BLEED_COLOR)).toBe(true)
+        expect(hasBleedBar(current)).toBe(true)
       }),
     )
   })
@@ -155,7 +169,7 @@ describe('a bled-out teammate', () => {
         Array.forEach(bodies, body => {
           expect(body.opacity).toBeLessThan(1)
         })
-        expect(hasFill(current, BLEED_COLOR)).toBe(false)
+        expect(hasBleedBar(current)).toBe(false)
         expect(reviveRingGroundShapes(current)).toHaveLength(0)
       }),
     )

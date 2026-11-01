@@ -18,6 +18,7 @@ import {
   InstallOffer,
   type LoadStep,
   Loading,
+  LookPart,
   LookSection,
   MenuPanel,
   Orientation,
@@ -56,13 +57,13 @@ import {
   Calling,
   CursorSetting,
   Difficulty,
-  Hat,
   HomeScreenTip,
   MusicSetting,
   PlayerName,
   RotationSetting,
-  SavedBoughtHats,
+  SavedBoughtCosmetics,
   SavedRank,
+  SavedSeenUnlocks,
   ShakeSetting,
   ShareStatsSetting,
   SoundSetting,
@@ -131,6 +132,8 @@ export const CharacterPicker = Schema.Struct({
   shirtColor: PartRadioGroupBlock.Model,
   outfit: PartRadioGroupBlock.Model,
   print: PartRadioGroupBlock.Model,
+  hat: PartRadioGroupBlock.Model,
+  gunSkin: PartRadioGroupBlock.Model,
 })
 export type CharacterPicker = typeof CharacterPicker.Type
 
@@ -138,7 +141,6 @@ export type CharacterPicker = typeof CharacterPicker.Type
 // Stats, is one more literal here and one more entry in src/profile.ts.
 export const ProfileTab = Schema.Literals([
   'Look',
-  'Closet',
   'Name',
   'Account',
   'Settings',
@@ -150,10 +152,10 @@ export type ProfileTab = typeof ProfileTab.Type
 export const ProfileFx = Schema.Literals(['Still', 'Poof', 'Spin'])
 export type ProfileFx = typeof ProfileFx.Type
 
-// NOTE: the last thing a closet card did, for the card to play: a hat bought
-// (a poof), put on (a hop), or wanted with too few Bones (the price shakes
-// red). The count moves on every time, and the view reads only its parity,
-// so the same cue twice in a row still replays.
+// NOTE: the last thing a Look tab option did, for the option to play: a look
+// bought (a poof), or wanted with too few Bones or not reached yet (the price
+// or the padlock shakes red). The count moves on every time, and the view
+// reads only its parity, so the same cue twice in a row still replays.
 export const ClosetCueKind = Schema.Literals([
   'Still',
   'Bought',
@@ -163,7 +165,8 @@ export const ClosetCueKind = Schema.Literals([
 export type ClosetCueKind = typeof ClosetCueKind.Type
 
 const ClosetCue = Schema.Struct({
-  hat: Hat,
+  part: LookPart,
+  value: Schema.String,
   kind: ClosetCueKind,
   count: Schema.Number,
 })
@@ -189,12 +192,17 @@ export const HelpCard = Schema.Literals([
 ])
 export type HelpCard = typeof HelpCard.Type
 
+// NOTE: a look for sale being tried on in the Look tab: shown on the
+// figure and never worn, saved, or synced until it is bought.
+const LookPreview = Schema.Struct({ part: LookPart, value: Schema.String })
+
 const ProfilePanel = Schema.Struct({
   tab: ProfileTab,
   nameDraft: Schema.String,
   fx: ProfileFx,
   fxCount: Schema.Number,
   closetCue: ClosetCue,
+  maybePreview: Schema.Option(LookPreview),
 })
 type ProfilePanel = typeof ProfilePanel.Type
 
@@ -303,9 +311,14 @@ export const Model = Schema.Struct({
   // NOTE: the calling picked for the next run (src/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
-  // NOTE: the sold hats bought with Bones (src/closet.ts). A gift hat is
-  // owned by rank and is never here.
-  boughtHats: SavedBoughtHats,
+  // NOTE: the looks bought with Bones, by cosmetic id (src/closet.ts). A gift
+  // is owned by rank and is never here.
+  boughtCosmetics: SavedBoughtCosmetics,
+  // NOTE: the unlocks the player has seen (src/unlocks.ts), saved and synced,
+  // and the ones that wear a NEW badge right now: those reached and unseen
+  // when the Look tab or the character picker last opened.
+  seenUnlocks: SavedSeenUnlocks,
+  freshUnlocks: Schema.Array(Schema.String),
   // NOTE: the room's difficulty while an online co-op run is drawn, kept
   // with the run so its summary has it after the room is gone (a LEAVE).
   maybeRoomDifficulty: Schema.Option(Difficulty),
@@ -339,7 +352,8 @@ const closedProfile: ProfilePanel = {
   nameDraft: '',
   fx: 'Still',
   fxCount: 0,
-  closetCue: { hat: 'None', kind: 'Still', count: 0 },
+  closetCue: { part: 'Hat', value: 'None', kind: 'Still', count: 0 },
+  maybePreview: Option.none(),
 }
 
 const closedCharacterPicker: CharacterPicker = {
@@ -352,6 +366,8 @@ const closedCharacterPicker: CharacterPicker = {
   shirtColor: PartRadioGroupBlock.init({ id: 'look-shirt-color' }).model,
   outfit: PartRadioGroupBlock.init({ id: 'look-outfit' }).model,
   print: PartRadioGroupBlock.init({ id: 'look-print' }).model,
+  hat: PartRadioGroupBlock.init({ id: 'look-hat' }).model,
+  gunSkin: PartRadioGroupBlock.init({ id: 'look-gun-skin' }).model,
 }
 
 const PANEL_DIALOG_ID = 'menu-panel'
@@ -498,7 +514,9 @@ export const initialModel: Model = {
   maybeRankGain: Option.none(),
   rank: noRank,
   calling: 'You',
-  boughtHats: [],
+  boughtCosmetics: [],
+  seenUnlocks: [],
+  freshUnlocks: [],
   maybeRoomDifficulty: Option.none(),
   maybeCrewRunKey: Option.none(),
   loading: Loading.Loaded(),

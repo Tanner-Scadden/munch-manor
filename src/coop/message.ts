@@ -49,6 +49,9 @@ export const Message = defineMessageUnion({
   ClickedKickButton: { playerId: Schema.String },
   ClickedModePick: { mode: PickedMode },
   ClickedDifficultyPick: { difficulty: RoomDifficulty },
+  ClickedCallingPill: {},
+  ClickedCallingPick: { calling: Calling },
+  ClickedCallingDone: {},
   CompletedChangeLobby: {},
   FailedChangeLobby: { problem: CoopProblem },
   ClickedLeaveButton: {},
@@ -94,5 +97,6 @@ export const OutMessage = defineMessageUnion({
   ClosedCoop: {},
   NeededNewerBuild: {},
   LeftRoom: {},
+  ChoseCalling: { calling: Calling },
 })
 export type OutMessage = typeof OutMessage.Type

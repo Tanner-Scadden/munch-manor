@@ -136,24 +136,24 @@ describe('the cards a rank up flips', () => {
 
   test('a rank that reaches a gift flips the hat, none when it does not', () => {
     expect(unlocksOf(ended(hatGift))).toEqual([
-      { _tag: 'Hat', hat: 'PartyHat' },
+      { _tag: 'Gift', kind: 'Hat', name: 'PartyHat' },
     ])
     expect(unlocksOf(ended(sameRank))).toEqual([])
     expect(unlocksOf(ended(noGain))).toEqual([])
   })
 
-  test('several ranks at once flip the callings first, then the hats', () => {
+  test('several ranks at once flip the callings first, then the gifts', () => {
     expect(tag(ended(several))).toEqual([
       'Calling',
       'Calling',
-      'Hat',
-      'Hat',
-      'Hat',
-      'Hat',
+      'Gift',
+      'Gift',
+      'Gift',
+      'Gift',
     ])
     expect(
       unlocksOf(ended(several)).map(unlock =>
-        unlock._tag === 'Hat' ? unlock.hat : '',
+        unlock._tag === 'Gift' ? unlock.name : '',
       ),
     ).toEqual(['', '', 'PartyHat', 'BucketHat', 'PomBeanie', 'PropellerCap'])
   })

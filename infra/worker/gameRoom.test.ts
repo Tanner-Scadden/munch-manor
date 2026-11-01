@@ -6,6 +6,7 @@ import * as SqlClient from 'effect/sql/SqlClient'
 
 import { describe, expect, it } from '@effect/vitest'
 import {
+  ChangedMemberCalling,
   ChangedReady,
   type ClientFrame,
   KickedPlayer,
@@ -212,6 +213,52 @@ describe('the room host', () => {
       }),
   )
 
+  // NOTE: a calling changed in the lobby reaches the room's own members, and
+  // the start seats it only when it reads back as one of the game's callings
+  // (a made-up word is dropped, so that slot plays YOU), the same check a calling sent at create and join gets.
+  it.effect('a calling changed in the lobby is seated at the start', () =>
+    Effect.gen(function* () {
+      const host = yield* roomHost
+      yield* host.create(ANA, 'Ana', '', 1, 'TrackStar', false, CODE, 'Private')
+      yield* host.join(BO, 'Bo', '', 1, 'You', false, [])
+      yield* host.join(CY, 'Cy', '', 1, 'You', false, [])
+      const bo = fakeSocket()
+      yield* host.scope.onMessage(bo, hello(yield* tokenOf(BO)), [bo])
+      yield* host.scope.onMessage(
+        bo,
+        yield* pushOf(
+          ChangedMemberCalling,
+          { by: BO, calling: 'LineCook' },
+          'calling-bo-0001',
+        ),
+        [bo],
+      )
+      const cy = fakeSocket()
+      yield* host.scope.onMessage(cy, hello(yield* tokenOf(CY)), [cy])
+      yield* host.scope.onMessage(
+        cy,
+        yield* pushOf(
+          ChangedMemberCalling,
+          { by: CY, calling: 'Wizard' },
+          'calling-cy-0001',
+        ),
+        [cy],
+      )
+      const lobby = yield* lobbyOf(host)
+      expect(lobby.members.map(member => member.calling)).toEqual([
+        'TrackStar',
+        'LineCook',
+        'Wizard',
+      ])
+      expect(
+        roomSettingsOf('Campaign', 'Normal', lobby.members).callings,
+      ).toEqual([
+        { slot: 0, calling: 'TrackStar' },
+        { slot: 1, calling: 'LineCook' },
+      ])
+    }),
+  )
+
   // NOTE: a rank is a claim the Worker cannot check, so it only keeps it in
   // range: a whole number from 1 to 999.
   it.effect('a sent rank is clamped to a whole number from 1 to 999', () =>
@@ -260,11 +307,35 @@ describe('the room host', () => {
     expect(lookOfRequest('Broad.Bald.Grey.Fair.Purple.DAAA.Q')).toBe(
       'Broad.Bald.Grey.Fair.Purple.DAAA.Q',
     )
+    // NOTE: a gun skin is an eighth word, the letter of its place in the
+    // game's skins (F is Neon), the seventh then being the hat's, A for
+    // none. Stock is left off, so the code stays the shortest it can be.
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.A.F')).toBe(
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.A.F',
+    )
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.M.F')).toBe(
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.F',
+    )
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.M.A')).toBe(
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M',
+    )
+    // NOTE: the earned shirt colors and prints are placed at the end of their
+    // lists, so an older code reads the same and a new one reads back whole.
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Midnight.CGBB.Q.D')).toBe(
+      'Slim.Mohawk.Pink.Deep.Midnight.CGBB.Q.D',
+    )
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Gold.ADAA')).toBe(
+      'Slim.Mohawk.Pink.Deep.Gold.ADAA',
+    )
     const junks = [
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.Z',
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.AA',
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.A.A',
+      'Slim.Mohawk.Pink.Deep.Magenta.CCBB',
+      'Slim.Mohawk.Pink.Deep.Teal.CHBB',
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.R',
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.MM',
       'Slim.Mohawk.Pink.Deep.Teal.CCBB.m',
-      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.A',
       'Slim.Mohawk.Pink.Deep.Teal.CCBA.AAAA.A',
       'Female.Ponytail.Pink.Tan.Plaid',
       'Robot',
@@ -272,7 +343,7 @@ describe('the room host', () => {
       'Slim.Mohawk.Pink.Deep.Teal',
       'Slim.Mohawk.Pink.Deep.Teal.CCBC',
       'Slim.Mohawk.Pink.Deep.Teal.ECAA',
-      'Slim.Mohawk.Pink.Deep.Teal.ADAA',
+      'Slim.Mohawk.Pink.Deep.Teal.AHAA',
       'Slim.Mohawk.Pink.Deep.Teal.AAA',
       'Slim.Mohawk.Pink.Deep.Teal.aaaa',
       'Medium.Short.Pink.Deep.Teal.AAAA',

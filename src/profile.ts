@@ -13,7 +13,6 @@ import { type Seeded, nextRandom } from './prng'
 // more literal in ProfileTab.
 export const PROFILE_TABS: Array.NonEmptyReadonlyArray<ProfileTab> = [
   'Look',
-  'Closet',
   'Name',
   'Account',
   'Settings',

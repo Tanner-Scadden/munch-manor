@@ -87,6 +87,7 @@ import {
   unchanged,
   withInput,
 } from './step'
+import { markCallingsSeen } from './unlocks'
 
 // COMMAND
 
@@ -207,11 +208,14 @@ const showPanel =
   (panel: MenuPanel): UpdateStep =>
   stepModel => ({
     model: withInput(
-      modifyFields(stepModel, {
-        panel: () => panel,
-        tutorialReset: () => 'Idle',
-        maybeOpenHelpCard: () => Option.none(),
-      }),
+      modifyFields(
+        panel === 'Calling' ? markCallingsSeen(stepModel) : stepModel,
+        {
+          panel: () => panel,
+          tutorialReset: () => 'Idle',
+          maybeOpenHelpCard: () => Option.none(),
+        },
+      ),
       releaseAll,
     ),
   })

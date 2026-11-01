@@ -19,7 +19,7 @@ import {
 import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
 import { CueMusic } from './musicPlan'
 import { subscriptions } from './subscriptions'
-import { FocusClosetCard } from './update/closet'
+import { FocusLookOption } from './update/character'
 import { ReadRoomLink } from './update/coop'
 import { SendShareEvent } from './update/end'
 import { SetFullscreen } from './update/fullscreen'
@@ -68,6 +68,7 @@ export const CommandsLayer = Layer.mergeAll(
   ResumeAudio.layer,
   PlaySound.layer,
   CueMusic.layer,
+  FocusLookOption.layer,
   FocusShopItem.layer,
   FetchBuild.layer,
   WaitForUnwrap.layer,
@@ -77,7 +78,6 @@ export const CommandsLayer = Layer.mergeAll(
   UpdateServiceWorker.layer,
   FocusHomeButton.layer,
   FocusHandCard.layer,
-  FocusClosetCard.layer,
   FocusEndMenuButton.layer,
   ClickSupportLink.layer,
   SendShareEvent.layer,

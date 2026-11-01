@@ -4,9 +4,10 @@ import { Canvas } from 'foldkit'
 import { type Level, findStrike, levelOf } from './arena'
 import { BOSS_RULES, type BossBar, isEnraged, maybeStandingBoss } from './boss'
 import { VIEW_WIDTH } from './constants'
-import { FULL_TURN, HEALTH_BAR_BACK_COLOR, tellAlpha } from './drawing'
+import { FULL_TURN, tellAlpha } from './drawing'
 import { bakeText, placeBaked } from './font'
 import { clamp } from './geometry'
+import { barWidthOf, healthBarShapes } from './healthBarView'
 import {
   Boss,
   BossMove,
@@ -396,13 +397,7 @@ export const bossOverheadShapes = (
 
 const BAR_NAME = bakeText(String.toUpperCase(ZOMBIE_KINDS.Boss.name), 'Defeat')
 const ENRAGED = bakeText('ENRAGED', 'Alert')
-const BAR_WIDTH = 80
-const BAR_HEIGHT = 4
 const BAR_GAP = 4
-const BAR_FILL = '#ff3b3f'
-const BAR_SHINE = '#ff8a8f'
-const BAR_RAGE_FILL = '#ff7a1f'
-const BAR_EDGE = '#f4f1de'
 const RAGE_BLINK_MS = 400
 
 export const bossBarShapes = (
@@ -412,44 +407,19 @@ export const bossBarShapes = (
   elapsedMs: number,
 ): ReadonlyArray<Canvas.Shape> => {
   const label = bar.isEnraged ? ENRAGED : BAR_NAME
-  const total = label.width + BAR_GAP + BAR_WIDTH
+  const total = label.width + BAR_GAP + barWidthOf('Large')
   const left = Math.round(centerX - total / 2)
   const barLeft = left + label.width + BAR_GAP
-  const filled = Math.max(
-    bar.hp > 0 ? 1 : 0,
-    Math.round((BAR_WIDTH * bar.hp) / Math.max(1, bar.maxHp)),
-  )
   const isBlinkOn = Math.floor(elapsedMs / RAGE_BLINK_MS) % 2 === 0
   return [
     placeBaked(label, { x: left, y, align: 'Left' }),
-    Canvas.Rect({
-      x: barLeft - 1,
-      y: y - 1,
-      width: BAR_WIDTH + 2,
-      height: BAR_HEIGHT + 2,
-      fill: BAR_EDGE,
-    }),
-    Canvas.Rect({
-      x: barLeft,
+    ...healthBarShapes(
+      'Large',
+      bar.isEnraged && isBlinkOn ? 'Rage' : 'Zombie',
+      barLeft,
       y,
-      width: BAR_WIDTH,
-      height: BAR_HEIGHT,
-      fill: HEALTH_BAR_BACK_COLOR,
-    }),
-    Canvas.Rect({
-      x: barLeft,
-      y,
-      width: filled,
-      height: BAR_HEIGHT,
-      fill: bar.isEnraged && isBlinkOn ? BAR_RAGE_FILL : BAR_FILL,
-    }),
-    Canvas.Rect({
-      x: barLeft,
-      y,
-      width: filled,
-      height: 1,
-      fill: BAR_SHINE,
-    }),
+      bar.hp / Math.max(1, bar.maxHp),
+    ),
   ]
 }
 

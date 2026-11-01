@@ -1,5 +1,5 @@
 import { Option } from 'effect'
-import type { Html } from 'foldkit/html'
+import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from './composition'
 import { rankBadgeImgView } from './menuParts'
@@ -20,12 +20,15 @@ import { BONE_IMAGE } from './rankArt'
 
 const ART_SCALE = 2
 
-const badgeView = (rank: number, h: ApplicationViewBuilder): Html =>
+const badgeView = <Message>(rank: number, h: HtmlBuilder<Message>): Html =>
   rankBadgeImgView(rank, ART_SCALE, h)
 
 // NOTE: the badge a rank wears and its number, for a card that says which
-// rank it needs (src/callingView.ts).
-export const rankMarkView = (rank: number, h: ApplicationViewBuilder): Html =>
+// rank it needs (src/callingCards.ts).
+export const rankMarkView = <Message>(
+  rank: number,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.span(
     [
       h.Class('rank-chip'),
@@ -51,10 +54,10 @@ export const rankChipView = (model: Model, h: ApplicationViewBuilder): Html => {
 
 // NOTE: a pixel bone and a count, `scale` times its pixels, for the Bones
 // the plate holds and the closet spends.
-export const boneCountView = (
+export const boneCountView = <Message>(
   count: number,
   className: string,
-  h: ApplicationViewBuilder,
+  h: HtmlBuilder<Message>,
 ): Html =>
   h.span(
     [h.Class(className), h.AriaHidden(true)],

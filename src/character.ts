@@ -18,12 +18,19 @@ import {
   ShirtColor,
   SkinTone,
 } from './model'
+import { type CosmeticKind, GunSkin, Hat } from './playerData'
 
 // MESSAGE
 
 export const Message = defineMessageUnion({
   ClickedToggle: { toggle: LookToggle },
   ClickedDiceButton: {},
+  // NOTE: the rows of earned looks (shirt color, print, hat, gun skin) pick
+  // by this click and not by the radio group, which is read only there: an
+  // arrow key only moves focus, so walking a row never buys anything.
+  ClickedGearOption: { part: LookPart, value: Schema.String },
+  // NOTE: the BUY pill by the figure, for the look being tried on.
+  ClickedBuyButton: {},
 })
 export type Message = typeof Message.Type
 
@@ -31,6 +38,7 @@ const OutMessage = defineMessageUnion({
   ChoseLook: { part: LookPart, value: Schema.String },
   FlippedLook: { toggle: LookToggle },
   RequestedRandomLook: {},
+  RequestedBuy: {},
 })
 type OutMessage = typeof OutMessage.Type
 
@@ -45,6 +53,7 @@ export const SECTION_PARTS: Readonly<
   Body: ['Body', 'SkinTone'],
   Hair: ['HairStyle', 'HairColor'],
   Outfit: ['Outfit', 'ShirtColor', 'Print'],
+  Gear: ['Hat', 'GunSkin'],
 }
 
 // NOTE: the on and off parts each little tab shows under its rows.
@@ -54,6 +63,7 @@ export const SECTION_TOGGLES: Readonly<
   Body: ['Beard', 'Glasses'],
   Hair: [],
   Outfit: [],
+  Gear: [],
 }
 
 export const isToggleOn = (appearance: Appearance, toggle: LookToggle) =>
@@ -141,7 +151,50 @@ const PARTS: Readonly<Record<LookPart, Part>> = {
         onSome: print => modifyFields(appearance, { print: () => print }),
       }),
   },
+  Hat: {
+    read: picker => picker.hat,
+    choose: (appearance, value) =>
+      Option.match(readAs(Hat)(value), {
+        onNone: () => appearance,
+        onSome: hat => modifyFields(appearance, { hat: () => hat }),
+      }),
+  },
+  GunSkin: {
+    read: picker => picker.gunSkin,
+    choose: (appearance, value) =>
+      Option.match(readAs(GunSkin)(value), {
+        onNone: () => appearance,
+        onSome: gunSkin => modifyFields(appearance, { gunSkin: () => gunSkin }),
+      }),
+  },
 }
+
+type Gear = Readonly<{
+  kind: CosmeticKind
+  worn: (appearance: Appearance) => string
+}>
+
+// NOTE: the four parts that hold earned looks (src/closet.ts), by the kind
+// of look and what each wears now. Their rows pick by a click and not by
+// the radio group, so a look not owned is never the selected one. Every
+// other part is free and is simply chosen.
+const GEAR: Readonly<Partial<Record<LookPart, Gear>>> = {
+  ShirtColor: { kind: 'Shirt', worn: appearance => appearance.shirtColor },
+  Print: { kind: 'Print', worn: appearance => appearance.print },
+  Hat: { kind: 'Hat', worn: appearance => appearance.hat },
+  GunSkin: { kind: 'Skin', worn: appearance => appearance.gunSkin },
+}
+
+// NOTE: the part of the look each kind of earned look sits on.
+export const PART_OF_KIND: Readonly<Record<CosmeticKind, LookPart>> = {
+  Hat: 'Hat',
+  Shirt: 'ShirtColor',
+  Print: 'Print',
+  Skin: 'GunSkin',
+}
+
+export const gearOf = (part: LookPart): Option.Option<Gear> =>
+  Option.fromNullishOr(GEAR[part])
 
 export const partGroupOf = (
   picker: CharacterPicker,
@@ -219,6 +272,16 @@ export const PrintBinding = makeBinding(PartRadioGroupBlock, {
   init: false,
 }).withOutMessagePolicy({ forward: forwardPart('Print') })
 
+export const HatBinding = makeBinding(PartRadioGroupBlock, {
+  field: 'hat',
+  init: false,
+}).withOutMessagePolicy({ forward: forwardPart('Hat') })
+
+export const GunSkinBinding = makeBinding(PartRadioGroupBlock, {
+  field: 'gunSkin',
+  init: false,
+}).withOutMessagePolicy({ forward: forwardPart('GunSkin') })
+
 export const PART_BINDINGS = {
   Body: BodyBinding,
   HairStyle: HairStyleBinding,
@@ -227,6 +290,8 @@ export const PART_BINDINGS = {
   ShirtColor: ShirtColorBinding,
   Outfit: OutfitBinding,
   Print: PrintBinding,
+  Hat: HatBinding,
+  GunSkin: GunSkinBinding,
 } as const
 
 export const CharacterComposition = CharacterDefinition.makeComposition({
@@ -239,6 +304,8 @@ export const CharacterComposition = CharacterDefinition.makeComposition({
     ShirtColorBinding,
     OutfitBinding,
     PrintBinding,
+    HatBinding,
+    GunSkinBinding,
   ],
 })
 export type CharacterViewBuilder = Block.ViewBuilderFor<
@@ -253,6 +320,12 @@ export const update = CharacterComposition.makeUpdate({
   ),
   ClickedDiceButton: CharacterDefinition.makeOutMessageStep(() =>
     OutMessage.RequestedRandomLook(),
+  ),
+  ClickedBuyButton: CharacterDefinition.makeOutMessageStep(() =>
+    OutMessage.RequestedBuy(),
+  ),
+  ClickedGearOption: CharacterDefinition.makeOutMessageStep.fromMessage(
+    ({ part, value }) => OutMessage.ChoseLook({ part, value }),
   ),
 })
 

@@ -249,7 +249,10 @@ const PEAK_STANDING: Readonly<Record<number, Standing>> = {
   5: 'Met',
   6: 'Met',
   7: 'Met',
-  10: 'Met',
+  // NOTE: wave 10 was Met until the 2026-11-01 boss change (Hard boss health
+  // x2.2, attacks x0.8 apart): the model counts his health as incoming, so the
+  // ratio rose past 2.5. Deliberate; the snapshots hold the real fight.
+  10: 'NotYet',
 }
 
 const sumOf = (values: ReadonlyArray<number>) => Number.sumAll(values)

@@ -42,7 +42,6 @@ import {
 
 import { API_ORIGIN } from './apiOrigin'
 import { type RoomAccess, makeRoomAccess } from './coop/roomReplica'
-import { Hat } from './playerData'
 import {
   BoughtCosmetic,
   BoughtRow,
@@ -64,6 +63,7 @@ import {
   ReachedRecords,
   RecordedRun,
   SawPowerUps,
+  SawUnlocks,
   SeededPlayer,
   UnlockedNightmare,
   boughtRowsOfSave,
@@ -165,10 +165,9 @@ const MetaRow = Schema.Struct({ value: Schema.String })
 
 const DevicesRow = Schema.Struct({ count: Schema.Number })
 
-const decodeHat = Schema.decodeUnknownOption(Hat)
-
-const boughtHatsOf = (rows: ReadonlyArray<BoughtRow>): ReadonlyArray<Hat> =>
-  Array.getSomes(Array.map(rows, ({ id }) => decodeHat(id)))
+const boughtCosmeticsOf = (
+  rows: ReadonlyArray<BoughtRow>,
+): ReadonlyArray<string> => Array.map(rows, ({ id }) => id)
 
 const saveOfRow = (
   row: PlayerRow,
@@ -204,10 +203,11 @@ const saveOfRow = (
   },
   home: row.home,
   seenPowerUps: row.seen_power_ups,
+  seenUnlocks: row.seen_unlocks,
   rotation: row.rotation,
   name: row.name,
   calling: row.calling,
-  boughtHats: boughtHatsOf(bought),
+  boughtCosmetics: boughtCosmeticsOf(bought),
   records: row.run_records,
   rank: {
     earnedPoints: row.rank_points,
@@ -512,6 +512,7 @@ const runChange = (replica: Replica, change: PlayerChange) =>
       replica.run(ChangedOnboarding, { onboarding, homeScreenTip }),
     ChangedHome: ({ home }) => replica.run(ChangedHome, { home }),
     SawPowerUps: ({ kinds }) => replica.run(SawPowerUps, { kinds }),
+    SawUnlocks: ({ ids }) => replica.run(SawUnlocks, { ids }),
     ForgotPowerUps: () => replica.run(ForgotPowerUps, {}),
     RecordedRun: ({ runs, totalKills, kills, bests }) =>
       replica.run(RecordedRun, { runs, totalKills, kills, bests }),

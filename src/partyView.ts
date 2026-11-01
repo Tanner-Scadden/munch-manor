@@ -8,6 +8,7 @@ import { maybeRoomOf } from './coop/roomState'
 import type { Drawable } from './depth'
 import { rect, ringPixels } from './drawing'
 import { hatRiseOf } from './hatArt'
+import { barWidthOf, healthBarShapes } from './healthBarView'
 import type { Model } from './model'
 import {
   COOP_RULES,
@@ -19,7 +20,6 @@ import {
   leadSeatOf,
   playersOf,
 } from './party'
-import type { Calling } from './playerData'
 import {
   type Lying,
   lyingShapes,
@@ -112,11 +112,7 @@ export const mateShadowShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
 
 // NOTE: the pixels a seat's hat stands over its head, from the look it
 // wears (a teammate's from the lobby), for the marks drawn over it.
-export const seatHatRiseOf = (
-  model: Model,
-  slot: PlayerSlot,
-  calling: Calling,
-): number => {
+export const seatHatRiseOf = (model: Model, slot: PlayerSlot): number => {
   const maybeRoom = maybeRoomOf(model.coop)
   const look = Option.isSome(maybeRoom)
     ? seatLookOf(
@@ -126,7 +122,7 @@ export const seatHatRiseOf = (
         Option.flatMap(maybeRoom, room => room.maybeLobby),
       )
     : model.appearance
-  return hatRiseOf(look, calling)
+  return hatRiseOf(look)
 }
 
 const mateBodyShapes = ({
@@ -166,9 +162,7 @@ export const seatColorOf = (slot: PlayerSlot): string =>
   )
 
 const MARK_LIFT_PX = 15
-const BAR_WIDTH = 12
 const BAR_BACK = '#1a0f14'
-const BLEED_COLOR = '#ff3b3b'
 const REVIVE_COLOR = '#8cff5a'
 
 const markShapes = (slot: PlayerSlot, x: number, y: number, rise: number) => {
@@ -196,29 +190,14 @@ const markShapes = (slot: PlayerSlot, x: number, y: number, rise: number) => {
 // draining red as they bleed out.
 const BLEED_BAR_LIFT_PX = 7
 
-const bleedBarShapes = (x: number, y: number, share: number) => {
-  const left = Math.round(x - BAR_WIDTH / 2)
-  const top = Math.round(y) - BLEED_BAR_LIFT_PX
-  return [
-    Canvas.Rect({
-      x: left - 1,
-      y: top - 1,
-      width: BAR_WIDTH + 2,
-      height: 3,
-      fill: BAR_BACK,
-    }),
-    Canvas.Rect({
-      x: left,
-      y: top,
-      width: Math.max(
-        1,
-        Math.round(BAR_WIDTH * Math.min(1, Math.max(0, share))),
-      ),
-      height: 1,
-      fill: BLEED_COLOR,
-    }),
-  ]
-}
+const bleedBarShapes = (x: number, y: number, share: number) =>
+  healthBarShapes(
+    'Small',
+    'Ally',
+    Math.round(x - barWidthOf('Small') / 2),
+    Math.round(y) - BLEED_BAR_LIFT_PX,
+    share,
+  )
 
 // THE REVIVE ICON
 
@@ -352,7 +331,7 @@ const seatMarkShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
             slot,
             player.x,
             player.y,
-            seatHatRiseOf(model, slot, player.calling),
+            seatHatRiseOf(model, slot),
           )
         }
         return Option.match(maybeDownedOf(seat), {
@@ -384,10 +363,7 @@ export const mateOverheadShapes = (
           isStanding(seat)
             ? [
                 ...playerFlashShapes(mate.player),
-                ...reloadBarShapes(
-                  mate.player,
-                  hatRiseOf(mate.appearance, mate.player.calling),
-                ),
+                ...reloadBarShapes(mate.player, hatRiseOf(mate.appearance)),
               ]
             : [],
         ),

@@ -34,19 +34,21 @@ export const GenerateSeed = makeCommand('GenerateSeed', {
 })
 
 const COARSE_POINTER_QUERY = '(pointer: coarse)'
-const MOBILE_SCREEN_MAX_SIDE_PX = 600
 
-const isMobileTouchScreen = (): boolean =>
-  window.matchMedia(COARSE_POINTER_QUERY).matches &&
-  Math.min(window.screen.width, window.screen.height) <=
-    MOBILE_SCREEN_MAX_SIDE_PX
+// NOTE: `pointer` reads the primary pointer, so a touchscreen laptop (a
+// trackpad or mouse first) reads fine and keeps keyboard and mouse, while a
+// phone or a tablet reads coarse. Tablets once fell back to keyboard
+// controls by a screen size check, which left an iPad with no keyboard
+// unable to move. An iPad with a trackpad attached reads fine.
+const isTouchScreen = (): boolean =>
+  window.matchMedia(COARSE_POINTER_QUERY).matches
 
 export const DetectInputDevice = makeCommand('DetectInputDevice', {
   messages: [Message.CompletedDetectInputDevice],
   handler: function* () {
     return () =>
       pipe(
-        Effect.try(isMobileTouchScreen),
+        Effect.try(isTouchScreen),
         Effect.map(isMobile =>
           Message.CompletedDetectInputDevice({
             touchControls: isMobile ? 'Allowed' : 'Blocked',

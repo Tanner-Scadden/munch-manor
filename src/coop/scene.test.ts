@@ -185,8 +185,8 @@ describe('the lobby', () => {
     scene(
       { update, view },
       given(lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo', true)])),
-      expect(role('listitem', { name: 'Ana, you, host' })).toExist(),
-      expect(role('listitem', { name: 'Bo, ready' })).toExist(),
+      expect(role('listitem', { name: 'Ana, you, host, rank 1' })).toExist(),
+      expect(role('listitem', { name: 'Bo, rank 1, ready' })).toExist(),
       expect(role('listitem', { name: 'Empty seat' })).toExist(),
       expect(role('button', { name: 'Kick Bo' })).toExist(),
       click(role('button', { name: 'READY' })),
@@ -285,6 +285,7 @@ describe('the lobby', () => {
       beard: true,
       glasses: true,
       hat: 'None',
+      gunSkin: 'Stock',
     }
     scene(
       { update, view },
@@ -295,16 +296,16 @@ describe('the lobby', () => {
           memberOf(2, 'Cy', false, 'Robot.Chrome'),
         ]),
       ),
-      expect(selector('[aria-label="Bo"] .coop-seat-head')).toHaveStyle(
+      expect(selector('[aria-label="Bo, rank 1"] .coop-seat-head')).toHaveStyle(
         'background-image',
         portraitOf(sent),
       ),
-      expect(selector('[aria-label="Cy"] .coop-seat-head')).toHaveStyle(
+      expect(selector('[aria-label="Cy, rank 1"] .coop-seat-head')).toHaveStyle(
         'background-image',
         portraitOf(seatLook(2)),
       ),
       expect(
-        selector('[aria-label="Ana, you, host"] .coop-seat-head'),
+        selector('[aria-label="Ana, you, host, rank 1"] .coop-seat-head'),
       ).toHaveStyle('background-image', portraitOf(defaultAppearance)),
     )
   })
@@ -322,19 +323,23 @@ describe('the lobby', () => {
           memberOf(3, 'Dee', false, '', false, 999),
         ]),
       ),
-      expect(selector('[aria-label="Ana, you, host"] .coop-rank')).toHaveText(
-        '1',
-      ),
-      expect(selector('[aria-label="Bo"] .coop-rank')).toHaveText('12'),
-      expect(selector('[aria-label="Dee"] .coop-rank')).toHaveText('999'),
       expect(
-        selector('[aria-label="Ana, you, host"] .coop-rank img'),
+        selector('[aria-label="Ana, you, host, rank 1"] .coop-rank'),
+      ).toHaveText('1'),
+      expect(selector('[aria-label="Bo, rank 12"] .coop-rank')).toHaveText(
+        '12',
+      ),
+      expect(selector('[aria-label="Dee, rank 999"] .coop-rank')).toHaveText(
+        '999',
+      ),
+      expect(
+        selector('[aria-label="Ana, you, host, rank 1"] .coop-rank img'),
       ).toHaveAttr('src', woodSrc),
-      expect(selector('[aria-label="Cy"] .coop-rank')).toHaveAttr(
+      expect(selector('[aria-label="Cy, rank 33"] .coop-rank')).toHaveAttr(
         'data-tier',
         'Silver',
       ),
-      expect(selector('[aria-label="Cy"] .coop-rank img')).toHaveAttr(
+      expect(selector('[aria-label="Cy, rank 33"] .coop-rank img')).toHaveAttr(
         'src',
         silverSrc,
       ),
@@ -353,26 +358,88 @@ describe('the lobby', () => {
         ]),
       ),
       expect(
-        selector('[aria-label="Ana, you, host"] .coop-calling'),
+        selector('[aria-label="Ana, you, host, rank 1"] .coop-calling'),
       ).toBeAbsent(),
-      expect(selector('[aria-label="Bo"] .coop-calling')).toHaveAttr(
-        'data-calling',
-        'Handyman',
-      ),
-      expect(selector('[aria-label="Cy"] .coop-calling')).toHaveAttr(
-        'data-calling',
-        'LineCook',
-      ),
-      expect(selector('[aria-label="Dee"] .coop-calling')).toBeAbsent(),
+      expect(
+        selector('[aria-label="Bo, rank 4, Handyman"] .coop-calling'),
+      ).toHaveAttr('data-calling', 'Handyman'),
+      expect(
+        selector('[aria-label="Cy, rank 16, Line Cook"] .coop-calling'),
+      ).toHaveAttr('data-calling', 'LineCook'),
+      expect(selector('[aria-label="Dee, rank 7"] .coop-calling')).toBeAbsent(),
       // NOTE: the portrait wears the prop too; a word that is no calling does not.
-      expect(selector('[aria-label="Bo"] .coop-seat-head')).toHaveStyle(
-        'background-image',
-        portraitOf(seatLook(1), 'Handyman'),
+      expect(
+        selector('[aria-label="Bo, rank 4, Handyman"] .coop-seat-head'),
+      ).toHaveStyle('background-image', portraitOf(seatLook(1), 'Handyman')),
+      expect(
+        selector('[aria-label="Dee, rank 7"] .coop-seat-head'),
+      ).toHaveStyle('background-image', portraitOf(seatLook(3))),
+    )
+  })
+
+  test('a seat reads aloud its player, rank, hero, and READY', () => {
+    scene(
+      { update, view },
+      given(
+        lobbyRoom([
+          memberOf(0, 'Ana', false, '', false, 7),
+          memberOf(1, 'Bo', true, '', false, 16, 'LineCook'),
+          memberOf(2, 'Cy', false, '', false, 3, 'Wizard'),
+        ]),
       ),
-      expect(selector('[aria-label="Dee"] .coop-seat-head')).toHaveStyle(
-        'background-image',
-        portraitOf(seatLook(3)),
+      expect(role('listitem', { name: 'Ana, you, host, rank 7' })).toExist(),
+      expect(
+        role('listitem', { name: 'Bo, rank 16, Line Cook, ready' }),
+      ).toExist(),
+      expect(role('listitem', { name: 'Cy, rank 3' })).toExist(),
+    )
+  })
+
+  test('the hero pill opens a picker of cards with their specials', () => {
+    const picking = (rank: number) =>
+      lobbyRoom([memberOf(0, 'Ana', false, '', false, rank)])
+    scene(
+      { update, view },
+      given(picking(4)),
+      expect(selector('.coop-calling-picker')).toBeAbsent(),
+      click(role('button', { name: /^Hero: YOU/ })),
+      expect(selector('.coop-calling-picker')).toExist(),
+      expect(selector('[data-calling="Handyman"] .calling-special')).toHaveText(
+        '+Planks 50% off',
       ),
+      expect(selector('[data-calling="Handyman"][data-lock="Open"]')).toExist(),
+      expect(
+        selector(
+          '[data-calling="Handyman"] [data-sign="Drawback"] .calling-special-line',
+        ),
+      ).toHaveText('4 max hearts'),
+      expect(
+        selector(
+          '[data-calling="PennyPincher"] [data-sign="Perk"] .calling-special-line',
+        ),
+      ).toHaveText('Rattles 15% off'),
+      expect(
+        selector('[data-calling="LineCook"][data-lock="Locked"]'),
+      ).toExist(),
+      expect(
+        selector('[data-calling="LineCook"] .calling-special-line'),
+      ).toHaveText('Starts with Pressure Cooker'),
+      expect(selector('[data-calling="LineCook"] .rank-number')).toHaveText(
+        '15',
+      ),
+      click(
+        role('button', {
+          name: /^Handyman\. Plus: Planks 50% off/,
+        }),
+      ),
+      Command.resolve(
+        ChangeLobby({
+          change: LobbyChange.ChangedMemberCalling({ calling: 'Handyman' }),
+        }),
+        Message.CompletedChangeLobby(),
+      ),
+      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+      expect(selector('.coop-calling-picker')).toBeAbsent(),
     )
   })
 
@@ -548,22 +615,32 @@ describe('the arena', () => {
       { update, view: heldView },
       given(back),
       expect(selector('#coop-ready')).toBeAbsent(),
-      expect(role('listitem', { name: 'Bo: 9, MVP' })).toBeAbsent(),
+      expect(
+        role('listitem', { name: 'Bo: rank 1, Track Star, 9, MVP' }),
+      ).toBeAbsent(),
       expect(role('button', { name: /^Leave/ })).toBeAbsent(),
       expect(selector('.coop[data-screen="RunCard"]')).toExist(),
     )
     scene(
       { update, view },
       given(back),
-      expect(role('listitem', { name: 'Bo: 9, MVP' })).toExist(),
-      expect(role('listitem', { name: 'Ana: 3' })).toExist(),
-      expect(selector('.coop-result-crown')).toExist(),
-      expect(selector('[aria-label="Bo: 9, MVP"] .coop-result-rank')).toExist(),
       expect(
-        selector('[aria-label="Bo: 9, MVP"] .coop-result-calling'),
+        role('listitem', { name: 'Bo: rank 1, Track Star, 9, MVP' }),
+      ).toExist(),
+      expect(role('listitem', { name: 'Ana: rank 1, 3' })).toExist(),
+      expect(selector('.coop-result-crown')).toExist(),
+      expect(
+        selector(
+          '[aria-label="Bo: rank 1, Track Star, 9, MVP"] .coop-result-rank',
+        ),
+      ).toExist(),
+      expect(
+        selector(
+          '[aria-label="Bo: rank 1, Track Star, 9, MVP"] .coop-result-calling',
+        ),
       ).toHaveAttr('data-calling', 'TrackStar'),
       expect(
-        selector('[aria-label="Ana: 3"] .coop-result-calling'),
+        selector('[aria-label="Ana: rank 1, 3"] .coop-result-calling'),
       ).toBeAbsent(),
     )
   })

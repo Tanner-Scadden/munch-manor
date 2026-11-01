@@ -11,6 +11,7 @@ import {
   Body,
   Calling,
   Difficulty,
+  GunSkin,
   HairColor,
   HairStyle,
   Hat,
@@ -18,7 +19,6 @@ import {
   Print,
   ShirtColor,
   SkinTone,
-  SoldHat,
 } from '@game/playerData'
 
 // NOTE: the harness's query string, decoded once. An unknown key or a bad
@@ -176,8 +176,8 @@ export const HarnessConfig = Schema.Struct({
   god: Flag,
   look: Schema.optionalKey(Look),
   picker: Flag,
-  looksection: Choice(['Body', 'Hair', 'Outfit']),
-  profile: Choice(['look', 'closet', 'name', 'account', 'settings']),
+  looksection: Choice(['Body', 'Hair', 'Outfit', 'Gear']),
+  profile: Choice(['look', 'name', 'account', 'settings']),
   name: Schema.optionalKey(Schema.String),
   sync: Choice(['local', 'connecting', 'synced', 'offline', 'broken']),
   devices: Num(1),
@@ -278,10 +278,14 @@ export const HarnessConfig = Schema.Struct({
   // and the points the run on the end card just paid, for its strip
   rank: MaybeNum,
   rankgain: MaybeNum,
-  // The closet: the hat worn, the hats bought, and the Bones earned (over
-  // the tenth of the rank's points) and spent
+  // The earned looks: the hat and gun skin worn, the cosmetic ids bought
+  // (`Fez`, `skin:Candy`), and the Bones earned (over the tenth of the
+  // rank's points) and spent. `fresh` leaves the gifts reached unseen, so
+  // they wear NEW badges and pips.
   hat: Schema.optionalKey(Hat),
-  bought: Schema.optionalKey(ListOf(SoldHat)),
+  skin: Schema.optionalKey(GunSkin),
+  bought: Schema.optionalKey(ListOf(Schema.String)),
+  fresh: Flag,
   bones: MaybeNum,
   spent: MaybeNum,
   bests: Flag,
@@ -310,6 +314,7 @@ export const HarnessConfig = Schema.Struct({
     'lobby',
     'host',
     'picks',
+    'heroes',
     'keep',
     'ready',
     'result',

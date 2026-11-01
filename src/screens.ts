@@ -953,7 +953,7 @@ const runnerShapes = (
       ).Normal.Left,
       group({
         translate: { x: -HERO_GUN_PX, y: -PLAYER_FOOT_OFFSET },
-        shapes: gunSprite(gun, 0, Math.PI),
+        shapes: gunSprite(gun, 0, Math.PI, appearance.gunSkin),
       }),
     ],
   }),
