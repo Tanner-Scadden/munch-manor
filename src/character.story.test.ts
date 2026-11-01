@@ -94,6 +94,7 @@ const PICKED: Appearance = {
   print: 'Rainbow',
   beard: true,
   glasses: true,
+  hat: 'None',
 }
 
 const flip = (toggle: 'Beard' | 'Glasses') =>
@@ -186,6 +187,7 @@ describe('Character', () => {
       print: 'Plain',
       beard: false,
       glasses: false,
+      hat: 'None',
     })
   })
 
@@ -481,6 +483,7 @@ describe('Character', () => {
         print: 'Rainbow',
         beard: true,
         glasses: true,
+        hat: 'None',
       },
     ]
     const frameSizes = (appearance: Appearance) =>

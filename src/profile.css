@@ -45,7 +45,7 @@
   position: relative;
   box-sizing: border-box;
   width: min(700px, calc(100vw - 64px));
-  height: min(420px, calc(100dvh - 16px));
+  height: min(456px, calc(100dvh - 16px));
   padding: var(--menu-pad);
   padding-left: 0;
   border: 3px solid var(--tab-color);
@@ -94,7 +94,7 @@
 .profile-tabs {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   margin-left: -16px;
   padding-top: 6px;
 }
@@ -108,9 +108,9 @@
   justify-content: center;
   gap: 4px;
   width: 88px;
-  min-height: 66px;
+  min-height: 54px;
   margin: 0;
-  padding: 6px 4px;
+  padding: 4px 4px;
   border: 3px solid var(--tab-color);
   border-radius: 12px;
   background: color-mix(in srgb, var(--tab-color) 20%, var(--menu-bg));
@@ -1332,8 +1332,19 @@
   }
 
   .profile-tab {
-    min-height: 56px;
+    min-height: 46px;
     width: 80px;
+  }
+
+  .profile-tab-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .profile-tab[aria-selected='true'] .profile-tab-icon {
+    width: 30px;
+    height: 26px;
+    background-size: 20px;
   }
 
   .look-stage {
@@ -1609,11 +1620,11 @@
    tabs close up a little to leave it room. */
 @media (max-height: 460px) and (orientation: landscape) {
   .profile-tabs {
-    gap: 6px;
+    gap: 4px;
   }
 
   .profile-tab {
-    min-height: 50px;
+    min-height: 44px;
   }
 
   .profile-rank {

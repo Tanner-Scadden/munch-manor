@@ -299,6 +299,7 @@ describe('the save in the player scope', () => {
           print: 'Plain',
           beard: false,
           glasses: false,
+          hat: 'None',
         }),
       )
       expect(
@@ -316,6 +317,7 @@ describe('the save in the player scope', () => {
           print: 'Rainbow',
           beard: true,
           glasses: true,
+          hat: 'None',
         }),
       )
     }),
@@ -896,6 +898,7 @@ const migratedLiveSave: PlayerSave = {
     print: 'Plain',
     beard: false,
     glasses: false,
+    hat: 'None',
   },
   difficulty: { chosen: 'Hard', card: 'Seen', nightmare: 'Unlocked' },
   bests: {
@@ -919,6 +922,7 @@ const migratedLiveSave: PlayerSave = {
   records: noSavedRunRecords,
   rank: noRank,
   calling: 'You',
+  boughtHats: [],
 }
 
 const realLegacy: LegacySave = {

@@ -119,6 +119,7 @@ export const FIELD_CLASSES = {
   bests: 'Client',
   rank: 'Client',
   calling: 'Client',
+  boughtHats: 'Client',
   rankPaid: 'Client',
   maybeRankGain: 'Client',
   runTally: 'Client',

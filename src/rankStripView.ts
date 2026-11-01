@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { playerSprites } from './appearance'
@@ -7,18 +7,21 @@ import { rect } from './drawing'
 import {
   CALLING_FLIP_MS,
   type EndKind,
+  EndUnlock,
   RANK_FILL_MS,
   RANK_POP_MS,
   easeOut,
   easeOutBack,
   isRankedUp,
-  maybeOpenedCalling,
   progressOf,
   rankStripAtMs,
+  unlockFlipAtMs,
+  unlockStartMs,
+  unlocksOf,
 } from './endBeat'
 import { GLYPH_HEIGHT, textShapes, textWidth } from './font'
 import type { Model } from './model'
-import { CALLING_NAMES } from './names'
+import { CALLING_NAMES, HAT_NAMES } from './names'
 import { badgeTierOf, rankProgressOf, shownPointsOf } from './rank'
 import { BONE, BONE_SIZE, badgeSprite } from './rankArt'
 import { frameAt, group, placeAt } from './sprite'
@@ -65,61 +68,91 @@ const barShapes = (
 }
 
 const CARD_WIDTH = 62
-const CARD_HEIGHT = 40
+const CARD_HEIGHT = 50
 const CARD_EDGE = '#ffd23f'
 const CARD_FILL = '#2a1a2e'
 const CARD_LIFT_PX = 7
+const CARD_FOOT_Y = 37
 
-// NOTE: the card a rank up that opens a calling flips over above the strip:
-// the player in the calling's prop, and its name. It narrows to a line and
-// opens again, as a card turns.
-const callingCardShapes = (
+// NOTE: the figure a card shows and what it is called: the player in the
+// calling's prop, or in the gift hat. The hat reaches above the head, so the
+// card is tall enough for the tallest.
+const unlockFigureOf = (
   model: Model,
+  unlock: EndUnlock,
+): Readonly<{ figure: ReadonlyArray<Canvas.Shape>; name: string }> =>
+  EndUnlock.match(unlock, {
+    Calling: ({ calling }) => ({
+      figure: frameAt(playerSprites(model.appearance, calling).idle, 0).Normal
+        .Right,
+      name: CALLING_NAMES[calling],
+    }),
+    Hat: ({ hat }) => ({
+      figure: frameAt(playerSprites({ ...model.appearance, hat }).idle, 0)
+        .Normal.Right,
+      name: HAT_NAMES[hat],
+    }),
+  })
+
+// NOTE: each card a rank up opened flips over above the strip in turn: the
+// player in the prop or the hat, and its name. It narrows to a line and
+// opens again, as a card turns; the next one flips over it.
+const unlockCardShapes = (
+  model: Model,
+  kind: EndKind,
   ms: number,
-  flipAtMs: number,
   centerX: number,
   centerY: number,
-): ReadonlyArray<Canvas.Shape> =>
-  Option.match(maybeOpenedCalling(model), {
-    onNone: () => [],
-    onSome: calling => {
-      if (ms < flipAtMs) {
-        return []
-      }
-      const turn = easeOutBack(progressOf(ms, flipAtMs, CALLING_FLIP_MS))
-      const scaleX = Math.max(0.04, Math.min(1, turn))
-      const top = centerY - CARD_LIFT_PX - CARD_HEIGHT
-      const sprite = frameAt(playerSprites(model.appearance, calling).idle, 0)
-      return [
-        group({
-          translate: { x: centerX, y: top },
-          scale: { x: scaleX, y: 1 },
-          shapes: [
-            rect(
-              -CARD_WIDTH / 2 - 1,
-              -1,
-              CARD_WIDTH + 2,
-              CARD_HEIGHT + 2,
-              CARD_EDGE,
-            ),
-            rect(-CARD_WIDTH / 2, 0, CARD_WIDTH, CARD_HEIGHT, CARD_FILL),
-            group({
-              translate: { x: 0, y: 26 },
-              scale: { x: 2, y: 2 },
-              shapes: sprite.Normal.Right,
-            }),
-            ...textShapes(
-              CALLING_NAMES[calling].toUpperCase(),
-              'Plain',
-              0,
-              CARD_HEIGHT - GLYPH_HEIGHT - 2,
-              'Center',
-            ),
-          ],
-        }),
-      ]
+): ReadonlyArray<Canvas.Shape> => {
+  const flipAtMs = unlockFlipAtMs(model, kind)
+  const unlocks = unlocksOf(model)
+  const shown = Array.findLastIndex(
+    unlocks,
+    (_, index) => ms >= flipAtMs + unlockStartMs(index),
+  )
+  return Option.match(
+    Option.flatMap(shown, index => Array.get(unlocks, index)),
+    {
+      onNone: () => [],
+      onSome: unlock => {
+        const startMs =
+          flipAtMs + unlockStartMs(Option.getOrElse(shown, () => 0))
+        const turn = easeOutBack(progressOf(ms, startMs, CALLING_FLIP_MS))
+        const scaleX = Math.max(0.04, Math.min(1, turn))
+        const top = centerY - CARD_LIFT_PX - CARD_HEIGHT
+        const { figure, name } = unlockFigureOf(model, unlock)
+        return [
+          group({
+            translate: { x: centerX, y: top },
+            scale: { x: scaleX, y: 1 },
+            shapes: [
+              rect(
+                -CARD_WIDTH / 2 - 1,
+                -1,
+                CARD_WIDTH + 2,
+                CARD_HEIGHT + 2,
+                CARD_EDGE,
+              ),
+              rect(-CARD_WIDTH / 2, 0, CARD_WIDTH, CARD_HEIGHT, CARD_FILL),
+              group({
+                translate: { x: 0, y: CARD_FOOT_Y },
+                scale: { x: 2, y: 2 },
+                shapes: figure,
+              }),
+              ...textShapes(
+                name.toUpperCase(),
+                'Plain',
+                0,
+                CARD_HEIGHT - GLYPH_HEIGHT - 2,
+                'Center',
+              ),
+            ],
+          }),
+        ]
+      },
     },
-  })
+  )
+}
 
 // NOTE: `left` and `width` are the strip's room, `centerY` its middle.
 export const rankStripShapes = (
@@ -192,13 +225,7 @@ export const rankStripShapes = (
             ...(isPopping
               ? sparkShapes(left + BADGE_X, centerY, ms - popAtMs)
               : []),
-            ...callingCardShapes(
-              model,
-              ms,
-              popAtMs + (isRankedUp(model) ? RANK_POP_MS : 0),
-              left + width / 2,
-              centerY,
-            ),
+            ...unlockCardShapes(model, kind, ms, left + width / 2, centerY),
           ],
         }),
       ]

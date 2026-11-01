@@ -13,10 +13,12 @@ import {
   Difficulty,
   HairColor,
   HairStyle,
+  Hat,
   Outfit,
   Print,
   ShirtColor,
   SkinTone,
+  SoldHat,
 } from '@game/playerData'
 
 // NOTE: the harness's query string, decoded once. An unknown key or a bad
@@ -175,7 +177,7 @@ export const HarnessConfig = Schema.Struct({
   look: Schema.optionalKey(Look),
   picker: Flag,
   looksection: Choice(['Body', 'Hair', 'Outfit']),
-  profile: Choice(['look', 'name', 'account', 'settings']),
+  profile: Choice(['look', 'closet', 'name', 'account', 'settings']),
   name: Schema.optionalKey(Schema.String),
   sync: Choice(['local', 'connecting', 'synced', 'offline', 'broken']),
   devices: Num(1),
@@ -276,6 +278,12 @@ export const HarnessConfig = Schema.Struct({
   // and the points the run on the end card just paid, for its strip
   rank: MaybeNum,
   rankgain: MaybeNum,
+  // The closet: the hat worn, the hats bought, and the Bones earned (over
+  // the tenth of the rank's points) and spent
+  hat: Schema.optionalKey(Hat),
+  bought: Schema.optionalKey(ListOf(SoldHat)),
+  bones: MaybeNum,
+  spent: MaybeNum,
   bests: Flag,
   kills: Schema.optionalKey(Kills),
   opened: Schema.optionalKey(ListOf(ZombieKind)),

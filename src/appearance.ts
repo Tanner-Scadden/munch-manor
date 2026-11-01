@@ -1,6 +1,8 @@
 import { Array, Option, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { shownHatOf } from './closet'
+import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, NO_HAT } from './hatArt'
 import {
   type Appearance,
   Body,
@@ -157,6 +159,7 @@ export const playerPalette = (appearance: Appearance): Palette => {
     V: VISOR_COLOR,
     C: COIN_COLOR,
     N: TOQUE_BAND_COLOR,
+    ...HAT_COLORS,
     ...Object.fromEntries(
       Array.map(RAINBOW_STRIPES, (color, index) => [
         RAINBOW_SYMBOLS.charAt(index),
@@ -374,6 +377,23 @@ const overlayRows = (base: Rows, top: Rows): Rows =>
     }),
   )
 
+// HATS
+
+// NOTE: a hat sits over the hair and glasses. It reaches above the head, so
+// the figure's rows grow at the top and nothing below them moves: the sprite
+// is anchored at its feet. A calling's prop takes the hat's place, so only
+// YOU wears one (shownHatOf).
+const withHat = (rows: Rows, look: Appearance, calling: Calling): Rows => {
+  const hat = shownHatOf(look, calling)
+  const art = hat === 'None' ? NO_HAT : HAT_ART[hat]
+  return Array.isReadonlyArrayEmpty(art.rows)
+    ? rows
+    : overlayRows(
+        [...Array.makeBy(art.above, () => BLANK_ROW), ...rows],
+        art.rows,
+      )
+}
+
 // PRINTS
 
 // NOTE: a print paints the shirt's own pixels (B and D) on the torso rows:
@@ -430,7 +450,11 @@ export const playerPixels = (
     const bearded = appearance.beard ? overlayRows(printed, BEARD) : printed
     const haired = overlayRows(bearded, hair)
     const glassed = appearance.glasses ? overlayRows(haired, GLASSES) : haired
-    return overlayRows(glassed, CALLING_PROPS[calling])
+    return withHat(
+      overlayRows(glassed, CALLING_PROPS[calling]),
+      appearance,
+      calling,
+    )
   }
   const legs = (rows: Rows) => shape.legs(rows)
   return {
@@ -470,6 +494,25 @@ export const playerPixels = (
   }
 }
 
+// NOTE: a closet card's picture, from the room over the tallest hat down to
+// the hips: the standing figure with the look's hat, its top padded so every
+// hat sits at the same height from the figure's feet, and nothing under the
+// torso. Rows are the standing frame's, so the hat sits as it does in a run.
+// NOTE: the blank row over the head, the face's six rows, and the torso's
+// three.
+const HEAD_AND_TORSO_ROWS = 10
+
+export const closetRows = (look: Appearance): Rows => {
+  const grown = look.hat === 'None' ? 0 : HAT_ART[look.hat].above
+  return Array.take(
+    [
+      ...Array.makeBy(MAX_HAT_ABOVE - grown, () => BLANK_ROW),
+      ...playerPixels(look).idle[0],
+    ],
+    MAX_HAT_ABOVE + HEAD_AND_TORSO_ROWS,
+  )
+}
+
 // SPRITES
 
 type PlayerSprites = Readonly<{
@@ -504,6 +547,7 @@ export const appearanceKey = (
     appearance.print,
     appearance.beard ? 'Beard' : 'Shaven',
     appearance.glasses ? 'Glasses' : 'Bare',
+    shownHatOf(appearance, calling),
   ].join('.')
 
 const SPRITE_CACHE_SIZE = 16
@@ -597,6 +641,7 @@ export const randomAppearance = (
     print,
     beard,
     glasses,
+    hat: current.hat,
   }
   return [
     afterGlasses,

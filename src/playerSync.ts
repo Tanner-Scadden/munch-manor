@@ -50,6 +50,7 @@ export const PlayerChange = defineTaggedUnion({
   ChangedCalling: { calling: Calling },
   EarnedRank: { points: Schema.Number, bones: Schema.Number },
   GrantedVeteranRank: { points: Schema.Number, bones: Schema.Number },
+  BoughtCosmetic: { id: Schema.String },
 })
 export type PlayerChange = typeof PlayerChange.Type
 
@@ -176,6 +177,13 @@ export const changesBetween = (
             ),
           }),
       ),
+      Array.map(
+        Array.filter(
+          after.boughtHats,
+          hat => !Array.contains(before.boughtHats, hat),
+        ),
+        id => PlayerChange.BoughtCosmetic({ id }),
+      ),
       changeWhen(
         after.rank.isVeteranGranted &&
           (!before.rank.isVeteranGranted ||
@@ -226,6 +234,7 @@ const refreshed = (change: PlayerChange, save: PlayerSave): PlayerChange =>
     ChangedCalling: () =>
       PlayerChange.ChangedCalling({ calling: save.calling }),
     EarnedRank: () => change,
+    BoughtCosmetic: () => change,
     GrantedVeteranRank: () =>
       PlayerChange.GrantedVeteranRank({
         points: save.rank.veteranPoints,
@@ -242,6 +251,7 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'SawPowerUps',
     'ForgotPowerUps',
     'EarnedRank',
+    'BoughtCosmetic',
   ])(change)
 
 export const withUnsavedChanges = (

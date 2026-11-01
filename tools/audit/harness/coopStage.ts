@@ -132,17 +132,18 @@ const COOP_PINGS = [48, 140, 260, 90]
 
 const COOP_LOOKS = [
   '',
-  'Male.Curls.Blonde.Deep.Red',
-  'Female.Long.Black.Fair.Yellow',
-  'Male.Crop.Pink.Medium.Purple',
+  'Broad.Curly.Blonde.Deep.Red.AAAA.H',
+  'Slim.Long.Black.Fair.Yellow.ABAB.J',
+  'Broad.Short.Pink.Medium.Purple.CBAA.N',
 ]
 
 // NOTE: the ranks the staged teammates sent: wood, tin, silver, and the
 // golden drumstick, so the shots show the badges' tiers.
 const COOP_RANKS = [7, 18, 33, 62]
 
-// NOTE: and the callings, so the shots show a prop for each and none for YOU.
-const COOP_CALLINGS = ['PennyPincher', 'Handyman', 'LineCook', 'TrackStar']
+// NOTE: and the callings, so the shots show a prop for the Handyman and the
+// hats the others wear: a calling's prop takes a hat's place.
+const COOP_CALLINGS = ['You', 'You', 'You', 'LineCook']
 
 const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
   const Screen = CoopModel.Screen

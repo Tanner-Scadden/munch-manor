@@ -249,7 +249,23 @@ describe('the room host', () => {
     expect(lookOfRequest('Male.Curls.Black.Deep.Red')).toBe(
       'Broad.Curly.Black.Deep.Red.AAAA',
     )
+    // NOTE: a hat is one more word, the letter of its place in the game's
+    // hats (M is the Fez). Bare headed is the code it always was.
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.M')).toBe(
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M',
+    )
+    expect(lookOfRequest('Slim.Mohawk.Pink.Deep.Teal.CCBB.A')).toBe(
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB',
+    )
+    expect(lookOfRequest('Broad.Bald.Grey.Fair.Purple.DAAA.Q')).toBe(
+      'Broad.Bald.Grey.Fair.Purple.DAAA.Q',
+    )
     const junks = [
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.R',
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.MM',
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.m',
+      'Slim.Mohawk.Pink.Deep.Teal.CCBB.M.A',
+      'Slim.Mohawk.Pink.Deep.Teal.CCBA.AAAA.A',
       'Female.Ponytail.Pink.Tan.Plaid',
       'Robot',
       '',

@@ -270,13 +270,15 @@ export const sceneOf = (
     current =>
       openProfileOn(
         modifyFields(current, { screenMs: () => 99999 }),
-        profileTab === 'name'
-          ? 'Name'
-          : profileTab === 'account'
-            ? 'Account'
-            : profileTab === 'settings'
-              ? 'Settings'
-              : 'Look',
+        profileTab === 'closet'
+          ? 'Closet'
+          : profileTab === 'name'
+            ? 'Name'
+            : profileTab === 'account'
+              ? 'Account'
+              : profileTab === 'settings'
+                ? 'Settings'
+                : 'Look',
       ),
   )(seeded)
   const lookSection = config.looksection

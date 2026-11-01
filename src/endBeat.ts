@@ -1,9 +1,11 @@
 import { Array, Option } from 'effect'
+import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
 import type { SharePath } from './analytics'
 import type { SoundEffect } from './audio'
 import { callingsOpenedBy } from './calling'
+import { hatsGiftedBy } from './closet'
 import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards'
 import { isEndScreen, withBests } from './home'
 import {
@@ -14,7 +16,7 @@ import {
   type RunRecord,
 } from './model'
 import { isCoop, leadSeatOf } from './party'
-import type { Calling, Difficulty } from './playerData'
+import { Calling, type Difficulty, Hat } from './playerData'
 import { isRankUp, rankOf } from './rank'
 import type { SharedRun } from './share'
 import { accuracyPercent, totalKills } from './stats'
@@ -236,22 +238,51 @@ export const isRankedUp = (model: Model): boolean =>
     isRankUp(pointsBefore, gained),
   )
 
-// NOTE: a rank up that opens a calling flips its card after the badge pops:
-// the newest one it opened, if it opened several.
+// NOTE: a rank up that opens a calling or a gift hat flips a card for each
+// after the badge pops: the callings first, then the hats, one card at a
+// time, each held a moment before the next flips over it. The last stays.
 export const CALLING_FLIP_MS = 420
+export const UNLOCK_HOLD_MS = 500
 
-export const maybeOpenedCalling = (model: Model): Option.Option<Calling> =>
-  Option.flatMap(model.maybeRankGain, ({ pointsBefore, gained }) =>
-    Array.last(
-      callingsOpenedBy(rankOf(pointsBefore), rankOf(pointsBefore + gained)),
-    ),
-  )
+export const EndUnlock = defineTaggedUnion({
+  Calling: { calling: Calling },
+  Hat: { hat: Hat },
+})
+export type EndUnlock = typeof EndUnlock.Type
 
-export const rankDoneMs = (model: Model, kind: EndKind): number =>
+export const unlocksOf = (model: Model): ReadonlyArray<EndUnlock> =>
+  Option.match(model.maybeRankGain, {
+    onNone: () => [],
+    onSome: ({ pointsBefore, gained }) => {
+      const before = rankOf(pointsBefore)
+      const after = rankOf(pointsBefore + gained)
+      return [
+        ...Array.map(callingsOpenedBy(before, after), calling =>
+          EndUnlock.Calling({ calling }),
+        ),
+        ...Array.map(hatsGiftedBy(before, after), hat =>
+          EndUnlock.Hat({ hat }),
+        ),
+      ]
+    },
+  })
+
+// NOTE: how long after the badge pops card number `index` starts to flip.
+export const unlockStartMs = (index: number): number =>
+  index * (CALLING_FLIP_MS + UNLOCK_HOLD_MS)
+
+// NOTE: when the first unlock card starts to flip: once the bar is full and
+// the badge has popped.
+export const unlockFlipAtMs = (model: Model, kind: EndKind): number =>
   rankStripAtMs(model, kind) +
   RANK_FILL_MS +
-  (isRankedUp(model) ? RANK_POP_MS : 0) +
-  (Option.isSome(maybeOpenedCalling(model)) ? CALLING_FLIP_MS : 0)
+  (isRankedUp(model) ? RANK_POP_MS : 0)
+
+const unlockDurationMs = (count: number): number =>
+  count === 0 ? 0 : unlockStartMs(count - 1) + CALLING_FLIP_MS
+
+export const rankDoneMs = (model: Model, kind: EndKind): number =>
+  unlockFlipAtMs(model, kind) + unlockDurationMs(unlocksOf(model).length)
 
 const beatDoneMs = (model: Model, kind: EndKind): number =>
   hasRankStrip(model)
@@ -336,6 +367,12 @@ export const beatSounds = (
           isRankedUp(model) &&
             isPast(rankStripAtMs(model, kind) + RANK_FILL_MS),
           'RankUp',
+        ),
+        ...soundWhen(
+          Array.some(unlocksOf(model), (_, index) =>
+            isPast(unlockFlipAtMs(model, kind) + unlockStartMs(index)),
+          ),
+          'LootPop',
         ),
       ]
     },

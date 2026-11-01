@@ -9,10 +9,11 @@ import { type Seeded, nextRandom } from './prng'
 // TABS
 
 // NOTE: the tabs as data, in the order they stand down the side (across the
-// top in portrait). Cosmetics or Stats would be one more entry here and one
+// top in portrait). Stats would be one more entry here and one
 // more literal in ProfileTab.
 export const PROFILE_TABS: Array.NonEmptyReadonlyArray<ProfileTab> = [
   'Look',
+  'Closet',
   'Name',
   'Account',
   'Settings',

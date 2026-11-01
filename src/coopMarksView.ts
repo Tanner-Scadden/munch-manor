@@ -7,7 +7,7 @@ import { textShapes } from './font'
 import type { Model } from './model'
 import { seatNamesOf } from './onlineRun'
 import { isBledOut, isCoop, isDowned, leadSeatOf, playersOf } from './party'
-import { NAME_LIFT_DOWNED_PX, seatColorOf } from './partyView'
+import { NAME_LIFT_DOWNED_PX, seatColorOf, seatHatRiseOf } from './partyView'
 import { TOP_LEFT, bakeShapes, placeAt, spriteShapes } from './sprite'
 import { isBreak } from './waves'
 
@@ -178,14 +178,19 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
                 seatColorOf(slot),
                 player.x,
                 player.y -
-                  (isDowned(seat) ? NAME_LIFT_DOWNED_PX : NAME_BOTTOM_LIFT_PX),
+                  (isDowned(seat)
+                    ? NAME_LIFT_DOWNED_PX
+                    : NAME_BOTTOM_LIFT_PX +
+                      seatHatRiseOf(model, slot, player.calling)),
               )),
           ...(isBreak(model) && seat.readiness === 'Ready'
             ? textShapes(
                 'READY',
                 'Title',
                 player.x,
-                player.y - READY_LIFT_PX,
+                player.y -
+                  READY_LIFT_PX -
+                  seatHatRiseOf(model, slot, player.calling),
                 'Center',
               )
             : []),

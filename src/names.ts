@@ -2,7 +2,7 @@ import { Array, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
-import type { Calling } from './playerData'
+import type { Calling, Hat } from './playerData'
 import type {
   FixedShopItemId,
   FridgePrize,
@@ -162,6 +162,27 @@ export const CALLING_NAMES: Readonly<Record<Calling, string>> = {
   TrackStar: 'Track Star',
   PennyPincher: 'Penny Pincher',
   LineCook: 'Line Cook',
+}
+
+// NOTE: the closet's hats (src/closet.ts), read on focus and aloud.
+export const HAT_NAMES: Readonly<Record<Hat, string>> = {
+  None: 'No hat',
+  PartyHat: 'Party Hat',
+  BucketHat: 'Bucket Hat',
+  PomBeanie: 'Pom Beanie',
+  PropellerCap: 'Propeller Cap',
+  CowboyHat: 'Cowboy Hat',
+  HornedHelmet: 'Horned Helmet',
+  TopHat: 'Top Hat',
+  PirateHat: 'Pirate Hat',
+  WitchHat: 'Witch Hat',
+  TrafficCone: 'Traffic Cone',
+  Colander: 'Colander',
+  Fez: 'Fez',
+  BunnyEars: 'Bunny Ears',
+  Plunger: 'Plunger',
+  Lampshade: 'Lampshade',
+  PumpkinHead: 'Pumpkin Head',
 }
 
 export const CALLING_NOTES: Readonly<Record<Calling, string>> = {

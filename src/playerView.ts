@@ -457,14 +457,18 @@ export const playerFootY = (player: Player): number =>
 export const playerShadow = (player: Player): Canvas.Shape =>
   footShadow(player, PLAYER_FOOT_OFFSET, PLAYER_SHADOW_WIDTH, SHADOW_COLOR)
 
-export const reloadBarShapes = (player: Player): ReadonlyArray<Canvas.Shape> =>
+// NOTE: `rise` lifts the bar over a hat (hatRiseOf in src/hatArt.ts).
+export const reloadBarShapes = (
+  player: Player,
+  rise = 0,
+): ReadonlyArray<Canvas.Shape> =>
   Reload.match(player.reload, {
     Ready: () => [],
     Reloading: ({ remainingMs, durationMs }) => {
       const progress =
         durationMs > 0 ? clamp(1 - remainingMs / durationMs, 0, 1) : 1
       const left = Math.round(player.x - RELOAD_BAR_WIDTH / 2)
-      const top = Math.round(player.y) - RELOAD_BAR_LIFT_PX
+      const top = Math.round(player.y) - RELOAD_BAR_LIFT_PX - rise
       return [
         Canvas.Rect({
           x: left - 1,

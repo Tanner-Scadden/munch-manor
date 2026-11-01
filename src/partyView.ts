@@ -7,6 +7,7 @@ import { seatLookOf } from './coop/looks'
 import { maybeRoomOf } from './coop/roomState'
 import type { Drawable } from './depth'
 import { rect, ringPixels } from './drawing'
+import { hatRiseOf } from './hatArt'
 import type { Model } from './model'
 import {
   COOP_RULES,
@@ -18,6 +19,7 @@ import {
   leadSeatOf,
   playersOf,
 } from './party'
+import type { Calling } from './playerData'
 import {
   type Lying,
   lyingShapes,
@@ -108,6 +110,25 @@ export const mateShadowShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
     ? Array.map(mateModelsOf(model), mate => playerShadow(mate.model.player))
     : []
 
+// NOTE: the pixels a seat's hat stands over its head, from the look it
+// wears (a teammate's from the lobby), for the marks drawn over it.
+export const seatHatRiseOf = (
+  model: Model,
+  slot: PlayerSlot,
+  calling: Calling,
+): number => {
+  const maybeRoom = maybeRoomOf(model.coop)
+  const look = Option.isSome(maybeRoom)
+    ? seatLookOf(
+        model.appearance,
+        leadSeatOf(model).slot,
+        slot,
+        Option.flatMap(maybeRoom, room => room.maybeLobby),
+      )
+    : model.appearance
+  return hatRiseOf(look, calling)
+}
+
 const mateBodyShapes = ({
   model,
   seat,
@@ -122,14 +143,11 @@ const mateBodyShapes = ({
 
 export const mateDrawables = (model: Model): ReadonlyArray<Drawable> =>
   isCoop(model)
-    ? Array.map(
-        mateModelsOf(model),
-        (mate): Drawable => ({
-          footY: playerFootY(mate.model.player),
-          rank: 'Player',
-          shapes: mateBodyShapes(mate),
-        }),
-      )
+    ? Array.map(mateModelsOf(model), (mate): Drawable => ({
+        footY: playerFootY(mate.model.player),
+        rank: 'Player',
+        shapes: mateBodyShapes(mate),
+      }))
     : []
 
 // SEAT MARKS
@@ -153,9 +171,9 @@ const BAR_BACK = '#1a0f14'
 const BLEED_COLOR = '#ff3b3b'
 const REVIVE_COLOR = '#8cff5a'
 
-const markShapes = (slot: PlayerSlot, x: number, y: number) => {
+const markShapes = (slot: PlayerSlot, x: number, y: number, rise: number) => {
   const left = Math.round(x) - 1
-  const top = Math.round(y) - MARK_LIFT_PX
+  const top = Math.round(y) - MARK_LIFT_PX - rise
   return [
     Canvas.Rect({
       x: left,
@@ -330,7 +348,12 @@ const seatMarkShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
   isCoop(model)
     ? Array.flatMap(playersOf(model), ({ slot, seat, player }) => {
         if (isStanding(seat)) {
-          return markShapes(slot, player.x, player.y)
+          return markShapes(
+            slot,
+            player.x,
+            player.y,
+            seatHatRiseOf(model, slot, player.calling),
+          )
         }
         return Option.match(maybeDownedOf(seat), {
           onNone: () => [],
@@ -361,7 +384,10 @@ export const mateOverheadShapes = (
           isStanding(seat)
             ? [
                 ...playerFlashShapes(mate.player),
-                ...reloadBarShapes(mate.player),
+                ...reloadBarShapes(
+                  mate.player,
+                  hatRiseOf(mate.appearance, mate.player.calling),
+                ),
               ]
             : [],
         ),

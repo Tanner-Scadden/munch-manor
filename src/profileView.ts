@@ -9,6 +9,7 @@ import {
   ProfileTabsBinding,
 } from './bindings'
 import { startingCallingOf } from './callingPick'
+import { closetTabView } from './closetView'
 import type { ApplicationViewBuilder } from './composition'
 import { closeButtonView, dialogShell } from './dialogs'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from './home'
@@ -17,6 +18,7 @@ import {
   AIM_ICON,
   CHARACTER_ICON,
   CLOCK_ICON,
+  CLOSET_ICON,
   DICE_ICON,
   FULLSCREEN_ICON,
   KEYPAD_ICON,
@@ -68,6 +70,7 @@ type TabLook = Readonly<{ word: string; icon: string }>
 // grey Settings.
 const TAB_LOOKS: Readonly<Record<ProfileTab, TabLook>> = {
   Look: { word: 'Look', icon: CHARACTER_ICON },
+  Closet: { word: 'Closet', icon: CLOSET_ICON },
   Name: { word: 'Name', icon: NAME_ICON },
   Account: { word: 'Account', icon: ACCOUNT_ICON },
   Settings: { word: 'Settings', icon: SETTINGS_ICON },
@@ -838,6 +841,12 @@ const lookPageView = (
   h: ApplicationViewBuilder,
 ): Html => h.div(pageAttributes(panel, 'Look', h), [lookTabView(model, h)])
 
+const closetPageView = (
+  model: Model,
+  panel: PageAttributes,
+  h: ApplicationViewBuilder,
+): Html => h.div(pageAttributes(panel, 'Closet', h), [closetTabView(model, h)])
+
 const namePageView = (
   model: Model,
   panel: PageAttributes,
@@ -865,6 +874,7 @@ const PAGE_VIEWS: Readonly<
   >
 > = {
   Look: lookPageView,
+  Closet: closetPageView,
   Name: namePageView,
   Account: accountPageView,
   Settings: settingsPageView,
