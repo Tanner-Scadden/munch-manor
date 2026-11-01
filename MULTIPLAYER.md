@@ -362,6 +362,16 @@ Built on 2026-10-31. Create, join, and QUICK PLAY send the player's rank, a whol
 
 **Deploy.** A room's scope migrations run when the scope opens in its Durable Object, so the deploy applies `0006_ranks` by itself, one room at a time. Nothing to run by hand; the analytics D1 migrations are not involved.
 
+### Callings
+
+Built on 2026-11-01. Create, join, and QUICK PLAY send the player's calling (`startingCallingOf(model)`, `src/callingPick.ts`: the saved pick, or YOU if their rank has not reached it) beside their name, look, and rank. In the netcode package a calling is a plain short word, as a look is a dotted code: `cleanCalling` in `Lobby.ts` keeps one word of letters and else reads `You` (`DEFAULT_CALLING`), and the member's row holds it (`calling`, scope migration `0007_callings`, default `You`, so a room already open when it ran seats every member as YOU). The game's own decode lives on the game and Worker side: `callingOfRequest` in `infra/worker/gameRoomCore.ts` keeps a calling only if it decodes as one of the game's `Calling`s (`callingOfCode`, `src/playerData.ts`), else YOU. `CreatedRoom` and `JoinedRoom` are at version 5.
+
+The Worker cannot check that the player's rank reached the calling, as it cannot check the rank. A client that lies gets a calling it has not unlocked in a room it joined, nothing more: callings are trade-offs, and nothing is scored or saved from them. When the host starts, `startGame` passes the lobby's members to `roomSettingsOf`, which keeps `RoomSettings.callings` (slot and calling, an unknown word dropped), and `startRoomWorld` makes each seat over with `seatedAs` (`src/callingPlayer.ts`, the same function single player's run start builds on): its hearts and its starting gun, with its place in the room kept. A slot with no calling plays YOU. KEEP GOING carries the kept World's seats as they were, callings included. The lobby's seats and the last run's scores show the prop beside the rank badge (`callingPropView`, `src/menuParts.ts`; nothing for YOU) and their portraits wear it (`callingOfMember`, `src/coop/looks.ts`), and a teammate in a run wears their prop on their sprite, from their seat's `calling` in the World, never a badge over a head.
+
+No protocol version bump: the calling already rode the World (version 16, `Player.calling`), and the lobby scope carries it as it carries the rank.
+
+**Deploy.** The deploy applies `0007_callings` by itself when each room's scope opens. Nothing to run by hand.
+
 ### Protocol version 2
 
 The lobby's picks, looks, and unlock, and the `Won` end reason, are version 2 of the room protocol (`PROTOCOL_VERSION` and `MIN_PROTOCOL_VERSION` in `Protocol.ts`). A version 1 client says Hello and is refused with `VersionMismatch`, a frame every version reads, instead of being sent messages it cannot decode. A client refused this way lands on the hub with UPDATE and asks for the build check at once (`NeededNewerBuild`), so the update chip offers the new build.

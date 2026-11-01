@@ -128,6 +128,10 @@ export const COOK_STARTING_LIDS = 12
 export const startsWithCooker = (calling: Calling): boolean =>
   calling === 'LineCook'
 
+// NOTE: the gun a calling starts holding, for the Profile's Look preview.
+export const startingGunKind = (calling: Calling): 'Cooker' | 'Pistol' =>
+  startsWithCooker(calling) ? 'Cooker' : 'Pistol'
+
 // NOTE: Rattles never sells the Line Cook the Pop Pistol back.
 export const isPistolBarred = (calling: Calling): boolean =>
   calling === 'LineCook'

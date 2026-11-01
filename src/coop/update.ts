@@ -16,6 +16,7 @@ import {
 import { QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
 import { DIFFICULTY_ORDER } from '../difficulty'
+import { Calling } from '../playerData'
 import { eventsBetween } from '../roomWorld'
 import { stepWhen } from '../stepWhen'
 import { CoopComposition } from './composition'
@@ -88,11 +89,14 @@ export const RequestRoom = makeCommand('RequestRoom', {
     name: Schema.String,
     look: Schema.String,
     rank: Schema.Number,
+    calling: Calling,
   },
   messages: [Message.SucceededRequestRoom, Message.FailedRequestRoom],
   handler: function* () {
-    return ({ request, name, look, rank }) =>
-      CoopNet.use(net => net.requestRoom(request, name, look, rank)).pipe(
+    return ({ request, name, look, rank, calling }) =>
+      CoopNet.use(net =>
+        net.requestRoom(request, name, look, rank, calling),
+      ).pipe(
         Effect.map(ticket => Message.SucceededRequestRoom(ticket)),
         Effect.catch(problem =>
           Effect.succeed(Message.FailedRequestRoom({ problem })),
@@ -259,6 +263,7 @@ const ask = (model: Model, request: RoomRequest): UpdateReturn => ({
       name: model.name,
       look: model.look,
       rank: model.rank,
+      calling: model.calling,
     }),
   ],
 })
@@ -590,11 +595,13 @@ export const open = (
   maybeCode: Option.Option<string>,
   look = '',
   rank = 1,
+  calling: Calling = 'You',
 ): UpdateReturn => {
   const named = modifyFields(model, {
     name: () => name,
     look: () => look,
     rank: () => rank,
+    calling: () => calling,
   })
   return Option.match(maybeCode, {
     onNone: () => ({
@@ -822,8 +829,8 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
 
     CompletedFocusCoopElement: () => ({ model }),
 
-    RequestedOpen: ({ name, maybeCode, look, rank }) =>
-      open(model, name, maybeCode, look, rank),
+    RequestedOpen: ({ name, maybeCode, look, rank, calling }) =>
+      open(model, name, maybeCode, look, rank, calling),
 
     RequestedPressKey: ({ code }) => pressKey(model, code),
 

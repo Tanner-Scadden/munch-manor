@@ -9,6 +9,8 @@ import {
   Session,
 } from '@munch/netcode'
 
+import type { Calling } from '../playerData'
+import { roomSettingsOf, roomWorldFor } from '../roomWorld'
 import type { CoopProblem, LobbyChange, RoomRequest, RoomTicket } from './model'
 import { CoopNet } from './net'
 import { type RoomSession, type WorldState, coopWorld } from './seam'
@@ -25,6 +27,7 @@ export type FakeCall =
       name: string
       look: string
       rank: number
+      calling: Calling
     }>
   | Readonly<{ _tag: 'AnswerOffer'; accept: boolean }>
   | Readonly<{ _tag: 'CancelQuickPlay' }>
@@ -48,9 +51,16 @@ export const makeFakeCoopNet = (
       layer: Layer.succeed(
         CoopNet,
         CoopNet.of({
-          requestRoom: (request, name, look, rank) =>
+          requestRoom: (request, name, look, rank, calling) =>
             Effect.andThen(
-              record({ _tag: 'RequestRoom', request, name, look, rank }),
+              record({
+                _tag: 'RequestRoom',
+                request,
+                name,
+                look,
+                rank,
+                calling,
+              }),
               answer(request),
             ),
           quickPlay: () => Stream.never,
@@ -99,11 +109,13 @@ export const memberOf = (
   look = '',
   canNightmare = false,
   rank = 1,
+  calling = 'You',
 ): LobbyMember => ({
   playerId: `player-${slot}`,
   name,
   look,
   rank,
+  calling,
   canNightmare,
   slot,
   ready,
@@ -132,23 +144,30 @@ export const lobbyOf = (
 
 const STAGED_TICKS = 50
 
-// NOTE: a stand-in world a few seconds into a run, players spread out.
-export const stagedWorld = (slots: ReadonlyArray<number>): WorldState =>
-  Array.reduce(Array.range(1, STAGED_TICKS), coopWorld.start(slots, 7), world =>
-    coopWorld.step(
-      world,
-      Array.map(slots, slot => ({
-        slot,
-        input: {
-          ...NEUTRAL_INPUT,
-          moveX: slot % 2 === 0 ? 90 : -90,
-          moveY: slot < 2 ? -60 : 60,
-        },
-        presence: 'Here' as const,
-        viewLagTicks: 0,
-        rttMs: 0,
-      })),
-    ),
+// NOTE: a stand-in world a few seconds into a run, players spread out. The
+// lobby's `members` give each seat its calling, as a room starts them.
+export const stagedWorld = (
+  slots: ReadonlyArray<number>,
+  members: ReadonlyArray<Readonly<{ slot: number; calling: string }>> = [],
+): WorldState =>
+  Array.reduce(
+    Array.range(1, STAGED_TICKS),
+    roomWorldFor(roomSettingsOf('Campaign', 'Normal', members)).start(slots, 7),
+    world =>
+      coopWorld.step(
+        world,
+        Array.map(slots, slot => ({
+          slot,
+          input: {
+            ...NEUTRAL_INPUT,
+            moveX: slot % 2 === 0 ? 90 : -90,
+            moveY: slot < 2 ? -60 : 60,
+          },
+          presence: 'Here' as const,
+          viewLagTicks: 0,
+          rttMs: 0,
+        })),
+      ),
   )
 
 export const playingSession = (

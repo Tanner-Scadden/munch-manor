@@ -5,6 +5,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 ## November 1, 2026: Pick your calling
 
 - 🎩 Rank up and you can pick a calling beside the difficulty: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Reach rank 3 to meet the first.
+- 🎒 Your calling comes along in co-op: everyone in the room starts as the calling they picked, and the prop shows by their name in the lobby.
 
 ## October 31, 2026: Rattles has notes
 

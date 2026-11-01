@@ -16,6 +16,7 @@ import type {
 import {
   type ClosedReason,
   CreateRequest,
+  DEFAULT_CALLING,
   JoinRequest,
   type Lobby,
   ROOM_PATHS,
@@ -428,6 +429,7 @@ export class GameRoom {
           lobby.difficulty === 'Nightmare' && !isNightmareOpen
             ? 'Hard'
             : lobby.difficulty,
+          lobby.members,
         ),
         maybeKept,
       )
@@ -642,6 +644,7 @@ export class GameRoom {
             body.name,
             body.look ?? '',
             body.rank ?? 1,
+            body.calling ?? DEFAULT_CALLING,
             nightmare,
             body.code,
             body.visibility,
@@ -670,6 +673,7 @@ export class GameRoom {
             body.name,
             body.look ?? '',
             body.rank ?? 1,
+            body.calling ?? DEFAULT_CALLING,
             nightmare,
             everyone,
           ),
@@ -1115,6 +1119,10 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
           onNone: () => 1,
           onSome: body => body.rank ?? 1,
         }),
+        Option.match(maybeBody, {
+          onNone: () => DEFAULT_CALLING,
+          onSome: body => body.calling ?? DEFAULT_CALLING,
+        }),
         'Private',
         continentOf(request),
       )
@@ -1137,6 +1145,7 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
         maybeBody.value.name,
         maybeBody.value.look ?? '',
         maybeBody.value.rank ?? 1,
+        maybeBody.value.calling ?? DEFAULT_CALLING,
       )
       return answer(called.status, called.text)
     }

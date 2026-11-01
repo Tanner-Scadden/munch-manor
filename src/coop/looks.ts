@@ -1,8 +1,8 @@
 import { Array, Option } from 'effect'
 
-import type { Lobby } from '@munch/netcode'
+import type { Lobby, LobbyMember } from '@munch/netcode'
 
-import { lookOfCode } from '../playerData'
+import { type Calling, callingOfCode, lookOfCode } from '../playerData'
 import type { Appearance } from '../worldSchema'
 
 // NOTE: each player's own look rides in the lobby (the member's `look`,
@@ -85,6 +85,11 @@ const memberLookAt = (
       member => lookOfCodeOnce(member.look),
     ),
   )
+
+// NOTE: the calling a lobby member brought, as text in the lobby; a word that
+// is none of ours reads as YOU, which has no prop.
+export const callingOfMember = (member: LobbyMember): Calling =>
+  Option.getOrElse(callingOfCode(member.calling), (): Calling => 'You')
 
 export const seatLookOf = (
   ownLook: Appearance,

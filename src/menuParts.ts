@@ -1,7 +1,9 @@
 import { Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
+import { PROP_ICONS } from './callingArt'
 import type { Model } from './model'
+import type { Calling } from './playerData'
 import { badgeTierOf } from './rank'
 import { badgeImage } from './rankArt'
 
@@ -23,6 +25,24 @@ export const iconView = <Message>(
     h.AriaHidden(true),
     h.Style({ backgroundImage: icon }),
   ])
+
+// CALLING PROPS
+
+// NOTE: a calling's small prop beside a player's name and rank, in co-op's
+// lobby and on its last run's scores. YOU has none, so nothing is drawn.
+export const callingPropView = <Message>(
+  className: string,
+  calling: Calling,
+  h: HtmlBuilder<Message>,
+): Html =>
+  calling === 'You'
+    ? h.empty
+    : h.span([
+        h.Class(className),
+        h.DataAttribute('calling', calling),
+        h.AriaHidden(true),
+        h.Style({ backgroundImage: PROP_ICONS[calling] }),
+      ])
 
 // RANK BADGES
 

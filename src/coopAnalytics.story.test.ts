@@ -35,6 +35,7 @@ const OWN_SLOT = 1
 const started = startRoomWorld([0, OWN_SLOT, 2], 7, {
   difficulty: 'Hard',
   mode: RunMode.Campaign(),
+  callings: [],
 })
 
 const fighting: RoomWorld = {

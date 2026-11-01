@@ -93,6 +93,19 @@ const HEART_ICON = icon([
 
 const PLANK_ICON = icon(['PPPPPPPPP', 'PNPPPPPNP', 'PPPPPPPPP', 'DDDDDDDDD'])
 
+// NOTE: a shield for the Handyman's longer breather after a bite: the
+// flash that keeps the zombies off him lasts half again as long.
+const SHIELD_ICON = icon([
+  'bbbbbbbbb',
+  'bXBBBBBBb',
+  'bXBBBBBBb',
+  'bXBBBBBBb',
+  '.bBBBBBb.',
+  '..bBBBb..',
+  '...bBb...',
+  '....b....',
+])
+
 const SHOE_ICON = icon([
   '.....BB..',
   '....BBBB.',
@@ -162,7 +175,7 @@ const NO_PISTOL_ICON = icon(crossedOut(PISTOL_PIXELS))
 export type QuirkMark = Readonly<{ art: string; label: string }>
 
 // NOTE: a quirk is a picture and, at most, a sign: a heart with -1, a plank
-// with a half, a shoe with a plus, a magazine with a minus, a price tag and
+// with a half, a shield with a plus (the longer breather), a shoe with a plus, a magazine with a minus, a price tag and
 // a coin with -15%, the pot, and a pistol crossed out.
 export const QUIRK_MARKS: Readonly<Record<Calling, ReadonlyArray<QuirkMark>>> =
   {
@@ -170,6 +183,7 @@ export const QUIRK_MARKS: Readonly<Record<Calling, ReadonlyArray<QuirkMark>>> =
     Handyman: [
       { art: HEART_ICON, label: '-1' },
       { art: PLANK_ICON, label: '1/2' },
+      { art: SHIELD_ICON, label: '+' },
     ],
     TrackStar: [
       { art: SHOE_ICON, label: '+' },
