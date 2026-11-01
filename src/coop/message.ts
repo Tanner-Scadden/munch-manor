@@ -63,6 +63,7 @@ export const Message = defineMessageUnion({
     name: Schema.String,
     maybeCode: Schema.Option(Schema.String),
     look: Schema.String,
+    rank: Schema.Number,
   },
   RequestedPressKey: { code: Schema.String },
   RequestedReleaseKey: { code: Schema.String },

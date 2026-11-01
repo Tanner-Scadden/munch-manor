@@ -2,7 +2,7 @@ import { Array, Option, Order, Result, pipe } from 'effect'
 
 import type { Model } from './model'
 import type { CrewAward } from './names'
-import { seatNamesOf } from './onlineRun'
+import { seatNamesOf, seatRanksOf } from './onlineRun'
 import { isCoop, playersOf } from './party'
 import type { PlayerSlot } from './worldSchema'
 
@@ -16,6 +16,7 @@ import type { PlayerSlot } from './worldSchema'
 export type CrewMember = Readonly<{
   slot: PlayerSlot
   name: string
+  rank: number
   kills: number
   revives: number
   downs: number
@@ -36,9 +37,11 @@ export const crewOf = (model: Model): ReadonlyArray<CrewMember> => {
     return []
   }
   const names = seatNamesOf(model)
+  const ranks = seatRanksOf(model)
   return Array.map(playersOf(model), ({ slot, seat, wallet }) => ({
     slot,
     name: names.get(slot) ?? `P${slot + 1}`,
+    rank: ranks.get(slot) ?? 1,
     kills: seat.kills,
     revives: seat.revives,
     downs: seat.downs,

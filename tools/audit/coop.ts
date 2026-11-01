@@ -36,6 +36,7 @@ import { PARLOUR, isWalkableTile, tileCoordinate } from '@game/arena'
 import { TILE_SIZE } from '@game/constants'
 import { type Readout, ReadoutJson } from '@game/coop/readout'
 import { Vector } from '@game/entitySchema'
+import { pointsForRank } from '@game/rank'
 
 import { encodeJson } from '../json'
 import {
@@ -156,7 +157,7 @@ const VIEWPORT_NAME = process.env['VIEWPORT'] ?? 'd1280'
 const VIEWPORT = VIEWPORTS[VIEWPORT_NAME] ?? DESKTOP
 
 const GRADUATE_SAVE = {
-  version: 2,
+  version: 3,
   onboarding: {
     lessons: {
       move: 'Learned',
@@ -182,6 +183,23 @@ const GRADUATE_SAVE = {
   },
   difficulty: { chosen: 'Normal', card: 'Seen', nightmare: 'Locked' },
 }
+
+// NOTE: each page plays at its own rank, so every page can check that it
+// reads the others' in the lobby. The save holds a kill for each point the
+// veteran grant pays (src/rank.ts), up to rank 10.
+const RANKS = [3, 8, 10]
+
+const bestsOfRank = (rank: number) => ({
+  runsPlayed: 0,
+  totalKills: 0,
+  killsByKind: { Shambler: pointsForRank(rank) },
+  byDifficulty: Object.fromEntries(
+    ['Easy', 'Normal', 'Hard', 'Nightmare'].map(name => [
+      name,
+      { fastestWinMs: null, bestEndlessWave: null },
+    ]),
+  ),
+})
 
 // NOTE: each player wears their own look, so every page can check that it
 // draws the others in theirs.
@@ -269,6 +287,7 @@ const openPlayer = async (name: string, lookIndex = 0): Promise<Page> => {
     encodeJson(Schema.Json)({
       ...GRADUATE_SAVE,
       appearance: LOOKS[lookIndex % LOOKS.length] ?? null,
+      bests: bestsOfRank(RANKS[lookIndex % RANKS.length] ?? 1),
     }),
   ] as const)
   return page
@@ -762,6 +781,16 @@ check(
   (await headOf(host, 'Other')) === guestHead &&
     (await headOf(firstGuest, 'Other')) === hostHead,
   'each page draws the other player in their own look',
+)
+
+const rankOn = (page: Page, who: 'Me' | 'Other') =>
+  page.locator(`.coop-seat[data-me="${who}"] .coop-rank`).first().innerText()
+check(
+  (await rankOn(host, 'Me')) === `${RANKS[0]}` &&
+    (await rankOn(host, 'Other')) === `${RANKS[1]}` &&
+    (await rankOn(firstGuest, 'Me')) === `${RANKS[1]}` &&
+    (await rankOn(firstGuest, 'Other')) === `${RANKS[0]}`,
+  'each page reads the other players rank beside their name',
 )
 
 if (PICK_MODE !== undefined && PICK_DIFFICULTY !== undefined) {

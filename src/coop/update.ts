@@ -83,11 +83,16 @@ export const FocusCoopElement = makeCommand('FocusCoopElement', {
 })
 
 export const RequestRoom = makeCommand('RequestRoom', {
-  args: { request: RoomRequest, name: Schema.String, look: Schema.String },
+  args: {
+    request: RoomRequest,
+    name: Schema.String,
+    look: Schema.String,
+    rank: Schema.Number,
+  },
   messages: [Message.SucceededRequestRoom, Message.FailedRequestRoom],
   handler: function* () {
-    return ({ request, name, look }) =>
-      CoopNet.use(net => net.requestRoom(request, name, look)).pipe(
+    return ({ request, name, look, rank }) =>
+      CoopNet.use(net => net.requestRoom(request, name, look, rank)).pipe(
         Effect.map(ticket => Message.SucceededRequestRoom(ticket)),
         Effect.catch(problem =>
           Effect.succeed(Message.FailedRequestRoom({ problem })),
@@ -248,7 +253,14 @@ const enterRoom = (model: Model, code: string, slot: number): UpdateReturn => ({
 
 const ask = (model: Model, request: RoomRequest): UpdateReturn => ({
   model: withScreen(model, Screen.Asking({ request })),
-  commands: [RequestRoom({ request, name: model.name, look: model.look })],
+  commands: [
+    RequestRoom({
+      request,
+      name: model.name,
+      look: model.look,
+      rank: model.rank,
+    }),
+  ],
 })
 
 const leaveFor = (model: Model, problem: CoopProblem): UpdateReturn => ({
@@ -577,10 +589,12 @@ export const open = (
   name: string,
   maybeCode: Option.Option<string>,
   look = '',
+  rank = 1,
 ): UpdateReturn => {
   const named = modifyFields(model, {
     name: () => name,
     look: () => look,
+    rank: () => rank,
   })
   return Option.match(maybeCode, {
     onNone: () => ({
@@ -808,8 +822,8 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
 
     CompletedFocusCoopElement: () => ({ model }),
 
-    RequestedOpen: ({ name, maybeCode, look }) =>
-      open(model, name, maybeCode, look),
+    RequestedOpen: ({ name, maybeCode, look, rank }) =>
+      open(model, name, maybeCode, look, rank),
 
     RequestedPressKey: ({ code }) => pressKey(model, code),
 

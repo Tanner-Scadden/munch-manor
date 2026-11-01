@@ -147,12 +147,14 @@ export const Screen = defineTaggedUnion({
 })
 export type Screen = typeof Screen.Type
 
-// NOTE: `name` and `look` are what joining sends for this player (the
-// look as src/playerData.ts writes it).
+// NOTE: `name`, `look`, and `rank` are what joining sends for this player
+// (the look as src/playerData.ts writes it, the rank as src/rank.ts works
+// it out from their points).
 export const Model = Schema.Struct({
   screen: Screen,
   name: Schema.String,
   look: Schema.String,
+  rank: Schema.Number,
 })
 export type Model = typeof Model.Type
 
@@ -160,6 +162,7 @@ export const initialModel: Model = {
   screen: Screen.Closed(),
   name: '',
   look: '',
+  rank: 1,
 }
 
 export const emptyQueue: Queue = {

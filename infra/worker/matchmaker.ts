@@ -14,6 +14,7 @@ import {
   ROOM_PATHS,
   RoomRefusal,
   type RoomTicket,
+  cleanRank,
 } from '@munch/netcode'
 import { PING_JSON, PONG_JSON, verifyToken } from '@munch/sync-engine'
 
@@ -50,6 +51,7 @@ const Attachment = Schema.TaggedUnion({
     playerId: Schema.String,
     name: Schema.String,
     look: Schema.optionalKey(Schema.String),
+    rank: Schema.optionalKey(Schema.Number),
     region: Schema.optionalKey(Schema.String),
   },
 })
@@ -109,6 +111,7 @@ export class Matchmaker {
           first.playerId,
           first.name,
           first.look ?? '',
+          first.rank ?? 1,
           'Public',
           first.region ?? '',
         ),
@@ -125,6 +128,7 @@ export class Matchmaker {
             player.playerId,
             player.name,
             player.look ?? '',
+            player.rank ?? 1,
           ),
           called => ({
             socket: player.socket,
@@ -189,6 +193,7 @@ export class Matchmaker {
                     player.playerId,
                     player.name,
                     player.look ?? '',
+                    player.rank ?? 1,
                   ).pipe(
                     Effect.map(ticketOf),
                     Effect.catchTag('SyncCallFailed', () =>
@@ -322,6 +327,7 @@ export class Matchmaker {
           playerId: claims.success.playerId,
           name: said.name,
           look: said.look ?? '',
+          rank: cleanRank(said.rank ?? 1),
           region: attachment.region ?? '',
         }),
       )
@@ -330,6 +336,7 @@ export class Matchmaker {
         playerId: claims.success.playerId,
         name: said.name,
         look: said.look ?? '',
+        rank: cleanRank(said.rank ?? 1),
         region: attachment.region ?? '',
         queuedMs: nowMs,
       }

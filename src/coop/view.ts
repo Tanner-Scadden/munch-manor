@@ -21,7 +21,7 @@ import {
   SKULL_OFF_ICON,
   TROPHY_ICON,
 } from '../icons'
-import { iconView } from '../menuParts'
+import { iconView, rankTagView } from '../menuParts'
 import type { Appearance } from '../model'
 import { MODE_NAMES } from '../names'
 import { seatColorOf } from '../partyView'
@@ -599,7 +599,16 @@ const memberSeatView = (
             [iconView('coop-stamp-icon', CHECK_ICON, h)],
           )
         : h.empty,
-      h.span([h.Class('coop-nameplate'), h.AriaHidden(true)], [member.name]),
+      h.div(
+        [h.Class('coop-nameline')],
+        [
+          rankTagView('coop-rank', member.rank, 2, h),
+          h.span(
+            [h.Class('coop-nameplate'), h.AriaHidden(true)],
+            [member.name],
+          ),
+        ],
+      ),
       pingBarsView(
         isMe && ownPingOf(room) > 0 ? ownPingOf(room) : member.pingMs,
         'coop-seat-ping',
@@ -662,6 +671,12 @@ const resultView = (
                       'coop-result-head',
                       h,
                     ),
+                    rankTagView(
+                      'coop-result-rank',
+                      rankAt(lobby, score.slot),
+                      1,
+                      h,
+                    ),
                     h.span([h.AriaHidden(true)], [`${score.score}`]),
                   ],
                 ),
@@ -680,6 +695,13 @@ const nameAt = (lobby: Lobby, slot: number): string =>
   Option.match(
     Array.findFirst(lobby.members, member => member.slot === slot),
     { onNone: () => `Player ${slot + 1}`, onSome: member => member.name },
+  )
+
+// NOTE: a seat's rank from the lobby; a seat that left reads as 1.
+const rankAt = (lobby: Lobby, slot: number): number =>
+  Option.match(
+    Array.findFirst(lobby.members, member => member.slot === slot),
+    { onNone: () => 1, onSome: member => member.rank },
   )
 
 const readyButtonView = (

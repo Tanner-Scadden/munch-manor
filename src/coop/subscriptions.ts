@@ -12,15 +12,19 @@ import { maybeRoomOf } from './roomState'
 // root's (src/subscriptions.ts), which ticks the room through its Binding.
 
 const MaybeJoiner = Schema.Option(
-  Schema.Struct({ name: Schema.String, look: Schema.String }),
+  Schema.Struct({
+    name: Schema.String,
+    look: Schema.String,
+    rank: Schema.Number,
+  }),
 )
 const MaybeCode = Schema.Option(Schema.String)
 
 const maybeQueueJoiner = (
   model: Model,
-): Option.Option<Readonly<{ name: string; look: string }>> =>
+): Option.Option<Readonly<{ name: string; look: string; rank: number }>> =>
   Screen.isAnyOf(['Queue'])(model.screen)
-    ? Option.some({ name: model.name, look: model.look })
+    ? Option.some({ name: model.name, look: model.look, rank: model.rank })
     : Option.none()
 
 const maybeRoomCode = (model: Model): Option.Option<string> =>
@@ -44,8 +48,8 @@ export const subscriptions = makeSubscriptions(entry => ({
       handler: function* () {
         const net = yield* CoopNet
         return ({ maybeJoiner }) =>
-          whenSome(maybeJoiner, ({ name, look }) =>
-            Stream.map(net.quickPlay(name, look), event =>
+          whenSome(maybeJoiner, ({ name, look, rank }) =>
+            Stream.map(net.quickPlay(name, look, rank), event =>
               Message.ReceivedQuickPlayEvent({ event }),
             ),
           )

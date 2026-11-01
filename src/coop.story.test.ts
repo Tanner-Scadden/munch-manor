@@ -20,6 +20,7 @@ import { Message } from './message'
 import { Lesson, type Model } from './model'
 import { home } from './model.fixture'
 import { type Appearance, lookCodeOf } from './playerData'
+import { noRank, pointsForRank } from './rank'
 import { FocusHomeButton } from './update/home'
 
 const graduate = (current: Model): Model =>
@@ -99,6 +100,7 @@ describe('co-op from home', () => {
           request: RoomRequest.Join({ code: CODE }),
           name: '',
           look: lookCodeOf(graduated.appearance),
+          rank: 1,
         }),
         CoopMessage.FailedRequestRoom({ problem: 'NoRoom' }),
       ),
@@ -109,13 +111,14 @@ describe('co-op from home', () => {
     )
   })
 
-  test('the saved display name and look go with the room request', () => {
+  test('the saved display name, look, and rank go with the room request', () => {
     story(
       update,
       given(
         modifyFields(graduated, {
           playerName: () => 'Snackula',
           appearance: () => PICKED_LOOK,
+          rank: () => ({ ...noRank, earnedPoints: pointsForRank(12) }),
         }),
       ),
       message(Message.ClickedCoopButton()),
@@ -126,6 +129,7 @@ describe('co-op from home', () => {
           request: RoomRequest.Create(),
           name: 'Snackula',
           look: 'Slim.Ponytail.Pink.Tan.Purple.CCBA',
+          rank: 12,
         }),
         CoopMessage.FailedRequestRoom({ problem: 'Offline' }),
       ),

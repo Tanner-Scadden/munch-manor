@@ -2,6 +2,7 @@ import { Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from './composition'
+import { rankBadgeImgView } from './menuParts'
 import type { Model } from './model'
 import {
   badgeTierOf,
@@ -9,7 +10,7 @@ import {
   rankProgressOf,
   totalPointsOf,
 } from './rank'
-import { BONE_IMAGE, badgeImage } from './rankArt'
+import { BONE_IMAGE } from './rankArt'
 
 // The rank in the menus, in HTML: the badge with its number on the home
 // menu's player (a tap on them opens the Profile), and in the Profile the
@@ -20,20 +21,7 @@ import { BONE_IMAGE, badgeImage } from './rankArt'
 const ART_SCALE = 2
 
 const badgeView = (rank: number, h: ApplicationViewBuilder): Html =>
-  Option.match(badgeImage(badgeTierOf(rank)), {
-    onNone: () => h.span([h.Class('rank-badge-img')]),
-    onSome: image =>
-      h.img([
-        h.Class('rank-badge-img'),
-        h.Src(image.src),
-        h.Alt(''),
-        h.AriaHidden(true),
-        h.Style({
-          width: `${image.width * ART_SCALE}px`,
-          height: `${image.height * ART_SCALE}px`,
-        }),
-      ]),
-  })
+  rankBadgeImgView(rank, ART_SCALE, h)
 
 // NOTE: the badge a rank wears and its number, for a card that says which
 // rank it needs (src/callingView.ts).

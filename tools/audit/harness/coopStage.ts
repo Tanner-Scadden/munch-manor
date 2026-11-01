@@ -134,6 +134,10 @@ const COOP_LOOKS = [
   'Male.Crop.Pink.Medium.Purple',
 ]
 
+// NOTE: the ranks the staged teammates sent: wood, tin, silver, and the
+// golden drumstick, so the shots show the badges' tiers.
+const COOP_RANKS = [7, 18, 33, 62]
+
 const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
   const Screen = CoopModel.Screen
   const queue = (
@@ -155,7 +159,14 @@ const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
   const members = (count: number, readyCount = 0) =>
     COOP_NAMES.slice(0, count).map((name, slot) =>
       modifyFields(
-        memberOf(slot, name, slot < readyCount, COOP_LOOKS[slot] ?? ''),
+        memberOf(
+          slot,
+          name,
+          slot < readyCount,
+          COOP_LOOKS[slot] ?? '',
+          false,
+          COOP_RANKS[slot] ?? 1,
+        ),
         { pingMs: () => COOP_PINGS[slot] ?? 0 },
       ),
     )

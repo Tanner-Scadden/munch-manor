@@ -1,9 +1,13 @@
-import { Array, Option } from 'effect'
+import { Array, Match, Option } from 'effect'
+import type { Canvas } from 'foldkit'
 import { given, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS } from './constants'
+import { Screen } from './coop/model'
+import { freshRoom } from './coop/roomState'
+import { CODE, lobbyOf, memberOf } from './coop/testing'
 import {
   type CrewMember,
   SHARPSHOOTER_MIN_SHOTS,
@@ -13,6 +17,12 @@ import {
   mvpOf,
 } from './crewAwards'
 import {
+  crewBoardColumns,
+  crewBoardHeightPx,
+  crewBoardShapes,
+  crewBoardWidthPx,
+} from './crewBoardView'
+import {
   awardsAtMs,
   beatSounds,
   crewDoneMs,
@@ -21,17 +31,25 @@ import {
   sharedRunOf,
   skipBeat,
 } from './endBeat'
+import {
+  CREW_BOARD_TOP_PX,
+  END_BUTTONS_TOP_PX,
+  crewCardBottomPx,
+} from './endView'
 import { update } from './main'
 import { Life, type Model, Phase } from './model'
 import {
   atSeat,
   crewInWave,
   home,
+  inPortrait,
   pipeline,
   placeSeat,
   withSeatLife,
 } from './model.fixture'
 import { COOP_RULES, maybePlayerAt, modifyLeadSeat, playersOf } from './party'
+import { badgeSprite } from './rankArt'
+import { PORTRAIT_WIDTH } from './screen'
 import { stepWorld } from './stepWorld'
 import { ticks, zombieOf } from './testing'
 import { WEAPONS } from './weapons'
@@ -43,6 +61,9 @@ import { type Intent, Pierce, type Seat, idleIntent } from './worldSchema'
 // the card's beat and post.
 
 const TICK_MS = FIXED_STEP_MS
+// NOTE: the shortest phone held upright puts its buttons about here in the
+// 180 high frame the card is drawn in (the strip's bar must end above).
+const UPRIGHT_BUTTONS_TOP_PX = 203
 const LEFT_X = 60
 const RIGHT_X = 240
 const ROW_Y = 104
@@ -152,6 +173,7 @@ const member = (
 ): CrewMember => ({
   slot,
   name: `P${slot + 1}`,
+  rank: 1,
   kills: 0,
   revives: 0,
   downs: 0,
@@ -223,6 +245,150 @@ const crewCard = pipeline(
       screenMs: () => 0,
     }),
 )(crewInWave(2))
+
+// NOTE: the lobby's ranks, as each player sent them when they joined.
+const withLobbyRanks = (current: Model): Model =>
+  modifyFields(current, {
+    coop: coop =>
+      modifyFields(coop, {
+        screen: () =>
+          Screen.InRoom({
+            room: {
+              ...freshRoom(CODE, 0),
+              maybeLobby: Option.some(
+                lobbyOf([
+                  memberOf(0, 'Ana', false, '', false, 4),
+                  memberOf(1, 'Bo', false, '', false, 27),
+                ]),
+              ),
+            },
+          }),
+      }),
+  })
+
+const imageSources = (
+  shapes: ReadonlyArray<Canvas.Shape>,
+): ReadonlyArray<string> =>
+  Array.flatMap(shapes, shape =>
+    Match.value(shape).pipe(
+      Match.tag('Image', image => [image.src]),
+      Match.tag('Group', inner => imageSources(inner.shapes)),
+      Match.orElse(() => []),
+    ),
+  )
+
+const boardImages = (current: Model): ReadonlyArray<string> => {
+  const drawn = crewBoardShapes(
+    current,
+    'Munched',
+    crewDoneMs('Munched'),
+    30,
+    160,
+  )
+  return imageSources([...drawn.panel, ...drawn.rows])
+}
+
+describe("each player's rank on the board", () => {
+  test('the crew reads each rank off the lobby, and 1 without one', () => {
+    expect(Array.map(crewOf(crewCard), ({ rank }) => rank)).toEqual([1, 1])
+    expect(
+      Array.map(crewOf(withLobbyRanks(crewCard)), ({ rank }) => rank),
+    ).toEqual([4, 27])
+  })
+
+  test("the board draws each player's badge by their rank's tier", () => {
+    const wood = imageSources(badgeSprite('Wood'))
+    const bronze = imageSources(badgeSprite('Bronze'))
+    const bare = boardImages(crewCard)
+    const ranked = boardImages(withLobbyRanks(crewCard))
+    expect(bare.filter(src => wood.includes(src))).toHaveLength(2)
+    expect(bare.filter(src => bronze.includes(src))).toHaveLength(0)
+    expect(ranked.filter(src => wood.includes(src))).toHaveLength(1)
+    expect(ranked.filter(src => bronze.includes(src))).toHaveLength(1)
+  })
+})
+
+const endedCrew = (count: number, isUpright: boolean): Model => {
+  const ended = modifyFields(crewInWave(count), {
+    phase: () => Phase.GameOver({ wave: 5 }),
+    screenMs: () => 0,
+  })
+  return isUpright
+    ? modifyFields(inPortrait(ended), { lastDevice: () => 'Touch' })
+    : ended
+}
+
+const PORTRAIT_VISIBLE_LEFT = 160 - PORTRAIT_WIDTH / 2
+const PORTRAIT_VISIBLE_RIGHT = 160 + PORTRAIT_WIDTH / 2
+
+describe('the crew card in short landscape', () => {
+  test("the board and the rank strip's bar end above the buttons", () => {
+    expect(crewCardBottomPx(crewCard, true)).toBeLessThan(
+      END_BUTTONS_TOP_PX - 4,
+    )
+    expect(crewCardBottomPx(crewCard, false)).toBeLessThan(
+      crewCardBottomPx(crewCard, true),
+    )
+  })
+
+  test("the board's panel is drawn where the card says it ends", () => {
+    const drawn = crewBoardShapes(
+      crewCard,
+      'Munched',
+      crewDoneMs('Munched'),
+      CREW_BOARD_TOP_PX,
+      160,
+    )
+    const bottoms = Array.flatMap(drawn.panel, shape =>
+      shape._tag === 'Rect' ? [shape.y + shape.height] : [],
+    )
+    expect(Math.max(...bottoms)).toBeLessThanOrEqual(
+      crewCardBottomPx(crewCard, false),
+    )
+  })
+
+  test('four players sit in one row', () => {
+    expect(crewBoardColumns(endedCrew(4, false), 4)).toBe(4)
+  })
+})
+
+describe('the crew card upright', () => {
+  test.each([2, 3, 4])(
+    'a board of %i players is inside the screen, strip and all',
+    count => {
+      const current = endedCrew(count, true)
+      expect(crewBoardWidthPx(current)).toBeLessThanOrEqual(PORTRAIT_WIDTH)
+      const drawn = crewBoardShapes(
+        current,
+        'Munched',
+        crewDoneMs('Munched'),
+        CREW_BOARD_TOP_PX,
+        160,
+      )
+      const rects = Array.flatMap(drawn.panel, shape =>
+        shape._tag === 'Rect' ? [shape] : [],
+      )
+      expect(Math.min(...rects.map(shape => shape.x))).toBeGreaterThanOrEqual(
+        PORTRAIT_VISIBLE_LEFT,
+      )
+      expect(
+        Math.max(...rects.map(shape => shape.x + shape.width)),
+      ).toBeLessThanOrEqual(PORTRAIT_VISIBLE_RIGHT)
+      expect(crewCardBottomPx(current, true)).toBeLessThan(
+        UPRIGHT_BUTTONS_TOP_PX,
+      )
+    },
+  )
+
+  test('three and four players sit two to a row, two players in one', () => {
+    expect(crewBoardColumns(endedCrew(2, true), 2)).toBe(2)
+    expect(crewBoardColumns(endedCrew(3, true), 3)).toBe(2)
+    expect(crewBoardColumns(endedCrew(4, true), 4)).toBe(2)
+    expect(crewBoardHeightPx(endedCrew(4, true))).toBeGreaterThan(
+      crewBoardHeightPx(endedCrew(4, false)),
+    )
+  })
+})
 
 describe("the crew's card", () => {
   test('reads every seat off the World', () => {

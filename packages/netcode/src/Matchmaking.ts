@@ -1,6 +1,12 @@
 import { Array, Option, Order, Schema, pipe } from 'effect'
 
-import { LookInput, MAX_PLAYERS, NameInput, cleanName } from './Lobby'
+import {
+  LookInput,
+  MAX_PLAYERS,
+  NameInput,
+  RankInput,
+  cleanName,
+} from './Lobby'
 
 // NOTE: QUICK PLAY (MULTIPLAYER.md, decision 15), as pure functions over
 // plain data, apart from the Matchmaker Durable Object that runs them
@@ -38,6 +44,7 @@ export const QuickClient = Schema.TaggedUnion({
     token: Schema.String.check(Schema.isMaxLength(1024)),
     name: NameInput,
     look: Schema.optionalKey(LookInput),
+    rank: Schema.optionalKey(RankInput),
   },
   Answer: { accept: Schema.Boolean },
   Cancel: {},
@@ -73,6 +80,7 @@ export interface Queued {
   readonly playerId: string
   readonly name: string
   readonly look?: string
+  readonly rank?: number
   // NOTE: the continent the player connected from, as Cloudflare names it
   // (NA, EU, AS, ...); '' when unknown.
   readonly region?: string
@@ -106,6 +114,7 @@ const QueuedSchema = Schema.Struct({
   playerId: Schema.String,
   name: Schema.String,
   look: Schema.optionalKey(Schema.String),
+  rank: Schema.optionalKey(Schema.Number),
   region: Schema.optionalKey(Schema.String),
   queuedMs: Schema.Number,
 })

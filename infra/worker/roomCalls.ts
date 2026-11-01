@@ -111,6 +111,7 @@ export const createRoomIn = (
   playerId: string,
   name: string,
   look: string,
+  rank: number,
   visibility: RoomVisibility,
   region = '',
   attempt = 0,
@@ -118,7 +119,7 @@ export const createRoomIn = (
   Effect.gen(function* () {
     const code = yield* makeRoomCode
     const body = yield* Effect.orDie(
-      encodeCreate({ playerId, name, look, code, visibility }),
+      encodeCreate({ playerId, name, look, rank, code, visibility }),
     )
     const called = yield* callRoom(
       rooms,
@@ -133,6 +134,7 @@ export const createRoomIn = (
           playerId,
           name,
           look,
+          rank,
           visibility,
           region,
           attempt + 1,
@@ -146,9 +148,11 @@ export const joinRoomIn = (
   playerId: string,
   name: string,
   look: string,
+  rank: number,
 ): Effect.Effect<Called, SyncCallFailed> =>
-  Effect.flatMap(Effect.orDie(encodeJoin({ playerId, name, look })), body =>
-    callRoom(rooms, code, INTERNAL_PATHS.join, body),
+  Effect.flatMap(
+    Effect.orDie(encodeJoin({ playerId, name, look, rank })),
+    body => callRoom(rooms, code, INTERNAL_PATHS.join, body),
   )
 
 const decodeTicket = Schema.decodeOption(

@@ -138,6 +138,33 @@
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
 }
 
+.coop-nameline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* NOTE: a player's rank badge and number beside their name; the line wraps
+   to put it above the name when the seat is narrow. */
+.coop-rank,
+.coop-result-rank {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.coop-rank .rank-number {
+  font-size: clamp(11px, 2.4 * var(--coop-unit), 16px);
+}
+
+.coop-result-rank .rank-number {
+  font-size: clamp(10px, 2.2 * var(--coop-unit), 14px);
+}
+
 .coop-nameplate:empty {
   visibility: hidden;
 }

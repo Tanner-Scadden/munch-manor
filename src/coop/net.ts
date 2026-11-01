@@ -57,10 +57,12 @@ export class CoopNet extends Context.Service<
       request: RoomRequest,
       name: string,
       look: string,
+      rank: number,
     ) => Effect.Effect<RoomTicket, CoopProblem>
     readonly quickPlay: (
       name: string,
       look: string,
+      rank: number,
     ) => Stream.Stream<QuickPlayEvent>
     readonly answerOffer: (accept: boolean) => Effect.Effect<void>
     readonly cancelQuickPlay: Effect.Effect<void>
@@ -223,21 +225,21 @@ const liveOf = (maybeAccess: Option.Option<RoomAccess>) =>
       Effect.mapError(access.token, (): CoopProblem => 'Offline')
 
     return CoopNet.of({
-      requestRoom: (request, name, look) =>
+      requestRoom: (request, name, look, rank) =>
         withAccess(access =>
           Effect.flatMap(tokenOf(access), token =>
             pipe(
               RoomRequest.match(request, {
-                Create: () => createRoom(API_ORIGIN, token, name, look),
+                Create: () => createRoom(API_ORIGIN, token, name, look, rank),
                 Join: ({ code }) =>
-                  joinRoom(API_ORIGIN, token, code, name, look),
+                  joinRoom(API_ORIGIN, token, code, name, look, rank),
               }),
               Effect.mapError(error => problemOfRefusal(error.refusal)),
             ),
           ),
         ),
 
-      quickPlay: (name, look) =>
+      quickPlay: (name, look, rank) =>
         streamWithAccess(
           access =>
             Stream.unwrap(
@@ -246,6 +248,7 @@ const liveOf = (maybeAccess: Option.Option<RoomAccess>) =>
                   origin: API_ORIGIN,
                   name,
                   look,
+                  rank,
                   token: access.token,
                 })
                 yield* Ref.set(handles.quick, Option.some(quick))
@@ -338,9 +341,10 @@ export const layer: Layer.Layer<CoopNet, never, PlayerStore> = Layer.effect(
       run: (net: CoopNet['Service']) => Stream.Stream<A>,
     ): Stream.Stream<A> => Stream.unwrap(Effect.map(live, run))
     return CoopNet.of({
-      requestRoom: (request, name, look) =>
-        use(net => net.requestRoom(request, name, look)),
-      quickPlay: (name, look) => useStream(net => net.quickPlay(name, look)),
+      requestRoom: (request, name, look, rank) =>
+        use(net => net.requestRoom(request, name, look, rank)),
+      quickPlay: (name, look, rank) =>
+        useStream(net => net.quickPlay(name, look, rank)),
       answerOffer: accept => use(net => net.answerOffer(accept)),
       cancelQuickPlay: use(net => net.cancelQuickPlay),
       lobby: code => useStream(net => net.lobby(code)),

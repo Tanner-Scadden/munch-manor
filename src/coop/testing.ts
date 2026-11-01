@@ -24,6 +24,7 @@ export type FakeCall =
       request: RoomRequest
       name: string
       look: string
+      rank: number
     }>
   | Readonly<{ _tag: 'AnswerOffer'; accept: boolean }>
   | Readonly<{ _tag: 'CancelQuickPlay' }>
@@ -47,9 +48,9 @@ export const makeFakeCoopNet = (
       layer: Layer.succeed(
         CoopNet,
         CoopNet.of({
-          requestRoom: (request, name, look) =>
+          requestRoom: (request, name, look, rank) =>
             Effect.andThen(
-              record({ _tag: 'RequestRoom', request, name, look }),
+              record({ _tag: 'RequestRoom', request, name, look, rank }),
               answer(request),
             ),
           quickPlay: () => Stream.never,
@@ -97,10 +98,12 @@ export const memberOf = (
   ready = false,
   look = '',
   canNightmare = false,
+  rank = 1,
 ): LobbyMember => ({
   playerId: `player-${slot}`,
   name,
   look,
+  rank,
   canNightmare,
   slot,
   ready,
