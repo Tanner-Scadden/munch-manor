@@ -26,6 +26,11 @@ import {
   sharedRunOf,
   skipBeat,
 } from './endBeat'
+import {
+  CREW_BOARD_TOP_PX,
+  END_BUTTONS_TOP_PX,
+  crewCardBottomPx,
+} from './endView'
 import { update } from './main'
 import { Life, type Model, Phase } from './model'
 import {
@@ -290,6 +295,27 @@ describe("each player's rank on the board", () => {
     expect(bare.filter(src => bronze.includes(src))).toHaveLength(0)
     expect(ranked.filter(src => wood.includes(src))).toHaveLength(1)
     expect(ranked.filter(src => bronze.includes(src))).toHaveLength(1)
+  })
+})
+
+describe('the crew card in short landscape', () => {
+  test("the board and the rank strip's bar end above the buttons", () => {
+    expect(crewCardBottomPx(true)).toBeLessThan(END_BUTTONS_TOP_PX - 4)
+    expect(crewCardBottomPx(false)).toBeLessThan(crewCardBottomPx(true))
+  })
+
+  test("the board's panel is drawn where the card says it ends", () => {
+    const drawn = crewBoardShapes(
+      crewCard,
+      'Munched',
+      crewDoneMs('Munched'),
+      CREW_BOARD_TOP_PX,
+      160,
+    )
+    const bottoms = Array.flatMap(drawn.panel, shape =>
+      shape._tag === 'Rect' ? [shape.y + shape.height] : [],
+    )
+    expect(Math.max(...bottoms)).toBeLessThanOrEqual(crewCardBottomPx(false))
   })
 })
 

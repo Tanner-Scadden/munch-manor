@@ -110,6 +110,7 @@ const NIGHTMARE_UNLOCKED_DIM = bakeText('NIGHTMARE UNLOCKED!', 'Alert')
 // LAYOUT
 
 type Layout = Readonly<{
+  trophyX: number
   trophyY: number
   titleY: number
   skullsY: number
@@ -118,9 +119,40 @@ type Layout = Readonly<{
 }>
 
 const LAYOUTS: Readonly<Record<EndKind, Layout>> = {
-  Munched: { trophyY: 0, titleY: 12, skullsY: 30, quipY: 43, panelTop: 53 },
-  Won: { trophyY: 3, titleY: 24, skullsY: 39, quipY: 51, panelTop: 61 },
+  Munched: {
+    trophyX: 0,
+    trophyY: 0,
+    titleY: 12,
+    skullsY: 30,
+    quipY: 43,
+    panelTop: 53,
+  },
+  Won: {
+    trophyX: 0,
+    trophyY: 3,
+    titleY: 24,
+    skullsY: 39,
+    quipY: 51,
+    panelTop: 61,
+  },
 }
+
+// NOTE: a crew's card is the tallest, with the board and the rank strip
+// under it, so on a phone on its side the stack has to end above the buttons.
+// Its title rides the top edge with the trophy beside it, and the board
+// starts right under (CREW_BOARD_TOP_PX).
+const CREW_LAYOUT: Layout = {
+  trophyX: -74,
+  trophyY: 1,
+  titleY: 4,
+  skullsY: 0,
+  quipY: 0,
+  panelTop: 0,
+}
+export const CREW_BOARD_TOP_PX = 18
+
+const layoutOf = (model: Model, kind: EndKind): Layout =>
+  isCoop(model) ? CREW_LAYOUT : LAYOUTS[kind]
 
 const PANEL_LEFT = 82
 const PANEL_RIGHT = VIEW_WIDTH - PANEL_LEFT
@@ -211,7 +243,7 @@ const trophyShapes = (
   const y = -size + (layout.trophyY + size) * t
   return [
     group({
-      translate: { x: CENTER_X, y: Math.round(y + size / 2) },
+      translate: { x: CENTER_X + layout.trophyX, y: Math.round(y + size / 2) },
       scale: { x: TROPHY_SCALE, y: TROPHY_SCALE },
       shapes: TROPHY,
     }),
@@ -364,9 +396,17 @@ const quipOf = (model: Model, kind: EndKind): string =>
       : defeatQuip(roundWave(model.phase), model.stats),
   )
 
-const SKULLS_ROW_PX = 10
-
 // NOTE: the bar a crew's rank strip sits in, under the board.
+const crewStripTop = CREW_BOARD_TOP_PX + CREW_BOARD_PX + STRIP_GAP_PX + 1
+
+// NOTE: where a crew's card ends in the 180 high frame: the board, and the
+// strip's bar under it when there is one. A phone on its side puts the
+// buttons' tops at about 133 (END_BUTTONS_TOP_PX), so this stays above.
+export const crewCardBottomPx = (hasStrip: boolean): number =>
+  hasStrip ? crewStripTop + STRIP_PX + 4 : CREW_BOARD_TOP_PX + CREW_BOARD_PX + 2
+
+export const END_BUTTONS_TOP_PX = 133
+
 const crewStripPanel = (top: number): ReadonlyArray<Canvas.Shape> => [
   rect(
     PANEL_LEFT - 1,
@@ -402,11 +442,10 @@ const cardShapes = (
     // NOTE: a crew's board takes the quip's line too, so it fits above the
     // buttons on a phone on its side.
     const hasStrip = hasRankStrip(model)
-    // NOTE: with a rank strip the board takes the skulls' row, and the strip
-    // sits in its own bar under the board.
-    const boardTop = layout.quipY - 1 - (hasStrip ? SKULLS_ROW_PX : 0)
+    // NOTE: the strip sits in its own bar under the board.
+    const boardTop = CREW_BOARD_TOP_PX
     const board = crewBoardShapes(model, kind, ms, boardTop, CENTER_X)
-    const stripTop = boardTop + CREW_BOARD_PX + STRIP_GAP_PX + 1
+    const stripTop = crewStripTop
     return [
       rise([...board.panel, ...(hasStrip ? crewStripPanel(stripTop) : [])]),
       ...board.rows,
@@ -645,16 +684,14 @@ export const endOverlayShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
     onNone: () => [],
     onSome: kind => {
       const ms = model.screenMs
-      const layout = LAYOUTS[kind]
+      const layout = layoutOf(model, kind)
       return [
         ...dimShapes(kind, ms),
         ...(kind === 'Won' ? confettiShapes(ms) : []),
         ...flashShapes(kind, ms),
         ...trophyShapes(kind, ms, layout),
         ...stampShapes(kind, ms, layout),
-        ...(isCoop(model) && hasRankStrip(model)
-          ? []
-          : skullShapes(model, kind, ms, layout)),
+        ...(isCoop(model) ? [] : skullShapes(model, kind, ms, layout)),
         ...cardShapes(model, kind, ms, layout),
       ]
     },
