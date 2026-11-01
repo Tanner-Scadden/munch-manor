@@ -91,8 +91,8 @@ export const TRAPS: Readonly<Record<TrapKind, TrapStats>> = {
     name: TRAP_NAMES.Barricade,
     blurb:
       'Nail it across a doorway, two at most. Slow zombies stop to chew it. Your bullets fly through.',
-    price: 40,
-    hp: 30,
+    price: 95,
+    hp: 50,
     limit: 2,
     placeLimitNote: `Two ${TRAP_NAMES.Barricade}s max`,
     buyLimitNote: `Two ${TRAP_NAMES.Barricade}s max`,
@@ -105,8 +105,8 @@ export const TRAPS: Readonly<Record<TrapKind, TrapStats>> = {
     name: TRAP_NAMES.Turret,
     blurb:
       'A garden gnome with a pea shooter. Set him down and he shoots anything that gets close.',
-    price: 75,
-    hp: 10,
+    price: 150,
+    hp: 20,
     limit: 2,
     placeLimitNote: `All 2 ${TRAP_NAMES.Turret}s are out`,
     buyLimitNote: 'You can only own 2',

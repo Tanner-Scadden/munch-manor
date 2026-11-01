@@ -53,10 +53,10 @@ type Wearer = Readonly<{ calling: Calling }>
 // a revive, and the hearts drawn read this.
 const HANDYMAN_HEARTS_LESS = 1
 
-// NOTE: the hard hat: a bite leaves the Handyman 50% longer to get clear.
+// NOTE: the hard hat: a bite leaves the Handyman twice as long to get clear.
 // It pays back part of his fewer heart, which cost 8 points of wins to YOU
 // on the balance bot with only cheap planks and free repairs to show for it.
-const HANDYMAN_GRACE_SCALE = 1.5
+const HANDYMAN_GRACE_SCALE = 2
 
 export const woundGraceScaleOf = ({ calling }: Wearer): number =>
   calling === 'Handyman' ? HANDYMAN_GRACE_SCALE : 1
@@ -66,8 +66,9 @@ export const maxHpOf = ({ calling }: Wearer): number =>
 
 // SPEED
 
-// NOTE: the Track Star runs 10% faster.
-const TRACK_STAR_SPEED = 1.1
+// NOTE: the Track Star runs 20% faster (10% left him 5 points under YOU, and
+// with the dearer traps 15% was 9 under).
+const TRACK_STAR_SPEED = 1.2
 
 export const speedScaleOf = ({ calling }: Wearer): number =>
   calling === 'TrackStar' ? TRACK_STAR_SPEED : 1
@@ -122,8 +123,10 @@ export const killPayFor = (calling: Calling, pay: number): number =>
 
 // NOTE: the lids the Line Cook starts with, fewer than a fridge's Cooker
 // brings (20), set by the balance bot: with all 20 the bot won 42 of 100
-// Normal campaigns, 12 points over YOU.
-export const COOK_STARTING_LIDS = 12
+// Normal campaigns, 12 points over YOU. 8 lids with $20 and 10 with $15
+// died on waves 2 to 4 more (45% of runs) with no fewer wins; 14 died less
+// (39%).
+export const COOK_STARTING_LIDS = 14
 
 export const startsWithCooker = (calling: Calling): boolean =>
   calling === 'LineCook'

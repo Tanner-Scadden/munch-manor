@@ -70,6 +70,7 @@ describe('a run starts with the calling picked', () => {
     expect(heldGun(run.player.arsenal).kind).toBe('Cooker')
     expect(maybeCarried(run.player, 'Pistol')).toEqual(Option.none())
     expect(looseRounds(heldGun(run.player.arsenal))).toBeGreaterThan(0)
+    expect(heldGun(run.player.arsenal).rounds).toBe(14)
   })
 
   test('the Track Star starts with a 12 round pistol magazine', () => {
@@ -118,8 +119,8 @@ describe('the quirks in play', () => {
     asCalling(withMoney(besideStall(preparing(3)), 500), calling)
 
   test('the Handyman pays half for a Plank Pile', () => {
-    expect(priceFor(shopping('You'), 'Barricade')).toBe(40)
-    expect(priceFor(shopping('Handyman'), 'Barricade')).toBe(20)
+    expect(priceFor(shopping('You'), 'Barricade')).toBe(95)
+    expect(priceFor(shopping('Handyman'), 'Barricade')).toBe(48)
   })
 
   test('the Handyman cannot heal past 4 hearts', () => {
@@ -135,7 +136,7 @@ describe('the quirks in play', () => {
 
   test('the Track Star runs faster and fills a smaller magazine', () => {
     const star = shopping('TrackStar').player
-    expect(playerSpeed(idleBoosts, star)).toBeCloseTo(PLAYER_SPEED * 1.1)
+    expect(playerSpeed(idleBoosts, star)).toBeCloseTo(PLAYER_SPEED * 1.2)
     const bought = tryPurchase(shopping('TrackStar'), 'Shotgun')
     expect(bought._tag).toBe('Success')
     const gun = Option.getOrThrow(
@@ -150,7 +151,7 @@ describe('the quirks in play', () => {
   test('Rattles charges the Penny Pincher 15 percent less', () => {
     expect(priceFor(shopping('You'), 'Shotgun')).toBe(35)
     expect(priceFor(shopping('PennyPincher'), 'Shotgun')).toBe(30)
-    expect(priceFor(shopping('PennyPincher'), 'Barricade')).toBe(34)
+    expect(priceFor(shopping('PennyPincher'), 'Barricade')).toBe(81)
   })
 
   test('a kill pays the Penny Pincher less', () => {
@@ -213,6 +214,6 @@ describe('what the player sees of a calling', () => {
           .invulnerability,
         { Vulnerable: () => 0, Invulnerable: ({ durationMs }) => durationMs },
       )
-    expect(grace('Handyman')).toBe(grace('You') * 1.5)
+    expect(grace('Handyman')).toBe(grace('You') * 2)
   })
 })
