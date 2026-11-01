@@ -15,12 +15,15 @@ import {
   plankPriceFor,
   shopPriceFor,
   speedScaleOf,
+  startingGunKind,
   startsWithCooker,
   woundGraceScaleOf,
 } from './calling'
+import { QUIRK_MARKS } from './callingArt'
 import { playerOfCalling } from './callingPlayer'
 import { PLAYER_MAX_HP } from './constants'
 import { defaultAppearance } from './model'
+import { heldGun } from './weapons'
 import { initialPlayer } from './worldSchema'
 
 // The callings' rules (src/calling.ts), each a pure function of a calling.
@@ -123,5 +126,27 @@ describe('the player of a calling', () => {
     for (const calling of CALLINGS.filter(next => next !== 'You')) {
       expect(playerPixels(defaultAppearance, calling).idle).not.toEqual(bare)
     }
+  })
+})
+
+describe('the gun in the Look preview', () => {
+  test('is the gun the calling starts a run holding', () => {
+    for (const calling of CALLINGS) {
+      expect(startingGunKind(calling)).toBe(
+        heldGun(playerOfCalling(calling).arsenal).kind,
+      )
+    }
+  })
+})
+
+describe('the quirks as pictures', () => {
+  test("the Handyman's card has a mark for each quirk: fewer hearts, half price planks, and the longer breather", () => {
+    const marks = QUIRK_MARKS.Handyman
+    expect(marks.map(mark => mark.label)).toEqual(['-1', '1/2', '+'])
+    expect(new Set(marks.map(mark => mark.art)).size).toBe(marks.length)
+  })
+
+  test('YOU has none', () => {
+    expect(QUIRK_MARKS.You).toEqual([])
   })
 })

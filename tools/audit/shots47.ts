@@ -1,5 +1,6 @@
 // The callings pass: the calling pill on the home menu, the picker with
-// locked and unlocked callings, each calling's prop on the player in play,
+// locked and unlocked callings, the Profile's Look preview holding each
+// calling's gun, each calling's prop on the player in play,
 // and the end card that unlocks a calling, on a 1280x720 desktop, an 844x390
 // phone on its side, and a 390x844 phone held upright, as
 // `s47-<TAG>-<viewport>-<scene>.png`. It exits with 1 on a card past the
@@ -65,6 +66,11 @@ const SCENES: ReadonlyArray<Scene> = [
     query: 'rank=4000&calling=LineCook',
     open: '#home-calling',
     isPicker: true,
+  },
+  { name: 'profile-you', query: 'profile=look' },
+  {
+    name: 'profile-linecook',
+    query: 'rank=4000&calling=LineCook&profile=look',
   },
   ...CALLINGS.map(calling => ({
     name: `play-${calling.toLowerCase()}`,

@@ -8,6 +8,7 @@ import {
   ProfileDialogBinding,
   ProfileTabsBinding,
 } from './bindings'
+import { startingCallingOf } from './callingPick'
 import type { ApplicationViewBuilder } from './composition'
 import { closeButtonView, dialogShell } from './dialogs'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from './home'
@@ -99,7 +100,7 @@ const lookTabView = (model: Model, h: ApplicationViewBuilder): Html =>
       model: model.character,
       viewInputs: {
         appearance: model.appearance,
-        calling: model.player.calling,
+        calling: startingCallingOf(model),
         screenMs: model.screenMs,
         fx: model.profile.fx,
         fxCount: model.profile.fxCount,

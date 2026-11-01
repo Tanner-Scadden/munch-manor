@@ -22,6 +22,7 @@ import {
   playerPixels,
   playerSprites,
 } from './appearance'
+import { startingGunKind } from './calling'
 import {
   CharacterComposition,
   type CharacterViewBuilder,
@@ -264,7 +265,11 @@ const previewShapes = (
         x: centerX + direction * GUN_HOLD_PX,
         y: PREVIEW_FOOT_Y - PLAYER_FOOT_OFFSET,
       },
-      shapes: gunSprite('Pistol', 0, facing === 'Right' ? 0 : Math.PI),
+      shapes: gunSprite(
+        startingGunKind(calling),
+        0,
+        facing === 'Right' ? 0 : Math.PI,
+      ),
     }),
   ]
 }
