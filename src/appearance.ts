@@ -110,6 +110,7 @@ const HARD_HAT_COLOR = '#f2c230'
 const HARD_HAT_SHADE = '#b8861c'
 const VISOR_COLOR = '#2f9e57'
 const COIN_COLOR = '#ffd23f'
+const TOQUE_BAND_COLOR = '#c9c3ad'
 
 const channel = (color: string, index: number): number =>
   Number.parseInt(color.slice(1 + index * 2, 3 + index * 2), 16)
@@ -155,6 +156,7 @@ export const playerPalette = (appearance: Appearance): Palette => {
     Z: HARD_HAT_SHADE,
     V: VISOR_COLOR,
     C: COIN_COLOR,
+    N: TOQUE_BAND_COLOR,
     ...Object.fromEntries(
       Array.map(RAINBOW_STRIPES, (color, index) => [
         RAINBOW_SYMBOLS.charAt(index),
@@ -348,10 +350,10 @@ const GLASSES: Rows = ['', '', '', '', '.RERRER.']
 // row and lay over the hair and glasses.
 const CALLING_PROPS: Readonly<Record<Calling, Rows>> = {
   You: [],
-  Handyman: ['..YYYY..', '.ZZZZZZ.'],
+  Handyman: ['..YYYY..', '.ZYYYYZ.'],
   TrackStar: ['', '', '.RRRRRR.'],
   PennyPincher: ['', '..VCCV..', '.VVVVVV.'],
-  LineCook: ['.WWWWWW.', '.WWWWWW.'],
+  LineCook: ['.WWWWWW.', '.NNNNNN.'],
 }
 
 const overlayRow = (base: string, top: string): string =>

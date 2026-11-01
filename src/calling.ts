@@ -53,6 +53,14 @@ type Wearer = Readonly<{ calling: Calling }>
 // a revive, and the hearts drawn read this.
 const HANDYMAN_HEARTS_LESS = 1
 
+// NOTE: the hard hat: a bite leaves the Handyman 50% longer to get clear.
+// It pays back part of his fewer heart, which cost 8 points of wins to YOU
+// on the balance bot with only cheap planks and free repairs to show for it.
+const HANDYMAN_GRACE_SCALE = 1.5
+
+export const woundGraceScaleOf = ({ calling }: Wearer): number =>
+  calling === 'Handyman' ? HANDYMAN_GRACE_SCALE : 1
+
 export const maxHpOf = ({ calling }: Wearer): number =>
   calling === 'Handyman' ? PLAYER_MAX_HP - HANDYMAN_HEARTS_LESS : PLAYER_MAX_HP
 
@@ -66,9 +74,10 @@ export const speedScaleOf = ({ calling }: Wearer): number =>
 
 // MAGAZINES
 
-// NOTE: the Track Star's magazines are 20% smaller, rounded down, never
-// below one round.
-const TRACK_STAR_MAGAZINE_PERCENT = 80
+// NOTE: the Track Star's magazines are 10% smaller, rounded down, never
+// below one round. (20% lost 11 points of wins to YOU on the balance bot,
+// so 10%.)
+const TRACK_STAR_MAGAZINE_PERCENT = 90
 
 export const magazineFor = (calling: Calling, magazine: number): number =>
   calling === 'TrackStar'
@@ -86,19 +95,27 @@ export const shopPriceFor = (calling: Calling, price: number): number =>
     ? Math.max(1, Math.round((price * PENNY_PRICE_PERCENT) / 100))
     : price
 
+// NOTE: a Plank Pile costs the Handyman half, and he mends boards for
+// nothing: the Handyman's one fewer heart cost 12 points of wins to YOU on
+// the balance bot, which half price planks alone did not pay back.
+export const isRepairFree = (calling: Calling): boolean =>
+  calling === 'Handyman'
+
 // NOTE: a Plank Pile costs the Handyman half.
 export const plankPriceFor = (calling: Calling, price: number): number =>
   calling === 'Handyman' ? Math.round(price / 2) : price
 
 // KILL PAY
 
-const PENNY_KILL_PERCENT = 85
-
-// NOTE: a kill pays the Penny Pincher 15% less, rounded down, but a kill
-// that paid anything still pays at least a dollar.
+// NOTE: a kill pays the Penny Pincher 20% less, rounded to the nearest
+// dollar, and never to nothing. Kills pay only $2 to $20, so rounding does
+// the real work: a Shambler's $2 stays $2, a $3 kill pays $2, a Tank's $20
+// pays $16, about 10% less over a run (a flat 15% rounded down cost a third
+// of the income, and the Penny Pincher won 9 points fewer than YOU).
+const PENNY_KILL_PERCENT = 80
 export const killPayFor = (calling: Calling, pay: number): number =>
   calling === 'PennyPincher' && pay > 0
-    ? Math.max(1, Math.floor((pay * PENNY_KILL_PERCENT) / 100))
+    ? Math.max(1, Math.round((pay * PENNY_KILL_PERCENT) / 100))
     : pay
 
 // THE STARTING GUN

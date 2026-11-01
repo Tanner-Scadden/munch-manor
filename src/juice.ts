@@ -2,6 +2,7 @@ import { Array, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { DOOR_OUTWARD } from './arena'
+import { killPayFor } from './calling'
 import {
   BLAST_FLASH_MS,
   BLAST_MAX,
@@ -29,6 +30,7 @@ import {
 } from './constants'
 import { countWhere } from './hitStop'
 import type { Model } from './model'
+import type { Calling } from './playerData'
 import { type Seeded, between, generateMany, nextRandom } from './prng'
 import { tickShownMoney } from './shop'
 import { TRAPS } from './traps'
@@ -225,103 +227,112 @@ const popup =
 
 const noPopups = (state: number): Seeded<ReadonlyArray<Popup>> => [state, []]
 
-const eventPopups = (
-  state: number,
-  event: GameEvent,
-): Seeded<ReadonlyArray<Popup>> =>
-  GameEvent.match(event, {
-    Fired: () => noPopups(state),
-    ZombieHit: ({ x, y, damage }) =>
-      generateMany(
-        state,
-        1,
-        popup('Damage', damage, x, y - DAMAGE_POPUP_LIFT_PX),
-      ),
-    ZombieKilled: ({ x, y, bounty }) =>
-      generateMany(state, 1, popup('Kill', bounty, x, y - KILL_POPUP_LIFT_PX)),
-    Exploded: ({ x, y, radius }) =>
-      generateMany(state, 1, popup('Kaboom', 0, x, y - radius * 0.6)),
-    Footfall: () => noPopups(state),
-    PlayerHurt: () => noPopups(state),
-    BulletStruck: () => noPopups(state),
-    RanDry: ({ x, y }) =>
-      generateMany(state, 1, popup('Empty', 0, x, y - EMPTY_POPUP_LIFT_PX)),
-    DryFired: () => noPopups(state),
-    ReloadStarted: () => noPopups(state),
-    Reloaded: () => noPopups(state),
-    WaveCleared: ({ x, y, bonus }) =>
-      generateMany(
-        state,
-        1,
-        popup('Payday', bonus, x, y - PAYDAY_POPUP_LIFT_PX),
-      ),
-    PackWarned: () => noPopups(state),
-    TrapHit: () => noPopups(state),
-    TrapCracked: () => noPopups(state),
-    TrapBroken: () => noPopups(state),
-    PickupDropped: () => noPopups(state),
-    PickupGrabbed: () => noPopups(state),
-    PickupFizzled: () => noPopups(state),
-    BoostFaded: () => noPopups(state),
-    Burped: () => noPopups(state),
-    PartShed: () => noPopups(state),
-    BossRoared: () => noPopups(state),
-    BossWoundUp: () => noPopups(state),
-    BossStomped: () => noPopups(state),
-    BossBelched: () => noPopups(state),
-    BossRushed: () => noPopups(state),
-    BossRammed: () => noPopups(state),
-    BossBonked: () => noPopups(state),
-    BossSpat: () => noPopups(state),
-    GlobLanded: () => noPopups(state),
-    BossEnraged: () => noPopups(state),
-    ZombieGrabbed: () => noPopups(state),
-    ShieldRaised: () => noPopups(state),
-    ZombieThrown: () => noPopups(state),
-    ZombieLanded: () => noPopups(state),
-    CrawlerStirred: () => noPopups(state),
-    CrawlerSurfaced: () => noPopups(state),
-    AnklesGrabbed: () => noPopups(state),
-    PackFrenzied: ({ x, y, door }) =>
-      generateMany(
-        state,
-        1,
-        popup(
-          'Horde',
-          0,
-          x - DOOR_OUTWARD[door].x * HORDE_POPUP_INSET_PX,
-          y - DOOR_OUTWARD[door].y * HORDE_POPUP_INSET_PX,
+// NOTE: a kill's popup shows what the kill paid the player, so the Penny
+// Pincher's reads 15% less (src/calling.ts).
+const eventPopups =
+  (calling: Calling) =>
+  (state: number, event: GameEvent): Seeded<ReadonlyArray<Popup>> =>
+    GameEvent.match(event, {
+      Fired: () => noPopups(state),
+      ZombieHit: ({ x, y, damage }) =>
+        generateMany(
+          state,
+          1,
+          popup('Damage', damage, x, y - DAMAGE_POPUP_LIFT_PX),
         ),
-      ),
-    PackWiped: ({ x, y, bonus }) =>
-      generateMany(state, 1, popup('Wipe', bonus, x, y - PAYDAY_POPUP_LIFT_PX)),
-    OvenBelched: () => noPopups(state),
-    Purchased: () => noPopups(state),
-    PurchaseRefused: () => noPopups(state),
-    ExitOpened: () => noPopups(state),
-    FridgeOpened: () => noPopups(state),
-    FridgeSlammed: () => noPopups(state),
-    PrizeTaken: () => noPopups(state),
-    PrizeLeft: () => noPopups(state),
-    DudBurped: () => noPopups(state),
-    LidLaunched: () => noPopups(state),
-    LidBlasted: () => noPopups(state),
-    CookerPopped: () => noPopups(state),
-    PanSwung: () => noPopups(state),
-    PanClanged: () => noPopups(state),
-    PanSmashed: () => noPopups(state),
-    PanFlattened: () => noPopups(state),
-    KnifeStabbed: () => noPopups(state),
-    KnifeHit: () => noPopups(state),
-    HomeRun: () => noPopups(state),
-    FreezeSprayed: () => noPopups(state),
-    ZombieFrozen: () => noPopups(state),
-    ZombieShattered: () => noPopups(state),
-    ZombieSlipped: () => noPopups(state),
-    PlayerDowned: () => noPopups(state),
-    PlayerRevived: () => noPopups(state),
-    FriendlyFire: () => noPopups(state),
-  })
+      ZombieKilled: ({ x, y, bounty }) =>
+        generateMany(
+          state,
+          1,
+          popup('Kill', killPayFor(calling, bounty), x, y - KILL_POPUP_LIFT_PX),
+        ),
+      Exploded: ({ x, y, radius }) =>
+        generateMany(state, 1, popup('Kaboom', 0, x, y - radius * 0.6)),
+      Footfall: () => noPopups(state),
+      PlayerHurt: () => noPopups(state),
+      BulletStruck: () => noPopups(state),
+      RanDry: ({ x, y }) =>
+        generateMany(state, 1, popup('Empty', 0, x, y - EMPTY_POPUP_LIFT_PX)),
+      DryFired: () => noPopups(state),
+      ReloadStarted: () => noPopups(state),
+      Reloaded: () => noPopups(state),
+      WaveCleared: ({ x, y, bonus }) =>
+        generateMany(
+          state,
+          1,
+          popup('Payday', bonus, x, y - PAYDAY_POPUP_LIFT_PX),
+        ),
+      PackWarned: () => noPopups(state),
+      TrapHit: () => noPopups(state),
+      TrapCracked: () => noPopups(state),
+      TrapBroken: () => noPopups(state),
+      PickupDropped: () => noPopups(state),
+      PickupGrabbed: () => noPopups(state),
+      PickupFizzled: () => noPopups(state),
+      BoostFaded: () => noPopups(state),
+      Burped: () => noPopups(state),
+      PartShed: () => noPopups(state),
+      BossRoared: () => noPopups(state),
+      BossWoundUp: () => noPopups(state),
+      BossStomped: () => noPopups(state),
+      BossBelched: () => noPopups(state),
+      BossRushed: () => noPopups(state),
+      BossRammed: () => noPopups(state),
+      BossBonked: () => noPopups(state),
+      BossSpat: () => noPopups(state),
+      GlobLanded: () => noPopups(state),
+      BossEnraged: () => noPopups(state),
+      ZombieGrabbed: () => noPopups(state),
+      ShieldRaised: () => noPopups(state),
+      ZombieThrown: () => noPopups(state),
+      ZombieLanded: () => noPopups(state),
+      CrawlerStirred: () => noPopups(state),
+      CrawlerSurfaced: () => noPopups(state),
+      AnklesGrabbed: () => noPopups(state),
+      PackFrenzied: ({ x, y, door }) =>
+        generateMany(
+          state,
+          1,
+          popup(
+            'Horde',
+            0,
+            x - DOOR_OUTWARD[door].x * HORDE_POPUP_INSET_PX,
+            y - DOOR_OUTWARD[door].y * HORDE_POPUP_INSET_PX,
+          ),
+        ),
+      PackWiped: ({ x, y, bonus }) =>
+        generateMany(
+          state,
+          1,
+          popup('Wipe', bonus, x, y - PAYDAY_POPUP_LIFT_PX),
+        ),
+      OvenBelched: () => noPopups(state),
+      Purchased: () => noPopups(state),
+      PurchaseRefused: () => noPopups(state),
+      ExitOpened: () => noPopups(state),
+      FridgeOpened: () => noPopups(state),
+      FridgeSlammed: () => noPopups(state),
+      PrizeTaken: () => noPopups(state),
+      PrizeLeft: () => noPopups(state),
+      DudBurped: () => noPopups(state),
+      LidLaunched: () => noPopups(state),
+      LidBlasted: () => noPopups(state),
+      CookerPopped: () => noPopups(state),
+      PanSwung: () => noPopups(state),
+      PanClanged: () => noPopups(state),
+      PanSmashed: () => noPopups(state),
+      PanFlattened: () => noPopups(state),
+      KnifeStabbed: () => noPopups(state),
+      KnifeHit: () => noPopups(state),
+      HomeRun: () => noPopups(state),
+      FreezeSprayed: () => noPopups(state),
+      ZombieFrozen: () => noPopups(state),
+      ZombieShattered: () => noPopups(state),
+      ZombieSlipped: () => noPopups(state),
+      PlayerDowned: () => noPopups(state),
+      PlayerRevived: () => noPopups(state),
+      FriendlyFire: () => noPopups(state),
+    })
 
 const agePopups = (
   popups: ReadonlyArray<Popup>,
@@ -437,7 +448,7 @@ export const advanceJuice = (
   const [popupState, popupBatches] = Array.mapAccum(
     events,
     shakeState,
-    eventPopups,
+    eventPopups(model.player.calling),
   )
 
   return modifyFields(model, {

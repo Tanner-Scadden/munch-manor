@@ -2,7 +2,11 @@ import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
+import { ammoLevelOf } from './ammoWarning'
+import { playerOfCalling } from './callingPlayer'
+import { woundPlayer } from './combat'
 import { PLAYER_MAX_HP, PLAYER_SPEED } from './constants'
+import { advanceJuice } from './juice'
 import { update } from './main'
 import { isPanelOpen } from './menuState'
 import { Message } from './message'
@@ -14,8 +18,13 @@ import { playerSpeed } from './powerups'
 import { pointsForRank } from './rank'
 import { priceFor, tryPurchase, verdictFor } from './shop'
 import { besideStall, preparing, shopReady, withMoney } from './shop.fixture'
-import { heldGun, looseRounds, maybeCarried } from './weapons'
-import { idleBoosts } from './worldSchema'
+import { freshGun, heldGun, looseRounds, maybeCarried } from './weapons'
+import {
+  type CarriedGun,
+  GameEvent,
+  Invulnerability,
+  idleBoosts,
+} from './worldSchema'
 
 // Callings (src/calling.ts): the pick on the home menu, a run starting with
 // it, and each quirk playing out in the World.
@@ -63,9 +72,9 @@ describe('a run starts with the calling picked', () => {
     expect(looseRounds(heldGun(run.player.arsenal))).toBeGreaterThan(0)
   })
 
-  test('the Track Star starts with an 11 round pistol magazine', () => {
+  test('the Track Star starts with a 12 round pistol magazine', () => {
     const run = started(ranked(6, 'TrackStar'))
-    expect(heldGun(run.player.arsenal).loaded).toBe(11)
+    expect(heldGun(run.player.arsenal).loaded).toBe(12)
   })
 })
 
@@ -135,7 +144,7 @@ describe('the quirks in play', () => {
         world => maybeCarried(world.player, 'Shotgun'),
       ),
     )
-    expect(gun.loaded).toBe(4)
+    expect(gun.loaded).toBe(5)
   })
 
   test('Rattles charges the Penny Pincher 15 percent less', () => {
@@ -144,11 +153,11 @@ describe('the quirks in play', () => {
     expect(priceFor(shopping('PennyPincher'), 'Barricade')).toBe(34)
   })
 
-  test('a kill pays the Penny Pincher 15 percent less', () => {
+  test('a kill pays the Penny Pincher less', () => {
     const paid = (calling: Calling) =>
       earnKill(asCalling(shopReady, calling), 20).wallet.balance
     expect(paid('You')).toBe(20)
-    expect(paid('PennyPincher')).toBe(17)
+    expect(paid('PennyPincher')).toBe(16)
   })
 
   test('Rattles never sells the Line Cook the pistol', () => {
@@ -162,5 +171,48 @@ describe('the quirks in play', () => {
         }),
     })
     expect(verdictFor(withoutPistol, 'Pistol')._tag).toBe('Available')
+  })
+})
+
+describe('what the player sees of a calling', () => {
+  const killed = (calling: Calling): Model =>
+    advanceJuice(
+      modifyFields(readyAfterRead, {
+        player: player => modifyFields(player, { calling: () => calling }),
+        frameEvents: () => [
+          GameEvent.ZombieKilled({
+            x: 100,
+            y: 100,
+            direction: { x: 1, y: 0 },
+            bounty: 20,
+            kind: 'Tank',
+          }),
+        ],
+      }),
+      16,
+      16,
+    )
+
+  test('a kill popup shows what the kill paid', () => {
+    expect(killed('You').popups.map(({ value }) => value)).toEqual([20])
+    expect(killed('PennyPincher').popups.map(({ value }) => value)).toEqual([
+      16,
+    ])
+  })
+
+  test('the low ammo warning reads the Track Star smaller magazine', () => {
+    const smg: CarriedGun = { ...freshGun('Smg'), rounds: 56, loaded: 20 }
+    expect(ammoLevelOf(smg, 'You')).toBe('Low')
+    expect(ammoLevelOf(smg, 'TrackStar')).toBe('Plenty')
+  })
+
+  test('a bite leaves the Handyman 50 percent longer to get clear', () => {
+    const grace = (calling: Calling): number =>
+      Invulnerability.match(
+        woundPlayer(playerOfCalling(calling), 1, { x: 1, y: 0 })
+          .invulnerability,
+        { Vulnerable: () => 0, Invulnerable: ({ durationMs }) => durationMs },
+      )
+    expect(grace('Handyman')).toBe(grace('You') * 1.5)
   })
 })

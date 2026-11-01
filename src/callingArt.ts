@@ -177,7 +177,7 @@ export const QUIRK_MARKS: Readonly<Record<Calling, ReadonlyArray<QuirkMark>>> =
     ],
     PennyPincher: [
       { art: TAG_ICON, label: '-15%' },
-      { art: COIN_ICON, label: '-15%' },
+      { art: COIN_ICON, label: '-' },
     ],
     LineCook: [
       { art: POT_ICON, label: '' },

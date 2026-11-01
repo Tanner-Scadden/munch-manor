@@ -2,6 +2,7 @@ import { Array, Option, Order, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
+import { woundGraceScaleOf } from './calling'
 import {
   LAST_HEART_INVULNERABLE_MS,
   MAX_BLASTS_PER_FRAME,
@@ -110,7 +111,8 @@ export const woundPlayer = (
   graceScale = 1,
 ): Player => {
   const hp = Math.max(0, player.hp - damage)
-  const durationMs = invulnerableMsAt(hp) * graceScale
+  const durationMs =
+    invulnerableMsAt(hp) * graceScale * woundGraceScaleOf(player)
   return modifyFields(player, {
     hp: () => hp,
     knockback: () => scaleVector(direction, PLAYER_KNOCKBACK_SPEED),

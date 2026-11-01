@@ -673,7 +673,7 @@ const ammoLook = (
   isHeld: boolean,
   gun: CarriedGun,
 ): AmmoLook => {
-  const level = ammoLevelOf(gun)
+  const level = ammoLevelOf(gun, player.calling)
   if (isHeld && isReloading(player)) {
     return 'Reloading'
   } else if (gun.loaded <= 0) {

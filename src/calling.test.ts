@@ -8,6 +8,7 @@ import {
   callingsOpenedBy,
   isCallingUnlocked,
   isPistolBarred,
+  isRepairFree,
   killPayFor,
   magazineFor,
   maxHpOf,
@@ -15,6 +16,7 @@ import {
   shopPriceFor,
   speedScaleOf,
   startsWithCooker,
+  woundGraceScaleOf,
 } from './calling'
 import { playerOfCalling } from './callingPlayer'
 import { PLAYER_MAX_HP } from './constants'
@@ -51,7 +53,11 @@ describe('unlocking', () => {
 })
 
 describe('the Handyman', () => {
-  test('has one fewer heart and pays half for a Plank Pile', () => {
+  test('has one fewer heart, a longer grace after a bite, pays half for a Plank Pile, and mends for free', () => {
+    expect(woundGraceScaleOf({ calling: 'Handyman' })).toBe(1.5)
+    expect(woundGraceScaleOf({ calling: 'You' })).toBe(1)
+    expect(isRepairFree('Handyman')).toBe(true)
+    expect(isRepairFree('You')).toBe(false)
     expect(maxHpOf({ calling: 'Handyman' })).toBe(PLAYER_MAX_HP - 1)
     expect(maxHpOf({ calling: 'You' })).toBe(PLAYER_MAX_HP)
     expect(plankPriceFor('Handyman', 40)).toBe(20)
@@ -65,10 +71,10 @@ describe('the Track Star', () => {
     expect(speedScaleOf({ calling: 'Handyman' })).toBe(1)
   })
 
-  test('has 20 percent smaller magazines, rounded down, never under 1', () => {
-    expect(magazineFor('TrackStar', 14)).toBe(11)
-    expect(magazineFor('TrackStar', 6)).toBe(4)
-    expect(magazineFor('TrackStar', 30)).toBe(24)
+  test('has 10 percent smaller magazines, rounded down, never under 1', () => {
+    expect(magazineFor('TrackStar', 14)).toBe(12)
+    expect(magazineFor('TrackStar', 6)).toBe(5)
+    expect(magazineFor('TrackStar', 30)).toBe(27)
     expect(magazineFor('TrackStar', 1)).toBe(1)
     expect(magazineFor('You', 14)).toBe(14)
   })
@@ -83,9 +89,10 @@ describe('the Penny Pincher', () => {
     expect(shopPriceFor('You', 35)).toBe(35)
   })
 
-  test('is paid 15 percent less a kill, rounded down, at least 1', () => {
-    expect(killPayFor('PennyPincher', 20)).toBe(17)
+  test('is paid 20 percent less a kill, to the nearest dollar, at least 1', () => {
+    expect(killPayFor('PennyPincher', 20)).toBe(16)
     expect(killPayFor('PennyPincher', 3)).toBe(2)
+    expect(killPayFor('PennyPincher', 2)).toBe(2)
     expect(killPayFor('PennyPincher', 1)).toBe(1)
     expect(killPayFor('PennyPincher', 0)).toBe(0)
     expect(killPayFor('You', 20)).toBe(20)

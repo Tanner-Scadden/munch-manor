@@ -3,7 +3,13 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
 import { PARLOUR, SHOP_STALL_SYMBOL, tilesWithSymbol } from './arena'
-import { isPistolBarred, maxHpOf, plankPriceFor, shopPriceFor } from './calling'
+import {
+  isPistolBarred,
+  isRepairFree,
+  maxHpOf,
+  plankPriceFor,
+  shopPriceFor,
+} from './calling'
 import {
   MONEY_TICK_PER_SECOND,
   MS_PER_SECOND,
@@ -633,7 +639,10 @@ export const priceFor = (model: World, id: ShopItemId): number => {
     Repair: () =>
       Option.match(maybeRepairTrap(model, id), {
         onNone: () => 0,
-        onSome: trap => shopPriceFor(calling, repairPrice([trap])),
+        onSome: trap =>
+          isRepairFree(calling)
+            ? 0
+            : shopPriceFor(calling, repairPrice([trap])),
       }),
     Sight: () => shopPriceFor(calling, shopItem(id).price),
   })

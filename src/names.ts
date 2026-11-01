@@ -166,8 +166,9 @@ export const CALLING_NAMES: Readonly<Record<Calling, string>> = {
 
 export const CALLING_NOTES: Readonly<Record<Calling, string>> = {
   You: 'No quirk',
-  Handyman: 'Plank Piles cost half, one fewer heart',
-  TrackStar: 'Runs 10 percent faster, magazines 20 percent smaller',
-  PennyPincher: 'Rattles charges 15 percent less, kills pay 15 percent less',
+  Handyman:
+    'Plank Piles cost half, repairs are free, a longer breather after a bite, one fewer heart',
+  TrackStar: 'Runs 10 percent faster, magazines 10 percent smaller',
+  PennyPincher: 'Rattles charges 15 percent less, kills pay less',
   LineCook: 'Starts with the Pressure Cooker, no Pop Pistol',
 }

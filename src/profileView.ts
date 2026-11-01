@@ -99,6 +99,7 @@ const lookTabView = (model: Model, h: ApplicationViewBuilder): Html =>
       model: model.character,
       viewInputs: {
         appearance: model.appearance,
+        calling: model.player.calling,
         screenMs: model.screenMs,
         fx: model.profile.fx,
         fxCount: model.profile.fxCount,
