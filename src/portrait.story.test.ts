@@ -84,7 +84,7 @@ describe('the portrait screen', () => {
       width: PORTRAIT_WIDTH,
       height: 240,
     })
-    expect(screen.zoom).toBeCloseTo(15 / 8)
+    expect(screen.zoom).toBeCloseTo(3 / 2)
     expect(
       portraitHeightFor({ left: 0, top: 0, width: 430, height: 932 }),
     ).toBe(390)
@@ -93,13 +93,13 @@ describe('the portrait screen', () => {
     ).toBe(400)
   })
 
-  test('shows 128 rows of the room in a window as tall as the thumbs leave room for', () => {
+  test('shows 160 rows of the room in a window as tall as the thumbs leave room for', () => {
     const phones = [
-      { width: 390, height: 844, world: 240, viewWidth: 96 },
-      { width: 430, height: 932, world: 240, viewWidth: 96 },
-      { width: 360, height: 780, world: 240, viewWidth: 96 },
-      { width: 360, height: 800, world: 240, viewWidth: 96 },
-      { width: 375, height: 667, world: 192, viewWidth: 120 },
+      { width: 390, height: 844, world: 240, viewWidth: 120 },
+      { width: 430, height: 932, world: 240, viewWidth: 120 },
+      { width: 360, height: 780, world: 240, viewWidth: 120 },
+      { width: 360, height: 800, world: 240, viewWidth: 120 },
+      { width: 360, height: 840, world: 240, viewWidth: 120 },
     ]
     Array.forEach(phones, phone => {
       const screen = portraitScreen(
@@ -115,12 +115,21 @@ describe('the portrait screen', () => {
       expect(screen.height - thumbAreaTop(screen)).toBeGreaterThanOrEqual(76)
       expect(screen.world.height).toBeLessThan(screen.height * 0.64)
     })
+  })
+
+  test('never zooms a short window out past a phone on its side', () => {
+    const short = portraitScreen(
+      portraitHeightFor({ left: 0, top: 0, width: 375, height: 667 }),
+    )
+    expect(short.world.height).toBe(192)
+    expect(short.zoom).toBeCloseTo(4 / 3)
+    expect(worldWindowOf(short)).toEqual({ width: 135, height: 144 })
     const widest = portraitScreen(
       portraitHeightFor({ left: 0, top: 0, width: 768, height: 1024 }),
     )
-    expect(widest.zoom).toBeCloseTo(180 / 128)
+    expect(widest.zoom).toBeCloseTo(4 / 3)
     expect(widest.world.height).toBe(180)
-    expect(worldWindowOf(widest)).toEqual({ width: 128, height: 128 })
+    expect(worldWindowOf(widest)).toEqual({ width: 135, height: 135 })
   })
 
   test('fills the window with whole columns and rows of the room at every height', () => {
@@ -175,15 +184,15 @@ describe('the portrait camera', () => {
       cameraOf(standingAt(fightingInPortrait, x, 120))
     expect(cameraAt(20)).toEqual({
       x: 0,
-      y: 52,
-      width: 96,
-      height: 128,
+      y: 20,
+      width: 120,
+      height: 160,
       scale: 1,
       left: 0,
       top: 0,
     })
-    expect(cameraAt(160)).toMatchObject({ x: 112, y: 52 })
-    expect(cameraAt(300)).toMatchObject({ x: 224, y: 52 })
+    expect(cameraAt(160)).toMatchObject({ x: 100, y: 20 })
+    expect(cameraAt(300)).toMatchObject({ x: 200, y: 20 })
     expect(cameraOf(standingAt(fightingInPortrait, 160, 10))).toMatchObject({
       y: 0,
     })
@@ -201,11 +210,11 @@ describe('the portrait camera', () => {
   test('keeps the player in the middle of the window between the walls', () => {
     const fighting = standingAt(fightingInPortrait, 151, 90)
     const onWindow = worldToView(cameraOf(fighting), fighting.player)
-    expect(Math.abs(onWindow.x - 96 / 2)).toBeLessThanOrEqual(0.5)
-    expect(Math.abs(onWindow.y - 128 / 2)).toBeLessThanOrEqual(0.5)
+    expect(Math.abs(onWindow.x - 120 / 2)).toBeLessThanOrEqual(0.5)
+    expect(Math.abs(onWindow.y - 160 / 2)).toBeLessThanOrEqual(0.5)
     const onScreen = worldToView(screenCameraOf(fighting), fighting.player)
-    expect(onScreen.x).toBeCloseTo((onWindow.x * 15) / 8)
-    expect(onScreen.y).toBeCloseTo((onWindow.y * 15) / 8 + PORTRAIT_HUD_PX)
+    expect(onScreen.x).toBeCloseTo((onWindow.x * 3) / 2)
+    expect(onScreen.y).toBeCloseTo((onWindow.y * 3) / 2 + PORTRAIT_HUD_PX)
   })
 
   test('on a phone on its side, follows the player and stops at the walls', () => {

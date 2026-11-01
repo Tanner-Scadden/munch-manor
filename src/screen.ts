@@ -59,20 +59,24 @@ const PORTRAIT_MIN_HEIGHT =
 const PORTRAIT_MAX_HEIGHT = 440
 const PORTRAIT_DEFAULT_HEIGHT = 390
 
-// NOTE: the world window shows the room 128 rows high, across
-// 180 * 128 / height of its width, so a taller window zooms in further.
-// Changed on 2026-10-30 at the owner's request, from the room's full 180
-// rows: a phone held upright draws a Groaner about 1.4 times as big as it
-// did. These are the window heights, shortest first. Each one shows a whole
-// number of the room's columns (96 to 128), so the window, the camera, and
-// the zoom stay exact.
-export const PORTRAIT_VIEW_ROWS = 128
+// NOTE: the world window shows the room up to 160 rows high, across
+// 180 * 160 / height of its width, and never zooms out past a phone on its
+// side (4/3), so a short window shows fewer rows instead. Changed on
+// 2026-10-31 at the owner's request, from 128 rows: the upright view zoomed
+// in so far (15/8) that the balance bot won about half as often upright as
+// on a desktop, and a Groaner at 3/2 still reads bigger than on the same
+// phone turned sideways. These are the window heights, shortest first. Each
+// one shows a whole number of the room's columns and rows (135 by 135, 135
+// by 144, and 120 by 160), so the window, the camera, and the zoom stay
+// exact. A 256 pixel window had 128 rows; at 160 rows it would show half
+// columns, so the tallest phones keep the 240 pixel one and a taller thumb
+// area.
+export const PORTRAIT_VIEW_ROWS = 160
 
 const PORTRAIT_WINDOW_HEIGHTS: Array.NonEmptyReadonlyArray<number> = [
   VIEW_HEIGHT,
   192,
   240,
-  256,
 ]
 
 const fitsThumbs = (screenHeight: number, windowHeight: number): boolean =>
@@ -82,8 +86,8 @@ const fitsThumbs = (screenHeight: number, windowHeight: number): boolean =>
 // NOTE: the tallest window that still leaves a thumb area at least 76
 // pixels tall and keeps the world window under two thirds of the screen. A
 // 390 or 400 pixel screen (390x844, 430x932, 360x800) gets a 240 pixel
-// window, which shows 96 by 128 of the room at 15/8, and a 320 pixel one
-// (375x667) a 192 pixel window, 120 by 128 at 3/2.
+// window, which shows 120 by 160 of the room at 3/2, and a 320 pixel one
+// (375x667) a 192 pixel window, 135 by 144 at 4/3.
 const portraitWindowFor = (screenHeight: number): number =>
   Array.reduce(
     PORTRAIT_WINDOW_HEIGHTS,
@@ -112,7 +116,7 @@ export const portraitScreen = (height: number): Screen => {
       width: PORTRAIT_WIDTH,
       height: windowHeight,
     },
-    zoom: windowHeight / PORTRAIT_VIEW_ROWS,
+    zoom: Math.max(LANDSCAPE_TOUCH_ZOOM, windowHeight / PORTRAIT_VIEW_ROWS),
   }
 }
 
