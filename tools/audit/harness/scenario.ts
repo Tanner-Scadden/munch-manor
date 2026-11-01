@@ -235,6 +235,25 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       }),
     })
   }
+  const { bones, spent, bought, hat } = config
+  if (bones !== undefined || spent !== undefined) {
+    model = modifyFields(model, {
+      rank: rank => ({
+        ...rank,
+        earnedBones: bones ?? rank.earnedBones,
+        spentBones: spent ?? rank.spentBones,
+        isVeteranGranted: true,
+      }),
+    })
+  }
+  if (bought !== undefined) {
+    model = modifyFields(model, { boughtHats: () => bought })
+  }
+  if (hat !== undefined) {
+    model = modifyFields(model, {
+      appearance: look => modifyFields(look, { hat: () => hat }),
+    })
+  }
   if (rankGain !== undefined && isEndScreen(model.phase)) {
     model = modifyFields(model, {
       maybeRankGain: () =>
@@ -471,6 +490,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
         print: print || a.print,
         beard: beard === 'Beard' || a.beard,
         glasses: glasses === 'Glasses' || a.glasses,
+        hat: a.hat,
       }),
     })
   }
