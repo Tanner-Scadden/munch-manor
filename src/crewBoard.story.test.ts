@@ -16,7 +16,12 @@ import {
   hasAwards,
   mvpOf,
 } from './crewAwards'
-import { crewBoardShapes } from './crewBoardView'
+import {
+  crewBoardColumns,
+  crewBoardHeightPx,
+  crewBoardShapes,
+  crewBoardWidthPx,
+} from './crewBoardView'
 import {
   awardsAtMs,
   beatSounds,
@@ -37,12 +42,14 @@ import {
   atSeat,
   crewInWave,
   home,
+  inPortrait,
   pipeline,
   placeSeat,
   withSeatLife,
 } from './model.fixture'
 import { COOP_RULES, maybePlayerAt, modifyLeadSeat, playersOf } from './party'
 import { badgeSprite } from './rankArt'
+import { PORTRAIT_WIDTH } from './screen'
 import { stepWorld } from './stepWorld'
 import { ticks, zombieOf } from './testing'
 import { WEAPONS } from './weapons'
@@ -54,6 +61,9 @@ import { type Intent, Pierce, type Seat, idleIntent } from './worldSchema'
 // the card's beat and post.
 
 const TICK_MS = FIXED_STEP_MS
+// NOTE: the shortest phone held upright puts its buttons about here in the
+// 180 high frame the card is drawn in (the strip's bar must end above).
+const UPRIGHT_BUTTONS_TOP_PX = 203
 const LEFT_X = 60
 const RIGHT_X = 240
 const ROW_Y = 104
@@ -298,10 +308,27 @@ describe("each player's rank on the board", () => {
   })
 })
 
+const endedCrew = (count: number, isUpright: boolean): Model => {
+  const ended = modifyFields(crewInWave(count), {
+    phase: () => Phase.GameOver({ wave: 5 }),
+    screenMs: () => 0,
+  })
+  return isUpright
+    ? modifyFields(inPortrait(ended), { lastDevice: () => 'Touch' })
+    : ended
+}
+
+const PORTRAIT_VISIBLE_LEFT = 160 - PORTRAIT_WIDTH / 2
+const PORTRAIT_VISIBLE_RIGHT = 160 + PORTRAIT_WIDTH / 2
+
 describe('the crew card in short landscape', () => {
   test("the board and the rank strip's bar end above the buttons", () => {
-    expect(crewCardBottomPx(true)).toBeLessThan(END_BUTTONS_TOP_PX - 4)
-    expect(crewCardBottomPx(false)).toBeLessThan(crewCardBottomPx(true))
+    expect(crewCardBottomPx(crewCard, true)).toBeLessThan(
+      END_BUTTONS_TOP_PX - 4,
+    )
+    expect(crewCardBottomPx(crewCard, false)).toBeLessThan(
+      crewCardBottomPx(crewCard, true),
+    )
   })
 
   test("the board's panel is drawn where the card says it ends", () => {
@@ -315,7 +342,51 @@ describe('the crew card in short landscape', () => {
     const bottoms = Array.flatMap(drawn.panel, shape =>
       shape._tag === 'Rect' ? [shape.y + shape.height] : [],
     )
-    expect(Math.max(...bottoms)).toBeLessThanOrEqual(crewCardBottomPx(false))
+    expect(Math.max(...bottoms)).toBeLessThanOrEqual(
+      crewCardBottomPx(crewCard, false),
+    )
+  })
+
+  test('four players sit in one row', () => {
+    expect(crewBoardColumns(endedCrew(4, false), 4)).toBe(4)
+  })
+})
+
+describe('the crew card upright', () => {
+  test.each([2, 3, 4])(
+    'a board of %i players is inside the screen, strip and all',
+    count => {
+      const current = endedCrew(count, true)
+      expect(crewBoardWidthPx(current)).toBeLessThanOrEqual(PORTRAIT_WIDTH)
+      const drawn = crewBoardShapes(
+        current,
+        'Munched',
+        crewDoneMs('Munched'),
+        CREW_BOARD_TOP_PX,
+        160,
+      )
+      const rects = Array.flatMap(drawn.panel, shape =>
+        shape._tag === 'Rect' ? [shape] : [],
+      )
+      expect(Math.min(...rects.map(shape => shape.x))).toBeGreaterThanOrEqual(
+        PORTRAIT_VISIBLE_LEFT,
+      )
+      expect(
+        Math.max(...rects.map(shape => shape.x + shape.width)),
+      ).toBeLessThanOrEqual(PORTRAIT_VISIBLE_RIGHT)
+      expect(crewCardBottomPx(current, true)).toBeLessThan(
+        UPRIGHT_BUTTONS_TOP_PX,
+      )
+    },
+  )
+
+  test('three and four players sit two to a row, two players in one', () => {
+    expect(crewBoardColumns(endedCrew(2, true), 2)).toBe(2)
+    expect(crewBoardColumns(endedCrew(3, true), 3)).toBe(2)
+    expect(crewBoardColumns(endedCrew(4, true), 4)).toBe(2)
+    expect(crewBoardHeightPx(endedCrew(4, true))).toBeGreaterThan(
+      crewBoardHeightPx(endedCrew(4, false)),
+    )
   })
 })
 

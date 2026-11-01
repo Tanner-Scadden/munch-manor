@@ -4,9 +4,9 @@ import { modifyFields } from 'foldkit/struct'
 
 import { FEEDBACK_LINE, VIEW_HEIGHT, VIEW_WIDTH } from './constants'
 import {
-  CREW_BOARD_PX,
   PANEL_EDGE,
   PANEL_FILL,
+  crewBoardHeightPx,
   crewBoardShapes,
   sparkShapes,
 } from './crewBoardView'
@@ -397,13 +397,16 @@ const quipOf = (model: Model, kind: EndKind): string =>
   )
 
 // NOTE: the bar a crew's rank strip sits in, under the board.
-const crewStripTop = CREW_BOARD_TOP_PX + CREW_BOARD_PX + STRIP_GAP_PX + 1
+const crewStripTop = (model: Model): number =>
+  CREW_BOARD_TOP_PX + crewBoardHeightPx(model) + STRIP_GAP_PX + 1
 
 // NOTE: where a crew's card ends in the 180 high frame: the board, and the
 // strip's bar under it when there is one. A phone on its side puts the
 // buttons' tops at about 133 (END_BUTTONS_TOP_PX), so this stays above.
-export const crewCardBottomPx = (hasStrip: boolean): number =>
-  hasStrip ? crewStripTop + STRIP_PX + 4 : CREW_BOARD_TOP_PX + CREW_BOARD_PX + 2
+export const crewCardBottomPx = (model: Model, hasStrip: boolean): number =>
+  hasStrip
+    ? crewStripTop(model) + STRIP_PX + 4
+    : CREW_BOARD_TOP_PX + crewBoardHeightPx(model) + 2
 
 export const END_BUTTONS_TOP_PX = 133
 
@@ -445,7 +448,7 @@ const cardShapes = (
     // NOTE: the strip sits in its own bar under the board.
     const boardTop = CREW_BOARD_TOP_PX
     const board = crewBoardShapes(model, kind, ms, boardTop, CENTER_X)
-    const stripTop = crewStripTop
+    const stripTop = crewStripTop(model)
     return [
       rise([...board.panel, ...(hasStrip ? crewStripPanel(stripTop) : [])]),
       ...board.rows,
