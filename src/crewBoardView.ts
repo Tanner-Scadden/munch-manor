@@ -289,9 +289,9 @@ const isAwarded = (board: Board, ms: number): boolean =>
 // beside the figure, so the board is no taller for it. The rank is the one
 // they joined the room with, so every card shows the same. Award badges
 // stack on the right.
-const BADGE_WIDTH = 11
+const BADGE_WIDTH = 13
 const BADGE_GAP = 2
-const RANK_LEFT_PX = 27
+const RANK_LEFT_PX = 29
 const RANK_Y = 9
 
 const rankShapes = (

@@ -1616,6 +1616,30 @@
   }
 }
 
+/* NOTE: an occasional glint on the home badge: it brightens in place, and
+   nothing moves. */
+.home-hero .rank-chip .rank-badge-img {
+  animation: rank-glint 7s ease-in-out 2s infinite;
+}
+
+@keyframes rank-glint {
+  0%,
+  88%,
+  100% {
+    filter: none;
+  }
+
+  93% {
+    filter: brightness(1.7) saturate(0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-hero .rank-chip .rank-badge-img {
+    animation: none;
+  }
+}
+
 /* NOTE: on a phone on its side the rank plate stands under the tabs, so the
    tabs close up a little to leave it room. */
 @media (max-height: 460px) and (orientation: landscape) {

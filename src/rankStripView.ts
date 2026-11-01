@@ -26,7 +26,12 @@ import type { Model } from './model'
 import { CALLING_NAMES, giftName } from './names'
 import { GUN_HOLD_PX } from './playerView'
 import { badgeTierOf, rankProgressOf, shownPointsOf } from './rank'
-import { BONE, BONE_SIZE, badgeSprite } from './rankArt'
+import {
+  BONE,
+  BONE_SIZE,
+  badgeSprite,
+  shineSprite,
+} from './rankArt'
 import { frameAt, group, placeAt } from './sprite'
 import { gunSprite } from './sprites/guns'
 
@@ -44,14 +49,15 @@ const BAR_EDGE = '#5a3a4a'
 const BAR_BACK = '#140c10'
 const BAR_FILL = '#ffd23f'
 const BAR_SHINE = '#fff2a8'
-const BADGE_X = 5
-const NUMBER_X = 13
-const BAR_X = 32
-const BAR_WIDTH = 70
+const BADGE_X = 6
+const NUMBER_X = 15
+const BAR_X = 34
+const BAR_WIDTH = 68
 const BONES_GAP_PX = 4
 const BONE_TEXT_GAP_PX = 3
 const POP_SCALE = 1.2
 const FADE_MS = 120
+const SHINE_FRAME_MS = 45
 
 const barShapes = (
   x: number,
@@ -216,7 +222,12 @@ export const rankStripShapes = (
             group({
               translate: { x: left + BADGE_X, y: centerY },
               scale: pop === 1 ? undefined : { x: pop, y: pop },
-              shapes: badgeSprite(badgeTierOf(progress.rank)),
+              shapes: isPopping
+                ? shineSprite(
+                    badgeTierOf(progress.rank),
+                    Math.floor((ms - popAtMs) / SHINE_FRAME_MS),
+                  )
+                : badgeSprite(badgeTierOf(progress.rank)),
             }),
             ...textShapes(
               number,

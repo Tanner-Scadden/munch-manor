@@ -131,7 +131,7 @@ export type BadgeTier =
   | 'Bronze'
   | 'Silver'
   | 'Gold'
-  | 'Drumstick'
+  | 'Skull'
 
 const BADGE_TIERS: ReadonlyArray<BadgeTier> = [
   'Wood',
@@ -139,13 +139,13 @@ const BADGE_TIERS: ReadonlyArray<BadgeTier> = [
   'Bronze',
   'Silver',
   'Gold',
-  'Drumstick',
+  'Skull',
 ]
 
 const RANKS_PER_TIER = 10
 
 // NOTE: the badge changes look every 10 ranks: wood for 1 to 10, tin for 11
-// to 20, and so on to gold at 41 to 50, then the golden drumstick for good.
+// to 20, and so on to gold at 41 to 50, then the skull crest for good.
 export const badgeTierOf = (rank: number): BadgeTier =>
   BADGE_TIERS[
     Math.min(
