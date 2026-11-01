@@ -210,9 +210,9 @@ describe('repairing placed traps', () => {
       measureSurface,
       ...walkIntoStallInScene(),
       expect(
-        role('button', { name: 'Repair the Plank Pile at the West door, $10' }),
+        role('button', { name: 'Repair the Plank Pile at the West door, $24' }),
       ).toExist(),
-      expect(within(westPlank, selector('.shop-tag'))).toHaveText('$10'),
+      expect(within(westPlank, selector('.shop-tag'))).toHaveText('$24'),
       expect(within(westPlank, selector('.shop-map-dot'))).toExist(),
       expect(within(westPlank, selector('.shop-health'))).toHaveStyle(
         'width',
@@ -222,7 +222,7 @@ describe('repairing placed traps', () => {
       expect(selector('[data-stock="Done"] #shop-item-Repair-2')).toExist(),
       click(westPlank),
       expect(within(westPlank, selector('.shop-tag'))).toHaveText('FULL'),
-      expect(selector('.shop-balance')).toHaveText('You have $90'),
+      expect(selector('.shop-balance')).toHaveText('You have $76'),
     )
   })
 
@@ -237,7 +237,7 @@ describe('repairing placed traps', () => {
       measureSurface,
       ...walkIntoStallInScene(),
       expect(role('button', { name: /^Repair the/ })).toBeAbsent(),
-      expect(role('button', { name: 'Buy Plank Pile for $40' })).toExist(),
+      expect(role('button', { name: 'Buy Plank Pile for $95' })).toExist(),
     )
   })
 })

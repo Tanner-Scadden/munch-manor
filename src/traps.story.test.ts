@@ -177,12 +177,12 @@ describe('buying traps', () => {
         modifyFields(readyModel, {
           phase: () => preparing(),
           shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
-          wallet: () => ({ balance: 150, earned: 150, shown: 150 }),
+          wallet: () => ({ balance: 300, earned: 150, shown: 150 }),
         }),
       ),
       message(Message.ClickedBuyButton({ item: 'Barricade' })),
       model(({ wallet, trapStock, trapHint, selectedTrap }) => {
-        expect(wallet.balance).toBe(150 - TRAPS.Barricade.price)
+        expect(wallet.balance).toBe(300 - TRAPS.Barricade.price)
         expect(trapStock).toEqual({ Barricade: 1, Turret: 0 })
         expect(selectedTrap).toBe('Barricade')
         expect(trapHint).toEqual(TrapHint.Showing())
@@ -190,7 +190,7 @@ describe('buying traps', () => {
       message(Message.ClickedBuyButton({ item: 'Turret' })),
       model(({ wallet, trapStock }) => {
         expect(wallet.balance).toBe(
-          150 - TRAPS.Barricade.price - TRAPS.Turret.price,
+          300 - TRAPS.Barricade.price - TRAPS.Turret.price,
         )
         expect(trapStock).toEqual({ Barricade: 1, Turret: 1 })
       }),
@@ -578,7 +578,7 @@ describe('barricades and pathing', () => {
           ROOM_MIDDLE,
         ),
       ),
-      ...recordTicks(300, LONG_FRAME_MS, frames),
+      ...recordTicks(520, LONG_FRAME_MS, frames),
     )
 
     expect(
@@ -642,7 +642,7 @@ describe('barricade damage', () => {
           { x: 220, y: 40 },
         ),
       ),
-      ...recordTicks(260, LONG_FRAME_MS, frames),
+      ...recordTicks(500, LONG_FRAME_MS, frames),
     )
 
     const hps = Array.filterMap(frames, ({ traps }) =>
@@ -749,7 +749,7 @@ describe('barricade damage', () => {
 })
 
 describe('bursts and traps', () => {
-  test('a Kaboomer burst damages a barricade and breaks a turret in reach', () => {
+  test('a Kaboomer burst damages a barricade and a gnome in reach, but not one out of it', () => {
     const blast = {
       ...zombieOf('Exploder', 60, 222, 25),
       hp: 0,
@@ -767,17 +767,14 @@ describe('bursts and traps', () => {
       ),
       tick(FRAME_MS),
       model(({ traps, frameEvents }) => {
-        expect(TRAPS.Turret.hp).toBeLessThanOrEqual(burstDamage)
         expect(Array.map(traps, ({ id, hp }) => [id, hp])).toEqual([
           [1, TRAPS.Barricade.hp - burstDamage],
+          [2, TRAPS.Turret.hp - burstDamage],
           [3, TRAPS.Turret.hp],
         ])
-        expect(
-          Array.map(
-            Array.filter(frameEvents, GameEvent.guards.TrapBroken),
-            ({ kind }) => kind,
-          ),
-        ).toEqual(['Turret'])
+        expect(Array.filter(frameEvents, GameEvent.guards.TrapBroken)).toEqual(
+          [],
+        )
       }),
     )
   })
@@ -971,7 +968,7 @@ describe('between waves', () => {
       wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
       traps: () => damagedTraps,
     })
-    expect(plankPrice).toBe(10)
+    expect(plankPrice).toBe(24)
     expect(priceFor(shopping, repairItemId(1))).toBe(plankPrice)
     expect(priceFor(shopping, repairItemId(2))).toBe(gnomePrice)
     expect(repairPrice([damagedTraps[0]!])).toBe(plankPrice)

@@ -352,7 +352,7 @@ export const SCORCH_DECAL_FADED_COLOR = '#241a16'
 
 export const BARRICADE_REACH_PX = 16
 export const TURRET_PLACE_REACH_PX = 10
-export const TURRET_RANGE_PX = 84
+export const TURRET_RANGE_PX = 115
 export const TRAP_REACH_PX = 1.5
 export const TRAP_BLAST_RADIUS = 6
 export const TRAP_HIT_PULSE_MS = 140

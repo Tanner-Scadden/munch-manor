@@ -57,7 +57,7 @@ describe('unlocking', () => {
 
 describe('the Handyman', () => {
   test('has one fewer heart, a longer grace after a bite, pays half for a Plank Pile, and mends for free', () => {
-    expect(woundGraceScaleOf({ calling: 'Handyman' })).toBe(1.5)
+    expect(woundGraceScaleOf({ calling: 'Handyman' })).toBe(2)
     expect(woundGraceScaleOf({ calling: 'You' })).toBe(1)
     expect(isRepairFree('Handyman')).toBe(true)
     expect(isRepairFree('You')).toBe(false)
@@ -70,7 +70,7 @@ describe('the Handyman', () => {
 
 describe('the Track Star', () => {
   test('runs 10 percent faster', () => {
-    expect(speedScaleOf({ calling: 'TrackStar' })).toBe(1.1)
+    expect(speedScaleOf({ calling: 'TrackStar' })).toBe(1.2)
     expect(speedScaleOf({ calling: 'Handyman' })).toBe(1)
   })
 
@@ -146,14 +146,14 @@ describe('the specials as short lines', () => {
     ).toEqual([
       [true, 'Planks 50% off'],
       [true, 'Free repairs'],
-      [true, 'Bite blink 50% longer'],
+      [true, 'Bite blink 100% longer'],
       [false, `${PLAYER_MAX_HP - 1} max hearts`],
     ])
   })
 
   test('the Track Star and the Penny Pincher read theirs', () => {
     expect(specialsOf('TrackStar').map(({ line }) => line)).toEqual([
-      'Runs 10% faster',
+      'Runs 20% faster',
       'Mags 10% smaller',
     ])
     expect(specialsOf('PennyPincher').map(({ line }) => line)).toEqual([
