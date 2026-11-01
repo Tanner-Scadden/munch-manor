@@ -269,6 +269,10 @@ export const HarnessConfig = Schema.Struct({
   nightmare: Schema.optionalKey(NightmareLock),
   // The home menu and the save
   best: MaybeNum,
+  // Rank: the total points the player holds (after the run on an end card),
+  // and the points the run on the end card just paid, for its strip
+  rank: MaybeNum,
+  rankgain: MaybeNum,
   bests: Flag,
   kills: Schema.optionalKey(Kills),
   opened: Schema.optionalKey(ListOf(ZombieKind)),

@@ -75,7 +75,7 @@ export const PANEL_EDGE = '#5a3a4a'
 const OWN_FILL = 'rgba(255, 240, 200, 0.07)'
 
 // NOTE: the board's height below its top, from the panel's edge to edge.
-const CREW_BOARD_PX = CREW_TOP + BOTTOM
+export const CREW_BOARD_PX = CREW_TOP + BOTTOM
 
 // THE ROWS
 

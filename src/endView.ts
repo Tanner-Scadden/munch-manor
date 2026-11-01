@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { FEEDBACK_LINE, VIEW_HEIGHT, VIEW_WIDTH } from './constants'
 import {
+  CREW_BOARD_PX,
   PANEL_EDGE,
   PANEL_FILL,
   crewBoardShapes,
@@ -23,6 +24,7 @@ import {
   easeOut,
   easeOutBack,
   endKindOf,
+  hasRankStrip,
   progressOf,
   rowLandMs,
   rowStartMs,
@@ -51,6 +53,7 @@ import { Invulnerability, type Model, Phase, type Zombie } from './model'
 import { isCoop } from './party'
 import type { Difficulty } from './playerData'
 import { playerFootY } from './playerView'
+import { STRIP_PX, rankStripShapes } from './rankStripView'
 import { type Sprite, group, placeAt, spriteShapes } from './sprite'
 import { ZOMBIE_SPRITES } from './sprites/zombies'
 import { defeatQuip, victoryVerdict } from './stats'
@@ -123,6 +126,10 @@ const PANEL_LEFT = 82
 const PANEL_RIGHT = VIEW_WIDTH - PANEL_LEFT
 const PANEL_PAD = 5
 const ROW_PX = 10
+// NOTE: with the rank strip in the panel the rows sit a pixel closer, so
+// the card still ends above the buttons on a phone on its side.
+const STRIPPED_ROW_PX = 9
+const STRIP_GAP_PX = 2
 const KINDS_PX = 11
 const SKULL_STRIDE = 12
 const SKULL_SLOTS = 4
@@ -280,7 +287,7 @@ const VALUE_TONES: Readonly<Record<TallyIcon, TextTone>> = {
 }
 
 const rowShapes =
-  (kind: EndKind, ms: number, top: number) =>
+  (kind: EndKind, ms: number, top: number, rowPx: number) =>
   (row: TallyRow, index: number): ReadonlyArray<Canvas.Shape> => {
     const startMs = rowStartMs(kind, index)
     if (ms < startMs) {
@@ -289,7 +296,7 @@ const rowShapes =
     const slide = Math.round(
       ROW_SLIDE_PX * (1 - easeOut(progressOf(ms, startMs, 120))),
     )
-    const y = top + PANEL_PAD + index * ROW_PX
+    const y = top + PANEL_PAD + index * rowPx
     const value = row.format(shownValue(row, kind, index, ms))
     const valueRight = PANEL_RIGHT - PANEL_PAD
     return [
@@ -357,6 +364,20 @@ const quipOf = (model: Model, kind: EndKind): string =>
       : defeatQuip(roundWave(model.phase), model.stats),
   )
 
+const SKULLS_ROW_PX = 10
+
+// NOTE: the bar a crew's rank strip sits in, under the board.
+const crewStripPanel = (top: number): ReadonlyArray<Canvas.Shape> => [
+  rect(
+    PANEL_LEFT - 1,
+    top - 1,
+    PANEL_RIGHT - PANEL_LEFT + 2,
+    STRIP_PX + 4,
+    PANEL_EDGE,
+  ),
+  rect(PANEL_LEFT, top, PANEL_RIGHT - PANEL_LEFT, STRIP_PX + 2, PANEL_FILL),
+]
+
 const CARD_FADE_MS = 160
 const CARD_RISE_PX = 6
 
@@ -380,22 +401,36 @@ const cardShapes = (
   if (isCoop(model)) {
     // NOTE: a crew's board takes the quip's line too, so it fits above the
     // buttons on a phone on its side.
-    const board = crewBoardShapes(model, kind, ms, layout.quipY - 1, CENTER_X)
-    return [rise(board.panel), ...board.rows]
+    const hasStrip = hasRankStrip(model)
+    // NOTE: with a rank strip the board takes the skulls' row, and the strip
+    // sits in its own bar under the board.
+    const boardTop = layout.quipY - 1 - (hasStrip ? SKULLS_ROW_PX : 0)
+    const board = crewBoardShapes(model, kind, ms, boardTop, CENTER_X)
+    const stripTop = boardTop + CREW_BOARD_PX + STRIP_GAP_PX + 1
+    return [
+      rise([...board.panel, ...(hasStrip ? crewStripPanel(stripTop) : [])]),
+      ...board.rows,
+      ...rankStripShapes(
+        model,
+        kind,
+        ms,
+        PANEL_LEFT + PANEL_PAD,
+        stripTop + Math.floor(STRIP_PX / 2) + 1,
+        PANEL_RIGHT - PANEL_LEFT - PANEL_PAD * 2,
+      ),
+    ]
   }
   const rows = tallyRowsOf(model)
+  const hasStrip = hasRankStrip(model)
+  const rowPx = hasStrip ? STRIPPED_ROW_PX : ROW_PX
   const top = layout.panelTop
-  const footerTop = top + PANEL_PAD + rows.length * ROW_PX + 2
-  const bottom = footerTop + KINDS_PX + PANEL_PAD - 2
+  const footerTop = top + PANEL_PAD + rows.length * rowPx + 2
+  const stripTop = footerTop + KINDS_PX
+  const bottom =
+    footerTop + KINDS_PX + PANEL_PAD - 2 + (hasStrip ? STRIP_PX + 2 : 0)
   return [
     rise([
-      ...textShapes(
-        quipOf(model, kind),
-        'Prompt',
-        CENTER_X,
-        layout.quipY,
-        'Center',
-      ),
+      ...lineShapes(model, kind, ms, layout.quipY),
       rect(
         PANEL_LEFT - 1,
         top - 1,
@@ -411,14 +446,47 @@ const cardShapes = (
         1,
         PANEL_EDGE,
       ),
+      ...(hasStrip
+        ? [
+            rect(
+              PANEL_LEFT + PANEL_PAD,
+              stripTop,
+              PANEL_RIGHT - PANEL_LEFT - PANEL_PAD * 2,
+              1,
+              PANEL_EDGE,
+            ),
+          ]
+        : []),
       ...kindShapes(model, footerTop + 1),
     ]),
-    ...Array.flatMap(rows, rowShapes(kind, ms, top)),
-    ...noteShapes(model, ms, bottom + 5),
+    ...Array.flatMap(rows, rowShapes(kind, ms, top, rowPx)),
+    ...rankStripShapes(
+      model,
+      kind,
+      ms,
+      PANEL_LEFT + PANEL_PAD,
+      stripTop + 2 + Math.floor(STRIP_PX / 2),
+      PANEL_RIGHT - PANEL_LEFT - PANEL_PAD * 2,
+    ),
   ]
 }
 
 const UNLOCK_BLINK_MS = 400
+
+// NOTE: the line over the tally is the quip, or, when there is news (Nightmare
+// unlocked, or the first runs' ask for feedback), the news in its place. Under
+// the card there is no room: on a phone on its side the buttons start there.
+const lineShapes = (
+  model: Model,
+  kind: EndKind,
+  ms: number,
+  y: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const note = noteShapes(model, ms, y)
+  return Array.isReadonlyArrayNonEmpty(note)
+    ? note
+    : textShapes(quipOf(model, kind), 'Prompt', CENTER_X, y, 'Center')
+}
 
 const noteShapes = (
   model: Model,
@@ -584,7 +652,9 @@ export const endOverlayShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
         ...flashShapes(kind, ms),
         ...trophyShapes(kind, ms, layout),
         ...stampShapes(kind, ms, layout),
-        ...skullShapes(model, kind, ms, layout),
+        ...(isCoop(model) && hasRankStrip(model)
+          ? []
+          : skullShapes(model, kind, ms, layout)),
         ...cardShapes(model, kind, ms, layout),
       ]
     },

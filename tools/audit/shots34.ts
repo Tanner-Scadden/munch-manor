@@ -98,6 +98,7 @@ const SCENES: ReadonlyArray<Scene> = [
     act: tapTab(/^Traps,/),
   },
   { name: 'home', query: '' },
+  { name: 'home-rank', query: 'rank=1850' },
   {
     name: 'bests',
     query: 'bests&kills=Shambler:40,Runner:12&newentries=Runner',

@@ -5,7 +5,7 @@
 import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { withBests } from '@game/home'
+import { isEndScreen, withBests } from '@game/home'
 import {
   DifficultyCard,
   FridgeDoor,
@@ -210,6 +210,27 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       })),
       { bests: bests => ({ ...bests, totalKills: 341 }) },
     )
+  }
+  const { rank: rankPoints, rankgain: rankGain } = config
+  if (rankPoints !== undefined) {
+    model = modifyFields(model, {
+      rank: rank => ({
+        ...rank,
+        earnedPoints: rankPoints,
+        earnedBones: Math.floor(rankPoints / 10),
+        isVeteranGranted: true,
+      }),
+    })
+  }
+  if (rankGain !== undefined && isEndScreen(model.phase)) {
+    model = modifyFields(model, {
+      maybeRankGain: () =>
+        Option.some({
+          pointsBefore: Math.max(0, (rankPoints ?? 0) - rankGain),
+          gained: rankGain,
+          bonesGained: Math.floor(rankGain / 10),
+        }),
+    })
   }
   const kills = config.kills
   if (kills !== undefined) {

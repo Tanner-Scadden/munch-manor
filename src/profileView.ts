@@ -53,6 +53,7 @@ import {
   nameLength,
   shownName,
 } from './profile'
+import { rankPlateView } from './rankBadgeView'
 import { isPortrait } from './screen'
 
 // SHARED
@@ -919,6 +920,7 @@ const panelView = (
     h,
   ),
   tabsView(model, initialFocus, h),
+  rankPlateView(model, h),
 ]
 
 export const profileView = (model: Model, h: ApplicationViewBuilder): Html =>

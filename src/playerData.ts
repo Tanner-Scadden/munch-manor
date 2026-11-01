@@ -510,7 +510,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 12
+export const SAVE_VERSION = 13
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -622,6 +622,21 @@ export const noSavedRunRecords: SavedRunRecords = {
   Nightmare: noSavedRunRecord,
 }
 
+// NOTE: version 13 added rank (src/rank.ts): the points and Bones earned,
+// which only ever add, so runs on two linked devices both count; the
+// veteran grant for a player from before rank, whether it has been made and
+// what it was, merged as the larger so it happens once; and the Bones
+// spent, for the closet that is not built yet.
+export const SavedRank = Schema.Struct({
+  earnedPoints: Schema.Number,
+  earnedBones: Schema.Number,
+  veteranPoints: Schema.Number,
+  veteranBones: Schema.Number,
+  isVeteranGranted: Schema.Boolean,
+  spentBones: Schema.Number,
+})
+export type SavedRank = typeof SavedRank.Type
+
 // NOTE: version 4 added the home menu: the newest What's New day seen, by
 // its date, and the Munchopedia entries opened, by kind id.
 export const SavedHome = Schema.Struct({
@@ -659,5 +674,6 @@ export const PlayerSave = Schema.Struct({
   rotation: RotationSetting,
   name: PlayerName,
   records: SavedRunRecords,
+  rank: SavedRank,
 })
 export type PlayerSave = typeof PlayerSave.Type

@@ -164,7 +164,7 @@ const partyOf = (run: Model, visitId: string): SummaryParty => {
 
 // NOTE: an online run plays on the room's difficulty, kept with the run
 // (maybeRoomDifficulty) so a LEAVE, which drops the room, still has it.
-const playedDifficultyOf = (run: Model): Difficulty =>
+export const playedDifficultyOf = (run: Model): Difficulty =>
   Option.getOrElse(run.maybeRoomDifficulty, () => run.difficulty.chosen)
 
 export const runSummaryOf = (

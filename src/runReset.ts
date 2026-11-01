@@ -2,7 +2,12 @@ import { Option } from 'effect'
 
 import { MANOR, startingLevel } from './arena'
 import { cameraFor } from './camera'
-import { PrizeFlight, RunTally, cosmeticSeedOf } from './clientSchema'
+import {
+  PrizeFlight,
+  RunTally,
+  cosmeticSeedOf,
+  noRankPaid,
+} from './clientSchema'
 import { ZERO_VECTOR } from './geometry'
 import { deriveIntent } from './input'
 import { freshOvens } from './kitchen'
@@ -81,6 +86,8 @@ export type RunFields = Pick<
   | 'hintBand'
   | 'stats'
   | 'runTally'
+  | 'rankPaid'
+  | 'maybeRankGain'
   | 'maybeRoomDifficulty'
   | 'maybeCrewRunKey'
   | 'screenMs'
@@ -142,6 +149,8 @@ export const freshRun = (model: Model): RunFields => ({
   hintBand: 'Top',
   stats: freshStats,
   runTally: RunTally.Uncounted(),
+  rankPaid: noRankPaid,
+  maybeRankGain: Option.none(),
   maybeRoomDifficulty: Option.none(),
   maybeCrewRunKey: Option.none(),
   screenMs: 0,

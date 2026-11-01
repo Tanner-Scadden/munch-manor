@@ -6,7 +6,7 @@
 import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { levelOf, openExitIn } from './arena'
+import { PARLOUR, levelOf, openExitIn } from './arena'
 import { PLAYER_MAX_HP, PREPARATION_MS } from './constants'
 import { biteGraceScale } from './difficulty'
 import { KITCHEN_EXIT } from './exits'
@@ -25,9 +25,10 @@ import {
 } from './model'
 import { seatCrew, withSeat } from './party'
 import { nextRandom } from './prng'
+import { grantedVeteran } from './rank'
 import { freshRun } from './runReset'
 import { STALL_BOX } from './shop'
-import { PHONE_PORTRAIT, SURFACE } from './testing'
+import { PHONE_PORTRAIT, SURFACE, zombieOf } from './testing'
 import { asVeteran } from './veteran'
 import { freshGun } from './weapons'
 import { type World, withWorld } from './world'
@@ -86,9 +87,10 @@ export const WAVE_3_BREAK = Phase.Preparation({
 export const home: Model = asVeteran(initialModel)
 
 // NOTE: the home menu once the save has been read, so the menu's buttons are
-// up.
+// up. A save that was read has been granted its veteran start (0 here).
 export const homeAfterRead: Model = modifyFields(home, {
   saveStatus: () => 'Read',
+  rank: rank => grantedVeteran(rank, 0),
 })
 
 // NOTE: a returning player on a measured surface, ready to start a run.
@@ -113,6 +115,7 @@ export const newPlayerCardSeen: Model = modifyFields(initialModel, {
 export const readyAfterRead: Model = modifyFields(home, {
   maybeSurface: () => Option.some(SURFACE),
   saveStatus: () => 'Read',
+  rank: rank => grantedVeteran(rank, 0),
 })
 
 // NOTE: the boot splash, still reading the save.
@@ -353,3 +356,12 @@ export const pipeline =
   (...steps: ReadonlyArray<(current: Model) => Model>) =>
   (start: Model): Model =>
     Array.reduce(steps, start, (current, step) => step(current))
+
+// NOTE: one heart left and a zombie on the player, so the next tick bites.
+export const lastHeart = (base: Model): Model =>
+  modifyFields(base, {
+    player: player => modifyFields(player, { hp: () => 1 }),
+    zombies: () => [
+      zombieOf('Runner', 100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
+    ],
+  })
