@@ -15,10 +15,21 @@ const CREW_GAMES = `
       min(difficulty) AS difficulty,
       max(crew_size) AS crew_size,
       max(wave) AS wave,
+      max(run_ms) AS run_ms,
+      min(received_day) AS received_day,
       max(outcome = 'Victory') AS won,
       max(outcome = 'GameOver') AND NOT max(outcome = 'Victory') AS lost
     FROM runs WHERE party = 'Crew'
     GROUP BY game
+  )`
+
+// NOTE: every game once: a solo run's row, and a co-op game once by its
+// key, its length the longest any player saw and its day the first.
+const GAMES = `
+  games AS (
+    SELECT mode, run_ms, received_day FROM runs WHERE party = 'Solo'
+    UNION ALL
+    SELECT mode, run_ms, received_day FROM crew_games
   )`
 
 // NOTE: one co-op game's outcome, from its players' rows: won if anyone's
@@ -81,23 +92,27 @@ export const DEADLIEST = `
   WHERE outcome = 'GameOver' AND party = 'Solo'
   GROUP BY killed_by ORDER BY deaths DESC`
 
+// NOTE: per game, so a co-op game counts once.
 export const MEDIAN_LENGTH = `
-  WITH ordered AS (
+  WITH ${CREW_GAMES}, ${GAMES}, ordered AS (
     SELECT mode, run_ms,
       row_number() OVER (PARTITION BY mode ORDER BY run_ms) AS position,
       count(*) OVER (PARTITION BY mode) AS runs
-    FROM runs
+    FROM games
   )
   SELECT mode, max(runs) AS runs, avg(run_ms) AS median_ms FROM ordered
   WHERE position IN ((runs + 1) / 2, (runs + 2) / 2)
   GROUP BY mode ORDER BY mode`
 
+// NOTE: per player: each player in a co-op game plays on their own device.
 export const DEVICES = `
   SELECT device, screen_fit, count(*) AS runs FROM runs
   GROUP BY device, screen_fit ORDER BY runs DESC`
 
+// NOTE: per game, so a co-op game counts once.
 export const RUNS_PER_DAY = `
-  SELECT received_day, count(*) AS runs FROM runs
+  WITH ${CREW_GAMES}, ${GAMES}
+  SELECT received_day, count(*) AS runs FROM games
   GROUP BY received_day ORDER BY received_day DESC LIMIT 30`
 
 // NOTE: taps on SHARE by end screen, against the runs that ended
