@@ -148,7 +148,7 @@
 .home-stage .home-key,
 .hand .home-key {
   top: calc(-0.7em - 1px);
-  font-size: clamp(10px, 2.6 * var(--a), 16px);
+  font-size: round(clamp(10px, 2.6 * var(--a), 16px), 1px);
 }
 
 /* PLAY CLUSTER: PLAY, with CO-OP over it. */
@@ -174,7 +174,7 @@
   border: 0;
   border-radius: var(--menu-radius-md);
   background: transparent;
-  color: #10240a;
+  color: var(--menu-ink-on-green);
 }
 
 .home-play-face {
@@ -185,7 +185,7 @@
   justify-content: center;
   gap: max(8px, 3 * var(--a));
   overflow: hidden;
-  border: 3px solid #10240a;
+  border: 3px solid var(--menu-ink-on-green);
   border-radius: var(--menu-radius-md);
   background: var(--menu-primary);
   box-shadow:
@@ -212,7 +212,7 @@
 }
 
 .home-play[data-mode='Endless'] .home-play-face {
-  background: linear-gradient(#a6f3ea, #5fd4c8 55%, #3aa89c);
+  background: linear-gradient(#a6f3ea, var(--menu-teal) 55%, #3aa89c);
   box-shadow:
     inset 0 3px 0 rgba(255, 255, 255, 0.45),
     inset 0 -4px 0 rgba(0, 0, 0, 0.18),
@@ -323,8 +323,8 @@
 .home-coop-label {
   grid-area: label;
   color: var(--menu-pink);
-  font: bold clamp(9px, 2.6 * var(--a), 14px) / 1 var(--menu-font);
-  letter-spacing: 0.06em;
+  font: bold round(clamp(9px, 2.6 * var(--a), 14px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
   pointer-events: none;
 }
 
@@ -429,8 +429,8 @@
 }
 
 .home-manor-label {
-  font: bold clamp(14px, 5 * var(--a), 28px) / 1 var(--menu-font);
-  letter-spacing: 0.1em;
+  font: bold round(clamp(14px, 5 * var(--a), 28px), 1px) / 1 var(--menu-font);
+  letter-spacing: 2px;
   pointer-events: none;
 }
 
@@ -654,8 +654,8 @@
 }
 
 .hand-card-title {
-  font: bold clamp(9px, 2.8 * var(--a), 17px) / 1.1 var(--menu-font);
-  letter-spacing: 0.04em;
+  font: bold round(clamp(9px, 2.8 * var(--a), 17px), 1px) / 1.1 var(--menu-font);
+  letter-spacing: 1px;
   text-align: center;
   white-space: nowrap;
   pointer-events: none;
@@ -668,8 +668,8 @@
   padding: 0 0.5em;
   border-radius: var(--menu-radius-pill);
   background: var(--menu-green-deep);
-  color: #c8f59e;
-  font: bold clamp(9px, 2.6 * var(--a), 15px) / 1.4 var(--menu-font);
+  color: var(--menu-green-hi);
+  font: bold round(clamp(9px, 2.6 * var(--a), 15px), 1px) / 1.4 var(--menu-font);
   pointer-events: none;
 }
 
@@ -681,7 +681,7 @@
   border-radius: var(--menu-radius-sm);
   background: var(--menu-red);
   color: var(--menu-sunken);
-  font: bold clamp(10px, 2.6 * var(--a), 15px) / 1.3 var(--menu-font);
+  font: bold round(clamp(10px, 2.6 * var(--a), 15px), 1px) / 1.3 var(--menu-font);
   rotate: 8deg;
   box-shadow: var(--menu-lift);
   pointer-events: none;
@@ -828,7 +828,7 @@
 
 .home-best-value {
   color: var(--menu-gold);
-  font: bold clamp(12px, 4 * var(--a), 24px) / 1 var(--menu-font);
+  font: bold round(clamp(12px, 4 * var(--a), 24px), 1px) / 1 var(--menu-font);
 }
 
 /* SUPPORT: the coffee pill on Victory. On the home menu the coffee is a
@@ -846,7 +846,7 @@
   background: var(--menu-glass);
   color: var(--menu-gold);
   font: bold 11px/1.15 var(--menu-font);
-  letter-spacing: 0.04em;
+  letter-spacing: 1px;
   text-decoration: none;
   text-shadow: 0 1px 0 #000;
   white-space: nowrap;
@@ -927,7 +927,7 @@
   border-radius: var(--menu-radius-pill);
   background: rgba(20, 36, 14, 0.94);
   color: var(--menu-ink);
-  font: clamp(10px, 3.4 * var(--a, 2px), 24px) / 1.2 var(--menu-font);
+  font: round(clamp(10px, 3.4 * var(--a, 2px), 24px), 1px) / 1.2 var(--menu-font);
   animation: menu-fade-in 0.35s ease-out both;
 }
 
@@ -945,7 +945,7 @@
 .new-entry-flag {
   color: #8fdc5a;
   font-weight: bold;
-  letter-spacing: 0.08em;
+  letter-spacing: 1px;
   pointer-events: none;
   animation: menu-blink 0.8s steps(2) infinite;
 }
@@ -958,7 +958,7 @@
 
 .new-entry-where {
   color: var(--menu-ink-dim);
-  font-size: 0.8em;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -1203,7 +1203,7 @@
 }
 
 .gift-tag {
-  --tag-font: clamp(9px, 1.5 * var(--a), 11px);
+  --tag-font: round(clamp(9px, 1.5 * var(--a), 11px), 1px);
   position: absolute;
   right: 80%;
   top: 54%;
@@ -1247,7 +1247,7 @@
   box-shadow: inset -2px -2px 0 rgba(176, 40, 122, 0.25);
   color: #b0287a;
   font: bold var(--tag-font) / 1 var(--menu-font);
-  letter-spacing: 0.02em;
+  letter-spacing: 1px;
   white-space: nowrap;
 }
 
@@ -1375,7 +1375,7 @@
    ring until its first tap. */
 
 .home-stage .home-install {
-  border-color: #5fd4c8;
+  border-color: var(--menu-teal);
 }
 
 .home-install-icon {
@@ -1387,7 +1387,7 @@
   content: '';
   position: absolute;
   inset: -2px;
-  border: 3px solid #5fd4c8;
+  border: 3px solid var(--menu-teal);
   border-radius: var(--menu-radius-md);
   pointer-events: none;
   animation: install-ring 1.8s ease-out infinite;
@@ -1424,7 +1424,7 @@
 /* HOME SCREEN GUIDE: three big picture steps for an iPhone. */
 
 .panel-dialog[data-panel='HomeScreen'] .panel {
-  --panel-accent: #5fd4c8;
+  --panel-accent: var(--menu-teal);
   width: min(420px, calc(100vw - 24px));
 }
 
@@ -1508,7 +1508,7 @@
 .install-step-word {
   color: var(--menu-ink);
   font: bold 14px var(--menu-font);
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
@@ -1675,7 +1675,7 @@
 }
 
 .greeting-confetti-piece:nth-child(4n + 3) {
-  background: #5fd4c8;
+  background: var(--menu-teal);
 }
 
 @keyframes greeting-confetti {
@@ -1772,7 +1772,7 @@
   margin: 0;
   color: var(--panel-accent);
   font: bold var(--menu-title-size) / 1.2 var(--menu-font);
-  letter-spacing: 0.08em;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
@@ -1795,7 +1795,7 @@
   background: var(--menu-surface);
   color: var(--menu-ink);
   font: bold var(--menu-text-size) var(--menu-font);
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
   touch-action: manipulation;
@@ -1804,7 +1804,7 @@
 .panel-stay {
   border-color: var(--menu-green);
   background: var(--menu-green-deep);
-  color: #c8f59e;
+  color: var(--menu-green-hi);
 }
 
 .panel-leave {
@@ -1893,7 +1893,7 @@
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
   color: var(--menu-ink-faint);
   font: bold var(--menu-small-size) var(--menu-font);
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -1901,7 +1901,7 @@
 .setting-tile[aria-pressed='true'] {
   border-color: var(--menu-green);
   background: var(--menu-green-deep);
-  color: #c8f59e;
+  color: var(--menu-green-hi);
 }
 
 .setting-tile-icon {
@@ -2052,7 +2052,7 @@ button.help-card:focus-visible {
 .help-card-line {
   display: none;
   color: var(--menu-ink);
-  font-size: 0.82em;
+  font-size: 11px;
   line-height: 1.3;
   text-transform: none;
   letter-spacing: 0;
@@ -2072,7 +2072,7 @@ button.help-card:focus-visible {
 
 .help-card[data-open='true'] .help-card-action {
   color: var(--menu-gold);
-  font-size: 0.8em;
+  font-size: 11px;
 }
 
 .help-card[data-open='true'] .help-card-line {
@@ -2090,7 +2090,7 @@ button.help-card:focus-visible {
 
   .help-card:hover .help-card-action {
     color: var(--menu-gold);
-    font-size: 0.8em;
+    font-size: 11px;
   }
 
   .help-card:hover .help-card-line {
@@ -2195,7 +2195,7 @@ button.help-card:focus-visible {
 .help-card-action {
   color: var(--menu-ink);
   font-weight: bold;
-  letter-spacing: 0.04em;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
@@ -2207,7 +2207,7 @@ button.help-card:focus-visible {
   margin: 0;
   padding: 0;
   color: var(--menu-ink-dim);
-  font-size: 0.9em;
+  font-size: 12px;
   list-style: none;
 }
 
@@ -2229,7 +2229,7 @@ button.help-card:focus-visible {
   font: inherit;
   font-size: var(--menu-small-size);
   font-weight: bold;
-  letter-spacing: 0.08em;
+  letter-spacing: 1px;
   text-align: center;
   text-transform: uppercase;
 }
@@ -2305,7 +2305,7 @@ button.help-card:focus-visible {
   gap: 6px;
   color: var(--level);
   font: bold 14px var(--menu-font);
-  letter-spacing: 0.08em;
+  letter-spacing: 1px;
   text-transform: uppercase;
   pointer-events: none;
 }
@@ -2535,8 +2535,8 @@ button.help-card:focus-visible {
       var(--menu-green) calc(var(--found) * 360deg),
       rgba(244, 241, 222, 0.15) 0
     );
-  color: #c8f59e;
-  font-size: clamp(8px, 2.2 * var(--a), 13px);
+  color: var(--menu-green-hi);
+  font-size: round(clamp(8px, 2.2 * var(--a), 13px), 1px);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2659,7 +2659,7 @@ button.help-card:focus-visible {
 }
 
 .munch-tile-count {
-  color: #ffe066;
+  color: var(--menu-gold);
   font-size: 11px;
 }
 
@@ -2709,23 +2709,23 @@ button.help-card:focus-visible {
 
 .munch-name {
   margin: 0;
-  color: #c8f59e;
+  color: var(--menu-green-hi);
   font: bold 16px var(--menu-font);
-  letter-spacing: 0.05em;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
 .munch-bio {
   margin: 0;
-  color: #f4f1de;
+  color: var(--menu-ink);
   font-style: italic;
 }
 
 .munch-heading {
   margin: 4px 0 0;
-  color: #ffe066;
+  color: var(--menu-gold);
   font: bold 11px var(--menu-font);
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
@@ -2744,7 +2744,7 @@ button.help-card:focus-visible {
 
 .munch-count {
   margin: 0;
-  color: #ffe066;
+  color: var(--menu-gold);
   font-weight: bold;
 }
 
@@ -2779,7 +2779,7 @@ button.help-card:focus-visible {
 .munch-badge[data-earned='Earned'][data-badge='Gold'] {
   border-color: var(--menu-gold);
   background: rgba(255, 224, 102, 0.22);
-  color: #ffe066;
+  color: var(--menu-gold);
 }
 
 .munch-tile:active {
@@ -2832,7 +2832,7 @@ button.help-card:focus-visible {
   background: var(--menu-glass);
   color: var(--menu-ink);
   font: bold 14px monospace;
-  letter-spacing: 0.08em;
+  letter-spacing: 1px;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -2855,13 +2855,13 @@ button.help-card:focus-visible {
 
 .mode-button.menu-button {
   border-color: rgba(244, 241, 222, 0.7);
-  color: #f4f1de;
+  color: var(--menu-ink);
 }
 
 .mode-button.menu-button.is-primary {
-  border-color: #ffe066;
-  background: #ffe066;
-  color: #140c10;
+  border-color: var(--menu-gold);
+  background: var(--menu-gold);
+  color: var(--menu-ink-on-gold);
 }
 
 .mode-button.menu-button.is-primary .mode-button-detail {
@@ -2869,7 +2869,7 @@ button.help-card:focus-visible {
 }
 
 .mode-button.menu-button.is-primary .mode-button-key {
-  color: #ffe066;
+  color: var(--menu-gold);
 }
 
 @media (hover: hover) {
@@ -3034,8 +3034,8 @@ button.help-card:focus-visible {
 }
 
 .home-turn-text {
-  font: bold clamp(12px, 3.6 * var(--a), 18px) / 1 var(--menu-font);
-  letter-spacing: 0.04em;
+  font: bold round(clamp(12px, 3.6 * var(--a), 18px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
   white-space: nowrap;
 }
 
@@ -3117,7 +3117,7 @@ button.help-card:focus-visible {
   box-shadow: var(--menu-lift);
   color: var(--menu-ink);
   font: bold var(--menu-small-size) var(--menu-font);
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   cursor: pointer;
   touch-action: manipulation;
   animation: menu-fade-in 0.28s ease-out both;

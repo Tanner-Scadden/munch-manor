@@ -90,12 +90,12 @@
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  font: bold clamp(14px, 3.6 * var(--coop-unit), 22px) / 1 var(--menu-font);
-  letter-spacing: 0.08em;
+  font: bold round(clamp(14px, 3.6 * var(--coop-unit), 22px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
 }
 
 .lobby-add-bot-plus {
-  font-size: 1.3em;
+  font-size: 16px;
 }
 
 /* A BOT'S SEAT: its figure, its name beside a little robot head, its hero
@@ -216,8 +216,8 @@
 .lobby-hero-name {
   max-width: 100%;
   overflow: hidden;
-  font: bold clamp(11px, 2.6 * var(--coop-unit), 16px) / 1.1 var(--menu-font);
-  letter-spacing: 0.06em;
+  font: bold round(clamp(11px, 2.6 * var(--coop-unit), 16px), 1px) / 1.1 var(--menu-font);
+  letter-spacing: 1px;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -243,7 +243,7 @@
 }
 
 .lobby-special-sign {
-  font: bold clamp(11px, 2.6 * var(--coop-unit), 16px) / 1 var(--menu-font);
+  font: bold round(clamp(11px, 2.6 * var(--coop-unit), 16px), 1px) / 1 var(--menu-font);
 }
 
 .lobby-special[data-sign='Perk'] .lobby-special-sign {
@@ -266,7 +266,7 @@
   gap: 8px;
   height: clamp(48px, 9 * var(--coop-unit), 56px);
   padding: 0 12px 0 8px;
-  border: 2px solid #b98cff;
+  border: 2px solid var(--menu-lilac);
   border-radius: var(--menu-radius-sm);
   background: rgba(185, 140, 255, 0.2);
 }
@@ -279,8 +279,8 @@
 }
 
 .lobby-map-name {
-  font: bold clamp(11px, 2.6 * var(--coop-unit), 15px) / 1 var(--menu-font);
-  letter-spacing: 0.08em;
+  font: bold round(clamp(11px, 2.6 * var(--coop-unit), 15px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
   text-transform: uppercase;
   white-space: nowrap;
 }

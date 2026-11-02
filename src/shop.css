@@ -24,7 +24,7 @@
   --shop-card: #2b2233;
   --shop-card-raised: #352a40;
   --shop-line: rgba(244, 241, 222, 0.22);
-  --shop-bubble: #f4f1de;
+  --shop-bubble: var(--menu-ink);
   --shop-bubble-ink: #2a1418;
   --shop-panel-h: calc(560 * var(--shop-u));
   --shop-pad: calc(12 * var(--shop-u));
@@ -134,7 +134,7 @@
   margin: 0;
   color: var(--shop-gold);
   font: bold var(--shop-small) monospace;
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
@@ -142,7 +142,7 @@
   position: relative;
   margin: 0;
   padding: calc(5 * var(--shop-u)) calc(10 * var(--shop-u));
-  border: calc(2 * var(--shop-u)) solid #140c10;
+  border: calc(2 * var(--shop-u)) solid var(--menu-ink-on-gold);
   border-radius: var(--menu-radius-md);
   background: var(--shop-bubble);
   color: var(--shop-bubble-ink);
@@ -156,7 +156,7 @@
   left: calc(-8 * var(--shop-u));
   width: calc(8 * var(--shop-u));
   height: calc(10 * var(--shop-u));
-  background: #140c10;
+  background: var(--menu-ink-on-gold);
   clip-path: polygon(100% 0, 0 50%, 100% 100%);
   content: '';
   transform: translateY(-50%);
@@ -174,7 +174,7 @@
   display: inline-block;
   color: var(--shop-gold);
   font: bold var(--shop-big) monospace;
-  text-shadow: calc(2 * var(--shop-u)) calc(2 * var(--shop-u)) 0 #140c10;
+  text-shadow: calc(2 * var(--shop-u)) calc(2 * var(--shop-u)) 0 var(--menu-ink-on-gold);
   animation: shop-bump 0.35s ease-out;
 }
 
@@ -183,7 +183,7 @@
   height: 0.85em;
   margin-right: 0.2em;
   filter: drop-shadow(
-    calc(2 * var(--shop-u)) calc(2 * var(--shop-u)) 0 #140c10
+    calc(2 * var(--shop-u)) calc(2 * var(--shop-u)) 0 var(--menu-ink-on-gold)
   );
 }
 
@@ -223,7 +223,7 @@
   background: var(--shop-card);
   color: var(--shop-muted);
   font: bold var(--shop-text) monospace;
-  letter-spacing: 0.04em;
+  letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
   touch-action: manipulation;
@@ -270,7 +270,7 @@
   font-size: var(--shop-small);
   font-weight: bold;
   line-height: calc(14 * var(--shop-u));
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   animation: shop-new-bob 0.8s ease-in-out infinite alternate;
 }
 
@@ -304,9 +304,9 @@
 }
 
 .shop-tag.is-free {
-  background: #9be36a;
-  color: #140c10;
-  letter-spacing: 0.08em;
+  background: var(--menu-green);
+  color: var(--menu-ink-on-gold);
+  letter-spacing: 1px;
 }
 
 /* CARDS */
@@ -411,7 +411,7 @@
 }
 
 .shop-tag.is-short {
-  border-color: #140c10;
+  border-color: var(--menu-ink-on-gold);
   background: #4a4152;
   color: #b8b0c4;
 }
@@ -426,7 +426,7 @@
   box-shadow: none;
   color: var(--shop-muted);
   font-size: var(--shop-small);
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
 }
 
 .shop-need {
@@ -499,8 +499,8 @@
 
 .shop-rounds.is-endless {
   background: rgba(155, 227, 106, 0.16);
-  color: #9be36a;
-  font-size: calc(var(--shop-small) * 1.4);
+  color: var(--menu-green);
+  font-size: round(calc(var(--shop-small) * 1.4), 1px);
 }
 
 .shop-rounds-icon {
@@ -660,7 +660,7 @@
 
 .shop-gun-name {
   margin: 0;
-  color: #ffe066;
+  color: var(--menu-gold);
   font: bold var(--shop-text) monospace;
   line-height: 1.1;
 }
@@ -672,7 +672,7 @@
   background: var(--shop-wood);
   color: var(--shop-ink);
   font: bold calc(10 * var(--shop-u)) monospace;
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   white-space: nowrap;
 }
 
@@ -854,8 +854,8 @@
   border-radius: var(--menu-radius-sm);
   color: var(--menu-red);
   font: bold calc(22 * var(--shop-u)) monospace;
-  letter-spacing: 0.08em;
-  text-shadow: 0 0 calc(2 * var(--shop-u)) #140c10;
+  letter-spacing: 1px;
+  text-shadow: 0 0 calc(2 * var(--shop-u)) var(--menu-ink-on-gold);
   animation: shop-stamp 1.4s ease-out forwards;
 }
 

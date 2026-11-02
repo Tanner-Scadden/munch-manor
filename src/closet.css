@@ -74,7 +74,7 @@
   gap: 2px;
   padding: 0 4px 0 3px;
   border-radius: var(--menu-radius-pill);
-  background: #140c10;
+  background: var(--menu-ink-on-gold);
   box-shadow: 0 0 0 2px #5a3a4a;
 }
 
@@ -133,7 +133,7 @@
   background: var(--look-new);
   color: #fff;
   font: bold 8px / 11px var(--menu-font);
-  letter-spacing: 0.03em;
+  letter-spacing: 1px;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
   pointer-events: none;
   animation: look-new-blink 0.8s steps(2) infinite;
@@ -153,7 +153,7 @@
   z-index: 2;
   width: 11px;
   height: 11px;
-  border: 2px solid #140c10;
+  border: 2px solid var(--menu-ink-on-gold);
   border-radius: var(--menu-radius-pill);
   background: var(--look-new);
   pointer-events: none;
@@ -167,7 +167,7 @@
   right: -5px;
   width: 11px;
   height: 11px;
-  border: 2px solid #140c10;
+  border: 2px solid var(--menu-ink-on-gold);
   border-radius: var(--menu-radius-pill);
   background: var(--look-new);
   pointer-events: none;
@@ -345,10 +345,10 @@
   gap: 5px;
   min-height: 34px;
   padding: 0 10px 0 12px;
-  border: 2px solid #ffe066;
+  border: 2px solid var(--menu-gold);
   border-radius: var(--menu-radius-pill);
-  background: #140c10;
-  color: #ffe066;
+  background: var(--menu-ink-on-gold);
+  color: var(--menu-gold);
   font: bold 14px / 1 var(--menu-font);
   cursor: pointer;
   animation: closet-pill-in 160ms ease-out both;
