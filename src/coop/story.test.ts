@@ -20,7 +20,13 @@ import {
 import { RoomEvent } from '@munch/netcode/browser'
 
 import { playRoom } from '../roomTesting'
-import { AIM_REACH, FIRE_BUTTON, seatActionOf } from '../roomWorld'
+import {
+  AIM_REACH,
+  FIRE_BUTTON,
+  actionCodeOf,
+  heldAction,
+  seatActionOf,
+} from '../roomWorld'
 import { SeatAction } from '../stepWorld'
 import { Message, OutMessage } from './message'
 import {
@@ -29,6 +35,7 @@ import {
   RoomRequest,
   Screen,
   emptyQueue,
+  noPresses,
 } from './model'
 import { cleanCode, freshRoom, pressAction } from './roomState'
 import { coopWorld } from './seam'
@@ -742,6 +749,49 @@ describe('the room', () => {
         ].flatMap(input => input.samples.map(sample => sample.input.action))
         expect(actions).toContain(firstHeld)
         expect(actions).toContain(secondHeld)
+      }),
+    )
+  })
+
+  test('a new run in the same room takes presses from its first tick, however late the last run pressed', () => {
+    story(
+      update,
+      given(inRoom(0)),
+      message(
+        received(
+          { _tag: 'Welcome', version: 1, slot: 0, state: 'Playing', tick: 0 },
+          1000,
+        ),
+      ),
+      message(received(snapshotFrame(10), 1010)),
+      model(current => {
+        // The first run: a press 60 seconds in, so its heldFrom is far out.
+        const late = tickRoom(
+          pressAction(
+            tickRoom(current, NEUTRAL_INPUT, 61_000).model,
+            SeatAction.Reload(),
+          ),
+          NEUTRAL_INPUT,
+          61_100,
+        ).model
+        expect(roomOf(late).presses.held).not.toBe(0)
+        // The second run: the room says Welcome at tick 0 again.
+        const again = [
+          received(
+            { _tag: 'Welcome', version: 1, slot: 0, state: 'Playing', tick: 0 },
+            70_000,
+          ),
+          received(snapshotFrame(0), 70_010),
+        ].reduce((next, frame) => update(next, frame).model, late)
+        expect(roomOf(again).presses).toEqual(noPresses)
+        const pressed = pressAction(again, SeatAction.Ready())
+        const ready = heldAction(actionCodeOf(SeatAction.Ready()), 1)
+        const held = Array.range(1, 6).reduce(
+          (next, frame) =>
+            tickRoom(next, NEUTRAL_INPUT, 70_100 + frame * 50).model,
+          pressed,
+        )
+        expect(roomOf(held).presses.held).toBe(ready)
       }),
     )
   })

@@ -32,6 +32,7 @@ import {
   RoomRequest,
   Screen,
   emptyQueue,
+  noPresses,
 } from './model'
 import { CoopNet } from './net'
 import {
@@ -315,6 +316,20 @@ const receiveServerFrame = (
     frame,
     {
       Kicked: () => leaveFor(model, 'Kicked'),
+      Welcome: welcome =>
+        receiveSessionFrame(
+          model,
+          // NOTE: a Welcome at tick 0 is a new run in the same room. The
+          // old run's presses count input ticks of the old session, so a
+          // press queued behind its heldFrom would wait until the new run
+          // outlasted the old (READY in the second run's break never went
+          // out). The new run starts with none, as the room's own memory
+          // of presses does.
+          welcome.tick === 0 ? { ...room, presses: noPresses } : room,
+          frame,
+          bytes,
+          atMs,
+        ),
       Refused: refused =>
         refused.reason === 'VersionMismatch'
           ? {
