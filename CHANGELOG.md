@@ -6,7 +6,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 - 🎩 PLAY opens a lobby to pick your hero, mode, and difficulty before a run. Rank up and you can pick a hero there: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Every card says what it gives (+) and costs (-). Reach rank 3 to meet the first.
 - 🎩 Spend your Bones on hats in your Look tab (try one on before you buy), wear them on any hero, and rank up to be gifted a few for free: a party hat, a cowboy hat, a witch hat, even a traffic cone.
-- 🎒 Your hero comes along in co-op: everyone in the room starts as the hero they picked, and the prop shows by their name in the lobby, where you can swap it too.
+- 🎒 Your hero comes along in co-op: everyone in the room starts as the hero they picked, and the prop shows by their name in the lobby, where you can swap it too. Every hero now wears their trade, so you can tell who's who.
 - 👕 New shirts, prints, and gun skins to earn or buy in your Look tab, with a NEW badge on what you just unlocked.
 - 🪵 Planks and gnomes cost more but finally pull their weight, and the Handyman, Track Star, and Line Cook got a tune-up.
 - ❤️ Crunchier health bars: zombies, Uncle Chunk, and bleeding teammates get outlined, chunked bars with a shiny top edge. On Hard and Nightmare, Uncle Chunk takes way more to drop, and attacks more often.

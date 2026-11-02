@@ -474,3 +474,17 @@ export const defaultAppearance: Appearance = {
   hat: 'None',
   gunSkin: 'Stock',
 }
+
+// NOTE: what the hero tells (src/heroTells.ts) saw of the World last frame,
+// to see what changed in it: each trap's health (a rise is a repair) and
+// each seat's earnings (a rise beside a kill is a kill paid). A cosmetic of
+// the client's own, so the room's World needs nothing new for it.
+export const TellWatch = Schema.Struct({
+  traps: Schema.Array(Schema.Struct({ id: Schema.Number, hp: Schema.Number })),
+  earned: Schema.Array(
+    Schema.Struct({ slot: Schema.Number, earned: Schema.Number }),
+  ),
+})
+export type TellWatch = typeof TellWatch.Type
+
+export const noTellWatch: TellWatch = { traps: [], earned: [] }
