@@ -1,6 +1,7 @@
 import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { BIG_CROWD_SCALE, type Modifiers, noModifiers } from './modifiers'
 import { COOP_RULES } from './party'
 import { type World, modifyWorldFields } from './world'
 import {
@@ -131,14 +132,19 @@ const scaleAt = (scales: ReadonlyArray<number>, players: number): number =>
     () => 1,
   )
 
+// NOTE: the Big Crowd modifier multiplies the count again, alone or in a
+// crew, the same way: the extra copies are not tougher on their own.
 export const crowdSpawns = (
   players: number,
   spawns: ReadonlyArray<PlannedSpawn>,
+  modifiers: Modifiers = noModifiers,
 ): ReadonlyArray<PlannedSpawn> => {
-  if (players <= 1) {
+  if (players <= 1 && !modifiers.bigCrowd) {
     return spawns
   }
-  const countScale = scaleAt(COOP_RULES.waveCountScale, players)
+  const countScale =
+    scaleAt(COOP_RULES.waveCountScale, players) *
+    (modifiers.bigCrowd ? BIG_CROWD_SCALE : 1)
   const healthScale = scaleAt(COOP_RULES.healthScale, players)
   return Array.flatMap(spawns, (spawn, index) => {
     const copies =

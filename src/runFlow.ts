@@ -5,7 +5,7 @@ import { activeBots, seatCallings } from './bots'
 import { FIRST_PREPARATION_MS } from './constants'
 import { type Model, Phase, Round, type RunMode } from './model'
 import { raiseDebutCard, settleLessons } from './onboarding'
-import { seatCrew } from './party'
+import { seatCrew, withStartingHearts } from './party'
 import { freshRun } from './runReset'
 import { SeatAction } from './stepWorld'
 import { actAsLead } from './update/action'
@@ -32,10 +32,12 @@ const startRun = (model: Model, mode: RunMode): Model => {
     },
     world =>
       beginPreparation(
-        seatCallings(
-          seatCrew(world, model.localPlayers + bots.length),
-          model.localPlayers,
-          Array.map(bots, ({ calling }) => calling),
+        withStartingHearts(
+          seatCallings(
+            seatCrew(world, model.localPlayers + bots.length),
+            model.localPlayers,
+            Array.map(bots, ({ calling }) => calling),
+          ),
         ),
         1,
         FIRST_PREPARATION_MS,

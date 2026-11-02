@@ -29,6 +29,8 @@ import {
   type RunStats,
   type ScreenFit,
 } from './model'
+import { maskOfModifiers } from './modifiers'
+import { effectiveModifiersOf } from './onlineRun'
 import { isCoop, leadSeatOf, playersOf } from './party'
 import type { Difficulty } from './playerData'
 import { roundWave } from './waves'
@@ -197,6 +199,7 @@ export const runSummaryOf = (
     screenFit: summaryScreenFit(run.screenFit),
     frameTime: frameTimeBucket(stats),
     party: partyOf(run, visitId),
+    modifiers: maskOfModifiers(effectiveModifiersOf(run)),
   }
 }
 

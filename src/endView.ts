@@ -1,4 +1,4 @@
-import { Array, Option, Result, String } from 'effect'
+import { Array, Option, Record, Result, String } from 'effect'
 import type { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -44,12 +44,16 @@ import {
 } from './font'
 import { isAskingForFeedback } from './home'
 import {
+  MODIFIER_PALETTE,
+  MODIFIER_PIXELS,
   SKULL_ART,
   SKULL_OFF_ART,
   TROPHY_PALETTE,
   TROPHY_PIXELS,
 } from './icons'
 import { Invulnerability, type Model, Phase, type Zombie } from './model'
+import { modifiersOn } from './modifiers'
+import { effectiveModifiersOf } from './onlineRun'
 import { focusOf, isCoop, modifyFocus } from './party'
 import type { Difficulty } from './playerData'
 import { playerFootY } from './playerView'
@@ -84,6 +88,10 @@ const SKULLS: Readonly<Record<Difficulty, Sprite>> = {
   ),
 }
 const SKULL_OFF = spriteShapes(SKULL_OFF_ART.pixels, SKULL_OFF_ART.palette)
+
+const MODIFIER_SPRITES = Record.map(MODIFIER_PIXELS, pixels =>
+  spriteShapes(pixels, MODIFIER_PALETTE),
+)
 
 // TEXT
 
@@ -277,6 +285,43 @@ const skullShapes = (
       }),
     )
   })
+}
+
+// NOTE: the run modifiers that were on, as small pictures to the right of the
+// skulls, popping in after the last of them (the bonus itself is the rank
+// strip's gold chip).
+const MODIFIER_STRIDE = 13
+const MODIFIERS_GAP_PX = 22
+
+const modifierShapes = (
+  model: Model,
+  kind: EndKind,
+  ms: number,
+  layout: Layout,
+): ReadonlyArray<Canvas.Shape> => {
+  const left =
+    CENTER_X + ((SKULL_SLOTS - 1) * SKULL_STRIDE) / 2 + MODIFIERS_GAP_PX
+  const atMs =
+    kind === 'Won' ? skullAtMs(SKULL_SLOTS) : TIMELINES[kind].stampAtMs
+  return Array.filterMap(
+    modifiersOn(effectiveModifiersOf(model)),
+    (modifier, index) => {
+      if (ms < atMs) {
+        return Result.failVoid
+      }
+      const pop = 1 + 0.6 * (1 - easeOut(progressOf(ms, atMs, 160)))
+      return Result.succeed(
+        group({
+          translate: {
+            x: Math.round(left + index * MODIFIER_STRIDE),
+            y: layout.skullsY + 5,
+          },
+          scale: pop === 1 ? undefined : { x: pop, y: pop },
+          shapes: MODIFIER_SPRITES[modifier],
+        }),
+      )
+    },
+  )
 }
 
 // TALLY
@@ -697,7 +742,12 @@ export const endOverlayShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
         ...flashShapes(kind, ms),
         ...trophyShapes(kind, ms, layout),
         ...stampShapes(kind, ms, layout),
-        ...(isCoop(model) ? [] : skullShapes(model, kind, ms, layout)),
+        ...(isCoop(model)
+          ? []
+          : [
+              ...skullShapes(model, kind, ms, layout),
+              ...modifierShapes(model, kind, ms, layout),
+            ]),
         ...cardShapes(model, kind, ms, layout),
       ]
     },

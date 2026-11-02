@@ -23,6 +23,7 @@ import { type ZombieAt, catchUpShots, zombiesAt } from './firing'
 import { normalize } from './geometry'
 import { freshOvens } from './kitchen'
 import { settledLessons } from './lessons'
+import { type Modifiers, modifiersOfMask, noModifiers } from './modifiers'
 import {
   biteGraceFor,
   focusSeat,
@@ -38,6 +39,7 @@ import {
   slotsOf,
   soloSeat,
   soloState,
+  withStartingHearts,
 } from './party'
 import { type Calling, callingOfCode } from './playerData'
 import { predictSeat } from './simulation'
@@ -122,10 +124,12 @@ export type RoomWorld = Readonly<{
 // NOTE: your own part of the World, for prediction: your slot and player.
 export type OwnSeat = Readonly<{ slot: PlayerSlot; player: Player }>
 
-// NOTE: `callings` is what each seat brings, by slot (the lobby's members,
-// Lobby.ts); a slot with none plays YOU.
+// NOTE: `modifiers` is the host's pick (src/modifiers.ts). `callings` is what
+// each seat brings, by slot (the lobby's members, Lobby.ts); a slot with none
+// plays YOU.
 export type RoomSettings = Readonly<{
   difficulty: Difficulty
+  modifiers: Modifiers
   mode: RunMode
   callings: ReadonlyArray<Readonly<{ slot: PlayerSlot; calling: Calling }>>
 }>
@@ -137,8 +141,10 @@ export const roomSettingsOf = (
   mode: RoomMode,
   difficulty: RoomDifficulty,
   members: ReadonlyArray<Readonly<{ slot: number; calling: string }>> = [],
+  modifierMask = 0,
 ): RoomSettings => ({
   difficulty,
+  modifiers: modifiersOfMask(modifierMask),
   mode:
     mode === 'Endless' || mode === 'KeepGoing'
       ? RunMode.Endless()
@@ -324,6 +330,7 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   intensity: 0,
   mode: settings.mode,
   difficulty: { chosen: settings.difficulty, nightmare: 'Locked' },
+  modifiers: settings.modifiers,
   zombies: [],
   bullets: [],
   lobs: [],
@@ -388,9 +395,11 @@ export const startRoomWorld = (
 ): RoomWorld => ({
   tick: 0,
   world: beginPreparation(
-    seatCallings(
-      seatSlots(freshWorld(seed, settings), slots),
-      settings.callings,
+    withStartingHearts(
+      seatCallings(
+        seatSlots(freshWorld(seed, settings), slots),
+        settings.callings,
+      ),
     ),
     1,
     FIRST_PREPARATION_MS,
@@ -732,6 +741,7 @@ const scoresOf = (world: World): ReadonlyArray<Score> =>
 
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   difficulty: 'Normal',
+  modifiers: noModifiers,
   mode: RunMode.Campaign(),
   callings: [],
 }

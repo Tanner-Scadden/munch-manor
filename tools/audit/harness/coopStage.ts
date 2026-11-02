@@ -360,6 +360,29 @@ const coopScreen = (
   }
 }
 
+// NOTE: `mods` is the host's pick of run modifiers (a mask, as the lobby keeps
+// it), shown in a staged lobby.
+const withModifiersPicked = (
+  screen: CoopModel.Screen,
+  mask: number,
+): CoopModel.Screen =>
+  CoopModel.Screen.matchOrElse(
+    screen,
+    {
+      InRoom: ({ room }) =>
+        CoopModel.Screen.InRoom({
+          room: {
+            ...room,
+            maybeLobby: Option.map(room.maybeLobby, lobby => ({
+              ...lobby,
+              modifiers: mask,
+            })),
+          },
+        }),
+    },
+    () => screen,
+  )
+
 // NOTE: a staged run draws its room's World as the game, one frame of it,
 // as an online run does (src/coopPlay.ts).
 export const withCoop = (config: HarnessConfig, model: Model): Model => {
@@ -374,7 +397,10 @@ export const withCoop = (config: HarnessConfig, model: Model): Model => {
     }),
     coop: coop => ({
       ...coop,
-      screen: coopScreen(stage, config.seats ?? LIVE_SEATS),
+      screen: withModifiersPicked(
+        coopScreen(stage, config.seats ?? LIVE_SEATS),
+        config.mods ?? 0,
+      ),
     }),
   })
   const drawn = update(staged, Message.TickedRoomFrame({ nowMs: 0 })).model

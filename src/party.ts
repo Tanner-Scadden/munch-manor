@@ -3,6 +3,7 @@ import { makeModifyFieldsFor, modifyFields } from 'foldkit/struct'
 
 import { killPayFor } from './calling'
 import { FIXED_STEP_MS } from './constants'
+import { GLASS_START_HEARTS } from './modifiers'
 import { type World, modifyWorldFields } from './world'
 import {
   type Bullet,
@@ -50,13 +51,18 @@ export const COOP_RULES = {
   downedCrawlScale: 0.35,
   trapLimit: 1,
   friendlyFireDamage: 1,
-  isFriendlyFireOn: false,
   maxPlayers: 4,
 } as const
 
 // SEATS
 
 export const isCoop = (world: World): boolean => world.party._tag === 'Crew'
+
+// NOTE: the Friendly Fire modifier (src/modifiers.ts): teammates' bullets
+// and lid blasts hurt each other. It bites only with a teammate to hit, a
+// player or a bot, so alone it does nothing and pays nothing.
+export const isFriendlyFireOn = (world: World): boolean =>
+  world.modifiers.friendlyFire && world.seats.length > 1
 
 export const soloSeat: Seat = {
   slot: SOLO_SLOT,
@@ -310,6 +316,21 @@ export const facingNearest = (
     isCoop(world) ? nearestStandingSlot(world, at) : focusOf(world).seat.slot,
   )
 
+// NOTE: the Glass modifier (src/modifiers.ts): every player starts the run on
+// one heart, whatever their hero's hearts. Run once, after the crew is seated
+// and made over as their heroes.
+export const withStartingHearts = (world: World): World =>
+  world.modifiers.glass
+    ? forEachSeat(world, (current, slot) =>
+        modifySeat(current, slot, {
+          player: player =>
+            modifyFields(player, {
+              hp: hp => Math.min(hp, GLASS_START_HEARTS),
+            }),
+        }),
+      )
+    : world
+
 // MONEY
 
 export const earn = (wallet: Wallet, amount: number): Wallet =>
@@ -332,7 +353,11 @@ export const earnKill = (
   earnInWorld(
     world,
     slot,
-    killPayFor(seatStateAt(world, slot).player.calling, amount),
+    killPayFor(
+      seatStateAt(world, slot).player.calling,
+      amount,
+      world.modifiers,
+    ),
   )
 
 // NOTE: kill money goes to the killer (decided 5). A kill with no single

@@ -134,6 +134,7 @@ export const lobbyOf = (
   visibility: 'Private',
   mode: 'Campaign',
   difficulty: 'Normal',
+  modifiers: 0,
   canKeepGoing: false,
   round: 1,
   createdMs: 0,

@@ -24,6 +24,7 @@ import {
   TouchControls,
   ZombieKind,
 } from './model'
+import { Modifier } from './modifiers'
 import { MusicMood } from './music'
 import { Calling } from './playerData'
 import {
@@ -227,6 +228,7 @@ export const Message = defineMessageUnion({
   ClickedLobbyBotHeroButton: { index: Schema.Number },
   ClickedLobbyModeButton: { mode: HomeMode },
   ClickedLobbyDifficultyButton: { difficulty: Difficulty },
+  ClickedLobbyModifierButton: { modifier: Modifier },
   FocusedLobbyControl: { control: LobbyControl },
   BlurredLobbyControl: {},
   CompletedFocusLobbyControl: {},

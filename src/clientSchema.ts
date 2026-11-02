@@ -270,6 +270,8 @@ export const RankGain = Schema.Struct({
   pointsBefore: Schema.Number,
   gained: Schema.Number,
   bonesGained: Schema.Number,
+  // NOTE: the run modifiers' bonus in percent, 0 with none (src/modifiers.ts).
+  bonusPercent: Schema.Number,
 })
 export type RankGain = typeof RankGain.Type
 
@@ -306,6 +308,10 @@ export const LobbyControl = Schema.Literals([
   'Normal',
   'Hard',
   'Nightmare',
+  'FriendlyFire',
+  'BigCrowd',
+  'Broke',
+  'Glass',
   'Start',
 ])
 export type LobbyControl = typeof LobbyControl.Type

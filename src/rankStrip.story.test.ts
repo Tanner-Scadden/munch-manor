@@ -42,11 +42,13 @@ const rankUp: Gain = Option.some({
   pointsBefore: 70,
   gained: 60,
   bonesGained: 6,
+  bonusPercent: 0,
 })
 const sameRank: Gain = Option.some({
   pointsBefore: 10,
   gained: 60,
   bonesGained: 6,
+  bonusPercent: 0,
 })
 
 const stripAt = (gain: Gain): number => rankStripAtMs(ended(gain), 'Munched')
@@ -99,6 +101,30 @@ describe('the strip draws', () => {
     )
   })
 
+  test('a modifiers’ bonus adds a gold chip to the strip', () => {
+    const bonus: Gain = Option.map(sameRank, gain => ({
+      ...gain,
+      bonusPercent: 115,
+    }))
+    const done = stripAt(sameRank) + RANK_FILL_MS
+    expect(shapesAt(bonus, done)).toBeGreaterThan(shapesAt(sameRank, done))
+  })
+
+  test('the modifiers that were on sit by the skulls on a solo card', () => {
+    const done = stripAt(sameRank) + RANK_FILL_MS
+    const withIcons = modifyFields(ended(sameRank, done), {
+      modifiers: () => ({
+        friendlyFire: false,
+        bigCrowd: true,
+        broke: true,
+        glass: false,
+      }),
+    })
+    expect(count(endOverlayShapes(withIcons))).toBeGreaterThan(
+      shapesAt(sameRank, done),
+    )
+  })
+
   test('a rank up throws sparks, the same fill without one does not', () => {
     const popAt = stripAt(rankUp) + RANK_FILL_MS + 100
     expect(shapesAt(rankUp, popAt)).toBeGreaterThan(shapesAt(sameRank, popAt))
@@ -131,6 +157,7 @@ describe('the cards a rank up flips', () => {
     pointsBefore: 0,
     gained: 1000,
     bonesGained: 100,
+    bonusPercent: 0,
   })
   const tag = (model: Model) => unlocksOf(model).map(unlock => unlock._tag)
 

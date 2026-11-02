@@ -73,6 +73,7 @@ const summary: RunSummary = {
   screenFit: 'Browser',
   frameTime: 'Under17Ms',
   party: SOLO_PARTY,
+  modifiers: 0,
 }
 
 // NOTE: a co-op crew as a build before the run key sent it.
@@ -93,11 +94,16 @@ const crewSummary: RunSummary = {
   party: { ...crewPartyV2, runKey: CREW_KEY },
 }
 
+const { modifiers: _modifiers, ...beforeModifiers } = crewSummary
+
 const crewV2SummaryJson = toJson({
-  ...crewSummary,
+  ...beforeModifiers,
   version: 2,
   party: crewPartyV2,
 })
+
+// NOTE: a summary from a build before the run modifiers.
+const versionThreeSummaryJson = toJson({ ...beforeModifiers, version: 3 })
 
 // NOTE: a summary from a build before co-op summaries: no party.
 const { party: _party, ...olderFields } = summary
@@ -306,7 +312,7 @@ describe('POST /api/runs', () => {
           ),
         ).toEqual([
           {
-            summary_version: 3,
+            summary_version: 4,
             difficulty: 'Hard',
             party: 'Crew',
             crew_size: 3,
@@ -317,6 +323,45 @@ describe('POST /api/runs', () => {
           },
         ])
       }),
+  )
+
+  it.effect('the run modifiers that bit are stored as a mask', () =>
+    Effect.gen(function* () {
+      const setup = yield* setUp()
+      const response = yield* post(
+        setup,
+        encodeSummary({ ...summary, modifiers: 12 }),
+      )
+      expect(response.status).toBe(202)
+      expect(
+        yield* query(setup, 'SELECT summary_version, modifiers FROM runs'),
+      ).toEqual([{ summary_version: 4, modifiers: 12 }])
+    }),
+  )
+
+  it.effect('a mask no modifier has is refused', () =>
+    Effect.gen(function* () {
+      const setup = yield* setUp()
+      const response = yield* post(
+        setup,
+        encodeSummary({ ...summary, modifiers: 12 }).replace(
+          '"modifiers":12',
+          '"modifiers":16',
+        ),
+      )
+      expect(response.status).toBe(400)
+      expect(yield* rowCount(setup)).toBe(0)
+    }),
+  )
+
+  it.effect('a version 3 summary from a cached build stores no modifiers', () =>
+    Effect.gen(function* () {
+      const setup = yield* setUp()
+      expect((yield* post(setup, versionThreeSummaryJson)).status).toBe(202)
+      expect(
+        yield* query(setup, 'SELECT summary_version, modifiers FROM runs'),
+      ).toEqual([{ summary_version: 3, modifiers: 0 }])
+    }),
   )
 
   it.effect(
@@ -371,7 +416,7 @@ describe('POST /api/runs', () => {
           ),
         ).toEqual([
           {
-            summary_version: 3,
+            summary_version: 4,
             party: 'Solo',
             crew_size: 1,
             seat_kills: null,

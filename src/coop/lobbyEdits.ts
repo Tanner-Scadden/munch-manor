@@ -7,6 +7,12 @@ import {
   callingStandingOf,
   isCallingOwned,
 } from '../calling'
+import {
+  type Modifier,
+  maskOfModifiers,
+  modifiersOfMask,
+  toggledModifier,
+} from '../modifiers'
 import { type Calling, type SavedBoughtCosmetics } from '../playerData'
 import { cleanName, draftName, rollName } from '../profile'
 import { stepWhen } from '../stepWhen'
@@ -18,6 +24,7 @@ import {
   NAME_BUTTON_ID,
   NAME_INPUT_ID,
   isInLobby,
+  isPicking,
   maybeRoomOf,
   meIn,
   withRoom,
@@ -153,6 +160,34 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
     })
   }
 
+  // MODIFIERS
+
+  // NOTE: the host turns a run modifier on or off, as they pick the
+  // difficulty: the room takes back everyone's READY. A guest's tap is the
+  // pick nudge's (the view sends that instead), so nothing here is theirs.
+  const pickModifier = (model: Model, room: Room, modifier: Modifier): R =>
+    Option.match(room.maybeLobby, {
+      onNone: () => ({ model }),
+      onSome: lobby =>
+        isPicking(room)
+          ? {
+              model,
+              commands: [
+                commands.changeLobby(
+                  LobbyChange.ChangedModifiers({
+                    modifiers: maskOfModifiers(
+                      toggledModifier(
+                        modifiersOfMask(lobby.modifiers),
+                        modifier,
+                      ),
+                    ),
+                  }),
+                ),
+              ],
+            }
+          : { model },
+    })
+
   // NUDGE
 
   // NOTE: a tap on a pick that is not the player's to change: a guest's, since
@@ -250,6 +285,7 @@ export const makeEdits = <C>(commands: EditCommands<C>) => {
 
   return {
     pickCalling,
+    pickModifier,
     buyCalling,
     boughtHero,
     nudge,

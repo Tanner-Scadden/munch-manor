@@ -122,6 +122,51 @@ describe('the lobby', () => {
     )
   })
 
+  test('offers the four run modifiers as tiles with a total bonus', () => {
+    scene(
+      ROOT,
+      given(home),
+      measureSurface,
+      ...openLobbyInScene(),
+      inside(
+        role('group', { name: 'Modifiers' }),
+        expectAll(all.selector('.modifier-pick')).toHaveCount(4),
+        expect(role('status', { name: 'Bonus +0%' })).toExist(),
+      ),
+      click(role('button', { name: 'Glass, +50%, off' })),
+      expect(role('button', { name: 'Glass, +50%, on' })).toHaveAttr(
+        'aria-pressed',
+        'true',
+      ),
+      click(role('button', { name: 'Big Crowd, +25%, off' })),
+      expect(role('status', { name: 'Bonus +75%' })).toExist(),
+      click(role('button', { name: 'Glass, +50%, on' })),
+      expect(role('status', { name: 'Bonus +25%' })).toExist(),
+    )
+  })
+
+  test('Friendly Fire is dim until a bot sits in the crew, then it works', () => {
+    scene(
+      ROOT,
+      given(home),
+      measureSurface,
+      ...openLobbyInScene(),
+      expect(
+        selector('.modifier-pick[data-modifier="FriendlyFire"]'),
+      ).toHaveAttr('data-available', 'No'),
+      expect(
+        selector('.modifier-pick[data-modifier="FriendlyFire"]'),
+      ).toHaveAttr('aria-disabled', 'true'),
+      click(role('button', { name: 'Add a bot teammate' })),
+      resolveFocusLobbyInScene(),
+      expect(
+        selector('.modifier-pick[data-modifier="FriendlyFire"]'),
+      ).toHaveAttr('data-available', 'Yes'),
+      click(role('button', { name: 'Friendly Fire, +15%, off' })),
+      expect(role('status', { name: 'Bonus +15%' })).toExist(),
+    )
+  })
+
   test('shows key caps to a keyboard and none to a finger', () => {
     scene(
       ROOT,

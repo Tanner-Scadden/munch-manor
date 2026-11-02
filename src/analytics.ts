@@ -16,8 +16,10 @@ import { Difficulty } from './playerData'
 // its size and this player's own seat's kills, downs, and revives. Version
 // 3 adds the crew's `runKey`, the same on every client in one co-op run, so
 // a report counts a game once. The Worker still takes version 1 from a
-// build cached before co-op, as Solo, and version 2 with no key.
-export const RUN_SUMMARY_VERSION = 3
+// build cached before co-op, as Solo, and version 2 with no key. Version 4
+// adds `modifiers`, the run modifiers that bit, as a mask; the Worker still
+// takes version 3 with none.
+export const RUN_SUMMARY_VERSION = 4
 
 export const MAX_SUMMARY_BYTES = 8 * 1024
 
@@ -173,12 +175,28 @@ const runFields = {
   frameTime: FrameTimeBucket,
 }
 
+// NOTE: the run modifiers that bit (src/modifiers.ts), a bit for each:
+// Friendly Fire 1, Big Crowd 2, Broke 4, Glass 8. Repeated here so the Worker
+// never pulls in the game; src/analytics.story.test.ts checks the width.
+const ModifierMask = Schema.Int.check(
+  Schema.isBetween({ minimum: 0, maximum: 15 }),
+)
+
 export const RunSummary = Schema.Struct({
   version: Schema.Literal(RUN_SUMMARY_VERSION),
   ...runFields,
   party: SummaryParty,
+  modifiers: ModifierMask,
 })
 export type RunSummary = typeof RunSummary.Type
+
+// NOTE: a summary from a build before the run modifiers.
+const RunSummaryV3 = Schema.Struct({
+  version: Schema.Literal(3),
+  ...runFields,
+  party: SummaryParty,
+})
+type RunSummaryV3 = typeof RunSummaryV3.Type
 
 // NOTE: a summary from a build before the crew's run key.
 export const RunSummaryV2 = Schema.Struct({
@@ -196,9 +214,10 @@ export const RunSummaryV1 = Schema.Struct({
 export type RunSummaryV1 = typeof RunSummaryV1.Type
 
 // NOTE: what the Worker takes, and what the offline queue may hold: this
-// version, or version 2 or 1 from a build cached before it.
+// version, or version 3, 2, or 1 from a build cached before it.
 export const PostedRunSummary = Schema.Union([
   RunSummary,
+  RunSummaryV3,
   RunSummaryV2,
   RunSummaryV1,
 ])

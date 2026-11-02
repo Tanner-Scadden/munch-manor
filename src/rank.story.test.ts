@@ -7,8 +7,11 @@ import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, RunMode, initialModel } from './model'
 import { lastHeart, readyAfterRead } from './model.fixture'
+import { type Modifiers } from './modifiers'
+import { seatCrew } from './party'
 import { noRank } from './rank'
 import { WriteSave } from './update/save'
+import { withWorld } from './world'
 import { noKills } from './worldSchema'
 
 // Rank and Bones (src/rank.ts, src/rankRun.ts): a run pays its points and
@@ -69,7 +72,12 @@ describe('a death', () => {
     expect(ended.phase._tag).toBe('GameOver')
     expect(ended.rank).toMatchObject({ earnedPoints: 60, earnedBones: 6 })
     expect(ended.maybeRankGain).toEqual(
-      Option.some({ pointsBefore: 0, gained: 60, bonesGained: 6 }),
+      Option.some({
+        pointsBefore: 0,
+        gained: 60,
+        bonesGained: 6,
+        bonusPercent: 0,
+      }),
     )
   })
 
@@ -88,7 +96,12 @@ describe('a death', () => {
       bones: 6,
     })
     expect(result.model.maybeRankGain).toEqual(
-      Option.some({ pointsBefore: 90, gained: 60, bonesGained: 6 }),
+      Option.some({
+        pointsBefore: 90,
+        gained: 60,
+        bonesGained: 6,
+        bonusPercent: 0,
+      }),
     )
   })
 
@@ -97,7 +110,12 @@ describe('a death', () => {
       rank: rank => ({ ...rank, veteranPoints: 400, veteranBones: 40 }),
     })
     expect(tickOnce(veteran).maybeRankGain).toEqual(
-      Option.some({ pointsBefore: 400, gained: 60, bonesGained: 6 }),
+      Option.some({
+        pointsBefore: 400,
+        gained: 60,
+        bonesGained: 6,
+        bonusPercent: 0,
+      }),
     )
   })
 
@@ -108,6 +126,51 @@ describe('a death', () => {
       })
     expect(tickOnce(on('Hard')).rank.earnedPoints).toBe(90)
     expect(tickOnce(on('Easy')).rank.earnedPoints).toBe(45)
+  })
+
+  test('is multiplied by the modifiers’ bonus, and the end card says so', () => {
+    const withModifiers = (modifiers: Modifiers): Model =>
+      modifyFields(diesOnWave7, { modifiers: () => modifiers })
+    const ended = tickOnce(
+      withModifiers({
+        friendlyFire: false,
+        bigCrowd: false,
+        broke: true,
+        glass: true,
+      }),
+    )
+    expect(ended.rank).toMatchObject({ earnedPoints: 105, earnedBones: 10 })
+    expect(ended.maybeRankGain).toEqual(
+      Option.some({
+        pointsBefore: 0,
+        gained: 105,
+        bonesGained: 10,
+        bonusPercent: 75,
+      }),
+    )
+  })
+
+  test('counts Friendly Fire only with a teammate to hit', () => {
+    const friendly: Modifiers = {
+      friendlyFire: true,
+      bigCrowd: false,
+      broke: false,
+      glass: false,
+    }
+    const alone = tickOnce(
+      modifyFields(diesOnWave7, { modifiers: () => friendly }),
+    )
+    expect(alone.rank.earnedPoints).toBe(60)
+    expect(
+      Option.map(alone.maybeRankGain, ({ bonusPercent }) => bonusPercent),
+    ).toEqual(Option.some(0))
+    const crewed = leave(
+      withWorld(
+        modifyFields(runAt(wave(7), 6), { modifiers: () => friendly }),
+        world => seatCrew(world, 2),
+      ),
+    )
+    expect(crewed.rank.earnedPoints).toBe(69)
   })
 
   test('pays once: the end card ticking on pays nothing more', () => {
@@ -126,7 +189,12 @@ describe('a win', () => {
     expect(won.phase._tag).toBe('Victory')
     expect(won.rank).toMatchObject({ earnedPoints: 250, earnedBones: 25 })
     expect(won.maybeRankGain).toEqual(
-      Option.some({ pointsBefore: 0, gained: 250, bonesGained: 25 }),
+      Option.some({
+        pointsBefore: 0,
+        gained: 250,
+        bonesGained: 25,
+        bonusPercent: 0,
+      }),
     )
   })
 
@@ -146,7 +214,12 @@ describe('a win', () => {
     expect(ended.phase._tag).toBe('GameOver')
     expect(ended.rank.earnedPoints).toBe(270)
     expect(ended.maybeRankGain).toEqual(
-      Option.some({ pointsBefore: 250, gained: 20, bonesGained: 2 }),
+      Option.some({
+        pointsBefore: 250,
+        gained: 20,
+        bonesGained: 2,
+        bonusPercent: 0,
+      }),
     )
   })
 

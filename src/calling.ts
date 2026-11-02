@@ -1,6 +1,7 @@
 import { Array, Option, Record } from 'effect'
 
 import { PLAYER_MAX_HP } from './constants'
+import { type Modifiers, brokenKillPay, noModifiers } from './modifiers'
 import {
   COSMETIC_PRICES,
   Calling,
@@ -168,10 +169,16 @@ export const plankPriceFor = (calling: Calling, price: number): number =>
 // pays $16, about 10% less over a run (a flat 15% rounded down cost a third
 // of the income, and the Penny Pincher won 9 points fewer than YOU).
 const PENNY_KILL_PERCENT = 80
-export const killPayFor = (calling: Calling, pay: number): number =>
-  calling === 'PennyPincher' && pay > 0
-    ? Math.max(1, Math.round((pay * PENNY_KILL_PERCENT) / 100))
-    : pay
+export const killPayFor = (
+  calling: Calling,
+  pay: number,
+  modifiers: Modifiers = noModifiers,
+): number => {
+  const broken = brokenKillPay(modifiers, pay)
+  return calling === 'PennyPincher' && broken > 0
+    ? Math.max(1, Math.round((broken * PENNY_KILL_PERCENT) / 100))
+    : broken
+}
 
 // THE STARTING GUN
 

@@ -20,6 +20,7 @@ import {
   type Zombie,
   ZombieAction,
 } from '@game/model'
+import { bonusPercentOf, modifiersOfMask } from '@game/modifiers'
 import { modifyFocus } from '@game/party'
 import { heroIdOf } from '@game/playerData'
 import { LinkFlow, PlayerScopeStatus, SyncState } from '@game/playerSync'
@@ -292,8 +293,13 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
           pointsBefore: Math.max(0, (rankPoints ?? 0) - rankGain),
           gained: rankGain,
           bonesGained: Math.floor(rankGain / 10),
+          bonusPercent: bonusPercentOf(modifiersOfMask(config.mods ?? 0)),
         }),
     })
+  }
+  const { mods } = config
+  if (mods !== undefined) {
+    model = modifyFields(model, { modifiers: () => modifiersOfMask(mods) })
   }
   const kills = config.kills
   if (kills !== undefined) {

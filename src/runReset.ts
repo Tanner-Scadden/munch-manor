@@ -79,6 +79,7 @@ export type RunFields = Pick<
   | 'rankPaid'
   | 'maybeRankGain'
   | 'maybeRoomDifficulty'
+  | 'maybeRoomModifiers'
   | 'maybeCrewRunKey'
   | 'screenMs'
   | 'maybeShareCopiedAtMs'
@@ -131,6 +132,7 @@ export const freshRun = (model: Model): RunFields => ({
   rankPaid: noRankPaid,
   maybeRankGain: Option.none(),
   maybeRoomDifficulty: Option.none(),
+  maybeRoomModifiers: Option.none(),
   maybeCrewRunKey: Option.none(),
   screenMs: 0,
   maybeShareCopiedAtMs: Option.none(),

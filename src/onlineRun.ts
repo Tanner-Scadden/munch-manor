@@ -4,7 +4,8 @@ import { botNameOf, botSlotOf, isBotCrew } from './bots'
 import type { Room as CoopRoom } from './coop/model'
 import { isInLobby, maybeRoomOf } from './coop/roomState'
 import { type Model, Phase } from './model'
-import { isCoop, leadSeatOf } from './party'
+import type { Modifiers } from './modifiers'
+import { isCoop, leadSeatOf, playerCountOf } from './party'
 import { rankOf, totalPointsOf } from './rank'
 import { isRoundActive } from './waves'
 import type { Difficulty, PlayerSlot } from './worldSchema'
@@ -42,6 +43,22 @@ export const runDifficultyOf = (model: Model): Difficulty =>
     ),
     () => model.difficulty.chosen,
   )
+
+// NOTE: the modifiers a run plays with: the room's, kept with the run
+// (maybeRoomModifiers) so a LEAVE, which drops the room, still has them,
+// else the player's own pick.
+export const playedModifiersOf = (run: Model): Modifiers =>
+  Option.getOrElse(run.maybeRoomModifiers, () => run.modifiers)
+
+// NOTE: the modifiers that bite in a run. Friendly Fire needs a teammate to
+// hit, so with only one seat it is off, and pays nothing.
+export const effectiveModifiersOf = (run: Model): Modifiers => {
+  const played = playedModifiersOf(run)
+  return {
+    ...played,
+    friendlyFire: played.friendlyFire && playerCountOf(run) > 1,
+  }
+}
 
 // NOTE: an online run in a round: its presses and frames go to the room.
 export const isRunOn = (model: Model): boolean =>

@@ -56,6 +56,7 @@ const summary: RunSummary = {
   screenFit: 'Installed',
   frameTime: 'Under17Ms',
   party: SOLO_PARTY,
+  modifiers: 0,
 }
 
 const bodyOf = (wave: number) =>

@@ -256,6 +256,7 @@ export const beginPreparation = (
   const spawns = crowdSpawns(
     playerCountOf(model),
     toughenSpawns(model.difficulty.chosen, rolled.spawns),
+    model.modifiers,
   )
   const [rngState, boss] = planBoss(
     levelOf(model).doorIds,

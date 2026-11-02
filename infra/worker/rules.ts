@@ -131,6 +131,7 @@ export type RunRow = Readonly<{
   seat_downs: number | null
   seat_revives: number | null
   crew_key: string | null
+  modifiers: number
 }>
 
 type PartyColumns = Pick<
@@ -192,6 +193,7 @@ export const rowOf = (summary: PostedRunSummary, nowMs: number): RunRow => ({
   frame_time: summary.frameTime,
   kills: Schema.encodeSync(KillsJson)(summary.kills),
   ...summaryPartyColumns(summary),
+  modifiers: 'modifiers' in summary ? summary.modifiers : 0,
 })
 
 export type ShareRow = Readonly<{

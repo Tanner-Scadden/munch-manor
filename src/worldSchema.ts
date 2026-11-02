@@ -42,6 +42,7 @@ import {
   Zombie,
   ZombieKind,
 } from './entitySchema'
+import { Modifiers } from './modifiers'
 import { Difficulty } from './playerData'
 import { Heading, MillisNumber, PositionNumber, UnitNumber } from './wireNumber'
 
@@ -702,6 +703,7 @@ export const World = Schema.Struct({
   intensity: UnitNumber,
   mode: RunMode,
   difficulty: DifficultySetting,
+  modifiers: Modifiers,
   zombies: Schema.Array(Zombie),
   bullets: Schema.Array(Bullet),
   lobs: Schema.Array(Lob),

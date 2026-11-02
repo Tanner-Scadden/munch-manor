@@ -43,6 +43,7 @@ import {
   initialModel,
   noKills,
 } from './model'
+import { type Modifiers, noModifiers } from './modifiers'
 import { modifyFocus } from './party'
 import { PlayerChange } from './playerSync'
 import { saveOf } from './save'
@@ -110,7 +111,7 @@ const FRAME_MS = FIXED_STEP_MS
 const expectedSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 3,
+  version: 4,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -125,6 +126,7 @@ const expectedSummary = (
   screenFit: 'Installed',
   frameTime: 'Under17Ms',
   party: SOLO_PARTY,
+  modifiers: 0,
   ...overrides,
 })
 
@@ -163,7 +165,10 @@ describe('the run summary schema', () => {
     expect(
       decode(withField('outcome', { _tag: 'GameOver', killedBy: 'Ghost' })),
     ).toEqual(Option.none())
-    expect(decode(withField('version', 4))).toEqual(Option.none())
+    expect(decode(withField('version', 5))).toEqual(Option.none())
+    expect(decode(withField('modifiers', 16))).toEqual(Option.none())
+    expect(decode(withField('modifiers', -1))).toEqual(Option.none())
+    expect(decode(withField('modifiers', 1.5))).toEqual(Option.none())
     expect(
       decode(
         withField('party', {
@@ -189,10 +194,21 @@ describe('the run summary schema', () => {
     expect(Schema.decodeSync(RunSummaryJson)(json)).toEqual(crew)
   })
 
-  test('a version 2 crew summary from a cached build still decodes, with no key', () => {
-    const json = JSON.stringify({ ...summary, version: 2, party: CREW_V2 })
+  test('a version 3 summary from a cached build still decodes, with no modifiers', () => {
+    const { modifiers: _modifiers, ...older } = summary
+    const json = JSON.stringify({ ...older, version: 3 })
     expect(Schema.decodeSync(PostedRunJson)(json)).toEqual({
-      ...summary,
+      ...older,
+      version: 3,
+    })
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
+  })
+
+  test('a version 2 crew summary from a cached build still decodes, with no key', () => {
+    const { modifiers: _modifiers, ...older } = summary
+    const json = JSON.stringify({ ...older, version: 2, party: CREW_V2 })
+    expect(Schema.decodeSync(PostedRunJson)(json)).toEqual({
+      ...older,
       version: 2,
       party: CREW_V2,
     })
@@ -200,7 +216,7 @@ describe('the run summary schema', () => {
   })
 
   test('a version 1 summary from a cached build still decodes, with no party', () => {
-    const { party: _party, ...older } = summary
+    const { party: _party, modifiers: _modifiers, ...older } = summary
     const json = JSON.stringify({ ...older, version: 1 })
     expect(Schema.decodeSync(PostedRunJson)(json)).toEqual({
       ...older,
@@ -235,6 +251,49 @@ describe('the run summary schema', () => {
 })
 
 describe('sending at the end of a run', () => {
+  const lostWith = (modifiers: Modifiers): Model =>
+    modifyFields(lastHeart, { modifiers: () => modifiers })
+
+  test('the modifiers that were on go in the summary as a mask', () => {
+    story(
+      update,
+      given(lostWith({ ...noModifiers, glass: true, broke: true })),
+      message(Message.TickedFrame({ deltaTime: FRAME_MS })),
+      Command.expectHas(
+        SendRunSummary({
+          summary: expectedSummary({
+            outcome: { _tag: 'GameOver', killedBy: 'Runner' },
+            wave: 4,
+            heartsLost: 3,
+            frameTime: 'Under17Ms',
+            modifiers: 12,
+          }),
+        }),
+      ),
+      Command.resolve(SendRunSummary, Message.CompletedSendRunSummary()),
+    )
+  })
+
+  test('Friendly Fire with no teammate to hit is not counted', () => {
+    story(
+      update,
+      given(lostWith({ ...noModifiers, friendlyFire: true, bigCrowd: true })),
+      message(Message.TickedFrame({ deltaTime: FRAME_MS })),
+      Command.expectHas(
+        SendRunSummary({
+          summary: expectedSummary({
+            outcome: { _tag: 'GameOver', killedBy: 'Runner' },
+            wave: 4,
+            heartsLost: 3,
+            frameTime: 'Under17Ms',
+            modifiers: 2,
+          }),
+        }),
+      ),
+      Command.resolve(SendRunSummary, Message.CompletedSendRunSummary()),
+    )
+  })
+
   test('Game Over sends the run with what killed the player', () => {
     story(
       update,

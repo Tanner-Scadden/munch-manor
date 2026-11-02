@@ -7,6 +7,8 @@ import { awardsOf, crewOf } from './crewAwards'
 import { isEndScreen, isInRun, isOnHome } from './home'
 import { isPending } from './lessons'
 import { type Model, Phase, RunMode } from './model'
+import { bonusPercentOf } from './modifiers'
+import { effectiveModifiersOf } from './onlineRun'
 import { isCoop, leadSeatOf } from './party'
 import {
   type RunPayInput,
@@ -56,6 +58,7 @@ const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
     revives: isHumanCrew(run)
       ? Math.max(0, seat.revives - run.rankPaid.revivesPaid)
       : 0,
+    bonusPercent: bonusPercentOf(effectiveModifiersOf(run)),
     isGuided: isGuided(run),
   }
 }
@@ -99,7 +102,12 @@ export const earnRank = (before: Model, after: Model): Model => {
         maybeRankGain: () =>
           input.isGuided
             ? Option.none()
-            : Option.some({ pointsBefore, gained: points, bonesGained: bones }),
+            : Option.some({
+                pointsBefore,
+                gained: points,
+                bonesGained: bones,
+                bonusPercent: input.bonusPercent,
+              }),
       })
     : paid
 }

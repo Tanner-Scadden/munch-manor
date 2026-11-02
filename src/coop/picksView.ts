@@ -17,6 +17,18 @@ import {
   TROPHY_ICON,
 } from '../icons'
 import { iconView } from '../menuParts'
+import {
+  MODIFIER_ORDER,
+  type Modifier,
+  bonusPercentOf,
+  isModifierOn,
+  modifiersOfMask,
+} from '../modifiers'
+import {
+  bonusChipView,
+  modifierFaceView,
+  modifierLabel,
+} from '../modifiersView'
 import { MODE_NAMES } from '../names'
 import { callingPillView } from './callingPicker'
 import { CROWN_ICON } from './icons'
@@ -135,6 +147,35 @@ const skullPickView = (
   )
 }
 
+// NOTE: a run modifier is a tile the host turns on and off, lit when on. A
+// guest sees the same tiles, still, and a tap says the host picks.
+const modifierPickView = (
+  room: Room,
+  lobby: Lobby,
+  modifier: Modifier,
+  h: HtmlBuilder<Message>,
+): Html => {
+  const isOn = isModifierOn(modifiersOfMask(lobby.modifiers), modifier)
+  return h.keyed('button')(
+    `modifier-${modifier}`,
+    [
+      h.Type('button'),
+      h.Class('coop-pick modifier-pick'),
+      h.DataAttribute('modifier', modifier),
+      h.DataAttribute('state', isOn ? 'On' : 'Off'),
+      h.AriaPressed(isOn ? 'true' : 'false'),
+      h.AriaLabel(modifierLabel(modifier, isOn)),
+      ...pickAttributes(
+        isPicking(room),
+        Message.ClickedModifierPick({ modifier }),
+        'HostPicks',
+        h,
+      ),
+    ],
+    modifierFaceView(modifier, h),
+  )
+}
+
 // NOTE: the note a tap on a pick that is not yours leaves: it fades in
 // place over the picks (no movement), and a new tap starts it again.
 const nudgeView = (room: Room, h: HtmlBuilder<Message>): Html =>
@@ -198,6 +239,19 @@ export const picksView = (
             skullPickView(room, lobby, difficulty, h),
           ),
           isPicking(room) ? keyCapView('X') : h.empty,
+        ],
+      ),
+      h.div(
+        [
+          h.Class('coop-pick-group modifier-group'),
+          h.Role('group'),
+          h.AriaLabel('Modifiers'),
+        ],
+        [
+          ...Array.map(MODIFIER_ORDER, modifier =>
+            modifierPickView(room, lobby, modifier, h),
+          ),
+          bonusChipView(bonusPercentOf(modifiersOfMask(lobby.modifiers)), h),
         ],
       ),
       h.div(

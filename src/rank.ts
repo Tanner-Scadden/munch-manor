@@ -38,6 +38,9 @@ export type RunPayInput = Readonly<{
   isCampaignWin: boolean
   awards: number
   revives: number
+  // NOTE: the run modifiers' bonus, in percent (src/modifiers.ts): the total
+  // multiplies the points, so the Bones follow.
+  bonusPercent: number
   isGuided: boolean
 }>
 
@@ -50,11 +53,11 @@ export const pointsForRun = (input: RunPayInput): number => {
     Math.max(0, input.wavesCleared) * POINTS_PER_WAVE +
     (input.bossesFelled > 0 ? BOSS_POINTS : 0) +
     (input.isCampaignWin ? WIN_POINTS : 0)
-  return (
+  const total =
     Math.floor((base * multiplier.top) / multiplier.bottom) +
     Math.max(0, input.awards) * AWARD_POINTS +
     Math.max(0, input.revives) * REVIVE_POINTS
-  )
+  return Math.floor((total * (100 + Math.max(0, input.bonusPercent))) / 100)
 }
 
 export const bonesForPoints = (points: number): number =>

@@ -194,8 +194,9 @@ export const fridgeBoxOf = (level: Level): Option.Option<Box> => {
 }
 
 // NOTE: for sale once the kitchen is open, in a break or mid-wave, while
-// the door is shut.
+// the door is shut. Never for a Broke run: there are no pulls.
 const isFridgeForSale = (world: World): boolean =>
+  !world.modifiers.broke &&
   Phase.isAnyOf(['Preparation', 'Wave'])(world.phase) &&
   isKitchenOpen(levelOf(world)) &&
   FridgeDoor.isAnyOf(['Shut'])(world.fridge.door)

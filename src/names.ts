@@ -3,6 +3,7 @@ import { Array, Option } from 'effect'
 import type { PickedMode } from '@munch/netcode'
 
 import type { HouseSpot, MapId, ShopGuideSection } from './clientSchema'
+import type { Modifier } from './modifiers'
 import { type Calling, type CosmeticKind, Hat } from './playerData'
 import type {
   FixedShopItemId,
@@ -101,6 +102,16 @@ export const MODE_NAMES: Readonly<Record<PickedMode, string>> = {
 // NOTE: the maps the single player lobby offers (src/lobby.ts).
 export const MAP_NAMES: Readonly<Record<MapId, string>> = {
   Manor: 'The Manor',
+}
+
+// RUN MODIFIERS
+
+// NOTE: the opt-in rules a run can take for a bonus (src/modifiers.ts).
+export const MODIFIER_NAMES: Readonly<Record<Modifier, string>> = {
+  FriendlyFire: 'Friendly Fire',
+  BigCrowd: 'Big Crowd',
+  Broke: 'Broke',
+  Glass: 'Glass',
 }
 
 // THE FRIDGE

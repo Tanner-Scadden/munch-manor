@@ -12,6 +12,7 @@ import {
 import {
   ChangedMemberCalling,
   ChangedMemberName,
+  ChangedModifiers,
   ChangedPicks,
   ChangedReady,
   type ClientFrame,
@@ -134,6 +135,8 @@ const writeChange = <E>(
             write(ChangedMemberName, { by, name }),
           ChangedPicks: ({ mode, difficulty }) =>
             write(ChangedPicks, { by, mode, difficulty }),
+          ChangedModifiers: ({ modifiers }) =>
+            write(ChangedModifiers, { by, modifiers }),
           KickedPlayer: ({ playerId }) => write(KickedPlayer, { by, playerId }),
         }),
     Effect.asVoid,

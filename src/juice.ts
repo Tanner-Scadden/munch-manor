@@ -30,6 +30,8 @@ import {
 } from './constants'
 import { countWhere } from './hitStop'
 import type { Model } from './model'
+import type { Modifiers } from './modifiers'
+import { playedModifiersOf } from './onlineRun'
 import { focusOf, modifyFocus } from './party'
 import type { Calling } from './playerData'
 import { type Seeded, between, generateMany, nextRandom } from './prng'
@@ -231,7 +233,7 @@ const noPopups = (state: number): Seeded<ReadonlyArray<Popup>> => [state, []]
 // NOTE: a kill's popup shows what the kill paid the player, so the Penny
 // Pincher's reads 15% less (src/calling.ts).
 const eventPopups =
-  (calling: Calling) =>
+  (calling: Calling, modifiers: Modifiers) =>
   (state: number, event: GameEvent): Seeded<ReadonlyArray<Popup>> =>
     GameEvent.match(event, {
       Fired: () => noPopups(state),
@@ -245,7 +247,12 @@ const eventPopups =
         generateMany(
           state,
           1,
-          popup('Kill', killPayFor(calling, bounty), x, y - KILL_POPUP_LIFT_PX),
+          popup(
+            'Kill',
+            killPayFor(calling, bounty, modifiers),
+            x,
+            y - KILL_POPUP_LIFT_PX,
+          ),
         ),
       Exploded: ({ x, y, radius }) =>
         generateMany(state, 1, popup('Kaboom', 0, x, y - radius * 0.6)),
@@ -449,7 +456,7 @@ export const advanceJuice = (
   const [popupState, popupBatches] = Array.mapAccum(
     events,
     shakeState,
-    eventPopups(focusOf(model).player.calling),
+    eventPopups(focusOf(model).player.calling, playedModifiersOf(model)),
   )
 
   return modifyFocus(

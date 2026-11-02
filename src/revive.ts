@@ -12,6 +12,7 @@ import {
   forEachSeat,
   isCoop,
   isDowned,
+  isFriendlyFireOn,
   isHere,
   isStanding,
   maybeShooterOf,
@@ -195,10 +196,8 @@ export const isEveryoneReady = (world: World): boolean =>
 // FRIENDLY FIRE
 
 // NOTE: off on every difficulty (decided row 6, changed with the owner on
-// 2026-11-01). It comes back as a run modifier that pays extra.
-const isFriendlyFireOn = (world: World): boolean =>
-  isCoop(world) && COOP_RULES.isFriendlyFireOn
-
+// 2026-11-01). It is the Friendly Fire run modifier, which pays extra
+// (isFriendlyFireOn, src/party.ts).
 const isTeammateShot =
   (slot: number) =>
   (bullet: Bullet): boolean =>

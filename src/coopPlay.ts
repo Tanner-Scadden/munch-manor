@@ -119,6 +119,7 @@ const takeRoomWorld = (
     party: () => world.party,
     seats: () => takeOwnSeat(focusOf(model), world.seats),
     maybeRoomDifficulty: () => Option.some(world.difficulty.chosen),
+    maybeRoomModifiers: () => Option.some(world.modifiers),
   })
 
 const isFrozen = HitStop.isAnyOf(['Frozen'])

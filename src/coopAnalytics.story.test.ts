@@ -16,6 +16,7 @@ import { update } from './main'
 import { Message } from './message'
 import { Lesson, type Model, initialModel } from './model'
 import { WAVE_3_BREAK, modifyLeadSeat, withSeat } from './model.fixture'
+import { noModifiers } from './modifiers'
 import { type RoomWorld, startRoomWorld } from './roomWorld'
 import { SendRunSummary } from './update/settle'
 import { asVeteran } from './veteran'
@@ -33,6 +34,7 @@ const OWN_SLOT = 1
 
 const started = startRoomWorld([0, OWN_SLOT, 2], 7, {
   difficulty: 'Hard',
+  modifiers: noModifiers,
   mode: RunMode.Campaign(),
   callings: [],
 })
@@ -169,7 +171,7 @@ describe("an online co-op run's summary", () => {
     const summaries = summariesOf(result)
     expect(summaries).toHaveLength(1)
     expect(summaries[0]).toMatchObject({
-      version: 3,
+      version: 4,
       visitId: VISIT_ID,
       mode: 'Campaign',
       difficulty: 'Hard',
@@ -303,7 +305,12 @@ describe("an online co-op run's rank", () => {
     // NOTE: 4 waves x 10 x 1.5 = 60, 3 awards x 10, 1 revive x 5.
     expect(ended.rank).toMatchObject({ earnedPoints: 95, earnedBones: 9 })
     expect(ended.maybeRankGain).toEqual(
-      Option.some({ pointsBefore: 0, gained: 95, bonesGained: 9 }),
+      Option.some({
+        pointsBefore: 0,
+        gained: 95,
+        bonesGained: 9,
+        bonusPercent: 0,
+      }),
     )
   })
 

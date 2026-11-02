@@ -19,6 +19,7 @@ import {
   bountyOf,
 } from './combat'
 import { PLAYER_RADIUS, PLAYER_SPEED } from './constants'
+import type { Modifiers } from './modifiers'
 import { PICKUP_NAMES } from './names'
 import {
   atSeat,
@@ -539,12 +540,17 @@ const settleSpot = (
   )
 }
 
-const eligibleKinds = (player: Player): ReadonlyArray<PickupKind> =>
+// NOTE: a heart drops only for a player who has lost one, and never in a
+// Glass run (src/modifiers.ts), where hearts come from Rattles alone.
+const eligibleKinds = (
+  player: Player,
+  modifiers: Modifiers,
+): ReadonlyArray<PickupKind> =>
   Array.filter(
     PICKUP_KIND_ORDER,
     kind =>
       !PickupEffect.isAnyOf(['Heal'])(PICKUPS[kind].effect) ||
-      player.hp < maxHpOf(player),
+      (!modifiers.glass && player.hp < maxHpOf(player)),
   )
 
 const pickKindAt = (
@@ -683,7 +689,7 @@ const dropFromKills = (
       const kindDraw = nextRandom(rolled.rngState)
       const kind = pickKindAt(
         kindDraw.value,
-        eligibleKinds(focusOf(model).player),
+        eligibleKinds(focusOf(model).player, model.modifiers),
       )
       return modifyFields(placePickup(model, kind, kill), {
         loot: () =>
