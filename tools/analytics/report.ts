@@ -245,7 +245,8 @@ const program = Effect.gen(function* () {
       screen.endsWith('Victory') ? 'Victory' : 'GameOver',
     )
 
-  const totalRuns = Array.reduce(medians, 0, (sum, { runs }) => sum + runs)
+  const totalGames = Array.reduce(medians, 0, (sum, { runs }) => sum + runs)
+  const totalSummaries = Array.reduce(devices, 0, (sum, { runs }) => sum + runs)
   const totalDeaths = Array.reduce(
     killers,
     0,
@@ -255,7 +256,7 @@ const program = Effect.gen(function* () {
   yield* Console.log(
     Array.join(
       [
-        `Munch Manor analytics: stage ${stage} (D1 ${name}), ${totalRuns} summaries (a co-op game sends one per player)`,
+        `Munch Manor analytics: stage ${stage} (D1 ${name}), ${totalGames} games from ${totalSummaries} summaries (a co-op game sends one per player)`,
         section(
           'Solo campaign win rate by difficulty (wins out of finished runs)',
           WIN_HEADERS,
@@ -276,7 +277,7 @@ const program = Effect.gen(function* () {
           ]),
         ),
         section(
-          'Median run length',
+          'Median run length (per game)',
           ['mode', 'runs', 'median'],
           Array.map(medians, row => [
             row.mode,
@@ -285,13 +286,13 @@ const program = Effect.gen(function* () {
           ]),
         ),
         section(
-          'Devices',
+          'Devices (per player)',
           ['device', 'screen', 'runs', 'share'],
           Array.map(devices, row => [
             row.device,
             row.screen_fit,
             `${row.runs}`,
-            percent(row.runs, totalRuns),
+            percent(row.runs, totalSummaries),
           ]),
         ),
         section(
@@ -344,8 +345,8 @@ const program = Effect.gen(function* () {
           ]),
         ),
         section(
-          'Runs per day (UTC, last 30)',
-          ['day', 'runs'],
+          'Games per day (UTC, last 30; a co-op game once)',
+          ['day', 'games'],
           Array.map(days, row => [row.received_day, `${row.runs}`]),
         ),
       ],
