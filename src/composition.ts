@@ -27,7 +27,9 @@ import { ProfileTabsBlock } from './profile'
 import { ShopTabsBlock } from './shopTabs'
 import { buyPreview, chooseLook, flipLook, rollLook } from './update/character'
 import {
+  boughtCalling,
   choseCalling,
+  choseName,
   closedCoop,
   leftRoom,
   neededNewerBuild,
@@ -129,6 +131,11 @@ const CoopBindingWithOutMessagePolicy = CoopBinding.withOutMessagePolicy({
     NeededNewerBuild: () => settled(neededNewerBuild),
     LeftRoom: () => settled(leftRoom),
     ChoseCalling: ({ calling }) => settled(choseCalling(calling)),
+    ChoseName: ({ name }) => settled(choseName(name)),
+    BoughtCalling: ({ calling }) =>
+      makeStep(before =>
+        Update.combineSteps([boughtCalling(calling), ...afterMessage(before)]),
+      ),
   }),
 })
 

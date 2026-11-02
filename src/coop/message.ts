@@ -7,7 +7,7 @@ import { LobbyEvent, QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 import { Calling, SavedBoughtCosmetics } from '../playerData'
 import { SeatAction } from '../stepWorld'
 import { Bullet } from '../worldSchema'
-import { CodeCopy, CoopProblem, Share } from './model'
+import { CodeCopy, CoopProblem, NudgeReason, Share } from './model'
 
 // NOTE: this client's controls for one room frame, the shape of netcode's
 // PlayerInput. PlayerInput's own Schema checks each field's wire range, and
@@ -52,6 +52,13 @@ export const Message = defineMessageUnion({
   ClickedCallingPill: {},
   ClickedCallingPick: { calling: Calling },
   ClickedCallingDone: {},
+  ClickedBuyCallingButton: {},
+  ClickedPickNudge: { reason: NudgeReason },
+  ClickedNameButton: {},
+  UpdatedNameDraft: { value: Schema.String },
+  SubmittedName: {},
+  ClickedNameDice: {},
+  ClickedNameCancel: {},
   CompletedChangeLobby: {},
   FailedChangeLobby: { problem: CoopProblem },
   ClickedLeaveButton: {},
@@ -69,7 +76,14 @@ export const Message = defineMessageUnion({
     look: Schema.String,
     rank: Schema.Number,
     calling: Calling,
+    rngState: Schema.Number,
     bought: SavedBoughtCosmetics,
+    bones: Schema.Number,
+  },
+  RequestedBoughtHero: {
+    calling: Calling,
+    bought: SavedBoughtCosmetics,
+    bones: Schema.Number,
   },
   RequestedPressKey: { code: Schema.String },
   RequestedReleaseKey: { code: Schema.String },
@@ -99,5 +113,7 @@ export const OutMessage = defineMessageUnion({
   NeededNewerBuild: {},
   LeftRoom: {},
   ChoseCalling: { calling: Calling },
+  ChoseName: { name: Schema.String },
+  BoughtCalling: { calling: Calling },
 })
 export type OutMessage = typeof OutMessage.Type

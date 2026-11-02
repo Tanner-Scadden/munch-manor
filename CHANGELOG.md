@@ -6,6 +6,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 - 🍲 The boarded kitchen door now glows, steams, and smells like soup, Rattles hollers about it every break until you open it, and a little house in your breaks counts the rooms you've found.
 - 📖 Rattles wrote a shop guide: tap the ? in his shop, or find Shop in the Munchopedia, for bars, upgrades, and a fridge full of ???.
+- 🎒 The co-op lobby got friendlier: tap your own name (it has a pencil) to rename yourself, dice and all, and buy a hero right there. Pings are WiFi icons now, KICK is a door with an arrow, and tapping a pick that's the host's says HOST PICKS.
 - 👟 The Track Star's magazines are barely smaller now, so the speedy hero keeps up with the rest.
 
 ## November 1, 2026: Pick your hero

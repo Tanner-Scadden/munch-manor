@@ -11,6 +11,7 @@ import {
 
 import {
   ChangedMemberCalling,
+  ChangedMemberName,
   ChangedPicks,
   ChangedReady,
   type ClientFrame,
@@ -129,6 +130,8 @@ const writeChange = <E>(
             }),
           ChangedMemberCalling: ({ calling }) =>
             write(ChangedMemberCalling, { by, calling }),
+          ChangedMemberName: ({ name }) =>
+            write(ChangedMemberName, { by, name }),
           ChangedPicks: ({ mode, difficulty }) =>
             write(ChangedPicks, { by, mode, difficulty }),
           KickedPlayer: ({ playerId }) => write(KickedPlayer, { by, playerId }),

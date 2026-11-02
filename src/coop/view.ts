@@ -5,28 +5,17 @@ import {
   type Lobby,
   type LobbyMember,
   MAX_PLAYERS,
-  type PickedMode,
-  type RoomDifficulty,
   type RoomScore,
 } from '@munch/netcode'
 
 import { closeButtonView } from '../dialogs'
-import { DIFFICULTIES, DIFFICULTY_ORDER } from '../difficulty'
-import {
-  CAMPAIGN_ICON,
-  ENDLESS_ICON,
-  PADLOCK_ICON,
-  SHARE_ICON,
-  SKULL_ICONS,
-  SKULL_OFF_ICON,
-  TROPHY_ICON,
-} from '../icons'
+import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '../icons'
 import { callingPropView, iconView, rankTagView } from '../menuParts'
 import type { Appearance } from '../model'
-import { CALLING_NAMES, MODE_NAMES } from '../names'
+import { CALLING_NAMES } from '../names'
 import { seatColorOf } from '../partyView'
 import type { Calling, SavedBoughtCosmetics } from '../playerData'
-import { callingPickerView, callingPillView } from './callingPicker'
+import { callingPickerView } from './callingPicker'
 import { CoopComposition } from './composition'
 import {
   AWAY_ICON,
@@ -42,6 +31,7 @@ import {
   OFFLINE_ICON,
   QUICK_ICON,
   WAIT_ICON,
+  WIFI_ICONS,
   portraitOf,
 } from './icons'
 import { callingOfMember, seatLook, seatLookOf } from './looks'
@@ -53,19 +43,16 @@ import {
   type Room,
   Screen,
 } from './model'
+import { nameButtonView, namePickerView } from './namePicker'
+import { picksView } from './picksView'
 import {
   CODE_INPUT_ID,
-  MODE_PICKS,
   QUICK_PLAY_BUTTON_ID,
   READY_BUTTON_ID,
   ROOM_CODE_LENGTH,
-  canPickDifficulty,
-  canPickMode,
   isHost,
   isInLobby,
-  isPicking,
   meIn,
-  pickedModeOf,
 } from './roomState'
 import { readoutOf } from './seam'
 
@@ -78,6 +65,7 @@ export type ViewInputs = Readonly<{
   isKeyboard: boolean
   isRunCardUp: boolean
   bought: SavedBoughtCosmetics
+  bones: number
 }>
 
 const lookOf = (inputs: ViewInputs, room: Room, seat: number) =>
@@ -181,7 +169,7 @@ const PING_OK_MS = 200
 const pingGrade = (rttMs: number): 'Good' | 'Ok' | 'Bad' =>
   rttMs < PING_GOOD_MS ? 'Good' : rttMs < PING_OK_MS ? 'Ok' : 'Bad'
 
-const pingBarsView = (
+const pingView = (
   rttMs: number,
   className: string,
   h: HtmlBuilder<Message>,
@@ -195,9 +183,7 @@ const pingBarsView = (
           h.DataAttribute('ping', pingGrade(rttMs)),
           h.AriaLabel(`${Math.round(rttMs)} ms`),
         ],
-        Array.map([1, 2, 3], bar =>
-          h.span([h.Class('coop-ping-bar'), h.DataAttribute('bar', `${bar}`)]),
-        ),
+        [iconView('coop-ping-icon', WIFI_ICONS[pingGrade(rttMs)], h)],
       )
 
 const ownPingOf = (room: Room): number => Math.round(room.session.rttMs)
@@ -592,6 +578,17 @@ const seatLabelOf = (
   ].join(', ')
 }
 
+// NOTE: the host's crown flashes in place when a guest taps a pick. The flash
+// alternates between two same-looking animations so each tap starts it over.
+const crownClassOf = (room: Room): string =>
+  Option.match(room.maybeNudge, {
+    onNone: () => 'coop-crown',
+    onSome: ({ reason, count }) =>
+      reason === 'HostPicks'
+        ? `coop-crown coop-crown-flash-${count % 2 === 0 ? 'a' : 'b'}`
+        : 'coop-crown',
+  })
+
 const memberSeatView = (
   room: Room,
   lobby: Lobby,
@@ -618,7 +615,7 @@ const memberSeatView = (
         h,
         callingOfMember(member),
       ),
-      isTheHost ? iconView('coop-crown', CROWN_ICON, h) : h.empty,
+      isTheHost ? iconView(crownClassOf(room), CROWN_ICON, h) : h.empty,
       member.ready
         ? h.span(
             [h.Class('coop-stamp'), h.AriaHidden(true)],
@@ -630,13 +627,15 @@ const memberSeatView = (
         [
           rankTagView('coop-rank', member.rank, 2, h),
           callingPropView('coop-calling', callingOfMember(member), h),
-          h.span(
-            [h.Class('coop-nameplate'), h.AriaHidden(true)],
-            [member.name],
-          ),
+          isMe && lobby.status === 'Lobby'
+            ? nameButtonView(member.name, h)
+            : h.span(
+                [h.Class('coop-nameplate'), h.AriaHidden(true)],
+                [member.name],
+              ),
         ],
       ),
-      pingBarsView(
+      pingView(
         isMe && ownPingOf(room) > 0 ? ownPingOf(room) : member.pingMs,
         'coop-seat-ping',
         h,
@@ -647,11 +646,15 @@ const memberSeatView = (
               h.Type('button'),
               h.Class('coop-kick'),
               h.AriaLabel(`Kick ${member.name}`),
+              h.Title(`Kick ${member.name}`),
               h.OnClick(
                 Message.ClickedKickButton({ playerId: member.playerId }),
               ),
             ],
-            [iconView('coop-kick-icon', KICK_ICON, h)],
+            [
+              iconView('coop-kick-icon', KICK_ICON, h),
+              h.span([h.Class('coop-kick-word'), h.AriaHidden(true)], ['KICK']),
+            ],
           )
         : h.empty,
     ],
@@ -787,144 +790,6 @@ const readyButtonView = (
   )
 }
 
-// PICKS
-
-const MODE_PICK_ICONS: Readonly<Record<PickedMode, string>> = {
-  Campaign: CAMPAIGN_ICON,
-  Endless: ENDLESS_ICON,
-  KeepGoing: ENDLESS_ICON,
-}
-
-// NOTE: a pick the host can change is a button; everyone else sees the
-// same icons, still, with the picked one lit.
-const pickAttributes = (
-  canPick: boolean,
-  message: Message,
-  h: HtmlBuilder<Message>,
-) => (canPick ? [h.OnClick(message)] : [h.AriaDisabled(true)])
-
-const modePickView = (
-  room: Room,
-  lobby: Lobby,
-  mode: PickedMode,
-  h: HtmlBuilder<Message>,
-): Html => {
-  const isChosen = pickedModeOf(lobby) === mode
-  return h.keyed('button')(
-    mode,
-    [
-      h.Type('button'),
-      h.Class('coop-pick coop-mode-pick'),
-      h.DataAttribute('mode', mode),
-      h.DataAttribute('state', isChosen ? 'Chosen' : 'Other'),
-      h.AriaPressed(isChosen ? 'true' : 'false'),
-      h.AriaLabel(MODE_NAMES[mode]),
-      ...pickAttributes(isPicking(room), Message.ClickedModePick({ mode }), h),
-    ],
-    [
-      iconView('coop-pick-icon', MODE_PICK_ICONS[mode], h),
-      mode === 'KeepGoing'
-        ? iconView('coop-pick-badge', TROPHY_ICON, h)
-        : h.empty,
-    ],
-  )
-}
-
-const skullIndexOf = (difficulty: RoomDifficulty): number =>
-  Option.getOrElse(
-    Array.findFirstIndex(DIFFICULTY_ORDER, level => level === difficulty),
-    () => 0,
-  )
-
-const skullPickView = (
-  room: Room,
-  lobby: Lobby,
-  difficulty: RoomDifficulty,
-  h: HtmlBuilder<Message>,
-): Html => {
-  const isLit = skullIndexOf(difficulty) <= skullIndexOf(lobby.difficulty)
-  const isLocked = !canPickDifficulty(lobby, difficulty)
-  return h.keyed('button')(
-    difficulty,
-    [
-      h.Type('button'),
-      h.Class('coop-pick coop-skull-pick'),
-      h.DataAttribute('difficulty', difficulty),
-      h.DataAttribute(
-        'state',
-        lobby.difficulty === difficulty ? 'Chosen' : isLit ? 'Lit' : 'Other',
-      ),
-      h.AriaPressed(lobby.difficulty === difficulty ? 'true' : 'false'),
-      h.AriaLabel(
-        isLocked
-          ? `${DIFFICULTIES[difficulty].name}, locked`
-          : DIFFICULTIES[difficulty].name,
-      ),
-      ...pickAttributes(
-        isPicking(room) && !isLocked,
-        Message.ClickedDifficultyPick({ difficulty }),
-        h,
-      ),
-    ],
-    [
-      iconView(
-        'coop-pick-icon',
-        isLocked
-          ? PADLOCK_ICON
-          : isLit
-            ? SKULL_ICONS[lobby.difficulty]
-            : SKULL_OFF_ICON,
-        h,
-      ),
-    ],
-  )
-}
-
-const picksView = (
-  room: Room,
-  lobby: Lobby,
-  inputs: ViewInputs,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.div(
-    [
-      h.Class('coop-picks'),
-      h.DataAttribute('host', isPicking(room) ? 'Picking' : 'Watching'),
-      h.AriaLabel(
-        `${MODE_NAMES[pickedModeOf(lobby)]}, ${DIFFICULTIES[lobby.difficulty].name}`,
-      ),
-    ],
-    [
-      h.div(
-        [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Mode')],
-        [
-          ...Array.map(
-            Array.filter(MODE_PICKS, mode => canPickMode(lobby, mode)),
-            mode => modePickView(room, lobby, mode, h),
-          ),
-          isPicking(room) ? keyCapView(inputs, 'E', h) : h.empty,
-        ],
-      ),
-      h.div(
-        [
-          h.Class('coop-pick-group coop-skulls'),
-          h.Role('group'),
-          h.AriaLabel('Difficulty'),
-        ],
-        [
-          ...Array.map(DIFFICULTY_ORDER, difficulty =>
-            skullPickView(room, lobby, difficulty, h),
-          ),
-          isPicking(room) ? keyCapView(inputs, 'X', h) : h.empty,
-        ],
-      ),
-      h.div(
-        [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Hero')],
-        [callingPillView(room, [keyCapView(inputs, 'Y', h)], h)],
-      ),
-    ],
-  )
-
 const lobbyView = (
   room: Room,
   inputs: ViewInputs,
@@ -957,7 +822,8 @@ const lobbyView = (
       }),
       Option.match(room.maybeLobby, {
         onNone: () => h.empty,
-        onSome: lobby => picksView(room, lobby, inputs, h),
+        onSome: lobby =>
+          picksView(room, lobby, key => keyCapView(inputs, key, h), h),
       }),
       readyButtonView(room, inputs, h),
       Option.match(meIn(room), {
@@ -967,9 +833,11 @@ const lobbyView = (
             room,
             lookOf(inputs, room, me.slot),
             inputs.bought,
+            inputs.bones,
             h,
           ),
       }),
+      namePickerView(room, h),
     ],
   )
 
@@ -1090,7 +958,7 @@ const arenaPingsView = (room: Room, h: HtmlBuilder<Message>): Html =>
             h.Style({ borderColor: seatColorOf(slot) }),
           ],
           [
-            pingBarsView(
+            pingView(
               slot === room.slot
                 ? ownPingOf(room)
                 : Option.getOrElse(

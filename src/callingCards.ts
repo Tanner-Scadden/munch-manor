@@ -160,3 +160,56 @@ export const callingCardsView = <Message>(
     [h.Class('calling-cards')],
     Array.map(CALLINGS, calling => cardView(input, calling, h)),
   )
+
+// NOTE: the player's Bones by the title, so a price has its context. Shared
+// by the home menu's picker and co-op's lobby picker.
+export const callingBalanceView = <Message>(
+  bones: number,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.div(
+    [
+      h.Class('calling-balance'),
+      h.Role('group'),
+      h.AriaLabel(`${bones} Bones`),
+    ],
+    [boneCountView(bones, 'calling-balance-count', h)],
+  )
+
+// NOTE: the BUY button: a bright gold arcade button when the Bones cover
+// the hero, dim and red with how many more it needs when they do not. The
+// caller says what a tap sends.
+export const callingBuyView = <Message>(
+  input: Readonly<{ calling: Calling; bones: number; onBuy: Message }>,
+  h: HtmlBuilder<Message>,
+): Html => {
+  const price = Option.getOrElse(callingPriceOf(input.calling), () => 0)
+  const lacking = Math.max(0, price - input.bones)
+  return h.button(
+    [
+      h.Type('button'),
+      h.Key('calling-buy'),
+      h.Class('calling-buy'),
+      h.AriaLabel(
+        lacking > 0
+          ? `Buy for ${price} Bones, too few`
+          : `Buy for ${price} Bones`,
+      ),
+      ...(lacking > 0
+        ? [h.Disabled(true), h.DataAttribute('short', 'true')]
+        : [h.OnClick(input.onBuy)]),
+    ],
+    [
+      h.span([h.Class('calling-buy-word'), h.AriaHidden(true)], ['BUY']),
+      boneCountView(price, 'calling-buy-price', h),
+      ...(lacking > 0
+        ? [
+            h.span(
+              [h.Class('calling-buy-need'), h.AriaHidden(true)],
+              [`NEED ${lacking} MORE`],
+            ),
+          ]
+        : []),
+    ],
+  )
+}

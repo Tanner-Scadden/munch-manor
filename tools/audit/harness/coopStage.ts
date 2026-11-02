@@ -63,6 +63,9 @@ const coopRoom = (
     codeCopies: 0,
     departure: 'Staying',
     isPickingCalling: false,
+    maybeNameDraft: Option.none(),
+    maybeNudge: Option.none(),
+    maybeTryingCalling: Option.none(),
     ...extra,
   }
 }
@@ -208,6 +211,44 @@ const coopScreen = (
     case 'heroes': {
       const room = coopRoom(members(3, 1), 'Lobby')
       return Screen.InRoom({ room: { ...room, isPickingCalling: true } })
+    }
+    case 'guest':
+      return Screen.InRoom({
+        room: coopRoom(members(3, 1), 'Lobby', {
+          slot: 1,
+          maybePlayerId: Option.some('player-1'),
+        }),
+      })
+    case 'nudge':
+      return Screen.InRoom({
+        room: coopRoom(members(3, 1), 'Lobby', {
+          slot: 1,
+          maybePlayerId: Option.some('player-1'),
+          maybeNudge: Option.some({ reason: 'HostPicks', count: 1 }),
+        }),
+      })
+    case 'padlock':
+      return Screen.InRoom({
+        room: coopRoom(members(3, 1), 'Lobby', {
+          maybeNudge: Option.some({ reason: 'Locked', count: 1 }),
+        }),
+      })
+    case 'name': {
+      const room = coopRoom(members(3, 1), 'Lobby')
+      return Screen.InRoom({
+        room: { ...room, maybeNameDraft: Option.some('Tanner') },
+      })
+    }
+    case 'herosale':
+    case 'heroshort': {
+      const room = coopRoom(members(3, 1), 'Lobby')
+      return Screen.InRoom({
+        room: {
+          ...room,
+          isPickingCalling: true,
+          maybeTryingCalling: Option.some('TrackStar' as const),
+        },
+      })
     }
     case 'picks': {
       const room = coopRoom(members(2, 1), 'Lobby')

@@ -21,6 +21,7 @@ const prepare = () =>
     EffectsLayer,
     operations: {
       requestOpen: Message.RequestedOpen,
+      requestBoughtHero: Message.RequestedBoughtHero,
       requestPressKey: Message.RequestedPressKey,
       requestReleaseKey: Message.RequestedReleaseKey,
       requestTickRoom: Message.RequestedTickRoom,

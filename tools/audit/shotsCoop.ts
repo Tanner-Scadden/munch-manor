@@ -41,6 +41,17 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'host', query: 'coop=host' },
   { name: 'picks', query: 'coop=picks' },
   { name: 'heroes', query: 'coop=heroes' },
+  { name: 'name', query: 'coop=name' },
+  { name: 'herosale', query: 'coop=herosale&bones=150&spent=0' },
+  { name: 'heroshort', query: 'coop=heroshort&bones=40&spent=0' },
+  {
+    name: 'herobought',
+    query:
+      'coop=heroes&bones=150&spent=100&bought=hero:Handyman,hero:TrackStar',
+  },
+  { name: 'guest', query: 'coop=guest' },
+  { name: 'nudge', query: 'coop=nudge' },
+  { name: 'padlock', query: 'coop=padlock' },
   { name: 'keep', query: 'coop=keep' },
   { name: 'ready', query: 'coop=ready' },
   { name: 'result', query: 'coop=result' },
@@ -65,6 +76,7 @@ const checkButtons = async (
       // NOTE: the hero picker covers the lobby, so only its own buttons count.
       const scope =
         document.querySelector('.coop-calling-picker') ??
+        document.querySelector('.coop-name-picker') ??
         document.querySelector('.coop') ??
         document
       const buttons = Array.from(scope.querySelectorAll('button'))
@@ -121,6 +133,11 @@ for (const viewport of SHOT_VIEWPORTS) {
     await page.goto(harnessUrl('nodev', scene.query, deviceQuery(viewport)))
     await page.waitForSelector('canvas')
     await wait(900)
+    // NOTE: a shot shows an ended animation at its end, and the note's end
+    // is gone, so hold it at its start.
+    await page.addStyleTag({
+      content: '.coop-nudge { animation: none !important; opacity: 1; }',
+    })
     await checkButtons(page, viewport, label, problems)
     await shot(page, `coop-${TAG}-${viewport.name}-${scene.name}`)
     console.log(`shot ${label}`)

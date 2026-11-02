@@ -20,6 +20,7 @@ import { first, settle } from '@munch/sync-engine/testing'
 
 import {
   ChangedMemberCalling,
+  ChangedMemberName,
   ChangedPicks,
   ChangedReady,
   CreatedRoom,
@@ -456,6 +457,49 @@ describe('the room scope', () => {
             by: BO,
             calling: 'TrackStar',
           }),
+        ).toMatch(/Not in the lobby/)
+      }),
+  )
+
+  it.effect(
+    'a player renames themselves in the lobby, and only themselves',
+    () =>
+      Effect.gen(function* () {
+        const server = yield* created
+        yield* seat(server, BO)
+        const names = Effect.map(lobbyOf(server), lobby =>
+          lobby.members.map(member => member.name),
+        )
+        yield* push(server, BO, ChangedReady, { by: BO, ready: true })
+        expect(
+          yield* push(server, BO, ChangedMemberName, {
+            by: BO,
+            name: '  Gravy   Dave ',
+          }),
+        ).toBe('Acked')
+        expect((yield* names)[1]).toBe('Gravy Dave')
+        // NOTE: the name is the player's own, so nobody's READY goes.
+        expect(
+          (yield* lobbyOf(server)).members.map(member => member.ready),
+        ).toEqual([false, true])
+        // NOTE: too long is cut to the limit, as at join; empty is "Player N".
+        yield* push(server, BO, ChangedMemberName, {
+          by: BO,
+          name: 'Extraordinarily Long Name',
+        })
+        expect((yield* names)[1]).toBe('Extraordinar')
+        yield* push(server, BO, ChangedMemberName, { by: BO, name: '   ' })
+        expect((yield* names)[1]).toBe('Player 2')
+        expect(
+          yield* push(server, ANA, ChangedMemberName, { by: BO, name: 'Mine' }),
+        ).not.toBe('Acked')
+        expect(
+          yield* push(server, CY, ChangedMemberName, { by: CY, name: 'Cy' }),
+        ).toMatch(/Not in this room|member/i)
+        expect((yield* names)[1]).toBe('Player 2')
+        yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
+        expect(
+          yield* push(server, BO, ChangedMemberName, { by: BO, name: 'Late' }),
         ).toMatch(/Not in the lobby/)
       }),
   )

@@ -1,4 +1,4 @@
-import { Array, Effect, Layer, Option, Schema } from 'effect'
+import { Array, Effect, Layer, Option } from 'effect'
 import {
   Command,
   expectOutMessage,
@@ -25,7 +25,6 @@ import {
   FIRE_BUTTON,
   actionCodeOf,
   heldAction,
-  roomSettingsOf,
   seatActionOf,
 } from '../roomWorld'
 import { SeatAction } from '../stepWorld'
@@ -33,15 +32,14 @@ import { Message, OutMessage } from './message'
 import {
   LobbyChange,
   type Model,
-  type Room,
   RoomRequest,
   Screen,
   emptyQueue,
-  initialModel,
   noPresses,
 } from './model'
-import { cleanCode, freshRoom, maybeRoomOf, pressAction } from './roomState'
+import { cleanCode, freshRoom, pressAction } from './roomState'
 import { coopWorld } from './seam'
+import { inRoom, lobbyUpdate, onHub, picked, roomOf } from './story.fixture'
 import {
   CODE,
   lobbyOf,
@@ -59,21 +57,9 @@ import {
   RequestRoom,
   ResyncRoom,
   SendRoomFrames,
-  open,
-  pressKey,
   tickRoom,
   update,
 } from './update'
-
-const onHub: Model = open(
-  initialModel,
-  '',
-  Option.none(),
-  '',
-  1,
-  'You',
-  ['hero:Handyman'],
-).model
 
 const resolveFocus = () =>
   Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement())
@@ -105,32 +91,7 @@ const matched = Message.ReceivedQuickPlayEvent({
   event: { _tag: 'Heard', message: { _tag: 'Matched', code: CODE, slot: 1 } },
 })
 
-const roomOf = (current: Model): Room => Option.getOrThrow(maybeRoomOf(current))
-
-const inRoom = (slot: number): Model =>
-  modifyFields(onHub, {
-    screen: () => Screen.InRoom({ room: freshRoom(CODE, slot) }),
-  })
-
-const lobbyUpdate = (lobby: ReturnType<typeof lobbyOf>) =>
-  Message.ReceivedLobbyEvent({ event: { _tag: 'Updated', lobby } })
-
 const TWO = [memberOf(0, 'Ana'), memberOf(1, 'Bo')]
-
-const decodeChange = Schema.decodeUnknownOption(
-  Schema.Struct({ change: LobbyChange }),
-)
-
-const picked = (current: Model, code: string) =>
-  Array.flatMap(pressKey(current, code).commands ?? [], command =>
-    Option.match(decodeChange(command.args), {
-      onNone: () => [],
-      onSome: ({ change }) =>
-        LobbyChange.isAnyOf(['ChangedPicks'])(change)
-          ? [change.mode, change.difficulty]
-          : [],
-    }),
-  )
 
 describe('co-op hub', () => {
   test('the X on the hub closes co-op and tells the parent', () => {
@@ -468,100 +429,6 @@ describe('the lobby', () => {
   })
 })
 
-describe('picking a hero in the lobby', () => {
-  const ANA_RANK_4 = memberOf(0, 'Ana', true, '', false, 4)
-  const BO = memberOf(1, 'Bo')
-  const lobbyAt4 = lobbyOf([ANA_RANK_4, BO])
-  const opened = (): Model =>
-    update(
-      update(inRoom(0), lobbyUpdate(lobbyAt4)).model,
-      Message.ClickedCallingPill(),
-    ).model
-
-  test('the pill and Y open the picker, and Y or Escape close it', () => {
-    const lobbied = update(inRoom(0), lobbyUpdate(lobbyAt4)).model
-    expect(roomOf(lobbied).isPickingCalling).toBe(false)
-    const byKey = pressKey(lobbied, 'KeyY').model
-    expect(roomOf(byKey).isPickingCalling).toBe(true)
-    expect(roomOf(pressKey(byKey, 'KeyY').model).isPickingCalling).toBe(false)
-    expect(roomOf(pressKey(byKey, 'Escape').model).isPickingCalling).toBe(false)
-    expect(roomOf(opened()).isPickingCalling).toBe(true)
-  })
-
-  test('Enter and the picks wait while it is open', () => {
-    const up = opened()
-    expect(pressKey(up, 'Enter').commands).toBeUndefined()
-    expect(picked(up, 'KeyE')).toEqual([])
-  })
-
-  test('a hero the rank reached goes to the lobby and the parent, and READY stays', () => {
-    story(
-      update,
-      given(opened()),
-      message(Message.ClickedCallingPick({ calling: 'Handyman' })),
-      expectOutMessage(OutMessage.ChoseCalling({ calling: 'Handyman' })),
-      Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedMemberCalling({ calling: 'Handyman' }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
-      model(current => {
-        expect(roomOf(current).isPickingCalling).toBe(false)
-        expect(current.calling).toBe('Handyman')
-        expect(
-          Option.exists(roomOf(current).maybeLobby, lobby =>
-            lobby.members.every(member => member.ready === (member.slot === 0)),
-          ),
-        ).toBe(true)
-      }),
-    )
-  })
-
-  test('a hero the rank has not reached, or the one already worn, sends nothing', () => {
-    story(
-      update,
-      given(opened()),
-      message(Message.ClickedCallingPick({ calling: 'LineCook' })),
-      Command.expectNone(),
-      model(current => {
-        expect(roomOf(current).isPickingCalling).toBe(true)
-      }),
-      message(Message.ClickedCallingPick({ calling: 'You' })),
-      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
-      model(current => {
-        expect(roomOf(current).isPickingCalling).toBe(false)
-      }),
-    )
-  })
-
-  test('a hero changed in the lobby is the one the start seats', () => {
-    const changed = update(
-      update(inRoom(0), lobbyUpdate(lobbyAt4)).model,
-      lobbyUpdate({
-        ...lobbyAt4,
-        members: [{ ...ANA_RANK_4, calling: 'Handyman' }, BO],
-      }),
-    ).model
-    const lobby = Option.getOrThrow(roomOf(changed).maybeLobby)
-    expect(
-      roomSettingsOf('Campaign', 'Normal', lobby.members).callings,
-    ).toEqual([
-      { slot: 0, calling: 'Handyman' },
-      { slot: 1, calling: 'You' },
-    ])
-  })
-
-  test('a started run closes the picker', () => {
-    const playing = update(
-      opened(),
-      lobbyUpdate({ ...lobbyAt4, status: 'Playing' }),
-    )
-    expect(roomOf(playing.model).isPickingCalling).toBe(false)
-  })
-})
-
 // NOTE: the Input frames a return's SendRoomFrames carry.
 const sentInputs = (
   commands: ReadonlyArray<{ readonly name: string; readonly args?: unknown }>,
@@ -785,16 +652,13 @@ describe('the room', () => {
           const ticked = tickRoom(current, NEUTRAL_INPUT, 3000).model
           expect(roomOf(ticked).link).toBe('Reconnecting')
           expect(roomOf(ticked).droppedAtMs).toEqual(Option.some(3000))
-          expect(roomOf(tickRoom(ticked, NEUTRAL_INPUT, 22_900).model).link).toBe(
-            'Reconnecting',
-          )
+          expect(
+            roomOf(tickRoom(ticked, NEUTRAL_INPUT, 22_900).model).link,
+          ).toBe('Reconnecting')
           const lost = tickRoom(ticked, NEUTRAL_INPUT, 23_000).model
           expect(roomOf(lost).link).toBe('Lost')
           // NOTE: the room answers again: back Online, the clock cleared.
-          const back = update(
-            lost,
-            received(snapshotFrame(30), 24_000),
-          ).model
+          const back = update(lost, received(snapshotFrame(30), 24_000)).model
           expect(roomOf(back).link).toBe('Online')
           expect(roomOf(back).droppedAtMs).toEqual(Option.none())
         }),

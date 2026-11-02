@@ -35,6 +35,7 @@ export const LobbyChange = defineTaggedUnion({
   ChangedReady: { ready: Schema.Boolean, pingMs: Schema.Number },
   ChangedPicks: { mode: PickedMode, difficulty: RoomDifficulty },
   ChangedMemberCalling: { calling: Calling },
+  ChangedMemberName: { name: Schema.String },
   KickedPlayer: { playerId: Schema.String },
 })
 export type LobbyChange = typeof LobbyChange.Type
@@ -106,6 +107,18 @@ export const noPresses: Presses = {
   heldFrom: -1,
 }
 
+// NOTE: a tap on a pick the player cannot change answers with a note, in
+// place: the host picks, or Nightmare is locked. `count` restarts the note's
+// fade on every tap.
+export const NudgeReason = Schema.Literals(['HostPicks', 'Locked'])
+export type NudgeReason = typeof NudgeReason.Type
+
+const Nudge = Schema.Struct({
+  reason: NudgeReason,
+  count: Schema.Number,
+})
+type Nudge = typeof Nudge.Type
+
 // NOTE: `codeCopies` counts the times the room code went to the clipboard,
 // so each copy flashes COPIED! afresh.
 // NOTE: `maybeWorld` is the World to draw this frame, everyone else about
@@ -138,6 +151,9 @@ export const Room = Schema.Struct({
   codeCopies: Schema.Number,
   departure: Departure,
   isPickingCalling: Schema.Boolean,
+  maybeNameDraft: Schema.Option(Schema.String),
+  maybeNudge: Schema.Option(Nudge),
+  maybeTryingCalling: Schema.Option(Calling),
 })
 export type Room = typeof Room.Type
 
@@ -167,9 +183,12 @@ export const Model = Schema.Struct({
   look: Schema.String,
   rank: Schema.Number,
   calling: Calling,
+  rngState: Schema.Number,
   // NOTE: the ids of the heroes and looks this player bought, so the lobby's
   // picker offers only the heroes they own.
   bought: SavedBoughtCosmetics,
+  // NOTE: the player's Bones, for the BUY pill's price check.
+  bones: Schema.Number,
 })
 export type Model = typeof Model.Type
 
@@ -179,7 +198,9 @@ export const initialModel: Model = {
   look: '',
   rank: 1,
   calling: 'You',
+  rngState: 0,
   bought: [],
+  bones: 0,
 }
 
 export const emptyQueue: Queue = {
