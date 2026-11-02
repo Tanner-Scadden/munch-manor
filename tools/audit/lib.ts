@@ -619,6 +619,22 @@ export const waitForDialog = (page: Page) =>
     .waitFor({ state: 'visible', timeout: OPEN_TIMEOUT_MS })
     .catch(() => undefined)
 
+// NOTE: the lobby PLAY opens for a scene whose player has learned to move
+// and fire (`learned=move,fire`; a new player's PLAY starts the tutorial).
+const LOBBY = '.coop[data-screen="Solo"]'
+
+export const waitForLobby = (page: Page) =>
+  page
+    .locator(LOBBY)
+    .waitFor({ state: 'visible', timeout: OPEN_TIMEOUT_MS })
+    .catch(() => undefined)
+
+// NOTE: clicks PLAY and waits for the lobby.
+export const openLobby = async (page: Page) => {
+  await page.click('#home-play')
+  await waitForLobby(page)
+}
+
 // NOTE: waits for the game's loading splash to go, the game up.
 export const awaitGame = (page: Page) =>
   page.waitForFunction(() => document.getElementById('splash') === null, {

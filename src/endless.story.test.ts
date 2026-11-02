@@ -38,14 +38,18 @@ import {
   bulletInto,
   doomed,
   holdingSecond,
+  openLobbyByKey,
   pistolOf,
   pistolOnly,
   press,
+  resolveFocusLobby,
   scoring,
+  startRunFromHome,
   tick,
   ticksFor,
   zombieAt,
 } from './testing'
+import { asVeteran } from './veteran'
 import { FINAL_WAVE } from './wavePlans'
 import { STARTING_PISTOL } from './weapons'
 import { ZOMBIE_KINDS } from './zombies'
@@ -99,11 +103,11 @@ const preparationWave = (phase: Phase): Option.Option<number> =>
   )
 
 describe('choosing a mode', () => {
-  test('Enter on the title plays the chosen mode, and E switches it', () => {
+  test('the lobby plays the chosen mode, and E switches it', () => {
     story(
       update,
-      given(readyModel),
-      press('Enter'),
+      given(asVeteran(readyModel)),
+      startRunFromHome,
       model(({ mode, phase }) => {
         expect(mode).toEqual(RunMode.Campaign())
         expect(preparationWave(phase)).toEqual(Option.some(1))
@@ -111,8 +115,10 @@ describe('choosing a mode', () => {
     )
     story(
       update,
-      given(readyModel),
+      given(asVeteran(readyModel)),
+      openLobbyByKey,
       press('KeyE'),
+      resolveFocusLobby(),
       model(({ home, phase }) => {
         expect(home.mode).toBe('Endless')
         expect(Phase.guards.Ready(phase)).toBe(true)

@@ -1,41 +1,4 @@
-/* HEROES: the pill by the difficulty on the home menu, and its picker. */
-
-.home-pick-row {
-  display: flex;
-  gap: var(--menu-gap-sm);
-}
-
-.home-pick-row .home-difficulty {
-  flex: 1;
-}
-
-.home-calling {
-  flex: 0 0 auto;
-  width: var(--pick-h);
-  border-color: var(--menu-pink);
-}
-
-.home-calling[data-calling='You'] {
-  border-color: var(--menu-line-strong);
-}
-
-.home-calling-icon {
-  width: max(22px, 8 * var(--a));
-  height: max(22px, 8 * var(--a));
-  background: center / contain no-repeat;
-  image-rendering: pixelated;
-  pointer-events: none;
-}
-
-.game-root[data-layout='Portrait'] .home-pick-row {
-  display: contents;
-}
-
-.game-root[data-layout='Portrait'] .home-calling {
-  flex: 0 0 52px;
-  width: 52px;
-  min-height: 52px;
-}
+/* HEROES: the picker the lobby's hero card opens. */
 
 .panel-dialog[data-panel='Calling'] .panel {
   width: min(760px, calc(100vw - 16px));

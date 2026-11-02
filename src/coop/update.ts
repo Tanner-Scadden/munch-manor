@@ -499,7 +499,9 @@ const pickCalling = (
         return {
           model: modifyFields(closed.model, { calling: () => calling }),
           commands: [
-            ChangeLobby({ change: LobbyChange.ChangedMemberCalling({ calling }) }),
+            ChangeLobby({
+              change: LobbyChange.ChangedMemberCalling({ calling }),
+            }),
             ...closed.commands,
           ],
           outMessage: OutMessage.ChoseCalling({ calling }),

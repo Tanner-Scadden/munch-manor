@@ -189,9 +189,6 @@ export type FullscreenSetting = typeof FullscreenSetting.Type
 
 export const HomeButton = Schema.Literals([
   'Play',
-  'Mode',
-  'Difficulty',
-  'Calling',
   'Coop',
   'Manor',
   'Support',
@@ -280,6 +277,31 @@ export type RankGain = typeof RankGain.Type
 export const HomeMode = Schema.Literals(['Campaign', 'Endless'])
 export type HomeMode = typeof HomeMode.Type
 
+// NOTE: the single player lobby PLAY opens (src/lobby.ts): the settings of
+// a run before it starts. It is a screen of the home menu, so a run that
+// starts or a way home leaves it Closed.
+export const HomeLobby = Schema.Literals(['Closed', 'Open'])
+export type HomeLobby = typeof HomeLobby.Type
+
+// NOTE: the maps a run can be played on (src/lobby.ts). One for now.
+export const MapId = Schema.Literals(['Manor'])
+export type MapId = typeof MapId.Type
+
+// NOTE: every control the lobby's arrow keys walk, in order: BACK, the hero
+// card, the two modes, the four difficulties, then START.
+export const LobbyControl = Schema.Literals([
+  'Back',
+  'Hero',
+  'Campaign',
+  'Endless',
+  'Easy',
+  'Normal',
+  'Hard',
+  'Nightmare',
+  'Start',
+])
+export type LobbyControl = typeof LobbyControl.Type
+
 export const MunchopediaPage = defineTaggedUnion({
   List: {},
   Entry: { kind: ZombieKind },
@@ -292,6 +314,8 @@ export type MunchopediaPage = typeof MunchopediaPage.Type
 // the kinds unlocked by the last counted run, for the NEW ENTRY pop.
 export const HomeMenu = Schema.Struct({
   mode: HomeMode,
+  lobby: HomeLobby,
+  maybeLobbyFocus: Schema.Option(LobbyControl),
   maybeSeenNewsDay: Schema.Option(Schema.String),
   newsPage: Schema.Number,
   munchopediaPage: MunchopediaPage,
@@ -302,6 +326,8 @@ export type HomeMenu = typeof HomeMenu.Type
 
 export const freshHomeMenu: HomeMenu = {
   mode: 'Campaign',
+  lobby: 'Closed',
+  maybeLobbyFocus: Option.none(),
   maybeSeenNewsDay: Option.none(),
   newsPage: 0,
   munchopediaPage: MunchopediaPage.List(),

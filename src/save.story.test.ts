@@ -47,8 +47,9 @@ import {
   unvisitedHome,
   writeLegacySave,
 } from './save'
-import { finishSplash, showDialog, tick } from './testing'
+import { finishSplash, resolveFocusLobby, showDialog, tick } from './testing'
 import { FocusTutorialReset, WriteSave } from './update/save'
+import { asVeteran } from './veteran'
 import { ZOMBIE_KIND_ORDER } from './zombies'
 
 const learnedSave: PlayerSave = {
@@ -668,20 +669,15 @@ describe('writing the save', () => {
     )
   })
 
-  test('choosing a difficulty by PLAY writes the new save', () => {
-    const settings = modifyFields(read, {
-      panel: () => 'Difficulty',
-      panelDialog: dialog => ({ ...dialog, isOpen: true }),
-      difficultyCard: () => DifficultyCard.Seen(),
-    })
+  test('choosing a difficulty in the lobby writes the new save', () => {
+    const settings = asVeteran(read)
     story(
       update,
       given(settings),
-      message(Message.ClickedDifficultyCardButton({ difficulty: 'Easy' })),
-      Command.resolve(
-        Dialog.test.CloseDialog,
-        DialogBlock.Message.CompletedCloseDialog(),
-      ),
+      message(Message.ClickedPlayButton()),
+      resolveFocusLobby(),
+      message(Message.ClickedLobbyDifficultyButton({ difficulty: 'Easy' })),
+      resolveFocusLobby(),
       Command.expectExact(
         WriteSave({
           save: saveOf(

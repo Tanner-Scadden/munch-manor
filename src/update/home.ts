@@ -26,12 +26,9 @@ import {
   handCardId,
   homeButtonId,
   homeButtonsOf,
-  isCallingKey,
-  isDifficultyKey,
   isEndScreen,
   isInstallTileShown,
   isManorKey,
-  isModeKey,
   isOnHome,
   isSettingsKey,
   isSupportKey,
@@ -39,11 +36,9 @@ import {
   isUpdateGiftShown,
   maybeHandCardOfKey,
   returnHome,
-  runModeOf,
   seeNews,
   showMunchopediaPage,
   steppedHomeFocus,
-  switchMode,
   turnNewsPage,
 } from '../home'
 import { isMenuKey, isStartKey, maybeFocusStep, releaseAll } from '../input'
@@ -197,12 +192,18 @@ export const forgetAskedMode: UpdateStep = stepModel => ({
     : stepModel,
 })
 
-// NOTE: Leave Run opens over the pause menu, every other panel over the
-// bare home menu.
-const isPanelAllowed = (model: Model, panel: MenuPanel): boolean =>
-  MenuState.isAnyOf([panel === 'LeaveRun' ? 'Paused' : 'Home'])(
-    menuState(model),
-  )
+// NOTE: Leave Run opens over the pause menu, the hero picker over the bare
+// home menu or the single player lobby, every other panel over the bare home
+// menu.
+const isPanelAllowed = (model: Model, panel: MenuPanel): boolean => {
+  if (panel === 'LeaveRun') {
+    return MenuState.isAnyOf(['Paused'])(menuState(model))
+  } else if (panel === 'Calling') {
+    return MenuState.isAnyOf(['Home', 'Lobby'])(menuState(model))
+  } else {
+    return MenuState.isAnyOf(['Home'])(menuState(model))
+  }
+}
 
 const showPanel =
   (panel: MenuPanel): UpdateStep =>
@@ -318,9 +319,6 @@ export const homeFocusFromKey: (code: string) => UpdateStep =
 
 // HOME MENU
 
-export const homeStartFromKey = (model: Model, code: string): Model =>
-  isStartKey(code) ? startWhenAllowed(model, runModeOf(model.home.mode)) : model
-
 export const openWhatsNew = makeStep(model =>
   isPanelAllowed(model, 'WhatsNew')
     ? Update.combineSteps([modelStep(seeNews), openPanel('WhatsNew')])
@@ -372,12 +370,6 @@ export const homeFromKey = (code: string) =>
   makeStep(model => {
     if (!isOnHomeMenu(model)) {
       return unchanged
-    } else if (isModeKey(code)) {
-      return modelStep(switchMode)
-    } else if (isDifficultyKey(code)) {
-      return openPanel('Difficulty')
-    } else if (isCallingKey(code)) {
-      return openPanel('Calling')
     } else if (isManorKey(code)) {
       return openHand
     } else if (isSupportKey(code)) {
@@ -413,7 +405,7 @@ const askDifficulty = (mode: RunMode) =>
       : unchanged,
   )
 
-const startWithMode =
+export const startWithMode =
   (mode: RunMode): UpdateStep =>
   stepModel =>
     startFromButton(stepModel, startWhenAllowed(stepModel, mode))
@@ -425,13 +417,6 @@ export const startOrAsk = (mode: RunMode) =>
       : startWithMode(mode),
   )
 
-export const difficultyCardFromKey = (code: string) =>
-  makeStep(model =>
-    isAskingDifficultyFirst(model) && isStartKey(code)
-      ? askDifficulty(runModeOf(model.home.mode))
-      : unchanged,
-  )
-
 const chooseFromCard =
   (difficulty: Difficulty): UpdateStep =>
   stepModel => ({
@@ -440,20 +425,13 @@ const chooseFromCard =
     }),
   })
 
-const pickFromBadge = (difficulty: Difficulty) =>
-  makeStep(model =>
-    isPanelOpen(model, 'Difficulty') &&
-    isOnHome(model.phase) &&
-    !isLocked(model.difficulty, difficulty)
-      ? Update.combineSteps([chooseFromCard(difficulty), closePanel])
-      : unchanged,
-  )
-
+// NOTE: the difficulty panel opens only to ask a new player before a first
+// run. Every later pick is in the single player lobby (src/update/lobby.ts).
 export const pickFromCard = (difficulty: Difficulty) =>
   makeStep(model =>
     DifficultyCard.match(model.difficultyCard, {
-      Unseen: () => pickFromBadge(difficulty),
-      Seen: () => pickFromBadge(difficulty),
+      Unseen: () => unchanged,
+      Seen: () => unchanged,
       Asking: ({ mode }) =>
         isLocked(model.difficulty, difficulty)
           ? unchanged

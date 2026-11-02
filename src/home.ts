@@ -5,6 +5,7 @@ import { maybeNewestNewsDay } from './changelog'
 import { FEEDBACK_LINE, RESTART_GRACE_MS } from './constants'
 import { IS_COOP_RELEASED } from './coop/release'
 import { hasJustWon } from './difficulty'
+import { FOCUS_STEP_OFFSET } from './input'
 import {
   type DifficultyBests,
   type HandCard,
@@ -26,31 +27,20 @@ import type { Difficulty } from './worldSchema'
 
 // BUTTONS
 
-// NOTE: the home layout. Arrow keys walk PLAY, the mode, the difficulty,
-// CO-OP, the MANOR button, the coffee, then the gear. Everything else lives
-// in the MANOR hand, so a new feature is a new card there and PLAY never
+// NOTE: the home layout. Arrow keys walk PLAY, CO-OP, the MANOR button, the
+// coffee, then the gear. The mode, difficulty, and hero are picked in the
+// single player lobby PLAY opens (src/lobby.ts). Everything else lives in
+// the MANOR hand, so a new feature is a new card there and PLAY never
 // moves. CO-OP joins only in builds where co-op is released
 // (src/coop/release.ts), and the coffee only while a support link is set
 // (homeButtonsOf).
 export const HOME_BUTTONS: Array.NonEmptyReadonlyArray<HomeButton> =
   IS_COOP_RELEASED
-    ? [
-        'Play',
-        'Mode',
-        'Difficulty',
-        'Calling',
-        'Coop',
-        'Manor',
-        'Support',
-        'Settings',
-      ]
-    : ['Play', 'Mode', 'Difficulty', 'Calling', 'Manor', 'Support', 'Settings']
+    ? ['Play', 'Coop', 'Manor', 'Support', 'Settings']
+    : ['Play', 'Manor', 'Support', 'Settings']
 
 const HOME_BUTTON_IDS: Readonly<Record<HomeButton, string>> = {
   Play: 'home-play',
-  Mode: 'home-mode',
-  Difficulty: 'home-difficulty',
-  Calling: 'home-calling',
   Coop: 'home-coop',
   Manor: 'home-manor',
   Support: 'home-support',
@@ -68,28 +58,18 @@ export const homeButtonsOf = (model: Model): ReadonlyArray<HomeButton> =>
 
 type HomeKey = Readonly<{ code: string; cap: string; name: string }>
 
-// NOTE: one key per action. Enter, E, C, L, Z, I, and O were already the
-// home keys. X picks the difficulty, Y the calling, J joins up for co-op, V opens the
-// MANOR hand, and B buys Rattles a coffee, letters no other screen uses, so
-// WASD, R, Q, T, G, H, K, M, and N keep their one meaning.
+// NOTE: one key per action. Enter, C, L, Z, I, and O were already the home
+// keys. J joins up for co-op, V opens the MANOR hand, and B buys Rattles a
+// coffee, letters no other screen uses, so WASD, R, Q, T, G, H, K, M, and N
+// keep their one meaning. E, X, and Y pick the mode, difficulty, and hero in
+// the lobby (src/lobby.ts).
 export const HOME_KEYS: Readonly<Record<HomeButton, HomeKey>> = {
   Play: { code: 'Enter', cap: 'ENTER', name: 'Enter' },
-  Mode: { code: 'KeyE', cap: 'E', name: 'E' },
-  Difficulty: { code: 'KeyX', cap: 'X', name: 'X' },
-  Calling: { code: 'KeyY', cap: 'Y', name: 'Y' },
   Coop: { code: 'KeyJ', cap: 'J', name: 'J' },
   Manor: { code: 'KeyV', cap: 'V', name: 'V' },
   Support: { code: 'KeyB', cap: 'B', name: 'B' },
   Settings: { code: 'KeyO', cap: 'O', name: 'O' },
 }
-
-export const isModeKey = (code: string): boolean => code === HOME_KEYS.Mode.code
-
-export const isDifficultyKey = (code: string): boolean =>
-  code === HOME_KEYS.Difficulty.code
-
-export const isCallingKey = (code: string): boolean =>
-  code === HOME_KEYS.Calling.code
 
 export const isCoopKey = (code: string): boolean => code === HOME_KEYS.Coop.code
 
@@ -165,11 +145,6 @@ export const steppedHandCard = (
 export const RESET_TUTORIAL_BUTTON_ID = 'reset-tutorial'
 export const KEEP_TUTORIAL_BUTTON_ID = 'keep-tutorial'
 
-const STEP_OFFSET: Readonly<Record<FocusStep, number>> = {
-  Previous: -1,
-  Next: 1,
-}
-
 export const steppedHomeFocus = (
   buttons: ReadonlyArray<HomeButton>,
   maybeFocus: Option.Option<HomeButton>,
@@ -185,7 +160,7 @@ export const steppedHomeFocus = (
       )
       const count = buttons.length
       return pipe(
-        Array.get(buttons, (index + STEP_OFFSET[step] + count) % count),
+        Array.get(buttons, (index + FOCUS_STEP_OFFSET[step] + count) % count),
         Option.getOrElse(() => first),
       )
     },

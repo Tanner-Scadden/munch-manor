@@ -8,8 +8,8 @@ import { MenuPanel, type Model, Phase, ProfileTab } from './model'
 // NOTE: what the player is looking at, derived from the Model and never
 // stored. Update's gates and the view both read it, so "is a menu open"
 // has one answer. The dialogs come first, top to bottom (the shop's
-// dialog also opens in a co-op run), then co-op's own screens, then the
-// phase. Only this module reads a dialog's `isOpen` or `model.coop.screen`
+// dialog also opens in a co-op run), then the single player lobby, then
+// co-op's own screens, then the phase. Only this module reads a dialog's `isOpen` or `model.coop.screen`
 // (munch/no-menu-field).
 export const MenuState = defineTaggedUnion({
   Shop: {},
@@ -18,6 +18,7 @@ export const MenuState = defineTaggedUnion({
   Hand: {},
   InstallSteps: {},
   UpdateGreeting: {},
+  Lobby: {},
   Coop: {},
   Home: {},
   Playing: {},
@@ -56,6 +57,8 @@ export const menuState = (model: Model): MenuState => {
     return MenuState.InstallSteps()
   } else if (model.updateGreeting.isOpen) {
     return MenuState.UpdateGreeting()
+  } else if (isLobbyUp(model)) {
+    return MenuState.Lobby()
   } else if (isCoopScreenOpen(model.coop)) {
     return MenuState.Coop()
   } else {
@@ -67,6 +70,12 @@ export const menuState = (model: Model): MenuState => {
 // work, and its buttons open panels, the hand, the Profile, and co-op.
 export const isOnHomeMenu = (model: Model): boolean =>
   MenuState.isAnyOf(['Home'])(menuState(model))
+
+// NOTE: the lobby is on screen, whatever dialog is over it (the hero picker).
+export const isLobbyUp = (model: Model): boolean => model.home.lobby === 'Open'
+
+export const isLobbyOpen = (model: Model): boolean =>
+  MenuState.isAnyOf(['Lobby'])(menuState(model))
 
 export const isProfileOpen = (model: Model): boolean =>
   MenuState.isAnyOf(['Profile'])(menuState(model))

@@ -50,6 +50,7 @@ import {
   shot,
   useHarness,
   waitForDialog,
+  waitForLobby,
 } from './lib'
 
 const VIEWPORTS = pickViewports([
@@ -64,9 +65,12 @@ type Scene = Readonly<{
   name: string
   query: string
   open: ReadonlyArray<string>
+  // NOTE: the first open step is PLAY, which opens the lobby, not a dialog.
+  opensLobby?: boolean
 }>
 
 const MANOR = '#home-manor'
+const LOBBY_QUERY = 'learned=move,fire&rank=300&calling=Handyman'
 
 const SCENES: ReadonlyArray<Scene> = [
   {
@@ -89,7 +93,13 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   { name: 'howto', query: '', open: [MANOR, '#hand-card-howtoplay'] },
   { name: 'character', query: '', open: [MANOR, '#hand-card-character'] },
-  { name: 'difficulty', query: '', open: ['#home-difficulty'] },
+  { name: 'difficulty', query: 'ask', open: ['#home-play'] },
+  {
+    name: 'hero',
+    query: LOBBY_QUERY,
+    open: ['#home-play', '#lobby-hero'],
+    opensLobby: true,
+  },
   { name: 'home-guide', query: 'fit=home', open: ['#home-install'] },
   { name: 'greet', query: 'greet', open: [] },
 ]
@@ -157,7 +167,7 @@ const press = async (page: Page, viewport: Viewport, point: Point) => {
 // settle, never for a fixed time.
 const openScene = async (page: Page, viewport: Viewport, scene: Scene) => {
   await settleAnimations(page)
-  for (const selector of scene.open) {
+  for (const [step, selector] of scene.open.entries()) {
     const locator = page.locator(selector).first()
     await locator
       .waitFor({ state: 'visible', timeout: OPEN_TIMEOUT_MS })
@@ -170,7 +180,9 @@ const openScene = async (page: Page, viewport: Viewport, scene: Scene) => {
       x: box.x + box.width / 2,
       y: box.y + box.height / 2,
     })
-    await waitForDialog(page)
+    await (step === 0 && scene.opensLobby === true
+      ? waitForLobby(page)
+      : waitForDialog(page))
     await settleAnimations(page)
   }
   await page

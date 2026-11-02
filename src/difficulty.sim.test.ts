@@ -9,19 +9,18 @@ import { describe, expect, test } from 'vitest'
 import { update } from './main'
 import { Message } from './message'
 import { type Difficulty, type Model, Phase, initialModel } from './model'
-import { SURFACE } from './testing'
+import { SURFACE, startedRunOf } from './testing'
 import { asVeteran } from './veteran'
 
 const REPLAYED: ReadonlyArray<Difficulty> = ['Easy', 'Hard', 'Nightmare']
 
 const startedOn = (chosen: Difficulty): Model =>
-  update(
+  startedRunOf(
     modifyFields(asVeteran(initialModel), {
       maybeSurface: () => Option.some(SURFACE),
       difficulty: () => ({ chosen, nightmare: 'Unlocked' as const }),
     }),
-    Message.PressedKey({ code: 'Enter' }),
-  ).model
+  )
 
 describe('the multipliers', () => {
   test('the same seed on the same difficulty plays out the same', () => {

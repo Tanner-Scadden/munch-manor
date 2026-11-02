@@ -13,7 +13,9 @@ import {
   SHOTGUN,
   holdingFirst,
   holdingSecond,
+  openLobbyByKey,
   press,
+  resolveFocusLobby,
   tap,
   tick,
 } from './testing'
@@ -236,6 +238,7 @@ describe('one key per action: the kept keys work', () => {
     story(
       update,
       given(readyModel),
+      openLobbyByKey,
       tap('Enter'),
       model(({ phase, mode }) => {
         expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
@@ -260,11 +263,13 @@ describe('one key per action: the kept keys work', () => {
     )
   })
 
-  test('E switches the home mode to endless, and Enter plays it', () => {
+  test('E switches the lobby mode to endless, and Enter plays it', () => {
     story(
       update,
       given(readyModel),
+      openLobbyByKey,
       tap('KeyE'),
+      resolveFocusLobby(),
       model(({ phase, home }) => {
         expect(Phase.isAnyOf(['Ready'])(phase)).toBe(true)
         expect(home.mode).toBe('Endless')

@@ -40,6 +40,7 @@ import {
   holdingSecond,
   measureSurface,
   playButton,
+  startRunInScene,
   withPistol,
 } from './testing'
 import { FocusShopItem } from './update/shop'
@@ -57,7 +58,7 @@ const KEEP_GOING =
 const BACK_HOME = 'Press H or choose Menu to go back to the main menu.'
 
 const FEEDBACK = 'Tell whoever sent you this what you think!'
-const READY_STATUS = `${GAME_TITLE}, an early alpha. Main menu. Press Enter or choose Play to start. Press E to switch between the campaign and endless, and X to pick the difficulty. Press V or choose Manor for your character, the Munchopedia, what is new, and how to play. Press O or choose the gear for settings. Arrow keys move between the buttons.`
+const READY_STATUS = `${GAME_TITLE}, an early alpha. Main menu. Press Enter or choose Play. Press V or choose Manor for your character, the Munchopedia, what is new, and how to play. Press O or choose the gear for settings. Arrow keys move between the buttons.`
 
 const PAUSED_STATUS =
   'Paused during wave 3 of 10. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.'
@@ -87,7 +88,7 @@ describe('Ready screen', () => {
       }),
       expect(role('status')).toHaveText(READY_STATUS),
       expect(selector('[data-stick="move"]')).toBeAbsent(),
-      click(playButton),
+      ...startRunInScene(),
       expect(role('status')).toHaveText(PREPARING_WAVE_ONE),
     )
   })
@@ -138,7 +139,7 @@ describe('Start wave button', () => {
       given(asVeteran(initialModel)),
       measureSurface,
       expect(startWaveButton).toBeAbsent(),
-      click(playButton),
+      ...startRunInScene(),
       expect(role('status')).toHaveText(PREPARING_WAVE_ONE),
       expect(role('timer')).toHaveText('6 seconds until wave 1.'),
       expect(startWaveButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
@@ -734,7 +735,7 @@ describe('New zombie card', () => {
         modifyFields(asVeteran(initialModel), { introducedKinds: () => [] }),
       ),
       measureSurface,
-      click(playButton),
+      ...startRunInScene(),
       click(role('button', { name: 'Start wave 1 now' })),
       expect(continueButton).toBeAbsent(),
       ...Array.makeBy(CARD_TICKS, () =>

@@ -11,7 +11,7 @@ import { Message } from './message'
 import { type Model, Phase, ShopState, initialModel } from './model'
 import { DISTANT_SPAWN, atSeat } from './model.fixture'
 import { maybePlayerAt, playersOf } from './party'
-import { SURFACE, press, release, ticks } from './testing'
+import { SURFACE, press, release, startedRunOf, ticks } from './testing'
 import { asVeteran } from './veteran'
 import { type World } from './world'
 
@@ -27,8 +27,7 @@ const onTheCouch = (count: number): Model =>
     localPlayers: () => count,
   })
 
-const started = (count: number): Model =>
-  update(onTheCouch(count), Message.PressedKey({ code: 'Enter' })).model
+const started = (count: number): Model => startedRunOf(onTheCouch(count))
 
 const fighting = (count: number): Model =>
   modifyFields(started(count), {

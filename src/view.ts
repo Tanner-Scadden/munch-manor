@@ -21,6 +21,8 @@ import { homeScreenGuideView } from './installView'
 import { keyGrabToastView } from './keyGrab'
 import { gameStageView } from './layers'
 import { isPracticeGateHeld } from './lessons'
+import { lobbyView } from './lobbyView'
+import { isLobbyUp } from './menuState'
 import {
   cornerButtonsView,
   debutCardView,
@@ -97,7 +99,10 @@ const PLAY_AGAIN =
   'Press Enter or choose Retry to play again, or E for an endless run. Press X or choose Share to post your run on X.'
 
 const HOME_MENU =
-  'Main menu. Press Enter or choose Play to start. Press E to switch between the campaign and endless, and X to pick the difficulty. Press V or choose Manor for your character, the Munchopedia, what is new, and how to play. Press O or choose the gear for settings. Arrow keys move between the buttons.'
+  'Main menu. Press Enter or choose Play. Press V or choose Manor for your character, the Munchopedia, what is new, and how to play. Press O or choose the gear for settings. Arrow keys move between the buttons.'
+
+const LOBBY_MENU =
+  'Lobby. Press Enter, or choose Start, to start your run. Press E to switch between the campaign and endless, X to pick the difficulty, and Y to pick your hero. Press Escape, or choose Back, to leave. Arrow keys move between the buttons.'
 
 const BACK_HOME = 'Press H or choose Menu to go back to the main menu.'
 
@@ -167,7 +172,8 @@ const practiceGateNote = (model: Model): string =>
 
 const statusText = (model: Model): string => {
   return Phase.match(model.phase, {
-    Ready: () => `${GAME_TITLE}, an early alpha. ${HOME_MENU}`,
+    Ready: () =>
+      `${GAME_TITLE}, an early alpha. ${isLobbyUp(model) ? LOBBY_MENU : HOME_MENU}`,
     Preparation: ({ wave }) =>
       `Get ready for ${statusWave(model, wave)}. ${isOpenBreak(model) ? 'There is no timer this break. ' : ''}Press Enter, or use the Start wave button, to start it now.${practiceGateNote(model)}${shopHint(model)}`,
     Wave: ({ wave }) =>
@@ -297,7 +303,9 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         ),
         loadoutView(model, h),
         pauseHelpView(model, h.OnPointerDown(toPressedPointer), h),
-        isCoopOpen(model) ? h.empty : homeMenuView(model, h),
+        isCoopOpen(model) || isLobbyUp(model)
+          ? h.empty
+          : homeMenuView(model, h),
         preparationControlsView(model, h),
         gunClusterView(model, h),
         ammoTagButtonView(model, h),
@@ -314,6 +322,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         manorHandView(model, h),
         menuPanelView(model, h),
         profileView(model, h),
+        lobbyView(model, h),
         h.block(
           CoopBinding.embedView({
             slotId: 'coop',

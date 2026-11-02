@@ -20,6 +20,7 @@ import {
 } from '../input'
 import { playerKeyAction } from '../keyActions'
 import { advanceKitchenTour } from '../kitchenTour'
+import { isLobbyOpen } from '../menuState'
 import {
   type GunSlot,
   type InputDevice,
@@ -58,14 +59,8 @@ import {
   isRunCardKey,
   runCardFromKey,
 } from './end'
-import {
-  difficultyCardFromKey,
-  homeFocusFromKey,
-  homeFromKey,
-  homeStartFromKey,
-  isAskingDifficultyFirst,
-  menuFromKey,
-} from './home'
+import { homeFocusFromKey, homeFromKey, menuFromKey } from './home'
+import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
 import { closeShop, syncShopDialog } from './shop'
@@ -77,7 +72,6 @@ import {
   playStartSoundWhen,
   playSwapSoundWhen,
   toggleAudioFromKey,
-  uiCue,
   unlockAudio,
 } from './sound'
 import {
@@ -197,8 +191,7 @@ const debutCardFromKey = (model: Model, code: string): Model => {
 
 const phaseFromKey = (model: Model, code: string): Model =>
   Phase.match(model.phase, {
-    Ready: () =>
-      isAskingDifficultyFirst(model) ? model : homeStartFromKey(model, code),
+    Ready: () => model,
     Preparation: () => preparationFromKey(model, code),
     Wave: () => (isPauseKey(code) ? pause(model) : model),
     Paused: () => resumeFromKey(model, code),
@@ -210,9 +203,6 @@ const hasResumed = (before: Model, after: Model): boolean =>
   isPaused(before.phase) && !isPaused(after.phase)
 
 // MENU TAPS
-
-// NOTE: a soft pop on the home menu's own buttons, so a tap feels pressed.
-export const tapSound: UpdateStep = playSounds([uiCue('Pop')])
 
 // RELOAD
 
@@ -359,6 +349,13 @@ export const pressedKey = (code: string) =>
         unlockAudio,
       ])
     }
+    if (isLobbyOpen(keyed)) {
+      return Update.combineSteps([
+        toModel(keyed),
+        unlockAudio,
+        lobbyFromKey(code),
+      ])
+    }
     if (isCoopOpen(keyed)) {
       return Update.combineSteps([
         toModel(keyed),
@@ -412,7 +409,7 @@ export const pressedKey = (code: string) =>
       unlockAudio,
       profileFromKey(code),
       coopFromKey(code),
-      difficultyCardFromKey(code),
+      playFromKey(code),
       menuFromKey(code),
       homeFocusFromKey(code),
       homeFromKey(code),

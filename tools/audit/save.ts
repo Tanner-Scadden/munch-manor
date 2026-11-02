@@ -78,6 +78,9 @@ await page.reload()
 await awaitSplashGone()
 await page.click('.home-play')
 await wait(300)
+// NOTE: a player past the practice gate gets the lobby, and START plays.
+await page.click('#lobby-start')
+await wait(300)
 check(
   !(await status()).includes(GATE_NOTE),
   'after a reload the gate stays open',

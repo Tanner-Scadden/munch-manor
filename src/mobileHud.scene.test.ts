@@ -36,6 +36,7 @@ import {
   SCENE_SUBSCRIPTIONS,
   holdingSecond,
   measureSurface,
+  resolveFocusLobbyInScene,
 } from './testing'
 import { ShowInstallPrompt } from './update/home'
 import { asVeteran } from './veteran'
@@ -491,6 +492,7 @@ describe('the install tile', () => {
       expect(homeScreenTip).toHaveAttr('data-tip', 'Unseen'),
       expect(fullscreenButton).toBeAbsent(),
       click(role('button', { name: 'Play' })),
+      resolveFocusLobbyInScene(),
       expect(homeScreenTip).toBeAbsent(),
     )
     scene(

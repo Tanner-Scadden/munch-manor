@@ -29,6 +29,7 @@ import {
   type Bullet,
   Frenzy,
   GameEvent,
+  type LobbyControl,
   type Model,
   Pierce,
   type RunStats,
@@ -45,6 +46,7 @@ import { PURCHASE_RULES } from './purchase'
 import { subscriptions } from './subscriptions'
 import { TRAPS } from './traps'
 import { ReadRoomLink } from './update/coop'
+import { FocusLobbyControl } from './update/lobby'
 import { HideSplash, ShowLoadProgress, WriteSave } from './update/save'
 import { PlaySound } from './update/sound'
 import { view } from './view'
@@ -183,6 +185,23 @@ export const showDialogInScene = () => [
     Dialog.test.ShowDialog,
     DialogBlock.Message.SucceededShowDialog(),
   ),
+]
+
+// NOTE: PLAY opens the lobby, which focuses START; START starts the run.
+export const resolveFocusLobbyInScene = (control: LobbyControl = 'Start') =>
+  Scene.Command.resolve(
+    FocusLobbyControl({ control }),
+    Message.CompletedFocusLobbyControl(),
+  )
+
+export const openLobbyInScene = () => [
+  Scene.click(Scene.role('button', { name: 'Play' })),
+  resolveFocusLobbyInScene(),
+]
+
+export const startRunInScene = () => [
+  ...openLobbyInScene(),
+  Scene.click(Scene.role('button', { name: 'Start' })),
 ]
 
 // NOTE: a frame walks the player into the stall, which opens the shop.
@@ -339,6 +358,27 @@ export const finishSplash = Story.steps(
   ),
 )
 
+// NOTE: PLAY by Enter opens the single player lobby with START focused; Enter
+// again starts the run with what the lobby holds. A test about something
+// else than the lobby starts its run with `startRunFromHome`.
+export const resolveFocusLobby = (control: LobbyControl = 'Start') =>
+  Story.Command.resolve(
+    FocusLobbyControl({ control }),
+    Message.CompletedFocusLobbyControl(),
+  )
+
+export const openLobbyByKey = Story.steps(press('Enter'), resolveFocusLobby())
+
+export const startRunFromHome = Story.steps(openLobbyByKey, press('Enter'))
+
+// NOTE: the same two Enters on a Model, for a test that wants the run's
+// first Model and nothing between.
+export const startedRunOf = (model: Model): Model =>
+  modelAfter(
+    modelAfter(model, Message.PressedKey({ code: 'Enter' })),
+    Message.PressedKey({ code: 'Enter' }),
+  )
+
 // READING A MODEL
 
 // NOTE: every event the Messages raise, frame by frame, in order.
@@ -446,21 +486,23 @@ export const settingsButton = Scene.role('button', { name: 'Settings' })
 
 export const profileDialog = Scene.role('dialog', { name: 'Profile' })
 
-export const modeButton = Scene.role('button', {
-  name: 'Mode: Campaign. Switch to Endless',
+export const lobbyScreen = Scene.role('region', { name: 'Lobby' })
+
+export const lobbyStartButton = Scene.role('button', { name: 'Start' })
+
+export const lobbyBackButton = Scene.role('button', {
+  name: 'Back to the menu',
+})
+
+export const lobbyMode = (name: string) => Scene.role('button', { name })
+
+export const lockedNightmare = Scene.role('button', {
+  name: 'Nightmare, locked. Beat Hard to unlock',
 })
 
 export const playEndlessButton = Scene.selector(
   ".home-play[data-mode='Endless']",
 )
-
-export const difficultyButton = Scene.role('button', {
-  name: 'Difficulty: Normal. Change it',
-})
-
-export const lockedNightmare = Scene.role('button', {
-  name: 'Nightmare, locked. Beat Hard to unlock',
-})
 
 export const keepGoingButton = Scene.role('button', {
   name: 'Keep going: carry on into endless from wave 11 with your money, guns, and traps',

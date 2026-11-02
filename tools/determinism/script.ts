@@ -160,7 +160,8 @@ const pastTutorial = (model: Model): Model =>
       }),
   })
 
-// A returning player's Model, seeded, measured, and started into a run.
+// A returning player's Model, seeded, measured, and started into a run: Enter
+// opens the lobby, E picks endless there, and Enter starts.
 export const startedRun = (seed: number, mode: ScriptMode): Model => {
   const ready = send(
     modifyFields(pastTutorial(asVeteran(initialModel)), {
@@ -169,7 +170,8 @@ export const startedRun = (seed: number, mode: ScriptMode): Model => {
     }),
     Message.MeasuredGameSurface(SURFACE),
   )
-  return tapKey(mode === 'Endless' ? tapKey(ready, 'KeyE') : ready, 'Enter')
+  const inLobby = tapKey(ready, 'Enter')
+  return tapKey(mode === 'Endless' ? tapKey(inLobby, 'KeyE') : inLobby, 'Enter')
 }
 
 const godMode = (model: Model): Model =>

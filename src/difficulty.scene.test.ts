@@ -16,18 +16,17 @@ import { RESTART_GRACE_MS } from './constants'
 import { type Model, Phase, initialModel } from './model'
 import {
   ROOT,
-  closeButton,
-  difficultyButton,
   lockedNightmare,
   measureSurface,
+  openLobbyInScene,
   playButton,
+  resolveFocusLobbyInScene,
   shareMountSettles,
   showDialogInScene,
 } from './testing'
 import { asVeteran } from './veteran'
 
 const card = role('dialog', { name: 'How tough are you?' })
-const picker = role('dialog', { name: 'Difficulty' })
 const easy = role('button', { name: 'Easy: Just here for the vibes' })
 const normal = role('button', {
   name: "Normal: The way it's meant to be played",
@@ -36,9 +35,6 @@ const hard = role('button', { name: 'Hard: They bite back' })
 const openNightmare = role('button', {
   name: 'Nightmare: No mercy. Bring snacks',
 })
-
-// NOTE: the attribute the Foldkit dialog focuses when it opens.
-const INITIAL_FOCUS = 'data-foldkit-dialog-initial-focus'
 
 describe('the difficulty card', () => {
   test('the first PLAY shows four choices with Nightmare locked', () => {
@@ -83,23 +79,41 @@ describe('the difficulty card', () => {
   })
 })
 
-describe('the difficulty picker by PLAY', () => {
-  test('marks the chosen level, keeps Nightmare locked, and opens on the chosen level', () => {
+describe('the difficulty in the lobby', () => {
+  const skull = (name: string) =>
+    role('button', { name: new RegExp(`^${name}`) })
+
+  test('shows four skulls, marks the chosen level, and keeps Nightmare locked', () => {
     scene(
       ROOT,
       given(asVeteran(initialModel)),
       measureSurface,
-      click(difficultyButton),
-      ...showDialogInScene(),
-      inside(
-        picker,
-        expect(normal).toHaveAttr('data-chosen', 'Chosen'),
-        expect(hard).not.toHaveAttr('data-chosen', 'Chosen'),
-        expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
-        expect(normal).toHaveAttr(INITIAL_FOCUS),
-        expect(hard).not.toHaveAttr(INITIAL_FOCUS),
-        expect(closeButton).not.toHaveAttr(INITIAL_FOCUS),
+      expect(selector('.coop-skull-pick')).toBeAbsent(),
+      ...openLobbyInScene(),
+      expect(skull('Easy')).toHaveAttr('aria-pressed', 'false'),
+      expect(skull('Normal')).toHaveAttr('aria-pressed', 'true'),
+      expect(skull('Hard')).toHaveAttr('aria-pressed', 'false'),
+      expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
+      expect(skull('Normal')).toHaveAttr('aria-pressed', 'true'),
+      click(skull('Hard')),
+      resolveFocusLobbyInScene(),
+      expect(skull('Hard')).toHaveAttr('aria-pressed', 'true'),
+      expect(skull('Normal')).toHaveAttr('aria-pressed', 'false'),
+    )
+  })
+
+  test('a Hard win opens Nightmare with a NEW pip', () => {
+    scene(
+      ROOT,
+      given(
+        modifyFields(asVeteran(initialModel), {
+          difficulty: () => ({ chosen: 'Hard', nightmare: 'JustUnlocked' }),
+        }),
       ),
+      measureSurface,
+      ...openLobbyInScene(),
+      expect(skull('Nightmare')).not.toHaveAttr('aria-disabled', 'true'),
+      expect(selector('.coop-skull-pick .new-pip')).toExist(),
     )
   })
 })

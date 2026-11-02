@@ -37,6 +37,7 @@ import {
   useHarness,
   wait,
   waitForDialog,
+  waitForLobby,
 } from './lib'
 
 // NOTE: a 2x pixel ratio on every phone keeps the many reloads quick. The hit
@@ -62,9 +63,13 @@ type Scene = Readonly<{
   open?: ReadonlyArray<string>
   opensDialog?: boolean
   fresh?: boolean
+  // NOTE: the first open step is PLAY, which opens the single player lobby
+  // (a screen, not a dialog), for a player who has learned to move and fire.
+  opensLobby?: boolean
 }>
 
 const MANOR = '#home-manor'
+const LOBBY_QUERY = 'learned=move,fire&rank=300&calling=Handyman'
 
 // NOTE: the end screens show their buttons only once the restart grace
 // (RESTART_GRACE_MS, 900 ms) is over, and those buttons come before the
@@ -101,7 +106,25 @@ const SCENES: ReadonlyArray<Scene> = [
     query: 'kills=Shambler:40,Runner:3',
     open: [MANOR, '#hand-card-munchopedia', '.munch-tile'],
   },
-  { name: 'difficulty', query: '', open: ['#home-difficulty'] },
+  { name: 'difficulty', query: 'ask', open: ['#home-play'] },
+  {
+    name: 'lobby',
+    query: LOBBY_QUERY,
+    open: ['#home-play'],
+    opensLobby: true,
+  },
+  {
+    name: 'lobby-nightmare',
+    query: `${LOBBY_QUERY}&difficulty=Hard&nightmare=Unlocked`,
+    open: ['#home-play'],
+    opensLobby: true,
+  },
+  {
+    name: 'lobby-hero',
+    query: LOBBY_QUERY,
+    open: ['#home-play', '#lobby-hero'],
+    opensLobby: true,
+  },
   { name: 'how-to-play', query: '', open: [MANOR, '#hand-card-howtoplay'] },
   {
     name: 'profile-settings',
@@ -221,9 +244,11 @@ const openScene = async (page: Page, scene: Scene) => {
     await waitForDialog(page)
   }
   await settleAnimations(page)
-  for (const selector of scene.open ?? []) {
+  for (const [step, selector] of (scene.open ?? []).entries()) {
     await tapToOpen(page, scene, selector)
-    await waitForDialog(page)
+    await (step === 0 && scene.opensLobby === true
+      ? waitForLobby(page)
+      : waitForDialog(page))
     await settleAnimations(page)
   }
 }

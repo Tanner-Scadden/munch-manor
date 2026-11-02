@@ -266,6 +266,9 @@ export const playSounds =
 
 export const uiCue = (sound: SoundEffect): SoundCue => ({ sound, variation: 0 })
 
+// NOTE: a soft pop on the home menu's own buttons, so a tap feels pressed.
+export const tapSound: UpdateStep = playSounds([uiCue('Pop')])
+
 export const playStartSoundWhen = (isRoundStart: boolean): UpdateStep =>
   playSounds(isRoundStart ? [uiCue('Start')] : [])
 
