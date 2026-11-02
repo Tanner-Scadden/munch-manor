@@ -8,7 +8,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 📖 Rattles wrote a shop guide: tap the ? in his shop, or find Shop in the Munchopedia, for bars, upgrades, and a fridge full of ???.
 - 🎒 The co-op lobby got friendlier: tap your own name (it has a pencil) to rename yourself, dice and all, and buy a hero right there. Pings are WiFi icons now, KICK is a door with an arrow, and tapping a pick that's the host's says HOST PICKS.
 - 👟 The Track Star's magazines are barely smaller now, so the speedy hero keeps up with the rest.
-- 🎲 Run modifiers: pick Friendly Fire, Big Crowd, Broke, or Glass in the lobby to make a run meaner and pay up to +115% rank and Bones.
+- 🎲 Run modifiers: pick Friendly Fire, Big Crowd, Broke, or Glass in the lobby to make a run meaner and pay up to +465% rank and Bones. Glass means one heart for real: Rattles sells no spare ones.
 
 ## November 1, 2026: Pick your hero
 

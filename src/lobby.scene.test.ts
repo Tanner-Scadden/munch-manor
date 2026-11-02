@@ -133,14 +133,14 @@ describe('the lobby', () => {
         expectAll(all.selector('.modifier-pick')).toHaveCount(4),
         expect(role('status', { name: 'Bonus +0%' })).toExist(),
       ),
-      click(role('button', { name: 'Glass, +50%, off' })),
-      expect(role('button', { name: 'Glass, +50%, on' })).toHaveAttr(
+      click(role('button', { name: 'Glass, +350%, off' })),
+      expect(role('button', { name: 'Glass, +350%, on' })).toHaveAttr(
         'aria-pressed',
         'true',
       ),
       click(role('button', { name: 'Big Crowd, +25%, off' })),
-      expect(role('status', { name: 'Bonus +75%' })).toExist(),
-      click(role('button', { name: 'Glass, +50%, on' })),
+      expect(role('status', { name: 'Bonus +375%' })).toExist(),
+      click(role('button', { name: 'Glass, +350%, on' })),
       expect(role('status', { name: 'Bonus +25%' })).toExist(),
     )
   })

@@ -139,13 +139,13 @@ describe('a death', () => {
         glass: true,
       }),
     )
-    expect(ended.rank).toMatchObject({ earnedPoints: 105, earnedBones: 10 })
+    expect(ended.rank).toMatchObject({ earnedPoints: 315, earnedBones: 31 })
     expect(ended.maybeRankGain).toEqual(
       Option.some({
         pointsBefore: 0,
-        gained: 105,
-        bonesGained: 10,
-        bonusPercent: 75,
+        gained: 315,
+        bonesGained: 31,
+        bonusPercent: 425,
       }),
     )
   })

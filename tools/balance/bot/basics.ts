@@ -8,6 +8,12 @@ import { cameraFocus, cameraFor, worldWindowOf } from '../../../src/camera'
 import { update } from '../../../src/main'
 import { Message } from '../../../src/message'
 import type { Difficulty, ZombieKind, initialModel } from '../../../src/model'
+import {
+  MODIFIER_ORDER,
+  type Modifiers,
+  noModifiers,
+  toggledModifier,
+} from '../../../src/modifiers'
 import type { Calling } from '../../../src/playerData'
 import {
   DEFAULT_PORTRAIT_SCREEN,
@@ -32,6 +38,7 @@ export type BotOptions = {
   swapsBack: boolean
   noUpgrades: boolean
   calling: Calling
+  modifiers: Modifiers
 }
 
 export const DEFAULT_OPTIONS: BotOptions = {
@@ -40,6 +47,7 @@ export const DEFAULT_OPTIONS: BotOptions = {
   swapsBack: false,
   noUpgrades: false,
   calling: 'You',
+  modifiers: noModifiers,
 }
 
 // CALLING=Handyman, TrackStar, PennyPincher, or LineCook (any case, spaces
@@ -51,6 +59,25 @@ export const parseCalling = (raw: string | undefined): Calling => {
     throw new Error(`CALLING must be one of ${CALLINGS.join(', ')}`)
   }
   return found
+}
+
+// MODS=BigCrowd,Broke,Glass (any case, commas) plays the run with those
+// modifiers on, as the lobby sets them. FriendlyFire is refused: the bot
+// plays alone, and it bites only with teammates.
+export const parseModifiers = (raw: string | undefined): Modifiers => {
+  const names = (raw ?? '')
+    .split(',')
+    .map(name => name.trim().toLowerCase())
+    .filter(name => name !== '')
+  return names.reduce((modifiers, name) => {
+    const found = MODIFIER_ORDER.find(
+      modifier => modifier.toLowerCase() === name,
+    )
+    if (found === undefined || found === 'FriendlyFire') {
+      throw new Error('MODS must be a list of BigCrowd, Broke, Glass')
+    }
+    return toggledModifier(modifiers, found)
+  }, noModifiers)
 }
 
 export const parseDifficulty = (raw: string | undefined): Difficulty => {

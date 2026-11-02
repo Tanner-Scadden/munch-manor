@@ -85,12 +85,12 @@ const withModifiers = (base: Model, modifiers: Modifiers): Model =>
   modifyFields(base, { modifiers: () => modifiers })
 
 describe('the set and its bonus', () => {
-  test('the bonuses add: 15, 25, 25, and 50 make 115', () => {
+  test('the bonuses add: 15, 25, 75, and 350 make 465', () => {
     expect(bonusPercentOf(noModifiers)).toBe(0)
     expect(bonusPercentOf(only({ friendlyFire: true }))).toBe(15)
     expect(bonusPercentOf(only({ bigCrowd: true }))).toBe(25)
-    expect(bonusPercentOf(only({ broke: true }))).toBe(25)
-    expect(bonusPercentOf(only({ glass: true }))).toBe(50)
+    expect(bonusPercentOf(only({ broke: true }))).toBe(75)
+    expect(bonusPercentOf(only({ glass: true }))).toBe(350)
     expect(
       bonusPercentOf({
         friendlyFire: true,
@@ -98,7 +98,7 @@ describe('the set and its bonus', () => {
         broke: true,
         glass: true,
       }),
-    ).toBe(115)
+    ).toBe(465)
   })
 
   test('a toggle turns one on and off and touches no other', () => {

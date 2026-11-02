@@ -16,7 +16,7 @@ Everything else serves them. The art, names, and characters here are original. O
 ## Decided
 
 - **The game.** A goofy-gory pixel-art wave shooter. Chunky, bright, bouncy sprites, cartoon splatter, and zombies that are funny more than scary. Every sprite moves: walk cycles, hit flashes, knockback, gibs, decals that stay, shake, and hit-stop.
-- **Run modifiers (owner, 2026-11-02).** Four opt-in rules in the lobby, each making a run harder and paying more: Friendly Fire (teammates' and bots' bullets and lid blasts hurt each other; +15%), Big Crowd (half as many zombies again, campaign and Endless; +25%), Broke (kills pay half, no fridge pulls; +25%), and Glass (start on one heart, no heart pickups drop; +50%). The bonuses add (all four are +115%) and multiply the run's rank points and so its Bones (`src/modifiers.ts`, `src/rank.ts`). Friendly Fire needs a teammate to hit, so alone it is dim and pays nothing. They are World rules (the co-op room runs them, the host picks them like the difficulty), shown as four icon tiles and a gold total, and again on the end card. Each launch starts with none; bests stay per difficulty.
+- **Run modifiers (owner, 2026-11-02).** Four opt-in rules in the lobby, each making a run harder and paying more: Friendly Fire (teammates' and bots' bullets and lid blasts hurt each other; +15%), Big Crowd (half as many zombies again, campaign and Endless; +25%, kept low on purpose: bragging rights), Broke (kills pay half, no fridge pulls; +75%), and Glass (start on one heart, no heart pickups drop, and Rattles sells no spare Heart; +350%). Bonuses set from the balance bot's expected points on 2026-11-02 (see "Run modifier bonuses"). The bonuses add (all four are +465%) and multiply the run's rank points and so its Bones (`src/modifiers.ts`, `src/rank.ts`). Friendly Fire needs a teammate to hit, so alone it is dim and pays nothing. They are World rules (the co-op room runs them, the host picks them like the difficulty), shown as four icon tiles and a gold total, and again on the end card. Each launch starts with none; bests stay per difficulty.
 - **Platform.** One game for desktop and phones, in landscape and in portrait. Every input works with a keyboard and mouse and with touch.
 - **View.** Top-down pixel art on a 320×180 canvas, scaled with crisp pixels. Phones see a zoomed window that follows the player, so zombies read big under a thumb: 4/3 on their side, and 3/2 held upright on most phones (changed on 2026-10-30 at the owner's request, and zoomed back out from 15/8 on 2026-10-31 to balance portrait; see "The phone camera" and "Portrait play"). A keyboard and mouse see the whole room.
 - **Controls.** Twin-stick on every device.
@@ -216,15 +216,38 @@ Before that (nightly, 2026-10-30, the sharp bot, 200 runs a row, after the balan
 
 - **Caveats.** The bot never stands in a doorway, plays Preparation in seconds, steps off every landing mark at once, and backs off anything within 36 px. A person feels the peaks, the Big Leaguer's throws, and the Ankle Biter's grabs far more. Playtest before trusting any of it.
 
+#### Run modifier bonuses
+
+Measured on 2026-11-02 (`BONUS_PERCENT` in `src/modifiers.ts` held first guesses of +15, +25, +25, +50 at the time; it holds the decided bonuses now). The human bot on Normal, campaign, 100 runs each on the same seeds, `MODS=<list> bun run balance -- --runs 100`. `FriendlyFire` is not measured: the bot plays alone, and the modifier bites only with teammates. Points a run: 10 per wave cleared, 50 for the boss, 100 for the win (`src/rank.ts`), so the expected points are read from each batch's cleared-by-wave column and its boss and win counts.
+
+| Setup     | Win rate | Mean wave reached | Mean waves cleared | Expected points | With today's bonus |
+| --------- | -------- | ----------------- | ------------------ | --------------- | ------------------ |
+| None      | 23%      | 7.92              | 7.15               | 107             | 107                |
+| Big Crowd | 1%       | 4.16              | 3.17               | 33              | 41 (+25%)          |
+| Broke     | 6%       | 6.22              | 5.28               | 62              | 78 (+25%)          |
+| Glass     | 17%      | 6.87              | 6.04               | 87              | 131 (+50%)         |
+
+What it says:
+
+- **Big Crowd is by far the hardest.** About 50% more zombies sends the bot's usual loadout under: 17% of runs die on wave 2 and 43% by wave 3, and only 1 run in 100 wins. It pays a third of the baseline's points at +25%.
+- **Broke is the middle.** No fridge pulls and half the pay from kills leave the bot short of guns and planks by waves 4 to 6 (deaths by wave 5 are 42%, against 14%). 6% win.
+- **Glass is the mildest, and overpaid.** One heart costs the bot 6 points of win rate and one wave of depth. Hearts are still bought in the shop, so the bot arrives at the back half with a few anyway, and its first waves are fine (9% die on wave 2, then 7 to 11% a wave). At +50% it earns 22% more points than playing plain. Every Glass win was a close call (17 of 17 reached 1 heart).
+
+**Decided by the owner on 2026-11-02**, from the measures above: Big Crowd stays +25% (bragging rights, however hard it is), Broke goes to +75% (parity is +72). Glass also loses the shop's Heart (the item stays on the shelf, marked GLASS like a full jar, and a buy is refused), so one heart means one. Revives are not changed: a revived player still comes back on the revive hearts (`src/revive.ts`), and a fridge Sandwich still heals. Friendly Fire stays +15%.
+
+**Glass re-measured** with no spare hearts (the same 100 seeds, Normal, human bot): 0% win, mean wave reached 3.39 (the bot's shopping list buys hearts, and it now arrives at the middle waves on one), 74% clear wave 2, 47% wave 3, 13% wave 4, 5% wave 5, none wave 6. Expected points 24 a run (against 107 plain), so parity is +345%; set to **+350%** (24 x 4.5 = 108). The Glass row in the table above is the old Glass, with hearts still sold. A bot that stays on one heart cannot tell how a person fares, who flees, aims, and dodges better; expect people to go further than 3 waves, which makes +350% generous. Playtest, and ease it toward +100% if Glass runs reach the back half.
+
+Caveats. Points a run ignore time, and a short run (Big Crowd, Glass) ends sooner, so points a minute favor them more. The bonuses add, so all three on would be +450% (+465% with Friendly Fire), and stacked runs were not measured. The bot is a stand-in: it flees well and shops on schedule, and a person may do better or worse. The 100-run sample has about 4 points of noise on the win rate; the mean wave is steadier (a gap of 1 wave or more is real). Playtest before moving the numbers again.
+
 #### Traps
 
 Proposed numbers. The table is in `src/traps.ts`, the chewing rates in `src/zombies.ts`.
 
-| Trap      | Name           | Price  | Health | Most at once | What it does                                                                                 |
-| --------- | -------------- | ------ | ------ | ------------ | -------------------------------------------------------------------------------------------- |
-| Barricade | Plank Pile     | $95    | 50     | 2            | Boards up one doorway. Blocks zombies and the player; shots and peas fly through the gaps    |
+| Trap      | Name           | Price  | Health | Most at once | What it does                                                                                  |
+| --------- | -------------- | ------ | ------ | ------------ | --------------------------------------------------------------------------------------------- |
+| Barricade | Plank Pile     | $95    | 50     | 2            | Boards up one doorway. Blocks zombies and the player; shots and peas fly through the gaps     |
 | Turret    | Grumpy Gnome   | $150   | 20     | 2            | Shoots a pea (1 damage, 1000 ms apart) at the nearest walking zombie it can see within 115 px |
-| Repair    | Glue and Nails | Varies | -      | -            | Restores one placed trap for half its price, scaled by the share of health it is missing     |
+| Repair    | Glue and Nails | Varies | -      | -            | Restores one placed trap for half its price, scaled by the share of health it is missing      |
 
 - **Placing.** Traps are bought into a pack shown in the HUD. In Preparation, T (or the place icon) puts the selected one down and G (or the next icon) switches kinds. A Plank Pile goes in the doorway the player stands in or beside; a gnome on the free tile in front of the player. A green or red ghost shows where it would go.
 - **Chewing.** A walking zombie that touches a trap chews it: a Groaner 3 health a second, a Hotfoot 2, a Big Lug 12. A Kaboomer that touches one fuses. A Plank Pile cracks at two thirds and one third and breaks with a crash.
