@@ -74,6 +74,7 @@ import {
   ShopState,
   type Trap,
   calmPacing,
+  crewOf,
   emptyTrapStock,
   emptyWallet,
   freshLoot,
@@ -377,15 +378,15 @@ const seatSlots = (world: World, slots: ReadonlyArray<PlayerSlot>): World => {
       Party.match(party, {
         Solo: () => party,
         Crew: ({ mates }) =>
-          Party.Crew({
-            lead: seatAt(ordered[0] ?? 0),
-            mates: Array.filterMap(mates, (mate, index) =>
+          crewOf(
+            seatAt(ordered[0] ?? 0),
+            Array.filterMap(mates, (mate, index) =>
               Option.match(Array.get(ordered, index + 1), {
                 onNone: () => Result.failVoid,
                 onSome: slot => Result.succeed({ ...mate, seat: seatAt(slot) }),
               }),
             ),
-          }),
+          ),
       }),
   })
 }
@@ -676,9 +677,9 @@ const lerpParty = (from: World, to: World, t: number): Party =>
   Party.match(to.party, {
     Solo: () => to.party,
     Crew: ({ lead, mates }) =>
-      Party.Crew({
+      crewOf(
         lead,
-        mates: Array.map(mates, mate =>
+        Array.map(mates, mate =>
           Option.match(maybePlayerAt(from, mate.seat.slot), {
             onNone: () => mate,
             onSome: was => ({
@@ -687,7 +688,7 @@ const lerpParty = (from: World, to: World, t: number): Party =>
             }),
           }),
         ),
-      }),
+      ),
   })
 
 const interpolateWorld = (from: World, to: World, t: number): World =>

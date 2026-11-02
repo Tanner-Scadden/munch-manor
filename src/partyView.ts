@@ -77,12 +77,16 @@ export const leadBodyShapes = (
 
 // TEAMMATES
 
-type MateModel = Readonly<{ model: Model; seat: Seat }>
+export type MateModel = Readonly<{ model: Model; seat: Seat }>
 
 // NOTE: the client Model as each teammate's seat would show it, so the
-// player's own views draw them. Only co-op pays for it. Online, each
-// teammate wears their own look from the lobby (src/coop/looks.ts).
-const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
+// player's own views draw them. Only co-op pays for it, and a frame builds
+// them once for the views that need them. Online, each teammate wears their
+// own look from the lobby (src/coop/looks.ts).
+export const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
+  if (!isCoop(model)) {
+    return []
+  }
   const lead = leadSeatOf(model).slot
   const maybeRoom = maybeRoomOf(model.coop)
   const isOnline = Option.isSome(maybeRoom)
@@ -105,10 +109,10 @@ const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
   )
 }
 
-export const mateShadowShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
-  isCoop(model)
-    ? Array.map(mateModelsOf(model), mate => playerShadow(mate.model.player))
-    : []
+export const mateShadowShapes = (
+  mates: ReadonlyArray<MateModel>,
+): ReadonlyArray<Canvas.Shape> =>
+  Array.map(mates, mate => playerShadow(mate.model.player))
 
 // NOTE: the pixels a seat's hat stands over its head, from the look it
 // wears (a teammate's from the lobby), for the marks drawn over it.
@@ -137,14 +141,14 @@ const mateBodyShapes = ({
     onSome: lying => lyingShapes(model, lying),
   })
 
-export const mateDrawables = (model: Model): ReadonlyArray<Drawable> =>
-  isCoop(model)
-    ? Array.map(mateModelsOf(model), (mate): Drawable => ({
-        footY: playerFootY(mate.model.player),
-        rank: 'Player',
-        shapes: mateBodyShapes(mate),
-      }))
-    : []
+export const mateDrawables = (
+  mates: ReadonlyArray<MateModel>,
+): ReadonlyArray<Drawable> =>
+  Array.map(mates, (mate): Drawable => ({
+    footY: playerFootY(mate.model.player),
+    rank: 'Player',
+    shapes: mateBodyShapes(mate),
+  }))
 
 // SEAT MARKS
 
@@ -356,10 +360,11 @@ const seatMarkShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
 
 export const mateOverheadShapes = (
   model: Model,
+  mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> =>
   isCoop(model)
     ? [
-        ...Array.flatMap(mateModelsOf(model), ({ model: mate, seat }) =>
+        ...Array.flatMap(mates, ({ model: mate, seat }) =>
           isStanding(seat)
             ? [
                 ...playerFlashShapes(mate.player),

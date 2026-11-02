@@ -699,6 +699,16 @@ export const Party = defineTaggedUnion({
   Crew: { lead: Seat, mates: Schema.Array(Mate) },
 })
 export type Party = typeof Party.Type
+type Crew = typeof Party.Crew.Type
+
+// NOTE: a Crew built as the plain value `Party.Crew` would return, without
+// its Schema validation. The step builds one for every seat swap, dozens of
+// times a tick, from a lead and mates it already holds as valid values.
+export const crewOf = (lead: Seat, mates: ReadonlyArray<Mate>): Crew => ({
+  _tag: 'Crew',
+  lead,
+  mates,
+})
 
 // NOTE: the World is the part of the Model the step reads and writes: what
 // a co-op room owns and runs (MULTIPLAYER.md, Phase 0). The rest of the

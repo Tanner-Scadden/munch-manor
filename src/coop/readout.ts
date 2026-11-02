@@ -21,6 +21,11 @@ const ReadoutSeat = Schema.Struct({
   calling: Schema.String,
 })
 
+// NOTE: the link param that asks the page for the readout. Encoding the
+// whole World to JSON every frame is for the audit only, so a page writes
+// it only when its address carries this param when the page loads.
+export const AUDIT_PARAM = 'audit'
+
 export const Readout = Schema.Struct({
   tick: Schema.Number,
   phase: Schema.String,

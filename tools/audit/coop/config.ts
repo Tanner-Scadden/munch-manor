@@ -1,12 +1,19 @@
 // Co-op audit (tools/audit/coop.ts): what the run was asked to do (the URL, the
 // players, QUICK, PICK, NET) and the bad link a page can sit behind.
 
+import { AUDIT_PARAM } from '@game/coop/readout'
+
 const base = process.argv[2] ?? process.env['BASE']
 if (base === undefined) {
   console.error('Usage: bun tools/audit/coop.ts <game url> [players]')
   process.exit(2)
 }
-export const BASE = base
+
+// NOTE: the game writes its readout of the room's World only on a page loaded
+// with this param (src/coop/readout.ts), since encoding it costs every frame.
+const audited = new URL(base)
+audited.searchParams.set(AUDIT_PARAM, '1')
+export const BASE = audited.href
 export const PLAYERS = Math.min(3, Math.max(2, Number(process.argv[3] ?? 3)))
 export const IS_QUICK = process.env['QUICK'] === '1'
 export const [PICK_MODE, PICK_DIFFICULTY] = (process.env['PICK'] ?? '').split(

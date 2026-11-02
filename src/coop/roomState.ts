@@ -26,6 +26,7 @@ import {
   type Room,
   Screen,
   noPresses,
+  screenInRoom,
 } from './model'
 import type { OwnPlayer } from './seam'
 
@@ -120,7 +121,7 @@ export const isHost = (room: Room): boolean =>
   )
 
 export const withRoom = (model: Model, room: Room): Model =>
-  withScreen(model, Screen.InRoom({ room }))
+  withScreen(model, screenInRoom(room))
 
 export const learnLobby = (room: Room, lobby: Lobby): Room => {
   const maybePlayerId = Option.orElse(room.maybePlayerId, () =>
