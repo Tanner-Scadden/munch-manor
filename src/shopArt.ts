@@ -24,7 +24,10 @@ import { HEART_PIXELS } from './sprites/hearts'
 // can draw it at a whole multiple and the pixels stay square.
 export type ShopArt = Readonly<{ url: string; width: number; height: number }>
 
-const artOf = (pixels: ReadonlyArray<string>, palette: Palette): ShopArt => ({
+export const artOf = (
+  pixels: ReadonlyArray<string>,
+  palette: Palette,
+): ShopArt => ({
   url: pixelIconUrl(pixels, palette),
   width: Array.reduce(pixels, 0, (widest, row) => Math.max(widest, row.length)),
   height: pixels.length,

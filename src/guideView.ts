@@ -19,6 +19,9 @@ import {
   isDiscovered,
   killsOf,
 } from './munchopedia'
+import { SHOP_GUIDE_NAME } from './names'
+import { SHOP_TILE_ART } from './shopGuideArt'
+import { shopGuideView } from './shopGuideView'
 
 // TEXT
 
@@ -132,10 +135,49 @@ const tileView = (
   )
 }
 
+// NOTE: the Shop tile beside the zombies opens the shop guide
+// (src/shopGuide.ts). It wears Rattles' face and is always known.
+const shopTileView = (h: ApplicationViewBuilder): Html =>
+  h.li(
+    [h.Class('munch-tile-item')],
+    [
+      h.button(
+        [
+          h.Type('button'),
+          h.Class('munch-tile munch-tile-shop'),
+          h.DataAttribute('known', 'Known'),
+          h.AriaLabel(`${SHOP_GUIDE_NAME}, what Rattles sells`),
+          h.OnClick(Message.ClickedMunchopediaShopButton(), {
+            propagation: 'Stop',
+          }),
+        ],
+        [
+          h.span(
+            [h.Class('munch-tile-picture'), h.AriaHidden(true)],
+            [
+              h.span([
+                h.Class('sg-art munch-shop-art'),
+                h.Style({
+                  backgroundImage: SHOP_TILE_ART.url,
+                  '--art-w': `${SHOP_TILE_ART.width}`,
+                  '--art-h': `${SHOP_TILE_ART.height}`,
+                }),
+              ]),
+            ],
+          ),
+          h.span([h.Class('munch-tile-name')], [SHOP_GUIDE_NAME]),
+        ],
+      ),
+    ],
+  )
+
 const listView = (model: Model, h: ApplicationViewBuilder): Html =>
   h.ul(
     [h.Class('munch-list'), h.AriaLabel('Zombies')],
-    Array.map(MUNCHOPEDIA, entry => tileView(model, entry, h)),
+    [
+      ...Array.map(MUNCHOPEDIA, entry => tileView(model, entry, h)),
+      shopTileView(h),
+    ],
   )
 
 // ENTRY
@@ -232,6 +274,29 @@ const entryView = (
 
 // BODY
 
+const backActionsView = (
+  doneButton: Html,
+  backLabel: string,
+  h: ApplicationViewBuilder,
+): Html =>
+  h.div(
+    [h.Class('panel-actions')],
+    [
+      h.button(
+        [
+          h.Type('button'),
+          h.Class('panel-button munch-back'),
+          h.AriaLabel(backLabel),
+          h.OnClick(Message.ClickedMunchopediaListButton(), {
+            propagation: 'Stop',
+          }),
+        ],
+        ['Back'],
+      ),
+      doneButton,
+    ],
+  )
+
 export const munchopediaBodyView = (
   model: Model,
   doneButton: Html,
@@ -242,24 +307,17 @@ export const munchopediaBodyView = (
       listView(model, h),
       h.div([h.Class('panel-actions')], [doneButton]),
     ],
+    Shop: ({ section }) => [
+      shopGuideView(
+        model.seenUnlocks,
+        section,
+        next => Message.ClickedMunchopediaShopSectionButton({ section: next }),
+        h,
+      ),
+      backActionsView(doneButton, 'Back to the Munchopedia', h),
+    ],
     Entry: ({ kind }) => [
       entryView(model, kind, h),
-      h.div(
-        [h.Class('panel-actions')],
-        [
-          h.button(
-            [
-              h.Type('button'),
-              h.Class('panel-button munch-back'),
-              h.AriaLabel('Back to every zombie'),
-              h.OnClick(Message.ClickedMunchopediaListButton(), {
-                propagation: 'Stop',
-              }),
-            ],
-            ['Back'],
-          ),
-          doneButton,
-        ],
-      ),
+      backActionsView(doneButton, 'Back to every zombie', h),
     ],
   })
