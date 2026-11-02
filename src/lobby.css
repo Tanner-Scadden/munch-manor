@@ -40,7 +40,7 @@
 /* NOTE: a seat nobody can take (a dev link with players at the keyboard)
    stays faint and still. */
 .lobby-seat-empty {
-  opacity: 0.55;
+  opacity: var(--menu-dim);
 }
 
 /* THE + BOT TILE: an empty seat that looks like the button it is. */

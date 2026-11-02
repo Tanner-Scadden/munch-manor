@@ -188,8 +188,8 @@ body {
 }
 
 .icon-button:focus-visible {
-  outline: 2px solid #9be36a;
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .icon-button-glyph {
@@ -252,7 +252,8 @@ body {
 }
 
 .ammo-tag-button:focus-visible {
-  outline: 2px solid #ffe066;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 /* HOLD TO BUY: the touch button at a purchasable. A gold ring fills round
@@ -303,7 +304,7 @@ body {
 }
 
 .hold-buy-button.is-refused {
-  border-color: #ff4a4f;
+  border-color: var(--menu-red);
   background: rgba(90, 20, 24, 0.9);
   animation: hold-buy-shake 450ms linear;
 }
@@ -401,7 +402,8 @@ body {
 }
 
 .gun-slot-button:focus-visible {
-  outline: 2px solid #9be36a;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 /* Mid-wave a mouse click on a slot is a shot at the world beneath
@@ -459,7 +461,7 @@ body {
 
 .reload-button[data-ready='false'] .reload-face {
   border-color: rgba(244, 241, 222, 0.25);
-  opacity: 0.5;
+  opacity: var(--menu-dim);
 }
 
 .reload-button:active .reload-face {
@@ -467,7 +469,8 @@ body {
 }
 
 .reload-button:focus-visible {
-  outline: 2px solid #9be36a;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .gun-cluster-side > * {
@@ -612,8 +615,8 @@ body {
 
 .start-wave-pill:focus-visible,
 .start-wave-button:focus-visible {
-  outline: 2px solid #9be36a;
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .mode-choice {
@@ -689,8 +692,8 @@ body {
 }
 
 .mode-button:focus-visible {
-  outline: 2px solid #9be36a;
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .money {
@@ -739,8 +742,8 @@ body {
 }
 
 .debut-card-button:focus-visible {
-  outline: 2px solid #9be36a;
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .debut-card-key {
@@ -768,7 +771,7 @@ body {
   height: 112px;
   margin-left: -56px;
   box-sizing: border-box;
-  border: 3px dashed rgba(244, 241, 222, 0.6);
+  border: 2px dashed rgba(244, 241, 222, 0.6);
   border-radius: var(--menu-radius-pill);
   display: flex;
   align-items: center;
@@ -1110,7 +1113,8 @@ body {
 }
 
 .quest-skip:focus-visible::before {
-  outline: 2px solid #9be36a;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .quest-confetti {

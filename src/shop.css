@@ -265,7 +265,7 @@
 .shop-tab-new {
   padding: calc(1 * var(--shop-u)) calc(4 * var(--shop-u));
   border-radius: var(--menu-radius-sm);
-  background: #ff4a4f;
+  background: var(--menu-red);
   color: #fff;
   font-size: var(--shop-small);
   font-weight: bold;
@@ -369,8 +369,8 @@
 .shop-item:focus-visible,
 .shop-tab:focus-visible,
 .shop-tabpanel:focus-visible {
-  outline: max(2px, calc(2 * var(--shop-u))) solid var(--shop-focus);
-  outline-offset: calc(4 * var(--shop-u));
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
   border-radius: var(--menu-radius-sm);
 }
 
@@ -850,9 +850,9 @@
 
 .shop-stamp-word {
   padding: calc(2 * var(--shop-u)) calc(8 * var(--shop-u));
-  border: calc(3 * var(--shop-u)) solid #e8333a;
+  border: calc(3 * var(--shop-u)) solid var(--menu-red);
   border-radius: var(--menu-radius-sm);
-  color: #e8333a;
+  color: var(--menu-red);
   font: bold calc(22 * var(--shop-u)) monospace;
   letter-spacing: 0.08em;
   text-shadow: 0 0 calc(2 * var(--shop-u)) #140c10;

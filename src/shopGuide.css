@@ -99,8 +99,8 @@
 
 .sg-section:focus-visible,
 .shop-help:focus-visible {
-  outline: 3px solid var(--sg-good);
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 /* ENTRIES */

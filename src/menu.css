@@ -315,7 +315,7 @@
 }
 
 .home-coop[data-lock='Locked'] .home-coop-icon {
-  opacity: 0.35;
+  opacity: var(--menu-dim);
   filter: grayscale(1);
   animation: none;
 }
@@ -330,7 +330,7 @@
 
 .home-coop[data-lock='Locked'] .home-coop-label {
   color: var(--menu-ink);
-  opacity: 0.6;
+  opacity: var(--menu-dim);
 }
 
 .home-coop-lock {
@@ -383,7 +383,7 @@
 }
 
 .skull-locked {
-  opacity: 0.55;
+  opacity: var(--menu-dim);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2045,8 +2045,8 @@ button.help-card {
 }
 
 button.help-card:focus-visible {
-  outline: 2px solid var(--menu-green);
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .help-card-line {
@@ -2321,7 +2321,7 @@ button.help-card:focus-visible {
 
 .difficulty-choice[aria-disabled='true'] {
   border-style: dashed;
-  opacity: 0.6;
+  opacity: var(--menu-dim);
   cursor: not-allowed;
 }
 
@@ -2849,8 +2849,8 @@ button.help-card:focus-visible {
 }
 
 .pause-menu-button:focus-visible {
-  outline: 2px solid #9be36a;
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .mode-button.menu-button {

@@ -1052,7 +1052,7 @@
 .account-portal-ring {
   position: absolute;
   inset: 0;
-  border: 6px dashed var(--profile-portal);
+  border: 2px dashed var(--profile-portal);
   border-radius: 50%;
   box-shadow:
     0 0 24px var(--profile-portal),

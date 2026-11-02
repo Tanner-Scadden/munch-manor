@@ -74,7 +74,7 @@
 
 .coop button:disabled {
   cursor: default;
-  opacity: 0.45;
+  opacity: var(--menu-dim);
 }
 
 .coop-key {
@@ -541,7 +541,7 @@
   min-width: 0;
   height: clamp(90px, 30 * var(--coop-unit), 200px);
   padding: 8px 4px;
-  border: 3px dashed var(--menu-line-strong);
+  border: 2px dashed var(--menu-line-strong);
   border-radius: var(--menu-radius-md);
   background: rgba(20, 15, 24, 0.7);
 }
@@ -840,8 +840,8 @@
 }
 
 .coop-seat[data-me='Me'] {
-  outline: 3px solid var(--menu-gold);
-  outline-offset: 3px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .coop-seat-empty {
@@ -1377,7 +1377,7 @@
 }
 
 .modifier-pick[data-available='No'] {
-  opacity: 0.4;
+  opacity: var(--menu-dim);
   cursor: default;
 }
 
@@ -1401,7 +1401,7 @@
 }
 
 .coop-picks[data-host='Watching'] .modifier-pick[data-state='Off'] {
-  opacity: 0.6;
+  opacity: var(--menu-dim);
 }
 
 /* PING: a WiFi signal, green, yellow, or red by how good the link is, in
