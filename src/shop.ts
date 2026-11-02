@@ -1122,7 +1122,7 @@ const isAtStall = (position: Vector): boolean =>
 const hasLeftStall = (position: Vector): boolean =>
   distanceToStall(position) > SHOP_LEAVE_PX
 
-const isNearStall = (position: Vector): boolean =>
+export const isNearStall = (position: Vector): boolean =>
   distanceToStall(position) <= SHOP_NEAR_PX
 
 export const isShopOpenFor = (phase: Phase): boolean =>

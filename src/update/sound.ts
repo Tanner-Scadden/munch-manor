@@ -16,6 +16,7 @@ import {
 } from '../audio'
 import { makeCommand, makeManagedResources, makeResource } from '../definition'
 import { maybeLandedBetween, prizeSpotOf, revealOf } from '../fridgeReveal'
+import { mendedSpots } from '../heroTells'
 import { Message } from '../message'
 import { AudioState, GameEvent, type Model, type Player } from '../model'
 import { PICKUPS } from '../powerups'
@@ -229,6 +230,21 @@ export const fridgeLandCues = (
         ),
         Option.toArray,
       )
+
+// NOTE: a trap mended between two frames rings its tink there, read from the
+// traps' health (src/heroTells.ts), so the room's World needs nothing new.
+export const mendCues = (
+  before: Model,
+  after: Model,
+): ReadonlyArray<SoundCue> =>
+  pipe(
+    mendedSpots(after, before.tellWatch),
+    Array.take(1),
+    Array.map(spot => ({
+      sound: 'Tink' as const,
+      variation: positionVariation(spot.x, spot.y),
+    })),
+  )
 
 export const frameSoundCues = (
   events: ReadonlyArray<GameEvent>,

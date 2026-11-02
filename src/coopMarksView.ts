@@ -8,6 +8,7 @@ import type { Model } from './model'
 import { seatNamesOf } from './onlineRun'
 import { isBledOut, isCoop, isDowned, leadSeatOf, playersOf } from './party'
 import { NAME_LIFT_DOWNED_PX, seatColorOf, seatHatRiseOf } from './partyView'
+import type { Calling } from './playerData'
 import { TOP_LEFT, bakeShapes, placeAt, spriteShapes } from './sprite'
 import { isBreak } from './waves'
 
@@ -103,6 +104,37 @@ const tagCellsOf = (name: string): ReadonlyArray<TagCell> =>
           }),
   )
 
+// NOTE: the hero's trade as a tiny picture before the name, so a crew can
+// tell who plays what at a glance (decided 2026-11-01): the Handyman's
+// hammer, the Track Star's sneaker, the Penny Pincher's coin, the Line
+// Cook's ladle. YOU gets none. Four rows tall, like the letters.
+type TagIcon = Readonly<{ width: number; sprite: ReadonlyArray<Canvas.Shape> }>
+
+const tagIconOf = (pixels: ReadonlyArray<string>): TagIcon => ({
+  width: Array.reduce(pixels, 0, (widest, row) => Math.max(widest, row.length)),
+  sprite: spriteShapes(
+    pixels,
+    {
+      s: '#d3d8e2',
+      t: '#c99a5b',
+      o: '#f08a24',
+      w: '#f4f1de',
+      y: '#f2c230',
+      z: '#b8861c',
+      e: '#8d93a3',
+    },
+    TOP_LEFT,
+  ),
+})
+
+const TAG_ICONS: Readonly<Record<Calling, Option.Option<TagIcon>>> = {
+  You: Option.none(),
+  Handyman: Option.some(tagIconOf(['.sss.', '.sss.', '..t..', '..t..'])),
+  TrackStar: Option.some(tagIconOf(['.oo..', '.ooo.', 'ooooo', 'wwwww'])),
+  PennyPincher: Option.some(tagIconOf(['.yy.', 'yzzy', 'yzzy', '.yy.'])),
+  LineCook: Option.some(tagIconOf(['..t..', '..t..', '.eee.', '.eee.'])),
+}
+
 const tagWidthOf = (cells: ReadonlyArray<TagCell>): number =>
   Math.max(
     0,
@@ -116,17 +148,27 @@ const nameTagShapes = (
   color: string,
   x: number,
   bottom: number,
+  calling: Calling,
 ): ReadonlyArray<Canvas.Shape> => {
   const cells = tagCellsOf(name)
   if (Array.isReadonlyArrayEmpty(cells)) {
     return []
   }
-  const width = tagWidthOf(cells)
+  const maybeIcon = TAG_ICONS[calling]
+  const iconSpan = Option.match(maybeIcon, {
+    onNone: () => 0,
+    onSome: icon => icon.width + TAG_GAP + 1,
+  })
+  const width = tagWidthOf(cells) + iconSpan
   const left = Math.round(x - width / 2)
   const top = Math.round(bottom) - TAG_ROWS - TAG_PAD - 1
+  const icon = Option.match(maybeIcon, {
+    onNone: () => [],
+    onSome: found => [placeAt(left, top, found.sprite)],
+  })
   const glyphs = Array.reduce(
     cells,
-    { at: left, shapes: Array.empty<Canvas.Shape>() },
+    { at: left + iconSpan, shapes: Array.empty<Canvas.Shape>() },
     (placed, cell) => ({
       at: placed.at + cell.width + TAG_GAP,
       shapes: Option.match(cell.maybeGlyph, {
@@ -151,6 +193,7 @@ const nameTagShapes = (
       height: 1,
       fill: color,
     }),
+    ...icon,
     ...glyphs.shapes,
   ]
 }
@@ -181,6 +224,7 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
                   (isDowned(seat)
                     ? NAME_LIFT_DOWNED_PX
                     : NAME_BOTTOM_LIFT_PX + seatHatRiseOf(model, slot)),
+                player.calling,
               )),
           ...(isBreak(model) && seat.readiness === 'Ready'
             ? textShapes(

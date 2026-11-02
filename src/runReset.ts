@@ -9,6 +9,7 @@ import {
   RunTally,
   cosmeticSeedOf,
   noRankPaid,
+  noTellWatch,
 } from './clientSchema'
 import { ZERO_VECTOR } from './geometry'
 import { deriveIntent } from './input'
@@ -54,6 +55,7 @@ export type RunFields = Pick<
   | 'particles'
   | 'decals'
   | 'dustCooldownMs'
+  | 'tellWatch'
   | 'wallet'
   | 'shop'
   | 'shopCategory'
@@ -113,6 +115,7 @@ export const freshRun = (model: Model): RunFields => ({
   particles: [],
   decals: [],
   dustCooldownMs: 0,
+  tellWatch: noTellWatch,
   wallet: emptyWallet,
   shop: ShopState.Away(),
   shopCategory: FIRST_SHOP_CATEGORY,
