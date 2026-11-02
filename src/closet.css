@@ -64,6 +64,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  letter-spacing: 0;
   pointer-events: none;
 }
 
@@ -327,7 +328,7 @@
 
 /* NOTE: a 360 px phone cannot fit a row of 48 px options beside the panel's
    padding, so only it keeps the 44 px ones. */
-@media (max-width: 400px) {
+@media (max-width: 370px) {
   .game-root[data-layout='Portrait'] .look-tab {
     --menu-tap: 44px;
   }

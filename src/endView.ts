@@ -7,8 +7,8 @@ import {
   PANEL_EDGE,
   PANEL_FILL,
   crewBoardHeightPx,
-  crewBoardSpan,
   crewBoardShapes,
+  crewBoardSpan,
   sparkShapes,
 } from './crewBoardView'
 import { QUARTER_TURN, rect } from './drawing'
