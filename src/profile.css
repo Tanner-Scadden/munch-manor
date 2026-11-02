@@ -160,7 +160,6 @@
     0 0 18px color-mix(in srgb, var(--tab-color) 55%, transparent);
   color: var(--menu-bg);
   translate: -6px 0;
-  scale: 1.08;
 }
 
 /* NOTE: the chosen tab is filled with its color, so its icon sits on a dark

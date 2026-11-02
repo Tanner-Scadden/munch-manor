@@ -1960,12 +1960,14 @@
 /* NOTE: a small square icon button for rare things, such as the tutorial
    reset: there, never loud. */
 .panel-icon-button {
-  display: grid;
+  display: flex;
   flex: none;
-  place-items: center;
-  width: var(--menu-tap);
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: var(--menu-tap);
   height: var(--menu-tap);
-  padding: 0;
+  padding: 0 12px;
   border: 2px solid var(--menu-line);
   border-radius: var(--menu-radius-sm);
   background: transparent;
@@ -1979,6 +1981,13 @@
   background: center / contain no-repeat;
   image-rendering: pixelated;
   opacity: 0.6;
+  pointer-events: none;
+}
+
+.panel-icon-label {
+  color: var(--menu-ink-dim);
+  font: bold var(--menu-small-size) var(--menu-font);
+  letter-spacing: 1px;
   pointer-events: none;
 }
 
@@ -2581,7 +2590,9 @@ button.help-card:focus-visible {
 
 .news-emoji {
   flex: none;
-  width: 1.4em;
+  width: 20px;
+  font-size: var(--menu-text-size);
+  line-height: 1.35;
   text-align: center;
 }
 
@@ -3014,7 +3025,9 @@ button.help-card:focus-visible {
    It sits just above the rail row. Only the pill takes taps. */
 .game-root[data-layout='Portrait'] .home-turn-hint {
   position: absolute;
-  left: 50%;
+  left: calc(4 * var(--a) + var(--manor-w) + 3 * var(--a));
+  right: calc(4 * var(--a));
+  justify-content: center;
   bottom: calc(
     4 * var(--a) + max(52px, 24 * var(--a)) + 48px + 3 * var(--a) + 8 *
       var(--a) + max(10px, 4 * var(--a))
@@ -3029,7 +3042,6 @@ button.help-card:focus-visible {
   border-radius: var(--menu-radius-pill);
   background: var(--menu-glass);
   color: var(--menu-ink);
-  translate: -50% 0;
   animation: turn-hint-in 0.6s ease-out 0.8s both;
 }
 

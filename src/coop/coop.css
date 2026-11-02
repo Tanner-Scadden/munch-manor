@@ -1619,3 +1619,14 @@
     display: none;
   }
 }
+
+/* NOTE: upright, the lobby's rows of picks all run the width of the column,
+   so the mode, skulls, and modifiers line up edge to edge. */
+[data-layout='Portrait'] .coop-picks {
+  width: 100%;
+}
+
+[data-layout='Portrait'] .modifier-group {
+  flex: 1 1 100%;
+  justify-content: space-evenly;
+}
