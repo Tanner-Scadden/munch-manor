@@ -24,7 +24,11 @@
     "balance:nightly": "bun tools/heavy/main.ts -- bun tools/balance/nightly.ts",
     "balance:model": "bun tools/balance/model.ts",
     "video": "bun tools/heavy/main.ts -- --cpu bun tools/video/video.ts",
-    "lint": "oxlint --report-unused-disable-directives-severity=error src tools/heavy tools/vite tools/balance tools/analytics tools/determinism tools/audit tools/video tools/sprites tools/mp-dev tools/lint/duplicateHelpers.ts tools/lint/fileTable.ts tools/lint/munchPlugin.ts tools/json.ts vite.config.ts vitest.config.ts packages/sqlite-wasm-effect packages/sync-engine packages/netcode && effect-tsgo oxlint --config .oxlintrc.effect.json --deny-warnings src tools/heavy tools/vite tools/balance tools/analytics tools/determinism tools/audit tools/video tools/sprites tools/mp-dev tools/lint/duplicateHelpers.ts tools/lint/fileTable.ts tools/lint/munchPlugin.ts tools/json.ts vite.config.ts vitest.config.ts packages/sqlite-wasm-effect packages/sync-engine packages/netcode && sh tools/lint/noEmDash.sh && bun tools/lint/duplicateHelpers.ts && bun tools/lint/fileTable.ts && knip --no-progress"
+    "lint": "bun run lint:oxlint && bun run lint:effect && bun run lint:rest && bun run lint:infra",
+    "lint:oxlint": "oxlint --report-unused-disable-directives-severity=error src tools/heavy tools/vite tools/balance tools/analytics tools/determinism tools/audit tools/video tools/sprites tools/mp-dev tools/lint/duplicateHelpers.ts tools/lint/fileTable.ts tools/lint/munchPlugin.ts tools/json.ts vite.config.ts vitest.config.ts packages/sqlite-wasm-effect packages/sync-engine packages/netcode",
+    "lint:effect": "effect-tsgo oxlint --config .oxlintrc.effect.json --deny-warnings src tools/heavy tools/vite tools/balance tools/analytics tools/determinism tools/audit tools/video tools/sprites tools/mp-dev tools/lint/duplicateHelpers.ts tools/lint/fileTable.ts tools/lint/munchPlugin.ts tools/json.ts vite.config.ts vitest.config.ts packages/sqlite-wasm-effect packages/sync-engine packages/netcode",
+    "lint:rest": "sh tools/lint/noEmDash.sh && bun tools/lint/duplicateHelpers.ts && bun tools/lint/fileTable.ts && knip --no-progress",
+    "lint:infra": "cd infra && bun run lint"
   },
   "dependencies": {
     "@effect/platform-browser": "4.0.6",

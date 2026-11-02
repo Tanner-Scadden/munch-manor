@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import './menu.css';
 @import './shop.css';
+@import './shopGuide.css';
 @import './profile.css';
 @import './calling.css';
 @import './closet.css';
