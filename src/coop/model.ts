@@ -150,6 +150,10 @@ export const Screen = defineTaggedUnion({
 })
 export type Screen = typeof Screen.Type
 
+// NOTE: `Screen.InRoom({ room })` without its Schema validation, which walks
+// the whole room. The room's frame moves the room on every tick.
+export const screenInRoom = (room: Room): Screen => ({ _tag: 'InRoom', room })
+
 // NOTE: `name`, `look`, `rank`, and `calling` are what joining sends for
 // this player (the look as src/playerData.ts writes it, the rank as
 // src/rank.ts works it out from their points, the calling their saved pick

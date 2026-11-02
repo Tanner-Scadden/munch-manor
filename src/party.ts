@@ -18,6 +18,7 @@ import {
   type ShopState,
   type Vector,
   type Wallet,
+  crewOf,
 } from './worldSchema'
 
 // The players of a World (MULTIPLAYER.md, Phase 1). Single player is Solo:
@@ -121,12 +122,12 @@ const swapIn = (world: World, index: number): World =>
             laserSight: () => mate.laserSight,
             purchase: () => mate.purchase,
             party: () =>
-              Party.Crew({
-                lead: mate.seat,
-                mates: Array.map(mates, (other, at) =>
+              crewOf(
+                mate.seat,
+                Array.map(mates, (other, at) =>
                   at === index ? mateOfLead(world, lead) : other,
                 ),
-              }),
+              ),
           }),
       }),
   })
@@ -189,7 +190,7 @@ export const modifyLeadSeat = (
     Solo: () => world,
     Crew: ({ lead, mates }) =>
       modifyFields(world, {
-        party: () => Party.Crew({ lead: change(lead), mates }),
+        party: () => crewOf(change(lead), mates),
       }),
   })
 
@@ -452,7 +453,7 @@ export const seatCrew = (world: World, count: number): World => {
     })
   })
   return modifyFields(world, {
-    party: () => Party.Crew({ lead: freshSeat(SOLO_SLOT), mates }),
+    party: () => crewOf(freshSeat(SOLO_SLOT), mates),
   })
 }
 
