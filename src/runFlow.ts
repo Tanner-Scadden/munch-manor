@@ -1,5 +1,7 @@
+import { Array } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { activeBots, seatCallings } from './bots'
 import { FIRST_PREPARATION_MS } from './constants'
 import { type Model, Phase, Round, type RunMode } from './model'
 import { raiseDebutCard, settleLessons } from './onboarding'
@@ -14,23 +16,32 @@ import { withWorld } from './world'
 // resets or reads client state (the run's fields, the lessons settled from
 // the save, the new zombie card) around the World's own step.
 
-// NOTE: a `?local=N` link seats N players at this keyboard before the
-// first wave is rolled, so the wave already counts them.
-const startRun = (model: Model, mode: RunMode): Model =>
-  withWorld(
+// NOTE: a `?local=N` link seats N players at this keyboard, and the
+// lobby's bots sit after them, all before the first wave is rolled, so the
+// wave already counts them. Each bot plays its own hero, as a co-op seat
+// does (src/roomWorld.ts).
+const startRun = (model: Model, mode: RunMode): Model => {
+  const bots = activeBots(model)
+  return withWorld(
     {
       ...model,
       ...freshRun(model),
       mode,
       lessons: settleLessons(model.lessons),
+      crewBots: bots,
     },
     world =>
       beginPreparation(
-        seatCrew(world, model.localPlayers),
+        seatCallings(
+          seatCrew(world, model.localPlayers + bots.length),
+          model.localPlayers,
+          Array.map(bots, ({ calling }) => calling),
+        ),
         1,
         FIRST_PREPARATION_MS,
       ),
   )
+}
 
 const resume = (model: Model, round: Round): Model =>
   modifyFields(model, {

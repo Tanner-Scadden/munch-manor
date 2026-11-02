@@ -8,6 +8,7 @@ import {
   PanelDialogBinding,
   UpdateGreetingBinding,
 } from '../bindings'
+import { setBotCalling } from '../bots'
 import { chooseCalling, isPickable } from '../callingPick'
 import { NEWS_DAYS } from '../changelog'
 import { makeCommand, makeStep } from '../definition'
@@ -187,9 +188,17 @@ export const ReloadPage = makeCommand('ReloadPage', {
 // NOTE: the panel's Closed fold (src/composition.ts): a Difficulty panel
 // that asked before a run, closed without a pick, asks again next time.
 export const forgetAskedMode: UpdateStep = stepModel => ({
-  model: DifficultyCard.isAnyOf(['Asking'])(stepModel.difficultyCard)
-    ? modifyFields(stepModel, { difficultyCard: () => DifficultyCard.Unseen() })
-    : stepModel,
+  model: modifyFields(
+    DifficultyCard.isAnyOf(['Asking'])(stepModel.difficultyCard)
+      ? modifyFields(stepModel, {
+          difficultyCard: () => DifficultyCard.Unseen(),
+        })
+      : stepModel,
+    {
+      home: home =>
+        modifyFields(home, { maybePickingBot: () => Option.none() }),
+    },
+  ),
 })
 
 // NOTE: Leave Run opens over the pause menu, the hero picker over the bare
@@ -451,7 +460,12 @@ export const pickCalling = (calling: Calling) =>
     isOnHome(model.phase) &&
     isPickable(model, calling)
       ? Update.combineSteps([
-          modelStep(stepModel => chooseCalling(stepModel, calling)),
+          modelStep(stepModel =>
+            Option.match(stepModel.home.maybePickingBot, {
+              onNone: () => chooseCalling(stepModel, calling),
+              onSome: index => setBotCalling(stepModel, index, calling),
+            }),
+          ),
           closePanel,
         ])
       : unchanged,

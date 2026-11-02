@@ -228,6 +228,8 @@ Left for later:
 - **Within the World.** The new zombie card and the lessons are single player's; a co-op room plays them settled. Intensity, footfalls, and an Ankle Biter's fair surfacing spot read the lead player only. The boss's stomp and charge hit only the player he fights. A downed player cannot be bitten again. Run stats (accuracy, hearts lost) are the client's tally of its own events, with the World's per-seat `kills` beside them.
 - **For Phase 2's swap.** Done on 2026-10-30: see "What Phase 2 built".
 
+**Bots use the same seats (2026-11-01).** The single player lobby seats up to three teammate bots in this same World (`seatCrew`, then each seat made over as its hero), each driven by a bot's intent and presses from `src/teammateBot.ts` in place of keys, so a run with bots plays by every rule above. See "Teammate bots" in `GAME_DESIGN.md`.
+
 ### Phase 2: the room and the wire
 
 A `GameRoom` SQLite Durable Object class in the API Worker, beside `SyncScope` and `SyncDirectory`, on the Hibernation API. A hard-coded `?room=TEST` is enough, one room per object for now.

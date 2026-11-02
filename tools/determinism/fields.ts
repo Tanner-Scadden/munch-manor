@@ -63,7 +63,6 @@ export const FIELD_CLASSES = {
   orientation: 'Client',
   cameraLean: 'Client',
 
-
   particles: 'Cosmetic',
   decals: 'Cosmetic',
   dustCooldownMs: 'Cosmetic',
@@ -149,6 +148,7 @@ export const FIELD_CLASSES = {
   rotationSetting: 'Client',
   shopChatter: 'Client',
   localPlayers: 'Client',
+  crewBots: 'Client',
 } satisfies Partial<Record<keyof Model, FieldClass>>
 
 const CLASS_BY_FIELD: ReadonlyMap<string, FieldClass> = new Map(

@@ -1,6 +1,7 @@
 import { Array, Option, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
+import { isBotCrew, maybeCrewBotAt } from './bots'
 import { type Camera, worldToView } from './camera'
 import { maybeRoomOf } from './coop/roomState'
 import { textShapes } from './font'
@@ -19,7 +20,7 @@ import { isBreak } from './waves'
 // exception to "No off-screen hints"). Zombies and doors get nothing.
 
 const isOnline = (model: Model): boolean =>
-  isCoop(model) && Option.isSome(maybeRoomOf(model.coop))
+  isCoop(model) && (Option.isSome(maybeRoomOf(model.coop)) || isBotCrew(model))
 
 // NAME TAGS
 
@@ -135,6 +136,17 @@ const TAG_ICONS: Readonly<Record<Calling, Option.Option<TagIcon>>> = {
   LineCook: Option.some(tagIconOf(['..t..', '..t..', '.eee.', '.eee.'])),
 }
 
+// NOTE: a teammate bot wears a tiny robot head before its hero's trade, so
+// no one takes it for a person. Four rows tall, like the letters.
+const BOT_TAG_ICON: TagIcon = {
+  width: 5,
+  sprite: spriteShapes(
+    ['..y..', 'sssss', 'ststs', 'sssss'],
+    { s: '#d3d8e2', t: '#5fd4c8', y: '#f2c230' },
+    TOP_LEFT,
+  ),
+}
+
 const tagWidthOf = (cells: ReadonlyArray<TagCell>): number =>
   Math.max(
     0,
@@ -149,23 +161,38 @@ const nameTagShapes = (
   x: number,
   bottom: number,
   calling: Calling,
+  isBot: boolean,
 ): ReadonlyArray<Canvas.Shape> => {
   const cells = tagCellsOf(name)
   if (Array.isReadonlyArrayEmpty(cells)) {
     return []
   }
-  const maybeIcon = TAG_ICONS[calling]
-  const iconSpan = Option.match(maybeIcon, {
-    onNone: () => 0,
-    onSome: icon => icon.width + TAG_GAP + 1,
-  })
+  const icons = [
+    ...(isBot ? [BOT_TAG_ICON] : []),
+    ...Option.match(TAG_ICONS[calling], {
+      onNone: () => [],
+      onSome: found => [found],
+    }),
+  ]
+  const iconSpan = Array.reduce(
+    icons,
+    Array.isReadonlyArrayEmpty(icons) ? 0 : 1,
+    (span, icon) => span + icon.width + TAG_GAP,
+  )
   const width = tagWidthOf(cells) + iconSpan
   const left = Math.round(x - width / 2)
   const top = Math.round(bottom) - TAG_ROWS - TAG_PAD - 1
-  const icon = Option.match(maybeIcon, {
-    onNone: () => [],
-    onSome: found => [placeAt(left, top, found.sprite)],
-  })
+  const icon = Array.reduce(
+    icons,
+    { at: left, shapes: Array.empty<Canvas.Shape>() },
+    (placed, found) => ({
+      at: placed.at + found.width + TAG_GAP,
+      shapes: Array.append(
+        placed.shapes,
+        placeAt(placed.at, top, found.sprite),
+      ),
+    }),
+  ).shapes
   const glyphs = Array.reduce(
     cells,
     { at: left + iconSpan, shapes: Array.empty<Canvas.Shape>() },
@@ -225,6 +252,7 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
                     ? NAME_LIFT_DOWNED_PX
                     : NAME_BOTTOM_LIFT_PX + seatHatRiseOf(model, slot)),
                 player.calling,
+                Option.isSome(maybeCrewBotAt(model, slot)),
               )),
           ...(isBreak(model) && seat.readiness === 'Ready'
             ? textShapes(

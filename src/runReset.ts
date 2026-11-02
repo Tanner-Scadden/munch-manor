@@ -97,6 +97,7 @@ export type RunFields = Pick<
   | 'runRecords'
   | 'bestStreak'
   | 'party'
+  | 'crewBots'
 >
 
 export const freshRun = (model: Model): RunFields => ({
@@ -159,4 +160,5 @@ export const freshRun = (model: Model): RunFields => ({
   runRecords: [],
   bestStreak: 0,
   party: Party.Solo(),
+  crewBots: [],
 })

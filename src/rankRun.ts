@@ -2,6 +2,7 @@ import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { playedDifficultyOf } from './analyticsRun'
+import { isBotCrew } from './bots'
 import { awardsOf, crewOf } from './crewAwards'
 import { isEndScreen, isInRun, isOnHome } from './home'
 import { isPending } from './lessons'
@@ -22,6 +23,12 @@ import { roundWave } from './waves'
 // for the menu, once each way: the same moments the run is counted in the
 // bests (countRunFrom in src/home.ts).
 
+// NOTE: awards and revives pay only in a crew of people. Teammate bots are
+// opponents for neither: a run with bots pays as a single player run does,
+// so a bot never makes Bones (and a human never farms them by reviving or
+// outscoring one).
+const isHumanCrew = (run: Model): boolean => isCoop(run) && !isBotCrew(run)
+
 // NOTE: a run still on the practice gate (wave 1 with the basics not yet
 // tried, even paused) pays nothing: the tutorial is not a run to rank.
 const isGuided = (run: Model): boolean =>
@@ -37,7 +44,7 @@ const isGuided = (run: Model): boolean =>
 const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
   const seat = leadSeatOf(run)
   const awards =
-    isEnded && isCoop(run) ? awardsOf(crewOf(run), seat.slot).length : 0
+    isEnded && isHumanCrew(run) ? awardsOf(crewOf(run), seat.slot).length : 0
   return {
     difficulty: playedDifficultyOf(run),
     wavesCleared: Math.max(0, run.stats.wavesCleared - run.rankPaid.wavesPaid),
@@ -46,7 +53,7 @@ const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
       Phase.isAnyOf(['Victory'])(run.phase) &&
       RunMode.isAnyOf(['Campaign'])(run.mode),
     awards: Math.max(0, awards - run.rankPaid.awardsPaid),
-    revives: isCoop(run)
+    revives: isHumanCrew(run)
       ? Math.max(0, seat.revives - run.rankPaid.revivesPaid)
       : 0,
     isGuided: isGuided(run),
@@ -58,10 +65,10 @@ const paidBy = (run: Model, isEnded: boolean): Model['rankPaid'] => ({
   wavesPaid: run.stats.wavesCleared,
   bossesPaid: run.stats.kills.Boss,
   awardsPaid:
-    isEnded && isCoop(run)
+    isEnded && isHumanCrew(run)
       ? awardsOf(crewOf(run), leadSeatOf(run).slot).length
       : 0,
-  revivesPaid: isCoop(run) ? leadSeatOf(run).revives : 0,
+  revivesPaid: isHumanCrew(run) ? leadSeatOf(run).revives : 0,
 })
 
 // NOTE: pays the run that just ended, or that the player just left, into

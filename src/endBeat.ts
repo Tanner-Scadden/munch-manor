@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { SharePath } from './analytics'
 import type { SoundEffect } from './audio'
+import { isBotCrew } from './bots'
 import { callingsOpenedBy } from './calling'
 import { giftsOpenedBy } from './closet'
 import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards'
@@ -525,8 +526,12 @@ export const sharedRunOf = (
   wave: roundWave(model.phase),
   difficulty: played,
   kills: totalKills(model.stats),
-  crew: Math.max(1, crewOf(model).length),
-  ...crewBragsOf(model),
+  // NOTE: bots are not a crew to boast of: a run with them posts as one
+  // player's run.
+  crew: isBotCrew(model) ? 1 : Math.max(1, crewOf(model).length),
+  ...(isBotCrew(model)
+    ? { maybeMvp: Option.none(), maybeOwnAward: Option.none() }
+    : crewBragsOf(model)),
 })
 
 // NOTE: the MVP, and the sharer's own first award but MVP, which the MVP's

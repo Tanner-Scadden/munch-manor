@@ -7,6 +7,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { levelOf, openExitIn } from '@game/arena'
 import { BOSS_RULES, hasBoss, planBoss } from '@game/boss'
+import { activeBots, addBot, seatCallings } from '@game/bots'
 import { cameraOf, worldToView } from '@game/camera'
 import { DECAL_MAX } from '@game/constants'
 import { noteRecords } from '@game/endBeat'
@@ -841,6 +842,29 @@ export const roomModel = (settings: SceneSettings): Model => {
         seatCrew(world, party),
         (seated, slot) => creditKills(seated, slot, PARTY_KILLS[slot] ?? 0),
       ),
+    )
+  }
+  // NOTE: `bots` seats that many teammate bots, as the lobby's + BOT does,
+  // each with kills of their own.
+  const { bots } = config
+  if (bots !== undefined) {
+    const rostered = Array.reduce(Array.range(1, bots), model, seated =>
+      addBot(seated),
+    )
+    const crewBots = activeBots(rostered)
+    model = modifyFields(
+      withWorld(rostered, world =>
+        Array.reduce(
+          Array.range(1, crewBots.length),
+          seatCallings(
+            seatCrew(world, crewBots.length + 1),
+            1,
+            Array.map(crewBots, bot => bot.calling),
+          ),
+          (seated, slot) => creditKills(seated, slot, PARTY_KILLS[slot] ?? 0),
+        ),
+      ),
+      { crewBots: () => crewBots },
     )
   }
   const phase = config.phase

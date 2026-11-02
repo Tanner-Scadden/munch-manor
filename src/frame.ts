@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { assistAim } from './aimAssist'
 import { COUNTER_LINES, isCounterOpen } from './ammoCounter'
 import { levelOf } from './arena'
+import { crewBotSlots, isBotCrew } from './bots'
 import { cameraOf, leanCamera, screenCameraOf } from './camera'
 import {
   FIXED_STEP_MS,
@@ -37,7 +38,8 @@ import { raiseDebutCardFrom } from './onboarding'
 import { advanceParticles } from './particles'
 import { CALLOUT_LIFETIME_MS } from './powerups'
 import { STALL_BOX } from './shop'
-import { soloInputs, stepWorld } from './stepWorld'
+import { type InputsByPlayer, soloInputs, stepWorld } from './stepWorld'
+import { applyBotPresses, botInputs } from './teammateBot'
 import { isEndless, isRoundActive, roundWave } from './waves'
 import { withWorld } from './world'
 
@@ -84,6 +86,25 @@ export const refreshIntent = (model: Model): Model =>
 
 type Ticks = Readonly<{ count: number; carryMs: number }>
 
+// NOTE: every seat's intent for a tick: the human's from the client, the
+// couch players' from their keys, and each teammate bot's from its brain
+// (src/teammateBot.ts).
+const inputsOf = (model: Model): InputsByPlayer => {
+  const players = isCouchPlay(model)
+    ? couchInputs(model, model.intent)
+    : soloInputs(model.intent)
+  return isBotCrew(model)
+    ? new Map([...players, ...botInputs(model, crewBotSlots(model))])
+    : players
+}
+
+// NOTE: the bots' presses for the tick, as their seats' own actions, before
+// the step: a reload in a lull, buying at the stall, READY.
+const botsPressed = (model: Model): Model =>
+  isBotCrew(model)
+    ? withWorld(model, world => applyBotPresses(world, crewBotSlots(model)))
+    : model
+
 // NOTE: a 60 Hz frame on an empty carry is exactly one tick and leaves
 // exactly zero, so a 60 Hz display steps as it did before the fixed step.
 const ticksIn = (carryMs: number, count = 0): Ticks =>
@@ -102,13 +123,8 @@ const runTicks = (stepped: Stepped, count: number): Stepped => {
   if (count <= 0 || !isRoundActive(stepped.model.phase)) {
     return stepped
   }
-  const intended = refreshIntent(stepped.model)
-  const ticked = stepWorld(
-    intended,
-    isCouchPlay(intended)
-      ? couchInputs(intended, intended.intent)
-      : soloInputs(intended.intent),
-  )
+  const intended = botsPressed(refreshIntent(stepped.model))
+  const ticked = stepWorld(intended, inputsOf(intended))
   return runTicks(
     {
       model: withWorld(intended, () => ticked.world),

@@ -1,11 +1,12 @@
 import { Array, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
+import { botSeatsFor } from './bots'
 import { PROP_ICONS } from './callingArt'
 import { startingCallingOf } from './callingPick'
 import { type Special, specialsNoteOf, specialsOf } from './callingSpecials'
 import type { ApplicationViewBuilder } from './composition'
-import { BACK_ICON, portraitOf } from './coop/icons'
+import { BACK_ICON, BOT_ICON, portraitOf } from './coop/icons'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
@@ -14,6 +15,7 @@ import {
 } from './difficulty'
 import {
   CAMPAIGN_ICON,
+  CLOSE_ICON,
   ENDLESS_ICON,
   MANOR_ICON,
   PADLOCK_ICON,
@@ -21,12 +23,19 @@ import {
   SKULL_ICONS,
   SKULL_OFF_ICON,
 } from './icons'
-import { LOBBY_KEYS, MAPS, MODE_CONTROLS, lobbyControlId } from './lobby'
+import { LOBBY_KEYS, MAPS, MODE_CONTROLS, SEATS, lobbyControlId } from './lobby'
 import { newPipView } from './lookGearView'
 import { callingPropView, iconView, keyCapView, rankTagView } from './menuParts'
 import { isLobbyUp } from './menuState'
 import { Message } from './message'
-import type { Difficulty, HomeMode, LobbyControl, MapId, Model } from './model'
+import type {
+  Bot,
+  Difficulty,
+  HomeMode,
+  LobbyControl,
+  MapId,
+  Model,
+} from './model'
 import { CALLING_NAMES, MAP_NAMES, MODE_NAMES } from './names'
 import { joinName } from './profile'
 import { rankOf, totalPointsOf } from './rank'
@@ -166,23 +175,168 @@ const mySeatView = (model: Model, h: ApplicationViewBuilder): Html => {
   )
 }
 
-// NOTE: where teammates will sit. They are faint outlines for now, shown
-// to nobody and pressed by nobody.
-const emptySeatView = (seat: number, h: ApplicationViewBuilder): Html =>
+// TEAMMATE BOTS
+
+const seatControlsAt = (index: number): readonly [LobbyControl, LobbyControl] =>
+  Option.getOrElse(
+    Array.get(SEATS, index),
+    (): readonly [LobbyControl, LobbyControl] => ['Bot1', 'Drop1'],
+  )
+
+// NOTE: an empty seat is a button you can see: the bot's head and + BOT.
+// A tap seats a bot there, with a goofy name and a hero picked from the
+// ones this player has unlocked. The first empty seat wears the key, B.
+const addBotTileView = (
+  model: Model,
+  seat: number,
+  isFirst: boolean,
+  h: ApplicationViewBuilder,
+): Html => {
+  const [control] = seatControlsAt(seat)
+  return h.keyed('li')(
+    `seat-${seat}`,
+    [h.Class('coop-seat lobby-seat-empty'), h.DataAttribute('state', 'Empty')],
+    [
+      h.button(
+        [
+          ...controlAttributes(control, h),
+          h.Type('button'),
+          h.Class('lobby-add-bot'),
+          h.AriaLabel('Add a bot teammate'),
+          h.AriaKeyshortcuts(LOBBY_KEYS.Bot.name),
+          h.OnClick(Message.ClickedLobbyAddBotButton()),
+        ],
+        [
+          iconView('lobby-add-bot-icon', BOT_ICON, h),
+          h.span(
+            [h.Class('lobby-add-bot-label'), h.AriaHidden(true)],
+            [
+              h.span([h.Class('lobby-add-bot-plus')], ['+']),
+              h.span([], ['BOT']),
+            ],
+          ),
+          ...(isFirst ? keyCapView(model, LOBBY_KEYS.Bot.cap, h) : []),
+        ],
+      ),
+    ],
+  )
+}
+
+// NOTE: where teammates cannot sit: a dev link with players at the keyboard
+// leaves fewer seats. Faint, and pressed by nobody.
+const closedSeatView = (seat: number, h: ApplicationViewBuilder): Html =>
   h.keyed('li')(`seat-${seat}`, [
     h.Class('coop-seat lobby-seat-empty'),
     h.DataAttribute('state', 'Empty'),
     h.AriaHidden(true),
   ])
 
-const seatsView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.ol(
+// NOTE: a bot's hero card is the same card as yours, smaller: tap it for
+// the hero picker, which then chooses for this bot.
+const botHeroView = (
+  bot: Bot,
+  index: number,
+  h: ApplicationViewBuilder,
+): Html => {
+  const [control] = seatControlsAt(index)
+  return h.button(
+    [
+      ...controlAttributes(control, h),
+      h.Type('button'),
+      h.Class('lobby-hero lobby-hero-bot'),
+      h.DataAttribute('calling', bot.calling),
+      h.AriaLabel(
+        `${bot.name}'s hero: ${CALLING_NAMES[bot.calling]}. ${specialsNoteOf(bot.calling)}. Change it`,
+      ),
+      h.AriaHasPopup('dialog'),
+      h.OnClick(Message.ClickedLobbyBotHeroButton({ index })),
+    ],
+    [
+      iconView('lobby-hero-prop', PROP_ICONS[bot.calling], h),
+      h.span(
+        [h.Class('lobby-hero-body'), h.AriaHidden(true)],
+        [
+          h.span([h.Class('lobby-hero-name')], [CALLING_NAMES[bot.calling]]),
+          h.span(
+            [h.Class('lobby-specials')],
+            Array.map(specialsOf(bot.calling), special =>
+              specialChipView(special, h),
+            ),
+          ),
+        ],
+      ),
+    ],
+  )
+}
+
+const dropBotView = (
+  bot: Bot,
+  index: number,
+  h: ApplicationViewBuilder,
+): Html => {
+  const [, control] = seatControlsAt(index)
+  return h.button(
+    [
+      ...controlAttributes(control, h),
+      h.Type('button'),
+      h.Class('lobby-drop-bot'),
+      h.AriaLabel(`Remove ${bot.name}`),
+      h.OnClick(Message.ClickedLobbyDropBotButton({ index })),
+    ],
+    [iconView('lobby-drop-bot-icon', CLOSE_ICON, h)],
+  )
+}
+
+const botSeatView = (
+  bot: Bot,
+  index: number,
+  h: ApplicationViewBuilder,
+): Html =>
+  h.keyed('li')(
+    `seat-${index}`,
+    [
+      h.Class('coop-seat lobby-seat-bot'),
+      h.DataAttribute('state', 'Here'),
+      h.DataAttribute('bot', 'Bot'),
+      h.AriaLabel(`${bot.name}, bot teammate, ${CALLING_NAMES[bot.calling]}`),
+    ],
+    [
+      iconView(
+        'coop-portrait coop-seat-head',
+        portraitOf(bot.look, bot.calling),
+        h,
+      ),
+      h.div(
+        [h.Class('coop-nameline lobby-bot-nameline')],
+        [
+          iconView('lobby-bot-mark', BOT_ICON, h),
+          h.span([h.Class('coop-nameplate'), h.AriaHidden(true)], [bot.name]),
+        ],
+      ),
+      botHeroView(bot, index, h),
+      dropBotView(bot, index, h),
+    ],
+  )
+
+const seatsView = (model: Model, h: ApplicationViewBuilder): Html => {
+  const bots = model.home.bots
+  const emptyCount = CREW_SEATS - bots.length
+  const canAdd = bots.length < botSeatsFor(model)
+  return h.ol(
     [h.Class('coop-seats lobby-seats'), h.AriaLabel('Players')],
     [
       mySeatView(model, h),
-      ...Array.makeBy(CREW_SEATS, seat => emptySeatView(seat + 1, h)),
+      ...Array.map(bots, (bot, index) => botSeatView(bot, index, h)),
+      ...(emptyCount > 0
+        ? Array.makeBy(emptyCount, offset =>
+            canAdd
+              ? addBotTileView(model, bots.length + offset, offset === 0, h)
+              : closedSeatView(bots.length + offset, h),
+          )
+        : []),
     ],
   )
+}
 
 // PICKS
 

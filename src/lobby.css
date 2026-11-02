@@ -3,7 +3,8 @@
    NOTE: PLAY opens the co-op lobby's cousin, alone. It wears co-op's own
    layer, seats, picks, and START (src/coop/coop.css); only what the lobby
    adds is here: your seat is wide, with the hero card beside your figure,
-   three faint seats wait for a crew, and the map is a card. */
+   each empty seat is a + BOT tile to tap, a seated bot shows its figure,
+   name, hero card, and an x, and the map is a card. */
 
 .lobby .lobby-seats {
   grid-template-columns: repeat(5, 1fr);
@@ -36,9 +37,145 @@
   min-width: 0;
 }
 
-/* NOTE: where a crew will sit, drawn faint and still: no plus to tap. */
+/* NOTE: a seat nobody can take (a dev link with players at the keyboard)
+   stays faint and still. */
 .lobby-seat-empty {
   opacity: 0.55;
+}
+
+/* THE + BOT TILE: an empty seat that looks like the button it is. */
+
+.lobby-seat-empty:has(.lobby-add-bot) {
+  padding: 0;
+  opacity: 1;
+  border-color: var(--coop-teal);
+  background: rgba(95, 212, 200, 0.12);
+}
+
+.lobby-add-bot {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-height: var(--menu-tap);
+  padding: 8px 4px;
+  border: 0;
+  border-radius: calc(var(--menu-radius) - 2px);
+  background: transparent;
+  color: var(--coop-teal);
+  cursor: pointer;
+}
+
+.lobby-add-bot:hover,
+.lobby-add-bot:focus-visible {
+  background: rgba(95, 212, 200, 0.22);
+}
+
+.lobby-add-bot:active {
+  background: rgba(95, 212, 200, 0.34);
+}
+
+.lobby-add-bot-icon {
+  width: clamp(34px, 9 * var(--coop-unit), 60px);
+  aspect-ratio: 11 / 9;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.lobby-add-bot-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font: bold clamp(14px, 3.6 * var(--coop-unit), 22px) / 1 var(--menu-font);
+  letter-spacing: 0.08em;
+}
+
+.lobby-add-bot-plus {
+  font-size: 1.3em;
+}
+
+/* A BOT'S SEAT: its figure, its name beside a little robot head, its hero
+   card, and an x to send it home. */
+
+.lobby-seat-bot {
+  padding-top: 6px;
+}
+
+/* NOTE: the figure takes what the name and the hero card leave, and keeps
+   clear of the x in the corner. */
+.lobby-seat-bot .coop-seat-head {
+  flex: 1 1 0;
+  height: auto;
+  min-height: 0;
+  max-width: calc(100% - var(--menu-tap) - 6px);
+  margin-right: calc(var(--menu-tap) * 0.5);
+  align-self: center;
+}
+
+.lobby-bot-nameline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.lobby-bot-nameline .coop-nameplate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby-bot-mark {
+  flex: none;
+  width: clamp(13px, 3.2 * var(--coop-unit), 18px);
+  aspect-ratio: 11 / 9;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.lobby-hero-bot {
+  align-self: stretch;
+  min-height: 0;
+  padding: 3px 5px;
+}
+
+.lobby-hero-bot .lobby-specials {
+  display: none;
+}
+
+.lobby-hero-bot .lobby-hero-prop {
+  width: clamp(18px, 4.4 * var(--coop-unit), 28px);
+}
+
+.lobby-drop-bot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: var(--menu-tap);
+  height: var(--menu-tap);
+  padding: 0;
+  border: 2px solid var(--menu-line-strong);
+  border-radius: var(--menu-radius-sm);
+  background: rgba(20, 15, 24, 0.85);
+  cursor: pointer;
+}
+
+.lobby-drop-bot:hover,
+.lobby-drop-bot:focus-visible {
+  border-color: var(--menu-red);
+}
+
+.lobby-drop-bot-icon {
+  width: 14px;
+  aspect-ratio: 1;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
 }
 
 /* THE HERO CARD: the prop, the name, and each special as a picture. */
@@ -164,8 +301,14 @@
   grid-column: 1 / -1;
 }
 
-[data-layout='Portrait'] .lobby-seat-empty {
+[data-layout='Portrait'] .lobby-seat-empty,
+[data-layout='Portrait'] .lobby-seat-bot {
   height: clamp(70px, 11cqh, 110px);
+}
+
+[data-layout='Portrait'] .lobby-seat-bot {
+  height: auto;
+  min-height: clamp(150px, 22cqh, 210px);
 }
 
 /* LANDSCAPE: BACK sits in the top left corner, so the seats leave it room
@@ -173,4 +316,10 @@
 
 [data-layout='Landscape'] .lobby .lobby-seats {
   width: min(100cqw - 2 * (var(--menu-tap) + 24px), 720px);
+}
+
+/* NOTE: seats come and go as bots are added and sent home, so none pops in:
+   a seat that is swapped in place must not leave a ghost of its animation. */
+.lobby-seats .coop-seat {
+  animation: none;
 }
