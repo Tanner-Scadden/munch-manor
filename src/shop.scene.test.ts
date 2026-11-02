@@ -24,6 +24,7 @@ import {
   TrapHint,
   initialModel,
 } from './model'
+import { modifyFocus } from './party'
 import { ShopTabsBlock } from './shopTabs'
 import {
   ROOT,
@@ -34,36 +35,40 @@ import {
 import { TRAPS } from './traps'
 
 const atStall = (balance: number, arsenal: Arsenal): Model =>
-  modifyFields(initialModel, {
-    maybeSurface: () =>
-      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-    phase: () =>
-      Phase.Preparation({
-        wave: 4,
-        remainingMs: 15_000,
-        durationMs: PREPARATION_MS,
-        spawns: [
-          {
-            atMs: 1e9,
-            kind: 'Shambler',
-            door: 'North',
-            offset: 0,
-            speedScale: 1,
-            hpScale: 1,
-            pack: 0,
-            formation: 'Squad',
-          },
-        ],
-      }),
-    player: player =>
-      modifyFields(player, {
-        x: () => 270,
-        y: () => 142,
-        hp: () => 3,
-        arsenal: () => arsenal,
-      }),
-    wallet: () => ({ balance, earned: balance, shown: balance }),
-  })
+  modifyFocus(
+    modifyFields(initialModel, {
+      maybeSurface: () =>
+        Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+      phase: () =>
+        Phase.Preparation({
+          wave: 4,
+          remainingMs: 15_000,
+          durationMs: PREPARATION_MS,
+          spawns: [
+            {
+              atMs: 1e9,
+              kind: 'Shambler',
+              door: 'North',
+              offset: 0,
+              speedScale: 1,
+              hpScale: 1,
+              pack: 0,
+              formation: 'Squad',
+            },
+          ],
+        }),
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          x: () => 270,
+          y: () => 142,
+          hp: () => 3,
+          arsenal: () => arsenal,
+        }),
+      wallet: () => ({ balance, earned: balance, shown: balance }),
+    },
+  )
 
 const holdingSmg = (rounds: number, tier: number): Arsenal =>
   holdingSecond({ kind: 'Smg', rounds, loaded: 30, tier })
@@ -183,23 +188,25 @@ describe('the shop at a glance', () => {
 })
 
 describe('repairing placed traps', () => {
-  const withPlanks = modifyFields(atStall(100, holdingSmg(200, 1)), {
-    shopCategory: () => 'Traps',
-    traps: () => [
-      Trap.Barricade({
-        id: 1,
-        door: 'West',
-        hp: TRAPS.Barricade.hp / 2,
-        hitRemainingMs: 0,
-      }),
-      Trap.Barricade({
-        id: 2,
-        door: 'North',
-        hp: TRAPS.Barricade.hp,
-        hitRemainingMs: 0,
-      }),
-    ],
-  })
+  const withPlanks = modifyFocus(
+    modifyFields(atStall(100, holdingSmg(200, 1)), {
+      traps: () => [
+        Trap.Barricade({
+          id: 1,
+          door: 'West',
+          hp: TRAPS.Barricade.hp / 2,
+          hitRemainingMs: 0,
+        }),
+        Trap.Barricade({
+          id: 2,
+          door: 'North',
+          hp: TRAPS.Barricade.hp,
+          hitRemainingMs: 0,
+        }),
+      ],
+    }),
+    { shopCategory: () => 'Traps' },
+  )
   const westPlank = selector('#shop-item-Repair-1')
   const northPlank = selector('#shop-item-Repair-2')
 
@@ -230,7 +237,7 @@ describe('repairing placed traps', () => {
     scene(
       ROOT,
       given(
-        modifyFields(atStall(100, holdingSmg(200, 1)), {
+        modifyFocus(atStall(100, holdingSmg(200, 1)), {
           shopCategory: () => 'Traps',
         }),
       ),
@@ -249,7 +256,7 @@ describe('what the shop teaches', () => {
     scene(
       ROOT,
       given(
-        modifyFields(atStall(100, holdingSmg(200, 0)), {
+        modifyFocus(atStall(100, holdingSmg(200, 0)), {
           shopCategory: () => 'Traps',
         }),
       ),
@@ -264,10 +271,12 @@ describe('what the shop teaches', () => {
     scene(
       ROOT,
       given(
-        modifyFields(atStall(100, holdingSmg(200, 0)), {
-          shopCategory: () => 'Traps',
-          trapHint: () => TrapHint.Seen(),
-        }),
+        modifyFocus(
+          modifyFields(atStall(100, holdingSmg(200, 0)), {
+            trapHint: () => TrapHint.Seen(),
+          }),
+          { shopCategory: () => 'Traps' },
+        ),
       ),
       measureSurface,
       ...walkIntoStallInScene(),

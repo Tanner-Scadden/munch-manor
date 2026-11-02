@@ -2,6 +2,7 @@ import { Array, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { MS_PER_SECOND, SCORE_PER_ZOMBIE } from './constants'
+import { focusOf } from './party'
 import { type World, modifyWorldFields } from './world'
 import {
   GameEvent,
@@ -60,7 +61,8 @@ export const tallyFrame = <M extends World>(
           Array.reduce(killedKinds(after.frameEvents), kills, addKill),
         wavesCleared: count => count + clearedWaves(after.frameEvents),
         heartsLost: count =>
-          count + Math.max(0, before.player.hp - after.player.hp),
+          count +
+          Math.max(0, focusOf(before).player.hp - focusOf(after).player.hp),
         powerUpsGrabbed: count => count + grabbedPickups(after.frameEvents),
         maybeLastHurtBy: maybeKind =>
           Option.orElse(lastHurtBy(after.frameEvents), () => maybeKind),

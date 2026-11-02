@@ -10,6 +10,7 @@ import {
 import { playerKeyAction } from '../keyActions'
 import { type Model, TrapHint, TrapNotice } from '../model'
 import { puffDust } from '../particles'
+import { focusOf } from '../party'
 import { ActionRefusal, SeatAction } from '../stepWorld'
 import { trapCenter } from '../traps'
 import { actAsLead, tryAsLead } from './action'
@@ -62,7 +63,9 @@ export const placeSelectedTrap = (model: Model): UpdateReturn =>
 export const nextTrap = (model: Model): UpdateReturn => {
   const cycled = actAsLead(model, SeatAction.NextTrap())
   return playSounds(
-    cycled.selectedTrap === model.selectedTrap ? [] : [uiCue('Swap')],
+    focusOf(cycled).selectedTrap === focusOf(model).selectedTrap
+      ? []
+      : [uiCue('Swap')],
   )(cycled)
 }
 

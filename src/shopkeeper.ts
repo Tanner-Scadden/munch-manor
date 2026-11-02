@@ -7,6 +7,7 @@ import {
   type ShopItemId,
   type TrapKind,
 } from './model'
+import { focusSlotOf } from './party'
 import {
   ShopGood,
   Verdict,
@@ -162,7 +163,10 @@ const REFUSED_MOOD: Mood = 'Shrugging'
 
 export const moodOf = (model: Model): Mood =>
   ShopChatter.match(model.shopChatter, {
-    Greeting: () => (totalAffordable(model) === 0 ? BROKE_MOOD : GREETING_MOOD),
+    Greeting: () =>
+      totalAffordable(model, focusSlotOf(model)) === 0
+        ? BROKE_MOOD
+        : GREETING_MOOD,
     Bought: () => BOUGHT_MOOD,
     TooPricey: () => BROKE_MOOD,
     Refused: () => REFUSED_MOOD,
@@ -177,12 +181,12 @@ export const chatterLine = (model: Model): string => {
   const index = model.stats.purchases
   return ShopChatter.match(model.shopChatter, {
     Greeting: () =>
-      totalAffordable(model) === 0
+      totalAffordable(model, focusSlotOf(model)) === 0
         ? pick(BROKE_GREETINGS, wavesSeen(model) + index)
         : pick(GREETINGS, wavesSeen(model) + index),
     Bought: ({ item }) => pick(boughtLines(item), index),
     TooPricey: ({ item }) =>
-      Verdict.match(verdictFor(model, item), {
+      Verdict.match(verdictFor(model, focusSlotOf(model), item), {
         Available: () => 'Now you can!',
         Refused: ({ reason }) =>
           String.startsWith(NEED_PREFIX)(reason)
@@ -190,7 +194,7 @@ export const chatterLine = (model: Model): string => {
             : reason,
       }),
     Refused: ({ item }) =>
-      Verdict.match(verdictFor(model, item), {
+      Verdict.match(verdictFor(model, focusSlotOf(model), item), {
         Available: () => 'Go on, then!',
         Refused: ({ reason }) => reason,
       }),

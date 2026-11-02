@@ -44,6 +44,7 @@ import {
   warnPacks,
 } from './pacing'
 import {
+  focusOf,
   isCoop,
   isStanding,
   payShared,
@@ -338,7 +339,7 @@ const arriveAt = (model: World, spawn: PlannedSpawn): Arrival => {
     const [rngState, at] = drawSurfacingSpot(
       levelOf(model),
       model.rngState,
-      model.player,
+      focusOf(model).player,
       model.traps,
     )
     return {
@@ -400,7 +401,11 @@ const payWaveBonus = (model: World, wave: number): World => {
   return payShared(
     modifyFields(model, {
       frameEvents: Array.append(
-        GameEvent.WaveCleared({ x: model.player.x, y: model.player.y, bonus }),
+        GameEvent.WaveCleared({
+          x: focusOf(model).player.x,
+          y: focusOf(model).player.y,
+          bonus,
+        }),
       ),
     }),
     bonus,
@@ -573,7 +578,7 @@ export const advanceRound = (model: World, worldMs: number): World =>
           ? startWaveEarly(model)
           : countDownBreak(model, preparation, worldMs)
       }
-      return ShopState.isAnyOf(['Browsing'])(model.shop) ||
+      return ShopState.isAnyOf(['Browsing'])(focusOf(model).shop) ||
         isPracticeGateHeld(model) ||
         isKitchenTourOn(model)
         ? model
@@ -599,7 +604,7 @@ export const roundWave = (phase: Phase): number =>
 const isDefeated = (model: World): boolean =>
   isCoop(model)
     ? !Array.some(playersOf(model), ({ seat }) => isStanding(seat))
-    : model.player.hp <= 0
+    : focusOf(model).player.hp <= 0
 
 export const endWhenDefeated = (model: World): World => {
   if (!isDefeated(model)) {

@@ -22,6 +22,7 @@ import {
   ZombieState,
   initialModel,
 } from './model'
+import { modifyFocus } from './party'
 import { ticks } from './testing'
 import { TRAPS, trapBox } from './traps'
 
@@ -48,14 +49,19 @@ const DISTANT_SPAWN = spawnAt('North', 999, 1e9)
 const plank = (id: number, door: DoorId, hp = TRAPS.Barricade.hp): Trap =>
   Trap.Barricade({ id, door, hp, hitRemainingMs: 0 })
 
-const base: Model = modifyFields(initialModel, {
-  maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-  player: player =>
-    modifyFields(player, {
-      invulnerability: () =>
-        Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
-    }),
-})
+const base: Model = modifyFocus(
+  modifyFields(initialModel, {
+    maybeSurface: () =>
+      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+  }),
+  {
+    player: player =>
+      modifyFields(player, {
+        invulnerability: () =>
+          Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
+      }),
+  },
+)
 
 const fighting = (
   spawns: ReadonlyArray<PlannedSpawn>,
@@ -191,18 +197,22 @@ describe('boarded doors are no spawn points', () => {
   })
 })
 
-const preparing: Model = modifyFields(base, {
-  phase: () =>
-    Phase.Preparation({
-      wave: 3,
-      remainingMs: 15_000,
-      durationMs: PREPARATION_MS,
-      spawns: [spawnAt('North', 1), spawnAt('North', 1), spawnAt('West', 2)],
-    }),
-  trapStock: () => ({ Barricade: 1, Turret: 0 }),
-  selectedTrap: () => 'Barricade',
-  player: player => modifyFields(player, { x: () => 220, y: () => 27 }),
-})
+const preparing: Model = modifyFocus(
+  modifyFields(base, {
+    phase: () =>
+      Phase.Preparation({
+        wave: 3,
+        remainingMs: 15_000,
+        durationMs: PREPARATION_MS,
+        spawns: [spawnAt('North', 1), spawnAt('North', 1), spawnAt('West', 2)],
+      }),
+  }),
+  {
+    trapStock: () => ({ Barricade: 1, Turret: 0 }),
+    selectedTrap: () => 'Barricade',
+    player: player => modifyFields(player, { x: () => 220, y: () => 27 }),
+  },
+)
 
 describe('the door preview follows the planks', () => {
   test('a plank moves its door count, live, and a broken one moves it back', () => {

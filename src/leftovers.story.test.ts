@@ -28,8 +28,15 @@ import {
   atFridge,
   freshRunModel,
   fridgeSeededFor,
+  withSeat,
 } from './model.fixture'
-import { maybePlayerAt, seatCrew, withSeat } from './party'
+import {
+  focusOf,
+  focusSlotOf,
+  maybePlayerAt,
+  modifyFocus,
+  seatCrew,
+} from './party'
 import { nextRandom } from './prng'
 import { PURCHASE_RULES, offersOf } from './purchase'
 import { stepWorld } from './stepWorld'
@@ -55,10 +62,16 @@ const FRAME_MS = FIXED_STEP_MS
 const pull = [press('Enter'), ...ticks(HOLD_TICKS, FRAME_MS), release('Enter')]
 
 const isFridgeOffered = (current: Model): boolean =>
-  Array.some(offersOf(current), ({ target }) => target._tag === 'Fridge')
+  Array.some(
+    offersOf(current, focusSlotOf(current)),
+    ({ target }) => target._tag === 'Fridge',
+  )
 
 const isPrizeOffered = (current: Model): boolean =>
-  Array.some(offersOf(current), ({ target }) => target._tag === 'Prize')
+  Array.some(
+    offersOf(current, focusSlotOf(current)),
+    ({ target }) => target._tag === 'Prize',
+  )
 
 describe('pulling from Mystery Leftovers', () => {
   test('holding Enter at the fridge pays, swings the door open, and offers a weapon', () => {
@@ -67,11 +80,11 @@ describe('pulling from Mystery Leftovers', () => {
       given(fridgeSeededFor(atFridge(100), 'Cooker')),
       ...pull,
       model(current => {
-        expect(current.wallet.balance).toBe(100 - FRIDGE_RULES.price)
+        expect(focusOf(current).wallet.balance).toBe(100 - FRIDGE_RULES.price)
         expect(current.stats.purchases).toBe(1)
         expect(FridgeDoor.isAnyOf(['Open'])(current.fridge.door)).toBe(true)
         expect(current.fridge.pulls).toBe(1)
-        expect(current.player.arsenal).toEqual(pistolOnly())
+        expect(focusOf(current).player.arsenal).toEqual(pistolOnly())
         expect(
           Array.some(current.particles, ({ kind }) => kind === 'Fog'),
         ).toBe(true)
@@ -91,7 +104,7 @@ describe('pulling from Mystery Leftovers', () => {
       update,
       given(
         fridgeSeededFor(
-          modifyFields(atFridge(100), {
+          modifyFocus(atFridge(100), {
             player: player =>
               modifyFields(player, {
                 arsenal: () => holdingSecond(freshGun('Smg')),
@@ -104,11 +117,11 @@ describe('pulling from Mystery Leftovers', () => {
       ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       ...pull,
       model(current => {
-        expect(current.player.arsenal).toEqual(
+        expect(focusOf(current).player.arsenal).toEqual(
           holdingSecond(freshGun('Cooker')),
         )
-        expect(current.player.melee).toEqual(Melee.Knife())
-        expect(current.wallet.balance).toBe(100 - FRIDGE_RULES.price)
+        expect(focusOf(current).player.melee).toEqual(Melee.Knife())
+        expect(focusOf(current).wallet.balance).toBe(100 - FRIDGE_RULES.price)
         expect(isPrizeOffered(current)).toBe(false)
         expect(FridgeDoor.isAnyOf(['Shut'])(current.fridge.door)).toBe(true)
       }),
@@ -121,7 +134,7 @@ describe('pulling from Mystery Leftovers', () => {
       update,
       given(
         fridgeSeededFor(
-          modifyFields(atFridge(100), {
+          modifyFocus(atFridge(100), {
             player: player => modifyFields(player, { arsenal: () => guns }),
           }),
           'Pan',
@@ -131,11 +144,11 @@ describe('pulling from Mystery Leftovers', () => {
       ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       ...pull,
       model(current => {
-        expect(current.player.arsenal).toEqual(guns)
-        expect(current.player.melee).toEqual(
+        expect(focusOf(current).player.arsenal).toEqual(guns)
+        expect(focusOf(current).player.melee).toEqual(
           Melee.Pan({ pan: freshGun('Pan') }),
         )
-        expect(current.player.wield).toBe('Melee')
+        expect(focusOf(current).player.wield).toBe('Melee')
         expect(FridgeDoor.isAnyOf(['Shut'])(current.fridge.door)).toBe(true)
       }),
     )
@@ -147,7 +160,7 @@ describe('pulling from Mystery Leftovers', () => {
       update,
       given(
         fridgeSeededFor(
-          modifyFields(atFridge(100), {
+          modifyFocus(atFridge(100), {
             player: player => modifyFields(player, { arsenal: () => smg }),
           }),
           'Pan',
@@ -161,12 +174,12 @@ describe('pulling from Mystery Leftovers', () => {
       message(Message.PressedKey({ code: 'KeyA' })),
       ...ticks(60, FRAME_MS),
       model(current => {
-        expect(current.player.arsenal).toEqual(smg)
+        expect(focusOf(current).player.arsenal).toEqual(smg)
         expect(isPrizeOffered(current)).toBe(false)
         expect(FridgeDoor.isAnyOf(['Offering'])(current.fridge.door)).toBe(
           false,
         )
-        expect(current.wallet.balance).toBe(100 - FRIDGE_RULES.price)
+        expect(focusOf(current).wallet.balance).toBe(100 - FRIDGE_RULES.price)
       }),
     )
   })
@@ -184,7 +197,7 @@ describe('pulling from Mystery Leftovers', () => {
       ...ticks(12, FRAME_MS),
       model(current => {
         expect(isPrizeOffered(current)).toBe(false)
-        expect(current.player.arsenal).toEqual(pistolOnly())
+        expect(focusOf(current).player.arsenal).toEqual(pistolOnly())
         expect(
           Array.some(current.frameEvents, GameEvent.isAnyOf(['PrizeLeft'])) ||
             !FridgeDoor.isAnyOf(['Offering'])(current.fridge.door),
@@ -212,7 +225,7 @@ describe('pulling from Mystery Leftovers', () => {
       update,
       given(
         fridgeSeededFor(
-          modifyFields(atFridge(100), {
+          modifyFocus(atFridge(100), {
             player: player => modifyFields(player, { hp: () => 2 }),
           }),
           'Sandwich',
@@ -220,9 +233,9 @@ describe('pulling from Mystery Leftovers', () => {
       ),
       ...pull,
       model(current => {
-        expect(current.player.hp).toBe(3)
-        expect(current.player.arsenal).toEqual(pistolOnly())
-        expect(current.player.hp).toBeLessThanOrEqual(PLAYER_MAX_HP)
+        expect(focusOf(current).player.hp).toBe(3)
+        expect(focusOf(current).player.arsenal).toEqual(pistolOnly())
+        expect(focusOf(current).player.hp).toBeLessThanOrEqual(PLAYER_MAX_HP)
       }),
     )
   })
@@ -233,7 +246,7 @@ describe('pulling from Mystery Leftovers', () => {
       given(fridgeSeededFor(atFridge(100), 'Dud')),
       ...pull,
       model(current => {
-        expect(current.wallet.balance).toBe(
+        expect(focusOf(current).wallet.balance).toBe(
           100 - FRIDGE_RULES.price + DUD_REFUND,
         )
         expect(
@@ -250,9 +263,11 @@ describe('pulling from Mystery Leftovers', () => {
       press('Enter'),
       ...ticks(2, FRAME_MS),
       model(current => {
-        expect(Purchase.isAnyOf(['Refused'])(current.purchase)).toBe(true)
+        expect(Purchase.isAnyOf(['Refused'])(focusOf(current).purchase)).toBe(
+          true,
+        )
         expect(current.fridge).toEqual(shutFridge)
-        expect(current.wallet.balance).toBe(40)
+        expect(focusOf(current).wallet.balance).toBe(40)
       }),
     )
   })
@@ -275,7 +290,7 @@ describe('pulling from Mystery Leftovers', () => {
       given(fridgeSeededFor(fighting, 'Pan')),
       ...pull,
       model(current => {
-        expect(current.wallet.balance).toBe(100 - FRIDGE_RULES.price)
+        expect(focusOf(current).wallet.balance).toBe(100 - FRIDGE_RULES.price)
         expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
       }),
     )
@@ -317,7 +332,7 @@ describe('the fridge slams shut', () => {
     expect(slammed.fridge.luck).toBe(1)
     expect(slammed.fridge.pulls).toBe(0)
     expect(isFridgeOffered(slammed)).toBe(false)
-    expect(slammed.wallet.balance).toBeLessThan(1000)
+    expect(focusOf(slammed).wallet.balance).toBeLessThan(1000)
     const rested = playAll(
       slammed,
       Array.makeBy(Math.ceil(FRIDGE_RULES.slamMs / FRAME_MS) + 1, () =>
@@ -350,7 +365,7 @@ describe('the fridge slams shut', () => {
 })
 
 describe('the odds', () => {
-  const pistolCarrier = freshRunModel().player
+  const pistolCarrier = focusOf(freshRunModel()).player
 
   const shareOf = (
     weights: ReadonlyArray<readonly [FridgePrize, number]>,
@@ -424,7 +439,7 @@ describe('the fridge in co-op', () => {
     const placedCrew = withWorld(crew, world =>
       withSeat(
         withSeat(world, 1, seat =>
-          modifyFields(seat, {
+          modifyFocus(seat, {
             wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
             player: player =>
               modifyFields(player, {
@@ -435,7 +450,7 @@ describe('the fridge in co-op', () => {
         ),
         0,
         seat =>
-          modifyFields(seat, {
+          modifyFocus(seat, {
             wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
             player: player =>
               modifyFields(player, { x: () => 60, y: () => 104 }),
@@ -468,7 +483,7 @@ describe('the fridge in co-op', () => {
     const offered = withWorld(fridgeSeededFor(atFridge(0), 'Pan'), world =>
       withSeat(
         withSeat(seatCrew(world, 2), 1, seat =>
-          modifyFields(seat, {
+          modifyFocus(seat, {
             player: player =>
               modifyFields(player, {
                 x: () => AT_FRIDGE.x - 6,
@@ -478,23 +493,27 @@ describe('the fridge in co-op', () => {
         ),
         0,
         seat =>
-          modifyFields(seat, {
-            player: player =>
-              modifyFields(player, {
-                x: () => AT_FRIDGE.x + 6,
-                y: () => AT_FRIDGE.y,
-              }),
-            fridge: fridge =>
-              modifyFields(fridge, {
-                door: () =>
-                  FridgeDoor.Offering({
-                    prize: 'Pan',
-                    slot: 1,
-                    remainingMs: FRIDGE_RULES.offerMs,
-                    durationMs: FRIDGE_RULES.offerMs,
-                  }),
-              }),
-          }),
+          modifyFocus(
+            modifyFields(seat, {
+              fridge: fridge =>
+                modifyFields(fridge, {
+                  door: () =>
+                    FridgeDoor.Offering({
+                      prize: 'Pan',
+                      slot: 1,
+                      remainingMs: FRIDGE_RULES.offerMs,
+                      durationMs: FRIDGE_RULES.offerMs,
+                    }),
+                }),
+            }),
+            {
+              player: player =>
+                modifyFields(player, {
+                  x: () => AT_FRIDGE.x + 6,
+                  y: () => AT_FRIDGE.y,
+                }),
+            },
+          ),
       ),
     )
     const holdFor = (start: typeof offered, slot: number): typeof offered =>

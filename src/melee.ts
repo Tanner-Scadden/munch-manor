@@ -4,11 +4,12 @@ import { modifyFields } from 'foldkit/struct'
 import { bountyOf, hitEvent, killEvent, strikeZombie } from './combat'
 import { PLAYER_RADIUS } from './constants'
 import { directionBetween } from './geometry'
-import { earnKill, isCoop, modifyLeadSeat } from './party'
+import { earnKill, isCoop, modifySeatRecord } from './party'
 import type { World } from './world'
 import {
   GameEvent,
   type Player,
+  type PlayerSlot,
   type Vector,
   type Zombie,
   ZombieAction,
@@ -172,17 +173,17 @@ export const countKills = (events: ReadonlyArray<GameEvent>): number =>
     GameEvent.isAnyOf(['ZombieKilled'])(event) ? sum + 1 : sum,
   )
 
-// NOTE: a seat's own strike pays that seat and credits it the kills; the
-// seat stands in the World's per-player fields while it strikes.
+// NOTE: a seat's own strike pays that seat and credits it the kills.
 export const payStriker = (
   world: World,
+  slot: PlayerSlot,
   events: ReadonlyArray<GameEvent>,
 ): World => {
   const bounty = bountyOf(events)
   const kills = countKills(events)
-  const paid = bounty > 0 ? earnKill(world, bounty) : world
+  const paid = bounty > 0 ? earnKill(world, slot, bounty) : world
   return isCoop(paid) && kills > 0
-    ? modifyLeadSeat(paid, seat =>
+    ? modifySeatRecord(paid, slot, seat =>
         modifyFields(seat, { kills: count => count + kills }),
       )
     : paid

@@ -23,6 +23,7 @@ import {
   shownGhostSticks,
   shownHints,
 } from './onboarding'
+import { modifyFocus } from './party'
 import { clientToView } from './screen'
 import { accuracyPercent, totalKills } from './stats'
 import {
@@ -213,17 +214,21 @@ const standing = (id: number, kind: ZombieKind, x: number): Zombie => ({
   frenzy: Frenzy.Calm(),
 })
 
-const shootingGallery: Model = modifyFields(newPlayerCardSeen, {
-  phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-  player: player =>
-    modifyFields(player, {
-      x: () => 100,
-      y: () => 90,
-      facing: () => ({ x: 1, y: 0 }),
-    }),
-  zombies: () => [standing(1, 'Shambler', 130), standing(2, 'Runner', 150)],
-  nextEntityId: () => 10,
-})
+const shootingGallery: Model = modifyFocus(
+  modifyFields(newPlayerCardSeen, {
+    phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+    zombies: () => [standing(1, 'Shambler', 130), standing(2, 'Runner', 150)],
+    nextEntityId: () => 10,
+  }),
+  {
+    player: player =>
+      modifyFields(player, {
+        x: () => 100,
+        y: () => 90,
+        facing: () => ({ x: 1, y: 0 }),
+      }),
+  },
+)
 
 const SHOOTING_TICKS = 110
 

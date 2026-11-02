@@ -15,6 +15,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { modifyFocus } from './party'
 import { PARLOUR_SPOT, ticks, westPlank, zombieOf } from './testing'
 import { ZOMBIE_KINDS } from './zombies'
 
@@ -42,20 +43,26 @@ const crowd: ReadonlyArray<Zombie> = [
   ),
 ].map(zombie => modifyFields(zombie, { speed: () => speedOf(zombie) }))
 
-const stuckInTheYard: Model = modifyFields(initialModel, {
-  maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-  level: level => openExitIn(level, KITCHEN_EXIT),
-  phase: () => Phase.Wave({ wave: 10, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-  traps: () => [westPlank],
-  zombies: () => crowd,
-  player: player =>
-    modifyFields(player, {
-      x: () => PARLOUR_SPOT.x,
-      y: () => PARLOUR_SPOT.y,
-      invulnerability: () =>
-        Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
-    }),
-})
+const stuckInTheYard: Model = modifyFocus(
+  modifyFields(initialModel, {
+    maybeSurface: () =>
+      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+    level: level => openExitIn(level, KITCHEN_EXIT),
+    phase: () =>
+      Phase.Wave({ wave: 10, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+    traps: () => [westPlank],
+    zombies: () => crowd,
+  }),
+  {
+    player: player =>
+      modifyFields(player, {
+        x: () => PARLOUR_SPOT.x,
+        y: () => PARLOUR_SPOT.y,
+        invulnerability: () =>
+          Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
+      }),
+  },
+)
 
 const outside = (current: Model): ReadonlyArray<Zombie> =>
   Array.filter(

@@ -26,15 +26,17 @@ import {
 } from './geometry'
 import { queryBox, queryBuffer } from './grid'
 import {
+  atSeat,
   creditKills,
   creditShots,
   earnKill,
+  focusOf,
   isCoop,
-  leadSeatOf,
   maybePlayerAt,
   maybeShooterOf,
-  modifyLeadSeat,
+  modifySeatRecord,
   payTo,
+  seatStateAt,
 } from './party'
 import { resolveFriendlyFire } from './revive'
 import { countHits } from './stats'
@@ -47,6 +49,8 @@ import {
   Invulnerability,
   Pierce,
   type Player,
+  type PlayerSlot,
+  SOLO_SLOT,
   type Vector,
   type WeaponKind,
   type Zombie,
@@ -311,7 +315,7 @@ export const resolveBulletHits = (
   return resolveFriendlyFire(
     isCoop(model)
       ? payKillers(creditLanded(struck, hits), hits, killedZombies)
-      : earnKill(struck, bounty),
+      : earnKill(struck, SOLO_SLOT, bounty),
     seconds,
     freshShots.from,
     firstFreshId,
@@ -330,11 +334,11 @@ const freshShotsOf = (model: World, firstFreshId: number): FreshShots => ({
             maybePlayerAt(model, slot),
           ),
           {
-            onNone: (): Vector => model.player,
+            onNone: (): Vector => focusOf(model).player,
             onSome: ({ player }): Vector => player,
           },
         )
-    : () => model.player,
+    : () => focusOf(model).player,
 })
 
 // NOTE: each shooter's shots that landed, for their aim on the crew
@@ -385,19 +389,25 @@ const bumpAttacker =
         })
       : zombie
 
-const bitePlayer = (model: World, attacker: Zombie): World => {
-  const { player } = model
+const bitePlayer = (
+  model: World,
+  slot: PlayerSlot,
+  attacker: Zombie,
+): World => {
+  const { player } = seatStateAt(model, slot)
   const direction = Option.getOrElse(directionBetween(attacker, player), () =>
     scaleVector(player.facing, -1),
   )
   return modifyFields(model, {
-    player: () =>
-      woundPlayer(
-        player,
-        biteDamage(model.difficulty.chosen, statsOf(attacker).contactDamage),
-        direction,
-        biteGraceScale(model.difficulty.chosen),
-      ),
+    seats: atSeat(slot, {
+      player: () =>
+        woundPlayer(
+          player,
+          biteDamage(model.difficulty.chosen, statsOf(attacker).contactDamage),
+          direction,
+          biteGraceScale(model.difficulty.chosen),
+        ),
+    }),
     zombies: Array.map(bumpAttacker(attacker, direction)),
     frameEvents: Array.append(
       GameEvent.PlayerHurt({
@@ -434,38 +444,41 @@ const popOnContact =
         })
       : zombie
 
-const popBombers = (model: World): World =>
-  modifyFields(model, { zombies: Array.map(popOnContact(model.player)) })
+const popBombers = (model: World, slot: PlayerSlot): World =>
+  modifyFields(model, {
+    zombies: Array.map(popOnContact(seatStateAt(model, slot).player)),
+  })
 
 // NOTE: in co-op a zombie must keep touching a player for their seat's
 // bite grace before it bites (see Seat); single player bites at once.
-const biteOnContact = (model: World): World => {
-  if (Invulnerability.isAnyOf(['Invulnerable'])(model.player.invulnerability)) {
+const biteOnContact = (model: World, slot: PlayerSlot): World => {
+  const { player, seat } = seatStateAt(model, slot)
+  if (Invulnerability.isAnyOf(['Invulnerable'])(player.invulnerability)) {
     return model
   }
 
+  const isTouched = isTouching(player)
   const maybeAttacker = Array.findFirst(
     model.zombies,
-    zombie => isBrawler(zombie) && isTouching(model.player)(zombie),
+    zombie => isBrawler(zombie) && isTouched(zombie),
   )
   if (!isCoop(model)) {
     return Option.match(maybeAttacker, {
       onNone: () => model,
-      onSome: attacker => bitePlayer(model, attacker),
+      onSome: attacker => bitePlayer(model, slot, attacker),
     })
   }
-  const seat = leadSeatOf(model)
   return Option.match(maybeAttacker, {
     onNone: () =>
       seat.touchedMs === 0
         ? model
-        : modifyLeadSeat(model, current =>
+        : modifySeatRecord(model, slot, current =>
             modifyFields(current, { touchedMs: () => 0 }),
           ),
     onSome: attacker =>
       seat.touchedMs >= seat.graceMs
-        ? bitePlayer(model, attacker)
-        : modifyLeadSeat(model, current =>
+        ? bitePlayer(model, slot, attacker)
+        : modifySeatRecord(model, slot, current =>
             modifyFields(current, {
               touchedMs: touched => touched + FIXED_STEP_MS,
             }),
@@ -473,5 +486,5 @@ const biteOnContact = (model: World): World => {
   })
 }
 
-export const resolvePlayerContact = (model: World): World =>
-  popBombers(biteOnContact(model))
+export const resolvePlayerContact = (model: World, slot: PlayerSlot): World =>
+  popBombers(biteOnContact(model, slot), slot)

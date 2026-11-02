@@ -20,6 +20,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import {
   bulletInto,
   hasEvent,
@@ -101,7 +102,7 @@ describe('the Big Leaguer', () => {
         const chucker = zombieById(current, CHUCKER_ID)
         expect(zombieById(current, GROANER_ID).action).toMatchObject({
           _tag: 'Flying',
-          to: { x: current.player.x, y: current.player.y },
+          to: { x: focusOf(current).player.x, y: focusOf(current).player.y },
           from: { x: chucker.x, y: chucker.y },
           durationMs: CHUCKER_RULES.flightMs,
         })
@@ -115,11 +116,11 @@ describe('the Big Leaguer', () => {
       given(sceneWith([CHUCKER, GROANER])),
       ...ticks(HEFT_FRAMES + 1, FRAME_MS),
       model(current => {
-        expect(current.player.hp).toBe(PLAYER_MAX_HP)
+        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
       }),
       ...ticks(FLIGHT_FRAMES - 2, FRAME_MS),
       model(current => {
-        expect(current.player.hp).toBe(PLAYER_MAX_HP)
+        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
         expect(
           ZombieAction.isAnyOf(['Flying'])(
             zombieById(current, GROANER_ID).action,
@@ -129,11 +130,16 @@ describe('the Big Leaguer', () => {
       tick(FRAME_MS),
       model(current => {
         expect(hasEvent(current, 'ZombieLanded')).toBe(true)
-        expect(current.player.hp).toBe(PLAYER_MAX_HP - CHUCKER_RULES.landDamage)
+        expect(focusOf(current).player.hp).toBe(
+          PLAYER_MAX_HP - CHUCKER_RULES.landDamage,
+        )
         const landed = zombieById(current, GROANER_ID)
         expect(ZombieAction.isAnyOf(['Dazed'])(landed.action)).toBe(true)
         expect(
-          Math.hypot(landed.x - current.player.x, landed.y - current.player.y),
+          Math.hypot(
+            landed.x - focusOf(current).player.x,
+            landed.y - focusOf(current).player.y,
+          ),
         ).toBeLessThan(CHUCKER_RULES.landRadius + 8)
       }),
       ...ticks(framesFor(CHUCKER_RULES.dazedMs) - 1, FRAME_MS),
@@ -161,7 +167,7 @@ describe('the Big Leaguer', () => {
       message(Message.PressedKey({ code: 'KeyW' })),
       ...ticks(FLIGHT_FRAMES, FRAME_MS),
       model(current => {
-        expect(current.player.hp).toBe(PLAYER_MAX_HP)
+        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
         expect(
           ZombieAction.isAnyOf(['Dazed'])(
             zombieById(current, GROANER_ID).action,
@@ -237,7 +243,7 @@ const PLAYER_AT = { x: CENTER_X, y: CENTER_Y }
 const FACING_PLAYER = Math.PI
 
 const atPlayer = (scene: Model): Model =>
-  modifyFields(scene, {
+  modifyFocus(scene, {
     player: player =>
       modifyFields(player, { x: () => PLAYER_AT.x, y: () => PLAYER_AT.y }),
   })

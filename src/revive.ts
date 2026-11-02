@@ -7,17 +7,17 @@ import { BULLET_RADIUS, PLAYER_RADIUS } from './constants'
 import { ZERO_VECTOR, circlesOverlap, closestPointOnSegment } from './geometry'
 import {
   COOP_RULES,
-  type SeatedPlayer,
+  atSeat,
   creditRevive,
   forEachSeat,
   isCoop,
   isDowned,
   isHere,
   isStanding,
-  leadSeatOf,
   maybeShooterOf,
-  modifyLeadSeat,
+  modifySeatRecord,
   playersOf,
+  seatStateAt,
 } from './party'
 import type { World } from './world'
 import {
@@ -26,7 +26,9 @@ import {
   Invulnerability,
   Life,
   Phase,
+  type PlayerSlot,
   type Seat,
+  type SeatState,
   type Vector,
 } from './worldSchema'
 
@@ -36,15 +38,15 @@ import {
 
 // DOWNED AND REVIVED
 
-const isStill = ({ intent }: SeatedPlayer): boolean =>
+const isStill = ({ intent }: SeatState): boolean =>
   intent.move.x === 0 && intent.move.y === 0
 
 // NOTE: a teammate revives a downed player by standing still beside them:
 // standing, here, not moving, within reach.
 const isReviver =
   (downed: Readonly<{ slot: number; player: Vector }>) =>
-  (mate: SeatedPlayer): boolean =>
-    mate.slot !== downed.slot &&
+  (mate: SeatState): boolean =>
+    mate.seat.slot !== downed.slot &&
     isStanding(mate.seat) &&
     isHere(mate.seat) &&
     isStill(mate) &&
@@ -55,34 +57,34 @@ const isReviver =
       COOP_RULES.reviveReachPx,
     )
 
-const fall = (world: World): World =>
-  modifyFields(
-    modifyLeadSeat(world, seat =>
-      modifyFields(seat, {
-        life: () =>
-          Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 }),
-        readiness: () => 'Waiting',
-        downs: count => count + 1,
-      }),
-    ),
-    {
+const fall = (world: World, slot: PlayerSlot): World => {
+  const { player: fallen } = seatStateAt(world, slot)
+  return modifyFields(world, {
+    seats: atSeat(slot, {
+      seat: seat =>
+        modifyFields(seat, {
+          life: () =>
+            Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 }),
+          readiness: () => 'Waiting',
+          downs: count => count + 1,
+        }),
       player: player =>
         modifyFields(player, {
           hp: () => 0,
           knockback: () => ZERO_VECTOR,
         }),
-      frameEvents: Array.append(
-        GameEvent.PlayerDowned({ x: world.player.x, y: world.player.y }),
-      ),
-    },
-  )
-
-const standUp = (world: World, hearts: number): World =>
-  modifyFields(
-    modifyLeadSeat(world, seat =>
-      modifyFields(seat, { life: () => Life.Standing() }),
+    }),
+    frameEvents: Array.append(
+      GameEvent.PlayerDowned({ x: fallen.x, y: fallen.y }),
     ),
-    {
+  })
+}
+
+const standUp = (world: World, slot: PlayerSlot, hearts: number): World => {
+  const { player: risen } = seatStateAt(world, slot)
+  return modifyFields(world, {
+    seats: atSeat(slot, {
+      seat: seat => modifyFields(seat, { life: () => Life.Standing() }),
       player: player =>
         modifyFields(player, {
           hp: () => Math.min(hearts, maxHpOf(player)),
@@ -92,18 +94,20 @@ const standUp = (world: World, hearts: number): World =>
               durationMs: COOP_RULES.revivedInvulnerableMs,
             }),
         }),
-      frameEvents: Array.append(
-        GameEvent.PlayerRevived({ x: world.player.x, y: world.player.y }),
-      ),
-    },
-  )
+    }),
+    frameEvents: Array.append(
+      GameEvent.PlayerRevived({ x: risen.x, y: risen.y }),
+    ),
+  })
+}
 
 // NOTE: every teammate standing still beside a player when they get up
 // counts the revive, for the crew board.
 const bleed = (
   world: World,
+  slot: PlayerSlot,
   life: Readonly<{ bleedMs: number; reviveMs: number }>,
-  revivers: ReadonlyArray<SeatedPlayer>,
+  revivers: ReadonlyArray<SeatState>,
   deltaMs: number,
 ): World => {
   const reviveMs = Array.isReadonlyArrayNonEmpty(revivers)
@@ -112,12 +116,12 @@ const bleed = (
   if (reviveMs >= COOP_RULES.reviveMs) {
     return Array.reduce(
       revivers,
-      standUp(world, COOP_RULES.reviveHearts),
-      (current, reviver) => creditRevive(current, reviver.slot),
+      standUp(world, slot, COOP_RULES.reviveHearts),
+      (current, reviver) => creditRevive(current, reviver.seat.slot),
     )
   }
   const bleedMs = life.bleedMs - deltaMs
-  return modifyLeadSeat(world, seat =>
+  return modifySeatRecord(world, slot, seat =>
     modifyFields(seat, {
       life: () =>
         bleedMs > 0 ? Life.Downed({ bleedMs, reviveMs }) : Life.BledOut(),
@@ -126,19 +130,17 @@ const bleed = (
 }
 
 const advanceSeat =
-  (revivers: ReadonlyArray<SeatedPlayer>, deltaMs: number) =>
-  (world: World): World => {
-    const seat = leadSeatOf(world)
+  (revivers: ReadonlyArray<SeatState>, deltaMs: number) =>
+  (world: World, slot: PlayerSlot): World => {
+    const { seat, player } = seatStateAt(world, slot)
     return Life.match(seat.life, {
-      Standing: () => (world.player.hp <= 0 ? fall(world) : world),
+      Standing: () => (player.hp <= 0 ? fall(world, slot) : world),
       Downed: life =>
         bleed(
           world,
+          slot,
           life,
-          Array.filter(
-            revivers,
-            isReviver({ slot: seat.slot, player: world.player }),
-          ),
+          Array.filter(revivers, isReviver({ slot, player })),
           deltaMs,
         ),
       BledOut: () => world,
@@ -163,22 +165,22 @@ export const advanceParty = (world: World, deltaMs: number): World => {
 // clears for it.
 export const returnFallen = (world: World): World =>
   isCoop(world)
-    ? forEachSeat(world, seatWorld => {
-        const waiting = modifyLeadSeat(seatWorld, seat =>
+    ? forEachSeat(world, (current, slot) => {
+        const waiting = modifySeatRecord(current, slot, seat =>
           modifyFields(seat, { readiness: () => 'Waiting' }),
         )
-        return isStanding(leadSeatOf(waiting))
+        return isStanding(seatStateAt(waiting, slot).seat)
           ? waiting
-          : standUp(waiting, COOP_RULES.reviveHearts)
+          : standUp(waiting, slot, COOP_RULES.reviveHearts)
       })
     : world
 
 // NOTE: READY from one player (decided 7, row 12): the break ends once
 // everyone who is here and standing has pressed it, or when its clock runs
 // out. An away player never holds it up.
-export const markReady = (world: World): World =>
+export const markReady = (world: World, slot: PlayerSlot): World =>
   Phase.isAnyOf(['Preparation'])(world.phase)
-    ? modifyLeadSeat(world, seat =>
+    ? modifySeatRecord(world, slot, seat =>
         modifyFields(seat, { readiness: () => 'Ready' }),
       )
     : world
@@ -231,35 +233,36 @@ export const resolveFriendlyFire = (
   if (!isFriendlyFireOn(world)) {
     return world
   }
-  return forEachSeat(world, (seatWorld, slot) => {
+  return forEachSeat(world, (current, slot) => {
+    const { seat, player: target } = seatStateAt(current, slot)
     if (
-      !isStanding(leadSeatOf(seatWorld)) ||
-      Invulnerability.isAnyOf(['Invulnerable'])(
-        seatWorld.player.invulnerability,
-      )
+      !isStanding(seat) ||
+      Invulnerability.isAnyOf(['Invulnerable'])(target.invulnerability)
     ) {
-      return seatWorld
+      return current
     }
     return pipe(
-      seatWorld.bullets,
+      current.bullets,
       Array.findFirst(
         bullet =>
           bullet.weapon !== 'Peashooter' &&
           isTeammateShot(slot)(bullet) &&
-          sweepHits(seatWorld.player, seconds, from, firstFreshId)(bullet),
+          sweepHits(target, seconds, from, firstFreshId)(bullet),
       ),
       Option.match({
-        onNone: () => seatWorld,
+        onNone: () => current,
         onSome: bullet => {
           const direction = bulletDirection(bullet)
-          return modifyFields(seatWorld, {
-            player: player =>
-              woundPlayer(player, COOP_RULES.friendlyFireDamage, direction),
+          return modifyFields(current, {
+            seats: atSeat(slot, {
+              player: player =>
+                woundPlayer(player, COOP_RULES.friendlyFireDamage, direction),
+            }),
             bullets: Array.filter(({ id }) => id !== bullet.id),
             frameEvents: Array.append(
               GameEvent.FriendlyFire({
-                x: seatWorld.player.x,
-                y: seatWorld.player.y,
+                x: target.x,
+                y: target.y,
                 direction,
               }),
             ),

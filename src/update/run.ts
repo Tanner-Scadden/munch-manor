@@ -4,6 +4,7 @@ import { PREPARATION_MS } from '../constants'
 import { endOffer } from '../home'
 import { releaseAll } from '../input'
 import { type Model, Phase, Purchase, RunMode, ShopState } from '../model'
+import { modifyFocus } from '../party'
 import { startOrResume } from '../runFlow'
 import { FINAL_WAVE } from '../wavePlans'
 import { beginPreparation, isRoundActive } from '../waves'
@@ -29,12 +30,13 @@ export const startWhenAllowed = (model: Model, mode: RunMode): Model =>
 export const keepGoing = (model: Model): Model =>
   Phase.isAnyOf(['Victory'])(model.phase)
     ? withWorld(
-        modifyFields(model, {
-          mode: () => RunMode.Endless(),
-          shop: () => ShopState.Away(),
-          purchase: () => Purchase.Idle(),
-          screenMs: () => 0,
-        }),
+        modifyFocus(
+          modifyFields(model, {
+            mode: () => RunMode.Endless(),
+            screenMs: () => 0,
+          }),
+          { shop: () => ShopState.Away(), purchase: () => Purchase.Idle() },
+        ),
         world => beginPreparation(world, FINAL_WAVE + 1, PREPARATION_MS),
       )
     : model

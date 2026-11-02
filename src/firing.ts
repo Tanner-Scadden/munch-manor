@@ -18,7 +18,15 @@ import {
 } from './fridgeWeapons'
 import { addVectors, scaleVector } from './geometry'
 import { resolveBulletHits } from './hits'
-import { creditShots, firedBy, forEachSeat, shooterOf } from './party'
+import {
+  atSeat,
+  creditShots,
+  firedBy,
+  forEachSeat,
+  modifySeat,
+  seatStateAt,
+  shooterOf,
+} from './party'
 import {
   bulletGlaze,
   bulletPierce,
@@ -51,6 +59,7 @@ import {
   GameEvent,
   Phase,
   type Pierce,
+  type PlayerSlot,
   Reload,
   ShopState,
   type Vector,
@@ -137,11 +146,13 @@ const nextFireCooldown = (
 
 const shoot = (
   model: World,
+  slot: PlayerSlot,
   weapon: WeaponKind,
   tier: number,
   deltaMs: number,
 ): World => {
-  const { player, nextEntityId, boosts } = model
+  const { nextEntityId } = model
+  const { player, boosts } = seatStateAt(model, slot)
   const stats = firingStats(boosts, weapon, tier)
   const load: Load = {
     stats,
@@ -161,7 +172,7 @@ const shoot = (
   const pellets = Array.map(velocities, (velocity, index) =>
     firedBy(
       makeBullet(nextEntityId + index, muzzle, velocity, load),
-      shooterOf(model),
+      shooterOf(model, slot),
     ),
   )
   const fired = modifyFields(model, {
@@ -169,53 +180,62 @@ const shoot = (
     nextEntityId: id => id + pellets.length,
     rngState: () => rngState,
     stats: runStats => countShots(runStats, pellets.length),
-    player: () => {
-      const cycled = modifyFields(player, {
-        fireCooldownMs: cooldown => cooldown + stats.fireIntervalMs - deltaMs,
-        recoilRemainingMs: () => stats.recoilMs,
-      })
-      return isAmmoFree(boosts) ? cycled : spendRound(cycled)
-    },
+    seats: atSeat(slot, {
+      player: () => {
+        const cycled = modifyFields(player, {
+          fireCooldownMs: cooldown => cooldown + stats.fireIntervalMs - deltaMs,
+          recoilRemainingMs: () => stats.recoilMs,
+        })
+        return isAmmoFree(boosts) ? cycled : spendRound(cycled)
+      },
+    }),
     frameEvents: Array.append(
       GameEvent.Fired({
         x: muzzle.x,
         y: muzzle.y,
         direction: player.facing,
         weapon,
-        maybeShooter: shooterOf(model),
+        maybeShooter: shooterOf(model, slot),
       }),
     ),
   })
-  return Option.match(shooterOf(model), {
+  return Option.match(shooterOf(model, slot), {
     onNone: () => fired,
-    onSome: slot => creditShots(fired, slot, pellets.length, 0),
+    onSome: shooter => creditShots(fired, shooter, pellets.length, 0),
   })
 }
 
-const runDry = (model: World): World =>
-  modifyFields(model, {
-    player: player =>
-      handOverWhenDry(
-        modifyFields(player, { fireCooldownMs: () => DRY_FIRE_DELAY_MS }),
-      ),
-    frameEvents: Array.append(
-      GameEvent.RanDry({ x: model.player.x, y: model.player.y }),
-    ),
+const runDry = (model: World, slot: PlayerSlot): World => {
+  const { player } = seatStateAt(model, slot)
+  return modifyFields(model, {
+    seats: atSeat(slot, {
+      player: () =>
+        handOverWhenDry(
+          modifyFields(player, { fireCooldownMs: () => DRY_FIRE_DELAY_MS }),
+        ),
+    }),
+    frameEvents: Array.append(GameEvent.RanDry({ x: player.x, y: player.y })),
   })
+}
 
-const pullTrigger = (model: World, deltaMs: number): World => {
-  const gun = heldGun(model.player.arsenal)
+const pullTrigger = (
+  model: World,
+  slot: PlayerSlot,
+  deltaMs: number,
+): World => {
+  const gun = heldGun(seatStateAt(model, slot).player.arsenal)
   return gun.loaded > 0
-    ? shoot(model, gun.kind, gun.tier, deltaMs)
-    : runDry(model)
+    ? shoot(model, slot, gun.kind, gun.tier, deltaMs)
+    : runDry(model, slot)
 }
 
 const coolTrigger = (
   model: World,
+  slot: PlayerSlot,
   deltaMs: number,
   isTriggerHeld: boolean,
 ): World =>
-  modifyFields(model, {
+  modifySeat(model, slot, {
     player: player =>
       modifyFields(player, {
         fireCooldownMs: cooldown =>
@@ -223,8 +243,12 @@ const coolTrigger = (
       }),
   })
 
-const autoReload = (model: World, isTriggerHeld: boolean): World => {
-  const { player } = model
+const autoReload = (
+  model: World,
+  slot: PlayerSlot,
+  isTriggerHeld: boolean,
+): World => {
+  const { player } = seatStateAt(model, slot)
   const started = GameEvent.ReloadStarted({
     x: player.x,
     y: player.y,
@@ -232,8 +256,10 @@ const autoReload = (model: World, isTriggerHeld: boolean): World => {
     weapon: heldWeapon(player.arsenal),
   })
   return modifyFields(model, {
-    player: () =>
-      beginReload(modifyFields(player, { fireCooldownMs: () => 0 })),
+    seats: atSeat(slot, {
+      player: () =>
+        beginReload(modifyFields(player, { fireCooldownMs: () => 0 })),
+    }),
     frameEvents: frameEvents => [
       ...frameEvents,
       ...(isTriggerHeld
@@ -246,25 +272,35 @@ const autoReload = (model: World, isTriggerHeld: boolean): World => {
 
 // NOTE: the trigger's rest starts over while fire is held or the melee
 // weapon is out, and otherwise counts up to IDLE_RELOAD_MS, where it stays.
-const restTrigger = (model: World, deltaMs: number): World =>
-  modifyFields(model, {
+const restTrigger = (
+  model: World,
+  slot: PlayerSlot,
+  deltaMs: number,
+): World => {
+  const { intent } = seatStateAt(model, slot)
+  return modifySeat(model, slot, {
     player: player =>
       modifyFields(player, {
         triggerRestMs: rest =>
-          model.intent.trigger === 'Held' || isWieldingMelee(player)
+          intent.trigger === 'Held' || isWieldingMelee(player)
             ? 0
             : Math.min(IDLE_RELOAD_MS, rest + deltaMs),
       }),
   })
+}
 
 // NOTE: below Hard (src/difficulty.ts), a gun with room in its magazine
 // and rounds to load reloads by itself once the trigger has rested
 // IDLE_RELOAD_MS (GAME_DESIGN.md, "Reloading"). Hard and Nightmare wait
 // for an empty magazine or R.
-const isIdleReloadDue = (model: World): boolean =>
-  reloadsWhenIdle(model.difficulty.chosen) &&
-  model.player.triggerRestMs >= IDLE_RELOAD_MS &&
-  canReload(model.player)
+const isIdleReloadDue = (model: World, slot: PlayerSlot): boolean => {
+  const { player } = seatStateAt(model, slot)
+  return (
+    reloadsWhenIdle(model.difficulty.chosen) &&
+    player.triggerRestMs >= IDLE_RELOAD_MS &&
+    canReload(player)
+  )
+}
 
 // NOTE: the stall shuts outside the break. A player still at the counter
 // when the wave starts (in co-op the break runs on while one shops) or the
@@ -273,23 +309,25 @@ const isIdleReloadDue = (model: World): boolean =>
 export const shutStallOutsideBreak = (model: World): World =>
   Phase.isAnyOf(['Preparation'])(model.phase)
     ? model
-    : forEachSeat(model, seatWorld =>
-        isAtCounter(seatWorld.shop)
-          ? modifyFields(seatWorld, { shop: () => ShopState.Dismissed() })
-          : seatWorld,
+    : forEachSeat(model, (current, slot) =>
+        isAtCounter(seatStateAt(current, slot).shop)
+          ? modifySeat(current, slot, { shop: () => ShopState.Dismissed() })
+          : current,
       )
 
-const topUp = (model: World): World =>
-  isAtCounter(model.shop)
+const topUp = (model: World, slot: PlayerSlot): World => {
+  const { shop, boosts } = seatStateAt(model, slot)
+  return isAtCounter(shop)
     ? model
-    : modifyFields(model, {
-        player: player => keepTopped(player, model.boosts),
+    : modifySeat(model, slot, {
+        player: player => keepTopped(player, boosts),
       })
+}
 
-const withoutCharge = (model: World): World =>
-  Charge.isAnyOf(['Idle'])(model.player.charge)
+const withoutCharge = (model: World, slot: PlayerSlot): World =>
+  Charge.isAnyOf(['Idle'])(seatStateAt(model, slot).player.charge)
     ? model
-    : modifyFields(model, { player: dropCharge })
+    : modifySeat(model, slot, { player: dropCharge })
 
 // NOTE: a fridge weapon fires no bullets, so its trigger is its own
 // (src/fridgeWeapons.ts). The stall and a reload let go of a charge. With
@@ -297,43 +335,55 @@ const withoutCharge = (model: World): World =>
 // with the Clang Pan drawn from the melee slot it swings, and a reload of
 // the last gun carries on meanwhile. Below Hard a rested trigger reloads
 // a gun that has room for more (isIdleReloadDue).
-export const fire = (stocked: World, deltaMs: number): World => {
-  const topped = topUp(restTrigger(stocked, deltaMs))
-  if (isWieldingKnife(topped.player)) {
-    return coolTrigger(withoutCharge(topped), deltaMs, false)
+export const fire = (
+  stocked: World,
+  slot: PlayerSlot,
+  deltaMs: number,
+): World => {
+  const topped = topUp(restTrigger(stocked, slot, deltaMs), slot)
+  if (isWieldingKnife(seatStateAt(topped, slot).player)) {
+    return coolTrigger(withoutCharge(topped, slot), slot, deltaMs, false)
   }
-  const maybeFridgeWeapon = maybeHeldFridgeWeapon(topped.player)
+  const maybeFridgeWeapon = maybeHeldFridgeWeapon(
+    seatStateAt(topped, slot).player,
+  )
   const model = Option.isSome(maybeFridgeWeapon)
     ? topped
-    : withoutCharge(topped)
-  const { player, intent } = model
+    : withoutCharge(topped, slot)
+  const { player, intent, shop } = seatStateAt(model, slot)
   const isTriggerHeld = intent.trigger === 'Held'
 
-  if (
-    isAtCounter(model.shop) ||
-    (isReloading(player) && !isWieldingMelee(player))
-  ) {
-    return coolTrigger(withoutCharge(model), deltaMs, false)
+  if (isAtCounter(shop) || (isReloading(player) && !isWieldingMelee(player))) {
+    return coolTrigger(withoutCharge(model, slot), slot, deltaMs, false)
   } else if (Option.isSome(maybeFridgeWeapon)) {
-    return fireFridgeWeapon(model, maybeFridgeWeapon.value, deltaMs)
+    return fireFridgeWeapon(model, slot, maybeFridgeWeapon.value, deltaMs)
   } else if (player.fireCooldownMs > 0) {
-    return coolTrigger(model, deltaMs, isTriggerHeld && !isReloading(player))
+    return coolTrigger(
+      model,
+      slot,
+      deltaMs,
+      isTriggerHeld && !isReloading(player),
+    )
   } else if (heldLoaded(player) <= 0 && canReload(player)) {
-    return autoReload(model, isTriggerHeld)
+    return autoReload(model, slot, isTriggerHeld)
   } else if (isTriggerHeld) {
-    return pullTrigger(model, deltaMs)
-  } else if (isIdleReloadDue(model)) {
-    return autoReload(model, false)
+    return pullTrigger(model, slot, deltaMs)
+  } else if (isIdleReloadDue(model, slot)) {
+    return autoReload(model, slot, false)
   } else {
-    return coolTrigger(model, deltaMs, isTriggerHeld)
+    return coolTrigger(model, slot, deltaMs, isTriggerHeld)
   }
 }
 
 // RELOADING
 
-export const tickReload = (model: World, deltaMs: number): World => {
-  const { player } = model
-  if (isAtCounter(model.shop)) {
+export const tickReload = (
+  model: World,
+  slot: PlayerSlot,
+  deltaMs: number,
+): World => {
+  const { player, shop } = seatStateAt(model, slot)
+  if (isAtCounter(shop)) {
     return model
   }
 
@@ -341,7 +391,7 @@ export const tickReload = (model: World, deltaMs: number): World => {
     Ready: () => model,
     Reloading: ({ remainingMs, durationMs }) =>
       remainingMs > deltaMs
-        ? modifyFields(model, {
+        ? modifySeat(model, slot, {
             player: () =>
               modifyFields(player, {
                 reload: () =>
@@ -352,7 +402,7 @@ export const tickReload = (model: World, deltaMs: number): World => {
               }),
           })
         : modifyFields(model, {
-            player: () => finishReload(player),
+            seats: atSeat(slot, { player: () => finishReload(player) }),
             frameEvents: Array.append(
               GameEvent.Reloaded({
                 x: player.x,
@@ -490,10 +540,11 @@ export const catchUpShots = (
 // nothing; the room's own copy of the shot decides every hit.
 export const aimTracers = (
   model: World,
+  slot: PlayerSlot,
   seed: number,
   firstId: number,
 ): Seeded<ReadonlyArray<Bullet>> => {
-  const { player, boosts } = model
+  const { player, boosts } = seatStateAt(model, slot)
   const { kind: weapon, tier } = heldGun(player.arsenal)
   const stats = firingStats(boosts, weapon, tier)
   const load: Load = {

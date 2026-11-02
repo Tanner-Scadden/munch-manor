@@ -20,6 +20,7 @@ import { update } from './main'
 import { Message } from './message'
 import { type Model, MouseButton, Phase, initialModel } from './model'
 import { fighting } from './model.fixture'
+import { modifyFocus } from './party'
 import { CONTROL_CARDS, helpLineOf } from './pauseHelp'
 import {
   ROOT,
@@ -221,8 +222,7 @@ describe('Touch gun slots', () => {
     scene(
       ROOT,
       given(
-        modifyFields(fighting, {
-          lastDevice: () => 'Touch',
+        modifyFocus(modifyFields(fighting, { lastDevice: () => 'Touch' }), {
           player: player =>
             modifyFields(player, {
               arsenal: () =>

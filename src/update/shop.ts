@@ -19,6 +19,7 @@ import {
 import { learnShop } from '../onboarding'
 import { isRunOn } from '../onlineRun'
 import { burstCoins } from '../particles'
+import { focusOf, focusSlotOf, modifyFocus } from '../party'
 import {
   ShopGood,
   StockTag,
@@ -77,19 +78,21 @@ export const leaveShop = makeStep(model =>
 )
 
 const selectShopCategory = (model: Model, category: ShopCategory): Model =>
-  modifyFields(model, {
-    shopCategory: () => category,
-    shopChatter: () => ShopChatter.Greeting(),
-    shop: shop =>
-      ShopState.match(shop, {
-        Away: () => shop,
-        Browsing: () =>
-          ShopState.Browsing({
-            focusedItem: suggestedItem(model, category),
-          }),
-        Dismissed: () => shop,
-      }),
-  })
+  modifyFocus(
+    modifyFields(model, { shopChatter: () => ShopChatter.Greeting() }),
+    {
+      shopCategory: () => category,
+      shop: shop =>
+        ShopState.match(shop, {
+          Away: () => shop,
+          Browsing: () =>
+            ShopState.Browsing({
+              focusedItem: suggestedItem(model, focusSlotOf(model), category),
+            }),
+          Dismissed: () => shop,
+        }),
+    },
+  )
 
 export const selectCategory =
   (category: ShopCategory): UpdateStep =>
@@ -112,7 +115,7 @@ const enterShop = makeStep(() =>
 )
 
 export const closeShop = makeStep(model =>
-  isBrowsing(model.shop)
+  isBrowsing(focusOf(model).shop)
     ? Update.combineSteps([ShopDialogBinding.requestClose(), leaveCounter])
     : unchanged,
 )
@@ -126,7 +129,7 @@ export const closeShop = makeStep(model =>
 // the counter; while it opens normally it is open by the end of the Step.
 export const syncShopDialog = (wasBrowsing: boolean) =>
   makeStep(model => {
-    const isAtCounterNow = isBrowsing(model.shop)
+    const isAtCounterNow = isBrowsing(focusOf(model).shop)
     if (isAtCounterNow && !wasBrowsing) {
       return Update.combineSteps([modelStep(learnShop), enterShop])
     } else if (!isAtCounterNow && isShopDialogOpen(model)) {
@@ -156,9 +159,16 @@ export const buy = (model: Model, item: ShopItemId): UpdateReturn =>
     onSuccess: world => {
       const bought = withHint(item, world)
       return combine(
-        modifyFields(burstCoins(bought, bought.player.x, bought.player.y), {
-          shopChatter: () => ShopChatter.Bought({ item }),
-        }),
+        modifyFields(
+          burstCoins(
+            bought,
+            focusOf(bought).player.x,
+            focusOf(bought).player.y,
+          ),
+          {
+            shopChatter: () => ShopChatter.Bought({ item }),
+          },
+        ),
         [playSounds(purchaseCues(item)), refocusDisplacedRow],
       )
     },
@@ -181,13 +191,13 @@ const withHint = (item: ShopItemId, model: Model): Model =>
 const refusedChatter = (model: Model, item: ShopItemId): Model =>
   modifyFields(model, {
     shopChatter: () =>
-      StockTag.isAnyOf(['Short'])(stockTag(model, item))
+      StockTag.isAnyOf(['Short'])(stockTag(model, focusSlotOf(model), item))
         ? ShopChatter.TooPricey({ item })
         : ShopChatter.Refused({ item }),
   })
 
 const refocusDisplacedRow: UpdateStep = stepModel =>
-  Option.match(maybeDisplacedFocus(stepModel), {
+  Option.match(maybeDisplacedFocus(stepModel, focusSlotOf(stepModel)), {
     onNone: () => ({ model: stepModel }),
     onSome: nextItem => ({
       model: focusShopItem(stepModel, nextItem),
@@ -198,16 +208,16 @@ const refocusDisplacedRow: UpdateStep = stepModel =>
 // FOCUS
 
 export const focusShopItem = (model: Model, item: ShopItemId): Model =>
-  ShopState.match(model.shop, {
+  ShopState.match(focusOf(model).shop, {
     Away: () => model,
     Browsing: () =>
-      modifyFields(model, {
+      modifyFocus(model, {
         shop: () => ShopState.Browsing({ focusedItem: item }),
       }),
     Dismissed: () => model,
   })
 
 export const moveShopFocus = (model: Model, item: ShopItemId): UpdateReturn =>
-  isBrowsing(model.shop)
+  isBrowsing(focusOf(model).shop)
     ? { model: focusShopItem(model, item), commands: [FocusShopItem({ item })] }
     : { model }

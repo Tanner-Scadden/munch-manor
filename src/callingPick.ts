@@ -3,6 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 import { callingForRun, isCallingUnlocked } from './calling'
 import { playerOfCalling } from './callingPlayer'
 import type { Model } from './model'
+import { modifyFocus } from './party'
 import type { Calling } from './playerData'
 import { rankOf, totalPointsOf } from './rank'
 import { callingUnlockId } from './unlocks'
@@ -26,8 +27,10 @@ export const startingCallingOf = (model: Model): Calling =>
 // it at once, so the menu shows the prop, and its NEW badge goes.
 export const chooseCalling = (model: Model, calling: Calling): Model =>
   isPickable(model, calling)
-    ? modifyFields(withoutFresh(model, callingUnlockId(calling)), {
-        calling: () => calling,
-        player: () => playerOfCalling(calling),
-      })
+    ? modifyFocus(
+        modifyFields(withoutFresh(model, callingUnlockId(calling)), {
+          calling: () => calling,
+        }),
+        { player: () => playerOfCalling(calling) },
+      )
     : model

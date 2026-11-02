@@ -20,7 +20,7 @@ import { stopForHits, thawTick } from './hitStop'
 import type { Model } from './model'
 import { ageDebutCard, raiseDebutCardFrom } from './onboarding'
 import { maybeRunRoom, runDifficultyOf } from './onlineRun'
-import { shopOf } from './party'
+import { focusOf, shopOf } from './party'
 import { inputOfIntent, ownWorldOf } from './roomWorld'
 import { freshRun } from './runReset'
 import { isBrowsing } from './shop'
@@ -45,6 +45,7 @@ import {
   HitStop,
   Phase,
   RunMode,
+  type SeatState,
   ShopState,
   type Vector,
 } from './worldSchema'
@@ -69,6 +70,23 @@ import { footfallNearness } from './zombies'
 const heldShop = (own: ShopState, room: ShopState): ShopState =>
   isBrowsing(room) && !ShopState.isAnyOf(['Away'])(own) ? own : room
 
+// NOTE: the room's seats, with this client's own (the first) keeping what
+// the client owns: its intent, its open tab, the money count-up, and its
+// purchase hold, and the shop it holds (heldShop).
+const takeOwnSeat = (own: SeatState, seats: World['seats']): World['seats'] => {
+  const [first, ...rest] = seats
+  return [
+    modifyFields(first, {
+      intent: () => own.intent,
+      purchase: () => own.purchase,
+      shopCategory: () => own.shopCategory,
+      wallet: wallet => modifyFields(wallet, { shown: () => own.wallet.shown }),
+      shop: shop => heldShop(own.shop, shop),
+    }),
+    ...rest,
+  ]
+}
+
 // NOTE: the fields the room owns, from the World with this client's own
 // seat in the player fields, and the room's difficulty beside the save's,
 // for the run's summary. The rest stay the client's: its intent, the run's
@@ -87,24 +105,18 @@ const takeRoomWorld = (
     frenzyPacks: () => world.frenzyPacks,
     intensity: () => world.intensity,
     mode: () => world.mode,
-    player: () => world.player,
     zombies: () => world.zombies,
     bullets: () => world.bullets,
     lobs: () => world.lobs,
-    wallet: wallet => modifyFields(world.wallet, { shown: () => wallet.shown }),
     elapsedMs: () => world.elapsedMs,
     frameEvents: () => events,
     traps: () => world.traps,
     pickups: () => world.pickups,
-    boosts: () => world.boosts,
-    trapStock: () => world.trapStock,
-    selectedTrap: () => world.selectedTrap,
     level: () => world.level,
     ovens: () => world.ovens,
     fridge: () => world.fridge,
-    laserSight: () => world.laserSight,
-    shop: shop => heldShop(shop, world.shop),
     party: () => world.party,
+    seats: () => takeOwnSeat(focusOf(model), world.seats),
     maybeRoomDifficulty: () => Option.some(world.difficulty.chosen),
   })
 
@@ -176,6 +188,7 @@ const traceOwnShots = (
   }
   const [cosmeticRngState, fired] = aimTracers(
     world,
+    room.slot,
     model.cosmeticRngState,
     -1 - room.tracerCount,
   )
@@ -221,7 +234,7 @@ const drawRoom = (frameMs: number, maybeShopBefore: Option.Option<ShopState>) =>
               ...freshRun(stepModel),
             })
           : stepModel
-        const events = heardBy(world.player, room.frameEvents)
+        const events = heardBy(focusOf(world).player, room.frameEvents)
         const shot = traceOwnShots(base, room, world, frameMs)
         return Update.combineSteps([
           toModel(
@@ -334,7 +347,9 @@ const drawTraced = ({
     return Update.combineSteps([
       toModel(drawn),
       playSounds([
-        ...(room.predictedShots > 0 ? [shotSoundCue(world.player)] : []),
+        ...(room.predictedShots > 0
+          ? [shotSoundCue(focusOf(world).player)]
+          : []),
         ...frameSoundCues(
           Array.filter(events, event => !isOwnShot(event, room.slot)),
         ),
@@ -361,7 +376,7 @@ export const playRoomFrame = (nowMs: number) =>
     return Update.combineSteps([
       toModel(intended),
       CoopBinding.requestTickRoom({
-        controls: inputOfIntent(intended.intent, 0),
+        controls: inputOfIntent(focusOf(intended).intent, 0),
         nowMs,
         isPictureHeld: isFrozen(thawTick(stepModel.hitStop, frameMs).hitStop),
       }),

@@ -43,6 +43,7 @@ import {
   initialModel,
   noKills,
 } from './model'
+import { modifyFocus } from './party'
 import { PlayerChange } from './playerSync'
 import { saveOf } from './save'
 import { SURFACE, closeDialog, showDialog } from './testing'
@@ -93,10 +94,12 @@ const midRun: Model = modifyFields(home, {
     }),
 })
 
-const lastHeart: Model = modifyFields(midRun, {
-  player: player => modifyFields(player, { hp: () => 1 }),
-  zombies: () => [runnerAt(PARLOUR.width / 2 + 2, PARLOUR.height / 2)],
-})
+const lastHeart: Model = modifyFocus(
+  modifyFields(midRun, {
+    zombies: () => [runnerAt(PARLOUR.width / 2 + 2, PARLOUR.height / 2)],
+  }),
+  { player: player => modifyFields(player, { hp: () => 1 }) },
+)
 
 const finalWave: Model = modifyFields(midRun, {
   phase: () => Phase.Wave({ wave: FINAL_WAVE, elapsedMs: 90_000, spawns: [] }),

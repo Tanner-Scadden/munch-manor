@@ -81,7 +81,7 @@ const readoutFields = (room: WorldState) => ({
   })),
   players: Array.map(
     playersOf(room.world),
-    ({ slot, player, seat, wallet }) => ({
+    ({ seat: { slot }, player, seat, wallet }) => ({
       slot,
       x: Math.round(player.x * 10) / 10,
       y: Math.round(player.y * 10) / 10,

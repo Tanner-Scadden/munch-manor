@@ -5,7 +5,7 @@ import { levelOf } from './arena'
 import { Tour } from './clientSchema'
 import { isPending } from './lessons'
 import type { Model } from './model'
-import { isCoop } from './party'
+import { focusOf, isCoop } from './party'
 import { isBrowsing, isShopOpenFor } from './shop'
 import { barricadedDoors } from './traps'
 import { type DoorId, TrapHint, type Vector } from './worldSchema'
@@ -45,7 +45,7 @@ export const questStepOf = (model: Model): Option.Option<QuestStep> => {
     return Option.none()
   } else if (TrapHint.isAnyOf(['Showing'])(model.trapHint)) {
     return Option.some('Place')
-  } else if (isBrowsing(model.shop)) {
+  } else if (isBrowsing(focusOf(model).shop)) {
     return Option.some('Buy')
   } else {
     return Option.some('Shop')
@@ -105,8 +105,14 @@ export const maybeQuestDoor = (model: Model): Option.Option<Vector> => {
     Array.filter((door: DoorId) => !Array.contains(boarded, door)),
     Array.map(door => level.doors[door].center),
     Array.sort((first: Vector, second: Vector) =>
-      Math.hypot(first.x - model.player.x, first.y - model.player.y) -
-        Math.hypot(second.x - model.player.x, second.y - model.player.y) <
+      Math.hypot(
+        first.x - focusOf(model).player.x,
+        first.y - focusOf(model).player.y,
+      ) -
+        Math.hypot(
+          second.x - focusOf(model).player.x,
+          second.y - focusOf(model).player.y,
+        ) <
       0
         ? -1
         : 1,

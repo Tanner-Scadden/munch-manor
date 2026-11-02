@@ -604,6 +604,15 @@ const SEAT_ACTION_FIELDS: ReadonlySet<string> = new Set([
   'selectedTrap',
 ])
 
+// NOTE: the calls that change a seat's fields: any Model's fields, the seat a
+// screen is about, a seat by slot, and the `seats` transform.
+const SEAT_WRITERS: ReadonlyArray<string> = [
+  'modifyFields',
+  'modifyFocus',
+  'modifySeat',
+  'atSeat',
+]
+
 const SEAT_ACTION_MESSAGE =
   'A player action\'s rule lives once, in src/stepWorld.ts: apply it as a seat action (actAsLead or tryAsLead in src/update/action.ts) and wrap only the client cues around it (AGENTS.md "Code shape").'
 
@@ -635,14 +644,16 @@ const seatActionOnce = defineRule({
         }
       },
       CallExpression(node) {
-        const changes = node.arguments[1]
-        if (
-          !isCallOf(node, 'modifyFields') ||
-          changes?.type !== 'ObjectExpression'
-        ) {
+        if (!SEAT_WRITERS.some(writer => isCallOf(node, writer))) {
           return
         }
-        changes.properties
+        const changes = node.arguments
+          .slice(1)
+          .find(
+            (argument): argument is ESTree.ObjectExpression =>
+              argument.type === 'ObjectExpression',
+          )
+        changes?.properties
           .filter(property => hasName(SEAT_ACTION_FIELDS, keyName(property)))
           .forEach(property =>
             context.report({ node: property, message: SEAT_ACTION_MESSAGE }),

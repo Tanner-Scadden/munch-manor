@@ -16,7 +16,7 @@ import {
   RunMode,
   type RunRecord,
 } from './model'
-import { isCoop, leadSeatOf } from './party'
+import { focusOf, isCoop, leadSeatOf } from './party'
 import { Calling, CosmeticKind, type Difficulty } from './playerData'
 import { isRankUp, rankOf } from './rank'
 import type { SharedRun } from './share'
@@ -166,7 +166,7 @@ export const tallyRowsOf = (model: Model): ReadonlyArray<TallyRow> =>
       {
         icon: 'Cash',
         label: 'CASH',
-        value: model.wallet.earned,
+        value: focusOf(model).wallet.earned,
         format: shown => `$${shown}`,
         isBest: false,
       },

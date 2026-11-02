@@ -7,7 +7,7 @@
 import { Array, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { withSeat } from '@game/party'
+import { modifySeat } from '@game/party'
 import {
   DEFAULT_ROOM_SETTINGS,
   ROOM_WORLD,
@@ -83,17 +83,15 @@ const crowdedRoom = (
 ): RoomWorld => {
   const room = startRoomWorld(slots, seed, DEFAULT_ROOM_SETTINGS)
   const seated = Array.reduce(slots, room.world, (world, slot) =>
-    withSeat(world, slot, seatWorld =>
-      modifyFields(seatWorld, {
-        player: player => ({
-          ...player,
-          hp: 999,
-          arsenal: Arsenal.OneGun({
-            first: { ...freshGun('Smg'), rounds: UNKILLABLE_HP },
-          }),
+    modifySeat(world, slot, {
+      player: player => ({
+        ...player,
+        hp: 999,
+        arsenal: Arsenal.OneGun({
+          first: { ...freshGun('Smg'), rounds: UNKILLABLE_HP },
         }),
       }),
-    ),
+    }),
   )
   const firstId = seated.nextEntityId
   return {

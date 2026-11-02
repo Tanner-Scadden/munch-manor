@@ -18,6 +18,7 @@ import {
   type Zombie,
 } from './model'
 import { newPlayerReady } from './model.fixture'
+import { modifyFocus } from './party'
 import { zombieOf } from './testing'
 import { FINAL_WAVE, WAVE_PLANS } from './wavePlans'
 import { ZOMBIE_KINDS, scaledHp } from './zombies'
@@ -70,7 +71,7 @@ export const fightingWith = (
   })
 
 export const sturdy = (start: Model): Model =>
-  modifyFields(start, {
+  modifyFocus(start, {
     player: player =>
       modifyFields(player, {
         hp: () => 1e6,

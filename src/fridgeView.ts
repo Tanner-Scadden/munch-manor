@@ -14,6 +14,7 @@ import {
 import { FRIDGE_RISE_PX, isKitchenShown } from './kitchenView'
 import { fridgeBoxOf } from './leftovers'
 import { Charge, FridgeDoor, type Lob, type Model, type Player } from './model'
+import { focusOf } from './party'
 import { type Sprite, bakeShapes, placeAt, spriteShapes } from './sprite'
 
 // The Mystery Leftovers fridge in motion (src/leftovers.ts) and the fridge
@@ -194,12 +195,12 @@ const dialFor = (player: Player, elapsedMs: number): Option.Option<Sprite> =>
   })
 
 const dialShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
-  Option.match(dialFor(model.player, model.elapsedMs), {
+  Option.match(dialFor(focusOf(model).player, model.elapsedMs), {
     onNone: () => [],
     onSome: dial => [
       placeAt(
-        Math.round(model.player.x),
-        Math.round(model.player.y) - DIAL_LIFT_PX,
+        Math.round(focusOf(model).player.x),
+        Math.round(focusOf(model).player.y) - DIAL_LIFT_PX,
         dial,
       ),
     ],

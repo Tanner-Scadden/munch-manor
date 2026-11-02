@@ -28,6 +28,7 @@ import {
   ZombieState,
 } from './model'
 import { DISTANT_SPAWN, quietWave, withActors } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { blastFrames, recordTicks, tick, ticks, zombieOf } from './testing'
 import {
   FINAL_WAVE,
@@ -183,7 +184,7 @@ describe('the kind table', () => {
       update,
       given(withScene([tank], pistolsInto(20, tankHp, tank))),
       tick(FRAME_MS),
-      model(({ zombies, wallet }) => {
+      model(({ zombies, seats: [{ wallet }] }) => {
         expect(Array.map(zombies, ({ state }) => state._tag)).toEqual(['Dying'])
         expect(wallet.balance).toBe(ZOMBIE_KINDS.Tank.bounty)
       }),
@@ -255,7 +256,7 @@ describe('the kind table', () => {
       update,
       given(withScene([tank])),
       tick(FRAME_MS),
-      model(({ player, zombies }) => {
+      model(({ seats: [{ player }], zombies }) => {
         expect(player.hp).toBe(PLAYER_MAX_HP - 2)
         const bitten = Option.getOrThrow(Array.head(zombies))
         expect(vectorLength(bitten.knockback)).toBeCloseTo(
@@ -292,7 +293,7 @@ describe('the kind table', () => {
     story(
       update,
       given(
-        modifyFields(withScene([tank, runner]), {
+        modifyFocus(withScene([tank, runner]), {
           player: player =>
             modifyFields(player, { x: () => 280, y: () => 150 }),
         }),
@@ -337,7 +338,7 @@ describe('exploders', () => {
         ),
       ),
       tick(FRAME_MS),
-      model(({ zombies, wallet }) => {
+      model(({ zombies, seats: [{ wallet }] }) => {
         expect(
           Array.map(Array.take(zombies, 2), ({ state }) => state._tag),
         ).toEqual(['Fusing', 'Fusing'])
@@ -352,9 +353,11 @@ describe('exploders', () => {
     expect(
       Array.filter(burst.frameEvents, GameEvent.guards.PlayerHurt),
     ).toHaveLength(1)
-    expect(burst.player.hp).toBe(PLAYER_MAX_HP - EXPLODER.playerDamage)
+    expect(focusOf(burst).player.hp).toBe(PLAYER_MAX_HP - EXPLODER.playerDamage)
     expect(
-      Invulnerability.guards.Invulnerable(burst.player.invulnerability),
+      Invulnerability.guards.Invulnerable(
+        focusOf(burst).player.invulnerability,
+      ),
     ).toBe(true)
     expect(Array.map(burst.zombies, ({ id }) => id)).toEqual([3, 4])
     const [blastedShambler, blastedTank] = burst.zombies
@@ -362,7 +365,7 @@ describe('exploders', () => {
     expect(blastedTank?.hp).toBe(
       ZOMBIE_KINDS.Tank.hp - 2 * EXPLODER.zombieDamage,
     )
-    expect(Option.getOrThrow(Array.last(frames)).player.hp).toBe(
+    expect(focusOf(Option.getOrThrow(Array.last(frames))).player.hp).toBe(
       PLAYER_MAX_HP - EXPLODER.playerDamage,
     )
     expect(Array.isReadonlyArrayNonEmpty(burst.blasts)).toBe(true)
@@ -419,7 +422,7 @@ describe('exploders', () => {
       MIN_CHAIN_STAGGER_FRAMES,
     )
     expect(Option.getOrThrow(Array.last(frames)).zombies).toEqual([])
-    expect(Option.getOrThrow(Array.last(frames)).wallet.balance).toBe(
+    expect(focusOf(Option.getOrThrow(Array.last(frames))).wallet.balance).toBe(
       2 * ZOMBIE_KINDS.Exploder.bounty,
     )
   })
@@ -458,7 +461,7 @@ describe('exploders', () => {
       update,
       given(withScene([exploder])),
       tick(FRAME_MS),
-      model(({ zombies, player, frameEvents }) => {
+      model(({ zombies, seats: [{ player }], frameEvents }) => {
         expect(Array.map(zombies, ({ state }) => state)).toEqual([
           ZombieState.Fusing({ remainingMs: EXPLODER.contactFuseMs }),
         ])
@@ -470,9 +473,9 @@ describe('exploders', () => {
 
     const last = Option.getOrThrow(Array.last(frames))
     expect(Array.map(blastFrames(frames), explosionsIn)).toEqual([1])
-    expect(last.player.hp).toBe(PLAYER_MAX_HP - EXPLODER.playerDamage)
+    expect(focusOf(last).player.hp).toBe(PLAYER_MAX_HP - EXPLODER.playerDamage)
     expect(last.zombies).toEqual([])
-    expect(last.wallet.balance).toBe(0)
+    expect(focusOf(last).wallet.balance).toBe(0)
     expect(
       Array.some(
         Array.flatMap(frames, ({ frameEvents }) => frameEvents),

@@ -44,6 +44,7 @@ import {
   type Vector,
   type WeaponKind,
 } from './model'
+import { focusOf } from './party'
 import type { GunSkin } from './playerData'
 import {
   type Facing,
@@ -73,8 +74,8 @@ export const maybeMsSinceHurt = (player: Player): Option.Option<number> =>
   })
 
 const playerFrames = (model: Model): SpriteSet => {
-  const sprites = playerSprites(model.appearance, model.player.calling)
-  return vectorLength(model.intent.move) > 0
+  const sprites = playerSprites(model.appearance, focusOf(model).player.calling)
+  return vectorLength(focusOf(model).intent.move) > 0
     ? frameAt(sprites.walk, Math.floor(model.elapsedMs / PLAYER_WALK_FRAME_MS))
     : frameAt(
         sprites.idle,
@@ -258,7 +259,7 @@ const playerPose = (player: Player): PlayerPose => {
 }
 
 export const playerShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
-  const { player } = model
+  const { player } = focusOf(model)
   const { weapon, tier, stats, bodyX, bodyY } = playerPose(player)
   const recoil = clamp(player.recoilRemainingMs / stats.recoilMs, 0, 1)
   const facing: Facing = player.facing.x < 0 ? 'Left' : 'Right'
@@ -305,8 +306,8 @@ const CRAWL_FRAME_MS = PLAYER_WALK_FRAME_MS * 2
 const BLED_OUT_OPACITY = 0.55
 
 const lyingFrames = (model: Model, lying: Lying): SpriteSet => {
-  const sprites = playerSprites(model.appearance, model.player.calling)
-  return lying === 'Downed' && vectorLength(model.intent.move) > 0
+  const sprites = playerSprites(model.appearance, focusOf(model).player.calling)
+  return lying === 'Downed' && vectorLength(focusOf(model).intent.move) > 0
     ? frameAt(sprites.walk, Math.floor(model.elapsedMs / CRAWL_FRAME_MS))
     : frameAt(sprites.idle, 0)
 }
@@ -319,7 +320,7 @@ export const lyingShapes = (
   model: Model,
   lying: Lying,
 ): ReadonlyArray<Canvas.Shape> => {
-  const { player } = model
+  const { player } = focusOf(model)
   const facing: Facing = player.facing.x < 0 ? 'Left' : 'Right'
   const foot = footPosition(player, PLAYER_FOOT_OFFSET)
   return [

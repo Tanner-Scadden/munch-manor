@@ -32,8 +32,7 @@ import {
   textWidth,
 } from './font'
 import { clamp } from './geometry'
-import { isPending } from './lessons'
-import { isPracticeGateHeld } from './lessons'
+import { isPending, isPracticeGateHeld } from './lessons'
 import {
   type CarriedGun,
   type Model,
@@ -45,7 +44,7 @@ import {
   type WeaponKind,
 } from './model'
 import { isCountdownBeckoning, isOpenBreak } from './onboarding'
-import { type SeatedPlayer, leadSeatOf, playersOf } from './party'
+import { focusOf, focusSlotOf, leadSeatOf, playersOf } from './party'
 import { seatColorOf } from './partyView'
 import { maybeMsSinceHurt } from './playerView'
 import { boostChipShapes } from './powerupView'
@@ -81,6 +80,7 @@ import {
   maxTier,
   maybePanOf,
 } from './weapons'
+import { type SeatState } from './worldSchema'
 
 // HUD
 
@@ -374,7 +374,7 @@ const roundHudShapes = (
 const MONEY_Y = HUD_MARGIN + 9
 
 const moneyShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
-  const { shown, balance } = model.wallet
+  const { shown, balance } = focusOf(model).wallet
   const isTicking = shown !== balance
   return textShapes(
     `$${shown}`,
@@ -769,7 +769,7 @@ const loadoutShapes = (
   model: Model,
   layout: HudLayout,
 ): ReadonlyArray<Canvas.Shape> => {
-  const { player } = model
+  const { player } = focusOf(model)
   const { arsenal } = player
   const held = isWieldingMelee(player)
     ? Option.none()
@@ -838,15 +838,15 @@ const trapStockShapes = (
   model: Model,
   layout: HudLayout,
 ): ReadonlyArray<Canvas.Shape> => {
-  const maybeSelected = maybeSelectedKind(model)
+  const maybeSelected = maybeSelectedKind(model, focusSlotOf(model))
   return pipe(
     TRAP_KIND_ORDER,
-    Array.filter(kind => model.trapStock[kind] > 0),
+    Array.filter(kind => focusOf(model).trapStock[kind] > 0),
     Array.flatMap((kind, index) =>
       trapSlotShapes(
         layout.trapTop,
         kind,
-        model.trapStock[kind],
+        focusOf(model).trapStock[kind],
         index,
         Option.contains(maybeSelected, kind),
       ),
@@ -866,7 +866,7 @@ const trapNoticeShapes = (
     Refused: ({ reason }) => {
       const content = String.toUpperCase(reason)
       const halfWidth = Math.ceil(textWidth(content) / 2) + NOTICE_MARGIN_PX
-      const player = worldToView(camera, model.player)
+      const player = worldToView(camera, focusOf(model).player)
       const view = viewBoxOf(camera)
       const x = clamp(
         Math.round(player.x),
@@ -884,7 +884,7 @@ const MATE_ROW_TOP = 24
 const MATE_ROW_HEIGHT = 10
 
 const mateRowShapes = (
-  mate: SeatedPlayer,
+  mate: SeatState,
   row: number,
 ): ReadonlyArray<Canvas.Shape> => {
   const y = MATE_ROW_TOP + row * MATE_ROW_HEIGHT
@@ -894,7 +894,7 @@ const mateRowShapes = (
       y: y + 2,
       width: 3,
       height: 3,
-      fill: seatColorOf(mate.slot),
+      fill: seatColorOf(mate.seat.slot),
     }),
     ...Array.makeBy(maxHpOf(mate.player), index =>
       placeSprite(
@@ -918,7 +918,7 @@ const mateHudShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
     ? Array.flatMap(
         Array.filter(
           playersOf(model),
-          ({ slot }) => slot !== leadSeatOf(model).slot,
+          ({ seat }) => seat.slot !== leadSeatOf(model).slot,
         ),
         mateRowShapes,
       )
@@ -932,13 +932,13 @@ const playHudShapes = (
   layout: HudLayout,
   camera: Camera,
 ): ReadonlyArray<Canvas.Shape> => [
-  ...heartShapes(model.player),
+  ...heartShapes(focusOf(model).player),
   ...moneyShapes(model),
   ...mateHudShapes(model),
   ...streakShapes(model.streak),
   ...loadoutShapes(model, layout),
   ...boostChipShapes(
-    model.boosts,
+    focusOf(model).boosts,
     layout.boostLeft,
     layout.boostTop,
     layout.boostColumns,

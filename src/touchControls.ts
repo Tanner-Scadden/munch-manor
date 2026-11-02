@@ -31,7 +31,7 @@ import {
   isStartWaveBeckoning,
   shownGhostSticks,
 } from './onboarding'
-import { isCoop, leadSeatOf } from './party'
+import { focusOf, focusSlotOf, isCoop, leadSeatOf } from './party'
 import { holdButtonView } from './purchaseHud'
 import { type Screen, screenOf } from './screen'
 import { STALL_BOX, gunName } from './shop'
@@ -118,10 +118,14 @@ type SlotGun = Readonly<{ slot: GunSlot; name: string }>
 const SLOT_ORDER = GunSlot.literals
 
 const slotGuns = (model: Model): ReadonlyArray<SlotGun> =>
-  Array.zipWith(SLOT_ORDER, gunsOf(model.player.arsenal), (slot, gun) => ({
-    slot,
-    name: tierName(gun.kind, gun.tier),
-  }))
+  Array.zipWith(
+    SLOT_ORDER,
+    gunsOf(focusOf(model).player.arsenal),
+    (slot, gun) => ({
+      slot,
+      name: tierName(gun.kind, gun.tier),
+    }),
+  )
 
 const SLOT_INDEX: Readonly<Record<GunSlot, number>> = { First: 0, Second: 1 }
 
@@ -154,8 +158,8 @@ const toPressedHudSlot = (
 // NOTE: the key that reaches a gun slot: R reloads the held gun, Q swaps
 // to the other; with the knife out, Q goes back to the last gun held.
 const gunSlotKey = (model: Model, slot: GunSlot): Option.Option<string> => {
-  const isLastHeld = slot === heldSlotOf(model.player.arsenal)
-  if (isWieldingMelee(model.player)) {
+  const isLastHeld = slot === heldSlotOf(focusOf(model).player.arsenal)
+  if (isWieldingMelee(focusOf(model).player)) {
     return isLastHeld ? Option.some('Q') : Option.none()
   } else {
     return Option.some(isLastHeld ? 'R' : 'Q')
@@ -181,7 +185,8 @@ const gunSlotButtonView = (
   h: ApplicationViewBuilder,
 ): Html => {
   const isHeld =
-    !isWieldingMelee(model.player) && slot === heldSlotOf(model.player.arsenal)
+    !isWieldingMelee(focusOf(model).player) &&
+    slot === heldSlotOf(focusOf(model).player.arsenal)
   const maybeKey = gunSlotKey(model, slot)
   return h.keyed('button')(
     slot,
@@ -195,7 +200,9 @@ const gunSlotButtonView = (
         onNone: () => [],
         onSome: key => [h.AriaKeyshortcuts(key)],
       }),
-      ...(isHeld && !canReload(model.player) ? [h.AriaDisabled(true)] : []),
+      ...(isHeld && !canReload(focusOf(model).player)
+        ? [h.AriaDisabled(true)]
+        : []),
       h.Style(slotSpan(screen, SLOT_INDEX[slot])),
       h.OnPointerDown(toPressedHudSlot),
       h.OnClick(Message.ClickedGunSlot({ slot }), {
@@ -218,8 +225,8 @@ const meleeSlotButtonView = (
   screen: Screen,
   h: ApplicationViewBuilder,
 ): Html => {
-  const isHeld = isWieldingMelee(model.player)
-  const name = meleeNameOf(model.player)
+  const isHeld = isWieldingMelee(focusOf(model).player)
+  const name = meleeNameOf(focusOf(model).player)
   return h.keyed('button')(
     'Melee',
     [
@@ -227,7 +234,10 @@ const meleeSlotButtonView = (
       h.Class('gun-slot-button'),
       h.DataAttribute('slot', 'Melee'),
       h.DataAttribute('held', isHeld ? 'true' : 'false'),
-      h.DataAttribute('out', isOutOfGuns(model.player) ? 'true' : 'false'),
+      h.DataAttribute(
+        'out',
+        isOutOfGuns(focusOf(model).player) ? 'true' : 'false',
+      ),
       h.AriaLabel(isHeld ? `The ${name} is in hand` : `Switch to the ${name}`),
       h.AriaKeyshortcuts('F'),
       ...(isHeld ? [h.AriaDisabled(true)] : []),
@@ -296,9 +306,13 @@ const reloadButtonView = (
   screen: Screen,
   h: ApplicationViewBuilder,
 ): Html => {
-  const gun = gunName(model, heldWeapon(model.player.arsenal))
-  const isMeleeOut = isWieldingMelee(model.player)
-  const isReady = canReload(model.player)
+  const gun = gunName(
+    model,
+    focusSlotOf(model),
+    heldWeapon(focusOf(model).player.arsenal),
+  )
+  const isMeleeOut = isWieldingMelee(focusOf(model).player)
+  const isReady = canReload(focusOf(model).player)
   return h.button(
     [
       h.Type('button'),
@@ -381,7 +395,7 @@ const placeIconView = (
       ]),
       h.span(
         [h.Class('icon-button-badge'), h.AriaHidden(true)],
-        [`x${model.trapStock[kind]}`],
+        [`x${focusOf(model).trapStock[kind]}`],
       ),
       keyBadgeView(model, 'T', h),
       placeReasonView(placement, h),
@@ -390,7 +404,7 @@ const placeIconView = (
 }
 
 const nextTrapIconView = (model: Model, h: ApplicationViewBuilder): Html =>
-  Option.match(maybeNextKind(model), {
+  Option.match(maybeNextKind(model, focusSlotOf(model)), {
     onNone: () => h.empty,
     onSome: kind =>
       iconButtonView(
@@ -411,7 +425,7 @@ const trapIconsView = (
   h: ApplicationViewBuilder,
 ): ReadonlyArray<Html> =>
   Phase.isAnyOf(['Preparation'])(model.phase)
-    ? Option.match(maybePlacement(model), {
+    ? Option.match(maybePlacement(model, focusSlotOf(model)), {
         onNone: () => [],
         onSome: placement => [
           placeIconView(model, placement, h),

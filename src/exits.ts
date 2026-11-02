@@ -10,11 +10,18 @@ import {
   tileBox,
 } from './arena'
 import { KITCHEN_FIRST_WAVE } from './constants'
+import { atSeat, seatStateAt } from './party'
 import type { Offer } from './purchase'
 import { isKitchenTourOn } from './tutorialRules'
 import { joinNewDoors } from './waves'
 import type { World } from './world'
-import { type ExitId, GameEvent, Phase, Purchasable } from './worldSchema'
+import {
+  type ExitId,
+  GameEvent,
+  Phase,
+  type PlayerSlot,
+  Purchasable,
+} from './worldSchema'
 
 // THE EXIT
 
@@ -109,10 +116,12 @@ export const maybePadlockedExit = (model: World): Option.Option<Box> =>
     ? Option.map(Array.head(closedExitBoxes(levelOf(model))), ({ box }) => box)
     : Option.none()
 
-const spendOn = (model: World, price: number): World =>
+const spendOn = (model: World, slot: PlayerSlot, price: number): World =>
   modifyFields(model, {
-    wallet: wallet =>
-      modifyFields(wallet, { balance: balance => balance - price }),
+    seats: atSeat(slot, {
+      wallet: wallet =>
+        modifyFields(wallet, { balance: balance => balance - price }),
+    }),
     stats: stats =>
       modifyFields(stats, { purchases: purchases => purchases + 1 }),
   })
@@ -123,6 +132,7 @@ const spendOn = (model: World, price: number): World =>
 // the doorway meets the parlour floor.
 export const buyExit = (
   model: World,
+  slot: PlayerSlot,
   exit: ExitId,
   price: number,
 ): Option.Option<World> => {
@@ -134,12 +144,12 @@ export const buyExit = (
   if (
     Option.isNone(maybeBox) ||
     !isExitOfferOpenFor(model.phase) ||
-    model.wallet.balance < price
+    seatStateAt(model, slot).wallet.balance < price
   ) {
     return Option.none()
   }
   const box = maybeBox.value
-  const opened = modifyFields(spendOn(model, price), {
+  const opened = modifyFields(spendOn(model, slot, price), {
     level: state => openExitIn(state, exit),
     frameEvents: frameEvents => [
       ...frameEvents,

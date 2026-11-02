@@ -16,7 +16,7 @@ import {
 } from '@munch/netcode'
 
 import { normalize } from './geometry'
-import { maybePlayerAt, playersOf, withSeat } from './party'
+import { maybePlayerAt, modifySeat, playersOf } from './party'
 import {
   AIM_REACH,
   DEFAULT_ROOM_SETTINGS,
@@ -105,7 +105,7 @@ export const scriptedInput = (
   })
 
 export const scriptedTicks = (room: RoomWorld): ReadonlyArray<PlayerTick> =>
-  Array.map(playersOf(room.world), ({ slot }) => ({
+  Array.map(playersOf(room.world), ({ seat: { slot } }) => ({
     slot,
     input: scriptedInput(room, slot, room.tick),
     presence: 'Here' as const,
@@ -141,11 +141,9 @@ const withHearts = (hearts: number) => ({
     return {
       ...room,
       world: Array.reduce(slots, room.world, (world, slot) =>
-        withSeat(world, slot, seatWorld =>
-          modifyFields(seatWorld, {
-            player: player => modifyFields(player, { hp: () => hearts }),
-          }),
-        ),
+        modifySeat(world, slot, {
+          player: player => modifyFields(player, { hp: () => hearts }),
+        }),
       ),
     }
   },

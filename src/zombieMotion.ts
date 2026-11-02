@@ -30,7 +30,7 @@ import {
   scaleVector,
 } from './geometry'
 import { queryAround, queryBuffer } from './grid'
-import { nearestOf, targetsOf } from './party'
+import { focusOf, nearestOf, targetsOf } from './party'
 import {
   type Clearance,
   type FlowField,
@@ -422,7 +422,7 @@ export const recordFootfalls = (model: World, deltaMs: number): World =>
         Array.map(
           model.zombies,
           maybeFootfall(
-            model.player,
+            focusOf(model).player,
             model.elapsedMs - deltaMs,
             model.elapsedMs,
           ),

@@ -33,6 +33,7 @@ import {
 } from './model'
 import { pastFirstBreak } from './model.fixture'
 import { DEBUT_CARD_MIN_MS } from './onboarding'
+import { focusOf, modifyFocus } from './party'
 import { ShopTabsBlock } from './shopTabs'
 import {
   ROOT,
@@ -152,31 +153,35 @@ describe('Start wave button', () => {
 })
 
 describe('Shop', () => {
-  const atStall: Model = modifyFields(pastFirstBreak(initialModel), {
-    maybeSurface: () =>
-      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-    phase: () =>
-      Phase.Preparation({
-        wave: 2,
-        remainingMs: 15_000,
-        durationMs: PREPARATION_MS,
-        spawns: [
-          {
-            atMs: 1e9,
-            kind: 'Shambler',
-            door: 'North',
-            offset: 0,
-            speedScale: 1,
-            hpScale: 1,
-            pack: 0,
-            formation: 'Squad',
-          },
-        ],
-      }),
-    player: player =>
-      modifyFields(player, { x: () => 270, y: () => 142, hp: () => 3 }),
-    wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
-  })
+  const atStall: Model = modifyFocus(
+    modifyFields(pastFirstBreak(initialModel), {
+      maybeSurface: () =>
+        Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+      phase: () =>
+        Phase.Preparation({
+          wave: 2,
+          remainingMs: 15_000,
+          durationMs: PREPARATION_MS,
+          spawns: [
+            {
+              atMs: 1e9,
+              kind: 'Shambler',
+              door: 'North',
+              offset: 0,
+              speedScale: 1,
+              hpScale: 1,
+              pack: 0,
+              formation: 'Squad',
+            },
+          ],
+        }),
+    }),
+    {
+      player: player =>
+        modifyFields(player, { x: () => 270, y: () => 142, hp: () => 3 }),
+      wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
+    },
+  )
 
   const shotgunButton = role('button', { name: 'Buy Barn Buster for $35' })
   const smgButton = role('button', { name: 'Buy Chatterbox for $100' })
@@ -220,7 +225,7 @@ describe('Shop', () => {
     scene(
       ROOT,
       given(
-        modifyFields(atStall, {
+        modifyFocus(atStall, {
           wallet: () => ({ balance: 70, earned: 70, shown: 70 }),
         }),
       ),
@@ -245,7 +250,7 @@ describe('Shop', () => {
     scene(
       ROOT,
       given(
-        modifyFields(atStall, {
+        modifyFocus(atStall, {
           wallet: () => ({ balance: 70, earned: 70, shown: 70 }),
         }),
       ),
@@ -321,7 +326,7 @@ describe('Shop', () => {
     scene(
       ROOT,
       given(
-        modifyFields(atStall, {
+        modifyFocus(atStall, {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
@@ -363,7 +368,7 @@ describe('Shop', () => {
     scene(
       ROOT,
       given(
-        modifyFields(atStall, {
+        modifyFocus(atStall, {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
@@ -423,7 +428,7 @@ describe('Shop', () => {
     scene(
       ROOT,
       given(
-        modifyFields(atStall, {
+        modifyFocus(atStall, {
           wallet: () => ({ balance: 37, earned: 37, shown: 37 }),
         }),
       ),
@@ -449,7 +454,7 @@ describe('Shop', () => {
     scene(
       ROOT,
       given(
-        modifyFields(atStall, {
+        modifyFocus(atStall, {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
@@ -466,10 +471,15 @@ describe('Shop', () => {
 })
 
 describe('Reload button', () => {
-  const fighting: Model = modifyFields(initialModel, {
-    phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
-    player: player => withPistol(player, pistol => ({ ...pistol, loaded: 2 })),
-  })
+  const fighting: Model = modifyFocus(
+    modifyFields(initialModel, {
+      phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
+    }),
+    {
+      player: player =>
+        withPistol(player, pistol => ({ ...pistol, loaded: 2 })),
+    },
+  )
   const reloadButton = role('button', { name: 'Reload the Pop Pistol' })
 
   test('shows on touch and starts a reload when tapped', () => {
@@ -482,9 +492,9 @@ describe('Reload button', () => {
       expect(reloadButton).toExist(),
     )
     const reloaded = update(fighting, Message.ClickedReloadButton()).model
-    vitestExpect(Reload.isAnyOf(['Reloading'])(reloaded.player.reload)).toBe(
-      true,
-    )
+    vitestExpect(
+      Reload.isAnyOf(['Reloading'])(focusOf(reloaded).player.reload),
+    ).toBe(true)
   })
 
   test('stays hidden on a keyboard, where the held gun shows R', () => {
@@ -499,30 +509,34 @@ describe('Reload button', () => {
 })
 
 describe('Place button', () => {
-  const atNorthDoor: Model = modifyFields(initialModel, {
-    maybeSurface: () =>
-      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-    phase: () =>
-      Phase.Preparation({
-        wave: 2,
-        remainingMs: 15_000,
-        durationMs: PREPARATION_MS,
-        spawns: [
-          {
-            atMs: 1e9,
-            kind: 'Shambler',
-            door: 'North',
-            offset: 0,
-            speedScale: 1,
-            hpScale: 1,
-            pack: 0,
-            formation: 'Squad',
-          },
-        ],
-      }),
-    player: player => modifyFields(player, { x: () => 220, y: () => 27 }),
-    trapStock: () => ({ Barricade: 1, Turret: 1 }),
-  })
+  const atNorthDoor: Model = modifyFocus(
+    modifyFields(initialModel, {
+      maybeSurface: () =>
+        Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+      phase: () =>
+        Phase.Preparation({
+          wave: 2,
+          remainingMs: 15_000,
+          durationMs: PREPARATION_MS,
+          spawns: [
+            {
+              atMs: 1e9,
+              kind: 'Shambler',
+              door: 'North',
+              offset: 0,
+              speedScale: 1,
+              hpScale: 1,
+              pack: 0,
+              formation: 'Squad',
+            },
+          ],
+        }),
+    }),
+    {
+      player: player => modifyFields(player, { x: () => 220, y: () => 27 }),
+      trapStock: () => ({ Barricade: 1, Turret: 1 }),
+    },
+  )
 
   test('places the selected trap on a tap, and NEXT switches the kind', () => {
     const plankButton = role('button', { name: 'Place a Plank Pile' })
@@ -554,7 +568,7 @@ describe('Place button', () => {
     scene(
       ROOT,
       given(
-        modifyFields(atNorthDoor, {
+        modifyFocus(atNorthDoor, {
           trapStock: () => ({ Barricade: 0, Turret: 0 }),
         }),
       ),
@@ -576,32 +590,34 @@ describe('Place button', () => {
 
 describe('Run stats', () => {
   const finished = (phase: Phase): Model =>
-    modifyFields(initialModel, {
-      phase: () => phase,
-      wallet: () => ({ balance: 40, earned: 615, shown: 40 }),
-      stats: () => ({
-        kills: {
-          Shambler: 41,
-          Runner: 17,
-          Tank: 2,
-          Exploder: 9,
-          Thrower: 0,
-          Crawler: 0,
-          Boss: 0,
-        },
-        wavesCleared: 3,
-        shotsFired: 1240,
-        shotsHit: 532,
-        heartsLost: 7,
-        trapsPlaced: 3,
-        purchases: 4,
-        powerUpsGrabbed: 2,
-        maybeLastHurtBy: Option.some('Runner'),
-        activeFrames: 22_260,
-        activeFrameMs: 371_000,
-        runMs: 371_000,
+    modifyFocus(
+      modifyFields(initialModel, {
+        phase: () => phase,
+        stats: () => ({
+          kills: {
+            Shambler: 41,
+            Runner: 17,
+            Tank: 2,
+            Exploder: 9,
+            Thrower: 0,
+            Crawler: 0,
+            Boss: 0,
+          },
+          wavesCleared: 3,
+          shotsFired: 1240,
+          shotsHit: 532,
+          heartsLost: 7,
+          trapsPlaced: 3,
+          purchases: 4,
+          powerUpsGrabbed: 2,
+          maybeLastHurtBy: Option.some('Runner'),
+          activeFrames: 22_260,
+          activeFrameMs: 371_000,
+          runMs: 371_000,
+        }),
       }),
-    })
+      { wallet: () => ({ balance: 40, earned: 615, shown: 40 }) },
+    )
   const STATS =
     'Waves cleared: 3 of 10. Zombies splatted: 69 (41 Groaner, 17 Hotfoot, 9 Kaboomer, 2 Big Lug, 0 Big Leaguer, 0 Ankle Biter). Best streak 0. Run time 6:11. Accuracy 43 percent. Money earned $615.'
 

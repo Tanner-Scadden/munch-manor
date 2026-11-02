@@ -4,7 +4,6 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { MANOR, levelOf } from './arena'
-import { flowFieldsToward } from './pathing'
 import {
   FIXED_STEP_MS,
   IDLE_RELOAD_MS,
@@ -42,13 +41,15 @@ import {
 } from './model.fixture'
 import {
   COOP_RULES,
-  type SeatedPlayer,
+  focusOf,
   focusSeat,
   maybePlayerAt,
+  modifyFocus,
   playersOf,
   setPresence,
   targetsOf,
 } from './party'
+import { flowFieldsToward } from './pathing'
 import { PURCHASE_RULES } from './purchase'
 import { SHOP_ITEMS, STALL_BOX } from './shop'
 import { SeatAction, applySeatAction, soloInputs, stepWorld } from './stepWorld'
@@ -62,6 +63,7 @@ import {
   Purchasable,
   Purchase,
   type Seat,
+  type SeatState,
   idleIntent,
 } from './worldSchema'
 import { ZOMBIE_KINDS } from './zombies'
@@ -78,7 +80,7 @@ const withMoney =
   (slot: number, balance: number) =>
   (current: Model): Model =>
     atSeat(current, slot, world =>
-      modifyFields(world, {
+      modifyFocus(world, {
         wallet: wallet => modifyFields(wallet, { balance: () => balance }),
       }),
     )
@@ -86,7 +88,7 @@ const withMoney =
 const act = (current: Model, slot: number, action: SeatAction): Model =>
   withWorld(current, world => applySeatAction(world, slot, action))
 
-const seatedAt = (current: World, slot: number): SeatedPlayer =>
+const seatedAt = (current: World, slot: number): SeatState =>
   Option.getOrThrow(maybePlayerAt(current, slot))
 
 const seatOf = (current: World, slot: number): Seat =>
@@ -375,11 +377,11 @@ describe('money', () => {
     const halfway = holdFor(atDoor, [1], Math.floor(HOLD_TICKS / 2), [0])
     expect(levelOf(halfway).key).toBe(levelOf(atDoor).key)
     expect(
-      Purchase.isAnyOf(['Holding'])(seatWorldOf(halfway, 1).purchase),
+      Purchase.isAnyOf(['Holding'])(focusOf(seatWorldOf(halfway, 1)).purchase),
     ).toBe(true)
-    expect(Purchase.isAnyOf(['Idle'])(seatWorldOf(halfway, 0).purchase)).toBe(
-      true,
-    )
+    expect(
+      Purchase.isAnyOf(['Idle'])(focusOf(seatWorldOf(halfway, 0)).purchase),
+    ).toBe(true)
     const bought = holdFor(atDoor, [1], HOLD_TICKS, [0])
     expect(seatedAt(bought, 1).wallet.balance).toBe(100 - EXIT_RULES.price)
     expect(seatedAt(bought, 0).wallet.balance).toBe(100)
@@ -396,7 +398,7 @@ describe('money', () => {
       (slot: number, rounds: number) =>
       (current: Model): Model =>
         atSeat(current, slot, world =>
-          modifyFields(world, {
+          modifyFocus(world, {
             player: player =>
               modifyFields(player, { arsenal: () => smgOf(rounds) }),
           }),
@@ -442,11 +444,11 @@ describe('money', () => {
     const standTicks = Math.ceil(PURCHASE_RULES.standMs / TICK_MS) + 2
     const halfway = holdFor(atDoor, [], Math.floor(standTicks / 2), [0])
     expect(
-      Purchase.isAnyOf(['Holding'])(seatWorldOf(halfway, 1).purchase),
+      Purchase.isAnyOf(['Holding'])(focusOf(seatWorldOf(halfway, 1)).purchase),
     ).toBe(true)
-    expect(Purchase.isAnyOf(['Idle'])(seatWorldOf(halfway, 0).purchase)).toBe(
-      true,
-    )
+    expect(
+      Purchase.isAnyOf(['Idle'])(focusOf(seatWorldOf(halfway, 0)).purchase),
+    ).toBe(true)
     const bought = holdFor(atDoor, [], standTicks, [0])
     expect(seatedAt(bought, 1).wallet.balance).toBe(100 - EXIT_RULES.price)
     expect(seatedAt(bought, 0).wallet.balance).toBe(100)
@@ -467,7 +469,7 @@ describe('money', () => {
       placeSeat(1, DOOR_X + 8, DOOR_Y),
     )(crewInWave(2, preparation))
     const pressed = holdFor(atDoor, [0, 1], 1)
-    expect(seatWorldOf(pressed, 0).purchase).toEqual(
+    expect(focusOf(seatWorldOf(pressed, 0)).purchase).toEqual(
       Purchase.Refused({
         target: Purchasable.Exit({ exit: KITCHEN_EXIT }),
         shortBy: EXIT_RULES.price - 10,
@@ -510,7 +512,7 @@ describe('traps per player', () => {
   })
   const shopping = pipeline(withMoney(0, 500), withMoney(1, 500), current =>
     atSeat(current, 1, world =>
-      modifyFields(world, {
+      modifyFocus(world, {
         shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
       }),
     ),
@@ -524,7 +526,7 @@ describe('traps per player', () => {
       seatedAt(once, 1).wallet.balance,
     )
     const lead = atSeat(twice, 0, world =>
-      modifyFields(world, {
+      modifyFocus(world, {
         shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
       }),
     )
@@ -627,7 +629,7 @@ describe('friendly fire', () => {
       given(solo),
       ...ticks(2, TICK_MS),
       model(current => {
-        expect(current.player.hp).toBe(PLAYER_MAX_HP)
+        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
       }),
     )
   })
@@ -638,7 +640,7 @@ describe('the idle reload per seat', () => {
     (slot: number, loaded: number) =>
     (current: Model): Model =>
       atSeat(current, slot, world =>
-        modifyFields(world, {
+        modifyFocus(world, {
           player: player =>
             withPistol(player, pistol => ({ ...pistol, loaded })),
         }),
@@ -733,7 +735,7 @@ describe('the world never pauses in co-op', () => {
 
   test('a player at the stall does not hold the break clock', () => {
     const browsing = atSeat(crewInWave(2, breakOf(3)), 0, world =>
-      modifyFields(world, {
+      modifyFocus(world, {
         shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
       }),
     )
@@ -831,9 +833,11 @@ describe('single player', () => {
     expect(playersOf(crewInWave(1))).toHaveLength(1)
     expect(
       Invulnerability.isAnyOf(['Vulnerable'])(
-        crewInWave(1).player.invulnerability,
+        focusOf(crewInWave(1)).player.invulnerability,
       ),
     ).toBe(true)
-    expect(Arsenal.isAnyOf(['OneGun'])(crewInWave(1).player.arsenal)).toBe(true)
+    expect(
+      Arsenal.isAnyOf(['OneGun'])(focusOf(crewInWave(1)).player.arsenal),
+    ).toBe(true)
   })
 })

@@ -19,6 +19,7 @@ import {
 } from './model'
 import type { MusicMood } from './music'
 import { CueMusic } from './musicPlan'
+import { modifyFocus } from './party'
 import { SURFACE, resolveFocusLobby, resolvePlayed, tick } from './testing'
 import { PlaySound, ResumeAudio } from './update/sound'
 import { FetchBuild } from './update/version'
@@ -164,25 +165,27 @@ describe('music follows the phase', () => {
     story(
       update,
       given(
-        modifyFields(fighting(3, AudioState.Ready()), {
-          player: player => modifyFields(player, { hp: () => 1 }),
-          zombies: () => [
-            {
-              id: 100,
-              kind: 'Shambler',
-              x: PARLOUR.width / 2 + 2,
-              y: PARLOUR.height / 2,
-              speed: 0,
-              hp: ZOMBIE_MAX_HP,
-              maxHp: ZOMBIE_MAX_HP,
-              knockback: { x: 0, y: 0 },
-              hitRemainingMs: 0,
-              state: ZombieState.Walking(),
-              action: ZombieAction.Roaming(),
-              frenzy: Frenzy.Calm(),
-            },
-          ],
-        }),
+        modifyFocus(
+          modifyFields(fighting(3, AudioState.Ready()), {
+            zombies: () => [
+              {
+                id: 100,
+                kind: 'Shambler',
+                x: PARLOUR.width / 2 + 2,
+                y: PARLOUR.height / 2,
+                speed: 0,
+                hp: ZOMBIE_MAX_HP,
+                maxHp: ZOMBIE_MAX_HP,
+                knockback: { x: 0, y: 0 },
+                hitRemainingMs: 0,
+                state: ZombieState.Walking(),
+                action: ZombieAction.Roaming(),
+                frenzy: Frenzy.Calm(),
+              },
+            ],
+          }),
+          { player: player => modifyFields(player, { hp: () => 1 }) },
+        ),
       ),
       tick(FRAME_MS),
       model(({ phase }) => {

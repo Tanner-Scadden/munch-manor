@@ -19,7 +19,13 @@ import {
   normalize,
   scaleVector,
 } from './geometry'
-import { forEachSeatWhere, isStanding, payKillShared } from './party'
+import {
+  atSeat,
+  forEachSeatWhere,
+  isStanding,
+  payKillShared,
+  seatStateAt,
+} from './party'
 import { trapBlastTarget } from './traps'
 import type { World } from './world'
 import {
@@ -229,10 +235,13 @@ const PLAYER_BLAST_TARGET: BlastTarget<Player> = {
 
 // NOTE: a blast on every standing player it reaches.
 export const blastPlayers = (model: World, blast: BlastSpec): World =>
-  forEachSeatWhere(model, isStanding, seatWorld => {
-    const playerOutcome = blastOne(blast, PLAYER_BLAST_TARGET)(seatWorld.player)
-    return modifyFields(seatWorld, {
-      player: () => playerOutcome.target,
+  forEachSeatWhere(model, isStanding, (current, slot) => {
+    const playerOutcome = blastOne(
+      blast,
+      PLAYER_BLAST_TARGET,
+    )(seatStateAt(current, slot).player)
+    return modifyFields(current, {
+      seats: atSeat(slot, { player: () => playerOutcome.target }),
       frameEvents: frameEvents => [...frameEvents, ...playerOutcome.events],
     })
   })

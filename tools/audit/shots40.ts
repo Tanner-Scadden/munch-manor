@@ -15,6 +15,8 @@
 // ONLY picks scenes, such as `ONLY=slash`, and VIEWPORTS picks screens.
 import type { Page } from 'playwright-core'
 
+import { focusOf } from '@game/party'
+
 import {
   DESKTOP_1280,
   PHONE_844,
@@ -232,7 +234,7 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `${FIGHTING}&gun=smg&iced=pan&stab&tick=4`,
     act: async (page, problems, label) => {
       const knifeCooldownMs = await page.evaluate(
-        () => window.__model.player.knifeCooldownMs,
+        () => focusOf(window.__model).player.knifeCooldownMs,
       )
       if (knifeCooldownMs <= 0) {
         problems.push(`${label}: the knife in hand did not stab`)

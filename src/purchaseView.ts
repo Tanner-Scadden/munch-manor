@@ -15,6 +15,7 @@ import {
 import { ZERO_VECTOR } from './geometry'
 import { FRIDGE_RULES } from './leftovers'
 import { type Model, Purchasable, Purchase } from './model'
+import { focusOf, focusSlotOf } from './party'
 import {
   type Offer,
   PURCHASE_RULES,
@@ -179,10 +180,13 @@ const FULL_TAG = bakeTag(bakeText('FULL', 'Hint'), Option.some(AMMO_ICON))
 const ammoTagOf = (model: Model, offer: Offer): PriceTag =>
   offer.isFull
     ? FULL_TAG
-    : Option.match(maybeAmmoItemOf(heldGun(model.player.arsenal).kind), {
-        onNone: () => FULL_TAG,
-        onSome: item => AMMO_TAGS[item],
-      })
+    : Option.match(
+        maybeAmmoItemOf(heldGun(focusOf(model).player.arsenal).kind),
+        {
+          onNone: () => FULL_TAG,
+          onSome: item => AMMO_TAGS[item],
+        },
+      )
 
 const tagOf = (model: Model, offer: Offer): PriceTag =>
   Purchasable.match(offer.target, {
@@ -371,9 +375,11 @@ export const maybeReplacedIcon = (model: Model): Option.Option<Sprite> => {
   const isPanOffered =
     FridgeDoor.isAnyOf(['Offering'])(door) && door.prize === 'Pan'
   if (isPanOffered) {
-    return hasPan(model.player) ? Option.none() : Option.some(REPLACED_KNIFE)
+    return hasPan(focusOf(model).player)
+      ? Option.none()
+      : Option.some(REPLACED_KNIFE)
   }
-  return Option.map(maybeReplacedGun(model.player.arsenal), gun =>
+  return Option.map(maybeReplacedGun(focusOf(model).player.arsenal), gun =>
     gunIcon(gun.kind, gun.tier),
   )
 }
@@ -414,11 +420,14 @@ const offerShapes =
       isInReach ? tag.lit : tag.plain,
     )
     const prompt = isInReach ? promptShapes(model, offer, tag) : []
-    const shapes = Purchase.match(model.purchase, {
+    const shapes = Purchase.match(focusOf(model).purchase, {
       Idle: () => [tagShape, ...prompt],
       Holding: ({ target }) =>
         isMine(target)
-          ? [...ringShapes(offer, tag, holdProgress(model.purchase)), tagShape]
+          ? [
+              ...ringShapes(offer, tag, holdProgress(focusOf(model).purchase)),
+              tagShape,
+            ]
           : [tagShape, ...prompt],
       Refused: ({ target, shortBy, sinceMs }) =>
         isMine(target)
@@ -449,8 +458,11 @@ const purchaseShapes = (
   camera: Camera,
 ): ReadonlyArray<Canvas.Shape> =>
   Array.flatMap(
-    Array.filter(offersOf(model), isTagInView(model, camera)),
-    offerShapes(model, maybeOfferInReach(model)),
+    Array.filter(
+      offersOf(model, focusSlotOf(model)),
+      isTagInView(model, camera),
+    ),
+    offerShapes(model, maybeOfferInReach(model, focusSlotOf(model))),
   )
 
 // NOTE: drawn on the overlay, over the actors and the HUD strip, placed

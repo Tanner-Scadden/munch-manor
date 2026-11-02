@@ -10,6 +10,7 @@
 // early waves to Groaners and Hotfoots the way real players do.
 
 import { hasLineOfSight, levelOf } from '../../../src/arena'
+import { focusOf } from '../../../src/party'
 import {
   FRAME_MS,
   type Model,
@@ -64,7 +65,7 @@ const NOTICE_RADIANS = numberFrom('NOTICE_DEGREES', 75) * (Math.PI / 180)
 // THE TARGET IT HOLDS
 
 const isInSight = (model: Model, zombie: Zombie) =>
-  hasLineOfSight(levelOf(model), model.player, zombie)
+  hasLineOfSight(levelOf(model), focusOf(model).player, zombie)
 
 // Keeps its target while it stands and is in sight, unless the nearest is
 // much nearer or about to bite.
@@ -89,8 +90,9 @@ export const stickyTarget = (
   ) {
     return candidate
   }
-  const near = distance(model.player, candidate)
-  return near < PANIC_PX || near < SWITCH_RATIO * distance(model.player, held)
+  const near = distance(focusOf(model).player, candidate)
+  return near < PANIC_PX ||
+    near < SWITCH_RATIO * distance(focusOf(model).player, held)
     ? candidate
     : held
 }
@@ -157,7 +159,7 @@ export const isNoticed = (
   if (IS_SHARP || state.maybeAimAngle === undefined) {
     return true
   }
-  const { player } = model
+  const { player } = focusOf(model)
   if (distance(player, zombie) < NOTICE_PX) {
     return true
   }
@@ -177,5 +179,6 @@ export const isNoticed = (
 export const withinSenses = (model: Model): ReadonlyArray<Zombie> =>
   standing(model).filter(
     zombie =>
-      isInView(model, zombie) || distance(model.player, zombie) < NOTICE_PX,
+      isInView(model, zombie) ||
+      distance(focusOf(model).player, zombie) < NOTICE_PX,
   )

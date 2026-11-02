@@ -38,7 +38,7 @@ export const crewOf = (model: Model): ReadonlyArray<CrewMember> => {
   }
   const names = seatNamesOf(model)
   const ranks = seatRanksOf(model)
-  return Array.map(playersOf(model), ({ slot, seat, wallet }) => ({
+  return Array.map(playersOf(model), ({ seat: { slot }, seat, wallet }) => ({
     slot,
     name: names.get(slot) ?? `P${slot + 1}`,
     rank: ranks.get(slot) ?? 1,

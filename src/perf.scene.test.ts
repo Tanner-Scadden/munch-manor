@@ -58,6 +58,7 @@ import {
   ZombieState,
   initialModel,
 } from './model'
+import { modifyFocus } from './party'
 import { DROP_RULES } from './powerups'
 import { startOrResume } from './runFlow'
 import {
@@ -335,53 +336,57 @@ const fullRoom = (mode: RunMode, wave: number, tier: number): Model => {
     mode,
   )
   const [rngState, spawns] = rollSpawns(started.rngState, wave)
-  return modifyFields(started, {
-    rngState: () => rngState,
-    maybeSurface: () => Option.some(WIDE_SURFACE),
-    phase: () => Phase.Wave({ wave, elapsedMs: 30_000, spawns }),
-    pacing: pacing =>
-      modifyFields(pacing, {
-        warnedPacks: () => Array.map(spawns, ({ pack }) => pack),
-        alarm: () => Alarm.Ringing({ remainingMs: 1000 }),
-      }),
-    zombies: () => [
-      ...Array.makeBy(ZOMBIE_ALIVE_MAX, zombieAt(wave)),
-      bossAt(wave),
-    ],
-    boss: () =>
-      Boss.Fighting({
-        id: BOSS_ID,
-        move: BossMove.Bracing({
-          target: { x: 60, y: 140 },
-          remainingMs: 400,
-          durationMs: 800,
+  return modifyFocus(
+    modifyFields(started, {
+      rngState: () => rngState,
+      maybeSurface: () => Option.some(WIDE_SURFACE),
+      phase: () => Phase.Wave({ wave, elapsedMs: 30_000, spawns }),
+      pacing: pacing =>
+        modifyFields(pacing, {
+          warnedPacks: () => Array.map(spawns, ({ pack }) => pack),
+          alarm: () => Alarm.Ringing({ remainingMs: 1000 }),
         }),
-        standingMs: 4000,
-        mood: 'Enraged',
-        nextFar: 'Spit',
-        belchMs: 0,
-        globs: WORST_GLOBS,
-      }),
-    particles: () => Array.makeBy(PARTICLE_MAX, particleAt),
-    decals: () => Array.makeBy(DECAL_MAX, decalAt),
-    bullets: () => Array.makeBy(BULLET_MAX, bulletAt),
-    blasts: () => Array.makeBy(BLAST_MAX / 2, blastAt),
-    popups: () => Array.makeBy(POPUP_MAX, popupAt),
-    traps: () => TRAPS,
-    pickups: () => Array.makeBy(DROP_RULES.floorMax, pickupAt),
-    boosts: () => ALL_BOOSTED,
-    callouts: () => [
-      { kind: 'Pierce', look: 'Explained', x: 160, y: 90, ageMs: 600 },
-    ],
-    streak: () => Streak.Hot({ count: 12, remainingMs: 900 }),
-    stats: scoring(98_760),
-    trapStock: () => ({ Barricade: 2, Turret: 1 }),
-    wallet: wallet => ({ ...wallet, balance: 1234, shown: 1234 }),
-    player: player => ({
-      ...player,
-      arsenal: holdingSecond({ kind: 'Smg', rounds: 300, loaded: 30, tier }),
+      zombies: () => [
+        ...Array.makeBy(ZOMBIE_ALIVE_MAX, zombieAt(wave)),
+        bossAt(wave),
+      ],
+      boss: () =>
+        Boss.Fighting({
+          id: BOSS_ID,
+          move: BossMove.Bracing({
+            target: { x: 60, y: 140 },
+            remainingMs: 400,
+            durationMs: 800,
+          }),
+          standingMs: 4000,
+          mood: 'Enraged',
+          nextFar: 'Spit',
+          belchMs: 0,
+          globs: WORST_GLOBS,
+        }),
+      particles: () => Array.makeBy(PARTICLE_MAX, particleAt),
+      decals: () => Array.makeBy(DECAL_MAX, decalAt),
+      bullets: () => Array.makeBy(BULLET_MAX, bulletAt),
+      blasts: () => Array.makeBy(BLAST_MAX / 2, blastAt),
+      popups: () => Array.makeBy(POPUP_MAX, popupAt),
+      traps: () => TRAPS,
+      pickups: () => Array.makeBy(DROP_RULES.floorMax, pickupAt),
+      callouts: () => [
+        { kind: 'Pierce', look: 'Explained', x: 160, y: 90, ageMs: 600 },
+      ],
+      streak: () => Streak.Hot({ count: 12, remainingMs: 900 }),
+      stats: scoring(98_760),
     }),
-  })
+    {
+      boosts: () => ALL_BOOSTED,
+      trapStock: () => ({ Barricade: 2, Turret: 1 }),
+      wallet: wallet => ({ ...wallet, balance: 1234, shown: 1234 }),
+      player: player => ({
+        ...player,
+        arsenal: holdingSecond({ kind: 'Smg', rounds: 300, loaded: 30, tier }),
+      }),
+    },
+  )
 }
 
 // COUNTING PAINTER
@@ -606,23 +611,25 @@ const BUDGET_KEYS: ReadonlyArray<keyof FrameCost> = [
 // the parlour, out of the camera's view, where it is culled from drawing.
 const kitchenRoom = (wave: number): Model => {
   const room = fullRoom(RunMode.Campaign(), wave, 2)
-  return modifyFields(room, {
-    level: level => openExitIn(level, KITCHEN_EXIT),
-    ovens: ovens =>
-      Array.map(ovens, () =>
-        Oven.Belching({ remainingMs: 400, burnedTicks: 2 }),
-      ),
-    player: player => modifyFields(player, { x: () => 100, y: () => -40 }),
-    zombies: zombies =>
-      Array.map(zombies, (zombie, index) =>
-        index % 2 === 0
-          ? modifyFields(zombie, {
-              x: () => 30 + ((index * 17) % 150),
-              y: () => -110 + ((index * 23) % 100),
-            })
-          : zombie,
-      ),
-  })
+  return modifyFocus(
+    modifyFields(room, {
+      level: level => openExitIn(level, KITCHEN_EXIT),
+      ovens: ovens =>
+        Array.map(ovens, () =>
+          Oven.Belching({ remainingMs: 400, burnedTicks: 2 }),
+        ),
+      zombies: zombies =>
+        Array.map(zombies, (zombie, index) =>
+          index % 2 === 0
+            ? modifyFields(zombie, {
+                x: () => 30 + ((index * 17) % 150),
+                y: () => -110 + ((index * 23) % 100),
+              })
+            : zombie,
+        ),
+    }),
+    { player: player => modifyFields(player, { x: () => 100, y: () => -40 }) },
+  )
 }
 
 // NOTE: the fridge weapons at their busiest in the open kitchen: the
@@ -635,48 +642,58 @@ const fridgeFight = (
   charge: Charge,
   recoilMs: number,
 ): Model =>
-  modifyFields(room, {
-    player: player =>
-      modifyFields(player, {
-        arsenal: () => holdingSecond(spare),
-        charge: () => charge,
-        recoilRemainingMs: () => recoilMs,
-      }),
-    fridge: fridge =>
-      modifyFields(fridge, {
-        door: () =>
-          FridgeDoor.Open({
-            prize: 'Freeze',
-            slot: 0,
-            remainingMs: 400,
-            durationMs: 1100,
-          }),
-      }),
-    lobs: () =>
-      Array.makeBy(3, index => ({
-        id: 8000 + index,
-        x: 110 + index * 20,
-        y: -60 - index * 10,
-        from: { x: 100, y: -40 },
-        to: { x: 150 + index * 10, y: -80 - index * 10 },
-        remainingMs: 200,
-        durationMs: 500,
-        charge: 1,
-        tier: 3,
-      })),
-    blasts: () => [{ x: 140, y: -70, radius: 34, ageMs: 60 }],
-    zombies: zombies =>
-      Array.map(zombies, (zombie, index) =>
-        index % 3 === 0 && zombie.kind !== 'Boss'
-          ? modifyFields(zombie, {
-              action: () =>
-                index % 2 === 0
-                  ? ZombieAction.Frozen({ remainingMs: 2000, durationMs: 2500 })
-                  : ZombieAction.Reeling({ remainingMs: 400, durationMs: 700 }),
-            })
-          : zombie,
-      ),
-  })
+  modifyFocus(
+    modifyFields(room, {
+      fridge: fridge =>
+        modifyFields(fridge, {
+          door: () =>
+            FridgeDoor.Open({
+              prize: 'Freeze',
+              slot: 0,
+              remainingMs: 400,
+              durationMs: 1100,
+            }),
+        }),
+      lobs: () =>
+        Array.makeBy(3, index => ({
+          id: 8000 + index,
+          x: 110 + index * 20,
+          y: -60 - index * 10,
+          from: { x: 100, y: -40 },
+          to: { x: 150 + index * 10, y: -80 - index * 10 },
+          remainingMs: 200,
+          durationMs: 500,
+          charge: 1,
+          tier: 3,
+        })),
+      blasts: () => [{ x: 140, y: -70, radius: 34, ageMs: 60 }],
+      zombies: zombies =>
+        Array.map(zombies, (zombie, index) =>
+          index % 3 === 0 && zombie.kind !== 'Boss'
+            ? modifyFields(zombie, {
+                action: () =>
+                  index % 2 === 0
+                    ? ZombieAction.Frozen({
+                        remainingMs: 2000,
+                        durationMs: 2500,
+                      })
+                    : ZombieAction.Reeling({
+                        remainingMs: 400,
+                        durationMs: 700,
+                      }),
+              })
+            : zombie,
+        ),
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          arsenal: () => holdingSecond(spare),
+          charge: () => charge,
+          recoilRemainingMs: () => recoilMs,
+        }),
+    },
+  )
 
 const SCENARIOS: ReadonlyArray<Readonly<{ name: string; model: Model }>> = [
   {

@@ -5,6 +5,7 @@ import { type Level, findReach, levelOf } from './arena'
 import { MS_PER_SECOND } from './constants'
 import { addVectors, scaleVector } from './geometry'
 import type { Model, Vector } from './model'
+import { focusOf } from './party'
 import { firingStats } from './powerups'
 import {
   type WeaponStats,
@@ -25,7 +26,8 @@ const FAN_EDGE_COLOR = 'rgba(255, 58, 63, 0.35)'
 // NOTE: the knife and the Pan fire nothing, so the sight goes dark while
 // the melee slot is in hand.
 const hasSight = (model: Model): boolean =>
-  model.laserSight === 'Fitted' && !isWieldingMelee(model.player)
+  focusOf(model).laserSight === 'Fitted' &&
+  !isWieldingMelee(focusOf(model).player)
 
 const rangeOf = (stats: WeaponStats): number =>
   (stats.bulletSpeed * stats.bulletLifetimeMs) / MS_PER_SECOND
@@ -77,13 +79,13 @@ export const aimSightShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
     return []
   }
 
-  return Option.match(model.intent.maybeAim, {
+  return Option.match(focusOf(model).intent.maybeAim, {
     onNone: () => [],
     onSome: aim => {
-      const { player } = model
+      const { player } = focusOf(model)
       const level = levelOf(model)
       const stats = firingStats(
-        model.boosts,
+        focusOf(model).boosts,
         heldWeapon(player.arsenal),
         heldTier(player),
       )

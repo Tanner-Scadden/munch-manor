@@ -661,8 +661,10 @@ export const Seat = Schema.Struct({
 })
 export type Seat = typeof Seat.Type
 
-// NOTE: a teammate's own copy of every per-player World field.
-export const Mate = Schema.Struct({
+// NOTE: one player's place in the World: the seat's own record and every
+// per-player field. The World holds them in `seats`, in slot order, so a
+// per-player system reads and writes its player by slot, with no swapping.
+export const SeatState = Schema.Struct({
   seat: Seat,
   player: Player,
   intent: Intent,
@@ -675,29 +677,16 @@ export const Mate = Schema.Struct({
   laserSight: LaserSight,
   purchase: Purchase,
 })
-export type Mate = typeof Mate.Type
+export type SeatState = typeof SeatState.Type
 
-// NOTE: Solo is single player, exactly as it always played. A Crew holds
-// one player in the World's own per-player fields (player, intent, wallet,
-// and the rest), whose seat is lead, and every other player as a Mate. The
-// lead is whichever seat sits in those fields: the step swaps each seat in
-// to run the per-player systems on it, and a client may keep its own seat
-// there to draw it.
+// NOTE: Solo is single player, exactly as it always played. A Crew plays by
+// co-op's rules: a downed player, READY for the break, no world pause. Both
+// hold their players in the World's `seats`, one for Solo at SOLO_SLOT.
 export const Party = defineTaggedUnion({
   Solo: {},
-  Crew: { lead: Seat, mates: Schema.Array(Mate) },
+  Crew: {},
 })
 export type Party = typeof Party.Type
-type Crew = typeof Party.Crew.Type
-
-// NOTE: a Crew built as the plain value `Party.Crew` would return, without
-// its Schema validation. The step builds one for every seat swap, dozens of
-// times a tick, from a lead and mates it already holds as valid values.
-export const crewOf = (lead: Seat, mates: ReadonlyArray<Mate>): Crew => ({
-  _tag: 'Crew',
-  lead,
-  mates,
-})
 
 // NOTE: the World is the part of the Model the step reads and writes: what
 // a co-op room owns and runs (MULTIPLAYER.md, Phase 0). The rest of the
@@ -713,35 +702,26 @@ export const World = Schema.Struct({
   intensity: UnitNumber,
   mode: RunMode,
   difficulty: DifficultySetting,
-  player: Player,
   zombies: Schema.Array(Zombie),
   bullets: Schema.Array(Bullet),
   lobs: Schema.Array(Lob),
   nextEntityId: Schema.Number,
-  wallet: Wallet,
   elapsedMs: MillisNumber,
   frameEvents: Schema.Array(GameEvent),
   traps: Schema.Array(Trap),
   pickups: Schema.Array(Pickup),
-  boosts: Boosts,
   loot: Loot,
-  trapStock: TrapCounts,
-  selectedTrap: TrapKind,
   level: LevelState,
   ovens: Schema.Array(Oven),
   fridge: Fridge,
-  laserSight: LaserSight,
   rngState: Schema.Number,
-  intent: Intent,
-  shop: ShopState,
-  shopCategory: ShopCategory,
-  purchase: Purchase,
   hitStop: HitStop,
   lessons: Lessons,
   practice: Practice,
   debutCard: DebutCard,
   stats: RunStats,
   party: Party,
+  seats: Schema.NonEmptyArray(SeatState),
 })
 export type World = typeof World.Type
 

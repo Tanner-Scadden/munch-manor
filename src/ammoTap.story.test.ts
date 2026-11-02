@@ -7,6 +7,7 @@ import { update } from './main'
 import { Message } from './message'
 import { CounterSale, type Model, Phase, Purchasable, Purchase } from './model'
 import { midWaveAtStall, withPlayerAt } from './model.fixture'
+import { focusOf } from './party'
 import { actionCodeOf, heldAction, seatActionOf } from './roomWorld'
 import { SHOP_ITEMS, STALL_BOX } from './shop'
 import { SeatAction, applySeatAction, soloInputs, stepWorld } from './stepWorld'
@@ -26,8 +27,8 @@ const liftHoldButton = message(Message.ReleasedPointer({ pointerId: 7 }))
 const clickTag = message(Message.ClickedAmmoTag())
 
 const expectBoughtOnce = (current: Model): void => {
-  expect(heldGun(current.player.arsenal).rounds).toBeGreaterThan(10)
-  expect(current.wallet.balance).toBe(100 - PRICE)
+  expect(heldGun(focusOf(current).player.arsenal).rounds).toBeGreaterThan(10)
+  expect(focusOf(current).wallet.balance).toBe(100 - PRICE)
   expect(CounterSale.isAnyOf(['Selling'])(current.counterSale)).toBe(true)
 }
 
@@ -71,14 +72,14 @@ describe('a tap at the ammo window buys at once', () => {
       press('Enter'),
       ...ticks(HOLD_TICKS * 3, FRAME_MS),
       model(current => {
-        expect(current.wallet.balance).toBe(100 - PRICE)
+        expect(focusOf(current).wallet.balance).toBe(100 - PRICE)
       }),
       release('Enter'),
       tick(FRAME_MS),
       press('Enter'),
       tick(FRAME_MS),
       model(current => {
-        expect(current.wallet.balance).toBe(100 - PRICE * 2)
+        expect(focusOf(current).wallet.balance).toBe(100 - PRICE * 2)
       }),
       release('Enter'),
     )
@@ -91,9 +92,9 @@ describe('a tap at the ammo window buys at once', () => {
       clickTag,
       tick(FRAME_MS),
       model(current => {
-        expect(current.wallet.balance).toBe(PRICE - 5)
-        expect(heldGun(current.player.arsenal).rounds).toBe(10)
-        expect(current.purchase).toEqual(
+        expect(focusOf(current).wallet.balance).toBe(PRICE - 5)
+        expect(heldGun(focusOf(current).player.arsenal).rounds).toBe(10)
+        expect(focusOf(current).purchase).toEqual(
           Purchase.Refused({
             target: Purchasable.Ammo(),
             shortBy: 5,
@@ -112,7 +113,7 @@ describe('a tap at the ammo window buys at once', () => {
       clickTag,
       tick(FRAME_MS),
       model(current => {
-        expect(current.wallet.balance).toBe(100)
+        expect(focusOf(current).wallet.balance).toBe(100)
         expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
       }),
       release('Enter'),
@@ -125,12 +126,14 @@ describe('a tap at the ammo window buys at once', () => {
       given(midWaveAtStall('Smg', 10)),
       ...ticks(STAND_TICKS - 4, FRAME_MS),
       model(current => {
-        expect(current.wallet.balance).toBe(100)
-        expect(Purchase.isAnyOf(['Holding'])(current.purchase)).toBe(true)
+        expect(focusOf(current).wallet.balance).toBe(100)
+        expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
+          true,
+        )
       }),
       ...ticks(4, FRAME_MS),
       model(current => {
-        expect(current.wallet.balance).toBe(100 - PRICE)
+        expect(focusOf(current).wallet.balance).toBe(100 - PRICE)
       }),
     )
   })
@@ -144,8 +147,8 @@ describe('a tap at the ammo window buys at once', () => {
     expect(read).toEqual(Option.some(SeatAction.BuyAmmo()))
     const pressed = applySeatAction(from, SOLO_SLOT, SeatAction.BuyAmmo())
     const { world, events } = stepWorld(pressed, soloInputs(idleIntent))
-    expect(world.wallet.balance).toBe(100 - PRICE)
-    expect(heldGun(world.player.arsenal).rounds).toBeGreaterThan(10)
+    expect(focusOf(world).wallet.balance).toBe(100 - PRICE)
+    expect(heldGun(focusOf(world).player.arsenal).rounds).toBeGreaterThan(10)
     expect(events.some(GameEvent.isAnyOf(['Purchased']))).toBe(true)
   })
 })

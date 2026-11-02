@@ -12,6 +12,7 @@ import { PLAYER_RADIUS } from '../../../src/constants'
 import { isSmallKind } from '../../../src/fridgeWeapons'
 import { KNIFE_RULES } from '../../../src/knife'
 import { Message } from '../../../src/message'
+import { focusOf } from '../../../src/party'
 import {
   canReload,
   heldGun,
@@ -71,7 +72,7 @@ const panStance = (state: BotState, model: Model): Vector | undefined => {
   if (panTarget === undefined) {
     return undefined
   }
-  const { player } = model
+  const { player } = focusOf(model)
   const threat = walking(model)
     .filter(zombie => !isPannable(zombie))
     .sort((a, b) => distance(player, a) - distance(player, b))[0]
@@ -107,7 +108,7 @@ const panStance = (state: BotState, model: Model): Vector | undefined => {
 const STAB_SLACK_PX = 1
 
 export const isGunIdle = (model: Model): boolean => {
-  const { player } = model
+  const { player } = focusOf(model)
   const held = heldGun(player.arsenal)
   return (
     isReloading(player) ||
@@ -119,27 +120,29 @@ export const isGunIdle = (model: Model): boolean => {
 const isWithinKnife = (model: Model): boolean =>
   walking(model).some(
     zombie =>
-      distance(model.player, zombie) - bodyRadiusOf(zombie) - PLAYER_RADIUS <=
+      distance(focusOf(model).player, zombie) -
+        bodyRadiusOf(zombie) -
+        PLAYER_RADIUS <=
       KNIFE_RULES.reachPx - STAB_SLACK_PX,
   )
 
 // With the Pan in the melee slot the same rules draw it, and while its
 // plan swings it the bot keeps it out.
 export const handleKnife = (state: BotState, model: Model): Model => {
-  if (!isWieldingMelee(model.player)) {
+  if (!isWieldingMelee(focusOf(model).player)) {
     return isWithinKnife(model) && isGunIdle(model)
       ? tapKey(model, KEYS.knife)
       : model
   }
   return !state.panPlanNow.useSpare &&
-    !isOutOfGuns(model.player) &&
+    !isOutOfGuns(focusOf(model).player) &&
     !isGunIdle(model)
     ? tapKey(model, 'KeyQ')
     : model
 }
 
 export const kite = (state: BotState, model: Model): Vector => {
-  const { player } = model
+  const { player } = focusOf(model)
   const dodge = telegraphDodge(model)
   if (dodge !== undefined) {
     return dodge
@@ -205,18 +208,23 @@ const isBehindShield = (model: Model, zombie: Model['zombies'][number]) => {
   if (zombie.action._tag === 'Shielded') {
     return true
   }
-  const length = Math.max(1, distance(model.player, zombie))
+  const length = Math.max(1, distance(focusOf(model).player, zombie))
   const toward = {
-    x: (zombie.x - model.player.x) / length,
-    y: (zombie.y - model.player.y) / length,
+    x: (zombie.x - focusOf(model).player.x) / length,
+    y: (zombie.y - focusOf(model).player.y) / length,
   }
   return Option.isSome(maybeShieldFor(zombie, toward))
 }
 
 export const nearestVisible = (model: Model) => {
   const inSight = walking(model)
-    .filter(zombie => hasLineOfSight(levelOf(model), model.player, zombie))
-    .sort((a, b) => distance(model.player, a) - distance(model.player, b))
+    .filter(zombie =>
+      hasLineOfSight(levelOf(model), focusOf(model).player, zombie),
+    )
+    .sort(
+      (a, b) =>
+        distance(focusOf(model).player, a) - distance(focusOf(model).player, b),
+    )
   const open = inSight.filter(zombie => !isBehindShield(model, zombie))
   const visible = open.length > 0 ? open : inSight
   const nearest = visible[0]
@@ -229,7 +237,7 @@ export const nearestVisible = (model: Model) => {
     nearest !== undefined &&
     (isDazed ||
       nearest.kind === 'Boss' ||
-      distance(model.player, nearest) > FOCUS_PX)
+      distance(focusOf(model).player, nearest) > FOCUS_PX)
     ? boss
     : nearest
 }
@@ -238,8 +246,11 @@ export const nearestVisible = (model: Model) => {
 // the room is empty, the way a player tops off between fights instead of
 // every time a zombie ducks behind cover. An empty gun reloads on its own.
 export const topOff = (model: Model): Model => {
-  const isLow = heldLoaded(model.player) < heldStats(model.player).magazine / 2
-  return canReload(model.player) && (isLow || walking(model).length === 0)
+  const isLow =
+    heldLoaded(focusOf(model).player) <
+    heldStats(focusOf(model).player).magazine / 2
+  return canReload(focusOf(model).player) &&
+    (isLow || walking(model).length === 0)
     ? tapKey(model, 'KeyR')
     : model
 }
@@ -259,20 +270,20 @@ const assistedPoint = (model: Model, rawPoint: Vector): Vector => {
   }
   const camera = screenCameraOf(model)
   const raw = viewToWorld(camera, rawPoint)
-  const length = Math.max(1e-6, distance(model.player, raw))
+  const length = Math.max(1e-6, distance(focusOf(model).player, raw))
   const aim = assistAim(
     levelOf(model),
     windowCamera(model, maybeAssistScreen),
-    model.player,
+    focusOf(model).player,
     model.zombies,
     {
-      x: (raw.x - model.player.x) / length,
-      y: (raw.y - model.player.y) / length,
+      x: (raw.x - focusOf(model).player.x) / length,
+      y: (raw.y - focusOf(model).player.y) / length,
     },
   )
   return worldToView(camera, {
-    x: model.player.x + aim.x * AIM_REACH_PX,
-    y: model.player.y + aim.y * AIM_REACH_PX,
+    x: focusOf(model).player.x + aim.x * AIM_REACH_PX,
+    y: focusOf(model).player.y + aim.y * AIM_REACH_PX,
   })
 }
 
@@ -297,15 +308,18 @@ export const aimAt = (
   humanError?: number,
 ): { model: Model; point: Vector } => {
   const angle =
-    Math.atan2(target.y - model.player.y, target.x - model.player.x) +
+    Math.atan2(
+      target.y - focusOf(model).player.y,
+      target.x - focusOf(model).player.x,
+    ) +
     (humanError ??
       (nextBotRandom(state) + nextBotRandom(state) - 1) * AIM_NOISE_RADIANS)
   state.maybeAimAngle = angle
   // The mouse lives in screen pixels, so the aim point goes through the
   // camera, which scrolls once the kitchen is open.
   const rawPoint = worldToView(screenCameraOf(model), {
-    x: model.player.x + Math.cos(angle) * AIM_REACH_PX,
-    y: model.player.y + Math.sin(angle) * AIM_REACH_PX,
+    x: focusOf(model).player.x + Math.cos(angle) * AIM_REACH_PX,
+    y: focusOf(model).player.y + Math.sin(angle) * AIM_REACH_PX,
   })
   state.maybeRawAim = rawPoint
   const point = assistedPoint(model, rawPoint)

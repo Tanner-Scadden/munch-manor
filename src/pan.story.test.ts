@@ -22,8 +22,8 @@ import {
   type Zombie,
   initialModel,
 } from './model'
-import { DISTANT_SPAWN, atFridge } from './model.fixture'
-import { maybePlayerAt, withSeat } from './party'
+import { DISTANT_SPAWN, atFridge, withSeat } from './model.fixture'
+import { focusOf, focusSlotOf, maybePlayerAt, modifyFocus } from './party'
 import { nextRandom } from './prng'
 import { REPLACED_KNIFE, maybeReplacedIcon } from './purchaseView'
 import {
@@ -67,19 +67,24 @@ const BOTH_GUNS = holdingSecond(SMG)
 const withPan = (pan: CarriedGun = freshGun('Pan')): Melee => Melee.Pan({ pan })
 
 const panFight = (zombies: ReadonlyArray<Zombie> = []): Model =>
-  modifyFields(asVeteran(initialModel), {
-    maybeSurface: () => Option.some(SURFACE),
-    phase: () => Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-    zombies: () => zombies,
-    player: player =>
-      modifyFields(player, {
-        x: () => PLAYER_X,
-        y: () => ROW_Y,
-        facing: () => ({ x: 1, y: 0 }),
-        arsenal: () => BOTH_GUNS,
-        melee: () => withPan(),
-      }),
-  })
+  modifyFocus(
+    modifyFields(asVeteran(initialModel), {
+      maybeSurface: () => Option.some(SURFACE),
+      phase: () =>
+        Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+      zombies: () => zombies,
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          x: () => PLAYER_X,
+          y: () => ROW_Y,
+          facing: () => ({ x: 1, y: 0 }),
+          arsenal: () => BOTH_GUNS,
+          melee: () => withPan(),
+        }),
+    },
+  )
 
 const groanerAhead = (id: number): Zombie =>
   zombieOf('Shambler', id, PLAYER_X + 10, ROW_Y, { hp: 99 })
@@ -89,34 +94,36 @@ const swungIn = (current: Model): boolean =>
 
 describe('the Clang Pan in the melee slot', () => {
   test('taking it from the fridge keeps both guns and puts the Pan in hand', () => {
-    const pullsPan = modifyFields(atFridge(100), {
-      player: player => modifyFields(player, { arsenal: () => BOTH_GUNS }),
-      fridge: fridge =>
-        modifyFields(fridge, {
-          door: () =>
-            FridgeDoor.Offering({
-              prize: 'Pan',
-              slot: 0,
-              remainingMs: FRIDGE_RULES.offerMs,
-              durationMs: FRIDGE_RULES.offerMs,
-            }),
-        }),
-    })
+    const pullsPan = modifyFocus(
+      modifyFields(atFridge(100), {
+        fridge: fridge =>
+          modifyFields(fridge, {
+            door: () =>
+              FridgeDoor.Offering({
+                prize: 'Pan',
+                slot: 0,
+                remainingMs: FRIDGE_RULES.offerMs,
+                durationMs: FRIDGE_RULES.offerMs,
+              }),
+          }),
+      }),
+      { player: player => modifyFields(player, { arsenal: () => BOTH_GUNS }) },
+    )
     story(
       update,
       given(pullsPan),
       press('Enter'),
       ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       model(current => {
-        expect(current.player.arsenal).toEqual(BOTH_GUNS)
-        expect(current.player.melee).toEqual(withPan())
-        expect(inHandOf(current.player)).toBe('Pan')
+        expect(focusOf(current).player.arsenal).toEqual(BOTH_GUNS)
+        expect(focusOf(current).player.melee).toEqual(withPan())
+        expect(inHandOf(focusOf(current).player)).toBe('Pan')
       }),
     )
   })
 
   test('the melee slot shows the Pan, its tier, and its dent meter, not the knife', () => {
-    const knifeLook = meleeSlotLook(initialModel.player)
+    const knifeLook = meleeSlotLook(focusOf(initialModel).player)
     expect(Option.isSome(knifeLook.maybeIcon ?? Option.none())).toBe(true)
     expect(knifeLook.maybeGun).toEqual(Option.none())
     const dented = modifyFields(freshGun('Pan'), {
@@ -124,7 +131,9 @@ describe('the Clang Pan in the melee slot', () => {
       tier: () => 1,
     })
     const panLook = meleeSlotLook(
-      modifyFields(initialModel.player, { melee: () => withPan(dented) }),
+      modifyFields(focusOf(initialModel).player, {
+        melee: () => withPan(dented),
+      }),
     )
     expect(panLook.maybeGun).toEqual(Option.some({ weapon: 'Pan', tier: 1 }))
     expect(panLook.maybeIcon ?? Option.none()).toEqual(Option.none())
@@ -138,8 +147,8 @@ describe('the Clang Pan in the melee slot', () => {
       given(panFight([bigLug])),
       press('KeyF'),
       model(current => {
-        expect(inHandOf(current.player)).toBe('Pan')
-        expect(heldWeapon(current.player.arsenal)).toBe('Smg')
+        expect(inHandOf(focusOf(current).player)).toBe('Pan')
+        expect(heldWeapon(focusOf(current).player.arsenal)).toBe('Smg')
       }),
       holdFire,
       tick(FRAME_MS),
@@ -148,11 +157,15 @@ describe('the Clang Pan in the melee slot', () => {
         expect(
           Array.some(current.frameEvents, GameEvent.isAnyOf(['KnifeStabbed'])),
         ).toBe(false)
-        expect(Option.getOrThrow(maybePanOf(current.player)).loaded).toBe(23)
+        expect(
+          Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
+        ).toBe(23)
       }),
       ...ticks(tickCountFor(PAN_RULES.swingMs), FRAME_MS),
       model(current => {
-        expect(Option.getOrThrow(maybePanOf(current.player)).loaded).toBe(22)
+        expect(
+          Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
+        ).toBe(22)
       }),
     )
   })
@@ -163,11 +176,11 @@ describe('the Clang Pan in the melee slot', () => {
       given(panFight()),
       message(Message.ClickedMeleeSlot()),
       model(current => {
-        expect(inHandOf(current.player)).toBe('Pan')
+        expect(inHandOf(focusOf(current).player)).toBe('Pan')
       }),
       press('KeyQ'),
       model(current => {
-        expect(inHandOf(current.player)).toBe('Smg')
+        expect(inHandOf(focusOf(current).player)).toBe('Smg')
       }),
     )
   })
@@ -175,7 +188,7 @@ describe('the Clang Pan in the melee slot', () => {
   test('with every gun dry, the next pull draws the Pan by itself, and fire swings it', () => {
     const dry = (gun: CarriedGun): CarriedGun =>
       modifyFields(gun, { rounds: () => 0, loaded: () => 0 })
-    const allDry = modifyFields(panFight([groanerAhead(900)]), {
+    const allDry = modifyFocus(panFight([groanerAhead(900)]), {
       player: player =>
         modifyFields(player, {
           arsenal: () =>
@@ -188,17 +201,19 @@ describe('the Clang Pan in the melee slot', () => {
       holdFire,
       tick(FRAME_MS),
       model(current => {
-        expect(inHandOf(current.player)).toBe('Pan')
+        expect(inHandOf(focusOf(current).player)).toBe('Pan')
       }),
       ...ticks(tickCountFor(PAN_RULES.swingMs), FRAME_MS),
       model(current => {
-        expect(Option.getOrThrow(maybePanOf(current.player)).loaded).toBe(23)
+        expect(
+          Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
+        ).toBe(23)
       }),
     )
   })
 
   test('a second Pan never comes out of the fridge: its share goes to the rest', () => {
-    const holder = modifyFields(atFridge(500).player, {
+    const holder = modifyFields(focusOf(atFridge(500)).player, {
       melee: () => withPan(),
     })
     const weights = prizeWeights(atFridge(500).fridge, holder)
@@ -219,7 +234,7 @@ describe('the Clang Pan in the melee slot', () => {
       loaded: () => 3,
       tier: () => 2,
     })
-    const holder = modifyFields(initialModel.player, {
+    const holder = modifyFields(focusOf(initialModel).player, {
       melee: () => withPan(worn),
     })
     const retaken = takePan(holder, freshGun('Pan'))
@@ -229,14 +244,16 @@ describe('the Clang Pan in the melee slot', () => {
   })
 
   test("Rattles' Pan upgrade finds it in the melee slot", () => {
-    const shopping = modifyFields(atFridge(500), {
+    const shopping = modifyFocus(atFridge(500), {
       player: player => modifyFields(player, { melee: () => withPan() }),
     })
     const upgraded = withWorld(shopping, world =>
-      Option.getOrThrow(purchase(world, 'PanUpgrade')),
+      Option.getOrThrow(purchase(world, focusSlotOf(world), 'PanUpgrade')),
     )
-    expect(Option.getOrThrow(maybePanOf(upgraded.player)).tier).toBe(1)
-    expect(upgraded.player.arsenal).toEqual(shopping.player.arsenal)
+    expect(Option.getOrThrow(maybePanOf(focusOf(upgraded).player)).tier).toBe(1)
+    expect(focusOf(upgraded).player.arsenal).toEqual(
+      focusOf(shopping).player.arsenal,
+    )
   })
 
   test('a new run starts with the knife in the melee slot again', () => {
@@ -249,7 +266,7 @@ describe('the Clang Pan in the melee slot', () => {
       given(over),
       press('Enter'),
       model(current => {
-        expect(current.player.melee).toEqual(Melee.Knife())
+        expect(focusOf(current).player.melee).toEqual(Melee.Knife())
       }),
     )
   })
@@ -257,20 +274,27 @@ describe('the Clang Pan in the melee slot', () => {
 
 describe('the TAKE preview', () => {
   const offering = (prize: FridgePrize, melee: Melee): Model =>
-    modifyFields(atFridge(100), {
-      player: player =>
-        modifyFields(player, { arsenal: () => BOTH_GUNS, melee: () => melee }),
-      fridge: fridge =>
-        modifyFields(fridge, {
-          door: () =>
-            FridgeDoor.Offering({
-              prize,
-              slot: 0,
-              remainingMs: FRIDGE_RULES.offerMs,
-              durationMs: FRIDGE_RULES.offerMs,
-            }),
-        }),
-    })
+    modifyFocus(
+      modifyFields(atFridge(100), {
+        fridge: fridge =>
+          modifyFields(fridge, {
+            door: () =>
+              FridgeDoor.Offering({
+                prize,
+                slot: 0,
+                remainingMs: FRIDGE_RULES.offerMs,
+                durationMs: FRIDGE_RULES.offerMs,
+              }),
+          }),
+      }),
+      {
+        player: player =>
+          modifyFields(player, {
+            arsenal: () => BOTH_GUNS,
+            melee: () => melee,
+          }),
+      },
+    )
 
   test('for the Pan it crosses out the knife; for a gun-slot prize, the gun in hand', () => {
     expect(maybeReplacedIcon(offering('Pan', Melee.Knife()))).toEqual(
@@ -287,7 +311,7 @@ describe('the Clang Pan in co-op', () => {
     const started = startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS)
     const placed = (slot: number, x: number) => (world: RoomWorld['world']) =>
       withSeat(world, slot, seatWorld =>
-        modifyFields(seatWorld, {
+        modifyFocus(seatWorld, {
           player: player =>
             modifyFields(player, {
               x: () => x,

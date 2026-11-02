@@ -20,6 +20,7 @@ import {
   type Zombie,
   ZombieAction,
 } from '@game/model'
+import { modifyFocus } from '@game/party'
 import { LinkFlow, PlayerScopeStatus, SyncState } from '@game/playerSync'
 import { rankOf, totalPointsOf } from '@game/rank'
 import { unlocksAt } from '@game/unlocks'
@@ -173,10 +174,10 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const traphint = config.traphint
   if (traphint !== undefined) {
-    model = modifyFields(model, {
-      trapHint: () => TrapHint.Showing(),
-      selectedTrap: () => traphint,
-    })
+    model = modifyFocus(
+      modifyFields(model, { trapHint: () => TrapHint.Showing() }),
+      { selectedTrap: () => traphint },
+    )
   }
   const quest = config.quest
   if (quest !== undefined) {
@@ -217,8 +218,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const { calling } = config
   if (calling !== undefined) {
-    model = modifyFields(model, {
-      calling: () => calling,
+    model = modifyFocus(modifyFields(model, { calling: () => calling }), {
       player: player => ({
         ...playerOfCalling(calling),
         x: player.x,

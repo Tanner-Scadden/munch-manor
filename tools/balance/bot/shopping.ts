@@ -21,7 +21,7 @@ import {
 import { isFridgeWeapon } from '../../../src/fridgeWeapons'
 import { FRIDGE_RULES, fridgeBoxOf } from '../../../src/leftovers'
 import { Message } from '../../../src/message'
-import { leadSeatOf } from '../../../src/party'
+import { focusOf, focusSlotOf, leadSeatOf } from '../../../src/party'
 import { maybeOfferInReach } from '../../../src/purchase'
 import {
   STALL_BOX,
@@ -88,7 +88,7 @@ const NO_PLANKS = process.env['NO_PLANKS'] !== undefined
 const IS_SHOTGUN_RUN = process.env['GUN'] === 'shotgun'
 const RESERVE = Number(process.env['RESERVE'] ?? 30)
 
-type ItemId = Parameters<typeof priceFor>[1]
+type ItemId = Parameters<typeof priceFor>[2]
 type SpareKind = FridgeSpare['kind']
 
 // Each spare's ammo and upgrade on Rattles' shelves. The Cooker's ammo is a
@@ -133,10 +133,12 @@ export const wantedPurchase = (
   const fridge = fridgeSpareOf(model)
   const spare = spareOf(model)
   const isAvailable = (item: ItemId) =>
-    verdictFor(model, item)._tag === 'Available'
+    verdictFor(model, focusSlotOf(model), item)._tag === 'Available'
   const canSpare = (item: ItemId) =>
-    isAvailable(item) && model.wallet.balance - priceFor(model, item) >= RESERVE
-  if (model.player.hp <= 3 && isAvailable('Heart')) {
+    isAvailable(item) &&
+    focusOf(model).wallet.balance - priceFor(model, focusSlotOf(model), item) >=
+      RESERVE
+  if (focusOf(model).player.hp <= 3 && isAvailable('Heart')) {
     return 'Heart'
   }
   // Traded the pistol for a fridge weapon that is now spent: Rattles gives
@@ -191,19 +193,19 @@ export const wantedPurchase = (
     return refills[0]
   }
   const barricades =
-    model.trapStock.Barricade +
+    focusOf(model).trapStock.Barricade +
     model.traps.filter(trap => trap._tag === 'Barricade').length
   if (!NO_PLANKS && barricades < 2 && isAvailable('Barricade')) {
     return 'Barricade'
   }
-  if (model.player.hp <= 4 && isAvailable('Heart')) {
+  if (focusOf(model).player.hp <= 4 && isAvailable('Heart')) {
     return 'Heart'
   }
   const repairs = model.traps
     .map(trap => repairItemId(trap.id))
     .filter(item => isAvailable(item))
   const repairTotal = repairs.reduce(
-    (total, item) => total + priceFor(model, item),
+    (total, item) => total + priceFor(model, focusSlotOf(model), item),
     0,
   )
   if (repairs.length > 0 && repairTotal <= 25) {
@@ -213,7 +215,7 @@ export const wantedPurchase = (
     return undefined
   }
   const turrets =
-    model.trapStock.Turret +
+    focusOf(model).trapStock.Turret +
     model.traps.filter(trap => trap._tag === 'Turret').length
   // A fridge weapon's upgrades (Rattles' line for a carried Cooker or Pan)
   // come after the hearts, planks, repairs, and the first gnome.
@@ -284,11 +286,11 @@ export const isKitchenOpen = (model: Model) =>
   levelOf(model).openExits.includes(KITCHEN_EXIT)
 
 const turretCount = (model: Model) =>
-  model.trapStock.Turret +
+  focusOf(model).trapStock.Turret +
   model.traps.filter(trap => trap._tag === 'Turret').length
 
 const plankCount = (model: Model) =>
-  model.trapStock.Barricade +
+  focusOf(model).trapStock.Barricade +
   model.traps.filter(trap => trap._tag === 'Barricade').length
 
 const wantsKitchen = (model: Model): boolean => {
@@ -301,7 +303,7 @@ const wantsKitchen = (model: Model): boolean => {
     spare.tier >= 2 &&
     (NO_GNOME || turretCount(model) >= 1) &&
     (NO_PLANKS || plankCount(model) >= 2) &&
-    model.wallet.balance - EXIT_RULES.price >= RESERVE
+    focusOf(model).wallet.balance - EXIT_RULES.price >= RESERVE
   )
 }
 
@@ -316,21 +318,26 @@ const NO_AMMO_WINDOW = process.env['AMMO'] === '0'
 export const AMMO_WINDOW_NEAR_PX = 70
 
 const wantsAmmoWindow = (model: Model): boolean => {
-  const gun = heldGun(model.player.arsenal)
+  const gun = heldGun(focusOf(model).player.arsenal)
   return (
     !NO_AMMO_WINDOW &&
     isCounterOpen(model) &&
     ammoLevelOf(gun) !== 'Plenty' &&
     Option.exists(
       maybeAmmoItemOf(gun.kind),
-      item => model.wallet.balance >= priceFor(model, item),
+      item =>
+        focusOf(model).wallet.balance >=
+        priceFor(model, focusSlotOf(model), item),
     ) &&
-    distance(model.player, STALL_FRONT) < AMMO_WINDOW_NEAR_PX
+    distance(focusOf(model).player, STALL_FRONT) < AMMO_WINDOW_NEAR_PX
   )
 }
 
 const isAtAmmoOffer = (model: Model): boolean =>
-  Option.exists(maybeOfferInReach(model), offer => offer.target._tag === 'Ammo')
+  Option.exists(
+    maybeOfferInReach(model, focusSlotOf(model)),
+    offer => offer.target._tag === 'Ammo',
+  )
 
 export const holdingAtWindow = (
   model: Model,
@@ -342,7 +349,7 @@ export const holdingAtWindow = (
 
 export const towardWindow = (model: Model, direction: Vector): Vector =>
   wantsAmmoWindow(model) && !isAtAmmoOffer(model)
-    ? steerToward(model.player, STALL_BELOW)
+    ? steerToward(focusOf(model).player, STALL_BELOW)
     : direction
 
 // The bot buys the room as a player does: it holds the interact key at the
@@ -352,7 +359,8 @@ export const holdingAtKitchen = (
   model: Model,
   keys: Set<string>,
 ): Set<string> =>
-  wantsKitchen(model) && Option.isSome(maybeOfferInReach(model))
+  wantsKitchen(model) &&
+  Option.isSome(maybeOfferInReach(model, focusSlotOf(model)))
     ? new Set([...keys, KEYS.interact])
     : keys
 
@@ -379,7 +387,8 @@ export const fridgeStand = (model: Model): Vector | undefined =>
 export const isFridgeInReach = (model: Model): boolean =>
   Option.exists(
     fridgeBoxOf(levelOf(model)),
-    box => distanceToBox(model.player, box) <= FRIDGE_RULES.reachPx - 2,
+    box =>
+      distanceToBox(focusOf(model).player, box) <= FRIDGE_RULES.reachPx - 2,
   )
 
 // NOTE: take it or leave it: the bot takes a weapon on offer when it beats
@@ -416,8 +425,8 @@ export const wouldTake = (model: Model): boolean => {
 // the weapons the fridge can still give it (never the one it carries) must
 // beat its weaker gun. Otherwise the $75 buys a prize it walks away from.
 const wouldTakeAnyPrize = (model: Model): boolean =>
-  FRIDGE_PRIZES.filter(kind => !isCarrying(model.player, kind)).every(kind =>
-    beatsWeaker(model, kind),
+  FRIDGE_PRIZES.filter(kind => !isCarrying(focusOf(model).player, kind)).every(
+    kind => beatsWeaker(model, kind),
   )
 
 export const isOfferedToBot = (model: Model): boolean =>
@@ -426,11 +435,16 @@ export const isOfferedToBot = (model: Model): boolean =>
 
 const fridgeReserve = (state: BotState, model: Model): number => {
   const heart =
-    model.player.hp <= 4 && model.player.hp < maxHpOf(model.player)
-      ? priceFor(model, 'Heart')
+    focusOf(model).player.hp <= 4 &&
+    focusOf(model).player.hp < maxHpOf(focusOf(model).player)
+      ? priceFor(model, focusSlotOf(model), 'Heart')
       : 0
   const want = wantedPurchase(state, model)
-  return RESERVE + heart + (want === undefined ? 0 : priceFor(model, want))
+  return (
+    RESERVE +
+    heart +
+    (want === undefined ? 0 : priceFor(model, focusSlotOf(model), want))
+  )
 }
 
 const wantsFridge = (state: BotState, model: Model): boolean =>
@@ -442,7 +456,8 @@ const wantsFridge = (state: BotState, model: Model): boolean =>
     (isOfferedToBot(model) && wouldTake(model)) ||
     (model.fridge.door._tag === 'Shut' &&
       wouldTakeAnyPrize(model) &&
-      model.wallet.balance - FRIDGE_RULES.price >= fridgeReserve(state, model)))
+      focusOf(model).wallet.balance - FRIDGE_RULES.price >=
+        fridgeReserve(state, model)))
 
 // At the fridge it holds the interact key while the door is shut, lets go
 // once a pull is done so the next hold starts fresh, and waits while the
@@ -450,7 +465,7 @@ const wantsFridge = (state: BotState, model: Model): boolean =>
 export const fridgeKeys = (model: Model): Set<string> =>
   (model.fridge.door._tag === 'Shut' ||
     (isOfferedToBot(model) && wouldTake(model))) &&
-  model.purchase._tag !== 'Done'
+  focusOf(model).purchase._tag !== 'Done'
     ? new Set([KEYS.interact])
     : new Set()
 
@@ -466,16 +481,17 @@ export const shop = (state: BotState, model: Model): Model => {
   }
   const bought = send(model, Message.ClickedBuyButton({ item }))
   if (item.endsWith('Upgrade')) {
-    state.spentOnUpgrades += model.wallet.balance - bought.wallet.balance
+    state.spentOnUpgrades +=
+      focusOf(model).wallet.balance - focusOf(bought).wallet.balance
   }
   const { phase } = model
   if (
-    bought.wallet.balance !== model.wallet.balance &&
+    focusOf(bought).wallet.balance !== focusOf(model).wallet.balance &&
     phase._tag === 'Preparation'
   ) {
     state.shopVisits.find(visit => visit.wave === phase.wave)?.bought.push(item)
   }
-  return bought.wallet.balance === model.wallet.balance
+  return focusOf(bought).wallet.balance === focusOf(model).wallet.balance
     ? send(bought, closeShopDialog())
     : bought
 }
@@ -528,7 +544,7 @@ export const gnomeSpot = (model: Model): Vector =>
       GNOME_SPOTS.length - 1,
       model.traps.filter(trap => trap._tag === 'Turret').length,
     )
-  ] ?? model.player
+  ] ?? focusOf(model).player
 
 export const prepPlan = (
   state: BotState,
@@ -545,16 +561,19 @@ export const prepPlan = (
   if (wantsKitchen(model)) {
     return 'Kitchen'
   }
-  if (model.trapStock.Barricade > 0 && busiestDoor(model) !== undefined) {
+  if (
+    focusOf(model).trapStock.Barricade > 0 &&
+    busiestDoor(model) !== undefined
+  ) {
     return 'Barricade'
   }
-  if (model.trapStock.Turret > 0 && state.gnomeTries < 90) {
+  if (focusOf(model).trapStock.Turret > 0 && state.gnomeTries < 90) {
     return 'Gnome'
   }
   if (wantsFridge(state, model)) {
     return 'Fridge'
   }
-  if (isInKitchen(model.player)) {
+  if (isInKitchen(focusOf(model).player)) {
     return 'Return'
   }
   return 'Go'

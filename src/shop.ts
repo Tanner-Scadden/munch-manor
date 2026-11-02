@@ -12,7 +12,6 @@ import {
 } from './calling'
 import {
   MONEY_TICK_PER_SECOND,
-  MS_PER_SECOND,
   SHOP_FIRST_WAVE,
   SHOP_LEAVE_PX,
   SHOP_NEAR_PX,
@@ -20,15 +19,14 @@ import {
   TILE_SIZE,
 } from './constants'
 import { SHOP_GOOD_NAMES } from './names'
-import { isCoop } from './party'
+import { atSeat, isCoop, modifySeat, seatStateAt } from './party'
+import { upgradeChanges } from './shopUpgrades'
 import { countPurchase } from './stats'
 import {
   TRAPS,
   TRAP_KIND_ORDER,
-  healthShare,
   isDamaged,
   ownedCount,
-  placedCount,
   repairPrice,
   repairTrap,
   stockTrap,
@@ -51,7 +49,6 @@ import {
   maybeReplacedGun,
   putGunInHand,
   startingRounds,
-  statsAt,
   takeGun,
   tierName,
   tierOf,
@@ -64,6 +61,7 @@ import {
   Lesson,
   Phase,
   type Player,
+  type PlayerSlot,
   type RepairItemId,
   type ShopCategory,
   ShopItemId,
@@ -115,95 +113,25 @@ export type ShopGood = typeof ShopGood.Type
 
 // UPGRADES
 
-export const gunName = (model: World, weapon: WeaponKind): string =>
-  tierName(weapon, tierOf(model.player, weapon))
+export const gunName = (
+  model: World,
+  slot: PlayerSlot,
+  weapon: WeaponKind,
+): string => tierName(weapon, tierOf(seatStateAt(model, slot).player, weapon))
 
-export const nextGunName = (model: World, weapon: WeaponKind): string =>
-  tierName(weapon, tierOf(model.player, weapon) + 1)
+export const nextGunName = (
+  model: World,
+  slot: PlayerSlot,
+  weapon: WeaponKind,
+): string =>
+  tierName(weapon, tierOf(seatStateAt(model, slot).player, weapon) + 1)
 
 const nextTierFor = (
   model: World,
+  slot: PlayerSlot,
   weapon: WeaponKind,
 ): Option.Option<WeaponTier> =>
-  maybeNextTier(weapon, tierOf(model.player, weapon))
-
-const changeText = (
-  before: number,
-  after: number,
-  describe: (from: number, to: number) => string,
-): ReadonlyArray<string> => (before === after ? [] : [describe(before, after)])
-
-const roundTo = (value: number, places: number): number =>
-  Math.round(value * 10 ** places) / 10 ** places
-
-// NOTE: the fridge weapons' tiers change what their own table holds
-// (src/fridgeWeapons.ts), so each says it in a few words.
-const FRIDGE_TIER_WORDS: Readonly<
-  Partial<Record<WeaponKind, ReadonlyArray<string>>>
-> = {
-  Cooker: ['A bigger blast', 'Builds pressure faster', 'Six lids a load'],
-  Pan: ['A wider swing', 'Dents half as fast', 'Hold for a ground smash'],
-}
-
-const upgradeChanges = (weapon: WeaponKind, tier: number): string =>
-  Option.match(
-    Option.flatMap(Option.fromNullishOr(FRIDGE_TIER_WORDS[weapon]), words =>
-      Array.get(words, tier),
-    ),
-    {
-      onSome: words => `${words}.`,
-      onNone: () => gunUpgradeChanges(weapon, tier),
-    },
-  )
-
-const gunUpgradeChanges = (weapon: WeaponKind, tier: number): string => {
-  const before = statsAt(weapon, tier)
-  const after = statsAt(weapon, tier + 1)
-  const roundsLabel = WEAPONS[weapon].roundsLabel
-  return pipe(
-    [
-      ...changeText(
-        before.damage,
-        after.damage,
-        (from, to) => `Hits for ${to} instead of ${from}`,
-      ),
-      ...changeText(
-        before.pellets,
-        after.pellets,
-        (from, to) => `${to} pellets instead of ${from}`,
-      ),
-      ...changeText(
-        before.fireIntervalMs,
-        after.fireIntervalMs,
-        (from, to) => `${to} ms between shots instead of ${from}`,
-      ),
-      ...changeText(
-        roundTo(before.spread, 2),
-        roundTo(after.spread, 2),
-        (from, to) => (to < from ? 'Tighter aim' : 'A wider spray'),
-      ),
-      ...changeText(
-        before.magazine,
-        after.magazine,
-        (from, to) => `Loads ${to} ${roundsLabel} instead of ${from}`,
-      ),
-      ...changeText(
-        before.reloadMs,
-        after.reloadMs,
-        (from, to) =>
-          `Reloads in ${to / MS_PER_SECOND} s instead of ${from / MS_PER_SECOND}`,
-      ),
-      ...changeText(before.knockback, after.knockback, () => 'A bigger shove'),
-      ...changeText(
-        maxRounds(weapon, tier),
-        maxRounds(weapon, tier + 1),
-        (from, to) => `Holds ${to} ${roundsLabel} instead of ${from}`,
-      ),
-    ],
-    Array.join('. '),
-    text => `${text}.`,
-  )
-}
+  maybeNextTier(weapon, tierOf(seatStateAt(model, slot).player, weapon))
 
 type ShopItem = Readonly<{
   id: ShopItemId
@@ -528,10 +456,13 @@ const gunShelf = (player: Player, line: GunLine): GunShelf =>
 
 export const gunShelves = (
   model: World,
+  slot: PlayerSlot,
 ): Array.NonEmptyReadonlyArray<GunShelf> =>
   Array.appendAll(
-    Array.map(GUN_LINES, line => gunShelf(model.player, line)),
-    fridgeShelves(model.player),
+    Array.map(GUN_LINES, line =>
+      gunShelf(seatStateAt(model, slot).player, line),
+    ),
+    fridgeShelves(seatStateAt(model, slot).player),
   )
 
 const shelfItems = (shelf: GunShelf): Array.NonEmptyReadonlyArray<ShopItemId> =>
@@ -542,11 +473,12 @@ const shelfItems = (shelf: GunShelf): Array.NonEmptyReadonlyArray<ShopItemId> =>
 
 export const itemsIn = (
   model: World,
+  slot: PlayerSlot,
   category: ShopCategory,
 ): Array.NonEmptyReadonlyArray<ShopItemId> => {
   if (category === 'Guns') {
     return Array.append(
-      Array.flatMap(gunShelves(model), shelfItems),
+      Array.flatMap(gunShelves(model, slot), shelfItems),
       'LaserSight' as const,
     )
   } else if (category === 'Health') {
@@ -570,16 +502,26 @@ const maybeGunOf = (item: ShopItemId): Option.Option<WeaponKind> =>
     Sight: () => Option.none(),
   })
 
-const replacementFor = (model: World, item: ShopItemId): ShopItemId => {
-  const isShown = Array.contains(itemsIn(model, model.shopCategory), item)
-  if (model.shopCategory !== 'Guns' || isShown) {
+const replacementFor = (
+  model: World,
+  slot: PlayerSlot,
+  item: ShopItemId,
+): ShopItemId => {
+  const isShown = Array.contains(
+    itemsIn(model, slot, seatStateAt(model, slot).shopCategory),
+    item,
+  )
+  if (seatStateAt(model, slot).shopCategory !== 'Guns' || isShown) {
     return item
   }
 
   return pipe(
     maybeGunOf(item),
     Option.flatMap(weapon =>
-      Array.findFirst(gunShelves(model), shelf => shelf.weapon === weapon),
+      Array.findFirst(
+        gunShelves(model, slot),
+        shelf => shelf.weapon === weapon,
+      ),
     ),
     Option.match({
       onNone: () => item,
@@ -588,12 +530,15 @@ const replacementFor = (model: World, item: ShopItemId): ShopItemId => {
   )
 }
 
-export const maybeDisplacedFocus = (model: World): Option.Option<ShopItemId> =>
-  ShopState.match(model.shop, {
+export const maybeDisplacedFocus = (
+  model: World,
+  slot: PlayerSlot,
+): Option.Option<ShopItemId> =>
+  ShopState.match(seatStateAt(model, slot).shop, {
     Away: () => Option.none(),
     Browsing: ({ focusedItem }) =>
       Option.liftPredicate(
-        replacementFor(model, focusedItem),
+        replacementFor(model, slot, focusedItem),
         replacement => replacement !== focusedItem,
       ),
     Dismissed: () => Option.none(),
@@ -604,31 +549,39 @@ export const maybeDisplacedFocus = (model: World): Option.Option<ShopItemId> =>
 // wallet: in a new save's first break (no timer, before any wave 2), with no
 // Plank Pile owned yet, the first one is free. Only a player alone; a
 // co-op room has its lessons learned. A save past the tutorial never sees it.
-export const isFirstPlankFree = (model: World, kind: TrapKind): boolean =>
+export const isFirstPlankFree = (
+  model: World,
+  slot: PlayerSlot,
+  kind: TrapKind,
+): boolean =>
   kind === 'Barricade' &&
   !isCoop(model) &&
   Lesson.isAnyOf(['Pending'])(model.lessons.openBreak) &&
   Phase.isAnyOf(['Preparation'])(model.phase) &&
   model.phase.wave === SHOP_FIRST_WAVE &&
-  ownedCount(model, 'Barricade') === 0
+  ownedCount(model, slot, 'Barricade') === 0
 
 // NOTE: what Rattles charges the acting player: the list price as the
 // calling changes it (the Handyman's Plank Piles, the Penny Pincher's
 // discount). The first plank of the guided break stays free, and a price
 // of nothing stays nothing.
-export const priceFor = (model: World, id: ShopItemId): number => {
-  const { calling } = model.player
+export const priceFor = (
+  model: World,
+  slot: PlayerSlot,
+  id: ShopItemId,
+): number => {
+  const { calling } = seatStateAt(model, slot).player
   return ShopGood.match(shopItem(id).good, {
     Gun: () => shopPriceFor(calling, shopItem(id).price),
     Ammo: () => shopPriceFor(calling, shopItem(id).price),
     Upgrade: ({ weapon }) =>
-      Option.match(nextTierFor(model, weapon), {
+      Option.match(nextTierFor(model, slot, weapon), {
         onNone: () => 0,
         onSome: ({ price }) => shopPriceFor(calling, price),
       }),
     Heart: () => shopPriceFor(calling, shopItem(id).price),
     Trap: ({ kind }) =>
-      isFirstPlankFree(model, kind)
+      isFirstPlankFree(model, slot, kind)
         ? 0
         : shopPriceFor(
             calling,
@@ -648,28 +601,40 @@ export const priceFor = (model: World, id: ShopItemId): number => {
   })
 }
 
-const isMaxedUpgrade = (model: World, id: ShopItemId): boolean =>
+const isMaxedUpgrade = (
+  model: World,
+  slot: PlayerSlot,
+  id: ShopItemId,
+): boolean =>
   ShopGood.match(shopItem(id).good, {
     Gun: () => false,
     Ammo: () => false,
-    Upgrade: ({ weapon }) => Option.isNone(nextTierFor(model, weapon)),
+    Upgrade: ({ weapon }) => Option.isNone(nextTierFor(model, slot, weapon)),
     Heart: () => false,
     Trap: () => false,
     Repair: () => false,
     Sight: () => false,
   })
 
-export const priceLabel = (model: World, id: ShopItemId): string =>
-  isMaxedUpgrade(model, id) ? 'MAX' : `$${priceFor(model, id)}`
+export const priceLabel = (
+  model: World,
+  slot: PlayerSlot,
+  id: ShopItemId,
+): string =>
+  isMaxedUpgrade(model, slot, id) ? 'MAX' : `$${priceFor(model, slot, id)}`
 
-export const itemName = (model: World, id: ShopItemId): string =>
+export const itemName = (
+  model: World,
+  slot: PlayerSlot,
+  id: ShopItemId,
+): string =>
   ShopGood.match(shopItem(id).good, {
     Gun: () => shopItem(id).name,
     Ammo: () => shopItem(id).name,
     Upgrade: ({ weapon }) =>
-      Option.match(nextTierFor(model, weapon), {
+      Option.match(nextTierFor(model, slot, weapon), {
         onNone: () => `${tierName(weapon, maxTier(weapon))}, fully upgraded`,
-        onSome: () => `Upgrade to ${nextGunName(model, weapon)}`,
+        onSome: () => `Upgrade to ${nextGunName(model, slot, weapon)}`,
       }),
     Heart: () => shopItem(id).name,
     Trap: () => shopItem(id).name,
@@ -681,12 +646,20 @@ export const itemName = (model: World, id: ShopItemId): string =>
     Sight: () => shopItem(id).name,
   })
 
-const ammoGain = (model: World, weapon: WeaponKind, rounds: number): string => {
+const ammoGain = (
+  model: World,
+  slot: PlayerSlot,
+  weapon: WeaponKind,
+  rounds: number,
+): string => {
   const roundsLabel = WEAPONS[weapon].roundsLabel
-  const room = Option.match(maybeCarried(model.player, weapon), {
-    onNone: () => rounds,
-    onSome: spare => maxRounds(weapon, spare.tier) - spare.rounds,
-  })
+  const room = Option.match(
+    maybeCarried(seatStateAt(model, slot).player, weapon),
+    {
+      onNone: () => rounds,
+      onSome: spare => maxRounds(weapon, spare.tier) - spare.rounds,
+    },
+  )
   if (room <= 0) {
     return `adds up to ${rounds} ${roundsLabel}`
   } else if (room < rounds) {
@@ -696,43 +669,52 @@ const ammoGain = (model: World, weapon: WeaponKind, rounds: number): string => {
   }
 }
 
-export const itemAriaLabel = (model: World, id: ShopItemId): string => {
-  const price = `$${priceFor(model, id)}`
+export const itemAriaLabel = (
+  model: World,
+  slot: PlayerSlot,
+  id: ShopItemId,
+): string => {
+  const price = `$${priceFor(model, slot, id)}`
   return ShopGood.match(shopItem(id).good, {
-    Gun: () => `Buy ${itemName(model, id)} for ${price}`,
+    Gun: () => `Buy ${itemName(model, slot, id)} for ${price}`,
     Ammo: ({ weapon, rounds }) =>
-      `${itemName(model, id)}, ammo for ${gunName(model, weapon)}, ${price}, ${ammoGain(model, weapon, rounds)}`,
+      `${itemName(model, slot, id)}, ammo for ${gunName(model, slot, weapon)}, ${price}, ${ammoGain(model, slot, weapon, rounds)}`,
     Upgrade: ({ weapon }) =>
-      Option.match(nextTierFor(model, weapon), {
-        onNone: () => itemName(model, id),
+      Option.match(nextTierFor(model, slot, weapon), {
+        onNone: () => itemName(model, slot, id),
         onSome: () =>
-          `${nextGunName(model, weapon)}, upgrade for ${gunName(model, weapon)}, ${price}`,
+          `${nextGunName(model, slot, weapon)}, upgrade for ${gunName(model, slot, weapon)}, ${price}`,
       }),
-    Heart: () => `Buy ${itemName(model, id)} for ${price}`,
-    Trap: () => `Buy ${itemName(model, id)} for ${price}`,
+    Heart: () => `Buy ${itemName(model, slot, id)} for ${price}`,
+    Trap: () => `Buy ${itemName(model, slot, id)} for ${price}`,
     Repair: () =>
       Option.match(maybeRepairTrap(model, id), {
-        onNone: () => `Buy ${itemName(model, id)} for ${price}`,
+        onNone: () => `Buy ${itemName(model, slot, id)} for ${price}`,
         onSome: trap =>
           `Repair the ${TRAPS[trap._tag].name} ${trapPlace(trap)}, ${price}`,
       }),
-    Sight: () => `Buy ${itemName(model, id)} for ${price}`,
+    Sight: () => `Buy ${itemName(model, slot, id)} for ${price}`,
   })
 }
 
-export const itemBlurb = (model: World, id: ShopItemId): string =>
+export const itemBlurb = (
+  model: World,
+  slot: PlayerSlot,
+  id: ShopItemId,
+): string =>
   ShopGood.match(shopItem(id).good, {
     Gun: () => shopItem(id).blurb,
     Ammo: ({ weapon, rounds }) =>
-      Option.match(maybeCarried(model.player, weapon), {
+      Option.match(maybeCarried(seatStateAt(model, slot).player, weapon), {
         onNone: () => shopItem(id).blurb,
         onSome: spare =>
-          `${String.capitalize(ammoGain(model, weapon, rounds))}. You have ${spare.rounds} of ${maxRounds(weapon, spare.tier)}.`,
+          `${String.capitalize(ammoGain(model, slot, weapon, rounds))}. You have ${spare.rounds} of ${maxRounds(weapon, spare.tier)}.`,
       }),
     Upgrade: ({ weapon }) => {
-      const tier = tierOf(model.player, weapon)
-      return Option.match(nextTierFor(model, weapon), {
-        onNone: () => `Your ${gunName(model, weapon)} cannot get any fancier.`,
+      const tier = tierOf(seatStateAt(model, slot).player, weapon)
+      return Option.match(nextTierFor(model, slot, weapon), {
+        onNone: () =>
+          `Your ${gunName(model, slot, weapon)} cannot get any fancier.`,
         onSome: () => upgradeChanges(weapon, tier),
       })
     },
@@ -757,8 +739,12 @@ type Block = Readonly<{ reason: string; tag: string }>
 const block = (reason: string, tag: string): Option.Option<Block> =>
   Option.some({ reason, tag })
 
-const blockedBy = (model: World, good: ShopGood): Option.Option<Block> => {
-  const { player } = model
+const blockedBy = (
+  model: World,
+  slot: PlayerSlot,
+  good: ShopGood,
+): Option.Option<Block> => {
+  const { player } = seatStateAt(model, slot)
   return ShopGood.match(good, {
     Gun: ({ weapon }) => {
       if (isCarrying(player, weapon)) {
@@ -771,7 +757,8 @@ const blockedBy = (model: World, good: ShopGood): Option.Option<Block> => {
     },
     Ammo: ({ weapon }) =>
       Option.match(maybeCarried(player, weapon), {
-        onNone: () => block(`Needs the ${gunName(model, weapon)}`, 'NO GUN'),
+        onNone: () =>
+          block(`Needs the ${gunName(model, slot, weapon)}`, 'NO GUN'),
         onSome: spare =>
           spare.rounds >= maxRounds(weapon, spare.tier)
             ? block(`Your ${tierName(weapon, spare.tier)} is full`, 'FULL')
@@ -779,8 +766,8 @@ const blockedBy = (model: World, good: ShopGood): Option.Option<Block> => {
       }),
     Upgrade: ({ weapon }) => {
       if (!isCarrying(player, weapon)) {
-        return block(`Needs the ${gunName(model, weapon)}`, 'NO GUN')
-      } else if (Option.isNone(nextTierFor(model, weapon))) {
+        return block(`Needs the ${gunName(model, slot, weapon)}`, 'NO GUN')
+      } else if (Option.isNone(nextTierFor(model, slot, weapon))) {
         return block('Fully upgraded', 'MAX')
       } else {
         return Option.none()
@@ -791,7 +778,7 @@ const blockedBy = (model: World, good: ShopGood): Option.Option<Block> => {
         ? block('Your hearts are full', 'FULL')
         : Option.none(),
     Trap: ({ kind }) =>
-      ownedCount(model, kind) >= trapLimitOf(model, kind)
+      ownedCount(model, slot, kind) >= trapLimitOf(model, kind)
         ? block(TRAPS[kind].buyLimitNote, 'MAX')
         : Option.none(),
     Repair: ({ trapId }) =>
@@ -804,23 +791,33 @@ const blockedBy = (model: World, good: ShopGood): Option.Option<Block> => {
         },
       ),
     Sight: () =>
-      model.laserSight === 'Fitted'
+      seatStateAt(model, slot).laserSight === 'Fitted'
         ? block('Already fitted', 'OWNED')
         : Option.none(),
   })
 }
 
-const blockedReason = (model: World, good: ShopGood): Option.Option<string> =>
-  Option.map(blockedBy(model, good), ({ reason }) => reason)
+const blockedReason = (
+  model: World,
+  slot: PlayerSlot,
+  good: ShopGood,
+): Option.Option<string> =>
+  Option.map(blockedBy(model, slot, good), ({ reason }) => reason)
 
-export const verdictFor = (model: World, id: ShopItemId): Verdict => {
+export const verdictFor = (
+  model: World,
+  slot: PlayerSlot,
+  id: ShopItemId,
+): Verdict => {
   const item = shopItem(id)
-  const price = priceFor(model, id)
+  const price = priceFor(model, slot, id)
   return pipe(
-    blockedReason(model, item.good),
+    blockedReason(model, slot, item.good),
     Option.orElse(() =>
-      price > model.wallet.balance
-        ? Option.some(`Need $${price - model.wallet.balance} more`)
+      price > seatStateAt(model, slot).wallet.balance
+        ? Option.some(
+            `Need $${price - seatStateAt(model, slot).wallet.balance} more`,
+          )
         : Option.none(),
     ),
     Option.match({
@@ -830,17 +827,23 @@ export const verdictFor = (model: World, id: ShopItemId): Verdict => {
   )
 }
 
-const isAvailable = (model: World, id: ShopItemId): boolean =>
-  Verdict.isAnyOf(['Available'])(verdictFor(model, id))
+const isAvailable = (model: World, slot: PlayerSlot, id: ShopItemId): boolean =>
+  Verdict.isAnyOf(['Available'])(verdictFor(model, slot, id))
 
-export const affordableCount = (model: World, category: ShopCategory): number =>
-  Array.filter(itemsIn(model, category), id => isAvailable(model, id)).length
+export const affordableCount = (
+  model: World,
+  slot: PlayerSlot,
+  category: ShopCategory,
+): number =>
+  Array.filter(itemsIn(model, slot, category), id =>
+    isAvailable(model, slot, id),
+  ).length
 
-export const totalAffordable = (model: World): number =>
+export const totalAffordable = (model: World, slot: PlayerSlot): number =>
   Array.reduce(
     SHOP_CATEGORY_ORDER,
     0,
-    (total, category) => total + affordableCount(model, category),
+    (total, category) => total + affordableCount(model, slot, category),
   )
 
 // TAGS
@@ -852,30 +855,48 @@ export const StockTag = defineTaggedUnion({
 })
 export type StockTag = typeof StockTag.Type
 
-export const stockTag = (model: World, id: ShopItemId): StockTag => {
-  const price = priceFor(model, id)
-  return Option.match(blockedBy(model, shopItem(id).good), {
+export const stockTag = (
+  model: World,
+  slot: PlayerSlot,
+  id: ShopItemId,
+): StockTag => {
+  const price = priceFor(model, slot, id)
+  return Option.match(blockedBy(model, slot, shopItem(id).good), {
     onSome: ({ tag }) => StockTag.Done({ label: tag }),
     onNone: () =>
-      price > model.wallet.balance
-        ? StockTag.Short({ price, need: price - model.wallet.balance })
+      price > seatStateAt(model, slot).wallet.balance
+        ? StockTag.Short({
+            price,
+            need: price - seatStateAt(model, slot).wallet.balance,
+          })
         : StockTag.Price({ price }),
   })
 }
 
 // SUGGESTION
 
-const isRunningLow = (model: World, weapon: WeaponKind): boolean =>
-  Option.match(maybeCarried(model.player, weapon), {
+const isRunningLow = (
+  model: World,
+  slot: PlayerSlot,
+  weapon: WeaponKind,
+): boolean =>
+  Option.match(maybeCarried(seatStateAt(model, slot).player, weapon), {
     onNone: () => false,
     onSome: spare => spare.rounds * 2 < maxRounds(weapon, spare.tier),
   })
 
-const suggestionRank = (model: World, id: ShopItemId): number =>
+const suggestionRank = (
+  model: World,
+  slot: PlayerSlot,
+  id: ShopItemId,
+): number =>
   ShopGood.match(shopItem(id).good, {
-    Ammo: ({ weapon }) => (isRunningLow(model, weapon) ? 0 : 3),
+    Ammo: ({ weapon }) => (isRunningLow(model, slot, weapon) ? 0 : 3),
     Upgrade: ({ weapon }) => (weapon === SIDEARM ? 2 : 1),
-    Gun: () => (Option.isNone(maybeReplacedGun(model.player.arsenal)) ? 0 : 4),
+    Gun: () =>
+      Option.isNone(maybeReplacedGun(seatStateAt(model, slot).player.arsenal))
+        ? 0
+        : 4,
     Heart: () => 0,
     Repair: () => 0,
     Trap: () => 1,
@@ -886,21 +907,22 @@ const suggestionRank = (model: World, id: ShopItemId): number =>
 // lands first on a gun that would replace the one in their hands.
 export const suggestedItem = (
   model: World,
+  slot: PlayerSlot,
   category: ShopCategory,
 ): ShopItemId => {
   const stockRank = (id: ShopItemId): number =>
-    StockTag.match(stockTag(model, id), {
+    StockTag.match(stockTag(model, slot, id), {
       Price: () => 0,
       Short: () => 1,
       Done: () => 2,
     })
   return pipe(
-    itemsIn(model, category),
+    itemsIn(model, slot, category),
     Array.sort(
       Order.combine(
         Order.mapInput(Order.Number, stockRank),
         Order.mapInput(Order.Number, (id: ShopItemId) =>
-          suggestionRank(model, id),
+          suggestionRank(model, slot, id),
         ),
       ),
     ),
@@ -908,103 +930,7 @@ export const suggestedItem = (
   )
 }
 
-// STATS
-
-export type GunBars = Readonly<{
-  hit: number
-  rate: number
-  load: number
-}>
-
-export const BAR_SEGMENTS = 5
-
-const SHOP_GUNS: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
-
-const ALL_TIERS = Array.flatMap(SHOP_GUNS, weapon =>
-  Array.makeBy(maxTier(weapon) + 1, tier => statsAt(weapon, tier)),
-)
-
-const MAX_HIT = Math.max(
-  ...Array.map(ALL_TIERS, stats => stats.damage * stats.pellets),
-)
-const MAX_RATE = Math.max(
-  ...Array.map(ALL_TIERS, stats => 1 / stats.fireIntervalMs),
-)
-const MAX_LOAD = Math.max(...Array.map(ALL_TIERS, stats => stats.magazine))
-
-const segments = (value: number, most: number): number =>
-  Math.max(1, Math.min(BAR_SEGMENTS, Math.round((value / most) * BAR_SEGMENTS)))
-
-export const gunBars = (weapon: WeaponKind, tier: number): GunBars => {
-  const stats = statsAt(weapon, tier)
-  return {
-    hit: segments(stats.damage * stats.pellets, MAX_HIT),
-    rate: segments(1 / stats.fireIntervalMs, MAX_RATE),
-    load: segments(stats.magazine, MAX_LOAD),
-  }
-}
-
-export type AmmoGauge = Readonly<{ have: number; gain: number; most: number }>
-
-export const ammoGauge = (
-  model: World,
-  weapon: WeaponKind,
-  rounds: number,
-): AmmoGauge =>
-  Option.match(maybeCarried(model.player, weapon), {
-    onNone: () => ({ have: 0, gain: 0, most: 1 }),
-    onSome: spare => {
-      const most = maxRounds(weapon, spare.tier)
-      return {
-        have: spare.rounds,
-        gain: Math.max(0, Math.min(rounds, most - spare.rounds)),
-        most,
-      }
-    },
-  })
-
 export { isHolding }
-
-export const ownedNote = (model: World, id: ShopItemId): string => {
-  const { player } = model
-  return ShopGood.match(shopItem(id).good, {
-    Gun: ({ weapon }) =>
-      Option.match(maybeCarried(player, weapon), {
-        onSome: gun =>
-          `You carry it, ${gun.loaded} ${WEAPONS[weapon].roundsLabel} loaded`,
-        onNone: () =>
-          Option.match(maybeReplacedGun(player.arsenal), {
-            onNone: () => 'Goes in your empty second slot',
-            onSome: held =>
-              held.tier > 0
-                ? `Replaces your ${tierName(held.kind, held.tier)}, and its upgrades are lost`
-                : `Replaces your ${tierName(held.kind, held.tier)}`,
-          }),
-      }),
-    Ammo: ({ weapon }) =>
-      Option.match(maybeCarried(player, weapon), {
-        onNone: () => `You do not carry the ${gunName(model, weapon)}`,
-        onSome: spare =>
-          `You have ${spare.rounds} of ${maxRounds(weapon, spare.tier)} ${WEAPONS[weapon].roundsLabel}`,
-      }),
-    Upgrade: ({ weapon }) =>
-      !isCarrying(player, weapon)
-        ? `Buy the ${gunName(model, weapon)} first`
-        : `Tier ${tierOf(player, weapon)} of ${maxTier(weapon)}`,
-    Heart: () => `Hearts ${player.hp} of ${maxHpOf(player)}`,
-    Trap: ({ kind }) =>
-      `${model.trapStock[kind]} ready to place, ${placedCount(model.traps, kind)} placed, up to ${TRAPS[kind].limit}`,
-    Repair: () =>
-      Option.match(maybeRepairTrap(model, id), {
-        onNone: () => 'Gone',
-        onSome: trap => `Health ${Math.round(healthShare(trap) * 100)} percent`,
-      }),
-    Sight: () =>
-      model.laserSight === 'Fitted'
-        ? 'Fitted to every gun you carry'
-        : 'Shows the shot before you take it',
-  })
-}
 
 // PURCHASE
 
@@ -1029,13 +955,16 @@ const upgrade = (player: Player, weapon: WeaponKind): Player =>
     gun.kind === weapon ? modifyFields(gun, { tier: tier => tier + 1 }) : gun,
   )
 
-const equip = (model: World, toPlayer: (player: Player) => Player): World =>
-  modifyFields(model, { player: toPlayer })
+const equip = (
+  model: World,
+  slot: PlayerSlot,
+  toPlayer: (player: Player) => Player,
+): World => modifySeat(model, slot, { player: toPlayer })
 
-const grant = (model: World, good: ShopGood): World =>
+const grant = (model: World, slot: PlayerSlot, good: ShopGood): World =>
   ShopGood.match(good, {
     Gun: ({ weapon }) =>
-      equip(model, player =>
+      equip(model, slot, player =>
         modifyFields(putGunInHand(player), {
           arsenal: arsenal =>
             takeGun(arsenal, freshGun(weapon, player.calling)),
@@ -1043,37 +972,40 @@ const grant = (model: World, good: ShopGood): World =>
         }),
       ),
     Ammo: ({ weapon, rounds }) =>
-      equip(model, player =>
+      equip(model, slot, player =>
         modifyFields(player, {
           arsenal: arsenal => refill(arsenal, weapon, rounds),
         }),
       ),
-    Upgrade: ({ weapon }) => equip(model, player => upgrade(player, weapon)),
+    Upgrade: ({ weapon }) =>
+      equip(model, slot, player => upgrade(player, weapon)),
     Heart: () =>
-      equip(model, player =>
+      equip(model, slot, player =>
         modifyFields(player, { hp: hp => Math.min(maxHpOf(player), hp + 1) }),
       ),
-    Trap: ({ kind }) => stockTrap(model, kind),
+    Trap: ({ kind }) => stockTrap(model, slot, kind),
     Repair: ({ trapId }) =>
       modifyFields(model, { traps: traps => repairTrap(traps, trapId) }),
-    Sight: () => modifyFields(model, { laserSight: () => 'Fitted' }),
+    Sight: () => modifySeat(model, slot, { laserSight: () => 'Fitted' }),
   })
 
 // NOTE: the World with `id` bought, or why Rattles turns it down.
 export const tryPurchase = (
   model: World,
+  slot: PlayerSlot,
   id: ShopItemId,
 ): Result.Result<World, string> => {
   const item = shopItem(id)
-  const price = priceFor(model, id)
-  return Verdict.match(verdictFor(model, id), {
+  const price = priceFor(model, slot, id)
+  return Verdict.match(verdictFor(model, slot, id), {
     Available: () =>
       Result.succeed(
         grant(
           modifyFields(model, {
-            wallet: wallet => spend(wallet, price),
+            seats: atSeat(slot, { wallet: wallet => spend(wallet, price) }),
             stats: countPurchase,
           }),
+          slot,
           item.good,
         ),
       ),
@@ -1081,8 +1013,11 @@ export const tryPurchase = (
   })
 }
 
-export const purchase = (model: World, id: ShopItemId): Option.Option<World> =>
-  Result.getSuccess(tryPurchase(model, id))
+export const purchase = (
+  model: World,
+  slot: PlayerSlot,
+  id: ShopItemId,
+): Option.Option<World> => Result.getSuccess(tryPurchase(model, slot, id))
 
 // STALL
 
@@ -1136,27 +1071,37 @@ export const isBrowsing = (shop: ShopState): boolean =>
 export const isAtCounter = (shop: ShopState): boolean =>
   ShopState.isAnyOf(['Browsing'])(shop)
 
-const arriveAtStall = (model: World): ShopState =>
+const arriveAtStall = (model: World, slot: PlayerSlot): ShopState =>
   isShopOpenFor(model.phase)
     ? ShopState.Browsing({
-        focusedItem: suggestedItem(model, model.shopCategory),
+        focusedItem: suggestedItem(
+          model,
+          slot,
+          seatStateAt(model, slot).shopCategory,
+        ),
       })
     : ShopState.Away()
 
 // NOTE: walking into the stall opens the shop. It stays shut after it is
 // left until the player steps away.
-const arriveAt = (model: World, shop: ShopState): ShopState =>
-  isAtStall(model.player) ? arriveAtStall(model) : shop
+const arriveAt = (
+  model: World,
+  slot: PlayerSlot,
+  shop: ShopState,
+): ShopState =>
+  isAtStall(seatStateAt(model, slot).player) ? arriveAtStall(model, slot) : shop
 
-export const refreshShopPresence = (model: World): World =>
-  modifyFields(model, {
+export const refreshShopPresence = (model: World, slot: PlayerSlot): World => {
+  const { player } = seatStateAt(model, slot)
+  return modifySeat(model, slot, {
     shop: shop =>
       ShopState.match(shop, {
-        Away: () => arriveAt(model, shop),
+        Away: () => arriveAt(model, slot, shop),
         Browsing: () => shop,
-        Dismissed: () => (hasLeftStall(model.player) ? ShopState.Away() : shop),
+        Dismissed: () => (hasLeftStall(player) ? ShopState.Away() : shop),
       }),
   })
+}
 
 export type StallPrompt = 'None' | 'WalkUp' | 'ClosedUntilFirstClear'
 
@@ -1167,8 +1112,9 @@ const closedPrompt = (phase: Phase): StallPrompt =>
 
 // NOTE: the words teach the stall once. After the player has shopped, its
 // sign and the bobbing coin over it say the same without words.
-export const stallPrompt = (model: World): StallPrompt => {
-  const { phase, player, shop, lessons } = model
+export const stallPrompt = (model: World, slot: PlayerSlot): StallPrompt => {
+  const { phase, lessons } = model
+  const { player, shop } = seatStateAt(model, slot)
   if (
     !Phase.isAnyOf(['Preparation', 'Wave'])(phase) ||
     !isNearStall(player) ||

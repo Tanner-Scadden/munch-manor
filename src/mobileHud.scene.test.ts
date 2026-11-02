@@ -31,6 +31,7 @@ import { PREPARATION_MS } from './constants'
 import { update } from './main'
 import { Message } from './message'
 import { BreakClock, type Model, Phase, initialModel } from './model'
+import { focusOf, modifyFocus } from './party'
 import {
   ROOT,
   SCENE_SUBSCRIPTIONS,
@@ -41,33 +42,38 @@ import {
 import { ShowInstallPrompt } from './update/home'
 import { asVeteran } from './veteran'
 import { tierName } from './weapons'
+import { type Player } from './worldSchema'
 
 const SMG_NAME = tierName('Smg', 0)
 
 const onTouch = (base: Model): Model =>
   modifyFields(asVeteran(base), { lastDevice: () => 'Touch' })
 
-const withSmg = (loaded: number): Model['player'] =>
-  modifyFields(initialModel.player, {
+const withSmg = (loaded: number): Player =>
+  modifyFields(focusOf(initialModel).player, {
     arsenal: () => holdingSecond({ kind: 'Smg', rounds: 120, loaded, tier: 0 }),
   })
 
 const fightingWith = (loaded: number): Model =>
-  modifyFields(onTouch(initialModel), {
-    phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
-    player: () => withSmg(loaded),
-  })
-
-const breakWithTraps: Model = modifyFields(onTouch(initialModel), {
-  phase: () =>
-    Phase.Preparation({
-      wave: 3,
-      remainingMs: PREPARATION_MS,
-      durationMs: PREPARATION_MS,
-      spawns: [],
+  modifyFocus(
+    modifyFields(onTouch(initialModel), {
+      phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
     }),
-  trapStock: () => ({ Barricade: 1, Turret: 1 }),
-})
+    { player: () => withSmg(loaded) },
+  )
+
+const breakWithTraps: Model = modifyFocus(
+  modifyFields(onTouch(initialModel), {
+    phase: () =>
+      Phase.Preparation({
+        wave: 3,
+        remainingMs: PREPARATION_MS,
+        durationMs: PREPARATION_MS,
+        spawns: [],
+      }),
+  }),
+  { trapStock: () => ({ Barricade: 1, Turret: 1 }) },
+)
 
 const reloadButton = selector('.reload-button')
 const pauseButton = role('button', { name: 'Pause' })
@@ -129,7 +135,7 @@ describe('the reload button', () => {
   })
 
   test('with the knife out, draws the last gun and reloads it, as R does', () => {
-    const knifeOut = modifyFields(fightingWith(20), {
+    const knifeOut = modifyFocus(fightingWith(20), {
       player: player => modifyFields(player, { wield: () => 'Melee' }),
     })
     scene(
@@ -154,7 +160,7 @@ describe('the reload button', () => {
   })
 
   test('with the knife out and a full magazine, is dim but still draws the gun', () => {
-    const knifeOut = modifyFields(fightingWith(30), {
+    const knifeOut = modifyFocus(fightingWith(30), {
       player: player => modifyFields(player, { wield: () => 'Melee' }),
     })
     scene(
@@ -349,7 +355,7 @@ describe('the gun cluster', () => {
     )
     scene(
       ROOT,
-      given(modifyFields(breakWithTraps, { player: () => withSmg(20) })),
+      given(modifyFocus(breakWithTraps, { player: () => withSmg(20) })),
       measureSurface,
       expect(slots).toHaveAttr('data-click', 'Slot'),
       pointerDown(knifeSlot, { pointerType: 'mouse', pointerId: 1 }),

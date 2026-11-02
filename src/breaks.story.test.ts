@@ -25,6 +25,7 @@ import {
   isCountdownBeckoning,
   shownHints,
 } from './onboarding'
+import { focusOf, modifyFocus } from './party'
 import { maybeBubbleKind } from './stallBubble'
 import { holdingFirst, showDialog, tap, tick, ticks } from './testing'
 import { SetFullscreen } from './update/fullscreen'
@@ -157,7 +158,7 @@ describe('the new zombie card', () => {
       message(Message.ClickedDebutCardButton()),
       model(current => {
         expect(current.debutCard._tag).toBe('Showing')
-        expect(current.player.x).toBe(home.player.x)
+        expect(focusOf(current).player.x).toBe(focusOf(home).player.x)
       }),
       tick(TICK_MS),
       tap('Enter'),
@@ -181,18 +182,22 @@ describe('the new zombie card', () => {
 })
 
 describe('gun slots on touch', () => {
-  const carrying: Model = modifyFields(home, {
-    lastDevice: () => 'Touch',
-    phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] }),
-    player: player =>
-      modifyFields(player, {
-        arsenal: () =>
-          holdingFirst(
-            { kind: 'Smg', rounds: 90, loaded: 30, tier: 0 },
-            { ...STARTING_PISTOL, loaded: 2 },
-          ),
-      }),
-  })
+  const carrying: Model = modifyFocus(
+    modifyFields(home, {
+      lastDevice: () => 'Touch',
+      phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] }),
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          arsenal: () =>
+            holdingFirst(
+              { kind: 'Smg', rounds: 90, loaded: 30, tier: 0 },
+              { ...STARTING_PISTOL, loaded: 2 },
+            ),
+        }),
+    },
+  )
 
   test('a tap on the held gun reloads it, a tap on the other swaps', () => {
     story(
@@ -200,13 +205,17 @@ describe('gun slots on touch', () => {
       given(carrying),
       message(Message.ClickedGunSlot({ slot: 'First' })),
       model(current => {
-        expect(Reload.isAnyOf(['Reloading'])(current.player.reload)).toBe(true)
-        expect(current.player.arsenal._tag).toBe('HoldingFirst')
+        expect(
+          Reload.isAnyOf(['Reloading'])(focusOf(current).player.reload),
+        ).toBe(true)
+        expect(focusOf(current).player.arsenal._tag).toBe('HoldingFirst')
       }),
       message(Message.ClickedGunSlot({ slot: 'Second' })),
       model(current => {
-        expect(current.player.arsenal._tag).toBe('HoldingSecond')
-        expect(Reload.isAnyOf(['Ready'])(current.player.reload)).toBe(true)
+        expect(focusOf(current).player.arsenal._tag).toBe('HoldingSecond')
+        expect(Reload.isAnyOf(['Ready'])(focusOf(current).player.reload)).toBe(
+          true,
+        )
       }),
     )
   })

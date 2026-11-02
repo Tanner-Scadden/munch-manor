@@ -9,6 +9,7 @@ import { percentOf } from './menuParts'
 import { Message } from './message'
 import { type Model, Purchasable, Purchase } from './model'
 import { FRIDGE_NAME } from './names'
+import { focusOf, focusSlotOf } from './party'
 import {
   type Offer,
   PURCHASE_RULES,
@@ -67,20 +68,20 @@ const labelOf = (offer: Offer): string =>
 // NOTE: what the player is at: the offer in reach, or the one they still
 // hold or were refused at a moment ago.
 const maybeShownOffer = (model: Model): Option.Option<Offer> =>
-  Purchase.match(model.purchase, {
-    Idle: () => maybeOfferInReach(model),
-    Holding: ({ target }) => maybeOfferOf(model, target),
+  Purchase.match(focusOf(model).purchase, {
+    Idle: () => maybeOfferInReach(model, focusSlotOf(model)),
+    Holding: ({ target }) => maybeOfferOf(model, focusSlotOf(model), target),
     Refused: ({ target }) =>
-      Option.orElse(maybeOfferOf(model, target), () =>
-        maybeOfferInReach(model),
+      Option.orElse(maybeOfferOf(model, focusSlotOf(model), target), () =>
+        maybeOfferInReach(model, focusSlotOf(model)),
       ),
-    Done: () => maybeOfferInReach(model),
-    Spent: () => maybeOfferInReach(model),
-    Tapped: ({ target }) => maybeOfferOf(model, target),
+    Done: () => maybeOfferInReach(model, focusSlotOf(model)),
+    Spent: () => maybeOfferInReach(model, focusSlotOf(model)),
+    Tapped: ({ target }) => maybeOfferOf(model, focusSlotOf(model), target),
   })
 
 const isRefusedAt = (model: Model, offer: Offer): boolean =>
-  Purchase.match(model.purchase, {
+  Purchase.match(focusOf(model).purchase, {
     Idle: () => false,
     Holding: () => false,
     Refused: ({ target, sinceMs }) =>
@@ -92,11 +93,11 @@ const isRefusedAt = (model: Model, offer: Offer): boolean =>
   })
 
 const progressAt = (model: Model, offer: Offer): number =>
-  Purchase.match(model.purchase, {
+  Purchase.match(focusOf(model).purchase, {
     Idle: () => 0,
     Holding: ({ target }) =>
       isSamePurchasable(target, offer.target)
-        ? holdProgress(model.purchase)
+        ? holdProgress(focusOf(model).purchase)
         : 0,
     Refused: () => 0,
     Done: () => 0,
@@ -126,7 +127,7 @@ const holdButtonFor = (
   offer: Offer,
   h: ApplicationViewBuilder,
 ): Html => {
-  const isShort = shortfallFor(model, offer) > 0
+  const isShort = shortfallFor(model, focusSlotOf(model), offer) > 0
   return h.button(
     [
       h.Type('button'),
@@ -182,7 +183,7 @@ const howToBuy = (model: Model, offer: Offer): string => {
 }
 
 const announcementOf = (model: Model, offer: Offer): string => {
-  const shortBy = shortfallFor(model, offer)
+  const shortBy = shortfallFor(model, focusSlotOf(model), offer)
   const how = howToBuy(model, offer)
   return shortBy > 0
     ? `${nameOf(offer.target)}, ${priceWords(offer.price)}. ${shortBy} dollars short.`
@@ -198,7 +199,7 @@ export const purchaseAnnouncementView = (
   h.p(
     [h.Class('sr-only'), h.Role('status'), h.AriaLive('polite')],
     [
-      Option.match(maybeOfferInReach(model), {
+      Option.match(maybeOfferInReach(model, focusSlotOf(model)), {
         onNone: () => '',
         onSome: offer => announcementOf(model, offer),
       }),
@@ -257,7 +258,7 @@ export const ammoTagButtonView = (
   model: Model,
   h: ApplicationViewBuilder,
 ): Html =>
-  Option.match(maybeTapOffer(model), {
+  Option.match(maybeTapOffer(model, focusSlotOf(model)), {
     onNone: () => h.empty,
     onSome: offer => ammoTagButtonFor(model, offer, h),
   })

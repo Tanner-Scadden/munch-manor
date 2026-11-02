@@ -15,6 +15,7 @@ import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, type PlannedSpawn, type Zombie } from './model'
 import { plannedSpawn, readyModel } from './model.fixture'
+import { modifyFocus } from './party'
 import { scoreOf } from './stats'
 import {
   RESTART_GRACE_TICKS,
@@ -107,7 +108,7 @@ describe('preparation', () => {
       press('KeyD'),
       holdFire,
       ...ticks(4, FRAME_MS),
-      model(({ phase, player, bullets }) => {
+      model(({ phase, seats: [{ player }], bullets }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(player.x).toBeGreaterThan(PARLOUR.width / 2)
         expect(Array.isReadonlyArrayNonEmpty(bullets)).toBe(true)
@@ -180,7 +181,7 @@ describe('waves', () => {
     story(
       update,
       given(
-        modifyFields(killShot(inWave(2, [], [doomed, farAway]), doomed), {
+        modifyFocus(killShot(inWave(2, [], [doomed, farAway]), doomed), {
           player: player => modifyFields(player, { hp: () => 3 }),
         }),
       ),
@@ -196,12 +197,12 @@ describe('waves', () => {
     story(
       update,
       given(
-        modifyFields(killShot(inWave(2, [], [doomed]), doomed), {
+        modifyFocus(killShot(inWave(2, [], [doomed]), doomed), {
           player: player => modifyFields(player, { hp: () => 3 }),
         }),
       ),
       tick(FRAME_MS),
-      model(({ phase, player }) => {
+      model(({ phase, seats: [{ player }] }) => {
         const preparation = Option.getOrThrow(
           Option.liftPredicate(phase, Phase.guards.Preparation),
         )
@@ -243,22 +244,24 @@ describe('waves', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
-          phase: () =>
-            Phase.Preparation({
-              wave: 4,
-              remainingMs: 9000,
-              durationMs: PREPARATION_MS,
-              spawns: [plannedSpawn(0)],
-            }),
-          player: player => modifyFields(player, { hp: () => 1 }),
-          zombies: () => [
-            zombieAt(100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
-          ],
-        }),
+        modifyFocus(
+          modifyFields(readyModel, {
+            phase: () =>
+              Phase.Preparation({
+                wave: 4,
+                remainingMs: 9000,
+                durationMs: PREPARATION_MS,
+                spawns: [plannedSpawn(0)],
+              }),
+            zombies: () => [
+              zombieAt(100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
+            ],
+          }),
+          { player: player => modifyFields(player, { hp: () => 1 }) },
+        ),
       ),
       tick(FRAME_MS),
-      model(({ phase, player }) => {
+      model(({ phase, seats: [{ player }] }) => {
         expect(player.hp).toBe(0)
         expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
       }),
@@ -269,13 +272,15 @@ describe('waves', () => {
     story(
       update,
       given(
-        modifyFields(killShot(inWave(FINAL_WAVE, [], [doomed]), doomed), {
-          player: player => modifyFields(player, { hp: () => 1 }),
-          zombies: zombies => [
-            ...zombies,
-            zombieAt(102, PARLOUR.width / 2 - 2, PARLOUR.height / 2),
-          ],
-        }),
+        modifyFocus(
+          modifyFields(killShot(inWave(FINAL_WAVE, [], [doomed]), doomed), {
+            zombies: zombies => [
+              ...zombies,
+              zombieAt(102, PARLOUR.width / 2 - 2, PARLOUR.height / 2),
+            ],
+          }),
+          { player: player => modifyFields(player, { hp: () => 1 }) },
+        ),
       ),
       tick(FRAME_MS),
       model(({ phase }) => {

@@ -7,6 +7,7 @@ import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, Reload, initialModel } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { SURFACE, holdingSecond } from './testing'
 import { asVeteran } from './veteran'
 import { heldWeapon } from './weapons'
@@ -22,17 +23,22 @@ import { heldWeapon } from './weapons'
 const MOVE_FINGER = 3
 
 const carrying = (loaded: number): Model =>
-  modifyFields(asVeteran(initialModel), {
-    lastDevice: () => 'Touch',
-    maybeSurface: () => Option.some(SURFACE),
-    phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-    zombies: () => [],
-    player: player =>
-      modifyFields(player, {
-        arsenal: () =>
-          holdingSecond({ kind: 'Smg', rounds: 90, loaded, tier: 0 }),
-      }),
-  })
+  modifyFocus(
+    modifyFields(asVeteran(initialModel), {
+      lastDevice: () => 'Touch',
+      maybeSurface: () => Option.some(SURFACE),
+      phase: () =>
+        Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+      zombies: () => [],
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          arsenal: () =>
+            holdingSecond({ kind: 'Smg', rounds: 90, loaded, tier: 0 }),
+        }),
+    },
+  )
 
 // NOTE: the left thumb lands on the left of the surface, the move stick.
 const moveThumbDown = Message.PressedPointer({
@@ -49,7 +55,7 @@ const moveThumbDrag = Message.MovedPointer({
 })
 
 const isReloading = (current: Model): boolean =>
-  Reload.isAnyOf(['Reloading'])(current.player.reload)
+  Reload.isAnyOf(['Reloading'])(focusOf(current).player.reload)
 
 describe('a HUD tap with the move stick held', () => {
   test('swaps guns while the first holds the move stick, and the stick stays held', () => {
@@ -62,7 +68,7 @@ describe('a HUD tap with the move stick held', () => {
         expect(input.moveStick._tag).toBe('Active')
       }),
       message(Message.ClickedGunSlot({ slot: 'First' })),
-      model(({ input, player }) => {
+      model(({ input, seats: [{ player }] }) => {
         expect(heldWeapon(player.arsenal)).toBe('Pistol')
         expect(input.moveStick._tag).toBe('Active')
       }),
@@ -75,12 +81,12 @@ describe('a HUD tap with the move stick held', () => {
       given(carrying(20)),
       message(moveThumbDown),
       message(Message.ClickedMeleeSlot()),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.wield).toBe('Melee')
       }),
       message(Message.ClickedReloadButton()),
       model(current => {
-        expect(current.player.wield).toBe('Gun')
+        expect(focusOf(current).player.wield).toBe('Gun')
         expect(isReloading(current)).toBe(true)
         expect(current.input.moveStick._tag).toBe('Active')
       }),
@@ -96,13 +102,13 @@ describe('the reload button', () => {
       message(Message.ClickedReloadButton()),
       model(current => {
         expect(isReloading(current)).toBe(true)
-        expect(heldWeapon(current.player.arsenal)).toBe('Smg')
+        expect(heldWeapon(focusOf(current).player.arsenal)).toBe('Smg')
       }),
     )
   })
 
   test('with the knife out, draws the last gun and reloads it, as R does', () => {
-    const knifeOut = modifyFields(carrying(20), {
+    const knifeOut = modifyFocus(carrying(20), {
       player: player => modifyFields(player, { wield: () => 'Melee' }),
     })
     story(
@@ -110,8 +116,8 @@ describe('the reload button', () => {
       given(knifeOut),
       message(Message.ClickedReloadButton()),
       model(current => {
-        expect(current.player.wield).toBe('Gun')
-        expect(heldWeapon(current.player.arsenal)).toBe('Smg')
+        expect(focusOf(current).player.wield).toBe('Gun')
+        expect(heldWeapon(focusOf(current).player.arsenal)).toBe('Smg')
         expect(isReloading(current)).toBe(true)
       }),
     )
@@ -124,7 +130,7 @@ describe('the reload button', () => {
       message(Message.ClickedReloadButton()),
       model(current => {
         expect(isReloading(current)).toBe(false)
-        expect(current.player.wield).toBe('Gun')
+        expect(focusOf(current).player.wield).toBe('Gun')
       }),
     )
   })

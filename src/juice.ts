@@ -30,6 +30,7 @@ import {
 } from './constants'
 import { countWhere } from './hitStop'
 import type { Model } from './model'
+import { focusOf, modifyFocus } from './party'
 import type { Calling } from './playerData'
 import { type Seeded, between, generateMany, nextRandom } from './prng'
 import { tickShownMoney } from './shop'
@@ -448,32 +449,34 @@ export const advanceJuice = (
   const [popupState, popupBatches] = Array.mapAccum(
     events,
     shakeState,
-    eventPopups(model.player.calling),
+    eventPopups(focusOf(model).player.calling),
   )
 
-  return modifyFields(model, {
-    blasts: current =>
-      Array.isReadonlyArrayEmpty(current) &&
-      Array.isReadonlyArrayEmpty(newBlasts)
-        ? current
-        : ageBlasts(
-            Array.takeRight([...current, ...newBlasts], BLAST_MAX),
-            deltaMs,
+  return modifyFocus(
+    modifyFields(model, {
+      blasts: current =>
+        Array.isReadonlyArrayEmpty(current) &&
+        Array.isReadonlyArrayEmpty(newBlasts)
+          ? current
+          : ageBlasts(
+              Array.takeRight([...current, ...newBlasts], BLAST_MAX),
+              deltaMs,
+            ),
+      shake: () => shake,
+      popups: popups =>
+        keepNewestHorde(
+          Array.takeRight(
+            [
+              ...agePopups(popups, seconds, deltaMs),
+              ...Array.flatten(popupBatches),
+            ],
+            POPUP_MAX,
           ),
-    shake: () => shake,
-    popups: popups =>
-      keepNewestHorde(
-        Array.takeRight(
-          [
-            ...agePopups(popups, seconds, deltaMs),
-            ...Array.flatten(popupBatches),
-          ],
-          POPUP_MAX,
         ),
-      ),
-    streak: () => streak,
-    bestStreak: best => Math.max(best, streakCount(streak)),
-    wallet: wallet => tickShownMoney(wallet, seconds),
-    cosmeticRngState: () => popupState,
-  })
+      streak: () => streak,
+      bestStreak: best => Math.max(best, streakCount(streak)),
+      cosmeticRngState: () => popupState,
+    }),
+    { wallet: wallet => tickShownMoney(wallet, seconds) },
+  )
 }

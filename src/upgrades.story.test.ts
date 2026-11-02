@@ -17,6 +17,7 @@ import {
 } from './model'
 import { DISTANT_SPAWN, newPlayerReady } from './model.fixture'
 import { TIER_LADDER } from './names'
+import { focusOf, focusSlotOf, modifyFocus } from './party'
 import { Verdict, verdictFor } from './shop'
 import {
   RESTART_GRACE_TICKS,
@@ -44,18 +45,22 @@ import {
 const FRAME_MS = FIXED_STEP_MS
 const GRACE_TICK_MS = 50
 const browsing = (balance: number, arsenal: Arsenal): Model =>
-  modifyFields(newPlayerReady, {
-    phase: () =>
-      Phase.Preparation({
-        wave: 3,
-        remainingMs: 15_000,
-        durationMs: PREPARATION_MS,
-        spawns: [DISTANT_SPAWN],
-      }),
-    shop: () => ShopState.Browsing({ focusedItem: 'PistolUpgrade' }),
-    wallet: () => ({ balance, earned: balance, shown: balance }),
-    player: player => modifyFields(player, { arsenal: () => arsenal }),
-  })
+  modifyFocus(
+    modifyFields(newPlayerReady, {
+      phase: () =>
+        Phase.Preparation({
+          wave: 3,
+          remainingMs: 15_000,
+          durationMs: PREPARATION_MS,
+          spawns: [DISTANT_SPAWN],
+        }),
+    }),
+    {
+      shop: () => ShopState.Browsing({ focusedItem: 'PistolUpgrade' }),
+      wallet: () => ({ balance, earned: balance, shown: balance }),
+      player: player => modifyFields(player, { arsenal: () => arsenal }),
+    },
+  )
 
 const spare = (kind: WeaponKind, rounds: number, tier = 0): CarriedGun => ({
   kind,
@@ -115,20 +120,22 @@ describe('upgrade tiers', () => {
           tier => [
             buy(item),
             model((current: Model) => {
-              expect(tierOf(current.player, kind)).toBe(tier)
-              expect(current.wallet.balance).toBe(start - spentAfter(tier))
+              expect(tierOf(focusOf(current).player, kind)).toBe(tier)
+              expect(focusOf(current).wallet.balance).toBe(
+                start - spentAfter(tier),
+              )
             }),
           ],
         ),
         model(current => {
-          expect(verdictFor(current, item)).toEqual(
+          expect(verdictFor(current, focusSlotOf(current), item)).toEqual(
             Verdict.Refused({ reason: 'Fully upgraded' }),
           )
         }),
         buy(item),
         model(current => {
-          expect(tierOf(current.player, kind)).toBe(3)
-          expect(current.wallet.balance).toBe(7)
+          expect(tierOf(focusOf(current).player, kind)).toBe(3)
+          expect(focusOf(current).wallet.balance).toBe(7)
         }),
       )
     },
@@ -140,12 +147,12 @@ describe('upgrade tiers', () => {
       update,
       given(browsing(price - 5, pistolOnly())),
       model(current => {
-        expect(verdictFor(current, 'PistolUpgrade')).toEqual(
-          Verdict.Refused({ reason: 'Need $5 more' }),
-        )
+        expect(
+          verdictFor(current, focusSlotOf(current), 'PistolUpgrade'),
+        ).toEqual(Verdict.Refused({ reason: 'Need $5 more' }))
       }),
       buy('PistolUpgrade'),
-      model(({ player, wallet }) => {
+      model(({ seats: [{ player, wallet }] }) => {
         expect(pistolOf(player).tier).toBe(0)
         expect(wallet.balance).toBe(price - 5)
       }),
@@ -157,12 +164,12 @@ describe('upgrade tiers', () => {
       update,
       given(browsing(1000, holdingSecond(spare('Smg', 120)))),
       model(current => {
-        expect(verdictFor(current, 'ShotgunUpgrade')).toEqual(
-          Verdict.Refused({ reason: 'Needs the Barn Buster' }),
-        )
+        expect(
+          verdictFor(current, focusSlotOf(current), 'ShotgunUpgrade'),
+        ).toEqual(Verdict.Refused({ reason: 'Needs the Barn Buster' }))
       }),
       buy('ShotgunUpgrade'),
-      model(({ wallet, player }) => {
+      model(({ seats: [{ wallet, player }] }) => {
         expect(wallet.balance).toBe(1000)
         expect(tierOf(player, 'Shotgun')).toBe(0)
       }),
@@ -171,21 +178,25 @@ describe('upgrade tiers', () => {
 
   test('firing reads the effective stats of the held gun at its tier', () => {
     const fighting = (arsenal: Arsenal): Model =>
-      modifyFields(newPlayerReady, {
-        phase: () =>
-          Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-        player: player =>
-          modifyFields(player, {
-            arsenal: () => arsenal,
-          }),
-      })
+      modifyFocus(
+        modifyFields(newPlayerReady, {
+          phase: () =>
+            Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+        }),
+        {
+          player: player =>
+            modifyFields(player, {
+              arsenal: () => arsenal,
+            }),
+        },
+      )
 
     story(
       update,
       given(fighting(pistolOnly({ ...STARTING_PISTOL, tier: 3 }))),
       holdFire,
       tick(FRAME_MS),
-      model(({ bullets, player }) => {
+      model(({ bullets, seats: [{ player }] }) => {
         expect(
           Array.map(bullets, ({ damage, knockback }) => [damage, knockback]),
         ).toEqual([[2, statsAt('Pistol', 3).knockback]])
@@ -230,7 +241,7 @@ describe('upgrade tiers', () => {
       update,
       given(browsing(1000, holdingSecond(spare('Smg', baseCap, 2)))),
       buy('SmgRounds'),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(
           Option.map(maybeSpareGun(player.arsenal), ({ rounds }) => rounds),
         ).toEqual(Option.some(Math.min(raisedCap, baseCap + 120)))
@@ -245,7 +256,7 @@ describe('tier resets', () => {
       update,
       given(browsing(1000, holdingSecond(spare('Shotgun', 30, 2)))),
       buy('Smg'),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(
           Option.map(maybeSpareGun(player.arsenal), gun => gun.tier),
         ).toEqual(Option.some(0))
@@ -253,7 +264,7 @@ describe('tier resets', () => {
         expect(tierOf(player, 'Shotgun')).toBe(0)
       }),
       buy('Shotgun'),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(maybeSpareGun(player.arsenal)).toEqual(
           Option.some(spare('Shotgun', 16, 0)),
         )
@@ -265,13 +276,13 @@ describe('tier resets', () => {
     story(
       update,
       given(
-        modifyFields(browsing(1000, pistolOnly()), {
+        modifyFocus(browsing(1000, pistolOnly()), {
           player: player =>
             withPistol(player, pistol => ({ ...pistol, tier: 2 })),
         }),
       ),
       buy('Smg'),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(pistolOf(player).tier).toBe(2)
       }),
     )
@@ -281,21 +292,25 @@ describe('tier resets', () => {
     story(
       update,
       given(
-        modifyFields(newPlayerReady, {
-          phase: () => Phase.GameOver({ wave: 5 }),
-          player: player =>
-            modifyFields(player, {
-              arsenal: () =>
-                holdingSecond(spare('Smg', 200, 2), {
-                  ...STARTING_PISTOL,
-                  tier: 3,
-                }),
-            }),
-        }),
+        modifyFocus(
+          modifyFields(newPlayerReady, {
+            phase: () => Phase.GameOver({ wave: 5 }),
+          }),
+          {
+            player: player =>
+              modifyFields(player, {
+                arsenal: () =>
+                  holdingSecond(spare('Smg', 200, 2), {
+                    ...STARTING_PISTOL,
+                    tier: 3,
+                  }),
+              }),
+          },
+        ),
       ),
       ...Array.makeBy(RESTART_GRACE_TICKS, () => tick(GRACE_TICK_MS)),
       press('Enter'),
-      model(({ phase, player }) => {
+      model(({ phase, seats: [{ player }] }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(pistolOf(player).tier).toBe(0)
         expect(player.arsenal).toEqual(pistolOnly())

@@ -12,7 +12,7 @@ import { isPanelOpen } from './menuState'
 import { Message } from './message'
 import { type Model } from './model'
 import { readyAfterRead } from './model.fixture'
-import { earnKill } from './party'
+import { earnKill, focusOf, focusSlotOf, modifyFocus } from './party'
 import type { Calling } from './playerData'
 import { playerSpeed } from './powerups'
 import { pointsForRank } from './rank'
@@ -51,35 +51,35 @@ const pickInPicker = (model: Model, calling: Calling): Model =>
 describe('a run starts with the calling picked', () => {
   test('YOU holds the pistol and every heart', () => {
     const run = started(ranked(1, 'You'))
-    expect(run.player.calling).toBe('You')
-    expect(run.player.hp).toBe(PLAYER_MAX_HP)
-    expect(heldGun(run.player.arsenal).kind).toBe('Pistol')
+    expect(focusOf(run).player.calling).toBe('You')
+    expect(focusOf(run).player.hp).toBe(PLAYER_MAX_HP)
+    expect(heldGun(focusOf(run).player.arsenal).kind).toBe('Pistol')
   })
 
   test('the Handyman starts with 4 hearts', () => {
     const run = started(ranked(3, 'Handyman'))
-    expect(run.player.calling).toBe('Handyman')
-    expect(run.player.hp).toBe(PLAYER_MAX_HP - 1)
+    expect(focusOf(run).player.calling).toBe('Handyman')
+    expect(focusOf(run).player.hp).toBe(PLAYER_MAX_HP - 1)
   })
 
   test('a calling its rank has not reached starts as YOU', () => {
     const run = started(ranked(2, 'LineCook'))
     expect(run.calling).toBe('LineCook')
-    expect(run.player.calling).toBe('You')
-    expect(heldGun(run.player.arsenal).kind).toBe('Pistol')
+    expect(focusOf(run).player.calling).toBe('You')
+    expect(heldGun(focusOf(run).player.arsenal).kind).toBe('Pistol')
   })
 
   test('the Line Cook starts with the Pressure Cooker, not the pistol', () => {
     const run = started(ranked(15, 'LineCook'))
-    expect(heldGun(run.player.arsenal).kind).toBe('Cooker')
-    expect(maybeCarried(run.player, 'Pistol')).toEqual(Option.none())
-    expect(looseRounds(heldGun(run.player.arsenal))).toBeGreaterThan(0)
-    expect(heldGun(run.player.arsenal).rounds).toBe(14)
+    expect(heldGun(focusOf(run).player.arsenal).kind).toBe('Cooker')
+    expect(maybeCarried(focusOf(run).player, 'Pistol')).toEqual(Option.none())
+    expect(looseRounds(heldGun(focusOf(run).player.arsenal))).toBeGreaterThan(0)
+    expect(heldGun(focusOf(run).player.arsenal).rounds).toBe(14)
   })
 
   test('the Track Star starts with a 12 round pistol magazine', () => {
     const run = started(ranked(6, 'TrackStar'))
-    expect(heldGun(run.player.arsenal).loaded).toBe(12)
+    expect(heldGun(focusOf(run).player.arsenal).loaded).toBe(12)
   })
 })
 
@@ -95,7 +95,7 @@ describe('the picker', () => {
   test('picks an unlocked calling, which closes it, and dresses the player', () => {
     const picked = pickInPicker(ranked(3, 'You'), 'Handyman')
     expect(picked.calling).toBe('Handyman')
-    expect(picked.player.calling).toBe('Handyman')
+    expect(focusOf(picked).player.calling).toBe('Handyman')
     expect(isPanelOpen(picked, 'Calling')).toBe(false)
   })
 
@@ -116,84 +116,119 @@ describe('the picker', () => {
 
 describe('the quirks in play', () => {
   const asCalling = (model: Model, calling: Calling): Model =>
-    modifyFields(model, {
+    modifyFocus(model, {
       player: player => modifyFields(player, { calling: () => calling }),
     })
   const shopping = (calling: Calling): Model =>
     asCalling(withMoney(besideStall(preparing(3)), 500), calling)
 
   test('the Handyman pays half for a Plank Pile', () => {
-    expect(priceFor(shopping('You'), 'Barricade')).toBe(95)
-    expect(priceFor(shopping('Handyman'), 'Barricade')).toBe(48)
+    expect(
+      priceFor(shopping('You'), focusSlotOf(shopping('You')), 'Barricade'),
+    ).toBe(95)
+    expect(
+      priceFor(
+        shopping('Handyman'),
+        focusSlotOf(shopping('Handyman')),
+        'Barricade',
+      ),
+    ).toBe(48)
   })
 
   test('the Handyman cannot heal past 4 hearts', () => {
-    const full = modifyFields(shopping('Handyman'), {
+    const full = modifyFocus(shopping('Handyman'), {
       player: player => modifyFields(player, { hp: () => 4 }),
     })
-    expect(verdictFor(full, 'Heart')._tag).toBe('Refused')
-    const you = modifyFields(shopping('You'), {
+    expect(verdictFor(full, focusSlotOf(full), 'Heart')._tag).toBe('Refused')
+    const you = modifyFocus(shopping('You'), {
       player: player => modifyFields(player, { hp: () => 4 }),
     })
-    expect(verdictFor(you, 'Heart')._tag).toBe('Available')
+    expect(verdictFor(you, focusSlotOf(you), 'Heart')._tag).toBe('Available')
   })
 
   test('the Track Star runs faster and fills a smaller magazine', () => {
-    const star = shopping('TrackStar').player
+    const star = focusOf(shopping('TrackStar')).player
     expect(playerSpeed(idleBoosts, star)).toBeCloseTo(PLAYER_SPEED * 1.2)
-    const bought = tryPurchase(shopping('TrackStar'), 'Shotgun')
+    const bought = tryPurchase(
+      shopping('TrackStar'),
+      focusSlotOf(shopping('TrackStar')),
+      'Shotgun',
+    )
     expect(bought._tag).toBe('Success')
     const gun = Option.getOrThrow(
       Option.flatMap(
         Option.fromNullishOr(bought._tag === 'Success' ? bought.success : null),
-        world => maybeCarried(world.player, 'Shotgun'),
+        world => maybeCarried(focusOf(world).player, 'Shotgun'),
       ),
     )
     expect(gun.loaded).toBe(5)
   })
 
   test('Rattles charges the Penny Pincher 15 percent less', () => {
-    expect(priceFor(shopping('You'), 'Shotgun')).toBe(35)
-    expect(priceFor(shopping('PennyPincher'), 'Shotgun')).toBe(30)
-    expect(priceFor(shopping('PennyPincher'), 'Barricade')).toBe(81)
+    expect(
+      priceFor(shopping('You'), focusSlotOf(shopping('You')), 'Shotgun'),
+    ).toBe(35)
+    expect(
+      priceFor(
+        shopping('PennyPincher'),
+        focusSlotOf(shopping('PennyPincher')),
+        'Shotgun',
+      ),
+    ).toBe(30)
+    expect(
+      priceFor(
+        shopping('PennyPincher'),
+        focusSlotOf(shopping('PennyPincher')),
+        'Barricade',
+      ),
+    ).toBe(81)
   })
 
   test('a kill pays the Penny Pincher less', () => {
-    const paid = (calling: Calling) =>
-      earnKill(asCalling(shopReady, calling), 20).wallet.balance
+    const paid = (calling: Calling) => {
+      const model = asCalling(shopReady, calling)
+      return focusOf(earnKill(model, focusSlotOf(model), 20)).wallet.balance
+    }
     expect(paid('You')).toBe(20)
     expect(paid('PennyPincher')).toBe(16)
   })
 
   test('Rattles never sells the Line Cook the pistol', () => {
     const cook = shopping('LineCook')
-    expect(verdictFor(cook, 'Pistol')._tag).toBe('Refused')
-    expect(verdictFor(shopping('You'), 'Pistol')._tag).toBe('Refused')
-    const withoutPistol = modifyFields(shopping('You'), {
+    expect(verdictFor(cook, focusSlotOf(cook), 'Pistol')._tag).toBe('Refused')
+    expect(
+      verdictFor(shopping('You'), focusSlotOf(shopping('You')), 'Pistol')._tag,
+    ).toBe('Refused')
+    const withoutPistol = modifyFocus(shopping('You'), {
       player: player =>
         modifyFields(player, {
-          arsenal: () => started(ranked(15, 'LineCook')).player.arsenal,
+          arsenal: () =>
+            focusOf(started(ranked(15, 'LineCook'))).player.arsenal,
         }),
     })
-    expect(verdictFor(withoutPistol, 'Pistol')._tag).toBe('Available')
+    expect(
+      verdictFor(withoutPistol, focusSlotOf(withoutPistol), 'Pistol')._tag,
+    ).toBe('Available')
   })
 })
 
 describe('what the player sees of a calling', () => {
   const killed = (calling: Calling): Model =>
     advanceJuice(
-      modifyFields(readyAfterRead, {
-        player: player => modifyFields(player, { calling: () => calling }),
-        frameEvents: () => [
-          GameEvent.ZombieKilled({
-            x: 100,
-            y: 100,
-            direction: { x: 1, y: 0 },
-            bounty: 20,
-            kind: 'Tank',
-          }),
-        ],
-      }),
+      modifyFocus(
+        modifyFields(readyAfterRead, {
+          frameEvents: () => [
+            GameEvent.ZombieKilled({
+              x: 100,
+              y: 100,
+              direction: { x: 1, y: 0 },
+              bounty: 20,
+              kind: 'Tank',
+            }),
+          ],
+        }),
+        { player: player => modifyFields(player, { calling: () => calling }) },
+      ),
       16,
       16,
     )

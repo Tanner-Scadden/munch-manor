@@ -21,6 +21,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { focusOf } from './party'
 import { KABOOMER_FUSE_MAX } from './sprites/zombies'
 import { bulletInto, tick, ticks } from './testing'
 import { wavePreviewLabel } from './wavePreview'
@@ -185,7 +186,7 @@ describe('the Kaboomer', () => {
   })
 
   test('his fuse burns shorter in a few steps as he closes in and each time he is shot', () => {
-    const player = modifyFields(initialModel.player, {
+    const player = modifyFields(focusOf(initialModel).player, {
       x: () => CENTER_X,
       y: () => CENTER_Y,
     })

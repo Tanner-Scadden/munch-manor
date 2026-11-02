@@ -34,7 +34,7 @@ import {
 } from './font'
 import type { Model } from './model'
 import { CREW_AWARD_NAMES, type CrewAward } from './names'
-import { leadSeatOf } from './party'
+import { focusOf, leadSeatOf } from './party'
 import { seatColorOf, seatModelsOf } from './partyView'
 import { playerShapes } from './playerView'
 import { badgeTierOf } from './rank'
@@ -349,8 +349,8 @@ const headShapes = (
       onSome: ({ model: seatModel }) => [
         group({
           translate: {
-            x: x - seatModel.player.x,
-            y: footY - seatModel.player.y - 5,
+            x: x - focusOf(seatModel).player.x,
+            y: footY - focusOf(seatModel).player.y - 5,
           },
           shapes: playerShapes(seatModel),
         }),

@@ -17,7 +17,8 @@ import { aimTracers } from './firing'
 import { update } from './main'
 import { Message } from './message'
 import { AudioState, Lesson, type Model, initialModel } from './model'
-import { leadSeatOf, maybePlayerAt, withSeat } from './party'
+import { withSeat } from './model.fixture'
+import { focusOf, leadSeatOf, maybePlayerAt, modifyFocus } from './party'
 import {
   DEFAULT_ROOM_SETTINGS,
   type RoomWorld,
@@ -96,7 +97,7 @@ describe('an online co-op run', () => {
       model(current => {
         expect(current.phase._tag).toBe('Preparation')
         expect(leadSeatOf(current).slot).toBe(OWN_SLOT)
-        expect(current.player.x).toBe(ownX)
+        expect(focusOf(current).player.x).toBe(ownX)
         expect(current.party._tag).toBe('Crew')
         expect(current.lessons).toEqual(graduated.lessons)
       }),
@@ -323,16 +324,20 @@ describe('an online co-op run', () => {
 
   test('a predicted shot fires its tracers from the muzzle on the same frame', () => {
     const world = ownWorldOf(roomWorld, OWN_SLOT)
-    const [, tracers] = aimTracers(world, 7, -1)
+    const [, tracers] = aimTracers(world, OWN_SLOT, 7, -1)
     expect(tracers.length).toBe(1)
     const tracer = Option.getOrThrow(Array.head(tracers))
     expect(tracer.id).toBe(-1)
     expect(
-      Math.hypot(tracer.x - world.player.x, tracer.y - world.player.y),
+      Math.hypot(
+        tracer.x - focusOf(world).player.x,
+        tracer.y - focusOf(world).player.y,
+      ),
     ).toBeGreaterThan(0)
     expect(
-      Math.sign(tracer.velocityX) === Math.sign(world.player.facing.x) ||
-        world.player.facing.x === 0,
+      Math.sign(tracer.velocityX) ===
+        Math.sign(focusOf(world).player.facing.x) ||
+        focusOf(world).player.facing.x === 0,
     ).toBe(true)
   })
 
@@ -365,7 +370,7 @@ describe('an online co-op run', () => {
         beginPreparation(roomWorld.world, 2, 20_000),
         OWN_SLOT,
         world =>
-          modifyFields(world, {
+          modifyFocus(world, {
             shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
           }),
       ),
@@ -406,13 +411,15 @@ describe('an online co-op run', () => {
     const offCounter = {
       ...roomWorld,
       world: withSeat(startWaveEarly(roomWorld.world), OWN_SLOT, world =>
-        modifyFields(world, { shop: () => ShopState.Dismissed() }),
+        modifyFocus(world, { shop: () => ShopState.Dismissed() }),
       ),
     }
-    const shopping = modifyFields(inRun(offCounter), {
-      shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-      shopDialog: dialog => modifyFields(dialog, { isOpen: () => true }),
-    })
+    const shopping = modifyFocus(
+      modifyFields(inRun(offCounter), {
+        shopDialog: dialog => modifyFields(dialog, { isOpen: () => true }),
+      }),
+      { shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }) },
+    )
     story(
       update,
       given(shopping),
@@ -423,7 +430,7 @@ describe('an online co-op run', () => {
       ),
       model(current => {
         expect(current.shopDialog.isOpen).toBe(false)
-        expect(current.shop).toEqual(ShopState.Dismissed())
+        expect(focusOf(current).shop).toEqual(ShopState.Dismissed())
       }),
     )
   })

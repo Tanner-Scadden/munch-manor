@@ -16,6 +16,7 @@ import { update } from '../../src/main'
 import { Message } from '../../src/message'
 import { Lesson, type Model, Phase, initialModel } from '../../src/model'
 import { asVeteran } from '../../src/veteran'
+import { leadOf, withLeadPlayer } from './lead'
 import type { ScriptMode, StepPattern } from './request'
 
 export type { ScriptMode, StepPattern } from './request'
@@ -79,8 +80,9 @@ const nearestZombie = (model: Model): Target | undefined =>
   model.zombies
     .filter(zombie => zombie.state._tag === 'Walking')
     .reduce<Target | undefined>((best, zombie) => {
-      const dx = zombie.x - model.player.x
-      const dy = zombie.y - model.player.y
+      const { player } = leadOf(model)
+      const dx = zombie.x - player.x
+      const dy = zombie.y - player.y
       const distance = dx * dx + dy * dy
       return best === undefined || distance < best.distance
         ? { x: zombie.x, y: zombie.y, distance }
@@ -95,7 +97,7 @@ const prepareFrame = (model: Model): Model => {
     still.input.mouseButton._tag === 'Held'
       ? send(still, Message.ReleasedPointer({ pointerId: 1 }))
       : still
-  return released.shop._tag === 'Browsing'
+  return leadOf(released).shop._tag === 'Browsing'
     ? tapKey(released, 'Escape')
     : tapKey(released, 'Enter')
 }
@@ -175,11 +177,11 @@ export const startedRun = (seed: number, mode: ScriptMode): Model => {
 }
 
 const godMode = (model: Model): Model =>
-  model.player.hp === PLAYER_MAX_HP
+  leadOf(model).player.hp === PLAYER_MAX_HP
     ? model
-    : modifyFields(model, {
-        player: player => modifyFields(player, { hp: () => PLAYER_MAX_HP }),
-      })
+    : withLeadPlayer(model, player =>
+        modifyFields(player, { hp: () => PLAYER_MAX_HP }),
+      )
 
 export const isPlaying = (model: Model): boolean =>
   model.phase._tag === 'Preparation' || model.phase._tag === 'Wave'

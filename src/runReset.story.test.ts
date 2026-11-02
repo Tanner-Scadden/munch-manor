@@ -6,6 +6,7 @@ import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, TrapNotice, freshLoot } from './model'
 import { readyModel } from './model.fixture'
+import { modifyFocus } from './party'
 import {
   closeDialog,
   press,
@@ -21,17 +22,14 @@ const RUN_FIELDS = [
   'pacing',
   'boss',
   'frenzyPacks',
+  'seats',
   'intensity',
-  'player',
   'cameraLean',
   'zombies',
   'bullets',
   'particles',
   'decals',
   'dustCooldownMs',
-  'wallet',
-  'shop',
-  'shopCategory',
   'elapsedMs',
   'frameEvents',
   'hitStop',
@@ -41,15 +39,10 @@ const RUN_FIELDS = [
   'blasts',
   'traps',
   'pickups',
-  'boosts',
   'loot',
   'callouts',
-  'trapStock',
-  'selectedTrap',
-  'laserSight',
   'trapNotice',
   'level',
-  'intent',
   'debutCard',
   'hintBand',
   'stats',
@@ -86,17 +79,22 @@ describe('going home', () => {
         played.push(current)
       }),
     )
-    const messy = modifyFields(played[0]!, {
-      cameraLean: () => ({ x: 12, y: -7 }),
-      dustCooldownMs: () => 90,
-      shopCategory: () => 'Traps',
-      selectedTrap: () => 'Turret',
-      trapNotice: () =>
-        TrapNotice.Refused({ reason: 'No room', remainingMs: 800 }),
-      intent: intent => modifyFields(intent, { move: () => ({ x: 1, y: 0 }) }),
-      hintBand: () => 'Bottom',
-      loot: loot => modifyFields(loot, { dryMs: () => 5000 }),
-    })
+    const messy = modifyFocus(
+      modifyFields(played[0]!, {
+        cameraLean: () => ({ x: 12, y: -7 }),
+        dustCooldownMs: () => 90,
+        trapNotice: () =>
+          TrapNotice.Refused({ reason: 'No room', remainingMs: 800 }),
+        hintBand: () => 'Bottom',
+        loot: loot => modifyFields(loot, { dryMs: () => 5000 }),
+      }),
+      {
+        shopCategory: () => 'Traps',
+        selectedTrap: () => 'Turret',
+        intent: intent =>
+          modifyFields(intent, { move: () => ({ x: 1, y: 0 }) }),
+      },
+    )
 
     const atHome: Array<Model> = []
     story(

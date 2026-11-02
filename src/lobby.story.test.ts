@@ -9,6 +9,7 @@ import { MenuState, isLobbyOpen, menuState } from './menuState'
 import { Message } from './message'
 import { DifficultyCard, Lesson, Phase, RunMode, initialModel } from './model'
 import { newPlayerCardSeen, readyModel } from './model.fixture'
+import { focusOf } from './party'
 import { pointsForRank } from './rank'
 import {
   closeDialog,
@@ -79,7 +80,7 @@ describe('START plays what the lobby holds', () => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.mode).toEqual(RunMode.Endless())
         expect(current.difficulty.chosen).toBe('Hard')
-        expect(current.player.calling).toBe('Handyman')
+        expect(focusOf(current).player.calling).toBe('Handyman')
         expect(current.home.lobby).toBe('Closed')
         expect(isLobbyOpen(current)).toBe(false)
       }),

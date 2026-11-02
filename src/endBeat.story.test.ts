@@ -25,7 +25,7 @@ import { update } from './main'
 import { Message } from './message'
 import { AudioState, type Model, Phase, RunMode } from './model'
 import { lastHeart, readyModel } from './model.fixture'
-import { seatCrew } from './party'
+import { focusOf, modifyFocus, seatCrew } from './party'
 import { noSavedRunRecords } from './playerData'
 import { mergeRunRecords } from './playerScope'
 import { GAME_URL, copiedLineOf, sharePostOf, shareText } from './share'
@@ -105,7 +105,7 @@ describe('the death beat', () => {
       ...Array.makeBy(20, () => tick(50)),
       model(after => {
         expect(zombiesAt(after)).toEqual(zombiesAt(fallen))
-        expect(after.player).toEqual(fallen.player)
+        expect(focusOf(after).player).toEqual(focusOf(fallen).player)
         expect(after.phase).toEqual(gameOver)
       }),
     )
@@ -192,16 +192,18 @@ describe('skipping and retrying', () => {
 })
 
 describe('the tally', () => {
-  const tallied = modifyFields(onEndScreen(gameOver, 0), {
-    bestStreak: () => 12,
-    wallet: wallet => modifyFields(wallet, { earned: () => 240 }),
-    stats: stats =>
-      modifyFields(stats, {
-        kills: kills => modifyFields(kills, { Shambler: () => 40 }),
-        shotsFired: () => 100,
-        shotsHit: () => 55,
-      }),
-  })
+  const tallied = modifyFocus(
+    modifyFields(onEndScreen(gameOver, 0), {
+      bestStreak: () => 12,
+      stats: stats =>
+        modifyFields(stats, {
+          kills: kills => modifyFields(kills, { Shambler: () => 40 }),
+          shotsFired: () => 100,
+          shotsHit: () => 55,
+        }),
+    }),
+    { wallet: wallet => modifyFields(wallet, { earned: () => 240 }) },
+  )
 
   test('a loss counts the wave, the kills, the streak, the aim, and the cash', () => {
     const rows = tallyRowsOf(tallied)

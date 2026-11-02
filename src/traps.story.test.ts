@@ -9,9 +9,9 @@ import {
   FIXED_STEP_MS,
   PLAYER_RADIUS,
   PREPARATION_MS,
+  RESTART_GRACE_MS,
   TURRET_RANGE_PX,
 } from './constants'
-import { RESTART_GRACE_MS } from './constants'
 import { update } from './main'
 import { Message } from './message'
 import {
@@ -32,6 +32,8 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN, WAVE_2_FIGHT, pastFirstBreak } from './model.fixture'
+import { focusOf, focusSlotOf, modifyFocus } from './party'
+import { distanceAt, flowFieldToward } from './pathing'
 import {
   StockTag,
   Verdict,
@@ -53,7 +55,6 @@ import {
   ticks,
   zombieOf,
 } from './testing'
-import { distanceAt, flowFieldToward } from './pathing'
 import { TRAPS, repairPrice, stageOf, tollsOf } from './traps'
 import { WEAPONS } from './weapons'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from './zombies'
@@ -87,7 +88,7 @@ const withPlayer = (
   { x, y }: Vector,
   facing: Vector = { x: 1, y: 0 },
 ): Model =>
-  modifyFields(base, {
+  modifyFocus(base, {
     player: player =>
       modifyFields(player, {
         x: () => x,
@@ -104,12 +105,16 @@ const stocked = (
   at: Vector = BELOW_NORTH_DOOR,
   facing: Vector = { x: 1, y: 0 },
 ): Model =>
-  modifyFields(withPlayer(readyModel, at, facing), {
-    phase: () => preparing(),
-    trapStock: () => ({ Barricade: barricades, Turret: turrets }),
-    selectedTrap: () => (barricades > 0 ? 'Barricade' : 'Turret'),
-    trapHint: () => TrapHint.Showing(),
-  })
+  modifyFocus(
+    modifyFields(withPlayer(readyModel, at, facing), {
+      phase: () => preparing(),
+      trapHint: () => TrapHint.Showing(),
+    }),
+    {
+      trapStock: () => ({ Barricade: barricades, Turret: turrets }),
+      selectedTrap: () => (barricades > 0 ? 'Barricade' : 'Turret'),
+    },
+  )
 
 const barricade = (
   id: number,
@@ -175,21 +180,20 @@ describe('buying traps', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
-          phase: () => preparing(),
+        modifyFocus(modifyFields(readyModel, { phase: () => preparing() }), {
           shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
           wallet: () => ({ balance: 300, earned: 150, shown: 150 }),
         }),
       ),
       message(Message.ClickedBuyButton({ item: 'Barricade' })),
-      model(({ wallet, trapStock, trapHint, selectedTrap }) => {
+      model(({ seats: [{ wallet, trapStock, selectedTrap }], trapHint }) => {
         expect(wallet.balance).toBe(300 - TRAPS.Barricade.price)
         expect(trapStock).toEqual({ Barricade: 1, Turret: 0 })
         expect(selectedTrap).toBe('Barricade')
         expect(trapHint).toEqual(TrapHint.Showing())
       }),
       message(Message.ClickedBuyButton({ item: 'Turret' })),
-      model(({ wallet, trapStock }) => {
+      model(({ seats: [{ wallet, trapStock }] }) => {
         expect(wallet.balance).toBe(
           300 - TRAPS.Barricade.price - TRAPS.Turret.price,
         )
@@ -202,16 +206,20 @@ describe('buying traps', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
-          phase: () => preparing(),
-          shop: () => ShopState.Browsing({ focusedItem: 'Turret' }),
-          wallet: () => ({ balance: 500, earned: 500, shown: 500 }),
-          traps: () => [turret(1, 5, 5)],
-          trapStock: () => ({ Barricade: 0, Turret: 1 }),
-        }),
+        modifyFocus(
+          modifyFields(readyModel, {
+            phase: () => preparing(),
+            traps: () => [turret(1, 5, 5)],
+          }),
+          {
+            shop: () => ShopState.Browsing({ focusedItem: 'Turret' }),
+            wallet: () => ({ balance: 500, earned: 500, shown: 500 }),
+            trapStock: () => ({ Barricade: 0, Turret: 1 }),
+          },
+        ),
       ),
       message(Message.ClickedBuyButton({ item: 'Turret' })),
-      model(({ wallet, trapStock }) => {
+      model(({ seats: [{ wallet, trapStock }] }) => {
         expect(wallet.balance).toBe(500)
         expect(trapStock.Turret).toBe(1)
       }),
@@ -222,21 +230,25 @@ describe('buying traps', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
-          phase: () => preparing(),
-          shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
-          wallet: () => ({ balance: 500, earned: 500, shown: 500 }),
-          traps: () => [barricade(1, 'West')],
-          trapStock: () => ({ Barricade: 1, Turret: 0 }),
-        }),
+        modifyFocus(
+          modifyFields(readyModel, {
+            phase: () => preparing(),
+            traps: () => [barricade(1, 'West')],
+          }),
+          {
+            shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
+            wallet: () => ({ balance: 500, earned: 500, shown: 500 }),
+            trapStock: () => ({ Barricade: 1, Turret: 0 }),
+          },
+        ),
       ),
       model(current => {
-        expect(verdictFor(current, 'Barricade')).toEqual(
+        expect(verdictFor(current, focusSlotOf(current), 'Barricade')).toEqual(
           Verdict.Refused({ reason: 'Two Plank Piles max' }),
         )
       }),
       message(Message.ClickedBuyButton({ item: 'Barricade' })),
-      model(({ wallet, trapStock }) => {
+      model(({ seats: [{ wallet, trapStock }] }) => {
         expect(wallet.balance).toBe(500)
         expect(trapStock.Barricade).toBe(1)
       }),
@@ -251,15 +263,23 @@ describe('placing a barricade', () => {
       update,
       given(start),
       press('KeyT'),
-      model(({ traps, trapStock, trapHint, nextEntityId, particles }) => {
-        expect(traps).toEqual([barricade(start.nextEntityId, 'North')])
-        expect(trapStock.Barricade).toBe(0)
-        expect(trapHint).toEqual(TrapHint.Seen())
-        expect(nextEntityId).toBe(start.nextEntityId + 1)
-        expect(
-          Array.filter(particles, ({ kind }) => kind === 'Dust').length,
-        ).toBeGreaterThan(0)
-      }),
+      model(
+        ({
+          traps,
+          seats: [{ trapStock }],
+          trapHint,
+          nextEntityId,
+          particles,
+        }) => {
+          expect(traps).toEqual([barricade(start.nextEntityId, 'North')])
+          expect(trapStock.Barricade).toBe(0)
+          expect(trapHint).toEqual(TrapHint.Seen())
+          expect(nextEntityId).toBe(start.nextEntityId + 1)
+          expect(
+            Array.filter(particles, ({ kind }) => kind === 'Dust').length,
+          ).toBeGreaterThan(0)
+        },
+      ),
     )
   })
 
@@ -279,14 +299,14 @@ describe('placing a barricade', () => {
       update,
       given(stocked(1, 0, { x: 5, y: 90 })),
       press('KeyT'),
-      model(({ traps, player }) => {
+      model(({ traps, seats: [{ player }] }) => {
         expect(traps).toHaveLength(1)
         expect(player.x).toBeGreaterThanOrEqual(
           PARLOUR.thresholds.West.box.right + PLAYER_RADIUS,
         )
       }),
       ...ticks(5, FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.x).toBeGreaterThanOrEqual(
           PARLOUR.thresholds.West.box.right + PLAYER_RADIUS,
         )
@@ -301,7 +321,7 @@ describe('placing a barricade', () => {
       press('KeyT'),
       model(current => {
         expect(current.traps).toEqual([])
-        expect(current.trapStock.Barricade).toBe(1)
+        expect(focusOf(current).trapStock.Barricade).toBe(1)
         expect(refusal(current)).toEqual(
           Option.some('Stand in a doorway to board it up'),
         )
@@ -330,7 +350,7 @@ describe('placing a barricade', () => {
       press('KeyT'),
       model(current => {
         expect(current.traps).toHaveLength(2)
-        expect(current.trapStock.Barricade).toBe(1)
+        expect(focusOf(current).trapStock.Barricade).toBe(1)
         expect(refusal(current)).toEqual(Option.some('Two Plank Piles max'))
       }),
     )
@@ -369,7 +389,7 @@ describe('placing a turret', () => {
       update,
       given(stocked(0, 1, ROOM_MIDDLE)),
       press('KeyT'),
-      model(({ traps, trapStock }) => {
+      model(({ traps, seats: [{ trapStock }] }) => {
         expect(traps).toHaveLength(1)
         const placed = Option.getOrThrow(Array.head(traps))
         expect(placed._tag).toBe('Turret')
@@ -450,21 +470,21 @@ describe('placing a turret', () => {
       update,
       given(stocked(1, 1)),
       press('KeyG'),
-      model(({ selectedTrap }) => {
+      model(({ seats: [{ selectedTrap }] }) => {
         expect(selectedTrap).toBe('Turret')
       }),
       message(Message.ClickedNextTrapButton()),
-      model(({ selectedTrap }) => {
+      model(({ seats: [{ selectedTrap }] }) => {
         expect(selectedTrap).toBe('Barricade')
       }),
       press('KeyT'),
-      model(({ traps, selectedTrap, trapStock }) => {
+      model(({ traps, seats: [{ selectedTrap, trapStock }] }) => {
         expect(Array.map(traps, trap => trap._tag)).toEqual(['Barricade'])
         expect(trapStock).toEqual({ Barricade: 0, Turret: 1 })
         expect(selectedTrap).toBe('Barricade')
       }),
       press('KeyG'),
-      model(({ selectedTrap }) => {
+      model(({ seats: [{ selectedTrap }] }) => {
         expect(selectedTrap).toBe('Barricade')
       }),
       release('KeyG'),
@@ -490,11 +510,11 @@ describe('placing a turret', () => {
         }),
       ),
       press('KeyG'),
-      model(({ selectedTrap }) => {
+      model(({ seats: [{ selectedTrap }] }) => {
         expect(selectedTrap).toBe('Barricade')
       }),
       message(Message.ClickedNextTrapButton()),
-      model(({ selectedTrap }) => {
+      model(({ seats: [{ selectedTrap }] }) => {
         expect(selectedTrap).toBe('Barricade')
       }),
     )
@@ -513,8 +533,13 @@ describe('barricades and pathing', () => {
       Array.head(MANOR.thresholds.North.indices),
     )
     Array.forEach(['Narrow', 'Wide'] as const, clearance => {
-      const bare = flowFieldToward(MANOR, start.player, clearance, [])
-      const tolled = flowFieldToward(MANOR, start.player, clearance, tolls)
+      const bare = flowFieldToward(MANOR, focusOf(start).player, clearance, [])
+      const tolled = flowFieldToward(
+        MANOR,
+        focusOf(start).player,
+        clearance,
+        tolls,
+      )
       expect(distanceAt(tolled.distances, innerTile)).toBeGreaterThan(
         TRAPS.Barricade.pathCost,
       )
@@ -711,7 +736,7 @@ describe('barricade damage', () => {
     story(
       update,
       given(
-        modifyFields(
+        modifyFocus(
           fightingWith([barricade(1, 'West')], [], { x: 20, y: 90 }),
           {
             player: player =>
@@ -722,7 +747,7 @@ describe('barricade damage', () => {
       press('KeyA'),
       holdFireToward({ x: -1, y: 0 }),
       ...ticks(Math.ceil(FIRE_INTERVAL_MS / FRAME_MS) + 2, FRAME_MS),
-      model(({ player, frameEvents, bullets }) => {
+      model(({ seats: [{ player }], frameEvents, bullets }) => {
         expect(player.x).toBeCloseTo(
           PARLOUR.thresholds.West.box.right + PLAYER_RADIUS,
           1,
@@ -890,7 +915,7 @@ describe('turrets', () => {
         ),
       ),
       ...ticks(Math.ceil((2 * PEA_INTERVAL_MS + 500) / FRAME_MS), FRAME_MS),
-      model(({ wallet, zombies }) => {
+      model(({ seats: [{ wallet }], zombies }) => {
         expect(wallet.balance).toBe(ZOMBIE_KINDS.Runner.bounty)
         expect(
           Array.every(
@@ -952,17 +977,25 @@ describe('between waves', () => {
   test('each placed trap repairs on its own, priced by its own missing health', () => {
     const plankPrice = Math.ceil(0.5 * TRAPS.Barricade.price * 0.5)
     const gnomePrice = Math.ceil(0.5 * TRAPS.Turret.price * 0.5)
-    const shopping = modifyFields(readyModel, {
-      phase: () => preparing(),
-      shop: () => ShopState.Browsing({ focusedItem: repairItemId(1) }),
-      wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
-      traps: () => damagedTraps,
-    })
+    const shopping = modifyFocus(
+      modifyFields(readyModel, {
+        phase: () => preparing(),
+        traps: () => damagedTraps,
+      }),
+      {
+        shop: () => ShopState.Browsing({ focusedItem: repairItemId(1) }),
+        wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
+      },
+    )
     expect(plankPrice).toBe(24)
-    expect(priceFor(shopping, repairItemId(1))).toBe(plankPrice)
-    expect(priceFor(shopping, repairItemId(2))).toBe(gnomePrice)
+    expect(priceFor(shopping, focusSlotOf(shopping), repairItemId(1))).toBe(
+      plankPrice,
+    )
+    expect(priceFor(shopping, focusSlotOf(shopping), repairItemId(2))).toBe(
+      gnomePrice,
+    )
     expect(repairPrice([damagedTraps[0]!])).toBe(plankPrice)
-    expect(itemsIn(shopping, 'Traps')).toEqual([
+    expect(itemsIn(shopping, focusSlotOf(shopping), 'Traps')).toEqual([
       'Barricade',
       repairItemId(1),
       'Turret',
@@ -974,24 +1007,24 @@ describe('between waves', () => {
       given(shopping),
       message(Message.ClickedBuyButton({ item: repairItemId(1) })),
       model(current => {
-        expect(current.wallet.balance).toBe(100 - plankPrice)
+        expect(focusOf(current).wallet.balance).toBe(100 - plankPrice)
         expect(Array.map(current.traps, ({ hp }) => hp)).toEqual([
           TRAPS.Barricade.hp,
           TRAPS.Turret.hp / 2,
         ])
-        expect(stockTag(current, repairItemId(1))).toEqual(
-          StockTag.Done({ label: 'FULL' }),
-        )
-        expect(stockTag(current, repairItemId(2))).toEqual(
-          StockTag.Price({ price: gnomePrice }),
-        )
+        expect(
+          stockTag(current, focusSlotOf(current), repairItemId(1)),
+        ).toEqual(StockTag.Done({ label: 'FULL' }))
+        expect(
+          stockTag(current, focusSlotOf(current), repairItemId(2)),
+        ).toEqual(StockTag.Price({ price: gnomePrice }))
       }),
       message(Message.ClickedBuyButton({ item: repairItemId(1) })),
-      model(({ wallet }) => {
+      model(({ seats: [{ wallet }] }) => {
         expect(wallet.balance).toBe(100 - plankPrice)
       }),
       message(Message.ClickedBuyButton({ item: repairItemId(2) })),
-      model(({ wallet, traps }) => {
+      model(({ seats: [{ wallet }], traps }) => {
         expect(wallet.balance).toBe(100 - plankPrice - gnomePrice)
         expect(Array.map(traps, ({ hp }) => hp)).toEqual([
           TRAPS.Barricade.hp,
@@ -1005,16 +1038,20 @@ describe('between waves', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
-          phase: () => Phase.GameOver({ wave: 4 }),
-          screenMs: () => RESTART_GRACE_MS,
-          traps: () => damagedTraps,
-          trapStock: () => ({ Barricade: 2, Turret: 1 }),
-          selectedTrap: () => 'Turret',
-        }),
+        modifyFocus(
+          modifyFields(readyModel, {
+            phase: () => Phase.GameOver({ wave: 4 }),
+            screenMs: () => RESTART_GRACE_MS,
+            traps: () => damagedTraps,
+          }),
+          {
+            trapStock: () => ({ Barricade: 2, Turret: 1 }),
+            selectedTrap: () => 'Turret',
+          },
+        ),
       ),
       press('Enter'),
-      model(({ phase, traps, trapStock, selectedTrap }) => {
+      model(({ phase, traps, seats: [{ trapStock, selectedTrap }] }) => {
         expect(Phase.guards.Preparation(phase) && phase.wave).toBe(1)
         expect(traps).toEqual([])
         expect(trapStock).toEqual({ Barricade: 0, Turret: 0 })

@@ -27,6 +27,7 @@ import {
   TurretGun,
   type Vector,
 } from './model'
+import { focusOf, focusSlotOf } from './party'
 import { MUZZLE_FLASHES } from './playerView'
 import { type Facing, type Sprite, type Tone, group } from './sprite'
 import { gunSprite } from './sprites/guns'
@@ -273,8 +274,11 @@ const ghostSprite = (
     Floor: () =>
       gnomeShapes(
         boxCenter(spotBox(levelOf(model), spot)),
-        model.player.facing,
-        Math.atan2(model.player.facing.y, model.player.facing.x),
+        focusOf(model).player.facing,
+        Math.atan2(
+          focusOf(model).player.facing.y,
+          focusOf(model).player.facing.x,
+        ),
         'Normal',
         0,
       ),
@@ -307,14 +311,14 @@ const openDoorwayHints = (model: Model): ReadonlyArray<Canvas.Shape> => {
 
 const isPlacingNow = (model: Model): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase) &&
-  !ShopState.isAnyOf(['Browsing'])(model.shop)
+  !ShopState.isAnyOf(['Browsing'])(focusOf(model).shop)
 
 export const ghostShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
   if (!isPlacingNow(model)) {
     return []
   }
 
-  return Option.match(maybePlacement(model), {
+  return Option.match(maybePlacement(model, focusSlotOf(model)), {
     onNone: () => [],
     onSome: ({ maybeSpot, verdict }) =>
       Option.match(maybeSpot, {

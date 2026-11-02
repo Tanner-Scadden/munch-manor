@@ -9,6 +9,7 @@ import { describe, expect, test } from 'vitest'
 import { update } from './main'
 import { Message } from './message'
 import { type Difficulty, type Model, Phase, initialModel } from './model'
+import { focusOf } from './party'
 import { SURFACE, startedRunOf } from './testing'
 import { asVeteran } from './veteran'
 
@@ -46,7 +47,7 @@ describe('the multipliers', () => {
       const second = playFor(difficulty)
       expect(first.zombies.length).toBeGreaterThan(0)
       expect(second.zombies).toEqual(first.zombies)
-      expect(second.player).toEqual(first.player)
+      expect(focusOf(second).player).toEqual(focusOf(first).player)
       expect(second.rngState).toBe(first.rngState)
     })
     const easySpeeds = Array.map(playFor('Easy').zombies, ({ speed }) => speed)

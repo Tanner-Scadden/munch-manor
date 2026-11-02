@@ -19,6 +19,7 @@ import { Message } from './message'
 import { type Model, Phase, Stick, initialModel } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { moveHintBand } from './onboarding'
+import { focusOf, modifyFocus } from './party'
 import {
   LANDSCAPE_SCREEN,
   PORTRAIT_HUD_PX,
@@ -52,7 +53,7 @@ const fightingInLandscape: Model = modifyFields(fightingInPortrait, {
 })
 
 const standingAt = (base: Model, x: number, y: number): Model =>
-  modifyFields(base, { player: player => ({ ...player, x, y }) })
+  modifyFocus(base, { player: player => ({ ...player, x, y }) })
 
 const pressThumb = (pointerId: number, clientX: number, clientY: number) =>
   message(
@@ -209,10 +210,13 @@ describe('the portrait camera', () => {
 
   test('keeps the player in the middle of the window between the walls', () => {
     const fighting = standingAt(fightingInPortrait, 151, 90)
-    const onWindow = worldToView(cameraOf(fighting), fighting.player)
+    const onWindow = worldToView(cameraOf(fighting), focusOf(fighting).player)
     expect(Math.abs(onWindow.x - 120 / 2)).toBeLessThanOrEqual(0.5)
     expect(Math.abs(onWindow.y - 160 / 2)).toBeLessThanOrEqual(0.5)
-    const onScreen = worldToView(screenCameraOf(fighting), fighting.player)
+    const onScreen = worldToView(
+      screenCameraOf(fighting),
+      focusOf(fighting).player,
+    )
     expect(onScreen.x).toBeCloseTo((onWindow.x * 3) / 2)
     expect(onScreen.y).toBeCloseTo((onWindow.y * 3) / 2 + PORTRAIT_HUD_PX)
   })
@@ -298,7 +302,7 @@ describe('the aim lean', () => {
         expect(Math.abs(current.cameraLean.y)).toBeLessThan(0.5)
         const camera = cameraOf(current)
         expect(camera.x).toBeGreaterThan(93)
-        expect(current.player.x - camera.x).toBeLessThan(135 / 2)
+        expect(focusOf(current).player.x - camera.x).toBeLessThan(135 / 2)
       }),
       message(Message.ReleasedPointer({ pointerId: RIGHT_THUMB })),
       ...ticks(120, FRAME_MS),
@@ -379,7 +383,9 @@ describe('portrait input', () => {
         }),
       )
       expect(Stick.isAnyOf(['Active'])(fighting.input.moveStick)).toBe(true)
-      expect(fighting.intent.maybeAim).toEqual(Option.some({ x: 0, y: -1 }))
+      expect(focusOf(fighting).intent.maybeAim).toEqual(
+        Option.some({ x: 0, y: -1 }),
+      )
     })
   })
 
@@ -437,7 +443,7 @@ describe('aiming on a phone on its side', () => {
       }),
     )
     const length = Math.hypot(zombie.x - 200, zombie.y - 120)
-    const aim = Option.getOrThrow(aimed.intent.maybeAim)
+    const aim = Option.getOrThrow(focusOf(aimed).intent.maybeAim)
     expect(aim.x).toBeCloseTo((zombie.x - 200) / length)
     expect(aim.y).toBeCloseTo((zombie.y - 120) / length)
   })
@@ -462,10 +468,12 @@ describe('the hint band on a zoomed phone', () => {
 
 describe('turning the phone', () => {
   test('mid-wave, the run, the money, and both thumbs carry over, with no pause', () => {
-    const rich = modifyFields(standingAt(fightingInLandscape, 120, 90), {
-      stats: scoring(340),
-      wallet: () => ({ balance: 75, earned: 120, shown: 75 }),
-    })
+    const rich = modifyFocus(
+      modifyFields(standingAt(fightingInLandscape, 120, 90), {
+        stats: scoring(340),
+      }),
+      { wallet: () => ({ balance: 75, earned: 120, shown: 75 }) },
+    )
     story(
       update,
       given(rich),
@@ -477,10 +485,10 @@ describe('turning the phone', () => {
         expect(isPortrait(current)).toBe(true)
         expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
         expect(scoreOf(current.stats)).toBe(340)
-        expect(current.wallet.balance).toBe(75)
+        expect(focusOf(current).wallet.balance).toBe(75)
         expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(true)
         expect(Stick.isAnyOf(['Active'])(current.input.aimStick)).toBe(true)
-        expect(current.intent.trigger).toBe('Held')
+        expect(focusOf(current).intent.trigger).toBe('Held')
       }),
       ...ticks(3, FRAME_MS),
       model(current => {

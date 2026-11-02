@@ -19,6 +19,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN, pastFirstBreak, withPlayerAt } from './model.fixture'
+import { modifyFocus } from './party'
 import { holdingSecond } from './testing'
 import { FocusShopItem } from './update/shop'
 import { asVeteran } from './veteran'
@@ -55,13 +56,12 @@ export const besideStall = (phase: Phase): Model =>
   })
 
 export const withMoney = (base: Model, balance: number): Model =>
-  modifyFields(base, {
+  modifyFocus(base, {
     wallet: () => ({ balance, earned: balance, shown: balance }),
   })
 
 export const browsing = (base: Model): Model =>
-  modifyFields(base, {
-    phase: () => preparing(2),
+  modifyFocus(modifyFields(base, { phase: () => preparing(2) }), {
     shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
   })
 
@@ -71,10 +71,10 @@ export const resolveFocusShopItem = Command.resolve(
 )
 
 export const focusedOn = (base: Model, item: ShopItemId): Model =>
-  modifyFields(base, { shop: () => ShopState.Browsing({ focusedItem: item }) })
+  modifyFocus(base, { shop: () => ShopState.Browsing({ focusedItem: item }) })
 
 export const withHp = (base: Model, hp: number): Model =>
-  modifyFields(base, {
+  modifyFocus(base, {
     player: player => modifyFields(player, { hp: () => hp }),
   })
 

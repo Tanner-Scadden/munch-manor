@@ -24,6 +24,7 @@ import {
   ZombieAction,
 } from './model'
 import { DISTANT_SPAWN, freshRunModel, pastTimedBreaks } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { PURCHASE_RULES, holdProgress } from './purchase'
 import { freshRun } from './runReset'
 import {
@@ -43,21 +44,25 @@ const FRAME_MS = FIXED_STEP_MS
 const base: Model = pastTimedBreaks(freshRunModel())
 
 const inBreak = (wave: number, balance: number): Model =>
-  modifyFields(base, {
-    phase: () =>
-      Phase.Preparation({
-        wave,
-        remainingMs: 15_000,
-        durationMs: 20_000,
-        spawns: [DISTANT_SPAWN],
-      }),
-    wallet: () => ({ balance, earned: balance, shown: balance }),
-    player: player =>
-      modifyFields(player, {
-        x: () => BELOW_KITCHEN_DOOR.x,
-        y: () => BELOW_KITCHEN_DOOR.y,
-      }),
-  })
+  modifyFocus(
+    modifyFields(base, {
+      phase: () =>
+        Phase.Preparation({
+          wave,
+          remainingMs: 15_000,
+          durationMs: 20_000,
+          spawns: [DISTANT_SPAWN],
+        }),
+    }),
+    {
+      wallet: () => ({ balance, earned: balance, shown: balance }),
+      player: player =>
+        modifyFields(player, {
+          x: () => BELOW_KITCHEN_DOOR.x,
+          y: () => BELOW_KITCHEN_DOOR.y,
+        }),
+    },
+  )
 
 const [, WAVE_FOUR] = rollSpawns(41, 4)
 
@@ -88,7 +93,7 @@ const KITCHEN_TARGET = Purchasable.Exit({ exit: KITCHEN_EXIT })
 const holdToBuy = [press('Enter'), ...ticks(HOLD_TICKS, FRAME_MS)]
 
 const awayFromDoor = (current: Model): Model =>
-  modifyFields(current, {
+  modifyFocus(current, {
     player: player => modifyFields(player, { y: () => 120 }),
   })
 
@@ -101,18 +106,20 @@ describe('holding to buy the kitchen open', () => {
       ...ticks(HOLD_TICKS - 4, FRAME_MS),
       model(current => {
         expect(isKitchenOpen(current)).toBe(false)
-        expect(Purchase.isAnyOf(['Holding'])(current.purchase)).toBe(true)
-        expect(holdProgress(current.purchase)).toBeGreaterThan(0.8)
-        expect(current.shop).toEqual(ShopState.Away())
+        expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
+          true,
+        )
+        expect(holdProgress(focusOf(current).purchase)).toBeGreaterThan(0.8)
+        expect(focusOf(current).shop).toEqual(ShopState.Away())
         expect(current.shopDialog.isOpen).toBe(false)
         expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
       }),
       ...ticks(4, FRAME_MS),
       model(current => {
         expect(isKitchenOpen(current)).toBe(true)
-        expect(current.wallet.balance).toBe(85 - EXIT_RULES.price)
+        expect(focusOf(current).wallet.balance).toBe(85 - EXIT_RULES.price)
         expect(current.stats.purchases).toBe(1)
-        expect(current.purchase).toEqual(Purchase.Done())
+        expect(focusOf(current).purchase).toEqual(Purchase.Done())
         expect(levelOf(current).doorIds).toEqual([
           'North',
           'West',
@@ -129,7 +136,7 @@ describe('holding to buy the kitchen open', () => {
       release('Enter'),
       tick(FRAME_MS),
       model(current => {
-        expect(current.purchase).toEqual(Purchase.Spent())
+        expect(focusOf(current).purchase).toEqual(Purchase.Spent())
       }),
     )
   })
@@ -159,7 +166,7 @@ describe('holding to buy the kitchen open', () => {
       release('Enter'),
       tick(FRAME_MS),
       model(current => {
-        expect(current.purchase).toEqual(Purchase.Idle())
+        expect(focusOf(current).purchase).toEqual(Purchase.Idle())
         expect(isKitchenOpen(current)).toBe(false)
       }),
       release('KeyD'),
@@ -167,7 +174,7 @@ describe('holding to buy the kitchen open', () => {
       ...ticks(HOLD_TICKS - 6, FRAME_MS),
       model(current => {
         expect(isKitchenOpen(current)).toBe(false)
-        expect(current.wallet.balance).toBe(85)
+        expect(focusOf(current).wallet.balance).toBe(85)
       }),
     )
   })
@@ -181,10 +188,14 @@ describe('holding to buy the kitchen open', () => {
       press('KeyS'),
       ...ticks(HOLD_TICKS, FRAME_MS),
       model(current => {
-        expect(current.player.y).toBeGreaterThan(BELOW_KITCHEN_DOOR.y + 10)
-        expect(Purchase.isAnyOf(['Holding'])(current.purchase)).toBe(false)
+        expect(focusOf(current).player.y).toBeGreaterThan(
+          BELOW_KITCHEN_DOOR.y + 10,
+        )
+        expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
+          false,
+        )
         expect(isKitchenOpen(current)).toBe(false)
-        expect(current.wallet.balance).toBe(85)
+        expect(focusOf(current).wallet.balance).toBe(85)
       }),
     )
   })
@@ -206,20 +217,22 @@ describe('holding to buy the kitchen open', () => {
       press('Enter'),
       tick(FRAME_MS),
       model(current => {
-        expect(current.purchase).toEqual(
+        expect(focusOf(current).purchase).toEqual(
           Purchase.Refused({ target: KITCHEN_TARGET, shortBy: 7, sinceMs: 0 }),
         )
       }),
       ...ticks(HOLD_TICKS * 2, FRAME_MS),
       model(current => {
         expect(isKitchenOpen(current)).toBe(false)
-        expect(current.wallet.balance).toBe(EXIT_RULES.price - 7)
-        expect(Purchase.isAnyOf(['Refused'])(current.purchase)).toBe(true)
+        expect(focusOf(current).wallet.balance).toBe(EXIT_RULES.price - 7)
+        expect(Purchase.isAnyOf(['Refused'])(focusOf(current).purchase)).toBe(
+          true,
+        )
       }),
       release('Enter'),
       tick(FRAME_MS),
       model(current => {
-        expect(current.purchase).toEqual(Purchase.Idle())
+        expect(focusOf(current).purchase).toEqual(Purchase.Idle())
       }),
     )
   })
@@ -254,7 +267,7 @@ describe('holding to buy the kitchen open', () => {
       ...holdToBuy,
       model(current => {
         expect(isKitchenOpen(current)).toBe(true)
-        expect(current.wallet.balance).toBe(85 - EXIT_RULES.price)
+        expect(focusOf(current).wallet.balance).toBe(85 - EXIT_RULES.price)
         expect(waveClockOf(current)).toBeGreaterThan(
           (HOLD_TICKS - 1) * FRAME_MS,
         )
@@ -289,14 +302,14 @@ describe('holding to buy the kitchen open', () => {
       ...ticks(HOLD_TICKS, FRAME_MS),
       model(current => {
         expect(isKitchenOpen(current)).toBe(true)
-        expect(current.wallet.balance).toBe(85 - EXIT_RULES.price)
+        expect(focusOf(current).wallet.balance).toBe(85 - EXIT_RULES.price)
         expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(true)
         expect(Stick.isAnyOf(['Idle'])(current.input.aimStick)).toBe(true)
       }),
       message(Message.ReleasedPointer({ pointerId: 2 })),
       tick(FRAME_MS),
       model(current => {
-        expect(current.purchase).toEqual(Purchase.Spent())
+        expect(focusOf(current).purchase).toEqual(Purchase.Spent())
         expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(true)
       }),
     )
@@ -322,13 +335,17 @@ describe('holding to buy the kitchen open', () => {
       message(Message.ReleasedPointer({ pointerId: 1 })),
       ...ticks(2, FRAME_MS),
       model(current => {
-        expect(Purchase.isAnyOf(['Holding'])(current.purchase)).toBe(true)
+        expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
+          true,
+        )
       }),
       message(Message.ReleasedPointer({ pointerId: 2 })),
       tick(FRAME_MS),
       model(current => {
-        expect(Purchase.isAnyOf(['Holding'])(current.purchase)).toBe(true)
-        expect(holdProgress(current.purchase)).toBeLessThan(
+        expect(Purchase.isAnyOf(['Holding'])(focusOf(current).purchase)).toBe(
+          true,
+        )
+        expect(holdProgress(focusOf(current).purchase)).toBeLessThan(
           (13 * FRAME_MS) / PURCHASE_RULES.holdMs,
         )
         expect(isKitchenOpen(current)).toBe(false)
@@ -342,7 +359,7 @@ describe('holding to buy the kitchen open', () => {
       given(inBreak(2, 500)),
       ...holdToBuy,
       model(current => {
-        expect(current.purchase).toEqual(Purchase.Idle())
+        expect(focusOf(current).purchase).toEqual(Purchase.Idle())
         expect(isKitchenOpen(current)).toBe(false)
       }),
     )
@@ -529,30 +546,34 @@ describe('ovens', () => {
   )
 
   const shotAtOven = (ovens: ReadonlyArray<Oven>): Model =>
-    modifyFields(fightingInKitchen(base), {
-      ovens: () => ovens,
-      zombies: () => [victim],
-      bullets: () => [
-        {
-          id: 900,
-          x: (oven.left + oven.right) / 2,
-          y: oven.bottom + 3,
-          velocityX: 0,
-          velocityY: -300,
-          remainingMs: 500,
-          weapon: 'Pistol',
-          damage: 1,
-          knockback: 0,
-          glaze: 'Plain',
-          pierce: { _tag: 'Stops' },
-        },
-      ],
-      player: player =>
-        modifyFields(player, {
-          x: () => oven.left - 30,
-          y: () => oven.bottom + 30,
-        }),
-    })
+    modifyFocus(
+      modifyFields(fightingInKitchen(base), {
+        ovens: () => ovens,
+        zombies: () => [victim],
+        bullets: () => [
+          {
+            id: 900,
+            x: (oven.left + oven.right) / 2,
+            y: oven.bottom + 3,
+            velocityX: 0,
+            velocityY: -300,
+            remainingMs: 500,
+            weapon: 'Pistol',
+            damage: 1,
+            knockback: 0,
+            glaze: 'Plain',
+            pierce: { _tag: 'Stops' },
+          },
+        ],
+      }),
+      {
+        player: player =>
+          modifyFields(player, {
+            x: () => oven.left - 30,
+            y: () => oven.bottom + 30,
+          }),
+      },
+    )
 
   test('a shot into a ready oven belches fire that burns the zombie in front of it', () => {
     story(
@@ -609,12 +630,16 @@ describe('slippery soup', () => {
   const soupLeft = { x: 34, y: -95 }
 
   const walkingInto = (kind: 'Shambler' | 'Tank'): Model =>
-    modifyFields(fightingInKitchen(base), {
-      zombies: () => [
-        zombieOf(kind, 800, soupLeft.x, soupLeft.y, { speed: 40 }),
-      ],
-      player: player => modifyFields(player, { x: () => 110, y: () => -95 }),
-    })
+    modifyFocus(
+      modifyFields(fightingInKitchen(base), {
+        zombies: () => [
+          zombieOf(kind, 800, soupLeft.x, soupLeft.y, { speed: 40 }),
+        ],
+      }),
+      {
+        player: player => modifyFields(player, { x: () => 110, y: () => -95 }),
+      },
+    )
 
   test('a Groaner that steps into the soup slips and lies dazed', () => {
     story(

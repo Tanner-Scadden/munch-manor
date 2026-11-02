@@ -15,7 +15,7 @@ import { CODE, lobbyOf, memberOf } from './coop/testing'
 import { update } from './main'
 import type { Model } from './model'
 import { readyAfterRead } from './model.fixture'
-import { maybePlayerAt } from './party'
+import { focusOf, maybePlayerAt } from './party'
 import { pointsForRank } from './rank'
 import {
   DEFAULT_ROOM_SETTINGS,
@@ -151,7 +151,7 @@ describe('picking a hero in the lobby', () => {
       ),
     )
     expect(result.model.calling).toBe('Handyman')
-    expect(result.model.player.calling).toBe('Handyman')
+    expect(focusOf(result.model).player.calling).toBe('Handyman')
     expect(Array.map(result.commands ?? [], command => command.name)).toContain(
       'Application/WriteSave',
     )

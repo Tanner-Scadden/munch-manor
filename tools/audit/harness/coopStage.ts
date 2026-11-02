@@ -16,7 +16,7 @@ import {
 import { update } from '@game/main'
 import { Message } from '@game/message'
 import { Lesson, type Model, Phase } from '@game/model'
-import { modifyLeadSeat, withSeat } from '@game/party'
+import { modifySeat, modifySeatRecord } from '@game/party'
 import type { RoomWorld } from '@game/roomWorld'
 import { Session } from '@munch/netcode'
 
@@ -81,24 +81,23 @@ const withRuns = (room: RoomWorld, phase: Phase): RoomWorld => ({
   ...room,
   world: COOP_RUNS.reduce(
     (world, [kills, revives, downs, fired, hit, earned, balance], slot) =>
-      withSeat(world, slot, seatWorld =>
-        modifyLeadSeat(
-          modifyFields(seatWorld, {
-            wallet: wallet => ({
-              ...wallet,
-              earned: earned ?? 0,
-              balance: balance ?? 0,
-            }),
+      modifySeatRecord(
+        modifySeat(world, slot, {
+          wallet: wallet => ({
+            ...wallet,
+            earned: earned ?? 0,
+            balance: balance ?? 0,
           }),
-          seat => ({
-            ...seat,
-            kills: kills ?? 0,
-            revives: revives ?? 0,
-            downs: downs ?? 0,
-            shotsFired: fired ?? 0,
-            shotsHit: hit ?? 0,
-          }),
-        ),
+        }),
+        slot,
+        seat => ({
+          ...seat,
+          kills: kills ?? 0,
+          revives: revives ?? 0,
+          downs: downs ?? 0,
+          shotsFired: fired ?? 0,
+          shotsHit: hit ?? 0,
+        }),
       ),
     modifyFields(room.world, { phase: () => phase }),
   ),

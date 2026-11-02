@@ -8,6 +8,7 @@ import { FIXED_STEP_MS } from './constants'
 import { update } from './main'
 import { CounterSale, Phase, Purchasable, Purchase, ShopState } from './model'
 import { DISTANT_SPAWN, midWaveAtStall } from './model.fixture'
+import { focusOf, focusSlotOf, modifyFocus } from './party'
 import { PURCHASE_RULES, offersOf } from './purchase'
 import {
   SHOP_ITEMS,
@@ -26,7 +27,7 @@ import { Arsenal } from './worldSchema'
 const FRAME_MS = FIXED_STEP_MS
 const HOLD_TICKS = Math.ceil(PURCHASE_RULES.holdMs / FRAME_MS) + 1
 const ammoOffers = (current: World) =>
-  Array.filter(offersOf(current), offer =>
+  Array.filter(offersOf(current, focusSlotOf(current)), offer =>
     Purchasable.isAnyOf(['Ammo'])(offer.target),
   )
 
@@ -44,7 +45,7 @@ describe('the ammo window mid-wave', () => {
   })
 
   test('the Pop Pistol, which never runs dry, gets no offer', () => {
-    const pistolInHand = modifyFields(midWaveAtStall('Smg', 0), {
+    const pistolInHand = modifyFocus(midWaveAtStall('Smg', 0), {
       player: player =>
         modifyFields(player, {
           arsenal: () => Arsenal.OneGun({ first: freshGun('Pistol') }),
@@ -68,11 +69,13 @@ describe('the ammo window mid-wave', () => {
       ...ticks(HOLD_TICKS, FRAME_MS),
       release('Enter'),
       model(current => {
-        const gun = heldGun(current.player.arsenal)
+        const gun = heldGun(focusOf(current).player.arsenal)
         expect(gun.kind).toBe('Smg')
         expect(gun.rounds).toBeGreaterThan(10)
-        expect(current.wallet.balance).toBe(100 - SHOP_ITEMS.SmgRounds.price)
-        expect(current.shop).toEqual(ShopState.Away())
+        expect(focusOf(current).wallet.balance).toBe(
+          100 - SHOP_ITEMS.SmgRounds.price,
+        )
+        expect(focusOf(current).shop).toEqual(ShopState.Away())
         expect(current.shopDialog.isOpen).toBe(false)
       }),
     )
@@ -84,12 +87,14 @@ describe('the ammo window mid-wave', () => {
       given(midWaveAtStall('Shotgun', 0)),
       ...ticks(STAND_TICKS, FRAME_MS),
       model(current => {
-        expect(heldGun(current.player.arsenal).rounds).toBeGreaterThan(0)
-        expect(current.wallet.balance).toBe(
+        expect(heldGun(focusOf(current).player.arsenal).rounds).toBeGreaterThan(
+          0,
+        )
+        expect(focusOf(current).wallet.balance).toBe(
           100 - SHOP_ITEMS.ShotgunShells.price,
         )
         expect(CounterSale.isAnyOf(['Selling'])(current.counterSale)).toBe(true)
-        expect(isAtAmmoWindow(current)).toBe(true)
+        expect(isAtAmmoWindow(current, focusSlotOf(current))).toBe(true)
       }),
     )
   })
@@ -103,14 +108,16 @@ describe('the ammo window mid-wave', () => {
       given(full),
       ...ticks(STAND_TICKS * 2, FRAME_MS),
       model(current => {
-        expect(current.wallet.balance).toBe(100)
-        expect(current.purchase).toEqual(Purchase.Idle())
+        expect(focusOf(current).wallet.balance).toBe(100)
+        expect(focusOf(current).purchase).toEqual(Purchase.Idle())
       }),
       press('Enter'),
       ...ticks(2, FRAME_MS),
       model(current => {
-        expect(Purchase.isAnyOf(['Refused'])(current.purchase)).toBe(true)
-        expect(current.wallet.balance).toBe(100)
+        expect(Purchase.isAnyOf(['Refused'])(focusOf(current).purchase)).toBe(
+          true,
+        )
+        expect(focusOf(current).wallet.balance).toBe(100)
       }),
     )
   })
@@ -119,7 +126,10 @@ describe('the ammo window mid-wave', () => {
     const current = midWaveAtStall('Smg', 0)
     expect(
       Array.map(
-        Array.filter(offersOf(current), offer => offer.box === STALL_BOX),
+        Array.filter(
+          offersOf(current, focusSlotOf(current)),
+          offer => offer.box === STALL_BOX,
+        ),
         offer => offer.target._tag,
       ),
     ).toEqual(['Ammo'])
@@ -128,25 +138,34 @@ describe('the ammo window mid-wave', () => {
 
 describe('in a break', () => {
   test('there is no window, and walking up opens the full shop', () => {
-    const inBreak = modifyFields(midWaveAtStall('Smg', 0), {
-      phase: () =>
-        Phase.Preparation({
-          wave: 5,
-          remainingMs: 15_000,
-          durationMs: 20_000,
-          spawns: [DISTANT_SPAWN],
-        }),
-      player: player =>
-        modifyFields(player, { y: () => STALL_BOX.bottom + 20 }),
-    })
-    expect(ammoCounterOffers(inBreak)).toEqual([])
+    const inBreak = modifyFocus(
+      modifyFields(midWaveAtStall('Smg', 0), {
+        phase: () =>
+          Phase.Preparation({
+            wave: 5,
+            remainingMs: 15_000,
+            durationMs: 20_000,
+            spawns: [DISTANT_SPAWN],
+          }),
+      }),
+      {
+        player: player =>
+          modifyFields(player, { y: () => STALL_BOX.bottom + 20 }),
+      },
+    )
+    expect(ammoCounterOffers(inBreak, focusSlotOf(inBreak))).toEqual([])
     expect(isShopOpenFor(inBreak.phase)).toBe(true)
     const walkedUp = refreshShopPresence(
-      modifyFields(inBreak, {
+      modifyFocus(inBreak, {
         player: player => modifyFields(player, { y: () => STALL_BOX.bottom }),
       }),
+      focusSlotOf(
+        modifyFocus(inBreak, {
+          player: player => modifyFields(player, { y: () => STALL_BOX.bottom }),
+        }),
+      ),
     )
-    expect(ShopState.isAnyOf(['Browsing'])(walkedUp.shop)).toBe(true)
+    expect(ShopState.isAnyOf(['Browsing'])(focusOf(walkedUp).shop)).toBe(true)
     expect(ammoOffers(walkedUp)).toEqual([])
   })
 })

@@ -8,6 +8,7 @@ import { update } from './main'
 import { Message } from './message'
 import { type Bullet, MouseButton, Phase, Stick } from './model'
 import { FIGHTING_PHASE, playingModel, readyModel } from './model.fixture'
+import { modifyFocus } from './party'
 import { holdingSecond, tick, touchDown, touchMove } from './testing'
 import { WEAPONS, freshGun } from './weapons'
 
@@ -45,17 +46,17 @@ describe('touch sticks', () => {
       }),
       touchMove(LEFT_THUMB, 100 + STICK_RADIUS_PX / 2, 300),
       touchMove(RIGHT_THUMB, 700, 300 - STICK_RADIUS_PX),
-      model(({ intent }) => {
+      model(({ seats: [{ intent }] }) => {
         expect(intent.move).toEqual({ x: 0.5, y: 0 })
         expect(intent.maybeAim).toEqual(Option.some({ x: 0, y: -1 }))
         expect(intent.trigger).toBe('Held')
       }),
       touchMove(LEFT_THUMB, 100 + STICK_RADIUS_PX * 3, 300),
-      model(({ intent }) => {
+      model(({ seats: [{ intent }] }) => {
         expect(intent.move).toEqual({ x: 1, y: 0 })
       }),
       message(Message.ReleasedPointer({ pointerId: LEFT_THUMB })),
-      model(({ input, intent }) => {
+      model(({ input, seats: [{ intent }] }) => {
         expect(input.moveStick).toEqual(Stick.Idle())
         expect(Stick.guards.Active(input.aimStick)).toBe(true)
         expect(intent.move).toEqual({ x: 0, y: 0 })
@@ -65,7 +66,7 @@ describe('touch sticks', () => {
   })
 
   test('a thumb that lands on the aim stick fires only once pushed, and the shot goes where it points', () => {
-    const shotgunInHand = modifyFields(playingModel, {
+    const shotgunInHand = modifyFocus(playingModel, {
       player: player =>
         modifyFields(player, {
           facing: () => ({ x: 1, y: 0 }),
@@ -81,14 +82,14 @@ describe('touch sticks', () => {
       given(shotgunInHand),
       touchDown(RIGHT_THUMB, 700, 300),
       tick(FIXED_STEP_MS),
-      model(({ intent, bullets, player }) => {
+      model(({ seats: [{ intent, player }], bullets }) => {
         expect(intent.trigger).toBe('Released')
         expect(bullets).toEqual([])
         expect(player.facing).toEqual({ x: 1, y: 0 })
       }),
       touchMove(RIGHT_THUMB, 700, 300 - STICK_RADIUS_PX * 0.3),
       tick(FIXED_STEP_MS),
-      model(({ intent, bullets, player }) => {
+      model(({ seats: [{ intent, player }], bullets }) => {
         expect(intent.maybeAim).toEqual(Option.some({ x: 0, y: -1 }))
         expect(intent.trigger).toBe('Released')
         expect(bullets).toEqual([])
@@ -100,7 +101,7 @@ describe('touch sticks', () => {
         300 - STICK_RADIUS_PX * (STICK_FIRE_ZONE + 0.05),
       ),
       tick(FIXED_STEP_MS),
-      model(({ intent, bullets }) => {
+      model(({ seats: [{ intent }], bullets }) => {
         expect(intent.trigger).toBe('Held')
         expect(bullets).toHaveLength(WEAPONS.Shotgun.pellets)
         expect(Array.every(bullets, isUpward)).toBe(true)
@@ -172,7 +173,7 @@ describe('touch sticks', () => {
       touchDown(LEFT_THUMB, 100, 300),
       touchDown(RIGHT_THUMB, 700, 300),
       message(Message.CancelledPointer({ pointerId: RIGHT_THUMB })),
-      model(({ input, intent }) => {
+      model(({ input, seats: [{ intent }] }) => {
         expect(input.aimStick).toEqual(Stick.Idle())
         expect(Stick.guards.Active(input.moveStick)).toBe(true)
         expect(intent.trigger).toBe('Released')
@@ -204,7 +205,7 @@ describe('mouse', () => {
       update,
       given(letterboxedModel),
       message(Message.MovedMouse({ clientX: 320, clientY: 60 })),
-      model(({ input, intent }) => {
+      model(({ input, seats: [{ intent }] }) => {
         expect(input.maybeMouseInView).toEqual(Option.some({ x: 160, y: 0 }))
         expect(intent.maybeAim).toEqual(Option.some({ x: 0, y: -1 }))
         expect(intent.trigger).toBe('Released')
@@ -217,7 +218,7 @@ describe('mouse', () => {
           clientY: 240,
         }),
       ),
-      model(({ input, intent }) => {
+      model(({ input, seats: [{ intent }] }) => {
         expect(input.mouseButton).toEqual(
           MouseButton.Held({ pointerId: MOUSE_POINTER }),
         )
@@ -225,7 +226,7 @@ describe('mouse', () => {
         expect(intent.trigger).toBe('Held')
       }),
       message(Message.ReleasedPointer({ pointerId: MOUSE_POINTER })),
-      model(({ intent }) => {
+      model(({ seats: [{ intent }] }) => {
         expect(intent.trigger).toBe('Released')
       }),
     )
@@ -240,7 +241,7 @@ describe('page visibility', () => {
       touchDown(LEFT_THUMB, 100, 300),
       message(Message.PressedKey({ code: 'KeyD' })),
       message(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
-      model(({ phase, input, intent }) => {
+      model(({ phase, input, seats: [{ intent }] }) => {
         expect(phase).toEqual(Phase.Paused({ round: FIGHTING_PHASE }))
         expect(input.moveStick).toEqual(Stick.Idle())
         expect(input.pressedKeys).toEqual([])

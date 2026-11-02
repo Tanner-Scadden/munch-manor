@@ -43,11 +43,12 @@ import {
   crewInWave,
   home,
   inPortrait,
+  modifyLeadSeat,
   pipeline,
   placeSeat,
   withSeatLife,
 } from './model.fixture'
-import { COOP_RULES, maybePlayerAt, modifyLeadSeat, playersOf } from './party'
+import { COOP_RULES, maybePlayerAt, modifyFocus, playersOf } from './party'
 import { badgeSprite } from './rankArt'
 import { PORTRAIT_WIDTH } from './screen'
 import { stepWorld } from './stepWorld'
@@ -220,7 +221,7 @@ const seatRun =
   (current: Model): Model =>
     atSeat(current, slot, world =>
       modifyLeadSeat(
-        modifyFields(world, {
+        modifyFocus(world, {
           wallet: wallet =>
             modifyFields(wallet, {
               earned: () => earned,
@@ -404,7 +405,9 @@ describe("the crew's card", () => {
       }),
     ])
     expect(crewOf(home)).toEqual([])
-    expect(Array.map(playersOf(crewCard), ({ slot }) => slot)).toEqual([0, 1])
+    expect(Array.map(playersOf(crewCard), ({ seat }) => seat.slot)).toEqual([
+      0, 1,
+    ])
   })
 
   test('its beat runs on to the awards, and a press skips there', () => {

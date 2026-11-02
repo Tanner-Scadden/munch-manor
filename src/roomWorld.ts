@@ -28,22 +28,24 @@ import {
   focusSeat,
   forEachSeat,
   maybePlayerAt,
-  modifyLeadSeat,
+  modifySeat,
+  modifySeatRecord,
+  playerAt,
   playersOf,
   presenceOf,
   seatCrew,
   setPresence,
   slotsOf,
   soloSeat,
-  withSeat,
+  soloState,
 } from './party'
 import { type Calling, callingOfCode } from './playerData'
-import { predictLeadSeat } from './simulation'
+import { predictSeat } from './simulation'
 import { SeatAction, applySeatAction, stepWorld } from './stepWorld'
 import { TURRET_WEAPON } from './traps'
 import { FINAL_WAVE } from './wavePlans'
 import { beginPreparation } from './waves'
-import type { World } from './world'
+import { type World, modifyWorldFields } from './world'
 import {
   readEvent,
   readMany,
@@ -58,7 +60,6 @@ import {
   type Bullet,
   DebutCard,
   type Difficulty,
-  FIRST_SHOP_CATEGORY,
   FixedShopItemId,
   type GameEvent,
   GunSlot,
@@ -73,15 +74,9 @@ import {
   ShopState,
   type Trap,
   calmPacing,
-  crewOf,
-  emptyTrapStock,
-  emptyWallet,
   freshLoot,
   freshStats,
-  idleBoosts,
-  idleIntent,
   initialHitStop,
-  initialPlayer,
   noPractice,
   shutFridge,
 } from './worldSchema'
@@ -329,28 +324,18 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   intensity: 0,
   mode: settings.mode,
   difficulty: { chosen: settings.difficulty, nightmare: 'Locked' },
-  player: initialPlayer,
   zombies: [],
   bullets: [],
   lobs: [],
   nextEntityId: 0,
-  wallet: emptyWallet,
   elapsedMs: 0,
   frameEvents: [],
   traps: [],
   pickups: [],
-  boosts: idleBoosts,
   loot: freshLoot(seed),
-  trapStock: emptyTrapStock,
-  selectedTrap: 'Barricade',
   level: startingLevel,
   ovens: freshOvens(MANOR),
-  laserSight: 'None',
   rngState: seed,
-  intent: idleIntent,
-  shop: ShopState.Away(),
-  shopCategory: FIRST_SHOP_CATEGORY,
-  purchase: Purchase.Idle(),
   fridge: shutFridge,
   hitStop: initialHitStop,
   lessons: settledLessons,
@@ -358,6 +343,7 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   debutCard: DebutCard.Hidden(),
   stats: freshStats,
   party: Party.Solo(),
+  seats: [soloState],
 })
 
 const seatAt = (slot: PlayerSlot): Seat =>
@@ -369,22 +355,19 @@ const seatSlots = (world: World, slots: ReadonlyArray<PlayerSlot>): World => {
   const ordered = Array.sort(Array.dedupe(slots), (a: number, b: number) =>
     a < b ? -1 : a > b ? 1 : 0,
   )
-  const crewed = seatCrew(world, Math.max(2, ordered.length))
-  return modifyFields(crewed, {
-    party: party =>
-      Party.match(party, {
-        Solo: () => party,
-        Crew: ({ mates }) =>
-          crewOf(
-            seatAt(ordered[0] ?? 0),
-            Array.filterMap(mates, (mate, index) =>
-              Option.match(Array.get(ordered, index + 1), {
-                onNone: () => Result.failVoid,
-                onSome: slot => Result.succeed({ ...mate, seat: seatAt(slot) }),
-              }),
-            ),
-          ),
-      }),
+  const [lead, ...mates] = seatCrew(world, Math.max(2, ordered.length)).seats
+  return modifyWorldFields(world, {
+    party: () => Party.Crew(),
+    seats: () => [
+      modifyFields(lead, { seat: () => seatAt(ordered[0] ?? 0) }),
+      ...Array.filterMap(mates, (mate, index) =>
+        Option.match(Array.get(ordered, index + 1), {
+          onNone: () => Result.failVoid,
+          onSome: slot =>
+            Result.succeed(modifyFields(mate, { seat: () => seatAt(slot) })),
+        }),
+      ),
+    ],
   })
 }
 
@@ -395,9 +378,7 @@ const seatCallings = (
   callings: RoomSettings['callings'],
 ): World =>
   Array.reduce(callings, world, (current, { slot, calling }) =>
-    withSeat(current, slot, seatWorld =>
-      modifyFields(seatWorld, { player: player => seatedAs(player, calling) }),
-    ),
+    modifySeat(current, slot, { player: player => seatedAs(player, calling) }),
   )
 
 export const startRoomWorld = (
@@ -429,8 +410,8 @@ const keepGoingWorld = (world: World): World =>
   beginPreparation(
     forEachSeat(
       modifyFields(world, { mode: () => RunMode.Endless() }),
-      seatWorld =>
-        modifyFields(seatWorld, {
+      (current, slot) =>
+        modifySeat(current, slot, {
           shop: () => ShopState.Away(),
           purchase: () => Purchase.Idle(),
         }),
@@ -500,10 +481,8 @@ const syncGrace = (world: World, tick: PlayerTick): World => {
     seat => seat.graceMs === graceMs,
   )
     ? world
-    : withSeat(world, tick.slot, seatWorld =>
-        modifyLeadSeat(seatWorld, seat =>
-          modifyFields(seat, { graceMs: () => graceMs }),
-        ),
+    : modifySeatRecord(world, tick.slot, seat =>
+        modifyFields(seat, { graceMs: () => graceMs }),
       )
 }
 
@@ -670,30 +649,22 @@ const lerpById = <A extends Placed & Readonly<{ id: number }>>(
   )
 }
 
-const lerpParty = (from: World, to: World, t: number): Party =>
-  Party.match(to.party, {
-    Solo: () => to.party,
-    Crew: ({ lead, mates }) =>
-      crewOf(
-        lead,
-        Array.map(mates, mate =>
-          Option.match(maybePlayerAt(from, mate.seat.slot), {
-            onNone: () => mate,
-            onSome: was => ({
-              ...mate,
-              player: lerpPlaced(was.player, mate.player, t),
-            }),
-          }),
-        ),
-      ),
-  })
+const lerpSeats = (from: World, to: World, t: number): World['seats'] =>
+  Array.map(to.seats, state =>
+    Option.match(maybePlayerAt(from, state.seat.slot), {
+      onNone: () => state,
+      onSome: was =>
+        modifyFields(state, {
+          player: player => lerpPlaced(was.player, player, t),
+        }),
+    }),
+  )
 
 const interpolateWorld = (from: World, to: World, t: number): World =>
   modifyFields(to, {
-    player: player => lerpPlaced(from.player, player, t),
     zombies: zombies => lerpById(from.zombies, zombies, t),
     bullets: bullets => lerpById(from.bullets, bullets, t),
-    party: () => lerpParty(from, to, t),
+    seats: () => lerpSeats(from, to, t),
   })
 
 // OWN PLAYER
@@ -710,9 +681,7 @@ const putOwn = (
   own: OwnSeat,
 ): RoomWorld => ({
   ...room,
-  world: withSeat(room.world, slot, seatWorld =>
-    modifyFields(seatWorld, { player: () => own.player }),
-  ),
+  world: modifySeat(room.world, slot, { player: () => own.player }),
 })
 
 // NOTE: one predicted tick of your own player from your own input, against
@@ -725,13 +694,17 @@ export const predictOwn = (
   room: RoomWorld,
 ): OwnSeat => ({
   ...own,
-  player: predictLeadSeat(
-    modifyFields(focusSeat(room.world, own.slot), {
-      player: () => own.player,
-      intent: () => intentOfInput(input),
-    }),
-    FIXED_STEP_MS,
-  ).player,
+  player: playerAt(
+    predictSeat(
+      modifySeat(room.world, own.slot, {
+        player: () => own.player,
+        intent: () => intentOfInput(input),
+      }),
+      own.slot,
+      FIXED_STEP_MS,
+    ),
+    own.slot,
+  ),
 })
 
 const gapOf = (a: OwnSeat, b: OwnSeat): number =>
@@ -752,8 +725,8 @@ const isRunOver = (world: World): boolean =>
   Phase.isAnyOf(['GameOver', 'Victory'])(world.phase)
 
 const scoresOf = (world: World): ReadonlyArray<Score> =>
-  Array.map(playersOf(world), ({ slot, seat }) => ({
-    slot,
+  Array.map(playersOf(world), ({ seat }) => ({
+    slot: seat.slot,
     score: seat.kills,
   }))
 
@@ -807,8 +780,8 @@ export const roomWorldFor = (
 // names it (src/coop/seam.ts), the dev page plays it, and tests step it.
 export const ROOM_WORLD = roomWorldFor(DEFAULT_ROOM_SETTINGS)
 
-// NOTE: the seat a client draws itself as: its own player in the World's
-// per-player fields (src/party.ts, focusSeat).
+// NOTE: the World a client draws itself in: its own seat first (src/party.ts,
+// focusSeat), so `focusOf` is its own player.
 export const ownWorldOf = (room: RoomWorld, slot: PlayerSlot): World =>
   focusSeat(room.world, slot)
 

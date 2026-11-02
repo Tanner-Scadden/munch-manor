@@ -4,6 +4,7 @@ import { describe, test } from 'vitest'
 
 import { Arsenal, type CarriedGun, type Model } from './model'
 import { fighting } from './model.fixture'
+import { modifyFocus } from './party'
 import { ROOT, measureSurface } from './testing'
 import { freshGun } from './weapons'
 
@@ -13,8 +14,7 @@ import { freshGun } from './weapons'
 const dry = (gun: CarriedGun): CarriedGun => ({ ...gun, rounds: 0, loaded: 0 })
 
 const onTouchWith = (first: CarriedGun, second: CarriedGun): Model =>
-  modifyFields(fighting, {
-    lastDevice: () => 'Touch',
+  modifyFocus(modifyFields(fighting, { lastDevice: () => 'Touch' }), {
     player: player =>
       modifyFields(player, {
         arsenal: () => Arsenal.HoldingSecond({ first, second }),

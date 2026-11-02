@@ -23,6 +23,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { SavedOnboarding } from './playerData'
 import { restoreSave, saveOf } from './save'
 import { maybeBubbleKind } from './stallBubble'
@@ -43,17 +44,22 @@ const smg = (rounds: number, loaded = Math.min(rounds, 30)): CarriedGun => ({
 })
 
 const fightingWith = (second: CarriedGun, first = STARTING_PISTOL): Model =>
-  modifyFields(initialModel, {
-    difficultyCard: () => DifficultyCard.Seen(),
-    maybeSurface: () => Option.some(SURFACE),
-    musicSetting: () => 'Off',
-    audio: () => AudioState.Ready(),
-    phase: () => Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-    player: player =>
-      modifyFields(player, {
-        arsenal: () => Arsenal.HoldingSecond({ first, second }),
-      }),
-  })
+  modifyFocus(
+    modifyFields(initialModel, {
+      difficultyCard: () => DifficultyCard.Seen(),
+      maybeSurface: () => Option.some(SURFACE),
+      musicSetting: () => 'Off',
+      audio: () => AudioState.Ready(),
+      phase: () =>
+        Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          arsenal: () => Arsenal.HoldingSecond({ first, second }),
+        }),
+    },
+  )
 
 describe('how low a gun is', () => {
   test('a gun with limited ammo goes Low, then Last on its last magazine, then Dry', () => {
@@ -72,15 +78,17 @@ describe('how low a gun is', () => {
 
   test('the knife is the way out only when every gun is dry', () => {
     expect(
-      isOutOfGuns(fightingWith(smg(0, 0), freshGun('Shotgun')).player),
+      isOutOfGuns(focusOf(fightingWith(smg(0, 0), freshGun('Shotgun'))).player),
     ).toBe(false)
     expect(
       isOutOfGuns(
-        fightingWith(smg(0, 0), {
-          ...freshGun('Shotgun'),
-          rounds: 0,
-          loaded: 0,
-        }).player,
+        focusOf(
+          fightingWith(smg(0, 0), {
+            ...freshGun('Shotgun'),
+            rounds: 0,
+            loaded: 0,
+          }),
+        ).player,
       ),
     ).toBe(true)
   })

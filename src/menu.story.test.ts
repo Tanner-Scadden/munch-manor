@@ -28,6 +28,7 @@ import {
   noKills,
 } from './model'
 import { DISTANT_SPAWN, home, veteranFighting } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { scoreOf } from './stats'
 import { maybeKeyDownMessage } from './subscriptions'
 import { scoring, showDialog } from './testing'
@@ -51,11 +52,13 @@ const withKills = (base: Model, shamblers: number, runMs: number): Model =>
   })
 
 const dying = (base: Model): Model =>
-  modifyFields(base, {
-    phase: () =>
-      Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
-    player: player => modifyFields(player, { hp: () => 0 }),
-  })
+  modifyFocus(
+    modifyFields(base, {
+      phase: () =>
+        Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
+    }),
+    { player: player => modifyFields(player, { hp: () => 0 }) },
+  )
 
 describe('the bests', () => {
   test('kills count when the run ends, not as they happen', () => {
@@ -285,7 +288,7 @@ describe('leaving a run', () => {
     expect(Phase.guards.Ready(cleared.phase)).toBe(true)
     expect(scoreOf(cleared.stats)).toBe(0)
     expect(cleared.zombies).toEqual([])
-    expect(cleared.player).toEqual(initialModel.player)
+    expect(focusOf(cleared).player).toEqual(focusOf(initialModel).player)
     expect(cleared.soundSetting).toBe('Muted')
     expect(cleared.shakeSetting).toBe('Off')
     expect(bestsFor(cleared).maybeBestEndlessWave).toEqual(Option.some(11))

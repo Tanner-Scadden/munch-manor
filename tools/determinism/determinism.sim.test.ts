@@ -9,6 +9,7 @@
 import { Option } from 'effect'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
+import { focusOf } from '../../src/party'
 import { firstDifference, firstDivergentCheckpoint } from './diff'
 import { gameplayOf, hashedFieldsOf } from './fields'
 import { makeGameplayHasher } from './hash'
@@ -141,9 +142,12 @@ describe('the gameplay hash', () => {
     const model = startedRun(1, 'Campaign')
     const nudged = {
       ...model,
-      player: { ...model.player, x: model.player.x * (1 + Number.EPSILON) },
+      player: {
+        ...focusOf(model).player,
+        x: focusOf(model).player.x * (1 + Number.EPSILON),
+      },
     }
-    expect(nudged.player.x).not.toBe(model.player.x)
+    expect(nudged.player.x).not.toBe(focusOf(model).player.x)
     expect(hashModel(nudged)).not.toBe(hashModel(model))
   })
 

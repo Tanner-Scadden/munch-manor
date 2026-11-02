@@ -1,6 +1,7 @@
 import { Array, Option, pipe } from 'effect'
 
 import { SHOP_NEAR_PX, SHOP_REACH_PX } from './constants'
+import { seatStateAt } from './party'
 import type { Offer } from './purchase'
 import { STALL_BOX, priceFor, purchase } from './shop'
 import { heldGun, maxRounds } from './weapons'
@@ -9,6 +10,7 @@ import {
   type CarriedGun,
   type FixedShopItemId,
   Phase,
+  type PlayerSlot,
   Purchasable,
   type WeaponKind,
 } from './worldSchema'
@@ -54,17 +56,20 @@ const COUNTER_SPOT = {
 export const isCounterOpen = (world: World): boolean =>
   Phase.isAnyOf(['Wave'])(world.phase)
 
-export const ammoCounterOffers = (world: World): ReadonlyArray<Offer> =>
+export const ammoCounterOffers = (
+  world: World,
+  slot: PlayerSlot,
+): ReadonlyArray<Offer> =>
   isCounterOpen(world)
     ? pipe(
-        maybeAmmoItemOf(heldGun(world.player.arsenal).kind),
+        maybeAmmoItemOf(heldGun(seatStateAt(world, slot).player.arsenal).kind),
         Option.map((item): Offer => ({
           target: Purchasable.Ammo(),
-          price: priceFor(world, item),
+          price: priceFor(world, slot, item),
           box: STALL_BOX,
           reachPx: SHOP_REACH_PX,
           spot: COUNTER_SPOT,
-          isFull: isFullGun(heldGun(world.player.arsenal)),
+          isFull: isFullGun(heldGun(seatStateAt(world, slot).player.arsenal)),
         })),
         Option.toArray,
       )
@@ -72,11 +77,14 @@ export const ammoCounterOffers = (world: World): ReadonlyArray<Offer> =>
 
 // NOTE: the sale: the held gun's ammo, through the shop's own purchase, so
 // the price, the cap, and the stats are the shop's.
-export const sellAmmo = (world: World): Option.Option<World> =>
+export const sellAmmo = (
+  world: World,
+  slot: PlayerSlot,
+): Option.Option<World> =>
   isCounterOpen(world)
     ? Option.flatMap(
-        maybeAmmoItemOf(heldGun(world.player.arsenal).kind),
-        item => purchase(world, item),
+        maybeAmmoItemOf(heldGun(seatStateAt(world, slot).player.arsenal).kind),
+        item => purchase(world, slot, item),
       )
     : Option.none()
 
@@ -94,20 +102,20 @@ export const COUNTER_LINES: Array.NonEmptyReadonlyArray<string> = [
 ]
 
 // NOTE: a player standing at the window wakes Rattles up.
-export const isAtAmmoWindow = (world: World): boolean =>
+export const isAtAmmoWindow = (world: World, slot: PlayerSlot): boolean =>
   Array.some(
-    ammoCounterOffers(world),
+    ammoCounterOffers(world, slot),
     offer =>
       Math.hypot(
         Math.max(
-          offer.box.left - world.player.x,
+          offer.box.left - seatStateAt(world, slot).player.x,
           0,
-          world.player.x - offer.box.right,
+          seatStateAt(world, slot).player.x - offer.box.right,
         ),
         Math.max(
-          offer.box.top - world.player.y,
+          offer.box.top - seatStateAt(world, slot).player.y,
           0,
-          world.player.y - offer.box.bottom,
+          seatStateAt(world, slot).player.y - offer.box.bottom,
         ),
       ) <= SHOP_NEAR_PX,
   )

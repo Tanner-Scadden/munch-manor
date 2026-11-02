@@ -5,6 +5,7 @@ import { CAMERA_LEAN_EASE_MS, CAMERA_LEAN_PX } from './constants'
 import { couchFocus } from './couch'
 import { ZERO_VECTOR, clamp, scaleVector } from './geometry'
 import type { Model, Vector } from './model'
+import { focusOf } from './party'
 import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
 
 // CAMERA
@@ -72,8 +73,8 @@ export const cameraFor = (
 // them all (src/couch.ts).
 export const cameraFocus = (model: Model): Vector =>
   Option.getOrElse(couchFocus(model), () => ({
-    x: model.player.x + model.cameraLean.x,
-    y: model.player.y + model.cameraLean.y,
+    x: focusOf(model).player.x + model.cameraLean.x,
+    y: focusOf(model).player.y + model.cameraLean.y,
   }))
 
 // NOTE: the part of the world the window shows, in world pixels. A zoomed

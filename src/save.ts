@@ -30,6 +30,7 @@ import {
   freshLessons,
   noPractice,
 } from './model'
+import { modifyFocus } from './party'
 import {
   Calling,
   HomeScreenTip,
@@ -898,72 +899,77 @@ const restoreBests = (
 })
 
 export const restoreSave = (model: Model, save: PlayerSave): Model =>
-  modifyFields(model, {
-    lessons: lessons => restoreLessons(lessons, save.onboarding.lessons),
-    trapHint: hint =>
-      save.onboarding.trapHint === 'Seen' ? TrapHint.Seen() : hint,
-    ammoTip: tip => (save.onboarding.ammoTip === 'Seen' ? AmmoTip.Seen() : tip),
-    introducedKinds: kinds =>
-      Array.union(kinds, knownKinds(save.onboarding.introducedKinds)),
-    homeScreenTip: tip =>
-      save.homeScreenTip === 'Dismissed' ? 'Dismissed' : tip,
-    soundSetting: () => save.settings.sound,
-    musicSetting: () => save.settings.music,
-    shakeSetting: () => save.settings.shake,
-    shareStats: () => save.settings.shareStats,
-    cursorSetting: () => save.settings.cursor,
-    // NOTE: a look worn but not owned (a purchase another device's Bones
-    // outran) comes off.
-    appearance: () =>
-      lookInOwned(
-        save.appearance,
-        save.boughtCosmetics,
-        rankOf(totalPointsOf(save.rank)),
-      ),
-    difficulty: setting =>
-      modifyFields(setting, {
-        chosen: () => save.difficulty.chosen,
-        nightmare: nightmare =>
-          save.difficulty.nightmare === 'Unlocked' && nightmare === 'Locked'
-            ? 'Unlocked'
-            : nightmare,
-      }),
-    difficultyCard: card =>
-      save.difficulty.card === 'Seen' ? DifficultyCard.Seen() : card,
-    bests: () => restoreBests(save.bests, save.records),
-    home: home =>
-      modifyFields(home, {
-        maybeSeenNewsDay: () => Option.fromNullishOr(save.home.seenNewsDay),
-        openedEntries: opened =>
-          Array.union(opened, knownKinds(save.home.openedEntries)),
-      }),
-    seenPowerUps: seen => Array.union(seen, knownPowerUps(save.seenPowerUps)),
-    rotationSetting: () => save.rotation,
-    playerName: () => cleanName(save.name),
-    rank: () => save.rank,
-    calling: () => save.calling,
-    boughtCosmetics: () => save.boughtCosmetics,
-    // NOTE: unlocks seen on any device stay seen. The baseline mark of a row
-    // from before NEW badges stands for every unlock reached now.
-    seenUnlocks: seen =>
-      Array.union(
-        seen,
-        Array.contains(save.seenUnlocks, SEEN_BASELINE)
-          ? [
-              ...Array.filter(save.seenUnlocks, id => id !== SEEN_BASELINE),
-              ...unlocksAt(rankOf(totalPointsOf(save.rank))),
-            ]
-          : save.seenUnlocks,
-      ),
-    // NOTE: the player at home wears the calling the next run starts with.
-    // A save that syncs in mid-run leaves the run's player alone.
-    player: player =>
-      model.phase._tag === 'Ready'
-        ? playerOfCalling(
-            callingForRun(save.calling, rankOf(totalPointsOf(save.rank))),
-          )
-        : player,
-  })
+  modifyFocus(
+    modifyFields(model, {
+      lessons: lessons => restoreLessons(lessons, save.onboarding.lessons),
+      trapHint: hint =>
+        save.onboarding.trapHint === 'Seen' ? TrapHint.Seen() : hint,
+      ammoTip: tip =>
+        save.onboarding.ammoTip === 'Seen' ? AmmoTip.Seen() : tip,
+      introducedKinds: kinds =>
+        Array.union(kinds, knownKinds(save.onboarding.introducedKinds)),
+      homeScreenTip: tip =>
+        save.homeScreenTip === 'Dismissed' ? 'Dismissed' : tip,
+      soundSetting: () => save.settings.sound,
+      musicSetting: () => save.settings.music,
+      shakeSetting: () => save.settings.shake,
+      shareStats: () => save.settings.shareStats,
+      cursorSetting: () => save.settings.cursor,
+      // NOTE: a look worn but not owned (a purchase another device's Bones
+      // outran) comes off.
+      appearance: () =>
+        lookInOwned(
+          save.appearance,
+          save.boughtCosmetics,
+          rankOf(totalPointsOf(save.rank)),
+        ),
+      difficulty: setting =>
+        modifyFields(setting, {
+          chosen: () => save.difficulty.chosen,
+          nightmare: nightmare =>
+            save.difficulty.nightmare === 'Unlocked' && nightmare === 'Locked'
+              ? 'Unlocked'
+              : nightmare,
+        }),
+      difficultyCard: card =>
+        save.difficulty.card === 'Seen' ? DifficultyCard.Seen() : card,
+      bests: () => restoreBests(save.bests, save.records),
+      home: home =>
+        modifyFields(home, {
+          maybeSeenNewsDay: () => Option.fromNullishOr(save.home.seenNewsDay),
+          openedEntries: opened =>
+            Array.union(opened, knownKinds(save.home.openedEntries)),
+        }),
+      seenPowerUps: seen => Array.union(seen, knownPowerUps(save.seenPowerUps)),
+      rotationSetting: () => save.rotation,
+      playerName: () => cleanName(save.name),
+      rank: () => save.rank,
+      calling: () => save.calling,
+      boughtCosmetics: () => save.boughtCosmetics,
+      // NOTE: unlocks seen on any device stay seen. The baseline mark of a row
+      // from before NEW badges stands for every unlock reached now.
+      seenUnlocks: seen =>
+        Array.union(
+          seen,
+          Array.contains(save.seenUnlocks, SEEN_BASELINE)
+            ? [
+                ...Array.filter(save.seenUnlocks, id => id !== SEEN_BASELINE),
+                ...unlocksAt(rankOf(totalPointsOf(save.rank))),
+              ]
+            : save.seenUnlocks,
+        ),
+    }),
+    {
+      // NOTE: the player at home wears the calling the next run starts with.
+      // A save that syncs in mid-run leaves the run's player alone.
+      player: player =>
+        model.phase._tag === 'Ready'
+          ? playerOfCalling(
+              callingForRun(save.calling, rankOf(totalPointsOf(save.rank))),
+            )
+          : player,
+    },
+  )
 
 // RESET
 

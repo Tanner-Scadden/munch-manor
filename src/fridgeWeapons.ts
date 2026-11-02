@@ -26,7 +26,14 @@ import {
   strikeInMelee,
   swingAt,
 } from './melee'
-import { creditKills, payTo, shooterOf } from './party'
+import {
+  atSeat,
+  creditKills,
+  modifySeat,
+  payTo,
+  seatStateAt,
+  shooterOf,
+} from './party'
 import { isAmmoFree } from './powerups'
 import { trapBlastTarget } from './traps'
 import {
@@ -43,11 +50,13 @@ import {
 } from './weapons'
 import type { World } from './world'
 import {
+  type Boosts,
   type CarriedGun,
   Charge,
   GameEvent,
   type Lob,
   type Player,
+  type PlayerSlot,
   type Vector,
   type WeaponKind,
   type Zombie,
@@ -207,8 +216,11 @@ export const chillPace = (zombie: Zombie): number =>
 
 // HELPERS
 
-const withPlayer = (world: World, change: (player: Player) => Player): World =>
-  modifyFields(world, { player: change })
+const withPlayer = (
+  world: World,
+  slot: PlayerSlot,
+  change: (player: Player) => Player,
+): World => modifySeat(world, slot, { player: change })
 
 const withEvents = (world: World, events: ReadonlyArray<GameEvent>): World =>
   Array.isReadonlyArrayEmpty(events)
@@ -217,9 +229,10 @@ const withEvents = (world: World, events: ReadonlyArray<GameEvent>): World =>
         frameEvents: frameEvents => [...frameEvents, ...events],
       })
 
-const runDry = (world: World): World =>
-  withEvents(
-    withPlayer(world, player =>
+const runDry = (world: World, slot: PlayerSlot): World => {
+  const { player: held } = seatStateAt(world, slot)
+  return withEvents(
+    withPlayer(world, slot, player =>
       handOverWhenDry(
         modifyFields(player, {
           fireCooldownMs: () => DRY_FIRE_DELAY_MS,
@@ -227,12 +240,14 @@ const runDry = (world: World): World =>
         }),
       ),
     ),
-    [GameEvent.RanDry({ x: world.player.x, y: world.player.y })],
+    [GameEvent.RanDry({ x: held.x, y: held.y })],
   )
+}
 
-const startReload = (world: World): World =>
-  withEvents(
-    withPlayer(world, player =>
+const startReload = (world: World, slot: PlayerSlot): World => {
+  const { player: held } = seatStateAt(world, slot)
+  return withEvents(
+    withPlayer(world, slot, player =>
       beginReload(
         modifyFields(player, {
           fireCooldownMs: () => 0,
@@ -242,13 +257,14 @@ const startReload = (world: World): World =>
     ),
     [
       GameEvent.ReloadStarted({
-        x: world.player.x,
-        y: world.player.y,
-        direction: world.player.facing,
-        weapon: heldWeapon(world.player.arsenal),
+        x: held.x,
+        y: held.y,
+        direction: held.facing,
+        weapon: heldWeapon(held.arsenal),
       }),
     ],
   )
+}
 
 const coolDown = (player: Player, deltaMs: number): Player =>
   modifyFields(player, {
@@ -282,16 +298,17 @@ export const lidBlastRadius = (charge: number, tier: number): number =>
 const lidDamage = (charge: number): number =>
   Math.round(lerp(COOKER_RULES.minDamage, COOKER_RULES.maxDamage, charge))
 
-const spendLid = (world: World, player: Player): Player =>
-  isAmmoFree(world.boosts) ? player : spendRound(player)
+const spendLid = (boosts: Boosts, player: Player): Player =>
+  isAmmoFree(boosts) ? player : spendRound(player)
 
 const launch = (
   world: World,
+  slot: PlayerSlot,
   spare: CarriedGun,
   heldMs: number,
   aim: Vector,
 ): World => {
-  const { player } = world
+  const { player, boosts } = seatStateAt(world, slot)
   const charge = throwCharge(heldMs, spare.tier)
   const from = addVectors(
     player,
@@ -323,7 +340,7 @@ const launch = (
     charge,
     tier: spare.tier,
   }
-  const thrown = Option.match(shooterOf(world), {
+  const thrown = Option.match(shooterOf(world, slot), {
     onNone: () => lob,
     onSome: shooter => ({ ...lob, shooter }),
   })
@@ -331,15 +348,17 @@ const launch = (
     modifyFields(world, {
       lobs: lobs => [...lobs, thrown],
       nextEntityId: id => id + 1,
-      player: current =>
-        spendLid(
-          world,
-          modifyFields(current, {
-            charge: () => Charge.Idle(),
-            fireCooldownMs: () => COOKER_RULES.launchCooldownMs,
-            recoilRemainingMs: () => 180,
-          }),
-        ),
+      seats: atSeat(slot, {
+        player: current =>
+          spendLid(
+            boosts,
+            modifyFields(current, {
+              charge: () => Charge.Idle(),
+              fireCooldownMs: () => COOKER_RULES.launchCooldownMs,
+              recoilRemainingMs: () => 180,
+            }),
+          ),
+      }),
     }),
     [GameEvent.LidLaunched({ x: from.x, y: from.y, direction: aim })],
   )
@@ -348,8 +367,8 @@ const launch = (
 // NOTE: held past full, the lid blows off in the player's hands: it shoves
 // them back, the lid is lost, and nothing builds until fire is let go. It
 // hurts only on Nightmare.
-const pop = (world: World): World => {
-  const { player } = world
+const pop = (world: World, slot: PlayerSlot): World => {
+  const { player, boosts } = seatStateAt(world, slot)
   const back = scaleVector(player.facing, -1)
   const shoved = modifyFields(player, {
     charge: () => Charge.Spent(),
@@ -362,50 +381,51 @@ const pop = (world: World): World => {
       ? woundPlayer(shoved, COOKER_RULES.popDamage, back)
       : shoved
   return withEvents(
-    modifyFields(world, { player: () => spendLid(world, hurt) }),
+    modifySeat(world, slot, { player: () => spendLid(boosts, hurt) }),
     [GameEvent.CookerPopped({ x: player.x, y: player.y, direction: back })],
   )
 }
 
 const fireCooker = (
   world: World,
+  slot: PlayerSlot,
   spare: CarriedGun,
   deltaMs: number,
 ): World => {
-  const cooled = withPlayer(world, player => coolDown(player, deltaMs))
-  const { player, intent } = cooled
+  const cooled = withPlayer(world, slot, player => coolDown(player, deltaMs))
+  const { player, intent } = seatStateAt(cooled, slot)
   const isHeld = intent.trigger === 'Held'
   return Charge.match(player.charge, {
     Spent: () =>
       isHeld
         ? cooled
-        : withPlayer(cooled, current =>
+        : withPlayer(cooled, slot, current =>
             modifyFields(current, { charge: () => Charge.Idle() }),
           ),
     Idle: () => {
       if (!isHeld || player.fireCooldownMs > 0) {
         return cooled
       } else if (spare.loaded > 0) {
-        return withPlayer(cooled, current =>
+        return withPlayer(cooled, slot, current =>
           modifyFields(current, {
             charge: () =>
               Charge.Building({ heldMs: deltaMs, aim: current.facing }),
           }),
         )
       } else if (canReload(player)) {
-        return startReload(cooled)
+        return startReload(cooled, slot)
       } else {
-        return runDry(cooled)
+        return runDry(cooled, slot)
       }
     },
     Building: ({ heldMs, aim }) => {
       if (!isHeld) {
-        return launch(cooled, spare, heldMs, aim)
+        return launch(cooled, slot, spare, heldMs, aim)
       }
       const nextMs = heldMs + deltaMs
       return nextMs >= cookerFullMs(spare.tier) + COOKER_RULES.overMs
-        ? pop(cooled)
-        : withPlayer(cooled, current =>
+        ? pop(cooled, slot)
+        : withPlayer(cooled, slot, current =>
             modifyFields(current, {
               charge: () =>
                 Charge.Building({ heldMs: nextMs, aim: current.facing }),
@@ -546,8 +566,8 @@ const swat = (player: Player, zombie: Zombie): Struck => {
   }
 }
 
-const swingArc = (world: World, spare: CarriedGun): Swing => {
-  const { player } = world
+const swingArc = (world: World, slot: PlayerSlot, spare: CarriedGun): Swing => {
+  const { player } = seatStateAt(world, slot)
   const isClanged = isInArc(player, PAN_RULES.reachPx, panHalfArc(spare.tier))
   return swingAt(
     world.zombies,
@@ -572,8 +592,8 @@ const swingArc = (world: World, spare: CarriedGun): Swing => {
 
 // NOTE: the 3000's overhead smash: the Pan comes down on the floor and
 // everything round the player is knocked away and dazed, the guard or not.
-const smash = (world: World): Swing => {
-  const { player } = world
+const smash = (world: World, slot: PlayerSlot): Swing => {
+  const { player } = seatStateAt(world, slot)
   const isNear = (zombie: Zombie): boolean =>
     isGrounded(zombie) &&
     Math.hypot(zombie.x - player.x, zombie.y - player.y) -
@@ -613,64 +633,72 @@ const holdMsOf = (player: Player): number =>
 
 const isPanDented = (spare: CarriedGun): boolean => spare.loaded <= 0
 
-const firePan = (world: World, spare: CarriedGun, deltaMs: number): World => {
-  const cooled = withPlayer(world, player => coolDown(player, deltaMs))
-  const { player, intent } = cooled
+const firePan = (
+  world: World,
+  slot: PlayerSlot,
+  spare: CarriedGun,
+  deltaMs: number,
+): World => {
+  const cooled = withPlayer(world, slot, player => coolDown(player, deltaMs))
+  const { player, intent } = seatStateAt(cooled, slot)
   if (intent.trigger !== 'Held') {
     return Charge.isAnyOf(['Idle'])(player.charge)
       ? cooled
-      : withPlayer(cooled, current =>
+      : withPlayer(cooled, slot, current =>
           modifyFields(current, { charge: () => Charge.Idle() }),
         )
   }
   const heldMs = holdMsOf(player) + deltaMs
   if (player.fireCooldownMs > 0) {
-    return withPlayer(cooled, current =>
+    return withPlayer(cooled, slot, current =>
       modifyFields(current, {
         charge: () => Charge.Building({ heldMs, aim: current.facing }),
       }),
     )
   }
   const isSmash = spare.tier >= SMASH_TIER && heldMs >= PAN_RULES.smashHoldMs
-  const swing = isSmash ? smash(cooled) : swingArc(cooled, spare)
+  const swing = isSmash ? smash(cooled, slot) : swingArc(cooled, slot, spare)
   const struck = modifyFields(cooled, {
     zombies: () => swing.zombies,
-    player: current =>
-      modifyFields(
-        swing.connected
-          ? mapPan(current, pan =>
-              modifyFields(pan, {
-                loaded: loaded => Math.max(0, loaded - 1),
+    seats: atSeat(slot, {
+      player: current =>
+        modifyFields(
+          swing.connected
+            ? mapPan(current, pan =>
+                modifyFields(pan, {
+                  loaded: loaded => Math.max(0, loaded - 1),
+                }),
+              )
+            : current,
+          {
+            fireCooldownMs: () =>
+              isPanDented(spare) ? PAN_RULES.dentedSwingMs : PAN_RULES.swingMs,
+            recoilRemainingMs: () => (isSmash ? 320 : 220),
+            charge: () =>
+              Charge.Building({
+                heldMs: isSmash ? 0 : heldMs,
+                aim: current.facing,
               }),
-            )
-          : current,
-        {
-          fireCooldownMs: () =>
-            isPanDented(spare) ? PAN_RULES.dentedSwingMs : PAN_RULES.swingMs,
-          recoilRemainingMs: () => (isSmash ? 320 : 220),
-          charge: () =>
-            Charge.Building({
-              heldMs: isSmash ? 0 : heldMs,
-              aim: current.facing,
-            }),
-        },
-      ),
+          },
+        ),
+    }),
   })
-  return payStriker(withEvents(struck, swing.events), swing.events)
+  return payStriker(withEvents(struck, swing.events), slot, swing.events)
 }
 
-// NOTE: Rattles bangs every Pan flat, free, when a break begins.
-export const flattenPans = (world: World): World =>
-  Option.match(
+// NOTE: Rattles bangs a Pan flat, free, when a break begins.
+export const flattenPans = (world: World, slot: PlayerSlot): World => {
+  const { player: held } = seatStateAt(world, slot)
+  return Option.match(
     Option.filter(
-      maybePanOf(world.player),
+      maybePanOf(held),
       pan => pan.loaded < magazineOf('Pan', pan.tier),
     ),
     {
       onNone: () => world,
       onSome: () =>
         withEvents(
-          withPlayer(world, player =>
+          withPlayer(world, slot, player =>
             mapPan(player, pan =>
               modifyFields(pan, {
                 loaded: () => magazineOf('Pan', pan.tier),
@@ -678,10 +706,11 @@ export const flattenPans = (world: World): World =>
               }),
             ),
           ),
-          [GameEvent.PanFlattened({ x: world.player.x, y: world.player.y })],
+          [GameEvent.PanFlattened({ x: held.x, y: held.y })],
         ),
     },
   )
+}
 
 // BRAIN FREEZE
 
@@ -702,8 +731,8 @@ const freezeOne = (zombie: Zombie): Zombie =>
         })
       : zombie
 
-const spray = (world: World): World => {
-  const { player } = world
+const spray = (world: World, slot: PlayerSlot): World => {
+  const { player } = seatStateAt(world, slot)
   const isChilled = isInArc(player, FREEZE_RULES.reachPx, FREEZE_RULES.halfArc)
   const hit = Array.map(
     world.zombies,
@@ -719,13 +748,15 @@ const spray = (world: World): World => {
         Array.map(zombies, (zombie, index) =>
           hit[index] === true ? freezeOne(zombie) : zombie,
         ),
-      player: current =>
-        spendRound(
-          modifyFields(current, {
-            fireCooldownMs: () => FREEZE_RULES.intervalMs,
-            recoilRemainingMs: () => 160,
-          }),
-        ),
+      seats: atSeat(slot, {
+        player: current =>
+          spendRound(
+            modifyFields(current, {
+              fireCooldownMs: () => FREEZE_RULES.intervalMs,
+              recoilRemainingMs: () => 160,
+            }),
+          ),
+      }),
     }),
     [
       GameEvent.FreezeSprayed({
@@ -740,14 +771,16 @@ const spray = (world: World): World => {
 
 const fireFreeze = (
   world: World,
+  slot: PlayerSlot,
   spare: CarriedGun,
   deltaMs: number,
 ): World => {
-  const cooled = withPlayer(world, player => coolDown(player, deltaMs))
-  if (cooled.intent.trigger !== 'Held' || cooled.player.fireCooldownMs > 0) {
+  const cooled = withPlayer(world, slot, player => coolDown(player, deltaMs))
+  const { intent, player } = seatStateAt(cooled, slot)
+  if (intent.trigger !== 'Held' || player.fireCooldownMs > 0) {
     return cooled
   }
-  return spare.loaded > 0 ? spray(cooled) : runDry(cooled)
+  return spare.loaded > 0 ? spray(cooled, slot) : runDry(cooled, slot)
 }
 
 // THE TRIGGER
@@ -766,15 +799,16 @@ export const maybeHeldFridgeWeapon = (
 // NOTE: one tick of the trigger for a player holding a fridge weapon.
 export const fireFridgeWeapon = (
   world: World,
+  slot: PlayerSlot,
   spare: CarriedGun,
   deltaMs: number,
 ): World => {
   if (spare.kind === 'Cooker') {
-    return fireCooker(world, spare, deltaMs)
+    return fireCooker(world, slot, spare, deltaMs)
   } else if (spare.kind === 'Pan') {
-    return firePan(world, spare, deltaMs)
+    return firePan(world, slot, spare, deltaMs)
   } else {
-    return fireFreeze(world, spare, deltaMs)
+    return fireFreeze(world, slot, spare, deltaMs)
   }
 }
 

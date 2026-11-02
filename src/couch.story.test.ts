@@ -10,7 +10,7 @@ import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, ShopState, initialModel } from './model'
 import { DISTANT_SPAWN, atSeat } from './model.fixture'
-import { maybePlayerAt, playersOf } from './party'
+import { focusOf, maybePlayerAt, modifyFocus, playersOf } from './party'
 import { SURFACE, press, release, startedRunOf, ticks } from './testing'
 import { asVeteran } from './veteran'
 import { type World } from './world'
@@ -71,7 +71,7 @@ describe('player 2 on IJKL', () => {
         expect(mateAt(current, 1).player.x).toBeGreaterThan(
           mateAt(before, 1).player.x,
         )
-        expect(current.player.x).toBe(before.player.x)
+        expect(focusOf(current).player.x).toBe(focusOf(before).player.x)
       }),
       release('KeyL'),
     )
@@ -135,7 +135,7 @@ describe('player 2 on IJKL', () => {
       }),
       1,
       world =>
-        modifyFields(world, {
+        modifyFocus(world, {
           wallet: wallet => modifyFields(wallet, { balance: () => 200 }),
           shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
         }),
@@ -148,15 +148,12 @@ describe('player 2 on IJKL', () => {
       model(current => {
         expect(mateAt(current, 1).player.arsenal._tag).toBe('HoldingSecond')
         expect(mateAt(current, 1).wallet.balance).toBeLessThan(200)
-        expect(current.wallet.balance).toBe(0)
+        expect(focusOf(current).wallet.balance).toBe(0)
       }),
       press('KeyO'),
       release('KeyO'),
       model(current => {
-        const party = current.party
-        expect(
-          party._tag === 'Crew' ? party.mates[0]?.shop._tag : undefined,
-        ).toBe('Dismissed')
+        expect(current.seats[1]?.shop._tag).toBe('Dismissed')
       }),
     )
   })
@@ -166,13 +163,13 @@ describe('one camera for the couch', () => {
   test('follows the middle of every player', () => {
     const apart = atSeat(
       atSeat(fighting(2), 0, world =>
-        modifyFields(world, {
+        modifyFocus(world, {
           player: player => modifyFields(player, { x: () => 100 }),
         }),
       ),
       1,
       world =>
-        modifyFields(world, {
+        modifyFocus(world, {
           player: player => modifyFields(player, { x: () => 200 }),
         }),
     )
@@ -181,7 +178,7 @@ describe('one camera for the couch', () => {
 
   test('single player follows the player as before', () => {
     const solo = fighting(1)
-    expect(cameraFocus(solo).x).toBe(solo.player.x + solo.cameraLean.x)
+    expect(cameraFocus(solo).x).toBe(focusOf(solo).player.x + solo.cameraLean.x)
   })
 })
 

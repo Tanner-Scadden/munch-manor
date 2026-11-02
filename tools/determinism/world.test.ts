@@ -7,6 +7,7 @@ import { describe, expect, test } from 'vitest'
 
 import { refreshIntent } from '../../src/frame'
 import type { Model } from '../../src/model'
+import { focusOf } from '../../src/party'
 import { soloInputs, stepWorld } from '../../src/stepWorld'
 import { WORLD_KEYS } from '../../src/testing'
 import type { World } from '../../src/world'
@@ -36,8 +37,11 @@ describe('the World', () => {
       startedRun(9, 'Campaign'),
     )
     const intended = refreshIntent(played)
-    const bare = stepWorld(worldOf(intended), soloInputs(intended.intent))
-    const full = stepWorld(intended, soloInputs(intended.intent))
+    const bare = stepWorld(
+      worldOf(intended),
+      soloInputs(focusOf(intended).intent),
+    )
+    const full = stepWorld(intended, soloInputs(focusOf(intended).intent))
     expect(Object.keys(bare.world).sort()).toEqual([...WORLD_KEYS].sort())
     expect(
       firstDifference(
@@ -50,7 +54,7 @@ describe('the World', () => {
   test('a bare World plays a whole minute on its own', () => {
     const start = refreshIntent(startedRun(4, 'Campaign'))
     const world = Array.from({ length: 3600 }).reduce<World>(
-      current => stepWorld(current, soloInputs(start.intent)).world,
+      current => stepWorld(current, soloInputs(focusOf(start).intent)).world,
       worldOf(start),
     )
     expect(Object.keys(world).sort()).toEqual([...WORLD_KEYS].sort())

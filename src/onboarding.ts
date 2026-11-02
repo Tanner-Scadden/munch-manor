@@ -6,6 +6,7 @@ import { type HintBand, type InputDevice, Stick, Tour } from './clientSchema'
 import { vectorLength } from './geometry'
 import { isPending, isTimedBreak, learn } from './lessons'
 import type { Model } from './model'
+import { focusOf, focusSlotOf } from './party'
 import { landscapeFrameOffset, screenOf } from './screen'
 import { TURRET_WEAPON, maybeSelectedKind } from './traps'
 import { isKitchenTourOn } from './tutorialRules'
@@ -43,15 +44,16 @@ const AIM_LESSON_SHOTS = 3
 export const LESSON_MIN_SHOWN_MS = 2500
 
 const distanceWalked = (before: Model, after: Model): number =>
-  vectorLength(after.intent.move) > 0
+  vectorLength(focusOf(after).intent.move) > 0
     ? Math.hypot(
-        after.player.x - before.player.x,
-        after.player.y - before.player.y,
+        focusOf(after).player.x - focusOf(before).player.x,
+        focusOf(after).player.y - focusOf(before).player.y,
       )
     : 0
 
 const hasFiredWhileAiming = (model: Model): boolean =>
-  hasPlayerFired(model.frameEvents) && Option.isSome(model.intent.maybeAim)
+  hasPlayerFired(model.frameEvents) &&
+  Option.isSome(focusOf(model).intent.maybeAim)
 
 const hasGrabbedPickup = (events: ReadonlyArray<GameEvent>): boolean =>
   Array.some(events, GameEvent.isAnyOf(['PickupGrabbed']))
@@ -227,7 +229,7 @@ export const moveHintBand = (model: Model): Model =>
     hintBand: band =>
       followPlayer(
         band,
-        worldToView(screenCameraOf(model), model.player).y -
+        worldToView(screenCameraOf(model), focusOf(model).player).y -
           landscapeFrameOffset(screenOf(model)).y,
       ),
   })
@@ -363,7 +365,7 @@ const isLaterTimedBreak = (model: Model): boolean =>
 const isTrapHintFor = (model: Model, kind: 'Barricade' | 'Turret'): boolean =>
   isBreak(model) &&
   TrapHint.isAnyOf(['Showing'])(model.trapHint) &&
-  Option.contains(maybeSelectedKind(model), kind)
+  Option.contains(maybeSelectedKind(model, focusSlotOf(model)), kind)
 
 // NOTE: on touch the ghost sticks, drawn where the thumbs go, teach moving
 // and shooting, so the center hints for them show only with a keyboard.

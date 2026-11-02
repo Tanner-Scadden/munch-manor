@@ -20,6 +20,7 @@ import {
   type WeaponKind,
 } from './model'
 import { withArsenal } from './model.fixture'
+import { focusSlotOf, modifyFocus } from './party'
 import {
   SHOP_CATEGORY_ORDER,
   SHOP_ITEMS,
@@ -83,19 +84,19 @@ describe('shop categories', () => {
     story(
       update,
       given(browsing(withMoney(shopReady, 100))),
-      model(({ shopCategory }) => {
+      model(({ seats: [{ shopCategory }] }) => {
         expect(shopCategory).toBe('Guns')
       }),
       selectTab('Traps'),
       Command.expectExact(Tabs.test.FocusTab),
       resolveFocusTab,
-      model(({ shopCategory, shop }) => {
+      model(({ seats: [{ shopCategory, shop }] }) => {
         expect(shopCategory).toBe('Traps')
         expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Barricade' }))
       }),
       selectTab('Health'),
       resolveFocusTab,
-      model(({ shopCategory, shop }) => {
+      model(({ seats: [{ shopCategory, shop }] }) => {
         expect(shopCategory).toBe('Health')
         expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Heart' }))
       }),
@@ -117,7 +118,7 @@ describe('shop categories', () => {
       // NOTE: the fixture browses with the dialog already down, which the
       // next frame takes as a dialog that failed to show.
       ...ticks(1, SHOP_FRAME_MS),
-      model(({ shop, shopCategory }) => {
+      model(({ seats: [{ shop, shopCategory }] }) => {
         expect(shop).toEqual(ShopState.Dismissed())
         expect(shopCategory).toBe('Health')
       }),
@@ -126,14 +127,12 @@ describe('shop categories', () => {
     story(
       update,
       given(
-        modifyFields(besideStall(preparing(3)), {
-          shopCategory: () => 'Traps',
-        }),
+        modifyFocus(besideStall(preparing(3)), { shopCategory: () => 'Traps' }),
       ),
       press('KeyD'),
       ...ticks(FRAMES_TO_STALL, SHOP_FRAME_MS),
       resolveShowShop,
-      model(({ shop, shopCategory }) => {
+      model(({ seats: [{ shop, shopCategory }] }) => {
         expect(shopCategory).toBe('Traps')
         expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Barricade' }))
       }),
@@ -142,14 +141,14 @@ describe('shop categories', () => {
     story(
       update,
       given(
-        modifyFields(shopReady, {
-          phase: () => Phase.GameOver({ wave: 4 }),
-          shopCategory: () => 'Traps',
-        }),
+        modifyFocus(
+          modifyFields(shopReady, { phase: () => Phase.GameOver({ wave: 4 }) }),
+          { shopCategory: () => 'Traps' },
+        ),
       ),
       ...ticks(RESTART_GRACE_TICKS, GRACE_TICK_MS),
       press('Enter'),
-      model(({ phase, shopCategory }) => {
+      model(({ phase, seats: [{ shopCategory }] }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(shopCategory).toBe('Guns')
       }),
@@ -160,14 +159,13 @@ describe('shop categories', () => {
     story(
       update,
       given(
-        modifyFields(shopReady, {
-          phase: () => preparing(2),
+        modifyFocus(modifyFields(shopReady, { phase: () => preparing(2) }), {
           shop: () => ShopState.Away(),
         }),
       ),
       selectTab('Traps'),
       Command.expectNone(),
-      model(({ shopCategory, shop }) => {
+      model(({ seats: [{ shopCategory, shop }] }) => {
         expect(shopCategory).toBe('Guns')
         expect(shop).toEqual(ShopState.Away())
       }),
@@ -176,19 +174,28 @@ describe('shop categories', () => {
 
   test('each tab counts what the player can buy right now', () => {
     const firstVisit = browsing(withMoney(shopReady, WAVE_ONE_PAY))
-    expect(affordableCount(firstVisit, 'Guns')).toBe(1)
-    expect(affordableCount(firstVisit, 'Health')).toBe(0)
-    expect(affordableCount(firstVisit, 'Traps')).toBe(0)
-    expect(totalAffordable(firstVisit)).toBe(1)
+    expect(affordableCount(firstVisit, focusSlotOf(firstVisit), 'Guns')).toBe(1)
+    expect(affordableCount(firstVisit, focusSlotOf(firstVisit), 'Health')).toBe(
+      0,
+    )
+    expect(affordableCount(firstVisit, focusSlotOf(firstVisit), 'Traps')).toBe(
+      0,
+    )
+    expect(totalAffordable(firstVisit, focusSlotOf(firstVisit))).toBe(1)
 
     const hurt = withHp(firstVisit, PLAYER_MAX_HP - 2)
-    expect(affordableCount(hurt, 'Health')).toBe(1)
-    expect(totalAffordable(hurt)).toBe(2)
+    expect(affordableCount(hurt, focusSlotOf(hurt), 'Health')).toBe(1)
+    expect(totalAffordable(hurt, focusSlotOf(hurt))).toBe(2)
 
     const armed = withArsenal(withMoney(firstVisit, 50), holdingSpare(20))
-    expect(affordableCount(armed, 'Guns')).toBe(2)
+    expect(affordableCount(armed, focusSlotOf(armed), 'Guns')).toBe(2)
 
-    expect(totalAffordable(withMoney(firstVisit, 0))).toBe(0)
+    expect(
+      totalAffordable(
+        withMoney(firstVisit, 0),
+        focusSlotOf(withMoney(firstVisit, 0)),
+      ),
+    ).toBe(0)
   })
 
   test('the money from a clean wave 1 buys a first gun at the first visit', () => {
@@ -197,7 +204,7 @@ describe('shop categories', () => {
       given(browsing(withMoney(shopReady, WAVE_ONE_PAY))),
       message(Message.ClickedBuyButton({ item: 'Shotgun' })),
       resolveFocusShopItem,
-      model(({ wallet, player }) => {
+      model(({ seats: [{ wallet, player }] }) => {
         expect(wallet.balance).toBe(WAVE_ONE_PAY - SHOP_ITEMS.Shotgun.price)
         expect(
           Option.map(maybeSpareGun(player.arsenal), ({ kind }) => kind),
@@ -230,11 +237,14 @@ describe('ammo and upgrades under the gun', () => {
   test('guns always go pistol, shotgun, machine gun, whether owned, in hand, or for sale', () => {
     const unarmed = browsing(withMoney(shopReady, 100))
     const weaponOrder = (current: Model): ReadonlyArray<WeaponKind> =>
-      Array.map(gunShelves(current), ({ weapon }) => weapon)
+      Array.map(
+        gunShelves(current, focusSlotOf(current)),
+        ({ weapon }) => weapon,
+      )
     const PISTOL_FIRST: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
 
     expect(weaponOrder(unarmed)).toEqual(PISTOL_FIRST)
-    expect(itemsIn(unarmed, 'Guns')).toEqual([
+    expect(itemsIn(unarmed, focusSlotOf(unarmed), 'Guns')).toEqual([
       'PistolUpgrade',
       'Shotgun',
       'Smg',
@@ -243,7 +253,7 @@ describe('ammo and upgrades under the gun', () => {
 
     const shotgunInHand = withArsenal(unarmed, holdingSpare(20))
     expect(weaponOrder(shotgunInHand)).toEqual(PISTOL_FIRST)
-    expect(itemsIn(shotgunInHand, 'Guns')).toEqual([
+    expect(itemsIn(shotgunInHand, focusSlotOf(shotgunInHand), 'Guns')).toEqual([
       'PistolUpgrade',
       'ShotgunShells',
       'ShotgunUpgrade',
@@ -259,7 +269,7 @@ describe('ammo and upgrades under the gun', () => {
 
     const smgInHand = withArsenal(unarmed, holdingSpare(60, 'Smg'))
     expect(weaponOrder(smgInHand)).toEqual(PISTOL_FIRST)
-    expect(itemsIn(smgInHand, 'Guns')).toEqual([
+    expect(itemsIn(smgInHand, focusSlotOf(smgInHand), 'Guns')).toEqual([
       'PistolUpgrade',
       'Shotgun',
       'SmgRounds',
@@ -269,7 +279,7 @@ describe('ammo and upgrades under the gun', () => {
 
     const smgHolstered = withArsenal(unarmed, holdingFirst(gun('Smg', 60)))
     expect(weaponOrder(smgHolstered)).toEqual(PISTOL_FIRST)
-    expect(itemsIn(unarmed, 'Health')).toEqual(['Heart'])
+    expect(itemsIn(unarmed, focusSlotOf(unarmed), 'Health')).toEqual(['Heart'])
   })
 
   test('buying a gun moves focus to its ammo, and buying ammo leaves focus where it is', () => {
@@ -279,14 +289,14 @@ describe('ammo and upgrades under the gun', () => {
       message(Message.PressedBuyKey({ item: 'Shotgun' })),
       Command.expectExact(FocusShopItem({ item: 'ShotgunShells' })),
       resolveFocusShopItem,
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(
           ShopState.Browsing({ focusedItem: 'ShotgunShells' }),
         )
       }),
       message(Message.PressedBuyKey({ item: 'ShotgunShells' })),
       Command.expectNone(),
-      model(({ shop, player }) => {
+      model(({ seats: [{ shop, player }] }) => {
         expect(shop).toEqual(
           ShopState.Browsing({ focusedItem: 'ShotgunShells' }),
         )
@@ -307,7 +317,7 @@ describe('ammo and upgrades under the gun', () => {
       message(Message.ClickedBuyButton({ item: 'Smg' })),
       Command.expectExact(FocusShopItem({ item: 'SmgRounds' })),
       resolveFocusShopItem,
-      model(({ shop, player }) => {
+      model(({ seats: [{ shop, player }] }) => {
         expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'SmgRounds' }))
         expect(
           Option.map(maybeSpareGun(player.arsenal), ({ kind }) => kind),
@@ -322,7 +332,7 @@ describe('ammo and upgrades under the gun', () => {
       given(browsing(withMoney(shopReady, 10))),
       message(Message.PressedBuyKey({ item: 'Shotgun' })),
       Command.expectNone(),
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Shotgun' }))
       }),
     )
@@ -338,7 +348,7 @@ describe('the row the shop opens on', () => {
       press('KeyD'),
       ...ticks(FRAMES_TO_STALL, SHOP_FRAME_MS),
       resolveShowShop,
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         focused.push(
           Option.getOrThrow(
             Option.liftPredicate(shop, ShopState.guards.Browsing),
@@ -403,7 +413,7 @@ describe('what Rattles says', () => {
         )
       }),
       message(Message.PressedBuyKey({ item: 'Heart' })),
-      model(({ shopChatter, wallet }) => {
+      model(({ shopChatter, seats: [{ wallet }] }) => {
         expect(shopChatter).toEqual(ShopChatter.Bought({ item: 'Heart' }))
         expect(wallet.balance).toBe(5)
       }),

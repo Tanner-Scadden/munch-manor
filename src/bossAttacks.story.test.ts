@@ -35,6 +35,7 @@ import {
   type Model,
   type Zombie,
 } from './model'
+import { focusOf, modifyFocus } from './party'
 import { FRAME_MS, bulletInto, tick, ticks, zombieOf } from './testing'
 import { FINAL_WAVE } from './wavePlans'
 import { ZOMBIE_KINDS, scaledHp } from './zombies'
@@ -118,8 +119,10 @@ describe('telegraphed attacks', () => {
       ),
       tick(FRAME_MS),
       model(current => {
-        expect(current.player.hp).toBe(PLAYER_MAX_HP - BOSS_RULES.stompDamage)
-        expect(current.player.knockback.x).toBeLessThan(0)
+        expect(focusOf(current).player.hp).toBe(
+          PLAYER_MAX_HP - BOSS_RULES.stompDamage,
+        )
+        expect(focusOf(current).player.knockback.x).toBeLessThan(0)
         expect(eventsTagged(current.frameEvents, 'BossStomped')).toHaveLength(1)
         expect(
           BossMove.isAnyOf(['Recovering'])(
@@ -153,7 +156,7 @@ describe('telegraphed attacks', () => {
       tick(FRAME_MS),
       model(current => {
         expect(eventsTagged(current.frameEvents, 'BossStomped')).toHaveLength(1)
-        expect(current.player.hp).toBe(PLAYER_MAX_HP)
+        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
       }),
     )
   })
@@ -365,7 +368,7 @@ describe('far attacks', () => {
     story(
       update,
       given(
-        modifyFields(
+        modifyFocus(
           inWave(
             FINAL_WAVE,
             [spawnAt(1e9, 0)],
@@ -404,7 +407,7 @@ describe('far attacks', () => {
       PLAYER.x - BOSS_RULES.chargeOvershootPx,
       0,
     )
-    expect(recovered.player.hp).toBe(PLAYER_MAX_HP)
+    expect(focusOf(recovered).player.hp).toBe(PLAYER_MAX_HP)
     const bowled = Option.getOrThrow(
       Array.findFirst(recovered.zombies, ({ id }) => id === 300),
     )
@@ -432,17 +435,22 @@ describe('far attacks', () => {
       ...Array.flatMap(ticks(40, FRAME_MS), frame => [
         frame,
         model((current: Model) => {
-          if (current.player.hp < PLAYER_MAX_HP) {
+          if (focusOf(current).player.hp < PLAYER_MAX_HP) {
             hurtAt.push(current)
           }
         }),
       ]),
     )
     const hurt = Option.getOrThrow(Array.head(hurtAt))
-    expect(hurt.player.hp).toBe(PLAYER_MAX_HP - BOSS_RULES.chargeDamage)
+    expect(focusOf(hurt).player.hp).toBe(
+      PLAYER_MAX_HP - BOSS_RULES.chargeDamage,
+    )
     expect(eventsTagged(hurt.frameEvents, 'BossRammed')).toHaveLength(1)
     expect(
-      Math.hypot(hurt.player.knockback.x, hurt.player.knockback.y),
+      Math.hypot(
+        focusOf(hurt).player.knockback.x,
+        focusOf(hurt).player.knockback.y,
+      ),
     ).toBeGreaterThan(PLAYER_KNOCKBACK_SPEED)
   })
 
@@ -551,7 +559,7 @@ describe('far attacks', () => {
   })
 
   const landing = (playerAt: { x: number; y: number }): Model =>
-    modifyFields(
+    modifyFocus(
       inWave(
         FINAL_WAVE,
         [spawnAt(1e9, 0)],
@@ -579,11 +587,13 @@ describe('far attacks', () => {
       given(landing(PLAYER)),
       tick(FRAME_MS),
       model(current => {
-        expect(current.player.hp).toBe(PLAYER_MAX_HP)
+        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
       }),
       ...ticks(2, FRAME_MS),
       model(current => {
-        expect(current.player.hp).toBe(PLAYER_MAX_HP - BOSS_RULES.spitDamage)
+        expect(focusOf(current).player.hp).toBe(
+          PLAYER_MAX_HP - BOSS_RULES.spitDamage,
+        )
       }),
     )
     story(
@@ -592,7 +602,7 @@ describe('far attacks', () => {
       ...ticks(3, FRAME_MS),
       model(current => {
         expect(eventsTagged(current.frameEvents, 'GlobLanded')).toHaveLength(1)
-        expect(current.player.hp).toBe(PLAYER_MAX_HP)
+        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
       }),
     )
   })
@@ -617,7 +627,7 @@ describe('far attacks', () => {
         message(Message.PressedKey({ code: 'KeyA' })),
         ...ticks(6, FRAME_MS),
         model(current => {
-          ends.push(current.player.x)
+          ends.push(focusOf(current).player.x)
         }),
       )
       return CENTER_X - Option.getOrThrow(Array.head(ends))

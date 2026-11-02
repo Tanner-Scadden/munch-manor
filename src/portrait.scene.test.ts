@@ -19,6 +19,7 @@ import { update } from './main'
 import { Message } from './message'
 import { BreakClock, type Model, Phase, initialModel } from './model'
 import { DISTANT_SPAWN, inPortrait } from './model.fixture'
+import { modifyFocus } from './party'
 import { screenOf, thumbAreaTop } from './screen'
 import {
   PHONE_LANDSCAPE,
@@ -370,7 +371,7 @@ describe('the turn hint', () => {
 describe('the portrait door preview', () => {
   test('pins the markers of doors out of view to the window edge', () => {
     const breakAtWestWall = inPortrait(
-      modifyFields(
+      modifyFocus(
         onTouch(
           Phase.Preparation({
             wave: 3,
@@ -402,7 +403,7 @@ describe('the portrait door preview', () => {
 
   test('points at no door during a wave', () => {
     const waveAtWestWall = inPortrait(
-      modifyFields(
+      modifyFocus(
         onTouch(
           Phase.Wave({
             wave: 3,

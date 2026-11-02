@@ -40,11 +40,13 @@ import {
 import { TRAP_NAMES } from './names'
 import {
   COOP_RULES,
+  atSeat,
   firedBy,
   isCoop,
-  leadSeatOf,
-  modifyLeadSeat,
+  modifySeat,
+  seatStateAt,
   trapOwnerOf,
+  updateSeat,
 } from './party'
 import type { SoundEffect } from './soundEffect'
 import { countTrapPlaced } from './stats'
@@ -57,6 +59,7 @@ import {
   Phase,
   Pierce,
   type Player,
+  type PlayerSlot,
   type Toll,
   Trap,
   type TrapCounts,
@@ -518,24 +521,32 @@ export const placedCount = (
 
 // NOTE: in co-op each player counts only the traps they placed, against a
 // limit of their own (decided row 21). Single player counts every trap.
-const ownTraps = (model: World): ReadonlyArray<Trap> =>
+const ownTraps = (model: World, slot: PlayerSlot): ReadonlyArray<Trap> =>
   isCoop(model)
     ? Array.filter(model.traps, ({ id }) =>
-        Array.contains(leadSeatOf(model).trapIds, id),
+        Array.contains(seatStateAt(model, slot).seat.trapIds, id),
       )
     : model.traps
 
 export const trapLimitOf = (model: World, kind: TrapKind): number =>
   isCoop(model) ? COOP_RULES.trapLimit : TRAPS[kind].limit
 
-export const ownedCount = (model: World, kind: TrapKind): number =>
-  model.trapStock[kind] + placedCount(ownTraps(model), kind)
+export const ownedCount = (
+  model: World,
+  slot: PlayerSlot,
+  kind: TrapKind,
+): number =>
+  seatStateAt(model, slot).trapStock[kind] +
+  placedCount(ownTraps(model, slot), kind)
 
 const otherKind = (kind: TrapKind): TrapKind =>
   kind === 'Barricade' ? 'Turret' : 'Barricade'
 
-export const maybeSelectedKind = (model: World): Option.Option<TrapKind> => {
-  const { selectedTrap, trapStock } = model
+export const maybeSelectedKind = (
+  model: World,
+  slot: PlayerSlot,
+): Option.Option<TrapKind> => {
+  const { selectedTrap, trapStock } = seatStateAt(model, slot)
   if (trapStock[selectedTrap] > 0) {
     return Option.some(selectedTrap)
   } else if (trapStock[otherKind(selectedTrap)] > 0) {
@@ -545,18 +556,24 @@ export const maybeSelectedKind = (model: World): Option.Option<TrapKind> => {
   }
 }
 
-const hasBothKinds = (model: World): boolean =>
-  Array.every(TRAP_KIND_ORDER, kind => model.trapStock[kind] > 0)
+const hasBothKinds = (model: World, slot: PlayerSlot): boolean =>
+  Array.every(
+    TRAP_KIND_ORDER,
+    kind => seatStateAt(model, slot).trapStock[kind] > 0,
+  )
 
-export const maybeNextKind = (model: World): Option.Option<TrapKind> =>
-  hasBothKinds(model)
-    ? Option.map(maybeSelectedKind(model), otherKind)
+export const maybeNextKind = (
+  model: World,
+  slot: PlayerSlot,
+): Option.Option<TrapKind> =>
+  hasBothKinds(model, slot)
+    ? Option.map(maybeSelectedKind(model, slot), otherKind)
     : Option.none()
 
-export const cycleTrap = (model: World): World =>
-  Option.match(maybeNextKind(model), {
+export const cycleTrap = (model: World, slot: PlayerSlot): World =>
+  Option.match(maybeNextKind(model, slot), {
     onNone: () => model,
-    onSome: kind => modifyFields(model, { selectedTrap: () => kind }),
+    onSome: kind => modifySeat(model, slot, { selectedTrap: () => kind }),
   })
 
 const addStock = (stock: TrapCounts, kind: TrapKind, amount: number) =>
@@ -565,10 +582,15 @@ const addStock = (stock: TrapCounts, kind: TrapKind, amount: number) =>
     Turret: count => (kind === 'Turret' ? count + amount : count),
   })
 
-export const stockTrap = (model: World, kind: TrapKind): World =>
-  modifyFields(model, {
+export const stockTrap = (
+  model: World,
+  slot: PlayerSlot,
+  kind: TrapKind,
+): World =>
+  modifySeat(model, slot, {
     trapStock: stock => addStock(stock, kind, 1),
-    selectedTrap: selected => (model.trapStock[selected] > 0 ? selected : kind),
+    selectedTrap: selected =>
+      seatStateAt(model, slot).trapStock[selected] > 0 ? selected : kind,
   })
 
 // PLACEMENT
@@ -623,8 +645,8 @@ const firstReason = (
     }),
   )
 
-const isAtLimit = (model: World, kind: TrapKind): boolean =>
-  placedCount(ownTraps(model), kind) >= trapLimitOf(model, kind)
+const isAtLimit = (model: World, slot: PlayerSlot, kind: TrapKind): boolean =>
+  placedCount(ownTraps(model, slot), kind) >= trapLimitOf(model, kind)
 
 const maybeDoorInReach = (
   level: Level,
@@ -655,35 +677,42 @@ const isHalfBoarded = (model: World): boolean => {
   return boarded.length >= Math.floor(doorIds.length / 2)
 }
 
-const barricadePlacement = (model: World, isBetweenWaves: boolean) =>
-  Option.match(maybeDoorInReach(levelOf(model), model.player), {
-    onNone: (): Placement => ({
-      kind: 'Barricade',
-      maybeSpot: Option.none(),
-      verdict: PlaceVerdict.Blocked({
-        reason: isBetweenWaves
-          ? 'Stand in a doorway to board it up'
-          : 'Traps go down between waves',
+const barricadePlacement = (
+  model: World,
+  slot: PlayerSlot,
+  isBetweenWaves: boolean,
+) =>
+  Option.match(
+    maybeDoorInReach(levelOf(model), seatStateAt(model, slot).player),
+    {
+      onNone: (): Placement => ({
+        kind: 'Barricade',
+        maybeSpot: Option.none(),
+        verdict: PlaceVerdict.Blocked({
+          reason: isBetweenWaves
+            ? 'Stand in a doorway to board it up'
+            : 'Traps go down between waves',
+        }),
       }),
-    }),
-    onSome: (door): Placement => ({
-      kind: 'Barricade',
-      maybeSpot: Option.some(TrapSpot.Doorway({ door })),
-      verdict: firstReason([
-        [!isBetweenWaves, 'Traps go down between waves'],
-        [isAtLimit(model, 'Barricade'), TRAPS.Barricade.placeLimitNote],
-        [isHalfBoarded(model), 'Half the doors are boarded'],
-        [
-          Array.contains(barricadedDoors(model.traps), door),
-          'This doorway is already boarded up',
-        ],
-        [
-          isZombieInBox(model.zombies, levelOf(model).thresholds[door].box),
-          'A zombie is in the way',
-        ],
-      ]),
-    }),
-  })
+      onSome: (door): Placement => ({
+        kind: 'Barricade',
+        maybeSpot: Option.some(TrapSpot.Doorway({ door })),
+        verdict: firstReason([
+          [!isBetweenWaves, 'Traps go down between waves'],
+          [isAtLimit(model, slot, 'Barricade'), TRAPS.Barricade.placeLimitNote],
+          [isHalfBoarded(model), 'Half the doors are boarded'],
+          [
+            Array.contains(barricadedDoors(model.traps), door),
+            'This doorway is already boarded up',
+          ],
+          [
+            isZombieInBox(model.zombies, levelOf(model).thresholds[door].box),
+            'A zombie is in the way',
+          ],
+        ]),
+      }),
+    },
+  )
 
 const TURRET_SEARCH_PX = 15
 
@@ -691,6 +720,7 @@ type FloorTile = Readonly<{ column: number; row: number }>
 
 const floorVerdict = (
   model: World,
+  slot: PlayerSlot,
   { column, row }: FloorTile,
 ): PlaceVerdict => {
   const level = levelOf(model)
@@ -708,7 +738,7 @@ const floorVerdict = (
     [isOccupied, 'A trap is already there'],
     [Array.contains(stallFrontOf(level), index), 'Keep the shop stall clear'],
     [
-      circleTouchesBox(model.player, PLAYER_RADIUS, box),
+      circleTouchesBox(seatStateAt(model, slot).player, PLAYER_RADIUS, box),
       'Too close. Step back',
     ],
     [isZombieInBox(model.zombies, box), 'A zombie is in the way'],
@@ -761,8 +791,12 @@ const floorPlacement = (tile: FloorTile, verdict: PlaceVerdict): Placement => ({
   verdict,
 })
 
-const turretPlacement = (model: World, isBetweenWaves: boolean): Placement => {
-  const { player } = model
+const turretPlacement = (
+  model: World,
+  slot: PlayerSlot,
+  isBetweenWaves: boolean,
+): Placement => {
+  const { player } = seatStateAt(model, slot)
   const front = addVectors(
     player,
     scaleVector(player.facing, TURRET_PLACE_REACH_PX),
@@ -773,13 +807,13 @@ const turretPlacement = (model: World, isBetweenWaves: boolean): Placement => {
   }
   const roundVerdict = firstReason([
     [!isBetweenWaves, 'Traps go down between waves'],
-    [isAtLimit(model, 'Turret'), TRAPS.Turret.placeLimitNote],
+    [isAtLimit(model, slot, 'Turret'), TRAPS.Turret.placeLimitNote],
   ])
   if (PlaceVerdict.isAnyOf(['Blocked'])(roundVerdict)) {
     return floorPlacement(frontTile, roundVerdict)
   }
 
-  const frontVerdict = floorVerdict(model, frontTile)
+  const frontVerdict = floorVerdict(model, slot, frontTile)
   if (PlaceVerdict.isAnyOf(['Placeable'])(frontVerdict)) {
     return floorPlacement(frontTile, frontVerdict)
   }
@@ -787,7 +821,7 @@ const turretPlacement = (model: World, isBetweenWaves: boolean): Placement => {
   return pipe(
     nearbyFloorTiles(player, front),
     Array.findFirst(tile =>
-      PlaceVerdict.isAnyOf(['Placeable'])(floorVerdict(model, tile)),
+      PlaceVerdict.isAnyOf(['Placeable'])(floorVerdict(model, slot, tile)),
     ),
     Option.match({
       onNone: () => floorPlacement(frontTile, frontVerdict),
@@ -796,12 +830,15 @@ const turretPlacement = (model: World, isBetweenWaves: boolean): Placement => {
   )
 }
 
-export const maybePlacement = (model: World): Option.Option<Placement> =>
-  Option.map(maybeSelectedKind(model), kind => {
+export const maybePlacement = (
+  model: World,
+  slot: PlayerSlot,
+): Option.Option<Placement> =>
+  Option.map(maybeSelectedKind(model, slot), kind => {
     const isBetweenWaves = Phase.isAnyOf(['Preparation'])(model.phase)
     return kind === 'Barricade'
-      ? barricadePlacement(model, isBetweenWaves)
-      : turretPlacement(model, isBetweenWaves)
+      ? barricadePlacement(model, slot, isBetweenWaves)
+      : turretPlacement(model, slot, isBetweenWaves)
   })
 
 const newTrap = (id: number, spot: TrapSpot, player: Player): Trap =>
@@ -855,8 +892,9 @@ export type PlacedInWorld = Readonly<{ world: World; trap: Trap }>
 // fields, who owns it in co-op.
 export const placeTrapIn = (
   model: World,
+  slot: PlayerSlot,
 ): Result.Result<PlacedInWorld, string> =>
-  Option.match(maybePlacement(model), {
+  Option.match(maybePlacement(model, slot), {
     onNone: () => Result.fail('You have no traps to place'),
     onSome: ({ kind, maybeSpot, verdict }) =>
       PlaceVerdict.match(verdict, {
@@ -865,21 +903,32 @@ export const placeTrapIn = (
           Option.match(maybeSpot, {
             onNone: () => Result.fail('There is nowhere to put it'),
             onSome: spot => {
-              const trap = newTrap(model.nextEntityId, spot, model.player)
+              const trap = newTrap(
+                model.nextEntityId,
+                spot,
+                seatStateAt(model, slot).player,
+              )
               return Result.succeed({
                 trap,
                 world: modifyFields(
-                  modifyLeadSeat(model, seat =>
-                    modifyFields(seat, {
-                      trapIds: Array.append(trap.id),
-                    }),
-                  ),
+                  isCoop(model)
+                    ? updateSeat(model, slot, state =>
+                        modifyFields(state, {
+                          seat: seat =>
+                            modifyFields(seat, {
+                              trapIds: Array.append(trap.id),
+                            }),
+                        }),
+                      )
+                    : model,
                   {
                     traps: Array.append(trap),
                     nextEntityId: id => id + 1,
-                    trapStock: stock => addStock(stock, kind, -1),
-                    player: player =>
-                      stepOutOfDoorway(levelOf(model), player, spot),
+                    seats: atSeat(slot, {
+                      trapStock: stock => addStock(stock, kind, -1),
+                      player: player =>
+                        stepOutOfDoorway(levelOf(model), player, spot),
+                    }),
                     stats: countTrapPlaced,
                   },
                 ),

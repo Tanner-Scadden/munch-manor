@@ -2,9 +2,15 @@ import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { isInArc, maybeNearest, payStriker, strikeInMelee } from './melee'
+import { atSeat, modifySeat, seatStateAt } from './party'
 import { isWieldingKnife } from './weapons'
 import type { World } from './world'
-import { GameEvent, type Player, ShopState } from './worldSchema'
+import {
+  GameEvent,
+  type Player,
+  type PlayerSlot,
+  ShopState,
+} from './worldSchema'
 import { isGrounded } from './zombies'
 
 // The knife (GAME_DESIGN.md, "The knife and two gun slots"): every player
@@ -44,9 +50,9 @@ export const maybeSlashShare = (player: Player): Option.Option<number> => {
     : Option.none()
 }
 
-const coolKnife = (world: World, deltaMs: number): World =>
-  world.player.knifeCooldownMs > 0
-    ? modifyFields(world, {
+const coolKnife = (world: World, slot: PlayerSlot, deltaMs: number): World =>
+  seatStateAt(world, slot).player.knifeCooldownMs > 0
+    ? modifySeat(world, slot, {
         player: player =>
           modifyFields(player, {
             knifeCooldownMs: cooldown => Math.max(0, cooldown - deltaMs),
@@ -54,8 +60,8 @@ const coolKnife = (world: World, deltaMs: number): World =>
       })
     : world
 
-const stab = (world: World): World => {
-  const { player } = world
+const stab = (world: World, slot: PlayerSlot): World => {
+  const { player } = seatStateAt(world, slot)
   const isReached = isInArc(player, KNIFE_RULES.reachPx, KNIFE_RULES.halfArc)
   const maybeTarget = maybeNearest(
     player,
@@ -88,24 +94,30 @@ const stab = (world: World): World => {
             zombie.id === hit.zombie.id ? hit.zombie : zombie,
           ),
       }),
-    player: current =>
-      modifyFields(current, {
-        knifeCooldownMs: () => KNIFE_RULES.intervalMs,
-      }),
+    seats: atSeat(slot, {
+      player: current =>
+        modifyFields(current, {
+          knifeCooldownMs: () => KNIFE_RULES.intervalMs,
+        }),
+    }),
     frameEvents: frameEvents => [...frameEvents, ...events],
   })
-  return payStriker(stabbed, events)
+  return payStriker(stabbed, slot, events)
 }
 
-// NOTE: one tick of the knife for the seat in the World's per-player
-// fields: in hand, the held trigger stabs. It rests while that player
-// browses the shop.
-export const stabWithKnife = (world: World, deltaMs: number): World => {
-  const cooled = coolKnife(world, deltaMs)
-  return isWieldingKnife(cooled.player) &&
-    cooled.intent.trigger === 'Held' &&
-    cooled.player.knifeCooldownMs <= 0 &&
-    !ShopState.isAnyOf(['Browsing'])(cooled.shop)
-    ? stab(cooled)
+// NOTE: one tick of the knife for the seat at `slot`: in hand, the held
+// trigger stabs. It rests while that player browses the shop.
+export const stabWithKnife = (
+  world: World,
+  slot: PlayerSlot,
+  deltaMs: number,
+): World => {
+  const cooled = coolKnife(world, slot, deltaMs)
+  const { player, intent, shop } = seatStateAt(cooled, slot)
+  return isWieldingKnife(player) &&
+    intent.trigger === 'Held' &&
+    player.knifeCooldownMs <= 0 &&
+    !ShopState.isAnyOf(['Browsing'])(shop)
+    ? stab(cooled, slot)
     : cooled
 }

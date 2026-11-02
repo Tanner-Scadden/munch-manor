@@ -19,6 +19,7 @@ import {
   type ProfileTab,
   type Zombie,
 } from '@game/model'
+import { modifyFocus } from '@game/party'
 import { stepWhen } from '@game/stepWhen'
 import { withInput } from '@game/update/step'
 import { markLooksSeen } from '@game/update/unlocks'
@@ -105,7 +106,7 @@ export const keepScene = (
   const kept = god
     ? {
         ...result,
-        model: modifyFields(result.model, {
+        model: modifyFocus(result.model, {
           player: p => ({ ...p, hp: PLAYER_MAX_HP }),
         }),
       }
@@ -316,7 +317,7 @@ export const sceneOf = (
   const panned: HarnessReturn = config.pan
     ? {
         ...holding,
-        model: modifyFields(holding.model, {
+        model: modifyFocus(holding.model, {
           player: player =>
             modifyFields(player, {
               melee: () =>
@@ -329,7 +330,7 @@ export const sceneOf = (
     config.knife || config.stab
       ? {
           ...panned,
-          model: modifyFields(panned.model, {
+          model: modifyFocus(panned.model, {
             player: player => modifyFields(player, { wield: () => 'Melee' }),
           }),
         }
@@ -349,7 +350,7 @@ export const sceneOf = (
   const dried: HarnessReturn = config.dry
     ? {
         ...held,
-        model: modifyFields(held.model, {
+        model: modifyFocus(held.model, {
           player: player =>
             modifyFields(player, {
               arsenal: arsenal =>

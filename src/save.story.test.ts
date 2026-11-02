@@ -28,6 +28,7 @@ import {
 } from './model'
 import { DISTANT_SPAWN, loadingSave } from './model.fixture'
 import { shownHints } from './onboarding'
+import { focusOf, modifyFocus } from './party'
 import { noSavedRunRecords } from './playerData'
 import { PlayerChange, changesBetween } from './playerSync'
 import { grantedVeteran, noRank } from './rank'
@@ -776,16 +777,18 @@ describe('writing the save', () => {
   })
 
   test('the end of a run writes its kills and the run into the save', () => {
-    const dying = modifyFields(read, {
-      phase: () =>
-        Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
-      player: player => modifyFields(player, { hp: () => 0 }),
-      stats: stats =>
-        modifyFields(stats, {
-          kills: () =>
-            modifyFields(noKills, { Shambler: () => 4, Tank: () => 1 }),
-        }),
-    })
+    const dying = modifyFocus(
+      modifyFields(read, {
+        phase: () =>
+          Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
+        stats: stats =>
+          modifyFields(stats, {
+            kills: () =>
+              modifyFields(noKills, { Shambler: () => 4, Tank: () => 1 }),
+          }),
+      }),
+      { player: player => modifyFields(player, { hp: () => 0 }) },
+    )
     story(
       update,
       given(dying),
@@ -827,8 +830,8 @@ describe('writing the save', () => {
           {
             id: 900,
             kind: 'RapidFire',
-            x: base.player.x,
-            y: base.player.y,
+            x: focusOf(base).player.x,
+            y: focusOf(base).player.y,
             ageMs: 0,
           },
         ],
@@ -892,7 +895,7 @@ describe('writing the save', () => {
       tick(FIXED_STEP_MS),
       Command.expectNone(),
       model(current => {
-        expect(current.player.x).not.toBe(fighting.player.x)
+        expect(focusOf(current).player.x).not.toBe(focusOf(fighting).player.x)
         expect(
           SAVED_FIELDS.filter(field => fighting[field] !== current[field]),
         ).toEqual([])
@@ -902,18 +905,20 @@ describe('writing the save', () => {
   })
 
   test('the saved fields are all the save reads', () => {
-    const played = modifyFields(restoreSave(read, learnedSave), {
-      phase: () =>
-        Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
-      wallet: wallet => modifyFields(wallet, { balance: () => 300 }),
-      stats: stats =>
-        modifyFields(stats, {
-          kills: () => modifyFields(noKills, { Shambler: () => 4 }),
-        }),
-      runTally: () => RunTally.Counted({ kills: noKills }),
-      panel: () => 'WhatsNew',
-      orientation: () => 'Portrait',
-    })
+    const played = modifyFocus(
+      modifyFields(restoreSave(read, learnedSave), {
+        phase: () =>
+          Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
+        stats: stats =>
+          modifyFields(stats, {
+            kills: () => modifyFields(noKills, { Shambler: () => 4 }),
+          }),
+        runTally: () => RunTally.Counted({ kills: noKills }),
+        panel: () => 'WhatsNew',
+        orientation: () => 'Portrait',
+      }),
+      { wallet: wallet => modifyFields(wallet, { balance: () => 300 }) },
+    )
     const savedFromInitial = Object.fromEntries(
       SAVED_FIELDS.map(field => [field, initialModel[field]]),
     )
@@ -1114,6 +1119,6 @@ describe('the calling in the save', () => {
       { ...learnedSave, calling: 'LineCook', rank: noRank },
     )
     expect(synced.calling).toBe('LineCook')
-    expect(synced.player.calling).toBe('You')
+    expect(focusOf(synced).player.calling).toBe('You')
   })
 })

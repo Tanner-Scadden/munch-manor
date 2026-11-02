@@ -8,7 +8,7 @@ import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase } from './model'
 import { readyModel } from './model.fixture'
-import { playersOf } from './party'
+import { atSeatBy, playersOf } from './party'
 import { pointsForRank } from './rank'
 import { earnRank } from './rankRun'
 import {
@@ -18,6 +18,7 @@ import {
   resolveFocusLobby,
   showDialog,
 } from './testing'
+import { SOLO_SLOT } from './worldSchema'
 
 // Teammate bots in the single player lobby (src/bots.ts, src/update/lobby.ts):
 // + BOT seats one, the x sends it home, its hero card picks its hero, START
@@ -358,10 +359,11 @@ describe('rank for a run with bots', () => {
 
   const revivedFour = (run: typeof botted) =>
     modifyFields(run, {
-      party: party =>
-        party._tag === 'Crew'
-          ? { ...party, lead: { ...party.lead, revives: 4 } }
-          : party,
+      seats: atSeatBy(SOLO_SLOT, state =>
+        modifyFields(state, {
+          seat: seat => modifyFields(seat, { revives: () => 4 }),
+        }),
+      ),
       phase: () => Phase.GameOver({ wave: 3 }),
     })
 
