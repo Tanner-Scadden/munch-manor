@@ -37,9 +37,10 @@ import {
 } from '@game/model'
 import { raiseDebutCard } from '@game/onboarding'
 import { advanceParticles } from '@game/particles'
-import { creditKills, seatCrew } from '@game/party'
+import { creditKills, leadSeatOf, playersOf, seatCrew } from '@game/party'
 import { startOrResume } from '@game/runFlow'
 import { shedParts } from '@game/simulation'
+import { SeatAction, applySeatAction } from '@game/stepWorld'
 import { planFor } from '@game/wavePlans'
 import { pause } from '@game/waves'
 import { STARTING_PISTOL, freshGun, mapGuns } from '@game/weapons'
@@ -867,6 +868,16 @@ export const roomModel = (settings: SceneSettings): Model => {
       { crewBots: () => crewBots },
     )
   }
+  if (config.mates === 'ready') {
+    model = withWorld(model, world =>
+      Array.reduce(playersOf(world), world, (readied, { slot }) =>
+        slot === leadSeatOf(world).slot
+          ? readied
+          : applySeatAction(readied, slot, SeatAction.Ready()),
+      ),
+    )
+  }
+  model = modifyFields(model, { breakIdleMs: () => config.idle })
   const phase = config.phase
   const beforeEnd = model
   if (phase === 'victory') {
