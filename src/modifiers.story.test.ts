@@ -6,11 +6,12 @@ import { describe, expect, test } from 'vitest'
 import { addBot } from './bots'
 import { FIXED_STEP_MS, PLAYER_MAX_HP, SHAMBLER_BOUNTY } from './constants'
 import { advanceLobs } from './fridgeWeapons'
-import { FRIDGE_RULES } from './leftovers'
+import { FRIDGE_RULES, pullFridge } from './leftovers'
 import { update } from './main'
 import { Message } from './message'
 import {
   type Bullet,
+  Life,
   type Model,
   Phase,
   Pierce,
@@ -26,6 +27,7 @@ import {
   pipeline,
   placeSeat,
   readyAfterRead,
+  withSeatLife,
 } from './model.fixture'
 import {
   MODIFIER_ORDER,
@@ -41,6 +43,7 @@ import {
 } from './modifiers'
 import { effectiveModifiersOf } from './onlineRun'
 import {
+  COOP_RULES,
   focusOf,
   focusSlotOf,
   isFriendlyFireOn,
@@ -447,6 +450,94 @@ describe('Glass', () => {
     expect(without).toContain('Heart')
     expect(withGlass.length).toBeGreaterThan(0)
     expect(withGlass).not.toContain('Heart')
+  })
+
+  const prizesFor = (modifiers: Modifiers): ReadonlyArray<string> =>
+    Array.map(Array.makeBy(200, index => 3 + index * 7919), seed => {
+      const facing = withModifiers(
+        modifyFields(atFridge(1000), {
+          loot: loot => ({ ...loot, fridgeRngState: seed }),
+        }),
+        modifiers,
+      )
+      return Option.match(
+        pullFridge(facing, focusSlotOf(facing), FRIDGE_RULES.price),
+        {
+          onNone: () => 'None',
+          onSome: pulled =>
+            pulled.fridge.door._tag === 'Open'
+              ? pulled.fridge.door.prize
+              : 'None',
+        },
+      )
+    })
+
+  test('the fridge never pulls the healing Sandwich', () => {
+    const withGlass = prizesFor(glass)
+    expect(prizesFor(noModifiers)).toContain('Sandwich')
+    expect(withGlass).not.toContain('None')
+    expect(withGlass).not.toContain('Sandwich')
+  })
+
+  test('a revived teammate gets up on one heart', () => {
+    const reviveTicks = Math.ceil(COOP_RULES.reviveMs / TICK_MS)
+    story(
+      update,
+      given(
+        pipeline(
+          placeSeat(0, 232, ROW_Y),
+          placeSeat(1, 240, ROW_Y, 0),
+          withSeatLife(
+            1,
+            Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 }),
+          ),
+        )(withModifiers(crewInWave(2), glass)),
+      ),
+      ...ticks(reviveTicks, TICK_MS),
+      model(current => {
+        const risen = Array.findFirst(
+          playersOf(current),
+          ({ seat }) => seat.slot === 1,
+        )
+        expect(Option.map(risen, ({ seat }) => seat.life._tag)).toEqual(
+          Option.some('Standing'),
+        )
+        expect(Option.map(risen, ({ player }) => player.hp)).toEqual(
+          Option.some(1),
+        )
+      }),
+    )
+  })
+
+  test('the fallen come back at the break on one heart', () => {
+    story(
+      update,
+      given(
+        pipeline(
+          withSeatLife(1, Life.BledOut()),
+          placeSeat(1, 240, ROW_Y, 0),
+        )(
+          withModifiers(
+            crewInWave(2, Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })),
+            glass,
+          ),
+        ),
+      ),
+      ...ticks(1, TICK_MS),
+      model(current => {
+        expect(current.phase._tag).toBe('Preparation')
+        const back = Array.findFirst(
+          playersOf(current),
+          ({ seat }) => seat.slot === 1,
+        )
+        expect(Option.map(back, ({ seat }) => seat.life._tag)).toEqual(
+          Option.some('Standing'),
+        )
+        expect(Option.map(back, ({ player }) => player.hp)).toEqual(
+          Option.some(1),
+        )
+      }),
+    )
   })
 })
 
