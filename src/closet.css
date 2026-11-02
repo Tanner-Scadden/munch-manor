@@ -293,7 +293,7 @@
 
 @media (max-height: 460px) and (orientation: landscape) {
   .look-tab {
-    --menu-tap: 40px;
+    --menu-tap: 44px;
   }
 }
 
@@ -316,7 +316,7 @@
 }
 
 .game-root[data-layout='Portrait'] .look-tab {
-  --menu-tap: 40px;
+  --menu-tap: 44px;
 }
 
 /* TRYING ON: the option being tried on glows, and the BUY pill sits in the

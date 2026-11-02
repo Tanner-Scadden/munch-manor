@@ -15,9 +15,12 @@ import {
   TAG,
   deviceQuery,
   finish,
+  fromHand,
   harnessQuery,
+  inOrder,
   isPickedScene,
   launch,
+  press,
   scenePages,
   settleAnimations,
   shot,
@@ -32,27 +35,6 @@ type Scene = Readonly<{
 
 const SHOP = 'wave=5&money=180&gun=smg&tier=1&px=270&py=142'
 const MIN_SIDE = 48
-
-// NOTE: a click on a visible button by its accessible name. On a phone the
-// harness plays with touch, but a click lands the same Message.
-const press = (name: RegExp | string) => async (page: Page) => {
-  await page.getByRole('button', { name }).first().click()
-  await settleAnimations(page)
-}
-
-const inOrder =
-  (...acts: ReadonlyArray<(page: Page) => Promise<void>>) =>
-  async (page: Page) => {
-    for (const act of acts) {
-      await act(page)
-    }
-  }
-
-const fromHand = (name: RegExp) =>
-  inOrder(press(/^more/i), async page => {
-    await page.locator('dialog[open]').first().waitFor({ state: 'visible' })
-    await press(name)(page)
-  })
 
 const GUIDE = press('Shop guide')
 

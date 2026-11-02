@@ -680,6 +680,18 @@
   }
 }
 
+/* NOTE: seven options in a row (the prints) are a few pixels short of
+   fitting a 360 px phone at the full tap size, so a column may shrink to
+   fit; every option keeps its height. */
+@media (max-width: 380px) {
+  .look-options {
+    grid-template-columns: repeat(
+      var(--look-columns, 6),
+      minmax(0, var(--menu-tap))
+    );
+  }
+}
+
 .look-options.look-toggles {
   grid-template-columns: repeat(2, var(--menu-tap));
 }

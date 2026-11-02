@@ -640,3 +640,24 @@ export const awaitGame = (page: Page) =>
   page.waitForFunction(() => document.getElementById('splash') === null, {
     timeout: 45_000,
   })
+
+// NOTE: a click on a visible button by its accessible name. On a phone the
+// harness plays with touch, but a click lands the same Message.
+export const press = (name: RegExp | string) => async (page: Page) => {
+  await page.getByRole('button', { name }).first().click()
+  await settleAnimations(page)
+}
+
+export const inOrder =
+  (...acts: ReadonlyArray<(page: Page) => Promise<void>>) =>
+  async (page: Page) => {
+    for (const act of acts) {
+      await act(page)
+    }
+  }
+
+export const fromHand = (name: RegExp) =>
+  inOrder(press(/^more/i), async page => {
+    await page.locator('dialog[open]').first().waitFor({ state: 'visible' })
+    await press(name)(page)
+  })
