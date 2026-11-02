@@ -52,6 +52,7 @@ import {
   msIntoPhase,
   shownHints,
 } from './onboarding'
+import { isCoop } from './party'
 import type { Calling } from './playerData'
 import { type Screen, landscapeFrameOffset } from './screen'
 import {
@@ -434,15 +435,20 @@ const beefierBanner = (
   }
 }
 
+// NOTE: a crew never reads about a new zombie (owner, 2026-11-01: "don't show
+// new zombie info in multiplayer"), so its break shows no NEW banner.
 const debutBanner = (
   band: HintBand,
   wave: number,
   shownMs: number,
+  isCrew: boolean,
 ): ReadonlyArray<Canvas.Shape> =>
   Option.match(Array.head(debutKinds(wave)), {
     onNone: () => beefierBanner(band, wave, shownMs),
     onSome: kind =>
-      shownMs < NEW_KIND_BANNER_MS ? newKindBanner(band, kind, shownMs) : [],
+      shownMs < NEW_KIND_BANNER_MS && !isCrew
+        ? newKindBanner(band, kind, shownMs)
+        : [],
   })
 
 const preparationBanner = (
@@ -467,6 +473,7 @@ const preparationBanner = (
       model.hintBand,
       wave,
       msIntoPreparation - WAVE_CLEARED_BANNER_MS,
+      isCoop(model),
     )
   }
 }

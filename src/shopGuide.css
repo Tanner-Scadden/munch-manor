@@ -1,0 +1,381 @@
+/* THE SHOP GUIDE
+
+   What Rattles sells, as pictures and bars: the Munchopedia's Shop page and
+   the ? in his shop share these styles. The colors are the shop's own, set
+   here so the guide looks the same inside the menu panel and the shop
+   dialog. --sg-px is one art pixel; a phone draws them smaller. */
+
+.sg,
+.sg-shop {
+  --sg-ink: #f4f1de;
+  --sg-muted: #9a93a8;
+  --sg-gold: #ffd23f;
+  --sg-good: #9be36a;
+  --sg-card: #2b2233;
+  --sg-card-raised: #352a40;
+  --sg-line: rgba(244, 241, 222, 0.22);
+  --sg-wood: #8a5a2b;
+  --sg-tap: 48px;
+  --sg-px: 3px;
+}
+
+.sg {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  color: var(--sg-ink);
+  font: 12px monospace;
+}
+
+.sg-art {
+  display: block;
+  flex: none;
+  width: calc(var(--art-w) * var(--px, var(--sg-px)));
+  height: calc(var(--art-h) * var(--px, var(--sg-px)));
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+}
+
+/* SECTIONS */
+
+.sg-sections {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sg-section-item {
+  display: flex;
+}
+
+.sg-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  box-sizing: border-box;
+  min-height: var(--sg-tap);
+  padding: 4px 2px;
+  border: 2px solid var(--sg-line);
+  border-radius: 6px;
+  background: var(--sg-card);
+  color: var(--sg-ink);
+  font: bold 11px monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.sg-section[aria-pressed='true'] {
+  border-color: var(--sg-gold);
+  background: var(--sg-card-raised);
+  color: var(--sg-gold);
+}
+
+.sg-section-art {
+  --px: 2px;
+  pointer-events: none;
+}
+
+.sg-section-name {
+  pointer-events: none;
+}
+
+.sg-section:active {
+  filter: brightness(1.3);
+}
+
+.sg-section:focus-visible,
+.sg-back:focus-visible,
+.shop-help:focus-visible {
+  outline: 3px solid var(--sg-good);
+  outline-offset: 2px;
+}
+
+/* ENTRIES */
+
+.sg-entries {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sg-entry {
+  display: flex;
+  gap: 10px;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 8px;
+  border: 2px solid var(--sg-line);
+  border-radius: 6px;
+  background: var(--sg-card);
+}
+
+.sg-entry[data-known='Unknown'] {
+  border-style: dashed;
+  color: var(--sg-muted);
+}
+
+.sg-picture {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 80px;
+  min-height: 64px;
+  border-radius: 6px;
+  background: #1f1826;
+}
+
+.sg-mystery {
+  color: var(--sg-muted);
+  font: bold 32px monospace;
+}
+
+.sg-facts {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.sg-name {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  color: #c8f59e;
+  font: bold 13px monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sg-entry[data-known='Unknown'] .sg-name {
+  color: var(--sg-muted);
+}
+
+.sg-price {
+  color: var(--sg-gold);
+  white-space: nowrap;
+}
+
+.sg-line {
+  margin: 0;
+  color: #d8dccb;
+}
+
+/* BARS */
+
+.sg-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sg-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sg-bar-name {
+  flex: none;
+  width: 62px;
+  color: var(--sg-muted);
+  font: bold 10px monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sg-bar-segs {
+  display: flex;
+  gap: 2px;
+}
+
+.sg-seg {
+  width: 14px;
+  height: 8px;
+  border-radius: 1px;
+  background: rgba(244, 241, 222, 0.14);
+}
+
+.sg-seg.is-on {
+  background: var(--sg-good);
+}
+
+.sg-seg.is-next {
+  background: var(--sg-gold);
+  opacity: 0.8;
+}
+
+/* LADDER AND CHIPS */
+
+.sg-ladder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sg-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.sg-step + .sg-step::before {
+  content: '>';
+  position: absolute;
+  left: -10px;
+  top: 30%;
+  color: var(--sg-muted);
+  font: bold 11px monospace;
+}
+
+.sg-step-art {
+  --px: 2px;
+}
+
+.sg-step-price {
+  color: var(--sg-gold);
+  font-size: 11px;
+}
+
+.sg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sg-chip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--sg-gold);
+  font-size: 11px;
+}
+
+.sg-chip-art {
+  --px: 2px;
+}
+
+/* IN THE SHOP */
+
+.sg-shop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.sg-shop > .sg {
+  flex: 1;
+}
+
+.sg-back {
+  align-self: flex-start;
+  box-sizing: border-box;
+  min-width: 96px;
+  min-height: var(--sg-tap);
+  padding: 0 16px;
+  border: 2px solid var(--sg-gold);
+  border-radius: 6px;
+  background: var(--sg-card-raised);
+  color: var(--sg-gold);
+  font: bold 14px monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.sg-back:active,
+.shop-help:active {
+  filter: brightness(1.3);
+}
+
+/* NOTE: the ? takes a column between Rattles' bubble and the close button. */
+.shop-header:has(> .shop-help) {
+  grid-template-columns: auto 1fr auto auto auto;
+}
+
+.shop-help {
+  align-self: start;
+  box-sizing: border-box;
+  width: var(--shop-tap);
+  height: var(--shop-tap);
+  border: calc(2 * var(--shop-u)) solid var(--shop-gold);
+  border-radius: var(--shop-radius);
+  background: var(--shop-card-raised);
+  color: var(--shop-gold);
+  font: bold calc(20 * var(--shop-u)) monospace;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.munch-shop-art {
+  --px: 3px;
+}
+
+/* PHONES */
+
+@media (max-height: 500px), (max-width: 560px) {
+  .sg {
+    --sg-px: 2px;
+  }
+
+  .sg-picture {
+    width: 60px;
+    min-height: 48px;
+  }
+
+  .sg-section-name {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 560px) {
+  .sg-entries {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shop-header:has(> .shop-help) {
+    grid-template-areas:
+      'keeper speech help close'
+      'keeper wallet wallet wallet';
+    grid-template-columns: auto 1fr auto auto;
+  }
+
+  .shop-help {
+    grid-area: help;
+  }
+}

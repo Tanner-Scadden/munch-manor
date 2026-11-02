@@ -4,7 +4,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { PickedMode, RoomDifficulty } from '@munch/netcode'
 import { LobbyEvent, QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
-import { Calling } from '../playerData'
+import { Calling, SavedBoughtCosmetics } from '../playerData'
 import { SeatAction } from '../stepWorld'
 import { Bullet } from '../worldSchema'
 import { CodeCopy, CoopProblem, Share } from './model'
@@ -69,6 +69,7 @@ export const Message = defineMessageUnion({
     look: Schema.String,
     rank: Schema.Number,
     calling: Calling,
+    bought: SavedBoughtCosmetics,
   },
   RequestedPressKey: { code: Schema.String },
   RequestedReleaseKey: { code: Schema.String },

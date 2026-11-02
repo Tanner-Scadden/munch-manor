@@ -11,7 +11,7 @@ import { update } from './main'
 import { isPanelOpen } from './menuState'
 import { Message } from './message'
 import { type Model } from './model'
-import { readyAfterRead } from './model.fixture'
+import { heroesBoughtBy, readyAfterRead } from './model.fixture'
 import { earnKill } from './party'
 import type { Calling } from './playerData'
 import { playerSpeed } from './powerups'
@@ -33,6 +33,7 @@ import {
 const ranked = (rank: number, calling: Calling): Model =>
   modifyFields(readyAfterRead, {
     rank: current => ({ ...current, earnedPoints: pointsForRank(rank) }),
+    boughtCosmetics: () => heroesBoughtBy(rank),
     calling: () => calling,
   })
 

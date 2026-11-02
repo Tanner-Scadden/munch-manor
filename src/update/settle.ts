@@ -11,6 +11,7 @@ import type { Model } from '../model'
 import { cueMusicFrom } from '../musicPlan'
 import { runDifficultyOf } from '../onlineRun'
 import { earnRank } from '../rankRun'
+import { notePulledPrize } from '../shopGuide'
 import { sendOrQueueRunSummary } from '../summaryQueue'
 import { RUNNING_BUILD } from '../version'
 import {
@@ -80,8 +81,8 @@ const sendRunSummaryFrom =
 
 // NOTE: what the root does after any change, comparing the Model from
 // before it: music for the phase, the end menu's focus, the rotation lock,
-// Nightmare, the run count and its summary, the new zombie badges, and the
-// save. Each looks only at the root's own fields, so a child Message that
+// Nightmare, the run count and its summary, the new zombie badges, the fridge
+// prizes pulled, and the save. Each looks only at the root's own fields, so a child Message that
 // changes nothing but its child needs none of them.
 export const afterMessage = (
   before: Model,
@@ -108,6 +109,7 @@ export const afterMessage = (
   }),
   sendRunSummaryFrom(before),
   stepModel => ({ model: forgetNewEntriesFrom(before, stepModel) }),
+  stepModel => ({ model: notePulledPrize(stepModel) }),
   writeSaveFrom(before, saveWrite),
 ]
 

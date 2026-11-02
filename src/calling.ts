@@ -1,7 +1,14 @@
-import { Array } from 'effect'
+import { Array, Option, Record } from 'effect'
 
 import { PLAYER_MAX_HP } from './constants'
-import { Calling } from './playerData'
+import {
+  COSMETIC_PRICES,
+  Calling,
+  type SavedBoughtCosmetics,
+  type SavedRank,
+  heroIdOf,
+} from './playerData'
+import { bonesBalanceOf } from './rank'
 
 // NOTE: players read "hero" (plural "heroes") for what the code calls a
 // calling, renamed 2026-11-01 by the owner. The code keeps `calling`, as
@@ -19,9 +26,9 @@ export const CALLINGS: Array.NonEmptyReadonlyArray<Calling> = Calling.literals
 
 // UNLOCKS
 
-// NOTE: the rank each calling opens at. A rank is derived from the points
-// earned (src/rank.ts), so a synced save can say a calling it has not
-// reached, and `callingForRun` starts YOU for it.
+// NOTE: the rank each calling opens for sale at. A rank is derived from the
+// points earned (src/rank.ts). A hero is then bought with Bones (its price is
+// in COSMETIC_PRICES, src/playerData.ts) and kept in the save's bought list.
 export const UNLOCK_RANKS: Readonly<Record<Calling, number>> = {
   You: 1,
   Handyman: 3,
@@ -33,10 +40,52 @@ export const UNLOCK_RANKS: Readonly<Record<Calling, number>> = {
 export const isCallingUnlocked = (calling: Calling, rank: number): boolean =>
   rank >= UNLOCK_RANKS[calling]
 
-// NOTE: the calling a run starts with: the one picked if its rank is
-// reached, else YOU.
-export const callingForRun = (chosen: Calling, rank: number): Calling =>
-  isCallingUnlocked(chosen, rank) ? chosen : 'You'
+// OWNING
+
+// NOTE: the Bones a hero costs, none for YOU.
+export const callingPriceOf = (calling: Calling): Option.Option<number> =>
+  Record.get<string, number>(COSMETIC_PRICES, heroIdOf(calling))
+
+// NOTE: YOU is always owned; any other hero once bought.
+export const isCallingOwned = (
+  calling: Calling,
+  bought: SavedBoughtCosmetics,
+): boolean => calling === 'You' || Array.contains(bought, heroIdOf(calling))
+
+export const ownedCallings = (
+  bought: SavedBoughtCosmetics,
+): ReadonlyArray<Calling> =>
+  Array.filter(CALLINGS, calling => isCallingOwned(calling, bought))
+
+// NOTE: a hero's card: owned (pickable), for sale (its rank is reached, so
+// it shows its price and a pick tries it on), or locked (shows its rank).
+export type CallingStanding = 'Owned' | 'ForSale' | 'Locked'
+
+export const callingStandingOf = (
+  calling: Calling,
+  rank: number,
+  bought: SavedBoughtCosmetics,
+): CallingStanding =>
+  isCallingOwned(calling, bought)
+    ? 'Owned'
+    : isCallingUnlocked(calling, rank)
+      ? 'ForSale'
+      : 'Locked'
+
+// NOTE: whether the Bones cover a hero for sale.
+export const canAffordCalling = (rank: SavedRank, calling: Calling): boolean =>
+  Option.match(callingPriceOf(calling), {
+    onNone: () => false,
+    onSome: price => bonesBalanceOf(rank) >= price,
+  })
+
+// NOTE: the calling a run starts with: the one picked if it is owned, else
+// YOU. A synced pick this device has not bought (or an old save from when
+// rank alone opened heroes) starts YOU.
+export const callingForRun = (
+  chosen: Calling,
+  bought: SavedBoughtCosmetics,
+): Calling => (isCallingOwned(chosen, bought) ? chosen : 'You')
 
 // NOTE: the callings a rank up to `rank` opened that `before` had not.
 export const callingsOpenedBy = (

@@ -13,7 +13,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 
 import { specialsOf } from './callingSpecials'
-import { home } from './model.fixture'
+import { heroesBoughtBy, home } from './model.fixture'
 import { pointsForRank } from './rank'
 import {
   ROOT,
@@ -33,6 +33,7 @@ import {
 
 const handyman = modifyFields(home, {
   rank: current => ({ ...current, earnedPoints: pointsForRank(3) }),
+  boughtCosmetics: () => heroesBoughtBy(3),
   calling: () => 'Handyman',
   playerName: () => 'Mo',
 })

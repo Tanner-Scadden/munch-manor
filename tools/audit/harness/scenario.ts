@@ -20,8 +20,10 @@ import {
   type Zombie,
   ZombieAction,
 } from '@game/model'
+import { heroIdOf } from '@game/playerData'
 import { LinkFlow, PlayerScopeStatus, SyncState } from '@game/playerSync'
 import { rankOf, totalPointsOf } from '@game/rank'
+import { prizeUnlockId } from '@game/shopGuide'
 import { unlocksAt } from '@game/unlocks'
 
 import { withCoop } from './coopStage'
@@ -219,6 +221,9 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (calling !== undefined) {
     model = modifyFields(model, {
       calling: () => calling,
+      // NOTE: the hero is bought, as a run starts only with one the player owns.
+      boughtCosmetics: bought =>
+        calling === 'You' ? bought : Array.union(bought, [heroIdOf(calling)]),
       player: player => ({
         ...playerOfCalling(calling),
         x: player.x,
@@ -250,7 +255,9 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     })
   }
   if (bought !== undefined) {
-    model = modifyFields(model, { boughtCosmetics: () => bought })
+    model = modifyFields(model, {
+      boughtCosmetics: current => Array.union(current, bought),
+    })
   }
   if (hat !== undefined) {
     model = modifyFields(model, {
@@ -265,6 +272,12 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (!config.fresh) {
     model = modifyFields(model, {
       seenUnlocks: () => unlocksAt(rankOf(totalPointsOf(model.rank))),
+    })
+  }
+  const prizes = config.prizes
+  if (prizes !== undefined) {
+    model = modifyFields(model, {
+      seenUnlocks: seen => Array.union(seen, Array.map(prizes, prizeUnlockId)),
     })
   }
   if (rankGain !== undefined && isEndScreen(model.phase)) {

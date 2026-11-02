@@ -331,6 +331,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
               look: model.appearance,
               isKeyboard: model.lastDevice === 'KeyboardMouse',
               isRunCardUp: isRunCardHeld(model),
+              bought: model.boughtCosmetics,
             },
           }),
         ),

@@ -84,19 +84,26 @@ const nearestZombie = (current: Model) =>
       undefined,
     )
 
-const prepare = (current: Model): Model => {
-  const still = hold(current, [])
+// NOTE: the breaks have no clock on Normal, so a player the READY key finds
+// at a purchasable (held there to buy) would hold the break forever. The
+// walking pattern carries on through the break, so both come off it.
+const walking = (frame: number): ReadonlyArray<string> => {
+  const step = Math.floor(frame / FRAMES_PER_MOVE)
+  return [
+    ...(P1_MOVES[step % P1_MOVES.length] ?? []),
+    ...(P2_MOVES[(step + 1) % P2_MOVES.length] ?? []),
+  ]
+}
+
+const prepare = (current: Model, frame: number): Model => {
+  const still = hold(current, walking(frame))
   const leftStall =
     still.shop._tag === 'Browsing' ? tap(still, 'Escape') : still
   return tap(tap(tap(leftStall, 'KeyO'), 'KeyY'), 'Enter')
 }
 
 const fight = (current: Model, frame: number): Model => {
-  const step = Math.floor(frame / FRAMES_PER_MOVE)
-  const moved = hold(current, [
-    ...(P1_MOVES[step % P1_MOVES.length] ?? []),
-    ...(P2_MOVES[(step + 1) % P2_MOVES.length] ?? []),
-  ])
+  const moved = hold(current, walking(frame))
   const firing = moved.input.pressedKeys.includes('KeyU')
     ? moved
     : send(moved, Message.PressedKey({ code: 'KeyU' }))
@@ -125,7 +132,7 @@ const drive = (current: Model, frame: number): Model =>
   Phase.matchOrElse(
     current.phase,
     {
-      Preparation: () => prepare(current),
+      Preparation: () => prepare(current, frame),
       Wave: () => fight(current, frame),
     },
     () => current,

@@ -8,6 +8,7 @@ import { closeButtonView } from '../dialogs'
 import { iconView } from '../menuParts'
 import type { Appearance } from '../model'
 import { CALLING_NAMES } from '../names'
+import type { SavedBoughtCosmetics } from '../playerData'
 import { callingOfMember } from './looks'
 import { Message } from './message'
 import type { Room } from './model'
@@ -51,6 +52,7 @@ export const callingPillView = (
 export const callingPickerView = (
   room: Room,
   look: Appearance,
+  bought: SavedBoughtCosmetics,
   h: HtmlBuilder<Message>,
 ): Html =>
   Option.match(meIn(room), {
@@ -84,6 +86,8 @@ export const callingPickerView = (
                   look,
                   chosen: callingOfMember(me),
                   rank: me.rank,
+                  bought,
+                  maybeTrying: Option.none(),
                   fresh: [],
                   attributesOf: calling => [
                     h.OnClick(Message.ClickedCallingPick({ calling })),

@@ -15,9 +15,7 @@ import type {
 } from '@cloudflare/workers-types'
 import {
   type ClosedReason,
-  CreateRequest,
   DEFAULT_CALLING,
-  JoinRequest,
   type Lobby,
   ROOM_PATHS,
   Room,
@@ -29,9 +27,11 @@ import {
   decodeClientFrame,
   encodeServerFrame,
   normalizeRoomCode,
+  readAll,
   roomCodeOfScope,
   roomRefusalStatus,
   roomScopeId,
+  writeAll,
 } from '@munch/netcode'
 import {
   Connection,
@@ -39,7 +39,6 @@ import {
   OPENED,
   PING_JSON,
   PONG_JSON,
-  verifyToken,
 } from '@munch/sync-engine'
 
 import {
@@ -64,21 +63,14 @@ import {
   roomHostOnce,
 } from './gameRoomCore.ts'
 import {
-  MATCHMAKER_NAME,
-  REGION_HEADER,
-  continentOf,
-  createRoomIn,
-  joinRoomIn,
   reportListing,
 } from './roomCalls.ts'
 import type { SyncBindings } from './sync.ts'
 import type { SyncCallFailed } from './syncCore.ts'
 import {
   BadSyncBody,
-  CORS_HEADERS,
   type Socket,
   type SyncSetupFailed,
-  bearerOf,
   json,
   readNightmareUnlock,
   sqlOf,
@@ -108,6 +100,23 @@ type GameWorld = RoomWorld
 type GameRules = RoomWorldOf<GameWorld, OwnSeat>
 
 const KEPT_KEY = 'kept-world'
+
+// NOTE: the run in progress, written every few seconds, so a restart of the
+// object (a deploy of new code drops every socket and loses the memory)
+// resumes the run from the last checkpoint instead of ending it. The World
+// is the room's own binary snapshot, a few KB.
+const CHECKPOINT_KEY = 'run-checkpoint'
+const CHECKPOINT_EVERY_MS = 3000
+
+const Checkpoint = Schema.Struct({
+  round: Schema.Number,
+  tick: Schema.Number,
+  members: Schema.Array(
+    Schema.Struct({ slot: Schema.Number, playerId: Schema.String }),
+  ),
+  world: Schema.Uint8Array,
+})
+const decodeCheckpoint = Schema.decodeUnknownOption(Checkpoint)
 
 const SCOPE_HEADER = 'x-sync-scope'
 const GAME_TAG = 'game'
@@ -139,6 +148,7 @@ interface Game {
   readonly room: Room.Room<GameWorld>
   readonly round: number
   readonly advancedMs: number
+  readonly checkpointMs: number
 }
 
 const sendFrame = (socket: WorkersWebSocket, frame: ServerFrame) =>
@@ -367,6 +377,7 @@ export class GameRoom {
       )
       yield* this.list(host)
       yield* stopLoop
+      yield* this.forgetCheckpoint
     })
   }
 
@@ -382,15 +393,20 @@ export class GameRoom {
         current.value.room,
         nowMs,
       )
+      const isDue = nowMs - current.value.checkpointMs >= CHECKPOINT_EVERY_MS
       this.game = Option.some({
         world: current.value.world,
         room: stepped.room,
         round: current.value.round,
         advancedMs: nowMs,
+        checkpointMs: isDue ? nowMs : current.value.checkpointMs,
       })
       yield* this.apply(stepped.out, host)
       if (Option.isNone(this.game)) {
         return
+      }
+      if (isDue) {
+        yield* this.checkpoint(this.game.value)
       }
       const after = yield* Clock.currentTimeMillis
       yield* Effect.sleep(Math.max(1, Room.nextWakeMs(stepped.room) - after))
@@ -456,6 +472,7 @@ export class GameRoom {
         room: started.room,
         round: lobby.round,
         advancedMs: nowMs,
+        checkpointMs: nowMs,
       })
       yield* this.apply(started.out, host)
       this.startLoop(host)
@@ -556,6 +573,89 @@ export class GameRoom {
         scopes.get(scopes.idFromName(scope)).fetch(url, { headers }),
       playerId,
     )
+  }
+
+  // CHECKPOINT
+
+  private checkpoint(game: Game): Effect.Effect<void> {
+    return tryCall('write the checkpoint', () =>
+      this.ctx.storage.put(
+        CHECKPOINT_KEY,
+        {
+          round: game.round,
+          tick: game.room.tick,
+          members: Array.map(game.room.seats, seat => ({
+            slot: seat.slot,
+            playerId: seat.playerId,
+          })),
+          world: writeAll(writer =>
+            game.world.snapshot(writer, game.room.world),
+          ),
+        },
+        { allowUnconfirmed: true },
+      ),
+    ).pipe(Effect.ignore)
+  }
+
+  private get forgetCheckpoint(): Effect.Effect<void> {
+    return tryCall('forget the checkpoint', () =>
+      this.ctx.storage.delete(CHECKPOINT_KEY),
+    ).pipe(Effect.ignore)
+  }
+
+  // NOTE: a lobby still Playing with no game in memory was cut off by a
+  // restart. If the last checkpoint is of this round, the run goes on from
+  // it with every seat Away, and each player's reconnect snaps them back
+  // in. Returns whether a run is going again.
+  private resume(host: RoomHost): Effect.Effect<boolean> {
+    return Effect.gen({ self: this }, function* () {
+      const maybeLobby = yield* host.lobby
+      if (
+        Option.isNone(maybeLobby) ||
+        maybeLobby.value.status !== 'Playing' ||
+        Option.isSome(this.game)
+      ) {
+        return Option.isSome(this.game)
+      }
+      const lobby = maybeLobby.value
+      const stored = yield* tryCall('read the checkpoint', () =>
+        this.ctx.storage.get(CHECKPOINT_KEY),
+      ).pipe(Effect.catch(() => Effect.void))
+      const maybeCheckpoint = Option.filter(
+        decodeCheckpoint(stored),
+        checkpoint => checkpoint.round === lobby.round,
+      )
+      if (Option.isNone(maybeCheckpoint)) {
+        return false
+      }
+      const checkpoint = maybeCheckpoint.value
+      const rules = roomWorldFor(
+        roomSettingsOf(lobby.mode, lobby.difficulty, lobby.members),
+      )
+      const read = readAll(checkpoint.world, rules.readSnapshot)
+      if (Result.isFailure(read)) {
+        return false
+      }
+      const nowMs = yield* Clock.currentTimeMillis
+      this.game = Option.some({
+        world: rules,
+        room: Room.restoreRoom(
+          read.success,
+          checkpoint.tick,
+          checkpoint.members,
+          nowMs,
+        ),
+        round: lobby.round,
+        advancedMs: nowMs,
+        checkpointMs: nowMs,
+      })
+      yield* Effect.logWarning(
+        `Room game ${lobby.round} resumed at tick ${checkpoint.tick} after a restart`,
+      )
+      this.startLoop(host)
+      yield* setAlarm(this.ctx, nowMs + 60 * 1000)
+      return true
+    })
   }
 
   // KEPT RUN
@@ -752,6 +852,7 @@ export class GameRoom {
             playerId: answer.playerId,
           }),
         )
+        yield* this.resume(host)
         const game = this.game
         const linked = Option.flatMap(game, current =>
           Room.link(
@@ -765,6 +866,16 @@ export class GameRoom {
         if (Option.isSome(game) && Option.isSome(linked)) {
           this.game = Option.some({ ...game.value, room: linked.value.room })
           return yield* this.apply(linked.value.out, host)
+        }
+        const maybeLobby = yield* host.lobby
+        // NOTE: the lobby says Playing but no run is in memory and none could
+        // be resumed: tell them now, plainly, and send the crew back to the
+        // lobby, instead of leaving them waiting for the watchdog.
+        if (
+          Option.exists(maybeLobby, lobby => lobby.status === 'Playing') &&
+          Option.isNone(this.game)
+        ) {
+          return yield* this.interrupted(Option.some(host), maybeLobby)
         }
         sendFrame(
           socket,
@@ -907,6 +1018,7 @@ export class GameRoom {
   ): Effect.Effect<void> {
     return Effect.gen({ self: this }, function* () {
       if (Option.isSome(maybeHost) && Option.isSome(lobby)) {
+        yield* this.forgetCheckpoint
         yield* this.lock.withPermit(
           maybeHost.value.recordResult(
             {
@@ -950,9 +1062,12 @@ export class GameRoom {
         const lobby = Option.isSome(maybeHost)
           ? yield* maybeHost.value.lobby
           : Option.none<Lobby>()
+        const isResumed = Option.isSome(maybeHost)
+          ? yield* this.resume(maybeHost.value)
+          : false
         const decision = decideAlarm({
           nowMs,
-          gameRunning: Option.isSome(this.game),
+          gameRunning: isResumed || Option.isSome(this.game),
           lobby,
           socketsOpen: this.ctx.getWebSockets().length,
         })
@@ -1000,168 +1115,13 @@ const refuseAndClose = (
 const encodeRefusal = Schema.encodeSync(Schema.fromJsonString(RoomRefusal))
 const encodeTicket = Schema.encodeSync(Schema.fromJsonString(RoomTicket))
 
-const refusalResponse = (refusal: RoomRefusal): Response =>
+export const refusalResponse = (refusal: RoomRefusal): Response =>
   json(roomRefusalStatus(refusal), encodeRefusal(refusal))
 
 const ticketResponse = (result: Result.Result<RoomTicket, RoomRefusal>) =>
   Result.match(result, {
     onSuccess: ticket => json(200, encodeTicket(ticket)),
     onFailure: refusalResponse,
-  })
-
-// ROUTES
-
-const isWithinRate = (env: GameRoomBindings, request: Request) => {
-  const address = request.headers.get('cf-connecting-ip') ?? 'unknown'
-  return tryCall('check the rate limit', () =>
-    env.SYNC_BY_ADDRESS.limit({ key: `room:${address}` }),
-  ).pipe(
-    Effect.map(outcome => outcome.success),
-    Effect.catchTag('SyncCallFailed', () => Effect.succeed(true)),
-  )
-}
-
-const answer = (status: number, text: string): Response =>
-  new Response(text, {
-    status,
-    headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
-  })
-
-const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
-  Effect.gen(function* () {
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS_HEADERS })
-    }
-    const rooms = env.GAME_ROOMS
-    if (rooms === undefined) {
-      return refusalResponse(RoomRefusal.cases.Unavailable.make({}))
-    }
-    if (url.pathname === ROOM_PATHS.quick) {
-      const matchmakers = env.MATCHMAKER
-      if (matchmakers === undefined) {
-        return refusalResponse(RoomRefusal.cases.Unavailable.make({}))
-      }
-      if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
-        return json(426, '{}')
-      }
-      const stub = matchmakers.get(matchmakers.idFromName(MATCHMAKER_NAME))
-      const response = yield* tryCall('open the quick play socket', () =>
-        stub.fetch(request.url, {
-          headers: {
-            ...Object.fromEntries(request.headers.entries()),
-            [REGION_HEADER]: continentOf(request),
-          },
-        }),
-      )
-      return new Response(null, {
-        status: response.status,
-        webSocket: response.webSocket,
-      })
-    }
-    if (url.pathname === ROOM_PATHS.socket) {
-      const maybeCode = normalizeRoomCode(url.searchParams.get('code') ?? '')
-      if (Option.isNone(maybeCode)) {
-        return refusalResponse(RoomRefusal.cases.NoRoom.make({}))
-      }
-      if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
-        return json(426, '{}')
-      }
-      const stub = rooms.get(rooms.idFromName(roomScopeId(maybeCode.value)))
-      const response = yield* tryCall('open the room socket', () =>
-        stub.fetch(request.url, {
-          headers: {
-            ...Object.fromEntries(request.headers.entries()),
-            [ROOM_CODE_HEADER]: maybeCode.value,
-          },
-        }),
-      )
-      return new Response(null, {
-        status: response.status,
-        webSocket: response.webSocket,
-      })
-    }
-    if (request.method !== 'POST') {
-      return json(405, '{}')
-    }
-    const nowMs = yield* Clock.currentTimeMillis
-    const claims = yield* Effect.result(
-      Option.match(bearerOf(request), {
-        onNone: () => verifyToken(env.SYNC_SECRET, '', nowMs),
-        onSome: token => verifyToken(env.SYNC_SECRET, token, nowMs),
-      }),
-    )
-    if (Result.isFailure(claims)) {
-      return refusalResponse(
-        RoomRefusal.cases.Unauthorized.make({ reason: claims.failure.reason }),
-      )
-    }
-    if (!(yield* isWithinRate(env, request))) {
-      return refusalResponse(RoomRefusal.cases.RateLimited.make({}))
-    }
-    const playerId = claims.success.playerId
-    const text = yield* tryCall('read the body', () => request.text())
-    if (url.pathname === ROOM_PATHS.create) {
-      const maybeBody = Schema.decodeOption(
-        Schema.fromJsonString(CreateRequest),
-      )(text)
-      const called = yield* createRoomIn(
-        rooms,
-        playerId,
-        Option.match(maybeBody, {
-          onNone: () => '',
-          onSome: body => body.name,
-        }),
-        Option.match(maybeBody, {
-          onNone: () => '',
-          onSome: body => body.look ?? '',
-        }),
-        Option.match(maybeBody, {
-          onNone: () => 1,
-          onSome: body => body.rank ?? 1,
-        }),
-        Option.match(maybeBody, {
-          onNone: () => DEFAULT_CALLING,
-          onSome: body => body.calling ?? DEFAULT_CALLING,
-        }),
-        'Private',
-        continentOf(request),
-      )
-      return answer(called.status, called.text)
-    }
-    if (url.pathname === ROOM_PATHS.join) {
-      const maybeBody = Schema.decodeOption(Schema.fromJsonString(JoinRequest))(
-        text,
-      )
-      const maybeCode = Option.flatMap(maybeBody, body =>
-        normalizeRoomCode(body.code),
-      )
-      if (Option.isNone(maybeCode) || Option.isNone(maybeBody)) {
-        return refusalResponse(RoomRefusal.cases.NoRoom.make({}))
-      }
-      const called = yield* joinRoomIn(
-        rooms,
-        maybeCode.value,
-        playerId,
-        maybeBody.value.name,
-        maybeBody.value.look ?? '',
-        maybeBody.value.rank ?? 1,
-        maybeBody.value.calling ?? DEFAULT_CALLING,
-      )
-      return answer(called.status, called.text)
-    }
-    return json(404, '{}')
-  })
-
-// NOTE: the /room paths. Every failure is answered here.
-export const routeRoom = (
-  request: Request,
-  env: GameRoomBindings,
-): Effect.Effect<Option.Option<Response>> =>
-  Effect.suspend(() => {
-    const url = new URL(request.url)
-    return url.pathname.startsWith('/room/')
-      ? Effect.asSome(syncErrorResponse(routeRoomPath(request, env, url)))
-      : Effect.succeedNone
   })
 
 // NOTE: the sync paths of a room scope go to its GameRoom, which hosts the
