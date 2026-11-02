@@ -586,6 +586,15 @@ describe('the arena', () => {
     )
   })
 
+  test('a link lost for good says so and offers LEAVE', () => {
+    scene(
+      { update, view },
+      given(playing({ link: 'Lost' })),
+      expect(role('alert')).toExist(),
+      expect(role('button', { name: 'Leave the room' })).toExist(),
+    )
+  })
+
   test('the lobby waits behind the run end card, drawing nothing over it, then crowns the MVP', () => {
     const back = modifyFields(initialModel, {
       screen: () =>
