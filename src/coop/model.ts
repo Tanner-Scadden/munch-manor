@@ -150,7 +150,7 @@ export const Screen = defineTaggedUnion({
 })
 export type Screen = typeof Screen.Type
 
-// NOTE: \`Screen.InRoom({ room })\` without its Schema validation, which walks
+// NOTE: `Screen.InRoom({ room })` without its Schema validation, which walks
 // the whole room. The room's frame moves the room on every tick.
 export const screenInRoom = (room: Room): Screen => ({ _tag: 'InRoom', room })
 
