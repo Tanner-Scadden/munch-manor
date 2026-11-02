@@ -69,6 +69,7 @@ export const freshRoom = (code: string, slot: number): Room => ({
   maybePlayerId: Option.none(),
   maybeLobby: Option.none(),
   link: 'Connecting',
+  droppedAtMs: Option.none(),
   session: Session.makeSession(0),
   maybeWorld: Option.none(),
   frameEvents: [],

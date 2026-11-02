@@ -95,18 +95,44 @@ jobs:
           }
           echo "url=$(output_url url)" >> "$GITHUB_OUTPUT"
           echo "api_url=$(output_url apiUrl)" >> "$GITHUB_OUTPUT"
+      # NOTE: GitHub's datacenter IPs get a Cloudflare bot-protection 403
+      # from the custom domain (munchmanor.com) while the site answers 200
+      # to everyone else. The same Worker also serves from its workers.dev
+      # address, which has no bot protection, so the hard check goes there:
+      # the site answers 200 and its version.json is this very commit. The
+      # custom domain is a soft check: a 403 there is a warning, anything
+      # else that is not 200 still fails.
       - name: Check the site answers
         env:
           URL: ${{ steps.deploy.outputs.url }}
         run: |
           test -n "$URL"
-          for attempt in 1 2 3 4 5 6; do
-            status=$(curl -s -o /dev/null -w '%{http_code}' "$URL/")
-            if [ "$status" = "200" ]; then echo "$URL answered 200"; exit 0; fi
+          if [ "$STAGE" = "prod" ]; then
+            hard_url=https://munch-manor.tanner-scadden.workers.dev
+          else
+            hard_url="$URL"
+          fi
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' "$hard_url/")
+            build=$(curl -s "$hard_url/version.json?check=$attempt" | grep -oE '"build" *: *"[^"]*"' | grep -oE '"[^"]*"$' | tr -d '"' || true)
+            if [ "$status" = "200" ] && [ "$build" = "$GITHUB_SHA" ]; then
+              echo "$hard_url answered 200 with build $build"
+              break
+            fi
+            if [ "$attempt" = "12" ]; then
+              echo "$hard_url answered $status with build '$build', wanted $GITHUB_SHA"
+              exit 1
+            fi
             sleep 5
           done
-          echo "$URL answered $status"
-          exit 1
+          if [ "$hard_url" != "$URL" ]; then
+            status=$(curl -s -o /dev/null -w '%{http_code}' "$URL/")
+            case "$status" in
+              200) echo "$URL answered 200" ;;
+              403) echo "::warning::$URL answered 403 to GitHub's runner (Cloudflare bot protection); the workers.dev address above answered 200 with this build" ;;
+              *) echo "$URL answered $status"; exit 1 ;;
+            esac
+          fi
       - name: Check the analytics API answers
         env:
           API_URL: ${{ steps.deploy.outputs.api_url }}

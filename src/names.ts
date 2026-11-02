@@ -53,6 +53,9 @@ export const gunTierName = (kind: WeaponKind, tier: number): string =>
 // is never sold, so it has one name and nothing else.
 export const KNIFE_NAME = 'Knife'
 
+// NOTE: the home menu's co-op button.
+export const MULTIPLAYER_NAME = 'MULTIPLAYER'
+
 // ZOMBIES
 
 export const ZOMBIE_NAMES: Readonly<Record<ZombieKind, string>> = {
