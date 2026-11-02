@@ -142,9 +142,9 @@ const COOP_LOOKS = [
 // golden drumstick, so the shots show the badges' tiers.
 const COOP_RANKS = [7, 18, 33, 62]
 
-// NOTE: and the callings, so the shots show a prop for the Handyman and the
-// hats the others wear: a calling's prop takes a hat's place.
-const COOP_CALLINGS = ['You', 'Handyman', 'You', 'LineCook']
+// NOTE: and the callings, so the shots show a body prop for each hero and a
+// hero icon by each teammate's name tag.
+const COOP_CALLINGS = ['LineCook', 'Handyman', 'TrackStar', 'PennyPincher']
 
 const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
   const Screen = CoopModel.Screen
@@ -273,7 +273,7 @@ const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
       })
     }
     case 'arena':
-      return Screen.InRoom({ room: coopRoom(members(3), 'Playing') })
+      return Screen.InRoom({ room: coopRoom(members(4), 'Playing') })
     case 'away':
       return Screen.InRoom({
         room: coopRoom(members(3), 'Playing', { link: 'Reconnecting' }),
