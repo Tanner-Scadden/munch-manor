@@ -15,6 +15,7 @@ import { boxCenter, levelOf } from '../../src/arena'
 import { Message } from '../../src/message'
 import { initialModel } from '../../src/model'
 import { focusOf } from '../../src/party'
+import { heroIdOf } from '../../src/playerData'
 import { noRank } from '../../src/rank'
 import { isShopOpenFor } from '../../src/shop'
 import { asTutorialDone, asVeteran } from '../../src/veteran'
@@ -165,8 +166,8 @@ const blame = (
   return kind
 }
 
-// NOTE: points enough for any calling's rank, so the bot starts the one it
-// plays.
+// NOTE: points enough for any calling's rank, and the calling it plays
+// bought, so the bot starts it.
 const BOT_RANK_POINTS = 100_000
 
 // The model of a fresh run on the title, already started: Enter opens the
@@ -178,6 +179,8 @@ export const startedRun = (seed: number, options: BotOptions): Model => {
       difficulty: () => ({ chosen: options.difficulty, nightmare: 'Unlocked' }),
       calling: () => options.calling,
       rank: () => ({ ...noRank, earnedPoints: BOT_RANK_POINTS }),
+      boughtCosmetics: () =>
+        options.calling === 'You' ? [] : [heroIdOf(options.calling)],
     }),
     Message.MeasuredGameSurface(SURFACE),
   )

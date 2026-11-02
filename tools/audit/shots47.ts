@@ -43,6 +43,10 @@ type Scene = Readonly<{
   query: string
   open?: string
   isPicker?: boolean
+  // NOTE: selectors clicked in order once the picker is open.
+  clicks?: ReadonlyArray<string>
+  // NOTE: a shot after each click, named `<scene>-<n>`.
+  isFlow?: boolean
 }>
 
 const SCENES: ReadonlyArray<Scene> = [
@@ -72,6 +76,42 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `${LEARNED}&rank=4000&calling=LineCook`,
     open: '#lobby-hero',
     isPicker: true,
+  },
+  // NOTE: heroes are bought with Bones: locked below the rank, for sale at
+  // it with a price, tried on with a BUY pill, and owned once bought.
+  {
+    name: 'buy-forsale',
+    query: `${LEARNED}&rank=1000&bones=220`,
+    open: '#lobby-hero',
+    isPicker: true,
+  },
+  {
+    name: 'buy-trying',
+    query: `${LEARNED}&rank=1000&bones=220`,
+    open: '#lobby-hero',
+    isPicker: true,
+    clicks: ["[data-calling='TrackStar']"],
+  },
+  {
+    name: 'buy-short',
+    query: `${LEARNED}&rank=1000&bones=40`,
+    open: '#lobby-hero',
+    isPicker: true,
+    clicks: ["[data-calling='TrackStar']"],
+  },
+  {
+    name: 'buy-owned',
+    query: `${LEARNED}&rank=1000&bones=220&bought=hero:Handyman`,
+    open: '#lobby-hero',
+    isPicker: true,
+    clicks: ["[data-calling='TrackStar']"],
+  },
+  {
+    name: 'flow',
+    query: `${LEARNED}&rank=1000&bones=220`,
+    open: '#lobby-hero',
+    clicks: ["[data-calling='TrackStar']", '.calling-buy'],
+    isFlow: true,
   },
   { name: 'profile-you', query: 'profile=look' },
   {
@@ -171,6 +211,16 @@ for (const viewport of VIEWPORTS) {
       await page.click(scene.open)
       await page.locator('dialog[open]').first().waitFor({ state: 'visible' })
       await settleAnimations(page)
+      for (const selector of scene.clicks ?? []) {
+        await page.click(selector)
+        await settleAnimations(page)
+        if (scene.isFlow === true) {
+          await shot(
+            page,
+            `s47-${TAG}-${viewport.name}-${scene.name}-${selector.includes('buy') ? 'bought' : 'trying'}`,
+          )
+        }
+      }
     }
     const where = `${viewport.name} ${scene.name}`
     if (scene.isPicker === true) {

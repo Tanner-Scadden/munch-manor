@@ -191,6 +191,7 @@ export const HomeButton = Schema.Literals([
   'Play',
   'Coop',
   'Manor',
+  'Bests',
   'Support',
   'Settings',
 ])
@@ -319,9 +320,38 @@ export const Bot = Schema.Struct({
 })
 export type Bot = typeof Bot.Type
 
+// NOTE: the shop guide's sections, the shop's tabs and then the fridge's
+// prizes and the rest of the house (src/shopGuide.ts).
+export const ShopGuideSection = Schema.Literals([
+  'Guns',
+  'Health',
+  'Traps',
+  'Fridge',
+  'House',
+])
+export type ShopGuideSection = typeof ShopGuideSection.Type
+
+// NOTE: the places around the house the shop guide shows (src/shopGuide.ts).
+export const HouseSpot = Schema.Literals([
+  'Stall',
+  'Window',
+  'Boards',
+  'Fridge',
+])
+export type HouseSpot = typeof HouseSpot.Type
+
+// NOTE: the guide inside Rattles' shop dialog, opened by its ? button. It
+// stands in the dialog's body, so closing it lands back on the shelves.
+export const ShopGuide = defineTaggedUnion({
+  Closed: {},
+  Open: { section: ShopGuideSection },
+})
+export type ShopGuide = typeof ShopGuide.Type
+
 export const MunchopediaPage = defineTaggedUnion({
   List: {},
   Entry: { kind: ZombieKind },
+  Shop: { section: ShopGuideSection },
 })
 export type MunchopediaPage = typeof MunchopediaPage.Type
 
@@ -337,10 +367,14 @@ export const HomeMenu = Schema.Struct({
   // whose hero the open picker is choosing (an index into them).
   bots: Schema.Array(Bot),
   maybePickingBot: Schema.Option(Schema.Number),
+  // NOTE: the hero for sale being tried on in the picker (its BUY pill buys
+  // it), never saved.
+  maybeTryingCalling: Schema.Option(Calling),
   maybeSeenNewsDay: Schema.Option(Schema.String),
   newsPage: Schema.Number,
   munchopediaPage: MunchopediaPage,
   openedEntries: Schema.Array(ZombieKind),
+  isTurnHintSeen: Schema.Boolean,
   newEntries: Schema.Array(ZombieKind),
 })
 export type HomeMenu = typeof HomeMenu.Type
@@ -351,10 +385,12 @@ export const freshHomeMenu: HomeMenu = {
   maybeLobbyFocus: Option.none(),
   bots: [],
   maybePickingBot: Option.none(),
+  maybeTryingCalling: Option.none(),
   maybeSeenNewsDay: Option.none(),
   newsPage: 0,
   munchopediaPage: MunchopediaPage.List(),
   openedEntries: [],
+  isTurnHintSeen: false,
   newEntries: [],
 }
 

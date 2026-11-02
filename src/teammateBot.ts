@@ -32,6 +32,7 @@ import {
 } from './weapons'
 import type { World } from './world'
 import {
+  BreakClock,
   type Intent,
   Phase,
   type PlayerSlot,
@@ -215,8 +216,11 @@ const spotBeside = (anchor: Vector, slot: PlayerSlot): Vector => {
 const clockMsOf = (world: World): number =>
   Phase.match(world.phase, {
     Ready: () => 0,
-    Preparation: preparation =>
-      preparation.durationMs - preparation.remainingMs,
+    Preparation: ({ clock, durationMs, remainingMs }) =>
+      BreakClock.match(clock, {
+        Counting: () => durationMs - remainingMs,
+        Waiting: ({ elapsedMs }) => elapsedMs,
+      }),
     Wave: wave => wave.elapsedMs,
     Paused: () => 0,
     Victory: () => 0,

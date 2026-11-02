@@ -64,6 +64,7 @@ import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
 import { closeShop, syncShopDialog } from './shop'
+import { shopGuideFromKey } from './shopGuide'
 import {
   ammoTickCues,
   frameSoundCues,
@@ -377,6 +378,7 @@ export const pressedKey = (code: string) =>
           ),
         ),
         unlockAudio,
+        shopGuideFromKey(code),
       ])
     }
 

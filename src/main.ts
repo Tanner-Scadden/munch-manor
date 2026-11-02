@@ -7,6 +7,7 @@ import { ApplicationComposition } from './composition'
 import { makeStep } from './definition'
 import { endQuest } from './firstBreakQuest'
 import { refreshIntent } from './frame'
+import { isTurnHintShown, seeTurnHint } from './home'
 import {
   type PointerPress,
   moveMouse,
@@ -48,6 +49,7 @@ import {
 } from './update/end'
 import { toggleFullscreen } from './update/fullscreen'
 import {
+  buyHero,
   closeHand,
   closePanel,
   greetUpdate,
@@ -141,6 +143,11 @@ import {
 } from './update/save'
 import { type SaveWrite, afterMessage } from './update/settle'
 import { buy, focusShopItem, moveShopFocus } from './update/shop'
+import {
+  closeShopGuide,
+  openShopGuide,
+  showShopGuide,
+} from './update/shopGuide'
 import {
   ResumeAudio,
   notePlayOutcome,
@@ -323,13 +330,19 @@ export const update = ApplicationComposition.makeUpdate({
   // made. The tapped button's own Message did the work.
   TappedWithTouch: model => settle(model, { model }),
 
-  MeasuredGameSurface: (model, { left, top, width, height }) =>
-    settle(model, {
-      model: modifyFields(model, {
-        maybeSurface: () => Option.some({ left, top, width, height }),
-        orientation: () => orientationOf(width, height),
-      }),
-    }),
+  // NOTE: turning the phone while the turn hint is up is the hint done.
+  MeasuredGameSurface: (model, { left, top, width, height }) => {
+    const measured = modifyFields(model, {
+      maybeSurface: () => Option.some({ left, top, width, height }),
+      orientation: () => orientationOf(width, height),
+    })
+    return settle(model, {
+      model:
+        isTurnHintShown(model) && !isTurnHintShown(measured)
+          ? seeTurnHint(measured)
+          : measured,
+    })
+  },
 
   CompletedGenerateSeed: (model, { seed }) =>
     settle(model, {
@@ -550,6 +563,14 @@ export const update = ApplicationComposition.makeUpdate({
     settle(model, { model: focusShopItem(model, item) }),
 
   CompletedFocusShopItem: model => settle(model, { model }),
+  CompletedFocusShopGuide: model => settle(model, { model }),
+
+  ClickedShopGuideButton: model => settle(model, openShopGuide(model)),
+
+  ClickedShopGuideSectionButton: (model, { section }) =>
+    settle(model, { model: showShopGuide(model, section) }),
+
+  ClickedShopGuideBackButton: model => settle(model, closeShopGuide(model)),
   CompletedFocusLookOption: model => settle(model, { model }),
 
   AcquiredAudioEngine: model =>
@@ -681,6 +702,9 @@ export const update = ApplicationComposition.makeUpdate({
 
   ClickedCallingCardButton: (model, { calling }) =>
     Update.combineSteps(model, [pickCalling(calling), ...afterMessage(model)]),
+
+  ClickedBuyCallingButton: model =>
+    Update.combineSteps(model, [buyHero, ...afterMessage(model)]),
 
   ClickedDifficultyCardButton: (model, { difficulty }) =>
     Update.combineSteps(model, [
@@ -931,12 +955,26 @@ export const update = ApplicationComposition.makeUpdate({
   ClickedMunchopediaListButton: model =>
     settle(model, turnMunchopediaPage(model, MunchopediaPage.List())),
 
+  ClickedMunchopediaShopButton: model =>
+    settle(
+      model,
+      turnMunchopediaPage(model, MunchopediaPage.Shop({ section: 'Guns' })),
+    ),
+
+  ClickedMunchopediaShopSectionButton: (model, { section }) =>
+    settle(
+      model,
+      turnMunchopediaPage(model, MunchopediaPage.Shop({ section })),
+    ),
+
   ClickedNewEntryButton: (model, { kind }) =>
     Update.combineSteps(model, [
       unlockAudio,
       openMunchopedia(MunchopediaPage.Entry({ kind })),
       ...afterMessage(model),
     ]),
+
+  ClickedTurnHint: model => settle(model, { model: seeTurnHint(model) }),
 
   ClickedManorButton: model =>
     Update.combineSteps(model, [

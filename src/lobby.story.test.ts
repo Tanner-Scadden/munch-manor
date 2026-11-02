@@ -8,7 +8,7 @@ import { update } from './main'
 import { MenuState, isLobbyOpen, menuState } from './menuState'
 import { Message } from './message'
 import { DifficultyCard, Lesson, Phase, RunMode, initialModel } from './model'
-import { newPlayerCardSeen, readyModel } from './model.fixture'
+import { heroesBoughtBy, newPlayerCardSeen, readyModel } from './model.fixture'
 import { focusOf } from './party'
 import { pointsForRank } from './rank'
 import {
@@ -64,6 +64,7 @@ describe('PLAY opens the lobby', () => {
 describe('START plays what the lobby holds', () => {
   const chosen = modifyFields(readyModel, {
     rank: rank => ({ ...rank, earnedPoints: pointsForRank(3) }),
+    boughtCosmetics: () => heroesBoughtBy(3),
     calling: () => 'Handyman',
     difficulty: () => ({ chosen: 'Hard', nightmare: 'Locked' }),
     home: home => modifyFields(home, { mode: () => 'Endless' }),
@@ -134,6 +135,7 @@ describe('START plays what the lobby holds', () => {
 describe('the hero card', () => {
   const ranked = modifyFields(readyModel, {
     rank: rank => ({ ...rank, earnedPoints: pointsForRank(3) }),
+    boughtCosmetics: () => heroesBoughtBy(3),
   })
 
   test('opens the hero picker over the lobby, and a pick lands back in the lobby', () => {

@@ -2,6 +2,7 @@ import { Array, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { playerSprites } from './appearance'
+import { callingPriceOf } from './calling'
 import { PART_OF_KIND, chooseLook } from './character'
 import { PLAYER_FOOT_OFFSET } from './constants'
 import { sparkShapes } from './crewBoardView'
@@ -85,12 +86,17 @@ const CARD_FOOT_Y = 37
 const unlockFigureOf = (
   model: Model,
   unlock: EndUnlock,
-): Readonly<{ figure: ReadonlyArray<Canvas.Shape>; name: string }> =>
+): Readonly<{
+  figure: ReadonlyArray<Canvas.Shape>
+  name: string
+  maybePrice: Option.Option<number>
+}> =>
   EndUnlock.match(unlock, {
     Calling: ({ calling }) => ({
       figure: frameAt(playerSprites(model.appearance, calling).idle, 0).Normal
         .Right,
       name: CALLING_NAMES[calling],
+      maybePrice: callingPriceOf(calling),
     }),
     Gift: ({ kind, name }) => {
       const look = chooseLook(model.appearance, PART_OF_KIND[kind], name)
@@ -107,9 +113,31 @@ const unlockFigureOf = (
             : []),
         ],
         name: giftName(kind, name),
+        maybePrice: Option.none(),
       }
     },
   })
+
+// NOTE: a hero's card is for sale, not given: a pixel bone and its price in
+// Bones across the card's top, so the tag says what the rank opened.
+const PRICE_TAG_Y = 6
+const PRICE_TAG_GAP_PX = 2
+
+const priceTagShapes = (price: number): ReadonlyArray<Canvas.Shape> => {
+  const text = `${price}`
+  const width = BONE_SIZE.width + PRICE_TAG_GAP_PX + textWidth(text)
+  const left = -Math.floor(width / 2)
+  return [
+    placeAt(left + Math.floor(BONE_SIZE.width / 2), PRICE_TAG_Y, BONE),
+    ...textShapes(
+      text,
+      'Victory',
+      left + BONE_SIZE.width + PRICE_TAG_GAP_PX,
+      PRICE_TAG_Y - Math.floor(GLYPH_HEIGHT / 2),
+      'Left',
+    ),
+  ]
+}
 
 // NOTE: each card a rank up opened flips over above the strip in turn: the
 // player in the prop or the hat, and its name. It narrows to a line and
@@ -137,7 +165,7 @@ const unlockCardShapes = (
         const turn = easeOutBack(progressOf(ms, startMs, CALLING_FLIP_MS))
         const scaleX = Math.max(0.04, Math.min(1, turn))
         const top = centerY - CARD_LIFT_PX - CARD_HEIGHT
-        const { figure, name } = unlockFigureOf(model, unlock)
+        const { figure, name, maybePrice } = unlockFigureOf(model, unlock)
         return [
           group({
             translate: { x: centerX, y: top },
@@ -155,6 +183,10 @@ const unlockCardShapes = (
                 translate: { x: 0, y: CARD_FOOT_Y },
                 scale: { x: 2, y: 2 },
                 shapes: figure,
+              }),
+              ...Option.match(maybePrice, {
+                onNone: () => [],
+                onSome: priceTagShapes,
               }),
               ...textShapes(
                 name.toUpperCase(),

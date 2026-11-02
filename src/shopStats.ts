@@ -29,7 +29,7 @@ export type GunBars = Readonly<{
 
 export const BAR_SEGMENTS = 5
 
-const SHOP_GUNS: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
+export const SHOP_GUNS: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
 
 const ALL_TIERS = Array.flatMap(SHOP_GUNS, weapon =>
   Array.makeBy(maxTier(weapon) + 1, tier => statsAt(weapon, tier)),

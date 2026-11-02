@@ -32,6 +32,7 @@ import {
 } from '../shop'
 import { ActionRefusal, SeatAction } from '../stepWorld'
 import { tryAsLead } from './action'
+import { forgetShopGuide } from './shopGuide'
 import { type SoundCue, playSounds, uiCue } from './sound'
 import {
   type UpdateReturn,
@@ -109,6 +110,7 @@ const greetAtCounter: UpdateStep = stepModel => ({
 const enterShop = makeStep(() =>
   Update.combineSteps([
     greetAtCounter,
+    forgetShopGuide,
     ShopDialogBinding.requestOpen(),
     playSounds([uiCue('ShopBell')]),
   ]),

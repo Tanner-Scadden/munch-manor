@@ -33,6 +33,7 @@ import {
 } from './onboarding'
 import { focusOf, focusSlotOf, isCoop, leadSeatOf } from './party'
 import { holdButtonView } from './purchaseHud'
+import { isWaitingOnYou } from './readyNudge'
 import { type Screen, screenOf } from './screen'
 import { STALL_BOX, gunName } from './shop'
 import {
@@ -535,6 +536,10 @@ const startWaveButtonView = (
               h.DataAttribute(
                 'beckon',
                 isStartWaveBeckoning(model) ? 'true' : 'false',
+              ),
+              h.DataAttribute(
+                'nudge',
+                isWaitingOnYou(model) ? 'true' : 'false',
               ),
               h.AriaKeyshortcuts('Enter'),
               h.OnClick(Message.ClickedStartWaveButton(), {

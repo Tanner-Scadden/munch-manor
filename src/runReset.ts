@@ -66,6 +66,7 @@ export type RunFields = Pick<
   | 'callouts'
   | 'prizeFlight'
   | 'counterSale'
+  | 'breakIdleMs'
   | 'trapNotice'
   | 'level'
   | 'ovens'
@@ -116,6 +117,7 @@ export const freshRun = (model: Model): RunFields => ({
   callouts: [],
   prizeFlight: PrizeFlight.Grounded(),
   counterSale: CounterSale.Quiet(),
+  breakIdleMs: 0,
   trapNotice: TrapNotice.Quiet(),
   level: startingLevel,
   ovens: freshOvens(MANOR),

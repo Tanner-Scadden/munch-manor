@@ -10,6 +10,7 @@ import { Message } from './message'
 import {
   BreakClock,
   DebutCard,
+  type Difficulty,
   DifficultyCard,
   Lesson,
   type Model,
@@ -18,7 +19,7 @@ import {
   RunMode,
   initialModel,
 } from './model'
-import { home } from './model.fixture'
+import { home, onHard, pastTimedBreaks } from './model.fixture'
 import {
   DEBUT_CARD_MIN_MS,
   DEBUT_CARD_MS,
@@ -91,9 +92,11 @@ describe('the first break waits', () => {
     story(
       update,
       given(
-        modifyFields(clearingWave(2), {
-          fridge: fridge => modifyFields(fridge, { pulls: () => 1 }),
-        }),
+        onHard(
+          modifyFields(clearingWave(2), {
+            fridge: fridge => modifyFields(fridge, { pulls: () => 1 }),
+          }),
+        ),
       ),
       tick(TICK_MS),
       model(current => {
@@ -135,10 +138,63 @@ describe('the first break waits', () => {
       }),
     )
     const keptGoing = keepGoing(
-      modifyFields(home, { phase: () => Phase.Victory() }),
+      onHard(modifyFields(home, { phase: () => Phase.Victory() })),
     )
     expect(breakClock(keptGoing)).toEqual(Option.some(BreakClock.Counting()))
   })
+})
+
+// NOTE: owner, 2026-11-01: "don't want wave timers on easy/medium. Too much."
+describe('the break clock by difficulty', () => {
+  const clearingLaterWave = (difficulty: Difficulty): Model =>
+    modifyFields(pastTimedBreaks(clearingWave(4)), {
+      difficulty: setting =>
+        modifyFields(setting, { chosen: () => difficulty }),
+    })
+
+  test.each(['Easy', 'Normal'] as const)(
+    '%s has no countdown, and the wave waits for READY',
+    difficulty => {
+      story(
+        update,
+        given(clearingLaterWave(difficulty)),
+        tick(FIXED_STEP_MS),
+        model(current => {
+          expect(breakClock(current)).toEqual(
+            Option.some(BreakClock.Waiting({ elapsedMs: 0 })),
+          )
+        }),
+        ...ticks(BREAK_TICKS * 3, TICK_MS),
+        model(current => {
+          expect(isBreak(current)).toBe(true)
+        }),
+        tap('Enter'),
+        model(current => {
+          expect(isFighting(current)).toBe(true)
+        }),
+      )
+    },
+  )
+
+  test.each(['Hard', 'Nightmare'] as const)(
+    '%s keeps the countdown, which starts the wave on its own',
+    difficulty => {
+      story(
+        update,
+        given(clearingLaterWave(difficulty)),
+        tick(FIXED_STEP_MS),
+        model(current => {
+          expect(breakClock(current)).toEqual(
+            Option.some(BreakClock.Counting()),
+          )
+        }),
+        ...ticks(BREAK_TICKS, TICK_MS),
+        model(current => {
+          expect(isFighting(current)).toBe(true)
+        }),
+      )
+    },
+  )
 })
 
 describe('the new zombie card', () => {

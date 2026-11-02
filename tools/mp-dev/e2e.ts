@@ -279,10 +279,16 @@ const report = (player: Player, seconds: number) =>
   })
 
 const program = Effect.gen(function* () {
-  if (origin === LOCAL_ORIGIN) {
-    yield* Console.log('Starting the API Worker in workerd...')
-    yield* startWorkerd
-  }
+  const workerd =
+    origin === LOCAL_ORIGIN
+      ? Option.some(yield* Effect.tap(
+          Effect.andThen(
+            Console.log('Starting the API Worker in workerd...'),
+            startWorkerd,
+          ),
+          () => Effect.void,
+        ))
+      : Option.none()
   yield* Console.log(`Co-op end to end against ${origin}`)
   const [ana, bo, cy] = yield* Effect.all([
     signIn('ana'),
@@ -400,6 +406,46 @@ const program = Effect.gen(function* () {
       ),
     ),
   )
+  // NOTE: a deploy of new Worker code restarts every Durable Object: the
+  // sockets drop and the run's memory is lost. The room checkpoints the run,
+  // so everyone reconnects by themselves, gets a Snapshot of the run a few
+  // seconds back, and plays on.
+  if (Option.isSome(workerd)) {
+    yield* Effect.sleep('4 seconds')
+    const newestTick = (player: Player) =>
+      Effect.map(Ref.get(player.play), play =>
+        Option.getOrElse(
+          Option.map(Array.last(play.frames), frame => frame.tick),
+          () => 0,
+        ),
+      )
+    const before = yield* Effect.forEach(players, newestTick)
+    yield* Console.log('  restarting workerd mid-run (a deploy)')
+    yield* workerd.value.restart
+    yield* eventually(
+      'after a restart every player is back in the run',
+      Effect.map(
+        Effect.forEach(players, player =>
+          Effect.zip(Ref.get(player.play), newestTick(player)),
+        ),
+        plays =>
+          Array.every(
+            plays,
+            ([play, tick]) =>
+              play.phase._tag === 'Playing' &&
+              tick > 0 &&
+              play.away.length === 0,
+          ),
+      ),
+      '40 seconds',
+    )
+    yield* Effect.sleep('3 seconds')
+    const after = yield* Effect.forEach(players, newestTick)
+    yield* check(
+      'the run keeps ticking after the restart',
+      Array.every(after, (tick, index) => tick > (before[index] ?? 0)),
+    )
+  }
   yield* writeAs(ana, EndedGame, { by: ana.playerId })
   yield* eventually(
     'the host ends the game for everyone',

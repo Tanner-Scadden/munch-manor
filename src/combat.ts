@@ -33,6 +33,7 @@ import {
   GameEvent,
   Invulnerability,
   type Player,
+  type PlayerSlot,
   type Vector,
   type Zombie,
   ZombieAction,
@@ -234,17 +235,36 @@ const PLAYER_BLAST_TARGET: BlastTarget<Player> = {
 }
 
 // NOTE: a blast on every standing player it reaches.
-export const blastPlayers = (model: World, blast: BlastSpec): World =>
-  forEachSeatWhere(model, isStanding, (current, slot) => {
-    const playerOutcome = blastOne(
-      blast,
-      PLAYER_BLAST_TARGET,
-    )(seatStateAt(current, slot).player)
-    return modifyFields(current, {
-      seats: atSeat(slot, { player: () => playerOutcome.target }),
-      frameEvents: frameEvents => [...frameEvents, ...playerOutcome.events],
-    })
+const blastSeated = (
+  model: World,
+  slot: PlayerSlot,
+  blast: BlastSpec,
+): World => {
+  const playerOutcome = blastOne(
+    blast,
+    PLAYER_BLAST_TARGET,
+  )(seatStateAt(model, slot).player)
+  return modifyFields(model, {
+    seats: atSeat(slot, { player: () => playerOutcome.target }),
+    frameEvents: frameEvents => [...frameEvents, ...playerOutcome.events],
   })
+}
+
+export const blastPlayers = (model: World, blast: BlastSpec): World =>
+  forEachSeatWhere(model, isStanding, (current, slot) =>
+    blastSeated(current, slot, blast),
+  )
+
+// NOTE: a blast on one seat's player only, if standing and in reach: a
+// player's own blast never hurts a teammate.
+export const blastOwnSeat = (
+  model: World,
+  slot: PlayerSlot,
+  blast: BlastSpec,
+): World =>
+  isStanding(seatStateAt(model, slot).seat)
+    ? blastSeated(model, slot, blast)
+    : model
 
 const maybeBlastOf = (zombie: Zombie): Option.Option<BlastSpec> =>
   Behavior.match(statsOf(zombie).behavior, {

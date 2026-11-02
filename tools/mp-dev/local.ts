@@ -16,7 +16,8 @@ const root = resolve(here, '../..')
 const infra = resolve(root, 'infra')
 const outdir = resolve(here, 'dist/workerd')
 
-export const LOCAL_PORT = 8798
+// NOTE: MP_DEV_PORT moves it, so two worktrees can each run a local workerd.
+export const LOCAL_PORT = Number(process.env['MP_DEV_PORT'] ?? 8798)
 export const LOCAL_ORIGIN = `http://127.0.0.1:${LOCAL_PORT}`
 
 // NOTE: the Worker and the shared packages must meet one Effect, infra's,
@@ -108,31 +109,47 @@ const answersChallenge = HttpClient.execute(
   Effect.provide(FetchHttpClient.layer),
 )
 
+export interface Workerd {
+  // NOTE: stops workerd and starts it again on the same storage, as a deploy
+  // of new code does: every Durable Object loses its memory and every socket
+  // drops, and what the objects stored stays.
+  readonly restart: Effect.Effect<void, WorkerdFailed>
+}
+
 // NOTE: workerd runs for as long as the Scope; closing it stops workerd.
-export const startWorkerd: Effect.Effect<void, WorkerdFailed, Scope.Scope> =
+export const startWorkerd: Effect.Effect<Workerd, WorkerdFailed, Scope.Scope> =
   Effect.gen(function* () {
     const config = yield* Effect.tryPromise({
       try: () => buildWorker(),
       catch: error => new WorkerdFailed({ reason: String(error) }),
     })
-    yield* Effect.acquireRelease(
-      Effect.sync(() =>
-        Bun.spawn(
-          [
-            resolve(infra, 'node_modules/.bin/workerd'),
-            'serve',
-            config,
-            '--experimental',
-          ],
-          { cwd: outdir, stdout: 'inherit', stderr: 'inherit' },
-        ),
-      ),
-      workerd => Effect.sync(() => workerd.kill()),
+    const spawn = () =>
+      Bun.spawn(
+        [
+          resolve(infra, 'node_modules/.bin/workerd'),
+          'serve',
+          config,
+          '--experimental',
+        ],
+        { cwd: outdir, stdout: 'inherit', stderr: 'inherit' },
+      )
+    const running = { current: spawn() }
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => running.current.kill()),
     )
-    yield* Effect.retry(answersChallenge, {
+    const ready = Effect.retry(answersChallenge, {
       schedule: Schedule.spaced('100 millis'),
       times: 100,
     })
+    yield* ready
+    return {
+      restart: Effect.gen(function* () {
+        running.current.kill(9)
+        yield* Effect.promise(() => running.current.exited)
+        running.current = spawn()
+        yield* ready
+      }),
+    }
   })
 
 if (import.meta.main) {

@@ -6,6 +6,7 @@ import {
   type BlastSpec,
   ZOMBIE_BLAST_TARGET,
   blastAll,
+  blastOwnSeat,
   blastPlayers,
   bountyOf,
   hitEvent,
@@ -88,8 +89,8 @@ import { bodyRadiusOf, isGrounded } from './zombies'
 //   charges, never refilled.
 //
 // Below Nightmare they hurt only zombies. On Nightmare a lid's blast, and a
-// lid popping in the hands, hurt players too (MULTIPLAYER.md, decided row
-// 6): its thrower included, in single player as in co-op.
+// lid popping in the hands, hurt their thrower too, never a teammate
+// (MULTIPLAYER.md, decided row 6).
 
 const FRIDGE_WEAPONS: ReadonlyArray<WeaponKind> = ['Cooker', 'Pan', 'Freeze']
 
@@ -484,13 +485,15 @@ const lidBlast = (world: World, lob: Lob, at: Vector): World => {
     credited.traps,
     trapBlastTarget(levelOf(credited)),
   )
-  return blastPlayers(
-    modifyFields(credited, {
-      traps: () => trapOutcome.targets,
-      frameEvents: frameEvents => [...frameEvents, ...trapOutcome.events],
-    }),
-    blast,
-  )
+  const trapsBlasted = modifyFields(credited, {
+    traps: () => trapOutcome.targets,
+    frameEvents: frameEvents => [...frameEvents, ...trapOutcome.events],
+  })
+  // NOTE: no shooter is single player, whose one player threw it.
+  return Option.match(maybeShooter, {
+    onNone: () => blastPlayers(trapsBlasted, blast),
+    onSome: slot => blastOwnSeat(trapsBlasted, slot, blast),
+  })
 }
 
 // NOTE: each lid flies on toward where it was thrown and bursts there, or

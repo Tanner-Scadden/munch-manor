@@ -19,7 +19,7 @@ import {
   ZOMBIE_ALIVE_MAX,
 } from './constants'
 import { burrowed, drawSurfacingSpot } from './crawler'
-import { crowdSpawns, toughenSpawns } from './difficulty'
+import { crowdSpawns, hasBreakClock, toughenSpawns } from './difficulty'
 import { routeSpawns } from './doorRoute'
 import { rollWave } from './endlessWaves'
 import { frenzyOnArrival, frenzyPacksOf } from './frenzy'
@@ -232,8 +232,12 @@ export const isRoundActive = (phase: Phase): boolean =>
 export const isBreak = (model: World): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase)
 
-const breakClockFor = (wave: number): BreakClock =>
-  wave === OPEN_BREAK_WAVE
+// NOTE: a break waits for READY, with no clock, in the lesson's open break
+// (wave 2) and on every difficulty below Hard (owner, 2026-11-01). The first
+// break of a run is the short get-ready beat before wave 1: it always counts.
+const breakClockFor = (model: World, wave: number): BreakClock =>
+  wave === OPEN_BREAK_WAVE ||
+  (wave > 1 && !hasBreakClock(model.difficulty.chosen))
     ? BreakClock.Waiting({ elapsedMs: 0 })
     : BreakClock.Counting()
 
@@ -241,7 +245,7 @@ export const beginPreparation = (
   model: World,
   wave: number,
   durationMs: number,
-  clock: BreakClock = BreakClock.Counting(),
+  clock: BreakClock = breakClockFor(model, wave),
 ): World => {
   const [waveState, rolled] = rollWave(
     model.rngState,
@@ -417,12 +421,7 @@ const clearWave = (model: World, wave: number): World => {
   if (wave >= FINAL_WAVE && !isEndless(model)) {
     return modifyFields(paid, { phase: () => Phase.Victory() })
   } else {
-    return beginPreparation(
-      paid,
-      wave + 1,
-      PREPARATION_MS,
-      breakClockFor(wave + 1),
-    )
+    return beginPreparation(paid, wave + 1, PREPARATION_MS)
   }
 }
 

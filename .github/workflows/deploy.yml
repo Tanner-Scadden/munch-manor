@@ -19,11 +19,36 @@ env:
   STAGE: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || 'prod' }}
 
 jobs:
+  # NOTE: the checks run as parallel legs, each on its own runner, so the
+  # slowest leg (lint or the full test tier) sets the time instead of their
+  # sum. Deploy waits for every leg.
   check:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: typecheck
+            run: bun run typecheck && cd infra && bun run typecheck
+          # NOTE: the two type-aware lint passes each build the whole program,
+          # so they run on separate legs.
+          - name: oxlint
+            run: bun run lint:oxlint
+          - name: effect lint
+            run: bun run lint:effect && bun run lint:rest && bun run lint:infra
+          # NOTE: the full tier: the fast tests plus the sim tier (whole wave
+          # replays and seed sweeps) that `bun run test` leaves out.
+          - name: test
+            run: bun run test:full
+          # NOTE: world:check bundles the co-op room's step with no UI, art,
+          # audio, or store module and plays it in workerd exactly as in Bun
+          # (MULTIPLAYER.md, Phase 0).
+          - name: build
+            run: bun run world:check && bun run build && cd infra && bun run test
+    name: check (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -42,21 +67,7 @@ jobs:
       # covers them, so their types (Bun, playwright-core) must be installed.
       - run: bun install --frozen-lockfile
         working-directory: tools/audit
-      - run: bun run typecheck
-      - run: bun run lint
-      # NOTE: the full tier: the fast tests plus the sim tier (whole wave
-      # replays and seed sweeps) that `bun run test` leaves out.
-      - run: bun run test:full
-      # NOTE: the co-op room's step bundles with no UI, art, audio, or store
-      # module and plays in workerd exactly as in Bun (MULTIPLAYER.md, Phase 0).
-      - run: bun run world:check
-      - run: bun run build
-      - run: bun run typecheck
-        working-directory: infra
-      - run: bun run lint
-        working-directory: infra
-      - run: bun run test
-        working-directory: infra
+      - run: ${{ matrix.run }}
 
   deploy:
     needs: check
@@ -95,18 +106,44 @@ jobs:
           }
           echo "url=$(output_url url)" >> "$GITHUB_OUTPUT"
           echo "api_url=$(output_url apiUrl)" >> "$GITHUB_OUTPUT"
+      # NOTE: GitHub's datacenter IPs get a Cloudflare bot-protection 403
+      # from the custom domain (munchmanor.com) while the site answers 200
+      # to everyone else. The same Worker also serves from its workers.dev
+      # address, which has no bot protection, so the hard check goes there:
+      # the site answers 200 and its version.json is this very commit. The
+      # custom domain is a soft check: a 403 there is a warning, anything
+      # else that is not 200 still fails.
       - name: Check the site answers
         env:
           URL: ${{ steps.deploy.outputs.url }}
         run: |
           test -n "$URL"
-          for attempt in 1 2 3 4 5 6; do
-            status=$(curl -s -o /dev/null -w '%{http_code}' "$URL/")
-            if [ "$status" = "200" ]; then echo "$URL answered 200"; exit 0; fi
+          if [ "$STAGE" = "prod" ]; then
+            hard_url=https://munch-manor.tanner-scadden.workers.dev
+          else
+            hard_url="$URL"
+          fi
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' "$hard_url/")
+            build=$(curl -s "$hard_url/version.json?check=$attempt" | grep -oE '"build" *: *"[^"]*"' | grep -oE '"[^"]*"$' | tr -d '"' || true)
+            if [ "$status" = "200" ] && [ "$build" = "$GITHUB_SHA" ]; then
+              echo "$hard_url answered 200 with build $build"
+              break
+            fi
+            if [ "$attempt" = "12" ]; then
+              echo "$hard_url answered $status with build '$build', wanted $GITHUB_SHA"
+              exit 1
+            fi
             sleep 5
           done
-          echo "$URL answered $status"
-          exit 1
+          if [ "$hard_url" != "$URL" ]; then
+            status=$(curl -s -o /dev/null -w '%{http_code}' "$URL/")
+            case "$status" in
+              200) echo "$URL answered 200" ;;
+              403) echo "::warning::$URL answered 403 to GitHub's runner (Cloudflare bot protection); the workers.dev address above answered 200 with this build" ;;
+              *) echo "$URL answered $status"; exit 1 ;;
+            esac
+          fi
       - name: Check the analytics API answers
         env:
           API_URL: ${{ steps.deploy.outputs.api_url }}

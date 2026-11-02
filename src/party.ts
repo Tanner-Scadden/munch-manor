@@ -50,6 +50,7 @@ export const COOP_RULES = {
   downedCrawlScale: 0.35,
   trapLimit: 1,
   friendlyFireDamage: 1,
+  isFriendlyFireOn: false,
   maxPlayers: 4,
 } as const
 

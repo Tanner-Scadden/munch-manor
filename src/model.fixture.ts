@@ -14,6 +14,7 @@ import {
   levelOf,
   openExitIn,
 } from './arena'
+import { CALLINGS, isCallingUnlocked } from './calling'
 import { PLAYER_MAX_HP, PREPARATION_MS } from './constants'
 import { biteGraceScale } from './difficulty'
 import { KITCHEN_EXIT } from './exits'
@@ -39,6 +40,7 @@ import {
   modifySeatRecord,
   seatCrew,
 } from './party'
+import { heroIdOf } from './playerData'
 import { nextRandom } from './prng'
 import { grantedVeteran } from './rank'
 import { freshRun } from './runReset'
@@ -115,6 +117,15 @@ export const WAVE_3_BREAK = Phase.Preparation({
 
 // HOME
 
+// NOTE: the ids of the heroes a player of this rank could have bought, all
+// of them bought, for tests that pick or start a run as a hero.
+export const heroesBoughtBy = (rank: number): ReadonlyArray<string> =>
+  Array.flatMap(CALLINGS, calling =>
+    calling !== 'You' && isCallingUnlocked(calling, rank)
+      ? [heroIdOf(calling)]
+      : [],
+  )
+
 // NOTE: a returning player on the home menu: the tutorial is done, so no
 // lesson or first-run card gets in the way.
 export const home: Model = asVeteran(initialModel)
@@ -189,6 +200,13 @@ export const pastTimedBreaks = (model: Model): Model =>
   modifyFields(model, {
     lessons: lessons =>
       modifyFields(lessons, { timedBreaks: () => Lesson.Learned({ atMs: 0 }) }),
+  })
+
+// NOTE: Hard keeps the break clock, which Easy and Normal do not have (the
+// default Model is Normal), so a test of the countdown starts from this.
+export const onHard = (model: Model): Model =>
+  modifyFields(model, {
+    difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
   })
 
 export const withActors = (

@@ -194,8 +194,10 @@ export const isEveryoneReady = (world: World): boolean =>
 
 // FRIENDLY FIRE
 
+// NOTE: off on every difficulty (decided row 6, changed with the owner on
+// 2026-11-01). It comes back as a run modifier that pays extra.
 const isFriendlyFireOn = (world: World): boolean =>
-  isCoop(world) && world.difficulty.chosen === 'Nightmare'
+  isCoop(world) && COOP_RULES.isFriendlyFireOn
 
 const isTeammateShot =
   (slot: number) =>
@@ -221,9 +223,9 @@ const sweepHits =
     return circlesOverlap(point, BULLET_RADIUS, target, PLAYER_RADIUS)
   }
 
-// NOTE: on Nightmare a teammate's shot that reaches a standing player
-// wounds them and stops there (decided row 6). Gnome peas never do. On any
-// other difficulty, and in single player, shots pass through teammates.
+// NOTE: with friendly fire on, a teammate's shot that reaches a standing
+// player wounds them and stops there. Gnome peas never do. With it off, and
+// in single player, shots pass through teammates.
 export const resolveFriendlyFire = (
   world: World,
   seconds: number,

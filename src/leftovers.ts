@@ -87,7 +87,7 @@ export const FRIDGE_RULES: FridgeRules = {
 // 100, and each slam adds 3 more, up to 20; the gags are one pull in five.
 // The weapon the puller already carries is never pulled again: its share
 // goes to the rest.
-const PRIZE_WEIGHTS: Readonly<Record<FridgePrize, number>> = {
+export const PRIZE_WEIGHTS: Readonly<Record<FridgePrize, number>> = {
   Cooker: 36,
   Pan: 36,
   Freeze: 8,

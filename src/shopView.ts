@@ -17,6 +17,7 @@ import {
   type Model,
   type ShopCategory,
   ShopChatter,
+  ShopGuide,
   type ShopItemId,
   ShopState,
   Trap,
@@ -63,6 +64,7 @@ import {
   gunArt,
   itemArt,
 } from './shopArt'
+import { shopGuideDialogView, shopHelpButtonView } from './shopGuideView'
 import {
   BAR_SEGMENTS,
   type GunBars,
@@ -1107,6 +1109,9 @@ const panelView = (
           h.span([h.Class('shop-summary sr-only')], [affordSummary(model)]),
         ],
       ),
+      ...(ShopGuide.isAnyOf(['Closed'])(model.shopGuide)
+        ? [shopHelpButtonView(h)]
+        : []),
       closeButtonView(
         {
           attributes: closeButton,
@@ -1117,7 +1122,10 @@ const panelView = (
       ),
     ],
   ),
-  categoriesView(model, initialFocus, h),
+  ShopGuide.match(model.shopGuide, {
+    Closed: () => categoriesView(model, initialFocus, h),
+    Open: ({ section }) => shopGuideDialogView(model.seenUnlocks, section, h),
+  }),
 ]
 
 export const shopDialogView = (model: Model, h: ApplicationViewBuilder): Html =>

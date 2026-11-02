@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { MANOR, levelOf } from './arena'
+import { blastOwnSeat } from './combat'
 import {
   FIXED_STEP_MS,
   IDLE_RELOAD_MS,
@@ -599,7 +600,7 @@ describe('friendly fire', () => {
     )
   })
 
-  test('a teammate’s shot hurts on Nightmare', () => {
+  test('a teammate’s shot passes through on Nightmare too', () => {
     const nightmare = modifyFields(crewInWave(2), {
       difficulty: difficulty =>
         modifyFields(difficulty, { chosen: () => 'Nightmare' }),
@@ -609,11 +610,27 @@ describe('friendly fire', () => {
       given(inTheLine(nightmare)),
       ...ticks(2, TICK_MS),
       model(current => {
-        expect(seatedAt(current, 1).player.hp).toBe(
-          PLAYER_MAX_HP - COOP_RULES.friendlyFireDamage,
-        )
+        expect(seatedAt(current, 1).player.hp).toBe(PLAYER_MAX_HP)
       }),
     )
+  })
+
+  test('a lid’s blast hurts its thrower but never a teammate', () => {
+    const huddled = pipeline(
+      placeSeat(0, LEFT_X, ROW_Y),
+      placeSeat(1, LEFT_X + 4, ROW_Y),
+    )(crewInWave(2))
+    const blasted = blastOwnSeat(huddled, 0, {
+      x: LEFT_X + 2,
+      y: ROW_Y,
+      radius: 30,
+      playerDamage: 1,
+      zombieDamage: 0,
+      trapDamage: 0,
+      knockback: 0,
+    })
+    expect(seatedAt(blasted, 0).player.hp).toBe(PLAYER_MAX_HP - 1)
+    expect(seatedAt(blasted, 1).player.hp).toBe(PLAYER_MAX_HP)
   })
 
   test('single player never shoots itself', () => {

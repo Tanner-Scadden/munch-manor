@@ -48,6 +48,7 @@ import { focusOf, focusSlotOf, leadSeatOf, playersOf } from './party'
 import { seatColorOf } from './partyView'
 import { maybeMsSinceHurt } from './playerView'
 import { boostChipShapes } from './powerupView'
+import { isWaitingOnYou } from './readyNudge'
 import { type Box, type Screen, thumbAreaTop } from './screen'
 import { waveLabel } from './screens'
 import {
@@ -290,6 +291,7 @@ const COUNTDOWN_BLINK_MS = 400
 
 const TRY_CONTROLS = bakeText('TRY THE CONTROLS', 'Prompt')
 const NO_TIMER = bakeText('NO TIMER', 'Prompt')
+const WAITING_ON_YOU = bakeText('WAITING ON YOU', 'Alert')
 
 const breakSubtitleShapes = (
   model: Model,
@@ -305,13 +307,23 @@ const breakSubtitleShapes = (
       }),
     ]
   } else if (isOpenBreak(model)) {
-    return [
-      placeBaked(NO_TIMER, {
-        x: layout.centerX,
-        y: layout.subtitleY,
-        align: 'Center',
-      }),
-    ]
+    return isWaitingOnYou(model)
+      ? [
+          placeBaked(WAITING_ON_YOU, {
+            x: layout.centerX,
+            y: layout.subtitleY,
+            align: 'Center',
+          }),
+        ]
+      : isPending(model.lessons.openBreak)
+        ? [
+            placeBaked(NO_TIMER, {
+              x: layout.centerX,
+              y: layout.subtitleY,
+              align: 'Center',
+            }),
+          ]
+        : []
   } else {
     return hudText(
       layout,
