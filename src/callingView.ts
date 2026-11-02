@@ -3,15 +3,16 @@ import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
 
-import { callingPriceOf } from './calling'
-import { callingCardsView } from './callingCards'
+import {
+  callingBalanceView,
+  callingBuyView,
+  callingCardsView,
+} from './callingCards'
 import { startingCallingOf } from './callingPick'
 import type { ApplicationViewBuilder } from './composition'
 import { Message } from './message'
 import type { Bot, Model } from './model'
-import type { Calling } from './playerData'
 import { bonesBalanceOf, rankOf, totalPointsOf } from './rank'
-import { boneCountView } from './rankBadgeView'
 
 // The hero picker the lobby's hero card opens (src/callingCards.ts): five
 // cards, each the player's own look wearing the hero's prop, with its
@@ -36,57 +37,6 @@ export const callingPanelText = (
     onSome: bot => `Pick for ${bot.name}.`,
   }),
 })
-
-// NOTE: the player's Bones by the title, so a price has its context.
-const balanceView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const bones = bonesBalanceOf(model.rank)
-  return h.div(
-    [
-      h.Class('calling-balance'),
-      h.Role('group'),
-      h.AriaLabel(`${bones} Bones`),
-    ],
-    [boneCountView(bones, 'calling-balance-count', h)],
-  )
-}
-
-// NOTE: the BUY button: a bright gold arcade button when the Bones cover
-// the hero, dim and red with how many more it needs when they do not.
-const buyButtonView = (
-  model: Model,
-  calling: Calling,
-  h: ApplicationViewBuilder,
-): Html => {
-  const price = Option.getOrElse(callingPriceOf(calling), () => 0)
-  const lacking = Math.max(0, price - bonesBalanceOf(model.rank))
-  return h.button(
-    [
-      h.Type('button'),
-      h.Key('calling-buy'),
-      h.Class('calling-buy'),
-      h.AriaLabel(
-        lacking > 0
-          ? `Buy for ${price} Bones, too few`
-          : `Buy for ${price} Bones`,
-      ),
-      ...(lacking > 0
-        ? [h.Disabled(true), h.DataAttribute('short', 'true')]
-        : [h.OnClick(Message.ClickedBuyCallingButton())]),
-    ],
-    [
-      h.span([h.Class('calling-buy-word'), h.AriaHidden(true)], ['BUY']),
-      boneCountView(price, 'calling-buy-price', h),
-      ...(lacking > 0
-        ? [
-            h.span(
-              [h.Class('calling-buy-need'), h.AriaHidden(true)],
-              [`NEED ${lacking} MORE`],
-            ),
-          ]
-        : []),
-    ],
-  )
-}
 
 export const callingBodyView = (
   model: Model,
@@ -118,13 +68,22 @@ export const callingBodyView = (
     },
     h,
   ),
-  balanceView(model, h),
+  callingBalanceView(bonesBalanceOf(model.rank), h),
   h.div(
     [h.Class('panel-actions')],
     [
       ...Option.match(model.home.maybeTryingCalling, {
         onNone: () => [],
-        onSome: calling => [buyButtonView(model, calling, h)],
+        onSome: calling => [
+          callingBuyView(
+            {
+              calling,
+              bones: bonesBalanceOf(model.rank),
+              onBuy: Message.ClickedBuyCallingButton(),
+            },
+            h,
+          ),
+        ],
       }),
       done,
     ],

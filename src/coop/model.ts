@@ -153,6 +153,7 @@ export const Room = Schema.Struct({
   isPickingCalling: Schema.Boolean,
   maybeNameDraft: Schema.Option(Schema.String),
   maybeNudge: Schema.Option(Nudge),
+  maybeTryingCalling: Schema.Option(Calling),
 })
 export type Room = typeof Room.Type
 
@@ -186,6 +187,8 @@ export const Model = Schema.Struct({
   // NOTE: the ids of the heroes and looks this player bought, so the lobby's
   // picker offers only the heroes they own.
   bought: SavedBoughtCosmetics,
+  // NOTE: the player's Bones, for the BUY pill's price check.
+  bones: Schema.Number,
 })
 export type Model = typeof Model.Type
 
@@ -197,6 +200,7 @@ export const initialModel: Model = {
   calling: 'You',
   rngState: 0,
   bought: [],
+  bones: 0,
 }
 
 export const emptyQueue: Queue = {

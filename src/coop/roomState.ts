@@ -87,6 +87,7 @@ export const freshRoom = (code: string, slot: number): Room => ({
   isPickingCalling: false,
   maybeNameDraft: Option.none(),
   maybeNudge: Option.none(),
+  maybeTryingCalling: Option.none(),
 })
 
 const isCodeSymbol = (symbol: string): boolean =>

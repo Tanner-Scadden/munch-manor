@@ -5,7 +5,8 @@ import { modifyFields } from 'foldkit/struct'
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
 import { CoopBinding } from '../bindings'
-import { chooseCalling, startingCallingOf } from '../callingPick'
+import { callingStandingOf, canAffordCalling } from '../calling'
+import { buyCalling, chooseCalling, startingCallingOf } from '../callingPick'
 import { IS_COOP_RELEASED } from '../coop/release'
 import { readRoomLink } from '../coop/roomState'
 import * as Coop from '../coop/update'
@@ -19,10 +20,11 @@ import { isLearned } from '../onboarding'
 import { isLeftFromRoom, maybeRunRoom } from '../onlineRun'
 import { type Calling, lookCodeOf } from '../playerData'
 import { cleanName, joinName } from '../profile'
-import { rankOf, totalPointsOf } from '../rank'
+import { bonesBalanceOf, rankOf, totalPointsOf } from '../rank'
 import { stepWhen } from '../stepWhen'
 import type { SeatAction } from '../stepWorld'
 import { FocusHomeButton, goHome } from './home'
+import { playSounds, uiCue } from './sound'
 import {
   type UpdateStep,
   combine,
@@ -73,6 +75,31 @@ export const leftRoom = stepWhen(isLeftFromRoom, goHome)
 // `chooseCalling` checks it again).
 export const choseCalling = (calling: Calling): UpdateStep =>
   modelStep(model => chooseCalling(model, calling))
+
+// NOTE: the BUY pill in co-op's hero picker: the same purchase the home
+// picker's BUY makes (`buyCalling`: the Bones spent, the id bought, the hero
+// the pick, all saved and synced as a bought look is). Nothing if the hero is
+// no longer for sale or the Bones fall short, so a stale tap buys nothing.
+// Co-op is then handed the purse and the hero, to send the room.
+export const boughtCalling = (calling: Calling) =>
+  makeStep(model => {
+    const after = buyCalling(model, calling)
+    return callingStandingOf(
+      calling,
+      rankOf(totalPointsOf(model.rank)),
+      model.boughtCosmetics,
+    ) === 'ForSale' && canAffordCalling(model.rank, calling)
+      ? Update.combineSteps([
+          stepModel =>
+            playSounds([uiCue('Purchase')])(buyCalling(stepModel, calling)),
+          CoopBinding.requestBoughtHero({
+            calling,
+            bought: after.boughtCosmetics,
+            bones: bonesBalanceOf(after.rank),
+          }),
+        ])
+      : unchanged
+  })
 
 // NOTE: a name changed in the lobby is the player's name everywhere, kept
 // and synced as the Profile's Name tab keeps it.
@@ -145,6 +172,7 @@ export const openCoop = (maybeCode: Option.Option<string>) =>
             calling: startingCallingOf(model),
             rngState: model.cosmeticRngState,
             bought: model.boughtCosmetics,
+            bones: bonesBalanceOf(model.rank),
           }),
         ])
       : unchanged,

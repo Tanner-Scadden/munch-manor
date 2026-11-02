@@ -206,3 +206,81 @@ describe('renaming yourself in the lobby', () => {
     expect(result.model.playerName).toBe('Old')
   })
 })
+
+describe('buying a hero in the lobby', () => {
+  // NOTE: rank 7 has reached the Track Star (100 Bones); 150 are earned.
+  const trying: Model = modifyFields(readyAfterRead, {
+    rank: current => ({
+      ...current,
+      earnedPoints: pointsForRank(7),
+      earnedBones: 150,
+      spentBones: 0,
+    }),
+    coop: coop => ({
+      ...coop,
+      rank: 7,
+      bones: 150,
+      screen: CoopScreen.InRoom({
+        room: {
+          ...freshRoom(CODE, 0),
+          maybePlayerId: Option.some('player-0'),
+          maybeLobby: Option.some(
+            lobbyOf([memberOf(0, 'Ana', false, '', false, 7)]),
+          ),
+          isPickingCalling: true,
+          maybeTryingCalling: Option.some('TrackStar' as const),
+        },
+      }),
+    }),
+  })
+  const buy = (model: Model) =>
+    update(
+      model,
+      toParentMessage(CoopBinding, CoopMessage.ClickedBuyCallingButton()),
+    )
+
+  test('spends the Bones once, saves, and the hero is the pick in the room', () => {
+    const result = buy(trying)
+    expect(result.model.boughtCosmetics).toContain('hero:TrackStar')
+    expect(result.model.rank.spentBones).toBe(100)
+    expect(result.model.calling).toBe('TrackStar')
+    expect(result.model.coop.calling).toBe('TrackStar')
+    expect(result.model.coop.bones).toBe(50)
+    expect(result.model.coop.bought).toContain('hero:TrackStar')
+    expect(Array.map(result.commands ?? [], command => command.name)).toEqual(
+      expect.arrayContaining(['Application/WriteSave']),
+    )
+  })
+
+  test('a second tap buys nothing more', () => {
+    const once = buy(trying).model
+    const again = buy(
+      modifyFields(once, {
+        coop: coop => ({
+          ...coop,
+          screen: trying.coop.screen,
+        }),
+      }),
+    )
+    expect(again.model.rank.spentBones).toBe(100)
+  })
+
+  test('the root checks the Bones itself, whatever co-op believes', () => {
+    const stale = modifyFields(trying, {
+      rank: current => ({ ...current, earnedBones: 99 }),
+    })
+    const result = buy(stale)
+    expect(result.model.rank.spentBones).toBe(0)
+    expect(result.model.boughtCosmetics).not.toContain('hero:TrackStar')
+  })
+
+  test('too few Bones buys nothing', () => {
+    const poor = modifyFields(trying, {
+      rank: current => ({ ...current, earnedBones: 99 }),
+      coop: coop => ({ ...coop, bones: 99 }),
+    })
+    const result = buy(poor)
+    expect(result.model.rank.spentBones).toBe(0)
+    expect(result.model.boughtCosmetics).not.toContain('hero:TrackStar')
+  })
+})

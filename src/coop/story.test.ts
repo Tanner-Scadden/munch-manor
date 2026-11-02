@@ -1,4 +1,4 @@
-import { Array, Effect, Layer, Option, Schema } from 'effect'
+import { Array, Effect, Layer, Option } from 'effect'
 import {
   Command,
   expectOutMessage,
@@ -19,27 +19,20 @@ import {
 } from '@munch/netcode'
 import { RoomEvent } from '@munch/netcode/browser'
 
-import { GOOFY_NAMES } from '../profile'
 import { playRoom } from '../roomTesting'
-import {
-  AIM_REACH,
-  FIRE_BUTTON,
-  roomSettingsOf,
-  seatActionOf,
-} from '../roomWorld'
+import { AIM_REACH, FIRE_BUTTON, seatActionOf } from '../roomWorld'
 import { SeatAction } from '../stepWorld'
 import { Message, OutMessage } from './message'
 import {
   LobbyChange,
   type Model,
-  type Room,
   RoomRequest,
   Screen,
   emptyQueue,
-  initialModel,
 } from './model'
-import { cleanCode, freshRoom, maybeRoomOf, pressAction } from './roomState'
+import { cleanCode, freshRoom, pressAction } from './roomState'
 import { coopWorld } from './seam'
+import { inRoom, lobbyUpdate, onHub, picked, roomOf } from './story.fixture'
 import {
   CODE,
   lobbyOf,
@@ -57,15 +50,9 @@ import {
   RequestRoom,
   ResyncRoom,
   SendRoomFrames,
-  open,
-  pressKey,
   tickRoom,
   update,
 } from './update'
-
-const onHub: Model = open(initialModel, '', Option.none(), '', 1, 'You', [
-  'hero:Handyman',
-]).model
 
 const resolveFocus = () =>
   Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement())
@@ -97,32 +84,7 @@ const matched = Message.ReceivedQuickPlayEvent({
   event: { _tag: 'Heard', message: { _tag: 'Matched', code: CODE, slot: 1 } },
 })
 
-const roomOf = (current: Model): Room => Option.getOrThrow(maybeRoomOf(current))
-
-const inRoom = (slot: number): Model =>
-  modifyFields(onHub, {
-    screen: () => Screen.InRoom({ room: freshRoom(CODE, slot) }),
-  })
-
-const lobbyUpdate = (lobby: ReturnType<typeof lobbyOf>) =>
-  Message.ReceivedLobbyEvent({ event: { _tag: 'Updated', lobby } })
-
 const TWO = [memberOf(0, 'Ana'), memberOf(1, 'Bo')]
-
-const decodeChange = Schema.decodeUnknownOption(
-  Schema.Struct({ change: LobbyChange }),
-)
-
-const picked = (current: Model, code: string) =>
-  Array.flatMap(pressKey(current, code).commands ?? [], command =>
-    Option.match(decodeChange(command.args), {
-      onNone: () => [],
-      onSome: ({ change }) =>
-        LobbyChange.isAnyOf(['ChangedPicks'])(change)
-          ? [change.mode, change.difficulty]
-          : [],
-    }),
-  )
 
 describe('co-op hub', () => {
   test('the X on the hub closes co-op and tells the parent', () => {
@@ -457,260 +419,6 @@ describe('the lobby', () => {
         )
       }),
     )
-  })
-})
-
-describe('picking a hero in the lobby', () => {
-  const ANA_RANK_4 = memberOf(0, 'Ana', true, '', false, 4)
-  const BO = memberOf(1, 'Bo')
-  const lobbyAt4 = lobbyOf([ANA_RANK_4, BO])
-  const opened = (): Model =>
-    update(
-      update(inRoom(0), lobbyUpdate(lobbyAt4)).model,
-      Message.ClickedCallingPill(),
-    ).model
-
-  test('the pill and Y open the picker, and Y or Escape close it', () => {
-    const lobbied = update(inRoom(0), lobbyUpdate(lobbyAt4)).model
-    expect(roomOf(lobbied).isPickingCalling).toBe(false)
-    const byKey = pressKey(lobbied, 'KeyY').model
-    expect(roomOf(byKey).isPickingCalling).toBe(true)
-    expect(roomOf(pressKey(byKey, 'KeyY').model).isPickingCalling).toBe(false)
-    expect(roomOf(pressKey(byKey, 'Escape').model).isPickingCalling).toBe(false)
-    expect(roomOf(opened()).isPickingCalling).toBe(true)
-  })
-
-  test('Enter and the picks wait while it is open', () => {
-    const up = opened()
-    expect(pressKey(up, 'Enter').commands).toBeUndefined()
-    expect(picked(up, 'KeyE')).toEqual([])
-  })
-
-  test('a hero the rank reached goes to the lobby and the parent, and READY stays', () => {
-    story(
-      update,
-      given(opened()),
-      message(Message.ClickedCallingPick({ calling: 'Handyman' })),
-      expectOutMessage(OutMessage.ChoseCalling({ calling: 'Handyman' })),
-      Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedMemberCalling({ calling: 'Handyman' }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
-      model(current => {
-        expect(roomOf(current).isPickingCalling).toBe(false)
-        expect(current.calling).toBe('Handyman')
-        expect(
-          Option.exists(roomOf(current).maybeLobby, lobby =>
-            lobby.members.every(member => member.ready === (member.slot === 0)),
-          ),
-        ).toBe(true)
-      }),
-    )
-  })
-
-  test('a hero the rank has not reached, or the one already worn, sends nothing', () => {
-    story(
-      update,
-      given(opened()),
-      message(Message.ClickedCallingPick({ calling: 'LineCook' })),
-      Command.expectNone(),
-      model(current => {
-        expect(roomOf(current).isPickingCalling).toBe(true)
-      }),
-      message(Message.ClickedCallingPick({ calling: 'You' })),
-      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
-      model(current => {
-        expect(roomOf(current).isPickingCalling).toBe(false)
-      }),
-    )
-  })
-
-  test('a hero changed in the lobby is the one the start seats', () => {
-    const changed = update(
-      update(inRoom(0), lobbyUpdate(lobbyAt4)).model,
-      lobbyUpdate({
-        ...lobbyAt4,
-        members: [{ ...ANA_RANK_4, calling: 'Handyman' }, BO],
-      }),
-    ).model
-    const lobby = Option.getOrThrow(roomOf(changed).maybeLobby)
-    expect(
-      roomSettingsOf('Campaign', 'Normal', lobby.members).callings,
-    ).toEqual([
-      { slot: 0, calling: 'Handyman' },
-      { slot: 1, calling: 'You' },
-    ])
-  })
-
-  test('a started run closes the picker', () => {
-    const playing = update(
-      opened(),
-      lobbyUpdate({ ...lobbyAt4, status: 'Playing' }),
-    )
-    expect(roomOf(playing.model).isPickingCalling).toBe(false)
-  })
-})
-
-describe('tapping a difficulty in the lobby', () => {
-  const lobbyAt = lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')])
-  const as = (slot: number): Model =>
-    update(inRoom(slot), lobbyUpdate(lobbyAt)).model
-  const changes = (result: {
-    commands?: ReadonlyArray<{ name: string }> | undefined
-  }) => (result.commands ?? []).map(command => command.name)
-
-  test('the host changes it, and the room is told', () => {
-    story(
-      update,
-      given(as(0)),
-      message(Message.ClickedDifficultyPick({ difficulty: 'Hard' })),
-      Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedPicks({
-            mode: 'Campaign',
-            difficulty: 'Hard',
-          }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-    )
-  })
-
-  test('a guest tap changes nothing but tells them the host picks', () => {
-    const tapped = update(
-      as(1),
-      Message.ClickedPickNudge({ reason: 'HostPicks' }),
-    )
-    expect(changes(tapped)).toEqual([])
-    expect(roomOf(tapped.model).maybeNudge).toEqual(
-      Option.some({ reason: 'HostPicks', count: 1 }),
-    )
-    const again = update(
-      tapped.model,
-      Message.ClickedPickNudge({ reason: 'HostPicks' }),
-    )
-    expect(roomOf(again.model).maybeNudge).toEqual(
-      Option.some({ reason: 'HostPicks', count: 2 }),
-    )
-  })
-
-  test('the host on a locked Nightmare is told why, and nothing is sent', () => {
-    const tapped = update(
-      update(as(0), Message.ClickedDifficultyPick({ difficulty: 'Nightmare' }))
-        .model,
-      Message.ClickedPickNudge({ reason: 'Locked' }),
-    )
-    expect(changes(tapped)).toEqual([])
-    expect(roomOf(tapped.model).maybeNudge).toEqual(
-      Option.some({ reason: 'Locked', count: 1 }),
-    )
-    expect(
-      Option.map(roomOf(tapped.model).maybeLobby, lobby => lobby.difficulty),
-    ).toEqual(Option.some('Normal'))
-  })
-})
-
-describe('renaming yourself in the lobby', () => {
-  const lobbyAt = lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')])
-  const lobbied = (): Model => update(inRoom(0), lobbyUpdate(lobbyAt)).model
-  const opened = (): Model =>
-    update(lobbied(), Message.ClickedNameButton()).model
-  const draftOf = (current: Model) => roomOf(current).maybeNameDraft
-
-  test('the name button opens the field, prefilled with your name', () => {
-    story(
-      update,
-      given(lobbied()),
-      message(Message.ClickedNameButton()),
-      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
-      model(current => {
-        expect(draftOf(current)).toEqual(Option.some('Ana'))
-      }),
-    )
-  })
-
-  test('typing cleans the draft as the Profile does', () => {
-    const typed = update(
-      opened(),
-      Message.UpdatedNameDraft({ value: '  Gravy   Dave and more' }),
-    ).model
-    expect(draftOf(typed)).toEqual(Option.some('Gravy Dave a'))
-  })
-
-  test('saving sends the room and the parent the cleaned name, READY stays', () => {
-    story(
-      update,
-      given(opened()),
-      message(Message.UpdatedNameDraft({ value: 'Gravy Dave ' })),
-      message(Message.SubmittedName()),
-      expectOutMessage(OutMessage.ChoseName({ name: 'Gravy Dave' })),
-      Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedMemberName({ name: 'Gravy Dave' }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
-      model(current => {
-        expect(draftOf(current)).toEqual(Option.none())
-        expect(current.name).toBe('Gravy Dave')
-      }),
-    )
-  })
-
-  test('an empty name, or the one already worn, only closes the field', () => {
-    for (const value of ['   ', 'Ana']) {
-      const submitted = update(
-        update(opened(), Message.UpdatedNameDraft({ value })).model,
-        Message.SubmittedName(),
-      )
-      expect(draftOf(submitted.model)).toEqual(Option.none())
-      expect(submitted.outMessage).toBeUndefined()
-      expect(
-        (submitted.commands ?? []).map(command => command.name),
-      ).not.toContain(ChangeLobby.name)
-    }
-  })
-
-  test('Escape and the X cancel, and send nothing', () => {
-    const typed = update(
-      opened(),
-      Message.UpdatedNameDraft({ value: 'Nope' }),
-    ).model
-    for (const cancelled of [
-      pressKey(typed, 'Escape'),
-      update(typed, Message.ClickedNameCancel()),
-    ]) {
-      expect(draftOf(cancelled.model)).toEqual(Option.none())
-      expect(cancelled.outMessage).toBeUndefined()
-      expect(cancelled.model.name).toBe(typed.name)
-    }
-  })
-
-  test('the dice put a goofy name in the field, a new one each roll', () => {
-    const first = update(opened(), Message.ClickedNameDice()).model
-    const second = update(first, Message.ClickedNameDice()).model
-    const name = (current: Model) => Option.getOrThrow(draftOf(current))
-    expect(GOOFY_NAMES).toContain(name(first))
-    expect(GOOFY_NAMES).toContain(name(second))
-    expect(name(second)).not.toBe(name(first))
-    expect(first.name).toBe(lobbied().name)
-  })
-
-  test('other lobby keys wait while the field is open', () => {
-    expect(pressKey(opened(), 'Enter').commands).toBeUndefined()
-    expect(picked(opened(), 'KeyE')).toEqual([])
-  })
-
-  test('a started run closes the field', () => {
-    const started = update(
-      opened(),
-      lobbyUpdate({ ...lobbyAt, status: 'Playing' }),
-    )
-    expect(draftOf(started.model)).toEqual(Option.none())
   })
 })
 

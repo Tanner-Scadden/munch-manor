@@ -42,6 +42,13 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'picks', query: 'coop=picks' },
   { name: 'heroes', query: 'coop=heroes' },
   { name: 'name', query: 'coop=name' },
+  { name: 'herosale', query: 'coop=herosale&bones=150&spent=0' },
+  { name: 'heroshort', query: 'coop=heroshort&bones=40&spent=0' },
+  {
+    name: 'herobought',
+    query:
+      'coop=heroes&bones=150&spent=100&bought=hero:Handyman,hero:TrackStar',
+  },
   { name: 'guest', query: 'coop=guest' },
   { name: 'nudge', query: 'coop=nudge' },
   { name: 'padlock', query: 'coop=padlock' },

@@ -52,6 +52,7 @@ export const Message = defineMessageUnion({
   ClickedCallingPill: {},
   ClickedCallingPick: { calling: Calling },
   ClickedCallingDone: {},
+  ClickedBuyCallingButton: {},
   ClickedPickNudge: { reason: NudgeReason },
   ClickedNameButton: {},
   UpdatedNameDraft: { value: Schema.String },
@@ -77,6 +78,12 @@ export const Message = defineMessageUnion({
     calling: Calling,
     rngState: Schema.Number,
     bought: SavedBoughtCosmetics,
+    bones: Schema.Number,
+  },
+  RequestedBoughtHero: {
+    calling: Calling,
+    bought: SavedBoughtCosmetics,
+    bones: Schema.Number,
   },
   RequestedPressKey: { code: Schema.String },
   RequestedReleaseKey: { code: Schema.String },
@@ -107,5 +114,6 @@ export const OutMessage = defineMessageUnion({
   LeftRoom: {},
   ChoseCalling: { calling: Calling },
   ChoseName: { name: Schema.String },
+  BoughtCalling: { calling: Calling },
 })
 export type OutMessage = typeof OutMessage.Type

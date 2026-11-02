@@ -65,6 +65,7 @@ const coopRoom = (
     isPickingCalling: false,
     maybeNameDraft: Option.none(),
     maybeNudge: Option.none(),
+    maybeTryingCalling: Option.none(),
     ...extra,
   }
 }
@@ -236,6 +237,17 @@ const coopScreen = (
       const room = coopRoom(members(3, 1), 'Lobby')
       return Screen.InRoom({
         room: { ...room, maybeNameDraft: Option.some('Tanner') },
+      })
+    }
+    case 'herosale':
+    case 'heroshort': {
+      const room = coopRoom(members(3, 1), 'Lobby')
+      return Screen.InRoom({
+        room: {
+          ...room,
+          isPickingCalling: true,
+          maybeTryingCalling: Option.some('TrackStar' as const),
+        },
       })
     }
     case 'picks': {

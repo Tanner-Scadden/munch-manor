@@ -1,13 +1,4 @@
-import {
-  Array,
-  Effect,
-  Layer,
-  Match,
-  Option,
-  Result,
-  Schema,
-  String,
-} from 'effect'
+import { Array, Effect, Layer, Match, Option, Result, Schema } from 'effect'
 import { Dom, type Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -24,21 +15,18 @@ import {
 } from '@munch/netcode'
 import { QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
-import { isCallingOwned } from '../calling'
 import { DIFFICULTY_ORDER } from '../difficulty'
 import { Calling, type SavedBoughtCosmetics } from '../playerData'
-import { cleanName, draftName, rollName } from '../profile'
 import { eventsBetween } from '../roomWorld'
 import { stepWhen } from '../stepWhen'
 import { CoopComposition } from './composition'
 import { makeCommand } from './definition'
-import { callingOfMember } from './looks'
+import { makeEdits } from './lobbyEdits'
 import { Message, OutMessage } from './message'
 import {
   type CoopProblem,
   LobbyChange,
   type Model,
-  type NudgeReason,
   type Queue,
   type Room,
   RoomRequest,
@@ -48,15 +36,12 @@ import {
 import { CoopNet } from './net'
 import {
   CALLING_KEY,
-  CALLING_PILL_ID,
   CODE_INPUT_ID,
   DIFFICULTY_KEY,
   ENTER,
   ESCAPE,
   MODE_KEY,
   MODE_PICKS,
-  NAME_BUTTON_ID,
-  NAME_INPUT_ID,
   QUICK_PLAY_BUTTON_ID,
   READY_BUTTON_ID,
   ROOM_CODE_LENGTH,
@@ -264,6 +249,13 @@ export type UpdateReturn = Update.ReturnWithOutMessage<
   CoopHandlers
 >
 
+const edits = makeEdits<
+  ReturnType<typeof ChangeLobby> | ReturnType<typeof FocusCoopElement>
+>({
+  changeLobby: change => ChangeLobby({ change }),
+  focus: id => FocusCoopElement({ id }),
+})
+
 const enterRoom = (model: Model, code: string, slot: number): UpdateReturn => ({
   model: withScreen(model, Screen.InRoom({ room: freshRoom(code, slot) })),
   commands: [
@@ -301,6 +293,8 @@ const lobbyUpdated = (model: Model, room: Room, lobby: Lobby): UpdateReturn => {
       model: withRoom(model, {
         ...learned,
         isPickingCalling: learned.isPickingCalling && lobby.status === 'Lobby',
+        maybeTryingCalling:
+          lobby.status === 'Lobby' ? learned.maybeTryingCalling : Option.none(),
         maybeNameDraft:
           lobby.status === 'Lobby' ? learned.maybeNameDraft : Option.none(),
       }),
@@ -526,143 +520,13 @@ const pick = (
         : { model },
   })
 
-// NOTE: a player picks their own hero in the lobby, once their rank has
-// reached it. The pick goes to the room's lobby for the others to see and to
-// seat at the start, and up to the parent, which saves it as the player's
-// pick at home too. Nobody's READY changes. Picking the one already worn only
-// closes the picker.
-const pickCalling = (
-  model: Model,
-  room: Room,
-  calling: Calling,
-): UpdateReturn =>
-  Option.match(meIn(room), {
-    onNone: () => ({ model }),
-    onSome: me => {
-      const closed = {
-        model: withRoom(model, { ...room, isPickingCalling: false }),
-        commands: [FocusCoopElement({ id: CALLING_PILL_ID })],
-      }
-      if (!isInLobby(room) || !isCallingOwned(calling, model.bought)) {
-        return { model }
-      } else if (callingOfMember(me) === calling) {
-        return closed
-      } else {
-        return {
-          model: modifyFields(closed.model, { calling: () => calling }),
-          commands: [
-            ChangeLobby({
-              change: LobbyChange.ChangedMemberCalling({ calling }),
-            }),
-            ...closed.commands,
-          ],
-          outMessage: OutMessage.ChoseCalling({ calling }),
-        }
-      }
-    },
-  })
-
-// NUDGE
-
-// NOTE: a tap on a pick that is not the player's to change: a guest's, since
-// the host picks, or the locked Nightmare. Nothing is sent; the lobby says
-// why, in place.
-const nudge = (model: Model, room: Room, reason: NudgeReason): UpdateReturn =>
-  isInLobby(room)
-    ? {
-        model: withRoom(model, {
-          ...room,
-          maybeNudge: Option.some({
-            reason,
-            count: Option.match(room.maybeNudge, {
-              onNone: () => 1,
-              onSome: last => last.count + 1,
-            }),
-          }),
-        }),
-      }
-    : { model }
-
-// NAME
-
-// NOTE: a player renames themselves in the lobby with the same cleaning and
-// dice as the Profile's Name tab (src/profile.ts). Saving sends the name to
-// the room for the others to see, and up to the parent, which keeps it as
-// the player's name everywhere else. An empty name or the one already worn
-// only closes the field. Nobody's READY changes.
-const withNameDraft = (
-  model: Model,
-  room: Room,
-  maybeNameDraft: Option.Option<string>,
-): Model => withRoom(model, { ...room, maybeNameDraft })
-
-const startNaming = (model: Model, room: Room): UpdateReturn =>
-  Option.match(meIn(room), {
-    onNone: () => ({ model }),
-    onSome: me =>
-      isInLobby(room)
-        ? {
-            model: withNameDraft(model, room, Option.some(me.name)),
-            commands: [FocusCoopElement({ id: NAME_INPUT_ID })],
-          }
-        : { model },
-  })
-
-const stopNaming = (model: Model, room: Room): UpdateReturn =>
-  Option.isSome(room.maybeNameDraft)
-    ? {
-        model: withNameDraft(model, room, Option.none()),
-        commands: [FocusCoopElement({ id: NAME_BUTTON_ID })],
-      }
-    : { model }
-
-const typeName = (model: Model, room: Room, value: string): UpdateReturn =>
-  Option.isSome(room.maybeNameDraft)
-    ? { model: withNameDraft(model, room, Option.some(draftName(value))) }
-    : { model }
-
-const rollNameDraft = (model: Model, room: Room): UpdateReturn =>
-  Option.match(room.maybeNameDraft, {
-    onNone: () => ({ model }),
-    onSome: draft => {
-      const [rngState, name] = rollName(model.rngState, cleanName(draft))
-      return {
-        model: modifyFields(withNameDraft(model, room, Option.some(name)), {
-          rngState: () => rngState,
-        }),
-        commands: [FocusCoopElement({ id: NAME_INPUT_ID })],
-      }
-    },
-  })
-
-const keepName = (model: Model, room: Room): UpdateReturn =>
-  Option.match(room.maybeNameDraft, {
-    onNone: () => ({ model }),
-    onSome: draft => {
-      const name = cleanName(draft)
-      const closed = stopNaming(model, room)
-      const isWorn = Option.exists(meIn(room), me => me.name === name)
-      if (!isInLobby(room) || String.isEmpty(name) || isWorn) {
-        return closed
-      } else {
-        return {
-          model: modifyFields(closed.model, { name: () => name }),
-          commands: [
-            ChangeLobby({ change: LobbyChange.ChangedMemberName({ name }) }),
-            ...(closed.commands ?? []),
-          ],
-          outMessage: OutMessage.ChoseName({ name }),
-        }
-      }
-    },
-  })
-
 const togglePicker = (model: Model, room: Room): UpdateReturn =>
   isInLobby(room) && Option.isSome(meIn(room))
     ? {
         model: withRoom(model, {
           ...room,
           isPickingCalling: !room.isPickingCalling,
+          maybeTryingCalling: Option.none(),
         }),
       }
     : { model }
@@ -738,7 +602,7 @@ const keyOnScreen = (model: Model, code: string): UpdateReturn =>
       } else if (Option.isSome(room.maybeNameDraft)) {
         return stepWhen<Model, UpdateReturn>(
           () => code === ESCAPE,
-          () => stopNaming(model, room),
+          () => edits.stopNaming(model, room),
         )(model)
       } else if (room.isPickingCalling) {
         return keyInPicker(model, room, code)
@@ -816,6 +680,7 @@ export const open = (
   rank = 1,
   calling: Calling = 'You',
   bought: SavedBoughtCosmetics = [],
+  bones = 0,
   rngState = 0,
 ): UpdateReturn => {
   const named = modifyFields(model, {
@@ -825,6 +690,7 @@ export const open = (
     calling: () => calling,
     rngState: () => rngState,
     bought: () => bought,
+    bones: () => bones,
   })
   return Option.match(maybeCode, {
     onNone: () => ({
@@ -1010,7 +876,7 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
     ClickedCallingPill: () => inRoom(model, room => togglePicker(model, room)),
 
     ClickedCallingPick: ({ calling }) =>
-      inRoom(model, room => pickCalling(model, room, calling)),
+      inRoom(model, room => edits.pickCalling(model, room, calling)),
 
     ClickedCallingDone: () =>
       inRoom(model, room =>
@@ -1020,19 +886,25 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
         )(model),
       ),
 
-    ClickedPickNudge: ({ reason }) =>
-      inRoom(model, room => nudge(model, room, reason)),
+    ClickedBuyCallingButton: () =>
+      inRoom(model, room => edits.buyCalling(model, room)),
 
-    ClickedNameButton: () => inRoom(model, room => startNaming(model, room)),
+    ClickedPickNudge: ({ reason }) =>
+      inRoom(model, room => edits.nudge(model, room, reason)),
+
+    ClickedNameButton: () =>
+      inRoom(model, room => edits.startNaming(model, room)),
 
     UpdatedNameDraft: ({ value }) =>
-      inRoom(model, room => typeName(model, room, value)),
+      inRoom(model, room => edits.typeName(model, room, value)),
 
-    SubmittedName: () => inRoom(model, room => keepName(model, room)),
+    SubmittedName: () => inRoom(model, room => edits.keepName(model, room)),
 
-    ClickedNameDice: () => inRoom(model, room => rollNameDraft(model, room)),
+    ClickedNameDice: () =>
+      inRoom(model, room => edits.rollNameDraft(model, room)),
 
-    ClickedNameCancel: () => inRoom(model, room => stopNaming(model, room)),
+    ClickedNameCancel: () =>
+      inRoom(model, room => edits.stopNaming(model, room)),
 
     CompletedChangeLobby: () => ({ model }),
 
@@ -1087,7 +959,22 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
       calling,
       rngState,
       bought,
-    }) => open(model, name, maybeCode, look, rank, calling, bought, rngState),
+      bones,
+    }) =>
+      open(
+        model,
+        name,
+        maybeCode,
+        look,
+        rank,
+        calling,
+        bought,
+        bones,
+        rngState,
+      ),
+
+    RequestedBoughtHero: ({ calling, bought, bones }) =>
+      edits.boughtHero(model, calling, bought, bones),
 
     RequestedPressKey: ({ code }) => pressKey(model, code),
 
@@ -1150,6 +1037,7 @@ export const update = CoopComposition.makeUpdate({
   ClickedCallingPill: delivered,
   ClickedCallingPick: delivered,
   ClickedCallingDone: delivered,
+  ClickedBuyCallingButton: delivered,
   ClickedPickNudge: delivered,
   ClickedNameButton: delivered,
   UpdatedNameDraft: delivered,
@@ -1168,6 +1056,7 @@ export const update = CoopComposition.makeUpdate({
   CompletedRememberRoom: delivered,
   CompletedFocusCoopElement: delivered,
   RequestedOpen: requested,
+  RequestedBoughtHero: requested,
   RequestedPressKey: requested,
   RequestedReleaseKey: requested,
   RequestedTickRoom: requested,

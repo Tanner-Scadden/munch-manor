@@ -320,6 +320,8 @@ export const HarnessConfig = Schema.Struct({
     'picks',
     'heroes',
     'name',
+    'herosale',
+    'heroshort',
     'guest',
     'nudge',
     'padlock',

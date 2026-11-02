@@ -2,7 +2,11 @@ import { Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import { PROP_ICONS } from '../callingArt'
-import { callingCardsView } from '../callingCards'
+import {
+  callingBalanceView,
+  callingBuyView,
+  callingCardsView,
+} from '../callingCards'
 import { specialsNoteOf } from '../callingSpecials'
 import { closeButtonView } from '../dialogs'
 import { iconView } from '../menuParts'
@@ -53,6 +57,7 @@ export const callingPickerView = (
   room: Room,
   look: Appearance,
   bought: SavedBoughtCosmetics,
+  bones: number,
   h: HtmlBuilder<Message>,
 ): Html =>
   Option.match(meIn(room), {
@@ -70,6 +75,7 @@ export const callingPickerView = (
               h.div(
                 [h.Class('coop-calling-picker-head')],
                 [
+                  callingBalanceView(bones, h),
                   h.span([h.Class('coop-calling-picker-title')], ['Hero']),
                   closeButtonView(
                     {
@@ -87,7 +93,7 @@ export const callingPickerView = (
                   chosen: callingOfMember(me),
                   rank: me.rank,
                   bought,
-                  maybeTrying: Option.none(),
+                  maybeTrying: room.maybeTryingCalling,
                   fresh: [],
                   attributesOf: calling => [
                     h.OnClick(Message.ClickedCallingPick({ calling })),
@@ -95,6 +101,24 @@ export const callingPickerView = (
                 },
                 h,
               ),
+              ...Option.match(room.maybeTryingCalling, {
+                onNone: () => [],
+                onSome: calling => [
+                  h.div(
+                    [h.Class('coop-calling-actions')],
+                    [
+                      callingBuyView(
+                        {
+                          calling,
+                          bones,
+                          onBuy: Message.ClickedBuyCallingButton(),
+                        },
+                        h,
+                      ),
+                    ],
+                  ),
+                ],
+              }),
             ],
           )
         : h.empty,

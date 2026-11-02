@@ -65,6 +65,7 @@ export type ViewInputs = Readonly<{
   isKeyboard: boolean
   isRunCardUp: boolean
   bought: SavedBoughtCosmetics
+  bones: number
 }>
 
 const lookOf = (inputs: ViewInputs, room: Room, seat: number) =>
@@ -832,6 +833,7 @@ const lobbyView = (
             room,
             lookOf(inputs, room, me.slot),
             inputs.bought,
+            inputs.bones,
             h,
           ),
       }),

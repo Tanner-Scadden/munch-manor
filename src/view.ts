@@ -47,6 +47,7 @@ import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from './powerups'
 import { profileView } from './profileView'
 import { ammoTagButtonView, purchaseAnnouncementView } from './purchaseHud'
 import { questTrackerView } from './questView'
+import { bonesBalanceOf } from './rank'
 import { landscapeFrameOffset, screenOf } from './screen'
 import { isShopOpenFor } from './shop'
 import { shopDialogView } from './shopView'
@@ -332,6 +333,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
               isKeyboard: model.lastDevice === 'KeyboardMouse',
               isRunCardUp: isRunCardHeld(model),
               bought: model.boughtCosmetics,
+              bones: bonesBalanceOf(model.rank),
             },
           }),
         ),

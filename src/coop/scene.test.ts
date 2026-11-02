@@ -49,6 +49,7 @@ const view = withViewInputs(coopView, {
   isKeyboard: false,
   isRunCardUp: false,
   bought: ['hero:Handyman'],
+  bones: 0,
 })()
 
 const at = (screen: Screen): Model =>
@@ -675,6 +676,7 @@ describe('the arena', () => {
       isKeyboard: false,
       isRunCardUp: true,
       bought: [],
+      bones: 0,
     })()
     scene(
       { update, view: heldView },
