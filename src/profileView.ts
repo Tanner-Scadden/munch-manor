@@ -936,7 +936,7 @@ const panelView = (
   closeButtonView(
     {
       attributes: closeButton,
-      className: 'panel-close profile-close',
+      className: 'panel-close',
       label: 'Close',
     },
     h,

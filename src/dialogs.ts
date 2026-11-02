@@ -20,6 +20,7 @@ import type {
   ApplicationAttribute,
   ApplicationViewBuilder,
 } from './composition'
+import { BACK_ICON } from './coop/icons'
 import { CLOSE_ICON } from './icons'
 
 // NOTE: the root's dialogs, each a Dialog Binding in src/composition.ts.
@@ -149,21 +150,22 @@ export const dialogShell = (
       ])
     : shellView(shell, h)
 
-// CLOSE
+// CORNER BUTTONS
 
-type CloseButton<Message> = Readonly<{
+type CornerButton<Message> = Readonly<{
   attributes: ReadonlyArray<Attribute<Message> | ChildAttribute>
   className: string
   label: string
 }>
 
-// NOTE: the one close button every menu dialog shares: the shop's red pixel
-// X on a small face, centered in a bigger see-through button, so it looks
-// small but a thumb still has a 48 px target. `className` only places it.
+// NOTE: the one close button every menu dialog shares: a red pixel X on a
+// 32 px face, centered in a bigger see-through button, so it looks small
+// but a thumb still has a 48 px target. `className` only places it, with
+// the button flush in its panel's corner so the face sits 8 px inside.
 // `attributes` carry what it does: a Dialog's `closeButton`, or an OnClick
 // for a screen that is not a Dialog, such as co-op's.
 export const closeButtonView = <Message>(
-  { attributes, className, label }: CloseButton<Message>,
+  { attributes, className, label }: CornerButton<Message>,
   h: HtmlBuilder<Message>,
 ): Html =>
   h.button(
@@ -174,15 +176,36 @@ export const closeButtonView = <Message>(
       h.AriaLabel(label),
       h.AriaKeyshortcuts('Escape'),
     ],
+    [faceView(CLOSE_ICON, 'menu-close-icon', h)],
+  )
+
+// NOTE: the matching back button: the same 48 px target and 32 px face in a
+// neutral fill, an arrow in place of the X. `extra` is for a key cap.
+export const backButtonView = <Message>(
+  {
+    attributes,
+    className,
+    label,
+    extra = [],
+  }: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.button(
     [
-      h.span(
-        [h.Class('menu-close-face'), h.AriaHidden(true)],
-        [
-          h.span([
-            h.Class('menu-close-icon'),
-            h.Style({ backgroundImage: CLOSE_ICON }),
-          ]),
-        ],
-      ),
+      h.Type('button'),
+      ...attributes,
+      h.Class(`menu-close menu-back ${className}`),
+      h.AriaLabel(label),
     ],
+    [faceView(BACK_ICON, 'menu-back-icon', h), ...extra],
+  )
+
+const faceView = <Message>(
+  icon: string,
+  iconClass: string,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.span(
+    [h.Class('menu-close-face'), h.AriaHidden(true)],
+    [h.span([h.Class(iconClass), h.Style({ backgroundImage: icon })])],
   )

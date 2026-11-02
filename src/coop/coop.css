@@ -89,32 +89,17 @@
   pointer-events: none;
 }
 
+/* NOTE: flush in the screen's corner, so the 32 px face sits 8 px in. */
 .coop-close {
   position: absolute;
-  top: max(10px, 2 * var(--coop-unit));
-  right: max(10px, 2 * var(--coop-unit));
+  top: 0;
+  right: 0;
 }
 
 .coop-back {
   position: absolute;
-  top: max(10px, 2 * var(--coop-unit));
-  left: max(10px, 2 * var(--coop-unit));
-  display: grid;
-  place-items: center;
-  width: var(--menu-tap);
-  height: var(--menu-tap);
-  padding: 0;
-  border: 2px solid var(--menu-line-strong);
-  border-radius: var(--menu-radius-sm);
-  background: var(--menu-surface);
-  box-shadow: var(--menu-lift);
-}
-
-.coop-back-icon {
-  width: 24px;
-  height: 22px;
-  background: center / contain no-repeat;
-  image-rendering: pixelated;
+  top: 0;
+  left: 0;
 }
 
 .coop-portrait {

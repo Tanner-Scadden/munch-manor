@@ -1585,7 +1585,7 @@
 
 .panel-dialog[data-panel='Updated'] .greeting-title {
   justify-content: center;
-  padding-left: calc(var(--menu-tap) + 4px - var(--menu-pad));
+  padding-left: calc(var(--menu-tap) - var(--menu-pad));
   font-size: 20px;
   animation: greeting-title 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both;
 }
@@ -2369,13 +2369,14 @@ button.help-card:focus-visible {
   }
 }
 
-/* CLOSE: the one close button every menu dialog shares (closeButtonView in
-   dialogs.ts). The red pixel X sits on a small face, about 30 px on a phone
-   and up to 40 px on a big screen, centered in a see-through button that
-   keeps the 48 px tap target. Each dialog only places the button. */
+/* CLOSE AND BACK: the one corner button every menu shares (closeButtonView
+   and backButtonView in dialogs.ts). A 48 px see-through target holds a 32 px
+   face, so the face sits 8 px inside whatever corner the button is flush
+   with and never straddles a border. Close is red, back is neutral. Each
+   surface only places the button. */
 
 .menu-close {
-  --close-face: clamp(30px, 4.6vmin, 40px);
+  --close-face: 32px;
   display: grid;
   place-items: center;
   box-sizing: border-box;
@@ -2396,9 +2397,9 @@ button.help-card:focus-visible {
   place-items: center;
   width: var(--close-face);
   height: var(--close-face);
-  border: 2px solid #8a2a24;
+  border: var(--menu-border) solid var(--menu-red-line);
   border-radius: var(--menu-radius-sm);
-  background: #3a1a1e;
+  background: var(--menu-red-deep);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
   pointer-events: none;
   transition:
@@ -2406,11 +2407,26 @@ button.help-card:focus-visible {
     background-color 80ms ease-out;
 }
 
-.menu-close-icon {
-  width: 56%;
-  height: 56%;
+.menu-back .menu-close-face {
+  border-color: var(--menu-line-strong);
+  background: var(--menu-surface);
+}
+
+.menu-close-icon,
+.menu-back-icon {
   background: center / contain no-repeat;
   image-rendering: pixelated;
+}
+
+/* NOTE: whole multiples of the icons' pixel grids (9 and 8 wide). */
+.menu-close-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.menu-back-icon {
+  width: 16px;
+  height: 14px;
 }
 
 @media (hover: hover) {
@@ -2418,10 +2434,15 @@ button.help-card:focus-visible {
     border-color: var(--menu-red);
     background: #5a2228;
   }
+
+  .menu-back:hover .menu-close-face {
+    border-color: var(--menu-ink);
+    background: var(--menu-surface-hi);
+  }
 }
 
 .menu-close:active .menu-close-face {
-  transform: translateY(1px) scale(0.92);
+  transform: translateY(1px);
   box-shadow: var(--menu-press);
 }
 
@@ -2432,24 +2453,24 @@ button.help-card:focus-visible {
 .menu-close:focus-visible .menu-close-face {
   border-color: var(--menu-gold);
   outline: var(--menu-focus);
-  outline-offset: 2px;
+  outline-offset: var(--menu-focus-offset);
 }
 
-/* NOTE: a panel's close sits in its top right corner. The title row is as
-   tall as the button and stops short of it, so the close never covers the
+/* NOTE: a panel's close sits flush in its top right corner. The title row is
+   as tall as the button and stops short of it, so the close never covers the
    title or the first row of the panel. */
 .panel-close {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 0;
+  right: 0;
   z-index: 1;
 }
 
 .panel-title {
   display: flex;
   align-items: center;
-  min-height: calc(var(--menu-tap) + 4px - var(--menu-pad));
-  padding-right: calc(var(--menu-tap) + 4px - var(--menu-pad));
+  min-height: calc(var(--menu-tap) - var(--menu-pad));
+  padding-right: calc(var(--menu-tap) - var(--menu-pad));
 }
 
 /* GAME FEEL: small idle motions, all CSS, none of them on the game's

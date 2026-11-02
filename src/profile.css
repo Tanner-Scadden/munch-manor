@@ -76,11 +76,6 @@
   }
 }
 
-.profile-close {
-  top: -12px;
-  right: -12px;
-}
-
 .profile-body {
   display: grid;
   grid-template-columns: auto 1fr;

@@ -26,6 +26,8 @@
   --shop-line: rgba(244, 241, 222, 0.22);
   --shop-bubble: #f4f1de;
   --shop-bubble-ink: #2a1418;
+  --shop-pad: calc(12 * var(--shop-u));
+  --shop-pad-y: calc(10 * var(--shop-u));
   --shop-gap: calc(8 * var(--shop-u));
   --shop-radius: calc(6 * var(--shop-u));
   --shop-tap: max(48px, calc(48 * var(--shop-u)));
@@ -60,7 +62,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  padding: calc(10 * var(--shop-u)) calc(12 * var(--shop-u));
+  padding: var(--shop-pad-y) var(--shop-pad);
   border: calc(3 * var(--shop-u)) solid var(--shop-wood);
   border-radius: calc(8 * var(--shop-u));
   background: var(--shop-bg);
@@ -84,8 +86,10 @@
 /* HEADER */
 
 .shop-header {
+  position: relative;
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto 1fr auto;
+  padding-right: calc(var(--shop-tap) - var(--shop-pad));
   align-items: center;
   gap: var(--shop-gap) calc(10 * var(--shop-u));
 }
@@ -182,10 +186,13 @@
   );
 }
 
-/* NOTE: the shared close (closeButtonView) holds its own column at the end
-   of the header row, so it never covers the wallet or Rattles' bubble. */
+/* NOTE: the shared close (closeButtonView) sits flush in the panel's top
+   right corner, where it stays on every page; the header leaves its width
+   free, so it never covers the wallet or Rattles' bubble. */
 .shop-close {
-  align-self: start;
+  position: absolute;
+  top: calc(-1 * var(--shop-pad-y));
+  right: calc(-1 * var(--shop-pad));
 }
 
 /* TABS */
@@ -1050,15 +1057,16 @@
 }
 
 @media (max-width: 560px) {
-  .shop-panel {
-    padding: 8px;
+  .shop-dialog {
+    --shop-pad: 8px;
+    --shop-pad-y: 8px;
   }
 
   .shop-header {
     grid-template-areas:
-      'keeper speech close'
-      'keeper wallet wallet';
-    grid-template-columns: auto 1fr auto;
+      'keeper speech'
+      'keeper wallet';
+    grid-template-columns: auto 1fr;
   }
 
   .shop-keeper {
@@ -1072,10 +1080,6 @@
 
   .shop-wallet {
     grid-area: wallet;
-  }
-
-  .shop-close {
-    grid-area: close;
   }
 
   .shop-tab {
