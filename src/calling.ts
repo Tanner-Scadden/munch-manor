@@ -72,7 +72,7 @@ export const maxHpOf = ({ calling }: Wearer): number =>
 // SPEED
 
 // NOTE: the Track Star runs 20% faster (10% left him 5 points under YOU, and
-// with the dearer traps 15% was 9 under).
+// with the dearer traps 15% was 9 under; 25% did no better on the bot).
 const TRACK_STAR_SPEED = 1.2
 
 export const speedScaleOf = ({ calling }: Wearer): number =>
@@ -80,14 +80,14 @@ export const speedScaleOf = ({ calling }: Wearer): number =>
 
 // MAGAZINES
 
-// NOTE: the Track Star's magazines are 10% smaller, rounded down, never
+// NOTE: the Track Star's magazines are 5% smaller, to the nearest round, never
 // below one round. (20% lost 11 points of wins to YOU on the balance bot,
-// so 10%.)
-const TRACK_STAR_MAGAZINE_PERCENT = 90
+// 10% (rounded down) left him 8 under, and 5% rounded down 9; 5% to the nearest read 4 under.)
+const TRACK_STAR_MAGAZINE_PERCENT = 95
 
 export const magazineFor = (calling: Calling, magazine: number): number =>
   calling === 'TrackStar'
-    ? Math.max(1, Math.floor((magazine * TRACK_STAR_MAGAZINE_PERCENT) / 100))
+    ? Math.max(1, Math.round((magazine * TRACK_STAR_MAGAZINE_PERCENT) / 100))
     : magazine
 
 // PRICES
