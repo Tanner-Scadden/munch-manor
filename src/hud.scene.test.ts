@@ -3,7 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { PARLOUR } from './arena'
-import { cameraFor } from './camera'
+import { cameraFor, cameraOf } from './camera'
 import { VIEW_HEIGHT } from './constants'
 import { hudShapes, hudStripShapes } from './hud'
 import {
@@ -108,15 +108,20 @@ describe('the boost chips', () => {
 
 describe('the top HUD strip', () => {
   test('backs the landscape HUD rows over the wall, and only in landscape', () => {
-    const [strip, ...rest] = hudStripShapes(twoBoosts, LANDSCAPE_SCREEN)
-    expect(rest).toEqual([])
-    expect(strip).toMatchObject({
-      _tag: 'Rect',
-      x: 0,
-      y: 0,
-      width: LANDSCAPE_SCREEN.width,
-    })
-    expect(hudStripShapes(twoBoosts, DEFAULT_PORTRAIT_SCREEN)).toEqual([])
-    expect(hudStripShapes(initialModel, LANDSCAPE_SCREEN)).toEqual([])
+    const camera = cameraOf(twoBoosts)
+    const [strip, ...rest] = hudStripShapes(twoBoosts, LANDSCAPE_SCREEN, camera)
+    expect(strip).toMatchObject({ _tag: 'Rect', x: 0, y: 0 })
+    expect(hudStripShapes(twoBoosts, DEFAULT_PORTRAIT_SCREEN, camera)).toEqual(
+      [],
+    )
+    expect(hudStripShapes(initialModel, LANDSCAPE_SCREEN, camera)).toEqual([])
+    // NOTE: the strip leaves a gap over the boarded kitchen door, so it is
+    // two pieces that reach the screen's two edges and leave the door out.
+    expect(rest).toHaveLength(1)
+    const [door] = rest
+    expect(door).toMatchObject({ _tag: 'Rect' })
+    expect(strip?._tag === 'Rect' ? strip.width : 0).toBeLessThan(
+      LANDSCAPE_SCREEN.width / 2,
+    )
   })
 })

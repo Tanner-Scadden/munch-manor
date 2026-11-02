@@ -78,9 +78,9 @@ describe('a run starts with the calling picked', () => {
     expect(heldGun(focusOf(run).player.arsenal).rounds).toBe(14)
   })
 
-  test('the Track Star starts with a 12 round pistol magazine', () => {
+  test('the Track Star starts with a 13 round pistol magazine', () => {
     const run = started(ranked(6, 'TrackStar'))
-    expect(heldGun(focusOf(run).player.arsenal).loaded).toBe(12)
+    expect(heldGun(focusOf(run).player.arsenal).loaded).toBe(13)
   })
 })
 
@@ -153,16 +153,16 @@ describe('the quirks in play', () => {
     const bought = tryPurchase(
       shopping('TrackStar'),
       focusSlotOf(shopping('TrackStar')),
-      'Shotgun',
+      'Smg',
     )
     expect(bought._tag).toBe('Success')
     const gun = Option.getOrThrow(
       Option.flatMap(
         Option.fromNullishOr(bought._tag === 'Success' ? bought.success : null),
-        world => maybeCarried(focusOf(world).player, 'Shotgun'),
+        world => maybeCarried(focusOf(world).player, 'Smg'),
       ),
     )
-    expect(gun.loaded).toBe(5)
+    expect(gun.loaded).toBe(29)
   })
 
   test('Rattles charges the Penny Pincher 15 percent less', () => {
@@ -242,7 +242,7 @@ describe('what the player sees of a calling', () => {
   })
 
   test('the low ammo warning reads the Track Star smaller magazine', () => {
-    const smg: CarriedGun = { ...freshGun('Smg'), rounds: 56, loaded: 20 }
+    const smg: CarriedGun = { ...freshGun('Smg'), rounds: 59, loaded: 20 }
     expect(ammoLevelOf(smg, 'You')).toBe('Low')
     expect(ammoLevelOf(smg, 'TrackStar')).toBe('Plenty')
   })

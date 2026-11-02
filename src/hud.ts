@@ -32,6 +32,7 @@ import {
   textWidth,
 } from './font'
 import { clamp } from './geometry'
+import { maybeLeakSpan } from './kitchenLeak'
 import { isPending, isPracticeGateHeld } from './lessons'
 import {
   type CarriedGun,
@@ -49,6 +50,7 @@ import { seatColorOf } from './partyView'
 import { maybeMsSinceHurt } from './playerView'
 import { boostChipShapes } from './powerupView'
 import { isWaitingOnYou } from './readyNudge'
+import { roomsCounterShapes } from './roomsFound'
 import { type Box, type Screen, thumbAreaTop } from './screen'
 import { waveLabel } from './screens'
 import {
@@ -65,7 +67,11 @@ import {
   HEART_SPRITE,
 } from './sprites/hearts'
 import { TRAP_ICONS } from './sprites/traps'
-import { kitchenBubbleShapes, stallBubbleShapes } from './stallBubble'
+import {
+  kitchenBubbleShapes,
+  soupBubbleShapes,
+  stallBubbleShapes,
+} from './stallBubble'
 import { scoreOf } from './stats'
 import { TRAP_KIND_ORDER, maybeSelectedKind } from './traps'
 import { isRoundActive, zombiesRemaining } from './waves'
@@ -145,6 +151,7 @@ type HudLayout = Readonly<{
   titleY: number
   subtitleY: number
   scoreRight: number
+  roomsTop: number
   boostLeft: number
   boostTop: number
   boostColumns: number
@@ -168,6 +175,7 @@ const hudLayoutFor = (screen: Screen): HudLayout => {
       titleY: HUD_MARGIN - 2,
       subtitleY: 11,
       scoreRight: screen.width - HUD_MARGIN - PAUSE_BUTTON_CLEARANCE,
+      roomsTop: HUD_MARGIN + 9,
       boostLeft: BOOST_CHIPS_LEFT,
       boostTop: HUD_MARGIN - 3,
       boostColumns: 2,
@@ -183,6 +191,7 @@ const hudLayoutFor = (screen: Screen): HudLayout => {
       titleY: screen.world.y - 17,
       subtitleY: screen.world.y - 9,
       scoreRight,
+      roomsTop: HUD_MARGIN + 9,
       boostLeft: scoreRight - BOOST_CHIPS * BOOST_CHIP_STRIDE + 3,
       boostTop: HUD_MARGIN + 7,
       boostColumns: BOOST_CHIPS,
@@ -959,7 +968,9 @@ const playHudShapes = (
   ...trapNoticeShapes(model, camera),
   ...stallBubbleShapes(model, camera),
   ...kitchenBubbleShapes(model, camera),
+  ...soupBubbleShapes(model, camera),
   ...roundHudShapes(model, layout),
+  ...roomsCounterShapes(model, layout.scoreRight, layout.roomsTop),
   ...(isRoundActive(model.phase)
     ? textShapes(
         `SCORE ${scoreOf(model.stats)}`,
@@ -981,18 +992,31 @@ const HUD_STRIP_COLOR = 'rgba(20, 15, 24, 0.75)'
 export const hudStripShapes = (
   model: Model,
   screen: Screen,
-): ReadonlyArray<Canvas.Shape> =>
-  screen.layout === 'Landscape' && isHudShown(model.phase)
-    ? [
-        Canvas.Rect({
-          x: 0,
-          y: 0,
-          width: screen.width,
-          height: HUD_STRIP_HEIGHT,
-          fill: HUD_STRIP_COLOR,
-        }),
-      ]
-    : []
+  camera: Camera,
+): ReadonlyArray<Canvas.Shape> => {
+  if (screen.layout !== 'Landscape' || !isHudShown(model.phase)) {
+    return []
+  }
+  const stripPiece = (left: number, right: number): Canvas.Shape =>
+    Canvas.Rect({
+      x: left,
+      y: 0,
+      width: right - left,
+      height: HUD_STRIP_HEIGHT,
+      fill: HUD_STRIP_COLOR,
+    })
+  return Option.match(maybeLeakSpan(model), {
+    onNone: () => [stripPiece(0, screen.width)],
+    onSome: ({ left, right }) => {
+      const gapLeft = Math.max(0, worldToView(camera, { x: left, y: 0 }).x)
+      const gapRight = Math.min(
+        screen.width,
+        worldToView(camera, { x: right, y: 0 }).x,
+      )
+      return [stripPiece(0, gapLeft), stripPiece(gapRight, screen.width)]
+    },
+  })
+}
 
 export const hudShapes = (
   model: Model,

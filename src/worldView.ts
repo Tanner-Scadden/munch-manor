@@ -25,6 +25,7 @@ import {
 } from './fridgeView'
 import { ZERO_VECTOR } from './geometry'
 import { hatRiseOf } from './hatArt'
+import { kitchenLeakShapes } from './kitchenLeak'
 import { ovenFlameShapes, ovenGlowShapes, padlockShapes } from './kitchenView'
 import {
   CounterSale,
@@ -151,6 +152,7 @@ const groundShapes = (
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> => [
   ...hearthFireShapes(levelOf(model), model.elapsedMs),
+  ...kitchenLeakShapes(model),
   ...ovenGlowShapes(model),
   ...stallGroundShapes(look, model.elapsedMs),
   ...reviveRingGroundShapes(model),

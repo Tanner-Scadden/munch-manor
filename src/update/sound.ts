@@ -17,6 +17,7 @@ import {
 import { makeCommand, makeManagedResources, makeResource } from '../definition'
 import { maybeLandedBetween, prizeSpotOf, revealOf } from '../fridgeReveal'
 import { mendedSpots } from '../heroTells'
+import { maybeKitchenSound } from '../kitchenCall'
 import { Message } from '../message'
 import { AudioState, GameEvent, type Model, type Player } from '../model'
 import { focusOf } from '../party'
@@ -245,6 +246,24 @@ export const mendCues = (
       sound: 'Tink' as const,
       variation: positionVariation(spot.x, spot.y),
     })),
+  )
+
+// NOTE: the kitchen behind its boards rattles or simmers now and then when
+// the player is near (src/kitchenCall.ts), read from the elapsed time.
+export const kitchenCues = (
+  before: Model,
+  after: Model,
+): ReadonlyArray<SoundCue> =>
+  pipe(
+    maybeKitchenSound(before, after),
+    Option.map(sound => ({
+      sound,
+      variation: positionVariation(
+        focusOf(after).player.x,
+        focusOf(after).player.y,
+      ),
+    })),
+    Option.toArray,
   )
 
 export const frameSoundCues = (

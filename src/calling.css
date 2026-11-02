@@ -308,6 +308,10 @@
   position: absolute;
   top: calc(var(--menu-pad) + 2px);
   right: calc(var(--menu-pad) + 56px);
+}
+
+.panel-dialog[data-panel='Calling'] .calling-balance,
+.coop-calling-picker .calling-balance {
   display: flex;
   align-items: center;
   min-height: 30px;
@@ -413,4 +417,30 @@
   .calling-buy {
     animation: none;
   }
+}
+
+/* NOTE: co-op's lobby picker: the Bones balance at the head's left, and the
+   BUY pill under the cards when a hero for sale is being tried on. */
+.coop-calling-picker .calling-balance {
+  position: absolute;
+  top: 6px;
+  left: 0;
+}
+
+.coop-calling-actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.coop-calling-actions .calling-buy {
+  flex: 0 1 360px;
+}
+
+/* NOTE: a short BUY is dim by its own colors, not by co-op's disabled fade,
+   which would let the lobby show through it. */
+.coop-calling-actions .calling-buy:disabled {
+  opacity: 1;
 }

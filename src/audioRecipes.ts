@@ -887,6 +887,41 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
+  // NOTE: the kitchen behind the boards, heard when the player is near and
+  // the exit is still shut (src/kitchenCall.ts). Both are quiet: a lid
+  // rattling on a pot, and a slow bubble.
+  PotClatter: {
+    variationCents: 240,
+    tones: Array.map([0, 0.09, 0.16, 0.22], (delay, index) => ({
+      wave: 'triangle' as const,
+      pitch: [at(0, 880 + index * 90), at(0.08, 840 + index * 90)],
+      envelope: envelope(0.05 - index * 0.008, 0.001, 0.07, delay),
+    })),
+    noises: [
+      {
+        filter: 'bandpass',
+        quality: 3,
+        cutoff: [at(0, 3200), at(0.3, 2400)],
+        envelope: envelope(0.06, 0.002, 0.2),
+      },
+    ],
+  },
+  Simmer: {
+    variationCents: 300,
+    tones: Array.map([0.1, 0.42, 0.66], (delay, index) => ({
+      wave: 'sine' as const,
+      pitch: [at(0, 160 + index * 40), at(0.09, 300 + index * 50)],
+      envelope: envelope(0.05, 0.006, 0.1, delay),
+    })),
+    noises: [
+      {
+        filter: 'bandpass',
+        quality: 1.5,
+        cutoff: [at(0, 500), at(0.9, 800)],
+        envelope: envelope(0.05, 0.25, 0.7),
+      },
+    ],
+  },
   PrizeChomp: {
     variationCents: 0,
     tones: [

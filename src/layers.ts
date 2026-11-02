@@ -48,7 +48,7 @@ const overlayLayerShapes = (
   screen: Screen,
   camera: Camera,
 ): ReadonlyArray<Canvas.Shape> => [
-  ...hudStripShapes(model, screen),
+  ...hudStripShapes(model, screen, camera),
   ...wavePreviewShapes(model, camera),
   ...(isRoundActive(model.phase)
     ? [
