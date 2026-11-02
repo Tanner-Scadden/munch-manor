@@ -48,10 +48,14 @@ const view = withViewInputs(coopView, {
   look: defaultAppearance,
   isKeyboard: false,
   isRunCardUp: false,
+  bought: ['hero:Handyman'],
 })()
 
 const at = (screen: Screen): Model =>
-  modifyFields(initialModel, { screen: () => screen })
+  modifyFields(initialModel, {
+    screen: () => screen,
+    bought: () => ['hero:Handyman'],
+  })
 
 const onHub = at(Screen.Hub({ maybeProblem: Option.none() }))
 
@@ -407,7 +411,7 @@ describe('the lobby', () => {
       expect(selector('[data-calling="Handyman"] .calling-special')).toHaveText(
         '+Planks 50% off',
       ),
-      expect(selector('[data-calling="Handyman"][data-lock="Open"]')).toExist(),
+      expect(selector('[data-calling="Handyman"][data-lock="Owned"]')).toExist(),
       expect(
         selector(
           '[data-calling="Handyman"] [data-sign="Drawback"] .calling-special-line',
@@ -610,6 +614,7 @@ describe('the arena', () => {
       look: defaultAppearance,
       isKeyboard: false,
       isRunCardUp: true,
+      bought: [],
     })()
     scene(
       { update, view: heldView },

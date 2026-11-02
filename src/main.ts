@@ -48,6 +48,7 @@ import {
 } from './update/end'
 import { toggleFullscreen } from './update/fullscreen'
 import {
+  buyHero,
   closeHand,
   closePanel,
   greetUpdate,
@@ -681,6 +682,9 @@ export const update = ApplicationComposition.makeUpdate({
 
   ClickedCallingCardButton: (model, { calling }) =>
     Update.combineSteps(model, [pickCalling(calling), ...afterMessage(model)]),
+
+  ClickedBuyCallingButton: model =>
+    Update.combineSteps(model, [buyHero, ...afterMessage(model)]),
 
   ClickedDifficultyCardButton: (model, { difficulty }) =>
     Update.combineSteps(model, [

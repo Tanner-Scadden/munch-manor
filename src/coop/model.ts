@@ -3,7 +3,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import { Lobby, PickedMode, RoomCode, RoomDifficulty } from '@munch/netcode'
 
-import { Calling } from '../playerData'
+import { Calling, SavedBoughtCosmetics } from '../playerData'
 import { Bullet, GameEvent } from '../worldSchema'
 import { RoomSession, WorldState } from './seam'
 
@@ -164,6 +164,9 @@ export const Model = Schema.Struct({
   look: Schema.String,
   rank: Schema.Number,
   calling: Calling,
+  // NOTE: the ids of the heroes and looks this player bought, so the lobby's
+  // picker offers only the heroes they own.
+  bought: SavedBoughtCosmetics,
 })
 export type Model = typeof Model.Type
 
@@ -173,6 +176,7 @@ export const initialModel: Model = {
   look: '',
   rank: 1,
   calling: 'You',
+  bought: [],
 }
 
 export const emptyQueue: Queue = {

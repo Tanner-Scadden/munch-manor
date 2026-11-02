@@ -337,6 +337,9 @@ export const HomeMenu = Schema.Struct({
   // whose hero the open picker is choosing (an index into them).
   bots: Schema.Array(Bot),
   maybePickingBot: Schema.Option(Schema.Number),
+  // NOTE: the hero for sale being tried on in the picker (its BUY pill buys
+  // it), never saved.
+  maybeTryingCalling: Schema.Option(Calling),
   maybeSeenNewsDay: Schema.Option(Schema.String),
   newsPage: Schema.Number,
   munchopediaPage: MunchopediaPage,
@@ -351,6 +354,7 @@ export const freshHomeMenu: HomeMenu = {
   maybeLobbyFocus: Option.none(),
   bots: [],
   maybePickingBot: Option.none(),
+  maybeTryingCalling: Option.none(),
   maybeSeenNewsDay: Option.none(),
   newsPage: 0,
   munchopediaPage: MunchopediaPage.List(),

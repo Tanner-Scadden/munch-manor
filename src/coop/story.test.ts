@@ -62,7 +62,15 @@ import {
   update,
 } from './update'
 
-const onHub: Model = open(initialModel, '', Option.none()).model
+const onHub: Model = open(
+  initialModel,
+  '',
+  Option.none(),
+  '',
+  1,
+  'You',
+  ['hero:Handyman'],
+).model
 
 const resolveFocus = () =>
   Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement())

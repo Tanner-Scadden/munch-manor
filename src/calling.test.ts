@@ -1,3 +1,4 @@
+import { Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { playerPixels } from './appearance'
@@ -5,6 +6,8 @@ import {
   CALLINGS,
   UNLOCK_RANKS,
   callingForRun,
+  callingPriceOf,
+  callingStandingOf,
   callingsOpenedBy,
   isCallingUnlocked,
   isPistolBarred,
@@ -39,9 +42,26 @@ describe('unlocking', () => {
     expect(isCallingUnlocked('LineCook', 15)).toBe(true)
   })
 
-  test('a run starts with a locked calling as YOU', () => {
-    expect(callingForRun('TrackStar', 5)).toBe('You')
-    expect(callingForRun('TrackStar', 6)).toBe('TrackStar')
+  test('a run starts with a hero not bought as YOU', () => {
+    expect(callingForRun('TrackStar', [])).toBe('You')
+    expect(callingForRun('TrackStar', ['hero:Handyman'])).toBe('You')
+    expect(callingForRun('TrackStar', ['hero:TrackStar'])).toBe('TrackStar')
+    expect(callingForRun('You', [])).toBe('You')
+  })
+
+  test('a hero is locked below its rank, for sale at it, and owned once bought', () => {
+    expect(callingStandingOf('Handyman', 2, [])).toBe('Locked')
+    expect(callingStandingOf('Handyman', 3, [])).toBe('ForSale')
+    expect(callingStandingOf('Handyman', 3, ['hero:Handyman'])).toBe('Owned')
+    expect(callingStandingOf('You', 1, [])).toBe('Owned')
+  })
+
+  test('the prices: Handyman 60, Track Star 100, Penny Pincher 150, Line Cook 200', () => {
+    expect(
+      CALLINGS.map(calling =>
+        Option.getOrElse(callingPriceOf(calling), () => 0),
+      ),
+    ).toEqual([0, 60, 100, 150, 200])
   })
 
   test('a rank up lists the callings it opened', () => {

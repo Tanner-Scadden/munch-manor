@@ -15,9 +15,9 @@ import {
 } from '@munch/netcode'
 import { QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
-import { isCallingUnlocked } from '../calling'
+import { isCallingOwned } from '../calling'
 import { DIFFICULTY_ORDER } from '../difficulty'
-import { Calling } from '../playerData'
+import { Calling, type SavedBoughtCosmetics } from '../playerData'
 import { eventsBetween } from '../roomWorld'
 import { stepWhen } from '../stepWhen'
 import { CoopComposition } from './composition'
@@ -491,7 +491,7 @@ const pickCalling = (
         model: withRoom(model, { ...room, isPickingCalling: false }),
         commands: [FocusCoopElement({ id: CALLING_PILL_ID })],
       }
-      if (!isInLobby(room) || !isCallingUnlocked(calling, me.rank)) {
+      if (!isInLobby(room) || !isCallingOwned(calling, model.bought)) {
         return { model }
       } else if (callingOfMember(me) === calling) {
         return closed
@@ -663,12 +663,14 @@ export const open = (
   look = '',
   rank = 1,
   calling: Calling = 'You',
+  bought: SavedBoughtCosmetics = [],
 ): UpdateReturn => {
   const named = modifyFields(model, {
     name: () => name,
     look: () => look,
     rank: () => rank,
     calling: () => calling,
+    bought: () => bought,
   })
   return Option.match(maybeCode, {
     onNone: () => ({
@@ -909,8 +911,8 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
 
     CompletedFocusCoopElement: () => ({ model }),
 
-    RequestedOpen: ({ name, maybeCode, look, rank, calling }) =>
-      open(model, name, maybeCode, look, rank, calling),
+    RequestedOpen: ({ name, maybeCode, look, rank, calling, bought }) =>
+      open(model, name, maybeCode, look, rank, calling, bought),
 
     RequestedPressKey: ({ code }) => pressKey(model, code),
 

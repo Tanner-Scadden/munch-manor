@@ -253,8 +253,22 @@ const SHIRT_PRICE = 20
 const PRINT_PRICE = 20
 const SKIN_PRICE = 60
 
+// NOTE: a hero is bought with Bones and kept in the same list of ids as the
+// looks (GAME_DESIGN.md, "Rank and Bones"): `hero:Handyman`. YOU is free
+// and has no id. A hero opens for sale at its rank (UNLOCK_RANKS in
+// src/calling.ts) and costs this once bought.
+export const heroIdOf = (calling: string): string => `hero:${calling}`
+
+const HERO_PRICES: Readonly<Record<string, number>> = {
+  [heroIdOf('Handyman')]: 60,
+  [heroIdOf('TrackStar')]: 100,
+  [heroIdOf('PennyPincher')]: 150,
+  [heroIdOf('LineCook')]: 200,
+}
+
 export const COSMETIC_PRICES: Readonly<Record<string, number>> = {
   ...HAT_PRICES,
+  ...HERO_PRICES,
   ...idsOf('Shirt', SoldShirtColor.literals, SHIRT_PRICE),
   ...idsOf('Print', SoldPrint.literals, PRINT_PRICE),
   ...idsOf('Skin', SoldGunSkin.literals, SKIN_PRICE),

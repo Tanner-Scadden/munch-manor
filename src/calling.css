@@ -263,3 +263,49 @@
     min-height: 40px;
   }
 }
+
+/* NOTE: a hero for sale (its rank reached, not bought): its price in Bones
+   where a locked card shows the padlock. Tapping one tries it on, and the
+   BUY pill beside DONE buys it. */
+.calling-price {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px 1px 4px;
+  border-radius: 999px;
+  background: #140c10;
+  box-shadow: 0 0 0 2px #5a3a4a;
+}
+
+.calling-price .rank-bone-img {
+  width: 12px !important;
+  height: auto !important;
+}
+
+.calling-price .rank-bones-count {
+  font: bold 12px / 14px var(--menu-font);
+  color: #ffe066;
+}
+
+.calling-card[data-lock='ForSale'] .calling-specials {
+  opacity: 0.8;
+}
+
+.calling-card[data-lock='ForSale'] .calling-figure-img {
+  opacity: 0.85;
+}
+
+.calling-card[data-trying='true'] {
+  border-color: #ffe066;
+  border-style: dashed;
+  box-shadow:
+    0 0 0 2px #ffe066,
+    0 4px 0 rgba(0, 0, 0, 0.45);
+}
+
+.panel-actions .look-buy {
+  position: static;
+  flex: 1;
+  justify-content: center;
+  min-height: var(--menu-tap);
+}

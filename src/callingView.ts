@@ -3,8 +3,11 @@ import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
 
+import { callingPriceOf, canAffordCalling } from './calling'
 import { callingCardsView } from './callingCards'
+import { startingCallingOf } from './callingPick'
 import type { ApplicationViewBuilder } from './composition'
+import { buyPillView } from './lookGearView'
 import { Message } from './message'
 import type { Bot, Model } from './model'
 import { rankOf, totalPointsOf } from './rank'
@@ -46,10 +49,12 @@ export const callingBodyView = (
         onSome: bot => bot.look,
       }),
       chosen: Option.match(maybeBotOf(model), {
-        onNone: () => model.calling,
+        onNone: () => startingCallingOf(model),
         onSome: bot => bot.calling,
       }),
       rank: rankOf(totalPointsOf(model.rank)),
+      bought: model.boughtCosmetics,
+      maybeTrying: model.home.maybeTryingCalling,
       fresh: model.freshUnlocks,
       attributesOf: (calling, isChosen) => [
         ...(isChosen ? renderInfo.initialFocus : []),
@@ -61,5 +66,23 @@ export const callingBodyView = (
     },
     h,
   ),
-  h.div([h.Class('panel-actions')], [done]),
+  h.div(
+    [h.Class('panel-actions')],
+    [
+      ...Option.match(model.home.maybeTryingCalling, {
+        onNone: () => [],
+        onSome: calling => [
+          buyPillView(
+            {
+              price: Option.getOrElse(callingPriceOf(calling), () => 0),
+              isShort: !canAffordCalling(model.rank, calling),
+              onClick: Message.ClickedBuyCallingButton(),
+            },
+            h,
+          ),
+        ],
+      }),
+      done,
+    ],
+  ),
 ]
