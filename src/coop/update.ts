@@ -38,6 +38,7 @@ import {
   type CoopProblem,
   LobbyChange,
   type Model,
+  type NudgeReason,
   type Queue,
   type Room,
   RoomRequest,
@@ -524,6 +525,27 @@ const pickCalling = (
     },
   })
 
+// NUDGE
+
+// NOTE: a tap on a pick that is not the player's to change: a guest's, since
+// the host picks, or the locked Nightmare. Nothing is sent; the lobby says
+// why, in place.
+const nudge = (model: Model, room: Room, reason: NudgeReason): UpdateReturn =>
+  isInLobby(room)
+    ? {
+        model: withRoom(model, {
+          ...room,
+          maybeNudge: Option.some({
+            reason,
+            count: Option.match(room.maybeNudge, {
+              onNone: () => 1,
+              onSome: last => last.count + 1,
+            }),
+          }),
+        }),
+      }
+    : { model }
+
 // NAME
 
 // NOTE: a player renames themselves in the lobby with the same cleaning and
@@ -959,6 +981,9 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
         )(model),
       ),
 
+    ClickedPickNudge: ({ reason }) =>
+      inRoom(model, room => nudge(model, room, reason)),
+
     ClickedNameButton: () => inRoom(model, room => startNaming(model, room)),
 
     UpdatedNameDraft: ({ value }) =>
@@ -1079,6 +1104,7 @@ export const update = CoopComposition.makeUpdate({
   ClickedCallingPill: delivered,
   ClickedCallingPick: delivered,
   ClickedCallingDone: delivered,
+  ClickedPickNudge: delivered,
   ClickedNameButton: delivered,
   UpdatedNameDraft: delivered,
   SubmittedName: delivered,

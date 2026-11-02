@@ -63,6 +63,7 @@ const coopRoom = (
     departure: 'Staying',
     isPickingCalling: false,
     maybeNameDraft: Option.none(),
+    maybeNudge: Option.none(),
     ...extra,
   }
 }
@@ -209,6 +210,27 @@ const coopScreen = (
       const room = coopRoom(members(3, 1), 'Lobby')
       return Screen.InRoom({ room: { ...room, isPickingCalling: true } })
     }
+    case 'guest':
+      return Screen.InRoom({
+        room: coopRoom(members(3, 1), 'Lobby', {
+          slot: 1,
+          maybePlayerId: Option.some('player-1'),
+        }),
+      })
+    case 'nudge':
+      return Screen.InRoom({
+        room: coopRoom(members(3, 1), 'Lobby', {
+          slot: 1,
+          maybePlayerId: Option.some('player-1'),
+          maybeNudge: Option.some({ reason: 'HostPicks', count: 1 }),
+        }),
+      })
+    case 'padlock':
+      return Screen.InRoom({
+        room: coopRoom(members(3, 1), 'Lobby', {
+          maybeNudge: Option.some({ reason: 'Locked', count: 1 }),
+        }),
+      })
     case 'name': {
       const room = coopRoom(members(3, 1), 'Lobby')
       return Screen.InRoom({

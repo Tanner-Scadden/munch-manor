@@ -105,6 +105,18 @@ export const noPresses: Presses = {
   heldFrom: -1,
 }
 
+// NOTE: a tap on a pick the player cannot change answers with a note, in
+// place: the host picks, or Nightmare is locked. `count` restarts the note's
+// fade on every tap.
+export const NudgeReason = Schema.Literals(['HostPicks', 'Locked'])
+export type NudgeReason = typeof NudgeReason.Type
+
+const Nudge = Schema.Struct({
+  reason: NudgeReason,
+  count: Schema.Number,
+})
+type Nudge = typeof Nudge.Type
+
 // NOTE: `codeCopies` counts the times the room code went to the clipboard,
 // so each copy flashes COPIED! afresh.
 // NOTE: `maybeWorld` is the World to draw this frame, everyone else about
@@ -137,6 +149,7 @@ export const Room = Schema.Struct({
   departure: Departure,
   isPickingCalling: Schema.Boolean,
   maybeNameDraft: Schema.Option(Schema.String),
+  maybeNudge: Schema.Option(Nudge),
 })
 export type Room = typeof Room.Type
 

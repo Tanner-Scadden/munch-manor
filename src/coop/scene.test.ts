@@ -243,6 +243,55 @@ describe('the lobby', () => {
     )
   })
 
+  // NOTE: Scene treats aria-disabled as disabled and refuses the click, but a
+  // browser delivers it: the taps themselves are Story tests (story.test.ts).
+  test('a tap on a pick that is not yours leaves a note in place', () => {
+    const guest = (reason: 'HostPicks' | 'Locked') =>
+      roomWith({
+        slot: 1,
+        maybePlayerId: Option.some('player-1'),
+        maybeLobby: Option.some(
+          lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')]),
+        ),
+        maybeNudge: Option.some({ reason, count: 1 }),
+      })
+    scene(
+      { update, view },
+      given(guest('HostPicks')),
+      expect(selector('.coop-nudge')).toHaveText('HOST PICKS'),
+      expect(selector('.coop-crown-flash-b')).toExist(),
+    )
+    scene(
+      { update, view },
+      given(guest('Locked')),
+      expect(selector('.coop-nudge')).toHaveText('Beat Hard to unlock'),
+      expect(selector('.coop-crown-flash-b')).not.toExist(),
+    )
+    scene(
+      { update, view },
+      given(lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo')])),
+      expect(selector('.coop-nudge')).not.toExist(),
+    )
+  })
+
+  test('your own name is a button; the field saves it for the room', () => {
+    scene(
+      { update, view },
+      given(lobbyRoom([memberOf(0, 'Ana'), memberOf(1, 'Bo')])),
+      expect(role('button', { name: 'Bo, rank 1' })).not.toExist(),
+      expect(role('button', { name: 'Your name: Ana. Change it' })).toExist(),
+      click(role('button', { name: 'Your name: Ana. Change it' })),
+      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+      expect(role('dialog', { name: 'Your name' })).toExist(),
+      expect(selector('.coop-name-input')).toHaveValue('Ana'),
+      click(role('button', { name: 'Roll a goofy name' })),
+      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+      click(role('button', { name: 'Cancel' })),
+      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+      expect(role('dialog', { name: 'Your name' })).not.toExist(),
+    )
+  })
+
   test('a guest sees the picks as icons, and KEEP GOING after a win', () => {
     scene(
       { update, view },

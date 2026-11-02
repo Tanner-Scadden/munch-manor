@@ -7,7 +7,7 @@ import { LobbyEvent, QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 import { Calling } from '../playerData'
 import { SeatAction } from '../stepWorld'
 import { Bullet } from '../worldSchema'
-import { CodeCopy, CoopProblem, Share } from './model'
+import { CodeCopy, CoopProblem, NudgeReason, Share } from './model'
 
 // NOTE: this client's controls for one room frame, the shape of netcode's
 // PlayerInput. PlayerInput's own Schema checks each field's wire range, and
@@ -52,6 +52,7 @@ export const Message = defineMessageUnion({
   ClickedCallingPill: {},
   ClickedCallingPick: { calling: Calling },
   ClickedCallingDone: {},
+  ClickedPickNudge: { reason: NudgeReason },
   ClickedNameButton: {},
   UpdatedNameDraft: { value: Schema.String },
   SubmittedName: {},

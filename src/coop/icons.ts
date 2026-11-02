@@ -88,14 +88,45 @@ export const CHECK_ICON = icon([
   '..GG....',
 ])
 
+// NOTE: a door with an arrow out of it: the host shows a player the door.
 export const KICK_ICON = icon([
-  '..RRR...',
-  '..RRR...',
-  '..RRR...',
-  '..RRRR..',
-  '.RRRRRRR',
-  'RRRRRRRR',
+  'XXXXX.......',
+  'XDDDX....R..',
+  'XDDDX.....R.',
+  'XDDYXRRRRRRR',
+  'XDDDX.....R.',
+  'XDDDX....R..',
+  'XDDDX.......',
+  'XXXXX.......',
 ])
+
+// NOTE: a ping as a WiFi signal: a dot and three arcs, as many lit in the
+// grade's color as the connection is good (the thresholds are the view's).
+const WIFI_PIXELS = [
+  '.AAAAAAA.',
+  'A.......A',
+  '..BBBBB..',
+  '.B.....B.',
+  '...CCC...',
+  '..C...C..',
+  '....D....',
+]
+
+const WIFI_OFF = '#4a3f52'
+
+const wifiIcon = (lit: string, arcs: number): string =>
+  pixelIconUrl(WIFI_PIXELS, {
+    A: arcs >= 3 ? lit : WIFI_OFF,
+    B: arcs >= 2 ? lit : WIFI_OFF,
+    C: lit,
+    D: lit,
+  })
+
+export const WIFI_ICONS = {
+  Good: wifiIcon('#8cff5a', 3),
+  Ok: wifiIcon('#ffe066', 2),
+  Bad: wifiIcon('#ff4a4f', 1),
+} as const
 
 export const LEAVE_ICON = icon([
   'XXXX.....',

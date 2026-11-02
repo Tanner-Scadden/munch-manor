@@ -552,6 +552,65 @@ describe('picking a hero in the lobby', () => {
   })
 })
 
+describe('tapping a difficulty in the lobby', () => {
+  const lobbyAt = lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')])
+  const as = (slot: number): Model =>
+    update(inRoom(slot), lobbyUpdate(lobbyAt)).model
+  const changes = (result: {
+    commands?: ReadonlyArray<{ name: string }> | undefined
+  }) => (result.commands ?? []).map(command => command.name)
+
+  test('the host changes it, and the room is told', () => {
+    story(
+      update,
+      given(as(0)),
+      message(Message.ClickedDifficultyPick({ difficulty: 'Hard' })),
+      Command.resolve(
+        ChangeLobby({
+          change: LobbyChange.ChangedPicks({
+            mode: 'Campaign',
+            difficulty: 'Hard',
+          }),
+        }),
+        Message.CompletedChangeLobby(),
+      ),
+    )
+  })
+
+  test('a guest tap changes nothing but tells them the host picks', () => {
+    const tapped = update(
+      as(1),
+      Message.ClickedPickNudge({ reason: 'HostPicks' }),
+    )
+    expect(changes(tapped)).toEqual([])
+    expect(roomOf(tapped.model).maybeNudge).toEqual(
+      Option.some({ reason: 'HostPicks', count: 1 }),
+    )
+    const again = update(
+      tapped.model,
+      Message.ClickedPickNudge({ reason: 'HostPicks' }),
+    )
+    expect(roomOf(again.model).maybeNudge).toEqual(
+      Option.some({ reason: 'HostPicks', count: 2 }),
+    )
+  })
+
+  test('the host on a locked Nightmare is told why, and nothing is sent', () => {
+    const tapped = update(
+      update(as(0), Message.ClickedDifficultyPick({ difficulty: 'Nightmare' }))
+        .model,
+      Message.ClickedPickNudge({ reason: 'Locked' }),
+    )
+    expect(changes(tapped)).toEqual([])
+    expect(roomOf(tapped.model).maybeNudge).toEqual(
+      Option.some({ reason: 'Locked', count: 1 }),
+    )
+    expect(
+      Option.map(roomOf(tapped.model).maybeLobby, lobby => lobby.difficulty),
+    ).toEqual(Option.some('Normal'))
+  })
+})
+
 describe('renaming yourself in the lobby', () => {
   const lobbyAt = lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')])
   const lobbied = (): Model => update(inRoom(0), lobbyUpdate(lobbyAt)).model

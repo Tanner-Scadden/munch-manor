@@ -890,7 +890,7 @@
 
 .coop-stamp {
   position: absolute;
-  top: 10%;
+  top: 26%;
   right: 6%;
   display: grid;
   place-items: center;
@@ -922,21 +922,29 @@
   position: absolute;
   top: 6px;
   left: 6px;
-  display: grid;
-  place-items: center;
-  width: var(--menu-tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: var(--menu-tap);
   height: var(--menu-tap);
-  padding: 0;
+  padding: 0 6px;
   border: 2px solid #8a2a24;
   border-radius: var(--menu-radius-sm);
   background: #3a1a1e;
 }
 
 .coop-kick-icon {
-  width: 20px;
+  width: 24px;
   height: 16px;
   background: center / contain no-repeat;
   image-rendering: pixelated;
+}
+
+.coop-kick-word {
+  color: #ff9a92;
+  font: bold 11px / 1 var(--menu-font);
+  letter-spacing: 0.06em;
 }
 
 .coop-result {
@@ -1232,6 +1240,84 @@
   image-rendering: pixelated;
 }
 
+.coop-picks {
+  position: relative;
+}
+
+.coop-nudge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 2px solid var(--menu-gold);
+  border-radius: var(--menu-radius-pill);
+  background: #241a06;
+  color: var(--menu-gold);
+  font: bold clamp(13px, 2.6 * var(--coop-unit), 18px) / 1 var(--menu-font);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  translate: -50% -50%;
+  pointer-events: none;
+  animation: coop-nudge 1800ms ease-out both;
+}
+
+.coop-nudge[data-reason='Locked'] {
+  border-color: var(--menu-red);
+  color: var(--menu-red);
+}
+
+.coop-nudge-icon {
+  width: 22px;
+  height: 18px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+@keyframes coop-nudge {
+  0%,
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes coop-crown-flash-a {
+  0%,
+  100% {
+    filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.6));
+  }
+
+  30% {
+    filter: brightness(2.2) drop-shadow(0 0 8px var(--menu-gold));
+  }
+}
+
+@keyframes coop-crown-flash-b {
+  0%,
+  100% {
+    filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.6));
+  }
+
+  30% {
+    filter: brightness(2.2) drop-shadow(0 0 8px var(--menu-gold));
+  }
+}
+
+.coop-crown-flash-a {
+  animation: coop-crown-flash-a 900ms ease-out;
+}
+
+.coop-crown-flash-b {
+  animation: coop-crown-flash-b 900ms ease-out;
+}
+
 .coop-picks[data-host='Watching'] .coop-pick-group {
   border-style: dashed;
 }
@@ -1240,52 +1326,28 @@
   display: none;
 }
 
-/* PING: three bars, green, yellow, or red, in a seat's corner and by
-   LEAVE in the run. */
+/* PING: a WiFi signal, green, yellow, or red by how good the link is, in
+   a seat's corner and by LEAVE in the run. */
 
 .coop-ping {
   display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 14px;
-  padding: 2px 3px;
+  align-items: center;
+  padding: 3px 4px;
   border-radius: 4px;
   background: rgba(16, 10, 18, 0.75);
 }
 
-.coop-ping-bar {
-  width: 3px;
-  background: #4a3f52;
-}
-
-.coop-ping-bar[data-bar='1'] {
-  height: 40%;
-}
-
-.coop-ping-bar[data-bar='2'] {
-  height: 70%;
-}
-
-.coop-ping-bar[data-bar='3'] {
-  height: 100%;
-}
-
-.coop-ping[data-ping='Good'] .coop-ping-bar {
-  background: #8cff5a;
-}
-
-.coop-ping[data-ping='Ok'] .coop-ping-bar:not([data-bar='3']) {
-  background: #ffe066;
-}
-
-.coop-ping[data-ping='Bad'] .coop-ping-bar[data-bar='1'] {
-  background: #ff4a4f;
+.coop-ping-icon {
+  width: 20px;
+  height: 16px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
 }
 
 .coop-seat-ping {
   position: absolute;
+  top: 6px;
   right: 6px;
-  bottom: 6px;
 }
 
 .coop-arena-pings {
