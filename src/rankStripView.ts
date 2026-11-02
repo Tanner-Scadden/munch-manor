@@ -49,6 +49,9 @@ const BADGE_X = 6
 const NUMBER_X = 15
 const BAR_X = 34
 const BAR_WIDTH = 68
+// NOTE: with a modifier bonus the bar gives up room for the gold "+115%".
+const BONUS_BAR_WIDTH = 48
+const BONUS_GAP_PX = 4
 const BONES_GAP_PX = 4
 const BONE_TEXT_GAP_PX = 3
 const POP_SCALE = 1.2
@@ -59,11 +62,12 @@ const barShapes = (
   x: number,
   y: number,
   fraction: number,
+  barWidth: number,
 ): ReadonlyArray<Canvas.Shape> => {
-  const filled = Math.round(BAR_WIDTH * fraction)
+  const filled = Math.round(barWidth * fraction)
   return [
-    rect(x - 1, y - 3, BAR_WIDTH + 2, 6, BAR_EDGE),
-    rect(x, y - 2, BAR_WIDTH, 4, BAR_BACK),
+    rect(x - 1, y - 3, barWidth + 2, 6, BAR_EDGE),
+    rect(x, y - 2, barWidth, 4, BAR_BACK),
     ...(filled > 0
       ? [
           rect(x, y - 2, filled, 4, BAR_FILL),
@@ -214,7 +218,7 @@ export const rankStripShapes = (
 ): ReadonlyArray<Canvas.Shape> =>
   Option.match(model.maybeRankGain, {
     onNone: () => [],
-    onSome: ({ pointsBefore, gained, bonesGained }) => {
+    onSome: ({ pointsBefore, gained, bonesGained, bonusPercent }) => {
       const startMs = rankStripAtMs(model, kind)
       if (ms < startMs) {
         return []
@@ -233,6 +237,10 @@ export const rankStripShapes = (
         : 1
       const number = `${progress.rank}`
       const barX = left + BAR_X
+      const barWidth = bonusPercent > 0 ? BONUS_BAR_WIDTH : BAR_WIDTH
+      const bonusText = `+${bonusPercent}%`
+      const bonusRoom =
+        bonusPercent > 0 ? BONUS_GAP_PX + textWidth(bonusText) : 0
       const bones = Math.round(bonesGained * fillT)
       const bonesText = `+${bones}`
       const bonesRight = left + width
@@ -263,8 +271,18 @@ export const rankStripShapes = (
               centerY - Math.floor(GLYPH_HEIGHT / 2),
               'Left',
             ),
-            ...barShapes(barX, centerY, progress.fraction),
-            ...(bonesGained > 0 && barX + BAR_WIDTH + BONES_GAP_PX < boneX
+            ...barShapes(barX, centerY, progress.fraction, barWidth),
+            ...(bonusPercent > 0
+              ? textShapes(
+                  bonusText,
+                  'Victory',
+                  barX + barWidth + BONUS_GAP_PX,
+                  centerY - Math.floor(GLYPH_HEIGHT / 2),
+                  'Left',
+                )
+              : []),
+            ...(bonesGained > 0 &&
+            barX + barWidth + bonusRoom + BONES_GAP_PX < boneX
               ? [
                   placeAt(Math.round(boneX), centerY, BONE),
                   ...textShapes(

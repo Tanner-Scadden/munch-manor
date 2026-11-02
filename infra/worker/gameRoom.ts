@@ -62,9 +62,7 @@ import {
   reactionsOf,
   roomHostOnce,
 } from './gameRoomCore.ts'
-import {
-  reportListing,
-} from './roomCalls.ts'
+import { reportListing } from './roomCalls.ts'
 import type { SyncBindings } from './sync.ts'
 import type { SyncCallFailed } from './syncCore.ts'
 import {
@@ -446,6 +444,7 @@ export class GameRoom {
             ? 'Hard'
             : lobby.difficulty,
           lobby.members,
+          lobby.modifiers,
         ),
         maybeKept,
       )
@@ -630,7 +629,12 @@ export class GameRoom {
       }
       const checkpoint = maybeCheckpoint.value
       const rules = roomWorldFor(
-        roomSettingsOf(lobby.mode, lobby.difficulty, lobby.members),
+        roomSettingsOf(
+          lobby.mode,
+          lobby.difficulty,
+          lobby.members,
+          lobby.modifiers,
+        ),
       )
       const read = readAll(checkpoint.world, rules.readSnapshot)
       if (Result.isFailure(read)) {

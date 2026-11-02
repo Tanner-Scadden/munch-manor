@@ -227,7 +227,7 @@ describe('the arrow keys', () => {
       press('ArrowLeft'),
       resolveFocusLobby('Start'),
       press('ArrowLeft'),
-      resolveFocusLobby('Nightmare'),
+      resolveFocusLobby('Glass'),
     )
   })
 })

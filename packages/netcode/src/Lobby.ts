@@ -200,6 +200,15 @@ export type RoomDifficulty = typeof RoomDifficulty.Type
 export const DEFAULT_MODE: PickedMode = 'Campaign'
 export const DEFAULT_DIFFICULTY: RoomDifficulty = 'Normal'
 
+// NOTE: the run modifiers the host picked (src/modifiers.ts in the game), as
+// a mask with a bit for each: Friendly Fire 1, Big Crowd 2, Broke 4, Glass 8.
+// The room does not read them, it hands the mask to the game's rules when it
+// starts the run. 0 is none.
+export const MAX_MODIFIER_MASK = 15
+export const ModifierMask = Schema.Int.check(
+  Schema.isBetween({ minimum: 0, maximum: MAX_MODIFIER_MASK }),
+)
+
 export const RoomScore = Schema.Struct({
   playerId: Schema.String,
   slot: Schema.Number,
@@ -224,6 +233,7 @@ export const RoomRow = Schema.Struct({
   visibility: RoomVisibility,
   mode: RoomMode,
   difficulty: RoomDifficulty,
+  modifiers: Schema.Number,
   kept: Schema.Number,
   round: Schema.Number,
   created_ms: Schema.Number,
@@ -277,6 +287,7 @@ export const Lobby = Schema.Struct({
   visibility: RoomVisibility,
   mode: RoomMode,
   difficulty: RoomDifficulty,
+  modifiers: Schema.Number,
   canKeepGoing: Schema.Boolean,
   round: Schema.Number,
   createdMs: Schema.Number,
@@ -301,6 +312,7 @@ export const lobbyOfRows = (
   visibility: room.visibility,
   mode: room.mode,
   difficulty: room.difficulty,
+  modifiers: room.modifiers,
   canKeepGoing: room.kept !== 0,
   round: room.round,
   createdMs: room.created_ms,
@@ -353,7 +365,7 @@ export const readLobby = (
     const sql = yield* SqlClient.SqlClient
     const rooms = yield* rejectBadRows(
       decodeRoomRows(
-        yield* sql`SELECT code, host, status, visibility, mode, difficulty, kept, round, created_ms, updated_ms, result
+        yield* sql`SELECT code, host, status, visibility, mode, difficulty, modifiers, kept, round, created_ms, updated_ms, result
           FROM ${context.table('room')} WHERE id = 1`,
       ),
     )
@@ -512,6 +524,7 @@ export const CreatedRoom = defineMutation({
         visibility,
         mode,
         difficulty: DEFAULT_DIFFICULTY,
+        modifiers: 0,
         kept: 0,
         round: 0,
         created_ms: context.timestampMs,
@@ -649,6 +662,31 @@ export const ChangedPicks = defineMutation({
       }
       yield* clearReady(context)
       yield* touch(context, { mode, difficulty })
+    }),
+})
+
+// NOTE: the host picks the run's modifiers while the room is in its lobby,
+// as they pick the difficulty: a change takes back everyone's READY, and
+// picking what is already picked changes nothing.
+export const ChangedModifiers = defineMutation({
+  name: 'ChangedModifiers',
+  version: 1,
+  args: Schema.Struct({ by: Schema.String, modifiers: ModifierMask }),
+  scopes: [ROOM_SCOPE_KIND],
+  writer: 'Members',
+  authorize: (args, actor) => isSender(args, actor),
+  apply: ({ by, modifiers }, context) =>
+    Effect.gen(function* () {
+      const lobby = yield* requireLobby(context)
+      yield* requireHost(lobby, by)
+      if (lobby.status !== 'Lobby') {
+        return yield* reject('Not in the lobby')
+      }
+      if (modifiers === lobby.modifiers) {
+        return
+      }
+      yield* clearReady(context)
+      yield* touch(context, { modifiers })
     }),
 })
 
@@ -839,6 +877,7 @@ export const RoomScope = defineScope({
     JoinedRoom,
     ChangedReady,
     ChangedPicks,
+    ChangedModifiers,
     ChangedMemberCalling,
     ChangedMemberName,
     EndedGame,
@@ -907,6 +946,12 @@ export const RoomScope = defineScope({
         const sql = yield* SqlClient.SqlClient
         yield* sql`ALTER TABLE ${sql(table('members'))}
           ADD COLUMN calling TEXT NOT NULL DEFAULT 'You'`
+      }),
+    '0008_modifiers': table =>
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient
+        yield* sql`ALTER TABLE ${sql(table('room'))}
+          ADD COLUMN modifiers INTEGER NOT NULL DEFAULT 0`
       }),
   },
 })

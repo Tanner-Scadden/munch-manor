@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Option, Schedule, Stream } from 'effect'
+import { Context, Effect, Exit, Layer, Option, Schedule, Stream } from 'effect'
 import { SqlClient } from 'effect/sql'
 
 import { describe, expect, it, test } from '@effect/vitest'
@@ -21,6 +21,7 @@ import { first, settle } from '@munch/sync-engine/testing'
 import {
   ChangedMemberCalling,
   ChangedMemberName,
+  ChangedModifiers,
   ChangedPicks,
   ChangedReady,
   CreatedRoom,
@@ -408,6 +409,56 @@ describe('the room scope', () => {
           }),
         ).toMatch(/Not in the lobby/)
       }),
+  )
+
+  it.effect(
+    'the host picks the run modifiers, which takes back READY, and nobody else may',
+    () =>
+      Effect.gen(function* () {
+        const server = yield* created
+        yield* seat(server, BO)
+        expect((yield* lobbyOf(server)).modifiers).toBe(0)
+        yield* push(server, BO, ChangedReady, { by: BO, ready: true })
+        expect(
+          yield* push(server, BO, ChangedModifiers, { by: BO, modifiers: 8 }),
+        ).toMatch(/Only the host/)
+        expect((yield* lobbyOf(server)).modifiers).toBe(0)
+        expect(
+          yield* push(server, ANA, ChangedModifiers, { by: ANA, modifiers: 9 }),
+        ).toBe('Acked')
+        const picked = yield* lobbyOf(server)
+        expect(picked.modifiers).toBe(9)
+        expect(picked.members.map(member => member.ready)).toEqual([
+          false,
+          false,
+        ])
+        yield* push(server, BO, ChangedReady, { by: BO, ready: true })
+        yield* push(server, ANA, ChangedModifiers, { by: ANA, modifiers: 9 })
+        expect(
+          (yield* lobbyOf(server)).members.map(member => member.ready),
+        ).toEqual([false, true])
+        yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
+        expect((yield* lobbyOf(server)).status).toBe('Playing')
+        expect(
+          yield* push(server, ANA, ChangedModifiers, { by: ANA, modifiers: 0 }),
+        ).toMatch(/Not in the lobby/)
+        expect((yield* lobbyOf(server)).modifiers).toBe(9)
+      }),
+  )
+
+  it.effect('a mask no modifier has is refused before it is written', () =>
+    Effect.gen(function* () {
+      const server = yield* created
+      const tooBig = yield* Effect.exit(
+        push(server, ANA, ChangedModifiers, { by: ANA, modifiers: 16 }),
+      )
+      const negative = yield* Effect.exit(
+        push(server, ANA, ChangedModifiers, { by: ANA, modifiers: -1 }),
+      )
+      expect(Exit.isFailure(tooBig)).toBe(true)
+      expect(Exit.isFailure(negative)).toBe(true)
+      expect((yield* lobbyOf(server)).modifiers).toBe(0)
+    }),
   )
 
   it.effect(

@@ -56,6 +56,7 @@ import {
 import { DEFAULT_SEED } from './constants'
 import * as Coop from './coop/model'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from './lookRadios'
+import { Modifiers, noModifiers } from './modifiers'
 import { soloState } from './party'
 import {
   Appearance,
@@ -327,6 +328,8 @@ export const Model = Schema.Struct({
   // NOTE: the room's difficulty while an online co-op run is drawn, kept
   // with the run so its summary has it after the room is gone (a LEAVE).
   maybeRoomDifficulty: Schema.Option(Difficulty),
+  // NOTE: the room's modifiers, kept the same way (src/modifiers.ts).
+  maybeRoomModifiers: Schema.Option(Modifiers),
   // NOTE: the online co-op run's key, the same on every client in it, kept
   // with the run so its summary has it after the room is gone (a LEAVE).
   maybeCrewRunKey: Schema.Option(Schema.String),
@@ -413,6 +416,7 @@ export const initialModel: Model = {
   intensity: 0,
   mode: RunMode.Campaign(),
   difficulty: { chosen: 'Normal', nightmare: 'Locked' },
+  modifiers: noModifiers,
   difficultyCard: DifficultyCard.Unseen(),
   zombies: [],
   bullets: [],
@@ -517,6 +521,7 @@ export const initialModel: Model = {
   seenUnlocks: [],
   freshUnlocks: [],
   maybeRoomDifficulty: Option.none(),
+  maybeRoomModifiers: Option.none(),
   maybeCrewRunKey: Option.none(),
   loading: Loading.Loaded(),
   saveStatus: 'Unread',

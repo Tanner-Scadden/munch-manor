@@ -66,8 +66,11 @@ import {
 // Version 17: seats by slot. The World holds every player in `seats`, in
 // slot order, each with the player's own fields, in place of a lead's fields
 // at its root and the others as mates; a party is only Solo or Crew.
-export const PROTOCOL_VERSION = 17
-export const MIN_PROTOCOL_VERSION = 17
+// Version 18: run modifiers. The World holds the run's `modifiers` (Friendly
+// Fire, Big Crowd, Broke, Glass), and the room's lobby carries the host's
+// pick as a mask.
+export const PROTOCOL_VERSION = 18
+export const MIN_PROTOCOL_VERSION = 18
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

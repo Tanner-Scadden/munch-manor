@@ -1,14 +1,15 @@
-import { Effect, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { addBot, removeBot } from '../bots'
+import { activeBots, addBot, removeBot } from '../bots'
 import { makeCommand, makeStep } from '../definition'
 import { chooseDifficulty, isLocked } from '../difficulty'
 import { runModeOf, switchMode } from '../home'
 import { isStartKey, maybeFocusStep } from '../input'
 import {
   LOBBY_KEYS,
+  isModifierPickable,
   lobbyControlId,
   nextDifficultyOf,
   steppedLobbyFocus,
@@ -22,6 +23,7 @@ import {
   LobbyControl,
   type Model,
 } from '../model'
+import { type Modifier, toggledModifier } from '../modifiers'
 import { isLearned } from '../onboarding'
 import {
   FocusHomeButton,
@@ -160,6 +162,23 @@ export const pickLobbyDifficulty = (difficulty: Difficulty) =>
       : picked(modelStep(current => chooseDifficulty(current, difficulty))),
   )
 
+// NOTE: a modifier turns on and off where it sits, so a player can turn
+// several on in a row (a pick elsewhere hands focus to START). Friendly Fire
+// waits for a bot to hit, as the tile says.
+export const pickLobbyModifier = (modifier: Modifier) =>
+  makeStep(model =>
+    isLobbyOpen(model) && isModifierPickable(model, modifier)
+      ? Update.combineSteps([
+          modelStep(current =>
+            modifyFields(current, {
+              modifiers: modifiers => toggledModifier(modifiers, modifier),
+            }),
+          ),
+          tapSound,
+        ])
+      : unchanged,
+  )
+
 export const openLobbyHero = makeStep(model =>
   isLobbyOpen(model) ? openPanel('Calling') : unchanged,
 )
@@ -168,8 +187,20 @@ export const openLobbyHero = makeStep(model =>
 // hero picked at random from the heroes this player has unlocked.
 export const addLobbyBot = picked(modelStep(addBot))
 
+// NOTE: the last bot leaving takes Friendly Fire with it: it has nobody to
+// hit, and the tile goes dim.
 export const dropLobbyBot = (index: number) =>
-  picked(modelStep(model => removeBot(model, index)))
+  picked(
+    modelStep(model => {
+      const removed = removeBot(model, index)
+      return Array.isReadonlyArrayEmpty(activeBots(removed))
+        ? modifyFields(removed, {
+            modifiers: modifiers =>
+              modifyFields(modifiers, { friendlyFire: () => false }),
+          })
+        : removed
+    }),
+  )
 
 // NOTE: a bot's hero card opens the hero picker, choosing for that bot
 // (src/update/home.ts, pickCalling) until it closes.

@@ -87,6 +87,7 @@ import {
   openLobbyHero,
   pickLobbyDifficulty,
   pickLobbyMode,
+  pickLobbyModifier,
   playFromHome,
   startFromLobby,
 } from './update/lobby'
@@ -918,6 +919,12 @@ export const update = ApplicationComposition.makeUpdate({
   ClickedLobbyDifficultyButton: (model, { difficulty }) =>
     Update.combineSteps(model, [
       pickLobbyDifficulty(difficulty),
+      ...afterMessage(model),
+    ]),
+
+  ClickedLobbyModifierButton: (model, { modifier }) =>
+    Update.combineSteps(model, [
+      pickLobbyModifier(modifier),
       ...afterMessage(model),
     ]),
 

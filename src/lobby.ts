@@ -1,6 +1,7 @@
 import { Array, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { activeBots } from './bots'
 import { DIFFICULTY_ORDER, isLocked } from './difficulty'
 import { FOCUS_STEP_OFFSET } from './input'
 import {
@@ -11,6 +12,7 @@ import {
   type MapId,
   type Model,
 } from './model'
+import { MODIFIER_ORDER, type Modifier } from './modifiers'
 import type { FocusStep } from './stepWorld'
 
 // The single player lobby (GAME_DESIGN.md, "The single player lobby"): PLAY
@@ -36,6 +38,7 @@ const MODE_AND_DIFFICULTY_CONTROLS: ReadonlyArray<LobbyControl> = [
   'Normal',
   'Hard',
   'Nightmare',
+  ...MODIFIER_ORDER,
   'Start',
 ]
 
@@ -66,6 +69,10 @@ const LOBBY_CONTROL_IDS: Readonly<Record<LobbyControl, string>> = {
   Normal: 'lobby-normal',
   Hard: 'lobby-hard',
   Nightmare: 'lobby-nightmare',
+  FriendlyFire: 'lobby-friendly-fire',
+  BigCrowd: 'lobby-big-crowd',
+  Broke: 'lobby-broke',
+  Glass: 'lobby-glass',
   Start: 'lobby-start',
 }
 
@@ -136,6 +143,14 @@ export const nextDifficultyOf = (model: Model): Difficulty => {
     Option.getOrElse(() => model.difficulty.chosen),
   )
 }
+
+// MODIFIERS
+
+// NOTE: Friendly Fire needs a teammate to hit, so it is dim and cannot be
+// turned on until a bot sits in the crew. The rest are always there.
+export const isModifierPickable = (model: Model, modifier: Modifier): boolean =>
+  modifier !== 'FriendlyFire' ||
+  Array.isReadonlyArrayNonEmpty(activeBots(model))
 
 // MAPS
 

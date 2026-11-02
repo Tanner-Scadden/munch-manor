@@ -30,6 +30,7 @@ import {
 import {
   atSeat,
   creditKills,
+  isFriendlyFireOn,
   modifySeat,
   payTo,
   seatStateAt,
@@ -452,6 +453,38 @@ const isLidOn =
     isGrounded(zombie) &&
     circlesOverlap(at, COOKER_RULES.lidRadius, zombie, bodyRadiusOf(zombie))
 
+const blastTraps = (world: World, blast: BlastSpec, lob: Lob): World => {
+  const trapOutcome = blastAll(
+    { ...blast, trapDamage: lidDamage(lob.charge) },
+    world.traps,
+    trapBlastTarget(levelOf(world)),
+  )
+  return modifyFields(world, {
+    traps: () => trapOutcome.targets,
+    frameEvents: frameEvents => [...frameEvents, ...trapOutcome.events],
+  })
+}
+
+// NOTE: who a lid's blast hurts. With Friendly Fire on, every standing player
+// it reaches. Otherwise only on Nightmare, and then only its own thrower:
+// teammates never hurt each other. No shooter is single player, whose one
+// player threw it.
+const scorchPlayers = (
+  world: World,
+  maybeShooter: Option.Option<PlayerSlot>,
+  blast: BlastSpec,
+): World => {
+  if (isFriendlyFireOn(world)) {
+    return blastPlayers(world, blast)
+  } else if (!isNightmare(world)) {
+    return world
+  }
+  return Option.match(maybeShooter, {
+    onNone: () => blastPlayers(world, blast),
+    onSome: slot => blastOwnSeat(world, slot, blast),
+  })
+}
+
 const lidBlast = (world: World, lob: Lob, at: Vector): World => {
   const blast: BlastSpec = {
     x: at.x,
@@ -477,23 +510,10 @@ const lidBlast = (world: World, lob: Lob, at: Vector): World => {
     onNone: () => paid,
     onSome: slot => creditKills(paid, slot, countKills(zombieOutcome.events)),
   })
-  if (!isNightmare(credited)) {
-    return credited
-  }
-  const trapOutcome = blastAll(
-    { ...blast, trapDamage: lidDamage(lob.charge) },
-    credited.traps,
-    trapBlastTarget(levelOf(credited)),
-  )
-  const trapsBlasted = modifyFields(credited, {
-    traps: () => trapOutcome.targets,
-    frameEvents: frameEvents => [...frameEvents, ...trapOutcome.events],
-  })
-  // NOTE: no shooter is single player, whose one player threw it.
-  return Option.match(maybeShooter, {
-    onNone: () => blastPlayers(trapsBlasted, blast),
-    onSome: slot => blastOwnSeat(trapsBlasted, slot, blast),
-  })
+  const trapsBlasted = isNightmare(credited)
+    ? blastTraps(credited, blast, lob)
+    : credited
+  return scorchPlayers(trapsBlasted, maybeShooter, blast)
 }
 
 // NOTE: each lid flies on toward where it was thrown and bursts there, or

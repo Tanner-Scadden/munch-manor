@@ -23,6 +23,7 @@ const run = (change: Partial<RunPayInput>): RunPayInput => ({
   isCampaignWin: false,
   awards: 0,
   revives: 0,
+  bonusPercent: 0,
   isGuided: false,
   ...change,
 })
@@ -58,6 +59,29 @@ describe('points for a run', () => {
     ).toBe(90 + 20 + 15)
   })
 
+  it('multiplies the whole run by the modifiers’ bonus, then rounds down', () => {
+    expect(pointsForRun(run({ wavesCleared: 6, bonusPercent: 115 }))).toBe(129)
+    expect(pointsForRun(run({ wavesCleared: 6, bonusPercent: 15 }))).toBe(69)
+    expect(pointsForRun(run({ wavesCleared: 1, bonusPercent: 25 }))).toBe(12)
+    expect(
+      bonesForPoints(pointsForRun(run({ wavesCleared: 6, bonusPercent: 115 }))),
+    ).toBe(12)
+  })
+
+  it('takes the bonus on the difficulty’s points, awards and revives too', () => {
+    expect(
+      pointsForRun(
+        run({
+          wavesCleared: 6,
+          difficulty: 'Hard',
+          awards: 2,
+          revives: 3,
+          bonusPercent: 50,
+        }),
+      ),
+    ).toBe(Math.floor((90 + 20 + 15) * 1.5))
+  })
+
   it('pays a felled boss once, not per kill', () => {
     expect(pointsForRun(run({ bossesFelled: 3 }))).toBe(50)
   })
@@ -65,6 +89,9 @@ describe('points for a run', () => {
   it('pays nothing for a guided run', () => {
     expect(
       pointsForRun(run({ wavesCleared: 6, revives: 2, isGuided: true })),
+    ).toBe(0)
+    expect(
+      pointsForRun(run({ wavesCleared: 6, bonusPercent: 115, isGuided: true })),
     ).toBe(0)
   })
 })

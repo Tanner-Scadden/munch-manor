@@ -888,6 +888,9 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
         }),
       ),
 
+    ClickedModifierPick: ({ modifier }) =>
+      inRoom(model, room => edits.pickModifier(model, room, modifier)),
+
     ClickedCallingPill: () => inRoom(model, room => togglePicker(model, room)),
 
     ClickedCallingPick: ({ calling }) =>
@@ -1049,6 +1052,7 @@ export const update = CoopComposition.makeUpdate({
   ClickedKickButton: delivered,
   ClickedModePick: delivered,
   ClickedDifficultyPick: delivered,
+  ClickedModifierPick: delivered,
   ClickedCallingPill: delivered,
   ClickedCallingPick: delivered,
   ClickedCallingDone: delivered,

@@ -1,9 +1,15 @@
 import { Array, Match, Option, Order, Schema, type SchemaAST } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { type Writer, makeReader, makeWriter } from '@munch/netcode'
+import {
+  MAX_MODIFIER_MASK,
+  type Writer,
+  makeReader,
+  makeWriter,
+} from '@munch/netcode'
 
 import { freshFight } from './boss'
+import { maskOfModifiers, noModifiers } from './modifiers'
 import { TWO_SEAT_ROOM, playRoom } from './roomTesting'
 import { DEFAULT_ROOM_SETTINGS, startRoomWorld } from './roomWorld'
 import { beginPreparation } from './waves'
@@ -12,6 +18,7 @@ import {
   WIRE_FIELDS,
   readEvent,
   readWorld,
+  readWorldDiff,
   valueCodecOf,
   writeEvent,
   writeWorld,
@@ -173,6 +180,44 @@ describe('the wire packs numbers by their Schema', () => {
   })
 })
 
+describe("the run's modifiers on the wire", () => {
+  const every = {
+    friendlyFire: true,
+    bigCrowd: true,
+    broke: true,
+    glass: true,
+  }
+  const some = { ...every, friendlyFire: false, broke: false }
+
+  test('a snapshot carries them to the client, whichever are on', () => {
+    Array.forEach([noModifiers, every, some], modifiers => {
+      const writer = makeWriter()
+      writeWorld(writer, { ...TWO_SEAT_ROOM.world, modifiers })
+      expect(readWorld(makeReader(writer.finish())).modifiers).toEqual(
+        modifiers,
+      )
+    })
+  })
+
+  test('a diff names them only when they changed', () => {
+    const before = TWO_SEAT_ROOM.world
+    const same = makeWriter()
+    writeWorldDiff(same, before, { ...before })
+    const changed = makeWriter()
+    writeWorldDiff(changed, before, { ...before, modifiers: some })
+    expect(changed.finish().length).toBeGreaterThan(same.finish().length)
+    const writer = makeWriter()
+    writeWorldDiff(writer, before, { ...before, modifiers: some })
+    expect(
+      readWorldDiff(makeReader(writer.finish()), before).modifiers,
+    ).toEqual(some)
+  })
+
+  test('the lobby mask is as wide as the set', () => {
+    expect(MAX_MODIFIER_MASK).toBe(maskOfModifiers(every))
+  })
+})
+
 const BOSS_ID = 9000
 
 // NOTE: a charge aimed across the room: the target and the rush both go
@@ -240,11 +285,12 @@ describe("the boss's charge on the wire", () => {
 // the Clang Pan in the melee slot; protocol 13 added each player's
 // `triggerRestMs`, the idle reload's clock; protocol 14 added the ammo window's
 // tap; protocol 15 added each seat's revives, downs, and shots for the crew
-// board; protocol 16 added each player's `calling`. The wire must not change
+// board; protocol 16 added each player's `calling`; protocol 18 added the
+// run's `modifiers`. The wire must not change
 // without a protocol bump. A change to how the room plays moves the bytes
 // with no change to the wire, as zombies coming in promptly after their
 // warning did, and Normal's eased health and speed (2026-10-31) did.
-const GOLDEN_DIGEST = '59953:f789a1f5533c3d1f'
+const GOLDEN_DIGEST = '59985:dc27343cb8286ac2'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

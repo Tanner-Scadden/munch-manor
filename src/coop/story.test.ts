@@ -361,6 +361,43 @@ describe('the lobby', () => {
     )
   })
 
+  test('the host turns run modifiers on and off; the others only see them', () => {
+    const modifiers = (mask: number) =>
+      ChangeLobby({
+        change: LobbyChange.ChangedModifiers({ modifiers: mask }),
+      })
+    story(
+      update,
+      given(inRoom(1)),
+      message(lobbyUpdate(lobbyOf(TWO))),
+      message(Message.ClickedModifierPick({ modifier: 'Glass' })),
+      Command.expectNone(),
+    )
+    story(
+      update,
+      given(inRoom(0)),
+      message(lobbyUpdate(lobbyOf(TWO))),
+      message(Message.ClickedModifierPick({ modifier: 'Glass' })),
+      Command.resolve(modifiers(8), Message.CompletedChangeLobby()),
+      message(lobbyUpdate({ ...lobbyOf(TWO), modifiers: 8 })),
+      message(Message.ClickedModifierPick({ modifier: 'BigCrowd' })),
+      Command.resolve(modifiers(10), Message.CompletedChangeLobby()),
+      message(lobbyUpdate({ ...lobbyOf(TWO), modifiers: 10 })),
+      message(Message.ClickedModifierPick({ modifier: 'Glass' })),
+      Command.resolve(modifiers(2), Message.CompletedChangeLobby()),
+    )
+  })
+
+  test('a host in a room that has started picks no modifiers', () => {
+    story(
+      update,
+      given(inRoom(0)),
+      message(lobbyUpdate(lobbyOf(TWO, 'Playing'))),
+      message(Message.ClickedModifierPick({ modifier: 'Glass' })),
+      Command.expectNone(),
+    )
+  })
+
   test('E and X step the picks, past Nightmare until it is unlocked', () => {
     const hard = { ...lobbyOf(TWO), difficulty: 'Hard' as const }
     story(

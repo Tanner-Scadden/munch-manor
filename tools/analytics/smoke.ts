@@ -53,6 +53,7 @@ const smokeSummary = (visitId: string): RunSummary => ({
   screenFit: 'Browser',
   frameTime: 'Under17Ms',
   party: SOLO_PARTY,
+  modifiers: 0,
 })
 
 const HEX_DIGITS = 16

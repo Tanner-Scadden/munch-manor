@@ -4,6 +4,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { PickedMode, RoomDifficulty } from '@munch/netcode'
 import { LobbyEvent, QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
+import { Modifier } from '../modifiers'
 import { Calling, SavedBoughtCosmetics } from '../playerData'
 import { SeatAction } from '../stepWorld'
 import { Bullet } from '../worldSchema'
@@ -49,6 +50,7 @@ export const Message = defineMessageUnion({
   ClickedKickButton: { playerId: Schema.String },
   ClickedModePick: { mode: PickedMode },
   ClickedDifficultyPick: { difficulty: RoomDifficulty },
+  ClickedModifierPick: { modifier: Modifier },
   ClickedCallingPill: {},
   ClickedCallingPick: { calling: Calling },
   ClickedCallingDone: {},

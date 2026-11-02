@@ -23,7 +23,14 @@ import {
   SKULL_ICONS,
   SKULL_OFF_ICON,
 } from './icons'
-import { LOBBY_KEYS, MAPS, MODE_CONTROLS, SEATS, lobbyControlId } from './lobby'
+import {
+  LOBBY_KEYS,
+  MAPS,
+  MODE_CONTROLS,
+  SEATS,
+  isModifierPickable,
+  lobbyControlId,
+} from './lobby'
 import { newPipView } from './lookGearView'
 import { callingPropView, iconView, keyCapView, rankTagView } from './menuParts'
 import { isLobbyUp } from './menuState'
@@ -36,6 +43,13 @@ import type {
   MapId,
   Model,
 } from './model'
+import {
+  MODIFIER_ORDER,
+  type Modifier,
+  bonusPercentOf,
+  isModifierOn,
+} from './modifiers'
+import { bonusChipView, modifierFaceView, modifierLabel } from './modifiersView'
 import { CALLING_NAMES, MAP_NAMES, MODE_NAMES } from './names'
 import { joinName } from './profile'
 import { rankOf, totalPointsOf } from './rank'
@@ -421,6 +435,36 @@ const skullPickView = (
   )
 }
 
+// NOTE: a run modifier is a tile that turns on and off, lit when on. Friendly
+// Fire is dim until a bot sits in the crew, with nobody to hit before that.
+const modifierPickView = (
+  model: Model,
+  modifier: Modifier,
+  h: ApplicationViewBuilder,
+): Html => {
+  const isOn = isModifierOn(model.modifiers, modifier)
+  const isPickable = isModifierPickable(model, modifier)
+  return h.button(
+    [
+      ...controlAttributes(modifier, h),
+      h.Type('button'),
+      h.Class('coop-pick modifier-pick'),
+      h.DataAttribute('modifier', modifier),
+      h.DataAttribute('state', isOn ? 'On' : 'Off'),
+      h.DataAttribute('available', isPickable ? 'Yes' : 'No'),
+      h.AriaPressed(isOn ? 'true' : 'false'),
+      h.AriaLabel(
+        isPickable
+          ? modifierLabel(modifier, isOn)
+          : `${modifierLabel(modifier, isOn)}. Add a bot teammate first`,
+      ),
+      ...(isPickable ? [] : [h.AriaDisabled(true)]),
+      h.OnClick(Message.ClickedLobbyModifierButton({ modifier })),
+    ],
+    modifierFaceView(modifier, h),
+  )
+}
+
 // NOTE: a map is a card with its picture and its name. With one map there
 // is nothing to pick, so it is shown chosen and takes no taps; a second map
 // makes this row a button group like the modes.
@@ -465,6 +509,19 @@ const picksView = (model: Model, h: ApplicationViewBuilder): Html =>
             skullPickView(model, difficulty, h),
           ),
           ...keyCapView(model, LOBBY_KEYS.Difficulty.cap, h),
+        ],
+      ),
+      h.div(
+        [
+          h.Class('coop-pick-group modifier-group'),
+          h.Role('group'),
+          h.AriaLabel('Modifiers'),
+        ],
+        [
+          ...Array.map(MODIFIER_ORDER, modifier =>
+            modifierPickView(model, modifier, h),
+          ),
+          bonusChipView(bonusPercentOf(model.modifiers), h),
         ],
       ),
       h.div(

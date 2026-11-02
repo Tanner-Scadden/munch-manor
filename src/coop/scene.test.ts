@@ -248,6 +248,76 @@ describe('the lobby', () => {
     )
   })
 
+  test('the modifiers are four tiles and their bonus; the host taps one', () => {
+    const withMask = (mask: number) =>
+      roomWith({
+        maybePlayerId: Option.some('player-0'),
+        maybeLobby: Option.some({
+          ...lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')]),
+          modifiers: mask,
+        }),
+      })
+    scene(
+      { update, view },
+      given(withMask(0)),
+      expect(role('group', { name: 'Modifiers' })).toExist(),
+      expect(role('button', { name: 'Friendly Fire, +15%, off' })).toExist(),
+      expect(role('status', { name: 'Bonus +0%' })).toExist(),
+      click(role('button', { name: 'Glass, +50%, off' })),
+      Command.resolve(
+        ChangeLobby({
+          change: LobbyChange.ChangedModifiers({ modifiers: 8 }),
+        }),
+        Message.CompletedChangeLobby(),
+      ),
+    )
+    scene(
+      { update, view },
+      given(withMask(9)),
+      expect(role('button', { name: 'Friendly Fire, +15%, on' })).toHaveAttr(
+        'aria-pressed',
+        'true',
+      ),
+      expect(role('button', { name: 'Glass, +50%, on' })).toHaveAttr(
+        'aria-pressed',
+        'true',
+      ),
+      expect(role('button', { name: 'Broke, +25%, off' })).toHaveAttr(
+        'aria-pressed',
+        'false',
+      ),
+      expect(role('status', { name: 'Bonus +65%' })).toExist(),
+      click(role('button', { name: 'Glass, +50%, on' })),
+      Command.resolve(
+        ChangeLobby({
+          change: LobbyChange.ChangedModifiers({ modifiers: 1 }),
+        }),
+        Message.CompletedChangeLobby(),
+      ),
+    )
+  })
+
+  test('a guest sees the tiles still, and a tap on one says the host picks', () => {
+    scene(
+      { update, view },
+      given(
+        roomWith({
+          slot: 1,
+          maybePlayerId: Option.some('player-1'),
+          maybeLobby: Option.some({
+            ...lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')]),
+            modifiers: 4,
+          }),
+        }),
+      ),
+      expect(role('button', { name: 'Broke, +25%, on' })).toHaveAttr(
+        'aria-disabled',
+        'true',
+      ),
+      expect(role('status', { name: 'Bonus +25%' })).toExist(),
+    )
+  })
+
   // NOTE: Scene treats aria-disabled as disabled and refuses the click, but a
   // browser delivers it: the taps themselves are Story tests (story.test.ts).
   test('a tap on a pick that is not yours leaves a note in place', () => {

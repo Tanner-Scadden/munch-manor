@@ -202,7 +202,7 @@ describe('the arrow keys with bots', () => {
       message(Message.ClickedLobbyAddBotButton()),
       resolveFocusLobby(),
       press('ArrowLeft'),
-      resolveFocusLobby('Nightmare'),
+      resolveFocusLobby('Glass'),
     )
   })
 

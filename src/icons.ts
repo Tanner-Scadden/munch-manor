@@ -1,6 +1,7 @@
 import { Array, Record, pipe } from 'effect'
 
 import type { Difficulty, TrapKind } from './model'
+import type { Modifier } from './modifiers'
 import { type Palette, pixelRuns } from './sprite'
 import { TRAP_ICON_PIXELS } from './sprites/traps'
 
@@ -1024,4 +1025,71 @@ export const TOUR_PRIZE_ICON = pixelIconUrl(
     'm..M.......',
   ],
   TOUR_ICON_PALETTE,
+)
+
+// RUN MODIFIERS
+
+export const MODIFIER_PALETTE: Palette = {
+  O: SHADE,
+  R: ALERT,
+  Y: '#ffe066',
+  D: '#a87a1e',
+  G: '#8bd45e',
+  K: '#4c8a32',
+  T: '#8fe3f2',
+  W: '#e9fbff',
+}
+
+// NOTE: Friendly Fire is a bullet flying into a teammate's heart; Big Crowd
+// three green heads; Broke a coin with a red slash through it; Glass a
+// heart of ice with a crack down it. The end card draws them on its canvas
+// too (src/endView.ts), from the same pixel maps.
+export const MODIFIER_PIXELS: Readonly<
+  Record<Modifier, ReadonlyArray<string>>
+> = {
+  FriendlyFire: [
+    '..RR...RR...',
+    '.RRRR.RRRR..',
+    '.RRRRRRRRR..',
+    'DDYYRRRRRR..',
+    '..RRRRRRR...',
+    '...RRRRR....',
+    '....RRR.....',
+    '.....R......',
+  ],
+  BigCrowd: [
+    '.GGG.....GGG.',
+    'GGGGG...GGGGG',
+    'GOGOG.G.GOGOG',
+    'GGGGGGGGGGGGG',
+    '.KGGGGGGGGGK.',
+    '..GOGOGOGOG..',
+    '...GGGGGGG...',
+  ],
+  Broke: [
+    '..YYYYR.',
+    '.YYDDRYY',
+    'YYDYRDYY',
+    'YYDRYDYY',
+    'YYRYYDYY',
+    'YRDYYDYY',
+    '.RYDDYY.',
+    'R.YYYY..',
+  ],
+  Glass: [
+    '.TT...TT.',
+    'TWTT.TTTT',
+    'TTTTOTTTT',
+    'TTTOTTTTT',
+    'TTTTOTTTT',
+    '.TTOTTTT.',
+    '..TTOTT..',
+    '...TTT...',
+    '....T....',
+  ],
+}
+
+export const MODIFIER_ICONS: Readonly<Record<Modifier, string>> = Record.map(
+  MODIFIER_PIXELS,
+  pixels => pixelIconUrl(pixels, MODIFIER_PALETTE),
 )
