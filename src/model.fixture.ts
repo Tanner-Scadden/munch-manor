@@ -6,7 +6,14 @@
 import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { PARLOUR, levelOf, openExitIn } from './arena'
+import {
+  LEVEL_SPECS,
+  type Level,
+  PARLOUR,
+  levelFor,
+  levelOf,
+  openExitIn,
+} from './arena'
 import { PLAYER_MAX_HP, PREPARATION_MS } from './constants'
 import { biteGraceScale } from './difficulty'
 import { KITCHEN_EXIT } from './exits'
@@ -36,6 +43,18 @@ import { Arsenal, type Life, type WeaponKind } from './worldSchema'
 
 // The stretch of the blink after a bite on Normal, where the named Models
 // play: a bite's invulnerability is the base times this.
+// NOTE: every level the game builds, shut and with all its exits open.
+export const EVERY_LEVEL: ReadonlyArray<Level> = Array.flatMap(
+  Object.values(LEVEL_SPECS),
+  spec => [
+    levelFor(spec),
+    levelFor(
+      spec,
+      Array.map(spec.exits, ({ id }) => id),
+    ),
+  ],
+)
+
 export const NORMAL_BITE_GRACE = biteGraceScale('Normal')
 
 // SPAWNS

@@ -443,13 +443,38 @@ export type Level = Readonly<{
   doors: Readonly<Record<DoorId, Door>>
   thresholds: Readonly<Record<DoorId, Threshold>>
   doorTileIndices: Readonly<Record<DoorId, ReadonlyArray<number>>>
-  solidTiles: ReadonlySet<number>
-  outsideTiles: ReadonlySet<number>
-  playerSolidTiles: ReadonlySet<number>
-  soupTiles: ReadonlySet<number>
-  openBlocks: ReadonlySet<number>
-  doorTiles: ReadonlySet<number>
+  tileFlags: Uint8Array
+  hasSoup: boolean
 }>
+
+// NOTE: what a tile is, as bits of one byte per tile in `Level.tileFlags`,
+// indexed by `tileIndex`. Built once with the level, so every tile query in
+// a frame is one array read.
+export const TILE_SOLID = 1
+export const TILE_PLAYER_SOLID = 2
+export const TILE_OUTSIDE = 4
+export const TILE_OPEN_BLOCK = 8
+const TILE_SOUP = 16
+export const TILE_DOOR = 32
+
+export const hasTileFlag = (
+  level: Level,
+  index: number,
+  flag: number,
+): boolean => ((level.tileFlags[index] ?? 0) & flag) !== 0
+
+const packTileFlags = (
+  tileCount: number,
+  marked: ReadonlyArray<readonly [ReadonlySet<number>, number]>,
+): Uint8Array => {
+  const flags = new Uint8Array(tileCount)
+  for (const [indices, flag] of marked) {
+    for (const index of indices) {
+      flags[index] = (flags[index] ?? 0) | flag
+    }
+  }
+  return flags
+}
 
 const openExitIdsOf = (
   spec: LevelSpec,
@@ -641,12 +666,15 @@ const buildLevel = (
     doors,
     thresholds,
     doorTileIndices,
-    solidTiles,
-    outsideTiles,
-    playerSolidTiles,
-    soupTiles,
-    openBlocks,
-    doorTiles,
+    tileFlags: packTileFlags(columns * grid.rows, [
+      [solidTiles, TILE_SOLID],
+      [outsideTiles, TILE_OUTSIDE],
+      [playerSolidTiles, TILE_PLAYER_SOLID],
+      [soupTiles, TILE_SOUP],
+      [openBlocks, TILE_OPEN_BLOCK],
+      [doorTiles, TILE_DOOR],
+    ]),
+    hasSoup: soupTiles.size > 0,
   }
 }
 
@@ -771,11 +799,11 @@ export const isWalkableTile = (
   row: number,
 ): boolean =>
   isInsideRoom(level, column, row) &&
-  !level.solidTiles.has(tileIndex(level, column, row))
+  !hasTileFlag(level, tileIndex(level, column, row), TILE_SOLID)
 
 const isSolidTile = (level: Level, column: number, row: number): boolean =>
   isInsideRoom(level, column, row) &&
-  level.solidTiles.has(tileIndex(level, column, row))
+  hasTileFlag(level, tileIndex(level, column, row), TILE_SOLID)
 
 export const isOpenBlock = (
   level: Level,
@@ -783,7 +811,7 @@ export const isOpenBlock = (
   row: number,
 ): boolean =>
   isInsideRoom(level, column, row) &&
-  level.openBlocks.has(tileIndex(level, column, row))
+  hasTileFlag(level, tileIndex(level, column, row), TILE_OPEN_BLOCK)
 
 export const tileCoordinate = (position: number): number =>
   Math.floor(position / TILE_SIZE)
@@ -792,16 +820,13 @@ export const isSolidAt = (level: Level, { x, y }: Vector): boolean =>
   isSolidTile(level, tileCoordinate(x), tileCoordinate(y))
 
 const isOutsideTile = (level: Level, column: number, row: number): boolean =>
-  level.outsideTiles.has(tileIndex(level, column, row))
+  hasTileFlag(level, tileIndex(level, column, row), TILE_OUTSIDE)
 
 // NOTE: inside the house: on the map and not out in the yard. A zombie in the
 // yard is still outside, walking to its door the way one past the map's edge
 // does, and nothing out there is drawn.
-export const isInsideRoomAt = (level: Level, { x, y }: Vector): boolean => {
-  const column = tileCoordinate(x)
-  const row = tileCoordinate(y)
-  return isInsideRoom(level, column, row) && !isOutsideTile(level, column, row)
-}
+export const isInsideRoomAt = (level: Level, { x, y }: Vector): boolean =>
+  isInsideRoomPoint(level, x, y)
 
 // NOTE: out in the yard: on the map but outside the house. With the kitchen
 // boarded, its tiles count as yard too.
@@ -816,7 +841,7 @@ export const isOnSoupAt = (level: Level, { x, y }: Vector): boolean => {
   const row = tileCoordinate(y)
   return (
     isInsideRoom(level, column, row) &&
-    level.soupTiles.has(tileIndex(level, column, row))
+    hasTileFlag(level, tileIndex(level, column, row), TILE_SOUP)
   )
 }
 
@@ -835,7 +860,7 @@ export const isDoorTile = (
   row: number,
 ): boolean =>
   isInsideRoom(level, column, row) &&
-  level.doorTiles.has(tileIndex(level, column, row))
+  hasTileFlag(level, tileIndex(level, column, row), TILE_DOOR)
 
 // NOTE: a zombie due at a door stands just past the door's own outer face,
 // which for the parlour's doors is the map's edge, and for the kitchen's
@@ -903,52 +928,38 @@ const pushOutOfBox = (position: Vector, radius: number, box: Box): Vector => {
 // way to a door, and the player never leaves the house.
 export type Walker = 'Zombie' | 'Player'
 
-const solidSetFor = (level: Level, walker: Walker): ReadonlySet<number> =>
-  walker === 'Player' ? level.playerSolidTiles : level.solidTiles
+const solidFlagFor = (walker: Walker): number =>
+  walker === 'Player' ? TILE_PLAYER_SOLID : TILE_SOLID
 
-const solidTilesNear = (
-  level: Level,
-  position: Vector,
-  radius: number,
-  walker: Walker,
-): ReadonlyArray<Tile> => {
-  const solid = solidSetFor(level, walker)
-  return Array.flatMap(
-    Array.range(
-      tileCoordinate(position.y - radius),
-      tileCoordinate(position.y + radius),
-    ),
-    row =>
-      Array.filterMap(
-        Array.range(
-          tileCoordinate(position.x - radius),
-          tileCoordinate(position.x + radius),
-        ),
-        column =>
-          isInsideRoom(level, column, row) &&
-          solid.has(tileIndex(level, column, row))
-            ? Result.succeed({ column, row })
-            : Result.failVoid,
-      ),
-  )
-}
-
+// NOTE: the solid tiles in the circle's square, row by row and left to right
+// in each row, each pushing the circle out in turn, then the blockers.
 export const resolveCircle = (
   level: Level,
   position: Vector,
   radius: number,
   blockers: ReadonlyArray<Box> = [],
   walker: Walker = 'Zombie',
-): Vector =>
-  Array.reduce(
-    blockers,
-    Array.reduce(
-      solidTilesNear(level, position, radius, walker),
-      position,
-      (resolved, tile) => pushOutOfBox(resolved, radius, tileBox(tile)),
-    ),
-    (resolved, box) => pushOutOfBox(resolved, radius, box),
-  )
+): Vector => {
+  const flag = solidFlagFor(walker)
+  const firstColumn = tileCoordinate(position.x - radius)
+  const lastColumn = tileCoordinate(position.x + radius)
+  const lastRow = tileCoordinate(position.y + radius)
+  let resolved = position
+  for (let row = tileCoordinate(position.y - radius); row <= lastRow; row++) {
+    for (let column = firstColumn; column <= lastColumn; column++) {
+      if (
+        isInsideRoom(level, column, row) &&
+        hasTileFlag(level, tileIndex(level, column, row), flag)
+      ) {
+        resolved = pushOutOfBox(resolved, radius, tileBox({ column, row }))
+      }
+    }
+  }
+  for (const box of blockers) {
+    resolved = pushOutOfBox(resolved, radius, box)
+  }
+  return resolved
+}
 
 export const moveCircle = (
   level: Level,
@@ -959,30 +970,36 @@ export const moveCircle = (
   walker: Walker = 'Zombie',
 ): Vector => {
   const steps = Math.max(1, Math.ceil(vectorLength(delta) / COLLISION_STEP_PX))
-  const step = scaleVector(delta, 1 / steps)
-  return Array.reduce(
-    Array.makeBy(steps, () => step),
-    position,
-    (moved, part) =>
-      resolveCircle(level, addVectors(moved, part), radius, blockers, walker),
-  )
+  const factor = 1 / steps
+  const stepX = delta.x * factor
+  const stepY = delta.y * factor
+  let moved = position
+  for (let index = 0; index < steps; index++) {
+    moved = resolveCircle(
+      level,
+      { x: moved.x + stepX, y: moved.y + stepY },
+      radius,
+      blockers,
+      walker,
+    )
+  }
+  return moved
 }
 
 // RAYS
 
-const pointsAlong = (
-  from: Vector,
-  to: Vector,
-  stepPx: number,
-): ReadonlyArray<Vector> => {
-  const steps = Math.max(
-    1,
-    Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / stepPx),
-  )
-  return Array.makeBy(steps + 1, index => ({
-    x: from.x + ((to.x - from.x) * index) / steps,
-    y: from.y + ((to.y - from.y) * index) / steps,
-  }))
+// NOTE: a ray is sampled at `steps + 1` evenly spaced points, the first on
+// `from` and the last on `to`. Rays walk the samples as plain numbers.
+const stepsAlong = (from: Vector, to: Vector, stepPx: number): number =>
+  Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / stepPx))
+
+const isSolidPoint = (level: Level, x: number, y: number): boolean =>
+  isSolidTile(level, tileCoordinate(x), tileCoordinate(y))
+
+const isInsideRoomPoint = (level: Level, x: number, y: number): boolean => {
+  const column = tileCoordinate(x)
+  const row = tileCoordinate(y)
+  return isInsideRoom(level, column, row) && !isOutsideTile(level, column, row)
 }
 
 export const findStrike = (
@@ -990,36 +1007,69 @@ export const findStrike = (
   from: Vector,
   to: Vector,
 ): Option.Option<Vector> => {
-  const points = pointsAlong(from, to, BULLET_STEP_PX)
-  return pipe(
-    points,
-    Array.findFirstIndex(point => isSolidAt(level, point)),
-    Option.map(index =>
-      Option.getOrElse(Array.get(points, Math.max(0, index - 1)), () => from),
-    ),
-  )
+  const steps = stepsAlong(from, to, BULLET_STEP_PX)
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  for (let index = 0; index <= steps; index++) {
+    if (isSolidPoint(level, from.x + (dx * index) / steps, from.y + (dy * index) / steps)) {
+      const before = Math.max(0, index - 1)
+      return Option.some({
+        x: from.x + (dx * before) / steps,
+        y: from.y + (dy * before) / steps,
+      })
+    }
+  }
+  return Option.none()
 }
 
 // NOTE: where a ray ends: the last point before a wall or before it leaves
 // the room through a doorway, or `to` when nothing is in the way.
 export const findReach = (level: Level, from: Vector, to: Vector): Vector => {
-  const points = pointsAlong(from, to, BULLET_STEP_PX)
-  return pipe(
-    points,
-    Array.findFirstIndex(
-      point => isSolidAt(level, point) || !isInsideRoomAt(level, point),
-    ),
-    Option.flatMap(index => Array.get(points, Math.max(0, index - 1))),
-    Option.getOrElse(() => to),
-  )
+  const steps = stepsAlong(from, to, BULLET_STEP_PX)
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  for (let index = 0; index <= steps; index++) {
+    const x = from.x + (dx * index) / steps
+    const y = from.y + (dy * index) / steps
+    if (isSolidPoint(level, x, y) || !isInsideRoomPoint(level, x, y)) {
+      const before = Math.max(0, index - 1)
+      return {
+        x: from.x + (dx * before) / steps,
+        y: from.y + (dy * before) / steps,
+      }
+    }
+  }
+  return to
 }
 
-const isLaneClear = (level: Level, from: Vector, to: Vector): boolean =>
-  !Array.some(pointsAlong(from, to, LINE_OF_SIGHT_STEP_PX), point =>
-    isSolidAt(level, point),
+const isLaneClear = (
+  level: Level,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+): boolean => {
+  const steps = Math.max(
+    1,
+    Math.ceil(Math.hypot(toX - fromX, toY - fromY) / LINE_OF_SIGHT_STEP_PX),
   )
+  const dx = toX - fromX
+  const dy = toY - fromY
+  for (let index = 0; index <= steps; index++) {
+    if (
+      isSolidPoint(level, fromX + (dx * index) / steps, fromY + (dy * index) / steps)
+    ) {
+      return false
+    }
+  }
+  return true
+}
 
-export const hasLineOfSight = isLaneClear
+export const hasLineOfSight = (
+  level: Level,
+  from: Vector,
+  to: Vector,
+): boolean => isLaneClear(level, from.x, from.y, to.x, to.y)
 
 export const hasClearPath = (
   level: Level,
@@ -1032,17 +1082,11 @@ export const hasClearPath = (
     return !isSolidAt(level, from)
   }
 
-  const side = {
-    x: (-(to.y - from.y) / length) * halfWidth,
-    y: ((to.x - from.x) / length) * halfWidth,
-  }
+  const sideX = (-(to.y - from.y) / length) * halfWidth
+  const sideY = ((to.x - from.x) / length) * halfWidth
   return (
-    isLaneClear(level, from, to) &&
-    isLaneClear(level, addVectors(from, side), addVectors(to, side)) &&
-    isLaneClear(
-      level,
-      addVectors(from, scaleVector(side, -1)),
-      addVectors(to, scaleVector(side, -1)),
-    )
+    isLaneClear(level, from.x, from.y, to.x, to.y) &&
+    isLaneClear(level, from.x + sideX, from.y + sideY, to.x + sideX, to.y + sideY) &&
+    isLaneClear(level, from.x - sideX, from.y - sideY, to.x - sideX, to.y - sideY)
   )
 }
