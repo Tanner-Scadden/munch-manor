@@ -20,6 +20,7 @@ import {
   UNKNOWN_CAUSE,
   WonRun,
 } from './analytics'
+import { isBotCrew } from './bots'
 import { isInRun } from './home'
 import {
   type Model,
@@ -141,12 +142,14 @@ export const crewRunKeyOf = (lobby: Lobby): string =>
 const ownRunKey = (visitId: string, run: Model): string =>
   hashKey(`visit:${visitId}:${run.stats.runMs}`)
 
-// NOTE: an online co-op run's own seat is the lead in the Model (the
+// NOTE: a run with teammate bots reports as Solo: it is one human's run, and
+// the crew numbers are for humans (a bot count in the summary would be a
+// RUN_SUMMARY_VERSION bump and a D1 migration, left for later). An online co-op run's own seat is the lead in the Model (the
 // client draws it as the player, src/coopPlay.ts), so its numbers are this
 // player's. The crew's size counts every seat in the run, one who dropped
 // out too.
 const partyOf = (run: Model, visitId: string): SummaryParty => {
-  if (!isCoop(run)) {
+  if (!isCoop(run) || isBotCrew(run)) {
     return SOLO_PARTY
   }
   const seat = leadSeatOf(run)
@@ -223,7 +226,7 @@ export const shareEventOf = (
     build,
     screen: shareScreenOf(
       Phase.isAnyOf(['Victory'])(model.phase),
-      isCoop(model),
+      isCoop(model) && !isBotCrew(model),
     ),
     mode: RunMode.isAnyOf(['Endless'])(model.mode) ? 'Endless' : 'Campaign',
     difficulty: played,

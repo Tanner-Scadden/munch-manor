@@ -172,6 +172,27 @@ export const CALLING_NAMES: Readonly<Record<Calling, string>> = {
   LineCook: 'Line Cook',
 }
 
+// NOTE: teammate bots (src/bots.ts) take a goofy name from here, letters
+// and spaces only so the name tag's small font can draw it.
+export const BOT_NAMES: Array.NonEmptyReadonlyArray<string> = [
+  'Bolts',
+  'Rusty',
+  'Beepo',
+  'Clank',
+  'Gizmo',
+  'Sprocket',
+  'Widget',
+  'Zappy',
+  'Tin Tim',
+  'Mr Gears',
+  'Wobbles',
+  'Dingus',
+  'Nuts',
+  'Static',
+  'Fuzz Bot',
+  'Pixel',
+]
+
 // NOTE: the closet's hats (src/closet.ts), read on focus and aloud.
 export const HAT_NAMES: Readonly<Record<Hat, string>> = {
   None: 'No hat',

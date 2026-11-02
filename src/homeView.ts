@@ -911,7 +911,7 @@ const panelText = (model: Model, panel: MenuPanel): PanelText => {
           blurb: 'Pick how tough the zombies are.',
         }
   } else if (panel === 'Calling') {
-    return callingPanelText()
+    return callingPanelText(model)
   } else if (panel === 'WhatsNew') {
     return whatsNewText(model)
   } else if (panel === 'Munchopedia') {

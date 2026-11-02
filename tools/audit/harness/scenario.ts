@@ -2,9 +2,10 @@
 // around it, from the home menu's state to the fridge, the planks, sync,
 // and the look, then co-op staged over it.
 
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { addBot } from '@game/bots'
 import { playerOfCalling } from '@game/callingPlayer'
 import { isEndScreen, withBests } from '@game/home'
 import {
@@ -304,6 +305,9 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
       newEntries: config.newentries ?? home.newEntries,
     }),
   })
+  model = Array.reduce(Array.range(1, config.lobbybots ?? 0), model, seated =>
+    config.lobbybots === undefined ? seated : addBot(seated),
+  )
   model = modifyFields(model, {
     difficultyCard: () =>
       config.ask ? DifficultyCard.Unseen() : DifficultyCard.Seen(),

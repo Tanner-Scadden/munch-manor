@@ -76,9 +76,12 @@ import {
   unwrapUpdateGift,
 } from './update/home'
 import {
+  addLobbyBot,
   backFromLobby,
   blurredLobbyControl,
+  dropLobbyBot,
   focusedLobbyControl,
+  openLobbyBotHero,
   openLobbyHero,
   pickLobbyDifficulty,
   pickLobbyMode,
@@ -868,6 +871,20 @@ export const update = ApplicationComposition.makeUpdate({
       unlockAudio,
       tapSound,
       openLobbyHero,
+      ...afterMessage(model),
+    ]),
+
+  ClickedLobbyAddBotButton: model =>
+    Update.combineSteps(model, [addLobbyBot, ...afterMessage(model)]),
+
+  ClickedLobbyDropBotButton: (model, { index }) =>
+    Update.combineSteps(model, [dropLobbyBot(index), ...afterMessage(model)]),
+
+  ClickedLobbyBotHeroButton: (model, { index }) =>
+    Update.combineSteps(model, [
+      unlockAudio,
+      tapSound,
+      openLobbyBotHero(index),
       ...afterMessage(model),
     ]),
 

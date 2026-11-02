@@ -316,6 +316,19 @@ const rankShapes = (
   ]
 }
 
+// NOTE: a teammate bot has no rank, so BOT stands where the badge would.
+const botMarkShapes = (
+  x: number,
+  centerY: number,
+): ReadonlyArray<Canvas.Shape> =>
+  textShapes(
+    'BOT',
+    'Plain',
+    x - RANK_LEFT_PX,
+    centerY - Math.floor(GLYPH_HEIGHT / 2),
+    'Left',
+  )
+
 const headShapes = (
   model: Model,
   board: Board,
@@ -351,7 +364,9 @@ const headShapes = (
       1,
       seatColorOf(member.slot),
     ),
-    ...rankShapes(x, crewTop + RANK_Y, member.rank),
+    ...(member.rank > 0
+      ? rankShapes(x, crewTop + RANK_Y, member.rank)
+      : botMarkShapes(x, crewTop + RANK_Y)),
   ]
 }
 

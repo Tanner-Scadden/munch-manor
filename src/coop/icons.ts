@@ -118,6 +118,20 @@ export const AWAY_ICON = icon([
 
 export const WAIT_ICON = icon(['XXXXX', '.XXX.', '..X..', '.X.X.', 'XXXXX'])
 
+// NOTE: the teammate bot's head, for the lobby's + BOT tiles and the mark
+// beside a bot's name.
+export const BOT_ICON = icon([
+  '.....Y.....',
+  '.....X.....',
+  '.XXXXXXXXX.',
+  'XXXXXXXXXXX',
+  'XXTTXXXTTXX',
+  'XXTTXXXTTXX',
+  'XXXXXXXXXXX',
+  'XXOXOXOXOXX',
+  '.XXXXXXXXX.',
+])
+
 export const BACK_ICON = icon([
   '...X....',
   '..XX....',

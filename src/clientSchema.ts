@@ -5,7 +5,7 @@
 import { Option, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
-import type { Appearance } from './playerData'
+import { Appearance, Calling } from './playerData'
 import { MillisNumber } from './wireNumber'
 import {
   DifficultyBests,
@@ -288,10 +288,17 @@ export const MapId = Schema.Literals(['Manor'])
 export type MapId = typeof MapId.Type
 
 // NOTE: every control the lobby's arrow keys walk, in order: BACK, the hero
-// card, the two modes, the four difficulties, then START.
+// card, each crew seat (a + BOT tile, or a bot's hero card with its x), the
+// two modes, the four difficulties, then START.
 export const LobbyControl = Schema.Literals([
   'Back',
   'Hero',
+  'Bot1',
+  'Drop1',
+  'Bot2',
+  'Drop2',
+  'Bot3',
+  'Drop3',
   'Campaign',
   'Endless',
   'Easy',
@@ -301,6 +308,16 @@ export const LobbyControl = Schema.Literals([
   'Start',
 ])
 export type LobbyControl = typeof LobbyControl.Type
+
+// NOTE: a teammate bot of the single player lobby (src/bots.ts): a goofy
+// name, the hero it plays, and the look it wears. Bots are seats in the
+// run's World, driven by src/teammateBot.ts.
+export const Bot = Schema.Struct({
+  name: Schema.String,
+  calling: Calling,
+  look: Appearance,
+})
+export type Bot = typeof Bot.Type
 
 export const MunchopediaPage = defineTaggedUnion({
   List: {},
@@ -316,6 +333,10 @@ export const HomeMenu = Schema.Struct({
   mode: HomeMode,
   lobby: HomeLobby,
   maybeLobbyFocus: Schema.Option(LobbyControl),
+  // NOTE: the bots the lobby seats, kept for the page session, and the one
+  // whose hero the open picker is choosing (an index into them).
+  bots: Schema.Array(Bot),
+  maybePickingBot: Schema.Option(Schema.Number),
   maybeSeenNewsDay: Schema.Option(Schema.String),
   newsPage: Schema.Number,
   munchopediaPage: MunchopediaPage,
@@ -328,6 +349,8 @@ export const freshHomeMenu: HomeMenu = {
   mode: 'Campaign',
   lobby: 'Closed',
   maybeLobbyFocus: Option.none(),
+  bots: [],
+  maybePickingBot: Option.none(),
   maybeSeenNewsDay: Option.none(),
   newsPage: 0,
   munchopediaPage: MunchopediaPage.List(),

@@ -6,6 +6,7 @@ import { startingLevel } from './arena'
 import {
   AmmoTip,
   AudioState,
+  Bot,
   Decal,
   DifficultyCard,
   FullscreenSetting,
@@ -297,6 +298,10 @@ export const Model = Schema.Struct({
   // NOTE: players sharing this keyboard, from a dev-only `?local=N` link
   // (MULTIPLAYER.md, "What Phase 1 built"). 1 in every shipped build.
   localPlayers: Schema.Number,
+  // NOTE: the teammate bots seated in this run (src/bots.ts), set as the run
+  // starts from the lobby's bots, so RETRY seats the same ones and a LEAVE
+  // clears them.
+  crewBots: Schema.Array(Bot),
   shareStats: ShareStatsSetting,
   cursorSetting: CursorSetting,
   maybeVisitId: Schema.Option(Schema.String),
@@ -500,6 +505,7 @@ export const initialModel: Model = {
   rotationSetting: 'Landscape',
   orientationLock: 'Unsupported',
   localPlayers: 1,
+  crewBots: [],
   party: Party.Solo(),
   shareStats: 'On',
   cursorSetting: 'Bold',

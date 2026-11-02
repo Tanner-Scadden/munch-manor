@@ -2,6 +2,7 @@ import { Array, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { maybeCrewBotAt } from './bots'
 import { PLAYER_RADIUS } from './constants'
 import { seatLookOf } from './coop/looks'
 import { maybeRoomOf } from './coop/roomState'
@@ -9,7 +10,7 @@ import type { Drawable } from './depth'
 import { rect, ringPixels } from './drawing'
 import { hatRiseOf } from './hatArt'
 import { barWidthOf, healthBarShapes } from './healthBarView'
-import type { Model } from './model'
+import type { Appearance, Model } from './model'
 import {
   COOP_RULES,
   focusSeat,
@@ -88,9 +89,6 @@ export const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
     return []
   }
   const lead = leadSeatOf(model).slot
-  const maybeRoom = maybeRoomOf(model.coop)
-  const isOnline = Option.isSome(maybeRoom)
-  const maybeLobby = Option.flatMap(maybeRoom, room => room.maybeLobby)
   return Array.filterMap(playersOf(model), ({ slot, seat }) =>
     slot === lead
       ? Result.failVoid
@@ -98,15 +96,27 @@ export const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
           seat,
           model: modifyFields(
             withWorld(model, world => focusSeat(world, slot)),
-            {
-              appearance: appearance =>
-                isOnline
-                  ? seatLookOf(appearance, lead, slot, maybeLobby)
-                  : appearance,
-            },
+            { appearance: () => lookOfSeat(model, slot) },
           ),
         }),
   )
+}
+
+// NOTE: the look a seat wears: online, the one it brought to the lobby; a
+// bot, its own; otherwise the player's.
+const lookOfSeat = (model: Model, slot: PlayerSlot): Appearance => {
+  const maybeRoom = maybeRoomOf(model.coop)
+  return Option.isSome(maybeRoom)
+    ? seatLookOf(
+        model.appearance,
+        leadSeatOf(model).slot,
+        slot,
+        Option.flatMap(maybeRoom, room => room.maybeLobby),
+      )
+    : Option.match(maybeCrewBotAt(model, slot), {
+        onNone: () => model.appearance,
+        onSome: bot => bot.look,
+      })
 }
 
 export const mateShadowShapes = (
@@ -116,18 +126,8 @@ export const mateShadowShapes = (
 
 // NOTE: the pixels a seat's hat stands over its head, from the look it
 // wears (a teammate's from the lobby), for the marks drawn over it.
-export const seatHatRiseOf = (model: Model, slot: PlayerSlot): number => {
-  const maybeRoom = maybeRoomOf(model.coop)
-  const look = Option.isSome(maybeRoom)
-    ? seatLookOf(
-        model.appearance,
-        leadSeatOf(model).slot,
-        slot,
-        Option.flatMap(maybeRoom, room => room.maybeLobby),
-      )
-    : model.appearance
-  return hatRiseOf(look)
-}
+export const seatHatRiseOf = (model: Model, slot: PlayerSlot): number =>
+  hatRiseOf(lookOfSeat(model, slot))
 
 const mateBodyShapes = ({
   model,
@@ -381,19 +381,11 @@ export const mateOverheadShapes = (
 export const seatModelsOf = (
   model: Model,
 ): ReadonlyArray<Readonly<{ slot: PlayerSlot; model: Model }>> => {
-  const lead = leadSeatOf(model).slot
-  const maybeRoom = maybeRoomOf(model.coop)
-  const maybeLobby = Option.flatMap(maybeRoom, room => room.maybeLobby)
   return Array.map(playersOf(model), ({ slot }) => ({
     slot,
     model: modifyFields(
       withWorld(model, world => focusSeat(world, slot)),
-      {
-        appearance: appearance =>
-          Option.isSome(maybeRoom)
-            ? seatLookOf(appearance, lead, slot, maybeLobby)
-            : appearance,
-      },
+      { appearance: () => lookOfSeat(model, slot) },
     ),
   }))
 }

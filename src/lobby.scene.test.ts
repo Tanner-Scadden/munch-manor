@@ -52,7 +52,7 @@ describe('the lobby', () => {
     )
   })
 
-  test('seats you with your name, rank, and hero card, and holds three seats for a crew', () => {
+  test('seats you with your name, rank, and hero card, and offers three + BOT seats', () => {
     scene(
       ROOT,
       given(handyman),
@@ -63,7 +63,11 @@ describe('the lobby', () => {
         expect(role('listitem', { name: 'Mo, you, rank 3' })).toExist(),
         expect(selector('.lobby-seat .coop-nameplate')).toExist(),
         expectAll(all.selector('.lobby-seat-empty')).toHaveCount(3),
-        expect(selector('.lobby-seat-empty')).toHaveAttr('aria-hidden', 'true'),
+        expectAll(all.selector('.lobby-add-bot')).toHaveCount(3),
+        expect(role('button', { name: 'Add a bot teammate' })).toHaveAttr(
+          'aria-keyshortcuts',
+          'B',
+        ),
       ),
       expect(
         role('button', { name: /^Hero: Handyman\. Plus: Planks 50% off/ }),
@@ -71,6 +75,28 @@ describe('the lobby', () => {
       expectAll(all.selector('.lobby-special')).toHaveCount(
         specialsOf('Handyman').length,
       ),
+    )
+  })
+
+  test('a tap on + BOT seats a bot with its name, hero card, and an x, and the x sends it home', () => {
+    scene(
+      ROOT,
+      given(home),
+      measureSurface,
+      ...openLobbyInScene(),
+      click(role('button', { name: 'Add a bot teammate' })),
+      resolveFocusLobbyInScene(),
+      inside(
+        role('list', { name: 'Players' }),
+        expect(role('listitem', { name: /, bot teammate, YOU$/ })).toExist(),
+        expectAll(all.selector('.lobby-add-bot')).toHaveCount(2),
+        expectAll(all.selector('.lobby-hero-bot')).toHaveCount(1),
+        expect(role('button', { name: /^Remove / })).toExist(),
+      ),
+      click(role('button', { name: /^Remove / })),
+      resolveFocusLobbyInScene(),
+      expectAll(all.selector('.lobby-add-bot')).toHaveCount(3),
+      expect(selector('.lobby-seat-bot')).toBeAbsent(),
     )
   })
 
@@ -101,7 +127,7 @@ describe('the lobby', () => {
       given(home),
       measureSurface,
       ...openLobbyInScene(),
-      expectAll(all.selector('.home-key')).toHaveCount(5),
+      expectAll(all.selector('.home-key')).toHaveCount(6),
     )
     scene(
       ROOT,

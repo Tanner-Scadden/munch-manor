@@ -20,10 +20,16 @@ import type { FocusStep } from './stepWorld'
 
 // CONTROLS
 
-// NOTE: the order the arrow keys walk the lobby, one stop each.
-const LOBBY_CONTROLS: Array.NonEmptyReadonlyArray<LobbyControl> = [
-  'Back',
-  'Hero',
+// NOTE: the order the arrow keys walk the lobby, one stop each. Each crew
+// seat is a stop (the + BOT tile, or the bot's hero card), and a seated bot's
+// x is another.
+export const SEATS: ReadonlyArray<readonly [LobbyControl, LobbyControl]> = [
+  ['Bot1', 'Drop1'],
+  ['Bot2', 'Drop2'],
+  ['Bot3', 'Drop3'],
+]
+
+const MODE_AND_DIFFICULTY_CONTROLS: ReadonlyArray<LobbyControl> = [
   'Campaign',
   'Endless',
   'Easy',
@@ -33,9 +39,27 @@ const LOBBY_CONTROLS: Array.NonEmptyReadonlyArray<LobbyControl> = [
   'Start',
 ]
 
+// NOTE: the stops of a lobby with `botCount` bots seated.
+const lobbyControlsOf = (
+  botCount: number,
+): Array.NonEmptyReadonlyArray<LobbyControl> => [
+  'Back',
+  'Hero',
+  ...Array.flatMap(SEATS, ([seat, drop], index) =>
+    index < botCount ? [seat, drop] : index === botCount ? [seat] : [],
+  ),
+  ...MODE_AND_DIFFICULTY_CONTROLS,
+]
+
 const LOBBY_CONTROL_IDS: Readonly<Record<LobbyControl, string>> = {
   Back: 'lobby-back',
   Hero: 'lobby-hero',
+  Bot1: 'lobby-bot-1',
+  Drop1: 'lobby-drop-1',
+  Bot2: 'lobby-bot-2',
+  Drop2: 'lobby-drop-2',
+  Bot3: 'lobby-bot-3',
+  Drop3: 'lobby-drop-3',
   Campaign: 'lobby-campaign',
   Endless: 'lobby-endless',
   Easy: 'lobby-easy',
@@ -59,6 +83,7 @@ export const LOBBY_KEYS = {
   Mode: { code: 'KeyE', cap: 'E', name: 'E' },
   Difficulty: { code: 'KeyX', cap: 'X', name: 'X' },
   Hero: { code: 'KeyY', cap: 'Y', name: 'Y' },
+  Bot: { code: 'KeyB', cap: 'B', name: 'B' },
 } as const satisfies Readonly<Record<string, LobbyKey>>
 
 // NOTE: with nothing focused yet the walk starts at START, the control a
@@ -66,20 +91,19 @@ export const LOBBY_KEYS = {
 export const steppedLobbyFocus = (
   maybeFocus: Option.Option<LobbyControl>,
   step: FocusStep,
+  botCount: number,
 ): LobbyControl =>
   Option.match(maybeFocus, {
     onNone: (): LobbyControl => 'Start',
     onSome: focused => {
+      const controls = lobbyControlsOf(botCount)
       const index = Option.getOrElse(
-        Array.findFirstIndex(LOBBY_CONTROLS, control => control === focused),
+        Array.findFirstIndex(controls, control => control === focused),
         () => 0,
       )
-      const count = LOBBY_CONTROLS.length
+      const count = controls.length
       return Option.getOrElse(
-        Array.get(
-          LOBBY_CONTROLS,
-          (index + FOCUS_STEP_OFFSET[step] + count) % count,
-        ),
+        Array.get(controls, (index + FOCUS_STEP_OFFSET[step] + count) % count),
         (): LobbyControl => 'Start',
       )
     },

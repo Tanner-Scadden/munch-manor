@@ -2,6 +2,7 @@ import { Effect, Option } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { addBot, removeBot } from '../bots'
 import { makeCommand, makeStep } from '../definition'
 import { chooseDifficulty, isLocked } from '../difficulty'
 import { runModeOf, switchMode } from '../home'
@@ -163,6 +164,32 @@ export const openLobbyHero = makeStep(model =>
   isLobbyOpen(model) ? openPanel('Calling') : unchanged,
 )
 
+// NOTE: + BOT seats a bot in the next empty seat, with a goofy name and a
+// hero picked at random from the heroes this player has unlocked.
+export const addLobbyBot = picked(modelStep(addBot))
+
+export const dropLobbyBot = (index: number) =>
+  picked(modelStep(model => removeBot(model, index)))
+
+// NOTE: a bot's hero card opens the hero picker, choosing for that bot
+// (src/update/home.ts, pickCalling) until it closes.
+export const openLobbyBotHero = (index: number) =>
+  makeStep(model =>
+    isLobbyOpen(model) && index < model.home.bots.length
+      ? Update.combineSteps([
+          modelStep(current =>
+            modifyFields(current, {
+              home: home =>
+                modifyFields(home, {
+                  maybePickingBot: () => Option.some(index),
+                }),
+            }),
+          ),
+          openPanel('Calling'),
+        ])
+      : unchanged,
+  )
+
 // KEYS
 
 // NOTE: Enter starts, Esc goes back, and E, X, and Y pick as their pills
@@ -185,11 +212,19 @@ export const lobbyFromKey = (code: string) =>
       return pickLobbyDifficulty(nextDifficultyOf(model))
     } else if (code === LOBBY_KEYS.Hero.code) {
       return openLobbyHero
+    } else if (code === LOBBY_KEYS.Bot.code) {
+      return addLobbyBot
     } else {
       return Option.match(maybeStep, {
         onNone: () => unchanged,
         onSome: step =>
-          focusLobby(steppedLobbyFocus(model.home.maybeLobbyFocus, step)),
+          focusLobby(
+            steppedLobbyFocus(
+              model.home.maybeLobbyFocus,
+              step,
+              model.home.bots.length,
+            ),
+          ),
       })
     }
   })

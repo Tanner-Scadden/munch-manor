@@ -122,6 +122,10 @@ export const HarnessConfig = Schema.Struct({
   // NOTE: `party` seats a crew of that many players around the player, each
   // with kills of their own, as the end card's crew and MVP show them.
   party: MaybeNum,
+  // NOTE: `bots` seats teammate bots, 1 to 3, as the lobby does.
+  bots: MaybeNum,
+  // NOTE: `lobbybots` waits that many bots in the lobby's seats, for PLAY to open.
+  lobbybots: MaybeNum,
   elapsed: Num(0),
   prep: Num(20000),
   break: Choice(['open']),
