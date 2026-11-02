@@ -2,6 +2,10 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 2, 2026: Something's cooking
+
+- 🍲 The boarded kitchen door now glows, steams, and smells like soup, Rattles hollers about it every break until you open it, and a little house in your breaks counts the rooms you've found.
+
 ## November 1, 2026: Pick your hero
 
 - 🎩 PLAY opens a lobby to pick your hero, mode, and difficulty before a run. Rank up and you can pick a hero there: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Every card says what it gives (+) and costs (-). Reach rank 3 to meet the first, then spend Bones to take your pick home (try one on before you buy). Tap + BOT to bring up to three bot buddies along: they shoot, revive you, shop, and press READY.

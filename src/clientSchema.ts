@@ -435,6 +435,18 @@ export const AmmoTip = defineTaggedUnion({
 })
 export type AmmoTip = typeof AmmoTip.Type
 
+// NOTE: Rattles' holler about the boarded kitchen (src/kitchenCall.ts):
+// once a break, until the boards are open, a bubble points at them for a
+// few seconds. `Quiet` remembers the last break it called in, so a break is
+// never called twice. `Opened` is the kitchen found, aging for the rooms
+// counter's sparkle (src/roomsFound.ts). Never saved.
+export const KitchenCall = defineTaggedUnion({
+  Quiet: { calledWave: Schema.Number },
+  Calling: { wave: Schema.Number, remainingMs: MillisNumber },
+  Opened: { ageMs: MillisNumber },
+})
+export type KitchenCall = typeof KitchenCall.Type
+
 // NOTE: a chapter of the guided tutorial (src/firstBreakQuest.ts, the
 // first break, and src/kitchenTour.ts, the kitchen and the fridge): waiting
 // for its break, running through its steps, done with its tick shown for a
