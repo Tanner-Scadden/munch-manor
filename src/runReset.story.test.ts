@@ -6,7 +6,14 @@ import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, TrapNotice, freshLoot } from './model'
 import { readyModel } from './model.fixture'
-import { closeDialog, press, release, showDialog, ticks } from './testing'
+import {
+  closeDialog,
+  press,
+  release,
+  showDialog,
+  startRunFromHome,
+  ticks,
+} from './testing'
 
 // NOTE: listed here by hand, not read from the reset itself, so a field the
 // reset forgets shows up as a difference.
@@ -69,7 +76,7 @@ describe('going home', () => {
     story(
       update,
       given(readyModel),
-      press('Enter'),
+      startRunFromHome,
       press('KeyD'),
       press('KeyS'),
       ...ticks(40, 16),
@@ -112,7 +119,7 @@ describe('going home', () => {
     story(
       update,
       given({ ...readyModel, rngState: wentHome.rngState }),
-      press('Enter'),
+      startRunFromHome,
       model(current => {
         freshStart.push(current)
       }),
@@ -120,7 +127,7 @@ describe('going home', () => {
     story(
       update,
       given(wentHome),
-      press('Enter'),
+      startRunFromHome,
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.phase).toEqual(freshStart[0]!.phase)

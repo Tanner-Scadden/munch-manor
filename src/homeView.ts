@@ -4,11 +4,7 @@ import type { Html } from 'foldkit/html'
 import type { Dialog } from '@foldkit/ui'
 
 import { HandDialogBinding, PanelDialogBinding } from './bindings'
-import {
-  callingBodyView,
-  callingButtonView,
-  callingPanelText,
-} from './callingView'
+import { callingBodyView, callingPanelText } from './callingView'
 import type { ApplicationViewBuilder } from './composition'
 import { COOP_ICON } from './coop/icons'
 import { IS_COOP_RELEASED } from './coop/release'
@@ -40,12 +36,10 @@ import {
 } from './home'
 import {
   AIM_ICON,
-  CAMPAIGN_ICON,
   CHARACTER_ICON,
   CLOCK_ICON,
   COFFEE_CUP_ICON,
   COFFEE_STEAM_ICON,
-  ENDLESS_ICON,
   FULLSCREEN_ICON,
   GITHUB_MARK_ICON,
   HAND_ICON,
@@ -69,7 +63,6 @@ import {
   DifficultyCard,
   type HandCard,
   type HomeButton,
-  type HomeMode,
   type MenuPanel,
   type Model,
   Phase,
@@ -80,7 +73,6 @@ import {
   entryName,
   hasUnopenedEntry,
 } from './munchopedia'
-import { MODE_NAMES } from './names'
 import { helpLabel, howToPlayView } from './pauseHelp'
 import { rankOf, totalPointsOf } from './rank'
 import { rankChipView } from './rankBadgeView'
@@ -115,16 +107,8 @@ const homeButtonAttributes = (
 
 // PLAY
 
-const MODE_ICONS: Readonly<Record<HomeMode, string>> = {
-  Campaign: CAMPAIGN_ICON,
-  Endless: ENDLESS_ICON,
-}
-
-const otherMode = (mode: HomeMode): HomeMode =>
-  mode === 'Campaign' ? 'Endless' : 'Campaign'
-
-// NOTE: show, don't explain. PLAY is the big play icon alone, and the mode
-// beside it says which run it starts.
+// NOTE: show, don't explain. PLAY is the big play icon alone, and the lobby it
+// opens (src/lobbyView.ts) says which run it starts.
 const playButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
   h.button(
     [
@@ -140,37 +124,6 @@ const playButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
         [iconView('home-play-icon', PLAY_ICON, h)],
       ),
       ...keyBadgeView(model, 'Play', h),
-    ],
-  )
-
-const modeOptionView = (
-  model: Model,
-  mode: HomeMode,
-  h: ApplicationViewBuilder,
-): Html =>
-  h.span(
-    [
-      h.Class('home-mode-option'),
-      h.DataAttribute('mode', mode),
-      h.DataAttribute('state', model.home.mode === mode ? 'Chosen' : 'Other'),
-    ],
-    [iconView('home-mode-icon', MODE_ICONS[mode], h)],
-  )
-
-const modeButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.button(
-    [
-      ...homeButtonAttributes('Mode', h),
-      h.Class('home-pick home-mode'),
-      h.AriaLabel(
-        `Mode: ${MODE_NAMES[model.home.mode]}. Switch to ${MODE_NAMES[otherMode(model.home.mode)]}`,
-      ),
-      h.OnClick(Message.ClickedModeButton(), { propagation: 'Stop' }),
-    ],
-    [
-      modeOptionView(model, 'Campaign', h),
-      modeOptionView(model, 'Endless', h),
-      ...keyBadgeView(model, 'Mode', h),
     ],
   )
 
@@ -201,29 +154,6 @@ const skullMeterView = (
   )
 }
 
-// NOTE: the difficulty sits by PLAY, so the run is picked where it starts.
-// It opens the picker anchored just above this cluster.
-const difficultyButtonView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html => {
-  const name = DIFFICULTIES[model.difficulty.chosen].name
-  return h.button(
-    [
-      ...homeButtonAttributes('Difficulty', h),
-      h.Class('home-pick home-difficulty'),
-      h.DataAttribute('difficulty', model.difficulty.chosen),
-      h.AriaLabel(`Difficulty: ${name}. Change it`),
-      h.AriaHasPopup('dialog'),
-      h.OnClick(Message.ClickedDifficultyBadge(), { propagation: 'Stop' }),
-    ],
-    [
-      skullMeterView(model, model.difficulty.chosen, h),
-      ...keyBadgeView(model, 'Difficulty', h),
-    ],
-  )
-}
-
 // NOTE: CO-OP is two heads, pink and teal, by PLAY. Until the tutorial is
 // done it is padlocked, with the aim icon of the tutorial's own lesson.
 const coopButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
@@ -231,7 +161,7 @@ const coopButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
   return h.button(
     [
       ...homeButtonAttributes('Coop', h),
-      h.Class('home-pick home-coop'),
+      h.Class('home-coop'),
       h.DataAttribute('lock', isOpen ? 'Open' : 'Locked'),
       h.AriaLabel(
         isOpen
@@ -264,25 +194,7 @@ const playClusterView = (model: Model, h: ApplicationViewBuilder): Html =>
     [h.Class('home-play-cluster'), h.Role('group'), h.AriaLabel('Play')],
     [
       playButtonView(model, h),
-      h.div(
-        [h.Class('home-loadout')],
-        [
-          modeButtonView(model, h),
-          h.div(
-            [h.Class('home-pick-row')],
-            [
-              difficultyButtonView(model, h),
-              callingButtonView(
-                model,
-                homeButtonAttributes('Calling', h),
-                keyBadgeView(model, 'Calling', h),
-                h,
-              ),
-            ],
-          ),
-          IS_COOP_RELEASED ? coopButtonView(model, h) : h.empty,
-        ],
-      ),
+      IS_COOP_RELEASED ? coopButtonView(model, h) : h.empty,
     ],
   )
 
@@ -866,9 +778,6 @@ const MENU_KEYS_TITLE_ID = 'menu-keys-title'
 
 const MENU_KEY_ACTIONS: Readonly<Record<HomeButton, string>> = {
   Play: 'play',
-  Mode: 'mode',
-  Difficulty: 'difficulty',
-  Calling: 'hero',
   Coop: 'co-op',
   Manor: 'manor',
   Support: 'coffee',
@@ -995,7 +904,7 @@ const panelText = (model: Model, panel: MenuPanel): PanelText => {
     return isAskingFirst(model)
       ? {
           title: 'How tough are you?',
-          blurb: 'Pick a difficulty. You can change it any time beside PLAY.',
+          blurb: 'Pick a difficulty. You can change it in the lobby.',
         }
       : {
           title: 'Difficulty',
@@ -1139,11 +1048,6 @@ const panelView = (
   ]
 }
 
-// NOTE: the difficulty picker opened beside PLAY hangs just above that
-// cluster. The first-run question before a first run stays centered.
-const panelAnchor = (model: Model): string =>
-  model.panel === 'Difficulty' && !isAskingFirst(model) ? 'Play' : 'Center'
-
 export const menuPanelView = (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(
     {
@@ -1151,10 +1055,7 @@ export const menuPanelView = (model: Model, h: ApplicationViewBuilder): Html =>
       dialogClass: 'panel-dialog',
       backdropClass: 'panel-backdrop',
       panelClass: 'panel',
-      dialogAttributes: [
-        h.DataAttribute('panel', model.panel),
-        h.DataAttribute('anchor', panelAnchor(model)),
-      ],
+      dialogAttributes: [h.DataAttribute('panel', model.panel)],
       panelView: renderInfo => panelView(model, renderInfo, h),
       binding: PanelDialogBinding,
     },

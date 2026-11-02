@@ -71,15 +71,17 @@ import { evaluateAs } from './page'
 
 // NOTE: each page plays a different hero, unlocked by the rank its save holds
 // (RANKS 3, 8, 10 reach the Handyman at 3, the Track Star at 6, the Penny
-// Pincher at 10). The host picks at home, through the home menu's pill and
-// picker; each guest picks in the lobby, through the lobby's own pill. Every
+// Pincher at 10). The host picks at home, through the single player lobby's hero card
+// and picker; each guest picks in the lobby, through the lobby's own pill. Every
 // page must then see the others' prop icons in the lobby, and the room must
 // seat each slot as its hero.
 const HEROES = ['Handyman', 'TrackStar', 'PennyPincher'] as const
 
 const pickAtHome = async (page: Page, hero: string) => {
-  await page.click('.home-calling')
+  await page.click('#home-play')
+  await page.click('#lobby-hero')
   await page.click(`.calling-card[data-calling="${hero}"]`)
+  await page.click('#lobby-back')
 }
 
 const pickInLobby = async (page: Page, hero: string) => {

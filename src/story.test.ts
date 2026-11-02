@@ -40,7 +40,9 @@ import {
   MUZZLE_X,
   RESTART_GRACE_TICKS,
   holdFire,
+  openLobbyByKey,
   releaseFire,
+  resolveFocusLobby,
   scoring,
   tick,
   ticks,
@@ -141,10 +143,11 @@ describe('keyboard intent', () => {
     )
   })
 
-  test('Enter starts the run in the first preparation', () => {
+  test('Enter opens the lobby, and Enter again starts the run in the first preparation', () => {
     story(
       update,
       given(readyModel),
+      openLobbyByKey,
       message(Message.PressedKey({ code: 'Enter' })),
       model(({ phase }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
@@ -534,6 +537,8 @@ describe('determinism', () => {
     story(
       update,
       given(modifyFields(readyModel, { rngState: () => seed })),
+      message(Message.PressedKey({ code: 'Enter' })),
+      resolveFocusLobby(),
       message(Message.PressedKey({ code: 'Enter' })),
       message(Message.ReleasedKey({ code: 'Enter' })),
       message(Message.PressedKey({ code: 'Enter' })),

@@ -26,7 +26,16 @@ import {
   ZombieState,
 } from './model'
 import { newPlayerReady, readyModel } from './model.fixture'
-import { closeDialog, press, showDialog, tick } from './testing'
+import {
+  closeDialog,
+  openLobbyByKey,
+  press,
+  resolveFocusLobby,
+  showDialog,
+  startRunFromHome,
+  startedRunOf,
+  tick,
+} from './testing'
 import { FINAL_WAVE } from './wavePlans'
 import { ZOMBIE_KINDS } from './zombies'
 
@@ -76,32 +85,6 @@ describe('the first-time difficulty card', () => {
     )
   })
 
-  test('E switches the mode, then Enter asks too, and the pick starts endless', () => {
-    story(
-      update,
-      given(newPlayerReady),
-      press('KeyE'),
-      model(current => {
-        expect(current.panelDialog.isOpen).toBe(false)
-        expect(current.home.mode).toBe('Endless')
-      }),
-      press('Enter'),
-      showDialog(),
-      model(current => {
-        expect(Phase.guards.Ready(current.phase)).toBe(true)
-        expect(current.difficultyCard).toEqual(
-          DifficultyCard.Asking({ mode: RunMode.Endless() }),
-        )
-      }),
-      pick('Hard'),
-      closeDialog(),
-      model(current => {
-        expect(current.mode).toEqual(RunMode.Endless())
-        expect(current.difficulty.chosen).toBe('Hard')
-      }),
-    )
-  })
-
   test('closing the card starts nothing, and the next PLAY asks again', () => {
     story(
       update,
@@ -128,10 +111,15 @@ describe('the first-time difficulty card', () => {
     )
   })
 
-  test('a veteran who has picked goes straight in', () => {
+  test('a veteran who has picked opens the lobby, and START goes in', () => {
     story(
       update,
       given(readyModel),
+      openLobbyByKey,
+      model(current => {
+        expect(Phase.guards.Ready(current.phase)).toBe(true)
+        expect(current.panelDialog.isOpen).toBe(false)
+      }),
       press('Enter'),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
@@ -156,56 +144,78 @@ describe('the first-time difficulty card', () => {
   })
 })
 
-const pickerOpen = (base: Model): Model =>
-  modifyFields(base, {
-    panel: () => 'Difficulty',
-    panelDialog: dialog => ({ ...dialog, isOpen: true }),
-  })
+const lobbyDifficulty = (difficulty: Difficulty) =>
+  message(Message.ClickedLobbyDifficultyButton({ difficulty }))
 
-describe('difficulty by PLAY', () => {
-  test('the picker by PLAY changes the difficulty, but not Nightmare while locked', () => {
+describe('difficulty in the lobby', () => {
+  test('a tile changes the difficulty without starting a run, but not Nightmare while locked', () => {
     story(
       update,
       given(readyModel),
-      message(Message.ClickedDifficultyBadge()),
-      showDialog(),
-      message(Message.ClickedDifficultyCardButton({ difficulty: 'Nightmare' })),
+      openLobbyByKey,
+      lobbyDifficulty('Nightmare'),
       model(current => {
         expect(current.difficulty.chosen).toBe('Normal')
-        expect(current.panelDialog.isOpen).toBe(true)
       }),
-      message(Message.ClickedDifficultyCardButton({ difficulty: 'Hard' })),
-      closeDialog(),
+      lobbyDifficulty('Hard'),
+      resolveFocusLobby(),
       model(current => {
         expect(current.difficulty.chosen).toBe('Hard')
-        expect(current.panelDialog.isOpen).toBe(false)
         expect(Phase.guards.Ready(current.phase)).toBe(true)
+        expect(current.home.lobby).toBe('Open')
       }),
     )
   })
 
-  test('X opens the picker on the home menu', () => {
+  test('X steps to the next difficulty, skipping a locked Nightmare', () => {
+    story(
+      update,
+      given(withDifficulty(readyModel, 'Hard')),
+      openLobbyByKey,
+      press('KeyX'),
+      resolveFocusLobby(),
+      model(current => {
+        expect(current.difficulty.chosen).toBe('Easy')
+      }),
+      press('KeyX'),
+      resolveFocusLobby(),
+      model(current => {
+        expect(current.difficulty.chosen).toBe('Normal')
+      }),
+    )
+    story(
+      update,
+      given(withDifficulty(readyModel, 'Hard', 'Unlocked')),
+      openLobbyByKey,
+      press('KeyX'),
+      resolveFocusLobby(),
+      model(current => {
+        expect(current.difficulty.chosen).toBe('Nightmare')
+      }),
+    )
+  })
+
+  test('the home menu has no difficulty key', () => {
     story(
       update,
       given(readyModel),
       press('KeyX'),
-      showDialog(),
       model(current => {
-        expect(current.panel).toBe('Difficulty')
-        expect(current.panelDialog.isOpen).toBe(true)
+        expect(current.panelDialog.isOpen).toBe(false)
+        expect(current.home.lobby).toBe('Closed')
       }),
     )
   })
 
-  test('a difficulty click outside the home menu does nothing', () => {
+  test('a difficulty tile outside the lobby does nothing', () => {
     story(
       update,
       given(
-        modifyFields(pickerOpen(readyModel), {
+        modifyFields(readyModel, {
           phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] }),
         }),
       ),
-      message(Message.ClickedDifficultyCardButton({ difficulty: 'Easy' })),
+      lobbyDifficulty('Easy'),
       model(current => {
         expect(current.difficulty.chosen).toBe('Normal')
       }),
@@ -240,7 +250,7 @@ describe('unlocking Nightmare', () => {
     story(
       update,
       given(withDifficulty(readyModel, 'Hard', 'JustUnlocked')),
-      press('Enter'),
+      startRunFromHome,
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.difficulty.nightmare).toBe('Unlocked')
@@ -249,9 +259,10 @@ describe('unlocking Nightmare', () => {
 
     story(
       update,
-      given(pickerOpen(withDifficulty(readyModel, 'Hard', 'Unlocked'))),
-      message(Message.ClickedDifficultyCardButton({ difficulty: 'Nightmare' })),
-      closeDialog(),
+      given(withDifficulty(readyModel, 'Hard', 'Unlocked')),
+      openLobbyByKey,
+      lobbyDifficulty('Nightmare'),
+      resolveFocusLobby(),
       model(current => {
         expect(current.difficulty.chosen).toBe('Nightmare')
       }),
@@ -273,10 +284,7 @@ describe('unlocking Nightmare', () => {
 
 describe('the multipliers', () => {
   const startedOn = (difficulty: Difficulty): Model =>
-    update(
-      withDifficulty(readyModel, difficulty, 'Unlocked'),
-      Message.PressedKey({ code: 'Enter' }),
-    ).model
+    startedRunOf(withDifficulty(readyModel, difficulty, 'Unlocked'))
 
   test('each difficulty scales the same wave by its health and speed', () => {
     const normal = preparationSpawns(startedOn('Normal'))

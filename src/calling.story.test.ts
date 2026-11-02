@@ -18,6 +18,7 @@ import { playerSpeed } from './powerups'
 import { pointsForRank } from './rank'
 import { priceFor, tryPurchase, verdictFor } from './shop'
 import { besideStall, preparing, shopReady, withMoney } from './shop.fixture'
+import { modelAfter } from './testing'
 import { freshGun, heldGun, looseRounds, maybeCarried } from './weapons'
 import {
   type CarriedGun,
@@ -35,14 +36,17 @@ const ranked = (rank: number, calling: Calling): Model =>
     calling: () => calling,
   })
 
+const inLobby = (model: Model): Model =>
+  modelAfter(model, Message.ClickedPlayButton())
+
 const started = (model: Model): Model =>
-  update(model, Message.ClickedPlayButton()).model
+  modelAfter(inLobby(model), Message.ClickedLobbyStartButton())
 
 const pickInPicker = (model: Model, calling: Calling): Model =>
-  update(
-    update(model, Message.ClickedCallingBadge()).model,
+  modelAfter(
+    modelAfter(inLobby(model), Message.ClickedLobbyHeroButton()),
     Message.ClickedCallingCardButton({ calling }),
-  ).model
+  )
 
 describe('a run starts with the calling picked', () => {
   test('YOU holds the pistol and every heart', () => {
@@ -82,7 +86,7 @@ describe('a run starts with the calling picked', () => {
 describe('the picker', () => {
   test('the key opens it', () => {
     const opened = update(
-      ranked(3, 'You'),
+      inLobby(ranked(3, 'You')),
       Message.PressedKey({ code: 'KeyY' }),
     )
     expect(isPanelOpen(opened.model, 'Calling')).toBe(true)

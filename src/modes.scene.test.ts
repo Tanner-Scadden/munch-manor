@@ -24,35 +24,41 @@ import {
   SCENE_SUBSCRIPTIONS,
   holdingSecond,
   keepGoingButton,
+  lobbyMode,
+  lobbyStartButton,
   measureSurface,
-  modeButton,
+  openLobbyInScene,
   playButton,
   playEndlessButton,
+  resolveFocusLobbyInScene,
   retryButton,
   shareMountEnded,
   shareMountSettles,
+  startRunInScene,
 } from './testing'
 import { asVeteran } from './veteran'
 
-const endlessModeButton = role('button', {
-  name: 'Mode: Endless. Switch to Campaign',
-})
+const endlessModeButton = role('button', { name: 'Endless' })
 const START_PROMPT =
   'Press Enter, or use the Start wave button, to start it now.'
 
 describe('Mode choice', () => {
-  test('the home menu offers PLAY with a mode toggle, and PLAY in Endless starts endless', () => {
+  test('the home menu offers PLAY alone, and the lobby picks endless and starts it', () => {
     scene(
       ROOT,
       given(asVeteran(initialModel)),
       measureSurface,
       expect(playButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
-      expect(modeButton).toHaveAttr('aria-keyshortcuts', 'E'),
+      expect(endlessModeButton).toBeAbsent(),
       expect(selector('.home-key')).toExist(),
       expect(keepGoingButton).toBeAbsent(),
-      click(modeButton),
-      expect(endlessModeButton).toExist(),
-      click(playEndlessButton),
+      ...openLobbyInScene(),
+      expect(endlessModeButton).toHaveAttr('aria-pressed', 'false'),
+      click(endlessModeButton),
+      resolveFocusLobbyInScene(),
+      expect(endlessModeButton).toHaveAttr('aria-pressed', 'true'),
+      expect(lobbyMode('Campaign')).toHaveAttr('aria-pressed', 'false'),
+      click(lobbyStartButton),
       expect(role('status')).toHaveText(
         `Get ready for endless wave 1. ${START_PROMPT}`,
       ),
@@ -69,7 +75,7 @@ describe('Mode choice', () => {
         }),
       ),
       measureSurface,
-      click(playButton),
+      ...startRunInScene(),
       expect(role('status')).toHaveText(
         `Get ready for wave 1 of 10. ${START_PROMPT}`,
       ),

@@ -5,6 +5,7 @@
 @import './calling.css';
 @import './closet.css';
 @import './coop/coop.css';
+@import './lobby.css';
 
 html,
 body {

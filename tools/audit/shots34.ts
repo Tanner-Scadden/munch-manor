@@ -52,6 +52,20 @@ const clickButton = (name: RegExp) => async (page: Page) => {
   await page.locator('dialog[open]').first().waitFor({ state: 'visible' })
 }
 
+// NOTE: PLAY opens the single player lobby for a player who has learned to
+// move and fire (a screen, not a dialog).
+const LOBBY_QUERY = 'learned=move,fire&rank=300&calling=Handyman'
+
+const toLobby = async (page: Page) => {
+  await page.getByRole('button', { name: /^play/i }).first().click()
+  await page.locator('.coop[data-screen="Solo"]').waitFor({ state: 'visible' })
+}
+
+const toLobbyHero = async (page: Page) => {
+  await toLobby(page)
+  await clickButton(/^hero/i)(page)
+}
+
 const fromHand = (name: RegExp) => async (page: Page) => {
   await clickButton(/^more/i)(page)
   await clickButton(name)(page)
@@ -140,7 +154,15 @@ const SCENES: ReadonlyArray<Scene> = [
     query: 'rotate&fit=full',
     act: clickButton(/settings/i),
   },
-  { name: 'difficulty', query: '', act: clickButton(/difficulty/i) },
+  { name: 'difficulty', query: 'ask', act: clickButton(/^play/i) },
+  { name: 'lobby', query: LOBBY_QUERY, act: toLobby },
+  {
+    name: 'lobby-hard',
+    query: `${LOBBY_QUERY}&difficulty=Hard&nightmare=Unlocked`,
+    act: toLobby,
+  },
+  { name: 'lobby-you', query: 'learned=move,fire', act: toLobby },
+  { name: 'lobby-hero', query: LOBBY_QUERY, act: toLobbyHero },
 ]
 
 const MIN_SIDE = 48

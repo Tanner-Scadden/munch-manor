@@ -10,10 +10,12 @@ import {
   closeDialogInScene,
   emitPressedKey,
   measureSurface,
+  openLobbyInScene,
   showDialogInScene,
 } from './testing'
 
-// The hero pill by the difficulty and its picker (src/callingView.ts).
+// The lobby's hero card and the picker it opens (src/lobbyView.ts,
+// src/callingView.ts).
 
 const callingPill = (name: string | RegExp) => role('button', { name })
 
@@ -23,12 +25,13 @@ const atRank = (rank: number, calling: Calling) =>
     calling: () => calling,
   })
 
-describe('the calling pill', () => {
+describe('the hero card', () => {
   test('shows the calling picked, with its key, and opens the picker', () => {
     scene(
       ROOT,
       given(atRank(3, 'Handyman')),
       measureSurface,
+      ...openLobbyInScene(),
       expect(callingPill(/^Hero: Handyman\./)).toHaveAttr(
         'aria-keyshortcuts',
         'Y',
@@ -48,6 +51,7 @@ describe('the calling pill', () => {
       ROOT,
       given(atRank(1, 'You')),
       measureSurface,
+      ...openLobbyInScene(),
       emitPressedKey('KeyY'),
       ...showDialogInScene(),
       expect(role('dialog', { name: 'Hero' })).toExist(),
@@ -61,6 +65,7 @@ describe('the picker', () => {
       ROOT,
       given(atRank(3, 'You')),
       measureSurface,
+      ...openLobbyInScene(),
       click(callingPill(/^Hero: YOU\./)),
       ...showDialogInScene(),
       expect(selector(".calling-card[data-lock='Open']")).toExist(),
@@ -68,10 +73,14 @@ describe('the picker', () => {
         role('button', { name: /^Handyman\. Plus: Planks 50% off/ }),
       ).toExist(),
       expect(
-        role('button', { name: /^Track Star, locked\. Reach rank 6 to unlock/ }),
+        role('button', {
+          name: /^Track Star, locked\. Reach rank 6 to unlock/,
+        }),
       ).toHaveAttr('aria-disabled', 'true'),
       expect(
-        role('button', { name: /^Line Cook, locked\. Reach rank 15 to unlock/ }),
+        role('button', {
+          name: /^Line Cook, locked\. Reach rank 15 to unlock/,
+        }),
       ).toExist(),
       expect(selector('.calling-need .rank-chip')).toExist(),
     )
@@ -82,6 +91,7 @@ describe('the picker', () => {
       ROOT,
       given(atRank(3, 'You')),
       measureSurface,
+      ...openLobbyInScene(),
       click(callingPill(/^Hero: YOU\./)),
       ...showDialogInScene(),
       expect(
@@ -102,11 +112,12 @@ describe('the picker', () => {
     )
   })
 
-  test('picking an unlocked calling closes the picker and changes the pill', () => {
+  test('picking an unlocked calling closes the picker and changes the card', () => {
     scene(
       ROOT,
       given(atRank(3, 'You')),
       measureSurface,
+      ...openLobbyInScene(),
       click(callingPill(/^Hero: YOU\./)),
       ...showDialogInScene(),
       click(role('button', { name: /^Handyman\./ })),
@@ -120,10 +131,13 @@ describe('the picker', () => {
       ROOT,
       given(atRank(3, 'You')),
       measureSurface,
+      ...openLobbyInScene(),
       click(callingPill(/^Hero: YOU\./)),
       ...showDialogInScene(),
       expect(
-        role('button', { name: /^Track Star, locked\. Reach rank 6 to unlock/ }),
+        role('button', {
+          name: /^Track Star, locked\. Reach rank 6 to unlock/,
+        }),
       ).toHaveAttr('aria-disabled', 'true'),
       expect(callingPill(/^Hero: YOU\./)).toExist(),
     )

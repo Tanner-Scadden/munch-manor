@@ -24,6 +24,7 @@ import {
   press,
   release,
   scoring,
+  startRunFromHome,
   tick,
   ticks,
   zombieAt,
@@ -56,7 +57,7 @@ describe('preparation', () => {
     story(
       update,
       given(readyModel),
-      press('Enter'),
+      startRunFromHome,
       release('Enter'),
       model(({ phase }) => {
         const preparation = Option.getOrThrow(
@@ -101,7 +102,7 @@ describe('preparation', () => {
     story(
       update,
       given(readyModel),
-      press('Enter'),
+      startRunFromHome,
       release('Enter'),
       press('KeyD'),
       holdFire,
@@ -119,7 +120,7 @@ describe('preparation', () => {
       story(
         update,
         given(readyModel),
-        press('Enter'),
+        startRunFromHome,
         release('Enter'),
         tick(FRAME_MS),
         press(code),
@@ -138,7 +139,7 @@ describe('preparation', () => {
     story(
       update,
       given(readyModel),
-      press('Enter'),
+      startRunFromHome,
       message(Message.ClickedStartWaveButton()),
       model(({ phase }) => {
         expect(Phase.guards.Wave(phase)).toBe(true)
