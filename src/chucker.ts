@@ -11,12 +11,19 @@ import {
   distanceBetween,
   normalize,
 } from './geometry'
-import { facingNearest, forEachSeatWhere, isStanding } from './party'
+import {
+  atSeat,
+  facingNearest,
+  forEachSeatWhere,
+  isStanding,
+  seatStateAt,
+} from './party'
 import type { World } from './world'
 import {
   GameEvent,
   Invulnerability,
   type Player,
+  type PlayerSlot,
   type Vector,
   type Zombie,
   ZombieAction,
@@ -167,11 +174,11 @@ const heftMsOf = (chucker: Zombie): number =>
     ? CHUCKER_RULES.heftMs * CHUCKER_RULES.limpHeftScale
     : CHUCKER_RULES.heftMs
 
-const tryGrab = (model: World, chucker: Zombie): World => {
+const tryGrab = (model: World, slot: PlayerSlot, chucker: Zombie): World => {
   if (
     !ZombieAction.isAnyOf(['Roaming'])(chucker.action) ||
     !isWalking(chucker) ||
-    !isInThrowRange(levelOf(model), chucker, model.player)
+    !isInThrowRange(levelOf(model), chucker, seatStateAt(model, slot).player)
   ) {
     return model
   }
@@ -236,8 +243,14 @@ const windChucker = (model: World, chucker: Zombie): World =>
     ),
   })
 
-const release = (model: World, chucker: Zombie, victim: Zombie): World => {
-  const target = { x: model.player.x, y: model.player.y }
+const release = (
+  model: World,
+  slot: PlayerSlot,
+  chucker: Zombie,
+  victim: Zombie,
+): World => {
+  const { player } = seatStateAt(model, slot)
+  const target = { x: player.x, y: player.y }
   return modifyFields(windChucker(model, chucker), {
     zombies: Array.map(
       setAction(
@@ -256,7 +269,12 @@ const release = (model: World, chucker: Zombie, victim: Zombie): World => {
   })
 }
 
-const stepHeft = (model: World, chucker: Zombie, deltaMs: number): World => {
+const stepHeft = (
+  model: World,
+  slot: PlayerSlot,
+  chucker: Zombie,
+  deltaMs: number,
+): World => {
   if (!ZombieAction.isAnyOf(['Hefting'])(chucker.action)) {
     return model
   }
@@ -280,7 +298,7 @@ const stepHeft = (model: World, chucker: Zombie, deltaMs: number): World => {
                 ),
               ),
             })
-          : release(model, chucker, victim),
+          : release(model, slot, chucker, victim),
     },
   )
 }
@@ -426,11 +444,11 @@ const land = (model: World, landing: Landing): World =>
       ),
     }),
     isStanding,
-    landed => landOn(landed, landing),
+    (landed, slot) => landOn(landed, slot, landing),
   )
 
-const landOn = (landed: World, landing: Landing): World => {
-  const { player } = landed
+const landOn = (landed: World, slot: PlayerSlot, landing: Landing): World => {
+  const { player } = seatStateAt(landed, slot)
   const isHit =
     Invulnerability.isAnyOf(['Vulnerable'])(player.invulnerability) &&
     distanceBetween(landing.at, player) <=
@@ -444,7 +462,9 @@ const landOn = (landed: World, landing: Landing): World => {
     () => OUTWARD,
   )
   return modifyFields(landed, {
-    player: () => woundPlayer(player, CHUCKER_RULES.landDamage, direction),
+    seats: atSeat(slot, {
+      player: () => woundPlayer(player, CHUCKER_RULES.landDamage, direction),
+    }),
     frameEvents: Array.append(
       GameEvent.PlayerHurt({
         x: player.x,
@@ -486,11 +506,11 @@ const isUnderThreat = (chucker: Zombie, player: Player): boolean =>
 // nearest small zombie in front of him as a shield: a Groaner if one is in
 // reach, otherwise a Hotfoot or an Ankle Biter, never a Kaboomer, a Big Lug,
 // or the boss.
-const tryShield = (model: World, chucker: Zombie): World => {
+const tryShield = (model: World, slot: PlayerSlot, chucker: Zombie): World => {
   if (
     !ZombieAction.isAnyOf(['Roaming'])(chucker.action) ||
     !isWalking(chucker) ||
-    !isUnderThreat(chucker, model.player)
+    !isUnderThreat(chucker, seatStateAt(model, slot).player)
   ) {
     return model
   }
@@ -520,7 +540,7 @@ const tryShield = (model: World, chucker: Zombie): World => {
                   ZombieAction.Shielding({
                     victimId: victim.id,
                     remainingMs: CHUCKER_RULES.shieldMs,
-                    aim: angleBetween(chucker, model.player),
+                    aim: angleBetween(chucker, seatStateAt(model, slot).player),
                   }),
                 ),
                 setAction(
@@ -577,7 +597,12 @@ const turnToward = (aim: number, target: number, maxTurn: number): number => {
 
 // NOTE: he turns slowly to keep the shield toward the player, so a player
 // who circles around him can shoot him from the side.
-const stepShield = (model: World, chucker: Zombie, deltaMs: number): World => {
+const stepShield = (
+  model: World,
+  slot: PlayerSlot,
+  chucker: Zombie,
+  deltaMs: number,
+): World => {
   if (!ZombieAction.isAnyOf(['Shielding'])(chucker.action)) {
     return model
   }
@@ -592,7 +617,7 @@ const stepShield = (model: World, chucker: Zombie, deltaMs: number): World => {
 
   const turned = turnToward(
     aim,
-    angleBetween(chucker, model.player),
+    angleBetween(chucker, seatStateAt(model, slot).player),
     (CHUCKER_RULES.shieldTurnPerSecond * deltaMs) / MS_PER_SECOND,
   )
   return modifyFields(model, {
@@ -655,8 +680,13 @@ export const advanceChuckers = (model: World, deltaMs: number): World => {
       Option.match(findZombie(current.zombies, chucker.id), {
         onNone: () => current,
         onSome: latest =>
-          facingNearest(current, latest, fight =>
-            stepShield(stepHeft(fight, latest, deltaMs), latest, deltaMs),
+          facingNearest(current, latest, (fight, slot) =>
+            stepShield(
+              stepHeft(fight, slot, latest, deltaMs),
+              slot,
+              latest,
+              deltaMs,
+            ),
           ),
       }),
   )
@@ -675,11 +705,11 @@ export const advanceChuckers = (model: World, deltaMs: number): World => {
       Option.match(findZombie(current.zombies, chucker.id), {
         onNone: () => current,
         onSome: latest =>
-          facingNearest(current, latest, fight => {
-            const shielded = tryShield(fight, latest)
+          facingNearest(current, latest, (fight, slot) => {
+            const shielded = tryShield(fight, slot, latest)
             return Option.match(findZombie(shielded.zombies, latest.id), {
               onNone: () => shielded,
-              onSome: after => tryGrab(shielded, after),
+              onSome: after => tryGrab(shielded, slot, after),
             })
           }),
       }),

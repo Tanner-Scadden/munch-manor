@@ -8,8 +8,8 @@ import {
   isDowned,
   isHere,
   isStanding,
-  leadSeatOf,
-  withSeat,
+  modifySeat,
+  seatStateAt,
 } from './party'
 import { tapToBuy } from './purchase'
 import { markReady } from './revive'
@@ -38,8 +38,10 @@ import {
   GunSlot,
   type Intent,
   Phase,
+  type Player,
   type PlayerSlot,
   SOLO_SLOT,
+  type ShopCategory,
   ShopItemId,
   ShopState,
   idleIntent,
@@ -75,11 +77,11 @@ const inputOf = (inputsByPlayer: InputsByPlayer, slot: PlayerSlot): Intent =>
 
 // NOTE: an away player stands frozen and a bled-out one is out of the
 // fight (decided row 4, row 10). A downed one crawls but cannot fire.
-const intentFor = (world: World, intent: Intent): Intent => {
+const intentFor = (world: World, slot: PlayerSlot, intent: Intent): Intent => {
   if (!isCoop(world)) {
     return intent
   }
-  const seat = leadSeatOf(world)
+  const { seat } = seatStateAt(world, slot)
   if (!isHere(seat) || !(isStanding(seat) || isDowned(seat))) {
     return idleIntent
   }
@@ -92,9 +94,9 @@ export const stepWorld = (
   world: World,
   inputsByPlayer: InputsByPlayer,
 ): Stepped => {
-  const intended = forEachSeat(world, (seatWorld, slot) =>
-    modifyFields(seatWorld, {
-      intent: () => intentFor(seatWorld, inputOf(inputsByPlayer, slot)),
+  const intended = forEachSeat(world, (current, slot) =>
+    modifySeat(current, slot, {
+      intent: () => intentFor(current, slot, inputOf(inputsByPlayer, slot)),
     }),
   )
   const ticked = advanceTick(intended)
@@ -147,110 +149,120 @@ const notNow: ActionResult = Result.fail(ActionRefusal.NotNow())
 const refused = (reason: string): ActionRefusal =>
   ActionRefusal.Refused({ reason })
 
-const isFighting = (world: World): boolean =>
-  isRoundActive(world.phase) &&
-  isStanding(leadSeatOf(world)) &&
-  !ShopState.isAnyOf(['Browsing'])(world.shop)
+const isFighting = (world: World, slot: PlayerSlot): boolean => {
+  const { seat, shop } = seatStateAt(world, slot)
+  return (
+    isRoundActive(world.phase) &&
+    isStanding(seat) &&
+    !ShopState.isAnyOf(['Browsing'])(shop)
+  )
+}
 
 const whenFighting =
-  (act: (world: World) => ActionResult) =>
-  (world: World): ActionResult =>
-    isFighting(world) ? act(world) : notNow
+  (act: (world: World, slot: PlayerSlot) => ActionResult) =>
+  (world: World, slot: PlayerSlot): ActionResult =>
+    isFighting(world, slot) ? act(world, slot) : notNow
 
-const inHand = (change: (player: World['player']) => World['player']) =>
-  whenFighting(world => Result.succeed(modifyFields(world, { player: change })))
+const inHand = (change: (player: Player) => Player) =>
+  whenFighting((world, slot) =>
+    Result.succeed(modifySeat(world, slot, { player: change })),
+  )
 
 const swap = inHand(swapInHand)
 
 const melee = inHand(drawMelee)
 
-const draw = (world: World, slot: GunSlot): ActionResult =>
-  inHand(player => drawSlot(player, slot))(world)
+const draw = (world: World, slot: PlayerSlot, gun: GunSlot): ActionResult =>
+  inHand(player => drawSlot(player, gun))(world, slot)
 
 // NOTE: with the knife out, a reload puts the last gun back in hand first,
 // even when that gun cannot reload.
-const reload = (world: World): ActionResult => {
-  const drawn = isWieldingMelee(world.player)
-    ? draw(world, heldSlotOf(world.player.arsenal))
+const reload = (world: World, slot: PlayerSlot): ActionResult => {
+  const { player } = seatStateAt(world, slot)
+  const drawn = isWieldingMelee(player)
+    ? draw(world, slot, heldSlotOf(player.arsenal))
     : notNow
   const inHandNow = Result.getOrElse(drawn, () => world)
-  return isFighting(inHandNow) && canReload(inHandNow.player)
-    ? Result.succeed(modifyFields(inHandNow, { player: beginReload }))
+  return isFighting(inHandNow, slot) &&
+    canReload(seatStateAt(inHandNow, slot).player)
+    ? Result.succeed(modifySeat(inHandNow, slot, { player: beginReload }))
     : drawn
 }
 
 // NOTE: with no trap in stock there is nothing to try.
-const placeTrap = whenFighting(world =>
-  Option.isNone(maybeSelectedKind(world))
+const placeTrap = whenFighting((world, slot) =>
+  Option.isNone(maybeSelectedKind(world, slot))
     ? notNow
-    : Result.mapBoth(placeTrapIn(world), {
+    : Result.mapBoth(placeTrapIn(world, slot), {
         onFailure: refused,
         onSuccess: ({ world: placed }) => placed,
       }),
 )
 
-const nextTrap = whenFighting(world => Result.succeed(cycleTrap(world)))
+const nextTrap = whenFighting((world, slot) =>
+  Result.succeed(cycleTrap(world, slot)),
+)
 
 // NOTE: only at the counter, and only in a break the shop is open for.
-const buy = (world: World, item: ShopItemId): ActionResult =>
-  ShopState.isAnyOf(['Browsing'])(world.shop) && isShopOpenFor(world.phase)
-    ? Result.mapError(tryPurchase(world, item), refused)
+const buy = (world: World, slot: PlayerSlot, item: ShopItemId): ActionResult =>
+  ShopState.isAnyOf(['Browsing'])(seatStateAt(world, slot).shop) &&
+  isShopOpenFor(world.phase)
+    ? Result.mapError(tryPurchase(world, slot, item), refused)
     : notNow
 
-const leaveCounter = (world: World): ActionResult =>
-  ShopState.isAnyOf(['Browsing'])(world.shop)
-    ? Result.succeed(modifyFields(world, { shop: () => ShopState.Dismissed() }))
+const leaveCounter = (world: World, slot: PlayerSlot): ActionResult =>
+  ShopState.isAnyOf(['Browsing'])(seatStateAt(world, slot).shop)
+    ? Result.succeed(
+        modifySeat(world, slot, { shop: () => ShopState.Dismissed() }),
+      )
     : notNow
 
 // NOTE: READY in single player starts the wave at once, as START WAVE
 // always has; in co-op it waits for everyone. Only a break has one.
-const ready = (world: World): ActionResult =>
+const ready = (world: World, slot: PlayerSlot): ActionResult =>
   Phase.isAnyOf(['Preparation'])(world.phase)
-    ? Result.succeed(isCoop(world) ? markReady(world) : startWaveEarly(world))
+    ? Result.succeed(
+        isCoop(world) ? markReady(world, slot) : startWaveEarly(world),
+      )
     : notNow
 
 // NOTE: a tap at the ammo window mid-wave buys there on the next tick, with
 // no hold (src/purchase.ts, tapToBuy). Away from it there is nothing to tap.
-const buyAmmo = (world: World): ActionResult =>
-  Option.match(tapToBuy(world), {
+const buyAmmo = (world: World, slot: PlayerSlot): ActionResult =>
+  Option.match(tapToBuy(world, slot), {
     onNone: () => notNow,
     onSome: Result.succeed,
   })
 
-// NOTE: an action on a seat World's lead seat (party.ts, withSeat): the
-// World it makes, or why it made none.
+// NOTE: an action by the seat at `slot`: the World it makes, or why it made
+// none.
 export const trySeatAction = (
-  seatWorld: World,
+  world: World,
+  slot: PlayerSlot,
   action: SeatAction,
 ): ActionResult =>
   SeatAction.match(action, {
-    Swap: () => swap(seatWorld),
-    Melee: () => melee(seatWorld),
-    Draw: ({ slot }) => draw(seatWorld, slot),
-    Reload: () => reload(seatWorld),
-    PlaceTrap: () => placeTrap(seatWorld),
-    NextTrap: () => nextTrap(seatWorld),
-    Buy: ({ item }) => buy(seatWorld, item),
-    LeaveCounter: () => leaveCounter(seatWorld),
-    Ready: () => ready(seatWorld),
-    BuyAmmo: () => buyAmmo(seatWorld),
+    Swap: () => swap(world, slot),
+    Melee: () => melee(world, slot),
+    Draw: ({ slot: gun }) => draw(world, slot, gun),
+    Reload: () => reload(world, slot),
+    PlaceTrap: () => placeTrap(world, slot),
+    NextTrap: () => nextTrap(world, slot),
+    Buy: ({ item }) => buy(world, slot, item),
+    LeaveCounter: () => leaveCounter(world, slot),
+    Ready: () => ready(world, slot),
+    BuyAmmo: () => buyAmmo(world, slot),
   })
 
 export const applySeatAction = (
   world: World,
   slot: PlayerSlot,
   action: SeatAction,
-): World =>
-  withSeat(world, slot, seatWorld =>
-    Result.getOrElse(trySeatAction(seatWorld, action), () => seatWorld),
-  )
+): World => Result.getOrElse(trySeatAction(world, slot, action), () => world)
 
 // NOTE: a tap on a HUD gun slot. On the gun in hand it reloads it; any
 // other tap draws that gun, from the knife too.
-export const gunSlotAction = (
-  player: World['player'],
-  slot: GunSlot,
-): SeatAction =>
+export const gunSlotAction = (player: Player, slot: GunSlot): SeatAction =>
   !isWieldingMelee(player) && heldSlotOf(player.arsenal) === slot
     ? SeatAction.Reload()
     : SeatAction.Draw({ slot })
@@ -263,11 +275,14 @@ export const gunSlotAction = (
 export const FocusStep = Schema.Literals(['Previous', 'Next'])
 export type FocusStep = typeof FocusStep.Type
 
-const categoryAfter = (world: World, step: FocusStep) => {
+const categoryAfter = (
+  shopCategory: ShopCategory,
+  step: FocusStep,
+): ShopCategory => {
   const index = Option.getOrElse(
     Array.findFirstIndex(
       SHOP_CATEGORY_ORDER,
-      category => category === world.shopCategory,
+      category => category === shopCategory,
     ),
     () => 0,
   )
@@ -277,16 +292,17 @@ const categoryAfter = (world: World, step: FocusStep) => {
       SHOP_CATEGORY_ORDER,
       (index + (step === 'Next' ? 1 : count - 1)) % count,
     ),
-    () => world.shopCategory,
+    () => shopCategory,
   )
 }
 
-const stepFocus = (world: World, step: FocusStep): World => {
-  if (!ShopState.isAnyOf(['Browsing'])(world.shop)) {
+const stepFocus = (world: World, slot: PlayerSlot, step: FocusStep): World => {
+  const { shop, shopCategory } = seatStateAt(world, slot)
+  if (!ShopState.isAnyOf(['Browsing'])(shop)) {
     return world
   }
-  const focused = world.shop.focusedItem
-  const items = itemsIn(world, world.shopCategory)
+  const focused = shop.focusedItem
+  const items = itemsIn(world, slot, shopCategory)
   const index = Option.getOrElse(
     Array.findFirstIndex(items, item => item === focused),
     () => -1,
@@ -294,15 +310,17 @@ const stepFocus = (world: World, step: FocusStep): World => {
   const nextIndex = step === 'Next' ? index + 1 : index - 1
   return Option.match(Array.get(items, nextIndex), {
     onSome: item =>
-      modifyFields(world, {
+      modifySeat(world, slot, {
         shop: () => ShopState.Browsing({ focusedItem: item }),
       }),
     onNone: () => {
-      const category = categoryAfter(world, step)
-      return modifyFields(world, {
+      const category = categoryAfter(shopCategory, step)
+      return modifySeat(world, slot, {
         shopCategory: () => category,
         shop: () =>
-          ShopState.Browsing({ focusedItem: suggestedItem(world, category) }),
+          ShopState.Browsing({
+            focusedItem: suggestedItem(world, slot, category),
+          }),
       })
     },
   })
@@ -312,4 +330,4 @@ export const stepShopFocus = (
   world: World,
   slot: PlayerSlot,
   step: FocusStep,
-): World => withSeat(world, slot, seatWorld => stepFocus(seatWorld, step))
+): World => stepFocus(world, slot, step)

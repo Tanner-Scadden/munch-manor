@@ -27,6 +27,7 @@ import {
   initialModel,
 } from './model'
 import { inPortrait, midWaveAtStall, pastTimedBreaks } from './model.fixture'
+import { modifyFocus } from './party'
 import { purchaseOverlayShapes } from './purchaseView'
 import { SHOP_ITEMS } from './shop'
 import {
@@ -39,18 +40,22 @@ import { asVeteran } from './veteran'
 import { maxRounds } from './weapons'
 
 const atBoards = (device: InputDevice, balance: number): Model =>
-  modifyFields(pastTimedBreaks(asVeteran(initialModel)), {
-    lastDevice: () => device,
-    phase: () =>
-      Phase.Preparation({
-        wave: 3,
-        remainingMs: 15_000,
-        durationMs: 20_000,
-        spawns: [],
-      }),
-    wallet: () => ({ balance, earned: balance, shown: balance }),
-    player: player => modifyFields(player, { x: () => 70, y: () => 26 }),
-  })
+  modifyFocus(
+    modifyFields(pastTimedBreaks(asVeteran(initialModel)), {
+      lastDevice: () => device,
+      phase: () =>
+        Phase.Preparation({
+          wave: 3,
+          remainingMs: 15_000,
+          durationMs: 20_000,
+          spawns: [],
+        }),
+    }),
+    {
+      wallet: () => ({ balance, earned: balance, shown: balance }),
+      player: player => modifyFields(player, { x: () => 70, y: () => 26 }),
+    },
+  )
 
 const holdButton = role('button', {
   name: `Hold to open the kitchen for ${EXIT_RULES.price} dollars`,
@@ -124,24 +129,28 @@ describe('taking a fridge prize on touch', () => {
   const offered = (): Model => {
     const kitchen = openExitIn(asVeteran(initialModel).level, KITCHEN_EXIT)
     const box = Option.getOrThrow(fridgeBoxOf(levelOf({ level: kitchen })))
-    return modifyFields(atBoards('Touch', 0), {
-      level: () => kitchen,
-      player: player =>
-        modifyFields(player, {
-          x: () => (box.left + box.right) / 2,
-          y: () => box.bottom + 8,
-        }),
-      fridge: fridge =>
-        modifyFields(fridge, {
-          door: () =>
-            FridgeDoor.Offering({
-              prize: 'Freeze',
-              slot: 0,
-              remainingMs: 5000,
-              durationMs: FRIDGE_RULES.offerMs,
-            }),
-        }),
-    })
+    return modifyFocus(
+      modifyFields(atBoards('Touch', 0), {
+        level: () => kitchen,
+        fridge: fridge =>
+          modifyFields(fridge, {
+            door: () =>
+              FridgeDoor.Offering({
+                prize: 'Freeze',
+                slot: 0,
+                remainingMs: 5000,
+                durationMs: FRIDGE_RULES.offerMs,
+              }),
+          }),
+      }),
+      {
+        player: player =>
+          modifyFields(player, {
+            x: () => (box.left + box.right) / 2,
+            y: () => box.bottom + 8,
+          }),
+      },
+    )
   }
 
   const takeButton = role('button', {
@@ -171,7 +180,7 @@ describe('the price tag in a zoomed phone window', () => {
     purchaseOverlayShapes(model, screenCameraOf(model))
   const upright = (y: number): Model =>
     inPortrait(
-      modifyFields(atBoards('Touch', 85), {
+      modifyFocus(atBoards('Touch', 85), {
         player: player => modifyFields(player, { y: () => y }),
       }),
     )
@@ -216,7 +225,7 @@ describe('the ammo tag', () => {
     scene(
       ROOT,
       given(
-        modifyFields(midWaveAtStall('Smg', 10), {
+        modifyFocus(midWaveAtStall('Smg', 10), {
           player: player => modifyFields(player, { x: () => 40 }),
         }),
       ),

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
+import { focusOf } from '../../src/party'
 import { waveSeedAt } from './bot'
 import { DEFAULT_OPTIONS } from './bot/basics'
 import {
@@ -47,8 +48,10 @@ describe('wave snapshots', () => {
     const rolled = rerolled(snapshot.model, waveSeedAt(1, 0))
     const phaseOf = (seed: number) =>
       JSON.stringify(rerolled(snapshot.model, seed).phase)
-    expect(rolled.wallet).toEqual(snapshot.model.wallet)
-    expect(rolled.player.arsenal).toEqual(snapshot.model.player.arsenal)
+    expect(focusOf(rolled).wallet).toEqual(focusOf(snapshot.model).wallet)
+    expect(focusOf(rolled).player.arsenal).toEqual(
+      focusOf(snapshot.model).player.arsenal,
+    )
     expect(rolled.phase._tag).toBe('Preparation')
     expect(phaseOf(waveSeedAt(1, 0))).toBe(phaseOf(waveSeedAt(1, 0)))
     expect(phaseOf(waveSeedAt(1, 0))).not.toBe(phaseOf(waveSeedAt(1, 1)))

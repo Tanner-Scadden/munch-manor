@@ -131,7 +131,7 @@ const aimTarget = (page: Page) =>
       if (z.state._tag === 'Dying') {
         continue
       }
-      const d = Math.hypot(z.x - m.player.x, z.y - m.player.y)
+      const d = Math.hypot(z.x - m.seats[0].player.x, z.y - m.seats[0].player.y)
       if (d < bestDistance) {
         bestDistance = d
         best = z

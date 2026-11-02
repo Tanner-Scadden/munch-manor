@@ -28,7 +28,7 @@ import {
 // - Literals and union tags as their index, options as a flag, strings and
 //   lists with their length.
 // - The entity lists (zombies, bullets, lids, pickups, traps, and the
-//   teammates) are keyed by id, so a diff names only what came, went, or
+//   seats, by slot) are keyed by id, so a diff names only what came, went, or
 //   changed.
 // - A diff is a mask of the fields that changed, nested: a zombie that
 //   only walked writes its id, a mask byte, and its new x and y.
@@ -62,7 +62,7 @@ const KEYED_LISTS: ReadonlyMap<string, KeyOf> = new Map([
   ['lobs', fieldNumber('id')],
   ['pickups', fieldNumber('id')],
   ['traps', fieldNumber('id')],
-  ['mates', fieldNumber('seat', 'slot')],
+  ['seats', fieldNumber('seat', 'slot')],
 ])
 
 // NOTE: World fields that never go on the wire.
@@ -818,16 +818,14 @@ const propertyName = (property: SchemaAST.PropertySignature): string =>
 const isOptionalProperty = (property: SchemaAST.PropertySignature): boolean =>
   property.type.context?.isOptional === true
 
-const fieldCodec = (name: string, ast: SchemaAST.AST): Codec => {
-  const inner = codecOf(ast)
-  return Option.match(Option.fromNullishOr(KEYED_LISTS.get(name)), {
-    onNone: () => inner,
+const fieldCodec = (name: string, ast: SchemaAST.AST): Codec =>
+  Option.match(Option.fromNullishOr(KEYED_LISTS.get(name)), {
+    onNone: () => codecOf(ast),
     onSome: keyOf =>
       ast._tag === 'Arrays' && Array.isReadonlyArrayNonEmpty(ast.rest)
         ? keyedListCodec(codecOf(ast.rest[0]), keyOf)
-        : inner,
+        : codecOf(ast),
   })
-}
 
 const objectsCodec = (
   ast: SchemaAST.Objects,
@@ -926,7 +924,8 @@ const isWorld = (value: unknown): value is World =>
   'phase' in value &&
   'zombies' in value &&
   'party' in value &&
-  'player' in value
+  isList(value['seats']) &&
+  value['seats'].length > 0
 
 const worldOf = (value: unknown): World =>
   isWorld(value) ? value : fail('The wire gave back no World')

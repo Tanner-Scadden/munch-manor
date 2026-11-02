@@ -517,7 +517,8 @@ const draw = (
         context.fillStyle = '#ffe9a8'
         context.fillRect(bullet.x - 1, bullet.y - 1, 2, 2)
       })
-      Array.forEach(playersOf(drawn.world), ({ slot, player, seat }) => {
+      Array.forEach(playersOf(drawn.world), ({ seat, player }) => {
+        const { slot } = seat
         const mine = Option.exists(play.slot, own => own === slot)
         const away = seat.presence === 'Away'
         context.globalAlpha = away ? 0.35 : 1
@@ -798,7 +799,7 @@ const playRoom = (
             seated =>
               !Option.exists(
                 rendered.session.slot,
-                slot => slot === seated.slot,
+                slot => slot === seated.seat.slot,
               ),
           ),
       })
@@ -846,7 +847,7 @@ const playRoom = (
           onSome: world => world.tick,
         }),
         others: Array.map(others, seated => ({
-          slot: seated.slot,
+          slot: seated.seat.slot,
           x: seated.player.x,
           y: seated.player.y,
           away: seated.seat.presence === 'Away',

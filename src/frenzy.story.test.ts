@@ -18,6 +18,7 @@ import {
   type Zombie,
   initialModel,
 } from './model'
+import { focusOf, modifyFocus } from './party'
 import { bulletInto, tick, ticks, zombieAt } from './testing'
 
 const FRAME_MS = FIXED_STEP_MS
@@ -49,19 +50,27 @@ const packOf = (
 const DISTANT_SPAWN = spawnOf(99_999, 1e9)
 
 const sturdyIn = (spawns: ReadonlyArray<PlannedSpawn>): Model =>
-  modifyFields(initialModel, {
-    maybeSurface: () =>
-      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-    phase: () =>
-      Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [...spawns, DISTANT_SPAWN] }),
-    frenzyPacks: () => frenzyPacksOf(spawns),
-    player: player =>
-      modifyFields(player, {
-        hp: () => 1e6,
-        invulnerability: () =>
-          Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
-      }),
-  })
+  modifyFocus(
+    modifyFields(initialModel, {
+      maybeSurface: () =>
+        Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+      phase: () =>
+        Phase.Wave({
+          wave: 3,
+          elapsedMs: 0,
+          spawns: [...spawns, DISTANT_SPAWN],
+        }),
+      frenzyPacks: () => frenzyPacksOf(spawns),
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          hp: () => 1e6,
+          invulnerability: () =>
+            Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
+        }),
+    },
+  )
 
 const frenziedOf = (current: Model): ReadonlyArray<Zombie> =>
   Array.filter(current.zombies, zombie =>
@@ -132,12 +141,16 @@ describe('horde frenzy', () => {
       zombieAt(3, 40, 48, { frenzy: pack }),
     ]
     const straggler = zombieAt(4, 280, 160, { frenzy: pack })
-    const start = modifyFields(sturdyIn([]), {
-      zombies: () => [...together, straggler],
-      frenzyPacks: () => [{ pack: 7, left: 4, bonus: 4 }],
-      player: player =>
-        modifyFields(player, { x: () => CENTER_X, y: () => CENTER_Y }),
-    })
+    const start = modifyFocus(
+      modifyFields(sturdyIn([]), {
+        zombies: () => [...together, straggler],
+        frenzyPacks: () => [{ pack: 7, left: 4, bonus: 4 }],
+      }),
+      {
+        player: player =>
+          modifyFields(player, { x: () => CENTER_X, y: () => CENTER_Y }),
+      },
+    )
     // NOTE: the ticks to drift apart, one that starts the fade, and one
     // into it, so the pace has begun to drop.
     const apartFrames = Math.ceil(FRENZY_RULES.apartMs / FRAME_MS) + 2
@@ -214,7 +227,9 @@ describe('horde frenzy', () => {
         expect(wiped).toHaveLength(1)
         expect(Array.map(wiped, ({ bonus }) => bonus)).toEqual([9])
         expect(current.frenzyPacks).toEqual([])
-        expect(current.wallet.earned - start.wallet.earned).toBe(9 + 2 * 2)
+        expect(
+          focusOf(current).wallet.earned - focusOf(start).wallet.earned,
+        ).toBe(9 + 2 * 2)
       }),
       ...ticks(3, FRAME_MS),
       model(current => {

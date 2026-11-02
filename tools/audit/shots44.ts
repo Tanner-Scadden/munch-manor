@@ -59,7 +59,9 @@ const SCENES: ReadonlyArray<Scene> = [
     name: 'sale',
     query: `${MID_WAVE}&rounds=20&${AT_WINDOW}&hold&tick=44`,
     act: async (page, problems, label) => {
-      const balance = await page.evaluate(() => window.__model.wallet.balance)
+      const balance = await page.evaluate(
+        () => window.__model.seats[0].wallet.balance,
+      )
       if (balance >= 120) {
         problems.push(`${label}: holding at the ammo window did not buy`)
       }

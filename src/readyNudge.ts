@@ -3,7 +3,14 @@ import { modifyFields } from 'foldkit/struct'
 
 import { isPracticeGateHeld } from './lessons'
 import { type Model, Phase, ShopState } from './model'
-import { isCoop, isDowned, isHere, leadSeatOf, playersOf } from './party'
+import {
+  focusOf,
+  isCoop,
+  isDowned,
+  isHere,
+  leadSeatOf,
+  playersOf,
+} from './party'
 import { isBrowsing, isNearStall } from './shop'
 import { isKitchenTourOn } from './tutorialRules'
 
@@ -20,16 +27,16 @@ export const CREW_NUDGE_MS = 8_000
 export const LAST_ONE_NUDGE_MS = 2_500
 
 const isActive = (model: Model): boolean => {
-  const { move, maybeAim, trigger, interact } = model.intent
+  const { move, maybeAim, trigger, interact } = focusOf(model).intent
   return (
     move.x !== 0 ||
     move.y !== 0 ||
     maybeAim._tag === 'Some' ||
     trigger === 'Held' ||
     interact === 'Held' ||
-    isBrowsing(model.shop) ||
-    model.purchase._tag !== 'Idle' ||
-    (!isCoop(model) && isNearStall(model.player))
+    isBrowsing(focusOf(model).shop) ||
+    focusOf(model).purchase._tag !== 'Idle' ||
+    (!isCoop(model) && isNearStall(focusOf(model).player))
   )
 }
 
@@ -56,7 +63,7 @@ const isLastOneIn = (model: Model): boolean =>
   isCoop(model) &&
   Array.every(
     playersOf(model),
-    ({ slot, seat }) =>
+    ({ seat: { slot }, seat }) =>
       slot === leadSeatOf(model).slot ||
       !isHere(seat) ||
       isDowned(seat) ||
@@ -66,7 +73,7 @@ const isLastOneIn = (model: Model): boolean =>
 export const isWaitingOnYou = (model: Model): boolean => {
   if (
     !isWaitingOnClock(model) ||
-    ShopState.isAnyOf(['Browsing'])(model.shop) ||
+    ShopState.isAnyOf(['Browsing'])(focusOf(model).shop) ||
     isPracticeGateHeld(model) ||
     isKitchenTourOn(model) ||
     model.firstBreakQuest._tag === 'Running'

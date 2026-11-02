@@ -20,14 +20,8 @@ import {
   SHOP_GOOD_NAMES,
   SHOP_GUIDE_SECTION_NAMES,
 } from './names'
-import {
-  BAR_SEGMENTS,
-  LASER_SIGHT_PRICE,
-  SHOP_GUNS,
-  SHOP_ITEMS,
-  ShopGood,
-  repairItemId,
-} from './shop'
+import { LASER_SIGHT_PRICE, SHOP_ITEMS, ShopGood, repairItemId } from './shop'
+import { BAR_SEGMENTS, SHOP_GUNS } from './shopStats'
 import { TRAPS, TRAP_KIND_ORDER } from './traps'
 import { UPGRADE_TIERS, WEAPONS, maxTier, statsAt } from './weapons'
 import {

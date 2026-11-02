@@ -21,6 +21,7 @@ import * as Coop from './coop/model'
 import type { Message } from './message'
 import { type Model, Phase, ShopState, initialModel } from './model'
 import { homeAfterRead } from './model.fixture'
+import { modifyFocus } from './party'
 import {
   ROOT,
   holdingSecond,
@@ -95,36 +96,41 @@ const holdsDialogsApart = tap<Model, Message>(({ html }) => {
   ).toEqual(Array.sort(DIALOG_IDS, Order.String))
 })
 
-const atStall: Model = modifyFields(initialModel, {
-  maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-  phase: () =>
-    Phase.Preparation({
-      wave: 4,
-      remainingMs: 15_000,
-      durationMs: PREPARATION_MS,
-      spawns: [
-        {
-          atMs: 1e9,
-          kind: 'Shambler',
-          door: 'North',
-          offset: 0,
-          speedScale: 1,
-          hpScale: 1,
-          pack: 0,
-          formation: 'Squad',
-        },
-      ],
-    }),
-  player: player =>
-    modifyFields(player, {
-      x: () => 270,
-      y: () => 142,
-      hp: () => 3,
-      arsenal: () =>
-        holdingSecond({ kind: 'Smg', rounds: 200, loaded: 30, tier: 1 }),
-    }),
-  wallet: () => ({ balance: 180, earned: 180, shown: 180 }),
-})
+const atStall: Model = modifyFocus(
+  modifyFields(initialModel, {
+    maybeSurface: () =>
+      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+    phase: () =>
+      Phase.Preparation({
+        wave: 4,
+        remainingMs: 15_000,
+        durationMs: PREPARATION_MS,
+        spawns: [
+          {
+            atMs: 1e9,
+            kind: 'Shambler',
+            door: 'North',
+            offset: 0,
+            speedScale: 1,
+            hpScale: 1,
+            pack: 0,
+            formation: 'Squad',
+          },
+        ],
+      }),
+  }),
+  {
+    player: player =>
+      modifyFields(player, {
+        x: () => 270,
+        y: () => 142,
+        hp: () => 3,
+        arsenal: () =>
+          holdingSecond({ kind: 'Smg', rounds: 200, loaded: 30, tier: 1 }),
+      }),
+    wallet: () => ({ balance: 180, earned: 180, shown: 180 }),
+  },
+)
 
 describe('the shop dialog', () => {
   test('walking into the stall opens one shop, keyed on its id, and its buy buttons buy', () => {
@@ -157,9 +163,8 @@ const OPEN_CASES: ReadonlyArray<OpenCase> = [
   { name: 'nothing open', model: homeAfterRead, opensDialog: false },
   {
     name: 'the shop',
-    model: modifyFields(atStall, {
+    model: modifyFocus(modifyFields(atStall, { shopDialog: opened }), {
       shop: () => ShopState.Browsing({ focusedItem: 'SmgRounds' }),
-      shopDialog: opened,
     }),
     opensDialog: true,
   },

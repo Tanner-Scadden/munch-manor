@@ -31,6 +31,7 @@ import {
   ShopState,
 } from './model'
 import { DISTANT_SPAWN, withArsenal, withPlayerAt } from './model.fixture'
+import { focusOf, focusSlotOf, modifyFocus } from './party'
 import { LASER_SIGHT_PRICE, SHOP_ITEMS, itemsIn, stallPrompt } from './shop'
 import {
   FRAMES_TO_STALL,
@@ -96,7 +97,7 @@ describe('money', () => {
       update,
       given(killShot(modifyFields(shopReady, { phase: () => fighting(1) }))),
       tick(SHORT_FRAME_MS),
-      model(({ wallet, popups, frameEvents }) => {
+      model(({ seats: [{ wallet }], popups, frameEvents }) => {
         expect(wallet.balance).toBe(SHAMBLER_BOUNTY)
         expect(wallet.earned).toBe(SHAMBLER_BOUNTY)
         expect(
@@ -131,7 +132,7 @@ describe('money', () => {
         ),
       ),
       tick(SHORT_FRAME_MS),
-      model(({ phase, wallet, popups, frameEvents }) => {
+      model(({ phase, seats: [{ wallet }], popups, frameEvents }) => {
         expect(waveBonus(wave)).toBe(
           WAVE_BONUS_BASE + WAVE_BONUS_PER_WAVE * wave,
         )
@@ -154,15 +155,17 @@ describe('money', () => {
       update,
       given(
         killShot(
-          modifyFields(shopReady, {
-            phase: () =>
-              Phase.Wave({ wave: FINAL_WAVE, elapsedMs: 0, spawns: [] }),
-            wallet: () => ({ balance: 10, earned: 200, shown: 10 }),
-          }),
+          modifyFocus(
+            modifyFields(shopReady, {
+              phase: () =>
+                Phase.Wave({ wave: FINAL_WAVE, elapsedMs: 0, spawns: [] }),
+            }),
+            { wallet: () => ({ balance: 10, earned: 200, shown: 10 }) },
+          ),
         ),
       ),
       tick(SHORT_FRAME_MS),
-      model(({ phase, wallet }) => {
+      model(({ phase, seats: [{ wallet }] }) => {
         expect(phase).toEqual(Phase.Victory())
         expect(wallet.balance).toBe(
           10 + SHAMBLER_BOUNTY + waveBonus(FINAL_WAVE),
@@ -173,7 +176,7 @@ describe('money', () => {
       }),
       ...ticks(RESTART_GRACE_TICKS, GRACE_TICK_MS),
       press('Enter'),
-      model(({ wallet, player }) => {
+      model(({ seats: [{ wallet, player }] }) => {
         expect(wallet).toEqual({ balance: 0, earned: 0, shown: 0 })
         expect(player.arsenal).toEqual(pistolOnly())
       }),
@@ -184,18 +187,17 @@ describe('money', () => {
     story(
       update,
       given(
-        modifyFields(shopReady, {
-          phase: () => preparing(2),
+        modifyFocus(modifyFields(shopReady, { phase: () => preparing(2) }), {
           wallet: () => ({ balance: 60, earned: 60, shown: 0 }),
         }),
       ),
       tick(SHORT_FRAME_MS),
-      model(({ wallet }) => {
+      model(({ seats: [{ wallet }] }) => {
         expect(wallet.shown).toBeGreaterThan(0)
         expect(wallet.shown).toBeLessThan(60)
       }),
       ...ticks(60, SHORT_FRAME_MS),
-      model(({ wallet }) => {
+      model(({ seats: [{ wallet }] }) => {
         expect(wallet.shown).toBe(60)
       }),
     )
@@ -209,13 +211,13 @@ describe('the shop stall', () => {
       given(besideStall(preparing(2))),
       press('KeyD'),
       ...ticks(FRAMES_TO_STALL - 1, SHOP_FRAME_MS),
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(ShopState.Away())
       }),
       tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
-      model(({ shop, shopDialog, input }) => {
+      model(({ seats: [{ shop }], shopDialog, input }) => {
         expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Shotgun' }))
         expect(shopDialog.isOpen).toBe(true)
         expect(input.pressedKeys).toEqual([])
@@ -231,7 +233,7 @@ describe('the shop stall', () => {
         press('KeyD'),
         ...ticks(FRAMES_TO_STALL + 2, SHOP_FRAME_MS),
         Command.expectNone(),
-        model(({ shop, shopDialog }) => {
+        model(({ seats: [{ shop }], shopDialog }) => {
           expect(shop).toEqual(ShopState.Away())
           expect(shopDialog.isOpen).toBe(false)
         }),
@@ -252,14 +254,14 @@ describe('the shop stall', () => {
         ),
       ),
       tick(SHORT_FRAME_MS),
-      model(({ phase, shop }) => {
+      model(({ phase, seats: [{ shop }] }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(shop).toEqual(ShopState.Away())
       }),
       tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
-      model(({ shop, shopDialog }) => {
+      model(({ seats: [{ shop }], shopDialog }) => {
         expect(ShopState.guards.Browsing(shop)).toBe(true)
         expect(shopDialog.isOpen).toBe(true)
       }),
@@ -276,7 +278,7 @@ describe('the shop stall', () => {
       ),
       press('KeyS'),
       ...ticks(20, SHOP_FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.y).toBeCloseTo(146)
       }),
     )
@@ -297,12 +299,12 @@ describe('the shop stall', () => {
       holdFire,
       press('Enter'),
       ...ticks(10, SHOP_FRAME_MS),
-      model(({ phase, player, bullets, elapsedMs, intent }) => {
+      model(({ phase, seats: [{ player, intent }], bullets, elapsedMs }) => {
         const opened = Option.getOrThrow(Array.head(frozen))
         expect(preparationRemainingMs(phase)).toBe(
           preparationRemainingMs(opened.phase),
         )
-        expect(player.x).toBe(opened.player.x)
+        expect(player.x).toBe(focusOf(opened).player.x)
         expect(bullets).toEqual([])
         expect(intent.trigger).toBe('Released')
         expect(elapsedMs).toBeCloseTo(opened.elapsedMs + 10 * SHOP_FRAME_MS)
@@ -325,7 +327,7 @@ describe('the shop stall', () => {
         ),
       ),
       resolveCloseShop,
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(ShopState.Dismissed())
       }),
       tick(SHOP_FRAME_MS),
@@ -338,12 +340,12 @@ describe('the shop stall', () => {
       Command.expectNone(),
       press('KeyA'),
       ...ticks(4, SHOP_FRAME_MS),
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(ShopState.Dismissed())
       }),
       ...ticks(2, SHOP_FRAME_MS),
       release('KeyA'),
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(ShopState.Away())
       }),
       press('KeyD'),
@@ -352,7 +354,7 @@ describe('the shop stall', () => {
       tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(ShopState.guards.Browsing(shop)).toBe(true)
       }),
     )
@@ -368,9 +370,9 @@ describe('the shop stall', () => {
       press('KeyR'),
       press('KeyQ'),
       message(Message.ClickedStartWaveButton()),
-      model(({ phase, player }) => {
+      model(({ phase, seats: [{ player }] }) => {
         expect(phase).toEqual(shopping.phase)
-        expect(player.arsenal).toEqual(shopping.player.arsenal)
+        expect(player.arsenal).toEqual(focusOf(shopping).player.arsenal)
       }),
     )
   })
@@ -383,7 +385,7 @@ describe('buying', () => {
       given(browsing(withMoney(shopReady, 100))),
       message(Message.ClickedBuyButton({ item: 'Shotgun' })),
       resolveFocusShopItem,
-      model(({ wallet, player, particles }) => {
+      model(({ seats: [{ wallet, player }], particles }) => {
         expect(wallet.balance).toBe(100 - SHOP_ITEMS.Shotgun.price)
         expect(wallet.earned).toBe(100)
         expect(player.arsenal).toEqual(holdingSpare(16))
@@ -392,7 +394,7 @@ describe('buying', () => {
         ).toHaveLength(COINS_PER_PURCHASE)
       }),
       message(Message.PressedBuyKey({ item: 'ShotgunShells' })),
-      model(({ wallet, player }) => {
+      model(({ seats: [{ wallet, player }] }) => {
         expect(wallet.balance).toBe(
           100 - SHOP_ITEMS.Shotgun.price - SHOP_ITEMS.ShotgunShells.price,
         )
@@ -411,7 +413,7 @@ describe('buying', () => {
         ),
       ),
       message(Message.ClickedBuyButton({ item: 'Smg' })),
-      model(({ player, wallet }) => {
+      model(({ seats: [{ player, wallet }] }) => {
         expect(player.arsenal).toEqual(
           holdingSecond(gun('Smg', startingRounds('Smg'))),
         )
@@ -425,12 +427,12 @@ describe('buying', () => {
       update,
       given(withHp(browsing(withMoney(shopReady, 60)), PLAYER_MAX_HP - 1)),
       message(Message.ClickedBuyButton({ item: 'Heart' })),
-      model(({ player, wallet }) => {
+      model(({ seats: [{ player, wallet }] }) => {
         expect(player.hp).toBe(PLAYER_MAX_HP)
         expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
       }),
       message(Message.ClickedBuyButton({ item: 'Heart' })),
-      model(({ player, wallet }) => {
+      model(({ seats: [{ player, wallet }] }) => {
         expect(player.hp).toBe(PLAYER_MAX_HP)
         expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
       }),
@@ -444,8 +446,8 @@ describe('buying', () => {
         given(start),
         message(Message.ClickedBuyButton({ item })),
         model(current => {
-          expect(current.wallet).toEqual(start.wallet)
-          expect(current.player).toEqual(start.player)
+          expect(focusOf(current).wallet).toEqual(focusOf(start).wallet)
+          expect(focusOf(current).player).toEqual(focusOf(start).player)
           expect(current.particles).toEqual([])
         }),
       )
@@ -468,12 +470,12 @@ describe('buying', () => {
       update,
       given(browsing(withMoney(shopReady, LASER_SIGHT_PRICE - 1))),
       model(current => {
-        expect(Array.last(itemsIn(current, 'Guns'))).toEqual(
-          Option.some('LaserSight'),
-        )
+        expect(
+          Array.last(itemsIn(current, focusSlotOf(current), 'Guns')),
+        ).toEqual(Option.some('LaserSight'))
       }),
       message(Message.ClickedBuyButton({ item: 'LaserSight' })),
-      model(({ laserSight, wallet }) => {
+      model(({ seats: [{ laserSight, wallet }] }) => {
         expect(laserSight).toBe('None')
         expect(wallet.balance).toBe(LASER_SIGHT_PRICE - 1)
       }),
@@ -482,12 +484,12 @@ describe('buying', () => {
       update,
       given(browsing(withMoney(shopReady, LASER_SIGHT_PRICE + 10))),
       message(Message.ClickedBuyButton({ item: 'LaserSight' })),
-      model(({ laserSight, wallet }) => {
+      model(({ seats: [{ laserSight, wallet }] }) => {
         expect(laserSight).toBe('Fitted')
         expect(wallet.balance).toBe(10)
       }),
       message(Message.ClickedBuyButton({ item: 'LaserSight' })),
-      model(({ wallet }) => {
+      model(({ seats: [{ wallet }] }) => {
         expect(wallet.balance).toBe(10)
       }),
     )
@@ -503,7 +505,7 @@ describe('buying', () => {
         ),
       ),
       message(Message.ClickedBuyButton({ item: 'ShotgunShells' })),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(holdingSpare(48))
       }),
     )
@@ -523,15 +525,15 @@ describe('carrying two guns', () => {
       update,
       given(armed),
       press('KeyQ'),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(spare)
       }),
       press('KeyQ'),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(pistol)
       }),
       message(Message.ClickedSwapButton()),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(spare)
       }),
     )
@@ -543,7 +545,7 @@ describe('carrying two guns', () => {
       given(modifyFields(shopReady, { phase: () => fighting(1) })),
       press('KeyQ'),
       message(Message.ClickedSwapButton()),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(pistolOnly())
       }),
     )
@@ -555,7 +557,7 @@ describe('carrying two guns', () => {
       given(withArsenal(armed, holdingSpare(16))),
       holdFire,
       tick(SHORT_FRAME_MS),
-      model(({ bullets, player, frameEvents }) => {
+      model(({ bullets, seats: [{ player }], frameEvents }) => {
         expect(bullets).toHaveLength(WEAPONS.Shotgun.pellets)
         expect(bullets).toHaveLength(7)
         expect(Array.every(bullets, ({ weapon }) => weapon === 'Shotgun')).toBe(
@@ -582,7 +584,7 @@ describe('carrying two guns', () => {
       given(withArsenal(armed, holdingSpare(1, 'Smg'))),
       holdFire,
       tick(SHORT_FRAME_MS),
-      model(({ player, bullets }) => {
+      model(({ seats: [{ player }], bullets }) => {
         expect(player.arsenal).toEqual(holdingSpare(0, 'Smg'))
         expect(bullets).toHaveLength(1)
       }),
@@ -590,7 +592,7 @@ describe('carrying two guns', () => {
         Math.ceil(WEAPONS.Smg.fireIntervalMs / SHORT_FRAME_MS),
         SHORT_FRAME_MS,
       ),
-      model(({ player, frameEvents, popups }) => {
+      model(({ seats: [{ player }], frameEvents, popups }) => {
         expect(player.arsenal).toEqual(holdingFirst(gun('Smg', 0)))
         expect(Array.map(frameEvents, ({ _tag }) => _tag)).toContain('RanDry')
         expect(Array.map(popups, ({ kind }) => kind)).toContain('Empty')
@@ -689,9 +691,14 @@ describe('the Barn Buster up close', () => {
   // CLOSE_PX in front of the player, over BLASTS_MS of held fire.
   const damageUpClose = (kind: CarriedGun['kind']): number => {
     const start = withArsenal(shopReady, holdingSpare(48, kind))
-    const target = zombieAt(100, start.player.x + CLOSE_PX, start.player.y, {
-      hp: 99,
-    })
+    const target = zombieAt(
+      100,
+      focusOf(start).player.x + CLOSE_PX,
+      focusOf(start).player.y,
+      {
+        hp: 99,
+      },
+    )
     const hpLeft: Array<number> = []
     story(
       update,
@@ -713,7 +720,11 @@ describe('the Barn Buster up close', () => {
 
   test("one blast drops a Groaner at arm's length", () => {
     const start = withArsenal(shopReady, holdingSpare(16))
-    const groaner = zombieAt(100, start.player.x + CLOSE_PX, start.player.y)
+    const groaner = zombieAt(
+      100,
+      focusOf(start).player.x + CLOSE_PX,
+      focusOf(start).player.y,
+    )
     story(
       update,
       given(
@@ -752,7 +763,7 @@ describe('zombies still need two pistol shots', () => {
         }),
       ),
       tick(SHORT_FRAME_MS),
-      model(({ zombies, wallet }) => {
+      model(({ zombies, seats: [{ wallet }] }) => {
         expect(Array.map(zombies, ({ hp }) => hp)).toEqual([ZOMBIE_MAX_HP - 1])
         expect(wallet.balance).toBe(0)
       }),
@@ -777,13 +788,13 @@ describe('the stall entrance', () => {
       press(key),
       ...ticks(2, SHOP_FRAME_MS),
       Command.expectNone(),
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(ShopState.Away())
       }),
       tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(ShopState.guards.Browsing(shop)).toBe(true)
       }),
     )
@@ -826,13 +837,13 @@ describe('the stall entrance', () => {
       ...ticks(3, SHOP_FRAME_MS),
       release('KeyD'),
       Command.expectNone(),
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(ShopState.Dismissed())
       }),
       press('KeyA'),
       ...ticks(8, SHOP_FRAME_MS),
       release('KeyA'),
-      model(({ shop }) => {
+      model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(ShopState.Away())
       }),
     )
@@ -852,9 +863,9 @@ describe('the stall entrance', () => {
       ...ticks(6, SHOP_FRAME_MS),
       Command.expectNone(),
       model(current => {
-        expect(current.shop).toEqual(ShopState.Away())
+        expect(focusOf(current).shop).toEqual(ShopState.Away())
         expect(current.shopDialog.isOpen).toBe(false)
-        expect(stallPrompt(current)).toBe('None')
+        expect(stallPrompt(current, focusSlotOf(current))).toBe('None')
       }),
     )
   })
@@ -866,7 +877,7 @@ describe('the stall entrance', () => {
       given(withPlayerAt(prepared, 160, 90)),
       tick(SHOP_FRAME_MS),
       model(current => {
-        expect(stallPrompt(current)).toBe('None')
+        expect(stallPrompt(current, focusSlotOf(current))).toBe('None')
       }),
     )
     story(
@@ -874,15 +885,15 @@ describe('the stall entrance', () => {
       given(withPlayerAt(prepared, 225, 160)),
       tick(SHOP_FRAME_MS),
       model(current => {
-        expect(stallPrompt(current)).toBe('WalkUp')
+        expect(stallPrompt(current, focusSlotOf(current))).toBe('WalkUp')
       }),
       press('KeyD'),
       ...ticks(6, SHOP_FRAME_MS),
       tick(SHOP_FRAME_MS),
       resolveShowShop,
       model(current => {
-        expect(ShopState.guards.Browsing(current.shop)).toBe(true)
-        expect(stallPrompt(current)).toBe('None')
+        expect(ShopState.guards.Browsing(focusOf(current).shop)).toBe(true)
+        expect(stallPrompt(current, focusSlotOf(current))).toBe('None')
       }),
     )
     story(
@@ -896,7 +907,9 @@ describe('the stall entrance', () => {
       ),
       tick(SHOP_FRAME_MS),
       model(current => {
-        expect(stallPrompt(current)).toBe('ClosedUntilFirstClear')
+        expect(stallPrompt(current, focusSlotOf(current))).toBe(
+          'ClosedUntilFirstClear',
+        )
       }),
     )
   })
@@ -913,8 +926,8 @@ describe('the stall entrance', () => {
       given(near(preparing(2))),
       tick(SHOP_FRAME_MS),
       model(current => {
-        expect(ShopState.guards.Away(current.shop)).toBe(true)
-        expect(stallPrompt(current)).toBe('None')
+        expect(ShopState.guards.Away(focusOf(current).shop)).toBe(true)
+        expect(stallPrompt(current, focusSlotOf(current))).toBe('None')
       }),
     )
     story(
@@ -922,7 +935,7 @@ describe('the stall entrance', () => {
       given(near(fighting(3))),
       tick(SHOP_FRAME_MS),
       model(current => {
-        expect(stallPrompt(current)).toBe('None')
+        expect(stallPrompt(current, focusSlotOf(current))).toBe('None')
       }),
     )
     story(
@@ -930,7 +943,7 @@ describe('the stall entrance', () => {
       given(near(preparing(1))),
       tick(SHOP_FRAME_MS),
       model(current => {
-        expect(stallPrompt(current)).toBe('None')
+        expect(stallPrompt(current, focusSlotOf(current))).toBe('None')
       }),
     )
   })

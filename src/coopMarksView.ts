@@ -237,7 +237,7 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
   }
   const names = seatNamesOf(model)
   const ownSlot = leadSeatOf(model).slot
-  return Array.flatMap(playersOf(model), ({ slot, seat, player }) =>
+  return Array.flatMap(playersOf(model), ({ seat: { slot }, seat, player }) =>
     isBledOut(seat)
       ? []
       : [
@@ -328,8 +328,10 @@ export const coopEdgeShapes = (
   const bottom = camera.top + camera.height * camera.scale - EDGE_INSET_PX
   return pipe(
     playersOf(model),
-    Array.filter(({ slot, seat }) => slot !== ownSlot && !isBledOut(seat)),
-    Array.flatMap(({ slot, player }) => {
+    Array.filter(
+      ({ seat: { slot }, seat }) => slot !== ownSlot && !isBledOut(seat),
+    ),
+    Array.flatMap(({ seat: { slot }, player }) => {
       const at = worldToView(camera, player)
       const isOnScreen =
         at.x >= left && at.x <= right && at.y >= top && at.y <= bottom

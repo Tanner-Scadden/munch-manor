@@ -28,7 +28,7 @@ import { fileURLToPath } from 'node:url'
 import { PlayerInput } from '@munch/netcode'
 
 import { refreshIntent } from '../../src/frame'
-import { seatCrew, withSeat } from '../../src/party'
+import { focusOf, modifySeat, seatCrew } from '../../src/party'
 import type { Intent } from '../../src/worldSchema'
 import { worldToJson } from '../../src/worldWire'
 import { askWorkerd } from './askWorkerd'
@@ -277,14 +277,12 @@ const KNIFE_SEAT = 3
 
 const requestFor = (players: number): PlayRequest => ({
   world: worldToJson(
-    withSeat(seatCrew(intended, players), KNIFE_SEAT, seatWorld =>
-      modifyFields(seatWorld, {
-        player: player => modifyFields(player, { wield: () => 'Melee' }),
-      }),
-    ),
+    modifySeat(seatCrew(intended, players), KNIFE_SEAT, {
+      player: player => modifyFields(player, { wield: () => 'Melee' }),
+    }),
   ),
   intents: [
-    [0, intentToJson(intended.intent)],
+    [0, intentToJson(focusOf(intended).intent)],
     ...MATE_INTENTS.slice(0, players - 1).map(
       (intent, index) => [index + 1, intentToJson(intent)] as const,
     ),

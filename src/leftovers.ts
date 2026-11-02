@@ -14,7 +14,13 @@ import { maxHpOf } from './calling'
 import { boxAround } from './exits'
 import { dropCharge, isFridgeWeapon } from './fridgeWeapons'
 import { isKitchenOpen } from './kitchen'
-import { leadSeatOf, maybePlayerAt } from './party'
+import {
+  atSeat,
+  focusOf,
+  maybePlayerAt,
+  modifySeat,
+  seatStateAt,
+} from './party'
 import { nextRandom } from './prng'
 import type { Offer } from './purchase'
 import { isKitchenTourOn } from './tutorialRules'
@@ -27,6 +33,7 @@ import {
   GameEvent,
   Phase,
   type Player,
+  type PlayerSlot,
   Purchasable,
   type WeaponKind,
 } from './worldSchema'
@@ -200,15 +207,18 @@ export const fridgeSpot = (box: Box) => ({
 
 // NOTE: a weapon on offer is the puller's alone to take, for nothing: the
 // pull already paid for it.
-const isOfferedTo = (world: World): boolean =>
+const isOfferedTo = (world: World, slot: PlayerSlot): boolean =>
   FridgeDoor.isAnyOf(['Offering'])(world.fridge.door) &&
-  world.fridge.door.slot === leadSeatOf(world).slot
+  world.fridge.door.slot === slot
 
 // NOTE: the kitchen tour's pull is free (src/tutorialRules.ts).
 export const fridgePriceFor = (world: World): number =>
   isKitchenTourOn(world) ? 0 : FRIDGE_RULES.price
 
-export const fridgeOffers = (world: World): ReadonlyArray<Offer> =>
+export const fridgeOffers = (
+  world: World,
+  slot: PlayerSlot,
+): ReadonlyArray<Offer> =>
   Option.match(fridgeBoxOf(levelOf(world)), {
     onNone: () => [],
     onSome: box =>
@@ -223,7 +233,7 @@ export const fridgeOffers = (world: World): ReadonlyArray<Offer> =>
               spot: fridgeSpot(box),
             },
           ]
-        : isOfferedTo(world)
+        : isOfferedTo(world, slot)
           ? [
               {
                 target: Purchasable.Prize(),
@@ -254,27 +264,29 @@ const giveWeapon = (player: Player, kind: WeaponKind): Player =>
       })
 
 // NOTE: a gag resolves at once; a weapon waits on offer in the door.
-const givePrize = (world: World, prize: FridgePrize): World =>
+const givePrize = (world: World, slot: PlayerSlot, prize: FridgePrize): World =>
   Option.match(weaponOf(prize), {
     onSome: () => world,
     onNone: () =>
       prize === 'Sandwich'
-        ? modifyFields(world, {
+        ? modifySeat(world, slot, {
             player: player =>
               modifyFields(player, {
                 hp: hp => Math.min(maxHpOf(player), hp + 1),
               }),
           })
         : modifyFields(world, {
-            wallet: wallet =>
-              modifyFields(wallet, {
-                balance: balance => balance + DUD_REFUND,
-              }),
+            seats: atSeat(slot, {
+              wallet: wallet =>
+                modifyFields(wallet, {
+                  balance: balance => balance + DUD_REFUND,
+                }),
+            }),
             frameEvents: frameEvents => [
               ...frameEvents,
               GameEvent.DudBurped({
-                x: world.player.x,
-                y: world.player.y,
+                x: seatStateAt(world, slot).player.x,
+                y: seatStateAt(world, slot).player.y,
                 refund: DUD_REFUND,
               }),
             ],
@@ -285,24 +297,30 @@ const givePrize = (world: World, prize: FridgePrize): World =>
 // stream and given to the seat that held, and the door swings open.
 export const pullFridge = (
   world: World,
+  slot: PlayerSlot,
   price: number,
 ): Option.Option<World> => {
-  if (!isFridgeForSale(world) || world.wallet.balance < price) {
+  if (
+    !isFridgeForSale(world) ||
+    seatStateAt(world, slot).wallet.balance < price
+  ) {
     return Option.none()
   }
   return Option.map(fridgeBoxOf(levelOf(world)), box => {
     const draw = nextRandom(world.loot.fridgeRngState)
-    const weights = prizeWeights(world.fridge, world.player)
+    const weights = prizeWeights(world.fridge, seatStateAt(world, slot).player)
     const prize = pickPrize(
       isKitchenTourOn(world) ? weaponsOnly(weights) : weights,
       draw.value,
     )
     const spot = fridgeSpot(box)
     const paid = modifyFields(world, {
-      wallet: wallet =>
-        modifyFields(wallet, {
-          balance: balance => balance - price,
-        }),
+      seats: atSeat(slot, {
+        wallet: wallet =>
+          modifyFields(wallet, {
+            balance: balance => balance - price,
+          }),
+      }),
       stats: stats =>
         modifyFields(stats, { purchases: purchases => purchases + 1 }),
       loot: loot =>
@@ -313,7 +331,7 @@ export const pullFridge = (
           door: () =>
             FridgeDoor.Open({
               prize,
-              slot: leadSeatOf(world).slot,
+              slot,
               remainingMs: FRIDGE_RULES.openMs,
               durationMs: FRIDGE_RULES.openMs,
             }),
@@ -323,7 +341,7 @@ export const pullFridge = (
         GameEvent.FridgeOpened({ x: spot.x, y: spot.y, prize }),
       ],
     })
-    return givePrize(paid, prize)
+    return givePrize(paid, slot, prize)
   })
 }
 
@@ -349,7 +367,7 @@ const shut = (world: World): World => {
     })
   }
   const spot = Option.match(fridgeBoxOf(levelOf(world)), {
-    onNone: () => ({ x: world.player.x, y: world.player.y }),
+    onNone: () => ({ x: focusOf(world).player.x, y: focusOf(world).player.y }),
     onSome: fridgeSpot,
   })
   return modifyFields(rolled, {
@@ -370,19 +388,23 @@ const shut = (world: World): World => {
 
 const spotOf = (world: World) =>
   Option.match(fridgeBoxOf(levelOf(world)), {
-    onNone: () => ({ x: world.player.x, y: world.player.y }),
+    onNone: () => ({ x: focusOf(world).player.x, y: focusOf(world).player.y }),
     onSome: fridgeSpot,
   })
 
 // NOTE: take it: the puller holds at the door and the weapon is theirs: a
 // gun slot for the Cooker or Brain Freeze, the melee slot for the Pan.
-export const takePrize = (world: World): Option.Option<World> =>
-  isOfferedTo(world) && FridgeDoor.isAnyOf(['Offering'])(world.fridge.door)
+export const takePrize = (
+  world: World,
+  slot: PlayerSlot,
+): Option.Option<World> =>
+  isOfferedTo(world, slot) &&
+  FridgeDoor.isAnyOf(['Offering'])(world.fridge.door)
     ? Option.map(weaponOf(world.fridge.door.prize), kind => {
         const spot = spotOf(world)
         return shut(
           modifyFields(world, {
-            player: player => giveWeapon(player, kind),
+            seats: atSeat(slot, { player: player => giveWeapon(player, kind) }),
             frameEvents: frameEvents => [
               ...frameEvents,
               GameEvent.PrizeTaken({ x: spot.x, y: spot.y }),

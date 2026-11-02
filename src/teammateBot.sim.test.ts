@@ -7,7 +7,7 @@ import { FIXED_STEP_MS } from './constants'
 import { Message } from './message'
 import { type Model, initialModel } from './model'
 import { atSeat } from './model.fixture'
-import { playersOf } from './party'
+import { modifyFocus, playersOf } from './party'
 import { SURFACE, modelAfter, startedRunOf } from './testing'
 import { asVeteran } from './veteran'
 
@@ -29,7 +29,7 @@ const readyKey = (current: Model): Model =>
 const withThreeBots = (): Model =>
   Array.reduce(Array.range(1, 3), startedThreeBots(), (current, slot) =>
     atSeat(current, slot, world =>
-      modifyFields(world, {
+      modifyFocus(world, {
         wallet: wallet => ({ ...wallet, balance: 120 }),
         player: player => modifyFields(player, { hp: () => 3 }),
       }),

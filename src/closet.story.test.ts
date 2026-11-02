@@ -19,9 +19,9 @@ import {
 import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, hatRiseOf } from './hatArt'
 import { update } from './main'
 import { Message } from './message'
-import { Reload } from './model'
-import { type LookPart, type Model, defaultAppearance } from './model'
+import { type LookPart, type Model, Reload, defaultAppearance } from './model'
 import { readyAfterRead } from './model.fixture'
+import { focusOf } from './party'
 import {
   type Appearance,
   COSMETIC_GIFT_RANKS,
@@ -650,7 +650,7 @@ describe('the marks over a hat', () => {
 
   test('the reload bar stands that much higher', () => {
     const reloading = {
-      ...readyAfterRead.player,
+      ...focusOf(readyAfterRead).player,
       reload: Reload.Reloading({ remainingMs: 500, durationMs: 1000 }),
     }
     const yOf = (rise: number) => {

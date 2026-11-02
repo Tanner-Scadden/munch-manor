@@ -92,7 +92,7 @@ export const isCouchPlay = (model: Model): boolean =>
 
 const couchSlots = (model: Model): ReadonlyArray<PlayerSlot> =>
   Array.filter(
-    Array.map(playersOf(model), ({ slot }) => slot),
+    Array.map(playersOf(model), ({ seat }) => seat.slot),
     slot => COUCH_KEYS.has(slot),
   )
 

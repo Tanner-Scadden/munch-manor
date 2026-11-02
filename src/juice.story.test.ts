@@ -50,6 +50,7 @@ import {
   initialModel,
 } from './model'
 import { playingModel, withZombies } from './model.fixture'
+import { modifyFocus } from './party'
 import { scoreOf } from './stats'
 import {
   FRAME_MS,
@@ -403,7 +404,7 @@ describe('screen shake', () => {
   })
 
   const holdingSpare = (weapon: 'Shotgun' | 'Smg'): Model =>
-    modifyFields(playingModel, {
+    modifyFocus(playingModel, {
       player: player =>
         modifyFields(player, {
           arsenal: () =>
@@ -611,17 +612,17 @@ describe('hit-stop', () => {
       tick(FRAME_MS),
       message(Message.PressedKey({ code: 'KeyD' })),
       tick(FRAME_MS),
-      model(({ player, intent, input }) => {
+      model(({ seats: [{ player, intent }], input }) => {
         expect(input.pressedKeys).toEqual(['KeyD'])
         expect(intent.move).toEqual({ x: 1, y: 0 })
         expect(player.x).toBe(PARLOUR.width / 2)
       }),
       ...ticks(freezeTicks(HIT_STOP_KILL_MS) - 1, FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.x).toBe(PARLOUR.width / 2)
       }),
       tick(FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.x).toBeCloseTo(
           PARLOUR.width / 2 + (PLAYER_SPEED * FRAME_MS) / 1000,
         )

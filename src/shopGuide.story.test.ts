@@ -12,6 +12,7 @@ import { update } from './main'
 import { Message } from './message'
 import { FridgeDoor, MunchopediaPage, ShopGuide } from './model'
 import { home } from './model.fixture'
+import { modifyFocus } from './party'
 import { SHOP_ITEMS } from './shop'
 import {
   FRAMES_TO_STALL,
@@ -51,7 +52,7 @@ const resolveFocusGuide = Command.resolve(
 )
 
 const closedShop = () =>
-  modifyFields(besideStall(preparing(3)), { shopCategory: () => 'Traps' })
+  modifyFocus(besideStall(preparing(3)), { shopCategory: () => 'Traps' })
 
 describe('the ? in Rattles shop', () => {
   test('opens the guide on the tab being looked at, and back returns to the shelves', () => {
@@ -112,7 +113,7 @@ describe('the ? in Rattles shop', () => {
         DialogBlock.Message.CompletedCloseDialog(),
       ),
       resolveShowShop,
-      model(({ shopGuide, shop }) => {
+      model(({ shopGuide, seats: [{ shop }] }) => {
         expect(shopGuide).toEqual(ShopGuide.Closed())
         expect(shop._tag).toBe('Browsing')
       }),

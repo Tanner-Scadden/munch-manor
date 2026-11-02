@@ -1,6 +1,7 @@
 import { Option } from 'effect'
 
 import { isFridgeWeapon } from '../../../src/fridgeWeapons'
+import { focusOf } from '../../../src/party'
 import { gunsOf, heldGun, maybePanOf } from '../../../src/weapons'
 import { type Model, tapKey } from './basics'
 
@@ -9,11 +10,11 @@ import { type Model, tapKey } from './basics'
 export type Gun = ReturnType<typeof heldGun>
 
 export const gunsOfBot = (model: Model): ReadonlyArray<Gun> =>
-  gunsOf(model.player.arsenal)
+  gunsOf(focusOf(model).player.arsenal)
 
 // The Clang Pan in the melee slot, if the fridge has given one.
 export const panOf = (model: Model): Gun | undefined =>
-  Option.getOrUndefined(maybePanOf(model.player))
+  Option.getOrUndefined(maybePanOf(focusOf(model).player))
 
 // The fridge weapon the bot carries in a gun slot (the Cooker or Brain
 // Freeze; the Pan is in the melee slot).
@@ -72,6 +73,6 @@ export const weakerGun = (model: Model): Gun | undefined => {
 // A new gun replaces the one in the player's hands, so before it buys or
 // takes one the bot holds the gun it means to give up.
 export const holdToReplace = (model: Model, gun: Gun | undefined): Model =>
-  gun !== undefined && heldGun(model.player.arsenal).kind !== gun.kind
+  gun !== undefined && heldGun(focusOf(model).player.arsenal).kind !== gun.kind
     ? tapKey(model, 'KeyQ')
     : model

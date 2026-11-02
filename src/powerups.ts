@@ -20,7 +20,15 @@ import {
 } from './combat'
 import { PLAYER_RADIUS, PLAYER_SPEED } from './constants'
 import { PICKUP_NAMES } from './names'
-import { earnKill, forEachSeat, isCoop, isStanding, leadSeatOf } from './party'
+import {
+  atSeat,
+  earnKill,
+  focusOf,
+  forEachSeat,
+  isCoop,
+  isStanding,
+  seatStateAt,
+} from './party'
 import { nextRandom } from './prng'
 import { isAtCounter } from './shop'
 import type { SoundEffect } from './soundEffect'
@@ -48,7 +56,9 @@ import {
   type PickupKind,
   Pierce,
   type Player,
+  type PlayerSlot,
   Prize,
+  SOLO_SLOT,
   type Vector,
   type WeaponKind,
   type ZombieKind,
@@ -342,24 +352,23 @@ const extendTimer = (timer: BoostTimer, durationMs: number): BoostTimer => {
   return BoostTimer.On({ remainingMs, durationMs: remainingMs })
 }
 
-const tickBoosts = (model: World, deltaMs: number): World => {
-  if (!Array.some(BOOST_KIND_ORDER, kind => isOn(model.boosts[kind]))) {
+const tickBoosts = (model: World, slot: PlayerSlot, deltaMs: number): World => {
+  const { boosts: before, player } = seatStateAt(model, slot)
+  if (!Array.some(BOOST_KIND_ORDER, kind => isOn(before[kind]))) {
     return model
   }
 
-  const boosts: Boosts = Record.map(model.boosts, timer =>
-    tickTimer(timer, deltaMs),
-  )
+  const boosts: Boosts = Record.map(before, timer => tickTimer(timer, deltaMs))
   const faded = Array.filter(
     BOOST_KIND_ORDER,
-    kind => isOn(model.boosts[kind]) && !isOn(boosts[kind]),
+    kind => isOn(before[kind]) && !isOn(boosts[kind]),
   )
   return modifyFields(model, {
-    boosts: () => boosts,
+    seats: atSeat(slot, { boosts: () => boosts }),
     frameEvents: frameEvents => [
       ...frameEvents,
       ...Array.map(faded, kind =>
-        GameEvent.BoostFaded({ x: model.player.x, y: model.player.y, kind }),
+        GameEvent.BoostFaded({ x: player.x, y: player.y, kind }),
       ),
     ],
   })
@@ -397,7 +406,7 @@ const isWithinGrab =
   (pickup: Pickup): boolean =>
     Math.hypot(pickup.x - player.x, pickup.y - player.y) <= PICKUP_GRAB_PX
 
-const burpAt = (model: World, at: Vector): World => {
+const burpAt = (model: World, slot: PlayerSlot, at: Vector): World => {
   const blast: BlastSpec = {
     x: at.x,
     y: at.y,
@@ -408,7 +417,7 @@ const burpAt = (model: World, at: Vector): World => {
     knockback: BURP_KNOCKBACK,
   }
   const outcome = blastAll(blast, model.zombies, ZOMBIE_BLAST_TARGET)
-  return modifyFields(earnKill(model, bountyOf(outcome.events)), {
+  return modifyFields(earnKill(model, slot, bountyOf(outcome.events)), {
     zombies: () => outcome.targets,
     frameEvents: frameEvents => [
       ...frameEvents,
@@ -418,43 +427,54 @@ const burpAt = (model: World, at: Vector): World => {
   })
 }
 
-const applyEffect = (model: World, effect: PickupEffect): World =>
+const applyEffect = (
+  model: World,
+  slot: PlayerSlot,
+  effect: PickupEffect,
+): World =>
   PickupEffect.match(effect, {
     Boost: ({ boost }) => {
-      const boosts: Boosts = Record.map(model.boosts, (timer, kind) =>
-        kind === boost ? extendTimer(timer, BOOSTS[boost].durationMs) : timer,
+      const boosts: Boosts = Record.map(
+        seatStateAt(model, slot).boosts,
+        (timer, kind) =>
+          kind === boost ? extendTimer(timer, BOOSTS[boost].durationMs) : timer,
       )
       return modifyFields(model, {
-        boosts: () => boosts,
-        player: player => keepTopped(player, boosts),
+        seats: atSeat(slot, {
+          boosts: () => boosts,
+          player: player => keepTopped(player, boosts),
+        }),
       })
     },
-    Burp: () => burpAt(model, model.player),
+    Burp: () => burpAt(model, slot, seatStateAt(model, slot).player),
     Heal: ({ hearts }) =>
       modifyFields(model, {
-        player: player =>
-          modifyFields(player, {
-            hp: hp => Math.min(maxHpOf(player), hp + hearts),
-          }),
+        seats: atSeat(slot, {
+          player: player =>
+            modifyFields(player, {
+              hp: hp => Math.min(maxHpOf(player), hp + hearts),
+            }),
+        }),
       }),
   })
 
-const grab = (model: World, pickup: Pickup): World =>
-  modifyFields(applyEffect(model, PICKUPS[pickup.kind].effect), {
+const grab = (model: World, slot: PlayerSlot, pickup: Pickup): World =>
+  modifyFields(applyEffect(model, slot, PICKUPS[pickup.kind].effect), {
     frameEvents: Array.append(
       GameEvent.PickupGrabbed({ x: pickup.x, y: pickup.y, kind: pickup.kind }),
     ),
   })
 
-const grabPickups = (model: World): World => {
+const grabPickups = (model: World, slot: PlayerSlot): World => {
   if (Array.isReadonlyArrayEmpty(model.pickups)) {
     return model
   }
 
+  const { player } = seatStateAt(model, slot)
   const [grabbed, left] = Array.partition(
     model.pickups,
     (pickup): Result.Result<Pickup, Pickup> =>
-      isWithinGrab(model.player)(pickup)
+      isWithinGrab(player)(pickup)
         ? Result.succeed(pickup)
         : Result.fail(pickup),
   )
@@ -462,10 +482,9 @@ const grabPickups = (model: World): World => {
     return model
   }
 
-  return Array.reduce(
-    grabbed,
-    modifyFields(model, { pickups: () => left }),
-    grab,
+  const landed: World = modifyFields(model, { pickups: () => left })
+  return Array.reduce(grabbed, landed, (current, pickup) =>
+    grab(current, slot, pickup),
   )
 }
 
@@ -662,7 +681,10 @@ const dropFromKills = (
       }),
     onSome: kill => {
       const kindDraw = nextRandom(rolled.rngState)
-      const kind = pickKindAt(kindDraw.value, eligibleKinds(model.player))
+      const kind = pickKindAt(
+        kindDraw.value,
+        eligibleKinds(focusOf(model).player),
+      )
       return modifyFields(placePickup(model, kind, kill), {
         loot: () =>
           modifyFields(loot, {
@@ -711,27 +733,30 @@ export const advancePowerUps = (
   worldMs: number,
 ): World => {
   if (!isCoop(model)) {
-    return isAtCounter(model.shop)
+    return isAtCounter(focusOf(model).shop)
       ? model
       : pipe(
-          tickBoosts(model, worldMs),
+          tickBoosts(model, SOLO_SLOT, worldMs),
           ticked => agePickups(ticked, worldMs),
-          grabPickups,
+          grabbed => grabPickups(grabbed, SOLO_SLOT),
           grabbed => dropLoot(before, grabbed, worldMs),
         )
   }
 
   return pipe(
-    forEachSeat(model, seatWorld =>
-      isAtCounter(seatWorld.shop) ? seatWorld : tickBoosts(seatWorld, worldMs),
+    forEachSeat(model, (current, slot) =>
+      isAtCounter(seatStateAt(current, slot).shop)
+        ? current
+        : tickBoosts(current, slot, worldMs),
     ),
     ticked => agePickups(ticked, worldMs),
     aged =>
-      forEachSeat(aged, seatWorld =>
-        isAtCounter(seatWorld.shop) || !isStanding(leadSeatOf(seatWorld))
-          ? seatWorld
-          : grabPickups(seatWorld),
-      ),
+      forEachSeat(aged, (current, slot) => {
+        const { shop, seat } = seatStateAt(current, slot)
+        return isAtCounter(shop) || !isStanding(seat)
+          ? current
+          : grabPickups(current, slot)
+      }),
     grabbed => dropLoot(before, grabbed, worldMs),
   )
 }

@@ -25,6 +25,7 @@ import {
   isLearned,
   shownGhostSticks,
 } from './onboarding'
+import { focusOf } from './party'
 import {
   SHOWN_TICKS,
   hintIds,
@@ -276,7 +277,7 @@ describe('new zombie card', () => {
         expect(cardKind(current)).toStrictEqual(Option.some('Runner'))
         expect(waveClockMs(current)).toBe(0)
         expect(current.zombies).toEqual([])
-        expect(current.player.x).toBe(initialModel.player.x)
+        expect(focusOf(current).player.x).toBe(focusOf(initialModel).player.x)
       }),
       tick(TICK_MS),
       model(current => {
@@ -285,7 +286,9 @@ describe('new zombie card', () => {
       ...ticks(4, TICK_MS),
       model(current => {
         expect(waveClockMs(current)).toBeGreaterThan(0)
-        expect(current.player.x).toBeGreaterThan(initialModel.player.x)
+        expect(focusOf(current).player.x).toBeGreaterThan(
+          focusOf(initialModel).player.x,
+        )
       }),
     )
   })

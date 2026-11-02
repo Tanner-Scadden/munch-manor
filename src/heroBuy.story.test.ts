@@ -10,6 +10,7 @@ import { update } from './main'
 import { Message } from './message'
 import type { Model } from './model'
 import { readyAfterRead } from './model.fixture'
+import { focusOf } from './party'
 import type { Calling } from './playerData'
 import { bonesBalanceOf, pointsForRank } from './rank'
 import { restoreSave, saveOf } from './save'
@@ -97,7 +98,7 @@ describe('a hero for sale', () => {
         expect(current.rank.spentBones).toBe(60)
         expect(bonesBalanceOf(current.rank)).toBe(40)
         expect(current.calling).toBe('Handyman')
-        expect(current.player.calling).toBe('Handyman')
+        expect(focusOf(current).player.calling).toBe('Handyman')
         expect(current.home.maybeTryingCalling).toEqual(Option.none())
       }),
     )
@@ -150,7 +151,7 @@ describe('the reset', () => {
     expect(old.boughtCosmetics).toEqual([])
     const restored = restoreSave(readyAfterRead, saveOf(old))
     expect(startingCallingOf(restored)).toBe('You')
-    expect(restored.player.calling).toBe('You')
+    expect(focusOf(restored).player.calling).toBe('You')
   })
 
   test('the Bones balance is untouched, and a bought hero survives the save', () => {

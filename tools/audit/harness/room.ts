@@ -37,7 +37,14 @@ import {
 } from '@game/model'
 import { raiseDebutCard } from '@game/onboarding'
 import { advanceParticles } from '@game/particles'
-import { creditKills, leadSeatOf, playersOf, seatCrew } from '@game/party'
+import {
+  creditKills,
+  focusOf,
+  leadSeatOf,
+  modifyFocus,
+  playersOf,
+  seatCrew,
+} from '@game/party'
 import { startOrResume } from '@game/runFlow'
 import { shedParts } from '@game/simulation'
 import { SeatAction, applySeatAction } from '@game/stepWorld'
@@ -117,78 +124,85 @@ export const roomModel = (settings: SceneSettings): Model => {
         : firstGun === 'shotgun'
           ? { ...freshGun('Shotgun'), rounds: shotgunRounds, tier: config.tier }
           : { ...freshGun(FRIDGE_GUNS[firstGun]), tier: config.tier }
-  let model: Model = modifyFields(started, {
-    rngState: () => rngState,
-    phase: () =>
-      config.start === 'wave'
-        ? Phase.Wave({ wave, elapsedMs: config.elapsed, spawns })
-        : Phase.Preparation({
-            wave,
-            remainingMs: config.prep,
-            durationMs: 20000,
-            spawns,
-            clock:
-              config.break === 'open'
-                ? BreakClock.Waiting({ elapsedMs: config.breakMs })
-                : BreakClock.Counting(),
-          }),
-    wallet: w => ({
-      ...w,
-      balance: config.money,
-      shown: config.money,
-      earned: config.money,
-    }),
-    decals: () => (config.fill ? makeDecals(DECAL_MAX) : []),
-    trapStock: () => ({
-      Barricade: config.barricades,
-      Turret: config.turrets,
-    }),
-    player: p =>
-      gun === 'smg'
-        ? {
-            ...p,
-            arsenal: Arsenal.HoldingSecond({
-              first,
-              second: {
-                kind: 'Smg',
-                rounds: smgRounds,
-                loaded: Math.min(config.loaded, smgRounds),
-                tier: config.tier,
-              },
+  let model: Model = modifyFocus(
+    modifyFields(started, {
+      rngState: () => rngState,
+      phase: () =>
+        config.start === 'wave'
+          ? Phase.Wave({ wave, elapsedMs: config.elapsed, spawns })
+          : Phase.Preparation({
+              wave,
+              remainingMs: config.prep,
+              durationMs: 20000,
+              spawns,
+              clock:
+                config.break === 'open'
+                  ? BreakClock.Waiting({ elapsedMs: config.breakMs })
+                  : BreakClock.Counting(),
             }),
-          }
-        : gun === 'pan'
+      decals: () => (config.fill ? makeDecals(DECAL_MAX) : []),
+    }),
+    {
+      wallet: w => ({
+        ...w,
+        balance: config.money,
+        shown: config.money,
+        earned: config.money,
+      }),
+      trapStock: () => ({
+        Barricade: config.barricades,
+        Turret: config.turrets,
+      }),
+      player: p =>
+        gun === 'smg'
           ? {
               ...p,
-              arsenal: Arsenal.OneGun({ first }),
-              melee: Melee.Pan({
-                pan: { ...freshGun('Pan'), tier: config.tier },
+              arsenal: Arsenal.HoldingSecond({
+                first,
+                second: {
+                  kind: 'Smg',
+                  rounds: smgRounds,
+                  loaded: Math.min(config.loaded, smgRounds),
+                  tier: config.tier,
+                },
               }),
-              wield: 'Melee',
             }
-          : gun === 'cooker' || gun === 'freeze'
+          : gun === 'pan'
             ? {
                 ...p,
-                arsenal: Arsenal.HoldingSecond({
-                  first,
-                  second: { ...freshGun(FRIDGE_GUNS[gun]), tier: config.tier },
+                arsenal: Arsenal.OneGun({ first }),
+                melee: Melee.Pan({
+                  pan: { ...freshGun('Pan'), tier: config.tier },
                 }),
+                wield: 'Melee',
               }
-            : gun === 'shotgun'
+            : gun === 'cooker' || gun === 'freeze'
               ? {
                   ...p,
                   arsenal: Arsenal.HoldingSecond({
                     first,
                     second: {
-                      kind: 'Shotgun',
-                      rounds: shotgunRounds,
-                      loaded: Math.min(6, shotgunRounds),
+                      ...freshGun(FRIDGE_GUNS[gun]),
                       tier: config.tier,
                     },
                   }),
                 }
-              : p,
-  })
+              : gun === 'shotgun'
+                ? {
+                    ...p,
+                    arsenal: Arsenal.HoldingSecond({
+                      first,
+                      second: {
+                        kind: 'Shotgun',
+                        rounds: shotgunRounds,
+                        loaded: Math.min(6, shotgunRounds),
+                        tier: config.tier,
+                      },
+                    }),
+                  }
+                : p,
+    },
+  )
   const crowd = config.crowd ?? gasbagRoom
   const toughness = config.tough ? 40 : 1
   if (crowd > 0) {
@@ -653,16 +667,16 @@ export const roomModel = (settings: SceneSettings): Model => {
     runMs: 371_000,
   }
   if (config.stats) {
-    model = modifyFields(model, {
-      stats: s => ({ ...s, ...sampleStats }),
-      wallet: w => ({ ...w, earned: 615 }),
-    })
+    model = modifyFocus(
+      modifyFields(model, { stats: s => ({ ...s, ...sampleStats }) }),
+      { wallet: w => ({ ...w, earned: 615 }) },
+    )
   }
   if (config.py !== undefined) {
-    model = modifyFields(model, {
-      player: p => ({ ...p, x: config.px ?? p.x, y: py }),
-      hintBand: () => (py < 70 ? 'Bottom' : 'Top'),
-    })
+    model = modifyFocus(
+      modifyFields(model, { hintBand: () => (py < 70 ? 'Bottom' : 'Top') }),
+      { player: p => ({ ...p, x: config.px ?? p.x, y: py }) },
+    )
   }
   const { best, pistol, aim, card } = config
   if (best !== undefined) {
@@ -672,7 +686,7 @@ export const roomModel = (settings: SceneSettings): Model => {
     }))
   }
   if (pistol !== undefined) {
-    model = modifyFields(model, {
+    model = modifyFocus(model, {
       player: p => ({
         ...p,
         arsenal: mapGuns(p.arsenal, held =>
@@ -699,7 +713,10 @@ export const roomModel = (settings: SceneSettings): Model => {
     const [dx, dy] = stick
     const originX = Math.round(window.innerWidth * 0.8)
     const originY = Math.round(window.innerHeight * 0.72)
-    const aimed = { x: model.player.x + dx, y: model.player.y + dy }
+    const aimed = {
+      x: focusOf(model).player.x + dx,
+      y: focusOf(model).player.y + dy,
+    }
     model = modifyFields(model, {
       input: input =>
         config.device === 'touch'
@@ -774,7 +791,7 @@ export const roomModel = (settings: SceneSettings): Model => {
   )
   if (boostKinds.length > 0) {
     const boostMs = config.boostMs
-    model = modifyFields(model, {
+    model = modifyFocus(model, {
       boosts: boosts => {
         const next: { -readonly [Kind in keyof Boosts]: Boosts[Kind] } = {
           ...boosts,
@@ -797,8 +814,8 @@ export const roomModel = (settings: SceneSettings): Model => {
         {
           kind: calloutKind,
           look: config.calloutLook ?? 'Explained',
-          x: model.player.x,
-          y: model.player.y,
+          x: focusOf(model).player.x,
+          y: focusOf(model).player.y,
           ageMs: config.calloutAge,
         },
       ],
@@ -870,7 +887,7 @@ export const roomModel = (settings: SceneSettings): Model => {
   }
   if (config.mates === 'ready') {
     model = withWorld(model, world =>
-      Array.reduce(playersOf(world), world, (readied, { slot }) =>
+      Array.reduce(playersOf(world), world, (readied, { seat: { slot } }) =>
         slot === leadSeatOf(world).slot
           ? readied
           : applySeatAction(readied, slot, SeatAction.Ready()),

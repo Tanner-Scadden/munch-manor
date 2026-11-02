@@ -13,6 +13,7 @@ import { barWidthOf, healthBarShapes } from './healthBarView'
 import type { Appearance, Model } from './model'
 import {
   COOP_RULES,
+  focusOf,
   focusSeat,
   isBledOut,
   isCoop,
@@ -89,7 +90,7 @@ export const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
     return []
   }
   const lead = leadSeatOf(model).slot
-  return Array.filterMap(playersOf(model), ({ slot, seat }) =>
+  return Array.filterMap(playersOf(model), ({ seat: { slot }, seat }) =>
     slot === lead
       ? Result.failVoid
       : Result.succeed({
@@ -122,7 +123,7 @@ const lookOfSeat = (model: Model, slot: PlayerSlot): Appearance => {
 export const mateShadowShapes = (
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> =>
-  Array.map(mates, mate => playerShadow(mate.model.player))
+  Array.map(mates, mate => playerShadow(focusOf(mate.model).player))
 
 // NOTE: the pixels a seat's hat stands over its head, from the look it
 // wears (a teammate's from the lobby), for the marks drawn over it.
@@ -135,7 +136,11 @@ const mateBodyShapes = ({
 }: MateModel): ReadonlyArray<Canvas.Shape> =>
   Option.match(maybeLyingOf(seat), {
     onNone: () => [
-      ...auraShapes(model.player, model.boosts, model.elapsedMs),
+      ...auraShapes(
+        focusOf(model).player,
+        focusOf(model).boosts,
+        model.elapsedMs,
+      ),
       ...playerShapes(model),
     ],
     onSome: lying => lyingShapes(model, lying),
@@ -145,7 +150,7 @@ export const mateDrawables = (
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Drawable> =>
   Array.map(mates, (mate): Drawable => ({
-    footY: playerFootY(mate.model.player),
+    footY: playerFootY(focusOf(mate.model).player),
     rank: 'Player',
     shapes: mateBodyShapes(mate),
   }))
@@ -329,7 +334,7 @@ export const reviveRingGroundShapes = (
 // bled-out body gets nothing.
 const seatMarkShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
   isCoop(model)
-    ? Array.flatMap(playersOf(model), ({ slot, seat, player }) => {
+    ? Array.flatMap(playersOf(model), ({ seat: { slot }, seat, player }) => {
         if (isStanding(seat)) {
           return markShapes(
             slot,
@@ -367,8 +372,11 @@ export const mateOverheadShapes = (
         ...Array.flatMap(mates, ({ model: mate, seat }) =>
           isStanding(seat)
             ? [
-                ...playerFlashShapes(mate.player),
-                ...reloadBarShapes(mate.player, hatRiseOf(mate.appearance)),
+                ...playerFlashShapes(focusOf(mate).player),
+                ...reloadBarShapes(
+                  focusOf(mate).player,
+                  hatRiseOf(mate.appearance),
+                ),
               ]
             : [],
         ),
@@ -381,7 +389,7 @@ export const mateOverheadShapes = (
 export const seatModelsOf = (
   model: Model,
 ): ReadonlyArray<Readonly<{ slot: PlayerSlot; model: Model }>> => {
-  return Array.map(playersOf(model), ({ slot }) => ({
+  return Array.map(playersOf(model), ({ seat: { slot } }) => ({
     slot,
     model: modifyFields(
       withWorld(model, world => focusSeat(world, slot)),

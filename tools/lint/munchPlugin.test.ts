@@ -108,10 +108,16 @@ tester.run('seat-action-once', ruleOf('seat-action-once'), {
   valid: [
     "import { actAsLead } from './action'",
     'const next = modifyFields(model, { hitStop: () => 0 })',
+    "const next = modifyFocus(model, { shopCategory: () => 'Guns' })",
   ],
   invalid: [
     one("import { beginReload } from '../weapons'"),
     one('const next = modifyFields(model, { wallet: () => wallet })'),
+    one('const next = modifyFocus(model, { player: player => player })'),
+    one('const next = modifySeat(world, 1, { trapStock: () => stock })'),
+    one(
+      'const next = modifyFields(model, { seats: atSeat(1, { wallet: () => wallet }) })',
+    ),
   ],
 })
 

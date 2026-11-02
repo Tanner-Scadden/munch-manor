@@ -27,36 +27,27 @@ export const FIELD_CLASSES = {
   intensity: 'World',
   mode: 'World',
   difficulty: 'World',
-  player: 'World',
   zombies: 'World',
   bullets: 'World',
   lobs: 'World',
   nextEntityId: 'World',
-  wallet: 'World',
   elapsedMs: 'World',
   frameEvents: 'World',
   traps: 'World',
   pickups: 'World',
-  boosts: 'World',
   loot: 'World',
-  trapStock: 'World',
-  selectedTrap: 'World',
   level: 'World',
   rngState: 'World',
-  intent: 'World',
 
   ovens: 'World',
   fridge: 'World',
-  laserSight: 'World',
-  shop: 'World',
-  shopCategory: 'World',
-  purchase: 'World',
   hitStop: 'World',
   lessons: 'World',
   practice: 'World',
   debutCard: 'World',
   stats: 'World',
   party: 'World',
+  seats: 'World',
 
   input: 'Client',
   maybeSurface: 'Client',
@@ -154,9 +145,29 @@ export const FIELD_CLASSES = {
   crewBots: 'Client',
 } satisfies Partial<Record<keyof Model, FieldClass>>
 
-const CLASS_BY_FIELD: ReadonlyMap<string, FieldClass> = new Map(
-  Object.entries(FIELD_CLASSES),
-)
+// NOTE: the player fields at the root of a Model before seats by slot. A
+// Model's first seat hashes under these names (legacyEntriesOf), so a run
+// before that change and a run after it hash alike.
+const LEGACY_SEAT_FIELDS = [
+  'player',
+  'intent',
+  'wallet',
+  'boosts',
+  'trapStock',
+  'selectedTrap',
+  'shop',
+  'shopCategory',
+  'laserSight',
+  'purchase',
+] as const
+
+const CLASS_BY_FIELD: ReadonlyMap<string, FieldClass> = new Map([
+  ...Object.entries(FIELD_CLASSES),
+  ...LEGACY_SEAT_FIELDS.map((field): readonly [string, FieldClass] => [
+    field,
+    'World',
+  ]),
+])
 
 const classOf = (field: string): FieldClass | undefined =>
   CLASS_BY_FIELD.get(field)
@@ -175,11 +186,47 @@ const byField = (
 const flatEntriesOf = (
   model: object,
 ): ReadonlyArray<readonly [string, unknown]> =>
-  Object.entries(model).flatMap(([field, value]: [string, unknown]) =>
-    field === 'world' && typeof value === 'object' && value !== null
-      ? Object.entries(value)
-      : [[field, value] as const],
+  legacyEntriesOf(
+    Object.entries(model).flatMap(([field, value]: [string, unknown]) =>
+      field === 'world' && typeof value === 'object' && value !== null
+        ? Object.entries(value)
+        : [[field, value] as const],
+    ),
   )
+
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isList = (value: unknown): value is ReadonlyArray<unknown> =>
+  Array.isArray(value)
+
+// NOTE: seats by slot read as the Model before them: the first seat's player
+// fields at the root, and a Crew with its lead seat and the other seats as
+// mates (a Mate was a seat's whole state). before and after (beforeAfter.ts)
+// plays this against a base with the old shape, so both sides hash the same
+// state under the same names.
+const legacyEntriesOf = (
+  entries: ReadonlyArray<readonly [string, unknown]>,
+): ReadonlyArray<readonly [string, unknown]> => {
+  const seats = entries.find(([field]) => field === 'seats')?.[1]
+  const lead = isList(seats) ? seats[0] : undefined
+  if (!isList(seats) || !isRecord(lead)) {
+    return entries
+  }
+  return [
+    ...entries
+      .filter(([field]) => field !== 'seats')
+      .map(([field, value]): readonly [string, unknown] =>
+        field === 'party' && isRecord(value) && value['_tag'] === 'Crew'
+          ? [field, { _tag: 'Crew', lead: lead['seat'], mates: seats.slice(1) }]
+          : [field, value],
+      ),
+    ...LEGACY_SEAT_FIELDS.map((field): readonly [string, unknown] => [
+      field,
+      lead[field],
+    ]),
+  ]
+}
 
 // NOTE: fields the World gained for co-op hash only once they hold more
 // than single player's value, so a single player run hashes exactly as it

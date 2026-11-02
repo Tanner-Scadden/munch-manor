@@ -3,7 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { AmmoTip } from './clientSchema'
 import type { Model } from './model'
-import { isCoop } from './party'
+import { focusOf, isCoop } from './party'
 import type { Calling } from './playerData'
 import {
   carriedMagazine,
@@ -91,7 +91,10 @@ export const AMMO_TIP_MS = 4500
 const isTipWorthy = (model: Model): boolean =>
   Phase.isAnyOf(['Wave', 'Preparation'])(model.phase) &&
   !isCoop(model) &&
-  isRunningLow(heldGun(model.player.arsenal), model.player.calling)
+  isRunningLow(
+    heldGun(focusOf(model).player.arsenal),
+    focusOf(model).player.calling,
+  )
 
 // NOTE: the first time ever the held gun runs low, Rattles calls from the
 // stall for a few seconds. The frame's own time drains it, so a pause holds

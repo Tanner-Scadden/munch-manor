@@ -52,7 +52,7 @@ import {
   msIntoPhase,
   shownHints,
 } from './onboarding'
-import { isCoop } from './party'
+import { focusOf, isCoop } from './party'
 import type { Calling } from './playerData'
 import { type Screen, landscapeFrameOffset } from './screen'
 import {
@@ -972,8 +972,8 @@ const readyShapes = (model: Model): ReadonlyArray<Canvas.Shape> => [
   ...paradeShapes(model.screenMs),
   ...runnerShapes(
     model.appearance,
-    model.player.calling,
-    heldGun(model.player.arsenal).kind,
+    focusOf(model).player.calling,
+    heldGun(focusOf(model).player.arsenal).kind,
     model.screenMs,
   ),
   ...logoShapes(model.screenMs),

@@ -14,6 +14,7 @@ import { modifyFields } from 'foldkit/struct'
 import { boxCenter, levelOf } from '../../src/arena'
 import { Message } from '../../src/message'
 import { initialModel } from '../../src/model'
+import { focusOf } from '../../src/party'
 import { heroIdOf } from '../../src/playerData'
 import { noRank } from '../../src/rank'
 import { isShopOpenFor } from '../../src/shop'
@@ -128,7 +129,10 @@ const blamedKind = (before: Model, after: Model): Kind | undefined => {
   const burst = after.frameEvents.some(
     event =>
       event._tag === 'Exploded' &&
-      Math.hypot(event.x - after.player.x, event.y - after.player.y) < 34,
+      Math.hypot(
+        event.x - focusOf(after).player.x,
+        event.y - focusOf(after).player.y,
+      ) < 34,
   )
   if (burst) {
     return 'Exploder'
@@ -140,7 +144,8 @@ const blamedKind = (before: Model, after: Model): Kind | undefined => {
     return 'Boss'
   }
   return walking(before).sort(
-    (a, b) => distance(before.player, a) - distance(before.player, b),
+    (a, b) =>
+      distance(focusOf(before).player, a) - distance(focusOf(before).player, b),
   )[0]?.kind
 }
 
@@ -150,7 +155,7 @@ const blame = (
   after: Model,
   hurtBy: Record<Kind, number>,
 ): Kind | undefined => {
-  const lost = before.player.hp - after.player.hp
+  const lost = focusOf(before).player.hp - focusOf(after).player.hp
   if (lost <= 0) {
     return undefined
   }
@@ -216,11 +221,11 @@ export const play = (
   let preparedWave = 0
   let shoppedWave = 0
   let stuckFrames = 0
-  let lastPosition: Vector = model.player
+  let lastPosition: Vector = focusOf(model).player
   let strafe = 1
   let frame = 0
   let maxAlive = 0
-  let minHp = model.player.hp
+  let minHp = focusOf(model).player.hp
   const waves: Array<WaveLog> = []
   const dropped: Record<string, number> = {}
   const grabbed: Record<string, number> = {}
@@ -251,11 +256,15 @@ export const play = (
       isShopOpenFor(model.phase) &&
       !state.shopVisits.some(visit => visit.wave === wave)
     ) {
-      state.shopVisits.push({ wave, money: model.wallet.balance, bought: [] })
+      state.shopVisits.push({
+        wave,
+        money: focusOf(model).wallet.balance,
+        bought: [],
+      })
     }
-    if (model.shop._tag === 'Browsing') {
+    if (focusOf(model).shop._tag === 'Browsing') {
       model = shop(state, model)
-      if (model.shop._tag !== 'Browsing') {
+      if (focusOf(model).shop._tag !== 'Browsing') {
         shoppedWave = wave
       }
       continue
@@ -266,10 +275,12 @@ export const play = (
       if (plan === 'Go') {
         state.gnomeTries = 0
         model = pressKeys(model, new Set())
-        const other = Option.getOrUndefined(maybeOtherGun(model.player.arsenal))
+        const other = Option.getOrUndefined(
+          maybeOtherGun(focusOf(model).player.arsenal),
+        )
         if (
           state.options.swapsBack &&
-          heldGun(model.player.arsenal).kind === 'Pistol' &&
+          heldGun(focusOf(model).player.arsenal).kind === 'Pistol' &&
           other !== undefined &&
           other.rounds > 0
         ) {
@@ -310,26 +321,40 @@ export const play = (
       }
       if (plan === 'Fridge' && isFridgeInReach(model)) {
         model = pressKeys(model, fridgeKeys(model))
-      } else if (plan === 'Gnome' && distance(model.player, target) < 6) {
+      } else if (
+        plan === 'Gnome' &&
+        distance(focusOf(model).player, target) < 6
+      ) {
         state.gnomeTries += 1
         const selected =
-          model.selectedTrap === 'Turret' ? model : tapKey(model, 'KeyG')
+          focusOf(model).selectedTrap === 'Turret'
+            ? model
+            : tapKey(model, 'KeyG')
         const placed = tapKey(selected, 'KeyT')
         state.gnomesPlaced +=
-          placed.trapStock.Turret < model.trapStock.Turret ? 1 : 0
+          focusOf(placed).trapStock.Turret < focusOf(model).trapStock.Turret
+            ? 1
+            : 0
         model = pressKeys(placed, new Set())
-      } else if (plan === 'Barricade' && distance(model.player, target) < 8) {
+      } else if (
+        plan === 'Barricade' &&
+        distance(focusOf(model).player, target) < 8
+      ) {
         const placed = tapKey(model, 'KeyT')
         model =
-          placed.trapStock.Barricade < model.trapStock.Barricade
+          focusOf(placed).trapStock.Barricade <
+          focusOf(model).trapStock.Barricade
             ? placed
-            : pressKeys(placed, desiredKeys(steerToward(placed.player, target)))
+            : pressKeys(
+                placed,
+                desiredKeys(steerToward(focusOf(placed).player, target)),
+              )
       } else {
         const direction = steerToward(
-          model.player,
-          routeTo(model.player, target),
+          focusOf(model).player,
+          routeTo(focusOf(model).player, target),
         )
-        const moved = distance(model.player, lastPosition)
+        const moved = distance(focusOf(model).player, lastPosition)
         stuckFrames = moved < 0.3 ? stuckFrames + 1 : 0
         if (stuckFrames > 20) {
           strafe = -strafe
@@ -372,7 +397,7 @@ export const play = (
         model = fightWithFridge(state, sheathPan(model), frame, fridgeSpare)
       }
     }
-    lastPosition = model.player
+    lastPosition = focusOf(model).player
     frame += 1
     const before = model
     model = send(model, Message.TickedFrame({ deltaTime: FRAME_MS }))
@@ -380,7 +405,7 @@ export const play = (
       state.kitchenWave = wave
     }
     const blamed = blame(before, model, hurtBy)
-    if (model.player.hp <= 0 && before.player.hp > 0) {
+    if (focusOf(model).player.hp <= 0 && focusOf(before).player.hp > 0) {
       killedBy = blamed
     }
     model.frameEvents.forEach(event => {
@@ -445,16 +470,17 @@ export const play = (
       }
     })
     if (
-      model.player.hp < before.player.hp &&
+      focusOf(model).player.hp < focusOf(before).player.hp &&
       model.frameEvents.some(event => event._tag === 'ZombieLanded')
     ) {
       newKinds.throwHits += 1
     }
     if (
-      model.player.hp < before.player.hp &&
+      focusOf(model).player.hp < focusOf(before).player.hp &&
       before.zombies.some(zombie => zombie.action._tag === 'Clinging')
     ) {
-      newKinds.heartsWhileClung += before.player.hp - model.player.hp
+      newKinds.heartsWhileClung +=
+        focusOf(before).player.hp - focusOf(model).player.hp
     }
     model.frameEvents.forEach(event => {
       if (event._tag === 'PickupDropped') {
@@ -466,7 +492,9 @@ export const play = (
     })
     if (before.phase._tag === 'Wave') {
       waveMs += FRAME_MS
-      if (Object.values(model.boosts).some(timer => timer._tag === 'On')) {
+      if (
+        Object.values(focusOf(model).boosts).some(timer => timer._tag === 'On')
+      ) {
         boostedMs += FRAME_MS
       }
     }
@@ -541,12 +569,14 @@ export const play = (
         ) {
           fight.aimedMs += FRAME_MS
         }
-        const lost = before.player.hp - model.player.hp
+        const lost = focusOf(before).player.hp - focusOf(model).player.hp
         if (lost > 0 && model.boss._tag === 'Fighting') {
           fight.heartsLost += lost
           const cause = bossBlameOf(model)
           const nearest = walking(before).sort(
-            (a, b) => distance(before.player, a) - distance(before.player, b),
+            (a, b) =>
+              distance(focusOf(before).player, a) -
+              distance(focusOf(before).player, b),
           )[0]
           if (cause !== undefined) {
             fight.heartsByAttack[cause] += lost
@@ -559,17 +589,17 @@ export const play = (
         }
         if (
           model.frameEvents.some(event => event._tag === 'BossStomped') &&
-          model.player.hp < before.player.hp
+          focusOf(model).player.hp < focusOf(before).player.hp
         ) {
           fight.stompHits += 1
         }
-        if (model.player.hp <= 0 && model.boss._tag === 'Fighting') {
+        if (focusOf(model).player.hp <= 0 && model.boss._tag === 'Fighting') {
           fight.diedToIt = true
         }
       }
     }
     maxAlive = Math.max(maxAlive, model.zombies.length)
-    minHp = Math.min(minHp, model.player.hp)
+    minHp = Math.min(minHp, focusOf(model).player.hp)
     if (
       before.phase._tag === 'Wave' ||
       (before.phase._tag === 'Preparation' && model.phase._tag === 'Wave')
@@ -582,9 +612,12 @@ export const play = (
         zombie => zombie.state._tag !== 'Dying',
       )
       const crowd = alive.filter(
-        zombie => distance(model.player, zombie) <= PRESSURE_PX,
+        zombie => distance(focusOf(model).player, zombie) <= PRESSURE_PX,
       ).length
-      log.heartsLost += Math.max(0, before.player.hp - model.player.hp)
+      log.heartsLost += Math.max(
+        0,
+        focusOf(before).player.hp - focusOf(model).player.hp,
+      )
       log.lengthMs += FRAME_MS
       log.pressureMs += crowd >= PRESSURE_CROWD ? FRAME_MS : 0
       log.relaxMs += alive.length === 0 ? FRAME_MS : 0
@@ -612,8 +645,8 @@ export const play = (
         boss?.y.toFixed(0),
         model.boss.move._tag,
         'player',
-        model.player.x.toFixed(0),
-        model.player.y.toFixed(0),
+        focusOf(model).player.x.toFixed(0),
+        focusOf(model).player.y.toFixed(0),
         'alive',
         walking(model).length,
       )
@@ -623,7 +656,7 @@ export const play = (
       process.env['DEBUG'] !== '' &&
       frame % 150 === 0
     ) {
-      const near = walking(model).map(z => distance(model.player, z))
+      const near = walking(model).map(z => distance(focusOf(model).player, z))
       console.log(
         model.phase._tag,
         wave,
@@ -632,18 +665,18 @@ export const play = (
         'closest',
         Math.min(...near).toFixed(0),
         'player',
-        model.player.x.toFixed(0),
-        model.player.y.toFixed(0),
+        focusOf(model).player.x.toFixed(0),
+        focusOf(model).player.y.toFixed(0),
         'hp',
-        model.player.hp,
+        focusOf(model).player.hp,
         'shots',
         model.stats.shotsFired,
         model.stats.shotsHit,
-        model.player.arsenal._tag,
+        focusOf(model).player.arsenal._tag,
       )
     }
     if (model.frameEvents.some(event => event._tag === 'WaveCleared')) {
-      moneyAfterWave.push(model.wallet.earned)
+      moneyAfterWave.push(focusOf(model).wallet.earned)
     }
   }
   const finalSpare = spareOf(model)

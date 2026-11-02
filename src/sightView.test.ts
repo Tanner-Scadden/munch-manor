@@ -9,22 +9,28 @@ import { BULLET_STEP_PX, TILE_SIZE } from './constants'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, type Vector, initialModel } from './model'
+import { focusOf, modifyFocus } from './party'
 import { aimSightShapes } from './sightView'
 import { SHOTGUN, holdingFirst, holdingSecond } from './testing'
 import { asVeteran } from './veteran'
 
-const fighting: Model = modifyFields(asVeteran(initialModel), {
-  maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-  phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
-  player: player =>
-    modifyFields(player, {
-      y: () => 70,
-      arsenal: () => holdingFirst(SHOTGUN),
-    }),
-  laserSight: () => 'Fitted',
-})
+const fighting: Model = modifyFocus(
+  modifyFields(asVeteran(initialModel), {
+    maybeSurface: () =>
+      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+    phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
+  }),
+  {
+    player: player =>
+      modifyFields(player, {
+        y: () => 70,
+        arsenal: () => holdingFirst(SHOTGUN),
+      }),
+    laserSight: () => 'Fitted',
+  },
+)
 
-const unfitted: Model = modifyFields(fighting, { laserSight: () => 'None' })
+const unfitted: Model = modifyFocus(fighting, { laserSight: () => 'None' })
 
 // NOTE: the right thumb aims exactly along its deflection, so a stick pushed
 // straight right or straight up gives a sight to test against.
@@ -110,7 +116,7 @@ describe('the laser sight', () => {
         if (from === undefined || to === undefined) {
           return
         }
-        expect(from.x).toBeGreaterThan(current.player.x)
+        expect(from.x).toBeGreaterThan(focusOf(current).player.x)
         expect(to.y).toBeCloseTo(from.y)
         expect(to.x).toBeGreaterThan(from.x)
         const level = levelOf(current)
@@ -126,7 +132,7 @@ describe('the laser sight', () => {
     story(
       update,
       given(
-        modifyFields(fighting, {
+        modifyFocus(fighting, {
           player: player =>
             modifyFields(player, {
               arsenal: () => holdingSecond(SHOTGUN),
@@ -160,7 +166,7 @@ describe('the laser sight', () => {
     story(
       update,
       given(
-        modifyFields(fighting, { player: player => ({ ...player, y: 90 }) }),
+        modifyFocus(fighting, { player: player => ({ ...player, y: 90 }) }),
       ),
       ...thumbAim(50, 0),
       model(current => {
@@ -183,7 +189,7 @@ describe('the laser sight', () => {
         const to = Option.getOrThrow(
           Array.get(Array.map(onlyPath(current).instructions, pointOf), 1),
         )
-        expect(to.y).toBeLessThan(current.player.y)
+        expect(to.y).toBeLessThan(focusOf(current).player.y)
       }),
       liftThumb,
       message(Message.MovedMouse({ clientX: 700, clientY: 200 })),
@@ -191,7 +197,7 @@ describe('the laser sight', () => {
         const to = Option.getOrThrow(
           Array.get(Array.map(onlyPath(current).instructions, pointOf), 1),
         )
-        expect(to.x).toBeGreaterThan(current.player.x)
+        expect(to.x).toBeGreaterThan(focusOf(current).player.x)
       }),
     )
   })

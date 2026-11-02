@@ -13,25 +13,34 @@ import {
   idleBoosts,
   initialModel,
 } from './model'
+import { focusOf, modifyFocus } from './party'
 import { BOOSTS } from './powerups'
 import { DEFAULT_PORTRAIT_SCREEN, LANDSCAPE_SCREEN } from './screen'
 import { rectsOf } from './testing'
 
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 
-const twoBoosts: Model = modifyFields(initialModel, {
-  phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
-  boosts: () => ({
-    ...idleBoosts,
-    RapidFire: BoostTimer.On({ remainingMs: 6000, durationMs: 8000 }),
-    Speed: BoostTimer.On({ remainingMs: 3000, durationMs: 10000 }),
+const twoBoosts: Model = modifyFocus(
+  modifyFields(initialModel, {
+    phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
   }),
-})
+  {
+    boosts: () => ({
+      ...idleBoosts,
+      RapidFire: BoostTimer.On({ remainingMs: 6000, durationMs: 8000 }),
+      Speed: BoostTimer.On({ remainingMs: 3000, durationMs: 10000 }),
+    }),
+  },
+)
 
 const chipFrames = (model: Model): ReadonlyArray<Box> =>
   Array.filterMap(
     rectsOf(
-      hudShapes(model, LANDSCAPE_SCREEN, cameraFor(PARLOUR, model.player)),
+      hudShapes(
+        model,
+        LANDSCAPE_SCREEN,
+        cameraFor(PARLOUR, focusOf(model).player),
+      ),
       {
         x: 0,
         y: 0,
@@ -61,7 +70,7 @@ describe('the boost chips', () => {
   })
 
   test('all four boosts stack in two rows, clear of the boss name under the wave label', () => {
-    const allFour = modifyFields(twoBoosts, {
+    const allFour = modifyFocus(twoBoosts, {
       boosts: () => ({
         RapidFire: BoostTimer.On({ remainingMs: 6000, durationMs: 8000 }),
         Damage: BoostTimer.On({ remainingMs: 5000, durationMs: 8000 }),
@@ -74,7 +83,7 @@ describe('the boost chips', () => {
         hudShapes(
           allFour,
           LANDSCAPE_SCREEN,
-          cameraFor(PARLOUR, allFour.player),
+          cameraFor(PARLOUR, focusOf(allFour).player),
         ),
         {
           x: 0,
@@ -92,7 +101,7 @@ describe('the boost chips', () => {
 
   test('no boost running shows no chip', () => {
     expect(
-      chipFrames(modifyFields(twoBoosts, { boosts: () => idleBoosts })),
+      chipFrames(modifyFocus(twoBoosts, { boosts: () => idleBoosts })),
     ).toEqual([])
   })
 })

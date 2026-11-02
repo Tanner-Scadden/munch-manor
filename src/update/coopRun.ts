@@ -8,6 +8,7 @@ import { playerKeyAction } from '../keyActions'
 import { Message } from '../message'
 import { type Model, type PageVisibility, type ShopItemId } from '../model'
 import { isRunOn } from '../onlineRun'
+import { focusOf, focusSlotOf } from '../party'
 import { maybeTapOffer } from '../purchase'
 import { isAtCounter } from '../shop'
 import { SeatAction, gunSlotAction, trySeatAction } from '../stepWorld'
@@ -36,7 +37,9 @@ const buyInRun = (item: ShopItemId) =>
       pressInRun(SeatAction.Buy({ item })),
       playSounds([
         uiCue(
-          Result.isSuccess(trySeatAction(model, SeatAction.Buy({ item })))
+          Result.isSuccess(
+            trySeatAction(model, focusSlotOf(model), SeatAction.Buy({ item })),
+          )
             ? 'Purchase'
             : 'Denied',
         ),
@@ -59,7 +62,7 @@ const holdKey =
 // goes to the room, and every key is held in the input for walking.
 const keyInRun = (code: string) =>
   makeStep(model =>
-    isAtCounter(model.shop)
+    isAtCounter(focusOf(model).shop)
       ? Update.combineSteps([holdKey(code), unlockAudio])
       : Option.match(playerKeyAction(model, code), {
           onNone: () => Update.combineSteps([holdKey(code), unlockAudio]),
@@ -71,7 +74,7 @@ const keyInRun = (code: string) =>
 // NOTE: a tap at the ammo window goes to the room as BuyAmmo, which buys
 // there at once (src/purchase.ts); the room's tick makes its sound.
 const tapInRun = makeStep(model =>
-  Option.isSome(maybeTapOffer(model))
+  Option.isSome(maybeTapOffer(model, focusSlotOf(model)))
     ? pressInRun(SeatAction.BuyAmmo())
     : unchanged,
 )
@@ -118,7 +121,8 @@ const inRun = (model: Model, message: RunMessage) =>
     ClickedPauseButton: () => unchanged,
     ClickedStartWaveButton: () => pressInRun(SeatAction.Ready()),
     ClickedSwapButton: () => pressInRun(SeatAction.Swap()),
-    ClickedGunSlot: ({ slot }) => pressInRun(gunSlotAction(model.player, slot)),
+    ClickedGunSlot: ({ slot }) =>
+      pressInRun(gunSlotAction(focusOf(model).player, slot)),
     ClickedMeleeSlot: () => pressInRun(SeatAction.Melee()),
     ClickedReloadButton: () => pressInRun(SeatAction.Reload()),
     ClickedPlaceTrapButton: () => pressInRun(SeatAction.PlaceTrap()),

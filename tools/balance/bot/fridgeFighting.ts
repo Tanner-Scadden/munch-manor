@@ -8,6 +8,7 @@ import {
   isFridgeWeapon,
   isSmallKind,
 } from '../../../src/fridgeWeapons'
+import { focusOf } from '../../../src/party'
 import { heldGun, isWieldingMelee } from '../../../src/weapons'
 import { bodyRadiusOf } from '../../../src/zombies'
 import {
@@ -37,7 +38,7 @@ import { type BotState, type FridgePlan, GUN_PLAN, type Zombie } from './state'
 
 const visibleZombies = (model: Model) =>
   walking(model).filter(zombie =>
-    hasLineOfSight(levelOf(model), model.player, zombie),
+    hasLineOfSight(levelOf(model), focusOf(model).player, zombie),
   )
 
 const nearestOf = (from: Vector, zombies: ReadonlyArray<Zombie>) =>
@@ -46,7 +47,7 @@ const nearestOf = (from: Vector, zombies: ReadonlyArray<Zombie>) =>
 // The gap from the player's edge to a zombie's body, the way the Pan's and
 // Brain Freeze's reach are measured.
 const edgeGap = (model: Model, zombie: Zombie) =>
-  distance(model.player, zombie) - bodyRadiusOf(zombie) - PLAYER_RADIUS
+  distance(focusOf(model).player, zombie) - bodyRadiusOf(zombie) - PLAYER_RADIUS
 
 const gunPlan = (target?: Zombie): FridgePlan => ({ ...GUN_PLAN, target })
 
@@ -75,7 +76,7 @@ const cookerPlan = (model: Model, spare: FridgeSpare): FridgePlan => {
   if (spare.rounds <= 0) {
     return gunPlan()
   }
-  const { player } = model
+  const { player } = focusOf(model)
   const seen = visibleZombies(model)
   const nearest = nearestOf(player, seen)
   // NOTE: a Line Cook's first gun is the Cooker alone, so with no other gun
@@ -131,7 +132,7 @@ const PAN_ENGAGE_PX = 40
 const PAN_THREAT_PX = 50
 
 export const panPlan = (model: Model): FridgePlan => {
-  const { player } = model
+  const { player } = focusOf(model)
   const seen = visibleZombies(model)
   const isThreat = seen.some(
     zombie =>
@@ -160,7 +161,7 @@ const FREEZE_CLOSE_PX = 30
 const FREEZE_GROUP_PX = 20
 
 const freezePlan = (model: Model, spare: FridgeSpare): FridgePlan => {
-  const { player } = model
+  const { player } = focusOf(model)
   const seen = visibleZombies(model)
   const isFrozen = (zombie: Zombie) => zombie.action._tag === 'Frozen'
   const frozen = nearestOf(player, seen.filter(isFrozen))
@@ -213,7 +214,7 @@ export const swingPan = (
   model: Model,
   frame: number,
 ): Model => {
-  const drawn = isWieldingMelee(model.player)
+  const drawn = isWieldingMelee(focusOf(model).player)
     ? model
     : tapKey(model, KEYS.knife)
   const { target } = state.panPlanNow
@@ -226,15 +227,15 @@ export const swingPan = (
 // The Pan out with no target to swing at goes back to the last gun at
 // once, unless no gun can shoot.
 export const sheathPan = (model: Model): Model =>
-  isWieldingMelee(model.player) &&
+  isWieldingMelee(focusOf(model).player) &&
   panOf(model) !== undefined &&
-  !isOutOfGuns(model.player) &&
+  !isOutOfGuns(focusOf(model).player) &&
   !isGunIdle(model)
     ? tapKey(model, 'KeyQ')
     : model
 
 const isHoldingSpare = (model: Model) =>
-  isFridgeWeapon(heldGun(model.player.arsenal).kind)
+  isFridgeWeapon(heldGun(focusOf(model).player.arsenal).kind)
 
 // The Cooker's trigger, every frame: let go once the charge reaches the
 // planned hold, and never hold past full.
@@ -243,7 +244,7 @@ const workCooker = (
   model: Model,
   spare: FridgeSpare,
 ): Model => {
-  const { charge } = model.player
+  const { charge } = focusOf(model).player
   if (charge._tag === 'Building') {
     const limit = Math.min(state.fridgePlan.lobMs, cookerFullMs(spare.tier))
     return charge.heldMs >= limit ? holdFire(model) : model
@@ -280,7 +281,7 @@ export const fightWithFridge = (
     return aimAndShoot(state, swapped, target, frame)
   }
   const aimed = aimAt(state, swapped, target)
-  const { charge, fireCooldownMs } = aimed.model.player
+  const { charge, fireCooldownMs } = focusOf(aimed.model).player
   return charge._tag === 'Idle' && fireCooldownMs <= 0
     ? pressFire(aimed.model, aimed.point)
     : workCooker(state, aimed.model, spare)

@@ -22,6 +22,7 @@ import {
   type ZombieKind,
 } from './model'
 import { quietWave, withActors } from './model.fixture'
+import { modifyFocus } from './party'
 import { blastFrames, holdFire, recordTicks, ticks, zombieOf } from './testing'
 import { FINAL_WAVE } from './wavePlans'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from './zombies'
@@ -49,11 +50,13 @@ describe('exploders', () => {
       story(
         update,
         given(
-          modifyFields(withScene(cluster), {
-            rngState: () => seed,
-            player: player =>
-              modifyFields(player, { x: () => 150, y: () => 72 }),
-          }),
+          modifyFocus(
+            modifyFields(withScene(cluster), { rngState: () => seed }),
+            {
+              player: player =>
+                modifyFields(player, { x: () => 150, y: () => 72 }),
+            },
+          ),
         ),
         holdFire,
         ...recordTicks(300, FRAME_MS, frames),
@@ -91,19 +94,23 @@ describe('spawn tables', () => {
     story(
       update,
       given(
-        modifyFields(quietWave(1), {
-          phase: () => preparation,
-          rngState: () => rngState,
-          player: player =>
-            modifyFields(player, {
-              hp: () => 1e6,
-              invulnerability: () =>
-                Invulnerability.Invulnerable({
-                  remainingMs: 1e9,
-                  durationMs: 1e9,
-                }),
-            }),
-        }),
+        modifyFocus(
+          modifyFields(quietWave(1), {
+            phase: () => preparation,
+            rngState: () => rngState,
+          }),
+          {
+            player: player =>
+              modifyFields(player, {
+                hp: () => 1e6,
+                invulnerability: () =>
+                  Invulnerability.Invulnerable({
+                    remainingMs: 1e9,
+                    durationMs: 1e9,
+                  }),
+              }),
+          },
+        ),
       ),
       message(Message.PressedKey({ code: 'Enter' })),
       ...Array.flatMap(ticks(4000, 50), frame => [
@@ -169,7 +176,7 @@ describe('tank pathing', () => {
     story(
       update,
       given(
-        modifyFields(
+        modifyFocus(
           withScene([
             zombieOf('Tank', 1, start.x, start.y, { speed: TANK_TEST_SPEED }),
           ]),
@@ -195,7 +202,7 @@ describe('tank pathing', () => {
   const closestApproach = (frames: ReadonlyArray<Model>): number =>
     pipe(
       frames,
-      Array.flatMap(({ zombies, player }) =>
+      Array.flatMap(({ zombies, seats: [{ player }] }) =>
         Array.map(zombies, zombie =>
           Math.hypot(zombie.x - player.x, zombie.y - player.y),
         ),

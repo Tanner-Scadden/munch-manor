@@ -9,6 +9,7 @@ import { CALL_MS, maybeKitchenSound } from './kitchenCall'
 import { kitchenLeakShapes } from './kitchenLeak'
 import { Boss, KitchenCall, type Model, Phase } from './model'
 import { DISTANT_SPAWN, freshRunModel, pastTimedBreaks } from './model.fixture'
+import { modifyFocus } from './party'
 import { roomsCounterShapes, roomsOf } from './roomsFound'
 import { soupBubbleShapes } from './stallBubble'
 import { BELOW_KITCHEN_DOOR, nextFrame } from './testing'
@@ -133,7 +134,7 @@ describe('the boards leaking the kitchen', () => {
 
 describe('the smell of soup', () => {
   const near = (current: Model): Model =>
-    modifyFields(current, {
+    modifyFocus(current, {
       player: player =>
         modifyFields(player, {
           x: () => BELOW_KITCHEN_DOOR.x,
@@ -153,7 +154,7 @@ describe('the smell of soup', () => {
 
   test('is silent when the player is far', () => {
     const before = beat(breakAt(3), 6900)
-    const after = modifyFields(beat(breakAt(3), 7100), {
+    const after = modifyFocus(beat(breakAt(3), 7100), {
       player: player => modifyFields(player, { x: () => 300, y: () => 170 }),
     })
     expect(Option.isNone(maybeKitchenSound(before, after))).toBe(true)

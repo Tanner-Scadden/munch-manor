@@ -10,6 +10,7 @@ import { deriveIntent } from './input'
 import { update } from './main'
 import { Message } from './message'
 import { type Input, type Model, Phase, initialModel } from './model'
+import { focusOf, modifyFocus } from './party'
 import { clientToView } from './screen'
 import { WIDE_SURFACE } from './testing'
 
@@ -92,7 +93,7 @@ describe('camera', () => {
 
   test('aims the mouse at the world point under the cursor on a scrolled map', () => {
     const player = {
-      ...initialModel.player,
+      ...focusOf(initialModel).player,
       x: 400,
       y: 90,
     }
@@ -124,7 +125,7 @@ describe('camera', () => {
     story(
       update,
       given(
-        modifyFields(playingModel, {
+        modifyFocus(playingModel, {
           player: player => ({ ...player, x: 100, y: 90 }),
         }),
       ),
@@ -134,7 +135,9 @@ describe('camera', () => {
         expect(current.input.maybeMouseInView).toEqual(
           Option.some({ x: 250, y: 90 }),
         )
-        expect(current.intent.maybeAim).toEqual(Option.some({ x: 1, y: 0 }))
+        expect(focusOf(current).intent.maybeAim).toEqual(
+          Option.some({ x: 1, y: 0 }),
+        )
       }),
     )
   })

@@ -4,6 +4,7 @@ import { CharacterBlock } from './characterBlock'
 import { CoopBlock } from './coop'
 import { makeBinding } from './definition'
 import { isProfileOpen } from './menuState'
+import { focusOf } from './party'
 import { ProfileTabsBlock } from './profile'
 import { isBrowsing } from './shop'
 import { ShopTabsBlock } from './shopTabs'
@@ -60,7 +61,7 @@ export const ProfileTabsBinding = makeBinding(ProfileTabsBlock, {
 export const ShopTabsBinding = makeBinding(ShopTabsBlock, {
   field: 'shopTabs',
   init: false,
-  delivery: { when: model => isBrowsing(model.shop) },
+  delivery: { when: model => isBrowsing(focusOf(model).shop) },
 })
 
 // THE LOOK TAB

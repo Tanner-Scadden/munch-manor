@@ -16,11 +16,12 @@ import {
 } from '@game/model'
 import { CueMusic, cueMusicFrom } from '@game/musicPlan'
 import {
+  focusOf,
   isDowned,
-  leadSeatOf,
-  modifyLeadSeat,
+  modifySeat,
+  modifySeatRecord,
   playersOf,
-  withSeat,
+  seatStateAt,
 } from '@game/party'
 import { Difficulty } from '@game/playerData'
 import {
@@ -210,10 +211,10 @@ export const seatsOnScreen = (
   world: screenOf(model).world,
   seats: Option.match(maybeRoom, {
     onNone: () => [
-      { slot: 0, ...worldToView(screenCameraOf(model), model.player) },
+      { slot: 0, ...worldToView(screenCameraOf(model), focusOf(model).player) },
     ],
     onSome: ({ world }) =>
-      Array.map(playersOf(world.world), ({ slot, player }) => ({
+      Array.map(playersOf(world.world), ({ seat: { slot }, player }) => ({
         slot,
         ...worldToView(screenCameraOf(model), player),
       })),
@@ -358,9 +359,9 @@ const aimOffset = (model: Model, segment: Segment): Option.Option<Vector> => {
   }
   const offset =
     aim === 'nearest'
-      ? Option.map(nearestTo(model, model.player), target => ({
-          x: target.x - model.player.x,
-          y: target.y - model.player.y,
+      ? Option.map(nearestTo(model, focusOf(model).player), target => ({
+          x: target.x - focusOf(model).player.x,
+          y: target.y - focusOf(model).player.y,
         }))
       : Option.some({ x: aim[0], y: aim[1] })
   return Option.map(offset, raw => turned(raw, segment.turn ?? 0))
@@ -471,8 +472,8 @@ const withAim = (model: Model, segments: ReadonlyArray<Segment>): Model => {
         onSome: offset =>
           Option.some(
             worldToView(cameraOf(model), {
-              x: model.player.x + offset.x,
-              y: model.player.y + offset.y,
+              x: focusOf(model).player.x + offset.x,
+              y: focusOf(model).player.y + offset.y,
             }),
           ),
       }),
@@ -597,7 +598,7 @@ const spotFor = (
         isPrerolled && reviver === slot && tick >= walkAt,
     ),
     ({ down }) =>
-      Array.findFirst(playersOf(world.world), seat => seat.slot === down),
+      Array.findFirst(playersOf(world.world), seat => seat.seat.slot === down),
   )
   if (Option.isSome(maybeDowned)) {
     return Option.some(maybeDowned.value.player)
@@ -629,7 +630,7 @@ const botInput = (
 ): PlayerInput => {
   const seated = Array.findFirst(
     playersOf(world.world),
-    seat => seat.slot === slot,
+    seat => seat.seat.slot === slot,
   )
   return Option.match(seated, {
     onNone: () => NEUTRAL_INPUT,
@@ -692,33 +693,30 @@ const scripted = (
   const revive = coop.revive
   let world = held.world
   if (revive !== undefined && isPrerolled && tick === revive.at) {
-    world = withSeat(world, revive.down, seatWorld =>
-      modifyFields(seatWorld, {
-        player: player => modifyFields(player, { hp: () => 0 }),
-      }),
-    )
+    world = modifySeat(world, revive.down, {
+      player: player => modifyFields(player, { hp: () => 0 }),
+    })
   }
   if (revive !== undefined && isPrerolled && tick === revive.at + 1) {
-    world = withSeat(world, revive.down, seatWorld =>
-      isDowned(leadSeatOf(seatWorld))
-        ? modifyLeadSeat(seatWorld, seat =>
-            modifyFields(seat, {
-              life: () => Life.Downed({ bleedMs: revive.bleedMs, reviveMs: 0 }),
-            }),
-          )
-        : seatWorld,
-    )
+    world = isDowned(seatStateAt(world, revive.down).seat)
+      ? modifySeatRecord(world, revive.down, seat =>
+          modifyFields(seat, {
+            life: () => Life.Downed({ bleedMs: revive.bleedMs, reviveMs: 0 }),
+          }),
+        )
+      : world
   }
   if (coop.god === true) {
-    world = Array.reduce(playersOf(world), world, (current, { slot, seat }) =>
-      isDownedOnPurpose(coop, slot) || isDowned(seat)
-        ? current
-        : withSeat(current, slot, seatWorld =>
-            modifyFields(seatWorld, {
+    world = Array.reduce(
+      playersOf(world),
+      world,
+      (current, { seat: { slot }, seat }) =>
+        isDownedOnPurpose(coop, slot) || isDowned(seat)
+          ? current
+          : modifySeat(current, slot, {
               player: player =>
                 modifyFields(player, { hp: () => PLAYER_MAX_HP }),
             }),
-          ),
     )
   }
   return world === held.world ? held : { ...held, world }

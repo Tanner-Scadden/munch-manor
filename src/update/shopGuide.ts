@@ -7,6 +7,7 @@ import { makeCommand, makeStep } from '../definition'
 import { isShopDialogOpen } from '../menuState'
 import { Message } from '../message'
 import { type Model, ShopGuide, type ShopGuideSection } from '../model'
+import { focusOf } from '../party'
 import { isBrowsing } from '../shop'
 import { SHOP_GUIDE_BACK_ID, SHOP_GUIDE_OPEN_ID } from '../shopGuide'
 import { stepWhen } from '../stepWhen'
@@ -36,7 +37,8 @@ export const openShopGuide = (model: Model): UpdateReturn =>
   isShopDialogOpen(model)
     ? {
         model: modifyFields(model, {
-          shopGuide: () => ShopGuide.Open({ section: model.shopCategory }),
+          shopGuide: () =>
+            ShopGuide.Open({ section: focusOf(model).shopCategory }),
         }),
         commands: [FocusShopGuide({ target: 'Back' })],
       }
@@ -69,7 +71,8 @@ export const forgetShopGuide = modelStep(closedGuide)
 // player leaving but Escape reaching for the guide, so the guide closes and
 // the dialog opens again; otherwise the shop's own close goes ahead.
 export const isGuideEscape = (model: Model): boolean =>
-  ShopGuide.isAnyOf(['Open'])(model.shopGuide) && isBrowsing(model.shop)
+  ShopGuide.isAnyOf(['Open'])(model.shopGuide) &&
+  isBrowsing(focusOf(model).shop)
 
 export const reopenForGuide = makeStep(() =>
   Update.combineSteps([

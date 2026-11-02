@@ -255,7 +255,7 @@ const othersMoved = (player: Player, others: ReadonlyArray<number>) =>
     Array.every(others, slot => {
       const xs = Array.flatMap(seen, world =>
         Array.filterMap(playersOf(world.world), seated =>
-          seated.slot === slot
+          seated.seat.slot === slot
             ? Result.succeed(Math.round(seated.player.x))
             : Result.failVoid,
         ),

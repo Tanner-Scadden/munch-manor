@@ -16,7 +16,7 @@ import {
   readyModel,
   withArsenal,
 } from './model.fixture'
-import { leadSeatOf } from './party'
+import { leadSeatOf, modifyFocus } from './party'
 import { actionCodeOf, heldAction, seatActionOf } from './roomWorld'
 import { SeatAction, applySeatAction } from './stepWorld'
 import {
@@ -27,6 +27,7 @@ import {
   withPistol,
 } from './testing'
 import type { World } from './world'
+import { idleIntent } from './worldSchema'
 
 // One rule set for player actions (AGENTS.md "Code shape"): every seat
 // action, pressed through single player's own Messages, leaves the World
@@ -38,15 +39,17 @@ import type { World } from './world'
 // NOTE: World fields that are single player's cues around an action, not
 // its rule: the intent is read again from the input after a press, and
 // the lessons and the new zombie card are the tutorial's.
-const CUE_KEYS: ReadonlySet<keyof World> = new Set([
-  'intent',
-  'lessons',
-  'debutCard',
-])
+const CUE_KEYS: ReadonlySet<keyof World> = new Set(['lessons', 'debutCard'])
 
 const RULE_KEYS = Array.filter(WORLD_KEYS, key => !CUE_KEYS.has(key))
 
-const ruleFieldsOf = (world: World) => Struct.pick(world, RULE_KEYS)
+// NOTE: every seat's intent is a cue too.
+const ruleFieldsOf = (world: World) => ({
+  ...Struct.pick(world, RULE_KEYS),
+  seats: Array.map(world.seats, state =>
+    modifyFields(state, { intent: () => idleIntent }),
+  ),
+})
 
 // NOTE: a Message the root's update takes, its children's included.
 type RootMessage = Parameters<typeof update>[1]
@@ -60,13 +63,13 @@ type Row = Readonly<{
 const inWave = quietWave(3)
 
 const withKnifeOut = (base: Model): Model =>
-  modifyFields(base, {
+  modifyFocus(base, {
     player: player => modifyFields(player, { wield: () => 'Melee' }),
   })
 
 // NOTE: by the north door, where a Plank Pile goes.
 const withTraps = (base: Model, barricades: number, turrets: number): Model =>
-  modifyFields(base, {
+  modifyFocus(base, {
     trapStock: () => ({ Barricade: barricades, Turret: turrets }),
     selectedTrap: () => 'Barricade',
     player: player =>
@@ -76,25 +79,31 @@ const withTraps = (base: Model, barricades: number, turrets: number): Model =>
       }),
   })
 
-const inBreak = modifyFields(readyModel, {
-  phase: () =>
-    Phase.Preparation({
-      wave: 2,
-      remainingMs: 20_000,
-      durationMs: 20_000,
-      clock: BreakClock.Counting(),
-      spawns: [DISTANT_SPAWN],
-    }),
-  wallet: () => ({ balance: 500, earned: 500, shown: 500 }),
-})
+const inBreak = modifyFocus(
+  modifyFields(readyModel, {
+    phase: () =>
+      Phase.Preparation({
+        wave: 2,
+        remainingMs: 20_000,
+        durationMs: 20_000,
+        clock: BreakClock.Counting(),
+        spawns: [DISTANT_SPAWN],
+      }),
+  }),
+  { wallet: () => ({ balance: 500, earned: 500, shown: 500 }) },
+)
 
 // NOTE: at the counter with the dialog up and a heart down. Rattles' focus
 // stays on the Shotgun row, so a buy moves no focus.
-const atCounter = modifyFields(inBreak, {
-  shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-  shopDialog: dialog => modifyFields(dialog, { isOpen: () => true }),
-  player: player => modifyFields(player, { hp: hp => hp - 1 }),
-})
+const atCounter = modifyFocus(
+  modifyFields(inBreak, {
+    shopDialog: dialog => modifyFields(dialog, { isOpen: () => true }),
+  }),
+  {
+    shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+    player: player => modifyFields(player, { hp: hp => hp - 1 }),
+  },
+)
 
 const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
   Swap: {
@@ -114,7 +123,7 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
   },
   Reload: {
     from: withKnifeOut(
-      modifyFields(inWave, {
+      modifyFocus(inWave, {
         player: player =>
           withPistol(player, pistol =>
             modifyFields(pistol, { loaded: () => 2 }),

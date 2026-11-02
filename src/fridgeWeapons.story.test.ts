@@ -27,6 +27,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import {
   FIRE_LIFT,
   FIRE_PRESS,
@@ -57,21 +58,26 @@ const holding = (
   spare: CarriedGun,
   zombies: ReadonlyArray<Zombie> = [],
 ): Model =>
-  modifyFields(asVeteran(initialModel), {
-    maybeSurface: () =>
-      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-    phase: () => Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-    zombies: () => zombies,
-    player: player =>
-      modifyFields(player, {
-        x: () => PLAYER_X,
-        y: () => ROW_Y,
-        facing: () => ({ x: 1, y: 0 }),
-        ...(spare.kind === 'Pan'
-          ? { melee: () => Melee.Pan({ pan: spare }), wield: () => 'Melee' }
-          : { arsenal: () => holdingSecond(spare) }),
-      }),
-  })
+  modifyFocus(
+    modifyFields(asVeteran(initialModel), {
+      maybeSurface: () =>
+        Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+      phase: () =>
+        Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+      zombies: () => zombies,
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          x: () => PLAYER_X,
+          y: () => ROW_Y,
+          facing: () => ({ x: 1, y: 0 }),
+          ...(spare.kind === 'Pan'
+            ? { melee: () => Melee.Pan({ pan: spare }), wield: () => 'Melee' }
+            : { arsenal: () => holdingSecond(spare) }),
+        }),
+    },
+  )
 
 const nightmare = (current: Model): Model =>
   modifyFields(current, {
@@ -91,8 +97,8 @@ const press: ReadonlyArray<Message> = [FIRE_PRESS, FIRE_PUSH]
 // slot.
 const spareOf = (current: Model): CarriedGun =>
   Option.getOrThrow(
-    Option.orElse(maybePanOf(current.player), () =>
-      maybeSpareGun(current.player.arsenal),
+    Option.orElse(maybePanOf(focusOf(current).player), () =>
+      maybeSpareGun(focusOf(current).player.arsenal),
     ),
   )
 
@@ -104,13 +110,15 @@ describe('the Pressure Cooker', () => {
       holdFire,
       ...ticks(tickCountFor(COOKER_RULES.fullMs / 2), FRAME_MS),
       model(current => {
-        expect(Charge.isAnyOf(['Building'])(current.player.charge)).toBe(true)
+        expect(
+          Charge.isAnyOf(['Building'])(focusOf(current).player.charge),
+        ).toBe(true)
         expect(current.lobs).toEqual([])
       }),
       releaseFire,
       tick(FRAME_MS),
       model(current => {
-        expect(current.player.charge).toEqual(Charge.Idle())
+        expect(focusOf(current).player.charge).toEqual(Charge.Idle())
         expect(current.lobs.length).toBe(1)
         expect(spareOf(current).loaded).toBe(magazineOf('Cooker', 0) - 1)
         const lob = current.lobs[0]
@@ -166,16 +174,16 @@ describe('the Pressure Cooker', () => {
         FRAME_MS,
       ),
       model(current => {
-        expect(current.player.charge).toEqual(Charge.Spent())
+        expect(focusOf(current).player.charge).toEqual(Charge.Spent())
         expect(spareOf(current).loaded).toBe(magazineOf('Cooker', 0) - 1)
-        expect(current.player.hp).toBe(PLAYER_MAX_HP)
-        expect(current.player.x).toBeLessThan(PLAYER_X)
+        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
+        expect(focusOf(current).player.x).toBeLessThan(PLAYER_X)
         expect(current.lobs).toEqual([])
       }),
       releaseFire,
       tick(FRAME_MS),
       model(current => {
-        expect(current.player.charge).toEqual(Charge.Idle())
+        expect(focusOf(current).player.charge).toEqual(Charge.Idle())
         expect(current.lobs).toEqual([])
       }),
     )
@@ -190,7 +198,9 @@ describe('the Pressure Cooker', () => {
       nightmare(holding(freshGun('Cooker'))),
       (current, sent) => update(current, sent).model,
     )
-    expect(popped.player.hp).toBe(PLAYER_MAX_HP - COOKER_RULES.popDamage)
+    expect(focusOf(popped).player.hp).toBe(
+      PLAYER_MAX_HP - COOKER_RULES.popDamage,
+    )
   })
 
   test('a lid that lands at your feet spares you below Nightmare, and not on it', () => {
@@ -201,11 +211,12 @@ describe('the Pressure Cooker', () => {
         start,
         (current, sent) => update(current, sent).model,
       )
-    expect(blastAtFeet(holding(freshGun('Cooker'), [wall])).player.hp).toBe(
-      PLAYER_MAX_HP,
-    )
     expect(
-      blastAtFeet(nightmare(holding(freshGun('Cooker'), [wall]))).player.hp,
+      focusOf(blastAtFeet(holding(freshGun('Cooker'), [wall]))).player.hp,
+    ).toBe(PLAYER_MAX_HP)
+    expect(
+      focusOf(blastAtFeet(nightmare(holding(freshGun('Cooker'), [wall]))))
+        .player.hp,
     ).toBeLessThan(PLAYER_MAX_HP)
   })
 
@@ -217,7 +228,7 @@ describe('the Pressure Cooker', () => {
       holdFire,
       tick(FRAME_MS),
       model(current => {
-        expect(current.player.reload._tag).toBe('Reloading')
+        expect(focusOf(current).player.reload._tag).toBe('Reloading')
       }),
     )
   })
@@ -377,7 +388,7 @@ describe('Brain Freeze', () => {
           }),
       },
     )
-    const pistol = modifyFields(holding(freshGun('Freeze'), [frozen]), {
+    const pistol = modifyFocus(holding(freshGun('Freeze'), [frozen]), {
       player: player =>
         modifyFields(player, {
           arsenal: () => holdingFirst(freshGun('Freeze')),
@@ -412,10 +423,10 @@ describe('Brain Freeze', () => {
       holdFire,
       tick(FRAME_MS),
       model(current => {
-        expect(current.player.reload._tag).toBe('Ready')
-        expect(Arsenal.isAnyOf(['HoldingFirst'])(current.player.arsenal)).toBe(
-          true,
-        )
+        expect(focusOf(current).player.reload._tag).toBe('Ready')
+        expect(
+          Arsenal.isAnyOf(['HoldingFirst'])(focusOf(current).player.arsenal),
+        ).toBe(true)
       }),
     )
     expect(magazineOf('Freeze', 0)).toBe(12)

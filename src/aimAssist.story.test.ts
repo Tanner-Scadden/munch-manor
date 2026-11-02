@@ -10,6 +10,7 @@ import { update } from './main'
 import { Message } from './message'
 import { type Model, MouseButton, Phase, Stick, initialModel } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { PHONE_LANDSCAPE, PHONE_PORTRAIT, tick, zombieOf } from './testing'
 import { asVeteran } from './veteran'
 
@@ -22,38 +23,41 @@ const aimingRight = (
   orientation: 'Portrait' | 'Landscape',
   zombieAngle: number,
 ): Model =>
-  modifyFields(asVeteran(initialModel), {
-    lastDevice: () => 'Touch',
-    orientation: () => orientation,
-    maybeSurface: () =>
-      Option.some(
-        orientation === 'Portrait' ? PHONE_PORTRAIT : PHONE_LANDSCAPE,
-      ),
-    phase: () => Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-    player: player => ({ ...player, ...PLAYER }),
-    zombies: () => [
-      zombieOf(
-        'Shambler',
-        900,
-        PLAYER.x + Math.cos(zombieAngle) * ZOMBIE_DISTANCE_PX,
-        PLAYER.y + Math.sin(zombieAngle) * ZOMBIE_DISTANCE_PX,
-      ),
-    ],
-    input: input =>
-      modifyFields(input, {
-        aimStick: () =>
-          Stick.Active({
-            pointerId: 12,
-            originX: 300,
-            originY: 700,
-            currentX: 300 + STICK_RADIUS_PX,
-            currentY: 700,
-          }),
-      }),
-  })
+  modifyFocus(
+    modifyFields(asVeteran(initialModel), {
+      lastDevice: () => 'Touch',
+      orientation: () => orientation,
+      maybeSurface: () =>
+        Option.some(
+          orientation === 'Portrait' ? PHONE_PORTRAIT : PHONE_LANDSCAPE,
+        ),
+      phase: () =>
+        Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+      zombies: () => [
+        zombieOf(
+          'Shambler',
+          900,
+          PLAYER.x + Math.cos(zombieAngle) * ZOMBIE_DISTANCE_PX,
+          PLAYER.y + Math.sin(zombieAngle) * ZOMBIE_DISTANCE_PX,
+        ),
+      ],
+      input: input =>
+        modifyFields(input, {
+          aimStick: () =>
+            Stick.Active({
+              pointerId: 12,
+              originX: 300,
+              originY: 700,
+              currentX: 300 + STICK_RADIUS_PX,
+              currentY: 700,
+            }),
+        }),
+    }),
+    { player: player => ({ ...player, ...PLAYER }) },
+  )
 
 const aimAngleOf = (current: Model): number =>
-  Option.match(current.intent.maybeAim, {
+  Option.match(focusOf(current).intent.maybeAim, {
     onNone: () => Number.NaN,
     onSome: ({ x, y }) => Math.atan2(y, x),
   })

@@ -39,6 +39,7 @@ import {
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { isGoodieBeckoning, shownHints } from './onboarding'
+import { focusOf, modifyFocus } from './party'
 import { pickupShapes } from './powerupView'
 import {
   BOOSTS,
@@ -132,10 +133,12 @@ const withPickups = (base: Model, pickups: ReadonlyArray<Pickup>): Model =>
   modifyFields(base, { pickups: () => pickups })
 
 const underPlayer = (base: Model, kind: PickupKind): Model =>
-  withPickups(base, [pickupAt(900, kind, base.player.x, base.player.y)])
+  withPickups(base, [
+    pickupAt(900, kind, focusOf(base).player.x, focusOf(base).player.y),
+  ])
 
 const withBoost = (base: Model, boost: BoostKind, remainingMs: number): Model =>
-  modifyFields(base, {
+  modifyFocus(base, {
     boosts: boosts =>
       Record.map(boosts, (timer, kind) =>
         kind === boost
@@ -357,7 +360,7 @@ describe('drops', () => {
 
 describe('grabbing', () => {
   test('walking over a pickup grabs it and announces its name', () => {
-    const { x, y } = fighting.player
+    const { x, y } = focusOf(fighting).player
     story(
       update,
       given(withPickups(fighting, [pickupAt(900, 'RapidFire', x + 14, y)])),
@@ -367,7 +370,7 @@ describe('grabbing', () => {
       }),
       press('KeyD'),
       ...ticks(3, FRAME_MS),
-      model(({ pickups, boosts, callouts, lessons }) => {
+      model(({ pickups, seats: [{ boosts }], callouts, lessons }) => {
         expect(pickups).toEqual([])
         expect(remainingOf(boosts, 'RapidFire')).toBeGreaterThan(0)
         expect(Array.map(callouts, ({ kind }) => kind)).toEqual(['RapidFire'])
@@ -377,7 +380,7 @@ describe('grabbing', () => {
   })
 
   test('a thumb on the move stick grabs a pickup the same way', () => {
-    const { x, y } = fighting.player
+    const { x, y } = focusOf(fighting).player
     story(
       update,
       given(withPickups(fighting, [pickupAt(900, 'Speed', x + 14, y)])),
@@ -393,7 +396,7 @@ describe('grabbing', () => {
         Message.MovedPointer({ pointerId: 7, clientX: 160, clientY: 300 }),
       ),
       ...ticks(4, FRAME_MS),
-      model(({ pickups, boosts }) => {
+      model(({ pickups, seats: [{ boosts }] }) => {
         expect(pickups).toEqual([])
         expect(remainingOf(boosts, 'Speed')).toBeGreaterThan(0)
       }),
@@ -401,12 +404,12 @@ describe('grabbing', () => {
   })
 
   test('a pickup out of reach stays on the floor', () => {
-    const { x, y } = fighting.player
+    const { x, y } = focusOf(fighting).player
     story(
       update,
       given(withPickups(fighting, [pickupAt(900, 'Damage', x + 20, y)])),
       ...ticks(5, FRAME_MS),
-      model(({ pickups, boosts }) => {
+      model(({ pickups, seats: [{ boosts }] }) => {
         expect(pickups).toHaveLength(1)
         expect(boosts).toEqual(idleBoosts)
       }),
@@ -414,7 +417,7 @@ describe('grabbing', () => {
   })
 
   test('the first pickup ever wears an arrow until one is grabbed', () => {
-    const { x, y } = fighting.player
+    const { x, y } = focusOf(fighting).player
     story(
       update,
       given(withPickups(fighting, [pickupAt(900, 'Damage', x + 14, y)])),
@@ -458,8 +461,8 @@ describe('explaining a power-up once', () => {
     const again = afterGrabbing(first, 'RapidFire')
     expect(looksOf(again)).toEqual([{ kind: 'RapidFire', look: 'Named' }])
     expect(again.seenPowerUps).toBe(first.seenPowerUps)
-    expect(remainingOf(again.boosts, 'RapidFire')).toBeGreaterThan(
-      remainingOf(first.boosts, 'RapidFire'),
+    expect(remainingOf(focusOf(again).boosts, 'RapidFire')).toBeGreaterThan(
+      remainingOf(focusOf(first).boosts, 'RapidFire'),
     )
 
     const other = afterGrabbing(again, 'Burp')
@@ -515,7 +518,7 @@ describe('explaining a power-up once', () => {
 
 describe('effects', () => {
   test('Hot Sauce tops off the magazine, fires faster, spends no rounds, and never reloads', () => {
-    const loaded = modifyFields(fighting, {
+    const loaded = modifyFocus(fighting, {
       player: player =>
         withPistol(player, pistol => ({ ...pistol, loaded: 2 })),
     })
@@ -524,7 +527,7 @@ describe('effects', () => {
       given(withBoost(loaded, 'RapidFire', 5000)),
       holdFire,
       ...ticksFor(2000, FRAME_MS),
-      model(({ stats, player }) => {
+      model(({ stats, seats: [{ player }] }) => {
         const plainShots = 2000 / FIRE_INTERVAL_MS
         expect(stats.shotsFired).toBeGreaterThan(plainShots * 1.6)
         expect(pistolOf(player).loaded).toBe(PISTOL_MAGAZINE)
@@ -534,7 +537,7 @@ describe('effects', () => {
   })
 
   test('grabbing Hot Sauce mid-reload fills the magazine at once', () => {
-    const reloading = modifyFields(fighting, {
+    const reloading = modifyFocus(fighting, {
       player: player =>
         modifyFields(
           withPistol(player, pistol => ({ ...pistol, loaded: 0 })),
@@ -548,7 +551,7 @@ describe('effects', () => {
       update,
       given(underPlayer(reloading, 'RapidFire')),
       tick(FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
         expect(pistolOf(player).loaded).toBeGreaterThan(0)
       }),
@@ -571,13 +574,13 @@ describe('effects', () => {
   })
 
   test('Zoomy Socks make the player run faster', () => {
-    const startX = fighting.player.x
+    const startX = focusOf(fighting).player.x
     story(
       update,
       given(withBoost(fighting, 'Speed', 5000)),
       press('KeyD'),
       ...ticksFor(1000, FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.x - startX).toBeCloseTo(
           PLAYER_SPEED * BOOSTS.Speed.speedScale,
           5,
@@ -593,8 +596,8 @@ describe('effects', () => {
           zombieOf(
             'Shambler',
             200 + index,
-            base.player.x + 20 + index * 10,
-            base.player.y,
+            focusOf(base).player.x + 20 + index * 10,
+            focusOf(base).player.y,
             { hp: 1 },
           ),
         ),
@@ -630,7 +633,7 @@ describe('effects', () => {
   })
 
   test('a Big Burp blasts every zombie in reach and pays for the kills', () => {
-    const { x, y } = fighting.player
+    const { x, y } = focusOf(fighting).player
     const near = zombieOf('Shambler', 300, x + 50, y, { hp: BURP_DAMAGE })
     const far = zombieOf('Shambler', 301, x - BURP_RADIUS - 20, y, { hp: 3 })
     story(
@@ -641,7 +644,7 @@ describe('effects', () => {
         }),
       ),
       tick(FRAME_MS),
-      model(({ zombies, wallet, frameEvents, boosts }) => {
+      model(({ zombies, seats: [{ wallet, boosts }], frameEvents }) => {
         const byId = (id: number) =>
           Option.getOrThrow(
             Array.findFirst(zombies, zombie => zombie.id === id),
@@ -658,14 +661,14 @@ describe('effects', () => {
   })
 
   test('a Pickled Heart heals one heart, never past the maximum', () => {
-    const hurt = modifyFields(fighting, {
+    const hurt = modifyFocus(fighting, {
       player: player => modifyFields(player, { hp: () => 2 }),
     })
     story(
       update,
       given(underPlayer(hurt, 'Heart')),
       tick(FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.hp).toBe(3)
       }),
     )
@@ -673,7 +676,7 @@ describe('effects', () => {
       update,
       given(underPlayer(fighting, 'Heart')),
       tick(FRAME_MS),
-      model(({ player, pickups }) => {
+      model(({ seats: [{ player }], pickups }) => {
         expect(player.hp).toBe(PLAYER_MAX_HP)
         expect(pickups).toEqual([])
       }),
@@ -690,15 +693,15 @@ describe('timers', () => {
       update,
       given(underPlayer(fighting, 'Damage')),
       tick(TICK_MS),
-      model(({ boosts }) => {
+      model(({ seats: [{ boosts }] }) => {
         expect(remainingOf(boosts, 'Damage')).toBe(durationMs)
       }),
       ...ticksFor(durationMs - FRAME_MS, FRAME_MS),
-      model(({ boosts }) => {
+      model(({ seats: [{ boosts }] }) => {
         expect(remainingOf(boosts, 'Damage')).toBeCloseTo(FRAME_MS)
       }),
       tick(FRAME_MS),
-      model(({ boosts, frameEvents }) => {
+      model(({ seats: [{ boosts }], frameEvents }) => {
         expect(boosts.Damage).toEqual(BoostTimer.Off())
         expect(tagsOf(frameEvents)).toContain('BoostFaded')
       }),
@@ -713,7 +716,7 @@ describe('timers', () => {
   })
 
   const timersOf = (current: Model) => ({
-    remainingMs: remainingOf(current.boosts, 'RapidFire'),
+    remainingMs: remainingOf(focusOf(current).boosts, 'RapidFire'),
     pickupAges: Array.map(current.pickups, ({ ageMs }) => ageMs),
     calloutAges: Array.map(current.callouts, ({ ageMs }) => ageMs),
   })
@@ -759,10 +762,12 @@ describe('timers', () => {
 
   test('boosts, pickups, and callouts stand still while the shop is open', () => {
     expectStaysFrozen(
-      modifyFields(preparing, {
-        shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
-        shopDialog: dialog => ({ ...dialog, isOpen: true }),
-      }),
+      modifyFocus(
+        modifyFields(preparing, {
+          shopDialog: dialog => ({ ...dialog, isOpen: true }),
+        }),
+        { shop: () => ShopState.Browsing({ focusedItem: 'Heart' }) },
+      ),
     )
   })
 
@@ -787,7 +792,7 @@ describe('timers', () => {
       update,
       given(withBoost(preparing, 'Speed', 4000)),
       ...ticks(10, FRAME_MS),
-      model(({ boosts }) => {
+      model(({ seats: [{ boosts }] }) => {
         expect(remainingOf(boosts, 'Speed')).toBeCloseTo(4000 - 10 * FRAME_MS)
       }),
     )
@@ -804,7 +809,7 @@ describe('timers', () => {
         secondGrab(withBoost(fighting, 'RapidFire', durationMs - elapsedMs)),
       ),
       tick(TICK_MS),
-      model(({ boosts }) => {
+      model(({ seats: [{ boosts }] }) => {
         expect(remainingOf(boosts, 'RapidFire')).toBe(
           durationMs * BOOST_STACK_MAX,
         )
@@ -814,7 +819,7 @@ describe('timers', () => {
       update,
       given(secondGrab(withBoost(fighting, 'RapidFire', 1000))),
       tick(TICK_MS),
-      model(({ boosts }) => {
+      model(({ seats: [{ boosts }] }) => {
         expect(remainingOf(boosts, 'RapidFire')).toBeCloseTo(
           1000 - TICK_MS + durationMs,
         )
@@ -827,7 +832,7 @@ describe('timers', () => {
       update,
       given(underPlayer(withBoost(fighting, 'Speed', 3000), 'Damage')),
       tick(TICK_MS),
-      model(({ boosts }) => {
+      model(({ seats: [{ boosts }] }) => {
         expect(remainingOf(boosts, 'Speed')).toBeCloseTo(3000 - TICK_MS)
         expect(remainingOf(boosts, 'Damage')).toBe(BOOSTS.Damage.durationMs)
       }),
@@ -895,7 +900,7 @@ describe('the floor', () => {
       update,
       given(over),
       press('Enter'),
-      model(({ pickups, boosts, callouts, loot }) => {
+      model(({ pickups, seats: [{ boosts }], callouts, loot }) => {
         expect(pickups).toEqual([])
         expect(boosts).toEqual(idleBoosts)
         expect(callouts).toEqual([])

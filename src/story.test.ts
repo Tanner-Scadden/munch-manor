@@ -34,6 +34,7 @@ import {
   readyModel,
   withZombies,
 } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { scoreOf } from './stats'
 import {
   FRAME_MS,
@@ -70,7 +71,7 @@ describe('movement', () => {
       given(playingModel),
       message(Message.PressedKey({ code: 'KeyD' })),
       tick(FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.x).toBeCloseTo(
           PARLOUR.width / 2 + (PLAYER_SPEED * FRAME_MS) / 1000,
         )
@@ -85,7 +86,7 @@ describe('movement', () => {
       given(playingModel),
       message(Message.PressedKey({ code: 'KeyA' })),
       tick(5000),
-      model(({ player, elapsedMs }) => {
+      model(({ seats: [{ player }], elapsedMs }) => {
         expect(player.x).toBeCloseTo(PARLOUR.width / 2 - PLAYER_SPEED * 0.05)
         expect(elapsedMs).toBe(50)
       }),
@@ -99,7 +100,7 @@ describe('movement', () => {
       message(Message.PressedKey({ code: 'KeyD' })),
       tick(FIXED_STEP_MS),
       model(nextModel => {
-        expect(nextModel.player.x).toBe(PARLOUR.width / 2)
+        expect(focusOf(nextModel).player.x).toBe(PARLOUR.width / 2)
         expect(nextModel.elapsedMs).toBe(0)
       }),
     )
@@ -113,12 +114,12 @@ describe('keyboard intent', () => {
       given(playingModel),
       message(Message.PressedKey({ code: 'KeyW' })),
       message(Message.PressedKey({ code: 'KeyD' })),
-      model(({ intent }) => {
+      model(({ seats: [{ intent }] }) => {
         expect(intent.move.x).toBeCloseTo(Math.SQRT1_2)
         expect(intent.move.y).toBeCloseTo(-Math.SQRT1_2)
       }),
       message(Message.ReleasedKey({ code: 'KeyW' })),
-      model(({ intent }) => {
+      model(({ seats: [{ intent }] }) => {
         expect(intent.move).toEqual({ x: 1, y: 0 })
       }),
     )
@@ -130,12 +131,12 @@ describe('keyboard intent', () => {
       given(playingModel),
       message(Message.PressedKey({ code: 'KeyS' })),
       holdFire,
-      model(({ intent }) => {
+      model(({ seats: [{ intent }] }) => {
         expect(intent.move).toEqual({ x: 0, y: 1 })
         expect(intent.trigger).toBe('Held')
       }),
       message(Message.BlurredWindow()),
-      model(({ input, intent }) => {
+      model(({ input, seats: [{ intent }] }) => {
         expect(input.pressedKeys).toEqual([])
         expect(intent.move).toEqual({ x: 0, y: 0 })
         expect(intent.trigger).toBe('Released')
@@ -312,13 +313,13 @@ describe('zombies', () => {
         ]),
       ),
       ...ticks(frameCount - 1, FRAME_MS),
-      model(({ zombies, player }) => {
+      model(({ zombies, seats: [{ player }] }) => {
         expect(Array.map(zombies, ({ id }) => id)).toEqual([100])
         expect(player.hp).toBe(PLAYER_MAX_HP)
         expect(player.invulnerability).toEqual(Invulnerability.Vulnerable())
       }),
       tick(FRAME_MS),
-      model(({ zombies, player }) => {
+      model(({ zombies, seats: [{ player }] }) => {
         expect(zombies).toEqual([])
         expect(player.hp).toBe(PLAYER_MAX_HP)
       }),
@@ -353,7 +354,7 @@ describe('zombies', () => {
         ]),
       ),
       tick(FRAME_MS),
-      model(({ zombies, player, phase }) => {
+      model(({ zombies, seats: [{ player }], phase }) => {
         expect(Array.map(zombies, ({ id }) => id)).toEqual([100])
         expect(player.hp).toBe(PLAYER_MAX_HP - 1)
         expect(player.knockback.x).toBeLessThan(0)
@@ -367,7 +368,7 @@ describe('zombies', () => {
       }),
       ...waitOutFreeze(HIT_STOP_HURT_MS),
       tick(FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.x).toBeLessThan(PARLOUR.width / 2)
       }),
     )
@@ -391,19 +392,19 @@ describe('zombies', () => {
         ]),
       ),
       tick(FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.hp).toBe(PLAYER_MAX_HP - 1)
       }),
       ...waitOutFreeze(HIT_STOP_HURT_MS),
       ...ticks(invulnerableTicks - 1, FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.hp).toBe(PLAYER_MAX_HP - 1)
         expect(
           Invulnerability.guards.Invulnerable(player.invulnerability),
         ).toBe(true)
       }),
       ...ticks(2, FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.hp).toBe(PLAYER_MAX_HP - 2)
       }),
     )
@@ -411,9 +412,8 @@ describe('zombies', () => {
 
   test('the game ends when HP reaches zero, and Enter starts a fresh run', () => {
     const lastHeartModel = withZombies(
-      modifyFields(playingModel, {
+      modifyFocus(modifyFields(playingModel, { stats: scoring(120) }), {
         player: player => modifyFields(player, { hp: () => 1 }),
-        stats: scoring(120),
       }),
       [
         zombieAt(100, PARLOUR.width / 2, PARLOUR.height / 2 + 3, {
@@ -426,7 +426,7 @@ describe('zombies', () => {
       update,
       given(lastHeartModel),
       tick(FRAME_MS),
-      model(({ phase, player, stats }) => {
+      model(({ phase, seats: [{ player }], stats }) => {
         expect(phase).toEqual(Phase.GameOver({ wave: 1 }))
         expect(player.hp).toBe(0)
         expect(scoreOf(stats)).toBe(120)
@@ -437,7 +437,7 @@ describe('zombies', () => {
       }),
       ...ticks(RESTART_GRACE_TICKS, GRACE_TICK_MS),
       message(Message.PressedKey({ code: 'Enter' })),
-      model(({ phase, player, stats, zombies }) => {
+      model(({ phase, seats: [{ player }], stats, zombies }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(player.hp).toBe(PLAYER_MAX_HP)
         expect(scoreOf(stats)).toBe(0)

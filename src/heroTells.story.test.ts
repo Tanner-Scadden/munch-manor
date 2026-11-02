@@ -18,6 +18,7 @@ import {
   crewInWave,
   playingModel,
 } from './model.fixture'
+import { modifyFocus } from './party'
 import type { Appearance, Calling } from './playerData'
 import { DEFAULT_ROOM_SETTINGS, startRoomWorld } from './roomWorld'
 import { STALL_BOX } from './shop'
@@ -42,10 +43,10 @@ const lookWith = (patch: Partial<Appearance>): Appearance => ({
 const withCalling =
   (calling: Calling) =>
   (current: Model): Model =>
-    modifyFields(current, { player: () => playerOfCalling(calling) })
+    modifyFocus(current, { player: () => playerOfCalling(calling) })
 
 const runningRight = (current: Model): Model =>
-  modifyFields(current, {
+  modifyFocus(current, {
     intent: intent => modifyFields(intent, { move: () => ({ x: 1, y: 0 }) }),
   })
 
@@ -126,22 +127,24 @@ describe('the signature effects', () => {
   })
 
   const paid = (calling: Calling, hasKill: boolean): Model =>
-    modifyFields(withCalling(calling)(playingModel), {
-      wallet: wallet => modifyFields(wallet, { earned: () => 8 }),
-      tellWatch: () => ({ traps: [], earned: [{ slot: 0, earned: 2 }] }),
-      frameEvents: () =>
-        hasKill
-          ? [
-              GameEvent.ZombieKilled({
-                x: 10,
-                y: 10,
-                direction: { x: 1, y: 0 },
-                bounty: 6,
-                kind: 'Shambler',
-              }),
-            ]
-          : [],
-    })
+    modifyFocus(
+      modifyFields(withCalling(calling)(playingModel), {
+        tellWatch: () => ({ traps: [], earned: [{ slot: 0, earned: 2 }] }),
+        frameEvents: () =>
+          hasKill
+            ? [
+                GameEvent.ZombieKilled({
+                  x: 10,
+                  y: 10,
+                  direction: { x: 1, y: 0 },
+                  bounty: 6,
+                  kind: 'Shambler',
+                }),
+              ]
+            : [],
+      }),
+      { wallet: wallet => modifyFields(wallet, { earned: () => 8 }) },
+    )
 
   test('a kill that pays the Penny Pincher glints a coin on him', () => {
     const kinds = kindsOf(advanceTells(paid('PennyPincher', true), FRAME_MS))
@@ -157,18 +160,22 @@ describe('the signature effects', () => {
   })
 
   const atTheStall = (calling: Calling): Model =>
-    modifyFields(withCalling(calling)(playingModel), {
-      phase: () => FIGHTING_PHASE,
-      player: player =>
-        modifyFields(player, {
-          x: () => (STALL_BOX.left + STALL_BOX.right) / 2,
-          y: () => STALL_BOX.bottom + 6,
-        }),
-      traps: () => [
-        Trap.Barricade({ id: 5, door: 'West', hp: 30, hitRemainingMs: 0 }),
-      ],
-      tellWatch: () => ({ traps: [{ id: 5, hp: 10 }], earned: [] }),
-    })
+    modifyFocus(
+      modifyFields(withCalling(calling)(playingModel), {
+        phase: () => FIGHTING_PHASE,
+        traps: () => [
+          Trap.Barricade({ id: 5, door: 'West', hp: 30, hitRemainingMs: 0 }),
+        ],
+        tellWatch: () => ({ traps: [{ id: 5, hp: 10 }], earned: [] }),
+      }),
+      {
+        player: player =>
+          modifyFields(player, {
+            x: () => (STALL_BOX.left + STALL_BOX.right) / 2,
+            y: () => STALL_BOX.bottom + 6,
+          }),
+      },
+    )
 
   test('a trap mended with a Handyman at the stall throws sparks and tinks once', () => {
     const mended = atTheStall('Handyman')
@@ -193,7 +200,7 @@ describe('the signature effects', () => {
 
   test('a teammate Track Star running in a crew kicks up dust for everyone', () => {
     const crew = atSeat(crewInWave(3), 2, world =>
-      modifyFields(world, {
+      modifyFocus(world, {
         player: () => playerOfCalling('TrackStar'),
         intent: intent =>
           modifyFields(intent, { move: () => ({ x: 0, y: 1 }) }),
@@ -201,7 +208,7 @@ describe('the signature effects', () => {
     )
     expect(kindsOf(tellsFor(crew))).toContain('Dust')
     const calm = atSeat(crewInWave(3), 2, world =>
-      modifyFields(world, { player: () => playerOfCalling('Handyman') }),
+      modifyFocus(world, { player: () => playerOfCalling('Handyman') }),
     )
     expect(kindsOf(tellsFor(runningRight(calm)))).not.toContain('Smoke')
   })
@@ -210,7 +217,7 @@ describe('the signature effects', () => {
 describe('the hero icon on a teammate name tag', () => {
   const online = (calling: Calling): Model => {
     const crew = atSeat(crewInWave(2), 1, world =>
-      modifyFields(world, { player: () => playerOfCalling(calling) }),
+      modifyFocus(world, { player: () => playerOfCalling(calling) }),
     )
     const world = startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS)
     return modifyFields(crew, {

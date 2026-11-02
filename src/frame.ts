@@ -37,6 +37,7 @@ import {
 } from './model'
 import { raiseDebutCardFrom } from './onboarding'
 import { advanceParticles } from './particles'
+import { focusOf, modifyFocus } from './party'
 import { CALLOUT_LIFETIME_MS } from './powerups'
 import { advanceBreakIdle } from './readyNudge'
 import { STALL_BOX } from './shop'
@@ -64,7 +65,7 @@ const withAimAssist = (model: Model, intent: Intent): Intent =>
           assistAim(
             levelOf(model),
             cameraOf(model),
-            model.player,
+            focusOf(model).player,
             model.zombies,
             aim,
           ),
@@ -76,13 +77,17 @@ const withAimAssist = (model: Model, intent: Intent): Intent =>
 // camera, which only this device knows. A player at the stall's counter
 // intends nothing.
 export const refreshIntent = (model: Model): Model =>
-  modifyFields(model, {
+  modifyFocus(model, {
     intent: () =>
-      ShopState.isAnyOf(['Browsing'])(model.shop)
+      ShopState.isAnyOf(['Browsing'])(focusOf(model).shop)
         ? idleIntent
         : withAimAssist(
             model,
-            deriveIntent(model.input, model.player, screenCameraOf(model)),
+            deriveIntent(
+              model.input,
+              focusOf(model).player,
+              screenCameraOf(model),
+            ),
           ),
   })
 
@@ -93,8 +98,8 @@ type Ticks = Readonly<{ count: number; carryMs: number }>
 // (src/teammateBot.ts).
 const inputsOf = (model: Model): InputsByPlayer => {
   const players = isCouchPlay(model)
-    ? couchInputs(model, model.intent)
-    : soloInputs(model.intent)
+    ? couchInputs(model, focusOf(model).intent)
+    : soloInputs(focusOf(model).intent)
   return isBotCrew(model)
     ? new Map([...players, ...botInputs(model, crewBotSlots(model))])
     : players
@@ -179,8 +184,8 @@ const calloutFor = (model: Model, kind: PickupKind): Model => {
   const callout: Callout = {
     kind,
     look: isSeen ? 'Named' : 'Explained',
-    x: model.player.x,
-    y: model.player.y,
+    x: focusOf(model).player.x,
+    y: focusOf(model).player.y,
     ageMs: 0,
   }
   return modifyFields(model, {
@@ -197,7 +202,7 @@ const advanceCallouts = (model: Model, worldMs: number): Model => {
       ? calloutFor(current, event.kind)
       : current,
   )
-  return ShopState.isAnyOf(['Browsing'])(called.shop)
+  return ShopState.isAnyOf(['Browsing'])(focusOf(called).shop)
     ? called
     : ageCallouts(called, worldMs)
 }
@@ -285,7 +290,8 @@ export const advanceCosmetics = (
 // NOTE: the camera leans toward the aim on the display's own time.
 export const leanFor = (model: Model, frameMs: number): Model =>
   modifyFields(model, {
-    cameraLean: lean => leanCamera(lean, model.intent.maybeAim, frameMs),
+    cameraLean: lean =>
+      leanCamera(lean, focusOf(model).intent.maybeAim, frameMs),
   })
 
 const recordBestWave = (

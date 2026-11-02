@@ -3,7 +3,7 @@
 // not care about reads as a name, and the steps it is about stay in the test.
 // Steps and locators live in `testing.ts`.
 
-import { Array, Option } from 'effect'
+import { Array, Option, Order } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -31,7 +31,15 @@ import {
   type Zombie,
   initialModel,
 } from './model'
-import { seatCrew, withSeat } from './party'
+import {
+  atSeatBy,
+  focusOf,
+  focusSeat,
+  focusSlotOf,
+  modifyFocus,
+  modifySeatRecord,
+  seatCrew,
+} from './party'
 import { heroIdOf } from './playerData'
 import { nextRandom } from './prng'
 import { grantedVeteran } from './rank'
@@ -40,8 +48,14 @@ import { STALL_BOX } from './shop'
 import { PHONE_PORTRAIT, SURFACE, zombieOf } from './testing'
 import { asVeteran } from './veteran'
 import { freshGun } from './weapons'
-import { type World, withWorld } from './world'
-import { Arsenal, type Life, type WeaponKind } from './worldSchema'
+import { type World, modifyWorldFields, withWorld } from './world'
+import {
+  Arsenal,
+  type Life,
+  type Seat,
+  type SeatState,
+  type WeaponKind,
+} from './worldSchema'
 
 // The stretch of the blink after a bite on Normal, where the named Models
 // play: a bite's invulnerability is the base times this.
@@ -206,14 +220,40 @@ export const withActors = (
   })
 
 export const withPlayerAt = (base: Model, x: number, y: number): Model =>
-  modifyFields(base, {
+  modifyFocus(base, {
     player: player => modifyFields(player, { x: () => x, y: () => y }),
   })
 
 export const withArsenal = (base: Model, arsenal: Arsenal): Model =>
-  modifyFields(base, {
+  modifyFocus(base, {
     player: player => modifyFields(player, { arsenal: () => arsenal }),
   })
+
+// NOTE: runs a step on a World with the seat at `slot` first, so the seat
+// reads as `focusOf(world)`, then puts the seats back in the order they
+// were.
+export const withSeat = (
+  world: World,
+  slot: number,
+  step: (focused: World) => World,
+): World => {
+  const order = Array.map(world.seats, ({ seat }) => seat.slot)
+  return modifyWorldFields(step(focusSeat(world, slot)), {
+    seats: seats =>
+      Array.sort(
+        seats,
+        Order.mapInput(Order.Number, ({ seat }: SeatState) =>
+          order.indexOf(seat.slot),
+        ),
+      ),
+  })
+}
+
+// NOTE: a change to the record of the seat a World is about.
+export const modifyLeadSeat = (
+  world: World,
+  change: (seat: Seat) => Seat,
+): World => modifySeatRecord(world, focusSlotOf(world), change)
 
 // NOTE: changes one seat of a co-op World held in the Model.
 export const atSeat = (
@@ -260,19 +300,23 @@ export const AT_FRIDGE = {
 }
 
 export const atFridge = (balance: number, wave = 5): Model =>
-  modifyFields(freshRunModel(), {
-    level: level => openExitIn(level, KITCHEN_EXIT),
-    phase: () =>
-      Phase.Preparation({
-        wave,
-        remainingMs: 120_000,
-        durationMs: 120_000,
-        spawns: [DISTANT_SPAWN],
-      }),
-    wallet: () => ({ balance, earned: balance, shown: balance }),
-    player: player =>
-      modifyFields(player, { x: () => AT_FRIDGE.x, y: () => AT_FRIDGE.y }),
-  })
+  modifyFocus(
+    modifyFields(freshRunModel(), {
+      level: level => openExitIn(level, KITCHEN_EXIT),
+      phase: () =>
+        Phase.Preparation({
+          wave,
+          remainingMs: 120_000,
+          durationMs: 120_000,
+          spawns: [DISTANT_SPAWN],
+        }),
+    }),
+    {
+      wallet: () => ({ balance, earned: balance, shown: balance }),
+      player: player =>
+        modifyFields(player, { x: () => AT_FRIDGE.x, y: () => AT_FRIDGE.y }),
+    },
+  )
 
 // THE AMMO WINDOW
 
@@ -294,21 +338,25 @@ export const midWaveAtStall = (
   rounds: number,
   balance = 100,
 ): Model =>
-  modifyFields(freshRunModel(), {
-    phase: () =>
-      Phase.Wave({
-        wave: 5,
-        elapsedMs: 20_000,
-        spawns: [DISTANT_SPAWN],
-      }),
-    wallet: () => ({ balance, earned: balance, shown: balance }),
-    player: player =>
-      modifyFields(player, {
-        x: () => BELOW_STALL.x,
-        y: () => BELOW_STALL.y,
-        arsenal: () => holdingSecond(kind, rounds),
-      }),
-  })
+  modifyFocus(
+    modifyFields(freshRunModel(), {
+      phase: () =>
+        Phase.Wave({
+          wave: 5,
+          elapsedMs: 20_000,
+          spawns: [DISTANT_SPAWN],
+        }),
+    }),
+    {
+      wallet: () => ({ balance, earned: balance, shown: balance }),
+      player: player =>
+        modifyFields(player, {
+          x: () => BELOW_STALL.x,
+          y: () => BELOW_STALL.y,
+          arsenal: () => holdingSecond(kind, rounds),
+        }),
+    },
+  )
 
 // NOTE: a fridge whose stream's next draw lands on `prize`, found by trying
 // seeds, so a test can ask for each prize without knowing the stream.
@@ -318,7 +366,7 @@ export const fridgeSeededFor = (current: Model, prize: FridgePrize): Model => {
       Array.makeBy(500, index => index + 1),
       candidate =>
         pickPrize(
-          prizeWeights(current.fridge, current.player),
+          prizeWeights(current.fridge, focusOf(current).player),
           nextRandom(candidate).value,
         ) === prize,
     ),
@@ -368,7 +416,7 @@ export const placeSeat =
   (slot: number, x: number, y: number, hp = PLAYER_MAX_HP) =>
   (current: Model): Model =>
     atSeat(current, slot, world =>
-      modifyFields(world, {
+      modifyFocus(world, {
         player: player =>
           modifyFields(player, { x: () => x, y: () => y, hp: () => hp }),
       }),
@@ -379,12 +427,11 @@ export const withSeatLife =
   (current: Model): Model =>
     atSeat(current, slot, world =>
       modifyFields(world, {
-        party: party =>
-          party._tag === 'Crew'
-            ? modifyFields(party, {
-                lead: lead => modifyFields(lead, { life: () => life }),
-              })
-            : party,
+        seats: atSeatBy(slot, state =>
+          modifyFields(state, {
+            seat: seat => modifyFields(seat, { life: () => life }),
+          }),
+        ),
       }),
     )
 
@@ -396,9 +443,11 @@ export const pipeline =
 
 // NOTE: one heart left and a zombie on the player, so the next tick bites.
 export const lastHeart = (base: Model): Model =>
-  modifyFields(base, {
-    player: player => modifyFields(player, { hp: () => 1 }),
-    zombies: () => [
-      zombieOf('Runner', 100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
-    ],
-  })
+  modifyFocus(
+    modifyFields(base, {
+      zombies: () => [
+        zombieOf('Runner', 100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
+      ],
+    }),
+    { player: player => modifyFields(player, { hp: () => 1 }) },
+  )

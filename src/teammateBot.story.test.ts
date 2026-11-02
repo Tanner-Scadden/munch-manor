@@ -19,7 +19,7 @@ import {
   withZombies,
 } from './model.fixture'
 import { isLeftFromRoom } from './onlineRun'
-import { maybePlayerAt, playersOf } from './party'
+import { maybePlayerAt, modifyFocus, playersOf } from './party'
 import { STALL_BOX } from './shop'
 import { botInputs } from './teammateBot'
 import { press, release, ticks, zombieOf } from './testing'
@@ -146,7 +146,7 @@ describe('in a break', () => {
 
   const wounded = (current: Model) =>
     atSeat(current, 1, world =>
-      modifyFields(world, {
+      modifyFocus(world, {
         player: player => modifyFields(player, { hp: () => 3 }),
         wallet: wallet => ({ ...wallet, balance: 200 }),
       }),
@@ -174,7 +174,7 @@ describe('in a break', () => {
       update,
       given(
         atSeat(humanAtStall, 0, world =>
-          modifyFields(world, {
+          modifyFocus(world, {
             shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
           }),
         ),

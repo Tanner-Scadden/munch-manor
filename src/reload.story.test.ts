@@ -24,6 +24,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN, withArsenal } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import {
   countdownTicks,
   holdFire,
@@ -66,7 +67,7 @@ const preparing: Model = modifyFields(fighting, {
 })
 
 const withPistolLoaded = (base: Model, pistolLoaded: number): Model =>
-  modifyFields(base, {
+  modifyFocus(base, {
     player: player =>
       withPistol(player, pistol => ({ ...pistol, loaded: pistolLoaded })),
   })
@@ -99,12 +100,12 @@ describe('magazines', () => {
       given(withPistolLoaded(fighting, 2)),
       holdFire,
       ...ticks(1 + TICKS_PER_SHOT, FRAME_MS),
-      model(({ player, stats }) => {
+      model(({ seats: [{ player }], stats }) => {
         expect(stats.shotsFired).toBe(2)
         expect(pistolOf(player).loaded).toBe(0)
       }),
       ...ticks(TICKS_PER_SHOT, FRAME_MS),
-      model(({ player, stats, frameEvents }) => {
+      model(({ seats: [{ player }], stats, frameEvents }) => {
         expect(stats.shotsFired).toBe(2)
         expect(tagsOf(frameEvents)).toEqual(
           expect.arrayContaining(['DryFired', 'ReloadStarted']),
@@ -127,12 +128,12 @@ describe('magazines', () => {
       given(withPistolLoaded(fighting, 0)),
       holdFire,
       tick(FRAME_MS),
-      model(({ player, stats }) => {
+      model(({ seats: [{ player }], stats }) => {
         expect(stats.shotsFired).toBe(0)
         expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
       }),
       ...ticks(PISTOL_RELOAD_TICKS - 1, FRAME_MS),
-      model(({ player, stats }) => {
+      model(({ seats: [{ player }], stats }) => {
         expect(stats.shotsFired).toBe(0)
         expect(pistolOf(player).loaded).toBe(0)
         expect(
@@ -143,7 +144,7 @@ describe('magazines', () => {
         ).toBe(true)
       }),
       tick(FRAME_MS),
-      model(({ player, stats, frameEvents }) => {
+      model(({ seats: [{ player }], stats, frameEvents }) => {
         expect(tagsOf(frameEvents)).toEqual(
           expect.arrayContaining(['Reloaded', 'Fired']),
         )
@@ -159,7 +160,7 @@ describe('magazines', () => {
       update,
       given(withPistolLoaded(fighting, 0)),
       tick(FRAME_MS),
-      model(({ player, frameEvents }) => {
+      model(({ seats: [{ player }], frameEvents }) => {
         expect(tagsOf(frameEvents)).toContain('ReloadStarted')
         expect(tagsOf(frameEvents)).not.toContain('DryFired')
         expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
@@ -178,7 +179,7 @@ describe('magazines', () => {
       given(fighting),
       holdFire,
       ...ticks(magazines * magazineTicks, FRAME_MS),
-      model(({ player, stats }) => {
+      model(({ seats: [{ player }], stats }) => {
         expect(stats.shotsFired).toBeGreaterThan(magazines * PISTOL_MAGAZINE)
         expect(player.arsenal._tag).toBe('OneGun')
         expect(pistolOf(player).rounds).toBe(0)
@@ -195,14 +196,14 @@ describe('magazines', () => {
       holdFire,
       ...ticks(SMG_FIRING_TICKS, FRAME_MS),
       releaseFire,
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(spareRounds(player.arsenal)).toEqual(
           Option.some({ rounds: 10, loaded: 0 }),
         )
         expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
       }),
       ...ticks(countdownTicks(WEAPONS.Smg.reloadMs), FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(spareRounds(player.arsenal)).toEqual(
           Option.some({ rounds: 10, loaded: 10 }),
         )
@@ -217,7 +218,7 @@ describe('manual reload', () => {
       update,
       given(withPistolLoaded(fighting, 3)),
       press('KeyR'),
-      model(({ player, particles }) => {
+      model(({ seats: [{ player }], particles }) => {
         expect(reloadingMs(player.reload)).toEqual(
           Option.some(PISTOL_RELOAD_MS),
         )
@@ -225,11 +226,11 @@ describe('manual reload', () => {
       }),
       release('KeyR'),
       ...ticks(PISTOL_RELOAD_TICKS - 1, FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(pistolOf(player).loaded).toBe(3)
       }),
       tick(FRAME_MS),
-      model(({ player, frameEvents }) => {
+      model(({ seats: [{ player }], frameEvents }) => {
         expect(tagsOf(frameEvents)).toContain('Reloaded')
         expect(pistolOf(player).loaded).toBe(PISTOL_MAGAZINE)
       }),
@@ -237,7 +238,7 @@ describe('manual reload', () => {
   })
 
   test('R does nothing with a full magazine, mid-reload, or with no loose rounds', () => {
-    const midReload = modifyFields(withPistolLoaded(fighting, 3), {
+    const midReload = modifyFocus(withPistolLoaded(fighting, 3), {
       player: player =>
         modifyFields(player, {
           reload: () =>
@@ -253,8 +254,8 @@ describe('manual reload', () => {
         update,
         given(start),
         press('KeyR'),
-        model(({ player }) => {
-          expect(player).toEqual(start.player)
+        model(({ seats: [{ player }] }) => {
+          expect(player).toEqual(focusOf(start).player)
         }),
       ),
     )
@@ -265,7 +266,7 @@ describe('manual reload', () => {
       update,
       given(withPistolLoaded(fighting, 1)),
       message(Message.ClickedReloadButton()),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(reloadingMs(player.reload)).toEqual(
           Option.some(PISTOL_RELOAD_MS),
         )
@@ -278,7 +279,7 @@ describe('manual reload', () => {
       update,
       given(withPistolLoaded(preparing, 4)),
       press('KeyR'),
-      model(({ player, phase }) => {
+      model(({ seats: [{ player }], phase }) => {
         expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
         expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
       }),
@@ -297,7 +298,7 @@ describe('reload pauses', () => {
       release('Escape'),
       ...ticks(PISTOL_RELOAD_TICKS * 2, FRAME_MS),
       press('KeyR'),
-      model(({ player, phase }) => {
+      model(({ seats: [{ player }], phase }) => {
         expect(Phase.isAnyOf(['Paused'])(phase)).toBe(true)
         expect(reloadingMs(player.reload)).toEqual(
           aboutMs(PISTOL_RELOAD_MS - 4 * FRAME_MS),
@@ -305,30 +306,34 @@ describe('reload pauses', () => {
       }),
       press('Escape'),
       ...ticks(PISTOL_RELOAD_TICKS - 4, FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(pistolOf(player).loaded).toBe(PISTOL_MAGAZINE)
       }),
     )
   })
 
   test('a reload does not progress while the shop is open', () => {
-    const shopping = modifyFields(withPistolLoaded(preparing, 3), {
-      shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
-      shopDialog: dialog => ({ ...dialog, isOpen: true }),
-      player: player =>
-        modifyFields(player, {
-          reload: () =>
-            Reload.Reloading({
-              remainingMs: 400,
-              durationMs: PISTOL_RELOAD_MS,
-            }),
-        }),
-    })
+    const shopping = modifyFocus(
+      modifyFields(withPistolLoaded(preparing, 3), {
+        shopDialog: dialog => ({ ...dialog, isOpen: true }),
+      }),
+      {
+        shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
+        player: player =>
+          modifyFields(player, {
+            reload: () =>
+              Reload.Reloading({
+                remainingMs: 400,
+                durationMs: PISTOL_RELOAD_MS,
+              }),
+          }),
+      },
+    )
     story(
       update,
       given(shopping),
       ...ticks(PISTOL_RELOAD_TICKS, FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(reloadingMs(player.reload)).toEqual(Option.some(400))
         expect(pistolOf(player).loaded).toBe(3)
       }),
@@ -347,19 +352,19 @@ describe('swapping', () => {
       ...ticks(PISTOL_RELOAD_TICKS - 2, FRAME_MS),
       press('KeyQ'),
       release('KeyQ'),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(Arsenal.isAnyOf(['HoldingSecond'])(player.arsenal)).toBe(true)
         expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
       }),
       ...ticks(PISTOL_RELOAD_TICKS, FRAME_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(pistolOf(player).loaded).toBe(3)
         expect(spareRounds(player.arsenal)).toEqual(
           Option.some({ rounds: 90, loaded: 30 }),
         )
       }),
       press('KeyQ'),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(Arsenal.isAnyOf(['HoldingFirst'])(player.arsenal)).toBe(true)
         expect(pistolOf(player).loaded).toBe(3)
         expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
@@ -377,7 +382,7 @@ describe('the idle reload below Hard', () => {
         modifyFields(difficulty, { chosen: () => chosen }),
     })
 
-  const isReloadingNow = ({ player }: Model) =>
+  const isReloadingNow = ({ seats: [{ player }] }: Model) =>
     Reload.isAnyOf(['Reloading'])(player.reload)
 
   test('on Easy and Normal a part-empty gun reloads once the trigger rests', () => {
@@ -393,12 +398,12 @@ describe('the idle reload below Hard', () => {
         model(current => {
           expect(tagsOf(current.frameEvents)).toContain('ReloadStarted')
           expect(tagsOf(current.frameEvents)).not.toContain('DryFired')
-          expect(reloadingMs(current.player.reload)).toEqual(
+          expect(reloadingMs(focusOf(current).player.reload)).toEqual(
             Option.some(PISTOL_RELOAD_MS),
           )
         }),
         ...ticks(PISTOL_RELOAD_TICKS, FRAME_MS),
-        model(({ player }) => {
+        model(({ seats: [{ player }] }) => {
           expect(pistolOf(player).loaded).toBe(PISTOL_MAGAZINE)
           expect(Reload.isAnyOf(['Ready'])(player.reload)).toBe(true)
         }),
@@ -414,7 +419,7 @@ describe('the idle reload below Hard', () => {
         ...ticks(IDLE_TICKS * 3, FRAME_MS),
         model(current => {
           expect(isReloadingNow(current)).toBe(false)
-          expect(pistolOf(current.player).loaded).toBe(3)
+          expect(pistolOf(focusOf(current).player).loaded).toBe(3)
         }),
       ),
     )
@@ -428,7 +433,7 @@ describe('the idle reload below Hard', () => {
       ...ticks(IDLE_TICKS * 2, FRAME_MS),
       model(current => {
         expect(current.stats.shotsFired).toBeGreaterThan(1)
-        expect(pistolOf(current.player).loaded).toBeGreaterThan(0)
+        expect(pistolOf(focusOf(current).player).loaded).toBeGreaterThan(0)
         expect(isReloadingNow(current)).toBe(false)
       }),
       releaseFire,
@@ -465,14 +470,14 @@ describe('the idle reload below Hard', () => {
       release('KeyF'),
       ...ticks(IDLE_TICKS * 2, FRAME_MS),
       model(current => {
-        expect(current.player.wield).toBe('Melee')
+        expect(focusOf(current).player.wield).toBe('Melee')
         expect(isReloadingNow(current)).toBe(false)
       }),
       press('KeyQ'),
       release('KeyQ'),
       ...ticks(IDLE_TICKS - 1, FRAME_MS),
       model(current => {
-        expect(current.player.wield).toBe('Gun')
+        expect(focusOf(current).player.wield).toBe('Gun')
         expect(isReloadingNow(current)).toBe(false)
       }),
       tick(FRAME_MS),
@@ -493,9 +498,9 @@ describe('the idle reload below Hard', () => {
       release('KeyQ'),
       ...ticks(IDLE_TICKS - 1, FRAME_MS),
       model(current => {
-        expect(Arsenal.isAnyOf(['HoldingFirst'])(current.player.arsenal)).toBe(
-          true,
-        )
+        expect(
+          Arsenal.isAnyOf(['HoldingFirst'])(focusOf(current).player.arsenal),
+        ).toBe(true)
         expect(isReloadingNow(current)).toBe(false)
       }),
       tick(FRAME_MS),
@@ -506,17 +511,19 @@ describe('the idle reload below Hard', () => {
   })
 
   test('nothing reloads at the counter', () => {
-    const shopping = modifyFields(withPistolLoaded(preparing, 3), {
-      shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
-      shopDialog: dialog => ({ ...dialog, isOpen: true }),
-    })
+    const shopping = modifyFocus(
+      modifyFields(withPistolLoaded(preparing, 3), {
+        shopDialog: dialog => ({ ...dialog, isOpen: true }),
+      }),
+      { shop: () => ShopState.Browsing({ focusedItem: 'Heart' }) },
+    )
     story(
       update,
       given(shopping),
       ...ticks(IDLE_TICKS * 2, FRAME_MS),
       model(current => {
         expect(isReloadingNow(current)).toBe(false)
-        expect(pistolOf(current.player).loaded).toBe(3)
+        expect(pistolOf(focusOf(current).player).loaded).toBe(3)
       }),
     )
   })

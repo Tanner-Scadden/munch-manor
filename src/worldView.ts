@@ -37,6 +37,7 @@ import {
 } from './model'
 import { isBehindWall, occludersOf } from './occluders'
 import { isGoodieBeckoning } from './onboarding'
+import { focusOf, focusSlotOf } from './party'
 import {
   type MateModel,
   isLeadArmed,
@@ -104,13 +105,13 @@ export const worldOffset = (model: Model, camera: Camera): Vector =>
 
 const stallLook = (model: Model): StallLook => {
   if (isCounterOpen(model)) {
-    return isAtAmmoWindow(model) ||
+    return isAtAmmoWindow(model, focusSlotOf(model)) ||
       CounterSale.isAnyOf(['Selling'])(model.counterSale)
       ? 'CounterAwake'
       : 'Counter'
   } else if (!isShopOpenFor(model.phase)) {
     return 'Closed'
-  } else if (ShopState.isAnyOf(['Away'])(model.shop)) {
+  } else if (ShopState.isAnyOf(['Away'])(focusOf(model).shop)) {
     return 'Beckoning'
   } else {
     return 'Open'
@@ -155,7 +156,7 @@ const groundShapes = (
   ...ovenGlowShapes(model),
   ...stallGroundShapes(look, model.elapsedMs),
   ...reviveRingGroundShapes(model),
-  playerShadow(model.player),
+  playerShadow(focusOf(model).player),
   ...mateShadowShapes(mates),
   ...zombieGroundShapes(zombies, model.elapsedMs),
   ...Array.filterMap(zombies, zombieShadow),
@@ -178,7 +179,11 @@ const standingDrawables = (
   zombies: ReadonlyArray<Zombie>,
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Drawable> => {
-  const drawZombie = zombieShapes(model.player, model.elapsedMs, model.boss)
+  const drawZombie = zombieShapes(
+    focusOf(model).player,
+    model.elapsedMs,
+    model.boss,
+  )
   const isChomp = isChomping(model.phase)
   const level = levelOf(model)
   const drawTrap = trapShapes(level, model.elapsedMs)
@@ -211,11 +216,15 @@ const standingDrawables = (
         : drawZombie(zombie),
     })),
     {
-      footY: playerFootY(model.player),
+      footY: playerFootY(focusOf(model).player),
       rank: 'Player',
       shapes: leadBodyShapes(model, () =>
         toppleShapes(model, [
-          ...auraShapes(model.player, model.boosts, model.elapsedMs),
+          ...auraShapes(
+            focusOf(model).player,
+            focusOf(model).boosts,
+            model.elapsedMs,
+          ),
           ...playerShapes(fallenOf(model)),
         ]),
       ),
@@ -240,7 +249,7 @@ const overheadShapes = (
   zombies: ReadonlyArray<Zombie>,
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> => [
-  ...(isLeadArmed(model) ? playerFlashShapes(model.player) : []),
+  ...(isLeadArmed(model) ? playerFlashShapes(focusOf(model).player) : []),
   ...ovenFlameShapes(model),
   ...Array.flatMap(
     model.traps,
@@ -263,12 +272,12 @@ const overheadShapes = (
   }),
   ...Array.map(model.popups, popupShape(camera)),
   ...(isLeadArmed(model)
-    ? reloadBarShapes(model.player, hatRiseOf(model.appearance))
+    ? reloadBarShapes(focusOf(model).player, hatRiseOf(model.appearance))
     : []),
   ...fridgeOverheadShapes(model),
   ...mateOverheadShapes(model, mates),
   ...coopNameShapes(model),
-  ...stallPromptShapes(stallPrompt(model)),
+  ...stallPromptShapes(stallPrompt(model, focusSlotOf(model))),
   ...CounterSale.match(model.counterSale, {
     Quiet: () => [],
     Selling: ({ ageMs, line }) => counterSaleShapes(ageMs, line),

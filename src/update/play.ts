@@ -41,7 +41,7 @@ import {
   skipDebutCard,
 } from '../onboarding'
 import { dropClip } from '../particles'
-import { isCoop } from '../party'
+import { focusOf, focusSlotOf, isCoop } from '../party'
 import { maybeTapOffer } from '../purchase'
 import { startWave } from '../runFlow'
 import { isAtCounter, isBrowsing } from '../shop'
@@ -170,7 +170,7 @@ const swapFromKey = (model: Model, code: string): Model => {
 }
 
 const changedWeapon = (before: Model, after: Model): boolean =>
-  inHandOf(before.player) !== inHandOf(after.player)
+  inHandOf(focusOf(before).player) !== inHandOf(focusOf(after).player)
 
 const isFighting = Phase.isAnyOf(['Wave'])
 
@@ -210,13 +210,16 @@ const hasResumed = (before: Model, after: Model): boolean =>
 // RELOAD
 
 const hasBegunReload = (before: Model, after: Model): boolean =>
-  !isReloading(before.player) && isReloading(after.player)
+  !isReloading(focusOf(before).player) && isReloading(focusOf(after).player)
 
 const dropMagazine: UpdateStep = model =>
   playSounds([
     {
       sound: 'MagOut',
-      variation: positionVariation(model.player.x, model.player.y),
+      variation: positionVariation(
+        focusOf(model).player.x,
+        focusOf(model).player.y,
+      ),
     },
   ])(dropClip(model))
 
@@ -241,7 +244,7 @@ const buyAmmoFromKey = (code: string): UpdateStep =>
   stepWhen(model => isKeyFor(model, code, ['BuyAmmo']), buyAmmo)
 
 export const buyAmmoFromHoldButton: UpdateStep = stepWhen(
-  model => Option.isSome(maybeTapOffer(model)),
+  model => Option.isSome(maybeTapOffer(model, focusSlotOf(model))),
   buyAmmo,
 )
 
@@ -322,7 +325,7 @@ export const tickFrame = (deltaTime: number) =>
           ...mendCues(model, advanced),
           ...kitchenCues(model, advanced),
         ]),
-        syncShopDialog(isBrowsing(model.shop)),
+        syncShopDialog(isBrowsing(focusOf(model).shop)),
       ])
     } else if (isEndScreen(model.phase)) {
       return advanceEndScreen(clampFrameDelta(deltaTime))
@@ -369,7 +372,7 @@ export const pressedKey = (code: string) =>
       ])
     }
 
-    if (isAtCounter(keyed.shop)) {
+    if (isAtCounter(focusOf(keyed).shop)) {
       return Update.combineSteps([
         toModel(
           withInput(toggleAudioFromKey(keyed, code), input =>
@@ -455,7 +458,7 @@ export const pressGunSlot = (slot: GunSlot): UpdateStep =>
   stepWhen(
     model => !isDebutCardBlocking(model),
     model => {
-      const action = gunSlotAction(model.player, slot)
+      const action = gunSlotAction(focusOf(model).player, slot)
       return SeatAction.isAnyOf(['Reload'])(action)
         ? combine(model, [unlockAudio, reloadHeldGun])
         : drawFromButton(actInHand(action))(model)
@@ -487,13 +490,14 @@ export const isSlotClickPassingThrough = (model: Model): boolean =>
 // NOTE: a tap on the knife slot draws the knife; on the knife in hand it
 // does nothing.
 export const pressMeleeSlot: UpdateStep = stepWhen(
-  model => !isDebutCardBlocking(model) && !isWieldingMelee(model.player),
+  model =>
+    !isDebutCardBlocking(model) && !isWieldingMelee(focusOf(model).player),
   drawFromButton(equipMelee),
 )
 
 // NOTE: the counter and the new zombie card hold the round's buttons.
 const isTrapButtonHeld = (model: Model): boolean =>
-  isAtCounter(model.shop) || isDebutCardBlocking(model)
+  isAtCounter(focusOf(model).shop) || isDebutCardBlocking(model)
 
 const startWaveFromButton: UpdateStep = model => ({
   model: learnStartWaveWhen(model, startWave(model)),

@@ -14,6 +14,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { modifyFocus } from './party'
 import { screenOf } from './screen'
 import { FIXED_FRAME, SURFACE, holdingFirst } from './testing'
 import { asVeteran } from './veteran'
@@ -28,17 +29,21 @@ const MOUSE = 1
 const FINGER = 7
 
 const armed = (phase: Phase): Model =>
-  modifyFields(asVeteran(initialModel), {
-    maybeSurface: () => Option.some(SURFACE),
-    phase: () => phase,
-    zombies: () => [],
-    player: player =>
-      modifyFields(player, {
-        x: () => 100,
-        y: () => 104,
-        arsenal: () => holdingFirst(freshGun('Smg')),
-      }),
-  })
+  modifyFocus(
+    modifyFields(asVeteran(initialModel), {
+      maybeSurface: () => Option.some(SURFACE),
+      phase: () => phase,
+      zombies: () => [],
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          x: () => 100,
+          y: () => 104,
+          arsenal: () => holdingFirst(freshGun('Smg')),
+        }),
+    },
+  )
 
 const midWave = armed(
   Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
@@ -109,7 +114,7 @@ describe('a press on a HUD slot', () => {
       }),
       message(Message.ReleasedPointer({ pointerId: MOUSE })),
       message(Message.ClickedMeleeSlot()),
-      model(({ player, input }) => {
+      model(({ seats: [{ player }], input }) => {
         expect(player.wield).toBe('Gun')
         expect(heldWeapon(player.arsenal)).toBe('Pistol')
         expect(input.mouseButton._tag).toBe('Released')
@@ -129,7 +134,7 @@ describe('a press on a HUD slot', () => {
       }),
       message(Message.ReleasedPointer({ pointerId: MOUSE })),
       message(Message.ClickedGunSlot({ slot: 'Second' })),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(heldWeapon(player.arsenal)).toBe('Pistol')
       }),
     )
@@ -148,7 +153,7 @@ describe('a press on a HUD slot', () => {
       }),
       message(Message.ReleasedPointer({ pointerId: FINGER })),
       message(Message.ClickedMeleeSlot()),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.wield).toBe('Melee')
       }),
       message(FIXED_FRAME),
@@ -168,7 +173,7 @@ describe('a press on a HUD slot', () => {
       }),
       message(Message.ReleasedPointer({ pointerId: MOUSE })),
       message(Message.ClickedMeleeSlot()),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.wield).toBe('Melee')
       }),
       message(FIXED_FRAME),
@@ -185,7 +190,7 @@ describe('a press on a HUD slot', () => {
       message(pressSlot(inBreak, 1, 'Mouse', MOUSE)),
       message(Message.ReleasedPointer({ pointerId: MOUSE })),
       message(Message.ClickedGunSlot({ slot: 'Second' })),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(heldWeapon(player.arsenal)).toBe('Smg')
       }),
     )
@@ -199,7 +204,7 @@ describe('a press on a HUD slot', () => {
       message(Message.ReleasedPointer({ pointerId: MOUSE })),
       message(Message.ClickedMeleeSlot()),
       message(Message.ClickedMeleeSlot()),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.wield).toBe('Melee')
       }),
     )

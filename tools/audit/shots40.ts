@@ -232,7 +232,7 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `${FIGHTING}&gun=smg&iced=pan&stab&tick=4`,
     act: async (page, problems, label) => {
       const knifeCooldownMs = await page.evaluate(
-        () => window.__model.player.knifeCooldownMs,
+        () => window.__model.seats[0].player.knifeCooldownMs,
       )
       if (knifeCooldownMs <= 0) {
         problems.push(`${label}: the knife in hand did not stab`)

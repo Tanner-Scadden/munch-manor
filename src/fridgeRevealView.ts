@@ -17,7 +17,7 @@ import { ZERO_VECTOR, clamp } from './geometry'
 import { HUD_STRIP_HEIGHT, gunSlotBox } from './hud'
 import { DUD_REFUND, FRIDGE_RULES } from './leftovers'
 import { type FridgePrize, type Model, PrizeFlight, type Vector } from './model'
-import { maybePlayerAt } from './party'
+import { focusOf, maybePlayerAt } from './party'
 import type { Screen } from './screen'
 import {
   type Sprite,
@@ -548,7 +548,7 @@ export const prizeFlightShapes = (
     Flying: ({ prize, from, ageMs }) => {
       const box = gunSlotBox(
         screen,
-        heldSlotOf(model.player.arsenal) === 'First' ? 0 : 1,
+        heldSlotOf(focusOf(model).player.arsenal) === 'First' ? 0 : 1,
       )
       if (ageMs >= REVEAL_RULES.flightMs) {
         return pulseShapes(

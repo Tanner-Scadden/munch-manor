@@ -30,6 +30,7 @@ import {
   initialModel,
 } from './model'
 import { plannedSpawn } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { endlessBannerOf } from './screens'
 import { scoreOf } from './stats'
 import {
@@ -79,22 +80,26 @@ const PLANK_PILE: Trap = Trap.Barricade({
   hitRemainingMs: 0,
 })
 
-const victorious: Model = modifyFields(readyModel, {
-  phase: () => Phase.Victory(),
-  wallet: () => ({ balance: 412, earned: 1900, shown: 412 }),
-  traps: () => [PLANK_PILE],
-  trapStock: () => ({ Barricade: 1, Turret: 1 }),
-  stats: scoring(4200),
-  player: player =>
-    modifyFields(player, {
-      hp: () => 3,
-      arsenal: () =>
-        holdingSecond(
-          { kind: 'Smg', rounds: 210, loaded: 40, tier: 2 },
-          { ...STARTING_PISTOL, tier: 1 },
-        ),
-    }),
-})
+const victorious: Model = modifyFocus(
+  modifyFields(readyModel, {
+    phase: () => Phase.Victory(),
+    traps: () => [PLANK_PILE],
+    stats: scoring(4200),
+  }),
+  {
+    wallet: () => ({ balance: 412, earned: 1900, shown: 412 }),
+    trapStock: () => ({ Barricade: 1, Turret: 1 }),
+    player: player =>
+      modifyFields(player, {
+        hp: () => 3,
+        arsenal: () =>
+          holdingSecond(
+            { kind: 'Smg', rounds: 210, loaded: 40, tier: 2 },
+            { ...STARTING_PISTOL, tier: 1 },
+          ),
+      }),
+  },
+)
 
 const preparationWave = (phase: Phase): Option.Option<number> =>
   Option.map(
@@ -124,7 +129,7 @@ describe('choosing a mode', () => {
         expect(Phase.guards.Ready(phase)).toBe(true)
       }),
       press('Enter'),
-      model(({ mode, phase, player }) => {
+      model(({ mode, phase, seats: [{ player }] }) => {
         expect(mode).toEqual(RunMode.Endless())
         expect(preparationWave(phase)).toEqual(Option.some(1))
         expect(player.arsenal).toEqual(pistolOnly())
@@ -156,10 +161,12 @@ describe('choosing a mode', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
-          phase: () => Phase.GameOver({ wave: 6 }),
-          wallet: () => ({ balance: 300, earned: 900, shown: 300 }),
-        }),
+        modifyFocus(
+          modifyFields(readyModel, {
+            phase: () => Phase.GameOver({ wave: 6 }),
+          }),
+          { wallet: () => ({ balance: 300, earned: 900, shown: 300 }) },
+        ),
       ),
       press('KeyE'),
       model(({ phase }) => {
@@ -167,7 +174,7 @@ describe('choosing a mode', () => {
       }),
       ...waitOutGrace(),
       press('KeyE'),
-      model(({ mode, phase, wallet }) => {
+      model(({ mode, phase, seats: [{ wallet }] }) => {
         expect(mode).toEqual(RunMode.Endless())
         expect(preparationWave(phase)).toEqual(Option.some(1))
         expect(wallet.balance).toBe(0)
@@ -371,17 +378,25 @@ describe('keep going from Victory', () => {
       }),
       ...waitOutGrace(),
       press('KeyK'),
-      model(({ mode, phase, wallet, player, traps, trapStock, stats }) => {
-        expect(mode).toEqual(RunMode.Endless())
-        expect(preparationWave(phase)).toEqual(Option.some(FINAL_WAVE + 1))
-        expect(wallet).toEqual(victorious.wallet)
-        expect(player.arsenal).toEqual(victorious.player.arsenal)
-        expect(pistolOf(player).tier).toBe(1)
-        expect(player.hp).toBe(3)
-        expect(traps).toEqual([PLANK_PILE])
-        expect(trapStock).toEqual({ Barricade: 1, Turret: 1 })
-        expect(scoreOf(stats)).toBe(4200)
-      }),
+      model(
+        ({
+          mode,
+          phase,
+          seats: [{ wallet, player, trapStock }],
+          traps,
+          stats,
+        }) => {
+          expect(mode).toEqual(RunMode.Endless())
+          expect(preparationWave(phase)).toEqual(Option.some(FINAL_WAVE + 1))
+          expect(wallet).toEqual(focusOf(victorious).wallet)
+          expect(player.arsenal).toEqual(focusOf(victorious).player.arsenal)
+          expect(pistolOf(player).tier).toBe(1)
+          expect(player.hp).toBe(3)
+          expect(traps).toEqual([PLANK_PILE])
+          expect(trapStock).toEqual({ Barricade: 1, Turret: 1 })
+          expect(scoreOf(stats)).toBe(4200)
+        },
+      ),
     )
   })
 
@@ -391,7 +406,7 @@ describe('keep going from Victory', () => {
       given(victorious),
       ...waitOutGrace(),
       message(Message.ClickedKeepGoingButton()),
-      model(({ mode, phase, wallet, traps }) => {
+      model(({ mode, phase, seats: [{ wallet }], traps }) => {
         expect(mode).toEqual(RunMode.Endless())
         expect(preparationWave(phase)).toEqual(Option.some(FINAL_WAVE + 1))
         expect(wallet.balance).toBe(412)
@@ -423,7 +438,7 @@ describe('keep going from Victory', () => {
       given(victorious),
       ...waitOutGrace(),
       press('Enter'),
-      model(({ mode, phase, wallet, traps }) => {
+      model(({ mode, phase, seats: [{ wallet }], traps }) => {
         expect(mode).toEqual(RunMode.Campaign())
         expect(preparationWave(phase)).toEqual(Option.some(1))
         expect(wallet.balance).toBe(0)
@@ -457,9 +472,9 @@ describe('keep going from Victory', () => {
       message(Message.ReleasedPointer({ pointerId: 1 })),
       press('KeyW'),
       press('KeyQ'),
-      model(({ phase, wallet, traps }) => {
+      model(({ phase, seats: [{ wallet }], traps }) => {
         expect(phase).toEqual(Phase.Victory())
-        expect(wallet).toEqual(victorious.wallet)
+        expect(wallet).toEqual(focusOf(victorious).wallet)
         expect(traps).toEqual([PLANK_PILE])
       }),
       press('KeyK'),
@@ -508,12 +523,14 @@ describe('keep going from Victory', () => {
 
 describe('best wave this session', () => {
   const dyingIn = (base: Model, wave: number): Model =>
-    modifyFields(base, {
-      mode: () => RunMode.Endless(),
-      phase: () =>
-        Phase.Wave({ wave, elapsedMs: 0, spawns: [plannedSpawn(1e9)] }),
-      player: player => modifyFields(player, { hp: () => 0 }),
-    })
+    modifyFocus(
+      modifyFields(base, {
+        mode: () => RunMode.Endless(),
+        phase: () =>
+          Phase.Wave({ wave, elapsedMs: 0, spawns: [plannedSpawn(1e9)] }),
+      }),
+      { player: player => modifyFields(player, { hp: () => 0 }) },
+    )
 
   test('an endless death records the best wave, and a worse run keeps it', () => {
     story(

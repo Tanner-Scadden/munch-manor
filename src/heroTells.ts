@@ -21,14 +21,13 @@ import {
   sparks,
 } from './particleBursts'
 import { keepNewest } from './particles'
-import { isCoop, isStanding, playersOf } from './party'
-import type { SeatedPlayer } from './party'
+import { focusOf, isCoop, isStanding, playersOf } from './party'
 import { type Calling } from './playerData'
 import { type Seeded, generateMany, nextRandom } from './prng'
 import { isNearStall } from './shop'
 import { trapCenter } from './traps'
 import { heldWeapon } from './weapons'
-import { GameEvent, type Vector } from './worldSchema'
+import { GameEvent, type SeatState, type Vector } from './worldSchema'
 
 // What each hero shows the whole crew while it plays (decided with the owner
 // on 2026-11-01, see "Heroes" in GAME_DESIGN.md): the Track Star kicks up
@@ -64,7 +63,7 @@ const isDrawn = (
 }
 
 const runDust =
-  ({ player, intent }: SeatedPlayer, deltaMs: number) =>
+  ({ player, intent }: SeatState, deltaMs: number) =>
   (state: number): Spawn => {
     const [next, isPuff] = isDrawn(state, RUN_PUFFS_PER_SECOND, deltaMs)
     return isPuff && vectorLength(intent.move) > 0
@@ -82,7 +81,7 @@ const runDust =
   }
 
 const steam =
-  ({ player }: SeatedPlayer, deltaMs: number) =>
+  ({ player }: SeatState, deltaMs: number) =>
   (state: number): Spawn => {
     const [next, isWisp] = isDrawn(state, STEAM_WISPS_PER_SECOND, deltaMs)
     return isWisp &&
@@ -100,7 +99,7 @@ const steam =
   }
 
 const glint =
-  ({ player }: SeatedPlayer) =>
+  ({ player }: SeatState) =>
   (state: number): Spawn =>
     chain(state, [
       drawState =>
@@ -140,7 +139,10 @@ export const mendedSpots = (
   )
 }
 
-const isKillPaid = (model: Model, { slot, wallet }: SeatedPlayer): boolean =>
+const isKillPaid = (
+  model: Model,
+  { seat: { slot }, wallet }: SeatState,
+): boolean =>
   Array.some(model.frameEvents, GameEvent.isAnyOf(['ZombieKilled'])) &&
   Array.some(
     model.tellWatch.earned,
@@ -149,7 +151,7 @@ const isKillPaid = (model: Model, { slot, wallet }: SeatedPlayer): boolean =>
 
 const watchOf = (model: Model): TellWatch => ({
   traps: Array.map(model.traps, ({ id, hp }) => ({ id, hp })),
-  earned: Array.map(playersOf(model), ({ slot, wallet }) => ({
+  earned: Array.map(playersOf(model), ({ seat: { slot }, wallet }) => ({
     slot,
     earned: wallet.earned,
   })),
@@ -161,7 +163,7 @@ type Batch = (state: number) => Spawn
 
 type Tell = (
   model: Model,
-  seat: SeatedPlayer,
+  seat: SeatState,
   deltaMs: number,
 ) => ReadonlyArray<Batch>
 
@@ -187,7 +189,7 @@ export const advanceTells = (model: Model, worldMs: number): Model =>
 const isPlainCrew = (model: Model): boolean =>
   isCoop(model)
     ? Array.every(playersOf(model), ({ player }) => player.calling === 'You')
-    : model.player.calling === 'You'
+    : focusOf(model).player.calling === 'You'
 
 const tellsAfter = (model: Model, worldMs: number): Model => {
   const batches = [

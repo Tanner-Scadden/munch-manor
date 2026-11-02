@@ -28,6 +28,7 @@ import {
   isDiscovered,
   unopenedKinds,
 } from './munchopedia'
+import { modifyFocus } from './party'
 import { saveOf } from './save'
 import {
   openLobbyByKey,
@@ -59,13 +60,15 @@ const dyingWith = (
   base: Model,
   kills: Partial<Record<ZombieKind, number>>,
 ): Model =>
-  modifyFields(base, {
-    phase: () =>
-      Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
-    player: player => modifyFields(player, { hp: () => 0 }),
-    stats: stats =>
-      modifyFields(stats, { kills: () => ({ ...noKills, ...kills }) }),
-  })
+  modifyFocus(
+    modifyFields(base, {
+      phase: () =>
+        Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
+      stats: stats =>
+        modifyFields(stats, { kills: () => ({ ...noKills, ...kills }) }),
+    }),
+    { player: player => modifyFields(player, { hp: () => 0 }) },
+  )
 
 const expectPanel = (panel: MenuPanel) =>
   model((current: Model) => {

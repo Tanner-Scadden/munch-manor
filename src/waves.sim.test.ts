@@ -10,6 +10,7 @@ import { PLAYER_MAX_HP } from './constants'
 import { update } from './main'
 import { type Model, Phase } from './model'
 import { readyModel } from './model.fixture'
+import { focusOf } from './party'
 import { scoreOf } from './stats'
 import {
   holdFireToward,
@@ -62,8 +63,8 @@ describe('a full wave', () => {
     )
     const cleared = Option.getOrThrow(maybeCleared)
     expect(scoreOf(cleared.stats)).toBeGreaterThan(0)
-    expect(cleared.player.hp).toBeGreaterThan(0)
-    expect(cleared.player.hp).toBeLessThanOrEqual(PLAYER_MAX_HP)
+    expect(focusOf(cleared).player.hp).toBeGreaterThan(0)
+    expect(focusOf(cleared).player.hp).toBeLessThanOrEqual(PLAYER_MAX_HP)
     expect(second).toEqual(first)
     expect(playFirstWave(98765)).not.toEqual(first)
   })

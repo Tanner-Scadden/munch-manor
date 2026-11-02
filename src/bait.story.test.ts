@@ -14,6 +14,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { modifyFocus } from './party'
 import { ticks, westPlank, zombieOf } from './testing'
 import { TRAPS } from './traps'
 import { ZOMBIE_KINDS } from './zombies'
@@ -26,20 +27,25 @@ const FAR_FROM_PLANKS: Vector = { x: 95, y: 90 }
 const PLAYER_AT: Vector = { x: 250, y: 90 }
 
 const fightingWith = (zombie: Zombie): Model =>
-  modifyFields(initialModel, {
-    maybeSurface: () =>
-      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-    phase: () => Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-    traps: () => [westPlank],
-    zombies: () => [zombie],
-    player: player =>
-      modifyFields(player, {
-        x: () => PLAYER_AT.x,
-        y: () => PLAYER_AT.y,
-        invulnerability: () =>
-          Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
-      }),
-  })
+  modifyFocus(
+    modifyFields(initialModel, {
+      maybeSurface: () =>
+        Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+      phase: () =>
+        Phase.Wave({ wave: 4, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+      traps: () => [westPlank],
+      zombies: () => [zombie],
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          x: () => PLAYER_AT.x,
+          y: () => PLAYER_AT.y,
+          invulnerability: () =>
+            Invulnerability.Invulnerable({ remainingMs: 1e9, durationMs: 1e9 }),
+        }),
+    },
+  )
 
 const onlyZombie = (current: Model): Zombie =>
   Option.getOrThrow(Array.head(current.zombies))
@@ -167,7 +173,7 @@ describe('planks as bait', () => {
     story(
       update,
       given(
-        modifyFields(
+        modifyFocus(
           fightingWith(
             zombieOf('Shambler', 50, NEAR_WEST_PLANK.x, NEAR_WEST_PLANK.y, {
               speed: SPEED,

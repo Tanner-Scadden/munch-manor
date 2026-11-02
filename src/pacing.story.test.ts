@@ -41,6 +41,7 @@ import {
   initialModel,
 } from './model'
 import { NORMAL_BITE_GRACE } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { tick, ticks, ticksFor } from './testing'
 import { FINAL_WAVE, debutKinds } from './wavePlans'
 
@@ -301,7 +302,7 @@ describe('telegraphs', () => {
 
   test('standing in a doorway holds its pack at that door until the player steps away', () => {
     const inNorthDoorway = (base: Model): Model =>
-      modifyFields(base, {
+      modifyFocus(base, {
         player: player => modifyFields(player, { x: () => 220, y: () => 24 }),
       })
     story(
@@ -517,11 +518,9 @@ describe('mercy', () => {
     story(
       update,
       given(
-        modifyFields(
+        modifyFocus(
           waveModel([spawnAt(100_000, 'North', 9)], calmPacing, [biter]),
-          {
-            player: player => modifyFields(player, { hp: () => hp }),
-          },
+          { player: player => modifyFields(player, { hp: () => hp }) },
         ),
       ),
       tick(FRAME_MS),
@@ -535,15 +534,15 @@ describe('mercy', () => {
   test('the blink after a hit lasts longer at the last heart, without drawing a random number', () => {
     const lastHeart = bittenAt(2)
     const roomy = bittenAt(3)
-    expect(lastHeart.player.hp).toBe(1)
-    expect(lastHeart.player.invulnerability).toEqual(
+    expect(focusOf(lastHeart).player.hp).toBe(1)
+    expect(focusOf(lastHeart).player.invulnerability).toEqual(
       Invulnerability.Invulnerable({
         remainingMs: LAST_HEART_INVULNERABLE_MS * NORMAL_BITE_GRACE,
         durationMs: LAST_HEART_INVULNERABLE_MS * NORMAL_BITE_GRACE,
       }),
     )
     expect(LAST_HEART_INVULNERABLE_MS).toBe(PLAYER_INVULNERABLE_MS * 1.5)
-    expect(roomy.player.invulnerability).toEqual(
+    expect(focusOf(roomy).player.invulnerability).toEqual(
       Invulnerability.Invulnerable({
         remainingMs: PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE,
         durationMs: PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE,

@@ -26,7 +26,7 @@ import {
   Tour,
 } from './model'
 import { AT_FRIDGE, atFridge, freshRunModel } from './model.fixture'
-import { soloSeat } from './party'
+import { focusOf, modifyFocus, soloSeat } from './party'
 import { nextRandom } from './prng'
 import { forgetTutorial } from './save'
 import { maybeBubbleKind } from './stallBubble'
@@ -75,21 +75,23 @@ const remainingOf = (current: Model): number =>
   })
 
 const timedBreak = (current: Model): Model =>
-  modifyFields(current, {
-    phase: () =>
-      Phase.Preparation({
-        wave: 3,
-        remainingMs: BREAK_MS,
-        durationMs: BREAK_MS,
-        spawns: [],
-      }),
-    wallet: () => ({ balance: 5, earned: 5, shown: 5 }),
-  })
+  modifyFocus(
+    modifyFields(current, {
+      phase: () =>
+        Phase.Preparation({
+          wave: 3,
+          remainingMs: BREAK_MS,
+          durationMs: BREAK_MS,
+          spawns: [],
+        }),
+    }),
+    { wallet: () => ({ balance: 5, earned: 5, shown: 5 }) },
+  )
 
 // NOTE: a new save in the break before wave 3, at the kitchen's boards.
 const atBoards = (): Model =>
   timedBreak(
-    modifyFields(freshRunModel(), {
+    modifyFocus(freshRunModel(), {
       player: player =>
         modifyFields(player, {
           x: () => BELOW_KITCHEN_DOOR.x,
@@ -107,7 +109,7 @@ const atOpenFridge = (prize: FridgePrize): Model => {
       Array.makeBy(500, index => index + 1),
       candidate =>
         pickPrize(
-          prizeWeights(opened.fridge, opened.player),
+          prizeWeights(opened.fridge, focusOf(opened).player),
           nextRandom(candidate).value,
         ) === prize,
     ),
@@ -127,7 +129,7 @@ const isTourDone = (current: Model): boolean =>
   Tour.isAnyOf(['Done'])(current.kitchenTour)
 
 const walkAway = (current: Model): Model =>
-  modifyFields(current, {
+  modifyFocus(current, {
     player: player =>
       modifyFields(player, {
         x: () => AT_FRIDGE.x,
@@ -145,7 +147,7 @@ describe('the kitchen tour', () => {
 
     const opened = holdEnter(started)
     expect(isKitchenOpen(levelOf(opened))).toBe(true)
-    expect(opened.wallet.balance).toBe(5)
+    expect(focusOf(opened).wallet.balance).toBe(5)
     expect(stepOf(opened)).toEqual(Option.some('Fridge'))
     expect(remainingOf(frames(opened, 10))).toBe(BREAK_MS)
   })
@@ -155,7 +157,7 @@ describe('the kitchen tour', () => {
       const start = frames(atOpenFridge(prize), 1)
       expect(fridgePriceFor(start)).toBe(0)
       const pulled = holdEnter(start)
-      expect(pulled.wallet.balance).toBe(5)
+      expect(focusOf(pulled).wallet.balance).toBe(5)
       expect(pulled.fridge.pulls).toBe(1)
       const door = pulled.fridge.door
       const pulledPrize = FridgeDoor.isAnyOf(['Open', 'Offering'])(door)
@@ -253,7 +255,7 @@ describe('the kitchen tour', () => {
 
   test('in co-op it never runs: full prices and the shared clock keeps going', () => {
     const crew = modifyFields(atBoards(), {
-      party: () => Party.Crew({ lead: soloSeat, mates: [] }),
+      party: () => Party.Crew(),
     })
     expect(isKitchenTourOn(crew)).toBe(false)
     expect(exitPriceFor(crew)).toBe(EXIT_RULES.price)

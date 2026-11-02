@@ -17,6 +17,7 @@ import {
   Stick,
 } from './model'
 import { WAVE_2_BREAK, WAVE_2_FIGHT, readyModel } from './model.fixture'
+import { modifyFocus } from './party'
 import {
   type KeyDown,
   maybeKeyDownMessage,
@@ -76,7 +77,7 @@ describe('leaving the window', () => {
       message(Message.PressedKey({ code: 'KeyD' })),
       mouseDown,
       blurWindow,
-      model(({ phase, input, intent }) => {
+      model(({ phase, input, seats: [{ intent }] }) => {
         expect(phase).toEqual(Phase.Paused({ round: WAVE_2_FIGHT }))
         expect(input.pressedKeys).toEqual([])
         expect(input.mouseButton).toEqual(MouseButton.Released())
@@ -93,13 +94,12 @@ describe('leaving the window', () => {
     story(
       update,
       given(
-        modifyFields(readyModel, {
-          phase: () => WAVE_2_BREAK,
+        modifyFocus(modifyFields(readyModel, { phase: () => WAVE_2_BREAK }), {
           shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
         }),
       ),
       blurWindow,
-      model(({ phase, shop }) => {
+      model(({ phase, seats: [{ shop }] }) => {
         expect(phase).toEqual(Phase.Paused({ round: WAVE_2_BREAK }))
         expect(ShopState.guards.Browsing(shop)).toBe(false)
       }),
@@ -156,7 +156,7 @@ describe('resuming', () => {
       update,
       given(pausedModel),
       mouseDown,
-      model(({ phase, input, intent }) => {
+      model(({ phase, input, seats: [{ intent }] }) => {
         expect(phase).toEqual(WAVE_2_FIGHT)
         expect(input.mouseButton).toEqual(MouseButton.Released())
         expect(intent.trigger).toBe('Released')
@@ -199,7 +199,7 @@ describe('resuming', () => {
       given(pausedModel),
       message(Message.PressedKey({ code: 'KeyD' })),
       message(Message.PressedKey({ code: 'Escape' })),
-      model(({ phase, input, intent }) => {
+      model(({ phase, input, seats: [{ intent }] }) => {
         expect(phase).toEqual(WAVE_2_FIGHT)
         expect(input.pressedKeys).toEqual(['KeyD'])
         expect(intent.trigger).toBe('Released')
@@ -215,7 +215,7 @@ describe('keys on a focused button', () => {
     story(
       update,
       given(
-        modifyFields(fightingModel, {
+        modifyFocus(fightingModel, {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
@@ -230,7 +230,7 @@ describe('keys on a focused button', () => {
       ),
       ...keyDownOn(swapButton, 'Space'),
       message(Message.ClickedSwapButton()),
-      model(({ player, input, intent }) => {
+      model(({ seats: [{ player, intent }], input }) => {
         expect(Arsenal.guards.HoldingSecond(player.arsenal)).toBe(true)
         expect(input.pressedKeys).toEqual([])
         expect(intent.trigger).toBe('Released')

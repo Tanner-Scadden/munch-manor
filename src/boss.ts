@@ -23,6 +23,7 @@ import {
   scaleVector,
 } from './geometry'
 import { warningPoint } from './pacing'
+import { atSeat, seatStateAt } from './party'
 import { type Seeded, nextRandom } from './prng'
 import { trapBlockers } from './traps'
 import type { World } from './world'
@@ -37,6 +38,7 @@ import {
   Invulnerability,
   type PlannedSpawn,
   type PlantedAttack,
+  type PlayerSlot,
   type Vector,
   type Zombie,
 } from './worldSchema'
@@ -366,22 +368,27 @@ export const paceOf = (boss: Boss, zombie: Zombie, player: Vector): number => {
 const awayFrom = (from: Vector, to: Vector): Vector =>
   Option.getOrElse(directionBetween(from, to), () => OUTWARD)
 
-const isVulnerable = (model: World): boolean =>
-  Invulnerability.isAnyOf(['Vulnerable'])(model.player.invulnerability)
+const isVulnerable = (model: World, slot: PlayerSlot): boolean =>
+  Invulnerability.isAnyOf(['Vulnerable'])(
+    seatStateAt(model, slot).player.invulnerability,
+  )
 
 const hurtPlayer = (
   model: World,
+  slot: PlayerSlot,
   damage: number,
   direction: Vector,
   knockbackScale: number,
 ): World => {
-  const { player } = model
+  const { player } = seatStateAt(model, slot)
   const wounded = woundPlayer(player, damage, direction)
   return modifyFields(model, {
-    player: () =>
-      modifyFields(wounded, {
-        knockback: knockback => scaleVector(knockback, knockbackScale),
-      }),
+    seats: atSeat(slot, {
+      player: () =>
+        modifyFields(wounded, {
+          knockback: knockback => scaleVector(knockback, knockbackScale),
+        }),
+    }),
     frameEvents: Array.append(
       GameEvent.PlayerHurt({
         x: player.x,
@@ -405,9 +412,14 @@ const enrage = (model: World, fight: Fight, boss: Zombie): World =>
       )
     : model
 
-const tickBelch = (model: World, boss: Zombie, deltaMs: number): World => {
+const tickBelch = (
+  model: World,
+  slot: PlayerSlot,
+  boss: Zombie,
+  deltaMs: number,
+): World => {
   const rate =
-    distanceBetween(boss, model.player) > BOSS_RULES.farPx
+    distanceBetween(boss, seatStateAt(model, slot).player) > BOSS_RULES.farPx
       ? BOSS_RULES.belchFarRate
       : 1
   return modifyFight(model, current =>
@@ -460,23 +472,29 @@ const isLanding =
   (glob: Glob): boolean =>
     isFlying(glob) && glob.remainingMs <= deltaMs
 
-const landGlob = (model: World, at: Vector): World => {
+const landGlob = (model: World, slot: PlayerSlot, at: Vector): World => {
   const splashed = emit(
     GameEvent.GlobLanded({ x: at.x, y: at.y, radius: BOSS_RULES.spitRadius }),
   )(model)
-  return isVulnerable(splashed) &&
-    distanceBetween(at, splashed.player) <=
+  return isVulnerable(splashed, slot) &&
+    distanceBetween(at, seatStateAt(splashed, slot).player) <=
       BOSS_RULES.spitRadius + PLAYER_RADIUS
     ? hurtPlayer(
         splashed,
+        slot,
         BOSS_RULES.spitDamage,
-        awayFrom(at, splashed.player),
+        awayFrom(at, seatStateAt(splashed, slot).player),
         1,
       )
     : splashed
 }
 
-const advanceGlobs = (model: World, fight: Fight, deltaMs: number): World => {
+const advanceGlobs = (
+  model: World,
+  slot: PlayerSlot,
+  fight: Fight,
+  deltaMs: number,
+): World => {
   const landed = pipe(
     fight.globs,
     Array.filter(isLanding(deltaMs)),
@@ -498,7 +516,7 @@ const advanceGlobs = (model: World, fight: Fight, deltaMs: number): World => {
           ),
       }),
     ),
-    landGlob,
+    (current, at) => landGlob(current, slot, at),
   )
 }
 
@@ -528,12 +546,15 @@ const windUp = (model: World, boss: Zombie, attack: PlantedAttack): World =>
     emit(GameEvent.BossWoundUp({ x: boss.x, y: boss.y, attack })),
   )
 
-const brace = (model: World, boss: Zombie): World =>
+const brace = (model: World, slot: PlayerSlot, boss: Zombie): World =>
   pipe(
     setMove(
       model,
       BossMove.Bracing({
-        target: { x: model.player.x, y: model.player.y },
+        target: {
+          x: seatStateAt(model, slot).player.x,
+          y: seatStateAt(model, slot).player.y,
+        },
         remainingMs: BOSS_RULES.windUpMs.Charge,
         durationMs: BOSS_RULES.windUpMs.Charge,
       }),
@@ -544,18 +565,23 @@ const brace = (model: World, boss: Zombie): World =>
 const aliveCount = (zombies: ReadonlyArray<Zombie>): number =>
   Array.filter(zombies, isWalking).length
 
-const canCharge = (model: World, boss: Zombie): boolean =>
+const canCharge = (model: World, slot: PlayerSlot, boss: Zombie): boolean =>
   hasClearPath(
     levelOf(model),
     boss,
-    model.player,
+    seatStateAt(model, slot).player,
     BOSS_RULES.chargeLaneHalfWidth,
   )
 
 // NOTE: a glob in the air is still a telegraph on the floor, so he waits for
 // it to land before he winds up anything else. That keeps one tell at a time.
-const chooseAttack = (model: World, fight: Fight, boss: Zombie): World => {
-  const distance = distanceBetween(boss, model.player)
+const chooseAttack = (
+  model: World,
+  slot: PlayerSlot,
+  fight: Fight,
+  boss: Zombie,
+): World => {
+  const distance = distanceBetween(boss, seatStateAt(model, slot).player)
   if (isGlobInFlight(fight)) {
     return setMove(model, BossMove.Stalking({ cooldownMs: BOSS_RULES.retryMs }))
   } else if (distance <= BOSS_RULES.stompTriggerPx) {
@@ -567,8 +593,8 @@ const chooseAttack = (model: World, fight: Fight, boss: Zombie): World => {
     return windUp(model, boss, 'Belch')
   } else if (distance <= BOSS_RULES.farPx) {
     return setMove(model, BossMove.Stalking({ cooldownMs: BOSS_RULES.retryMs }))
-  } else if (fight.nextFar === 'Charge' && canCharge(model, boss)) {
-    return brace(model, boss)
+  } else if (fight.nextFar === 'Charge' && canCharge(model, slot, boss)) {
+    return brace(model, slot, boss)
   } else {
     return windUp(model, boss, 'Spit')
   }
@@ -591,13 +617,28 @@ const shoveFrom =
         })
       : zombie
 
-const isPlayerInStomp = (model: World, boss: Zombie): boolean =>
-  isVulnerable(model) &&
-  circlesOverlap(boss, BOSS_RULES.stompRadius, model.player, PLAYER_RADIUS)
+const isPlayerInStomp = (
+  model: World,
+  slot: PlayerSlot,
+  boss: Zombie,
+): boolean =>
+  isVulnerable(model, slot) &&
+  circlesOverlap(
+    boss,
+    BOSS_RULES.stompRadius,
+    seatStateAt(model, slot).player,
+    PLAYER_RADIUS,
+  )
 
-const stompPlayer = (model: World, boss: Zombie): World =>
-  isPlayerInStomp(model, boss)
-    ? hurtPlayer(model, BOSS_RULES.stompDamage, awayFrom(boss, model.player), 1)
+const stompPlayer = (model: World, slot: PlayerSlot, boss: Zombie): World =>
+  isPlayerInStomp(model, slot, boss)
+    ? hurtPlayer(
+        model,
+        slot,
+        BOSS_RULES.stompDamage,
+        awayFrom(boss, seatStateAt(model, slot).player),
+        1,
+      )
     : model
 
 const recover = (model: World, fight: Fight, attack: BossAttack): World =>
@@ -609,7 +650,12 @@ const recover = (model: World, fight: Fight, attack: BossAttack): World =>
     }),
   )
 
-const stomp = (model: World, fight: Fight, boss: Zombie): World =>
+const stomp = (
+  model: World,
+  slot: PlayerSlot,
+  fight: Fight,
+  boss: Zombie,
+): World =>
   recover(
     stompPlayer(
       modifyFields(model, {
@@ -622,6 +668,7 @@ const stomp = (model: World, fight: Fight, boss: Zombie): World =>
           }),
         ),
       }),
+      slot,
       boss,
     ),
     fight,
@@ -679,8 +726,13 @@ const belchOne =
     })
   }
 
-const belch = (model: World, fight: Fight, boss: Zombie): World => {
-  const toward = awayFrom(boss, model.player)
+const belch = (
+  model: World,
+  slot: PlayerSlot,
+  fight: Fight,
+  boss: Zombie,
+): World => {
+  const toward = awayFrom(boss, seatStateAt(model, slot).player)
   const room = Math.max(0, ZOMBIE_ALIVE_MAX - aliveCount(model.zombies))
   const count = Math.min(BOSS_RULES.belchCount, room)
   return recover(
@@ -710,7 +762,12 @@ const belch = (model: World, fight: Fight, boss: Zombie): World => {
 
 // SPIT
 
-const spit = (model: World, fight: Fight, boss: Zombie): World =>
+const spit = (
+  model: World,
+  slot: PlayerSlot,
+  fight: Fight,
+  boss: Zombie,
+): World =>
   recover(
     pipe(
       modifyFight(model, current =>
@@ -719,7 +776,10 @@ const spit = (model: World, fight: Fight, boss: Zombie): World =>
           globs: Array.append(
             Glob.Flying({
               from: { x: boss.x, y: boss.y },
-              to: { x: model.player.x, y: model.player.y },
+              to: {
+                x: seatStateAt(model, slot).player.x,
+                y: seatStateAt(model, slot).player.y,
+              },
               remainingMs: BOSS_RULES.spitFlightMs,
               durationMs: BOSS_RULES.spitFlightMs,
             }),
@@ -783,20 +843,31 @@ const bowl =
         })
       : zombie
 
-const ram = (model: World, boss: Zombie, direction: Vector): World =>
-  isVulnerable(model) &&
-  circlesOverlap(boss, bodyRadiusOf(boss), model.player, PLAYER_RADIUS)
+const ram = (
+  model: World,
+  slot: PlayerSlot,
+  boss: Zombie,
+  direction: Vector,
+): World =>
+  isVulnerable(model, slot) &&
+  circlesOverlap(
+    boss,
+    bodyRadiusOf(boss),
+    seatStateAt(model, slot).player,
+    PLAYER_RADIUS,
+  )
     ? pipe(
         hurtPlayer(
           model,
+          slot,
           BOSS_RULES.chargeDamage,
-          sweptAside(boss, direction, model.player),
+          sweptAside(boss, direction, seatStateAt(model, slot).player),
           BOSS_RULES.chargeKnockbackScale,
         ),
         emit(
           GameEvent.BossRammed({
-            x: model.player.x,
-            y: model.player.y,
+            x: seatStateAt(model, slot).player.x,
+            y: seatStateAt(model, slot).player.y,
             direction,
           }),
         ),
@@ -825,6 +896,7 @@ const BLOCKED_SHARE = 0.5
 
 const stepRush = (
   model: World,
+  slot: PlayerSlot,
   fight: Fight,
   boss: Zombie,
   direction: Vector,
@@ -851,6 +923,7 @@ const stepRush = (
         zombie.id === boss.id ? rushed : bowl(rushed, direction)(zombie),
       ),
     }),
+    slot,
     rushed,
     direction,
   )
@@ -870,21 +943,23 @@ const stepRush = (
 
 const unleash = (
   model: World,
+  slot: PlayerSlot,
   fight: Fight,
   boss: Zombie,
   attack: PlantedAttack,
 ): World => {
   if (attack === 'Stomp') {
-    return stomp(model, fight, boss)
+    return stomp(model, slot, fight, boss)
   } else if (attack === 'Belch') {
-    return belch(model, fight, boss)
+    return belch(model, slot, fight, boss)
   } else {
-    return spit(model, fight, boss)
+    return spit(model, slot, fight, boss)
   }
 }
 
 const stepMove = (
   model: World,
+  slot: PlayerSlot,
   fight: Fight,
   boss: Zombie,
   deltaMs: number,
@@ -896,7 +971,7 @@ const stepMove = (
             model,
             BossMove.Stalking({ cooldownMs: cooldownMs - deltaMs }),
           )
-        : chooseAttack(model, fight, boss),
+        : chooseAttack(model, slot, fight, boss),
     WindingUp: ({ attack, remainingMs, durationMs }) =>
       remainingMs > deltaMs
         ? setMove(
@@ -907,7 +982,7 @@ const stepMove = (
               durationMs,
             }),
           )
-        : unleash(model, fight, boss, attack),
+        : unleash(model, slot, fight, boss, attack),
     Bracing: ({ target, remainingMs, durationMs }) =>
       remainingMs > deltaMs
         ? setMove(
@@ -920,7 +995,7 @@ const stepMove = (
           )
         : rush(model, boss, target),
     Rushing: ({ direction, remainingPx }) =>
-      stepRush(model, fight, boss, direction, remainingPx, deltaMs),
+      stepRush(model, slot, fight, boss, direction, remainingPx, deltaMs),
     Dazed: ({ remainingMs, durationMs }) =>
       remainingMs > deltaMs
         ? setMove(
@@ -958,19 +1033,27 @@ const withFight =
       onSome: fight => step(model, fight),
     })
 
-export const advanceBossMoves = (model: World, deltaMs: number): World =>
+export const advanceBossMoves = (
+  model: World,
+  slot: PlayerSlot,
+  deltaMs: number,
+): World =>
   Option.match(maybeStandingBoss(model), {
     onNone: () =>
-      withFight((current, fight) => advanceGlobs(current, fight, deltaMs))(
-        model,
-      ),
+      withFight((current, fight) =>
+        advanceGlobs(current, slot, fight, deltaMs),
+      )(model),
     onSome: boss =>
       pipe(
         model,
-        withFight((current, fight) => advanceGlobs(current, fight, deltaMs)),
+        withFight((current, fight) =>
+          advanceGlobs(current, slot, fight, deltaMs),
+        ),
         withFight((current, fight) => enrage(current, fight, boss)),
-        withFight(current => tickBelch(current, boss, deltaMs)),
-        withFight((current, fight) => stepMove(current, fight, boss, deltaMs)),
+        withFight(current => tickBelch(current, slot, boss, deltaMs)),
+        withFight((current, fight) =>
+          stepMove(current, slot, fight, boss, deltaMs),
+        ),
       ),
   })
 

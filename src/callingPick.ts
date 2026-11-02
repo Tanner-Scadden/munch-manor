@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { callingForRun, callingPriceOf, isCallingOwned } from './calling'
 import { playerOfCalling } from './callingPlayer'
 import type { Model } from './model'
+import { modifyFocus } from './party'
 import { type Calling, heroIdOf } from './playerData'
 import { callingUnlockId } from './unlocks'
 import { withoutFresh } from './update/unlocks'
@@ -24,10 +25,12 @@ export const startingCallingOf = (model: Model): Calling =>
 // it at once, so the menu shows the prop, and its NEW badge goes.
 export const chooseCalling = (model: Model, calling: Calling): Model =>
   isPickable(model, calling)
-    ? modifyFields(withoutFresh(model, callingUnlockId(calling)), {
-        calling: () => calling,
-        player: () => playerOfCalling(calling),
-      })
+    ? modifyFocus(
+        modifyFields(withoutFresh(model, callingUnlockId(calling)), {
+          calling: () => calling,
+        }),
+        { player: () => playerOfCalling(calling) },
+      )
     : model
 
 // NOTE: a hero for sale is tried on in the picker; its BUY pill buys it.

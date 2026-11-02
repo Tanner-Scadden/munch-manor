@@ -116,17 +116,17 @@ describe('the wire packs numbers by their Schema', () => {
     ]
     // NOTE: a new lossy field shows up here. Name it on purpose.
     expect(hintTable(numbers)).toEqual({
-      Position: { count: 171, names: ['offset', 'remainingPx', 'x', 'y'] },
+      Position: { count: 167, names: ['offset', 'remainingPx', 'x', 'y'] },
       Velocity: {
-        count: 9,
+        count: 7,
         names: ['knockback', 'velocityX', 'velocityY', 'x', 'y'],
       },
       Unit: {
-        count: 65,
+        count: 59,
         names: ['hpScale', 'intensity', 'speedScale', 'x', 'y'],
       },
       Millis: {
-        count: 120,
+        count: 97,
         names: [
           'ageMs',
           'apartMs',
@@ -244,7 +244,7 @@ describe("the boss's charge on the wire", () => {
 // without a protocol bump. A change to how the room plays moves the bytes
 // with no change to the wire, as zombies coming in promptly after their
 // warning did, and Normal's eased health and speed (2026-10-31) did.
-const GOLDEN_DIGEST = '60313:7e67061c438808d2'
+const GOLDEN_DIGEST = '59953:f789a1f5533c3d1f'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

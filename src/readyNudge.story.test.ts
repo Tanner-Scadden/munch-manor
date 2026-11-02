@@ -6,6 +6,7 @@ import { update } from './main'
 import { type Model, Phase, Tour } from './model'
 import { crewInWave, home, onHard, pastTimedBreaks } from './model.fixture'
 import { raiseDebutCardFrom } from './onboarding'
+import { modifyFocus } from './party'
 import {
   CREW_NUDGE_MS,
   LAST_ONE_NUDGE_MS,
@@ -103,7 +104,7 @@ describe('the nudge', () => {
     const nudged = idleFor(soloBreak(), SOLO_NUDGE_MS)
     expect(isWaitingOnYou(nudged)).toBe(true)
     const moving = advanceBreakIdle(
-      modifyFields(nudged, {
+      modifyFocus(nudged, {
         intent: () => ({ ...idleIntent, move: { x: 1, y: 0 } }),
       }),
       FRAME_MS,

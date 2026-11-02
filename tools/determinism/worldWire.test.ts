@@ -8,6 +8,7 @@ import { describe, expect, test } from 'vitest'
 
 import { makeReader, makeWriter } from '../../packages/netcode/src/Wire'
 import { refreshIntent } from '../../src/frame'
+import { focusOf } from '../../src/party'
 import { soloInputs, stepWorld } from '../../src/stepWorld'
 import { WORLD_KEYS } from '../../src/testing'
 import type { World } from '../../src/world'
@@ -40,7 +41,10 @@ describe('the World on the wire', () => {
       Readonly<{ world: World; sent: World; client: World }>
     >(
       ({ world, sent, client }, _, tick) => {
-        const next = stepWorld(world, soloInputs(intended.intent)).world
+        const next = stepWorld(
+          world,
+          soloInputs(focusOf(intended).intent),
+        ).world
         if (tick % 3 !== 2) {
           return { world: next, sent, client }
         }

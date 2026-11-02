@@ -42,6 +42,7 @@ import {
 import { ListenForTouchTaps, MeasureGameSurface } from './mount'
 import { CREW_AWARD_NAMES } from './names'
 import { isOpenBreak } from './onboarding'
+import { focusOf } from './party'
 import { pauseHelpView } from './pauseHelp'
 import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from './powerups'
 import { profileView } from './profileView'
@@ -154,7 +155,7 @@ const crewLabel = (model: Model): string => {
 
 const statsLabel = (model: Model): string => {
   const { stats } = model
-  return `Difficulty: ${DIFFICULTIES[model.difficulty.chosen].name}.${nightmareNews(model)} ${waveStatsLabel(model)}${recordNews(model)} Zombies splatted: ${totalKills(stats)} (${killLabel(stats)}). Best streak ${model.bestStreak}. Run time ${runTimeLabel(stats)}. Accuracy ${accuracyPercent(stats)} percent. Money earned $${model.wallet.earned}.${crewLabel(model)}`
+  return `Difficulty: ${DIFFICULTIES[model.difficulty.chosen].name}.${nightmareNews(model)} ${waveStatsLabel(model)}${recordNews(model)} Zombies splatted: ${totalKills(stats)} (${killLabel(stats)}). Best streak ${model.bestStreak}. Run time ${runTimeLabel(stats)}. Accuracy ${accuracyPercent(stats)} percent. Money earned $${focusOf(model).wallet.earned}.${crewLabel(model)}`
 }
 
 const debutCardStatus = (model: Model): Option.Option<string> =>
@@ -192,7 +193,7 @@ const statusText = (model: Model): string => {
 }
 
 const gunLabel = (model: Model): string => {
-  const { player } = model
+  const { player } = focusOf(model)
   const held = isWieldingMelee(player)
     ? meleeNameOf(player)
     : tierName(heldWeapon(player.arsenal), heldTier(player))
@@ -205,8 +206,8 @@ const gunLabel = (model: Model): string => {
 
 const trapLabel = (model: Model): string => {
   const ready = Array.filterMap(TRAP_KIND_ORDER, kind =>
-    model.trapStock[kind] > 0
-      ? Result.succeed(`${model.trapStock[kind]} ${TRAPS[kind].name}`)
+    focusOf(model).trapStock[kind] > 0
+      ? Result.succeed(`${focusOf(model).trapStock[kind]} ${TRAPS[kind].name}`)
       : Result.failVoid,
   )
   return Array.isReadonlyArrayEmpty(ready)
@@ -216,7 +217,7 @@ const trapLabel = (model: Model): string => {
 
 const boostLabel = (model: Model): string => {
   const running = Array.filterMap(BOOST_KIND_ORDER, kind =>
-    isBoosted(model.boosts, kind)
+    isBoosted(focusOf(model).boosts, kind)
       ? Result.succeed(toSentenceCase(PICKUPS[kind].name))
       : Result.failVoid,
   )
@@ -230,7 +231,7 @@ const loadoutView = (model: Model, h: ApplicationViewBuilder): Html =>
     ? h.p(
         [h.Class('sr-only')],
         [
-          `You have $${model.wallet.balance}. ${gunLabel(model)}${trapLabel(model)}${boostLabel(model)}`,
+          `You have $${focusOf(model).wallet.balance}. ${gunLabel(model)}${trapLabel(model)}${boostLabel(model)}`,
         ],
       )
     : h.empty

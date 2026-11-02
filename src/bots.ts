@@ -6,7 +6,7 @@ import { seatedAs } from './callingPlayer'
 import { seatLook } from './coop/looks'
 import type { Bot, Model } from './model'
 import { BOT_NAMES } from './names'
-import { COOP_RULES, withSeat } from './party'
+import { COOP_RULES, modifySeat } from './party'
 import type { Calling } from './playerData'
 import { nextRandom } from './prng'
 import type { World } from './world'
@@ -53,9 +53,9 @@ export const seatCallings = (
   callings: ReadonlyArray<Calling>,
 ): World =>
   Array.reduce(callings, world, (current, calling, index) =>
-    withSeat(current, firstSlot + index, seatWorld =>
-      modifyFields(seatWorld, { player: player => seatedAs(player, calling) }),
-    ),
+    modifySeat(current, firstSlot + index, {
+      player: player => seatedAs(player, calling),
+    }),
   )
 
 // ROSTER

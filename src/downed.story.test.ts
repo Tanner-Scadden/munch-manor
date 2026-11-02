@@ -17,7 +17,7 @@ import {
   placeSeat,
   withSeatLife,
 } from './model.fixture'
-import { COOP_RULES } from './party'
+import { COOP_RULES, focusOf, focusSlotOf, modifyFocus } from './party'
 import { reviveRingGroundShapes } from './partyView'
 import { reloadBarShapes } from './playerView'
 import { maybeOfferInReach } from './purchase'
@@ -179,7 +179,7 @@ describe('a bled-out teammate', () => {
 describe('your own downed player', () => {
   const reloading = (current: Model): Model =>
     atSeat(current, 0, world =>
-      modifyFields(world, {
+      modifyFocus(world, {
         player: player =>
           modifyFields(player, {
             reload: () =>
@@ -203,7 +203,7 @@ describe('your own downed player', () => {
       model(current => {
         expect(lyingBodies(current)).toHaveLength(1)
         expect(
-          Array.some(reloadBarShapes(current.player), bar =>
+          Array.some(reloadBarShapes(focusOf(current).player), bar =>
             isDrawn(current, bar),
           ),
         ).toBe(false)
@@ -215,7 +215,7 @@ describe('your own downed player', () => {
     const stallX = (STALL_BOX.left + STALL_BOX.right) / 2
     const armed = (current: Model): Model =>
       atSeat(current, 0, world =>
-        modifyFields(world, {
+        modifyFocus(world, {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
@@ -231,7 +231,16 @@ describe('your own downed player', () => {
       placeSeat(0, stallX, STALL_BOX.bottom + 6),
       placeSeat(1, LEFT_X, ROW_Y),
     )(crewInWave(2))
-    expect(Option.isSome(maybeOfferInReach(atStall))).toBe(true)
-    expect(Option.isNone(maybeOfferInReach(downedAt(0)(atStall)))).toBe(true)
+    expect(
+      Option.isSome(maybeOfferInReach(atStall, focusSlotOf(atStall))),
+    ).toBe(true)
+    expect(
+      Option.isNone(
+        maybeOfferInReach(
+          downedAt(0)(atStall),
+          focusSlotOf(downedAt(0)(atStall)),
+        ),
+      ),
+    ).toBe(true)
   })
 })

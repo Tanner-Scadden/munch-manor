@@ -99,6 +99,7 @@ import {
   zombieGround,
 } from './particleBursts'
 import { stepParticle } from './particlePhysics'
+import { focusOf } from './party'
 import { type Seeded, generateMany } from './prng'
 import { WEAPONS, heldWeapon } from './weapons'
 import { ZOMBIE_KINDS } from './zombies'
@@ -316,7 +317,7 @@ const walkingDust = (
   deltaMs: number,
   rngState: number,
 ): Spawn => {
-  const { player, intent } = model
+  const { player, intent } = focusOf(model)
   if (vectorLength(intent.move) <= 0) {
     return { rngState, dustCooldownMs: 0, particles: [] }
   }
@@ -435,7 +436,7 @@ export const puffDust = (model: Model, x: number, y: number): Model => {
 }
 
 export const dropClip = (model: Model): Model => {
-  const { player } = model
+  const { player } = focusOf(model)
   const clips = clipParticles(
     player.x,
     player.y,

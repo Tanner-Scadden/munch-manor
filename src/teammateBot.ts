@@ -11,8 +11,9 @@ import {
 } from './geometry'
 import {
   COOP_RULES,
-  type SeatedPlayer,
+  focusOf,
   focusSeat,
+  focusSlotOf,
   isDowned,
   isStanding,
   leadSeatOf,
@@ -35,6 +36,7 @@ import {
   type Intent,
   Phase,
   type PlayerSlot,
+  type SeatState,
   type ShopItemId,
   ShopState,
   type Vector,
@@ -112,22 +114,19 @@ const nearestShootable = (world: World, at: Vector): Option.Option<Zombie> =>
 
 // NOTE: the human is the seat in the World's own fields; the bot stays by
 // them, or by the nearest teammate on its feet when they are out.
-const anchorFor = (
-  world: World,
-  me: SeatedPlayer,
-): Option.Option<SeatedPlayer> => {
+const anchorFor = (world: World, me: SeatState): Option.Option<SeatState> => {
   const others = Array.filter(
     playersOf(world),
-    other => other.slot !== me.slot && isStanding(other.seat),
+    other => other.seat.slot !== me.seat.slot && isStanding(other.seat),
   )
   const humanSlot = leadSeatOf(world).slot
   return pipe(
-    Array.findFirst(others, other => other.slot === humanSlot),
+    Array.findFirst(others, other => other.seat.slot === humanSlot),
     Option.orElse(() =>
       Array.head(
         Array.sort(
           others,
-          Order.mapInput(Order.Number, (other: SeatedPlayer) =>
+          Order.mapInput(Order.Number, (other: SeatState) =>
             distanceBetween(me.player, other.player),
           ),
         ),
@@ -136,15 +135,14 @@ const anchorFor = (
   )
 }
 
-const downedNear = (
-  world: World,
-  me: SeatedPlayer,
-): Option.Option<SeatedPlayer> =>
+const downedNear = (world: World, me: SeatState): Option.Option<SeatState> =>
   pipe(
     playersOf(world),
-    Array.filter(other => other.slot !== me.slot && isDowned(other.seat)),
+    Array.filter(
+      other => other.seat.slot !== me.seat.slot && isDowned(other.seat),
+    ),
     Array.sort(
-      Order.mapInput(Order.Number, (other: SeatedPlayer) =>
+      Order.mapInput(Order.Number, (other: SeatState) =>
         distanceBetween(me.player, other.player),
       ),
     ),
@@ -231,16 +229,12 @@ const clockMsOf = (world: World): number =>
 
 // NOTE: on Nightmare a teammate's shot wounds, so the bot holds fire with
 // a teammate near the line.
-const isMateInLine = (
-  world: World,
-  me: SeatedPlayer,
-  target: Vector,
-): boolean =>
+const isMateInLine = (world: World, me: SeatState, target: Vector): boolean =>
   world.difficulty.chosen === 'Nightmare' &&
   Array.some(
     playersOf(world),
     other =>
-      other.slot !== me.slot &&
+      other.seat.slot !== me.seat.slot &&
       isStanding(other.seat) &&
       distanceBetween(
         closestPointOnSegment(other.player, me.player, target),
@@ -249,10 +243,7 @@ const isMateInLine = (
         PLAYER_RADIUS + 3,
   )
 
-const maybeTargetFor = (
-  world: World,
-  me: SeatedPlayer,
-): Option.Option<Zombie> =>
+const maybeTargetFor = (world: World, me: SeatState): Option.Option<Zombie> =>
   pipe(
     world.zombies,
     Array.filter(
@@ -269,17 +260,17 @@ const maybeTargetFor = (
     ),
   )
 
-const canShoot = (me: SeatedPlayer): boolean =>
+const canShoot = (me: SeatState): boolean =>
   !isReloading(me.player) && (heldLoaded(me.player) > 0 || canReload(me.player))
 
-const fleeFrom = (me: SeatedPlayer, zombie: Zombie): Option.Option<Zombie> =>
+const fleeFrom = (me: SeatState, zombie: Zombie): Option.Option<Zombie> =>
   distanceBetween(me.player, zombie) < FLEE_PX[zombie.kind]
     ? Option.some(zombie)
     : Option.none()
 
 const fightMove = (
   world: World,
-  me: SeatedPlayer,
+  me: SeatState,
   maybeNearest: Option.Option<Zombie>,
 ): Vector => {
   const clockMs = clockMsOf(world)
@@ -294,7 +285,7 @@ const fightMove = (
   if (Option.isSome(maybeDanger)) {
     return mixed(
       awayFrom(me.player, maybeDanger.value),
-      sideStep(me.player, maybeDanger.value, me.slot, clockMs),
+      sideStep(me.player, maybeDanger.value, me.seat.slot, clockMs),
       0.5,
     )
   }
@@ -308,7 +299,11 @@ const fightMove = (
     onSome: anchor => {
       const gap = distanceBetween(me.player, anchor.player)
       if (gap > FOLLOW_FAR_PX) {
-        return walkToward(world, me.player, spotBeside(anchor.player, me.slot))
+        return walkToward(
+          world,
+          me.player,
+          spotBeside(anchor.player, me.seat.slot),
+        )
       } else if (gap < FOLLOW_NEAR_PX) {
         return awayFrom(me.player, anchor.player)
       } else {
@@ -318,7 +313,7 @@ const fightMove = (
             distanceBetween(me.player, zombie) < FIRE_RANGE_PX / 2
               ? mixed(
                   ZERO_VECTOR,
-                  sideStep(me.player, zombie, me.slot, clockMs),
+                  sideStep(me.player, zombie, me.seat.slot, clockMs),
                   0.6,
                 )
               : ZERO_VECTOR,
@@ -357,7 +352,7 @@ const wanderedAim = (
   }
 }
 
-const fightIntent = (world: World, me: SeatedPlayer): Intent => {
+const fightIntent = (world: World, me: SeatState): Intent => {
   const maybeNearest = nearestShootable(world, me.player)
   const maybeTarget = maybeTargetFor(world, me)
   const window = Math.floor(clockMsOf(world) / HAND_WINDOW_MS)
@@ -365,13 +360,13 @@ const fightIntent = (world: World, me: SeatedPlayer): Intent => {
     move: fightMove(world, me, maybeNearest),
     maybeAim: Option.flatMap(maybeTarget, zombie =>
       Option.map(directionBetween(me.player, zombie), aim =>
-        wanderedAim(aim, me.slot, zombie.id, window),
+        wanderedAim(aim, me.seat.slot, zombie.id, window),
       ),
     ),
     trigger:
       Option.isSome(maybeTarget) &&
       canShoot(me) &&
-      (window + me.slot) % EASE_OFF_EVERY !== 0
+      (window + me.seat.slot) % EASE_OFF_EVERY !== 0
         ? 'Held'
         : 'Released',
     interact: 'Released',
@@ -395,30 +390,32 @@ const distanceToStall = ({ x, y }: Vector): number =>
 // its own wallet and guns (the seat in the World's fields).
 const maybeWishOf = (seatWorld: World): Option.Option<ShopItemId> =>
   Array.findFirst(WISHES, item =>
-    Verdict.isAnyOf(['Available'])(verdictFor(seatWorld, item)),
+    Verdict.isAnyOf(['Available'])(
+      verdictFor(seatWorld, focusSlotOf(seatWorld), item),
+    ),
   )
 
 const isShopOpen = (world: World): boolean => isShopOpenFor(world.phase)
 
-const isHumanBusyAtStall = (world: World, human: SeatedPlayer): boolean =>
+const isHumanBusyAtStall = (world: World, human: SeatState): boolean =>
   distanceToStall(human.player) < STALL_YIELD_PX ||
-  Option.exists(shopOf(world, human.slot), shop =>
+  Option.exists(shopOf(world, human.seat.slot), shop =>
     ShopState.isAnyOf(['Browsing'])(shop),
   )
 
 const humanReady = (world: World): boolean =>
   leadSeatOf(world).readiness === 'Ready'
 
-const humanOf = (world: World): Option.Option<SeatedPlayer> =>
+const humanOf = (world: World): Option.Option<SeatState> =>
   Array.findFirst(
     playersOf(world),
-    ({ slot }) => slot === leadSeatOf(world).slot,
+    ({ seat }) => seat.slot === leadSeatOf(world).slot,
   )
 
-const breakIntent = (world: World, me: SeatedPlayer): Intent => {
+const breakIntent = (world: World, me: SeatState): Intent => {
   const maybeHuman = humanOf(world)
-  const seatWorld = focusSeat(world, me.slot)
-  const isAtCounter = ShopState.isAnyOf(['Browsing'])(seatWorld.shop)
+  const seatWorld = focusSeat(world, me.seat.slot)
+  const isAtCounter = ShopState.isAnyOf(['Browsing'])(focusOf(seatWorld).shop)
   if (!isStanding(me.seat) || isAtCounter || me.seat.readiness === 'Ready') {
     return idleIntent
   }
@@ -426,12 +423,12 @@ const breakIntent = (world: World, me: SeatedPlayer): Intent => {
   const stallIsFree = Option.match(maybeHuman, {
     onNone: () => true,
     onSome: human =>
-      human.slot === me.slot || !isHumanBusyAtStall(world, human),
+      human.seat.slot === me.seat.slot || !isHumanBusyAtStall(world, human),
   })
   if (
     wantsShop &&
     stallIsFree &&
-    !ShopState.isAnyOf(['Dismissed'])(seatWorld.shop)
+    !ShopState.isAnyOf(['Dismissed'])(focusOf(seatWorld).shop)
   ) {
     return { ...idleIntent, move: walkToward(world, me.player, stallSpot) }
   }
@@ -441,7 +438,11 @@ const breakIntent = (world: World, me: SeatedPlayer): Intent => {
       ...idleIntent,
       move:
         distanceBetween(me.player, anchor.player) > FOLLOW_FAR_PX
-          ? walkToward(world, me.player, spotBeside(anchor.player, me.slot))
+          ? walkToward(
+              world,
+              me.player,
+              spotBeside(anchor.player, me.seat.slot),
+            )
           : distanceBetween(me.player, anchor.player) < FOLLOW_NEAR_PX
             ? awayFrom(me.player, anchor.player)
             : ZERO_VECTOR,
@@ -453,7 +454,7 @@ const breakIntent = (world: World, me: SeatedPlayer): Intent => {
 
 const intentFor = (world: World, slot: PlayerSlot): Intent =>
   Option.match(
-    Array.findFirst(playersOf(world), player => player.slot === slot),
+    Array.findFirst(playersOf(world), player => player.seat.slot === slot),
     {
       onNone: () => idleIntent,
       onSome: me => {
@@ -482,7 +483,7 @@ export const botInputs = (
 
 // PRESSES
 
-const isNobodyClose = (world: World, me: SeatedPlayer): boolean =>
+const isNobodyClose = (world: World, me: SeatState): boolean =>
   Option.match(nearestShootable(world, me.player), {
     onNone: () => true,
     onSome: zombie => distanceBetween(me.player, zombie) > RELOAD_QUIET_PX,
@@ -490,10 +491,7 @@ const isNobodyClose = (world: World, me: SeatedPlayer): boolean =>
 
 const readyTimeOf = (world: World): number => clockMsOf(world)
 
-const fightPress = (
-  world: World,
-  me: SeatedPlayer,
-): Option.Option<SeatAction> =>
+const fightPress = (world: World, me: SeatState): Option.Option<SeatAction> =>
   canReload(me.player) &&
   heldLoaded(me.player) * 2 <
     carriedMagazine(me.player.calling, heldGun(me.player.arsenal)) &&
@@ -501,13 +499,10 @@ const fightPress = (
     ? Option.some(SeatAction.Reload())
     : Option.none()
 
-const breakPress = (
-  world: World,
-  me: SeatedPlayer,
-): Option.Option<SeatAction> => {
-  const seatWorld = focusSeat(world, me.slot)
+const breakPress = (world: World, me: SeatState): Option.Option<SeatAction> => {
+  const seatWorld = focusSeat(world, me.seat.slot)
   const maybeWish = maybeWishOf(seatWorld)
-  if (ShopState.isAnyOf(['Browsing'])(seatWorld.shop)) {
+  if (ShopState.isAnyOf(['Browsing'])(focusOf(seatWorld).shop)) {
     return Option.some(
       Option.match(maybeWish, {
         onNone: () => SeatAction.LeaveCounter(),
@@ -519,7 +514,7 @@ const breakPress = (
   const isDone =
     !isShopOpen(world) ||
     Option.isNone(maybeWish) ||
-    ShopState.isAnyOf(['Dismissed'])(seatWorld.shop)
+    ShopState.isAnyOf(['Dismissed'])(focusOf(seatWorld).shop)
   const isReadyNow =
     me.seat.readiness === 'Waiting' &&
     ((isDone && (humanReady(world) || waitedMs >= READY_DELAY_MS)) ||
@@ -529,7 +524,7 @@ const breakPress = (
 
 const pressFor = (world: World, slot: PlayerSlot): Option.Option<SeatAction> =>
   Option.flatMap(
-    Array.findFirst(playersOf(world), player => player.slot === slot),
+    Array.findFirst(playersOf(world), player => player.seat.slot === slot),
     me => {
       if (!isStanding(me.seat)) {
         return Option.none()

@@ -141,7 +141,7 @@ for (const viewport of VIEWPORTS) {
         })
       return {
         stage: { x: rect.x, y: rect.y, scale: rect.width / 320 },
-        player: { x: model.player.x, y: model.player.y },
+        player: { x: model.seats[0].player.x, y: model.seats[0].player.y },
         buttons,
       }
     }, EDGE_INSET)

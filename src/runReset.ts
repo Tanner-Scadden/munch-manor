@@ -1,4 +1,5 @@
 import { Option } from 'effect'
+import { modifyFields } from 'foldkit/struct'
 
 import { MANOR, startingLevel } from './arena'
 import { startingCallingOf } from './callingPick'
@@ -16,22 +17,17 @@ import { ZERO_VECTOR } from './geometry'
 import { deriveIntent } from './input'
 import { freshOvens } from './kitchen'
 import type { Model } from './model'
+import { soloState } from './party'
 import {
   Boss,
   CounterSale,
   DebutCard,
-  FIRST_SHOP_CATEGORY,
   Party,
-  Purchase,
-  ShopState,
   Streak,
   TrapNotice,
   calmPacing,
-  emptyTrapStock,
-  emptyWallet,
   freshLoot,
   freshStats,
-  idleBoosts,
   initialHitStop,
   initialPlayer,
   shutFridge,
@@ -47,7 +43,6 @@ export type RunFields = Pick<
   | 'boss'
   | 'frenzyPacks'
   | 'intensity'
-  | 'player'
   | 'cameraLean'
   | 'zombies'
   | 'bullets'
@@ -56,10 +51,6 @@ export type RunFields = Pick<
   | 'decals'
   | 'dustCooldownMs'
   | 'tellWatch'
-  | 'wallet'
-  | 'shop'
-  | 'shopCategory'
-  | 'purchase'
   | 'fridge'
   | 'elapsedMs'
   | 'frameEvents'
@@ -70,7 +61,6 @@ export type RunFields = Pick<
   | 'blasts'
   | 'traps'
   | 'pickups'
-  | 'boosts'
   | 'loot'
   | 'cosmeticRngState'
   | 'stepCarryMs'
@@ -79,13 +69,9 @@ export type RunFields = Pick<
   | 'counterSale'
   | 'kitchenCall'
   | 'breakIdleMs'
-  | 'trapStock'
-  | 'selectedTrap'
-  | 'laserSight'
   | 'trapNotice'
   | 'level'
   | 'ovens'
-  | 'intent'
   | 'debutCard'
   | 'hintBand'
   | 'stats'
@@ -100,6 +86,7 @@ export type RunFields = Pick<
   | 'runRecords'
   | 'bestStreak'
   | 'party'
+  | 'seats'
   | 'crewBots'
 >
 
@@ -108,7 +95,6 @@ export const freshRun = (model: Model): RunFields => ({
   boss: Boss.Absent(),
   frenzyPacks: [],
   intensity: 0,
-  player: playerOfCalling(startingCallingOf(model)),
   cameraLean: ZERO_VECTOR,
   zombies: [],
   bullets: [],
@@ -117,10 +103,6 @@ export const freshRun = (model: Model): RunFields => ({
   decals: [],
   dustCooldownMs: 0,
   tellWatch: noTellWatch,
-  wallet: emptyWallet,
-  shop: ShopState.Away(),
-  shopCategory: FIRST_SHOP_CATEGORY,
-  purchase: Purchase.Idle(),
   fridge: shutFridge,
   elapsedMs: 0,
   frameEvents: [],
@@ -131,7 +113,6 @@ export const freshRun = (model: Model): RunFields => ({
   blasts: [],
   traps: [],
   pickups: [],
-  boosts: idleBoosts,
   loot: freshLoot(model.rngState),
   cosmeticRngState: cosmeticSeedOf(model.rngState),
   stepCarryMs: 0,
@@ -140,17 +121,9 @@ export const freshRun = (model: Model): RunFields => ({
   counterSale: CounterSale.Quiet(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   breakIdleMs: 0,
-  trapStock: emptyTrapStock,
-  selectedTrap: 'Barricade',
-  laserSight: 'None',
   trapNotice: TrapNotice.Quiet(),
   level: startingLevel,
   ovens: freshOvens(MANOR),
-  intent: deriveIntent(
-    model.input,
-    initialPlayer,
-    cameraFor(MANOR, initialPlayer),
-  ),
   debutCard: DebutCard.Hidden(),
   hintBand: 'Top',
   stats: freshStats,
@@ -165,5 +138,16 @@ export const freshRun = (model: Model): RunFields => ({
   runRecords: [],
   bestStreak: 0,
   party: Party.Solo(),
+  seats: [
+    modifyFields(soloState, {
+      player: () => playerOfCalling(startingCallingOf(model)),
+      intent: () =>
+        deriveIntent(
+          model.input,
+          initialPlayer,
+          cameraFor(MANOR, initialPlayer),
+        ),
+    }),
+  ],
   crewBots: [],
 })

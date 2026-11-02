@@ -5,7 +5,8 @@ import { describe, expect, test } from 'vitest'
 import { NEUTRAL_INPUT, makeReader, makeWriter } from '@munch/netcode'
 
 import { INTENSITY_PER_HEART } from './constants'
-import { maybePlayerAt, withSeat } from './party'
+import { withSeat } from './model.fixture'
+import { maybePlayerAt, modifyFocus } from './party'
 import { TWO_SEAT_ROOM, playRoom, scriptedTicks } from './roomTesting'
 import {
   AIM_REACH,
@@ -130,7 +131,7 @@ describe('inputs and presses', () => {
         beginPreparation(TWO_SEAT_ROOM.world, 2, 20_000),
         1,
         world =>
-          modifyFields(world, {
+          modifyFocus(world, {
             wallet: wallet => modifyFields(wallet, { balance: () => 1000 }),
             shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
           }),
@@ -459,7 +460,7 @@ describe('the lobby picks', () => {
 describe('the crew in the music', () => {
   test('a zombie close to any teammate, or a bitten teammate, raises the intensity', () => {
     const apart = withSeat(TWO_SEAT_ROOM.world, 1, seatWorld =>
-      modifyFields(seatWorld, {
+      modifyFocus(seatWorld, {
         player: player => modifyFields(player, { x: () => 260, y: () => 135 }),
       }),
     )
@@ -498,7 +499,7 @@ describe('the crew in the music', () => {
 
 describe('latency', () => {
   const apart = withSeat(TWO_SEAT_ROOM.world, 1, seatWorld =>
-    modifyFields(seatWorld, {
+    modifyFocus(seatWorld, {
       player: player => modifyFields(player, { x: () => 200, y: () => 120 }),
     }),
   )

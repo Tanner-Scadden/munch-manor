@@ -11,6 +11,7 @@ import { kitchenStepOf, maybeKitchenMark } from './kitchenTour'
 import { fridgeBoxOf } from './leftovers'
 import type { Model } from './model'
 import { isLearned } from './onboarding'
+import { focusOf } from './party'
 import { STALL_BOX, isBrowsing, isShopOpenFor } from './shop'
 import {
   type Palette,
@@ -248,7 +249,7 @@ const isStallInView = (camera: Camera): boolean => {
 }
 
 const isBreakWithShop = (model: Model): boolean =>
-  isShopOpenFor(model.phase) && !isBrowsing(model.shop)
+  isShopOpenFor(model.phase) && !isBrowsing(focusOf(model).shop)
 
 export const maybeBubbleKind = (
   model: Model,

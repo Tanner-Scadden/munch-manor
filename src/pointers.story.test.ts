@@ -9,6 +9,7 @@ import { isTrackingPointer } from './input'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, MouseButton, Phase, Stick, initialModel } from './model'
+import { focusOf } from './party'
 import { subscriptions } from './subscriptions'
 import { SURFACE } from './testing'
 import { asVeteran } from './veteran'
@@ -71,7 +72,7 @@ describe('stuck sticks', () => {
       model(after => {
         expect(isAnyStickActive(after)).toBe(false)
         expect(isTrackingPointer(after.input)).toBe(false)
-        expect(after.intent.trigger).toBe('Released')
+        expect(focusOf(after).intent.trigger).toBe('Released')
       }),
     )
   })

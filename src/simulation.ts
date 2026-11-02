@@ -40,12 +40,14 @@ import { advanceIntensity } from './pacing'
 import {
   COOP_RULES,
   facingNearest,
+  focusOf,
   forEachSeat,
   isCoop,
   isStanding,
-  leadSeatOf,
   maybePlayerAt,
+  modifySeat,
   playersOf,
+  seatStateAt,
 } from './party'
 import { advancePowerUps, playerSpeed } from './powerups'
 import { advancePurchase } from './purchase'
@@ -60,6 +62,7 @@ import {
   Life,
   Phase,
   type Player,
+  type PlayerSlot,
   ShopState,
   type Vector,
   type Zombie,
@@ -72,9 +75,9 @@ import { wearOf } from './zombies'
 
 // NOTE: the player's intent is the step's input. A player at the stall's
 // counter does nothing else, whatever they hold.
-const gateIntent = (model: World): World =>
-  ShopState.isAnyOf(['Browsing'])(model.shop)
-    ? modifyFields(model, { intent: () => idleIntent })
+const gateIntent = (model: World, slot: PlayerSlot): World =>
+  ShopState.isAnyOf(['Browsing'])(seatStateAt(model, slot).shop)
+    ? modifySeat(model, slot, { intent: () => idleIntent })
     : model
 
 // PLAYER
@@ -129,18 +132,20 @@ const movePlayer = (
   })
 }
 
-const faceTowardIntent = (model: World): World =>
-  modifyFields(model, {
+const faceTowardIntent = (model: World, slot: PlayerSlot): World => {
+  const { intent } = seatStateAt(model, slot)
+  return modifySeat(model, slot, {
     player: player =>
       modifyFields(player, {
         facing: facing =>
           pipe(
-            model.intent.maybeAim,
-            Option.orElse(() => normalize(model.intent.move)),
+            intent.maybeAim,
+            Option.orElse(() => normalize(intent.move)),
             Option.getOrElse(() => facing),
           ),
       }),
   })
+}
 
 // WEAR
 
@@ -204,7 +209,7 @@ const shedEvents = (before: ReadonlyArray<Zombie>, player: Player) => {
 export const shedParts = (before: World, after: World): World => {
   const shed = Array.flatMap(
     after.zombies,
-    shedEvents(before.zombies, after.player),
+    shedEvents(before.zombies, focusOf(after).player),
   )
   return Array.isReadonlyArrayEmpty(shed)
     ? after
@@ -216,8 +221,8 @@ export const shedParts = (before: World, after: World): World => {
 // INTENSITY
 
 const heartsLostBetween = (before: World, after: World): number =>
-  Array.reduce(playersOf(after), 0, (total, { slot, player }) =>
-    Option.match(maybePlayerAt(before, slot), {
+  Array.reduce(playersOf(after), 0, (total, { seat, player }) =>
+    Option.match(maybePlayerAt(before, seat.slot), {
       onNone: () => total,
       onSome: was => total + Math.max(0, was.player.hp - player.hp),
     }),
@@ -240,13 +245,17 @@ const feelIntensity = (before: World, after: World, deltaMs: number): World =>
 // NOTE: a downed player crawls (decided row 4), and one an Ankle Biter
 // clings to drags their feet. In single player any clinging Ankle Biter is
 // on the one player's ankles.
-const speedOf = (model: World): number =>
-  playerSpeed(model.boosts, model.player) *
-  puddleSlowAt(model.boss, model.player) *
-  (isCoop(model)
-    ? ankleSlowNear(model.zombies, model.player) *
-      (isStanding(leadSeatOf(model)) ? 1 : COOP_RULES.downedCrawlScale)
-    : ankleSlowAt(model.zombies))
+const speedOf = (model: World, slot: PlayerSlot): number => {
+  const { boosts, player, seat } = seatStateAt(model, slot)
+  return (
+    playerSpeed(boosts, player) *
+    puddleSlowAt(model.boss, player) *
+    (isCoop(model)
+      ? ankleSlowNear(model.zombies, player) *
+        (isStanding(seat) ? 1 : COOP_RULES.downedCrawlScale)
+      : ankleSlowAt(model.zombies))
+  )
+}
 
 const moveSeat =
   (
@@ -255,29 +264,32 @@ const moveSeat =
     seconds: number,
     deltaMs: number,
   ) =>
-  (model: World): World =>
-    Life.isAnyOf(['BledOut'])(leadSeatOf(model).life)
+  (model: World, slot: PlayerSlot): World => {
+    const { seat, intent } = seatStateAt(model, slot)
+    return Life.isAnyOf(['BledOut'])(seat.life)
       ? model
       : gateIntent(
-          modifyFields(model, {
+          modifySeat(model, slot, {
             player: player =>
               movePlayer(
                 level,
                 player,
-                model.intent.move,
-                speedOf(model),
+                intent.move,
+                speedOf(model, slot),
                 blockers,
                 seconds,
                 deltaMs,
               ),
           }),
+          slot,
         )
+  }
 
-// NOTE: one tick of the seat in the World's per-player fields walking and
-// turning from its intent, and nothing else: what a co-op client runs to
-// predict its own player before the room's answer comes (MULTIPLAYER.md,
-// Phase 4). Hits, money, and deaths stay the room's.
-const walkLeadSeat = (model: World, deltaMs: number): World => {
+// NOTE: one tick of the seat at `slot` walking and turning from its
+// intent, and nothing else: what a co-op client runs to predict its own
+// player before the room's answer comes (MULTIPLAYER.md, Phase 4). Hits,
+// money, and deaths stay the room's.
+const walkSeat = (model: World, slot: PlayerSlot, deltaMs: number): World => {
   const level = levelOf(model)
   return faceTowardIntent(
     moveSeat(
@@ -285,7 +297,8 @@ const walkLeadSeat = (model: World, deltaMs: number): World => {
       trapBlockers(level, model.traps),
       deltaMs / MS_PER_SECOND,
       deltaMs,
-    )(model),
+    )(model, slot),
+    slot,
   )
 }
 
@@ -293,40 +306,52 @@ const walkLeadSeat = (model: World, deltaMs: number): World => {
 // input (src/roomWorld.ts, predictOwn): the walk, the reload, and the
 // trigger, so its shots' timing, muzzle flash, and ammo show at once. The
 // caller keeps only the player; bullets, hits, and money stay the room's.
-export const predictLeadSeat = (model: World, deltaMs: number): World =>
-  armSeat(deltaMs)(walkLeadSeat(model, deltaMs))
+export const predictSeat = (
+  model: World,
+  slot: PlayerSlot,
+  deltaMs: number,
+): World => armSeat(deltaMs)(walkSeat(model, slot, deltaMs), slot)
 
 // NOTE: only a standing player shops, reloads, fires, and stabs.
 const armSeat =
   (deltaMs: number) =>
-  (model: World): World =>
-    isStanding(leadSeatOf(model))
+  (model: World, slot: PlayerSlot): World =>
+    isStanding(seatStateAt(model, slot).seat)
       ? stabWithKnife(
-          fire(tickReload(faceTowardIntent(model), deltaMs), deltaMs),
+          fire(
+            tickReload(faceTowardIntent(model, slot), slot, deltaMs),
+            slot,
+            deltaMs,
+          ),
+          slot,
           deltaMs,
         )
-      : faceTowardIntent(model)
+      : faceTowardIntent(model, slot)
 
 // NOTE: only a standing player shops at the stall or holds to buy.
 const visitStall =
   (deltaMs: number) =>
-  (model: World): World =>
-    isStanding(leadSeatOf(model))
-      ? advancePurchase(gateIntent(refreshShopPresence(model)), deltaMs)
+  (model: World, slot: PlayerSlot): World =>
+    isStanding(seatStateAt(model, slot).seat)
+      ? advancePurchase(
+          gateIntent(refreshShopPresence(model, slot), slot),
+          slot,
+          deltaMs,
+        )
       : model
 
 const standingSeats = (
   model: World,
-  step: (seatWorld: World) => World,
+  step: (current: World, slot: PlayerSlot) => World,
 ): World =>
-  forEachSeat(model, seatWorld =>
-    isStanding(leadSeatOf(seatWorld)) ? step(seatWorld) : seatWorld,
+  forEachSeat(model, (current, slot) =>
+    isStanding(seatStateAt(current, slot).seat) ? step(current, slot) : current,
   )
 
 const bossAt = (model: World): Vector =>
   Option.getOrElse(
     Array.findFirst(model.zombies, zombie => zombie.kind === 'Boss'),
-    (): Vector => model.player,
+    (): Vector => focusOf(model).player,
   )
 
 // NOTE: when a wave ends and its break begins, Rattles bangs every
@@ -369,8 +394,8 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     recovered => advanceChuckers(recovered, deltaMs),
     heaved => advanceCrawlers(heaved, deltaMs),
     crawled =>
-      facingNearest(crawled, bossAt(crawled), fight =>
-        advanceBossMoves(fight, deltaMs),
+      facingNearest(crawled, bossAt(crawled), (fight, slot) =>
+        advanceBossMoves(fight, slot, deltaMs),
       ),
     resolveBlasts,
   )

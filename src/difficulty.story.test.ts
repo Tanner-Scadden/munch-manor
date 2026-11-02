@@ -26,6 +26,7 @@ import {
   ZombieState,
 } from './model'
 import { newPlayerReady, readyModel } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import {
   closeDialog,
   openLobbyByKey,
@@ -329,20 +330,26 @@ describe('the multipliers', () => {
       frenzy: Frenzy.Calm(),
     }
     const bitten = (difficulty: Difficulty): number =>
-      update(
-        modifyFields(withDifficulty(readyModel, difficulty, 'Unlocked'), {
-          phase: () => Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [] }),
-          zombies: () => [lug],
-          player: player =>
-            modifyFields(player, {
-              x: () => 160,
-              y: () => 95,
-              invulnerability: () => Invulnerability.Vulnerable(),
+      focusOf(
+        update(
+          modifyFocus(
+            modifyFields(withDifficulty(readyModel, difficulty, 'Unlocked'), {
+              phase: () => Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [] }),
+              zombies: () => [lug],
             }),
-        }),
-        Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
-      ).model.player.hp
-    const full = readyModel.player.hp
+            {
+              player: player =>
+                modifyFields(player, {
+                  x: () => 160,
+                  y: () => 95,
+                  invulnerability: () => Invulnerability.Vulnerable(),
+                }),
+            },
+          ),
+          Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
+        ).model,
+      ).player.hp
+    const full = focusOf(readyModel).player.hp
     expect(full - bitten('Easy')).toBe(1)
     expect(full - bitten('Normal')).toBe(2)
     expect(full - bitten('Nightmare')).toBe(3)

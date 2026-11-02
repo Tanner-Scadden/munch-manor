@@ -19,6 +19,7 @@ import {
   ZombieState,
   initialModel,
 } from './model'
+import { focusOf } from './party'
 import { bulletInto, hasEvent, tick, ticks } from './testing'
 
 const FRAME_MS = FIXED_STEP_MS
@@ -78,7 +79,10 @@ const crawlerIn = (current: Model): Zombie =>
   )
 
 const distanceToPlayer = (current: Model, zombie: Zombie): number =>
-  Math.hypot(zombie.x - current.player.x, zombie.y - current.player.y)
+  Math.hypot(
+    zombie.x - focusOf(current).player.x,
+    zombie.y - focusOf(current).player.y,
+  )
 
 describe('the Ankle Biter', () => {
   test('comes up through the floor after a 1.5 s telegraph, out of reach until then', () => {
@@ -192,7 +196,7 @@ describe('the Ankle Biter', () => {
   test('grabs the player by the ankles, slowing them to half speed, then lets go', () => {
     const grabbing = crawlerAt(CENTER_X + 3, CENTER_Y, ZombieAction.Roaming())
     const walked = (start: Model, frames: number) => (current: Model) =>
-      Math.abs(current.player.x - start.player.x) / frames
+      Math.abs(focusOf(current).player.x - focusOf(start).player.x) / frames
 
     const free = waveWith([], [])
     const held = waveWith([], [grabbing])
@@ -220,7 +224,7 @@ describe('the Ankle Biter', () => {
         expect(
           ZombieAction.isAnyOf(['Clinging'])(crawlerIn(current).action),
         ).toBe(true)
-        expect(current.player.hp).toBe(initialModel.player.hp)
+        expect(focusOf(current).player.hp).toBe(focusOf(initialModel).player.hp)
       }),
       message(Message.PressedKey({ code: 'KeyD' })),
       ...ticks(clingFrames, FRAME_MS),

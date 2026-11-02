@@ -16,6 +16,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { holdFire, holdingSecond, ticks, zombieOf } from './testing'
 import { WEAPONS } from './weapons'
 import { ZOMBIE_KINDS, bodyRadiusOf } from './zombies'
@@ -40,8 +41,7 @@ const sceneOf = (
   zombies: ReadonlyArray<Zombie>,
   { isSteadfast = false }: Readonly<{ isSteadfast?: boolean }> = {},
 ): Model =>
-  modifyFields(fightingBase, {
-    zombies: () => zombies,
+  modifyFocus(modifyFields(fightingBase, { zombies: () => zombies }), {
     player: player =>
       modifyFields(player, {
         x: () => PLAYER_X,
@@ -57,8 +57,10 @@ const contactOf = (zombie: Zombie): number =>
   bodyRadiusOf(zombie) + PLAYER_RADIUS - CONTACT_ALLOWANCE_PX
 
 const gapOf = (current: Model, zombie: Zombie): number =>
-  Math.hypot(zombie.x - current.player.x, zombie.y - current.player.y) -
-  contactOf(zombie)
+  Math.hypot(
+    zombie.x - focusOf(current).player.x,
+    zombie.y - focusOf(current).player.y,
+  ) - contactOf(zombie)
 
 // NOTE: the smallest gap any free zombie left to its contact distance over
 // every frame. Below zero means a zombie stood deeper inside the player than
@@ -188,7 +190,7 @@ describe('point-blank shots', () => {
         action: () => ZombieAction.Dazed({ remainingMs: 1e9, durationMs: 1e9 }),
       },
     )
-    const start = modifyFields(sceneOf([dazed], { isSteadfast: true }), {
+    const start = modifyFocus(sceneOf([dazed], { isSteadfast: true }), {
       player: player =>
         modifyFields(player, {
           arsenal: () =>

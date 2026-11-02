@@ -20,6 +20,7 @@ import {
   type Vector,
   defaultAppearance,
 } from './model'
+import { focusOf } from './party'
 import { calloutShapes } from './powerupView'
 import { purchaseOverlayShapes } from './purchaseView'
 import { manorRoomImages, roomShapes } from './room'
@@ -253,7 +254,7 @@ const lensStyle = (
     onNone: () => NO_LENS,
     onSome: ({ zoom, saturation }) => ({
       transform: `scale(${zoom})`,
-      transformOrigin: `${percentOf(model.player.x - camera.x, camera.width)} ${percentOf(model.player.y - camera.y, camera.height)}`,
+      transformOrigin: `${percentOf(focusOf(model).player.x - camera.x, camera.width)} ${percentOf(focusOf(model).player.y - camera.y, camera.height)}`,
       filter: saturation < 1 ? `saturate(${saturation})` : 'none',
     }),
   })

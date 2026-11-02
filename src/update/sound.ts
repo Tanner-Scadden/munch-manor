@@ -20,6 +20,7 @@ import { mendedSpots } from '../heroTells'
 import { maybeKitchenSound } from '../kitchenCall'
 import { Message } from '../message'
 import { AudioState, GameEvent, type Model, type Player } from '../model'
+import { focusOf } from '../party'
 import { PICKUPS } from '../powerups'
 import { TRAPS } from '../traps'
 import { WEAPONS, heldWeapon } from '../weapons'
@@ -257,7 +258,10 @@ export const kitchenCues = (
     maybeKitchenSound(before, after),
     Option.map(sound => ({
       sound,
-      variation: positionVariation(after.player.x, after.player.y),
+      variation: positionVariation(
+        focusOf(after).player.x,
+        focusOf(after).player.y,
+      ),
     })),
     Option.toArray,
   )
@@ -274,11 +278,14 @@ export const frameSoundCues = (
 
 // NOTE: a low tick on each of the last few shots of a gun that can run dry.
 export const ammoTickCues = (model: Model): ReadonlyArray<SoundCue> =>
-  isTickingShot(model.player, model.frameEvents)
+  isTickingShot(focusOf(model).player, model.frameEvents)
     ? [
         {
           sound: 'AmmoTick',
-          variation: positionVariation(model.player.x, model.player.y),
+          variation: positionVariation(
+            focusOf(model).player.x,
+            focusOf(model).player.y,
+          ),
         },
       ]
     : []

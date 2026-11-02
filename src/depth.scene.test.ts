@@ -8,6 +8,7 @@ import { type Drawable, depthSortedShapes } from './depth'
 import { sceneShapes } from './layers'
 import { type Model, Phase, type Zombie, initialModel } from './model'
 import { isBehindWall, occludersOf } from './occluders'
+import { focusOf, modifyFocus } from './party'
 import { playerShapes } from './playerView'
 import { STALL_BOX } from './shop'
 import { stallShapes } from './stall'
@@ -21,11 +22,13 @@ const fightingModel = (
   player: Readonly<{ x: number; y: number }>,
   zombies: ReadonlyArray<Zombie>,
 ): Model =>
-  modifyFields(initialModel, {
-    phase: () => Phase.Wave({ wave: 1, elapsedMs: 0, spawns: [] }),
-    player: current => ({ ...current, ...player }),
-    zombies: () => zombies,
-  })
+  modifyFocus(
+    modifyFields(initialModel, {
+      phase: () => Phase.Wave({ wave: 1, elapsedMs: 0, spawns: [] }),
+      zombies: () => zombies,
+    }),
+    { player: current => ({ ...current, ...player }) },
+  )
 
 const worldShapesOf = (current: Model): ReadonlyArray<Canvas.Shape> =>
   Option.match(Array.head(sceneShapes(current)), {
@@ -52,7 +55,11 @@ const zombieIndex = (current: Model, zombie: Zombie): number =>
     worldShapesOf(current),
     Option.getOrThrow(
       Array.last(
-        zombieShapes(current.player, current.elapsedMs, current.boss)(zombie),
+        zombieShapes(
+          focusOf(current).player,
+          current.elapsedMs,
+          current.boss,
+        )(zombie),
       ),
     ),
   )

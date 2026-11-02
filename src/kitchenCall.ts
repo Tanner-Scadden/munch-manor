@@ -7,6 +7,7 @@ import { KITCHEN_EXIT, exitBoxOf, isExitOfferOpenFor } from './exits'
 import { distanceBetween } from './geometry'
 import { isKitchenOpen } from './kitchen'
 import type { Model } from './model'
+import { focusOf } from './party'
 import type { SoundEffect } from './soundEffect'
 import { isRoundActive } from './waves'
 import { Boss, GameEvent, Phase, type Vector } from './worldSchema'
@@ -135,7 +136,7 @@ export const maybeKitchenSound = (
     Boss.isAnyOf(['Absent'])(after.boss) &&
     isBoardsUp(after)
     ? Option.flatMap(exitBoxOf(levelOf(after), KITCHEN_EXIT), box =>
-        distanceBetween(after.player, {
+        distanceBetween(focusOf(after).player, {
           x: (box.left + box.right) / 2,
           y: (box.top + box.bottom) / 2,
         }) <= SMELL_REACH_PX

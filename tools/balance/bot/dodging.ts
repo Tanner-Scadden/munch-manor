@@ -5,6 +5,7 @@ import { BOSS_RULES } from '../../../src/boss'
 import { CHUCKER_RULES } from '../../../src/chucker'
 import { CRAWLER_RULES } from '../../../src/crawler'
 import { FRENZY_RULES } from '../../../src/frenzy'
+import { focusOf } from '../../../src/party'
 import { BossMove } from '../../../src/worldSchema'
 import {
   type Model,
@@ -34,10 +35,13 @@ export const safePickup = (model: Model): Vector | undefined => {
   return model.pickups
     .filter(
       pickup =>
-        distance(model.player, pickup) < PICKUP_SEEK_PX &&
+        distance(focusOf(model).player, pickup) < PICKUP_SEEK_PX &&
         zombies.every(zombie => distance(zombie, pickup) > PICKUP_SAFE_PX),
     )
-    .sort((a, b) => distance(model.player, a) - distance(model.player, b))[0]
+    .sort(
+      (a, b) =>
+        distance(focusOf(model).player, a) - distance(focusOf(model).player, b),
+    )[0]
 }
 
 // It dodges the boss the way a player who has seen his tells does: out of a
@@ -91,29 +95,32 @@ const laneDodge = (
   direction: Vector,
   length: number,
 ): Vector | undefined =>
-  distanceToLane(model.player, from, direction, length) <
+  distanceToLane(focusOf(model).player, from, direction, length) <
   BOSS_BODY_PX + PLAYER_BODY_PX + DODGE_MARGIN_PX
-    ? awayFromLine(from, direction, model.player)
+    ? awayFromLine(from, direction, focusOf(model).player)
     : undefined
 
 // Standing on a glob's mark, it steps across the boss's line of fire, to the
 // side with more room from the nearest other zombie.
 const clearSide = (model: Model, boss: Vector): Vector => {
-  const toward = steerToward(boss, model.player)
+  const toward = steerToward(boss, focusOf(model).player)
   const across = { x: -toward.y, y: toward.x }
   const crowd = walking(model)
     .filter(zombie => zombie.kind !== 'Boss')
-    .sort((a, b) => distance(model.player, a) - distance(model.player, b))[0]
+    .sort(
+      (a, b) =>
+        distance(focusOf(model).player, a) - distance(focusOf(model).player, b),
+    )[0]
   if (crowd === undefined) {
     return across
   }
   const left = {
-    x: model.player.x + across.x * 10,
-    y: model.player.y + across.y * 10,
+    x: focusOf(model).player.x + across.x * 10,
+    y: focusOf(model).player.y + across.y * 10,
   }
   const right = {
-    x: model.player.x - across.x * 10,
-    y: model.player.y - across.y * 10,
+    x: focusOf(model).player.x - across.x * 10,
+    y: focusOf(model).player.y - across.y * 10,
   }
   return distance(left, crowd) >= distance(right, crowd)
     ? across
@@ -129,25 +136,28 @@ const landingDodge = (model: Model): Vector | undefined => {
   const mark = model.zombies.find(
     zombie =>
       zombie.action._tag === 'Flying' &&
-      distance(model.player, zombie.action.to) <
+      distance(focusOf(model).player, zombie.action.to) <
         CHUCKER_RULES.landRadius + PLAYER_BODY_PX + LANDING_MARGIN_PX,
   )
   if (mark?.action._tag !== 'Flying') {
     return undefined
   }
   const center = mark.action.to
-  return distance(model.player, center) < 3
+  return distance(focusOf(model).player, center) < 3
     ? clearSide(model, mark.action.from)
-    : steerToward(center, model.player)
+    : steerToward(center, focusOf(model).player)
 }
 
 const crackDodge = (model: Model): Vector | undefined => {
   const crack = model.zombies.find(
     zombie =>
       zombie.action._tag === 'Burrowed' &&
-      distance(model.player, zombie) < CRAWLER_RULES.holdPx + CRACK_BERTH_PX,
+      distance(focusOf(model).player, zombie) <
+        CRAWLER_RULES.holdPx + CRACK_BERTH_PX,
   )
-  return crack === undefined ? undefined : steerToward(crack, model.player)
+  return crack === undefined
+    ? undefined
+    : steerToward(crack, focusOf(model).player)
 }
 
 const floorDodge = (model: Model): Vector | undefined =>
@@ -165,16 +175,16 @@ export const telegraphDodge = (model: Model): Vector | undefined => {
   const marker = model.boss.globs.find(
     glob =>
       (glob._tag === 'Flying' &&
-        distance(model.player, glob.to) <
+        distance(focusOf(model).player, glob.to) <
           BOSS_RULES.spitRadius + PLAYER_BODY_PX + DODGE_MARGIN_PX) ||
       (glob._tag === 'Pooled' &&
-        distance(model.player, glob.at) < BOSS_RULES.puddleRadius + 2),
+        distance(focusOf(model).player, glob.at) < BOSS_RULES.puddleRadius + 2),
   )
   if (marker !== undefined) {
     const center = marker._tag === 'Flying' ? marker.to : marker.at
-    return distance(model.player, center) < 3
+    return distance(focusOf(model).player, center) < 3
       ? clearSide(model, boss ?? { x: center.x, y: center.y - 1 })
-      : steerToward(center, model.player)
+      : steerToward(center, focusOf(model).player)
   }
   if (boss === undefined) {
     return undefined
@@ -185,9 +195,9 @@ export const telegraphDodge = (model: Model): Vector | undefined => {
       WindingUp: move =>
         move.attack !== 'Stomp'
           ? undefined
-          : distance(model.player, boss) <
+          : distance(focusOf(model).player, boss) <
               BOSS_RULES.stompRadius + DODGE_MARGIN_PX
-            ? steerToward(boss, model.player)
+            ? steerToward(boss, focusOf(model).player)
             : { x: 0, y: 0 },
       Bracing: move =>
         laneDodge(
@@ -225,9 +235,9 @@ const KITE_SPOTS: Array<Vector> = [
 export const kiteAway = (model: Model, boss: Vector): Vector => {
   const spot =
     [...KITE_SPOTS].sort((a, b) => distance(b, boss) - distance(a, boss))[0] ??
-    model.player
-  return distance(model.player, spot) > 6
-    ? steerToward(model.player, spot)
+    focusOf(model).player
+  return distance(focusOf(model).player, spot) > 6
+    ? steerToward(focusOf(model).player, spot)
     : { x: 0, y: 0 }
 }
 
@@ -238,12 +248,12 @@ export const ENGAGES = process.env['ENGAGE'] !== undefined
 const ENGAGE_PX = Number(process.env['ENGAGE_PX'] ?? 58)
 
 export const engage = (model: Model, boss: Vector): Vector => {
-  const away = steerToward(boss, model.player)
+  const away = steerToward(boss, focusOf(model).player)
   const spot = {
     x: boss.x + (away.x === 0 && away.y === 0 ? 1 : away.x) * ENGAGE_PX,
     y: boss.y + away.y * ENGAGE_PX,
   }
-  return distance(model.player, spot) > 6
-    ? steerToward(model.player, spot)
+  return distance(focusOf(model).player, spot) > 6
+    ? steerToward(focusOf(model).player, spot)
     : { x: 0, y: 0 }
 }

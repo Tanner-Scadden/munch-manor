@@ -19,6 +19,7 @@ import { FIXED_STEP_MS, PREPARATION_MS, RESTART_GRACE_MS } from './constants'
 import { withBests } from './home'
 import { Message } from './message'
 import { type Model, Phase, RunMode, initialModel } from './model'
+import { modifyFocus } from './party'
 import {
   ROOT,
   SCENE_SUBSCRIPTIONS,
@@ -95,15 +96,17 @@ describe('Mode choice', () => {
   })
 
   test('Victory offers Keep going after the grace, and it carries on into wave 11', () => {
-    const victorious: Model = modifyFields(asVeteran(initialModel), {
-      phase: () => Phase.Victory(),
-      wallet: () => ({ balance: 321, earned: 1900, shown: 321 }),
-      player: player =>
-        modifyFields(player, {
-          arsenal: () =>
-            holdingSecond({ kind: 'Smg', rounds: 99, loaded: 40, tier: 2 }),
-        }),
-    })
+    const victorious: Model = modifyFocus(
+      modifyFields(asVeteran(initialModel), { phase: () => Phase.Victory() }),
+      {
+        wallet: () => ({ balance: 321, earned: 1900, shown: 321 }),
+        player: player =>
+          modifyFields(player, {
+            arsenal: () =>
+              holdingSecond({ kind: 'Smg', rounds: 99, loaded: 40, tier: 2 }),
+          }),
+      },
+    )
     scene(
       ROOT,
       given(victorious),
@@ -174,36 +177,40 @@ describe('Mode choice', () => {
 })
 
 describe('Upgrades in the shop', () => {
-  const atStall: Model = modifyFields(initialModel, {
-    maybeSurface: () =>
-      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-    phase: () =>
-      Phase.Preparation({
-        wave: 4,
-        remainingMs: 15_000,
-        durationMs: PREPARATION_MS,
-        spawns: [
-          {
-            atMs: 1e9,
-            kind: 'Shambler',
-            door: 'North',
-            offset: 0,
-            speedScale: 1,
-            hpScale: 1,
-            pack: 0,
-            formation: 'Squad',
-          },
-        ],
-      }),
-    player: player =>
-      modifyFields(player, {
-        x: () => 270,
-        y: () => 142,
-        arsenal: () =>
-          holdingSecond({ kind: 'Shotgun', rounds: 16, loaded: 6, tier: 2 }),
-      }),
-    wallet: () => ({ balance: 400, earned: 400, shown: 400 }),
-  })
+  const atStall: Model = modifyFocus(
+    modifyFields(initialModel, {
+      maybeSurface: () =>
+        Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+      phase: () =>
+        Phase.Preparation({
+          wave: 4,
+          remainingMs: 15_000,
+          durationMs: PREPARATION_MS,
+          spawns: [
+            {
+              atMs: 1e9,
+              kind: 'Shambler',
+              door: 'North',
+              offset: 0,
+              speedScale: 1,
+              hpScale: 1,
+              pack: 0,
+              formation: 'Squad',
+            },
+          ],
+        }),
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          x: () => 270,
+          y: () => 142,
+          arsenal: () =>
+            holdingSecond({ kind: 'Shotgun', rounds: 16, loaded: 6, tier: 2 }),
+        }),
+      wallet: () => ({ balance: 400, earned: 400, shown: 400 }),
+    },
+  )
 
   test('names the next tier, says what changes, buys it, and shows MAX once done', () => {
     const nextShotgunTier = role('button', {

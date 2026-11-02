@@ -27,6 +27,6 @@ export const tryAsLead = (
   model: Model,
   action: SeatAction,
 ): Result.Result<Model, ActionRefusal> =>
-  Result.map(trySeatAction(model, action), world =>
+  Result.map(trySeatAction(model, leadSeatOf(model).slot, action), world =>
     withWorld(model, () => world),
   )

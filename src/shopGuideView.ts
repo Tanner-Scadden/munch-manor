@@ -5,7 +5,6 @@ import type { ShopGuideSection } from './clientSchema'
 import type { ApplicationViewBuilder } from './composition'
 import { Message, type Message as MessageType } from './message'
 import { SHOP_GUIDE_NAME } from './names'
-import { BAR_SEGMENTS } from './shop'
 import { type ShopArt } from './shopArt'
 import {
   type GuideBar,
@@ -21,6 +20,7 @@ import {
   sectionName,
 } from './shopGuide'
 import { guideArtOf, sectionArtOf } from './shopGuideArt'
+import { BAR_SEGMENTS } from './shopStats'
 
 // NOTE: the shop guide's view, shared by the Munchopedia's Shop page and the
 // ? in Rattles' shop. Chunky bars, the item's art, one short line, and its

@@ -32,6 +32,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN, quietWave, withPlayerAt } from './model.fixture'
+import { focusOf, modifyFocus } from './party'
 import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from './pathing'
 import { press, tick, ticks, zombieAt } from './testing'
 
@@ -78,7 +79,12 @@ describe('the room', () => {
 
   test('every walkable tile in the house can reach the player', () => {
     const level = levelOf(initialModel)
-    const flowField = flowFieldToward(level, initialModel.player, 'Narrow', [])
+    const flowField = flowFieldToward(
+      level,
+      focusOf(initialModel).player,
+      'Narrow',
+      [],
+    )
     const walkableDistances = Array.filterMap(
       Array.range(0, level.tileCount - 1),
       index => {
@@ -103,7 +109,7 @@ describe('player collision', () => {
       given(withPlayerAt(quietWave(1), 125, 40)),
       press('KeyW'),
       ...ticks(40, MAX_FRAME_DELTA_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.y).toBeCloseTo(TOP_WALL_BOTTOM + PLAYER_RADIUS)
         expect(player.x).toBeCloseTo(125)
       }),
@@ -114,7 +120,7 @@ describe('player collision', () => {
       given(withPlayerAt(quietWave(1), 25, 70)),
       press('KeyW'),
       ...ticks(20, MAX_FRAME_DELTA_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.y).toBeCloseTo(PIANO_BOTTOM + PLAYER_RADIUS)
         expect(player.x).toBeCloseTo(25)
       }),
@@ -128,14 +134,14 @@ describe('player collision', () => {
       press('KeyW'),
       press('KeyD'),
       ...ticks(5, MAX_FRAME_DELTA_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.y).toBeGreaterThanOrEqual(
           PIANO_BOTTOM + PLAYER_RADIUS - 0.01,
         )
         expect(player.x).toBeGreaterThan(30)
       }),
       ...ticks(20, MAX_FRAME_DELTA_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.x).toBeGreaterThan(PIANO_RIGHT + PLAYER_RADIUS)
         expect(player.y).toBeLessThan(PIANO_BOTTOM)
       }),
@@ -146,13 +152,13 @@ describe('player collision', () => {
     story(
       update,
       given(
-        modifyFields(withPlayerAt(quietWave(1), 100, ARMCHAIR_ROW_Y), {
+        modifyFocus(withPlayerAt(quietWave(1), 100, ARMCHAIR_ROW_Y), {
           player: player =>
             modifyFields(player, { knockback: () => ({ x: 600, y: 0 }) }),
         }),
       ),
       tick(5000),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.x).toBeCloseTo(ARMCHAIR_LEFT - PLAYER_RADIUS)
       }),
     )
@@ -164,7 +170,7 @@ describe('player collision', () => {
       given(withPlayerAt(quietWave(1), 30, PARLOUR.doors.West.center.y)),
       press('KeyA'),
       ...ticks(40, MAX_FRAME_DELTA_MS),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.x).toBe(PLAYER_RADIUS)
       }),
     )
@@ -326,7 +332,7 @@ describe('pathing', () => {
 
     const maybeHurtFrame = Array.findFirstIndex(
       frames,
-      ({ player }) => player.hp < PLAYER_MAX_HP,
+      ({ seats: [{ player }] }) => player.hp < PLAYER_MAX_HP,
     )
     expect(Option.isSome(maybeHurtFrame)).toBe(true)
     const zombiePositions = pipe(

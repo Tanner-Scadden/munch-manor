@@ -1,5 +1,6 @@
 import { Array, Option } from 'effect'
 
+import { focusSlotOf } from './party'
 import { isInteractTaken, maybeTapOffer } from './purchase'
 import { SeatAction } from './stepWorld'
 import type { World } from './world'
@@ -49,8 +50,8 @@ const isOpenTo = (seat: World, action: SeatAction): boolean =>
   SeatAction.matchOrElse(
     action,
     {
-      Ready: () => !isInteractTaken(seat),
-      BuyAmmo: () => Option.isSome(maybeTapOffer(seat)),
+      Ready: () => !isInteractTaken(seat, focusSlotOf(seat)),
+      BuyAmmo: () => Option.isSome(maybeTapOffer(seat, focusSlotOf(seat))),
     },
     () => true,
   )

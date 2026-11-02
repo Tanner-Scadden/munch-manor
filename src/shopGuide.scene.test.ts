@@ -19,6 +19,7 @@ import { PREPARATION_MS } from './constants'
 import { Message } from './message'
 import { FridgeDoor, type Model, Phase, initialModel } from './model'
 import { home } from './model.fixture'
+import { modifyFocus } from './party'
 import { prizeUnlockId } from './shopGuide'
 import {
   ROOT,
@@ -31,31 +32,35 @@ import {
 import { FocusShopGuide } from './update/shopGuide'
 
 const atStall = (): Model =>
-  modifyFields(initialModel, {
-    maybeSurface: () =>
-      Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-    phase: () =>
-      Phase.Preparation({
-        wave: 4,
-        remainingMs: 15_000,
-        durationMs: PREPARATION_MS,
-        spawns: [
-          {
-            atMs: 1e9,
-            kind: 'Shambler',
-            door: 'North',
-            offset: 0,
-            speedScale: 1,
-            hpScale: 1,
-            pack: 0,
-            formation: 'Squad',
-          },
-        ],
-      }),
-    player: player =>
-      modifyFields(player, { x: () => 270, y: () => 142, hp: () => 3 }),
-    wallet: () => ({ balance: 200, earned: 200, shown: 200 }),
-  })
+  modifyFocus(
+    modifyFields(initialModel, {
+      maybeSurface: () =>
+        Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+      phase: () =>
+        Phase.Preparation({
+          wave: 4,
+          remainingMs: 15_000,
+          durationMs: PREPARATION_MS,
+          spawns: [
+            {
+              atMs: 1e9,
+              kind: 'Shambler',
+              door: 'North',
+              offset: 0,
+              speedScale: 1,
+              hpScale: 1,
+              pack: 0,
+              formation: 'Squad',
+            },
+          ],
+        }),
+    }),
+    {
+      player: player =>
+        modifyFields(player, { x: () => 270, y: () => 142, hp: () => 3 }),
+      wallet: () => ({ balance: 200, earned: 200, shown: 200 }),
+    },
+  )
 
 const help = role('button', { name: 'Shop guide' })
 const back = role('button', { name: 'Back to the shop' })

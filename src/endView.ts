@@ -50,7 +50,7 @@ import {
   TROPHY_PIXELS,
 } from './icons'
 import { Invulnerability, type Model, Phase, type Zombie } from './model'
-import { isCoop } from './party'
+import { focusOf, isCoop, modifyFocus } from './party'
 import type { Difficulty } from './playerData'
 import { playerFootY } from './playerView'
 import { STRIP_PX, rankStripShapes } from './rankStripView'
@@ -625,8 +625,11 @@ export const toppleShapes = (
   if (t <= 0) {
     return shapes
   }
-  const foot = { x: model.player.x, y: playerFootY(model.player) }
-  const side = model.player.facing.x < 0 ? 1 : -1
+  const foot = {
+    x: focusOf(model).player.x,
+    y: playerFootY(focusOf(model).player),
+  }
+  const side = focusOf(model).player.facing.x < 0 ? 1 : -1
   return [
     group({
       translate: foot,
@@ -640,7 +643,7 @@ export const toppleShapes = (
 // the last bite is over, not frozen white mid blink.
 export const fallenOf = (model: Model): Model =>
   Phase.isAnyOf(['GameOver'])(model.phase) && model.screenMs >= FLASH_MS
-    ? modifyFields(model, {
+    ? modifyFocus(model, {
         player: player =>
           modifyFields(player, {
             invulnerability: () => Invulnerability.Vulnerable(),
@@ -659,8 +662,8 @@ export const chompShapes = (
   zombie: Zombie,
   shapes: ReadonlyArray<Canvas.Shape>,
 ): ReadonlyArray<Canvas.Shape> => {
-  const dx = model.player.x - zombie.x
-  const dy = model.player.y - zombie.y
+  const dx = focusOf(model).player.x - zombie.x
+  const dy = focusOf(model).player.y - zombie.y
   const distance = Math.hypot(dx, dy)
   if (distance > CHOMP_REACH_PX || distance < 1) {
     return shapes

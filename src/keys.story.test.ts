@@ -9,6 +9,7 @@ import { Message } from './message'
 import { DebutCard, type Model, Phase, Reload, RunMode } from './model'
 import { WAVE_2_BREAK, WAVE_2_FIGHT, readyModel } from './model.fixture'
 import { DEBUT_CARD_MIN_MS } from './onboarding'
+import { focusOf, modifyFocus } from './party'
 import {
   SHOTGUN,
   holdingFirst,
@@ -23,13 +24,15 @@ import { STARTING_PISTOL } from './weapons'
 
 const FRAME_MS = 50
 
-const fighting: Model = modifyFields(readyModel, {
-  phase: () => WAVE_2_FIGHT,
-  player: player =>
-    modifyFields(player, {
-      arsenal: () => holdingFirst(SHOTGUN, { ...STARTING_PISTOL, loaded: 3 }),
-    }),
-})
+const fighting: Model = modifyFocus(
+  modifyFields(readyModel, { phase: () => WAVE_2_FIGHT }),
+  {
+    player: player =>
+      modifyFields(player, {
+        arsenal: () => holdingFirst(SHOTGUN, { ...STARTING_PISTOL, loaded: 3 }),
+      }),
+  },
+)
 
 const preparing: Model = modifyFields(fighting, { phase: () => WAVE_2_BREAK })
 
@@ -55,13 +58,13 @@ describe('one key per action: removed keys do nothing', () => {
         update,
         given(fighting),
         press(code),
-        model(({ intent }) => {
+        model(({ seats: [{ intent }] }) => {
           expect(intent.move).toEqual({ x: 0, y: 0 })
         }),
         tick(FRAME_MS),
-        model(({ player }) => {
-          expect(player.x).toBe(fighting.player.x)
-          expect(player.y).toBe(fighting.player.y)
+        model(({ seats: [{ player }] }) => {
+          expect(player.x).toBe(focusOf(fighting).player.x)
+          expect(player.y).toBe(focusOf(fighting).player.y)
         }),
       ),
     )
@@ -72,7 +75,7 @@ describe('one key per action: removed keys do nothing', () => {
       update,
       given(fighting),
       press('Space'),
-      model(({ intent }) => {
+      model(({ seats: [{ intent }] }) => {
         expect(intent.trigger).toBe('Released')
       }),
       tick(FRAME_MS),
@@ -90,8 +93,8 @@ describe('one key per action: removed keys do nothing', () => {
         update,
         given(fighting),
         tap(code),
-        model(({ player }) => {
-          expect(player.arsenal).toEqual(fighting.player.arsenal)
+        model(({ seats: [{ player }] }) => {
+          expect(player.arsenal).toEqual(focusOf(fighting).player.arsenal)
         }),
       ),
     )
@@ -178,7 +181,7 @@ describe('one key per action: the kept keys work', () => {
         update,
         given(fighting),
         press(code),
-        model(({ intent }) => {
+        model(({ seats: [{ intent }] }) => {
           expect(intent.move).toEqual(move)
         }),
       ),
@@ -190,14 +193,14 @@ describe('one key per action: the kept keys work', () => {
       update,
       given(fighting),
       tap('KeyQ'),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(
           holdingSecond(SHOTGUN, { ...STARTING_PISTOL, loaded: 3 }),
         )
       }),
       tap('KeyQ'),
-      model(({ player }) => {
-        expect(player.arsenal).toEqual(fighting.player.arsenal)
+      model(({ seats: [{ player }] }) => {
+        expect(player.arsenal).toEqual(focusOf(fighting).player.arsenal)
       }),
     )
   })
@@ -207,7 +210,7 @@ describe('one key per action: the kept keys work', () => {
       update,
       given(fighting),
       tap('KeyR'),
-      model(({ player }) => {
+      model(({ seats: [{ player }] }) => {
         expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
       }),
     )
@@ -217,17 +220,17 @@ describe('one key per action: the kept keys work', () => {
     story(
       update,
       given(
-        modifyFields(preparing, {
+        modifyFocus(preparing, {
           trapStock: () => ({ Barricade: 1, Turret: 1 }),
           selectedTrap: () => 'Barricade',
         }),
       ),
       tap('KeyG'),
-      model(({ selectedTrap }) => {
+      model(({ seats: [{ selectedTrap }] }) => {
         expect(selectedTrap).toBe('Turret')
       }),
       tap('KeyT'),
-      model(({ traps, trapStock }) => {
+      model(({ traps, seats: [{ trapStock }] }) => {
         expect(traps).toHaveLength(1)
         expect(trapStock.Turret).toBe(0)
       }),
@@ -342,7 +345,7 @@ describe('the PAUSE button', () => {
       given(fighting),
       press('KeyD'),
       message(Message.ClickedPauseButton()),
-      model(({ input, intent }) => {
+      model(({ input, seats: [{ intent }] }) => {
         expect(input.pressedKeys).toEqual([])
         expect(intent.move).toEqual({ x: 0, y: 0 })
       }),

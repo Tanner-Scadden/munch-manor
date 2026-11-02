@@ -5,7 +5,7 @@ import { FIXED_STEP_MS, PLAYER_MAX_HP } from './constants'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, initialModel } from './model'
-import { forEachSeat, playersOf } from './party'
+import { focusOf, forEachSeat, modifyFocus, playersOf } from './party'
 import { asVeteran } from './veteran'
 import { withWorld } from './world'
 
@@ -75,8 +75,8 @@ const nearestZombie = (current: Model) =>
     .reduce<{ x: number; y: number; distance: number } | undefined>(
       (best, zombie) => {
         const distance =
-          (zombie.x - current.player.x) ** 2 +
-          (zombie.y - current.player.y) ** 2
+          (zombie.x - focusOf(current).player.x) ** 2 +
+          (zombie.y - focusOf(current).player.y) ** 2
         return best === undefined || distance < best.distance
           ? { x: zombie.x, y: zombie.y, distance }
           : best
@@ -98,7 +98,7 @@ const walking = (frame: number): ReadonlyArray<string> => {
 const prepare = (current: Model, frame: number): Model => {
   const still = hold(current, walking(frame))
   const leftStall =
-    still.shop._tag === 'Browsing' ? tap(still, 'Escape') : still
+    focusOf(still).shop._tag === 'Browsing' ? tap(still, 'Escape') : still
   return tap(tap(tap(leftStall, 'KeyO'), 'KeyY'), 'Enter')
 }
 
@@ -141,7 +141,7 @@ const drive = (current: Model, frame: number): Model =>
 const refillHearts = (current: Model): Model =>
   withWorld(current, world =>
     forEachSeat(world, seatWorld =>
-      modifyFields(seatWorld, {
+      modifyFocus(seatWorld, {
         player: player => modifyFields(player, { hp: () => PLAYER_MAX_HP }),
       }),
     ),

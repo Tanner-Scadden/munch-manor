@@ -11,29 +11,34 @@ import { frenzyPacksOf } from './frenzy'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, initialModel } from './model'
+import { focusOf, modifyFocus } from './party'
 import { asVeteran } from './veteran'
 
 describe('the Ankle Biter', () => {
   test('a wave with Ankle Biters, a Big Leaguer, and frenzied packs replays the same from the same seed', () => {
     const play = (seed: number): Model => {
       const [rngState, spawns] = rollSpawns(seed, 7)
-      const start = modifyFields(asVeteran(initialModel), {
-        maybeSurface: () =>
-          Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-        rngState: () => rngState,
-        phase: () =>
-          Phase.Preparation({
-            wave: 7,
-            remainingMs: PREPARATION_MS,
-            durationMs: PREPARATION_MS,
-            spawns,
-          }),
-        frenzyPacks: () => frenzyPacksOf(spawns),
-        player: player =>
-          modifyFields(player, {
-            hp: () => 1e6,
-          }),
-      })
+      const start = modifyFocus(
+        modifyFields(asVeteran(initialModel), {
+          maybeSurface: () =>
+            Option.some({ left: 0, top: 0, width: 800, height: 400 }),
+          rngState: () => rngState,
+          phase: () =>
+            Phase.Preparation({
+              wave: 7,
+              remainingMs: PREPARATION_MS,
+              durationMs: PREPARATION_MS,
+              spawns,
+            }),
+          frenzyPacks: () => frenzyPacksOf(spawns),
+        }),
+        {
+          player: player =>
+            modifyFields(player, {
+              hp: () => 1e6,
+            }),
+        },
+      )
       const started = update(start, Message.ClickedStartWaveButton()).model
       const skipped = update(
         started,
@@ -57,7 +62,7 @@ describe('the Ankle Biter', () => {
     const first = play(2024)
     const again = play(2024)
     expect(again.zombies).toEqual(first.zombies)
-    expect(again.player).toEqual(first.player)
+    expect(focusOf(again).player).toEqual(focusOf(first).player)
     expect(again.rngState).toBe(first.rngState)
     expect(again.phase).toEqual(first.phase)
     expect(again.frenzyPacks).toEqual(first.frenzyPacks)
