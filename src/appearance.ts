@@ -382,7 +382,7 @@ const BODY_PROPS: Readonly<Record<Calling, Rows>> = {
   You: [],
   Handyman: ['........', '.ss.....', '.tddydd.'],
   TrackStar: ['..wwrw..', '..wrrw..', '..wwrw..'],
-  PennyPincher: ['........', '..nn....', '.nyyn...'],
+  PennyPincher: ['..tt.l..', '.tywt...', '.dyyd.y.'],
   LineCook: ['...ww...', '.hwwwwh.', '.wwhhww.'],
 }
 

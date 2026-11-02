@@ -491,20 +491,20 @@ export const SKULL_OFF_ICON = tinted(skullPixels('Open'), '#4a3f52')
 
 export const KILLS_ICON = tinted(skullPixels('Open'), LIGHT)
 
-// NOTE: Campaign is the manor's front door, Endless the infinity loop.
+// NOTE: Campaign is a story banner: a flag with a gold star on a pole,
+// planted on a dotted trail of rooms. Endless is the infinity loop.
 export const CAMPAIGN_ICON = pixelIconUrl(
   [
-    '....U....',
-    '...UUU...',
-    '..UUUUU..',
-    '.UUUUUUU.',
-    'UUUUUUUUU',
-    '.UWWUWWU.',
-    '.UWWUWWU.',
-    '.UUUUUUU.',
-    '.UUWWWUU.',
-    '.UUWWYUU.',
-    '.UUWWWUU.',
+    '.DUUUUUU.',
+    '.DUUUUUUU',
+    '.DUUYUUU.',
+    '.DUYYYUU.',
+    '.DUUYUUU.',
+    '.DUUUUUU.',
+    '.DUUUUUUU',
+    '.D.......',
+    '.D..T.T.T',
+    'DDD......',
   ],
   BADGE_PALETTE,
 )

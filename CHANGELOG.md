@@ -9,7 +9,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 🎒 Your hero comes along in co-op: everyone in the room starts as the hero they picked, and the prop shows by their name in the lobby, where you can swap it too. Every hero now wears their trade, so you can tell who's who.
 - 🪵 Planks and gnomes cost more but finally pull their weight, and the Handyman, Track Star, and Line Cook got a tune-up.
 - 🧈 Buttery smooth: the game now draws every frame instead of every other one, so everything moves twice as smoothly, in co-op too.
-- ❤️ Crunchier health bars: zombies, Uncle Chunk, and bleeding teammates get outlined, chunked bars with a shiny top edge. On Hard and Nightmare, Uncle Chunk takes way more to drop, and attacks more often.
+- ❤️ Crunchier health bars: zombies, Uncle Chunk, and bleeding teammates get outlined, chunked bars with a shiny top edge. On Hard and Nightmare, Uncle Chunk takes way more to drop, and attacks more often. And on Nightmare your buddies' bullets and lids no longer hurt you.
 
 ## October 31, 2026: Rattles has notes
 
