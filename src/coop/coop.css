@@ -890,7 +890,7 @@
 
 .coop-stamp {
   position: absolute;
-  top: 26%;
+  top: 17%;
   right: 6%;
   display: grid;
   place-items: center;
@@ -1397,13 +1397,17 @@
    opens a small field at the top of the lobby (src/coop/namePicker.ts). */
 
 .coop-name-button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
   max-width: 100%;
+  min-width: var(--menu-tap);
   min-height: var(--menu-tap);
-  margin: 0;
+  /* NOTE: the tap target is the full 48 px but only the plate's height
+     takes room in the seat, so your figure is as big as the others. */
+  margin: calc((28px - var(--menu-tap)) / 2) 0;
   padding: 0 2px;
   border: 0;
   background: transparent;
@@ -1420,8 +1424,12 @@
   outline-offset: 2px;
 }
 
+/* NOTE: the pencil sits on the plate's corner like an edit badge, so the name
+   row is no wider than the others and the figure keeps its size. */
 .coop-name-pencil {
-  flex: none;
+  position: absolute;
+  top: calc(50% - 18px);
+  right: -6px;
   width: 16px;
   height: 16px;
   background: center / contain no-repeat;
@@ -1516,5 +1524,20 @@
   .coop-name-picker {
     gap: 4px;
     padding-block: 6px;
+  }
+}
+
+/* NOTE: a phone held sideways has short seats: KICK is only the door icon, a
+   square tucked in the corner, and the figure stays clear of it. */
+@media (max-height: 500px) {
+  .coop-kick {
+    top: 2px;
+    left: 2px;
+    width: var(--menu-tap);
+    padding: 0;
+  }
+
+  .coop-kick-word {
+    display: none;
   }
 }
