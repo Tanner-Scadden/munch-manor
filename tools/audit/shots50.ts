@@ -3,10 +3,10 @@
 // fridge with every prize still ??? and again with two pulled, and on the
 // house; and the Munchopedia's list with its Shop tile and the Shop page.
 // On a 1280x720 desktop, an 844x390 phone on its side, and a 390x844 phone
-// held upright, as `s49-<TAG>-<viewport>-<scene>.png`. It checks that each
+// held upright, as `s50-<TAG>-<viewport>-<scene>.png`. It checks that each
 // button in the open dialog is at least 48 px and that the page itself does
 // not scroll, and exits with 1 on any miss.
-//   TAG=after bun run heavy -- bun tools/audit/shots49.ts
+//   TAG=after bun run heavy -- bun tools/audit/shots50.ts
 // ONLY picks scenes, such as `ONLY=guns,fridge`, and VIEWPORTS picks screens.
 import type { Page } from 'playwright-core'
 
@@ -146,7 +146,7 @@ for (const viewport of SHOT_VIEWPORTS) {
     if (report.pageScrolls) {
       problems.push(`${label}: the page scrolls`)
     }
-    await shot(page, `s49-${TAG}-${viewport.name}-${scene.name}`)
+    await shot(page, `s50-${TAG}-${viewport.name}-${scene.name}`)
     console.log(`shot ${label}: ${report.buttons.length} buttons`)
     pages.release(page)
   }
