@@ -7,6 +7,7 @@ import {
   PANEL_EDGE,
   PANEL_FILL,
   crewBoardHeightPx,
+  crewBoardSpan,
   crewBoardShapes,
   sparkShapes,
 } from './crewBoardView'
@@ -151,7 +152,7 @@ const LAYOUTS: Readonly<Record<EndKind, Layout>> = {
 // starts right under (CREW_BOARD_TOP_PX).
 const CREW_LAYOUT: Layout = {
   trophyX: -74,
-  trophyY: 1,
+  trophyY: 3,
   titleY: 4,
   skullsY: 0,
   quipY: 0,
@@ -455,15 +456,12 @@ export const crewCardBottomPx = (model: Model, hasStrip: boolean): number =>
 
 export const END_BUTTONS_TOP_PX = 133
 
-const crewStripPanel = (top: number): ReadonlyArray<Canvas.Shape> => [
-  rect(
-    PANEL_LEFT - 1,
-    top - 1,
-    PANEL_RIGHT - PANEL_LEFT + 2,
-    STRIP_PX + 4,
-    PANEL_EDGE,
-  ),
-  rect(PANEL_LEFT, top, PANEL_RIGHT - PANEL_LEFT, STRIP_PX + 2, PANEL_FILL),
+const crewStripPanel = (
+  top: number,
+  span: Readonly<{ left: number; width: number }>,
+): ReadonlyArray<Canvas.Shape> => [
+  rect(span.left - 1, top - 1, span.width + 2, STRIP_PX + 4, PANEL_EDGE),
+  rect(span.left, top, span.width, STRIP_PX + 2, PANEL_FILL),
 ]
 
 const CARD_FADE_MS = 160
@@ -494,16 +492,20 @@ const cardShapes = (
     const boardTop = CREW_BOARD_TOP_PX
     const board = crewBoardShapes(model, kind, ms, boardTop, CENTER_X)
     const stripTop = crewStripTop(model)
+    const span = crewBoardSpan(model, CENTER_X)
     return [
-      rise([...board.panel, ...(hasStrip ? crewStripPanel(stripTop) : [])]),
+      rise([
+        ...board.panel,
+        ...(hasStrip ? crewStripPanel(stripTop, span) : []),
+      ]),
       ...board.rows,
       ...rankStripShapes(
         model,
         kind,
         ms,
-        PANEL_LEFT + PANEL_PAD,
+        span.left + PANEL_PAD,
         stripTop + Math.floor(STRIP_PX / 2) + 1,
-        PANEL_RIGHT - PANEL_LEFT - PANEL_PAD * 2,
+        span.width - PANEL_PAD * 2,
       ),
     ]
   }

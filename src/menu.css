@@ -3109,8 +3109,8 @@ button.help-card:focus-visible {
   gap: 3px;
   box-sizing: border-box;
   min-width: 96px;
-  min-height: var(--menu-tap-primary);
-  padding: 6px 12px;
+  height: var(--menu-tap-primary);
+  padding: 4px 12px;
   border: 2px solid var(--menu-line-strong);
   border-radius: var(--menu-radius-md);
   background: var(--menu-glass);
@@ -3185,9 +3185,16 @@ button.help-card:focus-visible {
   gap: 2px;
 }
 
+/* NOTE: a RUN IT BACK button with its crew's heads is no taller than the
+   others: a smaller icon and heads fit the same 64 px. */
+.end-button:has(.end-button-heads) .end-button-icon {
+  width: var(--menu-icon-sm);
+  height: var(--menu-icon-sm);
+}
+
 .end-button-head {
-  width: 14px;
-  height: 18px;
+  width: 8px;
+  height: 14px;
   background: no-repeat center / contain;
   image-rendering: pixelated;
   opacity: 0.35;

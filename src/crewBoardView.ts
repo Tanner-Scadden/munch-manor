@@ -513,6 +513,16 @@ const winnersOf = (
 const crewBoardWidth = (count: number): number =>
   PAD * 2 + GUTTER + count * COLUMN
 
+// NOTE: where the board stands across the frame, so the rank strip under it
+// is exactly as wide.
+export const crewBoardSpan = (
+  model: Model,
+  centerX: number,
+): Readonly<{ left: number; width: number }> => {
+  const width = crewBoardWidth(crewBoardColumns(model, crewOf(model).length))
+  return { left: Math.round(centerX - width / 2), width }
+}
+
 // NOTE: the panel and what stands on it, from `top`, centered on `centerX`
 // of the landscape frame the end card is drawn in (src/endView.ts). The panel fades and
 // rises with the rest of the card (src/endView.ts); the rows and awards
