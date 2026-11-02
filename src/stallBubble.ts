@@ -3,9 +3,10 @@ import { Canvas } from 'foldkit'
 
 import { levelOf } from './arena'
 import { type Camera, viewBoxOf, worldToView } from './camera'
-import { AmmoTip, Tour } from './clientSchema'
+import { AmmoTip, KitchenCall, Tour } from './clientSchema'
 import { FULL_TURN, placeSprite } from './drawing'
-import { COIN_SPRITE, COIN_WIDTH } from './font'
+import { COIN_SPRITE, COIN_WIDTH, bakeText } from './font'
+import { CALL_LINES, callLineIndex, maybeCallTarget } from './kitchenCall'
 import { kitchenStepOf, maybeKitchenMark } from './kitchenTour'
 import { fridgeBoxOf } from './leftovers'
 import type { Model } from './model'
@@ -16,6 +17,7 @@ import {
   type Sprite,
   TOP_LEFT,
   bakeShapes,
+  placeAt,
   spriteShapes,
 } from './sprite'
 import { TRAP_ICONS } from './sprites/traps'
@@ -34,7 +36,15 @@ import { TrapHint, type Vector } from './worldSchema'
 // spots: a gift over the boards and the fridge it gives away, and, under
 // the prize's TAKE tag and its ring (which teach taking), footprints and a
 // cross for leaving it by walking away.
-export type BubbleKind = 'Ammo' | 'Traps' | 'Shop' | 'Gift' | 'Leave'
+export type BubbleKind =
+  | 'Ammo'
+  | 'Traps'
+  | 'Shop'
+  | 'Gift'
+  | 'Leave'
+  | 'Soup0'
+  | 'Soup1'
+  | 'Soup2'
 
 const AMMO_PALETTE: Palette = {
   o: '#140c10',
@@ -99,6 +109,45 @@ const CROSS = tourIcon([
   'r.....r',
 ])
 
+// NOTE: Rattles' holler about the boarded kitchen (src/kitchenCall.ts): a
+// steaming pot and a goofy line, in dark ink on the bubble.
+const POT_STEAM = '#aeb6bd'
+
+const potGood: Good = {
+  sprite: spriteShapes(
+    [
+      '.w.w...',
+      '..w.w..',
+      '.ooooo.',
+      'oGGGGGo',
+      'ogggsso',
+      'ogggggo',
+      '.ooooo.',
+    ],
+    { o: '#140c10', G: '#8a93a0', g: '#5d6672', s: '#7c9c3a', w: POT_STEAM },
+    TOP_LEFT,
+  ),
+  isCentered: false,
+  width: 7,
+}
+
+const lineGood = (line: string): Good => {
+  const baked = bakeText(line, 'Ink')
+  return {
+    sprite: [placeAt(0, 1, baked.sprite)],
+    isCentered: false,
+    width: baked.width,
+  }
+}
+
+const SOUP_GOODS: ReadonlyArray<ReadonlyArray<Good>> = Array.map(
+  CALL_LINES,
+  line => [potGood, lineGood(line)],
+)
+
+const soupGoods = (index: number): ReadonlyArray<Good> =>
+  Option.getOrElse(Array.get(SOUP_GOODS, index), () => [])
+
 const COIN: Good = { sprite: COIN_SPRITE, isCentered: false, width: COIN_WIDTH }
 
 const ICON_SIZE = 7
@@ -117,6 +166,9 @@ const GOODS: Readonly<Record<BubbleKind, ReadonlyArray<Good>>> = {
   Shop: [COIN],
   Gift: [GIFT],
   Leave: [FOOTSTEPS, CROSS],
+  Soup0: soupGoods(0),
+  Soup1: soupGoods(1),
+  Soup2: soupGoods(2),
 }
 
 const bubbleWidth = (kind: BubbleKind): number =>
@@ -178,6 +230,9 @@ const FRAMES: Readonly<Record<BubbleKind, Sprite>> = {
   Shop: bakeShapes(frameRects(bubbleWidth('Shop'), BUBBLE_INK)),
   Gift: bakeShapes(frameRects(bubbleWidth('Gift'), BUBBLE_INK)),
   Leave: bakeShapes(frameRects(bubbleWidth('Leave'), BUBBLE_INK)),
+  Soup0: bakeShapes(frameRects(bubbleWidth('Soup0'), BUBBLE_INK)),
+  Soup1: bakeShapes(frameRects(bubbleWidth('Soup1'), BUBBLE_INK)),
+  Soup2: bakeShapes(frameRects(bubbleWidth('Soup2'), BUBBLE_INK)),
 }
 
 const isStallInView = (camera: Camera): boolean => {
@@ -203,7 +258,8 @@ export const maybeBubbleKind = (
     return Option.some('Ammo')
   } else if (
     !isBreakWithShop(model) ||
-    Tour.isAnyOf(['Running', 'Done'])(model.kitchenTour)
+    Tour.isAnyOf(['Running', 'Done'])(model.kitchenTour) ||
+    KitchenCall.isAnyOf(['Calling'])(model.kitchenCall)
   ) {
     return Option.none()
   } else if (
@@ -383,4 +439,22 @@ export const kitchenBubbleShapes = (
             onNone: () => [],
             onSome: mark => bubbleShapes('Gift', mark, model, camera),
           }),
+  })
+
+const SOUP_KINDS: ReadonlyArray<BubbleKind> = ['Soup0', 'Soup1', 'Soup2']
+
+// NOTE: Rattles' holler about the kitchen's boards, pinned to the window's
+// edge with an arrow toward them when they are out of view. While it calls,
+// the stall's own bubble waits (maybeBubbleKind), so two never stack.
+export const soupBubbleShapes = (
+  model: Model,
+  camera: Camera,
+): ReadonlyArray<Canvas.Shape> =>
+  Option.match(maybeCallTarget(model), {
+    onNone: () => [],
+    onSome: target =>
+      Option.match(Array.get(SOUP_KINDS, callLineIndex(model)), {
+        onNone: () => [],
+        onSome: kind => bubbleShapes(kind, target, model, camera),
+      }),
   })

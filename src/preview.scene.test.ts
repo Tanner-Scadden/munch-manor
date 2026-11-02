@@ -59,7 +59,7 @@ describe('Door preview', () => {
     const [shakingWorld, ...shakingOverlay] = sceneShapes(shaking)
     expect(shakingWorld).not.toEqual(stillWorld)
     expect(shakingOverlay).toEqual(stillOverlay)
-    const strip = hudStripShapes(still, screenOf(still))
+    const strip = hudStripShapes(still, screenOf(still), cameraOf(still))
     expect(
       stillOverlay.slice(strip.length, strip.length + preview.length),
     ).toEqual(preview)
