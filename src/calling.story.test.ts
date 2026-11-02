@@ -142,15 +142,15 @@ describe('the quirks in play', () => {
   test('the Track Star runs faster and fills a smaller magazine', () => {
     const star = shopping('TrackStar').player
     expect(playerSpeed(idleBoosts, star)).toBeCloseTo(PLAYER_SPEED * 1.2)
-    const bought = tryPurchase(shopping('TrackStar'), 'Shotgun')
+    const bought = tryPurchase(shopping('TrackStar'), 'Smg')
     expect(bought._tag).toBe('Success')
     const gun = Option.getOrThrow(
       Option.flatMap(
         Option.fromNullishOr(bought._tag === 'Success' ? bought.success : null),
-        world => maybeCarried(world.player, 'Shotgun'),
+        world => maybeCarried(world.player, 'Smg'),
       ),
     )
-    expect(gun.loaded).toBe(5)
+    expect(gun.loaded).toBe(29)
   })
 
   test('Rattles charges the Penny Pincher 15 percent less', () => {

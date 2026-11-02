@@ -5,6 +5,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 ## November 2, 2026: Rattles wrote it down
 
 - 📖 Rattles wrote a shop guide: tap the ? in his shop, or find Shop in the Munchopedia, for bars, upgrades, and a fridge full of ???.
+- 👟 The Track Star's magazines are barely smaller now, so the speedy hero keeps up with the rest.
 
 ## November 1, 2026: Pick your hero
 
