@@ -14,6 +14,7 @@ import {
 } from './arena'
 import { TILE_SIZE } from './constants'
 import { pixelArt, rect } from './drawing'
+import { isFacedExit, leakSpillShapes, leakStillShapes } from './kitchenLeak'
 import { backDoorShapes, windowShapes } from './kitchenView'
 import type { DoorId } from './model'
 import {
@@ -411,6 +412,7 @@ const kitchenExitShapes = (exit: Box): ReadonlyArray<Canvas.Shape> => {
     rect(x - 2, top - 1, exit.width + 4, 1, CASING_LIGHT_COLOR),
     rect(x + 1, top + 1, exit.width - 2, bottom - top - 1, '#3a281c'),
     rect(middle, top + 1, 1, bottom - top - 1, EXIT_GAP_COLOR),
+    ...leakStillShapes(exit),
     rect(x + 3, top + 3, 5, 4, '#33231a'),
     rect(middle + 3, top + 3, 5, 4, '#33231a'),
     rect(x + 3, top + 9, 5, 4, '#33231a'),
@@ -428,8 +430,8 @@ const kitchenExitShapes = (exit: Box): ReadonlyArray<Canvas.Shape> => {
     rect(right + 1, bottom - 5, 1, 1, NAIL_COLOR),
     // NOTE: a sign with a fork and a knife says what is through here.
     ...pixelArt(middle - 6, top + 3, KITCHEN_SIGN_PIXELS, KITCHEN_SIGN_PALETTE),
-    // NOTE: warm light leaks under the boards.
-    rect(x + 1, bottom, exit.width - 2, 1, 'rgba(255, 200, 120, 0.18)'),
+    // NOTE: warm light leaks through the cracks and out under the boards.
+    ...leakSpillShapes(exit),
   ]
 }
 
@@ -495,9 +497,7 @@ const exitShapes = (exit: Exit): ReadonlyArray<Canvas.Shape> => {
     return []
   }
   const box = boundingBox(exit.tiles)
-  return box.y === 0 && box.height === TILE_SIZE * 2
-    ? kitchenExitShapes(box)
-    : boardedShapes(box)
+  return isFacedExit(box) ? kitchenExitShapes(box) : boardedShapes(box)
 }
 
 export const closedExitShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>

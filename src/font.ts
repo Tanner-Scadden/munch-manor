@@ -250,6 +250,7 @@ export type TextTone =
   | 'Victory'
   | 'Defeat'
   | 'Fresh'
+  | 'Ink'
 
 const TONE_COLORS: Readonly<Record<TextTone, string>> = {
   Damage: DAMAGE_GLYPH_COLOR,
@@ -264,6 +265,7 @@ const TONE_COLORS: Readonly<Record<TextTone, string>> = {
   Victory: '#ffd23f',
   Defeat: '#ff4a4f',
   Fresh: '#ff8a3d',
+  Ink: '#140c10',
 }
 
 const tonePalette = (tone: TextTone) => ({

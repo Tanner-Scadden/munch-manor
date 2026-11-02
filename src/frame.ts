@@ -20,6 +20,7 @@ import { advanceTells } from './heroTells'
 import { withBests } from './home'
 import { deriveIntent } from './input'
 import { advanceJuice } from './juice'
+import { advanceKitchenCall } from './kitchenCall'
 import {
   type Callout,
   CounterSale,
@@ -248,23 +249,26 @@ const advanceFlourishes = (
   frameMs: number,
   worldMs: number,
 ): Model =>
-  advanceCounterSale(
-    ageFlight(
-      advanceJuice(
-        advanceCallouts(
-          ageTrapNotice(
-            advanceTells(
-              worldMs > 0
-                ? advanceParticles(model, worldMs / MS_PER_SECOND, worldMs)
-                : model,
+  advanceKitchenCall(
+    advanceCounterSale(
+      ageFlight(
+        advanceJuice(
+          advanceCallouts(
+            ageTrapNotice(
+              advanceTells(
+                worldMs > 0
+                  ? advanceParticles(model, worldMs / MS_PER_SECOND, worldMs)
+                  : model,
+                worldMs,
+              ),
               worldMs,
             ),
             worldMs,
           ),
+          frameMs,
           worldMs,
         ),
         frameMs,
-        worldMs,
       ),
       frameMs,
     ),
