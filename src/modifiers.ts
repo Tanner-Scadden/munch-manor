@@ -67,16 +67,17 @@ export const modifiersOn = (modifiers: Modifiers): ReadonlyArray<Modifier> =>
 // THE BONUS
 
 // NOTE: what each modifier adds to the run's rank points and Bones, in
-// percent. The bonuses add (all four are +115%) and the sum multiplies the
+// percent. The bonuses add (all four are +465%) and the sum multiplies the
 // pay (src/rank.ts). Friendly Fire pays least: it costs nothing alone and
-// bites only with teammates. Glass pays most: one heart is the sharpest
-// edge. Broke and Big Crowd sit between, one starves the wallet and the
-// other fills the room.
+// bites only with teammates. Big Crowd stays at +25% on purpose (the owner,
+// 2026-11-02): bragging rights. Broke and Glass were set from the balance
+// bot's expected points (GAME_DESIGN.md, "Run modifier bonuses"): Glass sells
+// no spare hearts, so one heart is the sharpest edge, and pays most.
 const BONUS_PERCENT: Readonly<Record<Modifier, number>> = {
   FriendlyFire: 15,
   BigCrowd: 25,
-  Broke: 25,
-  Glass: 50,
+  Broke: 75,
+  Glass: 350,
 }
 
 export const bonusPercentOfModifier = (modifier: Modifier): number =>

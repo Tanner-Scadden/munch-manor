@@ -299,7 +299,10 @@ export const SHOP_CATEGORIES: Readonly<Record<ShopCategory, ShopCategoryInfo>> =
     },
     Health: {
       label: 'Health',
-      blurb: () => 'One heart at a time.',
+      blurb: model =>
+        model.modifiers.glass
+          ? 'Glass: one heart, no more.'
+          : 'One heart at a time.',
     },
     Traps: {
       label: 'Traps',
@@ -773,10 +776,17 @@ const blockedBy = (
         return Option.none()
       }
     },
-    Heart: () =>
-      player.hp >= maxHpOf(player)
-        ? block('Your hearts are full', 'FULL')
-        : Option.none(),
+    // NOTE: a Glass run (src/modifiers.ts) sells no spare hearts: one heart
+    // means one. The item stays on the shelf, marked done like a full jar.
+    Heart: () => {
+      if (model.modifiers.glass) {
+        return block('Glass: no spare hearts', 'GLASS')
+      } else if (player.hp >= maxHpOf(player)) {
+        return block('Your hearts are full', 'FULL')
+      } else {
+        return Option.none()
+      }
+    },
     Trap: ({ kind }) =>
       ownedCount(model, slot, kind) >= trapLimitOf(model, kind)
         ? block(TRAPS[kind].buyLimitNote, 'MAX')

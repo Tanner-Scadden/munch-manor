@@ -178,6 +178,7 @@ export const startedRun = (seed: number, options: BotOptions): Model => {
       rngState: () => seed,
       difficulty: () => ({ chosen: options.difficulty, nightmare: 'Unlocked' }),
       calling: () => options.calling,
+      modifiers: () => options.modifiers,
       rank: () => ({ ...noRank, earnedPoints: BOT_RANK_POINTS }),
       boughtCosmetics: () =>
         options.calling === 'You' ? [] : [heroIdOf(options.calling)],

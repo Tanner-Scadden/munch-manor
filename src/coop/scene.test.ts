@@ -263,7 +263,7 @@ describe('the lobby', () => {
       expect(role('group', { name: 'Modifiers' })).toExist(),
       expect(role('button', { name: 'Friendly Fire, +15%, off' })).toExist(),
       expect(role('status', { name: 'Bonus +0%' })).toExist(),
-      click(role('button', { name: 'Glass, +50%, off' })),
+      click(role('button', { name: 'Glass, +350%, off' })),
       Command.resolve(
         ChangeLobby({
           change: LobbyChange.ChangedModifiers({ modifiers: 8 }),
@@ -278,16 +278,16 @@ describe('the lobby', () => {
         'aria-pressed',
         'true',
       ),
-      expect(role('button', { name: 'Glass, +50%, on' })).toHaveAttr(
+      expect(role('button', { name: 'Glass, +350%, on' })).toHaveAttr(
         'aria-pressed',
         'true',
       ),
-      expect(role('button', { name: 'Broke, +25%, off' })).toHaveAttr(
+      expect(role('button', { name: 'Broke, +75%, off' })).toHaveAttr(
         'aria-pressed',
         'false',
       ),
-      expect(role('status', { name: 'Bonus +65%' })).toExist(),
-      click(role('button', { name: 'Glass, +50%, on' })),
+      expect(role('status', { name: 'Bonus +365%' })).toExist(),
+      click(role('button', { name: 'Glass, +350%, on' })),
       Command.resolve(
         ChangeLobby({
           change: LobbyChange.ChangedModifiers({ modifiers: 1 }),
@@ -310,11 +310,11 @@ describe('the lobby', () => {
           }),
         }),
       ),
-      expect(role('button', { name: 'Broke, +25%, on' })).toHaveAttr(
+      expect(role('button', { name: 'Broke, +75%, on' })).toHaveAttr(
         'aria-disabled',
         'true',
       ),
-      expect(role('status', { name: 'Bonus +25%' })).toExist(),
+      expect(role('status', { name: 'Bonus +75%' })).toExist(),
     )
   })
 

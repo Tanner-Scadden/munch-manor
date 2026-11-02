@@ -40,7 +40,7 @@ Object.assign(globalThis, {
   __BUILD_ID__: 'dev',
 })
 
-const { DEFAULT_OPTIONS, parseCalling, parseDifficulty } =
+const { DEFAULT_OPTIONS, parseCalling, parseModifiers, parseDifficulty } =
   await import('./bot/basics')
 const { KINDS, emptyHurt, quietPartMs } = await import('./bot/logs')
 const { RunResults, WaveRuns } = await import('./bot/results')
@@ -110,6 +110,7 @@ const OPTIONS: BotOptions = {
   swapsBack: process.env['SWAP'] !== undefined,
   noUpgrades: process.env['NO_UPGRADES'] !== undefined,
   calling: parseCalling(process.env['CALLING']),
+  modifiers: parseModifiers(process.env['MODS']),
 }
 const DIFFICULTY = OPTIONS.difficulty
 const SWAPS_BACK = OPTIONS.swapsBack

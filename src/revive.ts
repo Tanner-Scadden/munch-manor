@@ -81,6 +81,10 @@ const fall = (world: World, slot: PlayerSlot): World => {
   })
 }
 
+// NOTE: a Glass run (src/modifiers.ts) gets up on one heart, as it started.
+const reviveHeartsOf = (world: World): number =>
+  world.modifiers.glass ? 1 : COOP_RULES.reviveHearts
+
 const standUp = (world: World, slot: PlayerSlot, hearts: number): World => {
   const { player: risen } = seatStateAt(world, slot)
   return modifyFields(world, {
@@ -117,7 +121,7 @@ const bleed = (
   if (reviveMs >= COOP_RULES.reviveMs) {
     return Array.reduce(
       revivers,
-      standUp(world, slot, COOP_RULES.reviveHearts),
+      standUp(world, slot, reviveHeartsOf(world)),
       (current, reviver) => creditRevive(current, reviver.seat.slot),
     )
   }
@@ -172,7 +176,7 @@ export const returnFallen = (world: World): World =>
         )
         return isStanding(seatStateAt(waiting, slot).seat)
           ? waiting
-          : standUp(waiting, slot, COOP_RULES.reviveHearts)
+          : standUp(waiting, slot, reviveHeartsOf(waiting))
       })
     : world
 
