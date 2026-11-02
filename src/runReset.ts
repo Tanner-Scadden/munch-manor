@@ -78,6 +78,7 @@ export type RunFields = Pick<
   | 'prizeFlight'
   | 'counterSale'
   | 'kitchenCall'
+  | 'breakIdleMs'
   | 'trapStock'
   | 'selectedTrap'
   | 'laserSight'
@@ -138,6 +139,7 @@ export const freshRun = (model: Model): RunFields => ({
   prizeFlight: PrizeFlight.Grounded(),
   counterSale: CounterSale.Quiet(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
+  breakIdleMs: 0,
   trapStock: emptyTrapStock,
   selectedTrap: 'Barricade',
   laserSight: 'None',

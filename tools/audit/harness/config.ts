@@ -130,6 +130,11 @@ export const HarnessConfig = Schema.Struct({
   prep: Num(20000),
   break: Choice(['open']),
   breakMs: Num(0),
+  // NOTE: `idle` is how long the player has done nothing in the break, ms, so
+  // 16000 shows the READY nudge in a break without a clock; `mates=ready`
+  // marks every other seat of a `party` READY.
+  idle: Num(0),
+  mates: Choice(['ready']),
   money: Num(0),
   barricades: Num(0),
   turrets: Num(0),
@@ -263,6 +268,9 @@ export const HarnessConfig = Schema.Struct({
   prize: Schema.optionalKey(FridgePrize),
   fridgeMs: Num(600),
   fridgeseed: MaybeNum,
+  // The fridge prizes pulled before (`Cooker,Freeze`): the shop guide's
+  // fridge page shows them in place of ???.
+  prizes: Schema.optionalKey(ListOf(FridgePrize)),
   lobs: Flag,
   iced: Choice(['freeze', 'pan']),
   // Traps and difficulty

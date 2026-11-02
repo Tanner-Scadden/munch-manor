@@ -121,7 +121,7 @@ describe('Mode choice', () => {
       click(keepGoingButton),
       shareMountEnded(),
       expect(role('status')).toHaveText(
-        `Get ready for endless wave 11. ${START_PROMPT} The shop stall in the bottom right corner is open. Walk up to it from any side to browse.`,
+        `Get ready for endless wave 11. There is no timer this break. ${START_PROMPT} The shop stall in the bottom right corner is open. Walk up to it from any side to browse.`,
       ),
       expect(
         text(

@@ -38,6 +38,7 @@ import {
 import { raiseDebutCardFrom } from './onboarding'
 import { advanceParticles } from './particles'
 import { CALLOUT_LIFETIME_MS } from './powerups'
+import { advanceBreakIdle } from './readyNudge'
 import { STALL_BOX } from './shop'
 import { type InputsByPlayer, soloInputs, stepWorld } from './stepWorld'
 import { applyBotPresses, botInputs } from './teammateBot'
@@ -243,7 +244,7 @@ const advanceCounterSale = (model: Model, frameMs: number): Model => {
 // NOTE: what the frame looks like once its ticks ran: the camera lean,
 // particles, the walking dust, callouts, and the juice, all from the
 // frame's events and the cosmetic stream, so they never touch the World.
-export const advanceCosmetics = (
+const advanceFlourishes = (
   model: Model,
   frameMs: number,
   worldMs: number,
@@ -273,6 +274,13 @@ export const advanceCosmetics = (
     ),
     frameMs,
   )
+
+export const advanceCosmetics = (
+  model: Model,
+  frameMs: number,
+  worldMs: number,
+): Model =>
+  advanceBreakIdle(advanceFlourishes(model, frameMs, worldMs), worldMs)
 
 // NOTE: the camera leans toward the aim on the display's own time.
 export const leanFor = (model: Model, frameMs: number): Model =>

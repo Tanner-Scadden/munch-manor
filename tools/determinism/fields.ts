@@ -76,6 +76,7 @@ export const FIELD_CLASSES = {
   prizeFlight: 'Cosmetic',
   counterSale: 'Cosmetic',
   kitchenCall: 'Cosmetic',
+  breakIdleMs: 'Cosmetic',
   cosmeticRngState: 'Cosmetic',
 
   difficultyCard: 'Client',
@@ -148,6 +149,7 @@ export const FIELD_CLASSES = {
   profileTabs: 'Client',
   rotationSetting: 'Client',
   shopChatter: 'Client',
+  shopGuide: 'Client',
   localPlayers: 'Client',
   crewBots: 'Client',
 } satisfies Partial<Record<keyof Model, FieldClass>>
