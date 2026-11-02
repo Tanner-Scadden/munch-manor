@@ -224,6 +224,7 @@ export const Message = defineMessageUnion({
   BlurredLobbyControl: {},
   CompletedFocusLobbyControl: {},
   ClickedManorButton: {},
+  ClickedTurnHint: {},
   SteppedHandFocus: { card: HandCard },
   CompletedFocusHandCard: {},
   ClickedCoopButton: {},

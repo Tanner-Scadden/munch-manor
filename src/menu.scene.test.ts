@@ -70,7 +70,7 @@ const whatsNewName = /^What's new:/
 const pauseMenuButton = role('button', { name: 'Menu: leave this run' })
 const endMenuButton = role('button', { name: 'Menu: back to the home screen' })
 const leaveQuestion = role('dialog', { name: 'Leave this run?' })
-const bests = role('region', { name: 'Your bests, Normal' })
+const bests = role('button', { name: /^Your bests, Normal/ })
 
 // NOTE: Scene refuses a pointerdown that no handler on the element or its
 // ancestors would receive. That refusal is the check: a press on these
@@ -336,13 +336,30 @@ describe('Home menu', () => {
       measureSurface,
       inside(
         bests,
-        expect(text('Best endless wave')).toExist(),
         expect(text('12')).toExist(),
-        expect(text('Fastest win')).toExist(),
         expect(text('6:42')).toExist(),
-        expect(text('Zombies splatted')).toExist(),
         expect(text('341')).toExist(),
       ),
+      expect(
+        role('button', {
+          name: /Best endless wave 12, Fastest win 6:42, Zombies splatted 341\. Opens the Munchopedia/,
+        }),
+      ).toExist(),
+    )
+  })
+
+  test('the bests badge is a button that opens the Munchopedia', () => {
+    scene(
+      ROOT,
+      given(
+        modifyFields(home, {
+          bests: current => modifyFields(current, { totalKills: () => 12 }),
+        }),
+      ),
+      measureSurface,
+      click(bests),
+      ...showDialogInScene(),
+      expect(role('dialog', { name: 'Munchopedia' })).toExist(),
     )
   })
 

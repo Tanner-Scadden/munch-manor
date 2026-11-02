@@ -991,13 +991,45 @@ const countdownView = (room: Room, h: HtmlBuilder<Message>): Html =>
     ),
   )
 
+// NOTE: Zz while the link tries again; past 20 seconds it says LOST THE ROOM
+// and offers the way out, with the tries going on behind it.
 const awayView = (room: Room, h: HtmlBuilder<Message>): Html =>
-  room.link === 'Reconnecting'
+  room.link === 'Reconnecting' || room.link === 'Lost'
     ? h.div(
         [h.Class('coop-away'), h.Role('status'), h.AriaLabel('Reconnecting')],
-        [iconView('coop-away-icon', AWAY_ICON, h)],
+        [
+          iconView('coop-away-icon', AWAY_ICON, h),
+          room.link === 'Lost' ? lostView(room, h) : h.empty,
+        ],
       )
     : h.empty
+
+const lostView = (room: Room, h: HtmlBuilder<Message>): Html =>
+  h.div(
+    [h.Class('coop-away-lost')],
+    [
+      h.p(
+        [h.Class('coop-problem'), h.Role('alert')],
+        [
+          iconView('coop-problem-icon', OFFLINE_ICON, h),
+          h.span([], ['LOST THE ROOM']),
+        ],
+      ),
+      h.button(
+        [
+          h.Type('button'),
+          h.Class('coop-leave'),
+          h.AriaLabel('Leave the room'),
+          h.Disabled(room.departure === 'Leaving'),
+          h.OnClick(Message.ClickedLeaveButton()),
+        ],
+        [
+          iconView('coop-leave-icon', LEAVE_ICON, h),
+          h.span([h.AriaHidden(true)], ['LEAVE']),
+        ],
+      ),
+    ],
+  )
 
 // NOTE: the link's numbers, for the audit harness and the curious: the
 // round trip, what came down, and how far your own player was corrected.

@@ -799,6 +799,7 @@ export const saveOf = (model: Model): PlayerSave => ({
   home: {
     seenNewsDay: Option.getOrNull(model.home.maybeSeenNewsDay),
     openedEntries: model.home.openedEntries,
+    ...(model.home.isTurnHintSeen ? { turnHintSeen: true } : {}),
   },
   seenPowerUps: model.seenPowerUps,
   rotation: model.rotationSetting,
@@ -936,6 +937,7 @@ export const restoreSave = (model: Model, save: PlayerSave): Model =>
         maybeSeenNewsDay: () => Option.fromNullishOr(save.home.seenNewsDay),
         openedEntries: opened =>
           Array.union(opened, knownKinds(save.home.openedEntries)),
+        isTurnHintSeen: isSeen => isSeen || save.home.turnHintSeen === true,
       }),
     seenPowerUps: seen => Array.union(seen, knownPowerUps(save.seenPowerUps)),
     rotationSetting: () => save.rotation,

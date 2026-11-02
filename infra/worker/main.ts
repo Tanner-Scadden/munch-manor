@@ -16,7 +16,7 @@ import {
   deleteExpiredRuns,
   makeHandler,
 } from './api.ts'
-import { routeRoom } from './gameRoom.ts'
+import { routeRoom } from './roomRoutes.ts'
 import { type SyncBindings, routeSync } from './sync.ts'
 
 export { GameRoom } from './gameRoom.ts'
