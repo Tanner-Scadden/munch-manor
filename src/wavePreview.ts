@@ -34,6 +34,7 @@ import {
   type Vector,
   type ZombieKind,
 } from './model'
+import { isCoop } from './party'
 import { type Box, screenOf } from './screen'
 import { group } from './sprite'
 import { BOSS_ICON, ZOMBIE_SPRITES } from './sprites/zombies'
@@ -512,10 +513,13 @@ export const wavePreviewShapes = (
       const level = levelOf(model)
       const counts = doorCounts(spawns, model.traps, level.doorIds)
       const window = screenOf(model).world
+      // NOTE: a crew's door markers carry no NEW tags (owner, 2026-11-01:
+      // "don't show new zombie info in multiplayer").
+      const debuts = isCoop(model) ? [] : debutKinds(wave)
       return [
         ...Array.flatMap(
           placeCounts(level, camera, window, counts),
-          doorMarkerShapes(camera, window, model.elapsedMs, debutKinds(wave)),
+          doorMarkerShapes(camera, window, model.elapsedMs, debuts),
         ),
         ...bossMarkerShapes(
           level,
@@ -530,7 +534,7 @@ export const wavePreviewShapes = (
           camera,
           window,
           model.elapsedMs,
-          debutKinds(wave),
+          debuts,
         ),
       ]
     },

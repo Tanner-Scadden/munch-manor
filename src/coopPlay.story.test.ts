@@ -136,7 +136,7 @@ describe('an online co-op run', () => {
     ])
   })
 
-  test('a wave with a zombie you have not met raises its card, and the run goes on', () => {
+  test('a wave with a zombie you have not met raises no card in co-op, and the run goes on', () => {
     const waveWorld: RoomWorld = {
       ...roomWorld,
       world: startWaveEarly(roomWorld.world),
@@ -171,13 +171,11 @@ describe('an online co-op run', () => {
       model(current => {
         const waved = update(drawWave(current), roomFrame(200)).model
         expect(waved.phase._tag).toBe('Wave')
-        expect(waved.debutCard._tag).toBe('Showing')
+        expect(waved.debutCard._tag).toBe('Hidden')
+        expect(waved.introducedKinds).toEqual([])
         const later = update(waved, roomFrame(300)).model
         expect(later.phase._tag).toBe('Wave')
-        expect(later.debutCard).toMatchObject({ _tag: 'Showing' })
-        expect(
-          update(later, Message.ClickedDebutCardButton()).model.debutCard._tag,
-        ).toBe('Showing')
+        expect(later.debutCard._tag).toBe('Hidden')
       }),
     )
   })
