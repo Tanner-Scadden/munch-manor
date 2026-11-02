@@ -762,7 +762,10 @@ const resetTutorialButtonView = (h: ApplicationViewBuilder): Html =>
       h.AriaLabel('Reset tutorial'),
       h.OnClick(Message.ClickedResetTutorialButton(), { propagation: 'Stop' }),
     ],
-    [iconView('panel-icon', REWIND_ICON, h)],
+    [
+      iconView('panel-icon', REWIND_ICON, h),
+      h.span([h.Class('panel-icon-label'), h.AriaHidden(true)], ['TUTORIAL']),
+    ],
   )
 
 // NOTE: the confirm wobbles in, so it reads as "are you sure?" at a glance.
@@ -936,7 +939,7 @@ const panelView = (
   closeButtonView(
     {
       attributes: closeButton,
-      className: 'panel-close profile-close',
+      className: 'panel-close',
       label: 'Close',
     },
     h,

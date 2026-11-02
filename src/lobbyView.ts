@@ -6,7 +6,7 @@ import { PROP_ICONS } from './callingArt'
 import { startingCallingOf } from './callingPick'
 import { type Special, specialsNoteOf, specialsOf } from './callingSpecials'
 import type { ApplicationViewBuilder } from './composition'
-import { BACK_ICON, BOT_ICON, portraitOf } from './coop/icons'
+import { BOT_ICON, portraitOf } from './coop/icons'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
@@ -32,6 +32,7 @@ import {
   lobbyControlId,
 } from './lobby'
 import { newPipView } from './lookGearView'
+import { backButtonView } from './dialogs'
 import { callingPropView, iconView, keyCapView, rankTagView } from './menuParts'
 import { isLobbyUp } from './menuState'
 import { Message } from './message'
@@ -77,20 +78,19 @@ const controlAttributes = (
   h.OnBlur(Message.BlurredLobbyControl()),
 ]
 
-const backButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  h.button(
-    [
-      ...controlAttributes('Back', h),
-      h.Type('button'),
-      h.Class('coop-back'),
-      h.AriaLabel('Back to the menu'),
-      h.AriaKeyshortcuts(LOBBY_KEYS.Back.name),
-      h.OnClick(Message.ClickedLobbyBackButton()),
-    ],
-    [
-      iconView('coop-back-icon', BACK_ICON, h),
-      ...keyCapView(model, LOBBY_KEYS.Back.cap, h),
-    ],
+const lobbyBackView = (model: Model, h: ApplicationViewBuilder): Html =>
+  backButtonView(
+    {
+      attributes: [
+        ...controlAttributes('Back', h),
+        h.AriaKeyshortcuts(LOBBY_KEYS.Back.name),
+        h.OnClick(Message.ClickedLobbyBackButton()),
+      ],
+      className: 'coop-back',
+      label: 'Back to the menu',
+      extra: keyCapView(model, LOBBY_KEYS.Back.cap, h),
+    },
+    h,
   )
 
 // YOUR SEAT
@@ -575,7 +575,7 @@ export const lobbyView = (model: Model, h: ApplicationViewBuilder): Html =>
           h.div(
             [h.Class('coop-lobby')],
             [
-              backButtonView(model, h),
+              lobbyBackView(model, h),
               seatsView(model, h),
               picksView(model, h),
               startButtonView(model, h),

@@ -8,7 +8,7 @@ import {
   type RoomScore,
 } from '@munch/netcode'
 
-import { closeButtonView } from '../dialogs'
+import { backButtonView, closeButtonView } from '../dialogs'
 import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '../icons'
 import { callingPropView, iconView, rankTagView } from '../menuParts'
 import type { Appearance } from '../model'
@@ -19,7 +19,6 @@ import { callingPickerView } from './callingPicker'
 import { CoopComposition } from './composition'
 import {
   AWAY_ICON,
-  BACK_ICON,
   CHECK_ICON,
   CODE_ICON,
   COOP_ICON,
@@ -99,20 +98,18 @@ const coopCloseView = (h: HtmlBuilder<Message>): Html =>
     h,
   )
 
-const backButtonView = (
+const coopBackView = (
   label: string,
   message: Message,
   h: HtmlBuilder<Message>,
 ): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class('coop-back'),
-      h.AriaLabel(label),
-      h.AriaKeyshortcuts('Escape'),
-      h.OnClick(message),
-    ],
-    [iconView('coop-back-icon', BACK_ICON, h)],
+  backButtonView(
+    {
+      attributes: [h.AriaKeyshortcuts('Escape'), h.OnClick(message)],
+      className: 'coop-back',
+      label,
+    },
+    h,
   )
 
 const PROBLEM_WORDS: Readonly<Record<CoopProblem, string>> = {
@@ -299,7 +296,7 @@ const codeView = (
   h.div(
     [h.Class('coop-code')],
     [
-      backButtonView('Back', Message.ClickedBackButton(), h),
+      coopBackView('Back', Message.ClickedBackButton(), h),
       coopCloseView(h),
       iconView('coop-code-icon', CODE_ICON, h),
       h.form(

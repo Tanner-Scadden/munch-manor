@@ -5,8 +5,8 @@
    a phone held either way and a desktop get the same picture. */
 
 .coop {
-  --coop-pink: #ff9df0;
-  --coop-teal: #5fd4c8;
+  --coop-pink: var(--menu-pink);
+  --coop-teal: var(--menu-teal);
   --coop-unit: min(1cqmin, 1cqw * 0.6);
   position: fixed;
   top: env(safe-area-inset-top, 0px);
@@ -74,7 +74,7 @@
 
 .coop button:disabled {
   cursor: default;
-  opacity: 0.45;
+  opacity: var(--menu-dim);
 }
 
 .coop-key {
@@ -83,38 +83,23 @@
   right: 8px;
   padding: 0 4px;
   border: 1px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--menu-radius-sm);
   background: var(--menu-sunken);
   font: bold 11px/1.4 var(--menu-font);
   pointer-events: none;
 }
 
+/* NOTE: flush in the screen's corner, so the 32 px face sits 8 px in. */
 .coop-close {
   position: absolute;
-  top: max(10px, 2 * var(--coop-unit));
-  right: max(10px, 2 * var(--coop-unit));
+  top: 0;
+  right: 0;
 }
 
 .coop-back {
   position: absolute;
-  top: max(10px, 2 * var(--coop-unit));
-  left: max(10px, 2 * var(--coop-unit));
-  display: grid;
-  place-items: center;
-  width: var(--menu-tap);
-  height: var(--menu-tap);
-  padding: 0;
-  border: 2px solid var(--menu-line-strong);
-  border-radius: var(--menu-radius-sm);
-  background: var(--menu-surface);
-  box-shadow: var(--menu-lift);
-}
-
-.coop-back-icon {
-  width: 24px;
-  height: 22px;
-  background: center / contain no-repeat;
-  image-rendering: pixelated;
+  top: 0;
+  left: 0;
 }
 
 .coop-portrait {
@@ -128,11 +113,11 @@
   max-width: 100%;
   overflow: hidden;
   padding: 2px 8px;
-  border: 2px solid #10240a;
+  border: 2px solid var(--menu-ink-on-green);
   border-radius: var(--menu-radius-sm);
   background: var(--menu-gold);
   color: #241a06;
-  font: bold clamp(11px, 2.4 * var(--coop-unit), 16px) / 1.2 var(--menu-font);
+  font: bold round(clamp(11px, 2.4 * var(--coop-unit), 16px), 1px) / 1.2 var(--menu-font);
   text-overflow: ellipsis;
   white-space: nowrap;
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
@@ -158,11 +143,11 @@
 }
 
 .coop-rank .rank-number {
-  font-size: clamp(11px, 2.4 * var(--coop-unit), 16px);
+  font-size: round(clamp(11px, 2.4 * var(--coop-unit), 16px), 1px);
 }
 
 .coop-result-rank .rank-number {
-  font-size: clamp(10px, 2.2 * var(--coop-unit), 14px);
+  font-size: round(clamp(10px, 2.2 * var(--coop-unit), 14px), 1px);
 }
 
 /* NOTE: a player's calling prop beside their rank: a picture, no words. */
@@ -195,10 +180,10 @@
   padding: 6px 12px;
   border: 2px solid var(--menu-red);
   border-radius: var(--menu-radius-pill);
-  background: #3a1a1e;
+  background: var(--menu-red-deep);
   color: var(--menu-red);
-  font: bold clamp(13px, 2.6 * var(--coop-unit), 18px) / 1 var(--menu-font);
-  letter-spacing: 0.08em;
+  font: bold round(clamp(13px, 2.6 * var(--coop-unit), 18px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
   animation: coop-wobble 420ms ease-out;
 }
 
@@ -246,8 +231,8 @@
   gap: 10px;
   margin: 0;
   color: var(--menu-ink);
-  font: bold clamp(20px, 6 * var(--coop-unit), 44px) / 1 var(--menu-font);
-  letter-spacing: 0.14em;
+  font: bold round(clamp(20px, 6 * var(--coop-unit), 44px), 1px) / 1 var(--menu-font);
+  letter-spacing: 2px;
   text-shadow:
     3px 0 0 var(--coop-pink),
     -3px 0 0 var(--coop-teal);
@@ -284,10 +269,10 @@
   gap: 12px;
   padding: 0 18px;
   overflow: hidden;
-  border: 3px solid #10240a;
-  border-radius: var(--menu-radius);
-  background: linear-gradient(#b8f58a, #7fd04e 55%, #5fae36);
-  color: #10240a;
+  border: 3px solid var(--menu-ink-on-green);
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-primary);
+  color: var(--menu-ink-on-green);
   box-shadow:
     inset 0 3px 0 rgba(255, 255, 255, 0.45),
     inset 0 -4px 0 rgba(0, 0, 0, 0.18),
@@ -319,12 +304,12 @@
   aspect-ratio: 7 / 8;
   background: center / contain no-repeat;
   image-rendering: pixelated;
-  filter: drop-shadow(2px 2px 0 #10240a);
+  filter: drop-shadow(2px 2px 0 var(--menu-ink-on-green));
 }
 
 .coop-quick-label {
-  font: bold clamp(22px, 7 * var(--coop-unit), 46px) / 1 var(--menu-font);
-  letter-spacing: 0.06em;
+  font: bold round(clamp(22px, 7 * var(--coop-unit), 46px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
   text-align: left;
   text-shadow: 0 2px 0 rgba(255, 255, 255, 0.4);
 }
@@ -363,7 +348,7 @@
   min-height: max(var(--menu-tap), 13 * var(--coop-unit));
   padding: 8px;
   border: 3px solid var(--coop-teal);
-  border-radius: var(--menu-radius);
+  border-radius: var(--menu-radius-md);
   background: #15403c;
   box-shadow:
     0 0 14px rgba(95, 212, 200, 0.35),
@@ -386,8 +371,8 @@
 }
 
 .coop-tile-label {
-  font: bold clamp(14px, 4 * var(--coop-unit), 26px) / 1 var(--menu-font);
-  letter-spacing: 0.08em;
+  font: bold round(clamp(14px, 4 * var(--coop-unit), 26px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
 }
 
 /* CODE: five chunky slots over one real input, so typing and pasting both
@@ -431,7 +416,7 @@
 .coop-slots {
   display: flex;
   gap: clamp(6px, 1.6 * var(--coop-unit), 12px);
-  border-radius: var(--menu-radius);
+  border-radius: var(--menu-radius-md);
 }
 
 .coop-slot {
@@ -440,10 +425,10 @@
   width: clamp(48px, 12 * var(--coop-unit), 84px);
   aspect-ratio: 4 / 5;
   border: 3px solid var(--menu-line-strong);
-  border-radius: var(--menu-radius);
+  border-radius: var(--menu-radius-md);
   background: var(--menu-sunken);
   box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.4);
-  font: bold clamp(28px, 8 * var(--coop-unit), 56px) / 1 var(--menu-font);
+  font: bold round(clamp(28px, 8 * var(--coop-unit), 56px), 1px) / 1 var(--menu-font);
 }
 
 .coop-slot[data-state='Filled'] {
@@ -478,11 +463,11 @@
   gap: 8px;
   min-height: clamp(52px, 15 * var(--coop-unit), 100px);
   padding: 0 20px;
-  border: 3px solid #10240a;
-  border-radius: var(--menu-radius);
-  background: linear-gradient(#b8f58a, #5fae36);
-  color: #10240a;
-  font: bold clamp(20px, 6 * var(--coop-unit), 40px) / 1 var(--menu-font);
+  border: 3px solid var(--menu-ink-on-green);
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-primary);
+  color: var(--menu-ink-on-green);
+  font: bold round(clamp(20px, 6 * var(--coop-unit), 40px), 1px) / 1 var(--menu-font);
   box-shadow: 0 5px 0 #2f6a1a;
 }
 
@@ -556,8 +541,8 @@
   min-width: 0;
   height: clamp(90px, 30 * var(--coop-unit), 200px);
   padding: 8px 4px;
-  border: 3px dashed var(--menu-line-strong);
-  border-radius: var(--menu-radius);
+  border: 2px dashed var(--menu-line-strong);
+  border-radius: var(--menu-radius-md);
   background: rgba(20, 15, 24, 0.7);
 }
 
@@ -582,7 +567,7 @@
 .coop-queue-empty {
   margin: auto;
   color: var(--menu-ink-faint);
-  font: bold clamp(28px, 8 * var(--coop-unit), 56px) / 1 var(--menu-font);
+  font: bold round(clamp(28px, 8 * var(--coop-unit), 56px), 1px) / 1 var(--menu-font);
   animation: coop-blink 1.4s step-end infinite;
 }
 
@@ -598,9 +583,9 @@
   gap: 14px;
   min-height: clamp(64px, 16 * var(--coop-unit), 110px);
   padding: 8px 18px;
-  border: 3px solid #3a2f12;
-  border-radius: var(--menu-radius);
-  background: linear-gradient(#fff1a0, #ffe066 55%, #e0b830);
+  border: 3px solid var(--menu-gold-deep);
+  border-radius: var(--menu-radius-md);
+  background: linear-gradient(#fff1a0, var(--menu-gold) 55%, #e0b830);
   color: #241a06;
   box-shadow: 0 6px 0 #7a5a10;
   animation: coop-pulse 900ms ease-in-out infinite;
@@ -608,7 +593,7 @@
 
 .coop-offer-start[data-answer='Accepted'] {
   animation: none;
-  background: linear-gradient(#b8f58a, #5fae36);
+  background: var(--menu-primary);
   box-shadow: 0 6px 0 #2f6a1a;
 }
 
@@ -626,8 +611,8 @@
 }
 
 .coop-offer-label {
-  font: bold clamp(18px, 5.5 * var(--coop-unit), 36px) / 1 var(--menu-font);
-  letter-spacing: 0.04em;
+  font: bold round(clamp(18px, 5.5 * var(--coop-unit), 36px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
 }
 
 .coop-offer-heads {
@@ -652,7 +637,7 @@
   place-items: center;
   width: clamp(56px, 14 * var(--coop-unit), 90px);
   border: 3px solid var(--menu-line-strong);
-  border-radius: var(--menu-radius);
+  border-radius: var(--menu-radius-md);
   background: var(--menu-surface);
   box-shadow: var(--menu-lift);
 }
@@ -695,14 +680,14 @@
   height: clamp(48px, 11 * var(--coop-unit), 64px);
   padding: 0 10px;
   border: 2px solid var(--menu-line-strong);
-  border-radius: var(--menu-radius);
+  border-radius: var(--menu-radius-md);
   background: var(--menu-surface);
   box-shadow: var(--menu-lift);
 }
 
 .coop-leave {
-  border-color: #8a2a24;
-  background: #3a1a1e;
+  border-color: var(--menu-red-line);
+  background: var(--menu-red-deep);
 }
 
 .coop-share {
@@ -748,7 +733,7 @@
   border-radius: var(--menu-radius-sm);
   background: var(--menu-green-deep);
   color: var(--menu-green);
-  font: bold clamp(12px, 3.5 * var(--coop-unit), 18px) / 1 var(--menu-font);
+  font: bold round(clamp(12px, 3.5 * var(--coop-unit), 18px), 1px) / 1 var(--menu-font);
   white-space: nowrap;
   pointer-events: none;
   animation: coop-code-copied 1400ms ease-out forwards;
@@ -779,7 +764,7 @@
   border-radius: var(--menu-radius-sm);
   background: var(--menu-gold-deep);
   color: var(--menu-gold);
-  font: bold clamp(22px, 6.5 * var(--coop-unit), 44px) / 1 var(--menu-font);
+  font: bold round(clamp(22px, 6.5 * var(--coop-unit), 44px), 1px) / 1 var(--menu-font);
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
 }
 
@@ -802,7 +787,7 @@
   height: clamp(110px, 36 * var(--coop-unit), 250px);
   padding: 10px 4px 8px;
   border: 3px solid var(--coop-teal);
-  border-radius: var(--menu-radius);
+  border-radius: var(--menu-radius-md);
   background:
     radial-gradient(
       ellipse at 50% 85%,
@@ -837,7 +822,7 @@
 }
 
 .coop-seat:nth-child(4) {
-  border-color: #b98cff;
+  border-color: var(--menu-lilac);
   background:
     radial-gradient(
       ellipse at 50% 85%,
@@ -855,14 +840,14 @@
 }
 
 .coop-seat[data-me='Me'] {
-  outline: 3px solid var(--menu-gold);
-  outline-offset: 3px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .coop-seat-empty {
   margin: auto;
   color: var(--menu-ink-faint);
-  font: bold clamp(30px, 9 * var(--coop-unit), 60px) / 1 var(--menu-font);
+  font: bold round(clamp(30px, 9 * var(--coop-unit), 60px), 1px) / 1 var(--menu-font);
   animation: coop-blink 1.6s step-end infinite;
 }
 
@@ -929,9 +914,9 @@
   min-width: var(--menu-tap);
   height: var(--menu-tap);
   padding: 0 6px;
-  border: 2px solid #8a2a24;
+  border: 2px solid var(--menu-red-line);
   border-radius: var(--menu-radius-sm);
-  background: #3a1a1e;
+  background: var(--menu-red-deep);
 }
 
 .coop-kick-icon {
@@ -944,7 +929,7 @@
 .coop-kick-word {
   color: #ff9a92;
   font: bold 11px / 1 var(--menu-font);
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
 }
 
 .coop-result {
@@ -977,7 +962,7 @@
   align-items: center;
   gap: 4px;
   color: var(--menu-gold);
-  font: bold clamp(16px, 4 * var(--coop-unit), 24px) / 1 var(--menu-font);
+  font: bold round(clamp(16px, 4 * var(--coop-unit), 24px), 1px) / 1 var(--menu-font);
 }
 
 .coop-result-score {
@@ -1015,10 +1000,10 @@
   align-items: center;
   justify-content: center;
   gap: 14px;
-  border: 3px solid #10240a;
-  border-radius: var(--menu-radius);
-  background: linear-gradient(#b8f58a, #7fd04e 55%, #5fae36);
-  color: #10240a;
+  border: 3px solid var(--menu-ink-on-green);
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-primary);
+  color: var(--menu-ink-on-green);
   box-shadow:
     inset 0 3px 0 rgba(255, 255, 255, 0.45),
     0 6px 0 #2f6a1a;
@@ -1027,7 +1012,7 @@
 
 .coop-ready[data-ready='Ready'] .coop-ready-face {
   translate: 0 6px;
-  background: linear-gradient(#fff1a0, #ffe066);
+  background: linear-gradient(#fff1a0, var(--menu-gold));
   box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.4);
   animation: none;
 }
@@ -1046,8 +1031,8 @@
 }
 
 .coop-ready-label {
-  font: bold clamp(24px, 7.5 * var(--coop-unit), 50px) / 1 var(--menu-font);
-  letter-spacing: 0.1em;
+  font: bold round(clamp(24px, 7.5 * var(--coop-unit), 50px), 1px) / 1 var(--menu-font);
+  letter-spacing: 2px;
 }
 
 /* ARENA: the game's own scene shows through; co-op adds only LEAVE, the
@@ -1090,7 +1075,7 @@
   min-width: 48px;
   height: 48px;
   padding: 0;
-  border-radius: 9999px;
+  border-radius: var(--menu-radius-pill);
   opacity: 0.8;
 }
 
@@ -1109,9 +1094,9 @@
 .coop-countdown-word {
   grid-area: 1 / 1;
   color: var(--menu-gold);
-  font: bold clamp(48px, 22cqh, 160px) / 1 var(--menu-font);
+  font: bold round(clamp(48px, 22cqh, 160px), 1px) / 1 var(--menu-font);
   text-shadow:
-    5px 5px 0 #3a2f12,
+    5px 5px 0 var(--menu-gold-deep),
     0 0 24px rgba(255, 224, 102, 0.7);
   opacity: 0;
   animation: coop-count 600ms ease-out both;
@@ -1120,7 +1105,7 @@
 .coop-countdown-word:last-child {
   color: var(--menu-green);
   text-shadow:
-    5px 5px 0 #24401a,
+    5px 5px 0 var(--menu-green-deep),
     0 0 24px rgba(155, 227, 106, 0.7);
 }
 
@@ -1192,7 +1177,7 @@
   gap: clamp(4px, 1.2 * var(--coop-unit), 10px);
   padding: 4px 6px;
   border: 2px solid var(--menu-line-strong);
-  border-radius: var(--menu-radius);
+  border-radius: var(--menu-radius-md);
   background: rgba(20, 15, 24, 0.75);
   box-shadow: var(--menu-lift);
 }
@@ -1204,7 +1189,7 @@
   height: clamp(48px, 9 * var(--coop-unit), 56px);
   padding: 0;
   border: 2px solid transparent;
-  border-radius: calc(var(--menu-radius) - 2px);
+  border-radius: var(--menu-radius-sm);
   background: transparent;
 }
 
@@ -1226,7 +1211,7 @@
 }
 
 .coop-mode-pick[data-mode='KeepGoing'][data-state='Chosen'] {
-  border-color: #ffe066;
+  border-color: var(--menu-gold);
   background: rgba(255, 224, 102, 0.2);
 }
 
@@ -1271,8 +1256,8 @@
   border-radius: var(--menu-radius-pill);
   background: #241a06;
   color: var(--menu-gold);
-  font: bold clamp(13px, 2.6 * var(--coop-unit), 18px) / 1 var(--menu-font);
-  letter-spacing: 0.06em;
+  font: bold round(clamp(13px, 2.6 * var(--coop-unit), 18px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
   white-space: nowrap;
   translate: -50% -50%;
   pointer-events: none;
@@ -1370,8 +1355,8 @@
 
 .modifier-name {
   max-width: 100%;
-  font: bold clamp(8px, 1.7 * var(--coop-unit), 10px) / 1.05 var(--menu-font);
-  letter-spacing: 0.04em;
+  font: bold round(clamp(8px, 1.7 * var(--coop-unit), 10px), 1px) / 1.05 var(--menu-font);
+  letter-spacing: 1px;
   color: var(--menu-ink-dim);
   text-align: center;
   text-transform: uppercase;
@@ -1392,7 +1377,7 @@
 }
 
 .modifier-pick[data-available='No'] {
-  opacity: 0.4;
+  opacity: var(--menu-dim);
   cursor: default;
 }
 
@@ -1404,8 +1389,8 @@
   border: 2px solid var(--menu-line-strong);
   border-radius: var(--menu-radius-pill);
   color: var(--menu-ink-faint);
-  font: bold clamp(11px, 2.4 * var(--coop-unit), 15px) / 1 var(--menu-font);
-  letter-spacing: 0.04em;
+  font: bold round(clamp(11px, 2.4 * var(--coop-unit), 15px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
   white-space: nowrap;
 }
 
@@ -1416,7 +1401,7 @@
 }
 
 .coop-picks[data-host='Watching'] .modifier-pick[data-state='Off'] {
-  opacity: 0.6;
+  opacity: var(--menu-dim);
 }
 
 /* PING: a WiFi signal, green, yellow, or red by how good the link is, in
@@ -1426,7 +1411,7 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 4px;
-  border-radius: 4px;
+  border-radius: var(--menu-radius-sm);
   background: rgba(16, 10, 18, 0.75);
 }
 
@@ -1451,7 +1436,7 @@
 .coop-arena-ping {
   display: inline-flex;
   border-bottom: 2px solid;
-  border-radius: 4px;
+  border-radius: var(--menu-radius-sm);
 }
 
 /* PORTRAIT: the hub and the lobby stack tighter, two seats a row. */
@@ -1567,7 +1552,7 @@
   min-height: var(--menu-tap);
   padding: 0 12px;
   border: 3px solid var(--menu-gold);
-  border-radius: 12px;
+  border-radius: var(--menu-radius-md);
   background: var(--menu-sunken);
   color: var(--menu-ink);
   font: bold 20px var(--menu-font);
@@ -1591,7 +1576,7 @@
   margin: 0;
   padding: 0;
   border: 3px solid var(--menu-gold);
-  border-radius: 12px;
+  border-radius: var(--menu-radius-md);
   background: var(--menu-surface-hi);
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
   cursor: pointer;
@@ -1633,4 +1618,15 @@
   .coop-kick-word {
     display: none;
   }
+}
+
+/* NOTE: upright, the lobby's rows of picks all run the width of the column,
+   so the mode, skulls, and modifiers line up edge to edge. */
+[data-layout='Portrait'] .coop-picks {
+  width: 100%;
+}
+
+[data-layout='Portrait'] .modifier-group {
+  flex: 1 1 100%;
+  justify-content: space-evenly;
 }

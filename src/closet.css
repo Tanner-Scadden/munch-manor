@@ -5,7 +5,7 @@
    Only art moves, never an option (src/motion.test.ts). */
 
 :root {
-  --look-new: #ff4a4f;
+  --look-new: var(--menu-red);
 }
 
 .look-option[data-standing],
@@ -50,7 +50,7 @@
 
 .look-option[data-standing='Locked'] > :first-child {
   filter: brightness(0);
-  opacity: 0.7;
+  opacity: var(--menu-dim);
 }
 
 /* THE TAG: a price, or a padlock and a rank, on the foot of the option */
@@ -64,6 +64,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  letter-spacing: 0;
   pointer-events: none;
 }
 
@@ -73,8 +74,8 @@
   align-items: center;
   gap: 2px;
   padding: 0 4px 0 3px;
-  border-radius: 999px;
-  background: #140c10;
+  border-radius: var(--menu-radius-pill);
+  background: var(--menu-ink-on-gold);
   box-shadow: 0 0 0 2px #5a3a4a;
 }
 
@@ -117,7 +118,7 @@
 }
 
 .look-option[data-cue='Short'] .rank-bones-count {
-  color: #ff5a4a;
+  color: var(--menu-red);
 }
 
 /* NEW: a badge on an option that was just unlocked, a dot on a tab or a
@@ -129,11 +130,11 @@
   right: 1px;
   z-index: 2;
   padding: 0 3px;
-  border-radius: 3px;
+  border-radius: var(--menu-radius-sm);
   background: var(--look-new);
   color: #fff;
   font: bold 8px / 11px var(--menu-font);
-  letter-spacing: 0.03em;
+  letter-spacing: 1px;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
   pointer-events: none;
   animation: look-new-blink 0.8s steps(2) infinite;
@@ -153,8 +154,8 @@
   z-index: 2;
   width: 11px;
   height: 11px;
-  border: 2px solid #140c10;
-  border-radius: 999px;
+  border: 2px solid var(--menu-ink-on-gold);
+  border-radius: var(--menu-radius-pill);
   background: var(--look-new);
   pointer-events: none;
   animation: look-new-blink 0.8s steps(2) infinite;
@@ -167,8 +168,8 @@
   right: -5px;
   width: 11px;
   height: 11px;
-  border: 2px solid #140c10;
-  border-radius: 999px;
+  border: 2px solid var(--menu-ink-on-gold);
+  border-radius: var(--menu-radius-pill);
   background: var(--look-new);
   pointer-events: none;
 }
@@ -312,19 +313,33 @@
 }
 
 .look-row:has(.look-tag) {
-  padding-bottom: 6px;
+  padding-bottom: 8px;
+}
+
+/* NOTE: a price or lock chip hangs below its option, so a wrapped line of
+   options leaves room for it before the next line. */
+.look-options:has(.look-tag) {
+  row-gap: 12px;
 }
 
 .game-root[data-layout='Portrait'] .look-tab {
-  --menu-tap: 44px;
+  --menu-tap: 48px;
+}
+
+/* NOTE: a 360 px phone cannot fit a row of 48 px options beside the panel's
+   padding, so only it keeps the 44 px ones. */
+@media (max-width: 370px) {
+  .game-root[data-layout='Portrait'] .look-tab {
+    --menu-tap: 44px;
+  }
 }
 
 /* TRYING ON: the option being tried on glows, and the BUY pill sits in the
    stage's top left corner (the dice is in the top right) */
 
 .look-option[data-previewed='true'] {
-  outline: 2px solid #ffe066;
-  outline-offset: 1px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .look-buy {
@@ -337,10 +352,10 @@
   gap: 5px;
   min-height: 34px;
   padding: 0 10px 0 12px;
-  border: 2px solid #ffe066;
-  border-radius: 999px;
-  background: #140c10;
-  color: #ffe066;
+  border: 2px solid var(--menu-gold);
+  border-radius: var(--menu-radius-pill);
+  background: var(--menu-ink-on-gold);
+  color: var(--menu-gold);
   font: bold 14px / 1 var(--menu-font);
   cursor: pointer;
   animation: closet-pill-in 160ms ease-out both;
@@ -369,7 +384,7 @@
 }
 
 .look-buy[data-short='true'] .rank-bones-count {
-  color: #ff5a4a;
+  color: var(--menu-red);
 }
 
 @keyframes closet-pill-in {

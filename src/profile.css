@@ -6,9 +6,9 @@
 :root {
   --profile-look: var(--menu-pink);
   --profile-name: var(--menu-gold);
-  --profile-account: #5fd4c8;
+  --profile-account: var(--menu-teal);
   --profile-settings: #c9cfc2;
-  --profile-portal: #b98cff;
+  --profile-portal: var(--menu-lilac);
   --profile-stone: #8d8a97;
   --profile-stone-deep: #3b3842;
 }
@@ -48,8 +48,8 @@
   height: min(456px, calc(100dvh - 16px));
   padding: var(--menu-pad);
   padding-left: 0;
-  border: 3px solid var(--tab-color);
-  border-radius: 16px;
+  border: var(--menu-border-panel) solid var(--tab-color);
+  border-radius: var(--menu-radius-lg);
   background:
     radial-gradient(
       circle at 70% 0%,
@@ -74,11 +74,6 @@
     opacity: 0;
     filter: brightness(2.2);
   }
-}
-
-.profile-close {
-  top: -12px;
-  right: -12px;
 }
 
 .profile-body {
@@ -108,16 +103,16 @@
   justify-content: center;
   gap: 4px;
   width: 88px;
-  min-height: 54px;
+  min-height: 48px;
   margin: 0;
   padding: 4px 4px;
   border: 3px solid var(--tab-color);
-  border-radius: 12px;
+  border-radius: var(--menu-radius-md);
   background: color-mix(in srgb, var(--tab-color) 20%, var(--menu-bg));
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
   color: var(--tab-color);
   font: bold var(--menu-small-size) var(--menu-font);
-  letter-spacing: 0.08em;
+  letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
   touch-action: manipulation;
@@ -165,7 +160,6 @@
     0 0 18px color-mix(in srgb, var(--tab-color) 55%, transparent);
   color: var(--menu-bg);
   translate: -6px 0;
-  scale: 1.08;
 }
 
 /* NOTE: the chosen tab is filled with its color, so its icon sits on a dark
@@ -173,7 +167,7 @@
 .profile-tab[aria-selected='true'] .profile-tab-icon {
   width: 36px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--menu-radius-md);
   background-color: var(--menu-bg);
   background-size: 26px;
   animation: tab-icon-pop 380ms cubic-bezier(0.2, 1.8, 0.4, 1);
@@ -240,7 +234,7 @@
   margin: 0;
   padding: 0;
   border: 3px solid var(--tab-color);
-  border-radius: 12px;
+  border-radius: var(--menu-radius-md);
   background: var(--menu-surface-hi);
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
   cursor: pointer;
@@ -296,10 +290,10 @@
   height: 250px;
   overflow: hidden;
   border: 3px solid color-mix(in srgb, var(--profile-look) 60%, #000);
-  border-radius: 14px;
+  border-radius: var(--menu-radius-lg);
   background:
     linear-gradient(transparent 62%, #2b1d22 62%),
-    radial-gradient(circle at 50% 30%, #3a2a45, #140f18 80%);
+    radial-gradient(circle at 50% 30%, #3a2a45, var(--menu-sunken) 80%);
 }
 
 .look-spotlight {
@@ -384,7 +378,7 @@
   width: 26px;
   height: 26px;
   margin-left: -13px;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: #fffbe6;
   box-shadow:
     34px 4px 0 4px #fffbe6,
@@ -392,8 +386,8 @@
     0 -34px 0 2px #fffbe6,
     24px 30px 0 0 #fffbe6,
     -24px 30px 0 0 #fffbe6,
-    26px -24px 0 0 #ff9df0,
-    -26px -24px 0 0 #ffe066;
+    26px -24px 0 0 var(--menu-pink),
+    -26px -24px 0 0 var(--menu-gold);
   opacity: 0;
   pointer-events: none;
 }
@@ -499,12 +493,12 @@
   margin: 0;
   padding: 4px 2px;
   border: 3px solid var(--menu-line-strong);
-  border-radius: 10px;
+  border-radius: var(--menu-radius-md);
   background: var(--menu-surface);
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
   color: var(--menu-ink-dim);
   font: bold 9px var(--menu-font);
-  letter-spacing: 0.04em;
+  letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
   touch-action: manipulation;
@@ -599,7 +593,7 @@
 .look-swatch.look-flag {
   width: 33px;
   height: 22px;
-  border-radius: 3px;
+  border-radius: var(--menu-radius-sm);
   background-size: cover;
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
 }
@@ -623,7 +617,7 @@
   font-weight: bold;
   font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
 }
 
 .look-row-value {
@@ -649,7 +643,7 @@
   min-height: var(--menu-tap);
   margin: 0;
   border: 3px solid var(--menu-line-strong);
-  border-radius: 10px;
+  border-radius: var(--menu-radius-md);
   background: var(--menu-surface);
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
   color: var(--menu-ink-dim);
@@ -668,7 +662,7 @@
 .look-swatch {
   width: 24px;
   height: 24px;
-  border-radius: 5px;
+  border-radius: var(--menu-radius-sm);
   box-shadow:
     0 0 0 2px rgba(0, 0, 0, 0.5),
     inset 0 -4px 0 rgba(0, 0, 0, 0.25);
@@ -764,7 +758,7 @@
 .name-stone-rip {
   color: var(--profile-stone-deep);
   font: bold 13px var(--menu-font);
-  letter-spacing: 0.3em;
+  letter-spacing: 3px;
 }
 
 .name-stone-name {
@@ -819,9 +813,9 @@
   right: 0;
   bottom: 0;
   height: 16px;
-  border-radius: 8px;
+  border-radius: var(--menu-radius-md);
   background: repeating-linear-gradient(90deg, #3f8a2a 0 6px, #5cb83c 6px 12px);
-  box-shadow: 0 4px 0 #24401a;
+  box-shadow: 0 4px 0 var(--menu-green-deep);
 }
 
 .name-entry {
@@ -836,7 +830,7 @@
   min-height: var(--menu-tap);
   padding: 0 12px;
   border: 3px solid var(--profile-name);
-  border-radius: 12px;
+  border-radius: var(--menu-radius-md);
   background: var(--menu-sunken);
   color: var(--menu-ink);
   font: bold 20px var(--menu-font);
@@ -884,7 +878,7 @@
   gap: 14px;
   padding: 10px 14px;
   border: 2px solid var(--menu-line);
-  border-radius: 14px;
+  border-radius: var(--menu-radius-lg);
   background: var(--menu-surface);
 }
 
@@ -990,10 +984,10 @@
   min-height: 92px;
   margin: 0;
   border: 3px solid;
-  border-radius: 14px;
+  border-radius: var(--menu-radius-lg);
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
   font: bold 13px var(--menu-font);
-  letter-spacing: 0.08em;
+  letter-spacing: 1px;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -1057,7 +1051,7 @@
 .account-portal-ring {
   position: absolute;
   inset: 0;
-  border: 6px dashed var(--profile-portal);
+  border: 2px dashed var(--profile-portal);
   border-radius: 50%;
   box-shadow:
     0 0 24px var(--profile-portal),
@@ -1111,7 +1105,7 @@
   place-items: center;
   width: 42px;
   height: 54px;
-  border-radius: 10px;
+  border-radius: var(--menu-radius-md);
   background: var(--menu-gold);
   box-shadow: 0 5px 0 #a87a1e;
   color: var(--menu-surface);
@@ -1151,7 +1145,7 @@
   gap: 10px;
   padding: 8px 12px;
   border: 2px solid rgba(255, 224, 102, 0.55);
-  border-radius: 12px;
+  border-radius: var(--menu-radius-md);
   background: rgba(255, 224, 102, 0.12);
   color: var(--menu-gold);
   font-size: 13px;
@@ -1180,14 +1174,14 @@
   box-sizing: border-box;
   width: 100%;
   max-width: 320px;
-  min-height: 56px;
+  min-height: 48px;
   padding: 0 12px;
   border: 3px solid var(--profile-account);
-  border-radius: 12px;
+  border-radius: var(--menu-radius-md);
   background: var(--menu-sunken);
   color: var(--menu-ink);
   font: bold 28px var(--menu-font);
-  letter-spacing: 0.3em;
+  letter-spacing: 3px;
   text-align: center;
   text-transform: uppercase;
   user-select: text;
@@ -1209,7 +1203,7 @@
 
 .account-zap-device {
   width: 52px;
-  height: 52px;
+  height: 48px;
   background: center bottom / contain no-repeat;
   image-rendering: pixelated;
 }
@@ -1283,7 +1277,7 @@
 .settings-tab .setting-confirm {
   padding: 10px 12px;
   border: 2px solid rgba(255, 107, 94, 0.55);
-  border-radius: 12px;
+  border-radius: var(--menu-radius-md);
   background: rgba(255, 107, 94, 0.08);
   animation: confirm-flash 520ms ease-out both;
 }
@@ -1344,7 +1338,7 @@
   }
 
   .profile-tab {
-    min-height: 46px;
+    min-height: 48px;
     width: 80px;
   }
 
@@ -1405,10 +1399,10 @@
 .game-root[data-layout='Portrait'] .profile-tab {
   flex: 1;
   width: auto;
-  min-height: 60px;
+  min-height: 64px;
   gap: 2px;
   font-size: 10px;
-  letter-spacing: 0.04em;
+  letter-spacing: 1px;
 }
 
 .game-root[data-layout='Portrait'] .profile-tab-icon {
@@ -1558,7 +1552,7 @@
   align-items: center;
   gap: 4px;
   padding: 2px 6px 2px 4px;
-  border-radius: 999px;
+  border-radius: var(--menu-radius-pill);
   background: rgba(20, 12, 16, 0.78);
   pointer-events: none;
 }
@@ -1576,7 +1570,7 @@
   gap: 4px 8px;
   padding: 6px 4px;
   border: 3px solid var(--profile-stone);
-  border-radius: 12px;
+  border-radius: var(--menu-radius-md);
   background: var(--profile-stone-deep);
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
   pointer-events: none;
@@ -1594,16 +1588,16 @@
   flex: 1 1 100%;
   height: 10px;
   padding: 2px;
-  border-radius: 5px;
-  background: #140c10;
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-ink-on-gold);
   box-shadow: 0 0 0 2px #5a3a4a;
 }
 
 .rank-bar-fill {
   display: block;
   height: 100%;
-  border-radius: 3px;
-  background: linear-gradient(#fff2a8 0 25%, #ffd23f 25%);
+  border-radius: var(--menu-radius-sm);
+  background: linear-gradient(#fff2a8 0 25%, var(--menu-coin) 25%);
   transition: width 400ms ease-out;
 }
 
@@ -1660,7 +1654,7 @@
   }
 
   .profile-tab {
-    min-height: 44px;
+    min-height: 48px;
   }
 
   .profile-rank {

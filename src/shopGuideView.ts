@@ -3,6 +3,7 @@ import type { Html } from 'foldkit/html'
 
 import type { ShopGuideSection } from './clientSchema'
 import type { ApplicationViewBuilder } from './composition'
+import { backButtonView } from './dialogs'
 import { Message, type Message as MessageType } from './message'
 import { SHOP_GUIDE_NAME } from './names'
 import { type ShopArt } from './shopArt'
@@ -282,17 +283,18 @@ export const shopGuideDialogView = (
   h.div(
     [h.Class('sg-shop')],
     [
-      h.button(
-        [
-          h.Type('button'),
-          h.Id(SHOP_GUIDE_BACK_ID),
-          h.Class('sg-back'),
-          h.AriaLabel('Back to the shop'),
-          h.OnClick(Message.ClickedShopGuideBackButton(), {
-            propagation: 'Stop',
-          }),
-        ],
-        ['Back'],
+      backButtonView(
+        {
+          attributes: [
+            h.Id(SHOP_GUIDE_BACK_ID),
+            h.OnClick(Message.ClickedShopGuideBackButton(), {
+              propagation: 'Stop',
+            }),
+          ],
+          className: 'sg-back',
+          label: 'Back to the shop',
+        },
+        h,
       ),
       shopGuideView(
         seenUnlocks,

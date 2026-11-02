@@ -2,6 +2,7 @@ import { Array, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from './composition'
+import { backButtonView } from './dialogs'
 import { Message } from './message'
 import { type Model, MunchopediaPage, type ZombieKind } from './model'
 import {
@@ -282,16 +283,17 @@ const backActionsView = (
   h.div(
     [h.Class('panel-actions')],
     [
-      h.button(
-        [
-          h.Type('button'),
-          h.Class('panel-button munch-back'),
-          h.AriaLabel(backLabel),
-          h.OnClick(Message.ClickedMunchopediaListButton(), {
-            propagation: 'Stop',
-          }),
-        ],
-        ['Back'],
+      backButtonView(
+        {
+          attributes: [
+            h.OnClick(Message.ClickedMunchopediaListButton(), {
+              propagation: 'Stop',
+            }),
+          ],
+          className: 'munch-back',
+          label: backLabel,
+        },
+        h,
       ),
       doneButton,
     ],

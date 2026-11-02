@@ -118,7 +118,7 @@ body {
   position: fixed;
   box-sizing: border-box;
   border: 3px solid rgba(244, 241, 222, 0.45);
-  border-radius: 9999px;
+  border-radius: var(--menu-radius-pill);
   background: rgba(244, 241, 222, 0.08);
   pointer-events: none;
   display: flex;
@@ -133,7 +133,7 @@ body {
 .touch-stick-thumb {
   width: 44px;
   height: 44px;
-  border-radius: 9999px;
+  border-radius: var(--menu-radius-pill);
   background: rgba(244, 241, 222, 0.55);
 }
 
@@ -162,9 +162,9 @@ body {
   width: 48px;
   height: 48px;
   padding: 0;
-  border: 2px solid rgba(244, 241, 222, 0.5);
-  border-radius: 9999px;
-  background: rgba(8, 10, 12, 0.55);
+  border: var(--menu-border) solid var(--menu-line-strong);
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-glass);
   opacity: 0.6;
   cursor: pointer;
   touch-action: manipulation;
@@ -188,8 +188,8 @@ body {
 }
 
 .icon-button:focus-visible {
-  outline: 2px solid #9be36a;
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .icon-button-glyph {
@@ -252,7 +252,8 @@ body {
 }
 
 .ammo-tag-button:focus-visible {
-  outline: 2px solid #ffe066;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 /* HOLD TO BUY: the touch button at a purchasable. A gold ring fills round
@@ -260,6 +261,7 @@ body {
    cover shakes it red. */
 
 .cluster-button.hold-buy-button {
+  border-radius: var(--menu-radius-pill);
   width: 56px;
   height: 56px;
   border-color: rgba(255, 210, 63, 0.9);
@@ -283,9 +285,9 @@ body {
 .hold-buy-ring {
   position: absolute;
   inset: -6px;
-  border-radius: 9999px;
+  border-radius: var(--menu-radius-pill);
   background: conic-gradient(
-    #ffd23f calc(var(--hold, 0) * 360deg),
+    var(--menu-coin) calc(var(--hold, 0) * 360deg),
     rgba(20, 12, 16, 0.6) 0
   );
   -webkit-mask: radial-gradient(
@@ -302,13 +304,13 @@ body {
 }
 
 .hold-buy-button.is-refused {
-  border-color: #ff4a4f;
+  border-color: var(--menu-red);
   background: rgba(90, 20, 24, 0.9);
   animation: hold-buy-shake 450ms linear;
 }
 
 .hold-buy-price {
-  color: #ffe066;
+  color: var(--menu-gold);
 }
 
 .hold-buy-button[data-short='true'] .hold-buy-price {
@@ -344,9 +346,9 @@ body {
   bottom: -4px;
   min-width: 18px;
   padding: 0 3px;
-  border-radius: 9px;
-  background: #140c10;
-  color: #f4f1de;
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-ink-on-gold);
+  color: var(--menu-ink);
   font: bold 11px/16px monospace;
   text-align: center;
 }
@@ -388,7 +390,7 @@ body {
   bottom: 0;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
@@ -400,7 +402,8 @@ body {
 }
 
 .gun-slot-button:focus-visible {
-  outline: 2px solid #9be36a;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 /* Mid-wave a mouse click on a slot is a shot at the world beneath
@@ -437,7 +440,7 @@ body {
   justify-content: flex-start;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
@@ -450,7 +453,7 @@ body {
 .reload-face {
   box-sizing: border-box;
   flex: none;
-  border: var(--hud-px) solid #ffe066;
+  border: var(--hud-px) solid var(--menu-gold);
   background: rgba(8, 10, 12, 0.6) center / calc(9 * var(--hud-px))
     calc(8 * var(--hud-px)) no-repeat;
   image-rendering: pixelated;
@@ -458,7 +461,7 @@ body {
 
 .reload-button[data-ready='false'] .reload-face {
   border-color: rgba(244, 241, 222, 0.25);
-  opacity: 0.5;
+  opacity: var(--menu-dim);
 }
 
 .reload-button:active .reload-face {
@@ -466,7 +469,8 @@ body {
 }
 
 .reload-button:focus-visible {
-  outline: 2px solid #9be36a;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .gun-cluster-side > * {
@@ -498,9 +502,9 @@ body {
   right: 4px;
   padding: 0 4px;
   border: 1px solid rgba(244, 241, 222, 0.6);
-  border-radius: 3px;
-  background: #140c10;
-  color: #f4f1de;
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-ink-on-gold);
+  color: var(--menu-ink);
   font: bold 10px/12px monospace;
   pointer-events: none;
 }
@@ -513,41 +517,27 @@ body {
 }
 
 .gun-slot-button[data-held='true'] .key-badge {
-  border-color: #ffe066;
-  color: #ffe066;
+  border-color: var(--menu-gold);
+  color: var(--menu-gold);
 }
 
 .start-wave-button .key-badge {
-  color: #ffe066;
+  color: var(--menu-gold);
   border-color: currentColor;
 }
 
-.start-wave-button {
-  min-width: 156px;
-  min-height: 56px;
-  padding: 0 20px;
-  border: 3px solid #fff3b0;
-  border-radius: 6px;
-  background: #ffe066;
-  box-shadow: 0 3px 0 #7a5c00;
-  color: #2a1a00;
-  font: bold 16px monospace;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
+.start-wave-button,
 .start-wave-pill {
   min-width: 132px;
-  min-height: 52px;
+  min-height: var(--menu-tap);
   padding: 0 18px;
-  border: 3px solid #fff3b0;
-  border-radius: 9999px;
-  background: #ffe066;
+  border: var(--menu-border-panel) solid #fff3b0;
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-gold);
   box-shadow: 0 3px 0 #7a5c00;
-  color: #2a1a00;
-  font: bold 14px monospace;
-  letter-spacing: 0.06em;
+  color: var(--menu-ink-on-gold);
+  font: bold 16px monospace;
+  letter-spacing: 1px;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -556,7 +546,7 @@ body {
 .start-wave-pill[data-ready='Ready'],
 .start-wave-button[data-ready='Ready'] {
   border-color: #d8ffc0;
-  background: #9be36a;
+  background: var(--menu-green);
   box-shadow: 0 3px 0 #2f6b1c;
 }
 
@@ -625,8 +615,8 @@ body {
 
 .start-wave-pill:focus-visible,
 .start-wave-button:focus-visible {
-  outline: 2px solid #9be36a;
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .mode-choice {
@@ -654,27 +644,27 @@ body {
   min-height: 48px;
   padding: 4px 16px;
   border: 2px solid rgba(255, 224, 102, 0.8);
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: rgba(8, 10, 12, 0.75);
-  color: #ffe066;
+  color: var(--menu-gold);
   font: bold 14px monospace;
-  letter-spacing: 0.05em;
+  letter-spacing: 1px;
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .keep-going-button {
   border-color: rgba(155, 227, 106, 0.9);
-  color: #9be36a;
+  color: var(--menu-green);
 }
 
 .character-button {
   border-color: rgba(255, 157, 240, 0.85);
-  color: #ff9df0;
+  color: var(--menu-pink);
 }
 
 .mode-button-detail {
-  color: #b8c2b0;
+  color: var(--menu-ink-dim);
   font-size: 10px;
   font-weight: normal;
 }
@@ -685,8 +675,8 @@ body {
   right: 6px;
   padding: 0 4px;
   border: 1px solid currentColor;
-  border-radius: 3px;
-  background: #140c10;
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-ink-on-gold);
   font-size: 10px;
 }
 
@@ -702,8 +692,8 @@ body {
 }
 
 .mode-button:focus-visible {
-  outline: 2px solid #9be36a;
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .money {
@@ -735,11 +725,11 @@ body {
   min-height: 48px;
   padding: 0 18px;
   border: 3px solid #ff8a3d;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: rgba(24, 14, 22, 0.94);
-  color: #ffe066;
+  color: var(--menu-gold);
   font: bold 14px monospace;
-  letter-spacing: 0.08em;
+  letter-spacing: 1px;
   cursor: pointer;
   touch-action: manipulation;
   pointer-events: auto;
@@ -752,8 +742,8 @@ body {
 }
 
 .debut-card-button:focus-visible {
-  outline: 2px solid #9be36a;
-  outline-offset: 2px;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .debut-card-key {
@@ -762,8 +752,8 @@ body {
   right: 6px;
   padding: 0 4px;
   border: 1px solid currentColor;
-  border-radius: 3px;
-  background: #140c10;
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-ink-on-gold);
   font-size: 10px;
   letter-spacing: 0;
 }
@@ -781,8 +771,8 @@ body {
   height: 112px;
   margin-left: -56px;
   box-sizing: border-box;
-  border: 3px dashed rgba(244, 241, 222, 0.6);
-  border-radius: 9999px;
+  border: 2px dashed rgba(244, 241, 222, 0.6);
+  border-radius: var(--menu-radius-pill);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -801,7 +791,7 @@ body {
 .ghost-stick-thumb {
   width: 44px;
   height: 44px;
-  border-radius: 9999px;
+  border-radius: var(--menu-radius-pill);
   background: rgba(244, 241, 222, 0.4);
   animation: ghost-drag 1.4s ease-in-out infinite;
 }
@@ -817,16 +807,16 @@ body {
   bottom: 100%;
   margin-bottom: 6px;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--menu-radius-sm);
   background: rgba(8, 10, 12, 0.7);
-  color: #f4f1de;
+  color: var(--menu-ink);
   font: bold 13px monospace;
-  letter-spacing: 0.05em;
+  letter-spacing: 1px;
   white-space: nowrap;
 }
 
 .ghost-stick[data-ghost='Aim'] .ghost-stick-label {
-  color: #ffe066;
+  color: var(--menu-gold);
 }
 
 @keyframes ghost-pulse {
@@ -886,12 +876,11 @@ body {
   gap: 0.5em;
   overflow: hidden;
   padding: 0.6em 0.8em 0.7em;
-  border: 2px solid var(--menu-line-strong);
-  border-top: 4px solid var(--menu-green);
-  border-radius: var(--menu-radius);
+  border: var(--menu-border-panel) solid var(--menu-green);
+  border-radius: var(--menu-radius-lg);
   background: rgba(28, 22, 34, 0.95);
   color: var(--menu-ink);
-  font: clamp(9px, 4.2 * var(--arena-px), 24px) / 1.3 var(--menu-font);
+  font: round(clamp(9px, 4.2 * var(--arena-px), 24px), 1px) / 1.3 var(--menu-font);
   pointer-events: auto;
   touch-action: none;
   cursor: pointer;
@@ -900,9 +889,9 @@ body {
 .pause-help-title {
   margin: 0;
   color: var(--menu-green);
-  font-size: 1.1em;
+  font-size: 16px;
   font-weight: bold;
-  letter-spacing: 0.08em;
+  letter-spacing: 1px;
   text-align: center;
   text-transform: uppercase;
 }
@@ -938,10 +927,10 @@ body {
   gap: 10px;
   max-width: calc(100vw - 24px);
   padding: 8px 14px;
-  border: 2px solid #ff6b5e;
-  border-radius: 12px;
+  border: 2px solid var(--menu-red);
+  border-radius: var(--menu-radius-md);
   background: rgba(8, 10, 12, 0.9);
-  color: #f4f1de;
+  color: var(--menu-ink);
   font: bold 12px/1.3 monospace;
   pointer-events: none;
   z-index: 30;
@@ -1009,15 +998,15 @@ body {
   gap: 6px;
   padding: 4px 4px 4px 8px;
   border: 2px solid rgba(255, 224, 102, 0.6);
-  border-radius: 10px;
+  border-radius: var(--menu-radius-md);
   background: rgba(20, 15, 24, 0.85);
-  color: #f4f1de;
+  color: var(--menu-ink);
   font: bold 11px monospace;
   pointer-events: auto;
 }
 
 .quest-tracker[data-done='true'] {
-  border-color: #9be36a;
+  border-color: var(--menu-green);
   animation: quest-fade 2.6s steps(26, end) forwards;
 }
 
@@ -1052,13 +1041,13 @@ body {
   align-items: center;
   gap: 4px;
   padding: 3px 5px;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   opacity: 0.4;
 }
 
 .quest-step[data-state='Now'] {
   background: rgba(255, 224, 102, 0.18);
-  box-shadow: inset 0 0 0 2px #ffe066;
+  box-shadow: inset 0 0 0 2px var(--menu-gold);
   opacity: 1;
   animation: quest-now 0.8s ease-in-out infinite alternate;
 }
@@ -1081,17 +1070,17 @@ body {
 }
 
 .quest-step-word {
-  color: #ffe066;
-  letter-spacing: 0.06em;
+  color: var(--menu-gold);
+  letter-spacing: 1px;
 }
 
 .quest-step-tick {
   position: absolute;
   right: -2px;
   bottom: -4px;
-  color: #9be36a;
+  color: var(--menu-green);
   font-size: 13px;
-  text-shadow: 0 1px 0 #140c10;
+  text-shadow: 0 1px 0 var(--menu-ink-on-gold);
 }
 
 /* The skip button's tap area is a full 48 px, as every touch target is,
@@ -1104,7 +1093,7 @@ body {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #f4f1de;
+  color: var(--menu-ink);
   font: bold 16px monospace;
   cursor: pointer;
   touch-action: manipulation;
@@ -1114,7 +1103,7 @@ body {
   content: '';
   position: absolute;
   inset: 8px;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: rgba(244, 241, 222, 0.1);
 }
 
@@ -1123,7 +1112,8 @@ body {
 }
 
 .quest-skip:focus-visible::before {
-  outline: 2px solid #9be36a;
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
 }
 
 .quest-confetti {

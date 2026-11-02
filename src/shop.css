@@ -9,22 +9,27 @@
 
 .shop-dialog {
   --shop-u: 1px;
-  --shop-ink: #f4f1de;
+  --shop-ink: var(--menu-ink);
   --shop-muted: #9a93a8;
-  --shop-gold: #ffd23f;
+  --shop-gold: var(--menu-gold);
+  --shop-coin: var(--menu-coin);
   --shop-gold-deep: #c98a1a;
   --shop-gold-ink: #3a2408;
-  --shop-good: #9be36a;
-  --shop-bad: #ff6b5e;
-  --shop-focus: #9be36a;
+  --shop-good: var(--menu-green);
+  --shop-bad: var(--menu-red);
+  --shop-focus: var(--menu-gold);
   --shop-wood: #8a5a2b;
   --shop-wood-light: #b8813f;
   --shop-bg: #1f1826;
   --shop-card: #2b2233;
   --shop-card-raised: #352a40;
   --shop-line: rgba(244, 241, 222, 0.22);
-  --shop-bubble: #f4f1de;
+  --shop-bubble: var(--menu-ink);
   --shop-bubble-ink: #2a1418;
+  --shop-panel-h: calc(560 * var(--shop-u));
+  --shop-top: max(8px, calc((100dvh - var(--shop-panel-h)) / 2));
+  --shop-pad: calc(12 * var(--shop-u));
+  --shop-pad-y: calc(10 * var(--shop-u));
   --shop-gap: calc(8 * var(--shop-u));
   --shop-radius: calc(6 * var(--shop-u));
   --shop-tap: max(48px, calc(48 * var(--shop-u)));
@@ -36,9 +41,12 @@
   --shop-keeper-px: calc(5 * var(--shop-u));
 }
 
+/* NOTE: the panel hangs from one fixed top, so its close stays put from page
+   to page, and it is as tall as its page (the list scrolls inside when the
+   screen is short). The top is where the tallest page would be centered. */
 .shop-dialog[open] {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -55,15 +63,16 @@
   gap: var(--shop-gap);
   box-sizing: border-box;
   width: min(calc(760 * var(--shop-u)), calc(100vw - 16px));
-  max-height: calc(100dvh - 16px);
+  margin-top: var(--shop-top);
+  max-height: calc(100dvh - var(--shop-top) - 8px);
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  padding: calc(10 * var(--shop-u)) calc(12 * var(--shop-u));
-  border: calc(3 * var(--shop-u)) solid var(--shop-wood);
-  border-radius: calc(8 * var(--shop-u));
+  padding: var(--shop-pad-y) var(--shop-pad);
+  border: var(--menu-border-panel) solid var(--shop-wood);
+  border-radius: var(--menu-radius-lg);
   background: var(--shop-bg);
-  box-shadow: inset 0 0 0 calc(2 * var(--shop-u)) #140c10;
+  box-shadow: inset 0 0 0 var(--menu-border) var(--menu-ink-on-gold);
   color: var(--shop-ink);
   font: var(--shop-text) monospace;
   user-select: none;
@@ -84,7 +93,8 @@
 
 .shop-header {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto 1fr auto;
+  padding-right: calc(var(--shop-tap) - var(--shop-pad));
   align-items: center;
   gap: var(--shop-gap) calc(10 * var(--shop-u));
 }
@@ -94,7 +104,7 @@
   place-items: end center;
   padding: calc(4 * var(--shop-u)) calc(4 * var(--shop-u)) 0;
   border: calc(2 * var(--shop-u)) solid var(--shop-wood-light);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   background: linear-gradient(#3d2f47, #2b2233);
   overflow: hidden;
 }
@@ -128,7 +138,7 @@
   margin: 0;
   color: var(--shop-gold);
   font: bold var(--shop-small) monospace;
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
@@ -136,8 +146,8 @@
   position: relative;
   margin: 0;
   padding: calc(5 * var(--shop-u)) calc(10 * var(--shop-u));
-  border: calc(2 * var(--shop-u)) solid #140c10;
-  border-radius: calc(8 * var(--shop-u));
+  border: calc(2 * var(--shop-u)) solid var(--menu-ink-on-gold);
+  border-radius: var(--menu-radius-md);
   background: var(--shop-bubble);
   color: var(--shop-bubble-ink);
   font: bold var(--shop-text) monospace;
@@ -150,7 +160,7 @@
   left: calc(-8 * var(--shop-u));
   width: calc(8 * var(--shop-u));
   height: calc(10 * var(--shop-u));
-  background: #140c10;
+  background: var(--menu-ink-on-gold);
   clip-path: polygon(100% 0, 0 50%, 100% 100%);
   content: '';
   transform: translateY(-50%);
@@ -168,7 +178,7 @@
   display: inline-block;
   color: var(--shop-gold);
   font: bold var(--shop-big) monospace;
-  text-shadow: calc(2 * var(--shop-u)) calc(2 * var(--shop-u)) 0 #140c10;
+  text-shadow: calc(2 * var(--shop-u)) calc(2 * var(--shop-u)) 0 var(--menu-ink-on-gold);
   animation: shop-bump 0.35s ease-out;
 }
 
@@ -177,14 +187,17 @@
   height: 0.85em;
   margin-right: 0.2em;
   filter: drop-shadow(
-    calc(2 * var(--shop-u)) calc(2 * var(--shop-u)) 0 #140c10
+    calc(2 * var(--shop-u)) calc(2 * var(--shop-u)) 0 var(--menu-ink-on-gold)
   );
 }
 
-/* NOTE: the shared close (closeButtonView) holds its own column at the end
-   of the header row, so it never covers the wallet or Rattles' bubble. */
+/* NOTE: the shared close (closeButtonView) sits flush in the panel's top
+   right corner, where it stays on every page; the header leaves its width
+   free, so it never covers the wallet or Rattles' bubble. */
 .shop-close {
-  align-self: start;
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
 /* TABS */
@@ -210,11 +223,11 @@
   min-height: var(--shop-tap);
   padding: calc(4 * var(--shop-u));
   border: calc(2 * var(--shop-u)) solid var(--shop-line);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   background: var(--shop-card);
   color: var(--shop-muted);
   font: bold var(--shop-text) monospace;
-  letter-spacing: 0.04em;
+  letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
   touch-action: manipulation;
@@ -238,7 +251,7 @@
 .shop-tab-count {
   min-width: calc(18 * var(--shop-u));
   padding: calc(1 * var(--shop-u)) calc(5 * var(--shop-u));
-  border-radius: calc(9 * var(--shop-u));
+  border-radius: var(--menu-radius-pill);
   background: var(--shop-good);
   color: var(--shop-bg);
   font-size: var(--shop-small);
@@ -255,13 +268,13 @@
    trap, so traps are plainly bought here. */
 .shop-tab-new {
   padding: calc(1 * var(--shop-u)) calc(4 * var(--shop-u));
-  border-radius: calc(3 * var(--shop-u));
-  background: #ff4a4f;
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-red);
   color: #fff;
   font-size: var(--shop-small);
   font-weight: bold;
   line-height: calc(14 * var(--shop-u));
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   animation: shop-new-bob 0.8s ease-in-out infinite alternate;
 }
 
@@ -295,9 +308,9 @@
 }
 
 .shop-tag.is-free {
-  background: #9be36a;
-  color: #140c10;
-  letter-spacing: 0.08em;
+  background: var(--menu-green);
+  color: var(--menu-ink-on-gold);
+  letter-spacing: 1px;
 }
 
 /* CARDS */
@@ -321,7 +334,7 @@
   width: 100%;
   min-height: var(--shop-tap);
   border: calc(2 * var(--shop-u)) solid var(--shop-line);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   background: var(--shop-card);
   color: inherit;
   font: inherit;
@@ -360,9 +373,9 @@
 .shop-item:focus-visible,
 .shop-tab:focus-visible,
 .shop-tabpanel:focus-visible {
-  outline: max(2px, calc(2 * var(--shop-u))) solid var(--shop-focus);
-  outline-offset: calc(4 * var(--shop-u));
-  border-radius: var(--shop-radius);
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
+  border-radius: var(--menu-radius-sm);
 }
 
 .shop-row[data-stock='Short'] .shop-item,
@@ -389,9 +402,9 @@
   min-width: calc(44 * var(--shop-u));
   padding: calc(3 * var(--shop-u)) calc(8 * var(--shop-u));
   border: calc(2 * var(--shop-u)) solid var(--shop-gold-ink);
-  border-radius: calc(4 * var(--shop-u));
-  background: linear-gradient(var(--shop-gold) 60%, var(--shop-gold-deep) 60%);
-  box-shadow: 0 calc(2 * var(--shop-u)) 0 #140c10;
+  border-radius: var(--menu-radius-sm);
+  background: linear-gradient(var(--shop-coin) 60%, var(--shop-gold-deep) 60%);
+  box-shadow: 0 calc(2 * var(--shop-u)) 0 var(--menu-ink-on-gold);
   color: var(--shop-gold-ink);
   font: bold calc(14 * var(--shop-u)) monospace;
   white-space: nowrap;
@@ -402,7 +415,7 @@
 }
 
 .shop-tag.is-short {
-  border-color: #140c10;
+  border-color: var(--menu-ink-on-gold);
   background: #4a4152;
   color: #b8b0c4;
 }
@@ -417,7 +430,7 @@
   box-shadow: none;
   color: var(--shop-muted);
   font-size: var(--shop-small);
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
 }
 
 .shop-need {
@@ -480,7 +493,7 @@
   align-items: center;
   gap: calc(4 * var(--shop-u));
   padding: calc(1 * var(--shop-u)) calc(6 * var(--shop-u));
-  border-radius: calc(4 * var(--shop-u));
+  border-radius: var(--menu-radius-sm);
   background: rgba(255, 138, 61, 0.18);
   color: #ff8a3d;
   font-weight: bold;
@@ -490,8 +503,8 @@
 
 .shop-rounds.is-endless {
   background: rgba(155, 227, 106, 0.16);
-  color: #9be36a;
-  font-size: calc(var(--shop-small) * 1.4);
+  color: var(--menu-green);
+  font-size: round(calc(var(--shop-small) * 1.4), 1px);
 }
 
 .shop-rounds-icon {
@@ -521,7 +534,7 @@
 .shop-seg {
   width: calc(9 * var(--shop-u));
   height: calc(6 * var(--shop-u));
-  border-radius: calc(1 * var(--shop-u));
+  border-radius: 0;
   background: rgba(244, 241, 222, 0.14);
 }
 
@@ -595,7 +608,7 @@
   display: flex;
   flex: 1;
   height: calc(7 * var(--shop-u));
-  border-radius: calc(2 * var(--shop-u));
+  border-radius: 0;
   background: rgba(244, 241, 222, 0.14);
   overflow: hidden;
 }
@@ -623,7 +636,7 @@
   gap: calc(6 * var(--shop-u));
   padding: calc(8 * var(--shop-u));
   border: calc(2 * var(--shop-u)) solid var(--shop-wood);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   background: #261d2e;
 }
 
@@ -651,7 +664,7 @@
 
 .shop-gun-name {
   margin: 0;
-  color: #ffe066;
+  color: var(--menu-gold);
   font: bold var(--shop-text) monospace;
   line-height: 1.1;
 }
@@ -659,11 +672,11 @@
 .shop-gun-owned {
   align-self: flex-start;
   padding: calc(1 * var(--shop-u)) calc(5 * var(--shop-u));
-  border-radius: calc(4 * var(--shop-u));
+  border-radius: var(--menu-radius-sm);
   background: var(--shop-wood);
   color: var(--shop-ink);
   font: bold calc(10 * var(--shop-u)) monospace;
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
   white-space: nowrap;
 }
 
@@ -698,7 +711,7 @@
   width: calc(10 * var(--shop-u));
   height: calc(6 * var(--shop-u));
   border: max(1px, calc(1 * var(--shop-u))) solid var(--shop-gold);
-  border-radius: calc(2 * var(--shop-u));
+  border-radius: 0;
 }
 
 .shop-pip.is-filled {
@@ -805,7 +818,7 @@
   width: calc(18 * var(--shop-u));
   height: calc(12 * var(--shop-u));
   border: max(1px, calc(1 * var(--shop-u))) solid var(--shop-muted);
-  border-radius: calc(2 * var(--shop-u));
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.35);
 }
 
@@ -841,12 +854,12 @@
 
 .shop-stamp-word {
   padding: calc(2 * var(--shop-u)) calc(8 * var(--shop-u));
-  border: calc(3 * var(--shop-u)) solid #e8333a;
-  border-radius: calc(4 * var(--shop-u));
-  color: #e8333a;
+  border: calc(3 * var(--shop-u)) solid var(--menu-red);
+  border-radius: var(--menu-radius-sm);
+  color: var(--menu-red);
   font: bold calc(22 * var(--shop-u)) monospace;
-  letter-spacing: 0.08em;
-  text-shadow: 0 0 calc(2 * var(--shop-u)) #140c10;
+  letter-spacing: 1px;
+  text-shadow: 0 0 calc(2 * var(--shop-u)) var(--menu-ink-on-gold);
   animation: shop-stamp 1.4s ease-out forwards;
 }
 
@@ -895,7 +908,7 @@
   position: absolute;
   inset: calc(-2 * var(--shop-u));
   border: calc(3 * var(--shop-u)) solid var(--shop-bad);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   pointer-events: none;
   animation: shop-nope 0.5s steps(2) forwards;
 }
@@ -1015,12 +1028,15 @@
     --shop-big: 22px;
     --shop-art-px: 2px;
     --shop-keeper-px: 3px;
+    --shop-top: 4px;
+    --shop-pad: 10px;
+    --shop-pad-y: 6px;
   }
 
   .shop-panel {
     width: min(820px, calc(100vw - 16px));
-    max-height: calc(100dvh - 8px);
-    padding: 6px 10px 8px;
+    max-height: calc(100dvh - var(--shop-top) - 4px);
+    padding: var(--shop-pad-y) var(--shop-pad) 8px;
   }
 
   .shop-card {
@@ -1049,15 +1065,17 @@
 }
 
 @media (max-width: 560px) {
-  .shop-panel {
-    padding: 8px;
+  .shop-dialog {
+    --shop-panel-h: 680px;
+    --shop-pad: 8px;
+    --shop-pad-y: 8px;
   }
 
   .shop-header {
     grid-template-areas:
-      'keeper speech close'
-      'keeper wallet wallet';
-    grid-template-columns: auto 1fr auto;
+      'keeper speech'
+      'keeper wallet';
+    grid-template-columns: auto 1fr;
   }
 
   .shop-keeper {
@@ -1071,10 +1089,6 @@
 
   .shop-wallet {
     grid-area: wallet;
-  }
-
-  .shop-close {
-    grid-area: close;
   }
 
   .shop-tab {
@@ -1152,6 +1166,6 @@
    its phone size. */
 @media (min-height: 501px) and (min-width: 561px) {
   .shop-dialog {
-    --shop-u: max(1px, min(100vw, 100dvh * 16 / 9) / 1100);
+    --shop-u: max(1px, round(down, min(100vw, 100dvh * 16 / 9) / 1100, 1px));
   }
 }
