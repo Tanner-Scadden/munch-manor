@@ -51,7 +51,7 @@ import {
   type Zombie,
   ZombieState,
 } from './worldSchema'
-import { MAX_BODY_RADIUS_PX, groundedGrid } from './zombieGrid'
+import { MAX_BODY_RADIUS_PX, groundedColumns } from './zombieGrid'
 import {
   bodyRadiusOf,
   isFree,
@@ -72,53 +72,54 @@ const isFinishedDying = (zombie: Zombie): boolean =>
 
 // SEPARATION
 
-const pushApart = (zombie: Zombie, other: Zombie): Vector => {
-  const deltaX = zombie.x - other.x
-  const deltaY = zombie.y - other.y
-  const distance = Math.hypot(deltaX, deltaY)
-  const reach = bodyRadiusOf(zombie) + bodyRadiusOf(other)
-  if (other.id === zombie.id || distance >= reach) {
-    return ZERO_VECTOR
-  }
-
-  const mass = statsOf(zombie).mass
-  const otherMass = statsOf(other).mass
-  const share = (2 * otherMass) / (mass + otherMass)
-  const strength = ((reach - distance) / reach) * share
-  if (distance > 0) {
-    return {
-      x: (deltaX / distance) * strength,
-      y: (deltaY / distance) * strength,
-    }
-  } else {
-    return { x: zombie.id < other.id ? -strength : strength, y: 0 }
-  }
-}
+// NOTE: two bodies farther apart than this share of their reach are surely
+// out of it, whatever the last bit of Math.hypot says, so the pair is skipped
+// before the root is taken.
+const SURELY_APART = 1 + 1e-9
 
 // NOTE: each grounded zombie sums the pushes of the grounded zombies near it
 // in ascending list order, the order the all-pairs loop used, so the sum is
 // the same to the last bit. One out of reach of every body pushes nothing.
-const separationPushes = (
+// The loop reads the step's columns (src/zombieGrid.ts), not the zombies.
+export const separationPushes = (
   zombies: ReadonlyArray<Zombie>,
 ): ReadonlyArray<Vector> => {
-  const grid = groundedGrid(zombies)
+  const { grid, xs, ys, radii, masses, ids } = groundedColumns(zombies)
   const near = queryBuffer(grid)
-  return Array.map(zombies, zombie => {
+  return Array.map(zombies, (zombie, row) => {
     if (!isGrounded(zombie)) {
       return ZERO_VECTOR
     }
 
     const count = queryAround(grid, near, zombie, 2 * MAX_BODY_RADIUS_PX)
+    const x = xs[row] ?? 0
+    const y = ys[row] ?? 0
+    const radius = radii[row] ?? 0
+    const mass = masses[row] ?? 1
+    const id = ids[row] ?? 0
     let pushX = 0
     let pushY = 0
     let isPushed = false
     for (let at = 0; at < count; at++) {
-      const other = zombies[near[at] ?? 0]
-      if (other !== undefined) {
-        const push = pushApart(zombie, other)
-        if (push !== ZERO_VECTOR) {
-          pushX += push.x
-          pushY += push.y
+      const other = near[at] ?? 0
+      const otherId = ids[other] ?? 0
+      const deltaX = x - (xs[other] ?? 0)
+      const deltaY = y - (ys[other] ?? 0)
+      const reach = radius + (radii[other] ?? 0)
+      const farSquared = reach * reach * SURELY_APART
+      if (otherId !== id && !(deltaX * deltaX + deltaY * deltaY > farSquared)) {
+        const distance = Math.hypot(deltaX, deltaY)
+        if (!(distance >= reach)) {
+          const otherMass = masses[other] ?? 1
+          const share = (2 * otherMass) / (mass + otherMass)
+          const strength = ((reach - distance) / reach) * share
+          if (distance > 0) {
+            pushX += (deltaX / distance) * strength
+            pushY += (deltaY / distance) * strength
+          } else {
+            pushX += id < otherId ? -strength : strength
+            pushY += 0
+          }
           isPushed = true
         }
       }

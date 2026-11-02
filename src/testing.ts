@@ -692,3 +692,13 @@ export const freezeTicks = (freezeMs: number): number =>
 
 export const waitOutFreeze = (freezeMs: number) =>
   ticks(freezeTicks(freezeMs), FRAME_MS)
+
+// NOTE: a tiny seeded generator, so a test's cases are the same on every
+// run.
+export const randoms = (seed: number) => {
+  let state = seed
+  return (): number => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    return state / 4294967296
+  }
+}

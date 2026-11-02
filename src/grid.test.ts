@@ -1,16 +1,8 @@
 import { describe, expect, test } from 'vitest'
 
 import { buildGrid, queryAround, queryBox, queryBuffer } from './grid'
+import { randoms } from './testing'
 import type { Vector } from './worldSchema'
-
-// NOTE: a tiny seeded generator so the cases are the same on every run.
-const randoms = (seed: number) => {
-  let state = seed
-  return (): number => {
-    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
-    return state / 4294967296
-  }
-}
 
 const scatter = (
   seed: number,
