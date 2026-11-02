@@ -153,18 +153,39 @@ const shedDirection = (zombie: Zombie, player: Player): Vector =>
     Option.getOrElse(() => OUTWARD),
   )
 
-const shedEvents =
-  (before: ReadonlyArray<Zombie>, player: Player) =>
-  (zombie: Zombie): ReadonlyArray<GameEvent> => {
+// NOTE: the zombies keep their order from one frame to the next (the dead
+// leave, new ones join at the end), so each one's wear a frame ago is found by
+// walking `before` forward from the last match, not by searching all of it. A
+// zombie the walk misses (an order that changed) falls back to a full search.
+const wearBefore = (before: ReadonlyArray<Zombie>) => {
+  let cursor = 0
+  return (zombie: Zombie): Option.Option<number> => {
+    let at = cursor
+    while (at < before.length && before[at]?.id !== zombie.id) {
+      at++
+    }
+    const walked = before[at]
+    if (walked !== undefined) {
+      cursor = at + 1
+      return Option.some(wearOf(walked))
+    }
+
+    return Option.map(
+      Array.findFirst(before, ({ id }) => id === zombie.id),
+      wearOf,
+    )
+  }
+}
+
+const shedEvents = (before: ReadonlyArray<Zombie>, player: Player) => {
+  const wearBeforeOf = wearBefore(before)
+  return (zombie: Zombie): ReadonlyArray<GameEvent> => {
     const worn = wearOf(zombie)
     if (zombie.hp <= 0 || worn === 0) {
       return []
     }
 
-    const wasWorn = Option.match(
-      Array.findFirst(before, ({ id }) => id === zombie.id),
-      { onNone: () => worn, onSome: wearOf },
-    )
+    const wasWorn = Option.getOrElse(wearBeforeOf(zombie), () => worn)
     if (worn <= wasWorn) {
       return []
     }
@@ -180,6 +201,7 @@ const shedEvents =
       }),
     )
   }
+}
 
 export const shedParts = (before: World, after: World): World => {
   const shed = Array.flatMap(

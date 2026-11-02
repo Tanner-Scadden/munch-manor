@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { woundScaleOf } from './boss'
@@ -24,6 +24,7 @@ import {
   directionBetween,
   scaleVector,
 } from './geometry'
+import { queryBox, queryBuffer } from './grid'
 import {
   creditKills,
   creditShots,
@@ -51,7 +52,8 @@ import {
   type Zombie,
   ZombieState,
 } from './worldSchema'
-import { Behavior, bodyRadiusOf, isFree, isGrounded, statsOf } from './zombies'
+import { MAX_BODY_RADIUS_PX, groundedGrid } from './zombieGrid'
+import { Behavior, bodyRadiusOf, isFree, statsOf } from './zombies'
 
 type BulletHit = Readonly<{
   bulletId: number
@@ -82,31 +84,11 @@ const maybeContact = (
     : Option.none()
 }
 
-const nearerContact = (
-  nearest: Option.Option<Contact>,
-  contact: Contact,
-): Option.Option<Contact> =>
-  Option.match(nearest, {
-    onNone: () => Option.some(contact),
-    onSome: current =>
-      contact.reach < current.reach ? Option.some(contact) : nearest,
-  })
-
 const struckBy = (bullet: Bullet): ReadonlyArray<number> =>
   Pierce.match(bullet.pierce, {
     Stops: () => [],
     Skewers: ({ struck }) => struck,
   })
-
-const targetsFor = (
-  bullet: Bullet,
-  targets: ReadonlyArray<Zombie>,
-): ReadonlyArray<Zombie> => {
-  const struck = struckBy(bullet)
-  return Array.isReadonlyArrayEmpty(struck)
-    ? targets
-    : Array.filter(targets, ({ id }) => !Array.contains(struck, id))
-}
 
 const shieldedTarget = (bullet: Bullet, zombie: Zombie): number =>
   Pierce.isAnyOf(['Stops'])(bullet.pierce)
@@ -137,6 +119,9 @@ const sweepStart = (
         y: bullet.y - bullet.velocityY * seconds,
       }
 
+// NOTE: a bullet only meets the grounded zombies in the cells its sweep (grown
+// by the widest reach) crosses, taken in list order, so the first nearest
+// contact wins a tie as it did over the whole list.
 const findBulletHits = (
   bullets: ReadonlyArray<Bullet>,
   zombies: ReadonlyArray<Zombie>,
@@ -144,29 +129,53 @@ const findBulletHits = (
   seconds: number,
   freshShots: FreshShots,
 ): ReadonlyArray<BulletHit> => {
-  const targets = Array.filter(zombies, isGrounded)
-  return Array.getSomes(
-    Array.map(bullets, bullet => {
-      const from = sweepStart(bullet, seconds, freshShots)
-      return pipe(
-        targetsFor(bullet, targets),
-        Array.map(zombie => maybeContact(from, bullet, zombie)),
-        Array.getSomes,
-        Array.reduce(Option.none<Contact>(), nearerContact),
-        Option.map(({ zombie, point }) => ({
-          bulletId: bullet.id,
-          zombieId: shieldedTarget(bullet, zombie),
-          x: point.x,
-          y: point.y,
-          direction: bulletDirection(bullet),
-          weapon: bullet.weapon,
-          damage: bullet.damage * woundScaleOf(boss, zombie),
-          knockback: bullet.knockback,
-          maybeShooter: maybeShooterOf(bullet),
-        })),
-      )
-    }),
-  )
+  if (Array.isReadonlyArrayEmpty(bullets)) {
+    return []
+  }
+
+  const grid = groundedGrid(zombies)
+  const near = queryBuffer(grid)
+  const growPx = BULLET_RADIUS + MAX_BODY_RADIUS_PX
+  const hits: Array<BulletHit> = []
+  for (const bullet of bullets) {
+    const from = sweepStart(bullet, seconds, freshShots)
+    const struck = struckBy(bullet)
+    const count = queryBox(
+      grid,
+      near,
+      Math.min(from.x, bullet.x) - growPx,
+      Math.min(from.y, bullet.y) - growPx,
+      Math.max(from.x, bullet.x) + growPx,
+      Math.max(from.y, bullet.y) + growPx,
+    )
+    let nearest: Contact | undefined = undefined
+    for (let at = 0; at < count; at++) {
+      const zombie = zombies[near[at] ?? 0]
+      if (zombie !== undefined && !Array.contains(struck, zombie.id)) {
+        const contact = maybeContact(from, bullet, zombie)
+        if (
+          Option.isSome(contact) &&
+          (nearest === undefined || contact.value.reach < nearest.reach)
+        ) {
+          nearest = contact.value
+        }
+      }
+    }
+    if (nearest !== undefined) {
+      hits.push({
+        bulletId: bullet.id,
+        zombieId: shieldedTarget(bullet, nearest.zombie),
+        x: nearest.point.x,
+        y: nearest.point.y,
+        direction: bulletDirection(bullet),
+        weapon: bullet.weapon,
+        damage: bullet.damage * woundScaleOf(boss, nearest.zombie),
+        knockback: bullet.knockback,
+        maybeShooter: maybeShooterOf(bullet),
+      })
+    }
+  }
+  return hits
 }
 
 const totalDamage = (hits: ReadonlyArray<BulletHit>): number =>
