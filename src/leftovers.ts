@@ -127,6 +127,16 @@ export const prizeWeights = (
     return [prize, isCarried(player, prize) ? 0 : lucky] as const
   })
 
+// NOTE: a Glass run (src/modifiers.ts) pulls no Sandwich: one heart is
+// one heart. Its share goes to the rest, as a carried weapon's does.
+const withoutHealing = (
+  weights: ReadonlyArray<readonly [FridgePrize, number]>,
+): ReadonlyArray<readonly [FridgePrize, number]> =>
+  Array.map(
+    weights,
+    ([prize, weight]) => [prize, prize === 'Sandwich' ? 0 : weight] as const,
+  )
+
 // NOTE: the kitchen tour's free pull shows off a weapon, never a gag: the
 // same draw from the fridge's own stream, against the weapons' weights alone,
 // so it never shifts the waves or the drops.
@@ -309,7 +319,8 @@ export const pullFridge = (
   }
   return Option.map(fridgeBoxOf(levelOf(world)), box => {
     const draw = nextRandom(world.loot.fridgeRngState)
-    const weights = prizeWeights(world.fridge, seatStateAt(world, slot).player)
+    const offered = prizeWeights(world.fridge, seatStateAt(world, slot).player)
+    const weights = world.modifiers.glass ? withoutHealing(offered) : offered
     const prize = pickPrize(
       isKitchenTourOn(world) ? weaponsOnly(weights) : weights,
       draw.value,
