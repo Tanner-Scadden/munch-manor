@@ -509,6 +509,26 @@ export const CAMPAIGN_ICON = pixelIconUrl(
   BADGE_PALETTE,
 )
 
+// NOTE: the lobby's map card: the manor itself, a gabled house with lit
+// windows and a door, in the campaign door's purples.
+export const MANOR_ICON = pixelIconUrl(
+  [
+    '.....UU......',
+    '....UUUU.....',
+    '...UUUUUU..U.',
+    '..UUUUUUUU.UU',
+    '.UUUUUUUUUUUU',
+    'UUUUUUUUUUUUU',
+    '.UUYYUUUYYUU.',
+    '.UUYYUUUYYUU.',
+    '.UUUUUUUUUUU.',
+    '.UUYYUWWWUUU.',
+    '.UUYYUWWYUUU.',
+    '.UUUUUWWWUUU.',
+  ],
+  BADGE_PALETTE,
+)
+
 export const ENDLESS_ICON = pixelIconUrl(
   ['.TTT...TTT.', 'T...T.T...T', 'T....T....T', 'T...T.T...T', '.TTT...TTT.'],
   BADGE_PALETTE,

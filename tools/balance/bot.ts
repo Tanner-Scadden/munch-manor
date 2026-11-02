@@ -164,7 +164,8 @@ const blame = (
 // plays.
 const BOT_RANK_POINTS = 100_000
 
-// The model of a fresh run on the title, already started.
+// The model of a fresh run on the title, already started: Enter opens the
+// lobby, E picks endless there, and Enter starts.
 export const startedRun = (seed: number, options: BotOptions): Model => {
   const ready = send(
     modifyFields(asTutorialDone(asVeteran(initialModel)), {
@@ -175,8 +176,9 @@ export const startedRun = (seed: number, options: BotOptions): Model => {
     }),
     Message.MeasuredGameSurface(SURFACE),
   )
+  const inLobby = tapKey(ready, 'Enter')
   return tapKey(
-    options.mode === 'Endless' ? tapKey(ready, 'KeyE') : ready,
+    options.mode === 'Endless' ? tapKey(inLobby, 'KeyE') : inLobby,
     'Enter',
   )
 }

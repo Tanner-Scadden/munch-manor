@@ -26,12 +26,7 @@ import type { Model } from './model'
 import { CALLING_NAMES, giftName } from './names'
 import { GUN_HOLD_PX } from './playerView'
 import { badgeTierOf, rankProgressOf, shownPointsOf } from './rank'
-import {
-  BONE,
-  BONE_SIZE,
-  badgeSprite,
-  shineSprite,
-} from './rankArt'
+import { BONE, BONE_SIZE, badgeSprite, shineSprite } from './rankArt'
 import { frameAt, group, placeAt } from './sprite'
 import { gunSprite } from './sprites/guns'
 

@@ -20,6 +20,7 @@ import {
   harnessQuery,
   isPickedScene,
   launch,
+  openLobby,
   pickViewports,
   scenePages,
   settleAnimations,
@@ -48,23 +49,28 @@ const SCENES: ReadonlyArray<Scene> = [
   { name: 'home-you', query: '' },
   { name: 'home-handyman', query: 'rank=300&calling=Handyman' },
   { name: 'home-linecook', query: 'rank=4000&calling=LineCook' },
-  { name: 'picker-rank1', query: '', open: '#home-calling', isPicker: true },
+  {
+    name: 'picker-rank1',
+    query: LEARNED,
+    open: '#lobby-hero',
+    isPicker: true,
+  },
   {
     name: 'picker-rank3',
-    query: 'rank=300&calling=Handyman',
-    open: '#home-calling',
+    query: `${LEARNED}&rank=300&calling=Handyman`,
+    open: '#lobby-hero',
     isPicker: true,
   },
   {
     name: 'picker-rank7',
-    query: 'rank=1000&calling=TrackStar',
-    open: '#home-calling',
+    query: `${LEARNED}&rank=1000&calling=TrackStar`,
+    open: '#lobby-hero',
     isPicker: true,
   },
   {
     name: 'picker-all',
-    query: 'rank=4000&calling=LineCook',
-    open: '#home-calling',
+    query: `${LEARNED}&rank=4000&calling=LineCook`,
+    open: '#lobby-hero',
     isPicker: true,
   },
   { name: 'profile-you', query: 'profile=look' },
@@ -161,6 +167,7 @@ for (const viewport of VIEWPORTS) {
     )
     await settleAnimations(page)
     if (scene.open !== undefined) {
+      await openLobby(page)
       await page.click(scene.open)
       await page.locator('dialog[open]').first().waitFor({ state: 'visible' })
       await settleAnimations(page)
@@ -175,4 +182,7 @@ for (const viewport of VIEWPORTS) {
 }
 await pages.close()
 await browser.close()
-finish(problems, 'The pill and the picker fit, and every card is big enough.')
+finish(
+  problems,
+  'The hero card and the picker fit, and every card is big enough.',
+)

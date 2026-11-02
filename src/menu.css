@@ -134,7 +134,7 @@
   font-size: clamp(10px, 2.6 * var(--a), 16px);
 }
 
-/* PLAY CLUSTER: PLAY with the mode and the difficulty right beside it. */
+/* PLAY CLUSTER: PLAY, with CO-OP over it. */
 
 .home-play-cluster {
   position: absolute;
@@ -241,13 +241,6 @@
   }
 }
 
-.home-loadout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--menu-gap-sm);
-  width: max(128px, 60 * var(--a));
-}
-
 /* NOTE: CO-OP is a bar of two bobbing heads in pink and teal sitting on
    PLAY, so the cluster grows up, not across the room. Locked, it greys out
    under a padlock and the tutorial's aim icon. */
@@ -255,9 +248,15 @@
   position: absolute;
   right: 0;
   bottom: calc(100% + 3 * var(--a));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: max(4px, 1.5 * var(--a));
   width: max(132px, 66 * var(--a));
   height: var(--pick-h);
+  padding: 3px;
   border: 3px solid var(--menu-pink);
+  border-radius: var(--menu-radius);
   background:
     radial-gradient(
       circle at 50% 40%,
@@ -325,86 +324,8 @@
   }
 }
 
-.home-pick {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  gap: max(4px, 1.5 * var(--a));
-  min-height: var(--pick-h);
-  padding: 3px;
-  border: 2px solid var(--menu-line-strong);
-  border-radius: var(--menu-radius);
-  background: var(--menu-glass);
-  box-shadow: var(--menu-lift);
-}
-
-/* NOTE: the mode is two little tiles, the manor door in purple for the
-   campaign and the loop in teal for endless. The chosen one is raised and
-   glows; the other sinks back. */
-.home-mode-option {
-  display: grid;
-  flex: 1;
-  align-self: stretch;
-  place-items: center;
-  border-radius: var(--menu-radius-sm);
-  background: var(--menu-sunken);
-  opacity: 0.45;
-  transition:
-    opacity 120ms ease-out,
-    translate 120ms ease-out;
-  pointer-events: none;
-}
-
-.home-mode-option[data-state='Chosen'] {
-  opacity: 1;
-  translate: 0 -2px;
-}
-
-.home-mode-option[data-mode='Campaign'][data-state='Chosen'] {
-  background: #3b2160;
-  box-shadow:
-    0 0 0 2px #b98cff,
-    0 0 12px rgba(185, 140, 255, 0.6),
-    0 3px 0 #1e0f33;
-}
-
-.home-mode-option[data-mode='Endless'][data-state='Chosen'] {
-  background: #15403c;
-  box-shadow:
-    0 0 0 2px #5fd4c8,
-    0 0 12px rgba(95, 212, 200, 0.6),
-    0 3px 0 #0a2220;
-}
-
-.home-mode-icon {
-  width: max(20px, 7 * var(--a));
-  height: max(20px, 7 * var(--a));
-  background: center / contain no-repeat;
-  image-rendering: pixelated;
-}
-
-/* NOTE: the difficulty is a skull meter. Its border takes the level's
-   color. */
-.home-difficulty {
-  border-color: var(--menu-gold);
-}
-
-.home-difficulty[data-difficulty='Easy'] {
-  border-color: var(--menu-green);
-}
-
-.home-difficulty[data-difficulty='Hard'] {
-  border-color: var(--menu-orange);
-}
-
-.home-difficulty[data-difficulty='Nightmare'] {
-  border-color: var(--menu-red);
-  box-shadow:
-    var(--menu-lift),
-    0 0 12px rgba(255, 107, 94, 0.5);
-}
-
+/* NOTE: a difficulty reads as a row of skulls: the home menu's first-run
+   question and the lobby's picks share them. */
 .skull-meter {
   display: flex;
   align-items: center;
@@ -2392,40 +2313,7 @@ button.help-card:focus-visible {
   animation: menu-blink 0.8s steps(2) infinite;
 }
 
-/* NOTE: the picker opened beside PLAY pops out of the loadout: it hangs
-   from the cluster's bottom edge, just left of PLAY, like a card pulled
-   from it. */
-.panel-dialog[data-anchor='Play'] {
-  --a: min(100vw / var(--screen-w), 100dvh / var(--screen-h));
-  --pick-h: max(var(--menu-tap), 14 * var(--a));
-}
-
-.panel-dialog[data-anchor='Play'] .panel {
-  position: fixed;
-  right: calc(
-    (100vw - var(--screen-w) * var(--a)) / 2 + 4 * var(--a) +
-      max(132px, 66 * var(--a)) + 3 * var(--a)
-  );
-  bottom: calc((100dvh - var(--screen-h) * var(--a)) / 2 + 4 * var(--a));
-  width: min(360px, 62vw);
-  max-height: calc(100dvh - 16px);
-  border-top-color: var(--menu-gold);
-  animation: picker-pop 180ms ease-out both;
-}
-
-.panel-dialog[data-anchor='Play'] .panel-title {
-  color: var(--menu-gold);
-}
-
-@keyframes picker-pop {
-  from {
-    opacity: 0;
-    filter: brightness(2);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .panel-dialog[data-anchor='Play'] .panel,
   .difficulty-new {
     animation: none;
   }
@@ -2982,7 +2870,7 @@ button.help-card:focus-visible {
 /* PORTRAIT */
 
 /* NOTE: upright, the MANOR deck stands at the bottom left, and the cluster
-   to its right stacks the mode and the difficulty over a wide PLAY. */
+   to its right stacks CO-OP over a wide PLAY. */
 .game-root[data-layout='Portrait'] .home-stage {
   --manor-w: max(80px, 36 * var(--a));
 }
@@ -2998,31 +2886,11 @@ button.help-card:focus-visible {
   min-height: max(60px, 28 * var(--a));
 }
 
-.game-root[data-layout='Portrait'] .home-loadout {
-  flex-direction: row;
-  width: auto;
-}
-
 .game-root[data-layout='Portrait'] .home-stage .home-coop {
   position: relative;
   bottom: auto;
-  flex: 0 0 56px;
-  width: 56px;
-  height: auto;
-}
-
-.game-root[data-layout='Portrait'] .home-coop-icon {
-  width: 80%;
-  height: auto;
-}
-
-.game-root[data-layout='Portrait'] .home-coop-lock {
-  position: absolute;
-  inset: auto 0 8%;
-}
-
-.game-root[data-layout='Portrait'] .home-pick {
-  min-height: 52px;
+  width: auto;
+  height: 52px;
 }
 
 .game-root[data-layout='Portrait'] .home-stage .home-manor {
@@ -3077,17 +2945,6 @@ button.help-card:focus-visible {
 
 .game-root[data-layout='Portrait'] .help-cards {
   grid-template-columns: repeat(2, 1fr);
-}
-
-.game-root[data-layout='Portrait'] .panel-dialog[data-anchor='Play'] .panel {
-  right: 8px;
-  left: 8px;
-  bottom: calc(
-    (100dvh - var(--screen-h) * var(--a)) / 2 + 4 * var(--a) +
-      max(60px, 28 * var(--a)) + 3 * var(--a)
-  );
-  width: auto;
-  transform-origin: 70% 100%;
 }
 
 .game-root[data-layout='Portrait'] .setting-tiles {

@@ -32,6 +32,7 @@ import {
   ShowInstallPrompt,
   WaitForUnwrap,
 } from './update/home'
+import { FocusLobbyControl } from './update/lobby'
 import { ApplyRotation } from './update/rotation'
 import {
   AwaitRunSettled,
@@ -78,6 +79,7 @@ export const CommandsLayer = Layer.mergeAll(
   UpdateServiceWorker.layer,
   FocusHomeButton.layer,
   FocusHandCard.layer,
+  FocusLobbyControl.layer,
   FocusEndMenuButton.layer,
   ClickSupportLink.layer,
   SendShareEvent.layer,

@@ -19,7 +19,7 @@ import {
 } from './model'
 import type { MusicMood } from './music'
 import { CueMusic } from './musicPlan'
-import { SURFACE, resolvePlayed, tick } from './testing'
+import { SURFACE, resolveFocusLobby, resolvePlayed, tick } from './testing'
 import { PlaySound, ResumeAudio } from './update/sound'
 import { FetchBuild } from './update/version'
 import { asVeteran } from './veteran'
@@ -74,6 +74,8 @@ describe('music follows the phase', () => {
       update,
       given(titleScreen(AudioState.Locked())),
       pressKey('Enter'),
+      resolveFocusLobby(),
+      pressKey('Enter'),
       Command.expectNone(),
       message(Message.AcquiredAudioEngine()),
       Command.expectExact(ResumeAudio),
@@ -94,6 +96,9 @@ describe('music follows the phase', () => {
     story(
       update,
       given(titleScreen(AudioState.Ready())),
+      pressKey('Enter'),
+      resolveFocusLobby(),
+      resolvePlayed('Pop'),
       pressKey('Enter'),
       model(({ phase }) => {
         expect(phase._tag).toBe('Preparation')

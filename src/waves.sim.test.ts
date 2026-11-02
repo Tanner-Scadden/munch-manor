@@ -11,7 +11,14 @@ import { update } from './main'
 import { type Model, Phase } from './model'
 import { readyModel } from './model.fixture'
 import { scoreOf } from './stats'
-import { holdFireToward, press, release, tick, ticks } from './testing'
+import {
+  holdFireToward,
+  press,
+  release,
+  startRunFromHome,
+  tick,
+  ticks,
+} from './testing'
 
 const FRAME_MS = 50
 
@@ -27,7 +34,7 @@ describe('a full wave', () => {
     story(
       update,
       given(modifyFields(readyModel, { rngState: () => seed })),
-      press('Enter'),
+      startRunFromHome,
       release('Enter'),
       press('KeyD'),
       ...ticks(STEP_RIGHT_TICKS, FRAME_MS),

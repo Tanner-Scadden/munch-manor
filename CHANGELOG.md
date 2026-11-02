@@ -4,7 +4,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 ## November 1, 2026: Pick your hero
 
-- 🎩 Rank up and you can pick a hero beside the difficulty: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Every card says what it gives (+) and costs (-). Reach rank 3 to meet the first.
+- 🎩 PLAY opens a lobby to pick your hero, mode, and difficulty before a run. Rank up and you can pick a hero there: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Every card says what it gives (+) and costs (-). Reach rank 3 to meet the first.
 - 🎩 Spend your Bones on hats in your Look tab (try one on before you buy), wear them on any hero, and rank up to be gifted a few for free: a party hat, a cowboy hat, a witch hat, even a traffic cone.
 - 🎒 Your hero comes along in co-op: everyone in the room starts as the hero they picked, and the prop shows by their name in the lobby, where you can swap it too.
 - 👕 New shirts, prints, and gun skins to earn or buy in your Look tab, with a NEW badge on what you just unlocked.

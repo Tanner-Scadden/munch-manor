@@ -172,7 +172,7 @@ describe('two keyboards on one desktop', () => {
       }),
       Message.MeasuredGameSurface(SURFACE),
     )
-    const started = tap(ready, 'Enter')
+    const started = tap(tap(ready, 'Enter'), 'Enter')
     expect(playersOf(started)).toHaveLength(2)
     const { end, frames } = play(started)
     expect(end.phase._tag).toBe('Victory')

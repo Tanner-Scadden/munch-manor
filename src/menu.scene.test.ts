@@ -32,16 +32,17 @@ import {
   ROOT,
   closeButton,
   closeDialogInScene,
-  difficultyButton,
   emitPressedKey,
+  lobbyBackButton,
+  lobbyScreen,
   lockedNightmare,
   manorButton,
   measureSurface,
-  modeButton,
   openHandInScene,
+  openLobbyInScene,
   pickCardInScene,
   playButton,
-  playEndlessButton,
+  resolveFocusLobbyInScene,
   settingsButton,
   shareMountEnded,
   shareMountSettles,
@@ -94,22 +95,23 @@ const afterGrace = (phase: Phase): Model =>
   })
 
 describe('Home menu', () => {
-  test('fills the slots: the gear, the MORE deck, and PLAY with its mode, difficulty, and CO-OP, with a key badge on every button on a keyboard, and no bests badge before a best', () => {
+  test('fills the slots: the gear, the MORE deck, and PLAY with CO-OP, no mode, difficulty, or hero pill, with a key badge on every button on a keyboard, and no bests badge before a best', () => {
     scene(
       ROOT,
       given(home),
       measureSurface,
       inside(
         playCluster,
-        expectAll(all.role('button')).toHaveCount(5),
+        expectAll(all.role('button')).toHaveCount(2),
         expect(playButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
         expect(
           role('button', { name: 'Co-op: finish the tutorial to unlock' }),
         ).toHaveAttr('aria-keyshortcuts', 'J'),
-        expect(modeButton).toHaveAttr('aria-keyshortcuts', 'E'),
-        expect(difficultyButton).toHaveAttr('aria-keyshortcuts', 'X'),
-        expect(difficultyButton).toHaveAttr('aria-haspopup', 'dialog'),
       ),
+      expect(selector('.home-pick')).toBeAbsent(),
+      expect(role('button', { name: /^Mode:/ })).toBeAbsent(),
+      expect(role('button', { name: /^Difficulty:/ })).toBeAbsent(),
+      expect(role('button', { name: /^Hero:/ })).toBeAbsent(),
       expect(manorButton).toHaveAttr('aria-keyshortcuts', 'V'),
       expect(manorButton).toHaveAttr('aria-haspopup', 'dialog'),
       inside(
@@ -121,7 +123,7 @@ describe('Home menu', () => {
           'B',
         ),
       ),
-      expectAll(all.selector('.home-stage .home-key')).toHaveCount(8),
+      expectAll(all.selector('.home-stage .home-key')).toHaveCount(5),
       expect(
         role('button', { name: 'Your character: change how you look' }),
       ).toHaveAttr('aria-haspopup', 'dialog'),
@@ -237,46 +239,70 @@ describe('Home menu', () => {
     )
   })
 
-  test('the difficulty beside PLAY opens the picker, a pick changes it without starting a run, and Nightmare stays locked', () => {
+  test('PLAY opens the lobby, a pick changes the difficulty without starting a run, and BACK goes home', () => {
     scene(
       ROOT,
       given(home),
       measureSurface,
-      click(difficultyButton),
-      ...showDialogInScene(),
+      ...openLobbyInScene(),
+      expect(lobbyScreen).toExist(),
+      expect(playButton).toBeAbsent(),
       expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
-      expect(selector("[data-difficulty='Nightmare'] .skull-locked")).toExist(),
-      expect(role('dialog', { name: 'Difficulty' })).toExist(),
       click(role('button', { name: /^Hard:/ })),
-      ...closeDialogInScene(),
-      expect(role('button', { name: 'Difficulty: Hard. Change it' })).toExist(),
-      expect(bests).toBeAbsent(),
+      resolveFocusLobbyInScene(),
+      expect(role('button', { name: /^Hard:/ })).toHaveAttr(
+        'aria-pressed',
+        'true',
+      ),
+      expect(selector('.coop[data-screen="Solo"]')).toExist(),
+      click(lobbyBackButton),
+      Command.resolve(
+        FocusHomeButton({ button: 'Play' }),
+        Message.CompletedFocusHomeButton(),
+      ),
+      expect(lobbyScreen).toBeAbsent(),
+      expect(playButton).toExist(),
       expect(manorButton).toExist(),
     )
   })
 
-  test('X opens the difficulty picker by PLAY on a keyboard, and a tap opens it on touch', () => {
+  test('Esc goes back from the lobby, and X and E pick on a keyboard while a tap does on touch', () => {
     scene(
       ROOT,
       given(home),
       measureSurface,
+      ...openLobbyInScene(),
       emitPressedKey('KeyX'),
-      ...showDialogInScene(),
-      expect(role('dialog', { name: 'Difficulty' })).toHaveAttr(
-        'data-anchor',
-        'Play',
+      resolveFocusLobbyInScene(),
+      expect(role('button', { name: /^Hard:/ })).toHaveAttr(
+        'aria-pressed',
+        'true',
       ),
+      emitPressedKey('KeyE'),
+      resolveFocusLobbyInScene(),
+      expect(role('button', { name: 'Endless' })).toHaveAttr(
+        'aria-pressed',
+        'true',
+      ),
+      emitPressedKey('Escape'),
+      Command.resolve(
+        FocusHomeButton({ button: 'Play' }),
+        Message.CompletedFocusHomeButton(),
+      ),
+      expect(lobbyScreen).toBeAbsent(),
     )
     scene(
       ROOT,
       given(modifyFields(home, { lastDevice: () => 'Touch' })),
       measureSurface,
-      inside(playCluster, expect(selector('.home-key')).toBeAbsent()),
-      click(difficultyButton),
-      ...showDialogInScene(),
+      ...openLobbyInScene(),
+      expect(selector('.home-key')).toBeAbsent(),
       click(role('button', { name: /^Easy:/ })),
-      ...closeDialogInScene(),
-      expect(role('button', { name: 'Difficulty: Easy. Change it' })).toExist(),
+      resolveFocusLobbyInScene(),
+      expect(role('button', { name: /^Easy:/ })).toHaveAttr(
+        'aria-pressed',
+        'true',
+      ),
     )
   })
 
@@ -285,7 +311,7 @@ describe('Home menu', () => {
       ROOT,
       given(modifyFields(home, { lastDevice: () => 'Touch' })),
       measureSurface,
-      inside(playCluster, expectAll(all.role('button')).toHaveCount(5)),
+      inside(playCluster, expectAll(all.role('button')).toHaveCount(2)),
       expect(manorButton).toExist(),
       expect(settingsButton).toExist(),
       expect(selector('.home-key')).toBeAbsent(),
@@ -342,14 +368,18 @@ describe('Home menu', () => {
     )
   })
 
-  test('Enter plays the chosen mode, and E switches the mode without moving PLAY', () => {
+  test('Enter opens the lobby, and Enter again plays the mode E chose there', () => {
     scene(
       ROOT,
       given(home),
       measureSurface,
       emitPressedKey('Enter'),
-      expect(role('status')).toContainText(PREPARING),
+      resolveFocusLobbyInScene(),
+      expect(lobbyScreen).toExist(),
       expect(manorButton).toBeAbsent(),
+      emitPressedKey('Enter'),
+      expect(role('status')).toContainText(PREPARING),
+      expect(lobbyScreen).toBeAbsent(),
     )
     scene(
       ROOT,
@@ -360,15 +390,15 @@ describe('Home menu', () => {
         expect(selector('.home-play')).toHaveAttr('id', 'home-play'),
       ),
       emitPressedKey('KeyE'),
-      expect(
-        role('button', { name: 'Mode: Endless. Switch to Campaign' }),
-      ).toExist(),
-      inside(
-        playCluster,
-        expect(selector('.home-play')).toHaveAttr('id', 'home-play'),
-        expect(playEndlessButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
+      expect(lobbyScreen).toBeAbsent(),
+      emitPressedKey('Enter'),
+      resolveFocusLobbyInScene(),
+      emitPressedKey('KeyE'),
+      resolveFocusLobbyInScene(),
+      expect(role('button', { name: 'Endless' })).toHaveAttr(
+        'aria-pressed',
+        'true',
       ),
-      expect(manorButton).toExist(),
       emitPressedKey('Enter'),
       expect(role('status')).toContainText('Get ready for endless wave 1.'),
     )
@@ -443,16 +473,7 @@ describe('Home menu', () => {
         Message.CompletedFocusHomeButton(),
       ),
       ...Array.flatMap(
-        [
-          'Mode',
-          'Difficulty',
-          'Calling',
-          'Coop',
-          'Manor',
-          'Support',
-          'Settings',
-          'Play',
-        ] as const,
+        ['Coop', 'Manor', 'Support', 'Settings', 'Play'] as const,
         button => [
           emitPressedKey('ArrowDown'),
           Command.resolve(
@@ -494,8 +515,12 @@ describe('Home menu', () => {
       open: [click(settingsButton), ...showDialogInScene()],
     },
     {
-      dialog: 'Difficulty',
-      open: [click(difficultyButton), ...showDialogInScene()],
+      dialog: 'Hero',
+      open: [
+        ...openLobbyInScene(),
+        click(role('button', { name: /^Hero:/ })),
+        ...showDialogInScene(),
+      ],
     },
   ])('$dialog (#$#) closes with the shared close X', ({ dialog, open }) => {
     scene(
@@ -606,19 +631,16 @@ describe('Home menu', () => {
   })
 
   test('a press on a menu button never reaches the game surface', () => {
-    Array.forEach(
-      [playButton, modeButton, difficultyButton, manorButton, settingsButton],
-      button => {
-        vitestExpect(() =>
-          scene(
-            ROOT,
-            given(modifyFields(home, { lastDevice: () => 'Touch' })),
-            measureSurface,
-            pointerDown(button, { pointerType: 'touch', pointerId: 4 }),
-          ),
-        ).toThrow(NO_POINTERDOWN_PATH)
-      },
-    )
+    Array.forEach([playButton, manorButton, settingsButton], button => {
+      vitestExpect(() =>
+        scene(
+          ROOT,
+          given(modifyFields(home, { lastDevice: () => 'Touch' })),
+          measureSurface,
+          pointerDown(button, { pointerType: 'touch', pointerId: 4 }),
+        ),
+      ).toThrow(NO_POINTERDOWN_PATH)
+    })
   })
 })
 

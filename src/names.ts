@@ -2,6 +2,7 @@ import { Array, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
+import type { MapId } from './clientSchema'
 import { type Calling, type CosmeticKind, Hat } from './playerData'
 import type {
   FixedShopItemId,
@@ -90,6 +91,13 @@ export const MODE_NAMES: Readonly<Record<PickedMode, string>> = {
   Campaign: 'Campaign',
   Endless: 'Endless',
   KeepGoing: 'Keep going',
+}
+
+// MAPS
+
+// NOTE: the maps the single player lobby offers (src/lobby.ts).
+export const MAP_NAMES: Readonly<Record<MapId, string>> = {
+  Manor: 'The Manor',
 }
 
 // THE FRIDGE

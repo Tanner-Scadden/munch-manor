@@ -29,6 +29,7 @@ import {
   harnessQuery,
   isPickedScene,
   launch,
+  openLobby,
   scenePages,
   settleAnimations,
   shot,
@@ -104,8 +105,8 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   {
     name: 'picker-fresh',
-    query: 'rank=1800&fresh',
-    open: '#home-calling',
+    query: `${LEARNED}&rank=1800&fresh`,
+    open: '#lobby-hero',
   },
   { name: 'home-fresh', query: `rank=${RANK_16}&fresh` },
   { name: 'home-skin', query: 'rank=5100&skin=Gold&look=,,,,Glow,,Checker' },
@@ -319,6 +320,9 @@ for (const viewport of SHOT_VIEWPORTS) {
       )
       await settleAnimations(page)
       if (scene.open !== undefined) {
+        if (scene.open.startsWith('#lobby-')) {
+          await openLobby(page)
+        }
         await page.locator(scene.open).click()
         await settleAnimations(page)
       }

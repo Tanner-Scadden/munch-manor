@@ -1,0 +1,176 @@
+/* THE SINGLE PLAYER LOBBY
+
+   NOTE: PLAY opens the co-op lobby's cousin, alone. It wears co-op's own
+   layer, seats, picks, and START (src/coop/coop.css); only what the lobby
+   adds is here: your seat is wide, with the hero card beside your figure,
+   three faint seats wait for a crew, and the map is a card. */
+
+.lobby .lobby-seats {
+  grid-template-columns: repeat(5, 1fr);
+  width: min(94cqw, 720px);
+}
+
+/* NOTE: your seat takes two of five columns: your figure, then your name,
+   rank, and hero card. */
+.lobby-seat {
+  grid-column: span 2;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 8px 8px;
+}
+
+.lobby-seat .coop-seat-head {
+  flex: none;
+  height: 88%;
+}
+
+.lobby-seat-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* NOTE: where a crew will sit, drawn faint and still: no plus to tap. */
+.lobby-seat-empty {
+  opacity: 0.55;
+}
+
+/* THE HERO CARD: the prop, the name, and each special as a picture. */
+
+.lobby-hero {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--menu-tap);
+  padding: 3px 8px;
+  border: 2px solid var(--menu-pink);
+  border-radius: var(--menu-radius-sm);
+  background: rgba(40, 18, 40, 0.94);
+  box-shadow: var(--menu-lift);
+  text-align: left;
+}
+
+.lobby-hero[data-calling='You'] {
+  border-color: var(--menu-line-strong);
+}
+
+.lobby-hero-prop {
+  flex: none;
+  width: clamp(24px, 6 * var(--coop-unit), 36px);
+  aspect-ratio: 1;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.lobby-hero-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lobby-hero-name {
+  max-width: 100%;
+  overflow: hidden;
+  font: bold clamp(11px, 2.6 * var(--coop-unit), 16px) / 1.1 var(--menu-font);
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.lobby-specials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.lobby-special {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.lobby-special-icon {
+  width: clamp(14px, 3.4 * var(--coop-unit), 20px);
+  aspect-ratio: 1;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.lobby-special-sign {
+  font: bold clamp(11px, 2.6 * var(--coop-unit), 16px) / 1 var(--menu-font);
+}
+
+.lobby-special[data-sign='Perk'] .lobby-special-sign {
+  color: var(--menu-green);
+}
+
+.lobby-special[data-sign='Drawback'] .lobby-special-sign {
+  color: var(--menu-red);
+}
+
+/* THE MAP: a card with its picture and its name. */
+
+.lobby-maps {
+  padding: 4px;
+}
+
+.lobby-map {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: clamp(48px, 9 * var(--coop-unit), 56px);
+  padding: 0 12px 0 8px;
+  border: 2px solid #b98cff;
+  border-radius: calc(var(--menu-radius) - 2px);
+  background: rgba(185, 140, 255, 0.2);
+}
+
+.lobby-map-icon {
+  width: clamp(30px, 7 * var(--coop-unit), 40px);
+  aspect-ratio: 13 / 12;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.lobby-map-name {
+  font: bold clamp(11px, 2.6 * var(--coop-unit), 15px) / 1 var(--menu-font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* START: PLAY's triangle is taller than READY's check. */
+
+.lobby-start .coop-ready-icon {
+  aspect-ratio: 8 / 11;
+}
+
+/* PORTRAIT: your seat takes the whole row, the crew's three sit under it. */
+
+[data-layout='Portrait'] .lobby .lobby-seats {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+[data-layout='Portrait'] .lobby-seat {
+  grid-column: 1 / -1;
+}
+
+[data-layout='Portrait'] .lobby-seat-empty {
+  height: clamp(70px, 11cqh, 110px);
+}
+
+/* LANDSCAPE: BACK sits in the top left corner, so the seats leave it room
+   on a short screen, where they reach up beside it. */
+
+[data-layout='Landscape'] .lobby .lobby-seats {
+  width: min(100cqw - 2 * (var(--menu-tap) + 24px), 720px);
+}

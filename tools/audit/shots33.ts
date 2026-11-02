@@ -50,6 +50,7 @@ const FOUND =
   'bests&kills=Shambler:1203,Runner:140,Tank:12,Exploder:9,Thrower:3,Boss:2&opened=Shambler,Tank'
 
 const MANOR = '#home-manor'
+const LOBBY_QUERY = 'learned=move,fire&rank=300&calling=Handyman'
 
 type Scene = Readonly<{
   name: string
@@ -110,11 +111,23 @@ const SCENES: ReadonlyArray<Scene> = [
     query: 'rotate&fit=full',
     open: ['#home-settings'],
   },
-  { name: 'difficulty', query: '', open: ['#home-difficulty'] },
+  { name: 'difficulty', query: 'ask', open: ['#home-play'] },
+  { name: 'lobby', query: LOBBY_QUERY, open: ['#home-play'] },
   {
-    name: 'difficulty-hard',
-    query: 'difficulty=Hard&nightmare=Unlocked',
-    open: ['#home-difficulty'],
+    name: 'lobby-hard',
+    query: `${LOBBY_QUERY}&difficulty=Hard&nightmare=Unlocked`,
+    open: ['#home-play'],
+  },
+  {
+    name: 'lobby-endless',
+    query: `${LOBBY_QUERY}&homemode=endless`,
+    open: ['#home-play'],
+  },
+  { name: 'lobby-you', query: 'learned=move,fire', open: ['#home-play'] },
+  {
+    name: 'lobby-hero',
+    query: LOBBY_QUERY,
+    open: ['#home-play', '#lobby-hero'],
   },
   { name: 'shop', query: 'wave=5&money=180&gun=smg&tier=1&px=270&py=142' },
   { name: 'shop-broke', query: 'wave=3&money=12&gun=shotgun&px=270&py=142' },

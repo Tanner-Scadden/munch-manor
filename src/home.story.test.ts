@@ -29,7 +29,15 @@ import {
   unopenedKinds,
 } from './munchopedia'
 import { saveOf } from './save'
-import { press, showDialog, tick, writeSave } from './testing'
+import {
+  openLobbyByKey,
+  press,
+  resolveFocusLobby,
+  showDialog,
+  startRunFromHome,
+  tick,
+  writeSave,
+} from './testing'
 import { WriteSave } from './update/save'
 
 const homeAfterRead: Model = modifyFields(readyModel, {
@@ -220,17 +228,20 @@ describe('the home menu keys', () => {
   })
 })
 
-describe('the mode toggle', () => {
-  test('E and the mode button switch the mode back and forth, and start nothing', () => {
+describe('the mode in the lobby', () => {
+  test('E and the mode tiles switch the mode back and forth, and start nothing', () => {
     story(
       update,
       given(readyModel),
+      openLobbyByKey,
       press('KeyE'),
+      resolveFocusLobby(),
       model(current => {
         expect(current.home.mode).toBe('Endless')
         expect(Phase.guards.Ready(current.phase)).toBe(true)
       }),
-      message(Message.ClickedModeButton()),
+      message(Message.ClickedLobbyModeButton({ mode: 'Campaign' })),
+      resolveFocusLobby(),
       model(current => {
         expect(current.home.mode).toBe('Campaign')
         expect(Phase.guards.Ready(current.phase)).toBe(true)
@@ -238,12 +249,26 @@ describe('the mode toggle', () => {
     )
   })
 
-  test('PLAY starts the chosen mode', () => {
+  test('E on the home menu itself does nothing now', () => {
     story(
       update,
       given(readyModel),
-      message(Message.ClickedModeButton()),
+      press('KeyE'),
+      model(current => {
+        expect(current.home.mode).toBe('Campaign')
+      }),
+    )
+  })
+
+  test('START plays the chosen mode', () => {
+    story(
+      update,
+      given(readyModel),
       message(Message.ClickedPlayButton()),
+      resolveFocusLobby(),
+      message(Message.ClickedLobbyModeButton({ mode: 'Endless' })),
+      resolveFocusLobby(),
+      message(Message.ClickedLobbyStartButton()),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.mode).toEqual(RunMode.Endless())
@@ -253,6 +278,8 @@ describe('the mode toggle', () => {
       update,
       given(readyModel),
       message(Message.ClickedPlayButton()),
+      resolveFocusLobby(),
+      message(Message.ClickedLobbyStartButton()),
       model(current => {
         expect(current.mode).toEqual(RunMode.Campaign())
       }),
@@ -263,7 +290,9 @@ describe('the mode toggle', () => {
     story(
       update,
       given(readyModel),
+      openLobbyByKey,
       press('KeyE'),
+      resolveFocusLobby(),
       press('Enter'),
       press('Escape'),
       press('KeyH'),
@@ -276,6 +305,7 @@ describe('the mode toggle', () => {
       model(current => {
         expect(Phase.guards.Ready(current.phase)).toBe(true)
         expect(current.home.mode).toBe('Endless')
+        expect(current.home.lobby).toBe('Closed')
       }),
     )
   })
@@ -409,7 +439,7 @@ describe('the Munchopedia', () => {
     story(
       update,
       given(fresh),
-      press('Enter'),
+      startRunFromHome,
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.home.newEntries).toEqual([])

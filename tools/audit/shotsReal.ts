@@ -61,9 +61,9 @@ for (const viewport of [
   )
   await page.goto(GAME)
   try {
-    await page.waitForSelector('.home-calling', { timeout: 20000 })
+    await page.waitForSelector('#home-play', { timeout: 20000 })
   } catch {
-    problems.push(`${viewport.name}: the home menu never showed its pill`)
+    problems.push(`${viewport.name}: the home menu never showed PLAY`)
   }
   await wait(1500)
   await shot(page, `s49-${TAG}-${viewport.name}-home`)

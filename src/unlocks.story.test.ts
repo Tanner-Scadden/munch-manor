@@ -12,7 +12,7 @@ import { update } from './main'
 import { Message } from './message'
 import { homeAfterRead } from './model.fixture'
 import { noRank, pointsForRank } from './rank'
-import { writeSave } from './testing'
+import { modelAfter, writeSave } from './testing'
 import { callingUnlocksAt, hasUnseenLook, lookUnlocksAt } from './unlocks'
 import { WriteSave } from './update/save'
 
@@ -124,7 +124,10 @@ describe('opening the Look tab', () => {
 
 describe('opening the picker', () => {
   test('marks the callings reached as seen and badges them', () => {
-    const { model: current } = update(reached, Message.ClickedCallingBadge())
+    const { model: current } = update(
+      modelAfter(reached, Message.ClickedPlayButton()),
+      Message.ClickedLobbyHeroButton(),
+    )
     expect(current.freshUnlocks).toContain('calling:LineCook')
     expect(current.freshUnlocks).not.toContain('shirt:Gold')
     expect(current.seenUnlocks).toContain('calling:LineCook')

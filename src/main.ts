@@ -7,7 +7,6 @@ import { ApplicationComposition } from './composition'
 import { makeStep } from './definition'
 import { endQuest } from './firstBreakQuest'
 import { refreshIntent } from './frame'
-import { runModeOf, switchMode } from './home'
 import {
   type PointerPress,
   moveMouse,
@@ -20,7 +19,6 @@ import {
 } from './input'
 import { noteMissedKeyDown } from './keyGrab'
 import { skipKitchenTour } from './kitchenTour'
-import { isOnHomeMenu } from './menuState'
 import {
   AudioState,
   type InputDevice,
@@ -78,6 +76,16 @@ import {
   unwrapUpdateGift,
 } from './update/home'
 import {
+  backFromLobby,
+  blurredLobbyControl,
+  focusedLobbyControl,
+  openLobbyHero,
+  pickLobbyDifficulty,
+  pickLobbyMode,
+  playFromHome,
+  startFromLobby,
+} from './update/lobby'
+import {
   asAllowedPress,
   buyAmmoFromHoldButton,
   clickAmmoTag,
@@ -100,7 +108,6 @@ import {
   resumeFromPointer,
   skipDebutCardWhenUp,
   swapFromButton,
-  tapSound,
   tickFrame,
   useDevice,
   withSlotClick,
@@ -136,6 +143,7 @@ import {
   notePlayOutcome,
   playSounds,
   playStartSoundWhen,
+  tapSound,
   toggleMusic,
   toggleSound,
   uiCue,
@@ -847,16 +855,38 @@ export const update = ApplicationComposition.makeUpdate({
     }),
 
   ClickedPlayButton: model =>
+    Update.combineSteps(model, [playFromHome, ...afterMessage(model)]),
+
+  ClickedLobbyBackButton: model =>
+    Update.combineSteps(model, [backFromLobby, ...afterMessage(model)]),
+
+  ClickedLobbyStartButton: model =>
+    Update.combineSteps(model, [startFromLobby, ...afterMessage(model)]),
+
+  ClickedLobbyHeroButton: model =>
     Update.combineSteps(model, [
-      startOrAsk(runModeOf(model.home.mode)),
+      unlockAudio,
+      tapSound,
+      openLobbyHero,
       ...afterMessage(model),
     ]),
 
-  ClickedModeButton: model =>
-    settle(
-      model,
-      combine(model, [stepWhen(isOnHomeMenu, modelStep(switchMode)), tapSound]),
-    ),
+  ClickedLobbyModeButton: (model, { mode }) =>
+    Update.combineSteps(model, [pickLobbyMode(mode), ...afterMessage(model)]),
+
+  ClickedLobbyDifficultyButton: (model, { difficulty }) =>
+    Update.combineSteps(model, [
+      pickLobbyDifficulty(difficulty),
+      ...afterMessage(model),
+    ]),
+
+  FocusedLobbyControl: (model, { control }) =>
+    settle(model, { model: focusedLobbyControl(model, control) }),
+
+  BlurredLobbyControl: model =>
+    settle(model, { model: blurredLobbyControl(model) }),
+
+  CompletedFocusLobbyControl: model => settle(model, { model }),
 
   ClickedWhatsNewButton: model =>
     Update.combineSteps(model, [
@@ -888,22 +918,6 @@ export const update = ApplicationComposition.makeUpdate({
     Update.combineSteps(model, [
       unlockAudio,
       openMunchopedia(MunchopediaPage.Entry({ kind })),
-      ...afterMessage(model),
-    ]),
-
-  ClickedDifficultyBadge: model =>
-    Update.combineSteps(model, [
-      unlockAudio,
-      tapSound,
-      openPanel('Difficulty'),
-      ...afterMessage(model),
-    ]),
-
-  ClickedCallingBadge: model =>
-    Update.combineSteps(model, [
-      unlockAudio,
-      tapSound,
-      openPanel('Calling'),
       ...afterMessage(model),
     ]),
 

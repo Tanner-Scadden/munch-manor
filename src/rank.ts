@@ -125,13 +125,7 @@ export const isRankUp = (pointsBefore: number, gained: number): boolean =>
 
 // BADGES
 
-export type BadgeTier =
-  | 'Wood'
-  | 'Tin'
-  | 'Bronze'
-  | 'Silver'
-  | 'Gold'
-  | 'Skull'
+export type BadgeTier = 'Wood' | 'Tin' | 'Bronze' | 'Silver' | 'Gold' | 'Skull'
 
 const BADGE_TIERS: ReadonlyArray<BadgeTier> = [
   'Wood',

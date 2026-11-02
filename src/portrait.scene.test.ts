@@ -287,7 +287,7 @@ describe('the world zoom on phones', () => {
 })
 
 describe('the portrait home menu', () => {
-  test('keeps every slot: the player, the MORE deck, and PLAY with its mode and difficulty, and no bests badge before a best', () => {
+  test('keeps every slot: the player, the MORE deck, and PLAY alone with CO-OP, and no bests badge before a best', () => {
     scene(
       ROOT,
       given(onTouch(Phase.Ready())),
@@ -297,7 +297,7 @@ describe('the portrait home menu', () => {
       expect(role('region', { name: /^Your bests/ })).toBeAbsent(),
       expect(role('group', { name: 'Play' })).toExist(),
       expect(role('button', { name: /^Play/ })).toExist(),
-      expect(role('button', { name: /^Difficulty/ })).toExist(),
+      expect(role('button', { name: /^Difficulty/ })).toBeAbsent(),
       expect(selector('.home-hero')).toExist(),
     )
   })

@@ -54,6 +54,12 @@ export const maybeFocusStep = (code: string): Option.Option<FocusStep> => {
   }
 }
 
+// NOTE: how far an arrow key moves focus along a menu's buttons.
+export const FOCUS_STEP_OFFSET: Readonly<Record<FocusStep, number>> = {
+  Previous: -1,
+  Next: 1,
+}
+
 export const isMenuKey = (code: string): boolean => code === MENU_KEY
 
 export const isLobbyKey = (code: string): boolean => code === LOBBY_KEY
