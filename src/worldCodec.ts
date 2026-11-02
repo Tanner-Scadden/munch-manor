@@ -8,7 +8,6 @@ import { type WireHint, wireHintOf } from './wireNumber'
 import type { World } from './world'
 import {
   DebutCard,
-  type FlowField,
   GameEvent,
   World as WorldSchema,
   freshLoot,
@@ -71,8 +70,6 @@ const HOME_FIELDS: ReadonlySet<string> = new Set([
   'rngState',
   'loot',
   'nextEntityId',
-  'flowField',
-  'wideFlowField',
   'frameEvents',
   'hitStop',
   'lessons',
@@ -901,22 +898,12 @@ const codecOf = (ast: SchemaAST.AST): Codec =>
 
 // THE WORLD
 
-const noFlowField: FlowField = {
-  levelKey: '',
-  originIndex: 0,
-  moreOrigins: [],
-  tolls: [],
-  distances: [],
-}
-
 // NOTE: what a client's World holds in the fields that stay home. The
 // lessons are settled, as a room plays them.
 const HOME_VALUES: Fields = {
   rngState: 0,
   loot: freshLoot(0),
   nextEntityId: 0,
-  flowField: noFlowField,
-  wideFlowField: noFlowField,
   frameEvents: [],
   hitStop: initialHitStop,
   lessons: settledLessons,

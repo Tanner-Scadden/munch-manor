@@ -1,8 +1,7 @@
-import { Array, Option, Order, Result, pipe } from 'effect'
+import { Array, Option, Order, pipe } from 'effect'
 
 import {
   type Level,
-  type Tile,
   byDoor,
   doorSpawnPoint,
   hasClearPath,
@@ -33,7 +32,7 @@ import {
   normalize,
   scaleVector,
 } from './geometry'
-import type { FlowField, Toll } from './worldSchema'
+import type { Toll } from './worldSchema'
 
 // PER LEVEL
 
@@ -59,40 +58,54 @@ export type Clearance = 'Narrow' | 'Wide'
 
 export const UNREACHED_DISTANCE = Number.MAX_SAFE_INTEGER
 
-const ORTHOGONAL_STEPS: ReadonlyArray<Tile> = [
-  { column: 1, row: 0 },
-  { column: -1, row: 0 },
-  { column: 0, row: 1 },
-  { column: 0, row: -1 },
-]
+// NOTE: what a field stores for a tile it never reached. Readers get
+// UNREACHED_DISTANCE through distanceAt, so every comparison and sum made on
+// a distance is the one it always was.
+const UNREACHED_TILE = 0x7fffffff
 
-const DIAGONAL_STEPS: ReadonlyArray<Tile> = [
-  { column: 1, row: 1 },
-  { column: 1, row: -1 },
-  { column: -1, row: 1 },
-  { column: -1, row: -1 },
-]
+// NOTE: every tile's distance, in whole tile steps and tolls, to the nearest
+// origin. originIndex is the tile the field flows to. In co-op the field
+// flows to every living player at once: the other players' tiles are
+// moreOrigins. A field is built where it is read, on the frame, from the
+// players' tiles and the traps' tolls: nothing keeps one.
+export type FlowField = Readonly<{
+  originIndex: number
+  moreOrigins: ReadonlyArray<number>
+  distances: Int32Array
+}>
 
-type StepRule = (
+// NOTE: the eight steps a zombie may take, the four straight ones first.
+// The flow field spreads over the straight ones only.
+const STEP_COUNT = 8
+const STRAIGHT_STEP_COUNT = 4
+const STEP_COLUMNS = Int8Array.of(1, -1, 0, 0, 1, 1, -1, -1)
+const STEP_ROWS = Int8Array.of(0, 0, 1, -1, 1, -1, 1, -1)
+
+const isNarrowStepOpen = (
   level: Level,
   column: number,
   row: number,
-  step: Tile,
-) => boolean
+  stepColumn: number,
+  stepRow: number,
+): boolean =>
+  isWalkableTile(level, column + stepColumn, row + stepRow) &&
+  (stepColumn === 0 ||
+    stepRow === 0 ||
+    (isWalkableTile(level, column + stepColumn, row) &&
+      isWalkableTile(level, column, row + stepRow)))
 
-const isNarrowStepOpen: StepRule = (level, column, row, step) =>
-  isWalkableTile(level, column + step.column, row + step.row) &&
-  (step.column === 0 ||
-    step.row === 0 ||
-    (isWalkableTile(level, column + step.column, row) &&
-      isWalkableTile(level, column, row + step.row)))
-
-const isWideStepOpen: StepRule = (level, column, row, step) => {
-  const left = Math.min(column, column + step.column)
-  const top = Math.min(row, row + step.row)
-  if (step.row === 0) {
+const isWideStepOpen = (
+  level: Level,
+  column: number,
+  row: number,
+  stepColumn: number,
+  stepRow: number,
+): boolean => {
+  const left = Math.min(column, column + stepColumn)
+  const top = Math.min(row, row + stepRow)
+  if (stepRow === 0) {
     return isOpenBlock(level, left, row - 1) || isOpenBlock(level, left, row)
-  } else if (step.column === 0) {
+  } else if (stepColumn === 0) {
     return (
       isOpenBlock(level, column - 1, top) || isOpenBlock(level, column, top)
     )
@@ -101,148 +114,152 @@ const isWideStepOpen: StepRule = (level, column, row, step) => {
   }
 }
 
-const STEP_RULES: Readonly<Record<Clearance, StepRule>> = {
-  Narrow: isNarrowStepOpen,
-  Wide: isWideStepOpen,
-}
+const isClearanceStepOpen = (
+  level: Level,
+  clearance: Clearance,
+  column: number,
+  row: number,
+  stepColumn: number,
+  stepRow: number,
+): boolean =>
+  clearance === 'Wide'
+    ? isWideStepOpen(level, column, row, stepColumn, stepRow)
+    : isNarrowStepOpen(level, column, row, stepColumn, stepRow)
 
 // NOTE: the flow field covers every walkable tile on the map, the yard too,
 // so a zombie in the yard reads it on the way to the door the yard leads to.
 // The yard meets the house only at its doors, so the house's own distances
 // are the same as a field over the house alone. A zombie past the map's edge
 // has no tile, and walks around the house instead (see OUTSIDE).
-const openNeighbors = (
-  level: Level,
-  index: number,
-  clearance: Clearance,
-): ReadonlyArray<number> => {
-  const { column, row } = tileOfIndex(level, index)
-  return Array.filterMap(ORTHOGONAL_STEPS, step =>
-    STEP_RULES[clearance](level, column, row, step)
-      ? Result.succeed(tileIndex(level, column + step.column, row + step.row))
-      : Result.failVoid,
-  )
+//
+// A level's walks are fixed, so each is laid out once with the level, in
+// compressed rows: the tiles one step from a tile are
+// adjacent[start[tile]] up to adjacent[start[tile + 1]].
+type WalkGraph = Readonly<{ start: Int32Array; adjacent: Int32Array }>
+
+const walkGraphFor = (level: Level, clearance: Clearance): WalkGraph => {
+  const start = new Int32Array(level.tileCount + 1)
+  const adjacent: Array<number> = []
+  for (let index = 0; index < level.tileCount; index++) {
+    const { column, row } = tileOfIndex(level, index)
+    for (let step = 0; step < STRAIGHT_STEP_COUNT; step++) {
+      const stepColumn = STEP_COLUMNS[step] ?? 0
+      const stepRow = STEP_ROWS[step] ?? 0
+      if (
+        isClearanceStepOpen(level, clearance, column, row, stepColumn, stepRow)
+      ) {
+        adjacent.push(tileIndex(level, column + stepColumn, row + stepRow))
+      }
+    }
+    start[index + 1] = adjacent.length
+  }
+  return { start, adjacent: Int32Array.from(adjacent) }
 }
 
-type Neighbors = Readonly<
-  Record<Clearance, ReadonlyArray<ReadonlyArray<number>>>
->
+type WalkGraphs = Readonly<{ narrow: WalkGraph; wide: WalkGraph }>
 
-const neighborsOf = perLevel((level): Neighbors => ({
-  Narrow: Array.makeBy(level.tileCount, index =>
-    openNeighbors(level, index, 'Narrow'),
-  ),
-  Wide: Array.makeBy(level.tileCount, index =>
-    openNeighbors(level, index, 'Wide'),
-  ),
-}))
+const walkGraphsOf = perLevel(
+  (level): WalkGraphs => ({
+    narrow: walkGraphFor(level, 'Narrow'),
+    wide: walkGraphFor(level, 'Wide'),
+  }),
+)
 
-const openNeighborsOf = (
-  neighbors: Neighbors,
-  index: number,
-  clearance: Clearance,
-): ReadonlyArray<number> =>
-  Option.getOrElse(Array.get(neighbors[clearance], index), () => [])
-
-const distanceAt = (distances: ReadonlyArray<number>, index: number): number =>
-  Option.getOrElse(Array.get(distances, index), () => UNREACHED_DISTANCE)
-
-type TollMap = ReadonlyMap<number, number>
-
-const tollAt = (tolls: TollMap, index: number): number =>
-  Option.getOrElse(Option.fromNullishOr(tolls.get(index)), () => 0)
-
-type Buckets = Map<number, Array<number>>
-
-const nearestDepth = (buckets: Buckets): number =>
-  Array.reduce(
-    Array.fromIterable(buckets.keys()),
-    UNREACHED_DISTANCE,
-    (nearest, depth) => Math.min(nearest, depth),
-  )
-
-const addArrival = (buckets: Buckets, depth: number, index: number): void => {
-  const bucket = buckets.get(depth)
-  if (bucket === undefined) {
-    buckets.set(depth, [index])
-  } else {
-    bucket.push(index)
-  }
+export const distanceAt = (distances: Int32Array, index: number): number => {
+  const distance = distances[index]
+  return distance === undefined || distance === UNREACHED_TILE
+    ? UNREACHED_DISTANCE
+    : distance
 }
 
 // NOTE: the field is a shortest path search with whole tile steps, so it
-// settles tiles one distance at a time from a bucket per distance. The
-// distances and the buckets are scratch arrays local to one search and
-// mutated in place, which keeps a refresh linear in the tile count. Copying
-// the whole grid once per ring made a refresh cost a frame on a slow phone
-// every time the player crossed a tile.
+// settles tiles one distance at a time. A tile stepped onto at a shorter
+// distance than it was reached by before waits in a bucket for that
+// distance, a list in two queue arrays. A step adds at most the largest toll
+// plus one, so a ring of one more buckets than that holds every distance in
+// flight. The order within a bucket never changes a distance.
 const spread = (
   level: Level,
   origins: ReadonlyArray<number>,
   clearance: Clearance,
-  tolls: TollMap,
-): ReadonlyArray<number> => {
-  const neighbors = neighborsOf(level)
-  const distances = Array.makeBy(level.tileCount, () => UNREACHED_DISTANCE)
-  const buckets: Buckets = new Map([[0, Array.copy(origins)]])
-  const settleRing = (depth: number): void => {
-    const ring = Option.getOrElse(
-      Option.fromNullishOr(buckets.get(depth)),
-      () => [],
-    )
-    buckets.delete(depth)
-    const ringClearance: Clearance = depth === 0 ? 'Narrow' : clearance
-    Array.forEach(ring, index => {
-      if (distances[index] !== UNREACHED_DISTANCE) {
-        return
-      }
-      distances[index] = depth
-      Array.forEach(
-        openNeighborsOf(neighbors, index, ringClearance),
-        neighbor => {
-          if (distances[neighbor] === UNREACHED_DISTANCE) {
-            addArrival(buckets, depth + 1 + tollAt(tolls, neighbor), neighbor)
-          }
-        },
-      )
-    })
-    if (buckets.size > 0) {
-      settleRing(nearestDepth(buckets))
+  tolls: ReadonlyArray<Toll>,
+): Int32Array => {
+  const graphs = walkGraphsOf(level)
+  const chosen = clearance === 'Wide' ? graphs.wide : graphs.narrow
+  const distances = new Int32Array(level.tileCount).fill(UNREACHED_TILE)
+  const reached = new Int32Array(level.tileCount).fill(UNREACHED_TILE)
+  const tollByTile = new Int32Array(level.tileCount)
+  let largestToll = 0
+  for (const { index, cost } of tolls) {
+    if (index >= 0 && index < level.tileCount) {
+      tollByTile[index] = cost
+      largestToll = Math.max(largestToll, cost)
     }
   }
-  settleRing(0)
+  const ring = largestToll + 2
+  const buckets = new Int32Array(ring).fill(-1)
+  let queueTiles = new Int32Array(level.tileCount + origins.length)
+  let queueNext = new Int32Array(queueTiles.length)
+  let used = 0
+  let pending = 0
+  const wait = (depth: number, tile: number): void => {
+    if (used === queueTiles.length) {
+      const grownTiles = new Int32Array(used * 2)
+      grownTiles.set(queueTiles)
+      queueTiles = grownTiles
+      const grownNext = new Int32Array(used * 2)
+      grownNext.set(queueNext)
+      queueNext = grownNext
+    }
+    const bucket = depth % ring
+    queueTiles[used] = tile
+    queueNext[used] = buckets[bucket] ?? -1
+    buckets[bucket] = used
+    used++
+    pending++
+  }
+  for (const origin of origins) {
+    wait(0, origin)
+  }
+  for (let depth = 0; pending > 0; depth++) {
+    const bucket = depth % ring
+    const graph = depth === 0 ? graphs.narrow : chosen
+    let entry = buckets[bucket] ?? -1
+    buckets[bucket] = -1
+    while (entry !== -1) {
+      const tile = queueTiles[entry] ?? 0
+      const following = queueNext[entry] ?? -1
+      pending--
+      if (distances[tile] === UNREACHED_TILE) {
+        distances[tile] = depth
+        const last = graph.start[tile + 1] ?? 0
+        for (let edge = graph.start[tile] ?? 0; edge < last; edge++) {
+          const neighbor = graph.adjacent[edge] ?? 0
+          const arrival = depth + 1 + (tollByTile[neighbor] ?? 0)
+          if (
+            distances[neighbor] === UNREACHED_TILE &&
+            arrival < (reached[neighbor] ?? UNREACHED_TILE)
+          ) {
+            reached[neighbor] = arrival
+            wait(arrival, neighbor)
+          }
+        }
+      }
+      entry = following
+    }
+  }
   return distances
 }
-
-const computeFlowField = (
-  level: Level,
-  originIndex: number,
-  clearance: Clearance,
-  tolls: ReadonlyArray<Toll>,
-  moreOrigins: ReadonlyArray<number> = [],
-): FlowField => ({
-  levelKey: level.key,
-  originIndex,
-  moreOrigins,
-  tolls,
-  distances: spread(
-    level,
-    [originIndex, ...moreOrigins],
-    clearance,
-    new Map(Array.map(tolls, ({ index, cost }) => [index, cost])),
-  ),
-})
 
 const fieldFrom = (
   level: Level,
   origins: Array.NonEmptyReadonlyArray<number>,
   clearance: Clearance,
+  tolls: ReadonlyArray<Toll>,
 ): FlowField => ({
-  levelKey: level.key,
   originIndex: Array.headNonEmpty(origins),
   moreOrigins: Array.tailNonEmpty(origins),
-  tolls: [],
-  distances: spread(level, origins, clearance, new Map()),
+  distances: spread(level, origins, clearance, tolls),
 })
 
 export const flowFieldToward = (
@@ -250,82 +267,24 @@ export const flowFieldToward = (
   target: Vector,
   clearance: Clearance,
   tolls: ReadonlyArray<Toll>,
-): FlowField =>
-  computeFlowField(level, tileIndexAt(level, target), clearance, tolls)
+): FlowField => fieldFrom(level, [tileIndexAt(level, target)], clearance, tolls)
 
-const isSameToll = (first: Toll, second: Toll): boolean =>
-  first.index === second.index && first.cost === second.cost
-
-const areSameTolls = (
-  first: ReadonlyArray<Toll>,
-  second: ReadonlyArray<Toll>,
-): boolean =>
-  first.length === second.length &&
-  Array.every(Array.zip(first, second), ([left, right]) =>
-    isSameToll(left, right),
-  )
-
-// NOTE: the field is kept while the player stays on one tile and the tolls
-// hold. It is rebuilt when the level changes, such as an exit opening, since
-// its distances are indexed by that level's tiles.
-export const refreshFlowField = (
+// NOTE: in co-op the field flows to every living player at once, one pass
+// from all their tiles, so each zombie walks downhill to whoever is nearest.
+// One target is flowFieldToward exactly. Both clearances are laid out from
+// the same tiles and tolls.
+export const flowFieldsToward = (
   level: Level,
-  flowField: FlowField,
-  target: Vector,
-  clearance: Clearance,
-  tolls: ReadonlyArray<Toll>,
-): FlowField => {
-  const originIndex = tileIndexAt(level, target)
-  if (
-    flowField.levelKey === level.key &&
-    originIndex === flowField.originIndex &&
-    Array.isReadonlyArrayEmpty(flowField.moreOrigins) &&
-    areSameTolls(flowField.tolls, tolls)
-  ) {
-    return flowField
-  } else {
-    return computeFlowField(level, originIndex, clearance, tolls)
-  }
-}
-
-const areSameOrigins = (
-  first: ReadonlyArray<number>,
-  second: ReadonlyArray<number>,
-): boolean =>
-  first.length === second.length &&
-  Array.every(Array.zip(first, second), ([left, right]) => left === right)
-
-// NOTE: in co-op the field flows to every living player at once, one
-// breadth-first pass from all their tiles, so each zombie walks downhill to
-// whoever is nearest. One target is refreshFlowField exactly.
-export const refreshFlowFieldToward = (
-  level: Level,
-  flowField: FlowField,
   targets: Array.NonEmptyReadonlyArray<Vector>,
-  clearance: Clearance,
   tolls: ReadonlyArray<Toll>,
-): FlowField => {
-  const [first, ...rest] = Array.dedupe(
+): Readonly<Record<Clearance, FlowField>> => {
+  const origins = Array.dedupe(
     Array.map(targets, target => tileIndexAt(level, target)),
   )
-  if (Array.isReadonlyArrayEmpty(rest)) {
-    return refreshFlowField(
-      level,
-      flowField,
-      Array.headNonEmpty(targets),
-      clearance,
-      tolls,
-    )
+  return {
+    Narrow: fieldFrom(level, origins, 'Narrow', tolls),
+    Wide: fieldFrom(level, origins, 'Wide', tolls),
   }
-  if (
-    flowField.levelKey === level.key &&
-    first === flowField.originIndex &&
-    areSameOrigins(rest, flowField.moreOrigins) &&
-    areSameTolls(flowField.tolls, tolls)
-  ) {
-    return flowField
-  }
-  return computeFlowField(level, first, clearance, tolls, rest)
 }
 
 const isOriginOf = (flowField: FlowField, index: number): boolean =>
@@ -335,58 +294,43 @@ const isOriginOf = (flowField: FlowField, index: number): boolean =>
 
 // STEERING
 
-type Step = Readonly<{ index: number; distance: number }>
-
-const isStepOpen = (
-  level: Level,
-  flowField: FlowField,
-  column: number,
-  row: number,
-  step: Tile,
-  clearance: Clearance,
-): boolean =>
-  STEP_RULES[clearance](level, column, row, step) ||
-  (isOriginOf(
-    flowField,
-    tileIndex(level, column + step.column, row + step.row),
-  ) &&
-    isNarrowStepOpen(level, column, row, step))
-
-const downhillStep = (
+// NOTE: the tile a zombie at this position steps to, the neighbor with the
+// shortest distance when that is shorter than its own, or -1. The first of
+// the eight steps wins a tie.
+const downhillTile = (
   level: Level,
   flowField: FlowField,
   position: Vector,
   clearance: Clearance,
-): Option.Option<Step> => {
+): number => {
   const index = tileIndexAt(level, position)
-  const { column, row } = tileOfIndex(level, index)
-  const here = distanceAt(flowField.distances, index)
-  return pipe(
-    [...ORTHOGONAL_STEPS, ...DIAGONAL_STEPS],
-    Array.filter(step =>
-      isStepOpen(level, flowField, column, row, step, clearance),
-    ),
-    Array.map(step => {
-      const neighborIndex = tileIndex(
+  const column = index % level.columns
+  const row = Math.floor(index / level.columns) + level.topRow
+  let best = -1
+  let bestDistance = distanceAt(flowField.distances, index)
+  for (let step = 0; step < STEP_COUNT; step++) {
+    const stepColumn = STEP_COLUMNS[step] ?? 0
+    const stepRow = STEP_ROWS[step] ?? 0
+    const neighbor = tileIndex(level, column + stepColumn, row + stepRow)
+    const distance = distanceAt(flowField.distances, neighbor)
+    if (
+      distance < bestDistance &&
+      (isClearanceStepOpen(
         level,
-        column + step.column,
-        row + step.row,
-      )
-      return {
-        index: neighborIndex,
-        distance: distanceAt(flowField.distances, neighborIndex),
-      }
-    }),
-    Array.reduce(Option.none<Step>(), (best, step) =>
-      step.distance < here &&
-      Option.match(best, {
-        onNone: () => true,
-        onSome: ({ distance }) => step.distance < distance,
-      })
-        ? Option.some(step)
-        : best,
-    ),
-  )
+        clearance,
+        column,
+        row,
+        stepColumn,
+        stepRow,
+      ) ||
+        (isOriginOf(flowField, neighbor) &&
+          isNarrowStepOpen(level, column, row, stepColumn, stepRow)))
+    ) {
+      best = neighbor
+      bestDistance = distance
+    }
+  }
+  return best
 }
 
 // NOTE: a wide walker cannot reach the middle of a tile beside a wall, so it
@@ -411,14 +355,12 @@ const flowDirection = (
   halfWidth: number,
   clearance: Clearance,
 ): Option.Option<Vector> =>
-  Option.flatMap(
-    downhillStep(level, flowField, position, clearance),
-    ({ index }) =>
-      directionBetween(
-        position,
-        waypointFor(level, index, halfWidth, clearance),
-      ),
-  )
+{
+  const tile = downhillTile(level, flowField, position, clearance)
+  return tile === -1
+    ? Option.none()
+    : directionBetween(position, waypointFor(level, tile, halfWidth, clearance))
+}
 
 const directWeight = (distance: number): number =>
   clamp(
@@ -472,12 +414,12 @@ type BaitFields = Readonly<Record<Clearance, FlowField>>
 const baitFieldsFor = (level: Level, door: DoorId): BaitFields =>
   Array.match(level.thresholds[door].indices, {
     onEmpty: () => ({
-      Narrow: computeFlowField(level, 0, 'Narrow', []),
-      Wide: computeFlowField(level, 0, 'Wide', []),
+      Narrow: fieldFrom(level, [0], 'Narrow', []),
+      Wide: fieldFrom(level, [0], 'Wide', []),
     }),
     onNonEmpty: origins => ({
-      Narrow: fieldFrom(level, origins, 'Narrow'),
-      Wide: fieldFrom(level, origins, 'Wide'),
+      Narrow: fieldFrom(level, origins, 'Narrow', []),
+      Wide: fieldFrom(level, origins, 'Wide', []),
     }),
   })
 

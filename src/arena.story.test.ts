@@ -32,7 +32,7 @@ import {
   initialModel,
 } from './model'
 import { DISTANT_SPAWN, quietWave, withPlayerAt } from './model.fixture'
-import { UNREACHED_DISTANCE } from './pathing'
+import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from './pathing'
 import { press, tick, ticks, zombieAt } from './testing'
 
 const FRAME_MS = FIXED_STEP_MS
@@ -77,16 +77,16 @@ describe('the room', () => {
   })
 
   test('every walkable tile in the house can reach the player', () => {
-    const { flowField } = initialModel
     const level = levelOf(initialModel)
-    const walkableDistances = Array.filter(
-      flowField.distances,
-      (_distance, index) => {
+    const flowField = flowFieldToward(level, initialModel.player, 'Narrow', [])
+    const walkableDistances = Array.filterMap(
+      Array.range(0, level.tileCount - 1),
+      index => {
         const { column, row } = tileOfIndex(level, index)
-        return (
-          isWalkableTile(level, column, row) &&
+        return isWalkableTile(level, column, row) &&
           isInsideRoomAt(level, tileCenter({ column, row }))
-        )
+          ? Result.succeed(distanceAt(flowField.distances, index))
+          : Result.failVoid
       },
     )
     expect(Array.isReadonlyArrayNonEmpty(walkableDistances)).toBe(true)
@@ -340,28 +340,6 @@ describe('pathing', () => {
       ),
     ).toBe(true)
     expect(Array.some(zombiePositions, ({ y }) => y > COUCH_TOP)).toBe(true)
-  })
-
-  test('the flow field is recomputed only when the player changes tile', () => {
-    const start = withPlayerAt(quietWave(1), 165, 95)
-    story(
-      update,
-      given(start),
-      tick(FRAME_MS),
-      model(({ flowField }) => {
-        expect(flowField).toBe(start.flowField)
-      }),
-      press('KeyD'),
-      tick(FRAME_MS),
-      model(({ flowField }) => {
-        expect(flowField).toBe(start.flowField)
-      }),
-      ...ticks(5, FRAME_MS),
-      model(({ flowField }) => {
-        expect(flowField).not.toBe(start.flowField)
-        expect(flowField.originIndex).toBe(start.flowField.originIndex + 1)
-      }),
-    )
   })
 
   test('zombies that start on top of each other spread apart', () => {

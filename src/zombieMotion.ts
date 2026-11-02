@@ -32,17 +32,18 @@ import {
 import { nearestOf, targetsOf } from './party'
 import {
   type Clearance,
+  type FlowField,
+  flowFieldsToward,
   maybeNearestBait,
   playerDistancePx,
   steerToBait,
   steerToward,
 } from './pathing'
-import { BAIT_RULES, barricadedDoors, trapBlockers } from './traps'
+import { BAIT_RULES, barricadedDoors, tollsOf, trapBlockers } from './traps'
 import type { World } from './world'
 import {
   type Boss,
   type DoorId,
-  type FlowField,
   GameEvent,
   type Player,
   type Vector,
@@ -333,10 +334,6 @@ export const advanceZombies = (
 ): ReadonlyArray<Zombie> => {
   const level = levelOf(model)
   const separations = separationPushes(model.zombies)
-  const flowFields: FlowFields = {
-    Narrow: model.flowField,
-    Wide: model.wideFlowField,
-  }
   const obstacles: Obstacles = {
     level,
     blockers: trapBlockers(level, model.traps),
@@ -345,6 +342,11 @@ export const advanceZombies = (
     zombies: model.zombies,
   }
   const targets = targetsOf(model)
+  const flowFields = flowFieldsToward(
+    level,
+    targets,
+    tollsOf(level, model.traps),
+  )
   return pipe(
     model.zombies,
     Array.map((zombie, index) =>

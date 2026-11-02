@@ -53,6 +53,7 @@ import {
   ticks,
   zombieOf,
 } from './testing'
+import { distanceAt, flowFieldToward } from './pathing'
 import { TRAPS, repairPrice, stageOf, tollsOf } from './traps'
 import { WEAPONS } from './weapons'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from './zombies'
@@ -505,32 +506,22 @@ describe('barricades and pathing', () => {
   const isNearNorthDoor = ({ x, y }: Vector) =>
     y >= 0 && y < 30 && x > 205 && x < 235
 
-  test('a barricade tolls its doorway in the flow field, recomputed only when traps change', () => {
+  test('a barricade tolls its doorway in the flow field', () => {
     const start = fightingWith([barricade(1, 'North')], [], ROOM_MIDDLE)
-    const settled: Array<Model> = []
-    story(
-      update,
-      given(start),
-      tick(FRAME_MS),
-      model(({ flowField, wideFlowField }) => {
-        expect(flowField).not.toBe(start.flowField)
-        expect(flowField.tolls).toEqual(tollsOf(MANOR, start.traps))
-        expect(wideFlowField.tolls).toEqual(tollsOf(MANOR, start.traps))
-        const innerDistance = pipe(
-          Array.head(MANOR.thresholds.North.indices),
-          Option.flatMap(index => Array.get(flowField.distances, index)),
-          Option.getOrThrow,
-        )
-        expect(innerDistance).toBeGreaterThan(TRAPS.Barricade.pathCost)
-      }),
-      model(current => {
-        settled.push(current)
-      }),
-      tick(FRAME_MS),
-      model(({ flowField }) => {
-        expect(flowField).toBe(Option.getOrThrow(Array.head(settled)).flowField)
-      }),
+    const tolls = tollsOf(MANOR, start.traps)
+    const innerTile = Option.getOrThrow(
+      Array.head(MANOR.thresholds.North.indices),
     )
+    Array.forEach(['Narrow', 'Wide'] as const, clearance => {
+      const bare = flowFieldToward(MANOR, start.player, clearance, [])
+      const tolled = flowFieldToward(MANOR, start.player, clearance, tolls)
+      expect(distanceAt(tolled.distances, innerTile)).toBeGreaterThan(
+        TRAPS.Barricade.pathCost,
+      )
+      expect(distanceAt(tolled.distances, innerTile)).toBeGreaterThan(
+        distanceAt(bare.distances, innerTile),
+      )
+    })
   })
 
   test('a zombie at a boarded door walks around to another door when that is shorter', () => {
@@ -592,7 +583,6 @@ describe('barricades and pathing', () => {
     expect(eventsOf(frames, GameEvent.guards.TrapBroken)).toHaveLength(1)
     const last = Option.getOrThrow(Array.last(frames))
     expect(last.traps).toHaveLength(3)
-    expect(last.flowField.tolls).toEqual(tollsOf(MANOR, last.traps))
     expect(
       Array.some(last.zombies, zombie => zombie.y > 40 && zombie.y < 170),
     ).toBe(true)
@@ -1029,10 +1019,6 @@ describe('between waves', () => {
         expect(traps).toEqual([])
         expect(trapStock).toEqual({ Barricade: 0, Turret: 0 })
         expect(selectedTrap).toBe('Barricade')
-      }),
-      tick(FRAME_MS),
-      model(({ flowField }) => {
-        expect(flowField.tolls).toEqual([])
       }),
     )
   })

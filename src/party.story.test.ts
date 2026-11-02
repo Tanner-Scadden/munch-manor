@@ -3,7 +3,8 @@ import { given, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { levelOf } from './arena'
+import { MANOR, levelOf } from './arena'
+import { flowFieldsToward } from './pathing'
 import {
   FIXED_STEP_MS,
   IDLE_RELOAD_MS,
@@ -46,6 +47,7 @@ import {
   maybePlayerAt,
   playersOf,
   setPresence,
+  targetsOf,
 } from './party'
 import { PURCHASE_RULES } from './purchase'
 import { SHOP_ITEMS, STALL_BOX } from './shop'
@@ -136,7 +138,9 @@ describe('who the zombies hunt', () => {
         const [nearLeft, nearRight] = current.zombies
         expect(nearLeft?.x).toBeLessThan(LEFT_X + 40)
         expect(nearRight?.x).toBeGreaterThan(RIGHT_X - 40)
-        expect(current.flowField.moreOrigins).toHaveLength(1)
+        expect(
+          flowFieldsToward(MANOR, targetsOf(current), []).Narrow.moreOrigins,
+        ).toHaveLength(1)
       }),
     )
   })

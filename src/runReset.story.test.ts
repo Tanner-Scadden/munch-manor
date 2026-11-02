@@ -49,8 +49,6 @@ const RUN_FIELDS = [
   'laserSight',
   'trapNotice',
   'level',
-  'flowField',
-  'wideFlowField',
   'intent',
   'debutCard',
   'hintBand',

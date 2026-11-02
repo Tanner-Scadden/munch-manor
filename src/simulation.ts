@@ -46,14 +46,12 @@ import {
   leadSeatOf,
   maybePlayerAt,
   playersOf,
-  targetsOf,
 } from './party'
-import { refreshFlowFieldToward } from './pathing'
 import { advancePowerUps, playerSpeed } from './powerups'
 import { advancePurchase } from './purchase'
 import { advanceParty } from './revive'
 import { refreshShopPresence } from './shop'
-import { advanceTraps, clearBrokenTraps, tollsOf, trapBlockers } from './traps'
+import { advanceTraps, clearBrokenTraps, trapBlockers } from './traps'
 import { advanceRound, endWhenDefeated } from './waves'
 import type { World } from './world'
 import {
@@ -322,7 +320,6 @@ const advanceWorld = (model: World, deltaMs: number): World => {
 
   const level = levelOf(model)
   const blockers = trapBlockers(level, model.traps)
-  const tolls = tollsOf(level, model.traps)
   const moved = forEachSeat(
     modifyFields(model, {
       elapsedMs: elapsedMs => elapsedMs + deltaMs,
@@ -330,16 +327,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     }),
     moveSeat(level, blockers, seconds, deltaMs),
   )
-  const targets = targetsOf(moved)
-  const routed = forEachSeat(
-    modifyFields(moved, {
-      flowField: flowField =>
-        refreshFlowFieldToward(level, flowField, targets, 'Narrow', tolls),
-      wideFlowField: flowField =>
-        refreshFlowFieldToward(level, flowField, targets, 'Wide', tolls),
-    }),
-    visitStall(deltaMs),
-  )
+  const routed = forEachSeat(moved, visitStall(deltaMs))
 
   const armed = forEachSeat(routed, armSeat(deltaMs))
 
