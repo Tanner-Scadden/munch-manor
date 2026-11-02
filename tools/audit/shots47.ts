@@ -45,6 +45,8 @@ type Scene = Readonly<{
   isPicker?: boolean
   // NOTE: selectors clicked in order once the picker is open.
   clicks?: ReadonlyArray<string>
+  // NOTE: a shot after each click, named `<scene>-<n>`.
+  isFlow?: boolean
 }>
 
 const SCENES: ReadonlyArray<Scene> = [
@@ -103,6 +105,13 @@ const SCENES: ReadonlyArray<Scene> = [
     open: '#lobby-hero',
     isPicker: true,
     clicks: ["[data-calling='TrackStar']"],
+  },
+  {
+    name: 'flow',
+    query: `${LEARNED}&rank=1000&bones=220`,
+    open: '#lobby-hero',
+    clicks: ["[data-calling='TrackStar']", '.calling-buy'],
+    isFlow: true,
   },
   { name: 'profile-you', query: 'profile=look' },
   {
@@ -205,6 +214,12 @@ for (const viewport of VIEWPORTS) {
       for (const selector of scene.clicks ?? []) {
         await page.click(selector)
         await settleAnimations(page)
+        if (scene.isFlow === true) {
+          await shot(
+            page,
+            `s47-${TAG}-${viewport.name}-${scene.name}-${selector.includes('buy') ? 'bought' : 'trying'}`,
+          )
+        }
       }
     }
     const where = `${viewport.name} ${scene.name}`

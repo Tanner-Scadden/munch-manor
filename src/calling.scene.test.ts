@@ -169,7 +169,8 @@ describe('a hero for sale', () => {
       expect(
         selector(".calling-card[data-calling='LineCook'][data-lock='Locked']"),
       ).toExist(),
-      expect(selector('.look-buy')).toBeAbsent(),
+      expect(selector('.calling-balance')).toHaveText('100'),
+      expect(selector('.calling-buy')).toBeAbsent(),
       click(role('button', { name: /^Handyman, for sale, 60 Bones/ })),
       expect(selector(".calling-card[data-trying='true']")).toExist(),
       expect(role('button', { name: 'Buy for 60 Bones' })).toExist(),

@@ -303,9 +303,114 @@
     0 4px 0 rgba(0, 0, 0, 0.45);
 }
 
-.panel-actions .look-buy {
-  position: static;
+/* NOTE: the Bones balance, by the title and left of the close button. */
+.panel-dialog[data-panel='Calling'] .calling-balance {
+  position: absolute;
+  top: calc(var(--menu-pad) + 2px);
+  right: calc(var(--menu-pad) + 56px);
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  background: #140c10;
+  box-shadow: 0 0 0 2px #5a3a4a;
+}
+
+.calling-balance .rank-bone-img {
+  width: 14px !important;
+  height: auto !important;
+}
+
+.calling-balance .rank-bones,
+.calling-balance-count {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.calling-balance .rank-bones-count {
+  font: bold 16px / 1 var(--menu-font);
+}
+
+/* NOTE: the BUY button, chunky and gold like START; dim and red when the
+   Bones fall short. */
+.calling-buy {
+  position: relative;
   flex: 1;
+  display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 10px;
+  box-sizing: border-box;
   min-height: var(--menu-tap);
+  margin-bottom: 5px;
+  padding: 0 14px;
+  border: 3px solid #2a1d00;
+  border-radius: var(--menu-radius);
+  background: linear-gradient(#fff1a0, #ffe066 55%, #e8b52a);
+  color: #2a1d00;
+  font: bold calc(var(--menu-text-size) * 1.25) / 1 var(--menu-font);
+  letter-spacing: 0.1em;
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.55),
+    0 5px 0 #8a6a10;
+  cursor: pointer;
+  touch-action: manipulation;
+  animation: play-breathe 2.4s ease-in-out infinite;
+}
+
+.calling-buy:active {
+  translate: 0 4px;
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.55),
+    0 1px 0 #8a6a10;
+}
+
+.calling-buy .rank-bone-img {
+  width: 18px !important;
+  height: auto !important;
+  filter: brightness(0.35);
+}
+
+.calling-buy-price,
+.calling-buy-price.rank-bones {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.calling-buy .rank-bones-count {
+  color: #2a1d00;
+  text-shadow: none;
+  font: bold calc(var(--menu-text-size) * 1.25) / 1 var(--menu-font);
+}
+
+.calling-buy[data-short='true'] {
+  border-color: #5a3a4a;
+  background: #1c1218;
+  color: #b9a7b0;
+  box-shadow: none;
+  cursor: default;
+  animation: none;
+}
+
+.calling-buy[data-short='true'] .rank-bone-img {
+  filter: none;
+  opacity: 0.7;
+}
+
+.calling-buy[data-short='true'] .rank-bones-count {
+  color: #ff5a4a;
+}
+
+.calling-buy-need {
+  font: bold var(--menu-small-size) / 1 var(--menu-font);
+  color: #b9a7b0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calling-buy {
+    animation: none;
+  }
 }
