@@ -7,6 +7,7 @@ import { ApplicationComposition } from './composition'
 import { makeStep } from './definition'
 import { endQuest } from './firstBreakQuest'
 import { refreshIntent } from './frame'
+import { isTurnHintShown, seeTurnHint } from './home'
 import {
   type PointerPress,
   moveMouse,
@@ -324,13 +325,19 @@ export const update = ApplicationComposition.makeUpdate({
   // made. The tapped button's own Message did the work.
   TappedWithTouch: model => settle(model, { model }),
 
-  MeasuredGameSurface: (model, { left, top, width, height }) =>
-    settle(model, {
-      model: modifyFields(model, {
-        maybeSurface: () => Option.some({ left, top, width, height }),
-        orientation: () => orientationOf(width, height),
-      }),
-    }),
+  // NOTE: turning the phone while the turn hint is up is the hint done.
+  MeasuredGameSurface: (model, { left, top, width, height }) => {
+    const measured = modifyFields(model, {
+      maybeSurface: () => Option.some({ left, top, width, height }),
+      orientation: () => orientationOf(width, height),
+    })
+    return settle(model, {
+      model:
+        isTurnHintShown(model) && !isTurnHintShown(measured)
+          ? seeTurnHint(measured)
+          : measured,
+    })
+  },
 
   CompletedGenerateSeed: (model, { seed }) =>
     settle(model, {
@@ -941,6 +948,8 @@ export const update = ApplicationComposition.makeUpdate({
       openMunchopedia(MunchopediaPage.Entry({ kind })),
       ...afterMessage(model),
     ]),
+
+  ClickedTurnHint: model => settle(model, { model: seeTurnHint(model) }),
 
   ClickedManorButton: model =>
     Update.combineSteps(model, [

@@ -114,6 +114,17 @@ const SCENES: ReadonlyArray<Scene> = [
   { name: 'home', query: '' },
   { name: 'home-rank', query: 'rank=1850' },
   {
+    name: 'home-hint-gone',
+    query: '',
+    act: async page => {
+      // NOTE: the hint is drawn only upright, so landscape has none to tap.
+      const hint = page.getByRole('button', { name: /turn sideways/i })
+      if ((await hint.count()) > 0) {
+        await hint.click()
+      }
+    },
+  },
+  {
     name: 'bests',
     query: 'bests&kills=Shambler:40,Runner:12&newentries=Runner',
   },

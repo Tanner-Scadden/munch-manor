@@ -21,6 +21,7 @@ import {
 } from './model'
 import { isDiscovered, newlyDiscovered } from './munchopedia'
 import { freshRun } from './runReset'
+import { isPortrait } from './screen'
 import { addKills, killTotal, killsSince } from './stats'
 import type { FocusStep } from './stepWorld'
 import type { Difficulty } from './worldSchema'
@@ -36,13 +37,14 @@ import type { Difficulty } from './worldSchema'
 // (homeButtonsOf).
 export const HOME_BUTTONS: Array.NonEmptyReadonlyArray<HomeButton> =
   IS_COOP_RELEASED
-    ? ['Play', 'Coop', 'Manor', 'Support', 'Settings']
-    : ['Play', 'Manor', 'Support', 'Settings']
+    ? ['Play', 'Coop', 'Manor', 'Bests', 'Support', 'Settings']
+    : ['Play', 'Manor', 'Bests', 'Support', 'Settings']
 
 const HOME_BUTTON_IDS: Readonly<Record<HomeButton, string>> = {
   Play: 'home-play',
   Coop: 'home-coop',
   Manor: 'home-manor',
+  Bests: 'home-bests',
   Support: 'home-support',
   Settings: 'home-settings',
 }
@@ -50,11 +52,21 @@ const HOME_BUTTON_IDS: Readonly<Record<HomeButton, string>> = {
 export const isSupportShown = (model: Model): boolean =>
   Option.isSome(model.maybeSupportUrl)
 
+// NOTE: the bests badge is a button, and is drawn only once the player has
+// a best on the chosen level or a zombie splatted.
+const hasBests = (model: Model): boolean =>
+  Option.isSome(bestsFor(model).maybeBestEndlessWave) ||
+  Option.isSome(bestsFor(model).maybeFastestWinMs) ||
+  model.bests.totalKills > 0
+
 // NOTE: the buttons the home menu draws, in arrow key order.
 export const homeButtonsOf = (model: Model): ReadonlyArray<HomeButton> =>
-  isSupportShown(model)
-    ? HOME_BUTTONS
-    : Array.filter(HOME_BUTTONS, button => button !== 'Support')
+  Array.filter(
+    HOME_BUTTONS,
+    button =>
+      (button !== 'Support' || isSupportShown(model)) &&
+      (button !== 'Bests' || hasBests(model)),
+  )
 
 type HomeKey = Readonly<{ code: string; cap: string; name: string }>
 
@@ -67,6 +79,8 @@ export const HOME_KEYS: Readonly<Record<HomeButton, HomeKey>> = {
   Play: { code: 'Enter', cap: 'ENTER', name: 'Enter' },
   Coop: { code: 'KeyJ', cap: 'J', name: 'J' },
   Manor: { code: 'KeyV', cap: 'V', name: 'V' },
+  // NOTE: the bests badge opens the Munchopedia, so it shares the card's key.
+  Bests: { code: 'KeyZ', cap: 'Z', name: 'Z' },
   Support: { code: 'KeyB', cap: 'B', name: 'B' },
   Settings: { code: 'KeyO', cap: 'O', name: 'O' },
 }
@@ -81,6 +95,16 @@ export const isSupportKey = (code: string): boolean =>
 
 export const isSettingsKey = (code: string): boolean =>
   code === HOME_KEYS.Settings.code
+
+// NOTE: the turn hint shows on the portrait home menu until it is dismissed
+// or the phone turns.
+export const isTurnHintShown = (model: Model): boolean =>
+  isOnHome(model.phase) && isPortrait(model) && !model.home.isTurnHintSeen
+
+export const seeTurnHint = (model: Model): Model =>
+  modifyFields(model, {
+    home: home => modifyFields(home, { isTurnHintSeen: () => true }),
+  })
 
 export const homeButtonId = (button: HomeButton): string =>
   HOME_BUTTON_IDS[button]

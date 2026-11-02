@@ -4,7 +4,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 ## November 1, 2026: Pick your hero
 
-- 🎩 PLAY opens a lobby to pick your hero, mode, and difficulty before a run. Rank up and you can pick a hero there: a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off to wear on your look. Every card says what it gives (+) and costs (-). Reach rank 3 to meet the first, then spend Bones to take your pick home (try one on before you buy). Tap + BOT to bring up to three bot buddies along: they shoot, revive you, shop, and press READY.
+- 🎩 PLAY opens a lobby to pick your hero, mode, and difficulty before a run. Rank up to meet a hero (a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off), then spend Bones to take them home (try one on first). Tap + BOT to bring up to three bot buddies along. The home menu got tidied too: MULTIPLAYER says its name, MORE is bigger, and your bests badge opens the Munchopedia.
 - 🎩 Spend your Bones on hats, shirts, prints, and gun skins in your Look tab (try one on before you buy, NEW badges on fresh unlocks), wear them on any hero, and rank up to be gifted a few for free: a party hat, a cowboy hat, a witch hat, even a traffic cone.
 - 🎒 Your hero comes along in co-op: everyone in the room starts as the hero they picked, and the prop shows by their name in the lobby, where you can swap it too. Every hero now wears their trade, so you can tell who's who.
 - 🪵 Planks and gnomes cost more but finally pull their weight, and the Handyman, Track Star, and Line Cook got a tune-up.

@@ -954,6 +954,9 @@ export const SEEN_BASELINE = '*'
 export const SavedHome = Schema.Struct({
   seenNewsDay: Schema.NullOr(Schema.String),
   openedEntries: Schema.Array(Schema.String),
+  // NOTE: the turn hint on the portrait home menu was dismissed or the phone
+  // turned. Optional, so every older save and row reads it as not yet seen.
+  turnHintSeen: Schema.optionalKey(Schema.Boolean),
 })
 export type SavedHome = typeof SavedHome.Type
 
