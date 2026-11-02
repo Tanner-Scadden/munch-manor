@@ -48,8 +48,8 @@
   height: min(456px, calc(100dvh - 16px));
   padding: var(--menu-pad);
   padding-left: 0;
-  border: 3px solid var(--tab-color);
-  border-radius: 16px;
+  border: var(--menu-border-panel) solid var(--tab-color);
+  border-radius: var(--menu-radius-lg);
   background:
     radial-gradient(
       circle at 70% 0%,

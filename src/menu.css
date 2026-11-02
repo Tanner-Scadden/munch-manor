@@ -1759,9 +1759,8 @@
   overscroll-behavior: contain;
   touch-action: pan-y;
   padding: var(--menu-pad);
-  border: 2px solid var(--menu-line-strong);
-  border-top: 4px solid var(--panel-accent);
-  border-radius: var(--menu-radius);
+  border: var(--menu-border-panel) solid var(--panel-accent);
+  border-radius: var(--menu-radius-lg);
   background: var(--menu-bg);
   box-shadow: var(--menu-pop);
   color: var(--menu-ink);
@@ -1859,10 +1858,6 @@
   .panel {
     gap: 6px;
     padding: 10px 12px;
-  }
-
-  .panel-title {
-    font-size: 14px;
   }
 }
 

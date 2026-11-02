@@ -26,6 +26,7 @@
   --shop-line: rgba(244, 241, 222, 0.22);
   --shop-bubble: #f4f1de;
   --shop-bubble-ink: #2a1418;
+  --shop-panel-h: calc(560 * var(--shop-u));
   --shop-pad: calc(12 * var(--shop-u));
   --shop-pad-y: calc(10 * var(--shop-u));
   --shop-gap: calc(8 * var(--shop-u));
@@ -58,15 +59,16 @@
   gap: var(--shop-gap);
   box-sizing: border-box;
   width: min(calc(760 * var(--shop-u)), calc(100vw - 16px));
+  height: min(var(--shop-panel-h), calc(100dvh - 16px));
   max-height: calc(100dvh - 16px);
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
   padding: var(--shop-pad-y) var(--shop-pad);
-  border: calc(3 * var(--shop-u)) solid var(--shop-wood);
-  border-radius: calc(8 * var(--shop-u));
+  border: var(--menu-border-panel) solid var(--shop-wood);
+  border-radius: var(--menu-radius-lg);
   background: var(--shop-bg);
-  box-shadow: inset 0 0 0 calc(2 * var(--shop-u)) #140c10;
+  box-shadow: inset 0 0 0 var(--menu-border) var(--menu-ink-on-gold);
   color: var(--shop-ink);
   font: var(--shop-text) monospace;
   user-select: none;
@@ -1023,12 +1025,14 @@
     --shop-big: 22px;
     --shop-art-px: 2px;
     --shop-keeper-px: 3px;
+    --shop-pad: 10px;
+    --shop-pad-y: 6px;
   }
 
   .shop-panel {
     width: min(820px, calc(100vw - 16px));
-    max-height: calc(100dvh - 8px);
-    padding: 6px 10px 8px;
+    height: calc(100dvh - 8px);
+    padding: var(--shop-pad-y) var(--shop-pad) 8px;
   }
 
   .shop-card {
@@ -1058,6 +1062,7 @@
 
 @media (max-width: 560px) {
   .shop-dialog {
+    --shop-panel-h: 680px;
     --shop-pad: 8px;
     --shop-pad-y: 8px;
   }
@@ -1157,6 +1162,6 @@
    its phone size. */
 @media (min-height: 501px) and (min-width: 561px) {
   .shop-dialog {
-    --shop-u: max(1px, min(100vw, 100dvh * 16 / 9) / 1100);
+    --shop-u: max(1px, round(down, min(100vw, 100dvh * 16 / 9) / 1100, 1px));
   }
 }
