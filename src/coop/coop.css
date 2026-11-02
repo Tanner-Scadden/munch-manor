@@ -1330,3 +1330,129 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* NAME: your own name in the lobby is a button with a pencil, and a tap
+   opens a small field at the top of the lobby (src/coop/namePicker.ts). */
+
+.coop-name-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 100%;
+  min-height: var(--menu-tap);
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.coop-name-button .coop-nameplate {
+  min-width: 0;
+}
+
+.coop-name-button:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: 2px;
+}
+
+.coop-name-pencil {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.coop-name-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--menu-gap);
+  box-sizing: border-box;
+  padding: 12px max(12px, 4%);
+  background: rgba(12, 9, 16, 0.95);
+}
+
+.coop-name-picker .coop-calling-picker-head {
+  align-self: stretch;
+}
+
+.coop-name-picker .coop-close {
+  top: 0;
+  right: 0;
+}
+
+.coop-name-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  max-width: 100%;
+}
+
+.coop-name-input {
+  box-sizing: border-box;
+  width: min(260px, 52vw);
+  min-height: var(--menu-tap);
+  padding: 0 12px;
+  border: 3px solid var(--menu-gold);
+  border-radius: 12px;
+  background: var(--menu-sunken);
+  color: var(--menu-ink);
+  font: bold 20px var(--menu-font);
+  text-align: center;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.coop-name-input:focus-visible,
+.coop-name-dice:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: 3px;
+}
+
+.coop-name-dice {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--menu-tap);
+  height: var(--menu-tap);
+  margin: 0;
+  padding: 0;
+  border: 3px solid var(--menu-gold);
+  border-radius: 12px;
+  background: var(--menu-surface-hi);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.coop-name-dice-icon {
+  width: 26px;
+  height: 30px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.coop-name-ok {
+  flex: none;
+  min-height: var(--menu-tap);
+  padding: 0 16px;
+  font-size: 20px;
+}
+
+@media (max-height: 500px) {
+  .coop-name-picker {
+    gap: 4px;
+    padding-block: 6px;
+  }
+}

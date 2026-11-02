@@ -35,6 +35,7 @@ export const LobbyChange = defineTaggedUnion({
   ChangedReady: { ready: Schema.Boolean, pingMs: Schema.Number },
   ChangedPicks: { mode: PickedMode, difficulty: RoomDifficulty },
   ChangedMemberCalling: { calling: Calling },
+  ChangedMemberName: { name: Schema.String },
   KickedPlayer: { playerId: Schema.String },
 })
 export type LobbyChange = typeof LobbyChange.Type
@@ -135,6 +136,7 @@ export const Room = Schema.Struct({
   codeCopies: Schema.Number,
   departure: Departure,
   isPickingCalling: Schema.Boolean,
+  maybeNameDraft: Schema.Option(Schema.String),
 })
 export type Room = typeof Room.Type
 
@@ -164,6 +166,7 @@ export const Model = Schema.Struct({
   look: Schema.String,
   rank: Schema.Number,
   calling: Calling,
+  rngState: Schema.Number,
 })
 export type Model = typeof Model.Type
 
@@ -173,6 +176,7 @@ export const initialModel: Model = {
   look: '',
   rank: 1,
   calling: 'You',
+  rngState: 0,
 }
 
 export const emptyQueue: Queue = {

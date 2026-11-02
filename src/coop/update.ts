@@ -1,4 +1,13 @@
-import { Array, Effect, Layer, Match, Option, Result, Schema } from 'effect'
+import {
+  Array,
+  Effect,
+  Layer,
+  Match,
+  Option,
+  Result,
+  Schema,
+  String,
+} from 'effect'
 import { Dom, type Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -18,6 +27,7 @@ import { QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 import { isCallingUnlocked } from '../calling'
 import { DIFFICULTY_ORDER } from '../difficulty'
 import { Calling } from '../playerData'
+import { cleanName, draftName, rollName } from '../profile'
 import { eventsBetween } from '../roomWorld'
 import { stepWhen } from '../stepWhen'
 import { CoopComposition } from './composition'
@@ -44,6 +54,8 @@ import {
   ESCAPE,
   MODE_KEY,
   MODE_PICKS,
+  NAME_BUTTON_ID,
+  NAME_INPUT_ID,
   QUICK_PLAY_BUTTON_ID,
   READY_BUTTON_ID,
   ROOM_CODE_LENGTH,
@@ -288,6 +300,8 @@ const lobbyUpdated = (model: Model, room: Room, lobby: Lobby): UpdateReturn => {
       model: withRoom(model, {
         ...learned,
         isPickingCalling: learned.isPickingCalling && lobby.status === 'Lobby',
+        maybeNameDraft:
+          lobby.status === 'Lobby' ? learned.maybeNameDraft : Option.none(),
       }),
     }
   }
@@ -510,6 +524,80 @@ const pickCalling = (
     },
   })
 
+// NAME
+
+// NOTE: a player renames themselves in the lobby with the same cleaning and
+// dice as the Profile's Name tab (src/profile.ts). Saving sends the name to
+// the room for the others to see, and up to the parent, which keeps it as
+// the player's name everywhere else. An empty name or the one already worn
+// only closes the field. Nobody's READY changes.
+const withNameDraft = (
+  model: Model,
+  room: Room,
+  maybeNameDraft: Option.Option<string>,
+): Model => withRoom(model, { ...room, maybeNameDraft })
+
+const startNaming = (model: Model, room: Room): UpdateReturn =>
+  Option.match(meIn(room), {
+    onNone: () => ({ model }),
+    onSome: me =>
+      isInLobby(room)
+        ? {
+            model: withNameDraft(model, room, Option.some(me.name)),
+            commands: [FocusCoopElement({ id: NAME_INPUT_ID })],
+          }
+        : { model },
+  })
+
+const stopNaming = (model: Model, room: Room): UpdateReturn =>
+  Option.isSome(room.maybeNameDraft)
+    ? {
+        model: withNameDraft(model, room, Option.none()),
+        commands: [FocusCoopElement({ id: NAME_BUTTON_ID })],
+      }
+    : { model }
+
+const typeName = (model: Model, room: Room, value: string): UpdateReturn =>
+  Option.isSome(room.maybeNameDraft)
+    ? { model: withNameDraft(model, room, Option.some(draftName(value))) }
+    : { model }
+
+const rollNameDraft = (model: Model, room: Room): UpdateReturn =>
+  Option.match(room.maybeNameDraft, {
+    onNone: () => ({ model }),
+    onSome: draft => {
+      const [rngState, name] = rollName(model.rngState, cleanName(draft))
+      return {
+        model: modifyFields(withNameDraft(model, room, Option.some(name)), {
+          rngState: () => rngState,
+        }),
+        commands: [FocusCoopElement({ id: NAME_INPUT_ID })],
+      }
+    },
+  })
+
+const keepName = (model: Model, room: Room): UpdateReturn =>
+  Option.match(room.maybeNameDraft, {
+    onNone: () => ({ model }),
+    onSome: draft => {
+      const name = cleanName(draft)
+      const closed = stopNaming(model, room)
+      const isWorn = Option.exists(meIn(room), me => me.name === name)
+      if (!isInLobby(room) || String.isEmpty(name) || isWorn) {
+        return closed
+      } else {
+        return {
+          model: modifyFields(closed.model, { name: () => name }),
+          commands: [
+            ChangeLobby({ change: LobbyChange.ChangedMemberName({ name }) }),
+            ...(closed.commands ?? []),
+          ],
+          outMessage: OutMessage.ChoseName({ name }),
+        }
+      }
+    },
+  })
+
 const togglePicker = (model: Model, room: Room): UpdateReturn =>
   isInLobby(room) && Option.isSome(meIn(room))
     ? {
@@ -588,6 +676,11 @@ const keyOnScreen = (model: Model, code: string): UpdateReturn =>
     InRoom: ({ room }) => {
       if (!isInLobby(room)) {
         return { model }
+      } else if (Option.isSome(room.maybeNameDraft)) {
+        return stepWhen<Model, UpdateReturn>(
+          () => code === ESCAPE,
+          () => stopNaming(model, room),
+        )(model)
       } else if (room.isPickingCalling) {
         return keyInPicker(model, room, code)
       } else if (code === CALLING_KEY) {
@@ -663,12 +756,14 @@ export const open = (
   look = '',
   rank = 1,
   calling: Calling = 'You',
+  rngState = 0,
 ): UpdateReturn => {
   const named = modifyFields(model, {
     name: () => name,
     look: () => look,
     rank: () => rank,
     calling: () => calling,
+    rngState: () => rngState,
   })
   return Option.match(maybeCode, {
     onNone: () => ({
@@ -864,6 +959,17 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
         )(model),
       ),
 
+    ClickedNameButton: () => inRoom(model, room => startNaming(model, room)),
+
+    UpdatedNameDraft: ({ value }) =>
+      inRoom(model, room => typeName(model, room, value)),
+
+    SubmittedName: () => inRoom(model, room => keepName(model, room)),
+
+    ClickedNameDice: () => inRoom(model, room => rollNameDraft(model, room)),
+
+    ClickedNameCancel: () => inRoom(model, room => stopNaming(model, room)),
+
     CompletedChangeLobby: () => ({ model }),
 
     FailedChangeLobby: () => ({ model }),
@@ -909,8 +1015,8 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
 
     CompletedFocusCoopElement: () => ({ model }),
 
-    RequestedOpen: ({ name, maybeCode, look, rank, calling }) =>
-      open(model, name, maybeCode, look, rank, calling),
+    RequestedOpen: ({ name, maybeCode, look, rank, calling, rngState }) =>
+      open(model, name, maybeCode, look, rank, calling, rngState),
 
     RequestedPressKey: ({ code }) => pressKey(model, code),
 
@@ -973,6 +1079,11 @@ export const update = CoopComposition.makeUpdate({
   ClickedCallingPill: delivered,
   ClickedCallingPick: delivered,
   ClickedCallingDone: delivered,
+  ClickedNameButton: delivered,
+  UpdatedNameDraft: delivered,
+  SubmittedName: delivered,
+  ClickedNameDice: delivered,
+  ClickedNameCancel: delivered,
   CompletedChangeLobby: delivered,
   FailedChangeLobby: delivered,
   ClickedLeaveButton: delivered,

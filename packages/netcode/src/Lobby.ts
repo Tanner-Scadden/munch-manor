@@ -688,6 +688,46 @@ export const ChangedMemberCalling = defineMutation({
     }),
 })
 
+// NOTE: a player renames themselves while the room is in its lobby, the
+// same name the Profile keeps (src/profile.ts). The room cleans it as it
+// cleans a joining name (displayName), so an empty one becomes "Player N" by
+// seat. Nobody's READY changes: the name is the player's own.
+export const ChangedMemberName = defineMutation({
+  name: 'ChangedMemberName',
+  version: 1,
+  args: Schema.Struct({ by: Schema.String, name: NameInput }),
+  scopes: [ROOM_SCOPE_KIND],
+  writer: 'Members',
+  authorize: (args, actor) => isSender(args, actor),
+  apply: ({ by, name }, context) =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      const lobby = yield* requireLobby(context)
+      yield* requireMember(lobby, by)
+      if (lobby.status !== 'Lobby') {
+        return yield* reject('Not in the lobby')
+      }
+      const me = Array.findFirst(
+        lobby.members,
+        member => member.playerId === by,
+      )
+      const cleaned = displayName(
+        name,
+        Option.match(me, {
+          onNone: () => 0,
+          onSome: member => member.slot,
+        }),
+      )
+      if (Option.exists(me, member => member.name === cleaned)) {
+        return
+      }
+      yield* sql`UPDATE ${context.table('members')}
+        SET name = ${cleaned}
+        WHERE player_id = ${by}`
+      yield* touch(context, {})
+    }),
+})
+
 export const EndedGame = defineMutation({
   name: 'EndedGame',
   version: 1,
@@ -800,6 +840,7 @@ export const RoomScope = defineScope({
     ChangedReady,
     ChangedPicks,
     ChangedMemberCalling,
+    ChangedMemberName,
     EndedGame,
     RecordedRoomResult,
     KickedPlayer,

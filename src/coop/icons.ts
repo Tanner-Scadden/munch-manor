@@ -182,3 +182,16 @@ export const portraitOf = (
     return url
   })
 }
+
+// NOTE: a pencil by your own name in the lobby: the name is a button.
+export const PENCIL_ICON = icon([
+  '......OO.',
+  '.....OPPO',
+  '....OYYO.',
+  '...OYYO..',
+  '..OYYO...',
+  '.OYYO....',
+  '.OBYO....',
+  'OBO.O....',
+  'OO.......',
+])

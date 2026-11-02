@@ -1,5 +1,6 @@
 import { Effect, Option } from 'effect'
 import { Update } from 'foldkit'
+import { modifyFields } from 'foldkit/struct'
 
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
@@ -17,7 +18,7 @@ import type { Model } from '../model'
 import { isLearned } from '../onboarding'
 import { isLeftFromRoom, maybeRunRoom } from '../onlineRun'
 import { type Calling, lookCodeOf } from '../playerData'
-import { joinName } from '../profile'
+import { cleanName, joinName } from '../profile'
 import { rankOf, totalPointsOf } from '../rank'
 import { stepWhen } from '../stepWhen'
 import type { SeatAction } from '../stepWorld'
@@ -72,6 +73,11 @@ export const leftRoom = stepWhen(isLeftFromRoom, goHome)
 // `chooseCalling` checks it again).
 export const choseCalling = (calling: Calling): UpdateStep =>
   modelStep(model => chooseCalling(model, calling))
+
+// NOTE: a name changed in the lobby is the player's name everywhere, kept
+// and synced as the Profile's Name tab keeps it.
+export const choseName = (name: string): UpdateStep =>
+  modelStep(model => modifyFields(model, { playerName: () => cleanName(name) }))
 
 export const closedCoop: UpdateStep = stepModel =>
   combine(stepModel, [
@@ -137,6 +143,7 @@ export const openCoop = (maybeCode: Option.Option<string>) =>
             look: lookCodeOf(model.appearance),
             rank: rankOf(totalPointsOf(model.rank)),
             calling: startingCallingOf(model),
+            rngState: model.cosmeticRngState,
           }),
         ])
       : unchanged,

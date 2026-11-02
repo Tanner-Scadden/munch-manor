@@ -168,3 +168,39 @@ describe('picking a hero in the lobby', () => {
     expect(result.model.calling).toBe(pointed(4).calling)
   })
 })
+
+describe('renaming yourself in the lobby', () => {
+  const naming: Model = modifyFields(readyAfterRead, {
+    playerName: () => 'Old',
+    coop: coop => ({
+      ...coop,
+      screen: CoopScreen.InRoom({
+        room: {
+          ...freshRoom(CODE, 0),
+          maybePlayerId: Option.some('player-0'),
+          maybeLobby: Option.some(lobbyOf([memberOf(0, 'Old')])),
+          maybeNameDraft: Option.some('Gravy Dave '),
+        },
+      }),
+    }),
+  })
+
+  test("is the player's name at home too, and saved", () => {
+    const result = update(
+      naming,
+      toParentMessage(CoopBinding, CoopMessage.SubmittedName()),
+    )
+    expect(result.model.playerName).toBe('Gravy Dave')
+    expect(Array.map(result.commands ?? [], command => command.name)).toContain(
+      'Application/WriteSave',
+    )
+  })
+
+  test('a cancelled rename changes nothing at home', () => {
+    const result = update(
+      naming,
+      toParentMessage(CoopBinding, CoopMessage.ClickedNameCancel()),
+    )
+    expect(result.model.playerName).toBe('Old')
+  })
+})

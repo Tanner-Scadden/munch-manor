@@ -19,6 +19,7 @@ import {
 } from '@munch/netcode'
 import { RoomEvent } from '@munch/netcode/browser'
 
+import { GOOFY_NAMES } from '../profile'
 import { playRoom } from '../roomTesting'
 import {
   AIM_REACH,
@@ -548,6 +549,107 @@ describe('picking a hero in the lobby', () => {
       lobbyUpdate({ ...lobbyAt4, status: 'Playing' }),
     )
     expect(roomOf(playing.model).isPickingCalling).toBe(false)
+  })
+})
+
+describe('renaming yourself in the lobby', () => {
+  const lobbyAt = lobbyOf([memberOf(0, 'Ana'), memberOf(1, 'Bo')])
+  const lobbied = (): Model => update(inRoom(0), lobbyUpdate(lobbyAt)).model
+  const opened = (): Model =>
+    update(lobbied(), Message.ClickedNameButton()).model
+  const draftOf = (current: Model) => roomOf(current).maybeNameDraft
+
+  test('the name button opens the field, prefilled with your name', () => {
+    story(
+      update,
+      given(lobbied()),
+      message(Message.ClickedNameButton()),
+      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+      model(current => {
+        expect(draftOf(current)).toEqual(Option.some('Ana'))
+      }),
+    )
+  })
+
+  test('typing cleans the draft as the Profile does', () => {
+    const typed = update(
+      opened(),
+      Message.UpdatedNameDraft({ value: '  Gravy   Dave and more' }),
+    ).model
+    expect(draftOf(typed)).toEqual(Option.some('Gravy Dave a'))
+  })
+
+  test('saving sends the room and the parent the cleaned name, READY stays', () => {
+    story(
+      update,
+      given(opened()),
+      message(Message.UpdatedNameDraft({ value: 'Gravy Dave ' })),
+      message(Message.SubmittedName()),
+      expectOutMessage(OutMessage.ChoseName({ name: 'Gravy Dave' })),
+      Command.resolve(
+        ChangeLobby({
+          change: LobbyChange.ChangedMemberName({ name: 'Gravy Dave' }),
+        }),
+        Message.CompletedChangeLobby(),
+      ),
+      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+      model(current => {
+        expect(draftOf(current)).toEqual(Option.none())
+        expect(current.name).toBe('Gravy Dave')
+      }),
+    )
+  })
+
+  test('an empty name, or the one already worn, only closes the field', () => {
+    for (const value of ['   ', 'Ana']) {
+      const submitted = update(
+        update(opened(), Message.UpdatedNameDraft({ value })).model,
+        Message.SubmittedName(),
+      )
+      expect(draftOf(submitted.model)).toEqual(Option.none())
+      expect(submitted.outMessage).toBeUndefined()
+      expect(
+        (submitted.commands ?? []).map(command => command.name),
+      ).not.toContain(ChangeLobby.name)
+    }
+  })
+
+  test('Escape and the X cancel, and send nothing', () => {
+    const typed = update(
+      opened(),
+      Message.UpdatedNameDraft({ value: 'Nope' }),
+    ).model
+    for (const cancelled of [
+      pressKey(typed, 'Escape'),
+      update(typed, Message.ClickedNameCancel()),
+    ]) {
+      expect(draftOf(cancelled.model)).toEqual(Option.none())
+      expect(cancelled.outMessage).toBeUndefined()
+      expect(cancelled.model.name).toBe(typed.name)
+    }
+  })
+
+  test('the dice put a goofy name in the field, a new one each roll', () => {
+    const first = update(opened(), Message.ClickedNameDice()).model
+    const second = update(first, Message.ClickedNameDice()).model
+    const name = (current: Model) => Option.getOrThrow(draftOf(current))
+    expect(GOOFY_NAMES).toContain(name(first))
+    expect(GOOFY_NAMES).toContain(name(second))
+    expect(name(second)).not.toBe(name(first))
+    expect(first.name).toBe(lobbied().name)
+  })
+
+  test('other lobby keys wait while the field is open', () => {
+    expect(pressKey(opened(), 'Enter').commands).toBeUndefined()
+    expect(picked(opened(), 'KeyE')).toEqual([])
+  })
+
+  test('a started run closes the field', () => {
+    const started = update(
+      opened(),
+      lobbyUpdate({ ...lobbyAt, status: 'Playing' }),
+    )
+    expect(draftOf(started.model)).toEqual(Option.none())
   })
 })
 

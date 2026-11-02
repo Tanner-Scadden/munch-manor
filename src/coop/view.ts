@@ -53,6 +53,7 @@ import {
   type Room,
   Screen,
 } from './model'
+import { nameButtonView, namePickerView } from './namePicker'
 import {
   CODE_INPUT_ID,
   MODE_PICKS,
@@ -629,10 +630,12 @@ const memberSeatView = (
         [
           rankTagView('coop-rank', member.rank, 2, h),
           callingPropView('coop-calling', callingOfMember(member), h),
-          h.span(
-            [h.Class('coop-nameplate'), h.AriaHidden(true)],
-            [member.name],
-          ),
+          isMe && lobby.status === 'Lobby'
+            ? nameButtonView(member.name, h)
+            : h.span(
+                [h.Class('coop-nameplate'), h.AriaHidden(true)],
+                [member.name],
+              ),
         ],
       ),
       pingBarsView(
@@ -963,6 +966,7 @@ const lobbyView = (
         onNone: () => h.empty,
         onSome: me => callingPickerView(room, lookOf(inputs, room, me.slot), h),
       }),
+      namePickerView(room, h),
     ],
   )
 
