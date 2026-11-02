@@ -406,17 +406,6 @@ export const Toll = Schema.Struct({
 })
 export type Toll = typeof Toll.Type
 
-// NOTE: originIndex is the tile the field flows to. In co-op it flows to
-// every living player at once: the other players' tiles are moreOrigins.
-export const FlowField = Schema.Struct({
-  levelKey: Schema.String,
-  originIndex: Schema.Number,
-  moreOrigins: Schema.Array(Schema.Number),
-  tolls: Schema.Array(Toll),
-  distances: Schema.Array(Schema.Number),
-})
-export type FlowField = typeof FlowField.Type
-
 export const Blast = Schema.Struct({
   x: Schema.Number,
   y: Schema.Number,
@@ -744,8 +733,6 @@ export const World = Schema.Struct({
   laserSight: LaserSight,
   rngState: Schema.Number,
   intent: Intent,
-  flowField: FlowField,
-  wideFlowField: FlowField,
   shop: ShopState,
   shopCategory: ShopCategory,
   purchase: Purchase,

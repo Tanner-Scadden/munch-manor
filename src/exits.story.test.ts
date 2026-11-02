@@ -24,8 +24,8 @@ import { update } from './main'
 import { type Model, Phase, initialModel } from './model'
 import {
   UNREACHED_DISTANCE,
+  distanceAt,
   flowFieldToward,
-  refreshFlowField,
 } from './pathing'
 import { roomShapes } from './room'
 import { freshRun } from './runReset'
@@ -78,14 +78,10 @@ const drawsBoards = (shapes: ReadonlyArray<Canvas.Shape>): boolean =>
   )
 
 const distanceTo = (
-  distances: ReadonlyArray<number>,
+  distances: Int32Array,
   column: number,
   row: number,
-): number =>
-  Option.getOrElse(
-    Array.get(distances, tileIndex(levelFor(HALL), column, row)),
-    () => UNREACHED_DISTANCE,
-  )
+): number => distanceAt(distances, tileIndex(levelFor(HALL), column, row))
 
 describe('a level with a closed exit', () => {
   const hall = levelFor(HALL)
@@ -133,16 +129,6 @@ describe('opening an exit', () => {
     expect(openExit(opened, 'Kitchen')).toBe(opened)
     expect(openExit(hall, 'Attic')).toBe(hall)
     expect(levelFor(HALL)).toBe(hall)
-  })
-
-  test('rebuilds the flow field even when the player has not moved', () => {
-    const before = flowFieldToward(hall, HALLWAY, 'Narrow', [])
-    expect(refreshFlowField(hall, before, HALLWAY, 'Narrow', [])).toBe(before)
-    const after = refreshFlowField(opened, before, HALLWAY, 'Narrow', [])
-    expect(after).not.toBe(before)
-    expect(after.levelKey).toBe(opened.key)
-    expect(after.originIndex).toBe(before.originIndex)
-    expect(distanceTo(after.distances, 3, 6)).toBeLessThan(UNREACHED_DISTANCE)
   })
 
   test('redraws the room without the boards', () => {
@@ -196,7 +182,7 @@ describe('the manor', () => {
     expect(drawsBoards(roomShapes(opened))).toBe(false)
   })
 
-  test('keeps its level and its flow field through a wave', () => {
+  test('keeps its level through a wave', () => {
     const fighting: Model = modifyFields(initialModel, {
       maybeSurface: () =>
         Option.some({ left: 0, top: 0, width: 800, height: 400 }),
@@ -208,8 +194,6 @@ describe('the manor', () => {
       ...ticks(30, MAX_FRAME_DELTA_MS),
       model(current => {
         expect(levelOf(current)).toBe(MANOR)
-        expect(current.flowField.levelKey).toBe(MANOR.key)
-        expect(current.wideFlowField.levelKey).toBe(MANOR.key)
       }),
     )
   })

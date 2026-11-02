@@ -2,7 +2,7 @@ import { Option, Schema } from 'effect'
 
 import { DialogBlock } from '@foldkit/ui'
 
-import { MANOR, startingLevel } from './arena'
+import { startingLevel } from './arena'
 import {
   AmmoTip,
   AudioState,
@@ -53,7 +53,6 @@ import {
 import { DEFAULT_SEED } from './constants'
 import * as Coop from './coop/model'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from './lookRadios'
-import { flowFieldToward } from './pathing'
 import {
   Appearance,
   Calling,
@@ -454,8 +453,6 @@ export const initialModel: Model = {
   trapNotice: TrapNotice.Quiet(),
   level: startingLevel,
   ovens: [],
-  flowField: flowFieldToward(MANOR, initialPlayer, 'Narrow', []),
-  wideFlowField: flowFieldToward(MANOR, initialPlayer, 'Wide', []),
   rngState: DEFAULT_SEED,
   cosmeticRngState: cosmeticSeedOf(DEFAULT_SEED),
   stepCarryMs: 0,

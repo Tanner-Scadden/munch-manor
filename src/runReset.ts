@@ -15,7 +15,6 @@ import { ZERO_VECTOR } from './geometry'
 import { deriveIntent } from './input'
 import { freshOvens } from './kitchen'
 import type { Model } from './model'
-import { flowFieldToward } from './pathing'
 import {
   Boss,
   CounterSale,
@@ -83,8 +82,6 @@ export type RunFields = Pick<
   | 'trapNotice'
   | 'level'
   | 'ovens'
-  | 'flowField'
-  | 'wideFlowField'
   | 'intent'
   | 'debutCard'
   | 'hintBand'
@@ -143,8 +140,6 @@ export const freshRun = (model: Model): RunFields => ({
   trapNotice: TrapNotice.Quiet(),
   level: startingLevel,
   ovens: freshOvens(MANOR),
-  flowField: flowFieldToward(MANOR, initialPlayer, 'Narrow', []),
-  wideFlowField: flowFieldToward(MANOR, initialPlayer, 'Wide', []),
   intent: deriveIntent(
     model.input,
     initialPlayer,

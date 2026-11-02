@@ -1,7 +1,14 @@
 import { Array, Option, Result, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
-import { type Level, type Tile, isWalkableTile, tileIndex } from './arena'
+import {
+  type Level,
+  TILE_DOOR,
+  type Tile,
+  hasTileFlag,
+  isWalkableTile,
+  tileIndex,
+} from './arena'
 import { TILE_SIZE } from './constants'
 import { roomShapes } from './room'
 import { FACE_TOP } from './roomPalette'
@@ -33,7 +40,7 @@ const BESIDE_PX = TILE_SIZE * 2
 type Opening = Readonly<{ row: number; first: number; last: number }>
 
 const isPassage = (level: Level, column: number, row: number): boolean =>
-  level.doorTiles.has(tileIndex(level, column, row)) ||
+  hasTileFlag(level, tileIndex(level, column, row), TILE_DOOR) ||
   Array.some(
     level.exits,
     exit =>

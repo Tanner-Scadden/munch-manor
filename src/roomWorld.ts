@@ -37,7 +37,6 @@ import {
   soloSeat,
   withSeat,
 } from './party'
-import { flowFieldToward } from './pathing'
 import { type Calling, callingOfCode } from './playerData'
 import { predictLeadSeat } from './simulation'
 import { SeatAction, applySeatAction, stepWorld } from './stepWorld'
@@ -349,8 +348,6 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   laserSight: 'None',
   rngState: seed,
   intent: idleIntent,
-  flowField: flowFieldToward(MANOR, initialPlayer, 'Narrow', []),
-  wideFlowField: flowFieldToward(MANOR, initialPlayer, 'Wide', []),
   shop: ShopState.Away(),
   shopCategory: FIRST_SHOP_CATEGORY,
   purchase: Purchase.Idle(),

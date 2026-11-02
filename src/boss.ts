@@ -48,6 +48,7 @@ import {
   isWalking,
   radiusOf,
   scaledHp,
+  statsOf,
 } from './zombies'
 
 // RULES
@@ -585,8 +586,7 @@ const shoveFrom =
           knockback: () =>
             scaleVector(
               awayFrom(boss, zombie),
-              BOSS_RULES.stompKnockback *
-                ZOMBIE_KINDS[zombie.kind].knockbackScale,
+              BOSS_RULES.stompKnockback * statsOf(zombie).knockbackScale,
             ),
         })
       : zombie
@@ -778,7 +778,7 @@ const bowl =
           knockback: () =>
             scaleVector(
               sweptAside(boss, direction, zombie),
-              BOSS_RULES.chargeShove * ZOMBIE_KINDS[zombie.kind].knockbackScale,
+              BOSS_RULES.chargeShove * statsOf(zombie).knockbackScale,
             ),
         })
       : zombie

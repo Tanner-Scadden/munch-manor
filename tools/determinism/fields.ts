@@ -6,7 +6,7 @@
 // - Gate: client state that steers gameplay in single player today (it
 //   freezes the world, blocks firing, or feeds aim). The split turns each one
 //   into a per-player input or a World field. Hashed until then.
-// - Derived: recomputed from the World (the flow fields). Not hashed: it is
+// - Derived: recomputed from the World (none today: the flow fields are built on the frame). Not hashed: it is
 //   costly, and a divergence there shows up in the World a frame later.
 // - Cosmetic: made from frame events, never read by the simulation.
 // - Client: UI, menus, dialogs, audio, settings, save and sync, devices.
@@ -63,8 +63,6 @@ export const FIELD_CLASSES = {
   orientation: 'Client',
   cameraLean: 'Client',
 
-  flowField: 'Derived',
-  wideFlowField: 'Derived',
 
   particles: 'Cosmetic',
   decals: 'Cosmetic',

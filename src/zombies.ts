@@ -416,8 +416,50 @@ export const ZOMBIE_KIND_ORDER: ReadonlyArray<ZombieKind> = [
   'Crawler',
 ]
 
+// NOTE: a kind's number, for the tables hot code reads by index. The World
+// keeps the kind as its Schema literal; this reads two things off the string,
+// its first letter and, for the two T kinds, its length. A lookup by string key
+// costs several times as much in V8. zombies.test.ts checks every kind.
+const KINDS_BY_INDEX: ReadonlyArray<ZombieKind> = [
+  'Shambler',
+  'Runner',
+  'Tank',
+  'Exploder',
+  'Thrower',
+  'Crawler',
+  'Boss',
+]
+
+const FIRST_LETTER = 66
+const LETTER_T = 84
+const KIND_OF_LETTER = new Uint8Array(19)
+KINDS_BY_INDEX.forEach((kind, index) => {
+  if (kind.charCodeAt(0) !== LETTER_T) {
+    KIND_OF_LETTER[kind.charCodeAt(0) - FIRST_LETTER] = index
+  }
+})
+
+const kindIndex = (kind: ZombieKind): number => {
+  const letter = kind.charCodeAt(0)
+  return letter === LETTER_T
+    ? kind.length === 4
+      ? 2
+      : 4
+    : (KIND_OF_LETTER[letter - FIRST_LETTER] ?? 0)
+}
+
+const STATS_BY_INDEX: ReadonlyArray<ZombieKindStats> = Array.map(
+  KINDS_BY_INDEX,
+  kind => ZOMBIE_KINDS[kind],
+)
+const RADIUS_BY_INDEX = Float64Array.from(STATS_BY_INDEX, ({ radius }) => radius)
+const BODY_RADIUS_BY_INDEX = Float64Array.from(
+  STATS_BY_INDEX,
+  ({ bodyRadius }) => bodyRadius,
+)
+
 export const statsOf = (zombie: Zombie): ZombieKindStats =>
-  ZOMBIE_KINDS[zombie.kind]
+  STATS_BY_INDEX[kindIndex(zombie.kind)] ?? ZOMBIE_KINDS[zombie.kind]
 
 // NOTE: how near a footstep sounds to a listener, 1 underfoot to 0 at its
 // kind's range; a kind with no range is never heard.
@@ -428,10 +470,11 @@ export const footfallNearness = (kind: ZombieKind, distance: number): number =>
       rangePx > 0 ? Math.max(0, Math.min(1, 1 - distance / rangePx)) : 0,
   })
 
-export const radiusOf = (zombie: Zombie): number => statsOf(zombie).radius
+export const radiusOf = (zombie: Zombie): number =>
+  RADIUS_BY_INDEX[kindIndex(zombie.kind)] ?? statsOf(zombie).radius
 
 export const bodyRadiusOf = (zombie: Zombie): number =>
-  statsOf(zombie).bodyRadius
+  BODY_RADIUS_BY_INDEX[kindIndex(zombie.kind)] ?? statsOf(zombie).bodyRadius
 
 export const isBoss = (zombie: Zombie): boolean => zombie.kind === 'Boss'
 
@@ -439,11 +482,16 @@ export const isBoss = (zombie: Zombie): boolean => zombie.kind === 'Boss'
 
 const WEAR_TOLERANCE = 1e-9
 
-export const wearAt = (kind: ZombieKind, hp: number, maxHp: number): number =>
-  Array.filter(
-    ZOMBIE_KINDS[kind].wear,
-    ({ below }) => hp <= maxHp * below + WEAR_TOLERANCE,
-  ).length
+export const wearAt = (kind: ZombieKind, hp: number, maxHp: number): number => {
+  const stages = STATS_BY_INDEX[kindIndex(kind)]?.wear ?? ZOMBIE_KINDS[kind].wear
+  let worn = 0
+  for (const { below } of stages) {
+    if (hp <= maxHp * below + WEAR_TOLERANCE) {
+      worn++
+    }
+  }
+  return worn
+}
 
 const ARMOR_PARTS: ReadonlyArray<ParticleKind> = [
   'PotLid',

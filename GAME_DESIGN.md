@@ -776,7 +776,7 @@ The first playable (controls, feel, the room and the loop, the shop, the horde, 
 ### Risks
 
 - **Phone frame time.** Frame time is measured only in headless Chrome with CPU throttling, which slows JavaScript but not the GPU. A real mid-range phone has not been checked (waiting on the owner). `src/perf.scene.test.ts` budgets the shapes and paint operations of a worst-case room, and `bun run perf:check` gates frame time against `tools/audit/frame-baseline.json`. The method is in `tools/audit/README.md`.
-- **What keeps it cheap.** Sprite images instead of rectangles (the worst room went from 2,656 shapes to 687 on 2026-10-28), the alive cap of 20 (at 4× throttling a room at the cap stays near 10 ms p95; 30 dropped frames at 6×), `isAnyOf` instead of `guards` in per-frame code, and a flow field rebuilt only when the player changes tile or the level changes.
+- **What keeps it cheap.** Sprite images instead of rectangles (the worst room went from 2,656 shapes to 687 on 2026-10-28), the alive cap of 20 (at 4× throttling a room at the cap stays near 10 ms p95; 30 dropped frames at 6×), `isAnyOf` instead of `guards` in per-frame code, and a flow field rebuilt flat on every frame (flat arrays and bucket queues, about 6 to 13 µs, nothing kept in the World).
 - **Determinism and juice.** Animation, particles, and shake live in the Model and use the seeded generator. Sound and music play through Commands and never feed back into the game.
 
 ## Open questions

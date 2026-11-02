@@ -308,7 +308,7 @@ const slip = (zombie: Zombie, before: Vector): Zombie =>
 // forever. Big Lugs, Ankle Biters, and Uncle Chunk keep their feet.
 const slipOnSoup = (before: World, model: World): World => {
   const level = levelOf(model)
-  if (level.soupTiles.size === 0 || !isKitchenOpen(level)) {
+  if (!level.hasSoup || !isKitchenOpen(level)) {
     return model
   }
   const was = new Map(
