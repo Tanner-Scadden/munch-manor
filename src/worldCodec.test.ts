@@ -354,3 +354,69 @@ describe('the bytes on the wire', () => {
     expect(digest).toBe(GOLDEN_DIGEST)
   })
 })
+
+// NOTE: a small seeded generator, so the pairs a test draws are the same on
+// every run.
+const lcg = (seed: number) => {
+  const state = { value: seed }
+  return (below: number): number => {
+    state.value = (Math.imul(state.value, 1664525) + 1013904223) >>> 0
+    return state.value % below
+  }
+}
+
+const readBack = (world: World): World =>
+  readWorld(makeReader(bytesOf(writer => writeWorld(writer, world))))
+
+describe('random diffs of a scripted room', () => {
+  const worlds = (() => {
+    const fresh = startRoomWorld([0, 1, 2], 5, DEFAULT_ROOM_SETTINGS)
+    const start = { ...fresh, world: beginPreparation(fresh.world, 4, 500) }
+    const seen: Array<World> = []
+    playRoom(start, WIRE_TICKS, room => {
+      if (room.tick % 5 === 0) {
+        seen.push(room.world)
+      }
+    })
+    return seen
+  })()
+
+  const pickWorld = (pick: (below: number) => number): World =>
+    worlds[pick(worlds.length)] ?? expect.fail('No World')
+
+  const reordered = (world: World, pick: (below: number) => number): World => ({
+    ...world,
+    zombies: Array.map(
+      Array.sort(
+        Array.map(world.zombies, zombie => ({ zombie, rank: pick(1000) })),
+        Order.mapInput(Order.Number, ({ rank }: { rank: number }) => rank),
+      ),
+      ({ zombie }) => zombie,
+    ),
+  })
+
+  test('a diff between any two Worlds reads back as a snapshot of the later', () => {
+    const pick = lcg(11)
+    Array.forEach(Array.makeBy(200, () => 0), () => {
+      const held = readBack(pickWorld(pick))
+      const to = pickWorld(pick)
+      const diff = bytesOf(writer => writeWorldDiff(writer, held, to))
+      expect(readWorldDiff(makeReader(diff), held)).toEqual(readBack(to))
+    })
+  })
+
+  test('a diff to a reordered, thinned list reads back the same', () => {
+    const pick = lcg(29)
+    Array.forEach(Array.makeBy(60, () => 0), () => {
+      const held = readBack(pickWorld(pick))
+      const shuffled = reordered(pickWorld(pick), pick)
+      const to = {
+        ...shuffled,
+        zombies: shuffled.zombies.filter(() => pick(4) !== 0),
+        bullets: shuffled.bullets.slice(pick(2)),
+      }
+      const diff = bytesOf(writer => writeWorldDiff(writer, held, to))
+      expect(readWorldDiff(makeReader(diff), held)).toEqual(readBack(to))
+    })
+  })
+})
