@@ -40,6 +40,7 @@ const coopRoom = (
     maybePlayerId: Option.some('player-0'),
     maybeLobby: Option.some(lobbyOf(members, status)),
     link: 'Online',
+    droppedAtMs: Option.none(),
     session: {
       ...(status === 'Playing'
         ? playingSession(world, 0)

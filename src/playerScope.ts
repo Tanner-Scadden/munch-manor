@@ -370,9 +370,9 @@ export const ChangedRotation = defineMutation({
 })
 
 // NOTE: the calling picked for the next run. The last device to change it
-// wins, like the settings. Whether its rank is reached is not checked here:
-// a run starts YOU for a calling its player has not unlocked
-// (callingForRun in src/calling.ts), so a pick never skips a rank.
+// wins, like the settings. Whether it is owned is not checked here: a run
+// starts YOU for a calling its player has not bought
+// (callingForRun in src/calling.ts), so a pick never skips a purchase.
 export const ChangedCalling = defineMutation({
   name: 'ChangedCalling',
   version: 1,
@@ -692,7 +692,7 @@ export const GrantedVeteranRank = defineMutation({
 
 const BalanceRow = Schema.Struct({ balance: Schema.Number })
 
-// NOTE: a cosmetic bought with Bones, by id (a hat today). The apply reads
+// NOTE: a cosmetic bought with Bones, by id (a look, or a hero as `hero:Handyman`). The apply reads
 // the price from the catalog (HAT_PRICES in src/playerData.ts), never from
 // the args, and does nothing unless the id is for sale, not owned yet, and
 // the Bones balance (earned + veteran - spent) covers it. So two devices

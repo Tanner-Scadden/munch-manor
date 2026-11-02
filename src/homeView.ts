@@ -32,6 +32,7 @@ import {
   isLinkHandCard,
   isNewsUnseen,
   isOnHome,
+  isTurnHintShown,
   steppedHandCard,
 } from './home'
 import {
@@ -73,10 +74,10 @@ import {
   entryName,
   hasUnopenedEntry,
 } from './munchopedia'
+import { MULTIPLAYER_NAME } from './names'
 import { helpLabel, howToPlayView } from './pauseHelp'
 import { rankOf, totalPointsOf } from './rank'
 import { rankChipView } from './rankBadgeView'
-import { isPortrait } from './screen'
 import { durationLabel } from './stats'
 import { hasUnseenLook } from './unlocks'
 import { hasFinishedTutorial } from './update/coop'
@@ -173,6 +174,7 @@ const coopButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
     ],
     [
       iconView('home-coop-icon', COOP_ICON, h),
+      h.span([h.Class('home-coop-label')], [MULTIPLAYER_NAME]),
       ...(isOpen
         ? []
         : [
@@ -501,37 +503,42 @@ const shownBests = (model: Model): ReadonlyArray<Best> => [
 ]
 
 const bestView = (best: Best, h: ApplicationViewBuilder): Html =>
-  h.div(
+  h.span(
     [h.Class('home-best')],
     [
-      h.dt(
+      h.span(
         [h.Class('home-best-label')],
-        [
-          iconView('home-best-icon', best.icon, h),
-          h.span([h.Class('sr-only')], [best.label]),
-        ],
+        [iconView('home-best-icon', best.icon, h)],
       ),
-      h.dd([h.Class('home-best-value')], [best.value]),
+      h.span([h.Class('home-best-value')], [best.value]),
     ],
   )
 
-// NOTE: a badge of icons and big numbers, in the chosen level's color, and
-// nothing at all until the player has a best.
+// NOTE: a button of icons and big numbers, in the chosen level's color, that
+// opens the Munchopedia, and nothing at all until the player has a best.
 const bestsView = (model: Model, h: ApplicationViewBuilder): Html =>
   Array.match(shownBests(model), {
     onEmpty: () => h.empty,
     onNonEmpty: bests =>
-      h.section(
+      h.button(
         [
+          ...homeButtonAttributes('Bests', h),
           h.Class('home-bests'),
           h.DataAttribute('difficulty', model.difficulty.chosen),
           h.AriaLabel(
-            `Your bests, ${DIFFICULTIES[model.difficulty.chosen].name}`,
+            `Your bests, ${DIFFICULTIES[model.difficulty.chosen].name}: ${Array.join(
+              Array.map(bests, best => `${best.label} ${best.value}`),
+              ', ',
+            )}. Opens the Munchopedia`,
           ),
+          h.AriaHasPopup('dialog'),
+          h.OnClick(Message.ClickedMunchopediaButton(), {
+            propagation: 'Stop',
+          }),
         ],
         [
           iconView('home-bests-level', SKULL_ICONS[model.difficulty.chosen], h),
-          h.dl(
+          h.span(
             [h.Class('home-bests-list')],
             Array.map(bests, best => bestView(best, h)),
           ),
@@ -690,17 +697,27 @@ export const newEntryNoticeView = (
 
 // TURN HINT
 
-export const TURN_HINT_TEXT = 'Turn your phone sideways to see the whole room'
+export const TURN_HINT_TEXT = 'Turn sideways to see more'
 
-// NOTE: portrait zooms in on part of the room, so a phone held upright gets a
-// small nudge to turn: only the tipping phone, no words, with its line for a
-// screen reader. It sits above the controls, takes no taps, and is gone the
-// moment the phone turns. isPortrait is false on a keyboard and mouse.
+// NOTE: portrait zooms in on part of the room, so the first time a phone
+// held upright is on the home menu it gets a nudge to turn: the tipping
+// phone and a short line. A tap on it, or turning the phone, dismisses it
+// for good (the save keeps that). Only the pill takes taps, so it never
+// blocks a button. isPortrait is false on a keyboard and mouse.
 const turnHintView = (model: Model, h: ApplicationViewBuilder): Html =>
-  isPortrait(model)
-    ? h.div(
-        [h.Class('home-turn-hint'), h.Role('img'), h.AriaLabel(TURN_HINT_TEXT)],
-        [iconView('home-turn-icon', TURN_PHONE_ICON, h)],
+  isTurnHintShown(model)
+    ? h.button(
+        [
+          h.Type('button'),
+          h.Class('home-turn-hint'),
+          h.Tabindex(-1),
+          h.AriaLabel(TURN_HINT_TEXT),
+          h.OnClick(Message.ClickedTurnHint(), { propagation: 'Stop' }),
+        ],
+        [
+          iconView('home-turn-icon', TURN_PHONE_ICON, h),
+          h.span([h.Class('home-turn-text')], [TURN_HINT_TEXT]),
+        ],
       )
     : h.empty
 
@@ -780,6 +797,7 @@ const MENU_KEY_ACTIONS: Readonly<Record<HomeButton, string>> = {
   Play: 'play',
   Coop: 'co-op',
   Manor: 'manor',
+  Bests: 'Munchopedia',
   Support: 'coffee',
   Settings: 'settings',
 }
@@ -802,14 +820,16 @@ const menuKeysView = (h: ApplicationViewBuilder): Html =>
       h.ul(
         [h.Class('help-extra')],
         [
-          ...Array.map(HOME_BUTTONS, button =>
-            h.li(
-              [h.Class('help-extra-item')],
-              [
-                h.kbd([h.Class('menu-key')], [HOME_KEYS[button].name]),
-                ` ${MENU_KEY_ACTIONS[button]}`,
-              ],
-            ),
+          ...Array.map(
+            Array.filter(HOME_BUTTONS, button => button !== 'Bests'),
+            button =>
+              h.li(
+                [h.Class('help-extra-item')],
+                [
+                  h.kbd([h.Class('menu-key')], [HOME_KEYS[button].name]),
+                  ` ${MENU_KEY_ACTIONS[button]}`,
+                ],
+              ),
           ),
           ...Array.map(KEYED_HAND_CARDS, card =>
             h.li(

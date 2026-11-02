@@ -3,7 +3,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import { Lobby, PickedMode, RoomCode, RoomDifficulty } from '@munch/netcode'
 
-import { Calling } from '../playerData'
+import { Calling, SavedBoughtCosmetics } from '../playerData'
 import { Bullet, GameEvent } from '../worldSchema'
 import { RoomSession, WorldState } from './seam'
 
@@ -73,7 +73,9 @@ export type Queue = typeof Queue.Type
 
 // ROOM
 
-const Link = Schema.Literals(['Connecting', 'Online', 'Reconnecting'])
+// NOTE: `Lost` is a link that stayed down past LOST_AFTER_MS (src/coop/update.ts):
+// the arena says so and offers the way out, and the tries go on.
+const Link = Schema.Literals(['Connecting', 'Online', 'Reconnecting', 'Lost'])
 type Link = typeof Link.Type
 
 export const Share = Schema.Literals(['Idle', 'Shared', 'Copied'])
@@ -135,6 +137,7 @@ export const Room = Schema.Struct({
   maybePlayerId: Schema.Option(Schema.String),
   maybeLobby: Schema.Option(Lobby),
   link: Link,
+  droppedAtMs: Schema.Option(Schema.Number),
   session: RoomSession,
   maybeWorld: Schema.Option(WorldState),
   frameEvents: Schema.Array(GameEvent),
@@ -180,6 +183,9 @@ export const Model = Schema.Struct({
   rank: Schema.Number,
   calling: Calling,
   rngState: Schema.Number,
+  // NOTE: the ids of the heroes and looks this player bought, so the lobby's
+  // picker offers only the heroes they own.
+  bought: SavedBoughtCosmetics,
 })
 export type Model = typeof Model.Type
 
@@ -190,6 +196,7 @@ export const initialModel: Model = {
   rank: 1,
   calling: 'You',
   rngState: 0,
+  bought: [],
 }
 
 export const emptyQueue: Queue = {
