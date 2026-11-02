@@ -9,8 +9,6 @@
 //   TAG=after bun run heavy -- --shared bun tools/audit/shots44.ts
 import type { Page } from 'playwright-core'
 
-import { focusOf } from '@game/party'
-
 import {
   DESKTOP_1280,
   TAG,
@@ -62,7 +60,7 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `${MID_WAVE}&rounds=20&${AT_WINDOW}&hold&tick=44`,
     act: async (page, problems, label) => {
       const balance = await page.evaluate(
-        () => focusOf(window.__model).wallet.balance,
+        () => window.__model.seats[0].wallet.balance,
       )
       if (balance >= 120) {
         problems.push(`${label}: holding at the ammo window did not buy`)

@@ -2,7 +2,6 @@ import { Effect, Schema } from 'effect'
 import type { Browser, CDPSession, Page } from 'playwright-core'
 
 import { Vector } from '@game/entitySchema'
-import { focusOf } from '@game/party'
 
 import { canvasRect, desktop, modelAs, toClient, wait } from './lib'
 import { evaluateAs } from './page'
@@ -132,7 +131,7 @@ const aimTarget = (page: Page) =>
       if (z.state._tag === 'Dying') {
         continue
       }
-      const d = Math.hypot(z.x - focusOf(m).player.x, z.y - focusOf(m).player.y)
+      const d = Math.hypot(z.x - m.seats[0].player.x, z.y - m.seats[0].player.y)
       if (d < bestDistance) {
         bestDistance = d
         best = z

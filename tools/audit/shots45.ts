@@ -11,8 +11,6 @@
 // ONLY picks scenes, such as `ONLY=take`, and VIEWPORTS picks screens.
 import type { Page } from 'playwright-core'
 
-import { focusOf } from '@game/party'
-
 import {
   SHOT_VIEWPORTS,
   TAG,
@@ -44,8 +42,8 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `${IN_KITCHEN}&gun=pan&tier=1&iced=pan&stick=60,0&tick=34`,
     act: async (page, problems, label) => {
       const player = await page.evaluate(() => ({
-        melee: focusOf(window.__model).player.melee._tag,
-        wield: focusOf(window.__model).player.wield,
+        melee: window.__model.seats[0].player.melee._tag,
+        wield: window.__model.seats[0].player.wield,
       }))
       if (player.melee !== 'Pan' || player.wield !== 'Melee') {
         problems.push(`${label}: the Pan is not in hand in the melee slot`)
@@ -57,7 +55,7 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `${BREAK}&${AT_FRIDGE}&fridge=offering&prize=Pan&fridgeMs=5000&tick=2`,
     act: async (page, problems, label) => {
       const arsenal = await page.evaluate(
-        () => focusOf(window.__model).player.arsenal._tag,
+        () => window.__model.seats[0].player.arsenal._tag,
       )
       if (arsenal === 'OneGun') {
         problems.push(`${label}: both gun slots should be full`)

@@ -9,8 +9,6 @@
 //   TAG=after bun run heavy -- --shared bun tools/audit/shots42.ts
 import type { Page } from 'playwright-core'
 
-import { focusOf } from '@game/party'
-
 import {
   SHOT_VIEWPORTS,
   TAG,
@@ -57,7 +55,7 @@ const hasFreeTag = async (
   await hasTracker(page, problems, label)
   const current = await page.evaluate(() => ({
     kitchenTour: { _tag: window.__model.kitchenTour._tag },
-    wallet: { balance: focusOf(window.__model).wallet.balance },
+    wallet: { balance: window.__model.seats[0].wallet.balance },
   }))
   if (current.kitchenTour._tag !== 'Running') {
     problems.push(`${label}: the kitchen tour is ${current.kitchenTour._tag}`)

@@ -1,5 +1,3 @@
-import { focusOf } from '@game/party'
-
 // The gun cluster pass: the guns at the bottom middle with the icons beside
 // them, in a wave, with a low magazine, in a break with traps, and in a break
 // with traps and a low magazine, on four landscape phones with touch and on a
@@ -143,7 +141,7 @@ for (const viewport of VIEWPORTS) {
         })
       return {
         stage: { x: rect.x, y: rect.y, scale: rect.width / 320 },
-        player: { x: focusOf(model).player.x, y: focusOf(model).player.y },
+        player: { x: model.seats[0].player.x, y: model.seats[0].player.y },
         buttons,
       }
     }, EDGE_INSET)
