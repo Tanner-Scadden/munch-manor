@@ -21,7 +21,7 @@ import {
   sparks,
 } from './particleBursts'
 import { keepNewest } from './particles'
-import { isStanding, playersOf } from './party'
+import { isCoop, isStanding, playersOf } from './party'
 import type { SeatedPlayer } from './party'
 import { type Calling } from './playerData'
 import { type Seeded, generateMany, nextRandom } from './prng'
@@ -179,7 +179,17 @@ const TELLS: Readonly<Record<Calling, Tell>> = {
 // repairs, then what the frame saw of the World kept to be read against
 // next time. It runs on frames with no tick too, so a repair made between
 // frames shows once and is not seen again.
-export const advanceTells = (model: Model, worldMs: number): Model => {
+export const advanceTells = (model: Model, worldMs: number): Model =>
+  isPlainCrew(model) ? model : tellsAfter(model, worldMs)
+
+// NOTE: a run of only YOU has no tell, and nothing to watch, so most runs
+// pay nothing here each frame.
+const isPlainCrew = (model: Model): boolean =>
+  isCoop(model)
+    ? Array.every(playersOf(model), ({ player }) => player.calling === 'You')
+    : model.player.calling === 'You'
+
+const tellsAfter = (model: Model, worldMs: number): Model => {
   const batches = [
     ...Array.flatMap(playersOf(model), seat =>
       isStanding(seat.seat)
