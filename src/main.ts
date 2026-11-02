@@ -144,6 +144,11 @@ import {
 import { type SaveWrite, afterMessage } from './update/settle'
 import { buy, focusShopItem, moveShopFocus } from './update/shop'
 import {
+  closeShopGuide,
+  openShopGuide,
+  showShopGuide,
+} from './update/shopGuide'
+import {
   ResumeAudio,
   notePlayOutcome,
   playSounds,
@@ -558,6 +563,14 @@ export const update = ApplicationComposition.makeUpdate({
     settle(model, { model: focusShopItem(model, item) }),
 
   CompletedFocusShopItem: model => settle(model, { model }),
+  CompletedFocusShopGuide: model => settle(model, { model }),
+
+  ClickedShopGuideButton: model => settle(model, openShopGuide(model)),
+
+  ClickedShopGuideSectionButton: (model, { section }) =>
+    settle(model, { model: showShopGuide(model, section) }),
+
+  ClickedShopGuideBackButton: model => settle(model, closeShopGuide(model)),
   CompletedFocusLookOption: model => settle(model, { model }),
 
   AcquiredAudioEngine: model =>
@@ -941,6 +954,18 @@ export const update = ApplicationComposition.makeUpdate({
 
   ClickedMunchopediaListButton: model =>
     settle(model, turnMunchopediaPage(model, MunchopediaPage.List())),
+
+  ClickedMunchopediaShopButton: model =>
+    settle(
+      model,
+      turnMunchopediaPage(model, MunchopediaPage.Shop({ section: 'Guns' })),
+    ),
+
+  ClickedMunchopediaShopSectionButton: (model, { section }) =>
+    settle(
+      model,
+      turnMunchopediaPage(model, MunchopediaPage.Shop({ section })),
+    ),
 
   ClickedNewEntryButton: (model, { kind }) =>
     Update.combineSteps(model, [

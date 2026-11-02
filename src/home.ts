@@ -284,6 +284,10 @@ export const showMunchopediaPage = (
           modifyFields(home, { munchopediaPage: () => MunchopediaPage.List() }),
       }),
     Entry: ({ kind }) => openEntry(model, kind),
+    Shop: () =>
+      modifyFields(model, {
+        home: home => modifyFields(home, { munchopediaPage: () => page }),
+      }),
   })
 
 // END SCREENS

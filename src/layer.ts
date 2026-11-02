@@ -46,6 +46,7 @@ import {
 } from './update/save'
 import { SendRunSummary } from './update/settle'
 import { FocusShopItem } from './update/shop'
+import { FocusShopGuide } from './update/shopGuide'
 import { PlaySound, ResumeAudio, managedResources } from './update/sound'
 import {
   FetchBuild,
@@ -71,6 +72,7 @@ export const CommandsLayer = Layer.mergeAll(
   CueMusic.layer,
   FocusLookOption.layer,
   FocusShopItem.layer,
+  FocusShopGuide.layer,
   FetchBuild.layer,
   WaitForUnwrap.layer,
   ReloadPage.layer,

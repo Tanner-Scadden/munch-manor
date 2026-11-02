@@ -268,6 +268,9 @@ export const HarnessConfig = Schema.Struct({
   prize: Schema.optionalKey(FridgePrize),
   fridgeMs: Num(600),
   fridgeseed: MaybeNum,
+  // The fridge prizes pulled before (`Cooker,Freeze`): the shop guide's
+  // fridge page shows them in place of ???.
+  prizes: Schema.optionalKey(ListOf(FridgePrize)),
   lobs: Flag,
   iced: Choice(['freeze', 'pan']),
   // Traps and difficulty

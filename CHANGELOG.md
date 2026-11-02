@@ -2,6 +2,10 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 2, 2026: Rattles wrote it down
+
+- 📖 Rattles wrote a shop guide: tap the ? in his shop, or find Shop in the Munchopedia, for bars, upgrades, and a fridge full of ???.
+
 ## November 1, 2026: Pick your hero
 
 - 🎩 PLAY opens a lobby to pick your hero, mode, and difficulty before a run. Rank up to meet a hero (a hard hat, a sweatband, a visor, or a chef's toque, each with a trade-off), then spend Bones to take them home (try one on first). Tap + BOT to bring up to three bot buddies along. The home menu got tidied too: MULTIPLAYER says its name, MORE is bigger, and your bests badge opens the Munchopedia.
