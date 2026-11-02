@@ -9,7 +9,17 @@ import {
   UpdateGreetingBinding,
 } from '../bindings'
 import { setBotCalling } from '../bots'
-import { chooseCalling, isPickable } from '../callingPick'
+import {
+  type CallingStanding,
+  callingStandingOf,
+  canAffordCalling,
+} from '../calling'
+import {
+  buyCalling,
+  chooseCalling,
+  tryOnCalling,
+  withoutTryOn,
+} from '../callingPick'
 import { NEWS_DAYS } from '../changelog'
 import { makeCommand, makeStep } from '../definition'
 import {
@@ -68,6 +78,7 @@ import {
 } from '../model'
 import { runDifficultyOf } from '../onlineRun'
 import type { Calling } from '../playerData'
+import { rankOf, totalPointsOf } from '../rank'
 import { activateNewBuild } from '../serviceWorker'
 import { stepWhen } from '../stepWhen'
 import { reloadOnto } from '../version'
@@ -196,7 +207,10 @@ export const forgetAskedMode: UpdateStep = stepModel => ({
       : stepModel,
     {
       home: home =>
-        modifyFields(home, { maybePickingBot: () => Option.none() }),
+        modifyFields(home, {
+          maybePickingBot: () => Option.none(),
+          maybeTryingCalling: () => Option.none(),
+        }),
     },
   ),
 })
@@ -452,24 +466,75 @@ export const pickFromCard = (difficulty: Difficulty) =>
     }),
   )
 
-// NOTE: a calling is picked from the home menu's picker, never in a run,
-// and only once its rank is reached.
+// NOTE: a calling is picked from the home menu's picker, never in a run.
+// An owned hero is the pick. One for sale (its rank is reached) is tried on
+// for the player's own pick and bought by the BUY pill (`buyHero`); a
+// teammate bot only takes a hero the player owns. A locked one shakes.
+const pickedOwned = (calling: Calling) =>
+  Update.combineSteps([
+    modelStep(stepModel =>
+      Option.match(stepModel.home.maybePickingBot, {
+        onNone: () => chooseCalling(withoutTryOn(stepModel), calling),
+        onSome: index => setBotCalling(withoutTryOn(stepModel), index, calling),
+      }),
+    ),
+    closePanel,
+  ])
+
+const deniedCard: UpdateStep = stepModel =>
+  playSounds([uiCue('Denied')])(withoutTryOn(stepModel))
+
+const CARD_TAPS = {
+  Owned: pickedOwned,
+  ForSale: (calling: Calling) =>
+    makeStep(model =>
+      Update.combineSteps([
+        Option.isSome(model.home.maybePickingBot)
+          ? deniedCard
+          : stepModel =>
+              playSounds([uiCue('Pop')])(tryOnCalling(stepModel, calling)),
+      ]),
+    ),
+  Locked: () => Update.combineSteps([deniedCard]),
+} satisfies Record<CallingStanding, unknown>
+
 export const pickCalling = (calling: Calling) =>
   makeStep(model =>
-    isPanelOpen(model, 'Calling') &&
-    isOnHome(model.phase) &&
-    isPickable(model, calling)
-      ? Update.combineSteps([
-          modelStep(stepModel =>
-            Option.match(stepModel.home.maybePickingBot, {
-              onNone: () => chooseCalling(stepModel, calling),
-              onSome: index => setBotCalling(stepModel, index, calling),
-            }),
-          ),
-          closePanel,
-        ])
+    isPanelOpen(model, 'Calling') && isOnHome(model.phase)
+      ? CARD_TAPS[
+          callingStandingOf(
+            calling,
+            rankOf(totalPointsOf(model.rank)),
+            model.boughtCosmetics,
+          )
+        ](calling)
       : unchanged,
   )
+
+// NOTE: the BUY pill: spends the Bones on the hero being tried on and makes
+// it the pick, and the picker closes. Short of Bones it shakes and stays.
+// Nothing without a try-on, or for a hero no longer for sale.
+export const buyHero = makeStep(model =>
+  Option.match(model.home.maybeTryingCalling, {
+    onNone: () => unchanged,
+    onSome: calling =>
+      !isPanelOpen(model, 'Calling') ||
+      Option.isSome(model.home.maybePickingBot) ||
+      callingStandingOf(
+        calling,
+        rankOf(totalPointsOf(model.rank)),
+        model.boughtCosmetics,
+      ) !== 'ForSale'
+        ? Update.combineSteps([modelStep(withoutTryOn)])
+        : canAffordCalling(model.rank, calling)
+          ? Update.combineSteps([
+              stepModel =>
+                playSounds([uiCue('Purchase')])(buyCalling(stepModel, calling)),
+              closePanel,
+            ])
+          : Update.combineSteps([playSounds([uiCue('Denied')])]),
+  }),
+)
 
 export const settleNightmareFrom =
   (before: Model): UpdateStep =>

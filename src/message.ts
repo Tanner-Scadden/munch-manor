@@ -156,6 +156,7 @@ export const Message = defineMessageUnion({
   ClickedShakeButton: {},
   ClickedDifficultyCardButton: { difficulty: Difficulty },
   ClickedCallingCardButton: { calling: Calling },
+  ClickedBuyCallingButton: {},
   FocusedHomeButton: { button: HomeButton },
   BlurredHomeButton: {},
   CompletedFocusHomeButton: {},

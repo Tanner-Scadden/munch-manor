@@ -133,6 +133,49 @@ describe('a gun skin bought with Bones', () => {
   )
 })
 
+describe('a hero bought with Bones', () => {
+  it.effect('reaches the other linked device, paid once even if both buy', () =>
+    synced(
+      Effect.gen(function* () {
+        const { phone, laptop, funded } = yield* pairWith(100)
+        const bought = {
+          ...funded,
+          calling: 'Handyman' as const,
+          boughtCosmetics: ['hero:Handyman'],
+          rank: { ...funded.rank, spentBones: 60 },
+        }
+        yield* Effect.all(
+          [write(phone, funded, bought), write(laptop, funded, bought)],
+          { concurrency: 'unbounded' },
+        )
+        const isPaidOnce = sees(
+          save =>
+            save.boughtCosmetics.length === 1 &&
+            save.boughtCosmetics[0] === 'hero:Handyman' &&
+            save.rank.spentBones === 60,
+        )
+        expect(isPaidOnce(yield* until(phone.load, isPaidOnce))).toBe(true)
+        expect(isPaidOnce(yield* until(laptop.load, isPaidOnce))).toBe(true)
+      }),
+    ),
+  )
+
+  it.effect('does nothing when the Bones fall short, or for YOU', () =>
+    synced(
+      Effect.gen(function* () {
+        const { phone, funded } = yield* pairWith(99)
+        yield* phone.write(funded, [
+          PlayerChange.BoughtCosmetic({ id: 'hero:TrackStar' }),
+          PlayerChange.BoughtCosmetic({ id: 'hero:You' }),
+        ])
+        const view = yield* settledView(phone)
+        expect(view.boughtCosmetics).toEqual([])
+        expect(view.rank.spentBones).toBe(0)
+      }),
+    ),
+  )
+})
+
 describe('the unlocks seen', () => {
   it.effect('add up across linked devices, whatever the order', () =>
     synced(

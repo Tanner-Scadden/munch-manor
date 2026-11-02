@@ -137,6 +137,7 @@ export const openCoop = (maybeCode: Option.Option<string>) =>
             look: lookCodeOf(model.appearance),
             rank: rankOf(totalPointsOf(model.rank)),
             calling: startingCallingOf(model),
+            bought: model.boughtCosmetics,
           }),
         ])
       : unchanged,

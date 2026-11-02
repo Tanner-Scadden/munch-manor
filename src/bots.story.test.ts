@@ -7,7 +7,7 @@ import { RESTART_GRACE_MS } from './constants'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase } from './model'
-import { readyModel } from './model.fixture'
+import { heroesBoughtBy, readyModel } from './model.fixture'
 import { playersOf } from './party'
 import { pointsForRank } from './rank'
 import { earnRank } from './rankRun'
@@ -25,6 +25,7 @@ import {
 
 const ranked = modifyFields(readyModel, {
   rank: rank => ({ ...rank, earnedPoints: pointsForRank(15) }),
+  boughtCosmetics: () => heroesBoughtBy(15),
 })
 
 const addOne = [

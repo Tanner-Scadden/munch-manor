@@ -1,7 +1,7 @@
 import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { CALLINGS, isCallingUnlocked } from './calling'
+import { ownedCallings } from './calling'
 import { seatedAs } from './callingPlayer'
 import { seatLook } from './coop/looks'
 import type { Bot, Model } from './model'
@@ -9,7 +9,6 @@ import { BOT_NAMES } from './names'
 import { COOP_RULES, withSeat } from './party'
 import type { Calling } from './playerData'
 import { nextRandom } from './prng'
-import { rankOf, totalPointsOf } from './rank'
 import type { World } from './world'
 import type { PlayerSlot } from './worldSchema'
 
@@ -61,11 +60,6 @@ export const seatCallings = (
 
 // ROSTER
 
-const unlockedCallings = (model: Model): ReadonlyArray<Calling> => {
-  const rank = rankOf(totalPointsOf(model.rank))
-  return Array.filter(CALLINGS, calling => isCallingUnlocked(calling, rank))
-}
-
 const pickFrom = <A>(
   state: number,
   choices: Array.NonEmptyReadonlyArray<A>,
@@ -89,12 +83,12 @@ const unusedNamesOf = (model: Model): Array.NonEmptyReadonlyArray<string> => {
 }
 
 const heroChoicesOf = (model: Model): Array.NonEmptyReadonlyArray<Calling> => {
-  const unlocked = unlockedCallings(model)
-  return Array.isReadonlyArrayNonEmpty(unlocked) ? unlocked : ['You']
+  const owned = ownedCallings(model.boughtCosmetics)
+  return Array.isReadonlyArrayNonEmpty(owned) ? owned : ['You']
 }
 
 // NOTE: a bot joins the next empty seat: a goofy name nobody in the crew
-// has, a hero picked at random from the ones this player has unlocked (the
+// has, a hero picked at random from the ones this player owns (the
 // seeded cosmetic generator), and the look of the seat it sits in.
 export const addBot = (model: Model): Model => {
   if (model.home.bots.length >= botSeatsFor(model)) {
@@ -125,13 +119,13 @@ export const removeBot = (model: Model, index: number): Model =>
       }),
   })
 
-// NOTE: only a hero this player has unlocked, as for their own pick.
+// NOTE: only a hero this player owns, as for their own pick.
 export const setBotCalling = (
   model: Model,
   index: number,
   calling: Calling,
 ): Model =>
-  Array.contains(unlockedCallings(model), calling)
+  Array.contains(ownedCallings(model.boughtCosmetics), calling)
     ? modifyFields(model, {
         home: home =>
           modifyFields(home, {

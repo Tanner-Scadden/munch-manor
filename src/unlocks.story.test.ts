@@ -23,6 +23,7 @@ import { WriteSave } from './update/save'
 const reached = modifyFields(homeAfterRead, {
   rank: () => ({ ...noRank, earnedPoints: pointsForRank(16) }),
   seenUnlocks: () => ['hat:PartyHat'],
+  boughtCosmetics: () => ['hero:Handyman'],
 })
 
 const showDialog = () =>
