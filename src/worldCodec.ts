@@ -47,22 +47,23 @@ import {
 // each item.
 type KeyOf = (item: unknown) => number
 
-const fieldNumber =
-  (...path: ReadonlyArray<string>): KeyOf =>
-  item => {
-    const value = Array.reduce(path, item, (at, name) =>
-      isRecord(at) ? at[name] : undefined,
-    )
-    return typeof value === 'number' ? value : -1
-  }
+const numberOrMissing = (value: unknown): number =>
+  typeof value === 'number' ? value : -1
+
+const idOf: KeyOf = item => (isRecord(item) ? numberOrMissing(item['id']) : -1)
+
+const seatSlotOf: KeyOf = item =>
+  isRecord(item) && isRecord(item['seat'])
+    ? numberOrMissing(item['seat']['slot'])
+    : -1
 
 const KEYED_LISTS: ReadonlyMap<string, KeyOf> = new Map([
-  ['zombies', fieldNumber('id')],
-  ['bullets', fieldNumber('id')],
-  ['lobs', fieldNumber('id')],
-  ['pickups', fieldNumber('id')],
-  ['traps', fieldNumber('id')],
-  ['seats', fieldNumber('seat', 'slot')],
+  ['zombies', idOf],
+  ['bullets', idOf],
+  ['lobs', idOf],
+  ['pickups', idOf],
+  ['traps', idOf],
+  ['seats', seatSlotOf],
 ])
 
 // NOTE: World fields that never go on the wire.
@@ -110,28 +111,36 @@ const lengthOf = (reader: Reader): number => {
   return length > MAX_LIST ? fail(`A list of ${length}`) : length
 }
 
-export const readMany = <A>(count: number, read: () => A): ReadonlyArray<A> =>
-  globalThis.Array.from({ length: count }, read)
+export const readMany = <A>(count: number, read: () => A): ReadonlyArray<A> => {
+  const items: Array<A> = []
+  for (let index = 0; index < count; index++) {
+    items.push(read())
+  }
+  return items
+}
 
 // CODECS
 
+// NOTE: a struct's diff also hands out its mask of changed fields, so a
+// keyed list that has found which items changed need not find it again.
 type Diff = Readonly<{
-  write: (writer: Writer, prev: unknown, next: unknown) => void
+  write: (writer: Writer, prev: unknown, next: unknown, mask?: number) => void
   read: (reader: Reader, prev: unknown) => unknown
+  maskOf?: (prev: unknown, next: unknown) => number
 }>
 
 type Codec = Readonly<{
   write: (writer: Writer, value: unknown) => void
   read: (reader: Reader) => unknown
   same: (a: unknown, b: unknown) => boolean
-  maybeDiff: Option.Option<Diff>
+  diff: Diff | undefined
 }>
 
 const plain = (
   write: Codec['write'],
   read: Codec['read'],
   same: Codec['same'],
-): Codec => ({ write, read, same, maybeDiff: Option.none() })
+): Codec => ({ write, read, same, diff: undefined })
 
 const writeChange = (
   codec: Codec,
@@ -139,16 +148,14 @@ const writeChange = (
   prev: unknown,
   next: unknown,
 ): void =>
-  Option.match(codec.maybeDiff, {
-    onNone: () => codec.write(writer, next),
-    onSome: diff => diff.write(writer, prev, next),
-  })
+  codec.diff === undefined
+    ? codec.write(writer, next)
+    : codec.diff.write(writer, prev, next)
 
 const readChange = (codec: Codec, reader: Reader, prev: unknown): unknown =>
-  Option.match(codec.maybeDiff, {
-    onNone: () => codec.read(reader),
-    onSome: diff => diff.read(reader, prev),
-  })
+  codec.diff === undefined
+    ? codec.read(reader)
+    : codec.diff.read(reader, prev)
 
 // NUMBERS
 
@@ -193,13 +200,14 @@ const fixedNumber = (scale: number): Codec =>
   plain(
     (writer, value) => writer.i16(fixedOf(numberOf(value), scale)),
     reader => reader.i16() / scale,
-    (a, b) => fixedOf(numberOf(a), scale) === fixedOf(numberOf(b), scale),
+    (a, b) =>
+      a === b || fixedOf(numberOf(a), scale) === fixedOf(numberOf(b), scale),
   )
 
 const millisNumber = plain(
   (writer, value) => writer.zigzag(Math.round(numberOf(value))),
   reader => reader.zigzag(),
-  (a, b) => Math.round(numberOf(a)) === Math.round(numberOf(b)),
+  (a, b) => a === b || Math.round(numberOf(a)) === Math.round(numberOf(b)),
 )
 
 const POSITION_SCALE = 8
@@ -267,20 +275,20 @@ const sameLists = (
   item: Codec,
   a: ReadonlyArray<unknown>,
   b: ReadonlyArray<unknown>,
-): boolean =>
-  a === b ||
-  (a.length === b.length &&
-    Array.every(a, (value, index) => item.same(value, b[index])))
-
-// NOTE: how many of the first `limit` indexes hold, counting from the start.
-const countWhile = (limit: number, holds: (index: number) => boolean): number =>
-  Option.getOrElse(
-    Array.findFirstIndex(
-      readMany(Math.max(0, limit), () => 0),
-      (_, index) => !holds(index),
-    ),
-    () => Math.max(0, limit),
-  )
+): boolean => {
+  if (a === b) {
+    return true
+  }
+  if (a.length !== b.length) {
+    return false
+  }
+  for (let index = 0; index < a.length; index++) {
+    if (!item.same(a[index], b[index])) {
+      return false
+    }
+  }
+  return true
+}
 
 // NOTE: the indexes of `prev` to drop to get `next`, when `next` is `prev`
 // with some items taken out and nothing else changed.
@@ -288,16 +296,17 @@ const removedIndexes = (
   item: Codec,
   prev: ReadonlyArray<unknown>,
   next: ReadonlyArray<unknown>,
-): Option.Option<ReadonlyArray<number>> => {
-  const walked = Array.reduce(
-    prev,
-    { at: 0, removed: Array.empty<number>() },
-    (state, entry, index) =>
-      state.at < next.length && item.same(entry, next[state.at])
-        ? { at: state.at + 1, removed: state.removed }
-        : { at: state.at, removed: Array.append(state.removed, index) },
-  )
-  return walked.at === next.length ? Option.some(walked.removed) : Option.none()
+): ReadonlyArray<number> | undefined => {
+  let at = 0
+  const removed: Array<number> = []
+  for (let index = 0; index < prev.length; index++) {
+    if (at < next.length && item.same(prev[index], next[at])) {
+      at++
+    } else {
+      removed.push(index)
+    }
+  }
+  return at === next.length ? removed : undefined
 }
 
 const SPLICED = 0
@@ -307,24 +316,23 @@ const RETOUCHED = 2
 // NOTE: index gaps, so a run of nearby indexes is a byte each.
 const writeIndexes = (writer: Writer, indexes: ReadonlyArray<number>) => {
   writer.varint(indexes.length)
-  Array.forEach(indexes, (index, at) =>
-    writer.varint(index - (at === 0 ? 0 : (indexes[at - 1] ?? 0) + 1)),
-  )
+  let previous = -1
+  for (const index of indexes) {
+    writer.varint(index - previous - 1)
+    previous = index
+  }
 }
 
-const readIndexes = (reader: Reader): ReadonlyArray<number> =>
-  Array.reduce(
-    readMany(lengthOf(reader), () => reader.varint()),
-    Array.empty<number>(),
-    (indexes, gap) =>
-      Array.append(
-        indexes,
-        Option.match(Array.last(indexes), {
-          onNone: () => gap,
-          onSome: last => last + 1 + gap,
-        }),
-      ),
-  )
+const readIndexes = (reader: Reader): ReadonlyArray<number> => {
+  const count = lengthOf(reader)
+  const indexes: Array<number> = []
+  let previous = -1
+  for (let at = 0; at < count; at++) {
+    previous = previous + 1 + reader.varint()
+    indexes.push(previous)
+  }
+  return indexes
+}
 
 // NOTE: a list's diff is one of three shapes. When items only left it, such
 // as a wave's planned spawns as they come in, it names the indexes that
@@ -337,7 +345,9 @@ const listCodec = (item: Codec): Codec => {
   const write = (writer: Writer, value: unknown) => {
     const list = listOf(value)
     writer.varint(list.length)
-    Array.forEach(list, entry => item.write(writer, entry))
+    for (const entry of list) {
+      item.write(writer, entry)
+    }
   }
   const read = (reader: Reader) =>
     readMany(lengthOf(reader), () => item.read(reader))
@@ -348,18 +358,25 @@ const listCodec = (item: Codec): Codec => {
     next: ReadonlyArray<unknown>,
   ) => {
     const shorter = Math.min(prev.length, next.length)
-    const head = countWhile(shorter, index =>
-      item.same(prev[index], next[index]),
-    )
-    const tail = countWhile(shorter - head, index =>
-      item.same(prev[prev.length - 1 - index], next[next.length - 1 - index]),
-    )
+    let head = 0
+    while (head < shorter && item.same(prev[head], next[head])) {
+      head++
+    }
+    let tail = 0
+    while (
+      tail < shorter - head &&
+      item.same(prev[prev.length - 1 - tail], next[next.length - 1 - tail])
+    ) {
+      tail++
+    }
     const middle = next.slice(head, next.length - tail)
     writer.u8(SPLICED)
     writer.varint(head)
     writer.varint(tail)
     writer.varint(middle.length)
-    Array.forEach(middle, entry => item.write(writer, entry))
+    for (const entry of middle) {
+      item.write(writer, entry)
+    }
   }
 
   const writeDiff = (
@@ -369,30 +386,28 @@ const listCodec = (item: Codec): Codec => {
   ) => {
     const prev = listOf(prevValue)
     const next = listOf(nextValue)
-    if (next.length === prev.length && Option.isSome(item.maybeDiff)) {
-      const changed = Array.filter(
-        Array.map(next, (_, index) => index),
-        index => !item.same(prev[index], next[index]),
-      )
+    if (next.length === prev.length && item.diff !== undefined) {
+      const changed: Array<number> = []
+      for (let index = 0; index < next.length; index++) {
+        if (!item.same(prev[index], next[index])) {
+          changed.push(index)
+        }
+      }
       writer.u8(RETOUCHED)
       writeIndexes(writer, changed)
-      Array.forEach(changed, index =>
-        writeChange(item, writer, prev[index], next[index]),
-      )
+      for (const index of changed) {
+        writeChange(item, writer, prev[index], next[index])
+      }
       return
     }
-    Option.match(
-      next.length < prev.length
-        ? removedIndexes(item, prev, next)
-        : Option.none(),
-      {
-        onNone: () => writeSplice(writer, prev, next),
-        onSome: removed => {
-          writer.u8(THINNED)
-          writeIndexes(writer, removed)
-        },
-      },
-    )
+    const removed =
+      next.length < prev.length ? removedIndexes(item, prev, next) : undefined
+    if (removed === undefined) {
+      writeSplice(writer, prev, next)
+    } else {
+      writer.u8(THINNED)
+      writeIndexes(writer, removed)
+    }
   }
 
   const readSplice = (reader: Reader, prev: ReadonlyArray<unknown>) => {
@@ -411,20 +426,18 @@ const listCodec = (item: Codec): Codec => {
 
   const readThinned = (reader: Reader, prev: ReadonlyArray<unknown>) => {
     const removed = new Set(readIndexes(reader))
-    return Array.filter(prev, (_, index) => !removed.has(index))
+    return prev.filter((_, index) => !removed.has(index))
   }
 
   const readRetouched = (reader: Reader, prev: ReadonlyArray<unknown>) => {
-    const changes = new Map(
-      Array.map(readIndexes(reader), index => {
-        const before =
-          index < prev.length ? prev[index] : fail('A list diff ran past it')
-        return [index, readChange(item, reader, before)] as const
-      }),
-    )
-    return Array.map(prev, (entry, index) =>
-      changes.has(index) ? changes.get(index) : entry,
-    )
+    const next = prev.slice()
+    for (const index of readIndexes(reader)) {
+      if (index >= prev.length) {
+        return fail('A list diff ran past it')
+      }
+      next[index] = readChange(item, reader, prev[index])
+    }
+    return next
   }
 
   const readDiff = (reader: Reader, prevValue: unknown): unknown => {
@@ -442,86 +455,137 @@ const listCodec = (item: Codec): Codec => {
     write,
     read,
     same: (a, b) => sameLists(item, listOf(a), listOf(b)),
-    maybeDiff: Option.some({ write: writeDiff, read: readDiff }),
+    diff: { write: writeDiff, read: readDiff },
   }
 }
 
 // NOTE: a keyed list's diff: the ids gone, each kept item that changed with
 // its own diff, the new items whole, and a flag for the order. The order is
 // almost always the kept items as they were and the new ones after them;
-// when it is not, the ids go in their new order.
+// when it is not, the ids go in their new order. Each list is indexed by id
+// once, so a diff costs time in the list's length, not its square.
 const keyedListCodec = (item: Codec, keyOf: KeyOf): Codec => {
   const whole = listCodec(item)
-  const byKey = (list: ReadonlyArray<unknown>): ReadonlyMap<number, unknown> =>
-    new Map(Array.map(list, entry => [keyOf(entry), entry] as const))
 
   const write = (writer: Writer, prevValue: unknown, nextValue: unknown) => {
     const prev = listOf(prevValue)
     const next = listOf(nextValue)
-    const prevByKey = byKey(prev)
-    const nextByKey = byKey(next)
-    const gone = Array.filter(prev, entry => !nextByKey.has(keyOf(entry)))
-    const added = Array.filter(next, entry => !prevByKey.has(keyOf(entry)))
-    const changed = Array.filter(next, entry => {
-      const before = prevByKey.get(keyOf(entry))
-      return before !== undefined && !item.same(before, entry)
-    })
-    const naturalOrder = [
-      ...Array.filter(prev, entry => nextByKey.has(keyOf(entry))),
-      ...added,
-    ]
-    const isNatural = Array.every(
-      next,
-      (entry, index) => keyOf(entry) === keyOf(naturalOrder[index]),
-    )
+    const prevByKey = new Map<number, unknown>()
+    for (const entry of prev) {
+      prevByKey.set(keyOf(entry), entry)
+    }
+    const nextKeys = new Set<number>()
+    const added: Array<unknown> = []
+    const changed: Array<unknown> = []
+    const masks: Array<number> = []
+    const maskOf = item.diff?.maskOf
+    for (const entry of next) {
+      const key = keyOf(entry)
+      nextKeys.add(key)
+      const before = prevByKey.get(key)
+      if (before === undefined) {
+        added.push(entry)
+      } else if (maskOf === undefined) {
+        if (!item.same(before, entry)) {
+          changed.push(entry)
+        }
+      } else {
+        const mask = maskOf(before, entry)
+        if (mask !== 0) {
+          changed.push(entry)
+          masks.push(mask)
+        }
+      }
+    }
+    const gone: Array<number> = []
+    const keptKeys: Array<number> = []
+    for (const entry of prev) {
+      const key = keyOf(entry)
+      if (nextKeys.has(key)) {
+        keptKeys.push(key)
+      } else {
+        gone.push(key)
+      }
+    }
+    let isNatural = true
+    for (let index = 0; index < next.length && isNatural; index++) {
+      const expected =
+        index < keptKeys.length
+          ? keptKeys[index]
+          : keyOf(added[index - keptKeys.length])
+      isNatural = keyOf(next[index]) === expected
+    }
     writer.varint(gone.length)
-    Array.forEach(gone, entry => writer.varint(keyOf(entry)))
+    for (const key of gone) {
+      writer.varint(key)
+    }
     writer.varint(changed.length)
-    Array.forEach(changed, entry => {
-      writer.varint(keyOf(entry))
-      writeChange(item, writer, prevByKey.get(keyOf(entry)), entry)
+    changed.forEach((entry, index) => {
+      const key = keyOf(entry)
+      writer.varint(key)
+      if (item.diff === undefined) {
+        item.write(writer, entry)
+      } else {
+        item.diff.write(writer, prevByKey.get(key), entry, masks[index])
+      }
     })
     writer.varint(added.length)
-    Array.forEach(added, entry => item.write(writer, entry))
+    for (const entry of added) {
+      item.write(writer, entry)
+    }
     writer.bool(isNatural)
     if (!isNatural) {
       writer.varint(next.length)
-      Array.forEach(next, entry => writer.varint(keyOf(entry)))
+      for (const entry of next) {
+        writer.varint(keyOf(entry))
+      }
     }
   }
 
   const read = (reader: Reader, prevValue: unknown): unknown => {
     const prev = listOf(prevValue)
     const gone = new Set(readMany(lengthOf(reader), () => reader.varint()))
-    const changes = new Map(
-      readMany(lengthOf(reader), () => {
+    const changeCount = lengthOf(reader)
+    const changes = new Map<number, unknown>()
+    if (changeCount > 0) {
+      const prevByKey = new Map<number, unknown>()
+      for (const entry of prev) {
+        prevByKey.set(keyOf(entry), entry)
+      }
+      for (let at = 0; at < changeCount; at++) {
         const key = reader.varint()
-        const before = Option.getOrElse(
-          Array.findFirst(prev, entry => keyOf(entry) === key),
-          () => fail(`A diff changed an unknown item ${key}`),
-        )
-        return [key, readChange(item, reader, before)] as const
-      }),
-    )
+        const before = prevByKey.get(key)
+        if (before === undefined) {
+          return fail(`A diff changed an unknown item ${key}`)
+        }
+        changes.set(key, readChange(item, reader, before))
+      }
+    }
     const added = readMany(lengthOf(reader), () => item.read(reader))
-    const kept = Array.filterMap(prev, entry => {
+    const natural: Array<unknown> = []
+    for (const entry of prev) {
       const key = keyOf(entry)
-      return gone.has(key)
-        ? Result.failVoid
-        : Result.succeed(changes.get(key) ?? entry)
-    })
-    const natural = [...kept, ...added]
+      if (!gone.has(key)) {
+        natural.push(changes.get(key) ?? entry)
+      }
+    }
+    for (const entry of added) {
+      natural.push(entry)
+    }
     if (reader.bool()) {
       return natural
     }
-    const naturalByKey = byKey(natural)
+    const naturalByKey = new Map<number, unknown>()
+    for (const entry of natural) {
+      naturalByKey.set(keyOf(entry), entry)
+    }
     return readMany(lengthOf(reader), () => {
       const key = reader.varint()
       return naturalByKey.get(key) ?? fail(`No item ${key} to order`)
     })
   }
 
-  return { ...whole, maybeDiff: Option.some({ write, read }) }
+  return { ...whole, diff: { write, read } }
 }
 
 // STRUCTS
@@ -536,31 +600,28 @@ type Property = Readonly<{
 // JavaScript's bitwise operators stop at 32 bits.
 const MAX_MASK_FIELDS = 48
 
-const maskOf = (flags: ReadonlyArray<boolean>): number =>
-  Array.reduce(flags, 0, (mask, flag, index) =>
-    flag ? mask + 2 ** index : mask,
-  )
+const BIT_VALUES: ReadonlyArray<number> = globalThis.Array.from(
+  { length: MAX_MASK_FIELDS },
+  (_, index) => 2 ** index,
+)
+
+const bitValue = (index: number): number => BIT_VALUES[index] ?? 2 ** index
 
 const hasBit = (mask: number, index: number): boolean =>
-  Math.floor(mask / 2 ** index) % 2 === 1
+  Math.floor(mask / bitValue(index)) % 2 === 1
 
 const sameProperty = (property: Property, a: Fields, b: Fields): boolean => {
+  const valueA = a[property.name]
+  const valueB = b[property.name]
+  if (valueA !== undefined && valueB !== undefined) {
+    return property.codec.same(valueA, valueB)
+  }
   const hasA = property.name in a
   const hasB = property.name in b
   return hasA && hasB
-    ? property.codec.same(a[property.name], b[property.name])
+    ? property.codec.same(valueA, valueB)
     : hasA === hasB
 }
-
-const withField = (fields: Fields, name: string, value: unknown): Fields => ({
-  ...fields,
-  [name]: value,
-})
-
-const withoutField = (fields: Fields, name: string): Fields =>
-  Object.fromEntries(
-    Array.filter(Object.entries(fields), ([key]) => key !== name),
-  )
 
 const structCodec = (
   properties: ReadonlyArray<Property>,
@@ -571,36 +632,44 @@ const structCodec = (
     return fail(`A struct of ${properties.length} fields`)
   }
   const optional = Array.filter(properties, property => property.isOptional)
+  const hasOptional = optional.length > 0
+  // NOTE: where each property sits among the optional ones, or -1.
+  const optionalIndexes = Array.map(properties, property =>
+    property.isOptional ? optional.indexOf(property) : -1,
+  )
+  const starting: Fields = { ...fills, ...constants }
 
   const write = (writer: Writer, value: unknown) => {
     const fields = recordOf(value)
-    if (Array.isReadonlyArrayNonEmpty(optional)) {
-      writer.varint(maskOf(Array.map(optional, ({ name }) => name in fields)))
+    if (hasOptional) {
+      let mask = 0
+      optional.forEach(({ name }, index) => {
+        if (name in fields) {
+          mask += bitValue(index)
+        }
+      })
+      writer.varint(mask)
     }
-    Array.forEach(properties, property => {
+    for (const property of properties) {
       if (property.name in fields) {
         property.codec.write(writer, fields[property.name])
       }
-    })
+    }
   }
 
   const read = (reader: Reader): unknown => {
-    const presence = Array.isReadonlyArrayNonEmpty(optional)
-      ? reader.varint()
-      : 0
-    const present = new Set(
-      Array.filterMap(optional, ({ name }, index) =>
-        hasBit(presence, index) ? Result.succeed(name) : Result.failVoid,
-      ),
-    )
-    return Array.reduce(
-      properties,
-      { ...fills, ...constants },
-      (fields: Fields, property) =>
-        property.isOptional && !present.has(property.name)
-          ? fields
-          : withField(fields, property.name, property.codec.read(reader)),
-    )
+    const presence = hasOptional ? reader.varint() : 0
+    const fields: Record<string, unknown> = { ...starting }
+    properties.forEach((property, index) => {
+      if (
+        property.isOptional &&
+        !hasBit(presence, optionalIndexes[index] ?? 0)
+      ) {
+        return
+      }
+      fields[property.name] = property.codec.read(reader)
+    })
+    return fields
   }
 
   const same = (a: unknown, b: unknown): boolean => {
@@ -609,22 +678,46 @@ const structCodec = (
     }
     const fieldsA = recordOf(a)
     const fieldsB = recordOf(b)
-    return Array.every(properties, property =>
-      sameProperty(property, fieldsA, fieldsB),
-    )
+    for (const property of properties) {
+      if (!sameProperty(property, fieldsA, fieldsB)) {
+        return false
+      }
+    }
+    return true
   }
 
-  const writeDiff = (writer: Writer, prev: unknown, next: unknown) => {
+  const maskOf = (prev: unknown, next: unknown): number => {
     const before = recordOf(prev)
     const after = recordOf(next)
-    const changed = Array.map(
-      properties,
-      property => before !== after && !sameProperty(property, before, after),
-    )
-    writer.varint(maskOf(changed))
-    Array.forEach(properties, (property, index) => {
-      if (changed[index] !== true) {
-        return
+    let mask = 0
+    if (before !== after) {
+      for (let index = 0; index < properties.length; index++) {
+        const property = properties[index]
+        if (property !== undefined && !sameProperty(property, before, after)) {
+          mask += bitValue(index)
+        }
+      }
+    }
+    return mask
+  }
+
+  const writeDiff = (
+    writer: Writer,
+    prev: unknown,
+    next: unknown,
+    known?: number,
+  ) => {
+    const before = recordOf(prev)
+    const after = recordOf(next)
+    const mask = known ?? maskOf(before, after)
+    writer.varint(mask)
+    if (mask === 0) {
+      return
+    }
+    for (let index = 0; index < properties.length; index++) {
+      const property = properties[index]
+      if (property === undefined || !hasBit(mask, index)) {
+        continue
       }
       const has = property.name in after
       if (property.isOptional) {
@@ -642,39 +735,39 @@ const structCodec = (
           property.codec.write(writer, after[property.name])
         }
       }
-    })
+    }
   }
 
   const readDiff = (reader: Reader, prev: unknown): unknown => {
     const before = recordOf(prev)
     const mask = reader.varint()
-    return Array.reduce(
-      properties,
-      before,
-      (fields: Fields, property, index) => {
-        if (!hasBit(mask, index)) {
-          return fields
-        }
-        const has = property.isOptional ? reader.bool() : true
-        if (!has) {
-          return withoutField(fields, property.name)
-        }
-        return withField(
-          fields,
-          property.name,
+    if (mask === 0) {
+      return before
+    }
+    const fields: Record<string, unknown> = { ...before }
+    properties.forEach((property, index) => {
+      if (!hasBit(mask, index)) {
+        return
+      }
+      const has = property.isOptional ? reader.bool() : true
+      if (!has) {
+        // NOTE: a removed optional field, which is rare.
+        delete fields[property.name]
+      } else {
+        fields[property.name] =
           property.name in before
             ? readChange(property.codec, reader, before[property.name])
-            : property.codec.read(reader),
-        )
-      },
-    )
+            : property.codec.read(reader)
+      }
+    })
+    return fields
   }
 
   return {
     write,
     read,
     same,
-    maybeDiff: Option.some({ write: writeDiff, read: readDiff }),
+    diff: { write: writeDiff, read: readDiff, maskOf },
   }
 }
 
@@ -685,11 +778,17 @@ type Member = Readonly<{
   codec: Codec
 }>
 
-const memberIndexOf = (members: ReadonlyArray<Member>, value: unknown) =>
-  Option.getOrElse(
-    Array.findFirstIndex(members, member => member.isMember(value)),
-    () => fail('A value no member of its union holds'),
-  )
+const memberIndexOf = (
+  members: ReadonlyArray<Member>,
+  value: unknown,
+): number => {
+  for (let index = 0; index < members.length; index++) {
+    if (members[index]?.isMember(value) === true) {
+      return index
+    }
+  }
+  return fail('A value no member of its union holds')
+}
 
 const memberAt = (members: ReadonlyArray<Member>, index: number): Member =>
   members[index] ?? fail(`No union member ${index}`)
@@ -734,16 +833,15 @@ const unionCodec = (members: ReadonlyArray<Member>): Codec => {
         )
       : memberAt(members, mark - 1).codec.read(reader)
   }
-  const isDiffable = Array.some(members, member =>
-    Option.isSome(member.codec.maybeDiff),
+  const isDiffable = Array.some(
+    members,
+    member => member.codec.diff !== undefined,
   )
   return {
     write,
     read,
     same,
-    maybeDiff: isDiffable
-      ? Option.some({ write: writeDiff, read: readDiff })
-      : Option.none(),
+    diff: isDiffable ? { write: writeDiff, read: readDiff } : undefined,
   }
 }
 
