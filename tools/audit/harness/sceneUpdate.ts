@@ -27,7 +27,11 @@ import { freshGun, mapGuns } from '@game/weapons'
 
 import type * as Director from './director'
 import { CALM, ROAMING } from './room'
-import { type HarnessPage, type SceneSettings } from './settings'
+import {
+  type HarnessPage,
+  type SceneSettings,
+  animationFrameTime,
+} from './settings'
 
 // NOTE: `hold` holds the interact key (on touch, a finger on the hold
 // button) from the first frame, so `tick=N` shows the ring N frames in.
@@ -225,8 +229,15 @@ export const gameUpdate = (
   window.__isFrozen = page.framesRun >= freezeAfter
   const t0 = performance.now()
   const result = update(model, message)
-  if (instrument && message._tag === 'TickedFrame') {
+  // NOTE: the frame tick is TickedFrame alone, or in an online run the
+  // room's TickedRoomFrame, which is the one that changes the Model there.
+  if (
+    instrument &&
+    (message._tag === 'TickedFrame' || message._tag === 'TickedRoomFrame') &&
+    result.model !== model
+  ) {
     window.__timings.update.push(performance.now() - t0)
+    window.__timings.tickFrames.push(animationFrameTime())
   }
   const next = keepScene(settings, result, message)
   window.__model = next.model

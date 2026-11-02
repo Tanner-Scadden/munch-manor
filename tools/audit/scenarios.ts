@@ -38,6 +38,15 @@ export const SCENARIOS: Record<string, Scenario> = {
   // The co-op arena staged with three players and a network that never
   // answers, so it measures the online run's view of a still World.
   coopArena: { q: '?coop=arena', warm: () => wait(1500), bot: false },
+  // A co-op client in a live room: four seats in a room run in a Worker
+  // (harness/liveRoom.worker.ts), three of them scripted players, and the
+  // page's own seat played by the bot, with 40 zombies that never die, so
+  // the World moves and stays the same size.
+  coopLive: {
+    q: '?coop=live&seats=4&crowd=40',
+    warm: () => wait(4000),
+    bot: true,
+  },
   endless15: {
     q: '?wave=15&mode=endless&start=wave&god&gun=smg&tier=3&fill',
     warm: () => wait(15000),
