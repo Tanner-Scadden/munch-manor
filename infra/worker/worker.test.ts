@@ -26,6 +26,8 @@ import {
   COOP_PLAYERS,
   COOP_WIN_RATE,
   ENDS,
+  MEDIAN_LENGTH,
+  RUNS_PER_DAY,
 } from '../../tools/analytics/queries.ts'
 import {
   type RateLimiter,
@@ -725,6 +727,12 @@ describe("the report's co-op counts", () => {
           { party: 'Crew', outcome: 'GameOver', runs: 3 },
           { party: 'Crew', outcome: 'Victory', runs: 1 },
         ])
+        expect(
+          yield* query(setup, `SELECT runs FROM (${RUNS_PER_DAY})`),
+        ).toEqual([{ runs: 4 }])
+        expect(
+          yield* query(setup, `SELECT mode, runs FROM (${MEDIAN_LENGTH})`),
+        ).toEqual([{ mode: 'Campaign', runs: 4 }])
       }),
   )
 })
