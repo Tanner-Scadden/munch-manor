@@ -69,6 +69,7 @@ import {
   ammoTickCues,
   frameSoundCues,
   fridgeLandCues,
+  kitchenCues,
   mendCues,
   playSounds,
   playStartSoundWhen,
@@ -319,6 +320,7 @@ export const tickFrame = (deltaTime: number) =>
           ...ammoTickCues(advanced),
           ...fridgeLandCues(model, advanced),
           ...mendCues(model, advanced),
+          ...kitchenCues(model, advanced),
         ]),
         syncShopDialog(isBrowsing(model.shop)),
       ])

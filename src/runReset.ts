@@ -5,6 +5,7 @@ import { startingCallingOf } from './callingPick'
 import { playerOfCalling } from './callingPlayer'
 import { cameraFor } from './camera'
 import {
+  KitchenCall,
   PrizeFlight,
   RunTally,
   cosmeticSeedOf,
@@ -76,6 +77,7 @@ export type RunFields = Pick<
   | 'callouts'
   | 'prizeFlight'
   | 'counterSale'
+  | 'kitchenCall'
   | 'breakIdleMs'
   | 'trapStock'
   | 'selectedTrap'
@@ -136,6 +138,7 @@ export const freshRun = (model: Model): RunFields => ({
   callouts: [],
   prizeFlight: PrizeFlight.Grounded(),
   counterSale: CounterSale.Quiet(),
+  kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   breakIdleMs: 0,
   trapStock: emptyTrapStock,
   selectedTrap: 'Barricade',
