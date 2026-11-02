@@ -756,6 +756,65 @@ describe('the room', () => {
     )
   })
 
+  describe('a link that stays down', () => {
+    const dropped = (atMs: number) =>
+      Message.ReceivedRoomEvent({
+        event: RoomEvent.cases.Dropped.make({ reason: 'Socket ended' }),
+        atMs,
+      })
+    const online = [
+      message(
+        received(
+          { _tag: 'Welcome', version: 1, slot: 0, state: 'Playing', tick: 0 },
+          1000,
+        ),
+      ),
+      message(received(snapshotFrame(10), 1010)),
+    ] as const
+
+    test('shows Zz at first, then Lost after 20 seconds, with the tries going on', () => {
+      story(
+        update,
+        given(inRoom(0)),
+        ...online,
+        message(dropped(2000)),
+        model(current => {
+          const ticked = tickRoom(current, NEUTRAL_INPUT, 3000).model
+          expect(roomOf(ticked).link).toBe('Reconnecting')
+          expect(roomOf(ticked).droppedAtMs).toEqual(Option.some(3000))
+          expect(roomOf(tickRoom(ticked, NEUTRAL_INPUT, 22_900).model).link).toBe(
+            'Reconnecting',
+          )
+          const lost = tickRoom(ticked, NEUTRAL_INPUT, 23_000).model
+          expect(roomOf(lost).link).toBe('Lost')
+          // NOTE: the room answers again: back Online, the clock cleared.
+          const back = update(
+            lost,
+            received(snapshotFrame(30), 24_000),
+          ).model
+          expect(roomOf(back).link).toBe('Online')
+          expect(roomOf(back).droppedAtMs).toEqual(Option.none())
+        }),
+      )
+    })
+
+    test('gives up past the rejoin window, back on the hub with LOST', () => {
+      story(
+        update,
+        given(inRoom(0)),
+        ...online,
+        message(dropped(2000)),
+        model(current => {
+          const ticked = tickRoom(current, NEUTRAL_INPUT, 3000).model
+          const gone = tickRoom(ticked, NEUTRAL_INPUT, 3000 + 135_000).model
+          expect(gone.screen).toEqual(
+            Screen.Hub({ maybeProblem: Option.some('Dropped') }),
+          )
+        }),
+      )
+    })
+  })
+
   test('the controls from the parent go to the room and the World comes back', () => {
     const walking = { ...NEUTRAL_INPUT, moveX: 127 }
     story(

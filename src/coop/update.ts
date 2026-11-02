@@ -328,7 +328,12 @@ const receiveSessionFrame = (
   Result.match(Session.receive(coopWorld, room.session, frame, bytes, atMs), {
     onFailure: () => ({ model }),
     onSuccess: session => ({
-      model: withRoom(model, { ...room, session, link: 'Online' }),
+      model: withRoom(model, {
+        ...room,
+        session,
+        link: 'Online',
+        droppedAtMs: Option.none(),
+      }),
       commands:
         session.isResyncing && !room.session.isResyncing ? [ResyncRoom()] : [],
     }),
@@ -351,7 +356,10 @@ const receiveFrame = (
       }),
     }),
     Dropped: () => ({
-      model: withRoom(model, { ...room, link: 'Reconnecting' }),
+      model: withRoom(model, {
+        ...room,
+        link: room.link === 'Lost' ? 'Lost' : 'Reconnecting',
+      }),
     }),
     Ponged: ponged => ({
       model: withRoom(model, {
@@ -366,6 +374,27 @@ const receiveFrame = (
       )(model),
   })
 
+// NOTE: the time a link went down is on the frame's clock, noted by the
+// first frame that finds it down; a frame from the room clears it.
+// A link down this long is Lost: the arena says so and offers the way
+// out, while the tries go on. Past the room's rejoin window (the server
+// frees an Away seat after 2 minutes, packages/netcode Room.ts) there is
+// nothing to rejoin, so the room is left with a LOST message.
+const LOST_AFTER_MS = 20_000
+const GIVE_UP_AFTER_MS = 135_000
+
+const downForMs = (room: Room, nowMs: number): number =>
+  Option.match(room.droppedAtMs, {
+    onNone: () => 0,
+    onSome: droppedAtMs => nowMs - droppedAtMs,
+  })
+
+const isLost = (room: Room, nowMs: number): boolean =>
+  room.link !== 'Online' && downForMs(room, nowMs) >= LOST_AFTER_MS
+
+const hasGivenUp = (room: Room, nowMs: number): boolean =>
+  room.link !== 'Online' && downForMs(room, nowMs) >= GIVE_UP_AFTER_MS
+
 // NOTE: one frame of the room: the parent's controls go in as this frame's
 // input with the held press, the session sends what it owes, and the World
 // to draw and the events it reached come out. The parent reads `maybeWorld`
@@ -378,6 +407,9 @@ export const tickRoom = (
   isPictureHeld = false,
 ): UpdateReturn =>
   inRoom(model, room => {
+    if (hasGivenUp(room, nowMs)) {
+      return leaveFor(model, 'Dropped')
+    }
     const presses = pressFor(room.presses, room.session.inputTick)
     const ticked = Session.tickInput(
       coopWorld,
@@ -403,6 +435,11 @@ export const tickRoom = (
     const from = startOfEvents(room, rendered.session.frames)
     const next = withRoom(model, {
       ...room,
+      link: isLost(room, nowMs) ? 'Lost' : room.link,
+      droppedAtMs:
+        room.link === 'Online'
+          ? Option.none()
+          : Option.orElseSome(room.droppedAtMs, () => nowMs),
       session: rendered.session,
       maybeWorld: Option.orElse(rendered.world, () => room.maybeWorld),
       frameEvents:

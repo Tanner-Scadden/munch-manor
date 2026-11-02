@@ -221,6 +221,39 @@ export const startRoom = <W, Own>(
   }
 }
 
+// RESTORE
+
+// NOTE: a room the object lost to a restart (a deploy), put back from a
+// checkpoint: the World as it was at `tick`, with every seat Away since
+// `nowMs` and no socket linked. Each player who reconnects within
+// FREE_SEAT_AFTER_MS links as in any rejoin and gets a Snapshot of this
+// World. The clock starts as if the room had run to `tick` just now.
+export const restoreRoom = <W>(
+  restored: W,
+  tick: number,
+  members: ReadonlyArray<Pick<Member, 'slot' | 'playerId'>>,
+  nowMs: number,
+): Room<W> => ({
+  seats: Array.map(members, (member): Seat => ({
+    slot: member.slot,
+    playerId: member.playerId,
+    socket: Option.none(),
+    presence: awaySince(nowMs),
+    lastHeardMs: nowMs,
+    input: NEUTRAL_INPUT,
+    queued: [],
+    receipts: [],
+    ack: 0,
+    rttMs: 0,
+    viewLagTicks: 0,
+  })),
+  world: restored,
+  tick,
+  startedMs: nowMs - tick * TICK_MS,
+  sentWorld: restored,
+  sentTick: tick,
+})
+
 // LINKS
 
 // NOTE: a player's game socket said Hello. A newer socket replaces an older

@@ -29,9 +29,11 @@ import {
   decodeClientFrame,
   encodeServerFrame,
   normalizeRoomCode,
+  readAll,
   roomCodeOfScope,
   roomRefusalStatus,
   roomScopeId,
+  writeAll,
 } from '@munch/netcode'
 import {
   Connection,
@@ -109,6 +111,23 @@ type GameRules = RoomWorldOf<GameWorld, OwnSeat>
 
 const KEPT_KEY = 'kept-world'
 
+// NOTE: the run in progress, written every few seconds, so a restart of the
+// object (a deploy of new code drops every socket and loses the memory)
+// resumes the run from the last checkpoint instead of ending it. The World
+// is the room's own binary snapshot, a few KB.
+const CHECKPOINT_KEY = 'run-checkpoint'
+const CHECKPOINT_EVERY_MS = 3000
+
+const Checkpoint = Schema.Struct({
+  round: Schema.Number,
+  tick: Schema.Number,
+  members: Schema.Array(
+    Schema.Struct({ slot: Schema.Number, playerId: Schema.String }),
+  ),
+  world: Schema.Uint8Array,
+})
+const decodeCheckpoint = Schema.decodeUnknownOption(Checkpoint)
+
 const SCOPE_HEADER = 'x-sync-scope'
 const GAME_TAG = 'game'
 const SYNC_TAG = 'sync'
@@ -139,6 +158,7 @@ interface Game {
   readonly room: Room.Room<GameWorld>
   readonly round: number
   readonly advancedMs: number
+  readonly checkpointMs: number
 }
 
 const sendFrame = (socket: WorkersWebSocket, frame: ServerFrame) =>
@@ -367,6 +387,7 @@ export class GameRoom {
       )
       yield* this.list(host)
       yield* stopLoop
+      yield* this.forgetCheckpoint
     })
   }
 
@@ -382,15 +403,20 @@ export class GameRoom {
         current.value.room,
         nowMs,
       )
+      const isDue = nowMs - current.value.checkpointMs >= CHECKPOINT_EVERY_MS
       this.game = Option.some({
         world: current.value.world,
         room: stepped.room,
         round: current.value.round,
         advancedMs: nowMs,
+        checkpointMs: isDue ? nowMs : current.value.checkpointMs,
       })
       yield* this.apply(stepped.out, host)
       if (Option.isNone(this.game)) {
         return
+      }
+      if (isDue) {
+        yield* this.checkpoint(this.game.value)
       }
       const after = yield* Clock.currentTimeMillis
       yield* Effect.sleep(Math.max(1, Room.nextWakeMs(stepped.room) - after))
@@ -456,6 +482,7 @@ export class GameRoom {
         room: started.room,
         round: lobby.round,
         advancedMs: nowMs,
+        checkpointMs: nowMs,
       })
       yield* this.apply(started.out, host)
       this.startLoop(host)
@@ -556,6 +583,89 @@ export class GameRoom {
         scopes.get(scopes.idFromName(scope)).fetch(url, { headers }),
       playerId,
     )
+  }
+
+  // CHECKPOINT
+
+  private checkpoint(game: Game): Effect.Effect<void> {
+    return tryCall('write the checkpoint', () =>
+      this.ctx.storage.put(
+        CHECKPOINT_KEY,
+        {
+          round: game.round,
+          tick: game.room.tick,
+          members: Array.map(game.room.seats, seat => ({
+            slot: seat.slot,
+            playerId: seat.playerId,
+          })),
+          world: writeAll(writer =>
+            game.world.snapshot(writer, game.room.world),
+          ),
+        },
+        { allowUnconfirmed: true },
+      ),
+    ).pipe(Effect.ignore)
+  }
+
+  private get forgetCheckpoint(): Effect.Effect<void> {
+    return tryCall('forget the checkpoint', () =>
+      this.ctx.storage.delete(CHECKPOINT_KEY),
+    ).pipe(Effect.ignore)
+  }
+
+  // NOTE: a lobby still Playing with no game in memory was cut off by a
+  // restart. If the last checkpoint is of this round, the run goes on from
+  // it with every seat Away, and each player's reconnect snaps them back
+  // in. Returns whether a run is going again.
+  private resume(host: RoomHost): Effect.Effect<boolean> {
+    return Effect.gen({ self: this }, function* () {
+      const maybeLobby = yield* host.lobby
+      if (
+        Option.isNone(maybeLobby) ||
+        maybeLobby.value.status !== 'Playing' ||
+        Option.isSome(this.game)
+      ) {
+        return Option.isSome(this.game)
+      }
+      const lobby = maybeLobby.value
+      const stored = yield* tryCall('read the checkpoint', () =>
+        this.ctx.storage.get(CHECKPOINT_KEY),
+      ).pipe(Effect.catch(() => Effect.void))
+      const maybeCheckpoint = Option.filter(
+        decodeCheckpoint(stored),
+        checkpoint => checkpoint.round === lobby.round,
+      )
+      if (Option.isNone(maybeCheckpoint)) {
+        return false
+      }
+      const checkpoint = maybeCheckpoint.value
+      const rules = roomWorldFor(
+        roomSettingsOf(lobby.mode, lobby.difficulty, lobby.members),
+      )
+      const read = readAll(checkpoint.world, rules.readSnapshot)
+      if (Result.isFailure(read)) {
+        return false
+      }
+      const nowMs = yield* Clock.currentTimeMillis
+      this.game = Option.some({
+        world: rules,
+        room: Room.restoreRoom(
+          read.success,
+          checkpoint.tick,
+          checkpoint.members,
+          nowMs,
+        ),
+        round: lobby.round,
+        advancedMs: nowMs,
+        checkpointMs: nowMs,
+      })
+      yield* Effect.logWarning(
+        `Room game ${lobby.round} resumed at tick ${checkpoint.tick} after a restart`,
+      )
+      this.startLoop(host)
+      yield* setAlarm(this.ctx, nowMs + 60 * 1000)
+      return true
+    })
   }
 
   // KEPT RUN
@@ -752,6 +862,7 @@ export class GameRoom {
             playerId: answer.playerId,
           }),
         )
+        yield* this.resume(host)
         const game = this.game
         const linked = Option.flatMap(game, current =>
           Room.link(
@@ -765,6 +876,16 @@ export class GameRoom {
         if (Option.isSome(game) && Option.isSome(linked)) {
           this.game = Option.some({ ...game.value, room: linked.value.room })
           return yield* this.apply(linked.value.out, host)
+        }
+        const maybeLobby = yield* host.lobby
+        // NOTE: the lobby says Playing but no run is in memory and none could
+        // be resumed: tell them now, plainly, and send the crew back to the
+        // lobby, instead of leaving them waiting for the watchdog.
+        if (
+          Option.exists(maybeLobby, lobby => lobby.status === 'Playing') &&
+          Option.isNone(this.game)
+        ) {
+          return yield* this.interrupted(Option.some(host), maybeLobby)
         }
         sendFrame(
           socket,
@@ -907,6 +1028,7 @@ export class GameRoom {
   ): Effect.Effect<void> {
     return Effect.gen({ self: this }, function* () {
       if (Option.isSome(maybeHost) && Option.isSome(lobby)) {
+        yield* this.forgetCheckpoint
         yield* this.lock.withPermit(
           maybeHost.value.recordResult(
             {
@@ -950,9 +1072,12 @@ export class GameRoom {
         const lobby = Option.isSome(maybeHost)
           ? yield* maybeHost.value.lobby
           : Option.none<Lobby>()
+        const isResumed = Option.isSome(maybeHost)
+          ? yield* this.resume(maybeHost.value)
+          : false
         const decision = decideAlarm({
           nowMs,
-          gameRunning: Option.isSome(this.game),
+          gameRunning: isResumed || Option.isSome(this.game),
           lobby,
           socketsOpen: this.ctx.getWebSockets().length,
         })

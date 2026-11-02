@@ -72,7 +72,9 @@ export type Queue = typeof Queue.Type
 
 // ROOM
 
-const Link = Schema.Literals(['Connecting', 'Online', 'Reconnecting'])
+// NOTE: `Lost` is a link that stayed down past LOST_AFTER_MS (src/coop/update.ts):
+// the arena says so and offers the way out, and the tries go on.
+const Link = Schema.Literals(['Connecting', 'Online', 'Reconnecting', 'Lost'])
 type Link = typeof Link.Type
 
 export const Share = Schema.Literals(['Idle', 'Shared', 'Copied'])
@@ -122,6 +124,7 @@ export const Room = Schema.Struct({
   maybePlayerId: Schema.Option(Schema.String),
   maybeLobby: Schema.Option(Lobby),
   link: Link,
+  droppedAtMs: Schema.Option(Schema.Number),
   session: RoomSession,
   maybeWorld: Schema.Option(WorldState),
   frameEvents: Schema.Array(GameEvent),

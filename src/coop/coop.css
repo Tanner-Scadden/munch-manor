@@ -1145,6 +1145,20 @@
   background: rgba(8, 6, 12, 0.55);
 }
 
+.coop-away {
+  grid-auto-flow: row;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+}
+
+.coop-away-lost {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
 .coop-away-icon {
   width: clamp(48px, 16cqh, 110px);
   aspect-ratio: 1;
