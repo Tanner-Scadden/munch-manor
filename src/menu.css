@@ -71,7 +71,7 @@
 .home-stage {
   --arena-px: min(100cqw / var(--screen-w), 100cqh / var(--screen-h));
   --a: var(--arena-px);
-  --pick-h: max(var(--menu-tap), 14 * var(--a));
+  --pick-h: max(var(--menu-tap), 12 * var(--a));
   --cluster-h: calc(2 * var(--pick-h) + var(--menu-gap-sm));
   position: absolute;
   left: calc((100cqw - var(--screen-w) * var(--a)) / 2);
@@ -152,7 +152,7 @@
    bevel. The button's box never moves, so a tap near an edge still lands;
    only its face sinks when pressed. */
 .home-stage .home-play {
-  width: max(132px, 66 * var(--a));
+  width: max(112px, 54 * var(--a));
   padding: 0;
   border: 0;
   border-radius: var(--menu-radius);
@@ -248,11 +248,17 @@
   position: absolute;
   right: 0;
   bottom: calc(100% + 3 * var(--a));
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-areas:
+    'icon lock'
+    'label label';
+  align-content: center;
   justify-content: center;
-  gap: max(4px, 1.5 * var(--a));
-  width: max(132px, 66 * var(--a));
+  justify-items: center;
+  align-items: center;
+  column-gap: max(4px, 1.5 * var(--a));
+  row-gap: 1px;
+  width: max(112px, 54 * var(--a));
   height: var(--pick-h);
   padding: 3px;
   border: 3px solid var(--menu-pink);
@@ -270,7 +276,8 @@
 }
 
 .home-coop-icon {
-  height: 78%;
+  grid-area: icon;
+  height: max(16px, 5 * var(--a));
   aspect-ratio: 14 / 9;
   background: center / contain no-repeat;
   image-rendering: pixelated;
@@ -296,7 +303,21 @@
   animation: none;
 }
 
+.home-coop-label {
+  grid-area: label;
+  color: var(--menu-pink);
+  font: bold clamp(9px, 2.6 * var(--a), 14px) / 1 var(--menu-font);
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+
+.home-coop[data-lock='Locked'] .home-coop-label {
+  color: var(--menu-ink);
+  opacity: 0.6;
+}
+
 .home-coop-lock {
+  grid-area: lock;
   display: flex;
   justify-content: center;
   gap: 3px;
@@ -366,8 +387,8 @@
   align-items: center;
   justify-content: center;
   gap: max(2px, 1 * var(--a));
-  width: max(96px, 40 * var(--a));
-  height: var(--cluster-h);
+  width: max(112px, 48 * var(--a));
+  height: calc(var(--cluster-h) + 8 * var(--a));
   padding: 4px;
   border: 3px solid var(--menu-pink);
   border-radius: var(--menu-radius);
@@ -383,15 +404,15 @@
 }
 
 .home-manor-icon {
-  width: max(36px, 15 * var(--a));
-  height: max(30px, 12.5 * var(--a));
+  width: max(44px, 18 * var(--a));
+  height: max(36px, 15 * var(--a));
   background: center / contain no-repeat;
   image-rendering: pixelated;
   pointer-events: none;
 }
 
 .home-manor-label {
-  font: bold clamp(12px, 4 * var(--a), 24px) / 1 var(--menu-font);
+  font: bold clamp(14px, 5 * var(--a), 28px) / 1 var(--menu-font);
   letter-spacing: 0.1em;
   pointer-events: none;
 }
@@ -667,7 +688,7 @@
    of cards never reaches into it. */
 .menu-close.hand-close {
   --hand-deck-w: max(96px, 40 * var(--a));
-  --hand-deck-h: var(--cluster-h);
+  --hand-deck-h: calc(var(--cluster-h) + 8 * var(--a));
   position: absolute;
   left: calc(
     var(--stage-x) + 4 * var(--a) + (var(--hand-deck-w) - var(--menu-tap)) / 2
@@ -733,6 +754,11 @@
   color: var(--menu-ink);
   font-family: var(--menu-font);
   text-shadow: 0 2px 0 #000;
+  cursor: pointer;
+}
+
+.home-stage .home-bests {
+  min-height: var(--menu-tap);
 }
 
 .home-bests[data-difficulty='Easy'] {
@@ -2872,7 +2898,7 @@ button.help-card:focus-visible {
 /* NOTE: upright, the MANOR deck stands at the bottom left, and the cluster
    to its right stacks CO-OP over a wide PLAY. */
 .game-root[data-layout='Portrait'] .home-stage {
-  --manor-w: max(80px, 36 * var(--a));
+  --manor-w: max(88px, 42 * var(--a));
 }
 
 .game-root[data-layout='Portrait'] .home-play-cluster {
@@ -2883,19 +2909,19 @@ button.help-card:focus-visible {
 
 .game-root[data-layout='Portrait'] .home-play {
   width: auto;
-  min-height: max(60px, 28 * var(--a));
+  min-height: max(52px, 24 * var(--a));
 }
 
 .game-root[data-layout='Portrait'] .home-stage .home-coop {
   position: relative;
   bottom: auto;
   width: auto;
-  height: 52px;
+  height: 48px;
 }
 
 .game-root[data-layout='Portrait'] .home-stage .home-manor {
   width: var(--manor-w);
-  height: calc(max(60px, 28 * var(--a)) + 52px + 3 * var(--a));
+  height: calc(max(52px, 24 * var(--a)) + 48px + 3 * var(--a) + 8 * var(--a));
 }
 
 .game-root[data-layout='Portrait'] .home-bests {
@@ -2912,10 +2938,10 @@ button.help-card:focus-visible {
 }
 
 .game-root[data-layout='Portrait'] .hand {
-  --manor-w: max(80px, 36 * var(--a));
+  --manor-w: max(88px, 42 * var(--a));
   --card-w: max(96px, 50 * var(--a));
   --card-h: max(120px, 62 * var(--a));
-  --deck-h: calc(max(60px, 28 * var(--a)) + 52px + 3 * var(--a));
+  --deck-h: calc(max(52px, 24 * var(--a)) + 48px + 3 * var(--a) + 8 * var(--a));
 }
 
 .game-root[data-layout='Portrait'] .hand-cards {
@@ -2952,30 +2978,38 @@ button.help-card:focus-visible {
 }
 
 /* NOTE: the turn hint is only drawn in portrait, so it has no landscape rule.
-   It sits just above the rail row and takes no taps. */
+   It sits just above the rail row. Only the pill takes taps. */
 .game-root[data-layout='Portrait'] .home-turn-hint {
   position: absolute;
   left: 50%;
   bottom: calc(
-    4 * var(--a) + max(60px, 28 * var(--a)) + 52px + 3 * var(--a) +
-      max(10px, 4 * var(--a))
+    4 * var(--a) + max(52px, 24 * var(--a)) + 48px + 3 * var(--a) + 8 *
+      var(--a) + max(10px, 4 * var(--a))
   );
-  display: grid;
-  place-items: center;
-  width: max(44px, 14 * var(--a));
-  height: max(44px, 14 * var(--a));
+  display: flex;
+  align-items: center;
+  gap: max(8px, 2 * var(--a));
+  min-height: var(--menu-tap);
   margin: 0;
+  padding: 4px max(14px, 4 * var(--a)) 4px max(10px, 3 * var(--a));
   border: 2px solid rgba(255, 224, 102, 0.45);
   border-radius: var(--menu-radius-pill);
   background: var(--menu-glass);
+  color: var(--menu-ink);
   translate: -50% 0;
-  pointer-events: none;
   animation: turn-hint-in 0.6s ease-out 0.8s both;
 }
 
+.home-turn-text {
+  font: bold clamp(12px, 3.6 * var(--a), 18px) / 1 var(--menu-font);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
 .home-turn-icon {
-  width: 46%;
-  height: 56%;
+  flex: none;
+  width: 22px;
+  height: 28px;
   background: center / contain no-repeat;
   image-rendering: pixelated;
   animation: turn-phone 3s steps(1, end) infinite;
