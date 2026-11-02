@@ -961,9 +961,7 @@ export const restoreSave = (model: Model, save: PlayerSave): Model =>
     // A save that syncs in mid-run leaves the run's player alone.
     player: player =>
       model.phase._tag === 'Ready'
-        ? playerOfCalling(
-            callingForRun(save.calling, rankOf(totalPointsOf(save.rank))),
-          )
+        ? playerOfCalling(callingForRun(save.calling, save.boughtCosmetics))
         : player,
   })
 

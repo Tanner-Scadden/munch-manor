@@ -14,7 +14,7 @@ import { freshRoom } from './coop/roomState'
 import { CODE, lobbyOf, memberOf } from './coop/testing'
 import { update } from './main'
 import type { Model } from './model'
-import { readyAfterRead } from './model.fixture'
+import { heroesBoughtBy, readyAfterRead } from './model.fixture'
 import { maybePlayerAt } from './party'
 import { pointsForRank } from './rank'
 import {
@@ -126,9 +126,11 @@ describe('picking a hero in the lobby', () => {
   const pointed = (rank: number): Model =>
     modifyFields(readyAfterRead, {
       rank: current => ({ ...current, earnedPoints: pointsForRank(rank) }),
+      boughtCosmetics: () => heroesBoughtBy(rank),
       coop: coop => ({
         ...coop,
         rank,
+        bought: heroesBoughtBy(rank),
         screen: CoopScreen.InRoom({
           room: {
             ...freshRoom(CODE, 0),

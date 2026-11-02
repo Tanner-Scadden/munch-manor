@@ -25,7 +25,7 @@ import { callingPropView, iconView, rankTagView } from '../menuParts'
 import type { Appearance } from '../model'
 import { CALLING_NAMES, MODE_NAMES } from '../names'
 import { seatColorOf } from '../partyView'
-import type { Calling } from '../playerData'
+import type { Calling, SavedBoughtCosmetics } from '../playerData'
 import { callingPickerView, callingPillView } from './callingPicker'
 import { CoopComposition } from './composition'
 import {
@@ -77,6 +77,7 @@ export type ViewInputs = Readonly<{
   look: Appearance
   isKeyboard: boolean
   isRunCardUp: boolean
+  bought: SavedBoughtCosmetics
 }>
 
 const lookOf = (inputs: ViewInputs, room: Room, seat: number) =>
@@ -961,7 +962,13 @@ const lobbyView = (
       readyButtonView(room, inputs, h),
       Option.match(meIn(room), {
         onNone: () => h.empty,
-        onSome: me => callingPickerView(room, lookOf(inputs, room, me.slot), h),
+        onSome: me =>
+          callingPickerView(
+            room,
+            lookOf(inputs, room, me.slot),
+            inputs.bought,
+            h,
+          ),
       }),
     ],
   )
