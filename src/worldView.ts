@@ -37,9 +37,11 @@ import {
 import { isBehindWall, occludersOf } from './occluders'
 import { isGoodieBeckoning } from './onboarding'
 import {
+  type MateModel,
   isLeadArmed,
   leadBodyShapes,
   mateDrawables,
+  mateModelsOf,
   mateOverheadShapes,
   mateShadowShapes,
   reviveRingGroundShapes,
@@ -145,13 +147,14 @@ const groundShapes = (
   model: Model,
   look: StallLook,
   zombies: ReadonlyArray<Zombie>,
+  mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> => [
   ...hearthFireShapes(levelOf(model), model.elapsedMs),
   ...ovenGlowShapes(model),
   ...stallGroundShapes(look, model.elapsedMs),
   ...reviveRingGroundShapes(model),
   playerShadow(model.player),
-  ...mateShadowShapes(model),
+  ...mateShadowShapes(mates),
   ...zombieGroundShapes(zombies, model.elapsedMs),
   ...Array.filterMap(zombies, zombieShadow),
   ...bossGroundShapes(model),
@@ -171,6 +174,7 @@ const standingDrawables = (
   model: Model,
   look: StallLook,
   zombies: ReadonlyArray<Zombie>,
+  mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Drawable> => {
   const drawZombie = zombieShapes(model.player, model.elapsedMs, model.boss)
   const isChomp = isChomping(model.phase)
@@ -214,7 +218,7 @@ const standingDrawables = (
         ]),
       ),
     },
-    ...mateDrawables(model),
+    ...mateDrawables(mates),
     ...fridgeDrawables(model),
   ]
 }
@@ -232,6 +236,7 @@ const overheadShapes = (
   model: Model,
   camera: Camera,
   zombies: ReadonlyArray<Zombie>,
+  mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> => [
   ...(isLeadArmed(model) ? playerFlashShapes(model.player) : []),
   ...ovenFlameShapes(model),
@@ -259,7 +264,7 @@ const overheadShapes = (
     ? reloadBarShapes(model.player, hatRiseOf(model.appearance))
     : []),
   ...fridgeOverheadShapes(model),
-  ...mateOverheadShapes(model),
+  ...mateOverheadShapes(model, mates),
   ...coopNameShapes(model),
   ...stallPromptShapes(stallPrompt(model)),
   ...CounterSale.match(model.counterSale, {
@@ -283,10 +288,11 @@ const playWorldShapes = (
 ): ReadonlyArray<Canvas.Shape> => {
   const look = stallLook(model)
   const zombies = shownZombies(model, camera)
+  const mates = mateModelsOf(model)
   return [
-    ...groundShapes(model, look, zombies),
-    ...depthSortedShapes(standingDrawables(model, look, zombies)),
-    ...overheadShapes(model, camera, zombies),
+    ...groundShapes(model, look, zombies, mates),
+    ...depthSortedShapes(standingDrawables(model, look, zombies, mates)),
+    ...overheadShapes(model, camera, zombies, mates),
   ]
 }
 
