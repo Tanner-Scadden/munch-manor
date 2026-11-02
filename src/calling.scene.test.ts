@@ -109,7 +109,7 @@ describe('the picker', () => {
         selector(
           ".calling-card[data-calling='TrackStar'][data-lock='Locked'] [data-sign='Drawback'] .calling-special-line",
         ),
-      ).toHaveText('Mags 10% smaller'),
+      ).toHaveText('Mags 5% smaller'),
     )
   })
 
