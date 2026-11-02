@@ -33,6 +33,8 @@ import { view } from '@game/view'
 import { cardShapes } from './cards'
 import { type HarnessConfig, decodeHarnessConfig } from './config'
 import * as Director from './director'
+import { liveCoopNet } from './liveNet'
+import { LIVE_CROWD, LIVE_SEATS } from './liveRoom'
 import { type ViewHtml, lookSheetView } from './lookSheet'
 import { settle } from './readiness'
 import { scenarioModel } from './scenario'
@@ -43,7 +45,12 @@ import {
   logMessage,
   sceneOf,
 } from './sceneUpdate'
-import { type HarnessPage, settingsOf } from './settings'
+import {
+  type HarnessPage,
+  animationFrameTime,
+  emptyTimings,
+  settingsOf,
+} from './settings'
 
 const readConfig = () => {
   try {
@@ -77,7 +84,7 @@ const countShapes = (shapes: ReadonlyArray<Canvas.Shape>): number =>
   )
 window.__countShapes = () => countShapes(sceneShapes(window.__model))
 
-window.__timings = { update: [], view: [] }
+window.__timings = emptyTimings()
 window.__messages = []
 
 // THE READY SIGNAL
@@ -325,6 +332,7 @@ const harnessView = ApplicationComposition.makeView((model, h): Document => {
   const out = view(model, h)
   if (instrument) {
     window.__timings.view.push(performance.now() - t0)
+    window.__timings.viewFrames.push(animationFrameTime())
   }
   return config.director ? withDirectorCard(model, out, h) : out
 })
@@ -349,7 +357,16 @@ const HarnessBlock: Block.FromAssemblyWithView<
 const harnessServices = Effect.runSync(
   Effect.flatMap(Scope.make(), scope =>
     Layer.buildWithScope(
-      Layer.mergeAll(PlayerStoreLayer, quietCoopNet, quietInstallPrompt),
+      Layer.mergeAll(
+        PlayerStoreLayer,
+        page.settings.config.coop === 'live'
+          ? liveCoopNet(
+              page.settings.config.seats ?? LIVE_SEATS,
+              page.settings.config.crowd ?? LIVE_CROWD,
+            )
+          : quietCoopNet,
+        quietInstallPrompt,
+      ),
       scope,
     ),
   ),
@@ -419,7 +436,7 @@ window.__loadScene = async (query: string) => {
   page.settings = settingsOf(next)
   page.framesRun = 0
   window.__messages.length = 0
-  window.__timings = { update: [], view: [] }
+  window.__timings = emptyTimings()
   page.sceneNumber++
   running = startScene()
 }

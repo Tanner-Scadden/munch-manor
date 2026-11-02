@@ -36,6 +36,7 @@ import {
   ScreenFit,
   SurfaceRectangle,
   SyncedSaveState,
+  TellWatch,
   TouchControls,
   Tour,
   TutorialReset,
@@ -47,6 +48,7 @@ import {
   freshLessons,
   idleInput,
   noRankPaid,
+  noTellWatch,
 } from './clientSchema'
 import { DEFAULT_SEED } from './constants'
 import * as Coop from './coop/model'
@@ -233,6 +235,7 @@ export const Model = Schema.Struct({
   particles: Schema.Array(Particle),
   decals: Schema.Array(Decal),
   dustCooldownMs: Schema.Number,
+  tellWatch: TellWatch,
   shopDialog: DialogBlock.Model,
   shopTabs: ShopTabsBlock.Model,
   shopChatter: ShopChatter,
@@ -415,6 +418,7 @@ export const initialModel: Model = {
   particles: [],
   decals: [],
   dustCooldownMs: 0,
+  tellWatch: noTellWatch,
   nextEntityId: 0,
   wallet: emptyWallet,
   shop: ShopState.Away(),

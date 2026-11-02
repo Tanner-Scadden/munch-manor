@@ -29,6 +29,7 @@ import {
   directionBetween,
   scaleVector,
 } from './geometry'
+import { queryAround, queryBuffer } from './grid'
 import { nearestOf, targetsOf } from './party'
 import {
   type Clearance,
@@ -50,6 +51,7 @@ import {
   type Zombie,
   ZombieState,
 } from './worldSchema'
+import { MAX_BODY_RADIUS_PX, groundedGrid } from './zombieGrid'
 import {
   bodyRadiusOf,
   isFree,
@@ -93,17 +95,36 @@ const pushApart = (zombie: Zombie, other: Zombie): Vector => {
   }
 }
 
+// NOTE: each grounded zombie sums the pushes of the grounded zombies near it
+// in ascending list order, the order the all-pairs loop used, so the sum is
+// the same to the last bit. One out of reach of every body pushes nothing.
 const separationPushes = (
   zombies: ReadonlyArray<Zombie>,
 ): ReadonlyArray<Vector> => {
-  const walking = Array.filter(zombies, isGrounded)
-  return Array.map(zombies, zombie =>
-    isGrounded(zombie)
-      ? Array.reduce(walking, ZERO_VECTOR, (push, other) =>
-          addVectors(push, pushApart(zombie, other)),
-        )
-      : ZERO_VECTOR,
-  )
+  const grid = groundedGrid(zombies)
+  const near = queryBuffer(grid)
+  return Array.map(zombies, zombie => {
+    if (!isGrounded(zombie)) {
+      return ZERO_VECTOR
+    }
+
+    const count = queryAround(grid, near, zombie, 2 * MAX_BODY_RADIUS_PX)
+    let pushX = 0
+    let pushY = 0
+    let isPushed = false
+    for (let at = 0; at < count; at++) {
+      const other = zombies[near[at] ?? 0]
+      if (other !== undefined) {
+        const push = pushApart(zombie, other)
+        if (push !== ZERO_VECTOR) {
+          pushX += push.x
+          pushY += push.y
+          isPushed = true
+        }
+      }
+    }
+    return isPushed ? { x: pushX, y: pushY } : ZERO_VECTOR
+  })
 }
 
 type FlowFields = Readonly<Record<Clearance, FlowField>>

@@ -46,6 +46,7 @@ export const SoundEffect = Schema.Literals([
   'PowerDown',
   'LimbPop',
   'Clang',
+  'Tink',
   'BossRoar',
   'BossWindUp',
   'BossStomp',

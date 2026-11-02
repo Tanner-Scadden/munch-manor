@@ -28,8 +28,15 @@ declare global {
     __model: Model
     // NOTE: every Message the runtime dispatched, as `Tag:ChildTag` chains.
     __messages: Array<string>
-    // NOTE: each frame's update and view time with `instrument`.
-    __timings: { update: Array<number>; view: Array<number> }
+    // NOTE: each frame's update and view time with `instrument`, and the
+    // animation frame (its `document.timeline` time) each view and each
+    // frame tick that changed the Model ran in.
+    __timings: {
+      update: Array<number>
+      view: Array<number>
+      viewFrames: Array<number>
+      tickFrames: Array<number>
+    }
     __shapeCounts: Array<number>
     __countShapes: () => number
     __isFrozen: boolean

@@ -21,6 +21,7 @@ import type { RoomWorld } from '@game/roomWorld'
 import { Session } from '@munch/netcode'
 
 import { type HarnessConfig } from './config'
+import { LIVE_SEATS } from './liveRoom'
 
 // NOTE: co-op staged at one screen, with a fake network that never
 // answers, so the screen holds still for a screenshot.
@@ -142,11 +143,14 @@ const COOP_LOOKS = [
 // golden drumstick, so the shots show the badges' tiers.
 const COOP_RANKS = [7, 18, 33, 62]
 
-// NOTE: and the callings, so the shots show a prop for the Handyman and the
-// hats the others wear: a calling's prop takes a hat's place.
-const COOP_CALLINGS = ['You', 'Handyman', 'You', 'LineCook']
+// NOTE: and the callings, so the shots show a body prop for each hero and a
+// hero icon by each teammate's name tag.
+const COOP_CALLINGS = ['LineCook', 'Handyman', 'TrackStar', 'PennyPincher']
 
-const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
+const coopScreen = (
+  stage: NonNullable<HarnessConfig['coop']>,
+  liveSeats: number,
+) => {
   const Screen = CoopModel.Screen
   const queue = (
     waiting: number,
@@ -273,7 +277,17 @@ const coopScreen = (stage: NonNullable<HarnessConfig['coop']>) => {
       })
     }
     case 'arena':
-      return Screen.InRoom({ room: coopRoom(members(3), 'Playing') })
+      return Screen.InRoom({ room: coopRoom(members(4), 'Playing') })
+    // NOTE: a room playing in a Worker (liveNet.ts), joined with no World
+    // yet: its snapshots bring the World in.
+    case 'live':
+      return Screen.InRoom({
+        room: {
+          ...coopRoom(members(liveSeats), 'Playing'),
+          session: Session.makeSession(0),
+          maybeWorld: Option.none(),
+        },
+      })
     case 'away':
       return Screen.InRoom({
         room: coopRoom(members(3), 'Playing', { link: 'Reconnecting' }),
@@ -317,7 +331,10 @@ export const withCoop = (config: HarnessConfig, model: Model): Model => {
       ...lessons,
       openBreak: Lesson.Learned({ atMs: 0 }),
     }),
-    coop: coop => ({ ...coop, screen: coopScreen(stage) }),
+    coop: coop => ({
+      ...coop,
+      screen: coopScreen(stage, config.seats ?? LIVE_SEATS),
+    }),
   })
   const drawn = update(staged, Message.TickedRoomFrame({ nowMs: 0 })).model
   return stage === 'card' || stage === 'cardwon' || stage === 'cardduo'

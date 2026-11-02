@@ -67,6 +67,7 @@ export const FIELD_CLASSES = {
   particles: 'Cosmetic',
   decals: 'Cosmetic',
   dustCooldownMs: 'Cosmetic',
+  tellWatch: 'Cosmetic',
   shake: 'Cosmetic',
   popups: 'Cosmetic',
   streak: 'Cosmetic',

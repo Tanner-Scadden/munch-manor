@@ -366,7 +366,7 @@ const scorchDecals = (event: GameEvent): ReadonlyArray<Decal> =>
 
 // FRAME
 
-const keepNewest = <A>(
+export const keepNewest = <A>(
   items: ReadonlyArray<A>,
   max: number,
 ): ReadonlyArray<A> =>

@@ -368,6 +368,30 @@ const CALLING_PROPS: Readonly<Record<Calling, Rows>> = {
   LineCook: ['.WWWWWW.', '.NNNNNN.'],
 }
 
+// BODY PROPS
+
+// NOTE: what each hero wears on the body, under the head and so over any
+// hat (owner decision, 2026-11-01: players own the head, heroes add on top).
+// Each prop is the torso's three rows, eight columns wide like the figure;
+// `.` leaves the figure's own pixel, so the hand (column 0) and the gun
+// strap (column 7) stay. The Handyman's tool belt hangs a hammer on the
+// hip, the Track Star's race bib shows a 1 on the chest, the Line Cook's
+// apron is white with a pocket, and the Penny Pincher's coin purse sits on
+// the hip. YOU wears nothing. Symbols come from the hat colors (HAT_COLORS).
+const BODY_PROPS: Readonly<Record<Calling, Rows>> = {
+  You: [],
+  Handyman: ['........', '.ss.....', '.tddydd.'],
+  TrackStar: ['..wwrw..', '..wrrw..', '..wwrw..'],
+  PennyPincher: ['........', '..nn....', '.nyyn...'],
+  LineCook: ['...ww...', '.hwwwwh.', '.wwhhww.'],
+}
+
+// NOTE: the Track Star's sneakers, bright in place of the black shoes.
+const SNEAKER_COLOR_SYMBOL = 'o'
+
+const sneakered = (calling: Calling, row: string): string =>
+  calling === 'TrackStar' ? row.replaceAll('K', SNEAKER_COLOR_SYMBOL) : row
+
 const overlayRow = (base: string, top: string): string =>
   pipe(
     String.split(base, ''),
@@ -385,6 +409,24 @@ const overlayRows = (base: Rows, top: Rows): Rows =>
       onSome: cover => overlayRow(row, cover),
     }),
   )
+
+const withBodyProp = (
+  rows: Rows,
+  torsoRowOf: (y: number) => number,
+  calling: Calling,
+): Rows => {
+  const prop = BODY_PROPS[calling]
+  return Array.isReadonlyArrayEmpty(prop)
+    ? rows
+    : Array.map(rows, (row, y) =>
+        y < TORSO_ROW
+          ? row
+          : Option.match(Array.get(prop, torsoRowOf(y - TORSO_ROW)), {
+              onNone: () => row,
+              onSome: cover => overlayRow(row, cover),
+            }),
+      )
+}
 
 // HATS
 
@@ -495,10 +537,15 @@ export const playerPixels = (
   // NOTE: the torso's pixel rows read the print by their own row: the full
   // torso its three rows, the exhale its top and bottom.
   const upper = (torso: Rows, isExhale: boolean): Rows => {
-    const printed = withPrint(
-      [...FACE, ...shape.torso(torso, isExhale)],
-      y => (isExhale && y === 1 ? 2 : y),
-      appearance.print,
+    const torsoRowOf = (y: number) => (isExhale && y === 1 ? 2 : y)
+    const printed = withBodyProp(
+      withPrint(
+        [...FACE, ...shape.torso(torso, isExhale)],
+        torsoRowOf,
+        appearance.print,
+      ),
+      torsoRowOf,
+      calling,
     )
     const bearded = appearance.beard ? overlayRows(printed, BEARD) : printed
     const haired = overlayRows(bearded, hair)
@@ -510,7 +557,8 @@ export const playerPixels = (
       appearance,
     )
   }
-  const legs = (rows: Rows) => shape.legs(rows)
+  const legs = (rows: Rows) =>
+    Array.map(shape.legs(rows), row => sneakered(calling, row))
   return {
     walk: [
       [

@@ -15,6 +15,7 @@ import {
 import { couchInputs, isCouchPlay } from './couch'
 import { ageFlight, launchPrize } from './fridgeReveal'
 import { clamp } from './geometry'
+import { advanceTells } from './heroTells'
 import { withBests } from './home'
 import { deriveIntent } from './input'
 import { advanceJuice } from './juice'
@@ -235,9 +236,12 @@ export const advanceCosmetics = (
       advanceJuice(
         advanceCallouts(
           ageTrapNotice(
-            worldMs > 0
-              ? advanceParticles(model, worldMs / MS_PER_SECOND, worldMs)
-              : model,
+            advanceTells(
+              worldMs > 0
+                ? advanceParticles(model, worldMs / MS_PER_SECOND, worldMs)
+                : model,
+              worldMs,
+            ),
             worldMs,
           ),
           worldMs,

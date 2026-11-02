@@ -569,10 +569,13 @@ describe('the standing of an option', () => {
   })
 })
 
+// NOTE: the blank row and the six rows of the face, over the torso.
+const HEAD_ROWS_OVER_BODY = 7
+
 describe('the hat on the sprite', () => {
   const look = withHat('TopHat')
 
-  test('every calling shows the worn hat, and its prop only under a bare head', () => {
+  test('every calling shows the worn hat, and its headgear only under a bare head', () => {
     const bare = playerPixels(withHat('None'))
     const hatted = playerPixels(look)
     expect(hatted.idle[0].length).toBe(
@@ -582,7 +585,10 @@ describe('the hat on the sprite', () => {
       calling => {
         const heroHatted = playerPixels(look, calling)
         const bareHeaded = playerPixels(withHat('None'), calling)
-        expect(heroHatted).toEqual(playerPixels(look))
+        const headRows = HAT_ART.TopHat.above + HEAD_ROWS_OVER_BODY
+        expect(heroHatted.idle[0].slice(0, headRows)).toEqual(
+          playerPixels(look).idle[0].slice(0, headRows),
+        )
         expect(heroHatted).not.toEqual(bareHeaded)
         expect(bareHeaded).not.toEqual(playerPixels(withHat('None')))
       },

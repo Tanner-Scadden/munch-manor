@@ -721,6 +721,31 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
+  // NOTE: the Handyman's tink on a repair: a small, quiet hit of metal on
+  // metal, shorter and softer than the Clang.
+  Tink: {
+    variationCents: 200,
+    tones: [
+      {
+        wave: 'triangle',
+        pitch: [at(0, 2100), at(0.12, 2050)],
+        envelope: envelope(0.07, 0.001, 0.12),
+      },
+      {
+        wave: 'sine',
+        pitch: [at(0, 3300), at(0.1, 3250)],
+        envelope: envelope(0.05, 0.001, 0.09),
+      },
+    ],
+    noises: [
+      {
+        filter: 'highpass',
+        quality: 1,
+        cutoff: [at(0, 5200), at(0.03, 4200)],
+        envelope: envelope(0.1, 0.001, 0.025),
+      },
+    ],
+  },
   // NOTE: the knife: a quick, thin swish through the air, and a wet chop
   // when it meets a zombie.
   Swish: {

@@ -168,7 +168,7 @@ export const droplet =
     ]
   }
 
-const spark =
+export const spark =
   (ground: Vector, height = ZOMBIE_FOOT_OFFSET) =>
   (state: number): Seeded<Particle> => {
     const angleDraw = nextRandom(state)

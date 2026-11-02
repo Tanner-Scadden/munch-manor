@@ -46,3 +46,17 @@ export type HarnessPage = {
   sceneNumber: number
   maybeCarriedModel: Option.Option<Model>
 }
+
+// NOTE: `instrument`'s records, empty for a new scene (`window.__timings`).
+export const emptyTimings = (): Window['__timings'] => ({
+  update: [],
+  view: [],
+  viewFrames: [],
+  tickFrames: [],
+})
+
+// NOTE: the animation frame code runs in, by its `document.timeline` time,
+// which every callback of one frame shares, and the Messages processed
+// after them in that frame too.
+export const animationFrameTime = (): number =>
+  Number(document.timeline.currentTime ?? -1)

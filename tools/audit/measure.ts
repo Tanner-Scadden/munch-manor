@@ -27,6 +27,15 @@ export const FrameRow = Schema.Struct({
   particles: Schema.String,
   phase: Schema.String,
   decals: Schema.Number,
+  // NOTE: optional, so rows recorded before they were measured still read.
+  // Animation frames per second that drew, frame ticks per drawn frame, and
+  // the share of frames with a tick that also drew in that frame.
+  drawnFps: Schema.optionalKey(Schema.Number),
+  ticksPerDraw: Schema.optionalKey(Schema.Number),
+  drawnTickShare: Schema.optionalKey(Schema.Number),
+  // NOTE: the calibration a row was recorded with, when it differs from the
+  // baseline's own (a row recorded alone, perf-check.ts).
+  calibrationMs: Schema.optionalKey(Schema.Number),
 })
 export type FrameRow = typeof FrameRow.Type
 
@@ -74,8 +83,28 @@ const FrameData = Schema.Struct({
   elapsedMs: Schema.Number,
   update: Schema.Array(Schema.Number),
   view: Schema.Array(Schema.Number),
+  viewFrames: Schema.Array(Schema.Number),
+  tickFrames: Schema.Array(Schema.Number),
   shapes: Schema.Number,
 })
+
+// NOTE: how the frames that ticked were drawn: the frames that drew, frame
+// ticks per drawn frame, and the share of ticked frames that drew in the
+// same animation frame. A render a frame late shows as ticks per draw near
+// 2 and a share near half.
+const cadenceOf = (
+  viewFrames: ReadonlyArray<number>,
+  tickFrames: ReadonlyArray<number>,
+) => {
+  const drawn = new Set(viewFrames)
+  const ticked = new Set(tickFrames)
+  const drawnTicked = [...ticked].filter(frame => drawn.has(frame)).length
+  return {
+    drawnFrames: drawn.size,
+    ticksPerDraw: drawn.size === 0 ? 0 : tickFrames.length / drawn.size,
+    drawnTickShare: ticked.size === 0 ? 1 : drawnTicked / ticked.size,
+  }
+}
 
 const stats = (xs: ReadonlyArray<number>) => {
   const s = [...xs].sort((a, b) => a - b)
@@ -191,6 +220,8 @@ export const measureScenario = async (
     async (durationSeconds: number) => {
       window.__timings.update.length = 0
       window.__timings.view.length = 0
+      window.__timings.viewFrames.length = 0
+      window.__timings.tickFrames.length = 0
       const deltas: Array<number> = []
       const start = performance.now()
       let last = start
@@ -215,6 +246,8 @@ export const measureScenario = async (
         elapsedMs: last - start,
         update: [...window.__timings.update],
         view: [...window.__timings.view],
+        viewFrames: [...window.__timings.viewFrames],
+        tickFrames: [...window.__timings.tickFrames],
         shapes: window.__countShapes(),
       }
     },
@@ -232,6 +265,7 @@ export const measureScenario = async (
   const frame = stats(data.deltas)
   const update = stats(data.update)
   const view = stats(data.view)
+  const cadence = cadenceOf(data.viewFrames, data.tickFrames)
   return {
     scenario: name,
     rate,
@@ -255,6 +289,9 @@ export const measureScenario = async (
     particles: `${m0.particles.length}->${m1.particles.length}`,
     phase: m1.phase._tag,
     decals: m1.decals.length,
+    drawnFps: round((1000 * cadence.drawnFrames) / data.elapsedMs, 1),
+    ticksPerDraw: round(cadence.ticksPerDraw, 2),
+    drawnTickShare: round(cadence.drawnTickShare, 2),
   }
 }
 
