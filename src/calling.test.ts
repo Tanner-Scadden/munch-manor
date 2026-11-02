@@ -89,15 +89,15 @@ describe('the Handyman', () => {
 })
 
 describe('the Track Star', () => {
-  test('runs 10 percent faster', () => {
+  test('runs 20 percent faster', () => {
     expect(speedScaleOf({ calling: 'TrackStar' })).toBe(1.2)
     expect(speedScaleOf({ calling: 'Handyman' })).toBe(1)
   })
 
-  test('has 10 percent smaller magazines, rounded down, never under 1', () => {
-    expect(magazineFor('TrackStar', 14)).toBe(12)
-    expect(magazineFor('TrackStar', 6)).toBe(5)
-    expect(magazineFor('TrackStar', 30)).toBe(27)
+  test('has 5 percent smaller magazines, rounded to the nearest, never under 1', () => {
+    expect(magazineFor('TrackStar', 14)).toBe(13)
+    expect(magazineFor('TrackStar', 6)).toBe(6)
+    expect(magazineFor('TrackStar', 30)).toBe(29)
     expect(magazineFor('TrackStar', 1)).toBe(1)
     expect(magazineFor('You', 14)).toBe(14)
   })
@@ -174,7 +174,7 @@ describe('the specials as short lines', () => {
   test('the Track Star and the Penny Pincher read theirs', () => {
     expect(specialsOf('TrackStar').map(({ line }) => line)).toEqual([
       'Runs 20% faster',
-      'Mags 10% smaller',
+      'Mags 5% smaller',
     ])
     expect(specialsOf('PennyPincher').map(({ line }) => line)).toEqual([
       'Rattles 15% off',
