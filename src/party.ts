@@ -1,9 +1,9 @@
-import { Array, Option, Order, Result, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Option, Order, Result, pipe } from "effect";
+import { modifyFields } from "foldkit/struct";
 
-import { killPayFor } from './calling'
-import { FIXED_STEP_MS } from './constants'
-import type { World } from './world'
+import { killPayFor } from "./calling";
+import { FIXED_STEP_MS } from "./constants";
+import type { World } from "./world";
 import {
   type Bullet,
   type Intent,
@@ -19,7 +19,7 @@ import {
   type Vector,
   type Wallet,
   crewOf,
-} from './worldSchema'
+} from "./worldSchema";
 
 // The players of a World (MULTIPLAYER.md, Phase 1). Single player is Solo:
 // its one player is the World's own per-player fields, exactly as before.
@@ -41,20 +41,21 @@ export const COOP_RULES = {
   revivedInvulnerableMs: 1500,
   downedCrawlScale: 0.35,
   trapLimit: 1,
+  isFriendlyFireOn: false,
   friendlyFireDamage: 1,
   maxPlayers: 4,
-} as const
+} as const;
 
 // SEATS
 
 export const isCoop = (world: World): boolean =>
-  Party.isAnyOf(['Crew'])(world.party)
+  Party.isAnyOf(["Crew"])(world.party);
 
 export const soloSeat: Seat = {
   slot: SOLO_SLOT,
   life: Life.Standing(),
-  presence: 'Here',
-  readiness: 'Waiting',
+  presence: "Here",
+  readiness: "Waiting",
   trapIds: [],
   kills: 0,
   revives: 0,
@@ -63,9 +64,9 @@ export const soloSeat: Seat = {
   shotsHit: 0,
   graceMs: 0,
   touchedMs: 0,
-}
+};
 
-const MAX_BITE_GRACE_MS = 100
+const MAX_BITE_GRACE_MS = 100;
 
 // NOTE: the bite grace for a round trip, in whole ticks so it only
 // changes when it matters.
@@ -73,19 +74,19 @@ export const biteGraceFor = (rttMs: number): number =>
   Math.min(
     MAX_BITE_GRACE_MS,
     Math.floor(rttMs / 2 / FIXED_STEP_MS) * FIXED_STEP_MS,
-  )
+  );
 
 export const leadSeatOf = (world: World): Seat =>
   Party.match(world.party, {
     Solo: () => soloSeat,
     Crew: ({ lead }) => lead,
-  })
+  });
 
 const matesOf = (world: World): ReadonlyArray<Mate> =>
   Party.match(world.party, {
     Solo: () => [],
     Crew: ({ mates }) => mates,
-  })
+  });
 
 const mateOfLead = (world: World, seat: Seat): Mate => ({
   seat,
@@ -99,7 +100,7 @@ const mateOfLead = (world: World, seat: Seat): Mate => ({
   shopCategory: world.shopCategory,
   laserSight: world.laserSight,
   purchase: world.purchase,
-})
+});
 
 // NOTE: puts mate `index` in the World's per-player fields and the lead in
 // its place among the mates. Swapping the same index again undoes it.
@@ -109,7 +110,7 @@ const swapIn = (world: World, index: number): World =>
     Crew: ({ lead, mates }) =>
       Option.match(Array.get(mates, index), {
         onNone: () => world,
-        onSome: mate =>
+        onSome: (mate) =>
           modifyFields(world, {
             player: () => mate.player,
             intent: () => mate.intent,
@@ -130,10 +131,10 @@ const swapIn = (world: World, index: number): World =>
               ),
           }),
       }),
-  })
+  });
 
 const mateIndexOf = (world: World, slot: PlayerSlot): Option.Option<number> =>
-  Array.findFirstIndex(matesOf(world), mate => mate.seat.slot === slot)
+  Array.findFirstIndex(matesOf(world), (mate) => mate.seat.slot === slot);
 
 // NOTE: runs `step` with the seat at `slot` in the World's per-player
 // fields, then puts the lead back. A slot not in the World is left alone.
@@ -143,21 +144,21 @@ export const withSeat = (
   step: (seatWorld: World) => World,
 ): World => {
   if (leadSeatOf(world).slot === slot) {
-    return step(world)
+    return step(world);
   }
   return Option.match(mateIndexOf(world, slot), {
     onNone: () => world,
-    onSome: index => swapIn(step(swapIn(world, index)), index),
-  })
-}
+    onSome: (index) => swapIn(step(swapIn(world, index)), index),
+  });
+};
 
 // NOTE: keeps the seat at `slot` in the World's per-player fields, for a
 // client that draws its own player there.
 export const focusSeat = (world: World, slot: PlayerSlot): World =>
   Option.match(mateIndexOf(world, slot), {
     onNone: () => world,
-    onSome: index => swapIn(world, index),
-  })
+    onSome: (index) => swapIn(world, index),
+  });
 
 export const slotsOf = (world: World): ReadonlyArray<PlayerSlot> =>
   Array.sort(
@@ -166,9 +167,10 @@ export const slotsOf = (world: World): ReadonlyArray<PlayerSlot> =>
       ...Array.map(matesOf(world), ({ seat }) => seat.slot),
     ],
     Order.Number,
-  )
+  );
 
-export const playerCountOf = (world: World): number => 1 + matesOf(world).length
+export const playerCountOf = (world: World): number =>
+  1 + matesOf(world).length;
 
 // NOTE: every seat in slot order, each with itself in the per-player
 // fields. Single player is one call on the World as it is.
@@ -178,9 +180,9 @@ export const forEachSeat = (
 ): World =>
   isCoop(world)
     ? Array.reduce(slotsOf(world), world, (current, slot) =>
-        withSeat(current, slot, seatWorld => step(seatWorld, slot)),
+        withSeat(current, slot, (seatWorld) => step(seatWorld, slot)),
       )
-    : step(world, SOLO_SLOT)
+    : step(world, SOLO_SLOT);
 
 export const modifyLeadSeat = (
   world: World,
@@ -192,7 +194,7 @@ export const modifyLeadSeat = (
       modifyFields(world, {
         party: () => crewOf(change(lead), mates),
       }),
-  })
+  });
 
 // NOTE: a step for each seat that `isIncluded` lets in, the rest left as
 // they are.
@@ -203,17 +205,17 @@ export const forEachSeatWhere = (
 ): World =>
   forEachSeat(world, (seatWorld, slot) =>
     isIncluded(leadSeatOf(seatWorld)) ? step(seatWorld, slot) : seatWorld,
-  )
+  );
 
 // READING THE PLAYERS
 
 export type SeatedPlayer = Readonly<{
-  slot: PlayerSlot
-  player: Player
-  seat: Seat
-  wallet: Wallet
-  intent: Intent
-}>
+  slot: PlayerSlot;
+  player: Player;
+  seat: Seat;
+  wallet: Wallet;
+  intent: Intent;
+}>;
 
 export const playersOf = (world: World): ReadonlyArray<SeatedPlayer> =>
   Array.sort(
@@ -225,7 +227,7 @@ export const playersOf = (world: World): ReadonlyArray<SeatedPlayer> =>
         wallet: world.wallet,
         intent: world.intent,
       },
-      ...Array.map(matesOf(world), mate => ({
+      ...Array.map(matesOf(world), (mate) => ({
         slot: mate.seat.slot,
         player: mate.player,
         seat: mate.seat,
@@ -234,30 +236,30 @@ export const playersOf = (world: World): ReadonlyArray<SeatedPlayer> =>
       })),
     ],
     Order.mapInput(Order.Number, ({ slot }: SeatedPlayer) => slot),
-  )
+  );
 
 export const maybePlayerAt = (
   world: World,
   slot: PlayerSlot,
 ): Option.Option<SeatedPlayer> =>
-  Array.findFirst(playersOf(world), player => player.slot === slot)
+  Array.findFirst(playersOf(world), (player) => player.slot === slot);
 
 export const isStanding = (seat: Seat): boolean =>
-  Life.isAnyOf(['Standing'])(seat.life)
+  Life.isAnyOf(["Standing"])(seat.life);
 
 export const isDowned = (seat: Seat): boolean =>
-  Life.isAnyOf(['Downed'])(seat.life)
+  Life.isAnyOf(["Downed"])(seat.life);
 
 export const isBledOut = (seat: Seat): boolean =>
-  Life.isAnyOf(['BledOut'])(seat.life)
+  Life.isAnyOf(["BledOut"])(seat.life);
 
-export const isHere = (seat: Seat): boolean => seat.presence === 'Here'
+export const isHere = (seat: Seat): boolean => seat.presence === "Here";
 
 const standingOrLead = (
   world: World,
   standing: ReadonlyArray<Player>,
 ): Array.NonEmptyReadonlyArray<Player> =>
-  Array.isReadonlyArrayNonEmpty(standing) ? standing : [world.player]
+  Array.isReadonlyArrayNonEmpty(standing) ? standing : [world.player];
 
 // NOTE: who the zombies hunt: every standing player, here or away. Single
 // player is always its one player, as before.
@@ -269,10 +271,10 @@ export const targetsOf = (world: World): Array.NonEmptyReadonlyArray<Player> =>
           isStanding(seat) ? Result.succeed(player) : Result.failVoid,
         ),
       )
-    : [world.player]
+    : [world.player];
 
 const distanceSquared = (from: Vector, to: Vector): number =>
-  (from.x - to.x) * (from.x - to.x) + (from.y - to.y) * (from.y - to.y)
+  (from.x - to.x) * (from.x - to.x) + (from.y - to.y) * (from.y - to.y);
 
 // NOTE: the nearest of the targets to a point, the first on a tie.
 export const nearestOf = <A extends Vector>(
@@ -286,7 +288,7 @@ export const nearestOf = <A extends Vector>(
       distanceSquared(target, at) < distanceSquared(nearest, at)
         ? target
         : nearest,
-  )
+  );
 
 // NOTE: the slot of the standing player nearest a point, for the systems
 // that fight one player at a time (the boss, a Big Leaguer, an Ankle Biter).
@@ -296,7 +298,7 @@ const nearestStandingSlot = (world: World, at: Vector): PlayerSlot =>
     Array.filter(({ seat }) => isStanding(seat)),
     Array.match({
       onEmpty: () => leadSeatOf(world).slot,
-      onNonEmpty: standing =>
+      onNonEmpty: (standing) =>
         nearestOf(
           Array.map(standing, ({ slot, player }) => ({
             slot,
@@ -306,7 +308,7 @@ const nearestStandingSlot = (world: World, at: Vector): PlayerSlot =>
           at,
         ).slot,
     }),
-  )
+  );
 
 // NOTE: runs a system that fights one player with the standing player
 // nearest `at` in the per-player fields.
@@ -317,24 +319,24 @@ export const facingNearest = (
 ): World =>
   isCoop(world)
     ? withSeat(world, nearestStandingSlot(world, at), step)
-    : step(world)
+    : step(world);
 
 // MONEY
 
 export const earn = (wallet: Wallet, amount: number): Wallet =>
   modifyFields(wallet, {
-    balance: balance => balance + amount,
-    earned: earned => earned + amount,
-  })
+    balance: (balance) => balance + amount,
+    earned: (earned) => earned + amount,
+  });
 
 const earnInWorld = (world: World, amount: number): World =>
-  modifyFields(world, { wallet: wallet => earn(wallet, amount) })
+  modifyFields(world, { wallet: (wallet) => earn(wallet, amount) });
 
 // NOTE: kill money for the player standing in the World's per-player
 // fields, as their calling pays it (the Penny Pincher's kills pay less).
 // A bonus is not a kill, so it goes through earnInWorld whole.
 export const earnKill = (world: World, amount: number): World =>
-  earnInWorld(world, killPayFor(world.player.calling, amount))
+  earnInWorld(world, killPayFor(world.player.calling, amount));
 
 // NOTE: kill money goes to the killer (decided 5). A kill with no single
 // killer, such as a Kaboomer's chain or an oven's fire, is shared.
@@ -345,22 +347,22 @@ export const payTo = (
 ): World =>
   Option.match(maybeSlot, {
     onNone: () => payShared(world, amount),
-    onSome: slot =>
+    onSome: (slot) =>
       isCoop(world)
-        ? withSeat(world, slot, seatWorld => earnKill(seatWorld, amount))
+        ? withSeat(world, slot, (seatWorld) => earnKill(seatWorld, amount))
         : earnKill(world, amount),
-  })
+  });
 
 // NOTE: a bonus split evenly among the players (decided 5): whole dollars,
 // with the odd ones to the lowest seats, so the split adds up to the bonus.
 export const payShared = (world: World, amount: number): World =>
-  splitAmong(world, amount, earnInWorld)
+  splitAmong(world, amount, earnInWorld);
 
 // NOTE: kill money with no single killer (a Kaboomer's chain, an oven's
 // fire, a trap's blast), split the same way, each player paid as their own
 // calling pays kills.
 export const payKillShared = (world: World, amount: number): World =>
-  splitAmong(world, amount, earnKill)
+  splitAmong(world, amount, earnKill);
 
 const splitAmong = (
   world: World,
@@ -368,21 +370,21 @@ const splitAmong = (
   earnWith: (seatWorld: World, amount: number) => World,
 ): World => {
   if (!isCoop(world)) {
-    return earnWith(world, amount)
+    return earnWith(world, amount);
   }
-  const slots = slotsOf(world)
-  const share = Math.floor(amount / slots.length)
-  const odd = amount - share * slots.length
+  const slots = slotsOf(world);
+  const share = Math.floor(amount / slots.length);
+  const odd = amount - share * slots.length;
   return Array.reduce(slots, world, (current, slot) => {
     const order = Option.getOrElse(
-      Array.findFirstIndex(slots, s => s === slot),
+      Array.findFirstIndex(slots, (s) => s === slot),
       () => 0,
-    )
-    return withSeat(current, slot, seatWorld =>
+    );
+    return withSeat(current, slot, (seatWorld) =>
       earnWith(seatWorld, share + (order < odd ? 1 : 0)),
-    )
-  })
-}
+    );
+  });
+};
 
 // NOTE: a change to the seat at `slot`, wherever it sits.
 const modifySeatAt = (
@@ -390,7 +392,7 @@ const modifySeatAt = (
   slot: PlayerSlot,
   change: (seat: Seat) => Seat,
 ): World =>
-  withSeat(world, slot, seatWorld => modifyLeadSeat(seatWorld, change))
+  withSeat(world, slot, (seatWorld) => modifyLeadSeat(seatWorld, change));
 
 export const creditKills = (
   world: World,
@@ -398,15 +400,15 @@ export const creditKills = (
   kills: number,
 ): World =>
   kills > 0
-    ? modifySeatAt(world, slot, seat =>
-        modifyFields(seat, { kills: count => count + kills }),
+    ? modifySeatAt(world, slot, (seat) =>
+        modifyFields(seat, { kills: (count) => count + kills }),
       )
-    : world
+    : world;
 
 export const creditRevive = (world: World, slot: PlayerSlot): World =>
-  modifySeatAt(world, slot, seat =>
-    modifyFields(seat, { revives: count => count + 1 }),
-  )
+  modifySeatAt(world, slot, (seat) =>
+    modifyFields(seat, { revives: (count) => count + 1 }),
+  );
 
 // NOTE: shots fired and landed by the seat at `slot`, for its aim on the
 // crew board. Single player counts its own in the run stats.
@@ -417,20 +419,20 @@ export const creditShots = (
   hit: number,
 ): World =>
   isCoop(world) && (fired > 0 || hit > 0)
-    ? modifySeatAt(world, slot, seat =>
+    ? modifySeatAt(world, slot, (seat) =>
         modifyFields(seat, {
-          shotsFired: count => count + fired,
-          shotsHit: count => count + hit,
+          shotsFired: (count) => count + fired,
+          shotsHit: (count) => count + hit,
         }),
       )
-    : world
+    : world;
 
 // CREW
 
-const MATE_SPACING_PX = 14
+const MATE_SPACING_PX = 14;
 
 const freshSeat = (slot: PlayerSlot): Seat =>
-  modifyFields(soloSeat, { slot: () => slot })
+  modifyFields(soloSeat, { slot: () => slot });
 
 // NOTE: a new run's crew: the lead at slot 0 where single player starts,
 // and each teammate beside them, with their own copy of every per-player
@@ -439,29 +441,29 @@ export const seatCrew = (world: World, count: number): World => {
   const players = Math.min(
     COOP_RULES.maxPlayers,
     Math.max(1, Math.floor(count)),
-  )
+  );
   if (players <= 1) {
-    return modifyFields(world, { party: () => Party.Solo() })
+    return modifyFields(world, { party: () => Party.Solo() });
   }
-  const mates = Array.makeBy(players - 1, index => {
-    const slot = index + 1
-    const side = slot % 2 === 1 ? 1 : -1
-    const step = Math.ceil(slot / 2)
+  const mates = Array.makeBy(players - 1, (index) => {
+    const slot = index + 1;
+    const side = slot % 2 === 1 ? 1 : -1;
+    const step = Math.ceil(slot / 2);
     return modifyFields(mateOfLead(world, freshSeat(slot)), {
-      player: player =>
-        modifyFields(player, { x: x => x + side * step * MATE_SPACING_PX }),
-    })
-  })
+      player: (player) =>
+        modifyFields(player, { x: (x) => x + side * step * MATE_SPACING_PX }),
+    });
+  });
   return modifyFields(world, {
     party: () => crewOf(freshSeat(SOLO_SLOT), mates),
-  })
-}
+  });
+};
 
 export const presenceOf = (world: World, slot: PlayerSlot): Presence =>
   Option.match(maybePlayerAt(world, slot), {
-    onNone: (): Presence => 'Away',
+    onNone: (): Presence => "Away",
     onSome: ({ seat }) => seat.presence,
-  })
+  });
 
 // NOTE: the room marks a player Away after 3 s with no input and Here again
 // once they send one (decided row 10).
@@ -470,11 +472,11 @@ export const setPresence = (
   slot: PlayerSlot,
   presence: Presence,
 ): World =>
-  withSeat(world, slot, seatWorld =>
-    modifyLeadSeat(seatWorld, seat =>
+  withSeat(world, slot, (seatWorld) =>
+    modifyLeadSeat(seatWorld, (seat) =>
       modifyFields(seat, { presence: () => presence }),
     ),
-  )
+  );
 
 // CREDIT
 
@@ -485,14 +487,14 @@ export const firedBy = (
 ): Bullet =>
   Option.match(maybeSlot, {
     onNone: () => bullet,
-    onSome: shooter => ({ ...bullet, shooter }),
-  })
+    onSome: (shooter) => ({ ...bullet, shooter }),
+  });
 
 export const shooterOf = (world: World): Option.Option<PlayerSlot> =>
-  isCoop(world) ? Option.some(leadSeatOf(world).slot) : Option.none()
+  isCoop(world) ? Option.some(leadSeatOf(world).slot) : Option.none();
 
 export const maybeShooterOf = (bullet: Bullet): Option.Option<PlayerSlot> =>
-  Option.fromNullishOr(bullet.shooter)
+  Option.fromNullishOr(bullet.shooter);
 
 export const trapOwnerOf = (
   world: World,
@@ -505,7 +507,7 @@ export const trapOwnerOf = (
         ),
         ({ slot }) => slot,
       )
-    : Option.none()
+    : Option.none();
 
 // NOTE: a seat's own stall or exit state, wherever the seat sits.
 export const shopOf = (
@@ -515,6 +517,6 @@ export const shopOf = (
   leadSeatOf(world).slot === slot
     ? Option.some(world.shop)
     : Option.map(
-        Array.findFirst(matesOf(world), mate => mate.seat.slot === slot),
+        Array.findFirst(matesOf(world), (mate) => mate.seat.slot === slot),
         ({ shop }) => shop,
-      )
+      );
