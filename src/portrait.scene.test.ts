@@ -1,6 +1,7 @@
 import { Array, Match } from 'effect'
 import type { Canvas } from 'foldkit'
 import {
+  click,
   expect,
   given,
   role,
@@ -13,12 +14,14 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test, expect as vitestExpect } from 'vitest'
 
 import { screenCameraOf } from './camera'
+import { isTurnHintShown } from './home'
 import { TURN_HINT_TEXT } from './homeView'
 import { MELEE_SLOT_INDEX, gunSlotBox, hudShapes, reloadFaceOf } from './hud'
 import { update } from './main'
 import { Message } from './message'
 import { BreakClock, type Model, Phase, initialModel } from './model'
 import { DISTANT_SPAWN, inPortrait } from './model.fixture'
+import { restoreSave, saveOf } from './save'
 import { screenOf, thumbAreaTop } from './screen'
 import {
   PHONE_LANDSCAPE,
@@ -304,17 +307,21 @@ describe('the portrait home menu', () => {
 })
 
 describe('the turn hint', () => {
-  const turnHint = role('img', { name: TURN_HINT_TEXT })
+  const turnHint = role('button', { name: TURN_HINT_TEXT })
 
-  test('shows the tipping phone, with no words, on the portrait home menu and goes when the phone turns', () => {
+  test('shows the tipping phone with its line on the portrait home menu', () => {
     scene(
       ROOT,
       given(onTouch(Phase.Ready())),
       measure(PHONE_PORTRAIT),
       expect(turnHint).toExist(),
       expect(selector('.home-turn-hint')).toExist(),
-      expect(text(TURN_HINT_TEXT)).toBeAbsent(),
+      expect(selector('.home-turn-icon')).toExist(),
+      expect(text(TURN_HINT_TEXT)).toExist(),
     )
+  })
+
+  test('goes when the phone turns, and does not come back when it turns upright again', () => {
     scene(
       ROOT,
       given(remeasured(onTouch(Phase.Ready()), [PHONE_PORTRAIT])),
@@ -328,7 +335,42 @@ describe('the turn hint', () => {
         remeasured(onTouch(Phase.Ready()), [PHONE_PORTRAIT, PHONE_LANDSCAPE]),
       ),
       measure(PHONE_PORTRAIT),
-      expect(turnHint).toExist(),
+      expect(root).toHaveAttr('data-layout', 'Portrait'),
+      expect(turnHint).toBeAbsent(),
+    )
+  })
+
+  test('goes on a tap and stays gone, leaving PLAY and the rest to tap', () => {
+    scene(
+      ROOT,
+      given(onTouch(Phase.Ready())),
+      measure(PHONE_PORTRAIT),
+      expect(role('button', { name: /^Play/ })).toExist(),
+      click(turnHint),
+      expect(turnHint).toBeAbsent(),
+      expect(role('button', { name: /^Play/ })).toExist(),
+    )
+  })
+
+  test('is not shown again once the save of a player who dismissed it is loaded', () => {
+    const dismissed = update(
+      remeasured(onTouch(Phase.Ready()), [PHONE_PORTRAIT]),
+      Message.ClickedTurnHint(),
+    ).model
+    const saved = saveOf(dismissed)
+    vitestExpect(saved.home.turnHintSeen).toBe(true)
+    const reloaded = remeasured(restoreSave(onTouch(Phase.Ready()), saved), [
+      PHONE_PORTRAIT,
+    ])
+    vitestExpect(isTurnHintShown(reloaded)).toBe(false)
+    vitestExpect(
+      isTurnHintShown(remeasured(onTouch(Phase.Ready()), [PHONE_PORTRAIT])),
+    ).toBe(true)
+    scene(
+      ROOT,
+      given(reloaded),
+      measure(PHONE_PORTRAIT),
+      expect(turnHint).toBeAbsent(),
     )
   })
 

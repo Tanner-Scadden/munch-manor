@@ -191,6 +191,7 @@ export const HomeButton = Schema.Literals([
   'Play',
   'Coop',
   'Manor',
+  'Bests',
   'Support',
   'Settings',
 ])
@@ -341,6 +342,7 @@ export const HomeMenu = Schema.Struct({
   newsPage: Schema.Number,
   munchopediaPage: MunchopediaPage,
   openedEntries: Schema.Array(ZombieKind),
+  isTurnHintSeen: Schema.Boolean,
   newEntries: Schema.Array(ZombieKind),
 })
 export type HomeMenu = typeof HomeMenu.Type
@@ -355,6 +357,7 @@ export const freshHomeMenu: HomeMenu = {
   newsPage: 0,
   munchopediaPage: MunchopediaPage.List(),
   openedEntries: [],
+  isTurnHintSeen: false,
   newEntries: [],
 }
 
