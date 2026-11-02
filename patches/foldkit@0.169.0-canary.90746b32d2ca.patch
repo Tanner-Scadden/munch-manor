@@ -600,6 +600,153 @@ index fa2e6d7..6cad7a2 100644
      }
  };
  /** The CSS declaration name corresponding to a CSSStyleDeclaration property.
+diff --git a/dist/runtime/messageQueue.d.ts b/dist/runtime/messageQueue.d.ts
+index 03cb951..bdc8beb 100644
+--- a/dist/runtime/messageQueue.d.ts
++++ b/dist/runtime/messageQueue.d.ts
+@@ -6,6 +6,7 @@ export type MessageQueue<Message, Processed = void> = Readonly<{
+     enqueueMessageEffect: (message: Message, isCurrent?: () => boolean) => Effect.Effect<void>;
+     enqueueMessageReceiptEffect: (message: Message, isCurrent?: () => boolean) => Effect.Effect<Result.Result<Option.Option<Processed>, string>>;
+     drainPendingMessages: () => void;
++    drainDeferredNow: () => void;
+     resetDrainBudget: () => void;
+     isAnyMessageDeferred: () => boolean;
+     completeBoot: () => void;
+diff --git a/dist/runtime/messageQueue.js b/dist/runtime/messageQueue.js
+index 957a042..8d119b8 100644
+--- a/dist/runtime/messageQueue.js
++++ b/dist/runtime/messageQueue.js
+@@ -160,6 +160,18 @@ export const makeMessageQueue = ({ status, processMessage, crashWith, }) => Effe
+     const resetDrainBudget = () => {
+         syncWorkMsSinceYield = 0;
+     };
++    // NOTE: runs a drain deferred to the next task now, from a render frame:
++    // the browser has had control back, which is what the deferral waited
++    // for, and is about to paint. A drain that runs over the budget again
++    // defers again. The channel's message still comes and finds nothing.
++    const drainDeferredNow = () => {
++        if (!isDrainDeferredToNextTask) {
++            return;
++        }
++        isDrainDeferredToNextTask = false;
++        syncWorkMsSinceYield = 0;
++        drainPendingMessages();
++    };
+     const isAnyMessageDeferred = () => isDrainDeferredToNextTask && pendingMessages.length > 0;
+     const completeBoot = () => {
+         isBootComplete = true;
+@@ -170,6 +182,7 @@ export const makeMessageQueue = ({ status, processMessage, crashWith, }) => Effe
+         enqueueMessageEffect,
+         enqueueMessageReceiptEffect,
+         drainPendingMessages,
++        drainDeferredNow,
+         resetDrainBudget,
+         isAnyMessageDeferred,
+         completeBoot,
+diff --git a/dist/runtime/renderer.js b/dist/runtime/renderer.js
+index 357fe7e..57b4d90 100644
+--- a/dist/runtime/renderer.js
++++ b/dist/runtime/renderer.js
+@@ -22,7 +22,7 @@ import { __decideViewTransition, __silenceViewTransitionRejections, } from './vi
+  * those fibers are interrupted.
+  */
+ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocument, crash, buildId, initModel, maybeHydrationRoot, maybeSlowView, maybeSlowPatch, duplicateIdScanner, maybeResolvedViewTransition, commitNotifier, mounts, runtimeContext, readLiveModel, messageQueue, devToolsIntegration, }) => Effect.gen(function* () {
+-    const { enqueueMessage, enqueueMessageEffect, drainPendingMessages, resetDrainBudget, isAnyMessageDeferred, } = messageQueue;
++    const { enqueueMessage, enqueueMessageEffect, drainPendingMessages, drainDeferredNow, resetDrainBudget, isAnyMessageDeferred, } = messageQueue;
+     const { mountTracker, mountRuntime, drainMountEvents, readViewState, setViewState, isPausedNow, resumeDevTools, attachRenderedMounts, } = devToolsIntegration;
+     const settlePendingCommit = () => {
+         if (commitNotifier.service.isCommitPending()) {
+@@ -39,6 +39,17 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+     // from an ordinary frame that was already queued when jumpTo installed
+     // the historical view.
+     let isLiveViewRestorePending = false;
++    // NOTE: whether a frame callback is already requested ahead, before
++    // anything changed (see `armNextFrame`).
++    let isFrameArmed = false;
++    let maybeArmChannel = null;
++    yield* Effect.addFinalizer(() => Effect.sync(() => {
++        if (maybeArmChannel !== null) {
++            maybeArmChannel.port1.close();
++            maybeArmChannel.port2.close();
++            maybeArmChannel = null;
++        }
++    }));
+     // NOTE: the Model behind the DOM currently on screen, which is what a
+     // View Transition animates away from. Seeded with `initModel` because
+     // the init render paints it, and advanced only where a render actually
+@@ -431,11 +442,23 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+     // would strand any `Render.afterCommit` registered against it, and
+     // the Dom helpers that gate on it would never run their DOM work.
+     const renderFramePlain = () => {
++        // NOTE: a drain deferred to a new task waits for the browser to get
++        // control back, and a frame running means it has: drain it here, so
++        // its Messages draw in this frame and not the next.
++        if (isLiveModelBehindQueue()) {
++            drainDeferredNow();
++        }
+         // NOTE: retain the scheduled frame's pending commit while the drain waits.
+         if (isLiveModelBehindQueue()) {
+             requestAnimationFrame(renderFramePlain);
+             return;
+         }
++        isFrameArmed = false;
++        // NOTE: a frame armed ahead that nothing has changed since. The
++        // runtime is idle, so it stops arming.
++        if (!isRenderFrameScheduled) {
++            return;
++        }
+         isRenderFrameScheduled = false;
+         const isRestoringLiveView = isLiveViewRestorePending;
+         isLiveViewRestorePending = false;
+@@ -472,11 +495,38 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+         // the render runs later, inside the transition's update callback.
+         if (Option.isNone(maybeResolvedViewTransition)) {
+             runRenderFrameBody();
++            armNextFrame();
+             return;
+         }
+         if (!startFrameViewTransition(maybeResolvedViewTransition.value)) {
+             runRenderFrameBody();
+         }
++        armNextFrame();
++    };
++    // NOTE: a `requestAnimationFrame` made inside an animation frame's
++    // callbacks runs in the next frame, so a Message from an animation frame
++    // Subscription (a game's tick) that scheduled its render then would draw
++    // a frame late, merged with the next tick: every other frame drawn. So
++    // after a frame renders, the next frame's callback is requested ahead,
++    // from a task after this frame, which puts it after every callback
++    // requested inside this frame's. The tick's callback then runs first,
++    // its Message dirties the Model, and this callback draws it in the same
++    // frame. A frame armed ahead that nothing dirtied stops the arming.
++    const armNextFrame = () => {
++        if (maybeArmChannel === null) {
++            maybeArmChannel = new MessageChannel();
++            maybeArmChannel.port2.onmessage = () => {
++                if (isFrameArmed ||
++                    isRenderFrameScheduled ||
++                    status.isRuntimeDisposed ||
++                    status.isCrashed) {
++                    return;
++                }
++                isFrameArmed = true;
++                requestAnimationFrame(renderFramePlain);
++            };
++        }
++        maybeArmChannel.port1.postMessage(null);
+     };
+     // NOTE: render frames run as plain JavaScript inside the
+     // requestAnimationFrame callback. Messages arriving between frames mark
+@@ -491,6 +541,9 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+         }
+         isRenderFrameScheduled = true;
+         commitNotifier.markCommitPending();
++        if (isFrameArmed) {
++            return;
++        }
+         requestAnimationFrame(renderFramePlain);
+     };
+     const devToolsRenderBridge = {
 diff --git a/dist/schema/index.js b/dist/schema/index.js
 index fa19443..0dce512 100644
 --- a/dist/schema/index.js

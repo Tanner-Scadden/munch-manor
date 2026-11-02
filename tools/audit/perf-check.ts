@@ -15,9 +15,12 @@ const VITE = `${ROOT}/node_modules/.bin/vite`
 const BASELINE_PATH = `${import.meta.dir}/frame-baseline.json`
 
 const PORT = Number(process.env['PORT'] ?? 4179)
-const SCENARIO_NAMES = (process.env['SCENARIOS'] ?? 'worst,endlessCap').split(
-  ',',
-)
+const SCENARIO_NAMES = (
+  process.env['SCENARIOS'] ?? 'worst,endlessCap,coopLive'
+).split(',')
+// NOTE: `UPDATE=1` with `SCENARIOS` records only those scenarios' rows and
+// keeps the baseline's others.
+const IS_RECORDING_SOME = (process.env['SCENARIOS'] ?? '') !== ''
 const RATES = (process.env['RATES'] ?? '1,4,6').split(',').map(Number)
 const SECONDS = Number(process.env['SECONDS'] ?? 5)
 const TRIALS = Number(process.env['TRIALS'] ?? 2)
@@ -28,6 +31,10 @@ const JS_TOLERANCE = Number(process.env['JS_TOLERANCE'] ?? 0.25)
 const BUSY_TOLERANCE = Number(process.env['BUSY_TOLERANCE'] ?? 0.25)
 const FPS_TOLERANCE = Number(process.env['FPS_TOLERANCE'] ?? 0.15)
 const P95_TOLERANCE = Number(process.env['P95_TOLERANCE'] ?? 0.3)
+// NOTE: at 1x, nearly every animation frame with a frame tick must draw in
+// that same frame, whatever the baseline says: a render scheduled a frame
+// late draws only every other frame.
+const DRAWN_SHARE_FLOOR = Number(process.env['DRAWN_SHARE_FLOOR'] ?? 0.9)
 
 const Baseline = Schema.Struct({
   recordedAt: Schema.String,
@@ -119,6 +126,22 @@ const bestOf = (trials: ReadonlyArray<FrameRow>): FrameRow => {
     busyMs: best(row => row.busyMs, Math.min),
     updateMean: best(row => row.updateMean, Math.min),
     viewMean: best(row => row.viewMean, Math.min),
+    ...bestCadence(trials),
+  }
+}
+
+const bestCadence = (trials: ReadonlyArray<FrameRow>) => {
+  const drawnFps = trials.flatMap(row => row.drawnFps ?? [])
+  const ticksPerDraw = trials.flatMap(row => row.ticksPerDraw ?? [])
+  const drawnTickShare = trials.flatMap(row => row.drawnTickShare ?? [])
+  return {
+    ...(drawnFps.length === 0 ? {} : { drawnFps: Math.max(...drawnFps) }),
+    ...(ticksPerDraw.length === 0
+      ? {}
+      : { ticksPerDraw: Math.min(...ticksPerDraw) }),
+    ...(drawnTickShare.length === 0
+      ? {}
+      : { drawnTickShare: Math.max(...drawnTickShare) }),
   }
 }
 
@@ -138,7 +161,7 @@ const measureAll = async (base: string) => {
       }
       const row = bestOf(trials)
       console.log(
-        `${name} ${rate}x: ${row.fps} fps, p95 ${row.p95}ms, js ${row.jsMs}ms (update ${row.updateMean} + view ${row.viewMean}), main thread ${row.busyMs}ms per frame, ${row.shapes} shapes`,
+        `${name} ${rate}x: ${row.fps} fps, drawn ${row.drawnFps ?? '?'} fps (${row.ticksPerDraw ?? '?'} ticks per draw, ${row.drawnTickShare ?? '?'} of ticked frames drawn), p95 ${row.p95}ms, js ${row.jsMs}ms (update ${row.updateMean} + view ${row.viewMean}), main thread ${row.busyMs}ms per frame, ${row.shapes} shapes`,
       )
       rows.push(row)
     }
@@ -166,6 +189,7 @@ const checksFor = (
   const fpsFloor = baseRow.fps * (1 - FPS_TOLERANCE)
   const p95Limit = baseRow.p95 * (1 + P95_TOLERANCE)
   return [
+    ...cadenceChecks(row, baseRow),
     {
       label: 'js ms (update + view)',
       measured: row.jsMs,
@@ -197,13 +221,45 @@ const checksFor = (
   ]
 }
 
+const cadenceChecks = (
+  row: FrameRow,
+  baseRow: FrameRow,
+): ReadonlyArray<Check> => {
+  const share = row.drawnTickShare
+  const drawn = row.drawnFps
+  const baseDrawn = baseRow.drawnFps
+  return [
+    ...(share !== undefined && row.rate === 1
+      ? [
+          {
+            label: 'share of ticked frames drawn',
+            measured: share,
+            limit: DRAWN_SHARE_FLOOR,
+            isOk: share >= DRAWN_SHARE_FLOOR,
+            isGated: true,
+          },
+        ]
+      : []),
+    ...(drawn !== undefined && baseDrawn !== undefined
+      ? [
+          {
+            label: 'drawn fps',
+            measured: drawn,
+            limit: baseDrawn * (1 - FPS_TOLERANCE),
+            isOk: drawn >= baseDrawn * (1 - FPS_TOLERANCE),
+            isGated: GATE === 'all',
+          },
+        ]
+      : []),
+  ]
+}
+
 const compare = (
   measured: Readonly<{ calibration: number; rows: ReadonlyArray<FrameRow> }>,
   baseline: Baseline,
 ): boolean => {
-  const loadFactor = Math.max(1, measured.calibration / baseline.calibrationMs)
   console.log(
-    `\ncalibration ${measured.calibration.toFixed(1)}ms now, ${baseline.calibrationMs.toFixed(1)}ms in the baseline (${baseline.recordedAt}). CPU time limits scale by ${loadFactor.toFixed(2)}.`,
+    `\ncalibration ${measured.calibration.toFixed(1)}ms now, ${baseline.calibrationMs.toFixed(1)}ms in the baseline (${baseline.recordedAt}). CPU time limits scale by how much slower it runs now.`,
   )
   const failures = measured.rows.flatMap(row => {
     const baseRow = baseline.rows.find(
@@ -214,6 +270,10 @@ const compare = (
       console.log(`${row.scenario} ${row.rate}x: no baseline row, skipped`)
       return []
     }
+    const loadFactor = Math.max(
+      1,
+      measured.calibration / (baseRow.calibrationMs ?? baseline.calibrationMs),
+    )
     return checksFor(row, baseRow, loadFactor).flatMap(check => {
       const verdict = check.isOk ? 'ok' : check.isGated ? 'FAIL' : 'warn'
       console.log(
@@ -230,6 +290,25 @@ const compare = (
   }
   console.log('\nFrame time is within the baseline tolerances.')
   return true
+}
+
+// NOTE: the baseline with the measured scenarios' rows recorded again, each
+// with the calibration it was recorded with, and every other row kept.
+const withRows = (
+  baseline: Baseline,
+  measured: Readonly<{ calibration: number; rows: ReadonlyArray<FrameRow> }>,
+): Baseline => {
+  const names = new Set(measured.rows.map(row => row.scenario))
+  return {
+    ...baseline,
+    rows: [
+      ...baseline.rows.filter(row => !names.has(row.scenario)),
+      ...measured.rows.map(row => ({
+        ...row,
+        calibrationMs: measured.calibration,
+      })),
+    ],
+  }
 }
 
 const main = async () => {
@@ -253,13 +332,17 @@ const main = async () => {
       existingBase ?? `http://localhost:${PORT}/`,
     )
     if (IS_UPDATING) {
-      const baseline: Baseline = {
-        recordedAt: DateTime.formatIso(DateTime.nowUnsafe()),
-        calibrationMs: measured.calibration,
-        loadAverage: loadavg()[0] ?? 0,
-        seconds: SECONDS,
-        rows: measured.rows,
-      }
+      const file = Bun.file(BASELINE_PATH)
+      const baseline: Baseline =
+        IS_RECORDING_SOME && (await file.exists())
+          ? withRows(readJsonFile(Baseline, BASELINE_PATH), measured)
+          : {
+              recordedAt: DateTime.formatIso(DateTime.nowUnsafe()),
+              calibrationMs: measured.calibration,
+              loadAverage: loadavg()[0] ?? 0,
+              seconds: SECONDS,
+              rows: measured.rows,
+            }
       writeJsonFile(Baseline, BASELINE_PATH, baseline)
       console.log(`\nWrote ${BASELINE_PATH}`)
       return true

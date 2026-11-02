@@ -70,7 +70,7 @@ const nearestZombie = (room: RoomWorld, at: Vector): Option.Option<Vector> =>
     Option.map(({ at: found }) => found),
   )
 
-const scriptedInput = (
+export const scriptedInput = (
   room: RoomWorld,
   slot: number,
   tick: number,

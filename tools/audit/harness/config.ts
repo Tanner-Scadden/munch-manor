@@ -324,7 +324,10 @@ export const HarnessConfig = Schema.Struct({
     'card',
     'cardwon',
     'cardduo',
+    'live',
   ]),
+  // With `coop=live`: the room's seats (default 4); `crowd` is its zombies.
+  seats: MaybeNum,
   // Measuring
   freeze: MaybeNum,
   tick: MaybeNum,
