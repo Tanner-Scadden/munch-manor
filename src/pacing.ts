@@ -445,19 +445,29 @@ export const delayWaitingPacks = (
   spawns: ReadonlyArray<PlannedSpawn>,
   waiting: ReadonlyArray<number>,
   clockMs: number,
-): ReadonlyArray<PlannedSpawn> =>
-  Array.isReadonlyArrayEmpty(waiting)
-    ? spawns
-    : Array.map(spawns, spawn => {
-        if (!Array.contains(waiting, spawn.pack)) {
-          return spawn
-        }
-        const firstMs = Array.reduce(spawns, spawn.atMs, (soonest, other) =>
-          other.pack === spawn.pack ? Math.min(soonest, other.atMs) : soonest,
-        )
-        const shiftMs = Math.max(0, clockMs + PACK_WARNING_MS - firstMs)
-        return modifyFields(spawn, { atMs: atMs => atMs + shiftMs })
-      })
+): ReadonlyArray<PlannedSpawn> => {
+  if (Array.isReadonlyArrayEmpty(waiting)) {
+    return spawns
+  }
+  // NOTE: how far each waiting pack shifts, found once in one pass over the
+  // spawns: its first zombie's time decides it.
+  const firsts = Array.map(waiting, () => Number.POSITIVE_INFINITY)
+  Array.forEach(spawns, spawn => {
+    const at = waiting.indexOf(spawn.pack)
+    if (at >= 0) {
+      firsts[at] = Math.min(firsts[at] ?? spawn.atMs, spawn.atMs)
+    }
+  })
+  return Array.map(spawns, spawn => {
+    const at = waiting.indexOf(spawn.pack)
+    if (at < 0) {
+      return spawn
+    }
+    const firstMs = firsts[at] ?? spawn.atMs
+    const shiftMs = Math.max(0, clockMs + PACK_WARNING_MS - firstMs)
+    return modifyFields(spawn, { atMs: atMs => atMs + shiftMs })
+  })
+}
 
 export const warnPacks = (
   model: World,
