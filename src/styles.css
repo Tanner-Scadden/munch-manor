@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import './menu.css';
 @import './shop.css';
+@import './shopGuide.css';
 @import './profile.css';
 @import './calling.css';
 @import './closet.css';
@@ -522,37 +523,45 @@ body {
 }
 
 .start-wave-button {
-  min-width: 132px;
-  min-height: 52px;
-  padding: 0 18px;
-  border: 2px solid rgba(255, 224, 102, 0.8);
+  min-width: 156px;
+  min-height: 56px;
+  padding: 0 20px;
+  border: 3px solid #fff3b0;
   border-radius: 6px;
-  background: rgba(8, 10, 12, 0.7);
-  color: #ffe066;
-  font: bold 14px monospace;
-  letter-spacing: 0.05em;
+  background: #ffe066;
+  box-shadow: 0 3px 0 #7a5c00;
+  color: #2a1a00;
+  font: bold 16px monospace;
+  letter-spacing: 0.06em;
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .start-wave-pill {
-  min-width: 112px;
-  min-height: 48px;
-  padding: 0 16px;
-  border: 2px solid rgba(255, 224, 102, 0.8);
+  min-width: 132px;
+  min-height: 52px;
+  padding: 0 18px;
+  border: 3px solid #fff3b0;
   border-radius: 9999px;
-  background: rgba(8, 10, 12, 0.6);
-  color: #ffe066;
-  font: bold 12px monospace;
+  background: #ffe066;
+  box-shadow: 0 3px 0 #7a5c00;
+  color: #2a1a00;
+  font: bold 14px monospace;
   letter-spacing: 0.06em;
-  opacity: 0.8;
   cursor: pointer;
   touch-action: manipulation;
 }
 
+/* Pressed READY in a crew: green, so a glance tells who is holding the break. */
+.start-wave-pill[data-ready='Ready'],
+.start-wave-button[data-ready='Ready'] {
+  border-color: #d8ffc0;
+  background: #9be36a;
+  box-shadow: 0 3px 0 #2f6b1c;
+}
+
 .start-wave-pill:active {
-  opacity: 1;
-  background: rgba(40, 30, 20, 0.85);
+  filter: brightness(0.85);
 }
 
 /* Until the player has started a wave once, the button itself pulses, in
@@ -574,7 +583,38 @@ body {
   }
 }
 
+/* The break is waiting on this player (src/readyNudge.ts): READY glows and
+   brightens in place. It never moves, and it stays on until pressed. */
+.start-wave-pill[data-nudge='true'],
+.start-wave-button[data-nudge='true'] {
+  animation: ready-nudge 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes ready-nudge {
+  from {
+    filter: brightness(1);
+    box-shadow:
+      0 3px 0 #7a5c00,
+      0 0 0 0 rgba(255, 255, 255, 0);
+  }
+  to {
+    filter: brightness(1.3);
+    box-shadow:
+      0 3px 0 #7a5c00,
+      0 0 0 6px rgba(255, 255, 255, 0.6),
+      0 0 18px 6px rgba(255, 224, 102, 0.8);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .start-wave-pill[data-nudge='true'],
+  .start-wave-button[data-nudge='true'] {
+    animation: none;
+    box-shadow:
+      0 3px 0 #7a5c00,
+      0 0 0 4px rgba(255, 255, 255, 0.7);
+  }
+
   .place-icon-button[data-beckon='true'],
   .start-wave-pill[data-beckon='true'],
   .start-wave-button[data-beckon='true'] {

@@ -2,7 +2,7 @@ import { Array, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
-import type { MapId } from './clientSchema'
+import type { HouseSpot, MapId, ShopGuideSection } from './clientSchema'
 import { type Calling, type CosmeticKind, Hat } from './playerData'
 import type {
   FixedShopItemId,
@@ -116,6 +116,16 @@ export const PRIZE_PUNCH_LINES: Readonly<Record<FridgePrize, string>> = {
   Freeze: 'BRRR',
   Sandwich: 'CHOMP',
   Dud: 'BLEH',
+}
+
+// NOTE: what each fridge prize is called in the shop guide. The weapons keep
+// their gun names; the gags are the moldy sandwich and the fish skeleton.
+export const PRIZE_NAMES: Readonly<Record<FridgePrize, string>> = {
+  Cooker: GUN_NAMES.Cooker,
+  Pan: GUN_NAMES.Pan,
+  Freeze: GUN_NAMES.Freeze,
+  Sandwich: 'Moldy Sandwich',
+  Dud: 'Dud',
 }
 
 // SHOP GOODS
@@ -254,3 +264,25 @@ export const SPECIAL_LINES = {
   noPistol: `No ${GUN_NAMES.Pistol}`,
   noSpecials: 'No specials',
 } as const
+
+// THE SHOP GUIDE
+
+// NOTE: the Munchopedia's Shop page and the ? in Rattles' shop (src/shopGuide.ts).
+export const SHOP_GUIDE_NAME = 'Shop'
+
+export const SHOP_GUIDE_SECTION_NAMES: Readonly<
+  Record<ShopGuideSection, string>
+> = {
+  Guns: 'Guns',
+  Health: 'Health',
+  Traps: 'Traps',
+  Fridge: 'Fridge',
+  House: 'House',
+}
+
+export const HOUSE_NAMES: Readonly<Record<HouseSpot, string>> = {
+  Stall: "Rattles' Stall",
+  Window: 'Ammo Window',
+  Boards: 'Boarded Doors',
+  Fridge: FRIDGE_NAME,
+}

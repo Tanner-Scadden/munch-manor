@@ -6,6 +6,7 @@ import { type HintBand, type InputDevice, Stick, Tour } from './clientSchema'
 import { vectorLength } from './geometry'
 import { isPending, isTimedBreak, learn } from './lessons'
 import type { Model } from './model'
+import { isCoop } from './party'
 import { landscapeFrameOffset, screenOf } from './screen'
 import { TURRET_WEAPON, maybeSelectedKind } from './traps'
 import { isKitchenTourOn } from './tutorialRules'
@@ -103,7 +104,7 @@ export const learnFromFrame = (before: Model, after: Model): Model => {
 export const DEBUT_CARD_MIN_MS = 1500
 export const DEBUT_CARD_MS = 5500
 
-const maybeDebutKind = (model: Model): Option.Option<ZombieKind> =>
+const maybeNewKindIn = (model: Model): Option.Option<ZombieKind> =>
   Phase.match(model.phase, {
     Ready: () => Option.none(),
     Preparation: () => Option.none(),
@@ -118,6 +119,12 @@ const maybeDebutKind = (model: Model): Option.Option<ZombieKind> =>
     Victory: () => Option.none(),
     GameOver: () => Option.none(),
   })
+
+// NOTE: never in a crew's run (owner, 2026-11-01: "don't show new zombie info
+// in multiplayer"), a run with teammate bots too, which plays by co-op's
+// rules. Nothing is marked introduced, so the card waits for a solo run.
+const maybeDebutKind = (model: Model): Option.Option<ZombieKind> =>
+  isCoop(model) ? Option.none() : maybeNewKindIn(model)
 
 export const raiseDebutCard = (model: Model): Model =>
   modifyFields(model, {

@@ -188,6 +188,13 @@ export const pastTimedBreaks = (model: Model): Model =>
       modifyFields(lessons, { timedBreaks: () => Lesson.Learned({ atMs: 0 }) }),
   })
 
+// NOTE: Hard keeps the break clock, which Easy and Normal do not have (the
+// default Model is Normal), so a test of the countdown starts from this.
+export const onHard = (model: Model): Model =>
+  modifyFields(model, {
+    difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
+  })
+
 export const withActors = (
   base: Model,
   zombies: ReadonlyArray<Zombie>,

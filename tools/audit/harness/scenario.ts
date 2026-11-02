@@ -23,6 +23,7 @@ import {
 import { heroIdOf } from '@game/playerData'
 import { LinkFlow, PlayerScopeStatus, SyncState } from '@game/playerSync'
 import { rankOf, totalPointsOf } from '@game/rank'
+import { prizeUnlockId } from '@game/shopGuide'
 import { unlocksAt } from '@game/unlocks'
 
 import { withCoop } from './coopStage'
@@ -271,6 +272,12 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (!config.fresh) {
     model = modifyFields(model, {
       seenUnlocks: () => unlocksAt(rankOf(totalPointsOf(model.rank))),
+    })
+  }
+  const prizes = config.prizes
+  if (prizes !== undefined) {
+    model = modifyFields(model, {
+      seenUnlocks: seen => Array.union(seen, Array.map(prizes, prizeUnlockId)),
     })
   }
   if (rankGain !== undefined && isEndScreen(model.phase)) {

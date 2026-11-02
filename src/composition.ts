@@ -38,6 +38,7 @@ import { forgetAskedMode } from './update/home'
 import { keepName, switchTab } from './update/profile'
 import { afterMessage, settled } from './update/settle'
 import { leaveShop, selectCategory } from './update/shop'
+import { isGuideEscape, reopenForGuide } from './update/shopGuide'
 
 // NOTE: each child's OutMessage fold. The Bindings live in src/bindings.ts,
 // where Steps and views reach them; these folds call Steps, so they stay
@@ -53,7 +54,9 @@ const ShopDialogBindingWithOutMessagePolicy =
       Opened: makeNoopStep,
       Closed: () =>
         makeStep(before =>
-          Update.combineSteps([leaveShop, ...afterMessage(before)]),
+          isGuideEscape(before)
+            ? reopenForGuide
+            : Update.combineSteps([leaveShop, ...afterMessage(before)]),
         ),
       CompletedClose: makeNoopStep,
     }),

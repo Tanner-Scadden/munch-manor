@@ -22,6 +22,7 @@ type DifficultyStats = Readonly<{
   biteScale: number
   biteGraceScale: number
   reloadsWhenIdle: boolean
+  hasBreakClock: boolean
 }>
 
 // NOTE: the scales multiply every zombie's base health and speed, the boss
@@ -34,6 +35,9 @@ type DifficultyStats = Readonly<{
 // crowd's bites come further apart below Hard. bossHealthScale is Uncle
 // Chunk's own, on top of healthScale (src/boss.ts): a finale on Hard and
 // Nightmare, where a late loadout melted him, without a tougher crowd.
+// hasBreakClock is whether the break between waves counts down (owner,
+// 2026-11-01: "don't want wave timers on easy/medium. Too much."): below Hard
+// a break waits for READY (BreakClock.Waiting, src/waves.ts).
 export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Easy: {
     name: 'Easy',
@@ -45,6 +49,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteScale: 0.5,
     biteGraceScale: 2,
     reloadsWhenIdle: true,
+    hasBreakClock: false,
   },
   Normal: {
     name: 'Normal',
@@ -56,6 +61,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteScale: 1,
     biteGraceScale: 1.5,
     reloadsWhenIdle: true,
+    hasBreakClock: false,
   },
   Hard: {
     name: 'Hard',
@@ -67,6 +73,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteScale: 1,
     biteGraceScale: 1,
     reloadsWhenIdle: false,
+    hasBreakClock: true,
   },
   Nightmare: {
     name: 'Nightmare',
@@ -78,6 +85,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
     biteScale: 1.25,
     biteGraceScale: 1,
     reloadsWhenIdle: false,
+    hasBreakClock: true,
   },
 }
 
@@ -152,6 +160,9 @@ export const crowdSpawns = (
 
 export const reloadsWhenIdle = (difficulty: Difficulty): boolean =>
   DIFFICULTIES[difficulty].reloadsWhenIdle
+
+export const hasBreakClock = (difficulty: Difficulty): boolean =>
+  DIFFICULTIES[difficulty].hasBreakClock
 
 export const difficultySpeedScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].speedScale

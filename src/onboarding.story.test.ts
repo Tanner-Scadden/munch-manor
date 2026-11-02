@@ -18,7 +18,7 @@ import {
   type ZombieKind,
   initialModel,
 } from './model'
-import { newPlayerCardSeen } from './model.fixture'
+import { newPlayerCardSeen, onHard } from './model.fixture'
 import {
   DEBUT_CARD_MIN_MS,
   DEBUT_CARD_MS,
@@ -157,7 +157,9 @@ describe('new zombie card', () => {
       given(
         clearingWave(
           3,
-          introduced(asVeteran(newPlayerCardSeen), ['Shambler', 'Runner']),
+          onHard(
+            introduced(asVeteran(newPlayerCardSeen), ['Shambler', 'Runner']),
+          ),
         ),
       ),
       // NOTE: one 60 Hz tick clears the wave; a 50 ms frame is three.
