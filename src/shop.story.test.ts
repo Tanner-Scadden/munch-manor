@@ -31,8 +31,16 @@ import {
   ShopState,
 } from './model'
 import { DISTANT_SPAWN, withArsenal, withPlayerAt } from './model.fixture'
+import { noModifiers } from './modifiers'
 import { focusOf, focusSlotOf, modifyFocus } from './party'
-import { LASER_SIGHT_PRICE, SHOP_ITEMS, itemsIn, stallPrompt } from './shop'
+import {
+  LASER_SIGHT_PRICE,
+  SHOP_ITEMS,
+  StockTag,
+  itemsIn,
+  stallPrompt,
+  stockTag,
+} from './shop'
 import {
   FRAMES_TO_STALL,
   GRACE_TICK_MS,
@@ -437,6 +445,29 @@ describe('buying', () => {
         expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
       }),
     )
+  })
+
+  test('a Glass run sells no heart: the shelf marks it done and the buy is refused', () => {
+    const glass = modifyFields(withHp(browsing(withMoney(shopReady, 200)), 1), {
+      modifiers: () => ({ ...noModifiers, glass: true }),
+    })
+    story(
+      update,
+      given(glass),
+      model(current => {
+        expect(stockTag(current, focusSlotOf(current), 'Heart')).toEqual(
+          StockTag.Done({ label: 'GLASS' }),
+        )
+      }),
+      message(Message.ClickedBuyButton({ item: 'Heart' })),
+      model(current => {
+        expect(focusOf(current).player.hp).toBe(1)
+        expect(focusOf(current).wallet.balance).toBe(200)
+        expect(current.particles).toEqual([])
+      }),
+    )
+    const plain = withHp(browsing(withMoney(shopReady, 200)), 1)
+    expect(stockTag(plain, focusSlotOf(plain), 'Heart')._tag).toBe('Price')
   })
 
   test('purchases are refused when broke, without the gun, when full, or already owned', () => {
