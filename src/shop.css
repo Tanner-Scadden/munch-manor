@@ -88,7 +88,6 @@
 /* HEADER */
 
 .shop-header {
-  position: relative;
   display: grid;
   grid-template-columns: auto 1fr auto;
   padding-right: calc(var(--shop-tap) - var(--shop-pad));
@@ -101,7 +100,7 @@
   place-items: end center;
   padding: calc(4 * var(--shop-u)) calc(4 * var(--shop-u)) 0;
   border: calc(2 * var(--shop-u)) solid var(--shop-wood-light);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   background: linear-gradient(#3d2f47, #2b2233);
   overflow: hidden;
 }
@@ -144,7 +143,7 @@
   margin: 0;
   padding: calc(5 * var(--shop-u)) calc(10 * var(--shop-u));
   border: calc(2 * var(--shop-u)) solid #140c10;
-  border-radius: calc(8 * var(--shop-u));
+  border-radius: var(--menu-radius-md);
   background: var(--shop-bubble);
   color: var(--shop-bubble-ink);
   font: bold var(--shop-text) monospace;
@@ -193,8 +192,8 @@
    free, so it never covers the wallet or Rattles' bubble. */
 .shop-close {
   position: absolute;
-  top: calc(-1 * var(--shop-pad-y));
-  right: calc(-1 * var(--shop-pad));
+  top: 0;
+  right: 0;
 }
 
 /* TABS */
@@ -220,7 +219,7 @@
   min-height: var(--shop-tap);
   padding: calc(4 * var(--shop-u));
   border: calc(2 * var(--shop-u)) solid var(--shop-line);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   background: var(--shop-card);
   color: var(--shop-muted);
   font: bold var(--shop-text) monospace;
@@ -248,7 +247,7 @@
 .shop-tab-count {
   min-width: calc(18 * var(--shop-u));
   padding: calc(1 * var(--shop-u)) calc(5 * var(--shop-u));
-  border-radius: calc(9 * var(--shop-u));
+  border-radius: var(--menu-radius-pill);
   background: var(--shop-good);
   color: var(--shop-bg);
   font-size: var(--shop-small);
@@ -265,7 +264,7 @@
    trap, so traps are plainly bought here. */
 .shop-tab-new {
   padding: calc(1 * var(--shop-u)) calc(4 * var(--shop-u));
-  border-radius: calc(3 * var(--shop-u));
+  border-radius: var(--menu-radius-sm);
   background: #ff4a4f;
   color: #fff;
   font-size: var(--shop-small);
@@ -331,7 +330,7 @@
   width: 100%;
   min-height: var(--shop-tap);
   border: calc(2 * var(--shop-u)) solid var(--shop-line);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   background: var(--shop-card);
   color: inherit;
   font: inherit;
@@ -372,7 +371,7 @@
 .shop-tabpanel:focus-visible {
   outline: max(2px, calc(2 * var(--shop-u))) solid var(--shop-focus);
   outline-offset: calc(4 * var(--shop-u));
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
 }
 
 .shop-row[data-stock='Short'] .shop-item,
@@ -399,7 +398,7 @@
   min-width: calc(44 * var(--shop-u));
   padding: calc(3 * var(--shop-u)) calc(8 * var(--shop-u));
   border: calc(2 * var(--shop-u)) solid var(--shop-gold-ink);
-  border-radius: calc(4 * var(--shop-u));
+  border-radius: var(--menu-radius-sm);
   background: linear-gradient(var(--shop-coin) 60%, var(--shop-gold-deep) 60%);
   box-shadow: 0 calc(2 * var(--shop-u)) 0 var(--menu-ink-on-gold);
   color: var(--shop-gold-ink);
@@ -490,7 +489,7 @@
   align-items: center;
   gap: calc(4 * var(--shop-u));
   padding: calc(1 * var(--shop-u)) calc(6 * var(--shop-u));
-  border-radius: calc(4 * var(--shop-u));
+  border-radius: var(--menu-radius-sm);
   background: rgba(255, 138, 61, 0.18);
   color: #ff8a3d;
   font-weight: bold;
@@ -531,7 +530,7 @@
 .shop-seg {
   width: calc(9 * var(--shop-u));
   height: calc(6 * var(--shop-u));
-  border-radius: calc(1 * var(--shop-u));
+  border-radius: 0;
   background: rgba(244, 241, 222, 0.14);
 }
 
@@ -605,7 +604,7 @@
   display: flex;
   flex: 1;
   height: calc(7 * var(--shop-u));
-  border-radius: calc(2 * var(--shop-u));
+  border-radius: 0;
   background: rgba(244, 241, 222, 0.14);
   overflow: hidden;
 }
@@ -633,7 +632,7 @@
   gap: calc(6 * var(--shop-u));
   padding: calc(8 * var(--shop-u));
   border: calc(2 * var(--shop-u)) solid var(--shop-wood);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   background: #261d2e;
 }
 
@@ -669,7 +668,7 @@
 .shop-gun-owned {
   align-self: flex-start;
   padding: calc(1 * var(--shop-u)) calc(5 * var(--shop-u));
-  border-radius: calc(4 * var(--shop-u));
+  border-radius: var(--menu-radius-sm);
   background: var(--shop-wood);
   color: var(--shop-ink);
   font: bold calc(10 * var(--shop-u)) monospace;
@@ -708,7 +707,7 @@
   width: calc(10 * var(--shop-u));
   height: calc(6 * var(--shop-u));
   border: max(1px, calc(1 * var(--shop-u))) solid var(--shop-gold);
-  border-radius: calc(2 * var(--shop-u));
+  border-radius: 0;
 }
 
 .shop-pip.is-filled {
@@ -815,7 +814,7 @@
   width: calc(18 * var(--shop-u));
   height: calc(12 * var(--shop-u));
   border: max(1px, calc(1 * var(--shop-u))) solid var(--shop-muted);
-  border-radius: calc(2 * var(--shop-u));
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.35);
 }
 
@@ -852,7 +851,7 @@
 .shop-stamp-word {
   padding: calc(2 * var(--shop-u)) calc(8 * var(--shop-u));
   border: calc(3 * var(--shop-u)) solid #e8333a;
-  border-radius: calc(4 * var(--shop-u));
+  border-radius: var(--menu-radius-sm);
   color: #e8333a;
   font: bold calc(22 * var(--shop-u)) monospace;
   letter-spacing: 0.08em;
@@ -905,7 +904,7 @@
   position: absolute;
   inset: calc(-2 * var(--shop-u));
   border: calc(3 * var(--shop-u)) solid var(--shop-bad);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   pointer-events: none;
   animation: shop-nope 0.5s steps(2) forwards;
 }

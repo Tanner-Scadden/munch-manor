@@ -68,7 +68,7 @@
   min-height: var(--sg-tap);
   padding: 4px 2px;
   border: 2px solid var(--sg-line);
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: var(--sg-card);
   color: var(--sg-ink);
   font: bold 11px monospace;
@@ -121,7 +121,7 @@
   min-width: 0;
   padding: 8px;
   border: 2px solid var(--sg-line);
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: var(--sg-card);
 }
 
@@ -138,7 +138,7 @@
   box-sizing: border-box;
   width: 80px;
   min-height: 64px;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: #1f1826;
 }
 
@@ -215,7 +215,7 @@
 .sg-seg {
   width: 14px;
   height: 8px;
-  border-radius: 1px;
+  border-radius: 0;
   background: rgba(244, 241, 222, 0.14);
 }
 
@@ -319,7 +319,7 @@
   width: var(--shop-tap);
   height: var(--shop-tap);
   border: calc(2 * var(--shop-u)) solid var(--shop-gold);
-  border-radius: var(--shop-radius);
+  border-radius: var(--menu-radius-sm);
   background: var(--shop-card-raised);
   color: var(--shop-gold);
   font: bold calc(20 * var(--shop-u)) monospace;

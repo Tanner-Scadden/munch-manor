@@ -64,7 +64,7 @@
   min-height: var(--menu-tap);
   padding: 8px 4px;
   border: 0;
-  border-radius: calc(var(--menu-radius) - 2px);
+  border-radius: var(--menu-radius-sm);
   background: transparent;
   color: var(--coop-teal);
   cursor: pointer;
@@ -267,7 +267,7 @@
   height: clamp(48px, 9 * var(--coop-unit), 56px);
   padding: 0 12px 0 8px;
   border: 2px solid #b98cff;
-  border-radius: calc(var(--menu-radius) - 2px);
+  border-radius: var(--menu-radius-sm);
   background: rgba(185, 140, 255, 0.2);
 }
 

@@ -118,7 +118,7 @@ body {
   position: fixed;
   box-sizing: border-box;
   border: 3px solid rgba(244, 241, 222, 0.45);
-  border-radius: 9999px;
+  border-radius: var(--menu-radius-pill);
   background: rgba(244, 241, 222, 0.08);
   pointer-events: none;
   display: flex;
@@ -133,7 +133,7 @@ body {
 .touch-stick-thumb {
   width: 44px;
   height: 44px;
-  border-radius: 9999px;
+  border-radius: var(--menu-radius-pill);
   background: rgba(244, 241, 222, 0.55);
 }
 
@@ -162,9 +162,9 @@ body {
   width: 48px;
   height: 48px;
   padding: 0;
-  border: 2px solid rgba(244, 241, 222, 0.5);
-  border-radius: 9999px;
-  background: rgba(8, 10, 12, 0.55);
+  border: var(--menu-border) solid var(--menu-line-strong);
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-glass);
   opacity: 0.6;
   cursor: pointer;
   touch-action: manipulation;
@@ -260,6 +260,7 @@ body {
    cover shakes it red. */
 
 .cluster-button.hold-buy-button {
+  border-radius: var(--menu-radius-pill);
   width: 56px;
   height: 56px;
   border-color: rgba(255, 210, 63, 0.9);
@@ -283,7 +284,7 @@ body {
 .hold-buy-ring {
   position: absolute;
   inset: -6px;
-  border-radius: 9999px;
+  border-radius: var(--menu-radius-pill);
   background: conic-gradient(
     #ffd23f calc(var(--hold, 0) * 360deg),
     rgba(20, 12, 16, 0.6) 0
@@ -344,7 +345,7 @@ body {
   bottom: -4px;
   min-width: 18px;
   padding: 0 3px;
-  border-radius: 9px;
+  border-radius: var(--menu-radius-md);
   background: #140c10;
   color: #f4f1de;
   font: bold 11px/16px monospace;
@@ -388,7 +389,7 @@ body {
   bottom: 0;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
@@ -437,7 +438,7 @@ body {
   justify-content: flex-start;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
@@ -498,7 +499,7 @@ body {
   right: 4px;
   padding: 0 4px;
   border: 1px solid rgba(244, 241, 222, 0.6);
-  border-radius: 3px;
+  border-radius: var(--menu-radius-sm);
   background: #140c10;
   color: #f4f1de;
   font: bold 10px/12px monospace;
@@ -522,32 +523,18 @@ body {
   border-color: currentColor;
 }
 
-.start-wave-button {
-  min-width: 156px;
-  min-height: 56px;
-  padding: 0 20px;
-  border: 3px solid #fff3b0;
-  border-radius: 6px;
-  background: #ffe066;
-  box-shadow: 0 3px 0 #7a5c00;
-  color: #2a1a00;
-  font: bold 16px monospace;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
+.start-wave-button,
 .start-wave-pill {
   min-width: 132px;
-  min-height: 52px;
+  min-height: var(--menu-tap);
   padding: 0 18px;
-  border: 3px solid #fff3b0;
-  border-radius: 9999px;
-  background: #ffe066;
+  border: var(--menu-border-panel) solid #fff3b0;
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-gold);
   box-shadow: 0 3px 0 #7a5c00;
-  color: #2a1a00;
-  font: bold 14px monospace;
-  letter-spacing: 0.06em;
+  color: var(--menu-ink-on-gold);
+  font: bold 16px monospace;
+  letter-spacing: 1px;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -654,7 +641,7 @@ body {
   min-height: 48px;
   padding: 4px 16px;
   border: 2px solid rgba(255, 224, 102, 0.8);
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: rgba(8, 10, 12, 0.75);
   color: #ffe066;
   font: bold 14px monospace;
@@ -685,7 +672,7 @@ body {
   right: 6px;
   padding: 0 4px;
   border: 1px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--menu-radius-sm);
   background: #140c10;
   font-size: 10px;
 }
@@ -735,7 +722,7 @@ body {
   min-height: 48px;
   padding: 0 18px;
   border: 3px solid #ff8a3d;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: rgba(24, 14, 22, 0.94);
   color: #ffe066;
   font: bold 14px monospace;
@@ -762,7 +749,7 @@ body {
   right: 6px;
   padding: 0 4px;
   border: 1px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--menu-radius-sm);
   background: #140c10;
   font-size: 10px;
   letter-spacing: 0;
@@ -782,7 +769,7 @@ body {
   margin-left: -56px;
   box-sizing: border-box;
   border: 3px dashed rgba(244, 241, 222, 0.6);
-  border-radius: 9999px;
+  border-radius: var(--menu-radius-pill);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -801,7 +788,7 @@ body {
 .ghost-stick-thumb {
   width: 44px;
   height: 44px;
-  border-radius: 9999px;
+  border-radius: var(--menu-radius-pill);
   background: rgba(244, 241, 222, 0.4);
   animation: ghost-drag 1.4s ease-in-out infinite;
 }
@@ -817,7 +804,7 @@ body {
   bottom: 100%;
   margin-bottom: 6px;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--menu-radius-sm);
   background: rgba(8, 10, 12, 0.7);
   color: #f4f1de;
   font: bold 13px monospace;
@@ -888,7 +875,7 @@ body {
   padding: 0.6em 0.8em 0.7em;
   border: 2px solid var(--menu-line-strong);
   border-top: 4px solid var(--menu-green);
-  border-radius: var(--menu-radius);
+  border-radius: var(--menu-radius-md);
   background: rgba(28, 22, 34, 0.95);
   color: var(--menu-ink);
   font: clamp(9px, 4.2 * var(--arena-px), 24px) / 1.3 var(--menu-font);
@@ -939,7 +926,7 @@ body {
   max-width: calc(100vw - 24px);
   padding: 8px 14px;
   border: 2px solid #ff6b5e;
-  border-radius: 12px;
+  border-radius: var(--menu-radius-md);
   background: rgba(8, 10, 12, 0.9);
   color: #f4f1de;
   font: bold 12px/1.3 monospace;
@@ -1009,7 +996,7 @@ body {
   gap: 6px;
   padding: 4px 4px 4px 8px;
   border: 2px solid rgba(255, 224, 102, 0.6);
-  border-radius: 10px;
+  border-radius: var(--menu-radius-md);
   background: rgba(20, 15, 24, 0.85);
   color: #f4f1de;
   font: bold 11px monospace;
@@ -1052,7 +1039,7 @@ body {
   align-items: center;
   gap: 4px;
   padding: 3px 5px;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   opacity: 0.4;
 }
 
@@ -1114,7 +1101,7 @@ body {
   content: '';
   position: absolute;
   inset: 8px;
-  border-radius: 6px;
+  border-radius: var(--menu-radius-sm);
   background: rgba(244, 241, 222, 0.1);
 }
 
