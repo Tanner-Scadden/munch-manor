@@ -216,15 +216,36 @@ Before that (nightly, 2026-10-30, the sharp bot, 200 runs a row, after the balan
 
 - **Caveats.** The bot never stands in a doorway, plays Preparation in seconds, steps off every landing mark at once, and backs off anything within 36 px. A person feels the peaks, the Big Leaguer's throws, and the Ankle Biter's grabs far more. Playtest before trusting any of it.
 
+#### Run modifier bonuses
+
+Measured on 2026-11-02, a proposal and not yet in code (`BONUS_PERCENT` in `src/modifiers.ts` still holds the first guesses: +15, +25, +25, +50). The human bot on Normal, campaign, 100 runs each on the same seeds, `MODS=<list> bun run balance -- --runs 100`. `FriendlyFire` is not measured: the bot plays alone, and the modifier bites only with teammates. Points a run: 10 per wave cleared, 50 for the boss, 100 for the win (`src/rank.ts`), so the expected points are read from each batch's cleared-by-wave column and its boss and win counts.
+
+| Setup     | Win rate | Mean wave reached | Mean waves cleared | Expected points | With today's bonus |
+| --------- | -------- | ----------------- | ------------------ | --------------- | ------------------ |
+| None      | 23%      | 7.92              | 7.15               | 107             | 107                |
+| Big Crowd | 1%       | 4.16              | 3.17               | 33              | 41 (+25%)          |
+| Broke     | 6%       | 6.22              | 5.28               | 62              | 78 (+25%)          |
+| Glass     | 17%      | 6.87              | 6.04               | 87              | 131 (+50%)         |
+
+What it says:
+
+- **Big Crowd is by far the hardest.** About 50% more zombies sends the bot's usual loadout under: 17% of runs die on wave 2 and 43% by wave 3, and only 1 run in 100 wins. It pays a third of the baseline's points at +25%.
+- **Broke is the middle.** No fridge pulls and half the pay from kills leave the bot short of guns and planks by waves 4 to 6 (deaths by wave 5 are 42%, against 14%). 6% win.
+- **Glass is the mildest, and overpaid.** One heart costs the bot 6 points of win rate and one wave of depth. Hearts are still bought in the shop, so the bot arrives at the back half with a few anyway, and its first waves are fine (9% die on wave 2, then 7 to 11% a wave). At +50% it earns 22% more points than playing plain. Every Glass win was a close call (17 of 17 reached 1 heart).
+
+**Proposed bonuses**, set so a modifier's expected points a run match the plain run's (the bonus that makes `points x (1 + bonus)` equal 107): Big Crowd +225% (parity is +222), Broke +75% (+72), Glass +25% (+23), Friendly Fire stays +15% (unmeasured; it costs nothing alone and only matters with teammates). That reverses today's order: Big Crowd pays most, Glass least. A bonus that big for Big Crowd is mostly a reward for trying: a run that dies on wave 4 pays 30 points plain and 98 with it.
+
+Caveats. Points a run ignore time, and a Big Crowd run is shorter because it ends sooner; points a minute would favor Big Crowd even more, so +225% is not generous. The bonuses add, so all three on would be +325% and Glass + Big Crowd + Broke runs were not measured; they likely win about never and would earn mostly wave points. The bot is a stand-in: a person will find Glass harder than the bot does (the bot flees well and shops hearts on schedule) and may find Big Crowd easier, since 50% more zombies is partly more kill pay. The 100-run sample has about 4 points of noise on the win rate; the mean wave is steadier (a gap of 1 wave or more is real). Settle the numbers with a playtest before changing them.
+
 #### Traps
 
 Proposed numbers. The table is in `src/traps.ts`, the chewing rates in `src/zombies.ts`.
 
-| Trap      | Name           | Price  | Health | Most at once | What it does                                                                                 |
-| --------- | -------------- | ------ | ------ | ------------ | -------------------------------------------------------------------------------------------- |
-| Barricade | Plank Pile     | $95    | 50     | 2            | Boards up one doorway. Blocks zombies and the player; shots and peas fly through the gaps    |
+| Trap      | Name           | Price  | Health | Most at once | What it does                                                                                  |
+| --------- | -------------- | ------ | ------ | ------------ | --------------------------------------------------------------------------------------------- |
+| Barricade | Plank Pile     | $95    | 50     | 2            | Boards up one doorway. Blocks zombies and the player; shots and peas fly through the gaps     |
 | Turret    | Grumpy Gnome   | $150   | 20     | 2            | Shoots a pea (1 damage, 1000 ms apart) at the nearest walking zombie it can see within 115 px |
-| Repair    | Glue and Nails | Varies | -      | -            | Restores one placed trap for half its price, scaled by the share of health it is missing     |
+| Repair    | Glue and Nails | Varies | -      | -            | Restores one placed trap for half its price, scaled by the share of health it is missing      |
 
 - **Placing.** Traps are bought into a pack shown in the HUD. In Preparation, T (or the place icon) puts the selected one down and G (or the next icon) switches kinds. A Plank Pile goes in the doorway the player stands in or beside; a gnome on the free tile in front of the player. A green or red ghost shows where it would go.
 - **Chewing.** A walking zombie that touches a trap chews it: a Groaner 3 health a second, a Hotfoot 2, a Big Lug 12. A Kaboomer that touches one fuses. A Plank Pile cracks at two thirds and one third and breaks with a crash.
