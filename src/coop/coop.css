@@ -5,8 +5,8 @@
    a phone held either way and a desktop get the same picture. */
 
 .coop {
-  --coop-pink: #ff9df0;
-  --coop-teal: #5fd4c8;
+  --coop-pink: var(--menu-pink);
+  --coop-teal: var(--menu-teal);
   --coop-unit: min(1cqmin, 1cqw * 0.6);
   position: fixed;
   top: env(safe-area-inset-top, 0px);

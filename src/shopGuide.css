@@ -7,10 +7,10 @@
 
 .sg,
 .sg-shop {
-  --sg-ink: #f4f1de;
+  --sg-ink: var(--menu-ink);
   --sg-muted: #9a93a8;
-  --sg-gold: #ffd23f;
-  --sg-good: #9be36a;
+  --sg-gold: var(--menu-gold);
+  --sg-good: var(--menu-green);
   --sg-card: #2b2233;
   --sg-card-raised: #352a40;
   --sg-line: rgba(244, 241, 222, 0.22);

@@ -9,14 +9,15 @@
 
 .shop-dialog {
   --shop-u: 1px;
-  --shop-ink: #f4f1de;
+  --shop-ink: var(--menu-ink);
   --shop-muted: #9a93a8;
-  --shop-gold: #ffd23f;
+  --shop-gold: var(--menu-gold);
+  --shop-coin: var(--menu-coin);
   --shop-gold-deep: #c98a1a;
   --shop-gold-ink: #3a2408;
-  --shop-good: #9be36a;
-  --shop-bad: #ff6b5e;
-  --shop-focus: #9be36a;
+  --shop-good: var(--menu-green);
+  --shop-bad: var(--menu-red);
+  --shop-focus: var(--menu-gold);
   --shop-wood: #8a5a2b;
   --shop-wood-light: #b8813f;
   --shop-bg: #1f1826;
@@ -390,8 +391,8 @@
   padding: calc(3 * var(--shop-u)) calc(8 * var(--shop-u));
   border: calc(2 * var(--shop-u)) solid var(--shop-gold-ink);
   border-radius: calc(4 * var(--shop-u));
-  background: linear-gradient(var(--shop-gold) 60%, var(--shop-gold-deep) 60%);
-  box-shadow: 0 calc(2 * var(--shop-u)) 0 #140c10;
+  background: linear-gradient(var(--shop-coin) 60%, var(--shop-gold-deep) 60%);
+  box-shadow: 0 calc(2 * var(--shop-u)) 0 var(--menu-ink-on-gold);
   color: var(--shop-gold-ink);
   font: bold calc(14 * var(--shop-u)) monospace;
   white-space: nowrap;

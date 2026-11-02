@@ -6,9 +6,9 @@
 :root {
   --profile-look: var(--menu-pink);
   --profile-name: var(--menu-gold);
-  --profile-account: #5fd4c8;
+  --profile-account: var(--menu-teal);
   --profile-settings: #c9cfc2;
-  --profile-portal: #b98cff;
+  --profile-portal: var(--menu-lilac);
   --profile-stone: #8d8a97;
   --profile-stone-deep: #3b3842;
 }

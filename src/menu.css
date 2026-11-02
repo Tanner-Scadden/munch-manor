@@ -17,15 +17,31 @@
   --menu-line: rgba(244, 241, 222, 0.12);
   --menu-line-strong: rgba(244, 241, 222, 0.3);
   --menu-green: #9be36a;
+  --menu-green-hi: #c8f59e;
   --menu-green-deep: #24401a;
   --menu-gold: #ffe066;
   --menu-gold-deep: #3a2f12;
+  --menu-coin: #ffd23f; /* coin art only, never UI gold */
   --menu-pink: #ff9df0;
+  --menu-lilac: #b98cff;
+  --menu-teal: #5fd4c8;
   --menu-orange: #ffa04d;
   --menu-red: #ff6b5e;
+  --menu-red-deep: #3a1a1e;
+  --menu-red-line: #8a2a24;
+  --menu-ink-on-gold: #140c10;
+  --menu-ink-on-green: #10240a;
+  --menu-dim: 0.5;
+  --menu-primary: linear-gradient(#b8f58a, #7fd04e 55%, #5fae36);
   --menu-coffee: #e0a46a;
   --menu-radius: 10px;
   --menu-radius-sm: 6px;
+  --menu-radius-md: 10px;
+  --menu-radius-lg: 14px;
+  --menu-border: 2px;
+  --menu-border-panel: 3px;
+  --menu-border-accent: 4px;
+  --menu-tap-primary: 64px;
   --menu-radius-pill: 9999px;
   --menu-gap: 8px;
   --menu-gap-sm: 4px;
@@ -40,6 +56,7 @@
   --menu-pop: 0 12px 32px rgba(0, 0, 0, 0.55);
   --menu-press: inset 0 0 0 3px rgba(255, 224, 102, 0.55);
   --menu-focus: 3px solid var(--menu-gold);
+  --menu-focus-offset: 2px;
 }
 
 /* A keycap, wherever a key is shown. */
@@ -2744,8 +2761,8 @@ button.help-card:focus-visible {
 }
 
 .munch-badge[data-earned='Earned'][data-badge='Gold'] {
-  border-color: #ffd23f;
-  background: rgba(255, 210, 63, 0.22);
+  border-color: var(--menu-gold);
+  background: rgba(255, 224, 102, 0.22);
   color: #ffe066;
 }
 
