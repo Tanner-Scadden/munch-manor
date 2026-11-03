@@ -61,6 +61,15 @@ const sceneWith = (zombies: ReadonlyArray<Zombie>): Model =>
 const HEFT_FRAMES = framesFor(CHUCKER_RULES.heftMs)
 const FLIGHT_FRAMES = framesFor(CHUCKER_RULES.flightMs)
 
+const PLAYER_AT = { x: CENTER_X, y: CENTER_Y }
+const FACING_PLAYER = Math.PI
+
+const atPlayer = (scene: Model): Model =>
+  modifyFocus(scene, {
+    player: player =>
+      modifyFields(player, { x: () => PLAYER_AT.x, y: () => PLAYER_AT.y }),
+  })
+
 describe('the Big Leaguer', () => {
   test('grabs a Groaner beside it, winds up with it overhead, and lobs it at the player', () => {
     story(
@@ -110,7 +119,7 @@ describe('the Big Leaguer', () => {
     )
   })
 
-  test('the thrown Groaner hurts the player on its mark, lies dazed for a second, then gets up', () => {
+  test('the thrown Groaner hurts the player on its mark, lies dazed a moment, then gets up', () => {
     story(
       update,
       given(sceneWith([CHUCKER, GROANER])),
@@ -235,18 +244,59 @@ describe('the Big Leaguer', () => {
       }),
     )
   })
+
+  test('a thrown zombie gets up riled: it runs faster for good', () => {
+    story(
+      update,
+      given(sceneWith([CHUCKER, GROANER])),
+      ...ticks(HEFT_FRAMES + FLIGHT_FRAMES, FRAME_MS),
+      model(current => {
+        const landed = zombieById(current, GROANER_ID)
+        expect(ZombieAction.isAnyOf(['Dazed'])(landed.action)).toBe(true)
+        expect(landed.speed).toBeCloseTo(
+          GROANER.speed * CHUCKER_RULES.landedPace,
+        )
+      }),
+    )
+  })
+
+  test('he throws a Hotfoot too', () => {
+    const hotfoot = zombieOf('Runner', GROANER_ID, CENTER_X + 52, CENTER_Y, {
+      hp: 2,
+    })
+    story(
+      update,
+      given(sceneWith([CHUCKER, hotfoot])),
+      tick(FRAME_MS),
+      model(current => {
+        expect(hasEvent(current, 'ZombieGrabbed')).toBe(true)
+        expect(zombieById(current, GROANER_ID).action).toEqual(
+          ZombieAction.Carried({ byId: CHUCKER_ID }),
+        )
+      }),
+    )
+  })
+
+  test('rested, he runs to a Groaner he can see across the room', () => {
+    // NOTE: 80 px off, past where he used to fetch, and away from the player.
+    const far = zombieOf('Shambler', GROANER_ID, CHUCKER.x + 80, CENTER_Y, {
+      hp: 3,
+    })
+    story(
+      update,
+      given(
+        atPlayer(sceneWith([modifyFields(CHUCKER, { speed: () => 20 }), far])),
+      ),
+      ...ticks(10, FRAME_MS),
+      model(current => {
+        expect(zombieById(current, CHUCKER_ID).x).toBeGreaterThan(CHUCKER.x + 2)
+      }),
+    )
+  })
 })
 
 const LEAGUER_ID = 20
 const HELD_ID = 21
-const PLAYER_AT = { x: CENTER_X, y: CENTER_Y }
-const FACING_PLAYER = Math.PI
-
-const atPlayer = (scene: Model): Model =>
-  modifyFocus(scene, {
-    player: player =>
-      modifyFields(player, { x: () => PLAYER_AT.x, y: () => PLAYER_AT.y }),
-  })
 
 const LEAGUER_HP = ZOMBIE_KINDS.Thrower.hp
 
@@ -289,9 +339,11 @@ const isShielding = (zombie: Zombie): boolean =>
   ZombieAction.isAnyOf(['Shielding'])(zombie.action)
 
 describe('the Big Leaguer shield', () => {
-  test('he is slower than any Groaner and carries the new name', () => {
-    expect(ZOMBIE_KINDS.Thrower.speedMax).toBeLessThanOrEqual(
-      ZOMBIE_KINDS.Shambler.speedMin,
+  test('he outpaces a Groaner on average and carries the new name', () => {
+    expect(
+      ZOMBIE_KINDS.Thrower.speedMin + ZOMBIE_KINDS.Thrower.speedMax,
+    ).toBeGreaterThan(
+      ZOMBIE_KINDS.Shambler.speedMin + ZOMBIE_KINDS.Shambler.speedMax,
     )
     expect(ZOMBIE_KINDS.Thrower.name).toBe('Big Leaguer')
     expect(debutPitch('Thrower')).toBe(

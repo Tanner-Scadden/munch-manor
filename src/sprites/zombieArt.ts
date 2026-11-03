@@ -625,36 +625,90 @@ export const chuckerTauntPixels = (stage: number): ReadonlyArray<string> =>
 
 // ANKLE BITER
 
+// NOTE: a zombie spider seen from above, facing right: a rotting abdomen
+// with a bone skull on its back, four sick yellow eyes, red fangs, lime ooze
+// dripping off it, and eight legs that skitter between the walk frames.
 export const CRAWLER_PALETTE: Palette = {
-  w: '#dcf5b8',
-  c: '#9ec786',
-  E: '#2a1418',
-  M: '#a8262c',
-  r: '#c2ad8a',
-  q: '#8a7558',
-  k: '#4a3c30',
+  b: '#2c4423',
+  g: '#6c9a47',
+  G: '#a3d46b',
+  s: '#ebe4c2',
+  B: '#1c1418',
+  h: '#4f6340',
+  H: '#6b8256',
+  E: '#eaff4d',
+  k: '#241b27',
+  j: '#6a5274',
+  w: '#f4efd8',
+  M: '#b0262c',
+  o: '#b8ff3a',
   N: '#f28fb0',
   J: '#c0587a',
 }
 
-const CRAWLER_HEAD: ReadonlyArray<string> = [
-  '.......cww..',
-  '......cwwww.',
-  '......wEwEw.',
-  '......wwMMw.',
-  '..rrr..www..',
-  '.rrrrrrcw...',
+const CRAWLER_BODY_TOP = '..bbbbbkHHk.....'
+const CRAWLER_BODY: ReadonlyArray<string> = [
+  '.bGgsssbhEhEw...',
+  'bgggBsBbhhhhM...',
+  '.bgNsssbhEhEw...',
+]
+const CRAWLER_BODY_BOTTOM = '..bbobbkhhk.....'
+
+const crawlerFrame = (
+  top: ReadonlyArray<string>,
+  bottom: ReadonlyArray<string>,
+): ReadonlyArray<string> => [
+  ...top,
+  CRAWLER_BODY_TOP,
+  ...CRAWLER_BODY,
+  CRAWLER_BODY_BOTTOM,
+  ...bottom,
+]
+
+const CRAWLER_LEGS_MID: ReadonlyArray<string> = [
+  '...kk...kk......',
+  '..k..k.k..k..kk.',
+  '.k...jkj..jkk..k',
+]
+
+const CRAWLER_LEGS_FORWARD: ReadonlyArray<string> = [
+  '....kk...kk.....',
+  '...k..k.k..k.kk.',
+  '..k...jkj..jkk.k',
+]
+
+const CRAWLER_LEGS_BACK: ReadonlyArray<string> = [
+  '..kk...kk.......',
+  '.k..k.k..k..kk..',
+  'k...jkj..jkk..k.',
 ]
 
 const CRAWLER_FRAMES: Array.NonEmptyReadonlyArray<ReadonlyArray<string>> = [
-  [...CRAWLER_HEAD, 'kkrrqrrrwww.', 'k......w..w.'],
-  [...CRAWLER_HEAD, 'kkrrqrrrww..', '.k......ww.w'],
-  [...CRAWLER_HEAD, 'kkrrqrrrwww.', 'k.......w..w'],
-  [...CRAWLER_HEAD, 'kkrrqrrrww..', '.k.....w.w..'],
+  crawlerFrame(CRAWLER_LEGS_MID, [
+    '.k...jkj..jkk..k',
+    '..k.o.k.k..k.kk.',
+    '...kk...kk......',
+  ]),
+  crawlerFrame(CRAWLER_LEGS_FORWARD, [
+    '..k...jkj..jkk.k',
+    '...k..k.k..k.kk.',
+    '....kk...kk.....',
+  ]),
+  crawlerFrame(CRAWLER_LEGS_MID, [
+    '.k...jkj..jkk..k',
+    '..k...k.k..k.kk.',
+    '...kko..kk......',
+  ]),
+  crawlerFrame(CRAWLER_LEGS_BACK, [
+    'k...jkj..jkk..k.',
+    '.k..ok.k..k.kk..',
+    '..kk...kk.......',
+  ]),
 ]
 
+// NOTE: hurt, the skull on its back cracks open in a pink gash.
 export const CRAWLER_WEAR: ReadonlyArray<ReadonlyArray<Patch>> = [
-  [patch(8, 0, 'N', 2), patch(7, 1, 'J', 4), patch(9, 2, 'M')],
+  [patch(3, 4, 'N'), patch(4, 4, 'J'), patch(4, 5, 'M'), patch(3, 6, 'J')],
 ]
 
 export const crawlerWalkPixels = (stage: number): FramePixels =>
@@ -708,10 +762,10 @@ export const CHUCKER_ICON_PIXELS: ReadonlyArray<string> = [
 ]
 
 export const CRAWLER_ICON_PIXELS: ReadonlyArray<string> = [
-  '....cw.',
-  '...cwww',
-  '...wEwE',
-  'r..wMMw',
-  'rrr.ww.',
-  'krrrcww',
+  'k..k.k.',
+  '.kbbkhk',
+  'bsBshEE',
+  'bgsbhhM',
+  '.kbbkhk',
+  'k..k.k.',
 ]

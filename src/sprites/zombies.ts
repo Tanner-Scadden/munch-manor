@@ -68,7 +68,7 @@ const BOSS_ANCHOR_X = BOSS_WIDTH / 2
 
 const CHUCKER_ANCHOR_X = 6
 
-const CRAWLER_ANCHOR_X = 6
+const CRAWLER_ANCHOR_X = 7
 
 export type WornFrames = Readonly<{
   walk: SpriteFrames

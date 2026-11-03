@@ -37,7 +37,8 @@ export const FRENZY_RULES: FrenzyRules = {
 const packOf = (spawn: PlannedSpawn): number => spawn.pack
 
 // NOTE: a pack that comes up through the floor never comes in together, so
-// only packs that walk in through a door can frenzy.
+// only packs that walk in through a door can frenzy. A Big Leaguer's pack
+// never frenzies either: his Groaners are there to be thrown.
 export const frenzyPacksOf = (
   spawns: ReadonlyArray<PlannedSpawn>,
 ): ReadonlyArray<FrenzyPack> =>
@@ -46,6 +47,13 @@ export const frenzyPacksOf = (
     Array.filter(spawn => !isFloorKind(spawn.kind)),
     Array.map(packOf),
     Array.dedupe,
+    Array.filter(
+      pack =>
+        !Array.some(
+          spawns,
+          spawn => spawn.pack === pack && spawn.kind === 'Thrower',
+        ),
+    ),
     Array.filterMap(pack => {
       const size = Array.filter(spawns, spawn => spawn.pack === pack).length
       return size >= FRENZY_RULES.packMin

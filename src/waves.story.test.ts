@@ -11,6 +11,7 @@ import {
   PREPARATION_MS,
 } from './constants'
 import { doorCounts, rollSpawns } from './endlessWaves'
+import { frenzyPacksOf, isFrenzyPack } from './frenzy'
 import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, type PlannedSpawn, type Zombie } from './model'
@@ -30,6 +31,7 @@ import {
   ticks,
   zombieAt,
 } from './testing'
+import { CHUCKER_ESCORT_SIZE } from './wavePacks'
 import { FINAL_WAVE, type SpawnGroup, WAVE_PLANS } from './wavePlans'
 import { ZOMBIE_KINDS } from './zombies'
 
@@ -351,11 +353,18 @@ describe('pause', () => {
 })
 
 describe('wave plans', () => {
+  // NOTE: every Big Leaguer brings his Groaners along (src/wavePacks.ts).
+  const isChuckerGroup = (group: SpawnGroup): boolean =>
+    Array.every(group.mix, ({ kind }) => kind === 'Thrower')
+
   const totalOf = (wave: number) =>
     Array.reduce(
       Option.getOrThrow(Array.get(WAVE_PLANS, wave - 1)).groups,
       0,
-      (sum, group) => sum + group.count,
+      (sum, group) =>
+        sum +
+        group.count +
+        (isChuckerGroup(group) ? group.count * CHUCKER_ESCORT_SIZE : 0),
     )
 
   const mixHealth = (group: SpawnGroup): number => {
@@ -411,6 +420,23 @@ describe('wave plans', () => {
         total => total < (totals[9] ?? 0),
       ),
     ).toBe(true)
+  })
+
+  test('every Big Leaguer walks in with three Groaners of his own, who never frenzy', () => {
+    const [, spawns] = rollSpawns(1234, 6)
+    const leaguers = Array.filter(spawns, ({ kind }) => kind === 'Thrower')
+    expect(leaguers.length).toBeGreaterThan(0)
+    Array.forEach(leaguers, leaguer => {
+      const crew = Array.filter(spawns, ({ pack }) => pack === leaguer.pack)
+      expect(Array.map(crew, ({ kind }) => kind).sort()).toEqual([
+        'Shambler',
+        'Shambler',
+        'Shambler',
+        'Thrower',
+      ])
+      expect(Array.every(crew, ({ door }) => door === leaguer.door)).toBe(true)
+      expect(isFrenzyPack(frenzyPacksOf(spawns), leaguer.pack)).toBe(false)
+    })
   })
 
   test('a roll matches its plan, is sorted by time, and is the same for the same seed', () => {

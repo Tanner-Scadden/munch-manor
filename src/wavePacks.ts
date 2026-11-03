@@ -14,7 +14,13 @@ import {
   pickKind,
   pickOne,
 } from './wavePlans'
-import type { DoorId, Formation, Hold, PlannedSpawn } from './worldSchema'
+import type {
+  DoorId,
+  Formation,
+  Hold,
+  PlannedSpawn,
+  ZombieKind,
+} from './worldSchema'
 
 // PACKS
 
@@ -266,8 +272,28 @@ export const rollGroup =
       volleyState,
       rollPack(group, plan),
     )
-    return [packState, Array.flatten(packs)]
+    return [packState, Array.flatMap(Array.flatten(packs), withEscort)]
   }
+
+// NOTE: a Big Leaguer never comes alone: three Groaners walk in right behind
+// him in his pack, so he always has something to throw. They take no draws
+// from the generator, so every other spawn of the wave rolls as before.
+export const CHUCKER_ESCORT_SIZE = 3
+const CHUCKER_ESCORT_GAP_MS = 280
+const CHUCKER_ESCORT_KIND: ZombieKind = 'Shambler'
+
+const withEscort = (spawn: PlannedSpawn): ReadonlyArray<PlannedSpawn> =>
+  spawn.kind === 'Thrower'
+    ? [
+        spawn,
+        ...Array.makeBy(CHUCKER_ESCORT_SIZE, index => ({
+          ...spawn,
+          kind: CHUCKER_ESCORT_KIND,
+          atMs: spawn.atMs + (index + 1) * CHUCKER_ESCORT_GAP_MS,
+          offset: (index - 1) * DOOR_SPAWN_SPREAD_PX,
+        })),
+      ]
+    : [spawn]
 
 export const bySpawnTime = Order.mapInput(
   Order.Number,

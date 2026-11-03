@@ -34,7 +34,7 @@ type CrawlerRules = {
 }
 
 export const CRAWLER_RULES: CrawlerRules = {
-  surfaceMs: 1500,
+  surfaceMs: 600,
   clearPx: 56,
   holdPx: 40,
   clingMs: 1100,

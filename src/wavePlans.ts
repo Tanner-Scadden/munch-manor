@@ -408,7 +408,7 @@ export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
     speedScale: 1.39,
     hpScale: 1.1,
     groups: [
-      crawlers({ count: 3, startMs: 7000, everyMs: 9000 }),
+      crawlers({ count: 3, startMs: 7000, everyMs: 4500 }),
       chuckers(anyDoors(1), 1, 30000, 0),
       squads({
         packs: [2, 4, 3, 1, 2],
@@ -513,7 +513,7 @@ export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
     speedScale: 1.42,
     hpScale: 1,
     groups: [
-      crawlers({ count: 2, startMs: 6000, everyMs: 12000 }),
+      crawlers({ count: 2, startMs: 6000, everyMs: 6000 }),
       chuckers(anyDoors(1), 1, 12000, 0),
       squads({
         packs: [2, 4, 3, 3],
@@ -564,7 +564,7 @@ export const WAVE_PLANS: Array.NonEmptyReadonlyArray<WavePlan> = [
     speedScale: 1.45,
     hpScale: 1,
     groups: [
-      crawlers({ count: 2, startMs: 9000, everyMs: 16000 }),
+      crawlers({ count: 2, startMs: 9000, everyMs: 8000 }),
       chuckers(anyDoors(1), 1, 21000, 0),
       squads({
         packs: [3, 1, 2, 2],

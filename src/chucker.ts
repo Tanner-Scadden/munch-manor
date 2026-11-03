@@ -41,7 +41,6 @@ import {
 
 type ChuckerRules = {
   grabReachPx: number
-  fetchPx: number
   hangPx: number
   throwMinPx: number
   throwMaxPx: number
@@ -52,6 +51,8 @@ type ChuckerRules = {
   dazedMs: number
   windedMs: number
   arrivalWindedMs: number
+  landedPace: number
+  landedSpeedCap: number
   limpHeftScale: number
   shieldTriggerPx: number
   shieldReachPx: number
@@ -65,17 +66,18 @@ type ChuckerRules = {
 
 export const CHUCKER_RULES: ChuckerRules = {
   grabReachPx: 10,
-  fetchPx: 70,
   hangPx: 64,
   throwMinPx: 28,
-  throwMaxPx: 150,
-  heftMs: 900,
-  flightMs: 900,
+  throwMaxPx: 170,
+  heftMs: 550,
+  flightMs: 750,
   landRadius: 12,
   landDamage: 1,
-  dazedMs: 1000,
-  windedMs: 3200,
-  arrivalWindedMs: 1500,
+  dazedMs: 800,
+  windedMs: 1500,
+  arrivalWindedMs: 600,
+  landedPace: 1.35,
+  landedSpeedCap: 60,
   limpHeftScale: 1.5,
   shieldTriggerPx: 50,
   shieldReachPx: 20,
@@ -93,8 +95,11 @@ const LIMP_ARM_STAGE = ZOMBIE_KINDS.Thrower.wear.length
 
 const isChucker = (zombie: Zombie): boolean => zombie.kind === THROWER_KIND
 
+// NOTE: he throws Groaners and Hotfoots, whichever is nearer.
+const THROWABLE_KINDS: ReadonlyArray<ZombieKind> = ['Shambler', 'Runner']
+
 const isThrowable = (zombie: Zombie): boolean =>
-  zombie.kind === 'Shambler' && isFree(zombie)
+  Array.contains(THROWABLE_KINDS, zombie.kind) && isFree(zombie)
 
 // STEERING
 
@@ -114,10 +119,11 @@ const nearestThrowable = (
     Array.head,
   )
 
-// NOTE: a Big Leaguer hangs back once it is close enough to throw and waits for
-// a Groaner to wander past. It walks to fetch a Groaner it can see nearby,
-// and walks in to bite like any other zombie when there is none to throw.
-// None means it follows the flow field like the rest; Some is its own
+// NOTE: a Big Leaguer always wants a zombie in hand. Rested, he runs to the
+// nearest Groaner or Hotfoot he can see, however far, and sticks with it
+// until the player is in range to throw. With none in sight he hangs back
+// once close enough to throw, and walks in to bite when there is none left
+// at all. None means it follows the flow field like the rest; Some is its own
 // heading, which is still while it holds its ground.
 export const maybeChuckerHeading = (
   level: Level,
@@ -127,11 +133,7 @@ export const maybeChuckerHeading = (
 ): Option.Option<Vector> =>
   Option.flatMap(nearestThrowable(chucker, zombies), groaner => {
     const isRested = ZombieAction.isAnyOf(['Roaming'])(chucker.action)
-    if (
-      isRested &&
-      distanceBetween(chucker, groaner) <= CHUCKER_RULES.fetchPx &&
-      hasLineOfSight(level, chucker, groaner)
-    ) {
+    if (isRested && hasLineOfSight(level, chucker, groaner)) {
       return Option.orElse(
         normalize({ x: groaner.x - chucker.x, y: groaner.y - chucker.y }),
         () => Option.some(ZERO_VECTOR),
@@ -391,6 +393,14 @@ const carry = (zombies: ReadonlyArray<Zombie>) => (zombie: Zombie) => {
 
 type Landing = Readonly<{ id: number; at: Vector }>
 
+// NOTE: a zombie that lands gets up riled and runs faster for the rest of
+// its life. Thrown again, it speeds up again, up to a cap.
+const landedSpeed = (speed: number): number =>
+  Math.max(
+    speed,
+    Math.min(speed * CHUCKER_RULES.landedPace, CHUCKER_RULES.landedSpeedCap),
+  )
+
 const fly =
   (deltaMs: number) =>
   (zombie: Zombie): Zombie => {
@@ -405,6 +415,7 @@ const fly =
         y: () => to.y,
         knockback: () => ({ x: 0, y: 0 }),
         action: dazed,
+        speed: landedSpeed,
       })
     }
 

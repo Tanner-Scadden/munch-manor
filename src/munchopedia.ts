@@ -50,7 +50,8 @@ export const MUNCHOPEDIA: Array.NonEmptyReadonlyArray<MunchopediaEntry> = [
   {
     kind: 'Crawler',
     bio: 'Lives under the floorboards. Pays no rent.',
-    behavior: 'Claws up through the floor and grabs your ankles.',
+    behavior:
+      'A zombie spider. Skitters up through the floor and grabs your ankles.',
     howToBeat: 'Watch for cracks in the floor. Two shots and it is done.',
   },
   {
