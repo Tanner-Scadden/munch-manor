@@ -170,7 +170,7 @@ const isInFlames =
   (zombie: Zombie): boolean =>
     isGrounded(zombie) && circleTouchesBox(zombie, bodyRadiusOf(zombie), flames)
 
-const SCORCH_DIRECTION: Vector = { x: 0, y: 1 }
+export const SCORCH_DIRECTION: Vector = { x: 0, y: 1 }
 
 const scorch = (model: World, oven: Box): World => {
   const flames = flameBoxOf(oven)
@@ -191,7 +191,7 @@ const scorch = (model: World, oven: Box): World => {
           zombies: () => Array.map(outcomes, ({ target }) => target),
           frameEvents: frameEvents => [...frameEvents, ...events],
         }),
-        bountyOf(events),
+        bountyOf(levelOf(model), events),
       )
 }
 

@@ -1,6 +1,7 @@
 import { Array, Option, Order, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { levelOf } from './arena'
 import { bountyOf, hitEvent, killEvent, strikeZombie } from './combat'
 import { PLAYER_RADIUS } from './constants'
 import { directionBetween } from './geometry'
@@ -179,7 +180,7 @@ export const payStriker = (
   slot: PlayerSlot,
   events: ReadonlyArray<GameEvent>,
 ): World => {
-  const bounty = bountyOf(events)
+  const bounty = bountyOf(levelOf(world), events)
   const kills = countKills(events)
   const paid = bounty > 0 ? earnKill(world, slot, bounty) : world
   return isCoop(paid) && kills > 0

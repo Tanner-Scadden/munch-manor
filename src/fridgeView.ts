@@ -1,10 +1,12 @@
 import { Array, Option, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import { levelOf } from './arena'
+import { distanceToBox, levelOf } from './arena'
 import { TILE_SIZE } from './constants'
 import type { Drawable } from './depth'
 import { rect } from './drawing'
+import { type Rarity, revealOf } from './fridgeReveal'
+import { prizeSprite } from './fridgeRevealView'
 import {
   PAN_RULES,
   SMASH_TIER,
@@ -12,9 +14,21 @@ import {
   maybeHeldFridgeWeapon,
 } from './fridgeWeapons'
 import { FRIDGE_RISE_PX, isKitchenShown } from './kitchenView'
-import { fridgeBoxOf } from './leftovers'
-import { Charge, FridgeDoor, type Lob, type Model, type Player } from './model'
-import { focusOf } from './party'
+import {
+  FRIDGE_RULES,
+  PRIZE_ORDER,
+  fridgeBoxOf,
+  prizeOddsFor,
+} from './leftovers'
+import {
+  Charge,
+  FridgeDoor,
+  type FridgePrize,
+  type Lob,
+  type Model,
+  type Player,
+} from './model'
+import { focusOf, focusSlotOf } from './party'
 import { type Sprite, bakeShapes, placeAt, spriteShapes } from './sprite'
 
 // The Mystery Leftovers fridge in motion (src/leftovers.ts) and the fridge
@@ -113,6 +127,117 @@ export const fridgeDrawables = (model: Model): ReadonlyArray<Drawable> =>
               ]
             },
           }),
+      })
+    : []
+
+// THE ODDS
+
+// NOTE: shown, not explained (owner, 2026-11-02): walk up to the shut fridge
+// and a grease-stained note taped beside its door lists what is inside, each
+// prize's icon with a pip for every 5 in 100 of its chance as this player
+// would pull now (a weapon they carry shows none). Pips are in the prize's
+// rarity color, as on the reveal.
+const ODDS_PIP_SHARE = 0.05
+const ODDS_MAX_PIPS = 12
+const ODDS_ROW_PX = 7
+const ODDS_ICON_PX = 11
+const ODDS_PAD_PX = 2
+const ODDS_PIP_LEFT = ODDS_PAD_PX + ODDS_ICON_PX + ODDS_PAD_PX
+const ODDS_WIDTH = ODDS_PIP_LEFT + ODDS_MAX_PIPS * 2 + ODDS_PAD_PX - 1
+const ODDS_HEIGHT = PRIZE_ORDER.length * ODDS_ROW_PX + ODDS_PAD_PX
+const ODDS_NEAR_PX = FRIDGE_RULES.leavePx
+
+const PIP_COLORS: Readonly<Record<Rarity, string>> = {
+  Common: '#ffd23f',
+  Rare: '#8fe3ff',
+  Snack: '#9be36a',
+  Dud: '#8a8a96',
+}
+
+const ODDS_CARD: Sprite = bakeShapes([
+  rect(-1, -1, ODDS_WIDTH + 2, ODDS_HEIGHT + 2, '#140c10'),
+  rect(0, 0, ODDS_WIDTH, ODDS_HEIGHT, '#efe6c8'),
+  rect(ODDS_WIDTH - 9, ODDS_HEIGHT - 6, 5, 4, 'rgba(160, 120, 40, 0.35)'),
+  rect(ODDS_WIDTH - 3, -2, 4, 3, 'rgba(230, 230, 210, 0.8)'),
+])
+
+const pipRow = (count: number, color: string): Sprite =>
+  bakeShapes(Array.makeBy(count, index => rect(index * 2, -1, 1, 3, color)))
+
+const PIP_ROWS: Readonly<Record<Rarity, Array.NonEmptyReadonlyArray<Sprite>>> =
+  {
+    Common: [
+      [],
+      ...Array.makeBy(ODDS_MAX_PIPS, n => pipRow(n + 1, PIP_COLORS.Common)),
+    ],
+    Rare: [
+      [],
+      ...Array.makeBy(ODDS_MAX_PIPS, n => pipRow(n + 1, PIP_COLORS.Rare)),
+    ],
+    Snack: [
+      [],
+      ...Array.makeBy(ODDS_MAX_PIPS, n => pipRow(n + 1, PIP_COLORS.Snack)),
+    ],
+    Dud: [
+      [],
+      ...Array.makeBy(ODDS_MAX_PIPS, n => pipRow(n + 1, PIP_COLORS.Dud)),
+    ],
+  }
+
+// NOTE: a pip for every 5 in 100, and one at least for any chance at all.
+export const oddsPips = (share: number): number =>
+  share <= 0
+    ? 0
+    : Math.min(ODDS_MAX_PIPS, Math.max(1, Math.round(share / ODDS_PIP_SHARE)))
+
+const oddsRow = (
+  left: number,
+  top: number,
+  index: number,
+  prize: FridgePrize,
+  share: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const middle = top + ODDS_PAD_PX + index * ODDS_ROW_PX + 3
+  const rows = PIP_ROWS[revealOf(prize).rarity]
+  return [
+    placeAt(
+      left + ODDS_PAD_PX + Math.floor(ODDS_ICON_PX / 2),
+      middle,
+      prizeSprite(prize),
+    ),
+    placeAt(
+      left + ODDS_PIP_LEFT,
+      middle,
+      Option.getOrElse(Array.get(rows, oddsPips(share)), () => rows[0]),
+    ),
+  ]
+}
+
+const isNearShutFridge = (model: Model): boolean =>
+  isKitchenShown(model) &&
+  !model.modifiers.broke &&
+  FridgeDoor.isAnyOf(['Shut'])(model.fridge.door) &&
+  Option.exists(
+    fridgeBoxOf(levelOf(model)),
+    box => distanceToBox(focusOf(model).player, box) <= ODDS_NEAR_PX,
+  )
+
+const oddsShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+  isNearShutFridge(model)
+    ? Option.match(maybeFridgeSpot(model), {
+        onNone: () => [],
+        onSome: spot => {
+          const left = spot.left - ODDS_WIDTH - 2
+          const top = spot.top + 1
+          return [
+            placeAt(left, top, ODDS_CARD),
+            ...Array.flatMap(
+              prizeOddsFor(model, focusSlotOf(model)),
+              ([prize, share], index) =>
+                oddsRow(left, top, index, prize, share),
+            ),
+          ]
+        },
       })
     : []
 
@@ -255,4 +380,8 @@ const lidShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
 // NOTE: what flies over the heads of everything standing.
 export const fridgeOverheadShapes = (
   model: Model,
-): ReadonlyArray<Canvas.Shape> => [...lidShapes(model), ...dialShapes(model)]
+): ReadonlyArray<Canvas.Shape> => [
+  ...oddsShapes(model),
+  ...lidShapes(model),
+  ...dialShapes(model),
+]

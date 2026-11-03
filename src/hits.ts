@@ -1,6 +1,7 @@
 import { Array, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { levelOf } from './arena'
 import { woundScaleOf } from './boss'
 import { maybeShieldFor } from './chucker'
 import {
@@ -25,6 +26,7 @@ import {
   scaleVector,
 } from './geometry'
 import { queryBox, queryBuffer } from './grid'
+import { kitchenBounty } from './kitchenPay'
 import {
   atSeat,
   creditKills,
@@ -296,7 +298,8 @@ export const resolveBulletHits = (
   const bounty = Array.reduce(
     killedZombies,
     0,
-    (sum, zombie) => sum + statsOf(zombie).bounty,
+    (sum, zombie) =>
+      sum + kitchenBounty(levelOf(model), zombie, statsOf(zombie).bounty),
   )
   const struck = modifyFields(model, {
     bullets: Array.filterMap(skewer(hits)),
@@ -369,7 +372,11 @@ const payKillers = (
       Array.last(hitsOn(hits, zombie.id)),
       ({ maybeShooter }) => maybeShooter,
     )
-    const paid = payTo(current, maybeKiller, statsOf(zombie).bounty)
+    const paid = payTo(
+      current,
+      maybeKiller,
+      kitchenBounty(levelOf(current), zombie, statsOf(zombie).bounty),
+    )
     return Option.match(maybeKiller, {
       onNone: () => paid,
       onSome: slot => creditKills(paid, slot, 1),

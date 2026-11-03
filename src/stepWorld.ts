@@ -3,6 +3,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
 import { ZERO_VECTOR } from './geometry'
+import { shoutMedic } from './medic'
 import {
   forEachSeat,
   isCoop,
@@ -124,7 +125,8 @@ export const stepWorld = (
 // its lead seat (src/update/action.ts) and wraps its cues around them.
 // A purchasable in the world is no press: it is bought by holding the
 // intent's interact, in the tick (src/purchase.ts). The ammo window is the
-// one press among them: BuyAmmo, a tap that buys there at once.
+// one press among them: BuyAmmo, a tap that buys there at once. CallMedic
+// is the one a downed player has: MEDIC! (src/medic.ts).
 export const SeatAction = defineTaggedUnion({
   Swap: {},
   Melee: {},
@@ -136,6 +138,7 @@ export const SeatAction = defineTaggedUnion({
   LeaveCounter: {},
   Ready: {},
   BuyAmmo: {},
+  CallMedic: {},
 })
 export type SeatAction = typeof SeatAction.Type
 
@@ -241,6 +244,14 @@ const buyAmmo = (world: World, slot: PlayerSlot): ActionResult =>
     onSome: Result.succeed,
   })
 
+// NOTE: MEDIC! from a downed player whose last shout has cooled down
+// (src/medic.ts). Standing, or too soon, there is nothing to shout.
+const callMedic = (world: World, slot: PlayerSlot): ActionResult =>
+  Option.match(shoutMedic(world, slot), {
+    onNone: () => notNow,
+    onSome: Result.succeed,
+  })
+
 // NOTE: an action by the seat at `slot`: the World it makes, or why it made
 // none.
 export const trySeatAction = (
@@ -259,6 +270,7 @@ export const trySeatAction = (
     LeaveCounter: () => leaveCounter(world, slot),
     Ready: () => ready(world, slot),
     BuyAmmo: () => buyAmmo(world, slot),
+    CallMedic: () => callMedic(world, slot),
   })
 
 export const applySeatAction = (

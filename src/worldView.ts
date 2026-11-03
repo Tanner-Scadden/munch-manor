@@ -25,6 +25,7 @@ import {
 } from './fridgeView'
 import { ZERO_VECTOR } from './geometry'
 import { hatRiseOf } from './hatArt'
+import { kitchenGearGroundShapes } from './kitchenGearView'
 import { kitchenLeakShapes } from './kitchenLeak'
 import { ovenFlameShapes, ovenGlowShapes, padlockShapes } from './kitchenView'
 import {
@@ -37,6 +38,7 @@ import {
 } from './model'
 import { isBehindWall, occludersOf } from './occluders'
 import { isGoodieBeckoning } from './onboarding'
+import { pantryDrawables } from './pantryView'
 import { focusOf, focusSlotOf } from './party'
 import {
   type MateModel,
@@ -154,6 +156,7 @@ const groundShapes = (
   ...hearthFireShapes(levelOf(model), model.elapsedMs),
   ...kitchenLeakShapes(model),
   ...ovenGlowShapes(model),
+  ...kitchenGearGroundShapes(model),
   ...stallGroundShapes(look, model.elapsedMs),
   ...reviveRingGroundShapes(model),
   playerShadow(focusOf(model).player),
@@ -231,6 +234,7 @@ const standingDrawables = (
     },
     ...mateDrawables(mates),
     ...fridgeDrawables(model),
+    ...pantryDrawables(model),
   ]
 }
 

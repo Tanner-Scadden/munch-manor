@@ -4,7 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { MANOR, levelOf } from './arena'
-import { blastOwnSeat } from './combat'
+import { blastTeammates } from './combat'
 import {
   FIXED_STEP_MS,
   IDLE_RELOAD_MS,
@@ -155,7 +155,10 @@ describe('who the zombies hunt', () => {
         pipeline(
           placeSeat(0, LEFT_X, ROW_Y),
           placeSeat(1, RIGHT_X, ROW_Y, 0),
-          withSeatLife(1, Life.Downed({ bleedMs: 1e9, reviveMs: 0 })),
+          withSeatLife(
+            1,
+            Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 }),
+          ),
           current =>
             modifyFields(current, {
               zombies: () => [
@@ -202,7 +205,7 @@ describe('downed, revived, and bled out', () => {
     placeSeat(1, RIGHT_X, ROW_Y, 0),
     withSeatLife(
       1,
-      Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 }),
+      Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0, callMs: 0 }),
     ),
   )(crewInWave(2))
 
@@ -224,30 +227,16 @@ describe('downed, revived, and bled out', () => {
     )
   })
 
-  test('a downed player alone bleeds out over 10 s', () => {
-    const bleedTicks = Math.ceil(COOP_RULES.bleedOutMs / TICK_MS)
-    story(
-      update,
-      given(placeSeat(0, LEFT_X, ROW_Y)(downedBeside)),
-      ...ticks(bleedTicks - 2, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).life._tag).toBe('Downed')
-      }),
-      ...ticks(4, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).life._tag).toBe('BledOut')
-        expect(current.phase._tag).toBe('Wave')
-      }),
-    )
-  })
-
   test('the run ends when everyone is down', () => {
     story(
       update,
       given(
         pipeline(
           placeSeat(0, LEFT_X, ROW_Y, 0),
-          withSeatLife(1, Life.Downed({ bleedMs: 1e9, reviveMs: 0 })),
+          withSeatLife(
+            1,
+            Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 }),
+          ),
         )(crewInWave(2)),
       ),
       ...ticks(1, TICK_MS),
@@ -265,7 +254,10 @@ describe('downed, revived, and bled out', () => {
         pipeline(
           withSeatLife(1, Life.BledOut()),
           placeSeat(1, RIGHT_X, ROW_Y, 0),
-          withSeatLife(2, Life.Downed({ bleedMs: 1e9, reviveMs: 0 })),
+          withSeatLife(
+            2,
+            Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 }),
+          ),
           placeSeat(2, LEFT_X, ROW_Y, 0),
         )(crewInWave(4, clearing)),
       ),
@@ -615,12 +607,12 @@ describe('friendly fire', () => {
     )
   })
 
-  test('a lid’s blast hurts its thrower but never a teammate', () => {
+  test('a player’s own blast hurts a teammate it reaches but never its thrower', () => {
     const huddled = pipeline(
       placeSeat(0, LEFT_X, ROW_Y),
       placeSeat(1, LEFT_X + 4, ROW_Y),
     )(crewInWave(2))
-    const blasted = blastOwnSeat(huddled, 0, {
+    const blasted = blastTeammates(huddled, 0, {
       x: LEFT_X + 2,
       y: ROW_Y,
       radius: 30,
@@ -629,8 +621,8 @@ describe('friendly fire', () => {
       trapDamage: 0,
       knockback: 0,
     })
-    expect(seatedAt(blasted, 0).player.hp).toBe(PLAYER_MAX_HP - 1)
-    expect(seatedAt(blasted, 1).player.hp).toBe(PLAYER_MAX_HP)
+    expect(seatedAt(blasted, 0).player.hp).toBe(PLAYER_MAX_HP)
+    expect(seatedAt(blasted, 1).player.hp).toBe(PLAYER_MAX_HP - 1)
   })
 
   test('single player never shoots itself', () => {

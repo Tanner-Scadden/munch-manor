@@ -251,6 +251,18 @@ export const buyAmmoFromHoldButton: UpdateStep = stepWhen(
 export const clickAmmoTag: UpdateStep = model =>
   combine(model, [unlockAudio, buyAmmo])
 
+// MEDIC
+
+// NOTE: MEDIC! from a downed player (src/medic.ts): the interact key or a
+// tap on the red cross. The tick after it sounds the shout.
+const callMedic = modelStep(actInHand(SeatAction.CallMedic()))
+
+const callMedicFromKey = (code: string): UpdateStep =>
+  stepWhen(model => isKeyFor(model, code, ['CallMedic']), callMedic)
+
+export const clickMedic: UpdateStep = model =>
+  combine(model, [unlockAudio, callMedic])
+
 // PAUSE
 
 const pauseRound = makeStep(() =>
@@ -425,6 +437,7 @@ export const pressedKey = (code: string) =>
       trapFromKey(code),
       reloadFromKey(code),
       buyAmmoFromKey(code),
+      callMedicFromKey(code),
       playStartSoundWhen(startsRun(model, pressed)),
       playSwapSoundWhen(changedWeapon(model, pressed)),
     ])

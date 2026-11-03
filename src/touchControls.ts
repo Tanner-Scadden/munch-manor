@@ -13,8 +13,14 @@ import {
   reloadFaceOf,
   secondsLeft,
 } from './hud'
-import { NEXT_TRAP_ICON, RELOAD_ICON, TRAP_BUTTON_ICONS } from './icons'
+import {
+  MEDIC_ICON,
+  NEXT_TRAP_ICON,
+  RELOAD_ICON,
+  TRAP_BUTTON_ICONS,
+} from './icons'
 import { thumbOffset } from './input'
+import { isCallFresh } from './medic'
 import { percentOf } from './menuParts'
 import { Message, type PressedHudSlot } from './message'
 import {
@@ -25,13 +31,14 @@ import {
   Stick,
   TrapHint,
 } from './model'
+import { MEDIC_WORD } from './names'
 import {
   type GhostStick,
   isDebutCardUp,
   isStartWaveBeckoning,
   shownGhostSticks,
 } from './onboarding'
-import { focusOf, focusSlotOf, isCoop, leadSeatOf } from './party'
+import { focusOf, focusSlotOf, isCoop, isDowned, leadSeatOf } from './party'
 import { holdButtonView } from './purchaseHud'
 import { isWaitingOnYou } from './readyNudge'
 import { type Screen, screenOf } from './screen'
@@ -476,6 +483,37 @@ const sideStyle = (
   }
 }
 
+// MEDIC
+
+// NOTE: a downed player's MEDIC! (src/medic.ts): a red cross over the row,
+// there only while they are down. It glows while the last shout still
+// rings, and a tap while it cools does nothing.
+const medicButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
+  const { seat } = focusOf(model)
+  return isDowned(seat)
+    ? h.button(
+        [
+          h.Type('button'),
+          h.Class('icon-button cluster-button medic-button'),
+          h.DataAttribute('fresh', isCallFresh(seat) ? 'true' : 'false'),
+          h.AriaLabel(MEDIC_WORD),
+          h.AriaKeyshortcuts('Enter'),
+          h.OnClick(Message.ClickedMedicButton(), {
+            focusSelector: '.game-surface',
+          }),
+        ],
+        [
+          h.span([
+            h.Class('icon-button-glyph'),
+            h.AriaHidden(true),
+            h.Style({ backgroundImage: MEDIC_ICON }),
+          ]),
+          keyBadgeView(model, 'ENTER', h),
+        ],
+      )
+    : h.empty
+}
+
 const clusterSideView = (
   model: Model,
   screen: Screen,
@@ -483,7 +521,11 @@ const clusterSideView = (
 ): Html =>
   h.div(
     [h.Class('gun-cluster-side'), h.Style(sideStyle(model, screen))],
-    [holdButtonView(model, h), ...trapIconsView(model, h)],
+    [
+      medicButtonView(model, h),
+      holdButtonView(model, h),
+      ...trapIconsView(model, h),
+    ],
   )
 
 // START WAVE

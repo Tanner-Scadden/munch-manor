@@ -42,6 +42,9 @@ export const FIELD_CLASSES = {
 
   ovens: 'World',
   fridge: 'World',
+  pantry: 'World',
+  stove: 'World',
+  gasValve: 'World',
   hitStop: 'World',
   lessons: 'World',
   practice: 'World',

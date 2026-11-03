@@ -216,7 +216,7 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     name: GUN_NAMES.Freeze,
     roundsLabel: 'charges',
     fireIntervalMs: 600,
-    magazine: 12,
+    magazine: 18,
     reloadMs: 0,
     damage: 0,
     pellets: 1,
@@ -234,7 +234,7 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     casing: 'Shell',
     maybeSpentClip: Option.none(),
     sound: 'PowerDown',
-    maybeRoundLimit: Option.some({ starting: 12, max: 12 }),
+    maybeRoundLimit: Option.some({ starting: 18, max: 18 }),
   },
 }
 
@@ -460,6 +460,37 @@ export const maybeNextTier = (
 export const tierName = (kind: WeaponKind, tier: number): string =>
   gunTierName(kind, clampTier(kind, tier))
 
+// PERKS
+
+type PerkRules = Readonly<{
+  spicyDamageScale: number
+  crispyPierce: number
+  heartyMagazineScale: number
+}>
+
+// NOTE: the perks the kitchen's stove cooks into a gun (src/stove.ts),
+// decided with the owner on 2026-11-02. Spicy's damage is not rounded, so
+// a 1 damage bullet hits for 1.3 and a zombie's health goes down in
+// fractions, as a boss's wound scale already makes it.
+export const PERK_RULES: PerkRules = {
+  spicyDamageScale: 1.3,
+  crispyPierce: 1,
+  heartyMagazineScale: 1.25,
+}
+
+// NOTE: the guns Rattles sells. Only these cook at the stove; the knife,
+// the Clang Pan, and the fridge's weapons do not.
+export const SHOP_GUNS: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
+
+export const isCookable = (kind: WeaponKind): boolean =>
+  Array.contains(SHOP_GUNS, kind)
+
+export const perkDamage = (gun: CarriedGun, damage: number): number =>
+  gun.perk === 'Spicy' ? damage * PERK_RULES.spicyDamageScale : damage
+
+export const perkPierce = (gun: CarriedGun): number =>
+  gun.perk === 'Crispy' ? PERK_RULES.crispyPierce : 0
+
 // ARSENAL
 
 // NOTE: a gun with no round limit (the Pop Pistol) never runs out: only its
@@ -494,21 +525,31 @@ const magazineWith = (
     ? magazineFor(calling, magazineOf(kind, tier))
     : magazineOf(kind, tier)
 
+// NOTE: a Hearty gun from the stove (src/stove.ts) holds a quarter more,
+// rounded, on top of its tier and the player's calling.
 export const carriedMagazine = (calling: Calling, gun: CarriedGun): number =>
-  magazineWith(calling, gun.kind, gun.tier)
+  gun.perk === 'Hearty'
+    ? Math.round(
+        magazineWith(calling, gun.kind, gun.tier) *
+          PERK_RULES.heartyMagazineScale,
+      )
+    : magazineWith(calling, gun.kind, gun.tier)
 
+// NOTE: a gun as it comes, at tier 0 unless it comes upgraded (a fridge
+// prize takes the tier of the gun it replaces, src/leftovers.ts).
 export const freshGun = (
   kind: WeaponKind,
   calling: Calling = 'You',
+  tier = 0,
 ): CarriedGun => {
-  const magazine = magazineWith(calling, kind, 0)
+  const magazine = magazineWith(calling, kind, tier)
   return {
     kind,
     rounds: startingRounds(kind),
     loaded: hasEndlessRounds(kind)
       ? magazine
       : Math.min(startingRounds(kind), magazine),
-    tier: 0,
+    tier,
   }
 }
 

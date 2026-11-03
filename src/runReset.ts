@@ -25,12 +25,15 @@ import {
   Party,
   Streak,
   TrapNotice,
+  barePantry,
   calmPacing,
   freshLoot,
   freshStats,
+  freshStove,
   initialHitStop,
   initialPlayer,
   shutFridge,
+  shutValve,
   stillShake,
 } from './worldSchema'
 
@@ -52,6 +55,9 @@ export type RunFields = Pick<
   | 'dustCooldownMs'
   | 'tellWatch'
   | 'fridge'
+  | 'pantry'
+  | 'stove'
+  | 'gasValve'
   | 'elapsedMs'
   | 'frameEvents'
   | 'hitStop'
@@ -105,6 +111,9 @@ export const freshRun = (model: Model): RunFields => ({
   dustCooldownMs: 0,
   tellWatch: noTellWatch,
   fridge: shutFridge,
+  pantry: barePantry,
+  stove: freshStove(model.rngState),
+  gasValve: shutValve,
   elapsedMs: 0,
   frameEvents: [],
   hitStop: initialHitStop,

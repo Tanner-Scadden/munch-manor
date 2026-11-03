@@ -343,6 +343,8 @@ export const HouseSpot = Schema.Literals([
   'Window',
   'Boards',
   'Fridge',
+  'Stove',
+  'Valve',
 ])
 export type HouseSpot = typeof HouseSpot.Type
 

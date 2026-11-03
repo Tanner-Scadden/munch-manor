@@ -75,12 +75,15 @@ import {
   type Seat,
   ShopState,
   type Trap,
+  barePantry,
   calmPacing,
   freshLoot,
   freshStats,
+  freshStove,
   initialHitStop,
   noPractice,
   shutFridge,
+  shutValve,
 } from './worldSchema'
 
 // The game's World in a co-op room (MULTIPLAYER.md, Phase 2): the netcode
@@ -250,6 +253,9 @@ const drawCode = (slot: GunSlot): number =>
 // NOTE: a tap at the ammo window (protocol version 14) follows the draws.
 const BUY_AMMO_CODE = DRAW_BASE + DRAW_SLOTS.length
 
+// NOTE: MEDIC! from a downed player (protocol version 19) follows it.
+const MEDIC_CODE = BUY_AMMO_CODE + 1
+
 const FIXED_ITEMS = FixedShopItemId.literals
 
 const simpleCode = (tag: SeatAction['_tag']): number =>
@@ -280,6 +286,7 @@ export const actionCodeOf = (action: SeatAction): number =>
     LeaveCounter: () => simpleCode('LeaveCounter'),
     Ready: () => simpleCode('Ready'),
     BuyAmmo: () => BUY_AMMO_CODE,
+    CallMedic: () => MEDIC_CODE,
   })
 
 // NOTE: the held value for the `press`th press of an action: never zero.
@@ -309,6 +316,8 @@ export const seatActionOf = (
     )
   } else if (code === BUY_AMMO_CODE) {
     return Option.some(SeatAction.BuyAmmo())
+  } else if (code === MEDIC_CODE) {
+    return Option.some(SeatAction.CallMedic())
   } else if (code >= DRAW_BASE) {
     return Option.map(Array.get(DRAW_SLOTS, code - DRAW_BASE), slot =>
       SeatAction.Draw({ slot }),
@@ -344,6 +353,9 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   ovens: freshOvens(MANOR),
   rngState: seed,
   fridge: shutFridge,
+  pantry: barePantry,
+  stove: freshStove(seed),
+  gasValve: shutValve,
   hitStop: initialHitStop,
   lessons: settledLessons,
   practice: noPractice,

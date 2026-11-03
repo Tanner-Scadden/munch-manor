@@ -1,7 +1,7 @@
 import { Array } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { levelOf } from './arena'
+import { type Level, levelOf } from './arena'
 import {
   BLOOD_PER_HIT,
   BLOOD_SPRAY_SPREAD,
@@ -29,10 +29,13 @@ import {
   ZOMBIE_FOOT_OFFSET,
 } from './constants'
 import { ZERO_VECTOR, vectorLength } from './geometry'
+import { isInKitchenAt } from './kitchenPay'
 import { type Decal, GameEvent, type Model, type Particle } from './model'
 import {
   BLOOD_SPEED,
   CLANG_SPARKS,
+  CONFETTI_PER_CLUTCH,
+  CONFETTI_PER_SAVE,
   DUD_FOG,
   FLATTEN_SPARKS,
   FREEZE_FROST,
@@ -75,6 +78,7 @@ import {
   chip,
   clipParticles,
   coin,
+  confettiBit,
   crackParticles,
   droplet,
   dustPuff,
@@ -104,7 +108,23 @@ import { type Seeded, generateMany } from './prng'
 import { WEAPONS, heldWeapon } from './weapons'
 import { ZOMBIE_KINDS } from './zombies'
 
+// NOTE: a kitchen kill pays a quarter more (src/kitchenPay.ts), and a few
+// coins and a glint jump off it to say so.
+const KITCHEN_KILL_COINS = 3
+const KITCHEN_KILL_SPARKS = 2
+
+const kitchenKillParticles = (
+  state: number,
+  killed: Parameters<typeof killParticles>[1],
+): Seeded<ReadonlyArray<Particle>> =>
+  chain(state, [
+    drawState => killParticles(drawState, killed),
+    drawState => generateMany(drawState, KITCHEN_KILL_COINS, coin(killed)),
+    sparks(killed, KITCHEN_KILL_SPARKS),
+  ])
+
 const eventParticles = (
+  level: Level,
   state: number,
   event: GameEvent,
 ): Seeded<ReadonlyArray<Particle>> =>
@@ -127,7 +147,10 @@ const eventParticles = (
           BLOOD_SPEED,
         ),
       ),
-    ZombieKilled: killed => killParticles(state, killed),
+    ZombieKilled: killed =>
+      isInKitchenAt(level, killed)
+        ? kitchenKillParticles(state, killed)
+        : killParticles(state, killed),
     Exploded: exploded => blastParticles(state, exploded),
     Footfall: footfall => footfallDust(state, footfall),
     PlayerHurt: ({ x, y }) =>
@@ -242,6 +265,10 @@ const eventParticles = (
     PrizeLeft: ({ x, y }) =>
       generateMany(state, DUD_FOG, fogPuff({ x, y: y + 14 })),
     DudBurped: () => noParticles(state),
+    PantryTaken: ({ x, y, goodie }) =>
+      goodie === 'Cash'
+        ? generateMany(state, COINS_PER_PURCHASE, coin(playerGround(x, y)))
+        : sparks({ x, y }, LID_SPARKS)(state),
     LidLaunched: ({ x, y }) =>
       generateMany(state, LAUNCH_STEAM, smokePuff(playerGround(x, y))),
     LidBlasted: ({ x, y }) =>
@@ -303,6 +330,13 @@ const eventParticles = (
           Math.PI * 2,
           DUST_HURT_SPEED_MIN,
         )(DUST_HURT_SPEED_MAX),
+      ),
+    MedicCalled: () => noParticles(state),
+    TeammateSaved: ({ x, y, clutch }) =>
+      generateMany(
+        state,
+        clutch ? CONFETTI_PER_CLUTCH : CONFETTI_PER_SAVE,
+        confettiBit(playerGround(x, y)),
       ),
   })
 
@@ -390,7 +424,7 @@ export const advanceParticles = (
   const [eventState, eventBatches] = Array.mapAccum(
     model.frameEvents,
     model.cosmeticRngState,
-    eventParticles,
+    (drawState, event) => eventParticles(levelOf(model), drawState, event),
   )
   const dust = walkingDust(model, deltaMs, eventState)
 

@@ -116,7 +116,7 @@ export const maybePadlockedExit = (model: World): Option.Option<Box> =>
     ? Option.map(Array.head(closedExitBoxes(levelOf(model))), ({ box }) => box)
     : Option.none()
 
-const spendOn = (model: World, slot: PlayerSlot, price: number): World =>
+export const spendOn = (model: World, slot: PlayerSlot, price: number): World =>
   modifyFields(model, {
     seats: atSeat(slot, {
       wallet: wallet =>

@@ -99,7 +99,7 @@ describe("each seat's run in the World", () => {
       placeSeat(1, RIGHT_X, ROW_Y, 0),
       withSeatLife(
         1,
-        Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 }),
+        Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0, callMs: 0 }),
       ),
     )(crewInWave(3))
     story(

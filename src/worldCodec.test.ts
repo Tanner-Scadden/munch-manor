@@ -123,7 +123,7 @@ describe('the wire packs numbers by their Schema', () => {
     ]
     // NOTE: a new lossy field shows up here. Name it on purpose.
     expect(hintTable(numbers)).toEqual({
-      Position: { count: 167, names: ['offset', 'remainingPx', 'x', 'y'] },
+      Position: { count: 173, names: ['offset', 'remainingPx', 'x', 'y'] },
       Velocity: {
         count: 7,
         names: ['knockback', 'velocityX', 'velocityY', 'x', 'y'],
@@ -133,13 +133,14 @@ describe('the wire packs numbers by their Schema', () => {
         names: ['hpScale', 'intensity', 'speedScale', 'x', 'y'],
       },
       Millis: {
-        count: 97,
+        count: 99,
         names: [
           'ageMs',
           'apartMs',
           'atMs',
           'belchMs',
           'bleedMs',
+          'callMs',
           'cooldownMs',
           'durationMs',
           'elapsedMs',
@@ -149,6 +150,7 @@ describe('the wire packs numbers by their Schema', () => {
           'heldMs',
           'hitRemainingMs',
           'knifeCooldownMs',
+          'nextBurnMs',
           'quietMs',
           'recoilRemainingMs',
           'relaxMs',
@@ -286,11 +288,13 @@ describe("the boss's charge on the wire", () => {
 // `triggerRestMs`, the idle reload's clock; protocol 14 added the ammo window's
 // tap; protocol 15 added each seat's revives, downs, and shots for the crew
 // board; protocol 16 added each player's `calling`; protocol 18 added the
-// run's `modifiers`. The wire must not change
+// run's `modifiers`; protocol 19 added the fridge's cheap first pulls,
+// the pantry's stash, the kitchen's `stove` and `gasValve`, and each
+// seat's `cooking`. The wire must not change
 // without a protocol bump. A change to how the room plays moves the bytes
 // with no change to the wire, as zombies coming in promptly after their
 // warning did, and Normal's eased health and speed (2026-10-31) did.
-const GOLDEN_DIGEST = '59985:dc27343cb8286ac2'
+const GOLDEN_DIGEST = '60507:73d66348cfe06b66'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {
@@ -397,26 +401,32 @@ describe('random diffs of a scripted room', () => {
 
   test('a diff between any two Worlds reads back as a snapshot of the later', () => {
     const pick = lcg(11)
-    Array.forEach(Array.makeBy(200, () => 0), () => {
-      const held = readBack(pickWorld(pick))
-      const to = pickWorld(pick)
-      const diff = bytesOf(writer => writeWorldDiff(writer, held, to))
-      expect(readWorldDiff(makeReader(diff), held)).toEqual(readBack(to))
-    })
+    Array.forEach(
+      Array.makeBy(200, () => 0),
+      () => {
+        const held = readBack(pickWorld(pick))
+        const to = pickWorld(pick)
+        const diff = bytesOf(writer => writeWorldDiff(writer, held, to))
+        expect(readWorldDiff(makeReader(diff), held)).toEqual(readBack(to))
+      },
+    )
   })
 
   test('a diff to a reordered, thinned list reads back the same', () => {
     const pick = lcg(29)
-    Array.forEach(Array.makeBy(60, () => 0), () => {
-      const held = readBack(pickWorld(pick))
-      const shuffled = reordered(pickWorld(pick), pick)
-      const to = {
-        ...shuffled,
-        zombies: shuffled.zombies.filter(() => pick(4) !== 0),
-        bullets: shuffled.bullets.slice(pick(2)),
-      }
-      const diff = bytesOf(writer => writeWorldDiff(writer, held, to))
-      expect(readWorldDiff(makeReader(diff), held)).toEqual(readBack(to))
-    })
+    Array.forEach(
+      Array.makeBy(60, () => 0),
+      () => {
+        const held = readBack(pickWorld(pick))
+        const shuffled = reordered(pickWorld(pick), pick)
+        const to = {
+          ...shuffled,
+          zombies: shuffled.zombies.filter(() => pick(4) !== 0),
+          bullets: shuffled.bullets.slice(pick(2)),
+        }
+        const diff = bytesOf(writer => writeWorldDiff(writer, held, to))
+        expect(readWorldDiff(makeReader(diff), held)).toEqual(readBack(to))
+      },
+    )
   })
 })

@@ -423,14 +423,17 @@ const burpAt = (model: World, slot: PlayerSlot, at: Vector): World => {
     knockback: BURP_KNOCKBACK,
   }
   const outcome = blastAll(blast, model.zombies, ZOMBIE_BLAST_TARGET)
-  return modifyFields(earnKill(model, slot, bountyOf(outcome.events)), {
-    zombies: () => outcome.targets,
-    frameEvents: frameEvents => [
-      ...frameEvents,
-      GameEvent.Burped({ x: at.x, y: at.y, radius: BURP_RADIUS }),
-      ...outcome.events,
-    ],
-  })
+  return modifyFields(
+    earnKill(model, slot, bountyOf(levelOf(model), outcome.events)),
+    {
+      zombies: () => outcome.targets,
+      frameEvents: frameEvents => [
+        ...frameEvents,
+        GameEvent.Burped({ x: at.x, y: at.y, radius: BURP_RADIUS }),
+        ...outcome.events,
+      ],
+    },
+  )
 }
 
 const applyEffect = (

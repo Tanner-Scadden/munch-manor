@@ -232,23 +232,42 @@ describe('Friendly Fire', () => {
       modifyFields(current, { lobs: () => [lidAt(62)] }),
     )(withModifiers(crewInWave(2), modifiers))
 
-  test('on, a lid’s blast hurts the thrower and a teammate, on any difficulty', () => {
-    const burst = advanceLobs(huddled(only({ friendlyFire: true })), TICK_MS)
-    expect(burst.lobs).toEqual([])
-    expect(Option.getOrThrow(maybePlayerAt(burst, 0)).player.hp).toBeLessThan(
-      PLAYER_MAX_HP,
-    )
-    expect(Option.getOrThrow(maybePlayerAt(burst, 1)).player.hp).toBeLessThan(
-      PLAYER_MAX_HP,
+  const onNightmare = (world: World): World =>
+    modifyFields(world, {
+      difficulty: difficulty =>
+        modifyFields(difficulty, { chosen: () => 'Nightmare' }),
+    })
+
+  test('on, a lid’s blast hurts a teammate but never its thrower, on any difficulty', () => {
+    Array.forEach(
+      [
+        huddled(only({ friendlyFire: true })),
+        onNightmare(huddled(only({ friendlyFire: true }))),
+      ],
+      start => {
+        const burst = advanceLobs(start, TICK_MS)
+        expect(burst.lobs).toEqual([])
+        expect(Option.getOrThrow(maybePlayerAt(burst, 0)).player.hp).toBe(
+          PLAYER_MAX_HP,
+        )
+        expect(
+          Option.getOrThrow(maybePlayerAt(burst, 1)).player.hp,
+        ).toBeLessThan(PLAYER_MAX_HP)
+      },
     )
   })
 
-  test('off, a lid’s blast hurts no one below Nightmare', () => {
-    const burst = advanceLobs(huddled(noModifiers), TICK_MS)
-    expect(burst.lobs).toEqual([])
-    Array.forEach(playersOf(burst), ({ player }) => {
-      expect(player.hp).toBe(PLAYER_MAX_HP)
-    })
+  test('off, a lid’s blast hurts no one, Nightmare included', () => {
+    Array.forEach(
+      [huddled(noModifiers), onNightmare(huddled(noModifiers))],
+      start => {
+        const burst = advanceLobs(start, TICK_MS)
+        expect(burst.lobs).toEqual([])
+        Array.forEach(playersOf(burst), ({ player }) => {
+          expect(player.hp).toBe(PLAYER_MAX_HP)
+        })
+      },
+    )
   })
 })
 
@@ -453,24 +472,27 @@ describe('Glass', () => {
   })
 
   const prizesFor = (modifiers: Modifiers): ReadonlyArray<string> =>
-    Array.map(Array.makeBy(200, index => 3 + index * 7919), seed => {
-      const facing = withModifiers(
-        modifyFields(atFridge(1000), {
-          loot: loot => ({ ...loot, fridgeRngState: seed }),
-        }),
-        modifiers,
-      )
-      return Option.match(
-        pullFridge(facing, focusSlotOf(facing), FRIDGE_RULES.price),
-        {
-          onNone: () => 'None',
-          onSome: pulled =>
-            pulled.fridge.door._tag === 'Open'
-              ? pulled.fridge.door.prize
-              : 'None',
-        },
-      )
-    })
+    Array.map(
+      Array.makeBy(200, index => 3 + index * 7919),
+      seed => {
+        const facing = withModifiers(
+          modifyFields(atFridge(1000), {
+            loot: loot => ({ ...loot, fridgeRngState: seed }),
+          }),
+          modifiers,
+        )
+        return Option.match(
+          pullFridge(facing, focusSlotOf(facing), FRIDGE_RULES.price),
+          {
+            onNone: () => 'None',
+            onSome: pulled =>
+              pulled.fridge.door._tag === 'Open'
+                ? pulled.fridge.door.prize
+                : 'None',
+          },
+        )
+      },
+    )
 
   test('the fridge never pulls the healing Sandwich', () => {
     const withGlass = prizesFor(glass)
@@ -489,7 +511,11 @@ describe('Glass', () => {
           placeSeat(1, 240, ROW_Y, 0),
           withSeatLife(
             1,
-            Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 }),
+            Life.Downed({
+              bleedMs: COOP_RULES.bleedOutMs,
+              reviveMs: 0,
+              callMs: 0,
+            }),
           ),
         )(withModifiers(crewInWave(2), glass)),
       ),

@@ -1,7 +1,7 @@
 import { Array, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { DOOR_OUTWARD } from './arena'
+import { DOOR_OUTWARD, type Level, levelOf } from './arena'
 import { killPayFor } from './calling'
 import {
   BLAST_FLASH_MS,
@@ -29,6 +29,7 @@ import {
   TRAP_CRACK_TRAUMA,
 } from './constants'
 import { countWhere } from './hitStop'
+import { kitchenBounty } from './kitchenPay'
 import type { Model } from './model'
 import type { Modifiers } from './modifiers'
 import { playedModifiersOf } from './onlineRun'
@@ -75,6 +76,7 @@ const KNIFE_HIT_TRAUMA = 0.06
 const PAN_SMASH_TRAUMA = 0.5
 const HOME_RUN_TRAUMA = 0.25
 const SHATTER_TRAUMA = 0.1
+const CLUTCH_TRAUMA = 0.2
 
 const firingTrauma = (event: GameEvent): number =>
   GameEvent.isAnyOf(['Fired'])(event) ? WEAPONS[event.weapon].shakeTrauma : 0
@@ -135,6 +137,7 @@ const eventTrauma = (event: GameEvent): number =>
     PrizeTaken: () => 0,
     PrizeLeft: () => 0,
     DudBurped: () => 0,
+    PantryTaken: () => 0,
     LidLaunched: () => LID_LAUNCH_TRAUMA,
     LidBlasted: () => LID_BLAST_TRAUMA,
     CookerPopped: () => COOKER_POP_TRAUMA,
@@ -152,6 +155,8 @@ const eventTrauma = (event: GameEvent): number =>
     PlayerDowned: () => SHAKE_TRAUMA_HURT,
     PlayerRevived: () => 0,
     FriendlyFire: () => SHAKE_TRAUMA_HURT,
+    MedicCalled: () => 0,
+    TeammateSaved: ({ clutch }) => (clutch ? CLUTCH_TRAUMA : 0),
   })
 
 const shakeAxis = (roll: number, trauma: number): number => {
@@ -196,6 +201,8 @@ const advanceShake = (
 const HORDE_POPUP_LIFETIME_MS = 1400
 const HORDE_POPUP_INSET_PX = 22
 const KABOOM_POPUP_LIFETIME_MS = 600
+const SAVE_POPUP_LIFETIME_MS = 1300
+const SAVE_POPUP_LIFT_PX = 18
 
 export const POPUP_LIFETIME_MS: Readonly<Record<PopupKind, number>> = {
   Damage: DAMAGE_POPUP_LIFETIME_MS,
@@ -205,6 +212,8 @@ export const POPUP_LIFETIME_MS: Readonly<Record<PopupKind, number>> = {
   Horde: HORDE_POPUP_LIFETIME_MS,
   Wipe: PAYDAY_POPUP_LIFETIME_MS,
   Kaboom: KABOOM_POPUP_LIFETIME_MS,
+  Saved: SAVE_POPUP_LIFETIME_MS,
+  Clutch: SAVE_POPUP_LIFETIME_MS,
 }
 
 const popup =
@@ -231,9 +240,10 @@ const popup =
 const noPopups = (state: number): Seeded<ReadonlyArray<Popup>> => [state, []]
 
 // NOTE: a kill's popup shows what the kill paid the player, so the Penny
-// Pincher's reads 15% less (src/calling.ts).
+// Pincher's reads 15% less (src/calling.ts) and a kitchen kill's a quarter
+// more (src/kitchenPay.ts).
 const eventPopups =
-  (calling: Calling, modifiers: Modifiers) =>
+  (calling: Calling, modifiers: Modifiers, level: Level) =>
   (state: number, event: GameEvent): Seeded<ReadonlyArray<Popup>> =>
     GameEvent.match(event, {
       Fired: () => noPopups(state),
@@ -249,7 +259,11 @@ const eventPopups =
           1,
           popup(
             'Kill',
-            killPayFor(calling, bounty, modifiers),
+            killPayFor(
+              calling,
+              kitchenBounty(level, { x, y }, bounty),
+              modifiers,
+            ),
             x,
             y - KILL_POPUP_LIFT_PX,
           ),
@@ -323,6 +337,14 @@ const eventPopups =
       PrizeTaken: () => noPopups(state),
       PrizeLeft: () => noPopups(state),
       DudBurped: () => noPopups(state),
+      PantryTaken: ({ x, y, cash }) =>
+        cash > 0
+          ? generateMany(
+              state,
+              1,
+              popup('Payday', cash, x, y - KILL_POPUP_LIFT_PX),
+            )
+          : noPopups(state),
       LidLaunched: () => noPopups(state),
       LidBlasted: () => noPopups(state),
       CookerPopped: () => noPopups(state),
@@ -340,6 +362,13 @@ const eventPopups =
       PlayerDowned: () => noPopups(state),
       PlayerRevived: () => noPopups(state),
       FriendlyFire: () => noPopups(state),
+      TeammateSaved: ({ x, y, clutch }) =>
+        generateMany(
+          state,
+          1,
+          popup(clutch ? 'Clutch' : 'Saved', 0, x, y - SAVE_POPUP_LIFT_PX),
+        ),
+      MedicCalled: () => noPopups(state),
     })
 
 const agePopups = (
@@ -456,7 +485,11 @@ export const advanceJuice = (
   const [popupState, popupBatches] = Array.mapAccum(
     events,
     shakeState,
-    eventPopups(focusOf(model).player.calling, playedModifiersOf(model)),
+    eventPopups(
+      focusOf(model).player.calling,
+      playedModifiersOf(model),
+      levelOf(model),
+    ),
   )
 
   return modifyFocus(

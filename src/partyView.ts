@@ -10,6 +10,7 @@ import type { Drawable } from './depth'
 import { rect, ringPixels } from './drawing'
 import { hatRiseOf } from './hatArt'
 import { barWidthOf, healthBarShapes } from './healthBarView'
+import { isCallFresh } from './medic'
 import type { Appearance, Model } from './model'
 import {
   COOP_RULES,
@@ -32,7 +33,14 @@ import {
   reloadBarShapes,
 } from './playerView'
 import { auraShapes } from './powerupView'
-import { type Sprite, bakeShapes, group, placeAt } from './sprite'
+import {
+  type Sprite,
+  TOP_LEFT,
+  bakeShapes,
+  group,
+  placeAt,
+  spriteShapes,
+} from './sprite'
 import { withWorld } from './world'
 import {
   type DownedLife,
@@ -329,6 +337,63 @@ export const reviveRingGroundShapes = (
       )
     : []
 
+// THE MEDIC BUBBLE
+
+// NOTE: while a downed player's MEDIC! shout is fresh (src/medic.ts), a
+// speech bubble with a red cross pops over the body in place of the revive
+// icon: it jumps up as it pops, then shakes a pixel side to side. Its tail
+// points down at the body. Built once, as the module loads.
+const MEDIC_BUBBLE: Sprite = spriteShapes(
+  [
+    '.ooooooooooo.',
+    'owwwwwwwwwwwo',
+    'owwwwrrrwwwwo',
+    'owwwwrrrwwwwo',
+    'owrrrrrrrrrwo',
+    'owrrrrrrrrrwo',
+    'owrrrrrrrrrwo',
+    'owwwwrrrwwwwo',
+    'owwwwrrrwwwwo',
+    'owwwwwwwwwwwo',
+    '.oooooowoooo.',
+    '......owo....',
+    '.......o.....',
+  ],
+  { o: BAR_BACK, w: '#f4f1de', r: '#e8343a' },
+  TOP_LEFT,
+)
+
+const MEDIC_BUBBLE_WIDTH = 13
+const MEDIC_BUBBLE_HEIGHT = 13
+const MEDIC_BUBBLE_TIP_LIFT_PX = 9
+const MEDIC_POP_MS = 150
+const MEDIC_POP_PX = 3
+const MEDIC_SHAKE_MS = 90
+
+// NOTE: how far over a calling player a name tag's bottom sits: over the
+// bubble.
+export const NAME_LIFT_CALLING_PX =
+  MEDIC_BUBBLE_TIP_LIFT_PX + MEDIC_BUBBLE_HEIGHT + MEDIC_POP_PX
+
+export const medicBubbleShape = (
+  x: number,
+  y: number,
+  callMs: number,
+): Canvas.Shape => {
+  const isPopping = callMs < MEDIC_POP_MS
+  const shake = isPopping
+    ? 0
+    : (Math.floor(callMs / MEDIC_SHAKE_MS) % 2) * 2 - 1
+  return placeAt(
+    Math.round(x) - Math.floor(MEDIC_BUBBLE_WIDTH / 2) + 1 + shake,
+    Math.round(y) -
+      MEDIC_BUBBLE_TIP_LIFT_PX -
+      MEDIC_BUBBLE_HEIGHT -
+      (isPopping ? MEDIC_POP_PX : 0),
+    MEDIC_BUBBLE,
+  )
+}
+
 // NOTE: over every player's head in co-op: their seat's mark while they
 // stand; while they are down, the bleed bar and the revive icon. A
 // bled-out body gets nothing.
@@ -345,19 +410,21 @@ const seatMarkShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
         }
         return Option.match(maybeDownedOf(seat), {
           onNone: () => [],
-          onSome: ({ bleedMs, reviveMs }) => [
+          onSome: ({ bleedMs, reviveMs, callMs }) => [
             ...bleedBarShapes(
               player.x,
               player.y,
               bleedMs / COOP_RULES.bleedOutMs,
             ),
-            ...reviveIconShapes(
-              slot,
-              player.x,
-              player.y,
-              reviveMs > 0,
-              model.elapsedMs,
-            ),
+            ...(isCallFresh(seat)
+              ? [medicBubbleShape(player.x, player.y, callMs)]
+              : reviveIconShapes(
+                  slot,
+                  player.x,
+                  player.y,
+                  reviveMs > 0,
+                  model.elapsedMs,
+                )),
           ],
         })
       })

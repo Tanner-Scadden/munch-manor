@@ -4,8 +4,10 @@ import { modifyFields } from 'foldkit/struct'
 import { ammoCounterOffers, sellAmmo } from './ammoCounter'
 import { type Box, distanceToBox } from './arena'
 import { buyExit, exitOffers } from './exits'
+import { buyValve, valveOffers } from './gasValve'
 import { fridgeOffers, pullFridge, takePrize } from './leftovers'
 import { isStanding as isOnFeet, modifySeat, seatStateAt } from './party'
+import { STOVE_RULES, cookGun, stoveOffers } from './stove'
 import type { World } from './world'
 import {
   GameEvent,
@@ -77,6 +79,8 @@ export const offersOf = (
   ...exitOffers(world),
   ...fridgeOffers(world, slot),
   ...ammoCounterOffers(world, slot),
+  ...stoveOffers(world, slot),
+  ...valveOffers(world),
 ]
 
 const buy = (
@@ -89,6 +93,8 @@ const buy = (
     Fridge: () => pullFridge(world, slot, offer.price),
     Prize: () => takePrize(world, slot),
     Ammo: () => sellAmmo(world, slot),
+    Stove: () => cookGun(world, slot, offer.price),
+    Valve: () => buyValve(world, slot, offer.price),
   })
 
 export const isSamePurchasable = (
@@ -100,7 +106,17 @@ export const isSamePurchasable = (
     Fridge: () => second._tag === 'Fridge',
     Prize: () => second._tag === 'Prize',
     Ammo: () => second._tag === 'Ammo',
+    Stove: () => second._tag === 'Stove',
+    Valve: () => second._tag === 'Valve',
   })
+
+// NOTE: how long the key holds to buy: half a second, but two at the
+// stove, since a cook is a choice for the rest of the run. Standing fills
+// at half the key's speed, as everywhere.
+const holdMsOf = (target: Purchasable): number =>
+  Purchasable.isAnyOf(['Stove'])(target)
+    ? STOVE_RULES.holdMs
+    : PURCHASE_RULES.holdMs
 
 const reachOf = (world: World, slot: PlayerSlot, offer: Offer): number =>
   distanceToBox(seatStateAt(world, slot).player, offer.box)
@@ -152,7 +168,7 @@ export const shortfallFor = (
 export const holdProgress = (purchase: Purchase): number =>
   Purchase.match(purchase, {
     Idle: () => 0,
-    Holding: ({ heldMs }) => Math.min(1, heldMs / PURCHASE_RULES.holdMs),
+    Holding: ({ target, heldMs }) => Math.min(1, heldMs / holdMsOf(target)),
     Refused: () => 0,
     Done: () => 1,
     Spent: () => 0,
@@ -259,7 +275,7 @@ export const advancePurchase = (
         return withPurchase(world, slot, Purchase.Idle())
       }
       const nextMs = heldMs + (isHeld ? deltaMs : deltaMs * STAND_RATE)
-      return nextMs >= PURCHASE_RULES.holdMs
+      return nextMs >= holdMsOf(target)
         ? complete(world, slot, maybeHeld.value)
         : withPurchase(
             world,

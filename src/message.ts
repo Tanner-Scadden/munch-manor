@@ -101,6 +101,7 @@ export const Message = defineMessageUnion({
   ClickedGunSlot: { slot: GunSlot },
   ClickedMeleeSlot: {},
   ClickedReloadButton: {},
+  ClickedMedicButton: {},
   ClickedFullscreenButton: {},
   CompletedSetFullscreen: { fullscreen: FullscreenSetting },
   FailedSetFullscreen: { reason: Schema.String },

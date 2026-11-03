@@ -6,16 +6,26 @@ import {
   type BlastSpec,
   ZOMBIE_BLAST_TARGET,
   blastAll,
-  blastOwnSeat,
-  blastPlayers,
+  blastTeammates,
   bountyOf,
   hitEvent,
+  isIcedSolid,
   killEvent,
   strikeZombie,
-  woundPlayer,
 } from './combat'
-import { DRY_FIRE_DELAY_MS, PLAYER_RADIUS } from './constants'
-import { addVectors, circlesOverlap, scaleVector } from './geometry'
+import {
+  DRY_FIRE_DELAY_MS,
+  PLAYER_RADIUS,
+  ZOMBIE_HIT_PULSE_MS,
+} from './constants'
+import {
+  OUTWARD,
+  ZERO_VECTOR,
+  addVectors,
+  circlesOverlap,
+  directionBetween,
+  scaleVector,
+} from './geometry'
 import {
   type Blow,
   type Struck,
@@ -28,16 +38,17 @@ import {
   swingAt,
 } from './melee'
 import {
+  COOP_RULES,
   atSeat,
   creditKills,
   isFriendlyFireOn,
   modifySeat,
+  payKillShared,
   payTo,
   seatStateAt,
   shooterOf,
 } from './party'
 import { isAmmoFree } from './powerups'
-import { trapBlastTarget } from './traps'
 import {
   beginReload,
   canReload,
@@ -63,8 +74,9 @@ import {
   type WeaponKind,
   type Zombie,
   ZombieAction,
+  type ZombieKind,
 } from './worldSchema'
-import { bodyRadiusOf, isGrounded } from './zombies'
+import { bodyRadiusOf, deathState, isGrounded } from './zombies'
 
 // The Mystery Leftovers weapons (GAME_DESIGN.md, "Mystery Leftovers"): the
 // fridge's prizes, never sold. Each fires no bullets, so the step hands a
@@ -84,14 +96,18 @@ import { bodyRadiusOf, isGrounded } from './zombies'
 //   once, and it swats a thrown Groaner out of the air. Each swing that
 //   connects dents it; fully dented it swings slower until Rattles bangs
 //   it flat at the next break.
-// - Brain Freeze sprays a cone of cold: small zombies freeze solid, and the
-//   next hit of any kind shatters one for SHATTER_SCALE times the damage
-//   (src/combat.ts). Big Lugs and Uncle Chunk are only slowed. Twelve
-//   charges, never refilled.
+// - Brain Freeze sprays a cone of cold that stings every zombie in it for
+//   a point: small zombies freeze solid, and the next hit of any kind
+//   shatters one for SHATTER_SCALE times the damage (src/combat.ts), its
+//   shards splashing the small zombies beside it. A Big Lug is only
+//   slowed, but sprayed again while still slowed it freezes solid for a
+//   moment; Uncle Chunk is only ever slowed. Eighteen charges, never
+//   refilled.
 //
-// Below Nightmare they hurt only zombies. On Nightmare a lid's blast, and a
-// lid popping in the hands, hurt their thrower too, never a teammate
-// (MULTIPLAYER.md, decided row 6).
+// They never hurt their own player, on any setting: a lid's blast spares
+// its thrower and a pop only shoves (the owner, 2026-11-02). Only the
+// Friendly Fire modifier lets a lid's blast hurt teammates (MULTIPLAYER.md,
+// decided row 6).
 
 const FRIDGE_WEAPONS: ReadonlyArray<WeaponKind> = ['Cooker', 'Pan', 'Freeze']
 
@@ -99,9 +115,6 @@ export const isFridgeWeapon = (kind: WeaponKind): boolean =>
   Array.contains(FRIDGE_WEAPONS, kind)
 
 export { isSmallKind }
-
-const isNightmare = (world: World): boolean =>
-  world.difficulty.chosen === 'Nightmare'
 
 // RULES
 
@@ -119,13 +132,11 @@ type CookerRules = Readonly<{
   maxDamage: number
   knockback: number
   popShove: number
-  popDamage: number
-  nightmareDamage: number
   launchCooldownMs: number
 }>
 
 export const COOKER_RULES: CookerRules = {
-  fullMs: 900,
+  fullMs: 550,
   overMs: 800,
   minCharge: 0.2,
   minThrowPx: 36,
@@ -138,8 +149,6 @@ export const COOKER_RULES: CookerRules = {
   maxDamage: 9,
   knockback: 240,
   popShove: 150,
-  popDamage: 1,
-  nightmareDamage: 1,
   launchCooldownMs: 250,
 }
 
@@ -150,8 +159,8 @@ type CookerTier = Readonly<{ blastScale: number; fullMs: number }>
 const COOKER_TIERS: Array.NonEmptyReadonlyArray<CookerTier> = [
   { blastScale: 1, fullMs: COOKER_RULES.fullMs },
   { blastScale: 1.3, fullMs: COOKER_RULES.fullMs },
-  { blastScale: 1.3, fullMs: 600 },
-  { blastScale: 1.3, fullMs: 600 },
+  { blastScale: 1.3, fullMs: 400 },
+  { blastScale: 1.3, fullMs: 400 },
 ]
 
 const cookerTier = (tier: number): CookerTier =>
@@ -198,18 +207,30 @@ type FreezeRules = Readonly<{
   intervalMs: number
   reachPx: number
   halfArc: number
+  damage: number
   frozenMs: number
+  lugFrozenMs: number
   chillMs: number
   chillPace: number
+  splashShare: number
+  splashPx: number
+  splashKnockback: number
 }>
 
+// NOTE: splashShare of a shattering hit's damage reaches the small zombies
+// within splashPx of the one that shattered.
 export const FREEZE_RULES: FreezeRules = {
   intervalMs: 600,
-  reachPx: 60,
+  reachPx: 75,
   halfArc: 0.5,
+  damage: 1,
   frozenMs: 2500,
+  lugFrozenMs: 1500,
   chillMs: 2500,
   chillPace: 0.5,
+  splashShare: 0.5,
+  splashPx: 20,
+  splashKnockback: 120,
 }
 
 // NOTE: a Chilled zombie walks at this share of its pace.
@@ -368,7 +389,7 @@ const launch = (
 
 // NOTE: held past full, the lid blows off in the player's hands: it shoves
 // them back, the lid is lost, and nothing builds until fire is let go. It
-// hurts only on Nightmare.
+// never hurts, on any setting (the owner, 2026-11-02).
 const pop = (world: World, slot: PlayerSlot): World => {
   const { player, boosts } = seatStateAt(world, slot)
   const back = scaleVector(player.facing, -1)
@@ -378,12 +399,8 @@ const pop = (world: World, slot: PlayerSlot): World => {
       addVectors(knockback, scaleVector(back, COOKER_RULES.popShove)),
     recoilRemainingMs: () => 240,
   })
-  const hurt =
-    isNightmare(world) && player.invulnerability._tag === 'Vulnerable'
-      ? woundPlayer(shoved, COOKER_RULES.popDamage, back)
-      : shoved
   return withEvents(
-    modifySeat(world, slot, { player: () => spendLid(boosts, hurt) }),
+    modifySeat(world, slot, { player: () => spendLid(boosts, shoved) }),
     [GameEvent.CookerPopped({ x: player.x, y: player.y, direction: back })],
   )
 }
@@ -453,44 +470,29 @@ const isLidOn =
     isGrounded(zombie) &&
     circlesOverlap(at, COOKER_RULES.lidRadius, zombie, bodyRadiusOf(zombie))
 
-const blastTraps = (world: World, blast: BlastSpec, lob: Lob): World => {
-  const trapOutcome = blastAll(
-    { ...blast, trapDamage: lidDamage(lob.charge) },
-    world.traps,
-    trapBlastTarget(levelOf(world)),
-  )
-  return modifyFields(world, {
-    traps: () => trapOutcome.targets,
-    frameEvents: frameEvents => [...frameEvents, ...trapOutcome.events],
-  })
-}
-
-// NOTE: who a lid's blast hurts. With Friendly Fire on, every standing player
-// it reaches. Otherwise only on Nightmare, and then only its own thrower:
-// teammates never hurt each other. No shooter is single player, whose one
-// player threw it.
+// NOTE: who a lid's blast hurts: with the Friendly Fire modifier on, every
+// standing teammate it reaches, and never its own thrower. Otherwise no
+// player, on any difficulty (the owner, 2026-11-02: "Let's get rid of team
+// damage on nightmare"). No shooter is single player, whose one player
+// threw it, so no one else is there to hurt.
 const scorchPlayers = (
   world: World,
   maybeShooter: Option.Option<PlayerSlot>,
   blast: BlastSpec,
-): World => {
-  if (isFriendlyFireOn(world)) {
-    return blastPlayers(world, blast)
-  } else if (!isNightmare(world)) {
-    return world
-  }
-  return Option.match(maybeShooter, {
-    onNone: () => blastPlayers(world, blast),
-    onSome: slot => blastOwnSeat(world, slot, blast),
-  })
-}
+): World =>
+  isFriendlyFireOn(world)
+    ? Option.match(maybeShooter, {
+        onNone: () => world,
+        onSome: slot => blastTeammates(world, slot, blast),
+      })
+    : world
 
 const lidBlast = (world: World, lob: Lob, at: Vector): World => {
   const blast: BlastSpec = {
     x: at.x,
     y: at.y,
     radius: lidBlastRadius(lob.charge, lob.tier),
-    playerDamage: COOKER_RULES.nightmareDamage,
+    playerDamage: COOP_RULES.friendlyFireDamage,
     zombieDamage: lidDamage(lob.charge),
     trapDamage: 0,
     knockback: COOKER_RULES.knockback,
@@ -505,15 +507,16 @@ const lidBlast = (world: World, lob: Lob, at: Vector): World => {
       ...zombieOutcome.events,
     ],
   })
-  const paid = payTo(struck, maybeShooter, bountyOf(zombieOutcome.events))
+  const paid = payTo(
+    struck,
+    maybeShooter,
+    bountyOf(levelOf(world), zombieOutcome.events),
+  )
   const credited = Option.match(maybeShooter, {
     onNone: () => paid,
     onSome: slot => creditKills(paid, slot, countKills(zombieOutcome.events)),
   })
-  const trapsBlasted = isNightmare(credited)
-    ? blastTraps(credited, blast, lob)
-    : credited
-  return scorchPlayers(trapsBlasted, maybeShooter, blast)
+  return scorchPlayers(credited, maybeShooter, blast)
 }
 
 // NOTE: each lid flies on toward where it was thrown and bursts there, or
@@ -737,40 +740,79 @@ export const flattenPans = (world: World, slot: PlayerSlot): World => {
 
 // BRAIN FREEZE
 
-const freezeOne = (zombie: Zombie): Zombie =>
-  isSmallKind(zombie.kind)
+const isChilledNow = ZombieAction.isAnyOf(['Chilled'])
+
+// NOTE: the big kinds a second spray freezes solid while the first still
+// slows them. Uncle Chunk is not one: he is only ever slowed.
+const DOUBLE_CHILL_KINDS: ReadonlyArray<ZombieKind> = ['Tank']
+
+const iceFor = (zombie: Zombie, frozenMs: number): Zombie =>
+  modifyFields(zombie, {
+    action: () =>
+      ZombieAction.Frozen({ remainingMs: frozenMs, durationMs: frozenMs }),
+    knockback: () => ZERO_VECTOR,
+  })
+
+const freezeOne = (zombie: Zombie): Zombie => {
+  if (isSmallKind(zombie.kind)) {
+    return iceFor(zombie, FREEZE_RULES.frozenMs)
+  } else if (
+    Array.contains(DOUBLE_CHILL_KINDS, zombie.kind) &&
+    isChilledNow(zombie.action)
+  ) {
+    return iceFor(zombie, FREEZE_RULES.lugFrozenMs)
+  }
+  return ZombieAction.isAnyOf(['Roaming', 'Chilled'])(zombie.action)
     ? modifyFields(zombie, {
         action: () =>
-          ZombieAction.Frozen({
-            remainingMs: FREEZE_RULES.frozenMs,
-            durationMs: FREEZE_RULES.frozenMs,
-          }),
-        knockback: () => ({ x: 0, y: 0 }),
+          ZombieAction.Chilled({ remainingMs: FREEZE_RULES.chillMs }),
       })
-    : ZombieAction.isAnyOf(['Roaming', 'Chilled'])(zombie.action)
-      ? modifyFields(zombie, {
-          action: () =>
-            ZombieAction.Chilled({ remainingMs: FREEZE_RULES.chillMs }),
-        })
-      : zombie
+    : zombie
+}
+
+// NOTE: the spray stings each zombie in the cone for FREEZE_RULES.damage,
+// then ices it. The sting is not a hit on the ice: it never shatters a
+// zombie frozen solid, by this spray or an earlier one, so a sprayed
+// zombie stays frozen.
+const sting = (zombie: Zombie, direction: Vector): Zombie => {
+  const hp = Math.max(0, zombie.hp - FREEZE_RULES.damage)
+  return modifyFields(zombie, {
+    hp: () => hp,
+    hitRemainingMs: () => ZOMBIE_HIT_PULSE_MS,
+    state: state =>
+      hp > 0 ? state : deathState(zombie.kind, direction, 'Shot'),
+  })
+}
+
+type Sprayed = Readonly<{ zombie: Zombie; events: ReadonlyArray<GameEvent> }>
+
+const sprayOne = (zombie: Zombie, direction: Vector): Sprayed => {
+  const stung = sting(zombie, direction)
+  const hit = hitEvent(zombie, zombie, direction, FREEZE_RULES.damage)
+  if (stung.hp <= 0) {
+    return { zombie: stung, events: [hit, killEvent(stung, direction)] }
+  }
+  const iced = freezeOne(stung)
+  return {
+    zombie: iced,
+    events: isIcedSolid(iced.action)
+      ? [hit, GameEvent.ZombieFrozen({ x: zombie.x, y: zombie.y })]
+      : [hit],
+  }
+}
 
 const spray = (world: World, slot: PlayerSlot): World => {
   const { player } = seatStateAt(world, slot)
-  const isChilled = isInArc(player, FREEZE_RULES.reachPx, FREEZE_RULES.halfArc)
-  const hit = Array.map(
-    world.zombies,
-    zombie => isGrounded(zombie) && isChilled(zombie),
+  const isInCone = isInArc(player, FREEZE_RULES.reachPx, FREEZE_RULES.halfArc)
+  const sprayed = Array.map(world.zombies, zombie =>
+    isGrounded(zombie) && isInCone(zombie)
+      ? sprayOne(zombie, player.facing)
+      : { zombie, events: [] },
   )
-  const frozen = Array.filter(
-    world.zombies,
-    (zombie, index) => hit[index] === true && isSmallKind(zombie.kind),
-  )
-  return withEvents(
+  const stings = Array.flatMap(sprayed, ({ events }) => events)
+  const iced = withEvents(
     modifyFields(world, {
-      zombies: zombies =>
-        Array.map(zombies, (zombie, index) =>
-          hit[index] === true ? freezeOne(zombie) : zombie,
-        ),
+      zombies: () => Array.map(sprayed, ({ zombie }) => zombie),
       seats: atSeat(slot, {
         player: current =>
           spendRound(
@@ -787,9 +829,10 @@ const spray = (world: World, slot: PlayerSlot): World => {
         y: player.y,
         direction: player.facing,
       }),
-      ...Array.map(frozen, ({ x, y }) => GameEvent.ZombieFrozen({ x, y })),
+      ...stings,
     ],
   )
+  return payStriker(iced, slot, stings)
 }
 
 const fireFreeze = (
@@ -843,12 +886,83 @@ export const dropCharge = (player: Player): Player =>
 
 // SHATTERS
 
+type Shatter = Readonly<{ zombie: Zombie; damage: number }>
+
+type Splashed = Readonly<{
+  zombies: ReadonlyArray<Zombie>
+  events: ReadonlyArray<GameEvent>
+}>
+
+const isSplashedBy =
+  (source: Zombie) =>
+  (zombie: Zombie): boolean =>
+    zombie.id !== source.id &&
+    isGrounded(zombie) &&
+    isSmallKind(zombie.kind) &&
+    Math.hypot(zombie.x - source.x, zombie.y - source.y) -
+      bodyRadiusOf(zombie) <=
+      FREEZE_RULES.splashPx
+
+// NOTE: a shatter's shards: splashShare of the shattering hit's damage (the
+// health it took, at least 1) on every other grounded small zombie within
+// splashPx. One frozen solid shatters too, but its own shards go no
+// further.
+const splash = (splashed: Splashed, { zombie, damage }: Shatter): Splashed => {
+  const shards = Math.max(1, Math.round(damage * FREEZE_RULES.splashShare))
+  const isReached = isSplashedBy(zombie)
+  const outcomes = Array.map(splashed.zombies, target => {
+    if (!isReached(target)) {
+      return { zombie: target, events: [] }
+    }
+    const direction = Option.getOrElse(
+      directionBetween(zombie, target),
+      () => OUTWARD,
+    )
+    const struck = strikeZombie(
+      target,
+      {
+        damage: shards,
+        direction,
+        knockbackSpeed: FREEZE_RULES.splashKnockback,
+      },
+      'Blast',
+    )
+    return {
+      zombie: struck,
+      events: [
+        hitEvent(target, target, direction, shards),
+        ...(struck.hp <= 0 ? [killEvent(struck, direction)] : []),
+      ],
+    }
+  })
+  return {
+    zombies: Array.map(outcomes, ({ zombie: target }) => target),
+    events: [
+      ...splashed.events,
+      ...Array.flatMap(outcomes, ({ events }) => events),
+    ],
+  }
+}
+
+const shattersOf = (
+  wasFrozen: ReadonlyMap<number, number>,
+  zombies: ReadonlyArray<Zombie>,
+): ReadonlyArray<Shatter> =>
+  Array.filterMap(zombies, zombie => {
+    const hp = wasFrozen.get(zombie.id)
+    return hp !== undefined && zombie.hp < hp && !isIcedSolid(zombie.action)
+      ? Result.succeed({ zombie, damage: hp - zombie.hp })
+      : Result.failVoid
+  })
+
 // NOTE: a zombie that was frozen solid and has been hit since shatters into
-// ice: the event the views and sounds read.
-export const shatterEvents = (before: World, after: World): World => {
+// ice: the event the views and sounds read, and the shards that splash its
+// small neighbors. Their kills have no one killer, so they pay shared, as a
+// Kaboomer's chain does.
+export const resolveShatters = (before: World, after: World): World => {
   const wasFrozen = new Map(
     Array.filterMap(before.zombies, zombie =>
-      ZombieAction.isAnyOf(['Frozen'])(zombie.action)
+      isIcedSolid(zombie.action)
         ? Result.succeed([zombie.id, zombie.hp] as const)
         : Result.failVoid,
     ),
@@ -856,19 +970,28 @@ export const shatterEvents = (before: World, after: World): World => {
   if (wasFrozen.size === 0) {
     return after
   }
-  const shattered = Array.filterMap(after.zombies, zombie => {
-    const hp = wasFrozen.get(zombie.id)
-    return hp !== undefined &&
-      zombie.hp < hp &&
-      !ZombieAction.isAnyOf(['Frozen'])(zombie.action)
-      ? Result.succeed(
-          GameEvent.ZombieShattered({
-            x: zombie.x,
-            y: zombie.y,
-            kind: zombie.kind,
-          }),
-        )
-      : Result.failVoid
-  })
-  return withEvents(after, shattered)
+  const shattered = shattersOf(wasFrozen, after.zombies)
+  if (Array.isReadonlyArrayEmpty(shattered)) {
+    return after
+  }
+  const splashed = Array.reduce(
+    shattered,
+    { zombies: after.zombies, events: [] },
+    splash,
+  )
+  const cracks = Array.map(
+    shattersOf(wasFrozen, splashed.zombies),
+    ({ zombie }) =>
+      GameEvent.ZombieShattered({
+        x: zombie.x,
+        y: zombie.y,
+        kind: zombie.kind,
+      }),
+  )
+  const bounty = bountyOf(levelOf(after), splashed.events)
+  const shards = withEvents(
+    modifyFields(after, { zombies: () => splashed.zombies }),
+    [...cracks, ...splashed.events],
+  )
+  return bounty > 0 ? payKillShared(shards, bounty) : shards
 }

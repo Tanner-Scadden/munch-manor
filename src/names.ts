@@ -8,6 +8,7 @@ import { type Calling, type CosmeticKind, Hat } from './playerData'
 import type {
   FixedShopItemId,
   FridgePrize,
+  GunPerk,
   PickupKind,
   TrapKind,
   WeaponKind,
@@ -137,6 +138,20 @@ export const PRIZE_NAMES: Readonly<Record<FridgePrize, string>> = {
   Freeze: GUN_NAMES.Freeze,
   Sandwich: 'Moldy Sandwich',
   Dud: 'Dud',
+}
+
+// THE STOVE AND THE GAS VALVE
+
+// NOTE: the kitchen's stove bench (src/stove.ts) and the perks it cooks
+// into a gun, and the gas valve that lights the fireplace (src/gasValve.ts).
+export const STOVE_NAME = 'The Stove'
+
+export const VALVE_NAME = 'Gas Valve'
+
+export const GUN_PERK_NAMES: Readonly<Record<GunPerk, string>> = {
+  Spicy: 'Spicy',
+  Crispy: 'Crispy',
+  Hearty: 'Hearty',
 }
 
 // SHOP GOODS
@@ -296,4 +311,17 @@ export const HOUSE_NAMES: Readonly<Record<HouseSpot, string>> = {
   Window: 'Ammo Window',
   Boards: 'Boarded Doors',
   Fridge: FRIDGE_NAME,
+  Stove: STOVE_NAME,
+  Valve: VALVE_NAME,
 }
+
+// THE MEDIC CALL
+
+// NOTE: the words of the MEDIC call (src/medic.ts): the shout on the
+// touch button, and the payoff over a teammate who got a downed player up.
+export const MEDIC_WORD = 'MEDIC!'
+
+export const SAVE_WORDS = {
+  Saved: 'SAVED!',
+  Clutch: 'CLUTCH!',
+} as const

@@ -81,6 +81,7 @@ import {
   Phase,
   type Popup,
 } from './model'
+import { SAVE_WORDS } from './names'
 import { rattlingDoors } from './pacing'
 import { group } from './sprite'
 
@@ -383,6 +384,7 @@ const PARTICLE_COLORS: Readonly<Record<ParticleKind, string>> = {
   Frost: '#c8f0ff',
   IceGib: '#9fd8f0',
   Fog: 'rgba(150, 210, 90, 0.55)',
+  Confetti: '#ff6fb5',
 }
 
 const LIMBS: ReadonlyArray<ParticleKind | DecalKind> = [
@@ -675,7 +677,23 @@ const HORDE_POPUP_SCALE = 2
 const EMPTY_POPUP_SCALE = 2
 
 const popupLook = (popup: Popup): PopupLook => {
-  if (popup.kind === 'Horde') {
+  if (popup.kind === 'Saved') {
+    return {
+      text: SAVE_WORDS.Saved,
+      tone: popup.ageMs < KILL_POPUP_FLASH_MS ? 'Victory' : 'Title',
+      scale: HORDE_POPUP_SCALE,
+      hopPx: KILL_POPUP_HOP_PX,
+      risePx: KILL_POPUP_RISE_PX,
+    }
+  } else if (popup.kind === 'Clutch') {
+    return {
+      text: SAVE_WORDS.Clutch,
+      tone: popup.ageMs < KILL_POPUP_FLASH_MS ? 'Damage' : 'Victory',
+      scale: popup.ageMs < KILL_POPUP_FLASH_MS ? 3 : HORDE_POPUP_SCALE,
+      hopPx: KILL_POPUP_HOP_PX,
+      risePx: KILL_POPUP_RISE_PX,
+    }
+  } else if (popup.kind === 'Horde') {
     return {
       text: 'HORDE!',
       tone: popup.ageMs < KILL_POPUP_FLASH_MS ? 'Damage' : 'Alert',

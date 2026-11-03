@@ -232,6 +232,36 @@ body {
   cursor: not-allowed;
 }
 
+/* MEDIC: a downed player's shout, a red cross on a red-edged pill. It
+   glows in place while the shout rings (data-fresh). */
+
+.cluster-button.medic-button {
+  border-radius: var(--menu-radius-pill);
+  width: 56px;
+  height: 56px;
+  border-color: rgba(232, 52, 58, 0.95);
+  background: rgba(70, 12, 16, 0.85);
+  opacity: 1;
+}
+
+.medic-button .icon-button-glyph {
+  width: 27px;
+  height: 27px;
+}
+
+.medic-button[data-fresh='true'] {
+  animation: medic-glow 240ms steps(2, jump-none) infinite;
+}
+
+@keyframes medic-glow {
+  from {
+    box-shadow: 0 0 0 0 rgba(232, 52, 58, 0);
+  }
+  to {
+    box-shadow: 0 0 10px 4px rgba(255, 120, 110, 0.85);
+  }
+}
+
 /* THE AMMO TAG: a clear button over the ammo window's tag on the canvas,
    so a click or a tap on the tag buys at once. Centered on the tag, never
    smaller than a fingertip. */
@@ -880,7 +910,8 @@ body {
   border-radius: var(--menu-radius-lg);
   background: rgba(28, 22, 34, 0.95);
   color: var(--menu-ink);
-  font: round(clamp(9px, 4.2 * var(--arena-px), 24px), 1px) / 1.3 var(--menu-font);
+  font: round(clamp(9px, 4.2 * var(--arena-px), 24px), 1px) / 1.3
+    var(--menu-font);
   pointer-events: auto;
   touch-action: none;
   cursor: pointer;

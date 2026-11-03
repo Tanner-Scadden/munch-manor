@@ -7,6 +7,7 @@ import { SHATTER_SCALE } from './combat'
 import { TRAP_REPAIR_SHARE, TURRET_RANGE_PX } from './constants'
 import { EXIT_RULES, KITCHEN_EXIT, exitName } from './exits'
 import { COOKER_RULES, FREEZE_RULES, PAN_RULES } from './fridgeWeapons'
+import { VALVE_RULES } from './gasValve'
 import {
   DUD_REFUND,
   FRIDGE_RULES,
@@ -21,9 +22,10 @@ import {
   SHOP_GUIDE_SECTION_NAMES,
 } from './names'
 import { LASER_SIGHT_PRICE, SHOP_ITEMS, ShopGood, repairItemId } from './shop'
-import { BAR_SEGMENTS, SHOP_GUNS } from './shopStats'
+import { BAR_SEGMENTS } from './shopStats'
+import { STOVE_RULES } from './stove'
 import { TRAPS, TRAP_KIND_ORDER } from './traps'
-import { UPGRADE_TIERS, WEAPONS, maxTier, statsAt } from './weapons'
+import { SHOP_GUNS, UPGRADE_TIERS, WEAPONS, maxTier, statsAt } from './weapons'
 import {
   type FixedShopItemId,
   FridgeDoor,
@@ -384,13 +386,16 @@ const PRIZE_LINES: Readonly<Record<FridgePrize, string>> = {
   Cooker: 'Hold, let go, lid goes boom.',
   Pan: 'Swings for the fences.',
   Freeze: 'Freezes small zombies solid.',
-  Sandwich: 'Heals a heart. Smells awful.',
+  Sandwich: 'Heals a heart. Burps cash back.',
   Dud: 'Fish bones. Burps cash back.',
 }
 
 const prizeChips = (prize: FridgePrize): ReadonlyArray<GuideChip> =>
   prize === 'Sandwich'
-    ? [{ art: GuideArt.Heart(), label: '+1' }]
+    ? [
+        { art: GuideArt.Heart(), label: '+1' },
+        { art: GuideArt.House({ spot: 'Fridge' }), label: `$${DUD_REFUND}` },
+      ]
     : prize === 'Dud'
       ? [{ art: GuideArt.House({ spot: 'Fridge' }), label: `$${DUD_REFUND}` }]
       : []
@@ -449,8 +454,18 @@ const houseEntries = (): ReadonlyArray<GuideEntry> => [
   ),
   houseEntry(
     'Fridge',
-    'Hold to pull. Take it or leave it.',
+    `Hold to pull. First pull a break: $${FRIDGE_RULES.firstPrice}.`,
     Option.some(FRIDGE_RULES.price),
+  ),
+  houseEntry(
+    'Stove',
+    'In a break. Hold to cook your gun.',
+    Option.some(STOVE_RULES.prices[0]),
+  ),
+  houseEntry(
+    'Valve',
+    'Hold to light the fireplace.',
+    Option.some(VALVE_RULES.price),
   ),
 ]
 

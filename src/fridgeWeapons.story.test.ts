@@ -164,7 +164,7 @@ describe('the Pressure Cooker', () => {
     expect(lidBlastRadius(1, 1)).toBeGreaterThan(lidBlastRadius(1, 0))
   })
 
-  test('held past full it pops in your hands: a shove and a lost lid, but no harm below Nightmare', () => {
+  test('held past full it pops in your hands: a shove and a lost lid, but no harm', () => {
     story(
       update,
       given(holding(freshGun('Cooker'))),
@@ -189,7 +189,7 @@ describe('the Pressure Cooker', () => {
     )
   })
 
-  test('on Nightmare the pop hurts', () => {
+  test('the pop never hurts, on Nightmare too', () => {
     const popped = Array.reduce(
       [
         ...press,
@@ -198,12 +198,28 @@ describe('the Pressure Cooker', () => {
       nightmare(holding(freshGun('Cooker'))),
       (current, sent) => update(current, sent).model,
     )
-    expect(focusOf(popped).player.hp).toBe(
-      PLAYER_MAX_HP - COOKER_RULES.popDamage,
-    )
+    expect(focusOf(popped).player.charge).toEqual(Charge.Spent())
+    expect(focusOf(popped).player.x).toBeLessThan(PLAYER_X)
+    expect(focusOf(popped).player.hp).toBe(PLAYER_MAX_HP)
   })
 
-  test('a lid that lands at your feet spares you below Nightmare, and not on it', () => {
+  test('the dial fills in 550 ms, and in 400 ms on the DELUXE', () => {
+    const chargeAfter = (tier: number, ms: number): number => {
+      const thrown = Array.reduce(
+        [...press, ...frames(tickCountFor(ms)), FIRE_LIFT, ...frames(1)],
+        holding(modifyFields(freshGun('Cooker'), { tier: () => tier })),
+        (current: Model, sent) => update(current, sent).model,
+      )
+      return Option.getOrThrow(Array.head(thrown.lobs)).charge
+    }
+    expect(chargeAfter(0, 550)).toBe(1)
+    expect(chargeAfter(1, 550)).toBe(1)
+    expect(chargeAfter(2, 400)).toBe(1)
+    expect(chargeAfter(3, 400)).toBe(1)
+    expect(chargeAfter(0, 400)).toBeLessThan(1)
+  })
+
+  test('a lid that lands at your feet never hurts you, on Nightmare too', () => {
     const wall = zombieOf('Tank', 901, PLAYER_X + 12, ROW_Y, { hp: 999 })
     const blastAtFeet = (start: Model): Model =>
       Array.reduce(
@@ -217,7 +233,7 @@ describe('the Pressure Cooker', () => {
     expect(
       focusOf(blastAtFeet(nightmare(holding(freshGun('Cooker'), [wall]))))
         .player.hp,
-    ).toBeLessThan(PLAYER_MAX_HP)
+    ).toBe(PLAYER_MAX_HP)
   })
 
   test('an empty pot reloads, four lids a load', () => {
@@ -372,12 +388,12 @@ describe('Brain Freeze', () => {
             Option.getOrThrow(zombieIn(current, 901)).action,
           ),
         ).toBe(true)
-        expect(spareOf(current).loaded).toBe(11)
+        expect(spareOf(current).loaded).toBe(17)
       }),
     )
   })
 
-  test('any hit on a frozen zombie shatters it for triple damage', () => {
+  test('any hit on a frozen zombie shatters it for four times the damage', () => {
     const frozen = modifyFields(
       zombieOf('Thrower', 900, PLAYER_X + 40, ROW_Y),
       {
@@ -407,12 +423,13 @@ describe('Brain Freeze', () => {
           : update(current, sent).model,
     )
     const hit = Option.getOrThrow(zombieIn(firstHit, 900))
+    expect(SHATTER_SCALE).toBe(4)
     expect(frozen.hp - hit.hp).toBe(SHATTER_SCALE * WEAPONS.Pistol.damage)
     expect(frozen.hp - hit.hp).toBeGreaterThan(WEAPONS.Pistol.damage)
     expect(ZombieAction.isAnyOf(['Frozen'])(hit.action)).toBe(false)
   })
 
-  test('twelve charges, never refilled: empty, it clicks and swaps to the pistol', () => {
+  test('eighteen charges, never refilled: empty, it clicks and swaps to the pistol', () => {
     const empty = modifyFields(freshGun('Freeze'), {
       loaded: () => 0,
       rounds: () => 0,
@@ -429,6 +446,114 @@ describe('Brain Freeze', () => {
         ).toBe(true)
       }),
     )
-    expect(magazineOf('Freeze', 0)).toBe(12)
+    expect(magazineOf('Freeze', 0)).toBe(18)
+  })
+
+  test('the spray stings each zombie for a point and keeps it frozen, spray after spray', () => {
+    const groaner = zombieOf('Shambler', 900, PLAYER_X + 20, ROW_Y, { hp: 9 })
+    const twice = [
+      ...press,
+      ...frames(tickCountFor(FREEZE_RULES.intervalMs) + 2),
+    ]
+    const sprayed = Array.reduce(
+      twice,
+      holding(freshGun('Freeze'), [groaner]),
+      (current: Model, sent) => update(current, sent).model,
+    )
+    const iced = Option.getOrThrow(zombieIn(sprayed, 900))
+    expect(iced.hp).toBe(9 - 2)
+    expect(ZombieAction.isAnyOf(['Frozen'])(iced.action)).toBe(true)
+    expect(spareOf(sprayed).loaded).toBe(magazineOf('Freeze', 0) - 2)
+    const events = eventsOver(holding(freshGun('Freeze'), [groaner]), twice)
+    expect(Array.some(events, GameEvent.isAnyOf(['ZombieShattered']))).toBe(
+      false,
+    )
+  })
+
+  test('the spray reaches 75 px', () => {
+    const far = zombieOf('Shambler', 900, PLAYER_X + 75, ROW_Y, { hp: 9 })
+    const sprayed = update(
+      Array.reduce(
+        press,
+        holding(freshGun('Freeze'), [far]),
+        (current: Model, sent) => update(current, sent).model,
+      ),
+      tick(FRAME_MS).message,
+    ).model
+    expect(
+      ZombieAction.isAnyOf(['Frozen'])(
+        Option.getOrThrow(zombieIn(sprayed, 900)).action,
+      ),
+    ).toBe(true)
+  })
+
+  test('a shatter splashes half its damage on the small zombies beside it', () => {
+    const iced = ZombieAction.Frozen({
+      remainingMs: FREEZE_RULES.frozenMs,
+      durationMs: FREEZE_RULES.frozenMs,
+    })
+    const frozen = modifyFields(
+      zombieOf('Shambler', 900, PLAYER_X + 40, ROW_Y, { hp: 99 }),
+      { action: () => iced },
+    )
+    const beside = zombieOf('Runner', 901, PLAYER_X + 40, ROW_Y + 14, {
+      hp: 99,
+    })
+    const lug = zombieOf('Tank', 902, PLAYER_X + 52, ROW_Y - 14, { hp: 99 })
+    const away = zombieOf('Shambler', 903, PLAYER_X + 40, ROW_Y + 60, {
+      hp: 99,
+    })
+    const pistol = modifyFocus(
+      holding(freshGun('Freeze'), [frozen, beside, lug, away]),
+      {
+        player: player =>
+          modifyFields(player, {
+            arsenal: () => holdingFirst(freshGun('Freeze')),
+          }),
+      },
+    )
+    const firstHit = Array.reduce(
+      [...press, ...frames(20)],
+      pistol,
+      (current: Model, sent) =>
+        Option.getOrThrow(zombieIn(current, 900)).hp < frozen.hp
+          ? current
+          : update(current, sent).model,
+    )
+    const shattered = Option.getOrThrow(zombieIn(firstHit, 900))
+    const shards = Math.round(
+      (frozen.hp - shattered.hp) * FREEZE_RULES.splashShare,
+    )
+    expect(shards).toBe(2 * WEAPONS.Pistol.damage)
+    expect(Option.getOrThrow(zombieIn(firstHit, 901)).hp).toBe(99 - shards)
+    expect(Option.getOrThrow(zombieIn(firstHit, 902)).hp).toBe(99)
+    expect(Option.getOrThrow(zombieIn(firstHit, 903)).hp).toBe(99)
+  })
+
+  test('a Big Lug sprayed again while still chilled freezes solid; Uncle Chunk never does', () => {
+    const twice = [
+      ...press,
+      ...frames(tickCountFor(FREEZE_RULES.intervalMs) + 2),
+    ]
+    const sprayTwice = (zombie: Zombie): Zombie =>
+      Option.getOrThrow(
+        zombieIn(
+          Array.reduce(
+            twice,
+            holding(freshGun('Freeze'), [zombie]),
+            (current: Model, sent) => update(current, sent).model,
+          ),
+          zombie.id,
+        ),
+      )
+    const lug = sprayTwice(
+      zombieOf('Tank', 900, PLAYER_X + 30, ROW_Y, { hp: 99 }),
+    )
+    expect(ZombieAction.isAnyOf(['Frozen'])(lug.action)).toBe(true)
+    expect(lug.action).toMatchObject({ durationMs: 1500 })
+    const chunk = sprayTwice(
+      zombieOf('Boss', 901, PLAYER_X + 30, ROW_Y, { hp: 99 }),
+    )
+    expect(ZombieAction.isAnyOf(['Chilled'])(chunk.action)).toBe(true)
   })
 })

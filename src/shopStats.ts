@@ -5,6 +5,7 @@ import { seatStateAt } from './party'
 import { ShopGood, gunName, maybeRepairTrap, shopItem } from './shop'
 import { TRAPS, healthShare, placedCount } from './traps'
 import {
+  SHOP_GUNS,
   WEAPONS,
   isCarrying,
   maxRounds,
@@ -28,8 +29,6 @@ export type GunBars = Readonly<{
 }>
 
 export const BAR_SEGMENTS = 5
-
-export const SHOP_GUNS: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
 
 const ALL_TIERS = Array.flatMap(SHOP_GUNS, weapon =>
   Array.makeBy(maxTier(weapon) + 1, tier => statsAt(weapon, tier)),
