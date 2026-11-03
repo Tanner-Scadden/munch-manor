@@ -787,10 +787,18 @@ describe('timers', () => {
     )
   })
 
-  test('boosts keep running through Preparation outside the shop', () => {
+  test('a boost holds its time through the break and runs again in the wave', () => {
     story(
       update,
       given(withBoost(preparing, 'Speed', 4000)),
+      ...ticks(10, FRAME_MS),
+      model(({ seats: [{ boosts }] }) => {
+        expect(remainingOf(boosts, 'Speed')).toBe(4000)
+      }),
+    )
+    story(
+      update,
+      given(withBoost(fighting, 'Speed', 4000)),
       ...ticks(10, FRAME_MS),
       model(({ seats: [{ boosts }] }) => {
         expect(remainingOf(boosts, 'Speed')).toBeCloseTo(4000 - 10 * FRAME_MS)
