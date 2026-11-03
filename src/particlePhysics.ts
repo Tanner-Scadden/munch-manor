@@ -181,6 +181,13 @@ const PHYSICS: Readonly<Record<ParticleKind, ParticlePhysics>> = {
     restitution: 0,
     maybeDecalKind: Option.none(),
   },
+  // NOTE: paper flutters: it falls slow and drifts to a stop.
+  Confetti: {
+    gravity: SPARK_GRAVITY / 2,
+    dragPerSecond: DUST_DRAG_PER_SECOND,
+    restitution: 0,
+    maybeDecalKind: Option.none(),
+  },
 }
 
 export const LAUNCH_SIZE: Readonly<Record<ParticleKind, number>> = {
@@ -220,6 +227,7 @@ export const LAUNCH_SIZE: Readonly<Record<ParticleKind, number>> = {
   Frost: 1,
   IceGib: 2,
   Fog: 4,
+  Confetti: 1,
 }
 
 const DECAL_HEIGHT: Readonly<Record<DecalKind, (size: number) => number>> = {

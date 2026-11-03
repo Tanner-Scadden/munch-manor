@@ -20,6 +20,7 @@ import { mendedSpots } from '../heroTells'
 import { maybeKitchenSound } from '../kitchenCall'
 import { Message } from '../message'
 import { AudioState, GameEvent, type Model, type Player } from '../model'
+import { PANTRY_SOUNDS } from '../pantry'
 import { focusOf } from '../party'
 import { PICKUPS } from '../powerups'
 import { TRAPS } from '../traps'
@@ -176,6 +177,7 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     PrizeTaken: () => Option.some<SoundEffect>('Swap'),
     PrizeLeft: () => Option.some<SoundEffect>('Thud'),
     DudBurped: () => Option.none<SoundEffect>(),
+    PantryTaken: ({ goodie }) => Option.some(PANTRY_SOUNDS[goodie]),
     LidLaunched: () => Option.some<SoundEffect>('Whoosh'),
     LidBlasted: () => Option.some<SoundEffect>('Boom'),
     CookerPopped: () => Option.some<SoundEffect>('Pop'),
@@ -193,6 +195,8 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     PlayerDowned: () => Option.some<SoundEffect>('PlayerHurt'),
     PlayerRevived: () => Option.some<SoundEffect>('Clutch'),
     FriendlyFire: () => Option.some<SoundEffect>('PlayerHurt'),
+    MedicCalled: () => Option.some<SoundEffect>('MedicCall'),
+    TeammateSaved: () => Option.some<SoundEffect>('Rescue'),
   })
 
 const maybeEventSoundCue = (event: GameEvent): Option.Option<SoundCue> =>

@@ -2,6 +2,14 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 3, 2026: Now we're cooking
+
+- 🔥 The kitchen is worth the trip: cook a perk into your gun at the stove (Spicy, Crispy, or Hearty), turn the gas valve to light the parlour fireplace and roast whatever walks past, and raid the pantry for a free goodie every break. Kills in the kitchen pay extra too.
+- 🧊 The fridge plays fair: its odds are on the door, Duds are rare, a Sandwich gives a refund too, your first pull each break is cheaper, and a new weapon keeps your old gun's upgrades.
+- 🥶 Brain Freeze bites now: it stings, reaches farther, has more charges, shatters harder and splashes, and can freeze a Big Lug solid. The Pressure Cooker charges way faster and never hurts you.
+- 😇 Nightmare no longer has team damage. Want it? Turn on Friendly Fire in the lobby for bonus score.
+- 🚑 Knocked down? You have 20 seconds now, and you can yell MEDIC! for help. Save a buddy in the nick of time for a CLUTCH!
+
 ## November 2, 2026: Something's cooking
 
 - 🍲 The boarded kitchen door now glows, steams, and smells like soup, Rattles hollers about it every break until you open it, and a little house in your breaks counts the rooms you've found. Rattles also wrote a shop guide: tap the ? in his shop for bars, upgrades, and a fridge full of ???.

@@ -105,7 +105,7 @@ describe('in a fight', () => {
   test('a bot revives a downed human by standing still beside them', () => {
     const downed = withSeatLife(
       0,
-      Life.Downed({ bleedMs: 10_000, reviveMs: 0 }),
+      Life.Downed({ bleedMs: 10_000, reviveMs: 0, callMs: 0 }),
     )(placeSeat(1, 120, 60)(placeSeat(0, 30, 60, 0)(crew())))
     story(
       update,
@@ -124,7 +124,7 @@ describe('in a fight', () => {
   test('a downed bot sits out, and the human can revive it', () => {
     const downed = withSeatLife(
       1,
-      Life.Downed({ bleedMs: 10_000, reviveMs: 0 }),
+      Life.Downed({ bleedMs: 10_000, reviveMs: 0, callMs: 0 }),
     )(placeSeat(1, 60, 60, 0)(placeSeat(0, 62, 60)(crew())))
     expect(botInputs(downed, [1]).get(1)?.trigger).toBe('Released')
   })

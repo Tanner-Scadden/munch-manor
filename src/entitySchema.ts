@@ -51,11 +51,20 @@ export const WeaponKind = Schema.Literals([
 ])
 export type WeaponKind = typeof WeaponKind.Type
 
+// NOTE: what the kitchen's stove cooks into a gun for the rest of the run
+// (src/stove.ts): Spicy hits harder, Crispy skewers one more zombie, Hearty
+// holds more rounds. Rattles never sells one.
+export const GunPerk = Schema.Literals(['Spicy', 'Crispy', 'Hearty'])
+export type GunPerk = typeof GunPerk.Type
+
+// NOTE: `perk` is set only on a gun the stove cooked. A gun holds one at
+// most, and a new gun in its place comes plain, so the perk goes with it.
 export const CarriedGun = Schema.Struct({
   kind: WeaponKind,
   rounds: Schema.Number,
   loaded: Schema.Number,
   tier: Schema.Number,
+  perk: Schema.optionalKey(GunPerk),
 })
 export type CarriedGun = typeof CarriedGun.Type
 
@@ -321,6 +330,7 @@ export const ParticleKind = Schema.Literals([
   'Frost',
   'IceGib',
   'Fog',
+  'Confetti',
 ])
 export type ParticleKind = typeof ParticleKind.Type
 
@@ -462,12 +472,34 @@ export type FridgeDoor = typeof FridgeDoor.Type
 
 // NOTE: `pulls` counts the pulls since the fridge last slammed; `luck`
 // counts its slams, each raising the rare prize's odds a little.
+// `cheapRound` is the round (a break and the wave after it, by its wave
+// number) whose cheap first pulls `cheapSlots` have spent: each seat's
+// first pull of a round costs less (src/leftovers.ts).
 export const Fridge = Schema.Struct({
   door: FridgeDoor,
   pulls: Schema.Number,
   luck: Schema.Number,
+  cheapRound: Schema.Number,
+  cheapSlots: Schema.Array(Schema.Number),
 })
 export type Fridge = typeof Fridge.Type
+
+// THE PANTRY
+
+// NOTE: what the pantry cupboard holds in a break (src/pantry.ts): cash, a
+// free Lid Stack for a Cooker carrier, or a heart for a hurt player. A Lid
+// Stack or a heart nobody can use pays `cash` instead.
+export const PantryGoodie = Schema.Literals(['Cash', 'Lids', 'Heart'])
+export type PantryGoodie = typeof PantryGoodie.Type
+
+// NOTE: `round` is the break it was stocked for, by its wave number, so a
+// break stocks it once and a taken stash stays Bare until the next break.
+export const Pantry = defineTaggedUnion({
+  Bare: { round: Schema.Number },
+  Stocked: { round: Schema.Number, goodie: PantryGoodie, cash: Schema.Number },
+})
+export type Pantry = typeof Pantry.Type
+export type PantryStash = typeof Pantry.Stocked.Type
 
 // NOTE: a Pressure Cooker lid in flight, from where it was thrown to where
 // it lands; `charge` (0 to 1) and `tier` size its blast. It names the seat
@@ -485,6 +517,34 @@ export const Lob = Schema.Struct({
   shooter: Schema.optionalKey(Schema.Number),
 })
 export type Lob = typeof Lob.Type
+
+// THE STOVE AND THE GAS VALVE
+
+// NOTE: the kitchen's stove bench (src/stove.ts): the perk it offers in
+// the break for `wave`, rolled from its own generator once each break.
+export const Stove = Schema.Struct({
+  rngState: Schema.Number,
+  perk: GunPerk,
+  wave: Schema.Number,
+})
+export type Stove = typeof Stove.Type
+
+// NOTE: one player's cooking at the stove: how many guns they have cooked
+// this run, which sets the price, and the break they last cooked in.
+export const Cooking = Schema.Struct({
+  cooks: Schema.Number,
+  lastWave: Schema.Number,
+})
+export type Cooking = typeof Cooking.Type
+
+// NOTE: the kitchen's gas valve (src/gasValve.ts). Lit, the parlour's
+// fireplace burns for the rest of the run: `owner` turned it and is paid
+// for its kills, and `nextBurnMs` counts down to its next burn.
+export const GasValve = defineTaggedUnion({
+  Shut: {},
+  Lit: { owner: Schema.Number, nextBurnMs: MillisNumber },
+})
+export type GasValve = typeof GasValve.Type
 
 export const Callout = Schema.Struct({
   kind: PickupKind,

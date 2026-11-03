@@ -5,6 +5,7 @@ import { maxHpOf } from './calling'
 import { bulletDirection, woundPlayer } from './combat'
 import { BULLET_RADIUS, PLAYER_RADIUS } from './constants'
 import { ZERO_VECTOR, circlesOverlap, closestPointOnSegment } from './geometry'
+import { fallenLife, saved, sounded } from './medic'
 import {
   COOP_RULES,
   atSeat,
@@ -23,6 +24,7 @@ import {
 import type { World } from './world'
 import {
   type Bullet,
+  type DownedLife,
   GameEvent,
   Invulnerability,
   Life,
@@ -35,7 +37,7 @@ import {
 
 // Co-op's life and death (MULTIPLAYER.md, decided row 4): downed players,
 // revives, bleeding out, coming back at the break, READY, and friendly fire
-// on Nightmare. Single player never reaches any of it.
+// with the Friendly Fire modifier. Single player never reaches any of it.
 
 // DOWNED AND REVIVED
 
@@ -64,8 +66,7 @@ const fall = (world: World, slot: PlayerSlot): World => {
     seats: atSeat(slot, {
       seat: seat =>
         modifyFields(seat, {
-          life: () =>
-            Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 }),
+          life: () => fallenLife(COOP_RULES.bleedOutMs),
           readiness: () => 'Waiting',
           downs: count => count + 1,
         }),
@@ -111,25 +112,31 @@ const standUp = (world: World, slot: PlayerSlot, hearts: number): World => {
 const bleed = (
   world: World,
   slot: PlayerSlot,
-  life: Readonly<{ bleedMs: number; reviveMs: number }>,
+  life: DownedLife,
   revivers: ReadonlyArray<SeatState>,
   deltaMs: number,
 ): World => {
   const reviveMs = Array.isReadonlyArrayNonEmpty(revivers)
     ? life.reviveMs + deltaMs
     : 0
-  if (reviveMs >= COOP_RULES.reviveMs) {
+  if (
+    Array.isReadonlyArrayNonEmpty(revivers) &&
+    reviveMs >= COOP_RULES.reviveMs
+  ) {
     return Array.reduce(
       revivers,
-      standUp(world, slot, reviveHeartsOf(world)),
+      saved(standUp(world, slot, reviveHeartsOf(world)), revivers, life),
       (current, reviver) => creditRevive(current, reviver.seat.slot),
     )
   }
   const bleedMs = life.bleedMs - deltaMs
-  return modifySeatRecord(world, slot, seat =>
+  const callMs = life.callMs + deltaMs
+  return modifySeatRecord(sounded(world, slot, life), slot, seat =>
     modifyFields(seat, {
       life: () =>
-        bleedMs > 0 ? Life.Downed({ bleedMs, reviveMs }) : Life.BledOut(),
+        bleedMs > 0
+          ? Life.Downed({ bleedMs, reviveMs, callMs })
+          : Life.BledOut(),
     }),
   )
 }
@@ -199,9 +206,10 @@ export const isEveryoneReady = (world: World): boolean =>
 
 // FRIENDLY FIRE
 
-// NOTE: off on every difficulty (decided row 6, changed with the owner on
-// 2026-11-01). It is the Friendly Fire run modifier, which pays extra
-// (isFriendlyFireOn, src/party.ts).
+// NOTE: off on every difficulty, Nightmare included (decided row 6,
+// changed with the owner on 2026-11-01 and again on 2026-11-02). It is the
+// Friendly Fire run modifier, which pays extra (isFriendlyFireOn,
+// src/party.ts), the only way teammates hurt each other.
 const isTeammateShot =
   (slot: number) =>
   (bullet: Bullet): boolean =>

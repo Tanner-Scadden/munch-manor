@@ -14,17 +14,19 @@ import { maxHpOf } from './calling'
 import { boxAround } from './exits'
 import { dropCharge, isFridgeWeapon } from './fridgeWeapons'
 import { isKitchenOpen } from './kitchen'
-import {
-  atSeat,
-  focusOf,
-  maybePlayerAt,
-  modifySeat,
-  seatStateAt,
-} from './party'
+import { atSeat, focusOf, maybePlayerAt, seatStateAt } from './party'
 import { nextRandom } from './prng'
 import type { Offer } from './purchase'
 import { isKitchenTourOn } from './tutorialRules'
-import { freshGun, isCarrying, putGunInHand, takeGun, takePan } from './weapons'
+import {
+  freshGun,
+  isCarrying,
+  maxTier,
+  maybeReplacedGun,
+  putGunInHand,
+  takeGun,
+  takePan,
+} from './weapons'
 import type { World } from './world'
 import {
   type Fridge,
@@ -45,16 +47,19 @@ import {
 // fog, and the prize pops up and flies to whoever pulled. Its prizes are
 // the fridge-only weapons (src/fridgeWeapons.ts), the Cooker and Brain
 // Freeze into a gun slot as a bought gun goes and the Clang Pan into the
-// melee slot in place of the knife, or a gag: a moldy Sandwich that heals a heart, or a Dud
-// that burps half the price back. After three or four pulls it slams shut
-// with a rumble for a while, and the rare prize comes a little more often
-// after each slam.
+// melee slot in place of the knife, or a gag: a moldy Sandwich that heals a
+// heart and burps half the price back, or a Dud that burps half the price
+// back. Each seat's first pull of a round (a break and the wave after it)
+// is cheaper. A weapon that replaces a gun arrives at that gun's tier. After
+// three or four pulls it slams shut with a rumble for a while, and the rare
+// prize comes a little more often after each slam.
 //
 // The pull draws from the fridge's own stream (`fridgeRngState` in the
 // World's loot), so it never changes the drops or which zombies come.
 
 type FridgeRules = Readonly<{
   price: number
+  firstPrice: number
   reachPx: number
   tagDropPx: number
   openMs: number
@@ -70,6 +75,7 @@ type FridgeRules = Readonly<{
 
 export const FRIDGE_RULES: FridgeRules = {
   price: 75,
+  firstPrice: 50,
   reachPx: 14,
   tagDropPx: 4,
   openMs: 1100,
@@ -83,16 +89,17 @@ export const FRIDGE_RULES: FridgeRules = {
   leavePx: 40,
 }
 
-// NOTE: out of 100 on a first pull. Brain Freeze, the rare one, is 8 in
-// 100, and each slam adds 3 more, up to 20; the gags are one pull in five.
-// The weapon the puller already carries is never pulled again: its share
-// goes to the rest.
+// NOTE: out of 100 on a first pull. Brain Freeze, the rare one, is 8.5 in
+// 100, and each slam adds 3 more, up to 20; the gags are about one pull in
+// seven. The Dud went from 9 to 4 (owner, 2026-11-02), its 5 shared out to
+// the weapons by their weights (36, 36, 8). The weapon the puller already
+// carries is never pulled again: its share goes to the rest.
 export const PRIZE_WEIGHTS: Readonly<Record<FridgePrize, number>> = {
-  Cooker: 36,
-  Pan: 36,
-  Freeze: 8,
+  Cooker: 38.25,
+  Pan: 38.25,
+  Freeze: 8.5,
   Sandwich: 11,
-  Dud: 9,
+  Dud: 4,
 }
 
 export const PRIZE_ORDER: ReadonlyArray<FridgePrize> = [
@@ -104,6 +111,11 @@ export const PRIZE_ORDER: ReadonlyArray<FridgePrize> = [
 ]
 
 export const DUD_REFUND = Math.round(FRIDGE_RULES.price / 2)
+
+// NOTE: the gags that burp cash back: the Dud, and since 2026-11-02 the
+// Sandwich too, on top of its heart, so a gag never feels like a loss.
+export const refundOf = (prize: FridgePrize): number =>
+  prize === 'Dud' || prize === 'Sandwich' ? DUD_REFUND : 0
 
 const weaponOf = (prize: FridgePrize): Option.Option<WeaponKind> =>
   prize === 'Cooker' || prize === 'Pan' || prize === 'Freeze'
@@ -148,6 +160,29 @@ const weaponsOnly = (
     ([prize, weight]) =>
       [prize, isFridgePrizeWeapon(prize) ? weight : 0] as const,
   )
+
+// NOTE: the odds the seat at `slot` would pull with right now, as each
+// prize's share of 1: what the fridge door's odds card shows.
+export const prizeOddsFor = (
+  world: World,
+  slot: PlayerSlot,
+): ReadonlyArray<readonly [FridgePrize, number]> => {
+  const weights = weightsFor(world, slot)
+  const total = Array.reduce(weights, 0, (sum, [, weight]) => sum + weight)
+  return Array.map(
+    weights,
+    ([prize, weight]) => [prize, total > 0 ? weight / total : 0] as const,
+  )
+}
+
+const weightsFor = (
+  world: World,
+  slot: PlayerSlot,
+): ReadonlyArray<readonly [FridgePrize, number]> => {
+  const offered = prizeWeights(world.fridge, seatStateAt(world, slot).player)
+  const weights = world.modifiers.glass ? withoutHealing(offered) : offered
+  return isKitchenTourOn(world) ? weaponsOnly(weights) : weights
+}
 
 // NOTE: a roll from 0 to 1 against the weights, in their order.
 export const pickPrize = (
@@ -222,9 +257,48 @@ const isOfferedTo = (world: World, slot: PlayerSlot): boolean =>
   FridgeDoor.isAnyOf(['Offering'])(world.fridge.door) &&
   world.fridge.door.slot === slot
 
-// NOTE: the kitchen tour's pull is free (src/tutorialRules.ts).
-export const fridgePriceFor = (world: World): number =>
-  isKitchenTourOn(world) ? 0 : FRIDGE_RULES.price
+// NOTE: a round is a break and the wave after it, by its wave number, so
+// a pull mid-wave counts as that wave's break's.
+const roundOf = (world: World): number =>
+  Phase.match(world.phase, {
+    Ready: () => 0,
+    Preparation: ({ wave }) => wave,
+    Wave: ({ wave }) => wave,
+    Paused: ({ round }) => round.wave,
+    Victory: () => 0,
+    GameOver: ({ wave }) => wave,
+  })
+
+const hasCheapPull = (world: World, slot: PlayerSlot): boolean =>
+  world.fridge.cheapRound !== roundOf(world) ||
+  !Array.contains(world.fridge.cheapSlots, slot)
+
+// NOTE: the kitchen tour's pull is free (src/tutorialRules.ts). Otherwise
+// each seat's first pull of a round costs `firstPrice` (owner, 2026-11-02),
+// and every later one `price`.
+export const fridgePriceFor = (world: World, slot: PlayerSlot): number =>
+  isKitchenTourOn(world)
+    ? 0
+    : hasCheapPull(world, slot)
+      ? FRIDGE_RULES.firstPrice
+      : FRIDGE_RULES.price
+
+// NOTE: any paid pull spends the seat's cheap pull for the round; the
+// kitchen tour's free one does not.
+const spendCheapPull = (
+  fridge: Fridge,
+  round: number,
+  slot: PlayerSlot,
+): Fridge =>
+  modifyFields(fridge, {
+    cheapRound: () => round,
+    cheapSlots: slots =>
+      fridge.cheapRound !== round
+        ? [slot]
+        : Array.contains(slots, slot)
+          ? slots
+          : Array.append(slots, slot),
+  })
 
 export const fridgeOffers = (
   world: World,
@@ -237,7 +311,7 @@ export const fridgeOffers = (
         ? [
             {
               target: Purchasable.Fridge(),
-              price: fridgePriceFor(world),
+              price: fridgePriceFor(world, slot),
               box,
               reachPx: FRIDGE_RULES.reachPx,
               isFull: false,
@@ -260,6 +334,18 @@ export const fridgeOffers = (
 
 // THE PULL
 
+// NOTE: a prize that replaces a gun arrives at that gun's tier, up to its
+// own top tier (owner, 2026-11-02), so taking it never throws an upgrade
+// away. Brain Freeze has no tiers; a gun into an empty slot starts at 0.
+export const carriedTierFor = (player: Player, kind: WeaponKind): number =>
+  Math.min(
+    maxTier(kind),
+    Option.match(maybeReplacedGun(player.arsenal), {
+      onNone: () => 0,
+      onSome: ({ tier }) => tier,
+    }),
+  )
+
 // NOTE: the Cooker and Brain Freeze go in a gun slot, as a bought gun
 // does. The Pan goes in the melee slot in place of the knife and both guns
 // stay; a reload of the last gun carries on, as it does with the knife out.
@@ -269,39 +355,43 @@ const giveWeapon = (player: Player, kind: WeaponKind): Player =>
         fireCooldownMs: () => 0,
       })
     : modifyFields(dropCharge(putGunInHand(player)), {
-        arsenal: arsenal => takeGun(arsenal, freshGun(kind, player.calling)),
+        arsenal: arsenal =>
+          takeGun(
+            arsenal,
+            freshGun(kind, player.calling, carriedTierFor(player, kind)),
+          ),
         wield: () => 'Gun',
         fireCooldownMs: () => 0,
       })
 
-// NOTE: a gag resolves at once; a weapon waits on offer in the door.
+// NOTE: a gag resolves at once: the Sandwich heals a heart, and both
+// gags burp cash back. A weapon waits on offer in the door.
 const givePrize = (world: World, slot: PlayerSlot, prize: FridgePrize): World =>
   Option.match(weaponOf(prize), {
     onSome: () => world,
     onNone: () =>
-      prize === 'Sandwich'
-        ? modifySeat(world, slot, {
-            player: player =>
-              modifyFields(player, {
-                hp: hp => Math.min(maxHpOf(player), hp + 1),
-              }),
-          })
-        : modifyFields(world, {
-            seats: atSeat(slot, {
-              wallet: wallet =>
-                modifyFields(wallet, {
-                  balance: balance => balance + DUD_REFUND,
-                }),
+      modifyFields(world, {
+        seats: atSeat(slot, {
+          player: player =>
+            prize === 'Sandwich'
+              ? modifyFields(player, {
+                  hp: hp => Math.min(maxHpOf(player), hp + 1),
+                })
+              : player,
+          wallet: wallet =>
+            modifyFields(wallet, {
+              balance: balance => balance + refundOf(prize),
             }),
-            frameEvents: frameEvents => [
-              ...frameEvents,
-              GameEvent.DudBurped({
-                x: seatStateAt(world, slot).player.x,
-                y: seatStateAt(world, slot).player.y,
-                refund: DUD_REFUND,
-              }),
-            ],
+        }),
+        frameEvents: frameEvents => [
+          ...frameEvents,
+          GameEvent.DudBurped({
+            x: seatStateAt(world, slot).player.x,
+            y: seatStateAt(world, slot).player.y,
+            refund: refundOf(prize),
           }),
+        ],
+      }),
   })
 
 // NOTE: the pull: the price is paid, the prize drawn from the fridge's own
@@ -319,12 +409,7 @@ export const pullFridge = (
   }
   return Option.map(fridgeBoxOf(levelOf(world)), box => {
     const draw = nextRandom(world.loot.fridgeRngState)
-    const offered = prizeWeights(world.fridge, seatStateAt(world, slot).player)
-    const weights = world.modifiers.glass ? withoutHealing(offered) : offered
-    const prize = pickPrize(
-      isKitchenTourOn(world) ? weaponsOnly(weights) : weights,
-      draw.value,
-    )
+    const prize = pickPrize(weightsFor(world, slot), draw.value)
     const spot = fridgeSpot(box)
     const paid = modifyFields(world, {
       seats: atSeat(slot, {
@@ -338,16 +423,19 @@ export const pullFridge = (
       loot: loot =>
         modifyFields(loot, { fridgeRngState: () => draw.nextState }),
       fridge: fridge =>
-        modifyFields(fridge, {
-          pulls: pulls => pulls + 1,
-          door: () =>
-            FridgeDoor.Open({
-              prize,
-              slot,
-              remainingMs: FRIDGE_RULES.openMs,
-              durationMs: FRIDGE_RULES.openMs,
-            }),
-        }),
+        modifyFields(
+          price > 0 ? spendCheapPull(fridge, roundOf(world), slot) : fridge,
+          {
+            pulls: pulls => pulls + 1,
+            door: () =>
+              FridgeDoor.Open({
+                prize,
+                slot,
+                remainingMs: FRIDGE_RULES.openMs,
+                durationMs: FRIDGE_RULES.openMs,
+              }),
+          },
+        ),
       frameEvents: frameEvents => [
         ...frameEvents,
         GameEvent.FridgeOpened({ x: spot.x, y: spot.y, prize }),
@@ -383,14 +471,16 @@ const shut = (world: World): World => {
     onSome: fridgeSpot,
   })
   return modifyFields(rolled, {
-    fridge: fridge => ({
-      door: FridgeDoor.Slammed({
-        remainingMs: FRIDGE_RULES.slamMs,
-        durationMs: FRIDGE_RULES.slamMs,
+    fridge: fridge =>
+      modifyFields(fridge, {
+        door: () =>
+          FridgeDoor.Slammed({
+            remainingMs: FRIDGE_RULES.slamMs,
+            durationMs: FRIDGE_RULES.slamMs,
+          }),
+        pulls: () => 0,
+        luck: luck => luck + 1,
       }),
-      pulls: 0,
-      luck: fridge.luck + 1,
-    }),
     frameEvents: frameEvents => [
       ...frameEvents,
       GameEvent.FridgeSlammed({ x: spot.x, y: spot.y }),

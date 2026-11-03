@@ -5,13 +5,20 @@ import { isBotCrew, maybeCrewBotAt } from './bots'
 import { type Camera, worldToView } from './camera'
 import { maybeRoomOf } from './coop/roomState'
 import { textShapes } from './font'
+import { isCallFresh } from './medic'
 import type { Model } from './model'
 import { seatNamesOf } from './onlineRun'
 import { isBledOut, isCoop, isDowned, leadSeatOf, playersOf } from './party'
-import { NAME_LIFT_DOWNED_PX, seatColorOf, seatHatRiseOf } from './partyView'
+import {
+  NAME_LIFT_CALLING_PX,
+  NAME_LIFT_DOWNED_PX,
+  seatColorOf,
+  seatHatRiseOf,
+} from './partyView'
 import type { Calling } from './playerData'
 import { TOP_LEFT, bakeShapes, placeAt, spriteShapes } from './sprite'
 import { isBreak } from './waves'
+import type { Seat } from './worldSchema'
 
 // What an online co-op run adds over the players (MULTIPLAYER.md, Phase
 // 2): each teammate's name over their head, READY over everyone who is
@@ -230,6 +237,16 @@ const nameTagShapes = (
 const NAME_BOTTOM_LIFT_PX = 8
 const READY_LIFT_PX = 21
 
+// NOTE: over the head, the revive icon, or a MEDIC! bubble.
+const nameLiftOf = (model: Model, slot: number, seat: Seat): number => {
+  if (isCallFresh(seat)) {
+    return NAME_LIFT_CALLING_PX
+  }
+  return isDowned(seat)
+    ? NAME_LIFT_DOWNED_PX
+    : NAME_BOTTOM_LIFT_PX + seatHatRiseOf(model, slot)
+}
+
 // NOTE: in the world's own pixels, drawn with the players' overheads.
 export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
   if (!isOnline(model)) {
@@ -247,10 +264,7 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
                 names.get(slot) ?? `P${slot + 1}`,
                 seatColorOf(slot),
                 player.x,
-                player.y -
-                  (isDowned(seat)
-                    ? NAME_LIFT_DOWNED_PX
-                    : NAME_BOTTOM_LIFT_PX + seatHatRiseOf(model, slot)),
+                player.y - nameLiftOf(model, slot, seat),
                 player.calling,
                 Option.isSome(maybeCrewBotAt(model, slot)),
               )),
@@ -310,6 +324,48 @@ const BADGES: ReadonlyArray<ReadonlyArray<Canvas.Shape>> = Array.map(
   slot => badgeOf(seatColorOf(slot)),
 )
 
+// NOTE: a teammate off screen who just shouted MEDIC! (src/medic.ts): their
+// badge flashes between their own and a bright one, white edged with a red
+// cross, a ring of light round it, for as long as the shout is fresh.
+const CALL_FLASH_MS = 120
+const CALL_GLOW_PX = 2
+
+const CALLING_BADGE: ReadonlyArray<Canvas.Shape> = spriteShapes(
+  [
+    '..ggggggggg..',
+    '.ggggggggggg.',
+    'gg.ooooooo.gg',
+    'ggowwwwwwwogg',
+    'ggowwwrwwwogg',
+    'ggowwwrwwwogg',
+    'ggowrrrrrwogg',
+    'ggowwwrwwwogg',
+    'ggowwwrwwwogg',
+    'ggowwwwwwwogg',
+    'gg.ooooooo.gg',
+    '.ggggggggggg.',
+    '..ggggggggg..',
+  ],
+  {
+    g: 'rgba(255, 244, 214, 0.55)',
+    o: BADGE_EDGE,
+    w: '#f4f1de',
+    r: '#e8343a',
+  },
+  TOP_LEFT,
+)
+
+const badgeShapeOf = (
+  x: number,
+  y: number,
+  slot: number,
+  isCalling: boolean,
+  elapsedMs: number,
+): Canvas.Shape =>
+  isCalling && Math.floor(elapsedMs / CALL_FLASH_MS) % 2 === 0
+    ? placeAt(x - CALL_GLOW_PX, y - CALL_GLOW_PX, CALLING_BADGE)
+    : placeAt(x, y, BADGES[slot % BADGES.length] ?? [])
+
 const clamp = (value: number, low: number, high: number): number =>
   Math.max(low, Math.min(high, value))
 
@@ -331,7 +387,7 @@ export const coopEdgeShapes = (
     Array.filter(
       ({ seat: { slot }, seat }) => slot !== ownSlot && !isBledOut(seat),
     ),
-    Array.flatMap(({ seat: { slot }, player }) => {
+    Array.flatMap(({ seat: { slot }, seat, player }) => {
       const at = worldToView(camera, player)
       const isOnScreen =
         at.x >= left && at.x <= right && at.y >= top && at.y <= bottom
@@ -340,7 +396,7 @@ export const coopEdgeShapes = (
       }
       const x = Math.round(clamp(at.x, left, right - BADGE_PX))
       const y = Math.round(clamp(at.y, top, bottom - BADGE_PX))
-      return [placeAt(x, y, BADGES[slot % BADGES.length] ?? [])]
+      return [badgeShapeOf(x, y, slot, isCallFresh(seat), model.elapsedMs)]
     }),
   )
 }

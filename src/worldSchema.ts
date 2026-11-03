@@ -17,6 +17,7 @@ import {
   BossMove,
   Bullet,
   Charge,
+  Cooking,
   DoorId,
   ExitId,
   FarAttack,
@@ -24,6 +25,7 @@ import {
   Fridge,
   FridgeDoor,
   FridgePrize,
+  GasValve,
   Glob,
   Intent,
   Invulnerability,
@@ -31,11 +33,14 @@ import {
   Lob,
   Loot,
   Melee,
+  Pantry,
+  PantryGoodie,
   Pickup,
   PickupKind,
   Player,
   Prize,
   Reload,
+  Stove,
   TrapKind,
   Vector,
   WeaponKind,
@@ -159,6 +164,12 @@ export const GameEvent = defineTaggedUnion({
   PrizeTaken: { x: PositionNumber, y: PositionNumber },
   PrizeLeft: { x: PositionNumber, y: PositionNumber },
   DudBurped: { x: PositionNumber, y: PositionNumber, refund: Schema.Number },
+  PantryTaken: {
+    x: PositionNumber,
+    y: PositionNumber,
+    goodie: PantryGoodie,
+    cash: Schema.Number,
+  },
   LidLaunched: { x: PositionNumber, y: PositionNumber, direction: Heading },
   LidBlasted: { x: PositionNumber, y: PositionNumber, radius: Schema.Number },
   CookerPopped: { x: PositionNumber, y: PositionNumber, direction: Heading },
@@ -176,6 +187,15 @@ export const GameEvent = defineTaggedUnion({
   PlayerDowned: { x: PositionNumber, y: PositionNumber },
   PlayerRevived: { x: PositionNumber, y: PositionNumber },
   FriendlyFire: { x: PositionNumber, y: PositionNumber, direction: Heading },
+  // NOTE: a downed player shouts MEDIC! (src/medic.ts), where they lie.
+  MedicCalled: { x: PositionNumber, y: PositionNumber },
+  // NOTE: a teammate got a downed player up, at the reviver; a clutch save
+  // came with under MEDIC_RULES.clutchBleedMs of bleed left.
+  TeammateSaved: {
+    x: PositionNumber,
+    y: PositionNumber,
+    clutch: Schema.Boolean,
+  },
 })
 export type GameEvent = typeof GameEvent.Type
 
@@ -197,6 +217,8 @@ export const PopupKind = Schema.Literals([
   'Horde',
   'Wipe',
   'Kaboom',
+  'Saved',
+  'Clutch',
 ])
 export type PopupKind = typeof PopupKind.Type
 
@@ -460,12 +482,16 @@ export type ShopState = typeof ShopState.Type
 // NOTE: something in the world bought by standing still or holding the
 // interact key beside it, the way a wall buy works (src/purchase.ts): a
 // boarded exit, the Mystery Leftovers fridge (src/leftovers.ts) and its
-// prize, or mid-wave the held gun's ammo at the stall (src/ammoCounter.ts).
+// prize, mid-wave the held gun's ammo at the stall (src/ammoCounter.ts),
+// and in the kitchen the stove bench (src/stove.ts) and the gas valve
+// (src/gasValve.ts).
 export const Purchasable = defineTaggedUnion({
   Exit: { exit: ExitId },
   Fridge: {},
   Prize: {},
   Ammo: {},
+  Stove: {},
+  Valve: {},
 })
 export type Purchasable = typeof Purchasable.Type
 
@@ -619,10 +645,16 @@ export const SOLO_SLOT: PlayerSlot = 0
 // NOTE: in co-op a player at zero hearts is Downed: they crawl, cannot
 // shoot, and bleed out when bleedMs runs out, unless a teammate standing
 // still beside them fills reviveMs first. A BledOut player is out of the
-// fight until the next break (MULTIPLAYER.md, decided row 4).
+// fight until the next break (MULTIPLAYER.md, decided row 4). `callMs` is
+// how long ago they last shouted MEDIC! (src/medic.ts): 0 is a shout the
+// next tick sounds.
 export const Life = defineTaggedUnion({
   Standing: {},
-  Downed: { bleedMs: MillisNumber, reviveMs: MillisNumber },
+  Downed: {
+    bleedMs: MillisNumber,
+    reviveMs: MillisNumber,
+    callMs: MillisNumber,
+  },
   BledOut: {},
 })
 export type Life = typeof Life.Type
@@ -677,6 +709,7 @@ export const SeatState = Schema.Struct({
   shopCategory: ShopCategory,
   laserSight: LaserSight,
   purchase: Purchase,
+  cooking: Cooking,
 })
 export type SeatState = typeof SeatState.Type
 
@@ -716,6 +749,9 @@ export const World = Schema.Struct({
   level: LevelState,
   ovens: Schema.Array(Oven),
   fridge: Fridge,
+  pantry: Pantry,
+  stove: Stove,
+  gasValve: GasValve,
   rngState: Schema.Number,
   hitStop: HitStop,
   lessons: Lessons,
@@ -760,6 +796,8 @@ export const idleIntent: Intent = {
 }
 
 export const emptyTrapStock: TrapCounts = { Barricade: 0, Turret: 0 }
+
+export const noCooking: Cooking = { cooks: 0, lastWave: 0 }
 
 export const noPractice: Practice = { movedPx: 0, aimedShots: 0 }
 
@@ -814,11 +852,27 @@ export const freshLoot = (seed: number): Loot => ({
   fridgeRngState: (seed ^ FRIDGE_SEED_SALT) >>> 0,
 })
 
+const STOVE_SEED_SALT = 0x5709e3c1
+
+// NOTE: the stove's own generator, apart from the run's, so its rolls move
+// no other; `wave` 0 is no break yet, so the first break rolls its perk.
+export const freshStove = (seed: number): Stove => ({
+  rngState: (seed ^ STOVE_SEED_SALT) >>> 0,
+  perk: 'Spicy',
+  wave: 0,
+})
+
+export const shutValve: GasValve = GasValve.Shut()
+
 export const shutFridge: Fridge = {
   door: FridgeDoor.Shut(),
   pulls: 0,
   luck: 0,
+  cheapRound: 0,
+  cheapSlots: [],
 }
+
+export const barePantry: Pantry = Pantry.Bare({ round: 0 })
 
 export const initialHitStop: HitStop = HitStop.Running({ cooldownMs: 0 })
 

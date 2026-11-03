@@ -1,6 +1,6 @@
 import { Array, Option } from 'effect'
 
-import { focusSlotOf } from './party'
+import { focusSlotOf, isDowned, seatStateAt } from './party'
 import { isInteractTaken, maybeTapOffer } from './purchase'
 import { SeatAction } from './stepWorld'
 import type { World } from './world'
@@ -11,7 +11,7 @@ import type { World } from './world'
 // block of their own (src/couch.ts).
 
 // NOTE: held to buy at a purchasable (src/purchase.ts), pressed to buy at
-// the ammo window, and pressed for READY elsewhere.
+// the ammo window, pressed for READY elsewhere, and while downed, MEDIC!
 export const INTERACT_KEY = 'Enter'
 
 export type ActionKeys = Readonly<{
@@ -33,6 +33,7 @@ const PLAYER_ACTION_KEYS: ActionKeys = {
 }
 
 const ACTIONS: ReadonlyArray<readonly [keyof ActionKeys, SeatAction]> = [
+  ['ready', SeatAction.CallMedic()],
   ['swap', SeatAction.Swap()],
   ['knife', SeatAction.Melee()],
   ['reload', SeatAction.Reload()],
@@ -44,12 +45,14 @@ const ACTIONS: ReadonlyArray<readonly [keyof ActionKeys, SeatAction]> = [
 
 // NOTE: at a purchasable the interact key is held to buy (src/purchase.ts),
 // so READY's key, the same key, starts nothing there; at the ammo window a
-// press of it buys at once. `seat` is the World as the pressing seat sees
-// it.
+// press of it buys at once. While downed it shouts MEDIC! and nothing
+// else, even while the last shout cools down. `seat` is the World as the
+// pressing seat sees it.
 const isOpenTo = (seat: World, action: SeatAction): boolean =>
   SeatAction.matchOrElse(
     action,
     {
+      CallMedic: () => isDowned(seatStateAt(seat, focusSlotOf(seat)).seat),
       Ready: () => !isInteractTaken(seat, focusSlotOf(seat)),
       BuyAmmo: () => Option.isSome(maybeTapOffer(seat, focusSlotOf(seat))),
     },

@@ -156,7 +156,7 @@ export const panPlan = (model: Model): FridgePlan => {
 
 // Brain Freeze sprays at a small zombie close by, or at a group of two or
 // more in its reach, then the bot shoots the frozen ones with the pistol,
-// where any hit does triple damage.
+// where any hit does four times the damage.
 const FREEZE_CLOSE_PX = 30
 const FREEZE_GROUP_PX = 20
 

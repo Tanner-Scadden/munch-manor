@@ -9,6 +9,7 @@ import { QUARTER_TURN } from './drawing'
 import { healthBarShapes } from './healthBarView'
 import { sceneShapes } from './layers'
 import { update } from './main'
+import { MEDIC_RULES } from './medic'
 import { Arsenal, Life, type Model, Reload } from './model'
 import {
   atSeat,
@@ -17,8 +18,14 @@ import {
   placeSeat,
   withSeatLife,
 } from './model.fixture'
-import { COOP_RULES, focusOf, focusSlotOf, modifyFocus } from './party'
-import { reviveRingGroundShapes } from './partyView'
+import {
+  COOP_RULES,
+  focusOf,
+  focusSlotOf,
+  maybePlayerAt,
+  modifyFocus,
+} from './party'
+import { medicBubbleShape, reviveRingGroundShapes } from './partyView'
 import { reloadBarShapes } from './playerView'
 import { maybeOfferInReach } from './purchase'
 import { STALL_BOX } from './shop'
@@ -83,7 +90,7 @@ const hasBleedBar = (current: Model): boolean => {
 const downedAt = (slot: number) =>
   withSeatLife(
     slot,
-    Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0 }),
+    Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0, callMs: 0 }),
   )
 
 describe('a downed teammate', () => {
@@ -242,5 +249,59 @@ describe('your own downed player', () => {
         ),
       ),
     ).toBe(true)
+  })
+})
+
+describe('the MEDIC bubble', () => {
+  const calledAt = (slot: number, callMs: number) =>
+    withSeatLife(
+      slot,
+      Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0, callMs }),
+    )
+
+  const bubbleOf = (current: Model, slot: number): Canvas.Shape => {
+    const { player, seat } = Option.getOrThrow(maybePlayerAt(current, slot))
+    return medicBubbleShape(
+      player.x,
+      player.y,
+      seat.life._tag === 'Downed' ? seat.life.callMs : 0,
+    )
+  }
+
+  test('pops over a teammate who just shouted, and over your own body', () => {
+    story(
+      update,
+      given(
+        pipeline(
+          placeSeat(0, LEFT_X, ROW_Y, 0),
+          placeSeat(1, RIGHT_X, ROW_Y, 0),
+          calledAt(0, 0),
+          calledAt(1, 0),
+        )(crewInWave(3)),
+      ),
+      ...ticks(1, TICK_MS),
+      model(current => {
+        expect(isDrawn(current, bubbleOf(current, 0))).toBe(true)
+        expect(isDrawn(current, bubbleOf(current, 1))).toBe(true)
+      }),
+    )
+  })
+
+  test('is gone once the shout is old, and never over a standing player', () => {
+    story(
+      update,
+      given(
+        pipeline(
+          placeSeat(0, LEFT_X, ROW_Y),
+          placeSeat(1, RIGHT_X, ROW_Y, 0),
+          calledAt(1, MEDIC_RULES.freshMs),
+        )(crewInWave(2)),
+      ),
+      ...ticks(1, TICK_MS),
+      model(current => {
+        expect(isDrawn(current, bubbleOf(current, 1))).toBe(false)
+        expect(isDrawn(current, medicBubbleShape(LEFT_X, ROW_Y, 0))).toBe(false)
+      }),
+    )
   })
 })

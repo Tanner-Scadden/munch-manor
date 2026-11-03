@@ -32,6 +32,7 @@ import {
   textWidth,
 } from './font'
 import { clamp } from './geometry'
+import { PERK_ICONS } from './kitchenGearView'
 import { maybeLeakSpan } from './kitchenLeak'
 import { isPending, isPracticeGateHeld } from './lessons'
 import {
@@ -87,7 +88,7 @@ import {
   maxTier,
   maybePanOf,
 } from './weapons'
-import { type SeatState } from './worldSchema'
+import { type GunPerk, type SeatState } from './worldSchema'
 
 // HUD
 
@@ -444,7 +445,13 @@ type SlotLook = Readonly<{
   isBeckoning?: boolean
   maybeIcon?: Option.Option<Sprite>
   isPulsing?: boolean
+  maybePerk?: Option.Option<GunPerk>
 }>
+
+// NOTE: a cooked gun's perk (src/stove.ts) sits on its slot's top left
+// corner like a sticker, half over the border, clear of the icon and the
+// count.
+const PERK_STICKER_OUT_PX = 3
 
 const METER_WIDTH = 8
 const METER_COLOR = '#ffe066'
@@ -590,6 +597,7 @@ const slotContentShapes = (
     ammoLook,
     maybeMeter = Option.none(),
     maybeIcon = Option.none(),
+    maybePerk = Option.none(),
   } = look
   const middle = x + width / 2
   return [
@@ -621,6 +629,16 @@ const slotContentShapes = (
                 slotGun,
               ),
             ],
+    }),
+    ...Option.match(maybePerk, {
+      onNone: () => [],
+      onSome: perk => [
+        placeSprite(
+          x - PERK_STICKER_OUT_PX,
+          top - PERK_STICKER_OUT_PX,
+          PERK_ICONS[perk],
+        ),
+      ],
     }),
     ...Option.match(maybeIcon, {
       onNone: () => [],
@@ -727,6 +745,7 @@ const gunSlotLook = (
   ammo: ammoText(gun),
   isHeld,
   ammoLook: ammoLook(player, isHeld, gun),
+  maybePerk: Option.fromNullishOr(gun.perk),
 })
 
 const EMPTY_SLOT: SlotLook = {

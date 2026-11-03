@@ -13,11 +13,13 @@ import {
   levelFor,
   levelOf,
   openExitIn,
+  startingLevel,
 } from './arena'
 import { CALLINGS, isCallingUnlocked } from './calling'
 import { PLAYER_MAX_HP, PREPARATION_MS } from './constants'
 import { biteGraceScale } from './difficulty'
 import { KITCHEN_EXIT } from './exits'
+import { valveBoxOf } from './gasValve'
 import { fridgeBoxOf, pickPrize, prizeWeights } from './leftovers'
 import {
   type Bullet,
@@ -45,12 +47,14 @@ import { nextRandom } from './prng'
 import { grantedVeteran } from './rank'
 import { freshRun } from './runReset'
 import { STALL_BOX } from './shop'
+import { stoveBoxOf } from './stove'
 import { PHONE_PORTRAIT, SURFACE, zombieOf } from './testing'
 import { asVeteran } from './veteran'
 import { freshGun } from './weapons'
 import { type World, modifyWorldFields, withWorld } from './world'
 import {
   Arsenal,
+  Invulnerability,
   type Life,
   type Pickup,
   type PickupKind,
@@ -438,6 +442,23 @@ export const withSeatLife =
     )
 
 // NOTE: changes made to a Model one after another, in order.
+// NOTE: a seat no zombie can hurt, so a long test keeps its run going.
+export const untouchableSeat =
+  (slot: number) =>
+  (current: Model): Model =>
+    atSeat(current, slot, world =>
+      modifyFocus(world, {
+        player: player =>
+          modifyFields(player, {
+            invulnerability: () =>
+              Invulnerability.Invulnerable({
+                remainingMs: 1e9,
+                durationMs: 1e9,
+              }),
+          }),
+      }),
+    )
+
 export const pipeline =
   (...steps: ReadonlyArray<(current: Model) => Model>) =>
   (start: Model): Model =>
@@ -468,3 +489,56 @@ export const withPickups = <M extends World>(
   base: M,
   pickups: ReadonlyArray<Pickup>,
 ): M => modifyWorldFields(base, { pickups: () => pickups })
+
+// THE STOVE AND THE GAS VALVE
+
+// NOTE: a fresh run with the kitchen open, in `phase`, and the player at
+// `spot` with `balance` to spend, for the stove's and the valve's tests.
+const inKitchen = (
+  spot: Readonly<{ x: number; y: number }>,
+  balance: number,
+  phase: Phase,
+): Model =>
+  modifyFocus(
+    modifyFields(freshRunModel(), {
+      level: level => openExitIn(level, KITCHEN_EXIT),
+      phase: () => phase,
+    }),
+    {
+      wallet: () => ({ balance, earned: balance, shown: balance }),
+      player: player =>
+        modifyFields(player, { x: () => spot.x, y: () => spot.y }),
+    },
+  )
+
+export const kitchenBreak = (wave: number): Phase =>
+  Phase.Preparation({
+    wave,
+    remainingMs: 120_000,
+    durationMs: 120_000,
+    spawns: [DISTANT_SPAWN],
+  })
+
+const stoveBox = Option.getOrThrow(
+  stoveBoxOf(inKitchen({ x: 0, y: 0 }, 0, kitchenBreak(5))),
+)
+
+const AT_STOVE = {
+  x: (stoveBox.left + stoveBox.right) / 2,
+  y: stoveBox.bottom + 8,
+}
+
+export const atStove = (balance: number, wave = 5): Model =>
+  inKitchen(AT_STOVE, balance, kitchenBreak(wave))
+
+const valveBox = Option.getOrThrow(
+  valveBoxOf(levelOf({ level: openExitIn(startingLevel, KITCHEN_EXIT) })),
+)
+
+const AT_VALVE = {
+  x: valveBox.left - 8,
+  y: (valveBox.top + valveBox.bottom) / 2,
+}
+
+export const atValve = (balance: number, phase: Phase): Model =>
+  inKitchen(AT_VALVE, balance, phase)

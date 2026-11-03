@@ -7,16 +7,19 @@ import { DialogBlock } from '@foldkit/ui'
 
 import { ShopDialogBinding } from './bindings'
 import { update } from './main'
+import { MEDIC_RULES } from './medic'
 import { Message } from './message'
-import { BreakClock, type Model, Phase, ShopState } from './model'
+import { BreakClock, Life, type Model, Phase, ShopState } from './model'
 import {
   DISTANT_SPAWN,
+  crewInWave,
   midWaveAtStall,
   quietWave,
   readyModel,
   withArsenal,
+  withSeatLife,
 } from './model.fixture'
-import { leadSeatOf, modifyFocus } from './party'
+import { COOP_RULES, leadSeatOf, modifyFocus } from './party'
 import { actionCodeOf, heldAction, seatActionOf } from './roomWorld'
 import { SeatAction, applySeatAction } from './stepWorld'
 import {
@@ -105,6 +108,16 @@ const atCounter = modifyFocus(
   },
 )
 
+// NOTE: a crew in a fight with the lead down, their last shout cooled.
+const downedLead = withSeatLife(
+  0,
+  Life.Downed({
+    bleedMs: COOP_RULES.bleedOutMs / 2,
+    reviveMs: 0,
+    callMs: MEDIC_RULES.cooldownMs,
+  }),
+)(crewInWave(2))
+
 const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
   Swap: {
     from: withArsenal(inWave, holdingFirst(SHOTGUN)),
@@ -169,6 +182,11 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
     from: midWaveAtStall('Smg', 10),
     action: SeatAction.BuyAmmo(),
     presses: [Message.ClickedAmmoTag()],
+  },
+  CallMedic: {
+    from: downedLead,
+    action: SeatAction.CallMedic(),
+    presses: [Message.ClickedMedicButton()],
   },
 }
 

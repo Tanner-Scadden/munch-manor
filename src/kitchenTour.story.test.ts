@@ -23,6 +23,7 @@ import {
   type Model,
   Party,
   Phase,
+  SOLO_SLOT,
   Tour,
 } from './model'
 import { AT_FRIDGE, atFridge, freshRunModel } from './model.fixture'
@@ -155,7 +156,7 @@ describe('the kitchen tour', () => {
   test('the free pull is always a weapon, from the fridge stream', () => {
     Array.forEach(['Sandwich', 'Dud', 'Cooker'] as const, prize => {
       const start = frames(atOpenFridge(prize), 1)
-      expect(fridgePriceFor(start)).toBe(0)
+      expect(fridgePriceFor(start, SOLO_SLOT)).toBe(0)
       const pulled = holdEnter(start)
       expect(focusOf(pulled).wallet.balance).toBe(5)
       expect(pulled.fridge.pulls).toBe(1)
@@ -259,7 +260,7 @@ describe('the kitchen tour', () => {
     })
     expect(isKitchenTourOn(crew)).toBe(false)
     expect(exitPriceFor(crew)).toBe(EXIT_RULES.price)
-    expect(fridgePriceFor(crew)).toBe(FRIDGE_RULES.price)
+    expect(fridgePriceFor(crew, SOLO_SLOT)).toBe(FRIDGE_RULES.firstPrice)
     expect(stepOf(frames(crew, 2))).toEqual(Option.none())
   })
 })

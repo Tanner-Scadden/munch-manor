@@ -324,6 +324,20 @@ export const FRIDGE_OPEN_TICKS =
 // NOTE: fixed-step frames that hold a stand-to-buy prompt until it buys.
 export const HOLD_TICKS = Math.ceil(PURCHASE_RULES.holdMs / FIXED_STEP_MS) + 1
 
+// NOTE: Enter held at a purchasable until the hold buys, then let go.
+export const holdToBuy = Story.steps(
+  press('Enter'),
+  ...ticks(HOLD_TICKS, FIXED_STEP_MS),
+  release('Enter'),
+)
+// NOTE: Enter held for `count` fixed-step frames, then let go: a hold to
+// buy at whatever purchasable the player stands at.
+export const holdEnter = (count: number) => [
+  press('Enter'),
+  ...ticks(count, FIXED_STEP_MS),
+  release('Enter'),
+]
+
 // NOTE: fixed-step frames that stand the player at a counter long enough for
 // its prompt to come up.
 export const STAND_TICKS = Math.ceil(PURCHASE_RULES.standMs / FIXED_STEP_MS) + 1

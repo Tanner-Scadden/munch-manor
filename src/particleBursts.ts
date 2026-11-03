@@ -443,6 +443,51 @@ export const coin =
     ]
   }
 
+// NOTE: a save's confetti (src/medic.ts): pink paper, gold sparks, and
+// pale blue flecks, thrown up over the reviver's head and floating down.
+export const CONFETTI_PER_SAVE = 14
+export const CONFETTI_PER_CLUTCH = 24
+const CONFETTI_KINDS: Array.NonEmptyReadonlyArray<ParticleKind> = [
+  'Confetti',
+  'Spark',
+  'Frost',
+]
+const CONFETTI_HEIGHT = 16
+const CONFETTI_SPEED_MIN = 20
+const CONFETTI_SPEED_MAX = 55
+const CONFETTI_LIFT_MIN = 50
+const CONFETTI_LIFT_MAX = 90
+const CONFETTI_LIFETIME_MS = 900
+
+export const confettiBit =
+  (ground: Vector) =>
+  (state: number): Seeded<Particle> => {
+    const kindDraw = nextRandom(state)
+    const angleDraw = nextRandom(kindDraw.nextState)
+    const speedDraw = nextRandom(angleDraw.nextState)
+    const liftDraw = nextRandom(speedDraw.nextState)
+    const kind = Option.getOrElse(
+      Array.get(
+        CONFETTI_KINDS,
+        Math.floor(kindDraw.value * CONFETTI_KINDS.length),
+      ),
+      () => Array.headNonEmpty(CONFETTI_KINDS),
+    )
+    return [
+      liftDraw.nextState,
+      launch({
+        kind,
+        ground,
+        height: CONFETTI_HEIGHT,
+        angle: angleDraw.value * Math.PI * 2,
+        speed: between(speedDraw.value, CONFETTI_SPEED_MIN, CONFETTI_SPEED_MAX),
+        lift: between(liftDraw.value, CONFETTI_LIFT_MIN, CONFETTI_LIFT_MAX),
+        size: LAUNCH_SIZE.Confetti,
+        lifetimeMs: CONFETTI_LIFETIME_MS,
+      }),
+    ]
+  }
+
 export const woodBit =
   (kind: ParticleKind, ground: Vector) =>
   (state: number): Seeded<Particle> => {

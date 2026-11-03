@@ -24,8 +24,9 @@ import {
   advanceLobs,
   fireFridgeWeapon,
   flattenPans,
-  shatterEvents,
+  resolveShatters,
 } from './fridgeWeapons'
+import { burnHearth } from './gasValve'
 import {
   OUTWARD,
   addVectors,
@@ -42,6 +43,7 @@ import { advanceKitchen, soupSkid } from './kitchen'
 import { stabWithKnife } from './knife'
 import { advanceFridge } from './leftovers'
 import { advanceIntensity } from './pacing'
+import { advancePantry } from './pantry'
 import {
   COOP_RULES,
   facingNearest,
@@ -58,6 +60,7 @@ import { advancePowerUps, playerSpeed } from './powerups'
 import { advancePurchase } from './purchase'
 import { advanceParty } from './revive'
 import { refreshShopPresence } from './shop'
+import { rollStove } from './stove'
 import { advanceTraps, clearBrokenTraps, trapBlockers } from './traps'
 import { advanceRound, endWhenDefeated } from './waves'
 import { maybePanOf } from './weapons'
@@ -427,6 +430,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     struck => advanceLobs(struck, deltaMs),
     trapped => advanceTraps(trapped, seconds, deltaMs),
     trapped => advanceKitchen(armed, trapped, deltaMs),
+    cooked => burnHearth(cooked, deltaMs),
     cooked => advanceFridge(cooked, deltaMs),
     contacted => standingSeats(contacted, resolvePlayerContact),
     contacted => recoverActions(contacted, deltaMs),
@@ -445,8 +449,10 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     blasted => feelIntensity(model, blasted, deltaMs),
     felt => advancePowerUps(felt, advanceRound(felt, deltaMs), deltaMs),
     rounded => flattenAtBreak(model, rounded),
+    advancePantry,
+    rollStove,
     rounded => shedParts(model, rounded),
-    shed => shatterEvents(model, shed),
+    shed => resolveShatters(model, shed),
     downed => advanceParty(downed, deltaMs),
     endWhenDefeated,
     shutStallOutsideBreak,

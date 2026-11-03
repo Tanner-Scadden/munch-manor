@@ -19,7 +19,11 @@ import {
   isExitOfferOpenFor,
 } from '../../../src/exits'
 import { isFridgeWeapon } from '../../../src/fridgeWeapons'
-import { FRIDGE_RULES, fridgeBoxOf } from '../../../src/leftovers'
+import {
+  FRIDGE_RULES,
+  fridgeBoxOf,
+  fridgePriceFor,
+} from '../../../src/leftovers'
 import { Message } from '../../../src/message'
 import { focusOf, focusSlotOf, leadSeatOf } from '../../../src/party'
 import { maybeOfferInReach } from '../../../src/purchase'
@@ -423,7 +427,7 @@ export const wouldTake = (model: Model): boolean => {
 
 // It pulls only when it would take whatever weapon came out: the worst of
 // the weapons the fridge can still give it (never the one it carries) must
-// beat its weaker gun. Otherwise the $75 buys a prize it walks away from.
+// beat its weaker gun. Otherwise the pull buys a prize it walks away from.
 const wouldTakeAnyPrize = (model: Model): boolean =>
   FRIDGE_PRIZES.filter(kind => !isCarrying(focusOf(model).player, kind)).every(
     kind => beatsWeaker(model, kind),
@@ -456,7 +460,8 @@ const wantsFridge = (state: BotState, model: Model): boolean =>
     (isOfferedToBot(model) && wouldTake(model)) ||
     (model.fridge.door._tag === 'Shut' &&
       wouldTakeAnyPrize(model) &&
-      focusOf(model).wallet.balance - FRIDGE_RULES.price >=
+      focusOf(model).wallet.balance -
+        fridgePriceFor(model, focusSlotOf(model)) >=
         fridgeReserve(state, model)))
 
 // At the fridge it holds the interact key while the door is shut, lets go

@@ -22,12 +22,14 @@ import {
   normalize,
 } from './geometry'
 import { KNIFE_RULES } from './knife'
+import { isCallFresh } from './medic'
 import {
   COOP_RULES,
   focusOf,
   focusSeat,
   focusSlotOf,
   isDowned,
+  isFriendlyFireOn,
   isStanding,
   leadSeatOf,
   playersOf,
@@ -67,7 +69,7 @@ import { bodyRadiusOf } from './zombies'
 // door (a different one for each seat, moving on now and then), hunts the
 // zombies it hears but cannot see, shoots the nearest one it can, keeps
 // some distance from it and some room from its teammates, revives anyone who
-// is down, grabs the power-ups nobody nearer wants, buys ammo and hearts at the stall in a break (never while the
+// is down (a fresh MEDIC! call first, over any power-up), grabs the power-ups nobody nearer wants, buys ammo and hearts at the stall in a break (never while the
 // human is at it), and presses READY when the human does or after a short
 // wait. It
 // carries nothing between ticks and rolls no dice, so the same World gives
@@ -140,6 +142,7 @@ const nearestShootable = (world: World, at: Vector): Option.Option<Zombie> =>
       : nearest,
   )
 
+// NOTE: a fresh MEDIC! call (src/medic.ts) comes first, then the nearest.
 const downedNear = (world: World, me: SeatState): Option.Option<SeatState> =>
   pipe(
     playersOf(world),
@@ -147,8 +150,14 @@ const downedNear = (world: World, me: SeatState): Option.Option<SeatState> =>
       other => other.seat.slot !== me.seat.slot && isDowned(other.seat),
     ),
     Array.sort(
-      Order.mapInput(Order.Number, (other: SeatState) =>
-        distanceBetween(me.player, other.player),
+      Order.combine(
+        Order.mapInput(
+          Order.Boolean,
+          (other: SeatState) => !isCallFresh(other.seat),
+        ),
+        Order.mapInput(Order.Number, (other: SeatState) =>
+          distanceBetween(me.player, other.player),
+        ),
       ),
     ),
     Array.head,
@@ -288,10 +297,10 @@ const clockMsOf = (world: World): number =>
     GameOver: () => 0,
   })
 
-// NOTE: on Nightmare a teammate's shot wounds, so the bot holds fire with
-// a teammate near the line.
+// NOTE: with the Friendly Fire modifier on a teammate's shot wounds, so
+// the bot holds fire with a teammate near the line.
 const isMateInLine = (world: World, me: SeatState, target: Vector): boolean =>
-  world.difficulty.chosen === 'Nightmare' &&
+  isFriendlyFireOn(world) &&
   Array.some(
     playersOf(world),
     other =>

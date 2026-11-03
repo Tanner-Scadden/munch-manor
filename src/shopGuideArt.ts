@@ -108,11 +108,61 @@ const PRIZE_ART: Readonly<Record<FridgePrize, ShopArt>> = {
   Dud: DUD_ART,
 }
 
+// NOTE: the stove bench, a cast iron stove with a chili over its pot, and
+// the gas valve's red wheel on its pipe.
+const STOVE_ART = artOf(
+  [
+    '.....RR.......',
+    '....RRr.......',
+    '...KKKKKKKK...',
+    '..KggggggggK..',
+    '.KKKKKKKKKKKK.',
+    '.KIIIIIIIIIIK.',
+    '.KIKKKKKKKKIK.',
+    '.KIKOOOOOOKIK.',
+    '.KIKOYYYYOKIK.',
+    '.KIKKKKKKKKIK.',
+    '.KIIIIIIIIIIK.',
+    '.KKKKKKKKKKKK.',
+    '..KK......KK..',
+  ],
+  {
+    K: INK,
+    I: '#44444c',
+    g: '#7c9c3a',
+    O: '#ff9a2a',
+    Y: '#ffe066',
+    R: '#e0482a',
+    r: '#ff9a7a',
+  },
+)
+
+const VALVE_ART = artOf(
+  [
+    '......PP......',
+    '....KKKKKK....',
+    '...KRRRRRRK...',
+    '..KRKRRRRKRK..',
+    '..KRRKRRKRRK..',
+    '..KRRRKKRRRK..',
+    '..KRRRKKRRRK..',
+    '..KRRKRRKRRK..',
+    '..KRKRRRRKRK..',
+    '...KRRRRRRK...',
+    '....KKKKKK....',
+    '......PP......',
+    '......PP......',
+  ],
+  { K: INK, R: '#d8302a', P: '#6a6a74' },
+)
+
 const HOUSE_ART: Readonly<Record<HouseSpot, ShopArt>> = {
   Stall: RATTLES_ART.Grinning,
   Window: WINDOW_ART,
   Boards: BOARDS_ART,
   Fridge: FRIDGE_ART,
+  Stove: STOVE_ART,
+  Valve: VALVE_ART,
 }
 
 export const guideArtOf = (art: GuideArt): ShopArt =>

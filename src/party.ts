@@ -25,6 +25,7 @@ import {
   idleBoosts,
   idleIntent,
   initialPlayer,
+  noCooking,
 } from './worldSchema'
 
 // The players of a World (MULTIPLAYER.md, Phase 1). Every player has a
@@ -43,7 +44,7 @@ import {
 export const COOP_RULES = {
   waveCountScale: [1, 1.6, 2.2, 2.8],
   healthScale: [1, 1.1, 1.2, 1.3],
-  bleedOutMs: 10_000,
+  bleedOutMs: 20_000,
   reviveMs: 2000,
   reviveHearts: 2,
   reviveReachPx: 16,
@@ -92,6 +93,7 @@ export const soloState: SeatState = {
   shopCategory: FIRST_SHOP_CATEGORY,
   laserSight: 'None',
   purchase: Purchase.Idle(),
+  cooking: noCooking,
 }
 
 const MAX_BITE_GRACE_MS = 100

@@ -49,16 +49,20 @@ import {
   isReloading,
   isWieldingKnife,
   isWieldingMelee,
+  perkDamage,
+  perkPierce,
   spendRound,
 } from './weapons'
 import type { World } from './world'
 import {
+  type Boosts,
   type Bullet,
   type BulletGlaze,
+  type CarriedGun,
   Charge,
   GameEvent,
   Phase,
-  type Pierce,
+  Pierce,
   type PlayerSlot,
   Reload,
   ShopState,
@@ -132,6 +136,31 @@ const makeBullet = (
   pierce,
 })
 
+// NOTE: a cooked gun's perk (src/stove.ts) rides on its load: Spicy hits
+// harder and glows hot when no boost tints the shot, and Crispy skewers one
+// zombie more.
+const withPierce = (pierce: Pierce, extra: number): Pierce =>
+  extra <= 0
+    ? pierce
+    : Pierce.match(pierce, {
+        Stops: () => Pierce.Skewers({ left: extra, struck: [] }),
+        Skewers: ({ left, struck }) =>
+          Pierce.Skewers({ left: left + extra, struck }),
+      })
+
+const loadOf = (boosts: Boosts, gun: CarriedGun): Load => {
+  const boosted = firingStats(boosts, gun.kind, gun.tier)
+  const glaze = bulletGlaze(boosts)
+  return {
+    stats: modifyFields(boosted, {
+      damage: damage => perkDamage(gun, damage),
+    }),
+    weapon: gun.kind,
+    glaze: glaze === 'Plain' && gun.perk === 'Spicy' ? 'Spicy' : glaze,
+    pierce: withPierce(bulletPierce(boosts), perkPierce(gun)),
+  }
+}
+
 const nextFireCooldown = (
   cooldown: number,
   deltaMs: number,
@@ -147,19 +176,13 @@ const nextFireCooldown = (
 const shoot = (
   model: World,
   slot: PlayerSlot,
-  weapon: WeaponKind,
-  tier: number,
+  gun: CarriedGun,
   deltaMs: number,
 ): World => {
   const { nextEntityId } = model
   const { player, boosts } = seatStateAt(model, slot)
-  const stats = firingStats(boosts, weapon, tier)
-  const load: Load = {
-    stats,
-    weapon,
-    glaze: bulletGlaze(boosts),
-    pierce: bulletPierce(boosts),
-  }
+  const load = loadOf(boosts, gun)
+  const { stats, weapon } = load
   const muzzle = addVectors(
     player,
     scaleVector(player.facing, stats.muzzleReach),
@@ -224,9 +247,7 @@ const pullTrigger = (
   deltaMs: number,
 ): World => {
   const gun = heldGun(seatStateAt(model, slot).player.arsenal)
-  return gun.loaded > 0
-    ? shoot(model, slot, gun.kind, gun.tier, deltaMs)
-    : runDry(model, slot)
+  return gun.loaded > 0 ? shoot(model, slot, gun, deltaMs) : runDry(model, slot)
 }
 
 const coolTrigger = (
@@ -545,14 +566,8 @@ export const aimTracers = (
   firstId: number,
 ): Seeded<ReadonlyArray<Bullet>> => {
   const { player, boosts } = seatStateAt(model, slot)
-  const { kind: weapon, tier } = heldGun(player.arsenal)
-  const stats = firingStats(boosts, weapon, tier)
-  const load: Load = {
-    stats,
-    weapon,
-    glaze: bulletGlaze(boosts),
-    pierce: bulletPierce(boosts),
-  }
+  const load = loadOf(boosts, heldGun(player.arsenal))
+  const { stats } = load
   const muzzle = addVectors(
     player,
     scaleVector(player.facing, stats.muzzleReach),

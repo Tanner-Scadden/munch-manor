@@ -15,7 +15,7 @@ import {
 } from './fridgeReveal'
 import { ZERO_VECTOR, clamp } from './geometry'
 import { HUD_STRIP_HEIGHT, gunSlotBox } from './hud'
-import { DUD_REFUND, FRIDGE_RULES } from './leftovers'
+import { DUD_REFUND, FRIDGE_RULES, refundOf } from './leftovers'
 import { type FridgePrize, type Model, PrizeFlight, type Vector } from './model'
 import { focusOf, maybePlayerAt } from './party'
 import type { Screen } from './screen'
@@ -49,7 +49,7 @@ const FISH_BONES: Sprite = spriteShapes(
   { k: '#140c10', w: '#e8e2cc' },
 )
 
-const prizeSprite = (prize: FridgePrize): Sprite =>
+export const prizeSprite = (prize: FridgePrize): Sprite =>
   prize === 'Sandwich'
     ? SANDWICH
     : prize === 'Dud'
@@ -438,7 +438,9 @@ const landedShapes = (
           ...wordShapes(
             frame,
             PUNCH_TEXTS[reveal.prize],
-            reveal.prize === 'Dud' ? Option.some(REFUND_TEXT) : Option.none(),
+            refundOf(reveal.prize) > 0
+              ? Option.some(REFUND_TEXT)
+              : Option.none(),
           ),
         ],
         onNone: () => {
@@ -454,7 +456,9 @@ const landedShapes = (
             ...wordShapes(
               frame,
               PUNCH_TEXTS[reveal.prize],
-              reveal.prize === 'Dud' ? Option.some(REFUND_TEXT) : Option.none(),
+              refundOf(reveal.prize) > 0
+                ? Option.some(REFUND_TEXT)
+                : Option.none(),
             ),
           ]
         },

@@ -43,11 +43,11 @@ import { stepWorld } from './stepWorld'
 import {
   FRIDGE_OPEN_TICKS,
   HOLD_TICKS,
+  holdToBuy,
   holdingFirst,
   holdingSecond,
   pistolOnly,
   press,
-  release,
   ticks,
 } from './testing'
 import { freshGun } from './weapons'
@@ -58,8 +58,6 @@ import { idleIntent, shutFridge } from './worldSchema'
 // with the hold to buy, and what comes out of it.
 
 const FRAME_MS = FIXED_STEP_MS
-
-const pull = [press('Enter'), ...ticks(HOLD_TICKS, FRAME_MS), release('Enter')]
 
 const isFridgeOffered = (current: Model): boolean =>
   Array.some(
@@ -78,9 +76,11 @@ describe('pulling from Mystery Leftovers', () => {
     story(
       update,
       given(fridgeSeededFor(atFridge(100), 'Cooker')),
-      ...pull,
+      holdToBuy,
       model(current => {
-        expect(focusOf(current).wallet.balance).toBe(100 - FRIDGE_RULES.price)
+        expect(focusOf(current).wallet.balance).toBe(
+          100 - FRIDGE_RULES.firstPrice,
+        )
         expect(current.stats.purchases).toBe(1)
         expect(FridgeDoor.isAnyOf(['Open'])(current.fridge.door)).toBe(true)
         expect(current.fridge.pulls).toBe(1)
@@ -113,15 +113,17 @@ describe('pulling from Mystery Leftovers', () => {
           'Cooker',
         ),
       ),
-      ...pull,
+      holdToBuy,
       ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
-      ...pull,
+      holdToBuy,
       model(current => {
         expect(focusOf(current).player.arsenal).toEqual(
           holdingSecond(freshGun('Cooker')),
         )
         expect(focusOf(current).player.melee).toEqual(Melee.Knife())
-        expect(focusOf(current).wallet.balance).toBe(100 - FRIDGE_RULES.price)
+        expect(focusOf(current).wallet.balance).toBe(
+          100 - FRIDGE_RULES.firstPrice,
+        )
         expect(isPrizeOffered(current)).toBe(false)
         expect(FridgeDoor.isAnyOf(['Shut'])(current.fridge.door)).toBe(true)
       }),
@@ -140,9 +142,9 @@ describe('pulling from Mystery Leftovers', () => {
           'Pan',
         ),
       ),
-      ...pull,
+      holdToBuy,
       ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
-      ...pull,
+      holdToBuy,
       model(current => {
         expect(focusOf(current).player.arsenal).toEqual(guns)
         expect(focusOf(current).player.melee).toEqual(
@@ -166,7 +168,7 @@ describe('pulling from Mystery Leftovers', () => {
           'Pan',
         ),
       ),
-      ...pull,
+      holdToBuy,
       ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       model(current => {
         expect(isPrizeOffered(current)).toBe(true)
@@ -179,7 +181,9 @@ describe('pulling from Mystery Leftovers', () => {
         expect(FridgeDoor.isAnyOf(['Offering'])(current.fridge.door)).toBe(
           false,
         )
-        expect(focusOf(current).wallet.balance).toBe(100 - FRIDGE_RULES.price)
+        expect(focusOf(current).wallet.balance).toBe(
+          100 - FRIDGE_RULES.firstPrice,
+        )
       }),
     )
   })
@@ -188,7 +192,7 @@ describe('pulling from Mystery Leftovers', () => {
     story(
       update,
       given(fridgeSeededFor(atFridge(100), 'Cooker')),
-      ...pull,
+      holdToBuy,
       ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       ...ticks(Math.ceil(FRIDGE_RULES.offerMs / FRAME_MS) - 10, FRAME_MS),
       model(current => {
@@ -211,7 +215,7 @@ describe('pulling from Mystery Leftovers', () => {
     story(
       update,
       given(start),
-      ...pull,
+      holdToBuy,
       model(current => {
         expect(current.rngState).toBe(start.rngState)
         expect(current.loot.rngState).toBe(start.loot.rngState)
@@ -231,7 +235,7 @@ describe('pulling from Mystery Leftovers', () => {
           'Sandwich',
         ),
       ),
-      ...pull,
+      holdToBuy,
       model(current => {
         expect(focusOf(current).player.hp).toBe(3)
         expect(focusOf(current).player.arsenal).toEqual(pistolOnly())
@@ -244,10 +248,10 @@ describe('pulling from Mystery Leftovers', () => {
     story(
       update,
       given(fridgeSeededFor(atFridge(100), 'Dud')),
-      ...pull,
+      holdToBuy,
       model(current => {
         expect(focusOf(current).wallet.balance).toBe(
-          100 - FRIDGE_RULES.price + DUD_REFUND,
+          100 - FRIDGE_RULES.firstPrice + DUD_REFUND,
         )
         expect(
           Array.some(current.popups, ({ kind }) => kind === 'Payday'),
@@ -288,9 +292,11 @@ describe('pulling from Mystery Leftovers', () => {
     story(
       update,
       given(fridgeSeededFor(fighting, 'Pan')),
-      ...pull,
+      holdToBuy,
       model(current => {
-        expect(focusOf(current).wallet.balance).toBe(100 - FRIDGE_RULES.price)
+        expect(focusOf(current).wallet.balance).toBe(
+          100 - FRIDGE_RULES.firstPrice,
+        )
         expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
       }),
     )
@@ -346,6 +352,7 @@ describe('the fridge slams shut', () => {
   test('the slam is heard and felt', () => {
     const slamming = modifyFields(atFridge(100), {
       fridge: () => ({
+        ...shutFridge,
         door: FridgeDoor.Open({
           prize: 'Sandwich',
           slot: 0,
@@ -353,7 +360,6 @@ describe('the fridge slams shut', () => {
           durationMs: FRIDGE_RULES.openMs,
         }),
         pulls: FRIDGE_RULES.maxPulls,
-        luck: 0,
       }),
     })
     const next = update(slamming, ticks(1, FRAME_MS)[0]!.message).model
@@ -383,11 +389,13 @@ describe('the odds', () => {
     )
   }
 
-  test('Brain Freeze is rare, the gags are one pull in five, and every slam makes the freeze a little likelier', () => {
+  test('Brain Freeze is rare, the gags are about one pull in seven, and every slam makes the freeze a little likelier', () => {
     const first = prizeWeights(shutFridge, pistolCarrier)
-    expect(shareOf(first, 'Freeze')).toBeCloseTo(0.08, 5)
+    expect(shareOf(first, 'Freeze')).toBeCloseTo(0.085, 5)
+    expect(shareOf(first, 'Dud')).toBeCloseTo(0.04, 5)
+    expect(shareOf(first, 'Cooker')).toBeCloseTo(0.3825, 5)
     expect(shareOf(first, 'Sandwich') + shareOf(first, 'Dud')).toBeCloseTo(
-      0.2,
+      0.15,
       5,
     )
     const lucky = prizeWeights({ ...shutFridge, luck: 2 }, pistolCarrier)
@@ -468,7 +476,7 @@ describe('the fridge in co-op', () => {
     const holder = Option.getOrThrow(maybePlayerAt(bought, 1))
     const teammate = Option.getOrThrow(maybePlayerAt(bought, 0))
     expect(holder.wallet.balance).toBeLessThanOrEqual(
-      100 - FRIDGE_RULES.price + DUD_REFUND,
+      100 - FRIDGE_RULES.firstPrice + DUD_REFUND,
     )
     expect(teammate.wallet.balance).toBe(100)
     expect(teammate.player.arsenal).toEqual(pistolOnly())

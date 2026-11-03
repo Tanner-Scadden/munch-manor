@@ -1,7 +1,7 @@
 import { Array, Option, Order, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { levelOf } from './arena'
+import { type Level, levelOf } from './arena'
 import { woundGraceScaleOf } from './calling'
 import {
   LAST_HEART_INVULNERABLE_MS,
@@ -19,6 +19,7 @@ import {
   normalize,
   scaleVector,
 } from './geometry'
+import { kitchenBounty } from './kitchenPay'
 import {
   atSeat,
   forEachSeatWhere,
@@ -57,10 +58,11 @@ type Strike = Readonly<{
 }>
 
 // NOTE: a zombie Brain Freeze iced solid shatters at the next hit of any
-// kind: it takes SHATTER_SCALE times the damage and the ice is gone.
-export const SHATTER_SCALE = 3
+// kind: it takes SHATTER_SCALE times the damage and the ice is gone. Only
+// Brain Freeze freezes (src/fridgeWeapons.ts).
+export const SHATTER_SCALE = 4
 
-const isIcedSolid = ZombieAction.isAnyOf(['Frozen'])
+export const isIcedSolid = ZombieAction.isAnyOf(['Frozen'])
 
 export const strikeZombie = (
   zombie: Zombie,
@@ -250,21 +252,22 @@ const blastSeated = (
   })
 }
 
-export const blastPlayers = (model: World, blast: BlastSpec): World =>
+const blastPlayers = (model: World, blast: BlastSpec): World =>
   forEachSeatWhere(model, isStanding, (current, slot) =>
     blastSeated(current, slot, blast),
   )
 
-// NOTE: a blast on one seat's player only, if standing and in reach: a
-// player's own blast never hurts a teammate.
-export const blastOwnSeat = (
+// NOTE: a player's own blast on every standing teammate it reaches, never
+// on the player who set it off (the owner, 2026-11-02: "it sucks that it
+// hurts you").
+export const blastTeammates = (
   model: World,
-  slot: PlayerSlot,
+  thrower: PlayerSlot,
   blast: BlastSpec,
 ): World =>
-  isStanding(seatStateAt(model, slot).seat)
-    ? blastSeated(model, slot, blast)
-    : model
+  forEachSeatWhere(model, isStanding, (current, slot) =>
+    slot === thrower ? current : blastSeated(current, slot, blast),
+  )
 
 const maybeBlastOf = (zombie: Zombie): Option.Option<BlastSpec> =>
   Behavior.match(statsOf(zombie).behavior, {
@@ -289,9 +292,16 @@ const maybeBlastOf = (zombie: Zombie): Option.Option<BlastSpec> =>
     Crawler: () => Option.none(),
   })
 
-export const bountyOf = (events: ReadonlyArray<GameEvent>): number =>
+// NOTE: what the kills among `events` pay, a kitchen kill a quarter more
+// (src/kitchenPay.ts).
+export const bountyOf = (
+  level: Level,
+  events: ReadonlyArray<GameEvent>,
+): number =>
   Array.reduce(events, 0, (sum, event) =>
-    GameEvent.isAnyOf(['ZombieKilled'])(event) ? sum + event.bounty : sum,
+    GameEvent.isAnyOf(['ZombieKilled'])(event)
+      ? sum + kitchenBounty(level, event, event.bounty)
+      : sum,
   )
 
 const detonate = (model: World, bomberId: number): World => {
@@ -332,7 +342,7 @@ const detonate = (model: World, bomberId: number): World => {
             ...trapOutcome.events,
           ],
         }),
-        bountyOf(zombieOutcome.events),
+        bountyOf(levelOf(model), zombieOutcome.events),
       )
     },
   })

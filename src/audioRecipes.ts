@@ -887,6 +887,48 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
+  // NOTE: MEDIC! from a downed player (src/medic.ts): two quick notes
+  // up, me-DIC!, a square shout with a triangle under it, then a short
+  // siren wobble, so a teammate hears it over a fight.
+  MedicCall: {
+    variationCents: 40,
+    tones: [
+      {
+        wave: 'square',
+        pitch: [at(0, 660), at(0.07, 660)],
+        envelope: envelope(0.13, 0.003, 0.07),
+      },
+      {
+        wave: 'square',
+        pitch: [at(0, 990), at(0.06, 1040), at(0.16, 880)],
+        envelope: envelope(0.15, 0.003, 0.16, 0.09),
+      },
+      {
+        wave: 'triangle',
+        pitch: [at(0, 495), at(0.25, 440)],
+        envelope: envelope(0.1, 0.004, 0.25),
+      },
+    ],
+    noises: [],
+  },
+  // NOTE: SAVED! or CLUTCH! (src/medic.ts): a bright little run up and a
+  // ring on top, a shorter cousin of the rank up.
+  Rescue: {
+    variationCents: 0,
+    tones: [
+      ...Array.map([659, 784, 988], (frequency, index) => ({
+        wave: 'square' as const,
+        pitch: [at(0, frequency), at(0.06, frequency)],
+        envelope: envelope(0.1, 0.002, 0.07, index * 0.06),
+      })),
+      {
+        wave: 'triangle',
+        pitch: [at(0, 1318), at(0.35, 1318)],
+        envelope: envelope(0.1, 0.004, 0.35, 0.18),
+      },
+    ],
+    noises: [],
+  },
   // NOTE: the kitchen behind the boards, heard when the player is near and
   // the exit is still shut (src/kitchenCall.ts). Both are quiet: a lid
   // rattling on a pot, and a slow bubble.

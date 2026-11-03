@@ -8,7 +8,7 @@ import { HOLD_ICON } from './icons'
 import { percentOf } from './menuParts'
 import { Message } from './message'
 import { type Model, Purchasable, Purchase } from './model'
-import { FRIDGE_NAME } from './names'
+import { FRIDGE_NAME, GUN_PERK_NAMES, STOVE_NAME, VALVE_NAME } from './names'
 import { focusOf, focusSlotOf } from './party'
 import {
   type Offer,
@@ -22,6 +22,7 @@ import {
 } from './purchase'
 import { tagBoxOf } from './purchaseView'
 import { screenOf } from './screen'
+import { maybeStovePerk } from './stove'
 
 // NOTE: the kitchen tour's free boards and pull are read as free.
 const priceWords = (price: number): string =>
@@ -38,6 +39,8 @@ const nameOf = (target: Purchasable): string =>
     Fridge: () => FRIDGE_NAME.toLowerCase(),
     Prize: () => 'the prize from the fridge, free',
     Ammo: () => 'ammo for the gun in your hands',
+    Stove: () => STOVE_NAME.toLowerCase(),
+    Valve: () => VALVE_NAME.toLowerCase(),
   })
 
 // NOTE: a weapon on offer is already paid for, so its button says TAKE
@@ -46,13 +49,13 @@ const badgeOf = (offer: Offer): string => {
   if (Purchasable.isAnyOf(['Prize'])(offer.target)) {
     return 'TAKE'
   } else if (offer.isFull) {
-    return 'FULL'
+    return Purchasable.isAnyOf(['Stove'])(offer.target) ? 'NOPE' : 'FULL'
   } else {
     return `$${offer.price}`
   }
 }
 
-const labelOf = (offer: Offer): string =>
+const labelOf = (model: Model, offer: Offer): string =>
   Purchasable.match(offer.target, {
     Exit: () =>
       `Hold to open ${nameOf(offer.target)} for ${priceWords(offer.price)}`,
@@ -63,6 +66,14 @@ const labelOf = (offer: Offer): string =>
       offer.isFull
         ? 'Your gun is full'
         : `Buy ammo for ${priceWords(offer.price)}`,
+    Stove: () =>
+      offer.isFull
+        ? 'Only a gun from the stall cooks'
+        : `Hold to cook your gun ${Option.match(maybeStovePerk(model), {
+            onNone: () => '',
+            onSome: perk => GUN_PERK_NAMES[perk].toLowerCase(),
+          })} for ${priceWords(offer.price)}`,
+    Valve: () => `Hold to light the fireplace for ${priceWords(offer.price)}`,
   })
 
 // NOTE: what the player is at: the offer in reach, or the one they still
@@ -136,7 +147,7 @@ const holdButtonFor = (
           ? 'icon-button cluster-button hold-buy-button is-refused'
           : 'icon-button cluster-button hold-buy-button',
       ),
-      h.AriaLabel(labelOf(offer)),
+      h.AriaLabel(labelOf(model, offer)),
       ...(isShort ? [h.AriaDisabled(true)] : []),
       h.DataAttribute('short', isShort ? 'true' : 'false'),
       h.Style({ '--hold': `${progressAt(model, offer)}` }),
@@ -236,7 +247,7 @@ const ammoTagButtonFor = (
           h.button([
             h.Type('button'),
             h.Class('ammo-tag-button'),
-            h.AriaLabel(labelOf(offer)),
+            h.AriaLabel(labelOf(model, offer)),
             h.AriaKeyshortcuts('Enter'),
             h.Style({
               left: percentOf(center.x, screen.width),

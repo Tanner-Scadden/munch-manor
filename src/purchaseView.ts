@@ -12,7 +12,9 @@ import {
   placeBaked,
   textShapes,
 } from './font'
+import { VALVE_RULES } from './gasValve'
 import { ZERO_VECTOR } from './geometry'
+import { FLAME_ICON, PERK_ICONS, PERK_ICON_SIZE } from './kitchenGearView'
 import { FRIDGE_RULES } from './leftovers'
 import { type Model, Purchasable, Purchase } from './model'
 import { focusOf, focusSlotOf } from './party'
@@ -35,8 +37,9 @@ import {
 } from './sprite'
 import { gunIcon } from './sprites/guns'
 import { AMMO_BOX, AMMO_BOX_WIDTH } from './stallBubble'
+import { STOVE_RULES, maybeStovePerk } from './stove'
 import { hasPan, heldGun, maybeReplacedGun } from './weapons'
-import { FridgeDoor } from './worldSchema'
+import { FridgeDoor, type GunPerk } from './worldSchema'
 
 // NOTE: a purchasable says what it costs without a word: a dark tag with
 // the coin and the price hangs off a nail. Walk up and it brightens, with a
@@ -150,6 +153,9 @@ const EXIT_TAG = bakePriceTag(EXIT_RULES.price)
 
 const FRIDGE_TAG = bakePriceTag(FRIDGE_RULES.price)
 
+// NOTE: each seat's first pull of a round is cheaper (src/leftovers.ts).
+const FRIDGE_FIRST_TAG = bakePriceTag(FRIDGE_RULES.firstPrice)
+
 const TAKE_TAG = bakeTag(bakeText('TAKE', 'Prompt'))
 
 // NOTE: the kitchen tour gives the boards and the first pull away
@@ -188,12 +194,51 @@ const ammoTagOf = (model: Model, offer: Offer): PriceTag =>
         },
       )
 
+// NOTE: the stove's tag leads with the perk it offers this break, one tag
+// for each perk at each price, all baked as the module loads.
+const stoveTagsOf = (perk: GunPerk): Array.NonEmptyReadonlyArray<PriceTag> =>
+  Array.map(STOVE_RULES.prices, price =>
+    bakeTag(
+      bakeText(`$${price}`, 'Coin'),
+      Option.some({ sprite: PERK_ICONS[perk], width: PERK_ICON_SIZE }),
+    ),
+  )
+
+const STOVE_TAGS: Readonly<
+  Record<GunPerk, Array.NonEmptyReadonlyArray<PriceTag>>
+> = {
+  Spicy: stoveTagsOf('Spicy'),
+  Crispy: stoveTagsOf('Crispy'),
+  Hearty: stoveTagsOf('Hearty'),
+}
+
+const stoveTagOf = (model: Model, offer: Offer): PriceTag => {
+  const tags =
+    STOVE_TAGS[Option.getOrElse(maybeStovePerk(model), (): GunPerk => 'Spicy')]
+  return Option.getOrElse(
+    Array.get(tags, STOVE_RULES.prices.indexOf(offer.price)),
+    () => tags[0],
+  )
+}
+
+const VALVE_TAG = bakeTag(
+  bakeText(`$${VALVE_RULES.price}`, 'Coin'),
+  Option.some({ sprite: FLAME_ICON, width: PERK_ICON_SIZE }),
+)
+
 const tagOf = (model: Model, offer: Offer): PriceTag =>
   Purchasable.match(offer.target, {
     Exit: () => (offer.price === 0 ? FREE_TAG : EXIT_TAG),
-    Fridge: () => (offer.price === 0 ? FREE_TAG : FRIDGE_TAG),
+    Fridge: () =>
+      offer.price === 0
+        ? FREE_TAG
+        : offer.price === FRIDGE_RULES.firstPrice
+          ? FRIDGE_FIRST_TAG
+          : FRIDGE_TAG,
     Prize: () => TAKE_TAG,
     Ammo: () => ammoTagOf(model, offer),
+    Stove: () => stoveTagOf(model, offer),
+    Valve: () => VALVE_TAG,
   })
 
 // THE PROMPT
@@ -304,6 +349,27 @@ const refusedShapes = (
         ),
       ]
 
+// NOTE: the stove cooks only a gun Rattles sells, so a press there with
+// the knife, the Pan, or a fridge weapon in hand shakes the tag with a red
+// cross beside it, and no price.
+const isUncooked = (offer: Offer, sinceMs: number): boolean =>
+  Purchasable.isAnyOf(['Stove'])(offer.target) &&
+  offer.isFull &&
+  sinceMs < PURCHASE_RULES.refusedMs
+
+const uncookedShapes = (
+  offer: Offer,
+  tag: PriceTag,
+  sinceMs: number,
+): ReadonlyArray<Canvas.Shape> => [
+  placeAt(tagLeft(offer, tag) + shakeOffset(sinceMs), offer.spot.y, tag.short),
+  placeAt(
+    offer.spot.x + Math.ceil(tag.width / 2) + PROMPT_GAP + CROSS_HALF,
+    offer.spot.y + Math.floor(tag.height / 2),
+    CROSS,
+  ),
+]
+
 // NOTE: a weapon on offer fills the fridge's door (src/fridgeRevealView.ts),
 // so its TAKE tag hangs beside the fridge instead of over it.
 const PRIZE_TAG_GAP = 4
@@ -313,6 +379,8 @@ const placedOffer = (offer: Offer, tag: PriceTag): Offer =>
     Exit: () => offer,
     Fridge: () => offer,
     Ammo: () => offer,
+    Stove: () => offer,
+    Valve: () => offer,
     Prize: () => ({
       ...offer,
       spot: {
@@ -355,6 +423,8 @@ const CROSS: Sprite = spriteShapes(
   ],
   { r: '#ff4a4f' },
 )
+
+const CROSS_HALF = 4
 
 const REPLACED_DROP_PX = 7
 
@@ -431,7 +501,9 @@ const offerShapes =
           : [tagShape, ...prompt],
       Refused: ({ target, shortBy, sinceMs }) =>
         isMine(target)
-          ? refusedShapes(offer, tag, shortBy, sinceMs)
+          ? isUncooked(offer, sinceMs)
+            ? uncookedShapes(offer, tag, sinceMs)
+            : refusedShapes(offer, tag, shortBy, sinceMs)
           : [tagShape, ...prompt],
       Done: () => [tagShape],
       Spent: () => [tagShape, ...prompt],

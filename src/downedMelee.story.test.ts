@@ -34,7 +34,7 @@ const swinging: Intent = {
   trigger: 'Held',
 }
 
-const DOWNED = Life.Downed({ bleedMs: 10_000, reviveMs: 0 })
+const DOWNED = Life.Downed({ bleedMs: 10_000, reviveMs: 0, callMs: 0 })
 
 // NOTE: player 1 lies at PLAYER_X with a Tank close in front; player 2
 // stands far off, so the run goes on.

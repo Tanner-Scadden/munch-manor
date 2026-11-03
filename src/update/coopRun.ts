@@ -108,6 +108,7 @@ type RunMessage =
   | typeof Message.PressedBuyKey.Type
   | typeof Message.PressedHoldButton.Type
   | typeof Message.ClickedAmmoTag.Type
+  | typeof Message.ClickedMedicButton.Type
 
 // NOTE: Message.match, exhaustive over just these Messages. Effect's
 // Match would unify the Steps' types and drop the Binding evidence
@@ -131,6 +132,7 @@ const inRun = (model: Model, message: RunMessage) =>
     PressedBuyKey: ({ item }) => buyInRun(item),
     PressedHoldButton: () => tapInRun,
     ClickedAmmoTag: () => tapInRun,
+    ClickedMedicButton: () => pressInRun(SeatAction.CallMedic()),
   })
 
 // NOTE: the Message's Step in an online run, or the single player Step

@@ -143,7 +143,7 @@ type ShopItem = Readonly<{
 
 const SHOTGUN_SHELLS = 16
 const SMG_ROUNDS = 120
-const LID_STACK = 8
+export const LID_STACK = 8
 
 // NOTE: the sight is a luxury: it costs about as much as a gun's top
 // upgrade, so it is a late-run buy, and it is gone with the run.
@@ -944,7 +944,7 @@ export { isHolding }
 
 // PURCHASE
 
-const refill = (
+export const refill = (
   arsenal: Arsenal,
   weapon: WeaponKind,
   rounds: number,

@@ -95,6 +95,7 @@ import {
   asAllowedPress,
   buyAmmoFromHoldButton,
   clickAmmoTag,
+  clickMedic,
   clickNextTrap,
   clickPause,
   clickPlaceTrap,
@@ -472,6 +473,13 @@ export const update = ApplicationComposition.makeUpdate({
   ClickedReloadButton: (model, message) =>
     Update.combineSteps(model, [
       makeStep(orInRun(message, reloadFromButton)),
+      ...afterMessage(model),
+    ]),
+
+  // NOTE: MEDIC! from a downed player, a tap on the red cross.
+  ClickedMedicButton: (model, message) =>
+    Update.combineSteps(model, [
+      makeStep(orInRun(message, clickMedic)),
       ...afterMessage(model),
     ]),
 

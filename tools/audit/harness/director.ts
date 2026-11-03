@@ -701,7 +701,8 @@ const scripted = (
     world = isDowned(seatStateAt(world, revive.down).seat)
       ? modifySeatRecord(world, revive.down, seat =>
           modifyFields(seat, {
-            life: () => Life.Downed({ bleedMs: revive.bleedMs, reviveMs: 0 }),
+            life: () =>
+              Life.Downed({ bleedMs: revive.bleedMs, reviveMs: 0, callMs: 0 }),
           }),
         )
       : world

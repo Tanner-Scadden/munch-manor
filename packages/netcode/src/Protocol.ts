@@ -69,8 +69,18 @@ import {
 // Version 18: run modifiers. The World holds the run's `modifiers` (Friendly
 // Fire, Big Crowd, Broke, Glass), and the room's lobby carries the host's
 // pick as a mask.
-export const PROTOCOL_VERSION = 18
-export const MIN_PROTOCOL_VERSION = 18
+// Version 19: the kitchen is worth the walk. The fridge holds the round
+// whose cheap first pulls its seats have spent (`cheapRound`,
+// `cheapSlots`), the World holds the pantry's stash (`pantry`), the
+// stove's offer (`stove`), and the valve (`gasValve`), each seat its
+// cooking (`cooking`), a carried gun may carry a `perk`, a seat's purchase
+// can target the Stove or the Valve, and a new event, PantryTaken, says
+// who took the stash and what it gave. The MEDIC call: a downed life
+// carries `callMs`, how long ago the player last shouted, a new action code
+// (CallMedic) shouts again, and two new events: MedicCalled and
+// TeammateSaved (SAVED! or CLUTCH!).
+export const PROTOCOL_VERSION = 19
+export const MIN_PROTOCOL_VERSION = 19
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

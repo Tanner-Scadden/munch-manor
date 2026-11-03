@@ -155,6 +155,20 @@ export const NEXT_TRAP_ICON = icon([
   '..X.....',
 ])
 
+// NOTE: MEDIC! for a downed player (src/medic.ts): a red cross on a light
+// plate.
+export const MEDIC_ICON = icon([
+  '.XXXXXXX.',
+  'XXXRRRXXX',
+  'XXXRRRXXX',
+  'XRRRRRRRX',
+  'XRRRRRRRX',
+  'XRRRRRRRX',
+  'XXXRRRXXX',
+  'XXXRRRXXX',
+  '.XXXXXXX.',
+])
+
 export const TRAP_BUTTON_ICONS: Readonly<Record<TrapKind, string>> = Record.map(
   TRAP_ICON_PIXELS,
   ({ pixels, palette }) => pixelIconUrl(pixels, palette),
