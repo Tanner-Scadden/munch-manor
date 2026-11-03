@@ -8,13 +8,16 @@ import {
   RANK_FILL_MS,
   RANK_POP_MS,
   UNLOCK_HOLD_MS,
+  UNLOCK_LINGER_MS,
   beatSounds,
+  dismissUnlock,
   doneMs,
   isBeatOver,
   rankDoneMs,
   rankStripAtMs,
   skipBeat,
   unlockFlipAtMs,
+  unlockGoneMs,
   unlockStartMs,
   unlocksOf,
 } from './endBeat'
@@ -228,6 +231,31 @@ describe('the cards a rank up flips', () => {
     ).toContain('LootPop')
     expect(beatSounds(ended(sameRank), flipAt - 5, flipAt + 5)).not.toContain(
       'LootPop',
+    )
+  })
+
+  test('the last card says what opened, lingers, then goes; a tap puts it away sooner', () => {
+    const doneAt = rankDoneMs(ended(rankUp), 'Munched')
+    const goneAt = unlockGoneMs(ended(rankUp), 'Munched')
+    const shapesOf = (shapes: ReadonlyArray<Canvas.Shape>): number =>
+      Array.reduce(
+        shapes,
+        0,
+        (total, shape) =>
+          total + 1 + (shape._tag === 'Group' ? shapesOf(shape.shapes) : 0),
+      )
+    const drawn = (screenMs: number) =>
+      shapesOf(endOverlayShapes(ended(rankUp, screenMs)))
+    expect(goneAt).toBe(doneAt + UNLOCK_LINGER_MS)
+    // NOTE: the card, its tab, and its timer are dozens of shapes; once its
+    // time is up none of them is drawn.
+    expect(drawn(doneAt + 10) - drawn(goneAt + 10)).toBeGreaterThan(20)
+    expect(drawn(goneAt + 10)).toBe(drawn(goneAt + 500))
+    expect(dismissUnlock(ended(rankUp, doneAt + 100)).screenMs).toBe(goneAt)
+    // NOTE: a tap mid-beat is the skip's, and no card means nothing to put away.
+    expect(dismissUnlock(ended(rankUp, 500)).screenMs).toBe(500)
+    expect(dismissUnlock(ended(sameRank, doneAt + 100)).screenMs).toBe(
+      doneAt + 100,
     )
   })
 })

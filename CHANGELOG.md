@@ -9,7 +9,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 - 🎒 The co-op lobby got friendlier: tap your own name (it has a pencil) to rename yourself, dice and all, and buy a hero right there. Pings are WiFi icons now, KICK is a door with an arrow, and tapping a pick that's the host's says HOST PICKS.
 - 👟 The Track Star's magazines are barely smaller now, and power-ups wait out the break: grab one late in a wave and its time carries into the next.
 - 🎲 Run modifiers: pick Friendly Fire, Big Crowd, Broke, or Glass in the lobby to make a run meaner and pay up to +465% rank and Bones. Glass means one heart for real: no spare hearts, no fridge Sandwich, and revives get up on one.
-- 🧼 Menus got a tidy-up: every close and back button matches, corners and borders line up, and the shop stops hopping between pages.
+- 🧼 Menus got a tidy-up: every close and back button matches, corners and borders line up, the shop stops hopping between pages, and a new hero or hat on the end card says NOW AVAILABLE or NOW PURCHASABLE, then tucks itself away (tap to dismiss).
 
 ## November 1, 2026: Pick your hero
 

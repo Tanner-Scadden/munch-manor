@@ -285,6 +285,29 @@ const unlockDurationMs = (count: number): number =>
 export const rankDoneMs = (model: Model, kind: EndKind): number =>
   unlockFlipAtMs(model, kind) + unlockDurationMs(unlocksOf(model).length)
 
+// NOTE: the last unlock card stays a few seconds after it flips, its timer
+// draining along its foot, then fades away; a tap puts it away sooner.
+export const UNLOCK_LINGER_MS = 4000
+export const UNLOCK_FADE_MS = 300
+
+export const unlockGoneMs = (model: Model, kind: EndKind): number =>
+  rankDoneMs(model, kind) + UNLOCK_LINGER_MS
+
+const isUnlockCardUp = (model: Model, kind: EndKind): boolean =>
+  Array.isReadonlyArrayNonEmpty(unlocksOf(model)) &&
+  model.screenMs < unlockGoneMs(model, kind)
+
+// NOTE: a tap once the beat is over puts away an unlock card still up, by
+// moving the end clock past its time, so nothing new needs to be stored.
+export const dismissUnlock = (model: Model): Model =>
+  Option.match(endKindOf(model), {
+    onNone: () => model,
+    onSome: kind =>
+      model.screenMs >= rankDoneMs(model, kind) && isUnlockCardUp(model, kind)
+        ? modifyFields(model, { screenMs: () => unlockGoneMs(model, kind) })
+        : model,
+  })
+
 const beatDoneMs = (model: Model, kind: EndKind): number =>
   hasRankStrip(model)
     ? rankDoneMs(model, kind)
