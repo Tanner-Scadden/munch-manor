@@ -85,8 +85,8 @@ const distanceToPlayer = (current: Model, zombie: Zombie): number =>
   )
 
 describe('the Ankle Biter', () => {
-  test('comes up through the floor after a 1.5 s telegraph, out of reach until then', () => {
-    expect(CRAWLER_RULES.surfaceMs).toBe(1500)
+  test('comes up through the floor after a quick 0.6 s telegraph, out of reach until then', () => {
+    expect(CRAWLER_RULES.surfaceMs).toBe(600)
     story(
       update,
       given(waveWith([spawnOf('Crawler', 0, 1)])),

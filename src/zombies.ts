@@ -289,8 +289,8 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
     name: ZOMBIE_NAMES.Thrower,
     tagline: 'HE PITCHES ZOMBIES',
     pitch: 'HE PITCHES ZOMBIES. GET CLOSE AND HE HIDES BEHIND ONE.',
-    speedMin: 13,
-    speedMax: 16,
+    speedMin: 26,
+    speedMax: 30,
     hp: 14,
     contactDamage: 1,
     trapBitePerSecond: 4,
@@ -325,16 +325,18 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
   },
   Crawler: {
     name: ZOMBIE_NAMES.Crawler,
-    tagline: 'IT COMES UP THROUGH THE FLOOR',
-    pitch: 'IT CLAWS UP THROUGH THE FLOOR AND GRABS YOUR ANKLES.',
+    tagline: 'A ZOMBIE SPIDER IN THE FLOOR',
+    pitch: 'EIGHT LEGS. ZERO MANNERS. IT GRABS YOUR ANKLES.',
     speedMin: 26,
     speedMax: 32,
     hp: 2,
     contactDamage: 0,
     trapBitePerSecond: 2,
-    radius: 3.5,
+    // NOTE: the spider's body (abdomen, eyes, and fangs) takes hits; its
+    // legs do not. Its bodyRadius, and so its grab reach, is the old one.
+    radius: 5,
     bodyRadius: 3.5,
-    footOffset: 2,
+    footOffset: 5,
     bounty: 3,
     mass: 0.6,
     knockbackScale: 1.3,
@@ -354,7 +356,7 @@ export const ZOMBIE_KINDS: Readonly<Record<ZombieKind, ZombieKindStats>> = {
     hitSound: 'RunnerHit',
     deathSound: 'RunnerDeath',
     maybeFootfall: Option.none(),
-    wear: [{ below: 1 / 2, part: 'PaleScalp', heightPx: 4 }],
+    wear: [{ below: 1 / 2, part: 'BoneGib', heightPx: 6 }],
     arrival: 'Floor',
     bait: 'Ignores',
   },
@@ -452,7 +454,10 @@ const STATS_BY_INDEX: ReadonlyArray<ZombieKindStats> = Array.map(
   KINDS_BY_INDEX,
   kind => ZOMBIE_KINDS[kind],
 )
-const RADIUS_BY_INDEX = Float64Array.from(STATS_BY_INDEX, ({ radius }) => radius)
+const RADIUS_BY_INDEX = Float64Array.from(
+  STATS_BY_INDEX,
+  ({ radius }) => radius,
+)
 const BODY_RADIUS_BY_INDEX = Float64Array.from(
   STATS_BY_INDEX,
   ({ bodyRadius }) => bodyRadius,
@@ -483,7 +488,8 @@ export const isBoss = (zombie: Zombie): boolean => zombie.kind === 'Boss'
 const WEAR_TOLERANCE = 1e-9
 
 export const wearAt = (kind: ZombieKind, hp: number, maxHp: number): number => {
-  const stages = STATS_BY_INDEX[kindIndex(kind)]?.wear ?? ZOMBIE_KINDS[kind].wear
+  const stages =
+    STATS_BY_INDEX[kindIndex(kind)]?.wear ?? ZOMBIE_KINDS[kind].wear
   let worn = 0
   for (const { below } of stages) {
     if (hp <= maxHp * below + WEAR_TOLERANCE) {

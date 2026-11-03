@@ -4,12 +4,12 @@ One entry per day, newest first. Only things a player would notice, a handful of
 
 ## November 2, 2026: Something's cooking
 
-- 🍲 The boarded kitchen door now glows, steams, and smells like soup, Rattles hollers about it every break until you open it, and a little house in your breaks counts the rooms you've found.
-- 📖 Rattles wrote a shop guide: tap the ? in his shop, or find Shop in the Munchopedia, for bars, upgrades, and a fridge full of ???.
+- 🍲 The boarded kitchen door now glows, steams, and smells like soup, Rattles hollers about it every break until you open it, and a little house in your breaks counts the rooms you've found. Rattles also wrote a shop guide: tap the ? in his shop for bars, upgrades, and a fridge full of ???.
 - 🎒 The co-op lobby got friendlier: tap your own name (it has a pencil) to rename yourself, dice and all, and buy a hero right there. Pings are WiFi icons now, KICK is a door with an arrow, and tapping a pick that's the host's says HOST PICKS.
 - 👟 The Track Star's magazines are barely smaller now, and power-ups wait out the break: grab one late in a wave and its time carries into the next.
 - 🎲 Run modifiers: pick Friendly Fire, Big Crowd, Broke, or Glass in the lobby to make a run meaner and pay up to +465% rank and Bones. Glass means one heart for real: no spare hearts, no fridge Sandwich, and revives get up on one. And Endless zombies keep beefing up, faster the deeper you go.
 - 🧼 Menus got a tidy-up: every close and back button matches, corners and borders line up, the shop stops hopping between pages, and a new hero or hat on the end card says NOW AVAILABLE or NOW PURCHASABLE, then tucks itself away (tap to dismiss).
+- 🕷️ Ankle Biters are zombie spiders now (quicker out of the floor, more of them, and easier to hit), and the Big Leaguer got a pitching coach: he brings three Groaners, runs to grab any he sees, throws quicker, lobs Hotfoots too, and whatever lands gets up angry and faster.
 
 ## November 1, 2026: Pick your hero
 

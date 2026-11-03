@@ -71,7 +71,7 @@ Decided on 2026-10-27: a fun one-room arena a stranger can open from a link. It 
 - **Preparation.** About 20 seconds, timed and skippable, on Hard and Nightmare. Since 2026-10-28 the first break, before wave 2, has no timer and waits for START WAVE (Enter). Changed on 2026-11-01, owner: "don't want wave timers on easy/medium. Too much." (medium means Normal): on Easy and Normal no break has a clock. Each waits for READY, the START WAVE button or Enter, and in co-op for every player who is here and standing (an Away player never holds it up). It is `hasBreakClock` in the difficulty table (`src/difficulty.ts`): a break without a clock is the open break (`BreakClock.Waiting`), so the timer text is gone from the HUD, and the HUD's subtitle is blank (NO TIMER shows only the first time, while the open break lesson is pending). The short get-ready beat before wave 1 still counts down. The balance bot already presses Enter when it is done shopping, the teammate bots press READY with the human or 4 s into the break (the break's elapsed time, which the open break ages), and the analytical model has no break length in it. READY is gold and tall, a pressed one green. When the game waits on the player it nudges: after about 15 s of doing nothing (and away from the stall) in a solo break without a clock, after 8 s in a crew's break, or 2.5 s once every other player is READY, the READY button glows and brightens in place (never moving) and the HUD says WAITING ON YOU where the countdown would be (`src/readyNudge.ts`, owner, 2026-11-01: "nudge players when they need to ready up. Ready button is kinda hidden too"). Hard and Nightmare have the clock to do that, so a solo break there gets no nudge.
 - **Shop.** A stall in the room, opened by walking into it.
 - **Weapons.** A pistol that never runs out, plus one bought gun with limited ammo. Two carried, swapped with one key.
-- **Zombies.** Six kinds and a boss (see "Zombie types"). The Ankle Biter comes up through the floor, which bends "doors are the chokepoints" on purpose: it stays rare, telegraphs for 1.5 s, never comes up near the player, and the preview counts it as FLOOR.
+- **Zombies.** Six kinds and a boss (see "Zombie types"). The Ankle Biter comes up through the floor, which bends "doors are the chokepoints" on purpose: it stays rare, telegraphs for 0.6 s, never comes up near the player, and the preview counts it as FLOOR.
 - **Traps.** The Plank Pile and the Grumpy Gnome. At most two Plank Piles, placed or carried (2026-10-28). Dearer and tougher (decided with the owner on 2026-11-01: "traps are useless today: make planks much more expensive, and the pea shooters as well, but buff them to be better"): a Plank Pile $95 with 50 health (was $40, 30), a Grumpy Gnome $150 with 20 health, a pea every 1000 ms (was 1200) and 115 px of reach (was 84). A repair is still half the price scaled by the health missing, so a full one never costs more than a new trap. The bot with traps won 23.5% on Normal and 7% with them off (100 runs, `NO_GNOME=1 NO_PLANKS=1`). A Kaboomer's burst (15) no longer pops a gnome in one go. Groaners and Big Lugs chew a nearby pile instead of chasing the player (2026-10-28). A boarded doorway is no spawn point (2026-10-29).
 - **Difficulty levels.** Decided on 2026-10-28: Easy, Normal (the default), Hard, and Nightmare, locked until a Hard campaign win. See "Difficulty levels and planks as bait".
 - **Health.** A few hearts, at most 5. A hit knocks the player back and gives a short invulnerable blink. Hearts are bought and rarely dropped.
@@ -139,8 +139,8 @@ Starting numbers to play against, not decisions. They live in `src/constants.ts`
 | Runner   | Hotfoot     | 44 to 52     | 2      | 1 heart  | 3.5    | $3     | Light, so it is shoved and knocked back further                             |
 | Tank     | Big Lug     | 11 to 14     | 30     | 2 hearts | 6.5    | $20    | Takes 12% of knockback, shoves the crowd aside, health bar once hurt        |
 | Exploder | Kaboomer    | 14 to 17     | 6      | none     | 4.5    | $4     | Bursts 200 ms after it dies, or 340 ms after it touches the player (no pay) |
-| Thrower  | Big Leaguer | 13 to 16     | 14     | 1 heart  | 4.5    | $8     | Hangs back, lobs Groaners, and hides behind a held zombie                   |
-| Crawler  | Ankle Biter | 26 to 32     | 2      | none     | 3.5    | $3     | Comes up through the floor and grabs the ankles, halving speed for 1.1 s    |
+| Thrower  | Big Leaguer | 26 to 30     | 14     | 1 heart  | 4.5    | $8     | Comes with 3 Groaners, runs to any in sight, lobs them, hides behind one    |
+| Crawler  | Ankle Biter | 26 to 32     | 2      | none     | 5      | $3     | A zombie spider: comes up through the floor, grabs the ankles (half speed)  |
 
 - **The burst.** Radius 28 px. It costs the player 1 heart unless blinking, deals 6 to every zombie and 15 to every trap it reaches, and lights any Kaboomer it touches, so chains ripple 150 ms apart. At most 2 bursts a frame.
 - **Speed.** Each wave scales spawn speed from ×1 on wave 1 to ×1.45 on wave 8. By wave 8 the fastest Hotfoots outrun the player (72 px/s).
@@ -156,7 +156,7 @@ Each wave is learn, test, combine, or twist, built from packs on the sawtooth (s
 | 4    | 66      | 220    | 2      | NEW: Kaboomer, three alone from one drawn door, while Groaner packs come from two others. Pincer peaks at 15.5 s and 38 s |
 | 5    | 62      | 221    | 2      | NEW: Big Lug, alone from the north with escorts behind. Mixed squads, then a second Big Lug leads a pincer                |
 | 6    | 63      | 235    | 2      | NEW: Big Leaguer, two 16 s apart. A Big Lug and a frenzied pincer, then a third Big Lug and a horde from every door       |
-| 7    | 70      | 264    | 3      | NEW: Ankle Biter, three 9 s apart. Big Lugs with pincers, a Big Leaguer, a stream of stragglers, a mixed rush             |
+| 7    | 70      | 264    | 3      | NEW: Ankle Biter, three 4.5 s apart. Big Lugs with pincers, a Big Leaguer, a stream of stragglers, a mixed rush             |
 | 8    | 53      | 262    | 3      | The finale. Squads and pincers, two Ankle Biters and a Big Leaguer, three Big Lugs, a one-volley horde, and Uncle Chunk   |
 
 A wave is a list of groups and holds. When Preparation begins the seeded generator shuffles each group's pack sizes, draws its doors, and rolls every spawn's kind and timing, so the door preview shows exactly what will come and the same seed rolls the same wave. A kind's debut group is only that kind, from one door, so the NEW card never promises a zombie the roll left out. Most groups draw their doors per run, and stragglers (packs of one with up to 1.5 s of jitter) wander in between packs from wave 3.
@@ -546,7 +546,7 @@ Each kind lists its wear stages in `ZOMBIE_KINDS`. A stage comes off when health
 | Big Lug     | 3/4, 1/2, 1/4      | His junk armor with a clang: the pot lid, the stop sign, then the bucket helmet         |
 | Kaboomer    | 2/3, 1/3           | His hugging arm, then the bomb casing cracks with a hot glow                            |
 | Big Leaguer | 2/3, 1/3           | His cap, then his throwing arm hangs limp and his wind-up takes 1.35 s instead of 0.9 s |
-| Ankle Biter | 1/2                | The top of its head                                                                     |
+| Ankle Biter | 1/2                | The skull on its back cracks pink                                                       |
 | Uncle Chunk | 4/5, 3/5, 2/5, 1/5 | One arm, his party hat and scalp, the other arm, then his belly bursts                  |
 
 A part flies off as a tumbling particle with blood and a pop sound and lands as a decal; armor throws sparks and clangs instead. Every stage's sprite is built once at module scope.
@@ -690,13 +690,15 @@ Redrawn on 2026-10-29 at the owner's request ("should look like an ARMORED zombi
 
 The kind id stays `Thrower`. A lanky mint pitcher in a torn pinstripe jersey and a backwards cap, knuckles dragging.
 
-- **What it does.** It arrives winded, hangs back about 64 px from the player, fetches a Groaner within 70 px, heaves it overhead with a leg kick for 0.9 s, and lobs it at where the player stands, then is winded. With no Groaner around it walks in and bites.
-- **The throw.** A red mark fills where it will land. A player on it loses a heart. The Groaner lands dazed for 1 s.
+- **What it does.** Reworked on 2026-11-02 from owner feedback ("always have grunts spawned with it, throw faster, and move much faster ... gravitate towards moving to closest one"). Three Groaners walk in right behind him in his pack, which never frenzies. He runs at 26 to 30 (was 13 to 16) to the nearest Groaner or Hotfoot he can see, however far, sticks with it until the player is within 170 px, heaves it for 0.55 s (was 0.9 s), lobs it at where the player stands, and is winded for 1.5 s (was 3.2 s). With none in sight he hangs back about 64 px from the player; with none left at all he walks in and bites.
+- **The throw.** A red mark fills over 0.75 s where it will land. A player on it loses a heart. The zombie lands dazed for 0.8 s and gets up riled: 35% faster for good (thrown again, faster again, up to 60).
 - **The shield.** When the player comes within 50 px or it is hit, it yanks the nearest small zombie in front of it and turns slowly toward the player. Shots from the front hit the held zombie; side and back shots, piercing shots, and bursts reach it. The shield drops after 4 s or when the held zombie dies.
 
 #### The Ankle Biter
 
-- **Coming up.** It never uses a door. A seeded spot on open floor at least 56 px from the player, clear of doorways, the stall, and traps, cracks and opens for 1.5 s, and it stays down while the player stands within 40 px.
+A rotting zombie spider seen from above (owner, 2026-11-02: "turn ankle biters into zombie spiders that look sick"): a skull in bone on its bloated green abdomen, four sick yellow eyes, red fangs, lime ooze dripping off it, and eight legs that skitter. Hurt, the skull cracks pink. Since then it also comes up in 0.6 s, arrives twice as often (campaign gaps halved, Endless every 9.5 s), and takes hits on a 5 px body that covers its abdomen, eyes, and fangs but not its legs.
+
+- **Coming up.** It never uses a door. A seeded spot on open floor at least 56 px from the player, clear of doorways, the stall, and traps, cracks and opens for 0.6 s (1.5 s before 2026-11-02, owner: "make them spawn a lot faster"), and it stays down while the player stands within 40 px.
 - **The grab.** It clings to the player's ankles for 1.1 s, halving their speed, then lets go winded.
 - **The preview.** It counts in a FLOOR box in the middle of the room. Its packs never rattle a door.
 

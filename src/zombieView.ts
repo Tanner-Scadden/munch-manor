@@ -1079,15 +1079,15 @@ const CRACKS: ReadonlyArray<Crack> = [
 ]
 
 // NOTE: the floor tells where an Ankle Biter is coming up: a ring of dust
-// spreads, pale cracks split the boards, a hole opens, and a claw pokes
-// through just before it climbs out.
+// spreads, pale cracks split the boards, a hole opens, and a leg pokes
+// through just before the spider climbs out over its middle.
 const crackShapes = (
   zombie: Zombie,
   elapsedMs: number,
 ): ReadonlyArray<Canvas.Shape> => {
   const progress = surfacingProgress(zombie)
   const x = Math.round(zombie.x)
-  const y = Math.round(zombie.y) + statsOf(zombie).footOffset
+  const y = Math.round(zombie.y)
   const jump = Math.floor((elapsedMs + zombie.id * 53) / CRACK_JUMP_MS) % 2
   const ring = Canvas.Circle({
     x,

@@ -16,7 +16,13 @@ import {
 import { routeSpawns } from './doorRoute'
 import { isThroughDoor } from './pacing'
 import { type Seeded, nextRandom } from './prng'
-import { byHoldTime, bySpawnTime, pairsWithin, rollGroup } from './wavePacks'
+import {
+  CHUCKER_ESCORT_SIZE,
+  byHoldTime,
+  bySpawnTime,
+  pairsWithin,
+  rollGroup,
+} from './wavePacks'
 import {
   type DoorPattern,
   FINAL_WAVE,
@@ -92,7 +98,7 @@ const ENDLESS_CRAWLERS_BASE = 1
 const ENDLESS_WAVES_PER_EXTRA_CRAWLER = 3
 const ENDLESS_CHUCKER_START_MS = ENDLESS_CYCLE_MS + 3000
 const ENDLESS_CRAWLER_START_MS = 6000
-const ENDLESS_CRAWLER_EVERY_MS = 19000
+const ENDLESS_CRAWLER_EVERY_MS = 9500
 
 const endlessChuckerCount = (wave: number): number =>
   ENDLESS_CHUCKERS_BASE +
@@ -108,7 +114,7 @@ const endlessEscortCount = (wave: number): number =>
 export const endlessZombieCount = (wave: number): number =>
   endlessTankCount(wave) +
   endlessEscortCount(wave) +
-  endlessChuckerCount(wave) +
+  endlessChuckerCount(wave) * (1 + CHUCKER_ESCORT_SIZE) +
   endlessCrawlerCount(wave)
 
 type EndlessCycle = Readonly<{
