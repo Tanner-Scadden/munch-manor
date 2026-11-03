@@ -11,6 +11,7 @@ import { makeCommand, makeStep } from '../definition'
 import {
   TIMELINES,
   beatSounds,
+  dismissUnlock,
   dropRunCard,
   endKindOf,
   isBeatOver,
@@ -127,10 +128,15 @@ export const isBeatSkipKey = (model: Model, code: string): boolean =>
   !isBeatOver(model) &&
   (endOffer(model) === 'Nothing' || !isEndActionKey(code))
 
-// NOTE: a tap on the game skips the beat, in an online room too. It never
-// starts a run (GAME_DESIGN.md, "No tap to start"); the card's buttons do.
+// NOTE: a tap on the game skips the beat, in an online room too, and once
+// the beat is over it puts away an unlock card still up. It never starts a
+// run (GAME_DESIGN.md, "No tap to start"); the card's buttons do.
 export const skipFromPointer = (model: Model): Model =>
-  isEndScreen(model.phase) ? skipBeat(model) : model
+  isEndScreen(model.phase)
+    ? isBeatOver(model)
+      ? dismissUnlock(model)
+      : skipBeat(model)
+    : model
 
 // AN ONLINE ROOM'S CARD
 

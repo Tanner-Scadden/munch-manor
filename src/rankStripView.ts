@@ -13,12 +13,16 @@ import {
   EndUnlock,
   RANK_FILL_MS,
   RANK_POP_MS,
+  UNLOCK_FADE_MS,
+  UNLOCK_LINGER_MS,
   easeOut,
   easeOutBack,
   isRankedUp,
   progressOf,
+  rankDoneMs,
   rankStripAtMs,
   unlockFlipAtMs,
+  unlockGoneMs,
   unlockStartMs,
   unlocksOf,
 } from './endBeat'
@@ -143,9 +147,52 @@ const priceTagShapes = (price: number): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
+// NOTE: a gold tab over the card says what the rank did: a hero for sale
+// is NOW PURCHASABLE, a gift look NOW AVAILABLE.
+const TAB_HEIGHT = GLYPH_HEIGHT + 4
+const TAB_PAD_PX = 3
+const TIMER_HEIGHT = 1
+const TIMER_COLOR = '#ffd23f'
+const TIMER_BACK = '#140c10'
+
+const tabShapes = (isForSale: boolean): ReadonlyArray<Canvas.Shape> => {
+  const text = isForSale ? 'NOW PURCHASABLE' : 'NOW AVAILABLE'
+  const width = Math.max(CARD_WIDTH + 2, textWidth(text) + TAB_PAD_PX * 2)
+  return [
+    rect(-width / 2, -TAB_HEIGHT - 1, width, TAB_HEIGHT, CARD_EDGE),
+    ...textShapes(text, 'Ink', 0, -TAB_HEIGHT + 1, 'Center'),
+  ]
+}
+
+// NOTE: the last card's timer drains along its foot until it goes away.
+const timerShapes = (left: number): ReadonlyArray<Canvas.Shape> => {
+  const filled = Math.round(CARD_WIDTH * Math.max(0, Math.min(1, left)))
+  return [
+    rect(
+      -CARD_WIDTH / 2,
+      CARD_HEIGHT - TIMER_HEIGHT,
+      CARD_WIDTH,
+      TIMER_HEIGHT,
+      TIMER_BACK,
+    ),
+    ...(filled > 0
+      ? [
+          rect(
+            -CARD_WIDTH / 2,
+            CARD_HEIGHT - TIMER_HEIGHT,
+            filled,
+            TIMER_HEIGHT,
+            TIMER_COLOR,
+          ),
+        ]
+      : []),
+  ]
+}
+
 // NOTE: each card a rank up opened flips over above the strip in turn: the
 // player in the prop or the hat, and its name. It narrows to a line and
-// opens again, as a card turns; the next one flips over it.
+// opens again, as a card turns; the next one flips over it. The last one
+// lingers with its timer, then fades away.
 const unlockCardShapes = (
   model: Model,
   kind: EndKind,
@@ -155,6 +202,14 @@ const unlockCardShapes = (
 ): ReadonlyArray<Canvas.Shape> => {
   const flipAtMs = unlockFlipAtMs(model, kind)
   const unlocks = unlocksOf(model)
+  const goneMs = unlockGoneMs(model, kind)
+  if (ms >= goneMs) {
+    return []
+  }
+  const doneMs = rankDoneMs(model, kind)
+  const fade = 1 - progressOf(ms, goneMs - UNLOCK_FADE_MS, UNLOCK_FADE_MS)
+  const timerLeft =
+    ms < doneMs ? 1 : 1 - progressOf(ms, doneMs, UNLOCK_LINGER_MS)
   const shown = Array.findLastIndex(
     unlocks,
     (_, index) => ms >= flipAtMs + unlockStartMs(index),
@@ -174,7 +229,9 @@ const unlockCardShapes = (
           group({
             translate: { x: centerX, y: top },
             scale: { x: scaleX, y: 1 },
+            opacity: fade >= 1 ? undefined : fade,
             shapes: [
+              ...tabShapes(Option.isSome(maybePrice)),
               rect(
                 -CARD_WIDTH / 2 - 1,
                 -1,
@@ -199,6 +256,7 @@ const unlockCardShapes = (
                 CARD_HEIGHT - GLYPH_HEIGHT - 2,
                 'Center',
               ),
+              ...timerShapes(timerLeft),
             ],
           }),
         ]
