@@ -307,7 +307,7 @@ Zombies sometimes drop a goodie. Walking over it grabs it. Four are timed boosts
 | Heart     | Pickled Heart   | At once: one heart. Only drops while the player is missing one                                  | -     | 8      |
 
 - **Stacking.** Different boosts run side by side. Grabbing a running boost adds its time, up to 1.5 times one pickup. `firingStats` and `playerSpeed` in `src/powerups.ts` are the one place boosts turn into stats.
-- **Time.** Boosts and pickups stand still with the world: paused, in the shop, in hit-stop, or under the new zombie card.
+- **Time.** Boosts and pickups stand still with the world: paused, in the shop, in hit-stop, or under the new zombie card. A boost's clock also stops once a wave is cleared and waits through the break, so a boost grabbed late carries into the next wave (owner, 2026-11-02).
 - **Feel.** A pickup bobs in a glow for 10 s and blinks out over its last 3. A grab plays its own sound, throws sparks, and shows its name. Only the first grab of each kind, ever, adds its one-line blurb; later grabs pop just its icon and name (2026-10-29, owner request, "Show, don't explain"). While a boost runs the player wears an aura of its color, shots take its glaze, and a chip beside the hearts drains.
 
 ##### Drops

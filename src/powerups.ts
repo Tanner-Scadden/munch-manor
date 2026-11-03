@@ -353,9 +353,14 @@ const extendTimer = (timer: BoostTimer, durationMs: number): BoostTimer => {
   return BoostTimer.On({ remainingMs, durationMs: remainingMs })
 }
 
+// NOTE: a boost's clock runs only while a wave is on, so one grabbed late in
+// a wave carries over the break to the next (owner, 2026-11-02).
 const tickBoosts = (model: World, slot: PlayerSlot, deltaMs: number): World => {
   const { boosts: before, player } = seatStateAt(model, slot)
-  if (!Array.some(BOOST_KIND_ORDER, kind => isOn(before[kind]))) {
+  if (
+    !Phase.isAnyOf(['Wave'])(model.phase) ||
+    !Array.some(BOOST_KIND_ORDER, kind => isOn(before[kind]))
+  ) {
     return model
   }
 
