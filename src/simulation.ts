@@ -20,7 +20,12 @@ import {
   tickReload,
 } from './firing'
 import { advanceFrenzy, payWipedPacks } from './frenzy'
-import { advanceLobs, flattenPans, shatterEvents } from './fridgeWeapons'
+import {
+  advanceLobs,
+  fireFridgeWeapon,
+  flattenPans,
+  shatterEvents,
+} from './fridgeWeapons'
 import {
   OUTWARD,
   addVectors,
@@ -55,6 +60,7 @@ import { advanceParty } from './revive'
 import { refreshShopPresence } from './shop'
 import { advanceTraps, clearBrokenTraps, trapBlockers } from './traps'
 import { advanceRound, endWhenDefeated } from './waves'
+import { maybePanOf } from './weapons'
 import type { World } from './world'
 import {
   GameEvent,
@@ -312,7 +318,38 @@ export const predictSeat = (
   deltaMs: number,
 ): World => armSeat(deltaMs)(walkSeat(model, slot, deltaMs), slot)
 
-// NOTE: only a standing player shops, reloads, fires, and stabs.
+const withWield = (
+  model: World,
+  slot: PlayerSlot,
+  wield: Player['wield'],
+): World =>
+  seatStateAt(model, slot).player.wield === wield
+    ? model
+    : modifySeat(model, slot, {
+        player: player => modifyFields(player, { wield: () => wield }),
+      })
+
+// NOTE: a co-op player who is down, Downed or BledOut, cannot shoot, but
+// the trigger swings whatever is in their melee slot, the knife or the
+// Clang Pan (owner, 2026-11-02: "when you are knocked or dead you can use
+// your knife, will give the pan more value"). The gun they held stays
+// drawn for when they get up: the melee slot is in hand only for the swing.
+const swingWhileDown = (
+  model: World,
+  slot: PlayerSlot,
+  deltaMs: number,
+): World => {
+  const { player } = seatStateAt(model, slot)
+  const inHand = withWield(model, slot, 'Melee')
+  const swung = Option.match(maybePanOf(player), {
+    onNone: () => stabWithKnife(inHand, slot, deltaMs),
+    onSome: pan => fireFridgeWeapon(inHand, slot, pan, deltaMs),
+  })
+  return withWield(swung, slot, player.wield)
+}
+
+// NOTE: only a standing player shops, reloads, and fires; one who is down
+// swings their melee slot (swingWhileDown).
 const armSeat =
   (deltaMs: number) =>
   (model: World, slot: PlayerSlot): World =>
@@ -326,7 +363,9 @@ const armSeat =
           slot,
           deltaMs,
         )
-      : faceTowardIntent(model, slot)
+      : isCoop(model)
+        ? swingWhileDown(faceTowardIntent(model, slot), slot, deltaMs)
+        : faceTowardIntent(model, slot)
 
 // NOTE: only a standing player shops at the stall or holds to buy.
 const visitStall =

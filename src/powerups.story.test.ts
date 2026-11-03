@@ -37,7 +37,7 @@ import {
   idleBoosts,
   initialModel,
 } from './model'
-import { DISTANT_SPAWN } from './model.fixture'
+import { DISTANT_SPAWN, pickupAt, withPickups } from './model.fixture'
 import { isGoodieBeckoning, shownHints } from './onboarding'
 import { focusOf, modifyFocus } from './party'
 import { pickupShapes } from './powerupView'
@@ -120,17 +120,6 @@ const withKills = (base: Model, victims: ReadonlyArray<Zombie>): Model =>
         bulletInto(victim.id + 500, victim, { knockback: 0 }),
       ),
   })
-
-const pickupAt = (
-  id: number,
-  kind: PickupKind,
-  x: number,
-  y: number,
-  ageMs = 0,
-): Pickup => ({ id, kind, x, y, ageMs })
-
-const withPickups = (base: Model, pickups: ReadonlyArray<Pickup>): Model =>
-  modifyFields(base, { pickups: () => pickups })
 
 const underPlayer = (base: Model, kind: PickupKind): Model =>
   withPickups(base, [

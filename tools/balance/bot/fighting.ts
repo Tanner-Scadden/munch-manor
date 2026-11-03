@@ -9,6 +9,7 @@ import { hasLineOfSight, levelOf } from '../../../src/arena'
 import { screenCameraOf, viewToWorld, worldToView } from '../../../src/camera'
 import { maybeShieldFor } from '../../../src/chucker'
 import { PLAYER_RADIUS } from '../../../src/constants'
+import { escapeHeading } from '../../../src/escape'
 import { isSmallKind } from '../../../src/fridgeWeapons'
 import { KNIFE_RULES } from '../../../src/knife'
 import { Message } from '../../../src/message'
@@ -64,6 +65,10 @@ import { type BotState, type Zombie } from './state'
 export const isPannable = (zombie: Zombie) =>
   isSmallKind(zombie.kind) && zombie.kind !== 'Exploder'
 
+// How much further than the flee line a zombie still counts when the bot
+// picks which way to run.
+const THREAT_SLACK_PX = 24
+
 const PAN_NEAR_PX = 12
 const PAN_FAR_PX = 16
 
@@ -81,7 +86,9 @@ const panStance = (state: BotState, model: Model): Vector | undefined => {
     distance(player, threat) <
       FLEE_PX + (threat.kind === 'Boss' ? BOSS_BERTH_PX : 0)
   ) {
-    return steerToward(threat, player)
+    return escapeHeading(levelOf(model), player, [
+      { at: threat, radius: bodyRadiusOf(threat) },
+    ])
   }
   const target = walking(model).find(zombie => zombie.id === panTarget.id)
   if (target === undefined) {
@@ -157,13 +164,27 @@ export const kite = (state: BotState, model: Model): Vector => {
     (zombie.frenzy._tag === 'Frenzied' ? frenzyBerthPx() : 0)
   // A zombie frozen solid by Brain Freeze cannot bite, so it is not fled,
   // and the human bot flees only what it has noticed: in view, or heard.
-  const nearest = withinSenses(model)
+  const fled = withinSenses(model)
     .filter(zombie => !KITES || zombie.kind !== 'Boss')
     .filter(zombie => zombie.action._tag !== 'Frozen')
     .filter(zombie => isNoticed(state, model, zombie))
-    .sort((a, b) => reach(a) - reach(b))[0]
+    .sort((a, b) => reach(a) - reach(b))
+  const nearest = fled[0]
   if (nearest !== undefined && reach(nearest) < FLEE_PX) {
-    return steerToward(nearest, player)
+    // It runs the way a player would: clear of every zombie close by and
+    // out of corners, through a gap in the crowd when it must
+    // (src/escape.ts), not straight back from the nearest one into a wall.
+    return escapeHeading(
+      levelOf(model),
+      player,
+      fled
+        .filter(zombie => reach(zombie) < FLEE_PX + THREAT_SLACK_PX)
+        .map(zombie => ({
+          at: zombie,
+          radius:
+            bodyRadiusOf(zombie) + distance(player, zombie) - reach(zombie),
+        })),
+    )
   }
   if (isInKitchen(player)) {
     return steerToward(player, routeTo(player, ROOM_CENTER))
