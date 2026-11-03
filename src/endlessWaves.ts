@@ -6,6 +6,7 @@ import {
   ENDLESS_ESCORTS_PER_WAVE,
   ENDLESS_EXPLODER_WEIGHT_PER_WAVE,
   ENDLESS_HP_PER_WAVE,
+  ENDLESS_HP_RAMP,
   ENDLESS_SPEED_MAX,
   ENDLESS_SPEED_PER_WAVE,
   ENDLESS_TANKS_BASE,
@@ -52,8 +53,13 @@ import { ZOMBIE_KIND_ORDER } from './zombies'
 export const endlessDepth = (wave: number): number =>
   Math.max(0, wave - FINAL_WAVE)
 
-export const hpScaleFor = (wave: number): number =>
-  1 + ENDLESS_HP_PER_WAVE * endlessDepth(wave)
+// NOTE: health past the finale climbs a little faster every wave, so a
+// maxed loadout still meets zombies that outgrow it: x1.13 one wave in, x2.8
+// ten waves in, x5.8 twenty waves in.
+export const hpScaleFor = (wave: number): number => {
+  const depth = endlessDepth(wave)
+  return 1 + ENDLESS_HP_PER_WAVE * depth + ENDLESS_HP_RAMP * depth * depth
+}
 
 const ENDLESS_CYCLE_SHARES: Array.NonEmptyReadonlyArray<number> = [
   0.3, 0.32, 0.38,
