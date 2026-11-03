@@ -226,6 +226,10 @@ describe('campaign and endless after wave 8', () => {
     const waves = Array.makeBy(10, index => FINAL_WAVE + 1 + index)
     Array.forEach(Array.drop(waves, 1), wave => {
       expect(hpScaleFor(wave)).toBeGreaterThan(hpScaleFor(wave - 1))
+      // NOTE: and each wave's step is bigger than the last.
+      expect(hpScaleFor(wave) - hpScaleFor(wave - 1)).toBeGreaterThan(
+        hpScaleFor(wave - 1) - hpScaleFor(wave - 2),
+      )
       expect(endlessZombieCount(wave)).toBeGreaterThan(
         endlessZombieCount(wave - 1),
       )

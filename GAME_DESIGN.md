@@ -347,7 +347,7 @@ Each gun has three tiers, rows in `UPGRADE_TIERS` in `src/weapons.ts`. Tiers sta
 The run mode is `Campaign` or `Endless`, chosen on the home menu and kept in the Model.
 
 - **Keep going.** Victory offers KEEP GOING (K), which carries the same run into endless with its money, guns, tiers, traps, hearts, and stats.
-- **Endless waves.** After the campaign's waves, each wave _n_ (depth _d_ past the campaign) is generated when Preparation begins, so the preview stays exact: health ×(1 + 0.12 _d_), three sawtooth cycles of squads and pincers ending in a horde, 90 + 6 _d_ escorts, 4 + ⌊_d_ / 2⌋ Big Lugs before the peaks, more Big Leaguers and Ankle Biters as it goes, and speed rising 0.01 a wave from the finale's, up to ×1.6. Uncle Chunk comes back every eighth wave.
+- **Endless waves.** After the campaign's waves, each wave _n_ (depth _d_ past the campaign) is generated when Preparation begins, so the preview stays exact: health ×(1 + 0.12 _d_ + 0.006 _d_²) (since 2026-11-02, owner: "keep ramping up the HP of the zombies slowly"; ×1.75 five waves in, ×2.8 ten, ×5.8 twenty), three sawtooth cycles of squads and pincers ending in a horde, 90 + 6 _d_ escorts, 4 + ⌊_d_ / 2⌋ Big Lugs before the peaks, more Big Leaguers and Ankle Biters as it goes, and speed rising 0.01 a wave from the finale's, up to ×1.6. Uncle Chunk comes back every eighth wave.
 - **What stays the same.** Preparation, the shop, traps, the preview, and the music. A THEY GOT BEEFIER banner replaces NEW. Game Over shows the wave reached and the best for the difficulty.
 
 #### Pausing, focus, and the end screens

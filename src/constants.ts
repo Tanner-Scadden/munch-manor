@@ -413,6 +413,7 @@ export const RELAX_QUIET_MAX_MS = 500
 export const RESTLESS_QUIET_MAX_MS = 1000
 export const RELAX_TRICKLE_MAX = 2
 export const ENDLESS_HP_PER_WAVE = 0.12
+export const ENDLESS_HP_RAMP = 0.006
 export const ENDLESS_SPEED_PER_WAVE = 0.01
 export const ENDLESS_SPEED_MAX = 1.6
 export const ENDLESS_ESCORTS_BASE = 90
