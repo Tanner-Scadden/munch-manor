@@ -60,6 +60,7 @@ import {
   type WeaponStats,
   heldGun,
   isWieldingKnife,
+  maybePanOf,
   maybeWieldedPan,
   statsAt,
 } from './weapons'
@@ -337,7 +338,39 @@ export const lyingShapes = (
         }),
       ],
     }),
+    ...downSwingShapes(model),
   ]
+}
+
+// NOTE: a player who is down swings their melee slot (swingWhileDown in
+// src/simulation.ts): the knife's slash, or the Clang Pan over the body for
+// as long as its swing lasts. Nothing shows between swings.
+const downSwingShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+  const { player } = focusOf(model)
+  return Option.match(maybePanOf(player), {
+    onNone: () => knifeSlashShapes(player),
+    onSome: ({ kind, tier }) => {
+      const stats = statsAt(kind, tier)
+      const recoil = clamp(player.recoilRemainingMs / stats.recoilMs, 0, 1)
+      return recoil > 0
+        ? [
+            group({
+              translate: {
+                x: Math.round(player.x + player.facing.x * GUN_HOLD_PX),
+                y: Math.round(player.y + player.facing.y * GUN_HOLD_PX),
+              },
+              shapes: gunSprite(
+                kind,
+                tier,
+                Math.atan2(player.facing.y, player.facing.x) +
+                  swingTurn(kind, recoil),
+                model.appearance.gunSkin,
+              ),
+            }),
+          ]
+        : []
+    },
+  })
 }
 
 // NOTE: the knife in hand rests where the gun would; mid-slash the thrust

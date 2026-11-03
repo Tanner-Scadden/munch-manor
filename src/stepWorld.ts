@@ -2,6 +2,7 @@ import { Array, Option, Result, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
+import { ZERO_VECTOR } from './geometry'
 import {
   forEachSeat,
   isCoop,
@@ -75,19 +76,25 @@ const inputOf = (inputsByPlayer: InputsByPlayer, slot: PlayerSlot): Intent =>
     () => idleIntent,
   )
 
-// NOTE: an away player stands frozen and a bled-out one is out of the
-// fight (decided row 4, row 10). A downed one crawls but cannot fire.
+// NOTE: an away player stands frozen (decided row 10). A downed one crawls
+// (decided row 4) and a bled-out one lies still; both aim, and their
+// trigger swings the melee slot, never the gun (swingWhileDown in
+// src/simulation.ts).
 const intentFor = (world: World, slot: PlayerSlot, intent: Intent): Intent => {
   if (!isCoop(world)) {
     return intent
   }
   const { seat } = seatStateAt(world, slot)
-  if (!isHere(seat) || !(isStanding(seat) || isDowned(seat))) {
+  if (!isHere(seat)) {
     return idleIntent
   }
-  return isDowned(seat)
-    ? modifyFields(intent, { trigger: () => 'Released' })
-    : intent
+  if (isStanding(seat)) {
+    return intent
+  }
+  return modifyFields(intent, {
+    move: move => (isDowned(seat) ? move : ZERO_VECTOR),
+    interact: () => 'Released',
+  })
 }
 
 export const stepWorld = (

@@ -1,7 +1,19 @@
-import { Array, Option, Order, pipe } from 'effect'
+import { Array, Option, Order, Result, pipe } from 'effect'
 
-import { hasClearPath, hasLineOfSight, levelOf } from './arena'
-import { PLAYER_RADIUS, SHOP_NEAR_PX } from './constants'
+import {
+  type Level,
+  boxCenter,
+  hasClearPath,
+  hasLineOfSight,
+  isInYardAt,
+  isInsideRoomAt,
+  isSolidAt,
+  levelOf,
+} from './arena'
+import { maxHpOf } from './calling'
+import { PLAYER_RADIUS, PLAYER_SPEED, SHOP_NEAR_PX } from './constants'
+import { type Threat, escapeHeading } from './escape'
+import { PAN_RULES } from './fridgeWeapons'
 import {
   ZERO_VECTOR,
   closestPointOnSegment,
@@ -9,6 +21,7 @@ import {
   distanceBetween,
   normalize,
 } from './geometry'
+import { KNIFE_RULES } from './knife'
 import {
   COOP_RULES,
   focusOf,
@@ -21,11 +34,13 @@ import {
   shopOf,
 } from './party'
 import { flowFieldToward, steerToward } from './pathing'
+import { PICKUP_LIFETIME_MS } from './powerups'
 import { STALL_BOX, Verdict, isShopOpenFor, verdictFor } from './shop'
 import { type InputsByPlayer, SeatAction, applySeatAction } from './stepWorld'
 import {
   canReload,
   carriedMagazine,
+  hasPan,
   heldGun,
   heldLoaded,
   isReloading,
@@ -35,6 +50,7 @@ import {
   BreakClock,
   type Intent,
   Phase,
+  type Pickup,
   type PlayerSlot,
   type SeatState,
   type ShopItemId,
@@ -43,21 +59,28 @@ import {
   type Zombie,
   idleIntent,
 } from './worldSchema'
+import { bodyRadiusOf } from './zombies'
 
 // A teammate bot's brain (GAME_DESIGN.md, "Teammate bots"): the seat's
 // intent and its presses for a tick, read from the World alone. It plays
-// like a competent casual: it shoots the nearest zombie it can see, keeps
-// some distance from it, stays by the human, revives anyone who is down,
-// buys ammo and hearts at the stall in a break (never while the human is at
-// it), and presses READY when the human does or after a short wait. It
+// like a competent casual with a mind of its own: it holds its own post by a
+// door (a different one for each seat, moving on now and then), hunts the
+// zombies it hears but cannot see, shoots the nearest one it can, keeps
+// some distance from it and some room from its teammates, revives anyone who
+// is down, grabs the power-ups nobody nearer wants, buys ammo and hearts at the stall in a break (never while the
+// human is at it), and presses READY when the human does or after a short
+// wait. It
 // carries nothing between ticks and rolls no dice, so the same World gives
 // the same intent, and a replay holds.
 
 // TUNING
 
 const FIRE_RANGE_PX = 100
-const FOLLOW_NEAR_PX = 16
-const FOLLOW_FAR_PX = 52
+const ELBOW_ROOM_PX = 18
+const HUNT_PX = 170
+const POST_INSET_PX = 30
+const POST_REACHED_PX = 10
+const POST_MS = 14_000
 const STRAFE_MS = 1300
 const RELOAD_QUIET_PX = 90
 const REVIVE_STOP_PX = PLAYER_RADIUS + COOP_RULES.reviveReachPx - 4
@@ -65,6 +88,11 @@ const READY_DELAY_MS = 4000
 const READY_LIMIT_MS = 10_000
 const STALL_YIELD_PX = SHOP_NEAR_PX
 const STALL_SPOT_PX = 8
+const THREAT_SLACK_PX = 40
+const PICKUP_SEEK_PX = 110
+const HEART_SEEK_PX = 170
+const PICKUP_SAFE_PX = 28
+const LOW_HP = 2
 
 // NOTE: how close a zombie may come before the bot backs off it. The big
 // and the explosive ones get more room.
@@ -111,29 +139,6 @@ const nearestShootable = (world: World, at: Vector): Option.Option<Zombie> =>
       ? Option.some(zombie)
       : nearest,
   )
-
-// NOTE: the human is the seat in the World's own fields; the bot stays by
-// them, or by the nearest teammate on its feet when they are out.
-const anchorFor = (world: World, me: SeatState): Option.Option<SeatState> => {
-  const others = Array.filter(
-    playersOf(world),
-    other => other.seat.slot !== me.seat.slot && isStanding(other.seat),
-  )
-  const humanSlot = leadSeatOf(world).slot
-  return pipe(
-    Array.findFirst(others, other => other.seat.slot === humanSlot),
-    Option.orElse(() =>
-      Array.head(
-        Array.sort(
-          others,
-          Order.mapInput(Order.Number, (other: SeatState) =>
-            distanceBetween(me.player, other.player),
-          ),
-        ),
-      ),
-    ),
-  )
-}
 
 const downedNear = (world: World, me: SeatState): Option.Option<SeatState> =>
   pipe(
@@ -194,21 +199,77 @@ const mixed = (first: Vector, second: Vector, weight: number): Vector =>
     () => ZERO_VECTOR,
   )
 
-// NOTE: where each bot stands by the human: a spot beside them, a little
-// different for every seat.
-const SPOT_OFFSETS: ReadonlyArray<Vector> = [
-  { x: 0, y: 0 },
-  { x: -22, y: 10 },
-  { x: 22, y: 10 },
-  { x: 0, y: -22 },
-]
+// NOTE: a bot's post: a spot inside the house a little way in from a door,
+// where it watches for what comes through. Built once for each Level.
+const postsByLevel = new WeakMap<Level, ReadonlyArray<Vector>>()
 
-const spotBeside = (anchor: Vector, slot: PlayerSlot): Vector => {
-  const offset = Option.getOrElse(
-    Array.get(SPOT_OFFSETS, slot % SPOT_OFFSETS.length),
-    () => ZERO_VECTOR,
+const postsOf = (level: Level): ReadonlyArray<Vector> => {
+  const cached = postsByLevel.get(level)
+  if (cached !== undefined) {
+    return cached
+  }
+  const inward = Array.flatMap(level.doorIds, (id): ReadonlyArray<Vector> => {
+    const { tiles, box } = level.thresholds[id]
+    if (!Array.isReadonlyArrayNonEmpty(tiles)) {
+      return []
+    }
+    const outward = level.doors[id].outward
+    const threshold = boxCenter(box)
+    const spot = {
+      x: threshold.x - outward.x * POST_INSET_PX,
+      y: threshold.y - outward.y * POST_INSET_PX,
+    }
+    return isInsideRoomAt(level, spot) &&
+      !isInYardAt(level, spot) &&
+      !isSolidAt(level, spot)
+      ? [spot]
+      : []
+  })
+  const posts: ReadonlyArray<Vector> = Array.isReadonlyArrayNonEmpty(inward)
+    ? inward
+    : [boxCenter(level.bounds)]
+  postsByLevel.set(level, posts)
+  return posts
+}
+
+// NOTE: which post a seat holds: its own, by slot, moving on to the next
+// door every POST_MS of the clock, so a crew spreads over the house and
+// each bot wanders it in its own order.
+const postOf = (world: World, slot: PlayerSlot): Vector => {
+  const posts = postsOf(levelOf(world))
+  const turn = Math.floor(clockMsOf(world) / POST_MS)
+  const index = (slot * 2 + turn) % posts.length
+  return Option.getOrElse(Array.get(posts, index), () =>
+    boxCenter(levelOf(world).bounds),
   )
-  return { x: anchor.x + offset.x, y: anchor.y + offset.y }
+}
+
+// NOTE: a step away from the nearest teammate on their feet when they are
+// too close, so a crew does not walk in a clump.
+const elbowRoom = (world: World, me: SeatState): Option.Option<Vector> =>
+  pipe(
+    playersOf(world),
+    Array.filter(
+      other =>
+        other.seat.slot !== me.seat.slot &&
+        isStanding(other.seat) &&
+        distanceBetween(me.player, other.player) < ELBOW_ROOM_PX,
+    ),
+    Array.head,
+    Option.map(other => awayFrom(me.player, other.player)),
+  )
+
+const withElbowRoom = (world: World, me: SeatState, move: Vector): Vector =>
+  Option.match(elbowRoom(world, me), {
+    onNone: () => move,
+    onSome: away => mixed(move, away, 1),
+  })
+
+const toPost = (world: World, me: SeatState): Vector => {
+  const post = postOf(world, me.seat.slot)
+  return distanceBetween(me.player, post) <= POST_REACHED_PX
+    ? ZERO_VECTOR
+    : walkToward(world, me.player, post)
 }
 
 // THE FIGHT
@@ -268,10 +329,73 @@ const fleeFrom = (me: SeatState, zombie: Zombie): Option.Option<Zombie> =>
     ? Option.some(zombie)
     : Option.none()
 
+// NOTE: every zombie close enough to matter when the bot runs, so it runs
+// clear of the crowd and not only of the nearest.
+const threatsNear = (world: World, me: SeatState): ReadonlyArray<Threat> =>
+  Array.filterMap(world.zombies, zombie =>
+    isShootable(zombie) &&
+    distanceBetween(me.player, zombie) < FLEE_PX[zombie.kind] + THREAT_SLACK_PX
+      ? Result.succeed({ at: zombie, radius: bodyRadiusOf(zombie) })
+      : Result.failVoid,
+  )
+
+// POWER-UPS
+
+// NOTE: whether a player would want this pickup: a Heart only when hurt.
+const wants = (player: SeatState, pickup: Pickup): boolean =>
+  pickup.kind !== 'Heart' || player.player.hp < maxHpOf(player.player)
+
+// NOTE: the pickup the bot goes for, the way a teammate would: one it can
+// reach before it vanishes, with no zombie standing on it, and that it is
+// the nearest of the players who want it to, so it never races the human
+// or another bot for it. It reaches further for a Heart when low.
+const maybePickupFor = (world: World, me: SeatState): Option.Option<Pickup> =>
+  pipe(
+    world.pickups,
+    Array.filter(pickup => {
+      const gap = distanceBetween(me.player, pickup)
+      const seekPx =
+        pickup.kind === 'Heart' && me.player.hp <= LOW_HP
+          ? HEART_SEEK_PX
+          : PICKUP_SEEK_PX
+      return (
+        gap <= seekPx &&
+        wants(me, pickup) &&
+        (gap / PLAYER_SPEED) * 1000 < PICKUP_LIFETIME_MS - pickup.ageMs &&
+        !Array.some(
+          world.zombies,
+          zombie =>
+            isShootable(zombie) &&
+            distanceBetween(zombie, pickup) < PICKUP_SAFE_PX,
+        ) &&
+        !Array.some(
+          playersOf(world),
+          other =>
+            other.seat.slot !== me.seat.slot &&
+            isStanding(other.seat) &&
+            wants(other, pickup) &&
+            distanceBetween(other.player, pickup) < gap,
+        )
+      )
+    }),
+    Array.sort(
+      Order.mapInput(Order.Number, (pickup: Pickup) =>
+        distanceBetween(me.player, pickup),
+      ),
+    ),
+    Array.head,
+  )
+
+const toPickup = (world: World, me: SeatState): Option.Option<Vector> =>
+  Option.map(maybePickupFor(world, me), pickup =>
+    walkToward(world, me.player, pickup),
+  )
+
 const fightMove = (
   world: World,
   me: SeatState,
   maybeNearest: Option.Option<Zombie>,
+  maybeTarget: Option.Option<Zombie>,
 ): Vector => {
   const clockMs = clockMsOf(world)
   const maybeDanger = Option.flatMap(maybeNearest, zombie =>
@@ -283,44 +407,39 @@ const fightMove = (
     downed => distanceBetween(me.player, downed.player) <= REVIVE_STOP_PX,
   )
   if (Option.isSome(maybeDanger)) {
-    return mixed(
-      awayFrom(me.player, maybeDanger.value),
-      sideStep(me.player, maybeDanger.value, me.seat.slot, clockMs),
-      0.5,
-    )
+    return escapeHeading(levelOf(world), me.player, threatsNear(world, me))
   }
   if (Option.isSome(maybeDowned)) {
     return reviveStop
       ? ZERO_VECTOR
       : walkToward(world, me.player, maybeDowned.value.player)
   }
-  return Option.match(anchorFor(world, me), {
-    onNone: () => ZERO_VECTOR,
-    onSome: anchor => {
-      const gap = distanceBetween(me.player, anchor.player)
-      if (gap > FOLLOW_FAR_PX) {
-        return walkToward(
-          world,
-          me.player,
-          spotBeside(anchor.player, me.seat.slot),
-        )
-      } else if (gap < FOLLOW_NEAR_PX) {
-        return awayFrom(me.player, anchor.player)
-      } else {
-        return Option.match(maybeNearest, {
-          onNone: () => ZERO_VECTOR,
-          onSome: zombie =>
-            distanceBetween(me.player, zombie) < FIRE_RANGE_PX / 2
-              ? mixed(
-                  ZERO_VECTOR,
-                  sideStep(me.player, zombie, me.seat.slot, clockMs),
-                  0.6,
-                )
-              : ZERO_VECTOR,
-        })
-      }
-    },
-  })
+  const maybeToPickup = toPickup(world, me)
+  if (Option.isSome(maybeToPickup)) {
+    return maybeToPickup.value
+  }
+  return withElbowRoom(
+    world,
+    me,
+    Option.match(maybeNearest, {
+      onNone: () => toPost(world, me),
+      onSome: zombie => {
+        const gap = distanceBetween(me.player, zombie)
+        if (Option.isSome(maybeTarget)) {
+          return gap < FIRE_RANGE_PX / 2
+            ? mixed(
+                ZERO_VECTOR,
+                sideStep(me.player, zombie, me.seat.slot, clockMs),
+                0.6,
+              )
+            : ZERO_VECTOR
+        }
+        return gap <= HUNT_PX && isInsideRoomAt(levelOf(world), zombie)
+          ? walkToward(world, me.player, zombie)
+          : toPost(world, me)
+      },
+    }),
+  )
 }
 
 // NOTE: a casual hand, without dice: every quarter second the bot's aim
@@ -357,7 +476,7 @@ const fightIntent = (world: World, me: SeatState): Intent => {
   const maybeTarget = maybeTargetFor(world, me)
   const window = Math.floor(clockMsOf(world) / HAND_WINDOW_MS)
   return {
-    move: fightMove(world, me, maybeNearest),
+    move: fightMove(world, me, maybeNearest, maybeTarget),
     maybeAim: Option.flatMap(maybeTarget, zombie =>
       Option.map(directionBetween(me.player, zombie), aim =>
         wanderedAim(aim, me.seat.slot, zombie.id, window),
@@ -416,7 +535,14 @@ const breakIntent = (world: World, me: SeatState): Intent => {
   const maybeHuman = humanOf(world)
   const seatWorld = focusSeat(world, me.seat.slot)
   const isAtCounter = ShopState.isAnyOf(['Browsing'])(focusOf(seatWorld).shop)
-  if (!isStanding(me.seat) || isAtCounter || me.seat.readiness === 'Ready') {
+  if (!isStanding(me.seat) || isAtCounter) {
+    return idleIntent
+  }
+  const maybeToPickup = toPickup(world, me)
+  if (Option.isSome(maybeToPickup)) {
+    return { ...idleIntent, move: maybeToPickup.value }
+  }
+  if (me.seat.readiness === 'Ready') {
     return idleIntent
   }
   const wantsShop = isShopOpen(world) && Option.isSome(maybeWishOf(seatWorld))
@@ -432,25 +558,33 @@ const breakIntent = (world: World, me: SeatState): Intent => {
   ) {
     return { ...idleIntent, move: walkToward(world, me.player, stallSpot) }
   }
-  return Option.match(anchorFor(world, me), {
-    onNone: () => idleIntent,
-    onSome: anchor => ({
-      ...idleIntent,
-      move:
-        distanceBetween(me.player, anchor.player) > FOLLOW_FAR_PX
-          ? walkToward(
-              world,
-              me.player,
-              spotBeside(anchor.player, me.seat.slot),
-            )
-          : distanceBetween(me.player, anchor.player) < FOLLOW_NEAR_PX
-            ? awayFrom(me.player, anchor.player)
-            : ZERO_VECTOR,
-    }),
-  })
+  return { ...idleIntent, move: withElbowRoom(world, me, toPost(world, me)) }
 }
 
 // INTENT
+
+// NOTE: a bot that is down lies where it fell and swings its knife or Pan
+// at any zombie in reach, as a player who is down can.
+const meleeReachOf = (me: SeatState, zombie: Zombie): number =>
+  (hasPan(me.player) ? PAN_RULES.reachPx : KNIFE_RULES.reachPx) +
+  bodyRadiusOf(zombie) +
+  PLAYER_RADIUS
+
+const downIntent = (world: World, me: SeatState): Intent =>
+  Option.match(
+    Option.filter(
+      nearestShootable(world, me.player),
+      zombie => distanceBetween(me.player, zombie) <= meleeReachOf(me, zombie),
+    ),
+    {
+      onNone: () => idleIntent,
+      onSome: zombie => ({
+        ...idleIntent,
+        maybeAim: directionBetween(me.player, zombie),
+        trigger: 'Held',
+      }),
+    },
+  )
 
 const intentFor = (world: World, slot: PlayerSlot): Intent =>
   Option.match(
@@ -459,7 +593,7 @@ const intentFor = (world: World, slot: PlayerSlot): Intent =>
       onNone: () => idleIntent,
       onSome: me => {
         if (!isStanding(me.seat)) {
-          return idleIntent
+          return downIntent(world, me)
         }
         return Phase.match(world.phase, {
           Ready: () => idleIntent,

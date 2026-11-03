@@ -52,6 +52,8 @@ import { type World, modifyWorldFields, withWorld } from './world'
 import {
   Arsenal,
   type Life,
+  type Pickup,
+  type PickupKind,
   type Seat,
   type SeatState,
   type WeaponKind,
@@ -451,3 +453,18 @@ export const lastHeart = (base: Model): Model =>
     }),
     { player: player => modifyFields(player, { hp: () => 1 }) },
   )
+
+// PICKUPS
+
+export const pickupAt = (
+  id: number,
+  kind: PickupKind,
+  x: number,
+  y: number,
+  ageMs = 0,
+): Pickup => ({ id, kind, x, y, ageMs })
+
+export const withPickups = <M extends World>(
+  base: M,
+  pickups: ReadonlyArray<Pickup>,
+): M => modifyWorldFields(base, { pickups: () => pickups })
