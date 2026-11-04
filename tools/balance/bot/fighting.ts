@@ -65,10 +65,6 @@ import { type BotState, type Zombie } from './state'
 export const isPannable = (zombie: Zombie) =>
   isSmallKind(zombie.kind) && zombie.kind !== 'Exploder'
 
-// How much further than the flee line a zombie still counts when the bot
-// picks which way to run.
-const THREAT_SLACK_PX = 24
-
 const PAN_NEAR_PX = 12
 const PAN_FAR_PX = 16
 
@@ -171,20 +167,17 @@ export const kite = (state: BotState, model: Model): Vector => {
     .sort((a, b) => reach(a) - reach(b))
   const nearest = fled[0]
   if (nearest !== undefined && reach(nearest) < FLEE_PX) {
-    // It runs the way a player would: clear of every zombie close by and
-    // out of corners, through a gap in the crowd when it must
-    // (src/escape.ts), not straight back from the nearest one into a wall.
-    return escapeHeading(
-      levelOf(model),
-      player,
-      fled
-        .filter(zombie => reach(zombie) < FLEE_PX + THREAT_SLACK_PX)
-        .map(zombie => ({
-          at: zombie,
-          radius:
-            bodyRadiusOf(zombie) + distance(player, zombie) - reach(zombie),
-        })),
-    )
+    // It runs the way a person does: away from the zombie it is watching,
+    // along a wall and out of corners (src/escape.ts), but blind to the rest
+    // of the crowd. Weaving through every gap, as the teammate bots do, won
+    // Normal 40% and Hard 49% on 2026-11-03, far past what people manage.
+    return escapeHeading(levelOf(model), player, [
+      {
+        at: nearest,
+        radius:
+          bodyRadiusOf(nearest) + distance(player, nearest) - reach(nearest),
+      },
+    ])
   }
   if (isInKitchen(player)) {
     return steerToward(player, routeTo(player, ROOM_CENTER))
