@@ -3,8 +3,10 @@
 // real wire, `Session`, and the game's co-op client. Nothing else answers.
 
 import {
+  Array,
   Clock,
   Effect,
+  Function,
   Layer,
   Option,
   Queue,
@@ -65,10 +67,10 @@ const roomEvents = (seats: number, zombies: number) =>
     ),
   )
 
-export const liveCoopNet = (
-  seats: number,
-  zombies: number,
-): Layer.Layer<CoopNet> =>
+export const liveCoopNet: {
+  (zombies: number): (seats: number) => Layer.Layer<CoopNet>
+  (seats: number, zombies: number): Layer.Layer<CoopNet>
+} = Function.dual(2, (seats: number, zombies: number): Layer.Layer<CoopNet> =>
   Layer.succeed(
     CoopNet,
     CoopNet.of({
@@ -81,7 +83,7 @@ export const liveCoopNet = (
       room: () => roomEvents(seats, zombies),
       sendToRoom: frames =>
         Effect.sync(() =>
-          frames.map(frame => {
+          Array.map(frames, frame => {
             const bytes = Result.getOrThrow(encodeClientFrame(frame))
             post(LiveRoomRequest.cases.Send.make({ bytes }))
             return bytes.length
@@ -90,4 +92,5 @@ export const liveCoopNet = (
       leaveRoom: Effect.void,
       resyncRoom: Effect.void,
     }),
-  )
+  ),
+)

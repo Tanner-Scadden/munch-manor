@@ -1,7 +1,8 @@
-import { Array, Option, String, pipe } from 'effect'
+import { Array, Function, Option, Record, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { isOwned } from './closet'
+import { isObjectFirst } from './dualArgs'
 import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, NO_HAT } from './hatArt'
 import {
   type Appearance,
@@ -123,25 +124,30 @@ const FLAME_COLOR = '#ff7a1a'
 const TOQUE_BAND_COLOR = '#c9c3ad'
 
 const channel = (color: string, index: number): number =>
-  Number.parseInt(color.slice(1 + index * 2, 3 + index * 2), 16)
+  Number.parseInt(String.slice(1 + index * 2, 3 + index * 2)(color), 16)
 
 const hexByte = (value: number): string =>
-  Math.round(value).toString(16).padStart(2, '0')
+  String.padStart(2, '0')(Math.round(value).toString(16))
 
 // NOTE: a color between two others, `amount` of the way from the first.
 const mix = (from: string, to: string, amount: number): string =>
-  `#${[0, 1, 2]
-    .map(index =>
+  `#${Array.join(
+    Array.map([0, 1, 2], index =>
       hexByte(
         channel(from, index) +
           (channel(to, index) - channel(from, index)) * amount,
       ),
-    )
-    .join('')}`
+    ),
+    '',
+  )}`
 
 // NOTE: the symbols a player's pixel maps use. The Rainbow print's stripes
 // are the digits 0 to 5, one per column of the torso.
 const RAINBOW_SYMBOLS = '012345'
+
+// NOTE: the symbol at a column of a pixel row, or the fallback past its end.
+const symbolAt = (row: string, x: number, fallback: string): string =>
+  Option.getOrElse(String.charAt(row, x), () => fallback)
 
 export const playerPalette = (appearance: Appearance): Palette => {
   const hair = HAIR_SHADES[appearance.hairColor]
@@ -169,9 +175,9 @@ export const playerPalette = (appearance: Appearance): Palette => {
     F: FLAME_COLOR,
     N: TOQUE_BAND_COLOR,
     ...HAT_COLORS,
-    ...Object.fromEntries(
+    ...Record.fromEntries(
       Array.map(RAINBOW_STRIPES, (color, index) => [
-        RAINBOW_SYMBOLS.charAt(index),
+        symbolAt(RAINBOW_SYMBOLS, index, ''),
         color,
       ]),
     ),
@@ -228,7 +234,7 @@ const mapLegs = (legs: Legs, row: (row: string) => string): Legs => ({
   passBack: Array.map(legs.passBack, row),
 })
 
-const bare = (row: string): string => row.replaceAll('L', 'S')
+const bare = (row: string): string => String.replaceAll('L', 'S')(row)
 
 // NOTE: a dress ends in one hem row, wider than the hips, over bare legs.
 const DRESS_LEGS: Legs = {
@@ -244,7 +250,7 @@ const OUTFIT_ART: Readonly<Record<Outfit, OutfitArt>> = {
   Dress: { top: ['BBSSBB', 'BDDDDB', 'BBBBBB'], legs: DRESS_LEGS },
   Overalls: {
     top: ['BOBBOB', 'BOOOOB', 'OOOOOO'],
-    legs: mapLegs(PANTS, row => row.replaceAll('L', 'O')),
+    legs: mapLegs(PANTS, row => String.replaceAll('L', 'O')(row)),
   },
 }
 
@@ -267,20 +273,22 @@ const exhaleRows = (top: OutfitArt['top']): Rows => [
 // BODY SHAPES
 
 const setAt = (row: string, x: number, symbol: string): string =>
-  `${row.slice(0, x)}${symbol}${row.slice(x + 1)}`
+  `${String.slice(0, x)(row)}${symbol}${String.slice(x + 1)(row)}`
 
 // NOTE: legs apart, as standing or in a stride, are `.XX..XX.` in the
 // pants' own symbol; Slim draws them one pixel thin.
 const LEGS_APART = /^\.(.)\1\.\.\1\1\.$/
 
 const slimLeg = (row: string): string =>
-  LEGS_APART.test(row) ? `..${row.charAt(1)}..${row.charAt(1)}..` : row
+  LEGS_APART.test(row)
+    ? `..${symbolAt(row, 1, '')}..${symbolAt(row, 1, '')}..`
+    : row
 
 // NOTE: Slim narrows the shoulders a pixel each side, the raised hand
 // coming in with them.
 const slimShoulders = (row: string): string => {
   const narrowed = setAt(setAt(row, 1, TRANSPARENT), 6, TRANSPARENT)
-  return row.charAt(0) === 'S'
+  return symbolAt(row, 0, '') === 'S'
     ? setAt(setAt(narrowed, 0, TRANSPARENT), 1, 'S')
     : narrowed
 }
@@ -289,7 +297,9 @@ const slimShoulders = (row: string): string => {
 // shirt beside it; a raised hand stays where it is.
 const broadShoulders = (row: string): string => {
   const widen = (line: string, x: number, from: number) =>
-    line.charAt(x) === TRANSPARENT ? setAt(line, x, line.charAt(from)) : line
+    symbolAt(line, x, '') === TRANSPARENT
+      ? setAt(line, x, symbolAt(line, from, ''))
+      : line
   return widen(widen(row, 0, 1), 7, 6)
 }
 
@@ -390,14 +400,16 @@ const BODY_PROPS: Readonly<Record<Calling, Rows>> = {
 const SNEAKER_COLOR_SYMBOL = 'o'
 
 const sneakered = (calling: Calling, row: string): string =>
-  calling === 'TrackStar' ? row.replaceAll('K', SNEAKER_COLOR_SYMBOL) : row
+  calling === 'TrackStar'
+    ? String.replaceAll('K', SNEAKER_COLOR_SYMBOL)(row)
+    : row
 
 const overlayRow = (base: string, top: string): string =>
   pipe(
     String.split(base, ''),
     Array.map((symbol, x) => {
-      const cover = top.charAt(x)
-      return cover === '' || cover === TRANSPARENT ? symbol : cover
+      const cover = symbolAt(top, x, TRANSPARENT)
+      return cover === TRANSPARENT ? symbol : cover
     }),
     Array.join(''),
   )
@@ -478,11 +490,11 @@ const printSymbolAt = (
     return torsoRow === 1 ? 'W' : 'B'
   }
   if (print === 'Rainbow') {
-    return RAINBOW_SYMBOLS.charAt(Math.min(5, Math.max(0, column)))
+    return symbolAt(RAINBOW_SYMBOLS, Math.min(5, Math.max(0, column)), '')
   }
   const tile = isTilePrint(print) ? PRINT_TILES[print] : []
-  const symbol = (tile[torsoRow] ?? '').charAt(column)
-  return symbol === '' || symbol === TRANSPARENT ? shirt : symbol
+  const symbol = symbolAt(tile[torsoRow] ?? '', column, TRANSPARENT)
+  return symbol === TRANSPARENT ? shirt : symbol
 }
 
 // NOTE: a print paints the shirt's own pixels (B and D) on the torso rows:
@@ -515,7 +527,8 @@ const withPrint = (
 // base, for the Look tab's swatch.
 export const printSwatchRows = (print: Print): Rows =>
   Array.makeBy(3, torsoRow =>
-    Array.makeBy(6, column => printSymbolAt(print, torsoRow, column, 'B')).join(
+    Array.join(
+      Array.makeBy(6, column => printSymbolAt(print, torsoRow, column, 'B')),
       '',
     ),
   )
@@ -526,75 +539,78 @@ type FramePixels = Array.NonEmptyReadonlyArray<Rows>
 
 type PlayerPixels = Readonly<{ walk: FramePixels; idle: FramePixels }>
 
-export const playerPixels = (
-  appearance: Appearance,
-  calling: Calling = 'You',
-): PlayerPixels => {
-  const shape = BODY_SHAPES[appearance.body]
-  const outfit = OUTFIT_ART[appearance.outfit]
-  const hair = HAIR_ART[appearance.hairStyle]
+export const playerPixels: {
+  (calling?: Calling): (appearance: Appearance) => PlayerPixels
+  (appearance: Appearance, calling?: Calling): PlayerPixels
+} = Function.dual(
+  isObjectFirst,
+  (appearance: Appearance, calling: Calling = 'You'): PlayerPixels => {
+    const shape = BODY_SHAPES[appearance.body]
+    const outfit = OUTFIT_ART[appearance.outfit]
+    const hair = HAIR_ART[appearance.hairStyle]
 
-  // NOTE: the torso's pixel rows read the print by their own row: the full
-  // torso its three rows, the exhale its top and bottom.
-  const upper = (torso: Rows, isExhale: boolean): Rows => {
-    const torsoRowOf = (y: number) => (isExhale && y === 1 ? 2 : y)
-    const printed = withBodyProp(
-      withPrint(
-        [...FACE, ...shape.torso(torso, isExhale)],
+    // NOTE: the torso's pixel rows read the print by their own row: the full
+    // torso its three rows, the exhale its top and bottom.
+    const upper = (torso: Rows, isExhale: boolean): Rows => {
+      const torsoRowOf = (y: number) => (isExhale && y === 1 ? 2 : y)
+      const printed = withBodyProp(
+        withPrint(
+          [...FACE, ...shape.torso(torso, isExhale)],
+          torsoRowOf,
+          appearance.print,
+        ),
         torsoRowOf,
-        appearance.print,
-      ),
-      torsoRowOf,
-      calling,
-    )
-    const bearded = appearance.beard ? overlayRows(printed, BEARD) : printed
-    const haired = overlayRows(bearded, hair)
-    const glassed = appearance.glasses ? overlayRows(haired, GLASSES) : haired
-    return withHat(
-      appearance.hat === 'None'
-        ? overlayRows(glassed, CALLING_PROPS[calling])
-        : glassed,
-      appearance,
-    )
-  }
-  const legs = (rows: Rows) =>
-    Array.map(shape.legs(rows), row => sneakered(calling, row))
-  return {
-    walk: [
-      [
-        BLANK_ROW,
-        ...upper(torsoRows(outfit.top, 2), false),
-        ...legs(outfit.legs.stride),
+        calling,
+      )
+      const bearded = appearance.beard ? overlayRows(printed, BEARD) : printed
+      const haired = overlayRows(bearded, hair)
+      const glassed = appearance.glasses ? overlayRows(haired, GLASSES) : haired
+      return withHat(
+        appearance.hat === 'None'
+          ? overlayRows(glassed, CALLING_PROPS[calling])
+          : glassed,
+        appearance,
+      )
+    }
+    const legs = (rows: Rows) =>
+      Array.map(shape.legs(rows), row => sneakered(calling, row))
+    return {
+      walk: [
+        [
+          BLANK_ROW,
+          ...upper(torsoRows(outfit.top, 2), false),
+          ...legs(outfit.legs.stride),
+        ],
+        [
+          ...upper(torsoRows(outfit.top, 1), false),
+          ...legs(outfit.legs.passFront),
+        ],
+        [
+          BLANK_ROW,
+          ...upper(torsoRows(outfit.top, 0), false),
+          ...legs(outfit.legs.stride),
+        ],
+        [
+          ...upper(torsoRows(outfit.top, 1), false),
+          ...legs(outfit.legs.passBack),
+        ],
       ],
-      [
-        ...upper(torsoRows(outfit.top, 1), false),
-        ...legs(outfit.legs.passFront),
+      idle: [
+        [
+          BLANK_ROW,
+          ...upper(torsoRows(outfit.top, 1), false),
+          ...legs(outfit.legs.stand),
+        ],
+        [
+          BLANK_ROW,
+          BLANK_ROW,
+          ...upper(exhaleRows(outfit.top), true),
+          ...legs(outfit.legs.stand),
+        ],
       ],
-      [
-        BLANK_ROW,
-        ...upper(torsoRows(outfit.top, 0), false),
-        ...legs(outfit.legs.stride),
-      ],
-      [
-        ...upper(torsoRows(outfit.top, 1), false),
-        ...legs(outfit.legs.passBack),
-      ],
-    ],
-    idle: [
-      [
-        BLANK_ROW,
-        ...upper(torsoRows(outfit.top, 1), false),
-        ...legs(outfit.legs.stand),
-      ],
-      [
-        BLANK_ROW,
-        BLANK_ROW,
-        ...upper(exhaleRows(outfit.top), true),
-        ...legs(outfit.legs.stand),
-      ],
-    ],
-  }
-}
+    }
+  },
+)
 
 // NOTE: a hat option's picture: the head under the tallest hat's room, its
 // top padded so every hat sits at the same height from the chin, and nothing
@@ -632,23 +648,29 @@ const buildPlayerSprites = (
   }
 }
 
-export const appearanceKey = (
-  appearance: Appearance,
-  calling: Calling = 'You',
-): string =>
-  [
-    calling,
-    appearance.body,
-    appearance.hairStyle,
-    appearance.hairColor,
-    appearance.skinTone,
-    appearance.shirtColor,
-    appearance.outfit,
-    appearance.print,
-    appearance.beard ? 'Beard' : 'Shaven',
-    appearance.glasses ? 'Glasses' : 'Bare',
-    appearance.hat,
-  ].join('.')
+export const appearanceKey: {
+  (calling?: Calling): (appearance: Appearance) => string
+  (appearance: Appearance, calling?: Calling): string
+} = Function.dual(
+  isObjectFirst,
+  (appearance: Appearance, calling: Calling = 'You'): string =>
+    Array.join(
+      [
+        calling,
+        appearance.body,
+        appearance.hairStyle,
+        appearance.hairColor,
+        appearance.skinTone,
+        appearance.shirtColor,
+        appearance.outfit,
+        appearance.print,
+        appearance.beard ? 'Beard' : 'Shaven',
+        appearance.glasses ? 'Glasses' : 'Bare',
+        appearance.hat,
+      ],
+      '.',
+    ),
+)
 
 const SPRITE_CACHE_SIZE = 16
 
@@ -658,25 +680,29 @@ const spriteCache = new Map<string, PlayerSprites>()
 // means composing the pixel maps and turning them into shapes, so each look
 // is built once and kept here, and the oldest look is dropped once more than
 // a handful have been tried, such as by pressing Randomize over and over.
-export const playerSprites = (
-  appearance: Appearance,
-  calling: Calling = 'You',
-): PlayerSprites => {
-  const key = appearanceKey(appearance, calling)
-  const maybeCached = Option.fromNullishOr(spriteCache.get(key))
-  if (Option.isSome(maybeCached)) {
-    return maybeCached.value
-  }
+export const playerSprites: {
+  (calling?: Calling): (appearance: Appearance) => PlayerSprites
+  (appearance: Appearance, calling?: Calling): PlayerSprites
+} = Function.dual(
+  isObjectFirst,
+  (appearance: Appearance, calling: Calling = 'You'): PlayerSprites => {
+    const key = appearanceKey(appearance, calling)
+    const maybeCached = Option.fromNullishOr(spriteCache.get(key))
+    if (Option.isSome(maybeCached)) {
+      return maybeCached.value
+    }
 
-  const built = buildPlayerSprites(appearance, calling)
-  spriteCache.set(key, built)
-  if (spriteCache.size > SPRITE_CACHE_SIZE) {
-    Option.map(Option.fromNullishOr(spriteCache.keys().next().value), oldest =>
-      spriteCache.delete(oldest),
-    )
-  }
-  return built
-}
+    const built = buildPlayerSprites(appearance, calling)
+    spriteCache.set(key, built)
+    if (spriteCache.size > SPRITE_CACHE_SIZE) {
+      Option.map(
+        Option.fromNullishOr(spriteCache.keys().next().value),
+        oldest => spriteCache.delete(oldest),
+      )
+    }
+    return built
+  },
+)
 
 // NOTE: every sprite image built so far, with the given look's frames built
 // first. The warm-up canvases and the loading splash read it once the game
@@ -732,48 +758,69 @@ const ownedOptions = <A extends string>(
   return Array.isReadonlyArrayNonEmpty(owned) ? owned : free
 }
 
-export const randomAppearance = (
-  state: number,
-  current: Appearance,
-  bought: SavedBoughtCosmetics,
-  rank: number,
-): Seeded<Appearance> => {
-  const shirtColors = ownedOptions(
-    'Shirt',
-    SHIRT_COLORS,
-    FreeShirtColor.literals,
-    bought,
-    rank,
-  )
-  const prints = ownedOptions('Print', PRINTS, FreePrint.literals, bought, rank)
-  const [afterBody, body] = pickFrom(BODIES, state)
-  const [afterStyle, hairStyle] = pickFrom(HAIR_STYLES, afterBody)
-  const [afterHair, hairColor] = pickFrom(HAIR_COLORS, afterStyle)
-  const [afterSkin, skinTone] = pickFrom(SKIN_TONES, afterHair)
-  const [afterShirt, shirtColor] = pickFrom(shirtColors, afterSkin)
-  const [afterOutfit, outfit] = pickFrom(OUTFITS, afterShirt)
-  const [afterPrint, print] = pickFrom(prints, afterOutfit)
-  const [afterBeard, beard] = pickFrom(ON_OFF, afterPrint)
-  const [afterGlasses, glasses] = pickFrom(ON_OFF, afterBeard)
-  const rolled: Appearance = {
-    body,
-    hairStyle,
-    hairColor,
-    skinTone,
-    shirtColor,
-    outfit,
-    print,
-    beard,
-    glasses,
-    hat: current.hat,
-    gunSkin: current.gunSkin,
-  }
-  return [
-    afterGlasses,
-    appearanceKey(rolled) === appearanceKey(current)
-      ? modifyFields(rolled, {
-          shirtColor: () => nextOption(shirtColors, shirtColor),
-        })
-      : rolled,
-  ]
-}
+export const randomAppearance: {
+  (
+    current: Appearance,
+    bought: SavedBoughtCosmetics,
+    rank: number,
+  ): (state: number) => Seeded<Appearance>
+  (
+    state: number,
+    current: Appearance,
+    bought: SavedBoughtCosmetics,
+    rank: number,
+  ): Seeded<Appearance>
+} = Function.dual(
+  4,
+  (
+    state: number,
+    current: Appearance,
+    bought: SavedBoughtCosmetics,
+    rank: number,
+  ): Seeded<Appearance> => {
+    const shirtColors = ownedOptions(
+      'Shirt',
+      SHIRT_COLORS,
+      FreeShirtColor.literals,
+      bought,
+      rank,
+    )
+    const prints = ownedOptions(
+      'Print',
+      PRINTS,
+      FreePrint.literals,
+      bought,
+      rank,
+    )
+    const [afterBody, body] = pickFrom(BODIES, state)
+    const [afterStyle, hairStyle] = pickFrom(HAIR_STYLES, afterBody)
+    const [afterHair, hairColor] = pickFrom(HAIR_COLORS, afterStyle)
+    const [afterSkin, skinTone] = pickFrom(SKIN_TONES, afterHair)
+    const [afterShirt, shirtColor] = pickFrom(shirtColors, afterSkin)
+    const [afterOutfit, outfit] = pickFrom(OUTFITS, afterShirt)
+    const [afterPrint, print] = pickFrom(prints, afterOutfit)
+    const [afterBeard, beard] = pickFrom(ON_OFF, afterPrint)
+    const [afterGlasses, glasses] = pickFrom(ON_OFF, afterBeard)
+    const rolled: Appearance = {
+      body,
+      hairStyle,
+      hairColor,
+      skinTone,
+      shirtColor,
+      outfit,
+      print,
+      beard,
+      glasses,
+      hat: current.hat,
+      gunSkin: current.gunSkin,
+    }
+    return [
+      afterGlasses,
+      appearanceKey(rolled) === appearanceKey(current)
+        ? modifyFields(rolled, {
+            shirtColor: () => nextOption(shirtColors, shirtColor),
+          })
+        : rolled,
+    ]
+  },
+)

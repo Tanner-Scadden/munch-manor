@@ -28,7 +28,8 @@ import { mendCues } from './update/sound'
 // each hero wears its trade on the body under any hat and shows a small
 // effect to the whole crew. YOU shows nothing.
 
-const HEROES: ReadonlyArray<Calling> = CALLINGS.filter(
+const HEROES: ReadonlyArray<Calling> = Array.filter(
+  CALLINGS,
   calling => calling !== 'You',
 )
 
@@ -184,7 +185,9 @@ describe('the signature effects', () => {
     expect(
       Array.filter(kindsOf(after), kind => kind === 'Spark').length,
     ).toBeGreaterThan(0)
-    expect(mendCues(mended, after).map(({ sound }) => sound)).toEqual(['Tink'])
+    expect(Array.map(mendCues(mended, after), ({ sound }) => sound)).toEqual([
+      'Tink',
+    ])
     // NOTE: seen now, so the next frame makes no more.
     expect(mendCues(after, advanceTells(after, FRAME_MS))).toEqual([])
     expect(kindsOf(advanceTells(after, FRAME_MS))).toHaveLength(

@@ -31,17 +31,20 @@ const SECONDS = 40
 
 const speedOf = (zombie: Zombie): number => ZOMBIE_KINDS[zombie.kind].speedMin
 
-const crowd: ReadonlyArray<Zombie> = [
-  zombieOf('Tank', 1, 320, -150),
-  ...Array.makeBy(20, index =>
-    zombieOf(
-      'Shambler',
-      index + 2,
-      305 + (index % 5) * 7,
-      -170 + Math.floor(index / 5) * 13,
+const crowd: ReadonlyArray<Zombie> = Array.map(
+  [
+    zombieOf('Tank', 1, 320, -150),
+    ...Array.makeBy(20, index =>
+      zombieOf(
+        'Shambler',
+        index + 2,
+        305 + (index % 5) * 7,
+        -170 + Math.floor(index / 5) * 13,
+      ),
     ),
-  ),
-].map(zombie => modifyFields(zombie, { speed: () => speedOf(zombie) }))
+  ],
+  zombie => modifyFields(zombie, { speed: () => speedOf(zombie) }),
+)
 
 const stuckInTheYard: Model = modifyFocus(
   modifyFields(initialModel, {

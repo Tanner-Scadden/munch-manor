@@ -1,4 +1,4 @@
-import { Array, Option, Record, String, pipe } from 'effect'
+import { Array, Function, Option, Record, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import {
@@ -85,8 +85,12 @@ const SPACE_WIDTH = 2
 const GLYPH_FILL = '#'
 const GLYPH_SHADOW = 'S'
 
+// NOTE: the table read by any string, so a symbol it lacks can be asked.
+const GLYPHS_BY_SYMBOL: Readonly<Record<string, ReadonlyArray<string>>> =
+  GLYPH_PIXELS
+
 const isGlyph = (symbol: string): symbol is Glyph =>
-  Object.hasOwn(GLYPH_PIXELS, symbol)
+  Record.has(GLYPHS_BY_SYMBOL, symbol)
 
 // COIN
 
@@ -168,9 +172,9 @@ export const textWidth = (text: string): number =>
 const cellRow = ({ mark, width }: Cell, row: number): string =>
   mark.kind === 'Glyph'
     ? Option.getOrElse(Array.get(GLYPH_PIXELS[mark.glyph], row), () =>
-        TRANSPARENT.repeat(width),
+        String.repeat(width)(TRANSPARENT),
       )
-    : TRANSPARENT.repeat(width)
+    : String.repeat(width)(TRANSPARENT)
 
 type Placed = Readonly<{ x: number; shapes: ReadonlyArray<Canvas.Shape> }>
 
@@ -204,7 +208,7 @@ export const textPixels = (text: string): ReadonlyArray<string> => {
     pipe(
       cells,
       Array.map(cell => cellRow(cell, row)),
-      Array.join(TRANSPARENT.repeat(GLYPH_GAP)),
+      Array.join(String.repeat(GLYPH_GAP)(TRANSPARENT)),
     ),
   )
 }
@@ -296,32 +300,52 @@ const alignedLeft = (x: number, width: number, align: Align): number => {
   }
 }
 
-export const textShapes = (
-  text: string,
-  tone: TextTone,
-  x: number,
-  y: number,
-  align: Align,
-): ReadonlyArray<Canvas.Shape> => {
-  const top = Math.round(y)
-  return placeCells(
-    cellsOf(text),
-    alignedLeft(x, textWidth(text), align),
-    (mark, cellX) => {
-      if (mark.kind === 'Glyph') {
-        return [placeAt(cellX, top, GLYPH_SPRITES[tone][mark.glyph])]
-      } else if (mark.kind === 'Coin') {
-        return [coinAt(cellX, top)]
-      } else {
-        return []
-      }
-    },
-  )
-}
+export const textShapes: {
+  (
+    tone: TextTone,
+    x: number,
+    y: number,
+    align: Align,
+  ): (text: string) => ReadonlyArray<Canvas.Shape>
+  (
+    text: string,
+    tone: TextTone,
+    x: number,
+    y: number,
+    align: Align,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  5,
+  (
+    text: string,
+    tone: TextTone,
+    x: number,
+    y: number,
+    align: Align,
+  ): ReadonlyArray<Canvas.Shape> => {
+    const top = Math.round(y)
+    return placeCells(
+      cellsOf(text),
+      alignedLeft(x, textWidth(text), align),
+      (mark, cellX) => {
+        if (mark.kind === 'Glyph') {
+          return [placeAt(cellX, top, GLYPH_SPRITES[tone][mark.glyph])]
+        } else if (mark.kind === 'Coin') {
+          return [coinAt(cellX, top)]
+        } else {
+          return []
+        }
+      },
+    )
+  },
+)
 
 export type BakedText = Readonly<{ width: number; sprite: Sprite }>
 
-export const bakeText = (text: string, tone: TextTone): BakedText => ({
+export const bakeText: {
+  (tone: TextTone): (text: string) => BakedText
+  (text: string, tone: TextTone): BakedText
+} = Function.dual(2, (text: string, tone: TextTone): BakedText => ({
   width: textWidth(text),
   sprite: [
     ...spriteShapes(
@@ -331,7 +355,7 @@ export const bakeText = (text: string, tone: TextTone): BakedText => ({
     ),
     ...coinShapes(text),
   ],
-})
+}))
 
 export type Placement = Readonly<{
   x: number
@@ -341,20 +365,26 @@ export type Placement = Readonly<{
   opacity?: number | undefined
 }>
 
-export const placeBaked = (
-  { width, sprite }: BakedText,
-  { x, y, align, scale = 1, opacity }: Placement,
-): Canvas.Shape => {
-  const left = alignedLeft(x, width * scale, align)
-  return scale === 1 && opacity === undefined
-    ? placeAt(left, Math.round(y), sprite)
-    : group({
-        translate: { x: left, y: Math.round(y) },
-        scale: scale === 1 ? undefined : { x: scale, y: scale },
-        opacity,
-        shapes: sprite,
-      })
-}
+export const placeBaked: {
+  (arg1: Placement): (self: BakedText) => Canvas.Shape
+  (self: BakedText, arg1: Placement): Canvas.Shape
+} = Function.dual(
+  2,
+  (
+    { width, sprite }: BakedText,
+    { x, y, align, scale = 1, opacity }: Placement,
+  ): Canvas.Shape => {
+    const left = alignedLeft(x, width * scale, align)
+    return scale === 1 && opacity === undefined
+      ? placeAt(left, Math.round(y), sprite)
+      : group({
+          translate: { x: left, y: Math.round(y) },
+          scale: scale === 1 ? undefined : { x: scale, y: scale },
+          opacity,
+          shapes: sprite,
+        })
+  },
+)
 
 // COUNTS
 

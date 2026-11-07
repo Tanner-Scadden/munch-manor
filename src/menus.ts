@@ -1,4 +1,4 @@
-import { Array, Option, Order } from 'effect'
+import { Array, Function, Option, Order, String, pipe } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { LobbyMember } from '@munch/netcode'
@@ -46,13 +46,20 @@ import { ZOMBIE_KINDS } from './zombies'
 
 // TEXT
 
+// NOTE: the split keeps each sentence end with its spaces as its own part,
+// so a part that starts with a letter starts a sentence.
+const SENTENCE_END = /([.!?]\s+)/
+const STARTS_LOWER = /^[a-z]/
+
 export const toSentenceCase = (shouted: string): string =>
-  shouted
-    .toLowerCase()
-    .replace(
-      /(^|[.!?]\s+)([a-z])/g,
-      (_match, lead: string, letter: string) => lead + letter.toUpperCase(),
-    )
+  pipe(
+    String.toLowerCase(shouted),
+    String.split(SENTENCE_END),
+    Array.map(part =>
+      STARTS_LOWER.test(part) ? String.capitalize(part) : part,
+    ),
+    Array.join(''),
+  )
 
 export const debutPitch = (kind: ZombieKind): string =>
   toSentenceCase(ZOMBIE_KINDS[kind].pitch)
@@ -137,13 +144,14 @@ const cornerButtons = (
   })
 }
 
-export const cornerButtonsView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const cornerButtonsView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   isProfileOpen(model)
     ? h.empty
-    : h.div([h.Class('corner-buttons')], cornerButtons(model, h))
+    : h.div([h.Class('corner-buttons')], cornerButtons(model, h)),
+)
 
 // END BUTTONS
 
@@ -452,10 +460,10 @@ const endActionsView = (model: Model, h: ApplicationViewBuilder): Html =>
     Array.map(endButtonsOf(model), endButtonView(model, h)),
   )
 
-export const modeChoiceView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html => {
+export const modeChoiceView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html => {
   const offer = endOffer(model)
   if (offer === 'Nothing') {
     return h.empty
@@ -468,7 +476,7 @@ export const modeChoiceView = (
   } else {
     return endActionsView(model, h)
   }
-}
+})
 
 // DEBUT CARD
 
@@ -496,7 +504,10 @@ const debutCardButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
       )
     : h.empty
 
-export const debutCardView = (model: Model, h: ApplicationViewBuilder): Html =>
+export const debutCardView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   !Phase.isAnyOf(['Wave'])(model.phase)
     ? h.empty
     : DebutCard.match(model.debutCard, {
@@ -521,4 +532,5 @@ export const debutCardView = (model: Model, h: ApplicationViewBuilder): Html =>
               debutCardButtonView(model, h),
             ],
           ),
-      })
+      }),
+)

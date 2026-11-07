@@ -1,3 +1,4 @@
+import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
@@ -58,31 +59,33 @@ const tap = (current: Model, code: string): Model =>
 
 const hold = (current: Model, wanted: ReadonlyArray<string>): Model => {
   const held = current.input.pressedKeys
-  const released = MOVE_KEYS.filter(
-    key => held.includes(key) && !wanted.includes(key),
-  ).reduce((model, code) => send(model, Message.ReleasedKey({ code })), current)
-  return wanted
-    .filter(key => !held.includes(key))
-    .reduce(
-      (model, code) => send(model, Message.PressedKey({ code })),
-      released,
-    )
+  const released = Array.reduce(
+    Array.filter(MOVE_KEYS, key => held.includes(key) && !wanted.includes(key)),
+    current,
+    (model, code) => send(model, Message.ReleasedKey({ code })),
+  )
+  return Array.reduce(
+    Array.filter(wanted, key => !held.includes(key)),
+    released,
+    (model, code) => send(model, Message.PressedKey({ code })),
+  )
 }
 
-const nearestZombie = (current: Model) =>
-  current.zombies
-    .filter(zombie => zombie.state._tag === 'Walking')
-    .reduce<{ x: number; y: number; distance: number } | undefined>(
-      (best, zombie) => {
-        const distance =
-          (zombie.x - focusOf(current).player.x) ** 2 +
-          (zombie.y - focusOf(current).player.y) ** 2
-        return best === undefined || distance < best.distance
-          ? { x: zombie.x, y: zombie.y, distance }
-          : best
-      },
-      undefined,
-    )
+type Target = Readonly<{ x: number; y: number; distance: number }>
+
+const nearestZombie = (current: Model): Target | undefined =>
+  Array.reduce(
+    Array.filter(current.zombies, zombie => zombie.state._tag === 'Walking'),
+    Option.none<Target>(),
+    (best, zombie) => {
+      const distance =
+        (zombie.x - focusOf(current).player.x) ** 2 +
+        (zombie.y - focusOf(current).player.y) ** 2
+      return Option.isNone(best) || distance < best.value.distance
+        ? Option.some({ x: zombie.x, y: zombie.y, distance })
+        : best
+    },
+  ).pipe(Option.getOrUndefined)
 
 // NOTE: the breaks have no clock on Normal, so a player the READY key finds
 // at a purchasable (held there to buy) would hold the break forever. The
@@ -153,7 +156,9 @@ const isPlaying = (current: Model): boolean =>
 type Played = Readonly<{ end: Model; frames: number }>
 
 const play = (start: Model): Played =>
-  Array.from({ length: MAX_FRAMES }).reduce<Played>(
+  Array.reduce(
+    globalThis.Array.from({ length: MAX_FRAMES }),
+    { end: start, frames: 0 },
     (played, _, frame) =>
       isPlaying(played.end)
         ? {
@@ -166,7 +171,6 @@ const play = (start: Model): Played =>
             frames: frame + 1,
           }
         : played,
-    { end: start, frames: 0 },
   )
 
 describe('two keyboards on one desktop', () => {

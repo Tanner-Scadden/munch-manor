@@ -1,9 +1,10 @@
 import * as Alchemy from 'alchemy'
 import * as Output from 'alchemy/Output'
+import { String } from 'effect'
 import * as Effect from 'effect/Effect'
 import * as Layer from 'effect/Layer'
+import * as Path from 'effect/Path'
 import { createRequire } from 'node:module'
-import * as Path from 'node:path'
 
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as GitHub from '@alchemy.run/github'
@@ -41,9 +42,11 @@ const apiDomain = (stage: string) =>
 // older Effect). The alias bundles infra's one copy of Effect for the shared
 // Schema and the HttpApi alike. It points at the built files, since an alias
 // skips the package's exports map: `effect/Schema` becomes `dist/Schema`.
-const INFRA_EFFECT = Path.join(
-  Path.dirname(createRequire(import.meta.url).resolve('effect/package.json')),
-  'dist',
+const infraEffect = Effect.map(Path.Path, path =>
+  path.join(
+    path.dirname(createRequire(import.meta.url).resolve('effect/package.json')),
+    'dist',
+  ),
 )
 
 // NOTE: each stage gets its own D1 database, its own salt for the daily
@@ -71,10 +74,12 @@ const hasDevPage = (stage: string): boolean => stage !== PRODUCTION_STAGE
 
 const Analytics = Effect.gen(function* () {
   const stage = yield* Alchemy.Stage
+  const path = yield* Path.Path
+  const effectAlias = yield* infraEffect
 
   const database = yield* Cloudflare.D1.Database('Analytics', {
     name: stageName('munch-manor-analytics', stage),
-    migrations: Path.resolve(import.meta.dirname, 'migrations'),
+    migrations: path.resolve(import.meta.dirname, 'migrations'),
   })
 
   const addressSalt = yield* Alchemy.makeRandom('AddressSalt')
@@ -85,7 +90,7 @@ const Analytics = Effect.gen(function* () {
   return yield* Cloudflare.Worker('Api', {
     name: apiWorkerName(stage),
     ...apiDomain(stage),
-    main: Path.resolve(import.meta.dirname, 'worker/main.ts'),
+    main: path.resolve(import.meta.dirname, 'worker/main.ts'),
     crons: stage === PRODUCTION_STAGE ? [RETENTION_CRON] : [],
     env: {
       DB: database,
@@ -118,7 +123,7 @@ const Analytics = Effect.gen(function* () {
       MATCHMAKER: Cloudflare.DurableObject('Matchmaker'),
     },
     build: {
-      input: { resolve: { alias: { effect: INFRA_EFFECT } } },
+      input: { resolve: { alias: { effect: effectAlias } } },
     },
   })
 })
@@ -126,11 +131,12 @@ const Analytics = Effect.gen(function* () {
 const Website = (apiUrl: Output.Output<string | undefined>) =>
   Effect.gen(function* () {
     const stage = yield* Alchemy.Stage
+    const path = yield* Path.Path
 
     return yield* Cloudflare.Website.Foldkit('Website', {
       name: workerName(stage),
       ...gameDomain(stage),
-      rootDir: Path.resolve(import.meta.dirname, '..'),
+      rootDir: path.resolve(import.meta.dirname, '..'),
       // The game has no routes. With the default single page fallback a
       // nested path such as /a/b served index.html, whose relative asset
       // paths then missed, so unknown paths answer 404 instead.
@@ -175,11 +181,12 @@ const Website = (apiUrl: Output.Output<string | undefined>) =>
 const MpDev = (apiUrl: Output.Output<string | undefined>) =>
   Effect.gen(function* () {
     const stage = yield* Alchemy.Stage
+    const path = yield* Path.Path
 
     return yield* Cloudflare.Website.StaticSite('MpDev', {
       name: stageName('munch-manor-mp-dev', stage),
       command: 'bun tools/mp-dev/build.ts',
-      cwd: Path.resolve(import.meta.dirname, '..'),
+      cwd: path.resolve(import.meta.dirname, '..'),
       outdir: 'tools/mp-dev/dist/page',
       env: { MP_DEV_API_ORIGIN: Output.map(apiUrl, url => url ?? '') },
       memo: {
@@ -218,11 +225,14 @@ const PreviewComment = (
 
             ${mpDevLine}
 
-            Built from commit ${github.sha.slice(0, 7)}. This comment updates on every push, and the preview is destroyed when the pull request closes.
+            Built from commit ${String.slice(0, 7)(github.sha)}. This comment updates on every push, and the preview is destroyed when the pull request closes.
           `,
         })
   })
 
+// NOTE: the stack needs the Path service, which Alchemy's own platform
+// layer provides; only the Alchemy CLI reads this export.
+/** @stability unstable */
 export default Alchemy.Stack(
   'munch-manor',
   {

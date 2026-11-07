@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Camera, viewToWorld } from './camera'
@@ -93,18 +93,26 @@ const keyboardMove = (pressedKeys: ReadonlyArray<string>): Vector =>
     Option.getOrElse(() => ZERO_VECTOR),
   )
 
-export const pressKey = (input: Input, code: string): Input =>
+export const pressKey: {
+  (code: string): (input: Input) => Input
+  (input: Input, code: string): Input
+} = Function.dual(2, (input: Input, code: string): Input =>
   modifyFields(input, {
     pressedKeys: pressedKeys =>
       Array.contains(pressedKeys, code)
         ? pressedKeys
         : Array.append(pressedKeys, code),
-  })
+  }),
+)
 
-export const releaseKey = (input: Input, code: string): Input =>
+export const releaseKey: {
+  (code: string): (input: Input) => Input
+  (input: Input, code: string): Input
+} = Function.dual(2, (input: Input, code: string): Input =>
   modifyFields(input, {
     pressedKeys: Array.filter(pressedCode => pressedCode !== code),
-  })
+  }),
+)
 
 // NOTE: macOS sends no keyup for a key released while Command is down, so
 // Command lets go of every key rather than leave one held for good.
@@ -181,18 +189,31 @@ const pressMouse = (
       clientToView(surface, { x: press.clientX, y: press.clientY }),
   })
 
-export const pressPointer = (
-  input: Input,
-  maybeSurface: Option.Option<SurfaceRectangle>,
-  press: PointerPress,
-): Input =>
-  Option.match(maybeSurface, {
-    onNone: () => input,
-    onSome: surface =>
-      press.device === 'Mouse'
-        ? pressMouse(input, surface, press)
-        : pressTouch(input, surface, press),
-  })
+export const pressPointer: {
+  (
+    maybeSurface: Option.Option<SurfaceRectangle>,
+    press: PointerPress,
+  ): (input: Input) => Input
+  (
+    input: Input,
+    maybeSurface: Option.Option<SurfaceRectangle>,
+    press: PointerPress,
+  ): Input
+} = Function.dual(
+  3,
+  (
+    input: Input,
+    maybeSurface: Option.Option<SurfaceRectangle>,
+    press: PointerPress,
+  ): Input =>
+    Option.match(maybeSurface, {
+      onNone: () => input,
+      onSome: surface =>
+        press.device === 'Mouse'
+          ? pressMouse(input, surface, press)
+          : pressTouch(input, surface, press),
+    }),
+)
 
 const moveStickPointer = (stick: Stick, position: PointerPosition): Stick =>
   Stick.match(stick, {
@@ -215,20 +236,33 @@ const isMouseHeldBy = (input: Input, pointerId: number): boolean =>
     Held: held => held.pointerId === pointerId,
   })
 
-export const movePointer = (
-  input: Input,
-  maybeSurface: Option.Option<SurfaceRectangle>,
-  position: PointerPosition,
-): Input =>
-  isMouseHeldBy(input, position.pointerId)
-    ? moveMouse(input, maybeSurface, {
-        x: position.clientX,
-        y: position.clientY,
-      })
-    : modifyFields(input, {
-        moveStick: stick => moveStickPointer(stick, position),
-        aimStick: stick => moveStickPointer(stick, position),
-      })
+export const movePointer: {
+  (
+    maybeSurface: Option.Option<SurfaceRectangle>,
+    position: PointerPosition,
+  ): (input: Input) => Input
+  (
+    input: Input,
+    maybeSurface: Option.Option<SurfaceRectangle>,
+    position: PointerPosition,
+  ): Input
+} = Function.dual(
+  3,
+  (
+    input: Input,
+    maybeSurface: Option.Option<SurfaceRectangle>,
+    position: PointerPosition,
+  ): Input =>
+    isMouseHeldBy(input, position.pointerId)
+      ? moveMouse(input, maybeSurface, {
+          x: position.clientX,
+          y: position.clientY,
+        })
+      : modifyFields(input, {
+          moveStick: stick => moveStickPointer(stick, position),
+          aimStick: stick => moveStickPointer(stick, position),
+        }),
+)
 
 const releaseStickPointer = (stick: Stick, pointerId: number): Stick =>
   Stick.match(stick, {
@@ -256,38 +290,59 @@ const releaseHoldButton = (
       held.pointerId === pointerId ? HoldButton.Released() : holdButton,
   })
 
-export const releasePointer = (input: Input, pointerId: number): Input =>
+export const releasePointer: {
+  (pointerId: number): (input: Input) => Input
+  (input: Input, pointerId: number): Input
+} = Function.dual(2, (input: Input, pointerId: number): Input =>
   modifyFields(input, {
     moveStick: stick => releaseStickPointer(stick, pointerId),
     aimStick: stick => releaseStickPointer(stick, pointerId),
     mouseButton: mouseButton => releaseMouseButton(mouseButton, pointerId),
     holdButton: holdButton => releaseHoldButton(holdButton, pointerId),
-  })
+  }),
+)
 
 // NOTE: a finger on the touch HUD's hold button. The button sits outside
 // the game surface, so the finger never starts a stick, and the sticks'
 // own fingers keep their sticks.
-export const pressHoldButton = (input: Input, pointerId: number): Input =>
+export const pressHoldButton: {
+  (pointerId: number): (input: Input) => Input
+  (input: Input, pointerId: number): Input
+} = Function.dual(2, (input: Input, pointerId: number): Input =>
   modifyFields(input, {
     holdButton: holdButton =>
       HoldButton.match(holdButton, {
         Released: () => HoldButton.Held({ pointerId }),
         Held: () => holdButton,
       }),
-  })
+  }),
+)
 
-export const moveMouse = (
-  input: Input,
-  maybeSurface: Option.Option<SurfaceRectangle>,
-  client: Vector,
-): Input =>
-  Option.match(maybeSurface, {
-    onNone: () => input,
-    onSome: surface =>
-      modifyFields(input, {
-        maybeMouseInView: () => clientToView(surface, client),
-      }),
-  })
+export const moveMouse: {
+  (
+    maybeSurface: Option.Option<SurfaceRectangle>,
+    client: Vector,
+  ): (input: Input) => Input
+  (
+    input: Input,
+    maybeSurface: Option.Option<SurfaceRectangle>,
+    client: Vector,
+  ): Input
+} = Function.dual(
+  3,
+  (
+    input: Input,
+    maybeSurface: Option.Option<SurfaceRectangle>,
+    client: Vector,
+  ): Input =>
+    Option.match(maybeSurface, {
+      onNone: () => input,
+      onSome: surface =>
+        modifyFields(input, {
+          maybeMouseInView: () => clientToView(surface, client),
+        }),
+    }),
+)
 
 export const isTrackingPointer = (input: Input): boolean =>
   Stick.isAnyOf(['Active'])(input.moveStick) ||
@@ -342,24 +397,26 @@ const interactOf = (input: Input): Trigger =>
     ? 'Held'
     : 'Released'
 
-export const deriveIntent = (
-  input: Input,
-  player: Player,
-  camera: Camera,
-): Intent => ({
-  move: clampLength(
-    addVectors(
-      keyboardMove(input.pressedKeys),
-      pipe(input.moveStick, stickDeflection, withDeadZone),
+export const deriveIntent: {
+  (player: Player, camera: Camera): (input: Input) => Intent
+  (input: Input, player: Player, camera: Camera): Intent
+} = Function.dual(
+  3,
+  (input: Input, player: Player, camera: Camera): Intent => ({
+    move: clampLength(
+      addVectors(
+        keyboardMove(input.pressedKeys),
+        pipe(input.moveStick, stickDeflection, withDeadZone),
+      ),
+      1,
     ),
-    1,
-  ),
-  maybeAim: Option.orElse(stickAim(input.aimStick), () =>
-    mouseAim(input, player, camera),
-  ),
-  trigger: triggerOf(input),
-  interact: interactOf(input),
-})
+    maybeAim: Option.orElse(stickAim(input.aimStick), () =>
+      mouseAim(input, player, camera),
+    ),
+    trigger: triggerOf(input),
+    interact: interactOf(input),
+  }),
+)
 
 export const thumbOffset = (stick: Stick): Vector =>
   scaleVector(stickDeflection(stick), STICK_RADIUS_PX)

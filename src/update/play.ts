@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -94,21 +94,30 @@ import { checkForUpdate } from './version'
 
 const START_SOUND_GRACE_MS = 1000
 
-export const useDevice = (model: Model, device: InputDevice): Model =>
+export const useDevice: {
+  (device: InputDevice): (model: Model) => Model
+  (model: Model, device: InputDevice): Model
+} = Function.dual(2, (model: Model, device: InputDevice): Model =>
   model.lastDevice === device
     ? model
-    : modifyFields(model, { lastDevice: () => device })
+    : modifyFields(model, { lastDevice: () => device }),
+)
 
-export const asAllowedPress = (
-  model: Model,
-  press: PointerPress,
-): PointerPress =>
+export const asAllowedPress: {
+  (press: PointerPress): (model: Model) => PointerPress
+  (model: Model, press: PointerPress): PointerPress
+} = Function.dual(2, (model: Model, press: PointerPress): PointerPress =>
   press.device === 'Touch' && model.touchControls === 'Blocked'
     ? { ...press, device: 'Mouse' }
-    : press
+    : press,
+)
 
-export const orientationOf = (width: number, height: number): Orientation =>
-  height > width ? 'Portrait' : 'Landscape'
+export const orientationOf: {
+  (height: number): (width: number) => Orientation
+  (width: number, height: number): Orientation
+} = Function.dual(2, (width: number, height: number): Orientation =>
+  height > width ? 'Portrait' : 'Landscape',
+)
 
 export const resumeFromPointer = (model: Model): Model =>
   isPaused(model.phase) ? startWhenAllowed(model, model.mode) : model
@@ -489,13 +498,23 @@ export const reloadFromButton: UpdateStep = stepWhen(
 // shot at the world beneath, like a click anywhere else, so a zombie behind
 // the slots still gets shot; keyboard players swap with Q, F, and R. A
 // touch, or a mouse in a break, leaves the slot's click to act.
-export const isSlotPressAShot = (
-  model: Model,
-  device: PointerDevice,
-): boolean => device === 'Mouse' && Phase.isAnyOf(['Wave'])(model.phase)
+export const isSlotPressAShot: {
+  (device: PointerDevice): (model: Model) => boolean
+  (model: Model, device: PointerDevice): boolean
+} = Function.dual(
+  2,
+  (model: Model, device: PointerDevice): boolean =>
+    device === 'Mouse' && Phase.isAnyOf(['Wave'])(model.phase),
+)
 
-export const withSlotClick = (model: Model, slotClick: SlotClick): Model =>
-  withInput(model, input => modifyFields(input, { slotClick: () => slotClick }))
+export const withSlotClick: {
+  (slotClick: SlotClick): (model: Model) => Model
+  (model: Model, slotClick: SlotClick): Model
+} = Function.dual(2, (model: Model, slotClick: SlotClick): Model =>
+  withInput(model, input =>
+    modifyFields(input, { slotClick: () => slotClick }),
+  ),
+)
 
 export const isSlotClickPassingThrough = (model: Model): boolean =>
   model.input.slotClick === 'PassesThrough'

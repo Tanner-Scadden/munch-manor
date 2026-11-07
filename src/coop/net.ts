@@ -6,20 +6,11 @@ import {
   Option,
   Ref,
   Stream,
+  String,
   pipe,
 } from 'effect'
 
-import {
-  ChangedMemberCalling,
-  ChangedMemberName,
-  ChangedModifiers,
-  ChangedPicks,
-  ChangedReady,
-  type ClientFrame,
-  KickedPlayer,
-  LeftRoom,
-  RoomRefusal,
-} from '@munch/netcode'
+import { type ClientFrame, RoomRefusal } from '@munch/netcode'
 import {
   LobbyEvent,
   type QuickPlay,
@@ -33,14 +24,14 @@ import {
   roomSocketUrl,
   startQuickPlay,
 } from '@munch/netcode/browser'
-import type { Mutation } from '@munch/sync-engine'
 
 import { API_ORIGIN } from '../apiOrigin'
 import type { Calling } from '../playerData'
 import { PlayerStore } from '../store'
+import { writeLobbyChange } from './lobbyWrite'
 import {
   type CoopProblem,
-  LobbyChange,
+  type LobbyChange,
   RoomRequest,
   type RoomTicket,
 } from './model'
@@ -109,40 +100,6 @@ type Handles = Readonly<{
   lobbyWrite: Ref.Ref<Option.Option<LobbyWrite>>
 }>
 
-type LobbyWriter<E> = <A, I>(
-  mutation: Mutation<string, A, I>,
-  args: NoInfer<A>,
-) => Effect.Effect<string, E>
-
-const writeChange = <E>(
-  write: LobbyWriter<E>,
-  by: string,
-  change: LobbyChange | 'Left',
-): Effect.Effect<void, CoopProblem> =>
-  pipe(
-    change === 'Left'
-      ? write(LeftRoom, { by })
-      : LobbyChange.match(change, {
-          ChangedReady: ({ ready, pingMs }) =>
-            write(ChangedReady, {
-              by,
-              ready,
-              pingMs: Math.max(0, Math.min(60_000, Math.round(pingMs))),
-            }),
-          ChangedMemberCalling: ({ calling }) =>
-            write(ChangedMemberCalling, { by, calling }),
-          ChangedMemberName: ({ name }) =>
-            write(ChangedMemberName, { by, name }),
-          ChangedPicks: ({ mode, difficulty }) =>
-            write(ChangedPicks, { by, mode, difficulty }),
-          ChangedModifiers: ({ modifiers }) =>
-            write(ChangedModifiers, { by, modifiers }),
-          KickedPlayer: ({ playerId }) => write(KickedPlayer, { by, playerId }),
-        }),
-    Effect.asVoid,
-    Effect.mapError((): CoopProblem => 'Offline'),
-  )
-
 const offline = <A>(): Effect.Effect<A, CoopProblem> =>
   Effect.fail<CoopProblem>('Offline')
 
@@ -162,7 +119,7 @@ const lobbyStream = (
         yield* Ref.set(
           handles.lobbyWrite,
           Option.some((change: LobbyChange | 'Left') =>
-            writeChange(access.writeRoom, playerId, change),
+            access.writeRoom(playerId, change),
           ),
         )
         return pipe(
@@ -180,13 +137,13 @@ const lobbyStream = (
           const client = yield* followLobby({
             origin: API_ORIGIN,
             code,
-            clientId: `tab-${playerId.slice(0, 8)}`,
+            clientId: `tab-${String.slice(0, 8)(playerId)}`,
             token: access.token,
           })
           yield* Ref.set(
             handles.lobbyWrite,
             Option.some((change: LobbyChange | 'Left') =>
-              writeChange(client.write, playerId, change),
+              writeLobbyChange(client.write, playerId, change),
             ),
           )
           return client.events
@@ -243,9 +200,24 @@ const liveOf = (maybeAccess: Option.Option<RoomAccess>) =>
             pipe(
               RoomRequest.match(request, {
                 Create: () =>
-                  createRoom(API_ORIGIN, token, name, look, rank, calling),
+                  createRoom({
+                    origin: API_ORIGIN,
+                    token,
+                    name,
+                    look,
+                    rank,
+                    calling,
+                  }),
                 Join: ({ code }) =>
-                  joinRoom(API_ORIGIN, token, code, name, look, rank, calling),
+                  joinRoom({
+                    origin: API_ORIGIN,
+                    token,
+                    code,
+                    name,
+                    look,
+                    rank,
+                    calling,
+                  }),
               }),
               Effect.mapError(error => problemOfRefusal(error.refusal)),
             ),

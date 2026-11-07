@@ -1,9 +1,9 @@
-import { Effect, Schema } from 'effect'
+import { Effect, Function, Schema } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { ShopDialogBinding } from '../bindings'
-import { makeCommand, makeStep } from '../definition'
+import { ApplicationDefinition, makeStep } from '../definition'
 import { isShopDialogOpen } from '../menuState'
 import { Message } from '../message'
 import { type Model, ShopGuide, type ShopGuideSection } from '../model'
@@ -22,16 +22,19 @@ import { type UpdateReturn, type UpdateStep, modelStep } from './step'
 
 const FocusTarget = Schema.Literals(['Back', 'Open'])
 
-export const FocusShopGuide = makeCommand('FocusShopGuide', {
-  args: { target: FocusTarget },
-  messages: [Message.CompletedFocusShopGuide],
-  handler: function* () {
-    return ({ target }) =>
-      Dom.focus(
-        `#${target === 'Back' ? SHOP_GUIDE_BACK_ID : SHOP_GUIDE_OPEN_ID}`,
-      ).pipe(Effect.ignore, Effect.as(Message.CompletedFocusShopGuide()))
+export const FocusShopGuide = ApplicationDefinition.makeCommand(
+  'FocusShopGuide',
+  {
+    args: { target: FocusTarget },
+    messages: [Message.CompletedFocusShopGuide],
+    handler: function* () {
+      return ({ target }) =>
+        Dom.focus(
+          `#${target === 'Back' ? SHOP_GUIDE_BACK_ID : SHOP_GUIDE_OPEN_ID}`,
+        ).pipe(Effect.ignore, Effect.as(Message.CompletedFocusShopGuide()))
+    },
   },
-})
+)
 
 export const openShopGuide = (model: Model): UpdateReturn =>
   isShopDialogOpen(model)
@@ -44,13 +47,14 @@ export const openShopGuide = (model: Model): UpdateReturn =>
       }
     : { model }
 
-export const showShopGuide = (
-  model: Model,
-  section: ShopGuideSection,
-): Model =>
+export const showShopGuide: {
+  (section: ShopGuideSection): (model: Model) => Model
+  (model: Model, section: ShopGuideSection): Model
+} = Function.dual(2, (model: Model, section: ShopGuideSection): Model =>
   ShopGuide.isAnyOf(['Open'])(model.shopGuide)
     ? modifyFields(model, { shopGuide: () => ShopGuide.Open({ section }) })
-    : model
+    : model,
+)
 
 const closedGuide = (model: Model): Model =>
   modifyFields(model, { shopGuide: () => ShopGuide.Closed() })

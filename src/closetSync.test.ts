@@ -76,8 +76,10 @@ describe('a gun skin bought with Bones', () => {
             save.rank.spentBones === 60 &&
             save.appearance.gunSkin === 'Candy',
         )
-        expect(isBought(yield* until(laptop.load, isBought))).toBe(true)
-        expect(isBought(yield* until(phone.load, isBought))).toBe(true)
+        const value = yield* until(laptop.load, isBought)
+        expect(isBought(value)).toBe(true)
+        const value_1 = yield* until(phone.load, isBought)
+        expect(isBought(value_1)).toBe(true)
       }),
     ),
   )
@@ -95,8 +97,10 @@ describe('a gun skin bought with Bones', () => {
           save =>
             save.boughtCosmetics.length === 1 && save.rank.spentBones === 60,
         )
-        expect(isPaidOnce(yield* until(phone.load, isPaidOnce))).toBe(true)
-        expect(isPaidOnce(yield* until(laptop.load, isPaidOnce))).toBe(true)
+        const value_2 = yield* until(phone.load, isPaidOnce)
+        expect(isPaidOnce(value_2)).toBe(true)
+        const value_3 = yield* until(laptop.load, isPaidOnce)
+        expect(isPaidOnce(value_3)).toBe(true)
       }),
     ),
   )
@@ -154,8 +158,10 @@ describe('a hero bought with Bones', () => {
             save.boughtCosmetics[0] === 'hero:Handyman' &&
             save.rank.spentBones === 60,
         )
-        expect(isPaidOnce(yield* until(phone.load, isPaidOnce))).toBe(true)
-        expect(isPaidOnce(yield* until(laptop.load, isPaidOnce))).toBe(true)
+        const value_4 = yield* until(phone.load, isPaidOnce)
+        expect(isPaidOnce(value_4)).toBe(true)
+        const value_5 = yield* until(laptop.load, isPaidOnce)
+        expect(isPaidOnce(value_5)).toBe(true)
       }),
     ),
   )
@@ -197,8 +203,10 @@ describe('the unlocks seen', () => {
             save.seenUnlocks.includes('hat:PartyHat') &&
             save.seenUnlocks.includes('calling:Handyman'),
         )
-        expect(hasBoth(yield* until(phone.load, hasBoth))).toBe(true)
-        expect(hasBoth(yield* until(laptop.load, hasBoth))).toBe(true)
+        const value_6 = yield* until(phone.load, hasBoth)
+        expect(hasBoth(value_6)).toBe(true)
+        const value_7 = yield* until(laptop.load, hasBoth)
+        expect(hasBoth(value_7)).toBe(true)
       }),
     ),
   )
@@ -232,8 +240,10 @@ describe('a hat bought with Bones', () => {
             save.rank.spentBones === 50 &&
             save.appearance.hat === 'Fez',
         )
-        expect(isBought(yield* until(laptop.load, isBought))).toBe(true)
-        expect(isBought(yield* until(phone.load, isBought))).toBe(true)
+        const value_8 = yield* until(laptop.load, isBought)
+        expect(isBought(value_8)).toBe(true)
+        const value_9 = yield* until(phone.load, isBought)
+        expect(isBought(value_9)).toBe(true)
       }),
     ),
   )
@@ -253,8 +263,10 @@ describe('a hat bought with Bones', () => {
             save.boughtCosmetics[0] === 'Fez' &&
             save.rank.spentBones === 50,
         )
-        expect(isPaidOnce(yield* until(phone.load, isPaidOnce))).toBe(true)
-        expect(isPaidOnce(yield* until(laptop.load, isPaidOnce))).toBe(true)
+        const value_10 = yield* until(phone.load, isPaidOnce)
+        expect(isPaidOnce(value_10)).toBe(true)
+        const value_11 = yield* until(laptop.load, isPaidOnce)
+        expect(isPaidOnce(value_11)).toBe(true)
         const onPhone = yield* settledView(phone)
         expect(bonesBalanceOf(onPhone.rank)).toBe(50)
       }),
@@ -315,8 +327,10 @@ describe('a hat bought with Bones', () => {
             save.boughtCosmetics.includes('Colander') &&
             save.rank.spentBones === 90,
         )
-        expect(isBoth(yield* until(phone.load, isBoth))).toBe(true)
-        expect(isBoth(yield* until(laptop.load, isBoth))).toBe(true)
+        const value_12 = yield* until(phone.load, isBoth)
+        expect(isBoth(value_12)).toBe(true)
+        const value_13 = yield* until(laptop.load, isBoth)
+        expect(isBoth(value_13)).toBe(true)
       }),
     ),
   )

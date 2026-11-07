@@ -1,4 +1,4 @@
-import { Effect, Option, Schema } from 'effect'
+import { Array, Effect, Option, Schema } from 'effect'
 import { FetchHttpClient } from 'effect/http'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
@@ -47,7 +47,7 @@ import { type Modifiers, noModifiers } from './modifiers'
 import { modifyFocus } from './party'
 import { PlayerChange } from './playerSync'
 import { saveOf } from './save'
-import { SURFACE, closeDialog, showDialog } from './testing'
+import { SURFACE, closeDialog, jsonOf, showDialog } from './testing'
 import { WriteSave } from './update/save'
 import { SendRunSummary } from './update/settle'
 import { asVeteran } from './veteran'
@@ -149,15 +149,17 @@ describe('the run summary schema', () => {
   })
 
   test('a summary round trips through JSON and fits the size cap', () => {
-    const json = Schema.encodeSync(RunSummaryJson)(summary)
-    expect(Schema.decodeSync(RunSummaryJson)(json)).toEqual(summary)
+    const json = Option.getOrThrow(Schema.encodeOption(RunSummaryJson)(summary))
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(
+      Option.some(summary),
+    )
     expect(new Blob([json]).size).toBeLessThan(MAX_SUMMARY_BYTES)
   })
 
   test('bad fields are refused', () => {
     const decode = Schema.decodeUnknownOption(RunSummaryJson)
     const withField = (field: string, value: unknown): string =>
-      JSON.stringify({ ...summary, [field]: value })
+      jsonOf({ ...summary, [field]: value })
     expect(decode(withField('wave', -1))).toEqual(Option.none())
     expect(decode(withField('runMs', 1.5))).toEqual(Option.none())
     expect(decode(withField('visitId', 'not-a-visit'))).toEqual(Option.none())
@@ -190,38 +192,44 @@ describe('the run summary schema', () => {
 
   test('a crew summary round trips with its run key', () => {
     const crew = { ...summary, party: CREW }
-    const json = Schema.encodeSync(RunSummaryJson)(crew)
-    expect(Schema.decodeSync(RunSummaryJson)(json)).toEqual(crew)
+    const json = Option.getOrThrow(Schema.encodeOption(RunSummaryJson)(crew))
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.some(crew))
   })
 
   test('a version 3 summary from a cached build still decodes, with no modifiers', () => {
     const { modifiers: _modifiers, ...older } = summary
-    const json = JSON.stringify({ ...older, version: 3 })
-    expect(Schema.decodeSync(PostedRunJson)(json)).toEqual({
-      ...older,
-      version: 3,
-    })
+    const json = jsonOf({ ...older, version: 3 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({
+        ...older,
+        version: 3,
+      }),
+    )
     expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
   })
 
   test('a version 2 crew summary from a cached build still decodes, with no key', () => {
     const { modifiers: _modifiers, ...older } = summary
-    const json = JSON.stringify({ ...older, version: 2, party: CREW_V2 })
-    expect(Schema.decodeSync(PostedRunJson)(json)).toEqual({
-      ...older,
-      version: 2,
-      party: CREW_V2,
-    })
+    const json = jsonOf({ ...older, version: 2, party: CREW_V2 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({
+        ...older,
+        version: 2,
+        party: CREW_V2,
+      }),
+    )
     expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
   })
 
   test('a version 1 summary from a cached build still decodes, with no party', () => {
     const { party: _party, modifiers: _modifiers, ...older } = summary
-    const json = JSON.stringify({ ...older, version: 1 })
-    expect(Schema.decodeSync(PostedRunJson)(json)).toEqual({
-      ...older,
-      version: 1,
-    })
+    const json = jsonOf({ ...older, version: 1 })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({
+        ...older,
+        version: 1,
+      }),
+    )
     expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
   })
 
@@ -432,7 +440,7 @@ describe('the sharing setting', () => {
   })
 
   test('the visit id comes from a Command at start', () => {
-    expect((init().commands ?? []).map(command => command.name)).toContain(
+    expect(Array.map(init().commands ?? [], command => command.name)).toContain(
       GenerateVisitId().name,
     )
     story(
@@ -458,14 +466,16 @@ describe('the beacon', () => {
 
   it.effect('a visit id is 16 hex digits', () =>
     Effect.gen(function* () {
-      expect(yield* generateVisitId).toMatch(/^[0-9a-f]{16}$/)
+      const generateVisitId_1 = yield* generateVisitId
+      expect(generateVisitId_1).toMatch(/^[0-9a-f]{16}$/)
     }),
   )
 
   it.effect('a build with no API origin sends nothing', () =>
     Effect.gen(function* () {
       expect(maybeRunsUrl('')).toEqual(Option.none())
-      expect(yield* sendRunSummary(summary, '')).toBe('Unconfigured')
+      const value_1 = yield* sendRunSummary(summary, '')
+      expect(value_1).toBe('Unconfigured')
     }),
   )
 

@@ -7,7 +7,7 @@ import { FIXED_STEP_MS, PREPARATION_MS } from './constants'
 import { update } from './main'
 import { Message } from './message'
 import {
-  type Arsenal,
+  Arsenal,
   type CarriedGun,
   type Model,
   Phase,
@@ -300,9 +300,12 @@ describe('tier resets', () => {
             player: player =>
               modifyFields(player, {
                 arsenal: () =>
-                  holdingSecond(spare('Smg', 200, 2), {
-                    ...STARTING_PISTOL,
-                    tier: 3,
+                  Arsenal.HoldingSecond({
+                    first: {
+                      ...STARTING_PISTOL,
+                      tier: 3,
+                    },
+                    second: spare('Smg', 200, 2),
                   }),
               }),
           },

@@ -56,6 +56,7 @@ import {
   SURFACE,
   bulletInto,
   holdFire,
+  jsonOf,
   pistolOf,
   press,
   release,
@@ -176,8 +177,7 @@ describe('drops', () => {
     expect(second).toEqual(first)
     expect(Array.some(first, Array.isReadonlyArrayNonEmpty)).toBe(true)
     expect(
-      Array.dedupeWith(first, (a, b) => JSON.stringify(a) === JSON.stringify(b))
-        .length,
+      Array.dedupeWith(first, (a, b) => jsonOf(a) === jsonOf(b)).length,
     ).toBeGreaterThan(1)
   })
 

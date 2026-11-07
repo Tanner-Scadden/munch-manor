@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 
 import { focusSlotOf, isDowned, seatStateAt } from './party'
 import { isInteractTaken, maybeTapOffer } from './purchase'
@@ -60,21 +60,25 @@ const isOpenTo = (seat: World, action: SeatAction): boolean =>
   )
 
 // NOTE: the seat action a key presses for a seat with these keys, if any.
-export const keyActionOf = (
-  seat: World,
-  keys: ActionKeys,
-  code: string,
-): Option.Option<SeatAction> =>
-  Option.map(
-    Array.findFirst(
-      ACTIONS,
-      ([key, action]) => keys[key] === code && isOpenTo(seat, action),
+export const keyActionOf: {
+  (keys: ActionKeys, code: string): (seat: World) => Option.Option<SeatAction>
+  (seat: World, keys: ActionKeys, code: string): Option.Option<SeatAction>
+} = Function.dual(
+  3,
+  (seat: World, keys: ActionKeys, code: string): Option.Option<SeatAction> =>
+    Option.map(
+      Array.findFirst(
+        ACTIONS,
+        ([key, action]) => keys[key] === code && isOpenTo(seat, action),
+      ),
+      ([, action]) => action,
     ),
-    ([, action]) => action,
-  )
+)
 
 // NOTE: single player's and co-op's own seat: the usual keys.
-export const playerKeyAction = (
-  model: World,
-  code: string,
-): Option.Option<SeatAction> => keyActionOf(model, PLAYER_ACTION_KEYS, code)
+export const playerKeyAction: {
+  (code: string): (model: World) => Option.Option<SeatAction>
+  (model: World, code: string): Option.Option<SeatAction>
+} = Function.dual(2, (model: World, code: string): Option.Option<SeatAction> =>
+  keyActionOf(model, PLAYER_ACTION_KEYS, code),
+)

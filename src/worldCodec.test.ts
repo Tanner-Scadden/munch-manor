@@ -1,4 +1,13 @@
-import { Array, Match, Option, Order, Schema, type SchemaAST } from 'effect'
+import {
+  Array,
+  Match,
+  Option,
+  Order,
+  Record,
+  Schema,
+  type SchemaAST,
+  String,
+} from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -47,7 +56,11 @@ const numbersOf = (
     ),
     Match.tag('Objects', ({ propertySignatures }) =>
       Array.flatMap(propertySignatures, property =>
-        numbersOf(property.type, `${path}.${String(property.name)}`, seen),
+        numbersOf(
+          property.type,
+          `${path}.${globalThis.String(property.name)}`,
+          seen,
+        ),
       ),
     ),
     Match.tag('Suspend', suspend =>
@@ -59,12 +72,12 @@ const numbersOf = (
   )
 
 const lastName = (path: string): string =>
-  Option.getOrElse(Array.last(path.split('.')), () => path)
+  Option.getOrElse(Array.last(String.split('.')(path)), () => path)
 
 const hintTable = (
   numbers: ReadonlyArray<readonly [string, WireHint]>,
 ): Readonly<Record<string, { count: number; names: ReadonlyArray<string> }>> =>
-  Object.fromEntries(
+  Record.fromEntries(
     Array.map(['Position', 'Velocity', 'Unit', 'Millis'] as const, hint => {
       const paths = Array.map(
         Array.filter(numbers, ([, at]) => at === hint),
@@ -87,14 +100,14 @@ describe('the wire packs numbers by their Schema', () => {
   test('a number with no wire annotation goes exactly, whatever its field is named', () => {
     // NOTE: the old codec packed these by name and rounded them.
     const Named = Schema.Struct({
-      x: Schema.Number,
-      y: Schema.Number,
-      offset: Schema.Number,
-      velocityX: Schema.Number,
-      knockback: Schema.Number,
-      intensity: Schema.Number,
-      sizeScale: Schema.Number,
-      waitMs: Schema.Number,
+      x: Schema.Finite,
+      y: Schema.Finite,
+      offset: Schema.Finite,
+      velocityX: Schema.Finite,
+      knockback: Schema.Finite,
+      intensity: Schema.Finite,
+      sizeScale: Schema.Finite,
+      waitMs: Schema.Finite,
       facing: Vector,
     })
     const value = {
@@ -316,7 +329,7 @@ const makeDigest = () => {
       state.length += bytes.length
     },
     digest: (): string =>
-      `${state.length}:${state.a.toString(16).padStart(8, '0')}${state.b.toString(16).padStart(8, '0')}`,
+      `${state.length}:${String.padStart(8, '0')(state.a.toString(16))}${String.padStart(8, '0')(state.b.toString(16))}`,
   }
 }
 
@@ -421,7 +434,7 @@ describe('random diffs of a scripted room', () => {
         const shuffled = reordered(pickWorld(pick), pick)
         const to = {
           ...shuffled,
-          zombies: shuffled.zombies.filter(() => pick(4) !== 0),
+          zombies: Array.filter(shuffled.zombies, () => pick(4) !== 0),
           bullets: shuffled.bullets.slice(pick(2)),
         }
         const diff = bytesOf(writer => writeWorldDiff(writer, held, to))

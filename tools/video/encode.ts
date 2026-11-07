@@ -1,4 +1,4 @@
-import { Console, Data, Effect } from 'effect'
+import { Array, Console, Effect, Schema } from 'effect'
 import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 
 import { FRAMES_PER_SECOND } from './shotList'
@@ -10,19 +10,28 @@ import { FRAMES_PER_SECOND } from './shotList'
 // yuv420p with AAC sound and the index up front, what X takes. The GIF is
 // half size at 30 frames a second, scaled by whole pixels, one palette.
 
-class EncodeFailed extends Data.TaggedError('EncodeFailed')<{
-  readonly reason: string
-}> {}
+class EncodeFailed extends Schema.TaggedError<
+  EncodeFailed,
+  { readonly brand: unique symbol }
+>()('EncodeFailed', { message: Schema.String }) {}
 
-export const INSTALL_FFMPEG = [
-  'ffmpeg is not installed, so the clips cannot be encoded.',
-  'Install it, then run the same command again:',
-  '  macOS:  brew install ffmpeg',
-  '  Linux:  sudo apt install ffmpeg',
-  'To render frames and sound without encoding, add --frames-only.',
-].join('\n')
+export const INSTALL_FFMPEG = Array.join(
+  [
+    'ffmpeg is not installed, so the clips cannot be encoded.',
+    'Install it, then run the same command again:',
+    '  macOS:  brew install ffmpeg',
+    '  Linux:  sudo apt install ffmpeg',
+    'To render frames and sound without encoding, add --frames-only.',
+  ],
+  '\n',
+)
 
-export const hasFfmpeg = Effect.gen(function* () {
+/** @stability unstable */
+export const hasFfmpeg: Effect.Effect<
+  boolean,
+  never,
+  ChildProcessSpawner.ChildProcessSpawner
+> = Effect.gen(function* () {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
   return yield* spawner
     .exitCode(
@@ -52,10 +61,10 @@ const ffmpeg = (args: ReadonlyArray<string>) =>
         ),
       )
       .pipe(
-        Effect.mapError(error => new EncodeFailed({ reason: String(error) })),
+        Effect.mapError(error => EncodeFailed.make({ message: String(error) })),
       )
     if (code !== 0) {
-      return yield* new EncodeFailed({ reason: `ffmpeg exited with ${code}` })
+      return yield* EncodeFailed.make({ message: `ffmpeg exited with ${code}` })
     }
   })
 
@@ -72,7 +81,16 @@ const REPEATABLE = [
   '-1',
 ]
 
-export const encodeMp4 = (frames: string, wav: string, out: string) =>
+/** @stability unstable */
+export const encodeMp4 = ({
+  frames,
+  wav,
+  out,
+}: Readonly<{ frames: string; wav: string; out: string }>): Effect.Effect<
+  void,
+  EncodeFailed,
+  ChildProcessSpawner.ChildProcessSpawner
+> =>
   Effect.andThen(
     ffmpeg([
       '-y',
@@ -107,7 +125,15 @@ export const encodeMp4 = (frames: string, wav: string, out: string) =>
     Console.log(`  wrote ${out}`),
   )
 
-export const encodeGif = (frames: string, out: string) =>
+/** @stability unstable */
+export const encodeGif = ({
+  frames,
+  out,
+}: Readonly<{ frames: string; out: string }>): Effect.Effect<
+  void,
+  EncodeFailed,
+  ChildProcessSpawner.ChildProcessSpawner
+> =>
   Effect.andThen(
     ffmpeg([
       '-y',

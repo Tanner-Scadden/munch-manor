@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { COUNTER_LINES } from './ammoCounter'
@@ -370,46 +370,52 @@ export type StallLook =
 
 export const STALL_FOOT_Y = STALL_BOX.bottom
 
-export const stallGroundShapes = (
-  look: StallLook,
-  elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
-  look === 'Beckoning'
-    ? [...glowShapes(elapsedMs), STALL_SHADOW]
-    : [STALL_SHADOW]
+export const stallGroundShapes: {
+  (elapsedMs: number): (look: StallLook) => ReadonlyArray<Canvas.Shape>
+  (look: StallLook, elapsedMs: number): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (look: StallLook, elapsedMs: number): ReadonlyArray<Canvas.Shape> =>
+    look === 'Beckoning'
+      ? [...glowShapes(elapsedMs), STALL_SHADOW]
+      : [STALL_SHADOW],
+)
 
-export const stallShapes = (
-  look: StallLook,
-  elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
-  if (look === 'Closed') {
-    return [
-      ...STALL_BACK_IMAGE,
-      ...sleepingShopkeeper(elapsedMs),
-      ...CLOSED_FRONT,
-    ]
-  } else if (look === 'Counter') {
-    return [
-      ...STALL_BACK_IMAGE,
-      ...sleepingShopkeeper(elapsedMs),
-      ...COUNTER_ASLEEP_FRONT,
-    ]
-  } else if (look === 'CounterAwake') {
-    return [
-      ...STALL_BACK_IMAGE,
-      ...awakeShopkeeper(elapsedMs),
-      ...COUNTER_AWAKE_FRONT,
-    ]
-  } else {
-    const isBeckoning = look === 'Beckoning'
-    return [
-      ...STALL_BACK_IMAGE,
-      ...awakeShopkeeper(elapsedMs),
-      ...(isBeckoning ? beckoningFront(elapsedMs) : OPEN_FRONT),
-      ...(isBeckoning ? beaconShapes(elapsedMs) : []),
-    ]
-  }
-}
+export const stallShapes: {
+  (elapsedMs: number): (look: StallLook) => ReadonlyArray<Canvas.Shape>
+  (look: StallLook, elapsedMs: number): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (look: StallLook, elapsedMs: number): ReadonlyArray<Canvas.Shape> => {
+    if (look === 'Closed') {
+      return [
+        ...STALL_BACK_IMAGE,
+        ...sleepingShopkeeper(elapsedMs),
+        ...CLOSED_FRONT,
+      ]
+    } else if (look === 'Counter') {
+      return [
+        ...STALL_BACK_IMAGE,
+        ...sleepingShopkeeper(elapsedMs),
+        ...COUNTER_ASLEEP_FRONT,
+      ]
+    } else if (look === 'CounterAwake') {
+      return [
+        ...STALL_BACK_IMAGE,
+        ...awakeShopkeeper(elapsedMs),
+        ...COUNTER_AWAKE_FRONT,
+      ]
+    } else {
+      const isBeckoning = look === 'Beckoning'
+      return [
+        ...STALL_BACK_IMAGE,
+        ...awakeShopkeeper(elapsedMs),
+        ...(isBeckoning ? beckoningFront(elapsedMs) : OPEN_FRONT),
+        ...(isBeckoning ? beaconShapes(elapsedMs) : []),
+      ]
+    }
+  },
+)
 
 // THE AMMO WINDOW'S SALE
 
@@ -437,18 +443,21 @@ const COUNTER_LINE_TEXTS: ReadonlyArray<Canvas.Shape> = Array.map(
   },
 )
 
-export const counterSaleShapes = (
-  ageMs: number,
-  line: number,
-): ReadonlyArray<Canvas.Shape> => {
-  const share = Math.min(1, ageMs / SLIDE_MS)
-  const eased = 1 - (1 - share) * (1 - share)
-  return [
-    placeAt(
-      Math.round(SLIDE_FROM_X + (SLIDE_TO_X - SLIDE_FROM_X) * eased),
-      SLIDE_Y,
-      AMMO_BOX,
-    ),
-    ...Option.toArray(Array.get(COUNTER_LINE_TEXTS, line)),
-  ]
-}
+export const counterSaleShapes: {
+  (line: number): (ageMs: number) => ReadonlyArray<Canvas.Shape>
+  (ageMs: number, line: number): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (ageMs: number, line: number): ReadonlyArray<Canvas.Shape> => {
+    const share = Math.min(1, ageMs / SLIDE_MS)
+    const eased = 1 - (1 - share) * (1 - share)
+    return [
+      placeAt(
+        Math.round(SLIDE_FROM_X + (SLIDE_TO_X - SLIDE_FROM_X) * eased),
+        SLIDE_Y,
+        AMMO_BOX,
+      ),
+      ...Option.toArray(Array.get(COUNTER_LINE_TEXTS, line)),
+    ]
+  },
+)

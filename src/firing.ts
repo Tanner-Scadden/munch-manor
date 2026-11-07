@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Level, findStrike, isInsideRoomAt, levelOf } from './arena'
@@ -356,84 +356,91 @@ const withoutCharge = (model: World, slot: PlayerSlot): World =>
 // with the Clang Pan drawn from the melee slot it swings, and a reload of
 // the last gun carries on meanwhile. Below Hard a rested trigger reloads
 // a gun that has room for more (isIdleReloadDue).
-export const fire = (
-  stocked: World,
-  slot: PlayerSlot,
-  deltaMs: number,
-): World => {
-  const topped = topUp(restTrigger(stocked, slot, deltaMs), slot)
-  if (isWieldingKnife(seatStateAt(topped, slot).player)) {
-    return coolTrigger(withoutCharge(topped, slot), slot, deltaMs, false)
-  }
-  const maybeFridgeWeapon = maybeHeldFridgeWeapon(
-    seatStateAt(topped, slot).player,
-  )
-  const model = Option.isSome(maybeFridgeWeapon)
-    ? topped
-    : withoutCharge(topped, slot)
-  const { player, intent, shop } = seatStateAt(model, slot)
-  const isTriggerHeld = intent.trigger === 'Held'
-
-  if (isAtCounter(shop) || (isReloading(player) && !isWieldingMelee(player))) {
-    return coolTrigger(withoutCharge(model, slot), slot, deltaMs, false)
-  } else if (Option.isSome(maybeFridgeWeapon)) {
-    return fireFridgeWeapon(model, slot, maybeFridgeWeapon.value, deltaMs)
-  } else if (player.fireCooldownMs > 0) {
-    return coolTrigger(
-      model,
-      slot,
-      deltaMs,
-      isTriggerHeld && !isReloading(player),
+export const fire: {
+  (slot: PlayerSlot, deltaMs: number): (stocked: World) => World
+  (stocked: World, slot: PlayerSlot, deltaMs: number): World
+} = Function.dual(
+  3,
+  (stocked: World, slot: PlayerSlot, deltaMs: number): World => {
+    const topped = topUp(restTrigger(stocked, slot, deltaMs), slot)
+    if (isWieldingKnife(seatStateAt(topped, slot).player)) {
+      return coolTrigger(withoutCharge(topped, slot), slot, deltaMs, false)
+    }
+    const maybeFridgeWeapon = maybeHeldFridgeWeapon(
+      seatStateAt(topped, slot).player,
     )
-  } else if (heldLoaded(player) <= 0 && canReload(player)) {
-    return autoReload(model, slot, isTriggerHeld)
-  } else if (isTriggerHeld) {
-    return pullTrigger(model, slot, deltaMs)
-  } else if (isIdleReloadDue(model, slot)) {
-    return autoReload(model, slot, false)
-  } else {
-    return coolTrigger(model, slot, deltaMs, isTriggerHeld)
-  }
-}
+    const model = Option.isSome(maybeFridgeWeapon)
+      ? topped
+      : withoutCharge(topped, slot)
+    const { player, intent, shop } = seatStateAt(model, slot)
+    const isTriggerHeld = intent.trigger === 'Held'
+
+    if (
+      isAtCounter(shop) ||
+      (isReloading(player) && !isWieldingMelee(player))
+    ) {
+      return coolTrigger(withoutCharge(model, slot), slot, deltaMs, false)
+    } else if (Option.isSome(maybeFridgeWeapon)) {
+      return fireFridgeWeapon(model, slot, maybeFridgeWeapon.value, deltaMs)
+    } else if (player.fireCooldownMs > 0) {
+      return coolTrigger(
+        model,
+        slot,
+        deltaMs,
+        isTriggerHeld && !isReloading(player),
+      )
+    } else if (heldLoaded(player) <= 0 && canReload(player)) {
+      return autoReload(model, slot, isTriggerHeld)
+    } else if (isTriggerHeld) {
+      return pullTrigger(model, slot, deltaMs)
+    } else if (isIdleReloadDue(model, slot)) {
+      return autoReload(model, slot, false)
+    } else {
+      return coolTrigger(model, slot, deltaMs, isTriggerHeld)
+    }
+  },
+)
 
 // RELOADING
 
-export const tickReload = (
-  model: World,
-  slot: PlayerSlot,
-  deltaMs: number,
-): World => {
-  const { player, shop } = seatStateAt(model, slot)
-  if (isAtCounter(shop)) {
-    return model
-  }
+export const tickReload: {
+  (slot: PlayerSlot, deltaMs: number): (model: World) => World
+  (model: World, slot: PlayerSlot, deltaMs: number): World
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, deltaMs: number): World => {
+    const { player, shop } = seatStateAt(model, slot)
+    if (isAtCounter(shop)) {
+      return model
+    }
 
-  return Reload.match(player.reload, {
-    Ready: () => model,
-    Reloading: ({ remainingMs, durationMs }) =>
-      remainingMs > deltaMs
-        ? modifySeat(model, slot, {
-            player: () =>
-              modifyFields(player, {
-                reload: () =>
-                  Reload.Reloading({
-                    remainingMs: remainingMs - deltaMs,
-                    durationMs,
-                  }),
-              }),
-          })
-        : modifyFields(model, {
-            seats: atSeat(slot, { player: () => finishReload(player) }),
-            frameEvents: Array.append(
-              GameEvent.Reloaded({
-                x: player.x,
-                y: player.y,
-                weapon: heldWeapon(player.arsenal),
-              }),
-            ),
-          }),
-  })
-}
+    return Reload.match(player.reload, {
+      Ready: () => model,
+      Reloading: ({ remainingMs, durationMs }) =>
+        remainingMs > deltaMs
+          ? modifySeat(model, slot, {
+              player: () =>
+                modifyFields(player, {
+                  reload: () =>
+                    Reload.Reloading({
+                      remainingMs: remainingMs - deltaMs,
+                      durationMs,
+                    }),
+                }),
+            })
+          : modifyFields(model, {
+              seats: atSeat(slot, { player: () => finishReload(player) }),
+              frameEvents: Array.append(
+                GameEvent.Reloaded({
+                  x: player.x,
+                  y: player.y,
+                  weapon: heldWeapon(player.arsenal),
+                }),
+              ),
+            }),
+    })
+  },
+)
 
 // BULLETS
 
@@ -475,20 +482,22 @@ const flyBullet =
     })
   }
 
-export const advanceBullets = (
-  model: World,
-  seconds: number,
-  deltaMs: number,
-): World => {
-  const [flying, stopped] = Array.partition(
-    model.bullets,
-    flyBullet(levelOf(model), seconds, deltaMs),
-  )
-  return modifyFields(model, {
-    bullets: () => flying,
-    frameEvents: frameEvents => [...frameEvents, ...Array.getSomes(stopped)],
-  })
-}
+export const advanceBullets: {
+  (seconds: number, deltaMs: number): (model: World) => World
+  (model: World, seconds: number, deltaMs: number): World
+} = Function.dual(
+  3,
+  (model: World, seconds: number, deltaMs: number): World => {
+    const [flying, stopped] = Array.partition(
+      model.bullets,
+      flyBullet(levelOf(model), seconds, deltaMs),
+    )
+    return modifyFields(model, {
+      bullets: () => flying,
+      frameEvents: frameEvents => [...frameEvents, ...Array.getSomes(stopped)],
+    })
+  },
+)
 
 // LAG COMPENSATION
 
@@ -505,53 +514,66 @@ export const zombiesAt = (model: World): ReadonlyArray<ZombieAt> =>
 // zombies as they are now (hearts, deaths, money, events); only the
 // positions are rewound, then put back. Pure, so the room replays the
 // same everywhere.
-export const catchUpShots = (
-  model: World,
-  bulletIds: ReadonlySet<number>,
-  pasts: ReadonlyArray<ReadonlyArray<ZombieAt>>,
-): World =>
-  Array.reduce(pasts, model, (current, past) => {
-    const mine = Array.filter(current.bullets, bullet =>
-      bulletIds.has(bullet.id),
-    )
-    const others = Array.filter(
-      current.bullets,
-      bullet => !bulletIds.has(bullet.id),
-    )
-    if (Array.isReadonlyArrayEmpty(mine)) {
-      return current
-    }
-    const then = new Map(Array.map(past, at => [at.id, at] as const))
-    const now = new Map(
-      Array.map(current.zombies, zombie => [zombie.id, zombie] as const),
-    )
-    const rewound = modifyFields(current, {
-      zombies: zombies =>
-        Array.map(zombies, zombie =>
-          Option.match(Option.fromNullishOr(then.get(zombie.id)), {
-            onNone: () => zombie,
-            onSome: at => ({ ...zombie, x: at.x, y: at.y }),
-          }),
-        ),
-      bullets: () => mine,
-    })
-    const seconds = FIXED_STEP_MS / MS_PER_SECOND
-    const struck = resolveBulletHits(
-      advanceBullets(rewound, seconds, FIXED_STEP_MS),
-      seconds,
-      current.nextEntityId,
-    )
-    return modifyFields(struck, {
-      zombies: zombies =>
-        Array.map(zombies, zombie =>
-          Option.match(Option.fromNullishOr(now.get(zombie.id)), {
-            onNone: () => zombie,
-            onSome: was => ({ ...zombie, x: was.x, y: was.y }),
-          }),
-        ),
-      bullets: flying => [...others, ...flying],
-    })
-  })
+export const catchUpShots: {
+  (
+    bulletIds: ReadonlySet<number>,
+    pasts: ReadonlyArray<ReadonlyArray<ZombieAt>>,
+  ): (model: World) => World
+  (
+    model: World,
+    bulletIds: ReadonlySet<number>,
+    pasts: ReadonlyArray<ReadonlyArray<ZombieAt>>,
+  ): World
+} = Function.dual(
+  3,
+  (
+    model: World,
+    bulletIds: ReadonlySet<number>,
+    pasts: ReadonlyArray<ReadonlyArray<ZombieAt>>,
+  ): World =>
+    Array.reduce(pasts, model, (current, past) => {
+      const mine = Array.filter(current.bullets, bullet =>
+        bulletIds.has(bullet.id),
+      )
+      const others = Array.filter(
+        current.bullets,
+        bullet => !bulletIds.has(bullet.id),
+      )
+      if (Array.isReadonlyArrayEmpty(mine)) {
+        return current
+      }
+      const then = new Map(Array.map(past, at => [at.id, at] as const))
+      const now = new Map(
+        Array.map(current.zombies, zombie => [zombie.id, zombie] as const),
+      )
+      const rewound = modifyFields(current, {
+        zombies: zombies =>
+          Array.map(zombies, zombie =>
+            Option.match(Option.fromNullishOr(then.get(zombie.id)), {
+              onNone: () => zombie,
+              onSome: at => ({ ...zombie, x: at.x, y: at.y }),
+            }),
+          ),
+        bullets: () => mine,
+      })
+      const seconds = FIXED_STEP_MS / MS_PER_SECOND
+      const struck = resolveBulletHits(
+        advanceBullets(rewound, seconds, FIXED_STEP_MS),
+        seconds,
+        current.nextEntityId,
+      )
+      return modifyFields(struck, {
+        zombies: zombies =>
+          Array.map(zombies, zombie =>
+            Option.match(Option.fromNullishOr(now.get(zombie.id)), {
+              onNone: () => zombie,
+              onSome: was => ({ ...zombie, x: was.x, y: was.y }),
+            }),
+          ),
+        bullets: flying => [...others, ...flying],
+      })
+    }),
+)
 
 // TRACERS
 
@@ -559,27 +581,42 @@ export const catchUpShots = (
 // the pellets the gun it holds would fire from where it stands, aimed as
 // it aims, with the client's cosmetic stream for the spread. They hurt
 // nothing; the room's own copy of the shot decides every hit.
-export const aimTracers = (
-  model: World,
-  slot: PlayerSlot,
-  seed: number,
-  firstId: number,
-): Seeded<ReadonlyArray<Bullet>> => {
-  const { player, boosts } = seatStateAt(model, slot)
-  const load = loadOf(boosts, heldGun(player.arsenal))
-  const { stats } = load
-  const muzzle = addVectors(
-    player,
-    scaleVector(player.facing, stats.muzzleReach),
-  )
-  const [nextSeed, velocities] = aimPellets(seed, player.facing, stats)
-  return [
-    nextSeed,
-    Array.map(velocities, (velocity, index) =>
-      makeBullet(firstId - index, muzzle, velocity, load),
-    ),
-  ]
-}
+export const aimTracers: {
+  (
+    slot: PlayerSlot,
+    seed: number,
+    firstId: number,
+  ): (model: World) => Seeded<ReadonlyArray<Bullet>>
+  (
+    model: World,
+    slot: PlayerSlot,
+    seed: number,
+    firstId: number,
+  ): Seeded<ReadonlyArray<Bullet>>
+} = Function.dual(
+  4,
+  (
+    model: World,
+    slot: PlayerSlot,
+    seed: number,
+    firstId: number,
+  ): Seeded<ReadonlyArray<Bullet>> => {
+    const { player, boosts } = seatStateAt(model, slot)
+    const load = loadOf(boosts, heldGun(player.arsenal))
+    const { stats } = load
+    const muzzle = addVectors(
+      player,
+      scaleVector(player.facing, stats.muzzleReach),
+    )
+    const [nextSeed, velocities] = aimPellets(seed, player.facing, stats)
+    return [
+      nextSeed,
+      Array.map(velocities, (velocity, index) =>
+        makeBullet(firstId - index, muzzle, velocity, load),
+      ),
+    ]
+  },
+)
 
 // NOTE: tracers fly as bullets do and stop at a wall, the arena's edge, the
 // end of their life, or the first zombie they touch; a zombie the room says
@@ -591,27 +628,45 @@ export type FlownTracers = Readonly<{
   struck: number
 }>
 
-export const flyTracers = (
-  level: Level,
-  zombies: ReadonlyArray<Zombie>,
-  tracers: ReadonlyArray<Bullet>,
-  deltaMs: number,
-): FlownTracers =>
-  Array.reduce(
-    tracers,
-    { tracers: Array.empty<Bullet>(), struck: 0 },
-    (flown, tracer) =>
-      Result.match(flyBullet(level, deltaMs / MS_PER_SECOND, deltaMs)(tracer), {
-        onFailure: () => flown,
-        onSuccess: moved =>
-          Array.some(
-            zombies,
-            zombie =>
-              isFree(zombie) &&
-              Math.hypot(zombie.x - moved.x, zombie.y - moved.y) <=
-                radiusOf(zombie),
-          )
-            ? { ...flown, struck: flown.struck + 1 }
-            : { ...flown, tracers: Array.append(flown.tracers, moved) },
-      }),
-  )
+export const flyTracers: {
+  (
+    zombies: ReadonlyArray<Zombie>,
+    tracers: ReadonlyArray<Bullet>,
+    deltaMs: number,
+  ): (level: Level) => FlownTracers
+  (
+    level: Level,
+    zombies: ReadonlyArray<Zombie>,
+    tracers: ReadonlyArray<Bullet>,
+    deltaMs: number,
+  ): FlownTracers
+} = Function.dual(
+  4,
+  (
+    level: Level,
+    zombies: ReadonlyArray<Zombie>,
+    tracers: ReadonlyArray<Bullet>,
+    deltaMs: number,
+  ): FlownTracers =>
+    Array.reduce(
+      tracers,
+      { tracers: Array.empty<Bullet>(), struck: 0 },
+      (flown, tracer) =>
+        Result.match(
+          flyBullet(level, deltaMs / MS_PER_SECOND, deltaMs)(tracer),
+          {
+            onFailure: () => flown,
+            onSuccess: moved =>
+              Array.some(
+                zombies,
+                zombie =>
+                  isFree(zombie) &&
+                  Math.hypot(zombie.x - moved.x, zombie.y - moved.y) <=
+                    radiusOf(zombie),
+              )
+                ? { ...flown, struck: flown.struck + 1 }
+                : { ...flown, tracers: Array.append(flown.tracers, moved) },
+          },
+        ),
+    ),
+)

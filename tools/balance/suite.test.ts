@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, DateTime, Option, Record, String } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -132,7 +132,7 @@ describe('portrait against landscape', () => {
     shares: Record<string, number>,
   ): ReadonlyArray<CampaignResult> => {
     const jobs = nightlyJobs(NIGHTLY_SIZES)
-    return Array.flatMap(Object.entries(shares), ([id, winShare]) =>
+    return Array.flatMap(Record.toEntries(shares), ([id, winShare]) =>
       Option.match(
         Array.findFirst(jobs, job => job.id === id),
         {
@@ -295,7 +295,7 @@ describe('the nightly invocation', () => {
       Array.map(jobs, ({ id, view, env }) => [id, view, env['VIEW']]),
     ).toEqual(
       Array.map(jobs, ({ id }) =>
-        id.startsWith('portrait-')
+        String.startsWith('portrait-')(id)
           ? [id, 'Portrait', 'portrait']
           : [id, 'Landscape', 'landscape'],
       ),
@@ -307,8 +307,10 @@ describe('the nightly invocation', () => {
   })
 
   test('a report is named for the local day', () => {
-    expect(localDate(new Date(2026, 9, 29, 23, 59).getTime())).toBe(
-      '2026-10-29',
+    const lateNight = DateTime.makeZonedUnsafe(
+      { year: 2026, month: 10, day: 29, hour: 23, minute: 59 },
+      { timeZone: DateTime.zoneMakeLocal(), adjustForTimeZone: true },
     )
+    expect(localDate(DateTime.toEpochMillis(lateNight))).toBe('2026-10-29')
   })
 })

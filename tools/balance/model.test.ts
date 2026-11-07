@@ -6,7 +6,6 @@ import {
   ASSUMPTIONS,
   type Catalog,
   type FlowRules,
-  type GunStats,
   type Loadout,
   STARTING_LOADOUT,
   balanceModel,
@@ -14,9 +13,8 @@ import {
   flowWave,
   moneyAgainstPrices,
   shopVisit,
-  sustainedDps,
-  timeToKill,
 } from './model'
+import { type GunStats, sustainedDps, timeToKill } from './modelGuns'
 import {
   PEAK_RATIO_TARGET,
   PEAK_RATIO_WAVES,
@@ -258,7 +256,7 @@ const PEAK_STANDING: Readonly<Record<number, Standing>> = {
 const sumOf = (values: ReadonlyArray<number>) => Number.sumAll(values)
 
 describe('guardrails from GAME_DESIGN.md', () => {
-  PEAK_RATIO_WAVES.forEach(wave =>
+  Array.forEach(PEAK_RATIO_WAVES, wave =>
     guardrail(
       `wave ${wave} peak incoming hp/s is ${PEAK_RATIO_TARGET.min} to ${PEAK_RATIO_TARGET.max} times the player's dps on Hard`,
       PEAK_STANDING[wave] ?? 'NotYet',
@@ -270,40 +268,44 @@ describe('guardrails from GAME_DESIGN.md', () => {
   guardrail(
     'waves 1 and 2 peak lower than any of the peak waves',
     'Met',
-    `${Math.max(ratioOf(1), ratioOf(2)).toFixed(2)} against ${Math.min(...PEAK_RATIO_WAVES.map(ratioOf)).toFixed(2)}`,
+    `${Math.max(ratioOf(1), ratioOf(2)).toFixed(2)} against ${Math.min(...Array.map(PEAK_RATIO_WAVES, ratioOf)).toFixed(2)}`,
     () =>
       Math.max(ratioOf(1), ratioOf(2)) <
-      Math.min(...PEAK_RATIO_WAVES.map(ratioOf)),
+      Math.min(...Array.map(PEAK_RATIO_WAVES, ratioOf)),
   )
 
   guardrail(
     'the second half presses harder than the first on average',
     'Met',
-    `${(sumOf([1, 2, 3, 4].map(ratioOf)) / 4).toFixed(2)} then ${(sumOf([5, 6, 7, 8].map(ratioOf)) / 4).toFixed(2)}`,
-    () => sumOf([1, 2, 3, 4].map(ratioOf)) < sumOf([5, 6, 7, 8].map(ratioOf)),
+    `${(sumOf(Array.map([1, 2, 3, 4], ratioOf)) / 4).toFixed(2)} then ${(sumOf(Array.map([5, 6, 7, 8], ratioOf)) / 4).toFixed(2)}`,
+    () =>
+      sumOf(Array.map([1, 2, 3, 4], ratioOf)) <
+      sumOf(Array.map([5, 6, 7, 8], ratioOf)),
   )
 
-  const drops = sawtooth
-    .slice(1)
-    .flatMap((row, index) =>
-      row.peakRatio + 0.05 < (sawtooth[index]?.peakRatio ?? 0)
-        ? [`wave ${row.wave} ${row.peakRatio.toFixed(2)}`]
-        : [],
-    )
+  const drops = Array.flatMap(sawtooth.slice(1), (row, index) =>
+    row.peakRatio + 0.05 < (sawtooth[index]?.peakRatio ?? 0)
+      ? [`wave ${row.wave} ${row.peakRatio.toFixed(2)}`]
+      : [],
+  )
   guardrail(
     'the peak never drops more than 0.05 from one wave to the next',
     'NotYet',
-    drops.length === 0 ? 'no drops' : drops.join(', '),
+    drops.length === 0 ? 'no drops' : Array.join(drops, ', '),
     () => drops.length === 0,
   )
 
-  DIFFICULTY_ORDER.forEach(difficulty =>
+  Array.forEach(DIFFICULTY_ORDER, difficulty =>
     guardrail(
       `total zombie health never falls from one wave to the next on ${difficulty}`,
       'NotYet',
-      MODEL[difficulty].map(({ totalHp }) => totalHp.toFixed(0)).join(', '),
+      Array.join(
+        Array.map(MODEL[difficulty], ({ totalHp }) => totalHp.toFixed(0)),
+        ', ',
+      ),
       () =>
-        MODEL[difficulty].every(
+        Array.every(
+          MODEL[difficulty],
           (row, index) =>
             index === 0 ||
             row.totalHp >= (MODEL[difficulty][index - 1]?.totalHp ?? 0),
@@ -311,30 +313,38 @@ describe('guardrails from GAME_DESIGN.md', () => {
     ),
   )
 
-  const campaignHp = DIFFICULTY_ORDER.map(difficulty =>
-    sumOf(MODEL[difficulty].map(({ totalHp }) => totalHp)),
+  const campaignHp = Array.map(DIFFICULTY_ORDER, difficulty =>
+    sumOf(Array.map(MODEL[difficulty], ({ totalHp }) => totalHp)),
   )
-  const campaignPressure = DIFFICULTY_ORDER.map(difficulty =>
-    sumOf(MODEL[difficulty].map(({ peakRatio }) => peakRatio)),
+  const campaignPressure = Array.map(DIFFICULTY_ORDER, difficulty =>
+    sumOf(Array.map(MODEL[difficulty], ({ peakRatio }) => peakRatio)),
   )
   const isRising = (values: ReadonlyArray<number>) =>
-    values.every(
+    Array.every(
+      values,
       (value, index) => index === 0 || value > (values[index - 1] ?? 0),
     )
   const neverFalls = (values: ReadonlyArray<number>) =>
-    values.every(
+    Array.every(
+      values,
       (value, index) => index === 0 || value >= (values[index - 1] ?? 0),
     )
   guardrail(
     'Easy < Normal < Hard < Nightmare in total campaign health',
     'Met',
-    campaignHp.map(hp => hp.toFixed(0)).join(' < '),
+    Array.join(
+      Array.map(campaignHp, hp => hp.toFixed(0)),
+      ' < ',
+    ),
     () => isRising(campaignHp),
   )
   guardrail(
     'Easy < Normal < Hard < Nightmare in peak pressure over the campaign',
     'Met',
-    campaignPressure.map(ratio => ratio.toFixed(2)).join(' < '),
+    Array.join(
+      Array.map(campaignPressure, ratio => ratio.toFixed(2)),
+      ' < ',
+    ),
     () => isRising(campaignPressure),
   )
   guardrail(
@@ -342,18 +352,18 @@ describe('guardrails from GAME_DESIGN.md', () => {
     'Met',
     'per wave health',
     () =>
-      normal.every((_, index) =>
+      Array.every(normal, (_, index) =>
         neverFalls(
-          DIFFICULTY_ORDER.map(
+          Array.map(
+            DIFFICULTY_ORDER,
             difficulty => MODEL[difficulty][index]?.totalHp ?? 0,
           ),
         ),
       ),
   )
 
-  const longest = normal.reduce(
-    (most, row) => (row.lengthSeconds > most.lengthSeconds ? row : most),
-    normal[0]!,
+  const longest = Array.reduce(normal, normal[0]!, (most, row) =>
+    row.lengthSeconds > most.lengthSeconds ? row : most,
   )
   Array.match(WAVE_LENGTH_TARGETS, {
     onEmpty: () => {
@@ -362,8 +372,10 @@ describe('guardrails from GAME_DESIGN.md', () => {
       )
     },
     onNonEmpty: targets => {
-      targets.forEach(({ wave, maxSeconds }) => {
-        const row = normal.find(candidate => candidate.wave === wave)
+      Array.forEach(targets, ({ wave, maxSeconds }) => {
+        const row = Option.getOrUndefined(
+          Array.findFirst(normal, candidate => candidate.wave === wave),
+        )
         test(`wave ${wave} runs at most ${maxSeconds} s (now ${row?.lengthSeconds.toFixed(0)} s)`, () => {
           expect(row?.lengthSeconds ?? Infinity).toBeLessThanOrEqual(maxSeconds)
         })
@@ -381,20 +393,18 @@ describe('guardrails from GAME_DESIGN.md', () => {
   guardrail(
     'the money affords the SMG by the wave 4 visit',
     'Met',
-    normal
-      .slice(0, 4)
-      .map(row =>
+    Array.join(
+      Array.map(normal.slice(0, 4), row =>
         Option.match(row.loadout.maybeSpare, {
           onNone: () => 'pistol',
           onSome: ({ kind }) => kind,
         }),
-      )
-      .join(', '),
+      ),
+      ', ',
+    ),
     () =>
-      normal
-        .slice(0, 4)
-        .some(row =>
-          Option.exists(row.loadout.maybeSpare, ({ kind }) => kind === 'Smg'),
-        ),
+      Array.some(normal.slice(0, 4), row =>
+        Option.exists(row.loadout.maybeSpare, ({ kind }) => kind === 'Smg'),
+      ),
   )
 })

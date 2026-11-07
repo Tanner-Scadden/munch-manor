@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { decodeJson, encodeJson } from '../json'
@@ -103,7 +104,7 @@ describe('worker results', () => {
 
   test('a skipped shop visit is not counted after the round trip', () => {
     const decoded = decodeRuns(encodeRuns(RUNS))
-    ;[2, 3, 4, 5].forEach(wave => {
+    Array.forEach([2, 3, 4, 5], wave => {
       expect(tallyShopVisits(decoded, wave)).toStrictEqual(
         tallyShopVisits(RUNS, wave),
       )

@@ -5,11 +5,12 @@ import {
   Array,
   Clock,
   Console,
-  Data,
   Effect,
   FileSystem,
   Option,
   Path,
+  Schema,
+  String,
 } from 'effect'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
@@ -34,9 +35,10 @@ import {
 import { renderSoundtrack } from './soundtrack'
 import type { ClipCue } from './soundtrackRequest'
 
-class VideoExit extends Data.TaggedError('VideoExit')<{
-  readonly message: string
-}> {}
+class VideoExit extends Schema.TaggedError<
+  VideoExit,
+  { readonly brand: unique symbol }
+>()('VideoExit', { message: Schema.String }) {}
 
 const USAGE =
   'usage: bun run video -- <shot list.json> [--only <clip>] [--frames-only]'
@@ -54,7 +56,7 @@ const optionsOf = (args: ReadonlyArray<string>): Option.Option<Options> => {
   const positional = Array.filter(
     args,
     (arg, index) =>
-      !arg.startsWith('--') && (onlyAt < 0 || index !== onlyAt + 1),
+      !String.startsWith('--')(arg) && (onlyAt < 0 || index !== onlyAt + 1),
   )
   return Option.map(Array.head(positional), listPath => ({
     listPath,
@@ -64,7 +66,10 @@ const optionsOf = (args: ReadonlyArray<string>): Option.Option<Options> => {
 }
 
 const hashOf = (bytes: Uint8Array): string =>
-  new Bun.CryptoHasher('sha256').update(bytes).digest('hex').slice(0, 16)
+  String.slice(
+    0,
+    16,
+  )(new Bun.CryptoHasher('sha256').update(bytes).digest('hex'))
 
 // NOTE: each frame's hash and the soundtrack's, one a line, in
 // hashes.txt beside them, and one hash of the lot, so two renders of the
@@ -80,7 +85,7 @@ const hashFiles = (paths: ReadonlyArray<string>, listPath: string) =>
         bytes => `${hashOf(bytes)} ${path.basename(file)}`,
       ),
     )
-    const text = `${lines.join('\n')}\n`
+    const text = `${Array.join(lines, '\n')}\n`
     yield* fs.writeFileString(listPath, text)
     return hashOf(new TextEncoder().encode(text))
   })
@@ -125,7 +130,10 @@ const beatReport = (score: Score, cuts: ReadonlyArray<number>): string => {
     const off = cut - (start + nearest * beat)
     return `    frame ${cut} (${(cut / FRAMES_PER_SECOND).toFixed(2)} s): beat ${nearest}, ${off >= 0 ? '+' : ''}${off.toFixed(1)} frames`
   })
-  return [`  cuts against the beat at ${score.bpm} bpm:`, ...lines].join('\n')
+  return Array.join(
+    [`  cuts against the beat at ${score.bpm} bpm:`, ...lines],
+    '\n',
+  )
 }
 
 const renderClip = (
@@ -146,7 +154,7 @@ const renderClip = (
     yield* Console.log(
       `${clip.name}: ${clip.format}, ${size.width}x${size.height}`,
     )
-    const page = yield* openShotPage(browser, clip.format)
+    const page = yield* openShotPage({ browser, format: clip.format })
     let frames = 0
     const cues: Array<ClipCue> = []
     const cuts: Array<number> = []
@@ -154,15 +162,15 @@ const renderClip = (
       yield* yieldTurn(`video ${clip.name} ${shot.name}`)
       const overlap = Math.min(frames, shot.crossfade ?? 0)
       const firstFrame = frames - overlap
-      const result = yield* captureShot(
+      const result = yield* captureShot({
         page,
         shot,
-        clip.format,
-        framesDir,
+        format: clip.format,
+        dir: framesDir,
         firstFrame,
-        frames,
-        line => Console.log(line),
-      )
+        overlapEnd: frames,
+        log: line => Console.log(line),
+      })
       if (firstFrame > 0) {
         cuts.push(firstFrame + Math.floor(overlap / 2))
       }
@@ -173,7 +181,12 @@ const renderClip = (
       yield* Console.log(
         `  looping the last ${clip.loop} frames into the first`,
       )
-      const tailStart = yield* loopFrames(page, framesDir, frames, clip.loop)
+      const tailStart = yield* loopFrames({
+        page,
+        dir: framesDir,
+        frames,
+        overlap: clip.loop,
+      })
       // NOTE: the tail's sounds play over the head it dissolved into.
       const moved = Array.map(cues, cue =>
         cue.frame >= tailStart ? { ...cue, frame: cue.frame - tailStart } : cue,
@@ -187,7 +200,12 @@ const renderClip = (
     if (clip.score !== undefined) {
       yield* Console.log(beatReport(clip.score, cuts))
     }
-    const seconds = yield* renderSoundtrack(browser, sounds, frames, wav)
+    const seconds = yield* renderSoundtrack({
+      browser,
+      cues: sounds,
+      frames,
+      outPath: wav,
+    })
     const hash = yield* hashFiles(
       [
         ...Array.makeBy(frames, frame =>
@@ -201,11 +219,11 @@ const renderClip = (
     if (canEncode) {
       const pattern = path.join(framesDir, 'frame-%06d.png')
       const mp4 = path.join(outDir, `${clip.name}.mp4`)
-      yield* encodeMp4(pattern, wav, mp4)
+      yield* encodeMp4({ frames: pattern, wav, out: mp4 })
       outputs.push(mp4)
       if (clip.gif === true) {
         const gif = path.join(outDir, `${clip.name}.gif`)
-        yield* encodeGif(pattern, gif)
+        yield* encodeGif({ frames: pattern, out: gif })
         outputs.push(gif)
       }
     }
@@ -217,11 +235,14 @@ const renderClip = (
     )
     const finishedMs = yield* Clock.currentTimeMillis
     yield* Console.log(
-      [
-        `${clip.name}: ${frames} frames, ${seconds.toFixed(2)} s at ${FRAMES_PER_SECOND} fps, rendered in ${((finishedMs - startedMs) / 1000).toFixed(1)} s`,
-        `  frames and sound hash ${hash}`,
-        ...Array.map(sizes, line => `  ${line}`),
-      ].join('\n'),
+      Array.join(
+        [
+          `${clip.name}: ${frames} frames, ${seconds.toFixed(2)} s at ${FRAMES_PER_SECOND} fps, rendered in ${((finishedMs - startedMs) / 1000).toFixed(1)} s`,
+          `  frames and sound hash ${hash}`,
+          ...Array.map(sizes, line => `  ${line}`),
+        ],
+        '\n',
+      ),
     )
   })
 
@@ -230,18 +251,19 @@ const program = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
   const options = yield* Effect.fromOption(
     optionsOf(process.argv.slice(2)),
-  ).pipe(Effect.mapError(() => new VideoExit({ message: USAGE })))
+  ).pipe(Effect.mapError(() => VideoExit.make({ message: USAGE })))
   const canEncode = !options.isFramesOnly && (yield* hasFfmpeg)
   if (!options.isFramesOnly && !canEncode) {
-    return yield* new VideoExit({ message: INSTALL_FFMPEG })
+    return yield* VideoExit.make({ message: INSTALL_FFMPEG })
   }
-  const list = yield* decodeShotList(yield* fs.readFileString(options.listPath))
+  const value = yield* fs.readFileString(options.listPath)
+  const list = yield* decodeShotList(value)
   const clips = Option.match(options.maybeOnly, {
     onNone: () => list.clips,
     onSome: only => Array.filter(list.clips, clip => clip.name === only),
   })
   if (clips.length === 0) {
-    return yield* new VideoExit({ message: 'no clip by that name' })
+    return yield* VideoExit.make({ message: 'no clip by that name' })
   }
   const outDir = path.join(import.meta.dir, 'out')
   yield* Effect.promise(() => useHarness())

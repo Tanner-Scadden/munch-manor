@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { type Level, SHOP_STALL_SYMBOL, tilesWithSymbol } from './arena'
@@ -355,18 +355,33 @@ const COBWEB_PIXELS: ReadonlyArray<string> = [
 
 const COBWEB_PALETTE: Palette = { W: COBWEB_COLOR, w: COBWEB_FAINT_COLOR }
 
-export const cobweb = (
-  x: number,
-  y: number,
-  facesRight: boolean,
-  facesDown: boolean,
-): ReadonlyArray<Canvas.Shape> => {
-  const flipped = facesRight ? COBWEB_PIXELS : mirrorRows(COBWEB_PIXELS)
-  const pixels = facesDown ? flipped : Array.reverse(flipped)
-  return pixelArt(
-    facesRight ? x : x - 8,
-    facesDown ? y : y - 8,
-    pixels,
-    COBWEB_PALETTE,
-  )
-}
+export const cobweb: {
+  (
+    y: number,
+    facesRight: boolean,
+    facesDown: boolean,
+  ): (x: number) => ReadonlyArray<Canvas.Shape>
+  (
+    x: number,
+    y: number,
+    facesRight: boolean,
+    facesDown: boolean,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  4,
+  (
+    x: number,
+    y: number,
+    facesRight: boolean,
+    facesDown: boolean,
+  ): ReadonlyArray<Canvas.Shape> => {
+    const flipped = facesRight ? COBWEB_PIXELS : mirrorRows(COBWEB_PIXELS)
+    const pixels = facesDown ? flipped : Array.reverse(flipped)
+    return pixelArt(
+      facesRight ? x : x - 8,
+      facesDown ? y : y - 8,
+      pixels,
+      COBWEB_PALETTE,
+    )
+  },
+)

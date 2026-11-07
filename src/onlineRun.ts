@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Option, String } from 'effect'
 
 import { botNameOf, botSlotOf, isBotCrew } from './bots'
 import type { Room as CoopRoom } from './coop/model'
@@ -73,7 +73,9 @@ const botCrewNames = (
     ? [
         [
           leadSeatOf(model).slot,
-          (model.playerName === '' ? 'YOU' : model.playerName).toUpperCase(),
+          String.toUpperCase(
+            model.playerName === '' ? 'YOU' : model.playerName,
+          ),
         ],
         ...Array.map(
           model.crewBots,
@@ -93,7 +95,7 @@ export const seatNamesOf = (model: Model): ReadonlyMap<PlayerSlot, string> =>
         onSome: lobby =>
           Array.map(
             lobby.members,
-            member => [member.slot, member.name.toUpperCase()] as const,
+            member => [member.slot, String.toUpperCase(member.name)] as const,
           ),
       },
     ),

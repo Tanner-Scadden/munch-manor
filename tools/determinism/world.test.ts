@@ -2,7 +2,7 @@
 // a World alone, with no client field in it, the way a co-op room holds
 // it, and play exactly what the client's frame loop plays.
 
-import { Struct } from 'effect'
+import { Array, Record, Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { refreshIntent } from '../../src/frame'
@@ -19,22 +19,30 @@ const worldOf = (model: Model): World => Struct.pick(model, WORLD_KEYS)
 
 describe('the World', () => {
   test('every World field is hashed as World, or derived from it', () => {
-    const classes = new Map<string, string>(Object.entries(FIELD_CLASSES))
-    const misfiled = WORLD_KEYS.filter(
+    const classes = new Map<string, string>(Record.toEntries(FIELD_CLASSES))
+    const misfiled = Array.filter(
+      WORLD_KEYS,
       key => classes.get(key) !== 'World' && classes.get(key) !== 'Derived',
     )
     expect(misfiled).toEqual([])
-    const outside = [...classes.entries()]
-      .filter(([, fieldClass]) => fieldClass === 'World')
-      .map(([key]) => key)
-      .filter(key => !WORLD_KEYS.some(worldKey => worldKey === key))
+    const outside = Array.filter(
+      Array.map(
+        Array.filter(
+          [...classes.entries()],
+          ([, fieldClass]) => fieldClass === 'World',
+        ),
+        ([key]) => key,
+      ),
+      key => !Array.some(WORLD_KEYS, worldKey => worldKey === key),
+    )
     expect(outside).toEqual([])
   })
 
   test('stepWorld on a bare World plays what the client plays', () => {
-    const played = Array.from({ length: 900 }).reduce<Model>(
-      (model, _, frame) => playFrame(model, frame, 'Fixed60'),
+    const played = Array.reduce(
+      globalThis.Array.from({ length: 900 }),
       startedRun(9, 'Campaign'),
+      (model, _, frame) => playFrame(model, frame, 'Fixed60'),
     )
     const intended = refreshIntent(played)
     const bare = stepWorld(
@@ -42,7 +50,7 @@ describe('the World', () => {
       soloInputs(focusOf(intended).intent),
     )
     const full = stepWorld(intended, soloInputs(focusOf(intended).intent))
-    expect(Object.keys(bare.world).sort()).toEqual([...WORLD_KEYS].sort())
+    expect(Record.keys(bare.world).sort()).toEqual([...WORLD_KEYS].sort())
     expect(
       firstDifference(
         Struct.pick(bare.world, WORLD_KEYS),
@@ -53,11 +61,12 @@ describe('the World', () => {
 
   test('a bare World plays a whole minute on its own', () => {
     const start = refreshIntent(startedRun(4, 'Campaign'))
-    const world = Array.from({ length: 3600 }).reduce<World>(
-      current => stepWorld(current, soloInputs(focusOf(start).intent)).world,
+    const world = Array.reduce(
+      globalThis.Array.from({ length: 3600 }),
       worldOf(start),
+      current => stepWorld(current, soloInputs(focusOf(start).intent)).world,
     )
-    expect(Object.keys(world).sort()).toEqual([...WORLD_KEYS].sort())
+    expect(Record.keys(world).sort()).toEqual([...WORLD_KEYS].sort())
     expect(world.elapsedMs).toBeGreaterThan(0)
   })
 })

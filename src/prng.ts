@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Function } from 'effect'
 
 const MULBERRY_INCREMENT = 0x6d2b79f5
 const UINT32_RANGE = 4294967296
@@ -17,18 +17,36 @@ export const nextRandom = (state: number): RandomDraw => {
 
 export type Seeded<A> = readonly [nextState: number, value: A]
 
-export const generateMany = <A>(
-  state: number,
-  count: number,
-  generate: (drawState: number) => Seeded<A>,
-): Seeded<ReadonlyArray<A>> =>
-  count > 0
-    ? Array.mapAccum(
-        Array.makeBy(count, () => count),
-        state,
-        drawState => generate(drawState),
-      )
-    : [state, []]
+export const generateMany: {
+  <A>(
+    count: number,
+    generate: (drawState: number) => Seeded<A>,
+  ): (state: number) => Seeded<ReadonlyArray<A>>
+  <A>(
+    state: number,
+    count: number,
+    generate: (drawState: number) => Seeded<A>,
+  ): Seeded<ReadonlyArray<A>>
+} = Function.dual(
+  3,
+  <A>(
+    state: number,
+    count: number,
+    generate: (drawState: number) => Seeded<A>,
+  ): Seeded<ReadonlyArray<A>> =>
+    count > 0
+      ? Array.mapAccum(
+          Array.makeBy(count, () => count),
+          state,
+          drawState => generate(drawState),
+        )
+      : [state, []],
+)
 
-export const between = (roll: number, min: number, max: number): number =>
-  min + (max - min) * roll
+export const between: {
+  (min: number, max: number): (roll: number) => number
+  (roll: number, min: number, max: number): number
+} = Function.dual(
+  3,
+  (roll: number, min: number, max: number): number => min + (max - min) * roll,
+)

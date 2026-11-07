@@ -67,13 +67,16 @@ describe('the room', () => {
     expect(PARLOUR.rows * TILE_SIZE).toBe(PARLOUR.height)
     expect(PARLOUR.doorIds).toEqual(['North', 'West', 'East', 'South'])
     expect(
-      Array.map(PARLOUR.doorIds, id => PARLOUR.doors[id]).map(({ center }) => ({
-        isOnEdge:
-          center.x < TILE_SIZE ||
-          center.x > PARLOUR.width - TILE_SIZE ||
-          center.y < TILE_SIZE * 2 ||
-          center.y > PARLOUR.height - TILE_SIZE,
-      })),
+      Array.map(
+        Array.map(PARLOUR.doorIds, id => PARLOUR.doors[id]),
+        ({ center }) => ({
+          isOnEdge:
+            center.x < TILE_SIZE ||
+            center.x > PARLOUR.width - TILE_SIZE ||
+            center.y < TILE_SIZE * 2 ||
+            center.y > PARLOUR.height - TILE_SIZE,
+        }),
+      ),
     ).toEqual(Array.makeBy(4, () => ({ isOnEdge: true })))
   })
 

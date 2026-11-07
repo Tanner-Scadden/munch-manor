@@ -1,4 +1,4 @@
-import { Array, Order, pipe } from 'effect'
+import { Array, Effect, Function, Order, Schema, String, pipe } from 'effect'
 
 // The service worker's precache list, worked out at build time from the
 // files Vite emits and the files it copies from public/, so the list never
@@ -27,8 +27,8 @@ const NOT_PRECACHED: ReadonlySet<string> = new Set([
 
 const isPrecached = (fileName: string): boolean =>
   !NOT_PRECACHED.has(fileName) &&
-  !fileName.endsWith('.map') &&
-  !fileName.startsWith('.vite/')
+  !String.endsWith('.map')(fileName) &&
+  !String.startsWith('.vite/')(fileName)
 
 const toUrl = (fileName: string): string =>
   fileName === SHELL_FILE ? SHELL_URL : fileName
@@ -37,54 +37,106 @@ const toUrl = (fileName: string): string =>
 // to the worker: the shell, every hashed chunk, stylesheet, wasm, and worker
 // Vite emits, and the icons and manifest from public/. Sorted, so one build
 // always writes the same worker.
-export const precacheList = (
-  emittedFiles: ReadonlyArray<string>,
-  publicFiles: ReadonlyArray<string>,
-): ReadonlyArray<string> =>
-  pipe(
-    Array.appendAll(emittedFiles, publicFiles),
-    Array.filter(isPrecached),
-    Array.map(toUrl),
-    Array.dedupe,
-    Array.sort(Order.String),
-  )
+export const precacheList: {
+  (
+    publicFiles: ReadonlyArray<string>,
+  ): (emittedFiles: ReadonlyArray<string>) => ReadonlyArray<string>
+  (
+    emittedFiles: ReadonlyArray<string>,
+    publicFiles: ReadonlyArray<string>,
+  ): ReadonlyArray<string>
+} = Function.dual(
+  2,
+  (
+    emittedFiles: ReadonlyArray<string>,
+    publicFiles: ReadonlyArray<string>,
+  ): ReadonlyArray<string> =>
+    pipe(
+      Array.appendAll(emittedFiles, publicFiles),
+      Array.filter(isPrecached),
+      Array.map(toUrl),
+      Array.dedupe,
+      Array.sort(Order.String),
+    ),
+)
 
 // The deployed files the precache list and the not precached list both miss,
 // and the list's entries that were not deployed. Both are empty for a sound
 // build; the build fails otherwise.
-export const precacheDrift = (
-  deployedFiles: ReadonlyArray<string>,
-  precache: ReadonlyArray<string>,
-): Readonly<{
-  missing: ReadonlyArray<string>
-  extra: ReadonlyArray<string>
-}> => {
-  const deployedUrls = pipe(deployedFiles, Array.filter(isPrecached))
-  const expected = Array.map(deployedUrls, toUrl)
-  return {
-    missing: Array.filter(expected, url => !precache.includes(url)),
-    extra: Array.filter(precache, url => !expected.includes(url)),
-  }
-}
+export const precacheDrift: {
+  (precache: ReadonlyArray<string>): (
+    deployedFiles: ReadonlyArray<string>,
+  ) => Readonly<{
+    missing: ReadonlyArray<string>
+    extra: ReadonlyArray<string>
+  }>
+  (
+    deployedFiles: ReadonlyArray<string>,
+    precache: ReadonlyArray<string>,
+  ): Readonly<{
+    missing: ReadonlyArray<string>
+    extra: ReadonlyArray<string>
+  }>
+} = Function.dual(
+  2,
+  (
+    deployedFiles: ReadonlyArray<string>,
+    precache: ReadonlyArray<string>,
+  ): Readonly<{
+    missing: ReadonlyArray<string>
+    extra: ReadonlyArray<string>
+  }> => {
+    const deployedUrls = pipe(deployedFiles, Array.filter(isPrecached))
+    const expected = Array.map(deployedUrls, toUrl)
+    return {
+      missing: Array.filter(expected, url => !precache.includes(url)),
+      extra: Array.filter(precache, url => !expected.includes(url)),
+    }
+  },
+)
 
 // NOTE: worker.ts is a module to TypeScript, so its globals can be declared,
 // but sw.js is registered as a classic script, which Safari and Firefox load
 // everywhere. The empty export is the only module syntax in it.
 const EMPTY_EXPORT = /^export\s*\{\s*\};?[ \t]*$/gm
 
+// NOTE: the build id and the precache list go into sw.js as JSON literals.
+const BuildJson = Schema.fromJsonString(Schema.String)
+const PrecacheJson = Schema.fromJsonString(Schema.Array(Schema.String))
+
 // The worker's source with this build's id and precache list in front of
 // it. A new build always changes the bytes of sw.js, which is how the
 // browser notices a new worker.
-export const serviceWorkerSource = (
-  build: string,
-  precache: ReadonlyArray<string>,
-  workerCode: string,
-): string =>
-  [
-    `const BUILD = ${JSON.stringify(build)};`,
-    `const PRECACHE = ${JSON.stringify(precache)};`,
-    workerCode.replace(EMPTY_EXPORT, ''),
-  ].join('\n')
+export const serviceWorkerSource: {
+  (
+    precache: ReadonlyArray<string>,
+    workerCode: string,
+  ): (build: string) => Effect.Effect<string, Schema.SchemaError>
+  (
+    build: string,
+    precache: ReadonlyArray<string>,
+    workerCode: string,
+  ): Effect.Effect<string, Schema.SchemaError>
+} = Function.dual(
+  3,
+  (
+    build: string,
+    precache: ReadonlyArray<string>,
+    workerCode: string,
+  ): Effect.Effect<string, Schema.SchemaError> =>
+    Effect.gen(function* () {
+      const buildJson = yield* Schema.encodeEffect(BuildJson)(build)
+      const precacheJson = yield* Schema.encodeEffect(PrecacheJson)(precache)
+      return Array.join(
+        [
+          `const BUILD = ${buildJson};`,
+          `const PRECACHE = ${precacheJson};`,
+          String.replace(EMPTY_EXPORT, '')(workerCode),
+        ],
+        '\n',
+      )
+    }),
+)
 
 // NOTE: the kill switch. Set this to true and push to ship it; a source
 // change also makes the deploy rebuild, where an env var alone would not.

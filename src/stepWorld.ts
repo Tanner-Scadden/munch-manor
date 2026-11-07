@@ -1,4 +1,4 @@
-import { Array, Option, Result, Schema } from 'effect'
+import { Array, Function, Option, Result, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
@@ -98,22 +98,25 @@ const intentFor = (world: World, slot: PlayerSlot, intent: Intent): Intent => {
   })
 }
 
-export const stepWorld = (
-  world: World,
-  inputsByPlayer: InputsByPlayer,
-): Stepped => {
-  const intended = forEachSeat(world, (current, slot) =>
-    modifySeat(current, slot, {
-      intent: () => intentFor(current, slot, inputOf(inputsByPlayer, slot)),
-    }),
-  )
-  const ticked = advanceTick(intended)
-  return {
-    world: ticked.world,
-    events: ticked.world.frameEvents,
-    worldMs: ticked.worldMs,
-  }
-}
+export const stepWorld: {
+  (inputsByPlayer: InputsByPlayer): (world: World) => Stepped
+  (world: World, inputsByPlayer: InputsByPlayer): Stepped
+} = Function.dual(
+  2,
+  (world: World, inputsByPlayer: InputsByPlayer): Stepped => {
+    const intended = forEachSeat(world, (current, slot) =>
+      modifySeat(current, slot, {
+        intent: () => intentFor(current, slot, inputOf(inputsByPlayer, slot)),
+      }),
+    )
+    const ticked = advanceTick(intended)
+    return {
+      world: ticked.world,
+      events: ticked.world.frameEvents,
+      worldMs: ticked.worldMs,
+    }
+  },
+)
 
 // ACTIONS
 
@@ -254,37 +257,46 @@ const callMedic = (world: World, slot: PlayerSlot): ActionResult =>
 
 // NOTE: an action by the seat at `slot`: the World it makes, or why it made
 // none.
-export const trySeatAction = (
-  world: World,
-  slot: PlayerSlot,
-  action: SeatAction,
-): ActionResult =>
-  SeatAction.match(action, {
-    Swap: () => swap(world, slot),
-    Melee: () => melee(world, slot),
-    Draw: ({ slot: gun }) => draw(world, slot, gun),
-    Reload: () => reload(world, slot),
-    PlaceTrap: () => placeTrap(world, slot),
-    NextTrap: () => nextTrap(world, slot),
-    Buy: ({ item }) => buy(world, slot, item),
-    LeaveCounter: () => leaveCounter(world, slot),
-    Ready: () => ready(world, slot),
-    BuyAmmo: () => buyAmmo(world, slot),
-    CallMedic: () => callMedic(world, slot),
-  })
+export const trySeatAction: {
+  (slot: PlayerSlot, action: SeatAction): (world: World) => ActionResult
+  (world: World, slot: PlayerSlot, action: SeatAction): ActionResult
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, action: SeatAction): ActionResult =>
+    SeatAction.match(action, {
+      Swap: () => swap(world, slot),
+      Melee: () => melee(world, slot),
+      Draw: ({ slot: gun }) => draw(world, slot, gun),
+      Reload: () => reload(world, slot),
+      PlaceTrap: () => placeTrap(world, slot),
+      NextTrap: () => nextTrap(world, slot),
+      Buy: ({ item }) => buy(world, slot, item),
+      LeaveCounter: () => leaveCounter(world, slot),
+      Ready: () => ready(world, slot),
+      BuyAmmo: () => buyAmmo(world, slot),
+      CallMedic: () => callMedic(world, slot),
+    }),
+)
 
-export const applySeatAction = (
-  world: World,
-  slot: PlayerSlot,
-  action: SeatAction,
-): World => Result.getOrElse(trySeatAction(world, slot, action), () => world)
+export const applySeatAction: {
+  (slot: PlayerSlot, action: SeatAction): (world: World) => World
+  (world: World, slot: PlayerSlot, action: SeatAction): World
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, action: SeatAction): World =>
+    Result.getOrElse(trySeatAction(world, slot, action), () => world),
+)
 
 // NOTE: a tap on a HUD gun slot. On the gun in hand it reloads it; any
 // other tap draws that gun, from the knife too.
-export const gunSlotAction = (player: Player, slot: GunSlot): SeatAction =>
+export const gunSlotAction: {
+  (slot: GunSlot): (player: Player) => SeatAction
+  (player: Player, slot: GunSlot): SeatAction
+} = Function.dual(2, (player: Player, slot: GunSlot): SeatAction =>
   !isWieldingMelee(player) && heldSlotOf(player.arsenal) === slot
     ? SeatAction.Reload()
-    : SeatAction.Draw({ slot })
+    : SeatAction.Draw({ slot }),
+)
 
 // THE SHOP WITHOUT A DIALOG
 
@@ -345,8 +357,9 @@ const stepFocus = (world: World, slot: PlayerSlot, step: FocusStep): World => {
   })
 }
 
-export const stepShopFocus = (
-  world: World,
-  slot: PlayerSlot,
-  step: FocusStep,
-): World => stepFocus(world, slot, step)
+export const stepShopFocus: {
+  (slot: PlayerSlot, step: FocusStep): (world: World) => World
+  (world: World, slot: PlayerSlot, step: FocusStep): World
+} = Function.dual(3, (world: World, slot: PlayerSlot, step: FocusStep): World =>
+  stepFocus(world, slot, step),
+)

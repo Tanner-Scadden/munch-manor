@@ -1,24 +1,32 @@
-import { Schema } from 'effect'
-import { readdirSync } from 'node:fs'
+import {
+  Array,
+  Config,
+  Console,
+  Effect,
+  FileSystem,
+  Schema,
+  String,
+} from 'effect'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 import { Vector } from '@game/entitySchema'
 
 import { encodeJson } from '../json'
+import { runHarnessAuditWith } from './harnessServer'
 import {
+  PHONE_844,
   SHOTS_DIR,
+  closePage,
   comparePngs,
   desktop,
   gotoScene,
   harnessUrl,
-  launch,
-  mobile,
   modelAs,
+  openBrowser,
+  openPage,
   shot,
   tagOr,
-  useHarness,
 } from './lib'
-
-const TAG = tagOr('now')
 
 // NOTE: the Model's fields the log line reads.
 const SceneCounts = Schema.Struct({
@@ -61,42 +69,49 @@ const scenes: ReadonlyArray<
   },
 ]
 
-await useHarness()
-const browser = await launch()
-for (const scene of scenes) {
-  const page =
-    scene.isMobile === true
-      ? await mobile(browser, true)
-      : await desktop(browser)
-  await gotoScene(page, harnessUrl(scene.q.replace(/^\?/, '')))
-  const m = await modelAs(page, SceneCounts)
-  await shot(page, `s9-${TAG}-${scene.name}`)
-  console.log(
-    scene.name,
-    `shake ${offsetJson(m.shake.offset)}`,
-    `zombies ${m.zombies.length} particles ${m.particles.length} decals ${m.decals.length}`,
-  )
-  await page.context().close()
-}
-
-const compareTag = process.env['COMPARE']
-if (compareTag !== undefined && compareTag !== '') {
-  const page = await desktop(browser)
-  const files = readdirSync(SHOTS_DIR)
-  for (const scene of scenes) {
-    const before = `s9-${compareTag}-${scene.name}.png`
-    const after = `s9-${TAG}-${scene.name}.png`
-    if (!files.includes(before) || !files.includes(after)) {
-      continue
+runHarnessAuditWith(
+  Effect.gen(function* () {
+    const tag = yield* tagOr('now')
+    const browser = yield* openBrowser
+    for (const scene of scenes) {
+      const page =
+        scene.isMobile === true
+          ? yield* openPage(browser, PHONE_844)
+          : yield* desktop(browser)
+      yield* gotoScene(page, harnessUrl(String.replace(/^\?/, '')(scene.q)))
+      const m = yield* modelAs(page, SceneCounts)
+      yield* shot(page, `s9-${tag}-${scene.name}`)
+      yield* Console.log(
+        scene.name,
+        `shake ${offsetJson(m.shake.offset)}`,
+        `zombies ${m.zombies.length} particles ${m.particles.length} decals ${m.decals.length}`,
+      )
+      yield* closePage(page)
     }
-    const result = await comparePngs(
-      page,
-      `${SHOTS_DIR}/${before}`,
-      `${SHOTS_DIR}/${after}`,
+
+    const compareTag = yield* Config.String('COMPARE').pipe(
+      Config.withDefault(''),
     )
-    console.log(
-      `${scene.name}: ${result.differing} of ${result.total} pixels differ, max channel delta ${result.maxDelta}`,
-    )
-  }
-}
-await browser.close()
+    if (compareTag !== '') {
+      const fs = yield* FileSystem.FileSystem
+      const page = yield* desktop(browser)
+      const files = yield* fs.readDirectory(SHOTS_DIR)
+      for (const scene of scenes) {
+        const before = `s9-${compareTag}-${scene.name}.png`
+        const after = `s9-${tag}-${scene.name}.png`
+        if (!Array.contains(files, before) || !Array.contains(files, after)) {
+          continue
+        }
+        const result = yield* comparePngs(
+          page,
+          `${SHOTS_DIR}/${before}`,
+          `${SHOTS_DIR}/${after}`,
+        )
+        yield* Console.log(
+          `${scene.name}: ${result.differing} of ${result.total} pixels differ, max channel delta ${result.maxDelta}`,
+        )
+      }
+    }
+  }),
+  NodeServices.layer,
+)

@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { playerPixels } from './appearance'
@@ -33,7 +33,7 @@ import { initialPlayer } from './worldSchema'
 
 describe('unlocking', () => {
   test('YOU is open at rank 1, the rest at 3, 6, 10, and 15', () => {
-    expect(CALLINGS.map(calling => UNLOCK_RANKS[calling])).toEqual([
+    expect(Array.map(CALLINGS, calling => UNLOCK_RANKS[calling])).toEqual([
       1, 3, 6, 10, 15,
     ])
     expect(isCallingUnlocked('Handyman', 2)).toBe(false)
@@ -58,7 +58,7 @@ describe('unlocking', () => {
 
   test('the prices: Handyman 60, Track Star 100, Penny Pincher 150, Line Cook 200', () => {
     expect(
-      CALLINGS.map(calling =>
+      Array.map(CALLINGS, calling =>
         Option.getOrElse(callingPriceOf(calling), () => 0),
       ),
     ).toEqual([0, 60, 100, 150, 200])
@@ -143,7 +143,7 @@ describe('the player of a calling', () => {
   test('each calling but YOU wears a prop over the look', () => {
     const bare = playerPixels(defaultAppearance, 'You').idle
     expect(playerPixels(defaultAppearance).idle).toEqual(bare)
-    for (const calling of CALLINGS.filter(next => next !== 'You')) {
+    for (const calling of Array.filter(CALLINGS, next => next !== 'You')) {
       expect(playerPixels(defaultAppearance, calling).idle).not.toEqual(bare)
     }
   })
@@ -162,7 +162,7 @@ describe('the gun in the Look preview', () => {
 describe('the specials as short lines', () => {
   test('the Handyman reads his own numbers, perks and drawbacks apart', () => {
     expect(
-      specialsOf('Handyman').map(({ isPerk, line }) => [isPerk, line]),
+      Array.map(specialsOf('Handyman'), ({ isPerk, line }) => [isPerk, line]),
     ).toEqual([
       [true, 'Planks 50% off'],
       [true, 'Free repairs'],
@@ -172,11 +172,11 @@ describe('the specials as short lines', () => {
   })
 
   test('the Track Star and the Penny Pincher read theirs', () => {
-    expect(specialsOf('TrackStar').map(({ line }) => line)).toEqual([
+    expect(Array.map(specialsOf('TrackStar'), ({ line }) => line)).toEqual([
       'Runs 20% faster',
       'Mags 5% smaller',
     ])
-    expect(specialsOf('PennyPincher').map(({ line }) => line)).toEqual([
+    expect(Array.map(specialsOf('PennyPincher'), ({ line }) => line)).toEqual([
       'Rattles 15% off',
       'Kills pay 20% less',
     ])
@@ -184,7 +184,7 @@ describe('the specials as short lines', () => {
 
   test('the Line Cook starts with the Cooker and has no Pop Pistol', () => {
     expect(
-      specialsOf('LineCook').map(({ isPerk, line }) => [isPerk, line]),
+      Array.map(specialsOf('LineCook'), ({ isPerk, line }) => [isPerk, line]),
     ).toEqual([
       [true, 'Starts with Pressure Cooker'],
       [false, 'No Pop Pistol'],

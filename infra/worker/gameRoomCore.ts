@@ -1,3 +1,4 @@
+import { Function, String } from 'effect'
 import * as Array from 'effect/Array'
 import * as Effect from 'effect/Effect'
 import type * as Layer from 'effect/Layer'
@@ -65,6 +66,7 @@ import {
 
 // ROOM HOST
 
+/** @stability unstable */
 export interface RoomHost {
   readonly scope: ScopeHost
   readonly lobby: Effect.Effect<Option.Option<Lobby>>
@@ -135,170 +137,205 @@ const broadcastApplied = (
     ),
   )
 
-export const makeRoomHost = (
-  scope: string,
-  secret: string,
-): Effect.Effect<RoomHost, ScopeHostFailed, SqlClient.SqlClient> =>
-  Effect.gen(function* () {
-    const host = yield* makeScopeHost(
-      scope,
-      authenticateWith(secret),
-      RoomScope,
-    )
-    const { server } = host
+/** @stability unstable */
+export const makeRoomHost: {
+  (
+    secret: string,
+  ): (
+    scope: string,
+  ) => Effect.Effect<RoomHost, ScopeHostFailed, SqlClient.SqlClient>
+  (
+    scope: string,
+    secret: string,
+  ): Effect.Effect<RoomHost, ScopeHostFailed, SqlClient.SqlClient>
+} = Function.dual(
+  2,
+  (
+    scope: string,
+    secret: string,
+  ): Effect.Effect<RoomHost, ScopeHostFailed, SqlClient.SqlClient> =>
+    Effect.gen(function* () {
+      const host = yield* makeScopeHost(
+        scope,
+        authenticateWith(secret),
+        RoomScope,
+      )
+      const { server } = host
 
-    const lobby = Effect.map(Effect.orDie(server.snapshot), snapshot =>
-      snapshot._tag === 'Snapshot'
-        ? lobbyOfSnapshot(snapshot.tables)
-        : Option.none(),
-    )
+      const lobby = Effect.map(Effect.orDie(server.snapshot), snapshot =>
+        snapshot._tag === 'Snapshot'
+          ? lobbyOfSnapshot(snapshot.tables)
+          : Option.none(),
+      )
 
-    const create = (
-      playerId: string,
-      name: string,
-      look: string,
-      rank: number,
-      calling: string,
-      nightmare: boolean,
-      code: string,
-      visibility: RoomVisibility,
-    ) =>
-      Effect.gen(function* () {
-        if (Option.isSome(yield* lobby)) {
-          return refusal(RoomRefusal.cases.Started.make({}))
-        }
-        yield* Effect.orDie(server.addMember(playerId))
-        const outcome = yield* Effect.orDie(
-          server.runServer(
-            CreatedRoom,
-            {
-              code,
-              host: playerId,
-              hostName: name.slice(0, MAX_NAME_INPUT),
-              hostLook: lookOfRequest(look),
-              hostRank: cleanRank(rank),
-              hostCalling: callingOfRequest(calling),
-              hostNightmare: nightmare,
-              mode: DEFAULT_MODE,
-              visibility,
-            },
-            `created-room-${code}`,
-          ),
-        )
-        if (outcome._tag !== 'Applied') {
-          return refusal(RoomRefusal.cases.Started.make({}))
-        }
-        return Result.succeed({ code, slot: 0 })
-      })
-
-    const join = (
-      playerId: string,
-      name: string,
-      look: string,
-      rank: number,
-      calling: string,
-      nightmare: boolean,
-      everyone: ReadonlyArray<Socket>,
-    ) =>
-      Effect.gen(function* () {
-        const maybeLobby = yield* lobby
-        if (Option.isNone(maybeLobby) || maybeLobby.value.status === 'Closed') {
-          return refusal(RoomRefusal.cases.NoRoom.make({}))
-        }
-        const current = maybeLobby.value
-        if (
-          Array.some(current.members, member => member.playerId === playerId)
-        ) {
-          return ticketOf(current, playerId)
-        }
-        if (!canJoin(current)) {
-          return refusal(
-            current.status === 'Playing'
-              ? RoomRefusal.cases.Started.make({})
-              : RoomRefusal.cases.Full.make({}),
+      const create = (
+        playerId: string,
+        name: string,
+        look: string,
+        rank: number,
+        calling: string,
+        nightmare: boolean,
+        code: string,
+        visibility: RoomVisibility,
+      ) =>
+        Effect.gen(function* () {
+          const lobby_1 = yield* lobby
+          if (Option.isSome(lobby_1)) {
+            return refusal(RoomRefusal.cases.Started.make({}))
+          }
+          yield* Effect.orDie(server.addMember(playerId))
+          const outcome = yield* Effect.orDie(
+            server.runServer(
+              CreatedRoom,
+              {
+                code,
+                host: playerId,
+                hostName: String.slice(0, MAX_NAME_INPUT)(name),
+                hostLook: lookOfRequest(look),
+                hostRank: cleanRank(rank),
+                hostCalling: callingOfRequest(calling),
+                hostNightmare: nightmare,
+                mode: DEFAULT_MODE,
+                visibility,
+              },
+              `created-room-${code}`,
+            ),
           )
-        }
-        yield* Effect.orDie(server.addMember(playerId))
-        const head = yield* Effect.orDie(server.head)
-        const outcome = yield* Effect.orDie(
-          server.runServer(
-            JoinedRoom,
-            {
-              playerId,
-              name: name.slice(0, MAX_NAME_INPUT),
-              look: lookOfRequest(look),
-              rank: cleanRank(rank),
-              calling: callingOfRequest(calling),
-              nightmare,
-            },
-            `joined-room-${head}-${playerId}`,
-          ),
-        )
-        if (outcome._tag !== 'Applied') {
-          yield* Effect.orDie(server.removeMember(playerId))
-          return refusal(RoomRefusal.cases.Full.make({}))
-        }
-        yield* broadcastApplied(host, outcome.delta, everyone)
-        return Option.match(yield* lobby, {
-          onNone: () => refusal(RoomRefusal.cases.Unavailable.make({})),
-          onSome: joined => ticketOf(joined, playerId),
+          if (outcome._tag !== 'Applied') {
+            return refusal(RoomRefusal.cases.Started.make({}))
+          }
+          return Result.succeed({ code, slot: 0 })
         })
-      })
 
-    const recordResult = (
-      result: RoomResult,
-      everyone: ReadonlyArray<Socket>,
-    ) =>
-      Effect.gen(function* () {
-        const outcome = yield* Effect.orDie(
-          server.runServer(
-            RecordedRoomResult,
-            { result },
-            `recorded-result-${result.round}`,
-          ),
-        )
-        if (outcome._tag === 'Applied') {
+      const join = (
+        playerId: string,
+        name: string,
+        look: string,
+        rank: number,
+        calling: string,
+        nightmare: boolean,
+        everyone: ReadonlyArray<Socket>,
+      ) =>
+        Effect.gen(function* () {
+          const maybeLobby = yield* lobby
+          if (
+            Option.isNone(maybeLobby) ||
+            maybeLobby.value.status === 'Closed'
+          ) {
+            return refusal(RoomRefusal.cases.NoRoom.make({}))
+          }
+          const current = maybeLobby.value
+          if (
+            Array.some(current.members, member => member.playerId === playerId)
+          ) {
+            return ticketOf(current, playerId)
+          }
+          if (!canJoin(current)) {
+            return refusal(
+              current.status === 'Playing'
+                ? RoomRefusal.cases.Started.make({})
+                : RoomRefusal.cases.Full.make({}),
+            )
+          }
+          yield* Effect.orDie(server.addMember(playerId))
+          const head = yield* Effect.orDie(server.head)
+          const outcome = yield* Effect.orDie(
+            server.runServer(
+              JoinedRoom,
+              {
+                playerId,
+                name: String.slice(0, MAX_NAME_INPUT)(name),
+                look: lookOfRequest(look),
+                rank: cleanRank(rank),
+                calling: callingOfRequest(calling),
+                nightmare,
+              },
+              `joined-room-${head}-${playerId}`,
+            ),
+          )
+          if (outcome._tag !== 'Applied') {
+            yield* Effect.orDie(server.removeMember(playerId))
+            return refusal(RoomRefusal.cases.Full.make({}))
+          }
           yield* broadcastApplied(host, outcome.delta, everyone)
-        }
-      })
+          const lobby_2 = yield* lobby
+          return Option.match(lobby_2, {
+            onNone: () => refusal(RoomRefusal.cases.Unavailable.make({})),
+            onSome: joined => ticketOf(joined, playerId),
+          })
+        })
 
-    const freeSeat = (
-      playerId: string,
-      round: number,
-      everyone: ReadonlyArray<Socket>,
-    ) =>
-      Effect.gen(function* () {
-        const outcome = yield* Effect.orDie(
-          server.runServer(
-            LeftRoom,
-            { by: playerId },
-            `freed-seat-${round}-${playerId}`,
-          ),
-        )
-        yield* Effect.orDie(server.removeMember(playerId))
-        if (outcome._tag === 'Applied') {
-          yield* broadcastApplied(host, outcome.delta, everyone)
-        }
-      })
+      const recordResult = (
+        result: RoomResult,
+        everyone: ReadonlyArray<Socket>,
+      ) =>
+        Effect.gen(function* () {
+          const outcome = yield* Effect.orDie(
+            server.runServer(
+              RecordedRoomResult,
+              { result },
+              `recorded-result-${result.round}`,
+            ),
+          )
+          if (outcome._tag === 'Applied') {
+            yield* broadcastApplied(host, outcome.delta, everyone)
+          }
+        })
 
-    return {
-      scope: host,
-      lobby,
-      create,
-      join,
-      recordResult,
-      freeSeat,
-      forget: playerId => Effect.orDie(server.removeMember(playerId)),
-    }
-  })
+      const freeSeat = (
+        playerId: string,
+        round: number,
+        everyone: ReadonlyArray<Socket>,
+      ) =>
+        Effect.gen(function* () {
+          const outcome = yield* Effect.orDie(
+            server.runServer(
+              LeftRoom,
+              { by: playerId },
+              `freed-seat-${round}-${playerId}`,
+            ),
+          )
+          yield* Effect.orDie(server.removeMember(playerId))
+          if (outcome._tag === 'Applied') {
+            yield* broadcastApplied(host, outcome.delta, everyone)
+          }
+        })
+
+      return {
+        scope: host,
+        lobby,
+        create,
+        join,
+        recordResult,
+        freeSeat,
+        forget: playerId => Effect.orDie(server.removeMember(playerId)),
+      }
+    }),
+)
 
 // NOTE: built once per Durable Object on first use, like the sync scopes.
-export const roomHostOnce = <E>(
-  sql: Layer.Layer<SqlClient.SqlClient, E>,
-  scope: string,
-  secret: string,
-): Effect.Effect<Effect.Effect<RoomHost, SyncSetupFailed>> =>
-  setupOnce(buildOn(sql, makeRoomHost(scope, secret)))
+/** @stability unstable */
+export const roomHostOnce: {
+  <E>(
+    scope: string,
+    secret: string,
+  ): (
+    sql: Layer.Layer<SqlClient.SqlClient, E>,
+  ) => Effect.Effect<Effect.Effect<RoomHost, SyncSetupFailed>>
+  <E>(
+    sql: Layer.Layer<SqlClient.SqlClient, E>,
+    scope: string,
+    secret: string,
+  ): Effect.Effect<Effect.Effect<RoomHost, SyncSetupFailed>>
+} = Function.dual(
+  3,
+  <E>(
+    sql: Layer.Layer<SqlClient.SqlClient, E>,
+    scope: string,
+    secret: string,
+  ): Effect.Effect<Effect.Effect<RoomHost, SyncSetupFailed>> =>
+    setupOnce(buildOn(sql, makeRoomHost(scope, secret))),
+)
 
 // NOTE: a look a player sent is kept only when it reads back as one of the
 // game's looks (src/playerData.ts); anything else seats them with none,
@@ -390,43 +427,60 @@ const refuse = (reason: RefusedReason): HelloAnswer => ({
 
 // NOTE: the first frame on a game socket must be a Hello with a version
 // both sides speak and a session token of a member of this room.
-export const answerHello = (
-  frame: ClientFrame,
-  secret: string,
-  maybeLobby: Option.Option<Lobby>,
-  nowMs: number,
-): Effect.Effect<HelloAnswer> =>
-  Effect.gen(function* () {
-    if (frame._tag !== 'Hello') {
-      return refuse('BadMessage')
-    }
-    const maybeVersion = negotiateVersion(frame, SERVER_VERSIONS)
-    if (Option.isNone(maybeVersion)) {
-      return refuse('VersionMismatch')
-    }
-    const claims = yield* Effect.result(verifyToken(secret, frame.token, nowMs))
-    if (Result.isFailure(claims)) {
-      return refuse('Unauthorized')
-    }
-    if (Option.isNone(maybeLobby) || maybeLobby.value.status === 'Closed') {
-      return refuse('NoRoom')
-    }
-    return Option.match(
-      Array.findFirst(
-        maybeLobby.value.members,
-        member => member.playerId === claims.success.playerId,
-      ),
-      {
-        onNone: () => refuse('NotMember'),
-        onSome: (member): HelloAnswer => ({
-          _tag: 'Accept',
-          playerId: member.playerId,
-          slot: member.slot,
-          version: maybeVersion.value,
-        }),
-      },
-    )
-  })
+export const answerHello: {
+  (
+    secret: string,
+    maybeLobby: Option.Option<Lobby>,
+    nowMs: number,
+  ): (frame: ClientFrame) => Effect.Effect<HelloAnswer>
+  (
+    frame: ClientFrame,
+    secret: string,
+    maybeLobby: Option.Option<Lobby>,
+    nowMs: number,
+  ): Effect.Effect<HelloAnswer>
+} = Function.dual(
+  4,
+  (
+    frame: ClientFrame,
+    secret: string,
+    maybeLobby: Option.Option<Lobby>,
+    nowMs: number,
+  ): Effect.Effect<HelloAnswer> =>
+    Effect.gen(function* () {
+      if (frame._tag !== 'Hello') {
+        return refuse('BadMessage')
+      }
+      const maybeVersion = negotiateVersion(frame, SERVER_VERSIONS)
+      if (Option.isNone(maybeVersion)) {
+        return refuse('VersionMismatch')
+      }
+      const claims = yield* Effect.result(
+        verifyToken(secret, frame.token, nowMs),
+      )
+      if (Result.isFailure(claims)) {
+        return refuse('Unauthorized')
+      }
+      if (Option.isNone(maybeLobby) || maybeLobby.value.status === 'Closed') {
+        return refuse('NoRoom')
+      }
+      return Option.match(
+        Array.findFirst(
+          maybeLobby.value.members,
+          member => member.playerId === claims.success.playerId,
+        ),
+        {
+          onNone: () => refuse('NotMember'),
+          onSome: (member): HelloAnswer => ({
+            _tag: 'Accept',
+            playerId: member.playerId,
+            slot: member.slot,
+            version: maybeVersion.value,
+          }),
+        },
+      )
+    }),
+)
 
 // INTERNAL REQUESTS
 

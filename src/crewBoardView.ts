@@ -1,4 +1,4 @@
-import { Array, Option, Record } from 'effect'
+import { Array, Function, Option, Record, String } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import {
@@ -84,8 +84,12 @@ const OWN_FILL = 'rgba(255, 240, 200, 0.07)'
 const PORTRAIT_COLUMNS = 2
 const BLOCK_STEP = BOTTOM + 4
 
-export const crewBoardColumns = (model: Model, count: number): number =>
-  isPortrait(model) && count > PORTRAIT_COLUMNS ? PORTRAIT_COLUMNS : count
+export const crewBoardColumns: {
+  (count: number): (model: Model) => number
+  (model: Model, count: number): number
+} = Function.dual(2, (model: Model, count: number): number =>
+  isPortrait(model) && count > PORTRAIT_COLUMNS ? PORTRAIT_COLUMNS : count,
+)
 
 const rowsOf = (count: number, columns: number): number =>
   Math.max(1, Math.ceil(count / Math.max(1, columns)))
@@ -160,7 +164,7 @@ const STAT_ROWS: ReadonlyArray<StatRow> = [
 
 const TITLES: Readonly<Record<CrewAward, BakedText>> = Record.map(
   CREW_AWARD_NAMES,
-  name => bakeText(name.toUpperCase(), 'Victory'),
+  name => bakeText(String.toUpperCase(name), 'Victory'),
 )
 
 // SPARKS
@@ -169,27 +173,29 @@ const SPARKS = 8
 const SPARK_MS = 420
 const SPARK_REACH = 16
 
-export const sparkShapes = (
-  x: number,
-  y: number,
-  ms: number,
-): ReadonlyArray<Canvas.Shape> => {
-  const t = progressOf(ms, 0, SPARK_MS)
-  if (t <= 0 || t >= 1) {
-    return []
-  }
-  const reach = SPARK_REACH * easeOut(t)
-  return Array.map(Array.range(0, SPARKS - 1), index => {
-    const angle = (index / SPARKS) * Math.PI * 2
-    return rect(
-      Math.round(x + Math.cos(angle) * reach),
-      Math.round(y + Math.sin(angle) * reach * 0.6),
-      2,
-      2,
-      index % 2 === 0 ? '#ffd23f' : '#ff8a3d',
-    )
-  })
-}
+export const sparkShapes: {
+  (y: number, ms: number): (x: number) => ReadonlyArray<Canvas.Shape>
+  (x: number, y: number, ms: number): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (x: number, y: number, ms: number): ReadonlyArray<Canvas.Shape> => {
+    const t = progressOf(ms, 0, SPARK_MS)
+    if (t <= 0 || t >= 1) {
+      return []
+    }
+    const reach = SPARK_REACH * easeOut(t)
+    return Array.map(Array.range(0, SPARKS - 1), index => {
+      const angle = (index / SPARKS) * Math.PI * 2
+      return rect(
+        Math.round(x + Math.cos(angle) * reach),
+        Math.round(y + Math.sin(angle) * reach * 0.6),
+        2,
+        2,
+        index % 2 === 0 ? '#ffd23f' : '#ff8a3d',
+      )
+    })
+  },
+)
 
 // LAYOUT
 
@@ -204,7 +210,7 @@ const slideOf = (kind: EndKind, index: number, ms: number): number =>
 const fitted = (name: string, width: number): string =>
   textWidth(name) <= width || name.length <= 1
     ? name
-    : fitted(name.slice(0, -1), width)
+    : fitted(String.slice(0, -1)(name), width)
 
 type Board = Readonly<{
   kind: EndKind
@@ -515,66 +521,95 @@ const crewBoardWidth = (count: number): number =>
 
 // NOTE: where the board stands across the frame, so the rank strip under it
 // is exactly as wide.
-export const crewBoardSpan = (
-  model: Model,
-  centerX: number,
-): Readonly<{ left: number; width: number }> => {
-  const width = crewBoardWidth(crewBoardColumns(model, crewOf(model).length))
-  return { left: Math.round(centerX - width / 2), width }
-}
+export const crewBoardSpan: {
+  (centerX: number): (model: Model) => Readonly<{ left: number; width: number }>
+  (model: Model, centerX: number): Readonly<{ left: number; width: number }>
+} = Function.dual(
+  2,
+  (
+    model: Model,
+    centerX: number,
+  ): Readonly<{ left: number; width: number }> => {
+    const width = crewBoardWidth(crewBoardColumns(model, crewOf(model).length))
+    return { left: Math.round(centerX - width / 2), width }
+  },
+)
 
 // NOTE: the panel and what stands on it, from `top`, centered on `centerX`
 // of the landscape frame the end card is drawn in (src/endView.ts). The panel fades and
 // rises with the rest of the card (src/endView.ts); the rows and awards
 // land on their own beats.
-export const crewBoardShapes = (
-  model: Model,
-  kind: EndKind,
-  ms: number,
-  top: number,
-  centerX: number,
-): Readonly<{
-  panel: ReadonlyArray<Canvas.Shape>
-  rows: ReadonlyArray<Canvas.Shape>
-}> => {
-  const crew = crewOf(model)
-  const columns = crewBoardColumns(model, crew.length)
-  const width = crewBoardWidth(columns)
-  const height = crewBoardHeightPx(model)
-  const left = Math.round(centerX - width / 2)
-  const board: Board = { kind, ms, top, left, crew, centerX, columns }
-  const winners = winnersOf(crew)
-  return {
-    panel: [
-      rect(left - 1, top - 1, width + 2, height + 2, PANEL_EDGE),
-      rect(left, top, width, height, PANEL_FILL),
-      ...ownPlateShapes(model, board),
-      rect(left + PAD, top + CREW_TOP - 5, width - PAD * 2, 1, PANEL_EDGE),
-      ...Array.map(
-        // NOTE: makeBy and range never make fewer than one, so a board of
-        // one row asks for none itself.
-        rowsOf(crew.length, columns) > 1
-          ? Array.makeBy(rowsOf(crew.length, columns) - 1, row => row + 1)
-          : [],
-        blockRow =>
-          rect(
-            left + PAD,
-            top + CREW_TOP + blockRow * BLOCK_STEP - 3,
-            width - PAD * 2,
-            1,
-            PANEL_EDGE,
-          ),
-      ),
-      ...Array.flatMap(crew, (member, index) =>
-        headShapes(model, board, member, index),
-      ),
-    ],
-    rows: [
-      ...runLineShapes(model, board),
-      ...statShapes(board, winners),
-      ...Array.flatMap(crew, (member, index) =>
-        awardShapes(board, member, index),
-      ),
-    ],
-  }
-}
+export const crewBoardShapes: {
+  (
+    kind: EndKind,
+    ms: number,
+    top: number,
+    centerX: number,
+  ): (model: Model) => Readonly<{
+    panel: ReadonlyArray<Canvas.Shape>
+    rows: ReadonlyArray<Canvas.Shape>
+  }>
+  (
+    model: Model,
+    kind: EndKind,
+    ms: number,
+    top: number,
+    centerX: number,
+  ): Readonly<{
+    panel: ReadonlyArray<Canvas.Shape>
+    rows: ReadonlyArray<Canvas.Shape>
+  }>
+} = Function.dual(
+  5,
+  (
+    model: Model,
+    kind: EndKind,
+    ms: number,
+    top: number,
+    centerX: number,
+  ): Readonly<{
+    panel: ReadonlyArray<Canvas.Shape>
+    rows: ReadonlyArray<Canvas.Shape>
+  }> => {
+    const crew = crewOf(model)
+    const columns = crewBoardColumns(model, crew.length)
+    const width = crewBoardWidth(columns)
+    const height = crewBoardHeightPx(model)
+    const left = Math.round(centerX - width / 2)
+    const board: Board = { kind, ms, top, left, crew, centerX, columns }
+    const winners = winnersOf(crew)
+    return {
+      panel: [
+        rect(left - 1, top - 1, width + 2, height + 2, PANEL_EDGE),
+        rect(left, top, width, height, PANEL_FILL),
+        ...ownPlateShapes(model, board),
+        rect(left + PAD, top + CREW_TOP - 5, width - PAD * 2, 1, PANEL_EDGE),
+        ...Array.map(
+          // NOTE: makeBy and range never make fewer than one, so a board of
+          // one row asks for none itself.
+          rowsOf(crew.length, columns) > 1
+            ? Array.makeBy(rowsOf(crew.length, columns) - 1, row => row + 1)
+            : [],
+          blockRow =>
+            rect(
+              left + PAD,
+              top + CREW_TOP + blockRow * BLOCK_STEP - 3,
+              width - PAD * 2,
+              1,
+              PANEL_EDGE,
+            ),
+        ),
+        ...Array.flatMap(crew, (member, index) =>
+          headShapes(model, board, member, index),
+        ),
+      ],
+      rows: [
+        ...runLineShapes(model, board),
+        ...statShapes(board, winners),
+        ...Array.flatMap(crew, (member, index) =>
+          awardShapes(board, member, index),
+        ),
+      ],
+    }
+  },
+)

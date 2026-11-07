@@ -14,7 +14,6 @@
 import {
   Array,
   Clock,
-  Data,
   Effect,
   Match,
   Option,
@@ -22,6 +21,7 @@ import {
   Result,
   Schema,
   Stream,
+  String,
   pipe,
 } from 'effect'
 
@@ -178,7 +178,7 @@ const makeToken = (
       const session = yield* Effect.mapError(
         signInDevice(origin, identity.key, identity.playerId),
         error =>
-          new TokenUnavailable({
+          TokenUnavailable.make({
             reason:
               error._tag === 'IdentityRefused'
                 ? error.failure._tag
@@ -206,13 +206,15 @@ const whenClicked = (button: HTMLButtonElement): Effect.Effect<void> =>
     return Effect.sync(() => button.removeEventListener('click', clicked))
   })
 
-class NotARoomCode extends Data.TaggedError('NotARoomCode')<{
-  readonly typed: string
-}> {}
+class NotARoomCode extends Schema.TaggedError<
+  NotARoomCode,
+  { readonly brand: unique symbol }
+>()('NotARoomCode', { typed: Schema.String }) {}
 
-class QuickPlayEnded extends Data.TaggedError('QuickPlayEnded')<{
-  readonly reason: string
-}> {}
+class QuickPlayEnded extends Schema.TaggedError<
+  QuickPlayEnded,
+  { readonly brand: unique symbol }
+>()('QuickPlayEnded', { message: Schema.String }) {}
 
 type EntryError =
   | NotARoomCode
@@ -224,7 +226,7 @@ const describeError = (error: EntryError): string =>
   Match.valueTags(error, {
     RoomRequestFailed: ({ refusal }) => refusal._tag,
     NotARoomCode: ({ typed }) => `${typed} is not a room code`,
-    QuickPlayEnded: ({ reason }) => `Quick Play ended: ${reason}`,
+    QuickPlayEnded: ({ message }) => `Quick Play ended: ${message}`,
     TokenUnavailable: ({ reason }) => `could not sign in (${reason})`,
   })
 
@@ -239,8 +241,8 @@ type Choice = 'Create' | 'Join' | 'Quick'
 const queueLine = (waiting: Matchmaking.QuickServer): string =>
   waiting._tag === 'Waiting'
     ? waiting.offerPlayers > 0
-      ? `Start with ${waiting.offerPlayers} players? ${waiting.accepted} of ${waiting.offerPlayers} said yes. Waiting: ${waiting.names.join(', ')}`
-      : `Waiting for players: ${waiting.waiting} of ${waiting.groupSize} (you are number ${waiting.position}). ${waiting.names.join(', ')}`
+      ? `Start with ${waiting.offerPlayers} players? ${waiting.accepted} of ${waiting.offerPlayers} said yes. Waiting: ${Array.join(waiting.names, ', ')}`
+      : `Waiting for players: ${waiting.waiting} of ${waiting.groupSize} (you are number ${waiting.position}). ${Array.join(waiting.names, ', ')}`
     : ''
 
 // NOTE: QUICK PLAY: the queue screen until the Matchmaker seats us. With
@@ -252,14 +254,15 @@ const quickPlay = (
   Effect.scoped(
     Effect.gen(function* () {
       const quick = yield* startQuickPlay({ origin, token, name: nameNow() })
-      const runFork = Effect.runForkWith(yield* Effect.context())
+      const value_1 = yield* Effect.context()
+      const runFork = Effect.runForkWith(value_1)
       ui.queue.hidden = false
       ui.accept.onclick = () => runFork(quick.answer(true))
       ui.keepWaiting.onclick = () => runFork(quick.answer(false))
       const cancelled = whenClicked(ui.cancel).pipe(
         Effect.andThen(quick.cancel),
         Effect.andThen(
-          Effect.fail(new QuickPlayEnded({ reason: 'Cancelled' })),
+          Effect.fail(QuickPlayEnded.make({ message: 'Cancelled' })),
         ),
       )
       const matched = Stream.runFoldEffect(
@@ -270,7 +273,7 @@ const quickPlay = (
             Heard: ({ message }) =>
               Match.valueTags(message, {
                 Matched: ({ code, slot }) => Effect.succeedSome({ code, slot }),
-                Refused: ({ reason }) => new QuickPlayEnded({ reason }),
+                Refused: ({ reason }) => QuickPlayEnded.make({ message: reason }),
                 Waiting: waiting =>
                   Effect.gen(function* () {
                     const offered = waiting.offerPlayers > 0
@@ -285,7 +288,7 @@ const quickPlay = (
               }),
             Dropped: ({ reason }) =>
               Option.isNone(found)
-                ? new QuickPlayEnded({ reason })
+                ? QuickPlayEnded.make({ message: reason })
                 : Effect.succeed(found),
             Connecting: () => Effect.succeed(found),
           }),
@@ -293,7 +296,7 @@ const quickPlay = (
         Effect.flatMap(
           Option.match({
             onNone: () =>
-              Effect.fail(new QuickPlayEnded({ reason: 'The queue closed' })),
+              Effect.fail(QuickPlayEnded.make({ message: 'The queue closed' })),
             onSome: ticket => Effect.succeed(ticket),
           }),
         ),
@@ -318,15 +321,15 @@ const enter = (
     const ticket =
       choice === 'Create'
         ? yield* Effect.flatMap(token, held =>
-            createRoom(origin, held, nameNow()),
+            createRoom({ origin, token: held, name: nameNow() }),
           )
         : choice === 'Quick'
           ? yield* quickPlay(origin, token)
           : yield* Option.match(normalizeRoomCode(typed), {
-              onNone: () => Effect.fail(new NotARoomCode({ typed })),
+              onNone: () => Effect.fail(NotARoomCode.make({ typed })),
               onSome: code =>
                 Effect.flatMap(token, held =>
-                  joinRoom(origin, held, code, nameNow()),
+                  joinRoom({ origin, token: held, code, name: nameNow() }),
                 ),
             })
     yield* rememberRoom(ticket.code)
@@ -377,10 +380,10 @@ interface Controls {
 const listenToControls = (): Controls => {
   const controls: Controls = { keys: new Set(), pointer: { at: Option.none() } }
   window.addEventListener('keydown', event => {
-    controls.keys.add(event.key.toLowerCase())
+    controls.keys.add(String.toLowerCase(event.key))
   })
   window.addEventListener('keyup', event => {
-    controls.keys.delete(event.key.toLowerCase())
+    controls.keys.delete(String.toLowerCase(event.key))
   })
   window.addEventListener('blur', () => controls.keys.clear())
   const toArena = (event: PointerEvent) => {
@@ -559,7 +562,7 @@ const draw = (
   }
 }
 
-const shortId = (playerId: string) => playerId.slice(0, 6)
+const shortId = (playerId: string) => String.slice(0, 6)(playerId)
 
 const renderLobby = (
   lobby: Lobby,
@@ -610,11 +613,14 @@ const renderLobby = (
   ui.leave.disabled = Option.isNone(mine)
   Option.map(lobby.result, result =>
     say(
-      `Last game ${result.round}: ${result.reason} after ${Math.round(result.ticks / 60)} s. ${Array.map(
-        result.scores,
-        score =>
-          `${nameOfSlot(Option.some(lobby), score.slot)}: ${score.score}`,
-      ).join(', ')}`,
+      `Last game ${result.round}: ${result.reason} after ${Math.round(result.ticks / 60)} s. ${Array.join(
+        Array.map(
+          result.scores,
+          score =>
+            `${nameOfSlot(Option.some(lobby), score.slot)}: ${score.score}`,
+        ),
+        ', ',
+      )}`,
     ).pipe(Effect.runSync),
   )
 }
@@ -655,7 +661,7 @@ const playRoom = (
     const lobbyClient = yield* followLobby({
       origin,
       code,
-      clientId: `tab-${me.slice(0, 8)}`,
+      clientId: `tab-${String.slice(0, 8)(me)}`,
       token,
     })
     const room: RoomClient = yield* connectRoom({
@@ -667,10 +673,13 @@ const playRoom = (
     const samples = yield* Ref.make<ReadonlyArray<Sample>>([])
     const connection = yield* Ref.make('Connecting')
     const controls = listenToControls()
-    const runFork = Effect.runForkWith(yield* Effect.context())
+    const value_2 = yield* Effect.context()
+    const runFork = Effect.runForkWith(value_2)
     const write = <A, E>(effect: Effect.Effect<A, E>) => {
       runFork(
-        effect.pipe(Effect.catch(error => say(`Not sent: ${String(error)}`))),
+        effect.pipe(
+          Effect.catch(error => say(`Not sent: ${globalThis.String(error)}`)),
+        ),
       )
     }
 
@@ -777,7 +786,7 @@ const playRoom = (
       const counted = Array.reduce(
         Array.getSomes(sent),
         ticked.session,
-        Session.countSent,
+        (session, bytes) => Session.countSent(session, bytes),
       )
       const rendered = Session.render(ROOM_WORLD, counted, nowMs)
       yield* Ref.set(play, rendered.session)
@@ -804,11 +813,14 @@ const playRoom = (
           ),
       })
       const status = yield* Ref.get(connection)
-      ui.stats.textContent = [
-        `you ${shortId(me)} slot ${Option.getOrElse(rendered.session.slot, () => -1)}  ${rendered.session.phase._tag}  ${status}`,
-        `round trip ${Math.round(rendered.session.rttMs)} ms   down ${rates.downKBs.toFixed(2)} KB/s   up ${rates.upPerSecond.toFixed(1)} msg/s (inputs ${rates.inputsPerSecond.toFixed(1)}/s)`,
-        `drawn ${Session.INTERPOLATION_MS} ms behind, ${rendered.session.frames.length} messages held   ack ${rendered.session.ack}   corrections ${stats.corrections} (last ${stats.lastCorrectionPx.toFixed(1)} px, max ${stats.maxCorrectionPx.toFixed(1)} px)`,
-      ].join('\n')
+      ui.stats.textContent = Array.join(
+        [
+          `you ${shortId(me)} slot ${Option.getOrElse(rendered.session.slot, () => -1)}  ${rendered.session.phase._tag}  ${status}`,
+          `round trip ${Math.round(rendered.session.rttMs)} ms   down ${rates.downKBs.toFixed(2)} KB/s   up ${rates.upPerSecond.toFixed(1)} msg/s (inputs ${rates.inputsPerSecond.toFixed(1)}/s)`,
+          `drawn ${Session.INTERPOLATION_MS} ms behind, ${rendered.session.frames.length} messages held   ack ${rendered.session.ack}   corrections ${stats.corrections} (last ${stats.lastCorrectionPx.toFixed(1)} px, max ${stats.maxCorrectionPx.toFixed(1)} px)`,
+        ],
+        '\n',
+      )
       ui.debug.textContent = yield* Schema.encodeEffect(
         Schema.fromJsonString(Schema.Unknown),
       )({
@@ -881,6 +893,8 @@ const main = Effect.gen(function* () {
 
 Effect.runFork(
   main.pipe(
-    Effect.catchCause(cause => say(`The dev page stopped: ${String(cause)}`)),
+    Effect.catchCause(cause =>
+      say(`The dev page stopped: ${globalThis.String(cause)}`),
+    ),
   ),
 )

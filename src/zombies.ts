@@ -1,4 +1,4 @@
-import { Array, Option, Schema } from 'effect'
+import { Array, Function, Option, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
 import {
@@ -35,14 +35,14 @@ import {
 export const Behavior = defineTaggedUnion({
   Brawler: {},
   Bomber: {
-    shotFuseMs: Schema.Number,
-    contactFuseMs: Schema.Number,
-    chainFuseMs: Schema.Number,
-    blastRadius: Schema.Number,
-    playerDamage: Schema.Number,
-    zombieDamage: Schema.Number,
-    trapDamage: Schema.Number,
-    blastKnockback: Schema.Number,
+    shotFuseMs: Schema.Finite,
+    contactFuseMs: Schema.Finite,
+    chainFuseMs: Schema.Finite,
+    blastRadius: Schema.Finite,
+    playerDamage: Schema.Finite,
+    zombieDamage: Schema.Finite,
+    trapDamage: Schema.Finite,
+    blastKnockback: Schema.Finite,
   },
   Thrower: {},
   Crawler: {},
@@ -419,9 +419,8 @@ export const ZOMBIE_KIND_ORDER: ReadonlyArray<ZombieKind> = [
 ]
 
 // NOTE: a kind's number, for the tables hot code reads by index. The World
-// keeps the kind as its Schema literal; this reads two things off the string,
-// its first letter and, for the two T kinds, its length. A lookup by string key
-// costs several times as much in V8. zombies.test.ts checks every kind.
+// keeps the kind as its Schema literal. A lookup by string key costs several
+// times as much in V8. zombies.test.ts checks every kind.
 const KINDS_BY_INDEX: ReadonlyArray<ZombieKind> = [
   'Shambler',
   'Runner',
@@ -432,22 +431,25 @@ const KINDS_BY_INDEX: ReadonlyArray<ZombieKind> = [
   'Boss',
 ]
 
-const FIRST_LETTER = 66
-const LETTER_T = 84
-const KIND_OF_LETTER = new Uint8Array(19)
-KINDS_BY_INDEX.forEach((kind, index) => {
-  if (kind.charCodeAt(0) !== LETTER_T) {
-    KIND_OF_LETTER[kind.charCodeAt(0) - FIRST_LETTER] = index
-  }
-})
-
+// NOTE: a switch over the literals, in KINDS_BY_INDEX's order, which V8
+// and JavaScriptCore compare as fast as the first letter's code.
 const kindIndex = (kind: ZombieKind): number => {
-  const letter = kind.charCodeAt(0)
-  return letter === LETTER_T
-    ? kind.length === 4
-      ? 2
-      : 4
-    : (KIND_OF_LETTER[letter - FIRST_LETTER] ?? 0)
+  switch (kind) {
+    case 'Shambler':
+      return 0
+    case 'Runner':
+      return 1
+    case 'Tank':
+      return 2
+    case 'Exploder':
+      return 3
+    case 'Thrower':
+      return 4
+    case 'Crawler':
+      return 5
+    case 'Boss':
+      return 6
+  }
 }
 
 const STATS_BY_INDEX: ReadonlyArray<ZombieKindStats> = Array.map(
@@ -468,12 +470,16 @@ export const statsOf = (zombie: Zombie): ZombieKindStats =>
 
 // NOTE: how near a footstep sounds to a listener, 1 underfoot to 0 at its
 // kind's range; a kind with no range is never heard.
-export const footfallNearness = (kind: ZombieKind, distance: number): number =>
+export const footfallNearness: {
+  (distance: number): (kind: ZombieKind) => number
+  (kind: ZombieKind, distance: number): number
+} = Function.dual(2, (kind: ZombieKind, distance: number): number =>
   Option.match(ZOMBIE_KINDS[kind].maybeFootfall, {
     onNone: () => 0,
     onSome: ({ rangePx }) =>
       rangePx > 0 ? Math.max(0, Math.min(1, 1 - distance / rangePx)) : 0,
-  })
+  }),
+)
 
 export const radiusOf = (zombie: Zombie): number =>
   RADIUS_BY_INDEX[kindIndex(zombie.kind)] ?? statsOf(zombie).radius
@@ -487,7 +493,10 @@ export const isBoss = (zombie: Zombie): boolean => zombie.kind === 'Boss'
 
 const WEAR_TOLERANCE = 1e-9
 
-export const wearAt = (kind: ZombieKind, hp: number, maxHp: number): number => {
+export const wearAt: {
+  (hp: number, maxHp: number): (kind: ZombieKind) => number
+  (kind: ZombieKind, hp: number, maxHp: number): number
+} = Function.dual(3, (kind: ZombieKind, hp: number, maxHp: number): number => {
   const stages =
     STATS_BY_INDEX[kindIndex(kind)]?.wear ?? ZOMBIE_KINDS[kind].wear
   let worn = 0
@@ -497,7 +506,7 @@ export const wearAt = (kind: ZombieKind, hp: number, maxHp: number): number => {
     }
   }
   return worn
-}
+})
 
 const ARMOR_PARTS: ReadonlyArray<ParticleKind> = [
   'PotLid',
@@ -508,11 +517,15 @@ const ARMOR_PARTS: ReadonlyArray<ParticleKind> = [
 export const isArmorPart = (part: ParticleKind): boolean =>
   Array.contains(ARMOR_PARTS, part)
 
-export const isArmorShedAt = (kind: ZombieKind, stage: number): boolean =>
+export const isArmorShedAt: {
+  (stage: number): (kind: ZombieKind) => boolean
+  (kind: ZombieKind, stage: number): boolean
+} = Function.dual(2, (kind: ZombieKind, stage: number): boolean =>
   Option.match(Array.get(ZOMBIE_KINDS[kind].wear, stage), {
     onNone: () => false,
     onSome: ({ part }) => isArmorPart(part),
-  })
+  }),
+)
 
 export const wearOf = (zombie: Zombie): number =>
   wearAt(zombie.kind, zombie.hp, zombie.maxHp)
@@ -521,32 +534,34 @@ export const wearOf = (zombie: Zombie): number =>
 
 export type DeathCause = 'Shot' | 'Blast'
 
-export const deathState = (
-  kind: ZombieKind,
-  direction: Vector,
-  cause: DeathCause,
-): ZombieState =>
-  Behavior.match(ZOMBIE_KINDS[kind].behavior, {
-    Brawler: () =>
-      ZombieState.Dying({
-        remainingMs: ZOMBIE_KINDS[kind].dyingMs,
-        direction,
-      }),
-    Bomber: ({ shotFuseMs, chainFuseMs }) =>
-      ZombieState.Fusing({
-        remainingMs: cause === 'Shot' ? shotFuseMs : chainFuseMs,
-      }),
-    Thrower: () =>
-      ZombieState.Dying({
-        remainingMs: ZOMBIE_KINDS[kind].dyingMs,
-        direction,
-      }),
-    Crawler: () =>
-      ZombieState.Dying({
-        remainingMs: ZOMBIE_KINDS[kind].dyingMs,
-        direction,
-      }),
-  })
+export const deathState: {
+  (direction: Vector, cause: DeathCause): (kind: ZombieKind) => ZombieState
+  (kind: ZombieKind, direction: Vector, cause: DeathCause): ZombieState
+} = Function.dual(
+  3,
+  (kind: ZombieKind, direction: Vector, cause: DeathCause): ZombieState =>
+    Behavior.match(ZOMBIE_KINDS[kind].behavior, {
+      Brawler: () =>
+        ZombieState.Dying({
+          remainingMs: ZOMBIE_KINDS[kind].dyingMs,
+          direction,
+        }),
+      Bomber: ({ shotFuseMs, chainFuseMs }) =>
+        ZombieState.Fusing({
+          remainingMs: cause === 'Shot' ? shotFuseMs : chainFuseMs,
+        }),
+      Thrower: () =>
+        ZombieState.Dying({
+          remainingMs: ZOMBIE_KINDS[kind].dyingMs,
+          direction,
+        }),
+      Crawler: () =>
+        ZombieState.Dying({
+          remainingMs: ZOMBIE_KINDS[kind].dyingMs,
+          direction,
+        }),
+    }),
+)
 
 export const isWalking = (zombie: Zombie): boolean =>
   ZombieState.isAnyOf(['Walking'])(zombie.state)
@@ -587,8 +602,12 @@ export const isFloorKind = (kind: ZombieKind): boolean =>
 
 // ARRIVAL
 
-export const scaledHp = (hp: number, hpScale: number): number =>
-  Math.max(1, Math.round(hp * hpScale))
+export const scaledHp: {
+  (hpScale: number): (hp: number) => number
+  (hp: number, hpScale: number): number
+} = Function.dual(2, (hp: number, hpScale: number): number =>
+  Math.max(1, Math.round(hp * hpScale)),
+)
 
 export type Entry = Readonly<{
   id: number
@@ -632,8 +651,12 @@ export const arrivingZombie = ({
 
 // STRIDE
 
-export const strideAt = (zombie: Zombie, elapsedMs: number): number =>
+export const strideAt: {
+  (elapsedMs: number): (zombie: Zombie) => number
+  (zombie: Zombie, elapsedMs: number): number
+} = Function.dual(2, (zombie: Zombie, elapsedMs: number): number =>
   Math.floor(
     ((elapsedMs / MS_PER_SECOND) * zombie.speed) / statsOf(zombie).stridePx +
       zombie.id * ZOMBIE_SHAMBLE_PHASE_PER_ID,
-  )
+  ),
+)

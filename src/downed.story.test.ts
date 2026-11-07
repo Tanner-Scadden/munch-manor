@@ -29,7 +29,7 @@ import { medicBubbleShape, reviveRingGroundShapes } from './partyView'
 import { reloadBarShapes } from './playerView'
 import { maybeOfferInReach } from './purchase'
 import { STALL_BOX } from './shop'
-import { ticks } from './testing'
+import { jsonOf, ticks } from './testing'
 import { freshGun } from './weapons'
 
 // A co-op player out of the fight, as everyone sees them (MULTIPLAYER.md,
@@ -60,10 +60,10 @@ const lyingBodies = (current: Model): ReadonlyArray<Canvas.Group> =>
   )
 
 const isDrawn = (current: Model, wanted: Canvas.Shape): boolean => {
-  const json = JSON.stringify(wanted)
+  const json = jsonOf(wanted)
   return Array.some(
     allShapes(sceneShapes(current)),
-    shape => JSON.stringify(shape) === json,
+    shape => jsonOf(shape) === json,
   )
 }
 
@@ -82,7 +82,7 @@ const hasBleedBar = (current: Model): boolean => {
       bar =>
         isImage(shape) &&
         shape.src === bar.src &&
-        JSON.stringify(shape.crop) === JSON.stringify(bar.crop),
+        jsonOf({ crop: shape.crop }) === jsonOf({ crop: bar.crop }),
     ),
   )
 }

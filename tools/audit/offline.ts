@@ -1,3 +1,21 @@
+import { type Subprocess, spawn } from 'bun'
+import {
+  Array,
+  Config,
+  Console,
+  Duration,
+  Effect,
+  FileSystem,
+  Layer,
+  Path,
+  Schedule,
+  Schema,
+  String,
+} from 'effect'
+import { FetchHttpClient, HttpClient, HttpClientResponse } from 'effect/http'
+import { ChildProcess, ChildProcessSpawner } from 'effect/process'
+import type { BrowserContext, Page } from 'playwright-core'
+
 // Plays the game with no network, the way it is played on an airplane, in
 // headless Chrome against a real production build with its service worker.
 //
@@ -15,143 +33,192 @@
 //   bun run heavy -- bun tools/audit/offline.ts
 // Against a deployed copy (steps 1 and 2 only, nothing is built):
 //   BASE=https://munchmanor.com/ bun run heavy -- bun tools/audit/offline.ts
-import { Duration, Effect, Schedule, Schema } from 'effect'
-import { FetchHttpClient, HttpClient, HttpClientResponse } from 'effect/http'
-import { type ChildProcess, execFileSync, spawn } from 'node:child_process'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import type { BrowserContext, Page } from 'playwright-core'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
-import { decodeJson, encodeJson, readJsonFile } from '../json'
-import { PHONE_844, launch, wait } from './lib'
-import { evaluateAs } from './page'
+import { decodeJson, encodeJson } from '../json'
+import { PHONE_844, openBrowser, runAuditWith, wait } from './lib'
+import {
+  type AuditFailed,
+  attempt,
+  decodedFrom,
+  evaluateAs,
+  failWith,
+} from './page'
 
-const ROOT = resolve(import.meta.dir, '../..')
 const PREVIEW_PORT = 4297
 const LOCAL = `http://localhost:${PREVIEW_PORT}/`
-const BASE = process.env['BASE'] ?? LOCAL
-const IS_LOCAL = BASE === LOCAL
 const CACHE_PREFIX = 'munch-manor-'
 
+// NOTE: where the game is played: `BASE`, or this script's own preview.
+const Base = Config.String('BASE').pipe(Config.withDefault(LOCAL))
+
 const failures: Array<string> = []
-const check = (isOk: boolean, label: string) => {
-  console.log(`${isOk ? 'ok  ' : 'FAIL'} ${label}`)
-  if (!isOk) {
-    failures.push(label)
-  }
-}
+const check = (isOk: boolean, label: string) =>
+  Effect.gen(function* () {
+    yield* Console.log(`${isOk ? 'ok  ' : 'FAIL'} ${label}`)
+    if (!isOk) {
+      failures.push(label)
+    }
+  })
 
 // BUILD AND SERVE
 
-const build = (id: string) => {
-  execFileSync('bun', ['run', 'build'], {
-    cwd: ROOT,
-    env: { ...process.env, BUILD_ID: id },
-    stdio: 'ignore',
+const rootDir = Effect.gen(function* () {
+  const path = yield* Path.Path
+  return path.resolve(import.meta.dir, '../..')
+})
+
+const build = (id: string) =>
+  Effect.gen(function* () {
+    const root = yield* rootDir
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+    const code = yield* spawner.exitCode(
+      ChildProcess.make('bun', ['run', 'build'], {
+        cwd: root,
+        env: { BUILD_ID: id },
+        extendEnv: true,
+        stdin: 'ignore',
+        stdout: 'ignore',
+        stderr: 'ignore',
+      }),
+    )
+    if (code !== 0) {
+      return yield* failWith(`the build of ${id} exited with ${code}`)
+    }
+    yield* Console.log(`built ${id}`)
   })
-  console.log(`built ${id}`)
-}
 
 const VersionFile = Schema.Struct({ build: Schema.optional(Schema.String) })
 
 // NOTE: the build the preview port serves, or nothing when nobody answers
 // with a version file.
-const servedBuild = (): Promise<string | undefined> =>
-  Effect.runPromise(
-    HttpClient.get(`${LOCAL}version.json`).pipe(
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(VersionFile)),
-      Effect.map(body => body.build),
-      Effect.provideService(FetchHttpClient.RequestInit, { cache: 'no-store' }),
-      Effect.provideService(HttpClient.TracerPropagationEnabled, false),
-      Effect.provide(FetchHttpClient.layer),
-      Effect.orElseSucceed(() => undefined),
-    ),
-  )
+const servedBuild = HttpClient.get(`${LOCAL}version.json`).pipe(
+  Effect.flatMap(HttpClientResponse.schemaBodyJson(VersionFile)),
+  Effect.map(body => body.build),
+  Effect.provideService(FetchHttpClient.RequestInit, { cache: 'no-store' }),
+  Effect.provideService(HttpClient.TracerPropagationEnabled, false),
+  Effect.orElseSucceed(() => undefined),
+)
 
 // NOTE: other worktrees run their own servers, so the port must be free
 // first, and the server that answers must serve this dist.
-const serve = async (): Promise<ChildProcess> => {
-  if ((await servedBuild()) !== undefined) {
-    throw new Error(`port ${PREVIEW_PORT} is already taken by another server`)
+const serve = Effect.gen(function* () {
+  const taken = yield* servedBuild
+  if (taken !== undefined) {
+    return yield* failWith(
+      `port ${PREVIEW_PORT} is already taken by another server`,
+    )
   }
-  const expected = readJsonFile(
-    VersionFile,
-    resolve(ROOT, 'dist/version.json'),
-  ).build
+  const root = yield* rootDir
+  const fs = yield* FileSystem.FileSystem
+  const versionText = yield* fs.readFileString(`${root}/dist/version.json`)
+  const version = yield* Schema.decodeEffect(
+    Schema.fromJsonString(VersionFile),
+  )(versionText)
+  const expected = version.build
   const server = spawn(
-    'bunx',
-    ['vite', 'preview', '--port', String(PREVIEW_PORT), '--strictPort'],
-    { cwd: ROOT, stdio: 'ignore', detached: true },
+    [
+      'bunx',
+      'vite',
+      'preview',
+      '--port',
+      globalThis.String(PREVIEW_PORT),
+      '--strictPort',
+    ],
+    {
+      cwd: root,
+      stdin: 'ignore',
+      stdout: 'ignore',
+      stderr: 'ignore',
+      detached: true,
+    },
   )
-  const served = await Effect.runPromise(
-    Effect.promise(servedBuild).pipe(
-      Effect.repeat({
-        until: answered => answered === expected,
-        schedule: Schedule.spaced(Duration.millis(500)).pipe(
-          Schedule.upTo({ times: 59 }),
-        ),
-      }),
-    ),
+  const served = yield* servedBuild.pipe(
+    Effect.repeat({
+      until: answered => answered === expected,
+      schedule: Schedule.spaced(Duration.millis(500)).pipe(
+        Schedule.upTo({ times: 59 }),
+      ),
+    }),
   )
   if (served === expected) {
     return server
   }
-  throw new Error(`vite preview never served ${expected} on ${LOCAL}`)
-}
+  return yield* failWith(`vite preview never served ${expected} on ${LOCAL}`)
+})
 
 // NOTE: the whole process group, so vite itself stops and not only bunx.
-const stop = async (server: ChildProcess | undefined) => {
-  if (server?.pid !== undefined && server.exitCode === null) {
-    try {
-      process.kill(-server.pid)
-    } catch {
-      server.kill()
-    }
+const killGroup = (server: Subprocess) => {
+  try {
+    process.kill(-server.pid)
+  } catch {
+    server.kill()
   }
-  await wait(500)
 }
 
-const precacheCount = (): number => {
-  const source = readFileSync(resolve(ROOT, 'dist/sw.js'), 'utf8')
-  const line = source.split('\n')[1] ?? ''
+const stop = (server: Subprocess | undefined) =>
+  Effect.andThen(
+    Effect.sync(() => {
+      if (server?.exitCode === null) {
+        killGroup(server)
+      }
+    }),
+    wait(500),
+  )
+
+const precacheCount = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem
+  const root = yield* rootDir
+  const source = yield* fs.readFileString(`${root}/dist/sw.js`)
+  const line = String.split('\n')(source)[1] ?? ''
   return decodeJson(Schema.Array(Schema.Unknown))(
-    line.replace(/^const PRECACHE = /, '').replace(/;$/, ''),
+    String.replace(/;$/, '')(String.replace(/^const PRECACHE = /, '')(line)),
   ).length
-}
+})
 
 // THE PAGE
 
 const Caches = Schema.Array(
-  Schema.Struct({ name: Schema.String, entries: Schema.Number }),
+  Schema.Struct({ name: Schema.String, entries: Schema.Finite }),
 )
-type Caches = typeof Caches.Type
 const encodeCaches = encodeJson(Caches)
 
-const gameCaches = (page: Page): Promise<Caches> =>
-  evaluateAs(
-    page,
-    Caches,
-    async (prefix: string) => {
-      const names = (await caches.keys()).filter(name =>
-        name.startsWith(prefix),
-      )
-      return Promise.all(
-        names.map(async name => ({
+const gameCaches = (page: Page) =>
+  decodedFrom(Caches, () =>
+    page.evaluate(
+      // NOTE: runs in the page, where the Cache API answers by promises.
+      // @effect-diagnostics-next-line asyncFunction:off
+      async (prefix: string) => {
+        // NOTE: runs in the page, which has no Effect.
+        // @effect-diagnostics-next-line preferEffectArray:off
+        const names = (await caches.keys()).filter(name =>
+          // NOTE: runs in the page, which has no Effect.
+          // @effect-diagnostics-next-line preferEffectString:off
+          name.startsWith(prefix),
+        )
+        // NOTE: runs in the page, where the Cache API answers by promises.
+        // @effect-diagnostics-next-line asyncFunction:off
+        const entriesOf = async (name: string) => ({
           name,
           entries: (await (await caches.open(name)).keys()).length,
-        })),
-      )
-    },
-    CACHE_PREFIX,
+        })
+        // NOTE: runs in the page, which has no Effect.
+        // @effect-diagnostics-next-line preferEffectArray:off
+        return Promise.all(names.map(entriesOf))
+      },
+      CACHE_PREFIX,
+    ),
   )
 
 // NOTE: a page with no service worker support counts as controlled here, as
 // it always has: the checks after it report the missing worker.
 const isControlled = (page: Page) =>
-  page.evaluate(
-    () =>
-      !('serviceWorker' in navigator) ||
-      navigator.serviceWorker.controller !== null,
+  attempt(() =>
+    page.evaluate(
+      () =>
+        !('serviceWorker' in navigator) ||
+        navigator.serviceWorker.controller !== null,
+    ),
   )
 
 const WorkerState = Schema.Struct({
@@ -163,46 +230,60 @@ const WorkerState = Schema.Struct({
 })
 
 const workerState = (page: Page) =>
-  evaluateAs(page, WorkerState, async () => {
-    if (!('serviceWorker' in navigator)) {
-      return { support: false }
-    }
-    const registration = await navigator.serviceWorker.getRegistration()
-    return {
-      support: true,
-      registered: registration !== undefined,
-      installing: registration?.installing?.state ?? null,
-      waiting: registration?.waiting?.state ?? null,
-      active: registration?.active?.state ?? null,
-    }
-  })
+  evaluateAs(
+    page,
+    WorkerState,
+    // NOTE: runs in the page, where the worker registration is a promise.
+    // @effect-diagnostics-next-line asyncFunction:off
+    async () => {
+      if (!('serviceWorker' in navigator)) {
+        return { support: false }
+      }
+      const registration = await navigator.serviceWorker.getRegistration()
+      return {
+        support: true,
+        registered: registration !== undefined,
+        installing: registration?.installing?.state ?? null,
+        waiting: registration?.waiting?.state ?? null,
+        active: registration?.active?.state ?? null,
+      }
+    },
+  )
 
 const awaitSplashGone = (page: Page) =>
-  page.waitForFunction(() => document.getElementById('splash') === null, {
-    timeout: 30_000,
-  })
+  attempt(() =>
+    page.waitForFunction(() => document.getElementById('splash') === null, {
+      timeout: 30_000,
+    }),
+  )
 
 // NOTE: the splash is in index.html itself, so a shell from the cache shows
 // it at once. It is looked for as soon as the document is parsed.
-const openGame = async (page: Page, how: () => Promise<unknown>) => {
-  await how()
-  const isSplashShown = (await page.locator('#splash').count()) === 1
-  await awaitSplashGone(page)
-  const canvases = await page.locator('.game-surface').count()
-  return { isSplashShown, isBooted: canvases > 0 }
-}
+const openGame = (page: Page, how: Effect.Effect<unknown, AuditFailed>) =>
+  Effect.gen(function* () {
+    yield* how
+    const splashes = yield* attempt(() => page.locator('#splash').count())
+    yield* awaitSplashGone(page)
+    const canvases = yield* attempt(() => page.locator('.game-surface').count())
+    return { isSplashShown: splashes === 1, isBooted: canvases > 0 }
+  })
 
-const goto = (page: Page) => () =>
-  page.goto(BASE, { waitUntil: 'domcontentloaded' })
+const goto = (page: Page, base: string) =>
+  attempt(() => page.goto(base, { waitUntil: 'domcontentloaded' }))
 
-const reload = (page: Page) => () =>
-  page.reload({ waitUntil: 'domcontentloaded' })
+const reload = (page: Page) =>
+  attempt(() => page.reload({ waitUntil: 'domcontentloaded' }))
 
 const runningScript = (page: Page) =>
-  page.evaluate(() =>
-    Array.from(document.querySelectorAll('script[src]'))
-      .map(script => script.getAttribute('src'))
-      .join(' '),
+  attempt(() =>
+    page.evaluate(() =>
+      globalThis.Array.from(document.querySelectorAll('script[src]'), script =>
+        script.getAttribute('src'),
+      )
+        // NOTE: runs in the page, which has no Effect.
+        // @effect-diagnostics-next-line preferEffectArray:off
+        .join(' '),
+    ),
   )
 
 // NOTE: the gear on the home menu (#home-settings) opens the Profile on its
@@ -213,263 +294,328 @@ const soundToggle = (page: Page) =>
     .getByRole('list', { name: 'Game settings' })
     .getByRole('button', { name: 'Sound', exact: true })
 
-const openSettings = async (page: Page) => {
-  await page.click('#home-settings')
-  await soundToggle(page).waitFor({ timeout: 5000 })
-}
+const openSettings = (page: Page) =>
+  Effect.andThen(
+    attempt(() => page.click('#home-settings')),
+    attempt(() => soundToggle(page).waitFor({ timeout: 5000 })),
+  )
 
-const isMuted = async (page: Page) => {
-  await openSettings(page)
-  return (await soundToggle(page).getAttribute('aria-pressed')) === 'false'
-}
+const soundPressed = (page: Page) =>
+  attempt(() => soundToggle(page).getAttribute('aria-pressed'))
+
+const isMuted = (page: Page) =>
+  Effect.gen(function* () {
+    yield* openSettings(page)
+    return (yield* soundPressed(page)) === 'false'
+  })
 
 const frameCount = (page: Page, ms: number) =>
-  page.evaluate(
-    duration =>
-      // NOTE: counts the page's own animation frames, which only the
-      // browser's callback API hands out.
-      // @effect-diagnostics-next-line newPromise:off
-      new Promise<number>(done => {
-        const start = performance.now()
-        let frames = 0
-        const step = (now: number) => {
-          frames += 1
-          if (now - start < duration) {
-            requestAnimationFrame(step)
-          } else {
-            done(frames)
+  attempt(() =>
+    page.evaluate(
+      duration =>
+        // NOTE: counts the page's own animation frames, which only the
+        // browser's callback API hands out.
+        // @effect-diagnostics-next-line newPromise:off
+        new Promise<number>(done => {
+          const start = performance.now()
+          let frames = 0
+          const step = (now: number) => {
+            frames += 1
+            if (now - start < duration) {
+              requestAnimationFrame(step)
+            } else {
+              done(frames)
+            }
           }
-        }
-        requestAnimationFrame(step)
-      }),
-    ms,
+          requestAnimationFrame(step)
+        }),
+      ms,
+    ),
   )
 
 const status = (page: Page) =>
-  page.evaluate(
-    () => document.querySelector('[role="status"].sr-only')?.textContent ?? '',
+  attempt(() =>
+    page.evaluate(
+      () =>
+        document.querySelector('[role="status"].sr-only')?.textContent ?? '',
+    ),
   )
 
 // NOTE: touch phone, so the run starts from the PLAY button and the first
 // visit picks a difficulty. The player then walks and fires for a while.
-const playARun = async (page: Page) => {
-  await page.locator('#home-play').tap()
-  await wait(400)
-  const normal = page.getByRole('button', { name: /^normal/i })
-  if ((await normal.count()) > 0) {
-    await normal.tap()
-  }
-  await wait(1500)
-  const surface = await page.locator('.game-surface').boundingBox()
-  if (surface !== null) {
-    for (const _ of [1, 2, 3, 4]) {
-      await page.touchscreen.tap(
-        surface.x + surface.width * 0.8,
-        surface.y + surface.height * 0.4,
-      )
-      await wait(200)
+const playARun = (page: Page) =>
+  Effect.gen(function* () {
+    yield* attempt(() => page.locator('#home-play').tap())
+    yield* wait(400)
+    const normal = page.getByRole('button', { name: /^normal/i })
+    if ((yield* attempt(() => normal.count())) > 0) {
+      yield* attempt(() => normal.tap())
     }
-  }
-  return {
-    frames: await frameCount(page, 2000),
-    status: await status(page),
-  }
-}
+    yield* wait(1500)
+    const surface = yield* attempt(() =>
+      page.locator('.game-surface').boundingBox(),
+    )
+    if (surface !== null) {
+      for (const _ of [1, 2, 3, 4]) {
+        yield* attempt(() =>
+          page.touchscreen.tap(
+            surface.x + surface.width * 0.8,
+            surface.y + surface.height * 0.4,
+          ),
+        )
+        yield* wait(200)
+      }
+    }
+    const frames = yield* frameCount(page, 2000)
+    return { frames, status: yield* status(page) }
+  })
 
-const goOffline = async (
-  context: BrowserContext,
-  server: ChildProcess | undefined,
-) => {
-  await context.setOffline(true)
-  await stop(server)
-}
+const goOffline = (context: BrowserContext, server: Subprocess | undefined) =>
+  Effect.andThen(
+    attempt(() => context.setOffline(true)),
+    stop(server),
+  )
 
 // THE AUDIT
 
-const offlinePart = async (page: Page) => {
-  const online = await openGame(page, goto(page))
-  check(online.isBooted, 'online: the first visit boots')
-  await page
-    .waitForFunction(
-      () =>
-        !('serviceWorker' in navigator) ||
-        navigator.serviceWorker.controller !== null,
-      null,
-      { timeout: 30_000 },
-    )
-    .catch(() => undefined)
-  const isFirstControlled = await isControlled(page)
-  if (!isFirstControlled) {
-    console.log(`worker: ${encodeJson(WorkerState)(await workerState(page))}`)
-    console.log(
-      `registering by hand: ${await page.evaluate(() =>
-        navigator.serviceWorker.register('sw.js').then(
-          registration => `ok, scope ${registration.scope}`,
-          (error: unknown) => `failed: ${String(error)}`,
+const offlinePart = (page: Page, base: string) =>
+  Effect.gen(function* () {
+    const online = yield* openGame(page, goto(page, base))
+    yield* check(online.isBooted, 'online: the first visit boots')
+    yield* attempt(() =>
+      page.waitForFunction(
+        () =>
+          !('serviceWorker' in navigator) ||
+          navigator.serviceWorker.controller !== null,
+        null,
+        { timeout: 30_000 },
+      ),
+    ).pipe(Effect.ignore)
+    const isFirstControlled = yield* isControlled(page)
+    if (!isFirstControlled) {
+      const state = yield* workerState(page)
+      yield* Console.log(`worker: ${encodeJson(WorkerState)(state)}`)
+      const registered = yield* attempt(() =>
+        page.evaluate(() =>
+          navigator.serviceWorker.register('sw.js').then(
+            registration => `ok, scope ${registration.scope}`,
+            (error: unknown) => `failed: ${globalThis.String(error)}`,
+          ),
         ),
-      )}`,
+      )
+      yield* Console.log(`registering by hand: ${registered}`)
+    }
+    yield* check(
+      isFirstControlled,
+      'online: the service worker controls the page',
     )
-  }
-  check(isFirstControlled, 'online: the service worker controls the page')
-  const firstCaches = await gameCaches(page)
-  console.log(`caches: ${encodeCaches(firstCaches)}`)
-  check(
-    firstCaches.length === 1 && (firstCaches[0]?.entries ?? 0) > 10,
-    'online: one cache holds the precached game',
-  )
-  return firstCaches
-}
-
-const main = async () => {
-  let server: ChildProcess | undefined
-  if (IS_LOCAL) {
-    build('offline-one')
-    server = await serve()
-    console.log(`precache list: ${precacheCount()} files`)
-  }
-  const browser = await launch()
-  const context = await browser.newContext({
-    viewport: { width: PHONE_844.width, height: PHONE_844.height },
-    deviceScaleFactor: PHONE_844.scale,
-    isMobile: true,
-    hasTouch: true,
+    const firstCaches = yield* gameCaches(page)
+    yield* Console.log(`caches: ${encodeCaches(firstCaches)}`)
+    yield* check(
+      firstCaches.length === 1 && (firstCaches[0]?.entries ?? 0) > 10,
+      'online: one cache holds the precached game',
+    )
+    return firstCaches
   })
-  const errors: Array<string> = []
-  context.on('weberror', error => errors.push(error.error().message))
-  context.on('console', message => {
-    const text = message.text()
-    if (message.type() === 'error' || /service ?worker|sw\.js/i.test(text)) {
-      console.log(`console ${message.type()}: ${text}`)
-    }
-  })
-  try {
-    const page = await context.newPage()
-    const firstCaches = await offlinePart(page)
-    if (failures.length > 0) {
-      throw new Error('the worker never took control, so offline is moot')
-    }
-    const firstScript = await runningScript(page)
 
-    await goOffline(context, server)
-    server = undefined
-    // NOTE: the page's own fetch, through its service worker, with a fresh
-    // query so nothing but the network could answer.
-    /* oxlint-disable no-restricted-globals, no-restricted-properties */
-    const versionOffline = await page.evaluate(() =>
-      // @effect-diagnostics-next-line globalFetch:off
-      fetch(
-        // @effect-diagnostics-next-line globalDate:off
-        `version.json?at=${Date.now()}`,
-        { cache: 'no-store' },
-      ).then(
-        () => 'answered',
-        () => 'failed',
+// NOTE: the preview server this script started, stopped when it ends.
+const servers: { current: Subprocess | undefined } = { current: undefined }
+
+const audit = (base: string, isLocal: boolean) =>
+  Effect.gen(function* () {
+    if (isLocal) {
+      yield* build('offline-one')
+      servers.current = yield* serve
+      const count = yield* precacheCount
+      yield* Console.log(`precache list: ${count} files`)
+    }
+    const browser = yield* openBrowser
+    const context = yield* attempt(() =>
+      browser.newContext({
+        viewport: { width: PHONE_844.width, height: PHONE_844.height },
+        deviceScaleFactor: PHONE_844.scale,
+        isMobile: true,
+        hasTouch: true,
+      }),
+    )
+    const services = yield* Effect.context()
+    const errors: Array<string> = []
+    context.on('weberror', error => errors.push(error.error().message))
+    context.on('console', message => {
+      const text = message.text()
+      if (message.type() === 'error' || /service ?worker|sw\.js/i.test(text)) {
+        Effect.runSyncWith(services)(
+          Console.log(`console ${message.type()}: ${text}`),
+        )
+      }
+    })
+    yield* Effect.gen(function* () {
+      const page = yield* attempt(() => context.newPage())
+      const firstCaches = yield* offlinePart(page, base)
+      if (failures.length > 0) {
+        return yield* failWith(
+          'the worker never took control, so offline is moot',
+        )
+      }
+      const firstScript = yield* runningScript(page)
+
+      yield* goOffline(context, servers.current)
+      servers.current = undefined
+      // NOTE: the page's own fetch, through its service worker, with a fresh
+      // query so nothing but the network could answer.
+      /* oxlint-disable no-restricted-globals, no-restricted-properties */
+      const versionOffline = yield* attempt(() =>
+        page.evaluate(() =>
+          // @effect-diagnostics-next-line globalFetch:off
+          fetch(
+            // NOTE: runs in the page, where the clock is the page's own.
+            // @effect-diagnostics-next-line globalDate:off
+            `version.json?at=${Date.now()}`,
+            { cache: 'no-store' },
+          ).then(
+            () => 'answered',
+            () => 'failed',
+          ),
+        ),
+      )
+      /* oxlint-enable no-restricted-globals, no-restricted-properties */
+      yield* check(
+        versionOffline === 'failed',
+        'offline: version.json is not cached',
+      )
+
+      const reloaded = yield* openGame(page, reload(page))
+      yield* check(reloaded.isSplashShown, 'offline reload: the splash shows')
+      yield* check(reloaded.isBooted, 'offline reload: the game boots')
+      yield* attempt(() => page.close())
+
+      const cold = yield* attempt(() => context.newPage())
+      const started = yield* openGame(cold, goto(cold, base))
+      yield* check(
+        started.isSplashShown,
+        'offline cold start: the splash shows',
+      )
+      yield* check(started.isBooted, 'offline cold start: the game boots')
+      const coldScript = yield* runningScript(cold)
+      yield* check(
+        coldScript === firstScript,
+        'offline cold start: the same build runs',
+      )
+      const run = yield* playARun(cold)
+      yield* Console.log(
+        `run: ${run.frames} frames in 2s, status "${run.status}"`,
+      )
+      yield* check(run.frames > 30, 'offline: a run plays frames')
+
+      yield* attempt(() => cold.reload({ waitUntil: 'domcontentloaded' }))
+      yield* awaitSplashGone(cold)
+      yield* openSettings(cold)
+      if ((yield* soundPressed(cold)) !== 'false') {
+        yield* attempt(() => soundToggle(cold).tap())
+      }
+      yield* wait(800)
+      yield* openGame(cold, reload(cold))
+      const isStillMuted = yield* isMuted(cold)
+      yield* check(isStillMuted, 'offline: the muted sound outlives a reload')
+
+      if (isLocal) {
+        yield* updatePart(context, cold, firstCaches[0]?.name ?? '', base)
+      }
+    }).pipe(
+      Effect.ensuring(
+        Effect.andThen(
+          attempt(() => browser.close()).pipe(Effect.ignore),
+          Effect.suspend(() => stop(servers.current)),
+        ),
       ),
     )
-    /* oxlint-enable no-restricted-globals, no-restricted-properties */
-    check(versionOffline === 'failed', 'offline: version.json is not cached')
-
-    const reloaded = await openGame(page, reload(page))
-    check(reloaded.isSplashShown, 'offline reload: the splash shows')
-    check(reloaded.isBooted, 'offline reload: the game boots')
-    await page.close()
-
-    const cold = await context.newPage()
-    const started = await openGame(cold, goto(cold))
-    check(started.isSplashShown, 'offline cold start: the splash shows')
-    check(started.isBooted, 'offline cold start: the game boots')
-    check(
-      (await runningScript(cold)) === firstScript,
-      'offline cold start: the same build runs',
+    yield* Console.log(
+      errors.length === 0
+        ? 'no page errors'
+        : `page errors: ${Array.join(errors, ' | ')}`,
     )
-    const run = await playARun(cold)
-    console.log(`run: ${run.frames} frames in 2s, status "${run.status}"`)
-    check(run.frames > 30, 'offline: a run plays frames')
-
-    await cold.reload({ waitUntil: 'domcontentloaded' })
-    await awaitSplashGone(cold)
-    await openSettings(cold)
-    if ((await soundToggle(cold).getAttribute('aria-pressed')) !== 'false') {
-      await soundToggle(cold).tap()
+    yield* check(errors.length === 0, 'no page errors')
+    if (failures.length > 0) {
+      yield* Console.log(`${failures.length} failed`)
+      return yield* Effect.sync(() => process.exit(1))
     }
-    await wait(800)
-    await openGame(cold, reload(cold))
-    check(await isMuted(cold), 'offline: the muted sound outlives a reload')
-
-    if (IS_LOCAL) {
-      await updatePart(context, cold, firstCaches[0]?.name ?? '')
-    }
-  } finally {
-    await browser.close()
-    await stop(server)
-  }
-  console.log(
-    errors.length === 0
-      ? 'no page errors'
-      : `page errors: ${errors.join(' | ')}`,
-  )
-  check(errors.length === 0, 'no page errors')
-  if (failures.length > 0) {
-    console.log(`${failures.length} failed`)
-    process.exit(1)
-  }
-  console.log('all clear')
-}
+    yield* Console.log('all clear')
+  })
 
 // NOTE: like PART=e2e in shots26.ts, but with the worker in the loop: the
 // new build's worker installs in the background, the chip asks it to take
 // over, and the old cache goes with the reload.
-const updatePart = async (
+const updatePart = (
   context: BrowserContext,
   page: Page,
   oldCache: string,
-) => {
-  const server = await serve()
-  try {
-    await context.setOffline(false)
-    await openGame(page, goto(page))
-    build('offline-two')
-    await page.evaluate(() =>
-      document.dispatchEvent(new Event('visibilitychange')),
-    )
-    await page.locator('.home-gift').waitFor({ timeout: 10_000 })
-    check(true, 'update: the chip appears for the new build')
-    await Promise.all([
-      page.waitForEvent('load', { timeout: 30_000 }),
-      page.locator('.home-gift').tap(),
-    ])
-    await awaitSplashGone(page)
-    const servedScripts = readFileSync(resolve(ROOT, 'dist/index.html'), 'utf8')
-    const script = await runningScript(page)
-    check(
-      script !== '' &&
-        script.split(' ').every(src => servedScripts.includes(src)),
-      'update: the reload lands on the new build',
-    )
-    await wait(1000)
-    const after = await gameCaches(page)
-    console.log(`caches after the update: ${encodeCaches(after)}`)
-    check(
-      after.every(cache => cache.name !== oldCache) &&
-        after.some(cache => cache.name === `${CACHE_PREFIX}offline-two`),
-      'update: the old cache is gone, the new one is there',
-    )
-    check(
-      (await page.locator('.home-gift').count()) === 0,
-      'update: no chip after the reload',
-    )
+  base: string,
+) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const root = yield* rootDir
+    const server = yield* serve
+    yield* Effect.gen(function* () {
+      yield* attempt(() => context.setOffline(false))
+      yield* openGame(page, goto(page, base))
+      yield* build('offline-two')
+      yield* attempt(() =>
+        page.evaluate(() =>
+          document.dispatchEvent(new Event('visibilitychange')),
+        ),
+      )
+      yield* attempt(() =>
+        page.locator('.home-gift').waitFor({ timeout: 10_000 }),
+      )
+      yield* check(true, 'update: the chip appears for the new build')
+      yield* attempt(() =>
+        Promise.all([
+          page.waitForEvent('load', { timeout: 30_000 }),
+          page.locator('.home-gift').tap(),
+        ]),
+      )
+      yield* awaitSplashGone(page)
+      const servedScripts = yield* fs.readFileString(`${root}/dist/index.html`)
+      const script = yield* runningScript(page)
+      yield* check(
+        script !== '' &&
+          Array.every(String.split(' ')(script), src =>
+            String.includes(src)(servedScripts),
+          ),
+        'update: the reload lands on the new build',
+      )
+      yield* wait(1000)
+      const after = yield* gameCaches(page)
+      yield* Console.log(`caches after the update: ${encodeCaches(after)}`)
+      yield* check(
+        Array.every(after, cache => cache.name !== oldCache) &&
+          Array.some(
+            after,
+            cache => cache.name === `${CACHE_PREFIX}offline-two`,
+          ),
+        'update: the old cache is gone, the new one is there',
+      )
+      const chips = yield* attempt(() => page.locator('.home-gift').count())
+      yield* check(chips === 0, 'update: no chip after the reload')
 
-    await context.setOffline(true)
-    await stop(server)
-    const cold = await context.newPage()
-    const started = await openGame(cold, goto(cold))
-    check(
-      started.isBooted && (await runningScript(cold)) === script,
-      'update: an offline cold start runs the new build',
-    )
-  } finally {
-    await stop(server)
-  }
-}
+      yield* attempt(() => context.setOffline(true))
+      yield* stop(server)
+      const cold = yield* attempt(() => context.newPage())
+      const started = yield* openGame(cold, goto(cold, base))
+      const coldScript = started.isBooted
+        ? yield* runningScript(cold)
+        : undefined
+      yield* check(
+        started.isBooted && coldScript === script,
+        'update: an offline cold start runs the new build',
+      )
+    }).pipe(Effect.ensuring(stop(server)))
+  })
 
-await main()
+runAuditWith(
+  Effect.gen(function* () {
+    const base = yield* Base
+    yield* audit(base, base === LOCAL)
+  }),
+  Layer.merge(NodeServices.layer, FetchHttpClient.layer),
+)

@@ -20,28 +20,28 @@ import {
 } from './worldSchema'
 
 export const SurfaceRectangle = Schema.Struct({
-  left: Schema.Number,
-  top: Schema.Number,
-  width: Schema.Number,
-  height: Schema.Number,
+  left: Schema.Finite,
+  top: Schema.Finite,
+  width: Schema.Finite,
+  height: Schema.Finite,
 })
 export type SurfaceRectangle = typeof SurfaceRectangle.Type
 
 export const Stick = defineTaggedUnion({
   Idle: {},
   Active: {
-    pointerId: Schema.Number,
-    originX: Schema.Number,
-    originY: Schema.Number,
-    currentX: Schema.Number,
-    currentY: Schema.Number,
+    pointerId: Schema.Finite,
+    originX: Schema.Finite,
+    originY: Schema.Finite,
+    currentX: Schema.Finite,
+    currentY: Schema.Finite,
   },
 })
 export type Stick = typeof Stick.Type
 
 export const MouseButton = defineTaggedUnion({
   Released: {},
-  Held: { pointerId: Schema.Number },
+  Held: { pointerId: Schema.Finite },
 })
 export type MouseButton = typeof MouseButton.Type
 
@@ -49,7 +49,7 @@ export type MouseButton = typeof MouseButton.Type
 // so lifting that finger lets go and no other finger does.
 export const HoldButton = defineTaggedUnion({
   Released: {},
-  Held: { pointerId: Schema.Number },
+  Held: { pointerId: Schema.Finite },
 })
 export type HoldButton = typeof HoldButton.Type
 
@@ -84,13 +84,13 @@ export type Input = typeof Input.Type
 
 export const Particle = Schema.Struct({
   kind: ParticleKind,
-  x: Schema.Number,
-  y: Schema.Number,
-  z: Schema.Number,
-  velocityX: Schema.Number,
-  velocityY: Schema.Number,
-  velocityZ: Schema.Number,
-  size: Schema.Number,
+  x: Schema.Finite,
+  y: Schema.Finite,
+  z: Schema.Finite,
+  velocityX: Schema.Finite,
+  velocityY: Schema.Finite,
+  velocityZ: Schema.Finite,
+  size: Schema.Finite,
   remainingMs: MillisNumber,
 })
 export type Particle = typeof Particle.Type
@@ -128,10 +128,10 @@ export type DecalKind = typeof DecalKind.Type
 
 export const Decal = Schema.Struct({
   kind: DecalKind,
-  x: Schema.Number,
-  y: Schema.Number,
-  width: Schema.Number,
-  height: Schema.Number,
+  x: Schema.Finite,
+  y: Schema.Finite,
+  width: Schema.Finite,
+  height: Schema.Finite,
 })
 export type Decal = typeof Decal.Type
 
@@ -140,7 +140,7 @@ export type Decal = typeof Decal.Type
 // pulses (src/fridgeReveal.ts). Never part of the World.
 export const PrizeFlight = defineTaggedUnion({
   Grounded: {},
-  Flying: { prize: WeaponKind, from: Vector, ageMs: Schema.Number },
+  Flying: { prize: WeaponKind, from: Vector, ageMs: Schema.Finite },
 })
 export type PrizeFlight = typeof PrizeFlight.Type
 
@@ -224,8 +224,8 @@ export type MenuPanel = typeof MenuPanel.Type
 // per kind. They are plain data on purpose: they move into the SQLite player
 // scope from PLATFORM.md as personal bests.
 export const PlayerBests = Schema.Struct({
-  runsPlayed: Schema.Number,
-  totalKills: Schema.Number,
+  runsPlayed: Schema.Finite,
+  totalKills: Schema.Finite,
   killsByKind: KillCounts,
   byDifficulty: Schema.Struct({
     Easy: DifficultyBests,
@@ -249,10 +249,10 @@ export type RunTally = typeof RunTally.Type
 // waves cleared, bosses felled, awards won, and revives made so far. A win that keeps going into
 // endless is paid again when it ends, and only for what it did after.
 export const RankPaid = Schema.Struct({
-  wavesPaid: Schema.Number,
-  bossesPaid: Schema.Number,
-  awardsPaid: Schema.Number,
-  revivesPaid: Schema.Number,
+  wavesPaid: Schema.Finite,
+  bossesPaid: Schema.Finite,
+  awardsPaid: Schema.Finite,
+  revivesPaid: Schema.Finite,
 })
 export type RankPaid = typeof RankPaid.Type
 
@@ -267,11 +267,11 @@ export const noRankPaid: RankPaid = {
 // points before it (so the bar fills from there), the points it paid, and
 // the Bones.
 export const RankGain = Schema.Struct({
-  pointsBefore: Schema.Number,
-  gained: Schema.Number,
-  bonesGained: Schema.Number,
+  pointsBefore: Schema.Finite,
+  gained: Schema.Finite,
+  bonesGained: Schema.Finite,
   // NOTE: the run modifiers' bonus in percent, 0 with none (src/modifiers.ts).
-  bonusPercent: Schema.Number,
+  bonusPercent: Schema.Finite,
 })
 export type RankGain = typeof RankGain.Type
 
@@ -374,12 +374,12 @@ export const HomeMenu = Schema.Struct({
   // NOTE: the bots the lobby seats, kept for the page session, and the one
   // whose hero the open picker is choosing (an index into them).
   bots: Schema.Array(Bot),
-  maybePickingBot: Schema.Option(Schema.Number),
+  maybePickingBot: Schema.Option(Schema.Finite),
   // NOTE: the hero for sale being tried on in the picker (its BUY pill buys
   // it), never saved.
   maybeTryingCalling: Schema.Option(Calling),
   maybeSeenNewsDay: Schema.Option(Schema.String),
-  newsPage: Schema.Number,
+  newsPage: Schema.Finite,
   munchopediaPage: MunchopediaPage,
   openedEntries: Schema.Array(ZombieKind),
   isTurnHintSeen: Schema.Boolean,
@@ -481,8 +481,8 @@ export type AmmoTip = typeof AmmoTip.Type
 // never called twice. `Opened` is the kitchen found, aging for the rooms
 // counter's sparkle (src/roomsFound.ts). Never saved.
 export const KitchenCall = defineTaggedUnion({
-  Quiet: { calledWave: Schema.Number },
-  Calling: { wave: Schema.Number, remainingMs: MillisNumber },
+  Quiet: { calledWave: Schema.Finite },
+  Calling: { wave: Schema.Finite, remainingMs: MillisNumber },
   Opened: { ageMs: MillisNumber },
 })
 export type KitchenCall = typeof KitchenCall.Type
@@ -559,9 +559,9 @@ export const defaultAppearance: Appearance = {
 // each seat's earnings (a rise beside a kill is a kill paid). A cosmetic of
 // the client's own, so the room's World needs nothing new for it.
 export const TellWatch = Schema.Struct({
-  traps: Schema.Array(Schema.Struct({ id: Schema.Number, hp: Schema.Number })),
+  traps: Schema.Array(Schema.Struct({ id: Schema.Finite, hp: Schema.Finite })),
   earned: Schema.Array(
-    Schema.Struct({ slot: Schema.Number, earned: Schema.Number }),
+    Schema.Struct({ slot: Schema.Finite, earned: Schema.Finite }),
   ),
 })
 export type TellWatch = typeof TellWatch.Type

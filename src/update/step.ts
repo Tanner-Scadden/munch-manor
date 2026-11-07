@@ -1,4 +1,5 @@
 import type { Layer } from 'effect'
+import { Function } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -17,8 +18,14 @@ type AppHandlers = Layer.Success<typeof CommandsLayer>
 export type UpdateReturn = Update.Return<Model, Message, AppHandlers>
 export type UpdateStep = Update.Step<Model, Message, AppHandlers>
 
-export const withInput = (model: Model, toNextInput: (input: Input) => Input) =>
-  refreshIntent(modifyFields(model, { input: toNextInput }))
+export const withInput: {
+  (toNextInput: (input: Input) => Input): (model: Model) => Model
+  (model: Model, toNextInput: (input: Input) => Input): Model
+} = Function.dual(
+  2,
+  (model: Model, toNextInput: (input: Input) => Input): Model =>
+    refreshIntent(modifyFields(model, { input: toNextInput })),
+)
 
 export const unchanged: UpdateStep = model => ({ model })
 
@@ -39,7 +46,11 @@ export const toModel =
 // NOTE: Update.combineSteps for plain Steps, typed to the root Model, so a
 // Model just built by modifyFields fits. Steps that use a Binding combine
 // with Update.combineSteps itself, inside `makeStep`.
-export const combine = (
-  model: Model,
-  steps: ReadonlyArray<UpdateStep>,
-): UpdateReturn => Update.combineSteps(model, steps)
+export const combine: {
+  (steps: ReadonlyArray<UpdateStep>): (model: Model) => UpdateReturn
+  (model: Model, steps: ReadonlyArray<UpdateStep>): UpdateReturn
+} = Function.dual(
+  2,
+  (model: Model, steps: ReadonlyArray<UpdateStep>): UpdateReturn =>
+    Update.combineSteps(model, steps),
+)

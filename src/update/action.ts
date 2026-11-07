@@ -1,4 +1,4 @@
-import { Result } from 'effect'
+import { Function, Result } from 'effect'
 
 import type { Model } from '../model'
 import { leadSeatOf } from '../party'
@@ -17,16 +17,23 @@ import { withWorld } from '../world'
 // clip, focus).
 
 // NOTE: the Model with the action applied to its lead seat, or as it was.
-export const actAsLead = (model: Model, action: SeatAction): Model =>
+export const actAsLead: {
+  (action: SeatAction): (model: Model) => Model
+  (model: Model, action: SeatAction): Model
+} = Function.dual(2, (model: Model, action: SeatAction): Model =>
   withWorld(model, world =>
     applySeatAction(world, leadSeatOf(world).slot, action),
-  )
+  ),
+)
 
 // NOTE: the same, with why nothing changed, for the cues of a refusal.
-export const tryAsLead = (
-  model: Model,
-  action: SeatAction,
-): Result.Result<Model, ActionRefusal> =>
-  Result.map(trySeatAction(model, leadSeatOf(model).slot, action), world =>
-    withWorld(model, () => world),
-  )
+export const tryAsLead: {
+  (action: SeatAction): (model: Model) => Result.Result<Model, ActionRefusal>
+  (model: Model, action: SeatAction): Result.Result<Model, ActionRefusal>
+} = Function.dual(
+  2,
+  (model: Model, action: SeatAction): Result.Result<Model, ActionRefusal> =>
+    Result.map(trySeatAction(model, leadSeatOf(model).slot, action), world =>
+      withWorld(model, () => world),
+    ),
+)

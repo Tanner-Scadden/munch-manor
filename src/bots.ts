@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option, String } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { ownedCallings } from './calling'
@@ -29,34 +29,50 @@ export const botSeatsFor = (model: Model): number =>
 export const activeBots = (model: Model): ReadonlyArray<Bot> =>
   Array.take(model.home.bots, botSeatsFor(model))
 
-export const botSlotOf = (model: Model, index: number): PlayerSlot =>
-  model.localPlayers + index
+export const botSlotOf: {
+  (index: number): (model: Model) => PlayerSlot
+  (model: Model, index: number): PlayerSlot
+} = Function.dual(
+  2,
+  (model: Model, index: number): PlayerSlot => model.localPlayers + index,
+)
 
 // NOTE: whether this run has bots at its seats: a run started from the
 // lobby with a crew. An online room's run never does.
 export const isBotCrew = (model: Model): boolean =>
   Array.isReadonlyArrayNonEmpty(model.crewBots)
 
-export const maybeCrewBotAt = (
-  model: Model,
-  slot: PlayerSlot,
-): Option.Option<Bot> => Array.get(model.crewBots, slot - model.localPlayers)
+export const maybeCrewBotAt: {
+  (slot: PlayerSlot): (model: Model) => Option.Option<Bot>
+  (model: Model, slot: PlayerSlot): Option.Option<Bot>
+} = Function.dual(2, (model: Model, slot: PlayerSlot): Option.Option<Bot> =>
+  Array.get(model.crewBots, slot - model.localPlayers),
+)
 
 export const crewBotSlots = (model: Model): ReadonlyArray<PlayerSlot> =>
   Array.map(model.crewBots, (_bot, index) => botSlotOf(model, index))
 
 // NOTE: the seats from `firstSlot` on made over as these heroes, in order:
 // their hearts and their gun, as the room seats a lobby's callings.
-export const seatCallings = (
-  world: World,
-  firstSlot: PlayerSlot,
-  callings: ReadonlyArray<Calling>,
-): World =>
-  Array.reduce(callings, world, (current, calling, index) =>
-    modifySeat(current, firstSlot + index, {
-      player: player => seatedAs(player, calling),
-    }),
-  )
+export const seatCallings: {
+  (
+    firstSlot: PlayerSlot,
+    callings: ReadonlyArray<Calling>,
+  ): (world: World) => World
+  (world: World, firstSlot: PlayerSlot, callings: ReadonlyArray<Calling>): World
+} = Function.dual(
+  3,
+  (
+    world: World,
+    firstSlot: PlayerSlot,
+    callings: ReadonlyArray<Calling>,
+  ): World =>
+    Array.reduce(callings, world, (current, calling, index) =>
+      modifySeat(current, firstSlot + index, {
+        player: player => seatedAs(player, calling),
+      }),
+    ),
+)
 
 // ROSTER
 
@@ -110,21 +126,24 @@ export const addBot = (model: Model): Model => {
   })
 }
 
-export const removeBot = (model: Model, index: number): Model =>
+export const removeBot: {
+  (index: number): (model: Model) => Model
+  (model: Model, index: number): Model
+} = Function.dual(2, (model: Model, index: number): Model =>
   modifyFields(model, {
     home: home =>
       modifyFields(home, {
         bots: bots => Array.remove(bots, index),
         maybePickingBot: () => Option.none(),
       }),
-  })
+  }),
+)
 
 // NOTE: only a hero this player owns, as for their own pick.
-export const setBotCalling = (
-  model: Model,
-  index: number,
-  calling: Calling,
-): Model =>
+export const setBotCalling: {
+  (index: number, calling: Calling): (model: Model) => Model
+  (model: Model, index: number, calling: Calling): Model
+} = Function.dual(3, (model: Model, index: number, calling: Calling): Model =>
   Array.contains(ownedCallings(model.boughtCosmetics), calling)
     ? modifyFields(model, {
         home: home =>
@@ -137,7 +156,8 @@ export const setBotCalling = (
               ),
           }),
       })
-    : model
+    : model,
+)
 
 // NOTE: a bot's name in the capitals a name tag and the crew board show.
-export const botNameOf = (bot: Bot): string => bot.name.toUpperCase()
+export const botNameOf = (bot: Bot): string => String.toUpperCase(bot.name)

@@ -1,19 +1,27 @@
-import { Cause, Data, Effect, Queue, type Scope, Stream, pipe } from 'effect'
+import { Cause, Effect, Queue, Schema, type Scope, Stream, pipe } from 'effect'
 
 // NOTE: one WebSocket as an Effect resource: text and binary messages in
 // a Stream that fails when the socket closes, and a send that fails once it
 // has. Closing the Scope closes the socket. It uses only the global
 // WebSocket, so it runs in a browser and in Bun alike.
 
-export class SocketError extends Data.TaggedError('SocketError')<{
-  readonly reason: string
-}> {}
+export class SocketError extends Schema.TaggedError<
+  SocketError,
+  { readonly brand: unique symbol }
+>()('SocketError', {
+  reason: Schema.String,
+}) {}
 
 // NOTE: the session token a socket's Hello carries could not be had, such
 // as when signing in failed. The client tries again later.
-export class TokenUnavailable extends Data.TaggedError('TokenUnavailable')<{
-  readonly reason: string
-}> {}
+export class TokenUnavailable extends Schema.TaggedError<
+  TokenUnavailable,
+  { readonly brand: unique symbol }
+>()('TokenUnavailable', {
+  reason: Schema.String,
+}) {}
+
+const isSocketError = Schema.is(SocketError)
 
 export type SocketData = string | Uint8Array
 
@@ -56,7 +64,7 @@ export const openSocket = (
           opened.binaryType = 'arraybuffer'
           return opened
         },
-        catch: error => new SocketError({ reason: String(error) }),
+        catch: error => SocketError.make({ reason: String(error) }),
       }),
       closeQuietly,
     )
@@ -70,7 +78,9 @@ export const openSocket = (
       Queue.failCauseUnsafe(
         inbox,
         Cause.fail(
-          new SocketError({ reason: `Closed (${event.code} ${event.reason})` }),
+          SocketError.make({
+            reason: `Closed (${event.code} ${event.reason})`,
+          }),
         ),
       )
     })
@@ -78,7 +88,7 @@ export const openSocket = (
       Effect.callback<void, SocketError>(resume => {
         const opened = () => resume(Effect.void)
         const failed = () =>
-          resume(Effect.fail(new SocketError({ reason: 'Failed to open' })))
+          resume(Effect.fail(SocketError.make({ reason: 'Failed to open' })))
         socket.addEventListener('open', opened, { once: true })
         socket.addEventListener('error', failed, { once: true })
         return Effect.sync(() => {
@@ -89,25 +99,25 @@ export const openSocket = (
       Effect.timeoutOrElse({
         duration: OPEN_TIMEOUT,
         orElse: () =>
-          Effect.fail(new SocketError({ reason: 'Open timed out' })),
+          Effect.fail(SocketError.make({ reason: 'Open timed out' })),
       }),
     )
     const send = (data: SocketData) =>
       Effect.try({
         try: () => {
           if (socket.readyState !== WebSocket.OPEN) {
-            throw new SocketError({ reason: 'Not open' })
+            throw SocketError.make({ reason: 'Not open' })
           }
           socket.send(typeof data === 'string' ? data : data.slice().buffer)
         },
         catch: error =>
-          error instanceof SocketError
+          isSocketError(error)
             ? error
-            : new SocketError({ reason: String(error) }),
+            : SocketError.make({ reason: String(error) }),
       })
     const drop = (reason: string) =>
       Effect.andThen(
-        Queue.fail(inbox, new SocketError({ reason })),
+        Queue.fail(inbox, SocketError.make({ reason })),
         closeQuietly(socket),
       )
     return { send, messages: Stream.fromQueue(inbox), drop }

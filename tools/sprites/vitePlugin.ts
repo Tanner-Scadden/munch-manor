@@ -1,11 +1,18 @@
-import { Clock, Effect, Schema } from 'effect'
-import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
-import { join, resolve, sep } from 'node:path'
+import {
+  Array,
+  Clock,
+  Effect,
+  FileSystem,
+  Option,
+  Schema,
+  String,
+} from 'effect'
+import { ChildProcess } from 'effect/process'
 import type { Plugin, ViteDevServer } from 'vite'
 
 import type { SpriteAtlas } from '../../src/spriteAtlas.ts'
 import { encodeJson, readJsonFile } from '../json.ts'
+import { nodeRuntime, textOf } from '../node.ts'
 import { AtlasEntries, SpriteAtlasManifest } from './manifest.ts'
 
 // The sprite atlas in the build (docs/IMAGES_PLAN.md). ./build.ts writes the
@@ -27,78 +34,142 @@ import { AtlasEntries, SpriteAtlasManifest } from './manifest.ts'
 const SPRITE_ATLAS_ID = 'virtual:sprite-atlas'
 const RESOLVED_ID = `\0${SPRITE_ATLAS_ID}`
 
-const ROOT = resolve(import.meta.dirname, '../..')
-const SOURCE_DIR = join(ROOT, 'src') + sep
-const GENERATOR = join(ROOT, 'tools/sprites/build.ts')
-const BUILD_CACHE_DIR = join(ROOT, 'node_modules/.cache/munch-sprites')
-const DEV_CACHE_DIR = join(ROOT, 'node_modules/.cache/munch-sprites-dev')
+// NOTE: two folders up from this one, joined with `/` as Vite's own paths are.
+const ROOT = Array.join(
+  Array.dropRight(String.split('/')(import.meta.dirname), 2),
+  '/',
+)
+const SOURCE_DIR = `${ROOT}/src/`
+const GENERATOR = `${ROOT}/tools/sprites/build.ts`
+const BUILD_CACHE_DIR = `${ROOT}/node_modules/.cache/munch-sprites`
+const DEV_CACHE_DIR = `${ROOT}/node_modules/.cache/munch-sprites-dev`
 
 const EMPTY_ATLAS_MODULE = 'export default { sources: [], entries: {} }\n'
 
-const generatorFailed = (output: string): Error =>
-  new Error(`the sprite atlas failed to build:\n${output}`)
+class GeneratorFailed extends Schema.TaggedError<
+  GeneratorFailed,
+  { readonly brand: unique symbol }
+>()('GeneratorFailed', { message: Schema.String }) {}
 
-const runGenerator = (outDir: string): void => {
-  const result = spawnSync('bun', [GENERATOR, outDir], {
-    cwd: ROOT,
-    encoding: 'utf8',
+const generatorFailed = (output: string): GeneratorFailed =>
+  GeneratorFailed.make({
+    message: `the sprite atlas failed to build:\n${output}`,
   })
-  if (result.status !== 0) {
-    throw generatorFailed(
-      result.stderr || result.stdout || String(result.error),
-    )
-  }
-  process.stdout.write(result.stdout)
-}
 
-const manifestIn = (outDir: string): SpriteAtlas | undefined => {
-  const manifestPath = join(outDir, 'manifest.json')
-  return existsSync(manifestPath)
-    ? readJsonFile(SpriteAtlasManifest, manifestPath)
-    : undefined
-}
+// NOTE: the generator writing `outDir`: its stdout and stderr together, in
+// the order each ended, and its exit code.
+const generate = (outDir: string) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const handle = yield* ChildProcess.make('bun', [GENERATOR, outDir], {
+        cwd: ROOT,
+        stdin: 'ignore',
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
+      const [stdout, stderr, code] = yield* Effect.all(
+        [textOf(handle.stdout), textOf(handle.stderr), handle.exitCode],
+        { concurrency: 'unbounded' },
+      )
+      return { stdout, stderr, code }
+    }),
+  )
+
+const runGenerator = (outDir: string) =>
+  Effect.gen(function* () {
+    const { stdout, stderr, code } = yield* generate(outDir).pipe(
+      Effect.mapError(error => generatorFailed(error.message)),
+    )
+    if (code !== 0) {
+      return yield* generatorFailed(stderr || stdout)
+    }
+    yield* Effect.sync(() => process.stdout.write(stdout))
+  })
+
+const manifestIn = (
+  outDir: string,
+): Effect.Effect<Option.Option<SpriteAtlas>, never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const manifestPath = `${outDir}/manifest.json`
+    const isThere = yield* fs
+      .exists(manifestPath)
+      .pipe(Effect.orElseSucceed(() => false))
+    if (!isThere) {
+      return Option.none()
+    }
+    return yield* readJsonFile(SpriteAtlasManifest, manifestPath).pipe(
+      Effect.asSome,
+      Effect.orDie,
+    )
+  })
 
 // NOTE: a build imports each file, so Vite emits it with a hashed name.
-const builtAtlasModule = (outDir: string): string => {
-  const manifest = manifestIn(outDir)
-  if (manifest === undefined) {
-    return EMPTY_ATLAS_MODULE
-  }
-  const imports = manifest.sources.map(
-    (name, index) =>
-      `import source${index} from ${encodeJson(Schema.String)(`${join(outDir, name)}?url&no-inline`)}`,
+const builtAtlasModule = (outDir: string) =>
+  Effect.map(manifestIn(outDir), maybeManifest =>
+    Option.match(maybeManifest, {
+      onNone: () => EMPTY_ATLAS_MODULE,
+      onSome: manifest => {
+        const imports = Array.map(
+          manifest.sources,
+          (name, index) =>
+            `import source${index} from ${encodeJson(Schema.String)(`${outDir}/${name}?url&no-inline`)}`,
+        )
+        const sources = Array.map(
+          manifest.sources,
+          (_name, index) => `source${index}`,
+        )
+        return Array.join(
+          [
+            ...imports,
+            `export default { sources: [${Array.join(sources, ', ')}], entries: ${encodeJson(AtlasEntries)(manifest.entries)} }`,
+            '',
+          ],
+          '\n',
+        )
+      },
+    }),
   )
-  const sources = manifest.sources.map((_name, index) => `source${index}`)
-  return [
-    ...imports,
-    `export default { sources: [${sources.join(', ')}], entries: ${encodeJson(AtlasEntries)(manifest.entries)} }`,
-    '',
-  ].join('\n')
-}
 
 // NOTE: the dev server serves the files itself, under DEV_URL_PREFIX. An
 // import would go through Vite's resolver, which caches what it has seen in
 // node_modules and so misses a file the generator has just written.
 const DEV_URL_PREFIX = '/@munch-sprites/'
 
-const devAtlasModule = (): string => {
-  const manifest = manifestIn(DEV_CACHE_DIR)
-  if (manifest === undefined) {
-    return EMPTY_ATLAS_MODULE
-  }
-  const atlas: SpriteAtlas = {
-    sources: manifest.sources.map(name => `${DEV_URL_PREFIX}${name}`),
-    entries: manifest.entries,
-  }
-  return `export default ${encodeJson(SpriteAtlasManifest)(atlas)}\n`
-}
+const devAtlasModule = Effect.map(manifestIn(DEV_CACHE_DIR), maybeManifest =>
+  Option.match(maybeManifest, {
+    onNone: () => EMPTY_ATLAS_MODULE,
+    onSome: manifest => {
+      const atlas: SpriteAtlas = {
+        sources: Array.map(
+          manifest.sources,
+          name => `${DEV_URL_PREFIX}${name}`,
+        ),
+        entries: manifest.entries,
+      }
+      return `export default ${encodeJson(SpriteAtlasManifest)(atlas)}\n`
+    },
+  }),
+)
 
 const FILE_NAME = /^[\w-]+\.png$/
 
+// NOTE: an atlas file from the dev cache, or None for any other name.
+const devFile = (
+  name: string,
+): Effect.Effect<Option.Option<Uint8Array>, never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    if (!FILE_NAME.test(name)) {
+      return Option.none()
+    }
+    const fs = yield* FileSystem.FileSystem
+    return yield* fs.readFile(`${DEV_CACHE_DIR}/${name}`).pipe(Effect.option)
+  })
+
 const isSourceEdit = (file: string): boolean =>
-  file.startsWith(SOURCE_DIR) &&
-  file.endsWith('.ts') &&
-  !file.endsWith('.test.ts')
+  String.startsWith(SOURCE_DIR)(file) &&
+  String.endsWith('.ts')(file) &&
+  !String.endsWith('.test.ts')(file)
 
 const REGENERATE_DELAY_MS = 300
 
@@ -114,39 +185,45 @@ const regenerateInBackground = (server: ViteDevServer) => {
     isWanted: false,
     timer: undefined,
   }
-  const run = () => {
-    state.isRunning = true
-    state.isWanted = false
+  const reload = () => {
+    const graph = server.environments.client.moduleGraph
+    const atlasModuleNode = graph.getModuleById(RESOLVED_ID)
+    if (atlasModuleNode !== undefined) {
+      graph.invalidateModule(atlasModuleNode)
+    }
+  }
+  const generateOnce = Effect.gen(function* () {
     // NOTE: the generator's wall time, logged for whoever runs the dev server.
-    const started = Effect.runSync(Clock.currentTimeMillis)
-    const child = spawn('bun', [GENERATOR, DEV_CACHE_DIR], {
-      cwd: ROOT,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    const output: Array<string> = []
-    child.stdout.on('data', data => output.push(String(data)))
-    child.stderr.on('data', data => output.push(String(data)))
-    child.on('close', code => {
+    const started = yield* Clock.currentTimeMillis
+    const { stdout, stderr, code } = yield* generate(DEV_CACHE_DIR).pipe(
+      Effect.catch(error =>
+        Effect.succeed({ stdout: '', stderr: error.message, code: 1 }),
+      ),
+    )
+    const finished = yield* Clock.currentTimeMillis
+    yield* Effect.sync(() => {
       state.isRunning = false
       if (code === 0) {
-        const graph = server.environments.client.moduleGraph
-        const atlasModuleNode = graph.getModuleById(RESOLVED_ID)
-        if (atlasModuleNode !== undefined) {
-          graph.invalidateModule(atlasModuleNode)
-        }
+        reload()
         server.config.logger.info(
-          `${output.join('').trim()} (${Effect.runSync(Clock.currentTimeMillis) - started} ms in the background)`,
+          `${String.trim(`${stdout}${stderr}`)} (${finished - started} ms in the background)`,
           { timestamp: true },
         )
       } else {
-        server.config.logger.warn(generatorFailed(output.join('')).message, {
-          timestamp: true,
-        })
+        server.config.logger.warn(
+          generatorFailed(`${stdout}${stderr}`).message,
+          { timestamp: true },
+        )
       }
       if (state.isWanted) {
         run()
       }
     })
+  })
+  const run = (): void => {
+    state.isRunning = true
+    state.isWanted = false
+    nodeRuntime.runFork(generateOnce)
   }
   return () => {
     clearTimeout(state.timer)
@@ -174,15 +251,21 @@ export const spriteAtlas = (): Plugin => {
     },
     configureServer(server) {
       server.middlewares.use(DEV_URL_PREFIX, (request, response, next) => {
-        const name = (request.url ?? '').slice(1)
-        const path = join(DEV_CACHE_DIR, name)
-        if (!FILE_NAME.test(name) || !existsSync(path)) {
-          next()
-          return
-        }
-        response.setHeader('Content-Type', 'image/png')
-        response.setHeader('Cache-Control', 'no-cache')
-        response.end(readFileSync(path))
+        const name = String.slice(1)(request.url ?? '')
+        nodeRuntime.runFork(
+          Effect.flatMap(devFile(name), maybeFile =>
+            Effect.sync(() =>
+              Option.match(maybeFile, {
+                onNone: () => next(),
+                onSome: file => {
+                  response.setHeader('Content-Type', 'image/png')
+                  response.setHeader('Cache-Control', 'no-cache')
+                  response.end(file)
+                },
+              }),
+            ),
+          ),
+        )
       })
       const regenerate = regenerateInBackground(server)
       regenerate()
@@ -193,9 +276,9 @@ export const spriteAtlas = (): Plugin => {
       })
     },
     buildStart() {
-      if (state.isBuild) {
-        runGenerator(BUILD_CACHE_DIR)
-      }
+      return state.isBuild
+        ? nodeRuntime.runPromise(runGenerator(BUILD_CACHE_DIR))
+        : undefined
     },
     resolveId: {
       filter: { id: /^virtual:sprite-atlas$/ },
@@ -207,9 +290,9 @@ export const spriteAtlas = (): Plugin => {
         if (id !== RESOLVED_ID) {
           return undefined
         }
-        return state.isBuild
-          ? builtAtlasModule(BUILD_CACHE_DIR)
-          : devAtlasModule()
+        return nodeRuntime.runPromise(
+          state.isBuild ? builtAtlasModule(BUILD_CACHE_DIR) : devAtlasModule,
+        )
       },
     },
   }

@@ -1,4 +1,4 @@
-import { Option, Result } from 'effect'
+import { Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Level, isInsideRoomAt, isSolidAt } from './arena'
@@ -295,48 +295,60 @@ const land = (
   })
 }
 
-export const stepParticle =
+export const stepParticle: {
+  (
+    seconds: number,
+    deltaMs: number,
+  ): (level: Level) => (particle: Particle) => ParticleStep
+  (
+    level: Level,
+    seconds: number,
+    deltaMs: number,
+  ): (particle: Particle) => ParticleStep
+} = Function.dual(
+  3,
   (level: Level, seconds: number, deltaMs: number) =>
-  (particle: Particle): ParticleStep => {
-    const physics = PHYSICS[particle.kind]
-    const remainingMs = particle.remainingMs - deltaMs
-    if (remainingMs <= 0) {
-      return LEFT_NOTHING
-    }
+    (particle: Particle): ParticleStep => {
+      const physics = PHYSICS[particle.kind]
+      const remainingMs = particle.remainingMs - deltaMs
+      if (remainingMs <= 0) {
+        return LEFT_NOTHING
+      }
 
-    const drag = Math.exp(-physics.dragPerSecond * seconds)
-    const velocityZ = particle.velocityZ - physics.gravity * seconds
-    const x = particle.x + particle.velocityX * seconds
-    const y = particle.y + particle.velocityY * seconds
-    const z = particle.z + velocityZ * seconds
-    const isTouchingDown = z <= 0 && velocityZ < 0
-    const reboundSpeed = -velocityZ * physics.restitution
+      const drag = Math.exp(-physics.dragPerSecond * seconds)
+      const velocityZ = particle.velocityZ - physics.gravity * seconds
+      const x = particle.x + particle.velocityX * seconds
+      const y = particle.y + particle.velocityY * seconds
+      const z = particle.z + velocityZ * seconds
+      const isTouchingDown = z <= 0 && velocityZ < 0
+      const reboundSpeed = -velocityZ * physics.restitution
 
-    if (!isTouchingDown) {
-      return flying(
-        modifyFields(particle, {
-          x: () => x,
-          y: () => y,
-          z: () => z,
-          velocityX: velocityX => velocityX * drag,
-          velocityY: velocityY => velocityY * drag,
-          velocityZ: () => velocityZ,
-          remainingMs: () => remainingMs,
-        }),
-      )
-    } else if (reboundSpeed > PARTICLE_BOUNCE_MIN_SPEED) {
-      return flying(
-        modifyFields(particle, {
-          x: () => x,
-          y: () => y,
-          z: () => 0,
-          velocityX: velocityX => velocityX * PARTICLE_BOUNCE_FRICTION,
-          velocityY: velocityY => velocityY * PARTICLE_BOUNCE_FRICTION,
-          velocityZ: () => reboundSpeed,
-          remainingMs: () => remainingMs,
-        }),
-      )
-    } else {
-      return land(level, particle, x, y)
-    }
-  }
+      if (!isTouchingDown) {
+        return flying(
+          modifyFields(particle, {
+            x: () => x,
+            y: () => y,
+            z: () => z,
+            velocityX: velocityX => velocityX * drag,
+            velocityY: velocityY => velocityY * drag,
+            velocityZ: () => velocityZ,
+            remainingMs: () => remainingMs,
+          }),
+        )
+      } else if (reboundSpeed > PARTICLE_BOUNCE_MIN_SPEED) {
+        return flying(
+          modifyFields(particle, {
+            x: () => x,
+            y: () => y,
+            z: () => 0,
+            velocityX: velocityX => velocityX * PARTICLE_BOUNCE_FRICTION,
+            velocityY: velocityY => velocityY * PARTICLE_BOUNCE_FRICTION,
+            velocityZ: () => reboundSpeed,
+            remainingMs: () => remainingMs,
+          }),
+        )
+      } else {
+        return land(level, particle, x, y)
+      }
+    },
+)

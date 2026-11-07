@@ -1,3 +1,4 @@
+import { Array, Record } from 'effect'
 import { given, message, model, steps, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
@@ -51,7 +52,7 @@ const RUN_FIELDS = [
 ] as const satisfies ReadonlyArray<keyof Model>
 
 const runState = (current: Model) =>
-  Object.fromEntries(RUN_FIELDS.map(field => [field, current[field]]))
+  Record.fromEntries(Array.map(RUN_FIELDS, field => [field, current[field]]))
 
 const leaveForHome = steps(
   press('Escape'),

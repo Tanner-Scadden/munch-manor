@@ -1,10 +1,11 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { maybeNewestNewsDay } from './changelog'
 import { FEEDBACK_LINE, RESTART_GRACE_MS } from './constants'
 import { IS_COOP_RELEASED } from './coop/release'
 import { hasJustWon } from './difficulty'
+import { isObjectFirst, isObjectSecond } from './dualArgs'
 import { FOCUS_STEP_OFFSET } from './input'
 import {
   type DifficultyBests,
@@ -154,42 +155,68 @@ export const maybeHandCardOfKey = (
   Array.findFirst(KEYED_HAND_CARDS, card => HAND_KEYS[card].code === code)
 
 export const handCardId = (card: HandCard): string =>
-  `hand-card-${card.toLowerCase()}`
+  `hand-card-${String.toLowerCase(card)}`
 
-export const steppedHandCard = (
-  cards: ReadonlyArray<HandCard>,
-  from: HandCard,
-  step: number,
-): Option.Option<HandCard> =>
-  Option.flatMap(
-    Array.findFirstIndex(cards, card => card === from),
-    index => Array.get(cards, (index + step + cards.length) % cards.length),
-  )
+export const steppedHandCard: {
+  (
+    from: HandCard,
+    step: number,
+  ): (cards: ReadonlyArray<HandCard>) => Option.Option<HandCard>
+  (
+    cards: ReadonlyArray<HandCard>,
+    from: HandCard,
+    step: number,
+  ): Option.Option<HandCard>
+} = Function.dual(
+  3,
+  (
+    cards: ReadonlyArray<HandCard>,
+    from: HandCard,
+    step: number,
+  ): Option.Option<HandCard> =>
+    Option.flatMap(
+      Array.findFirstIndex(cards, card => card === from),
+      index => Array.get(cards, (index + step + cards.length) % cards.length),
+    ),
+)
 
 export const RESET_TUTORIAL_BUTTON_ID = 'reset-tutorial'
 export const KEEP_TUTORIAL_BUTTON_ID = 'keep-tutorial'
 
-export const steppedHomeFocus = (
-  buttons: ReadonlyArray<HomeButton>,
-  maybeFocus: Option.Option<HomeButton>,
-  step: FocusStep,
-): HomeButton => {
-  const first = Array.headNonEmpty(HOME_BUTTONS)
-  return Option.match(maybeFocus, {
-    onNone: () => first,
-    onSome: focused => {
-      const index = pipe(
-        Array.findFirstIndex(buttons, button => button === focused),
-        Option.getOrElse(() => 0),
-      )
-      const count = buttons.length
-      return pipe(
-        Array.get(buttons, (index + FOCUS_STEP_OFFSET[step] + count) % count),
-        Option.getOrElse(() => first),
-      )
-    },
-  })
-}
+export const steppedHomeFocus: {
+  (
+    maybeFocus: Option.Option<HomeButton>,
+    step: FocusStep,
+  ): (buttons: ReadonlyArray<HomeButton>) => HomeButton
+  (
+    buttons: ReadonlyArray<HomeButton>,
+    maybeFocus: Option.Option<HomeButton>,
+    step: FocusStep,
+  ): HomeButton
+} = Function.dual(
+  3,
+  (
+    buttons: ReadonlyArray<HomeButton>,
+    maybeFocus: Option.Option<HomeButton>,
+    step: FocusStep,
+  ): HomeButton => {
+    const first = Array.headNonEmpty(HOME_BUTTONS)
+    return Option.match(maybeFocus, {
+      onNone: () => first,
+      onSome: focused => {
+        const index = pipe(
+          Array.findFirstIndex(buttons, button => button === focused),
+          Option.getOrElse(() => 0),
+        )
+        const count = buttons.length
+        return pipe(
+          Array.get(buttons, (index + FOCUS_STEP_OFFSET[step] + count) % count),
+          Option.getOrElse(() => first),
+        )
+      },
+    })
+  },
+)
 
 // HOME
 
@@ -246,17 +273,17 @@ export const seeNews = (model: Model): Model =>
       }),
   })
 
-export const turnNewsPage = (
-  model: Model,
-  step: number,
-  dayCount: number,
-): Model =>
+export const turnNewsPage: {
+  (step: number, dayCount: number): (model: Model) => Model
+  (model: Model, step: number, dayCount: number): Model
+} = Function.dual(3, (model: Model, step: number, dayCount: number): Model =>
   modifyFields(model, {
     home: home =>
       modifyFields(home, {
         newsPage: page => Math.max(0, Math.min(dayCount - 1, page + step)),
       }),
-  })
+  }),
+)
 
 // MUNCHOPEDIA
 
@@ -273,10 +300,10 @@ const openEntry = (model: Model, kind: ZombieKind): Model =>
       }),
   })
 
-export const showMunchopediaPage = (
-  model: Model,
-  page: MunchopediaPage,
-): Model =>
+export const showMunchopediaPage: {
+  (page: MunchopediaPage): (model: Model) => Model
+  (model: Model, page: MunchopediaPage): Model
+} = Function.dual(2, (model: Model, page: MunchopediaPage): Model =>
   MunchopediaPage.match(page, {
     List: () =>
       modifyFields(model, {
@@ -288,7 +315,8 @@ export const showMunchopediaPage = (
       modifyFields(model, {
         home: home => modifyFields(home, { munchopediaPage: () => page }),
       }),
-  })
+  }),
+)
 
 // END SCREENS
 
@@ -327,26 +355,38 @@ export const returnHome = (model: Model): Model => ({
 export const bestsFor = (model: Model): DifficultyBests =>
   model.bests.byDifficulty[model.difficulty.chosen]
 
-export const withBests = (
-  model: Model,
-  toBests: (bests: DifficultyBests) => DifficultyBests,
-  chosen: Difficulty = model.difficulty.chosen,
-): Model => {
-  return modifyFields(model, {
-    bests: bests =>
-      modifyFields(bests, {
-        byDifficulty: byDifficulty =>
-          modifyFields(byDifficulty, {
-            Easy: current => (chosen === 'Easy' ? toBests(current) : current),
-            Normal: current =>
-              chosen === 'Normal' ? toBests(current) : current,
-            Hard: current => (chosen === 'Hard' ? toBests(current) : current),
-            Nightmare: current =>
-              chosen === 'Nightmare' ? toBests(current) : current,
-          }),
-      }),
-  })
-}
+export const withBests: {
+  (
+    toBests: (bests: DifficultyBests) => DifficultyBests,
+    chosen?: Difficulty,
+  ): (model: Model) => Model
+  (
+    model: Model,
+    toBests: (bests: DifficultyBests) => DifficultyBests,
+    chosen?: Difficulty,
+  ): Model
+} = Function.dual(
+  isObjectFirst,
+  (
+    model: Model,
+    toBests: (bests: DifficultyBests) => DifficultyBests,
+    chosen: Difficulty = model.difficulty.chosen,
+  ): Model =>
+    modifyFields(model, {
+      bests: bests =>
+        modifyFields(bests, {
+          byDifficulty: byDifficulty =>
+            modifyFields(byDifficulty, {
+              Easy: current => (chosen === 'Easy' ? toBests(current) : current),
+              Normal: current =>
+                chosen === 'Normal' ? toBests(current) : current,
+              Hard: current => (chosen === 'Hard' ? toBests(current) : current),
+              Nightmare: current =>
+                chosen === 'Nightmare' ? toBests(current) : current,
+            }),
+        }),
+    }),
+)
 
 const fasterWin = (
   maybeFastestMs: Option.Option<number>,
@@ -409,40 +449,50 @@ const countRun = (
 // the save is written once a run.
 // NOTE: `played` is the run's difficulty, which an online co-op run takes
 // from the room.
-export const countRunFrom = (
-  before: Model,
-  after: Model,
-  played: Difficulty = after.difficulty.chosen,
-): Model => {
-  if (!isEndScreen(before.phase) && isEndScreen(after.phase)) {
-    return countRun(
-      after,
-      after.runTally,
-      after.stats.kills,
-      hasJustWon(before, after),
-      played,
-    )
-  } else if (isInRun(before.phase) && isOnHome(after.phase)) {
-    return modifyFields(
-      countRun(after, before.runTally, before.stats.kills, false, played),
-      { runTally: () => RunTally.Uncounted() },
-    )
-  } else {
-    return after
-  }
-}
+export const countRunFrom: {
+  (after: Model, played?: Difficulty): (before: Model) => Model
+  (before: Model, after: Model, played?: Difficulty): Model
+} = Function.dual(
+  isObjectSecond,
+  (
+    before: Model,
+    after: Model,
+    played: Difficulty = after.difficulty.chosen,
+  ): Model => {
+    if (!isEndScreen(before.phase) && isEndScreen(after.phase)) {
+      return countRun(
+        after,
+        after.runTally,
+        after.stats.kills,
+        hasJustWon(before, after),
+        played,
+      )
+    } else if (isInRun(before.phase) && isOnHome(after.phase)) {
+      return modifyFields(
+        countRun(after, before.runTally, before.stats.kills, false, played),
+        { runTally: () => RunTally.Uncounted() },
+      )
+    } else {
+      return after
+    }
+  },
+)
 
 // NOTE: the NEW ENTRY pop stays up on the end screen and the menu until the
 // entry is opened or another run starts. The dot on the rail stays until the
 // entry is opened.
-export const forgetNewEntriesFrom = (before: Model, after: Model): Model =>
+export const forgetNewEntriesFrom: {
+  (after: Model): (before: Model) => Model
+  (before: Model, after: Model): Model
+} = Function.dual(2, (before: Model, after: Model): Model =>
   !isInRun(before.phase) &&
   Phase.isAnyOf(['Preparation'])(after.phase) &&
   Array.isReadonlyArrayNonEmpty(after.home.newEntries)
     ? modifyFields(after, {
         home: home => modifyFields(home, { newEntries: () => [] }),
       })
-    : after
+    : after,
+)
 
 // FEEDBACK
 

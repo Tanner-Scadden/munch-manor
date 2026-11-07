@@ -38,7 +38,6 @@ import {
   RESTART_GRACE_TICKS,
   bulletInto,
   doomed,
-  holdingSecond,
   openLobbyByKey,
   pistolOf,
   pistolOnly,
@@ -53,6 +52,7 @@ import {
 import { asVeteran } from './veteran'
 import { FINAL_WAVE } from './wavePlans'
 import { STARTING_PISTOL } from './weapons'
+import { Arsenal } from './worldSchema'
 import { ZOMBIE_KINDS } from './zombies'
 
 const FRAME_MS = 50
@@ -93,10 +93,10 @@ const victorious: Model = modifyFocus(
       modifyFields(player, {
         hp: () => 3,
         arsenal: () =>
-          holdingSecond(
-            { kind: 'Smg', rounds: 210, loaded: 40, tier: 2 },
-            { ...STARTING_PISTOL, tier: 1 },
-          ),
+          Arsenal.HoldingSecond({
+            first: { ...STARTING_PISTOL, tier: 1 },
+            second: { kind: 'Smg', rounds: 210, loaded: 40, tier: 2 },
+          }),
       }),
   },
 )

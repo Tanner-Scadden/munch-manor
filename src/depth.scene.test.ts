@@ -12,7 +12,7 @@ import { focusOf, modifyFocus } from './party'
 import { playerShapes } from './playerView'
 import { STALL_BOX } from './shop'
 import { stallShapes } from './stall'
-import { zombieOf } from './testing'
+import { jsonOf, zombieOf } from './testing'
 import { zombieHealthBarShapes, zombieShapes } from './zombieView'
 
 const marker = (id: number): Canvas.Shape =>
@@ -40,8 +40,11 @@ const indexOf = (
   shapes: ReadonlyArray<Canvas.Shape>,
   shape: Canvas.Shape,
 ): number => {
-  const wanted = JSON.stringify(shape)
-  return shapes.findIndex(candidate => JSON.stringify(candidate) === wanted)
+  const wanted = jsonOf(shape)
+  return Option.getOrElse(
+    Array.findFirstIndex(shapes, candidate => jsonOf(candidate) === wanted),
+    () => -1,
+  )
 }
 
 const playerIndex = (current: Model): number =>

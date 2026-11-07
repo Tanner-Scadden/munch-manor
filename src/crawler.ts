@@ -1,4 +1,4 @@
-import { Array, Order, pipe } from 'effect'
+import { Array, Function, Order, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Level, distanceToBox, isSolidAt } from './arena'
@@ -146,13 +146,28 @@ const searchSpot = (
 // NOTE: the spot is drawn from the seeded generator when the Ankle Biter is
 // due, never planned in Preparation, since it must stay clear of wherever
 // the player stands by then. The door preview counts it as FLOOR.
-export const drawSurfacingSpot = (
-  level: Level,
-  state: number,
-  player: Vector,
-  traps: ReadonlyArray<Trap>,
-): Seeded<Vector> =>
-  searchSpot(level, state, player, traps, CRAWLER_RULES.draws)
+export const drawSurfacingSpot: {
+  (
+    state: number,
+    player: Vector,
+    traps: ReadonlyArray<Trap>,
+  ): (level: Level) => Seeded<Vector>
+  (
+    level: Level,
+    state: number,
+    player: Vector,
+    traps: ReadonlyArray<Trap>,
+  ): Seeded<Vector>
+} = Function.dual(
+  4,
+  (
+    level: Level,
+    state: number,
+    player: Vector,
+    traps: ReadonlyArray<Trap>,
+  ): Seeded<Vector> =>
+    searchSpot(level, state, player, traps, CRAWLER_RULES.draws),
+)
 
 export const burrowed = (): ZombieAction =>
   ZombieAction.Burrowed({
@@ -266,7 +281,10 @@ const stepCrawler =
 const hasCrawler = (zombies: ReadonlyArray<Zombie>): boolean =>
   Array.some(zombies, zombie => zombie.kind === CRAWLER_KIND)
 
-export const advanceCrawlers = (model: World, deltaMs: number): World => {
+export const advanceCrawlers: {
+  (deltaMs: number): (model: World) => World
+  (model: World, deltaMs: number): World
+} = Function.dual(2, (model: World, deltaMs: number): World => {
   if (!hasCrawler(model.zombies)) {
     return model
   }
@@ -283,7 +301,7 @@ export const advanceCrawlers = (model: World, deltaMs: number): World => {
       ...Array.flatMap(steps, ({ events }) => events),
     ],
   })
-}
+})
 
 // THE PLAYER'S ANKLES
 
@@ -299,24 +317,27 @@ export const ankleSlowAt = (zombies: ReadonlyArray<Zombie>): number =>
 const ANKLE_REACH_PX = 4
 
 // NOTE: in co-op an Ankle Biter slows only the player whose ankles it holds.
-export const ankleSlowNear = (
-  zombies: ReadonlyArray<Zombie>,
-  player: Vector,
-): number =>
-  Array.some(
-    zombies,
-    zombie =>
-      isWalking(zombie) &&
-      ZombieAction.isAnyOf(['Clinging'])(zombie.action) &&
-      circlesOverlap(
-        zombie,
-        bodyRadiusOf(zombie) + ANKLE_REACH_PX,
-        player,
-        PLAYER_RADIUS,
-      ),
-  )
-    ? CRAWLER_RULES.clingSlow
-    : 1
+export const ankleSlowNear: {
+  (player: Vector): (zombies: ReadonlyArray<Zombie>) => number
+  (zombies: ReadonlyArray<Zombie>, player: Vector): number
+} = Function.dual(
+  2,
+  (zombies: ReadonlyArray<Zombie>, player: Vector): number =>
+    Array.some(
+      zombies,
+      zombie =>
+        isWalking(zombie) &&
+        ZombieAction.isAnyOf(['Clinging'])(zombie.action) &&
+        circlesOverlap(
+          zombie,
+          bodyRadiusOf(zombie) + ANKLE_REACH_PX,
+          player,
+          PLAYER_RADIUS,
+        ),
+    )
+      ? CRAWLER_RULES.clingSlow
+      : 1,
+)
 
 export const surfacingProgress = (zombie: Zombie): number =>
   ZombieAction.isAnyOf(['Burrowed'])(zombie.action)

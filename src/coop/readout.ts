@@ -8,14 +8,14 @@ import { Schema } from 'effect'
 // the audit reads it through this one Schema. It imports only effect, so
 // the audit can load it without the game.
 const ReadoutSeat = Schema.Struct({
-  slot: Schema.Number,
-  x: Schema.Number,
-  y: Schema.Number,
-  hp: Schema.Number,
+  slot: Schema.Finite,
+  x: Schema.Finite,
+  y: Schema.Finite,
+  hp: Schema.Finite,
   life: Schema.String,
   ready: Schema.String,
-  kills: Schema.Number,
-  money: Schema.Number,
+  kills: Schema.Finite,
+  money: Schema.Finite,
   shop: Schema.String,
   // NOTE: the calling the room seated, as its word, so the audit can check it.
   calling: Schema.String,
@@ -27,18 +27,18 @@ const ReadoutSeat = Schema.Struct({
 export const AUDIT_PARAM = 'audit'
 
 export const Readout = Schema.Struct({
-  tick: Schema.Number,
+  tick: Schema.Finite,
   phase: Schema.String,
   mode: Schema.String,
   difficulty: Schema.String,
-  wave: Schema.Number,
+  wave: Schema.Finite,
   stall: Schema.Struct({
-    left: Schema.Number,
-    top: Schema.Number,
-    right: Schema.Number,
-    bottom: Schema.Number,
+    left: Schema.Finite,
+    top: Schema.Finite,
+    right: Schema.Finite,
+    bottom: Schema.Finite,
   }),
-  zombies: Schema.Array(Schema.Struct({ x: Schema.Number, y: Schema.Number })),
+  zombies: Schema.Array(Schema.Struct({ x: Schema.Finite, y: Schema.Finite })),
   players: Schema.Array(ReadoutSeat),
 })
 export type Readout = typeof Readout.Type

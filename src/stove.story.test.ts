@@ -46,6 +46,7 @@ import {
   ticksFor,
 } from './testing'
 import { PERK_RULES, carriedMagazine, freshGun, heldGun } from './weapons'
+import { Arsenal } from './worldSchema'
 
 // The kitchen's stove bench (src/stove.ts): a perk cooked into the gun in
 // hand, one a break, at a price that climbs, and what each perk does.
@@ -321,7 +322,8 @@ describe('what each perk does', () => {
       modifyFocus(atFridge(500), {
         player: player =>
           modifyFields(player, {
-            arsenal: () => holdingSecond(spicySmg, crispyPistol),
+            arsenal: () =>
+              Arsenal.HoldingSecond({ first: crispyPistol, second: spicySmg }),
           }),
       }),
       'Cooker',
@@ -335,7 +337,10 @@ describe('what each perk does', () => {
       ...pull,
       model(current => {
         expect(focusOf(current).player.arsenal).toEqual(
-          holdingSecond(freshGun('Cooker'), crispyPistol),
+          Arsenal.HoldingSecond({
+            first: crispyPistol,
+            second: freshGun('Cooker'),
+          }),
         )
       }),
     )

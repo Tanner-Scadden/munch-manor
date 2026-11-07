@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Function } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { bakeShapes, placeAt } from './sprite'
@@ -101,24 +101,41 @@ export const barWidthOf = (size: BarSize): number => BAR_SPECS[size].width
 
 // NOTE: `left` and `top` are the inside of the bar; the outline is one pixel
 // outside them. A bar with any health left shows at least one pixel of fill.
-export const healthBarShapes = (
-  size: BarSize,
-  tone: BarTone,
-  left: number,
-  top: number,
-  share: number,
-): ReadonlyArray<Canvas.Shape> => {
-  const { width } = BAR_SPECS[size]
-  const clamped = Math.min(1, Math.max(0, share))
-  const filled = Math.min(
-    width,
-    Math.max(clamped > 0 ? 1 : 0, Math.round(width * clamped)),
-  )
-  return size === 'Small'
-    ? [placeAt(left, top, SMALL_BARS[tone][filled] ?? [])]
-    : [
-        solid(left, top, LARGE.width, LARGE.height, BAR_TRACK),
-        ...fillShapes(LARGE, BAR_COLORS[tone], left, top, filled),
-        placeAt(left, top, LARGE_CAGE),
-      ]
-}
+export const healthBarShapes: {
+  (
+    tone: BarTone,
+    left: number,
+    top: number,
+    share: number,
+  ): (size: BarSize) => ReadonlyArray<Canvas.Shape>
+  (
+    size: BarSize,
+    tone: BarTone,
+    left: number,
+    top: number,
+    share: number,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  5,
+  (
+    size: BarSize,
+    tone: BarTone,
+    left: number,
+    top: number,
+    share: number,
+  ): ReadonlyArray<Canvas.Shape> => {
+    const { width } = BAR_SPECS[size]
+    const clamped = Math.min(1, Math.max(0, share))
+    const filled = Math.min(
+      width,
+      Math.max(clamped > 0 ? 1 : 0, Math.round(width * clamped)),
+    )
+    return size === 'Small'
+      ? [placeAt(left, top, SMALL_BARS[tone][filled] ?? [])]
+      : [
+          solid(left, top, LARGE.width, LARGE.height, BAR_TRACK),
+          ...fillShapes(LARGE, BAR_COLORS[tone], left, top, filled),
+          placeAt(left, top, LARGE_CAGE),
+        ]
+  },
+)

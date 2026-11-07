@@ -11,7 +11,7 @@ import { IS_COOP_RELEASED } from '../coop/release'
 import { readRoomLink } from '../coop/roomState'
 import * as Coop from '../coop/update'
 import { playRoomFrame } from '../coopPlay'
-import { makeCommand, makeStep } from '../definition'
+import { ApplicationDefinition, makeStep } from '../definition'
 import { isCoopKey } from '../home'
 import { MenuState, menuState } from '../menuState'
 import { Message } from '../message'
@@ -37,7 +37,7 @@ import { FetchBuild } from './version'
 // COMMAND
 
 // NOTE: a `?room=CODE` link, read once the splash is gone, joins that room.
-export const ReadRoomLink = makeCommand('ReadRoomLink', {
+export const ReadRoomLink = ApplicationDefinition.makeCommand('ReadRoomLink', {
   messages: [Message.CompletedReadRoomLink],
   handler: function* () {
     return () =>

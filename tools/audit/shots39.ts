@@ -12,22 +12,24 @@
 // exits with 1 on any miss.
 //   TAG=after bun run heavy -- bun tools/audit/shots39.ts
 // ONLY picks scenes, such as `ONLY=tag,pull`, and VIEWPORTS picks screens.
+import { Array, Console, Effect, Record } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
   SHOTS_DIR,
-  SHOT_VIEWPORTS,
-  TAG,
+  auditTag,
   deviceQuery,
   finish,
   harnessQuery,
   isPickedScene,
-  launch,
+  openBrowser,
   scenePages,
   settleAnimations,
   shot,
-  useHarness,
+  shotViewports,
 } from './lib'
+import { type AuditFailed, attempt } from './page'
 import { BREAK, IN_KITCHEN, LEARNED } from './scenes'
 
 type Scene = Readonly<{
@@ -37,7 +39,11 @@ type Scene = Readonly<{
   // which a shot with animations off holds at a hidden frame, so the pause
   // shot lets them run.
   isAnimated?: boolean
-  act?: (page: Page, problems: Array<string>, label: string) => Promise<void>
+  act?: (
+    page: Page,
+    problems: Array<string>,
+    label: string,
+  ) => Effect.Effect<void, AuditFailed>
 }>
 
 // NOTE: every scene plays its frames at once with `tick=N` (N frames of
@@ -61,20 +67,58 @@ const PRIZE_SEEDS = {
 
 const expectDoor =
   (tag: 'Open' | 'Offering' | 'Shut') =>
-  async (page: Page, problems: Array<string>, label: string) => {
-    const door = await page.evaluate(() => window.__model.fridge.door._tag)
-    if (door !== tag) {
-      problems.push(`${label}: the fridge door is ${door}, not ${tag}`)
-    }
-  }
+  (page: Page, problems: Array<string>, label: string) =>
+    Effect.gen(function* () {
+      const door = yield* attempt(() =>
+        page.evaluate(() => window.__model.fridge.door._tag),
+      )
+      if (door !== tag) {
+        problems.push(`${label}: the fridge door is ${door}, not ${tag}`)
+      }
+    })
 
-const PULL_SCENES: ReadonlyArray<Scene> = Object.entries(PRIZE_SEEDS).map(
+const PULL_SCENES: ReadonlyArray<Scene> = Array.map(
+  Record.toEntries(PRIZE_SEEDS),
   ([prize, seed]) => ({
     name: `pull-${prize}`,
     query: `${BREAK}&${AT_FRIDGE}&hold&fridgeseed=${seed}&tick=85`,
     act: expectDoor('Open'),
   }),
 )
+
+// NOTE: runs in the page, which has no Effect: plain loops, so no native
+// Array method is left for the Effect rules to flag.
+const readFit = () => {
+  const cards = document.querySelectorAll('.help-card')
+  let scrolls = 0
+  for (const element of [
+    document.scrollingElement,
+    ...document.querySelectorAll('*'),
+  ]) {
+    if (element instanceof HTMLElement) {
+      const overflow = getComputedStyle(element).overflowY
+      if (
+        element.scrollHeight > element.clientHeight + 1 &&
+        (overflow === 'auto' || overflow === 'scroll')
+      ) {
+        scrolls++
+      }
+    }
+  }
+  let off = 0
+  for (const card of cards) {
+    const box = card.getBoundingClientRect()
+    if (
+      box.left < 0 ||
+      box.top < 0 ||
+      box.right > window.innerWidth ||
+      box.bottom > window.innerHeight
+    ) {
+      off++
+    }
+  }
+  return { count: cards.length, scrolls, off }
+}
 
 const SCENES: ReadonlyArray<Scene> = [
   {
@@ -133,70 +177,56 @@ const SCENES: ReadonlyArray<Scene> = [
     name: 'pause',
     query: 'wave=3&start=wave&phase=paused&tick=24',
     isAnimated: true,
-    act: async (page, problems, label) => {
-      const fit = await page.evaluate(() => {
-        const cards = [...document.querySelectorAll('.help-card')]
-        const scrolls = [
-          document.scrollingElement,
-          ...document.querySelectorAll('*'),
-        ].filter(
-          element =>
-            element instanceof HTMLElement &&
-            element.scrollHeight > element.clientHeight + 1 &&
-            ['auto', 'scroll'].includes(getComputedStyle(element).overflowY),
-        ).length
-        const off = cards.filter(card => {
-          const box = card.getBoundingClientRect()
-          return (
-            box.left < 0 ||
-            box.top < 0 ||
-            box.right > window.innerWidth ||
-            box.bottom > window.innerHeight
-          )
-        }).length
-        return { count: cards.length, scrolls, off }
-      })
-      if (fit.count !== 10) {
-        problems.push(`${label}: ${fit.count} control cards, not 10`)
-      }
-      if (fit.off > 0) {
-        problems.push(`${label}: ${fit.off} control cards off screen`)
-      }
-      if (fit.scrolls > 0) {
-        problems.push(`${label}: ${fit.scrolls} panels scroll`)
-      }
-    },
+    act: (page, problems, label) =>
+      Effect.gen(function* () {
+        const fit = yield* attempt(() => page.evaluate(readFit))
+        if (fit.count !== 10) {
+          problems.push(`${label}: ${fit.count} control cards, not 10`)
+        }
+        if (fit.off > 0) {
+          problems.push(`${label}: ${fit.off} control cards off screen`)
+        }
+        if (fit.scrolls > 0) {
+          problems.push(`${label}: ${fit.scrolls} panels scroll`)
+        }
+      }),
   },
 ]
 
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev'])
-const problems: Array<string> = []
-for (const viewport of SHOT_VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* shotViewports
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev'])
+    const problems: Array<string> = []
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
+        }
+        const page = yield* pages.open(
+          viewport,
+          harnessQuery(scene.query, deviceQuery(viewport)),
+        )
+        const label = `${viewport.name} ${scene.name}`
+        yield* settleAnimations(page)
+        if (scene.act !== undefined) {
+          yield* scene.act(page, problems, label)
+        }
+        const name = `s39-${tag}-${viewport.name}-${scene.name}`
+        if (scene.isAnimated === true) {
+          yield* attempt(() =>
+            page.screenshot({ path: `${SHOTS_DIR}/${name}.png` }),
+          )
+        } else {
+          yield* shot(page, name)
+        }
+        yield* Console.log(`shot ${label}`)
+        pages.release(page)
+      }
     }
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
-    )
-    const label = `${viewport.name} ${scene.name}`
-    await settleAnimations(page)
-    if (scene.act !== undefined) {
-      await scene.act(page, problems, label)
-    }
-    const name = `s39-${TAG}-${viewport.name}-${scene.name}`
-    if (scene.isAnimated === true) {
-      await page.screenshot({ path: `${SHOTS_DIR}/${name}.png` })
-    } else {
-      await shot(page, name)
-    }
-    console.log(`shot ${label}`)
-    pages.release(page)
-  }
-}
-await pages.close()
-await browser.close()
-finish(problems, 'The Mystery Leftovers pass found no problems.')
+    yield* pages.close
+    yield* finish(problems, 'The Mystery Leftovers pass found no problems.')
+  }),
+)

@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { randoms, zombieOf } from './testing'
@@ -25,7 +26,7 @@ const pushApart = (zombie: Zombie, other: Zombie): Vector | undefined => {
 }
 
 const allPairs = (zombies: ReadonlyArray<Zombie>): ReadonlyArray<Vector> =>
-  zombies.map(zombie => {
+  Array.map(zombies, zombie => {
     if (!isGrounded(zombie)) {
       return { x: 0, y: 0 }
     }
@@ -53,7 +54,7 @@ const KINDS: ReadonlyArray<ZombieKind> = [
 
 const crowd = (seed: number, count: number, spread: number): Array<Zombie> => {
   const next = randoms(seed)
-  return Array.from({ length: count }, (_, index) => {
+  return globalThis.Array.from({ length: count }, (_, index) => {
     const kind = KINDS[Math.floor(next() * KINDS.length)] ?? 'Shambler'
     return zombieOf(kind, 100 + index, next() * spread, next() * spread)
   })
@@ -72,7 +73,7 @@ describe('separation', () => {
       const pushes = separationPushes(zombies)
       const wanted = allPairs(zombies)
       expect(pushes.length).toBe(wanted.length)
-      pushes.forEach((push, index) => {
+      Array.forEach(pushes, (push, index) => {
         expect(asZero(push.x)).toBe(asZero(wanted[index]?.x ?? NaN))
         expect(asZero(push.y)).toBe(asZero(wanted[index]?.y ?? NaN))
       })

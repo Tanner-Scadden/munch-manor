@@ -65,8 +65,9 @@ const DeviceRow = Schema.Struct({
 })
 
 const unavailable = () =>
-  new IdentityRefused({ failure: IdentityFailure.cases.Unavailable.make({}) })
+  IdentityRefused.make({ failure: IdentityFailure.cases.Unavailable.make({}) })
 
+/** @stability unstable */
 export const makeDeviceIdentity = (options: {
   readonly sql: SqlClient.SqlClient
   readonly api: IdentityApi

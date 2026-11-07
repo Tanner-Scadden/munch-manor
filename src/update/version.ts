@@ -1,7 +1,7 @@
-import { Effect, Option, pipe } from 'effect'
+import { Effect, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { makeCommand } from '../definition'
+import { ApplicationDefinition } from '../definition'
 import { Message } from '../message'
 import type { Model } from '../model'
 import {
@@ -19,7 +19,7 @@ import type { UpdateReturn } from './step'
 
 // COMMAND
 
-export const FetchBuild = makeCommand('FetchBuild', {
+export const FetchBuild = ApplicationDefinition.makeCommand('FetchBuild', {
   messages: [Message.CompletedFetchBuild, Message.FailedFetchBuild],
   handler: function* () {
     return () =>
@@ -33,43 +33,49 @@ export const FetchBuild = makeCommand('FetchBuild', {
   },
 })
 
-export const RegisterServiceWorker = makeCommand('RegisterServiceWorker', {
-  messages: [
-    Message.CompletedRegisterServiceWorker,
-    Message.FailedRegisterServiceWorker,
-  ],
-  handler: function* () {
-    return () =>
-      pipe(
-        registerServiceWorker,
-        Effect.as(Message.CompletedRegisterServiceWorker()),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedRegisterServiceWorker({ reason: error.reason }),
+export const RegisterServiceWorker = ApplicationDefinition.makeCommand(
+  'RegisterServiceWorker',
+  {
+    messages: [
+      Message.CompletedRegisterServiceWorker,
+      Message.FailedRegisterServiceWorker,
+    ],
+    handler: function* () {
+      return () =>
+        pipe(
+          registerServiceWorker,
+          Effect.as(Message.CompletedRegisterServiceWorker()),
+          Effect.catch(error =>
+            Effect.succeed(
+              Message.FailedRegisterServiceWorker({ reason: error.reason }),
+            ),
           ),
-        ),
-      )
+        )
+    },
   },
-})
+)
 
-export const UpdateServiceWorker = makeCommand('UpdateServiceWorker', {
-  messages: [
-    Message.CompletedUpdateServiceWorker,
-    Message.FailedUpdateServiceWorker,
-  ],
-  handler: function* () {
-    return () =>
-      pipe(
-        updateServiceWorker,
-        Effect.as(Message.CompletedUpdateServiceWorker()),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedUpdateServiceWorker({ reason: error.reason }),
+export const UpdateServiceWorker = ApplicationDefinition.makeCommand(
+  'UpdateServiceWorker',
+  {
+    messages: [
+      Message.CompletedUpdateServiceWorker,
+      Message.FailedUpdateServiceWorker,
+    ],
+    handler: function* () {
+      return () =>
+        pipe(
+          updateServiceWorker,
+          Effect.as(Message.CompletedUpdateServiceWorker()),
+          Effect.catch(error =>
+            Effect.succeed(
+              Message.FailedUpdateServiceWorker({ reason: error.reason }),
+            ),
           ),
-        ),
-      )
+        )
+    },
   },
-})
+)
 
 // VERSION
 
@@ -80,24 +86,27 @@ export const checkForUpdate = (model: Model): UpdateReturn =>
 
 // NOTE: a newer build also asks the service worker to look for it, so the
 // new build installs in the background before the player taps the chip.
-export const recordRemoteBuild = (
-  model: Model,
-  runningBuild: string,
-  remoteBuild: string,
-): UpdateReturn => {
-  const maybeNewer = maybeNewerBuild(runningBuild, remoteBuild)
-  const next = modifyFields(model, { maybeNewerBuild: () => maybeNewer })
-  return Option.isSome(maybeNewer) && isUsingServiceWorker(runningBuild)
-    ? { model: next, commands: [UpdateServiceWorker()] }
-    : { model: next }
-}
+export const recordRemoteBuild: {
+  (runningBuild: string, remoteBuild: string): (model: Model) => UpdateReturn
+  (model: Model, runningBuild: string, remoteBuild: string): UpdateReturn
+} = Function.dual(
+  3,
+  (model: Model, runningBuild: string, remoteBuild: string): UpdateReturn => {
+    const maybeNewer = maybeNewerBuild(runningBuild, remoteBuild)
+    const next = modifyFields(model, { maybeNewerBuild: () => maybeNewer })
+    return Option.isSome(maybeNewer) && isUsingServiceWorker(runningBuild)
+      ? { model: next, commands: [UpdateServiceWorker()] }
+      : { model: next }
+  },
+)
 
 // NOTE: the service worker registers once the splash is gone, so precaching
 // the game for offline play never slows the game's own first load.
-export const registerServiceWorkerAfterSplash = (
-  model: Model,
-  runningBuild: string,
-): UpdateReturn =>
+export const registerServiceWorkerAfterSplash: {
+  (runningBuild: string): (model: Model) => UpdateReturn
+  (model: Model, runningBuild: string): UpdateReturn
+} = Function.dual(2, (model: Model, runningBuild: string): UpdateReturn =>
   isUsingServiceWorker(runningBuild)
     ? { model, commands: [RegisterServiceWorker()] }
-    : { model }
+    : { model },
+)

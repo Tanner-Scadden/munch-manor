@@ -59,7 +59,7 @@ import {
   inHandOf,
   magazineOf,
 } from './weapons'
-import { type Player, Reload } from './worldSchema'
+import { Arsenal, type Player, Reload } from './worldSchema'
 
 // The knife (src/knife.ts) and the two gun slots (src/weapons.ts), played
 // through `update` the way a player plays them: F or a tap on the knife's
@@ -362,7 +362,10 @@ describe('the knife', () => {
       player: player =>
         modifyFields(player, {
           arsenal: () =>
-            holdingSecond(dry(freshGun('Shotgun')), dry(freshGun('Smg'))),
+            Arsenal.HoldingSecond({
+              first: dry(freshGun('Smg')),
+              second: dry(freshGun('Shotgun')),
+            }),
         }),
     })
     const seen = frames(send(allDry, FIRE_PRESS, FIRE_PUSH), 1)
@@ -479,7 +482,10 @@ describe('two gun slots', () => {
       Command.resolve(FocusShopItem, Message.CompletedFocusShopItem()),
       model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(
-          holdingFirst(freshGun('Smg'), freshGun('Shotgun')),
+          Arsenal.HoldingFirst({
+            first: freshGun('Shotgun'),
+            second: freshGun('Smg'),
+          }),
         )
         expect(
           Array.some(gunsOf(player.arsenal), gun => gun.kind === 'Pistol'),
@@ -490,7 +496,12 @@ describe('two gun slots', () => {
 
   test('Rattles sells the pistol back for $0, even to an empty wallet', () => {
     const traded = browsing(
-      armed(holdingSecond(freshGun('Shotgun'), freshGun('Smg'))),
+      armed(
+        Arsenal.HoldingSecond({
+          first: freshGun('Smg'),
+          second: freshGun('Shotgun'),
+        }),
+      ),
       0,
     )
     expect(SHOP_ITEMS.Pistol.price).toBe(0)
@@ -503,7 +514,10 @@ describe('two gun slots', () => {
       message(Message.ClickedBuyButton({ item: 'Pistol' })),
       model(({ seats: [{ player, wallet }] }) => {
         expect(player.arsenal).toEqual(
-          holdingSecond(STARTING_PISTOL, freshGun('Smg')),
+          Arsenal.HoldingSecond({
+            first: freshGun('Smg'),
+            second: STARTING_PISTOL,
+          }),
         )
         expect(heldGun(player.arsenal).loaded).toBe(PISTOL_MAGAZINE)
         expect(wallet.balance).toBe(0)
@@ -543,7 +557,7 @@ describe('two gun slots', () => {
       loaded: () => 0,
     })
     const stuck = update(
-      armed(holdingSecond(dry, spentFreeze)),
+      armed(Arsenal.HoldingSecond({ first: spentFreeze, second: dry })),
       Message.PressedPointer({
         pointerId: 1,
         device: 'Mouse',

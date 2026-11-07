@@ -29,24 +29,24 @@
 // nothing from the room), and resyncs (a message that would not apply).
 // Run it through the heavy guard, as a Shared job (one context per page):
 //   bun run heavy -- --shared bun tools/audit/coop.ts http://localhost:4398/ [players]
-import { Array, Order, Schema, pipe } from 'effect'
+import {
+  Array,
+  Clock,
+  Console,
+  Effect,
+  Option,
+  Order,
+  Schema,
+  pipe,
+} from 'effect'
 import type { Page } from 'playwright-core'
 
 import { type Readout } from '@game/coop/readout'
 
-import {
-  BASE,
-  IS_QUICK,
-  PICK_DIFFICULTY,
-  PICK_MODE,
-  PLAYERS,
-} from './coop/config'
+import { coopConfig } from './coop/config'
 import { type Held, heldOf, playFor, stopAll } from './coop/controllers'
 import {
   RANKS,
-  VIEWPORT,
-  VIEWPORT_NAME,
-  browser,
   check,
   contexts,
   filledSeats,
@@ -55,6 +55,9 @@ import {
   roomCodeOf,
   shot,
   until,
+  untilWithin,
+  viewportName,
+  viewportOf,
 } from './coop/players'
 import {
   type Seat,
@@ -64,8 +67,16 @@ import {
   readoutOf,
   slotOf,
 } from './coop/readouts'
-import { awaitGame, finish, nowMs, pollUntil, wait } from './lib'
-import { evaluateAs } from './page'
+import {
+  awaitGame,
+  countOf,
+  finish,
+  openBrowser,
+  pollUntil,
+  runAudit,
+  wait,
+} from './lib'
+import { attempt, evaluateAs, failWith } from './page'
 
 // HEROES
 
@@ -77,17 +88,21 @@ import { evaluateAs } from './page'
 // seat each slot as its hero.
 const HEROES = ['Handyman', 'TrackStar', 'PennyPincher'] as const
 
-const pickAtHome = async (page: Page, hero: string) => {
-  await page.click('#home-play')
-  await page.click('#lobby-hero')
-  await page.click(`.calling-card[data-calling="${hero}"]`)
-  await page.click('#lobby-back')
-}
+const pickAtHome = (page: Page, hero: string) =>
+  Effect.gen(function* () {
+    yield* attempt(() => page.click('#home-play'))
+    yield* attempt(() => page.click('#lobby-hero'))
+    yield* attempt(() => page.click(`.calling-card[data-calling="${hero}"]`))
+    yield* attempt(() => page.click('#lobby-back'))
+  })
 
-const pickInLobby = async (page: Page, hero: string) => {
-  await page.click('#coop-calling-pill')
-  await page.click(`.coop-calling-picker .calling-card[data-calling="${hero}"]`)
-}
+const pickInLobby = (page: Page, hero: string) =>
+  Effect.gen(function* () {
+    yield* attempt(() => page.click('#coop-calling-pill'))
+    yield* attempt(() =>
+      page.click(`.coop-calling-picker .calling-card[data-calling="${hero}"]`),
+    )
+  })
 
 // NOTE: the hero each filled seat shows, in seat order; YOU shows none.
 const heroesSeenBy = (page: Page) =>
@@ -100,510 +115,607 @@ const heroesSeenBy = (page: Page) =>
     ),
   )
 
-// ROOM BY CODE
-
-console.log(
-  `Co-op through the game UI at ${BASE}, ${PLAYERS} players, ${VIEWPORT_NAME}`,
-)
-const host = await openPlayer('host')
-await host.goto(BASE)
-await awaitGame(host)
-await pickAtHome(host, HEROES[0])
-await host.click('#home-coop')
-await until('the CO-OP tile opens the hub', () =>
-  host.getByRole('button', { name: /Quick play/ }).isVisible(),
-)
-await shot(host, 'hub')
-await host.getByRole('button', { name: 'Make a room for friends' }).click()
-await until(
-  'NEW ROOM lands in a lobby with a code',
-  async () => (await roomCodeOf(host)).length === 5,
-)
-const code = await roomCodeOf(host)
-console.log(`  room ${code}`)
-check(
-  new URL(host.url()).searchParams.get('room') === code,
-  'the address carries the room code',
-)
-
-const guests: Array<Page> = []
-for (const index of globalThis.Array.from(
-  { length: PLAYERS - 1 },
-  (_, i) => i,
-)) {
-  const guest = await openPlayer(`guest ${index + 1}`, index + 1)
-  const link = new URL(BASE)
-  link.searchParams.set('room', code)
-  await guest.goto(link.href)
-  await awaitGame(guest)
-  guests.push(guest)
-}
-const firstGuest = guests[0]
-const lastGuest = guests.at(-1)
-if (firstGuest === undefined || lastGuest === undefined) {
-  throw new Error('No guest page')
-}
-const everyone = [host, ...guests]
-const helds: Array<Held> = everyone.map(() => ({
-  keys: new Set(),
-  firing: false,
-}))
-
-for (const [index, page] of everyone.entries()) {
-  await until(
-    `player ${index + 1} sees ${PLAYERS} seats filled`,
-    async () => (await filledSeats(page)) === PLAYERS,
+const headOf = (page: Page, who: 'Me' | 'Other') =>
+  attempt(() =>
+    page
+      .locator(`.coop-seat[data-me="${who}"] .coop-seat-head`)
+      .nth(0)
+      .evaluate(element => getComputedStyle(element).backgroundImage),
   )
-}
-for (const [index, page] of guests.entries()) {
-  await pickInLobby(page, HEROES[index + 1] ?? 'Handyman')
-}
-for (const [index, page] of everyone.entries()) {
-  await until(
-    `player ${index + 1} sees every hero's prop in the lobby`,
-    async () =>
-      (await heroesSeenBy(page)).join() === HEROES.slice(0, PLAYERS).join(),
-  )
-}
-check(
-  (await host.locator('.coop-kick').count()) === PLAYERS - 1,
-  'the host can kick each guest',
-)
-check(
-  (await firstGuest.locator('.coop-kick').count()) === 0,
-  'a guest cannot kick',
-)
-await shot(host, 'lobby-host')
-
-const headOf = (page: Page, who: 'Me' | 'Other', at = 0) =>
-  page
-    .locator(`.coop-seat[data-me="${who}"] .coop-seat-head`)
-    .nth(at)
-    .evaluate(element => getComputedStyle(element).backgroundImage)
-const hostHead = await headOf(host, 'Me')
-const guestHead = await headOf(firstGuest, 'Me')
-check(hostHead !== guestHead, 'the host and the guest wear different looks')
-check(
-  (await headOf(host, 'Other')) === guestHead &&
-    (await headOf(firstGuest, 'Other')) === hostHead,
-  'each page draws the other player in their own look',
-)
 
 const rankOn = (page: Page, who: 'Me' | 'Other') =>
-  page.locator(`.coop-seat[data-me="${who}"] .coop-rank`).first().innerText()
-check(
-  (await rankOn(host, 'Me')) === `${RANKS[0]}` &&
-    (await rankOn(host, 'Other')) === `${RANKS[1]}` &&
-    (await rankOn(firstGuest, 'Me')) === `${RANKS[1]}` &&
-    (await rankOn(firstGuest, 'Other')) === `${RANKS[0]}`,
-  'each page reads the other players rank beside their name',
-)
-
-if (PICK_MODE !== undefined && PICK_DIFFICULTY !== undefined) {
-  await firstGuest.getByRole('button', { name: 'READY' }).click()
-  await until(
-    'a guest READY stamps on the host',
-    async () => (await host.locator('.coop-stamp').count()) === 1,
+  attempt(() =>
+    page.locator(`.coop-seat[data-me="${who}"] .coop-rank`).first().innerText(),
   )
-  await host.getByRole('button', { name: PICK_MODE, exact: true }).click()
-  await host.getByRole('button', { name: PICK_DIFFICULTY, exact: true }).click()
+
+const positionsOn = (page: Page) =>
+  Effect.map(
+    readoutOf(page),
+    readout =>
+      new Map(Array.map(readout?.players ?? [], seat => [seat.slot, seat])),
+  )
+
+const seatOf = (readout: Readout | undefined, slot: number) =>
+  Option.getOrUndefined(
+    Array.findFirst(readout?.players ?? [], seat => seat.slot === slot),
+  )
+
+const program = Effect.gen(function* () {
+  const config = yield* coopConfig
+  const viewportNameValue = yield* viewportName
+  const viewport = viewportOf(viewportNameValue)
+  const browser = yield* openBrowser
+  const players = config.players
+  const pickMode = config.pickMode
+  const pickDifficulty = config.pickDifficulty
+  const heroLine = Array.join(Array.take(HEROES, players), ',')
+
+  // ROOM BY CODE
+
+  yield* Console.log(
+    `Co-op through the game UI at ${config.base}, ${players} players, ${viewportNameValue}`,
+  )
+  const host = yield* openPlayer(browser, 'host', 0)
+  yield* attempt(() => host.goto(config.base))
+  yield* awaitGame(host)
+  yield* pickAtHome(host, HEROES[0])
+  yield* attempt(() => host.click('#home-coop'))
+  yield* until(
+    'the CO-OP tile opens the hub',
+    attempt(() => host.getByRole('button', { name: /Quick play/ }).isVisible()),
+  )
+  yield* shot(host, 'hub')
+  yield* attempt(() =>
+    host.getByRole('button', { name: 'Make a room for friends' }).click(),
+  )
+  yield* until(
+    'NEW ROOM lands in a lobby with a code',
+    Effect.map(roomCodeOf(host), roomCode => roomCode.length === 5),
+  )
+  const code = yield* roomCodeOf(host)
+  yield* Console.log(`  room ${code}`)
+  yield* check(
+    new URL(host.url()).searchParams.get('room') === code,
+    'the address carries the room code',
+  )
+
+  const guests: Array<Page> = []
+  for (const index of globalThis.Array.from(
+    { length: players - 1 },
+    (_, i) => i,
+  )) {
+    const guest = yield* openPlayer(browser, `guest ${index + 1}`, index + 1)
+    const link = new URL(config.base)
+    link.searchParams.set('room', code)
+    yield* attempt(() => guest.goto(link.href))
+    yield* awaitGame(guest)
+    guests.push(guest)
+  }
+  const firstGuest = guests[0]
+  const lastGuest = Option.getOrUndefined(Array.last(guests))
+  if (firstGuest === undefined || lastGuest === undefined) {
+    return yield* failWith('No guest page')
+  }
+  const everyone = [host, ...guests]
+  const helds: Array<Held> = Array.map(everyone, () => ({
+    keys: new Set(),
+    firing: false,
+  }))
+
   for (const [index, page] of everyone.entries()) {
-    await until(
-      `player ${index + 1} sees ${PICK_MODE} on ${PICK_DIFFICULTY}`,
-      async () =>
-        (await page
-          .locator(`.coop-picks[aria-label="${PICK_MODE}, ${PICK_DIFFICULTY}"]`)
-          .count()) === 1,
+    yield* until(
+      `player ${index + 1} sees ${players} seats filled`,
+      Effect.map(filledSeats(page), filled => filled === players),
     )
   }
-  await until(
-    'the pick takes back the READY stamps',
-    async () => (await host.locator('.coop-stamp').count()) === 0,
-  )
-  await shot(host, 'picks-host')
-  await shot(firstGuest, 'picks-guest')
-}
+  for (const [index, page] of guests.entries()) {
+    yield* pickInLobby(page, HEROES[index + 1] ?? 'Handyman')
+  }
+  for (const [index, page] of everyone.entries()) {
+    yield* until(
+      `player ${index + 1} sees every hero's prop in the lobby`,
+      Effect.map(
+        heroesSeenBy(page),
+        heroes => Array.join(heroes, ',') === heroLine,
+      ),
+    )
+  }
+  const hostKicks = yield* countOf(host, '.coop-kick')
+  yield* check(hostKicks === players - 1, 'the host can kick each guest')
+  const guestKicks = yield* countOf(firstGuest, '.coop-kick')
+  yield* check(guestKicks === 0, 'a guest cannot kick')
+  yield* shot(host, 'lobby-host')
 
-for (const page of everyone.slice(0, -1)) {
-  await page.getByRole('button', { name: 'READY' }).click()
-}
-await until(
-  'the READY stamps show on the host',
-  async () => (await host.locator('.coop-stamp').count()) === PLAYERS - 1,
-)
-await lastGuest.getByRole('button', { name: 'READY' }).click()
-
-for (const [index, page] of everyone.entries()) {
-  await until(
-    `player ${index + 1} plays the room's World in the game's own scene`,
-    async () =>
-      (await readoutOf(page))?.players.length === PLAYERS &&
-      (await isOnArena(page)) &&
-      (await page.locator('.game-canvas').isVisible()),
+  const hostHead = yield* headOf(host, 'Me')
+  const guestHead = yield* headOf(firstGuest, 'Me')
+  yield* check(
+    hostHead !== guestHead,
+    'the host and the guest wear different looks',
   )
-}
-for (const [index, page] of everyone.entries()) {
-  const maybeReadout = await readoutOf(page)
-  const seated =
-    maybeReadout === undefined
-      ? undefined
-      : pipe(
-          maybeReadout.players,
-          Array.sort(Order.mapInput(Order.Number, (seat: Seat) => seat.slot)),
-          Array.map(seat => seat.calling),
+  const hostSeesGuest = (yield* headOf(host, 'Other')) === guestHead
+  yield* check(
+    hostSeesGuest && (yield* headOf(firstGuest, 'Other')) === hostHead,
+    'each page draws the other player in their own look',
+  )
+
+  const ranksRead =
+    (yield* rankOn(host, 'Me')) === `${RANKS[0]}` &&
+    (yield* rankOn(host, 'Other')) === `${RANKS[1]}` &&
+    (yield* rankOn(firstGuest, 'Me')) === `${RANKS[1]}` &&
+    (yield* rankOn(firstGuest, 'Other')) === `${RANKS[0]}`
+  yield* check(
+    ranksRead,
+    'each page reads the other players rank beside their name',
+  )
+
+  if (pickMode !== undefined && pickDifficulty !== undefined) {
+    yield* attempt(() =>
+      firstGuest.getByRole('button', { name: 'READY' }).click(),
+    )
+    yield* until(
+      'a guest READY stamps on the host',
+      Effect.map(countOf(host, '.coop-stamp'), count => count === 1),
+    )
+    yield* attempt(() =>
+      host.getByRole('button', { name: pickMode, exact: true }).click(),
+    )
+    yield* attempt(() =>
+      host.getByRole('button', { name: pickDifficulty, exact: true }).click(),
+    )
+    for (const [index, page] of everyone.entries()) {
+      yield* until(
+        `player ${index + 1} sees ${pickMode} on ${pickDifficulty}`,
+        Effect.map(
+          countOf(
+            page,
+            `.coop-picks[aria-label="${pickMode}, ${pickDifficulty}"]`,
+          ),
+          count => count === 1,
+        ),
+      )
+    }
+    yield* until(
+      'the pick takes back the READY stamps',
+      Effect.map(countOf(host, '.coop-stamp'), count => count === 0),
+    )
+    yield* shot(host, 'picks-host')
+    yield* shot(firstGuest, 'picks-guest')
+  }
+
+  for (const page of Array.dropRight(everyone, 1)) {
+    yield* attempt(() => page.getByRole('button', { name: 'READY' }).click())
+  }
+  yield* until(
+    'the READY stamps show on the host',
+    Effect.map(countOf(host, '.coop-stamp'), count => count === players - 1),
+  )
+  yield* attempt(() => lastGuest.getByRole('button', { name: 'READY' }).click())
+
+  for (const [index, page] of everyone.entries()) {
+    yield* until(
+      `player ${index + 1} plays the room's World in the game's own scene`,
+      Effect.gen(function* () {
+        const readout = yield* readoutOf(page)
+        return (
+          readout?.players.length === players &&
+          (yield* isOnArena(page)) &&
+          (yield* attempt(() => page.locator('.game-canvas').isVisible()))
         )
-  check(
-    seated?.join() === HEROES.slice(0, PLAYERS).join(),
-    `player ${index + 1} sees the room seat ${HEROES.slice(0, PLAYERS).join(', ')} (${seated?.join(', ')})`,
-  )
-}
-if (PICK_MODE !== undefined && PICK_DIFFICULTY !== undefined) {
+      }),
+    )
+  }
   for (const [index, page] of everyone.entries()) {
-    const readout = await readoutOf(page)
-    check(
-      readout?.mode === PICK_MODE && readout.difficulty === PICK_DIFFICULTY,
-      `player ${index + 1} plays ${PICK_MODE} on ${PICK_DIFFICULTY} (${readout?.mode} on ${readout?.difficulty})`,
+    const maybeReadout = yield* readoutOf(page)
+    const seated =
+      maybeReadout === undefined
+        ? undefined
+        : pipe(
+            maybeReadout.players,
+            Array.sort(Order.mapInput(Order.Number, (seat: Seat) => seat.slot)),
+            Array.map(seat => seat.calling),
+          )
+    yield* check(
+      (seated === undefined ? undefined : Array.join(seated, ',')) === heroLine,
+      `player ${index + 1} sees the room seat ${Array.join(Array.take(HEROES, players), ', ')} (${seated === undefined ? undefined : Array.join(seated, ', ')})`,
     )
   }
-}
-await wait(400)
-await shot(host, 'countdown')
-const startNet = await Promise.all(everyone.map(netOf))
-const startedMs = nowMs()
-
-// NOTE: the link is measured over the fight, while the room still sends,
-// or until now on a phone, which only fights for its pictures.
-const linkNow = async () => ({
-  nets: await Promise.all(everyone.map(netOf)),
-  atMs: nowMs(),
-})
-let linkAtEnd: Awaited<ReturnType<typeof linkNow>> | undefined
-
-// WALKING
-
-const positionsOn = async (page: Page) =>
-  new Map((await readoutOf(page))?.players.map(seat => [seat.slot, seat]) ?? [])
-
-// NOTE: everyone holds their key until the guest's page draws every player
-// moved, not for a fixed time: on a slow link the others' steps come down
-// late, and a reading taken after a fixed wait missed them.
-const before = await positionsOn(firstGuest)
-await Promise.all(
-  everyone.map((page, index) =>
-    page.keyboard.down(index % 2 === 0 ? 'KeyD' : 'KeyA'),
-  ),
-)
-const movedOn = async (page: Page) =>
-  [...(await positionsOn(page)).values()].filter(
-    seat => Math.abs(seat.x - (before.get(seat.slot)?.x ?? seat.x)) > 10,
-  )
-const { last: moved } = await pollUntil(
-  () => movedOn(firstGuest).catch(() => []),
-  seats => seats.length === PLAYERS,
-  100,
-  10_000,
-)
-await Promise.all(
-  everyone.map((page, index) =>
-    page.keyboard.up(index % 2 === 0 ? 'KeyD' : 'KeyA'),
-  ),
-)
-const guestSlot = await slotOf(firstGuest)
-check(
-  moved.filter(seat => seat.slot !== guestSlot).length === PLAYERS - 1,
-  `a guest sees the ${PLAYERS - 1} others walk`,
-)
-check(
-  moved.some(seat => seat.slot === guestSlot),
-  'a guest walks its own player, predicted',
-)
-await shot(firstGuest, 'walked')
-
-// READY STARTS THE WAVE
-
-for (const page of everyone) {
-  await page.keyboard.press('Enter')
-}
-await until(
-  'READY from everyone starts wave 1 before its clock',
-  async () => (await readoutOf(host))?.phase === 'Wave',
-  4000,
-)
-
-// NOTE: a phone draws the upright or sideways layout with its own camera,
-// so the scripted mouse aim (which reads the desktop's still parlour) is
-// off there: on a phone the players fight a while for the pictures, and
-// the desktop run checks the kills, the revive, the break, and the shop.
-const isPhone = VIEWPORT_NAME !== 'd1280'
-
-if (isPhone) {
-  await playFor(
-    everyone,
-    helds,
-    () => 'Fight',
-    -1,
-    async () => false,
-    12_000,
-  )
-  // NOTE: keys made each phone a keyboard; a tap makes it a touch screen
-  // again, which draws the phone's own layout and its touch controls.
-  for (const [index, page] of everyone.entries()) {
-    await stopAll(page, heldOf(helds, index))
-    await page.touchscreen.tap(VIEWPORT.width / 2, VIEWPORT.height * 0.45)
-  }
-  await wait(500)
-  await shot(host, 'wave')
-  await shot(firstGuest, 'wave-guest')
-} else {
-  // THE FIGHT AND A REVIVE
-
-  const killsOn = async (page: Page) =>
-    (await readoutOf(page))?.players.reduce(
-      (sum, seat) => sum + seat.kills,
-      0,
-    ) ?? 0
-
-  const shotKills = await playFor(
-    everyone,
-    helds,
-    () => 'Fight',
-    -1,
-    async () => (await killsOn(host)) >= 3,
-    60_000,
-  )
-  check(shotKills, 'the players shoot zombies, each kill to its shooter')
-  // NOTE: kept in case the run ends before the revive's reading below.
-  linkAtEnd = await linkNow()
-  await shot(host, 'fight')
-  await shot(firstGuest, 'fight-guest')
-
-  const feeder = everyone.length - 1
-  const feederSlot = await slotOf(lastGuest)
-  // NOTE: the others guard meanwhile, firing only at what comes at them, or
-  // they shoot the zombies before any reaches the feeder.
-  const downed = await playFor(
-    everyone,
-    helds,
-    index => (index === feeder ? 'Feed' : 'Guard'),
-    feederSlot,
-    async () =>
-      (await readoutOf(host))?.players.find(seat => seat.slot === feederSlot)
-        ?.life === 'Downed',
-    90_000,
-  )
-  check(downed, 'a player who walks into the zombies goes down')
-  if (downed) {
-    await shot(host, 'downed')
-    const revived = await playFor(
-      everyone,
-      helds,
-      index => (index === 0 ? 'Revive' : index === feeder ? 'Idle' : 'Fight'),
-      feederSlot,
-      async () =>
-        (await readoutOf(host))?.players.find(seat => seat.slot === feederSlot)
-          ?.life === 'Standing',
-      12_000,
-    )
-    check(revived, 'a teammate standing still beside them revives them')
-    await shot(host, 'revived')
-  }
-
-  const linkAfterRevive = await linkNow()
-  if (linkAfterRevive.nets.every(net => net !== undefined)) {
-    linkAtEnd = linkAfterRevive
-  }
-
-  // THE BREAK, THE STALL, AND READY
-
-  // NOTE: everyone clears the rest of the wave. A teammate left standing
-  // idle was eaten, and then the host alone, and the party wiped back to
-  // the lobby. The break's bonus pays for something at the stall. A wipe
-  // ends the step at once (no readout off the arena) and says so.
-  const isBreak = (readout: Readout | undefined) =>
-    readout?.phase === 'Preparation' && readout.wave === 2
-  await playFor(
-    everyone,
-    helds,
-    () => 'Fight',
-    -1,
-    async () => !(await isOnArena(host)) || isBreak(await readoutOf(host)),
-    180_000,
-  )
-  check(await isOnArena(host), 'the party lives through wave 1')
-  check(
-    isBreak(await readoutOf(host)),
-    'the wave is cleared and the next break opens',
-  )
-  await Promise.all(
-    everyone.map((page, index) => stopAll(page, heldOf(helds, index))),
-  )
-  await shot(host, 'break')
-
-  const moneyBefore = (await ownSeatOf(host))?.money ?? 0
-  const atStall = await playFor(
-    everyone,
-    helds,
-    index => (index === 0 ? 'Shop' : 'Idle'),
-    -1,
-    async () => (await ownSeatOf(host))?.shop === 'Browsing',
-    15_000,
-  )
-  check(atStall, 'the host walks into the stall')
-  await Promise.all(
-    everyone.map((page, index) => stopAll(page, heldOf(helds, index))),
-  )
-  const shopOpen = await until(
-    'one shop dialog opens, for the host only',
-    async () =>
-      (await host.locator('dialog#shop').count()) === 1 &&
-      (await host.locator('dialog[open]').count()) === 1 &&
-      (await firstGuest.locator('.shop-dialog[open]').count()) === 0,
-  )
-  if (shopOpen) {
-    await shot(host, 'shop')
-    const available = host.locator(
-      '.shop-dialog[open] li[data-verdict="available"] button',
-    )
-    const tabs = host.locator('.shop-dialog[open] .shop-tab')
-    for (const index of globalThis.Array.from(
-      { length: await tabs.count() },
-      (_, i) => i,
-    )) {
-      if ((await available.count()) > 0) {
-        break
-      }
-      await tabs.nth(index).click()
-      await until(
-        `shop tab ${index + 1} opens`,
-        async () =>
-          (await tabs.nth(index).getAttribute('aria-selected')) === 'true',
-        5000,
+  if (pickMode !== undefined && pickDifficulty !== undefined) {
+    for (const [index, page] of everyone.entries()) {
+      const readout = yield* readoutOf(page)
+      yield* check(
+        readout?.mode === pickMode && readout.difficulty === pickDifficulty,
+        `player ${index + 1} plays ${pickMode} on ${pickDifficulty} (${readout?.mode} on ${readout?.difficulty})`,
       )
     }
-    if ((await available.count()) > 0) {
-      await shot(host, 'shop-tab')
-      await available.first().click()
-      await until(
-        'a purchase goes to the room and the money comes off',
-        async () => ((await ownSeatOf(host))?.money ?? 0) < moneyBefore,
-        5000,
-      )
-    } else {
-      console.log(`  note nothing affordable with $${moneyBefore}`)
-    }
-    await host.keyboard.press('Escape')
-    await until(
-      'closing the shop tells the room',
-      async () => (await ownSeatOf(host))?.shop !== 'Browsing',
-      5000,
-    )
   }
+  yield* wait(400)
+  yield* shot(host, 'countdown')
+  const netsOfEveryone = Effect.forEach(everyone, netOf, {
+    concurrency: 'unbounded',
+  })
+  const startNet = yield* netsOfEveryone
+  const startedMs = yield* Clock.currentTimeMillis
+
+  // NOTE: the link is measured over the fight, while the room still sends,
+  // or until now on a phone, which only fights for its pictures.
+  const linkNow = Effect.gen(function* () {
+    const nets = yield* netsOfEveryone
+    const atMs = yield* Clock.currentTimeMillis
+    return { nets, atMs }
+  })
+  let linkAtEnd: Effect.Success<typeof linkNow> | undefined
+
+  // WALKING
+
+  // NOTE: everyone holds their key until the guest's page draws every player
+  // moved, not for a fixed time: on a slow link the others' steps come down
+  // late, and a reading taken after a fixed wait missed them.
+  const before = yield* positionsOn(firstGuest)
+  const walkKeyOf = (index: number) => (index % 2 === 0 ? 'KeyD' : 'KeyA')
+  yield* Effect.forEach(
+    everyone,
+    (page, index) => attempt(() => page.keyboard.down(walkKeyOf(index))),
+    { concurrency: 'unbounded', discard: true },
+  )
+  const movedOn = (page: Page) =>
+    Effect.map(positionsOn(page), positions =>
+      Array.filter(
+        [...positions.values()],
+        seat => Math.abs(seat.x - (before.get(seat.slot)?.x ?? seat.x)) > 10,
+      ),
+    )
+  const { last: moved } = yield* pollUntil(
+    movedOn(firstGuest).pipe(
+      Effect.orElseSucceed((): ReadonlyArray<Seat> => []),
+    ),
+    seats => seats.length === players,
+    100,
+    10_000,
+  )
+  yield* Effect.forEach(
+    everyone,
+    (page, index) => attempt(() => page.keyboard.up(walkKeyOf(index))),
+    { concurrency: 'unbounded', discard: true },
+  )
+  const guestSlot = yield* slotOf(firstGuest)
+  yield* check(
+    Array.filter(moved, seat => seat.slot !== guestSlot).length === players - 1,
+    `a guest sees the ${players - 1} others walk`,
+  )
+  yield* check(
+    Array.some(moved, seat => seat.slot === guestSlot),
+    'a guest walks its own player, predicted',
+  )
+  yield* shot(firstGuest, 'walked')
+
+  // READY STARTS THE WAVE
 
   for (const page of everyone) {
-    await page.keyboard.press('Enter')
+    yield* attempt(() => page.keyboard.press('Enter'))
   }
-  await until(
-    'READY over everyone shows, then wave 2 starts',
-    async () => {
-      const readout = await readoutOf(host)
-      return readout?.phase === 'Wave' && readout.wave === 2
-    },
-    6000,
+  yield* untilWithin(
+    'READY from everyone starts wave 1 before its clock',
+    Effect.map(readoutOf(host), readout => readout?.phase === 'Wave'),
+    4000,
   )
-}
 
-// THE LINK
-
-const endNet = linkAtEnd ?? (await linkNow())
-const seconds = (endNet.atMs - startedMs) / 1000
-for (const [index, net] of endNet.nets.entries()) {
-  const start = startNet[index]
-  if (net === undefined || start === undefined) {
-    console.log(`  player ${index + 1}: no link readout (not in the run)`)
-    continue
-  }
-  const kbps = (net.bytesIn - start.bytesIn) / 1024 / seconds
-  const inputs = (net.inputsOut - start.inputsOut) / seconds
-  console.log(
-    `  player ${index + 1}: round trip ${net.rttMs} ms, down ${kbps.toFixed(2)} KB/s over ${net.framesIn - start.framesIn} messages (${((net.framesIn - start.framesIn) / seconds).toFixed(1)} a second), up ${inputs.toFixed(1)} inputs a second, ${net.corrections} corrections (at most ${net.correctionPx} px)`,
+  // NOTE: a phone draws the upright or sideways layout with its own camera,
+  // so the scripted mouse aim (which reads the desktop's still parlour) is
+  // off there: on a phone the players fight a while for the pictures, and
+  // the desktop run checks the kills, the revive, the break, and the shop.
+  const isPhone = viewportNameValue !== 'd1280'
+  const stopEveryone = Effect.forEach(
+    everyone,
+    (page, index) =>
+      heldOf(helds, index).pipe(Effect.flatMap(held => stopAll(page, held))),
+    { concurrency: 'unbounded', discard: true },
   )
-  console.log(
-    `  player ${index + 1}: hits seen ${net.lookedHits - start.lookedHits}, confirmed ${net.confirmedHits - start.confirmedHits}; drawn ${net.delayMs} ms behind; ${net.stalls - start.stalls} stalls, ${net.resyncs - start.resyncs} resyncs (the longest gap all session ${net.longestStallMs} ms)`,
-  )
-  check(net.rttMs > 0, `player ${index + 1} measured a round trip`)
-}
 
-// REJOIN
+  if (isPhone) {
+    yield* playFor(
+      everyone,
+      helds,
+      () => 'Fight',
+      -1,
+      Effect.succeed(false),
+      12_000,
+    )
+    // NOTE: keys made each phone a keyboard; a tap makes it a touch screen
+    // again, which draws the phone's own layout and its touch controls.
+    for (const [index, page] of everyone.entries()) {
+      const held = yield* heldOf(helds, index)
+      yield* stopAll(page, held)
+      yield* attempt(() =>
+        page.touchscreen.tap(viewport.width / 2, viewport.height * 0.45),
+      )
+    }
+    yield* wait(500)
+    yield* shot(host, 'wave')
+    yield* shot(firstGuest, 'wave-guest')
+  } else {
+    // THE FIGHT AND A REVIVE
 
-const rejoiner = firstGuest
-const rejoinSlot = await slotOf(rejoiner)
-await rejoiner.reload()
-await awaitGame(rejoiner)
-await until(
-  'a reloaded guest rejoins its seat from the address',
-  async () =>
-    (await slotOf(rejoiner)) === rejoinSlot &&
-    (await readoutOf(rejoiner))?.players.length === PLAYERS,
-)
-await shot(rejoiner, 'rejoined')
+    const killsOn = (page: Page) =>
+      Effect.map(readoutOf(page), readout =>
+        Array.reduce(
+          readout?.players ?? [],
+          0,
+          (sum, seat) => sum + seat.kills,
+        ),
+      )
 
-// LEAVE
+    const shotKills = yield* playFor(
+      everyone,
+      helds,
+      () => 'Fight',
+      -1,
+      Effect.map(killsOn(host), kills => kills >= 3),
+      60_000,
+    )
+    yield* check(
+      shotKills,
+      'the players shoot zombies, each kill to its shooter',
+    )
+    // NOTE: kept in case the run ends before the revive's reading below.
+    linkAtEnd = yield* linkNow
+    yield* shot(host, 'fight')
+    yield* shot(firstGuest, 'fight-guest')
 
-const leaver = lastGuest
-await leaver.getByRole('button', { name: 'Leave the room' }).click()
-await until('LEAVE lands back on the hub', () =>
-  leaver.getByRole('button', { name: /Quick play/ }).isVisible(),
-)
-check(
-  new URL(leaver.url()).searchParams.get('room') === null,
-  'leaving clears the room from the address',
-)
+    const feeder = everyone.length - 1
+    const feederSlot = yield* slotOf(lastGuest)
+    const feederLife = Effect.map(
+      readoutOf(host),
+      readout => seatOf(readout, feederSlot)?.life,
+    )
+    // NOTE: the others guard meanwhile, firing only at what comes at them, or
+    // they shoot the zombies before any reaches the feeder.
+    const downed = yield* playFor(
+      everyone,
+      helds,
+      index => (index === feeder ? 'Feed' : 'Guard'),
+      feederSlot,
+      Effect.map(feederLife, life => life === 'Downed'),
+      90_000,
+    )
+    yield* check(downed, 'a player who walks into the zombies goes down')
+    if (downed) {
+      yield* shot(host, 'downed')
+      const revived = yield* playFor(
+        everyone,
+        helds,
+        index => (index === 0 ? 'Revive' : index === feeder ? 'Idle' : 'Fight'),
+        feederSlot,
+        Effect.map(feederLife, life => life === 'Standing'),
+        12_000,
+      )
+      yield* check(
+        revived,
+        'a teammate standing still beside them revives them',
+      )
+      yield* shot(host, 'revived')
+    }
 
-// QUICK PLAY
+    const linkAfterRevive = yield* linkNow
+    if (Array.every(linkAfterRevive.nets, net => net !== undefined)) {
+      linkAtEnd = linkAfterRevive
+    }
 
-if (IS_QUICK) {
-  const quickOne = await openPlayer('quick 1')
-  const quickTwo = await openPlayer('quick 2')
-  const quick = [quickOne, quickTwo]
-  for (const page of quick) {
-    await page.goto(BASE)
-    await awaitGame(page)
-    await page.click('#home-coop')
-    await page.getByRole('button', { name: /Quick play/ }).click()
-  }
-  await until(
-    'two queued players see two heads',
-    async () =>
-      (await quickOne
-        .locator('.coop-queue-seat[data-state="Filled"]')
-        .count()) === 2,
-  )
-  await shot(quickOne, 'queue')
-  await until(
-    'the offer to start with two comes',
-    () => quickOne.locator('.coop-offer-start').isVisible(),
-    60_000,
-  )
-  for (const page of quick) {
-    await page.locator('.coop-offer-start').click()
-  }
-  for (const [index, page] of quick.entries()) {
-    await until(
-      `quick player ${index + 1} lands in a lobby`,
-      async () => (await filledSeats(page)) === 2,
+    // THE BREAK, THE STALL, AND READY
+
+    // NOTE: everyone clears the rest of the wave. A teammate left standing
+    // idle was eaten, and then the host alone, and the party wiped back to
+    // the lobby. The break's bonus pays for something at the stall. A wipe
+    // ends the step at once (no readout off the arena) and says so.
+    const isBreak = (readout: Readout | undefined) =>
+      readout?.phase === 'Preparation' && readout.wave === 2
+    yield* playFor(
+      everyone,
+      helds,
+      () => 'Fight',
+      -1,
+      Effect.gen(function* () {
+        if (!(yield* isOnArena(host))) {
+          return true
+        }
+        const readout = yield* readoutOf(host)
+        return isBreak(readout)
+      }),
+      180_000,
+    )
+    const isStillOn = yield* isOnArena(host)
+    yield* check(isStillOn, 'the party lives through wave 1')
+    const afterWave = yield* readoutOf(host)
+    yield* check(
+      isBreak(afterWave),
+      'the wave is cleared and the next break opens',
+    )
+    yield* stopEveryone
+    yield* shot(host, 'break')
+
+    const moneyBefore = (yield* ownSeatOf(host))?.money ?? 0
+    const atStall = yield* playFor(
+      everyone,
+      helds,
+      index => (index === 0 ? 'Shop' : 'Idle'),
+      -1,
+      Effect.map(ownSeatOf(host), seat => seat?.shop === 'Browsing'),
+      15_000,
+    )
+    yield* check(atStall, 'the host walks into the stall')
+    yield* stopEveryone
+    const shopOpen = yield* until(
+      'one shop dialog opens, for the host only',
+      Effect.gen(function* () {
+        return (
+          (yield* countOf(host, 'dialog#shop')) === 1 &&
+          (yield* countOf(host, 'dialog[open]')) === 1 &&
+          (yield* countOf(firstGuest, '.shop-dialog[open]')) === 0
+        )
+      }),
+    )
+    if (shopOpen) {
+      yield* shot(host, 'shop')
+      const available = host.locator(
+        '.shop-dialog[open] li[data-verdict="available"] button',
+      )
+      const tabs = host.locator('.shop-dialog[open] .shop-tab')
+      const tabCount = yield* attempt(() => tabs.count())
+      for (const index of globalThis.Array.from(
+        { length: tabCount },
+        (_, i) => i,
+      )) {
+        if ((yield* attempt(() => available.count())) > 0) {
+          break
+        }
+        yield* attempt(() => tabs.nth(index).click())
+        yield* untilWithin(
+          `shop tab ${index + 1} opens`,
+          Effect.map(
+            attempt(() => tabs.nth(index).getAttribute('aria-selected')),
+            selected => selected === 'true',
+          ),
+          5000,
+        )
+      }
+      if ((yield* attempt(() => available.count())) > 0) {
+        yield* shot(host, 'shop-tab')
+        yield* attempt(() => available.first().click())
+        yield* untilWithin(
+          'a purchase goes to the room and the money comes off',
+          Effect.map(ownSeatOf(host), seat => (seat?.money ?? 0) < moneyBefore),
+          5000,
+        )
+      } else {
+        yield* Console.log(`  note nothing affordable with $${moneyBefore}`)
+      }
+      yield* attempt(() => host.keyboard.press('Escape'))
+      yield* untilWithin(
+        'closing the shop tells the room',
+        Effect.map(ownSeatOf(host), seat => seat?.shop !== 'Browsing'),
+        5000,
+      )
+    }
+
+    for (const page of everyone) {
+      yield* attempt(() => page.keyboard.press('Enter'))
+    }
+    yield* untilWithin(
+      'READY over everyone shows, then wave 2 starts',
+      Effect.map(
+        readoutOf(host),
+        readout => readout?.phase === 'Wave' && readout.wave === 2,
+      ),
+      6000,
     )
   }
-  check(
-    (await roomCodeOf(quickOne)) === (await roomCodeOf(quickTwo)),
-    'both quick players share one room',
-  )
-}
 
-for (const context of contexts) {
-  await context.close()
-}
-await browser.close()
-finish(
-  problems,
-  'Co-op played a real wave through the game UI with no problems.',
-)
+  // THE LINK
+
+  const endNet = linkAtEnd ?? (yield* linkNow)
+  const seconds = (endNet.atMs - startedMs) / 1000
+  for (const [index, net] of endNet.nets.entries()) {
+    const start = startNet[index]
+    if (net === undefined || start === undefined) {
+      yield* Console.log(
+        `  player ${index + 1}: no link readout (not in the run)`,
+      )
+      continue
+    }
+    const kbps = (net.bytesIn - start.bytesIn) / 1024 / seconds
+    const inputs = (net.inputsOut - start.inputsOut) / seconds
+    yield* Console.log(
+      `  player ${index + 1}: round trip ${net.rttMs} ms, down ${kbps.toFixed(2)} KB/s over ${net.framesIn - start.framesIn} messages (${((net.framesIn - start.framesIn) / seconds).toFixed(1)} a second), up ${inputs.toFixed(1)} inputs a second, ${net.corrections} corrections (at most ${net.correctionPx} px)`,
+    )
+    yield* Console.log(
+      `  player ${index + 1}: hits seen ${net.lookedHits - start.lookedHits}, confirmed ${net.confirmedHits - start.confirmedHits}; drawn ${net.delayMs} ms behind; ${net.stalls - start.stalls} stalls, ${net.resyncs - start.resyncs} resyncs (the longest gap all session ${net.longestStallMs} ms)`,
+    )
+    yield* check(net.rttMs > 0, `player ${index + 1} measured a round trip`)
+  }
+
+  // REJOIN
+
+  const rejoiner = firstGuest
+  const rejoinSlot = yield* slotOf(rejoiner)
+  yield* attempt(() => rejoiner.reload())
+  yield* awaitGame(rejoiner)
+  yield* until(
+    'a reloaded guest rejoins its seat from the address',
+    Effect.gen(function* () {
+      return (
+        (yield* slotOf(rejoiner)) === rejoinSlot &&
+        (yield* readoutOf(rejoiner))?.players.length === players
+      )
+    }),
+  )
+  yield* shot(rejoiner, 'rejoined')
+
+  // LEAVE
+
+  const leaver = lastGuest
+  yield* attempt(() =>
+    leaver.getByRole('button', { name: 'Leave the room' }).click(),
+  )
+  yield* until(
+    'LEAVE lands back on the hub',
+    attempt(() =>
+      leaver.getByRole('button', { name: /Quick play/ }).isVisible(),
+    ),
+  )
+  yield* check(
+    new URL(leaver.url()).searchParams.get('room') === null,
+    'leaving clears the room from the address',
+  )
+
+  // QUICK PLAY
+
+  if (config.isQuick) {
+    const quickOne = yield* openPlayer(browser, 'quick 1', 0)
+    const quickTwo = yield* openPlayer(browser, 'quick 2', 0)
+    const quick = [quickOne, quickTwo]
+    for (const page of quick) {
+      yield* attempt(() => page.goto(config.base))
+      yield* awaitGame(page)
+      yield* attempt(() => page.click('#home-coop'))
+      yield* attempt(() =>
+        page.getByRole('button', { name: /Quick play/ }).click(),
+      )
+    }
+    yield* until(
+      'two queued players see two heads',
+      Effect.map(
+        countOf(quickOne, '.coop-queue-seat[data-state="Filled"]'),
+        count => count === 2,
+      ),
+    )
+    yield* shot(quickOne, 'queue')
+    yield* untilWithin(
+      'the offer to start with two comes',
+      attempt(() => quickOne.locator('.coop-offer-start').isVisible()),
+      60_000,
+    )
+    for (const page of quick) {
+      yield* attempt(() => page.locator('.coop-offer-start').click())
+    }
+    for (const [index, page] of quick.entries()) {
+      yield* until(
+        `quick player ${index + 1} lands in a lobby`,
+        Effect.map(filledSeats(page), filled => filled === 2),
+      )
+    }
+    const quickOneCode = yield* roomCodeOf(quickOne)
+    yield* check(
+      quickOneCode === (yield* roomCodeOf(quickTwo)),
+      'both quick players share one room',
+    )
+  }
+
+  for (const context of contexts) {
+    yield* attempt(() => context.close())
+  }
+  yield* finish(
+    problems,
+    'Co-op played a real wave through the game UI with no problems.',
+  )
+})
+
+runAudit(program)

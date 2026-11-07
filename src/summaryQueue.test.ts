@@ -1,14 +1,5 @@
 // @vitest-environment happy-dom
-import {
-  Array,
-  Effect,
-  Fiber,
-  Layer,
-  Option,
-  Ref,
-  Schema,
-  Stream,
-} from 'effect'
+import { Array, Effect, Fiber, Option, Ref, Schema, Stream } from 'effect'
 import { TestClock } from 'effect/testing'
 import { modifyFields } from 'foldkit/struct'
 
@@ -59,8 +50,8 @@ const summary: RunSummary = {
   modifiers: 0,
 }
 
-const bodyOf = (wave: number) =>
-  Schema.encodeSync(RunSummaryJson)({ ...summary, wave })
+const bodyOf = (wave: number): string =>
+  Option.getOrThrow(Schema.encodeOption(RunSummaryJson)({ ...summary, wave }))
 
 const stubNavigator = (isOnline: boolean) => {
   const sendBeacon = vi.fn<Navigator['sendBeacon']>(() => true)
@@ -77,7 +68,7 @@ const fakeStore = (
   Effect.gen(function* () {
     const waiting = yield* Ref.make(queued)
     const unused = Effect.die('the summary queue does not use this')
-    const layer = Layer.succeed(PlayerStore, {
+    const store = PlayerStore.of({
       load: Effect.succeed(
         shareStats === 'NoSave'
           ? Option.none()
@@ -104,7 +95,7 @@ const fakeStore = (
       ),
       clearQueuedSummaries: Ref.set(waiting, []),
     })
-    return { layer, waiting }
+    return { store, waiting }
   })
 
 describe('run summaries sent or queued', () => {
@@ -117,10 +108,11 @@ describe('run summaries sent or queued', () => {
       const sendBeacon = stubNavigator(true)
       const fake = yield* fakeStore([], 'NoSave')
       yield* sendOrQueueRunSummary(summary, ORIGIN).pipe(
-        Effect.provide(fake.layer),
+        Effect.provideService(PlayerStore, fake.store),
       )
       expect(sendBeacon).toHaveBeenCalledTimes(1)
-      expect(yield* Ref.get(fake.waiting)).toEqual([])
+      const value = yield* Ref.get(fake.waiting)
+      expect(value).toEqual([])
     }),
   )
 
@@ -129,7 +121,7 @@ describe('run summaries sent or queued', () => {
       const sendBeacon = stubNavigator(false)
       const fake = yield* fakeStore([], 'NoSave')
       yield* sendOrQueueRunSummary(summary, ORIGIN).pipe(
-        Effect.provide(fake.layer),
+        Effect.provideService(PlayerStore, fake.store),
       )
       expect(sendBeacon).not.toHaveBeenCalled()
       const waiting = yield* Ref.get(fake.waiting)
@@ -142,8 +134,11 @@ describe('run summaries sent or queued', () => {
     Effect.gen(function* () {
       stubNavigator(false)
       const fake = yield* fakeStore([], 'NoSave')
-      yield* sendOrQueueRunSummary(summary, '').pipe(Effect.provide(fake.layer))
-      expect(yield* Ref.get(fake.waiting)).toEqual([])
+      yield* sendOrQueueRunSummary(summary, '').pipe(
+        Effect.provideService(PlayerStore, fake.store),
+      )
+      const value_1 = yield* Ref.get(fake.waiting)
+      expect(value_1).toEqual([])
     }),
   )
 
@@ -154,7 +149,9 @@ describe('run summaries sent or queued', () => {
         const sendBeacon = stubNavigator(true)
         const fake = yield* fakeStore([bodyOf(1), bodyOf(2), bodyOf(3)], 'On')
         const sending = yield* Effect.forkChild(
-          startSummaryQueue(ORIGIN).pipe(Effect.provide(fake.layer)),
+          startSummaryQueue(ORIGIN).pipe(
+            Effect.provideService(PlayerStore, fake.store),
+          ),
         )
         yield* Effect.yieldNow
         expect(sendBeacon).toHaveBeenCalledTimes(1)
@@ -165,7 +162,8 @@ describe('run summaries sent or queued', () => {
         yield* TestClock.adjust('11 seconds')
         yield* Fiber.join(sending)
         expect(sendBeacon).toHaveBeenCalledTimes(3)
-        expect(yield* Ref.get(fake.waiting)).toEqual([])
+        const value_2 = yield* Ref.get(fake.waiting)
+        expect(value_2).toEqual([])
       }),
   )
 
@@ -173,9 +171,12 @@ describe('run summaries sent or queued', () => {
     Effect.gen(function* () {
       const sendBeacon = stubNavigator(false)
       const fake = yield* fakeStore([bodyOf(1)], 'On')
-      yield* startSummaryQueue(ORIGIN).pipe(Effect.provide(fake.layer))
+      yield* startSummaryQueue(ORIGIN).pipe(
+        Effect.provideService(PlayerStore, fake.store),
+      )
       expect(sendBeacon).not.toHaveBeenCalled()
-      expect(yield* Ref.get(fake.waiting)).toEqual([bodyOf(1)])
+      const value_3 = yield* Ref.get(fake.waiting)
+      expect(value_3).toEqual([bodyOf(1)])
     }),
   )
 
@@ -185,9 +186,12 @@ describe('run summaries sent or queued', () => {
       Effect.gen(function* () {
         const sendBeacon = stubNavigator(true)
         const fake = yield* fakeStore([bodyOf(1), bodyOf(2)], 'Off')
-        yield* startSummaryQueue(ORIGIN).pipe(Effect.provide(fake.layer))
+        yield* startSummaryQueue(ORIGIN).pipe(
+          Effect.provideService(PlayerStore, fake.store),
+        )
         expect(sendBeacon).not.toHaveBeenCalled()
-        expect(yield* Ref.get(fake.waiting)).toEqual([])
+        const value_4 = yield* Ref.get(fake.waiting)
+        expect(value_4).toEqual([])
       }),
   )
 
@@ -198,14 +202,17 @@ describe('run summaries sent or queued', () => {
         const sendBeacon = stubNavigator(true)
         const fake = yield* fakeStore(['{"version":0}', bodyOf(2)], 'On')
         const sending = yield* Effect.forkChild(
-          startSummaryQueue(ORIGIN).pipe(Effect.provide(fake.layer)),
+          startSummaryQueue(ORIGIN).pipe(
+            Effect.provideService(PlayerStore, fake.store),
+          ),
         )
         yield* Effect.yieldNow
         yield* TestClock.adjust('11 seconds')
         yield* TestClock.adjust('11 seconds')
         yield* Fiber.join(sending)
         expect(sendBeacon).toHaveBeenCalledTimes(1)
-        expect(yield* Ref.get(fake.waiting)).toEqual([])
+        const value_5 = yield* Ref.get(fake.waiting)
+        expect(value_5).toEqual([])
       }),
   )
 
@@ -220,17 +227,19 @@ describe('run summaries sent or queued', () => {
         )({ ...older, version: 1 })
         const fake = yield* fakeStore([olderBody], 'On')
         const sending = yield* Effect.forkChild(
-          startSummaryQueue(ORIGIN).pipe(Effect.provide(fake.layer)),
+          startSummaryQueue(ORIGIN).pipe(
+            Effect.provideService(PlayerStore, fake.store),
+          ),
         )
         yield* Effect.yieldNow
         yield* TestClock.adjust('11 seconds')
         yield* Fiber.join(sending)
         expect(sendBeacon).toHaveBeenCalledTimes(1)
         const sent = sendBeacon.mock.calls[0]?.[1] ?? null
-        expect(yield* Effect.promise(() => new Response(sent).text())).toBe(
-          olderBody,
-        )
-        expect(yield* Ref.get(fake.waiting)).toEqual([])
+        const value_6 = yield* Effect.promise(() => new Response(sent).text())
+        expect(value_6).toBe(olderBody)
+        const value_7 = yield* Ref.get(fake.waiting)
+        expect(value_7).toEqual([])
       }),
   )
 
@@ -254,17 +263,19 @@ describe('run summaries sent or queued', () => {
         })
         const fake = yield* fakeStore([olderBody], 'On')
         const sending = yield* Effect.forkChild(
-          startSummaryQueue(ORIGIN).pipe(Effect.provide(fake.layer)),
+          startSummaryQueue(ORIGIN).pipe(
+            Effect.provideService(PlayerStore, fake.store),
+          ),
         )
         yield* Effect.yieldNow
         yield* TestClock.adjust('11 seconds')
         yield* Fiber.join(sending)
         expect(sendBeacon).toHaveBeenCalledTimes(1)
         const sent = sendBeacon.mock.calls[0]?.[1] ?? null
-        expect(yield* Effect.promise(() => new Response(sent).text())).toBe(
-          olderBody,
-        )
-        expect(yield* Ref.get(fake.waiting)).toEqual([])
+        const value_8 = yield* Effect.promise(() => new Response(sent).text())
+        expect(value_8).toBe(olderBody)
+        const value_9 = yield* Ref.get(fake.waiting)
+        expect(value_9).toEqual([])
       }),
   )
 })

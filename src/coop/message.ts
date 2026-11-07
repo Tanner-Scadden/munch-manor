@@ -16,12 +16,12 @@ import { CodeCopy, CoopProblem, NudgeReason, Share } from './model'
 // aim beyond the range would throw on every frame. The session packs the
 // input for the wire itself, so the Message carries plain numbers.
 const Controls = Schema.Struct({
-  moveX: Schema.Number,
-  moveY: Schema.Number,
-  aimX: Schema.Number,
-  aimY: Schema.Number,
-  buttons: Schema.Number,
-  action: Schema.Number,
+  moveX: Schema.Finite,
+  moveY: Schema.Finite,
+  aimX: Schema.Finite,
+  aimY: Schema.Finite,
+  buttons: Schema.Finite,
+  action: Schema.Finite,
 })
 type Controls = typeof Controls.Type
 
@@ -35,7 +35,7 @@ export const Message = defineMessageUnion({
   ClickedCloseButton: {},
   UpdatedCode: { value: Schema.String },
   SubmittedCode: {},
-  SucceededRequestRoom: { code: Schema.String, slot: Schema.Number },
+  SucceededRequestRoom: { code: Schema.String, slot: Schema.Finite },
   FailedRequestRoom: { problem: CoopProblem },
   ReceivedQuickPlayEvent: { event: QuickPlayEvent },
   ClickedAcceptOfferButton: {},
@@ -44,8 +44,8 @@ export const Message = defineMessageUnion({
   CompletedAnswerOffer: {},
   CompletedCancelQuickPlay: {},
   ReceivedLobbyEvent: { event: LobbyEvent },
-  ReceivedRoomEvent: { event: RoomEvent, atMs: Schema.Number },
-  CompletedSendRoomFrames: { bytes: Schema.Array(Schema.Number) },
+  ReceivedRoomEvent: { event: RoomEvent, atMs: Schema.Finite },
+  CompletedSendRoomFrames: { bytes: Schema.Array(Schema.Finite) },
   ClickedReadyButton: {},
   ClickedKickButton: { playerId: Schema.String },
   ClickedModePick: { mode: PickedMode },
@@ -76,22 +76,22 @@ export const Message = defineMessageUnion({
     name: Schema.String,
     maybeCode: Schema.Option(Schema.String),
     look: Schema.String,
-    rank: Schema.Number,
+    rank: Schema.Finite,
     calling: Calling,
-    rngState: Schema.Number,
+    rngState: Schema.Finite,
     bought: SavedBoughtCosmetics,
-    bones: Schema.Number,
+    bones: Schema.Finite,
   },
   RequestedBoughtHero: {
     calling: Calling,
     bought: SavedBoughtCosmetics,
-    bones: Schema.Number,
+    bones: Schema.Finite,
   },
   RequestedPressKey: { code: Schema.String },
   RequestedReleaseKey: { code: Schema.String },
   RequestedTickRoom: {
     controls: Controls,
-    nowMs: Schema.Number,
+    nowMs: Schema.Finite,
     isPictureHeld: Schema.Boolean,
   },
   RequestedPressAction: { action: SeatAction },
@@ -99,9 +99,9 @@ export const Message = defineMessageUnion({
   RequestedLeave: {},
   RequestedKeepTracers: {
     tracers: Schema.Array(Bullet),
-    fired: Schema.Number,
-    looked: Schema.Number,
-    confirmed: Schema.Number,
+    fired: Schema.Finite,
+    looked: Schema.Finite,
+    confirmed: Schema.Finite,
   },
 })
 export type Message = typeof Message.Type

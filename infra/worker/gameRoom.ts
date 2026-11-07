@@ -1,3 +1,4 @@
+import { Function } from 'effect'
 import * as Array from 'effect/Array'
 import * as Clock from 'effect/Clock'
 import * as Effect from 'effect/Effect'
@@ -107,10 +108,10 @@ const CHECKPOINT_KEY = 'run-checkpoint'
 const CHECKPOINT_EVERY_MS = 3000
 
 const Checkpoint = Schema.Struct({
-  round: Schema.Number,
-  tick: Schema.Number,
+  round: Schema.Finite,
+  tick: Schema.Finite,
   members: Schema.Array(
-    Schema.Struct({ slot: Schema.Number, playerId: Schema.String }),
+    Schema.Struct({ slot: Schema.Finite, playerId: Schema.String }),
   ),
   world: Schema.Uint8Array,
 })
@@ -131,12 +132,28 @@ const Attachment = Schema.TaggedUnion({
 })
 type Attachment = typeof Attachment.Type
 type SyncAttachment = typeof Attachment.cases.Sync.Type
-type GameAttachment =
-  | typeof Attachment.cases.GameOpened.Type
-  | typeof Attachment.cases.GameJoined.Type
+const GameAttachment = Schema.Union([
+  Attachment.cases.GameOpened,
+  Attachment.cases.GameJoined,
+])
+type GameAttachment = typeof GameAttachment.Type
 
 const decodeAttachment = Schema.decodeUnknownOption(Attachment)
-const encodeAttachment = Schema.encodeSync(Attachment)
+
+// NOTE: an attachment is built here from its own Schema, so its encode
+// cannot fail; if it did, it would be a defect.
+const encodeAttachment = (attachment: Attachment) =>
+  Effect.orDie(Schema.encodeEffect(Attachment)(attachment))
+
+const serializeAttachment = (
+  socket: WorkersWebSocket,
+  attachment: Attachment,
+): Effect.Effect<void> =>
+  Effect.flatMap(encodeAttachment(attachment), encoded =>
+    Effect.sync(() => {
+      socket.serializeAttachment(encoded)
+    }),
+  )
 
 const attachmentOf = (socket: WorkersWebSocket): Option.Option<Attachment> =>
   decodeAttachment(socket.deserializeAttachment())
@@ -237,15 +254,12 @@ export class GameRoom {
                 send: (message: string) => {
                   socket.send(message)
                 },
-                setConnection: (connection: Connection) => {
-                  socket.serializeAttachment(
-                    encodeAttachment({
-                      _tag: 'Sync',
-                      scope: attachment.scope,
-                      connection,
-                    }),
-                  )
-                },
+                setConnection: (connection: Connection) =>
+                  serializeAttachment(socket, {
+                    _tag: 'Sync',
+                    scope: attachment.scope,
+                    connection,
+                  }),
                 close: () => socket.close(4001, 'Removed'),
               })
             : Option.none(),
@@ -282,13 +296,16 @@ export class GameRoom {
     )
   }
 
-  private accept(tag: string, attachment: Attachment): Response {
-    const pair = new WebSocketPair()
-    const client = pair[0]
-    const server = pair[1]
-    this.ctx.acceptWebSocket(server, [tag])
-    server.serializeAttachment(encodeAttachment(attachment))
-    return new Response(null, { status: 101, webSocket: client })
+  private accept(tag: string, attachment: Attachment): Effect.Effect<Response> {
+    const { ctx } = this
+    return Effect.map(encodeAttachment(attachment), encoded => {
+      const pair = new WebSocketPair()
+      const client = pair[0]
+      const server = pair[1]
+      ctx.acceptWebSocket(server, [tag])
+      server.serializeAttachment(encoded)
+      return new Response(null, { status: 101, webSocket: client })
+    })
   }
 
   // GAME
@@ -349,7 +366,7 @@ export class GameRoom {
     this.game = Option.none()
     const stopLoop = Option.match(this.loop, {
       onNone: () => Effect.void,
-      onSome: fiber => Effect.asVoid(Fiber.interrupt(fiber)),
+      onSome: fiber => fiber.pipe(Fiber.interrupt, Effect.asVoid),
     })
     this.loop = Option.none()
     const everyone = this.syncSockets()
@@ -413,8 +430,8 @@ export class GameRoom {
   }
 
   private startLoop(host: RoomHost): void {
-    Option.map(this.loop, fiber => Effect.runFork(Fiber.interrupt(fiber)))
-    this.loop = Option.some(Effect.runFork(this.tickLoop(host)))
+    Option.map(this.loop, fiber => fiber.pipe(Fiber.interrupt, Effect.runFork))
+    this.loop = Option.some(this.tickLoop(host).pipe(Effect.runFork))
   }
 
   private startGame(host: RoomHost): Effect.Effect<void> {
@@ -665,8 +682,8 @@ export class GameRoom {
   // KEPT RUN
 
   private keep(world: GameState): Effect.Effect<void> {
-    return tryCall('keep the won run', () =>
-      this.ctx.storage.put(KEPT_KEY, worldToJson(world)),
+    return Effect.flatMap(worldToJson(world), text =>
+      tryCall('keep the won run', () => this.ctx.storage.put(KEPT_KEY, text)),
     ).pipe(Effect.ignore)
   }
 
@@ -675,13 +692,9 @@ export class GameRoom {
       this.ctx.storage.get<string>(KEPT_KEY),
     ).pipe(
       Effect.flatMap(text =>
-        Effect.try({
-          try: () =>
-            typeof text === 'string'
-              ? Option.some(worldFromJson(text))
-              : Option.none(),
-          catch: () => Option.none<GameState>(),
-        }),
+        typeof text === 'string'
+          ? Effect.asSome(worldFromJson(text))
+          : Effect.succeedNone,
       ),
       Effect.catch(() => Effect.succeedNone),
     )
@@ -711,14 +724,14 @@ export class GameRoom {
     return Effect.gen({ self: this }, function* () {
       const host = yield* hostFor
       if (url.pathname === IDENTITY_PATHS.socket) {
-        return this.accept(SYNC_TAG, {
+        return yield* this.accept(SYNC_TAG, {
           _tag: 'Sync',
           scope,
           connection: OPENED,
         })
       }
       if (url.pathname === ROOM_PATHS.socket) {
-        return this.accept(GAME_TAG, {
+        return yield* this.accept(GAME_TAG, {
           _tag: 'GameOpened',
           scope,
           // NOTE: a socket's id needs no Effect service.
@@ -739,7 +752,7 @@ export class GameRoom {
         const text = yield* tryCall('read the body', () => request.text())
         const body = yield* Effect.mapError(
           Schema.decodeEffect(InternalCreate)(text),
-          error => new BadSyncBody({ reason: error.message }),
+          error => BadSyncBody.make({ reason: error.message }),
         )
         const nightmare = yield* this.nightmareOf(body.playerId)
         const created = yield* this.lock.withPermit(
@@ -761,13 +774,13 @@ export class GameRoom {
           ).pipe(Effect.ignore)
           yield* this.list(host)
         }
-        return ticketResponse(created)
+        return yield* ticketResponse(created)
       }
       if (url.pathname === INTERNAL_PATHS.join) {
         const text = yield* tryCall('read the body', () => request.text())
         const body = yield* Effect.mapError(
           Schema.decodeEffect(InternalJoin)(text),
-          error => new BadSyncBody({ reason: error.message }),
+          error => BadSyncBody.make({ reason: error.message }),
         )
         const nightmare = yield* this.nightmareOf(body.playerId)
         const everyone = this.syncSockets()
@@ -783,14 +796,14 @@ export class GameRoom {
           ),
         )
         yield* this.list(host)
-        return ticketResponse(joined)
+        return yield* ticketResponse(joined)
       }
       return json(404, '{}')
     })
   }
 
   fetch(request: Request): Promise<Response> {
-    return Effect.runPromise(syncErrorResponse(this.handle(request)))
+    return this.handle(request).pipe(syncErrorResponse, Effect.runPromise)
   }
 
   // MESSAGES
@@ -807,15 +820,12 @@ export class GameRoom {
         send: text => {
           socket.send(text)
         },
-        setConnection: connection => {
-          socket.serializeAttachment(
-            encodeAttachment({
-              _tag: 'Sync',
-              scope: attachment.scope,
-              connection,
-            }),
-          )
-        },
+        setConnection: connection =>
+          serializeAttachment(socket, {
+            _tag: 'Sync',
+            scope: attachment.scope,
+            connection,
+          }),
       }
       const everyone = this.syncSockets()
       const applied = yield* this.lock.withPermit(
@@ -839,23 +849,22 @@ export class GameRoom {
       }
       const frame = decoded.success
       if (attachment._tag === 'GameOpened') {
+        const lobbyAtHello = yield* host.lobby
         const answer = yield* answerHello(
           frame,
           this.env.SYNC_SECRET,
-          yield* host.lobby,
+          lobbyAtHello,
           nowMs,
         )
         if (answer._tag === 'Refuse') {
           return refuseAndClose(socket, answer.reason)
         }
-        socket.serializeAttachment(
-          encodeAttachment({
-            _tag: 'GameJoined',
-            scope: attachment.scope,
-            socket: attachment.socket,
-            playerId: answer.playerId,
-          }),
-        )
+        yield* serializeAttachment(socket, {
+          _tag: 'GameJoined',
+          scope: attachment.scope,
+          socket: attachment.socket,
+          playerId: answer.playerId,
+        })
         yield* this.resume(host)
         const game = this.game
         const linked = Option.flatMap(game, current =>
@@ -1061,7 +1070,7 @@ export class GameRoom {
         const maybeScope = yield* this.scopeOfObject()
         const nowMs = yield* Clock.currentTimeMillis
         const maybeHost = Option.isSome(maybeScope)
-          ? Option.some(yield* this.hostFor(maybeScope.value))
+          ? yield* Effect.asSome(this.hostFor(maybeScope.value))
           : Option.none<RoomHost>()
         const lobby = Option.isSome(maybeHost)
           ? yield* maybeHost.value.lobby
@@ -1116,26 +1125,46 @@ const refuseAndClose = (
   socket.close(1008, reason)
 }
 
-const encodeRefusal = Schema.encodeSync(Schema.fromJsonString(RoomRefusal))
-const encodeTicket = Schema.encodeSync(Schema.fromJsonString(RoomTicket))
+const encodeRefusal = Schema.encodeEffect(Schema.fromJsonString(RoomRefusal))
+const encodeTicket = Schema.encodeEffect(Schema.fromJsonString(RoomTicket))
 
-export const refusalResponse = (refusal: RoomRefusal): Response =>
-  json(roomRefusalStatus(refusal), encodeRefusal(refusal))
+export const refusalResponse = (
+  refusal: RoomRefusal,
+): Effect.Effect<Response> =>
+  Effect.map(Effect.orDie(encodeRefusal(refusal)), text =>
+    json(roomRefusalStatus(refusal), text),
+  )
 
-const ticketResponse = (result: Result.Result<RoomTicket, RoomRefusal>) =>
+const ticketResponse = (
+  result: Result.Result<RoomTicket, RoomRefusal>,
+): Effect.Effect<Response> =>
   Result.match(result, {
-    onSuccess: ticket => json(200, encodeTicket(ticket)),
+    onSuccess: ticket =>
+      Effect.map(Effect.orDie(encodeTicket(ticket)), text => json(200, text)),
     onFailure: refusalResponse,
   })
 
 // NOTE: the sync paths of a room scope go to its GameRoom, which hosts the
 // scope beside the game.
-export const roomScopeStub = (
-  env: GameRoomBindings,
-  scope: string,
-): Option.Option<ReturnType<DurableObjectNamespace['get']>> =>
-  Option.flatMap(roomCodeOfScope(scope), code =>
-    Option.map(Option.fromNullishOr(env.GAME_ROOMS), rooms =>
-      rooms.get(rooms.idFromName(roomScopeId(code))),
+export const roomScopeStub: {
+  (
+    scope: string,
+  ): (
+    env: GameRoomBindings,
+  ) => Option.Option<ReturnType<DurableObjectNamespace['get']>>
+  (
+    env: GameRoomBindings,
+    scope: string,
+  ): Option.Option<ReturnType<DurableObjectNamespace['get']>>
+} = Function.dual(
+  2,
+  (
+    env: GameRoomBindings,
+    scope: string,
+  ): Option.Option<ReturnType<DurableObjectNamespace['get']>> =>
+    Option.flatMap(roomCodeOfScope(scope), code =>
+      Option.map(Option.fromNullishOr(env.GAME_ROOMS), rooms =>
+        rooms.get(rooms.idFromName(roomScopeId(code))),
+      ),
     ),
-  )
+)

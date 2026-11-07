@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Effect, Schema } from 'effect'
+import { Effect, Schema, Struct } from 'effect'
 import { Canvas } from 'foldkit'
 import { inertHtml } from 'foldkit/html'
 import { taggedStruct } from 'foldkit/schema'
@@ -32,7 +32,7 @@ describe('a Canvas shape built every frame', () => {
       fill: '#fff',
     })
     expect(
-      Object.keys(Canvas.Circle({ x: 0, y: 0, radius: 2, fill: undefined })),
+      Struct.keys(Canvas.Circle({ x: 0, y: 0, radius: 2, fill: undefined })),
     ).toStrictEqual(['_tag', 'x', 'y', 'radius', 'fill'])
   })
 
@@ -54,7 +54,7 @@ describe('a Canvas shape built every frame', () => {
 
   test('still applies a constructor default', () => {
     const Defaulted = taggedStruct('Defaulted', {
-      size: Schema.Number.pipe(
+      size: Schema.Finite.pipe(
         Schema.withConstructorDefault(Effect.succeed(7)),
       ),
     })

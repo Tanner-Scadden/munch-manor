@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Level, levelOf } from './arena'
@@ -401,49 +401,57 @@ const scorchDecals = (event: GameEvent): ReadonlyArray<Decal> =>
 
 // FRAME
 
-export const keepNewest = <A>(
-  items: ReadonlyArray<A>,
-  max: number,
-): ReadonlyArray<A> =>
-  items.length > max ? Array.takeRight(items, max) : items
+export const keepNewest: {
+  <A>(max: number): (items: ReadonlyArray<A>) => ReadonlyArray<A>
+  <A>(items: ReadonlyArray<A>, max: number): ReadonlyArray<A>
+} = Function.dual(
+  2,
+  <A>(items: ReadonlyArray<A>, max: number): ReadonlyArray<A> =>
+    items.length > max ? Array.takeRight(items, max) : items,
+)
 
-export const advanceParticles = (
-  model: Model,
-  seconds: number,
-  deltaMs: number,
-): Model => {
-  const [stillFlying, leftBehind] = Array.partition(
-    model.particles,
-    stepParticle(levelOf(model), seconds, deltaMs),
-  )
-  const landed = [
-    ...Array.flatMap(model.frameEvents, scorchDecals),
-    ...Array.getSomes(leftBehind),
-  ]
+export const advanceParticles: {
+  (seconds: number, deltaMs: number): (model: Model) => Model
+  (model: Model, seconds: number, deltaMs: number): Model
+} = Function.dual(
+  3,
+  (model: Model, seconds: number, deltaMs: number): Model => {
+    const [stillFlying, leftBehind] = Array.partition(
+      model.particles,
+      stepParticle(levelOf(model), seconds, deltaMs),
+    )
+    const landed = [
+      ...Array.flatMap(model.frameEvents, scorchDecals),
+      ...Array.getSomes(leftBehind),
+    ]
 
-  const [eventState, eventBatches] = Array.mapAccum(
-    model.frameEvents,
-    model.cosmeticRngState,
-    (drawState, event) => eventParticles(levelOf(model), drawState, event),
-  )
-  const dust = walkingDust(model, deltaMs, eventState)
+    const [eventState, eventBatches] = Array.mapAccum(
+      model.frameEvents,
+      model.cosmeticRngState,
+      (drawState, event) => eventParticles(levelOf(model), drawState, event),
+    )
+    const dust = walkingDust(model, deltaMs, eventState)
 
-  return modifyFields(model, {
-    particles: () =>
-      keepNewest(
-        [...stillFlying, ...Array.flatten(eventBatches), ...dust.particles],
-        PARTICLE_MAX,
-      ),
-    decals: decals =>
-      Array.isReadonlyArrayEmpty(landed)
-        ? decals
-        : keepNewest([...decals, ...landed], DECAL_MAX),
-    cosmeticRngState: () => dust.rngState,
-    dustCooldownMs: () => dust.dustCooldownMs,
-  })
-}
+    return modifyFields(model, {
+      particles: () =>
+        keepNewest(
+          [...stillFlying, ...Array.flatten(eventBatches), ...dust.particles],
+          PARTICLE_MAX,
+        ),
+      decals: decals =>
+        Array.isReadonlyArrayEmpty(landed)
+          ? decals
+          : keepNewest([...decals, ...landed], DECAL_MAX),
+      cosmeticRngState: () => dust.rngState,
+      dustCooldownMs: () => dust.dustCooldownMs,
+    })
+  },
+)
 
-export const burstCoins = (model: Model, x: number, y: number): Model => {
+export const burstCoins: {
+  (x: number, y: number): (model: Model) => Model
+  (model: Model, x: number, y: number): Model
+} = Function.dual(3, (model: Model, x: number, y: number): Model => {
   const [rngState, coins] = generateMany(
     model.cosmeticRngState,
     COINS_PER_PURCHASE,
@@ -453,12 +461,15 @@ export const burstCoins = (model: Model, x: number, y: number): Model => {
     particles: particles => keepNewest([...particles, ...coins], PARTICLE_MAX),
     cosmeticRngState: () => rngState,
   })
-}
+})
 
 // NOTE: the boards over an exit the player buys open burst into splinters
 // and planks with a cloud of dust.
 
-export const puffDust = (model: Model, x: number, y: number): Model => {
+export const puffDust: {
+  (x: number, y: number): (model: Model) => Model
+  (model: Model, x: number, y: number): Model
+} = Function.dual(3, (model: Model, x: number, y: number): Model => {
   const [rngState, puffs] = dustRing(
     { x, y },
     DUST_PER_PLACEMENT,
@@ -467,7 +478,7 @@ export const puffDust = (model: Model, x: number, y: number): Model => {
     particles: particles => keepNewest([...particles, ...puffs], PARTICLE_MAX),
     cosmeticRngState: () => rngState,
   })
-}
+})
 
 export const dropClip = (model: Model): Model => {
   const { player } = focusOf(model)

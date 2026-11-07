@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -55,7 +55,7 @@ export const OVEN_RULES: OvenRules = {
 }
 
 const OVEN_SYMBOL = pipe(
-  Object.entries(COVER_SYMBOLS),
+  Record.toEntries(COVER_SYMBOLS),
   Array.findFirst(([, kind]) => kind === 'Oven'),
   Option.map(([symbol]) => symbol),
   Option.getOrElse(() => 'G'),
@@ -351,26 +351,27 @@ const slipOnSoup = (before: World, model: World): World => {
 
 // NOTE: the player slides a little on soup: moving there builds up a skid
 // that carries on for a moment after the stick lets go.
-export const soupSkid = (
-  level: Level,
-  position: Vector,
-  move: Vector,
-  seconds: number,
-): Vector =>
-  isOnSoupAt(level, position)
-    ? {
-        x: move.x * SOUP_RULES.playerSkidAccel * seconds,
-        y: move.y * SOUP_RULES.playerSkidAccel * seconds,
-      }
-    : { x: 0, y: 0 }
+export const soupSkid: {
+  (position: Vector, move: Vector, seconds: number): (level: Level) => Vector
+  (level: Level, position: Vector, move: Vector, seconds: number): Vector
+} = Function.dual(
+  4,
+  (level: Level, position: Vector, move: Vector, seconds: number): Vector =>
+    isOnSoupAt(level, position)
+      ? {
+          x: move.x * SOUP_RULES.playerSkidAccel * seconds,
+          y: move.y * SOUP_RULES.playerSkidAccel * seconds,
+        }
+      : { x: 0, y: 0 },
+)
 
 // FRAME
 
-export const advanceKitchen = (
-  before: World,
-  model: World,
-  deltaMs: number,
-): World =>
+export const advanceKitchen: {
+  (model: World, deltaMs: number): (before: World) => World
+  (before: World, model: World, deltaMs: number): World
+} = Function.dual(3, (before: World, model: World, deltaMs: number): World =>
   isKitchenOpen(levelOf(model))
     ? slipOnSoup(before, tickOvens(ignite(model), deltaMs))
-    : model
+    : model,
+)

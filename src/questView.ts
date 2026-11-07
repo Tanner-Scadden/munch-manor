@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import { levelOf } from './arena'
@@ -259,14 +259,15 @@ const chapterView = (
     ],
   )
 
-export const questTrackerView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const questTrackerView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   Option.match(
     Option.orElse(firstBreakChapter(model), () => kitchenChapter(model)),
     {
       onNone: () => h.empty,
       onSome: chapter => chapterView(chapter, sideOf(model), h),
     },
-  )
+  ),
+)

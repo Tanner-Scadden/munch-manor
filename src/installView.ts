@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Function } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
@@ -26,10 +26,10 @@ const tileLabel = (model: Model): string =>
 // NOTE: a phone with an arrow dropping onto it, beside the gear. It pulses
 // until its first tap. Chrome shows its own install prompt; an iPhone gets
 // the picture guide.
-export const installTileView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const installTileView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   isInstallTileShown(model)
     ? h.button(
         [
@@ -49,7 +49,8 @@ export const installTileView = (
           ]),
         ],
       )
-    : h.empty
+    : h.empty,
+)
 
 // GUIDE
 
@@ -116,10 +117,10 @@ const guidePanelView = (
   ),
 ]
 
-export const homeScreenGuideView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const homeScreenGuideView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(
     {
       dialog: model.homeScreenSteps,
@@ -131,4 +132,5 @@ export const homeScreenGuideView = (
       binding: HomeScreenStepsBinding,
     },
     h,
-  )
+  ),
+)

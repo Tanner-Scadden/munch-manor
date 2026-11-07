@@ -1,4 +1,4 @@
-import { Array, Option, Record, pipe } from 'effect'
+import { Array, Function, Option, Record, pipe } from 'effect'
 
 import {
   COVER_SYMBOLS,
@@ -91,19 +91,30 @@ export const BASEBOARD_Y = 19
 
 // NOTE: a fixed roll for each decoration, from its two indices, so the room
 // looks the same on every load.
-export const roll = (first: number, second: number): number =>
-  nextRandom(
-    DECOR_SEED ^ Math.imul(first, ROW_MIXER) ^ Math.imul(second, COLUMN_MIXER),
-  ).value
+export const roll: {
+  (second: number): (first: number) => number
+  (first: number, second: number): number
+} = Function.dual(
+  2,
+  (first: number, second: number): number =>
+    nextRandom(
+      DECOR_SEED ^
+        Math.imul(first, ROW_MIXER) ^
+        Math.imul(second, COLUMN_MIXER),
+    ).value,
+)
 
-export const pick = <A>(
-  options: Array.NonEmptyReadonlyArray<A>,
-  value: number,
-): A =>
-  Option.getOrElse(
-    Array.get(options, Math.floor(value * options.length)),
-    () => options[0],
-  )
+export const pick: {
+  <A>(value: number): (options: Array.NonEmptyReadonlyArray<A>) => A
+  <A>(options: Array.NonEmptyReadonlyArray<A>, value: number): A
+} = Function.dual(
+  2,
+  <A>(options: Array.NonEmptyReadonlyArray<A>, value: number): A =>
+    Option.getOrElse(
+      Array.get(options, Math.floor(value * options.length)),
+      () => options[0],
+    ),
+)
 
 export type Box = Readonly<{
   x: number
@@ -132,10 +143,14 @@ const symbolOfKind = (kind: CoverKind): Option.Option<string> =>
     Option.map(([symbol]) => symbol),
   )
 
-export const boxOfKind = (level: Level, kind: CoverKind): Option.Option<Box> =>
+export const boxOfKind: {
+  (kind: CoverKind): (level: Level) => Option.Option<Box>
+  (level: Level, kind: CoverKind): Option.Option<Box>
+} = Function.dual(2, (level: Level, kind: CoverKind): Option.Option<Box> =>
   pipe(
     symbolOfKind(kind),
     Option.map(symbol => tilesWithSymbol(level, symbol)),
     Option.filter(Array.isReadonlyArrayNonEmpty),
     Option.map(boundingBox),
-  )
+  ),
+)

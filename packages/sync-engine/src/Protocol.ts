@@ -17,7 +17,7 @@ export type MutationId = typeof MutationId.Type
 // bigints are not synced.
 export const RowValue = Schema.Union([
   Schema.Null,
-  Schema.Number,
+  Schema.Finite,
   Schema.String,
 ])
 export type RowValue = typeof RowValue.Type
@@ -31,7 +31,7 @@ export type Row = typeof Row.Type
 export const Envelope = Schema.Struct({
   id: MutationId,
   name: Schema.String,
-  version: Schema.Number,
+  version: Schema.Finite,
   args: Schema.String,
 })
 export type Envelope = typeof Envelope.Type
@@ -42,12 +42,12 @@ export type Origin = typeof Origin.Type
 // NOTE: a mutation the server applied, at its place in the scope's log,
 // with the server's timestamp. Clients apply it to their confirmed tables.
 export const Delta = Schema.Struct({
-  seq: Schema.Number,
+  seq: Schema.Finite,
   id: MutationId,
   name: Schema.String,
-  version: Schema.Number,
+  version: Schema.Finite,
   args: Schema.String,
-  timestampMs: Schema.Number,
+  timestampMs: Schema.Finite,
   origin: Origin,
 })
 export type Delta = typeof Delta.Type
@@ -82,13 +82,13 @@ export type HelloMode = typeof HelloMode.Type
 
 export const ClientMessage = Schema.TaggedUnion({
   Hello: {
-    protocol: Schema.Number,
+    protocol: Schema.Finite,
     scope: Schema.String,
-    lastSeq: Schema.Number,
+    lastSeq: Schema.Finite,
     mode: HelloMode,
     clientId: Schema.String,
     token: Schema.String,
-    versions: Schema.Record(Schema.String, Schema.Number),
+    versions: Schema.Record(Schema.String, Schema.Finite),
   },
   Push: { mutations: Schema.Array(Envelope) },
   Ping: {},
@@ -101,15 +101,15 @@ export type HelloMessage = typeof ClientMessage.cases.Hello.Type
 export const ServerMessage = Schema.TaggedUnion({
   Snapshot: {
     scope: Schema.String,
-    seq: Schema.Number,
+    seq: Schema.Finite,
     tables: Schema.Record(Schema.String, Schema.Array(Row)),
   },
   Deltas: {
     scope: Schema.String,
-    head: Schema.Number,
+    head: Schema.Finite,
     deltas: Schema.Array(Delta),
   },
-  Acked: { id: MutationId, seq: Schema.Number },
+  Acked: { id: MutationId, seq: Schema.Finite },
   Rejected: { id: MutationId, code: RejectCode, reason: Schema.String },
   Failed: { code: FailCode, reason: Schema.String },
   Pong: {},
@@ -135,14 +135,28 @@ export const ServerMessageJson = Schema.fromJsonString(ServerMessage)
 export const ExchangeJson = Schema.fromJsonString(Exchange)
 export const ExchangeReplyJson = Schema.fromJsonString(ExchangeReply)
 
-export const decodeClientMessage = Schema.decodeUnknownEffect(ClientMessageJson)
-export const encodeClientMessage = Schema.encodeEffect(ClientMessageJson)
-export const decodeServerMessage = Schema.decodeUnknownEffect(ServerMessageJson)
-export const encodeServerMessage = Schema.encodeEffect(ServerMessageJson)
-export const decodeExchange = Schema.decodeUnknownEffect(ExchangeJson)
-export const encodeExchange = Schema.encodeEffect(ExchangeJson)
-export const decodeExchangeReply = Schema.decodeUnknownEffect(ExchangeReplyJson)
-export const encodeExchangeReply = Schema.encodeEffect(ExchangeReplyJson)
+const decodeClientMessageWith = Schema.decodeUnknownEffect(ClientMessageJson)
+export const decodeClientMessage = (input: unknown) =>
+  decodeClientMessageWith(input)
+const encodeClientMessageWith = Schema.encodeEffect(ClientMessageJson)
+export const encodeClientMessage = (input: ClientMessage) =>
+  encodeClientMessageWith(input)
+const decodeServerMessageWith = Schema.decodeUnknownEffect(ServerMessageJson)
+export const decodeServerMessage = (input: unknown) =>
+  decodeServerMessageWith(input)
+const encodeServerMessageWith = Schema.encodeEffect(ServerMessageJson)
+export const encodeServerMessage = (input: ServerMessage) =>
+  encodeServerMessageWith(input)
+const decodeExchangeWith = Schema.decodeUnknownEffect(ExchangeJson)
+export const decodeExchange = (input: unknown) => decodeExchangeWith(input)
+const encodeExchangeWith = Schema.encodeEffect(ExchangeJson)
+export const encodeExchange = (input: Exchange) => encodeExchangeWith(input)
+const decodeExchangeReplyWith = Schema.decodeUnknownEffect(ExchangeReplyJson)
+export const decodeExchangeReply = (input: unknown) =>
+  decodeExchangeReplyWith(input)
+const encodeExchangeReplyWith = Schema.encodeEffect(ExchangeReplyJson)
+export const encodeExchangeReply = (input: ExchangeReply) =>
+  encodeExchangeReplyWith(input)
 
 // NOTE: the exact strings the Durable Object's WebSocket auto-response
 // matches, so a heartbeat never wakes a hibernating object.

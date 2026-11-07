@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { findStrike, levelOf } from './arena'
@@ -314,9 +314,15 @@ const throwCharge = (heldMs: number, tier: number): number =>
 const lerp = (from: number, to: number, share: number): number =>
   from + (to - from) * share
 
-export const lidBlastRadius = (charge: number, tier: number): number =>
-  lerp(COOKER_RULES.minRadius, COOKER_RULES.maxRadius, charge) *
-  cookerTier(tier).blastScale
+export const lidBlastRadius: {
+  (tier: number): (charge: number) => number
+  (charge: number, tier: number): number
+} = Function.dual(
+  2,
+  (charge: number, tier: number): number =>
+    lerp(COOKER_RULES.minRadius, COOKER_RULES.maxRadius, charge) *
+    cookerTier(tier).blastScale,
+)
 
 const lidDamage = (charge: number): number =>
   Math.round(lerp(COOKER_RULES.minDamage, COOKER_RULES.maxDamage, charge))
@@ -521,7 +527,10 @@ const lidBlast = (world: World, lob: Lob, at: Vector): World => {
 
 // NOTE: each lid flies on toward where it was thrown and bursts there, or
 // on the first grounded zombie it touches on the way.
-export const advanceLobs = (world: World, deltaMs: number): World => {
+export const advanceLobs: {
+  (deltaMs: number): (world: World) => World
+  (world: World, deltaMs: number): World
+} = Function.dual(2, (world: World, deltaMs: number): World => {
   if (Array.isReadonlyArrayEmpty(world.lobs)) {
     return world
   }
@@ -551,7 +560,7 @@ export const advanceLobs = (world: World, deltaMs: number): World => {
     landed,
     (current: World, { lob, at }) => lidBlast(current, lob, at),
   )
-}
+})
 
 // THE CLANG PAN
 
@@ -713,7 +722,10 @@ const firePan = (
 }
 
 // NOTE: Rattles bangs a Pan flat, free, when a break begins.
-export const flattenPans = (world: World, slot: PlayerSlot): World => {
+export const flattenPans: {
+  (slot: PlayerSlot): (world: World) => World
+  (world: World, slot: PlayerSlot): World
+} = Function.dual(2, (world: World, slot: PlayerSlot): World => {
   const { player: held } = seatStateAt(world, slot)
   return Option.match(
     Option.filter(
@@ -736,7 +748,7 @@ export const flattenPans = (world: World, slot: PlayerSlot): World => {
         ),
     },
   )
-}
+})
 
 // BRAIN FREEZE
 
@@ -863,20 +875,30 @@ export const maybeHeldFridgeWeapon = (
       )
 
 // NOTE: one tick of the trigger for a player holding a fridge weapon.
-export const fireFridgeWeapon = (
-  world: World,
-  slot: PlayerSlot,
-  spare: CarriedGun,
-  deltaMs: number,
-): World => {
-  if (spare.kind === 'Cooker') {
-    return fireCooker(world, slot, spare, deltaMs)
-  } else if (spare.kind === 'Pan') {
-    return firePan(world, slot, spare, deltaMs)
-  } else {
-    return fireFreeze(world, slot, spare, deltaMs)
-  }
-}
+export const fireFridgeWeapon: {
+  (
+    slot: PlayerSlot,
+    spare: CarriedGun,
+    deltaMs: number,
+  ): (world: World) => World
+  (world: World, slot: PlayerSlot, spare: CarriedGun, deltaMs: number): World
+} = Function.dual(
+  4,
+  (
+    world: World,
+    slot: PlayerSlot,
+    spare: CarriedGun,
+    deltaMs: number,
+  ): World => {
+    if (spare.kind === 'Cooker') {
+      return fireCooker(world, slot, spare, deltaMs)
+    } else if (spare.kind === 'Pan') {
+      return firePan(world, slot, spare, deltaMs)
+    } else {
+      return fireFreeze(world, slot, spare, deltaMs)
+    }
+  },
+)
 
 // NOTE: a reload, a swap, or the stall lets go of the charge.
 export const dropCharge = (player: Player): Player =>
@@ -959,7 +981,10 @@ const shattersOf = (
 // ice: the event the views and sounds read, and the shards that splash its
 // small neighbors. Their kills have no one killer, so they pay shared, as a
 // Kaboomer's chain does.
-export const resolveShatters = (before: World, after: World): World => {
+export const resolveShatters: {
+  (after: World): (before: World) => World
+  (before: World, after: World): World
+} = Function.dual(2, (before: World, after: World): World => {
   const wasFrozen = new Map(
     Array.filterMap(before.zombies, zombie =>
       isIcedSolid(zombie.action)
@@ -994,4 +1019,4 @@ export const resolveShatters = (before: World, after: World): World => {
     [...cracks, ...splashed.events],
   )
   return bounty > 0 ? payKillShared(shards, bounty) : shards
-}
+})

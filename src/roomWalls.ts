@@ -1,4 +1,4 @@
-import { Array, Option, Record, Result, pipe } from 'effect'
+import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import {
@@ -522,8 +522,12 @@ export const sconceShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
 
 // DOORS
 
-export const doorBox = (level: Level, id: DoorId): Box =>
-  boundingBox(tilesWithSymbol(level, DOOR_SYMBOLS[id]))
+export const doorBox: {
+  (id: DoorId): (level: Level) => Box
+  (level: Level, id: DoorId): Box
+} = Function.dual(2, (level: Level, id: DoorId): Box =>
+  boundingBox(tilesWithSymbol(level, DOOR_SYMBOLS[id])),
+)
 
 const splinters = (
   x: number,

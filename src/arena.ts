@@ -1,8 +1,7 @@
-import { Array, Option, Record, Result, String, pipe } from 'effect'
+import { Array, Function, Option, Record, Result, String, pipe } from 'effect'
 
 import {
   BULLET_STEP_PX,
-  COLLISION_STEP_PX,
   LINE_OF_SIGHT_STEP_PX,
   TILE_SIZE,
   ZOMBIE_SPAWN_MARGIN,
@@ -14,7 +13,7 @@ import type {
   LevelState,
   Vector,
 } from './entitySchema'
-import { addVectors, clamp, scaleVector, vectorLength } from './geometry'
+import { addVectors, clamp, scaleVector } from './geometry'
 
 // MAP
 
@@ -242,46 +241,60 @@ type Grid = Readonly<{
   topRow: number
 }>
 
-export const symbolAt = (
-  grid: Grid,
-  column: number,
-  row: number,
-): Option.Option<string> =>
-  pipe(
-    grid.tiles,
-    Array.get(row - grid.topRow),
-    Option.flatMap(line => String.at(line, column)),
-  )
+export const symbolAt: {
+  (column: number, row: number): (grid: Grid) => Option.Option<string>
+  (grid: Grid, column: number, row: number): Option.Option<string>
+} = Function.dual(
+  3,
+  (grid: Grid, column: number, row: number): Option.Option<string> =>
+    pipe(
+      grid.tiles,
+      Array.get(row - grid.topRow),
+      Option.flatMap(line => String.at(line, column)),
+    ),
+)
 
-export const tileIndex = (grid: Grid, column: number, row: number): number =>
-  (row - grid.topRow) * grid.columns + column
+export const tileIndex: {
+  (column: number, row: number): (grid: Grid) => number
+  (grid: Grid, column: number, row: number): number
+} = Function.dual(
+  3,
+  (grid: Grid, column: number, row: number): number =>
+    (row - grid.topRow) * grid.columns + column,
+)
 
-export const tileOfIndex = (grid: Grid, index: number): Tile => ({
+export const tileOfIndex: {
+  (index: number): (grid: Grid) => Tile
+  (grid: Grid, index: number): Tile
+} = Function.dual(2, (grid: Grid, index: number): Tile => ({
   column: index % grid.columns,
   row: Math.floor(index / grid.columns) + grid.topRow,
-})
+}))
 
-export const isInsideRoom = (
-  grid: Grid,
-  column: number,
-  row: number,
-): boolean =>
-  column >= 0 &&
-  column < grid.columns &&
-  row >= grid.topRow &&
-  row < grid.topRow + grid.rows
+export const isInsideRoom: {
+  (column: number, row: number): (grid: Grid) => boolean
+  (grid: Grid, column: number, row: number): boolean
+} = Function.dual(
+  3,
+  (grid: Grid, column: number, row: number): boolean =>
+    column >= 0 &&
+    column < grid.columns &&
+    row >= grid.topRow &&
+    row < grid.topRow + grid.rows,
+)
 
-export const tilesWithSymbol = (
-  grid: Grid,
-  symbol: string,
-): ReadonlyArray<Tile> =>
+export const tilesWithSymbol: {
+  (symbol: string): (grid: Grid) => ReadonlyArray<Tile>
+  (grid: Grid, symbol: string): ReadonlyArray<Tile>
+} = Function.dual(2, (grid: Grid, symbol: string): ReadonlyArray<Tile> =>
   Array.flatMap(grid.tiles, (line, index) =>
     Array.filterMap(String.split(line, ''), (lineSymbol, column) =>
       lineSymbol === symbol
         ? Result.succeed({ column, row: index + grid.topRow })
         : Result.failVoid,
     ),
-  )
+  ),
+)
 
 const indicesWhere = (
   grid: Grid,
@@ -321,17 +334,24 @@ export const boxCenter = ({ left, top, right, bottom }: Box): Vector => ({
   y: (top + bottom) / 2,
 })
 
-export const distanceToBox = (position: Vector, box: Box): number =>
+export const distanceToBox: {
+  (box: Box): (position: Vector) => number
+  (position: Vector, box: Box): number
+} = Function.dual(2, (position: Vector, box: Box): number =>
   Math.hypot(
     position.x - clamp(position.x, box.left, box.right),
     position.y - clamp(position.y, box.top, box.bottom),
-  )
+  ),
+)
 
-export const circleTouchesBox = (
-  position: Vector,
-  radius: number,
-  box: Box,
-): boolean => distanceToBox(position, box) < radius
+export const circleTouchesBox: {
+  (radius: number, box: Box): (position: Vector) => boolean
+  (position: Vector, radius: number, box: Box): boolean
+} = Function.dual(
+  3,
+  (position: Vector, radius: number, box: Box): boolean =>
+    distanceToBox(position, box) < radius,
+)
 
 const boundingBox = (tiles: ReadonlyArray<Tile>): Box =>
   Array.reduce(
@@ -457,11 +477,14 @@ export const TILE_OPEN_BLOCK = 8
 const TILE_SOUP = 16
 export const TILE_DOOR = 32
 
-export const hasTileFlag = (
-  level: Level,
-  index: number,
-  flag: number,
-): boolean => ((level.tileFlags[index] ?? 0) & flag) !== 0
+export const hasTileFlag: {
+  (index: number, flag: number): (level: Level) => boolean
+  (level: Level, index: number, flag: number): boolean
+} = Function.dual(
+  3,
+  (level: Level, index: number, flag: number): boolean =>
+    ((level.tileFlags[index] ?? 0) & flag) !== 0,
+)
 
 const packTileFlags = (
   tileCount: number,
@@ -680,53 +703,62 @@ const buildLevel = (
 
 const levelsBySpec = new WeakMap<LevelSpec, Map<string, Level>>()
 
-export const levelFor = (
-  spec: LevelSpec,
-  openExits: ReadonlyArray<ExitId> = [],
-): Level => {
-  const key = keyOf(spec, openExitIdsOf(spec, openExits))
-  const built = levelsBySpec.get(spec) ?? new Map<string, Level>()
-  levelsBySpec.set(spec, built)
-  const cached = built.get(key)
-  if (cached !== undefined) {
-    return cached
-  }
-  const level = buildLevel(spec, openExits)
-  built.set(key, level)
-  return level
-}
+export const levelFor: {
+  (openExits?: ReadonlyArray<ExitId>): (spec: LevelSpec) => Level
+  (spec: LevelSpec, openExits?: ReadonlyArray<ExitId>): Level
+} = Function.dual(
+  // NOTE: data-first starts with the spec; data-last with the open exits or nothing.
+  (args: IArguments): boolean =>
+    args[0] !== undefined && !Array.isArray(args[0]),
+  (spec: LevelSpec, openExits: ReadonlyArray<ExitId> = []): Level => {
+    const key = keyOf(spec, openExitIdsOf(spec, openExits))
+    const built = levelsBySpec.get(spec) ?? new Map<string, Level>()
+    levelsBySpec.set(spec, built)
+    const cached = built.get(key)
+    if (cached !== undefined) {
+      return cached
+    }
+    const level = buildLevel(spec, openExits)
+    built.set(key, level)
+    return level
+  },
+)
 
 // NOTE: a map with no exits, for tests and tools that need a level of a
 // different shape. It is built fresh, not kept.
-export const makeLevel = (
-  tiles: ReadonlyArray<string>,
-  id: string = 'Custom',
-): Level =>
-  buildLevel(
-    {
-      id,
-      tiles,
-      topRow: 0,
-      exits: [],
-      rooms: [
-        {
-          id,
-          firstColumn: 0,
-          lastColumn: Math.max(
-            0,
-            Option.match(Array.head(tiles), {
-              onNone: () => 0,
-              onSome: String.length,
-            }) - 1,
-          ),
-          firstRow: 0,
-          lastRow: Math.max(0, tiles.length - 1),
-          maybeExit: Option.none(),
-        },
-      ],
-    },
-    [],
-  )
+export const makeLevel: {
+  (id?: string): (tiles: ReadonlyArray<string>) => Level
+  (tiles: ReadonlyArray<string>, id?: string): Level
+} = Function.dual(
+  // NOTE: data-first starts with the tiles; data-last with the id or nothing.
+  (args: IArguments): boolean => Array.isArray(args[0]),
+  (tiles: ReadonlyArray<string>, id: string = 'Custom'): Level =>
+    buildLevel(
+      {
+        id,
+        tiles,
+        topRow: 0,
+        exits: [],
+        rooms: [
+          {
+            id,
+            firstColumn: 0,
+            lastColumn: Math.max(
+              0,
+              Option.match(Array.head(tiles), {
+                onNone: () => 0,
+                onSome: String.length,
+              }) - 1,
+            ),
+            firstRow: 0,
+            lastRow: Math.max(0, tiles.length - 1),
+            maybeExit: Option.none(),
+          },
+        ],
+      },
+      [],
+    ),
+)
 
 export const PARLOUR: Level = levelFor(PARLOUR_SPEC)
 
@@ -736,7 +768,10 @@ export const startingLevel: LevelState = { id: 'Manor', openExits: [] }
 
 // NOTE: the open room a point stands in, or the first room when it stands in
 // none, such as in a doorway.
-export const roomAt = (level: Level, point: Vector): Room =>
+export const roomAt: {
+  (point: Vector): (level: Level) => Room
+  (level: Level, point: Vector): Room
+} = Function.dual(2, (level: Level, point: Vector): Room =>
   pipe(
     level.rooms,
     Array.findFirst(
@@ -753,7 +788,8 @@ export const roomAt = (level: Level, point: Vector): Room =>
       box: level.bounds,
       isOpen: true,
     })),
-  )
+  ),
+)
 
 const levelsByState = new WeakMap<LevelState, Level>()
 
@@ -772,8 +808,12 @@ export const levelOf = ({ level }: Readonly<{ level: LevelState }>): Level => {
 
 // EXITS
 
-export const maybeExit = (level: Level, id: ExitId): Option.Option<Exit> =>
-  Array.findFirst(level.exits, exit => exit.id === id)
+export const maybeExit: {
+  (id: ExitId): (level: Level) => Option.Option<Exit>
+  (level: Level, id: ExitId): Option.Option<Exit>
+} = Function.dual(2, (level: Level, id: ExitId): Option.Option<Exit> =>
+  Array.findFirst(level.exits, exit => exit.id === id),
+)
 
 export const closedExits = (level: Level): ReadonlyArray<Exit> =>
   Array.filter(level.exits, ({ isOpen }) => !isOpen)
@@ -781,43 +821,59 @@ export const closedExits = (level: Level): ReadonlyArray<Exit> =>
 const isClosedExit = (level: Level, id: ExitId): boolean =>
   Option.exists(maybeExit(level, id), ({ isOpen }) => !isOpen)
 
-export const openExit = (level: Level, id: ExitId): Level =>
+export const openExit: {
+  (id: ExitId): (level: Level) => Level
+  (level: Level, id: ExitId): Level
+} = Function.dual(2, (level: Level, id: ExitId): Level =>
   isClosedExit(level, id)
     ? levelFor(level.spec, Array.append(level.openExits, id))
-    : level
+    : level,
+)
 
-export const openExitIn = (state: LevelState, id: ExitId): LevelState =>
+export const openExitIn: {
+  (id: ExitId): (state: LevelState) => LevelState
+  (state: LevelState, id: ExitId): LevelState
+} = Function.dual(2, (state: LevelState, id: ExitId): LevelState =>
   isClosedExit(levelOf({ level: state }), id)
     ? { id: state.id, openExits: Array.append(state.openExits, id) }
-    : state
+    : state,
+)
 
 // TILES
 
-export const isWalkableTile = (
-  level: Level,
-  column: number,
-  row: number,
-): boolean =>
-  isInsideRoom(level, column, row) &&
-  !hasTileFlag(level, tileIndex(level, column, row), TILE_SOLID)
+export const isWalkableTile: {
+  (column: number, row: number): (level: Level) => boolean
+  (level: Level, column: number, row: number): boolean
+} = Function.dual(
+  3,
+  (level: Level, column: number, row: number): boolean =>
+    isInsideRoom(level, column, row) &&
+    !hasTileFlag(level, tileIndex(level, column, row), TILE_SOLID),
+)
 
 const isSolidTile = (level: Level, column: number, row: number): boolean =>
   isInsideRoom(level, column, row) &&
   hasTileFlag(level, tileIndex(level, column, row), TILE_SOLID)
 
-export const isOpenBlock = (
-  level: Level,
-  column: number,
-  row: number,
-): boolean =>
-  isInsideRoom(level, column, row) &&
-  hasTileFlag(level, tileIndex(level, column, row), TILE_OPEN_BLOCK)
+export const isOpenBlock: {
+  (column: number, row: number): (level: Level) => boolean
+  (level: Level, column: number, row: number): boolean
+} = Function.dual(
+  3,
+  (level: Level, column: number, row: number): boolean =>
+    isInsideRoom(level, column, row) &&
+    hasTileFlag(level, tileIndex(level, column, row), TILE_OPEN_BLOCK),
+)
 
 export const tileCoordinate = (position: number): number =>
   Math.floor(position / TILE_SIZE)
 
-export const isSolidAt = (level: Level, { x, y }: Vector): boolean =>
-  isSolidTile(level, tileCoordinate(x), tileCoordinate(y))
+export const isSolidAt: {
+  (arg1: Vector): (level: Level) => boolean
+  (level: Level, arg1: Vector): boolean
+} = Function.dual(2, (level: Level, { x, y }: Vector): boolean =>
+  isSolidTile(level, tileCoordinate(x), tileCoordinate(y)),
+)
 
 const isOutsideTile = (level: Level, column: number, row: number): boolean =>
   hasTileFlag(level, tileIndex(level, column, row), TILE_OUTSIDE)
@@ -825,62 +881,80 @@ const isOutsideTile = (level: Level, column: number, row: number): boolean =>
 // NOTE: inside the house: on the map and not out in the yard. A zombie in the
 // yard is still outside, walking to its door the way one past the map's edge
 // does, and nothing out there is drawn.
-export const isInsideRoomAt = (level: Level, { x, y }: Vector): boolean =>
-  isInsideRoomPoint(level, x, y)
+export const isInsideRoomAt: {
+  (arg1: Vector): (level: Level) => boolean
+  (level: Level, arg1: Vector): boolean
+} = Function.dual(2, (level: Level, { x, y }: Vector): boolean =>
+  isInsideRoomPoint(level, x, y),
+)
 
 // NOTE: out in the yard: on the map but outside the house. With the kitchen
 // boarded, its tiles count as yard too.
-export const isInYardAt = (level: Level, { x, y }: Vector): boolean => {
+export const isInYardAt: {
+  (arg1: Vector): (level: Level) => boolean
+  (level: Level, arg1: Vector): boolean
+} = Function.dual(2, (level: Level, { x, y }: Vector): boolean => {
   const column = tileCoordinate(x)
   const row = tileCoordinate(y)
   return isInsideRoom(level, column, row) && isOutsideTile(level, column, row)
-}
+})
 
-export const isOnSoupAt = (level: Level, { x, y }: Vector): boolean => {
+export const isOnSoupAt: {
+  (arg1: Vector): (level: Level) => boolean
+  (level: Level, arg1: Vector): boolean
+} = Function.dual(2, (level: Level, { x, y }: Vector): boolean => {
   const column = tileCoordinate(x)
   const row = tileCoordinate(y)
   return (
     isInsideRoom(level, column, row) &&
     hasTileFlag(level, tileIndex(level, column, row), TILE_SOUP)
   )
-}
+})
 
-export const tileIndexAt = (level: Level, { x, y }: Vector): number =>
+export const tileIndexAt: {
+  (arg1: Vector): (level: Level) => number
+  (level: Level, arg1: Vector): number
+} = Function.dual(2, (level: Level, { x, y }: Vector): number =>
   tileIndex(
     level,
     clamp(tileCoordinate(x), 0, level.columns - 1),
     clamp(tileCoordinate(y), level.topRow, level.topRow + level.rows - 1),
-  )
+  ),
+)
 
 // DOORS
 
-export const isDoorTile = (
-  level: Level,
-  column: number,
-  row: number,
-): boolean =>
-  isInsideRoom(level, column, row) &&
-  hasTileFlag(level, tileIndex(level, column, row), TILE_DOOR)
+export const isDoorTile: {
+  (column: number, row: number): (level: Level) => boolean
+  (level: Level, column: number, row: number): boolean
+} = Function.dual(
+  3,
+  (level: Level, column: number, row: number): boolean =>
+    isInsideRoom(level, column, row) &&
+    hasTileFlag(level, tileIndex(level, column, row), TILE_DOOR),
+)
 
 // NOTE: a zombie due at a door stands just past the door's own outer face,
 // which for the parlour's doors is the map's edge, and for the kitchen's
 // back door the top of the kitchen's wall.
-export const doorSpawnPoint = (
-  level: Level,
-  id: DoorId,
-  offset: number,
-): Vector => {
+export const doorSpawnPoint: {
+  (id: DoorId, offset: number): (level: Level) => Vector
+  (level: Level, id: DoorId, offset: number): Vector
+} = Function.dual(3, (level: Level, id: DoorId, offset: number): Vector => {
   const { edge, outward } = level.doors[id]
   return {
     x: edge.x + outward.x * ZOMBIE_SPAWN_MARGIN - outward.y * offset,
     y: edge.y + outward.y * ZOMBIE_SPAWN_MARGIN + outward.x * offset,
   }
-}
+})
 
 const distanceSquared = (first: Vector, second: Vector): number =>
   (first.x - second.x) ** 2 + (first.y - second.y) ** 2
 
-export const nearestDoor = (level: Level, position: Vector): Door =>
+export const nearestDoor: {
+  (position: Vector): (level: Level) => Door
+  (level: Level, position: Vector): Door
+} = Function.dual(2, (level: Level, position: Vector): Door =>
   Array.reduce(
     Array.map(level.doorIds, id => level.doors[id]),
     level.doors[
@@ -891,100 +965,8 @@ export const nearestDoor = (level: Level, position: Vector): Door =>
       distanceSquared(nearest.center, position)
         ? door
         : nearest,
-  )
-
-// COLLISION
-
-const pushOutOfBox = (position: Vector, radius: number, box: Box): Vector => {
-  const { left, top, right, bottom } = box
-  const deltaX = position.x - clamp(position.x, left, right)
-  const deltaY = position.y - clamp(position.y, top, bottom)
-  const distance = Math.hypot(deltaX, deltaY)
-
-  if (distance >= radius) {
-    return position
-  } else if (distance > 0) {
-    const push = (radius - distance) / distance
-    return { x: position.x + deltaX * push, y: position.y + deltaY * push }
-  }
-
-  const toLeft = position.x - left
-  const toRight = right - position.x
-  const toTop = position.y - top
-  const toBottom = bottom - position.y
-  const nearest = Math.min(toLeft, toRight, toTop, toBottom)
-  if (nearest === toLeft) {
-    return { x: left - radius, y: position.y }
-  } else if (nearest === toRight) {
-    return { x: right + radius, y: position.y }
-  } else if (nearest === toTop) {
-    return { x: position.x, y: top - radius }
-  } else {
-    return { x: position.x, y: bottom + radius }
-  }
-}
-
-// NOTE: who is moving decides what is solid. A zombie walks the yard on its
-// way to a door, and the player never leaves the house.
-export type Walker = 'Zombie' | 'Player'
-
-const solidFlagFor = (walker: Walker): number =>
-  walker === 'Player' ? TILE_PLAYER_SOLID : TILE_SOLID
-
-// NOTE: the solid tiles in the circle's square, row by row and left to right
-// in each row, each pushing the circle out in turn, then the blockers.
-export const resolveCircle = (
-  level: Level,
-  position: Vector,
-  radius: number,
-  blockers: ReadonlyArray<Box> = [],
-  walker: Walker = 'Zombie',
-): Vector => {
-  const flag = solidFlagFor(walker)
-  const firstColumn = tileCoordinate(position.x - radius)
-  const lastColumn = tileCoordinate(position.x + radius)
-  const lastRow = tileCoordinate(position.y + radius)
-  let resolved = position
-  for (let row = tileCoordinate(position.y - radius); row <= lastRow; row++) {
-    for (let column = firstColumn; column <= lastColumn; column++) {
-      if (
-        isInsideRoom(level, column, row) &&
-        hasTileFlag(level, tileIndex(level, column, row), flag)
-      ) {
-        resolved = pushOutOfBox(resolved, radius, tileBox({ column, row }))
-      }
-    }
-  }
-  for (const box of blockers) {
-    resolved = pushOutOfBox(resolved, radius, box)
-  }
-  return resolved
-}
-
-export const moveCircle = (
-  level: Level,
-  position: Vector,
-  delta: Vector,
-  radius: number,
-  blockers: ReadonlyArray<Box> = [],
-  walker: Walker = 'Zombie',
-): Vector => {
-  const steps = Math.max(1, Math.ceil(vectorLength(delta) / COLLISION_STEP_PX))
-  const factor = 1 / steps
-  const stepX = delta.x * factor
-  const stepY = delta.y * factor
-  let moved = position
-  for (let index = 0; index < steps; index++) {
-    moved = resolveCircle(
-      level,
-      { x: moved.x + stepX, y: moved.y + stepY },
-      radius,
-      blockers,
-      walker,
-    )
-  }
-  return moved
-}
+  ),
+)
 
 // RAYS
 
@@ -1002,29 +984,40 @@ const isInsideRoomPoint = (level: Level, x: number, y: number): boolean => {
   return isInsideRoom(level, column, row) && !isOutsideTile(level, column, row)
 }
 
-export const findStrike = (
-  level: Level,
-  from: Vector,
-  to: Vector,
-): Option.Option<Vector> => {
-  const steps = stepsAlong(from, to, BULLET_STEP_PX)
-  const dx = to.x - from.x
-  const dy = to.y - from.y
-  for (let index = 0; index <= steps; index++) {
-    if (isSolidPoint(level, from.x + (dx * index) / steps, from.y + (dy * index) / steps)) {
-      const before = Math.max(0, index - 1)
-      return Option.some({
-        x: from.x + (dx * before) / steps,
-        y: from.y + (dy * before) / steps,
-      })
+export const findStrike: {
+  (from: Vector, to: Vector): (level: Level) => Option.Option<Vector>
+  (level: Level, from: Vector, to: Vector): Option.Option<Vector>
+} = Function.dual(
+  3,
+  (level: Level, from: Vector, to: Vector): Option.Option<Vector> => {
+    const steps = stepsAlong(from, to, BULLET_STEP_PX)
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    for (let index = 0; index <= steps; index++) {
+      if (
+        isSolidPoint(
+          level,
+          from.x + (dx * index) / steps,
+          from.y + (dy * index) / steps,
+        )
+      ) {
+        const before = Math.max(0, index - 1)
+        return Option.some({
+          x: from.x + (dx * before) / steps,
+          y: from.y + (dy * before) / steps,
+        })
+      }
     }
-  }
-  return Option.none()
-}
+    return Option.none()
+  },
+)
 
 // NOTE: where a ray ends: the last point before a wall or before it leaves
 // the room through a doorway, or `to` when nothing is in the way.
-export const findReach = (level: Level, from: Vector, to: Vector): Vector => {
+export const findReach: {
+  (from: Vector, to: Vector): (level: Level) => Vector
+  (level: Level, from: Vector, to: Vector): Vector
+} = Function.dual(3, (level: Level, from: Vector, to: Vector): Vector => {
   const steps = stepsAlong(from, to, BULLET_STEP_PX)
   const dx = to.x - from.x
   const dy = to.y - from.y
@@ -1040,7 +1033,7 @@ export const findReach = (level: Level, from: Vector, to: Vector): Vector => {
     }
   }
   return to
-}
+})
 
 const isLaneClear = (
   level: Level,
@@ -1057,7 +1050,11 @@ const isLaneClear = (
   const dy = toY - fromY
   for (let index = 0; index <= steps; index++) {
     if (
-      isSolidPoint(level, fromX + (dx * index) / steps, fromY + (dy * index) / steps)
+      isSolidPoint(
+        level,
+        fromX + (dx * index) / steps,
+        fromY + (dy * index) / steps,
+      )
     ) {
       return false
     }
@@ -1065,28 +1062,42 @@ const isLaneClear = (
   return true
 }
 
-export const hasLineOfSight = (
-  level: Level,
-  from: Vector,
-  to: Vector,
-): boolean => isLaneClear(level, from.x, from.y, to.x, to.y)
+export const hasLineOfSight: {
+  (from: Vector, to: Vector): (level: Level) => boolean
+  (level: Level, from: Vector, to: Vector): boolean
+} = Function.dual(3, (level: Level, from: Vector, to: Vector): boolean =>
+  isLaneClear(level, from.x, from.y, to.x, to.y),
+)
 
-export const hasClearPath = (
-  level: Level,
-  from: Vector,
-  to: Vector,
-  halfWidth: number,
-): boolean => {
-  const length = Math.hypot(to.x - from.x, to.y - from.y)
-  if (length <= 0) {
-    return !isSolidAt(level, from)
-  }
+export const hasClearPath: {
+  (from: Vector, to: Vector, halfWidth: number): (level: Level) => boolean
+  (level: Level, from: Vector, to: Vector, halfWidth: number): boolean
+} = Function.dual(
+  4,
+  (level: Level, from: Vector, to: Vector, halfWidth: number): boolean => {
+    const length = Math.hypot(to.x - from.x, to.y - from.y)
+    if (length <= 0) {
+      return !isSolidAt(level, from)
+    }
 
-  const sideX = (-(to.y - from.y) / length) * halfWidth
-  const sideY = ((to.x - from.x) / length) * halfWidth
-  return (
-    isLaneClear(level, from.x, from.y, to.x, to.y) &&
-    isLaneClear(level, from.x + sideX, from.y + sideY, to.x + sideX, to.y + sideY) &&
-    isLaneClear(level, from.x - sideX, from.y - sideY, to.x - sideX, to.y - sideY)
-  )
-}
+    const sideX = (-(to.y - from.y) / length) * halfWidth
+    const sideY = ((to.x - from.x) / length) * halfWidth
+    return (
+      isLaneClear(level, from.x, from.y, to.x, to.y) &&
+      isLaneClear(
+        level,
+        from.x + sideX,
+        from.y + sideY,
+        to.x + sideX,
+        to.y + sideY,
+      ) &&
+      isLaneClear(
+        level,
+        from.x - sideX,
+        from.y - sideY,
+        to.x - sideX,
+        to.y - sideY,
+      )
+    )
+  },
+)

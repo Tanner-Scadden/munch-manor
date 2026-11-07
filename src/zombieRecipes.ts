@@ -1,7 +1,13 @@
 import { Array } from 'effect'
 
 import type { SoundEffect } from './soundEffect'
-import { type PitchPoint, type Recipe, at, envelope } from './soundRecipe'
+import {
+  type PitchPoint,
+  type Recipe,
+  at,
+  delayedEnvelope,
+  envelope,
+} from './soundRecipe'
 
 const ZOMBIE_HIT_RECIPE: Recipe = {
   variationCents: 160,
@@ -36,7 +42,7 @@ const ZOMBIE_DEATH_RECIPE: Recipe = {
       filter: 'bandpass',
       quality: 7,
       cutoff: [at(0, 2800), at(0.2, 240)],
-      envelope: envelope(0.55, 0.004, 0.2, 0.02),
+      envelope: delayedEnvelope(0.55, 0.004, 0.2, 0.02),
     },
   ],
 }
@@ -96,7 +102,7 @@ export const ZOMBIE_RECIPES = {
       {
         wave: 'sine',
         pitch: [at(0, 70), at(0.3, 30)],
-        envelope: envelope(0.7, 0.004, 0.34, 0.18),
+        envelope: delayedEnvelope(0.7, 0.004, 0.34, 0.18),
       },
     ],
     noises: [
@@ -104,7 +110,7 @@ export const ZOMBIE_RECIPES = {
         filter: 'lowpass',
         quality: 1,
         cutoff: [at(0, 900), at(0.3, 120)],
-        envelope: envelope(0.6, 0.004, 0.3, 0.18),
+        envelope: delayedEnvelope(0.6, 0.004, 0.3, 0.18),
       },
     ],
   },
@@ -151,7 +157,7 @@ export const ZOMBIE_RECIPES = {
         filter: 'bandpass',
         quality: 12,
         cutoff: [at(0, 5200), at(0.06, 2400), at(0.12, 5600), at(0.2, 2800)],
-        envelope: envelope(0.25, 0.002, 0.26, 0.03),
+        envelope: delayedEnvelope(0.25, 0.002, 0.26, 0.03),
       },
     ],
   },
@@ -171,7 +177,7 @@ export const ZOMBIE_RECIPES = {
       {
         wave: 'triangle',
         pitch: [at(0, 60), at(0.3, 30)],
-        envelope: envelope(0.6, 0.004, 0.4, 0.02),
+        envelope: delayedEnvelope(0.6, 0.004, 0.4, 0.02),
       },
     ],
     noises: [
@@ -185,13 +191,13 @@ export const ZOMBIE_RECIPES = {
         filter: 'bandpass',
         quality: 6,
         cutoff: [at(0, 1800), at(0.2, 500)],
-        envelope: envelope(0.45, 0.01, 0.22, 0.04),
+        envelope: delayedEnvelope(0.45, 0.01, 0.22, 0.04),
       },
       {
         filter: 'lowpass',
         quality: 1,
         cutoff: [at(0, 900), at(0.5, 200)],
-        envelope: envelope(0.4, 0.05, 0.5, 0.12),
+        envelope: delayedEnvelope(0.4, 0.05, 0.5, 0.12),
       },
     ],
   },
@@ -262,7 +268,7 @@ export const ZOMBIE_RECIPES = {
         filter: 'lowpass',
         quality: 1,
         cutoff: [at(0, 1200), at(0.12, 200)],
-        envelope: envelope(0.35, 0.002, 0.12, 0.04),
+        envelope: delayedEnvelope(0.35, 0.002, 0.12, 0.04),
       },
     ],
   },
@@ -374,7 +380,7 @@ export const ZOMBIE_RECIPES = {
       {
         wave: 'sine',
         pitch: [at(0, 80), at(0.9, 24)],
-        envelope: envelope(0.9, 0.004, 1, 0.2),
+        envelope: delayedEnvelope(0.9, 0.004, 1, 0.2),
       },
     ],
     noises: [
@@ -382,7 +388,7 @@ export const ZOMBIE_RECIPES = {
         filter: 'lowpass',
         quality: 0.7,
         cutoff: [at(0, 4200), at(1.2, 100)],
-        envelope: envelope(0.9, 0.003, 1.2, 0.15),
+        envelope: delayedEnvelope(0.9, 0.003, 1.2, 0.15),
       },
       {
         filter: 'bandpass',
@@ -412,19 +418,19 @@ export const ZOMBIE_RECIPES = {
         filter: 'lowpass',
         quality: 1,
         cutoff: [at(0, 900), at(0.1, 160)],
-        envelope: envelope(0.6, 0.004, 0.12, 0.27),
+        envelope: delayedEnvelope(0.6, 0.004, 0.12, 0.27),
       },
       {
         filter: 'lowpass',
         quality: 1,
         cutoff: [at(0, 900), at(0.1, 160)],
-        envelope: envelope(0.6, 0.004, 0.12, 0.54),
+        envelope: delayedEnvelope(0.6, 0.004, 0.12, 0.54),
       },
       {
         filter: 'bandpass',
         quality: 6,
         cutoff: [at(0, 700), at(0.15, 1400)],
-        envelope: envelope(0.28, 0.02, 0.18, 0.6),
+        envelope: delayedEnvelope(0.28, 0.02, 0.18, 0.6),
       },
     ],
   },
@@ -457,7 +463,7 @@ export const ZOMBIE_RECIPES = {
       {
         wave: 'square',
         pitch: [at(0, 540), at(0.08, 300), at(0.16, 420), at(0.3, 260)],
-        envelope: envelope(0.14, 0.004, 0.35, 0.03),
+        envelope: delayedEnvelope(0.14, 0.004, 0.35, 0.03),
       },
     ],
     noises: [
@@ -475,7 +481,7 @@ export const ZOMBIE_RECIPES = {
       {
         wave: 'sine',
         pitch: [at(0, 420), at(0.1, 180)],
-        envelope: envelope(0.35, 0.004, 0.12, 0.08),
+        envelope: delayedEnvelope(0.35, 0.004, 0.12, 0.08),
       },
     ],
     noises: [
@@ -489,7 +495,7 @@ export const ZOMBIE_RECIPES = {
         filter: 'bandpass',
         quality: 4,
         cutoff: [at(0, 1800), at(0.12, 700)],
-        envelope: envelope(0.45, 0.003, 0.12, 0.08),
+        envelope: delayedEnvelope(0.45, 0.003, 0.12, 0.08),
       },
     ],
   },
@@ -549,7 +555,7 @@ export const ZOMBIE_RECIPES = {
         filter: 'highpass',
         quality: 3,
         cutoff: [at(0, 3800), at(0.5, 2600)],
-        envelope: envelope(0.08, 0.3, 0.4, 0.2),
+        envelope: delayedEnvelope(0.08, 0.3, 0.4, 0.2),
       },
     ],
   },
@@ -641,17 +647,17 @@ export const ZOMBIE_RECIPES = {
       {
         wave: 'square',
         pitch: [at(0, 988), at(0.06, 988)],
-        envelope: envelope(0.12, 0.002, 0.07, 0.07),
+        envelope: delayedEnvelope(0.12, 0.002, 0.07, 0.07),
       },
       {
         wave: 'square',
         pitch: [at(0, 1175), at(0.06, 1175)],
-        envelope: envelope(0.12, 0.002, 0.07, 0.14),
+        envelope: delayedEnvelope(0.12, 0.002, 0.07, 0.14),
       },
       {
         wave: 'triangle',
         pitch: [at(0, 1568), at(0.25, 1568)],
-        envelope: envelope(0.2, 0.002, 0.25, 0.21),
+        envelope: delayedEnvelope(0.2, 0.002, 0.25, 0.21),
       },
     ],
     noises: [],

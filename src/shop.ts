@@ -1,4 +1,13 @@
-import { Array, Option, Order, Result, Schema, String, pipe } from 'effect'
+import {
+  Array,
+  Function,
+  Option,
+  Order,
+  Result,
+  Schema,
+  String,
+  pipe,
+} from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
@@ -80,7 +89,10 @@ export { earn } from './party'
 const spend = (wallet: Wallet, amount: number): Wallet =>
   modifyFields(wallet, { balance: balance => balance - amount })
 
-export const tickShownMoney = (wallet: Wallet, seconds: number): Wallet => {
+export const tickShownMoney: {
+  (seconds: number): (wallet: Wallet) => Wallet
+  (wallet: Wallet, seconds: number): Wallet
+} = Function.dual(2, (wallet: Wallet, seconds: number): Wallet => {
   const gap = wallet.balance - wallet.shown
   if (gap === 0) {
     return wallet
@@ -96,35 +108,40 @@ export const tickShownMoney = (wallet: Wallet, seconds: number): Wallet => {
         ? Math.min(wallet.balance, shown + step)
         : Math.max(wallet.balance, shown - step),
   })
-}
+})
 
 // GOODS
 
 export const ShopGood = defineTaggedUnion({
   Gun: { weapon: WeaponKind },
-  Ammo: { weapon: WeaponKind, rounds: Schema.Number },
+  Ammo: { weapon: WeaponKind, rounds: Schema.Finite },
   Upgrade: { weapon: WeaponKind },
   Heart: {},
   Trap: { kind: TrapKind },
-  Repair: { trapId: Schema.Number },
+  Repair: { trapId: Schema.Finite },
   Sight: {},
 })
 export type ShopGood = typeof ShopGood.Type
 
 // UPGRADES
 
-export const gunName = (
-  model: World,
-  slot: PlayerSlot,
-  weapon: WeaponKind,
-): string => tierName(weapon, tierOf(seatStateAt(model, slot).player, weapon))
+export const gunName: {
+  (slot: PlayerSlot, weapon: WeaponKind): (model: World) => string
+  (model: World, slot: PlayerSlot, weapon: WeaponKind): string
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, weapon: WeaponKind): string =>
+    tierName(weapon, tierOf(seatStateAt(model, slot).player, weapon)),
+)
 
-export const nextGunName = (
-  model: World,
-  slot: PlayerSlot,
-  weapon: WeaponKind,
-): string =>
-  tierName(weapon, tierOf(seatStateAt(model, slot).player, weapon) + 1)
+export const nextGunName: {
+  (slot: PlayerSlot, weapon: WeaponKind): (model: World) => string
+  (model: World, slot: PlayerSlot, weapon: WeaponKind): string
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, weapon: WeaponKind): string =>
+    tierName(weapon, tierOf(seatStateAt(model, slot).player, weapon) + 1),
+)
 
 const nextTierFor = (
   model: World,
@@ -338,10 +355,10 @@ export const trapShelves = (
     ),
   }))
 
-export const maybeRepairTrap = (
-  model: World,
-  id: ShopItemId,
-): Option.Option<Trap> =>
+export const maybeRepairTrap: {
+  (id: ShopItemId): (model: World) => Option.Option<Trap>
+  (model: World, id: ShopItemId): Option.Option<Trap>
+} = Function.dual(2, (model: World, id: ShopItemId): Option.Option<Trap> =>
   ShopGood.match(shopItem(id).good, {
     Gun: () => Option.none(),
     Ammo: () => Option.none(),
@@ -351,7 +368,8 @@ export const maybeRepairTrap = (
     Repair: ({ trapId }) =>
       Array.findFirst(model.traps, trap => trap.id === trapId),
     Sight: () => Option.none(),
-  })
+  }),
+)
 
 const trapPlace = (trap: Trap): string =>
   Trap.match(trap, {
@@ -438,7 +456,7 @@ export const GunShelf = defineTaggedUnion({
   ForSale: { weapon: WeaponKind, item: ShopItemId },
   Owned: {
     weapon: WeaponKind,
-    tier: Schema.Number,
+    tier: Schema.Finite,
     status: Schema.String,
     items: Schema.NonEmptyArray(ShopItemId),
   },
@@ -457,16 +475,19 @@ const gunShelf = (player: Player, line: GunLine): GunShelf =>
       }),
   })
 
-export const gunShelves = (
-  model: World,
-  slot: PlayerSlot,
-): Array.NonEmptyReadonlyArray<GunShelf> =>
-  Array.appendAll(
-    Array.map(GUN_LINES, line =>
-      gunShelf(seatStateAt(model, slot).player, line),
+export const gunShelves: {
+  (slot: PlayerSlot): (model: World) => Array.NonEmptyReadonlyArray<GunShelf>
+  (model: World, slot: PlayerSlot): Array.NonEmptyReadonlyArray<GunShelf>
+} = Function.dual(
+  2,
+  (model: World, slot: PlayerSlot): Array.NonEmptyReadonlyArray<GunShelf> =>
+    Array.appendAll(
+      Array.map(GUN_LINES, line =>
+        gunShelf(seatStateAt(model, slot).player, line),
+      ),
+      fridgeShelves(seatStateAt(model, slot).player),
     ),
-    fridgeShelves(seatStateAt(model, slot).player),
-  )
+)
 
 const shelfItems = (shelf: GunShelf): Array.NonEmptyReadonlyArray<ShopItemId> =>
   GunShelf.match(shelf, {
@@ -474,25 +495,38 @@ const shelfItems = (shelf: GunShelf): Array.NonEmptyReadonlyArray<ShopItemId> =>
     Owned: ({ items }) => items,
   })
 
-export const itemsIn = (
-  model: World,
-  slot: PlayerSlot,
-  category: ShopCategory,
-): Array.NonEmptyReadonlyArray<ShopItemId> => {
-  if (category === 'Guns') {
-    return Array.append(
-      Array.flatMap(gunShelves(model, slot), shelfItems),
-      'LaserSight' as const,
-    )
-  } else if (category === 'Health') {
-    return ['Heart']
-  } else {
-    return Array.flatMap(trapShelves(model), shelf => [
-      shelf.item,
-      ...shelf.repairs,
-    ])
-  }
-}
+export const itemsIn: {
+  (
+    slot: PlayerSlot,
+    category: ShopCategory,
+  ): (model: World) => Array.NonEmptyReadonlyArray<ShopItemId>
+  (
+    model: World,
+    slot: PlayerSlot,
+    category: ShopCategory,
+  ): Array.NonEmptyReadonlyArray<ShopItemId>
+} = Function.dual(
+  3,
+  (
+    model: World,
+    slot: PlayerSlot,
+    category: ShopCategory,
+  ): Array.NonEmptyReadonlyArray<ShopItemId> => {
+    if (category === 'Guns') {
+      return Array.append(
+        Array.flatMap(gunShelves(model, slot), shelfItems),
+        'LaserSight' as const,
+      )
+    } else if (category === 'Health') {
+      return ['Heart']
+    } else {
+      return Array.flatMap(trapShelves(model), shelf => [
+        shelf.item,
+        ...shelf.repairs,
+      ])
+    }
+  },
+)
 
 const maybeGunOf = (item: ShopItemId): Option.Option<WeaponKind> =>
   ShopGood.match(shopItem(item).good, {
@@ -533,104 +567,88 @@ const replacementFor = (
   )
 }
 
-export const maybeDisplacedFocus = (
-  model: World,
-  slot: PlayerSlot,
-): Option.Option<ShopItemId> =>
-  ShopState.match(seatStateAt(model, slot).shop, {
-    Away: () => Option.none(),
-    Browsing: ({ focusedItem }) =>
-      Option.liftPredicate(
-        replacementFor(model, slot, focusedItem),
-        replacement => replacement !== focusedItem,
-      ),
-    Dismissed: () => Option.none(),
-  })
+export const maybeDisplacedFocus: {
+  (slot: PlayerSlot): (model: World) => Option.Option<ShopItemId>
+  (model: World, slot: PlayerSlot): Option.Option<ShopItemId>
+} = Function.dual(
+  2,
+  (model: World, slot: PlayerSlot): Option.Option<ShopItemId> =>
+    ShopState.match(seatStateAt(model, slot).shop, {
+      Away: () => Option.none(),
+      Browsing: ({ focusedItem }) =>
+        Option.liftPredicate(
+          replacementFor(model, slot, focusedItem),
+          replacement => replacement !== focusedItem,
+        ),
+      Dismissed: () => Option.none(),
+    }),
+)
 
 // NOTE: the guided first break (src/firstBreakQuest.ts) has a new player
 // buy a Plank Pile and place it, so a lesson never dead-ends on an empty
 // wallet: in a new save's first break (no timer, before any wave 2), with no
 // Plank Pile owned yet, the first one is free. Only a player alone; a
 // co-op room has its lessons learned. A save past the tutorial never sees it.
-export const isFirstPlankFree = (
-  model: World,
-  slot: PlayerSlot,
-  kind: TrapKind,
-): boolean =>
-  kind === 'Barricade' &&
-  !isCoop(model) &&
-  Lesson.isAnyOf(['Pending'])(model.lessons.openBreak) &&
-  Phase.isAnyOf(['Preparation'])(model.phase) &&
-  model.phase.wave === SHOP_FIRST_WAVE &&
-  ownedCount(model, slot, 'Barricade') === 0
+export const isFirstPlankFree: {
+  (slot: PlayerSlot, kind: TrapKind): (model: World) => boolean
+  (model: World, slot: PlayerSlot, kind: TrapKind): boolean
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, kind: TrapKind): boolean =>
+    kind === 'Barricade' &&
+    !isCoop(model) &&
+    Lesson.isAnyOf(['Pending'])(model.lessons.openBreak) &&
+    Phase.isAnyOf(['Preparation'])(model.phase) &&
+    model.phase.wave === SHOP_FIRST_WAVE &&
+    ownedCount(model, slot, 'Barricade') === 0,
+)
 
 // NOTE: what Rattles charges the acting player: the list price as the
 // calling changes it (the Handyman's Plank Piles, the Penny Pincher's
 // discount). The first plank of the guided break stays free, and a price
 // of nothing stays nothing.
-export const priceFor = (
-  model: World,
-  slot: PlayerSlot,
-  id: ShopItemId,
-): number => {
-  const { calling } = seatStateAt(model, slot).player
-  return ShopGood.match(shopItem(id).good, {
-    Gun: () => shopPriceFor(calling, shopItem(id).price),
-    Ammo: () => shopPriceFor(calling, shopItem(id).price),
-    Upgrade: ({ weapon }) =>
-      Option.match(nextTierFor(model, slot, weapon), {
-        onNone: () => 0,
-        onSome: ({ price }) => shopPriceFor(calling, price),
-      }),
-    Heart: () => shopPriceFor(calling, shopItem(id).price),
-    Trap: ({ kind }) =>
-      isFirstPlankFree(model, slot, kind)
-        ? 0
-        : shopPriceFor(
-            calling,
-            kind === 'Barricade'
-              ? plankPriceFor(calling, shopItem(id).price)
-              : shopItem(id).price,
-          ),
-    Repair: () =>
-      Option.match(maybeRepairTrap(model, id), {
-        onNone: () => 0,
-        onSome: trap =>
-          isRepairFree(calling)
-            ? 0
-            : shopPriceFor(calling, repairPrice([trap])),
-      }),
-    Sight: () => shopPriceFor(calling, shopItem(id).price),
-  })
-}
+export const priceFor: {
+  (slot: PlayerSlot, id: ShopItemId): (model: World) => number
+  (model: World, slot: PlayerSlot, id: ShopItemId): number
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, id: ShopItemId): number => {
+    const { calling } = seatStateAt(model, slot).player
+    return ShopGood.match(shopItem(id).good, {
+      Gun: () => shopPriceFor(calling, shopItem(id).price),
+      Ammo: () => shopPriceFor(calling, shopItem(id).price),
+      Upgrade: ({ weapon }) =>
+        Option.match(nextTierFor(model, slot, weapon), {
+          onNone: () => 0,
+          onSome: ({ price }) => shopPriceFor(calling, price),
+        }),
+      Heart: () => shopPriceFor(calling, shopItem(id).price),
+      Trap: ({ kind }) =>
+        isFirstPlankFree(model, slot, kind)
+          ? 0
+          : shopPriceFor(
+              calling,
+              kind === 'Barricade'
+                ? plankPriceFor(calling, shopItem(id).price)
+                : shopItem(id).price,
+            ),
+      Repair: () =>
+        Option.match(maybeRepairTrap(model, id), {
+          onNone: () => 0,
+          onSome: trap =>
+            isRepairFree(calling)
+              ? 0
+              : shopPriceFor(calling, repairPrice([trap])),
+        }),
+      Sight: () => shopPriceFor(calling, shopItem(id).price),
+    })
+  },
+)
 
-const isMaxedUpgrade = (
-  model: World,
-  slot: PlayerSlot,
-  id: ShopItemId,
-): boolean =>
-  ShopGood.match(shopItem(id).good, {
-    Gun: () => false,
-    Ammo: () => false,
-    Upgrade: ({ weapon }) => Option.isNone(nextTierFor(model, slot, weapon)),
-    Heart: () => false,
-    Trap: () => false,
-    Repair: () => false,
-    Sight: () => false,
-  })
-
-export const priceLabel = (
-  model: World,
-  slot: PlayerSlot,
-  id: ShopItemId,
-): string =>
-  isMaxedUpgrade(model, slot, id) ? 'MAX' : `$${priceFor(model, slot, id)}`
-
-export const itemName = (
-  model: World,
-  slot: PlayerSlot,
-  id: ShopItemId,
-): string =>
+export const itemName: {
+  (slot: PlayerSlot, id: ShopItemId): (model: World) => string
+  (model: World, slot: PlayerSlot, id: ShopItemId): string
+} = Function.dual(3, (model: World, slot: PlayerSlot, id: ShopItemId): string =>
   ShopGood.match(shopItem(id).good, {
     Gun: () => shopItem(id).name,
     Ammo: () => shopItem(id).name,
@@ -647,7 +665,8 @@ export const itemName = (
         onSome: trap => `Repair the ${TRAPS[trap._tag].name}`,
       }),
     Sight: () => shopItem(id).name,
-  })
+  }),
+)
 
 const ammoGain = (
   model: World,
@@ -672,39 +691,40 @@ const ammoGain = (
   }
 }
 
-export const itemAriaLabel = (
-  model: World,
-  slot: PlayerSlot,
-  id: ShopItemId,
-): string => {
-  const price = `$${priceFor(model, slot, id)}`
-  return ShopGood.match(shopItem(id).good, {
-    Gun: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-    Ammo: ({ weapon, rounds }) =>
-      `${itemName(model, slot, id)}, ammo for ${gunName(model, slot, weapon)}, ${price}, ${ammoGain(model, slot, weapon, rounds)}`,
-    Upgrade: ({ weapon }) =>
-      Option.match(nextTierFor(model, slot, weapon), {
-        onNone: () => itemName(model, slot, id),
-        onSome: () =>
-          `${nextGunName(model, slot, weapon)}, upgrade for ${gunName(model, slot, weapon)}, ${price}`,
-      }),
-    Heart: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-    Trap: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-    Repair: () =>
-      Option.match(maybeRepairTrap(model, id), {
-        onNone: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-        onSome: trap =>
-          `Repair the ${TRAPS[trap._tag].name} ${trapPlace(trap)}, ${price}`,
-      }),
-    Sight: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-  })
-}
+export const itemAriaLabel: {
+  (slot: PlayerSlot, id: ShopItemId): (model: World) => string
+  (model: World, slot: PlayerSlot, id: ShopItemId): string
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, id: ShopItemId): string => {
+    const price = `$${priceFor(model, slot, id)}`
+    return ShopGood.match(shopItem(id).good, {
+      Gun: () => `Buy ${itemName(model, slot, id)} for ${price}`,
+      Ammo: ({ weapon, rounds }) =>
+        `${itemName(model, slot, id)}, ammo for ${gunName(model, slot, weapon)}, ${price}, ${ammoGain(model, slot, weapon, rounds)}`,
+      Upgrade: ({ weapon }) =>
+        Option.match(nextTierFor(model, slot, weapon), {
+          onNone: () => itemName(model, slot, id),
+          onSome: () =>
+            `${nextGunName(model, slot, weapon)}, upgrade for ${gunName(model, slot, weapon)}, ${price}`,
+        }),
+      Heart: () => `Buy ${itemName(model, slot, id)} for ${price}`,
+      Trap: () => `Buy ${itemName(model, slot, id)} for ${price}`,
+      Repair: () =>
+        Option.match(maybeRepairTrap(model, id), {
+          onNone: () => `Buy ${itemName(model, slot, id)} for ${price}`,
+          onSome: trap =>
+            `Repair the ${TRAPS[trap._tag].name} ${trapPlace(trap)}, ${price}`,
+        }),
+      Sight: () => `Buy ${itemName(model, slot, id)} for ${price}`,
+    })
+  },
+)
 
-export const itemBlurb = (
-  model: World,
-  slot: PlayerSlot,
-  id: ShopItemId,
-): string =>
+export const itemBlurb: {
+  (slot: PlayerSlot, id: ShopItemId): (model: World) => string
+  (model: World, slot: PlayerSlot, id: ShopItemId): string
+} = Function.dual(3, (model: World, slot: PlayerSlot, id: ShopItemId): string =>
   ShopGood.match(shopItem(id).good, {
     Gun: () => shopItem(id).blurb,
     Ammo: ({ weapon, rounds }) =>
@@ -725,7 +745,8 @@ export const itemBlurb = (
     Trap: () => shopItem(id).blurb,
     Repair: () => shopItem(id).blurb,
     Sight: () => shopItem(id).blurb,
-  })
+  }),
+)
 
 export const shopItemElementId = (id: ShopItemId): string => `shop-item-${id}`
 
@@ -814,74 +835,84 @@ const blockedReason = (
 ): Option.Option<string> =>
   Option.map(blockedBy(model, slot, good), ({ reason }) => reason)
 
-export const verdictFor = (
-  model: World,
-  slot: PlayerSlot,
-  id: ShopItemId,
-): Verdict => {
-  const item = shopItem(id)
-  const price = priceFor(model, slot, id)
-  return pipe(
-    blockedReason(model, slot, item.good),
-    Option.orElse(() =>
-      price > seatStateAt(model, slot).wallet.balance
-        ? Option.some(
-            `Need $${price - seatStateAt(model, slot).wallet.balance} more`,
-          )
-        : Option.none(),
-    ),
-    Option.match({
-      onNone: () => Verdict.Available(),
-      onSome: reason => Verdict.Refused({ reason }),
-    }),
-  )
-}
+export const verdictFor: {
+  (slot: PlayerSlot, id: ShopItemId): (model: World) => Verdict
+  (model: World, slot: PlayerSlot, id: ShopItemId): Verdict
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, id: ShopItemId): Verdict => {
+    const item = shopItem(id)
+    const price = priceFor(model, slot, id)
+    return pipe(
+      blockedReason(model, slot, item.good),
+      Option.orElse(() =>
+        price > seatStateAt(model, slot).wallet.balance
+          ? Option.some(
+              `Need $${price - seatStateAt(model, slot).wallet.balance} more`,
+            )
+          : Option.none(),
+      ),
+      Option.match({
+        onNone: () => Verdict.Available(),
+        onSome: reason => Verdict.Refused({ reason }),
+      }),
+    )
+  },
+)
 
 const isAvailable = (model: World, slot: PlayerSlot, id: ShopItemId): boolean =>
   Verdict.isAnyOf(['Available'])(verdictFor(model, slot, id))
 
-export const affordableCount = (
-  model: World,
-  slot: PlayerSlot,
-  category: ShopCategory,
-): number =>
-  Array.filter(itemsIn(model, slot, category), id =>
-    isAvailable(model, slot, id),
-  ).length
+export const affordableCount: {
+  (slot: PlayerSlot, category: ShopCategory): (model: World) => number
+  (model: World, slot: PlayerSlot, category: ShopCategory): number
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, category: ShopCategory): number =>
+    Array.filter(itemsIn(model, slot, category), id =>
+      isAvailable(model, slot, id),
+    ).length,
+)
 
-export const totalAffordable = (model: World, slot: PlayerSlot): number =>
+export const totalAffordable: {
+  (slot: PlayerSlot): (model: World) => number
+  (model: World, slot: PlayerSlot): number
+} = Function.dual(2, (model: World, slot: PlayerSlot): number =>
   Array.reduce(
     SHOP_CATEGORY_ORDER,
     0,
     (total, category) => total + affordableCount(model, slot, category),
-  )
+  ),
+)
 
 // TAGS
 
 export const StockTag = defineTaggedUnion({
-  Price: { price: Schema.Number },
-  Short: { price: Schema.Number, need: Schema.Number },
+  Price: { price: Schema.Finite },
+  Short: { price: Schema.Finite, need: Schema.Finite },
   Done: { label: Schema.String },
 })
 export type StockTag = typeof StockTag.Type
 
-export const stockTag = (
-  model: World,
-  slot: PlayerSlot,
-  id: ShopItemId,
-): StockTag => {
-  const price = priceFor(model, slot, id)
-  return Option.match(blockedBy(model, slot, shopItem(id).good), {
-    onSome: ({ tag }) => StockTag.Done({ label: tag }),
-    onNone: () =>
-      price > seatStateAt(model, slot).wallet.balance
-        ? StockTag.Short({
-            price,
-            need: price - seatStateAt(model, slot).wallet.balance,
-          })
-        : StockTag.Price({ price }),
-  })
-}
+export const stockTag: {
+  (slot: PlayerSlot, id: ShopItemId): (model: World) => StockTag
+  (model: World, slot: PlayerSlot, id: ShopItemId): StockTag
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, id: ShopItemId): StockTag => {
+    const price = priceFor(model, slot, id)
+    return Option.match(blockedBy(model, slot, shopItem(id).good), {
+      onSome: ({ tag }) => StockTag.Done({ label: tag }),
+      onNone: () =>
+        price > seatStateAt(model, slot).wallet.balance
+          ? StockTag.Short({
+              price,
+              need: price - seatStateAt(model, slot).wallet.balance,
+            })
+          : StockTag.Price({ price }),
+    })
+  },
+)
 
 // SUGGESTION
 
@@ -915,48 +946,52 @@ const suggestionRank = (
 
 // NOTE: the shop opens on the row a player most likely wants, so Enter never
 // lands first on a gun that would replace the one in their hands.
-export const suggestedItem = (
-  model: World,
-  slot: PlayerSlot,
-  category: ShopCategory,
-): ShopItemId => {
-  const stockRank = (id: ShopItemId): number =>
-    StockTag.match(stockTag(model, slot, id), {
-      Price: () => 0,
-      Short: () => 1,
-      Done: () => 2,
-    })
-  return pipe(
-    itemsIn(model, slot, category),
-    Array.sort(
-      Order.combine(
-        Order.mapInput(Order.Number, stockRank),
-        Order.mapInput(Order.Number, (id: ShopItemId) =>
-          suggestionRank(model, slot, id),
+export const suggestedItem: {
+  (slot: PlayerSlot, category: ShopCategory): (model: World) => ShopItemId
+  (model: World, slot: PlayerSlot, category: ShopCategory): ShopItemId
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, category: ShopCategory): ShopItemId => {
+    const stockRank = (id: ShopItemId): number =>
+      StockTag.match(stockTag(model, slot, id), {
+        Price: () => 0,
+        Short: () => 1,
+        Done: () => 2,
+      })
+    return pipe(
+      itemsIn(model, slot, category),
+      Array.sort(
+        Order.combine(
+          Order.mapInput(Order.Number, stockRank),
+          Order.mapInput(Order.Number, (id: ShopItemId) =>
+            suggestionRank(model, slot, id),
+          ),
         ),
       ),
-    ),
-    Array.headNonEmpty,
-  )
-}
+      Array.headNonEmpty,
+    )
+  },
+)
 
 export { isHolding }
 
 // PURCHASE
 
-export const refill = (
-  arsenal: Arsenal,
-  weapon: WeaponKind,
-  rounds: number,
-): Arsenal =>
-  mapGuns(arsenal, gun =>
-    gun.kind === weapon
-      ? modifyFields(gun, {
-          rounds: current =>
-            Math.min(maxRounds(weapon, gun.tier), current + rounds),
-        })
-      : gun,
-  )
+export const refill: {
+  (weapon: WeaponKind, rounds: number): (arsenal: Arsenal) => Arsenal
+  (arsenal: Arsenal, weapon: WeaponKind, rounds: number): Arsenal
+} = Function.dual(
+  3,
+  (arsenal: Arsenal, weapon: WeaponKind, rounds: number): Arsenal =>
+    mapGuns(arsenal, gun =>
+      gun.kind === weapon
+        ? modifyFields(gun, {
+            rounds: current =>
+              Math.min(maxRounds(weapon, gun.tier), current + rounds),
+          })
+        : gun,
+    ),
+)
 
 // NOTE: an upgrade finds its gun in a gun slot or, for the Pan, in the
 // melee slot.
@@ -1000,34 +1035,46 @@ const grant = (model: World, slot: PlayerSlot, good: ShopGood): World =>
   })
 
 // NOTE: the World with `id` bought, or why Rattles turns it down.
-export const tryPurchase = (
-  model: World,
-  slot: PlayerSlot,
-  id: ShopItemId,
-): Result.Result<World, string> => {
-  const item = shopItem(id)
-  const price = priceFor(model, slot, id)
-  return Verdict.match(verdictFor(model, slot, id), {
-    Available: () =>
-      Result.succeed(
-        grant(
-          modifyFields(model, {
-            seats: atSeat(slot, { wallet: wallet => spend(wallet, price) }),
-            stats: countPurchase,
-          }),
-          slot,
-          item.good,
+export const tryPurchase: {
+  (
+    slot: PlayerSlot,
+    id: ShopItemId,
+  ): (model: World) => Result.Result<World, string>
+  (model: World, slot: PlayerSlot, id: ShopItemId): Result.Result<World, string>
+} = Function.dual(
+  3,
+  (
+    model: World,
+    slot: PlayerSlot,
+    id: ShopItemId,
+  ): Result.Result<World, string> => {
+    const item = shopItem(id)
+    const price = priceFor(model, slot, id)
+    return Verdict.match(verdictFor(model, slot, id), {
+      Available: () =>
+        Result.succeed(
+          grant(
+            modifyFields(model, {
+              seats: atSeat(slot, { wallet: wallet => spend(wallet, price) }),
+              stats: countPurchase,
+            }),
+            slot,
+            item.good,
+          ),
         ),
-      ),
-    Refused: ({ reason }) => Result.fail(reason),
-  })
-}
+      Refused: ({ reason }) => Result.fail(reason),
+    })
+  },
+)
 
-export const purchase = (
-  model: World,
-  slot: PlayerSlot,
-  id: ShopItemId,
-): Option.Option<World> => Result.getSuccess(tryPurchase(model, slot, id))
+export const purchase: {
+  (slot: PlayerSlot, id: ShopItemId): (model: World) => Option.Option<World>
+  (model: World, slot: PlayerSlot, id: ShopItemId): Option.Option<World>
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, id: ShopItemId): Option.Option<World> =>
+    Result.getSuccess(tryPurchase(model, slot, id)),
+)
 
 // STALL
 
@@ -1101,7 +1148,10 @@ const arriveAt = (
 ): ShopState =>
   isAtStall(seatStateAt(model, slot).player) ? arriveAtStall(model, slot) : shop
 
-export const refreshShopPresence = (model: World, slot: PlayerSlot): World => {
+export const refreshShopPresence: {
+  (slot: PlayerSlot): (model: World) => World
+  (model: World, slot: PlayerSlot): World
+} = Function.dual(2, (model: World, slot: PlayerSlot): World => {
   const { player } = seatStateAt(model, slot)
   return modifySeat(model, slot, {
     shop: shop =>
@@ -1111,7 +1161,7 @@ export const refreshShopPresence = (model: World, slot: PlayerSlot): World => {
         Dismissed: () => (hasLeftStall(player) ? ShopState.Away() : shop),
       }),
   })
-}
+})
 
 export type StallPrompt = 'None' | 'WalkUp' | 'ClosedUntilFirstClear'
 
@@ -1122,7 +1172,10 @@ const closedPrompt = (phase: Phase): StallPrompt =>
 
 // NOTE: the words teach the stall once. After the player has shopped, its
 // sign and the bobbing coin over it say the same without words.
-export const stallPrompt = (model: World, slot: PlayerSlot): StallPrompt => {
+export const stallPrompt: {
+  (slot: PlayerSlot): (model: World) => StallPrompt
+  (model: World, slot: PlayerSlot): StallPrompt
+} = Function.dual(2, (model: World, slot: PlayerSlot): StallPrompt => {
   const { phase, lessons } = model
   const { player, shop } = seatStateAt(model, slot)
   if (
@@ -1138,4 +1191,4 @@ export const stallPrompt = (model: World, slot: PlayerSlot): StallPrompt => {
   } else {
     return 'None'
   }
-}
+})

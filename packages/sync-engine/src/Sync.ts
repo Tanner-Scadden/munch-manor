@@ -1,7 +1,6 @@
 import {
   Array,
   Clock,
-  Data,
   Duration,
   Effect,
   PubSub,
@@ -26,9 +25,12 @@ import { mutationVersions } from './Scope'
 
 // TRANSPORT
 
-export class TransportError extends Data.TaggedError('TransportError')<{
-  readonly reason: string
-}> {}
+export class TransportError extends Schema.TaggedError<
+  TransportError,
+  { readonly brand: unique symbol }
+>()('TransportError', {
+  reason: Schema.String,
+}) {}
 
 // NOTE: one open connection to a scope's authority. A WebSocket is one; the
 // HTTP fallback emulates one by posting batches. `messages` ends or fails
@@ -54,7 +56,7 @@ export interface Credentials {
 
 export const SyncStatus = Schema.TaggedUnion({
   Following: {},
-  Connecting: { attempt: Schema.Number },
+  Connecting: { attempt: Schema.Finite },
   Online: { transport: Schema.String },
   Offline: { reason: Schema.String },
 })
@@ -62,6 +64,7 @@ export type SyncStatus = typeof SyncStatus.Type
 
 // OPTIONS
 
+/** @stability unstable */
 export interface SyncOptions {
   readonly replica: Replica
   readonly transports: Array.NonEmptyReadonlyArray<Transport>
@@ -97,12 +100,15 @@ const DEFAULT_RESEND: Duration.Input = '15 seconds'
 const DEFAULT_FOLLOWER_POLL: Duration.Input = '2 seconds'
 const DEFAULT_FALLBACK_AFTER = 2
 
-class Dropped extends Data.TaggedError('Dropped')<{
-  readonly reason: string
-}> {}
+class Dropped extends Schema.TaggedError<
+  Dropped,
+  { readonly brand: unique symbol }
+>()('Dropped', {
+  reason: Schema.String,
+}) {}
 
 const fromSql = (error: SqlError.SqlError) =>
-  new TransportError({ reason: `Local database: ${error.message}` })
+  TransportError.make({ reason: `Local database: ${error.message}` })
 
 // SYNC
 
@@ -114,6 +120,7 @@ const fromSql = (error: SqlError.SqlError) =>
 // online and then dropped reconnects at once; one that never got online
 // waits out the backoff. After `fallbackAfter` failures in a row on the
 // first transport (the WebSocket) the next one (HTTP) is tried.
+/** @stability unstable */
 export const startSync = (
   options: SyncOptions,
 ): Effect.Effect<Sync, never, Scope.Scope> =>
@@ -154,7 +161,8 @@ export const startSync = (
           const channel = yield* transport.open(scope)
           const online = yield* Ref.make(false)
           const inFlight = yield* Ref.make<ReadonlyArray<string>>([])
-          const lastHeard = yield* Ref.make(yield* Clock.currentTimeMillis)
+          const currentTimeMillis_1 = yield* Clock.currentTimeMillis
+          const lastHeard = yield* Ref.make(currentTimeMillis_1)
 
           const hello = (mode: HelloMode) =>
             Effect.flatMap(
@@ -204,7 +212,8 @@ export const startSync = (
 
           const handle = (message: ServerMessage) =>
             Effect.gen(function* () {
-              yield* Ref.set(lastHeard, yield* Clock.currentTimeMillis)
+              const currentTimeMillis_2 = yield* Clock.currentTimeMillis
+              yield* Ref.set(lastHeard, currentTimeMillis_2)
               const receipt = yield* Effect.mapError(
                 replica.receive(message),
                 fromSql,
@@ -240,7 +249,7 @@ export const startSync = (
                       yield* options.refreshCredentials ?? Effect.void
                     }
                     yield* PubSub.publish(receipts, failure)
-                    return yield* new TransportError({
+                    return yield* TransportError.make({
                       reason: `${failure.code}: ${failure.reason}`,
                     })
                   }),
@@ -252,7 +261,7 @@ export const startSync = (
             const now = yield* Clock.currentTimeMillis
             const heard = yield* Ref.get(lastHeard)
             if (now - heard > silenceMs) {
-              return yield* new Dropped({ reason: 'The server went quiet' })
+              return yield* Dropped.make({ reason: 'The server went quiet' })
             }
           }).pipe(
             Effect.repeat(Schedule.spaced(Duration.millis(silenceMs / 4))),
@@ -275,7 +284,7 @@ export const startSync = (
                 current =>
                   current === scope
                     ? Effect.void
-                    : Effect.fail(new Dropped({ reason: 'Scope changed' })),
+                    : Effect.fail(Dropped.make({ reason: 'Scope changed' })),
               ),
             ),
           )
@@ -296,7 +305,7 @@ export const startSync = (
 
           const receiving = Effect.andThen(
             Stream.runForEach(channel.messages, handle),
-            Effect.fail(new Dropped({ reason: 'Connection closed' })),
+            Effect.fail(Dropped.make({ reason: 'Connection closed' })),
           )
 
           yield* hello('Catchup')

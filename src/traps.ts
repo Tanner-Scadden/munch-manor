@@ -1,4 +1,4 @@
-import { Array, Option, Order, Result, Schema, pipe } from 'effect'
+import { Array, Function, Option, Order, Result, Schema, pipe } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
@@ -135,14 +135,22 @@ export const TURRET_WEAPON: WeaponKind = 'Peashooter'
 
 // GEOMETRY
 
-export const trapBox = (level: Level, trap: Trap): Box =>
+export const trapBox: {
+  (trap: Trap): (level: Level) => Box
+  (level: Level, trap: Trap): Box
+} = Function.dual(2, (level: Level, trap: Trap): Box =>
   Trap.match(trap, {
     Barricade: ({ door }) => level.thresholds[door].box,
     Turret: ({ column, row }) => tileBox({ column, row }),
-  })
+  }),
+)
 
-export const trapCenter = (level: Level, trap: Trap): Vector =>
-  boxCenter(trapBox(level, trap))
+export const trapCenter: {
+  (trap: Trap): (level: Level) => Vector
+  (level: Level, trap: Trap): Vector
+} = Function.dual(2, (level: Level, trap: Trap): Vector =>
+  boxCenter(trapBox(level, trap)),
+)
 
 const trapTileIndices = (level: Level, trap: Trap): ReadonlyArray<number> =>
   Trap.match(trap, {
@@ -152,20 +160,23 @@ const trapTileIndices = (level: Level, trap: Trap): ReadonlyArray<number> =>
 
 const byTileIndex = Order.mapInput(Order.Number, ({ index }: Toll) => index)
 
-export const tollsOf = (
-  level: Level,
-  traps: ReadonlyArray<Trap>,
-): ReadonlyArray<Toll> =>
-  pipe(
-    traps,
-    Array.flatMap(trap =>
-      Array.map(trapTileIndices(level, trap), index => ({
-        index,
-        cost: TRAPS[trap._tag].pathCost,
-      })),
+export const tollsOf: {
+  (traps: ReadonlyArray<Trap>): (level: Level) => ReadonlyArray<Toll>
+  (level: Level, traps: ReadonlyArray<Trap>): ReadonlyArray<Toll>
+} = Function.dual(
+  2,
+  (level: Level, traps: ReadonlyArray<Trap>): ReadonlyArray<Toll> =>
+    pipe(
+      traps,
+      Array.flatMap(trap =>
+        Array.map(trapTileIndices(level, trap), index => ({
+          index,
+          cost: TRAPS[trap._tag].pathCost,
+        })),
+      ),
+      Array.sort(byTileIndex),
     ),
-    Array.sort(byTileIndex),
-  )
+)
 
 export const barricadedDoors = (
   traps: ReadonlyArray<Trap>,
@@ -177,16 +188,23 @@ export const barricadedDoors = (
     }),
   )
 
-export const trapBlockers = (
-  level: Level,
-  traps: ReadonlyArray<Trap>,
-): ReadonlyArray<Box> => Array.map(traps, trap => trapBox(level, trap))
+export const trapBlockers: {
+  (traps: ReadonlyArray<Trap>): (level: Level) => ReadonlyArray<Box>
+  (level: Level, traps: ReadonlyArray<Trap>): ReadonlyArray<Box>
+} = Function.dual(
+  2,
+  (level: Level, traps: ReadonlyArray<Trap>): ReadonlyArray<Box> =>
+    Array.map(traps, trap => trapBox(level, trap)),
+)
 
 // HEALTH
 
 export type TrapStage = 'Sturdy' | 'Cracked' | 'Splintered'
 
-export const stageOf = (kind: TrapKind, hp: number): TrapStage => {
+export const stageOf: {
+  (hp: number): (kind: TrapKind) => TrapStage
+  (kind: TrapKind, hp: number): TrapStage
+} = Function.dual(2, (kind: TrapKind, hp: number): TrapStage => {
   const share = hp / TRAPS[kind].hp
   if (share > 2 / 3) {
     return 'Sturdy'
@@ -195,7 +213,7 @@ export const stageOf = (kind: TrapKind, hp: number): TrapStage => {
   } else {
     return 'Splintered'
   }
-}
+})
 
 const setHealth = (trap: Trap, hp: number, hitRemainingMs: number): Trap =>
   Trap.match(trap, {
@@ -497,11 +515,10 @@ const runTurrets = (model: World, deltaMs: number): World => {
   })
 }
 
-export const advanceTraps = (
-  model: World,
-  seconds: number,
-  deltaMs: number,
-): World =>
+export const advanceTraps: {
+  (seconds: number, deltaMs: number): (model: World) => World
+  (model: World, seconds: number, deltaMs: number): World
+} = Function.dual(3, (model: World, seconds: number, deltaMs: number): World =>
   runTurrets(
     chewTraps(
       modifyFields(model, {
@@ -510,14 +527,19 @@ export const advanceTraps = (
       seconds,
     ),
     deltaMs,
-  )
+  ),
+)
 
 // STOCK
 
-export const placedCount = (
-  traps: ReadonlyArray<Trap>,
-  kind: TrapKind,
-): number => Array.filter(traps, trap => trap._tag === kind).length
+export const placedCount: {
+  (kind: TrapKind): (traps: ReadonlyArray<Trap>) => number
+  (traps: ReadonlyArray<Trap>, kind: TrapKind): number
+} = Function.dual(
+  2,
+  (traps: ReadonlyArray<Trap>, kind: TrapKind): number =>
+    Array.filter(traps, trap => trap._tag === kind).length,
+)
 
 // NOTE: in co-op each player counts only the traps they placed, against a
 // limit of their own (decided row 21). Single player counts every trap.
@@ -528,33 +550,42 @@ const ownTraps = (model: World, slot: PlayerSlot): ReadonlyArray<Trap> =>
       )
     : model.traps
 
-export const trapLimitOf = (model: World, kind: TrapKind): number =>
-  isCoop(model) ? COOP_RULES.trapLimit : TRAPS[kind].limit
+export const trapLimitOf: {
+  (kind: TrapKind): (model: World) => number
+  (model: World, kind: TrapKind): number
+} = Function.dual(2, (model: World, kind: TrapKind): number =>
+  isCoop(model) ? COOP_RULES.trapLimit : TRAPS[kind].limit,
+)
 
-export const ownedCount = (
-  model: World,
-  slot: PlayerSlot,
-  kind: TrapKind,
-): number =>
-  seatStateAt(model, slot).trapStock[kind] +
-  placedCount(ownTraps(model, slot), kind)
+export const ownedCount: {
+  (slot: PlayerSlot, kind: TrapKind): (model: World) => number
+  (model: World, slot: PlayerSlot, kind: TrapKind): number
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, kind: TrapKind): number =>
+    seatStateAt(model, slot).trapStock[kind] +
+    placedCount(ownTraps(model, slot), kind),
+)
 
 const otherKind = (kind: TrapKind): TrapKind =>
   kind === 'Barricade' ? 'Turret' : 'Barricade'
 
-export const maybeSelectedKind = (
-  model: World,
-  slot: PlayerSlot,
-): Option.Option<TrapKind> => {
-  const { selectedTrap, trapStock } = seatStateAt(model, slot)
-  if (trapStock[selectedTrap] > 0) {
-    return Option.some(selectedTrap)
-  } else if (trapStock[otherKind(selectedTrap)] > 0) {
-    return Option.some(otherKind(selectedTrap))
-  } else {
-    return Option.none()
-  }
-}
+export const maybeSelectedKind: {
+  (slot: PlayerSlot): (model: World) => Option.Option<TrapKind>
+  (model: World, slot: PlayerSlot): Option.Option<TrapKind>
+} = Function.dual(
+  2,
+  (model: World, slot: PlayerSlot): Option.Option<TrapKind> => {
+    const { selectedTrap, trapStock } = seatStateAt(model, slot)
+    if (trapStock[selectedTrap] > 0) {
+      return Option.some(selectedTrap)
+    } else if (trapStock[otherKind(selectedTrap)] > 0) {
+      return Option.some(otherKind(selectedTrap))
+    } else {
+      return Option.none()
+    }
+  },
+)
 
 const hasBothKinds = (model: World, slot: PlayerSlot): boolean =>
   Array.every(
@@ -562,19 +593,26 @@ const hasBothKinds = (model: World, slot: PlayerSlot): boolean =>
     kind => seatStateAt(model, slot).trapStock[kind] > 0,
   )
 
-export const maybeNextKind = (
-  model: World,
-  slot: PlayerSlot,
-): Option.Option<TrapKind> =>
-  hasBothKinds(model, slot)
-    ? Option.map(maybeSelectedKind(model, slot), otherKind)
-    : Option.none()
+export const maybeNextKind: {
+  (slot: PlayerSlot): (model: World) => Option.Option<TrapKind>
+  (model: World, slot: PlayerSlot): Option.Option<TrapKind>
+} = Function.dual(
+  2,
+  (model: World, slot: PlayerSlot): Option.Option<TrapKind> =>
+    hasBothKinds(model, slot)
+      ? Option.map(maybeSelectedKind(model, slot), otherKind)
+      : Option.none(),
+)
 
-export const cycleTrap = (model: World, slot: PlayerSlot): World =>
+export const cycleTrap: {
+  (slot: PlayerSlot): (model: World) => World
+  (model: World, slot: PlayerSlot): World
+} = Function.dual(2, (model: World, slot: PlayerSlot): World =>
   Option.match(maybeNextKind(model, slot), {
     onNone: () => model,
     onSome: kind => modifySeat(model, slot, { selectedTrap: () => kind }),
-  })
+  }),
+)
 
 const addStock = (stock: TrapCounts, kind: TrapKind, amount: number) =>
   modifyFields(stock, {
@@ -582,22 +620,22 @@ const addStock = (stock: TrapCounts, kind: TrapKind, amount: number) =>
     Turret: count => (kind === 'Turret' ? count + amount : count),
   })
 
-export const stockTrap = (
-  model: World,
-  slot: PlayerSlot,
-  kind: TrapKind,
-): World =>
+export const stockTrap: {
+  (slot: PlayerSlot, kind: TrapKind): (model: World) => World
+  (model: World, slot: PlayerSlot, kind: TrapKind): World
+} = Function.dual(3, (model: World, slot: PlayerSlot, kind: TrapKind): World =>
   modifySeat(model, slot, {
     trapStock: stock => addStock(stock, kind, 1),
     selectedTrap: selected =>
       seatStateAt(model, slot).trapStock[selected] > 0 ? selected : kind,
-  })
+  }),
+)
 
 // PLACEMENT
 
 export const TrapSpot = defineTaggedUnion({
   Doorway: { door: DoorId },
-  Floor: { column: Schema.Number, row: Schema.Number },
+  Floor: { column: Schema.Finite, row: Schema.Finite },
 })
 export type TrapSpot = typeof TrapSpot.Type
 
@@ -613,11 +651,15 @@ export type Placement = Readonly<{
   verdict: PlaceVerdict
 }>
 
-export const spotBox = (level: Level, spot: TrapSpot): Box =>
+export const spotBox: {
+  (spot: TrapSpot): (level: Level) => Box
+  (level: Level, spot: TrapSpot): Box
+} = Function.dual(2, (level: Level, spot: TrapSpot): Box =>
   TrapSpot.match(spot, {
     Doorway: ({ door }) => level.thresholds[door].box,
     Floor: ({ column, row }) => tileBox({ column, row }),
-  })
+  }),
+)
 
 const stallFrontOf = (level: Level): ReadonlyArray<number> =>
   pipe(
@@ -830,16 +872,19 @@ const turretPlacement = (
   )
 }
 
-export const maybePlacement = (
-  model: World,
-  slot: PlayerSlot,
-): Option.Option<Placement> =>
-  Option.map(maybeSelectedKind(model, slot), kind => {
-    const isBetweenWaves = Phase.isAnyOf(['Preparation'])(model.phase)
-    return kind === 'Barricade'
-      ? barricadePlacement(model, slot, isBetweenWaves)
-      : turretPlacement(model, slot, isBetweenWaves)
-  })
+export const maybePlacement: {
+  (slot: PlayerSlot): (model: World) => Option.Option<Placement>
+  (model: World, slot: PlayerSlot): Option.Option<Placement>
+} = Function.dual(
+  2,
+  (model: World, slot: PlayerSlot): Option.Option<Placement> =>
+    Option.map(maybeSelectedKind(model, slot), kind => {
+      const isBetweenWaves = Phase.isAnyOf(['Preparation'])(model.phase)
+      return kind === 'Barricade'
+        ? barricadePlacement(model, slot, isBetweenWaves)
+        : turretPlacement(model, slot, isBetweenWaves)
+    }),
+)
 
 const newTrap = (id: number, spot: TrapSpot, player: Player): Trap =>
   TrapSpot.match(spot, {
@@ -890,53 +935,56 @@ export type PlacedInWorld = Readonly<{ world: World; trap: Trap }>
 
 // NOTE: places the selected trap for the player in the World's per-player
 // fields, who owns it in co-op.
-export const placeTrapIn = (
-  model: World,
-  slot: PlayerSlot,
-): Result.Result<PlacedInWorld, string> =>
-  Option.match(maybePlacement(model, slot), {
-    onNone: () => Result.fail('You have no traps to place'),
-    onSome: ({ kind, maybeSpot, verdict }) =>
-      PlaceVerdict.match(verdict, {
-        Blocked: ({ reason }) => Result.fail(reason),
-        Placeable: () =>
-          Option.match(maybeSpot, {
-            onNone: () => Result.fail('There is nowhere to put it'),
-            onSome: spot => {
-              const trap = newTrap(
-                model.nextEntityId,
-                spot,
-                seatStateAt(model, slot).player,
-              )
-              return Result.succeed({
-                trap,
-                world: modifyFields(
-                  isCoop(model)
-                    ? updateSeat(model, slot, state =>
-                        modifyFields(state, {
-                          seat: seat =>
-                            modifyFields(seat, {
-                              trapIds: Array.append(trap.id),
-                            }),
-                        }),
-                      )
-                    : model,
-                  {
-                    traps: Array.append(trap),
-                    nextEntityId: id => id + 1,
-                    seats: atSeat(slot, {
-                      trapStock: stock => addStock(stock, kind, -1),
-                      player: player =>
-                        stepOutOfDoorway(levelOf(model), player, spot),
-                    }),
-                    stats: countTrapPlaced,
-                  },
-                ),
-              })
-            },
-          }),
-      }),
-  })
+export const placeTrapIn: {
+  (slot: PlayerSlot): (model: World) => Result.Result<PlacedInWorld, string>
+  (model: World, slot: PlayerSlot): Result.Result<PlacedInWorld, string>
+} = Function.dual(
+  2,
+  (model: World, slot: PlayerSlot): Result.Result<PlacedInWorld, string> =>
+    Option.match(maybePlacement(model, slot), {
+      onNone: () => Result.fail('You have no traps to place'),
+      onSome: ({ kind, maybeSpot, verdict }) =>
+        PlaceVerdict.match(verdict, {
+          Blocked: ({ reason }) => Result.fail(reason),
+          Placeable: () =>
+            Option.match(maybeSpot, {
+              onNone: () => Result.fail('There is nowhere to put it'),
+              onSome: spot => {
+                const trap = newTrap(
+                  model.nextEntityId,
+                  spot,
+                  seatStateAt(model, slot).player,
+                )
+                return Result.succeed({
+                  trap,
+                  world: modifyFields(
+                    isCoop(model)
+                      ? updateSeat(model, slot, state =>
+                          modifyFields(state, {
+                            seat: seat =>
+                              modifyFields(seat, {
+                                trapIds: Array.append(trap.id),
+                              }),
+                          }),
+                        )
+                      : model,
+                    {
+                      traps: Array.append(trap),
+                      nextEntityId: id => id + 1,
+                      seats: atSeat(slot, {
+                        trapStock: stock => addStock(stock, kind, -1),
+                        player: player =>
+                          stepOutOfDoorway(levelOf(model), player, spot),
+                      }),
+                      stats: countTrapPlaced,
+                    },
+                  ),
+                })
+              },
+            }),
+        }),
+    }),
+)
 
 // REPAIR
 
@@ -958,12 +1006,15 @@ export const repairPrice = (traps: ReadonlyArray<Trap>): number =>
 export const repairTraps = (traps: ReadonlyArray<Trap>): ReadonlyArray<Trap> =>
   Array.map(traps, trap => setHealth(trap, TRAPS[trap._tag].hp, 0))
 
-export const repairTrap = (
-  traps: ReadonlyArray<Trap>,
-  trapId: number,
-): ReadonlyArray<Trap> =>
-  Array.map(traps, trap =>
-    trap.id === trapId ? setHealth(trap, TRAPS[trap._tag].hp, 0) : trap,
-  )
+export const repairTrap: {
+  (trapId: number): (traps: ReadonlyArray<Trap>) => ReadonlyArray<Trap>
+  (traps: ReadonlyArray<Trap>, trapId: number): ReadonlyArray<Trap>
+} = Function.dual(
+  2,
+  (traps: ReadonlyArray<Trap>, trapId: number): ReadonlyArray<Trap> =>
+    Array.map(traps, trap =>
+      trap.id === trapId ? setHealth(trap, TRAPS[trap._tag].hp, 0) : trap,
+    ),
+)
 
 export const healthShare = (trap: Trap): number => 1 - missingShare(trap)

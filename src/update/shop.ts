@@ -1,9 +1,9 @@
-import { Effect, Option, Result } from 'effect'
+import { Effect, Function, Option, Result } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { CoopBinding, ShopDialogBinding } from '../bindings'
-import { makeCommand, makeStep } from '../definition'
+import { ApplicationDefinition, makeStep } from '../definition'
 import { refreshIntent } from '../frame'
 import { releaseAll } from '../input'
 import { isShopDialogOpen } from '../menuState'
@@ -45,17 +45,20 @@ import {
 
 // COMMAND
 
-export const FocusShopItem = makeCommand('FocusShopItem', {
-  args: { item: ShopItemId },
-  messages: [Message.CompletedFocusShopItem],
-  handler: function* () {
-    return ({ item }) =>
-      Dom.focus(`#${shopItemElementId(item)}`).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedFocusShopItem()),
-      )
+export const FocusShopItem = ApplicationDefinition.makeCommand(
+  'FocusShopItem',
+  {
+    args: { item: ShopItemId },
+    messages: [Message.CompletedFocusShopItem],
+    handler: function* () {
+      return ({ item }) =>
+        Dom.focus(`#${shopItemElementId(item)}`).pipe(
+          Effect.ignore,
+          Effect.as(Message.CompletedFocusShopItem()),
+        )
+    },
   },
-})
+)
 
 // DIALOG
 
@@ -150,7 +153,10 @@ const purchaseCues = (item: ShopItemId): ReadonlyArray<SoundCue> =>
     ? [uiCue('Purchase'), uiCue('PowerUp')]
     : [uiCue('Purchase')]
 
-export const buy = (model: Model, item: ShopItemId): UpdateReturn =>
+export const buy: {
+  (item: ShopItemId): (model: Model) => UpdateReturn
+  (model: Model, item: ShopItemId): UpdateReturn
+} = Function.dual(2, (model: Model, item: ShopItemId): UpdateReturn =>
   Result.match(tryAsLead(model, SeatAction.Buy({ item })), {
     onFailure: refusal =>
       ActionRefusal.match(refusal, {
@@ -174,7 +180,8 @@ export const buy = (model: Model, item: ShopItemId): UpdateReturn =>
         [playSounds(purchaseCues(item)), refocusDisplacedRow],
       )
     },
-  })
+  }),
+)
 
 // NOTE: the first trap a player stocks brings up the hint for placing it.
 const showTrapHint = (model: Model): Model =>
@@ -209,7 +216,10 @@ const refocusDisplacedRow: UpdateStep = stepModel =>
 
 // FOCUS
 
-export const focusShopItem = (model: Model, item: ShopItemId): Model =>
+export const focusShopItem: {
+  (item: ShopItemId): (model: Model) => Model
+  (model: Model, item: ShopItemId): Model
+} = Function.dual(2, (model: Model, item: ShopItemId): Model =>
   ShopState.match(focusOf(model).shop, {
     Away: () => model,
     Browsing: () =>
@@ -217,9 +227,14 @@ export const focusShopItem = (model: Model, item: ShopItemId): Model =>
         shop: () => ShopState.Browsing({ focusedItem: item }),
       }),
     Dismissed: () => model,
-  })
+  }),
+)
 
-export const moveShopFocus = (model: Model, item: ShopItemId): UpdateReturn =>
+export const moveShopFocus: {
+  (item: ShopItemId): (model: Model) => UpdateReturn
+  (model: Model, item: ShopItemId): UpdateReturn
+} = Function.dual(2, (model: Model, item: ShopItemId): UpdateReturn =>
   isBrowsing(focusOf(model).shop)
     ? { model: focusShopItem(model, item), commands: [FocusShopItem({ item })] }
-    : { model }
+    : { model },
+)

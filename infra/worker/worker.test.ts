@@ -1,14 +1,18 @@
+import { String } from 'effect'
 import * as Array from 'effect/Array'
 import * as Context from 'effect/Context'
+import * as DateTime from 'effect/DateTime'
 import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'
+import * as FileSystem from 'effect/FileSystem'
 import * as Layer from 'effect/Layer'
 import * as Order from 'effect/Order'
+import * as Path from 'effect/Path'
+import * as Result from 'effect/Result'
 import * as Schema from 'effect/Schema'
 import * as SqlClient from 'effect/sql/SqlClient'
-import * as FileSystem from 'node:fs'
-import * as Path from 'node:path'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 import { describe, expect, it } from '@effect/vitest'
 
 import {
@@ -109,47 +113,52 @@ const versionThreeSummaryJson = toJson({ ...beforeModifiers, version: 3 })
 const { party: _party, ...olderFields } = summary
 const olderSummaryJson = toJson({ ...olderFields, version: 1 })
 
-const encodeSummary = Schema.encodeSync(RunSummaryJson)
+const encodeSummary = (posted: RunSummary): string =>
+  Result.getOrThrow(Schema.encodeResult(RunSummaryJson)(posted))
 
 const summaryJson = encodeSummary(summary)
 
 // FAKES
 
-// NOTE: every D1 migration, in the order D1 applies them.
-const MIGRATIONS_DIR = Path.resolve(import.meta.dirname, '../migrations')
-
-const MIGRATIONS = Array.map(
-  Array.sort(
-    Array.filter(FileSystem.readdirSync(MIGRATIONS_DIR), name =>
-      name.endsWith('.sql'),
-    ),
-    Order.String,
-  ),
-  name => Path.join(MIGRATIONS_DIR, name),
-)
-
-const isComment = (line: string): boolean => line.trim().startsWith('--')
+const isComment = (line: string): boolean =>
+  String.startsWith('--')(String.trim(line))
 
 const migrationStatements = (sql: string): ReadonlyArray<string> => {
   const code = Array.join(
-    Array.filter(sql.split('\n'), line => !isComment(line)),
+    Array.filter(String.split('\n')(sql), line => !isComment(line)),
     '\n',
   )
   return Array.filter(
-    Array.map(code.split(';'), statement => statement.trim()),
+    Array.map(String.split(';')(code), statement => String.trim(statement)),
     statement => statement !== '',
   )
 }
+
+// NOTE: every D1 migration's statements, in the order D1 applies them.
+const migrations = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const directory = path.resolve(import.meta.dirname, '../migrations')
+  const names = yield* fs.readDirectory(directory)
+  const files = Array.map(
+    Array.sort(
+      Array.filter(names, name => String.endsWith('.sql')(name)),
+      Order.String,
+    ),
+    name => path.join(directory, name),
+  )
+  const texts = yield* Effect.forEach(files, file => fs.readFileString(file))
+  return Array.flatMap(texts, text => migrationStatements(text))
+}).pipe(Effect.orDie)
 
 // NOTE: D1 is SQLite, so an in-memory SQLite database with the real
 // migration stands in for it, through Effect SQL like the Worker's own.
 const memoryDatabase = Effect.gen(function* () {
   const sql = yield* memory
-  yield* Effect.forEach(
-    Array.flatMap(MIGRATIONS, file =>
-      migrationStatements(FileSystem.readFileSync(file, 'utf8')),
-    ),
-    statement => Effect.orDie(sql.unsafe(statement)),
+  const platform = yield* Layer.build(NodeServices.layer)
+  const statements = yield* Effect.provideContext(migrations, platform)
+  yield* Effect.forEach(statements, statement =>
+    Effect.orDie(sql.unsafe(statement)),
   )
   return sql
 })
@@ -157,10 +166,10 @@ const memoryDatabase = Effect.gen(function* () {
 const countingLimiter = (limit: number): RateLimiter => {
   const counts = new Map<string, number>()
   return {
-    limit: async ({ key }) => {
+    limit: ({ key }) => {
       const count = (counts.get(key) ?? 0) + 1
       counts.set(key, count)
-      return { success: count <= limit }
+      return Promise.resolve({ success: count <= limit })
     },
   }
 }
@@ -219,31 +228,34 @@ describe('the rules', () => {
   it('the size cap reads the header and then the body', () => {
     expect(declaredSize(undefined)).toBe('Fits')
     expect(declaredSize('not a number')).toBe('Fits')
-    expect(declaredSize(String(MAX_SUMMARY_BYTES))).toBe('Fits')
-    expect(declaredSize(String(MAX_SUMMARY_BYTES + 1))).toBe('TooLarge')
-    expect(bodySize('x'.repeat(MAX_SUMMARY_BYTES))).toBe('Fits')
-    expect(bodySize('x'.repeat(MAX_SUMMARY_BYTES + 1))).toBe('TooLarge')
-    expect(bodySize('é'.repeat(MAX_SUMMARY_BYTES / 2 + 1))).toBe('TooLarge')
+    expect(declaredSize(globalThis.String(MAX_SUMMARY_BYTES))).toBe('Fits')
+    expect(declaredSize(globalThis.String(MAX_SUMMARY_BYTES + 1))).toBe(
+      'TooLarge',
+    )
+    expect(bodySize(String.repeat(MAX_SUMMARY_BYTES)('x'))).toBe('Fits')
+    expect(bodySize(String.repeat(MAX_SUMMARY_BYTES + 1)('x'))).toBe('TooLarge')
+    expect(bodySize(String.repeat(MAX_SUMMARY_BYTES / 2 + 1)('é'))).toBe(
+      'TooLarge',
+    )
   })
 
   it.effect('a summary decodes, and a broken one does not', () =>
     Effect.gen(function* () {
-      expect(yield* decodeSummary(summaryJson)).toEqual(summary)
+      const value = yield* decodeSummary(summaryJson)
+      expect(value).toEqual(summary)
       const broken = toJson({ ...summary, mode: 'Speedrun' })
-      expect(Exit.isFailure(yield* Effect.exit(decodeSummary(broken)))).toBe(
-        true,
-      )
-      expect(Exit.isFailure(yield* Effect.exit(decodeSummary('{')))).toBe(true)
-      expect(yield* decodeSummary(encodeSummary(crewSummary))).toEqual(
-        crewSummary,
-      )
+      const value_1 = yield* Effect.exit(decodeSummary(broken))
+      expect(Exit.isFailure(value_1)).toBe(true)
+      const value_2 = yield* Effect.exit(decodeSummary('{'))
+      expect(Exit.isFailure(value_2)).toBe(true)
+      const value_3 = yield* decodeSummary(encodeSummary(crewSummary))
+      expect(value_3).toEqual(crewSummary)
       const crewOfFive = toJson({
         ...crewSummary,
         party: { ...crewSummary.party, size: 5 },
       })
-      expect(
-        Exit.isFailure(yield* Effect.exit(decodeSummary(crewOfFive))),
-      ).toBe(true)
+      const value_4 = yield* Effect.exit(decodeSummary(crewOfFive))
+      expect(Exit.isFailure(value_4)).toBe(true)
     }),
   )
 
@@ -261,17 +273,20 @@ describe('the rules', () => {
     })
   })
 
-  it('a row keeps the cause only for Game Over and stores kills as JSON', () => {
-    const at = Date.UTC(2026, 9, 29, 23, 59)
-    const row = rowOf(summary, at)
-    expect(row.received_day).toBe('2026-10-29')
-    expect(row.killed_by).toBe('Runner')
-    expect(fromJson(row.kills)).toEqual(summary.kills)
-    expect(rowOf({ ...summary, outcome: { _tag: 'Quit' } }, at).killed_by).toBe(
-      null,
-    )
-    expect(utcDay(Date.UTC(2026, 9, 30, 0, 0))).toBe('2026-10-30')
-  })
+  it.effect(
+    'a row keeps the cause only for Game Over and stores kills as JSON',
+    () =>
+      Effect.gen(function* () {
+        const at = Date.UTC(2026, 9, 29, 23, 59)
+        const row = yield* rowOf(summary, at)
+        expect(row.received_day).toBe('2026-10-29')
+        expect(row.killed_by).toBe('Runner')
+        expect(fromJson(row.kills)).toEqual(summary.kills)
+        const quit = yield* rowOf({ ...summary, outcome: { _tag: 'Quit' } }, at)
+        expect(quit.killed_by).toBe(null)
+        expect(utcDay(Date.UTC(2026, 9, 30, 0, 0))).toBe('2026-10-30')
+      }),
+  )
 })
 
 // HANDLER
@@ -284,7 +299,8 @@ describe('POST /api/runs', () => {
         'cf-connecting-ip': '203.0.113.7',
       })
       expect(response.status).toBe(202)
-      expect(yield* rowCount(setup)).toBe(1)
+      const value_5 = yield* rowCount(setup)
+      expect(value_5).toBe(1)
       const [stored] = yield* query(
         setup,
         'SELECT visit_id, outcome, killed_by, wave FROM runs',
@@ -305,12 +321,11 @@ describe('POST /api/runs', () => {
         const setup = yield* setUp()
         const response = yield* post(setup, encodeSummary(crewSummary))
         expect(response.status).toBe(202)
-        expect(
-          yield* query(
-            setup,
-            'SELECT summary_version, difficulty, party, crew_size, seat_kills, seat_downs, seat_revives, crew_key FROM runs',
-          ),
-        ).toEqual([
+        const value_6 = yield* query(
+          setup,
+          'SELECT summary_version, difficulty, party, crew_size, seat_kills, seat_downs, seat_revives, crew_key FROM runs',
+        )
+        expect(value_6).toEqual([
           {
             summary_version: 4,
             difficulty: 'Hard',
@@ -333,9 +348,11 @@ describe('POST /api/runs', () => {
         encodeSummary({ ...summary, modifiers: 12 }),
       )
       expect(response.status).toBe(202)
-      expect(
-        yield* query(setup, 'SELECT summary_version, modifiers FROM runs'),
-      ).toEqual([{ summary_version: 4, modifiers: 12 }])
+      const value_7 = yield* query(
+        setup,
+        'SELECT summary_version, modifiers FROM runs',
+      )
+      expect(value_7).toEqual([{ summary_version: 4, modifiers: 12 }])
     }),
   )
 
@@ -344,13 +361,14 @@ describe('POST /api/runs', () => {
       const setup = yield* setUp()
       const response = yield* post(
         setup,
-        encodeSummary({ ...summary, modifiers: 12 }).replace(
+        String.replace(
           '"modifiers":12',
           '"modifiers":16',
-        ),
+        )(encodeSummary({ ...summary, modifiers: 12 })),
       )
       expect(response.status).toBe(400)
-      expect(yield* rowCount(setup)).toBe(0)
+      const value_8 = yield* rowCount(setup)
+      expect(value_8).toBe(0)
     }),
   )
 
@@ -358,9 +376,11 @@ describe('POST /api/runs', () => {
     Effect.gen(function* () {
       const setup = yield* setUp()
       expect((yield* post(setup, versionThreeSummaryJson)).status).toBe(202)
-      expect(
-        yield* query(setup, 'SELECT summary_version, modifiers FROM runs'),
-      ).toEqual([{ summary_version: 3, modifiers: 0 }])
+      const value_9 = yield* query(
+        setup,
+        'SELECT summary_version, modifiers FROM runs',
+      )
+      expect(value_9).toEqual([{ summary_version: 3, modifiers: 0 }])
     }),
   )
 
@@ -370,12 +390,11 @@ describe('POST /api/runs', () => {
       Effect.gen(function* () {
         const setup = yield* setUp()
         expect((yield* post(setup, crewV2SummaryJson)).status).toBe(202)
-        expect(
-          yield* query(
-            setup,
-            'SELECT summary_version, party, crew_size, seat_kills, crew_key FROM runs',
-          ),
-        ).toEqual([
+        const value_10 = yield* query(
+          setup,
+          'SELECT summary_version, party, crew_size, seat_kills, crew_key FROM runs',
+        )
+        expect(value_10).toEqual([
           {
             summary_version: 2,
             party: 'Crew',
@@ -398,7 +417,8 @@ describe('POST /api/runs', () => {
         }),
       )
       expect(response.status).toBe(400)
-      expect(yield* rowCount(setup)).toBe(0)
+      const value_11 = yield* rowCount(setup)
+      expect(value_11).toBe(0)
     }),
   )
 
@@ -409,12 +429,11 @@ describe('POST /api/runs', () => {
         const setup = yield* setUp()
         expect((yield* post(setup, summaryJson)).status).toBe(202)
         expect((yield* post(setup, olderSummaryJson)).status).toBe(202)
-        expect(
-          yield* query(
-            setup,
-            'SELECT summary_version, party, crew_size, seat_kills, seat_downs, seat_revives, crew_key FROM runs ORDER BY id',
-          ),
-        ).toEqual([
+        const value_12 = yield* query(
+          setup,
+          'SELECT summary_version, party, crew_size, seat_kills, seat_downs, seat_revives, crew_key FROM runs ORDER BY id',
+        )
+        expect(value_12).toEqual([
           {
             summary_version: 4,
             party: 'Solo',
@@ -441,7 +460,8 @@ describe('POST /api/runs', () => {
     Effect.gen(function* () {
       const setup = yield* setUp()
       yield* post(setup, summaryJson, { 'cf-connecting-ip': '203.0.113.7' })
-      const row = toJson(yield* query(setup, 'SELECT * FROM runs'))
+      const value_13 = yield* query(setup, 'SELECT * FROM runs')
+      const row = toJson(value_13)
       expect(row).not.toContain('203.0.113.7')
       expect(row).not.toContain('test-salt')
     }),
@@ -452,7 +472,8 @@ describe('POST /api/runs', () => {
       const setup = yield* setUp()
       const response = yield* post(setup, toJson({ ...summary, wave: -3 }))
       expect(response.status).toBe(400)
-      expect(yield* rowCount(setup)).toBe(0)
+      const value_14 = yield* rowCount(setup)
+      expect(value_14).toBe(0)
     }),
   )
 
@@ -461,13 +482,14 @@ describe('POST /api/runs', () => {
     () =>
       Effect.gen(function* () {
         const setup = yield* setUp()
-        const huge = 'x'.repeat(MAX_SUMMARY_BYTES + 1)
+        const huge = String.repeat(MAX_SUMMARY_BYTES + 1)('x')
         expect((yield* post(setup, huge)).status).toBe(413)
         expect(
           (yield* post(setup, summaryJson, { 'content-length': '99999' }))
             .status,
         ).toBe(413)
-        expect(yield* rowCount(setup)).toBe(0)
+        const value_15 = yield* rowCount(setup)
+        expect(value_15).toBe(0)
       }),
   )
 
@@ -477,7 +499,8 @@ describe('POST /api/runs', () => {
       expect((yield* post(setup, summaryJson)).status).toBe(202)
       expect((yield* post(setup, summaryJson)).status).toBe(202)
       expect((yield* post(setup, summaryJson)).status).toBe(429)
-      expect(yield* rowCount(setup)).toBe(2)
+      const value_16 = yield* rowCount(setup)
+      expect(value_16).toBe(2)
     }),
   )
 
@@ -505,7 +528,9 @@ const shareEvent: ShareEvent = {
   path: 'Sheet',
 }
 
-const shareJson = Schema.encodeSync(ShareEventJson)(shareEvent)
+const shareJson = Result.getOrThrow(
+  Schema.encodeResult(ShareEventJson)(shareEvent),
+)
 
 const postShare = (
   setup: Setup,
@@ -539,9 +564,11 @@ describe('POST /api/shares', () => {
             path: 'Sheet',
           },
         ])
-        const stored = toJson(yield* query(setup, 'SELECT * FROM shares'))
+        const value_17 = yield* query(setup, 'SELECT * FROM shares')
+        const stored = toJson(value_17)
         expect(stored).not.toContain('203.0.113.7')
-        expect(yield* rowCount(setup)).toBe(0)
+        const value_18 = yield* rowCount(setup)
+        expect(value_18).toBe(0)
       }),
   )
 
@@ -556,9 +583,11 @@ describe('POST /api/shares', () => {
           toJson({ ...older, version: 1 }),
         )
         expect(response.status).toBe(202)
-        expect(
-          yield* query(setup, 'SELECT event_version, path FROM shares'),
-        ).toEqual([{ event_version: 1, path: 'Link' }])
+        const value_19 = yield* query(
+          setup,
+          'SELECT event_version, path FROM shares',
+        )
+        expect(value_19).toEqual([{ event_version: 1, path: 'Link' }])
       }),
   )
 
@@ -570,7 +599,8 @@ describe('POST /api/shares', () => {
           .status,
       ).toBe(400)
       expect((yield* postShare(setup, summaryJson)).status).toBe(400)
-      expect(yield* shareCount(setup)).toBe(0)
+      const value_20 = yield* shareCount(setup)
+      expect(value_20).toBe(0)
     }),
   )
 
@@ -578,9 +608,11 @@ describe('POST /api/shares', () => {
     Effect.gen(function* () {
       const setup = yield* setUp()
       expect(
-        (yield* postShare(setup, 'x'.repeat(MAX_SUMMARY_BYTES + 1))).status,
+        (yield* postShare(setup, String.repeat(MAX_SUMMARY_BYTES + 1)('x')))
+          .status,
       ).toBe(413)
-      expect(yield* shareCount(setup)).toBe(0)
+      const value_21 = yield* shareCount(setup)
+      expect(value_21).toBe(0)
     }),
   )
 
@@ -590,7 +622,8 @@ describe('POST /api/shares', () => {
       expect((yield* post(setup, summaryJson)).status).toBe(202)
       expect((yield* postShare(setup, shareJson)).status).toBe(202)
       expect((yield* postShare(setup, shareJson)).status).toBe(429)
-      expect(yield* shareCount(setup)).toBe(1)
+      const value_22 = yield* shareCount(setup)
+      expect(value_22).toBe(1)
     }),
   )
 })
@@ -604,7 +637,8 @@ describe('GET /api/health', () => {
         new Request('https://api.test/api/health'),
       )
       expect(response.status).toBe(200)
-      expect(yield* Effect.promise(() => response.json())).toEqual({
+      const value_23 = yield* Effect.promise(() => response.json())
+      expect(value_23).toEqual({
         status: 'Ok',
         database: 'Ok',
       })
@@ -628,8 +662,8 @@ describe('GET /api/health', () => {
 const DAY_MS = 24 * 60 * 60 * 1000
 
 const insertRowAt = (setup: Setup, atMs: number) =>
-  Effect.orDie(
-    setup.sql`INSERT INTO runs ${setup.sql.insert(rowOf(summary, atMs))}`,
+  Effect.flatMap(rowOf(summary, atMs), row =>
+    Effect.orDie(setup.sql`INSERT INTO runs ${setup.sql.insert(row)}`),
   )
 
 const cleanUp = (setup: Setup, nowMs: number) =>
@@ -681,15 +715,14 @@ describe('the 90 day retention', () => {
         Effect.orDie(
           setup.sql.unsafe(
             `INSERT INTO shares (received_at, received_day, event_version, visit_id, build, screen, mode, difficulty)
-           VALUES ('${new Date(atMs).toISOString()}', '${utcDay(atMs)}', 1, '0123456789abcdef', 'test', 'Death', 'Campaign', 'Normal')`,
+           VALUES ('${DateTime.formatIso(DateTime.makeUnsafe(atMs))}', '${utcDay(atMs)}', 1, '0123456789abcdef', 'test', 'Death', 'Campaign', 'Normal')`,
           ),
         )
       yield* shareAt(now - 91 * DAY_MS)
       yield* shareAt(now - 30 * DAY_MS)
       yield* cleanUp(setup, now)
-      expect(yield* query(setup, 'SELECT received_day FROM shares')).toEqual([
-        { received_day: '2026-09-29' },
-      ])
+      const value_24 = yield* query(setup, 'SELECT received_day FROM shares')
+      expect(value_24).toEqual([{ received_day: '2026-09-29' }])
     }),
   )
 
@@ -698,9 +731,12 @@ describe('the 90 day retention', () => {
       const setup = yield* setUp()
       const now = Date.UTC(2026, 9, 29, 4, 17)
       yield* insertRowAt(setup, now - 120 * DAY_MS)
-      expect(yield* cleanUp(setup, now)).toBe(1)
-      expect(yield* cleanUp(setup, now)).toBe(0)
-      expect(yield* rowCount(setup)).toBe(0)
+      const value_25 = yield* cleanUp(setup, now)
+      expect(value_25).toBe(1)
+      const value_26 = yield* cleanUp(setup, now)
+      expect(value_26).toBe(0)
+      const value_27 = yield* rowCount(setup)
+      expect(value_27).toBe(0)
     }),
   )
 })
@@ -748,18 +784,23 @@ describe("the report's co-op counts", () => {
           crewRowJson(null, BITTEN, 4, 15),
         ]
         yield* Effect.forEach(rows, row => post(setup, row))
-        expect(yield* rowCount(setup)).toBe(rows.length)
-        expect(yield* query(setup, COOP_GAMES)).toEqual([
+        const value_28 = yield* rowCount(setup)
+        expect(value_28).toBe(rows.length)
+        const value_29 = yield* query(setup, COOP_GAMES)
+        expect(value_29).toEqual([
           { crew_size: 3, runs: 4, wins: 1, losses: 3, quits: 0 },
         ])
-        expect(yield* query(setup, COOP_WIN_RATE)).toEqual([
+        const value_30 = yield* query(setup, COOP_WIN_RATE)
+        expect(value_30).toEqual([
           { difficulty: 'Hard', runs: 4, wins: 1, losses: 3, quits: 0 },
         ])
-        expect(yield* query(setup, COOP_DEATH_WAVES)).toEqual([
+        const value_31 = yield* query(setup, COOP_DEATH_WAVES)
+        expect(value_31).toEqual([
           { mode: 'Campaign', crew_size: 3, wave: 4, deaths: 2 },
           { mode: 'Campaign', crew_size: 3, wave: 5, deaths: 1 },
         ])
-        expect(yield* query(setup, COOP_PLAYERS)).toEqual([
+        const value_32 = yield* query(setup, COOP_PLAYERS)
+        expect(value_32).toEqual([
           {
             crew_size: 3,
             players: 7,
@@ -768,16 +809,21 @@ describe("the report's co-op counts", () => {
             revives: 1,
           },
         ])
-        expect(yield* query(setup, `${ENDS} ORDER BY party, outcome`)).toEqual([
+        const value_33 = yield* query(setup, `${ENDS} ORDER BY party, outcome`)
+        expect(value_33).toEqual([
           { party: 'Crew', outcome: 'GameOver', runs: 3 },
           { party: 'Crew', outcome: 'Victory', runs: 1 },
         ])
-        expect(
-          yield* query(setup, `SELECT runs FROM (${RUNS_PER_DAY})`),
-        ).toEqual([{ runs: 4 }])
-        expect(
-          yield* query(setup, `SELECT mode, runs FROM (${MEDIAN_LENGTH})`),
-        ).toEqual([{ mode: 'Campaign', runs: 4 }])
+        const value_34 = yield* query(
+          setup,
+          `SELECT runs FROM (${RUNS_PER_DAY})`,
+        )
+        expect(value_34).toEqual([{ runs: 4 }])
+        const value_35 = yield* query(
+          setup,
+          `SELECT mode, runs FROM (${MEDIAN_LENGTH})`,
+        )
+        expect(value_35).toEqual([{ mode: 'Campaign', runs: 4 }])
       }),
   )
 })

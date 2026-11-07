@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { type Box, type Level, boxCenter, levelOf } from './arena'
@@ -201,17 +201,24 @@ const turretOverheadShapes = (
   return [...flash, ...turretHealthBar(center, turret.hp)]
 }
 
-export const trapOverheadShapes =
-  (level: Level, elapsedMs: number) =>
-  (trap: Trap): ReadonlyArray<Canvas.Shape> =>
+export const trapOverheadShapes: {
+  (level: Level, elapsedMs: number): (trap: Trap) => ReadonlyArray<Canvas.Shape>
+  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape> =>
     Trap.match(trap, {
       Barricade: () => [],
       Turret: turret => turretOverheadShapes(level, turret, elapsedMs),
-    })
+    }),
+)
 
-export const trapShapes =
-  (level: Level, elapsedMs: number) =>
-  (trap: Trap): ReadonlyArray<Canvas.Shape> =>
+export const trapShapes: {
+  (level: Level, elapsedMs: number): (trap: Trap) => ReadonlyArray<Canvas.Shape>
+  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (trap: Trap, level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape> =>
     Trap.match(trap, {
       Barricade: ({ door, hp, hitRemainingMs }) => {
         const center = trapCenter(level, trap)
@@ -224,13 +231,18 @@ export const trapShapes =
         ]
       },
       Turret: turret => turretShapes(level, turret, elapsedMs),
-    })
+    }),
+)
 
-export const trapFootY = (level: Level, trap: Trap): number =>
+export const trapFootY: {
+  (trap: Trap): (level: Level) => number
+  (level: Level, trap: Trap): number
+} = Function.dual(2, (level: Level, trap: Trap): number =>
   Trap.match(trap, {
     Barricade: () => trapBox(level, trap).bottom,
     Turret: () => trapCenter(level, trap).y + TURRET_FOOT_DROP,
-  })
+  }),
+)
 
 const TURRET_SHADOW_WIDTH = 8
 

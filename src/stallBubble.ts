@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { levelOf } from './arena'
@@ -251,29 +251,33 @@ const isStallInView = (camera: Camera): boolean => {
 const isBreakWithShop = (model: Model): boolean =>
   isShopOpenFor(model.phase) && !isBrowsing(focusOf(model).shop)
 
-export const maybeBubbleKind = (
-  model: Model,
-  camera: Camera,
-): Option.Option<BubbleKind> => {
-  if (AmmoTip.isAnyOf(['Showing'])(model.ammoTip)) {
-    return Option.some('Ammo')
-  } else if (
-    !isBreakWithShop(model) ||
-    Tour.isAnyOf(['Running', 'Done'])(model.kitchenTour) ||
-    KitchenCall.isAnyOf(['Calling'])(model.kitchenCall)
-  ) {
-    return Option.none()
-  } else if (
-    TrapHint.isAnyOf(['Unseen'])(model.trapHint) &&
-    (isStallInView(camera) || Tour.isAnyOf(['Running'])(model.firstBreakQuest))
-  ) {
-    return Option.some('Traps')
-  } else if (!isLearned(model.lessons.shop) && !isStallInView(camera)) {
-    return Option.some('Shop')
-  } else {
-    return Option.none()
-  }
-}
+export const maybeBubbleKind: {
+  (camera: Camera): (model: Model) => Option.Option<BubbleKind>
+  (model: Model, camera: Camera): Option.Option<BubbleKind>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): Option.Option<BubbleKind> => {
+    if (AmmoTip.isAnyOf(['Showing'])(model.ammoTip)) {
+      return Option.some('Ammo')
+    } else if (
+      !isBreakWithShop(model) ||
+      Tour.isAnyOf(['Running', 'Done'])(model.kitchenTour) ||
+      KitchenCall.isAnyOf(['Calling'])(model.kitchenCall)
+    ) {
+      return Option.none()
+    } else if (
+      TrapHint.isAnyOf(['Unseen'])(model.trapHint) &&
+      (isStallInView(camera) ||
+        Tour.isAnyOf(['Running'])(model.firstBreakQuest))
+    ) {
+      return Option.some('Traps')
+    } else if (!isLearned(model.lessons.shop) && !isStallInView(camera)) {
+      return Option.some('Shop')
+    } else {
+      return Option.none()
+    }
+  },
+)
 
 // PLACING
 
@@ -374,14 +378,17 @@ const goodsShapes = (
     }),
   ).shapes
 
-export const stallBubbleShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
-  Option.match(maybeBubbleKind(model, camera), {
-    onNone: () => [],
-    onSome: kind => bubbleShapes(kind, TIP, model, camera),
-  })
+export const stallBubbleShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+    Option.match(maybeBubbleKind(model, camera), {
+      onNone: () => [],
+      onSome: kind => bubbleShapes(kind, TIP, model, camera),
+    }),
+)
 
 // NOTE: a bubble whose tail tip points at a spot in the world, pinned to
 // the window's edge with an arrow when the spot is out of view.
@@ -418,44 +425,53 @@ const bubbleShapes = (
 const LEAVE_TIP_RIGHT = 26
 const LEAVE_TIP_DROP = 32
 
-export const kitchenBubbleShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
-  Option.match(kitchenStepOf(model), {
-    onNone: () => [],
-    onSome: step =>
-      step === 'Choose'
-        ? Option.match(fridgeBoxOf(levelOf(model)), {
-            onNone: () => [],
-            onSome: box =>
-              bubbleShapes(
-                'Leave',
-                { x: box.right + LEAVE_TIP_RIGHT, y: box.top + LEAVE_TIP_DROP },
-                model,
-                camera,
-              ),
-          })
-        : Option.match(maybeKitchenMark(model), {
-            onNone: () => [],
-            onSome: mark => bubbleShapes('Gift', mark, model, camera),
-          }),
-  })
+export const kitchenBubbleShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+    Option.match(kitchenStepOf(model), {
+      onNone: () => [],
+      onSome: step =>
+        step === 'Choose'
+          ? Option.match(fridgeBoxOf(levelOf(model)), {
+              onNone: () => [],
+              onSome: box =>
+                bubbleShapes(
+                  'Leave',
+                  {
+                    x: box.right + LEAVE_TIP_RIGHT,
+                    y: box.top + LEAVE_TIP_DROP,
+                  },
+                  model,
+                  camera,
+                ),
+            })
+          : Option.match(maybeKitchenMark(model), {
+              onNone: () => [],
+              onSome: mark => bubbleShapes('Gift', mark, model, camera),
+            }),
+    }),
+)
 
 const SOUP_KINDS: ReadonlyArray<BubbleKind> = ['Soup0', 'Soup1', 'Soup2']
 
 // NOTE: Rattles' holler about the kitchen's boards, pinned to the window's
 // edge with an arrow toward them when they are out of view. While it calls,
 // the stall's own bubble waits (maybeBubbleKind), so two never stack.
-export const soupBubbleShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
-  Option.match(maybeCallTarget(model), {
-    onNone: () => [],
-    onSome: target =>
-      Option.match(Array.get(SOUP_KINDS, callLineIndex(model)), {
-        onNone: () => [],
-        onSome: kind => bubbleShapes(kind, target, model, camera),
-      }),
-  })
+export const soupBubbleShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+    Option.match(maybeCallTarget(model), {
+      onNone: () => [],
+      onSome: target =>
+        Option.match(Array.get(SOUP_KINDS, callLineIndex(model)), {
+          onNone: () => [],
+          onSome: kind => bubbleShapes(kind, target, model, camera),
+        }),
+    }),
+)

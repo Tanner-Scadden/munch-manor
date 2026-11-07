@@ -12,8 +12,6 @@ import { DEBUT_CARD_MIN_MS } from './onboarding'
 import { focusOf, modifyFocus } from './party'
 import {
   SHOTGUN,
-  holdingFirst,
-  holdingSecond,
   openLobbyByKey,
   press,
   resolveFocusLobby,
@@ -21,6 +19,7 @@ import {
   tick,
 } from './testing'
 import { STARTING_PISTOL } from './weapons'
+import { Arsenal } from './worldSchema'
 
 const FRAME_MS = 50
 
@@ -29,7 +28,11 @@ const fighting: Model = modifyFocus(
   {
     player: player =>
       modifyFields(player, {
-        arsenal: () => holdingFirst(SHOTGUN, { ...STARTING_PISTOL, loaded: 3 }),
+        arsenal: () =>
+          Arsenal.HoldingFirst({
+            first: { ...STARTING_PISTOL, loaded: 3 },
+            second: SHOTGUN,
+          }),
       }),
   },
 )
@@ -195,7 +198,10 @@ describe('one key per action: the kept keys work', () => {
       tap('KeyQ'),
       model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(
-          holdingSecond(SHOTGUN, { ...STARTING_PISTOL, loaded: 3 }),
+          Arsenal.HoldingSecond({
+            first: { ...STARTING_PISTOL, loaded: 3 },
+            second: SHOTGUN,
+          }),
         )
       }),
       tap('KeyQ'),

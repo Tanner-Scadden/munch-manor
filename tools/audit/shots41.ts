@@ -7,23 +7,25 @@
 // upright, as `s41-<TAG>-<viewport>-<scene>.png`.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shots41.ts
 // ONLY picks scenes, such as `ONLY=lowammo`, and VIEWPORTS picks screens.
+import { Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
-  SHOT_VIEWPORTS,
-  TAG,
   type Viewport,
+  auditTag,
   deviceQuery,
   finish,
   harnessQuery,
   isPickedScene,
-  launch,
+  openBrowser,
   pressButton,
   scenePages,
   settleAnimations,
   shot,
-  useHarness,
+  shotViewports,
 } from './lib'
+import { type AuditFailed, attempt } from './page'
 import { FIGHTING, LEARNED } from './scenes'
 
 type Scene = Readonly<{
@@ -34,48 +36,41 @@ type Scene = Readonly<{
     viewport: Viewport,
     problems: Array<string>,
     label: string,
-  ) => Promise<void>
+  ) => Effect.Effect<void, AuditFailed>
 }>
 
-const openHowToPlay = async (page: Page, viewport: Viewport) => {
-  await pressButton(page, viewport, /^More:/)
-  await page.locator('dialog[open]').first().waitFor({ state: 'visible' })
-  await pressButton(page, viewport, /^How to play:/)
-  await page
-    .locator('dialog[open] .panel')
-    .first()
-    .waitFor({ state: 'visible' })
-}
+const openHowToPlay = (page: Page, viewport: Viewport) =>
+  Effect.gen(function* () {
+    yield* pressButton(page, viewport, /^More:/)
+    yield* attempt(() =>
+      page.locator('dialog[open]').first().waitFor({ state: 'visible' }),
+    )
+    yield* pressButton(page, viewport, /^How to play:/)
+    yield* attempt(() =>
+      page.locator('dialog[open] .panel').first().waitFor({ state: 'visible' }),
+    )
+  })
 
 // NOTE: a card's line shows on focus with a keyboard and on a tap on touch.
 const openCardLine =
   (card: string) =>
-  async (
-    page: Page,
-    viewport: Viewport,
-    problems: Array<string>,
-    label: string,
-  ) => {
-    await openHowToPlay(page, viewport)
-    const button = page.locator(`#help-card-${card}`)
-    if ((await button.count()) === 0) {
-      problems.push(`${label}: no ${card} card button`)
-      return
-    }
-    if (viewport.isPhone) {
-      await button.tap()
-    } else {
-      await button.focus()
-    }
-    await settleAnimations(page)
-    const isShown = await page
-      .locator(`#help-card-${card}-line`)
-      .isVisible()
-      .catch(() => false)
-    if (!isShown) {
-      problems.push(`${label}: the ${card} card's line is not showing`)
-    }
-  }
+  (page: Page, viewport: Viewport, problems: Array<string>, label: string) =>
+    Effect.gen(function* () {
+      yield* openHowToPlay(page, viewport)
+      const button = page.locator(`#help-card-${card}`)
+      if ((yield* attempt(() => button.count())) === 0) {
+        problems.push(`${label}: no ${card} card button`)
+        return
+      }
+      yield* attempt(() => (viewport.isPhone ? button.tap() : button.focus()))
+      yield* settleAnimations(page)
+      const isShown = yield* attempt(() =>
+        page.locator(`#help-card-${card}-line`).isVisible(),
+      ).pipe(Effect.orElseSucceed(() => false))
+      if (!isShown) {
+        problems.push(`${label}: the ${card} card's line is not showing`)
+      }
+    })
 
 const SCENES: ReadonlyArray<Scene> = [
   {
@@ -91,10 +86,12 @@ const SCENES: ReadonlyArray<Scene> = [
   {
     name: 'shoptraps',
     query: `wave=3&prep=15000&money=80&px=270&py=142&${LEARNED}`,
-    act: async (page, viewport) => {
+    act: (page, viewport) => {
       const tab = page.getByRole('tab', { name: /^Traps/ }).first()
-      await (viewport.isPhone ? tab.tap() : tab.click())
-      await settleAnimations(page)
+      return Effect.andThen(
+        attempt(() => (viewport.isPhone ? tab.tap() : tab.click())),
+        settleAnimations(page),
+      )
     },
   },
   {
@@ -126,29 +123,33 @@ const SCENES: ReadonlyArray<Scene> = [
   },
 ]
 
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev'])
-const problems: Array<string> = []
-for (const viewport of SHOT_VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* shotViewports
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev'])
+    const problems: Array<string> = []
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
+        }
+        const label = `${viewport.name} ${scene.name}`
+        const page = yield* pages.open(
+          viewport,
+          harnessQuery(scene.query, deviceQuery(viewport)),
+        )
+        yield* settleAnimations(page)
+        if (scene.act !== undefined) {
+          yield* scene.act(page, viewport, problems, label)
+        }
+        yield* shot(page, `s41-${tag}-${viewport.name}-${scene.name}`)
+        yield* Console.log(`shot ${label}`)
+        pages.release(page)
+      }
     }
-    const label = `${viewport.name} ${scene.name}`
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
-    )
-    await settleAnimations(page)
-    if (scene.act !== undefined) {
-      await scene.act(page, viewport, problems, label)
-    }
-    await shot(page, `s41-${TAG}-${viewport.name}-${scene.name}`)
-    console.log(`shot ${label}`)
-    pages.release(page)
-  }
-}
-await pages.close()
-await browser.close()
-finish(problems, 'The playtest clarity pass found no problems.')
+    yield* pages.close
+    yield* finish(problems, 'The playtest clarity pass found no problems.')
+  }),
+)

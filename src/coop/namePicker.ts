@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import { closeButtonView } from '../dialogs'
@@ -14,7 +14,10 @@ import { NAME_BUTTON_ID, NAME_INPUT_ID, isInLobby } from './roomState'
 // this small field over the lobby: the Profile's name rules and dice
 // (src/profile.ts). Enter or OK keeps it, Esc or the X leaves it as it was.
 
-export const nameButtonView = (name: string, h: HtmlBuilder<Message>): Html =>
+export const nameButtonView: {
+  (h: HtmlBuilder<Message>): (name: string) => Html
+  (name: string, h: HtmlBuilder<Message>): Html
+} = Function.dual(2, (name: string, h: HtmlBuilder<Message>): Html =>
   h.button(
     [
       h.Type('button'),
@@ -28,11 +31,15 @@ export const nameButtonView = (name: string, h: HtmlBuilder<Message>): Html =>
       h.span([h.Class('coop-nameplate'), h.AriaHidden(true)], [name]),
       iconView('coop-name-pencil', PENCIL_ICON, h),
     ],
-  )
+  ),
+)
 
 // NOTE: over the top of the lobby, not centered, so a phone's keyboard in
 // landscape leaves it in sight. The field is 16 px or more, or iOS zooms.
-export const namePickerView = (room: Room, h: HtmlBuilder<Message>): Html =>
+export const namePickerView: {
+  (h: HtmlBuilder<Message>): (room: Room) => Html
+  (room: Room, h: HtmlBuilder<Message>): Html
+} = Function.dual(2, (room: Room, h: HtmlBuilder<Message>): Html =>
   Option.match(room.maybeNameDraft, {
     onNone: () => h.empty,
     onSome: draft =>
@@ -105,4 +112,5 @@ export const namePickerView = (room: Room, h: HtmlBuilder<Message>): Html =>
             ],
           )
         : h.empty,
-  })
+  }),
+)

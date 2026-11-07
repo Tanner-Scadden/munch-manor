@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Option, String } from 'effect'
 
 // The prebuilt sprite images (docs/IMAGES_PLAN.md). A production build packs
 // every sprite the game builds as it loads into a few PNG files and a
@@ -80,7 +80,7 @@ export const spriteKeyOf = (text: string): string => {
   let first = 0xdeadbeef
   let second = 0x41c6ce57
   for (let index = 0; index < text.length; index++) {
-    const code = text.charCodeAt(index)
+    const code = Option.getOrElse(String.charCodeAt(text, index), () => 0)
     first = Math.imul(first ^ code, 2654435761)
     second = Math.imul(second ^ code, 1597334677)
   }
@@ -91,7 +91,7 @@ export const spriteKeyOf = (text: string): string => {
     Math.imul(second ^ (second >>> 16), 2246822507) ^
     Math.imul(first ^ (first >>> 13), 3266489909)
   const hash = 4294967296 * (2097151 & second) + (first >>> 0)
-  return hash.toString(36).padStart(11, '0')
+  return String.padStart(11, '0')(hash.toString(36))
 }
 
 // STAND-INS
@@ -104,6 +104,6 @@ export const standInSource = (key: string): string =>
   `${STAND_IN_PREFIX}${key},`
 
 export const standInKeyOf = (src: string): Option.Option<string> =>
-  src.startsWith(STAND_IN_PREFIX)
-    ? Option.some(src.slice(STAND_IN_PREFIX.length, -1))
+  String.startsWith(STAND_IN_PREFIX)(src)
+    ? Option.some(String.slice(STAND_IN_PREFIX.length, -1)(src))
     : Option.none()

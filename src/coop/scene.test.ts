@@ -676,7 +676,7 @@ describe('the room code', () => {
 })
 
 describe('the arena', () => {
-  const world = stagedWorld([0, 1])
+  const world = stagedWorld([0, 1], [])
   const playing = (overrides: Partial<Room> = {}) =>
     roomWith({
       maybePlayerId: Option.some('player-0'),

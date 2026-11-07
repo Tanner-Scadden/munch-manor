@@ -1,4 +1,4 @@
-import { Record } from 'effect'
+import { Array, Record, String } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -17,19 +17,19 @@ describe('Rattles', () => {
       RATTLES_BUST_ROWS,
     )
     expect(portrait).toEqual(stall.slice(0, RATTLES_BUST_ROWS))
-    expect(portrait.some(row => row.includes('R'))).toBe(true)
+    expect(Array.some(portrait, row => String.includes('R')(row))).toBe(true)
   })
 
   test('a mood changes only his eyes and mouth', () => {
     const faceRows = new Set([4, 5, 6, 7])
-    Record.toEntries(MOOD_FACES).forEach(([, face]) => {
+    Array.forEach(Record.toEntries(MOOD_FACES), ([, face]) => {
       const moody = rattlesPixels(face)
       expect(moody.length).toBe(stall.length)
-      moody.forEach((row, index) => {
+      Array.forEach(moody, (row, index) => {
         expect(row.length).toBe(stall[index]?.length)
       })
       const outsideFace = (rows: ReadonlyArray<string>) =>
-        rows.filter((_, index) => !faceRows.has(index))
+        Array.filter(rows, (_, index) => !faceRows.has(index))
       expect(outsideFace(moody)).toEqual(outsideFace(stall))
     })
   })

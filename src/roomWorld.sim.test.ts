@@ -1,6 +1,6 @@
-import { Array } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { Array, Console } from 'effect'
 
+import { describe, expect, it, test } from '@effect/vitest'
 import { Session } from '@munch/netcode'
 
 import { DRAW_EVERY, mean, percentile, simulateRoom } from './roomTesting'
@@ -26,8 +26,7 @@ const kilobytesPerSecond = (bytesPerMessage: number): number =>
 const perPlayerKbps = run.bytesDown / PLAYERS / run.seconds / 1024
 
 // NOTE: this sim test reports the wire's bandwidth for MULTIPLAYER.md.
-// oxlint-disable-next-line no-console
-console.log(
+const report = Array.join(
   [
     `co-op wire, ${PLAYERS} players, ${run.seconds} s to wave ${run.room.world.world.phase._tag === 'Wave' || run.room.world.world.phase._tag === 'Preparation' ? run.room.world.world.phase.wave : '?'}:`,
     `  bytes a message p50 ${percentile(run.messageBytes, 0.5)}, p95 ${percentile(run.messageBytes, 0.95)}, max ${Math.max(...run.messageBytes)}, mean ${Math.round(mean(run.messageBytes))}`,
@@ -38,10 +37,15 @@ console.log(
       client =>
         `  player ${client.slot + 1}: ${client.session.stats.corrections} corrections, at most ${client.session.stats.maxCorrectionPx.toFixed(1)} px, ${client.inputsSent} inputs`,
     ),
-  ].join('\n'),
+  ],
+  '\n',
 )
 
 describe('four players in a crowded room', () => {
+  // NOTE: the report goes to the real console; `it.effect`'s TestConsole
+  // would keep it.
+  it.live('reports the wire for MULTIPLAYER.md', () => Console.log(report))
+
   test('the waves get crowded', () => {
     expect(run.crowdedBytes.length).toBeGreaterThan(500)
   })

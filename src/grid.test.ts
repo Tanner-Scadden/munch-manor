@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { buildGrid, queryAround, queryBox, queryBuffer } from './grid'
@@ -10,7 +11,7 @@ const scatter = (
   spread: number,
 ): Array<Vector> => {
   const next = randoms(seed)
-  return Array.from({ length: count }, () => ({
+  return globalThis.Array.from({ length: count }, () => ({
     x: (next() - 0.25) * spread,
     y: (next() - 0.25) * spread,
   }))
@@ -25,7 +26,7 @@ const isInBox = (point: Vector, box: Box): boolean =>
   point.y <= box[3]
 
 const isAscending = (values: ReadonlyArray<number>): boolean =>
-  values.every((value, at) => at === 0 || value > (values[at - 1] ?? 0))
+  Array.every(values, (value, at) => at === 0 || value > (values[at - 1] ?? 0))
 
 describe('grid', () => {
   const cases = [
@@ -45,7 +46,7 @@ describe('grid', () => {
       const points = scatter(count + spread, count, spread)
       const isIncluded = (index: number): boolean => index % 3 !== 1
       const grid = buildGrid(
-        points.map((point, index) => ({ ...point, index })),
+        Array.map(points, (point, index) => ({ ...point, index })),
         ({ index }) => isIncluded(index),
         cellPx,
       )
@@ -56,16 +57,18 @@ describe('grid', () => {
         const x = (next() - 0.5) * spread * 1.6
         const y = (next() - 0.5) * spread * 1.6
         const box: Box = [x, y, x + next() * 60, y + next() * 60]
-        const found = Array.from(out.subarray(0, queryBox(grid, out, ...box)))
+        const found = globalThis.Array.from(
+          out.subarray(0, queryBox(grid, out, ...box)),
+        )
         expect(isAscending(found)).toBe(true)
-        expect(found.every(isIncluded)).toBe(true)
-        const wanted = points.flatMap((point, index) =>
+        expect(Array.every(found, isIncluded)).toBe(true)
+        const wanted = Array.flatMap(points, (point, index) =>
           isIncluded(index) && isInBox(point, box) ? [index] : [],
         )
         // whole cells come back, so the caller's exact test trims them
         expect(found).toEqual(expect.arrayContaining(wanted))
         expect(
-          found.filter(index => {
+          Array.filter(found, index => {
             const point = points[index]
             return point !== undefined && isInBox(point, box)
           }),
@@ -86,10 +89,10 @@ describe('grid', () => {
     const out = queryBuffer(grid)
     for (const [index, point] of points.entries()) {
       const count = queryAround(grid, out, point, 0)
-      expect(Array.from(out.subarray(0, count))).toContain(index)
+      expect(globalThis.Array.from(out.subarray(0, count))).toContain(index)
     }
     const count = queryAround(grid, out, { x: 24, y: 24 }, 30)
-    expect(Array.from(out.subarray(0, count))).toEqual([0, 1, 2, 3])
+    expect(globalThis.Array.from(out.subarray(0, count))).toEqual([0, 1, 2, 3])
   })
 
   test('nothing included builds an empty grid that answers nothing', () => {

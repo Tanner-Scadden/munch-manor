@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { isEnraged } from './boss'
@@ -157,11 +157,19 @@ const fuseLengthAt = (urgency: number): number =>
 const sparkMsAt = (urgency: number): number =>
   Math.round(SPARK_SLOW_MS + (SPARK_FAST_MS - SPARK_SLOW_MS) * urgency)
 
-export const kaboomerFuseLength = (zombie: Zombie, player: Player): number =>
-  fuseLengthAt(fuseUrgency(zombie, player, wearOf(zombie)))
+export const kaboomerFuseLength: {
+  (player: Player): (zombie: Zombie) => number
+  (zombie: Zombie, player: Player): number
+} = Function.dual(2, (zombie: Zombie, player: Player): number =>
+  fuseLengthAt(fuseUrgency(zombie, player, wearOf(zombie))),
+)
 
-export const kaboomerSparkMs = (zombie: Zombie, player: Player): number =>
-  sparkMsAt(fuseUrgency(zombie, player, wearOf(zombie)))
+export const kaboomerSparkMs: {
+  (player: Player): (zombie: Zombie) => number
+  (zombie: Zombie, player: Player): number
+} = Function.dual(2, (zombie: Zombie, player: Player): number =>
+  sparkMsAt(fuseUrgency(zombie, player, wearOf(zombie))),
+)
 
 const sparkShapes = (
   tip: Vector,
@@ -901,9 +909,26 @@ const dyingZombieShape = (
   })
 }
 
-export const zombieShapes =
-  (player: Player, elapsedMs: number, boss: Boss) =>
-  (zombie: Zombie): ReadonlyArray<Canvas.Shape> =>
+export const zombieShapes: {
+  (
+    player: Player,
+    elapsedMs: number,
+    boss: Boss,
+  ): (zombie: Zombie) => ReadonlyArray<Canvas.Shape>
+  (
+    zombie: Zombie,
+    player: Player,
+    elapsedMs: number,
+    boss: Boss,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  4,
+  (
+    zombie: Zombie,
+    player: Player,
+    elapsedMs: number,
+    boss: Boss,
+  ): ReadonlyArray<Canvas.Shape> =>
     ZombieState.match(zombie.state, {
       Walking: () => walkingZombieShapes(zombie, player, elapsedMs, boss),
       Fusing: ({ remainingMs }) =>
@@ -911,7 +936,8 @@ export const zombieShapes =
       Dying: ({ remainingMs, direction }) => [
         dyingZombieShape(zombie, remainingMs, direction),
       ],
-    })
+    }),
+)
 
 // DEPTH AND SHADOW
 
@@ -1149,8 +1175,19 @@ const groundTellShapes =
       Dying: () => [],
     })
 
-export const zombieGroundShapes = (
-  zombies: ReadonlyArray<Zombie>,
-  elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(zombies, groundTellShapes(elapsedMs))
+export const zombieGroundShapes: {
+  (
+    elapsedMs: number,
+  ): (zombies: ReadonlyArray<Zombie>) => ReadonlyArray<Canvas.Shape>
+  (
+    zombies: ReadonlyArray<Zombie>,
+    elapsedMs: number,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (
+    zombies: ReadonlyArray<Zombie>,
+    elapsedMs: number,
+  ): ReadonlyArray<Canvas.Shape> =>
+    Array.flatMap(zombies, groundTellShapes(elapsedMs)),
+)

@@ -9,26 +9,32 @@
 // not, and exits with 1 on any miss.
 //   TAG=after bun run heavy -- bun tools/audit/shots36.ts
 // ONLY picks scenes, such as `ONLY=prompt,ring`, and VIEWPORTS picks screens.
+import { Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
-  SHOT_VIEWPORTS,
-  TAG,
+  auditTag,
   deviceQuery,
   finish,
   harnessQuery,
   isPickedScene,
-  launch,
+  openBrowser,
   scenePages,
   settleAnimations,
   shot,
-  useHarness,
+  shotViewports,
 } from './lib'
+import { type AuditFailed, attempt } from './page'
 
 type Scene = Readonly<{
   name: string
   query: string
-  act?: (page: Page, problems: Array<string>, label: string) => Promise<void>
+  act?: (
+    page: Page,
+    problems: Array<string>,
+    label: string,
+  ) => Effect.Effect<void, AuditFailed>
 }>
 
 // NOTE: every scene but the smash plays its frames at once with `tick=N`
@@ -42,17 +48,23 @@ const BREAK = 'wave=3&seen=all&money=85&gun=smg'
 const HOLD_MS = 500
 const SMASH_MS = 120
 const WAIT_TIMEOUT_MS = 5000
-const afterGameMs = async (page: Page, ms: number) => {
-  const start = await page.evaluate(() => window.__model.elapsedMs)
-  await page.waitForFunction(
-    end => window.__model.elapsedMs >= end,
-    start + ms,
-    { polling: 'raf', timeout: WAIT_TIMEOUT_MS },
-  )
-}
+const afterGameMs = (page: Page, ms: number) =>
+  Effect.gen(function* () {
+    const start = yield* attempt(() =>
+      page.evaluate(() => window.__model.elapsedMs),
+    )
+    yield* attempt(() =>
+      page.waitForFunction(end => window.__model.elapsedMs >= end, start + ms, {
+        polling: 'raf',
+        timeout: WAIT_TIMEOUT_MS,
+      }),
+    )
+  })
 
-const isKitchenOpen = async (page: Page): Promise<boolean> =>
-  page.evaluate(() => window.__model.level.openExits.includes('Kitchen'))
+const isKitchenOpen = (page: Page) =>
+  attempt(() =>
+    page.evaluate(() => window.__model.level.openExits.includes('Kitchen')),
+  )
 
 const AT_BOARDS = 'px=70&py=27'
 const MID_WAVE = 'wave=4&seen=all&start=wave&elapsed=6000&money=85&gun=smg'
@@ -73,21 +85,25 @@ const SCENES: ReadonlyArray<Scene> = [
   {
     name: 'short',
     query: `wave=3&seen=all&money=40&gun=smg&${AT_BOARDS}&hold&tick=7`,
-    act: async (page, problems, label) => {
-      if (await isKitchenOpen(page)) {
-        problems.push(`${label}: a hold short of the price opened the kitchen`)
-      }
-    },
+    act: (page, problems, label) =>
+      Effect.gen(function* () {
+        if (yield* isKitchenOpen(page)) {
+          problems.push(
+            `${label}: a hold short of the price opened the kitchen`,
+          )
+        }
+      }),
   },
   {
     name: 'smash',
     query: `${BREAK}&${AT_BOARDS}&hold`,
-    act: async (page, problems, label) => {
-      await afterGameMs(page, HOLD_MS + SMASH_MS)
-      if (!(await isKitchenOpen(page))) {
-        problems.push(`${label}: holding at the boards left the kitchen shut`)
-      }
-    },
+    act: (page, problems, label) =>
+      Effect.gen(function* () {
+        yield* afterGameMs(page, HOLD_MS + SMASH_MS)
+        if (!(yield* isKitchenOpen(page))) {
+          problems.push(`${label}: holding at the boards left the kitchen shut`)
+        }
+      }),
   },
   {
     name: 'midwave',
@@ -108,30 +124,34 @@ const SCENES: ReadonlyArray<Scene> = [
   },
 ]
 
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev'])
-const problems: Array<string> = []
-for (const viewport of SHOT_VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* shotViewports
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev'])
+    const problems: Array<string> = []
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
+        }
+        const page = yield* pages.open(
+          viewport,
+          harnessQuery(scene.query, deviceQuery(viewport)),
+        )
+        const label = `${viewport.name} ${scene.name}`
+        yield* settleAnimations(page)
+        if (scene.act !== undefined) {
+          yield* scene.act(page, problems, label)
+          yield* settleAnimations(page)
+        }
+        yield* shot(page, `s36-${tag}-${viewport.name}-${scene.name}`)
+        yield* Console.log(`shot ${label}`)
+        pages.release(page)
+      }
     }
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
-    )
-    const label = `${viewport.name} ${scene.name}`
-    await settleAnimations(page)
-    if (scene.act !== undefined) {
-      await scene.act(page, problems, label)
-      await settleAnimations(page)
-    }
-    await shot(page, `s36-${TAG}-${viewport.name}-${scene.name}`)
-    console.log(`shot ${label}`)
-    pages.release(page)
-  }
-}
-await pages.close()
-await browser.close()
-finish(problems, 'The kitchen pass found no problems.')
+    yield* pages.close
+    yield* finish(problems, 'The kitchen pass found no problems.')
+  }),
+)

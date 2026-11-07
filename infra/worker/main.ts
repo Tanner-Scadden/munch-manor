@@ -1,5 +1,6 @@
 import * as Context from 'effect/Context'
 import * as Effect from 'effect/Effect'
+import * as Layer from 'effect/Layer'
 import * as Option from 'effect/Option'
 
 import type {
@@ -48,9 +49,15 @@ const { handler } = makeHandler()
 // alchemy.run.ts. It deletes run rows older than 90 days, as of the time the
 // trigger was scheduled for.
 const cleanUp = (env: Bindings, scheduledMs: number) =>
-  deleteExpiredRuns(scheduledMs).pipe(
-    Effect.tap(deleted => Effect.log(`Deleted ${deleted} expired run rows`)),
-    Effect.provide(D1Client.layer({ db: env.DB })),
+  Effect.scoped(
+    Effect.gen(function* () {
+      const database = yield* Layer.build(D1Client.layer({ db: env.DB }))
+      const deleted = yield* Effect.provideContext(
+        deleteExpiredRuns(scheduledMs),
+        database,
+      )
+      yield* Effect.log(`Deleted ${deleted} expired run rows`)
+    }),
   )
 
 // NOTE: the edge. Each request runs one Effect: routeSync answers the /sync

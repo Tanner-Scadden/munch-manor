@@ -1,4 +1,4 @@
-import { Array, Match, Option, pipe } from 'effect'
+import { Array, Function, Match, Option, pipe } from 'effect'
 
 import {
   ClientFrame,
@@ -152,7 +152,7 @@ const seatOfSocket = (room: Room<unknown>, socket: SocketId) =>
     Option.exists(seat.socket, linked => linked === socket),
   )
 
-export const seatOfPlayer = <W>(room: Room<W>, playerId: string) =>
+const seatOfPlayer = <W>(room: Room<W>, playerId: string) =>
   Array.findFirst(room.seats, seat => seat.playerId === playerId)
 
 const welcome = (seat: Seat, tick: number): ServerFrame =>
@@ -176,50 +176,65 @@ const snapshotFrame = <W, Own>(
 
 // START
 
-export const startRoom = <W, Own>(
-  world: World<W, Own>,
-  members: ReadonlyArray<Member>,
-  seed: number,
-  nowMs: number,
-): Stepped<W> => {
-  const first = world.start(
-    Array.map(members, member => member.slot),
-    seed,
-  )
-  const seats = Array.map(members, (member): Seat => ({
-    slot: member.slot,
-    playerId: member.playerId,
-    socket: member.socket,
-    presence: Option.isSome(member.socket) ? HERE : awaySince(nowMs),
-    lastHeardMs: nowMs,
-    input: NEUTRAL_INPUT,
-    queued: [],
-    receipts: [],
-    ack: 0,
-    rttMs: 0,
-    viewLagTicks: 0,
-  }))
-  const room: Room<W> = {
-    seats,
-    world: first,
-    tick: 0,
-    startedMs: nowMs,
-    sentWorld: first,
-    sentTick: 0,
-  }
-  return {
-    room,
-    out: Array.flatMap(seats, seat =>
-      Option.match(seat.socket, {
-        onNone: () => [],
-        onSome: socket => [
-          send(socket, welcome(seat, 0)),
-          send(socket, snapshotFrame(world, room, seat)),
-        ],
-      }),
-    ),
-  }
-}
+export const startRoom: {
+  <W, Own>(
+    members: ReadonlyArray<Member>,
+    seed: number,
+    nowMs: number,
+  ): (world: World<W, Own>) => Stepped<W>
+  <W, Own>(
+    world: World<W, Own>,
+    members: ReadonlyArray<Member>,
+    seed: number,
+    nowMs: number,
+  ): Stepped<W>
+} = Function.dual(
+  4,
+  <W, Own>(
+    world: World<W, Own>,
+    members: ReadonlyArray<Member>,
+    seed: number,
+    nowMs: number,
+  ): Stepped<W> => {
+    const first = world.start(
+      Array.map(members, member => member.slot),
+      seed,
+    )
+    const seats = Array.map(members, (member): Seat => ({
+      slot: member.slot,
+      playerId: member.playerId,
+      socket: member.socket,
+      presence: Option.isSome(member.socket) ? HERE : awaySince(nowMs),
+      lastHeardMs: nowMs,
+      input: NEUTRAL_INPUT,
+      queued: [],
+      receipts: [],
+      ack: 0,
+      rttMs: 0,
+      viewLagTicks: 0,
+    }))
+    const room: Room<W> = {
+      seats,
+      world: first,
+      tick: 0,
+      startedMs: nowMs,
+      sentWorld: first,
+      sentTick: 0,
+    }
+    return {
+      room,
+      out: Array.flatMap(seats, seat =>
+        Option.match(seat.socket, {
+          onNone: () => [],
+          onSome: socket => [
+            send(socket, welcome(seat, 0)),
+            send(socket, snapshotFrame(world, room, seat)),
+          ],
+        }),
+      ),
+    }
+  },
+)
 
 // RESTORE
 
@@ -228,78 +243,110 @@ export const startRoom = <W, Own>(
 // `nowMs` and no socket linked. Each player who reconnects within
 // FREE_SEAT_AFTER_MS links as in any rejoin and gets a Snapshot of this
 // World. The clock starts as if the room had run to `tick` just now.
-export const restoreRoom = <W>(
-  restored: W,
-  tick: number,
-  members: ReadonlyArray<Pick<Member, 'slot' | 'playerId'>>,
-  nowMs: number,
-): Room<W> => ({
-  seats: Array.map(members, (member): Seat => ({
-    slot: member.slot,
-    playerId: member.playerId,
-    socket: Option.none(),
-    presence: awaySince(nowMs),
-    lastHeardMs: nowMs,
-    input: NEUTRAL_INPUT,
-    queued: [],
-    receipts: [],
-    ack: 0,
-    rttMs: 0,
-    viewLagTicks: 0,
-  })),
-  world: restored,
-  tick,
-  startedMs: nowMs - tick * TICK_MS,
-  sentWorld: restored,
-  sentTick: tick,
-})
+export const restoreRoom: {
+  <W>(
+    tick: number,
+    members: ReadonlyArray<Pick<Member, 'slot' | 'playerId'>>,
+    nowMs: number,
+  ): (restored: W) => Room<W>
+  <W>(
+    restored: W,
+    tick: number,
+    members: ReadonlyArray<Pick<Member, 'slot' | 'playerId'>>,
+    nowMs: number,
+  ): Room<W>
+} = Function.dual(
+  4,
+  <W>(
+    restored: W,
+    tick: number,
+    members: ReadonlyArray<Pick<Member, 'slot' | 'playerId'>>,
+    nowMs: number,
+  ): Room<W> => ({
+    seats: Array.map(members, (member): Seat => ({
+      slot: member.slot,
+      playerId: member.playerId,
+      socket: Option.none(),
+      presence: awaySince(nowMs),
+      lastHeardMs: nowMs,
+      input: NEUTRAL_INPUT,
+      queued: [],
+      receipts: [],
+      ack: 0,
+      rttMs: 0,
+      viewLagTicks: 0,
+    })),
+    world: restored,
+    tick,
+    startedMs: nowMs - tick * TICK_MS,
+    sentWorld: restored,
+    sentTick: tick,
+  }),
+)
 
 // LINKS
 
 // NOTE: a player's game socket said Hello. A newer socket replaces an older
 // one (a reload, or a second tab), which is closed. The input queue and the
 // seq count start over, since a new socket starts its seqs from 1.
-export const link = <W, Own>(
-  world: World<W, Own>,
-  room: Room<W>,
-  playerId: string,
-  socket: SocketId,
-  nowMs: number,
-): Option.Option<Stepped<W>> =>
-  Option.map(seatOfPlayer(room, playerId), seat => {
-    const replaced = Option.filter(seat.socket, old => old !== socket)
-    const linked: Seat = {
-      ...seat,
-      socket: Option.some(socket),
-      presence: HERE,
-      lastHeardMs: nowMs,
-      input: NEUTRAL_INPUT,
-      queued: [],
-      receipts: [],
-      ack: 0,
-    }
-    const seats = updateSeat(room.seats, seat.slot, () => linked)
-    const next = { ...room, seats }
-    const back =
-      seat.presence._tag === 'Away'
-        ? sendToLinked(
-            Array.filter(seats, other => other.slot !== seat.slot),
-            () => ServerFrame.cases.Back.make({ slot: seat.slot }),
-          )
-        : []
-    return {
-      room: next,
-      out: [
-        ...Option.match(replaced, {
-          onNone: () => [],
-          onSome: old => [close(old)],
-        }),
-        send(socket, welcome(linked, room.tick)),
-        send(socket, snapshotFrame(world, next, linked)),
-        ...back,
-      ],
-    }
-  })
+export const link: {
+  <W, Own>(
+    room: Room<W>,
+    playerId: string,
+    socket: SocketId,
+    nowMs: number,
+  ): (world: World<W, Own>) => Option.Option<Stepped<W>>
+  <W, Own>(
+    world: World<W, Own>,
+    room: Room<W>,
+    playerId: string,
+    socket: SocketId,
+    nowMs: number,
+  ): Option.Option<Stepped<W>>
+} = Function.dual(
+  5,
+  <W, Own>(
+    world: World<W, Own>,
+    room: Room<W>,
+    playerId: string,
+    socket: SocketId,
+    nowMs: number,
+  ): Option.Option<Stepped<W>> =>
+    Option.map(seatOfPlayer(room, playerId), seat => {
+      const replaced = Option.filter(seat.socket, old => old !== socket)
+      const linked: Seat = {
+        ...seat,
+        socket: Option.some(socket),
+        presence: HERE,
+        lastHeardMs: nowMs,
+        input: NEUTRAL_INPUT,
+        queued: [],
+        receipts: [],
+        ack: 0,
+      }
+      const seats = updateSeat(room.seats, seat.slot, () => linked)
+      const next = { ...room, seats }
+      const back =
+        seat.presence._tag === 'Away'
+          ? sendToLinked(
+              Array.filter(seats, other => other.slot !== seat.slot),
+              () => ServerFrame.cases.Back.make({ slot: seat.slot }),
+            )
+          : []
+      return {
+        room: next,
+        out: [
+          ...Option.match(replaced, {
+            onNone: () => [],
+            onSome: old => [close(old)],
+          }),
+          send(socket, welcome(linked, room.tick)),
+          send(socket, snapshotFrame(world, next, linked)),
+          ...back,
+        ],
+      }
+    }),
+)
 
 const awayOut = (
   seats: ReadonlyArray<Seat>,
@@ -311,31 +358,33 @@ const awayOut = (
   )
 
 // NOTE: a socket closed. Its player is Away at once.
-export const unlink = <W>(
-  room: Room<W>,
-  socket: SocketId,
-  nowMs: number,
-): Stepped<W> =>
-  Option.match(seatOfSocket(room, socket), {
-    onNone: () => ({ room, out: [] }),
-    onSome: seat => {
-      const seats = updateSeat(room.seats, seat.slot, current => ({
-        ...current,
-        socket: Option.none(),
-        presence:
-          current.presence._tag === 'Away'
-            ? current.presence
-            : awaySince(nowMs),
-        queued: [],
-        receipts: [],
-        input: NEUTRAL_INPUT,
-      }))
-      return {
-        room: { ...room, seats },
-        out: seat.presence._tag === 'Here' ? awayOut(seats, seat.slot) : [],
-      }
-    },
-  })
+export const unlink: {
+  <W>(socket: SocketId, nowMs: number): (room: Room<W>) => Stepped<W>
+  <W>(room: Room<W>, socket: SocketId, nowMs: number): Stepped<W>
+} = Function.dual(
+  3,
+  <W>(room: Room<W>, socket: SocketId, nowMs: number): Stepped<W> =>
+    Option.match(seatOfSocket(room, socket), {
+      onNone: () => ({ room, out: [] }),
+      onSome: seat => {
+        const seats = updateSeat(room.seats, seat.slot, current => ({
+          ...current,
+          socket: Option.none(),
+          presence:
+            current.presence._tag === 'Away'
+              ? current.presence
+              : awaySince(nowMs),
+          queued: [],
+          receipts: [],
+          input: NEUTRAL_INPUT,
+        }))
+        return {
+          room: { ...room, seats },
+          out: seat.presence._tag === 'Here' ? awayOut(seats, seat.slot) : [],
+        }
+      },
+    }),
+)
 
 // SEATS
 
@@ -350,25 +399,40 @@ const removeSeat = <W, Own>(
 })
 
 // NOTE: the host kicked a player, or they left the room from the lobby.
-export const dropPlayer = <W, Own>(
-  world: World<W, Own>,
-  room: Room<W>,
-  playerId: string,
-  kicked: boolean,
-): Stepped<W> =>
-  Option.match(seatOfPlayer(room, playerId), {
-    onNone: () => ({ room, out: [] }),
-    onSome: seat => ({
-      room: removeSeat(world, room, seat),
-      out: Option.match(seat.socket, {
-        onNone: () => [],
-        onSome: socket =>
-          kicked
-            ? [send(socket, ServerFrame.cases.Kicked.make({})), close(socket)]
-            : [close(socket)],
+export const dropPlayer: {
+  <W, Own>(
+    room: Room<W>,
+    playerId: string,
+    kicked: boolean,
+  ): (world: World<W, Own>) => Stepped<W>
+  <W, Own>(
+    world: World<W, Own>,
+    room: Room<W>,
+    playerId: string,
+    kicked: boolean,
+  ): Stepped<W>
+} = Function.dual(
+  4,
+  <W, Own>(
+    world: World<W, Own>,
+    room: Room<W>,
+    playerId: string,
+    kicked: boolean,
+  ): Stepped<W> =>
+    Option.match(seatOfPlayer(room, playerId), {
+      onNone: () => ({ room, out: [] }),
+      onSome: seat => ({
+        room: removeSeat(world, room, seat),
+        out: Option.match(seat.socket, {
+          onNone: () => [],
+          onSome: socket =>
+            kicked
+              ? [send(socket, ServerFrame.cases.Kicked.make({})), close(socket)]
+              : [close(socket)],
+        }),
       }),
     }),
-  })
+)
 
 // INPUTS
 
@@ -484,58 +548,75 @@ const heard = <W>(room: Room<W>, seat: Seat, nowMs: number): Stepped<W> => {
   }
 }
 
-export const receive = <W, Own>(
-  world: World<W, Own>,
-  room: Room<W>,
-  socket: SocketId,
-  frame: ClientFrame,
-  nowMs: number,
-): Stepped<W> =>
-  Option.match(seatOfSocket(room, socket), {
-    onNone: () => ({ room, out: [] }),
-    onSome: seat => {
-      const woke = heard(room, seat, nowMs)
-      const current = Option.getOrElse(
-        seatOfSocket(woke.room, socket),
-        () => seat,
-      )
-      return ClientFrame.match(frame, {
-        Input: (input): Stepped<W> => ({
-          room: {
-            ...woke.room,
-            seats: updateSeat(woke.room.seats, seat.slot, () =>
-              enqueue(current, input, woke.room.tick),
-            ),
-          },
-          out: woke.out,
-        }),
-        Ping: ({ rttMs, nonce }): Stepped<W> => ({
-          room: {
-            ...woke.room,
-            seats: updateSeat(woke.room.seats, seat.slot, () => ({
-              ...current,
-              rttMs,
-            })),
-          },
-          out: [
-            ...woke.out,
-            send(
-              socket,
-              ServerFrame.cases.Pong.make({ nonce, tick: woke.room.tick }),
-            ),
-          ],
-        }),
-        Leave: (): Stepped<W> => ({
-          room: removeSeat(world, woke.room, current),
-          out: [
-            close(socket),
-            { _tag: 'FreedSeat', playerId: current.playerId },
-          ],
-        }),
-        Hello: (): Stepped<W> => woke,
-      })
-    },
-  })
+export const receive: {
+  <W, Own>(
+    room: Room<W>,
+    socket: SocketId,
+    frame: ClientFrame,
+    nowMs: number,
+  ): (world: World<W, Own>) => Stepped<W>
+  <W, Own>(
+    world: World<W, Own>,
+    room: Room<W>,
+    socket: SocketId,
+    frame: ClientFrame,
+    nowMs: number,
+  ): Stepped<W>
+} = Function.dual(
+  5,
+  <W, Own>(
+    world: World<W, Own>,
+    room: Room<W>,
+    socket: SocketId,
+    frame: ClientFrame,
+    nowMs: number,
+  ): Stepped<W> =>
+    Option.match(seatOfSocket(room, socket), {
+      onNone: () => ({ room, out: [] }),
+      onSome: seat => {
+        const woke = heard(room, seat, nowMs)
+        const current = Option.getOrElse(
+          seatOfSocket(woke.room, socket),
+          () => seat,
+        )
+        return ClientFrame.match(frame, {
+          Input: (input): Stepped<W> => ({
+            room: {
+              ...woke.room,
+              seats: updateSeat(woke.room.seats, seat.slot, () =>
+                enqueue(current, input, woke.room.tick),
+              ),
+            },
+            out: woke.out,
+          }),
+          Ping: ({ rttMs, nonce }): Stepped<W> => ({
+            room: {
+              ...woke.room,
+              seats: updateSeat(woke.room.seats, seat.slot, () => ({
+                ...current,
+                rttMs,
+              })),
+            },
+            out: [
+              ...woke.out,
+              send(
+                socket,
+                ServerFrame.cases.Pong.make({ nonce, tick: woke.room.tick }),
+              ),
+            ],
+          }),
+          Leave: (): Stepped<W> => ({
+            room: removeSeat(world, woke.room, current),
+            out: [
+              close(socket),
+              { _tag: 'FreedSeat', playerId: current.playerId },
+            ],
+          }),
+          Hello: (): Stepped<W> => woke,
+        })
+      },
+    }),
+)
 
 // TICKS
 
@@ -660,32 +741,45 @@ const checkPresence = <W, Own>(
 // NOTE: the game is over. Everyone linked hears why; `Ended` carries the
 // scores by player for the room's result. Sockets stay open for the next
 // game in the same room.
-export const endRoom = <W, Own>(
-  world: World<W, Own>,
-  room: Room<W>,
-  reason: ClosedReason,
-): ReadonlyArray<Out> => [
-  ...sendToLinked(room.seats, () =>
-    ServerFrame.cases.RoomClosed.make({ reason }),
-  ),
-  {
-    _tag: 'Ended',
-    reason,
-    tick: room.tick,
-    scores: Array.getSomes(
-      Array.map(world.scores(room.world), score =>
-        Option.map(
-          Array.findFirst(room.seats, seat => seat.slot === score.slot),
-          seat => ({
-            slot: score.slot,
-            playerId: seat.playerId,
-            score: score.score,
-          }),
+export const endRoom: {
+  <W, Own>(
+    room: Room<W>,
+    reason: ClosedReason,
+  ): (world: World<W, Own>) => ReadonlyArray<Out>
+  <W, Own>(
+    world: World<W, Own>,
+    room: Room<W>,
+    reason: ClosedReason,
+  ): ReadonlyArray<Out>
+} = Function.dual(
+  3,
+  <W, Own>(
+    world: World<W, Own>,
+    room: Room<W>,
+    reason: ClosedReason,
+  ): ReadonlyArray<Out> => [
+    ...sendToLinked(room.seats, () =>
+      ServerFrame.cases.RoomClosed.make({ reason }),
+    ),
+    {
+      _tag: 'Ended',
+      reason,
+      tick: room.tick,
+      scores: Array.getSomes(
+        Array.map(world.scores(room.world), score =>
+          Option.map(
+            Array.findFirst(room.seats, seat => seat.slot === score.slot),
+            seat => ({
+              slot: score.slot,
+              playerId: seat.playerId,
+              score: score.score,
+            }),
+          ),
         ),
       ),
-    ),
-  },
-]
+    },
+  ],
+)
 
 export const isEnded = (out: ReadonlyArray<Out>): boolean =>
   Array.some(out, item => item._tag === 'Ended')
@@ -693,65 +787,71 @@ export const isEnded = (out: ReadonlyArray<Out>): boolean =>
 // NOTE: a hair of slack, so 1000 ms is 60 ticks and not 59.999.
 const TICK_SLACK = 1e-6
 
-export const ticksDue = (room: Room<unknown>, nowMs: number): number =>
+export const ticksDue: {
+  (nowMs: number): (room: Room<unknown>) => number
+  (room: Room<unknown>, nowMs: number): number
+} = Function.dual(2, (room: Room<unknown>, nowMs: number): number =>
   Math.max(
     0,
     Math.floor((nowMs - room.startedMs) / TICK_MS + TICK_SLACK) - room.tick,
-  )
+  ),
+)
 
 // NOTE: one wake of the room's loop: the ticks the clock owes, one message
 // to everyone if a send tick passed, then presence, then the end of the
 // game, which first sends the last world if it is not out yet, so every
 // player sees how the run ended. After an `Ended` out the room is done.
-export const advance = <W, Own>(
-  world: World<W, Own>,
-  room: Room<W>,
-  nowMs: number,
-): Stepped<W> => {
-  const owed = ticksDue(room, nowMs)
-  const slipped =
-    owed > MAX_CATCH_UP_TICKS
-      ? {
-          ...room,
-          startedMs: nowMs - (room.tick + MAX_CATCH_UP_TICKS) * TICK_MS,
-        }
-      : room
-  const ticked = Array.reduce(
-    repeat(Math.min(owed, MAX_CATCH_UP_TICKS), () => 0),
-    slipped,
-    current => runTick(world, current),
-  )
-  const sent = isSendTick(ticked)
-    ? broadcast(world, ticked)
-    : { room: ticked, out: [] }
-  const present = checkPresence(world, sent.room, nowMs)
-  const out = [...sent.out, ...present.out]
-  if (world.isOver(present.room.world)) {
-    const last =
-      present.room.sentTick === present.room.tick
-        ? { room: present.room, out: [] }
-        : broadcast(world, present.room)
-    return {
-      room: last.room,
-      out: [
-        ...out,
-        ...last.out,
-        ...endRoom(
-          world,
-          last.room,
-          world.isWon(last.room.world) ? 'Won' : 'GameOver',
-        ),
-      ],
+export const advance: {
+  <W, Own>(room: Room<W>, nowMs: number): (world: World<W, Own>) => Stepped<W>
+  <W, Own>(world: World<W, Own>, room: Room<W>, nowMs: number): Stepped<W>
+} = Function.dual(
+  3,
+  <W, Own>(world: World<W, Own>, room: Room<W>, nowMs: number): Stepped<W> => {
+    const owed = ticksDue(room, nowMs)
+    const slipped =
+      owed > MAX_CATCH_UP_TICKS
+        ? {
+            ...room,
+            startedMs: nowMs - (room.tick + MAX_CATCH_UP_TICKS) * TICK_MS,
+          }
+        : room
+    const ticked = Array.reduce(
+      repeat(Math.min(owed, MAX_CATCH_UP_TICKS), () => 0),
+      slipped,
+      current => runTick(world, current),
+    )
+    const sent = isSendTick(ticked)
+      ? broadcast(world, ticked)
+      : { room: ticked, out: [] }
+    const present = checkPresence(world, sent.room, nowMs)
+    const out = [...sent.out, ...present.out]
+    if (world.isOver(present.room.world)) {
+      const last =
+        present.room.sentTick === present.room.tick
+          ? { room: present.room, out: [] }
+          : broadcast(world, present.room)
+      return {
+        room: last.room,
+        out: [
+          ...out,
+          ...last.out,
+          ...endRoom(
+            world,
+            last.room,
+            world.isWon(last.room.world) ? 'Won' : 'GameOver',
+          ),
+        ],
+      }
     }
-  }
-  if (Array.isReadonlyArrayEmpty(present.room.seats)) {
-    return {
-      room: present.room,
-      out: [...out, ...endRoom(world, present.room, 'Abandoned')],
+    if (Array.isReadonlyArrayEmpty(present.room.seats)) {
+      return {
+        room: present.room,
+        out: [...out, ...endRoom(world, present.room, 'Abandoned')],
+      }
     }
-  }
-  return { room: present.room, out }
-}
+    return { room: present.room, out }
+  },
+)
 
 // NOTE: when the loop should wake next: the next send tick.
 export const nextWakeMs = (room: Room<unknown>): number => {

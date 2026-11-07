@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 
 import type { Lobby, LobbyMember } from '@munch/netcode'
 
@@ -99,12 +99,27 @@ const memberLookAt = (
 export const callingOfMember = (member: LobbyMember): Calling =>
   Option.getOrElse(callingOfCode(member.calling), (): Calling => 'You')
 
-export const seatLookOf = (
-  ownLook: Appearance,
-  ownSeat: number,
-  seat: number,
-  maybeLobby: Option.Option<Lobby> = Option.none(),
-): Appearance =>
-  seat === ownSeat
-    ? ownLook
-    : Option.getOrElse(memberLookAt(maybeLobby, seat), () => seatLook(seat))
+export const seatLookOf: {
+  (
+    ownSeat: number,
+    seat: number,
+    maybeLobby: Option.Option<Lobby>,
+  ): (ownLook: Appearance) => Appearance
+  (
+    ownLook: Appearance,
+    ownSeat: number,
+    seat: number,
+    maybeLobby: Option.Option<Lobby>,
+  ): Appearance
+} = Function.dual(
+  4,
+  (
+    ownLook: Appearance,
+    ownSeat: number,
+    seat: number,
+    maybeLobby: Option.Option<Lobby>,
+  ): Appearance =>
+    seat === ownSeat
+      ? ownLook
+      : Option.getOrElse(memberLookAt(maybeLobby, seat), () => seatLook(seat)),
+)

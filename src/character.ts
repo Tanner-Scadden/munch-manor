@@ -1,4 +1,4 @@
-import { Option, Schema } from 'effect'
+import { Function, Option, Schema } from 'effect'
 import { Block } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
@@ -66,16 +66,23 @@ export const SECTION_TOGGLES: Readonly<
   Gear: [],
 }
 
-export const isToggleOn = (appearance: Appearance, toggle: LookToggle) =>
-  toggle === 'Beard' ? appearance.beard : appearance.glasses
+export const isToggleOn: {
+  (toggle: LookToggle): (appearance: Appearance) => boolean
+  (appearance: Appearance, toggle: LookToggle): boolean
+} = Function.dual(2, (appearance: Appearance, toggle: LookToggle): boolean =>
+  toggle === 'Beard' ? appearance.beard : appearance.glasses,
+)
 
-export const flipLook = (
-  appearance: Appearance,
-  toggle: LookToggle,
-): Appearance =>
-  toggle === 'Beard'
-    ? modifyFields(appearance, { beard: isOn => !isOn })
-    : modifyFields(appearance, { glasses: isOn => !isOn })
+export const flipLook: {
+  (toggle: LookToggle): (appearance: Appearance) => Appearance
+  (appearance: Appearance, toggle: LookToggle): Appearance
+} = Function.dual(
+  2,
+  (appearance: Appearance, toggle: LookToggle): Appearance =>
+    toggle === 'Beard'
+      ? modifyFields(appearance, { beard: isOn => !isOn })
+      : modifyFields(appearance, { glasses: isOn => !isOn }),
+)
 
 const readAs =
   <A extends string>(schema: Schema.Codec<A>) =>
@@ -196,16 +203,23 @@ export const PART_OF_KIND: Readonly<Record<CosmeticKind, LookPart>> = {
 export const gearOf = (part: LookPart): Option.Option<Gear> =>
   Option.fromNullishOr(GEAR[part])
 
-export const partGroupOf = (
-  picker: CharacterPicker,
-  part: LookPart,
-): PartRadioGroupModel => PARTS[part].read(picker)
+export const partGroupOf: {
+  (part: LookPart): (picker: CharacterPicker) => PartRadioGroupModel
+  (picker: CharacterPicker, part: LookPart): PartRadioGroupModel
+} = Function.dual(
+  2,
+  (picker: CharacterPicker, part: LookPart): PartRadioGroupModel =>
+    PARTS[part].read(picker),
+)
 
-export const chooseLook = (
-  appearance: Appearance,
-  part: LookPart,
-  value: string,
-): Appearance => PARTS[part].choose(appearance, value)
+export const chooseLook: {
+  (part: LookPart, value: string): (appearance: Appearance) => Appearance
+  (appearance: Appearance, part: LookPart, value: string): Appearance
+} = Function.dual(
+  3,
+  (appearance: Appearance, part: LookPart, value: string): Appearance =>
+    PARTS[part].choose(appearance, value),
+)
 
 // BLOCK
 

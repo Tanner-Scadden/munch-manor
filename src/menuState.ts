@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Function, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
 import { RESTART_GRACE_MS } from './constants'
@@ -80,19 +80,27 @@ export const isLobbyOpen = (model: Model): boolean =>
 export const isProfileOpen = (model: Model): boolean =>
   MenuState.isAnyOf(['Profile'])(menuState(model))
 
-export const isProfileOpenOn = (model: Model, tab: ProfileTab): boolean =>
+export const isProfileOpenOn: {
+  (tab: ProfileTab): (model: Model) => boolean
+  (model: Model, tab: ProfileTab): boolean
+} = Function.dual(2, (model: Model, tab: ProfileTab): boolean =>
   MenuState.matchOrElse(
     menuState(model),
     { Profile: profile => profile.tab === tab },
     () => false,
-  )
+  ),
+)
 
-export const isPanelOpen = (model: Model, panel: MenuPanel): boolean =>
+export const isPanelOpen: {
+  (panel: MenuPanel): (model: Model) => boolean
+  (model: Model, panel: MenuPanel): boolean
+} = Function.dual(2, (model: Model, panel: MenuPanel): boolean =>
   MenuState.matchOrElse(
     menuState(model),
     { Panel: open => open.panel === panel },
     () => false,
-  )
+  ),
+)
 
 export const isAnyPanelOpen = (model: Model): boolean =>
   MenuState.isAnyOf(['Panel'])(menuState(model))

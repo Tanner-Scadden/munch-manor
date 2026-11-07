@@ -1,4 +1,4 @@
-import { Array, Option, Order, pipe } from 'effect'
+import { Array, Option, Order, String, pipe } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import {
@@ -283,7 +283,7 @@ const codeSlotsView = (typed: string, h: HtmlBuilder<Message>): Html =>
           h.Class('coop-slot'),
           h.DataAttribute('state', slotState(typed, index)),
         ],
-        [typed.charAt(index)],
+        [Option.getOrElse(String.charAt(typed, index), () => '')],
       ),
     ),
   )
@@ -478,12 +478,12 @@ const roomCodeView = (room: Room, h: HtmlBuilder<Message>): Html =>
       h.Type('button'),
       h.Class('coop-room-code'),
       h.AriaLabel(
-        `Room code ${room.code.split('').join(' ')}${room.codeCopies > 0 ? ', copied' : ', tap to copy'}`,
+        `Room code ${Array.join(String.split('')(room.code), ' ')}${room.codeCopies > 0 ? ', copied' : ', tap to copy'}`,
       ),
       h.OnClick(Message.ClickedRoomCode()),
     ],
     [
-      ...Array.map(room.code.split(''), symbol =>
+      ...Array.map(String.split('')(room.code), symbol =>
         h.span(
           [h.Class('coop-room-code-symbol'), h.AriaHidden(true)],
           [symbol],
@@ -565,14 +565,17 @@ const seatLabelOf = (
   { isMe, isTheHost }: Readonly<{ isMe: boolean; isTheHost: boolean }>,
 ): string => {
   const calling = callingOfMember(member)
-  return [
-    member.name,
-    ...(isMe ? ['you'] : []),
-    ...(isTheHost ? ['host'] : []),
-    `rank ${member.rank}`,
-    ...(calling === 'You' ? [] : [CALLING_NAMES[calling]]),
-    ...(member.ready ? ['ready'] : []),
-  ].join(', ')
+  return Array.join(
+    [
+      member.name,
+      ...(isMe ? ['you'] : []),
+      ...(isTheHost ? ['host'] : []),
+      `rank ${member.rank}`,
+      ...(calling === 'You' ? [] : [CALLING_NAMES[calling]]),
+      ...(member.ready ? ['ready'] : []),
+    ],
+    ', ',
+  )
 }
 
 // NOTE: the host's crown flashes in place when a guest taps a pick. The flash
@@ -726,11 +729,14 @@ const scoreLabelOf = (
   index: number,
 ): string => {
   const calling = callingAt(lobby, score.slot)
-  return [
-    `${nameAt(lobby, score.slot)}: rank ${rankAt(lobby, score.slot)}`,
-    ...(calling === 'You' ? [] : [CALLING_NAMES[calling]]),
-    `${score.score}${index === 0 && score.score > 0 ? ', MVP' : ''}`,
-  ].join(', ')
+  return Array.join(
+    [
+      `${nameAt(lobby, score.slot)}: rank ${rankAt(lobby, score.slot)}`,
+      ...(calling === 'You' ? [] : [CALLING_NAMES[calling]]),
+      `${score.score}${index === 0 && score.score > 0 ? ', MVP' : ''}`,
+    ],
+    ', ',
+  )
 }
 
 const BY_SCORE_DESCENDING = Order.flip(
@@ -1027,6 +1033,10 @@ const screenName = (model: Model, inputs: ViewInputs): string =>
     InRoom: ({ room }) => roomScreenName(room, inputs),
   })
 
+// NOTE: Foldkit knows a view by the very function makeView returns (its view
+// inputs are registered against it), so a dual wrapper would be a view it
+// does not know; the Block and the Scene tests need this one.
+// @effect-diagnostics-next-line missingPipeableSignature:off
 export const view = CoopComposition.makeView.withInputs<ViewInputs>(
   (model, inputs, h) =>
     Screen.isAnyOf(['Closed'])(model.screen)

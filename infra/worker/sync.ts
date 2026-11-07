@@ -1,3 +1,4 @@
+import { Function, Record, String } from 'effect'
 import * as Array from 'effect/Array'
 import * as Clock from 'effect/Clock'
 import * as Effect from 'effect/Effect'
@@ -35,6 +36,7 @@ import {
   type SyncSetupFailed,
   encodeNightmareAnswer,
   failureResponse,
+  isWebSocketUpgrade,
   json,
   makeDirectoryHost,
   nightmareUnlockedIn,
@@ -70,19 +72,27 @@ type Attachment = typeof AttachmentSchema.Type
 
 const decodeAttachment = Schema.decodeUnknownOption(AttachmentSchema)
 
-const LinkedDevicesBody = Schema.fromJsonString(
-  Schema.Struct({ count: Schema.Number, id: Schema.String }),
-)
-const encodeLinkedDevices = Schema.encodeSync(LinkedDevicesBody)
+// NOTE: the values encoded here are built in this file from their own
+// Schemas, so an encode cannot fail; if one did, it would be a defect, or
+// for the linked devices body, a failed call like the fetch it goes in.
+const encodeAttachment = (attachment: Attachment) =>
+  Effect.orDie(Schema.encodeEffect(AttachmentSchema)(attachment))
 
-const encodeChallenge = Schema.encodeSync(
-  Schema.fromJsonString(ChallengeResponse),
+const LinkedDevicesBody = Schema.fromJsonString(
+  Schema.Struct({ count: Schema.Finite, id: Schema.String }),
 )
+const encodeLinkedDevices = (body: typeof LinkedDevicesBody.Type) =>
+  Effect.mapError(Schema.encodeEffect(LinkedDevicesBody)(body), cause =>
+    SyncCallFailed.make({ step: 'tell the scope', cause }),
+  )
+
+const ChallengeJson = Schema.fromJsonString(ChallengeResponse)
+const encodeChallenge = (challenge: typeof ChallengeJson.Type) =>
+  Effect.orDie(Schema.encodeEffect(ChallengeJson)(challenge))
 
 const decodeLinkedDevices = (body: string) =>
-  Effect.mapError(
-    Schema.decodeEffect(LinkedDevicesBody)(body),
-    error => new BadSyncBody({ reason: error.message }),
+  Effect.mapError(Schema.decodeEffect(LinkedDevicesBody)(body), error =>
+    BadSyncBody.make({ reason: error.message }),
   )
 
 // SCOPE
@@ -130,10 +140,14 @@ export class SyncScope {
         send: (message: string) => {
           socket.send(message)
         },
-        setConnection: (connection: Connection) => {
-          const next: Attachment = { scope: attachment.scope, connection }
-          socket.serializeAttachment(Schema.encodeSync(AttachmentSchema)(next))
-        },
+        setConnection: (connection: Connection) =>
+          Effect.flatMap(
+            encodeAttachment({ scope: attachment.scope, connection }),
+            encoded =>
+              Effect.sync(() => {
+                socket.serializeAttachment(encoded)
+              }),
+          ),
       }),
     )
   }
@@ -144,14 +158,19 @@ export class SyncScope {
     )
   }
 
-  private accept(scope: string): Response {
-    const pair = new WebSocketPair()
-    const client = pair[0]
-    const server = pair[1]
-    this.ctx.acceptWebSocket(server)
-    const attachment: Attachment = { scope, connection: OPENED }
-    server.serializeAttachment(Schema.encodeSync(AttachmentSchema)(attachment))
-    return new Response(null, { status: 101, webSocket: client })
+  private accept(scope: string): Effect.Effect<Response> {
+    const { ctx } = this
+    return Effect.map(
+      encodeAttachment({ scope, connection: OPENED }),
+      encoded => {
+        const pair = new WebSocketPair()
+        const client = pair[0]
+        const server = pair[1]
+        ctx.acceptWebSocket(server)
+        server.serializeAttachment(encoded)
+        return new Response(null, { status: 101, webSocket: client })
+      },
+    )
   }
 
   private handle(
@@ -171,7 +190,7 @@ export class SyncScope {
     return Effect.gen(function* () {
       const host = yield* hostFor
       if (url.pathname === IDENTITY_PATHS.socket) {
-        return accept()
+        return yield* accept()
       }
       if (url.pathname === IDENTITY_PATHS.exchange) {
         const body = yield* tryCall('read the body', () => request.text())
@@ -180,10 +199,9 @@ export class SyncScope {
         )
       }
       if (url.pathname === NIGHTMARE_PATH) {
-        return json(
-          200,
-          encodeNightmareAnswer(yield* nightmareUnlockedIn(host)),
-        )
+        const unlocked = yield* nightmareUnlockedIn(host)
+        const answer = yield* encodeNightmareAnswer(unlocked)
+        return json(200, answer)
       }
       if (url.pathname === LINKED_DEVICES_PATH) {
         const text = yield* tryCall('read the body', () => request.text())
@@ -198,7 +216,7 @@ export class SyncScope {
   }
 
   fetch(request: Request): Promise<Response> {
-    return Effect.runPromise(syncErrorResponse(this.handle(request)))
+    return this.handle(request).pipe(syncErrorResponse, Effect.runPromise)
   }
 
   webSocketMessage(
@@ -261,18 +279,19 @@ const tellScope = (env: SyncBindings, linked: Linked) =>
   Effect.gen(function* () {
     const scope = playerScopeId(linked.playerId)
     const stub = env.SYNC_SCOPES.get(env.SYNC_SCOPES.idFromName(scope))
+    const body = yield* encodeLinkedDevices({
+      count: linked.devices,
+      id: `linked-${linked.deviceId}-${linked.devices}`,
+    })
     const response = yield* tryCall('tell the scope', () =>
       stub.fetch(`https://sync${LINKED_DEVICES_PATH}`, {
         method: 'POST',
         headers: { [SCOPE_HEADER]: scope },
-        body: encodeLinkedDevices({
-          count: linked.devices,
-          id: `linked-${linked.deviceId}-${linked.devices}`,
-        }),
+        body,
       }),
     )
     if (!response.ok) {
-      return yield* new SyncCallFailed({
+      return yield* SyncCallFailed.make({
         step: 'tell the scope',
         cause: `HTTP ${response.status}`,
       })
@@ -321,15 +340,16 @@ const routeSyncPath = (request: Request, env: SyncBindings, url: URL) =>
       return json(405, '{}')
     }
     if (!(yield* isWithinRate(env, request))) {
-      return failureResponse(IdentityFailure.cases.RateLimited.make({}))
+      return yield* failureResponse(IdentityFailure.cases.RateLimited.make({}))
     }
     if (url.pathname === IDENTITY_PATHS.challenge) {
       const now = yield* Clock.currentTimeMillis
       const nonce = yield* Effect.mapError(
         makeChallenge(env.SYNC_SECRET, now),
-        cause => new SyncCallFailed({ step: 'make a challenge', cause }),
+        cause => SyncCallFailed.make({ step: 'make a challenge', cause }),
       )
-      return json(200, encodeChallenge({ nonce }))
+      const challenge = yield* encodeChallenge({ nonce })
+      return json(200, challenge)
     }
     if (isIdentityPath(url.pathname)) {
       const stub = env.SYNC_DIRECTORY.get(
@@ -339,7 +359,7 @@ const routeSyncPath = (request: Request, env: SyncBindings, url: URL) =>
       const response = yield* tryCall('call the directory', () =>
         stub.fetch(request.url, {
           method: 'POST',
-          headers: Object.fromEntries(request.headers.entries()),
+          headers: Record.fromEntries(request.headers.entries()),
           body,
         }),
       )
@@ -356,16 +376,27 @@ const routeSyncPath = (request: Request, env: SyncBindings, url: URL) =>
 
 // NOTE: every /sync path. The rest of the Worker is the analytics API. Every
 // failure is answered here, so the effect never fails.
-export const routeSync = (
-  request: Request,
-  env: SyncBindings,
-): Effect.Effect<Option.Option<Response>> =>
-  Effect.suspend(() => {
-    const url = new URL(request.url)
-    return url.pathname.startsWith('/sync/')
-      ? Effect.asSome(syncErrorResponse(routeSyncPath(request, env, url)))
-      : Effect.succeedNone
-  })
+export const routeSync: {
+  (
+    env: SyncBindings,
+  ): (request: Request) => Effect.Effect<Option.Option<Response>>
+  (request: Request, env: SyncBindings): Effect.Effect<Option.Option<Response>>
+} = Function.dual(
+  2,
+  (
+    request: Request,
+    env: SyncBindings,
+  ): Effect.Effect<Option.Option<Response>> =>
+    Effect.suspend(() => {
+      const url = new URL(request.url)
+      return String.startsWith('/sync/')(url.pathname)
+        ? routeSyncPath(request, env, url).pipe(
+            syncErrorResponse,
+            Effect.asSome,
+          )
+        : Effect.succeedNone
+    }),
+)
 
 const forwardToScope = (request: Request, env: SyncBindings, url: URL) =>
   Effect.gen(function* () {
@@ -384,14 +415,13 @@ const forwardToScope = (request: Request, env: SyncBindings, url: URL) =>
     if (Option.isNone(maybeTarget)) {
       return json(400, '{"_tag":"BadRequest","reason":"Bad scope"}')
     }
-    const isUpgrade =
-      request.headers.get('upgrade')?.toLowerCase() === 'websocket'
+    const isUpgrade = isWebSocketUpgrade(request)
     if (url.pathname === IDENTITY_PATHS.socket && !isUpgrade) {
       return json(426, '{}')
     }
     const stub = maybeTarget.value.stub
     const headers = {
-      ...Object.fromEntries(request.headers.entries()),
+      ...Record.fromEntries(request.headers.entries()),
       [SCOPE_HEADER]: maybeTarget.value.scope,
     }
     const body =

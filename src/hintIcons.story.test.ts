@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Option, String } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { ICON_PALETTE, keyPixels } from './hintIcons'
@@ -15,7 +15,7 @@ const lightnessOf = (symbol: string): number =>
   )
 
 const symbolsIn = (pixels: ReadonlyArray<string>): ReadonlySet<string> =>
-  new Set(Array.flatMap(pixels, row => row.split('')))
+  new Set(Array.flatMap(pixels, row => String.split('')(row)))
 
 describe('a keycap in a hint', () => {
   test('its letters are lighter than its cap, pressed or not', () => {

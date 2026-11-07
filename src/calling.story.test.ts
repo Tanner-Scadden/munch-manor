@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
@@ -235,10 +235,10 @@ describe('what the player sees of a calling', () => {
     )
 
   test('a kill popup shows what the kill paid', () => {
-    expect(killed('You').popups.map(({ value }) => value)).toEqual([20])
-    expect(killed('PennyPincher').popups.map(({ value }) => value)).toEqual([
-      16,
-    ])
+    expect(Array.map(killed('You').popups, ({ value }) => value)).toEqual([20])
+    expect(
+      Array.map(killed('PennyPincher').popups, ({ value }) => value),
+    ).toEqual([16])
   })
 
   test('the low ammo warning reads the Track Star smaller magazine', () => {

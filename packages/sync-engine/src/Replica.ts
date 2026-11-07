@@ -2,8 +2,8 @@ import type { Duration } from 'effect'
 import {
   Array,
   Clock,
-  Data,
   Effect,
+  Function,
   Option,
   Order,
   Record,
@@ -49,6 +49,7 @@ import { type ScopeDefinition, findMutation, runScopeMigrations } from './Scope'
 export const Role = Schema.Literals(['Leader', 'Follower'])
 export type Role = typeof Role.Type
 
+/** @stability unstable */
 export interface LocalDatabase {
   readonly sql: SqlClient.SqlClient
   readonly changes: Stream.Stream<ReadonlyArray<{ readonly table: string }>>
@@ -58,9 +59,9 @@ export interface LocalDatabase {
 // RECEIPTS
 
 export const Receipt = Schema.TaggedUnion({
-  Applied: { seq: Schema.Number },
+  Applied: { seq: Schema.Finite },
   Resync: { mode: HelloMode },
-  Confirmed: { id: Schema.String, seq: Schema.Number },
+  Confirmed: { id: Schema.String, seq: Schema.Finite },
   Rejected: {
     id: Schema.String,
     code: RejectCode,
@@ -88,7 +89,7 @@ const ignored: Receipt = Receipt.cases.Ignored.make({})
 export const ScopeStatus = Schema.TaggedUnion({
   Idle: {},
   Loading: {},
-  Ready: { seq: Schema.Number, fresh: Schema.Boolean },
+  Ready: { seq: Schema.Finite, fresh: Schema.Boolean },
   Failed: { reason: Schema.String },
 })
 export type ScopeStatus = typeof ScopeStatus.Type
@@ -111,10 +112,10 @@ const TERMINAL_FAILURES: ReadonlyArray<FailCode> = [
   'BadMessage',
 ]
 
-export const statusAfterReceipt = (
-  status: ScopeStatus,
-  receipt: Receipt,
-): ScopeStatus =>
+export const statusAfterReceipt: {
+  (receipt: Receipt): (status: ScopeStatus) => ScopeStatus
+  (status: ScopeStatus, receipt: Receipt): ScopeStatus
+} = Function.dual(2, (status: ScopeStatus, receipt: Receipt): ScopeStatus =>
   Receipt.matchOrElse(
     receipt,
     {
@@ -126,12 +127,13 @@ export const statusAfterReceipt = (
           : status,
     },
     () => status,
-  )
+  ),
+)
 
-export const statusAtSessionStart = (
-  status: ScopeStatus,
-  start: SessionStart,
-): ScopeStatus =>
+export const statusAtSessionStart: {
+  (start: SessionStart): (status: ScopeStatus) => ScopeStatus
+  (status: ScopeStatus, start: SessionStart): ScopeStatus
+} = Function.dual(2, (status: ScopeStatus, start: SessionStart): ScopeStatus =>
   ScopeStatus.match(status, {
     Idle: () => loading,
     Loading: () => loading,
@@ -140,7 +142,8 @@ export const statusAtSessionStart = (
       start === 'Leading'
         ? ScopeStatus.cases.Ready.make({ seq, fresh: false })
         : status,
-  })
+  }),
+)
 
 // NOTE: what a tab that opens the replica starts from. Rows the confirmed
 // tables already hold are ready, though not fresh, before any connection.
@@ -164,7 +167,7 @@ const statusOnOpen = (
 // NOTE: how a mutation this device made ended: confirmed at a seq of the
 // scope's log, or rejected by the server.
 export const Settled = Schema.TaggedUnion({
-  Confirmed: { seq: Schema.Number },
+  Confirmed: { seq: Schema.Finite },
   Rejected: { code: RejectCode, reason: Schema.String },
 })
 export type Settled = typeof Settled.Type
@@ -177,12 +180,16 @@ const SETTLED_KEPT = 200
 // the outbox changed between its first look and its subscription.
 const SETTLED_RECHECK: Duration.Input = '5 seconds'
 
-export class ReplicaError extends Data.TaggedError('ReplicaError')<{
-  readonly reason: string
-}> {}
+export class ReplicaError extends Schema.TaggedError<
+  ReplicaError,
+  { readonly brand: unique symbol }
+>()('ReplicaError', {
+  reason: Schema.String,
+}) {}
 
 // REPLICA
 
+/** @stability unstable */
 export interface Replica {
   readonly definition: ScopeDefinition
   readonly scope: Effect.Effect<string, SqlError.SqlError>
@@ -249,15 +256,15 @@ const createEngineTables = Effect.gen(function* () {
 
 const ReplicaRow = Schema.Struct({
   scope: Schema.String,
-  confirmed_seq: Schema.Number,
+  confirmed_seq: Schema.Finite,
 })
 
 const OutboxRow = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
-  version: Schema.Number,
+  version: Schema.Finite,
   args: Schema.String,
-  created_ms: Schema.Number,
+  created_ms: Schema.Finite,
 })
 type OutboxRow = typeof OutboxRow.Type
 
@@ -269,14 +276,19 @@ const SettledRow = Schema.Struct({
   outcome: Schema.fromJsonString(Settled),
 })
 
-const encodeStatus = Schema.encodeSync(Schema.fromJsonString(ScopeStatus))
-const encodeSettled = Schema.encodeSync(Schema.fromJsonString(Settled))
+// NOTE: a status and an outcome always encode; a failure is a bug, so it
+// dies.
+const encodeStatus = (status: ScopeStatus): Effect.Effect<string> =>
+  Effect.orDie(Schema.encodeEffect(Schema.fromJsonString(ScopeStatus))(status))
+const encodeSettled = (settled: Settled): Effect.Effect<string> =>
+  Effect.orDie(Schema.encodeEffect(Schema.fromJsonString(Settled))(settled))
 
 // NOTE: 16 random bytes from the platform's cryptographic source, so ids
 // made on two devices never meet. Only the replica draws them, never an
 // apply function.
 export const makeMutationId: Effect.Effect<string> = randomId(16)
 
+/** @stability unstable */
 export interface ReplicaOptions {
   readonly definition: ScopeDefinition
   readonly database: LocalDatabase
@@ -288,6 +300,7 @@ type DeltaStep = Readonly<{
   receipt: Option.Option<Receipt>
 }>
 
+/** @stability unstable */
 export const makeReplica = (
   options: ReplicaOptions,
 ): Effect.Effect<Replica, SqlError.SqlError> => {
@@ -326,11 +339,15 @@ export const makeReplica = (
   // newest SETTLED_KEPT per kind are kept.
   const recordSettled = (id: string, settled: Settled) =>
     Effect.andThen(
-      sql`INSERT INTO sync_settled ${sql.insert({
-        id,
-        kind: definition.kind,
-        outcome: encodeSettled(settled),
-      })} ON CONFLICT (id) DO NOTHING`,
+      Effect.flatMap(
+        encodeSettled(settled),
+        outcome =>
+          sql`INSERT INTO sync_settled ${sql.insert({
+            id,
+            kind: definition.kind,
+            outcome,
+          })} ON CONFLICT (id) DO NOTHING`,
+      ),
       sql`DELETE FROM sync_settled WHERE kind = ${definition.kind}
         AND rowid NOT IN (SELECT rowid FROM sync_settled
           WHERE kind = ${definition.kind} ORDER BY rowid DESC LIMIT ${SETTLED_KEPT})`,
@@ -359,7 +376,7 @@ export const makeReplica = (
     Option.match(findMutation(definition, row.name), {
       onNone: () =>
         Effect.fail(
-          new MutationRejected({ reason: `Unknown mutation ${row.name}` }),
+          MutationRejected.make({ reason: `Unknown mutation ${row.name}` }),
         ),
       onSome: (mutation: AnyMutation) =>
         Effect.flatMap(decodeArgs(mutation, row.args), args =>
@@ -590,17 +607,17 @@ export const makeReplica = (
   > =>
     Effect.gen(function* () {
       if (isReadOnly) {
-        return yield* new ReplicaError({
+        return yield* ReplicaError.make({
           reason: `${definition.kind} scopes are read only on clients`,
         })
       }
       if (Option.isNone(findMutation(definition, mutation.name))) {
-        return yield* new ReplicaError({
+        return yield* ReplicaError.make({
           reason: `${mutation.name} is not a ${definition.kind} mutation`,
         })
       }
       if (mutation.writer === 'ServerOnly') {
-        return yield* new ReplicaError({
+        return yield* ReplicaError.make({
           reason: `${mutation.name} is written only by the server`,
         })
       }
@@ -683,10 +700,14 @@ export const makeReplica = (
   )
 
   const storeStatus = (status: ScopeStatus) =>
-    sql`INSERT INTO sync_status ${sql.insert({
-      kind: definition.kind,
-      status: encodeStatus(status),
-    })} ON CONFLICT (kind) DO UPDATE SET status = excluded.status`
+    Effect.flatMap(
+      encodeStatus(status),
+      encoded =>
+        sql`INSERT INTO sync_status ${sql.insert({
+          kind: definition.kind,
+          status: encoded,
+        })} ON CONFLICT (kind) DO UPDATE SET status = excluded.status`,
+    )
 
   // NOTE: settled ids and the outbox, read together: still pending is none.
   // An id the outbox and the record have both forgotten was confirmed long
@@ -731,15 +752,18 @@ export const makeReplica = (
       }),
     )
     const role = yield* database.role
+    const readStatus_1 = yield* readStatus
     const opened = statusOnOpen(
-      yield* readStatus,
+      readStatus_1,
       (yield* readReplica).confirmed_seq,
     )
-    const statusRef = yield* SubscriptionRef.make(
-      role === 'Leader'
-        ? opened
-        : Option.getOrElse(yield* readStatus, () => opened),
-    )
+    const initialStatus = yield* role === 'Leader'
+      ? Effect.succeed(opened)
+      : Effect.map(
+          readStatus,
+          Option.getOrElse(() => opened),
+        )
+    const statusRef = yield* SubscriptionRef.make(initialStatus)
     if (role === 'Leader') {
       yield* storeStatus(opened)
     }

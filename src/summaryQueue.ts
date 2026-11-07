@@ -1,9 +1,10 @@
-import { Effect, Option, Schedule, Schema, pipe } from 'effect'
+import { Effect, Function, Option, Schedule, Schema, pipe } from 'effect'
 import type { Duration } from 'effect'
 
 import { PostedRunJson, type RunSummary, RunSummaryJson } from './analytics'
 import { sendRunSummary } from './analyticsBeacon'
 import { API_ORIGIN } from './apiOrigin'
+import { isObjectFirst } from './dualArgs'
 import { PlayerStore } from './store'
 
 // NOTE: a run that ends with no network cannot reach the analytics Worker, so
@@ -79,22 +80,36 @@ const drainSummaryQueue = (origin: string) =>
     ),
   )
 
+type SendFailure = Readonly<{ reason: string }>
+
 // NOTE: a build with no API origin sends nothing, so it queues nothing.
 // A summary sent while online also sends the ones that waited, in the
 // background, so the run's own Message is not held up by the spacing.
-export const sendOrQueueRunSummary = (
-  summary: RunSummary,
-  origin: string = API_ORIGIN,
-) =>
-  Effect.flatMap(isOnline, online =>
-    online || origin === ''
-      ? pipe(
-          sendRunSummary(summary, origin),
-          Effect.tap(() => Effect.forkDetach(drainSummaryQueue(origin))),
-          Effect.asVoid,
-        )
-      : queueRunSummary(summary),
-  )
+// The failure is the store's or the send's, each with its reason.
+export const sendOrQueueRunSummary: {
+  (
+    origin?: string,
+  ): (summary: RunSummary) => Effect.Effect<void, SendFailure, PlayerStore>
+  (
+    summary: RunSummary,
+    origin?: string,
+  ): Effect.Effect<void, SendFailure, PlayerStore>
+} = Function.dual(
+  isObjectFirst,
+  (
+    summary: RunSummary,
+    origin: string = API_ORIGIN,
+  ): Effect.Effect<void, SendFailure, PlayerStore> =>
+    Effect.flatMap(isOnline, online =>
+      online || origin === ''
+        ? pipe(
+            sendRunSummary(summary, origin),
+            Effect.tap(() => Effect.forkDetach(drainSummaryQueue(origin))),
+            Effect.asVoid,
+          )
+        : queueRunSummary(summary),
+    ),
+)
 
 // NOTE: at start, a player who has since turned sharing off loses what was
 // queued instead of sending it.

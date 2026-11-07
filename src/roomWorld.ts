@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type {
@@ -102,7 +102,7 @@ import {
 // of the last ticks by tick, so a diff carries every event since the one
 // before it. `pressed` is the room's memory of each player's last action,
 // to see a new press; a client's copy keeps it empty.
-export type TickEvents = Readonly<{
+type TickEvents = Readonly<{
   tick: number
   events: ReadonlyArray<GameEvent>
 }>
@@ -140,25 +140,41 @@ export type RoomSettings = Readonly<{
 // NOTE: what the lobby picked (packages/netcode, Lobby.ts) as the run's
 // settings. KeepGoing plays endless, carrying on a kept run when the room
 // has one.
-export const roomSettingsOf = (
-  mode: RoomMode,
-  difficulty: RoomDifficulty,
-  members: ReadonlyArray<Readonly<{ slot: number; calling: string }>> = [],
-  modifierMask = 0,
-): RoomSettings => ({
-  difficulty,
-  modifiers: modifiersOfMask(modifierMask),
-  mode:
-    mode === 'Endless' || mode === 'KeepGoing'
-      ? RunMode.Endless()
-      : RunMode.Campaign(),
-  callings: Array.filterMap(members, ({ slot, calling }) =>
-    Option.match(callingOfCode(calling), {
-      onNone: () => Result.failVoid,
-      onSome: known => Result.succeed({ slot, calling: known }),
-    }),
-  ),
-})
+export const roomSettingsOf: {
+  (
+    difficulty: RoomDifficulty,
+    members?: ReadonlyArray<Readonly<{ slot: number; calling: string }>>,
+    modifierMask?: number,
+  ): (mode: RoomMode) => RoomSettings
+  (
+    mode: RoomMode,
+    difficulty: RoomDifficulty,
+    members?: ReadonlyArray<Readonly<{ slot: number; calling: string }>>,
+    modifierMask?: number,
+  ): RoomSettings
+} = Function.dual(
+  // NOTE: data-first has the difficulty second; data-last has the members there or nothing.
+  (args: IArguments): boolean => typeof args[1] === 'string',
+  (
+    mode: RoomMode,
+    difficulty: RoomDifficulty,
+    members: ReadonlyArray<Readonly<{ slot: number; calling: string }>> = [],
+    modifierMask: number = 0,
+  ): RoomSettings => ({
+    difficulty,
+    modifiers: modifiersOfMask(modifierMask),
+    mode:
+      mode === 'Endless' || mode === 'KeepGoing'
+        ? RunMode.Endless()
+        : RunMode.Campaign(),
+    callings: Array.filterMap(members, ({ slot, calling }) =>
+      Option.match(callingOfCode(calling), {
+        onNone: () => Result.failVoid,
+        onSome: known => Result.succeed({ slot, calling: known }),
+      }),
+    ),
+  }),
+)
 
 // NOTE: the furthest back a shot is checked, 250 ms; the room caps each
 // player's view lag at the same (packages/netcode, World.ts), which this
@@ -186,7 +202,10 @@ const AIM_PRECISION = 8
 const eighths = (value: number): number =>
   Math.round(value * AIM_PRECISION) / AIM_PRECISION
 
-export const inputOfIntent = (intent: Intent, action: number): PlayerInput => {
+export const inputOfIntent: {
+  (action: number): (intent: Intent) => PlayerInput
+  (intent: Intent, action: number): PlayerInput
+} = Function.dual(2, (intent: Intent, action: number): PlayerInput => {
   const aim = Option.getOrElse(intent.maybeAim, () => ({ x: 0, y: 0 }))
   return {
     moveX: Math.round(Math.max(-1, Math.min(1, intent.move.x)) * MOVE_SCALE),
@@ -198,7 +217,7 @@ export const inputOfIntent = (intent: Intent, action: number): PlayerInput => {
       (intent.interact === 'Held' ? INTERACT_BUTTON : 0),
     action,
   }
-}
+})
 
 const moveOf = (input: PlayerInput) => {
   const x = input.moveX / MOVE_SCALE
@@ -270,7 +289,8 @@ const itemCode = (item: string): number =>
     {
       onSome: index => BUY_BASE + index,
       onNone: () =>
-        REPAIR_BASE + (Number(item.slice(REPAIR_PREFIX.length)) % REPAIR_SPAN),
+        REPAIR_BASE +
+        (Number(String.slice(REPAIR_PREFIX.length)(item)) % REPAIR_SPAN),
     },
   )
 
@@ -290,42 +310,51 @@ export const actionCodeOf = (action: SeatAction): number =>
   })
 
 // NOTE: the held value for the `press`th press of an action: never zero.
-export const heldAction = (code: number, press: number): number =>
-  ((press % PRESS_COUNTS) + 1) * ACTION_SPAN + code
+export const heldAction: {
+  (press: number): (code: number) => number
+  (code: number, press: number): number
+} = Function.dual(
+  2,
+  (code: number, press: number): number =>
+    ((press % PRESS_COUNTS) + 1) * ACTION_SPAN + code,
+)
 
 const trapId = (trap: Trap): number => trap.id
 
-export const seatActionOf = (
-  world: World,
-  held: number,
-): Option.Option<SeatAction> => {
-  const code = held % ACTION_SPAN
-  if (code >= REPAIR_BASE) {
-    return pipe(
-      Array.findFirst(
-        world.traps,
-        trap => trapId(trap) % REPAIR_SPAN === code - REPAIR_BASE,
-      ),
-      Option.map(trap =>
-        SeatAction.Buy({ item: `${REPAIR_PREFIX}${trapId(trap)}` }),
-      ),
-    )
-  } else if (code >= BUY_BASE) {
-    return Option.map(Array.get(FIXED_ITEMS, code - BUY_BASE), item =>
-      SeatAction.Buy({ item }),
-    )
-  } else if (code === BUY_AMMO_CODE) {
-    return Option.some(SeatAction.BuyAmmo())
-  } else if (code === MEDIC_CODE) {
-    return Option.some(SeatAction.CallMedic())
-  } else if (code >= DRAW_BASE) {
-    return Option.map(Array.get(DRAW_SLOTS, code - DRAW_BASE), slot =>
-      SeatAction.Draw({ slot }),
-    )
-  } else {
-    return Array.get(SIMPLE_ACTIONS, code - 1)
-  }
-}
+export const seatActionOf: {
+  (held: number): (world: World) => Option.Option<SeatAction>
+  (world: World, held: number): Option.Option<SeatAction>
+} = Function.dual(
+  2,
+  (world: World, held: number): Option.Option<SeatAction> => {
+    const code = held % ACTION_SPAN
+    if (code >= REPAIR_BASE) {
+      return pipe(
+        Array.findFirst(
+          world.traps,
+          trap => trapId(trap) % REPAIR_SPAN === code - REPAIR_BASE,
+        ),
+        Option.map(trap =>
+          SeatAction.Buy({ item: `${REPAIR_PREFIX}${trapId(trap)}` }),
+        ),
+      )
+    } else if (code >= BUY_BASE) {
+      return Option.map(Array.get(FIXED_ITEMS, code - BUY_BASE), item =>
+        SeatAction.Buy({ item }),
+      )
+    } else if (code === BUY_AMMO_CODE) {
+      return Option.some(SeatAction.BuyAmmo())
+    } else if (code === MEDIC_CODE) {
+      return Option.some(SeatAction.CallMedic())
+    } else if (code >= DRAW_BASE) {
+      return Option.map(Array.get(DRAW_SLOTS, code - DRAW_BASE), slot =>
+        SeatAction.Draw({ slot }),
+      )
+    } else {
+      return Array.get(SIMPLE_ACTIONS, code - 1)
+    }
+  },
+)
 
 // START
 
@@ -400,26 +429,39 @@ const seatCallings = (
     modifySeat(current, slot, { player: player => seatedAs(player, calling) }),
   )
 
-export const startRoomWorld = (
-  slots: ReadonlyArray<PlayerSlot>,
-  seed: number,
-  settings: RoomSettings,
-): RoomWorld => ({
-  tick: 0,
-  world: beginPreparation(
-    withStartingHearts(
-      seatCallings(
-        seatSlots(freshWorld(seed, settings), slots),
-        settings.callings,
+export const startRoomWorld: {
+  (
+    seed: number,
+    settings: RoomSettings,
+  ): (slots: ReadonlyArray<PlayerSlot>) => RoomWorld
+  (
+    slots: ReadonlyArray<PlayerSlot>,
+    seed: number,
+    settings: RoomSettings,
+  ): RoomWorld
+} = Function.dual(
+  3,
+  (
+    slots: ReadonlyArray<PlayerSlot>,
+    seed: number,
+    settings: RoomSettings,
+  ): RoomWorld => ({
+    tick: 0,
+    world: beginPreparation(
+      withStartingHearts(
+        seatCallings(
+          seatSlots(freshWorld(seed, settings), slots),
+          settings.callings,
+        ),
       ),
+      1,
+      FIRST_PREPARATION_MS,
     ),
-    1,
-    FIRST_PREPARATION_MS,
-  ),
-  events: [],
-  pressed: [],
-  history: [],
-})
+    events: [],
+    pressed: [],
+    history: [],
+  }),
+)
 
 // KEEP GOING
 
@@ -544,51 +586,59 @@ const catchUp = (
     return catchUpShots(current, shots, pasts)
   })
 
-export const stepRoomWorld = (
-  room: RoomWorld,
-  players: ReadonlyArray<PlayerTick>,
-): RoomWorld => {
-  const pressedWorld = Array.reduce(players, room.world, (world, tick) =>
-    syncGrace(pressOf(room, syncPresence(world, tick), tick), tick),
-  )
-  const stepped = stepWorld(
-    pressedWorld,
-    new Map(Array.map(players, tick => [tick.slot, intentOfInput(tick.input)])),
-  )
-  const caught = catchUp(
-    room,
-    stepped.world,
-    players,
-    pressedWorld.nextEntityId,
-  )
-  const events = [
-    ...stepped.events,
-    ...Array.drop(caught.frameEvents, stepped.world.frameEvents.length),
-  ]
-  const tick = room.tick + 1
-  return {
-    tick,
-    world: caught,
-    events: Array.filter(
-      Array.isReadonlyArrayEmpty(events)
-        ? room.events
-        : Array.append(room.events, { tick, events }),
-      entry => entry.tick > tick - EVENT_TICKS,
-    ),
-    pressed: Array.map(players, player => [player.slot, player.input.action]),
-    history: Array.takeRight(
-      Array.append(room.history, { tick, zombies: zombiesAt(caught) }),
-      MAX_VIEW_LAG_TICKS,
-    ),
-  }
-}
+export const stepRoomWorld: {
+  (players: ReadonlyArray<PlayerTick>): (room: RoomWorld) => RoomWorld
+  (room: RoomWorld, players: ReadonlyArray<PlayerTick>): RoomWorld
+} = Function.dual(
+  2,
+  (room: RoomWorld, players: ReadonlyArray<PlayerTick>): RoomWorld => {
+    const pressedWorld = Array.reduce(players, room.world, (world, tick) =>
+      syncGrace(pressOf(room, syncPresence(world, tick), tick), tick),
+    )
+    const stepped = stepWorld(
+      pressedWorld,
+      new Map(
+        Array.map(players, tick => [tick.slot, intentOfInput(tick.input)]),
+      ),
+    )
+    const caught = catchUp(
+      room,
+      stepped.world,
+      players,
+      pressedWorld.nextEntityId,
+    )
+    const events = [
+      ...stepped.events,
+      ...Array.drop(caught.frameEvents, stepped.world.frameEvents.length),
+    ]
+    const tick = room.tick + 1
+    return {
+      tick,
+      world: caught,
+      events: Array.filter(
+        Array.isReadonlyArrayEmpty(events)
+          ? room.events
+          : Array.append(room.events, { tick, events }),
+        entry => entry.tick > tick - EVENT_TICKS,
+      ),
+      pressed: Array.map(players, player => [player.slot, player.input.action]),
+      history: Array.takeRight(
+        Array.append(room.history, { tick, zombies: zombiesAt(caught) }),
+        MAX_VIEW_LAG_TICKS,
+      ),
+    }
+  },
+)
 
 // THE WIRE
 
-export const writeRoomSnapshot = (writer: Writer, room: RoomWorld): void => {
+export const writeRoomSnapshot: {
+  (room: RoomWorld): (writer: Writer) => void
+  (writer: Writer, room: RoomWorld): void
+} = Function.dual(2, (writer: Writer, room: RoomWorld): void => {
   writer.varint(room.tick)
   writeWorld(writer, room.world)
-}
+})
 
 export const readRoomSnapshot = (reader: Reader): RoomWorld => ({
   tick: reader.varint(),
@@ -600,24 +650,26 @@ export const readRoomSnapshot = (reader: Reader): RoomWorld => ({
 
 const MAX_EVENTS = 4096
 
-export const writeRoomDiff = (
-  writer: Writer,
-  prev: RoomWorld,
-  next: RoomWorld,
-): void => {
-  writer.varint(Math.max(0, next.tick - prev.tick))
-  writeWorldDiff(writer, prev.world, next.world)
-  const fresh = Array.filter(
-    next.events,
-    entry => entry.tick > prev.tick && entry.tick <= next.tick,
-  )
-  writer.varint(fresh.length)
-  Array.forEach(fresh, entry => {
-    writer.varint(entry.tick - prev.tick)
-    writer.varint(entry.events.length)
-    Array.forEach(entry.events, event => writeEvent(writer, event))
-  })
-}
+export const writeRoomDiff: {
+  (prev: RoomWorld, next: RoomWorld): (writer: Writer) => void
+  (writer: Writer, prev: RoomWorld, next: RoomWorld): void
+} = Function.dual(
+  3,
+  (writer: Writer, prev: RoomWorld, next: RoomWorld): void => {
+    writer.varint(Math.max(0, next.tick - prev.tick))
+    writeWorldDiff(writer, prev.world, next.world)
+    const fresh = Array.filter(
+      next.events,
+      entry => entry.tick > prev.tick && entry.tick <= next.tick,
+    )
+    writer.varint(fresh.length)
+    Array.forEach(fresh, entry => {
+      writer.varint(entry.tick - prev.tick)
+      writer.varint(entry.events.length)
+      Array.forEach(entry.events, event => writeEvent(writer, event))
+    })
+  },
+)
 
 const readCount = (reader: Reader): number => {
   const count = reader.varint()
@@ -627,7 +679,10 @@ const readCount = (reader: Reader): number => {
   return count
 }
 
-export const readRoomDiff = (reader: Reader, prev: RoomWorld): RoomWorld => {
+export const readRoomDiff: {
+  (prev: RoomWorld): (reader: Reader) => RoomWorld
+  (reader: Reader, prev: RoomWorld): RoomWorld
+} = Function.dual(2, (reader: Reader, prev: RoomWorld): RoomWorld => {
   const tick = prev.tick + reader.varint()
   const world = readWorldDiff(reader, prev.world)
   const events = readMany(readCount(reader), () => {
@@ -638,7 +693,7 @@ export const readRoomDiff = (reader: Reader, prev: RoomWorld): RoomWorld => {
     }
   })
   return { tick, world, events, pressed: [], history: [] }
-}
+})
 
 // INTERPOLATION
 
@@ -709,24 +764,26 @@ const putOwn = (
 // the newest World the room sent: its walls, traps, and boosts. It walks,
 // reloads, and pulls the trigger, so the shot's cooldown, recoil, and ammo
 // are predicted too; the room's answer replaces them on the next message.
-export const predictOwn = (
-  own: OwnSeat,
-  input: PlayerInput,
-  room: RoomWorld,
-): OwnSeat => ({
-  ...own,
-  player: playerAt(
-    predictSeat(
-      modifySeat(room.world, own.slot, {
-        player: () => own.player,
-        intent: () => intentOfInput(input),
-      }),
+export const predictOwn: {
+  (input: PlayerInput, room: RoomWorld): (own: OwnSeat) => OwnSeat
+  (own: OwnSeat, input: PlayerInput, room: RoomWorld): OwnSeat
+} = Function.dual(
+  3,
+  (own: OwnSeat, input: PlayerInput, room: RoomWorld): OwnSeat => ({
+    ...own,
+    player: playerAt(
+      predictSeat(
+        modifySeat(room.world, own.slot, {
+          player: () => own.player,
+          intent: () => intentOfInput(input),
+        }),
+        own.slot,
+        FIXED_STEP_MS,
+      ),
       own.slot,
-      FIXED_STEP_MS,
     ),
-    own.slot,
-  ),
-})
+  }),
+)
 
 const gapOf = (a: OwnSeat, b: OwnSeat): number =>
   Math.hypot(a.player.x - b.player.x, a.player.y - b.player.y)
@@ -760,43 +817,56 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
 
 // NOTE: the room's World for one run: a fresh run with the lobby's
 // settings, or a kept run carried on when the crew is the one that won it.
-export const roomWorldFor = (
-  settings: RoomSettings,
-  maybeKept: Option.Option<World> = Option.none(),
-): RoomWorldOf<RoomWorld, OwnSeat> => ({
-  name: 'MunchManor',
-  start: (slots, seed) =>
-    Option.match(
-      Option.filter(maybeKept, kept => canKeepGoingWith(kept, slots)),
-      {
-        onNone: () => startRoomWorld(slots, seed, settings),
-        onSome: keepGoingRoomWorld,
-      },
-    ),
-  step: stepRoomWorld,
-  removePlayer: (room, slot) => ({
-    ...room,
-    world: setPresence(room.world, slot, 'Away'),
+export const roomWorldFor: {
+  (
+    maybeKept?: Option.Option<World>,
+  ): (settings: RoomSettings) => RoomWorldOf<RoomWorld, OwnSeat>
+  (
+    settings: RoomSettings,
+    maybeKept?: Option.Option<World>,
+  ): RoomWorldOf<RoomWorld, OwnSeat>
+} = Function.dual(
+  // NOTE: data-first starts with the settings; data-last with the kept run or nothing.
+  (args: IArguments): boolean =>
+    args[0] !== undefined && !Option.isOption(args[0]),
+  (
+    settings: RoomSettings,
+    maybeKept: Option.Option<World> = Option.none(),
+  ): RoomWorldOf<RoomWorld, OwnSeat> => ({
+    name: 'MunchManor',
+    start: (slots, seed) =>
+      Option.match(
+        Option.filter(maybeKept, kept => canKeepGoingWith(kept, slots)),
+        {
+          onNone: () => startRoomWorld(slots, seed, settings),
+          onSome: keepGoingRoomWorld,
+        },
+      ),
+    step: stepRoomWorld,
+    removePlayer: (room, slot) => ({
+      ...room,
+      world: setPresence(room.world, slot, 'Away'),
+    }),
+    isOver: room => isRunOver(room.world),
+    isWon: room => isWonRun(room.world),
+    scores: room => scoresOf(room.world),
+    snapshot: writeRoomSnapshot,
+    readSnapshot: readRoomSnapshot,
+    diff: writeRoomDiff,
+    applyDiff: readRoomDiff,
+    interpolate: (from, to, t) => ({
+      ...to,
+      world: interpolateWorld(from.world, to.world, t),
+    }),
+    own: {
+      of: ownOf,
+      put: putOwn,
+      step: predictOwn,
+      gap: gapOf,
+      blend: blendOwn,
+    },
   }),
-  isOver: room => isRunOver(room.world),
-  isWon: room => isWonRun(room.world),
-  scores: room => scoresOf(room.world),
-  snapshot: writeRoomSnapshot,
-  readSnapshot: readRoomSnapshot,
-  diff: writeRoomDiff,
-  applyDiff: readRoomDiff,
-  interpolate: (from, to, t) => ({
-    ...to,
-    world: interpolateWorld(from.world, to.world, t),
-  }),
-  own: {
-    of: ownOf,
-    put: putOwn,
-    step: predictOwn,
-    gap: gapOf,
-    blend: blendOwn,
-  },
-})
+)
 
 // NOTE: the room's World with the lobby's first settings, as the client
 // names it (src/coop/seam.ts), the dev page plays it, and tests step it.
@@ -804,25 +874,44 @@ export const ROOM_WORLD = roomWorldFor(DEFAULT_ROOM_SETTINGS)
 
 // NOTE: the World a client draws itself in: its own seat first (src/party.ts,
 // focusSeat), so `focusOf` is its own player.
-export const ownWorldOf = (room: RoomWorld, slot: PlayerSlot): World =>
-  focusSeat(room.world, slot)
+export const ownWorldOf: {
+  (slot: PlayerSlot): (room: RoomWorld) => World
+  (room: RoomWorld, slot: PlayerSlot): World
+} = Function.dual(2, (room: RoomWorld, slot: PlayerSlot): World =>
+  focusSeat(room.world, slot),
+)
 
 // NOTE: the events of the ticks after `afterTick` up to `untilTick`, oldest
 // first, from every message a client holds.
-export const eventsBetween = (
-  frames: ReadonlyArray<Readonly<{ world: RoomWorld }>>,
-  afterTick: number,
-  untilTick: number,
-): ReadonlyArray<GameEvent> =>
-  pipe(
-    frames,
-    Array.flatMap(frame => frame.world.events),
-    Array.filter(entry => entry.tick > afterTick && entry.tick <= untilTick),
-    Array.sort((a: TickEvents, b: TickEvents) =>
-      a.tick < b.tick ? -1 : a.tick > b.tick ? 1 : 0,
+export const eventsBetween: {
+  (
+    afterTick: number,
+    untilTick: number,
+  ): (
+    frames: ReadonlyArray<Readonly<{ world: RoomWorld }>>,
+  ) => ReadonlyArray<GameEvent>
+  (
+    frames: ReadonlyArray<Readonly<{ world: RoomWorld }>>,
+    afterTick: number,
+    untilTick: number,
+  ): ReadonlyArray<GameEvent>
+} = Function.dual(
+  3,
+  (
+    frames: ReadonlyArray<Readonly<{ world: RoomWorld }>>,
+    afterTick: number,
+    untilTick: number,
+  ): ReadonlyArray<GameEvent> =>
+    pipe(
+      frames,
+      Array.flatMap(frame => frame.world.events),
+      Array.filter(entry => entry.tick > afterTick && entry.tick <= untilTick),
+      Array.sort((a: TickEvents, b: TickEvents) =>
+        a.tick < b.tick ? -1 : a.tick > b.tick ? 1 : 0,
+      ),
+      Array.flatMap(entry => entry.events),
     ),
-    Array.flatMap(entry => entry.events),
-  )
+)
 
 const maybeSeatOf = (world: World, slot: PlayerSlot): Option.Option<Seat> =>
   Option.map(maybePlayerAt(world, slot), ({ seat }) => seat)

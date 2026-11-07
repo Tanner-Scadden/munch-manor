@@ -42,7 +42,7 @@ const runVitest = (extraArgs: ReadonlyArray<string>) =>
       {},
     ).pipe(Effect.orDie)
     if (exitCode !== 0) {
-      return yield* new GuardExit({ code: exitCode })
+      return yield* GuardExit.make({ code: exitCode })
     }
   })
 

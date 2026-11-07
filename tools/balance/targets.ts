@@ -2,7 +2,7 @@
 // the model's tests both read them. Change a target here and in the design
 // doc together.
 
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 
 export type Target = Readonly<{
   key: string
@@ -147,9 +147,11 @@ const WIN_TARGETS: ReadonlyArray<Target> = [
 ]
 
 // NOTE: portrait is judged against the same win targets as landscape.
-const portraitWinTargets: ReadonlyArray<Target> = PORTRAIT_PAIRS.flatMap(
+const portraitWinTargets: ReadonlyArray<Target> = Array.flatMap(
+  PORTRAIT_PAIRS,
   ({ portraitId, landscapeId }) =>
-    WIN_TARGETS.filter(({ key }) => key === `${landscapeId}.wins`).map(
+    Array.map(
+      Array.filter(WIN_TARGETS, ({ key }) => key === `${landscapeId}.wins`),
       ({ label, maybeMin, maybeMax }): Target => ({
         key: `${portraitId}.wins`,
         label: `Portrait ${label}`,
@@ -211,7 +213,7 @@ export const TARGETS: ReadonlyArray<Target> = [
     0.65,
     TARGETS_SECTION,
   ),
-  ...PEAK_RATIO_WAVES.map(wave =>
+  ...Array.map(PEAK_RATIO_WAVES, wave =>
     between(
       `model.hard.peakRatio.w${wave}`,
       `Model: wave ${wave} peak incoming hp/s over player dps (Hard)`,
@@ -220,7 +222,7 @@ export const TARGETS: ReadonlyArray<Target> = [
       PRINCIPLES,
     ),
   ),
-  ...WAVE_LENGTH_TARGETS.flatMap(({ wave, maxSeconds }) => [
+  ...Array.flatMap(WAVE_LENGTH_TARGETS, ({ wave, maxSeconds }) => [
     atMost(
       `waves.w${wave}.medianLength`,
       `Wave ${wave} median length in the snapshot pass (seconds)`,

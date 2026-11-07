@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Option, String } from 'effect'
 import { Canvas } from 'foldkit'
 import type { Html } from 'foldkit/html'
 
@@ -36,8 +36,10 @@ import {
   chooseLook,
   flipLook,
   gearOf,
+  init,
   isToggleOn,
   partGroupOf,
+  update,
 } from './character'
 import { type Standing, canAfford, priceOf, standingOf } from './closet'
 import {
@@ -239,21 +241,26 @@ const PART_VIEWS: Readonly<Record<LookPart, PartView>> = {
 }
 
 const lookDescription = (appearance: Appearance): string =>
-  [
-    `${appearance.body} build`,
-    `${appearance.skinTone} skin`,
-    appearance.hairStyle === 'Bald'
-      ? 'bald'
-      : `${appearance.hairColor} ${appearance.hairStyle} hair`,
-    ...(appearance.beard ? ['beard'] : []),
-    ...(appearance.glasses ? ['glasses'] : []),
-    `${appearance.shirtColor} ${appearance.outfit}`,
-    ...(appearance.print === 'Plain' ? [] : [`${appearance.print} print`]),
-    ...(appearance.hat === 'None' ? [] : [HAT_NAMES[appearance.hat]]),
-    ...(appearance.gunSkin === 'Stock' ? [] : [`${appearance.gunSkin} gun`]),
-  ]
-    .join(', ')
-    .toLowerCase()
+  String.toLowerCase(
+    Array.join(
+      [
+        `${appearance.body} build`,
+        `${appearance.skinTone} skin`,
+        appearance.hairStyle === 'Bald'
+          ? 'bald'
+          : `${appearance.hairColor} ${appearance.hairStyle} hair`,
+        ...(appearance.beard ? ['beard'] : []),
+        ...(appearance.glasses ? ['glasses'] : []),
+        `${appearance.shirtColor} ${appearance.outfit}`,
+        ...(appearance.print === 'Plain' ? [] : [`${appearance.print} print`]),
+        ...(appearance.hat === 'None' ? [] : [HAT_NAMES[appearance.hat]]),
+        ...(appearance.gunSkin === 'Stock'
+          ? []
+          : [`${appearance.gunSkin} gun`]),
+      ],
+      ', ',
+    ),
+  )
 
 // PART ICONS
 
@@ -532,7 +539,9 @@ const hasNewLook = (
 ): boolean =>
   Array.some(SECTION_PARTS[section], part =>
     Option.exists(gearOf(part), ({ kind }) =>
-      Array.some(fresh, id => id.startsWith(`${kind.toLowerCase()}:`)),
+      Array.some(fresh, id =>
+        String.startsWith(`${String.toLowerCase(kind)}:`)(id),
+      ),
     ),
   )
 
@@ -667,7 +676,9 @@ const optionView = (
         [
           ...option.option,
           h.Key(option.value),
-          h.Class(`look-option look-${partView.look.toLowerCase()}-option`),
+          h.Class(
+            `look-option look-${String.toLowerCase(partView.look)}-option`,
+          ),
         ],
         [face, h.span([...option.label, h.Class('sr-only')], [option.value])],
       ),
@@ -678,7 +689,9 @@ const optionView = (
         [
           ...option.option,
           h.Key(option.value),
-          h.Class(`look-option look-${partView.look.toLowerCase()}-option`),
+          h.Class(
+            `look-option look-${String.toLowerCase(partView.look)}-option`,
+          ),
           h.DataAttribute('standing', standing),
           h.DataAttribute('look-option', `${part}.${option.value}`),
           ...(isPreviewed ? [h.DataAttribute('previewed', 'true')] : []),
@@ -857,7 +870,7 @@ type ViewInputs = Readonly<{
   }>
 }>
 
-export const view = CharacterComposition.makeView.withInputs<ViewInputs>(
+const view = CharacterComposition.makeView.withInputs<ViewInputs>(
   (picker, inputs, h) =>
     h.div(
       [h.Class('look-tab')],
@@ -889,3 +902,9 @@ export const view = CharacterComposition.makeView.withInputs<ViewInputs>(
       ],
     ),
 )
+
+// NOTE: the Look tab's Block, prepared here so the view is not exported: a
+// view is a function of three arguments with no pipeable form, and Foldkit
+// knows a view by its identity, so it cannot be wrapped in one.
+export const prepareCharacterBlock = () =>
+  CharacterComposition.prepareBlock({ init, update, view })

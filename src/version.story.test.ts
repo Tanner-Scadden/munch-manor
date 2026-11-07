@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Effect, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { FetchHttpClient } from 'effect/http'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
@@ -310,7 +310,7 @@ describe('the end screens with a new version waiting', () => {
 // by name and args.
 const namesOf = (
   commands: ReadonlyArray<Readonly<{ name: string; args?: unknown }>> = [],
-) => commands.map(({ name, args }) => [name, args])
+) => Array.map(commands, ({ name, args }) => [name, args])
 
 describe('the service worker', () => {
   const PRODUCTION_BUILD = 'abc123'
@@ -395,7 +395,8 @@ describe('fetching version.json', () => {
       const { seen, exit } = fetchWith(() =>
         Response.json({ build: NEWER_BUILD }),
       )
-      expect(yield* exit).toEqual(
+      const exit_1 = yield* exit
+      expect(exit_1).toEqual(
         expect.objectContaining({ _tag: 'Success', value: NEWER_BUILD }),
       )
       expect(seen).toHaveLength(1)

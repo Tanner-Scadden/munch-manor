@@ -7,8 +7,10 @@
 // with 1 when the world canvas is missing or the desktop is zoomed.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shots46.ts
 // ONLY picks scenes (`wave`, `kitchen`) and VIEWPORTS picks screens.
+import { Array, Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
   DESKTOP_1280,
   PHONE_844,
@@ -18,16 +20,14 @@ import {
   deviceQuery,
   finish,
   isPickedScene,
-  launch,
+  openBrowser,
   pickViewports,
   scenePages,
   settleAnimations,
   shot,
   tagOr,
-  useHarness,
 } from './lib'
-
-const TAG = tagOr('after')
+import { attempt } from './page'
 
 const VIEWPORTS = pickViewports([
   { name: 'p360', width: 360, height: 780, scale: 3, isPhone: true },
@@ -56,53 +56,65 @@ const SCENES: ReadonlyArray<Scene> = [
   },
 ]
 
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev', 'tick=72'])
-
 const measure = (page: Page) =>
-  page.evaluate(() => {
-    const canvas = document.querySelector<HTMLCanvasElement>('.game-canvas')
-    if (canvas === null) {
-      return undefined
-    }
-    const box = canvas.getBoundingClientRect()
-    return {
-      cssPerWorldPx: box.width / canvas.width,
-      view: { width: canvas.width, height: canvas.height },
-      layout:
-        document.querySelector('.game-root')?.getAttribute('data-layout') ?? '',
-    }
-  })
+  attempt(() =>
+    page.evaluate(() => {
+      const canvas = document.querySelector<HTMLCanvasElement>('.game-canvas')
+      if (canvas === null) {
+        return undefined
+      }
+      const box = canvas.getBoundingClientRect()
+      return {
+        cssPerWorldPx: box.width / canvas.width,
+        view: { width: canvas.width, height: canvas.height },
+        layout:
+          document.querySelector('.game-root')?.getAttribute('data-layout') ??
+          '',
+      }
+    }),
+  )
 
-const problems: Array<string> = []
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* tagOr('after')
+    const viewports = yield* VIEWPORTS
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev', 'tick=72'])
+    const problems: Array<string> = []
 
-for (const viewport of VIEWPORTS) {
-  for (const scene of SCENES.filter(({ name }) => isPickedScene(name))) {
-    const page = await pages.open(
-      viewport,
-      [scene.query, deviceQuery(viewport)].filter(Boolean).join('&'),
-    )
-    await settleAnimations(page)
-    await shot(page, `s46-${TAG}-${viewport.name}-${scene.name}`)
-    const size = await measure(page)
-    const where = `${viewport.name} ${scene.name}`
-    if (size === undefined) {
-      problems.push(`${where}: no world canvas`)
-    } else {
-      const px = (side: number) => Math.round(side * size.cssPerWorldPx)
-      console.log(
-        `${where} (${size.layout}): view ${size.view.width}x${size.view.height}, ${size.cssPerWorldPx.toFixed(3)} css px a world px, Groaner ${px(GROANER.width)}x${px(GROANER.height)}, player ${px(PLAYER.width)}x${px(PLAYER.height)}`,
+    for (const viewport of viewports) {
+      const scenes = yield* Effect.filter(SCENES, ({ name }) =>
+        isPickedScene(name),
       )
-      if (!viewport.isPhone && size.view.width !== 320) {
-        problems.push(`${where}: the desktop shows ${size.view.width} wide`)
+      for (const scene of scenes) {
+        const page = yield* pages.open(
+          viewport,
+          Array.join(
+            Array.filter([scene.query, deviceQuery(viewport)], Boolean),
+            '&',
+          ),
+        )
+        yield* settleAnimations(page)
+        yield* shot(page, `s46-${tag}-${viewport.name}-${scene.name}`)
+        const size = yield* measure(page)
+        const where = `${viewport.name} ${scene.name}`
+        if (size === undefined) {
+          problems.push(`${where}: no world canvas`)
+        } else {
+          const px = (side: number) => Math.round(side * size.cssPerWorldPx)
+          yield* Console.log(
+            `${where} (${size.layout}): view ${size.view.width}x${size.view.height}, ${size.cssPerWorldPx.toFixed(3)} css px a world px, Groaner ${px(GROANER.width)}x${px(GROANER.height)}, player ${px(PLAYER.width)}x${px(PLAYER.height)}`,
+          )
+          if (!viewport.isPhone && size.view.width !== 320) {
+            problems.push(`${where}: the desktop shows ${size.view.width} wide`)
+          }
+        }
+        pages.release(page)
       }
     }
-    pages.release(page)
-  }
-}
 
-await pages.close()
-await browser.close()
+    yield* pages.close
 
-finish(problems, 'measured')
+    yield* finish(problems, 'measured')
+  }),
+)

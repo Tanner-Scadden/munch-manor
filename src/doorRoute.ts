@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { DoorId } from './entitySchema'
@@ -161,24 +161,39 @@ const routedDoor = (
 
 // NOTE: doors are the level's spawn doors, so a pack rerouted from a boarded
 // doorway only ever goes to a door that is open on the map.
-export const routeSpawns = (
-  spawns: ReadonlyArray<PlannedSpawn>,
-  traps: ReadonlyArray<Trap>,
-  packDoors: ReadonlyArray<PackDoor>,
-  doors: ReadonlyArray<DoorId>,
-): ReadonlyArray<PlannedSpawn> => {
-  const boarded = barricadedDoors(traps)
-  if (
-    Array.isReadonlyArrayEmpty(boarded) &&
-    Array.isReadonlyArrayEmpty(packDoors)
-  ) {
-    return spawns
-  }
+export const routeSpawns: {
+  (
+    traps: ReadonlyArray<Trap>,
+    packDoors: ReadonlyArray<PackDoor>,
+    doors: ReadonlyArray<DoorId>,
+  ): (spawns: ReadonlyArray<PlannedSpawn>) => ReadonlyArray<PlannedSpawn>
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    traps: ReadonlyArray<Trap>,
+    packDoors: ReadonlyArray<PackDoor>,
+    doors: ReadonlyArray<DoorId>,
+  ): ReadonlyArray<PlannedSpawn>
+} = Function.dual(
+  4,
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    traps: ReadonlyArray<Trap>,
+    packDoors: ReadonlyArray<PackDoor>,
+    doors: ReadonlyArray<DoorId>,
+  ): ReadonlyArray<PlannedSpawn> => {
+    const boarded = barricadedDoors(traps)
+    if (
+      Array.isReadonlyArrayEmpty(boarded) &&
+      Array.isReadonlyArrayEmpty(packDoors)
+    ) {
+      return spawns
+    }
 
-  return Array.map(spawns, spawn => {
-    const door = routedDoor(spawn, spawns, doors, boarded, packDoors)
-    return door === spawn.door
-      ? spawn
-      : modifyFields(spawn, { door: () => door })
-  })
-}
+    return Array.map(spawns, spawn => {
+      const door = routedDoor(spawn, spawns, doors, boarded, packDoors)
+      return door === spawn.door
+        ? spawn
+        : modifyFields(spawn, { door: () => door })
+    })
+  },
+)

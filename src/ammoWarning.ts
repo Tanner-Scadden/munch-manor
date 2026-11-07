@@ -1,7 +1,8 @@
-import { Array, pipe } from 'effect'
+import { Array, Function, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { AmmoTip } from './clientSchema'
+import { isObjectFirst } from './dualArgs'
 import type { Model } from './model'
 import { focusOf, isCoop } from './party'
 import type { Calling } from './playerData'
@@ -25,56 +26,66 @@ export type AmmoLevel = 'Plenty' | 'Low' | 'Last' | 'Dry'
 
 // NOTE: the thresholds read the magazine the player's own calling gives
 // the gun (the Track Star's are smaller).
-export const ammoLevelOf = (
-  gun: CarriedGun,
-  calling: Calling = 'You',
-): AmmoLevel => {
-  if (hasEndlessRounds(gun.kind) || gun.kind === 'Pan') {
-    return 'Plenty'
-  }
-  const magazine = carriedMagazine(calling, gun)
-  const lastAt = isReloadable(gun.kind) ? magazine : Math.ceil(magazine / 4)
-  const lowAt = isReloadable(gun.kind)
-    ? Math.max(magazine * 2, Math.ceil(startingRounds(gun.kind) / 4))
-    : Math.ceil(magazine / 2)
-  if (gun.rounds <= 0) {
-    return 'Dry'
-  } else if (gun.rounds <= lastAt) {
-    return 'Last'
-  } else if (gun.rounds <= lowAt) {
-    return 'Low'
-  } else {
-    return 'Plenty'
-  }
-}
+export const ammoLevelOf: {
+  (calling?: Calling): (gun: CarriedGun) => AmmoLevel
+  (gun: CarriedGun, calling?: Calling): AmmoLevel
+} = Function.dual(
+  isObjectFirst,
+  (gun: CarriedGun, calling: Calling = 'You'): AmmoLevel => {
+    if (hasEndlessRounds(gun.kind) || gun.kind === 'Pan') {
+      return 'Plenty'
+    }
+    const magazine = carriedMagazine(calling, gun)
+    const lastAt = isReloadable(gun.kind) ? magazine : Math.ceil(magazine / 4)
+    const lowAt = isReloadable(gun.kind)
+      ? Math.max(magazine * 2, Math.ceil(startingRounds(gun.kind) / 4))
+      : Math.ceil(magazine / 2)
+    if (gun.rounds <= 0) {
+      return 'Dry'
+    } else if (gun.rounds <= lastAt) {
+      return 'Last'
+    } else if (gun.rounds <= lowAt) {
+      return 'Low'
+    } else {
+      return 'Plenty'
+    }
+  },
+)
 
-export const isRunningLow = (
-  gun: CarriedGun,
-  calling: Calling = 'You',
-): boolean => {
-  const level = ammoLevelOf(gun, calling)
-  return level === 'Low' || level === 'Last'
-}
+export const isRunningLow: {
+  (calling?: Calling): (gun: CarriedGun) => boolean
+  (gun: CarriedGun, calling?: Calling): boolean
+} = Function.dual(
+  isObjectFirst,
+  (gun: CarriedGun, calling: Calling = 'You'): boolean => {
+    const level = ammoLevelOf(gun, calling)
+    return level === 'Low' || level === 'Last'
+  },
+)
 
 // NOTE: the last few shots of a gun that can run dry each tick, so the ear
 // hears it coming before the click.
 const TICK_ROUNDS = 5
 
-export const isTickingShot = (
-  player: Player,
-  events: ReadonlyArray<GameEvent>,
-): boolean => {
-  const gun = heldGun(player.arsenal)
-  const level = ammoLevelOf(gun, player.calling)
-  return (
-    (level === 'Last' || level === 'Dry') &&
-    gun.rounds < TICK_ROUNDS &&
-    Array.some(
-      events,
-      event => GameEvent.isAnyOf(['Fired'])(event) && event.weapon === gun.kind,
+export const isTickingShot: {
+  (events: ReadonlyArray<GameEvent>): (player: Player) => boolean
+  (player: Player, events: ReadonlyArray<GameEvent>): boolean
+} = Function.dual(
+  2,
+  (player: Player, events: ReadonlyArray<GameEvent>): boolean => {
+    const gun = heldGun(player.arsenal)
+    const level = ammoLevelOf(gun, player.calling)
+    return (
+      (level === 'Last' || level === 'Dry') &&
+      gun.rounds < TICK_ROUNDS &&
+      Array.some(
+        events,
+        event =>
+          GameEvent.isAnyOf(['Fired'])(event) && event.weapon === gun.kind,
+      )
     )
-  )
-}
+  },
+)
 
 // NOTE: no gun the player carries has anything left to fire, so the melee
 // slot (the knife or the Pan) is the way out.
@@ -99,7 +110,10 @@ const isTipWorthy = (model: Model): boolean =>
 // NOTE: the first time ever the held gun runs low, Rattles calls from the
 // stall for a few seconds. The frame's own time drains it, so a pause holds
 // it.
-export const noteAmmoTip = (model: Model, deltaMs: number): Model =>
+export const noteAmmoTip: {
+  (deltaMs: number): (model: Model) => Model
+  (model: Model, deltaMs: number): Model
+} = Function.dual(2, (model: Model, deltaMs: number): Model =>
   AmmoTip.match(model.ammoTip, {
     Unseen: () =>
       isTipWorthy(model)
@@ -115,4 +129,5 @@ export const noteAmmoTip = (model: Model, deltaMs: number): Model =>
             : AmmoTip.Seen(),
       }),
     Seen: () => model,
-  })
+  }),
+)

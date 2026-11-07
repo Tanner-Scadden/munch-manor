@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option, String } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { playerSprites } from './appearance'
@@ -250,7 +250,7 @@ const unlockCardShapes = (
                 onSome: priceTagShapes,
               }),
               ...textShapes(
-                name.toUpperCase(),
+                String.toUpperCase(name),
                 'Plain',
                 0,
                 CARD_HEIGHT - GLYPH_HEIGHT - 2,
@@ -266,98 +266,117 @@ const unlockCardShapes = (
 }
 
 // NOTE: `left` and `width` are the strip's room, `centerY` its middle.
-export const rankStripShapes = (
-  model: Model,
-  kind: EndKind,
-  ms: number,
-  left: number,
-  centerY: number,
-  width: number,
-): ReadonlyArray<Canvas.Shape> =>
-  Option.match(model.maybeRankGain, {
-    onNone: () => [],
-    onSome: ({ pointsBefore, gained, bonesGained, bonusPercent }) => {
-      const startMs = rankStripAtMs(model, kind)
-      if (ms < startMs) {
-        return []
-      }
-      const fillT = easeOut(progressOf(ms, startMs, RANK_FILL_MS))
-      const progress = rankProgressOf(
-        shownPointsOf(pointsBefore, gained, fillT),
-      )
-      const popAtMs = startMs + RANK_FILL_MS
-      const isPopping = isRankedUp(model) && ms >= popAtMs
-      const pop = isPopping
-        ? 1 +
-          (POP_SCALE - 1) *
-            2 *
-            (1 - easeOutBack(progressOf(ms, popAtMs, RANK_POP_MS)))
-        : 1
-      const number = `${progress.rank}`
-      const barX = left + BAR_X
-      const barWidth = bonusPercent > 0 ? BONUS_BAR_WIDTH : BAR_WIDTH
-      const bonusText = `+${bonusPercent}%`
-      const bonusRoom =
-        bonusPercent > 0 ? BONUS_GAP_PX + textWidth(bonusText) : 0
-      const bones = Math.round(bonesGained * fillT)
-      const bonesText = `+${bones}`
-      const bonesRight = left + width
-      const boneX =
-        bonesRight -
-        textWidth(bonesText) -
-        BONE_TEXT_GAP_PX -
-        BONE_SIZE.width / 2
-      const fade = easeOut(progressOf(ms, startMs, FADE_MS))
-      return [
-        group({
-          opacity: fade >= 1 ? undefined : fade,
-          shapes: [
-            group({
-              translate: { x: left + BADGE_X, y: centerY },
-              scale: pop === 1 ? undefined : { x: pop, y: pop },
-              shapes: isPopping
-                ? shineSprite(
-                    badgeTierOf(progress.rank),
-                    Math.floor((ms - popAtMs) / SHINE_FRAME_MS),
-                  )
-                : badgeSprite(badgeTierOf(progress.rank)),
-            }),
-            ...textShapes(
-              number,
-              isPopping ? 'Victory' : 'Plain',
-              left + NUMBER_X,
-              centerY - Math.floor(GLYPH_HEIGHT / 2),
-              'Left',
-            ),
-            ...barShapes(barX, centerY, progress.fraction, barWidth),
-            ...(bonusPercent > 0
-              ? textShapes(
-                  bonusText,
-                  'Victory',
-                  barX + barWidth + BONUS_GAP_PX,
-                  centerY - Math.floor(GLYPH_HEIGHT / 2),
-                  'Left',
-                )
-              : []),
-            ...(bonesGained > 0 &&
-            barX + barWidth + bonusRoom + BONES_GAP_PX < boneX
-              ? [
-                  placeAt(Math.round(boneX), centerY, BONE),
-                  ...textShapes(
-                    bonesText,
+export const rankStripShapes: {
+  (
+    kind: EndKind,
+    ms: number,
+    left: number,
+    centerY: number,
+    width: number,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (
+    model: Model,
+    kind: EndKind,
+    ms: number,
+    left: number,
+    centerY: number,
+    width: number,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  6,
+  (
+    model: Model,
+    kind: EndKind,
+    ms: number,
+    left: number,
+    centerY: number,
+    width: number,
+  ): ReadonlyArray<Canvas.Shape> =>
+    Option.match(model.maybeRankGain, {
+      onNone: () => [],
+      onSome: ({ pointsBefore, gained, bonesGained, bonusPercent }) => {
+        const startMs = rankStripAtMs(model, kind)
+        if (ms < startMs) {
+          return []
+        }
+        const fillT = easeOut(progressOf(ms, startMs, RANK_FILL_MS))
+        const progress = rankProgressOf(
+          shownPointsOf(pointsBefore, gained, fillT),
+        )
+        const popAtMs = startMs + RANK_FILL_MS
+        const isPopping = isRankedUp(model) && ms >= popAtMs
+        const pop = isPopping
+          ? 1 +
+            (POP_SCALE - 1) *
+              2 *
+              (1 - easeOutBack(progressOf(ms, popAtMs, RANK_POP_MS)))
+          : 1
+        const number = `${progress.rank}`
+        const barX = left + BAR_X
+        const barWidth = bonusPercent > 0 ? BONUS_BAR_WIDTH : BAR_WIDTH
+        const bonusText = `+${bonusPercent}%`
+        const bonusRoom =
+          bonusPercent > 0 ? BONUS_GAP_PX + textWidth(bonusText) : 0
+        const bones = Math.round(bonesGained * fillT)
+        const bonesText = `+${bones}`
+        const bonesRight = left + width
+        const boneX =
+          bonesRight -
+          textWidth(bonesText) -
+          BONE_TEXT_GAP_PX -
+          BONE_SIZE.width / 2
+        const fade = easeOut(progressOf(ms, startMs, FADE_MS))
+        return [
+          group({
+            opacity: fade >= 1 ? undefined : fade,
+            shapes: [
+              group({
+                translate: { x: left + BADGE_X, y: centerY },
+                scale: pop === 1 ? undefined : { x: pop, y: pop },
+                shapes: isPopping
+                  ? shineSprite(
+                      badgeTierOf(progress.rank),
+                      Math.floor((ms - popAtMs) / SHINE_FRAME_MS),
+                    )
+                  : badgeSprite(badgeTierOf(progress.rank)),
+              }),
+              ...textShapes(
+                number,
+                isPopping ? 'Victory' : 'Plain',
+                left + NUMBER_X,
+                centerY - Math.floor(GLYPH_HEIGHT / 2),
+                'Left',
+              ),
+              ...barShapes(barX, centerY, progress.fraction, barWidth),
+              ...(bonusPercent > 0
+                ? textShapes(
+                    bonusText,
                     'Victory',
-                    bonesRight,
+                    barX + barWidth + BONUS_GAP_PX,
                     centerY - Math.floor(GLYPH_HEIGHT / 2),
-                    'Right',
-                  ),
-                ]
-              : []),
-            ...(isPopping
-              ? sparkShapes(left + BADGE_X, centerY, ms - popAtMs)
-              : []),
-            ...unlockCardShapes(model, kind, ms, left + width / 2, centerY),
-          ],
-        }),
-      ]
-    },
-  })
+                    'Left',
+                  )
+                : []),
+              ...(bonesGained > 0 &&
+              barX + barWidth + bonusRoom + BONES_GAP_PX < boneX
+                ? [
+                    placeAt(Math.round(boneX), centerY, BONE),
+                    ...textShapes(
+                      bonesText,
+                      'Victory',
+                      bonesRight,
+                      centerY - Math.floor(GLYPH_HEIGHT / 2),
+                      'Right',
+                    ),
+                  ]
+                : []),
+              ...(isPopping
+                ? sparkShapes(left + BADGE_X, centerY, ms - popAtMs)
+                : []),
+              ...unlockCardShapes(model, kind, ms, left + width / 2, centerY),
+            ],
+          }),
+        ]
+      },
+    }),
+)

@@ -1,13 +1,17 @@
 import {
   Array,
   Effect,
+  Function,
   MutableRef,
   Option,
   Schedule,
   Schema,
+  String,
   pipe,
 } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
+
+import { toBrowserError } from './describeError'
 
 // CUE
 
@@ -115,7 +119,7 @@ const maybeMidi = (token: string): Option.Option<number> =>
 
 const tokensOf = (pattern: string): ReadonlyArray<string> =>
   Array.filter(
-    pattern.split(/\s+/),
+    String.split(/\s+/)(pattern),
     token => token !== '' && token !== BAR_LINE,
   )
 
@@ -292,8 +296,8 @@ type Request = Readonly<{
 }>
 
 const Motion = defineTaggedUnion({
-  Looping: { mood: LoopMood, step: Schema.Number, stepAt: Schema.Number },
-  Stinging: { stinger: Fanfare, step: Schema.Number, stepAt: Schema.Number },
+  Looping: { mood: LoopMood, step: Schema.Finite, stepAt: Schema.Finite },
+  Stinging: { stinger: Fanfare, step: Schema.Finite, stepAt: Schema.Finite },
 })
 type Motion = typeof Motion.Type
 
@@ -333,39 +337,48 @@ const freshTrack = (context: AudioContext, bus: GainNode): GainNode => {
   return track
 }
 
-export const makeMusicDeck = (
-  context: AudioContext,
-  destination: AudioNode,
-  noise: AudioBuffer,
-): MusicDeck => {
-  const bus = context.createGain()
-  bus.gain.value = MUSIC_VOLUME
-  bus.connect(destination)
+export const makeMusicDeck: {
+  (
+    destination: AudioNode,
+    noise: AudioBuffer,
+  ): (context: AudioContext) => MusicDeck
+  (context: AudioContext, destination: AudioNode, noise: AudioBuffer): MusicDeck
+} = Function.dual(
+  3,
+  (
+    context: AudioContext,
+    destination: AudioNode,
+    noise: AudioBuffer,
+  ): MusicDeck => {
+    const bus = context.createGain()
+    bus.gain.value = MUSIC_VOLUME
+    bus.connect(destination)
 
-  const lfo = context.createOscillator()
-  lfo.frequency.value = LFO_HERTZ
-  const vibrato = context.createGain()
-  vibrato.gain.value = VIBRATO_CENTS
-  const wobble = context.createGain()
-  wobble.gain.value = WOBBLE_CENTS
-  lfo.connect(vibrato)
-  lfo.connect(wobble)
-  lfo.start()
+    const lfo = context.createOscillator()
+    lfo.frequency.value = LFO_HERTZ
+    const vibrato = context.createGain()
+    vibrato.gain.value = VIBRATO_CENTS
+    const wobble = context.createGain()
+    wobble.gain.value = WOBBLE_CENTS
+    lfo.connect(vibrato)
+    lfo.connect(wobble)
+    lfo.start()
 
-  return {
-    context,
-    bus,
-    noise,
-    vibrato,
-    wobble,
-    track: MutableRef.make(freshTrack(context, bus)),
-    request: MutableRef.make<Request>({
-      mood: 'Silence',
-      maybeStinger: Option.none(),
-    }),
-    maybeMotion: MutableRef.make(Option.none<Motion>()),
-  }
-}
+    return {
+      context,
+      bus,
+      noise,
+      vibrato,
+      wobble,
+      track: MutableRef.make(freshTrack(context, bus)),
+      request: MutableRef.make<Request>({
+        mood: 'Silence',
+        maybeStinger: Option.none(),
+      }),
+      maybeMotion: MutableRef.make(Option.none<Motion>()),
+    }
+  },
+)
 
 // INSTRUMENTS
 
@@ -735,7 +748,7 @@ const scheduleAhead = (deck: MusicDeck): void => {
 
 export const runMusicScheduler = (deck: MusicDeck): Effect.Effect<void> =>
   pipe(
-    Effect.try(() => scheduleAhead(deck)),
+    Effect.try({ try: () => scheduleAhead(deck), catch: toBrowserError }),
     Effect.ignore,
     Effect.repeat(Schedule.spaced(SCHEDULER_INTERVAL)),
     Effect.asVoid,
@@ -779,7 +792,10 @@ const nextStinger = (
   }
 }
 
-export const cueMusic = (deck: MusicDeck, cue: MusicCue): void => {
+export const cueMusic: {
+  (cue: MusicCue): (deck: MusicDeck) => void
+  (deck: MusicDeck, cue: MusicCue): void
+} = Function.dual(2, (deck: MusicDeck, cue: MusicCue): void => {
   deck.bus.gain.setTargetAtTime(
     LEVEL_GAIN[cue.level],
     deck.context.currentTime,
@@ -793,4 +809,4 @@ export const cueMusic = (deck: MusicDeck, cue: MusicCue): void => {
   if (isHardStop && Option.isSome(MutableRef.get(deck.maybeMotion))) {
     stopNow(deck)
   }
-}
+})

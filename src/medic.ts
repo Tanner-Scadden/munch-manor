@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { modifySeatRecord, seatStateAt } from './party'
@@ -51,10 +51,10 @@ const canCallMedic = (seat: Seat): boolean =>
 
 // NOTE: the CallMedic seat action's rule (src/stepWorld.ts): the shout,
 // or none.
-export const shoutMedic = (
-  world: World,
-  slot: PlayerSlot,
-): Option.Option<World> =>
+export const shoutMedic: {
+  (slot: PlayerSlot): (world: World) => Option.Option<World>
+  (world: World, slot: PlayerSlot): Option.Option<World>
+} = Function.dual(2, (world: World, slot: PlayerSlot): Option.Option<World> =>
   canCallMedic(seatStateAt(world, slot).seat)
     ? Option.some(
         modifySeatRecord(world, slot, seat =>
@@ -66,40 +66,56 @@ export const shoutMedic = (
           }),
         ),
       )
-    : Option.none()
+    : Option.none(),
+)
 
 // NOTE: in the tick, before the bleed moves on: a shout at 0 is heard.
-export const sounded = (
-  world: World,
-  slot: PlayerSlot,
-  life: DownedLife,
-): World => {
-  if (life.callMs > 0) {
-    return world
-  }
-  const { player } = seatStateAt(world, slot)
-  return modifyFields(world, {
-    frameEvents: Array.append(
-      GameEvent.MedicCalled({ x: player.x, y: player.y }),
-    ),
-  })
-}
+export const sounded: {
+  (slot: PlayerSlot, life: DownedLife): (world: World) => World
+  (world: World, slot: PlayerSlot, life: DownedLife): World
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, life: DownedLife): World => {
+    if (life.callMs > 0) {
+      return world
+    }
+    const { player } = seatStateAt(world, slot)
+    return modifyFields(world, {
+      frameEvents: Array.append(
+        GameEvent.MedicCalled({ x: player.x, y: player.y }),
+      ),
+    })
+  },
+)
 
 // NOTE: SAVED! over the first reviver, CLUTCH! when the bleed had under
 // MEDIC_RULES.clutchBleedMs left.
-export const saved = (
-  world: World,
-  revivers: Array.NonEmptyReadonlyArray<SeatState>,
-  life: DownedLife,
-): World => {
-  const { player } = Array.headNonEmpty(revivers)
-  return modifyFields(world, {
-    frameEvents: Array.append(
-      GameEvent.TeammateSaved({
-        x: player.x,
-        y: player.y,
-        clutch: life.bleedMs < MEDIC_RULES.clutchBleedMs,
-      }),
-    ),
-  })
-}
+export const saved: {
+  (
+    revivers: Array.NonEmptyReadonlyArray<SeatState>,
+    life: DownedLife,
+  ): (world: World) => World
+  (
+    world: World,
+    revivers: Array.NonEmptyReadonlyArray<SeatState>,
+    life: DownedLife,
+  ): World
+} = Function.dual(
+  3,
+  (
+    world: World,
+    revivers: Array.NonEmptyReadonlyArray<SeatState>,
+    life: DownedLife,
+  ): World => {
+    const { player } = Array.headNonEmpty(revivers)
+    return modifyFields(world, {
+      frameEvents: Array.append(
+        GameEvent.TeammateSaved({
+          x: player.x,
+          y: player.y,
+          clutch: life.bleedMs < MEDIC_RULES.clutchBleedMs,
+        }),
+      ),
+    })
+  },
+)

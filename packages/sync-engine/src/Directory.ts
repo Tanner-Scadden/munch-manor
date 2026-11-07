@@ -30,7 +30,7 @@ import { decodeRows, randomBytes } from './Rows'
 // runs over any SqlClient; Munch Manor keeps it in one Durable Object.
 
 const fail = (failure: IdentityFailure) =>
-  Effect.fail(new IdentityRefused({ failure }))
+  Effect.fail(IdentityRefused.make({ failure }))
 
 export interface Redeemed {
   readonly session: SessionResponse
@@ -57,13 +57,13 @@ export interface Directory {
 const DeviceRow = Schema.Struct({ player_id: Schema.String })
 const CodeRow = Schema.Struct({
   player_id: Schema.String,
-  expires_ms: Schema.Number,
+  expires_ms: Schema.Finite,
 })
 const AttemptsRow = Schema.Struct({
-  window_start_ms: Schema.Number,
-  failures: Schema.Number,
+  window_start_ms: Schema.Finite,
+  failures: Schema.Finite,
 })
-const CountRow = Schema.Struct({ n: Schema.Number })
+const CountRow = Schema.Struct({ n: Schema.Finite })
 
 const RedeemStep = Schema.TaggedUnion({
   Linked: { playerId: Schema.String, previous: Schema.String },
@@ -75,8 +75,9 @@ const refusedStep = (failure: IdentityFailure): RedeemStep =>
   RedeemStep.cases.Refused.make({ failure })
 
 const unavailable = (_: SqlError.SqlError) =>
-  new IdentityRefused({ failure: IdentityFailure.cases.Unavailable.make({}) })
+  IdentityRefused.make({ failure: IdentityFailure.cases.Unavailable.make({}) })
 
+/** @stability unstable */
 export const makeDirectory = (
   secret: string,
 ): Effect.Effect<Directory, SqlError.SqlError, SqlClient.SqlClient> =>
@@ -134,11 +135,10 @@ export const makeDirectory = (
         const expiresMs = nowMs + SESSION_TTL_MS
         const token = yield* pipe(
           signToken(secret, { deviceId, playerId, expiresMs }),
-          Effect.mapError(
-            () =>
-              new IdentityRefused({
-                failure: IdentityFailure.cases.Unavailable.make({}),
-              }),
+          Effect.mapError(() =>
+            IdentityRefused.make({
+              failure: IdentityFailure.cases.Unavailable.make({}),
+            }),
           ),
         )
         const devices = yield* Effect.mapError(
@@ -184,7 +184,7 @@ export const makeDirectory = (
         const deviceId = yield* Effect.mapError(
           deviceIdOf(request.publicKey),
           () =>
-            new IdentityRefused({
+            IdentityRefused.make({
               failure: IdentityFailure.cases.Unavailable.make({}),
             }),
         )
@@ -226,7 +226,8 @@ export const makeDirectory = (
           Effect.gen(function* () {
             yield* sql`DELETE FROM sync_link_codes
               WHERE expires_ms <= ${nowMs} OR player_id = ${claims.playerId}`
-            const code = codeFromBytes(yield* randomBytes(6))
+            const value_1 = yield* randomBytes(6)
+            const code = codeFromBytes(value_1)
             const expiresMs = nowMs + CODE_TTL_MS
             yield* sql`INSERT INTO sync_link_codes ${sql.insert({
               code,
@@ -255,7 +256,8 @@ export const makeDirectory = (
 
     const recordFailure = (deviceId: string, nowMs: number) =>
       Effect.gen(function* () {
-        const next = afterFailure(yield* attemptsOf(deviceId), nowMs)
+        const value_2 = yield* attemptsOf(deviceId)
+        const next = afterFailure(value_2, nowMs)
         yield* sql`INSERT INTO sync_link_attempts ${sql.insert({
           device_id: deviceId,
           window_start_ms: next.windowStartMs,
@@ -271,10 +273,8 @@ export const makeDirectory = (
         const step = yield* pipe(
           sql.withTransaction(
             Effect.gen(function* () {
-              const decision = decideAttempt(
-                yield* attemptsOf(claims.deviceId),
-                nowMs,
-              )
+              const value_3 = yield* attemptsOf(claims.deviceId)
+              const decision = decideAttempt(value_3, nowMs)
               if (decision._tag === 'Limited') {
                 return refusedStep(
                   IdentityFailure.cases.TooManyTries.make({
@@ -293,7 +293,8 @@ export const makeDirectory = (
               const rows =
                 yield* sql`SELECT player_id, expires_ms FROM sync_link_codes
                 WHERE code = ${maybeCode.value}`
-              const found = Array.head(yield* decodeRows(CodeRow, rows))
+              const value_4 = yield* decodeRows(CodeRow, rows)
+              const found = Array.head(value_4)
               if (
                 Option.isNone(found) ||
                 isExpired(found.value.expires_ms, nowMs)

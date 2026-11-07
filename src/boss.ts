@@ -1,13 +1,8 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  doorSpawnPoint,
-  hasClearPath,
-  isSolidAt,
-  levelOf,
-  moveCircle,
-} from './arena'
+import { doorSpawnPoint, hasClearPath, isSolidAt, levelOf } from './arena'
+import { moveCircle } from './collision'
 import { woundPlayer } from './combat'
 import { MS_PER_SECOND, PLAYER_RADIUS, ZOMBIE_ALIVE_MAX } from './constants'
 import {
@@ -165,36 +160,58 @@ const wavePlanHpScale = (spawns: ReadonlyArray<PlannedSpawn>): number =>
   })
 
 // His health: the wave's scale times the level's own boss scale.
-export const bossHp = (
-  difficulty: Difficulty,
-  spawns: ReadonlyArray<PlannedSpawn>,
-): number =>
-  scaledHp(
-    ZOMBIE_KINDS.Boss.hp,
-    wavePlanHpScale(spawns) * bossHealthScale(difficulty),
-  )
+export const bossHp: {
+  (spawns: ReadonlyArray<PlannedSpawn>): (difficulty: Difficulty) => number
+  (difficulty: Difficulty, spawns: ReadonlyArray<PlannedSpawn>): number
+} = Function.dual(
+  2,
+  (difficulty: Difficulty, spawns: ReadonlyArray<PlannedSpawn>): number =>
+    scaledHp(
+      ZOMBIE_KINDS.Boss.hp,
+      wavePlanHpScale(spawns) * bossHealthScale(difficulty),
+    ),
+)
 
-export const planBoss = (
-  doors: ReadonlyArray<DoorId>,
-  state: number,
-  wave: number,
-  spawns: ReadonlyArray<PlannedSpawn>,
-  difficulty: Difficulty,
-): Seeded<Boss> => {
-  if (!hasBoss(wave)) {
-    return [state, Boss.Absent()]
-  }
+export const planBoss: {
+  (
+    state: number,
+    wave: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    difficulty: Difficulty,
+  ): (doors: ReadonlyArray<DoorId>) => Seeded<Boss>
+  (
+    doors: ReadonlyArray<DoorId>,
+    state: number,
+    wave: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    difficulty: Difficulty,
+  ): Seeded<Boss>
+} = Function.dual(
+  5,
+  (
+    doors: ReadonlyArray<DoorId>,
+    state: number,
+    wave: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    difficulty: Difficulty,
+  ): Seeded<Boss> => {
+    if (!hasBoss(wave)) {
+      return [state, Boss.Absent()]
+    }
 
-  const doorDraw = nextRandom(state)
-  return [
-    doorDraw.nextState,
-    Boss.Waiting({
-      door: pickDoor(doors, doorDraw.value),
-      waitBelow: Math.round(spawns.length * (1 - BOSS_RULES.arriveAfterShare)),
-      hp: bossHp(difficulty, spawns),
-    }),
-  ]
-}
+    const doorDraw = nextRandom(state)
+    return [
+      doorDraw.nextState,
+      Boss.Waiting({
+        door: pickDoor(doors, doorDraw.value),
+        waitBelow: Math.round(
+          spawns.length * (1 - BOSS_RULES.arriveAfterShare),
+        ),
+        hp: bossHp(difficulty, spawns),
+      }),
+    ]
+  },
+)
 
 export const maybeBossDoor = (boss: Boss): Option.Option<DoorId> =>
   Boss.match(boss, {
@@ -240,7 +257,10 @@ const announce = (model: World, door: DoorId, hp: number): World => {
   })
 }
 
-export const freshFight = (id: number, move: BossMove): Boss =>
+export const freshFight: {
+  (move: BossMove): (id: number) => Boss
+  (id: number, move: BossMove): Boss
+} = Function.dual(2, (id: number, move: BossMove): Boss =>
   Boss.Fighting({
     id,
     move,
@@ -249,7 +269,8 @@ export const freshFight = (id: number, move: BossMove): Boss =>
     nextFar: 'Charge',
     belchMs: BOSS_RULES.firstBelchMs,
     globs: [],
-  })
+  }),
+)
 
 const enter = (model: World, door: DoorId, hp: number): World => {
   const speedDraw = nextRandom(model.rngState)
@@ -273,37 +294,39 @@ const enter = (model: World, door: DoorId, hp: number): World => {
   })
 }
 
-export const advanceBossEntrance = (
-  model: World,
-  pendingSpawns: number,
-  worldMs: number,
-): World =>
-  Boss.match(model.boss, {
-    Absent: () => model,
-    Waiting: ({ door, waitBelow, hp }) =>
-      pendingSpawns <= waitBelow ? announce(model, door, hp) : model,
-    Arriving: ({ door, hp, remainingMs, durationMs }) =>
-      remainingMs > worldMs
-        ? modifyFields(model, {
-            boss: () =>
-              Boss.Arriving({
-                door,
-                hp,
-                remainingMs: remainingMs - worldMs,
-                durationMs,
-              }),
-          })
-        : enter(model, door, hp),
-    Fighting: fight =>
-      Option.isSome(Option.filter(findBoss(model, fight.id), isStanding))
-        ? modifyFields(model, {
-            boss: () =>
-              modifyFields(fight, {
-                standingMs: standingMs => standingMs + worldMs,
-              }),
-          })
-        : modifyFields(model, { boss: () => Boss.Absent() }),
-  })
+export const advanceBossEntrance: {
+  (pendingSpawns: number, worldMs: number): (model: World) => World
+  (model: World, pendingSpawns: number, worldMs: number): World
+} = Function.dual(
+  3,
+  (model: World, pendingSpawns: number, worldMs: number): World =>
+    Boss.match(model.boss, {
+      Absent: () => model,
+      Waiting: ({ door, waitBelow, hp }) =>
+        pendingSpawns <= waitBelow ? announce(model, door, hp) : model,
+      Arriving: ({ door, hp, remainingMs, durationMs }) =>
+        remainingMs > worldMs
+          ? modifyFields(model, {
+              boss: () =>
+                Boss.Arriving({
+                  door,
+                  hp,
+                  remainingMs: remainingMs - worldMs,
+                  durationMs,
+                }),
+            })
+          : enter(model, door, hp),
+      Fighting: fight =>
+        Option.isSome(Option.filter(findBoss(model, fight.id), isStanding))
+          ? modifyFields(model, {
+              boss: () =>
+                modifyFields(fight, {
+                  standingMs: standingMs => standingMs + worldMs,
+                }),
+            })
+          : modifyFields(model, { boss: () => Boss.Absent() }),
+    }),
+)
 
 export const isWaveHeldByBoss = (boss: Boss): boolean =>
   Boss.match(boss, {
@@ -340,19 +363,32 @@ const gapScale = (model: World, fight: Fight): number =>
   (fight.mood === 'Enraged' ? BOSS_RULES.enrageGapScale : 1) *
   bossAttackPace(model.difficulty.chosen)
 
-export const isRooted = (boss: Boss, zombie: Zombie): boolean =>
-  Boss.isAnyOf(['Fighting'])(boss) &&
-  boss.id === zombie.id &&
-  !BossMove.isAnyOf(['Stalking'])(boss.move)
+export const isRooted: {
+  (zombie: Zombie): (boss: Boss) => boolean
+  (boss: Boss, zombie: Zombie): boolean
+} = Function.dual(
+  2,
+  (boss: Boss, zombie: Zombie): boolean =>
+    Boss.isAnyOf(['Fighting'])(boss) &&
+    boss.id === zombie.id &&
+    !BossMove.isAnyOf(['Stalking'])(boss.move),
+)
 
-export const woundScaleOf = (boss: Boss, zombie: Zombie): number =>
+export const woundScaleOf: {
+  (zombie: Zombie): (boss: Boss) => number
+  (boss: Boss, zombie: Zombie): number
+} = Function.dual(2, (boss: Boss, zombie: Zombie): number =>
   Boss.isAnyOf(['Fighting'])(boss) &&
   boss.id === zombie.id &&
   BossMove.isAnyOf(['Dazed'])(boss.move)
     ? BOSS_RULES.dazedWoundScale
-    : 1
+    : 1,
+)
 
-export const paceOf = (boss: Boss, zombie: Zombie, player: Vector): number => {
+export const paceOf: {
+  (zombie: Zombie, player: Vector): (boss: Boss) => number
+  (boss: Boss, zombie: Zombie, player: Vector): number
+} = Function.dual(3, (boss: Boss, zombie: Zombie, player: Vector): number => {
   if (!Boss.isAnyOf(['Fighting'])(boss) || boss.id !== zombie.id) {
     return 1
   }
@@ -363,7 +399,7 @@ export const paceOf = (boss: Boss, zombie: Zombie, player: Vector): number => {
       ? BOSS_RULES.farPace
       : 1
   return rage * chase
-}
+})
 
 const awayFrom = (from: Vector, to: Vector): Vector =>
   Option.getOrElse(directionBetween(from, to), () => OUTWARD)
@@ -520,7 +556,10 @@ const advanceGlobs = (
   )
 }
 
-export const puddleSlowAt = (boss: Boss, at: Vector): number =>
+export const puddleSlowAt: {
+  (at: Vector): (boss: Boss) => number
+  (boss: Boss, at: Vector): number
+} = Function.dual(2, (boss: Boss, at: Vector): number =>
   Boss.isAnyOf(['Fighting'])(boss) &&
   Array.some(
     boss.globs,
@@ -529,7 +568,8 @@ export const puddleSlowAt = (boss: Boss, at: Vector): number =>
       distanceBetween(glob.at, at) <= BOSS_RULES.puddleRadius,
   )
     ? BOSS_RULES.puddleSlow
-    : 1
+    : 1,
+)
 
 // CHOOSING
 
@@ -1033,11 +1073,10 @@ const withFight =
       onSome: fight => step(model, fight),
     })
 
-export const advanceBossMoves = (
-  model: World,
-  slot: PlayerSlot,
-  deltaMs: number,
-): World =>
+export const advanceBossMoves: {
+  (slot: PlayerSlot, deltaMs: number): (model: World) => World
+  (model: World, slot: PlayerSlot, deltaMs: number): World
+} = Function.dual(3, (model: World, slot: PlayerSlot, deltaMs: number): World =>
   Option.match(maybeStandingBoss(model), {
     onNone: () =>
       withFight((current, fight) =>
@@ -1055,7 +1094,8 @@ export const advanceBossMoves = (
           stepMove(current, slot, fight, boss, deltaMs),
         ),
       ),
-  })
+  }),
+)
 
 // BAR
 

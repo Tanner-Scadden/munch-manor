@@ -1,4 +1,4 @@
-import { Option, Result } from 'effect'
+import { Array, Option, Result } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -42,7 +42,7 @@ describe('the wire', () => {
   test('varints, zigzags, and fixed point read back', () => {
     const values = [0, 1, 127, 128, 300, 16_383, 16_384, 2 ** 31, 2 ** 48]
     const bytes = writeAll(writer => {
-      values.forEach(value => writer.varint(value))
+      Array.forEach(values, value => writer.varint(value))
       writer.zigzag(-1)
       writer.zigzag(-300)
       writer.position(123.456)
@@ -51,7 +51,7 @@ describe('the wire', () => {
     })
     const read = Result.getOrThrow(
       readAll(bytes, reader => ({
-        values: values.map(() => reader.varint()),
+        values: Array.map(values, () => reader.varint()),
         minusOne: reader.zigzag(),
         minus300: reader.zigzag(),
         position: reader.position(),
@@ -190,7 +190,7 @@ describe('client frames', () => {
         tick: 1,
         seen: 1,
         rttMs: 61,
-        samples: Array.from({ length: 65 }, () => ({
+        samples: globalThis.Array.from({ length: 65 }, () => ({
           ticks: 1,
           input: NEUTRAL_INPUT,
         })),
@@ -204,7 +204,7 @@ describe('client frames', () => {
         samples: [{ ticks: 0, input: NEUTRAL_INPUT }],
       }),
     ]
-    bad.forEach(bytes => {
+    Array.forEach(bad, bytes => {
       expect(Result.isFailure(decodeClientFrame(bytes))).toBe(true)
     })
   })

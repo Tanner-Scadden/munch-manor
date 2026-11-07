@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { activeBots, seatCallings } from './bots'
@@ -54,7 +54,10 @@ const resume = (model: Model, round: Round): Model =>
       }),
   })
 
-export const startOrResume = (model: Model, mode: RunMode): Model =>
+export const startOrResume: {
+  (mode: RunMode): (model: Model) => Model
+  (model: Model, mode: RunMode): Model
+} = Function.dual(2, (model: Model, mode: RunMode): Model =>
   Phase.match(model.phase, {
     Ready: () => startRun(model, mode),
     Preparation: () => model,
@@ -62,7 +65,8 @@ export const startOrResume = (model: Model, mode: RunMode): Model =>
     Paused: ({ round }) => resume(model, round),
     Victory: () => startRun(model, mode),
     GameOver: () => startRun(model, mode),
-  })
+  }),
+)
 
 // NOTE: START WAVE from the player, as their seat's READY
 // (src/stepWorld.ts): alone the wave starts, and a new kind in it raises

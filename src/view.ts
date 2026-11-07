@@ -172,8 +172,8 @@ const practiceGateNote = (model: Model): string =>
     ? ' The wave waits until you try moving, aiming, and firing.'
     : ''
 
-const statusText = (model: Model): string => {
-  return Phase.match(model.phase, {
+const statusText = (model: Model): string =>
+  Phase.match(model.phase, {
     Ready: () =>
       `${GAME_TITLE}, an early alpha. ${isLobbyUp(model) ? LOBBY_MENU : HOME_MENU}`,
     Preparation: ({ wave }) =>
@@ -190,7 +190,6 @@ const statusText = (model: Model): string => {
     GameOver: ({ wave }) =>
       `Game over. ${defeatVerdict(wave, model.stats)}. ${statsLabel(model)} ${PLAY_AGAIN} ${BACK_HOME}${feedbackSentence(model)}`,
   })
-}
 
 const gunLabel = (model: Model): string => {
   const { player } = focusOf(model)
@@ -265,6 +264,10 @@ const toPressedPointer = (
 
 // VIEW
 
+// NOTE: Foldkit knows a view by the very function makeView returns (its view
+// inputs are registered against it), so a dual wrapper would be a view it
+// does not know; the Block and the Scene tests need this one.
+// @effect-diagnostics-next-line missingPipeableSignature:off
 export const view = ApplicationComposition.makeView((model, h): Document => {
   const screen = screenOf(model)
   return {

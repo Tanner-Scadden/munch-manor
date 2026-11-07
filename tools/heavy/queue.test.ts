@@ -371,7 +371,7 @@ const runQueue = (jobs: ReadonlyArray<ModelJob>): Waits => {
         : [],
     )
   for (let now = 0; now < 6 * 60 * MINUTE; now += TICK_MS) {
-    jobs.forEach(job => {
+    Array.forEach(jobs, job => {
       if (job.arriveAt === now) {
         waitingSince.set(job.pid, now)
       }
@@ -408,7 +408,7 @@ const runQueue = (jobs: ReadonlyArray<ModelJob>): Waits => {
     const askers = Array.filter(jobs, job =>
       waitingSince.has(job.pid),
     ).reverse()
-    askers.forEach(job => {
+    Array.forEach(askers, job => {
       const since = waitingSince.get(job.pid)!
       const decision = decide({
         ...BASE,

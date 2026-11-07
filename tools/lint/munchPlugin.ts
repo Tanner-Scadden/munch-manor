@@ -5,6 +5,8 @@
 // tools/lint/munchPlugin.test.ts runs every rule on code it must and must
 // not flag.
 
+import { Array, Option, Record, String } from 'effect'
+
 import { definePlugin, defineRule } from '@oxlint/plugins'
 import type { ESTree, SourceCode } from '@oxlint/plugins'
 
@@ -87,7 +89,7 @@ const noTagChain = defineRule({
     const sourceCode = context.sourceCode
     // NOTE: `if (x._tag === 'A') { return … } if (x._tag === 'B') { return … }`
     const checkBody = (body: ReadonlyArray<Node>): void => {
-      body.forEach((current, index) => {
+      Array.forEach(body, (current, index) => {
         const previous = body[index - 1]
         if (
           previous?.type !== 'IfStatement' ||
@@ -164,7 +166,8 @@ const unwrapReadonly = (
 
 const hasTagMember = (node: ESTree.TSType | undefined): boolean =>
   node?.type === 'TSTypeLiteral' &&
-  node.members.some(
+  Array.some(
+    node.members,
     member =>
       member.type === 'TSPropertySignature' &&
       ((member.key.type === 'Identifier' && member.key.name === '_tag') ||
@@ -288,7 +291,7 @@ const bareModelName = (node: ESTree.Expression): string | undefined => {
 // field of a node as unknown, skipping the link back to its parent.
 const mentions = (value: unknown, name: string): boolean => {
   if (Array.isArray(value)) {
-    return value.some((child: unknown) => mentions(child, name))
+    return Array.some(value, (child: unknown) => mentions(child, name))
   }
   if (typeof value !== 'object' || value === null) {
     return false
@@ -296,7 +299,7 @@ const mentions = (value: unknown, name: string): boolean => {
   if ('type' in value && value.type === 'Identifier') {
     return 'name' in value && value.name === name
   }
-  return Object.keys(value).some(key => {
+  return Array.some(Record.keys(value), key => {
     const child: unknown = Reflect.get(value, key)
     return key !== 'parent' && mentions(child, name)
   })
@@ -308,7 +311,7 @@ const isStepCallOn = (
 ): boolean =>
   name !== undefined &&
   node.type === 'CallExpression' &&
-  (node.arguments.some(argument => mentions(argument, name)) ||
+  (Array.some(node.arguments, argument => mentions(argument, name)) ||
     isStepCallOn(node.callee, name))
 
 const noConditionalStep = defineRule({
@@ -360,7 +363,7 @@ const noWorldSpread = defineRule({
     return {
       // NOTE: `{ ...model, ...world }`: a spread after the first one.
       ObjectExpression(node) {
-        node.properties.forEach((property, index) => {
+        Array.forEach(node.properties, (property, index) => {
           if (
             index > 0 &&
             property.type === 'SpreadElement' &&
@@ -462,14 +465,14 @@ const commandBesideUpdate = defineRule({
         }
       },
       'Program:exit'() {
-        commands
-          .filter(command => !called.has(command.name))
-          .forEach(command =>
+        Array.forEach(
+          Array.filter(commands, command => !called.has(command.name)),
+          command =>
             context.report({
               node: command,
               message: `${command.name} is never returned here: define a Command beside the update that returns it, and its .layer joins CommandsLayer in src/layer.ts (AGENTS.md "Code shape").`,
             }),
-          )
+        )
       },
     }
   },
@@ -644,20 +647,25 @@ const seatActionOnce = defineRule({
         }
       },
       CallExpression(node) {
-        if (!SEAT_WRITERS.some(writer => isCallOf(node, writer))) {
+        if (!Array.some(SEAT_WRITERS, writer => isCallOf(node, writer))) {
           return
         }
-        const changes = node.arguments
-          .slice(1)
-          .find(
-            (argument): argument is ESTree.ObjectExpression =>
-              argument.type === 'ObjectExpression',
-          )
-        changes?.properties
-          .filter(property => hasName(SEAT_ACTION_FIELDS, keyName(property)))
-          .forEach(property =>
+        const maybeChanges = Array.findFirst(
+          Array.drop(node.arguments, 1),
+          (argument): argument is ESTree.ObjectExpression =>
+            argument.type === 'ObjectExpression',
+        )
+        Array.forEach(
+          Array.filter(
+            Option.match(maybeChanges, {
+              onNone: () => [],
+              onSome: changes => changes.properties,
+            }),
+            property => hasName(SEAT_ACTION_FIELDS, keyName(property)),
+          ),
+          property =>
             context.report({ node: property, message: SEAT_ACTION_MESSAGE }),
-          )
+        )
       },
     }
   },
@@ -718,15 +726,17 @@ const noBindingFieldWrite = defineRule({
         ) {
           return
         }
-        changes.properties
-          .filter(property => hasName(BINDING_FIELDS, keyName(property)))
-          .forEach(property =>
+        Array.forEach(
+          Array.filter(changes.properties, property =>
+            hasName(BINDING_FIELDS, keyName(property)),
+          ),
+          property =>
             context.report({
               node: property,
               message:
                 'A child Block\'s field changes only through its Binding: call an operation (CoopBinding.requestKeepTracers(...)) from a makeStep (AGENTS.md "Blocks and Bindings").',
             }),
-          )
+        )
       },
     }
   },
@@ -757,9 +767,10 @@ const liveTestNote = defineRule({
         if (call.type !== 'CallExpression' || !isItLive(call.callee)) {
           return
         }
-        const hasNote = context.sourceCode
-          .getCommentsBefore(node)
-          .some(comment => comment.value.trim().startsWith('NOTE:'))
+        const hasNote = Array.some(
+          context.sourceCode.getCommentsBefore(node),
+          comment => String.startsWith('NOTE:')(String.trim(comment.value)),
+        )
         if (!hasNote) {
           context.report({
             node,
@@ -793,25 +804,33 @@ const disableNeedsReason = defineRule({
     return {
       Program() {
         const comments = sourceCode.getAllComments()
-        const noteEnds = comments
-          .filter(comment => comment.value.trim().startsWith('NOTE:'))
-          .map(comment => sourceCode.getLoc(comment).end.line)
-        comments
-          .filter(comment => SILENCER.test(comment.value))
-          .filter(comment => !/\s--\s*\S/.test(comment.value))
-          .filter(comment => {
-            const line = sourceCode.getLoc(comment).start.line
-            return !noteEnds.some(
-              end => end <= line && line - end <= NOTE_REACH_LINES,
-            )
-          })
-          .forEach(comment =>
+        const noteEnds = Array.map(
+          Array.filter(comments, comment =>
+            String.startsWith('NOTE:')(String.trim(comment.value)),
+          ),
+          comment => sourceCode.getLoc(comment).end.line,
+        )
+        Array.forEach(
+          Array.filter(
+            Array.filter(
+              Array.filter(comments, comment => SILENCER.test(comment.value)),
+              comment => !/\s--\s*\S/.test(comment.value),
+            ),
+            comment => {
+              const line = sourceCode.getLoc(comment).start.line
+              return !Array.some(
+                noteEnds,
+                end => end <= line && line - end <= NOTE_REACH_LINES,
+              )
+            },
+          ),
+          comment =>
             context.report({
               loc: sourceCode.getLoc(comment),
               message:
                 'A silenced rule needs its reason: a // NOTE: just above, or `-- why` after the rule (AGENTS.md "Strictness").',
             }),
-          )
+        )
       },
     }
   },

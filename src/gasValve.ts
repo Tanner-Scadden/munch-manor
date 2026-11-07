@@ -1,4 +1,4 @@
-import { Array, Option, Record, pipe } from 'effect'
+import { Array, Function, Option, Record, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -91,24 +91,26 @@ export const valveOffers = (world: World): ReadonlyArray<Offer> =>
       })
     : []
 
-export const buyValve = (
-  world: World,
-  slot: PlayerSlot,
-  price: number,
-): Option.Option<World> =>
-  isValveForSale(world) &&
-  Option.isSome(valveBoxOf(levelOf(world))) &&
-  seatStateAt(world, slot).wallet.balance >= price
-    ? Option.some(
-        modifyFields(spendOn(world, slot, price), {
-          gasValve: () =>
-            GasValve.Lit({
-              owner: slot,
-              nextBurnMs: VALVE_RULES.burnEveryMs,
-            }),
-        }),
-      )
-    : Option.none()
+export const buyValve: {
+  (slot: PlayerSlot, price: number): (world: World) => Option.Option<World>
+  (world: World, slot: PlayerSlot, price: number): Option.Option<World>
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, price: number): Option.Option<World> =>
+    isValveForSale(world) &&
+    Option.isSome(valveBoxOf(levelOf(world))) &&
+    seatStateAt(world, slot).wallet.balance >= price
+      ? Option.some(
+          modifyFields(spendOn(world, slot, price), {
+            gasValve: () =>
+              GasValve.Lit({
+                owner: slot,
+                nextBurnMs: VALVE_RULES.burnEveryMs,
+              }),
+          }),
+        )
+      : Option.none(),
+)
 
 // THE FIRE
 
@@ -173,7 +175,10 @@ const burn = (world: World, owner: PlayerSlot, zone: Box): World => {
 
 // NOTE: once lit, the fire burns every 0.3 s whatever the phase; in a
 // break there is nobody to burn.
-export const burnHearth = (world: World, deltaMs: number): World =>
+export const burnHearth: {
+  (deltaMs: number): (world: World) => World
+  (world: World, deltaMs: number): World
+} = Function.dual(2, (world: World, deltaMs: number): World =>
   GasValve.match(world.gasValve, {
     Shut: () => world,
     Lit: ({ owner, nextBurnMs }) => {
@@ -193,4 +198,5 @@ export const burnHearth = (world: World, deltaMs: number): World =>
           })
         : timed
     },
-  })
+  }),
+)

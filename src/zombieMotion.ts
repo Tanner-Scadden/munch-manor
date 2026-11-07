@@ -1,15 +1,10 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  type Box,
-  type Level,
-  isInsideRoomAt,
-  levelOf,
-  moveCircle,
-} from './arena'
+import { type Box, type Level, isInsideRoomAt, levelOf } from './arena'
 import { isRooted, paceOf } from './boss'
 import { maybeChuckerHeading } from './chucker'
+import { moveCircle } from './collision'
 import {
   CONTACT_ALLOWANCE_PX,
   PLAYER_RADIUS,
@@ -349,42 +344,44 @@ const advanceZombie = (
   })
 }
 
-export const advanceZombies = (
-  model: World,
-  seconds: number,
-  deltaMs: number,
-): ReadonlyArray<Zombie> => {
-  const level = levelOf(model)
-  const separations = separationPushes(model.zombies)
-  const obstacles: Obstacles = {
-    level,
-    blockers: trapBlockers(level, model.traps),
-    barricaded: barricadedDoors(model.traps),
-    boss: model.boss,
-    zombies: model.zombies,
-  }
-  const targets = targetsOf(model)
-  const flowFields = flowFieldsToward(
-    level,
-    targets,
-    tollsOf(level, model.traps),
-  )
-  return pipe(
-    model.zombies,
-    Array.map((zombie, index) =>
-      advanceZombie(
-        zombie,
-        Option.getOrElse(Array.get(separations, index), () => ZERO_VECTOR),
-        flowFields,
-        obstacles,
-        nearestOf(targets, zombie),
-        seconds,
-        deltaMs,
+export const advanceZombies: {
+  (seconds: number, deltaMs: number): (model: World) => ReadonlyArray<Zombie>
+  (model: World, seconds: number, deltaMs: number): ReadonlyArray<Zombie>
+} = Function.dual(
+  3,
+  (model: World, seconds: number, deltaMs: number): ReadonlyArray<Zombie> => {
+    const level = levelOf(model)
+    const separations = separationPushes(model.zombies)
+    const obstacles: Obstacles = {
+      level,
+      blockers: trapBlockers(level, model.traps),
+      barricaded: barricadedDoors(model.traps),
+      boss: model.boss,
+      zombies: model.zombies,
+    }
+    const targets = targetsOf(model)
+    const flowFields = flowFieldsToward(
+      level,
+      targets,
+      tollsOf(level, model.traps),
+    )
+    return pipe(
+      model.zombies,
+      Array.map((zombie, index) =>
+        advanceZombie(
+          zombie,
+          Option.getOrElse(Array.get(separations, index), () => ZERO_VECTOR),
+          flowFields,
+          obstacles,
+          nearestOf(targets, zombie),
+          seconds,
+          deltaMs,
+        ),
       ),
-    ),
-    Array.filter(zombie => !isFinishedDying(zombie)),
-  )
-}
+      Array.filter(zombie => !isFinishedDying(zombie)),
+    )
+  },
+)
 
 // FOOTFALLS
 
@@ -415,7 +412,10 @@ const maybeFootfall =
       )
     })
 
-export const recordFootfalls = (model: World, deltaMs: number): World =>
+export const recordFootfalls: {
+  (deltaMs: number): (model: World) => World
+  (model: World, deltaMs: number): World
+} = Function.dual(2, (model: World, deltaMs: number): World =>
   modifyFields(model, {
     frameEvents: frameEvents => [
       ...frameEvents,
@@ -430,4 +430,5 @@ export const recordFootfalls = (model: World, deltaMs: number): World =>
         ),
       ),
     ],
-  })
+  }),
+)

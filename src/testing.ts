@@ -3,7 +3,7 @@
 // Models live in `model.fixture.ts`. `tools/lint/duplicateHelpers.ts`
 // fails a helper copied between test files: add it here instead.
 
-import { Array, Match, Option, Struct } from 'effect'
+import { Array, Function, Match, Option, Schema, Struct } from 'effect'
 import { Canvas, Scene, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -67,6 +67,15 @@ export const scoring =
     },
   })
 
+// NOTE: any value as JSON, for a test that writes a save or compares two
+// values by what they hold.
+const encodeJson = Schema.encodeUnknownOption(
+  Schema.fromJsonString(Schema.Unknown),
+)
+
+export const jsonOf = (value: unknown): string =>
+  Option.getOrThrow(encodeJson(value))
+
 export const SURFACE = { left: 0, top: 0, width: 800, height: 400 }
 
 export const WIDE_SURFACE = { left: 0, top: 0, width: 1280, height: 720 }
@@ -79,8 +88,16 @@ export const PHONE_PORTRAIT = { left: 0, top: 0, width: 390, height: 844 }
 export const tick = (deltaTime: number) =>
   Story.message(Message.TickedFrame({ deltaTime }))
 
-export const ticks = (count: number, deltaTime: number) =>
-  Array.makeBy(count, () => tick(deltaTime))
+type TickStep = ReturnType<typeof tick>
+
+export const ticks: {
+  (deltaTime: number): (count: number) => Array.NonEmptyArray<TickStep>
+  (count: number, deltaTime: number): Array.NonEmptyArray<TickStep>
+} = Function.dual(
+  2,
+  (count: number, deltaTime: number): Array.NonEmptyArray<TickStep> =>
+    Array.makeBy(count, () => tick(deltaTime)),
+)
 
 export const press = (code: string) =>
   Story.message(Message.PressedKey({ code }))
@@ -245,8 +262,12 @@ export const closeDialogInScene = () => [
 // option in it by name, and its little tabs.
 export const lookGroup = (name: string) => Scene.role('radiogroup', { name })
 
-export const lookOptionIn = (groupName: string, name: string) =>
-  Scene.within(lookGroup(groupName), Scene.role('radio', { name }))
+export const lookOptionIn: {
+  (name: string): (groupName: string) => Scene.Locator
+  (groupName: string, name: string): Scene.Locator
+} = Function.dual(2, (groupName: string, name: string): Scene.Locator =>
+  Scene.within(lookGroup(groupName), Scene.role('radio', { name })),
+)
 
 export const lookSection = (name: string) => lookOptionIn('Parts', name)
 
@@ -273,29 +294,51 @@ export const resolveFocusOption = () =>
 
 export const tap = (code: string) => Story.steps(press(code), release(code))
 
-export const touchDown = (
-  pointerId: number,
-  clientX: number,
-  clientY: number,
-) =>
-  Story.message(
-    Message.PressedPointer({ pointerId, device: 'Touch', clientX, clientY }),
-  )
+type PointerStep = Story.MessageStep<Message>
 
-export const touchMove = (
-  pointerId: number,
-  clientX: number,
-  clientY: number,
-) => Story.message(Message.MovedPointer({ pointerId, clientX, clientY }))
+export const touchDown: {
+  (clientX: number, clientY: number): (pointerId: number) => PointerStep
+  (pointerId: number, clientX: number, clientY: number): PointerStep
+} = Function.dual(
+  3,
+  (pointerId: number, clientX: number, clientY: number): PointerStep =>
+    Story.message(
+      Message.PressedPointer({ pointerId, device: 'Touch', clientX, clientY }),
+    ),
+)
 
-export const mouseDown = (clientX: number, clientY: number) =>
+export const touchMove: {
+  (clientX: number, clientY: number): (pointerId: number) => PointerStep
+  (pointerId: number, clientX: number, clientY: number): PointerStep
+} = Function.dual(
+  3,
+  (pointerId: number, clientX: number, clientY: number): PointerStep =>
+    Story.message(Message.MovedPointer({ pointerId, clientX, clientY })),
+)
+
+export const mouseDown: {
+  (clientY: number): (clientX: number) => PointerStep
+  (clientX: number, clientY: number): PointerStep
+} = Function.dual(2, (clientX: number, clientY: number): PointerStep =>
   Story.message(
-    Message.PressedPointer({ pointerId: 1, device: 'Mouse', clientX, clientY }),
-  )
+    Message.PressedPointer({
+      pointerId: 1,
+      device: 'Mouse',
+      clientX,
+      clientY,
+    }),
+  ),
+)
 
 // NOTE: the frames, of `frameMs` each, that play `ms` of game time.
-export const ticksFor = (ms: number, frameMs: number) =>
-  ticks(Math.round(ms / frameMs), frameMs)
+export const ticksFor: {
+  (frameMs: number): (ms: number) => Array.NonEmptyArray<TickStep>
+  (ms: number, frameMs: number): Array.NonEmptyArray<TickStep>
+} = Function.dual(
+  2,
+  (ms: number, frameMs: number): Array.NonEmptyArray<TickStep> =>
+    ticks(Math.round(ms / frameMs), frameMs),
+)
 
 // NOTE: the Model one fixed-step frame later, for a test that plays frames
 // by hand and looks at each.
@@ -304,8 +347,13 @@ export const nextFrame = (current: Model): Model =>
 
 // NOTE: the Model a Message leaves, for a test that starts from a Command's
 // result, which no Subscription emits.
-export const modelAfter = (model: Model, message: Message): Model =>
-  update(model, message).model
+export const modelAfter: {
+  (message: Message): (model: Model) => Model
+  (model: Model, message: Message): Model
+} = Function.dual(
+  2,
+  (model: Model, message: Message): Model => update(model, message).model,
+)
 
 // NOTE: how many fixed-step frames it takes to play at least `ms`.
 export const tickCountFor = (ms: number): number =>
@@ -396,26 +444,37 @@ export const startedRunOf = (model: Model): Model =>
 // READING A MODEL
 
 // NOTE: every event the Messages raise, frame by frame, in order.
-export const eventsOver = (
-  start: Model,
-  messages: ReadonlyArray<Message>,
-): ReadonlyArray<GameEvent> =>
-  Array.reduce(
-    messages,
-    { current: start, events: Array.empty<GameEvent>() },
-    ({ current, events }, sent) => {
-      const next = update(current, sent).model
-      return { current: next, events: [...events, ...next.frameEvents] }
-    },
-  ).events
+export const eventsOver: {
+  (messages: ReadonlyArray<Message>): (start: Model) => ReadonlyArray<GameEvent>
+  (start: Model, messages: ReadonlyArray<Message>): ReadonlyArray<GameEvent>
+} = Function.dual(
+  2,
+  (start: Model, messages: ReadonlyArray<Message>): ReadonlyArray<GameEvent> =>
+    Array.reduce(
+      messages,
+      { current: start, events: Array.empty<GameEvent>() },
+      ({ current, events }, sent) => {
+        const next = update(current, sent).model
+        return { current: next, events: [...events, ...next.frameEvents] }
+      },
+    ).events,
+)
 
-export const zombieById = (current: Model, id: number): Zombie =>
+export const zombieById: {
+  (id: number): (current: Model) => Zombie
+  (current: Model, id: number): Zombie
+} = Function.dual(2, (current: Model, id: number): Zombie =>
   Option.getOrThrow(
     Array.findFirst(current.zombies, zombie => zombie.id === id),
-  )
+  ),
+)
 
-export const hasEvent = (current: Model, tag: GameEvent['_tag']): boolean =>
-  Array.some(current.frameEvents, event => event._tag === tag)
+export const hasEvent: {
+  (tag: GameEvent['_tag']): (current: Model) => boolean
+  (current: Model, tag: GameEvent['_tag']): boolean
+} = Function.dual(2, (current: Model, tag: GameEvent['_tag']): boolean =>
+  Array.some(current.frameEvents, event => event._tag === tag),
+)
 
 export const tagsOf = (
   events: ReadonlyArray<GameEvent>,
@@ -434,24 +493,35 @@ export const WORLD_KEYS = Struct.keys(World.fields)
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 
 // NOTE: every Rect in a shape tree, moved by its Groups' translations.
-export const rectsOf = (
-  shapes: ReadonlyArray<Canvas.Shape>,
-  offset: Readonly<{ x: number; y: number }>,
-): ReadonlyArray<Canvas.Rect & Box> =>
-  Array.flatMap(shapes, shape =>
-    Match.value(shape).pipe(
-      Match.tag('Group', group =>
-        rectsOf(group.shapes, {
-          x: offset.x + (group.translate?.x ?? 0),
-          y: offset.y + (group.translate?.y ?? 0),
-        }),
+export const rectsOf: {
+  (
+    offset: Readonly<{ x: number; y: number }>,
+  ): (shapes: ReadonlyArray<Canvas.Shape>) => ReadonlyArray<Canvas.Rect & Box>
+  (
+    shapes: ReadonlyArray<Canvas.Shape>,
+    offset: Readonly<{ x: number; y: number }>,
+  ): ReadonlyArray<Canvas.Rect & Box>
+} = Function.dual(
+  2,
+  (
+    shapes: ReadonlyArray<Canvas.Shape>,
+    offset: Readonly<{ x: number; y: number }>,
+  ): ReadonlyArray<Canvas.Rect & Box> =>
+    Array.flatMap(shapes, shape =>
+      Match.value(shape).pipe(
+        Match.tag('Group', group =>
+          rectsOf(group.shapes, {
+            x: offset.x + (group.translate?.x ?? 0),
+            y: offset.y + (group.translate?.y ?? 0),
+          }),
+        ),
+        Match.tag('Rect', rect => [
+          Canvas.Rect({ ...rect, x: rect.x + offset.x, y: rect.y + offset.y }),
+        ]),
+        Match.orElse(() => []),
       ),
-      Match.tag('Rect', rect => [
-        Canvas.Rect({ ...rect, x: rect.x + offset.x, y: rect.y + offset.y }),
-      ]),
-      Match.orElse(() => []),
     ),
-  )
+)
 
 export const imagesIn = (
   shapes: ReadonlyArray<Canvas.Shape>,
@@ -484,7 +554,7 @@ export const nodesOf = (root: VNodeLike): ReadonlyArray<VNodeLike> => {
       return
     }
     found.push(node)
-    node.children?.forEach(visit)
+    Array.forEach(node.children ?? [], visit)
   }
   visit(root)
   return found
@@ -534,17 +604,35 @@ export const updateChip = Scene.role('button', {
 
 // Ticks that push each frame's Model onto `frames`, for tests that look at a
 // whole fight after it is played.
-export const recordTicks = (
-  count: number,
-  deltaTime: number,
-  frames: Array<Model>,
-) =>
-  Array.flatMap(ticks(count, deltaTime), frame => [
-    frame,
-    Story.model((current: Model) => {
-      frames.push(current)
-    }),
-  ])
+type RecordStep = TickStep | ReturnType<typeof Story.model<Model>>
+
+export const recordTicks: {
+  (
+    deltaTime: number,
+    frames: Array<Model>,
+  ): (count: number) => Array.NonEmptyArray<RecordStep>
+  (
+    count: number,
+    deltaTime: number,
+    frames: Array<Model>,
+  ): Array.NonEmptyArray<RecordStep>
+} = Function.dual(
+  3,
+  (
+    count: number,
+    deltaTime: number,
+    frames: Array<Model>,
+  ): Array.NonEmptyArray<RecordStep> =>
+    Array.flatMap(
+      ticks(count, deltaTime),
+      (frame): Array.NonEmptyReadonlyArray<RecordStep> => [
+        frame,
+        Story.model((current: Model) => {
+          frames.push(current)
+        }),
+      ],
+    ),
+)
 
 export const blastFrames = (
   frames: ReadonlyArray<Model>,
@@ -560,7 +648,7 @@ type ZombieOptions = Readonly<{
   frenzy?: Frenzy
 }>
 
-export const zombieOf = (
+const makeZombie = (
   kind: ZombieKind,
   id: number,
   x: number,
@@ -586,6 +674,23 @@ export const zombieOf = (
   frenzy,
 })
 
+// NOTE: data first when the kind leads: a kind is a string, an id a number.
+export const zombieOf: {
+  (
+    id: number,
+    x: number,
+    y: number,
+    options?: ZombieOptions,
+  ): (kind: ZombieKind) => Zombie
+  (
+    kind: ZombieKind,
+    id: number,
+    x: number,
+    y: number,
+    options?: ZombieOptions,
+  ): Zombie
+} = Function.dual((args: IArguments) => typeof args[0] === 'string', makeZombie)
+
 // NOTE: a grid of up to forty spots on open floor, ten across each of four
 // rows that no furniture in the parlour touches, for tests that fill the
 // room with zombies.
@@ -602,32 +707,47 @@ export const openFloorSpot = (
     OPEN_FLOOR_ROWS_Y[0],
 })
 
-export const zombieAt = (
-  id: number,
-  x: number,
-  y: number,
-  { hp = ZOMBIE_MAX_HP, ...options }: ZombieOptions = {},
-): Zombie => zombieOf('Shambler', id, x, y, { hp, ...options })
+// NOTE: data first when the third argument is a number: `y` after `id` and
+// `x`, where data last has the options there.
+export const zombieAt: {
+  (x: number, y: number, options?: ZombieOptions): (id: number) => Zombie
+  (id: number, x: number, y: number, options?: ZombieOptions): Zombie
+} = Function.dual(
+  (args: IArguments) => typeof args[2] === 'number',
+  (
+    id: number,
+    x: number,
+    y: number,
+    { hp = ZOMBIE_MAX_HP, ...options }: ZombieOptions = {},
+  ): Zombie => makeZombie('Shambler', id, x, y, { hp, ...options }),
+)
 
 type BulletOptions = Readonly<{ damage?: number; knockback?: number }>
 
-export const bulletInto = (
-  id: number,
-  { x, y }: Zombie,
-  { damage = 1, knockback = 110 }: BulletOptions = {},
-): Bullet => ({
-  id,
-  x,
-  y,
-  velocityX: 1,
-  velocityY: 0,
-  remainingMs: 900,
-  weapon: 'Pistol',
-  damage,
-  knockback,
-  glaze: 'Plain',
-  pierce: Pierce.Stops(),
-})
+// NOTE: data first when the id leads: an id is a number, a zombie is not.
+export const bulletInto: {
+  (target: Zombie, options?: BulletOptions): (id: number) => Bullet
+  (id: number, target: Zombie, options?: BulletOptions): Bullet
+} = Function.dual(
+  (args: IArguments) => typeof args[0] === 'number',
+  (
+    id: number,
+    { x, y }: Zombie,
+    { damage = 1, knockback = 110 }: BulletOptions = {},
+  ): Bullet => ({
+    id,
+    x,
+    y,
+    velocityX: 1,
+    velocityY: 0,
+    remainingMs: 900,
+    weapon: 'Pistol',
+    damage,
+    knockback,
+    glaze: 'Plain',
+    pierce: Pierce.Stops(),
+  }),
+)
 
 // ARSENALS
 
@@ -636,25 +756,26 @@ export const bulletInto = (
 export const pistolOnly = (pistol: CarriedGun = STARTING_PISTOL): Arsenal =>
   Arsenal.OneGun({ first: pistol })
 
-export const holdingSecond = (
-  second: CarriedGun,
-  first: CarriedGun = STARTING_PISTOL,
-): Arsenal => Arsenal.HoldingSecond({ first, second })
+// NOTE: with the Pop Pistol in the first slot; a test with another gun
+// there builds the Arsenal itself.
+export const holdingSecond = (second: CarriedGun): Arsenal =>
+  Arsenal.HoldingSecond({ first: STARTING_PISTOL, second })
 
-export const holdingFirst = (
-  second: CarriedGun,
-  first: CarriedGun = STARTING_PISTOL,
-): Arsenal => Arsenal.HoldingFirst({ first, second })
+export const holdingFirst = (second: CarriedGun): Arsenal =>
+  Arsenal.HoldingFirst({ first: STARTING_PISTOL, second })
 
 // NOTE: changes the carried Pop Pistol, wherever it sits.
-export const withPistol = (
-  player: Player,
-  change: (pistol: CarriedGun) => CarriedGun,
-): Player =>
-  modifyFields(player, {
-    arsenal: arsenal =>
-      mapGuns(arsenal, gun => (gun.kind === 'Pistol' ? change(gun) : gun)),
-  })
+export const withPistol: {
+  (change: (pistol: CarriedGun) => CarriedGun): (player: Player) => Player
+  (player: Player, change: (pistol: CarriedGun) => CarriedGun): Player
+} = Function.dual(
+  2,
+  (player: Player, change: (pistol: CarriedGun) => CarriedGun): Player =>
+    modifyFields(player, {
+      arsenal: arsenal =>
+        mapGuns(arsenal, gun => (gun.kind === 'Pistol' ? change(gun) : gun)),
+    }),
+)
 
 export const pistolOf = (player: Player): CarriedGun =>
   Option.getOrThrow(maybeCarried(player, 'Pistol'))

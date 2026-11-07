@@ -1,4 +1,4 @@
-import { Array, Equal, Option, Result } from 'effect'
+import { Array, Equal, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 import { type Html, createLazy } from 'foldkit/html'
 
@@ -263,10 +263,10 @@ const lensStyle = (
 
 const STAGE_BACKDROP = '#140c10'
 
-export const gameStageView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html => {
+export const gameStageView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html => {
   const screen = screenOf(model)
   const camera = worldCameraFor(model, screen)
   const { world } = screen
@@ -334,4 +334,4 @@ export const gameStageView = (
       lazyWarmUp(warmUpView, [h]),
     ],
   )
-}
+})

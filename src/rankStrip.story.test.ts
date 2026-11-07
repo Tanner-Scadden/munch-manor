@@ -24,6 +24,7 @@ import {
 import { endOverlayShapes } from './endView'
 import { type Model, Phase, RunMode } from './model'
 import { readyModel } from './model.fixture'
+import { jsonOf } from './testing'
 
 // The rank strip on the end card (src/endBeat.ts, src/rankStripView.ts):
 // it comes after the tally, fills its bar, and on a rank up pops with a
@@ -162,7 +163,8 @@ describe('the cards a rank up flips', () => {
     bonesGained: 100,
     bonusPercent: 0,
   })
-  const tag = (model: Model) => unlocksOf(model).map(unlock => unlock._tag)
+  const tag = (model: Model) =>
+    Array.map(unlocksOf(model), unlock => unlock._tag)
 
   test('a rank that reaches a gift flips the hat, none when it does not', () => {
     expect(unlocksOf(ended(hatGift))).toEqual([
@@ -182,7 +184,7 @@ describe('the cards a rank up flips', () => {
       'Gift',
     ])
     expect(
-      unlocksOf(ended(several)).map(unlock =>
+      Array.map(unlocksOf(ended(several)), unlock =>
         unlock._tag === 'Gift' ? unlock.name : '',
       ),
     ).toEqual(['', '', 'PartyHat', 'BucketHat', 'PomBeanie', 'PropellerCap'])
@@ -202,7 +204,7 @@ describe('the cards a rank up flips', () => {
   test('the card in view is the one whose turn it is', () => {
     const at = (card: number, extraMs: number) => {
       const model = ended(several)
-      return JSON.stringify(
+      return jsonOf(
         endOverlayShapes(
           modifyFields(model, {
             screenMs: () =>

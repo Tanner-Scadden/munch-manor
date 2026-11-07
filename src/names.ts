@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
@@ -45,11 +45,15 @@ export const TIER_LADDER: Array.NonEmptyReadonlyArray<
   base => `${base} 3000`,
 ]
 
-export const gunTierName = (kind: WeaponKind, tier: number): string =>
+export const gunTierName: {
+  (tier: number): (kind: WeaponKind) => string
+  (kind: WeaponKind, tier: number): string
+} = Function.dual(2, (kind: WeaponKind, tier: number): string =>
   Option.match(Array.get(TIER_LADDER, tier), {
     onNone: () => GUN_NAMES[kind],
     onSome: name => name(GUN_NAMES[kind]),
-  })
+  }),
+)
 
 // NOTE: the knife every player carries (src/knife.ts). It has no tiers and
 // is never sold, so it has one name and nothing else.
@@ -265,14 +269,18 @@ export const hatNameOf = (name: string): string =>
     () => name,
   )
 
-export const giftName = (kind: CosmeticKind, name: string): string =>
+export const giftName: {
+  (name: string): (kind: CosmeticKind) => string
+  (kind: CosmeticKind, name: string): string
+} = Function.dual(2, (kind: CosmeticKind, name: string): string =>
   kind === 'Hat'
     ? hatNameOf(name)
     : kind === 'Shirt'
       ? `${name} Shirt`
       : kind === 'Skin'
         ? `${name} Gun`
-        : name
+        : name,
+)
 
 // NOTE: the short line beside each special on a hero's card, read from
 // src/callingSpecials.ts with the numbers the rules hold (src/calling.ts), so

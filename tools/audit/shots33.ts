@@ -15,29 +15,32 @@
 // ONLY picks scenes, such as `ONLY=home,munchopedia`. SHOTS_PARALLEL sets
 // how many screens run at once, each in its own browser contexts (3 by
 // default).
+import { Array, Effect, String } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
   DESKTOP_1280,
   DESKTOP_1920,
   type Log,
   PHONE_667,
   PHONE_844,
-  TAG,
+  type ScenePages,
   type Viewport,
+  auditTag,
   deviceQuery,
   finish,
   forEachInOrder,
   harnessQuery,
   isPickedScene,
-  launch,
+  openBrowser,
   parallelFrom,
   scenePages,
   settleAnimations,
+  settled,
   shot,
-  useHarness,
-  whenSettled,
 } from './lib'
+import { attempt } from './page'
 
 const VIEWPORTS: ReadonlyArray<Viewport> = [
   PHONE_667,
@@ -145,193 +148,220 @@ const SCENES: ReadonlyArray<Scene> = [
 
 const MIN_SIDE = 48
 
-const press = async (
+const press = (
   page: Page,
   viewport: Viewport,
   selector: string,
   problems: Array<string>,
-) => {
-  const box = await page.locator(selector).first().boundingBox()
-  if (box === null) {
-    problems.push(`nothing to open with ${selector}`)
-    return
+) =>
+  Effect.gen(function* () {
+    const box = yield* attempt(() =>
+      page.locator(selector).first().boundingBox(),
+    )
+    if (box === null) {
+      problems.push(`nothing to open with ${selector}`)
+      return
+    }
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 2
+    yield* attempt(() =>
+      viewport.isPhone ? page.touchscreen.tap(x, y) : page.mouse.click(x, y),
+    )
+    yield* settleAnimations(page)
+  })
+
+// NOTE: runs in the page, which has no Effect: plain loops, so no native
+// Array method is left for the Effect rules to flag.
+const readLayout = ({
+  minSide,
+  isPhone,
+}: Readonly<{ minSide: number; isPhone: boolean }>) => {
+  const openDialog = document.querySelector('dialog[open]')
+  const scope: ParentNode = openDialog ?? document
+  const buttons: Array<{ label: string; box: DOMRect }> = []
+  for (const button of scope.querySelectorAll('button, a.home-support')) {
+    if (openDialog === null && button.closest('dialog') !== null) {
+      continue
+    }
+    const box = button.getBoundingClientRect()
+    if (box.width > 0 && box.height > 0) {
+      buttons.push({
+        // NOTE: runs in the page, where effect's String is not loaded.
+        // @effect-diagnostics-next-line preferEffectString:off
+        label: button.getAttribute('aria-label') ?? button.textContent.trim(),
+        box,
+      })
+    }
   }
-  const x = box.x + box.width / 2
-  const y = box.y + box.height / 2
-  if (viewport.isPhone) {
-    await page.touchscreen.tap(x, y)
-  } else {
-    await page.mouse.click(x, y)
+  const small: Array<string> = []
+  if (isPhone) {
+    for (const { label, box } of buttons) {
+      if (box.width < minSide - 0.5 || box.height < minSide - 0.5) {
+        small.push(
+          `${label} ${Math.round(box.width)}x${Math.round(box.height)}`,
+        )
+      }
+    }
   }
-  await settleAnimations(page)
+  const overlaps: Array<string> = []
+  if (openDialog === null) {
+    for (let index = 0; index < buttons.length; index++) {
+      const first = buttons[index]
+      for (let next = index + 1; next < buttons.length; next++) {
+        const second = buttons[next]
+        if (
+          first !== undefined &&
+          second !== undefined &&
+          first.box.left < second.box.right - 1 &&
+          second.box.left < first.box.right - 1 &&
+          first.box.top < second.box.bottom - 1 &&
+          second.box.top < first.box.bottom - 1
+        ) {
+          overlaps.push(`${first.label} / ${second.label}`)
+        }
+      }
+    }
+  }
+  const panel = document.querySelector('dialog[open] .panel')
+  const panelScroll =
+    panel === null ? 0 : panel.scrollHeight - panel.clientHeight
+  const pageScroll = document.documentElement.scrollHeight - window.innerHeight
+  const play = document.querySelector('#home-play')?.getBoundingClientRect()
+  return {
+    small,
+    overlaps,
+    panelScroll,
+    pageScroll,
+    play:
+      play === undefined
+        ? 'none'
+        : `${Math.round(play.x)},${Math.round(play.y)} ${Math.round(play.width)}x${Math.round(play.height)}`,
+  }
 }
 
 const check = (page: Page, side: number, phone: boolean) =>
-  page.evaluate(
-    ({ minSide, isPhone }) => {
-      const openDialog = document.querySelector('dialog[open]')
-      const scope: ParentNode = openDialog ?? document
-      const buttons = Array.from(
-        scope.querySelectorAll('button, a.home-support'),
-      )
-        .filter(
-          button => openDialog !== null || button.closest('dialog') === null,
-        )
-        .map(button => ({
-          label: button.getAttribute('aria-label') ?? button.textContent.trim(),
-          box: button.getBoundingClientRect(),
-        }))
-        .filter(({ box }) => box.width > 0 && box.height > 0)
-      const small = isPhone
-        ? buttons
-            .filter(
-              ({ box }) =>
-                box.width < minSide - 0.5 || box.height < minSide - 0.5,
-            )
-            .map(
-              ({ label, box }) =>
-                `${label} ${Math.round(box.width)}x${Math.round(box.height)}`,
-            )
-        : []
-      const overlaps =
-        openDialog === null
-          ? buttons.flatMap((first, index) =>
-              buttons
-                .slice(index + 1)
-                .filter(
-                  second =>
-                    first.box.left < second.box.right - 1 &&
-                    second.box.left < first.box.right - 1 &&
-                    first.box.top < second.box.bottom - 1 &&
-                    second.box.top < first.box.bottom - 1,
-                )
-                .map(second => `${first.label} / ${second.label}`),
-            )
-          : []
-      const panel = document.querySelector('dialog[open] .panel')
-      const panelScroll =
-        panel === null ? 0 : panel.scrollHeight - panel.clientHeight
-      const pageScroll =
-        document.documentElement.scrollHeight - window.innerHeight
-      const play = document.querySelector('#home-play')?.getBoundingClientRect()
-      return {
-        small,
-        overlaps,
-        panelScroll,
-        pageScroll,
-        play:
-          play === undefined
-            ? 'none'
-            : `${Math.round(play.x)},${Math.round(play.y)} ${Math.round(play.width)}x${Math.round(play.height)}`,
-      }
-    },
-    { minSide: side, isPhone: phone },
-  )
-
-await useHarness()
-const browser = await launch()
-
-// NOTE: every scene plays 72 frames (1.2 s) at once and holds there, so the
-// pictures are the same on every run, and a page per screen switches scenes
-// in place.
-const pages = scenePages(browser, ['tick=72'])
+  attempt(() => page.evaluate(readLayout, { minSide: side, isPhone: phone }))
 
 // NOTE: one viewport is one unit of work, since PLAY's box is compared
 // across its scenes and the focus walk follows them.
-const checkViewport = async (
+const checkViewport = (
+  pages: ScenePages,
+  tag: string,
   viewport: Viewport,
   log: Log,
-): Promise<ReadonlyArray<string>> => {
-  const problems: Array<string> = []
-  const playBoxes = new Map<string, string>()
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
-    }
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
-    )
-    await settleAnimations(page)
-    for (const selector of scene.open ?? []) {
-      await press(page, viewport, selector, problems)
-    }
-    const found = await check(page, MIN_SIDE, viewport.isPhone)
-    const name = `s33-${TAG}-${viewport.name}-${scene.name}`
-    await shot(page, name)
-    playBoxes.set(scene.name, found.play)
-    const notes = [
-      found.small.length > 0 ? `small: ${found.small.join(', ')}` : '',
-      found.overlaps.length > 0 ? `overlap: ${found.overlaps.join('; ')}` : '',
-      found.panelScroll > 0 ? `panel scrolls ${found.panelScroll}px` : '',
-      found.pageScroll > 0 ? `PAGE SCROLLS ${found.pageScroll}px` : '',
-    ].filter(Boolean)
-    log(`${name}  play ${found.play}  ${notes.join('  ')}`)
-    if (found.small.length > 0 || found.overlaps.length > 0) {
-      problems.push(`${name}: ${notes.join('  ')}`)
-    }
-    if (found.pageScroll > 0) {
-      problems.push(`${name}: the page scrolls`)
-    }
-    if (scene.name.startsWith('munchopedia') && found.panelScroll > 0) {
-      problems.push(`${name}: the Munchopedia panel scrolls`)
-    }
-    pages.release(page)
-  }
-  const campaignPlay = playBoxes.get('home-found')
-  const endlessPlay = playBoxes.get('home-endless')
-  if (campaignPlay !== undefined && endlessPlay !== undefined) {
-    const same = campaignPlay === endlessPlay
-    log(
-      `${viewport.name} PLAY campaign ${campaignPlay}, endless ${endlessPlay}: ${same ? 'same box' : 'MOVED'}`,
-    )
-    if (!same) {
-      problems.push(`${viewport.name}: PLAY moves when the mode switches`)
-    }
-  }
-  if (!viewport.isPhone && isPickedScene('focus')) {
-    const page = await pages.open(viewport, harnessQuery(FOUND, 'newsseen'))
-    const order: Array<string> = []
-    for (let step = 1; step <= 6; step++) {
-      await page.keyboard.press('ArrowDown')
-      await whenSettled(page)
-      order.push(
-        await page.evaluate(() => document.activeElement?.id ?? '(none)'),
+) =>
+  Effect.gen(function* () {
+    const problems: Array<string> = []
+    const playBoxes = new Map<string, string>()
+    for (const scene of SCENES) {
+      if (!(yield* isPickedScene(scene.name))) {
+        continue
+      }
+      const page = yield* pages.open(
+        viewport,
+        harnessQuery(scene.query, deviceQuery(viewport)),
       )
-      await shot(page, `s33-${TAG}-${viewport.name}-focus-${step}`)
-    }
-    const tabOrder: Array<string> = []
-    await page.locator('#home-play').focus()
-    for (let step = 0; step < 8; step++) {
-      tabOrder.push(
-        await page.evaluate(() => {
-          const active = document.activeElement
-          if (active === null) {
-            return '(none)'
-          }
-          if (active.id !== '') {
-            return active.id
-          }
-          const label = active.getAttribute('aria-label')
-          return label === null || label === '' ? '(none)' : label
-        }),
+      yield* settleAnimations(page)
+      for (const selector of scene.open ?? []) {
+        yield* press(page, viewport, selector, problems)
+      }
+      const found = yield* check(page, MIN_SIDE, viewport.isPhone)
+      const name = `s33-${tag}-${viewport.name}-${scene.name}`
+      yield* shot(page, name)
+      playBoxes.set(scene.name, found.play)
+      const notes = Array.filter(
+        [
+          found.small.length > 0
+            ? `small: ${Array.join(found.small, ', ')}`
+            : '',
+          found.overlaps.length > 0
+            ? `overlap: ${Array.join(found.overlaps, '; ')}`
+            : '',
+          found.panelScroll > 0 ? `panel scrolls ${found.panelScroll}px` : '',
+          found.pageScroll > 0 ? `PAGE SCROLLS ${found.pageScroll}px` : '',
+        ],
+        Boolean,
       )
-      await page.keyboard.press('Tab')
-      await whenSettled(page)
+      log(`${name}  play ${found.play}  ${Array.join(notes, '  ')}`)
+      if (found.small.length > 0 || found.overlaps.length > 0) {
+        problems.push(`${name}: ${Array.join(notes, '  ')}`)
+      }
+      if (found.pageScroll > 0) {
+        problems.push(`${name}: the page scrolls`)
+      }
+      if (
+        String.startsWith('munchopedia')(scene.name) &&
+        found.panelScroll > 0
+      ) {
+        problems.push(`${name}: the Munchopedia panel scrolls`)
+      }
+      pages.release(page)
     }
-    log(`${viewport.name} arrows: ${order.join(' > ')}`)
-    log(`${viewport.name} tab: ${tabOrder.join(' > ')}`)
-    pages.release(page)
-  }
-  return problems
-}
+    const campaignPlay = playBoxes.get('home-found')
+    const endlessPlay = playBoxes.get('home-endless')
+    if (campaignPlay !== undefined && endlessPlay !== undefined) {
+      const same = campaignPlay === endlessPlay
+      log(
+        `${viewport.name} PLAY campaign ${campaignPlay}, endless ${endlessPlay}: ${same ? 'same box' : 'MOVED'}`,
+      )
+      if (!same) {
+        problems.push(`${viewport.name}: PLAY moves when the mode switches`)
+      }
+    }
+    if (!viewport.isPhone && (yield* isPickedScene('focus'))) {
+      const page = yield* pages.open(viewport, harnessQuery(FOUND, 'newsseen'))
+      const order: Array<string> = []
+      for (let step = 1; step <= 6; step++) {
+        yield* attempt(() => page.keyboard.press('ArrowDown'))
+        yield* settled(page)
+        const focused = yield* attempt(() =>
+          page.evaluate(() => document.activeElement?.id ?? '(none)'),
+        )
+        order.push(focused)
+        yield* shot(page, `s33-${tag}-${viewport.name}-focus-${step}`)
+      }
+      const tabOrder: Array<string> = []
+      yield* attempt(() => page.locator('#home-play').focus())
+      for (let step = 0; step < 8; step++) {
+        const focused = yield* attempt(() =>
+          page.evaluate(() => {
+            const active = document.activeElement
+            if (active === null) {
+              return '(none)'
+            }
+            if (active.id !== '') {
+              return active.id
+            }
+            const label = active.getAttribute('aria-label')
+            return label === null || label === '' ? '(none)' : label
+          }),
+        )
+        tabOrder.push(focused)
+        yield* attempt(() => page.keyboard.press('Tab'))
+        yield* settled(page)
+      }
+      log(`${viewport.name} arrows: ${Array.join(order, ' > ')}`)
+      log(`${viewport.name} tab: ${Array.join(tabOrder, ' > ')}`)
+      pages.release(page)
+    }
+    return problems
+  })
 
-const problems = await forEachInOrder(
-  VIEWPORTS,
-  parallelFrom('SHOTS_PARALLEL'),
-  checkViewport,
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const browser = yield* openBrowser
+    // NOTE: every scene plays 72 frames (1.2 s) at once and holds there, so
+    // the pictures are the same on every run, and a page per screen switches
+    // scenes in place.
+    const pages = scenePages(browser, ['tick=72'])
+    const parallel = yield* parallelFrom('SHOTS_PARALLEL')
+    const problems = yield* forEachInOrder(
+      VIEWPORTS,
+      parallel,
+      (viewport, log) => checkViewport(pages, tag, viewport, log),
+    )
+    yield* pages.close
+    yield* finish(Array.flatten(problems), 'The home layout is clean.')
+  }),
 )
-await pages.close()
-await browser.close()
-
-finish(problems.flat(), 'The home layout is clean.')

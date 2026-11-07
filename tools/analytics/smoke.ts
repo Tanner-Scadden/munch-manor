@@ -1,4 +1,4 @@
-import { Array, Console, Data, Effect, Random, Schema, pipe } from 'effect'
+import { Array, Console, Effect, Random, Schema, pipe } from 'effect'
 import { FetchHttpClient, HttpClient, HttpClientRequest } from 'effect/http'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
@@ -21,9 +21,10 @@ import {
 
 const USAGE = 'Usage: bun tools/analytics/smoke.ts <api origin>'
 
-class SmokeError extends Data.TaggedError('SmokeError')<{
-  readonly reason: string
-}> {}
+class SmokeError extends Schema.TaggedError<
+  SmokeError,
+  { readonly brand: unique symbol }
+>()('SmokeError', { message: Schema.String }) {}
 
 const SMOKE_BUILD = 'smoke-test'
 
@@ -73,8 +74,7 @@ const call = (request: HttpClientRequest.HttpClientRequest) =>
     Effect.flatMap(response =>
       Effect.map(response.text, body => ({ status: response.status, body })),
     ),
-    Effect.mapError(error => new SmokeError({ reason: error.message })),
-    Effect.provide(FetchHttpClient.layer),
+    Effect.mapError(error => SmokeError.make({ message: error.message })),
   )
 
 const expectStatus =
@@ -83,17 +83,17 @@ const expectStatus =
     status === expected
       ? Console.log(`${what}: ${status} ${body}`)
       : Effect.fail(
-          new SmokeError({ reason: `${what} answered ${status} ${body}` }),
+          SmokeError.make({ message: `${what} answered ${status} ${body}` }),
         )
 
 const program = Effect.gen(function* () {
   const origin = yield* Effect.fromOption(Array.get(process.argv, 2)).pipe(
-    Effect.mapError(() => new SmokeError({ reason: USAGE })),
+    Effect.mapError(() => SmokeError.make({ message: USAGE })),
   )
   const visitId = yield* randomVisitId
   const body = yield* pipe(
     Schema.encodeEffect(RunSummaryJson)(smokeSummary(visitId)),
-    Effect.mapError(error => new SmokeError({ reason: error.message })),
+    Effect.mapError(error => SmokeError.make({ message: error.message })),
   )
   yield* Effect.flatMap(
     call(HttpClientRequest.get(new URL(HEALTH_PATH, origin).href)),
@@ -113,11 +113,12 @@ NodeRuntime.runMain(
   program.pipe(
     Effect.catchTag('SmokeError', error =>
       Effect.andThen(
-        Console.error(error.reason),
+        Console.error(error.message),
         Effect.sync(() => {
           process.exitCode = 1
         }),
       ),
     ),
+    Effect.provide(FetchHttpClient.layer),
   ),
 )

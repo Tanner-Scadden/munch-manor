@@ -1,4 +1,4 @@
-import { Array, Match, Option, Record, String, pipe } from 'effect'
+import { Array, Function, Match, Option, Record, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { ZERO_VECTOR } from './geometry'
@@ -40,7 +40,7 @@ const rowRuns = (
     color: string
   }> = []
   for (let x = 0; x < row.length; x++) {
-    const symbol = row.charAt(x)
+    const symbol = Option.getOrElse(String.charAt(row, x), () => TRANSPARENT)
     const color = palette[symbol]
     if (symbol === TRANSPARENT || color === undefined) {
       continue
@@ -91,15 +91,18 @@ const rowRunsOf = (
 ): ReadonlyArray<PixelRun> =>
   Array.flatMap(pixels, (row, y) => rowRuns(row, y, palette))
 
-export const pixelRuns = (
-  pixels: ReadonlyArray<string>,
-  palette: Palette,
-): ReadonlyArray<PixelRun> =>
-  pipe(
-    pixels,
-    Array.flatMap((row, y) => rowRuns(row, y, palette)),
-    Array.reduce<ReadonlyArray<PixelRun>, PixelRun>([], mergeVertically),
-  )
+export const pixelRuns: {
+  (palette: Palette): (pixels: ReadonlyArray<string>) => ReadonlyArray<PixelRun>
+  (pixels: ReadonlyArray<string>, palette: Palette): ReadonlyArray<PixelRun>
+} = Function.dual(
+  2,
+  (pixels: ReadonlyArray<string>, palette: Palette): ReadonlyArray<PixelRun> =>
+    pipe(
+      pixels,
+      Array.flatMap((row, y) => rowRuns(row, y, palette)),
+      Array.reduce<ReadonlyArray<PixelRun>, PixelRun>([], mergeVertically),
+    ),
+)
 
 export const spriteWidth = (pixels: ReadonlyArray<string>): number =>
   pipe(
@@ -117,20 +120,34 @@ const centerAnchor = (pixels: ReadonlyArray<string>): Anchor => ({
   y: Math.floor(pixels.length / 2),
 })
 
-export const spriteRects = (
-  pixels: ReadonlyArray<string>,
-  palette: Palette,
-  anchor: Anchor = centerAnchor(pixels),
-): ReadonlyArray<Canvas.Rect> =>
-  Array.map(pixelRuns(pixels, palette), run =>
-    Canvas.Rect({
-      x: run.x - anchor.x,
-      y: run.y - anchor.y,
-      width: run.width,
-      height: run.height,
-      fill: run.color,
-    }),
-  )
+export const spriteRects: {
+  (
+    palette: Palette,
+    anchor?: Anchor,
+  ): (pixels: ReadonlyArray<string>) => ReadonlyArray<Canvas.Rect>
+  (
+    pixels: ReadonlyArray<string>,
+    palette: Palette,
+    anchor?: Anchor,
+  ): ReadonlyArray<Canvas.Rect>
+} = Function.dual(
+  // NOTE: data-first starts with the pixel rows, the only array argument.
+  (args: IArguments): boolean => Array.isArray(args[0]),
+  (
+    pixels: ReadonlyArray<string>,
+    palette: Palette,
+    anchor: Anchor = centerAnchor(pixels),
+  ): ReadonlyArray<Canvas.Rect> =>
+    Array.map(pixelRuns(pixels, palette), run =>
+      Canvas.Rect({
+        x: run.x - anchor.x,
+        y: run.y - anchor.y,
+        width: run.width,
+        height: run.height,
+        fill: run.color,
+      }),
+    ),
+)
 
 // SPRITE IMAGES
 
@@ -190,11 +207,14 @@ const runsDataUrl = (
   return built
 }
 
-export const spriteDataUrl = (
-  pixels: ReadonlyArray<string>,
-  palette: Palette,
-): Option.Option<string> =>
-  runsDataUrl(spriteWidth(pixels), pixels.length, rowRunsOf(pixels, palette))
+export const spriteDataUrl: {
+  (palette: Palette): (pixels: ReadonlyArray<string>) => Option.Option<string>
+  (pixels: ReadonlyArray<string>, palette: Palette): Option.Option<string>
+} = Function.dual(
+  2,
+  (pixels: ReadonlyArray<string>, palette: Palette): Option.Option<string> =>
+    runsDataUrl(spriteWidth(pixels), pixels.length, rowRunsOf(pixels, palette)),
+)
 
 const builtSpriteSources = new Set<string>()
 
@@ -306,7 +326,7 @@ const pixelsKeyOf = (
   for (const row of pixels) {
     text += `\n${row}`
   }
-  for (const symbol of Object.keys(palette).sort()) {
+  for (const symbol of Record.keys(palette).sort()) {
     text += `\n${symbol}=${palette[symbol] ?? ''}`
   }
   return spriteKeyOf(text)
@@ -334,26 +354,40 @@ const builtSpriteShapes = (
 // drawImage, instead of a rectangle for each run of same colored pixels. A
 // prebuilt one is found by its key with no pixel work at all. A palette color
 // that is not a hex or rgb() color keeps the rectangles.
-export const spriteShapes = (
-  pixels: ReadonlyArray<string>,
-  palette: Palette,
-  anchor: Anchor = centerAnchor(pixels),
-): ReadonlyArray<Canvas.Shape> => {
-  const width = spriteWidth(pixels)
-  const key = pixelsKeyOf(width, pixels, palette)
-  return Option.match(atlasLookup(key), {
-    onNone: () => builtSpriteShapes(key, pixels, palette, anchor, width),
-    onSome: maybeHit =>
-      Option.match(maybeHit, {
-        onNone: () => [],
-        onSome: hit => [
-          atlasImageAt(hit, -anchor.x, -anchor.y, () =>
-            runsDataUrl(width, pixels.length, rowRunsOf(pixels, palette)),
-          ),
-        ],
-      }),
-  })
-}
+export const spriteShapes: {
+  (
+    palette: Palette,
+    anchor?: Anchor,
+  ): (pixels: ReadonlyArray<string>) => ReadonlyArray<Canvas.Shape>
+  (
+    pixels: ReadonlyArray<string>,
+    palette: Palette,
+    anchor?: Anchor,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  // NOTE: data-first starts with the pixel rows, the only array argument.
+  (args: IArguments): boolean => Array.isArray(args[0]),
+  (
+    pixels: ReadonlyArray<string>,
+    palette: Palette,
+    anchor: Anchor = centerAnchor(pixels),
+  ): ReadonlyArray<Canvas.Shape> => {
+    const width = spriteWidth(pixels)
+    const key = pixelsKeyOf(width, pixels, palette)
+    return Option.match(atlasLookup(key), {
+      onNone: () => builtSpriteShapes(key, pixels, palette, anchor, width),
+      onSome: maybeHit =>
+        Option.match(maybeHit, {
+          onNone: () => [],
+          onSome: hit => [
+            atlasImageAt(hit, -anchor.x, -anchor.y, () =>
+              runsDataUrl(width, pixels.length, rowRunsOf(pixels, palette)),
+            ),
+          ],
+        }),
+    })
+  },
+)
 
 type Box = Readonly<{
   left: number
@@ -474,58 +508,77 @@ export const bakeShapes = (
 // NOTE: draws a sprite at a whole pixel offset. A one image sprite moves the
 // image itself, which saves the painter a Group's save, restore, and
 // translate for every sprite in the scene.
-export const placeAt = (
-  x: number,
-  y: number,
-  sprite: ReadonlyArray<Canvas.Shape>,
-): Canvas.Shape => {
-  const only = sprite.length === 1 ? sprite[0] : undefined
-  if (only?._tag === 'Image') {
-    return {
-      _tag: 'Image',
-      src: only.src,
-      x: only.x + x,
-      y: only.y + y,
-      width: only.width,
-      height: only.height,
-      crop: only.crop,
-      rendering: only.rendering,
+export const placeAt: {
+  (y: number, sprite: ReadonlyArray<Canvas.Shape>): (x: number) => Canvas.Shape
+  (x: number, y: number, sprite: ReadonlyArray<Canvas.Shape>): Canvas.Shape
+} = Function.dual(
+  3,
+  (x: number, y: number, sprite: ReadonlyArray<Canvas.Shape>): Canvas.Shape => {
+    const only = sprite.length === 1 ? sprite[0] : undefined
+    if (only?._tag === 'Image') {
+      return {
+        _tag: 'Image',
+        src: only.src,
+        x: only.x + x,
+        y: only.y + y,
+        width: only.width,
+        height: only.height,
+        crop: only.crop,
+        rendering: only.rendering,
+      }
     }
-  }
 
-  return group({ translate: { x, y }, shapes: sprite })
-}
+    return group({ translate: { x, y }, shapes: sprite })
+  },
+)
 
 // NOTE: draws a sprite stretched by `scaleX` and `scaleY` about its anchor,
 // for a squash and stretch pop. A one image sprite stretches the image
 // itself, so the pop costs no Group.
-export const placeScaled = (
-  x: number,
-  y: number,
-  sprite: ReadonlyArray<Canvas.Shape>,
-  scaleX: number,
-  scaleY: number,
-): Canvas.Shape => {
-  const only = sprite.length === 1 ? sprite[0] : undefined
-  if (only?._tag === 'Image') {
-    return {
-      _tag: 'Image',
-      src: only.src,
-      x: Math.round(x + only.x * scaleX),
-      y: Math.round(y + only.y * scaleY),
-      width: Math.round(only.width * scaleX),
-      height: Math.round(only.height * scaleY),
-      crop: only.crop,
-      rendering: only.rendering,
+export const placeScaled: {
+  (
+    y: number,
+    sprite: ReadonlyArray<Canvas.Shape>,
+    scaleX: number,
+    scaleY: number,
+  ): (x: number) => Canvas.Shape
+  (
+    x: number,
+    y: number,
+    sprite: ReadonlyArray<Canvas.Shape>,
+    scaleX: number,
+    scaleY: number,
+  ): Canvas.Shape
+} = Function.dual(
+  5,
+  (
+    x: number,
+    y: number,
+    sprite: ReadonlyArray<Canvas.Shape>,
+    scaleX: number,
+    scaleY: number,
+  ): Canvas.Shape => {
+    const only = sprite.length === 1 ? sprite[0] : undefined
+    if (only?._tag === 'Image') {
+      return {
+        _tag: 'Image',
+        src: only.src,
+        x: Math.round(x + only.x * scaleX),
+        y: Math.round(y + only.y * scaleY),
+        width: Math.round(only.width * scaleX),
+        height: Math.round(only.height * scaleY),
+        crop: only.crop,
+        rendering: only.rendering,
+      }
     }
-  }
 
-  return group({
-    translate: { x, y },
-    scale: { x: scaleX, y: scaleY },
-    shapes: sprite,
-  })
-}
+    return group({
+      translate: { x, y },
+      scale: { x: scaleX, y: scaleY },
+      shapes: sprite,
+    })
+  },
+)
 
 export const mirrorRows = (
   pixels: ReadonlyArray<string>,
@@ -534,8 +587,14 @@ export const mirrorRows = (
     pipe(String.split(row, ''), Array.reverse, Array.join('')),
   )
 
-export const padRow = (row: string, left: number, right: number): string =>
-  `${TRANSPARENT.repeat(left)}${row}${TRANSPARENT.repeat(right)}`
+export const padRow: {
+  (left: number, right: number): (row: string) => string
+  (row: string, left: number, right: number): string
+} = Function.dual(
+  3,
+  (row: string, left: number, right: number): string =>
+    `${String.repeat(left)(TRANSPARENT)}${row}${String.repeat(right)(TRANSPARENT)}`,
+)
 
 const FLASH_COLOR = '#ffffff'
 
@@ -571,33 +630,76 @@ const footAnchor = (pixels: ReadonlyArray<string>, x: number): Anchor => ({
   y: pixels.length,
 })
 
-export const facingSprites = (
-  pixels: ReadonlyArray<string>,
-  palette: Palette,
-  anchorX: number,
-): Readonly<Record<Facing, Sprite>> => ({
-  Right: spriteShapes(pixels, palette, footAnchor(pixels, anchorX)),
-  Left: spriteShapes(
-    mirrorRows(pixels),
-    palette,
-    footAnchor(pixels, spriteWidth(pixels) - anchorX),
-  ),
-})
+export const facingSprites: {
+  (
+    palette: Palette,
+    anchorX: number,
+  ): (pixels: ReadonlyArray<string>) => Readonly<Record<Facing, Sprite>>
+  (
+    pixels: ReadonlyArray<string>,
+    palette: Palette,
+    anchorX: number,
+  ): Readonly<Record<Facing, Sprite>>
+} = Function.dual(
+  3,
+  (
+    pixels: ReadonlyArray<string>,
+    palette: Palette,
+    anchorX: number,
+  ): Readonly<Record<Facing, Sprite>> => ({
+    Right: spriteShapes(pixels, palette, footAnchor(pixels, anchorX)),
+    Left: spriteShapes(
+      mirrorRows(pixels),
+      palette,
+      footAnchor(pixels, spriteWidth(pixels) - anchorX),
+    ),
+  }),
+)
 
-export const spriteSet =
-  (palette: Palette, anchorX: number) =>
-  (pixels: ReadonlyArray<string>): SpriteSet => ({
+export const spriteSet: {
+  (
+    palette: Palette,
+    anchorX: number,
+  ): (pixels: ReadonlyArray<string>) => SpriteSet
+  (pixels: ReadonlyArray<string>, palette: Palette, anchorX: number): SpriteSet
+} = Function.dual(
+  3,
+  (
+    pixels: ReadonlyArray<string>,
+    palette: Palette,
+    anchorX: number,
+  ): SpriteSet => ({
     Normal: facingSprites(pixels, palette, anchorX),
     Flash: facingSprites(pixels, flashPalette(palette), anchorX),
-  })
+  }),
+)
 
-export const spriteFrames = (
-  framePixels: Array.NonEmptyReadonlyArray<ReadonlyArray<string>>,
-  palette: Palette,
-  anchorX: number,
-): SpriteFrames => Array.map(framePixels, spriteSet(palette, anchorX))
+export const spriteFrames: {
+  (
+    palette: Palette,
+    anchorX: number,
+  ): (
+    framePixels: Array.NonEmptyReadonlyArray<ReadonlyArray<string>>,
+  ) => SpriteFrames
+  (
+    framePixels: Array.NonEmptyReadonlyArray<ReadonlyArray<string>>,
+    palette: Palette,
+    anchorX: number,
+  ): SpriteFrames
+} = Function.dual(
+  3,
+  (
+    framePixels: Array.NonEmptyReadonlyArray<ReadonlyArray<string>>,
+    palette: Palette,
+    anchorX: number,
+  ): SpriteFrames => Array.map(framePixels, spriteSet(palette, anchorX)),
+)
 
-export const frameAt = (frames: SpriteFrames, frameIndex: number): SpriteSet =>
+export const frameAt: {
+  (frameIndex: number): (frames: SpriteFrames) => SpriteSet
+  (frames: SpriteFrames, frameIndex: number): SpriteSet
+} = Function.dual(2, (frames: SpriteFrames, frameIndex: number): SpriteSet =>
   Option.getOrElse(Array.get(frames, frameIndex % frames.length), () =>
     Array.headNonEmpty(frames),
-  )
+  ),
+)

@@ -16,10 +16,12 @@
 // PROFILE_PARALLEL how many screens run at once (3 by default),
 // `ENGINE=webkit` runs WebKit (one finger only), and `LIVE=<url>` runs it
 // against a deployed copy instead of the harness.
+import { Array, Config, Effect, Option, String } from 'effect'
 import { type CDPSession, type Page, webkit } from 'playwright-core'
 
 import { PROFILE_TABS } from '@game/profile'
 
+import { runHarnessAudit } from './harnessServer'
 import {
   DESKTOP_1280,
   type Log,
@@ -34,19 +36,16 @@ import {
   openPage,
   parallelFrom,
   pickViewports,
-  useHarness,
+  sceneReady,
   wait,
-  waitForReady,
 } from './lib'
+import { attempt, failWith } from './page'
 
-const ROUNDS = Number(process.env['ROUNDS'] ?? 16)
-const LIVE = process.env['LIVE']
-const IS_WEBKIT = process.env['ENGINE'] === 'webkit'
-const VIEWPORTS = pickViewports([
+const VIEWPORTS = [
   { ...PHONE_844, name: 'l844' },
   { ...UPRIGHT_390, name: 'p390' },
   DESKTOP_1280,
-])
+]
 const TIMEOUT_MS = 1500
 const HOLD_MS = 80
 // NOTE: how long after the last press landed the next one comes. Most fall
@@ -55,24 +54,41 @@ const GAPS_MS = [0, 30, 60, 100, 140, 180, 220, 260, 400]
 // NOTE: a resting finger is down long before the press, as a palm is.
 const REST_MS = 700
 
+// NOTE: what the environment asks for: ROUNDS, LIVE, and ENGINE.
+type Settings = Readonly<{
+  rounds: number
+  live: Option.Option<string>
+  isWebkit: boolean
+}>
+
+const settingsFromEnv = Effect.gen(function* () {
+  const rounds = yield* Config.String('ROUNDS').pipe(Config.withDefault('16'))
+  const live = yield* Config.String('LIVE').pipe(Config.option)
+  const engine = yield* Config.String('ENGINE').pipe(Config.withDefault(''))
+  return { rounds: Number(rounds), live, isWebkit: engine === 'webkit' }
+})
+
 type Point = Readonly<{ x: number; y: number }>
 
 type Hand = {
   readonly page: Page
   readonly viewport: Viewport
   readonly cdp: CDPSession | undefined
+  readonly isWebkit: boolean
   resting: Point | undefined
 }
 
-const centerOf = (page: Page, selector: string): Promise<Point | null> =>
-  page.evaluate(target => {
-    const element = document.querySelector(target)
-    if (element === null) {
-      return null
-    }
-    const box = element.getBoundingClientRect()
-    return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
-  }, selector)
+const centerOf = (page: Page, selector: string) =>
+  attempt((): Promise<Point | null> =>
+    page.evaluate(target => {
+      const element = document.querySelector(target)
+      if (element === null) {
+        return null
+      }
+      const box = element.getBoundingClientRect()
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+    }, selector),
+  )
 
 const RESTING_ID = 1
 const PRESSING_ID = 2
@@ -81,76 +97,99 @@ const PRESSING_ID = 2
 // touchStart, and the fingers to lift on a touchEnd.
 // NOTE: the touch session of a phone in Chrome, which every finger goes
 // through.
-const cdpOf = (hand: Hand): CDPSession => {
-  if (hand.cdp === undefined) {
-    throw new Error('Touch needs Chrome on a phone screen')
-  }
-  return hand.cdp
-}
+const cdpOf = (hand: Hand) =>
+  hand.cdp === undefined
+    ? Effect.fail(failWith('Touch needs Chrome on a phone screen'))
+    : Effect.succeed(hand.cdp)
 
-const touch = async (hand: Hand, point: Point) => {
-  const cdp = cdpOf(hand)
-  const pressing = { ...point, id: PRESSING_ID }
-  const resting =
-    hand.resting === undefined ? [] : [{ ...hand.resting, id: RESTING_ID }]
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchStart',
-    touchPoints: [...resting, pressing],
+const touch = (hand: Hand, point: Point) =>
+  Effect.gen(function* () {
+    const cdp = yield* cdpOf(hand)
+    const pressing = { ...point, id: PRESSING_ID }
+    const resting =
+      hand.resting === undefined ? [] : [{ ...hand.resting, id: RESTING_ID }]
+    yield* attempt(() =>
+      cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [...resting, pressing],
+      }),
+    )
+    yield* wait(HOLD_MS / 2)
+    yield* attempt(() =>
+      cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [
+          ...resting,
+          { ...pressing, x: point.x + 2, y: point.y + 1 },
+        ],
+      }),
+    )
+    yield* wait(HOLD_MS / 2)
+    yield* attempt(() =>
+      cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchEnd',
+        touchPoints: [{ ...pressing, x: point.x + 2, y: point.y + 1 }],
+      }),
+    )
   })
-  await wait(HOLD_MS / 2)
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchMove',
-    touchPoints: [...resting, { ...pressing, x: point.x + 2, y: point.y + 1 }],
-  })
-  await wait(HOLD_MS / 2)
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchEnd',
-    touchPoints: [{ ...pressing, x: point.x + 2, y: point.y + 1 }],
-  })
-}
 
-const press = async (hand: Hand, point: Point) => {
+const click = (page: Page, point: Point) =>
+  Effect.gen(function* () {
+    yield* attempt(() => page.mouse.move(point.x, point.y))
+    yield* attempt(() => page.mouse.down())
+    yield* wait(HOLD_MS / 2)
+    yield* attempt(() =>
+      page.mouse.move(point.x + 2, point.y + 1, { steps: 2 }),
+    )
+    yield* wait(HOLD_MS / 2)
+    yield* attempt(() => page.mouse.up())
+  })
+
+const press = (hand: Hand, point: Point) => {
   const { page, viewport } = hand
-  if (viewport.isPhone && IS_WEBKIT) {
-    await page.touchscreen.tap(point.x, point.y)
-  } else if (viewport.isPhone) {
-    await touch(hand, point)
-  } else {
-    await page.mouse.move(point.x, point.y)
-    await page.mouse.down()
-    await wait(HOLD_MS / 2)
-    await page.mouse.move(point.x + 2, point.y + 1, { steps: 2 })
-    await wait(HOLD_MS / 2)
-    await page.mouse.up()
+  if (viewport.isPhone && hand.isWebkit) {
+    return attempt(() => page.touchscreen.tap(point.x, point.y))
   }
+  return viewport.isPhone ? touch(hand, point) : click(page, point)
 }
 
 // NOTE: a finger set down on the corner of the screen, away from every
 // control, and left there until the round ends.
-const restFinger = async (hand: Hand) => {
-  hand.resting = { x: 6, y: hand.viewport.height - 6 }
-  await cdpOf(hand).send('Input.dispatchTouchEvent', {
-    type: 'touchStart',
-    touchPoints: [{ ...hand.resting, id: RESTING_ID }],
+const restFinger = (hand: Hand) =>
+  Effect.gen(function* () {
+    const resting = { x: 6, y: hand.viewport.height - 6 }
+    hand.resting = resting
+    const cdp = yield* cdpOf(hand)
+    yield* attempt(() =>
+      cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ ...resting, id: RESTING_ID }],
+      }),
+    )
+    yield* wait(REST_MS)
   })
-  await wait(REST_MS)
-}
 
-const liftRestingFinger = async (hand: Hand) => {
-  if (hand.resting !== undefined) {
-    await cdpOf(hand).send('Input.dispatchTouchEvent', {
-      type: 'touchEnd',
-      touchPoints: [],
-    })
-    hand.resting = undefined
-  }
-}
+const liftRestingFinger = (hand: Hand) =>
+  Effect.gen(function* () {
+    if (hand.resting !== undefined) {
+      const cdp = yield* cdpOf(hand)
+      yield* attempt(() =>
+        cdp.send('Input.dispatchTouchEvent', {
+          type: 'touchEnd',
+          touchPoints: [],
+        }),
+      )
+      hand.resting = undefined
+    }
+  })
 
 const waitFor = (page: Page, check: string) =>
-  page
-    .waitForFunction(check, null, { timeout: TIMEOUT_MS, polling: 'raf' })
-    .then(() => true)
-    .catch(() => false)
+  attempt(() =>
+    page.waitForFunction(check, null, { timeout: TIMEOUT_MS, polling: 'raf' }),
+  ).pipe(
+    Effect.as(true),
+    Effect.orElseSucceed(() => false),
+  )
 
 const IS_OPEN = `document.querySelector('dialog#profile[open] .menu-close') !== null`
 const IS_CLOSED = `document.querySelector('dialog[open]') === null`
@@ -158,36 +197,47 @@ const IS_CLOSED = `document.querySelector('dialog[open]') === null`
 type Tally = { tries: number; misses: Array<string> }
 
 // NOTE: the harness logs Messages; a deployed copy does not.
-const lastTags = (page: Page): Promise<string> =>
-  page.evaluate(() =>
-    '__messages' in window ? window.__messages.slice(-8).join(', ') : '(live)',
+const lastTags = (page: Page) =>
+  attempt(() =>
+    page.evaluate(() =>
+      '__messages' in window
+        ? // NOTE: runs in the page, which has no effect module.
+          // @effect-diagnostics-next-line preferEffectArray:off
+          window.__messages.slice(-8).join(', ')
+        : '(live)',
+    ),
   )
 
-const messageCount = (page: Page): Promise<number> =>
-  page.evaluate(() => ('__messages' in window ? window.__messages.length : 0))
+const messageCount = (page: Page) =>
+  attempt(() =>
+    page.evaluate(() =>
+      '__messages' in window ? window.__messages.length : 0,
+    ),
+  )
 
-const attempt = async (
+const tryPress = (
   hand: Hand,
   tally: Tally,
   what: string,
   selector: string,
   done: string,
-): Promise<boolean> => {
-  const point = await centerOf(hand.page, selector)
-  tally.tries++
-  if (point === null) {
-    tally.misses.push(
-      `${what}: no ${selector}, last ${await lastTags(hand.page)}`,
-    )
-    return false
-  }
-  await press(hand, point)
-  const isDone = await waitFor(hand.page, done)
-  if (!isDone) {
-    tally.misses.push(`${what}: last ${await lastTags(hand.page)}`)
-  }
-  return isDone
-}
+) =>
+  Effect.gen(function* () {
+    const point = yield* centerOf(hand.page, selector)
+    tally.tries++
+    if (point === null) {
+      const tags = yield* lastTags(hand.page)
+      tally.misses.push(`${what}: no ${selector}, last ${tags}`)
+      return false
+    }
+    yield* press(hand, point)
+    const isDone = yield* waitFor(hand.page, done)
+    if (!isDone) {
+      const tags = yield* lastTags(hand.page)
+      tally.misses.push(`${what}: last ${tags}`)
+    }
+    return isDone
+  })
 
 type Route = Readonly<{
   name: string
@@ -213,7 +263,7 @@ const ROUTES: ReadonlyArray<Route> = [
       ['#home-manor', opened('#hand-card-whatsnew')],
       [
         'dialog[open] #hand-card-whatsnew',
-        `${opened('.menu-close')} && ${opened('#hand-card-whatsnew').replace('!==', '===')}`,
+        `${opened('.menu-close')} && ${String.replace('!==', '===')(opened('#hand-card-whatsnew'))}`,
       ],
       ['dialog[open] .menu-close', IS_CLOSED],
       ['.home-settings', IS_OPEN],
@@ -236,120 +286,150 @@ const tabSelector = (tab: string) =>
 const isSelected = (tab: string) =>
   `document.querySelector('${tabSelector(tab)}')?.getAttribute('aria-selected') === 'true'`
 
-const openHome = async (page: Page, viewport: Viewport) => {
-  if (LIVE === undefined) {
-    await page.goto(harnessUrl('nodev', deviceQuery(viewport)))
-    await waitForReady(page)
-  } else {
-    await page.goto(LIVE)
-    await page
-      .locator('.home-settings')
-      .waitFor({ state: 'visible', timeout: 30_000 })
-  }
-}
+const openHome = (settings: Settings, page: Page, viewport: Viewport) =>
+  Option.match(settings.live, {
+    onNone: () =>
+      Effect.andThen(
+        attempt(() => page.goto(harnessUrl('nodev', deviceQuery(viewport)))),
+        sceneReady(page),
+      ),
+    onSome: live =>
+      Effect.andThen(
+        attempt(() => page.goto(live)),
+        attempt(() =>
+          page
+            .locator('.home-settings')
+            .waitFor({ state: 'visible', timeout: 30_000 }),
+        ),
+      ),
+  })
 
-const runRound = async (hand: Hand, tally: Tally, round: number) => {
-  const route = ROUTES[round % ROUTES.length]
-  if (route === undefined) {
-    throw new Error('No Profile routes')
-  }
-  const isTwoFingers = hand.cdp !== undefined && round % 2 === 1
-  const where = `round ${round} ${route.name}${isTwoFingers ? ' (second finger)' : ''}`
-  let pressIndex = 0
-  const gap = () =>
-    wait(GAPS_MS[(round * 5 + pressIndex++) % GAPS_MS.length] ?? 0)
-  // NOTE: a little time on the home menu, as a player would take.
-  await wait(300)
-  if (!(await waitFor(hand.page, IS_CLOSED))) {
-    tally.misses.push(`${where}: a dialog was still open`)
-    await hand.page.keyboard.press('Escape')
-    return
-  }
-  if (isTwoFingers) {
-    await restFinger(hand)
-  }
-  for (const [selector, done] of route.presses) {
-    const isOpened = await attempt(
-      hand,
-      tally,
-      `${where} open ${selector}`,
-      selector,
-      done,
-    )
-    if (!isOpened) {
-      await liftRestingFinger(hand)
-      await hand.page.keyboard.press('Escape')
+const runRound = (
+  settings: Settings,
+  hand: Hand,
+  tally: Tally,
+  round: number,
+) =>
+  Effect.gen(function* () {
+    const route = ROUTES[round % ROUTES.length]
+    if (route === undefined) {
+      return yield* failWith('No Profile routes')
+    }
+    const isTwoFingers = hand.cdp !== undefined && round % 2 === 1
+    const where = `round ${round} ${route.name}${isTwoFingers ? ' (second finger)' : ''}`
+    let pressIndex = 0
+    const gap = () =>
+      wait(GAPS_MS[(round * 5 + pressIndex++) % GAPS_MS.length] ?? 0)
+    // NOTE: a little time on the home menu, as a player would take.
+    yield* wait(300)
+    const isHomeClear = yield* waitFor(hand.page, IS_CLOSED)
+    if (!isHomeClear) {
+      tally.misses.push(`${where}: a dialog was still open`)
+      yield* attempt(() => hand.page.keyboard.press('Escape'))
       return
     }
-    await gap()
-  }
-  const last = PROFILE_TABS[round % PROFILE_TABS.length] ?? 'Look'
-  const order = [...PROFILE_TABS.filter(tab => tab !== last), last]
-  for (const tab of order) {
-    await attempt(
-      hand,
-      tally,
-      `${where} tab ${tab}`,
-      tabSelector(tab),
-      isSelected(tab),
-    )
-    await gap()
-  }
-  const inside = IN_TAB[last] ?? ''
-  if (inside !== '') {
-    for (let time = 0; time < 2; time++) {
-      const before = await messageCount(hand.page)
-      await attempt(
+    if (isTwoFingers) {
+      yield* restFinger(hand)
+    }
+    for (const [selector, done] of route.presses) {
+      const isOpened = yield* tryPress(
         hand,
         tally,
-        `${where} in ${last}`,
-        inside,
-        LIVE === undefined
-          ? `(window.__messages?.length ?? 0) > ${before}`
-          : 'true',
+        `${where} open ${selector}`,
+        selector,
+        done,
       )
-      await gap()
+      if (!isOpened) {
+        yield* liftRestingFinger(hand)
+        yield* attempt(() => hand.page.keyboard.press('Escape'))
+        return
+      }
+      yield* gap()
     }
-  }
-  await attempt(
-    hand,
-    tally,
-    `${where} close on ${last}`,
-    'dialog#profile[open] .menu-close',
-    IS_CLOSED,
-  )
-  await liftRestingFinger(hand)
-}
+    const last = PROFILE_TABS[round % PROFILE_TABS.length] ?? 'Look'
+    const order = [...Array.filter(PROFILE_TABS, tab => tab !== last), last]
+    for (const tab of order) {
+      yield* tryPress(
+        hand,
+        tally,
+        `${where} tab ${tab}`,
+        tabSelector(tab),
+        isSelected(tab),
+      )
+      yield* gap()
+    }
+    const inside = IN_TAB[last] ?? ''
+    if (inside !== '') {
+      for (let time = 0; time < 2; time++) {
+        const before = yield* messageCount(hand.page)
+        yield* tryPress(
+          hand,
+          tally,
+          `${where} in ${last}`,
+          inside,
+          Option.isNone(settings.live)
+            ? `(window.__messages?.length ?? 0) > ${before}`
+            : 'true',
+        )
+        yield* gap()
+      }
+    }
+    yield* tryPress(
+      hand,
+      tally,
+      `${where} close on ${last}`,
+      'dialog#profile[open] .menu-close',
+      IS_CLOSED,
+    )
+    yield* liftRestingFinger(hand)
+  })
 
-const runScreen = async (viewport: Viewport, log: Log) => {
-  const browser = IS_WEBKIT ? await webkit.launch() : await launch()
-  const page = await openPage(browser, viewport)
-  await openHome(page, viewport)
-  const hand: Hand = {
-    page,
-    viewport,
-    cdp:
-      viewport.isPhone && !IS_WEBKIT
-        ? await page.context().newCDPSession(page)
-        : undefined,
-    resting: undefined,
-  }
-  const tally: Tally = { tries: 0, misses: [] }
-  for (let round = 0; round < ROUNDS; round++) {
-    await runRound(hand, tally, round)
-  }
-  await browser.close()
-  log(
-    `${viewport.name}: ${tally.misses.length} of ${tally.tries} presses missed`,
-  )
-  for (const miss of tally.misses) {
-    log(`  ${miss}`)
-  }
-  return tally.misses.map(miss => `${viewport.name} ${miss}`)
-}
+const runScreen = (settings: Settings, viewport: Viewport, log: Log) =>
+  Effect.gen(function* () {
+    const tally: Tally = { tries: 0, misses: [] }
+    yield* Effect.scoped(
+      Effect.gen(function* () {
+        const browser = yield* Effect.acquireRelease(
+          attempt(() => (settings.isWebkit ? webkit.launch() : launch())),
+          launched => attempt(() => launched.close()).pipe(Effect.ignore),
+        )
+        const page = yield* openPage(browser, viewport)
+        yield* openHome(settings, page, viewport)
+        const cdp =
+          viewport.isPhone && !settings.isWebkit
+            ? yield* attempt(() => page.context().newCDPSession(page))
+            : undefined
+        const hand: Hand = {
+          page,
+          viewport,
+          cdp,
+          isWebkit: settings.isWebkit,
+          resting: undefined,
+        }
+        for (let round = 0; round < settings.rounds; round++) {
+          yield* runRound(settings, hand, tally, round)
+        }
+      }),
+    )
+    log(
+      `${viewport.name}: ${tally.misses.length} of ${tally.tries} presses missed`,
+    )
+    for (const miss of tally.misses) {
+      log(`  ${miss}`)
+    }
+    return Array.map(tally.misses, miss => `${viewport.name} ${miss}`)
+  })
 
-await useHarness()
-const problems = (
-  await forEachInOrder(VIEWPORTS, parallelFrom('PROFILE_PARALLEL'), runScreen)
-).flat()
-finish(problems, 'Every press in the Profile landed.')
+runHarnessAudit(
+  Effect.gen(function* () {
+    const settings = yield* settingsFromEnv
+    const viewports = yield* pickViewports(VIEWPORTS)
+    const parallel = yield* parallelFrom('PROFILE_PARALLEL')
+    const problems = yield* forEachInOrder(
+      viewports,
+      parallel,
+      (viewport, log) => runScreen(settings, viewport, log),
+    )
+    yield* finish(Array.flatten(problems), 'Every press in the Profile landed.')
+  }),
+)

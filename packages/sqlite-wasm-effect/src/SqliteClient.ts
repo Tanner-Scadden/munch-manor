@@ -2,10 +2,11 @@ import type { Duration } from 'effect'
 import {
   Array,
   Context,
-  Data,
   Effect,
+  Function,
   Layer,
   Predicate,
+  Record,
   Ref,
   Result,
   Schema,
@@ -44,10 +45,14 @@ export interface Status {
   readonly persistence: Persistence
 }
 
-export class SqliteOpenError extends Data.TaggedError('SqliteOpenError')<{
-  readonly reason: string
-}> {}
+export class SqliteOpenError extends Schema.TaggedError<
+  SqliteOpenError,
+  { readonly brand: unique symbol }
+>()('SqliteOpenError', {
+  reason: Schema.String,
+}) {}
 
+/** @stability unstable */
 export type Migrations = Record<
   string,
   Effect.Effect<void, unknown, SqlClient.SqlClient>
@@ -55,6 +60,7 @@ export type Migrations = Record<
 
 // SERVICE
 
+/** @stability unstable */
 export interface SqliteClientService {
   readonly sql: SqlClient.SqlClient
   readonly status: Effect.Effect<Status>
@@ -81,6 +87,7 @@ export interface SqliteClientService {
   >
 }
 
+/** @stability unstable */
 export class SqliteClient extends Context.Service<
   SqliteClient,
   SqliteClientService
@@ -140,7 +147,7 @@ interface Rows {
 
 const toObjects = (rows: Rows): ReadonlyArray<Record<string, SqlValue>> =>
   Array.map(rows.values, row =>
-    Object.fromEntries(Array.zip(rows.columns, row)),
+    Record.fromEntries(Array.zip(rows.columns, row)),
   )
 
 const makeConnection = (
@@ -223,69 +230,93 @@ export interface ClientOptions {
 
 // NOTE: builds both services over any Remote, so the worker layer and the
 // in-process layer share everything above the transport.
-export const makeClient = (
-  remote: Remote,
-  status: Ref.Ref<Status>,
-  options: ClientOptions,
-): Effect.Effect<
-  SqliteClientService,
-  never,
-  Reactivity.Reactivity | Scope.Scope
-> =>
-  Effect.gen(function* () {
-    const reactivity = yield* Reactivity.Reactivity
-    const semaphore = yield* Semaphore.make(1)
-    const connection = makeConnection(
-      remote,
-      options.requestTimeout ?? DEFAULT_REQUEST_TIMEOUT,
-    )
-    const acquirers = SqlClient.makeSqliteAcquirers({
-      connection: Effect.succeed(connection),
-      semaphore,
-    })
-    const sql = yield* SqlClient.make({
-      acquirer: acquirers.acquirer,
-      transactionAcquirer: acquirers.transactionAcquirer,
-      onCommitFailure: acquirers.onCommitFailure,
-      compiler: Statement.makeCompilerSqlite(),
-      driver: '@munch/sqlite-wasm-effect',
-      spanAttributes: [['db.system.name', 'sqlite']],
-    })
+/** @stability unstable */
+export const makeClient: {
+  (
+    status: Ref.Ref<Status>,
+    options: ClientOptions,
+  ): (
+    remote: Remote,
+  ) => Effect.Effect<
+    SqliteClientService,
+    never,
+    Reactivity.Reactivity | Scope.Scope
+  >
+  (
+    remote: Remote,
+    status: Ref.Ref<Status>,
+    options: ClientOptions,
+  ): Effect.Effect<
+    SqliteClientService,
+    never,
+    Reactivity.Reactivity | Scope.Scope
+  >
+} = Function.dual(
+  3,
+  (
+    remote: Remote,
+    status: Ref.Ref<Status>,
+    options: ClientOptions,
+  ): Effect.Effect<
+    SqliteClientService,
+    never,
+    Reactivity.Reactivity | Scope.Scope
+  > =>
+    Effect.gen(function* () {
+      const reactivity = yield* Reactivity.Reactivity
+      const semaphore = yield* Semaphore.make(1)
+      const connection = makeConnection(
+        remote,
+        options.requestTimeout ?? DEFAULT_REQUEST_TIMEOUT,
+      )
+      const acquirers = SqlClient.makeSqliteAcquirers({
+        connection: Effect.succeed(connection),
+        semaphore,
+      })
+      const sql = yield* SqlClient.make({
+        acquirer: acquirers.acquirer,
+        transactionAcquirer: acquirers.transactionAcquirer,
+        onCommitFailure: acquirers.onCommitFailure,
+        compiler: Statement.makeCompilerSqlite(),
+        driver: '@munch/sqlite-wasm-effect',
+        spanAttributes: [['db.system.name', 'sqlite']],
+      })
 
-    yield* pipe(
-      Stream.fromPubSub(remote.changes),
-      Stream.runForEach(changes =>
-        reactivity.invalidate(
-          Array.dedupe(Array.map(changes, change => change.table)),
+      yield* pipe(
+        Stream.fromPubSub(remote.changes),
+        Stream.runForEach(changes =>
+          reactivity.invalidate(
+            Array.dedupe(Array.map(changes, change => change.table)),
+          ),
         ),
-      ),
-      Effect.forkScoped,
-    )
+        Effect.forkScoped,
+      )
 
-    const runMigrations = Migrator.make({})
+      const runMigrations = Migrator.make({})
 
-    return {
-      sql,
-      status: Ref.get(status),
-      changes: Stream.fromPubSub(remote.changes),
-      execute: statement => Effect.asVoid(statement),
-      query: (schema, statement) =>
-        Effect.flatMap(
-          statement,
-          Schema.decodeUnknownEffect(Schema.Array(schema)),
-        ),
-      transaction: sql.withTransaction,
-      migrate: migrations =>
-        Effect.provideService(
-          runMigrations({
-            loader: Migrator.fromRecord(migrations),
-            table: MIGRATIONS_TABLE,
-          }),
-          SqlClient.SqlClient,
-          sql,
-        ),
-    }
-  })
+      return {
+        sql,
+        status: Ref.get(status),
+        changes: Stream.fromPubSub(remote.changes),
+        execute: statement => Effect.asVoid(statement),
+        query: (schema, statement) =>
+          Effect.flatMap(
+            statement,
+            Schema.decodeUnknownEffect(Schema.Array(schema)),
+          ),
+        transaction: sql.withTransaction,
+        migrate: migrations =>
+          Effect.provideService(
+            runMigrations({
+              loader: Migrator.fromRecord(migrations),
+              table: MIGRATIONS_TABLE,
+            }),
+            SqlClient.SqlClient,
+            sql,
+          ),
+      }
+    }),
+)
 
 // OPEN
 
@@ -296,38 +327,53 @@ export interface DatabaseFile {
   readonly directory: string
 }
 
-export const openThrough = (
-  remote: Remote,
-  database: DatabaseFile,
-  timeout: Duration.Input,
-): Effect.Effect<Persistence, SqliteOpenError> =>
-  pipe(
-    remote.call(
-      id =>
-        Request.cases.Open.make({
-          id,
-          session: remote.session,
-          file: database.file,
-          directory: database.directory,
-        }),
-      timeout,
-      'open',
+/** @stability unstable */
+export const openThrough: {
+  (
+    database: DatabaseFile,
+    timeout: Duration.Input,
+  ): (remote: Remote) => Effect.Effect<Persistence, SqliteOpenError>
+  (
+    remote: Remote,
+    database: DatabaseFile,
+    timeout: Duration.Input,
+  ): Effect.Effect<Persistence, SqliteOpenError>
+} = Function.dual(
+  3,
+  (
+    remote: Remote,
+    database: DatabaseFile,
+    timeout: Duration.Input,
+  ): Effect.Effect<Persistence, SqliteOpenError> =>
+    pipe(
+      remote.call(
+        id =>
+          Request.cases.Open.make({
+            id,
+            session: remote.session,
+            file: database.file,
+            directory: database.directory,
+          }),
+        timeout,
+        'open',
+      ),
+      Effect.mapError(error => SqliteOpenError.make({ reason: error.message })),
+      Effect.flatMap(response =>
+        response._tag === 'Opened'
+          ? Effect.succeed(response.persistence)
+          : Effect.fail(
+              SqliteOpenError.make({
+                reason:
+                  response._tag === 'OpenFailed'
+                    ? response.failure.message
+                    : `Unexpected ${response._tag} response to Open`,
+              }),
+            ),
+      ),
     ),
-    Effect.mapError(error => new SqliteOpenError({ reason: error.message })),
-    Effect.flatMap(response =>
-      response._tag === 'Opened'
-        ? Effect.succeed(response.persistence)
-        : Effect.fail(
-            new SqliteOpenError({
-              reason:
-                response._tag === 'OpenFailed'
-                  ? response.failure.message
-                  : `Unexpected ${response._tag} response to Open`,
-            }),
-          ),
-    ),
-  )
+)
 
+/** @stability unstable */
 export const layerFromClient = (
   build: Effect.Effect<
     SqliteClientService,

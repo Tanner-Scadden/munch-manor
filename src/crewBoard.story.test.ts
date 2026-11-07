@@ -302,10 +302,10 @@ describe("each player's rank on the board", () => {
     const bronze = imageSources(badgeSprite('Bronze'))
     const bare = boardImages(crewCard)
     const ranked = boardImages(withLobbyRanks(crewCard))
-    expect(bare.filter(src => wood.includes(src))).toHaveLength(2)
-    expect(bare.filter(src => bronze.includes(src))).toHaveLength(0)
-    expect(ranked.filter(src => wood.includes(src))).toHaveLength(1)
-    expect(ranked.filter(src => bronze.includes(src))).toHaveLength(1)
+    expect(Array.filter(bare, src => wood.includes(src))).toHaveLength(2)
+    expect(Array.filter(bare, src => bronze.includes(src))).toHaveLength(0)
+    expect(Array.filter(ranked, src => wood.includes(src))).toHaveLength(1)
+    expect(Array.filter(ranked, src => bronze.includes(src))).toHaveLength(1)
   })
 })
 
@@ -369,11 +369,11 @@ describe('the crew card upright', () => {
       const rects = Array.flatMap(drawn.panel, shape =>
         shape._tag === 'Rect' ? [shape] : [],
       )
-      expect(Math.min(...rects.map(shape => shape.x))).toBeGreaterThanOrEqual(
-        PORTRAIT_VISIBLE_LEFT,
-      )
       expect(
-        Math.max(...rects.map(shape => shape.x + shape.width)),
+        Math.min(...Array.map(rects, shape => shape.x)),
+      ).toBeGreaterThanOrEqual(PORTRAIT_VISIBLE_LEFT)
+      expect(
+        Math.max(...Array.map(rects, shape => shape.x + shape.width)),
       ).toBeLessThanOrEqual(PORTRAIT_VISIBLE_RIGHT)
       expect(crewCardBottomPx(current, true)).toBeLessThan(
         UPRIGHT_BUTTONS_TOP_PX,

@@ -6,6 +6,7 @@
 import {
   Array,
   DateTime,
+  Function,
   Match,
   Option,
   Order,
@@ -234,107 +235,119 @@ const DEATH_PAIRS: ReadonlyArray<readonly [number, number]> = [
   [9, 10],
 ]
 
-export const campaignMetrics = (
-  id: string,
-  title: string,
-  summary: CampaignSummary,
-): ReadonlyArray<Metric> => {
-  const waves = Array.makeBy(summary.diedShareByWave.length, index => index + 1)
-  const common = [
-    metric(`${id}.wins`, `${title}: wins`, summary.winShare, 'wins', 'Share'),
-    metric(
-      `${id}.medianRun`,
-      `${title}: median run (minutes)`,
-      summary.medianRunMinutes,
-      'minutes',
-      'Minutes',
-    ),
-  ]
-  if (summary.kind === 'Endless') {
-    return [
-      ...common,
+export const campaignMetrics: {
+  (
+    title: string,
+    summary: CampaignSummary,
+  ): (id: string) => ReadonlyArray<Metric>
+  (id: string, title: string, summary: CampaignSummary): ReadonlyArray<Metric>
+} = Function.dual(
+  3,
+  (
+    id: string,
+    title: string,
+    summary: CampaignSummary,
+  ): ReadonlyArray<Metric> => {
+    const waves = Array.makeBy(
+      summary.diedShareByWave.length,
+      index => index + 1,
+    )
+    const common = [
+      metric(`${id}.wins`, `${title}: wins`, summary.winShare, 'wins', 'Share'),
       metric(
-        `${id}.medianWave`,
-        `${title}: median wave reached`,
-        summary.medianWaveReached,
-        'endlessWave',
-        'Wave',
-      ),
-      metric(
-        `${id}.bestWave`,
-        `${title}: best wave reached`,
-        summary.bestWave,
-        'endlessWave',
-        'Wave',
+        `${id}.medianRun`,
+        `${title}: median run (minutes)`,
+        summary.medianRunMinutes,
+        'minutes',
+        'Minutes',
       ),
     ]
-  }
-  const winMetrics =
-    summary.winShare > 0
-      ? [
-          metric(
-            `${id}.medianWin`,
-            `${title}: median win (minutes)`,
-            summary.medianWinMinutes,
-            'minutes',
-            'Minutes',
-          ),
-          metric(
-            `${id}.closeCalls`,
-            `${title}: close calls`,
-            summary.closeCallShare,
-            'closeCalls',
-            'Share',
-          ),
-        ]
-      : []
-  const perWave = Array.flatMap(waves, wave => [
-    metric(
-      `${id}.died.w${wave}`,
-      `${title}: died on wave ${wave}`,
-      valueAt(summary.diedShareByWave, wave),
-      'died',
-      'Share',
-    ),
-    metric(
-      `${id}.hearts.w${wave}`,
-      `${title}: hearts lost on wave ${wave}`,
-      valueAt(summary.heartsLostByWave, wave),
-      'hearts',
-      'Hearts',
-    ),
-    metric(
-      `${id}.length.w${wave}`,
-      `${title}: wave ${wave} length (seconds)`,
-      valueAt(summary.lengthSecondsByWave, wave),
-      'waveLength',
-      'Seconds',
-    ),
-  ])
-  const pairs = Array.map(DEATH_PAIRS, ([first, second]) =>
-    metric(
-      `${id}.died.w${first}-${second}`,
-      `${title}: died on waves ${first} and ${second}`,
-      valueAt(summary.diedShareByWave, first) +
-        valueAt(summary.diedShareByWave, second),
-      'diedPair',
-      'Share',
-    ),
-  )
-  return [
-    ...common,
-    ...winMetrics,
-    ...pairs,
-    metric(
-      `${id}.died.peakWave`,
-      `${title}: wave with the most deaths`,
-      peakWave(summary.diedShareByWave),
-      'none',
-      'Wave',
-    ),
-    ...perWave,
-  ]
-}
+    if (summary.kind === 'Endless') {
+      return [
+        ...common,
+        metric(
+          `${id}.medianWave`,
+          `${title}: median wave reached`,
+          summary.medianWaveReached,
+          'endlessWave',
+          'Wave',
+        ),
+        metric(
+          `${id}.bestWave`,
+          `${title}: best wave reached`,
+          summary.bestWave,
+          'endlessWave',
+          'Wave',
+        ),
+      ]
+    }
+    const winMetrics =
+      summary.winShare > 0
+        ? [
+            metric(
+              `${id}.medianWin`,
+              `${title}: median win (minutes)`,
+              summary.medianWinMinutes,
+              'minutes',
+              'Minutes',
+            ),
+            metric(
+              `${id}.closeCalls`,
+              `${title}: close calls`,
+              summary.closeCallShare,
+              'closeCalls',
+              'Share',
+            ),
+          ]
+        : []
+    const perWave = Array.flatMap(waves, wave => [
+      metric(
+        `${id}.died.w${wave}`,
+        `${title}: died on wave ${wave}`,
+        valueAt(summary.diedShareByWave, wave),
+        'died',
+        'Share',
+      ),
+      metric(
+        `${id}.hearts.w${wave}`,
+        `${title}: hearts lost on wave ${wave}`,
+        valueAt(summary.heartsLostByWave, wave),
+        'hearts',
+        'Hearts',
+      ),
+      metric(
+        `${id}.length.w${wave}`,
+        `${title}: wave ${wave} length (seconds)`,
+        valueAt(summary.lengthSecondsByWave, wave),
+        'waveLength',
+        'Seconds',
+      ),
+    ])
+    const pairs = Array.map(DEATH_PAIRS, ([first, second]) =>
+      metric(
+        `${id}.died.w${first}-${second}`,
+        `${title}: died on waves ${first} and ${second}`,
+        valueAt(summary.diedShareByWave, first) +
+          valueAt(summary.diedShareByWave, second),
+        'diedPair',
+        'Share',
+      ),
+    )
+    return [
+      ...common,
+      ...winMetrics,
+      ...pairs,
+      metric(
+        `${id}.died.peakWave`,
+        `${title}: wave with the most deaths`,
+        peakWave(summary.diedShareByWave),
+        'none',
+        'Wave',
+      ),
+      ...perWave,
+    ]
+  },
+)
 
 export const wavePassMetrics = (
   summary: WavePassSummary,
@@ -453,45 +466,65 @@ const findMetric = (
 ): Option.Option<Metric> =>
   Array.findFirst(metrics, candidate => candidate.key === key)
 
-export const judge = (
-  metrics: ReadonlyArray<Metric>,
-  targets: ReadonlyArray<Target> = TARGETS,
-): ReadonlyArray<Verdict> =>
-  Array.map(targets, (target): Verdict =>
-    Option.match(findMetric(metrics, target.key), {
-      onNone: () => ({ _tag: 'NoData', target }),
-      onSome: ({ value }) =>
-        Option.exists(target.maybeMin, min => value < min)
-          ? { _tag: 'Below', target, value }
-          : Option.exists(target.maybeMax, max => value > max)
-            ? { _tag: 'Above', target, value }
-            : { _tag: 'InTarget', target, value },
-    }),
-  )
+export const judge: {
+  (
+    targets: ReadonlyArray<Target>,
+  ): (metrics: ReadonlyArray<Metric>) => ReadonlyArray<Verdict>
+  (
+    metrics: ReadonlyArray<Metric>,
+    targets: ReadonlyArray<Target>,
+  ): ReadonlyArray<Verdict>
+} = Function.dual(
+  2,
+  (
+    metrics: ReadonlyArray<Metric>,
+    targets: ReadonlyArray<Target>,
+  ): ReadonlyArray<Verdict> =>
+    Array.map(targets, (target): Verdict =>
+      Option.match(findMetric(metrics, target.key), {
+        onNone: () => ({ _tag: 'NoData', target }),
+        onSome: ({ value }) =>
+          Option.exists(target.maybeMin, min => value < min)
+            ? { _tag: 'Below', target, value }
+            : Option.exists(target.maybeMax, max => value > max)
+              ? { _tag: 'Above', target, value }
+              : { _tag: 'InTarget', target, value },
+      }),
+    ),
+)
 
 // BASELINE
 
 export const Baseline = Schema.Struct({
   createdAt: Schema.String,
   commit: Schema.String,
-  metrics: Schema.Record(Schema.String, Schema.Number),
+  metrics: Schema.Record(Schema.String, Schema.Finite),
 })
 export type Baseline = typeof Baseline.Type
 
 export const BaselineJson = Schema.fromJsonString(Baseline)
 
-export const baselineOf = (
-  metrics: ReadonlyArray<Metric>,
-  createdAt: string,
-  commit: string,
-): Baseline => ({
-  createdAt,
-  commit,
-  metrics: Record.fromIterableWith(metrics, ({ key, value }) => [
-    key,
-    Math.round(value * 10000) / 10000,
-  ]),
-})
+export const baselineOf: {
+  (
+    createdAt: string,
+    commit: string,
+  ): (metrics: ReadonlyArray<Metric>) => Baseline
+  (metrics: ReadonlyArray<Metric>, createdAt: string, commit: string): Baseline
+} = Function.dual(
+  3,
+  (
+    metrics: ReadonlyArray<Metric>,
+    createdAt: string,
+    commit: string,
+  ): Baseline => ({
+    createdAt,
+    commit,
+    metrics: Record.fromIterableWith(metrics, ({ key, value }) => [
+      key,
+      Math.round(value * 10000) / 10000,
+    ]),
+  }),
+)
 
 export type Drift =
   | Readonly<{ _tag: 'Within'; metric: Metric; baseline: number }>
@@ -509,45 +542,54 @@ export type Drift =
 // exactly on the tolerance, from being called drift.
 const EPSILON = 1e-4
 
-export const compareToBaseline = (
-  metrics: ReadonlyArray<Metric>,
-  baseline: Baseline,
-): ReadonlyArray<Drift> => {
-  const compared = Array.map(metrics, (current): Drift =>
-    Option.match(Record.get(baseline.metrics, current.key), {
-      onNone: () => ({ _tag: 'New', metric: current }),
-      onSome: (before): Drift => {
-        const delta = current.value - before
-        return Math.abs(delta) > current.tolerance + EPSILON
-          ? { _tag: 'Drifted', metric: current, baseline: before, delta }
-          : { _tag: 'Within', metric: current, baseline: before }
-      },
-    }),
-  )
-  const missing = pipe(
-    Record.toEntries(baseline.metrics),
-    Array.filter(([key]) => Option.isNone(findMetric(metrics, key))),
-    Array.map(([key, before]): Drift => ({
-      _tag: 'Missing',
-      key,
-      baseline: before,
-    })),
-  )
-  return [...compared, ...missing]
-}
+export const compareToBaseline: {
+  (baseline: Baseline): (metrics: ReadonlyArray<Metric>) => ReadonlyArray<Drift>
+  (metrics: ReadonlyArray<Metric>, baseline: Baseline): ReadonlyArray<Drift>
+} = Function.dual(
+  2,
+  (
+    metrics: ReadonlyArray<Metric>,
+    baseline: Baseline,
+  ): ReadonlyArray<Drift> => {
+    const compared = Array.map(metrics, (current): Drift =>
+      Option.match(Record.get(baseline.metrics, current.key), {
+        onNone: () => ({ _tag: 'New', metric: current }),
+        onSome: (before): Drift => {
+          const delta = current.value - before
+          return Math.abs(delta) > current.tolerance + EPSILON
+            ? { _tag: 'Drifted', metric: current, baseline: before, delta }
+            : { _tag: 'Within', metric: current, baseline: before }
+        },
+      }),
+    )
+    const missing = pipe(
+      Record.toEntries(baseline.metrics),
+      Array.filter(([key]) => Option.isNone(findMetric(metrics, key))),
+      Array.map(([key, before]): Drift => ({
+        _tag: 'Missing',
+        key,
+        baseline: before,
+      })),
+    )
+    return [...compared, ...missing]
+  },
+)
 
 // NOTE: keeps every number already in the baseline and adds the metrics it
 // has never seen, so a new job gets a baseline without moving the old ones.
-export const extendBaseline = (
-  before: Baseline,
-  metrics: ReadonlyArray<Metric>,
-): Baseline => ({
-  ...before,
-  metrics: {
-    ...baselineOf(metrics, before.createdAt, before.commit).metrics,
-    ...before.metrics,
-  },
-})
+export const extendBaseline: {
+  (metrics: ReadonlyArray<Metric>): (before: Baseline) => Baseline
+  (before: Baseline, metrics: ReadonlyArray<Metric>): Baseline
+} = Function.dual(
+  2,
+  (before: Baseline, metrics: ReadonlyArray<Metric>): Baseline => ({
+    ...before,
+    metrics: {
+      ...baselineOf(metrics, before.createdAt, before.commit).metrics,
+      ...before.metrics,
+    },
+  }),
+)
 
 // PORTRAIT
 
@@ -825,7 +867,7 @@ const isDrift = (drift: Drift): boolean =>
   drift._tag === 'Drifted' || drift._tag === 'Missing'
 
 export const formatReport = (input: ReportInput): string => {
-  const verdicts = judge(input.metrics)
+  const verdicts = judge(input.metrics, TARGETS)
   const inTarget = Array.filter(verdicts, ({ _tag }) => _tag === 'InTarget')
   const outOfTarget = Array.filter(verdicts, ({ _tag }) => _tag !== 'InTarget')
   const drifts =

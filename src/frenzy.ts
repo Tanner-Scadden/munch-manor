@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { payShared } from './party'
@@ -66,18 +66,25 @@ export const frenzyPacksOf = (
     }),
   )
 
-export const isFrenzyPack = (
-  frenzyPacks: ReadonlyArray<FrenzyPack>,
-  pack: number,
-): boolean => Array.some(frenzyPacks, entry => entry.pack === pack)
+export const isFrenzyPack: {
+  (pack: number): (frenzyPacks: ReadonlyArray<FrenzyPack>) => boolean
+  (frenzyPacks: ReadonlyArray<FrenzyPack>, pack: number): boolean
+} = Function.dual(
+  2,
+  (frenzyPacks: ReadonlyArray<FrenzyPack>, pack: number): boolean =>
+    Array.some(frenzyPacks, entry => entry.pack === pack),
+)
 
-export const frenzyOnArrival = (
-  frenzyPacks: ReadonlyArray<FrenzyPack>,
-  spawn: PlannedSpawn,
-): Frenzy =>
-  isFrenzyPack(frenzyPacks, spawn.pack)
-    ? Frenzy.Frenzied({ pack: spawn.pack, apartMs: 0 })
-    : Frenzy.Calm()
+export const frenzyOnArrival: {
+  (spawn: PlannedSpawn): (frenzyPacks: ReadonlyArray<FrenzyPack>) => Frenzy
+  (frenzyPacks: ReadonlyArray<FrenzyPack>, spawn: PlannedSpawn): Frenzy
+} = Function.dual(
+  2,
+  (frenzyPacks: ReadonlyArray<FrenzyPack>, spawn: PlannedSpawn): Frenzy =>
+    isFrenzyPack(frenzyPacks, spawn.pack)
+      ? Frenzy.Frenzied({ pack: spawn.pack, apartMs: 0 })
+      : Frenzy.Calm(),
+)
 
 // PACE
 
@@ -149,7 +156,10 @@ const hasAnyFrenzy = (zombies: ReadonlyArray<Zombie>): boolean =>
     Frenzy.isAnyOf(['Frenzied', 'Fading'])(zombie.frenzy),
   )
 
-export const advanceFrenzy = (model: World, deltaMs: number): World =>
+export const advanceFrenzy: {
+  (deltaMs: number): (model: World) => World
+  (model: World, deltaMs: number): World
+} = Function.dual(2, (model: World, deltaMs: number): World =>
   hasAnyFrenzy(model.zombies)
     ? modifyFields(model, {
         zombies: zombies =>
@@ -163,7 +173,8 @@ export const advanceFrenzy = (model: World, deltaMs: number): World =>
               : modifyFields(zombie, { frenzy: () => frenzy })
           }),
       })
-    : model
+    : model,
+)
 
 // BONUS
 
@@ -202,7 +213,10 @@ const wipeEvent =
       ({ x, y }) => GameEvent.PackWiped({ x, y, bonus: entry.bonus }),
     )
 
-export const payWipedPacks = (before: World, after: World): World => {
+export const payWipedPacks: {
+  (after: World): (before: World) => World
+  (before: World, after: World): World
+} = Function.dual(2, (before: World, after: World): World => {
   if (Array.isReadonlyArrayEmpty(after.frenzyPacks)) {
     return after
   }
@@ -225,4 +239,4 @@ export const payWipedPacks = (before: World, after: World): World => {
     ],
   })
   return bonus > 0 ? payShared(tallied, bonus) : tallied
-}
+})

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Effect, Fiber, Option, Stream } from 'effect'
+import { Effect, Fiber, Layer, Option, Stream } from 'effect'
 import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 
@@ -45,7 +45,7 @@ const firstReleaseMessage = (dispatch: () => void) => {
   const stream = pointerReleases.dependenciesToStream(
     pointerReleases.modelToDependencies(initialModel),
   )
-  return Effect.gen(function* () {
+  const firstMessage = Effect.gen(function* () {
     const fiber = yield* Effect.forkChild(
       Stream.runCollect(Stream.take(stream, 1)),
     )
@@ -57,7 +57,10 @@ const firstReleaseMessage = (dispatch: () => void) => {
     const messages = yield* Fiber.join(fiber).pipe(Effect.timeout('5 seconds'))
     yield* Fiber.interrupt(dispatcher)
     return messages
-  }).pipe(Effect.provide(pointerReleases.layer))
+  })
+  return Effect.flatMap(Layer.build(pointerReleases.layer), listening =>
+    Effect.provideContext(firstMessage, listening),
+  )
 }
 
 describe('stuck sticks', () => {

@@ -1,4 +1,13 @@
-import { Effect, Option, Schema, SchemaGetter } from 'effect'
+import {
+  Array,
+  Effect,
+  Function,
+  Option,
+  Record,
+  Schema,
+  SchemaGetter,
+  String,
+} from 'effect'
 
 // NOTE: the player's lasting data as Schemas, shared with the sync Worker in
 // infra/worker, which bundles it against its own, newer Effect. It imports
@@ -239,15 +248,22 @@ const KIND_PREFIXES: Readonly<Record<CosmeticKind, string>> = {
   Skin: 'skin:',
 }
 
-export const cosmeticIdOf = (kind: CosmeticKind, name: string): string =>
-  `${KIND_PREFIXES[kind]}${name}`
+export const cosmeticIdOf: {
+  (name: string): (kind: CosmeticKind) => string
+  (kind: CosmeticKind, name: string): string
+} = Function.dual(
+  2,
+  (kind: CosmeticKind, name: string): string => `${KIND_PREFIXES[kind]}${name}`,
+)
 
 const idsOf = (
   kind: CosmeticKind,
   names: ReadonlyArray<string>,
   value: number,
 ): Readonly<Record<string, number>> =>
-  Object.fromEntries(names.map(name => [cosmeticIdOf(kind, name), value]))
+  Record.fromEntries(
+    Array.map(names, name => [cosmeticIdOf(kind, name), value]),
+  )
 
 const SHIRT_PRICE = 20
 const PRINT_PRICE = 20
@@ -325,7 +341,11 @@ const oneOf = <A extends string>(
   options: ReadonlyArray<A>,
   value: string,
   fallback: A,
-): A => options.find(option => option === value) ?? fallback
+): A =>
+  Option.getOrElse(
+    Array.findFirst(options, option => option === value),
+    () => fallback,
+  )
 
 // NOTE: the first look, until 2026-10-30 (save versions 1 to 9, the player
 // scope's rows, ChangedAppearance version 1, and five word co-op codes): a
@@ -680,14 +700,21 @@ export const StoredAppearance = Schema.Union([
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 const letterOf = (options: ReadonlyArray<string>, value: string): string =>
-  LETTERS.charAt(Math.max(0, options.indexOf(value)))
+  Option.getOrElse(
+    String.charAt(LETTERS, Math.max(0, options.indexOf(value))),
+    () => '',
+  )
 
 const partOfLetter = (
   options: ReadonlyArray<string>,
   letter: string,
 ): string | undefined => {
-  const index = letter.length === 1 ? LETTERS.indexOf(letter) : -1
-  return index < 0 ? undefined : options[index]
+  const maybeIndex =
+    letter.length === 1 ? String.indexOf(letter)(LETTERS) : Option.none()
+  return Option.match(maybeIndex, {
+    onNone: () => undefined,
+    onSome: index => options[index],
+  })
 }
 
 const FLAG = ['A', 'B'] as const
@@ -696,12 +723,15 @@ const flagOfLetter = (letter: string): boolean | undefined =>
   letter === 'A' ? false : letter === 'B' ? true : undefined
 
 export const lookCodeOf = (look: Appearance): string => {
-  const letters = [
-    letterOf(Outfit.literals, look.outfit),
-    letterOf(Print.literals, look.print),
-    look.beard ? FLAG[1] : FLAG[0],
-    look.glasses ? FLAG[1] : FLAG[0],
-  ].join('')
+  const letters = Array.join(
+    [
+      letterOf(Outfit.literals, look.outfit),
+      letterOf(Print.literals, look.print),
+      look.beard ? FLAG[1] : FLAG[0],
+      look.glasses ? FLAG[1] : FLAG[0],
+    ],
+    '',
+  )
   const code = `${look.body}.${look.hairStyle}.${look.hairColor}.${look.skinTone}.${look.shirtColor}.${letters}`
   const withHat = `${code}.${letterOf(Hat.literals, look.hat)}`
   return look.gunSkin === 'Stock'
@@ -735,7 +765,7 @@ const lookWithoutHatOfCode = (
     skinTone: words[3],
     shirtColor: words[4],
   }
-  const letters = (words[5] ?? '').split('')
+  const letters = String.split('')(words[5] ?? '')
   if (letters.length === MANY_PART_LETTERS.length) {
     const partAt = (index: number) =>
       partOfLetter(MANY_PART_LETTERS[index] ?? [], letters[index] ?? '')
@@ -754,7 +784,7 @@ const lookWithoutHatOfCode = (
   return letters.length === 4
     ? decodeAppearance({
         ...firstFive,
-        outfit: partOfLetter(Outfit.literals, letters[0] ?? ''),
+        outfit: partOfLetter(Outfit.literals, letters[0]),
         print: partOfLetter(Print.literals, letters[1] ?? ''),
         beard: flagOfLetter(letters[2] ?? ''),
         glasses: flagOfLetter(letters[3] ?? ''),
@@ -765,7 +795,7 @@ const lookWithoutHatOfCode = (
 }
 
 export const lookOfCode = (code: string): Option.Option<Appearance> => {
-  const words = code.split('.')
+  const words = String.split('.')(code)
   if (words.length === 5) {
     return Option.map(
       decodeLegacyAppearance({
@@ -862,8 +892,8 @@ export type SavedDifficulty = typeof SavedDifficulty.Type
 // Kills per kind are keyed by kind id, ready for the Munchopedia. A win or a
 // wave not reached yet is null.
 export const SavedDifficultyBests = Schema.Struct({
-  fastestWinMs: Schema.NullOr(Schema.Number),
-  bestEndlessWave: Schema.NullOr(Schema.Number),
+  fastestWinMs: Schema.NullOr(Schema.Finite),
+  bestEndlessWave: Schema.NullOr(Schema.Finite),
 })
 export type SavedDifficultyBests = typeof SavedDifficultyBests.Type
 
@@ -876,9 +906,9 @@ export const SavedBestsByDifficulty = Schema.Struct({
 export type SavedBestsByDifficulty = typeof SavedBestsByDifficulty.Type
 
 export const SavedBests = Schema.Struct({
-  runsPlayed: Schema.Number,
-  totalKills: Schema.Number,
-  killsByKind: Schema.Record(Schema.String, Schema.Number),
+  runsPlayed: Schema.Finite,
+  totalKills: Schema.Finite,
+  killsByKind: Schema.Record(Schema.String, Schema.Finite),
   byDifficulty: SavedBestsByDifficulty,
 })
 export type SavedBests = typeof SavedBests.Type
@@ -888,8 +918,8 @@ export type SavedBests = typeof SavedBests.Type
 // end card's NEW BEST. A record not set yet is null. Two devices merge them
 // to the larger (src/playerScope.ts).
 export const SavedRunRecord = Schema.Struct({
-  furthestWave: Schema.NullOr(Schema.Number),
-  mostKills: Schema.NullOr(Schema.Number),
+  furthestWave: Schema.NullOr(Schema.Finite),
+  mostKills: Schema.NullOr(Schema.Finite),
 })
 export type SavedRunRecord = typeof SavedRunRecord.Type
 
@@ -916,12 +946,12 @@ export const noSavedRunRecords: SavedRunRecords = {
 // what it was, merged as the larger so it happens once; and the Bones
 // spent, for the closet that is not built yet.
 export const SavedRank = Schema.Struct({
-  earnedPoints: Schema.Number,
-  earnedBones: Schema.Number,
-  veteranPoints: Schema.Number,
-  veteranBones: Schema.Number,
+  earnedPoints: Schema.Finite,
+  earnedBones: Schema.Finite,
+  veteranPoints: Schema.Finite,
+  veteranBones: Schema.Finite,
   isVeteranGranted: Schema.Boolean,
-  spentBones: Schema.Number,
+  spentBones: Schema.Finite,
 })
 export type SavedRank = typeof SavedRank.Type
 

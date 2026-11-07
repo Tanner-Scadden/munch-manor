@@ -1,8 +1,17 @@
-import { Context, Effect, Layer, Option, Ref, Schedule } from 'effect'
+import {
+  Context,
+  Effect,
+  Function,
+  Layer,
+  Option,
+  Ref,
+  Schedule,
+  type Scope,
+} from 'effect'
 import { SqlClient } from 'effect/sql'
 import { TestClock } from 'effect/testing'
 
-import { SqliteClient } from '@munch/sqlite-wasm-effect'
+import { SqliteClient, type SqliteOpenError } from '@munch/sqlite-wasm-effect'
 import { type Hub, makeHub } from '@munch/sqlite-wasm-effect/in-process'
 import {
   Actor,
@@ -112,21 +121,52 @@ export const makeLegacy = (
     }
   })
 
-// NOTE: one hub is one device's database. Each open is a page load on it.
-export const openOn = (
-  hub: Hub,
-  legacy: LegacySave,
-  maybeSetup: Option.Option<SyncSetup> = Option.none(),
-) =>
-  Effect.gen(function* () {
-    const context = yield* Layer.build(hub.layer())
-    return yield* makePlayerDatabase(
-      Context.get(context, SqliteClient),
-      legacy,
-      maybeSetup,
-    )
-  })
+type OpenedDatabase = Effect.Effect<
+  PlayerDatabase,
+  Effect.Error<ReturnType<typeof makePlayerDatabase>> | SqliteOpenError,
+  Scope.Scope
+>
 
+// NOTE: one hub is one device's database. Each open is a page load on it,
+// syncing through `maybeSetup` when it holds one.
+/** @stability unstable */
+export const openSyncingOn: {
+  (
+    legacy: LegacySave,
+    maybeSetup: Option.Option<SyncSetup>,
+  ): (hub: Hub) => OpenedDatabase
+  (
+    hub: Hub,
+    legacy: LegacySave,
+    maybeSetup: Option.Option<SyncSetup>,
+  ): OpenedDatabase
+} = Function.dual(
+  3,
+  (
+    hub: Hub,
+    legacy: LegacySave,
+    maybeSetup: Option.Option<SyncSetup>,
+  ): OpenedDatabase =>
+    Effect.gen(function* () {
+      const context = yield* Layer.build(hub.layer())
+      return yield* makePlayerDatabase(
+        Context.get(context, SqliteClient),
+        legacy,
+        maybeSetup,
+      )
+    }),
+)
+
+// NOTE: a device with no sync set up.
+/** @stability unstable */
+export const openOn: {
+  (legacy: LegacySave): (hub: Hub) => OpenedDatabase
+  (hub: Hub, legacy: LegacySave): OpenedDatabase
+} = Function.dual(2, (hub: Hub, legacy: LegacySave): OpenedDatabase =>
+  openSyncingOn(hub, legacy, Option.none()),
+)
+
+/** @stability unstable */
 export const sqlOn = (hub: Hub) =>
   Effect.map(Layer.build(hub.layer()), context =>
     Context.get(context, SqlClient.SqlClient),
@@ -144,11 +184,21 @@ export const synced = <A, E, R>(
 ): Effect.Effect<A, E, R> =>
   Effect.andThen(TestClock.setTime(SYNC_EPOCH_MS), program)
 
-export const write = (
-  database: PlayerDatabase,
-  before: PlayerSave,
-  after: PlayerSave,
-) => database.write(after, changesBetween(before, after))
+export const write: {
+  (
+    before: PlayerSave,
+    after: PlayerSave,
+  ): (database: PlayerDatabase) => ReturnType<PlayerDatabase['write']>
+  (
+    database: PlayerDatabase,
+    before: PlayerSave,
+    after: PlayerSave,
+  ): ReturnType<PlayerDatabase['write']>
+} = Function.dual(
+  3,
+  (database: PlayerDatabase, before: PlayerSave, after: PlayerSave) =>
+    database.write(after, changesBetween(before, after)),
+)
 
 export const muted = (save: PlayerSave): PlayerSave => ({
   ...save,
@@ -168,6 +218,7 @@ const openServerDatabase = () =>
 // NOTE: the server side in this process: a Directory for identity and
 // linking, and the scope host for the player scopes, wired the way
 // infra/worker/sync.ts wires them on Cloudflare.
+/** @stability unstable */
 export const makeServer = Effect.gen(function* () {
   const directorySql = yield* openServerDatabase()
   const directory = yield* Effect.provideService(
@@ -182,30 +233,25 @@ export const makeServer = Effect.gen(function* () {
       Effect.flatMap(
         Effect.orDie(Effect.clockWith(clock => clock.currentTimeMillis)),
         now =>
-          Effect.map(
-            Effect.mapError(
-              verifyToken(SECRET, token, now),
-              error => new Unauthorized({ reason: error.reason }),
-            ),
-            claims =>
+          Effect.mapBoth(verifyToken(SECRET, token, now), {
+            onFailure: error => Unauthorized.make({ reason: error.reason }),
+            onSuccess: claims =>
               Actor.cases.Device.make({
                 playerId: claims.playerId,
                 deviceId: claims.deviceId,
               }),
-          ),
+          }),
       ),
   })
   const clock = yield* Effect.clockWith(Effect.succeed)
   const now = () => clock.currentTimeMillisUnsafe()
   const claimsOf = (token: string) =>
-    Effect.mapError(
-      verifyToken(SECRET, token, now()),
-      error =>
-        new IdentityRefused({
-          failure: IdentityFailure.cases.Unauthorized.make({
-            reason: error.reason,
-          }),
+    Effect.mapError(verifyToken(SECRET, token, now()), error =>
+      IdentityRefused.make({
+        failure: IdentityFailure.cases.Unauthorized.make({
+          reason: error.reason,
         }),
+      }),
     )
   const api: IdentityApi = {
     challenge: Effect.suspend(() =>
@@ -239,18 +285,30 @@ export const makeServer = Effect.gen(function* () {
 })
 
 // NOTE: polls on the TestClock, which settle moves.
-export const until = <A, E>(
-  probe: Effect.Effect<A, E>,
-  done: (value: A) => boolean,
-) =>
-  settle(
-    Effect.repeat(probe, {
-      until: done,
-      schedule: Schedule.spaced('20 millis'),
-    }),
-  )
+export const until: {
+  <A>(
+    done: (value: A) => boolean,
+  ): <E>(probe: Effect.Effect<A, E>) => Effect.Effect<A, E>
+  <A, E>(
+    probe: Effect.Effect<A, E>,
+    done: (value: A) => boolean,
+  ): Effect.Effect<A, E>
+} = Function.dual(
+  2,
+  <A, E>(
+    probe: Effect.Effect<A, E>,
+    done: (value: A) => boolean,
+  ): Effect.Effect<A, E> =>
+    settle(
+      Effect.repeat(probe, {
+        until: done,
+        schedule: Schedule.spaced('20 millis'),
+      }),
+    ),
+)
 
 // NOTE: a phone with the legacy save, and a laptop linked to its player.
+/** @stability unstable */
 export const linkedPair = Effect.gen(function* () {
   const server = yield* makeServer
   const network = yield* server.host.network()
@@ -258,18 +316,21 @@ export const linkedPair = Effect.gen(function* () {
     identityApi: server.api,
     transports: [network.transport],
   })
-  const phone = yield* openOn(
-    yield* makeHub(),
+  const value_1 = yield* makeHub()
+  const phone = yield* openSyncingOn(
+    value_1,
     (yield* makeLegacy(Option.some(legacySave))).legacy,
     setup,
   )
-  const laptop = yield* openOn(
-    yield* makeHub(),
+  const value_2 = yield* makeHub()
+  const laptop = yield* openSyncingOn(
+    value_2,
     (yield* makeLegacy(Option.none())).legacy,
     setup,
   )
   yield* phone.load
-  yield* laptop.redeemLinkCode(yield* phone.requestLinkCode)
+  const requestLinkCode_1 = yield* phone.requestLinkCode
+  yield* laptop.redeemLinkCode(requestLinkCode_1)
   yield* until(laptop.load, maybeSave =>
     Option.exists(maybeSave, save => save.appearance.hairColor === 'Red'),
   )

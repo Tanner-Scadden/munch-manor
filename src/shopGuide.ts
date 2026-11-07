@@ -1,4 +1,4 @@
-import { Array, Option, Record, Schema } from 'effect'
+import { Array, Function, Option, Record, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
@@ -63,7 +63,7 @@ export const sectionName = (section: ShopGuideSection): string =>
 // NOTE: which picture an entry, a ladder step, or a chip wears. The pixels
 // are in src/shopGuideArt.ts.
 export const GuideArt = defineTaggedUnion({
-  Gun: { weapon: WeaponKind, tier: Schema.Number },
+  Gun: { weapon: WeaponKind, tier: Schema.Finite },
   Item: { id: ShopItemId },
   Prize: { prize: FridgePrize },
   House: { spot: HouseSpot },
@@ -497,14 +497,17 @@ const isPrizeKnown = (
   prize: FridgePrize,
 ): boolean => Array.contains(seenUnlocks, prizeUnlockId(prize))
 
-export const isEntryKnown = (
-  seenUnlocks: ReadonlyArray<string>,
-  entry: GuideEntry,
-): boolean =>
-  Option.match(entry.prize, {
-    onNone: () => true,
-    onSome: prize => isPrizeKnown(seenUnlocks, prize),
-  })
+export const isEntryKnown: {
+  (entry: GuideEntry): (seenUnlocks: ReadonlyArray<string>) => boolean
+  (seenUnlocks: ReadonlyArray<string>, entry: GuideEntry): boolean
+} = Function.dual(
+  2,
+  (seenUnlocks: ReadonlyArray<string>, entry: GuideEntry): boolean =>
+    Option.match(entry.prize, {
+      onNone: () => true,
+      onSome: prize => isPrizeKnown(seenUnlocks, prize),
+    }),
+)
 
 // NOTE: the fridge's door open on a prize is a pull. Run after every
 // Message, it adds that prize to the ones seen.

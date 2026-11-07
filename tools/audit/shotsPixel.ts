@@ -1,3 +1,14 @@
+import {
+  Array,
+  Config,
+  Console,
+  Effect,
+  FileSystem,
+  Schema,
+  String,
+} from 'effect'
+import type { Page } from 'playwright-core'
+
 // The pixel pass: every menu and overlay screen on a 1280x720 desktop, an
 // 844x390 phone on its side, and a 390x844 phone held upright, as
 // `<viewport>-<scene>.png` in PIXEL_SHOTS (default /tmp/pixel-shots), with
@@ -8,26 +19,22 @@
 // a non-integer scale of its pixels without `pixelated` rendering.
 //   bun run heavy -- --shared bun tools/audit/shotsPixel.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
-import { Schema } from 'effect'
-import { mkdirSync } from 'node:fs'
-import type { Page } from 'playwright-core'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
-import { writeJsonFile } from '../json'
+import { encodeJson } from '../json'
+import { runHarnessAuditWith } from './harnessServer'
 import {
-  SHOT_VIEWPORTS,
   deviceQuery,
   finish,
   harnessQuery,
   isPickedScene,
-  launch,
+  openBrowser,
   scenePages,
   settleAnimations,
-  useHarness,
+  shotViewports,
   wait,
 } from './lib'
-import { evaluateAs } from './page'
-
-const DIR = process.env['PIXEL_SHOTS'] ?? '/tmp/pixel-shots'
+import { attempt, evaluateAs } from './page'
 
 const LEARNED =
   'learned=move,fire,startWave,shop,swap,pickup,timedBreaks,openBreak'
@@ -49,7 +56,7 @@ type Scene = Readonly<{
 const MANOR = '#home-manor'
 const PLAY = '#home-play'
 const tab = (index: number) => `dialog[open] [role=tab] >> nth=${index}`
-const SHOP_TABS = [0, 1, 2].map(tab)
+const SHOP_TABS = Array.map([0, 1, 2], tab)
 
 const SCENES: ReadonlyArray<Scene> = [
   { name: 'home', query: '' },
@@ -120,13 +127,11 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   { name: 'whats-new', query: '', open: [MANOR, '#hand-card-whatsnew'] },
   { name: 'shop-guns', query: SHOP },
-  ...SHOP_TABS.slice(1).map(
-    (selector, index): Scene => ({
-      name: `shop-tab${index + 1}`,
-      query: SHOP,
-      open: [selector],
-    }),
-  ),
+  ...Array.map(SHOP_TABS.slice(1), (selector, index): Scene => ({
+    name: `shop-tab${index + 1}`,
+    query: SHOP,
+    open: [selector],
+  })),
   { name: 'shop-broke', query: 'wave=3&money=12&gun=shotgun&px=270&py=142' },
   { name: 'shop-help', query: SHOP, open: ['button[aria-label="Shop guide"]'] },
   {
@@ -154,7 +159,10 @@ const SCENES: ReadonlyArray<Scene> = [
     query: `wave=4&seen=all&start=wave&elapsed=6000&crowd=8&${LEARNED}`,
   },
   { name: 'pause', query: 'wave=3&seen=all&start=wave&phase=paused' },
-  { name: 'end-loss', query: `wave=5&phase=gameover&stats&rank=162&rankgain=129` },
+  {
+    name: 'end-loss',
+    query: `wave=5&phase=gameover&stats&rank=162&rankgain=129`,
+  },
   {
     name: 'end-win',
     query: `wave=10&phase=victory&stats&difficulty=Hard&rank=1900&rankgain=537&mods=14`,
@@ -169,7 +177,7 @@ const SCENES: ReadonlyArray<Scene> = [
 
 const Control = Schema.Record(
   Schema.String,
-  Schema.Union([Schema.String, Schema.Number, Schema.Boolean]),
+  Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]),
 )
 const Metrics = Schema.Struct({
   controls: Schema.Array(Control),
@@ -178,136 +186,169 @@ const Metrics = Schema.Struct({
 
 const measure = (page: Page) =>
   evaluateAs(page, Metrics, () => {
+    // NOTE: this runs in the page, where Effect's modules are not loaded, so
+    // it reads the elements with plain loops and the page's own String.
     const round = (value: number) => Math.round(value * 100) / 100
     const visible = (element: Element) => {
       const box = element.getBoundingClientRect()
       return box.width > 0 && box.height > 0
     }
-    const controls = [
-      ...document.querySelectorAll(
-        'button, [role=tab], input, dialog[open], .coop, .profile, .panel, h1, h2, h3',
-      ),
-    ]
-      .filter(visible)
-      .map(element => {
-        const box = element.getBoundingClientRect()
-        const style = getComputedStyle(element)
-        const dialog = element.closest('dialog')
-        const inset =
-          dialog === null
-            ? { right: 0, top: 0 }
-            : {
-                right: dialog.getBoundingClientRect().right - box.right,
-                top: box.top - dialog.getBoundingClientRect().top,
-              }
-        return {
-          tag: element.tagName.toLowerCase(),
-          cls: element.className.toString().slice(0, 60),
-          label: (
-            element.getAttribute('aria-label') ?? element.textContent
-          )
-            .trim()
-            .slice(0, 28),
-          x: round(box.left),
-          y: round(box.top),
-          w: round(box.width),
-          h: round(box.height),
-          fromDialogRight: round(inset.right),
-          fromDialogTop: round(inset.top),
-          fontSize: style.fontSize,
-          fontFamily: style.fontFamily.slice(0, 30),
-          fontWeight: style.fontWeight,
-          letterSpacing: style.letterSpacing,
-          lineHeight: style.lineHeight,
-          color: style.color,
-          background: style.backgroundColor,
-          borderWidth: style.borderTopWidth,
-          borderStyle: style.borderTopStyle,
-          borderColor: style.borderTopColor,
-          radius: style.borderTopLeftRadius,
-          shadow: style.boxShadow.slice(0, 80),
-          padding: style.padding,
-          opacity: style.opacity,
-          cursor: style.cursor,
-          isDisabled:
-            element instanceof HTMLButtonElement && element.disabled,
-        }
+    // NOTE: runs in the page, where Effect's String is not loaded.
+    // @effect-diagnostics-next-line preferEffectString:off
+    const cut = (text: string, length: number) => text.slice(0, length)
+    // NOTE: runs in the page, where Effect's String is not loaded.
+    // @effect-diagnostics-next-line preferEffectString:off
+    const lower = (text: string) => text.toLowerCase()
+    // NOTE: runs in the page, where Effect's String is not loaded.
+    // @effect-diagnostics-next-line preferEffectString:off
+    const trimmed = (text: string) => text.trim()
+    const controls: Array<Record<string, string | number | boolean>> = []
+    for (const element of document.querySelectorAll(
+      'button, [role=tab], input, dialog[open], .coop, .profile, .panel, h1, h2, h3',
+    )) {
+      if (!visible(element)) {
+        continue
+      }
+      const box = element.getBoundingClientRect()
+      const style = getComputedStyle(element)
+      const dialog = element.closest('dialog')
+      const inset =
+        dialog === null
+          ? { right: 0, top: 0 }
+          : {
+              right: dialog.getBoundingClientRect().right - box.right,
+              top: box.top - dialog.getBoundingClientRect().top,
+            }
+      controls.push({
+        tag: lower(element.tagName),
+        cls: cut(element.className.toString(), 60),
+        label: cut(
+          trimmed(element.getAttribute('aria-label') ?? element.textContent),
+          28,
+        ),
+        x: round(box.left),
+        y: round(box.top),
+        w: round(box.width),
+        h: round(box.height),
+        fromDialogRight: round(inset.right),
+        fromDialogTop: round(inset.top),
+        fontSize: style.fontSize,
+        fontFamily: cut(style.fontFamily, 30),
+        fontWeight: style.fontWeight,
+        letterSpacing: style.letterSpacing,
+        lineHeight: style.lineHeight,
+        color: style.color,
+        background: style.backgroundColor,
+        borderWidth: style.borderTopWidth,
+        borderStyle: style.borderTopStyle,
+        borderColor: style.borderTopColor,
+        radius: style.borderTopLeftRadius,
+        shadow: cut(style.boxShadow, 80),
+        padding: style.padding,
+        opacity: style.opacity,
+        cursor: style.cursor,
+        isDisabled: element instanceof HTMLButtonElement && element.disabled,
       })
-    const images = [...document.querySelectorAll('img, canvas')]
-      .filter(visible)
-      .map(element => {
-        const box = element.getBoundingClientRect()
-        const natural =
-          element instanceof HTMLImageElement
-            ? element.naturalWidth
-            : element instanceof HTMLCanvasElement
-              ? element.width
-              : 0
-        return {
-          tag: element.tagName.toLowerCase(),
-          cls: element.className.toString().slice(0, 60),
-          parent: element.parentElement?.className.toString().slice(0, 40) ?? '',
-          natural,
-          drawn: round(box.width),
-          scale: natural === 0 ? 0 : round(box.width / natural),
-          rendering: getComputedStyle(element).imageRendering,
-        }
+    }
+    const images: Array<Record<string, string | number | boolean>> = []
+    for (const element of document.querySelectorAll('img, canvas')) {
+      if (!visible(element)) {
+        continue
+      }
+      const box = element.getBoundingClientRect()
+      const natural =
+        element instanceof HTMLImageElement
+          ? element.naturalWidth
+          : element instanceof HTMLCanvasElement
+            ? element.width
+            : 0
+      const parentClass = element.parentElement?.className.toString()
+      images.push({
+        tag: lower(element.tagName),
+        cls: cut(element.className.toString(), 60),
+        parent: parentClass === undefined ? '' : cut(parentClass, 40),
+        natural,
+        drawn: round(box.width),
+        scale: natural === 0 ? 0 : round(box.width / natural),
+        rendering: getComputedStyle(element).imageRendering,
       })
+    }
     return { controls, images }
   })
 
 const problems: Array<string> = []
 
-mkdirSync(DIR, { recursive: true })
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev', 'tick=72'])
-for (const viewport of SHOT_VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
-    }
-    const where = `${viewport.name}-${scene.name}`
-    // NOTE: a scene whose query the harness refuses, or whose control is
-    // missing, is a problem to report, never a reason to stop the pass.
-    try {
-      const page = await pages.open(
-        viewport,
-        harnessQuery(scene.query, deviceQuery(viewport)),
-      )
-      for (const selector of scene.open ?? []) {
-        await page.locator(selector).first().click({ timeout: 5000 })
-        await settleAnimations(page)
-      }
-      await wait(250)
-      await settleAnimations(page)
-      const metrics = await measure(page)
-      for (const image of metrics.images) {
-        const scale = Number(image['scale'])
-        if (
-          image['tag'] === 'img' &&
-          scale > 0 &&
-          Math.abs(scale - Math.round(scale)) > 0.02 &&
-          image['rendering'] !== 'pixelated' &&
-          image['rendering'] !== 'crisp-edges'
-        ) {
-          problems.push(
-            `${where}: ${String(image['cls'])} drawn at ${scale}x, ${String(image['rendering'])}`,
-          )
+runHarnessAuditWith(
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const dir = yield* Config.String('PIXEL_SHOTS').pipe(
+      Config.withDefault('/tmp/pixel-shots'),
+    )
+    yield* fs.makeDirectory(dir, { recursive: true })
+    const viewports = yield* shotViewports
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev', 'tick=72'])
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
         }
+        const where = `${viewport.name}-${scene.name}`
+        // NOTE: a scene whose query the harness refuses, or whose control is
+        // missing, is a problem to report, never a reason to stop the pass.
+        yield* Effect.gen(function* () {
+          const page = yield* pages.open(
+            viewport,
+            harnessQuery(scene.query, deviceQuery(viewport)),
+          )
+          for (const selector of scene.open ?? []) {
+            yield* attempt(() =>
+              page.locator(selector).first().click({ timeout: 5000 }),
+            )
+            yield* settleAnimations(page)
+          }
+          yield* wait(250)
+          yield* settleAnimations(page)
+          const metrics = yield* measure(page)
+          for (const image of metrics.images) {
+            const scale = Number(image['scale'])
+            if (
+              image['tag'] === 'img' &&
+              scale > 0 &&
+              Math.abs(scale - Math.round(scale)) > 0.02 &&
+              image['rendering'] !== 'pixelated' &&
+              image['rendering'] !== 'crisp-edges'
+            ) {
+              problems.push(
+                `${where}: ${globalThis.String(image['cls'])} drawn at ${scale}x, ${globalThis.String(image['rendering'])}`,
+              )
+            }
+          }
+          yield* fs.writeFileString(
+            `${dir}/${where}.json`,
+            `${encodeJson(Metrics, 2)(metrics)}\n`,
+          )
+          yield* attempt(() =>
+            page.screenshot({
+              path: `${dir}/${where}.png`,
+              animations: 'disabled',
+            }),
+          )
+          yield* Console.log(`shot ${where}`)
+          pages.release(page)
+        }).pipe(
+          Effect.catch(error =>
+            Effect.sync(() => {
+              problems.push(
+                `${where}: ${String.split('\n')(globalThis.String(error))[0]}`,
+              )
+            }),
+          ),
+        )
       }
-      writeJsonFile(Metrics, `${DIR}/${where}.json`, metrics)
-      await page.screenshot({
-        path: `${DIR}/${where}.png`,
-        animations: 'disabled',
-      })
-      console.log(`shot ${where}`)
-      pages.release(page)
-    } catch (error) {
-      problems.push(`${where}: ${String(error).split('\n')[0]}`)
     }
-  }
-}
-await pages.close()
-await browser.close()
-finish(problems, 'The pixel pass found no problems.')
+    yield* pages.close
+    yield* finish(problems, 'The pixel pass found no problems.')
+  }),
+  NodeServices.layer,
+)

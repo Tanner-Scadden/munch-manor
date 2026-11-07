@@ -16,12 +16,15 @@
 // TAPS_PARALLEL sets how many scenes run at once, each in its own browser
 // context (3 by default, 1 for one after another). The report keeps the
 // order of a run one after another.
+import { Array, Config, Effect, Option } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
   type Log,
   PHONE_667,
   PHONE_844,
+  type ScenePages,
   UPRIGHT_360,
   UPRIGHT_390,
   UPRIGHT_430,
@@ -29,16 +32,16 @@ import {
   finish,
   forEachInOrder,
   isPickedScene,
-  launch,
+  openBrowser,
   parallelFrom,
   pickViewports,
   scenePages,
   settleAnimations,
-  useHarness,
   wait,
   waitForDialog,
   waitForLobby,
 } from './lib'
+import { attempt, failWith } from './page'
 
 // NOTE: a 2x pixel ratio on every phone keeps the many reloads quick. The hit
 // tests read CSS pixels, so the ratio does not change them.
@@ -53,9 +56,11 @@ const PORTRAIT: ReadonlyArray<Viewport> = [
   { ...UPRIGHT_360, scale: 2 },
 ]
 
-const VIEWPORTS = pickViewports(
-  process.env['PORTRAIT'] === undefined ? LANDSCAPE : PORTRAIT,
-)
+// NOTE: PORTRAIT=1 takes the upright phones.
+const pickedViewports = Effect.gen(function* () {
+  const portrait = yield* Config.String('PORTRAIT').pipe(Config.option)
+  return yield* pickViewports(Option.isNone(portrait) ? LANDSCAPE : PORTRAIT)
+})
 
 type Scene = Readonly<{
   name: string
@@ -227,31 +232,35 @@ const OPEN_TIMEOUT_MS = 10_000
 // NOTE: the fixed waits are the least a scene needs. Each step also waits
 // for what it opens, so a busy machine, or several scenes at once, slows
 // the run instead of breaking it.
-const tapToOpen = async (page: Page, scene: Scene, selector: string) => {
-  const locator = page.locator(selector).first()
-  await locator
-    .waitFor({ state: 'visible', timeout: OPEN_TIMEOUT_MS })
-    .catch(() => undefined)
-  const box = await locator.boundingBox()
-  if (box === null) {
-    throw new Error(`${scene.name}: nothing to open with ${selector}`)
-  }
-  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
-}
+const tapToOpen = (page: Page, scene: Scene, selector: string) =>
+  Effect.gen(function* () {
+    const locator = page.locator(selector).first()
+    yield* attempt(() =>
+      locator.waitFor({ state: 'visible', timeout: OPEN_TIMEOUT_MS }),
+    ).pipe(Effect.ignore)
+    const box = yield* attempt(() => locator.boundingBox())
+    if (box === null) {
+      return yield* failWith(`${scene.name}: nothing to open with ${selector}`)
+    }
+    yield* attempt(() =>
+      page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2),
+    )
+  })
 
-const openScene = async (page: Page, scene: Scene) => {
-  if (scene.opensDialog === true) {
-    await waitForDialog(page)
-  }
-  await settleAnimations(page)
-  for (const [step, selector] of (scene.open ?? []).entries()) {
-    await tapToOpen(page, scene, selector)
-    await (step === 0 && scene.opensLobby === true
-      ? waitForLobby(page)
-      : waitForDialog(page))
-    await settleAnimations(page)
-  }
-}
+const openScene = (page: Page, scene: Scene) =>
+  Effect.gen(function* () {
+    if (scene.opensDialog === true) {
+      yield* waitForDialog(page)
+    }
+    yield* settleAnimations(page)
+    for (const [step, selector] of (scene.open ?? []).entries()) {
+      yield* tapToOpen(page, scene, selector)
+      yield* step === 0 && scene.opensLobby === true
+        ? waitForLobby(page)
+        : waitForDialog(page)
+      yield* settleAnimations(page)
+    }
+  })
 
 // NOTE: what a tap can land on: every button, the end screens' SHARE, a
 // link so the browser opens X on the tap itself, and the home menu's coffee,
@@ -261,8 +270,8 @@ const TAP_TARGETS = 'button, a.end-button, a.home-support'
 // NOTE: true once the scene shows a button at `index`, in the open dialog
 // when there is one.
 const hasButton = (page: Page, at: number, isInDialog: boolean) =>
-  page
-    .waitForFunction(
+  attempt(() =>
+    page.waitForFunction(
       ({ index, hasDialog, targets }) => {
         const scope: ParentNode = hasDialog
           ? (document.querySelector('dialog[open]') ?? document)
@@ -271,17 +280,18 @@ const hasButton = (page: Page, at: number, isInDialog: boolean) =>
       },
       { index: at, hasDialog: isInDialog, targets: TAP_TARGETS },
       { timeout: OPEN_TIMEOUT_MS },
-    )
-    .then(() => true)
-    .catch(() => false)
+    ),
+  ).pipe(
+    Effect.as(true),
+    Effect.orElseSucceed(() => false),
+  )
 
-const visibleTargets = (page: Page): Promise<ReadonlyArray<number>> =>
-  page.evaluate(targets => {
-    const openDialog = document.querySelector('dialog[open]')
-    const scope: ParentNode = openDialog ?? document
-    return Array.from(scope.querySelectorAll(targets))
-      .map((button, index) => ({ button, index }))
-      .filter(({ button }) => {
+const visibleTargets = (page: Page) =>
+  attempt((): Promise<ReadonlyArray<number>> =>
+    page.evaluate(targets => {
+      const openDialog = document.querySelector('dialog[open]')
+      const scope: ParentNode = openDialog ?? document
+      const isVisible = (button: Element) => {
         const box = button.getBoundingClientRect()
         const style = getComputedStyle(button)
         return (
@@ -291,62 +301,81 @@ const visibleTargets = (page: Page): Promise<ReadonlyArray<number>> =>
           style.display !== 'none' &&
           (openDialog !== null || button.closest('dialog') === null)
         )
-      })
-      .map(({ index }) => index)
-  }, TAP_TARGETS)
+      }
+      const indices: Array<number> = []
+      const buttons = scope.querySelectorAll(targets)
+      for (let index = 0; index < buttons.length; index++) {
+        const button = buttons[index]
+        if (button !== undefined && isVisible(button)) {
+          indices.push(index)
+        }
+      }
+      return indices
+    }, TAP_TARGETS),
+  )
 
 // NOTE: only a dialog's own panel counts. A list inside it, such as the
 // Munchopedia's tiles, may keep its place.
-const openedScroll = (page: Page): Promise<number> =>
-  page.evaluate(() =>
-    Math.round(document.querySelector('dialog[open] .panel')?.scrollTop ?? 0),
+const openedScroll = (page: Page) =>
+  attempt(() =>
+    page.evaluate(() =>
+      Math.round(document.querySelector('dialog[open] .panel')?.scrollTop ?? 0),
+    ),
   )
 
 // NOTE: a panel that scrolls, such as Settings on a landscape phone, can
 // open with some buttons out of view. A player scrolls to them, so each
 // button is scrolled into view before it is measured, hit tested, and tapped.
-const placeTarget = (
-  page: Page,
-  at: number,
-  isInDialog: boolean,
-): Promise<Target> =>
-  page.evaluate(
-    ({ index, hasDialog, inset, targets }) => {
-      const scope: ParentNode = hasDialog
-        ? (document.querySelector('dialog[open]') ?? document)
-        : document
-      const button = scope.querySelectorAll(targets)[index]
-      if (button === undefined) {
-        throw new Error(`No tap target at ${index}`)
-      }
-      button.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-      const box = button.getBoundingClientRect()
-      const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-      return {
-        label: button.getAttribute('aria-label') ?? button.textContent.trim(),
-        index,
-        center,
-        width: box.width,
-        height: box.height,
-        points: [
-          { name: 'center', point: center },
-          { name: 'left', point: { x: box.left + inset, y: center.y } },
-          { name: 'right', point: { x: box.right - inset, y: center.y } },
-          { name: 'top', point: { x: center.x, y: box.top + inset } },
-          { name: 'bottom', point: { x: center.x, y: box.bottom - inset } },
-          {
-            name: 'corner',
-            point: { x: box.left + inset * 4, y: box.top + inset * 4 },
-          },
-        ],
-      }
-    },
-    {
-      index: at,
-      hasDialog: isInDialog,
-      inset: EDGE_INSET,
-      targets: TAP_TARGETS,
-    },
+const placeTarget = (page: Page, at: number, isInDialog: boolean) =>
+  attempt((): Promise<Target> =>
+    page.evaluate(
+      ({ index, hasDialog, inset, targets }) => {
+        const scope: ParentNode = hasDialog
+          ? (document.querySelector('dialog[open]') ?? document)
+          : document
+        const button = scope.querySelectorAll(targets)[index]
+        if (button === undefined) {
+          throw new Error(`No tap target at ${index}`)
+        }
+        button.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        const box = button.getBoundingClientRect()
+        const center = {
+          x: box.x + box.width / 2,
+          y: box.y + box.height / 2,
+        }
+        return {
+          label:
+            button.getAttribute('aria-label') ??
+            // NOTE: runs in the page, which has no effect module.
+            // @effect-diagnostics-next-line preferEffectString:off
+            button.textContent.trim(),
+          index,
+          center,
+          width: box.width,
+          height: box.height,
+          points: [
+            { name: 'center', point: center },
+            { name: 'left', point: { x: box.left + inset, y: center.y } },
+            { name: 'right', point: { x: box.right - inset, y: center.y } },
+            { name: 'top', point: { x: center.x, y: box.top + inset } },
+            {
+              name: 'bottom',
+              point: { x: center.x, y: box.bottom - inset },
+            },
+            {
+              name: 'corner',
+              point: { x: box.left + inset * 4, y: box.top + inset * 4 },
+            },
+          ],
+        }
+      },
+      {
+        index: at,
+        hasDialog: isInDialog,
+        inset: EDGE_INSET,
+        targets: TAP_TARGETS,
+      },
+    ),
   )
 
 const hitsButton = (
@@ -355,168 +384,193 @@ const hitsButton = (
   point: Point,
   isInDialog: boolean,
 ) =>
-  page.evaluate(
-    ({ index, point: { x, y }, hasDialog, targets }) => {
-      const scope: ParentNode = hasDialog
-        ? (document.querySelector('dialog[open]') ?? document)
-        : document
-      const button = scope.querySelectorAll(targets)[index]
-      const hit = document.elementFromPoint(x, y)
-      return button !== undefined && hit !== null && button.contains(hit)
-    },
-    {
-      index: target.index,
-      point,
-      hasDialog: isInDialog,
-      targets: TAP_TARGETS,
-    },
+  attempt(() =>
+    page.evaluate(
+      ({ index, point: { x, y }, hasDialog, targets }) => {
+        const scope: ParentNode = hasDialog
+          ? (document.querySelector('dialog[open]') ?? document)
+          : document
+        const button = scope.querySelectorAll(targets)[index]
+        const hit = document.elementFromPoint(x, y)
+        return button !== undefined && hit !== null && button.contains(hit)
+      },
+      {
+        index: target.index,
+        point,
+        hasDialog: isInDialog,
+        targets: TAP_TARGETS,
+      },
+    ),
   )
-
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['device=touch', 'nodev'])
 
 // NOTE: a tap can change the scene, so every tap gets the scene again. It is
 // switched in on a page of the same screen, which starts from the query with
 // an empty save, whatever earlier taps wrote to storage. A scene marked
 // `fresh`, such as the iPhone tip, gets a new browser context instead, with
 // empty storage, as a first visit would.
-const openFreshScene = async (viewport: Viewport, scene: Scene) => {
-  const page = await pages.open(viewport, scene.query, {
-    fresh: scene.fresh === true,
+const openFreshScene = (pages: ScenePages, viewport: Viewport, scene: Scene) =>
+  Effect.gen(function* () {
+    const page = yield* pages.open(viewport, scene.query, {
+      fresh: scene.fresh === true,
+    })
+    yield* openScene(page, scene)
+    return page
   })
-  await openScene(page, scene)
-  return page
-}
 
 // NOTE: opens the scene fresh for one tap, once more if the button is not
 // there yet, and gives null when it is still missing.
-const openWithButton = async (
+const openWithButton = (
+  pages: ScenePages,
   viewport: Viewport,
   scene: Scene,
   index: number,
   hasDialog: boolean,
-): Promise<Page | null> => {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const page = await openFreshScene(viewport, scene)
-    if (await hasButton(page, index, hasDialog)) {
-      return page
+) =>
+  Effect.gen(function* () {
+    for (let tries = 0; tries < 2; tries++) {
+      const page = yield* openFreshScene(pages, viewport, scene)
+      if (yield* hasButton(page, index, hasDialog)) {
+        return page
+      }
+      yield* pages.discard(page)
     }
-    await pages.discard(page)
-  }
-  return null
-}
+    return null
+  })
 
-const checkScene = async (
+const checkScene = (
+  pages: ScenePages,
   viewport: Viewport,
   scene: Scene,
   log: Log,
-): Promise<ReadonlyArray<string>> => {
-  const failures: Array<string> = []
-  const page = await openFreshScene(viewport, scene)
-  const hasDialog = (scene.open ?? []).length > 0 || scene.opensDialog === true
-  const indices = await visibleTargets(page)
-  const where = `${viewport.name} ${scene.name}`
-  if (indices.length === 0) {
-    failures.push(`${where}: no buttons`)
-  }
-  const openScroll = await openedScroll(page)
-  if (openScroll > 0) {
-    failures.push(
-      `${where}: the open panel starts ${openScroll} px down, hiding its top`,
-    )
-  }
-  const targets: Array<Target> = []
-  for (const index of indices) {
-    const target = await placeTarget(page, index, hasDialog)
-    targets.push(target)
-    if (target.width < MIN_SIDE || target.height < MIN_SIDE) {
+) =>
+  Effect.gen(function* () {
+    const failures: Array<string> = []
+    const page = yield* openFreshScene(pages, viewport, scene)
+    const hasDialog =
+      (scene.open ?? []).length > 0 || scene.opensDialog === true
+    const indices = yield* visibleTargets(page)
+    const where = `${viewport.name} ${scene.name}`
+    if (indices.length === 0) {
+      failures.push(`${where}: no buttons`)
+    }
+    const openScroll = yield* openedScroll(page)
+    if (openScroll > 0) {
       failures.push(
-        `${where} "${target.label}": ${Math.round(target.width)}x${Math.round(target.height)} is under ${MIN_SIDE} px`,
+        `${where}: the open panel starts ${openScroll} px down, hiding its top`,
       )
     }
-    for (const { name, point } of target.points) {
-      if (!(await hitsButton(page, target, point, hasDialog))) {
-        failures.push(`${where} "${target.label}": the ${name} misses it`)
-      }
-    }
-  }
-  pages.release(page)
-  for (const target of targets) {
-    for (const { name } of target.points.filter(
-      ({ name: pointName }) => pointName === 'center' || pointName === 'corner',
-    )) {
-      const tapPage = await openWithButton(
-        viewport,
-        scene,
-        target.index,
-        hasDialog,
-      )
-      if (tapPage === null) {
-        log(`FAIL ${where} "${target.label}" ${name}: gone on reopen`)
+    const targets: Array<Target> = []
+    for (const index of indices) {
+      const target = yield* placeTarget(page, index, hasDialog)
+      targets.push(target)
+      if (target.width < MIN_SIDE || target.height < MIN_SIDE) {
         failures.push(
-          `${where} "${target.label}" ${name}: the button was not there when the scene was opened again`,
+          `${where} "${target.label}": ${Math.round(target.width)}x${Math.round(target.height)} is under ${MIN_SIDE} px`,
         )
-        continue
       }
-      const tapPlace = (
-        await placeTarget(tapPage, target.index, hasDialog)
-      ).points.find(placed => placed.name === name)
-      if (tapPlace === undefined) {
-        throw new Error(`No ${name} point on "${target.label}"`)
-      }
-      const tapPoint = tapPlace.point
-      await tapPage.evaluate(() => {
-        window.__messages.length = 0
-      })
-      // NOTE: the end screens' SHARE is a link that opens X in a new tab,
-      // and the coffee one that opens the tip jar; x.com and Stripe are
-      // answered here, so a tap never reaches either.
-      await tapPage
-        .context()
-        .route('https://x.com/**', route =>
-          route.fulfill({ status: 200, body: '' }),
-        )
-      await tapPage
-        .context()
-        .route('https://buy.stripe.com/**', route =>
-          route.fulfill({ status: 200, body: '' }),
-        )
-      await tapPage.touchscreen.tap(tapPoint.x, tapPoint.y)
-      await wait(AFTER_TAP_MS)
-      const tags = await tapPage.evaluate(() => [...window.__messages])
-      pages.release(tapPage)
-      const tapTags = tags.filter(isTapMessage)
-      const reachedSurface = tags.some(tag => surfaceTags.has(tag))
-      const isOk = tapTags.length === 1 && !reachedSurface
-      log(
-        `${isOk ? 'ok  ' : 'FAIL'} ${where} "${target.label}" ${name}: ${tapTags.join(', ') || '(nothing)'}`,
-      )
-      if (!isOk) {
-        failures.push(
-          `${where} "${target.label}" ${name} tap sent ${tags.join(', ') || 'nothing'}`,
-        )
+      for (const { name, point } of target.points) {
+        if (!(yield* hitsButton(page, target, point, hasDialog))) {
+          failures.push(`${where} "${target.label}": the ${name} misses it`)
+        }
       }
     }
-  }
-  return failures
-}
+    pages.release(page)
+    for (const target of targets) {
+      for (const { name } of Array.filter(
+        target.points,
+        ({ name: pointName }) =>
+          pointName === 'center' || pointName === 'corner',
+      )) {
+        const tapPage = yield* openWithButton(
+          pages,
+          viewport,
+          scene,
+          target.index,
+          hasDialog,
+        )
+        if (tapPage === null) {
+          log(`FAIL ${where} "${target.label}" ${name}: gone on reopen`)
+          failures.push(
+            `${where} "${target.label}" ${name}: the button was not there when the scene was opened again`,
+          )
+          continue
+        }
+        const placed = yield* placeTarget(tapPage, target.index, hasDialog)
+        const tapPlace = yield* Effect.fromOption(
+          Array.findFirst(placed.points, point => point.name === name),
+        ).pipe(
+          Effect.mapError(() =>
+            failWith(`No ${name} point on "${target.label}"`),
+          ),
+        )
+        const tapPoint = tapPlace.point
+        yield* attempt(() =>
+          tapPage.evaluate(() => {
+            window.__messages.length = 0
+          }),
+        )
+        // NOTE: the end screens' SHARE is a link that opens X in a new tab,
+        // and the coffee one that opens the tip jar; x.com and Stripe are
+        // answered here, so a tap never reaches either.
+        yield* attempt(() =>
+          tapPage
+            .context()
+            .route('https://x.com/**', route =>
+              route.fulfill({ status: 200, body: '' }),
+            ),
+        )
+        yield* attempt(() =>
+          tapPage
+            .context()
+            .route('https://buy.stripe.com/**', route =>
+              route.fulfill({ status: 200, body: '' }),
+            ),
+        )
+        yield* attempt(() => tapPage.touchscreen.tap(tapPoint.x, tapPoint.y))
+        yield* wait(AFTER_TAP_MS)
+        const tags = yield* attempt(() =>
+          tapPage.evaluate(() => [...window.__messages]),
+        )
+        pages.release(tapPage)
+        const tapTags = Array.filter(tags, isTapMessage)
+        const reachedSurface = Array.some(tags, tag => surfaceTags.has(tag))
+        const isOk = tapTags.length === 1 && !reachedSurface
+        log(
+          `${isOk ? 'ok  ' : 'FAIL'} ${where} "${target.label}" ${name}: ${Array.join(tapTags, ', ') || '(nothing)'}`,
+        )
+        if (!isOk) {
+          failures.push(
+            `${where} "${target.label}" ${name} tap sent ${Array.join(tags, ', ') || 'nothing'}`,
+          )
+        }
+      }
+    }
+    return failures
+  })
 
-// NOTE: each viewport and scene pair is one unit of work, so even the two
-// landscape phones fill every context.
-const UNITS = VIEWPORTS.flatMap(viewport =>
-  SCENES.filter(scene => isPickedScene(scene.name)).map(scene => ({
-    viewport,
-    scene,
-  })),
+runHarnessAudit(
+  Effect.gen(function* () {
+    const viewports = yield* pickedViewports
+    const scenes = yield* Effect.filter(SCENES, scene =>
+      isPickedScene(scene.name),
+    )
+    const parallel = yield* parallelFrom('TAPS_PARALLEL')
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['device=touch', 'nodev'])
+    // NOTE: each viewport and scene pair is one unit of work, so even the
+    // two landscape phones fill every context.
+    const units = Array.flatMap(viewports, viewport =>
+      Array.map(scenes, scene => ({ viewport, scene })),
+    )
+    const failures = yield* forEachInOrder(
+      units,
+      parallel,
+      ({ viewport, scene }, log) => checkScene(pages, viewport, scene, log),
+    )
+    yield* pages.close
+    yield* finish(
+      Array.flatten(failures),
+      'Every tap landed on its button and sent one Message.',
+    )
+  }),
 )
-
-const failures = await forEachInOrder(
-  UNITS,
-  parallelFrom('TAPS_PARALLEL'),
-  ({ viewport, scene }, log) => checkScene(viewport, scene, log),
-)
-await pages.close()
-await browser.close()
-
-finish(failures.flat(), 'Every tap landed on its button and sent one Message.')

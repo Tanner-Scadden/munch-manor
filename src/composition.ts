@@ -17,9 +17,9 @@ import {
 import { CharacterBlock } from './characterBlock'
 import { CoopBlock } from './coop'
 import {
+  ApplicationDefinition,
   makeComposition,
   makeNoopStep,
-  makeOutMessageFold,
   makeStep,
 } from './definition'
 import { mounts } from './mount'
@@ -50,7 +50,7 @@ import { isGuideEscape, reopenForGuide } from './update/shopGuide'
 
 const ShopDialogBindingWithOutMessagePolicy =
   ShopDialogBinding.withOutMessagePolicy({
-    fold: makeOutMessageFold(DialogBlock, {
+    fold: ApplicationDefinition.makeOutMessageFold(DialogBlock, {
       Opened: makeNoopStep,
       Closed: () =>
         makeStep(before =>
@@ -64,7 +64,7 @@ const ShopDialogBindingWithOutMessagePolicy =
 
 const ProfileDialogBindingWithOutMessagePolicy =
   ProfileDialogBinding.withOutMessagePolicy({
-    fold: makeOutMessageFold(DialogBlock, {
+    fold: ApplicationDefinition.makeOutMessageFold(DialogBlock, {
       Opened: makeNoopStep,
       Closed: () => settled(keepName),
       CompletedClose: makeNoopStep,
@@ -73,18 +73,21 @@ const ProfileDialogBindingWithOutMessagePolicy =
 
 const PanelDialogBindingWithOutMessagePolicy =
   PanelDialogBinding.withOutMessagePolicy({
-    fold: makeOutMessageFold(DialogBlock, {
+    fold: ApplicationDefinition.makeOutMessageFold(DialogBlock, {
       Opened: makeNoopStep,
       Closed: () => settled(forgetAskedMode),
       CompletedClose: makeNoopStep,
     }),
   })
 
-const dialogWithoutPolicy = makeOutMessageFold(DialogBlock, {
-  Opened: makeNoopStep,
-  Closed: makeNoopStep,
-  CompletedClose: makeNoopStep,
-})
+const dialogWithoutPolicy = ApplicationDefinition.makeOutMessageFold(
+  DialogBlock,
+  {
+    Opened: makeNoopStep,
+    Closed: makeNoopStep,
+    CompletedClose: makeNoopStep,
+  },
+)
 
 const HandDialogBindingWithOutMessagePolicy =
   HandDialogBinding.withOutMessagePolicy({ fold: dialogWithoutPolicy })
@@ -99,14 +102,14 @@ const UpdateGreetingBindingWithOutMessagePolicy =
 
 const ProfileTabsBindingWithOutMessagePolicy =
   ProfileTabsBinding.withOutMessagePolicy({
-    fold: makeOutMessageFold(ProfileTabsBlock, {
+    fold: ApplicationDefinition.makeOutMessageFold(ProfileTabsBlock, {
       Selected: ({ value }) => settled(switchTab(value)),
     }),
   })
 
 const ShopTabsBindingWithOutMessagePolicy =
   ShopTabsBinding.withOutMessagePolicy({
-    fold: makeOutMessageFold(ShopTabsBlock, {
+    fold: ApplicationDefinition.makeOutMessageFold(ShopTabsBlock, {
       Selected: ({ value }) => settled(selectCategory(value)),
     }),
   })
@@ -115,7 +118,7 @@ const ShopTabsBindingWithOutMessagePolicy =
 
 const CharacterBindingWithOutMessagePolicy =
   CharacterBinding.withOutMessagePolicy({
-    fold: makeOutMessageFold(CharacterBlock, {
+    fold: ApplicationDefinition.makeOutMessageFold(CharacterBlock, {
       ChoseLook: ({ part, value }) => settled(chooseLook(part, value)),
       FlippedLook: ({ toggle }) => settled(flipLook(toggle)),
       RequestedRandomLook: () => settled(rollLook),
@@ -126,7 +129,7 @@ const CharacterBindingWithOutMessagePolicy =
 // CO-OP
 
 const CoopBindingWithOutMessagePolicy = CoopBinding.withOutMessagePolicy({
-  fold: makeOutMessageFold(CoopBlock, {
+  fold: ApplicationDefinition.makeOutMessageFold(CoopBlock, {
     ClosedCoop: () => settled(closedCoop),
     NeededNewerBuild: () => settled(neededNewerBuild),
     LeftRoom: () => settled(leftRoom),

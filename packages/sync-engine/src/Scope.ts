@@ -1,4 +1,14 @@
-import { Array, Effect, Option, Order, Record, Schema, pipe } from 'effect'
+import {
+  Array,
+  Effect,
+  Function,
+  Option,
+  Order,
+  Record,
+  Schema,
+  String,
+  pipe,
+} from 'effect'
 import { SqlClient, type SqlError } from 'effect/sql'
 
 import {
@@ -23,18 +33,18 @@ export interface ScopeAddress {
   readonly key: string
 }
 
-export const scopeId = (kind: string, key: string): string => `${kind}:${key}`
+export const scopeId: {
+  (key: string): (kind: string) => string
+  (kind: string, key: string): string
+} = Function.dual(2, (kind: string, key: string): string => `${kind}:${key}`)
 
-export const parseScopeId = (id: string): Option.Option<ScopeAddress> => {
-  if (!SCOPE_ID_PATTERN.test(id)) {
-    return Option.none()
-  }
-  const separator = id.indexOf(':')
-  return Option.some({
-    kind: id.slice(0, separator),
-    key: id.slice(separator + 1),
-  })
-}
+export const parseScopeId = (id: string): Option.Option<ScopeAddress> =>
+  SCOPE_ID_PATTERN.test(id)
+    ? Option.map(String.indexOf(':')(id), separator => ({
+        kind: String.slice(0, separator)(id),
+        key: String.slice(separator + 1)(id),
+      }))
+    : Option.none()
 
 // DEFINITION
 
@@ -47,10 +57,12 @@ export type Readers = typeof Readers.Type
 export const ReplicaMode = Schema.Literals(['ReadWrite', 'ReadOnly'])
 export type ReplicaMode = typeof ReplicaMode.Type
 
+/** @stability unstable */
 export type ScopeMigration = (
   table: (name: string) => string,
 ) => Effect.Effect<void, SqlError.SqlError, SqlClient.SqlClient>
 
+/** @stability unstable */
 export interface ScopeDefinition {
   readonly kind: string
   readonly tables: ReadonlyArray<string>
@@ -60,11 +72,13 @@ export interface ScopeDefinition {
   readonly replica: ReplicaMode
 }
 
+/** @stability unstable */
 export const defineScope = (definition: ScopeDefinition): ScopeDefinition =>
   definition
 
 // NOTE: every mutation a scope lists must allow the scope's kind. The server
 // refuses to start a scope whose definition breaks this.
+/** @stability unstable */
 export const outOfScopeMutations = (
   definition: ScopeDefinition,
 ): ReadonlyArray<string> =>
@@ -74,12 +88,17 @@ export const outOfScopeMutations = (
     Array.map(mutation => mutation.name),
   )
 
-export const findMutation = (
-  definition: ScopeDefinition,
-  name: string,
-): Option.Option<AnyMutation> =>
-  Array.findFirst(definition.mutations, mutation => mutation.name === name)
+/** @stability unstable */
+export const findMutation: {
+  (name: string): (definition: ScopeDefinition) => Option.Option<AnyMutation>
+  (definition: ScopeDefinition, name: string): Option.Option<AnyMutation>
+} = Function.dual(
+  2,
+  (definition: ScopeDefinition, name: string): Option.Option<AnyMutation> =>
+    Array.findFirst(definition.mutations, mutation => mutation.name === name),
+)
 
+/** @stability unstable */
 export const mutationVersions = (
   definition: ScopeDefinition,
 ): Record<string, number> =>
@@ -95,46 +114,60 @@ export const mutationVersions = (
 // NOTE: each scope migration runs once per target: once on the server, and
 // once for the confirmed tables and once for the view on a client. They are
 // recorded in sync_migrations by kind, target, and id, and run in id order.
-export const runScopeMigrations = (
-  definition: ScopeDefinition,
-  target: Target,
-): Effect.Effect<void, SqlError.SqlError, SqlClient.SqlClient> =>
-  Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient
-    yield* sql`CREATE TABLE IF NOT EXISTS sync_migrations (
+/** @stability unstable */
+export const runScopeMigrations: {
+  (
+    target: Target,
+  ): (
+    definition: ScopeDefinition,
+  ) => Effect.Effect<void, SqlError.SqlError, SqlClient.SqlClient>
+  (
+    definition: ScopeDefinition,
+    target: Target,
+  ): Effect.Effect<void, SqlError.SqlError, SqlClient.SqlClient>
+} = Function.dual(
+  2,
+  (
+    definition: ScopeDefinition,
+    target: Target,
+  ): Effect.Effect<void, SqlError.SqlError, SqlClient.SqlClient> =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient
+      yield* sql`CREATE TABLE IF NOT EXISTS sync_migrations (
       kind TEXT NOT NULL,
       target TEXT NOT NULL,
       id TEXT NOT NULL,
       PRIMARY KEY (kind, target, id)
     )`
-    const done = yield* sql<{
-      readonly id: string
-    }>`SELECT id FROM sync_migrations WHERE kind = ${definition.kind} AND target = ${target}`
-    const doneIds = Array.map(done, row => row.id)
-    const pending = pipe(
-      Record.toEntries(definition.migrations),
-      Array.filter(([id]) => !Array.contains(doneIds, id)),
-      Array.sort(
-        Order.mapInput(
-          Order.String,
-          ([id]: readonly [string, ScopeMigration]) => id,
+      const done = yield* sql<{
+        readonly id: string
+      }>`SELECT id FROM sync_migrations WHERE kind = ${definition.kind} AND target = ${target}`
+      const doneIds = Array.map(done, row => row.id)
+      const pending = pipe(
+        Record.toEntries(definition.migrations),
+        Array.filter(([id]) => !Array.contains(doneIds, id)),
+        Array.sort(
+          Order.mapInput(
+            Order.String,
+            ([id]: readonly [string, ScopeMigration]) => id,
+          ),
         ),
-      ),
-    )
-    yield* Effect.forEach(
-      pending,
-      ([id, migration]) =>
-        Effect.andThen(
-          migration(name => tableName(target, name)),
-          sql`INSERT INTO sync_migrations ${sql.insert({
-            kind: definition.kind,
-            target,
-            id,
-          })}`,
-        ),
-      { discard: true },
-    )
-  }).pipe(withTransactionOf)
+      )
+      yield* Effect.forEach(
+        pending,
+        ([id, migration]) =>
+          Effect.andThen(
+            migration(name => tableName(target, name)),
+            sql`INSERT INTO sync_migrations ${sql.insert({
+              kind: definition.kind,
+              target,
+              id,
+            })}`,
+          ),
+        { discard: true },
+      )
+    }).pipe(withTransactionOf),
+)
 
 const withTransactionOf = <A, E>(
   effect: Effect.Effect<A, E, SqlClient.SqlClient>,
@@ -184,26 +217,58 @@ const checkParty = (
   )
 }
 
-export const checkRead = (
-  definition: ScopeDefinition,
-  actor: Actor,
-  address: ScopeAddress,
-): Effect.Effect<Permission, SqlError.SqlError, SqlClient.SqlClient> =>
-  definition.readers === 'Everyone'
-    ? Effect.succeed(allowed)
-    : checkParty(definition.readers, actor, address)
+/** @stability unstable */
+export const checkRead: {
+  (
+    actor: Actor,
+    address: ScopeAddress,
+  ): (
+    definition: ScopeDefinition,
+  ) => Effect.Effect<Permission, SqlError.SqlError, SqlClient.SqlClient>
+  (
+    definition: ScopeDefinition,
+    actor: Actor,
+    address: ScopeAddress,
+  ): Effect.Effect<Permission, SqlError.SqlError, SqlClient.SqlClient>
+} = Function.dual(
+  3,
+  (
+    definition: ScopeDefinition,
+    actor: Actor,
+    address: ScopeAddress,
+  ): Effect.Effect<Permission, SqlError.SqlError, SqlClient.SqlClient> =>
+    definition.readers === 'Everyone'
+      ? Effect.succeed(allowed)
+      : checkParty(definition.readers, actor, address),
+)
 
-export const checkWrite = (
-  mutation: AnyMutation,
-  actor: Actor,
-  address: ScopeAddress,
-): Effect.Effect<Permission, SqlError.SqlError, SqlClient.SqlClient> => {
-  if (mutation.writer === 'ServerOnly') {
-    return Effect.succeed(
-      actor._tag === 'Server'
-        ? allowed
-        : forbidden(`${mutation.name} is written only by the server`),
-    )
-  }
-  return checkParty(mutation.writer, actor, address)
-}
+/** @stability unstable */
+export const checkWrite: {
+  (
+    actor: Actor,
+    address: ScopeAddress,
+  ): (
+    mutation: AnyMutation,
+  ) => Effect.Effect<Permission, SqlError.SqlError, SqlClient.SqlClient>
+  (
+    mutation: AnyMutation,
+    actor: Actor,
+    address: ScopeAddress,
+  ): Effect.Effect<Permission, SqlError.SqlError, SqlClient.SqlClient>
+} = Function.dual(
+  3,
+  (
+    mutation: AnyMutation,
+    actor: Actor,
+    address: ScopeAddress,
+  ): Effect.Effect<Permission, SqlError.SqlError, SqlClient.SqlClient> => {
+    if (mutation.writer === 'ServerOnly') {
+      return Effect.succeed(
+        actor._tag === 'Server'
+          ? allowed
+          : forbidden(`${mutation.name} is written only by the server`),
+      )
+    }
+    return checkParty(mutation.writer, actor, address)
+  },
+)

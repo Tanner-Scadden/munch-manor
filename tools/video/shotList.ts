@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { type Effect, Schema } from 'effect'
 
 import { MusicLevel, MusicMood, MusicStinger } from '../../src/music'
 import { Difficulty } from '../../src/playerData'
@@ -195,9 +195,11 @@ export type Clip = typeof Clip.Type
 const ShotList = Schema.Struct({ clips: Schema.NonEmptyArray(Clip) })
 type ShotList = typeof ShotList.Type
 
-export const decodeShotList = Schema.decodeUnknownEffect(
-  Schema.fromJsonString(ShotList),
-)
+const decodeList = Schema.decodeUnknownEffect(Schema.fromJsonString(ShotList))
+
+export const decodeShotList = (
+  text: string,
+): Effect.Effect<ShotList, Schema.SchemaError> => decodeList(text)
 
 export const FRAMES_PER_SECOND = 60
 
@@ -211,6 +213,10 @@ const DirectorPlan = Schema.Struct({
   lobby: Schema.optionalKey(Schema.Array(LobbyKey)),
 })
 
-export const encodePlan = Schema.encodeEffect(
+const encodeDirectorPlan = Schema.encodeEffect(
   Schema.fromJsonString(DirectorPlan),
 )
+
+export const encodePlan = (
+  plan: typeof DirectorPlan.Type,
+): Effect.Effect<string, Schema.SchemaError> => encodeDirectorPlan(plan)

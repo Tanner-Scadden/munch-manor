@@ -22,6 +22,7 @@ import {
   makeServer,
   muted,
   openOn,
+  openSyncingOn,
   sqlOn,
   synced,
   until,
@@ -32,6 +33,7 @@ import {
   type PlayerDatabase,
   type SyncSetup,
 } from './storeSqlite'
+import { jsonOf } from './testing'
 
 describe('the save in the player scope', () => {
   it.effect('a localStorage save is imported once and seeds the scope', () =>
@@ -40,16 +42,21 @@ describe('the save in the player scope', () => {
       const fake = yield* makeLegacy(Option.some(legacySave))
 
       const first = yield* openOn(hub, fake.legacy)
-      expect(yield* first.load).toEqual(Option.some(legacySave))
-      expect(yield* fake.reads).toBe(1)
+      const loaded = yield* first.load
+      expect(loaded).toEqual(Option.some(legacySave))
+      const reads_1 = yield* fake.reads
+      expect(reads_1).toBe(1)
 
       const changed = muted(legacySave)
       yield* write(first, legacySave, changed)
 
       const second = yield* openOn(hub, fake.legacy)
-      expect(yield* second.load).toEqual(Option.some(changed))
-      expect(yield* fake.reads).toBe(1)
-      expect(yield* fake.stored).toEqual(Option.some(legacySave))
+      const loaded_1 = yield* second.load
+      expect(loaded_1).toEqual(Option.some(changed))
+      const reads_2 = yield* fake.reads
+      expect(reads_2).toBe(1)
+      const stored_1 = yield* fake.stored
+      expect(stored_1).toEqual(Option.some(legacySave))
       const sql = yield* sqlOn(hub)
       const outbox = yield* Effect.orDie(
         sql`SELECT name FROM sync_outbox ORDER BY local_seq`,
@@ -66,11 +73,14 @@ describe('the save in the player scope', () => {
       const hub = yield* makeHub()
       const fake = yield* makeLegacy(Option.none())
       const first = yield* openOn(hub, fake.legacy)
-      expect(yield* first.load).toEqual(Option.none())
+      const loaded_2 = yield* first.load
+      expect(loaded_2).toEqual(Option.none())
       yield* fake.legacy.write(legacySave)
       const second = yield* openOn(hub, fake.legacy)
-      expect(yield* second.load).toEqual(Option.none())
-      expect(yield* fake.reads).toBe(1)
+      const loaded_3 = yield* second.load
+      expect(loaded_3).toEqual(Option.none())
+      const reads_3 = yield* fake.reads
+      expect(reads_3).toBe(1)
     }),
   )
 
@@ -81,7 +91,8 @@ describe('the save in the player scope', () => {
       const first = yield* openOn(hub, fake.legacy)
       yield* first.write(legacySave, [])
       yield* first.write(legacySave, [])
-      expect(yield* first.load).toEqual(Option.some(legacySave))
+      const loaded_4 = yield* first.load
+      expect(loaded_4).toEqual(Option.some(legacySave))
     }),
   )
 
@@ -109,7 +120,8 @@ describe('the save in the player scope', () => {
         }),
       ])
       yield* write(first, legacySave, after)
-      expect(yield* first.load).toEqual(Option.some(after))
+      const loaded_5 = yield* first.load
+      expect(loaded_5).toEqual(Option.some(after))
     }),
   )
 
@@ -129,7 +141,8 @@ describe('the save in the player scope', () => {
         Effect.orDie,
       )
       const second = yield* openOn(hub, fake.legacy)
-      expect(yield* second.load).toEqual(
+      const loaded_6 = yield* second.load
+      expect(loaded_6).toEqual(
         Option.some({
           ...legacySave,
           home: { seenNewsDay: null, openedEntries: [] },
@@ -156,7 +169,8 @@ describe('the save in the player scope', () => {
           Effect.orDie,
         )
         const second = yield* openOn(hub, fake.legacy)
-        expect(yield* second.load).toEqual(
+        const loaded_7 = yield* second.load
+        expect(loaded_7).toEqual(
           Option.some({ ...legacySave, seenPowerUps: [] }),
         )
       }),
@@ -180,7 +194,8 @@ describe('the save in the player scope', () => {
           Effect.orDie,
         )
         const second = yield* openOn(hub, fake.legacy)
-        expect(yield* second.load).toEqual(
+        const loaded_8 = yield* second.load
+        expect(loaded_8).toEqual(
           Option.some({ ...legacySave, rotation: 'Landscape' }),
         )
       }),
@@ -202,9 +217,8 @@ describe('the save in the player scope', () => {
         Effect.orDie,
       )
       const second = yield* openOn(hub, fake.legacy)
-      expect(yield* second.load).toEqual(
-        Option.some({ ...legacySave, name: '' }),
-      )
+      const loaded_9 = yield* second.load
+      expect(loaded_9).toEqual(Option.some({ ...legacySave, name: '' }))
     }),
   )
 
@@ -222,7 +236,8 @@ describe('the save in the player scope', () => {
         ])
         yield* write(first, legacySave, renamed)
         const second = yield* openOn(hub, fake.legacy)
-        expect(yield* second.load).toEqual(Option.some(renamed))
+        const loaded_10 = yield* second.load
+        expect(loaded_10).toEqual(Option.some(renamed))
       }),
   )
 
@@ -244,7 +259,8 @@ describe('the save in the player scope', () => {
           Effect.orDie,
         )
         const second = yield* openOn(hub, fake.legacy)
-        expect(yield* second.load).toEqual(
+        const loaded_11 = yield* second.load
+        expect(loaded_11).toEqual(
           Option.some({
             ...legacySave,
             settings: { ...legacySave.settings, cursor: 'Bold' },
@@ -264,7 +280,8 @@ describe('the save in the player scope', () => {
         sql`UPDATE player SET appearance = '{"body":"Robot"}'`,
         Effect.orDie,
       )
-      expect(yield* first.load).toEqual(Option.none())
+      const loaded_12 = yield* first.load
+      expect(loaded_12).toEqual(Option.none())
     }),
   )
 
@@ -282,13 +299,13 @@ describe('the save in the player scope', () => {
           yield* Effect.orDie(
             sql`UPDATE player SET appearance = ${json} WHERE id = 1`,
           )
-          return Option.map(yield* first.load, save => save.appearance)
+          const loaded_13 = yield* first.load
+          return Option.map(loaded_13, save => save.appearance)
         })
-      expect(
-        yield* lookAfter(
-          '{"body":"Female","hairStyle":"Long","hairColor":"Black","skinTone":"Deep","shirtColor":"Pink"}',
-        ),
-      ).toEqual(
+      const value_1 = yield* lookAfter(
+        '{"body":"Female","hairStyle":"Long","hairColor":"Black","skinTone":"Deep","shirtColor":"Pink"}',
+      )
+      expect(value_1).toEqual(
         Option.some({
           body: 'Broad',
           hairStyle: 'Long',
@@ -303,11 +320,10 @@ describe('the save in the player scope', () => {
           gunSkin: 'Stock',
         }),
       )
-      expect(
-        yield* lookAfter(
-          '{"body":"Slim","hairStyle":"Bob","hairColor":"Rainbow","skinTone":"Medium","shirtColor":"Sky","outfit":"Hoodie","print":"Ace","facialHair":"Beard","makeup":"Lashes","extra":"Glasses"}',
-        ),
-      ).toEqual(
+      const value_2 = yield* lookAfter(
+        '{"body":"Slim","hairStyle":"Bob","hairColor":"Rainbow","skinTone":"Medium","shirtColor":"Sky","outfit":"Hoodie","print":"Ace","facialHair":"Beard","makeup":"Lashes","extra":"Glasses"}',
+      )
+      expect(value_2).toEqual(
         Option.some({
           body: 'Slim',
           hairStyle: 'Long',
@@ -370,12 +386,15 @@ describe('a write the database refuses', () => {
 
         const failed = yield* Effect.flip(database.write(after, changes))
         expect(failed._tag).toBe('PlayerDatabaseError')
-        expect(yield* database.load).toEqual(Option.some(legacySave))
-        expect(yield* outboxCount).toBe(before)
+        const loaded_14 = yield* database.load
+        expect(loaded_14).toEqual(Option.some(legacySave))
+        const outboxCount_1 = yield* outboxCount
+        expect(outboxCount_1).toBe(before)
 
         yield* Effect.orDie(sql`DROP TRIGGER refuse_runs`)
         yield* database.write(after, changes)
-        expect(yield* database.load).toEqual(Option.some(after))
+        const loaded_15 = yield* database.load
+        expect(loaded_15).toEqual(Option.some(after))
       }),
   )
 
@@ -395,7 +414,8 @@ describe('a write the database refuses', () => {
         }),
         ...changesBetween(legacySave, changed),
       ])
-      expect(yield* database.load).toEqual(Option.some(changed))
+      const loaded_16 = yield* database.load
+      expect(loaded_16).toEqual(Option.some(changed))
     }),
   )
 })
@@ -418,8 +438,16 @@ describe('two devices syncing one player', () => {
           const laptopHub = yield* makeHub()
           const phoneLegacy = yield* makeLegacy(Option.some(legacySave))
           const laptopLegacy = yield* makeLegacy(Option.none())
-          const phone = yield* openOn(phoneHub, phoneLegacy.legacy, setup)
-          const laptop = yield* openOn(laptopHub, laptopLegacy.legacy, setup)
+          const phone = yield* openSyncingOn(
+            phoneHub,
+            phoneLegacy.legacy,
+            setup,
+          )
+          const laptop = yield* openSyncingOn(
+            laptopHub,
+            laptopLegacy.legacy,
+            setup,
+          )
 
           const phoneEvents = yield* Ref.make<ReadonlyArray<string>>([])
           yield* pipe(
@@ -489,13 +517,15 @@ describe('two devices syncing one player', () => {
             identityApi: server.api,
             transports: [network.transport],
           })
-          const phone = yield* openOn(
-            yield* makeHub(),
+          const value_3 = yield* makeHub()
+          const phone = yield* openSyncingOn(
+            value_3,
             (yield* makeLegacy(Option.some(legacySave))).legacy,
             setup,
           )
-          const laptop = yield* openOn(
-            yield* makeHub(),
+          const value_4 = yield* makeHub()
+          const laptop = yield* openSyncingOn(
+            value_4,
             (yield* makeLegacy(Option.none())).legacy,
             setup,
           )
@@ -534,13 +564,15 @@ describe('two devices syncing one player', () => {
           identityApi: server.api,
           transports: [network.transport],
         })
-        const phone = yield* openOn(
-          yield* makeHub(),
+        const value_5 = yield* makeHub()
+        const phone = yield* openSyncingOn(
+          value_5,
           (yield* makeLegacy(Option.some(legacySave))).legacy,
           setup,
         )
-        const laptop = yield* openOn(
-          yield* makeHub(),
+        const value_6 = yield* makeHub()
+        const laptop = yield* openSyncingOn(
+          value_6,
           (yield* makeLegacy(Option.none())).legacy,
           setup,
         )
@@ -571,12 +603,14 @@ describe('two devices syncing one player', () => {
             maybeSave,
             save =>
               save.seenPowerUps.length === 3 &&
-              ['RapidFire', 'Burp', 'Speed'].every(kind =>
+              EffectArray.every(['RapidFire', 'Burp', 'Speed'], kind =>
                 save.seenPowerUps.includes(kind),
               ),
           )
-        expect(isEverySeen(yield* until(phone.load, isEverySeen))).toBe(true)
-        expect(isEverySeen(yield* until(laptop.load, isEverySeen))).toBe(true)
+        const value_7 = yield* until(phone.load, isEverySeen)
+        expect(isEverySeen(value_7)).toBe(true)
+        const value_8 = yield* until(laptop.load, isEverySeen)
+        expect(isEverySeen(value_8)).toBe(true)
       }),
     ),
   )
@@ -642,8 +676,10 @@ describe('two devices syncing one player', () => {
             save =>
               save.rank.earnedPoints === 160 && save.rank.earnedBones === 16,
           )
-        expect(isBoth(yield* until(phone.load, isBoth))).toBe(true)
-        expect(isBoth(yield* until(laptop.load, isBoth))).toBe(true)
+        const value_9 = yield* until(phone.load, isBoth)
+        expect(isBoth(value_9)).toBe(true)
+        const value_10 = yield* until(laptop.load, isBoth)
+        expect(isBoth(value_10)).toBe(true)
       }),
     ),
   )
@@ -655,8 +691,10 @@ describe('two devices syncing one player', () => {
         yield* write(phone, legacySave, { ...legacySave, calling: 'TrackStar' })
         const isPicked = (maybeSave: Option.Option<PlayerSave>) =>
           Option.exists(maybeSave, save => save.calling === 'TrackStar')
-        expect(isPicked(yield* until(laptop.load, isPicked))).toBe(true)
-        expect(isPicked(yield* until(phone.load, isPicked))).toBe(true)
+        const value_11 = yield* until(laptop.load, isPicked)
+        expect(isPicked(value_11)).toBe(true)
+        const value_12 = yield* until(phone.load, isPicked)
+        expect(isPicked(value_12)).toBe(true)
       }),
     ),
   )
@@ -681,8 +719,10 @@ describe('two devices syncing one player', () => {
                 save.rank.veteranPoints === 300 &&
                 save.rank.veteranBones === 30,
             )
-          expect(isLarger(yield* until(phone.load, isLarger))).toBe(true)
-          expect(isLarger(yield* until(laptop.load, isLarger))).toBe(true)
+          const value_13 = yield* until(phone.load, isLarger)
+          expect(isLarger(value_13)).toBe(true)
+          const value_14 = yield* until(laptop.load, isLarger)
+          expect(isLarger(value_14)).toBe(true)
         }),
       ),
   )
@@ -699,7 +739,8 @@ describe('two devices syncing one player', () => {
             transports: [network.transport],
           })
           const legacy = yield* makeLegacy(Option.some(legacySave))
-          const phone = yield* openOn(yield* makeHub(), legacy.legacy, setup)
+          const value_15 = yield* makeHub()
+          const phone = yield* openSyncingOn(value_15, legacy.legacy, setup)
           const scopeStatuses = yield* Ref.make<ReadonlyArray<string>>([])
           yield* pipe(
             phone.events,
@@ -734,9 +775,8 @@ describe('two devices syncing one player', () => {
             all.includes('Ready fresh'),
           )
           expect(seen).toContain('Loading')
-          expect(yield* write(phone, played, muted(played))).toEqual(
-            Option.none(),
-          )
+          const value_16 = yield* write(phone, played, muted(played))
+          expect(value_16).toEqual(Option.none())
         }),
       ),
   )
@@ -745,12 +785,14 @@ describe('two devices syncing one player', () => {
     synced(
       Effect.gen(function* () {
         const legacy = yield* makeLegacy(Option.some(legacySave))
-        const local = yield* openOn(yield* makeHub(), legacy.legacy)
+        const value_17 = yield* makeHub()
+        const local = yield* openOn(value_17, legacy.legacy)
         const played: PlayerSave = {
           ...legacySave,
           bests: { ...legacySave.bests, runsPlayed: 4 },
         }
-        expect(yield* write(local, legacySave, played)).toEqual(Option.none())
+        const value_18 = yield* write(local, legacySave, played)
+        expect(value_18).toEqual(Option.none())
       }),
     ),
   )
@@ -772,12 +814,16 @@ describe('run summaries queued with no network', () => {
   it.effect('come out oldest first, and each only once', () =>
     Effect.gen(function* () {
       const legacy = yield* makeLegacy(Option.none())
-      const local = yield* openOn(yield* makeHub(), legacy.legacy)
+      const value_19 = yield* makeHub()
+      const local = yield* openOn(value_19, legacy.legacy)
       yield* local.queueSummary('first')
       yield* local.queueSummary('second')
-      expect(yield* local.takeQueuedSummary).toEqual(Option.some('first'))
-      expect(yield* takeAll(local)).toEqual(['second'])
-      expect(yield* local.takeQueuedSummary).toEqual(Option.none())
+      const takeQueuedSummary_1 = yield* local.takeQueuedSummary
+      expect(takeQueuedSummary_1).toEqual(Option.some('first'))
+      const value_20 = yield* takeAll(local)
+      expect(value_20).toEqual(['second'])
+      const takeQueuedSummary_2 = yield* local.takeQueuedSummary
+      expect(takeQueuedSummary_2).toEqual(Option.none())
     }),
   )
 
@@ -788,14 +834,16 @@ describe('run summaries queued with no network', () => {
       const before = yield* openOn(hub, legacy.legacy)
       yield* before.queueSummary('flight home')
       const after = yield* openOn(hub, legacy.legacy)
-      expect(yield* takeAll(after)).toEqual(['flight home'])
+      const value_21 = yield* takeAll(after)
+      expect(value_21).toEqual(['flight home'])
     }),
   )
 
   it.effect('keep only the newest few when a trip is long', () =>
     Effect.gen(function* () {
       const legacy = yield* makeLegacy(Option.none())
-      const local = yield* openOn(yield* makeHub(), legacy.legacy)
+      const value_22 = yield* makeHub()
+      const local = yield* openOn(value_22, legacy.legacy)
       yield* Effect.forEach(EffectArray.range(1, 25), run =>
         local.queueSummary(`run ${run}`),
       )
@@ -809,11 +857,13 @@ describe('run summaries queued with no network', () => {
   it.effect('can all be cleared', () =>
     Effect.gen(function* () {
       const legacy = yield* makeLegacy(Option.none())
-      const local = yield* openOn(yield* makeHub(), legacy.legacy)
+      const value_23 = yield* makeHub()
+      const local = yield* openOn(value_23, legacy.legacy)
       yield* local.queueSummary('one')
       yield* local.queueSummary('two')
       yield* local.clearQueuedSummaries
-      expect(yield* takeAll(local)).toEqual([])
+      const value_24 = yield* takeAll(local)
+      expect(value_24).toEqual([])
     }),
   )
 })
@@ -822,7 +872,7 @@ describe('run summaries queued with no network', () => {
 
 // NOTE: the save the live game keeps today, exactly as it writes it to
 // localStorage: version 4, with the home menu and no shareStats.
-const LIVE_VERSION_4_SAVE = JSON.stringify({
+const LIVE_VERSION_4_SAVE = jsonOf({
   version: 4,
   onboarding: {
     lessons: {
@@ -951,16 +1001,19 @@ describe("the live game's version 4 save", () => {
           })
           const phoneHub = yield* makeHub()
 
-          const phone = yield* openOn(phoneHub, realLegacy, setup)
-          expect(yield* phone.load).toEqual(Option.some(migratedLiveSave))
+          const phone = yield* openSyncingOn(phoneHub, realLegacy, setup)
+          const loaded_17 = yield* phone.load
+          expect(loaded_17).toEqual(Option.some(migratedLiveSave))
 
           localStorage.removeItem(SAVE_KEY)
-          const reloaded = yield* openOn(phoneHub, realLegacy, setup)
-          expect(yield* reloaded.load).toEqual(Option.some(migratedLiveSave))
+          const reloaded = yield* openSyncingOn(phoneHub, realLegacy, setup)
+          const loaded_18 = yield* reloaded.load
+          expect(loaded_18).toEqual(Option.some(migratedLiveSave))
 
           const laptopLegacy = yield* makeLegacy(Option.none())
-          const laptop = yield* openOn(
-            yield* makeHub(),
+          const value_25 = yield* makeHub()
+          const laptop = yield* openSyncingOn(
+            value_25,
             laptopLegacy.legacy,
             setup,
           )

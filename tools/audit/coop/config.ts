@@ -1,27 +1,55 @@
 // Co-op audit (tools/audit/coop.ts): what the run was asked to do (the URL, the
 // players, QUICK, PICK, NET) and the bad link a page can sit behind.
 
+import { Array, Config, Console, Effect, Option, String } from 'effect'
+
 import { AUDIT_PARAM } from '@game/coop/readout'
 
-const base = process.argv[2] ?? process.env['BASE']
-if (base === undefined) {
-  console.error('Usage: bun tools/audit/coop.ts <game url> [players]')
-  process.exit(2)
-}
+type CoopConfig = Readonly<{
+  base: string
+  players: number
+  isQuick: boolean
+  pickMode: string | undefined
+  pickDifficulty: string | undefined
+  netRtt: number | undefined
+  netJitter: number | undefined
+  netLoss: number | undefined
+}>
 
-// NOTE: the game writes its readout of the room's World only on a page loaded
-// with this param (src/coop/readout.ts), since encoding it costs every frame.
-const audited = new URL(base)
-audited.searchParams.set(AUDIT_PARAM, '1')
-export const BASE = audited.href
-export const PLAYERS = Math.min(3, Math.max(2, Number(process.argv[3] ?? 3)))
-export const IS_QUICK = process.env['QUICK'] === '1'
-export const [PICK_MODE, PICK_DIFFICULTY] = (process.env['PICK'] ?? '').split(
-  ',',
-)
-export const [NET_RTT, NET_JITTER, NET_LOSS] = (process.env['NET'] ?? '')
-  .split(',')
-  .map(Number)
+// NOTE: the URL and players from the arguments, the rest from the
+// environment. With no URL it prints the usage and exits with 2.
+export const coopConfig = Effect.gen(function* () {
+  const maybeEnvBase = yield* Config.String('BASE').pipe(Config.option)
+  const maybeBase = Option.orElse(
+    Option.fromUndefinedOr(process.argv[2]),
+    () => maybeEnvBase,
+  )
+  if (Option.isNone(maybeBase)) {
+    yield* Console.error('Usage: bun tools/audit/coop.ts <game url> [players]')
+    return yield* Effect.sync(() => process.exit(2))
+  }
+  // NOTE: the game writes its readout of the room's World only on a page
+  // loaded with this param (src/coop/readout.ts), since encoding it costs
+  // every frame.
+  const audited = new URL(maybeBase.value)
+  audited.searchParams.set(AUDIT_PARAM, '1')
+  const quick = yield* Config.String('QUICK').pipe(Config.withDefault(''))
+  const pick = yield* Config.String('PICK').pipe(Config.withDefault(''))
+  const net = yield* Config.String('NET').pipe(Config.withDefault(''))
+  const [pickMode, pickDifficulty] = String.split(',')(pick)
+  const [netRtt, netJitter, netLoss] = Array.map(String.split(',')(net), Number)
+  const config: CoopConfig = {
+    base: audited.href,
+    players: Math.min(3, Math.max(2, Number(process.argv[3] ?? 3))),
+    isQuick: quick === '1',
+    pickMode,
+    pickDifficulty,
+    netRtt,
+    netJitter,
+    netLoss,
+  }
+  return config
+})
 
 // NOTE: runs in the page before the game: every WebSocket's sends and
 // messages wait half the round trip, plus jitter, plus a resend's delay

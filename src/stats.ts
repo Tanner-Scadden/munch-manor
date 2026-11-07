@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { MS_PER_SECOND, SCORE_PER_ZOMBIE } from './constants'
@@ -49,34 +49,44 @@ const lastHurtBy = (
     Option.map(({ source }) => source),
   )
 
-export const tallyFrame = <M extends World>(
-  before: World,
-  after: M,
-  deltaMs: number,
-): M =>
-  modifyWorldFields(after, {
-    stats: stats =>
-      modifyFields(stats, {
-        kills: kills =>
-          Array.reduce(killedKinds(after.frameEvents), kills, addKill),
-        wavesCleared: count => count + clearedWaves(after.frameEvents),
-        heartsLost: count =>
-          count +
-          Math.max(0, focusOf(before).player.hp - focusOf(after).player.hp),
-        powerUpsGrabbed: count => count + grabbedPickups(after.frameEvents),
-        maybeLastHurtBy: maybeKind =>
-          Option.orElse(lastHurtBy(after.frameEvents), () => maybeKind),
-        activeFrames: count => count + 1,
-        activeFrameMs: frameMs => frameMs + deltaMs,
-        runMs: runMs => runMs + deltaMs,
-      }),
-  })
+export const tallyFrame: {
+  <M extends World>(after: M, deltaMs: number): (before: World) => M
+  <M extends World>(before: World, after: M, deltaMs: number): M
+} = Function.dual(
+  3,
+  <M extends World>(before: World, after: M, deltaMs: number): M =>
+    modifyWorldFields(after, {
+      stats: stats =>
+        modifyFields(stats, {
+          kills: kills =>
+            Array.reduce(killedKinds(after.frameEvents), kills, addKill),
+          wavesCleared: count => count + clearedWaves(after.frameEvents),
+          heartsLost: count =>
+            count +
+            Math.max(0, focusOf(before).player.hp - focusOf(after).player.hp),
+          powerUpsGrabbed: count => count + grabbedPickups(after.frameEvents),
+          maybeLastHurtBy: maybeKind =>
+            Option.orElse(lastHurtBy(after.frameEvents), () => maybeKind),
+          activeFrames: count => count + 1,
+          activeFrameMs: frameMs => frameMs + deltaMs,
+          runMs: runMs => runMs + deltaMs,
+        }),
+    }),
+)
 
-export const countShots = (stats: RunStats, shots: number): RunStats =>
-  modifyFields(stats, { shotsFired: fired => fired + shots })
+export const countShots: {
+  (shots: number): (stats: RunStats) => RunStats
+  (stats: RunStats, shots: number): RunStats
+} = Function.dual(2, (stats: RunStats, shots: number): RunStats =>
+  modifyFields(stats, { shotsFired: fired => fired + shots }),
+)
 
-export const countHits = (stats: RunStats, hits: number): RunStats =>
-  modifyFields(stats, { shotsHit: hit => hit + hits })
+export const countHits: {
+  (hits: number): (stats: RunStats) => RunStats
+  (stats: RunStats, hits: number): RunStats
+} = Function.dual(2, (stats: RunStats, hits: number): RunStats =>
+  modifyFields(stats, { shotsHit: hit => hit + hits }),
+)
 
 export const countTrapPlaced = (stats: RunStats): RunStats =>
   modifyFields(stats, { trapsPlaced: placed => placed + 1 })
@@ -115,14 +125,19 @@ const zipKills = (
   Boss: combine(first.Boss, second.Boss),
 })
 
-export const addKills = (kills: KillCounts, more: KillCounts): KillCounts =>
-  zipKills(kills, more, (count, extra) => count + extra)
+export const addKills: {
+  (more: KillCounts): (kills: KillCounts) => KillCounts
+  (kills: KillCounts, more: KillCounts): KillCounts
+} = Function.dual(2, (kills: KillCounts, more: KillCounts): KillCounts =>
+  zipKills(kills, more, (count, extra) => count + extra),
+)
 
-export const killsSince = (
-  kills: KillCounts,
-  earlier: KillCounts,
-): KillCounts =>
-  zipKills(kills, earlier, (count, before) => Math.max(0, count - before))
+export const killsSince: {
+  (earlier: KillCounts): (kills: KillCounts) => KillCounts
+  (kills: KillCounts, earlier: KillCounts): KillCounts
+} = Function.dual(2, (kills: KillCounts, earlier: KillCounts): KillCounts =>
+  zipKills(kills, earlier, (count, before) => Math.max(0, count - before)),
+)
 
 export const accuracyPercent = ({ shotsFired, shotsHit }: RunStats): number =>
   shotsFired > 0 ? Math.round((100 * shotsHit) / shotsFired) : 0
@@ -136,12 +151,15 @@ export const durationLabel = (runMs: number): string => {
   const totalSeconds = Math.floor(runMs / MS_PER_SECOND)
   const minutes = Math.floor(totalSeconds / SECONDS_PER_MINUTE)
   const seconds = totalSeconds % SECONDS_PER_MINUTE
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
+  return `${minutes}:${String.padStart(2, '0')(globalThis.String(seconds))}`
 }
 
 const POOR_AIM_PERCENT = 25
 
-export const defeatVerdict = (wave: number, stats: RunStats): string => {
+export const defeatVerdict: {
+  (stats: RunStats): (wave: number) => string
+  (wave: number, stats: RunStats): string
+} = Function.dual(2, (wave: number, stats: RunStats): string => {
   if (wave <= 1) {
     return 'Eaten on wave 1. Those were the slow ones'
   } else if (
@@ -152,7 +170,7 @@ export const defeatVerdict = (wave: number, stats: RunStats): string => {
   } else {
     return `Eaten on wave ${wave}`
   }
-}
+})
 
 // NOTE: Rattles' word on the end card. The wave is on the card already, so
 // the quip never says it.
@@ -164,7 +182,10 @@ const DEFEAT_QUIPS: ReadonlyArray<string> = [
   'Dinner is served. You',
 ]
 
-export const defeatQuip = (wave: number, stats: RunStats): string => {
+export const defeatQuip: {
+  (stats: RunStats): (wave: number) => string
+  (wave: number, stats: RunStats): string
+} = Function.dual(2, (wave: number, stats: RunStats): string => {
   if (wave <= 1) {
     return 'Those were the slow ones'
   } else if (
@@ -178,7 +199,7 @@ export const defeatQuip = (wave: number, stats: RunStats): string => {
       'Better luck next life'
     )
   }
-}
+})
 
 export const victoryVerdict = (stats: RunStats): string =>
   stats.heartsLost === 0

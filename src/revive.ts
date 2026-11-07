@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { maxHpOf } from './calling'
@@ -163,12 +163,15 @@ const advanceSeat =
 // downed one bleeds, or is revived by a teammate who stood still beside
 // them for COOP_RULES.reviveMs. Who stood still is read before anyone
 // changes, so the order of the seats never matters.
-export const advanceParty = (world: World, deltaMs: number): World => {
+export const advanceParty: {
+  (deltaMs: number): (world: World) => World
+  (world: World, deltaMs: number): World
+} = Function.dual(2, (world: World, deltaMs: number): World => {
   if (!isCoop(world)) {
     return world
   }
   return forEachSeat(world, advanceSeat(playersOf(world), deltaMs))
-}
+})
 
 // THE BREAK
 
@@ -190,12 +193,16 @@ export const returnFallen = (world: World): World =>
 // NOTE: READY from one player (decided 7, row 12): the break ends once
 // everyone who is here and standing has pressed it, or when its clock runs
 // out. An away player never holds it up.
-export const markReady = (world: World, slot: PlayerSlot): World =>
+export const markReady: {
+  (slot: PlayerSlot): (world: World) => World
+  (world: World, slot: PlayerSlot): World
+} = Function.dual(2, (world: World, slot: PlayerSlot): World =>
   Phase.isAnyOf(['Preparation'])(world.phase)
     ? modifySeatRecord(world, slot, seat =>
         modifyFields(seat, { readiness: () => 'Ready' }),
       )
-    : world
+    : world,
+)
 
 const isHoldingBreak = (seat: Seat): boolean =>
   isHere(seat) && !isDowned(seat) && seat.readiness === 'Waiting'
@@ -237,51 +244,66 @@ const sweepHits =
 // NOTE: with friendly fire on, a teammate's shot that reaches a standing
 // player wounds them and stops there. Gnome peas never do. With it off, and
 // in single player, shots pass through teammates.
-export const resolveFriendlyFire = (
-  world: World,
-  seconds: number,
-  from: (bullet: Bullet) => Vector,
-  firstFreshId: number,
-): World => {
-  if (!isFriendlyFireOn(world)) {
-    return world
-  }
-  return forEachSeat(world, (current, slot) => {
-    const { seat, player: target } = seatStateAt(current, slot)
-    if (
-      !isStanding(seat) ||
-      Invulnerability.isAnyOf(['Invulnerable'])(target.invulnerability)
-    ) {
-      return current
+export const resolveFriendlyFire: {
+  (
+    seconds: number,
+    from: (bullet: Bullet) => Vector,
+    firstFreshId: number,
+  ): (world: World) => World
+  (
+    world: World,
+    seconds: number,
+    from: (bullet: Bullet) => Vector,
+    firstFreshId: number,
+  ): World
+} = Function.dual(
+  4,
+  (
+    world: World,
+    seconds: number,
+    from: (bullet: Bullet) => Vector,
+    firstFreshId: number,
+  ): World => {
+    if (!isFriendlyFireOn(world)) {
+      return world
     }
-    return pipe(
-      current.bullets,
-      Array.findFirst(
-        bullet =>
-          bullet.weapon !== 'Peashooter' &&
-          isTeammateShot(slot)(bullet) &&
-          sweepHits(target, seconds, from, firstFreshId)(bullet),
-      ),
-      Option.match({
-        onNone: () => current,
-        onSome: bullet => {
-          const direction = bulletDirection(bullet)
-          return modifyFields(current, {
-            seats: atSeat(slot, {
-              player: player =>
-                woundPlayer(player, COOP_RULES.friendlyFireDamage, direction),
-            }),
-            bullets: Array.filter(({ id }) => id !== bullet.id),
-            frameEvents: Array.append(
-              GameEvent.FriendlyFire({
-                x: target.x,
-                y: target.y,
-                direction,
+    return forEachSeat(world, (current, slot) => {
+      const { seat, player: target } = seatStateAt(current, slot)
+      if (
+        !isStanding(seat) ||
+        Invulnerability.isAnyOf(['Invulnerable'])(target.invulnerability)
+      ) {
+        return current
+      }
+      return pipe(
+        current.bullets,
+        Array.findFirst(
+          bullet =>
+            bullet.weapon !== 'Peashooter' &&
+            isTeammateShot(slot)(bullet) &&
+            sweepHits(target, seconds, from, firstFreshId)(bullet),
+        ),
+        Option.match({
+          onNone: () => current,
+          onSome: bullet => {
+            const direction = bulletDirection(bullet)
+            return modifyFields(current, {
+              seats: atSeat(slot, {
+                player: player =>
+                  woundPlayer(player, COOP_RULES.friendlyFireDamage, direction),
               }),
-            ),
-          })
-        },
-      }),
-    )
-  })
-}
+              bullets: Array.filter(({ id }) => id !== bullet.id),
+              frameEvents: Array.append(
+                GameEvent.FriendlyFire({
+                  x: target.x,
+                  y: target.y,
+                  direction,
+                }),
+              ),
+            })
+          },
+        }),
+      )
+    })
+  },
+)

@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { isAtAmmoWindow, isCounterOpen } from './ammoCounter'
@@ -100,8 +100,12 @@ const shakeOffset = (model: Model): Vector =>
     ? model.shake.offset
     : ZERO_VECTOR
 
-export const worldOffset = (model: Model, camera: Camera): Vector =>
-  sceneOffset(camera, shakeOffset(model))
+export const worldOffset: {
+  (camera: Camera): (model: Model) => Vector
+  (model: Model, camera: Camera): Vector
+} = Function.dual(2, (model: Model, camera: Camera): Vector =>
+  sceneOffset(camera, shakeOffset(model)),
+)
 
 // STALL
 
@@ -319,12 +323,15 @@ const worldShapes = (
     ? titleWorldShapes(model)
     : playWorldShapes(model, camera)
 
-export const worldLayerShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> => [
-  group({
-    translate: worldOffset(model, camera),
-    shapes: worldShapes(model, camera),
-  }),
-]
+export const worldLayerShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> => [
+    group({
+      translate: worldOffset(model, camera),
+      shapes: worldShapes(model, camera),
+    }),
+  ],
+)

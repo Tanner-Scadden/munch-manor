@@ -1,4 +1,4 @@
-import { Data, Effect, Result, Schema, pipe } from 'effect'
+import { Effect, Function, Result, Schema, String, pipe } from 'effect'
 import { Base64Url } from 'effect/encoding'
 
 import { base64Url, randomBytes } from './Rows'
@@ -19,12 +19,15 @@ import { Unauthorized } from './Server'
 
 // ERRORS
 
-export class IdentityError extends Data.TaggedError('IdentityError')<{
-  readonly reason: string
-}> {}
+export class IdentityError extends Schema.TaggedError<
+  IdentityError,
+  { readonly brand: unique symbol }
+>()('IdentityError', {
+  reason: Schema.String,
+}) {}
 
 const cryptoError = (error: unknown) =>
-  new IdentityError({ reason: `WebCrypto: ${String(error)}` })
+  IdentityError.make({ reason: `WebCrypto: ${globalThis.String(error)}` })
 
 // KEYS
 
@@ -126,11 +129,11 @@ export const generateKey: Effect.Effect<StoredKey, IdentityError> = Effect.gen(
         x: publicJwk.x,
         y: publicJwk.y,
       }),
-      error => new IdentityError({ reason: error.message }),
+      error => IdentityError.make({ reason: error.message }),
     )
     const privateJwkText = yield* Effect.mapError(
       Schema.encodeEffect(UnknownJson)(privateJwk),
-      error => new IdentityError({ reason: error.message }),
+      error => IdentityError.make({ reason: error.message }),
     )
     return { privateJwk: privateJwkText, publicKey }
   },
@@ -152,7 +155,7 @@ export const importKey = (
   Effect.gen(function* () {
     const jwk = yield* Effect.mapError(
       Schema.decodeEffect(PrivateJwk)(stored.privateJwk),
-      error => new IdentityError({ reason: error.message }),
+      error => IdentityError.make({ reason: error.message }),
     )
     const privateKey = yield* Effect.tryPromise({
       try: () =>
@@ -179,41 +182,65 @@ export const importKey = (
     }
   })
 
-export const verifySignature = (
-  publicKey: PublicKey,
-  message: string,
-  signature: string,
-): Effect.Effect<boolean, IdentityError> =>
-  Effect.gen(function* () {
-    const signatureBytes = yield* Result.match(fromBase64Url(signature), {
-      onFailure: reason => Effect.fail(new IdentityError({ reason })),
-      onSuccess: Effect.succeed,
-    })
-    const key = yield* Effect.tryPromise({
-      try: () =>
-        crypto.subtle.importKey(
-          'jwk',
-          {
-            kty: publicKey.kty,
-            crv: publicKey.crv,
-            x: publicKey.x,
-            y: publicKey.y,
-          },
-          EcdsaParams,
-          false,
-          ['verify'],
-        ),
-      catch: cryptoError,
-    })
-    return yield* Effect.tryPromise({
-      try: () =>
-        crypto.subtle.verify(SignParams, key, signatureBytes, bytesOf(message)),
-      catch: cryptoError,
-    })
-  })
+export const verifySignature: {
+  (
+    message: string,
+    signature: string,
+  ): (publicKey: PublicKey) => Effect.Effect<boolean, IdentityError>
+  (
+    publicKey: PublicKey,
+    message: string,
+    signature: string,
+  ): Effect.Effect<boolean, IdentityError>
+} = Function.dual(
+  3,
+  (
+    publicKey: PublicKey,
+    message: string,
+    signature: string,
+  ): Effect.Effect<boolean, IdentityError> =>
+    Effect.gen(function* () {
+      const signatureBytes = yield* Result.match(fromBase64Url(signature), {
+        onFailure: reason => Effect.fail(IdentityError.make({ reason })),
+        onSuccess: Effect.succeed,
+      })
+      const key = yield* Effect.tryPromise({
+        try: () =>
+          crypto.subtle.importKey(
+            'jwk',
+            {
+              kty: publicKey.kty,
+              crv: publicKey.crv,
+              x: publicKey.x,
+              y: publicKey.y,
+            },
+            EcdsaParams,
+            false,
+            ['verify'],
+          ),
+        catch: cryptoError,
+      })
+      return yield* Effect.tryPromise({
+        try: () =>
+          crypto.subtle.verify(
+            SignParams,
+            key,
+            signatureBytes,
+            bytesOf(message),
+          ),
+        catch: cryptoError,
+      })
+    }),
+)
 
-export const sessionMessage = (nonce: string, playerId: string): string =>
-  `munch-sync-session:v1:${nonce}:${playerId}`
+export const sessionMessage: {
+  (playerId: string): (nonce: string) => string
+  (nonce: string, playerId: string): string
+} = Function.dual(
+  2,
+  (nonce: string, playerId: string): string =>
+    `munch-sync-session:v1:${nonce}:${playerId}`,
+)
 
 // MACS
 
@@ -230,18 +257,21 @@ const hmacKey = (secret: string) =>
     catch: cryptoError,
   })
 
-export const mac = (
-  secret: string,
-  message: string,
-): Effect.Effect<string, IdentityError> =>
-  Effect.gen(function* () {
-    const key = yield* hmacKey(secret)
-    const signature = yield* Effect.tryPromise({
-      try: () => crypto.subtle.sign('HMAC', key, bytesOf(message)),
-      catch: cryptoError,
-    })
-    return base64Url(new Uint8Array(signature))
-  })
+export const mac: {
+  (message: string): (secret: string) => Effect.Effect<string, IdentityError>
+  (secret: string, message: string): Effect.Effect<string, IdentityError>
+} = Function.dual(
+  2,
+  (secret: string, message: string): Effect.Effect<string, IdentityError> =>
+    Effect.gen(function* () {
+      const key = yield* hmacKey(secret)
+      const signature = yield* Effect.tryPromise({
+        try: () => crypto.subtle.sign('HMAC', key, bytesOf(message)),
+        catch: cryptoError,
+      })
+      return base64Url(new Uint8Array(signature))
+    }),
+)
 
 // NOTE: crypto.subtle.verify compares in constant time.
 const checkMac = (
@@ -266,40 +296,56 @@ const checkMac = (
 
 export const CHALLENGE_TTL_MS = 2 * 60 * 1000
 
-export const makeChallenge = (
-  secret: string,
-  nowMs: number,
-): Effect.Effect<string, IdentityError> =>
-  Effect.gen(function* () {
-    const salt = base64Url(yield* randomBytes(12))
-    const body = `${salt}.${nowMs + CHALLENGE_TTL_MS}`
-    return `${body}.${yield* mac(secret, `challenge:${body}`)}`
-  })
+export const makeChallenge: {
+  (nowMs: number): (secret: string) => Effect.Effect<string, IdentityError>
+  (secret: string, nowMs: number): Effect.Effect<string, IdentityError>
+} = Function.dual(
+  2,
+  (secret: string, nowMs: number): Effect.Effect<string, IdentityError> =>
+    Effect.gen(function* () {
+      const value = yield* randomBytes(12)
+      const salt = base64Url(value)
+      const body = `${salt}.${nowMs + CHALLENGE_TTL_MS}`
+      return `${body}.${yield* mac(secret, `challenge:${body}`)}`
+    }),
+)
 
-export const checkChallenge = (
-  secret: string,
-  nonce: string,
-  nowMs: number,
-): Effect.Effect<void, Unauthorized | IdentityError> =>
-  Effect.gen(function* () {
-    const parts = nonce.split('.')
-    const [salt, expires, signature] = parts
-    if (
-      parts.length !== 3 ||
-      salt === undefined ||
-      expires === undefined ||
-      signature === undefined
-    ) {
-      return yield* new Unauthorized({ reason: 'Malformed challenge' })
-    }
-    const body = `${salt}.${expires}`
-    if (!(yield* checkMac(secret, `challenge:${body}`, signature))) {
-      return yield* new Unauthorized({ reason: 'Forged challenge' })
-    }
-    if (Number(expires) <= nowMs) {
-      return yield* new Unauthorized({ reason: 'Expired challenge' })
-    }
-  })
+export const checkChallenge: {
+  (
+    nonce: string,
+    nowMs: number,
+  ): (secret: string) => Effect.Effect<void, Unauthorized | IdentityError>
+  (
+    secret: string,
+    nonce: string,
+    nowMs: number,
+  ): Effect.Effect<void, Unauthorized | IdentityError>
+} = Function.dual(
+  3,
+  (
+    secret: string,
+    nonce: string,
+    nowMs: number,
+  ): Effect.Effect<void, Unauthorized | IdentityError> =>
+    Effect.gen(function* () {
+      const parts = String.split('.')(nonce)
+      const [salt, expires, signature] = parts
+      if (
+        parts.length !== 3 ||
+        expires === undefined ||
+        signature === undefined
+      ) {
+        return yield* Unauthorized.make({ reason: 'Malformed challenge' })
+      }
+      const body = `${salt}.${expires}`
+      if (!(yield* checkMac(secret, `challenge:${body}`, signature))) {
+        return yield* Unauthorized.make({ reason: 'Forged challenge' })
+      }
+      if (Number(expires) <= nowMs) {
+        return yield* Unauthorized.make({ reason: 'Expired challenge' })
+      }
+    }),
+)
 
 // TOKENS
 
@@ -308,58 +354,79 @@ export const SESSION_TTL_MS = 24 * 60 * 60 * 1000
 export const SessionClaims = Schema.Struct({
   deviceId: Schema.String,
   playerId: Schema.String,
-  expiresMs: Schema.Number,
+  expiresMs: Schema.Finite,
 })
 export type SessionClaims = typeof SessionClaims.Type
 
 const ClaimsJson = Schema.fromJsonString(SessionClaims)
 
-export const signToken = (
-  secret: string,
-  claims: SessionClaims,
-): Effect.Effect<string, IdentityError> =>
-  Effect.gen(function* () {
-    const json = yield* Effect.mapError(
-      Schema.encodeEffect(ClaimsJson)(claims),
-      error => new IdentityError({ reason: error.message }),
-    )
-    const body = base64Url(bytesOf(json))
-    return `${body}.${yield* mac(secret, `token:${body}`)}`
-  })
-
-export const verifyToken = (
-  secret: string,
-  token: string,
-  nowMs: number,
-): Effect.Effect<SessionClaims, Unauthorized> =>
-  pipe(
+export const signToken: {
+  (
+    claims: SessionClaims,
+  ): (secret: string) => Effect.Effect<string, IdentityError>
+  (secret: string, claims: SessionClaims): Effect.Effect<string, IdentityError>
+} = Function.dual(
+  2,
+  (
+    secret: string,
+    claims: SessionClaims,
+  ): Effect.Effect<string, IdentityError> =>
     Effect.gen(function* () {
-      const parts = token.split('.')
-      const [body, signature] = parts
-      if (parts.length !== 2 || body === undefined || signature === undefined) {
-        return yield* new Unauthorized({ reason: 'Malformed token' })
-      }
-      if (!(yield* checkMac(secret, `token:${body}`, signature))) {
-        return yield* new Unauthorized({ reason: 'Forged token' })
-      }
-      const json = yield* Result.match(Base64Url.decodeString(body), {
-        onFailure: () =>
-          Effect.fail(new Unauthorized({ reason: 'Malformed token' })),
-        onSuccess: Effect.succeed,
-      })
-      const claims = yield* Effect.mapError(
-        Schema.decodeEffect(ClaimsJson)(json),
-        () => new Unauthorized({ reason: 'Malformed token' }),
+      const json = yield* Effect.mapError(
+        Schema.encodeEffect(ClaimsJson)(claims),
+        error => IdentityError.make({ reason: error.message }),
       )
-      if (claims.expiresMs <= nowMs) {
-        return yield* new Unauthorized({ reason: 'Expired token' })
-      }
-      return claims
+      const body = base64Url(bytesOf(json))
+      return `${body}.${yield* mac(secret, `token:${body}`)}`
     }),
-    Effect.catchTag('IdentityError', error =>
-      Effect.fail(new Unauthorized({ reason: error.reason })),
+)
+
+export const verifyToken: {
+  (
+    token: string,
+    nowMs: number,
+  ): (secret: string) => Effect.Effect<SessionClaims, Unauthorized>
+  (
+    secret: string,
+    token: string,
+    nowMs: number,
+  ): Effect.Effect<SessionClaims, Unauthorized>
+} = Function.dual(
+  3,
+  (
+    secret: string,
+    token: string,
+    nowMs: number,
+  ): Effect.Effect<SessionClaims, Unauthorized> =>
+    pipe(
+      Effect.gen(function* () {
+        const parts = String.split('.')(token)
+        const [body, signature] = parts
+        if (parts.length !== 2 || signature === undefined) {
+          return yield* Unauthorized.make({ reason: 'Malformed token' })
+        }
+        if (!(yield* checkMac(secret, `token:${body}`, signature))) {
+          return yield* Unauthorized.make({ reason: 'Forged token' })
+        }
+        const json = yield* Result.match(Base64Url.decodeString(body), {
+          onFailure: () =>
+            Effect.fail(Unauthorized.make({ reason: 'Malformed token' })),
+          onSuccess: Effect.succeed,
+        })
+        const claims = yield* Effect.mapError(
+          Schema.decodeEffect(ClaimsJson)(json),
+          () => Unauthorized.make({ reason: 'Malformed token' }),
+        )
+        if (claims.expiresMs <= nowMs) {
+          return yield* Unauthorized.make({ reason: 'Expired token' })
+        }
+        return claims
+      }),
+      Effect.catchTag('IdentityError', error =>
+        Effect.fail(Unauthorized.make({ reason: error.reason })),
+      ),
     ),
-  )
+)
 
 // API
 
@@ -389,14 +456,14 @@ export const SessionResponse = Schema.Struct({
   token: Schema.String,
   deviceId: Schema.String,
   playerId: PlayerId,
-  devices: Schema.Number,
-  expiresMs: Schema.Number,
+  devices: Schema.Finite,
+  expiresMs: Schema.Finite,
 })
 export type SessionResponse = typeof SessionResponse.Type
 
 export const LinkCodeResponse = Schema.Struct({
   code: Schema.String,
-  expiresMs: Schema.Number,
+  expiresMs: Schema.Finite,
 })
 export type LinkCodeResponse = typeof LinkCodeResponse.Type
 
@@ -407,7 +474,7 @@ export const IdentityFailure = Schema.TaggedUnion({
   Unauthorized: { reason: Schema.String },
   PlayerTaken: {},
   WrongCode: {},
-  TooManyTries: { retryAfterMs: Schema.Number },
+  TooManyTries: { retryAfterMs: Schema.Finite },
   RateLimited: {},
   BadRequest: { reason: Schema.String },
   Unavailable: {},
@@ -416,9 +483,12 @@ export type IdentityFailure = typeof IdentityFailure.Type
 
 // NOTE: a refusal with its reason, from the directory on the server or
 // decoded from an identity response on the client.
-export class IdentityRefused extends Data.TaggedError('IdentityRefused')<{
-  readonly failure: IdentityFailure
-}> {}
+export class IdentityRefused extends Schema.TaggedError<
+  IdentityRefused,
+  { readonly brand: unique symbol }
+>()('IdentityRefused', {
+  failure: IdentityFailure,
+}) {}
 
 export const identityFailureStatus = (failure: IdentityFailure): number =>
   IdentityFailure.match(failure, {

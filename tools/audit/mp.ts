@@ -10,18 +10,30 @@
 // and must land in one public room together.
 // Run it through the heavy guard, as a Shared job (one context per page):
 //   bun run heavy -- --shared bun tools/audit/mp.ts https://munch-manor-mp-dev-pr-12.tanner-scadden.workers.dev/ [players]
-import { Duration, Effect, Schedule, Schema } from 'effect'
+import {
+  Array,
+  Config,
+  Console,
+  Duration,
+  Effect,
+  Option,
+  Order,
+  Schedule,
+  Schema,
+} from 'effect'
 import type { BrowserContext, Page } from 'playwright-core'
 
-import { decodeJson, encodeJson } from '../json'
-import { SHOTS_DIR, finish, launch, pollUntil, wait } from './lib'
+import { encodeJson } from '../json'
+import {
+  SHOTS_DIR,
+  finish,
+  openBrowser,
+  pollUntil,
+  runAudit,
+  wait,
+} from './lib'
+import { attempt, failWith } from './page'
 
-const BASE = process.argv[2] ?? process.env['BASE']
-if (BASE === undefined) {
-  console.error('Usage: bun tools/audit/mp.ts <co-op dev page url> [players]')
-  process.exit(2)
-}
-const PLAYERS = Math.min(4, Math.max(2, Number(process.argv[3] ?? 3)))
 const PLAY_SECONDS = 12
 
 // NOTE: the dev page's `#debug` readout, the fields this audit reads.
@@ -29,63 +41,69 @@ const Debug = Schema.Struct({
   code: Schema.String,
   visibility: Schema.NullOr(Schema.String),
   names: Schema.Array(Schema.String),
-  slot: Schema.NullOr(Schema.Number),
+  slot: Schema.NullOr(Schema.Finite),
   phase: Schema.String,
   lobbyStatus: Schema.NullOr(Schema.String),
-  members: Schema.Number,
-  rttMs: Schema.Number,
-  downKBs: Schema.Number,
-  inputsPerSecond: Schema.Number,
-  bytesIn: Schema.Number,
-  framesIn: Schema.Number,
-  framesOut: Schema.Number,
-  corrections: Schema.Number,
-  maxCorrectionPx: Schema.Number,
-  tick: Schema.NullOr(Schema.Number),
+  members: Schema.Finite,
+  rttMs: Schema.Finite,
+  downKBs: Schema.Finite,
+  inputsPerSecond: Schema.Finite,
+  bytesIn: Schema.Finite,
+  framesIn: Schema.Finite,
+  framesOut: Schema.Finite,
+  corrections: Schema.Finite,
+  maxCorrectionPx: Schema.Finite,
+  tick: Schema.NullOr(Schema.Finite),
   others: Schema.Array(
     Schema.Struct({
-      slot: Schema.Number,
-      x: Schema.Number,
+      slot: Schema.Finite,
+      x: Schema.Finite,
       away: Schema.Boolean,
     }),
   ),
 })
 type Debug = typeof Debug.Type
-const decodeDebug = decodeJson(Debug)
+const DebugJson = Schema.fromJsonString(Debug)
 
 const problems: Array<string> = []
 
-const debugOf = async (page: Page): Promise<Debug | undefined> => {
-  const text = await page.locator('#debug').textContent()
-  if (text === null || text === '') {
-    return undefined
-  }
-  return decodeDebug(text)
-}
+const debugOf = (page: Page) =>
+  Effect.gen(function* () {
+    const text = yield* attempt(() => page.locator('#debug').textContent())
+    if (text === null || text === '') {
+      return undefined
+    }
+    return yield* Schema.decodeEffect(DebugJson)(text)
+  })
 
-const until = async (
+const debugsOf = (pages: ReadonlyArray<Page>) =>
+  Effect.forEach(pages, debugOf, { concurrency: 'unbounded' })
+
+const until = (
   what: string,
   pages: ReadonlyArray<Page>,
   holds: (debug: Debug) => boolean,
-  timeoutMs = 20_000,
-): Promise<boolean> => {
-  const { last: isMet, elapsedMs } = await pollUntil(
-    async () =>
-      (await Promise.all(pages.map(debugOf))).every(
-        debug => debug !== undefined && holds(debug),
+  timeoutMs: number,
+) =>
+  Effect.gen(function* () {
+    const { last: isMet, elapsedMs } = yield* pollUntil(
+      Effect.map(debugsOf(pages), debugs =>
+        Array.every(debugs, debug => debug !== undefined && holds(debug)),
       ),
-    isDone => isDone,
-    250,
-    timeoutMs,
-  )
-  if (isMet) {
-    console.log(`  ok  ${what} (${elapsedMs} ms)`)
-    return true
-  }
-  problems.push(what)
-  console.log(`  FAIL ${what}`)
-  return false
-}
+      isDone => isDone,
+      250,
+      timeoutMs,
+    )
+    if (isMet) {
+      yield* Console.log(`  ok  ${what} (${elapsedMs} ms)`)
+      return true
+    }
+    problems.push(what)
+    yield* Console.log(`  FAIL ${what}`)
+    return false
+  })
+
+const DEFAULT_TIMEOUT_MS = 20_000
 
 const withBot = (url: string, name: string, code?: string): string => {
   const next = new URL(url)
@@ -99,79 +117,116 @@ const withBot = (url: string, name: string, code?: string): string => {
 
 const NAMES = ['Ana', 'Bo', 'Cy', 'Dee']
 
-const browser = await launch()
-const contexts: Array<BrowserContext> = []
-const pages: Array<Page> = []
+const screenshot = (page: Page | undefined, path: string) =>
+  page === undefined ? Effect.void : attempt(() => page.screenshot({ path }))
 
-for (let index = 0; index < PLAYERS; index += 1) {
-  const context = await browser.newContext({
-    viewport: { width: 1000, height: 820 },
-  })
-  contexts.push(context)
-  const page = await context.newPage()
-  page.on('pageerror', error =>
-    problems.push(`page ${index}: ${error.message}`),
+const Measured = Schema.Struct({
+  page: Schema.Finite,
+  slot: Schema.optional(Schema.NullOr(Schema.Finite)),
+  rttMs: Schema.optional(Schema.Finite),
+  downKBsWindow: Schema.Finite,
+  downKBsRun: Schema.Finite,
+  messagesInPerSecond: Schema.Finite,
+  messagesOutPerSecond: Schema.Finite,
+  inputsPerSecond: Schema.Finite,
+  corrections: Schema.optional(Schema.Finite),
+  maxCorrectionPx: Schema.Finite,
+})
+const encodeMeasured = encodeJson(Measured)
+
+const program = Effect.gen(function* () {
+  const maybeEnvBase = yield* Config.String('BASE').pipe(Config.option)
+  const maybeBase = Option.orElse(
+    Option.fromUndefinedOr(process.argv[2]),
+    () => maybeEnvBase,
   )
-  pages.push(page)
-}
+  if (Option.isNone(maybeBase)) {
+    yield* Console.error(
+      'Usage: bun tools/audit/mp.ts <co-op dev page url> [players]',
+    )
+    return yield* Effect.sync(() => process.exit(2))
+  }
+  const BASE = maybeBase.value
+  const PLAYERS = Math.min(4, Math.max(2, Number(process.argv[3] ?? 3)))
+  const browser = yield* openBrowser
+  const contexts: Array<BrowserContext> = []
+  const pages: Array<Page> = []
 
-const [host, ...guests] = pages
-if (host === undefined) {
-  throw new Error('No host page')
-}
+  for (let index = 0; index < PLAYERS; index += 1) {
+    const context = yield* attempt(() =>
+      browser.newContext({ viewport: { width: 1000, height: 820 } }),
+    )
+    contexts.push(context)
+    const page = yield* attempt(() => context.newPage())
+    page.on('pageerror', error =>
+      problems.push(`page ${index}: ${error.message}`),
+    )
+    pages.push(page)
+  }
 
-console.log(`Co-op check with ${PLAYERS} players against ${BASE}`)
-await host.goto(withBot(BASE, NAMES[0] ?? 'Ana'))
-await host
-  .locator('#status')
-  .filter({ hasText: 'Signed in' })
-  .waitFor({ timeout: 20_000 })
-await host.locator('#create').click()
-await host.waitForURL(/room=/, { timeout: 20_000 })
-const code = new URL(host.url()).searchParams.get('room') ?? ''
-console.log(`  ok  the host created room ${code}`)
+  const [host, ...guests] = pages
+  if (host === undefined) {
+    return yield* failWith('No host page')
+  }
 
-await Promise.all(
-  guests.map((page, index) =>
-    page.goto(withBot(BASE, NAMES[index + 1] ?? 'Zed', code)),
-  ),
-)
-await until(
-  `every page shows ${PLAYERS} members by name`,
-  pages,
-  debug =>
-    debug.members === PLAYERS &&
-    [...debug.names].sort().join(',') ===
-      NAMES.slice(0, PLAYERS).sort().join(','),
-)
+  yield* Console.log(`Co-op check with ${PLAYERS} players against ${BASE}`)
+  yield* attempt(() => host.goto(withBot(BASE, NAMES[0] ?? 'Ana')))
+  yield* attempt(() =>
+    host
+      .locator('#status')
+      .filter({ hasText: 'Signed in' })
+      .waitFor({ timeout: 20_000 }),
+  )
+  yield* attempt(() => host.locator('#create').click())
+  yield* attempt(() => host.waitForURL(/room=/, { timeout: 20_000 }))
+  const code = new URL(host.url()).searchParams.get('room') ?? ''
+  yield* Console.log(`  ok  the host created room ${code}`)
 
-for (const page of pages) {
-  await page.locator('#ready:not([disabled])').click()
-}
-await until(
-  'the last READY starts the run on every page',
-  pages,
-  debug => debug.phase === 'Playing' && debug.tick !== null,
-)
+  yield* Effect.forEach(
+    guests,
+    (page, index) =>
+      attempt(() => page.goto(withBot(BASE, NAMES[index + 1] ?? 'Zed', code))),
+    { concurrency: 'unbounded', discard: true },
+  )
+  const names = Array.join(
+    Array.sort(Array.take(NAMES, PLAYERS), Order.String),
+    ',',
+  )
+  yield* until(
+    `every page shows ${PLAYERS} members by name`,
+    pages,
+    debug =>
+      debug.members === PLAYERS &&
+      Array.join(Array.sort(debug.names, Order.String), ',') === names,
+    DEFAULT_TIMEOUT_MS,
+  )
 
-const seen = new Map<number, Map<number, Set<number>>>()
-const statsOfAll = Effect.promise(() => Promise.all(pages.map(debugOf)))
-const watchOthers = Effect.promise(async () => {
-  const debugs = await Promise.all(pages.map(debugOf))
-  debugs.forEach((debug, index) => {
-    debug?.others.forEach(other => {
-      const byOther = seen.get(index) ?? new Map<number, Set<number>>()
-      const xs = byOther.get(other.slot) ?? new Set<number>()
-      xs.add(Math.round(other.x))
-      byOther.set(other.slot, xs)
-      seen.set(index, byOther)
+  for (const page of pages) {
+    yield* attempt(() => page.locator('#ready:not([disabled])').click())
+  }
+  yield* until(
+    'the last READY starts the run on every page',
+    pages,
+    debug => debug.phase === 'Playing' && debug.tick !== null,
+    DEFAULT_TIMEOUT_MS,
+  )
+
+  const seen = new Map<number, Map<number, Set<number>>>()
+  const statsOfAll = debugsOf(pages)
+  const watchOthers = Effect.map(debugsOf(pages), debugs => {
+    Array.forEach(debugs, (debug, index) => {
+      Array.forEach(debug?.others ?? [], other => {
+        const byOther = seen.get(index) ?? new Map<number, Set<number>>()
+        const xs = byOther.get(other.slot) ?? new Set<number>()
+        xs.add(Math.round(other.x))
+        byOther.set(other.slot, xs)
+        seen.set(index, byOther)
+      })
     })
   })
-})
-// NOTE: the play is timed from the first readout to the last, so the rates
-// below are over the whole play.
-const [played, [firstStats, lastStats]] = await Effect.runPromise(
-  Effect.timed(
+  // NOTE: the play is timed from the first readout to the last, so the rates
+  // below are over the whole play.
+  const [played, [firstStats, lastStats]] = yield* Effect.timed(
     Effect.all([
       statsOfAll,
       watchOthers.pipe(
@@ -183,135 +238,141 @@ const [played, [firstStats, lastStats]] = await Effect.runPromise(
         Effect.andThen(statsOfAll),
       ),
     ]),
-  ),
-)
-pages.forEach((_, index) => {
-  const byOther = seen.get(index)
-  const moved = [...(byOther?.values() ?? [])].filter(xs => xs.size > 10).length
-  if (moved < PLAYERS - 1) {
-    problems.push(`page ${index} saw ${moved} of ${PLAYERS - 1} others move`)
-  } else {
-    console.log(`  ok  page ${index} saw all ${PLAYERS - 1} others move`)
+  )
+  for (const index of pages.keys()) {
+    const byOther = seen.get(index)
+    const moved = Array.filter(
+      [...(byOther?.values() ?? [])],
+      xs => xs.size > 10,
+    ).length
+    if (moved < PLAYERS - 1) {
+      problems.push(`page ${index} saw ${moved} of ${PLAYERS - 1} others move`)
+    } else {
+      yield* Console.log(
+        `  ok  page ${index} saw all ${PLAYERS - 1} others move`,
+      )
+    }
   }
-})
 
-const seconds = Duration.toMillis(played) / 1000
-const measured = lastStats.map((debug, index) => {
-  const first = firstStats[index]
-  return {
-    page: index,
-    slot: debug?.slot,
-    rttMs: debug?.rttMs,
-    downKBsWindow: Number(debug?.downKBs.toFixed(2)),
-    downKBsRun: Number(
-      (
-        ((debug?.bytesIn ?? 0) - (first?.bytesIn ?? 0)) /
-        1024 /
-        seconds
-      ).toFixed(2),
-    ),
-    messagesInPerSecond: Number(
-      (((debug?.framesIn ?? 0) - (first?.framesIn ?? 0)) / seconds).toFixed(1),
-    ),
-    messagesOutPerSecond: Number(
-      (((debug?.framesOut ?? 0) - (first?.framesOut ?? 0)) / seconds).toFixed(
-        1,
+  const seconds = Duration.toMillis(played) / 1000
+  const measured = Array.map(lastStats, (debug, index) => {
+    const first = firstStats[index]
+    return {
+      page: index,
+      slot: debug?.slot,
+      rttMs: debug?.rttMs,
+      downKBsWindow: Number(debug?.downKBs.toFixed(2)),
+      downKBsRun: Number(
+        (
+          ((debug?.bytesIn ?? 0) - (first?.bytesIn ?? 0)) /
+          1024 /
+          seconds
+        ).toFixed(2),
       ),
-    ),
-    inputsPerSecond: Number(debug?.inputsPerSecond.toFixed(1)),
-    corrections: debug?.corrections,
-    maxCorrectionPx: Number(debug?.maxCorrectionPx.toFixed(1)),
-  }
-})
-console.log('  measured over the play:')
-const Measured = Schema.Struct({
-  page: Schema.Number,
-  slot: Schema.optional(Schema.NullOr(Schema.Number)),
-  rttMs: Schema.optional(Schema.Number),
-  downKBsWindow: Schema.Number,
-  downKBsRun: Schema.Number,
-  messagesInPerSecond: Schema.Number,
-  messagesOutPerSecond: Schema.Number,
-  inputsPerSecond: Schema.Number,
-  corrections: Schema.optional(Schema.Number),
-  maxCorrectionPx: Schema.Number,
-})
-const encodeMeasured = encodeJson(Measured)
-measured.forEach(row => console.log(`    ${encodeMeasured(row)}`))
-
-await Promise.all(
-  pages.map((page, index) =>
-    page.screenshot({ path: `${SHOTS_DIR}/mp-${PLAYERS}p-page${index}.png` }),
-  ),
-)
-console.log(`  shots in ${SHOTS_DIR}/mp-${PLAYERS}p-page*.png`)
-
-const rejoining = guests[0]
-if (rejoining !== undefined) {
-  const before = await debugOf(rejoining)
-  await rejoining.reload()
-  await until(
-    'a reloaded page rejoins its seat and plays again',
-    [rejoining],
-    debug => debug.phase === 'Playing' && debug.slot === before?.slot,
-  )
-  await until(
-    'nobody shows the reloaded player as away',
-    [host],
-    debug => debug.others.every(other => !other.away),
-    10_000,
-  )
-}
-
-await host.locator('#end:not([disabled])').click()
-await until(
-  'every page hears the game end',
-  pages,
-  debug => debug.phase === 'Ended',
-)
-await until(
-  'every lobby is back for another run',
-  pages,
-  debug => debug.lobbyStatus === 'Lobby',
-)
-await pages[0]?.screenshot({ path: `${SHOTS_DIR}/mp-${PLAYERS}p-ended.png` })
-await Promise.all(contexts.map(context => context.close()))
-
-const quickContexts: Array<BrowserContext> = []
-const quickPages: Array<Page> = []
-for (let index = 0; index < PLAYERS; index += 1) {
-  const context = await browser.newContext({
-    viewport: { width: 1000, height: 820 },
+      messagesInPerSecond: Number(
+        (((debug?.framesIn ?? 0) - (first?.framesIn ?? 0)) / seconds).toFixed(
+          1,
+        ),
+      ),
+      messagesOutPerSecond: Number(
+        (((debug?.framesOut ?? 0) - (first?.framesOut ?? 0)) / seconds).toFixed(
+          1,
+        ),
+      ),
+      inputsPerSecond: Number(debug?.inputsPerSecond.toFixed(1)),
+      corrections: debug?.corrections,
+      maxCorrectionPx: Number(debug?.maxCorrectionPx.toFixed(1)),
+    }
   })
-  quickContexts.push(context)
-  const page = await context.newPage()
-  page.on('pageerror', error =>
-    problems.push(`quick page ${index}: ${error.message}`),
+  yield* Console.log('  measured over the play:')
+  for (const row of measured) {
+    yield* Console.log(`    ${encodeMeasured(row)}`)
+  }
+
+  yield* Effect.forEach(
+    pages,
+    (page, index) =>
+      screenshot(page, `${SHOTS_DIR}/mp-${PLAYERS}p-page${index}.png`),
+    { concurrency: 'unbounded', discard: true },
   )
-  const url = new URL(withBot(BASE, `Quick ${index + 1}`))
-  url.searchParams.set('quick', '1')
-  await page.goto(url.toString())
-  quickPages.push(page)
-  await wait(300)
-}
-await quickPages[0]?.screenshot({
-  path: `${SHOTS_DIR}/mp-${PLAYERS}p-queue.png`,
+  yield* Console.log(`  shots in ${SHOTS_DIR}/mp-${PLAYERS}p-page*.png`)
+
+  const rejoining = guests[0]
+  if (rejoining !== undefined) {
+    const before = yield* debugOf(rejoining)
+    yield* attempt(() => rejoining.reload())
+    yield* until(
+      'a reloaded page rejoins its seat and plays again',
+      [rejoining],
+      debug => debug.phase === 'Playing' && debug.slot === before?.slot,
+      DEFAULT_TIMEOUT_MS,
+    )
+    yield* until(
+      'nobody shows the reloaded player as away',
+      [host],
+      debug => Array.every(debug.others, other => !other.away),
+      10_000,
+    )
+  }
+
+  yield* attempt(() => host.locator('#end:not([disabled])').click())
+  yield* until(
+    'every page hears the game end',
+    pages,
+    debug => debug.phase === 'Ended',
+    DEFAULT_TIMEOUT_MS,
+  )
+  yield* until(
+    'every lobby is back for another run',
+    pages,
+    debug => debug.lobbyStatus === 'Lobby',
+    DEFAULT_TIMEOUT_MS,
+  )
+  yield* screenshot(pages[0], `${SHOTS_DIR}/mp-${PLAYERS}p-ended.png`)
+  yield* Effect.forEach(contexts, context => attempt(() => context.close()), {
+    concurrency: 'unbounded',
+    discard: true,
+  })
+
+  const quickContexts: Array<BrowserContext> = []
+  const quickPages: Array<Page> = []
+  for (let index = 0; index < PLAYERS; index += 1) {
+    const context = yield* attempt(() =>
+      browser.newContext({ viewport: { width: 1000, height: 820 } }),
+    )
+    quickContexts.push(context)
+    const page = yield* attempt(() => context.newPage())
+    page.on('pageerror', error =>
+      problems.push(`quick page ${index}: ${error.message}`),
+    )
+    const url = new URL(withBot(BASE, `Quick ${index + 1}`))
+    url.searchParams.set('quick', '1')
+    yield* attempt(() => page.goto(url.toString()))
+    quickPages.push(page)
+    yield* wait(300)
+  }
+  yield* screenshot(quickPages[0], `${SHOTS_DIR}/mp-${PLAYERS}p-queue.png`)
+  yield* until(
+    `${PLAYERS} QUICK PLAY pages land in one public room`,
+    quickPages,
+    debug => debug.visibility === 'Public' && debug.members === PLAYERS,
+    PLAYERS === 4 ? 30_000 : 90_000,
+  )
+  const quickDebugs = yield* debugsOf(quickPages)
+  const quickCodes = new Set(Array.map(quickDebugs, debug => debug?.code))
+  if (quickCodes.size !== 1) {
+    problems.push(`QUICK PLAY made ${quickCodes.size} rooms`)
+  }
+  yield* screenshot(
+    quickPages[0],
+    `${SHOTS_DIR}/mp-${PLAYERS}p-quick-lobby.png`,
+  )
+  yield* Effect.forEach(
+    quickContexts,
+    context => attempt(() => context.close()),
+    { concurrency: 'unbounded', discard: true },
+  )
+  yield* finish(problems, `Co-op with ${PLAYERS} players works on ${BASE}`)
 })
-await until(
-  `${PLAYERS} QUICK PLAY pages land in one public room`,
-  quickPages,
-  debug => debug.visibility === 'Public' && debug.members === PLAYERS,
-  PLAYERS === 4 ? 30_000 : 90_000,
-)
-const quickCodes = new Set(
-  (await Promise.all(quickPages.map(debugOf))).map(debug => debug?.code),
-)
-if (quickCodes.size !== 1) {
-  problems.push(`QUICK PLAY made ${quickCodes.size} rooms`)
-}
-await quickPages[0]?.screenshot({
-  path: `${SHOTS_DIR}/mp-${PLAYERS}p-quick-lobby.png`,
-})
-await Promise.all(quickContexts.map(context => context.close()))
-await browser.close()
-finish(problems, `Co-op with ${PLAYERS} players works on ${BASE}`)
+
+runAudit(program)

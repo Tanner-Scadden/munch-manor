@@ -1,4 +1,4 @@
-import { Array, Option, Record, Schema, pipe } from 'effect'
+import { Array, Function, Option, Record, Schema, pipe } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
 import {
@@ -43,15 +43,15 @@ export const PlayerChange = defineTaggedUnion({
   SawUnlocks: { ids: SavedSeenUnlocks },
   ForgotPowerUps: {},
   RecordedRun: {
-    runs: Schema.Number,
-    totalKills: Schema.Number,
-    kills: Schema.Record(Schema.String, Schema.Number),
+    runs: Schema.Finite,
+    totalKills: Schema.Finite,
+    kills: Schema.Record(Schema.String, Schema.Finite),
     bests: SavedBestsByDifficulty,
   },
   ReachedRecords: { records: SavedRunRecords },
   ChangedCalling: { calling: Calling },
-  EarnedRank: { points: Schema.Number, bones: Schema.Number },
-  GrantedVeteranRank: { points: Schema.Number, bones: Schema.Number },
+  EarnedRank: { points: Schema.Finite, bones: Schema.Finite },
+  GrantedVeteranRank: { points: Schema.Finite, bones: Schema.Finite },
   BoughtCosmetic: { id: Schema.String },
 })
 export type PlayerChange = typeof PlayerChange.Type
@@ -97,118 +97,121 @@ const changeWhen = (
   change: () => PlayerChange,
 ): ReadonlyArray<PlayerChange> => (isChanged ? [change()] : [])
 
-export const changesBetween = (
-  before: PlayerSave,
-  after: PlayerSave,
-): ReadonlyArray<PlayerChange> => {
-  const runs = after.bests.runsPlayed - before.bests.runsPlayed
-  const totalKills = after.bests.totalKills - before.bests.totalKills
-  const kills = killsAdded(before.bests.killsByKind, after.bests.killsByKind)
-  const isRunRecorded =
-    runs > 0 ||
-    totalKills > 0 ||
-    !Record.isEmptyRecord(kills) ||
-    !sameBests(before.bests.byDifficulty, after.bests.byDifficulty)
-  return pipe(
-    [
-      changeWhen(!sameSettings(before.settings, after.settings), () =>
-        PlayerChange.ChangedSettings({ settings: after.settings }),
-      ),
-      changeWhen(before.rotation !== after.rotation, () =>
-        PlayerChange.ChangedRotation({ rotation: after.rotation }),
-      ),
-      changeWhen(before.name !== after.name, () =>
-        PlayerChange.ChangedName({ name: after.name }),
-      ),
-      changeWhen(!sameAppearance(before.appearance, after.appearance), () =>
-        PlayerChange.ChangedAppearance({ appearance: after.appearance }),
-      ),
-      changeWhen(
-        before.difficulty.nightmare === 'Locked' &&
-          after.difficulty.nightmare === 'Unlocked',
-        () => PlayerChange.UnlockedNightmare(),
-      ),
-      changeWhen(
-        before.difficulty.chosen !== after.difficulty.chosen ||
-          before.difficulty.card !== after.difficulty.card,
-        () =>
-          PlayerChange.ChangedDifficulty({
-            chosen: after.difficulty.chosen,
-            card: after.difficulty.card,
-          }),
-      ),
-      changeWhen(
-        !sameOnboarding(before.onboarding, after.onboarding) ||
-          before.homeScreenTip !== after.homeScreenTip,
-        () =>
-          PlayerChange.ChangedOnboarding({
-            onboarding: after.onboarding,
-            homeScreenTip: after.homeScreenTip,
-          }),
-      ),
-      changeWhen(!sameHome(before.home, after.home), () =>
-        PlayerChange.ChangedHome({ home: after.home }),
-      ),
-      powerUpChanges(before.seenPowerUps, after.seenPowerUps),
-      Array.isReadonlyArrayNonEmpty(
-        Array.filter(
-          after.seenUnlocks,
-          id => !Array.contains(before.seenUnlocks, id),
+export const changesBetween: {
+  (after: PlayerSave): (before: PlayerSave) => ReadonlyArray<PlayerChange>
+  (before: PlayerSave, after: PlayerSave): ReadonlyArray<PlayerChange>
+} = Function.dual(
+  2,
+  (before: PlayerSave, after: PlayerSave): ReadonlyArray<PlayerChange> => {
+    const runs = after.bests.runsPlayed - before.bests.runsPlayed
+    const totalKills = after.bests.totalKills - before.bests.totalKills
+    const kills = killsAdded(before.bests.killsByKind, after.bests.killsByKind)
+    const isRunRecorded =
+      runs > 0 ||
+      totalKills > 0 ||
+      !Record.isEmptyRecord(kills) ||
+      !sameBests(before.bests.byDifficulty, after.bests.byDifficulty)
+    return pipe(
+      [
+        changeWhen(!sameSettings(before.settings, after.settings), () =>
+          PlayerChange.ChangedSettings({ settings: after.settings }),
         ),
-      )
-        ? [PlayerChange.SawUnlocks({ ids: after.seenUnlocks })]
-        : [],
-      changeWhen(isRunRecorded, () =>
-        PlayerChange.RecordedRun({
-          runs: Math.max(runs, 0),
-          totalKills: Math.max(totalKills, 0),
-          kills,
-          bests: after.bests.byDifficulty,
-        }),
-      ),
-      changeWhen(!sameRecords(before.records, after.records), () =>
-        PlayerChange.ReachedRecords({ records: after.records }),
-      ),
-      changeWhen(before.calling !== after.calling, () =>
-        PlayerChange.ChangedCalling({ calling: after.calling }),
-      ),
-      changeWhen(
-        after.rank.earnedPoints > before.rank.earnedPoints ||
-          after.rank.earnedBones > before.rank.earnedBones,
-        () =>
-          PlayerChange.EarnedRank({
-            points: Math.max(
-              0,
-              after.rank.earnedPoints - before.rank.earnedPoints,
-            ),
-            bones: Math.max(
-              0,
-              after.rank.earnedBones - before.rank.earnedBones,
-            ),
-          }),
-      ),
-      Array.map(
-        Array.filter(
-          after.boughtCosmetics,
-          hat => !Array.contains(before.boughtCosmetics, hat),
+        changeWhen(before.rotation !== after.rotation, () =>
+          PlayerChange.ChangedRotation({ rotation: after.rotation }),
         ),
-        id => PlayerChange.BoughtCosmetic({ id }),
-      ),
-      changeWhen(
-        after.rank.isVeteranGranted &&
-          (!before.rank.isVeteranGranted ||
-            after.rank.veteranPoints !== before.rank.veteranPoints ||
-            after.rank.veteranBones !== before.rank.veteranBones),
-        () =>
-          PlayerChange.GrantedVeteranRank({
-            points: after.rank.veteranPoints,
-            bones: after.rank.veteranBones,
+        changeWhen(before.name !== after.name, () =>
+          PlayerChange.ChangedName({ name: after.name }),
+        ),
+        changeWhen(!sameAppearance(before.appearance, after.appearance), () =>
+          PlayerChange.ChangedAppearance({ appearance: after.appearance }),
+        ),
+        changeWhen(
+          before.difficulty.nightmare === 'Locked' &&
+            after.difficulty.nightmare === 'Unlocked',
+          () => PlayerChange.UnlockedNightmare(),
+        ),
+        changeWhen(
+          before.difficulty.chosen !== after.difficulty.chosen ||
+            before.difficulty.card !== after.difficulty.card,
+          () =>
+            PlayerChange.ChangedDifficulty({
+              chosen: after.difficulty.chosen,
+              card: after.difficulty.card,
+            }),
+        ),
+        changeWhen(
+          !sameOnboarding(before.onboarding, after.onboarding) ||
+            before.homeScreenTip !== after.homeScreenTip,
+          () =>
+            PlayerChange.ChangedOnboarding({
+              onboarding: after.onboarding,
+              homeScreenTip: after.homeScreenTip,
+            }),
+        ),
+        changeWhen(!sameHome(before.home, after.home), () =>
+          PlayerChange.ChangedHome({ home: after.home }),
+        ),
+        powerUpChanges(before.seenPowerUps, after.seenPowerUps),
+        Array.isReadonlyArrayNonEmpty(
+          Array.filter(
+            after.seenUnlocks,
+            id => !Array.contains(before.seenUnlocks, id),
+          ),
+        )
+          ? [PlayerChange.SawUnlocks({ ids: after.seenUnlocks })]
+          : [],
+        changeWhen(isRunRecorded, () =>
+          PlayerChange.RecordedRun({
+            runs: Math.max(runs, 0),
+            totalKills: Math.max(totalKills, 0),
+            kills,
+            bests: after.bests.byDifficulty,
           }),
-      ),
-    ],
-    Array.flatten,
-  )
-}
+        ),
+        changeWhen(!sameRecords(before.records, after.records), () =>
+          PlayerChange.ReachedRecords({ records: after.records }),
+        ),
+        changeWhen(before.calling !== after.calling, () =>
+          PlayerChange.ChangedCalling({ calling: after.calling }),
+        ),
+        changeWhen(
+          after.rank.earnedPoints > before.rank.earnedPoints ||
+            after.rank.earnedBones > before.rank.earnedBones,
+          () =>
+            PlayerChange.EarnedRank({
+              points: Math.max(
+                0,
+                after.rank.earnedPoints - before.rank.earnedPoints,
+              ),
+              bones: Math.max(
+                0,
+                after.rank.earnedBones - before.rank.earnedBones,
+              ),
+            }),
+        ),
+        Array.map(
+          Array.filter(
+            after.boughtCosmetics,
+            hat => !Array.contains(before.boughtCosmetics, hat),
+          ),
+          id => PlayerChange.BoughtCosmetic({ id }),
+        ),
+        changeWhen(
+          after.rank.isVeteranGranted &&
+            (!before.rank.isVeteranGranted ||
+              after.rank.veteranPoints !== before.rank.veteranPoints ||
+              after.rank.veteranBones !== before.rank.veteranBones),
+          () =>
+            PlayerChange.GrantedVeteranRank({
+              points: after.rank.veteranPoints,
+              bones: after.rank.veteranBones,
+            }),
+        ),
+      ],
+      Array.flatten,
+    )
+  },
+)
 
 // NOTE: a write the store could not make is sent again with the next one.
 // A change that sets a field is resent with what the field holds now, so a
@@ -265,22 +268,38 @@ const isSetOnce = (change: PlayerChange): boolean =>
     'BoughtCosmetic',
   ])(change)
 
-export const withUnsavedChanges = (
-  unsaved: ReadonlyArray<PlayerChange>,
-  changes: ReadonlyArray<PlayerChange>,
-  save: PlayerSave,
-): ReadonlyArray<PlayerChange> =>
-  Array.isReadonlyArrayEmpty(unsaved)
-    ? changes
-    : Array.reduce(
-        [...Array.map(unsaved, change => refreshed(change, save)), ...changes],
-        Array.empty<PlayerChange>(),
-        (kept, change) =>
-          isSetOnce(change) &&
-          Array.some(kept, other => other._tag === change._tag)
-            ? kept
-            : Array.append(kept, change),
-      )
+export const withUnsavedChanges: {
+  (
+    changes: ReadonlyArray<PlayerChange>,
+    save: PlayerSave,
+  ): (unsaved: ReadonlyArray<PlayerChange>) => ReadonlyArray<PlayerChange>
+  (
+    unsaved: ReadonlyArray<PlayerChange>,
+    changes: ReadonlyArray<PlayerChange>,
+    save: PlayerSave,
+  ): ReadonlyArray<PlayerChange>
+} = Function.dual(
+  3,
+  (
+    unsaved: ReadonlyArray<PlayerChange>,
+    changes: ReadonlyArray<PlayerChange>,
+    save: PlayerSave,
+  ): ReadonlyArray<PlayerChange> =>
+    Array.isReadonlyArrayEmpty(unsaved)
+      ? changes
+      : Array.reduce(
+          [
+            ...Array.map(unsaved, change => refreshed(change, save)),
+            ...changes,
+          ],
+          Array.empty<PlayerChange>(),
+          (kept, change) =>
+            isSetOnce(change) &&
+            Array.some(kept, other => other._tag === change._tag)
+              ? kept
+              : Array.append(kept, change),
+        ),
+)
 
 // STATUS
 
@@ -290,8 +309,8 @@ export const withUnsavedChanges = (
 export const SyncState = defineTaggedUnion({
   LocalOnly: {},
   Connecting: {},
-  Synced: { devices: Schema.Number },
-  Offline: { devices: Schema.Number },
+  Synced: { devices: Schema.Finite },
+  Offline: { devices: Schema.Finite },
 })
 export type SyncState = typeof SyncState.Type
 
@@ -312,7 +331,7 @@ export const syncStateText = (state: SyncState): string =>
 export const PlayerScopeStatus = defineTaggedUnion({
   Idle: {},
   Loading: {},
-  Ready: { seq: Schema.Number, fresh: Schema.Boolean },
+  Ready: { seq: Schema.Finite, fresh: Schema.Boolean },
   Failed: { reason: Schema.String },
 })
 export type PlayerScopeStatus = typeof PlayerScopeStatus.Type
@@ -328,10 +347,10 @@ export const StoreEvent = defineTaggedUnion({
 export type StoreEvent = typeof StoreEvent.Type
 
 // NOTE: SETTINGS' Devices line, from the connection and the scope together.
-export const devicesStatusText = (
-  state: SyncState,
-  scope: PlayerScopeStatus,
-): string => {
+export const devicesStatusText: {
+  (scope: PlayerScopeStatus): (state: SyncState) => string
+  (state: SyncState, scope: PlayerScopeStatus): string
+} = Function.dual(2, (state: SyncState, scope: PlayerScopeStatus): string => {
   if (state._tag === 'LocalOnly') {
     return syncStateText(state)
   } else if (scope._tag === 'Failed') {
@@ -345,13 +364,13 @@ export const devicesStatusText = (
   } else {
     return syncStateText(state)
   }
-}
+})
 
 // NOTE: whether the last run this device finished has reached the server.
 // Waiting holds the RecordedRun's mutation id, so a settlement for an older
 // run never overwrites a newer one.
 export const RunSettled = defineTaggedUnion({
-  Confirmed: { seq: Schema.Number },
+  Confirmed: { seq: Schema.Finite },
   Rejected: { reason: Schema.String },
 })
 export type RunSettled = typeof RunSettled.Type
@@ -359,7 +378,7 @@ export type RunSettled = typeof RunSettled.Type
 export const LastRunSync = defineTaggedUnion({
   NoRun: {},
   Waiting: { id: Schema.String },
-  Confirmed: { seq: Schema.Number },
+  Confirmed: { seq: Schema.Finite },
   Rejected: { reason: Schema.String },
 })
 export type LastRunSync = typeof LastRunSync.Type

@@ -53,7 +53,7 @@ const Attachment = Schema.TaggedUnion({
     playerId: Schema.String,
     name: Schema.String,
     look: Schema.optionalKey(Schema.String),
-    rank: Schema.optionalKey(Schema.Number),
+    rank: Schema.optionalKey(Schema.Finite),
     calling: Schema.optionalKey(Schema.String),
     region: Schema.optionalKey(Schema.String),
   },
@@ -61,11 +61,16 @@ const Attachment = Schema.TaggedUnion({
 type Attachment = typeof Attachment.Type
 
 const decodeAttachment = Schema.decodeUnknownOption(Attachment)
-const encodeAttachment = Schema.encodeSync(Attachment)
 const decodeState = Schema.decodeUnknownOption(Matchmaking.MatchmakerJson)
-const encodeState = Schema.encodeSync(Matchmaking.MatchmakerJson)
 const decodeClient = Schema.decodeUnknownOption(Matchmaking.QuickClientJson)
-const encodeServer = Schema.encodeSync(Matchmaking.QuickServerJson)
+
+// NOTE: what is encoded here is built from its own Schema, so an encode
+// cannot fail; if one did, it would be a defect.
+const encodeAttachment = (attachment: Attachment) =>
+  Effect.orDie(Schema.encodeEffect(Attachment)(attachment))
+const encodeState = Schema.encodeEffect(Matchmaking.MatchmakerJson)
+const encodeServer = (message: Matchmaking.QuickServer) =>
+  Effect.orDie(Schema.encodeEffect(Matchmaking.QuickServerJson)(message))
 const decodeListing = Schema.decodeUnknownOption(
   Schema.fromJsonString(Matchmaking.RoomListing),
 )
@@ -108,18 +113,17 @@ export class Matchmaker {
       return Effect.succeed(Result.fail(RoomRefusal.cases.Unavailable.make({})))
     }
     return Effect.gen(function* () {
-      const created = ticketOf(
-        yield* createRoomIn(
-          rooms,
-          first.playerId,
-          first.name,
-          first.look ?? '',
-          first.rank ?? 1,
-          first.calling ?? DEFAULT_CALLING,
-          'Public',
-          first.region ?? '',
-        ),
+      const value_1 = yield* createRoomIn(
+        rooms,
+        first.playerId,
+        first.name,
+        first.look ?? '',
+        first.rank ?? 1,
+        first.calling ?? DEFAULT_CALLING,
+        'Public',
+        first.region ?? '',
       )
+      const created = ticketOf(value_1)
       if (Result.isFailure(created)) {
         return Result.fail(created.failure)
       }
@@ -173,13 +177,15 @@ export class Matchmaker {
               ),
             ),
             save: matchmaker =>
-              tryCall('save the queue', () =>
-                this.ctx.storage.put(STATE_KEY, encodeState(matchmaker)),
+              Effect.flatMap(encodeState(matchmaker), state =>
+                tryCall('save the queue', () =>
+                  this.ctx.storage.put(STATE_KEY, state),
+                ),
               ).pipe(Effect.ignore),
             send: (id, message) =>
-              Effect.sync(() =>
-                Option.map(this.socketById(id), socket =>
-                  socket.send(encodeServer(message)),
+              Effect.flatMap(encodeServer(message), text =>
+                Effect.sync(() =>
+                  Option.map(this.socketById(id), socket => socket.send(text)),
                 ),
               ),
             close: id =>
@@ -233,19 +239,21 @@ export class Matchmaker {
   fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
     if (url.pathname === ROOM_PATHS.quick) {
-      const pair = new WebSocketPair()
-      this.ctx.acceptWebSocket(pair[1], [QUICK_TAG])
-      pair[1].serializeAttachment(
-        encodeAttachment({
-          _tag: 'Opened',
-          // NOTE: a socket's id needs no Effect service.
-          // @effect-diagnostics-next-line cryptoRandomUUID:off
-          socket: crypto.randomUUID(),
-          region: request.headers.get(REGION_HEADER) ?? '',
+      const opened: Attachment = {
+        _tag: 'Opened',
+        // NOTE: a socket's id needs no Effect service.
+        // @effect-diagnostics-next-line cryptoRandomUUID:off
+        socket: crypto.randomUUID(),
+        region: request.headers.get(REGION_HEADER) ?? '',
+      }
+      const { ctx } = this
+      return Effect.runPromise(
+        Effect.map(encodeAttachment(opened), encoded => {
+          const pair = new WebSocketPair()
+          ctx.acceptWebSocket(pair[1], [QUICK_TAG])
+          pair[1].serializeAttachment(encoded)
+          return new Response(null, { status: 101, webSocket: pair[0] })
         }),
-      )
-      return Promise.resolve(
-        new Response(null, { status: 101, webSocket: pair[0] }),
       )
     }
     if (url.pathname === LISTING_PATH && request.method === 'POST') {
@@ -317,27 +325,25 @@ export class Matchmaker {
         verifyToken(this.env.SYNC_SECRET, said.token, nowMs),
       )
       if (Result.isFailure(claims)) {
-        socket.send(
-          encodeServer(
-            Matchmaking.QuickServer.cases.Refused.make({
-              reason: 'Unauthorized',
-            }),
-          ),
+        const refused = yield* encodeServer(
+          Matchmaking.QuickServer.cases.Refused.make({
+            reason: 'Unauthorized',
+          }),
         )
+        socket.send(refused)
         return socket.close(1008, 'Unauthorized')
       }
-      socket.serializeAttachment(
-        encodeAttachment({
-          _tag: 'Queued',
-          socket: attachment.socket,
-          playerId: claims.success.playerId,
-          name: said.name,
-          look: said.look ?? '',
-          rank: cleanRank(said.rank ?? 1),
-          calling: cleanCalling(said.calling ?? DEFAULT_CALLING),
-          region: attachment.region ?? '',
-        }),
-      )
+      const queued = yield* encodeAttachment({
+        _tag: 'Queued',
+        socket: attachment.socket,
+        playerId: claims.success.playerId,
+        name: said.name,
+        look: said.look ?? '',
+        rank: cleanRank(said.rank ?? 1),
+        calling: cleanCalling(said.calling ?? DEFAULT_CALLING),
+        region: attachment.region ?? '',
+      })
+      socket.serializeAttachment(queued)
       const player: Matchmaking.Queued = {
         socket: attachment.socket,
         playerId: claims.success.playerId,

@@ -2,7 +2,13 @@ import { Array } from 'effect'
 
 import { FRIDGE_SPIN_STEPS_MS, MS_PER_SECOND } from './constants'
 import type { SoundEffect } from './soundEffect'
-import { type Recipe, type ToneLayer, at, envelope } from './soundRecipe'
+import {
+  type Recipe,
+  type ToneLayer,
+  at,
+  delayedEnvelope,
+  envelope,
+} from './soundRecipe'
 import { ZOMBIE_RECIPES } from './zombieRecipes'
 
 const PICKUP_CHIRP: ReadonlyArray<ToneLayer> = [
@@ -14,7 +20,7 @@ const PICKUP_CHIRP: ReadonlyArray<ToneLayer> = [
   {
     wave: 'triangle',
     pitch: [at(0, 1760), at(0.08, 2637)],
-    envelope: envelope(0.1, 0.002, 0.09, 0.03),
+    envelope: delayedEnvelope(0.1, 0.002, 0.09, 0.03),
   },
 ]
 
@@ -109,7 +115,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'square',
         pitch: [at(0, 1500), at(0.012, 900)],
-        envelope: envelope(0.1, 0.001, 0.012, 0.06),
+        envelope: delayedEnvelope(0.1, 0.001, 0.012, 0.06),
       },
     ],
     noises: [],
@@ -136,7 +142,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'triangle',
         pitch: [at(0, 180), at(0.08, 120)],
-        envelope: envelope(0.2, 0.002, 0.08, 0.05),
+        envelope: delayedEnvelope(0.2, 0.002, 0.08, 0.05),
       },
     ],
     noises: [
@@ -159,12 +165,12 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'square',
         pitch: [at(0, 1700), at(0.015, 900)],
-        envelope: envelope(0.16, 0.001, 0.025, 0.07),
+        envelope: delayedEnvelope(0.16, 0.001, 0.025, 0.07),
       },
       {
         wave: 'sine',
         pitch: [at(0, 160), at(0.06, 90)],
-        envelope: envelope(0.3, 0.001, 0.07, 0.07),
+        envelope: delayedEnvelope(0.3, 0.001, 0.07, 0.07),
       },
     ],
     noises: [
@@ -172,7 +178,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'highpass',
         quality: 0.8,
         cutoff: [at(0, 3600), at(0.02, 2200)],
-        envelope: envelope(0.18, 0.001, 0.02, 0.07),
+        envelope: delayedEnvelope(0.18, 0.001, 0.02, 0.07),
       },
     ],
   },
@@ -187,7 +193,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'triangle',
         pitch: [at(0, 640), at(0.03, 700)],
-        envelope: envelope(0.22, 0.002, 0.05, 0.06),
+        envelope: delayedEnvelope(0.22, 0.002, 0.05, 0.06),
       },
     ],
     noises: [
@@ -195,7 +201,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'highpass',
         quality: 1,
         cutoff: [at(0, 4200), at(0.02, 2600)],
-        envelope: envelope(0.2, 0.001, 0.02, 0.06),
+        envelope: delayedEnvelope(0.2, 0.001, 0.02, 0.06),
       },
     ],
   },
@@ -233,12 +239,12 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'square',
         pitch: [at(0, 440), at(0.06, 440)],
-        envelope: envelope(0.14, 0.004, 0.08, 0.09),
+        envelope: delayedEnvelope(0.14, 0.004, 0.08, 0.09),
       },
       {
         wave: 'square',
         pitch: [at(0, 660), at(0.05, 880)],
-        envelope: envelope(0.16, 0.004, 0.18, 0.18),
+        envelope: delayedEnvelope(0.16, 0.004, 0.18, 0.18),
       },
     ],
     noises: [],
@@ -254,7 +260,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'sine',
         pitch: [at(0, 1568), at(0.4, 1560)],
-        envelope: envelope(0.16, 0.003, 0.46, 0.1),
+        envelope: delayedEnvelope(0.16, 0.003, 0.46, 0.1),
       },
     ],
     noises: [],
@@ -265,12 +271,12 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'square',
         pitch: [at(0, 1318), at(0.05, 1318)],
-        envelope: envelope(0.12, 0.002, 0.06, 0.07),
+        envelope: delayedEnvelope(0.12, 0.002, 0.06, 0.07),
       },
       {
         wave: 'square',
         pitch: [at(0, 1760), at(0.2, 1760)],
-        envelope: envelope(0.14, 0.002, 0.26, 0.13),
+        envelope: delayedEnvelope(0.14, 0.002, 0.26, 0.13),
       },
     ],
     noises: [
@@ -284,7 +290,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'highpass',
         quality: 3,
         cutoff: [at(0, 7000), at(0.24, 5200)],
-        envelope: envelope(0.18, 0.002, 0.24, 0.13),
+        envelope: delayedEnvelope(0.18, 0.002, 0.24, 0.13),
       },
     ],
   },
@@ -294,22 +300,22 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'square',
         pitch: [at(0, 523), at(0.18, 523)],
-        envelope: envelope(0.1, 0.002, 0.06, 0.12),
+        envelope: delayedEnvelope(0.1, 0.002, 0.06, 0.12),
       },
       {
         wave: 'square',
         pitch: [at(0, 659), at(0.24, 659)],
-        envelope: envelope(0.1, 0.002, 0.06, 0.18),
+        envelope: delayedEnvelope(0.1, 0.002, 0.06, 0.18),
       },
       {
         wave: 'square',
         pitch: [at(0, 784), at(0.3, 784)],
-        envelope: envelope(0.1, 0.002, 0.06, 0.24),
+        envelope: delayedEnvelope(0.1, 0.002, 0.06, 0.24),
       },
       {
         wave: 'triangle',
         pitch: [at(0.3, 1046), at(0.6, 1568)],
-        envelope: envelope(0.14, 0.004, 0.3, 0.3),
+        envelope: delayedEnvelope(0.14, 0.004, 0.3, 0.3),
       },
     ],
     noises: [],
@@ -336,12 +342,12 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'square',
         pitch: [at(0, 1318), at(0.05, 1318)],
-        envelope: envelope(0.12, 0.002, 0.06, 0.07),
+        envelope: delayedEnvelope(0.12, 0.002, 0.06, 0.07),
       },
       {
         wave: 'square',
         pitch: [at(0, 1976), at(0.2, 1976)],
-        envelope: envelope(0.13, 0.002, 0.24, 0.14),
+        envelope: delayedEnvelope(0.13, 0.002, 0.24, 0.14),
       },
     ],
     noises: [
@@ -349,7 +355,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'highpass',
         quality: 3,
         cutoff: [at(0, 6800), at(0.3, 5000)],
-        envelope: envelope(0.16, 0.002, 0.3, 0.14),
+        envelope: delayedEnvelope(0.16, 0.002, 0.3, 0.14),
       },
     ],
   },
@@ -419,7 +425,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'bandpass',
         quality: 5,
         cutoff: [at(0, 700), at(0.1, 300)],
-        envelope: envelope(0.4, 0.002, 0.1, 0.03),
+        envelope: delayedEnvelope(0.4, 0.002, 0.1, 0.03),
       },
     ],
   },
@@ -448,7 +454,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'bandpass',
         quality: 4,
         cutoff: [at(0, 1200), at(0.15, 500)],
-        envelope: envelope(0.5, 0.004, 0.16, 0.08),
+        envelope: delayedEnvelope(0.5, 0.004, 0.16, 0.08),
       },
     ],
   },
@@ -463,17 +469,17 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'triangle',
         pitch: [at(0, 1568), at(0.12, 1560)],
-        envelope: envelope(0.24, 0.002, 0.14, 0.16),
+        envelope: delayedEnvelope(0.24, 0.002, 0.14, 0.16),
       },
       {
         wave: 'triangle',
         pitch: [at(0, 1568), at(0.3, 1550)],
-        envelope: envelope(0.26, 0.002, 0.34, 0.32),
+        envelope: delayedEnvelope(0.26, 0.002, 0.34, 0.32),
       },
       {
         wave: 'sawtooth',
         pitch: [at(0, 82), at(0.3, 118), at(0.8, 64)],
-        envelope: envelope(0.16, 0.1, 0.7, 0.3),
+        envelope: delayedEnvelope(0.16, 0.1, 0.7, 0.3),
       },
     ],
     noises: [
@@ -481,7 +487,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'bandpass',
         quality: 5,
         cutoff: [at(0, 340), at(0.4, 560), at(0.9, 260)],
-        envelope: envelope(0.22, 0.1, 0.7, 0.3),
+        envelope: delayedEnvelope(0.22, 0.1, 0.7, 0.3),
       },
     ],
   },
@@ -496,7 +502,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'triangle',
         pitch: [at(0, 2093), at(0.1, 2637)],
-        envelope: envelope(0.07, 0.002, 0.12, 0.05),
+        envelope: delayedEnvelope(0.07, 0.002, 0.12, 0.05),
       },
     ],
     noises: [],
@@ -508,17 +514,27 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'square',
         pitch: [at(0, 659), at(0.05, 659)],
-        envelope: envelope(0.1, 0.002, 0.05, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.1, 0.002, 0.05, JINGLE_START_SECONDS),
       },
       {
         wave: 'square',
         pitch: [at(0, 988), at(0.05, 988)],
-        envelope: envelope(0.1, 0.002, 0.05, JINGLE_START_SECONDS + 0.06),
+        envelope: delayedEnvelope(
+          0.1,
+          0.002,
+          0.05,
+          JINGLE_START_SECONDS + 0.06,
+        ),
       },
       {
         wave: 'square',
         pitch: [at(0, 1319), at(0.2, 1397)],
-        envelope: envelope(0.12, 0.002, 0.22, JINGLE_START_SECONDS + 0.12),
+        envelope: delayedEnvelope(
+          0.12,
+          0.002,
+          0.22,
+          JINGLE_START_SECONDS + 0.12,
+        ),
       },
     ],
     noises: [
@@ -526,7 +542,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'highpass',
         quality: 1,
         cutoff: [at(0, 4200), at(0.4, 6800)],
-        envelope: envelope(0.16, 0.02, 0.4, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.16, 0.02, 0.4, JINGLE_START_SECONDS),
       },
     ],
   },
@@ -537,17 +553,22 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'sawtooth',
         pitch: [at(0, 98), at(0.18, 196)],
-        envelope: envelope(0.2, 0.01, 0.22, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.2, 0.01, 0.22, JINGLE_START_SECONDS),
       },
       {
         wave: 'square',
         pitch: [at(0, 196), at(0.12, 392)],
-        envelope: envelope(0.1, 0.004, 0.14, JINGLE_START_SECONDS + 0.12),
+        envelope: delayedEnvelope(
+          0.1,
+          0.004,
+          0.14,
+          JINGLE_START_SECONDS + 0.12,
+        ),
       },
       {
         wave: 'square',
         pitch: [at(0, 392), at(0.2, 392)],
-        envelope: envelope(0.1, 0.004, 0.2, JINGLE_START_SECONDS + 0.24),
+        envelope: delayedEnvelope(0.1, 0.004, 0.2, JINGLE_START_SECONDS + 0.24),
       },
     ],
     noises: [],
@@ -559,7 +580,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'sine',
         pitch: [at(0, 392), at(0.3, 1568)],
-        envelope: envelope(0.18, 0.01, 0.32, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.18, 0.01, 0.32, JINGLE_START_SECONDS),
       },
     ],
     noises: [
@@ -567,7 +588,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'bandpass',
         quality: 3,
         cutoff: [at(0, 600), at(0.32, 4200)],
-        envelope: envelope(0.3, 0.04, 0.3, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.3, 0.04, 0.3, JINGLE_START_SECONDS),
       },
     ],
   },
@@ -578,12 +599,17 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'triangle',
         pitch: [at(0, 1976), at(0.16, 1960)],
-        envelope: envelope(0.14, 0.002, 0.16, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.14, 0.002, 0.16, JINGLE_START_SECONDS),
       },
       {
         wave: 'triangle',
         pitch: [at(0, 2637), at(0.24, 2620)],
-        envelope: envelope(0.14, 0.002, 0.26, JINGLE_START_SECONDS + 0.1),
+        envelope: delayedEnvelope(
+          0.14,
+          0.002,
+          0.26,
+          JINGLE_START_SECONDS + 0.1,
+        ),
       },
     ],
     noises: [
@@ -591,13 +617,18 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'bandpass',
         quality: 8,
         cutoff: [at(0, 5200), at(0.12, 7600)],
-        envelope: envelope(0.24, 0.002, 0.12, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.24, 0.002, 0.12, JINGLE_START_SECONDS),
       },
       {
         filter: 'bandpass',
         quality: 8,
         cutoff: [at(0, 6000), at(0.14, 8400)],
-        envelope: envelope(0.22, 0.002, 0.14, JINGLE_START_SECONDS + 0.1),
+        envelope: delayedEnvelope(
+          0.22,
+          0.002,
+          0.14,
+          JINGLE_START_SECONDS + 0.1,
+        ),
       },
     ],
   },
@@ -615,12 +646,12 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
           at(0.4, 82),
           at(0.55, 70),
         ],
-        envelope: envelope(0.32, 0.03, 0.55, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.32, 0.03, 0.55, JINGLE_START_SECONDS),
       },
       {
         wave: 'square',
         pitch: [at(0, 75), at(0.5, 52)],
-        envelope: envelope(0.16, 0.03, 0.5, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.16, 0.03, 0.5, JINGLE_START_SECONDS),
       },
     ],
     noises: [
@@ -628,7 +659,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'lowpass',
         quality: 6,
         cutoff: [at(0, 700), at(0.3, 420), at(0.6, 200)],
-        envelope: envelope(0.4, 0.03, 0.6, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.4, 0.03, 0.6, JINGLE_START_SECONDS),
       },
     ],
   },
@@ -639,17 +670,22 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'sine',
         pitch: [at(0, 784), at(0.12, 784)],
-        envelope: envelope(0.2, 0.004, 0.14, JINGLE_START_SECONDS),
+        envelope: delayedEnvelope(0.2, 0.004, 0.14, JINGLE_START_SECONDS),
       },
       {
         wave: 'sine',
         pitch: [at(0, 1046), at(0.3, 1046)],
-        envelope: envelope(0.22, 0.004, 0.34, JINGLE_START_SECONDS + 0.12),
+        envelope: delayedEnvelope(
+          0.22,
+          0.004,
+          0.34,
+          JINGLE_START_SECONDS + 0.12,
+        ),
       },
       {
         wave: 'triangle',
         pitch: [at(0, 1568), at(0.3, 1568)],
-        envelope: envelope(0.1, 0.004, 0.3, JINGLE_START_SECONDS + 0.12),
+        envelope: delayedEnvelope(0.1, 0.004, 0.3, JINGLE_START_SECONDS + 0.12),
       },
     ],
     noises: [],
@@ -665,7 +701,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'triangle',
         pitch: [at(0, 392), at(0.32, 98)],
-        envelope: envelope(0.12, 0.004, 0.34, 0.04),
+        envelope: delayedEnvelope(0.12, 0.004, 0.34, 0.04),
       },
     ],
     noises: [],
@@ -806,7 +842,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'triangle',
         pitch: [at(0, 240), at(0.05, 420), at(0.2, 110)],
-        envelope: envelope(0.2, 0.004, 0.2, 0.04),
+        envelope: delayedEnvelope(0.2, 0.004, 0.2, 0.04),
       },
     ],
     noises: [
@@ -823,14 +859,14 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
     tones: Array.map(SPIN_CLICK_STARTS, (startSeconds, index) => ({
       wave: 'square' as const,
       pitch: [at(0, 1320 - index * 60), at(0.025, 990 - index * 50)],
-      envelope: envelope(0.07, 0.001, 0.025, startSeconds),
+      envelope: delayedEnvelope(0.07, 0.001, 0.025, startSeconds),
     })),
     noises: [
       {
         filter: 'lowpass',
         quality: 3,
         cutoff: [at(0, 900), at(0.12, 160)],
-        envelope: envelope(0.4, 0.003, 0.12, SPIN_LAND_SECONDS),
+        envelope: delayedEnvelope(0.4, 0.003, 0.12, SPIN_LAND_SECONDS),
       },
     ],
   },
@@ -840,17 +876,17 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       ...Array.map([784, 988, 1175, 1568, 1976], (frequency, index) => ({
         wave: 'square' as const,
         pitch: [at(0, frequency), at(0.06, frequency)],
-        envelope: envelope(0.11, 0.002, 0.07, index * 0.06),
+        envelope: delayedEnvelope(0.11, 0.002, 0.07, index * 0.06),
       })),
       {
         wave: 'triangle',
         pitch: [at(0, 2349), at(0.5, 3136)],
-        envelope: envelope(0.16, 0.004, 0.5, 0.3),
+        envelope: delayedEnvelope(0.16, 0.004, 0.5, 0.3),
       },
       {
         wave: 'sine',
         pitch: [at(0, 3520), at(0.4, 4186)],
-        envelope: envelope(0.06, 0.002, 0.4, 0.34),
+        envelope: delayedEnvelope(0.06, 0.002, 0.4, 0.34),
       },
     ],
     noises: [
@@ -858,7 +894,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'highpass',
         quality: 1,
         cutoff: [at(0, 6000), at(0.5, 9000)],
-        envelope: envelope(0.08, 0.01, 0.5, 0.3),
+        envelope: delayedEnvelope(0.08, 0.01, 0.5, 0.3),
       },
     ],
   },
@@ -870,12 +906,12 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       ...Array.map([523, 659, 784, 1046], (frequency, index) => ({
         wave: 'square' as const,
         pitch: [at(0, frequency), at(0.08, frequency)],
-        envelope: envelope(0.11, 0.002, 0.09, index * 0.08),
+        envelope: delayedEnvelope(0.11, 0.002, 0.09, index * 0.08),
       })),
       ...Array.map([1046, 1318, 1568], frequency => ({
         wave: 'triangle' as const,
         pitch: [at(0, frequency), at(0.55, frequency)],
-        envelope: envelope(0.1, 0.004, 0.55, 0.34),
+        envelope: delayedEnvelope(0.1, 0.004, 0.55, 0.34),
       })),
     ],
     noises: [
@@ -883,7 +919,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'highpass',
         quality: 1,
         cutoff: [at(0, 6000), at(0.5, 9000)],
-        envelope: envelope(0.06, 0.01, 0.45, 0.34),
+        envelope: delayedEnvelope(0.06, 0.01, 0.45, 0.34),
       },
     ],
   },
@@ -901,7 +937,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'square',
         pitch: [at(0, 990), at(0.06, 1040), at(0.16, 880)],
-        envelope: envelope(0.15, 0.003, 0.16, 0.09),
+        envelope: delayedEnvelope(0.15, 0.003, 0.16, 0.09),
       },
       {
         wave: 'triangle',
@@ -919,12 +955,12 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       ...Array.map([659, 784, 988], (frequency, index) => ({
         wave: 'square' as const,
         pitch: [at(0, frequency), at(0.06, frequency)],
-        envelope: envelope(0.1, 0.002, 0.07, index * 0.06),
+        envelope: delayedEnvelope(0.1, 0.002, 0.07, index * 0.06),
       })),
       {
         wave: 'triangle',
         pitch: [at(0, 1318), at(0.35, 1318)],
-        envelope: envelope(0.1, 0.004, 0.35, 0.18),
+        envelope: delayedEnvelope(0.1, 0.004, 0.35, 0.18),
       },
     ],
     noises: [],
@@ -937,7 +973,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
     tones: Array.map([0, 0.09, 0.16, 0.22], (delay, index) => ({
       wave: 'triangle' as const,
       pitch: [at(0, 880 + index * 90), at(0.08, 840 + index * 90)],
-      envelope: envelope(0.05 - index * 0.008, 0.001, 0.07, delay),
+      envelope: delayedEnvelope(0.05 - index * 0.008, 0.001, 0.07, delay),
     })),
     noises: [
       {
@@ -953,7 +989,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
     tones: Array.map([0.1, 0.42, 0.66], (delay, index) => ({
       wave: 'sine' as const,
       pitch: [at(0, 160 + index * 40), at(0.09, 300 + index * 50)],
-      envelope: envelope(0.05, 0.006, 0.1, delay),
+      envelope: delayedEnvelope(0.05, 0.006, 0.1, delay),
     })),
     noises: [
       {
@@ -975,12 +1011,12 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'square',
         pitch: [at(0, 240), at(0.06, 120)],
-        envelope: envelope(0.16, 0.002, 0.06, 0.16),
+        envelope: delayedEnvelope(0.16, 0.002, 0.06, 0.16),
       },
       {
         wave: 'triangle',
         pitch: [at(0, 660), at(0.1, 880)],
-        envelope: envelope(0.1, 0.004, 0.12, 0.3),
+        envelope: delayedEnvelope(0.1, 0.004, 0.12, 0.3),
       },
     ],
     noises: [
@@ -994,7 +1030,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
         filter: 'bandpass',
         quality: 2,
         cutoff: [at(0, 2600), at(0.07, 760)],
-        envelope: envelope(0.45, 0.001, 0.07, 0.16),
+        envelope: delayedEnvelope(0.45, 0.001, 0.07, 0.16),
       },
     ],
   },
@@ -1009,7 +1045,7 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       {
         wave: 'sawtooth',
         pitch: [at(0, 220), at(0.5, 196), at(0.7, 185)],
-        envelope: envelope(0.16, 0.01, 0.6, 0.28),
+        envelope: delayedEnvelope(0.16, 0.01, 0.6, 0.28),
       },
     ],
     noises: [],

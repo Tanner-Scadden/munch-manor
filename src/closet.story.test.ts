@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Option, Record, String, pipe } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { toParentMessage } from 'foldkit/test'
@@ -277,7 +277,10 @@ describe('the Bones', () => {
     expect(COSMETIC_PRICES['print:Skull']).toBe(20)
     expect(COSMETIC_PRICES['print:Flames']).toBe(20)
     expect(
-      ['Candy', 'Bone', 'Neon'].map(skin => COSMETIC_PRICES[`skin:${skin}`]),
+      Array.map(
+        ['Candy', 'Bone', 'Neon'],
+        skin => COSMETIC_PRICES[`skin:${skin}`],
+      ),
     ).toEqual([60, 60, 60])
   })
 })
@@ -321,7 +324,8 @@ describe('gifts', () => {
 
   test('are the ranks the decision lists', () => {
     expect(
-      GIFTS.filter(({ rank }) => rank >= 16).map(
+      Array.map(
+        Array.filter(GIFTS, ({ rank }) => rank >= 16),
         ({ kind, name, rank }) => `${rank} ${kind} ${name}`,
       ),
     ).toEqual([
@@ -335,13 +339,15 @@ describe('gifts', () => {
   })
 
   test('a rank up reaches the gifts between its ranks', () => {
-    expect(giftsOpenedBy(1, 2).map(({ name }) => name)).toEqual(['PartyHat'])
+    expect(Array.map(giftsOpenedBy(1, 2), ({ name }) => name)).toEqual([
+      'PartyHat',
+    ])
     expect(giftsOpenedBy(2, 2)).toEqual([])
-    expect(giftsOpenedBy(3, 6).map(({ name }) => name)).toEqual([
+    expect(Array.map(giftsOpenedBy(3, 6), ({ name }) => name)).toEqual([
       'BucketHat',
       'PomBeanie',
     ])
-    expect(giftsOpenedBy(15, 22).map(({ name }) => name)).toEqual([
+    expect(Array.map(giftsOpenedBy(15, 22), ({ name }) => name)).toEqual([
       'Gold',
       'Polka',
       'Gold',
@@ -353,8 +359,8 @@ describe('gifts', () => {
   })
 
   test('no gift shares a rank with a calling or with another gift', () => {
-    const ranks = Object.values(COSMETIC_GIFT_RANKS)
-    ;[3, 6, 10, 15].forEach(rank => {
+    const ranks = Record.values(COSMETIC_GIFT_RANKS)
+    Array.forEach([3, 6, 10, 15], rank => {
       expect(ranks).not.toContain(rank)
     })
     expect(new Set(ranks).size).toBe(ranks.length)
@@ -456,9 +462,9 @@ describe('the dice', () => {
       ),
     )
   const colorsOf = (looks: ReadonlyArray<Appearance>) =>
-    new Set(looks.map(look => look.shirtColor))
+    new Set(Array.map(looks, look => look.shirtColor))
   const printsOf = (looks: ReadonlyArray<Appearance>) =>
-    new Set(looks.map(look => look.print))
+    new Set(Array.map(looks, look => look.print))
 
   test('never rolls a color or print that is not free or owned', () => {
     const none = rolls([], 1)
@@ -581,7 +587,8 @@ describe('the hat on the sprite', () => {
     expect(hatted.idle[0].length).toBe(
       bare.idle[0].length + HAT_ART.TopHat.above,
     )
-    ;(['Handyman', 'TrackStar', 'PennyPincher', 'LineCook'] as const).forEach(
+    Array.forEach(
+      ['Handyman', 'TrackStar', 'PennyPincher', 'LineCook'] as const,
       calling => {
         const heroHatted = playerPixels(look, calling)
         const bareHeaded = playerPixels(withHat('None'), calling)
@@ -596,12 +603,12 @@ describe('the hat on the sprite', () => {
   })
 
   test('the feet stay where they were: only rows at the top are added', () => {
-    HATS.forEach(hat => {
+    Array.forEach(HATS, hat => {
       const bare = playerPixels(withHat('None'))
       const hatted = playerPixels(withHat(hat))
       const grown = HAT_ART[hat].above
       expect(grown).toBeLessThanOrEqual(MAX_HAT_ABOVE)
-      hatted.walk.forEach((frame, index) => {
+      Array.forEach(hatted.walk, (frame, index) => {
         const bareFrame = bare.walk[index] ?? []
         expect(frame.slice(grown + 8)).toEqual(bareFrame.slice(8))
         expect(frame).toHaveLength(bareFrame.length + grown)
@@ -611,7 +618,7 @@ describe('the hat on the sprite', () => {
 
   test('no hat reaches the eyes: their row is the same with every hat', () => {
     const EYES_ROW = 4
-    HATS.forEach(hat => {
+    Array.forEach(HATS, hat => {
       const art = HAT_ART[hat]
       const rowsOverFace = art.rows.length - art.above
       expect(rowsOverFace).toBeLessThanOrEqual(EYES_ROW - 1)
@@ -623,10 +630,10 @@ describe('the hat on the sprite', () => {
   })
 
   test('a hat is eight pixels wide and every symbol has a color', () => {
-    Object.values(HAT_ART).forEach(art => {
-      art.rows.forEach(row => {
+    Array.forEach(Record.values(HAT_ART), art => {
+      Array.forEach(art.rows, row => {
         expect(row).toHaveLength(8)
-        row.split('').forEach(symbol => {
+        Array.forEach(String.split('')(row), symbol => {
           expect(symbol === '.' || symbol in HAT_COLORS).toBe(true)
         })
       })
@@ -637,7 +644,7 @@ describe('the hat on the sprite', () => {
 describe('the marks over a hat', () => {
   test('rise by what the sprite grew, and by nothing for a bare head', () => {
     expect(hatRiseOf(withHat('None'))).toBe(0)
-    HATS.forEach(hat => {
+    Array.forEach(HATS, hat => {
       const grown =
         playerPixels(withHat(hat)).idle[0].length -
         playerPixels(withHat('None')).idle[0].length

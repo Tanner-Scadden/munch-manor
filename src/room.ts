@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import {
@@ -217,23 +217,26 @@ const fireSpotOf = (level: Level): Option.Option<Spot> => {
   return spot
 }
 
-export const hearthFireShapes = (
-  level: Level,
-  elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> =>
-  Option.match(fireSpotOf(level), {
-    onNone: () => [],
-    onSome: ({ x, y }) => [
-      placeAt(
-        x,
-        y,
-        Option.getOrElse(
-          Array.get(
-            FIRE_SPRITES,
-            Math.floor(elapsedMs / FIRE_FRAME_MS) % FIRE_SPRITES.length,
+export const hearthFireShapes: {
+  (elapsedMs: number): (level: Level) => ReadonlyArray<Canvas.Shape>
+  (level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (level: Level, elapsedMs: number): ReadonlyArray<Canvas.Shape> =>
+    Option.match(fireSpotOf(level), {
+      onNone: () => [],
+      onSome: ({ x, y }) => [
+        placeAt(
+          x,
+          y,
+          Option.getOrElse(
+            Array.get(
+              FIRE_SPRITES,
+              Math.floor(elapsedMs / FIRE_FRAME_MS) % FIRE_SPRITES.length,
+            ),
+            () => FIRE_SPRITES[0],
           ),
-          () => FIRE_SPRITES[0],
         ),
-      ),
-    ],
-  })
+      ],
+    }),
+)

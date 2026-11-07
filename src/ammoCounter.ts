@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 
 import { SHOP_NEAR_PX, SHOP_REACH_PX } from './constants'
 import { seatStateAt } from './party'
@@ -56,10 +56,10 @@ const COUNTER_SPOT = {
 export const isCounterOpen = (world: World): boolean =>
   Phase.isAnyOf(['Wave'])(world.phase)
 
-export const ammoCounterOffers = (
-  world: World,
-  slot: PlayerSlot,
-): ReadonlyArray<Offer> =>
+export const ammoCounterOffers: {
+  (slot: PlayerSlot): (world: World) => ReadonlyArray<Offer>
+  (world: World, slot: PlayerSlot): ReadonlyArray<Offer>
+} = Function.dual(2, (world: World, slot: PlayerSlot): ReadonlyArray<Offer> =>
   isCounterOpen(world)
     ? pipe(
         maybeAmmoItemOf(heldGun(seatStateAt(world, slot).player.arsenal).kind),
@@ -73,20 +73,22 @@ export const ammoCounterOffers = (
         })),
         Option.toArray,
       )
-    : []
+    : [],
+)
 
 // NOTE: the sale: the held gun's ammo, through the shop's own purchase, so
 // the price, the cap, and the stats are the shop's.
-export const sellAmmo = (
-  world: World,
-  slot: PlayerSlot,
-): Option.Option<World> =>
+export const sellAmmo: {
+  (slot: PlayerSlot): (world: World) => Option.Option<World>
+  (world: World, slot: PlayerSlot): Option.Option<World>
+} = Function.dual(2, (world: World, slot: PlayerSlot): Option.Option<World> =>
   isCounterOpen(world)
     ? Option.flatMap(
         maybeAmmoItemOf(heldGun(seatStateAt(world, slot).player.arsenal).kind),
         item => purchase(world, slot, item),
       )
-    : Option.none()
+    : Option.none(),
+)
 
 // THE SALE
 
@@ -102,7 +104,10 @@ export const COUNTER_LINES: Array.NonEmptyReadonlyArray<string> = [
 ]
 
 // NOTE: a player standing at the window wakes Rattles up.
-export const isAtAmmoWindow = (world: World, slot: PlayerSlot): boolean =>
+export const isAtAmmoWindow: {
+  (slot: PlayerSlot): (world: World) => boolean
+  (world: World, slot: PlayerSlot): boolean
+} = Function.dual(2, (world: World, slot: PlayerSlot): boolean =>
   Array.some(
     ammoCounterOffers(world, slot),
     offer =>
@@ -118,4 +123,5 @@ export const isAtAmmoWindow = (world: World, slot: PlayerSlot): boolean =>
           seatStateAt(world, slot).player.y - offer.box.bottom,
         ),
       ) <= SHOP_NEAR_PX,
-  )
+  ),
+)

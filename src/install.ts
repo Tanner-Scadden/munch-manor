@@ -9,6 +9,7 @@ import {
   pipe,
 } from 'effect'
 
+import { toBrowserError } from './describeError'
 import type { InstallOffer, InstallOutcome } from './model'
 
 // SERVICE
@@ -44,11 +45,14 @@ const isDeferredPrompt = (event: Event): event is DeferredPrompt =>
 
 const showPrompt = (deferred: DeferredPrompt) =>
   pipe(
-    Effect.tryPromise(() => deferred.prompt().then(() => deferred.userChoice)),
+    Effect.tryPromise({
+      try: () => deferred.prompt().then(() => deferred.userChoice),
+      catch: toBrowserError,
+    }),
     Effect.map(({ outcome }): InstallOutcome =>
       outcome === 'accepted' ? 'Accepted' : 'Dismissed',
     ),
-    Effect.catch(() => Effect.succeed<InstallOutcome>('Unavailable')),
+    Effect.orElseSucceed((): InstallOutcome => 'Unavailable'),
   )
 
 export const layer: Layer.Layer<InstallPrompt> = Layer.effect(

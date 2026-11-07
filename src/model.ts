@@ -169,7 +169,7 @@ const ClosetCue = Schema.Struct({
   part: LookPart,
   value: Schema.String,
   kind: ClosetCueKind,
-  count: Schema.Number,
+  count: Schema.Finite,
 })
 
 // NOTE: the Profile dialog: the open tab, the name as it is being typed,
@@ -201,7 +201,7 @@ const ProfilePanel = Schema.Struct({
   tab: ProfileTab,
   nameDraft: Schema.String,
   fx: ProfileFx,
-  fxCount: Schema.Number,
+  fxCount: Schema.Finite,
   closetCue: ClosetCue,
   maybePreview: Schema.Option(LookPreview),
 })
@@ -234,7 +234,7 @@ export const Model = Schema.Struct({
   difficultyCard: DifficultyCard,
   particles: Schema.Array(Particle),
   decals: Schema.Array(Decal),
-  dustCooldownMs: Schema.Number,
+  dustCooldownMs: Schema.Finite,
   tellWatch: TellWatch,
   shopDialog: DialogBlock.Model,
   shopTabs: ShopTabsBlock.Model,
@@ -243,20 +243,20 @@ export const Model = Schema.Struct({
   shake: Shake,
   popups: Schema.Array(Popup),
   streak: Streak,
-  bestStreak: Schema.Number,
+  bestStreak: Schema.Finite,
   blasts: Schema.Array(Blast),
   callouts: Schema.Array(Callout),
   prizeFlight: PrizeFlight,
   counterSale: CounterSale,
-  breakIdleMs: Schema.Number,
+  breakIdleMs: Schema.Finite,
   trapHint: TrapHint,
   ammoTip: AmmoTip,
   kitchenCall: KitchenCall,
   firstBreakQuest: Tour,
   kitchenTour: Tour,
   trapNotice: TrapNotice,
-  cosmeticRngState: Schema.Number,
-  stepCarryMs: Schema.Number,
+  cosmeticRngState: Schema.Finite,
+  stepCarryMs: Schema.Finite,
   input: Input,
   maybeSurface: Schema.Option(SurfaceRectangle),
   lastDevice: InputDevice,
@@ -266,10 +266,10 @@ export const Model = Schema.Struct({
   introducedKinds: Schema.Array(ZombieKind),
   seenPowerUps: Schema.Array(PickupKind),
   hintBand: HintBand,
-  screenMs: Schema.Number,
+  screenMs: Schema.Finite,
   runRecords: Schema.Array(RunRecord),
   shareSheet: ShareSheet,
-  maybeShareCopiedAtMs: Schema.Option(Schema.Number),
+  maybeShareCopiedAtMs: Schema.Option(Schema.Finite),
   isRunCardDropped: Schema.Boolean,
   audio: AudioState,
   soundSetting: SoundSetting,
@@ -281,7 +281,7 @@ export const Model = Schema.Struct({
   pageVisibility: PageVisibility,
   // NOTE: keys whose keyup came with no keydown: a browser extension took
   // them first (see src/keyGrab.ts).
-  missedKeyDowns: Schema.Number,
+  missedKeyDowns: Schema.Finite,
   maybeNewerBuild: Schema.Option(Schema.String),
   updateGift: UpdateGift,
   updateGreeting: DialogBlock.Model,
@@ -299,7 +299,7 @@ export const Model = Schema.Struct({
   orientationLock: OrientationLock,
   // NOTE: players sharing this keyboard, from a dev-only `?local=N` link
   // (MULTIPLAYER.md, "What Phase 1 built"). 1 in every shipped build.
-  localPlayers: Schema.Number,
+  localPlayers: Schema.Finite,
   // NOTE: the teammate bots seated in this run (src/bots.ts), set as the run
   // starts from the lobby's bots, so RETRY seats the same ones and a LEAVE
   // clears them.
@@ -342,7 +342,7 @@ export const Model = Schema.Struct({
   syncState: SyncState,
   playerScopeStatus: PlayerScopeStatus,
   lastRunSync: LastRunSync,
-  writesInFlight: Schema.Number,
+  writesInFlight: Schema.Finite,
   unsavedChanges: Schema.Array(PlayerChange),
   syncedSave: SyncedSaveState,
   linkFlow: LinkFlow,

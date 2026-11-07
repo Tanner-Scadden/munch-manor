@@ -1,5 +1,4 @@
-import { Schema } from 'effect'
-import { resolve } from 'node:path'
+import { Config, Effect, Path, Schema } from 'effect'
 import { defineConfig } from 'vite'
 
 import tailwindcss from '@tailwindcss/vite'
@@ -8,10 +7,22 @@ import { encodeJson } from '../../json.ts'
 import { spriteAtlas } from '../../sprites/vitePlugin.ts'
 import { foldkitBrandingViews } from '../../vite/viewIdentity.ts'
 
-const GAME = resolve(__dirname, '../../..')
 const encodeString = encodeJson(Schema.String)
 
-const isProfile = (process.env['PROFILE'] ?? '') !== ''
+// NOTE: where the game is, and whether this is the profiling build
+// (`PROFILE` set), read once as Vite loads the config.
+const settings = Effect.runSync(
+  Effect.gen(function* () {
+    const path = yield* Path.Path
+    const profile = yield* Config.String('PROFILE').pipe(Config.withDefault(''))
+    return {
+      game: path.resolve(__dirname, '../../..'),
+      isProfile: profile !== '',
+    }
+  }).pipe(Effect.provide(Path.layer)),
+)
+const GAME = settings.game
+const isProfile = settings.isProfile
 
 export default defineConfig({
   root: __dirname,

@@ -1,3 +1,4 @@
+import { Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { Screen, screenInRoom } from './coop/model'
@@ -9,6 +10,6 @@ describe('values built without validating', () => {
     const built = screenInRoom(room)
     const validated = Screen.InRoom({ room })
     expect(built).toStrictEqual(validated)
-    expect(Object.keys(built)).toStrictEqual(Object.keys(validated))
+    expect(Struct.keys(built)).toStrictEqual(Struct.keys(validated))
   })
 })

@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { magazineFor } from './calling'
@@ -444,21 +444,37 @@ const applyBoost = (stats: WeaponStats, boost: TierBoost): WeaponStats =>
     ),
   })
 
-export const effectiveStats = (kind: WeaponKind, tier: number): WeaponStats =>
-  Array.reduce(boostsUpTo(kind, tier), WEAPONS[kind], applyBoost)
+export const effectiveStats: {
+  (tier: number): (kind: WeaponKind) => WeaponStats
+  (kind: WeaponKind, tier: number): WeaponStats
+} = Function.dual(2, (kind: WeaponKind, tier: number): WeaponStats =>
+  Array.reduce(boostsUpTo(kind, tier), WEAPONS[kind], applyBoost),
+)
 
-export const statsAt = (kind: WeaponKind, tier: number): WeaponStats =>
-  effectiveStats(kind, tier)
+export const statsAt: {
+  (tier: number): (kind: WeaponKind) => WeaponStats
+  (kind: WeaponKind, tier: number): WeaponStats
+} = Function.dual(2, (kind: WeaponKind, tier: number): WeaponStats =>
+  effectiveStats(kind, tier),
+)
 
-export const maybeNextTier = (
-  kind: WeaponKind,
-  tier: number,
-): Option.Option<WeaponTier> => Array.get(UPGRADE_TIERS[kind], tier)
+export const maybeNextTier: {
+  (tier: number): (kind: WeaponKind) => Option.Option<WeaponTier>
+  (kind: WeaponKind, tier: number): Option.Option<WeaponTier>
+} = Function.dual(
+  2,
+  (kind: WeaponKind, tier: number): Option.Option<WeaponTier> =>
+    Array.get(UPGRADE_TIERS[kind], tier),
+)
 
 // NOTE: the names, and the tier word ladder every gun shares, are in
 // `src/names.ts`.
-export const tierName = (kind: WeaponKind, tier: number): string =>
-  gunTierName(kind, clampTier(kind, tier))
+export const tierName: {
+  (tier: number): (kind: WeaponKind) => string
+  (kind: WeaponKind, tier: number): string
+} = Function.dual(2, (kind: WeaponKind, tier: number): string =>
+  gunTierName(kind, clampTier(kind, tier)),
+)
 
 // PERKS
 
@@ -485,8 +501,12 @@ export const SHOP_GUNS: ReadonlyArray<WeaponKind> = ['Pistol', 'Shotgun', 'Smg']
 export const isCookable = (kind: WeaponKind): boolean =>
   Array.contains(SHOP_GUNS, kind)
 
-export const perkDamage = (gun: CarriedGun, damage: number): number =>
-  gun.perk === 'Spicy' ? damage * PERK_RULES.spicyDamageScale : damage
+export const perkDamage: {
+  (damage: number): (gun: CarriedGun) => number
+  (gun: CarriedGun, damage: number): number
+} = Function.dual(2, (gun: CarriedGun, damage: number): number =>
+  gun.perk === 'Spicy' ? damage * PERK_RULES.spicyDamageScale : damage,
+)
 
 export const perkPierce = (gun: CarriedGun): number =>
   gun.perk === 'Crispy' ? PERK_RULES.crispyPierce : 0
@@ -504,14 +524,23 @@ export const startingRounds = (kind: WeaponKind): number =>
     onSome: ({ starting }) => starting,
   })
 
-export const maxRounds = (kind: WeaponKind, tier: number): number =>
+export const maxRounds: {
+  (tier: number): (kind: WeaponKind) => number
+  (kind: WeaponKind, tier: number): number
+} = Function.dual(2, (kind: WeaponKind, tier: number): number =>
   Option.match(statsAt(kind, tier).maybeRoundLimit, {
     onNone: () => 0,
     onSome: ({ max }) => max,
-  })
+  }),
+)
 
-export const magazineOf = (kind: WeaponKind, tier: number): number =>
-  statsAt(kind, tier).magazine
+export const magazineOf: {
+  (tier: number): (kind: WeaponKind) => number
+  (kind: WeaponKind, tier: number): number
+} = Function.dual(
+  2,
+  (kind: WeaponKind, tier: number): number => statsAt(kind, tier).magazine,
+)
 
 // NOTE: the magazine a player's gun holds: the gun's own, smaller for the
 // Track Star (src/calling.ts). The Pan's dents and Brain Freeze's charges
@@ -527,31 +556,43 @@ const magazineWith = (
 
 // NOTE: a Hearty gun from the stove (src/stove.ts) holds a quarter more,
 // rounded, on top of its tier and the player's calling.
-export const carriedMagazine = (calling: Calling, gun: CarriedGun): number =>
+export const carriedMagazine: {
+  (gun: CarriedGun): (calling: Calling) => number
+  (calling: Calling, gun: CarriedGun): number
+} = Function.dual(2, (calling: Calling, gun: CarriedGun): number =>
   gun.perk === 'Hearty'
     ? Math.round(
         magazineWith(calling, gun.kind, gun.tier) *
           PERK_RULES.heartyMagazineScale,
       )
-    : magazineWith(calling, gun.kind, gun.tier)
+    : magazineWith(calling, gun.kind, gun.tier),
+)
 
 // NOTE: a gun as it comes, at tier 0 unless it comes upgraded (a fridge
 // prize takes the tier of the gun it replaces, src/leftovers.ts).
-export const freshGun = (
-  kind: WeaponKind,
-  calling: Calling = 'You',
-  tier = 0,
-): CarriedGun => {
-  const magazine = magazineWith(calling, kind, tier)
-  return {
-    kind,
-    rounds: startingRounds(kind),
-    loaded: hasEndlessRounds(kind)
-      ? magazine
-      : Math.min(startingRounds(kind), magazine),
-    tier,
-  }
-}
+export const freshGun: {
+  (calling?: Calling, tier?: number): (kind: WeaponKind) => CarriedGun
+  (kind: WeaponKind, calling?: Calling, tier?: number): CarriedGun
+} = Function.dual(
+  // NOTE: data-first starts with a weapon kind; data-last with a calling or nothing.
+  (args: IArguments): boolean =>
+    typeof args[0] === 'string' && args[0] in WEAPONS,
+  (
+    kind: WeaponKind,
+    calling: Calling = 'You',
+    tier: number = 0,
+  ): CarriedGun => {
+    const magazine = magazineWith(calling, kind, tier)
+    return {
+      kind,
+      rounds: startingRounds(kind),
+      loaded: hasEndlessRounds(kind)
+        ? magazine
+        : Math.min(startingRounds(kind), magazine),
+      tier,
+    }
+  },
+)
 
 export const heldGun = (arsenal: Arsenal): CarriedGun =>
   Arsenal.match(arsenal, {
@@ -597,41 +638,59 @@ export const carriedOf = (player: Player): ReadonlyArray<CarriedGun> => [
   ...Option.toArray(maybePanOf(player)),
 ]
 
-export const isCarrying = (player: Player, kind: WeaponKind): boolean =>
-  Array.some(carriedOf(player), gun => gun.kind === kind)
+export const isCarrying: {
+  (kind: WeaponKind): (player: Player) => boolean
+  (player: Player, kind: WeaponKind): boolean
+} = Function.dual(2, (player: Player, kind: WeaponKind): boolean =>
+  Array.some(carriedOf(player), gun => gun.kind === kind),
+)
 
-export const maybeCarried = (
-  player: Player,
-  kind: WeaponKind,
-): Option.Option<CarriedGun> =>
-  Array.findFirst(carriedOf(player), gun => gun.kind === kind)
+export const maybeCarried: {
+  (kind: WeaponKind): (player: Player) => Option.Option<CarriedGun>
+  (player: Player, kind: WeaponKind): Option.Option<CarriedGun>
+} = Function.dual(
+  2,
+  (player: Player, kind: WeaponKind): Option.Option<CarriedGun> =>
+    Array.findFirst(carriedOf(player), gun => gun.kind === kind),
+)
 
-export const isHolding = (player: Player, kind: WeaponKind): boolean =>
-  inHandOf(player) === kind
+export const isHolding: {
+  (kind: WeaponKind): (player: Player) => boolean
+  (player: Player, kind: WeaponKind): boolean
+} = Function.dual(
+  2,
+  (player: Player, kind: WeaponKind): boolean => inHandOf(player) === kind,
+)
 
-export const mapGuns = (
-  arsenal: Arsenal,
-  change: (gun: CarriedGun) => CarriedGun,
-): Arsenal =>
-  Arsenal.match(arsenal, {
-    OneGun: ({ first }) => Arsenal.OneGun({ first: change(first) }),
-    HoldingFirst: ({ first, second }) =>
-      Arsenal.HoldingFirst({ first: change(first), second: change(second) }),
-    HoldingSecond: ({ first, second }) =>
-      Arsenal.HoldingSecond({ first: change(first), second: change(second) }),
-  })
+export const mapGuns: {
+  (change: (gun: CarriedGun) => CarriedGun): (arsenal: Arsenal) => Arsenal
+  (arsenal: Arsenal, change: (gun: CarriedGun) => CarriedGun): Arsenal
+} = Function.dual(
+  2,
+  (arsenal: Arsenal, change: (gun: CarriedGun) => CarriedGun): Arsenal =>
+    Arsenal.match(arsenal, {
+      OneGun: ({ first }) => Arsenal.OneGun({ first: change(first) }),
+      HoldingFirst: ({ first, second }) =>
+        Arsenal.HoldingFirst({ first: change(first), second: change(second) }),
+      HoldingSecond: ({ first, second }) =>
+        Arsenal.HoldingSecond({ first: change(first), second: change(second) }),
+    }),
+)
 
-export const mapHeld = (
-  arsenal: Arsenal,
-  change: (gun: CarriedGun) => CarriedGun,
-): Arsenal =>
-  Arsenal.match(arsenal, {
-    OneGun: ({ first }) => Arsenal.OneGun({ first: change(first) }),
-    HoldingFirst: ({ first, second }) =>
-      Arsenal.HoldingFirst({ first: change(first), second }),
-    HoldingSecond: ({ first, second }) =>
-      Arsenal.HoldingSecond({ first, second: change(second) }),
-  })
+export const mapHeld: {
+  (change: (gun: CarriedGun) => CarriedGun): (arsenal: Arsenal) => Arsenal
+  (arsenal: Arsenal, change: (gun: CarriedGun) => CarriedGun): Arsenal
+} = Function.dual(
+  2,
+  (arsenal: Arsenal, change: (gun: CarriedGun) => CarriedGun): Arsenal =>
+    Arsenal.match(arsenal, {
+      OneGun: ({ first }) => Arsenal.OneGun({ first: change(first) }),
+      HoldingFirst: ({ first, second }) =>
+        Arsenal.HoldingFirst({ first: change(first), second }),
+      HoldingSecond: ({ first, second }) =>
+        Arsenal.HoldingSecond({ first, second: change(second) }),
+    }),
+)
 
 export const swapWeapon = (arsenal: Arsenal): Arsenal =>
   Arsenal.match(arsenal, {
@@ -646,12 +705,16 @@ export const swapWeapon = (arsenal: Arsenal): Arsenal =>
 // slot; with both slots full it replaces the gun the player holds (with the
 // knife out, the last gun held), upgrades and all (GAME_DESIGN.md, "The
 // knife and two gun slots").
-export const takeGun = (arsenal: Arsenal, gun: CarriedGun): Arsenal =>
+export const takeGun: {
+  (gun: CarriedGun): (arsenal: Arsenal) => Arsenal
+  (arsenal: Arsenal, gun: CarriedGun): Arsenal
+} = Function.dual(2, (arsenal: Arsenal, gun: CarriedGun): Arsenal =>
   Arsenal.match(arsenal, {
     OneGun: ({ first }) => Arsenal.HoldingSecond({ first, second: gun }),
     HoldingFirst: ({ second }) => Arsenal.HoldingFirst({ first: gun, second }),
     HoldingSecond: ({ first }) => Arsenal.HoldingSecond({ first, second: gun }),
-  })
+  }),
+)
 
 // NOTE: the gun a new one would replace: none while the second slot is
 // empty, else the one in the player's hands.
@@ -664,11 +727,15 @@ export const maybeReplacedGun = (
 
 export const heldTier = (player: Player): number => heldGun(player.arsenal).tier
 
-export const tierOf = (player: Player, kind: WeaponKind): number =>
+export const tierOf: {
+  (kind: WeaponKind): (player: Player) => number
+  (player: Player, kind: WeaponKind): number
+} = Function.dual(2, (player: Player, kind: WeaponKind): number =>
   Option.match(maybeCarried(player, kind), {
     onNone: () => 0,
     onSome: gun => gun.tier,
-  })
+  }),
+)
 
 export const heldStats = (player: Player): WeaponStats =>
   statsAt(heldWeapon(player.arsenal), heldTier(player))
@@ -776,32 +843,41 @@ export const isWieldingKnife = (player: Player): boolean =>
 export const maybeWieldedPan = (player: Player): Option.Option<CarriedGun> =>
   isWieldingMelee(player) ? maybePanOf(player) : Option.none()
 
-export const mapPan = (
-  player: Player,
-  change: (pan: CarriedGun) => CarriedGun,
-): Player =>
-  Melee.match(player.melee, {
-    Knife: () => player,
-    Pan: ({ pan }) =>
-      modifyFields(player, { melee: () => Melee.Pan({ pan: change(pan) }) }),
-  })
+export const mapPan: {
+  (change: (pan: CarriedGun) => CarriedGun): (player: Player) => Player
+  (player: Player, change: (pan: CarriedGun) => CarriedGun): Player
+} = Function.dual(
+  2,
+  (player: Player, change: (pan: CarriedGun) => CarriedGun): Player =>
+    Melee.match(player.melee, {
+      Knife: () => player,
+      Pan: ({ pan }) =>
+        modifyFields(player, { melee: () => Melee.Pan({ pan: change(pan) }) }),
+    }),
+)
 
 // NOTE: every gun and the Pan, mapped alike: an upgrade, a refill, or
 // Rattles banging the Pan flat finds it in whichever slot it is.
-export const mapCarried = (
-  player: Player,
-  change: (gun: CarriedGun) => CarriedGun,
-): Player =>
-  mapPan(
-    modifyFields(player, { arsenal: arsenal => mapGuns(arsenal, change) }),
-    change,
-  )
+export const mapCarried: {
+  (change: (gun: CarriedGun) => CarriedGun): (player: Player) => Player
+  (player: Player, change: (gun: CarriedGun) => CarriedGun): Player
+} = Function.dual(
+  2,
+  (player: Player, change: (gun: CarriedGun) => CarriedGun): Player =>
+    mapPan(
+      modifyFields(player, { arsenal: arsenal => mapGuns(arsenal, change) }),
+      change,
+    ),
+)
 
 // NOTE: the Pan from the fridge goes in the melee slot, in hand, and both
 // guns stay. A second Pan never comes out of the fridge (the weapon a
 // player carries is never pulled again), so a Pan already there only gets
 // banged flat, its upgrades kept.
-export const takePan = (player: Player, fresh: CarriedGun): Player =>
+export const takePan: {
+  (fresh: CarriedGun): (player: Player) => Player
+  (player: Player, fresh: CarriedGun): Player
+} = Function.dual(2, (player: Player, fresh: CarriedGun): Player =>
   modifyFields(player, {
     melee: () =>
       Melee.Pan({
@@ -815,7 +891,8 @@ export const takePan = (player: Player, fresh: CarriedGun): Player =>
         }),
       }),
     wield: () => 'Melee',
-  })
+  }),
+)
 
 // NOTE: the melee slot's name as a player reads it: the knife, or the Pan
 // with its tier word.
@@ -842,7 +919,10 @@ export const drawMelee = (player: Player): Player =>
 
 // NOTE: the gun in `slot` in hand. A slot with no gun leaves the arsenal
 // as it is, and a gun that changes stops a reload.
-export const drawSlot = (player: Player, slot: GunSlot): Player => {
+export const drawSlot: {
+  (slot: GunSlot): (player: Player) => Player
+  (player: Player, slot: GunSlot): Player
+} = Function.dual(2, (player: Player, slot: GunSlot): Player => {
   const arsenal =
     heldSlotOf(player.arsenal) === slot
       ? player.arsenal
@@ -854,7 +934,7 @@ export const drawSlot = (player: Player, slot: GunSlot): Player => {
   return heldGun(drawn.arsenal) === heldGun(player.arsenal)
     ? drawn
     : putGunInHand(drawn)
-}
+})
 
 // NOTE: Q. With the melee weapon out it goes back to the last gun held;
 // with a gun in hand it switches to the other gun.

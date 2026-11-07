@@ -2,9 +2,16 @@
 // options), its keys, and how it sends a Message, presses keys, and sees
 // the zombies in its view.
 
+import { Array, Function, Option, Record, String } from 'effect'
+
 import { levelOf } from '../../../src/arena'
 import { CALLINGS } from '../../../src/calling'
-import { cameraFocus, cameraFor, worldWindowOf } from '../../../src/camera'
+import {
+  type Camera,
+  cameraFocus,
+  cameraFor,
+  worldWindowOf,
+} from '../../../src/camera'
 import { update } from '../../../src/main'
 import { Message } from '../../../src/message'
 import type { Difficulty, ZombieKind, initialModel } from '../../../src/model'
@@ -20,6 +27,7 @@ import {
   LANDSCAPE_TOUCH_SCREEN,
   type Screen,
 } from '../../../src/screen'
+import { knobText } from './knobs'
 
 export type Model = typeof initialModel
 type GameMessage = Parameters<typeof update>[1]
@@ -53,10 +61,15 @@ export const DEFAULT_OPTIONS: BotOptions = {
 // CALLING=Handyman, TrackStar, PennyPincher, or LineCook (any case, spaces
 // allowed) plays that calling, with rank enough to start it.
 export const parseCalling = (raw: string | undefined): Calling => {
-  const name = (raw ?? 'you').toLowerCase().replaceAll(/[\s_-]/g, '')
-  const found = CALLINGS.find(calling => calling.toLowerCase() === name)
+  const name = String.replaceAll(
+    /[\s_-]/g,
+    '',
+  )(String.toLowerCase(raw ?? 'you'))
+  const found = Option.getOrUndefined(
+    Array.findFirst(CALLINGS, calling => String.toLowerCase(calling) === name),
+  )
   if (found === undefined) {
-    throw new Error(`CALLING must be one of ${CALLINGS.join(', ')}`)
+    throw new Error(`CALLING must be one of ${Array.join(CALLINGS, ', ')}`)
   }
   return found
 }
@@ -65,23 +78,28 @@ export const parseCalling = (raw: string | undefined): Calling => {
 // modifiers on, as the lobby sets them. FriendlyFire is refused: the bot
 // plays alone, and it bites only with teammates.
 export const parseModifiers = (raw: string | undefined): Modifiers => {
-  const names = (raw ?? '')
-    .split(',')
-    .map(name => name.trim().toLowerCase())
-    .filter(name => name !== '')
-  return names.reduce((modifiers, name) => {
-    const found = MODIFIER_ORDER.find(
-      modifier => modifier.toLowerCase() === name,
+  const names = Array.filter(
+    Array.map(String.split(',')(raw ?? ''), name =>
+      String.toLowerCase(String.trim(name)),
+    ),
+    name => name !== '',
+  )
+  return Array.reduce(names, noModifiers, (modifiers, name) => {
+    const found = Option.getOrUndefined(
+      Array.findFirst(
+        MODIFIER_ORDER,
+        modifier => String.toLowerCase(modifier) === name,
+      ),
     )
     if (found === undefined || found === 'FriendlyFire') {
       throw new Error('MODS must be a list of BigCrowd, Broke, Glass')
     }
     return toggledModifier(modifiers, found)
-  }, noModifiers)
+  })
 }
 
 export const parseDifficulty = (raw: string | undefined): Difficulty => {
-  const name = (raw ?? 'normal').toLowerCase()
+  const name = String.toLowerCase(raw ?? 'normal')
   if (name === 'easy') {
     return 'Easy'
   }
@@ -112,8 +130,13 @@ export const KEYS = {
   knife: 'KeyF',
 }
 
-export const send = (model: Model, message: GameMessage): Model =>
-  update(model, message).model
+export const send: {
+  (message: GameMessage): (model: Model) => Model
+  (model: Model, message: GameMessage): Model
+} = Function.dual(
+  2,
+  (model: Model, message: GameMessage): Model => update(model, message).model,
+)
 
 // The zombies standing in the room: alive, and not under the floor, held
 // overhead, or in the air, so the bot can see, shoot, and flee them.
@@ -125,31 +148,42 @@ const OUT_OF_REACH = new Set(['Burrowed', 'Carried', 'Flying'])
 // VIEW=touch plays as a phone on its side would, through the landscape
 // phone's zoomed window. Both get the touch aim assist, as in the game.
 export const maybeWindowScreen =
-  process.env['VIEW'] === 'portrait'
+  knobText('VIEW') === 'portrait'
     ? DEFAULT_PORTRAIT_SCREEN
-    : process.env['VIEW'] === 'touch'
+    : knobText('VIEW') === 'touch'
       ? LANDSCAPE_TOUCH_SCREEN
       : undefined
 
-export const windowCamera = (model: Model, screen: Screen) =>
-  cameraFor(levelOf(model), cameraFocus(model), worldWindowOf(screen))
+export const windowCamera: {
+  (screen: Screen): (model: Model) => Camera
+  (model: Model, screen: Screen): Camera
+} = Function.dual(2, (model: Model, screen: Screen): Camera =>
+  cameraFor(levelOf(model), cameraFocus(model), worldWindowOf(screen)),
+)
 
-export const isInView = (model: Model, zombie: Model['zombies'][number]) => {
-  if (maybeWindowScreen === undefined) {
-    return true
-  }
-  const camera = windowCamera(model, maybeWindowScreen)
-  return (
-    zombie.x >= camera.x &&
-    zombie.x <= camera.x + camera.width &&
-    zombie.y >= camera.y &&
-    zombie.y <= camera.y + camera.height
-  )
-}
+export const isInView: {
+  (zombie: Model['zombies'][number]): (model: Model) => boolean
+  (model: Model, zombie: Model['zombies'][number]): boolean
+} = Function.dual(
+  2,
+  (model: Model, zombie: Model['zombies'][number]): boolean => {
+    if (maybeWindowScreen === undefined) {
+      return true
+    }
+    const camera = windowCamera(model, maybeWindowScreen)
+    return (
+      zombie.x >= camera.x &&
+      zombie.x <= camera.x + camera.width &&
+      zombie.y >= camera.y &&
+      zombie.y <= camera.y + camera.height
+    )
+  },
+)
 
 // The zombies standing in the room, in view or not.
 export const standing = (model: Model) =>
-  model.zombies.filter(
+  Array.filter(
+    model.zombies,
     zombie =>
       zombie.state._tag === 'Walking' && !OUT_OF_REACH.has(zombie.action._tag),
   )
@@ -157,17 +191,24 @@ export const standing = (model: Model) =>
 // The zombies standing in the bot's view: the whole room, or the phone's
 // window under VIEW.
 export const walking = (model: Model) =>
-  standing(model).filter(zombie => isInView(model, zombie))
+  Array.filter(standing(model), zombie => isInView(model, zombie))
 
-export const distance = (a: Vector, b: Vector) =>
-  Math.hypot(a.x - b.x, a.y - b.y)
+export const distance: {
+  (b: Vector): (a: Vector) => number
+  (a: Vector, b: Vector): number
+} = Function.dual(2, (a: Vector, b: Vector): number =>
+  Math.hypot(a.x - b.x, a.y - b.y),
+)
 
-export const steerToward = (from: Vector, to: Vector): Vector => {
+export const steerToward: {
+  (to: Vector): (from: Vector) => Vector
+  (from: Vector, to: Vector): Vector
+} = Function.dual(2, (from: Vector, to: Vector): Vector => {
   const length = distance(from, to)
   return length < 2
     ? { x: 0, y: 0 }
     : { x: (to.x - from.x) / length, y: (to.y - from.y) / length }
-}
+})
 
 export const desiredKeys = (direction: Vector): Set<string> => {
   const keys = new Set<string>()
@@ -192,21 +233,30 @@ export const desiredKeys = (direction: Vector): Set<string> => {
   return keys
 }
 
-export const pressKeys = (model: Model, wanted: Set<string>): Model => {
+export const pressKeys: {
+  (wanted: Set<string>): (model: Model) => Model
+  (model: Model, wanted: Set<string>): Model
+} = Function.dual(2, (model: Model, wanted: Set<string>): Model => {
   const held = new Set(model.input.pressedKeys)
-  const released = [...held].filter(
-    key => Object.values(KEYS).includes(key) && !wanted.has(key),
+  const released = Array.filter(
+    [...held],
+    key => Record.values(KEYS).includes(key) && !wanted.has(key),
   )
-  const pressed = [...wanted].filter(key => !held.has(key))
-  const afterRelease = released.reduce(
-    (sent, code) => send(sent, Message.ReleasedKey({ code })),
-    model,
+  const pressed = Array.filter([...wanted], key => !held.has(key))
+  const afterRelease = Array.reduce(released, model, (sent, code) =>
+    send(sent, Message.ReleasedKey({ code })),
   )
-  return pressed.reduce(
-    (sent, code) => send(sent, Message.PressedKey({ code })),
-    afterRelease,
+  return Array.reduce(pressed, afterRelease, (sent, code) =>
+    send(sent, Message.PressedKey({ code })),
   )
-}
+})
 
-export const tapKey = (model: Model, code: string): Model =>
-  send(send(model, Message.PressedKey({ code })), Message.ReleasedKey({ code }))
+export const tapKey: {
+  (code: string): (model: Model) => Model
+  (model: Model, code: string): Model
+} = Function.dual(2, (model: Model, code: string): Model =>
+  send(
+    send(model, Message.PressedKey({ code })),
+    Message.ReleasedKey({ code }),
+  ),
+)

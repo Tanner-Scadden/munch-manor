@@ -1,4 +1,14 @@
-import { Array, Data, Effect, Option, Random, Schema, pipe } from 'effect'
+import {
+  Array,
+  Effect,
+  Function,
+  Layer,
+  Option,
+  Random,
+  Schema,
+  String,
+  pipe,
+} from 'effect'
 import { FetchHttpClient, HttpClient, HttpClientRequest } from 'effect/http'
 
 import {
@@ -13,6 +23,7 @@ import {
 } from './analytics'
 import { API_ORIGIN } from './apiOrigin'
 import { describeError } from './describeError'
+import { isObjectFirst } from './dualArgs'
 
 // API ORIGIN
 
@@ -33,7 +44,7 @@ const HEX_DIGITS_PER_PART = 4
 const PART_LIMIT = 16 ** HEX_DIGITS_PER_PART
 
 const hexPart = (value: number): string =>
-  value.toString(16).padStart(HEX_DIGITS_PER_PART, '0')
+  String.padStart(HEX_DIGITS_PER_PART, '0')(value.toString(16))
 
 export const generateVisitId: Effect.Effect<string> = pipe(
   Effect.all(
@@ -49,12 +60,15 @@ export const generateVisitId: Effect.Effect<string> = pipe(
 const SummaryTransport = Schema.Literals(['Beacon', 'Fetch', 'Unconfigured'])
 type SummaryTransport = typeof SummaryTransport.Type
 
-class SummarySendError extends Data.TaggedError('SummarySendError')<{
-  readonly reason: string
-}> {}
+class SummarySendError extends Schema.TaggedError<
+  SummarySendError,
+  { readonly brand: unique symbol }
+>()('SummarySendError', {
+  reason: Schema.String,
+}) {}
 
 const toSendError = (error: unknown): SummarySendError =>
-  new SummarySendError({ reason: describeError(error) })
+  SummarySendError.make({ reason: describeError(error) })
 
 // NOTE: text/plain keeps both requests "simple", so the browser sends them
 // cross-origin with no preflight. The Worker decodes the body as JSON anyway.
@@ -75,20 +89,26 @@ const queueBeacon = (url: string, body: string) =>
 // counts as a failure. Trace headers stay off: they are not CORS-safelisted.
 const postKeepalive = (url: string, body: string) =>
   pipe(
-    HttpClient.execute(
-      HttpClientRequest.bodyText(
-        HttpClientRequest.post(url),
-        body,
-        SUMMARY_CONTENT_TYPE,
+    Layer.build(FetchHttpClient.layer),
+    Effect.flatMap(client =>
+      pipe(
+        HttpClient.execute(
+          HttpClientRequest.bodyText(
+            HttpClientRequest.post(url),
+            body,
+            SUMMARY_CONTENT_TYPE,
+          ),
+        ),
+        Effect.provideService(FetchHttpClient.RequestInit, {
+          keepalive: true,
+          mode: 'no-cors',
+          credentials: 'omit',
+        }),
+        Effect.provideService(HttpClient.TracerPropagationEnabled, false),
+        Effect.provide(client),
       ),
     ),
-    Effect.provideService(FetchHttpClient.RequestInit, {
-      keepalive: true,
-      mode: 'no-cors',
-      credentials: 'omit',
-    }),
-    Effect.provideService(HttpClient.TracerPropagationEnabled, false),
-    Effect.provide(FetchHttpClient.layer),
+    Effect.scoped,
     Effect.mapError(toSendError),
   )
 
@@ -106,35 +126,59 @@ const sendTo = (
     ),
   )
 
-export const sendRunSummary = (
-  summary: PostedRunSummary,
-  origin: string = API_ORIGIN,
-): Effect.Effect<SummaryTransport, SummarySendError> =>
-  Option.match(maybeRunsUrl(origin), {
-    onNone: () => Effect.succeed<SummaryTransport>('Unconfigured'),
-    onSome: url =>
-      pipe(
-        Schema.encodeEffect(PostedRunJson)(summary),
-        Effect.mapError(toSendError),
-        Effect.filterOrFail(
-          body => new Blob([body]).size <= MAX_SUMMARY_BYTES,
-          () => new SummarySendError({ reason: 'summary too large' }),
+export const sendRunSummary: {
+  (
+    origin?: string,
+  ): (
+    summary: PostedRunSummary,
+  ) => Effect.Effect<SummaryTransport, SummarySendError>
+  (
+    summary: PostedRunSummary,
+    origin?: string,
+  ): Effect.Effect<SummaryTransport, SummarySendError>
+} = Function.dual(
+  isObjectFirst,
+  (
+    summary: PostedRunSummary,
+    origin: string = API_ORIGIN,
+  ): Effect.Effect<SummaryTransport, SummarySendError> =>
+    Option.match(maybeRunsUrl(origin), {
+      onNone: () => Effect.succeed<SummaryTransport>('Unconfigured'),
+      onSome: url =>
+        pipe(
+          Schema.encodeEffect(PostedRunJson)(summary),
+          Effect.mapError(toSendError),
+          Effect.filterOrFail(
+            body => new Blob([body]).size <= MAX_SUMMARY_BYTES,
+            () => SummarySendError.make({ reason: 'summary too large' }),
+          ),
+          Effect.flatMap(body => sendTo(url, body)),
         ),
-        Effect.flatMap(body => sendTo(url, body)),
-      ),
-  })
+    }),
+)
 
 // NOTE: a tap on SHARE, sent the same way as a run summary.
-export const sendShareEvent = (
-  event: ShareEvent,
-  origin: string = API_ORIGIN,
-): Effect.Effect<SummaryTransport, SummarySendError> =>
-  Option.match(maybeSharesUrl(origin), {
-    onNone: () => Effect.succeed<SummaryTransport>('Unconfigured'),
-    onSome: url =>
-      pipe(
-        Schema.encodeEffect(ShareEventJson)(event),
-        Effect.mapError(toSendError),
-        Effect.flatMap(body => sendTo(url, body)),
-      ),
-  })
+export const sendShareEvent: {
+  (
+    origin?: string,
+  ): (event: ShareEvent) => Effect.Effect<SummaryTransport, SummarySendError>
+  (
+    event: ShareEvent,
+    origin?: string,
+  ): Effect.Effect<SummaryTransport, SummarySendError>
+} = Function.dual(
+  isObjectFirst,
+  (
+    event: ShareEvent,
+    origin: string = API_ORIGIN,
+  ): Effect.Effect<SummaryTransport, SummarySendError> =>
+    Option.match(maybeSharesUrl(origin), {
+      onNone: () => Effect.succeed<SummaryTransport>('Unconfigured'),
+      onSome: url =>
+        pipe(
+          Schema.encodeEffect(ShareEventJson)(event),
+          Effect.mapError(toSendError),
+          Effect.flatMap(body => sendTo(url, body)),
+        ),
+    }),
+)

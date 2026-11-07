@@ -3,26 +3,36 @@
 // it; on its own it serves until stopped, for the dev page:
 //   bun tools/mp-dev/local.ts            (API at http://127.0.0.1:8798)
 //   bun tools/mp-dev/serve.ts http://127.0.0.1:8798
-import { Console, Data, Effect, Schedule, type Scope } from 'effect'
+import {
+  Config,
+  Console,
+  Effect,
+  FileSystem,
+  Layer,
+  Path,
+  Schedule,
+  Schema,
+  type Scope,
+} from 'effect'
 import { FetchHttpClient, HttpClient, HttpClientRequest } from 'effect/http'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const root = resolve(here, '../..')
-const infra = resolve(root, 'infra')
-const outdir = resolve(here, 'dist/workerd')
+const here = import.meta.dirname
 
 // NOTE: MP_DEV_PORT moves it, so two worktrees can each run a local workerd.
-export const LOCAL_PORT = Number(process.env['MP_DEV_PORT'] ?? 8798)
-export const LOCAL_ORIGIN = `http://127.0.0.1:${LOCAL_PORT}`
+const localPort = Effect.map(
+  Config.String('MP_DEV_PORT').pipe(Config.withDefault('8798')),
+  Number,
+)
+
+export const localOrigin: Effect.Effect<string, Config.ConfigError> =
+  Effect.map(localPort, port => `http://127.0.0.1:${port}`)
 
 // NOTE: the Worker and the shared packages must meet one Effect, infra's,
 // as the alias in infra/alchemy.run.ts makes them in a deploy.
-const effectFromInfra = {
+const effectFromInfra = (infra: string) => ({
   name: 'effect-from-infra',
   setup(build: {
     onResolve(
@@ -34,20 +44,19 @@ const effectFromInfra = {
       path: Bun.resolveSync(args.path, infra),
     }))
   },
-}
+})
 
-// NOTE: SQLite-backed Durable Objects need disk storage in workerd; each
-// run starts from an empty directory.
-const storage = resolve(outdir, 'storage')
-
-const CONFIG = `using Workerd = import "/workerd/workerd.capnp";
+const configOf = (
+  storage: string,
+  port: number,
+): string => `using Workerd = import "/workerd/workerd.capnp";
 
 const config :Workerd.Config = (
   services = [
     (name = "main", worker = .api),
     (name = "do-storage", disk = (path = "${storage}", writable = true)),
   ],
-  sockets = [ (name = "http", address = "127.0.0.1:${LOCAL_PORT}", http = (), service = "main") ],
+  sockets = [ (name = "http", address = "127.0.0.1:${port}", http = (), service = "main") ],
 );
 
 const api :Workerd.Worker = (
@@ -70,44 +79,71 @@ const api :Workerd.Worker = (
 );
 `
 
-export const buildWorker = async (): Promise<string> => {
-  mkdirSync(outdir, { recursive: true })
-  const result = await Bun.build({
-    entrypoints: [resolve(infra, 'worker/main.ts')],
+class WorkerdFailed extends Schema.TaggedError<
+  WorkerdFailed,
+  { readonly brand: unique symbol }
+>()('WorkerdFailed', { message: Schema.String }) {}
+
+type Dirs = Readonly<{ infra: string; outdir: string; storage: string }>
+
+const dirsOf = Effect.gen(function* () {
+  const path = yield* Path.Path
+  const outdir = path.resolve(here, 'dist/workerd')
+  return {
+    infra: path.resolve(here, '../../infra'),
     outdir,
-    target: 'browser',
-    format: 'esm',
-    minify: false,
-    metafile: false,
-    plugins: [effectFromInfra],
-    define: {},
-  })
-  if (!result.success) {
-    throw new Error(`The Worker did not build: ${String(result.logs)}`)
+    // NOTE: SQLite-backed Durable Objects need disk storage in workerd;
+    // each run starts from an empty directory.
+    storage: path.resolve(outdir, 'storage'),
   }
-  rmSync(storage, { recursive: true, force: true })
-  mkdirSync(storage, { recursive: true })
-  const config = resolve(outdir, 'local.capnp')
-  writeFileSync(config, CONFIG)
-  return config
-}
+})
 
-class WorkerdFailed extends Data.TaggedError('WorkerdFailed')<{
-  readonly reason: string
-}> {}
+const buildWorker = ({ infra, outdir, storage }: Dirs, port: number) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    yield* fs.makeDirectory(outdir, { recursive: true })
+    const result = yield* Effect.tryPromise({
+      try: () =>
+        Bun.build({
+          entrypoints: [path.resolve(infra, 'worker/main.ts')],
+          outdir,
+          target: 'browser',
+          format: 'esm',
+          minify: false,
+          metafile: false,
+          plugins: [effectFromInfra(infra)],
+          define: {},
+        }),
+      catch: error =>
+        WorkerdFailed.make({
+          message: `The Worker did not build: ${globalThis.String(error)}`,
+        }),
+    })
+    if (!result.success) {
+      return yield* WorkerdFailed.make({
+        message: `The Worker did not build: ${globalThis.String(result.logs)}`,
+      })
+    }
+    yield* fs.remove(storage, { recursive: true, force: true })
+    yield* fs.makeDirectory(storage, { recursive: true })
+    const config = path.resolve(outdir, 'local.capnp')
+    yield* fs.writeFileString(config, configOf(storage, port))
+    return config
+  })
 
-const answersChallenge = HttpClient.execute(
-  HttpClientRequest.post(`${LOCAL_ORIGIN}/sync/challenge`).pipe(
-    HttpClientRequest.bodyText('{}'),
-  ),
-).pipe(
-  Effect.mapError(() => new WorkerdFailed({ reason: 'Not answering yet' })),
-  Effect.filterOrFail(
-    response => response.status >= 200 && response.status < 300,
-    () => new WorkerdFailed({ reason: 'Not ready yet' }),
-  ),
-  Effect.provide(FetchHttpClient.layer),
-)
+const answersChallenge = (origin: string) =>
+  HttpClient.execute(
+    HttpClientRequest.post(`${origin}/sync/challenge`).pipe(
+      HttpClientRequest.bodyText('{}'),
+    ),
+  ).pipe(
+    Effect.mapError(() => WorkerdFailed.make({ message: 'Not answering yet' })),
+    Effect.filterOrFail(
+      response => response.status >= 200 && response.status < 300,
+      () => WorkerdFailed.make({ message: 'Not ready yet' }),
+    ),
+  )
 
 export interface Workerd {
   // NOTE: stops workerd and starts it again on the same storage, as a deploy
@@ -117,49 +153,61 @@ export interface Workerd {
 }
 
 // NOTE: workerd runs for as long as the Scope; closing it stops workerd.
-export const startWorkerd: Effect.Effect<Workerd, WorkerdFailed, Scope.Scope> =
-  Effect.gen(function* () {
-    const config = yield* Effect.tryPromise({
-      try: () => buildWorker(),
-      catch: error => new WorkerdFailed({ reason: String(error) }),
-    })
-    const spawn = () =>
-      Bun.spawn(
-        [
-          resolve(infra, 'node_modules/.bin/workerd'),
-          'serve',
-          config,
-          '--experimental',
-        ],
-        { cwd: outdir, stdout: 'inherit', stderr: 'inherit' },
-      )
-    const running = { current: spawn() }
-    yield* Effect.addFinalizer(() =>
-      Effect.sync(() => running.current.kill()),
+/** @stability unstable */
+export const startWorkerd: Effect.Effect<
+  Workerd,
+  WorkerdFailed,
+  FileSystem.FileSystem | Path.Path | HttpClient.HttpClient | Scope.Scope
+> = Effect.gen(function* () {
+  const path = yield* Path.Path
+  const dirs = yield* dirsOf
+  const port = yield* localPort.pipe(
+    Effect.mapError(error => WorkerdFailed.make({ message: error.message })),
+  )
+  const config = yield* buildWorker(dirs, port).pipe(
+    Effect.catchTag('PlatformError', error =>
+      Effect.fail(WorkerdFailed.make({ message: error.message })),
+    ),
+  )
+  const spawn = () =>
+    Bun.spawn(
+      [
+        path.resolve(dirs.infra, 'node_modules/.bin/workerd'),
+        'serve',
+        config,
+        '--experimental',
+      ],
+      { cwd: dirs.outdir, stdout: 'inherit', stderr: 'inherit' },
     )
-    const ready = Effect.retry(answersChallenge, {
-      schedule: Schedule.spaced('100 millis'),
-      times: 100,
-    })
-    yield* ready
-    return {
-      restart: Effect.gen(function* () {
-        running.current.kill(9)
-        yield* Effect.promise(() => running.current.exited)
-        running.current = spawn()
-        yield* ready
-      }),
-    }
+  const running = { current: spawn() }
+  yield* Effect.addFinalizer(() => Effect.sync(() => running.current.kill()))
+  const ready = Effect.retry(answersChallenge(`http://127.0.0.1:${port}`), {
+    schedule: Schedule.spaced('100 millis'),
+    times: 100,
   })
+  yield* ready
+  const client = yield* HttpClient.HttpClient
+  return {
+    restart: Effect.gen(function* () {
+      running.current.kill(9)
+      yield* Effect.promise(() => running.current.exited)
+      running.current = spawn()
+      yield* Effect.provideService(ready, HttpClient.HttpClient, client)
+    }),
+  }
+})
 
 if (import.meta.main) {
   NodeRuntime.runMain(
     Effect.scoped(
       Effect.gen(function* () {
         yield* startWorkerd
-        yield* Console.log(`The API Worker runs in workerd at ${LOCAL_ORIGIN}`)
+        const origin = yield* localOrigin
+        yield* Console.log(`The API Worker runs in workerd at ${origin}`)
         return yield* Effect.never
       }),
+    ).pipe(
+      Effect.provide(Layer.merge(NodeServices.layer, FetchHttpClient.layer)),
     ),
   )
 }

@@ -1,4 +1,14 @@
-import { Array, Console, Data, Effect, Option, Schema, pipe } from 'effect'
+import {
+  Array,
+  Console,
+  Effect,
+  Layer,
+  Option,
+  Schema,
+  String,
+  pipe,
+} from 'effect'
+import { FetchHttpClient } from 'effect/http'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
@@ -33,9 +43,10 @@ import {
 
 const USAGE = 'Usage: bun tools/analytics/report.ts --stage <prod|pr-N|name>'
 
-class UsageError extends Data.TaggedError('UsageError')<{
-  readonly reason: string
-}> {}
+class UsageError extends Schema.TaggedError<
+  UsageError,
+  { readonly brand: unique symbol }
+>()('UsageError', { message: Schema.String }) {}
 
 const stageArgument = (
   args: ReadonlyArray<string>,
@@ -44,12 +55,12 @@ const stageArgument = (
     Array.findFirstIndex(args, arg => arg === '--stage'),
     Option.flatMap(index => Array.get(args, index + 1)),
     Effect.fromOption,
-    Effect.mapError(() => new UsageError({ reason: USAGE })),
+    Effect.mapError(() => UsageError.make({ message: USAGE })),
   )
 
 // QUERIES
 
-const Count = Schema.Number
+const Count = Schema.Finite
 
 const WinRow = Schema.Struct({
   difficulty: Schema.String,
@@ -157,7 +168,7 @@ const SECONDS_PER_MINUTE = 60
 const duration = (ms: number): string => {
   const seconds = Math.round(ms / MS_PER_SECOND)
   const minutes = Math.floor(seconds / SECONDS_PER_MINUTE)
-  return `${minutes}:${globalThis.String(seconds % SECONDS_PER_MINUTE).padStart(2, '0')}`
+  return `${minutes}:${String.padStart(2, '0')(globalThis.String(seconds % SECONDS_PER_MINUTE))}`
 }
 
 const table = (
@@ -171,14 +182,18 @@ const table = (
     ),
   )
   const line = (cells: ReadonlyArray<string>): string =>
-    Array.join(
-      Array.map(cells, (cell, column) => cell.padEnd(widths[column] ?? 0)),
-      '  ',
-    ).trimEnd()
+    String.trimEnd(
+      Array.join(
+        Array.map(cells, (cell, column) =>
+          String.padEnd(widths[column] ?? 0)(cell),
+        ),
+        '  ',
+      ),
+    )
   return Array.join(
     [
       line(headers),
-      line(Array.map(widths, width => '-'.repeat(width))),
+      line(Array.map(widths, width => String.repeat(width)('-'))),
       ...Array.map(rows, line),
     ],
     '\n',
@@ -201,9 +216,9 @@ const program = Effect.gen(function* () {
   const token = yield* apiToken
   const account = yield* accountId(token)
   const name = databaseName(stage)
-  const database = yield* databaseId(token, account, name)
+  const database = yield* databaseId({ token, account, name })
   const run = <S extends Schema.Top>(sql: string, row: S) =>
-    query(token, account, database, sql, row)
+    query({ token, account, database, sql, row })
 
   const [
     wins,
@@ -241,8 +256,8 @@ const program = Effect.gen(function* () {
   // all share reads as 3 per game.
   const runsEndedOn = (screen: string): number =>
     endedAs(
-      screen.startsWith('Coop') ? 'Crew' : 'Solo',
-      screen.endsWith('Victory') ? 'Victory' : 'GameOver',
+      String.startsWith('Coop')(screen) ? 'Crew' : 'Solo',
+      String.endsWith('Victory')(screen) ? 'Victory' : 'GameOver',
     )
 
   const totalGames = Array.reduce(medians, 0, (sum, { runs }) => sum + runs)
@@ -359,8 +374,8 @@ const reportFailure = (error: CloudflareError | UsageError) =>
   Effect.andThen(
     Console.error(
       error._tag === 'UsageError'
-        ? error.reason
-        : `Cloudflare: ${error.reason}`,
+        ? error.message
+        : `Cloudflare: ${error.message}`,
     ),
     Effect.sync(() => {
       process.exitCode = 1
@@ -373,6 +388,6 @@ NodeRuntime.runMain(
       CloudflareError: reportFailure,
       UsageError: reportFailure,
     }),
-    Effect.provide(NodeServices.layer),
+    Effect.provide(Layer.merge(NodeServices.layer, FetchHttpClient.layer)),
   ),
 )

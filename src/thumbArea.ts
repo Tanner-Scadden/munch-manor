@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 import { createLazy } from 'foldkit/html'
 
@@ -105,10 +105,10 @@ const thumbAreaBoxView = (
 
 const lazyThumbArea = createLazy()
 
-export const thumbAreaView = (
-  screen: Screen,
-  h: ApplicationViewBuilder,
-): Html => {
+export const thumbAreaView: {
+  (h: ApplicationViewBuilder): (screen: Screen) => Html
+  (screen: Screen, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (screen: Screen, h: ApplicationViewBuilder): Html => {
   if (screen.layout === 'Landscape') {
     return h.empty
   }
@@ -120,4 +120,4 @@ export const thumbAreaView = (
     screen.height,
     h,
   ])
-}
+})

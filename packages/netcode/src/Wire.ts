@@ -1,4 +1,4 @@
-import { Data, Result } from 'effect'
+import { Function, Result, Schema } from 'effect'
 
 // NOTE: the bytes under the room protocol, after the spike's estimate
 // (MULTIPLAYER.md, "The wire at 20 Hz"): unsigned integers as LEB128
@@ -8,9 +8,12 @@ import { Data, Result } from 'effect'
 // end, or meets a malformed varint, throws a WireError, and `readAll`
 // turns that into a failed Result, so callers never see an exception.
 
-export class WireError extends Data.TaggedError('WireError')<{
-  readonly reason: string
-}> {}
+export class WireError extends Schema.TaggedError<
+  WireError,
+  { readonly brand: unique symbol }
+>()('WireError', {
+  reason: Schema.String,
+}) {}
 
 // NOTE: 2^49, so a varint fits in 7 bytes and every value is an exact
 // JavaScript integer.
@@ -23,13 +26,22 @@ export const POSITION_SCALE = 8
 const INT16_MIN = -32768
 const INT16_MAX = 32767
 
-export const fixedOf = (value: number, scale: number): number =>
-  Math.max(INT16_MIN, Math.min(INT16_MAX, Math.round(value * scale)))
+export const fixedOf: {
+  (scale: number): (value: number) => number
+  (value: number, scale: number): number
+} = Function.dual(2, (value: number, scale: number): number =>
+  Math.max(INT16_MIN, Math.min(INT16_MAX, Math.round(value * scale))),
+)
 
 // NOTE: what a value reads back as after a trip through `fixed`. The room
 // compares quantized values, so a client's copy equals the room's exactly.
-export const quantize = (value: number, scale: number): number =>
-  fixedOf(value, scale) / scale
+export const quantize: {
+  (scale: number): (value: number) => number
+  (value: number, scale: number): number
+} = Function.dual(
+  2,
+  (value: number, scale: number): number => fixedOf(value, scale) / scale,
+)
 
 export const quantizePosition = (value: number): number =>
   quantize(value, POSITION_SCALE)
@@ -75,7 +87,7 @@ export const makeWriter = (capacity = 64): Writer => {
 
   const varint = (value: number): void => {
     if (!Number.isInteger(value) || value < 0 || value >= MAX_VARINT) {
-      throw new WireError({ reason: `Not a varint: ${value}` })
+      throw WireError.make({ reason: `Not a varint: ${value}` })
     }
     if (value < 128) {
       u8(value)
@@ -153,7 +165,7 @@ export const makeReader = (bytes: Uint8Array): Reader => {
 
   const take = (count: number): Uint8Array => {
     if (state.at + count > bytes.length) {
-      throw new WireError({ reason: 'Ran past the end' })
+      throw WireError.make({ reason: 'Ran past the end' })
     }
     const slice = bytes.subarray(state.at, state.at + count)
     state.at += count
@@ -163,7 +175,7 @@ export const makeReader = (bytes: Uint8Array): Reader => {
   const u8 = (): number => {
     const value = bytes[state.at]
     if (value === undefined) {
-      throw new WireError({ reason: 'Ran past the end' })
+      throw WireError.make({ reason: 'Ran past the end' })
     }
     state.at += 1
     return value
@@ -171,7 +183,7 @@ export const makeReader = (bytes: Uint8Array): Reader => {
 
   const varintFrom = (index: number, scale: number, total: number): number => {
     if (index >= VARINT_MAX_BYTES) {
-      throw new WireError({ reason: 'Varint too long' })
+      throw WireError.make({ reason: 'Varint too long' })
     }
     const byte = u8()
     const sum = total + (byte & 0x7f) * scale
@@ -190,7 +202,7 @@ export const makeReader = (bytes: Uint8Array): Reader => {
   const lengthOf = (maxLength: number) => {
     const length = varint()
     if (length > maxLength) {
-      throw new WireError({ reason: `Length ${length} over ${maxLength}` })
+      throw WireError.make({ reason: `Length ${length} over ${maxLength}` })
     }
     return length
   }
@@ -221,7 +233,7 @@ export const makeReader = (bytes: Uint8Array): Reader => {
       try {
         return decoder.decode(encoded)
       } catch {
-        throw new WireError({ reason: 'Not UTF-8' })
+        throw WireError.make({ reason: 'Not UTF-8' })
       }
     },
     remaining: () => bytes.length - state.at,
@@ -230,8 +242,12 @@ export const makeReader = (bytes: Uint8Array): Reader => {
 
 // NOTE: reads `count` items in order. `Array.makeBy` makes at least one
 // item, and a count read off the wire may be zero.
-export const repeat = <A>(count: number, make: () => A): ReadonlyArray<A> =>
-  globalThis.Array.from({ length: count }, make)
+export const repeat: {
+  <A>(make: () => A): (count: number) => ReadonlyArray<A>
+  <A>(count: number, make: () => A): ReadonlyArray<A>
+} = Function.dual(2, <A>(count: number, make: () => A): ReadonlyArray<A> =>
+  globalThis.Array.from({ length: count }, make),
+)
 
 // NOTE: writes a value and returns its bytes.
 export const writeAll = (write: (writer: Writer) => void): Uint8Array => {
@@ -240,26 +256,39 @@ export const writeAll = (write: (writer: Writer) => void): Uint8Array => {
   return writer.finish()
 }
 
+const isWireError = Schema.is(WireError)
+
 const asWireError = (error: unknown): WireError =>
-  error instanceof WireError ? error : new WireError({ reason: String(error) })
+  isWireError(error) ? error : WireError.make({ reason: String(error) })
 
 // NOTE: reads one value that must use every byte.
-export const readAll = <A>(
-  bytes: Uint8Array,
-  read: (reader: Reader) => A,
-): Result.Result<A, WireError> => {
-  try {
-    const reader = makeReader(bytes)
-    const value = read(reader)
-    return reader.remaining() === 0
-      ? Result.succeed(value)
-      : Result.fail(
-          new WireError({ reason: `${reader.remaining()} trailing bytes` }),
-        )
-  } catch (error) {
-    return Result.fail(asWireError(error))
-  }
-}
+export const readAll: {
+  <A>(
+    read: (reader: Reader) => A,
+  ): (bytes: Uint8Array) => Result.Result<A, WireError>
+  <A>(
+    bytes: Uint8Array,
+    read: (reader: Reader) => A,
+  ): Result.Result<A, WireError>
+} = Function.dual(
+  2,
+  <A>(
+    bytes: Uint8Array,
+    read: (reader: Reader) => A,
+  ): Result.Result<A, WireError> => {
+    try {
+      const reader = makeReader(bytes)
+      const value = read(reader)
+      return reader.remaining() === 0
+        ? Result.succeed(value)
+        : Result.fail(
+            WireError.make({ reason: `${reader.remaining()} trailing bytes` }),
+          )
+    } catch (error) {
+      return Result.fail(asWireError(error))
+    }
+  },
+)
 
 // NOTE: for a writer callback that may throw, such as a varint out of
 // range: the bytes, or the reason.

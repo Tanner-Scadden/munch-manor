@@ -6,18 +6,24 @@
 // the answer.
 
 import './globals'
+import { Option, String } from 'effect'
+
 import { answer } from './engine'
 import { encodeEngineError, requestOf } from './request'
 
 document.currentScript?.remove()
 
-const chromeVersion =
-  navigator.userAgent.match(/Chrome\/[\d.]+/)?.[0] ?? navigator.userAgent
+const chromeVersion = Option.getOrElse(
+  Option.flatMap(String.match(/Chrome\/[\d.]+/)(navigator.userAgent), found =>
+    Option.fromNullishOr(found[0]),
+  ),
+  () => navigator.userAgent,
+)
 
 const answered = (): string => {
   try {
     return answer(
-      `chrome ${chromeVersion.replace('Chrome/', '')} (V8)`,
+      `chrome ${String.replace('Chrome/', '')(chromeVersion)} (V8)`,
       requestOf(new URLSearchParams(location.search)),
     )
   } catch (error) {

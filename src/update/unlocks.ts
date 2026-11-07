@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../model'
@@ -36,9 +36,13 @@ export const markCallingsSeen = markSeen(callingUnlocksAt, id => !isLookId(id))
 
 // NOTE: an unlock the player picked: its NEW badge goes at once, whatever is
 // still open. It was marked seen when its surface opened.
-export const withoutFresh = (model: Model, id: string): Model =>
+export const withoutFresh: {
+  (id: string): (model: Model) => Model
+  (model: Model, id: string): Model
+} = Function.dual(2, (model: Model, id: string): Model =>
   Array.contains(model.freshUnlocks, id)
     ? modifyFields(model, {
         freshUnlocks: fresh => Array.filter(fresh, other => other !== id),
       })
-    : model
+    : model,
+)

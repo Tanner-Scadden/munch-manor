@@ -1,11 +1,12 @@
 import {
   Array,
-  Data,
   Effect,
   FileSystem,
+  Function,
   Option,
   Predicate,
   Result,
+  Schema,
   type Scope,
   pipe,
 } from 'effect'
@@ -24,7 +25,10 @@ import {
   turnFileKey,
 } from './decision'
 
-export class LockTaken extends Data.TaggedError('LockTaken')<{}> {}
+export class LockTaken extends Schema.TaggedError<
+  LockTaken,
+  { readonly brand: unique symbol }
+>()('LockTaken', {}) {}
 
 const hasErrorCode = (error: unknown, code: string): boolean =>
   Predicate.hasProperty(error, 'code') && error.code === code
@@ -40,6 +44,7 @@ export const isProcessAlive = (pid: number): boolean =>
     }),
   )
 
+/** @stability unstable */
 export const readTextIfPresent = (
   path: string,
 ): Effect.Effect<Option.Option<string>, PlatformError, FileSystem.FileSystem> =>
@@ -64,7 +69,7 @@ const createLock = (
     yield* fs.writeFileString(draft, encodeLockHolder(holder))
     yield* fs.link(draft, path).pipe(
       Effect.catchReason('PlatformError', 'AlreadyExists', () =>
-        Effect.fail(new LockTaken()),
+        Effect.fail(LockTaken.make({})),
       ),
       Effect.ensuring(Effect.ignore(fs.remove(draft, { force: true }))),
     )
@@ -72,45 +77,92 @@ const createLock = (
 
 // NOTE: removes the lock only while it still names this holder, so a
 // second release, or one after another guard took the file, does nothing.
-export const releaseLock = (
-  path: string,
-  holder: LockHolder,
-): Effect.Effect<void, never, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    const maybeText = yield* readTextIfPresent(path)
-    if (isSameHolder(maybeText, holder)) {
-      yield* fs.remove(path, { force: true })
-    }
-  }).pipe(Effect.ignore)
+/** @stability unstable */
+export const releaseLock: {
+  (
+    holder: LockHolder,
+  ): (path: string) => Effect.Effect<void, never, FileSystem.FileSystem>
+  (
+    path: string,
+    holder: LockHolder,
+  ): Effect.Effect<void, never, FileSystem.FileSystem>
+} = Function.dual(
+  2,
+  (
+    path: string,
+    holder: LockHolder,
+  ): Effect.Effect<void, never, FileSystem.FileSystem> =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const maybeText = yield* readTextIfPresent(path)
+      if (isSameHolder(maybeText, holder)) {
+        yield* fs.remove(path, { force: true })
+      }
+    }).pipe(Effect.ignore),
+)
 
 // NOTE: rewrites the holder in place, for a renewed lease, only while the
 // file still names this holder. The rename replaces it atomically.
-export const rewriteLock = (
-  path: string,
-  holder: LockHolder,
-): Effect.Effect<void, never, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    if (!isSameHolder(yield* readTextIfPresent(path), holder)) {
-      return
-    }
-    const draft = `${path}.${holder.pid}.draft`
-    yield* fs.writeFileString(draft, encodeLockHolder(holder))
-    yield* fs.rename(draft, path)
-  }).pipe(Effect.ignore)
+/** @stability unstable */
+export const rewriteLock: {
+  (
+    holder: LockHolder,
+  ): (path: string) => Effect.Effect<void, never, FileSystem.FileSystem>
+  (
+    path: string,
+    holder: LockHolder,
+  ): Effect.Effect<void, never, FileSystem.FileSystem>
+} = Function.dual(
+  2,
+  (
+    path: string,
+    holder: LockHolder,
+  ): Effect.Effect<void, never, FileSystem.FileSystem> =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const current = yield* readTextIfPresent(path)
+      if (!isSameHolder(current, holder)) {
+        return
+      }
+      const draft = `${path}.${holder.pid}.draft`
+      yield* fs.writeFileString(draft, encodeLockHolder(holder))
+      yield* fs.rename(draft, path)
+    }).pipe(Effect.ignore),
+)
 
-export const acquireLock = (
-  path: string,
-  holder: LockHolder,
-): Effect.Effect<
-  void,
-  LockTaken | PlatformError,
-  FileSystem.FileSystem | Scope.Scope
-> =>
-  Effect.acquireRelease(createLock(path, holder), () =>
-    releaseLock(path, holder),
-  )
+/** @stability unstable */
+export const acquireLock: {
+  (
+    holder: LockHolder,
+  ): (
+    path: string,
+  ) => Effect.Effect<
+    void,
+    LockTaken | PlatformError,
+    FileSystem.FileSystem | Scope.Scope
+  >
+  (
+    path: string,
+    holder: LockHolder,
+  ): Effect.Effect<
+    void,
+    LockTaken | PlatformError,
+    FileSystem.FileSystem | Scope.Scope
+  >
+} = Function.dual(
+  2,
+  (
+    path: string,
+    holder: LockHolder,
+  ): Effect.Effect<
+    void,
+    LockTaken | PlatformError,
+    FileSystem.FileSystem | Scope.Scope
+  > =>
+    Effect.acquireRelease(createLock(path, holder), () =>
+      releaseLock(path, holder),
+    ),
+)
 
 // NOTE: the lock is removed only when it still holds the text that was judged
 // stale, so a guard that took the lock in the meantime keeps it.
@@ -147,8 +199,14 @@ const SHARED_SLOT_FILE = /^shared-(\d+)\.lock$/
 const WAITER_FILE = /^(?:exclusive-)?waiting-\d+\.json$/
 const TEST_RUN_FILE = /^tests-\d+\.json$/
 
-export const sharedSlotPath = (directory: string, slot: number): string =>
-  `${directory}/shared-${slot}.lock`
+export const sharedSlotPath: {
+  (slot: number): (directory: string) => string
+  (directory: string, slot: number): string
+} = Function.dual(
+  2,
+  (directory: string, slot: number): string =>
+    `${directory}/shared-${slot}.lock`,
+)
 
 const waiterPath = (directory: string, holder: LockHolder): string =>
   holder.jobClass === 'Shared'
@@ -172,6 +230,7 @@ const listDirectory = (
       )
   })
 
+/** @stability unstable */
 export const ensureLockDirectory = (
   directory: string,
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
@@ -188,6 +247,7 @@ const slotNumberOf = (name: string): ReadonlyArray<number> =>
     Option.toArray,
   )
 
+/** @stability unstable */
 export const readSharedSlots = (
   directory: string,
 ): Effect.Effect<
@@ -219,9 +279,8 @@ const readMarkers = (
 > =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const names = Array.filter(yield* listDirectory(directory), name =>
-      pattern.test(name),
-    )
+    const listed = yield* listDirectory(directory)
+    const names = Array.filter(listed, name => pattern.test(name))
     const found = yield* Effect.forEach(names, name =>
       readTextIfPresent(`${directory}/${name}`).pipe(
         Effect.map(maybeText => ({
@@ -240,9 +299,11 @@ const readMarkers = (
     )
   })
 
+/** @stability unstable */
 export const readWaiters = (directory: string) =>
   readMarkers(directory, WAITER_FILE)
 
+/** @stability unstable */
 export const readTestRuns = (directory: string) =>
   readMarkers(directory, TEST_RUN_FILE)
 
@@ -268,25 +329,58 @@ const withMarker = <A, E, R>(
 
 // NOTE: marks the job as waiting until it holds its file, gives up, or is
 // stopped.
-export const whileWaiting = <A, E, R>(
-  directory: string,
-  holder: LockHolder,
-  wait: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E | PlatformError, R | FileSystem.FileSystem> =>
-  withMarker(waiterPath(directory, holder), holder, wait)
+/** @stability unstable */
+export const whileWaiting: {
+  <A, E, R>(
+    holder: LockHolder,
+    wait: Effect.Effect<A, E, R>,
+  ): (
+    directory: string,
+  ) => Effect.Effect<A, E | PlatformError, R | FileSystem.FileSystem>
+  <A, E, R>(
+    directory: string,
+    holder: LockHolder,
+    wait: Effect.Effect<A, E, R>,
+  ): Effect.Effect<A, E | PlatformError, R | FileSystem.FileSystem>
+} = Function.dual(
+  3,
+  <A, E, R>(
+    directory: string,
+    holder: LockHolder,
+    wait: Effect.Effect<A, E, R>,
+  ): Effect.Effect<A, E | PlatformError, R | FileSystem.FileSystem> =>
+    withMarker(waiterPath(directory, holder), holder, wait),
+)
 
 // NOTE: marks a test run for as long as `run` lasts, so other test runs and
 // guards count its cost.
-export const whileTesting = <A, E, R>(
-  directory: string,
-  holder: LockHolder,
-  run: Effect.Effect<A, E, R>,
-): Effect.Effect<A, E | PlatformError, R | FileSystem.FileSystem> =>
-  withMarker(testRunPath(directory, holder.pid), holder, run)
+/** @stability unstable */
+export const whileTesting: {
+  <A, E, R>(
+    holder: LockHolder,
+    run: Effect.Effect<A, E, R>,
+  ): (
+    directory: string,
+  ) => Effect.Effect<A, E | PlatformError, R | FileSystem.FileSystem>
+  <A, E, R>(
+    directory: string,
+    holder: LockHolder,
+    run: Effect.Effect<A, E, R>,
+  ): Effect.Effect<A, E | PlatformError, R | FileSystem.FileSystem>
+} = Function.dual(
+  3,
+  <A, E, R>(
+    directory: string,
+    holder: LockHolder,
+    run: Effect.Effect<A, E, R>,
+  ): Effect.Effect<A, E | PlatformError, R | FileSystem.FileSystem> =>
+    withMarker(testRunPath(directory, holder.pid), holder, run),
+)
 
 // NOTE: clears a lock or slot file only while it still reads as stale or
 // corrupt, and only that same text, so a live job that took it in the
 // meantime keeps it.
+/** @stability unstable */
 export const clearIfNotHeld = (
   path: string,
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
@@ -304,18 +398,31 @@ const heldTurnPath = (directory: string, cwd: string): string =>
 
 // NOTE: written to a draft and renamed into place, so a reader never sees
 // half of it. A lost write only costs one turn of round robin.
-export const recordTurn = (
-  directory: string,
-  turn: HeldTurn,
-): Effect.Effect<void, never, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    const path = heldTurnPath(directory, turn.cwd)
-    const draft = `${path}.${process.pid}.draft`
-    yield* fs.writeFileString(draft, encodeHeldTurn(turn))
-    yield* fs.rename(draft, path)
-  }).pipe(Effect.ignore)
+/** @stability unstable */
+export const recordTurn: {
+  (
+    turn: HeldTurn,
+  ): (directory: string) => Effect.Effect<void, never, FileSystem.FileSystem>
+  (
+    directory: string,
+    turn: HeldTurn,
+  ): Effect.Effect<void, never, FileSystem.FileSystem>
+} = Function.dual(
+  2,
+  (
+    directory: string,
+    turn: HeldTurn,
+  ): Effect.Effect<void, never, FileSystem.FileSystem> =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const path = heldTurnPath(directory, turn.cwd)
+      const draft = `${path}.${process.pid}.draft`
+      yield* fs.writeFileString(draft, encodeHeldTurn(turn))
+      yield* fs.rename(draft, path)
+    }).pipe(Effect.ignore),
+)
 
+/** @stability unstable */
 export const readTurns = (
   directory: string,
 ): Effect.Effect<
@@ -324,9 +431,8 @@ export const readTurns = (
   FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
-    const names = Array.filter(yield* listDirectory(directory), name =>
-      HELD_TURN_FILE.test(name),
-    )
+    const listed = yield* listDirectory(directory)
+    const names = Array.filter(listed, name => HELD_TURN_FILE.test(name))
     const texts = yield* Effect.forEach(names, name =>
       readTextIfPresent(`${directory}/${name}`),
     )

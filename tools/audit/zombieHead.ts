@@ -1,3 +1,4 @@
+import { Array, String } from 'effect'
 // The app icon's art: the palette and the big Groaner head, mid-chomp.
 // icons.ts draws the icons and the loading splash from it, og.ts the link
 // card, and the video tool's end card (harness/cards.ts) chomps with it.
@@ -79,28 +80,29 @@ const BIG_HEAD_PATCHES: ReadonlyArray<Patch> = [
 
 const mirrorRow = (row: string): string =>
   row +
-  Array.from(row)
-    .reverse()
-    .map(cell => (cell === 'l' ? 'd' : cell))
-    .join('')
+  Array.join(
+    Array.map(globalThis.Array.from(row).reverse(), cell =>
+      cell === 'l' ? 'd' : cell,
+    ),
+    '',
+  )
 
 const applyPatches = (
   rows: ReadonlyArray<string>,
   patches: ReadonlyArray<Patch>,
 ): ReadonlyArray<string> =>
-  rows.map((row, y) =>
-    patches
-      .filter(patch => patch.y === y)
-      .reduce(
-        (line, patch) =>
-          line.slice(0, patch.x) +
-          patch.row +
-          line.slice(patch.x + patch.row.length),
-        row,
-      ),
+  Array.map(rows, (row, y) =>
+    Array.reduce(
+      Array.filter(patches, patch => patch.y === y),
+      row,
+      (line, patch) =>
+        String.slice(0, patch.x)(line) +
+        patch.row +
+        String.slice(patch.x + patch.row.length)(line),
+    ),
   )
 
 export const BIG_HEAD: ReadonlyArray<string> = applyPatches(
-  BIG_HEAD_LEFT.map(mirrorRow),
+  Array.map(BIG_HEAD_LEFT, mirrorRow),
   BIG_HEAD_PATCHES,
 )

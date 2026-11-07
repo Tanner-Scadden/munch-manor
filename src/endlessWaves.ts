@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 
 import { DOOR_IDS, PARLOUR } from './arena'
 import {
@@ -331,38 +331,66 @@ export type RolledWave = Readonly<{
 
 // NOTE: doors are the level's spawn doors as the wave is rolled. They are
 // the parlour's four until the kitchen is open.
-export const rollWave = (
-  state: number,
-  wave: number,
-  doors: ReadonlyArray<DoorId> = PARLOUR.doorIds,
-): Seeded<RolledWave> => {
-  const levelDoors = Array.match(doors, {
-    onEmpty: () => PARLOUR_DOORS,
-    onNonEmpty: nonEmpty => nonEmpty,
-  })
-  const [planState, plan] = rollPlan(state, wave, levelDoors)
-  const [nextState, groups] = Array.mapAccum(
-    plan.groups,
-    planState,
-    rollGroup(plan, levelDoors),
-  )
-  return [
-    nextState,
-    {
-      spawns: Array.sort(Array.flatten(groups), bySpawnTime),
-      holds: Array.sort(plan.holds, byHoldTime),
-    },
-  ]
-}
+export const rollWave: {
+  (
+    wave: number,
+    doors?: ReadonlyArray<DoorId>,
+  ): (state: number) => Seeded<RolledWave>
+  (
+    state: number,
+    wave: number,
+    doors?: ReadonlyArray<DoorId>,
+  ): Seeded<RolledWave>
+} = Function.dual(
+  // NOTE: data-first has the wave second; data-last has the doors there or nothing.
+  (args: IArguments): boolean => typeof args[1] === 'number',
+  (
+    state: number,
+    wave: number,
+    doors: ReadonlyArray<DoorId> = PARLOUR.doorIds,
+  ): Seeded<RolledWave> => {
+    const levelDoors = Array.match(doors, {
+      onEmpty: () => PARLOUR_DOORS,
+      onNonEmpty: nonEmpty => nonEmpty,
+    })
+    const [planState, plan] = rollPlan(state, wave, levelDoors)
+    const [nextState, groups] = Array.mapAccum(
+      plan.groups,
+      planState,
+      rollGroup(plan, levelDoors),
+    )
+    return [
+      nextState,
+      {
+        spawns: Array.sort(Array.flatten(groups), bySpawnTime),
+        holds: Array.sort(plan.holds, byHoldTime),
+      },
+    ]
+  },
+)
 
-export const rollSpawns = (
-  state: number,
-  wave: number,
-  doors: ReadonlyArray<DoorId> = PARLOUR.doorIds,
-): Seeded<ReadonlyArray<PlannedSpawn>> => {
-  const [nextState, rolled] = rollWave(state, wave, doors)
-  return [nextState, rolled.spawns]
-}
+export const rollSpawns: {
+  (
+    wave: number,
+    doors?: ReadonlyArray<DoorId>,
+  ): (state: number) => Seeded<ReadonlyArray<PlannedSpawn>>
+  (
+    state: number,
+    wave: number,
+    doors?: ReadonlyArray<DoorId>,
+  ): Seeded<ReadonlyArray<PlannedSpawn>>
+} = Function.dual(
+  // NOTE: data-first has the wave second; data-last has the doors there or nothing.
+  (args: IArguments): boolean => typeof args[1] === 'number',
+  (
+    state: number,
+    wave: number,
+    doors: ReadonlyArray<DoorId> = PARLOUR.doorIds,
+  ): Seeded<ReadonlyArray<PlannedSpawn>> => {
+    const [nextState, rolled] = rollWave(state, wave, doors)
+    return [nextState, rolled.spawns]
+  },
+)
 
 export type KindCount = Readonly<{ kind: ZombieKind; count: number }>
 
@@ -387,21 +415,42 @@ export const floorCounts = (
 ): ReadonlyArray<KindCount> =>
   kindCounts(Array.filter(spawns, spawn => !isThroughDoor(spawn)))
 
-export const doorCounts = (
-  plannedSpawns: ReadonlyArray<PlannedSpawn>,
-  traps: ReadonlyArray<Trap>,
-  doors: ReadonlyArray<DoorId> = DOOR_IDS,
-): ReadonlyArray<DoorCount> => {
-  const spawns = routeSpawns(plannedSpawns, traps, [], doors)
-  return Array.filterMap(DOOR_IDS, door => {
-    const atDoor = Array.filter(
-      spawns,
-      spawn => isThroughDoor(spawn) && spawn.door === door,
-    )
-    return Array.match(kindCounts(atDoor), {
-      onEmpty: () => Result.failVoid,
-      onNonEmpty: kinds =>
-        Result.succeed({ door, count: atDoor.length, kinds }),
+// NOTE: both forms start with an array. Three arguments are data-first;
+// two are data-first unless the second is a list of doors (strings), as
+// traps are objects.
+const isSpawnsFirst = (args: IArguments): boolean =>
+  args.length >= 3 ||
+  (args.length === 2 &&
+    !(Array.isArray(args[1]) && typeof args[1][0] === 'string'))
+
+export const doorCounts: {
+  (
+    traps: ReadonlyArray<Trap>,
+    doors?: ReadonlyArray<DoorId>,
+  ): (plannedSpawns: ReadonlyArray<PlannedSpawn>) => ReadonlyArray<DoorCount>
+  (
+    plannedSpawns: ReadonlyArray<PlannedSpawn>,
+    traps: ReadonlyArray<Trap>,
+    doors?: ReadonlyArray<DoorId>,
+  ): ReadonlyArray<DoorCount>
+} = Function.dual(
+  isSpawnsFirst,
+  (
+    plannedSpawns: ReadonlyArray<PlannedSpawn>,
+    traps: ReadonlyArray<Trap>,
+    doors: ReadonlyArray<DoorId> = DOOR_IDS,
+  ): ReadonlyArray<DoorCount> => {
+    const spawns = routeSpawns(plannedSpawns, traps, [], doors)
+    return Array.filterMap(DOOR_IDS, door => {
+      const atDoor = Array.filter(
+        spawns,
+        spawn => isThroughDoor(spawn) && spawn.door === door,
+      )
+      return Array.match(kindCounts(atDoor), {
+        onEmpty: () => Result.failVoid,
+        onNonEmpty: kinds =>
+          Result.succeed({ door, count: atDoor.length, kinds }),
+      })
     })
-  })
-}
+  },
+)

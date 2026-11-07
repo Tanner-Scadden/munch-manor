@@ -1,4 +1,4 @@
-import { Array, Option, Result, Schema, pipe } from 'effect'
+import { Array, Function, Option, Result, Schema, pipe } from 'effect'
 
 import {
   type Reader,
@@ -95,15 +95,18 @@ export const SERVER_VERSIONS: VersionRange = {
   maxVersion: PROTOCOL_VERSION,
 }
 
-export const negotiateVersion = (
-  client: VersionRange,
-  server: VersionRange,
-): Option.Option<number> => {
-  const newest = Math.min(client.maxVersion, server.maxVersion)
-  return newest >= Math.max(client.minVersion, server.minVersion)
-    ? Option.some(newest)
-    : Option.none()
-}
+export const negotiateVersion: {
+  (server: VersionRange): (client: VersionRange) => Option.Option<number>
+  (client: VersionRange, server: VersionRange): Option.Option<number>
+} = Function.dual(
+  2,
+  (client: VersionRange, server: VersionRange): Option.Option<number> => {
+    const newest = Math.min(client.maxVersion, server.maxVersion)
+    return newest >= Math.max(client.minVersion, server.minVersion)
+      ? Option.some(newest)
+      : Option.none()
+  },
+)
 
 // LIMITS
 
@@ -153,13 +156,19 @@ export const NEUTRAL_INPUT: PlayerInput = {
   action: 0,
 }
 
-export const inputsEqual = (a: PlayerInput, b: PlayerInput): boolean =>
-  a.moveX === b.moveX &&
-  a.moveY === b.moveY &&
-  a.aimX === b.aimX &&
-  a.aimY === b.aimY &&
-  a.buttons === b.buttons &&
-  a.action === b.action
+export const inputsEqual: {
+  (b: PlayerInput): (a: PlayerInput) => boolean
+  (a: PlayerInput, b: PlayerInput): boolean
+} = Function.dual(
+  2,
+  (a: PlayerInput, b: PlayerInput): boolean =>
+    a.moveX === b.moveX &&
+    a.moveY === b.moveY &&
+    a.aimX === b.aimX &&
+    a.aimY === b.aimY &&
+    a.buttons === b.buttons &&
+    a.action === b.action,
+)
 
 // NOTE: a move vector longer than 1 is scaled back onto the unit circle,
 // so a hand-made input never walks faster than a stick.
@@ -303,7 +312,7 @@ const indexOf = <A extends string>(list: ReadonlyArray<A>, value: A): number =>
 const pick = <A extends string>(list: ReadonlyArray<A>, index: number): A => {
   const value = list[index - 1]
   if (value === undefined) {
-    throw new WireError({ reason: `Unknown tag ${index}` })
+    throw WireError.make({ reason: `Unknown tag ${index}` })
   }
   return value
 }
@@ -409,7 +418,7 @@ const CLIENT_READERS: {
     const rttMs = reader.varint()
     const count = reader.varint()
     if (count > MAX_SAMPLES_PER_INPUT) {
-      throw new WireError({ reason: `${count} samples` })
+      throw WireError.make({ reason: `${count} samples` })
     }
     return {
       _tag: 'Input',
@@ -445,13 +454,12 @@ export const decodeClientFrame = (
   bytes: Uint8Array,
 ): Result.Result<ClientFrame, WireError> =>
   bytes.length > MAX_CLIENT_FRAME_BYTES
-    ? Result.fail(new WireError({ reason: `${bytes.length} bytes` }))
+    ? Result.fail(WireError.make({ reason: `${bytes.length} bytes` }))
     : pipe(
         readAll(bytes, readClientFrame),
         Result.flatMap(raw =>
-          Result.mapError(
-            decodeClientSchema(raw),
-            error => new WireError({ reason: error.message }),
+          Result.mapError(decodeClientSchema(raw), error =>
+            WireError.make({ reason: error.message }),
           ),
         ),
       )
@@ -527,12 +535,12 @@ const SERVER_READERS: {
     const tick = reader.varint()
     const back = reader.varint()
     if (back > tick) {
-      throw new WireError({ reason: 'Delta base before tick 0' })
+      throw WireError.make({ reason: 'Delta base before tick 0' })
     }
     const ack = reader.varint()
     const pingCount = reader.varint()
     if (pingCount > MAX_SLOTS) {
-      throw new WireError({ reason: `${pingCount} pings` })
+      throw WireError.make({ reason: `${pingCount} pings` })
     }
     const pings = repeat(pingCount, () => ({
       slot: reader.u8(),
@@ -572,10 +580,16 @@ export const decodeServerFrame = (
   bytes: Uint8Array,
 ): Result.Result<ServerFrame, WireError> =>
   bytes.length > MAX_WORLD_BYTES + 64
-    ? Result.fail(new WireError({ reason: `${bytes.length} bytes` }))
+    ? Result.fail(WireError.make({ reason: `${bytes.length} bytes` }))
     : readAll(bytes, readServerFrame)
 
 // NOTE: a WebSocket frame adds 2 bytes of header under 126 bytes of
 // payload and 4 up to 64 KB. A client's frames are masked, 4 bytes more.
-export const webSocketBytes = (payload: number, masked: boolean): number =>
-  payload + (payload < 126 ? 2 : 4) + (masked ? 4 : 0)
+export const webSocketBytes: {
+  (masked: boolean): (payload: number) => number
+  (payload: number, masked: boolean): number
+} = Function.dual(
+  2,
+  (payload: number, masked: boolean): number =>
+    payload + (payload < 126 ? 2 : 4) + (masked ? 4 : 0),
+)

@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import {
@@ -28,23 +28,25 @@ import { callingUnlockId } from './unlocks'
 
 type ButtonAttributes<Message> = Parameters<HtmlBuilder<Message>['button']>[0]
 
-export type CardsInput<Message> = Readonly<{
-  look: Appearance
-  chosen: Calling
-  rank: number
+// NOTE: an object type, not Readonly<...>, so the pipeable check matches the
+// view's two signatures.
+export type CardsInput<Message> = {
+  readonly look: Appearance
+  readonly chosen: Calling
+  readonly rank: number
   // NOTE: the heroes bought (the save's bought ids), and the one for sale
   // being tried on.
-  bought: SavedBoughtCosmetics
-  maybeTrying: Option.Option<Calling>
+  readonly bought: SavedBoughtCosmetics
+  readonly maybeTrying: Option.Option<Calling>
   // NOTE: the unlock ids that wear a NEW badge (src/unlocks.ts).
-  fresh: ReadonlyArray<string>
+  readonly fresh: ReadonlyArray<string>
   // NOTE: what the caller adds to a card: its click, and the initial focus
   // on the chosen one.
-  attributesOf: (
+  readonly attributesOf: (
     calling: Calling,
     isChosen: boolean,
   ) => ButtonAttributes<Message>
-}>
+}
 
 const specialView = <Message>(
   special: Special,
@@ -152,21 +154,24 @@ const cardView = <Message>(
   )
 }
 
-export const callingCardsView = <Message>(
-  input: CardsInput<Message>,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.div(
-    [h.Class('calling-cards')],
-    Array.map(CALLINGS, calling => cardView(input, calling, h)),
-  )
+export const callingCardsView: {
+  <Message>(h: HtmlBuilder<Message>): (input: CardsInput<Message>) => Html
+  <Message>(input: CardsInput<Message>, h: HtmlBuilder<Message>): Html
+} = Function.dual(
+  2,
+  <Message>(input: CardsInput<Message>, h: HtmlBuilder<Message>): Html =>
+    h.div(
+      [h.Class('calling-cards')],
+      Array.map(CALLINGS, calling => cardView(input, calling, h)),
+    ),
+)
 
 // NOTE: the player's Bones by the title, so a price has its context. Shared
 // by the home menu's picker and co-op's lobby picker.
-export const callingBalanceView = <Message>(
-  bones: number,
-  h: HtmlBuilder<Message>,
-): Html =>
+export const callingBalanceView: {
+  <Message>(h: HtmlBuilder<Message>): (bones: number) => Html
+  <Message>(bones: number, h: HtmlBuilder<Message>): Html
+} = Function.dual(2, <Message>(bones: number, h: HtmlBuilder<Message>): Html =>
   h.div(
     [
       h.Class('calling-balance'),
@@ -174,42 +179,56 @@ export const callingBalanceView = <Message>(
       h.AriaLabel(`${bones} Bones`),
     ],
     [boneCountView(bones, 'calling-balance-count', h)],
-  )
+  ),
+)
 
 // NOTE: the BUY button: a bright gold arcade button when the Bones cover
 // the hero, dim and red with how many more it needs when they do not. The
 // caller says what a tap sends.
-export const callingBuyView = <Message>(
-  input: Readonly<{ calling: Calling; bones: number; onBuy: Message }>,
-  h: HtmlBuilder<Message>,
-): Html => {
-  const price = Option.getOrElse(callingPriceOf(input.calling), () => 0)
-  const lacking = Math.max(0, price - input.bones)
-  return h.button(
-    [
-      h.Type('button'),
-      h.Key('calling-buy'),
-      h.Class('calling-buy'),
-      h.AriaLabel(
-        lacking > 0
-          ? `Buy for ${price} Bones, too few`
-          : `Buy for ${price} Bones`,
-      ),
-      ...(lacking > 0
-        ? [h.Disabled(true), h.DataAttribute('short', 'true')]
-        : [h.OnClick(input.onBuy)]),
-    ],
-    [
-      h.span([h.Class('calling-buy-word'), h.AriaHidden(true)], ['BUY']),
-      boneCountView(price, 'calling-buy-price', h),
-      ...(lacking > 0
-        ? [
-            h.span(
-              [h.Class('calling-buy-need'), h.AriaHidden(true)],
-              [`NEED ${lacking} MORE`],
-            ),
-          ]
-        : []),
-    ],
-  )
-}
+export const callingBuyView: {
+  <Message>(
+    h: HtmlBuilder<Message>,
+  ): (
+    input: Readonly<{ calling: Calling; bones: number; onBuy: Message }>,
+  ) => Html
+  <Message>(
+    input: Readonly<{ calling: Calling; bones: number; onBuy: Message }>,
+    h: HtmlBuilder<Message>,
+  ): Html
+} = Function.dual(
+  2,
+  <Message>(
+    input: Readonly<{ calling: Calling; bones: number; onBuy: Message }>,
+    h: HtmlBuilder<Message>,
+  ): Html => {
+    const price = Option.getOrElse(callingPriceOf(input.calling), () => 0)
+    const lacking = Math.max(0, price - input.bones)
+    return h.button(
+      [
+        h.Type('button'),
+        h.Key('calling-buy'),
+        h.Class('calling-buy'),
+        h.AriaLabel(
+          lacking > 0
+            ? `Buy for ${price} Bones, too few`
+            : `Buy for ${price} Bones`,
+        ),
+        ...(lacking > 0
+          ? [h.Disabled(true), h.DataAttribute('short', 'true')]
+          : [h.OnClick(input.onBuy)]),
+      ],
+      [
+        h.span([h.Class('calling-buy-word'), h.AriaHidden(true)], ['BUY']),
+        boneCountView(price, 'calling-buy-price', h),
+        ...(lacking > 0
+          ? [
+              h.span(
+                [h.Class('calling-buy-need'), h.AriaHidden(true)],
+                [`NEED ${lacking} MORE`],
+              ),
+            ]
+          : []),
+      ],
+    )
+  },
+)

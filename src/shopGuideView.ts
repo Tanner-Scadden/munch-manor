@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { ShopGuideSection } from './clientSchema'
@@ -230,33 +230,48 @@ const sectionButtonView = (
   )
 
 // NOTE: the whole guide: the section buttons over the chosen section's cards.
-export const shopGuideView = (
-  seenUnlocks: ReadonlyArray<string>,
-  section: ShopGuideSection,
-  sectionMessage: (section: ShopGuideSection) => MessageType,
-  h: ApplicationViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('sg'), h.AriaLabel(`${SHOP_GUIDE_NAME} guide`)],
-    [
-      h.ul(
-        [h.Class('sg-sections'), h.AriaLabel('Shop guide sections')],
-        Array.map(SECTION_ORDER, other =>
-          sectionButtonView(other, section, sectionMessage, h),
+export const shopGuideView: {
+  (
+    section: ShopGuideSection,
+    sectionMessage: (section: ShopGuideSection) => MessageType,
+    h: ApplicationViewBuilder,
+  ): (seenUnlocks: ReadonlyArray<string>) => Html
+  (
+    seenUnlocks: ReadonlyArray<string>,
+    section: ShopGuideSection,
+    sectionMessage: (section: ShopGuideSection) => MessageType,
+    h: ApplicationViewBuilder,
+  ): Html
+} = Function.dual(
+  4,
+  (
+    seenUnlocks: ReadonlyArray<string>,
+    section: ShopGuideSection,
+    sectionMessage: (section: ShopGuideSection) => MessageType,
+    h: ApplicationViewBuilder,
+  ): Html =>
+    h.div(
+      [h.Class('sg'), h.AriaLabel(`${SHOP_GUIDE_NAME} guide`)],
+      [
+        h.ul(
+          [h.Class('sg-sections'), h.AriaLabel('Shop guide sections')],
+          Array.map(SECTION_ORDER, other =>
+            sectionButtonView(other, section, sectionMessage, h),
+          ),
         ),
-      ),
-      h.ul(
-        [
-          h.Class('sg-entries'),
-          h.DataAttribute('section', section),
-          h.AriaLabel(sectionName(section)),
-        ],
-        Array.map(entriesOf(section), entry =>
-          entryView(entry, seenUnlocks, h),
+        h.ul(
+          [
+            h.Class('sg-entries'),
+            h.DataAttribute('section', section),
+            h.AriaLabel(sectionName(section)),
+          ],
+          Array.map(entriesOf(section), entry =>
+            entryView(entry, seenUnlocks, h),
+          ),
         ),
-      ),
-    ],
-  )
+      ],
+    ),
+)
 
 // IN RATTLES' SHOP
 
@@ -275,32 +290,45 @@ export const shopHelpButtonView = (h: ApplicationViewBuilder): Html =>
     ['?'],
   )
 
-export const shopGuideDialogView = (
-  seenUnlocks: ReadonlyArray<string>,
-  section: ShopGuideSection,
-  h: ApplicationViewBuilder,
-): Html =>
-  h.div(
-    [h.Class('sg-shop')],
-    [
-      backButtonView(
-        {
-          attributes: [
-            h.Id(SHOP_GUIDE_BACK_ID),
-            h.OnClick(Message.ClickedShopGuideBackButton(), {
-              propagation: 'Stop',
-            }),
-          ],
-          className: 'sg-back',
-          label: 'Back to the shop',
-        },
-        h,
-      ),
-      shopGuideView(
-        seenUnlocks,
-        section,
-        next => Message.ClickedShopGuideSectionButton({ section: next }),
-        h,
-      ),
-    ],
-  )
+export const shopGuideDialogView: {
+  (
+    section: ShopGuideSection,
+    h: ApplicationViewBuilder,
+  ): (seenUnlocks: ReadonlyArray<string>) => Html
+  (
+    seenUnlocks: ReadonlyArray<string>,
+    section: ShopGuideSection,
+    h: ApplicationViewBuilder,
+  ): Html
+} = Function.dual(
+  3,
+  (
+    seenUnlocks: ReadonlyArray<string>,
+    section: ShopGuideSection,
+    h: ApplicationViewBuilder,
+  ): Html =>
+    h.div(
+      [h.Class('sg-shop')],
+      [
+        backButtonView(
+          {
+            attributes: [
+              h.Id(SHOP_GUIDE_BACK_ID),
+              h.OnClick(Message.ClickedShopGuideBackButton(), {
+                propagation: 'Stop',
+              }),
+            ],
+            className: 'sg-back',
+            label: 'Back to the shop',
+          },
+          h,
+        ),
+        shopGuideView(
+          seenUnlocks,
+          section,
+          next => Message.ClickedShopGuideSectionButton({ section: next }),
+          h,
+        ),
+      ],
+    ),
+)

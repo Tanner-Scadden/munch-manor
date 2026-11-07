@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from './composition'
@@ -299,27 +299,41 @@ const backActionsView = (
     ],
   )
 
-export const munchopediaBodyView = (
-  model: Model,
-  doneButton: Html,
-  h: ApplicationViewBuilder,
-): ReadonlyArray<Html> =>
-  MunchopediaPage.match(model.home.munchopediaPage, {
-    List: () => [
-      listView(model, h),
-      h.div([h.Class('panel-actions')], [doneButton]),
-    ],
-    Shop: ({ section }) => [
-      shopGuideView(
-        model.seenUnlocks,
-        section,
-        next => Message.ClickedMunchopediaShopSectionButton({ section: next }),
-        h,
-      ),
-      backActionsView(doneButton, 'Back to the Munchopedia', h),
-    ],
-    Entry: ({ kind }) => [
-      entryView(model, kind, h),
-      backActionsView(doneButton, 'Back to every zombie', h),
-    ],
-  })
+export const munchopediaBodyView: {
+  (
+    doneButton: Html,
+    h: ApplicationViewBuilder,
+  ): (model: Model) => ReadonlyArray<Html>
+  (
+    model: Model,
+    doneButton: Html,
+    h: ApplicationViewBuilder,
+  ): ReadonlyArray<Html>
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    doneButton: Html,
+    h: ApplicationViewBuilder,
+  ): ReadonlyArray<Html> =>
+    MunchopediaPage.match(model.home.munchopediaPage, {
+      List: () => [
+        listView(model, h),
+        h.div([h.Class('panel-actions')], [doneButton]),
+      ],
+      Shop: ({ section }) => [
+        shopGuideView(
+          model.seenUnlocks,
+          section,
+          next =>
+            Message.ClickedMunchopediaShopSectionButton({ section: next }),
+          h,
+        ),
+        backActionsView(doneButton, 'Back to the Munchopedia', h),
+      ],
+      Entry: ({ kind }) => [
+        entryView(model, kind, h),
+        backActionsView(doneButton, 'Back to every zombie', h),
+      ],
+    }),
+)

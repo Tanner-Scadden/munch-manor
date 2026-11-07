@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { isInArc, maybeNearest, payStriker, strikeInMelee } from './melee'
@@ -90,7 +90,7 @@ const stab = (world: World, slot: PlayerSlot): World => {
       Option.match(outcome, {
         onNone: () => zombies,
         onSome: hit =>
-          zombies.map(zombie =>
+          Array.map(zombies, zombie =>
             zombie.id === hit.zombie.id ? hit.zombie : zombie,
           ),
       }),
@@ -107,17 +107,19 @@ const stab = (world: World, slot: PlayerSlot): World => {
 
 // NOTE: one tick of the knife for the seat at `slot`: in hand, the held
 // trigger stabs. It rests while that player browses the shop.
-export const stabWithKnife = (
-  world: World,
-  slot: PlayerSlot,
-  deltaMs: number,
-): World => {
-  const cooled = coolKnife(world, slot, deltaMs)
-  const { player, intent, shop } = seatStateAt(cooled, slot)
-  return isWieldingKnife(player) &&
-    intent.trigger === 'Held' &&
-    player.knifeCooldownMs <= 0 &&
-    !ShopState.isAnyOf(['Browsing'])(shop)
-    ? stab(cooled, slot)
-    : cooled
-}
+export const stabWithKnife: {
+  (slot: PlayerSlot, deltaMs: number): (world: World) => World
+  (world: World, slot: PlayerSlot, deltaMs: number): World
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, deltaMs: number): World => {
+    const cooled = coolKnife(world, slot, deltaMs)
+    const { player, intent, shop } = seatStateAt(cooled, slot)
+    return isWieldingKnife(player) &&
+      intent.trigger === 'Held' &&
+      player.knifeCooldownMs <= 0 &&
+      !ShopState.isAnyOf(['Browsing'])(shop)
+      ? stab(cooled, slot)
+      : cooled
+  },
+)

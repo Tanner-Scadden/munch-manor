@@ -1,4 +1,4 @@
-import { Data, Duration, Effect, Option, pipe } from 'effect'
+import { Duration, Effect, Option, Schema, pipe } from 'effect'
 
 import { describeError } from './describeError'
 import { DEV_BUILD } from './version'
@@ -25,9 +25,12 @@ const SKIP_WAITING = 'SkipWaiting'
 const INSTALL_TIMEOUT = Duration.seconds(15)
 const TAKE_OVER_TIMEOUT = Duration.seconds(5)
 
-export class ServiceWorkerError extends Data.TaggedError('ServiceWorkerError')<{
-  readonly reason: string
-}> {}
+export class ServiceWorkerError extends Schema.TaggedError<
+  ServiceWorkerError,
+  { readonly brand: unique symbol }
+>()('ServiceWorkerError', {
+  reason: Schema.String,
+}) {}
 
 // NOTE: Safari's private mode, an insecure origin, and an itch.io iframe can
 // all lack the container or refuse to register. Either is only a failure.
@@ -36,7 +39,7 @@ const container: Effect.Effect<ServiceWorkerContainer, ServiceWorkerError> =
     'serviceWorker' in navigator
       ? Effect.succeed(navigator.serviceWorker)
       : Effect.fail(
-          new ServiceWorkerError({ reason: 'no service worker support' }),
+          ServiceWorkerError.make({ reason: 'no service worker support' }),
         ),
   )
 
@@ -45,7 +48,7 @@ const attempt = <A>(
 ): Effect.Effect<A, ServiceWorkerError> =>
   Effect.tryPromise({
     try: try_,
-    catch: error => new ServiceWorkerError({ reason: describeError(error) }),
+    catch: error => ServiceWorkerError.make({ reason: describeError(error) }),
   })
 
 const maybeRegistration: Effect.Effect<
@@ -108,7 +111,7 @@ const awaitInstalled = (
     Effect.timeoutOrElse({
       duration: INSTALL_TIMEOUT,
       orElse: () =>
-        Effect.fail(new ServiceWorkerError({ reason: 'install timed out' })),
+        Effect.fail(ServiceWorkerError.make({ reason: 'install timed out' })),
     }),
   )
 
@@ -144,7 +147,7 @@ const takeOver = (
     Effect.timeoutOrElse({
       duration: TAKE_OVER_TIMEOUT,
       orElse: () =>
-        Effect.fail(new ServiceWorkerError({ reason: 'take over timed out' })),
+        Effect.fail(ServiceWorkerError.make({ reason: 'take over timed out' })),
     }),
   )
 

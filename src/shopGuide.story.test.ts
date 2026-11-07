@@ -190,8 +190,8 @@ describe('what the entries read', () => {
 
   test('a gun lists every upgrade tier as a step with its table price', () => {
     const ladder = entry('Guns', 'Shotgun').ladder
-    expect(ladder.map(step => step.price)).toEqual(
-      UPGRADE_TIERS.Shotgun.map(tier => tier.price),
+    expect(Array.map(ladder, step => step.price)).toEqual(
+      Array.map(UPGRADE_TIERS.Shotgun, tier => tier.price),
     )
   })
 
@@ -257,7 +257,7 @@ describe('the fridge prizes', () => {
       ...ticks(2, SHOP_FRAME_MS),
       model(({ seenUnlocks }) => {
         expect(
-          seenUnlocks.filter(id => id === prizeUnlockId('Freeze')),
+          Array.filter(seenUnlocks, id => id === prizeUnlockId('Freeze')),
         ).toHaveLength(1)
         expect(seenUnlocks).not.toContain(prizeUnlockId('Cooker'))
       }),

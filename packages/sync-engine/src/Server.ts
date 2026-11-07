@@ -1,9 +1,10 @@
 import {
   Array,
   Clock,
-  Data,
   Effect,
+  Function,
   Option,
+  Record,
   Result,
   Schema,
   pipe,
@@ -56,6 +57,7 @@ export const DEFAULT_LOG_TAIL = 500
 export const DEFAULT_SNAPSHOT_AFTER = 200
 export const DEFAULT_APPLIED_IDS_KEPT = 20_000
 
+/** @stability unstable */
 export interface ScopeServerOptions {
   readonly definition: ScopeDefinition
   readonly scope: string
@@ -64,15 +66,18 @@ export interface ScopeServerOptions {
   readonly appliedIdsKept?: number | undefined
 }
 
-export class ScopeServerError extends Data.TaggedError('ScopeServerError')<{
-  readonly reason: string
-}> {}
+export class ScopeServerError extends Schema.TaggedError<
+  ScopeServerError,
+  { readonly brand: unique symbol }
+>()('ScopeServerError', {
+  reason: Schema.String,
+}) {}
 
 // OUTCOMES
 
 export const Outcome = Schema.TaggedUnion({
   Applied: { delta: Delta },
-  Duplicate: { id: Schema.String, seq: Schema.Number },
+  Duplicate: { id: Schema.String, seq: Schema.Finite },
   Refused: { id: Schema.String, code: RejectCode, reason: Schema.String },
 })
 export type Outcome = typeof Outcome.Type
@@ -87,6 +92,7 @@ export interface Hello {
   readonly mode: HelloMode
 }
 
+/** @stability unstable */
 export interface ScopeServer {
   readonly scope: string
   readonly address: ScopeAddress
@@ -148,24 +154,24 @@ const createEngineTables = Effect.gen(function* () {
 })
 
 const HeadRow = Schema.Struct({
-  seq: Schema.Number,
-  trimmed_through: Schema.Number,
+  seq: Schema.Finite,
+  trimmed_through: Schema.Finite,
 })
 type HeadRow = typeof HeadRow.Type
 
 const LogRow = Schema.Struct({
-  seq: Schema.Number,
+  seq: Schema.Finite,
   id: Schema.String,
   name: Schema.String,
-  version: Schema.Number,
+  version: Schema.Finite,
   args: Schema.String,
-  timestamp_ms: Schema.Number,
+  timestamp_ms: Schema.Finite,
   origin: Schema.Literals(['Client', 'Server']),
 })
 type LogRow = typeof LogRow.Type
 
 const AppliedRow = Schema.Struct({
-  seq: Schema.NullOr(Schema.Number),
+  seq: Schema.NullOr(Schema.Finite),
   code: Schema.NullOr(Schema.String),
   reason: Schema.NullOr(Schema.String),
 })
@@ -189,6 +195,7 @@ const emptyHead: HeadRow = { seq: 0, trimmed_through: 0 }
 
 // SERVER
 
+/** @stability unstable */
 export const makeScopeServer = (
   options: ScopeServerOptions,
 ): Effect.Effect<
@@ -205,19 +212,19 @@ export const makeScopeServer = (
 
     const address = yield* Option.match(parseScopeId(scope), {
       onNone: () =>
-        Effect.fail(new ScopeServerError({ reason: `Bad scope id ${scope}` })),
+        Effect.fail(ScopeServerError.make({ reason: `Bad scope id ${scope}` })),
       onSome: parsed =>
         parsed.kind === definition.kind
           ? Effect.succeed(parsed)
           : Effect.fail(
-              new ScopeServerError({
+              ScopeServerError.make({
                 reason: `Scope ${scope} is not a ${definition.kind} scope`,
               }),
             ),
     })
     const strays = outOfScopeMutations(definition)
     if (Array.isReadonlyArrayNonEmpty(strays)) {
-      return yield* new ScopeServerError({
+      return yield* ScopeServerError.make({
         reason: `Mutations ${Array.join(strays, ', ')} do not allow scope kind ${definition.kind}`,
       })
     }
@@ -260,7 +267,7 @@ export const makeScopeServer = (
           return ServerMessage.cases.Snapshot.make({
             scope,
             seq: head.seq,
-            tables: Object.fromEntries(tables),
+            tables: Record.fromEntries(tables),
           })
         }),
       )
@@ -543,9 +550,12 @@ export type JoinedConnection = typeof Connection.cases.Joined.Type
 
 export const OPENED: Connection = Connection.cases.Opened.make({})
 
-export class Unauthorized extends Data.TaggedError('Unauthorized')<{
-  readonly reason: string
-}> {}
+export class Unauthorized extends Schema.TaggedError<
+  Unauthorized,
+  { readonly brand: unique symbol }
+>()('Unauthorized', {
+  reason: Schema.String,
+}) {}
 
 export type Authenticate = (
   token: string,
@@ -645,41 +655,73 @@ const pushed = (
 // joined socket of the scope (this one included) and then `reply` to this
 // one. Deltas go out before acks, so a client sees its own mutation
 // confirmed before it hears it was accepted.
-export const handleMessage = (
-  server: ScopeServer,
-  authenticate: Authenticate,
-  connection: Connection,
-  message: ClientMessage,
-): Effect.Effect<Handled> => {
-  const handling: Effect.Effect<Handled, SqlError.SqlError> =
-    ClientMessage.match(message, {
-      Ping: () =>
-        Effect.succeed(
-          handled(connection, [ServerMessage.cases.Pong.make({})]),
-        ),
-      Hello: helloMessage =>
-        hello(server, authenticate, connection, helloMessage),
-      Push: ({ mutations }) =>
-        Connection.match(connection, {
-          Opened: () =>
-            Effect.succeed(failed(connection, 'NotReady', 'Say Hello first')),
-          Joined: joined => pushed(server, joined, mutations),
-        }),
-    })
-  return Effect.catchTag(handling, 'SqlError', error =>
-    Effect.succeed(failed(connection, 'Unavailable', error.message)),
-  )
-}
+/** @stability unstable */
+export const handleMessage: {
+  (
+    authenticate: Authenticate,
+    connection: Connection,
+    message: ClientMessage,
+  ): (server: ScopeServer) => Effect.Effect<Handled>
+  (
+    server: ScopeServer,
+    authenticate: Authenticate,
+    connection: Connection,
+    message: ClientMessage,
+  ): Effect.Effect<Handled>
+} = Function.dual(
+  4,
+  (
+    server: ScopeServer,
+    authenticate: Authenticate,
+    connection: Connection,
+    message: ClientMessage,
+  ): Effect.Effect<Handled> => {
+    const handling: Effect.Effect<Handled, SqlError.SqlError> =
+      ClientMessage.match(message, {
+        Ping: () =>
+          Effect.succeed(
+            handled(connection, [ServerMessage.cases.Pong.make({})]),
+          ),
+        Hello: helloMessage =>
+          hello(server, authenticate, connection, helloMessage),
+        Push: ({ mutations }) =>
+          Connection.match(connection, {
+            Opened: () =>
+              Effect.succeed(failed(connection, 'NotReady', 'Say Hello first')),
+            Joined: joined => pushed(server, joined, mutations),
+          }),
+      })
+    return Effect.catchTag(handling, 'SqlError', error =>
+      Effect.succeed(failed(connection, 'Unavailable', error.message)),
+    )
+  },
+)
 
-export const handleRaw = (
-  server: ScopeServer,
-  authenticate: Authenticate,
-  connection: Connection,
-  raw: string,
-): Effect.Effect<Handled> =>
-  Effect.matchEffect(decodeClientMessage(raw), {
-    onFailure: error =>
-      Effect.succeed(failed(connection, 'BadMessage', error.message)),
-    onSuccess: message =>
-      handleMessage(server, authenticate, connection, message),
-  })
+/** @stability unstable */
+export const handleRaw: {
+  (
+    authenticate: Authenticate,
+    connection: Connection,
+    raw: string,
+  ): (server: ScopeServer) => Effect.Effect<Handled>
+  (
+    server: ScopeServer,
+    authenticate: Authenticate,
+    connection: Connection,
+    raw: string,
+  ): Effect.Effect<Handled>
+} = Function.dual(
+  4,
+  (
+    server: ScopeServer,
+    authenticate: Authenticate,
+    connection: Connection,
+    raw: string,
+  ): Effect.Effect<Handled> =>
+    Effect.matchEffect(decodeClientMessage(raw), {
+      onFailure: error =>
+        Effect.succeed(failed(connection, 'BadMessage', error.message)),
+      onSuccess: message =>
+        handleMessage(server, authenticate, connection, message),
+    }),
+)

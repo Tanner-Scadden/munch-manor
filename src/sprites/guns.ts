@@ -1,4 +1,4 @@
-import { Array, Option, Record, String, pipe } from 'effect'
+import { Array, Function, Option, Record, String, pipe } from 'effect'
 
 import type { WeaponKind } from '../model'
 import type { GunSkin } from '../playerData'
@@ -259,13 +259,23 @@ const skinnedTurnsOf = (
     return built
   })
 
-export const knifeSprite = (angle: number, skin: GunSkin = 'Stock'): Sprite =>
-  turnAt(
-    skin === 'Stock'
-      ? KNIFE_TURNS
-      : skinnedTurnsOf(`${skin}.Knife`, KNIFE_IN_HAND, skinPalette(skin)),
-    angle,
-  )
+// NOTE: a call is data-first when it starts with the angle (a number); the
+// data-last form starts with the skin (a string, or missing).
+const isAngleFirst = (args: IArguments): boolean => typeof args[0] === 'number'
+
+export const knifeSprite: {
+  (skin?: GunSkin): (angle: number) => Sprite
+  (angle: number, skin?: GunSkin): Sprite
+} = Function.dual(
+  isAngleFirst,
+  (angle: number, skin: GunSkin = 'Stock'): Sprite =>
+    turnAt(
+      skin === 'Stock'
+        ? KNIFE_TURNS
+        : skinnedTurnsOf(`${skin}.Knife`, KNIFE_IN_HAND, skinPalette(skin)),
+      angle,
+    ),
+)
 
 const GUN_ICONS: Readonly<Record<WeaponKind, ReadonlyArray<Sprite>>> =
   Record.map(GUN_PIXELS, ({ pixels }) =>
@@ -275,59 +285,87 @@ const GUN_ICONS: Readonly<Record<WeaponKind, ReadonlyArray<Sprite>>> =
 // NOTE: a gun's icon, flat: the stock one is made as the module loads.
 const skinnedIcons = new Map<string, Sprite>()
 
-export const gunIcon = (
-  kind: WeaponKind,
-  tier: number,
-  skin: GunSkin = 'Stock',
-): Sprite => {
-  if (skin !== 'Stock') {
-    const key = `${skin}.${kind}.${tier}`
-    return Option.getOrElse(Option.fromNullishOr(skinnedIcons.get(key)), () => {
-      const built = spriteShapes(
-        GUN_PIXELS[kind].pixels,
-        gunPalette(tier, skin),
-      )
-      skinnedIcons.set(key, built)
-      return built
-    })
-  }
-  return pipe(
-    Array.get(GUN_ICONS[kind], tier),
-    Option.orElse(() => Array.head(GUN_ICONS[kind])),
-    Option.getOrElse(() => []),
-  )
-}
+// NOTE: a call is data-first when it starts with the gun's kind (a
+// string); the data-last form starts with the tier (a number).
+const isKindFirst = (args: IArguments): boolean => typeof args[0] === 'string'
 
-export const gunSprite = (
-  kind: WeaponKind,
-  tier: number,
-  angle: number,
-  skin: GunSkin = 'Stock',
-): Sprite => {
-  if (skin !== 'Stock') {
-    return turnAt(
-      skinnedTurnsOf(
-        `${skin}.${kind}.${tier}`,
-        GUN_PIXELS[kind],
-        gunPalette(tier, skin),
-      ),
-      angle,
+export const gunIcon: {
+  (tier: number, skin?: GunSkin): (kind: WeaponKind) => Sprite
+  (kind: WeaponKind, tier: number, skin?: GunSkin): Sprite
+} = Function.dual(
+  isKindFirst,
+  (kind: WeaponKind, tier: number, skin: GunSkin = 'Stock'): Sprite => {
+    if (skin !== 'Stock') {
+      const key = `${skin}.${kind}.${tier}`
+      return Option.getOrElse(
+        Option.fromNullishOr(skinnedIcons.get(key)),
+        () => {
+          const built = spriteShapes(
+            GUN_PIXELS[kind].pixels,
+            gunPalette(tier, skin),
+          )
+          skinnedIcons.set(key, built)
+          return built
+        },
+      )
+    }
+    return pipe(
+      Array.get(GUN_ICONS[kind], tier),
+      Option.orElse(() => Array.head(GUN_ICONS[kind])),
+      Option.getOrElse(() => []),
     )
-  }
-  const turns = Option.getOrElse(Array.get(GUN_SPRITES[kind], tier), () =>
-    Option.getOrElse(Array.head(GUN_SPRITES[kind]), () =>
-      gunTurns(GUN_PIXELS[kind], GUN_PALETTE),
-    ),
-  )
-  return turnAt(turns, angle)
-}
+  },
+)
+
+export const gunSprite: {
+  (tier: number, angle: number, skin?: GunSkin): (kind: WeaponKind) => Sprite
+  (kind: WeaponKind, tier: number, angle: number, skin?: GunSkin): Sprite
+} = Function.dual(
+  isKindFirst,
+  (
+    kind: WeaponKind,
+    tier: number,
+    angle: number,
+    skin: GunSkin = 'Stock',
+  ): Sprite => {
+    if (skin !== 'Stock') {
+      return turnAt(
+        skinnedTurnsOf(
+          `${skin}.${kind}.${tier}`,
+          GUN_PIXELS[kind],
+          gunPalette(tier, skin),
+        ),
+        angle,
+      )
+    }
+    const turns = Option.getOrElse(Array.get(GUN_SPRITES[kind], tier), () =>
+      Option.getOrElse(Array.head(GUN_SPRITES[kind]), () =>
+        gunTurns(GUN_PIXELS[kind], GUN_PALETTE),
+      ),
+    )
+    return turnAt(turns, angle)
+  },
+)
 
 // NOTE: a gun as pixels and colors, for the Look tab's option: the Pop
 // Pistol in a skin.
-export const gunPictureOf = (
-  kind: WeaponKind,
-  skin: GunSkin,
-): Readonly<{ rows: ReadonlyArray<string>; palette: Palette }> => ({
-  rows: GUN_PIXELS[kind].pixels,
-  palette: gunPalette(0, skin),
-})
+export const gunPictureOf: {
+  (
+    skin: GunSkin,
+  ): (
+    kind: WeaponKind,
+  ) => Readonly<{ rows: ReadonlyArray<string>; palette: Palette }>
+  (
+    kind: WeaponKind,
+    skin: GunSkin,
+  ): Readonly<{ rows: ReadonlyArray<string>; palette: Palette }>
+} = Function.dual(
+  2,
+  (
+    kind: WeaponKind,
+    skin: GunSkin,
+  ): Readonly<{ rows: ReadonlyArray<string>; palette: Palette }> => ({
+    rows: GUN_PIXELS[kind].pixels,
+    palette: gunPalette(0, skin),
+  }),
+)

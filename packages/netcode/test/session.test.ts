@@ -1,4 +1,4 @@
-import { Option, Result } from 'effect'
+import { Array, Option, Result } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -76,7 +76,7 @@ const simulate = (options: {
 }) => {
   const heldMs = (count: number) =>
     options.holdEvery !== undefined && count % options.holdEvery === 0 ? 200 : 0
-  const clients: Array<Client> = Array.from(
+  const clients: Array<Client> = globalThis.Array.from(
     { length: options.players },
     (_, slot) => ({
       slot,
@@ -94,7 +94,7 @@ const simulate = (options: {
   )
   const started = Room.startRoom(
     StandIn,
-    clients.map(client => ({
+    Array.map(clients, client => ({
       slot: client.slot,
       playerId: `player-${client.slot}`,
       socket: Option.some(client.socket),
@@ -111,11 +111,13 @@ const simulate = (options: {
   const sends = { count: 0 }
   const ups = { count: 0 }
   const deliverOut = (out: ReadonlyArray<Room.Out>, nowMs: number) =>
-    out.forEach(item => {
+    Array.forEach(out, item => {
       if (item._tag !== 'Send') {
         return
       }
-      const client = clients.find(each => each.socket === item.socket)
+      const client = Option.getOrUndefined(
+        Array.findFirst(clients, each => each.socket === item.socket),
+      )
       const bytes = Result.getOrThrow(encodeServerFrame(item.frame))
       bytesDown.total += webSocketBytes(bytes.length, false)
       const sent = (sends.count += 1)
@@ -137,13 +139,20 @@ const simulate = (options: {
   const frameMs = 1000 / 60
   const frames = { next: T0 }
 
-  Array.from({ length: Math.ceil((endMs - T0) / stepMs) }).forEach(
+  Array.forEach(
+    globalThis.Array.from({ length: Math.ceil((endMs - T0) / stepMs) }),
     (_, index) => {
       const nowMs = T0 + index * stepMs
-      clients.forEach(client => {
-        const arrived = client.toRoom.filter(message => message.atMs <= nowMs)
-        client.toRoom = client.toRoom.filter(message => message.atMs > nowMs)
-        arrived.forEach(message => {
+      Array.forEach(clients, client => {
+        const arrived = Array.filter(
+          client.toRoom,
+          message => message.atMs <= nowMs,
+        )
+        client.toRoom = Array.filter(
+          client.toRoom,
+          message => message.atMs > nowMs,
+        )
+        Array.forEach(arrived, message => {
           const frame = Result.getOrThrow(decodeClientFrame(message.bytes))
           const received = Room.receive(
             StandIn,
@@ -162,12 +171,16 @@ const simulate = (options: {
         room.nextWakeMs = Room.nextWakeMs(advanced.room)
         deliverOut(advanced.out, nowMs)
       }
-      clients.forEach(client => {
-        const arrived = client.toClient.filter(message => message.atMs <= nowMs)
-        client.toClient = client.toClient.filter(
+      Array.forEach(clients, client => {
+        const arrived = Array.filter(
+          client.toClient,
+          message => message.atMs <= nowMs,
+        )
+        client.toClient = Array.filter(
+          client.toClient,
           message => message.atMs > nowMs,
         )
-        arrived.forEach(message => {
+        Array.forEach(arrived, message => {
           const frame = Result.getOrThrow(decodeServerFrame(message.bytes))
           client.session = Result.getOrThrow(
             Session.receive(
@@ -180,10 +193,10 @@ const simulate = (options: {
           )
         })
       })
-      clients.forEach(client => {
-        const ponged = client.pongs.filter(pong => pong.atMs <= nowMs)
-        client.pongs = client.pongs.filter(pong => pong.atMs > nowMs)
-        ponged.forEach(pong => {
+      Array.forEach(clients, client => {
+        const ponged = Array.filter(client.pongs, pong => pong.atMs <= nowMs)
+        client.pongs = Array.filter(client.pongs, pong => pong.atMs > nowMs)
+        Array.forEach(ponged, pong => {
           client.session = Session.heardPong(client.session, pong.sentMs, nowMs)
         })
         if (nowMs - client.pingedMs >= PING_EVERY_MS) {
@@ -196,7 +209,7 @@ const simulate = (options: {
       })
       if (nowMs >= frames.next) {
         frames.next += frameMs
-        clients.forEach(client => {
+        Array.forEach(clients, client => {
           client.muted =
             options.muteSlotAfterMs !== undefined &&
             client.slot === 1 &&
@@ -209,7 +222,7 @@ const simulate = (options: {
           )
           client.session = ticked.session
           if (!client.muted) {
-            ticked.outgoing.forEach((frame: ClientFrame) => {
+            Array.forEach(ticked.outgoing, (frame: ClientFrame) => {
               const bytes = Result.getOrThrow(encodeClientFrame(frame))
               client.inputsSent += frame._tag === 'Input' ? 1 : 0
               client.session = Session.countSent(client.session, bytes.length)
@@ -235,7 +248,7 @@ const simulate = (options: {
 }
 
 const xsOf = (worlds: ReadonlyArray<StandInWorld>, slot: number) =>
-  worlds.flatMap(world =>
+  Array.flatMap(worlds, world =>
     Option.match(StandIn.own.of(world, slot), {
       onNone: () => [],
       onSome: dot => [Math.round(dot.x)],
@@ -246,20 +259,21 @@ describe('sessions and a room over a 60 ms round trip', () => {
   const run = simulate({ players: 4, oneWayMs: 30, seconds: 8 })
 
   test('each player sees every other player move', () => {
-    run.clients.forEach(client => {
-      run.clients
-        .filter(other => other.slot !== client.slot)
-        .forEach(other => {
+    Array.forEach(run.clients, client => {
+      Array.forEach(
+        Array.filter(run.clients, other => other.slot !== client.slot),
+        other => {
           const xs = new Set(xsOf(client.seen, other.slot))
           expect(xs.size).toBeGreaterThan(20)
-        })
+        },
+      )
     })
   })
 
   // NOTE: the first turn can land a few ticks late while the round trip
   // is still unknown; after that the room applies every turn on its tick.
   test('own prediction agrees with the room once the clock settles', () => {
-    run.clients.forEach(client => {
+    Array.forEach(run.clients, client => {
       expect(client.session.stats.corrections).toBeLessThanOrEqual(3)
       expect(client.session.stats.maxCorrectionPx).toBeLessThanOrEqual(7.5)
       expect(client.session.stats.lastCorrectionPx).toBeLessThan(0.5)
@@ -267,7 +281,7 @@ describe('sessions and a room over a 60 ms round trip', () => {
   })
 
   test('the room acks inputs and the clock measures the round trip', () => {
-    run.clients.forEach(client => {
+    Array.forEach(run.clients, client => {
       expect(client.session.ack).toBeGreaterThanOrEqual(client.inputsSent - 2)
       expect(client.session.ack).toBeGreaterThan(5)
       expect(client.session.rttMs).toBeGreaterThan(55)
@@ -276,7 +290,7 @@ describe('sessions and a room over a 60 ms round trip', () => {
   })
 
   test('inputs go out on change at most 10 a second', () => {
-    run.clients.forEach(client => {
+    Array.forEach(run.clients, client => {
       expect(client.inputsSent / 8).toBeLessThanOrEqual(10)
       expect(client.inputsSent / 8).toBeGreaterThanOrEqual(1)
     })
@@ -289,7 +303,7 @@ describe('sessions and a room over a 60 ms round trip', () => {
   })
 
   test('the room and every client end at the same tick within the buffer', () => {
-    run.clients.forEach(client => {
+    Array.forEach(run.clients, client => {
       const newest = client.session.frames.at(-1)
       expect(run.room.tick - (newest?.tick ?? 0)).toBeLessThanOrEqual(6)
     })
@@ -305,13 +319,13 @@ describe('the delay to draw everyone else behind', () => {
       jitterMs: 60,
       seconds: 8,
     })
-    steady.clients.forEach(client => {
+    Array.forEach(steady.clients, client => {
       expect(client.session.interpolationMs).toBeLessThan(80)
       expect(client.session.interpolationMs).toBeGreaterThanOrEqual(
         Session.MIN_INTERPOLATION_MS,
       )
     })
-    jittery.clients.forEach(client => {
+    Array.forEach(jittery.clients, client => {
       expect(client.session.interpolationMs).toBeGreaterThan(90)
       expect(client.session.interpolationMs).toBeLessThanOrEqual(
         Session.MAX_INTERPOLATION_MS,
@@ -322,13 +336,13 @@ describe('the delay to draw everyone else behind', () => {
 
   test('the room learns every view lag and round trip from inputs', () => {
     const run = simulate({ players: 2, oneWayMs: 100, seconds: 4 })
-    run.room.seats.forEach(seat => {
+    Array.forEach(run.room.seats, seat => {
       expect(seat.rttMs).toBeGreaterThan(190)
       expect(seat.viewLagTicks).toBeGreaterThan(8)
       expect(seat.viewLagTicks).toBeLessThanOrEqual(15)
     })
-    run.clients.forEach(client => {
-      expect(client.session.rtts.map(ping => ping.slot)).toEqual([0, 1])
+    Array.forEach(run.clients, client => {
+      expect(Array.map(client.session.rtts, ping => ping.slot)).toEqual([0, 1])
     })
   })
 })
@@ -356,24 +370,25 @@ describe('a link that holds messages up behind a resend', () => {
   })
 
   test('each player still sees the other move', () => {
-    held.clients.forEach(client => {
-      held.clients
-        .filter(other => other.slot !== client.slot)
-        .forEach(other => {
+    Array.forEach(held.clients, client => {
+      Array.forEach(
+        Array.filter(held.clients, other => other.slot !== client.slot),
+        other => {
           expect(new Set(xsOf(client.seen, other.slot)).size).toBeGreaterThan(
             20,
           )
-        })
+        },
+      )
     })
   })
 
   test('counts the stalls and never needs a resync', () => {
-    held.clients.forEach(client => {
+    Array.forEach(held.clients, client => {
       expect(client.session.stats.stalls).toBeGreaterThan(3)
       expect(client.session.stats.longestStallMs).toBeGreaterThanOrEqual(240)
       expect(client.session.stats.resyncs).toBe(0)
     })
-    steady.clients.forEach(client => {
+    Array.forEach(steady.clients, client => {
       expect(client.session.stats.stalls).toBe(0)
     })
   })
@@ -382,18 +397,16 @@ describe('a link that holds messages up behind a resend', () => {
   // clock back: everyone drawn ran backwards and your own inputs stopped
   // until the clock passed them again.
   test('the picture never runs backwards', () => {
-    held.clients.forEach(client => {
-      const backwards = client.viewTicks.reduce(
-        (most, tick, index) =>
-          Math.max(most, (client.viewTicks[index - 1] ?? tick) - tick),
-        0,
+    Array.forEach(held.clients, client => {
+      const backwards = Array.reduce(client.viewTicks, 0, (most, tick, index) =>
+        Math.max(most, (client.viewTicks[index - 1] ?? tick) - tick),
       )
       expect(backwards).toBeLessThan(2)
     })
   })
 
   test('the room still applies nearly every input', () => {
-    held.clients.forEach(client => {
+    Array.forEach(held.clients, client => {
       expect(client.session.ack).toBeGreaterThanOrEqual(client.inputsSent - 4)
     })
   })
@@ -407,30 +420,28 @@ describe('a message that cannot apply', () => {
     T0,
   )
   const framesOf = (out: ReadonlyArray<Room.Out>): Array<ServerFrame> =>
-    out.flatMap(item => (item._tag === 'Send' ? [item.frame] : []))
-  const deltas = [1, 2, 3].reduce<{
-    room: Room.Room<StandInWorld>
-    frames: ReadonlyArray<ServerFrame>
-  }>(
-    (at, step) => {
-      const advanced = Room.advance(StandIn, at.room, T0 + step * 50 + 1)
-      return {
-        room: advanced.room,
-        frames: [...at.frames, ...framesOf(advanced.out)],
-      }
-    },
-    { room: started.room, frames: [] },
-  ).frames
+    Array.flatMap(out, item => (item._tag === 'Send' ? [item.frame] : []))
+  const deltas = Array.reduce<
+    number,
+    {
+      readonly room: Room.Room<StandInWorld>
+      readonly frames: ReadonlyArray<ServerFrame>
+    }
+  >([1, 2, 3], { room: started.room, frames: [] }, (at, step) => {
+    const advanced = Room.advance(StandIn, at.room, T0 + step * 50 + 1)
+    return {
+      room: advanced.room,
+      frames: [...at.frames, ...framesOf(advanced.out)],
+    }
+  }).frames
   const receiveAll = (
     session: ClientSession,
     frames: ReadonlyArray<ServerFrame>,
   ) =>
-    frames.reduce(
-      (current, frame, index) =>
-        Result.getOrThrow(
-          Session.receive(StandIn, current, frame, 8, T0 + index * 50),
-        ),
-      session,
+    Array.reduce(frames, session, (current, frame, index) =>
+      Result.getOrThrow(
+        Session.receive(StandIn, current, frame, 8, T0 + index * 50),
+      ),
     )
   const joined = receiveAll(
     Session.makeSession<StandInWorld, Dot>(T0),
@@ -438,21 +449,28 @@ describe('a message that cannot apply', () => {
   )
 
   test('the room sends three Deltas in a row', () => {
-    expect(deltas.map(frame => frame._tag)).toEqual(['Delta', 'Delta', 'Delta'])
+    expect(Array.map(deltas, frame => frame._tag)).toEqual([
+      'Delta',
+      'Delta',
+      'Delta',
+    ])
   })
 
   test('a Delta ahead of its base asks for a resync once and sets the rest aside', () => {
     const skipped = receiveAll(joined, deltas.slice(1))
     expect(skipped.isResyncing).toBe(true)
     expect(skipped.stats.resyncs).toBe(1)
-    expect(skipped.frames.map(frame => frame.tick)).toEqual(
-      joined.frames.map(frame => frame.tick),
+    expect(Array.map(skipped.frames, frame => frame.tick)).toEqual(
+      Array.map(joined.frames, frame => frame.tick),
     )
   })
 
   test('a Snapshot ends the resync', () => {
-    const snapshot = framesOf(started.out).find(
-      frame => frame._tag === 'Snapshot',
+    const snapshot = Option.getOrUndefined(
+      Array.findFirst(
+        framesOf(started.out),
+        frame => frame._tag === 'Snapshot',
+      ),
     )
     const back = receiveAll(
       receiveAll(joined, deltas.slice(1)),

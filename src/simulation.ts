@@ -1,10 +1,11 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { recoverActions } from './actions'
-import { type Box, type Level, levelOf, moveCircle } from './arena'
+import { type Box, type Level, levelOf } from './arena'
 import { advanceBossMoves, puddleSlowAt } from './boss'
 import { advanceChuckers } from './chucker'
+import { moveCircle } from './collision'
 import { resolveBlasts } from './combat'
 import {
   FIXED_STEP_MS,
@@ -215,7 +216,10 @@ const shedEvents = (before: ReadonlyArray<Zombie>, player: Player) => {
   }
 }
 
-export const shedParts = (before: World, after: World): World => {
+export const shedParts: {
+  (after: World): (before: World) => World
+  (before: World, after: World): World
+} = Function.dual(2, (before: World, after: World): World => {
   const shed = Array.flatMap(
     after.zombies,
     shedEvents(before.zombies, focusOf(after).player),
@@ -225,7 +229,7 @@ export const shedParts = (before: World, after: World): World => {
     : modifyFields(after, {
         frameEvents: frameEvents => [...frameEvents, ...shed],
       })
-}
+})
 
 // INTENSITY
 
@@ -315,11 +319,12 @@ const walkSeat = (model: World, slot: PlayerSlot, deltaMs: number): World => {
 // input (src/roomWorld.ts, predictOwn): the walk, the reload, and the
 // trigger, so its shots' timing, muzzle flash, and ammo show at once. The
 // caller keeps only the player; bullets, hits, and money stay the room's.
-export const predictSeat = (
-  model: World,
-  slot: PlayerSlot,
-  deltaMs: number,
-): World => armSeat(deltaMs)(walkSeat(model, slot, deltaMs), slot)
+export const predictSeat: {
+  (slot: PlayerSlot, deltaMs: number): (model: World) => World
+  (model: World, slot: PlayerSlot, deltaMs: number): World
+} = Function.dual(3, (model: World, slot: PlayerSlot, deltaMs: number): World =>
+  armSeat(deltaMs)(walkSeat(model, slot, deltaMs), slot),
+)
 
 const withWield = (
   model: World,

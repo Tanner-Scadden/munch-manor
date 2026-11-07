@@ -3,7 +3,7 @@
 // not care about reads as a name, and the steps it is about stay in the test.
 // Steps and locators live in `testing.ts`.
 
-import { Array, Option, Order } from 'effect'
+import { Array, Function, Option, Order, Record } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -67,7 +67,7 @@ import {
 // play: a bite's invulnerability is the base times this.
 // NOTE: every level the game builds, shut and with all its exits open.
 export const EVERY_LEVEL: ReadonlyArray<Level> = Array.flatMap(
-  Object.values(LEVEL_SPECS),
+  Record.values(LEVEL_SPECS),
   spec => [
     levelFor(spec),
     levelFor(
@@ -215,58 +215,87 @@ export const onHard = (model: Model): Model =>
     difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
   })
 
-export const withActors = (
-  base: Model,
-  zombies: ReadonlyArray<Zombie>,
-  bullets: ReadonlyArray<Bullet> = [],
-): Model =>
-  modifyFields(base, {
-    zombies: () => zombies,
-    bullets: () => bullets,
-  })
+// NOTE: data first when the Model leads: a Model is no array, zombies are.
+export const withActors: {
+  (
+    zombies: ReadonlyArray<Zombie>,
+    bullets?: ReadonlyArray<Bullet>,
+  ): (base: Model) => Model
+  (
+    base: Model,
+    zombies: ReadonlyArray<Zombie>,
+    bullets?: ReadonlyArray<Bullet>,
+  ): Model
+} = Function.dual(
+  (args: IArguments) => !Array.isArray(args[0]),
+  (
+    base: Model,
+    zombies: ReadonlyArray<Zombie>,
+    bullets: ReadonlyArray<Bullet> = [],
+  ): Model =>
+    modifyFields(base, {
+      zombies: () => zombies,
+      bullets: () => bullets,
+    }),
+)
 
-export const withPlayerAt = (base: Model, x: number, y: number): Model =>
+export const withPlayerAt: {
+  (x: number, y: number): (base: Model) => Model
+  (base: Model, x: number, y: number): Model
+} = Function.dual(3, (base: Model, x: number, y: number): Model =>
   modifyFocus(base, {
     player: player => modifyFields(player, { x: () => x, y: () => y }),
-  })
+  }),
+)
 
-export const withArsenal = (base: Model, arsenal: Arsenal): Model =>
+export const withArsenal: {
+  (arsenal: Arsenal): (base: Model) => Model
+  (base: Model, arsenal: Arsenal): Model
+} = Function.dual(2, (base: Model, arsenal: Arsenal): Model =>
   modifyFocus(base, {
     player: player => modifyFields(player, { arsenal: () => arsenal }),
-  })
+  }),
+)
 
 // NOTE: runs a step on a World with the seat at `slot` first, so the seat
 // reads as `focusOf(world)`, then puts the seats back in the order they
 // were.
-export const withSeat = (
-  world: World,
-  slot: number,
-  step: (focused: World) => World,
-): World => {
-  const order = Array.map(world.seats, ({ seat }) => seat.slot)
-  return modifyWorldFields(step(focusSeat(world, slot)), {
-    seats: seats =>
-      Array.sort(
-        seats,
-        Order.mapInput(Order.Number, ({ seat }: SeatState) =>
-          order.indexOf(seat.slot),
+export const withSeat: {
+  (slot: number, step: (focused: World) => World): (world: World) => World
+  (world: World, slot: number, step: (focused: World) => World): World
+} = Function.dual(
+  3,
+  (world: World, slot: number, step: (focused: World) => World): World => {
+    const order = Array.map(world.seats, ({ seat }) => seat.slot)
+    return modifyWorldFields(step(focusSeat(world, slot)), {
+      seats: seats =>
+        Array.sort(
+          seats,
+          Order.mapInput(Order.Number, ({ seat }: SeatState) =>
+            order.indexOf(seat.slot),
+          ),
         ),
-      ),
-  })
-}
+    })
+  },
+)
 
 // NOTE: a change to the record of the seat a World is about.
-export const modifyLeadSeat = (
-  world: World,
-  change: (seat: Seat) => Seat,
-): World => modifySeatRecord(world, focusSlotOf(world), change)
+export const modifyLeadSeat: {
+  (change: (seat: Seat) => Seat): (world: World) => World
+  (world: World, change: (seat: Seat) => Seat): World
+} = Function.dual(2, (world: World, change: (seat: Seat) => Seat): World =>
+  modifySeatRecord(world, focusSlotOf(world), change),
+)
 
 // NOTE: changes one seat of a co-op World held in the Model.
-export const atSeat = (
-  current: Model,
-  slot: number,
-  change: (world: World) => World,
-): Model => withWorld(current, world => withSeat(world, slot, change))
+export const atSeat: {
+  (slot: number, change: (world: World) => World): (current: Model) => Model
+  (current: Model, slot: number, change: (world: World) => World): Model
+} = Function.dual(
+  3,
+  (current: Model, slot: number, change: (world: World) => World): Model =>
+    withWorld(current, world => withSeat(world, slot, change)),
+)
 
 // SCREENS
 
@@ -305,7 +334,11 @@ export const AT_FRIDGE = {
   y: fridgeBox.bottom + 8,
 }
 
-export const atFridge = (balance: number, wave = 5): Model =>
+// NOTE: at the fridge in the break before `wave`.
+export const atFridgeOnWave: {
+  (balance: number): (wave: number) => Model
+  (wave: number, balance: number): Model
+} = Function.dual(2, (wave: number, balance: number): Model =>
   modifyFocus(
     modifyFields(freshRunModel(), {
       level: level => openExitIn(level, KITCHEN_EXIT),
@@ -322,7 +355,10 @@ export const atFridge = (balance: number, wave = 5): Model =>
       player: player =>
         modifyFields(player, { x: () => AT_FRIDGE.x, y: () => AT_FRIDGE.y }),
     },
-  )
+  ),
+)
+
+export const atFridge = (balance: number): Model => atFridgeOnWave(5, balance)
 
 // THE AMMO WINDOW
 
@@ -339,34 +375,40 @@ const holdingSecond = (kind: WeaponKind, rounds: number): Arsenal =>
   })
 
 // NOTE: mid-wave at the stall's ammo window (src/ammoCounter.ts).
-export const midWaveAtStall = (
-  kind: WeaponKind,
-  rounds: number,
-  balance = 100,
-): Model =>
-  modifyFocus(
-    modifyFields(freshRunModel(), {
-      phase: () =>
-        Phase.Wave({
-          wave: 5,
-          elapsedMs: 20_000,
-          spawns: [DISTANT_SPAWN],
-        }),
-    }),
-    {
-      wallet: () => ({ balance, earned: balance, shown: balance }),
-      player: player =>
-        modifyFields(player, {
-          x: () => BELOW_STALL.x,
-          y: () => BELOW_STALL.y,
-          arsenal: () => holdingSecond(kind, rounds),
-        }),
-    },
-  )
+// NOTE: data first when the kind leads: a kind is a string, rounds are not.
+export const midWaveAtStall: {
+  (rounds: number, balance?: number): (kind: WeaponKind) => Model
+  (kind: WeaponKind, rounds: number, balance?: number): Model
+} = Function.dual(
+  (args: IArguments) => typeof args[0] === 'string',
+  (kind: WeaponKind, rounds: number, balance: number = 100): Model =>
+    modifyFocus(
+      modifyFields(freshRunModel(), {
+        phase: () =>
+          Phase.Wave({
+            wave: 5,
+            elapsedMs: 20_000,
+            spawns: [DISTANT_SPAWN],
+          }),
+      }),
+      {
+        wallet: () => ({ balance, earned: balance, shown: balance }),
+        player: player =>
+          modifyFields(player, {
+            x: () => BELOW_STALL.x,
+            y: () => BELOW_STALL.y,
+            arsenal: () => holdingSecond(kind, rounds),
+          }),
+      },
+    ),
+)
 
 // NOTE: a fridge whose stream's next draw lands on `prize`, found by trying
 // seeds, so a test can ask for each prize without knowing the stream.
-export const fridgeSeededFor = (current: Model, prize: FridgePrize): Model => {
+export const fridgeSeededFor: {
+  (prize: FridgePrize): (current: Model) => Model
+  (current: Model, prize: FridgePrize): Model
+} = Function.dual(2, (current: Model, prize: FridgePrize): Model => {
   const seed = Option.getOrThrow(
     Array.findFirst(
       Array.makeBy(500, index => index + 1),
@@ -380,7 +422,7 @@ export const fridgeSeededFor = (current: Model, prize: FridgePrize): Model => {
   return modifyFields(current, {
     loot: loot => modifyFields(loot, { fridgeRngState: () => seed }),
   })
-}
+})
 
 // NOTE: typed as the Wave it is, not as any Phase, so a test can pause it
 // as a round.
@@ -394,10 +436,12 @@ export const playingModel: Model = modifyFields(readyModel, {
   phase: () => FIGHTING_PHASE,
 })
 
-export const withZombies = (
-  base: Model,
-  zombies: ReadonlyArray<Zombie>,
-): Model => modifyFields(base, { zombies: () => zombies })
+export const withZombies: {
+  (zombies: ReadonlyArray<Zombie>): (base: Model) => Model
+  (base: Model, zombies: ReadonlyArray<Zombie>): Model
+} = Function.dual(2, (base: Model, zombies: ReadonlyArray<Zombie>): Model =>
+  modifyFields(base, { zombies: () => zombies }),
+)
 
 // CO-OP CREWS
 
@@ -409,37 +453,57 @@ const CREW_WAVE = Phase.Wave({
 })
 
 // NOTE: a crew of `count` seats in one World, on a surface, mid-wave.
-export const crewInWave = (count: number, phase: Phase = CREW_WAVE): Model =>
-  withWorld(
-    modifyFields(home, {
-      maybeSurface: () => Option.some(SURFACE),
-      phase: () => phase,
-    }),
-    world => seatCrew(world, count),
-  )
+// NOTE: data first when the count leads: a count is a number, a Phase is not.
+export const crewInWave: {
+  (phase?: Phase): (count: number) => Model
+  (count: number, phase?: Phase): Model
+} = Function.dual(
+  (args: IArguments) => typeof args[0] === 'number',
+  (count: number, phase: Phase = CREW_WAVE): Model =>
+    withWorld(
+      modifyFields(home, {
+        maybeSurface: () => Option.some(SURFACE),
+        phase: () => phase,
+      }),
+      world => seatCrew(world, count),
+    ),
+)
 
-export const placeSeat =
-  (slot: number, x: number, y: number, hp = PLAYER_MAX_HP) =>
-  (current: Model): Model =>
+// NOTE: data first when the Model leads: a Model is an object, a slot is not.
+export const placeSeat: {
+  (slot: number, x: number, y: number, hp?: number): (current: Model) => Model
+  (current: Model, slot: number, x: number, y: number, hp?: number): Model
+} = Function.dual(
+  (args: IArguments) => typeof args[0] === 'object',
+  (
+    current: Model,
+    slot: number,
+    x: number,
+    y: number,
+    hp: number = PLAYER_MAX_HP,
+  ): Model =>
     atSeat(current, slot, world =>
       modifyFocus(world, {
         player: player =>
           modifyFields(player, { x: () => x, y: () => y, hp: () => hp }),
       }),
-    )
+    ),
+)
 
-export const withSeatLife =
-  (slot: number, life: Life) =>
-  (current: Model): Model =>
-    atSeat(current, slot, world =>
-      modifyFields(world, {
-        seats: atSeatBy(slot, state =>
-          modifyFields(state, {
-            seat: seat => modifyFields(seat, { life: () => life }),
-          }),
-        ),
-      }),
-    )
+export const withSeatLife: {
+  (slot: number, life: Life): (current: Model) => Model
+  (current: Model, slot: number, life: Life): Model
+} = Function.dual(3, (current: Model, slot: number, life: Life): Model =>
+  atSeat(current, slot, world =>
+    modifyFields(world, {
+      seats: atSeatBy(slot, state =>
+        modifyFields(state, {
+          seat: seat => modifyFields(seat, { life: () => life }),
+        }),
+      ),
+    }),
+  ),
+)
 
 // NOTE: changes made to a Model one after another, in order.
 // NOTE: a seat no zombie can hurt, so a long test keeps its run going.
@@ -477,18 +541,40 @@ export const lastHeart = (base: Model): Model =>
 
 // PICKUPS
 
-export const pickupAt = (
-  id: number,
-  kind: PickupKind,
-  x: number,
-  y: number,
-  ageMs = 0,
-): Pickup => ({ id, kind, x, y, ageMs })
+// NOTE: data first when the id leads: an id is a number, a kind is not.
+export const pickupAt: {
+  (
+    kind: PickupKind,
+    x: number,
+    y: number,
+    ageMs?: number,
+  ): (id: number) => Pickup
+  (id: number, kind: PickupKind, x: number, y: number, ageMs?: number): Pickup
+} = Function.dual(
+  (args: IArguments) => typeof args[0] === 'number',
+  (
+    id: number,
+    kind: PickupKind,
+    x: number,
+    y: number,
+    ageMs: number = 0,
+  ): Pickup => ({
+    id,
+    kind,
+    x,
+    y,
+    ageMs,
+  }),
+)
 
-export const withPickups = <M extends World>(
-  base: M,
-  pickups: ReadonlyArray<Pickup>,
-): M => modifyWorldFields(base, { pickups: () => pickups })
+export const withPickups: {
+  <M extends World>(pickups: ReadonlyArray<Pickup>): (base: M) => M
+  <M extends World>(base: M, pickups: ReadonlyArray<Pickup>): M
+} = Function.dual(
+  2,
+  <M extends World>(base: M, pickups: ReadonlyArray<Pickup>): M =>
+    modifyWorldFields(base, { pickups: () => pickups }),
+)
 
 // THE STOVE AND THE GAS VALVE
 
@@ -528,8 +614,8 @@ const AT_STOVE = {
   y: stoveBox.bottom + 8,
 }
 
-export const atStove = (balance: number, wave = 5): Model =>
-  inKitchen(AT_STOVE, balance, kitchenBreak(wave))
+export const atStove = (balance: number): Model =>
+  inKitchen(AT_STOVE, balance, kitchenBreak(5))
 
 const valveBox = Option.getOrThrow(
   valveBoxOf(levelOf({ level: openExitIn(startingLevel, KITCHEN_EXIT) })),
@@ -540,5 +626,9 @@ const AT_VALVE = {
   y: (valveBox.top + valveBox.bottom) / 2,
 }
 
-export const atValve = (balance: number, phase: Phase): Model =>
-  inKitchen(AT_VALVE, balance, phase)
+export const atValve: {
+  (phase: Phase): (balance: number) => Model
+  (balance: number, phase: Phase): Model
+} = Function.dual(2, (balance: number, phase: Phase): Model =>
+  inKitchen(AT_VALVE, balance, phase),
+)

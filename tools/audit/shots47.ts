@@ -7,26 +7,28 @@
 // picker's edge, the picker past the screen, or a phone card under 48 px.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shots47.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
+import { Array, Effect, String } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
   DESKTOP_1280,
   PHONE_844,
-  TAG,
   UPRIGHT_390,
   type Viewport,
+  auditTag,
   deviceQuery,
   finish,
   harnessQuery,
   isPickedScene,
-  launch,
+  openBrowser,
   openLobby,
   pickViewports,
   scenePages,
   settleAnimations,
   shot,
-  useHarness,
 } from './lib'
+import { attempt } from './page'
 
 const VIEWPORTS = pickViewports([
   { ...DESKTOP_1280, name: 'd1280' },
@@ -118,8 +120,8 @@ const SCENES: ReadonlyArray<Scene> = [
     name: 'profile-linecook',
     query: 'rank=4000&calling=LineCook&profile=look',
   },
-  ...CALLINGS.map(calling => ({
-    name: `play-${calling.toLowerCase()}`,
+  ...Array.map(CALLINGS, calling => ({
+    name: `play-${String.toLowerCase(calling)}`,
     query: `wave=3&start=wave&crowd=6&seen=all&${LEARNED}&calling=${calling}&tick=60`,
   })),
   {
@@ -134,105 +136,118 @@ const SCENES: ReadonlyArray<Scene> = [
 
 const problems: Array<string> = []
 
-const checkPicker = async (page: Page, viewport: Viewport, where: string) => {
-  const found = await page.evaluate(() => {
-    const box = document
-      .querySelector('.panel-dialog[open] .panel')
-      ?.getBoundingClientRect()
-    const cards = [...document.querySelectorAll('.calling-card')].map(card => {
-      const rect = card.getBoundingClientRect()
-      return {
-        left: rect.left,
-        right: rect.right,
-        top: rect.top,
-        bottom: rect.bottom,
-      }
-    })
-    return {
-      box:
-        box !== undefined
-          ? {
-              left: box.left,
-              right: box.right,
-              top: box.top,
-              bottom: box.bottom,
+const checkPicker = (page: Page, viewport: Viewport, where: string) =>
+  Effect.gen(function* () {
+    const found = yield* attempt(() =>
+      page.evaluate(() => {
+        const box = document
+          .querySelector('.panel-dialog[open] .panel')
+          ?.getBoundingClientRect()
+        const cards = globalThis.Array.from(
+          document.querySelectorAll('.calling-card'),
+          card => {
+            const rect = card.getBoundingClientRect()
+            return {
+              left: rect.left,
+              right: rect.right,
+              top: rect.top,
+              bottom: rect.bottom,
             }
-          : null,
-      cards,
-      width: innerWidth,
-      height: innerHeight,
+          },
+        )
+        return {
+          box:
+            box !== undefined
+              ? {
+                  left: box.left,
+                  right: box.right,
+                  top: box.top,
+                  bottom: box.bottom,
+                }
+              : null,
+          cards,
+          width: innerWidth,
+          height: innerHeight,
+        }
+      }),
+    )
+    if (found.box === null) {
+      problems.push(`${where}: no picker open`)
+      return
+    }
+    const { box } = found
+    if (
+      box.left < 0 ||
+      box.top < 0 ||
+      box.right > found.width ||
+      box.bottom > found.height
+    ) {
+      problems.push(`${where}: the picker is past the screen's edge`)
+    }
+    for (const card of found.cards) {
+      if (
+        card.left < box.left - 1 ||
+        card.right > box.right + 1 ||
+        card.bottom > box.bottom + 1
+      ) {
+        problems.push(`${where}: a card runs past the picker`)
+      }
+      if (
+        viewport.isPhone &&
+        (card.right - card.left < 47.5 || card.bottom - card.top < 47.5)
+      ) {
+        problems.push(`${where}: a card is under 48 px`)
+      }
     }
   })
-  if (found.box === null) {
-    problems.push(`${where}: no picker open`)
-    return
-  }
-  const { box } = found
-  if (
-    box.left < 0 ||
-    box.top < 0 ||
-    box.right > found.width ||
-    box.bottom > found.height
-  ) {
-    problems.push(`${where}: the picker is past the screen's edge`)
-  }
-  for (const card of found.cards) {
-    if (
-      card.left < box.left - 1 ||
-      card.right > box.right + 1 ||
-      card.bottom > box.bottom + 1
-    ) {
-      problems.push(`${where}: a card runs past the picker`)
-    }
-    if (
-      viewport.isPhone &&
-      (card.right - card.left < 47.5 || card.bottom - card.top < 47.5)
-    ) {
-      problems.push(`${where}: a card is under 48 px`)
-    }
-  }
-}
 
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev'])
-for (const viewport of VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
-    }
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
-    )
-    await settleAnimations(page)
-    if (scene.open !== undefined) {
-      await openLobby(page)
-      await page.click(scene.open)
-      await page.locator('dialog[open]').first().waitFor({ state: 'visible' })
-      await settleAnimations(page)
-      for (const selector of scene.clicks ?? []) {
-        await page.click(selector)
-        await settleAnimations(page)
-        if (scene.isFlow === true) {
-          await shot(
-            page,
-            `s47-${TAG}-${viewport.name}-${scene.name}-${selector.includes('buy') ? 'bought' : 'trying'}`,
-          )
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* VIEWPORTS
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev'])
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
         }
+        const page = yield* pages.open(
+          viewport,
+          harnessQuery(scene.query, deviceQuery(viewport)),
+        )
+        yield* settleAnimations(page)
+        if (scene.open !== undefined) {
+          const { open } = scene
+          yield* openLobby(page)
+          yield* attempt(() => page.click(open))
+          yield* attempt(() =>
+            page.locator('dialog[open]').first().waitFor({ state: 'visible' }),
+          )
+          yield* settleAnimations(page)
+          for (const selector of scene.clicks ?? []) {
+            yield* attempt(() => page.click(selector))
+            yield* settleAnimations(page)
+            if (scene.isFlow === true) {
+              yield* shot(
+                page,
+                `s47-${tag}-${viewport.name}-${scene.name}-${String.includes('buy')(selector) ? 'bought' : 'trying'}`,
+              )
+            }
+          }
+        }
+        const where = `${viewport.name} ${scene.name}`
+        if (scene.isPicker === true) {
+          yield* checkPicker(page, viewport, where)
+        }
+        yield* shot(page, `s47-${tag}-${viewport.name}-${scene.name}`)
+        pages.release(page)
       }
     }
-    const where = `${viewport.name} ${scene.name}`
-    if (scene.isPicker === true) {
-      await checkPicker(page, viewport, where)
-    }
-    await shot(page, `s47-${TAG}-${viewport.name}-${scene.name}`)
-    pages.release(page)
-  }
-}
-await pages.close()
-await browser.close()
-finish(
-  problems,
-  'The hero card and the picker fit, and every card is big enough.',
+    yield* pages.close
+    yield* finish(
+      problems,
+      'The hero card and the picker fit, and every card is big enough.',
+    )
+  }),
 )

@@ -1,5 +1,5 @@
 import type { SchemaAST } from 'effect'
-import { Array, Match, Option, Result, Struct } from 'effect'
+import { Array, Function, Match, Option, Record, Result, Struct } from 'effect'
 
 import type { Reader, Writer } from '@munch/netcode'
 
@@ -84,12 +84,7 @@ const HOME_FIELDS: ReadonlySet<string> = new Set([
 type Fields = Readonly<Record<string, unknown>>
 
 const isRecord = (value: unknown): value is Fields =>
-  typeof value === 'object' &&
-  value !== null &&
-  !globalThis.Array.isArray(value)
-
-const isList = (value: unknown): value is ReadonlyArray<unknown> =>
-  globalThis.Array.isArray(value)
+  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 const fail = (reason: string): never => {
   throw new Error(reason)
@@ -99,7 +94,7 @@ const recordOf = (value: unknown): Fields =>
   isRecord(value) ? value : fail('The World codec expected a record')
 
 const listOf = (value: unknown): ReadonlyArray<unknown> =>
-  isList(value) ? value : fail('The World codec expected a list')
+  Array.isArray(value) ? value : fail('The World codec expected a list')
 
 // NOTE: a list read off the wire is never longer than this, so a bad
 // message cannot ask for a huge allocation.
@@ -111,13 +106,16 @@ const lengthOf = (reader: Reader): number => {
   return length > MAX_LIST ? fail(`A list of ${length}`) : length
 }
 
-export const readMany = <A>(count: number, read: () => A): ReadonlyArray<A> => {
+export const readMany: {
+  <A>(read: () => A): (count: number) => ReadonlyArray<A>
+  <A>(count: number, read: () => A): ReadonlyArray<A>
+} = Function.dual(2, <A>(count: number, read: () => A): ReadonlyArray<A> => {
   const items: Array<A> = []
   for (let index = 0; index < count; index++) {
     items.push(read())
   }
   return items
-}
+})
 
 // CODECS
 
@@ -153,9 +151,7 @@ const writeChange = (
     : codec.diff.write(writer, prev, next)
 
 const readChange = (codec: Codec, reader: Reader, prev: unknown): unknown =>
-  codec.diff === undefined
-    ? codec.read(reader)
-    : codec.diff.read(reader, prev)
+  codec.diff === undefined ? codec.read(reader) : codec.diff.read(reader, prev)
 
 // NUMBERS
 
@@ -426,7 +422,7 @@ const listCodec = (item: Codec): Codec => {
 
   const readThinned = (reader: Reader, prev: ReadonlyArray<unknown>) => {
     const removed = new Set(readIndexes(reader))
-    return prev.filter((_, index) => !removed.has(index))
+    return Array.filter(prev, (_, index) => !removed.has(index))
   }
 
   const readRetouched = (reader: Reader, prev: ReadonlyArray<unknown>) => {
@@ -520,7 +516,7 @@ const keyedListCodec = (item: Codec, keyOf: KeyOf): Codec => {
       writer.varint(key)
     }
     writer.varint(changed.length)
-    changed.forEach((entry, index) => {
+    Array.forEach(changed, (entry, index) => {
       const key = keyOf(entry)
       writer.varint(key)
       if (item.diff === undefined) {
@@ -618,9 +614,7 @@ const sameProperty = (property: Property, a: Fields, b: Fields): boolean => {
   }
   const hasA = property.name in a
   const hasB = property.name in b
-  return hasA && hasB
-    ? property.codec.same(valueA, valueB)
-    : hasA === hasB
+  return hasA && hasB ? property.codec.same(valueA, valueB) : hasA === hasB
 }
 
 const structCodec = (
@@ -643,7 +637,7 @@ const structCodec = (
     const fields = recordOf(value)
     if (hasOptional) {
       let mask = 0
-      optional.forEach(({ name }, index) => {
+      Array.forEach(optional, ({ name }, index) => {
         if (name in fields) {
           mask += bitValue(index)
         }
@@ -660,7 +654,7 @@ const structCodec = (
   const read = (reader: Reader): unknown => {
     const presence = hasOptional ? reader.varint() : 0
     const fields: Record<string, unknown> = { ...starting }
-    properties.forEach((property, index) => {
+    Array.forEach(properties, (property, index) => {
       if (
         property.isOptional &&
         !hasBit(presence, optionalIndexes[index] ?? 0)
@@ -745,7 +739,7 @@ const structCodec = (
       return before
     }
     const fields: Record<string, unknown> = { ...before }
-    properties.forEach((property, index) => {
+    Array.forEach(properties, (property, index) => {
       if (!hasBit(mask, index)) {
         return
       }
@@ -903,7 +897,7 @@ const isMemberOf = (ast: SchemaAST.AST): ((value: unknown) => boolean) =>
     ),
     Match.tag('Number', () => (value: unknown) => typeof value === 'number'),
     Match.tag('Boolean', () => (value: unknown) => typeof value === 'boolean'),
-    Match.tag('Arrays', () => isList),
+    Match.tag('Arrays', () => Array.isArray),
     Match.tag('Declaration', () => Option.isOption),
     Match.orElse(() => () => false),
   )
@@ -930,7 +924,7 @@ const objectsCodec = (
   skipped: ReadonlySet<string>,
   fills: Fields,
 ): Codec => {
-  const constants = Object.fromEntries(
+  const constants = Record.fromEntries(
     Array.filterMap(ast.propertySignatures, property =>
       property.type._tag === 'Literal'
         ? Result.succeed([
@@ -1022,7 +1016,7 @@ const isWorld = (value: unknown): value is World =>
   'phase' in value &&
   'zombies' in value &&
   'party' in value &&
-  isList(value['seats']) &&
+  Array.isArray(value['seats']) &&
   value['seats'].length > 0
 
 const worldOf = (value: unknown): World =>
@@ -1034,20 +1028,29 @@ const isGameEvent = (value: unknown): value is GameEvent =>
 const eventOf = (value: unknown): GameEvent =>
   isGameEvent(value) ? value : fail('The wire gave back no event')
 
-export const writeWorld = (writer: Writer, world: World): void =>
-  worldCodec.write(writer, world)
+export const writeWorld: {
+  (world: World): (writer: Writer) => void
+  (writer: Writer, world: World): void
+} = Function.dual(2, (writer: Writer, world: World): void =>
+  worldCodec.write(writer, world),
+)
 
 export const readWorld = (reader: Reader): World =>
   worldOf(worldCodec.read(reader))
 
-export const writeWorldDiff = (
-  writer: Writer,
-  prev: World,
-  next: World,
-): void => writeChange(worldCodec, writer, prev, next)
+export const writeWorldDiff: {
+  (prev: World, next: World): (writer: Writer) => void
+  (writer: Writer, prev: World, next: World): void
+} = Function.dual(3, (writer: Writer, prev: World, next: World): void =>
+  writeChange(worldCodec, writer, prev, next),
+)
 
-export const readWorldDiff = (reader: Reader, prev: World): World =>
-  worldOf(readChange(worldCodec, reader, prev))
+export const readWorldDiff: {
+  (prev: World): (reader: Reader) => World
+  (reader: Reader, prev: World): World
+} = Function.dual(2, (reader: Reader, prev: World): World =>
+  worldOf(readChange(worldCodec, reader, prev)),
+)
 
 // NOTE: the codec for any Schema, as the World's fields get theirs, for
 // tests.
@@ -1062,11 +1065,17 @@ export const valueCodecOf = (
 }
 
 // NOTE: whether two Worlds read back the same on a client.
-export const isSameOnWire = (a: World, b: World): boolean =>
-  worldCodec.same(a, b)
+export const isSameOnWire: {
+  (b: World): (a: World) => boolean
+  (a: World, b: World): boolean
+} = Function.dual(2, (a: World, b: World): boolean => worldCodec.same(a, b))
 
-export const writeEvent = (writer: Writer, event: GameEvent): void =>
-  eventsCodec.write(writer, event)
+export const writeEvent: {
+  (event: GameEvent): (writer: Writer) => void
+  (writer: Writer, event: GameEvent): void
+} = Function.dual(2, (writer: Writer, event: GameEvent): void =>
+  eventsCodec.write(writer, event),
+)
 
 export const readEvent = (reader: Reader): GameEvent =>
   eventOf(eventsCodec.read(reader))

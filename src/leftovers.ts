@@ -1,4 +1,4 @@
-import { Array, Option, Record, pipe } from 'effect'
+import { Array, Function, Option, Record, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -125,19 +125,30 @@ const weaponOf = (prize: FridgePrize): Option.Option<WeaponKind> =>
 const isCarried = (player: Player, prize: FridgePrize): boolean =>
   Option.exists(weaponOf(prize), kind => isCarrying(player, kind))
 
-export const prizeWeights = (
-  fridge: Fridge,
-  player: Player,
-): ReadonlyArray<readonly [FridgePrize, number]> =>
-  Array.map(PRIZE_ORDER, prize => {
-    const base = PRIZE_WEIGHTS[prize]
-    const lucky =
-      prize === 'Freeze'
-        ? base +
-          FRIDGE_RULES.luckBoost * Math.min(FRIDGE_RULES.maxLuck, fridge.luck)
-        : base
-    return [prize, isCarried(player, prize) ? 0 : lucky] as const
-  })
+export const prizeWeights: {
+  (
+    player: Player,
+  ): (fridge: Fridge) => ReadonlyArray<readonly [FridgePrize, number]>
+  (
+    fridge: Fridge,
+    player: Player,
+  ): ReadonlyArray<readonly [FridgePrize, number]>
+} = Function.dual(
+  2,
+  (
+    fridge: Fridge,
+    player: Player,
+  ): ReadonlyArray<readonly [FridgePrize, number]> =>
+    Array.map(PRIZE_ORDER, prize => {
+      const base = PRIZE_WEIGHTS[prize]
+      const lucky =
+        prize === 'Freeze'
+          ? base +
+            FRIDGE_RULES.luckBoost * Math.min(FRIDGE_RULES.maxLuck, fridge.luck)
+          : base
+      return [prize, isCarried(player, prize) ? 0 : lucky] as const
+    }),
+)
 
 // NOTE: a Glass run (src/modifiers.ts) pulls no Sandwich: one heart is
 // one heart. Its share goes to the rest, as a carried weapon's does.
@@ -163,17 +174,28 @@ const weaponsOnly = (
 
 // NOTE: the odds the seat at `slot` would pull with right now, as each
 // prize's share of 1: what the fridge door's odds card shows.
-export const prizeOddsFor = (
-  world: World,
-  slot: PlayerSlot,
-): ReadonlyArray<readonly [FridgePrize, number]> => {
-  const weights = weightsFor(world, slot)
-  const total = Array.reduce(weights, 0, (sum, [, weight]) => sum + weight)
-  return Array.map(
-    weights,
-    ([prize, weight]) => [prize, total > 0 ? weight / total : 0] as const,
-  )
-}
+export const prizeOddsFor: {
+  (
+    slot: PlayerSlot,
+  ): (world: World) => ReadonlyArray<readonly [FridgePrize, number]>
+  (
+    world: World,
+    slot: PlayerSlot,
+  ): ReadonlyArray<readonly [FridgePrize, number]>
+} = Function.dual(
+  2,
+  (
+    world: World,
+    slot: PlayerSlot,
+  ): ReadonlyArray<readonly [FridgePrize, number]> => {
+    const weights = weightsFor(world, slot)
+    const total = Array.reduce(weights, 0, (sum, [, weight]) => sum + weight)
+    return Array.map(
+      weights,
+      ([prize, weight]) => [prize, total > 0 ? weight / total : 0] as const,
+    )
+  },
+)
 
 const weightsFor = (
   world: World,
@@ -185,34 +207,45 @@ const weightsFor = (
 }
 
 // NOTE: a roll from 0 to 1 against the weights, in their order.
-export const pickPrize = (
-  weights: ReadonlyArray<readonly [FridgePrize, number]>,
-  roll: number,
-): FridgePrize => {
-  const total = Array.reduce(weights, 0, (sum, [, weight]) => sum + weight)
-  const target = roll * total
-  return pipe(
-    weights,
-    Array.reduce(
-      { at: 0, maybePrize: Option.none<FridgePrize>() },
-      (walk, [prize, weight]) =>
-        Option.isSome(walk.maybePrize) || weight <= 0
-          ? walk
-          : target < walk.at + weight
-            ? { at: walk.at + weight, maybePrize: Option.some(prize) }
-            : { at: walk.at + weight, maybePrize: walk.maybePrize },
-    ),
-    ({ maybePrize }) =>
-      Option.getOrElse(
-        maybePrize,
-        () =>
-          Option.getOrElse(
-            Array.findLast(weights, ([, weight]) => weight > 0),
-            () => ['Dud', 1] as const,
-          )[0],
+export const pickPrize: {
+  (
+    roll: number,
+  ): (weights: ReadonlyArray<readonly [FridgePrize, number]>) => FridgePrize
+  (
+    weights: ReadonlyArray<readonly [FridgePrize, number]>,
+    roll: number,
+  ): FridgePrize
+} = Function.dual(
+  2,
+  (
+    weights: ReadonlyArray<readonly [FridgePrize, number]>,
+    roll: number,
+  ): FridgePrize => {
+    const total = Array.reduce(weights, 0, (sum, [, weight]) => sum + weight)
+    const target = roll * total
+    return pipe(
+      weights,
+      Array.reduce(
+        { at: 0, maybePrize: Option.none<FridgePrize>() },
+        (walk, [prize, weight]) =>
+          Option.isSome(walk.maybePrize) || weight <= 0
+            ? walk
+            : target < walk.at + weight
+              ? { at: walk.at + weight, maybePrize: Option.some(prize) }
+              : { at: walk.at + weight, maybePrize: walk.maybePrize },
       ),
-  )
-}
+      ({ maybePrize }) =>
+        Option.getOrElse(
+          maybePrize,
+          () =>
+            Option.getOrElse(
+              Array.findLast(weights, ([, weight]) => weight > 0),
+              () => ['Dud', 1] as const,
+            )[0],
+        ),
+    )
+  },
+)
 
 // WHERE
 
@@ -276,12 +309,16 @@ const hasCheapPull = (world: World, slot: PlayerSlot): boolean =>
 // NOTE: the kitchen tour's pull is free (src/tutorialRules.ts). Otherwise
 // each seat's first pull of a round costs `firstPrice` (owner, 2026-11-02),
 // and every later one `price`.
-export const fridgePriceFor = (world: World, slot: PlayerSlot): number =>
+export const fridgePriceFor: {
+  (slot: PlayerSlot): (world: World) => number
+  (world: World, slot: PlayerSlot): number
+} = Function.dual(2, (world: World, slot: PlayerSlot): number =>
   isKitchenTourOn(world)
     ? 0
     : hasCheapPull(world, slot)
       ? FRIDGE_RULES.firstPrice
-      : FRIDGE_RULES.price
+      : FRIDGE_RULES.price,
+)
 
 // NOTE: any paid pull spends the seat's cheap pull for the round; the
 // kitchen tour's free one does not.
@@ -300,10 +337,10 @@ const spendCheapPull = (
           : Array.append(slots, slot),
   })
 
-export const fridgeOffers = (
-  world: World,
-  slot: PlayerSlot,
-): ReadonlyArray<Offer> =>
+export const fridgeOffers: {
+  (slot: PlayerSlot): (world: World) => ReadonlyArray<Offer>
+  (world: World, slot: PlayerSlot): ReadonlyArray<Offer>
+} = Function.dual(2, (world: World, slot: PlayerSlot): ReadonlyArray<Offer> =>
   Option.match(fridgeBoxOf(levelOf(world)), {
     onNone: () => [],
     onSome: box =>
@@ -330,21 +367,26 @@ export const fridgeOffers = (
               },
             ]
           : [],
-  })
+  }),
+)
 
 // THE PULL
 
 // NOTE: a prize that replaces a gun arrives at that gun's tier, up to its
 // own top tier (owner, 2026-11-02), so taking it never throws an upgrade
 // away. Brain Freeze has no tiers; a gun into an empty slot starts at 0.
-export const carriedTierFor = (player: Player, kind: WeaponKind): number =>
+export const carriedTierFor: {
+  (kind: WeaponKind): (player: Player) => number
+  (player: Player, kind: WeaponKind): number
+} = Function.dual(2, (player: Player, kind: WeaponKind): number =>
   Math.min(
     maxTier(kind),
     Option.match(maybeReplacedGun(player.arsenal), {
       onNone: () => 0,
       onSome: ({ tier }) => tier,
     }),
-  )
+  ),
+)
 
 // NOTE: the Cooker and Brain Freeze go in a gun slot, as a bought gun
 // does. The Pan goes in the melee slot in place of the knife and both guns
@@ -396,54 +438,56 @@ const givePrize = (world: World, slot: PlayerSlot, prize: FridgePrize): World =>
 
 // NOTE: the pull: the price is paid, the prize drawn from the fridge's own
 // stream and given to the seat that held, and the door swings open.
-export const pullFridge = (
-  world: World,
-  slot: PlayerSlot,
-  price: number,
-): Option.Option<World> => {
-  if (
-    !isFridgeForSale(world) ||
-    seatStateAt(world, slot).wallet.balance < price
-  ) {
-    return Option.none()
-  }
-  return Option.map(fridgeBoxOf(levelOf(world)), box => {
-    const draw = nextRandom(world.loot.fridgeRngState)
-    const prize = pickPrize(weightsFor(world, slot), draw.value)
-    const spot = fridgeSpot(box)
-    const paid = modifyFields(world, {
-      seats: atSeat(slot, {
-        wallet: wallet =>
-          modifyFields(wallet, {
-            balance: balance => balance - price,
-          }),
-      }),
-      stats: stats =>
-        modifyFields(stats, { purchases: purchases => purchases + 1 }),
-      loot: loot =>
-        modifyFields(loot, { fridgeRngState: () => draw.nextState }),
-      fridge: fridge =>
-        modifyFields(
-          price > 0 ? spendCheapPull(fridge, roundOf(world), slot) : fridge,
-          {
-            pulls: pulls => pulls + 1,
-            door: () =>
-              FridgeDoor.Open({
-                prize,
-                slot,
-                remainingMs: FRIDGE_RULES.openMs,
-                durationMs: FRIDGE_RULES.openMs,
-              }),
-          },
-        ),
-      frameEvents: frameEvents => [
-        ...frameEvents,
-        GameEvent.FridgeOpened({ x: spot.x, y: spot.y, prize }),
-      ],
+export const pullFridge: {
+  (slot: PlayerSlot, price: number): (world: World) => Option.Option<World>
+  (world: World, slot: PlayerSlot, price: number): Option.Option<World>
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, price: number): Option.Option<World> => {
+    if (
+      !isFridgeForSale(world) ||
+      seatStateAt(world, slot).wallet.balance < price
+    ) {
+      return Option.none()
+    }
+    return Option.map(fridgeBoxOf(levelOf(world)), box => {
+      const draw = nextRandom(world.loot.fridgeRngState)
+      const prize = pickPrize(weightsFor(world, slot), draw.value)
+      const spot = fridgeSpot(box)
+      const paid = modifyFields(world, {
+        seats: atSeat(slot, {
+          wallet: wallet =>
+            modifyFields(wallet, {
+              balance: balance => balance - price,
+            }),
+        }),
+        stats: stats =>
+          modifyFields(stats, { purchases: purchases => purchases + 1 }),
+        loot: loot =>
+          modifyFields(loot, { fridgeRngState: () => draw.nextState }),
+        fridge: fridge =>
+          modifyFields(
+            price > 0 ? spendCheapPull(fridge, roundOf(world), slot) : fridge,
+            {
+              pulls: pulls => pulls + 1,
+              door: () =>
+                FridgeDoor.Open({
+                  prize,
+                  slot,
+                  remainingMs: FRIDGE_RULES.openMs,
+                  durationMs: FRIDGE_RULES.openMs,
+                }),
+            },
+          ),
+        frameEvents: frameEvents => [
+          ...frameEvents,
+          GameEvent.FridgeOpened({ x: spot.x, y: spot.y, prize }),
+        ],
+      })
+      return givePrize(paid, slot, prize)
     })
-    return givePrize(paid, slot, prize)
-  })
-}
+  },
+)
 
 // NOTE: after a pull the door shuts, unless that was the batch's last: the
 // third pull slams it half the time and the fourth always does.
@@ -496,10 +540,10 @@ const spotOf = (world: World) =>
 
 // NOTE: take it: the puller holds at the door and the weapon is theirs: a
 // gun slot for the Cooker or Brain Freeze, the melee slot for the Pan.
-export const takePrize = (
-  world: World,
-  slot: PlayerSlot,
-): Option.Option<World> =>
+export const takePrize: {
+  (slot: PlayerSlot): (world: World) => Option.Option<World>
+  (world: World, slot: PlayerSlot): Option.Option<World>
+} = Function.dual(2, (world: World, slot: PlayerSlot): Option.Option<World> =>
   isOfferedTo(world, slot) &&
   FridgeDoor.isAnyOf(['Offering'])(world.fridge.door)
     ? Option.map(weaponOf(world.fridge.door.prize), kind => {
@@ -514,7 +558,8 @@ export const takePrize = (
           }),
         )
       })
-    : Option.none()
+    : Option.none(),
+)
 
 // NOTE: leave it: the puller walked off or the time ran out, and the
 // weapon sinks back into the fridge. The pull stays paid.
@@ -557,7 +602,10 @@ const afterReveal = (world: World, prize: FridgePrize, slot: number): World =>
     : shut(world)
 
 // NOTE: one tick of the fridge's door, while the round runs.
-export const advanceFridge = (world: World, deltaMs: number): World =>
+export const advanceFridge: {
+  (deltaMs: number): (world: World) => World
+  (world: World, deltaMs: number): World
+} = Function.dual(2, (world: World, deltaMs: number): World =>
   FridgeDoor.match(world.fridge.door, {
     Shut: () => world,
     Open: door =>
@@ -599,7 +647,8 @@ export const advanceFridge = (world: World, deltaMs: number): World =>
                 : FridgeDoor.Shut(),
           }),
       }),
-  })
+  }),
+)
 
 export const isFridgePrizeWeapon = (prize: FridgePrize): boolean =>
   Option.exists(weaponOf(prize), isFridgeWeapon)

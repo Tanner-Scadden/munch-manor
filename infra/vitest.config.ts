@@ -1,4 +1,4 @@
-import * as Path from 'node:path'
+import { String } from 'effect'
 import { type Plugin, defineConfig } from 'vitest/config'
 
 const INFRA = import.meta.dirname
@@ -16,12 +16,12 @@ const oneEffect: Plugin = {
   resolveId(source, importer) {
     if (
       importer === undefined ||
-      importer.startsWith(INFRA) ||
+      String.startsWith(INFRA)(importer) ||
       !/^effect(\/|$)/.test(source)
     ) {
       return null
     }
-    return this.resolve(source, Path.join(INFRA, 'vitest.config.ts'), {
+    return this.resolve(source, `${INFRA}/vitest.config.ts`, {
       skipSelf: true,
     })
   },
@@ -31,5 +31,11 @@ const oneEffect: Plugin = {
 // in-memory database is @effect/sql-sqlite-bun on bun:sqlite.
 export default defineConfig({
   plugins: [oneEffect],
-  test: { include: ['worker/**/*.test.ts'] },
+  test: {
+    include: ['worker/**/*.test.ts'],
+    // NOTE: foldkit's Schema helpers (foldkit/schema, which the World's
+    // Schemas use) go through the plugin too, so they build on infra's
+    // Effect like the Schemas they wrap.
+    server: { deps: { inline: [/foldkit/] } },
+  },
 })

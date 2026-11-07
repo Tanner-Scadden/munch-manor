@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Option, Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { cleanLook } from '@munch/netcode'
@@ -18,6 +18,7 @@ import {
 import { pointsForRank } from './rank'
 import { SAVE_VERSION, decodeSave, restoreSave, saveOf } from './save'
 import { legacySave } from './store.fixture'
+import { jsonOf } from './testing'
 import { unlocksAt } from './unlocks'
 
 // The hat, shirt color, print, and gun skin in what is kept and what is
@@ -48,7 +49,7 @@ describe('the save with hats', () => {
   const { hat: _hat, gunSkin: _skin, ...lookWithoutHat } = legacySave.appearance
 
   test('a save from before hats is bare headed and has bought none', () => {
-    const json = JSON.stringify({
+    const json = jsonOf({
       ...withoutBought,
       version: 14,
       appearance: lookWithoutHat,
@@ -68,7 +69,7 @@ describe('the save with hats', () => {
 
   test('older saves still reach the current version through the chain', () => {
     const { calling: _calling, ...beforeCallings } = withoutBought
-    const json = JSON.stringify({
+    const json = jsonOf({
       ...beforeCallings,
       version: 13,
       appearance: lookWithoutHat,
@@ -92,7 +93,7 @@ describe('the save with hats', () => {
     expect(restored.boughtCosmetics).toEqual(['Fez', 'Plunger'])
     expect(saveOf(restored).boughtCosmetics).toEqual(['Fez', 'Plunger'])
     expect(saveOf(restored).appearance.hat).toBe('Fez')
-    const json = JSON.stringify(saveOf(restored))
+    const json = jsonOf(saveOf(restored))
     expect(decodeSave(json)).toEqual(Option.some(saveOf(restored)))
   })
 })
@@ -112,19 +113,17 @@ describe('the save at version 16', () => {
   })
 
   test('a save from before gun skins has stock guns and keeps its hats', () => {
-    const migrated = Option.getOrThrow(decodeSave(JSON.stringify(savedAt15(0))))
+    const migrated = Option.getOrThrow(decodeSave(jsonOf(savedAt15(0))))
     expect(migrated.version).toBe(SAVE_VERSION)
     expect(migrated.appearance.gunSkin).toBe('Stock')
     expect(migrated.appearance.hat).toBe(legacySave.appearance.hat)
     expect(migrated.boughtCosmetics).toEqual(['Fez', 'Plunger'])
-    expect(Object.keys(migrated)).not.toContain('boughtHats')
+    expect(Record.keys(migrated)).not.toContain('boughtHats')
   })
 
   test('it has seen every unlock it had reached, so no wall of NEW', () => {
     const rank16 = pointsForRank(16)
-    const migrated = Option.getOrThrow(
-      decodeSave(JSON.stringify(savedAt15(rank16))),
-    )
+    const migrated = Option.getOrThrow(decodeSave(jsonOf(savedAt15(rank16))))
     expect([...migrated.seenUnlocks].sort()).toEqual([...unlocksAt(16)].sort())
     expect(migrated.seenUnlocks).toContain('hat:TrafficCone')
     expect(migrated.seenUnlocks).toContain('shirt:Gold')
@@ -134,7 +133,7 @@ describe('the save at version 16', () => {
   })
 
   test('a new player has seen none, and one older save reaches the chain end', () => {
-    const migrated = Option.getOrThrow(decodeSave(JSON.stringify(savedAt15(0))))
+    const migrated = Option.getOrThrow(decodeSave(jsonOf(savedAt15(0))))
     expect(migrated.seenUnlocks).toEqual([])
   })
 
@@ -150,7 +149,7 @@ describe('the save at version 16', () => {
     expect(restored.appearance.gunSkin).toBe('Candy')
     expect(restored.seenUnlocks).toEqual(['hat:PartyHat'])
     expect(saveOf(restored).seenUnlocks).toEqual(['hat:PartyHat'])
-    const json = JSON.stringify(saveOf(restored))
+    const json = jsonOf(saveOf(restored))
     expect(decodeSave(json)).toEqual(Option.some(saveOf(restored)))
   })
 
@@ -301,17 +300,20 @@ describe('the hat in the look code', () => {
   })
 
   test('a hat word that is not a hat, or two of them, is no look', () => {
-    ;[
-      'Slim.Mohawk.Pink.Tan.Teal.CCBA.R',
-      'Slim.Mohawk.Pink.Tan.Teal.CCBA.MM',
-      'Slim.Mohawk.Pink.Tan.Teal.CCBA.m',
-      'Slim.Mohawk.Pink.Tan.Teal.CCBA.',
-      'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.A.A',
-      'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.Z',
-      'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.AA',
-    ].forEach(code => {
-      expect(lookOfCode(code)).toEqual(Option.none())
-    })
+    Array.forEach(
+      [
+        'Slim.Mohawk.Pink.Tan.Teal.CCBA.R',
+        'Slim.Mohawk.Pink.Tan.Teal.CCBA.MM',
+        'Slim.Mohawk.Pink.Tan.Teal.CCBA.m',
+        'Slim.Mohawk.Pink.Tan.Teal.CCBA.',
+        'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.A.A',
+        'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.Z',
+        'Slim.Mohawk.Pink.Tan.Teal.CCBA.M.AA',
+      ],
+      code => {
+        expect(lookOfCode(code)).toEqual(Option.none())
+      },
+    )
   })
 
   test('the lobby accepts the longer code', () => {

@@ -1,7 +1,8 @@
-import { Schema } from 'effect'
+import { Effect, Function, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 
 import type { Level } from '@game/arena'
+import { describeError } from '@game/describeError'
 import type { Model } from '@game/model'
 import type { STALL_BOX } from '@game/shop'
 
@@ -76,29 +77,73 @@ declare global {
 
 // TYPED RESULTS
 
+// NOTE: a browser call, or any promise a script waits on, that failed: the
+// error every Effect in the audits carries, with the thrown value's message.
+export class AuditFailed extends Schema.TaggedError<
+  AuditFailed,
+  { readonly brand: unique symbol }
+>()('AuditFailed', { message: Schema.String }) {}
+
+// NOTE: a promise, such as a Playwright call, as an Effect that fails with
+// `AuditFailed`.
+export const attempt = <A>(
+  run: () => Promise<A>,
+): Effect.Effect<A, AuditFailed> =>
+  Effect.tryPromise({
+    try: run,
+    catch: error => AuditFailed.make({ message: describeError(error) }),
+  })
+
+// NOTE: fails the audit with `reason`, as a thrown Error did.
+export const failWith = (reason: string) =>
+  AuditFailed.make({ message: reason })
+
+type Typed<S extends Schema.ConstraintDecoder<unknown>> = Effect.Effect<
+  S['Type'],
+  AuditFailed | Schema.SchemaError
+>
+
+// NOTE: what `run` hands back from the page, decoded with `schema`, for a
+// page function that takes an argument (`evaluateAs` takes none).
+export const decodedFrom: {
+  (
+    run: () => Promise<unknown>,
+  ): <S extends Schema.ConstraintDecoder<unknown>>(schema: S) => Typed<S>
+  <S extends Schema.ConstraintDecoder<unknown>>(
+    schema: S,
+    run: () => Promise<unknown>,
+  ): Typed<S>
+} = Function.dual(
+  2,
+  <S extends Schema.ConstraintDecoder<unknown>>(
+    schema: S,
+    run: () => Promise<unknown>,
+  ): Typed<S> =>
+    attempt(run).pipe(
+      Effect.flatMap(value => Schema.decodeUnknownEffect(schema)(value)),
+    ),
+)
+
 // NOTE: runs `pageFunction` in the page and decodes what comes back with
 // `schema`, so an audit reads a typed value, and a page that changed shape
 // fails here with the Schema's message instead of later as `undefined`.
 // Declare a Schema for only the fields the audit reads: a Struct ignores the
 // rest.
-export function evaluateAs<S extends Schema.ConstraintDecoder<unknown>>(
-  page: Page,
-  schema: S,
-  pageFunction: () => unknown,
-): Promise<S['Type']>
-export function evaluateAs<S extends Schema.ConstraintDecoder<unknown>, Arg>(
-  page: Page,
-  schema: S,
-  pageFunction: (arg: Arg) => unknown,
-  arg: Arg,
-): Promise<S['Type']>
-export async function evaluateAs<S extends Schema.ConstraintDecoder<unknown>>(
-  page: Page,
-  schema: S,
-  pageFunction: (arg: unknown) => unknown,
-  arg?: unknown,
-): Promise<S['Type']> {
-  return Schema.decodeUnknownPromise(schema)(
-    await page.evaluate(pageFunction, arg),
-  )
-}
+export const evaluateAs: {
+  <S extends Schema.ConstraintDecoder<unknown>>(
+    schema: S,
+    pageFunction: () => unknown,
+  ): (page: Page) => Typed<S>
+  <S extends Schema.ConstraintDecoder<unknown>>(
+    page: Page,
+    schema: S,
+    pageFunction: () => unknown,
+  ): Typed<S>
+} = Function.dual(
+  3,
+  <S extends Schema.ConstraintDecoder<unknown>>(
+    page: Page,
+    schema: S,
+    pageFunction: () => unknown,
+  ): Typed<S> => decodedFrom(schema, () => page.evaluate(pageFunction)),
+)

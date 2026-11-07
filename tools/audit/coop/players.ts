@@ -1,14 +1,23 @@
 // Co-op audit (tools/audit/coop.ts): each player's own browser page: the save it
 // starts with (rank, look), the viewport, checks, and waiting.
 
-import { Schema } from 'effect'
-import type { BrowserContext, Page } from 'playwright-core'
+import {
+  Array,
+  Config,
+  Console,
+  Effect,
+  Function,
+  Record,
+  Schema,
+} from 'effect'
+import type { Browser, BrowserContext, Page } from 'playwright-core'
 
 import { pointsForRank } from '@game/rank'
 
 import { encodeJson } from '../../json'
-import { SHOTS_DIR, launch, pollUntil } from '../lib'
-import { BASE, NET_JITTER, NET_LOSS, NET_RTT, slowSockets } from './config'
+import { SHOTS_DIR, pollUntil } from '../lib'
+import { type AuditFailed, attempt } from '../page'
+import { coopConfig, slowSockets } from './config'
 
 const SAVE_KEY = 'munch-manor:save'
 
@@ -23,8 +32,10 @@ const VIEWPORTS: Readonly<Record<string, ViewportSize>> = {
   l844: { width: 844, height: 390, isMobile: false },
   p390: { width: 390, height: 844, isMobile: false },
 }
-export const VIEWPORT_NAME = process.env['VIEWPORT'] ?? 'd1280'
-export const VIEWPORT = VIEWPORTS[VIEWPORT_NAME] ?? DESKTOP
+export const viewportName = Config.String('VIEWPORT').pipe(
+  Config.withDefault('d1280'),
+)
+export const viewportOf = (name: string) => VIEWPORTS[name] ?? DESKTOP
 
 const GRADUATE_SAVE = {
   version: 3,
@@ -63,8 +74,8 @@ const bestsOfRank = (rank: number) => ({
   runsPlayed: 0,
   totalKills: 0,
   killsByKind: { Shambler: pointsForRank(rank) },
-  byDifficulty: Object.fromEntries(
-    ['Easy', 'Normal', 'Hard', 'Nightmare'].map(name => [
+  byDifficulty: Record.fromEntries(
+    Array.map(['Easy', 'Normal', 'Hard', 'Nightmare'], name => [
       name,
       { fastestWinMs: null, bestEndlessWave: null },
     ]),
@@ -99,77 +110,150 @@ const LOOKS = [
 
 export const problems: Array<string> = []
 
-export const check = (isOk: boolean, label: string) => {
-  console.log(`${isOk ? '  ok  ' : '  FAIL'} ${label}`)
-  if (!isOk) {
-    problems.push(label)
-  }
-}
+export const check: {
+  (label: string): (isOk: boolean) => Effect.Effect<void>
+  (isOk: boolean, label: string): Effect.Effect<void>
+} = Function.dual(2, (isOk: boolean, label: string): Effect.Effect<void> =>
+  Effect.andThen(
+    Console.log(`${isOk ? '  ok  ' : '  FAIL'} ${label}`),
+    Effect.sync(() => {
+      if (!isOk) {
+        problems.push(label)
+      }
+    }),
+  ),
+)
 
-export const until = async (
-  label: string,
-  holds: () => Promise<boolean>,
-  timeoutMs = 20_000,
-): Promise<boolean> => {
-  const { last: isMet, elapsedMs } = await pollUntil(
-    () => holds().catch(() => false),
-    isDone => isDone,
-    200,
-    timeoutMs,
-  )
-  if (isMet) {
-    console.log(`  ok   ${label} (${elapsedMs} ms)`)
-    return true
-  }
-  problems.push(label)
-  console.log(`  FAIL ${label}`)
-  return false
-}
+// NOTE: polls `holds` (a failure counts as not yet) until it holds or
+// `timeoutMs` has passed, and logs the step as ok or a problem.
+export const untilWithin: {
+  <E>(
+    holds: Effect.Effect<boolean, E>,
+    timeoutMs: number,
+  ): (label: string) => Effect.Effect<boolean>
+  <E>(
+    label: string,
+    holds: Effect.Effect<boolean, E>,
+    timeoutMs: number,
+  ): Effect.Effect<boolean>
+} = Function.dual(
+  3,
+  <E>(
+    label: string,
+    holds: Effect.Effect<boolean, E>,
+    timeoutMs: number,
+  ): Effect.Effect<boolean> =>
+    Effect.gen(function* () {
+      const { last: isMet, elapsedMs } = yield* pollUntil(
+        holds.pipe(Effect.orElseSucceed(() => false)),
+        isDone => isDone,
+        200,
+        timeoutMs,
+      )
+      if (isMet) {
+        yield* Console.log(`  ok   ${label} (${elapsedMs} ms)`)
+        return true
+      }
+      problems.push(label)
+      yield* Console.log(`  FAIL ${label}`)
+      return false
+    }),
+)
 
-export const shot = (page: Page, name: string) =>
-  page.screenshot({
-    path: `${SHOTS_DIR}/coop-e2e-${VIEWPORT_NAME === 'd1280' ? '' : `${VIEWPORT_NAME}-`}${name}.png`,
-  })
+// NOTE: `untilWithin` with 20 s.
+export const until: {
+  <E>(
+    holds: Effect.Effect<boolean, E>,
+  ): (label: string) => Effect.Effect<boolean>
+  <E>(label: string, holds: Effect.Effect<boolean, E>): Effect.Effect<boolean>
+} = Function.dual(
+  2,
+  <E>(
+    label: string,
+    holds: Effect.Effect<boolean, E>,
+  ): Effect.Effect<boolean> => untilWithin(label, holds, 20_000),
+)
 
-export const browser = await launch()
-const PHONE_CONTEXT =
-  VIEWPORT_NAME === 'd1280' ? {} : { isMobile: true, hasTouch: true }
+export const shot: {
+  (name: string): (page: Page) => Effect.Effect<void, AuditFailed>
+  (page: Page, name: string): Effect.Effect<void, AuditFailed>
+} = Function.dual(
+  2,
+  (page: Page, name: string): Effect.Effect<void, AuditFailed> =>
+    Effect.gen(function* () {
+      const viewport = yield* viewportName.pipe(
+        Effect.orElseSucceed(() => 'd1280'),
+      )
+      yield* attempt(() =>
+        page.screenshot({
+          path: `${SHOTS_DIR}/coop-e2e-${viewport === 'd1280' ? '' : `${viewport}-`}${name}.png`,
+        }),
+      )
+    }),
+)
+
 export const contexts: Array<BrowserContext> = []
 
-export const openPlayer = async (
-  name: string,
-  lookIndex = 0,
-): Promise<Page> => {
-  const context = await browser.newContext({
-    viewport: { width: VIEWPORT.width, height: VIEWPORT.height },
-    ...PHONE_CONTEXT,
-  })
-  contexts.push(context)
-  const page = await context.newPage()
-  if (NET_RTT !== undefined && !Number.isNaN(NET_RTT)) {
-    await page.addInitScript(slowSockets, {
-      rttMs: NET_RTT,
-      jitterMs: NET_JITTER ?? 0,
-      lossPercent: NET_LOSS ?? 0,
-    })
-  }
-  page.on('pageerror', error => problems.push(`${name}: ${error.message}`))
-  await page.goto(new URL('version.json', BASE).href)
-  await page.evaluate(([key, json]) => localStorage.setItem(key, json), [
-    SAVE_KEY,
-    encodeJson(Schema.Json)({
-      ...GRADUATE_SAVE,
-      appearance: LOOKS[lookIndex % LOOKS.length] ?? null,
-      bests: bestsOfRank(RANKS[lookIndex % RANKS.length] ?? 1),
+export const openPlayer: {
+  (
+    name: string,
+    lookIndex: number,
+  ): (browser: Browser) => Effect.Effect<Page, AuditFailed | Config.ConfigError>
+  (
+    browser: Browser,
+    name: string,
+    lookIndex: number,
+  ): Effect.Effect<Page, AuditFailed | Config.ConfigError>
+} = Function.dual(
+  3,
+  (
+    browser: Browser,
+    name: string,
+    lookIndex: number,
+  ): Effect.Effect<Page, AuditFailed | Config.ConfigError> =>
+    Effect.gen(function* () {
+      const config = yield* coopConfig
+      const viewport = yield* viewportName
+      const size = viewportOf(viewport)
+      const phoneContext =
+        viewport === 'd1280' ? {} : { isMobile: true, hasTouch: true }
+      const context = yield* attempt(() =>
+        browser.newContext({
+          viewport: { width: size.width, height: size.height },
+          ...phoneContext,
+        }),
+      )
+      contexts.push(context)
+      const page = yield* attempt(() => context.newPage())
+      if (config.netRtt !== undefined && !Number.isNaN(config.netRtt)) {
+        const link = {
+          rttMs: config.netRtt,
+          jitterMs: config.netJitter ?? 0,
+          lossPercent: config.netLoss ?? 0,
+        }
+        yield* attempt(() => page.addInitScript(slowSockets, link))
+      }
+      page.on('pageerror', error => problems.push(`${name}: ${error.message}`))
+      yield* attempt(() => page.goto(new URL('version.json', config.base).href))
+      const save = encodeJson(Schema.Json)({
+        ...GRADUATE_SAVE,
+        appearance: LOOKS[lookIndex % LOOKS.length] ?? null,
+        bests: bestsOfRank(RANKS[lookIndex % RANKS.length] ?? 1),
+      })
+      yield* attempt(() =>
+        page.evaluate(([key, json]) => localStorage.setItem(key, json), [
+          SAVE_KEY,
+          save,
+        ] as const),
+      )
+      return page
     }),
-  ] as const)
-  return page
-}
+)
 
 export const filledSeats = (page: Page) =>
-  page.locator('.coop-seat:not([data-state="Empty"])').count()
+  attempt(() => page.locator('.coop-seat:not([data-state="Empty"])').count())
 
-export const roomCodeOf = async (page: Page): Promise<string> => {
-  const symbols = await page.locator('.coop-room-code-symbol').allTextContents()
-  return symbols.join('')
-}
+export const roomCodeOf = (page: Page) =>
+  attempt(() => page.locator('.coop-room-code-symbol').allTextContents()).pipe(
+    Effect.map(symbols => Array.join(symbols, '')),
+  )

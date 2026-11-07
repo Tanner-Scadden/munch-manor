@@ -1,4 +1,4 @@
-import { Option, Result } from 'effect'
+import { Array, Option, Result } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -22,7 +22,7 @@ const members = (
   linked: ReadonlyArray<number>,
   count = 2,
 ): ReadonlyArray<Room.Member> =>
-  Array.from({ length: count }, (_, slot) => ({
+  globalThis.Array.from({ length: count }, (_, slot) => ({
     slot,
     playerId: `player-${slot}`,
     socket: linked.includes(slot)
@@ -34,12 +34,12 @@ const start = (linked: ReadonlyArray<number> = [0, 1], count = 2): Stepped =>
   Room.startRoom(StandIn, members(linked, count), 42, T0)
 
 const sentTo = (out: ReadonlyArray<Room.Out>, socket: string) =>
-  out.flatMap(item =>
+  Array.flatMap(out, item =>
     item._tag === 'Send' && item.socket === socket ? [item.frame] : [],
   )
 
 const tagsTo = (out: ReadonlyArray<Room.Out>, socket: string) =>
-  sentTo(out, socket).map(frame => frame._tag)
+  Array.map(sentTo(out, socket), frame => frame._tag)
 
 const dotX = (room: Room.Room<StandInWorld>, slot: number): number =>
   Option.getOrThrow(StandIn.own.of(room.world, slot)).x
@@ -74,13 +74,14 @@ describe('the room', () => {
     const early = Room.advance(StandIn, started.room, T0 + 20)
     expect(early.room.tick).toBe(1)
     expect(early.out).toEqual([])
-    const second = Array.from({ length: 20 }).reduce<Stepped>(
-      (stepped, _, index) => advanceTo(stepped, T0 + (index + 1) * 50),
+    const second = Array.reduce<unknown, Stepped>(
+      globalThis.Array.from({ length: 20 }),
       { room: started.room, out: [] },
+      (stepped, _, index) => advanceTo(stepped, T0 + (index + 1) * 50),
     )
     expect(second.room.tick).toBe(60)
     expect(tagsTo(second.out, 'socket-0')).toEqual(
-      Array.from({ length: 20 }, () => 'Delta'),
+      globalThis.Array.from({ length: 20 }, () => 'Delta'),
     )
     const deltas = sentTo(second.out, 'socket-1')
     expect(deltas[0]).toMatchObject({ _tag: 'Delta', tick: 3, base: 0 })
@@ -223,8 +224,11 @@ describe('the room', () => {
     const started = start([0])
     const away = Room.unlink(started.room, 'socket-0', T0 + 100)
     const later = Room.advance(StandIn, away.room, T0 + 100 + 2 * 60 * 1000 + 1)
-    const freed = later.out.filter(item => item._tag === 'FreedSeat')
-    expect(freed.map(item => item.playerId)).toEqual(['player-0', 'player-1'])
+    const freed = Array.filter(later.out, item => item._tag === 'FreedSeat')
+    expect(Array.map(freed, item => item.playerId)).toEqual([
+      'player-0',
+      'player-1',
+    ])
     expect(later.room.world.dots).toEqual([])
     expect(later.out.at(-1)).toMatchObject({
       _tag: 'Ended',
@@ -243,7 +247,9 @@ describe('the room', () => {
   test('the round ends with the scores of each player', () => {
     const started = start()
     const busy = (room: Room.Room<StandInWorld>, at: number) =>
-      ['socket-0', 'socket-1'].reduce(
+      Array.reduce(
+        ['socket-0', 'socket-1'],
+        room,
         (current, socket) =>
           Room.receive(
             StandIn,
@@ -252,24 +258,26 @@ describe('the room', () => {
             { _tag: 'Ping', nonce: 1, rttMs: 30 },
             at,
           ).room,
-        room,
       )
-    const end = Array.from({ length: ROUND_TICKS / 30 + 1 }).reduce<Stepped>(
+    const end = Array.reduce<unknown, Stepped>(
+      globalThis.Array.from({ length: ROUND_TICKS / 30 + 1 }),
+      { room: started.room, out: [] },
       (stepped, _, index) => {
         const at = T0 + (index + 1) * 500
         return advanceTo({ room: busy(stepped.room, at), out: stepped.out }, at)
       },
-      { room: started.room, out: [] },
     )
     expect(Room.isEnded(end.out)).toBe(true)
     expect(tagsTo(end.out, 'socket-0').at(-1)).toBe('RoomClosed')
     expect(tagsTo(end.out, 'socket-0').at(-2)).toBe('Delta')
     expect(end.room.sentTick).toBe(end.room.tick)
-    const ended = end.out.find(item => item._tag === 'Ended')
+    const ended = Option.getOrUndefined(
+      Array.findFirst(end.out, item => item._tag === 'Ended'),
+    )
     expect(ended).toMatchObject({ _tag: 'Ended', reason: 'GameOver' })
     expect(
       ended?._tag === 'Ended'
-        ? ended.scores.map(score => [score.slot, score.playerId])
+        ? Array.map(ended.scores, score => [score.slot, score.playerId])
         : [],
     ).toEqual([
       [0, 'player-0'],
@@ -306,10 +314,10 @@ describe('the room', () => {
     ])
     expect(left.room.seats.length).toBe(1)
     const kicked = Room.dropPlayer(StandIn, started.room, 'player-1', true)
-    expect(kicked.out.map(item => item._tag)).toEqual(['Send', 'Close'])
+    expect(Array.map(kicked.out, item => item._tag)).toEqual(['Send', 'Close'])
     const frame: ServerFrame | undefined = sentTo(kicked.out, 'socket-1')[0]
     expect(frame?._tag).toBe('Kicked')
-    expect(kicked.room.world.dots.map(dot => dot.slot)).toEqual([0])
+    expect(Array.map(kicked.room.world.dots, dot => dot.slot)).toEqual([0])
   })
 
   test('it wakes next at the next send tick', () => {
@@ -330,7 +338,7 @@ describe('the room', () => {
       members([0, 1]),
       later,
     )
-    expect(restored.seats.map(seat => seat.presence._tag)).toEqual([
+    expect(Array.map(restored.seats, seat => seat.presence._tag)).toEqual([
       'Away',
       'Away',
     ])

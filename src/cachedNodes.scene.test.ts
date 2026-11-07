@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import { Subscription, given, scene, tap } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
@@ -47,7 +48,7 @@ const reusedRoots = (
       found.push(node)
       return
     }
-    node.children?.forEach(visit)
+    Array.forEach(node.children ?? [], visit)
   }
   visit(next)
   return found
@@ -85,10 +86,13 @@ const reuseAcrossAFrame = (
   }
   const reused = reusedRoots(previous, next)
   return {
-    keys: reused.flatMap(node =>
+    keys: Array.flatMap(reused, node =>
       typeof node.key === 'string' ? [node.key] : [],
     ),
-    unkeyed: reused.filter(node => node.key === undefined).map(describeNode),
+    unkeyed: Array.map(
+      Array.filter(reused, node => node.key === undefined),
+      describeNode,
+    ),
   }
 }
 

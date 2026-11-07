@@ -7,33 +7,45 @@
 // diff image, `s17-diff-<viewport>-<scene>.png`, for any scene that differs.
 // ONLY picks scenes by name, BASE points it at another harness port, and
 // COMPARE_ONLY=1 compares the sets already on disk without taking new shots.
-import { Schema } from 'effect'
-import { readdirSync } from 'node:fs'
+import {
+  Array,
+  Config,
+  Console,
+  Effect,
+  FileSystem,
+  Option,
+  Schema,
+  String,
+} from 'effect'
+
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { encodeJson } from '../json'
+import { runHarnessAuditWith } from './harnessServer'
 import {
   DESKTOP_1280,
   PHONE_667,
   SHOTS_DIR,
-  TAG,
   type Viewport,
+  auditTag,
+  closePage,
   comparePngs,
   deviceQuery,
   gotoScene,
   harnessUrl,
   isPickedScene,
-  launch,
+  openBrowser,
   openPage,
   shot,
-  useHarness,
 } from './lib'
+import { attempt } from './page'
 
 const boxJson = encodeJson(
   Schema.Struct({
-    left: Schema.Number,
-    top: Schema.Number,
-    right: Schema.Number,
-    bottom: Schema.Number,
+    left: Schema.Finite,
+    top: Schema.Finite,
+    right: Schema.Finite,
+    bottom: Schema.Finite,
   }),
 )
 
@@ -101,54 +113,67 @@ const SCENES: ReadonlyArray<Scene> = [
 const shotName = (tag: string, viewport: Viewport, scene: Scene) =>
   `s17-${tag}-${viewport.name}-${scene.name}`
 
-const isComparingOnly = process.env['COMPARE_ONLY'] === '1'
-
-await useHarness()
-const browser = await launch()
-for (const viewport of VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name) || isComparingOnly) {
-      continue
-    }
-    const page = await openPage(browser, viewport)
-    await gotoScene(page, harnessUrl(scene.query, deviceQuery(viewport)))
-    await shot(page, shotName(TAG, viewport, scene))
-    await page.context().close()
-  }
-}
-
-const compareTag = process.env['COMPARE']
-if (compareTag !== undefined && compareTag !== '') {
-  const page = await (
-    await browser.newContext({ viewport: { width: 400, height: 300 } })
-  ).newPage()
-  const files = readdirSync(SHOTS_DIR)
-  for (const viewport of VIEWPORTS) {
-    for (const scene of SCENES) {
-      if (!isPickedScene(scene.name)) {
-        continue
-      }
-      const before = `${shotName(compareTag, viewport, scene)}.png`
-      const after = `${shotName(TAG, viewport, scene)}.png`
-      if (!files.includes(before) || !files.includes(after)) {
-        continue
-      }
-      const result = await comparePngs(
-        page,
-        `${SHOTS_DIR}/${before}`,
-        `${SHOTS_DIR}/${after}`,
-      )
-      const label = `${viewport.name}-${scene.name}`
-      console.log(
-        `${label}: ${result.differing} of ${result.total} pixels differ, max channel delta ${result.maxDelta}${result.box === null ? '' : `, in ${boxJson(result.box)}`}`,
-      )
-      if (result.diffUrl !== null) {
-        await Bun.write(
-          `${SHOTS_DIR}/s17-diff-${label}.png`,
-          Buffer.from(result.diffUrl.split(',')[1] ?? '', 'base64'),
-        )
+runHarnessAuditWith(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const isComparingOnly =
+      (yield* Config.String('COMPARE_ONLY').pipe(Config.withDefault(''))) ===
+      '1'
+    const browser = yield* openBrowser
+    for (const viewport of VIEWPORTS) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name)) || isComparingOnly) {
+          continue
+        }
+        const page = yield* openPage(browser, viewport)
+        yield* gotoScene(page, harnessUrl(scene.query, deviceQuery(viewport)))
+        yield* shot(page, shotName(tag, viewport, scene))
+        yield* closePage(page)
       }
     }
-  }
-}
-await browser.close()
+
+    const compareTag = yield* Config.String('COMPARE').pipe(
+      Config.withDefault(''),
+    )
+    if (compareTag !== '') {
+      const fs = yield* FileSystem.FileSystem
+      const context = yield* attempt(() =>
+        browser.newContext({ viewport: { width: 400, height: 300 } }),
+      )
+      const page = yield* attempt(() => context.newPage())
+      const files = yield* fs.readDirectory(SHOTS_DIR)
+      for (const viewport of VIEWPORTS) {
+        for (const scene of SCENES) {
+          if (!(yield* isPickedScene(scene.name))) {
+            continue
+          }
+          const before = `${shotName(compareTag, viewport, scene)}.png`
+          const after = `${shotName(tag, viewport, scene)}.png`
+          if (!Array.contains(files, before) || !Array.contains(files, after)) {
+            continue
+          }
+          const result = yield* comparePngs(
+            page,
+            `${SHOTS_DIR}/${before}`,
+            `${SHOTS_DIR}/${after}`,
+          )
+          const label = `${viewport.name}-${scene.name}`
+          yield* Console.log(
+            `${label}: ${result.differing} of ${result.total} pixels differ, max channel delta ${result.maxDelta}${result.box === null ? '' : `, in ${boxJson(result.box)}`}`,
+          )
+          if (result.diffUrl !== null) {
+            const base64 = Option.getOrElse(
+              Array.get(String.split(',')(result.diffUrl), 1),
+              () => '',
+            )
+            yield* fs.writeFile(
+              `${SHOTS_DIR}/s17-diff-${label}.png`,
+              Buffer.from(base64, 'base64'),
+            )
+          }
+        }
+      }
+    }
+  }),
+  NodeServices.layer,
+)

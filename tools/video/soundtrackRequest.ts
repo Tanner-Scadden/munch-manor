@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { type Effect, Function, Schema } from 'effect'
 
 import { MusicLevel, MusicMood, MusicStinger } from '../../src/music'
 import { SoundEffect } from '../../src/soundEffect'
@@ -48,14 +48,19 @@ const LoggedCue = Schema.Union([
 ])
 type LoggedCue = typeof LoggedCue.Type
 
-export const decodeAudioLog = Schema.decodeUnknownEffect(
-  Schema.Array(LoggedCue),
-)
+const decodeLog = Schema.decodeUnknownEffect(Schema.Array(LoggedCue))
+
+export const decodeAudioLog = (
+  log: unknown,
+): Effect.Effect<ReadonlyArray<LoggedCue>, Schema.SchemaError> => decodeLog(log)
 
 // NOTE: a cue at the clip frame it is heard on.
 export type ClipCue = Readonly<{ frame: number; cue: LoggedCue }>
 
-export const cueAt = ({ frame, cue }: ClipCue, framesPerSecond: number): Cue =>
+export const cueAt: {
+  (framesPerSecond: number): (self: ClipCue) => Cue
+  (self: ClipCue, framesPerSecond: number): Cue
+} = Function.dual(2, ({ frame, cue }: ClipCue, framesPerSecond: number): Cue =>
   cue._tag === 'Sound'
     ? SoundCue.make({
         seconds: frame / framesPerSecond,
@@ -67,4 +72,5 @@ export const cueAt = ({ frame, cue }: ClipCue, framesPerSecond: number): Cue =>
         mood: cue.mood,
         level: cue.level,
         stinger: cue.stinger,
-      })
+      }),
+)

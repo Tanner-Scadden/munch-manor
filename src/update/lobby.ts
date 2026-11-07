@@ -1,9 +1,9 @@
-import { Array, Effect, Option } from 'effect'
+import { Array, Effect, Function, Option } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { activeBots, addBot, removeBot } from '../bots'
-import { makeCommand, makeStep } from '../definition'
+import { ApplicationDefinition, makeStep } from '../definition'
 import { chooseDifficulty, isLocked } from '../difficulty'
 import { runModeOf, switchMode } from '../home'
 import { isStartKey, maybeFocusStep } from '../input'
@@ -48,27 +48,32 @@ import {
 
 // COMMAND
 
-export const FocusLobbyControl = makeCommand('FocusLobbyControl', {
-  args: { control: LobbyControl },
-  messages: [Message.CompletedFocusLobbyControl],
-  handler: function* () {
-    return ({ control }) =>
-      Dom.focus(`#${lobbyControlId(control)}`).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedFocusLobbyControl()),
-      )
+export const FocusLobbyControl = ApplicationDefinition.makeCommand(
+  'FocusLobbyControl',
+  {
+    args: { control: LobbyControl },
+    messages: [Message.CompletedFocusLobbyControl],
+    handler: function* () {
+      return ({ control }) =>
+        Dom.focus(`#${lobbyControlId(control)}`).pipe(
+          Effect.ignore,
+          Effect.as(Message.CompletedFocusLobbyControl()),
+        )
+    },
   },
-})
+)
 
 const noteFocus = (model: Model, maybeControl: Option.Option<LobbyControl>) =>
   modifyFields(model, {
     home: home => modifyFields(home, { maybeLobbyFocus: () => maybeControl }),
   })
 
-export const focusedLobbyControl = (
-  model: Model,
-  control: LobbyControl,
-): Model => noteFocus(model, Option.some(control))
+export const focusedLobbyControl: {
+  (control: LobbyControl): (model: Model) => Model
+  (model: Model, control: LobbyControl): Model
+} = Function.dual(2, (model: Model, control: LobbyControl): Model =>
+  noteFocus(model, Option.some(control)),
+)
 
 export const blurredLobbyControl = (model: Model): Model =>
   noteFocus(model, Option.none())

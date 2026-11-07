@@ -1,3 +1,4 @@
+import { Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { OPEN_BREAK_WAVE } from './constants'
@@ -9,11 +10,15 @@ import { BreakClock, Lesson, type Lessons, Phase } from './worldSchema'
 // teaching, with its hints and their places on screen, is the client's
 // (src/onboarding.ts).
 
-export const learn = (lesson: Lesson, atMs: number): Lesson =>
+export const learn: {
+  (atMs: number): (lesson: Lesson) => Lesson
+  (lesson: Lesson, atMs: number): Lesson
+} = Function.dual(2, (lesson: Lesson, atMs: number): Lesson =>
   Lesson.match(lesson, {
     Pending: () => Lesson.Learned({ atMs }),
     Learned: () => lesson,
-  })
+  }),
+)
 
 const learned = Lesson.Learned({ atMs: 0 })
 
@@ -66,5 +71,11 @@ export const learnOpenBreak = (model: World): World =>
       }),
   })
 
-export const isTimedBreak = (wave: number, clock: BreakClock): boolean =>
-  wave > OPEN_BREAK_WAVE && BreakClock.isAnyOf(['Counting'])(clock)
+export const isTimedBreak: {
+  (clock: BreakClock): (wave: number) => boolean
+  (wave: number, clock: BreakClock): boolean
+} = Function.dual(
+  2,
+  (wave: number, clock: BreakClock): boolean =>
+    wave > OPEN_BREAK_WAVE && BreakClock.isAnyOf(['Counting'])(clock),
+)

@@ -1,4 +1,4 @@
-import { Array, Match, Option, String, pipe } from 'effect'
+import { Array, Function, Match, Option, String, pipe } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { Dialog, Tabs } from '@foldkit/ui'
@@ -1128,7 +1128,10 @@ const panelView = (
   }),
 ]
 
-export const shopDialogView = (model: Model, h: ApplicationViewBuilder): Html =>
+export const shopDialogView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(
     {
       dialog: model.shopDialog,
@@ -1139,4 +1142,5 @@ export const shopDialogView = (model: Model, h: ApplicationViewBuilder): Html =>
       binding: ShopDialogBinding,
     },
     h,
-  )
+  ),
+)

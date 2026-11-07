@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, String } from 'effect'
 
 import { pixelIconUrl } from './icons'
 import type { Calling } from './playerData'
@@ -165,9 +165,9 @@ const PISTOL_PIXELS = [
 const crossedOut = (pixels: ReadonlyArray<string>): ReadonlyArray<string> =>
   Array.map(pixels, (row, y) => {
     const x = Math.round((y * (row.length - 1)) / (pixels.length - 1))
-    const slashed = `${row.slice(0, x)}R${row.slice(x + 1)}`
+    const slashed = `${String.slice(0, x)(row)}R${String.slice(x + 1)(row)}`
     const other = row.length - 1 - x
-    return `${slashed.slice(0, other)}R${slashed.slice(other + 1)}`
+    return `${String.slice(0, other)(slashed)}R${String.slice(other + 1)(slashed)}`
   })
 
 const NO_PISTOL_ICON = icon(crossedOut(PISTOL_PIXELS))

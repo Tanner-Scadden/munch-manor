@@ -1,4 +1,4 @@
-import { Array, Effect, Layer, Option, Ref, Stream } from 'effect'
+import { Array, Effect, Function, Layer, Option, Ref, Stream } from 'effect'
 
 import {
   type ClientFrame,
@@ -102,81 +102,133 @@ export const quietCoopNet: Layer.Layer<CoopNet> = Layer.succeed(
 
 export const CODE = 'MNCH7'
 
-export const memberOf = (
-  slot: number,
-  name: string,
-  ready = false,
-  look = '',
-  canNightmare = false,
-  rank = 1,
-  calling = 'You',
-): LobbyMember => ({
-  playerId: `player-${slot}`,
-  name,
-  look,
-  rank,
-  calling,
-  canNightmare,
-  slot,
-  ready,
-  pingMs: 0,
-  joinedMs: slot,
-})
+// NOTE: data first when the slot leads: a slot is a number, a name is not.
+export const memberOf: {
+  (
+    name: string,
+    ready?: boolean,
+    look?: string,
+    canNightmare?: boolean,
+    rank?: number,
+    calling?: string,
+  ): (slot: number) => LobbyMember
+  (
+    slot: number,
+    name: string,
+    ready?: boolean,
+    look?: string,
+    canNightmare?: boolean,
+    rank?: number,
+    calling?: string,
+  ): LobbyMember
+} = Function.dual(
+  (args: IArguments) => typeof args[0] === 'number',
+  (
+    slot: number,
+    name: string,
+    ready: boolean = false,
+    look: string = '',
+    canNightmare: boolean = false,
+    rank: number = 1,
+    calling: string = 'You',
+  ): LobbyMember => ({
+    playerId: `player-${slot}`,
+    name,
+    look,
+    rank,
+    calling,
+    canNightmare,
+    slot,
+    ready,
+    pingMs: 0,
+    joinedMs: slot,
+  }),
+)
 
-export const lobbyOf = (
-  members: ReadonlyArray<LobbyMember>,
-  status: RoomStatus = 'Lobby',
-  host = 'player-0',
-): Lobby => ({
-  code: CODE,
-  host,
-  status,
-  visibility: 'Private',
-  mode: 'Campaign',
-  difficulty: 'Normal',
-  modifiers: 0,
-  canKeepGoing: false,
-  round: 1,
-  createdMs: 0,
-  updatedMs: 0,
-  result: Option.none(),
-  members,
-})
+// NOTE: data first when the members lead: they are an array, a status is not.
+export const lobbyOf: {
+  (
+    status?: RoomStatus,
+    host?: string,
+  ): (members: ReadonlyArray<LobbyMember>) => Lobby
+  (
+    members: ReadonlyArray<LobbyMember>,
+    status?: RoomStatus,
+    host?: string,
+  ): Lobby
+} = Function.dual(
+  (args: IArguments) => Array.isArray(args[0]),
+  (
+    members: ReadonlyArray<LobbyMember>,
+    status: RoomStatus = 'Lobby',
+    host: string = 'player-0',
+  ): Lobby => ({
+    code: CODE,
+    host,
+    status,
+    visibility: 'Private',
+    mode: 'Campaign',
+    difficulty: 'Normal',
+    modifiers: 0,
+    canKeepGoing: false,
+    round: 1,
+    createdMs: 0,
+    updatedMs: 0,
+    result: Option.none(),
+    members,
+  }),
+)
 
 const STAGED_TICKS = 50
 
 // NOTE: a stand-in world a few seconds into a run, players spread out. The
 // lobby's `members` give each seat its calling, as a room starts them.
-export const stagedWorld = (
-  slots: ReadonlyArray<number>,
-  members: ReadonlyArray<Readonly<{ slot: number; calling: string }>> = [],
-): WorldState =>
-  Array.reduce(
-    Array.range(1, STAGED_TICKS),
-    roomWorldFor(roomSettingsOf('Campaign', 'Normal', members)).start(slots, 7),
-    world =>
-      coopWorld.step(
-        world,
-        Array.map(slots, slot => ({
-          slot,
-          input: {
-            ...NEUTRAL_INPUT,
-            moveX: slot % 2 === 0 ? 90 : -90,
-            moveY: slot < 2 ? -60 : 60,
-          },
-          presence: 'Here' as const,
-          viewLagTicks: 0,
-          rttMs: 0,
-        })),
-      ),
-  )
+type StagedMember = Readonly<{ slot: number; calling: string }>
 
-export const playingSession = (
-  world: WorldState,
-  slot: number,
-): RoomSession => ({
+export const stagedWorld: {
+  (
+    members: ReadonlyArray<StagedMember>,
+  ): (slots: ReadonlyArray<number>) => WorldState
+  (
+    slots: ReadonlyArray<number>,
+    members: ReadonlyArray<StagedMember>,
+  ): WorldState
+} = Function.dual(
+  2,
+  (
+    slots: ReadonlyArray<number>,
+    members: ReadonlyArray<StagedMember>,
+  ): WorldState =>
+    Array.reduce(
+      Array.range(1, STAGED_TICKS),
+      roomWorldFor(roomSettingsOf('Campaign', 'Normal', members)).start(
+        slots,
+        7,
+      ),
+      world =>
+        coopWorld.step(
+          world,
+          Array.map(slots, slot => ({
+            slot,
+            input: {
+              ...NEUTRAL_INPUT,
+              moveX: slot % 2 === 0 ? 90 : -90,
+              moveY: slot < 2 ? -60 : 60,
+            },
+            presence: 'Here' as const,
+            viewLagTicks: 0,
+            rttMs: 0,
+          })),
+        ),
+    ),
+)
+
+export const playingSession: {
+  (slot: number): (world: WorldState) => RoomSession
+  (world: WorldState, slot: number): RoomSession
+} = Function.dual(2, (world: WorldState, slot: number): RoomSession => ({
   ...Session.makeSession(0),
   phase: { _tag: 'Playing' },
   slot: Option.some(slot),
   frames: [{ tick: world.tick, world, atMs: 0 }],
-})
+}))

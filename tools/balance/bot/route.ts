@@ -1,3 +1,5 @@
+import { Function } from 'effect'
+
 import { type Vector } from './basics'
 
 // THE KITCHEN ROUTE
@@ -20,7 +22,10 @@ const isInDoorColumn = (point: Vector) =>
   Math.abs(point.x - KITCHEN_DOOR_X) <= 6
 
 // The next point to walk to on the way to goal.
-export const routeTo = (from: Vector, goal: Vector): Vector => {
+export const routeTo: {
+  (goal: Vector): (from: Vector) => Vector
+  (from: Vector, goal: Vector): Vector
+} = Function.dual(2, (from: Vector, goal: Vector): Vector => {
   if (isInKitchen(from) === isInKitchen(goal)) {
     if (!isInKitchen(goal) || goal.y >= -55 || Math.abs(from.x - goal.x) <= 6) {
       return goal
@@ -37,4 +42,4 @@ export const routeTo = (from: Vector, goal: Vector): Vector => {
     return KITCHEN_EAST
   }
   return isInDoorColumn(from) && from.y > -48 ? PARLOUR_SIDE : KITCHEN_SIDE
-}
+})

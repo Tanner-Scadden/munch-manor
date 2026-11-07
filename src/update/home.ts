@@ -1,4 +1,4 @@
-import { Array, Duration, Effect, Option, Schema, pipe } from 'effect'
+import { Array, Duration, Effect, Function, Option, Schema, pipe } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -21,7 +21,7 @@ import {
   withoutTryOn,
 } from '../callingPick'
 import { NEWS_DAYS } from '../changelog'
-import { makeCommand, makeStep } from '../definition'
+import { ApplicationDefinition, makeStep } from '../definition'
 import {
   chooseDifficulty,
   isLocked,
@@ -98,87 +98,108 @@ import { markCallingsSeen } from './unlocks'
 
 // COMMAND
 
-export const ShowInstallPrompt = makeCommand('ShowInstallPrompt', {
-  messages: [Message.CompletedShowInstallPrompt],
-  handler: function* () {
-    return () =>
-      InstallPrompt.use(installPrompt =>
-        Effect.map(installPrompt.prompt, outcome =>
-          Message.CompletedShowInstallPrompt({ outcome }),
-        ),
-      )
+export const ShowInstallPrompt = ApplicationDefinition.makeCommand(
+  'ShowInstallPrompt',
+  {
+    messages: [Message.CompletedShowInstallPrompt],
+    handler: function* () {
+      return () =>
+        InstallPrompt.use(installPrompt =>
+          Effect.map(installPrompt.prompt, outcome =>
+            Message.CompletedShowInstallPrompt({ outcome }),
+          ),
+        )
+    },
   },
-})
+)
 
-export const FocusHomeButton = makeCommand('FocusHomeButton', {
-  args: { button: HomeButton },
-  messages: [Message.CompletedFocusHomeButton],
-  handler: function* () {
-    return ({ button }) =>
-      Dom.focus(`#${homeButtonId(button)}`).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedFocusHomeButton()),
-      )
+export const FocusHomeButton = ApplicationDefinition.makeCommand(
+  'FocusHomeButton',
+  {
+    args: { button: HomeButton },
+    messages: [Message.CompletedFocusHomeButton],
+    handler: function* () {
+      return ({ button }) =>
+        Dom.focus(`#${homeButtonId(button)}`).pipe(
+          Effect.ignore,
+          Effect.as(Message.CompletedFocusHomeButton()),
+        )
+    },
   },
-})
+)
 
 // NOTE: B buys Rattles a coffee from the keyboard. The coffee is a real
 // link, so the key clicks it, as SHARE's key does: the browser opens the
 // link from a click, which no popup blocker stops, and the click sends
 // ClickedSupportButton like a tap.
-export const ClickSupportLink = makeCommand('ClickSupportLink', {
-  messages: [Message.CompletedClickSupportLink],
-  handler: function* () {
-    return () =>
-      Dom.clickElement(`#${homeButtonId('Support')}`).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedClickSupportLink()),
-      )
+export const ClickSupportLink = ApplicationDefinition.makeCommand(
+  'ClickSupportLink',
+  {
+    messages: [Message.CompletedClickSupportLink],
+    handler: function* () {
+      return () =>
+        Dom.clickElement(`#${homeButtonId('Support')}`).pipe(
+          Effect.ignore,
+          Effect.as(Message.CompletedClickSupportLink()),
+        )
+    },
   },
-})
+)
 
 const clickSupportLink: UpdateStep = model =>
   isSupportShown(model) ? { model, commands: [ClickSupportLink()] } : { model }
 
-export const FocusHandCard = makeCommand('FocusHandCard', {
-  args: { card: HandCard },
-  messages: [Message.CompletedFocusHandCard],
-  handler: function* () {
-    return ({ card }) =>
-      Dom.focus(`#${handCardId(card)}`).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedFocusHandCard()),
-      )
+export const FocusHandCard = ApplicationDefinition.makeCommand(
+  'FocusHandCard',
+  {
+    args: { card: HandCard },
+    messages: [Message.CompletedFocusHandCard],
+    handler: function* () {
+      return ({ card }) =>
+        Dom.focus(`#${handCardId(card)}`).pipe(
+          Effect.ignore,
+          Effect.as(Message.CompletedFocusHandCard()),
+        )
+    },
   },
-})
+)
 
-export const FocusEndMenuButton = makeCommand('FocusEndMenuButton', {
-  messages: [Message.CompletedFocusEndMenuButton],
-  handler: function* () {
-    return () =>
-      Dom.focus(`#${END_MENU_BUTTON_ID}`).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedFocusEndMenuButton()),
-      )
+export const FocusEndMenuButton = ApplicationDefinition.makeCommand(
+  'FocusEndMenuButton',
+  {
+    messages: [Message.CompletedFocusEndMenuButton],
+    handler: function* () {
+      return () =>
+        Dom.focus(`#${END_MENU_BUTTON_ID}`).pipe(
+          Effect.ignore,
+          Effect.as(Message.CompletedFocusEndMenuButton()),
+        )
+    },
   },
-})
+)
 
 // NOTE: long enough for the gift's unwrap animation (src/menu.css) to
 // play out before the page goes.
 const UNWRAP_DURATION = Duration.millis(650)
 
-export const WaitForUnwrap = makeCommand('WaitForUnwrap', {
-  messages: [Message.CompletedWaitForUnwrap],
-  handler: function* () {
-    return () =>
-      Effect.as(Effect.sleep(UNWRAP_DURATION), Message.CompletedWaitForUnwrap())
+export const WaitForUnwrap = ApplicationDefinition.makeCommand(
+  'WaitForUnwrap',
+  {
+    messages: [Message.CompletedWaitForUnwrap],
+    handler: function* () {
+      return () =>
+        Effect.as(
+          Effect.sleep(UNWRAP_DURATION),
+          Message.CompletedWaitForUnwrap(),
+        )
+    },
   },
-})
+)
 
 // NOTE: the new build's service worker takes over first, when there is one,
 // so the reload and any later offline start run the new build. A worker that
 // fails or is slow never stops the reload.
-export const ReloadPage = makeCommand('ReloadPage', {
+export const ReloadPage = ApplicationDefinition.makeCommand('ReloadPage', {
   args: { build: Schema.String },
   messages: [Message.CompletedReloadPage, Message.FailedReloadPage],
   handler: function* () {
@@ -246,8 +267,12 @@ const showPanel =
 
 // NOTE: a How to play card shows its line once focused (a keyboard) or
 // tapped (touch), and keeps it until another card takes its place.
-export const showHelpLine = (model: Model, card: HelpCard): Model =>
-  modifyFields(model, { maybeOpenHelpCard: () => Option.some(card) })
+export const showHelpLine: {
+  (card: HelpCard): (model: Model) => Model
+  (model: Model, card: HelpCard): Model
+} = Function.dual(2, (model: Model, card: HelpCard): Model =>
+  modifyFields(model, { maybeOpenHelpCard: () => Option.some(card) }),
+)
 
 export const openPanel = (panel: MenuPanel) =>
   makeStep(model =>
@@ -312,10 +337,14 @@ export const closeHand = makeStep(model =>
   isHandOpen(model) ? HandDialogBinding.requestClose() : unchanged,
 )
 
-export const stepHandFocus = (model: Model, card: HandCard): UpdateReturn =>
+export const stepHandFocus: {
+  (card: HandCard): (model: Model) => UpdateReturn
+  (model: Model, card: HandCard): UpdateReturn
+} = Function.dual(2, (model: Model, card: HandCard): UpdateReturn =>
   isHandOpen(model) && Array.contains(HAND_CARDS, card)
     ? { model, commands: [FocusHandCard({ card })] }
-    : { model }
+    : { model },
+)
 
 export const homeFocusFromKey: (code: string) => UpdateStep =
   code => stepModel =>
@@ -358,20 +387,23 @@ export const openMunchopedia = (page: MunchopediaPage) =>
       : unchanged,
   )
 
-export const turnMunchopediaPage = (
-  model: Model,
-  page: MunchopediaPage,
-): UpdateReturn => ({
+export const turnMunchopediaPage: {
+  (page: MunchopediaPage): (model: Model) => UpdateReturn
+  (model: Model, page: MunchopediaPage): UpdateReturn
+} = Function.dual(2, (model: Model, page: MunchopediaPage): UpdateReturn => ({
   model: isPanelOpen(model, 'Munchopedia')
     ? showMunchopediaPage(model, page)
     : model,
-})
+}))
 
-export const turnNews = (model: Model, step: number): UpdateReturn => ({
+export const turnNews: {
+  (step: number): (model: Model) => UpdateReturn
+  (model: Model, step: number): UpdateReturn
+} = Function.dual(2, (model: Model, step: number): UpdateReturn => ({
   model: isPanelOpen(model, 'WhatsNew')
     ? turnNewsPage(model, step, NEWS_DAYS.length)
     : model,
-})
+}))
 
 const openCard = (card: KeyedHandCard) => {
   switch (card) {
@@ -601,13 +633,14 @@ export const pressInstall = makeStep(model => {
   }
 })
 
-export const settleInstallPrompt = (
-  model: Model,
-  outcome: InstallOutcome,
-): Model =>
+export const settleInstallPrompt: {
+  (outcome: InstallOutcome): (model: Model) => Model
+  (model: Model, outcome: InstallOutcome): Model
+} = Function.dual(2, (model: Model, outcome: InstallOutcome): Model =>
   modifyFields(model, {
     installOffer: () => (outcome === 'Accepted' ? 'Installed' : 'None'),
-  })
+  }),
+)
 
 // UPDATE GIFT
 

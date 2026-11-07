@@ -10,23 +10,24 @@
 // cover a button.
 //   bun run heavy -- --shared bun tools/audit/shotsModifiers.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
+import { Config, Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
-  SHOT_VIEWPORTS,
+  type Act,
   deviceQuery,
   finish,
   harnessQuery,
   isPickedScene,
-  launch,
+  openBrowser,
   openLobby,
   scenePages,
   settleAnimations,
-  useHarness,
+  shotViewports,
   wait,
 } from './lib'
-
-const SHOTS = process.env['MODIFIER_SHOTS'] ?? '/tmp/modifier-shots'
+import { attempt } from './page'
 
 const LEARNED =
   'learned=move,fire,startWave,shop,swap,pickup,timedBreaks,openBreak'
@@ -38,7 +39,7 @@ type Scene = Readonly<{
   query: string
   inLobby?: boolean
   checksTiles?: boolean
-  act?: (page: Page) => Promise<void>
+  act?: Act
 }>
 
 const SCENES: ReadonlyArray<Scene> = [
@@ -77,12 +78,16 @@ const SCENES: ReadonlyArray<Scene> = [
 ]
 
 // NOTE: the Glass shop's HEALTH shelf, whose one item is marked done.
-async function openHealthTab(page: Page): Promise<void> {
-  await page
-    .getByRole('tab', { name: /^Health,/ })
-    .first()
-    .click()
-  await settleAnimations(page)
+function openHealthTab(page: Page) {
+  return Effect.andThen(
+    attempt(() =>
+      page
+        .getByRole('tab', { name: /^Health,/ })
+        .first()
+        .click(),
+    ),
+    settleAnimations(page),
+  )
 }
 
 const MIN_TAP = 48
@@ -96,105 +101,129 @@ type Found = Readonly<{
   scrolls: boolean
 }>
 
-const checkTiles = (page: Page): Promise<Found> =>
-  page.evaluate(() => {
-    const group = document.querySelector('.modifier-group')
-    const box = group?.getBoundingClientRect()
-    const tiles = [...document.querySelectorAll('.modifier-pick')].map(tile => {
-      const rect = tile.getBoundingClientRect()
-      return {
-        name: tile.getAttribute('aria-label') ?? '',
-        width: rect.width,
-        height: rect.height,
-      }
-    })
-    const others = [...document.querySelectorAll('.coop button')].filter(
-      button => !button.classList.contains('modifier-pick'),
-    )
-    const covers = others.find(button => {
-      const rect = button.getBoundingClientRect()
-      return (
-        box !== undefined &&
-        rect.width > 0 &&
-        rect.height > 0 &&
-        rect.left < box.right - 1 &&
-        rect.right > box.left + 1 &&
-        rect.top < box.bottom - 1 &&
-        rect.bottom > box.top + 1
+const checkTiles = (page: Page) =>
+  attempt((): Promise<Found> =>
+    page.evaluate(() => {
+      const group = document.querySelector('.modifier-group')
+      const box = group?.getBoundingClientRect()
+      const tiles = globalThis.Array.from(
+        document.querySelectorAll('.modifier-pick'),
+        tile => {
+          const rect = tile.getBoundingClientRect()
+          return {
+            name: tile.getAttribute('aria-label') ?? '',
+            width: rect.width,
+            height: rect.height,
+          }
+        },
       )
-    })
-    return {
-      tiles,
-      isClipped:
-        box === undefined ||
-        box.left < 0 ||
-        box.top < 0 ||
-        box.right > innerWidth + 0.5 ||
-        box.bottom > innerHeight + 0.5,
-      coversButton:
-        covers?.getAttribute('aria-label') ?? covers?.textContent ?? '',
-      scrolls:
-        document.scrollingElement !== null &&
-        (document.scrollingElement.scrollHeight > innerHeight + 1 ||
-          document.scrollingElement.scrollWidth > innerWidth + 1),
-    }
-  })
+      // NOTE: this runs in the page, where Effect's modules are not loaded, so
+      // it finds the first covered button with a plain loop.
+      let covers: Element | undefined
+      for (const button of document.querySelectorAll('.coop button')) {
+        if (button.classList.contains('modifier-pick')) {
+          continue
+        }
+        const rect = button.getBoundingClientRect()
+        if (
+          box !== undefined &&
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.left < box.right - 1 &&
+          rect.right > box.left + 1 &&
+          rect.top < box.bottom - 1 &&
+          rect.bottom > box.top + 1
+        ) {
+          covers = button
+          break
+        }
+      }
+      return {
+        tiles,
+        isClipped:
+          box === undefined ||
+          box.left < 0 ||
+          box.top < 0 ||
+          box.right > innerWidth + 0.5 ||
+          box.bottom > innerHeight + 0.5,
+        coversButton:
+          covers?.getAttribute('aria-label') ?? covers?.textContent ?? '',
+        scrolls:
+          document.scrollingElement !== null &&
+          (document.scrollingElement.scrollHeight > innerHeight + 1 ||
+            document.scrollingElement.scrollWidth > innerWidth + 1),
+      }
+    }),
+  )
 
 const problems: Array<string> = []
 
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev'])
-for (const viewport of SHOT_VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
-    }
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
+runHarnessAudit(
+  Effect.gen(function* () {
+    const shots = yield* Config.String('MODIFIER_SHOTS').pipe(
+      Config.withDefault('/tmp/modifier-shots'),
     )
-    await settleAnimations(page)
-    await scene.act?.(page)
-    if (scene.inLobby === true) {
-      await openLobby(page)
-      await wait(500)
-      await settleAnimations(page)
-    }
-    const where = `${viewport.name} ${scene.name}`
-    if (scene.checksTiles === true) {
-      const found = await checkTiles(page)
-      if (found.tiles.length !== 4) {
-        problems.push(`${where}: ${found.tiles.length} modifier tiles`)
-      }
-      for (const tile of found.tiles) {
-        if (
-          viewport.isPhone &&
-          (tile.width < MIN_TAP || tile.height < MIN_TAP)
-        ) {
-          problems.push(
-            `${where}: ${tile.name} is ${Math.round(tile.width)}x${Math.round(tile.height)}`,
-          )
+    const viewports = yield* shotViewports
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev'])
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
         }
-      }
-      if (found.isClipped) {
-        problems.push(`${where}: the tiles run past the screen`)
-      }
-      if (found.coversButton !== '') {
-        problems.push(`${where}: the tiles cover ${found.coversButton}`)
-      }
-      if (found.scrolls) {
-        problems.push(`${where}: the page scrolls`)
+        const page = yield* pages.open(
+          viewport,
+          harnessQuery(scene.query, deviceQuery(viewport)),
+        )
+        yield* settleAnimations(page)
+        if (scene.act !== undefined) {
+          yield* scene.act(page)
+        }
+        if (scene.inLobby === true) {
+          yield* openLobby(page)
+          yield* wait(500)
+          yield* settleAnimations(page)
+        }
+        const where = `${viewport.name} ${scene.name}`
+        if (scene.checksTiles === true) {
+          const found = yield* checkTiles(page)
+          if (found.tiles.length !== 4) {
+            problems.push(`${where}: ${found.tiles.length} modifier tiles`)
+          }
+          for (const tile of found.tiles) {
+            if (
+              viewport.isPhone &&
+              (tile.width < MIN_TAP || tile.height < MIN_TAP)
+            ) {
+              problems.push(
+                `${where}: ${tile.name} is ${Math.round(tile.width)}x${Math.round(tile.height)}`,
+              )
+            }
+          }
+          if (found.isClipped) {
+            problems.push(`${where}: the tiles run past the screen`)
+          }
+          if (found.coversButton !== '') {
+            problems.push(`${where}: the tiles cover ${found.coversButton}`)
+          }
+          if (found.scrolls) {
+            problems.push(`${where}: the page scrolls`)
+          }
+        }
+        yield* attempt(() =>
+          page.screenshot({
+            path: `${shots}/modifiers-${viewport.name}-${scene.name}.png`,
+            animations: 'disabled',
+          }),
+        )
+        yield* Console.log(`shot ${where}`)
+        pages.release(page)
       }
     }
-    await page.screenshot({
-      path: `${SHOTS}/modifiers-${viewport.name}-${scene.name}.png`,
-      animations: 'disabled',
-    })
-    console.log(`shot ${where}`)
-    pages.release(page)
-  }
-}
-await pages.close()
-await browser.close()
-finish(problems, 'The modifier tiles fit, and every tile is big enough.')
+    yield* pages.close
+    yield* finish(
+      problems,
+      'The modifier tiles fit, and every tile is big enough.',
+    )
+  }),
+)

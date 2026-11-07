@@ -246,12 +246,11 @@ describe('power-ups', () => {
   })
 
   test('it grabs one in a break too', () => {
-    const start = modifyFields(
-      withPickups(placeSeat(1, 150, 90)(placeSeat(0, 30, 140)(crew())), [
-        pickupAt(900, 'Damage', 150, 135),
-      ]),
-      { phase: () => BREAK },
+    const stocked = withPickups(
+      placeSeat(1, 150, 90)(placeSeat(0, 30, 140)(crew())),
+      [pickupAt(900, 'Damage', 150, 135)],
     )
+    const start = modifyFields(stocked, { phase: () => BREAK })
     story(
       update,
       given(start),

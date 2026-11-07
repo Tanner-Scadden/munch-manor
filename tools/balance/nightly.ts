@@ -15,7 +15,6 @@ import {
   Clock,
   Config,
   Console,
-  Data,
   Effect,
   FileSystem,
   Option,
@@ -53,21 +52,30 @@ import {
 } from './suite'
 import { Summary, type WavePassSummary } from './summary'
 
-class JobFailed extends Data.TaggedError('JobFailed')<{
-  readonly job: string
-  readonly reason: string
-}> {}
+class JobFailed extends Schema.TaggedError<
+  JobFailed,
+  { readonly brand: unique symbol }
+>()('JobFailed', {
+  job: Schema.String,
+  reason: Schema.String,
+}) {}
 
-class BadSummary extends Data.TaggedError('BadSummary')<{
-  readonly job: string
-  readonly reason: string
-}> {}
+class BadSummary extends Schema.TaggedError<
+  BadSummary,
+  { readonly brand: unique symbol }
+>()('BadSummary', {
+  job: Schema.String,
+  reason: Schema.String,
+}) {}
 
 // NOTE: a failed job prints why before the suite fails, so the runtime
 // reports nothing more and the exit code is 1.
-class NightlyExit extends Data.TaggedError('NightlyExit')<{
-  readonly code: number
-}> {
+class NightlyExit extends Schema.TaggedError<
+  NightlyExit,
+  { readonly brand: unique symbol }
+>()('NightlyExit', {
+  code: Schema.Finite,
+}) {
   override get [Runtime.errorExitCode](): number {
     return this.code
   }
@@ -76,7 +84,7 @@ class NightlyExit extends Data.TaggedError('NightlyExit')<{
 
 const failWith = (message: string): Effect.Effect<never, NightlyExit> =>
   Console.error(`nightly: ${message}`).pipe(
-    Effect.andThen(Effect.fail(new NightlyExit({ code: 1 }))),
+    Effect.andThen(Effect.fail(NightlyExit.make({ code: 1 }))),
   )
 
 // JOBS
@@ -119,20 +127,20 @@ const runJob = (
         ),
       )
       .pipe(
-        Effect.mapError(
-          cause => new JobFailed({ job: job.id, reason: cause.message }),
+        Effect.mapError(cause =>
+          JobFailed.make({ job: job.id, reason: cause.message }),
         ),
       )
     if (exitCode !== 0) {
-      return yield* new JobFailed({
+      return yield* JobFailed.make({
         job: job.id,
         reason: `simulate.ts exited with ${exitCode}`,
       })
     }
     const text = yield* fs.readFileString(outPath)
     return yield* Schema.decodeEffect(SummaryJson)(text).pipe(
-      Effect.mapError(
-        error => new BadSummary({ job: job.id, reason: error.message }),
+      Effect.mapError(error =>
+        BadSummary.make({ job: job.id, reason: error.message }),
       ),
     )
   })
@@ -151,13 +159,14 @@ const readBaseline: Effect.Effect<
     onNone: () => Effect.succeed<BaselineState>({ _tag: 'Absent' }),
     onSome: text =>
       Schema.decodeEffect(BaselineJson)(text).pipe(
-        Effect.map((baseline): BaselineState => ({
-          _tag: 'Compared',
-          baseline,
-        })),
-        Effect.mapError(
-          error => new BadSummary({ job: 'baseline', reason: error.message }),
-        ),
+        Effect.mapBoth({
+          onSuccess: (baseline): BaselineState => ({
+            _tag: 'Compared',
+            baseline,
+          }),
+          onFailure: error =>
+            BadSummary.make({ job: 'baseline', reason: error.message }),
+        }),
       ),
   })
 })
@@ -231,10 +240,11 @@ const program = Effect.gen(function* () {
           yield* Ref.set(grantedWorkers, maybeGranted)
         }
       }
+      const maybeWorkers = yield* Ref.get(grantedWorkers)
       return yield* runJob(
         job,
         path.join(scratch, `${job.id}.json`),
-        yield* Ref.get(grantedWorkers),
+        maybeWorkers,
       )
     }),
   )
@@ -273,8 +283,8 @@ const program = Effect.gen(function* () {
     const encoded = yield* Schema.encodeEffect(
       Schema.fromJsonString(Baseline, { space: 2 }),
     )(next).pipe(
-      Effect.mapError(
-        error => new BadSummary({ job: 'baseline', reason: error.message }),
+      Effect.mapError(error =>
+        BadSummary.make({ job: 'baseline', reason: error.message }),
       ),
     )
     yield* fs.writeFileString(BASELINE, `${encoded}\n`)

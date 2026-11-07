@@ -1,7 +1,6 @@
 import {
   Array,
   Config,
-  Data,
   Effect,
   Option,
   Redacted,
@@ -9,12 +8,7 @@ import {
   String,
   pipe,
 } from 'effect'
-import {
-  FetchHttpClient,
-  HttpClient,
-  HttpClientRequest,
-  HttpClientResponse,
-} from 'effect/http'
+import { HttpClient, HttpClientRequest, HttpClientResponse } from 'effect/http'
 import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 
 // NOTE: the report reads D1 through the Cloudflare REST API with the same
@@ -26,9 +20,10 @@ const API = 'https://api.cloudflare.com/client/v4'
 const KEYCHAIN_SERVICE = 'cloudflare-api-token'
 const PRODUCTION_STAGE = 'prod'
 
-export class CloudflareError extends Data.TaggedError('CloudflareError')<{
-  readonly reason: string
-}> {}
+export class CloudflareError extends Schema.TaggedError<
+  CloudflareError,
+  { readonly brand: unique symbol }
+>()('CloudflareError', { message: Schema.String }) {}
 
 const describe = (error: unknown): string =>
   error instanceof Error ? error.message : globalThis.String(error)
@@ -55,20 +50,20 @@ const keychainToken = Effect.gen(function* () {
       Effect.map(String.trim),
       Effect.filterOrFail(
         token => token !== '',
-        () => new CloudflareError({ reason: 'the keychain token is empty' }),
+        () => CloudflareError.make({ message: 'the keychain token is empty' }),
       ),
-      Effect.mapError(
-        () =>
-          new CloudflareError({
-            reason: `set CLOUDFLARE_API_TOKEN or add ${KEYCHAIN_SERVICE} to the keychain`,
-          }),
+      Effect.mapError(() =>
+        CloudflareError.make({
+          message: `set CLOUDFLARE_API_TOKEN or add ${KEYCHAIN_SERVICE} to the keychain`,
+        }),
       ),
     )
 })
 
+/** @stability unstable */
 export const apiToken = pipe(
   Config.option(Config.Redacted('CLOUDFLARE_API_TOKEN')),
-  Effect.mapError(error => new CloudflareError({ reason: describe(error) })),
+  Effect.mapError(error => CloudflareError.make({ message: describe(error) })),
   Effect.flatMap(
     Option.match({
       onNone: () => Effect.map(keychainToken, Redacted.make),
@@ -107,14 +102,13 @@ const request = <S extends Schema.Top>(
     Effect.map(HttpClientRequest.bearerToken(token)),
     Effect.flatMap(HttpClient.execute),
     Effect.flatMap(HttpClientResponse.schemaBodyJson(Envelope(result))),
-    Effect.mapError(error => new CloudflareError({ reason: error.message })),
-    Effect.provide(FetchHttpClient.layer),
+    Effect.mapError(error => CloudflareError.make({ message: error.message })),
     Effect.flatMap(envelope =>
       envelope.success && envelope.result !== null
         ? Effect.succeed(envelope.result)
         : Effect.fail(
-            new CloudflareError({
-              reason: Array.join(
+            CloudflareError.make({
+              message: Array.join(
                 Array.map(envelope.errors, ({ message }) => message),
                 '; ',
               ),
@@ -125,10 +119,11 @@ const request = <S extends Schema.Top>(
 
 const Account = Schema.Struct({ id: Schema.String, name: Schema.String })
 
+/** @stability unstable */
 export const accountId = (token: Redacted.Redacted) =>
   pipe(
     Config.option(Config.String('CLOUDFLARE_ACCOUNT_ID')),
-    Effect.mapError(error => new CloudflareError({ reason: describe(error) })),
+    Effect.mapError(error => CloudflareError.make({ message: describe(error) })),
     Effect.flatMap(
       Option.match({
         onSome: Effect.succeed,
@@ -138,7 +133,7 @@ export const accountId = (token: Redacted.Redacted) =>
             Effect.flatMap(accounts =>
               Option.match(Array.head(accounts), {
                 onNone: () =>
-                  Effect.fail(new CloudflareError({ reason: 'no account' })),
+                  Effect.fail(CloudflareError.make({ message: 'no account' })),
                 onSome: ({ id }) => Effect.succeed(id),
               }),
             ),
@@ -152,11 +147,12 @@ const DatabaseInfo = Schema.Struct({
   name: Schema.String,
 })
 
-export const databaseId = (
-  token: Redacted.Redacted,
-  account: string,
-  name: string,
-) =>
+/** @stability unstable */
+export const databaseId = ({
+  token,
+  account,
+  name,
+}: Readonly<{ token: Redacted.Redacted; account: string; name: string }>) =>
   pipe(
     request(
       token,
@@ -169,7 +165,7 @@ export const databaseId = (
         {
           onNone: () =>
             Effect.fail(
-              new CloudflareError({ reason: `no D1 database named ${name}` }),
+              CloudflareError.make({ message: `no D1 database named ${name}` }),
             ),
           onSome: ({ uuid }) => Effect.succeed(uuid),
         },
@@ -184,13 +180,20 @@ const QueryResult = Schema.Array(
   }),
 )
 
-export const query = <S extends Schema.Top>(
-  token: Redacted.Redacted,
-  account: string,
-  database: string,
-  sql: string,
-  row: S,
-) =>
+/** @stability unstable */
+export const query = <S extends Schema.Top>({
+  token,
+  account,
+  database,
+  sql,
+  row,
+}: Readonly<{
+  token: Redacted.Redacted
+  account: string
+  database: string
+  sql: string
+  row: S
+}>) =>
   pipe(
     request(
       token,
@@ -205,9 +208,8 @@ export const query = <S extends Schema.Top>(
       }),
     ),
     Effect.flatMap(rows =>
-      Effect.mapError(
-        Schema.decodeEffect(Schema.Array(row))(rows),
-        error => new CloudflareError({ reason: error.message }),
+      Effect.mapError(Schema.decodeEffect(Schema.Array(row))(rows), error =>
+        CloudflareError.make({ message: error.message }),
       ),
     ),
   )

@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option, String } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type {
@@ -185,17 +185,21 @@ const DEVICE_LABELS: Readonly<Record<InputDevice, string>> = {
 const inputOf = (card: ControlCard, device: InputDevice): Input =>
   device === 'KeyboardMouse' ? card.keyboard : card.touch
 
-export const helpLineOf = (card: HelpCard, device: InputDevice): string =>
+export const helpLineOf: {
+  (device: InputDevice): (card: HelpCard) => string
+  (card: HelpCard, device: InputDevice): string
+} = Function.dual(2, (card: HelpCard, device: InputDevice): string =>
   Option.match(
     Array.findFirst(CONTROL_CARDS, ({ id }) => id === card),
     {
       onNone: () => '',
       onSome: found => inputOf(found, device).line,
     },
-  )
+  ),
+)
 
 export const helpCardElementId = (card: HelpCard): string =>
-  `help-card-${card.toLowerCase()}`
+  `help-card-${String.toLowerCase(card)}`
 
 export const helpLineElementId = (card: HelpCard): string =>
   `${helpCardElementId(card)}-line`
@@ -351,69 +355,97 @@ export const helpLabel = (device: InputDevice): string => DEVICE_LABELS[device]
 
 // NOTE: the home menu's HOW TO PLAY adds its own keys under the cards on a
 // keyboard.
-export const howToPlayView = (
-  model: Model,
-  cards: HelpCards,
-  h: ApplicationViewBuilder,
-  maybeUnder: Option.Option<Html> = Option.none(),
-): ReadonlyArray<Html> => [
-  h.ul(
-    [
-      h.Class('help-cards'),
-      h.DataAttribute('cards', cards),
-      h.AriaLabel('Controls'),
-    ],
-    Array.map(CONTROL_CARDS, card =>
-      cards === 'Interactive'
-        ? interactiveCardView(
-            card,
-            model.lastDevice,
-            model.maybeOpenHelpCard,
-            h,
-          )
-        : staticCardView(card, model.lastDevice, h),
+export const howToPlayView: {
+  (
+    cards: HelpCards,
+    h: ApplicationViewBuilder,
+    maybeUnder: Option.Option<Html>,
+  ): (model: Model) => ReadonlyArray<Html>
+  (
+    model: Model,
+    cards: HelpCards,
+    h: ApplicationViewBuilder,
+    maybeUnder: Option.Option<Html>,
+  ): ReadonlyArray<Html>
+} = Function.dual(
+  4,
+  (
+    model: Model,
+    cards: HelpCards,
+    h: ApplicationViewBuilder,
+    maybeUnder: Option.Option<Html>,
+  ): ReadonlyArray<Html> => [
+    h.ul(
+      [
+        h.Class('help-cards'),
+        h.DataAttribute('cards', cards),
+        h.AriaLabel('Controls'),
+      ],
+      Array.map(CONTROL_CARDS, card =>
+        cards === 'Interactive'
+          ? interactiveCardView(
+              card,
+              model.lastDevice,
+              model.maybeOpenHelpCard,
+              h,
+            )
+          : staticCardView(card, model.lastDevice, h),
+      ),
     ),
-  ),
-  ...(model.lastDevice === 'KeyboardMouse' ? [extraKeysView(h)] : []),
-  ...Option.toArray(maybeUnder),
-]
+    ...(model.lastDevice === 'KeyboardMouse' ? [extraKeysView(h)] : []),
+    ...Option.toArray(maybeUnder),
+  ],
+)
 
 const isPauseHelpUp = (model: Model): boolean =>
   Phase.isAnyOf(['Paused'])(model.phase)
 
-export const pauseHelpView = (
-  model: Model,
-  pressSurface: ApplicationAttribute,
-  h: ApplicationViewBuilder,
-): Html => {
-  if (!isPauseHelpUp(model)) {
-    return h.empty
-  }
+export const pauseHelpView: {
+  (
+    pressSurface: ApplicationAttribute,
+    h: ApplicationViewBuilder,
+  ): (model: Model) => Html
+  (
+    model: Model,
+    pressSurface: ApplicationAttribute,
+    h: ApplicationViewBuilder,
+  ): Html
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    pressSurface: ApplicationAttribute,
+    h: ApplicationViewBuilder,
+  ): Html => {
+    if (!isPauseHelpUp(model)) {
+      return h.empty
+    }
 
-  return h.div(
-    [h.Class('pause-help-frame')],
-    [
-      h.section(
-        [
-          h.Class('pause-help'),
-          h.DataAttribute('device', model.lastDevice),
-          h.AriaLabelledBy(HELP_TITLE_ID),
-          pressSurface,
-        ],
-        [
-          h.h2(
-            [h.Id(HELP_TITLE_ID), h.Class('pause-help-title')],
-            [
-              'How to play',
-              h.span(
-                [h.Class('sr-only')],
-                [` with ${helpLabel(model.lastDevice)}`],
-              ),
-            ],
-          ),
-          ...howToPlayView(model, 'Static', h),
-        ],
-      ),
-    ],
-  )
-}
+    return h.div(
+      [h.Class('pause-help-frame')],
+      [
+        h.section(
+          [
+            h.Class('pause-help'),
+            h.DataAttribute('device', model.lastDevice),
+            h.AriaLabelledBy(HELP_TITLE_ID),
+            pressSurface,
+          ],
+          [
+            h.h2(
+              [h.Id(HELP_TITLE_ID), h.Class('pause-help-title')],
+              [
+                'How to play',
+                h.span(
+                  [h.Class('sr-only')],
+                  [` with ${helpLabel(model.lastDevice)}`],
+                ),
+              ],
+            ),
+            ...howToPlayView(model, 'Static', h, Option.none()),
+          ],
+        ),
+      ],
+    )
+  },
+)

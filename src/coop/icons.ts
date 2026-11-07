@@ -1,6 +1,7 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 
 import { appearanceKey, playerPalette, playerPixels } from '../appearance'
+import { isObjectFirst } from '../dualArgs'
 import { pixelIconUrl } from '../icons'
 import type { Appearance } from '../model'
 import type { Calling } from '../playerData'
@@ -199,20 +200,23 @@ const portraits = new Map<string, string>()
 
 // NOTE: a player's look, standing, as an image for the lobby and the queue.
 // Each look is drawn once and kept.
-export const portraitOf = (
-  look: Appearance,
-  calling: Calling = 'You',
-): string => {
-  const key = appearanceKey(look, calling)
-  return Option.getOrElse(Option.fromNullishOr(portraits.get(key)), () => {
-    const url = pixelIconUrl(
-      playerPixels(look, calling).idle[0],
-      playerPalette(look),
-    )
-    portraits.set(key, url)
-    return url
-  })
-}
+export const portraitOf: {
+  (calling?: Calling): (look: Appearance) => string
+  (look: Appearance, calling?: Calling): string
+} = Function.dual(
+  isObjectFirst,
+  (look: Appearance, calling: Calling = 'You'): string => {
+    const key = appearanceKey(look, calling)
+    return Option.getOrElse(Option.fromNullishOr(portraits.get(key)), () => {
+      const url = pixelIconUrl(
+        playerPixels(look, calling).idle[0],
+        playerPalette(look),
+      )
+      portraits.set(key, url)
+      return url
+    })
+  },
+)
 
 // NOTE: a pencil by your own name in the lobby: the name is a button.
 export const PENCIL_ICON = icon([

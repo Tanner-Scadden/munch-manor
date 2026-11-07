@@ -12,6 +12,7 @@ import {
   Duration,
   Effect,
   FileSystem,
+  Function,
   Option,
   Order,
   Schema,
@@ -68,6 +69,7 @@ export type PendingRequest = Readonly<{ id: string; request: TurnRequest }>
 
 // NOTE: the guard's side: the requests waiting for a grant, oldest name
 // first. A request that does not decode is answered all the same.
+/** @stability unstable */
 export const readRequests = (
   directory: string,
 ): Effect.Effect<
@@ -109,19 +111,35 @@ export const readRequests = (
     )
   })
 
-export const grantTurn = (
-  directory: string,
-  id: string,
-  workers: number,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    yield* fs.remove(requestPath(directory, id), { force: true })
-    const grant = yield* Schema.encodeEffect(TurnGrantJson)({ workers }).pipe(
-      Effect.orDie,
-    )
-    yield* writeAtomically(grantPath(directory, id), `${grant}\n`)
-  })
+/** @stability unstable */
+export const grantTurn: {
+  (
+    id: string,
+    workers: number,
+  ): (
+    directory: string,
+  ) => Effect.Effect<void, PlatformError, FileSystem.FileSystem>
+  (
+    directory: string,
+    id: string,
+    workers: number,
+  ): Effect.Effect<void, PlatformError, FileSystem.FileSystem>
+} = Function.dual(
+  3,
+  (
+    directory: string,
+    id: string,
+    workers: number,
+  ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      yield* fs.remove(requestPath(directory, id), { force: true })
+      const grant = yield* Schema.encodeEffect(TurnGrantJson)({ workers }).pipe(
+        Effect.orDie,
+      )
+      yield* writeAtomically(grantPath(directory, id), `${grant}\n`)
+    }),
+)
 
 // THE JOB'S SIDE
 
@@ -149,6 +167,7 @@ const TurnConfig = Config.all({
 // NOTE: yields the turn at a boundary between parts of a job. Returns the
 // WORKERS for the next part, or None outside the guard (or when anything
 // goes wrong, so a job never fails for yielding).
+/** @stability unstable */
 export const yieldTurn = (
   label: string,
 ): Effect.Effect<Option.Option<number>, never, FileSystem.FileSystem> =>
@@ -205,13 +224,14 @@ export const chunkRuns = (workers: number): number =>
 
 // NOTE: `yieldTurn` for a script that is not an Effect program. Resolves
 // to the WORKERS for the next part, or `workers` when nothing changed.
-export const yieldTurnAsync = (
-  label: string,
-  workers: number,
-): Promise<number> =>
+export const yieldTurnAsync: {
+  (workers: number): (label: string) => Promise<number>
+  (label: string, workers: number): Promise<number>
+} = Function.dual(2, (label: string, workers: number): Promise<number> =>
   Effect.runPromise(
     yieldTurn(label).pipe(
       Effect.map(Option.getOrElse(() => workers)),
       Effect.provide(NodeServices.layer),
     ),
-  )
+  ),
+)

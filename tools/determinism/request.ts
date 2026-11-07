@@ -2,7 +2,9 @@
 // parameters and JSON. No game imports, so the orchestrator can load it
 // without the game.
 
-import { Schema } from 'effect'
+import { type Option, Schema } from 'effect'
+
+import { encodeJson } from '../json'
 
 const ScriptMode = Schema.Literals(['Campaign', 'Endless'])
 export type ScriptMode = typeof ScriptMode.Type
@@ -15,17 +17,17 @@ const StepPattern = Schema.Literals(['Fixed60', 'Mixed'])
 export type StepPattern = typeof StepPattern.Type
 
 export const EngineRequest = Schema.Struct({
-  frames: Schema.Number,
-  seed: Schema.Number,
+  frames: Schema.Finite,
+  seed: Schema.Finite,
   mode: ScriptMode,
   pattern: StepPattern,
-  every: Schema.Number,
+  every: Schema.Finite,
   detMath: Schema.Boolean,
   // NOTE: clear hit-stop after every frame, so no freeze or slow motion
   // ever runs. Hit-stop counts whole ticks since the fixed step, where it
   // cut a frame's world time before, so this compares everything else.
   noHitStop: Schema.Boolean,
-  dump: Schema.UndefinedOr(Schema.Number),
+  dump: Schema.UndefinedOr(Schema.Finite),
 })
 export type EngineRequest = typeof EngineRequest.Type
 
@@ -69,18 +71,18 @@ export const paramsOf = (request: EngineRequest): string =>
 
 export const EngineRun = Schema.Struct({
   engine: Schema.String,
-  frames: Schema.Number,
+  frames: Schema.Finite,
   endPhase: Schema.String,
-  endWave: Schema.Number,
-  checkpoints: Schema.Array(Schema.Tuple([Schema.Number, Schema.Number])),
+  endWave: Schema.Finite,
+  checkpoints: Schema.Array(Schema.Tuple([Schema.Finite, Schema.Finite])),
   unclassified: Schema.Array(Schema.String),
 })
 export type EngineRun = typeof EngineRun.Type
 
 export const EngineDump = Schema.Struct({
   engine: Schema.String,
-  frame: Schema.Number,
-  fieldHashes: Schema.Array(Schema.Tuple([Schema.String, Schema.Number])),
+  frame: Schema.Finite,
+  fieldHashes: Schema.Array(Schema.Tuple([Schema.String, Schema.Finite])),
   // exactJson of the gameplay state.
   state: Schema.String,
 })
@@ -89,7 +91,7 @@ export type EngineDump = typeof EngineDump.Type
 // NOTE: a dump asked for a frame the run never reached.
 const EngineMissing = Schema.Struct({
   engine: Schema.String,
-  frame: Schema.Number,
+  frame: Schema.Finite,
   missing: Schema.Literal(true),
 })
 
@@ -99,21 +101,29 @@ const EngineError = Schema.Struct({ error: Schema.Unknown })
 
 // NOTE: every engine answers through these, so all print the same text,
 // and the orchestrators read the answers back through them.
-export const encodeEngineRun = Schema.encodeSync(
-  Schema.fromJsonString(EngineRun),
-)
-export const encodeEngineDump = Schema.encodeSync(
-  Schema.fromJsonString(Schema.Union([EngineDump, EngineMissing])),
-)
-export const encodeEngineError = Schema.encodeSync(
+const encodeRun = encodeJson(EngineRun)
+export const encodeEngineRun = (run: EngineRun): string => encodeRun(run)
+
+const encodeDump = encodeJson(Schema.Union([EngineDump, EngineMissing]))
+export const encodeEngineDump = (
+  dump: EngineDump | typeof EngineMissing.Type,
+): string => encodeDump(dump)
+
+const encodeError = encodeJson(EngineError)
+export const encodeEngineError = (error: typeof EngineError.Type): string =>
+  encodeError(error)
+
+const decodeRun = Schema.decodeUnknownOption(Schema.fromJsonString(EngineRun))
+export const decodeEngineRun = (text: string): Option.Option<EngineRun> =>
+  decodeRun(text)
+
+const decodeDump = Schema.decodeUnknownOption(Schema.fromJsonString(EngineDump))
+export const decodeEngineDump = (text: string): Option.Option<EngineDump> =>
+  decodeDump(text)
+
+const decodeError = Schema.decodeUnknownOption(
   Schema.fromJsonString(EngineError),
 )
-export const decodeEngineRun = Schema.decodeUnknownOption(
-  Schema.fromJsonString(EngineRun),
-)
-export const decodeEngineDump = Schema.decodeUnknownOption(
-  Schema.fromJsonString(EngineDump),
-)
-export const decodeEngineError = Schema.decodeUnknownOption(
-  Schema.fromJsonString(EngineError),
-)
+export const decodeEngineError = (
+  text: string,
+): Option.Option<typeof EngineError.Type> => decodeError(text)

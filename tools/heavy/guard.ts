@@ -3,21 +3,22 @@ import {
   Clock,
   Config,
   Console,
-  Data,
   Duration,
   Effect,
   Exit,
   FileSystem,
+  Function,
   Option,
   Path,
   Ref,
   Runtime,
   Schedule,
+  Schema,
   Scope,
   String,
   pipe,
 } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError } from 'effect/PlatformError'
 import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 import * as Os from 'node:os'
 
@@ -32,6 +33,7 @@ import {
   LockAction,
   type LockHolder,
   type LockState,
+  PARALLEL_ENV_KEYS,
   type SharedSlot,
   type Snapshot,
   USAGE,
@@ -80,36 +82,50 @@ import {
   readRequests,
 } from './turn'
 
-class BudgetRefused extends Data.TaggedError('BudgetRefused')<{
-  readonly reason: string
-}> {}
+class BudgetRefused extends Schema.TaggedError<
+  BudgetRefused,
+  { readonly brand: unique symbol }
+>()('BudgetRefused', {
+  reason: Schema.String,
+}) {}
 
-class WaitTimedOut extends Data.TaggedError('WaitTimedOut')<{
-  readonly minutes: number
-  readonly maybeLastReason: Option.Option<string>
-}> {}
+class WaitTimedOut extends Schema.TaggedError<
+  WaitTimedOut,
+  { readonly brand: unique symbol }
+>()('WaitTimedOut', {
+  minutes: Schema.Finite,
+  maybeLastReason: Schema.Option(Schema.String),
+}) {}
 
-export class CommandFailedToStart extends Data.TaggedError(
-  'CommandFailedToStart',
-)<{
-  readonly command: string
-  readonly cause: PlatformError
-}> {}
+/** @stability unstable */
+export class CommandFailedToStart extends Schema.TaggedError<
+  CommandFailedToStart,
+  { readonly brand: unique symbol }
+>()('CommandFailedToStart', {
+  command: Schema.String,
+  cause: Schema.instanceOf(PlatformError),
+}) {}
 
 // NOTE: the guard exits with the child's code, and every message it fails
 // with is printed before it fails, so the runtime reports nothing more.
-export class GuardExit extends Data.TaggedError('GuardExit')<{
-  readonly code: number
-}> {
+export class GuardExit extends Schema.TaggedError<
+  GuardExit,
+  { readonly brand: unique symbol }
+>()('GuardExit', {
+  code: Schema.Finite,
+}) {
   override get [Runtime.errorExitCode](): number {
     return this.code
   }
   override readonly [Runtime.errorReported] = false
 }
 
-class NotYet extends Data.TaggedError('NotYet')<{
-  readonly reason: string
-}> {}
+class NotYet extends Schema.TaggedError<
+  NotYet,
+  { readonly brand: unique symbol }
+>()('NotYet', {
+  reason: Schema.String,
+}) {}
 
 // NOTE: the solo lock keeps the name every guard has used, so guards in
 // worktrees that have not rebased still see it. The directory beside it
@@ -208,6 +224,7 @@ const gitLine = (
       .pipe(Effect.map(String.trim), Effect.option)
   })
 
+/** @stability unstable */
 export const makeContext = Effect.gen(function* () {
   const config = yield* GuardConfig
   const path = yield* Path.Path
@@ -253,6 +270,7 @@ export type Budget = Readonly<{
 
 // NOTE: what the budget reads, for a guard and for `bun run test`: the
 // load, the target, the running jobs, and the test runs.
+/** @stability unstable */
 export const readBudget = (
   context: Context,
 ): Effect.Effect<Budget, PlatformError, FileSystem.FileSystem> =>
@@ -354,7 +372,7 @@ const takeTheLock = (
     }
     yield* acquireLock(path, holder).pipe(
       Effect.catchTag('LockTaken', () =>
-        Effect.fail(new NotYet({ reason: 'another job took the lock first' })),
+        Effect.fail(NotYet.make({ reason: 'another job took the lock first' })),
       ),
     )
     const { lock, shared } = yield* readLocks(context)
@@ -366,7 +384,7 @@ const takeTheLock = (
     )
     if (Option.isSome(maybeConflict)) {
       yield* releaseLock(path, holder)
-      return yield* new NotYet({ reason: maybeConflict.value })
+      return yield* NotYet.make({ reason: maybeConflict.value })
     }
     // NOTE: when the turn ends, the worktree's turn is recorded, so its
     // next job goes behind other worktrees' waiting jobs for a while.
@@ -397,10 +415,10 @@ const execute = (
       FileSystem.FileSystem | Scope.Scope
     >
   >(decide(snapshot), {
-    Refuse: ({ reason }) => Effect.fail(new BudgetRefused({ reason })),
+    Refuse: ({ reason }) => Effect.fail(BudgetRefused.make({ reason })),
     Wait: ({ reason }) =>
       reportWait(waitLog, reason).pipe(
-        Effect.andThen(Effect.fail(new NotYet({ reason }))),
+        Effect.andThen(Effect.fail(NotYet.make({ reason }))),
       ),
     Run: ({ hold, workers, cost, lockAction, notes }) =>
       Effect.gen(function* () {
@@ -446,7 +464,7 @@ const waitForTurn = (
       }),
       Effect.catchTag('NotYet', ({ reason }) =>
         Effect.fail(
-          new WaitTimedOut({
+          WaitTimedOut.make({
             minutes: context.waitMinutes,
             maybeLastReason: Option.some(reason),
           }),
@@ -463,7 +481,7 @@ const waitForTurn = (
                 Ref.get(waitLog).pipe(
                   Effect.flatMap(({ maybeLastReason }) =>
                     Effect.fail(
-                      new WaitTimedOut({
+                      WaitTimedOut.make({
                         minutes: context.waitMinutes,
                         maybeLastReason,
                       }),
@@ -513,42 +531,63 @@ const countBatch = (
       ),
   })
 
-export const runChild = (
-  command: Array.NonEmptyReadonlyArray<string>,
-  env: Readonly<Record<string, string>>,
-): Effect.Effect<
-  number,
-  CommandFailedToStart,
-  ChildProcessSpawner.ChildProcessSpawner
-> =>
-  Effect.gen(function* () {
-    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-    const exitCode = yield* spawner
-      .exitCode(
-        ChildProcess.make(
-          Array.headNonEmpty(command),
-          Array.tailNonEmpty(command),
-          {
-            env,
-            extendEnv: true,
-            stdin: 'inherit',
-            stdout: 'inherit',
-            stderr: 'inherit',
-            detached: false,
-          },
-        ),
-      )
-      .pipe(
-        Effect.mapError(
-          cause =>
-            new CommandFailedToStart({
+/** @stability unstable */
+export const runChild: {
+  (
+    env: Readonly<Record<string, string>>,
+  ): (
+    command: Array.NonEmptyReadonlyArray<string>,
+  ) => Effect.Effect<
+    number,
+    CommandFailedToStart,
+    ChildProcessSpawner.ChildProcessSpawner
+  >
+  (
+    command: Array.NonEmptyReadonlyArray<string>,
+    env: Readonly<Record<string, string>>,
+  ): Effect.Effect<
+    number,
+    CommandFailedToStart,
+    ChildProcessSpawner.ChildProcessSpawner
+  >
+} = Function.dual(
+  2,
+  (
+    command: Array.NonEmptyReadonlyArray<string>,
+    env: Readonly<Record<string, string>>,
+  ): Effect.Effect<
+    number,
+    CommandFailedToStart,
+    ChildProcessSpawner.ChildProcessSpawner
+  > =>
+    Effect.gen(function* () {
+      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+      const exitCode = yield* spawner
+        .exitCode(
+          ChildProcess.make(
+            Array.headNonEmpty(command),
+            Array.tailNonEmpty(command),
+            {
+              env,
+              extendEnv: true,
+              stdin: 'inherit',
+              stdout: 'inherit',
+              stderr: 'inherit',
+              detached: false,
+            },
+          ),
+        )
+        .pipe(
+          Effect.mapError(cause =>
+            CommandFailedToStart.make({
               command: Array.join(command, ' '),
               cause,
             }),
-        ),
-      )
-    return exitCode
-  })
+          ),
+        )
+      return exitCode
+    }),
+)
 
 const describeHold = (hold: Hold, jobClass: JobClass): string =>
   Hold.match(hold, {
@@ -557,8 +596,20 @@ const describeHold = (hold: Hold, jobClass: JobClass): string =>
     Shared: ({ slot }) => `in shared slot ${slot}`,
   })
 
-const envValue = (key: string): Option.Option<string> =>
-  Option.fromNullishOr(process.env[key])
+// NOTE: the variables a Shared script's cost reads, read once per job.
+const readParallelEnv = Effect.gen(function* () {
+  const entries = yield* Effect.forEach(PARALLEL_ENV_KEYS, key =>
+    Effect.gen(function* () {
+      const value = yield* Config.option(Config.String(key))
+      return [key, value] as const
+    }),
+  )
+  return (key: string): Option.Option<string> =>
+    pipe(
+      Array.findFirst(entries, ([name]) => name === key),
+      Option.flatMap(([, value]) => value),
+    )
+})
 
 const makeArrival = (
   command: Array.NonEmptyReadonlyArray<string>,
@@ -689,10 +740,8 @@ const watchLease = (context: Context, current: Ref.Ref<CurrentTurn>) =>
       return
     }
     const now = yield* Clock.currentTimeMillis
-    const waiters = Array.filter(
-      yield* readWaiters(context.lockDirectory),
-      waiter => waiter.pid !== process.pid,
-    )
+    const value_1 = yield* readWaiters(context.lockDirectory)
+    const waiters = Array.filter(value_1, waiter => waiter.pid !== process.pid)
     const maybeWarning = maybeLeaseWarning({
       holder: turn.plan.holder,
       now,
@@ -723,6 +772,7 @@ const runGuarded = (
     const context = yield* makeContext
     const arrivedAt = yield* Clock.currentTimeMillis
     const jobClass = jobClassOf(command, maybeClassOverride)
+    const envValue = yield* readParallelEnv
     const cost = JobClass.match(jobClass, {
       Timing: () => 1,
       Cpu: () => 1,
@@ -788,7 +838,7 @@ const runGuarded = (
       )
     }
     if (exitCode !== 0) {
-      return yield* new GuardExit({ code: exitCode })
+      return yield* GuardExit.make({ code: exitCode })
     }
   }).pipe(Effect.scoped)
 
@@ -802,11 +852,12 @@ const resetThisBudget = Effect.gen(function* () {
 
 const failWith = (message: string): Effect.Effect<never, GuardExit> =>
   Console.error(`heavy: ${message}`).pipe(
-    Effect.andThen(Effect.fail(new GuardExit({ code: FAILURE_EXIT_CODE }))),
+    Effect.andThen(Effect.fail(GuardExit.make({ code: FAILURE_EXIT_CODE }))),
   )
 
 type Guarded = ReturnType<typeof runGuarded>
 
+/** @stability unstable */
 export const program = Effect.suspend(() =>
   Invocation.match<
     Effect.Effect<

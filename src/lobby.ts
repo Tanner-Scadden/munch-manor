@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { activeBots } from './bots'
@@ -95,26 +95,42 @@ export const LOBBY_KEYS = {
 
 // NOTE: with nothing focused yet the walk starts at START, the control a
 // keyboard player wants most.
-export const steppedLobbyFocus = (
-  maybeFocus: Option.Option<LobbyControl>,
-  step: FocusStep,
-  botCount: number,
-): LobbyControl =>
-  Option.match(maybeFocus, {
-    onNone: (): LobbyControl => 'Start',
-    onSome: focused => {
-      const controls = lobbyControlsOf(botCount)
-      const index = Option.getOrElse(
-        Array.findFirstIndex(controls, control => control === focused),
-        () => 0,
-      )
-      const count = controls.length
-      return Option.getOrElse(
-        Array.get(controls, (index + FOCUS_STEP_OFFSET[step] + count) % count),
-        (): LobbyControl => 'Start',
-      )
-    },
-  })
+export const steppedLobbyFocus: {
+  (
+    step: FocusStep,
+    botCount: number,
+  ): (maybeFocus: Option.Option<LobbyControl>) => LobbyControl
+  (
+    maybeFocus: Option.Option<LobbyControl>,
+    step: FocusStep,
+    botCount: number,
+  ): LobbyControl
+} = Function.dual(
+  3,
+  (
+    maybeFocus: Option.Option<LobbyControl>,
+    step: FocusStep,
+    botCount: number,
+  ): LobbyControl =>
+    Option.match(maybeFocus, {
+      onNone: (): LobbyControl => 'Start',
+      onSome: focused => {
+        const controls = lobbyControlsOf(botCount)
+        const index = Option.getOrElse(
+          Array.findFirstIndex(controls, control => control === focused),
+          () => 0,
+        )
+        const count = controls.length
+        return Option.getOrElse(
+          Array.get(
+            controls,
+            (index + FOCUS_STEP_OFFSET[step] + count) % count,
+          ),
+          (): LobbyControl => 'Start',
+        )
+      },
+    }),
+)
 
 // MODE AND DIFFICULTY
 
@@ -148,9 +164,15 @@ export const nextDifficultyOf = (model: Model): Difficulty => {
 
 // NOTE: Friendly Fire needs a teammate to hit, so it is dim and cannot be
 // turned on until a bot sits in the crew. The rest are always there.
-export const isModifierPickable = (model: Model, modifier: Modifier): boolean =>
-  modifier !== 'FriendlyFire' ||
-  Array.isReadonlyArrayNonEmpty(activeBots(model))
+export const isModifierPickable: {
+  (modifier: Modifier): (model: Model) => boolean
+  (model: Model, modifier: Modifier): boolean
+} = Function.dual(
+  2,
+  (model: Model, modifier: Modifier): boolean =>
+    modifier !== 'FriendlyFire' ||
+    Array.isReadonlyArrayNonEmpty(activeBots(model)),
+)
 
 // MAPS
 
@@ -162,11 +184,15 @@ export const MAPS: Array.NonEmptyReadonlyArray<MapId> = ['Manor']
 
 // STATE
 
-export const withLobby = (model: Model, lobby: HomeLobby): Model =>
+export const withLobby: {
+  (lobby: HomeLobby): (model: Model) => Model
+  (model: Model, lobby: HomeLobby): Model
+} = Function.dual(2, (model: Model, lobby: HomeLobby): Model =>
   modifyFields(model, {
     home: home =>
       modifyFields(home, {
         lobby: () => lobby,
         maybeLobbyFocus: () => Option.none(),
       }),
-  })
+  }),
+)

@@ -1,4 +1,4 @@
-import { Effect, Exit, Option, type Scope } from 'effect'
+import { Array, Effect, Exit, Option, type Scope, String } from 'effect'
 import { SqlClient } from 'effect/sql'
 
 import { describe, expect, it, test } from '@effect/vitest'
@@ -53,9 +53,14 @@ describe('pairing codes', () => {
 
   test('stop a device after five wrong tries until the window passes', () => {
     const start = 1_000
-    const failures = Array.from({ length: MAX_FAILED_ATTEMPTS }).reduce<
+    const failures = Array.reduce<
+      unknown,
       Option.Option<{ windowStartMs: number; failures: number }>
-    >(maybe => Option.some(afterFailure(maybe, start + 10)), Option.none())
+    >(
+      globalThis.Array.from({ length: MAX_FAILED_ATTEMPTS }),
+      Option.none(),
+      maybe => Option.some(afterFailure(maybe, start + 10)),
+    )
     expect(decideAttempt(Option.none(), start)._tag).toBe('Allowed')
     expect(decideAttempt(failures, start + 20)).toEqual({
       _tag: 'Limited',
@@ -80,14 +85,15 @@ describe('tokens and keys', () => {
         expiresMs: 5_000,
       }
       const token = yield* signToken(SECRET, claims)
-      expect(yield* verifyToken(SECRET, token, 1_000)).toEqual(claims)
+      const value = yield* verifyToken(SECRET, token, 1000)
+      expect(value).toEqual(claims)
       const expired = yield* Effect.exit(verifyToken(SECRET, token, 5_000))
       const forged = yield* Effect.exit(
         verifyToken('another-secret', token, 1_000),
       )
-      const [body] = token.split('.')
+      const [body] = String.split('.')(token)
       const tampered = yield* Effect.exit(
-        verifyToken(SECRET, `${body}x.${token.split('.')[1]}`, 1_000),
+        verifyToken(SECRET, `${body}x.${String.split('.')(token)[1]}`, 1_000),
       )
       expect(Exit.isFailure(expired)).toBe(true)
       expect(Exit.isFailure(forged)).toBe(true)
@@ -101,15 +107,24 @@ describe('tokens and keys', () => {
       const other = yield* generateKey
       const key = yield* importKey(stored)
       const signature = yield* key.sign('hello')
-      expect(yield* verifySignature(stored.publicKey, 'hello', signature)).toBe(
-        true,
+      const value_1 = yield* verifySignature(
+        stored.publicKey,
+        'hello',
+        signature,
       )
-      expect(yield* verifySignature(stored.publicKey, 'hellO', signature)).toBe(
-        false,
+      expect(value_1).toBe(true)
+      const value_2 = yield* verifySignature(
+        stored.publicKey,
+        'hellO',
+        signature,
       )
-      expect(yield* verifySignature(other.publicKey, 'hello', signature)).toBe(
-        false,
+      expect(value_2).toBe(false)
+      const value_3 = yield* verifySignature(
+        other.publicKey,
+        'hello',
+        signature,
       )
+      expect(value_3).toBe(false)
     }),
   )
 })
@@ -119,14 +134,12 @@ const directoryApi = (
   nowMs: () => number,
 ): IdentityApi => {
   const claimsOf = (token: string) =>
-    Effect.mapError(
-      verifyToken(SECRET, token, nowMs()),
-      error =>
-        new IdentityRefused({
-          failure: IdentityFailure.cases.Unauthorized.make({
-            reason: error.reason,
-          }),
+    Effect.mapError(verifyToken(SECRET, token, nowMs()), error =>
+      IdentityRefused.make({
+        failure: IdentityFailure.cases.Unauthorized.make({
+          reason: error.reason,
         }),
+      }),
     )
   return {
     challenge: Effect.suspend(() =>
@@ -223,10 +236,11 @@ describe('device identity and linking', () => {
           expect(laptopBefore).not.toBe(phonePlayer)
           const { code, expiresMs } = yield* phone.createLinkCode
           expect(expiresMs - clock.now).toBe(CODE_TTL_MS)
-          const linked = yield* laptop.redeem(code.toLowerCase())
+          const linked = yield* laptop.redeem(String.toLowerCase(code))
           expect(linked.playerId).toBe(phonePlayer)
           expect(linked.devices).toBe(2)
-          expect(yield* laptop.playerId).toBe(phonePlayer)
+          const playerId_1 = yield* laptop.playerId
+          expect(playerId_1).toBe(phonePlayer)
           const again = yield* Effect.flip(laptop.redeem(code))
           expect(again.failure._tag).toBe('WrongCode')
         }),
@@ -271,11 +285,12 @@ describe('the wire protocol', () => {
         versions: { ChangedSettings: 1 },
       }
       const json = yield* encodeClientMessage(hello)
-      expect(yield* decodeClientMessage(json)).toEqual(hello)
+      const value_4 = yield* decodeClientMessage(json)
+      expect(value_4).toEqual(hello)
       const ack = { _tag: 'Acked' as const, id: 'mutation-0001', seq: 4 }
-      expect(
-        yield* decodeServerMessage(yield* encodeServerMessage(ack)),
-      ).toEqual(ack)
+      const value_6 = yield* encodeServerMessage(ack)
+      const value_5 = yield* decodeServerMessage(value_6)
+      expect(value_5).toEqual(ack)
       expect(ClientMessageJson).toBeDefined()
       expect(ServerMessageJson).toBeDefined()
     }),

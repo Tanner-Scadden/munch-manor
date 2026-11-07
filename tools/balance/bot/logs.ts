@@ -1,7 +1,14 @@
 // The logs a run of the balance bot fills as it plays, and the wave
 // timeline. What it reports is in results.ts, as Schemas.
 
-import { Record as EffectRecord, Schema, type Types } from 'effect'
+import {
+  Array,
+  Record as EffectRecord,
+  Function,
+  Option,
+  Schema,
+  type Types,
+} from 'effect'
 
 import { ZombieKind } from '../../../src/model'
 import { ZOMBIE_KINDS } from '../../../src/zombies'
@@ -85,7 +92,7 @@ export const isAnnounced = (model: Model): boolean => {
   return (
     model.pacing.alarm._tag === 'Ringing' ||
     model.boss._tag === 'Arriving' ||
-    pendingSpawns(model).some(spawn => warned.has(spawn.pack))
+    Array.some(pendingSpawns(model), spawn => warned.has(spawn.pack))
   )
 }
 
@@ -96,63 +103,73 @@ export const emptyTimeline = (): WaveTimeline => ({
   lengthMs: 0,
 })
 
-export const recordTimeline = (
-  timeline: WaveTimeline,
-  before: Model,
-  after: Model,
-) => {
-  const remaining = new Set(
-    after.phase._tag === 'Wave' ? after.phase.spawns.map(spawnKey) : [],
-  )
-  const released =
-    after.phase._tag === 'Wave'
-      ? pendingSpawns(before).filter(spawn => !remaining.has(spawnKey(spawn)))
-      : []
-  const atMs = timeline.lengthMs
-  released.forEach(spawn => {
-    const known = timeline.packs.find(arrival => arrival.pack === spawn.pack)
-    if (known === undefined) {
-      timeline.packs.push({
-        atMs,
-        pack: spawn.pack,
-        door: spawn.door,
-        size: 1,
-        kinds: [spawn.kind],
-        formation: spawn.formation,
-      })
-    } else {
-      known.size += 1
-      known.kinds.push(spawn.kind)
+export const recordTimeline: {
+  (before: Model, after: Model): (timeline: WaveTimeline) => void
+  (timeline: WaveTimeline, before: Model, after: Model): void
+} = Function.dual(
+  3,
+  (timeline: WaveTimeline, before: Model, after: Model): void => {
+    const remaining = new Set(
+      after.phase._tag === 'Wave'
+        ? Array.map(after.phase.spawns, spawnKey)
+        : [],
+    )
+    const released =
+      after.phase._tag === 'Wave'
+        ? Array.filter(
+            pendingSpawns(before),
+            spawn => !remaining.has(spawnKey(spawn)),
+          )
+        : []
+    const atMs = timeline.lengthMs
+    Array.forEach(released, spawn => {
+      const known = Option.getOrUndefined(
+        Array.findFirst(timeline.packs, arrival => arrival.pack === spawn.pack),
+      )
+      if (known === undefined) {
+        timeline.packs.push({
+          atMs,
+          pack: spawn.pack,
+          door: spawn.door,
+          size: 1,
+          kinds: [spawn.kind],
+          formation: spawn.formation,
+        })
+      } else {
+        known.size += 1
+        known.kinds.push(spawn.kind)
+      }
+    })
+    timeline.lengthMs += FRAME_MS
+    const isEmpty = !Array.some(after.zombies, isAliveZombie)
+    const last = timeline.empty[timeline.empty.length - 1]
+    const isOngoing = last !== undefined && last.fromMs + last.ms >= atMs - 1
+    if (isEmpty) {
+      const stretch = isOngoing ? last : { fromMs: atMs, ms: 0, announcedMs: 0 }
+      if (!isOngoing) {
+        timeline.empty.push(stretch)
+      }
+      stretch.ms += FRAME_MS
+      stretch.announcedMs += isAnnounced(after) ? FRAME_MS : 0
     }
-  })
-  timeline.lengthMs += FRAME_MS
-  const isEmpty = !after.zombies.some(isAliveZombie)
-  const last = timeline.empty[timeline.empty.length - 1]
-  const isOngoing = last !== undefined && last.fromMs + last.ms >= atMs - 1
-  if (isEmpty) {
-    const stretch = isOngoing ? last : { fromMs: atMs, ms: 0, announcedMs: 0 }
-    if (!isOngoing) {
-      timeline.empty.push(stretch)
+    const resting = after.pacing.beat._tag === 'Resting'
+    const wasResting = before.pacing.beat._tag === 'Resting'
+    if (resting && !wasResting) {
+      timeline.restMs.push(0)
     }
-    stretch.ms += FRAME_MS
-    stretch.announcedMs += isAnnounced(after) ? FRAME_MS : 0
-  }
-  const resting = after.pacing.beat._tag === 'Resting'
-  const wasResting = before.pacing.beat._tag === 'Resting'
-  if (resting && !wasResting) {
-    timeline.restMs.push(0)
-  }
-  if (resting) {
-    timeline.restMs[timeline.restMs.length - 1] =
-      (timeline.restMs[timeline.restMs.length - 1] ?? 0) + FRAME_MS
-  }
-}
+    if (resting) {
+      timeline.restMs[timeline.restMs.length - 1] =
+        (timeline.restMs[timeline.restMs.length - 1] ?? 0) + FRAME_MS
+    }
+  },
+)
 
 // The longest stretch inside an empty stretch with nothing announced.
 export const quietPartMs = (stretch: EmptyStretch) =>
   stretch.ms - stretch.announcedMs
 
-export const KINDS: ReadonlyArray<Kind> = Object.keys(ZOMBIE_KINDS).filter(
+export const KINDS: ReadonlyArray<Kind> = Array.filter(
+  EffectRecord.keys(ZOMBIE_KINDS),
   Schema.is(ZombieKind),
 )
 

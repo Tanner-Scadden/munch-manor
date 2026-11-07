@@ -7,7 +7,17 @@
 // game module builds a sprite, as in the game's own entry.
 import '@game/spriteAtlasBoot'
 import './harness.css'
-import { Effect, Layer, Option, Record, Scope } from 'effect'
+import {
+  Array,
+  Effect,
+  Layer,
+  Option,
+  Record,
+  Result,
+  Schema,
+  Scope,
+  String,
+} from 'effect'
 import { Block, Canvas, Dom, Program, Runtime } from 'foldkit'
 import type * as Command from 'foldkit/command'
 import { type Document } from 'foldkit/html'
@@ -36,7 +46,7 @@ import * as Director from './director'
 import { liveCoopNet } from './liveNet'
 import { LIVE_CROWD, LIVE_SEATS } from './liveRoom'
 import { type ViewHtml, lookSheetView } from './lookSheet'
-import { settle } from './readiness'
+import { nextFrame, settle } from './readiness'
 import { scenarioModel } from './scenario'
 import {
   type HarnessReturn,
@@ -52,18 +62,15 @@ import {
   settingsOf,
 } from './settings'
 
-const readConfig = () => {
-  try {
-    return decodeHarnessConfig(location.search)
-  } catch (error) {
+const readConfig = (): HarnessConfig =>
+  Result.getOrElse(decodeHarnessConfig(location.search), error => {
     const root = document.getElementById('root')
     if (root !== null) {
-      root.textContent = `Bad harness query: ${String(error)}`
+      root.textContent = `Bad harness query: ${globalThis.String(error)}`
       root.className = 'harness-error'
     }
     throw error
-  }
-}
+  })
 
 // NOTE: the page's state across scenes (settings.ts). `window.__loadScene`
 // swaps in another scene without reloading the page, so the scene's
@@ -78,9 +85,10 @@ const page: HarnessPage = {
 window.__shapeCounts = []
 
 const countShapes = (shapes: ReadonlyArray<Canvas.Shape>): number =>
-  shapes.reduce(
-    (n, s) => n + 1 + (s._tag === 'Group' ? countShapes(s.shapes) : 0),
+  Array.reduce(
+    shapes,
     0,
+    (n, s) => n + 1 + (s._tag === 'Group' ? countShapes(s.shapes) : 0),
   )
 window.__countShapes = () => countShapes(sceneShapes(window.__model))
 
@@ -101,29 +109,36 @@ const clearReady = () => {
 }
 const markReadyWhenSettled = (number: number) => {
   clearReady()
-  void settle(
-    () =>
-      window.__model.saveStatus !== 'Unread' &&
-      (!Number.isFinite(page.settings.freezeAfter) ||
-        page.framesRun >= page.settings.freezeAfter),
-  ).then(() => {
-    if (number === page.sceneNumber) {
-      window.__harnessReady = true
-      document.documentElement.dataset['harnessReady'] = String(number)
-    }
-  })
+  Effect.runFork(
+    settle(
+      () =>
+        window.__model.saveStatus !== 'Unread' &&
+        (!Number.isFinite(page.settings.freezeAfter) ||
+          page.framesRun >= page.settings.freezeAfter),
+    ).pipe(
+      Effect.andThen(
+        Effect.sync(() => {
+          if (number === page.sceneNumber) {
+            window.__harnessReady = true
+            document.documentElement.dataset['harnessReady'] =
+              globalThis.String(number)
+          }
+        }),
+      ),
+    ),
+  )
 }
 
 // SCENE SWITCHING
 
-const decodeScene = (query: string): HarnessConfig | undefined => {
-  try {
-    return decodeHarnessConfig(query)
-  } catch (error) {
-    window.__sceneError = String(error)
-    return undefined
-  }
-}
+const decodeScene = (query: string): HarnessConfig | undefined =>
+  Result.match(decodeHarnessConfig(query), {
+    onSuccess: config => config,
+    onFailure: error => {
+      window.__sceneError = globalThis.String(error)
+      return undefined
+    },
+  })
 
 // NOTE: a fresh page's boot, minus what a page does once. The Model comes
 // from the query as in init. The surface's measurement carries over, since
@@ -144,7 +159,8 @@ const nextSceneOf = (model: Model): HarnessReturn => {
   return {
     model: scene.model,
     commands: [
-      ...(init().commands ?? []).filter(
+      ...Array.filter(
+        init().commands ?? [],
         command => command.name !== LoadSave.name,
       ),
       ...(scene.commands ?? []),
@@ -237,19 +253,17 @@ const raiseDirectorRequest = (request: DirectorRequest) => {
 
 const runDirectorRequests = (model: Model): HarnessReturn => {
   const requests = directorRequests.splice(0)
-  return requests.reduce<HarnessReturn>(
-    (current, request) => {
-      const next =
-        request._tag === 'Start'
-          ? Director.startShot(current.model, Director.decodePlan(request.plan))
-          : Director.stepShot(current.model, request.ticks, directorStep)
-      return directed({
-        model: next.model,
-        commands: [...(current.commands ?? []), ...(next.commands ?? [])],
-      })
-    },
-    { model },
-  )
+  const start: HarnessReturn = { model }
+  return Array.reduce(requests, start, (current, request) => {
+    const next =
+      request._tag === 'Start'
+        ? Director.startShot(current.model, Director.decodePlan(request.plan))
+        : Director.stepShot(current.model, request.ticks, directorStep)
+    return directed({
+      model: next.model,
+      commands: [...(current.commands ?? []), ...(next.commands ?? [])],
+    })
+  })
 }
 
 const harnessStep = (model: Model, message: Message): HarnessReturn =>
@@ -394,56 +408,67 @@ const startScene = () =>
 
 let running = startScene()
 
+// NOTE: the harness's empty container never came back after a scene.
+class ContainerMissing extends Schema.TaggedError<
+  ContainerMissing,
+  { readonly brand: unique symbol }
+>()('ContainerMissing', { message: Schema.String }) {}
+
+const CONTAINER_FRAMES = 120
+
 // NOTE: a disposed runtime puts its empty container back on its own time,
 // so the next scene waits for `#root` before it starts.
-const containerRestored = async () => {
-  for (let frame = 0; frame < 120; frame++) {
+const containerRestored = Effect.gen(function* () {
+  for (let frame = 0; frame < CONTAINER_FRAMES; frame++) {
     if (document.getElementById('root') !== null) {
       return
     }
-    await Effect.runPromise(
-      Effect.callback<void>(resume => {
-        requestAnimationFrame(() => resume(Effect.void))
-      }),
-    )
+    yield* nextFrame
   }
-  throw new Error('the harness container did not come back')
-}
+  return yield* ContainerMissing.make({
+    message: 'the harness container did not come back',
+  })
+})
 
 // NOTE: `window.__loadScene('wave=3&start=wave')` swaps the scene in place:
 // the runtime stops, as a page leaving would, and starts again on the new
 // scene's Model. It resets what a new page would: open dialogs, focus, full
 // screen, and scroll. Wait for the ready signal afterwards. `nodev` belongs
 // to the page, not the scene.
-window.__loadScene = async (query: string) => {
-  const next = decodeScene(query.replace(/^\?/, ''))
-  if (next === undefined) {
-    return
-  }
-  clearReady()
-  await Effect.runPromise(releaseDialogs)
-  if (document.fullscreenElement !== null) {
-    await document.exitFullscreen().catch(() => undefined)
-  }
-  if (document.activeElement instanceof HTMLElement) {
-    document.activeElement.blur()
-  }
-  window.scrollTo(0, 0)
-  page.maybeCarriedModel = Option.some(window.__model)
-  running.dispose()
-  await containerRestored()
-  window.__sceneError = undefined
-  page.settings = settingsOf(next)
-  page.framesRun = 0
-  window.__messages.length = 0
-  window.__timings = emptyTimings()
-  page.sceneNumber++
-  running = startScene()
-}
+const loadScene = (query: string) =>
+  Effect.gen(function* () {
+    const next = decodeScene(String.replace(/^\?/, '')(query))
+    if (next === undefined) {
+      return
+    }
+    clearReady()
+    yield* releaseDialogs
+    if (document.fullscreenElement !== null) {
+      yield* Effect.promise(() =>
+        document.exitFullscreen().catch(() => undefined),
+      )
+    }
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+    window.scrollTo(0, 0)
+    page.maybeCarriedModel = Option.some(window.__model)
+    running.dispose()
+    yield* containerRestored
+    window.__sceneError = undefined
+    page.settings = settingsOf(next)
+    page.framesRun = 0
+    window.__messages.length = 0
+    window.__timings = emptyTimings()
+    page.sceneNumber++
+    running = startScene()
+  })
+
+window.__loadScene = query => Effect.runPromise(loadScene(query))
 
 window.__stall = STALL_BOX
 window.__doors = PARLOUR.doors
 
 // NOTE: for scripts after a click or a key: resolves once the page has
 // rendered and every image it asked for has decoded.
-window.__whenSettled = () => settle(() => true)
+window.__whenSettled = () => Effect.runPromise(settle(() => true))

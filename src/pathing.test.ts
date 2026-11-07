@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Record } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -11,10 +11,9 @@ import {
   isOpenBlock,
   isWalkableTile,
   levelFor,
-  moveCircle,
-  resolveCircle,
   tileCenter,
 } from './arena'
+import { moveCircle, resolveCircle } from './collision'
 import { DOOR_HALF_WIDTH_PX, TILE_SIZE } from './constants'
 import type { DoorId, Vector } from './model'
 import {
@@ -80,7 +79,7 @@ const canStandOn = (
 // width less the smallest zombie's radius, as spawnAt in waves.ts clamps it.
 const SPAWN_ROOM_PX =
   DOOR_HALF_WIDTH_PX -
-  Math.min(...Array.map(Object.values(ZOMBIE_KINDS), ({ radius }) => radius))
+  Math.min(...Array.map(Record.values(ZOMBIE_KINDS), ({ radius }) => radius))
 
 const SPAWN_OFFSETS = [-SPAWN_ROOM_PX, 0, SPAWN_ROOM_PX]
 
@@ -193,7 +192,7 @@ const BARRICADE_SETS: ReadonlyArray<ReadonlyArray<DoorId>> = [
 describe('a zombie in the yard', () => {
   Array.forEach(CASES, ({ name, level, players }) =>
     Array.forEach(BARRICADE_SETS, barricaded =>
-      test(`${name}, planks on ${barricaded.join(' and ') || 'no door'}: gets into the house from every spot`, () => {
+      test(`${name}, planks on ${Array.join(barricaded, ' and ') || 'no door'}: gets into the house from every spot`, () => {
         const stuck = Array.flatMap(players, player =>
           Array.flatMap(
             [
@@ -235,7 +234,7 @@ const PAST_THE_EDGE: ReadonlyArray<Vector> = [
 describe('a zombie knocked past the map edge', () => {
   Array.forEach(CASES, ({ name, level, players }) =>
     Array.forEach(BARRICADE_SETS, barricaded =>
-      test(`${name}, planks on ${barricaded.join(' and ') || 'no door'}: walks back into the house`, () => {
+      test(`${name}, planks on ${Array.join(barricaded, ' and ') || 'no door'}: walks back into the house`, () => {
         const stuck = Array.flatMap(players, player =>
           Array.filter(
             PAST_THE_EDGE,

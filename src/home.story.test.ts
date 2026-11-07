@@ -103,19 +103,22 @@ describe('the changelog', () => {
 
   test('a day with no bullets is skipped, the intro is optional, and text before the first day is ignored', () => {
     const days = parseChangelog(
-      [
-        '# What is new',
-        'Some notes for us.',
-        '',
-        '## May 2, 2027: Two',
-        '',
-        '- 🎉 Party time.',
-        '- 🧟 More zombies.',
-        '',
-        '## May 1, 2027: Empty',
-        '',
-        'Nothing here.',
-      ].join('\n'),
+      Array.join(
+        [
+          '# What is new',
+          'Some notes for us.',
+          '',
+          '## May 2, 2027: Two',
+          '',
+          '- 🎉 Party time.',
+          '- 🧟 More zombies.',
+          '',
+          '## May 1, 2027: Empty',
+          '',
+          'Nothing here.',
+        ],
+        '\n',
+      ),
     )
     expect(days).toEqual([
       {

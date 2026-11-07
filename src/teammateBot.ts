@@ -1,4 +1,4 @@
-import { Array, Option, Order, Result, pipe } from 'effect'
+import { Array, Function, Option, Order, Result, pipe } from 'effect'
 
 import {
   type Level,
@@ -618,11 +618,14 @@ const intentFor = (world: World, slot: PlayerSlot): Intent =>
 
 // NOTE: each bot's intent for the tick, keyed by its slot, to join the
 // human's in the step's inputs.
-export const botInputs = (
-  world: World,
-  slots: ReadonlyArray<PlayerSlot>,
-): InputsByPlayer =>
-  new Map(Array.map(slots, slot => [slot, intentFor(world, slot)] as const))
+export const botInputs: {
+  (slots: ReadonlyArray<PlayerSlot>): (world: World) => InputsByPlayer
+  (world: World, slots: ReadonlyArray<PlayerSlot>): InputsByPlayer
+} = Function.dual(
+  2,
+  (world: World, slots: ReadonlyArray<PlayerSlot>): InputsByPlayer =>
+    new Map(Array.map(slots, slot => [slot, intentFor(world, slot)] as const)),
+)
 
 // PRESSES
 
@@ -686,13 +689,14 @@ const pressFor = (world: World, slot: PlayerSlot): Option.Option<SeatAction> =>
 // NOTE: the bots' presses for the tick (reload in a lull, buy and leave the
 // counter, READY), applied to their seats before the step, through the same
 // seat actions a player's presses are.
-export const applyBotPresses = (
-  world: World,
-  slots: ReadonlyArray<PlayerSlot>,
-): World =>
+export const applyBotPresses: {
+  (slots: ReadonlyArray<PlayerSlot>): (world: World) => World
+  (world: World, slots: ReadonlyArray<PlayerSlot>): World
+} = Function.dual(2, (world: World, slots: ReadonlyArray<PlayerSlot>): World =>
   Array.reduce(slots, world, (current, slot) =>
     Option.match(pressFor(current, slot), {
       onNone: () => current,
       onSome: action => applySeatAction(current, slot, action),
     }),
-  )
+  ),
+)

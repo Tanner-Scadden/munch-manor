@@ -3,11 +3,11 @@ import { Schema } from 'effect'
 // NOTE: the atlas manifest ./build.ts writes and ./vitePlugin.ts reads, as
 // a Schema of src/spriteAtlas.ts's SpriteAtlas, so the JSON goes through it.
 const AtlasEntry = Schema.Tuple([
-  Schema.Number,
-  Schema.Number,
-  Schema.Number,
-  Schema.Number,
-  Schema.Number,
+  Schema.Finite,
+  Schema.Finite,
+  Schema.Finite,
+  Schema.Finite,
+  Schema.Finite,
 ])
 
 export const AtlasEntries = Schema.Record(

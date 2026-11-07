@@ -1,7 +1,7 @@
 import {
   Array,
-  Data,
   Effect,
+  Function,
   Option,
   Record,
   Result,
@@ -691,7 +691,14 @@ export const decodeSave = (raw: string): Option.Option<PlayerSave> =>
 export const encodeSave = (save: PlayerSave): Option.Option<string> =>
   Schema.encodeOption(PlayerSaveJson)(save)
 
-export const isSameSave = Schema.toEquivalence(PlayerSave)
+const saveEquivalence = Schema.toEquivalence(PlayerSave)
+
+export const isSameSave: {
+  (that: PlayerSave): (self: PlayerSave) => boolean
+  (self: PlayerSave, that: PlayerSave): boolean
+} = Function.dual(2, (self: PlayerSave, that: PlayerSave): boolean =>
+  saveEquivalence(self, that),
+)
 
 // FROM THE MODEL
 
@@ -760,8 +767,12 @@ export const SAVED_FIELDS = [
   'seenUnlocks',
 ] as const satisfies ReadonlyArray<keyof Model>
 
-export const hasSaveFieldsChanged = (before: Model, after: Model): boolean =>
-  Array.some(SAVED_FIELDS, field => before[field] !== after[field])
+export const hasSaveFieldsChanged: {
+  (after: Model): (before: Model) => boolean
+  (before: Model, after: Model): boolean
+} = Function.dual(2, (before: Model, after: Model): boolean =>
+  Array.some(SAVED_FIELDS, field => before[field] !== after[field]),
+)
 
 export const saveOf = (model: Model): PlayerSave => ({
   version: SAVE_VERSION,
@@ -899,7 +910,10 @@ const restoreBests = (
   },
 })
 
-export const restoreSave = (model: Model, save: PlayerSave): Model =>
+export const restoreSave: {
+  (save: PlayerSave): (model: Model) => Model
+  (model: Model, save: PlayerSave): Model
+} = Function.dual(2, (model: Model, save: PlayerSave): Model =>
   modifyFocus(
     modifyFields(model, {
       lessons: lessons => restoreLessons(lessons, save.onboarding.lessons),
@@ -969,7 +983,8 @@ export const restoreSave = (model: Model, save: PlayerSave): Model =>
           ? playerOfCalling(callingForRun(save.calling, save.boughtCosmetics))
           : player,
     },
-  )
+  ),
+)
 
 // RESET
 
@@ -991,12 +1006,15 @@ export const forgetTutorial = (model: Model): Model =>
 
 // LEGACY STORAGE
 
-export class SaveStorageError extends Data.TaggedError('SaveStorageError')<{
-  readonly reason: string
-}> {}
+export class SaveStorageError extends Schema.TaggedError<
+  SaveStorageError,
+  { readonly brand: unique symbol }
+>()('SaveStorageError', {
+  reason: Schema.String,
+}) {}
 
 const toStorageError = (error: unknown): SaveStorageError =>
-  new SaveStorageError({ reason: String(error) })
+  SaveStorageError.make({ reason: String(error) })
 
 // NOTE: the localStorage copy of the save, from before SQLite. Only
 // src/store.ts calls these: once to import it, and as the fallback when

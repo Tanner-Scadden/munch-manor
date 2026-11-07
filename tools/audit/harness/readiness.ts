@@ -47,7 +47,7 @@ const isPending = (image: HTMLImageElement): boolean =>
 // only the few still loading.
 const pendingImages = (): ReadonlyArray<HTMLImageElement> => {
   const pending: Array<HTMLImageElement> = []
-  for (const image of [...created, ...Array.from(document.images)]) {
+  for (const image of [...created, ...globalThis.Array.from(document.images)]) {
     if (isPending(image)) {
       pending.push(image)
     } else if (image.getAttribute('src') !== null) {
@@ -57,41 +57,43 @@ const pendingImages = (): ReadonlyArray<HTMLImageElement> => {
   return pending
 }
 
-const nextFrame = (): Promise<void> =>
-  Effect.runPromise(
-    Effect.callback<void>(resume => {
-      requestAnimationFrame(() => resume(Effect.void))
-    }),
-  )
+// NOTE: waits for the next animation frame.
+export const nextFrame = Effect.callback<void>(resume => {
+  requestAnimationFrame(() => resume(Effect.void))
+})
 
-const frames = async (count: number): Promise<void> => {
-  for (let index = 0; index < count; index++) {
-    await nextFrame()
-  }
-}
+const twoFrames = Effect.andThen(nextFrame, nextFrame)
 
 const SETTLE_LIMIT_MS = 10_000
+
+// NOTE: the page's own clock, as the frame times are.
+const pageNow = Effect.sync(() => performance.now())
+
+const decoded = (image: HTMLImageElement) =>
+  Effect.promise(() => image.decode().catch(() => undefined))
 
 // NOTE: resolves once the fonts are loaded, the scene has rendered, and every
 // image the page asked for has loaded and decoded, with two more frames so a
 // canvas that repaints when its image arrives has painted. `isHeld` is the
 // extra condition a scene needs, such as a frozen scene's last frame. It gives
 // up after ten seconds, so a broken image cannot hang a script forever.
-export const settle = async (isHeld: () => boolean): Promise<void> => {
-  const startedAt = performance.now()
-  await document.fonts.ready
-  await frames(2)
-  while (performance.now() - startedAt < SETTLE_LIMIT_MS) {
-    const pending = pendingImages()
-    if (pending.length === 0 && isHeld()) {
-      await frames(2)
-      if (pendingImages().length === 0) {
-        return
+export const settle = (isHeld: () => boolean): Effect.Effect<void> =>
+  Effect.gen(function* () {
+    const startedAt = yield* pageNow
+    yield* Effect.promise(() => document.fonts.ready)
+    yield* twoFrames
+    while ((yield* pageNow) - startedAt < SETTLE_LIMIT_MS) {
+      const pending = pendingImages()
+      if (pending.length === 0 && isHeld()) {
+        yield* twoFrames
+        if (pendingImages().length === 0) {
+          return
+        }
       }
+      yield* Effect.forEach(pending, decoded, {
+        concurrency: 'unbounded',
+        discard: true,
+      })
+      yield* nextFrame
     }
-    await Promise.all(
-      pending.map(image => image.decode().catch(() => undefined)),
-    )
-    await nextFrame()
-  }
-}
+  })

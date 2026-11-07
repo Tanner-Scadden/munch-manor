@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 
 import { DOOR_IDS } from './arena'
 import {
@@ -58,15 +58,28 @@ export const only = (
   kind: ZombieKind,
 ): Array.NonEmptyReadonlyArray<KindWeight> => [{ kind, weight: 1 }]
 
-export const mixOf = (
-  shamblers: number,
-  runners: number,
-  exploders: number,
-): Array.NonEmptyReadonlyArray<KindWeight> => [
-  { kind: 'Shambler', weight: shamblers },
-  { kind: 'Runner', weight: runners },
-  { kind: 'Exploder', weight: exploders },
-]
+export const mixOf: {
+  (
+    runners: number,
+    exploders: number,
+  ): (shamblers: number) => Array.NonEmptyReadonlyArray<KindWeight>
+  (
+    shamblers: number,
+    runners: number,
+    exploders: number,
+  ): Array.NonEmptyReadonlyArray<KindWeight>
+} = Function.dual(
+  3,
+  (
+    shamblers: number,
+    runners: number,
+    exploders: number,
+  ): Array.NonEmptyReadonlyArray<KindWeight> => [
+    { kind: 'Shambler', weight: shamblers },
+    { kind: 'Runner', weight: runners },
+    { kind: 'Exploder', weight: exploders },
+  ],
+)
 
 type DoorChoice = Readonly<{
   doors: Array.NonEmptyReadonlyArray<DoorId>
@@ -151,13 +164,23 @@ export const hordes = (spec: Omit<GroupSpec, 'from'>): SpawnGroup => ({
 const lug = (from: DoorChoice, atMs: number): SpawnGroup =>
   trickle({ count: 1, mix: only('Tank'), from, startMs: atMs, everyMs: 0 })
 
-export const chuckers = (
-  from: DoorChoice,
-  count: number,
-  atMs: number,
-  everyMs: number,
-): SpawnGroup =>
-  trickle({ count, mix: only('Thrower'), from, startMs: atMs, everyMs })
+export const chuckers: {
+  (
+    count: number,
+    atMs: number,
+    everyMs: number,
+  ): (from: DoorChoice) => SpawnGroup
+  (from: DoorChoice, count: number, atMs: number, everyMs: number): SpawnGroup
+} = Function.dual(
+  4,
+  (
+    from: DoorChoice,
+    count: number,
+    atMs: number,
+    everyMs: number,
+  ): SpawnGroup =>
+    trickle({ count, mix: only('Thrower'), from, startMs: atMs, everyMs }),
+)
 
 // NOTE: an Ankle Biter comes up through the floor, so its door is never
 // used. It still gets one, drawn like a straggler's, so the plan stays one
@@ -172,11 +195,14 @@ export const crawlers = (
 const lugPincer = (atMs: number): SpawnGroup =>
   pincers({ packs: [1, 1], mix: only('Tank'), startMs: atMs, everyMs: 0 })
 
-export const fadeThenRelax = (atMs: number, relaxMs: number): Hold => ({
+export const fadeThenRelax: {
+  (relaxMs: number): (atMs: number) => Hold
+  (atMs: number, relaxMs: number): Hold
+} = Function.dual(2, (atMs: number, relaxMs: number): Hold => ({
   atMs,
   releaseBelow: FADE_RELEASE_BELOW,
   relaxMs,
-})
+}))
 
 const MIXED = mixOf(3, 2, 1.5)
 
@@ -638,13 +664,16 @@ export const debutKinds = (wave: number): ReadonlyArray<ZombieKind> => {
   )
 }
 
-export const pickOne = <A>(
-  items: Array.NonEmptyReadonlyArray<A>,
-  roll: number,
-): A =>
-  Option.getOrElse(Array.get(items, Math.floor(roll * items.length)), () =>
-    Array.headNonEmpty(items),
-  )
+export const pickOne: {
+  <A>(roll: number): (items: Array.NonEmptyReadonlyArray<A>) => A
+  <A>(items: Array.NonEmptyReadonlyArray<A>, roll: number): A
+} = Function.dual(
+  2,
+  <A>(items: Array.NonEmptyReadonlyArray<A>, roll: number): A =>
+    Option.getOrElse(Array.get(items, Math.floor(roll * items.length)), () =>
+      Array.headNonEmpty(items),
+    ),
+)
 
 type KindPick = Readonly<{
   reached: number
@@ -653,22 +682,28 @@ type KindPick = Readonly<{
 
 const NOTHING_PICKED: KindPick = { reached: 0, maybeKind: Option.none() }
 
-export const pickKind = (
-  mix: Array.NonEmptyReadonlyArray<KindWeight>,
-  roll: number,
-): ZombieKind => {
-  const total = Array.reduce(mix, 0, (sum, { weight }) => sum + weight)
-  const target = roll * total
-  const picked = Array.reduce(
-    mix,
-    NOTHING_PICKED,
-    ({ reached, maybeKind }, { kind, weight }): KindPick => ({
-      reached: reached + weight,
-      maybeKind:
-        Option.isNone(maybeKind) && target < reached + weight
-          ? Option.some(kind)
-          : maybeKind,
-    }),
-  )
-  return Option.getOrElse(picked.maybeKind, () => Array.lastNonEmpty(mix).kind)
-}
+export const pickKind: {
+  (roll: number): (mix: Array.NonEmptyReadonlyArray<KindWeight>) => ZombieKind
+  (mix: Array.NonEmptyReadonlyArray<KindWeight>, roll: number): ZombieKind
+} = Function.dual(
+  2,
+  (mix: Array.NonEmptyReadonlyArray<KindWeight>, roll: number): ZombieKind => {
+    const total = Array.reduce(mix, 0, (sum, { weight }) => sum + weight)
+    const target = roll * total
+    const picked = Array.reduce(
+      mix,
+      NOTHING_PICKED,
+      ({ reached, maybeKind }, { kind, weight }): KindPick => ({
+        reached: reached + weight,
+        maybeKind:
+          Option.isNone(maybeKind) && target < reached + weight
+            ? Option.some(kind)
+            : maybeKind,
+      }),
+    )
+    return Option.getOrElse(
+      picked.maybeKind,
+      () => Array.lastNonEmpty(mix).kind,
+    )
+  },
+)

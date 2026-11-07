@@ -1,13 +1,13 @@
 // Co-op audit (tools/audit/coop.ts): the room's World and link as each page
 // draws them.
 
-import { Schema } from 'effect'
+import { Array, Effect, Function, Option, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { type Readout, ReadoutJson } from '@game/coop/readout'
 import { Vector } from '@game/entitySchema'
 
-import { evaluateAs } from '../page'
+import { type AuditFailed, attempt, decodedFrom, evaluateAs } from '../page'
 
 // THE ROOM'S WORLD, AS THE PAGE DRAWS IT
 
@@ -16,24 +16,26 @@ import { evaluateAs } from '../page'
 export type Seat = Readout['players'][number]
 
 const Net = Schema.Struct({
-  slot: Schema.Number,
-  lookedHits: Schema.Number,
-  confirmedHits: Schema.Number,
-  delayMs: Schema.Number,
-  rttMs: Schema.Number,
-  bytesIn: Schema.Number,
-  framesIn: Schema.Number,
-  inputsOut: Schema.Number,
-  nowMs: Schema.Number,
-  corrections: Schema.Number,
-  correctionPx: Schema.Number,
-  stalls: Schema.Number,
-  longestStallMs: Schema.Number,
-  resyncs: Schema.Number,
+  slot: Schema.Finite,
+  lookedHits: Schema.Finite,
+  confirmedHits: Schema.Finite,
+  delayMs: Schema.Finite,
+  rttMs: Schema.Finite,
+  bytesIn: Schema.Finite,
+  framesIn: Schema.Finite,
+  inputsOut: Schema.Finite,
+  nowMs: Schema.Finite,
+  corrections: Schema.Finite,
+  correctionPx: Schema.Finite,
+  stalls: Schema.Finite,
+  longestStallMs: Schema.Finite,
+  resyncs: Schema.Finite,
 })
 type Net = typeof Net.Type
 
-export const netOf = (page: Page): Promise<Net | undefined> =>
+export const netOf = (
+  page: Page,
+): Effect.Effect<Net | undefined, AuditFailed | Schema.SchemaError> =>
   evaluateAs(page, Schema.UndefinedOr(Net), () => {
     const element = document.querySelector<HTMLElement>('.coop-net')
     if (element === null) {
@@ -61,42 +63,71 @@ export const netOf = (page: Page): Promise<Net | undefined> =>
 // NOTE: read at once, never waited for: off the arena (a party wipe sends
 // the room back to its lobby) there is no readout, and a locator would
 // wait 30 s for it on every poll.
-export const readoutOf = (page: Page): Promise<Readout | undefined> =>
+export const readoutOf = (
+  page: Page,
+): Effect.Effect<Readout | undefined, AuditFailed | Schema.SchemaError> =>
   evaluateAs(page, Schema.UndefinedOr(ReadoutJson), () => {
     const text =
       document.querySelector<HTMLElement>('.coop-net')?.dataset['world']
     return text === undefined || text === '' ? undefined : text
   })
 
-export const isOnArena = async (page: Page): Promise<boolean> =>
-  (await page.locator('.coop[data-screen="Arena"]').count()) === 1
+export const isOnArena = (page: Page) =>
+  attempt(() => page.locator('.coop[data-screen="Arena"]').count()).pipe(
+    Effect.map(count => count === 1),
+  )
 
-export const slotOf = async (page: Page): Promise<number> =>
-  (await netOf(page))?.slot ?? -1
+export const slotOf = (page: Page) =>
+  Effect.map(netOf(page), net => net?.slot ?? -1)
 
-export const ownSeatOf = async (page: Page): Promise<Seat | undefined> => {
-  const [readout, slot] = [await readoutOf(page), await slotOf(page)]
-  return readout?.players.find(seat => seat.slot === slot)
-}
+export const ownSeatOf = (page: Page) =>
+  Effect.gen(function* () {
+    const readout = yield* readoutOf(page)
+    const slot = yield* slotOf(page)
+    return Option.getOrUndefined(
+      Array.findFirst(readout?.players ?? [], seat => seat.slot === slot),
+    )
+  })
+
+type ClientPoint = Readonly<{ x: number; y: number }>
 
 // NOTE: the parlour fills the 320 by 180 view while the kitchen is shut,
 // so the camera stands still and a world point is a fixed point on the
 // game canvas.
-export const toClient = async (page: Page, x: number, y: number) =>
-  evaluateAs(
-    page,
-    Vector,
-    ([worldX, worldY]) => {
-      const canvas = document.querySelector('.game-canvas')
-      if (canvas === null) {
-        return { x: 0, y: 0 }
-      }
-      const box = canvas.getBoundingClientRect()
-      const scale = Math.min(box.width / 320, box.height / 180)
-      return {
-        x: box.left + (box.width - 320 * scale) / 2 + worldX * scale,
-        y: box.top + (box.height - 180 * scale) / 2 + worldY * scale,
-      }
-    },
-    [x, y] as const,
-  )
+export const toClient: {
+  (
+    x: number,
+    y: number,
+  ): (
+    page: Page,
+  ) => Effect.Effect<ClientPoint, AuditFailed | Schema.SchemaError>
+  (
+    page: Page,
+    x: number,
+    y: number,
+  ): Effect.Effect<ClientPoint, AuditFailed | Schema.SchemaError>
+} = Function.dual(
+  3,
+  (
+    page: Page,
+    x: number,
+    y: number,
+  ): Effect.Effect<ClientPoint, AuditFailed | Schema.SchemaError> =>
+    decodedFrom(Vector, () =>
+      page.evaluate(
+        ([worldX, worldY]) => {
+          const canvas = document.querySelector('.game-canvas')
+          if (canvas === null) {
+            return { x: 0, y: 0 }
+          }
+          const box = canvas.getBoundingClientRect()
+          const scale = Math.min(box.width / 320, box.height / 180)
+          return {
+            x: box.left + (box.width - 320 * scale) / 2 + worldX * scale,
+            y: box.top + (box.height - 180 * scale) / 2 + worldY * scale,
+          }
+        },
+        [x, y] as const,
+      ),
+    ),
+)

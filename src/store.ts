@@ -1,7 +1,6 @@
 import type { Duration } from 'effect'
 import {
   Context,
-  Data,
   Effect,
   Fiber,
   Layer,
@@ -15,7 +14,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import type { RoomAccess } from './coop/roomReplica'
 import {
-  type LinkProblem,
+  LinkProblem,
   type PlayerChange,
   type RunSettled,
   StoreEvent,
@@ -58,13 +57,19 @@ const Backend = defineTaggedUnion({
 })
 type Backend = typeof Backend.Type
 
-class StoreError extends Data.TaggedError('StoreError')<{
-  readonly reason: string
-}> {}
+class StoreError extends Schema.TaggedError<
+  StoreError,
+  { readonly brand: unique symbol }
+>()('StoreError', {
+  reason: Schema.String,
+}) {}
 
-class LinkError extends Data.TaggedError('LinkError')<{
-  readonly problem: LinkProblem
-}> {}
+class LinkError extends Schema.TaggedError<
+  LinkError,
+  { readonly brand: unique symbol }
+>()('LinkError', {
+  problem: LinkProblem,
+}) {}
 
 export class PlayerStore extends Context.Service<
   PlayerStore,
@@ -90,10 +95,10 @@ export class PlayerStore extends Context.Service<
 const SQLITE_OPEN_TIMEOUT: Duration.Input = '12 seconds'
 
 const toStoreError = (error: { readonly reason: string }): StoreError =>
-  new StoreError({ reason: error.reason })
+  StoreError.make({ reason: error.reason })
 
 const toLinkError = (error: { readonly problem: LinkProblem }): LinkError =>
-  new LinkError({ problem: error.problem })
+  LinkError.make({ problem: error.problem })
 
 const readLegacy = pipe(readLegacySave, Effect.mapError(toStoreError))
 
@@ -105,7 +110,7 @@ const openSqlite: Effect.Effect<PlayerDatabase, StoreError> = pipe(
   Effect.tryPromise({
     try: () =>
       loadStoreModule().then(module => module.openPlayerDatabaseOnce()),
-    catch: error => new StoreError({ reason: String(error) }),
+    catch: error => StoreError.make({ reason: String(error) }),
   }),
   Effect.flatMap(opened => Effect.mapError(opened, toStoreError)),
 )
@@ -204,7 +209,7 @@ export const layer: Layer.Layer<PlayerStore> = Layer.effect(
       Backend.match(current, {
         Sqlite: ({ database: opened }) => Effect.succeed(opened),
         LocalStorage: () =>
-          Effect.fail(new LinkError({ problem: 'Unavailable' })),
+          Effect.fail(LinkError.make({ problem: 'Unavailable' })),
       }),
     )
     // NOTE: summaries finished offline wait in SQLite only. Without it
@@ -233,9 +238,8 @@ export const layer: Layer.Layer<PlayerStore> = Layer.effect(
         ),
       awaitSettled: id =>
         Effect.flatMap(
-          Effect.mapError(
-            database,
-            error => new StoreError({ reason: error.problem }),
+          Effect.mapError(database, error =>
+            StoreError.make({ reason: error.problem }),
           ),
           opened => Effect.mapError(opened.awaitSettled(id), toStoreError),
         ),

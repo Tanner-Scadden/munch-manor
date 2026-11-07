@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 // Deterministic stand-ins for the Math functions the game calls whose results
 // differ between engines (hypot, sin, cos, atan2, exp). They use only +, -,
 // *, /, and Math.sqrt, which IEEE 754 rounds the same way everywhere, so
@@ -127,7 +128,7 @@ const detExp = (x: number): number => {
 }
 
 const detHypot = (...values: Array<number>): number =>
-  Math.sqrt(values.reduce((sum, value) => sum + value * value, 0))
+  Math.sqrt(Array.reduce(values, 0, (sum, value) => sum + value * value))
 
 // Puts them over Math for the life of the process or isolate.
 export const installDeterministicMath = (): void => {

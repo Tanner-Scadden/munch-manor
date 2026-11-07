@@ -1,4 +1,4 @@
-import { Array, Option, Record, String, pipe } from 'effect'
+import { Array, Function, Option, Record, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { playerSprites } from './appearance'
@@ -100,11 +100,15 @@ const centered = (
 ): Canvas.Shape =>
   placeBaked(baked, { x: CENTER_X, y, align: 'Center', scale, opacity })
 
-export const waveLabel = (mode: RunMode, wave: number): string =>
+export const waveLabel: {
+  (wave: number): (mode: RunMode) => string
+  (mode: RunMode, wave: number): string
+} = Function.dual(2, (mode: RunMode, wave: number): string =>
   RunMode.match(mode, {
     Campaign: () => `WAVE ${wave} / ${FINAL_WAVE}`,
     Endless: () => `WAVE ${wave}`,
-  })
+  }),
+)
 
 const isBlinkOn = (ms: number): boolean => ms % 1000 < 700
 
@@ -1015,21 +1019,25 @@ const resumeYFor = (screen: Screen): number =>
     ? RESUME_Y
     : screen.height - landscapeFrameOffset(screen).y - PORTRAIT_RESUME_LIFT
 
-export const overlayShapes = (
-  model: Model,
-  screen: Screen,
-): ReadonlyArray<Canvas.Shape> =>
-  Phase.match(model.phase, {
-    Ready: () => readyShapes(model),
-    Preparation: ({ wave }) => [
-      ...preparationBanner(model, wave, msIntoPhase(model.phase)),
-      ...hintShapes(model),
-    ],
-    Wave: ({ wave, elapsedMs }) =>
-      isDebutCardUp(model)
-        ? debutCardOverlay(model)
-        : [...waveBanner(model, wave, elapsedMs), ...hintShapes(model)],
-    Paused: ({ round }) => pausedShapes(model, round.wave, resumeYFor(screen)),
-    Victory: () => endOverlayShapes(model),
-    GameOver: () => endOverlayShapes(model),
-  })
+export const overlayShapes: {
+  (screen: Screen): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape> =>
+    Phase.match(model.phase, {
+      Ready: () => readyShapes(model),
+      Preparation: ({ wave }) => [
+        ...preparationBanner(model, wave, msIntoPhase(model.phase)),
+        ...hintShapes(model),
+      ],
+      Wave: ({ wave, elapsedMs }) =>
+        isDebutCardUp(model)
+          ? debutCardOverlay(model)
+          : [...waveBanner(model, wave, elapsedMs), ...hintShapes(model)],
+      Paused: ({ round }) =>
+        pausedShapes(model, round.wave, resumeYFor(screen)),
+      Victory: () => endOverlayShapes(model),
+      GameOver: () => endOverlayShapes(model),
+    }),
+)

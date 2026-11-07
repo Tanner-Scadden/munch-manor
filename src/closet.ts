@@ -1,4 +1,4 @@
-import { Array, Option, Order, Record } from 'effect'
+import { Array, Function, Option, Order, Record } from 'effect'
 
 import {
   type Appearance,
@@ -30,7 +30,10 @@ export type LookSource =
   | Readonly<{ kind: 'Sold'; price: number }>
 
 // NOTE: where a look comes from, by its kind and name (`Hat`, `Fez`).
-export const sourceOf = (kind: CosmeticKind, name: string): LookSource => {
+export const sourceOf: {
+  (name: string): (kind: CosmeticKind) => LookSource
+  (kind: CosmeticKind, name: string): LookSource
+} = Function.dual(2, (kind: CosmeticKind, name: string): LookSource => {
   const id = cosmeticIdOf(kind, name)
   return Option.match(Record.get<string, number>(COSMETIC_GIFT_RANKS, id), {
     onSome: rank => ({ kind: 'Gift', rank }),
@@ -40,50 +43,71 @@ export const sourceOf = (kind: CosmeticKind, name: string): LookSource => {
         onNone: () => ({ kind: 'Free' }),
       }),
   })
-}
+})
 
 // OWNING
 
-export const isOwned = (
-  kind: CosmeticKind,
-  name: string,
-  bought: SavedBoughtCosmetics,
-  rank: number,
-): boolean => {
-  const source = sourceOf(kind, name)
-  return source.kind === 'Free'
-    ? true
-    : source.kind === 'Gift'
-      ? rank >= source.rank
-      : Array.contains(bought, cosmeticIdOf(kind, name))
-}
+export const isOwned: {
+  (
+    name: string,
+    bought: SavedBoughtCosmetics,
+    rank: number,
+  ): (kind: CosmeticKind) => boolean
+  (
+    kind: CosmeticKind,
+    name: string,
+    bought: SavedBoughtCosmetics,
+    rank: number,
+  ): boolean
+} = Function.dual(
+  4,
+  (
+    kind: CosmeticKind,
+    name: string,
+    bought: SavedBoughtCosmetics,
+    rank: number,
+  ): boolean => {
+    const source = sourceOf(kind, name)
+    return source.kind === 'Free'
+      ? true
+      : source.kind === 'Gift'
+        ? rank >= source.rank
+        : Array.contains(bought, cosmeticIdOf(kind, name))
+  },
+)
 
 // NOTE: the look wearing only what the player owns: a hat, shirt color,
 // print, or gun skin that is not owned (a purchase another device's Bones
 // outran) goes back to bare headed, blue, plain, and stock. The same look
 // comes back when nothing is off.
-export const lookInOwned = (
-  look: Appearance,
-  bought: SavedBoughtCosmetics,
-  rank: number,
-): Appearance => {
-  const hat = isOwned('Hat', look.hat, bought, rank) ? look.hat : 'None'
-  const shirtColor = isOwned('Shirt', look.shirtColor, bought, rank)
-    ? look.shirtColor
-    : 'Blue'
-  const print = isOwned('Print', look.print, bought, rank)
-    ? look.print
-    : 'Plain'
-  const gunSkin = isOwned('Skin', look.gunSkin, bought, rank)
-    ? look.gunSkin
-    : 'Stock'
-  return hat === look.hat &&
-    shirtColor === look.shirtColor &&
-    print === look.print &&
-    gunSkin === look.gunSkin
-    ? look
-    : { ...look, hat, shirtColor, print, gunSkin }
-}
+export const lookInOwned: {
+  (bought: SavedBoughtCosmetics, rank: number): (look: Appearance) => Appearance
+  (look: Appearance, bought: SavedBoughtCosmetics, rank: number): Appearance
+} = Function.dual(
+  3,
+  (
+    look: Appearance,
+    bought: SavedBoughtCosmetics,
+    rank: number,
+  ): Appearance => {
+    const hat = isOwned('Hat', look.hat, bought, rank) ? look.hat : 'None'
+    const shirtColor = isOwned('Shirt', look.shirtColor, bought, rank)
+      ? look.shirtColor
+      : 'Blue'
+    const print = isOwned('Print', look.print, bought, rank)
+      ? look.print
+      : 'Plain'
+    const gunSkin = isOwned('Skin', look.gunSkin, bought, rank)
+      ? look.gunSkin
+      : 'Stock'
+    return hat === look.hat &&
+      shirtColor === look.shirtColor &&
+      print === look.print &&
+      gunSkin === look.gunSkin
+      ? look
+      : { ...look, hat, shirtColor, print, gunSkin }
+  },
+)
 
 // GIFTS
 
@@ -111,70 +135,112 @@ export const GIFTS: ReadonlyArray<Gift> = Array.sort(
 
 // NOTE: the gifts a rank up from `rankBefore` to `rankAfter` opened, lowest
 // rank first.
-export const giftsOpenedBy = (
-  rankBefore: number,
-  rankAfter: number,
-): ReadonlyArray<Gift> =>
-  Array.filter(GIFTS, ({ rank }) => rank > rankBefore && rank <= rankAfter)
+export const giftsOpenedBy: {
+  (rankAfter: number): (rankBefore: number) => ReadonlyArray<Gift>
+  (rankBefore: number, rankAfter: number): ReadonlyArray<Gift>
+} = Function.dual(
+  2,
+  (rankBefore: number, rankAfter: number): ReadonlyArray<Gift> =>
+    Array.filter(GIFTS, ({ rank }) => rank > rankBefore && rank <= rankAfter),
+)
 
 // A LOOK'S STANDING
 
 export type Standing = 'Worn' | 'Owned' | 'ForSale' | 'Locked'
 
-export const standingOf = (
-  kind: CosmeticKind,
-  name: string,
-  worn: string,
-  bought: SavedBoughtCosmetics,
-  rank: number,
-): Standing =>
-  worn === name
-    ? 'Worn'
-    : isOwned(kind, name, bought, rank)
-      ? 'Owned'
-      : sourceOf(kind, name).kind === 'Gift'
-        ? 'Locked'
-        : 'ForSale'
+export const standingOf: {
+  (
+    name: string,
+    worn: string,
+    bought: SavedBoughtCosmetics,
+    rank: number,
+  ): (kind: CosmeticKind) => Standing
+  (
+    kind: CosmeticKind,
+    name: string,
+    worn: string,
+    bought: SavedBoughtCosmetics,
+    rank: number,
+  ): Standing
+} = Function.dual(
+  5,
+  (
+    kind: CosmeticKind,
+    name: string,
+    worn: string,
+    bought: SavedBoughtCosmetics,
+    rank: number,
+  ): Standing =>
+    worn === name
+      ? 'Worn'
+      : isOwned(kind, name, bought, rank)
+        ? 'Owned'
+        : sourceOf(kind, name).kind === 'Gift'
+          ? 'Locked'
+          : 'ForSale',
+)
 
 // BUYING
 
 // NOTE: whether the Bones cover a look for sale.
-export const canAfford = (
-  rank: SavedRank,
-  kind: CosmeticKind,
-  name: string,
-): boolean => {
-  const source = sourceOf(kind, name)
-  return source.kind === 'Sold' && bonesBalanceOf(rank) >= source.price
-}
+export const canAfford: {
+  (kind: CosmeticKind, name: string): (rank: SavedRank) => boolean
+  (rank: SavedRank, kind: CosmeticKind, name: string): boolean
+} = Function.dual(
+  3,
+  (rank: SavedRank, kind: CosmeticKind, name: string): boolean => {
+    const source = sourceOf(kind, name)
+    return source.kind === 'Sold' && bonesBalanceOf(rank) >= source.price
+  },
+)
 
 // NOTE: what picking a look does, read from its standing: nothing for the
 // one worn, put on one owned, try on one for sale (bought by its BUY pill,
 // not by the pick), and nothing for a locked gift.
 export type GearTap = 'Stay' | 'Wear' | 'Preview' | 'Locked'
 
-export const gearTapOf = (
-  kind: CosmeticKind,
-  name: string,
-  worn: string,
-  bought: SavedBoughtCosmetics,
-  rankNumber: number,
-): GearTap => {
-  const standing = standingOf(kind, name, worn, bought, rankNumber)
-  return standing === 'Worn'
-    ? 'Stay'
-    : standing === 'Owned'
-      ? 'Wear'
-      : standing === 'Locked'
-        ? 'Locked'
-        : 'Preview'
-}
+export const gearTapOf: {
+  (
+    name: string,
+    worn: string,
+    bought: SavedBoughtCosmetics,
+    rankNumber: number,
+  ): (kind: CosmeticKind) => GearTap
+  (
+    kind: CosmeticKind,
+    name: string,
+    worn: string,
+    bought: SavedBoughtCosmetics,
+    rankNumber: number,
+  ): GearTap
+} = Function.dual(
+  5,
+  (
+    kind: CosmeticKind,
+    name: string,
+    worn: string,
+    bought: SavedBoughtCosmetics,
+    rankNumber: number,
+  ): GearTap => {
+    const standing = standingOf(kind, name, worn, bought, rankNumber)
+    return standing === 'Worn'
+      ? 'Stay'
+      : standing === 'Owned'
+        ? 'Wear'
+        : standing === 'Locked'
+          ? 'Locked'
+          : 'Preview'
+  },
+)
 
 // NOTE: the price of a look for sale, none for any other.
-export const priceOf = (
-  kind: CosmeticKind,
-  name: string,
-): Option.Option<number> => {
-  const source = sourceOf(kind, name)
-  return source.kind === 'Sold' ? Option.some(source.price) : Option.none()
-}
+export const priceOf: {
+  (name: string): (kind: CosmeticKind) => Option.Option<number>
+  (kind: CosmeticKind, name: string): Option.Option<number>
+} = Function.dual(
+  2,
+  (kind: CosmeticKind, name: string): Option.Option<number> => {
+    const source = sourceOf(kind, name)
+    return source.kind === 'Sold' ? Option.some(source.price) : Option.none()
+  },
+)

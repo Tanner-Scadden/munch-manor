@@ -1,3 +1,5 @@
+import { Function } from 'effect'
+
 import { type Palette, TRANSPARENT } from '../sprite'
 import {
   type FramePixels,
@@ -119,15 +121,28 @@ export const BOSS_WEAR: ReadonlyArray<ReadonlyArray<Patch>> = [
   ],
 ]
 
-export const bossPixels = (
-  legs: ReadonlyArray<string>,
-  stage: number,
-  isGaping: boolean,
-): ReadonlyArray<string> =>
-  applyPatches(
-    [...BOSS_UPPER, ...legs],
-    [...(isGaping ? BOSS_GAPE_MOUTH : []), ...wornThrough(BOSS_WEAR, stage)],
-  )
+export const bossPixels: {
+  (
+    stage: number,
+    isGaping: boolean,
+  ): (legs: ReadonlyArray<string>) => ReadonlyArray<string>
+  (
+    legs: ReadonlyArray<string>,
+    stage: number,
+    isGaping: boolean,
+  ): ReadonlyArray<string>
+} = Function.dual(
+  3,
+  (
+    legs: ReadonlyArray<string>,
+    stage: number,
+    isGaping: boolean,
+  ): ReadonlyArray<string> =>
+    applyPatches(
+      [...BOSS_UPPER, ...legs],
+      [...(isGaping ? BOSS_GAPE_MOUTH : []), ...wornThrough(BOSS_WEAR, stage)],
+    ),
+)
 
 export const bossWalkPixels = (stage: number): FramePixels => [
   bossPixels(BOSS_LEGS_PLANTED, stage, false),

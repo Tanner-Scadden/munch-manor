@@ -1,4 +1,4 @@
-import { Array, Effect, Option, Schema, pipe } from 'effect'
+import { Array, Effect, Function, Option, Schema, pipe } from 'effect'
 import type { ManagedResource } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -14,7 +14,11 @@ import {
   releaseAudioEngine,
   resumeAudio,
 } from '../audio'
-import { makeCommand, makeManagedResources, makeResource } from '../definition'
+import {
+  ApplicationDefinition,
+  makeManagedResources,
+  makeResource,
+} from '../definition'
 import { maybeLandedBetween, prizeSpotOf, revealOf } from '../fridgeReveal'
 import { mendedSpots } from '../heroTells'
 import { maybeKitchenSound } from '../kitchenCall'
@@ -66,7 +70,7 @@ export const audioFailureReason = (
     ? error.reason
     : `${error.resource} is not acquired`
 
-export const ResumeAudio = makeCommand('ResumeAudio', {
+export const ResumeAudio = ApplicationDefinition.makeCommand('ResumeAudio', {
   messages: [Message.CompletedResumeAudio, Message.FailedResumeAudio],
   handler: function* () {
     return () =>
@@ -83,8 +87,8 @@ export const ResumeAudio = makeCommand('ResumeAudio', {
   },
 })
 
-export const PlaySound = makeCommand('PlaySound', {
-  args: { sound: SoundEffect, variation: Schema.Number },
+export const PlaySound = ApplicationDefinition.makeCommand('PlaySound', {
+  args: { sound: SoundEffect, variation: Schema.Finite },
   messages: [Message.CompletedPlaySound, Message.FailedPlaySound],
   handler: function* () {
     return ({ sound, variation }) =>
@@ -207,9 +211,15 @@ const maybeEventSoundCue = (event: GameEvent): Option.Option<SoundCue> =>
 
 // NOTE: a co-op client predicts its own shots and sounds them at once
 // (src/coopPlay.ts), so the room's own copy of each, later, stays quiet.
-export const isOwnShot = (event: GameEvent, ownSlot: number): boolean =>
-  GameEvent.isAnyOf(['Fired'])(event) &&
-  Option.exists(event.maybeShooter, shooter => shooter === ownSlot)
+export const isOwnShot: {
+  (ownSlot: number): (event: GameEvent) => boolean
+  (event: GameEvent, ownSlot: number): boolean
+} = Function.dual(
+  2,
+  (event: GameEvent, ownSlot: number): boolean =>
+    GameEvent.isAnyOf(['Fired'])(event) &&
+    Option.exists(event.maybeShooter, shooter => shooter === ownSlot),
+)
 
 // NOTE: the shot sound of the gun a player holds, where they stand.
 export const shotSoundCue = (player: Player): SoundCue => ({
@@ -220,10 +230,10 @@ export const shotSoundCue = (player: Player): SoundCue => ({
 // NOTE: the fridge's spin landing between two frames plays its prize's
 // sting there (src/fridgeReveal.ts). It is read from the door, not from an
 // event, so the room's World needs nothing new for it.
-export const fridgeLandCues = (
-  before: Model,
-  after: Model,
-): ReadonlyArray<SoundCue> =>
+export const fridgeLandCues: {
+  (after: Model): (before: Model) => ReadonlyArray<SoundCue>
+  (before: Model, after: Model): ReadonlyArray<SoundCue>
+} = Function.dual(2, (before: Model, after: Model): ReadonlyArray<SoundCue> =>
   before.fridge.door === after.fridge.door
     ? []
     : pipe(
@@ -235,14 +245,15 @@ export const fridgeLandCues = (
           })),
         ),
         Option.toArray,
-      )
+      ),
+)
 
 // NOTE: a trap mended between two frames rings its tink there, read from the
 // traps' health (src/heroTells.ts), so the room's World needs nothing new.
-export const mendCues = (
-  before: Model,
-  after: Model,
-): ReadonlyArray<SoundCue> =>
+export const mendCues: {
+  (after: Model): (before: Model) => ReadonlyArray<SoundCue>
+  (before: Model, after: Model): ReadonlyArray<SoundCue>
+} = Function.dual(2, (before: Model, after: Model): ReadonlyArray<SoundCue> =>
   pipe(
     mendedSpots(after, before.tellWatch),
     Array.take(1),
@@ -250,14 +261,15 @@ export const mendCues = (
       sound: 'Tink' as const,
       variation: positionVariation(spot.x, spot.y),
     })),
-  )
+  ),
+)
 
 // NOTE: the kitchen behind its boards rattles or simmers now and then when
 // the player is near (src/kitchenCall.ts), read from the elapsed time.
-export const kitchenCues = (
-  before: Model,
-  after: Model,
-): ReadonlyArray<SoundCue> =>
+export const kitchenCues: {
+  (after: Model): (before: Model) => ReadonlyArray<SoundCue>
+  (before: Model, after: Model): ReadonlyArray<SoundCue>
+} = Function.dual(2, (before: Model, after: Model): ReadonlyArray<SoundCue> =>
   pipe(
     maybeKitchenSound(before, after),
     Option.map(sound => ({
@@ -268,7 +280,8 @@ export const kitchenCues = (
       ),
     })),
     Option.toArray,
-  )
+  ),
+)
 
 export const frameSoundCues = (
   events: ReadonlyArray<GameEvent>,
@@ -359,5 +372,9 @@ export const toggleMusic = (model: Model): Model =>
 const toggleMusicFromKey = (model: Model, code: string): Model =>
   code === MUSIC_KEY ? toggleMusic(model) : model
 
-export const toggleAudioFromKey = (model: Model, code: string): Model =>
-  toggleMusicFromKey(toggleSoundFromKey(model, code), code)
+export const toggleAudioFromKey: {
+  (code: string): (model: Model) => Model
+  (model: Model, code: string): Model
+} = Function.dual(2, (model: Model, code: string): Model =>
+  toggleMusicFromKey(toggleSoundFromKey(model, code), code),
+)

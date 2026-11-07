@@ -1,7 +1,9 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { Array, Effect, FileSystem, String } from 'effect'
 import type { Plugin } from 'vite'
 
 import { foldkit } from '@foldkit/vite-plugin'
+
+import { nodeRuntime } from '../node.ts'
 
 // The Foldkit Vite plugin, branding view modules only. Its view identity
 // transform wraps every function return in every application module in
@@ -27,12 +29,17 @@ const VIEW_MODULE_MARKERS: ReadonlyArray<RegExp> = [
 ]
 
 export const isViewSource = (source: string): boolean =>
-  VIEW_MODULE_MARKERS.some(marker => marker.test(source))
+  Array.some(VIEW_MODULE_MARKERS, marker => marker.test(source))
 
-const sourceOf = (id: string, code: string): string => {
-  const [path = id] = id.split('?')
-  return existsSync(path) ? readFileSync(path, 'utf8') : code
-}
+const sourceOf = (
+  id: string,
+  code: string,
+): Effect.Effect<string, never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = Array.headNonEmpty(String.split('?')(id))
+    return yield* fs.readFileString(path).pipe(Effect.orElseSucceed(() => code))
+  })
 
 const brandingViewModulesOnly = (plugin: Plugin): Plugin => {
   const { transform } = plugin
@@ -44,9 +51,11 @@ const brandingViewModulesOnly = (plugin: Plugin): Plugin => {
   return {
     ...plugin,
     transform(code, id, options) {
-      return isViewSource(sourceOf(id, code))
-        ? transform.call(this, code, id, options)
-        : null
+      return nodeRuntime
+        .runPromise(sourceOf(id, code))
+        .then(source =>
+          isViewSource(source) ? transform.call(this, code, id, options) : null,
+        )
     },
   }
 }
@@ -55,12 +64,12 @@ export const foldkitBrandingViews = (
   ...options: Parameters<typeof foldkit>
 ): Array<Plugin> => {
   const plugins = foldkit(...options)
-  if (!plugins.some(plugin => plugin.name === VIEW_IDENTITY_PLUGIN)) {
+  if (!Array.some(plugins, plugin => plugin.name === VIEW_IDENTITY_PLUGIN)) {
     throw new Error(
       `@foldkit/vite-plugin has no ${VIEW_IDENTITY_PLUGIN} plugin: check tools/vite/viewIdentity.ts`,
     )
   }
-  return plugins.map(plugin =>
+  return Array.map(plugins, plugin =>
     plugin.name === VIEW_IDENTITY_PLUGIN
       ? brandingViewModulesOnly(plugin)
       : plugin,

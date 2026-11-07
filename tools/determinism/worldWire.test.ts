@@ -3,7 +3,7 @@
 // holds what a snapshot of the room's World gives. The co-op room's own
 // round trips are in src/roomWorld.test.ts.
 
-import { Struct } from 'effect'
+import { Array, Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { makeReader, makeWriter } from '../../packages/netcode/src/Wire'
@@ -30,16 +30,17 @@ const roundTrip = (world: World): World => {
 
 describe('the World on the wire', () => {
   test('diffs applied every third tick hold what a snapshot holds', () => {
-    const played = Array.from({ length: 600 }).reduce(
+    const played = Array.reduce(
+      globalThis.Array.from({ length: 600 }),
+      startedRun(2, 'Campaign'),
       (model: ReturnType<typeof startedRun>, _, frame) =>
         playFrame(model, frame, 'Fixed60'),
-      startedRun(2, 'Campaign'),
     )
     const intended = refreshIntent(played)
     const start: World = Struct.pick(intended, WORLD_KEYS)
-    const room = Array.from({ length: 180 }).reduce<
-      Readonly<{ world: World; sent: World; client: World }>
-    >(
+    const room = Array.reduce(
+      globalThis.Array.from({ length: 180 }),
+      { world: start, sent: start, client: roundTrip(start) },
       ({ world, sent, client }, _, tick) => {
         const next = stepWorld(
           world,
@@ -56,7 +57,6 @@ describe('the World on the wire', () => {
           client: readWorldDiff(makeReader(writer.finish()), client),
         }
       },
-      { world: start, sent: start, client: roundTrip(start) },
     )
     expect(firstDifference(roundTrip(room.world), room.client)).toBe(undefined)
     expect(isSameOnWire(room.client, room.world)).toBe(true)

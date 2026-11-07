@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from './composition'
@@ -41,11 +41,12 @@ const supportLinkView = (url: string, h: ApplicationViewBuilder): Html =>
 
 // NOTE: on Victory it waits out the restart grace like the end buttons, so a
 // tap meant for the last zombie never lands on it.
-export const victorySupportView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const victorySupportView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   Option.match(model.maybeSupportUrl, {
     onNone: () => h.empty,
     onSome: url => (isVictoryShown(model) ? supportLinkView(url, h) : h.empty),
-  })
+  }),
+)

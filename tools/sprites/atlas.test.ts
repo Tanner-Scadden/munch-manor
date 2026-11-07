@@ -1,7 +1,9 @@
-import { Array, Option, Record } from 'effect'
+import { Array, Context, Effect, Layer, Option, Record } from 'effect'
+import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 import { modifyFields } from 'foldkit/struct'
-import { spawnSync } from 'node:child_process'
-import { describe, expect, test } from 'vitest'
+
+import * as NodeServices from '@effect/platform-node/NodeServices'
+import { expect, layer } from '@effect/vitest'
 
 import { levelOf } from '../../src/arena'
 import { sceneShapes } from '../../src/layers'
@@ -21,13 +23,22 @@ import { SpriteKeys } from './manifest'
 // the main thread mid-game, so these scenes must draw only sprites the
 // generator found. The generator runs in its own process, so the keys it
 // lists do not depend on what other tests built.
-const generatorKeys = (): ReadonlySet<string> => {
-  const result = spawnSync('bun', ['tools/sprites/build.ts', '--keys'], {
-    encoding: 'utf8',
-  })
-  expect(result.status).toBe(0)
-  return new Set(decodeJson(SpriteKeys)(result.stdout))
-}
+class GeneratorKeys extends Context.Service<
+  GeneratorKeys,
+  ReadonlySet<string>
+>()('munch-manor/tools/sprites/atlas.test/GeneratorKeys') {}
+
+// NOTE: a failed run prints nothing, so its keys fail to decode.
+const GeneratorKeysLayer = Layer.effect(
+  GeneratorKeys,
+  Effect.gen(function* () {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+    const stdout = yield* spawner.string(
+      ChildProcess.make('bun', ['tools/sprites/build.ts', '--keys']),
+    )
+    return new Set(decodeJson(SpriteKeys)(stdout))
+  }),
+).pipe(Layer.provide(NodeServices.layer))
 
 const keysDrawnIn = (model: Model): ReadonlyArray<string> => {
   const level = levelOf(model)
@@ -88,18 +99,21 @@ const SCENES: Readonly<Record<string, Model>> = {
   }),
 }
 
-describe('the sprite atlas', () => {
-  const keys = generatorKeys()
-
-  test('finds the sprites the game builds as it loads', () => {
-    expect(keys.size).toBeGreaterThan(1000)
-  })
-
-  test.each(Record.toEntries(SCENES))(
-    'holds every sprite the %s scene draws',
-    (_name, model) => {
-      const missing = Array.filter(keysDrawnIn(model), key => !keys.has(key))
-      expect(Array.dedupe(missing)).toEqual([])
-    },
+layer(GeneratorKeysLayer, { timeout: 30_000 })('the sprite atlas', it => {
+  it.effect('finds the sprites the game builds as it loads', () =>
+    Effect.gen(function* () {
+      const keys = yield* GeneratorKeys
+      expect(keys.size).toBeGreaterThan(1000)
+    }),
   )
+
+  for (const [name, model] of Record.toEntries(SCENES)) {
+    it.effect(`holds every sprite the ${name} scene draws`, () =>
+      Effect.gen(function* () {
+        const keys = yield* GeneratorKeys
+        const missing = Array.filter(keysDrawnIn(model), key => !keys.has(key))
+        expect(Array.dedupe(missing)).toEqual([])
+      }),
+    )
+  }
 })

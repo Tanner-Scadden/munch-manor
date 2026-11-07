@@ -113,11 +113,10 @@ const render = (
           yield* Effect.yieldNow
         }
       }
-      return toInt16Base64(
-        yield* Effect.promise(() => context.startRendering()),
-      )
+      const value_1 = yield* Effect.promise(() => context.startRendering())
+      return toInt16Base64(value_1)
     }),
-  ).pipe(Effect.provide(TestClock.layer()))
+  )
 
 // NOTE: the engine disconnects a voice's nodes once its source ends. That
 // lands on the page's thread whenever the event arrives, so it would cut a
@@ -129,5 +128,5 @@ window.__renderAudio = (json: string): Promise<string> =>
   Effect.runPromise(
     Effect.flatMap(Schema.decodeEffect(SoundtrackRequestJson)(json), request =>
       render(request.cues, request.seconds, request.sampleRate),
-    ),
+    ).pipe(Effect.provide(TestClock.layer())),
   )

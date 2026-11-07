@@ -1,3 +1,4 @@
+import { Array, String } from 'effect'
 import * as Clock from 'effect/Clock'
 import type * as Config from 'effect/Config'
 import * as Context from 'effect/Context'
@@ -45,6 +46,7 @@ export type RateLimiter = Readonly<{
 // NOTE: main.ts builds this from the Worker's bindings for each request: the
 // D1 database as an Effect SQL layer, the two rate limit bindings, and the
 // address salt. Tests build it over SQLite and counting fakes.
+/** @stability unstable */
 export type WorkerServices = Readonly<{
   database: Layer.Layer<
     SqlClient.SqlClient,
@@ -55,6 +57,7 @@ export type WorkerServices = Readonly<{
   addressSalt: string
 }>
 
+/** @stability unstable */
 export class WorkerEnv extends Context.Service<WorkerEnv, WorkerServices>()(
   'munch-manor-infra/worker/api/WorkerEnv',
 ) {}
@@ -122,11 +125,16 @@ const Api = HttpApi.make('munch-manor').add(
 
 // DATABASE
 
+// NOTE: the database layer is built for this one effect and closed after
+// it, as each request brings its own bindings.
 const withDatabase = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  Effect.gen(function* () {
-    const env = yield* WorkerEnv
-    return yield* Effect.provide(effect, env.database)
-  })
+  Effect.scoped(
+    Effect.gen(function* () {
+      const env = yield* WorkerEnv
+      const database = yield* Layer.build(env.database)
+      return yield* Effect.provideContext(effect, database)
+    }),
+  )
 
 const insertRun = (row: RunRow) =>
   Effect.gen(function* () {
@@ -143,6 +151,7 @@ const insertShare = (row: ShareRow) =>
 // NOTE: the retention rule: every run row and share row received before the
 // cutoff day goes. Both tables index received_day, so each is one range
 // delete. Answers how many run rows went.
+/** @stability unstable */
 export const deleteExpiredRuns = (nowMs: number) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
@@ -166,9 +175,12 @@ const sha256Hex = (input: string) =>
     crypto.subtle.digest('SHA-256', new TextEncoder().encode(input)),
   ).pipe(
     Effect.map(digest =>
-      Array.from(new Uint8Array(digest), byte =>
-        byte.toString(16).padStart(2, '0'),
-      ).join(''),
+      Array.join(
+        globalThis.Array.from(new Uint8Array(digest), byte =>
+          String.padStart(2, '0')(byte.toString(16)),
+        ),
+        '',
+      ),
     ),
   )
 
@@ -242,7 +254,7 @@ const RunsLive = HttpApiBuilder.group(Api, 'runs', handlers =>
   handlers
     .handleRaw('record', ({ request }) =>
       recordPosted(request, decodeSummary, (summary, nowMs) =>
-        insertRun(rowOf(summary, nowMs)),
+        Effect.flatMap(rowOf(summary, nowMs), insertRun),
       ),
     )
     .handleRaw('share', ({ request }) =>

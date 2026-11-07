@@ -1,4 +1,4 @@
-import { Array, Predicate, Result } from 'effect'
+import { Array, Predicate, Record, Result, String } from 'effect'
 import {
   Subscription,
   all,
@@ -43,8 +43,8 @@ const sheetUsesIn = (node: Node): ReadonlyArray<string> => [
   ...Array.flatMap(BAGS, bag => {
     const values = node.data?.[bag]
     return Predicate.isObject(values)
-      ? Array.filterMap(Object.entries(values), ([name, value]) =>
-          Predicate.isString(value) && value.includes(ATLAS_SHEET)
+      ? Array.filterMap(Record.toEntries(values), ([name, value]) =>
+          Predicate.isString(value) && String.includes(ATLAS_SHEET)(value)
             ? Result.succeed(`${node.sel ?? '?'} ${name}`)
             : Result.failVoid,
         )

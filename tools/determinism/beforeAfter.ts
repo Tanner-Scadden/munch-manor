@@ -26,19 +26,21 @@
 // --pattern Mixed, --every N, --no-hit-stop (clear hit-stop after every
 // frame on both sides). It exits 1 when the two differ.
 
-import { Option, Schema } from 'effect'
-import { spawnSync } from 'node:child_process'
 import {
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-} from 'node:fs'
+  Array,
+  Console,
+  Effect,
+  FileSystem,
+  Option,
+  Path,
+  Record,
+  Schema,
+  String,
+} from 'effect'
 import { tmpdir } from 'node:os'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import {
   firstDifference,
@@ -46,18 +48,26 @@ import {
   jsonTextOf,
   revive,
 } from './diff'
+import { commandOutput } from './process'
 import {
   DEFAULT_REQUEST,
-  type EngineDump,
   type EngineRequest,
-  type EngineRun,
   decodeEngineDump,
   decodeEngineRun,
   paramsOf,
 } from './request'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const root = resolve(here, '../..')
+const here = import.meta.dirname
+
+class CompareFailed extends Schema.TaggedError<
+  CompareFailed,
+  { readonly brand: unique symbol }
+>()('CompareFailed', { message: Schema.String }) {}
+
+class RunsDiffer extends Schema.TaggedError<
+  RunsDiffer,
+  { readonly brand: unique symbol }
+>()('RunsDiffer', { frame: Schema.Finite }) {}
 
 const argv = process.argv.slice(2)
 const option = (name: string): string | undefined => {
@@ -65,7 +75,9 @@ const option = (name: string): string | undefined => {
   return at === -1 ? undefined : argv[at + 1]
 }
 const ref =
-  argv[0] !== undefined && !argv[0].startsWith('--') ? argv[0] : 'origin/main'
+  argv[0] !== undefined && !String.startsWith('--')(argv[0])
+    ? argv[0]
+    : 'origin/main'
 const isTip = argv.includes('--tip')
 
 const request: EngineRequest = {
@@ -82,137 +94,220 @@ const run = (
   command: string,
   args: ReadonlyArray<string>,
   cwd: string,
-  env: NodeJS.ProcessEnv = process.env,
-): string => {
-  const result = spawnSync(command, [...args], {
-    cwd,
-    env,
-    encoding: 'utf8',
-    maxBuffer: 512 * 1024 * 1024,
-  })
-  if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(' ')} failed: ${result.stderr}`)
-  }
-  return result.stdout
-}
+  env: Readonly<Record<string, string>>,
+) =>
+  commandOutput({ command, args, cwd, env }).pipe(
+    Effect.mapError(error =>
+      CompareFailed.make({
+        message: `${command} ${Array.join(args, ' ')}: ${error.message}`,
+      }),
+    ),
+  )
+
+const rootOf = Effect.gen(function* () {
+  const path = yield* Path.Path
+  return path.resolve(here, '../..')
+})
 
 // INSTALL
 
-// NOTE: kept between runs so only the first one downloads every package.
-const BASE_CACHE = resolve(tmpdir(), 'munch-determinism-bun-cache')
 const PATCHED_COPY = /_patch_hash=/
 
-const installBase = (cwd: string): void => {
-  mkdirSync(BASE_CACHE, { recursive: true })
-  for (const entry of readdirSync(BASE_CACHE)) {
-    if (PATCHED_COPY.test(entry)) {
-      rmSync(resolve(BASE_CACHE, entry), { recursive: true, force: true })
-    }
-  }
-  run('bun', ['install', '--frozen-lockfile', '--ignore-scripts'], cwd, {
-    ...process.env,
-    BUN_INSTALL_CACHE_DIR: BASE_CACHE,
+const installBase = (cwd: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    // NOTE: kept between runs so only the first one downloads every package.
+    const cache = path.resolve(tmpdir(), 'munch-determinism-bun-cache')
+    yield* fs.makeDirectory(cache, { recursive: true })
+    const entries = yield* fs.readDirectory(cache)
+    yield* Effect.forEach(
+      Array.filter(entries, entry => PATCHED_COPY.test(entry)),
+      entry => fs.remove(path.resolve(cache, entry), { recursive: true }),
+    )
+    yield* run(
+      'bun',
+      ['install', '--frozen-lockfile', '--ignore-scripts'],
+      cwd,
+      {
+        BUN_INSTALL_CACHE_DIR: cache,
+      },
+    )
   })
-}
 
 // NOTE: `patchedDependencies` maps `name@version` to the patch file.
 const PackageManifest = Schema.Struct({
   patchedDependencies: Schema.Record(Schema.String, Schema.Unknown),
 })
 
-const patchesOf = (cwd: string): ReadonlyArray<[string, string]> => {
-  const patched = Option.match(
-    Schema.decodeOption(Schema.fromJsonString(PackageManifest))(
-      readFileSync(resolve(cwd, 'package.json'), 'utf8'),
-    ),
-    {
+const decodeManifest = Schema.decodeOption(
+  Schema.fromJsonString(PackageManifest),
+)
+
+const nameOf = (key: string): string =>
+  Option.match(String.lastIndexOf('@')(key), {
+    onNone: () => String.slice(0, -1)(key),
+    onSome: at => String.slice(0, at)(key),
+  })
+
+const patchesOf = (cwd: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const text = yield* fs.readFileString(path.resolve(cwd, 'package.json'))
+    const patched = Option.match(decodeManifest(text), {
       onNone: () => [],
-      onSome: manifest => Object.entries(manifest.patchedDependencies),
-    },
-  )
-  return patched.flatMap(([key, path]): Array<[string, string]> =>
-    typeof path === 'string'
-      ? [[key.slice(0, key.lastIndexOf('@')), path]]
-      : [],
-  )
-}
+      onSome: manifest => Record.toEntries(manifest.patchedDependencies),
+    })
+    return Array.flatMap(
+      patched,
+      ([key, patch]): Array<readonly [string, string]> =>
+        typeof patch === 'string' ? [[nameOf(key), patch]] : [],
+    )
+  })
 
 // NOTE: a patch that reverses cleanly is applied in full, so the installed
 // package is the one the patch describes and not an older patched copy.
-const checkPatches = (cwd: string, side: string): void => {
-  for (const [name, path] of patchesOf(cwd)) {
-    const result = spawnSync(
-      'git',
-      [
-        'apply',
-        '--check',
-        '--reverse',
-        `--directory=node_modules/${name}`,
-        resolve(cwd, path),
-      ],
-      { cwd, encoding: 'utf8' },
-    )
-    if (result.status !== 0) {
-      throw new Error(
-        `The ${side}'s node_modules/${name} does not match ${path}. ` +
-          'Bun may have linked an older patched copy from its cache: see "Changing it" in patches/README.md.',
-      )
-    }
-  }
-}
-
-const askRun = (cwd: string, ofRequest: EngineRequest): EngineRun =>
-  Option.getOrThrowWith(
-    decodeEngineRun(
-      run('bun', ['tools/determinism/cli.ts', paramsOf(ofRequest)], cwd),
-    ),
-    () => new Error(`no run from ${cwd}`),
-  )
-
-const askDump = (cwd: string, frame: number): EngineDump =>
-  Option.getOrThrowWith(
-    decodeEngineDump(
-      run(
-        'bun',
-        ['tools/determinism/cli.ts', paramsOf({ ...request, dump: frame })],
+const checkPatches = (cwd: string, side: string) =>
+  Effect.gen(function* () {
+    const path = yield* Path.Path
+    const patches = yield* patchesOf(cwd)
+    yield* Effect.forEach(patches, ([name, patch]) =>
+      commandOutput({
+        command: 'git',
+        args: [
+          'apply',
+          '--check',
+          '--reverse',
+          `--directory=node_modules/${name}`,
+          path.resolve(cwd, patch),
+        ],
         cwd,
+      }).pipe(
+        Effect.mapError(() =>
+          CompareFailed.make({
+            message:
+              `The ${side}'s node_modules/${name} does not match ${patch}. ` +
+              'Bun may have linked an older patched copy from its cache: see "Changing it" in patches/README.md.',
+          }),
+        ),
+      ),
+    )
+  })
+
+const askRun = (cwd: string, ofRequest: EngineRequest) =>
+  run('bun', ['tools/determinism/cli.ts', paramsOf(ofRequest)], cwd, {}).pipe(
+    Effect.flatMap(text =>
+      Effect.fromOption(decodeEngineRun(text)).pipe(
+        Effect.mapError(() =>
+          CompareFailed.make({ message: `no run from ${cwd}` }),
+        ),
       ),
     ),
-    () => new Error(`no dump from ${cwd} for frame ${frame}`),
   )
 
-// NOTE: the merge base, not ref's tip: when ref has moved on since HEAD
-// branched (or was rebased onto), its new commits would read as this change's.
-const baseCommit = isTip
-  ? ref
-  : run('git', ['merge-base', 'HEAD', ref], root).trim()
-const baseName = isTip ? ref : `${ref} merge base ${baseCommit.slice(0, 9)}`
+const askDump = (cwd: string, frame: number) =>
+  run(
+    'bun',
+    ['tools/determinism/cli.ts', paramsOf({ ...request, dump: frame })],
+    cwd,
+    {},
+  ).pipe(
+    Effect.flatMap(text =>
+      Effect.fromOption(decodeEngineDump(text)).pipe(
+        Effect.mapError(() =>
+          CompareFailed.make({
+            message: `no dump from ${cwd} for frame ${frame}`,
+          }),
+        ),
+      ),
+    ),
+  )
 
-const base = mkdtempSync(resolve(tmpdir(), 'determinism-base-'))
-rmSync(base, { recursive: true, force: true })
-run('git', ['worktree', 'add', '--detach', base, baseCommit], root)
+// NOTE: the base commit checked out in a temporary worktree for as long as
+// the scope lasts.
+const baseWorktree = (root: string, baseCommit: string) =>
+  Effect.acquireRelease(
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const base = yield* fs.makeTempDirectory({ prefix: 'determinism-base-' })
+      yield* fs.remove(base, { recursive: true })
+      yield* run(
+        'git',
+        ['worktree', 'add', '--detach', base, baseCommit],
+        root,
+        {},
+      )
+      return base
+    }),
+    base =>
+      Effect.ignore(
+        run('git', ['worktree', 'remove', '--force', base], root, {}),
+      ),
+  )
 
-try {
-  // NOTE: the old harness goes first: Bun's cpSync keeps a file that is
-  // already there, so a harness changed in the working tree was not copied.
-  rmSync(resolve(base, 'tools/determinism'), { recursive: true, force: true })
-  cpSync(here, resolve(base, 'tools/determinism'), {
-    recursive: true,
-    filter: source => !source.includes('/out'),
+// NOTE: the old harness goes first, and out/ stays behind, as this harness
+// is copied over it.
+const copyHarness = (base: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const target = path.resolve(base, 'tools/determinism')
+    yield* fs.remove(target, { recursive: true, force: true })
+    yield* fs.makeDirectory(target, { recursive: true })
+    const entries = yield* fs.readDirectory(here)
+    yield* Effect.forEach(
+      Array.filter(entries, entry => entry !== 'out'),
+      entry => fs.copy(path.resolve(here, entry), path.resolve(target, entry)),
+    )
   })
-  installBase(base)
-  checkPatches(base, `base (${baseName})`)
-  checkPatches(root, 'working tree')
 
-  const before = askRun(base, request)
-  const after = askRun(root, request)
-  console.log(
+// NOTE: the exact first frame the two differ on, played again hashing
+// every frame up to the checkpoint.
+const exactFrame = (
+  base: string,
+  root: string,
+  narrowed: EngineRequest,
+  checkpointFrame: number,
+) =>
+  Effect.gen(function* () {
+    const before = yield* askRun(base, narrowed)
+    const after = yield* askRun(root, narrowed)
+    return (
+      firstDivergentCheckpoint(before.checkpoints, after.checkpoints)?.frame ??
+      checkpointFrame
+    )
+  })
+
+const compare = Effect.gen(function* () {
+  const root = yield* rootOf
+  // NOTE: the merge base, not ref's tip: when ref has moved on since HEAD
+  // branched (or was rebased onto), its new commits would read as this
+  // change's.
+  const baseCommit = isTip
+    ? ref
+    : yield* Effect.map(
+        run('git', ['merge-base', 'HEAD', ref], root, {}),
+        String.trim,
+      )
+  const baseName = isTip
+    ? ref
+    : `${ref} merge base ${String.slice(0, 9)(baseCommit)}`
+  const base = yield* baseWorktree(root, baseCommit)
+  yield* copyHarness(base)
+  yield* installBase(base)
+  yield* checkPatches(base, `base (${baseName})`)
+  yield* checkPatches(root, 'working tree')
+
+  const before = yield* askRun(base, request)
+  const after = yield* askRun(root, request)
+  yield* Console.log(
     `Seed ${request.seed}, ${request.mode}, ${request.pattern} steps, ${request.frames} frames, hashed every ${request.every}${request.noHitStop ? ', no hit-stop' : ''}`,
   )
-  console.log(
+  yield* Console.log(
     `  before (${baseName}): ${before.frames} frames, ended in ${before.endPhase} ${before.endWave}`,
   )
-  console.log(
+  yield* Console.log(
     `  after (working tree): ${after.frames} frames, ended in ${after.endPhase} ${after.endWave}`,
   )
   const checkpoint = firstDivergentCheckpoint(
@@ -220,44 +315,48 @@ try {
     after.checkpoints,
   )
   if (checkpoint === undefined) {
-    console.log('The gameplay is the same on every hashed frame.')
-    process.exitCode = 0
-  } else {
-    const narrowed = { ...request, every: 1, frames: checkpoint.frame + 1 }
-    const frame =
-      request.every === 1 || checkpoint.frame < 0
-        ? checkpoint.frame
-        : (firstDivergentCheckpoint(
-            askRun(base, narrowed).checkpoints,
-            askRun(root, narrowed).checkpoints,
-          )?.frame ?? checkpoint.frame)
-    if (frame < 0) {
-      console.log('The started runs already differ.')
-    } else {
-      const left = askDump(base, frame)
-      const right = askDump(root, frame)
-      const rightHashes = new Map(right.fieldHashes)
-      const fields = left.fieldHashes
-        .filter(([field, hash]) => rightHashes.get(field) !== hash)
-        .map(([field]) => field)
-      const onlyAfter = right.fieldHashes
-        .filter(([field]) => !left.fieldHashes.some(([name]) => name === field))
-        .map(([field]) => field)
-      console.log(
-        `First differ after frame ${frame}, in ${[...fields, ...onlyAfter].join(', ')}`,
-      )
-      const difference = firstDifference(
-        revive(left.state),
-        revive(right.state),
-      )
-      if (difference !== undefined) {
-        console.log(
-          `  first difference at ${difference.path}: ${jsonTextOf(difference.a).slice(0, 120)} vs ${jsonTextOf(difference.b).slice(0, 120)}`,
-        )
-      }
-    }
-    process.exitCode = 1
+    yield* Console.log('The gameplay is the same on every hashed frame.')
+    return
   }
-} finally {
-  run('git', ['worktree', 'remove', '--force', base], root)
-}
+  const narrowed = { ...request, every: 1, frames: checkpoint.frame + 1 }
+  const frame =
+    request.every === 1 || checkpoint.frame < 0
+      ? checkpoint.frame
+      : yield* exactFrame(base, root, narrowed, checkpoint.frame)
+  if (frame < 0) {
+    yield* Console.log('The started runs already differ.')
+  } else {
+    const left = yield* askDump(base, frame)
+    const right = yield* askDump(root, frame)
+    const rightHashes = new Map(right.fieldHashes)
+    const fields = Array.map(
+      Array.filter(
+        left.fieldHashes,
+        ([field, hash]) => rightHashes.get(field) !== hash,
+      ),
+      ([field]) => field,
+    )
+    const onlyAfter = Array.map(
+      Array.filter(
+        right.fieldHashes,
+        ([field]) => !Array.some(left.fieldHashes, ([name]) => name === field),
+      ),
+      ([field]) => field,
+    )
+    yield* Console.log(
+      `First differ after frame ${frame}, in ${Array.join([...fields, ...onlyAfter], ', ')}`,
+    )
+    const difference = firstDifference(revive(left.state), revive(right.state))
+    if (difference !== undefined) {
+      yield* Console.log(
+        `  first difference at ${difference.path}: ${String.slice(0, 120)(jsonTextOf(difference.a))} vs ${String.slice(0, 120)(jsonTextOf(difference.b))}`,
+      )
+    }
+  }
+  // NOTE: exits 1 when the two differ.
+  return yield* RunsDiffer.make({ frame })
+})
+
+NodeRuntime.runMain(
+  Effect.scoped(compare).pipe(Effect.provide(NodeServices.layer)),
+)

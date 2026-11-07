@@ -22,14 +22,10 @@ import { type Model, MouseButton, Phase, initialModel } from './model'
 import { fighting } from './model.fixture'
 import { modifyFocus } from './party'
 import { CONTROL_CARDS, helpLineOf } from './pauseHelp'
-import {
-  ROOT,
-  SCENE_SUBSCRIPTIONS,
-  holdingFirst,
-  measureSurface,
-} from './testing'
+import { ROOT, SCENE_SUBSCRIPTIONS, measureSurface } from './testing'
 import { pause } from './waves'
 import { STARTING_PISTOL, WEAPONS, tierName } from './weapons'
+import { Arsenal } from './worldSchema'
 
 const pausedOn = (device: Model['lastDevice']): Model =>
   pause(modifyFields(fighting, { lastDevice: () => device }))
@@ -226,10 +222,10 @@ describe('Touch gun slots', () => {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
-                holdingFirst(
-                  { kind: 'Shotgun', rounds: 16, loaded: 6, tier: 1 },
-                  { ...STARTING_PISTOL, tier: 1 },
-                ),
+                Arsenal.HoldingFirst({
+                  first: { ...STARTING_PISTOL, tier: 1 },
+                  second: { kind: 'Shotgun', rounds: 16, loaded: 6, tier: 1 },
+                }),
             }),
         }),
       ),

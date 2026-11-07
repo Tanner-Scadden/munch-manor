@@ -2,7 +2,7 @@
 // room links and codes, members and the host, presses and tracers, and the
 // lobby's picks. src/coop/update.ts wraps them in its Steps and Commands.
 
-import { Array, Option, String, pipe } from 'effect'
+import { Array, Function, Option, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -57,15 +57,26 @@ export const readRoomLink = (search: string): Option.Option<string> =>
     normalizeRoomCode,
   )
 
-export const withScreen = (model: Model, screen: Screen): Model =>
-  modifyFields(model, { screen: () => screen })
+export const withScreen: {
+  (screen: Screen): (model: Model) => Model
+  (model: Model, screen: Screen): Model
+} = Function.dual(2, (model: Model, screen: Screen): Model =>
+  modifyFields(model, { screen: () => screen }),
+)
 
-export const hub = (
-  model: Model,
-  maybeProblem: Option.Option<CoopProblem>,
-): Model => withScreen(model, Screen.Hub({ maybeProblem }))
+export const hub: {
+  (maybeProblem: Option.Option<CoopProblem>): (model: Model) => Model
+  (model: Model, maybeProblem: Option.Option<CoopProblem>): Model
+} = Function.dual(
+  2,
+  (model: Model, maybeProblem: Option.Option<CoopProblem>): Model =>
+    withScreen(model, Screen.Hub({ maybeProblem })),
+)
 
-export const freshRoom = (code: string, slot: number): Room => ({
+export const freshRoom: {
+  (slot: number): (code: string) => Room
+  (code: string, slot: number): Room
+} = Function.dual(2, (code: string, slot: number): Room => ({
   code,
   slot,
   maybePlayerId: Option.none(),
@@ -88,7 +99,7 @@ export const freshRoom = (code: string, slot: number): Room => ({
   maybeNameDraft: Option.none(),
   maybeNudge: Option.none(),
   maybeTryingCalling: Option.none(),
-})
+}))
 
 const isCodeSymbol = (symbol: string): boolean =>
   String.includes(symbol)(CODE_ALPHABET)
@@ -98,7 +109,7 @@ const isCodeSymbol = (symbol: string): boolean =>
 export const cleanCode = (typed: string): string => {
   const fromLink = Option.getOrElse(readRoomLinkOf(typed), () => typed)
   return pipe(
-    globalThis.Array.from(fromLink.toUpperCase()),
+    globalThis.Array.from(String.toUpperCase(fromLink)),
     Array.filter(isCodeSymbol),
     Array.take(ROOM_CODE_LENGTH),
     Array.join(''),
@@ -106,9 +117,10 @@ export const cleanCode = (typed: string): string => {
 }
 
 const readRoomLinkOf = (typed: string): Option.Option<string> =>
-  String.includes('?')(typed)
-    ? readRoomLink(typed.slice(typed.indexOf('?')))
-    : Option.none()
+  pipe(
+    String.indexOf('?')(typed),
+    Option.flatMap(at => readRoomLink(String.slice(at)(typed))),
+  )
 
 const memberAt = (lobby: Lobby, slot: number): Option.Option<LobbyMember> =>
   Array.findFirst(lobby.members, member => member.slot === slot)
@@ -126,25 +138,39 @@ export const isHost = (room: Room): boolean =>
     ([lobby, id]) => lobby.host === id,
   )
 
-export const withRoom = (model: Model, room: Room): Model =>
-  withScreen(model, screenInRoom(room))
+export const withRoom: {
+  (room: Room): (model: Model) => Model
+  (model: Model, room: Room): Model
+} = Function.dual(2, (model: Model, room: Room): Model =>
+  withScreen(model, screenInRoom(room)),
+)
 
-export const learnLobby = (room: Room, lobby: Lobby): Room => {
+export const learnLobby: {
+  (lobby: Lobby): (room: Room) => Room
+  (room: Room, lobby: Lobby): Room
+} = Function.dual(2, (room: Room, lobby: Lobby): Room => {
   const maybePlayerId = Option.orElse(room.maybePlayerId, () =>
     Option.map(memberAt(lobby, room.slot), member => member.playerId),
   )
   return { ...room, maybeLobby: Option.some(lobby), maybePlayerId }
-}
+})
 
-export const isKickedFrom = (room: Room, lobby: Lobby): boolean =>
+export const isKickedFrom: {
+  (lobby: Lobby): (room: Room) => boolean
+  (room: Room, lobby: Lobby): boolean
+} = Function.dual(2, (room: Room, lobby: Lobby): boolean =>
   Option.exists(
     room.maybePlayerId,
     id => !Array.some(lobby.members, member => member.playerId === id),
-  )
+  ),
+)
 
 // NOTE: the next queued press takes over the held value once the one held
 // now has gone out on at least one input tick.
-export const pressFor = (presses: Presses, inputTick: number): Presses =>
+export const pressFor: {
+  (inputTick: number): (presses: Presses) => Presses
+  (presses: Presses, inputTick: number): Presses
+} = Function.dual(2, (presses: Presses, inputTick: number): Presses =>
   Array.match(presses.queued, {
     onEmpty: () => presses,
     onNonEmpty: ([next, ...rest]) =>
@@ -156,11 +182,15 @@ export const pressFor = (presses: Presses, inputTick: number): Presses =>
             heldFrom: inputTick + 1,
           }
         : presses,
-  })
+  }),
+)
 
 // NOTE: events are counted from the tick the last frame reached. A room that
 // started its ticks again, a new run, counts from what it holds.
-export const startOfEvents = (room: Room, frames: Room['session']['frames']) =>
+export const startOfEvents: {
+  (frames: Room['session']['frames']): (room: Room) => number
+  (room: Room, frames: Room['session']['frames']): number
+} = Function.dual(2, (room: Room, frames: Room['session']['frames']): number =>
   Option.match(Array.last(frames), {
     onNone: () => room.eventsTick,
     onSome: newest =>
@@ -170,48 +200,80 @@ export const startOfEvents = (room: Room, frames: Room['session']['frames']) =>
             onSome: oldest => oldest.tick,
           })
         : room.eventsTick,
-  })
+  }),
+)
 
 // NOTE: a shot resets the recoil to its full length, and no gun fires
 // twice in one frame's ticks, so a recoil higher than before is a shot.
-export const shotsBetween = (
-  maybeBefore: Option.Option<OwnPlayer>,
-  maybeAfter: Option.Option<OwnPlayer>,
-): number =>
-  Option.exists(
-    Option.all([maybeBefore, maybeAfter]),
-    ([before, after]) =>
-      after.player.recoilRemainingMs > before.player.recoilRemainingMs,
-  )
-    ? 1
-    : 0
+export const shotsBetween: {
+  (
+    maybeAfter: Option.Option<OwnPlayer>,
+  ): (maybeBefore: Option.Option<OwnPlayer>) => number
+  (
+    maybeBefore: Option.Option<OwnPlayer>,
+    maybeAfter: Option.Option<OwnPlayer>,
+  ): number
+} = Function.dual(
+  2,
+  (
+    maybeBefore: Option.Option<OwnPlayer>,
+    maybeAfter: Option.Option<OwnPlayer>,
+  ): number =>
+    Option.exists(
+      Option.all([maybeBefore, maybeAfter]),
+      ([before, after]) =>
+        after.player.recoilRemainingMs > before.player.recoilRemainingMs,
+    )
+      ? 1
+      : 0,
+)
 
 // NOTE: this frame's own tracers, kept for the next, and how many were ever
 // fired, so each has its own id.
-export const keepTracers = (
-  model: Model,
-  tracers: ReadonlyArray<Bullet>,
-  fired: number,
-  looked: number,
-  confirmed: number,
-): Model =>
-  Option.match(maybeRoomOf(model), {
-    onNone: () => model,
-    onSome: room =>
-      withRoom(model, {
-        ...room,
-        tracers,
-        tracerCount: room.tracerCount + fired,
-        hits: {
-          looked: room.hits.looked + looked,
-          confirmed: room.hits.confirmed + confirmed,
-        },
-      }),
-  })
+export const keepTracers: {
+  (
+    tracers: ReadonlyArray<Bullet>,
+    fired: number,
+    looked: number,
+    confirmed: number,
+  ): (model: Model) => Model
+  (
+    model: Model,
+    tracers: ReadonlyArray<Bullet>,
+    fired: number,
+    looked: number,
+    confirmed: number,
+  ): Model
+} = Function.dual(
+  5,
+  (
+    model: Model,
+    tracers: ReadonlyArray<Bullet>,
+    fired: number,
+    looked: number,
+    confirmed: number,
+  ): Model =>
+    Option.match(maybeRoomOf(model), {
+      onNone: () => model,
+      onSome: room =>
+        withRoom(model, {
+          ...room,
+          tracers,
+          tracerCount: room.tracerCount + fired,
+          hits: {
+            looked: room.hits.looked + looked,
+            confirmed: room.hits.confirmed + confirmed,
+          },
+        }),
+    }),
+)
 
 // NOTE: a press for the room: a swap, a buy, READY, and the rest
 // (src/stepWorld.ts, SeatAction). It goes out with the next inputs.
-export const pressAction = (model: Model, action: SeatAction): Model =>
+export const pressAction: {
+  (action: SeatAction): (model: Model) => Model
+  (model: Model, action: SeatAction): Model
+} = Function.dual(2, (model: Model, action: SeatAction): Model =>
   Option.match(maybeRoomOf(model), {
     onNone: () => model,
     onSome: room =>
@@ -222,7 +284,8 @@ export const pressAction = (model: Model, action: SeatAction): Model =>
           queued: Array.append(room.presses.queued, actionCodeOf(action)),
         },
       }),
-  })
+  }),
+)
 
 // PICKS
 
@@ -238,40 +301,63 @@ export const pickedModeOf = (lobby: Lobby): PickedMode =>
 // NOTE: KeepGoing is there only while the room keeps a won run, and
 // Nightmare only for a host the room found it unlocked for, on the server
 // (packages/netcode, Lobby.ts, canHostPickNightmare).
-export const canPickMode = (lobby: Lobby, mode: PickedMode): boolean =>
-  mode !== 'KeepGoing' || lobby.canKeepGoing
+export const canPickMode: {
+  (mode: PickedMode): (lobby: Lobby) => boolean
+  (lobby: Lobby, mode: PickedMode): boolean
+} = Function.dual(
+  2,
+  (lobby: Lobby, mode: PickedMode): boolean =>
+    mode !== 'KeepGoing' || lobby.canKeepGoing,
+)
 
-export const canPickDifficulty = (
-  lobby: Lobby,
-  difficulty: RoomDifficulty,
-): boolean => difficulty !== 'Nightmare' || canHostPickNightmare(lobby)
+export const canPickDifficulty: {
+  (difficulty: RoomDifficulty): (lobby: Lobby) => boolean
+  (lobby: Lobby, difficulty: RoomDifficulty): boolean
+} = Function.dual(
+  2,
+  (lobby: Lobby, difficulty: RoomDifficulty): boolean =>
+    difficulty !== 'Nightmare' || canHostPickNightmare(lobby),
+)
 
 export const isPicking = (room: Room): boolean =>
   isHost(room) &&
   Option.exists(room.maybeLobby, lobby => lobby.status === 'Lobby')
 
-export const nextOf = <A>(
-  all: Array.NonEmptyReadonlyArray<A>,
-  current: A,
-  isAllowed: (value: A) => boolean,
-): A => {
-  const at = Option.getOrElse(
-    Array.findFirstIndex(all, value => value === current),
-    () => 0,
-  )
-  return Option.getOrElse(
-    Array.findFirst(
-      Array.makeBy(all.length - 1, step =>
-        Option.getOrElse(
-          Array.get(all, (at + step + 1) % all.length),
-          () => current,
+export const nextOf: {
+  <A>(
+    current: A,
+    isAllowed: (value: A) => boolean,
+  ): (all: Array.NonEmptyReadonlyArray<A>) => A
+  <A>(
+    all: Array.NonEmptyReadonlyArray<A>,
+    current: A,
+    isAllowed: (value: A) => boolean,
+  ): A
+} = Function.dual(
+  3,
+  <A>(
+    all: Array.NonEmptyReadonlyArray<A>,
+    current: A,
+    isAllowed: (value: A) => boolean,
+  ): A => {
+    const at = Option.getOrElse(
+      Array.findFirstIndex(all, value => value === current),
+      () => 0,
+    )
+    return Option.getOrElse(
+      Array.findFirst(
+        Array.makeBy(all.length - 1, step =>
+          Option.getOrElse(
+            Array.get(all, (at + step + 1) % all.length),
+            () => current,
+          ),
         ),
+        isAllowed,
       ),
-      isAllowed,
-    ),
-    () => current,
-  )
-}
+      () => current,
+    )
+  },
+)
 
 export const ESCAPE = 'Escape'
 export const ENTER = 'Enter'

@@ -1,5 +1,4 @@
 import {
-  Data,
   Effect,
   Exit,
   Fiber,
@@ -24,11 +23,19 @@ const withHub = <A, E>(
 const withClient = <A, E>(
   hub: Hub,
   effect: Effect.Effect<A, E, SqliteClient | SqlClient.SqlClient>,
-) => Effect.provide(effect, hub.layer())
+) =>
+  Effect.scoped(
+    Effect.flatMap(Layer.build(hub.layer()), context =>
+      Effect.provide(effect, context),
+    ),
+  )
 
-class Boom extends Data.TaggedError('Boom')<{}> {}
+class Boom extends Schema.TaggedError<
+  Boom,
+  { readonly brand: unique symbol }
+>()('Boom', {}) {}
 
-const Person = Schema.Struct({ id: Schema.Number, name: Schema.String })
+const Person = Schema.Struct({ id: Schema.Finite, name: Schema.String })
 
 const createPeople = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient
@@ -116,7 +123,7 @@ describe('SqliteClient over the in-process hub', () => {
             client.transaction(
               Effect.gen(function* () {
                 yield* sql`INSERT INTO people (id, name) VALUES (1, 'Ada')`
-                return yield* new Boom()
+                return yield* Boom.make()
               }),
             ),
           )
@@ -225,7 +232,7 @@ describe('SqliteClient over the in-process hub', () => {
             client.transaction(
               Effect.andThen(
                 sql`INSERT INTO people (id, name) VALUES (9, 'Gone')`,
-                Effect.fail(new Boom()),
+                Effect.fail(Boom.make()),
               ),
             ),
           )
@@ -336,14 +343,16 @@ describe('two sessions on one database, like two tabs', () => {
             const other = yield* Layer.build(hub.layer())
             yield* Effect.provide(createPeople, other)
             yield* Effect.scoped(
-              Effect.provide(
-                Effect.flatMap(SqlClient.SqlClient, sql =>
-                  Effect.andThen(
-                    sql`BEGIN`,
-                    sql`INSERT INTO people (id, name) VALUES (1, 'Closed')`,
+              Effect.flatMap(Layer.build(hub.layer()), closing =>
+                Effect.provide(
+                  Effect.flatMap(SqlClient.SqlClient, sql =>
+                    Effect.andThen(
+                      sql`BEGIN`,
+                      sql`INSERT INTO people (id, name) VALUES (1, 'Closed')`,
+                    ),
                   ),
+                  closing,
                 ),
-                hub.layer(),
               ),
             )
             const rows = yield* Effect.provide(

@@ -1,3 +1,5 @@
+import { Array, Function } from 'effect'
+
 import { isOutOfGuns } from '../../../src/ammoWarning'
 import { hasLineOfSight, levelOf } from '../../../src/arena'
 import { PLAYER_RADIUS } from '../../../src/constants'
@@ -37,7 +39,7 @@ import { type BotState, type FridgePlan, GUN_PLAN, type Zombie } from './state'
 // FIGHTING WITH A FRIDGE WEAPON
 
 const visibleZombies = (model: Model) =>
-  walking(model).filter(zombie =>
+  Array.filter(walking(model), zombie =>
     hasLineOfSight(levelOf(model), focusOf(model).player, zombie),
   )
 
@@ -99,20 +101,22 @@ const cookerPlan = (model: Model, spare: FridgeSpare): FridgePlan => {
   const weight = (zombie: Zombie) =>
     zombie.kind === 'Boss' || zombie.kind === 'Tank' ? 2 : 1
   const score = (zombie: Zombie) =>
-    seen
-      .filter(other => distance(other, zombie) <= LOB_GROUP_PX)
-      .reduce((total, other) => total + weight(other), 0)
-  const best = seen
-    .filter(zombie => {
+    Array.reduce(
+      Array.filter(seen, other => distance(other, zombie) <= LOB_GROUP_PX),
+      0,
+      (total, other) => total + weight(other),
+    )
+  const best = Array.map(
+    Array.filter(seen, zombie => {
       const gap = distance(player, zombie)
       return gap >= LOB_MIN_PX && gap <= farthest
-    })
-    .map(zombie => ({ zombie, score: score(zombie) }))
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        distance(player, a.zombie) - distance(player, b.zombie),
-    )[0]
+    }),
+    zombie => ({ zombie, score: score(zombie) }),
+  ).sort(
+    (a, b) =>
+      b.score - a.score ||
+      distance(player, a.zombie) - distance(player, b.zombie),
+  )[0]
   if (best === undefined || best.score < 2) {
     return gunPlan()
   }
@@ -134,7 +138,8 @@ const PAN_THREAT_PX = 50
 export const panPlan = (model: Model): FridgePlan => {
   const { player } = focusOf(model)
   const seen = visibleZombies(model)
-  const isThreat = seen.some(
+  const isThreat = Array.some(
+    seen,
     zombie =>
       !isPannable(zombie) &&
       distance(player, zombie) <
@@ -145,7 +150,8 @@ export const panPlan = (model: Model): FridgePlan => {
   }
   const target = nearestOf(
     player,
-    seen.filter(
+    Array.filter(
+      seen,
       zombie => isPannable(zombie) && distance(player, zombie) < PAN_ENGAGE_PX,
     ),
   )
@@ -164,11 +170,12 @@ const freezePlan = (model: Model, spare: FridgeSpare): FridgePlan => {
   const { player } = focusOf(model)
   const seen = visibleZombies(model)
   const isFrozen = (zombie: Zombie) => zombie.action._tag === 'Frozen'
-  const frozen = nearestOf(player, seen.filter(isFrozen))
+  const frozen = nearestOf(player, Array.filter(seen, isFrozen))
   if (spare.rounds <= 0) {
     return gunPlan(frozen)
   }
-  const freezable = seen.filter(
+  const freezable = Array.filter(
+    seen,
     zombie =>
       isSmallKind(zombie.kind) &&
       !isFrozen(zombie) &&
@@ -176,7 +183,10 @@ const freezePlan = (model: Model, spare: FridgeSpare): FridgePlan => {
   )
   const close = nearestOf(
     player,
-    freezable.filter(zombie => distance(player, zombie) < FREEZE_CLOSE_PX),
+    Array.filter(
+      freezable,
+      zombie => distance(player, zombie) < FREEZE_CLOSE_PX,
+    ),
   )
   const spray = (target: Zombie): FridgePlan => ({
     useSpare: true,
@@ -190,14 +200,13 @@ const freezePlan = (model: Model, spare: FridgeSpare): FridgePlan => {
   if (frozen !== undefined) {
     return gunPlan(frozen)
   }
-  const group = freezable
-    .map(zombie => ({
-      zombie,
-      count: freezable.filter(
-        other => distance(other, zombie) <= FREEZE_GROUP_PX,
-      ).length,
-    }))
-    .sort((a, b) => b.count - a.count)[0]
+  const group = Array.map(freezable, zombie => ({
+    zombie,
+    count: Array.filter(
+      freezable,
+      other => distance(other, zombie) <= FREEZE_GROUP_PX,
+    ).length,
+  })).sort((a, b) => b.count - a.count)[0]
   return group !== undefined && group.count >= 2
     ? spray(group.zombie)
     : gunPlan()
@@ -209,11 +218,10 @@ const planFor = (model: Model, spare: FridgeSpare): FridgePlan =>
 // The Pan swings as the knife stabs: F draws it, fire held swings at the
 // planned zombie, and handleKnife puts it away (Q) once the plan has no
 // target and a gun can shoot.
-export const swingPan = (
-  state: BotState,
-  model: Model,
-  frame: number,
-): Model => {
+export const swingPan: {
+  (model: Model, frame: number): (state: BotState) => Model
+  (state: BotState, model: Model, frame: number): Model
+} = Function.dual(3, (state: BotState, model: Model, frame: number): Model => {
   const drawn = isWieldingMelee(focusOf(model).player)
     ? model
     : tapKey(model, KEYS.knife)
@@ -222,7 +230,7 @@ export const swingPan = (
     return holdAssistedAim(state, drawn)
   }
   return aimAndShoot(state, drawn, target, frame)
-}
+})
 
 // The Pan out with no target to swing at goes back to the last gun at
 // once, unless no gun can shoot.
@@ -254,35 +262,36 @@ const workCooker = (
 
 // Every few frames the bot picks its plan and swaps to the weapon it wants
 // (the swap is free); in between it only times the Cooker's release.
-export const fightWithFridge = (
-  state: BotState,
-  model: Model,
-  frame: number,
-  spare: FridgeSpare,
-): Model => {
-  if (frame % AIM_EVERY_FRAMES !== 0) {
-    return isHoldingSpare(model) && spare.kind === 'Cooker'
-      ? workCooker(state, model, spare)
-      : holdAssistedAim(state, model)
-  }
-  state.fridgePlan = planFor(model, spare)
-  const swapped =
-    state.fridgePlan.useSpare !== isHoldingSpare(model)
-      ? tapKey(model, 'KeyQ')
-      : model
-  if (!state.fridgePlan.useSpare || !isHoldingSpare(swapped)) {
-    return aimAndFire(state, swapped, frame, state.fridgePlan.target)
-  }
-  const { target } = state.fridgePlan
-  if (target === undefined) {
-    return holdFire(swapped)
-  }
-  if (spare.kind !== 'Cooker') {
-    return aimAndShoot(state, swapped, target, frame)
-  }
-  const aimed = aimAt(state, swapped, target)
-  const { charge, fireCooldownMs } = focusOf(aimed.model).player
-  return charge._tag === 'Idle' && fireCooldownMs <= 0
-    ? pressFire(aimed.model, aimed.point)
-    : workCooker(state, aimed.model, spare)
-}
+export const fightWithFridge: {
+  (model: Model, frame: number, spare: FridgeSpare): (state: BotState) => Model
+  (state: BotState, model: Model, frame: number, spare: FridgeSpare): Model
+} = Function.dual(
+  4,
+  (state: BotState, model: Model, frame: number, spare: FridgeSpare): Model => {
+    if (frame % AIM_EVERY_FRAMES !== 0) {
+      return isHoldingSpare(model) && spare.kind === 'Cooker'
+        ? workCooker(state, model, spare)
+        : holdAssistedAim(state, model)
+    }
+    state.fridgePlan = planFor(model, spare)
+    const swapped =
+      state.fridgePlan.useSpare !== isHoldingSpare(model)
+        ? tapKey(model, 'KeyQ')
+        : model
+    if (!state.fridgePlan.useSpare || !isHoldingSpare(swapped)) {
+      return aimAndFire(state, swapped, frame, state.fridgePlan.target)
+    }
+    const { target } = state.fridgePlan
+    if (target === undefined) {
+      return holdFire(swapped)
+    }
+    if (spare.kind !== 'Cooker') {
+      return aimAndShoot(state, swapped, target, frame)
+    }
+    const aimed = aimAt(state, swapped, target, undefined)
+    const { charge, fireCooldownMs } = focusOf(aimed.model).player
+    return charge._tag === 'Idle' && fireCooldownMs <= 0
+      ? pressFire(aimed.model, aimed.point)
+      : workCooker(state, aimed.model, spare)
+  },
+)

@@ -1,4 +1,5 @@
-import { Array, Option, Order, Result } from 'effect'
+import { Array, Function, Option, Order, Result } from 'effect'
+import type { Ordering } from 'effect'
 
 import {
   DOOR_SPAWN_SPREAD_PX,
@@ -249,31 +250,51 @@ const rollVolley =
     ]
   }
 
-export const rollGroup =
-  (plan: WavePlan, levelDoors: Array.NonEmptyReadonlyArray<DoorId>) =>
+export const rollGroup: {
   (
+    levelDoors: Array.NonEmptyReadonlyArray<DoorId>,
+  ): (
+    plan: WavePlan,
+  ) => (
     state: number,
     group: SpawnGroup,
     groupIndex: number,
-  ): Seeded<ReadonlyArray<PlannedSpawn>> => {
-    const [doorState, doors] = drawDoors(state, group, levelDoors)
-    const [sizeState, sizes] = shuffle(doorState, group.packs)
-    const volleySizes = Array.chunksOf(
-      sizes,
-      Math.max(1, DOOR_PATTERNS[group.pattern].packsPerVolley(doors)),
-    )
-    const [volleyState, volleys] = Array.mapAccum(
-      volleySizes,
-      sizeState,
-      rollVolley(group, groupIndex, doors),
-    )
-    const [packState, packs] = Array.mapAccum(
-      Array.flatten(volleys),
-      volleyState,
-      rollPack(group, plan),
-    )
-    return [packState, Array.flatMap(Array.flatten(packs), withEscort)]
-  }
+  ) => Seeded<ReadonlyArray<PlannedSpawn>>
+  (
+    plan: WavePlan,
+    levelDoors: Array.NonEmptyReadonlyArray<DoorId>,
+  ): (
+    state: number,
+    group: SpawnGroup,
+    groupIndex: number,
+  ) => Seeded<ReadonlyArray<PlannedSpawn>>
+} = Function.dual(
+  2,
+  (plan: WavePlan, levelDoors: Array.NonEmptyReadonlyArray<DoorId>) =>
+    (
+      state: number,
+      group: SpawnGroup,
+      groupIndex: number,
+    ): Seeded<ReadonlyArray<PlannedSpawn>> => {
+      const [doorState, doors] = drawDoors(state, group, levelDoors)
+      const [sizeState, sizes] = shuffle(doorState, group.packs)
+      const volleySizes = Array.chunksOf(
+        sizes,
+        Math.max(1, DOOR_PATTERNS[group.pattern].packsPerVolley(doors)),
+      )
+      const [volleyState, volleys] = Array.mapAccum(
+        volleySizes,
+        sizeState,
+        rollVolley(group, groupIndex, doors),
+      )
+      const [packState, packs] = Array.mapAccum(
+        Array.flatten(volleys),
+        volleyState,
+        rollPack(group, plan),
+      )
+      return [packState, Array.flatMap(Array.flatten(packs), withEscort)]
+    },
+)
 
 // NOTE: a Big Leaguer never comes alone: three Groaners walk in right behind
 // him in his pack, so he always has something to throw. They take no draws
@@ -295,9 +316,18 @@ const withEscort = (spawn: PlannedSpawn): ReadonlyArray<PlannedSpawn> =>
       ]
     : [spawn]
 
-export const bySpawnTime = Order.mapInput(
-  Order.Number,
-  ({ atMs }: PlannedSpawn) => atMs,
+export const bySpawnTime: {
+  (that: PlannedSpawn): (self: PlannedSpawn) => Ordering.Ordering
+  (self: PlannedSpawn, that: PlannedSpawn): Ordering.Ordering
+} = Function.dual(
+  2,
+  Order.mapInput(Order.Number, ({ atMs }: PlannedSpawn) => atMs),
 )
 
-export const byHoldTime = Order.mapInput(Order.Number, ({ atMs }: Hold) => atMs)
+export const byHoldTime: {
+  (that: Hold): (self: Hold) => Ordering.Ordering
+  (self: Hold, that: Hold): Ordering.Ordering
+} = Function.dual(
+  2,
+  Order.mapInput(Order.Number, ({ atMs }: Hold) => atMs),
+)

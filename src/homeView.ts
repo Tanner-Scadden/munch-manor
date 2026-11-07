@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
@@ -460,7 +460,10 @@ const handView = (
   ]
 }
 
-export const manorHandView = (model: Model, h: ApplicationViewBuilder): Html =>
+export const manorHandView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(
     {
       dialog: model.handDialog,
@@ -472,7 +475,8 @@ export const manorHandView = (model: Model, h: ApplicationViewBuilder): Html =>
       binding: HandDialogBinding,
     },
     h,
-  )
+  ),
+)
 
 // BESTS
 
@@ -673,10 +677,10 @@ const newEntryButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
   })
 
 // NOTE: the end screens only tell. The entry opens from the menu.
-export const newEntryNoticeView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const newEntryNoticeView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   isEndScreen(model.phase)
     ? Option.match(newEntryText(model), {
         onNone: () => h.empty,
@@ -693,7 +697,8 @@ export const newEntryNoticeView = (
             ],
           ),
       })
-    : h.empty
+    : h.empty,
+)
 
 // TURN HINT
 
@@ -723,7 +728,10 @@ const turnHintView = (model: Model, h: ApplicationViewBuilder): Html =>
 
 // HOME MENU
 
-export const homeMenuView = (model: Model, h: ApplicationViewBuilder): Html =>
+export const homeMenuView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   isOnHome(model.phase)
     ? h.div(
         [
@@ -762,14 +770,15 @@ export const homeMenuView = (model: Model, h: ApplicationViewBuilder): Html =>
           ),
         ],
       )
-    : h.empty
+    : h.empty,
+)
 
 // PAUSE MENU BUTTON
 
-export const pauseMenuButtonView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const pauseMenuButtonView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   Phase.isAnyOf(['Paused'])(model.phase)
     ? h.button(
         [
@@ -787,7 +796,8 @@ export const pauseMenuButtonView = (
             : []),
         ],
       )
-    : h.empty
+    : h.empty,
+)
 
 // PANELS
 
@@ -1068,7 +1078,10 @@ const panelView = (
   ]
 }
 
-export const menuPanelView = (model: Model, h: ApplicationViewBuilder): Html =>
+export const menuPanelView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(
     {
       dialog: model.panelDialog,
@@ -1080,4 +1093,5 @@ export const menuPanelView = (model: Model, h: ApplicationViewBuilder): Html =>
       binding: PanelDialogBinding,
     },
     h,
-  )
+  ),
+)

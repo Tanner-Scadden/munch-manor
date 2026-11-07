@@ -2,7 +2,7 @@
 // around it, from the home menu's state to the fridge, the planks, sync,
 // and the look, then co-op staged over it.
 
-import { Array, Option } from 'effect'
+import { Array, Option, Record } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { addBot } from '@game/bots'
@@ -106,7 +106,7 @@ const withLeftovers = (settings: SceneSettings, start: Model): Model => {
     model = modifyFields(model, {
       zombies: zombies => [
         ...zombies,
-        ...ICED_SPOTS.map((spot, index): Zombie => ({
+        ...Array.map(ICED_SPOTS, (spot, index): Zombie => ({
           id: 9400 + index,
           kind: spot.kind,
           x: px + spot.dx,
@@ -132,7 +132,7 @@ const withLeftovers = (settings: SceneSettings, start: Model): Model => {
     ]
     model = modifyFields(model, {
       lobs: () =>
-        flights.map((flight, index) => {
+        Array.map(flights, (flight, index) => {
           const durationMs = Math.max(LID_FLIGHT_MS, flight.remainingMs + 120)
           const progress = 1 - flight.remainingMs / durationMs
           return {
@@ -169,8 +169,8 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     model = modifyFields(model, {
       lessons: lessons => ({
         ...lessons,
-        ...Object.fromEntries(
-          learned.map(name => [name, Lesson.Learned({ atMs: 0 })]),
+        ...Record.fromEntries(
+          Array.map(learned, name => [name, Lesson.Learned({ atMs: 0 })]),
         ),
       }),
     })
@@ -303,16 +303,17 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const kills = config.kills
   if (kills !== undefined) {
-    const counts = Object.fromEntries(kills)
+    const counts = Record.fromEntries(kills)
     model = modifyFields(model, {
       bests: bests => {
         const killsByKind = { ...bests.killsByKind, ...counts }
         return {
           ...bests,
           killsByKind,
-          totalKills: Object.values(killsByKind).reduce(
-            (sum, count) => sum + count,
+          totalKills: Array.reduce(
+            Record.values(killsByKind),
             0,
+            (sum, count) => sum + count,
           ),
         }
       },
@@ -344,7 +345,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   if (ovenState !== undefined) {
     model = modifyFields(model, {
       ovens: ovens =>
-        ovens.map(() =>
+        Array.map(ovens, () =>
           ovenState === 'belch'
             ? Oven.Belching({ remainingMs: config.ovenMs, burnedTicks: 4 })
             : Oven.Cooling({ remainingMs: config.ovenMs }),
@@ -355,24 +356,31 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     model = modifyFields(model, {
       zombies: zombies => [
         ...zombies,
-        ...[
-          { x: 152, y: -62 },
-          { x: 47, y: -92 },
-          { x: 65, y: -32 },
-        ].map((at, index) => ({
-          id: 9300 + index,
-          kind: 'Shambler' as const,
-          x: at.x,
-          y: at.y,
-          speed: 20,
-          hp: 3,
-          maxHp: 3,
-          knockback: { x: 0, y: 0 },
-          hitRemainingMs: 0,
-          state: { _tag: 'Walking' as const },
-          action: { _tag: 'Dazed' as const, remainingMs: 800, durationMs: 900 },
-          frenzy: CALM,
-        })),
+        ...Array.map(
+          [
+            { x: 152, y: -62 },
+            { x: 47, y: -92 },
+            { x: 65, y: -32 },
+          ],
+          (at, index) => ({
+            id: 9300 + index,
+            kind: 'Shambler' as const,
+            x: at.x,
+            y: at.y,
+            speed: 20,
+            hp: 3,
+            maxHp: 3,
+            knockback: { x: 0, y: 0 },
+            hitRemainingMs: 0,
+            state: { _tag: 'Walking' as const },
+            action: {
+              _tag: 'Dazed' as const,
+              remainingMs: 800,
+              durationMs: 900,
+            },
+            frenzy: CALM,
+          }),
+        ),
       ],
     })
   }
@@ -382,7 +390,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     model = modifyFields(model, {
       traps: traps => [
         ...traps,
-        ...planks.map((door, index) =>
+        ...Array.map(planks, (door, index) =>
           Trap.Barricade({
             id: 9000 + index,
             door,
@@ -405,7 +413,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     model = modifyFields(model, {
       zombies: zombies => [
         ...zombies,
-        ...spots.slice(0, chewers).map((at, index) => ({
+        ...Array.map(spots.slice(0, chewers), (at, index) => ({
           id: 9100 + index,
           kind: index === 4 ? ('Tank' as const) : ('Shambler' as const),
           x: at.x,
@@ -444,7 +452,7 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
     model = modifyFields(model, {
       zombies: zombies => [
         ...zombies,
-        ...spots.map(([kind, x, y], index) => ({
+        ...Array.map(spots, ([kind, x, y], index) => ({
           id: 9200 + index,
           kind,
           x,

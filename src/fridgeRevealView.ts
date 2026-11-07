@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { type Camera, viewBoxOf, viewToWorld, worldToView } from './camera'
@@ -479,33 +479,38 @@ const revealShapes = (
 
 // NOTE: the reveal for everyone in the room, placed in the world by the
 // screen camera like the purchase tags.
-export const fridgeRevealShapes = (
-  model: Model,
-  screen: Screen,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
-  Option.match(
-    Option.flatMap(doorRevealOf(model.fridge.door), reveal =>
-      Option.map(prizeSpotOf(model), spot => ({ reveal, spot })),
+export const fridgeRevealShapes: {
+  (
+    screen: Screen,
+    camera: Camera,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+    Option.match(
+      Option.flatMap(doorRevealOf(model.fridge.door), reveal =>
+        Option.map(prizeSpotOf(model), spot => ({ reveal, spot })),
+      ),
+      {
+        onNone: () => [],
+        onSome: ({ reveal, spot }) => [
+          group({
+            translate: worldToView(camera, ZERO_VECTOR),
+            scale:
+              camera.scale === 1
+                ? undefined
+                : { x: camera.scale, y: camera.scale },
+            shapes: revealShapes(
+              model,
+              revealFrameOf(screen, camera, spot),
+              reveal,
+            ),
+          }),
+        ],
+      },
     ),
-    {
-      onNone: () => [],
-      onSome: ({ reveal, spot }) => [
-        group({
-          translate: worldToView(camera, ZERO_VECTOR),
-          scale:
-            camera.scale === 1
-              ? undefined
-              : { x: camera.scale, y: camera.scale },
-          shapes: revealShapes(
-            model,
-            revealFrameOf(screen, camera, spot),
-            reveal,
-          ),
-        }),
-      ],
-    },
-  )
+)
 
 // THE TAKE
 
@@ -542,39 +547,44 @@ const pulseShapes = (
 
 // NOTE: the taken weapon's icon flies from the fridge into the gun slot
 // that now holds it, shrinking to the slot's size, and the slot pulses.
-export const prizeFlightShapes = (
-  model: Model,
-  screen: Screen,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
-  PrizeFlight.match(model.prizeFlight, {
-    Grounded: () => [],
-    Flying: ({ prize, from, ageMs }) => {
-      const box = gunSlotBox(
-        screen,
-        heldSlotOf(focusOf(model).player.arsenal) === 'First' ? 0 : 1,
-      )
-      if (ageMs >= REVEAL_RULES.flightMs) {
-        return pulseShapes(
-          box,
-          clamp((ageMs - REVEAL_RULES.flightMs) / REVEAL_RULES.pulseMs, 0, 1),
+export const prizeFlightShapes: {
+  (
+    screen: Screen,
+    camera: Camera,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+    PrizeFlight.match(model.prizeFlight, {
+      Grounded: () => [],
+      Flying: ({ prize, from, ageMs }) => {
+        const box = gunSlotBox(
+          screen,
+          heldSlotOf(focusOf(model).player.arsenal) === 'First' ? 0 : 1,
         )
-      }
-      const share = easeOut(clamp(ageMs / REVEAL_RULES.flightMs, 0, 1))
-      const start = worldToView(camera, from)
-      const end = { x: box.x + 8, y: box.y + 5 }
-      const startScale = PRIZE_SCALE * camera.scale
-      const scale = startScale + (1 - startScale) * share
-      return [
-        placeScaled(
-          Math.round(start.x + (end.x - start.x) * share),
-          Math.round(
-            start.y + (end.y - start.y) * share - 30 * share * (1 - share),
+        if (ageMs >= REVEAL_RULES.flightMs) {
+          return pulseShapes(
+            box,
+            clamp((ageMs - REVEAL_RULES.flightMs) / REVEAL_RULES.pulseMs, 0, 1),
+          )
+        }
+        const share = easeOut(clamp(ageMs / REVEAL_RULES.flightMs, 0, 1))
+        const start = worldToView(camera, from)
+        const end = { x: box.x + 8, y: box.y + 5 }
+        const startScale = PRIZE_SCALE * camera.scale
+        const scale = startScale + (1 - startScale) * share
+        return [
+          placeScaled(
+            Math.round(start.x + (end.x - start.x) * share),
+            Math.round(
+              start.y + (end.y - start.y) * share - 30 * share * (1 - share),
+            ),
+            gunIcon(prize, 0),
+            scale,
+            scale,
           ),
-          gunIcon(prize, 0),
-          scale,
-          scale,
-        ),
-      ]
-    },
-  })
+        ]
+      },
+    }),
+)

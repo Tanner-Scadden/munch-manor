@@ -1,4 +1,4 @@
-import { Array, Option, Order, Schema, pipe } from 'effect'
+import { Array, Function, Option, Order, Schema, pipe } from 'effect'
 
 import {
   CallingInput,
@@ -59,13 +59,13 @@ export type QuickHello = typeof QuickClient.cases.Hello.Type
 export const QuickServer = Schema.TaggedUnion({
   Waiting: {
     names: Schema.Array(Schema.String),
-    waiting: Schema.Number,
-    groupSize: Schema.Number,
-    position: Schema.Number,
-    offerPlayers: Schema.Number,
-    accepted: Schema.Number,
+    waiting: Schema.Finite,
+    groupSize: Schema.Finite,
+    position: Schema.Finite,
+    offerPlayers: Schema.Finite,
+    accepted: Schema.Finite,
   },
-  Matched: { code: Schema.String, slot: Schema.Number },
+  Matched: { code: Schema.String, slot: Schema.Finite },
   Refused: { reason: Schema.String },
 })
 export type QuickServer = typeof QuickServer.Type
@@ -117,10 +117,10 @@ const QueuedSchema = Schema.Struct({
   playerId: Schema.String,
   name: Schema.String,
   look: Schema.optionalKey(Schema.String),
-  rank: Schema.optionalKey(Schema.Number),
+  rank: Schema.optionalKey(Schema.Finite),
   calling: Schema.optionalKey(Schema.String),
   region: Schema.optionalKey(Schema.String),
-  queuedMs: Schema.Number,
+  queuedMs: Schema.Finite,
 })
 
 export const MatchmakerJson = Schema.fromJsonString(
@@ -130,23 +130,23 @@ export const MatchmakerJson = Schema.fromJsonString(
       Schema.Struct({
         sockets: Schema.Array(Schema.String),
         accepted: Schema.Array(Schema.String),
-        madeMs: Schema.Number,
+        madeMs: Schema.Finite,
       }),
     ),
     rooms: Schema.Array(
       Schema.Struct({
         code: Schema.String,
-        members: Schema.Number,
-        updatedMs: Schema.Number,
+        members: Schema.Finite,
+        updatedMs: Schema.Finite,
       }),
     ),
-    quietUntilMs: Schema.Number,
+    quietUntilMs: Schema.Finite,
   }),
 )
 
 export const RoomListing = Schema.Struct({
   code: Schema.String,
-  members: Schema.Number,
+  members: Schema.Finite,
   open: Schema.Boolean,
 })
 export type RoomListing = typeof RoomListing.Type
@@ -447,122 +447,177 @@ const settle = (matchmaker: Matchmaker, nowMs: number): Stepped => {
 
 // EVENTS
 
-export const arrive = (
-  matchmaker: Matchmaker,
-  player: Queued,
-  nowMs: number,
-): Stepped =>
-  settle(
-    {
-      ...matchmaker,
-      queue: Array.append(
-        Array.filter(
-          matchmaker.queue,
-          queued => queued.socket !== player.socket,
+export const arrive: {
+  (player: Queued, nowMs: number): (matchmaker: Matchmaker) => Stepped
+  (matchmaker: Matchmaker, player: Queued, nowMs: number): Stepped
+} = Function.dual(
+  3,
+  (matchmaker: Matchmaker, player: Queued, nowMs: number): Stepped =>
+    settle(
+      {
+        ...matchmaker,
+        queue: Array.append(
+          Array.filter(
+            matchmaker.queue,
+            queued => queued.socket !== player.socket,
+          ),
+          player,
         ),
-        player,
-      ),
-    },
-    nowMs,
-  )
+      },
+      nowMs,
+    ),
+)
 
 // NOTE: a player who cancelled or whose socket closed.
-export const leave = (
-  matchmaker: Matchmaker,
-  socket: string,
-  nowMs: number,
-): Stepped =>
-  settle(
-    {
-      ...matchmaker,
-      queue: Array.filter(matchmaker.queue, queued => queued.socket !== socket),
-    },
-    nowMs,
-  )
-
-export const answer = (
-  matchmaker: Matchmaker,
-  socket: string,
-  accept: boolean,
-  nowMs: number,
-): Stepped =>
-  Option.match(
-    Option.filter(matchmaker.offer, offer =>
-      Array.contains(offer.sockets, socket),
-    ),
-    {
-      onNone: () => settle(matchmaker, nowMs),
-      onSome: offer =>
-        settle(
-          accept
-            ? {
-                ...matchmaker,
-                offer: Option.some({
-                  ...offer,
-                  accepted: Array.dedupe(Array.append(offer.accepted, socket)),
-                }),
-              }
-            : endOffer(matchmaker, nowMs),
-          nowMs,
+export const leave: {
+  (socket: string, nowMs: number): (matchmaker: Matchmaker) => Stepped
+  (matchmaker: Matchmaker, socket: string, nowMs: number): Stepped
+} = Function.dual(
+  3,
+  (matchmaker: Matchmaker, socket: string, nowMs: number): Stepped =>
+    settle(
+      {
+        ...matchmaker,
+        queue: Array.filter(
+          matchmaker.queue,
+          queued => queued.socket !== socket,
         ),
-    },
-  )
+      },
+      nowMs,
+    ),
+)
+
+export const answer: {
+  (
+    socket: string,
+    accept: boolean,
+    nowMs: number,
+  ): (matchmaker: Matchmaker) => Stepped
+  (
+    matchmaker: Matchmaker,
+    socket: string,
+    accept: boolean,
+    nowMs: number,
+  ): Stepped
+} = Function.dual(
+  4,
+  (
+    matchmaker: Matchmaker,
+    socket: string,
+    accept: boolean,
+    nowMs: number,
+  ): Stepped =>
+    Option.match(
+      Option.filter(matchmaker.offer, offer =>
+        Array.contains(offer.sockets, socket),
+      ),
+      {
+        onNone: () => settle(matchmaker, nowMs),
+        onSome: offer =>
+          settle(
+            accept
+              ? {
+                  ...matchmaker,
+                  offer: Option.some({
+                    ...offer,
+                    accepted: Array.dedupe(
+                      Array.append(offer.accepted, socket),
+                    ),
+                  }),
+                }
+              : endOffer(matchmaker, nowMs),
+            nowMs,
+          ),
+      },
+    ),
+)
 
 // NOTE: a public room says how many it seats and whether it still takes
 // players (in its lobby, before everyone pressed READY).
-export const listed = (
-  matchmaker: Matchmaker,
-  room: RoomListing,
-  nowMs: number,
-): Stepped =>
-  settle(
-    {
-      ...matchmaker,
-      rooms: room.open
-        ? Array.append(
-            Array.filter(
+export const listed: {
+  (room: RoomListing, nowMs: number): (matchmaker: Matchmaker) => Stepped
+  (matchmaker: Matchmaker, room: RoomListing, nowMs: number): Stepped
+} = Function.dual(
+  3,
+  (matchmaker: Matchmaker, room: RoomListing, nowMs: number): Stepped =>
+    settle(
+      {
+        ...matchmaker,
+        rooms: room.open
+          ? Array.append(
+              Array.filter(
+                matchmaker.rooms,
+                listedRoom => listedRoom.code !== room.code,
+              ),
+              { code: room.code, members: room.members, updatedMs: nowMs },
+            )
+          : Array.filter(
               matchmaker.rooms,
               listedRoom => listedRoom.code !== room.code,
             ),
-            { code: room.code, members: room.members, updatedMs: nowMs },
-          )
-        : Array.filter(
-            matchmaker.rooms,
-            listedRoom => listedRoom.code !== room.code,
-          ),
-    },
-    nowMs,
-  )
+      },
+      nowMs,
+    ),
+)
 
 // NOTE: a seat or a room that did not work out: the room is forgotten
 // until it lists itself again, and the player goes back to the front.
-export const seatFailed = (
-  matchmaker: Matchmaker,
-  player: Queued,
-  code: string,
-  nowMs: number,
-): Stepped =>
-  settle(
-    {
-      ...matchmaker,
-      rooms: Array.filter(matchmaker.rooms, room => room.code !== code),
-      queue: Array.prepend(
-        Array.filter(
-          matchmaker.queue,
-          queued => queued.socket !== player.socket,
+export const seatFailed: {
+  (
+    player: Queued,
+    code: string,
+    nowMs: number,
+  ): (matchmaker: Matchmaker) => Stepped
+  (matchmaker: Matchmaker, player: Queued, code: string, nowMs: number): Stepped
+} = Function.dual(
+  4,
+  (
+    matchmaker: Matchmaker,
+    player: Queued,
+    code: string,
+    nowMs: number,
+  ): Stepped =>
+    settle(
+      {
+        ...matchmaker,
+        rooms: Array.filter(matchmaker.rooms, room => room.code !== code),
+        queue: Array.prepend(
+          Array.filter(
+            matchmaker.queue,
+            queued => queued.socket !== player.socket,
+          ),
+          player,
         ),
-        player,
-      ),
-    },
-    nowMs,
-  )
+      },
+      nowMs,
+    ),
+)
 
-export const roomMade = (
-  matchmaker: Matchmaker,
-  code: string,
-  members: number,
-  nowMs: number,
-): Stepped => listed(matchmaker, { code, members, open: true }, nowMs)
+export const roomMade: {
+  (
+    code: string,
+    members: number,
+    nowMs: number,
+  ): (matchmaker: Matchmaker) => Stepped
+  (
+    matchmaker: Matchmaker,
+    code: string,
+    members: number,
+    nowMs: number,
+  ): Stepped
+} = Function.dual(
+  4,
+  (
+    matchmaker: Matchmaker,
+    code: string,
+    members: number,
+    nowMs: number,
+  ): Stepped => listed(matchmaker, { code, members, open: true }, nowMs),
+)
 
-export const wake = (matchmaker: Matchmaker, nowMs: number): Stepped =>
-  settle(matchmaker, nowMs)
+export const wake: {
+  (nowMs: number): (matchmaker: Matchmaker) => Stepped
+  (matchmaker: Matchmaker, nowMs: number): Stepped
+} = Function.dual(2, (matchmaker: Matchmaker, nowMs: number): Stepped =>
+  settle(matchmaker, nowMs),
+)

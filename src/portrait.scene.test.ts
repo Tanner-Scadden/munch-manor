@@ -88,10 +88,11 @@ const remeasured = (
   model: Model,
   surfaces: ReadonlyArray<typeof PHONE_PORTRAIT>,
 ): Model =>
-  surfaces.reduce(
+  Array.reduce(
+    surfaces,
+    model,
     (current, surface) =>
       update(current, Message.MeasuredGameSurface(surface)).model,
-    model,
   )
 
 describe('the portrait HUD and thumb area', () => {

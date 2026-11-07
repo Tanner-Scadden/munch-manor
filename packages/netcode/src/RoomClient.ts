@@ -37,12 +37,12 @@ import {
 // `send` an Effect a Command can run. What the frames mean is Session.ts.
 
 export const RoomEvent = Schema.TaggedUnion({
-  Connecting: { attempt: Schema.Number },
-  Received: { frame: ServerFrame, bytes: Schema.Number, atMs: Schema.Number },
+  Connecting: { attempt: Schema.Finite },
+  Received: { frame: ServerFrame, bytes: Schema.Finite, atMs: Schema.Finite },
   Dropped: { reason: Schema.String },
   Stopped: { reason: Schema.String },
   // NOTE: the socket's free ping came back: sent at `sentMs`, back at `atMs`.
-  Ponged: { sentMs: Schema.Number, atMs: Schema.Number },
+  Ponged: { sentMs: Schema.Finite, atMs: Schema.Finite },
 })
 export type RoomEvent = typeof RoomEvent.Type
 
@@ -100,7 +100,8 @@ export const connectRoom = (
 
     const onData = (data: string | Uint8Array) =>
       Effect.gen(function* () {
-        yield* Ref.set(heardMs, yield* Clock.currentTimeMillis)
+        const currentTimeMillis_1 = yield* Clock.currentTimeMillis
+        yield* Ref.set(heardMs, currentTimeMillis_1)
         if (typeof data === 'string') {
           if (data !== PONG_JSON) {
             return
@@ -141,21 +142,22 @@ export const connectRoom = (
             token,
           }),
         ),
-        error => new SocketError({ reason: error.reason }),
+        error => SocketError.make({ reason: error.reason }),
       )
 
     const connection = (attempt: number) =>
       Effect.scoped(
         Effect.gen(function* () {
           yield* offer(RoomEvent.cases.Connecting.make({ attempt }))
-          const token = yield* Effect.mapError(
-            options.token,
-            error => new SocketError({ reason: `No token: ${error.reason}` }),
+          const token = yield* Effect.mapError(options.token, error =>
+            SocketError.make({ reason: `No token: ${error.reason}` }),
           )
           const socket = yield* openSocket(options.url)
-          yield* socket.send(yield* hello(token))
+          const value_1 = yield* hello(token)
+          yield* socket.send(value_1)
           yield* Ref.set(current, Option.some(socket))
-          yield* Ref.set(heardMs, yield* Clock.currentTimeMillis)
+          const currentTimeMillis_2 = yield* Clock.currentTimeMillis
+          yield* Ref.set(heardMs, currentTimeMillis_2)
           yield* Effect.forkScoped(
             Effect.repeat(
               Effect.delay(

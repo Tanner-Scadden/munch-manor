@@ -38,7 +38,7 @@ const SqliteLive = Browser.layer({
   name: 'my-app',
 })
 
-const Todo = Schema.Struct({ id: Schema.Number, title: Schema.String })
+const Todo = Schema.Struct({ id: Schema.Finite, title: Schema.String })
 
 const program = Effect.gen(function* () {
   const client = yield* SqliteClient

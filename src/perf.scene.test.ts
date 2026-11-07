@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Option, String, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 import type { Html } from 'foldkit/html'
 import { Subscription, given, scene } from 'foldkit/scene'
@@ -65,6 +65,7 @@ import {
   SCENE_SUBSCRIPTIONS,
   WIDE_SURFACE,
   holdingSecond,
+  jsonOf,
   measureSurfaceAs,
   scoring,
 } from './testing'
@@ -471,7 +472,7 @@ type CanvasNode = NonNullable<Html>
 const canvasNodes = (node: Html | string): ReadonlyArray<CanvasNode> => {
   if (node === null || typeof node === 'string') {
     return []
-  } else if (node.sel?.startsWith('canvas') === true) {
+  } else if (node.sel !== undefined && String.startsWith('canvas')(node.sel)) {
     return node.data?.class?.[WARM_UP_CLASS] === true ? [] : [node]
   } else {
     return Array.flatMap(node.children ?? [], canvasNodes)
@@ -733,7 +734,7 @@ describe('Frame cost', () => {
     '$name stays within the canvas work budget',
     ({ model }) => {
       const measured = measureFrames(model)
-      const report = `measured ${JSON.stringify(measured)}\nbudget   ${JSON.stringify(BUDGET)}`
+      const report = `measured ${jsonOf(measured)}\nbudget   ${jsonOf(BUDGET)}`
       Array.forEach(BUDGET_KEYS, key => {
         expect(
           measured[key],

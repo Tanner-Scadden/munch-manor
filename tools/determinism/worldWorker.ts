@@ -3,6 +3,8 @@
 // POST a PlayRequest as JSON to / for the World after its ticks, or a
 // RoomPlayRequest to /room for a co-op room's World after its ticks.
 
+import { Effect, Schema } from 'effect'
+
 import {
   type PlayRequest,
   type RoomPlayRequest,
@@ -34,15 +36,28 @@ const playRequestOf = (body: unknown): PlayRequest => {
 const isPlayRequest = (body: object): body is PlayRequest =>
   'world' in body && 'intents' in body && 'ticks' in body
 
-export default {
-  async fetch(request: Request): Promise<Response> {
+class BadRequest extends Schema.TaggedError<
+  BadRequest,
+  { readonly brand: unique symbol }
+>()('BadRequest', { message: Schema.String }) {}
+
+const answerOf = (request: Request) =>
+  Effect.gen(function* () {
     const isRoom = new URL(request.url).pathname === '/room'
-    const body: unknown = await request.json()
-    const answer = isRoom
+    const body: unknown = yield* Effect.tryPromise({
+      try: () => request.json(),
+      catch: error =>
+        BadRequest.make({ message: `Not JSON: ${globalThis.String(error)}` }),
+    })
+    const answer = yield* isRoom
       ? playRoomWorld(roomRequestOf(body))
       : playWorld(playRequestOf(body))
     return new Response(answer, {
       headers: { 'content-type': 'application/json' },
     })
-  },
+  })
+
+export default {
+  fetch: (request: Request): Promise<Response> =>
+    Effect.runPromise(answerOf(request)),
 }

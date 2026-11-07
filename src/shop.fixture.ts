@@ -2,7 +2,7 @@
 // a row, money, hearts, and guns. src/shop.story.test.ts and
 // src/shopDialog.story.test.ts start from it.
 
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 import { Command } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 
@@ -11,6 +11,7 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import { PREPARATION_MS } from './constants'
 import { Message } from './message'
 import {
+  type Arsenal,
   type CarriedGun,
   type Model,
   Phase,
@@ -55,10 +56,14 @@ export const besideStall = (phase: Phase): Model =>
     phase: () => phase,
   })
 
-export const withMoney = (base: Model, balance: number): Model =>
+export const withMoney: {
+  (balance: number): (base: Model) => Model
+  (base: Model, balance: number): Model
+} = Function.dual(2, (base: Model, balance: number): Model =>
   modifyFocus(base, {
     wallet: () => ({ balance, earned: balance, shown: balance }),
-  })
+  }),
+)
 
 export const browsing = (base: Model): Model =>
   modifyFocus(modifyFields(base, { phase: () => preparing(2) }), {
@@ -70,28 +75,44 @@ export const resolveFocusShopItem = Command.resolve(
   Message.CompletedFocusShopItem(),
 )
 
-export const focusedOn = (base: Model, item: ShopItemId): Model =>
-  modifyFocus(base, { shop: () => ShopState.Browsing({ focusedItem: item }) })
+export const focusedOn: {
+  (item: ShopItemId): (base: Model) => Model
+  (base: Model, item: ShopItemId): Model
+} = Function.dual(2, (base: Model, item: ShopItemId): Model =>
+  modifyFocus(base, { shop: () => ShopState.Browsing({ focusedItem: item }) }),
+)
 
-export const withHp = (base: Model, hp: number): Model =>
+export const withHp: {
+  (hp: number): (base: Model) => Model
+  (base: Model, hp: number): Model
+} = Function.dual(2, (base: Model, hp: number): Model =>
   modifyFocus(base, {
     player: player => modifyFields(player, { hp: () => hp }),
-  })
+  }),
+)
 
-export const gun = (
-  kind: CarriedGun['kind'],
-  rounds: number,
-  tier = 0,
-): CarriedGun => ({
-  kind,
-  rounds,
-  loaded: Math.min(rounds, magazineOf(kind, tier)),
-  tier,
-})
+// NOTE: data first when the kind leads: a kind is a string, rounds are not.
+export const gun: {
+  (rounds: number, tier?: number): (kind: CarriedGun['kind']) => CarriedGun
+  (kind: CarriedGun['kind'], rounds: number, tier?: number): CarriedGun
+} = Function.dual(
+  (args: IArguments) => typeof args[0] === 'string',
+  (kind: CarriedGun['kind'], rounds: number, tier: number = 0): CarriedGun => ({
+    kind,
+    rounds,
+    loaded: Math.min(rounds, magazineOf(kind, tier)),
+    tier,
+  }),
+)
 
-export const holdingSpare = (
-  rounds: number,
-  kind: CarriedGun['kind'] = 'Shotgun',
-) => holdingSecond(gun(kind, rounds))
+// NOTE: data first when the rounds lead: rounds are a number, a kind is not.
+export const holdingSpare: {
+  (kind?: CarriedGun['kind']): (rounds: number) => Arsenal
+  (rounds: number, kind?: CarriedGun['kind']): Arsenal
+} = Function.dual(
+  (args: IArguments) => typeof args[0] === 'number',
+  (rounds: number, kind: CarriedGun['kind'] = 'Shotgun'): Arsenal =>
+    holdingSecond(gun(kind, rounds)),
+)
 
 const BESIDE_STALL = { x: 241, y: 142 }

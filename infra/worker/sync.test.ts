@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import * as Clock from 'effect/Clock'
 import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'
@@ -18,7 +19,7 @@ import {
   sessionMessage,
 } from '@munch/sync-engine'
 
-import { ChangedSettings } from '../../src/playerScope.ts'
+import { ChangedSettings, PlayerScope } from '../../src/playerScope.ts'
 import {
   type DirectoryHost,
   type Linked,
@@ -44,19 +45,25 @@ import {
   toJson,
 } from './testing.ts'
 
-const decodeCode = Schema.decodeUnknownSync(
+const decodeCode = Schema.decodeEffect(
   Schema.fromJsonString(Schema.Struct({ code: Schema.String })),
 )
 
-const decodeSession = Schema.decodeSync(
+const decodeSession = Schema.decodeEffect(
   Schema.fromJsonString(SessionResponseJson),
 )
 
-const decodeExchange = Schema.decodeSync(Schema.fromJsonString(ExchangeReply))
+const decodeExchange = Schema.decodeEffect(Schema.fromJsonString(ExchangeReply))
 
 const SECRET = 'infra-sync-test-secret'
 
 const textOf = (response: Response) => Effect.promise(() => response.text())
+
+const codeOf = (response: Response) =>
+  Effect.flatMap(textOf(response), decodeCode)
+
+const sessionOf = (response: Response) =>
+  Effect.flatMap(textOf(response), decodeSession)
 
 const directoryOn = Effect.flatMap(memory, sql =>
   Effect.provideService(makeDirectory(SECRET), SqlClient.SqlClient, sql),
@@ -66,7 +73,8 @@ const sessionBody = (playerId: string) =>
   Effect.gen(function* () {
     const stored = yield* generateKey
     const key = yield* importKey(stored)
-    const nonce = yield* makeChallenge(SECRET, yield* Clock.currentTimeMillis)
+    const nowMs = yield* Clock.currentTimeMillis
+    const nonce = yield* makeChallenge(SECRET, nowMs)
     const signature = yield* key.sign(sessionMessage(nonce, playerId))
     return toJson({
       publicKey: stored.publicKey,
@@ -81,18 +89,16 @@ const signedIn = (
   playerId: string,
 ) =>
   Effect.gen(function* () {
+    const body = yield* sessionBody(playerId)
+    const nowMs = yield* Clock.currentTimeMillis
     const handled = yield* handleDirectory(
       directory,
       SECRET,
-      {
-        path: '/sync/session',
-        bearer: Option.none(),
-        body: yield* sessionBody(playerId),
-      },
-      yield* Clock.currentTimeMillis,
+      { path: '/sync/session', bearer: Option.none(), body },
+      nowMs,
     )
     expect(handled.response.status).toBe(200)
-    return decodeSession(yield* textOf(handled.response))
+    return yield* sessionOf(handled.response)
   })
 
 const PLAYER = 'AAAAAAAAAAAAAAAAAAAAAA'
@@ -115,13 +121,15 @@ describe('the sync Worker', () => {
       const directory = yield* directoryOn
       const phone = yield* signedIn(directory, PLAYER)
       const laptop = yield* signedIn(directory, 'BBBBBBBBBBBBBBBBBBBBBB')
+      const linkAtMs = yield* Clock.currentTimeMillis
       const link = yield* handleDirectory(
         directory,
         SECRET,
         { path: '/sync/link', bearer: Option.some(phone.token), body: '{}' },
-        yield* Clock.currentTimeMillis,
+        linkAtMs,
       )
-      const { code } = decodeCode(yield* textOf(link.response))
+      const { code } = yield* codeOf(link.response)
+      const redeemAtMs = yield* Clock.currentTimeMillis
       const redeem = yield* handleDirectory(
         directory,
         SECRET,
@@ -130,17 +138,18 @@ describe('the sync Worker', () => {
           bearer: Option.some(laptop.token),
           body: toJson({ code }),
         },
-        yield* Clock.currentTimeMillis,
+        redeemAtMs,
       )
       expect(redeem.response.status).toBe(200)
       expect(Option.map(redeem.linked, linked => linked.playerId)).toEqual(
         Option.some(PLAYER),
       )
+      const strangerAtMs = yield* Clock.currentTimeMillis
       const stranger = yield* handleDirectory(
         directory,
         SECRET,
         { path: '/sync/link', bearer: Option.some('forged.token'), body: '{}' },
-        yield* Clock.currentTimeMillis,
+        strangerAtMs,
       )
       expect(stranger.response.status).toBe(401)
     }),
@@ -155,7 +164,7 @@ describe('the sync Worker', () => {
         const sql = yield* memory
         const scope = playerScopeId(PLAYER)
         const host = yield* Effect.provideService(
-          makeScopeHost(scope, authenticateWith(SECRET)),
+          makeScopeHost(scope, authenticateWith(SECRET), PlayerScope),
           SqlClient.SqlClient,
           sql,
         )
@@ -198,17 +207,19 @@ describe('the sync Worker', () => {
           ],
         })
         yield* host.onMessage(phone, push, everyone)
-        const tags = phone.sent.map(text => decodeTagged(text)._tag)
+        const tags = Array.map(phone.sent, text => decodeTagged(text)._tag)
         expect(tags).toEqual(['Deltas', 'Deltas', 'Acked'])
 
         const reply = yield* host.exchange(
           `[${hello(session.token)}]`,
           everyone,
         )
-        const messages = decodeExchange(yield* textOf(reply))
+        const replyText = yield* textOf(reply)
+        const messages = yield* decodeExchange(replyText)
         expect(messages[0]).toMatchObject({ _tag: 'Deltas', head: 1 })
 
-        expect(yield* nightmareUnlockedIn(host)).toBe(false)
+        const unlocked = yield* nightmareUnlockedIn(host)
+        expect(unlocked).toBe(false)
         expect(
           isNightmareUnlockedIn({ player: [{ nightmare: 'Unlocked' }] }),
         ).toBe(true)
@@ -217,26 +228,26 @@ describe('the sync Worker', () => {
         ).toBe(false)
         expect(isNightmareUnlockedIn({})).toBe(false)
         const asked: Array<Readonly<Record<string, string>>> = []
-        const answered = yield* readNightmareUnlock(
-          async (_scope, _url, headers) => {
-            asked.push(headers)
-            return { ok: true, text: async () => encodeNightmareAnswer(true) }
-          },
-          PLAYER,
-        )
+        const answer = yield* encodeNightmareAnswer(true)
+        const answered = yield* readNightmareUnlock((_scope, _url, headers) => {
+          asked.push(headers)
+          return Promise.resolve({
+            ok: true,
+            text: () => Promise.resolve(answer),
+          })
+        }, PLAYER)
         expect(answered).toBe(true)
         expect(asked).toEqual([{ 'x-sync-scope': scope }])
-        expect(
-          yield* readNightmareUnlock(async () => {
-            throw new Error('down')
-          }, PLAYER),
-        ).toBe(false)
-        expect(
-          yield* readNightmareUnlock(
-            async () => ({ ok: false, text: async () => '' }),
-            PLAYER,
-          ),
-        ).toBe(false)
+        const whenDown = yield* readNightmareUnlock(
+          () => Promise.reject(new Error('down')),
+          PLAYER,
+        )
+        expect(whenDown).toBe(false)
+        const whenRefused = yield* readNightmareUnlock(
+          () => Promise.resolve({ ok: false, text: () => Promise.resolve('') }),
+          PLAYER,
+        )
+        expect(whenRefused).toBe(false)
 
         yield* host.linkedDevices(2, 'linked-x-2', everyone)
         expect(fromJson(phone.sent.at(-1) ?? '{}')).toMatchObject({
@@ -255,9 +266,9 @@ const flakySql = () => {
     Effect.sync(() => {
       counts.builds += 1
       return counts.builds === 1
-        ? Layer.effectDiscard(
-            Effect.fail(new SyncCallFailed({ step: 'open', cause: 'cold' })),
-          ).pipe(
+        ? SyncCallFailed.make({ step: 'open', cause: 'cold' }).pipe(
+            Effect.fail,
+            Layer.effectDiscard,
             Layer.provideMerge(SqliteClient.layer({ filename: ':memory:' })),
           )
         : SqliteClient.layer({ filename: ':memory:' })
@@ -322,10 +333,13 @@ describe('a sync Durable Object', () => {
           return attempt
         })
         const once = yield* setupOnce(setup)
-        expect(Exit.isFailure(yield* Effect.exit(once))).toBe(true)
+        const first = yield* Effect.exit(once)
+        expect(Exit.isFailure(first)).toBe(true)
         expect(closed).toEqual(['attempt 1'])
-        expect(yield* once).toBe(2)
-        expect(yield* once).toBe(2)
+        const second = yield* once
+        expect(second).toBe(2)
+        const third = yield* once
+        expect(third).toBe(2)
         expect(closed).toEqual(['attempt 1'])
       }),
   )
@@ -340,31 +354,23 @@ describe('a sync Durable Object', () => {
           Effect.suspend(() => {
             told.push(linked)
             return Effect.fail(
-              new SyncCallFailed({ step: 'tell the scope', cause: 'down' }),
+              SyncCallFailed.make({ step: 'tell the scope', cause: 'down' }),
             )
           }),
       })
-      const phone = decodeSession(
-        yield* textOf(
-          yield* post(host, '/sync/session', yield* sessionBody(PLAYER)),
-        ),
-      )
-      const laptop = decodeSession(
-        yield* textOf(
-          yield* post(
-            host,
-            '/sync/session',
-            yield* sessionBody('BBBBBBBBBBBBBBBBBBBBBB'),
-          ),
-        ),
-      )
+      const phoneBody = yield* sessionBody(PLAYER)
+      const phoneSignIn = yield* post(host, '/sync/session', phoneBody)
+      const phone = yield* sessionOf(phoneSignIn)
+      const laptopBody = yield* sessionBody('BBBBBBBBBBBBBBBBBBBBBB')
+      const laptopSignIn = yield* post(host, '/sync/session', laptopBody)
+      const laptop = yield* sessionOf(laptopSignIn)
       const link = yield* post(
         host,
         '/sync/link',
         '{}',
         Option.some(phone.token),
       )
-      const { code } = decodeCode(yield* textOf(link))
+      const { code } = yield* codeOf(link)
       const redeem = yield* post(
         host,
         '/sync/link/redeem',
@@ -372,8 +378,9 @@ describe('a sync Durable Object', () => {
         Option.some(laptop.token),
       )
       expect(redeem.status).toBe(200)
-      expect(decodeSession(yield* textOf(redeem)).playerId).toBe(PLAYER)
-      expect(told.map(linked => linked.playerId)).toEqual([PLAYER])
+      const redeemed = yield* sessionOf(redeem)
+      expect(redeemed.playerId).toBe(PLAYER)
+      expect(Array.map(told, linked => linked.playerId)).toEqual([PLAYER])
     }),
   )
 })

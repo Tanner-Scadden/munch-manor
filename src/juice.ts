@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { DOOR_OUTWARD, type Level, levelOf } from './arena'
@@ -465,58 +465,60 @@ const blastOf = (event: GameEvent): ReadonlyArray<Blast> =>
 // its ticks: shake, popups, blast flashes, the streak, and the money
 // count-up. `deltaMs` is the frame's real time and `worldMs` the world time
 // its ticks ran.
-export const advanceJuice = (
-  model: Model,
-  deltaMs: number,
-  worldMs: number,
-): Model => {
-  const seconds = deltaMs / MS_PER_SECOND
-  const events = model.frameEvents
-  const kills = countWhere(events, GameEvent.isAnyOf(['ZombieKilled']))
-  const newBlasts = Array.flatMap(events, blastOf)
-  const streak = advanceStreak(model.streak, kills, worldMs)
+export const advanceJuice: {
+  (deltaMs: number, worldMs: number): (model: Model) => Model
+  (model: Model, deltaMs: number, worldMs: number): Model
+} = Function.dual(
+  3,
+  (model: Model, deltaMs: number, worldMs: number): Model => {
+    const seconds = deltaMs / MS_PER_SECOND
+    const events = model.frameEvents
+    const kills = countWhere(events, GameEvent.isAnyOf(['ZombieKilled']))
+    const newBlasts = Array.flatMap(events, blastOf)
+    const streak = advanceStreak(model.streak, kills, worldMs)
 
-  const [shakeState, shake] = advanceShake(
-    model.shake,
-    events,
-    seconds,
-    model.cosmeticRngState,
-  )
-  const [popupState, popupBatches] = Array.mapAccum(
-    events,
-    shakeState,
-    eventPopups(
-      focusOf(model).player.calling,
-      playedModifiersOf(model),
-      levelOf(model),
-    ),
-  )
+    const [shakeState, shake] = advanceShake(
+      model.shake,
+      events,
+      seconds,
+      model.cosmeticRngState,
+    )
+    const [popupState, popupBatches] = Array.mapAccum(
+      events,
+      shakeState,
+      eventPopups(
+        focusOf(model).player.calling,
+        playedModifiersOf(model),
+        levelOf(model),
+      ),
+    )
 
-  return modifyFocus(
-    modifyFields(model, {
-      blasts: current =>
-        Array.isReadonlyArrayEmpty(current) &&
-        Array.isReadonlyArrayEmpty(newBlasts)
-          ? current
-          : ageBlasts(
-              Array.takeRight([...current, ...newBlasts], BLAST_MAX),
-              deltaMs,
+    return modifyFocus(
+      modifyFields(model, {
+        blasts: current =>
+          Array.isReadonlyArrayEmpty(current) &&
+          Array.isReadonlyArrayEmpty(newBlasts)
+            ? current
+            : ageBlasts(
+                Array.takeRight([...current, ...newBlasts], BLAST_MAX),
+                deltaMs,
+              ),
+        shake: () => shake,
+        popups: popups =>
+          keepNewestHorde(
+            Array.takeRight(
+              [
+                ...agePopups(popups, seconds, deltaMs),
+                ...Array.flatten(popupBatches),
+              ],
+              POPUP_MAX,
             ),
-      shake: () => shake,
-      popups: popups =>
-        keepNewestHorde(
-          Array.takeRight(
-            [
-              ...agePopups(popups, seconds, deltaMs),
-              ...Array.flatten(popupBatches),
-            ],
-            POPUP_MAX,
           ),
-        ),
-      streak: () => streak,
-      bestStreak: best => Math.max(best, streakCount(streak)),
-      cosmeticRngState: () => popupState,
-    }),
-    { wallet: wallet => tickShownMoney(wallet, seconds) },
-  )
-}
+        streak: () => streak,
+        bestStreak: best => Math.max(best, streakCount(streak)),
+        cosmeticRngState: () => popupState,
+      }),
+      { wallet: wallet => tickShownMoney(wallet, seconds) },
+    )
+  },
+)

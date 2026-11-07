@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { isPracticeGateHeld } from './lessons'
@@ -43,7 +43,10 @@ const isActive = (model: Model): boolean => {
 // NOTE: one frame of the idle clock: it counts world time in a break while
 // the player does nothing, and any move, shot, buy, or step to the stall
 // starts it over. Outside a break it rests at 0.
-export const advanceBreakIdle = (model: Model, worldMs: number): Model => {
+export const advanceBreakIdle: {
+  (worldMs: number): (model: Model) => Model
+  (model: Model, worldMs: number): Model
+} = Function.dual(2, (model: Model, worldMs: number): Model => {
   const idleMs =
     Phase.isAnyOf(['Preparation'])(model.phase) && !isActive(model)
       ? model.breakIdleMs + worldMs
@@ -51,7 +54,7 @@ export const advanceBreakIdle = (model: Model, worldMs: number): Model => {
   return idleMs === model.breakIdleMs
     ? model
     : modifyFields(model, { breakIdleMs: () => idleMs })
-}
+})
 
 const isWaitingOnClock = (model: Model): boolean =>
   model.phase._tag === 'Preparation' &&

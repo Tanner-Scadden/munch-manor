@@ -1,6 +1,7 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { isObjectSecond } from './dualArgs'
 import { BIG_CROWD_SCALE, type Modifiers, noModifiers } from './modifiers'
 import { COOP_RULES } from './party'
 import { type World, modifyWorldFields } from './world'
@@ -99,25 +100,40 @@ export const DIFFICULTY_ORDER: Array.NonEmptyReadonlyArray<Difficulty> = [
 
 export const NIGHTMARE_LOCK_NOTE = 'Beat Hard to unlock'
 
-export const isLocked = (
-  setting: DifficultySetting,
-  difficulty: Difficulty,
-): boolean => difficulty === 'Nightmare' && setting.nightmare === 'Locked'
+export const isLocked: {
+  (difficulty: Difficulty): (setting: DifficultySetting) => boolean
+  (setting: DifficultySetting, difficulty: Difficulty): boolean
+} = Function.dual(
+  2,
+  (setting: DifficultySetting, difficulty: Difficulty): boolean =>
+    difficulty === 'Nightmare' && setting.nightmare === 'Locked',
+)
 
 // SCALES
 
-export const toughenSpawns = (
-  difficulty: Difficulty,
-  spawns: ReadonlyArray<PlannedSpawn>,
-): ReadonlyArray<PlannedSpawn> => {
-  const { healthScale, speedScale } = DIFFICULTIES[difficulty]
-  return Array.map(spawns, spawn =>
-    modifyFields(spawn, {
-      speedScale: scale => scale * speedScale,
-      hpScale: scale => scale * healthScale,
-    }),
-  )
-}
+export const toughenSpawns: {
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): (difficulty: Difficulty) => ReadonlyArray<PlannedSpawn>
+  (
+    difficulty: Difficulty,
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): ReadonlyArray<PlannedSpawn>
+} = Function.dual(
+  2,
+  (
+    difficulty: Difficulty,
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): ReadonlyArray<PlannedSpawn> => {
+    const { healthScale, speedScale } = DIFFICULTIES[difficulty]
+    return Array.map(spawns, spawn =>
+      modifyFields(spawn, {
+        speedScale: scale => scale * speedScale,
+        hpScale: scale => scale * healthScale,
+      }),
+    )
+  },
+)
 
 // NOTE: co-op's crowd (decided 3): every planned zombie comes with copies
 // spread evenly through the wave, so the count scales by the player count's
@@ -134,35 +150,49 @@ const scaleAt = (scales: ReadonlyArray<number>, players: number): number =>
 
 // NOTE: the Big Crowd modifier multiplies the count again, alone or in a
 // crew, the same way: the extra copies are not tougher on their own.
-export const crowdSpawns = (
-  players: number,
-  spawns: ReadonlyArray<PlannedSpawn>,
-  modifiers: Modifiers = noModifiers,
-): ReadonlyArray<PlannedSpawn> => {
-  if (players <= 1 && !modifiers.bigCrowd) {
-    return spawns
-  }
-  const countScale =
-    scaleAt(COOP_RULES.waveCountScale, players) *
-    (modifiers.bigCrowd ? BIG_CROWD_SCALE : 1)
-  const healthScale = scaleAt(COOP_RULES.healthScale, players)
-  return Array.flatMap(spawns, (spawn, index) => {
-    const copies =
-      Math.floor((index + 1) * countScale) - Math.floor(index * countScale)
-    const tougher = modifyFields(spawn, {
-      hpScale: scale => scale * healthScale,
+export const crowdSpawns: {
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    modifiers?: Modifiers,
+  ): (players: number) => ReadonlyArray<PlannedSpawn>
+  (
+    players: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    modifiers?: Modifiers,
+  ): ReadonlyArray<PlannedSpawn>
+} = Function.dual(
+  // NOTE: data-first starts with the player count; data-last with the spawns.
+  (args: IArguments): boolean => typeof args[0] === 'number',
+  (
+    players: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    modifiers: Modifiers = noModifiers,
+  ): ReadonlyArray<PlannedSpawn> => {
+    if (players <= 1 && !modifiers.bigCrowd) {
+      return spawns
+    }
+    const countScale =
+      scaleAt(COOP_RULES.waveCountScale, players) *
+      (modifiers.bigCrowd ? BIG_CROWD_SCALE : 1)
+    const healthScale = scaleAt(COOP_RULES.healthScale, players)
+    return Array.flatMap(spawns, (spawn, index) => {
+      const copies =
+        Math.floor((index + 1) * countScale) - Math.floor(index * countScale)
+      const tougher = modifyFields(spawn, {
+        hpScale: scale => scale * healthScale,
+      })
+      return Array.makeBy(copies, copy =>
+        copy === 0
+          ? tougher
+          : modifyFields(tougher, {
+              atMs: atMs => atMs + copy * CROWD_GAP_MS,
+              offset: offset =>
+                offset + (copy % 2 === 1 ? 1 : -1) * CROWD_OFFSET_PX,
+            }),
+      )
     })
-    return Array.makeBy(copies, copy =>
-      copy === 0
-        ? tougher
-        : modifyFields(tougher, {
-            atMs: atMs => atMs + copy * CROWD_GAP_MS,
-            offset: offset =>
-              offset + (copy % 2 === 1 ? 1 : -1) * CROWD_OFFSET_PX,
-          }),
-    )
-  })
-}
+  },
+)
 
 export const reloadsWhenIdle = (difficulty: Difficulty): boolean =>
   DIFFICULTIES[difficulty].reloadsWhenIdle
@@ -184,21 +214,26 @@ export const bossAttackPace = (difficulty: Difficulty): number =>
 export const biteGraceScale = (difficulty: Difficulty): number =>
   DIFFICULTIES[difficulty].biteGraceScale
 
-export const biteDamage = (difficulty: Difficulty, damage: number): number =>
-  Math.max(1, Math.round(damage * DIFFICULTIES[difficulty].biteScale))
+export const biteDamage: {
+  (damage: number): (difficulty: Difficulty) => number
+  (difficulty: Difficulty, damage: number): number
+} = Function.dual(2, (difficulty: Difficulty, damage: number): number =>
+  Math.max(1, Math.round(damage * DIFFICULTIES[difficulty].biteScale)),
+)
 
 // CHOOSING
 
-export const chooseDifficulty = <M extends World>(
-  model: M,
-  difficulty: Difficulty,
-): M =>
+export const chooseDifficulty: {
+  <M extends World>(difficulty: Difficulty): (model: M) => M
+  <M extends World>(model: M, difficulty: Difficulty): M
+} = Function.dual(2, <M extends World>(model: M, difficulty: Difficulty): M =>
   isLocked(model.difficulty, difficulty)
     ? model
     : modifyWorldFields(model, {
         difficulty: setting =>
           modifyFields(setting, { chosen: () => difficulty }),
-      })
+      }),
+)
 
 export const settleNightmare = <M extends World>(model: M): M =>
   model.difficulty.nightmare === 'JustUnlocked'
@@ -210,20 +245,32 @@ export const settleNightmare = <M extends World>(model: M): M =>
 
 // UNLOCKING
 
-export const hasJustWon = (before: World, after: World): boolean =>
-  !Phase.isAnyOf(['Victory'])(before.phase) &&
-  Phase.isAnyOf(['Victory'])(after.phase)
+export const hasJustWon: {
+  (after: World): (before: World) => boolean
+  (before: World, after: World): boolean
+} = Function.dual(
+  2,
+  (before: World, after: World): boolean =>
+    !Phase.isAnyOf(['Victory'])(before.phase) &&
+    Phase.isAnyOf(['Victory'])(after.phase),
+)
 
 // NOTE: `played` is the run's difficulty: the player's own pick, or in an
 // online co-op run the one the room's host picked.
-export const isNightmareUnlockedBy = (
-  before: World,
-  after: World,
-  played: Difficulty = after.difficulty.chosen,
-): boolean =>
-  hasJustWon(before, after) &&
-  played === 'Hard' &&
-  after.difficulty.nightmare === 'Locked'
+export const isNightmareUnlockedBy: {
+  (after: World, played?: Difficulty): (before: World) => boolean
+  (before: World, after: World, played?: Difficulty): boolean
+} = Function.dual(
+  isObjectSecond,
+  (
+    before: World,
+    after: World,
+    played: Difficulty = after.difficulty.chosen,
+  ): boolean =>
+    hasJustWon(before, after) &&
+    played === 'Hard' &&
+    after.difficulty.nightmare === 'Locked',
+)
 
 export const unlockNightmare = <M extends World>(model: M): M =>
   modifyWorldFields(model, {

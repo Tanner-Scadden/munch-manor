@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Function } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { type Level, levelOf } from './arena'
@@ -72,31 +72,33 @@ const sparklesOf = (
 
 // NOTE: laid out from the right edge: the icon, then "1/2" in gold once
 // every room is found. `right` is the text's right edge, `y` its top.
-export const roomsCounterShapes = (
-  model: Model,
-  right: number,
-  y: number,
-): ReadonlyArray<Canvas.Shape> => {
-  if (!isRoomsCounterShown(model)) {
-    return []
-  }
-  const { found, total } = roomsOf(levelOf(model))
-  const label = `${found}/${total}`
-  const iconX = right - textWidth(label) - ICON_GAP - HOUSE_SIZE
-  const sparkle = KitchenCall.match(model.kitchenCall, {
-    Quiet: () => [],
-    Calling: () => [],
-    Opened: ({ ageMs }) => sparklesOf(iconX, y - 1, ageMs),
-  })
-  return [
-    placeSprite(iconX, y - 1, HOUSE),
-    ...textShapes(
-      label,
-      found === total ? 'Prompt' : 'Plain',
-      right,
-      y,
-      'Right',
-    ),
-    ...sparkle,
-  ]
-}
+export const roomsCounterShapes: {
+  (right: number, y: number): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, right: number, y: number): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (model: Model, right: number, y: number): ReadonlyArray<Canvas.Shape> => {
+    if (!isRoomsCounterShown(model)) {
+      return []
+    }
+    const { found, total } = roomsOf(levelOf(model))
+    const label = `${found}/${total}`
+    const iconX = right - textWidth(label) - ICON_GAP - HOUSE_SIZE
+    const sparkle = KitchenCall.match(model.kitchenCall, {
+      Quiet: () => [],
+      Calling: () => [],
+      Opened: ({ ageMs }) => sparklesOf(iconX, y - 1, ageMs),
+    })
+    return [
+      placeSprite(iconX, y - 1, HOUSE),
+      ...textShapes(
+        label,
+        found === total ? 'Prompt' : 'Plain',
+        right,
+        y,
+        'Right',
+      ),
+      ...sparkle,
+    ]
+  },
+)

@@ -1,4 +1,4 @@
-import { Array, Option, Order, Result, pipe } from 'effect'
+import { Array, Function, Option, Order, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Level, hasLineOfSight, levelOf } from './arena'
@@ -125,25 +125,40 @@ const nearestThrowable = (
 // once close enough to throw, and walks in to bite when there is none left
 // at all. None means it follows the flow field like the rest; Some is its own
 // heading, which is still while it holds its ground.
-export const maybeChuckerHeading = (
-  level: Level,
-  chucker: Zombie,
-  zombies: ReadonlyArray<Zombie>,
-  player: Vector,
-): Option.Option<Vector> =>
-  Option.flatMap(nearestThrowable(chucker, zombies), groaner => {
-    const isRested = ZombieAction.isAnyOf(['Roaming'])(chucker.action)
-    if (isRested && hasLineOfSight(level, chucker, groaner)) {
-      return Option.orElse(
-        normalize({ x: groaner.x - chucker.x, y: groaner.y - chucker.y }),
-        () => Option.some(ZERO_VECTOR),
-      )
-    } else if (distanceBetween(chucker, player) <= CHUCKER_RULES.hangPx) {
-      return Option.some(ZERO_VECTOR)
-    } else {
-      return Option.none()
-    }
-  })
+export const maybeChuckerHeading: {
+  (
+    chucker: Zombie,
+    zombies: ReadonlyArray<Zombie>,
+    player: Vector,
+  ): (level: Level) => Option.Option<Vector>
+  (
+    level: Level,
+    chucker: Zombie,
+    zombies: ReadonlyArray<Zombie>,
+    player: Vector,
+  ): Option.Option<Vector>
+} = Function.dual(
+  4,
+  (
+    level: Level,
+    chucker: Zombie,
+    zombies: ReadonlyArray<Zombie>,
+    player: Vector,
+  ): Option.Option<Vector> =>
+    Option.flatMap(nearestThrowable(chucker, zombies), groaner => {
+      const isRested = ZombieAction.isAnyOf(['Roaming'])(chucker.action)
+      if (isRested && hasLineOfSight(level, chucker, groaner)) {
+        return Option.orElse(
+          normalize({ x: groaner.x - chucker.x, y: groaner.y - chucker.y }),
+          () => Option.some(ZERO_VECTOR),
+        )
+      } else if (distanceBetween(chucker, player) <= CHUCKER_RULES.hangPx) {
+        return Option.some(ZERO_VECTOR)
+      } else {
+        return Option.none()
+      }
+    }),
+)
 
 // GRABBING
 
@@ -653,16 +668,19 @@ export const shieldAim = (zombie: Zombie): Option.Option<number> =>
 // NOTE: a shot that comes at a shielding Big Leaguer from inside his front
 // arc hits the zombie he holds instead. Shots from the side or behind reach
 // him, and piercing shots and bursts are never blocked.
-export const maybeShieldFor = (
-  zombie: Zombie,
-  direction: Vector,
-): Option.Option<number> =>
-  ZombieAction.isAnyOf(['Shielding'])(zombie.action) &&
-  direction.x * Math.cos(zombie.action.aim) +
-    direction.y * Math.sin(zombie.action.aim) <
-    -CHUCKER_RULES.shieldArcCos
-    ? Option.some(zombie.action.victimId)
-    : Option.none()
+export const maybeShieldFor: {
+  (direction: Vector): (zombie: Zombie) => Option.Option<number>
+  (zombie: Zombie, direction: Vector): Option.Option<number>
+} = Function.dual(
+  2,
+  (zombie: Zombie, direction: Vector): Option.Option<number> =>
+    ZombieAction.isAnyOf(['Shielding'])(zombie.action) &&
+    direction.x * Math.cos(zombie.action.aim) +
+      direction.y * Math.sin(zombie.action.aim) <
+      -CHUCKER_RULES.shieldArcCos
+      ? Option.some(zombie.action.victimId)
+      : Option.none(),
+)
 
 // FRAME
 
@@ -675,7 +693,10 @@ const isBusy = (zombie: Zombie): boolean =>
     'Shielded',
   ])(zombie.action)
 
-export const advanceChuckers = (model: World, deltaMs: number): World => {
+export const advanceChuckers: {
+  (deltaMs: number): (model: World) => World
+  (model: World, deltaMs: number): World
+} = Function.dual(2, (model: World, deltaMs: number): World => {
   const hasWork = Array.some(
     model.zombies,
     zombie => isChucker(zombie) || isBusy(zombie),
@@ -725,4 +746,4 @@ export const advanceChuckers = (model: World, deltaMs: number): World => {
           }),
       }),
   )
-}
+})

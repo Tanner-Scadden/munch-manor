@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
@@ -49,7 +49,10 @@ const waveOf = (model: Model): number =>
 const isOpenedThisFrame = (model: Model): boolean =>
   Array.some(model.frameEvents, GameEvent.isAnyOf(['ExitOpened']))
 
-export const advanceKitchenCall = (model: Model, frameMs: number): Model => {
+export const advanceKitchenCall: {
+  (frameMs: number): (model: Model) => Model
+  (model: Model, frameMs: number): Model
+} = Function.dual(2, (model: Model, frameMs: number): Model => {
   if (!isRoundActive(model.phase)) {
     return model
   }
@@ -88,7 +91,7 @@ export const advanceKitchenCall = (model: Model, frameMs: number): Model => {
               }),
           }),
   })
-}
+})
 
 // NOTE: where the bubble's tail points: the top of the boards.
 export const maybeCallTarget = (model: Model): Option.Option<Vector> =>
@@ -125,23 +128,26 @@ const SMELL_SOUNDS: Array.NonEmptyReadonlyArray<SoundEffect> = [
   'Simmer',
 ]
 
-export const maybeKitchenSound = (
-  before: Model,
-  after: Model,
-): Option.Option<SoundEffect> => {
-  const beat = beatOf(after.elapsedMs)
-  return beat !== beatOf(before.elapsedMs) &&
-    beat % 3 !== 0 &&
-    isRoundActive(after.phase) &&
-    Boss.isAnyOf(['Absent'])(after.boss) &&
-    isBoardsUp(after)
-    ? Option.flatMap(exitBoxOf(levelOf(after), KITCHEN_EXIT), box =>
-        distanceBetween(focusOf(after).player, {
-          x: (box.left + box.right) / 2,
-          y: (box.top + box.bottom) / 2,
-        }) <= SMELL_REACH_PX
-          ? Array.get(SMELL_SOUNDS, beat % SMELL_SOUNDS.length)
-          : Option.none(),
-      )
-    : Option.none()
-}
+export const maybeKitchenSound: {
+  (after: Model): (before: Model) => Option.Option<SoundEffect>
+  (before: Model, after: Model): Option.Option<SoundEffect>
+} = Function.dual(
+  2,
+  (before: Model, after: Model): Option.Option<SoundEffect> => {
+    const beat = beatOf(after.elapsedMs)
+    return beat !== beatOf(before.elapsedMs) &&
+      beat % 3 !== 0 &&
+      isRoundActive(after.phase) &&
+      Boss.isAnyOf(['Absent'])(after.boss) &&
+      isBoardsUp(after)
+      ? Option.flatMap(exitBoxOf(levelOf(after), KITCHEN_EXIT), box =>
+          distanceBetween(focusOf(after).player, {
+            x: (box.left + box.right) / 2,
+            y: (box.top + box.bottom) / 2,
+          }) <= SMELL_REACH_PX
+            ? Array.get(SMELL_SOUNDS, beat % SMELL_SOUNDS.length)
+            : Option.none(),
+        )
+      : Option.none()
+  },
+)

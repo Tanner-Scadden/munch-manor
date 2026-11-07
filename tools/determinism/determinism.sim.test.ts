@@ -6,7 +6,7 @@
 // Map or Set built from data that differs run to run, or a Model mutated in
 // place, shows up too. The heavy cross-engine check is crossEngine.ts.
 
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { focusOf } from '../../src/party'
@@ -27,13 +27,14 @@ const CAMPAIGN: RunOptions = {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+// NOTE: a wall clock far from any real one, in May 2030.
+const SKEWED_NOW_MS = 1_905_000_000_000
+
 // A second run in a world whose clock and Math.random differ from the first.
 const inSkewedWorld = <A>(run: () => A): A => {
-  // NOTE: the real clock, read once to skew it by a day.
-  const now = Date.now() // oxlint-disable-line no-restricted-properties
   const performanceNow = performance.now()
   const randoms = [0.91, 0.13, 0.57, 0.38, 0.74]
-  vi.spyOn(Date, 'now').mockImplementation(() => now + DAY_MS)
+  vi.spyOn(Date, 'now').mockImplementation(() => SKEWED_NOW_MS)
   vi.spyOn(performance, 'now').mockImplementation(() => performanceNow + DAY_MS)
   vi.spyOn(Math, 'random').mockImplementation(() => {
     const next = randoms.shift() ?? 0.5
@@ -75,9 +76,10 @@ describe('determinism in one engine', () => {
   test('the whole Model, client fields too, ends the same', () => {
     const hasher = makeGameplayHasher({ cached: false })
     const play = () =>
-      Array.from({ length: 600 }, (_, frame) => frame).reduce(
-        (model, frame) => playFrame(model, frame, 'Fixed60'),
+      Array.reduce(
+        globalThis.Array.from({ length: 600 }, (_, frame) => frame),
         startedRun(11, 'Campaign'),
+        (model, frame) => playFrame(model, frame, 'Fixed60'),
       )
     const first = play()
     const second = inSkewedWorld(play)
@@ -91,7 +93,9 @@ describe('determinism in one engine', () => {
     const cached = makeGameplayHasher({ cached: true })
     const full = makeGameplayHasher({ cached: false })
     const mismatches: Array<number> = []
-    Array.from({ length: 600 }, (_, frame) => frame).reduce(
+    Array.reduce(
+      globalThis.Array.from({ length: 600 }, (_, frame) => frame),
+      startedRun(5, 'Campaign'),
       (model, frame) => {
         const next = playFrame(model, frame, 'Fixed60')
         if (cached.hashModel(next) !== full.hashModel(next)) {
@@ -99,7 +103,6 @@ describe('determinism in one engine', () => {
         }
         return next
       },
-      startedRun(5, 'Campaign'),
     )
     expect(mismatches).toEqual([])
   })

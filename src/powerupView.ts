@@ -1,4 +1,4 @@
-import { Array, Option, Record, pipe } from 'effect'
+import { Array, Function, Option, Record, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { type Camera, viewBoxOf, worldToView } from './camera'
@@ -37,7 +37,7 @@ const HEX_PAIR = 2
 const HEX_BASE = 16
 
 const channel = (hex: string, start: number): number =>
-  Number.parseInt(hex.slice(start, start + HEX_PAIR), HEX_BASE)
+  Number.parseInt(String.slice(start, start + HEX_PAIR)(hex), HEX_BASE)
 
 const translucent = (hex: string, alpha: number): string =>
   `rgba(${channel(hex, HEX_RED)}, ${channel(hex, HEX_GREEN)}, ${channel(hex, HEX_BLUE)}, ${alpha})`
@@ -146,18 +146,29 @@ export const goodieArrowShapes = (
 
 // NOTE: the guided first break's arrow over the doorway where the first
 // Plank Pile goes (src/firstBreakQuest.ts).
-export const doorArrowShapes = (
-  point: Readonly<{ x: number; y: number }>,
-  elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => [
-  placeAt(
-    Math.round(point.x) - 3,
-    Math.round(point.y) -
-      GOODIE_ARROW_LIFT_PX +
-      (Math.floor(elapsedMs / GOODIE_ARROW_BOUNCE_MS) % 2) * 2,
-    GOODIE_ARROW,
-  ),
-]
+export const doorArrowShapes: {
+  (
+    elapsedMs: number,
+  ): (point: Readonly<{ x: number; y: number }>) => ReadonlyArray<Canvas.Shape>
+  (
+    point: Readonly<{ x: number; y: number }>,
+    elapsedMs: number,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (
+    point: Readonly<{ x: number; y: number }>,
+    elapsedMs: number,
+  ): ReadonlyArray<Canvas.Shape> => [
+    placeAt(
+      Math.round(point.x) - 3,
+      Math.round(point.y) -
+        GOODIE_ARROW_LIFT_PX +
+        (Math.floor(elapsedMs / GOODIE_ARROW_BOUNCE_MS) % 2) * 2,
+      GOODIE_ARROW,
+    ),
+  ],
+)
 
 // CALLOUTS
 
@@ -364,46 +375,59 @@ const isWarningOff = (remainingMs: number): boolean =>
   remainingMs < BOOST_WARNING_MS &&
   Math.floor(remainingMs / WARNING_BLINK_MS) % 2 === 1
 
-export const auraShapes = (
-  player: Player,
-  boosts: Boosts,
-  elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
-  if (!Array.some(BOOST_KIND_ORDER, kind => isOn(boosts[kind]))) {
-    return []
-  }
+export const auraShapes: {
+  (
+    boosts: Boosts,
+    elapsedMs: number,
+  ): (player: Player) => ReadonlyArray<Canvas.Shape>
+  (
+    player: Player,
+    boosts: Boosts,
+    elapsedMs: number,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (
+    player: Player,
+    boosts: Boosts,
+    elapsedMs: number,
+  ): ReadonlyArray<Canvas.Shape> => {
+    if (!Array.some(BOOST_KIND_ORDER, kind => isOn(boosts[kind]))) {
+      return []
+    }
 
-  const active = activeBoosts(boosts)
-  return pipe(
-    Array.get(
-      active,
-      Math.floor(elapsedMs / AURA_CYCLE_MS) % Math.max(1, active.length),
-    ),
-    Option.filter(({ remainingMs }) => !isWarningOff(remainingMs)),
-    Option.match({
-      onNone: () => [],
-      onSome: ({ kind }) => {
-        const x = Math.round(player.x)
-        const y = Math.round(player.y) + AURA_FOOT_DROP
-        const radius =
-          AURA_RADIUS +
-          Math.round(
-            Math.sin((elapsedMs / AURA_PULSE_MS) * FULL_TURN) * AURA_PULSE_PX,
-          )
-        return [
-          Canvas.Circle({ x, y, radius, fill: AURA_FILLS[kind] }),
-          Canvas.Circle({
-            x,
-            y,
-            radius,
-            stroke: BOOSTS[kind].color,
-            lineWidth: 1,
-          }),
-        ]
-      },
-    }),
-  )
-}
+    const active = activeBoosts(boosts)
+    return pipe(
+      Array.get(
+        active,
+        Math.floor(elapsedMs / AURA_CYCLE_MS) % Math.max(1, active.length),
+      ),
+      Option.filter(({ remainingMs }) => !isWarningOff(remainingMs)),
+      Option.match({
+        onNone: () => [],
+        onSome: ({ kind }) => {
+          const x = Math.round(player.x)
+          const y = Math.round(player.y) + AURA_FOOT_DROP
+          const radius =
+            AURA_RADIUS +
+            Math.round(
+              Math.sin((elapsedMs / AURA_PULSE_MS) * FULL_TURN) * AURA_PULSE_PX,
+            )
+          return [
+            Canvas.Circle({ x, y, radius, fill: AURA_FILLS[kind] }),
+            Canvas.Circle({
+              x,
+              y,
+              radius,
+              stroke: BOOSTS[kind].color,
+              lineWidth: 1,
+            }),
+          ]
+        },
+      }),
+    )
+  },
+)
 
 // HUD
 
@@ -459,10 +483,25 @@ const chipShapes =
     ]
   }
 
-export const boostChipShapes = (
-  boosts: Boosts,
-  left: number,
-  top: number,
-  columns: number,
-): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(activeBoosts(boosts), chipShapes(left, top, columns))
+export const boostChipShapes: {
+  (
+    left: number,
+    top: number,
+    columns: number,
+  ): (boosts: Boosts) => ReadonlyArray<Canvas.Shape>
+  (
+    boosts: Boosts,
+    left: number,
+    top: number,
+    columns: number,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  4,
+  (
+    boosts: Boosts,
+    left: number,
+    top: number,
+    columns: number,
+  ): ReadonlyArray<Canvas.Shape> =>
+    Array.flatMap(activeBoosts(boosts), chipShapes(left, top, columns)),
+)

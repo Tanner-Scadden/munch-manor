@@ -8,25 +8,29 @@
 // with 1 on any problem.
 //   TAG=after bun shots31.ts
 // ONLY picks scenes, such as `ONLY=wave,break`.
+import { Array, Console, Effect } from 'effect'
+
+import { runHarnessAudit } from './harnessServer'
 import {
   ANDROID_915,
   DESKTOP_1280,
   PHONE_667,
   PHONE_844,
   PHONE_932,
-  TAG,
   type Viewport,
+  auditTag,
+  closePage,
   deviceQuery,
   finish,
   gotoScene,
   harnessUrl,
   isPickedScene,
-  launch,
+  openBrowser,
   openPage,
   settleAnimations,
   shot,
-  useHarness,
 } from './lib'
+import { attempt } from './page'
 
 const VIEWPORTS: ReadonlyArray<Viewport> = [
   PHONE_667,
@@ -83,128 +87,159 @@ const overlaps = (a: Box, b: Box) =>
   a.y < b.y + b.height &&
   b.y < a.y + a.height
 
-const problems: Array<string> = []
-await useHarness()
-const browser = await launch()
-for (const viewport of VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
+// NOTE: runs in the page, which has no Effect: plain loops, so no native
+// Array method is left for the Effect rules to flag.
+const readButtons = (inset: number) => {
+  const stage = document.querySelector('.game-stage')
+  if (stage === null) {
+    throw new Error('No .game-stage on the page')
+  }
+  const rect = stage.getBoundingClientRect()
+  const model = window.__model
+  const buttons: Array<{
+    label: string
+    x: number
+    y: number
+    width: number
+    height: number
+    misses: Array<string>
+  }> = []
+  for (const button of document.querySelectorAll('button')) {
+    const box = button.getBoundingClientRect()
+    const style = getComputedStyle(button)
+    if (
+      !(
+        box.width > 0 &&
+        style.visibility !== 'hidden' &&
+        style.display !== 'none' &&
+        button.closest('dialog') === null
+      )
+    ) {
       continue
     }
-    const page = await openPage(browser, viewport)
-    await gotoScene(page, harnessUrl(scene.query, deviceQuery(viewport)))
-    await settleAnimations(page)
-    const report = await page.evaluate(inset => {
-      const stage = document.querySelector('.game-stage')
-      if (stage === null) {
-        throw new Error('No .game-stage on the page')
+    const cx = box.x + box.width / 2
+    const cy = box.y + box.height / 2
+    const points = [
+      ['center', cx, cy],
+      ['left', box.left + inset, cy],
+      ['right', box.right - inset, cy],
+      ['top', cx, box.top + inset],
+      ['bottom', cx, box.bottom - inset],
+    ] as const
+    const misses: Array<string> = []
+    for (const [name, x, y] of points) {
+      const hit = document.elementFromPoint(x, y)
+      if (hit === null || !button.contains(hit)) {
+        misses.push(name)
       }
-      const rect = stage.getBoundingClientRect()
-      const model = window.__model
-      const buttons = Array.from(document.querySelectorAll('button'))
-        .filter(button => {
-          const box = button.getBoundingClientRect()
-          const style = getComputedStyle(button)
-          return (
-            box.width > 0 &&
-            style.visibility !== 'hidden' &&
-            style.display !== 'none' &&
-            button.closest('dialog') === null
-          )
-        })
-        .map(button => {
-          const box = button.getBoundingClientRect()
-          const cx = box.x + box.width / 2
-          const cy = box.y + box.height / 2
-          const points = [
-            ['center', cx, cy],
-            ['left', box.left + inset, cy],
-            ['right', box.right - inset, cy],
-            ['top', cx, box.top + inset],
-            ['bottom', cx, box.bottom - inset],
-          ] as const
-          const misses = points
-            .filter(([, x, y]) => {
-              const hit = document.elementFromPoint(x, y)
-              return hit === null || !button.contains(hit)
-            })
-            .map(([name]) => name)
-          return {
-            label:
-              button.getAttribute('aria-label') ?? button.textContent.trim(),
-            x: box.x,
-            y: box.y,
-            width: box.width,
-            height: box.height,
-            misses,
-          }
-        })
-      return {
-        stage: { x: rect.x, y: rect.y, scale: rect.width / 320 },
-        player: { x: model.seats[0].player.x, y: model.seats[0].player.y },
-        buttons,
-      }
-    }, EDGE_INSET)
-    const { stage } = report
-    const toClient = (box: Box): Box => ({
-      x: stage.x + box.x * stage.scale,
-      y: stage.y + box.y * stage.scale,
-      width: box.width * stage.scale,
-      height: box.height * stage.scale,
-    })
-    const areas = [
-      ...AREAS,
-      {
-        name: 'player',
-        box: {
-          x: report.player.x - 5,
-          y: report.player.y - 8,
-          width: 10,
-          height: 14,
-        },
-      },
-    ]
-    const where = `${viewport.name} ${scene.name}`
-    const lines = [
-      ...report.buttons.flatMap(button =>
-        areas
-          .filter(area => overlaps(button, toClient(area.box)))
-          .map(area => `"${button.label}" covers the ${area.name}`),
-      ),
-      ...report.buttons.flatMap((button, index) =>
-        report.buttons
-          .slice(index + 1)
-          .filter(other => overlaps(button, other))
-          .map(other => `"${button.label}" overlaps "${other.label}"`),
-      ),
-      ...report.buttons.flatMap(button =>
-        button.misses.map(name => `"${button.label}": the ${name} misses it`),
-      ),
-      ...(viewport.isPhone
-        ? report.buttons
-            .filter(
-              button => button.width < MIN_SIDE || button.height < MIN_SIDE,
-            )
-            .map(
-              button =>
-                `"${button.label}" is ${Math.round(button.width)}x${Math.round(button.height)}`,
-            )
-        : []),
-    ]
-    console.log(
-      `${where}: ${report.buttons.map(b => `"${b.label}" ${Math.round(b.width)}x${Math.round(b.height)}`).join(' ')}`,
-    )
-    for (const line of lines) {
-      console.log(`  ! ${line}`)
-      problems.push(`${where} ${line}`)
     }
-    await shot(page, `s31-${TAG}-${viewport.name}-${scene.name}`)
-    await page.context().close()
+    buttons.push({
+      // NOTE: runs in the page, where effect's String is not loaded.
+      // @effect-diagnostics-next-line preferEffectString:off
+      label: button.getAttribute('aria-label') ?? button.textContent.trim(),
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+      misses,
+    })
+  }
+  return {
+    stage: { x: rect.x, y: rect.y, scale: rect.width / 320 },
+    player: { x: model.seats[0].player.x, y: model.seats[0].player.y },
+    buttons,
   }
 }
-await browser.close()
 
-finish(
-  problems,
-  'Every button hits itself and keeps clear of the doors and the stall.',
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const problems: Array<string> = []
+    const browser = yield* openBrowser
+    for (const viewport of VIEWPORTS) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
+        }
+        const page = yield* openPage(browser, viewport)
+        yield* gotoScene(page, harnessUrl(scene.query, deviceQuery(viewport)))
+        yield* settleAnimations(page)
+        const report = yield* attempt(() =>
+          page.evaluate(readButtons, EDGE_INSET),
+        )
+        const { stage } = report
+        const toClient = (box: Box): Box => ({
+          x: stage.x + box.x * stage.scale,
+          y: stage.y + box.y * stage.scale,
+          width: box.width * stage.scale,
+          height: box.height * stage.scale,
+        })
+        const areas = [
+          ...AREAS,
+          {
+            name: 'player',
+            box: {
+              x: report.player.x - 5,
+              y: report.player.y - 8,
+              width: 10,
+              height: 14,
+            },
+          },
+        ]
+        const where = `${viewport.name} ${scene.name}`
+        const lines = [
+          ...Array.flatMap(report.buttons, button =>
+            Array.map(
+              Array.filter(areas, area => overlaps(button, toClient(area.box))),
+              area => `"${button.label}" covers the ${area.name}`,
+            ),
+          ),
+          ...Array.flatMap(report.buttons, (button, index) =>
+            Array.map(
+              Array.filter(report.buttons.slice(index + 1), other =>
+                overlaps(button, other),
+              ),
+              other => `"${button.label}" overlaps "${other.label}"`,
+            ),
+          ),
+          ...Array.flatMap(report.buttons, button =>
+            Array.map(
+              button.misses,
+              name => `"${button.label}": the ${name} misses it`,
+            ),
+          ),
+          ...(viewport.isPhone
+            ? Array.map(
+                Array.filter(
+                  report.buttons,
+                  button => button.width < MIN_SIDE || button.height < MIN_SIDE,
+                ),
+                button =>
+                  `"${button.label}" is ${Math.round(button.width)}x${Math.round(button.height)}`,
+              )
+            : []),
+        ]
+        yield* Console.log(
+          `${where}: ${Array.join(
+            Array.map(
+              report.buttons,
+              b =>
+                `"${b.label}" ${Math.round(b.width)}x${Math.round(b.height)}`,
+            ),
+            ' ',
+          )}`,
+        )
+        for (const line of lines) {
+          yield* Console.log(`  ! ${line}`)
+          problems.push(`${where} ${line}`)
+        }
+        yield* shot(page, `s31-${tag}-${viewport.name}-${scene.name}`)
+        yield* closePage(page)
+      }
+    }
+    yield* finish(
+      problems,
+      'Every button hits itself and keeps clear of the doors and the stall.',
+    )
+  }),
 )

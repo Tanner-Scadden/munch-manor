@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Option, String } from 'effect'
 
 import { type Palette, TRANSPARENT, padRow } from '../sprite'
 import {
@@ -321,8 +321,11 @@ const overlayRows = (
       onSome: coverRow =>
         Array.join(
           Array.map(Array.fromIterable(row), (pixel, x) => {
-            const top = coverRow.charAt(x)
-            return top === '' || top === TRANSPARENT ? pixel : top
+            const top = Option.getOrElse(
+              String.charAt(coverRow, x),
+              () => TRANSPARENT,
+            )
+            return top === TRANSPARENT ? pixel : top
           }),
           '',
         ),

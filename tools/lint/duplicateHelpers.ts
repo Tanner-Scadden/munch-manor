@@ -30,14 +30,23 @@
 //   bun tools/lint/duplicateHelpers.ts [root]
 
 import { Glob } from 'bun'
-import { dirname, join } from 'node:path'
+import {
+  Array,
+  Console,
+  Effect,
+  FileSystem,
+  Option,
+  type Order,
+  Path,
+  Record,
+  Runtime,
+  Schema,
+  String,
+} from 'effect'
 import { parseSync } from 'oxc-parser'
 
-// NOTE: the repository, or another checkout of it given as the argument.
-const ROOT = join(
-  process.argv[2] ?? new URL('../..', import.meta.url).pathname,
-  '/',
-)
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
 // NOTE: test support that is no test file but is shared like one.
 const TEST_HOMES: ReadonlyArray<string> = [
@@ -56,10 +65,10 @@ type Kind = Readonly<{
 }>
 
 const isTestSupport = (file: string): boolean =>
-  file.endsWith('.test.ts') ||
-  file.includes('/test/') ||
+  String.endsWith('.test.ts')(file) ||
+  String.includes('/test/')(file) ||
   file === 'src/testing.ts' ||
-  file.endsWith('.fixture.ts') ||
+  String.endsWith('.fixture.ts')(file) ||
   file === 'src/vitest-setup.ts' ||
   file === 'infra/worker/testing.ts'
 
@@ -85,7 +94,7 @@ const KINDS: ReadonlyArray<Kind> = [
       'packages/*/src/**/*.ts',
       'infra/worker/**/*.ts',
     ],
-    isSkipped: file => isTestSupport(file) || file.endsWith('.d.ts'),
+    isSkipped: file => isTestSupport(file) || String.endsWith('.d.ts')(file),
     advice:
       'share each: canvas helpers from src/drawing.ts, menu view helpers from src/menuParts.ts, the rest from the module they are about',
   },
@@ -140,16 +149,17 @@ const ALLOWED: ReadonlyArray<
 ]
 
 const groupOf = (file: string): string =>
-  file.startsWith('packages/')
-    ? file.split('/').slice(0, 2).join('/')
-    : file.startsWith('infra/')
+  String.startsWith('packages/')(file)
+    ? Array.join(String.split('/')(file).slice(0, 2), '/')
+    : String.startsWith('infra/')(file)
       ? 'infra'
       : 'src'
 
 const allowedSeen = new Set<string>()
 
 const isAllowed = (file: string, name: string): boolean => {
-  const isListed = ALLOWED.some(
+  const isListed = Array.some(
+    ALLOWED,
     entry => entry.file === file && entry.name === name,
   )
   if (isListed) {
@@ -169,15 +179,19 @@ const isNode = (value: unknown): value is Node =>
 
 // NOTE: the nodes in a field that holds a list of them, or none.
 const nodesIn = (value: unknown): ReadonlyArray<Node> =>
-  Array.isArray(value) ? value.filter(isNode) : []
+  Array.isArray(value) ? Array.filter(value, isNode) : []
 
 // NOTE: the name of an identifier node, or '' for anything else.
 const nameOf = (value: unknown): string =>
   isNode(value) && typeof value['name'] === 'string' ? value['name'] : ''
 
 const childrenOf = (node: Node): ReadonlyArray<Node> =>
-  Object.values(node).flatMap(value =>
-    Array.isArray(value) ? value.filter(isNode) : isNode(value) ? [value] : [],
+  Array.flatMap(Record.values(node), value =>
+    Array.isArray(value)
+      ? Array.filter(value, isNode)
+      : isNode(value)
+        ? [value]
+        : [],
   )
 
 // NOTE: every identifier that reads a binding, never a property name.
@@ -195,32 +209,40 @@ const readsIn = (node: Node): ReadonlyArray<Node> => {
         current['shorthand'] !== true)
         ? (current['property'] ?? current['key'])
         : undefined
-    childrenOf(current)
-      .filter(child => child !== skipped)
-      .forEach(visit)
+    Array.forEach(
+      Array.filter(childrenOf(current), child => child !== skipped),
+      visit,
+    )
   }
   visit(node)
   return reads
 }
 
 const namesIn = (node: Node): ReadonlySet<string> =>
-  new Set(readsIn(node).map(nameOf))
+  new Set(Array.map(readsIn(node), nameOf))
 
 // NOTE: a declaration's text with its own name taken out: a function
 // declaration's name and the places it calls itself, so a copy under a new
 // name has the same body.
 const bodyOf = (text: string, node: Node, name: string): string => {
-  const own = readsIn(node).filter(read => nameOf(read) === name)
+  const own = Array.filter(readsIn(node), read => nameOf(read) === name)
   // NOTE: from the end, so each cut leaves the offsets before it in place.
-  return [...own]
-    .sort((a, b) => b.start - a.start)
-    .reduce(
-      (body, read) =>
-        `${body.slice(0, read.start - node.start)}\u0000${body.slice(read.end - node.start)}`,
-      text.slice(node.start, node.end),
-    )
-    .replace(/\s+/g, '')
-    .replace(/,([)\]}>])/g, '$1')
+  return String.replace(
+    /,([)\]}>])/g,
+    '$1',
+  )(
+    String.replace(
+      /\s+/g,
+      '',
+    )(
+      Array.reduce(
+        [...own].sort((a, b) => b.start - a.start),
+        String.slice(node.start, node.end)(text),
+        (body, read) =>
+          `${String.slice(0, read.start - node.start)(body)}\u0000${String.slice(read.end - node.start)(body)}`,
+      ),
+    ),
+  )
 }
 
 // NOTE: a value with no structure of its own: a literal, a name, a member of
@@ -269,7 +291,7 @@ const isOwnState = (node: Node, body: string): boolean => {
       return (
         (Array.isArray(node['arguments']) &&
           node['arguments'].length === 0 &&
-          nameOf(node['callee']).startsWith('create')) ||
+          String.startsWith('create')(nameOf(node['callee']))) ||
         OWN_READS.test(body)
       )
     case 'ArrayExpression':
@@ -299,15 +321,22 @@ type Helper = Readonly<{
 
 // NOTE: a relative import as a path from the root, so `./zombies` in src and
 // `../../src/zombies` in tools name the same module.
-const moduleOf = (file: string, source: string): string =>
-  source.startsWith('.')
-    ? join(dirname(file), source).replace(/\.(ts|js|mjs)$/, '')
+const moduleOf = (path: Path.Path, file: string, source: string): string =>
+  String.startsWith('.')(source)
+    ? String.replace(
+        /\.(ts|js|mjs)$/,
+        '',
+      )(path.join(path.dirname(file), source))
     : source
 
 const lineOf = (text: string, offset: number): number =>
-  text.slice(0, offset).split('\n').length
+  String.split('\n')(String.slice(0, offset)(text)).length
 
-const helpersOf = (file: string, text: string): ReadonlyArray<Helper> => {
+const helpersOf = (
+  path: Path.Path,
+  file: string,
+  text: string,
+): ReadonlyArray<Helper> => {
   const { program } = parseSync(file, text)
   // NOTE: a name may be both a value and a type (`const Message` and
   // `type Message`). A helper is its value; a name it reads means both.
@@ -337,11 +366,14 @@ const helpersOf = (file: string, text: string): ReadonlyArray<Helper> => {
       for (const specifier of nodesIn(statement['specifiers'])) {
         const local = nameOf(specifier['local'])
         const imported = isNode(specifier['imported'])
-          ? String(
+          ? globalThis.String(
               specifier['imported']['name'] ?? specifier['imported']['value'],
             )
           : specifier.type
-        imports.set(local, `${moduleOf(file, String(source))}#${imported}`)
+        imports.set(
+          local,
+          `${moduleOf(path, file, globalThis.String(source))}#${imported}`,
+        )
       }
     }
     // NOTE: a type a helper names is part of what it means, but no helper.
@@ -368,7 +400,7 @@ const helpersOf = (file: string, text: string): ReadonlyArray<Helper> => {
           record(values, name, init, declarator.start)
           if (
             isReassigned ||
-            isOwnState(init, text.slice(init.start, init.end))
+            isOwnState(init, String.slice(init.start, init.end)(text))
           ) {
             ownState.add(name)
           } else if (!isPlain(init)) {
@@ -393,12 +425,14 @@ const helpersOf = (file: string, text: string): ReadonlyArray<Helper> => {
     }
     const inner = new Set([...seen, name])
     const body = bodyOf(text, declaration.node, name)
-    const meanings = [...namesIn(declaration.node)]
-      .filter(other => other !== name)
-      .filter(other => isDeclared(other) || imports.has(other))
-      .sort()
-      .map(other => `${other}=${meaningOf(other, inner)}`)
-    const key = [body, ...meanings].join('\n')
+    const meanings = Array.map(
+      Array.filter(
+        Array.filter([...namesIn(declaration.node)], other => other !== name),
+        other => isDeclared(other) || imports.has(other),
+      ).sort(),
+      other => `${other}=${meaningOf(other, inner)}`,
+    )
+    const key = Array.join([body, ...meanings], '\n')
     keys.set(declaration, key)
     return key
   }
@@ -412,14 +446,15 @@ const helpersOf = (file: string, text: string): ReadonlyArray<Helper> => {
     if (ownState.has(name)) {
       return `own:${file}#${name}`
     }
-    return [values.get(name), types.get(name)]
-      .flatMap(declaration =>
+    return Array.join(
+      Array.flatMap([values.get(name), types.get(name)], declaration =>
         declaration === undefined ? [] : [keyOf(declaration, name, seen)],
-      )
-      .join('\n&\n')
+      ),
+      '\n&\n',
+    )
   }
 
-  return [...helperNames].flatMap(name => {
+  return Array.flatMap([...helperNames], name => {
     const declaration = values.get(name)
     return declaration === undefined
       ? []
@@ -434,68 +469,90 @@ const helpersOf = (file: string, text: string): ReadonlyArray<Helper> => {
   })
 }
 
-const copiesOf = async (kind: Kind): Promise<number> => {
-  const copies = new Map<string, Array<Helper>>()
-  for (const pattern of kind.patterns) {
-    for await (const file of new Glob(pattern).scan({ cwd: ROOT })) {
-      if (file.includes('node_modules') || kind.isSkipped(file)) {
-        continue
-      }
-      const text = await Bun.file(`${ROOT}${file}`).text()
-      for (const helper of helpersOf(file, text)) {
-        if (isAllowed(file, helper.name)) {
+// NOTE: the files a pattern matches under the root, outside node_modules.
+const filesMatching = (root: string, pattern: string): ReadonlyArray<string> =>
+  Array.filter(
+    Array.fromIterable(new Glob(pattern).scanSync({ cwd: root })),
+    file => !String.includes('node_modules')(file),
+  )
+
+const firstNameOf = (list: ReadonlyArray<Helper>): string => list[0]?.name ?? ''
+
+const byFirstName: Order.Order<ReadonlyArray<Helper>> = (a, b) =>
+  String.localeCompare(firstNameOf(b))(firstNameOf(a))
+
+const copiesOf = (root: string, kind: Kind) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const copies = new Map<string, Array<Helper>>()
+    for (const pattern of kind.patterns) {
+      for (const file of filesMatching(root, pattern)) {
+        if (kind.isSkipped(file)) {
           continue
         }
-        // NOTE: the key alone, so a copy under a new name is a copy too.
-        const at = `${groupOf(file)}\n${helper.key}`
-        const list = copies.get(at) ?? []
-        // NOTE: a file two patterns both match is read once.
-        if (!list.some(other => other.file === file)) {
-          copies.set(at, [...list, helper])
+        const text = yield* fs.readFileString(`${root}${file}`)
+        for (const helper of helpersOf(path, file, text)) {
+          if (isAllowed(file, helper.name)) {
+            continue
+          }
+          // NOTE: the key alone, so a copy under a new name is a copy too.
+          const at = `${groupOf(file)}\n${helper.key}`
+          const list = copies.get(at) ?? []
+          // NOTE: a file two patterns both match is read once.
+          if (!Array.some(list, other => other.file === file)) {
+            copies.set(at, [...list, helper])
+          }
         }
       }
     }
-  }
 
-  const repeated = [...copies.values()]
-    .filter(list => list.length > 1)
-    .sort((a, b) => (a[0]?.name ?? '').localeCompare(b[0]?.name ?? ''))
+    const repeated = Array.sort(
+      Array.filter([...copies.values()], list => list.length > 1),
+      byFirstName,
+    )
 
-  for (const list of repeated) {
-    const [first, ...rest] = list
-    const copied = rest.map(({ file, line, name }) =>
-      name === first?.name
-        ? `${file}:${line}`
-        : `${file}:${line} as \`${name}\``,
-    )
-    console.error(
-      `${first?.file}:${first?.line}: \`${first?.name}\` is copied in ${copied.join(', ')}`,
-    )
-  }
-  if (repeated.length > 0) {
-    console.error(
-      `${repeated.length} ${kind.name}(s) copied between files: ${kind.advice}.`,
-    )
-  }
-  return repeated.length
-}
+    for (const list of repeated) {
+      const [first, ...rest] = list
+      const copied = Array.map(rest, ({ file, line, name }) =>
+        name === first?.name
+          ? `${file}:${line}`
+          : `${file}:${line} as \`${name}\``,
+      )
+      yield* Console.error(
+        `${first?.file}:${first?.line}: \`${first?.name}\` is copied in ${Array.join(copied, ', ')}`,
+      )
+    }
+    if (repeated.length > 0) {
+      yield* Console.error(
+        `${repeated.length} ${kind.name}(s) copied between files: ${kind.advice}.`,
+      )
+    }
+    return repeated.length
+  })
 
 // NOTE: the names a module exports from its own declarations.
 const exportedNames = (file: string, text: string): ReadonlyArray<string> =>
-  nodesIn(parseSync(file, text).program.body)
-    .filter(statement => statement.type === 'ExportNamedDeclaration')
-    .flatMap(statement => {
-      const declaration = statement['declaration']
-      if (!isNode(declaration)) {
-        return []
-      }
-      return declaration.type === 'VariableDeclaration'
-        ? nodesIn(declaration['declarations']).map(declarator =>
-            nameOf(declarator['id']),
-          )
-        : [nameOf(declaration['id'])]
-    })
-    .filter(name => name !== '')
+  Array.filter(
+    Array.flatMap(
+      Array.filter(
+        nodesIn(parseSync(file, text).program.body),
+        statement => statement.type === 'ExportNamedDeclaration',
+      ),
+      (statement: Node) => {
+        const declaration = statement['declaration']
+        if (!isNode(declaration)) {
+          return []
+        }
+        return declaration.type === 'VariableDeclaration'
+          ? Array.map(nodesIn(declaration['declarations']), declarator =>
+              nameOf(declarator['id']),
+            )
+          : [nameOf(declaration['id'])]
+      },
+    ),
+    name => name !== '',
+  )
 
 // NOTE: two shared test homes of one code base that export the same name,
 // as `readyModel` once meant one Model in src/model.fixture.ts and another
@@ -503,46 +560,78 @@ const exportedNames = (file: string, text: string): ReadonlyArray<string> =>
 // in src/shop.fixture.ts. A test that imports the name gets whichever file
 // it happened to name, so each shared name lives in one home, and a
 // different value gets a name that says which.
-const sharedNameClashes = async (): Promise<number> => {
-  const homes = new Map<string, Array<string>>()
-  for (const pattern of TEST_HOMES) {
-    for await (const file of new Glob(pattern).scan({ cwd: ROOT })) {
-      if (file.includes('node_modules')) {
-        continue
-      }
-      const text = await Bun.file(`${ROOT}${file}`).text()
-      for (const name of exportedNames(file, text)) {
-        const at = `${groupOf(file)}\n${name}`
-        const files = homes.get(at) ?? []
-        if (!files.includes(file)) {
-          homes.set(at, [...files, file])
+const sharedNameClashes = (root: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const homes = new Map<string, Array<string>>()
+    for (const pattern of TEST_HOMES) {
+      for (const file of filesMatching(root, pattern)) {
+        const text = yield* fs.readFileString(`${root}${file}`)
+        for (const name of exportedNames(file, text)) {
+          const at = `${groupOf(file)}\n${name}`
+          const files = homes.get(at) ?? []
+          if (!Array.contains(files, file)) {
+            homes.set(at, [...files, file])
+          }
         }
       }
     }
-  }
-  const clashes = [...homes.entries()].filter(([, files]) => files.length > 1)
-  for (const [at, files] of clashes) {
-    console.error(
-      `\`${at.split('\n')[1]}\` is exported by more than one shared test home: ${files.join(', ')}. Keep one, or give the other a name that says which.`,
+    const clashes = Array.filter(
+      [...homes.entries()],
+      ([, files]) => files.length > 1,
     )
+    for (const [at, files] of clashes) {
+      const name = Option.getOrElse(
+        Array.get(String.split('\n')(at), 1),
+        () => '',
+      )
+      yield* Console.error(
+        `\`${name}\` is exported by more than one shared test home: ${Array.join(files, ', ')}. Keep one, or give the other a name that says which.`,
+      )
+    }
+    return clashes.length
+  })
+
+// NOTE: the script has printed every copy, so the runtime reports nothing
+// more and exits with 1.
+class CopiesFound extends Schema.TaggedError<
+  CopiesFound,
+  { readonly brand: unique symbol }
+>()('CopiesFound', {
+  count: Schema.Finite,
+}) {
+  override get [Runtime.errorExitCode](): number {
+    return 1
   }
-  return clashes.length
+  override readonly [Runtime.errorReported] = false
 }
 
-let total = await sharedNameClashes()
-for (const kind of KINDS) {
-  total += await copiesOf(kind)
-}
-// NOTE: an allowed copy that is gone is dropped from ALLOWED, so the list
-// never hides a new copy under an old name.
-for (const { file, name } of ALLOWED) {
-  if (!allowedSeen.has(`${file}#${name}`)) {
-    console.error(
-      `tools/lint/duplicateHelpers.ts: \`${name}\` in ${file} is no longer declared there: drop it from ALLOWED.`,
-    )
-    total += 1
+const program = Effect.gen(function* () {
+  const path = yield* Path.Path
+  // NOTE: the repository, or another checkout of it given as the argument.
+  const root = path.join(
+    Option.getOrElse(Array.get(process.argv, 2), () =>
+      path.resolve(import.meta.dirname, '../..'),
+    ),
+    '/',
+  )
+  let total = yield* sharedNameClashes(root)
+  for (const kind of KINDS) {
+    total += yield* copiesOf(root, kind)
   }
-}
-if (total > 0) {
-  process.exit(1)
-}
+  // NOTE: an allowed copy that is gone is dropped from ALLOWED, so the list
+  // never hides a new copy under an old name.
+  for (const { file, name } of ALLOWED) {
+    if (!allowedSeen.has(`${file}#${name}`)) {
+      yield* Console.error(
+        `tools/lint/duplicateHelpers.ts: \`${name}\` in ${file} is no longer declared there: drop it from ALLOWED.`,
+      )
+      total += 1
+    }
+  }
+  if (total > 0) {
+    return yield* CopiesFound.make({ count: total })
+  }
+})
+
+NodeRuntime.runMain(program.pipe(Effect.provide(NodeServices.layer)))

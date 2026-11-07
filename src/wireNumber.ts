@@ -28,10 +28,10 @@ declare module 'effect/Schema' {
   }
 }
 
-export const PositionNumber = Schema.Number.annotate({ wire: 'Position' })
-export const VelocityNumber = Schema.Number.annotate({ wire: 'Velocity' })
-export const UnitNumber = Schema.Number.annotate({ wire: 'Unit' })
-export const MillisNumber = Schema.Number.annotate({ wire: 'Millis' })
+export const PositionNumber = Schema.Finite.annotate({ wire: 'Position' })
+export const VelocityNumber = Schema.Finite.annotate({ wire: 'Velocity' })
+export const UnitNumber = Schema.Finite.annotate({ wire: 'Unit' })
+export const MillisNumber = Schema.Finite.annotate({ wire: 'Millis' })
 
 // NOTE: the same `{ x, y }` as `Vector`, packed by what it holds.
 export const Point = Schema.Struct({ x: PositionNumber, y: PositionNumber })

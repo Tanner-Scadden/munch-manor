@@ -1,4 +1,4 @@
-import { Array, Option, Result, Schema, String, pipe } from 'effect'
+import { Array, Function, Option, Result, Schema, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { screenCameraOf, worldToView } from './camera'
@@ -90,13 +90,16 @@ const learnFromPractice = (
     : { ...lessons, move, fire, pickup }
 }
 
-export const learnFromFrame = (before: Model, after: Model): Model => {
+export const learnFromFrame: {
+  (after: Model): (before: Model) => Model
+  (before: Model, after: Model): Model
+} = Function.dual(2, (before: Model, after: Model): Model => {
   const practice = practise(before, after)
   return modifyFields(after, {
     practice: () => practice,
     lessons: lessons => learnFromPractice(lessons, practice, after),
   })
-}
+})
 
 // PRACTICE GATE
 
@@ -138,11 +141,15 @@ export const raiseDebutCard = (model: Model): Model =>
 
 // NOTE: a wave that just started raises the card for any kind in it the
 // player has not met yet.
-export const raiseDebutCardFrom = (before: Model, after: Model): Model =>
+export const raiseDebutCardFrom: {
+  (after: Model): (before: Model) => Model
+  (before: Model, after: Model): Model
+} = Function.dual(2, (before: Model, after: Model): Model =>
   Phase.isAnyOf(['Preparation'])(before.phase) &&
   Phase.isAnyOf(['Wave'])(after.phase)
     ? raiseDebutCard(after)
-    : after
+    : after,
+)
 
 export const isDebutCardUp = (model: Model): boolean =>
   DebutCard.isAnyOf(['Showing'])(model.debutCard)
@@ -150,7 +157,10 @@ export const isDebutCardUp = (model: Model): boolean =>
 const finishDebutCard = (model: Model, kind: ZombieKind): Model =>
   raiseDebutCard(modifyFields(model, { introducedKinds: Array.append(kind) }))
 
-export const ageDebutCard = (model: Model, deltaMs: number): Model =>
+export const ageDebutCard: {
+  (deltaMs: number): (model: Model) => Model
+  (model: Model, deltaMs: number): Model
+} = Function.dual(2, (model: Model, deltaMs: number): Model =>
   DebutCard.match(model.debutCard, {
     Hidden: () => model,
     Showing: ({ kind, ageMs }) =>
@@ -160,7 +170,8 @@ export const ageDebutCard = (model: Model, deltaMs: number): Model =>
             debutCard: () =>
               DebutCard.Showing({ kind, ageMs: ageMs + deltaMs }),
           }),
-  })
+  }),
+)
 
 export const canSkipDebutCard = (model: Model): boolean =>
   DebutCard.match(model.debutCard, {
@@ -299,19 +310,26 @@ export const HINT_PARTS: Readonly<
   },
 }
 
-export const hintWords = (id: HintId, device: InputDevice): string =>
+export const hintWords: {
+  (device: InputDevice): (id: HintId) => string
+  (id: HintId, device: InputDevice): string
+} = Function.dual(2, (id: HintId, device: InputDevice): string =>
   pipe(
     HINT_PARTS[id][device],
     Array.map(({ words }) => words),
     Array.filter(String.isNonEmpty),
     Array.join(' '),
-  )
+  ),
+)
 
-export const hintIcons = (
-  id: HintId,
-  device: InputDevice,
-): ReadonlyArray<HintIcon> =>
-  Array.map(HINT_PARTS[id][device], ({ icon }) => icon)
+export const hintIcons: {
+  (device: InputDevice): (id: HintId) => ReadonlyArray<HintIcon>
+  (id: HintId, device: InputDevice): ReadonlyArray<HintIcon>
+} = Function.dual(
+  2,
+  (id: HintId, device: InputDevice): ReadonlyArray<HintIcon> =>
+    Array.map(HINT_PARTS[id][device], ({ icon }) => icon),
+)
 
 export type ShownHint = Readonly<{ id: HintId; ageMs: number }>
 

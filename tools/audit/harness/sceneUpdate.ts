@@ -2,7 +2,7 @@
 // every update (`god`, `gasroom`), freezing and `tick`, the Message log,
 // and the scene's first Model with the Profile, a hold, or a melee set up.
 
-import { Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { toParentMessage } from 'foldkit/test'
 
@@ -49,7 +49,8 @@ const GASBAG_DOORS: ReadonlyArray<readonly [number, number]> = [
   [8, 90],
 ]
 const topUpGasbags = (gasbagRoom: number, model: Model): Model => {
-  const alive = model.zombies.filter(
+  const alive = Array.filter(
+    model.zombies,
     z => z.kind === 'Exploder' && z.state._tag === 'Walking',
   ).length
   const missing = Math.max(0, Math.min(4, gasbagRoom - alive))
@@ -97,24 +98,37 @@ export type HarnessReturn = Director.Return
 
 // NOTE: what the harness adds after every update: full health with `god`,
 // and fresh Kaboomers at the doors with `gasroom`.
-export const keepScene = (
-  settings: SceneSettings,
-  result: HarnessReturn,
-  message: Message,
-): HarnessReturn => {
-  const { god, gasbagRoom } = settings
-  const kept = god
-    ? {
-        ...result,
-        model: modifyFocus(result.model, {
-          player: p => ({ ...p, hp: PLAYER_MAX_HP }),
-        }),
-      }
-    : result
-  return gasbagRoom > 0 && message._tag === 'TickedFrame'
-    ? { ...kept, model: topUpGasbags(gasbagRoom, kept.model) }
-    : kept
-}
+export const keepScene: {
+  (
+    result: HarnessReturn,
+    message: Message,
+  ): (settings: SceneSettings) => HarnessReturn
+  (
+    settings: SceneSettings,
+    result: HarnessReturn,
+    message: Message,
+  ): HarnessReturn
+} = Function.dual(
+  3,
+  (
+    settings: SceneSettings,
+    result: HarnessReturn,
+    message: Message,
+  ): HarnessReturn => {
+    const { god, gasbagRoom } = settings
+    const kept = god
+      ? {
+          ...result,
+          model: modifyFocus(result.model, {
+            player: p => ({ ...p, hp: PLAYER_MAX_HP }),
+          }),
+        }
+      : result
+    return gasbagRoom > 0 && message._tag === 'TickedFrame'
+      ? { ...kept, model: topUpGasbags(gasbagRoom, kept.model) }
+      : kept
+  },
+)
 
 // NOTE: `tick=N` plays N frames of a fixed 1/60 second at once, before the
 // first render, and holds the picture there. The game is deterministic, so
@@ -151,99 +165,102 @@ export const logMessage = (incoming: unknown) => {
       : []
   const tags = chain(incoming)
   if (tags[0] !== undefined && !QUIET_MESSAGES.has(tags[0])) {
-    window.__messages.push(tags.join(':'))
+    window.__messages.push(Array.join(tags, ':'))
   }
 }
 
-export const gameUpdate = (
-  page: HarnessPage,
-  model: Model,
-  incoming: Message,
-): HarnessReturn => {
-  const { settings } = page
-  const { config, freezeAfter, instrument } = settings
-  const isFrozenFrame =
-    incoming._tag === 'TickedFrame' && page.framesRun >= freezeAfter
-  const isFreezing = Number.isFinite(freezeAfter)
-  if (isFrozenFrame) {
-    return { model }
-  }
-  // NOTE: a director shot steps the co-op room itself, on the shot's clock.
-  if (config.director && incoming._tag === 'TickedRoomFrame') {
-    return { model }
-  }
-  if (isFreezing && incoming._tag === 'CompletedGenerateSeed') {
-    return { model }
-  }
-  // NOTE: a frozen run starts counting frames once the surface is measured,
-  // so how long the first render takes cannot change which frame the
-  // measurement lands on, and two builds freeze on the same picture.
-  if (
-    isFreezing &&
-    incoming._tag === 'TickedFrame' &&
-    Option.isNone(model.maybeSurface)
-  ) {
-    return { model }
-  }
-  if (
-    config.fit !== undefined &&
-    incoming._tag === 'CompletedDetectScreenFit'
-  ) {
-    return {
-      model: modifyFields(model, {
-        screenFit: () => (config.fit === 'home' ? 'HomeScreen' : 'Fullscreen'),
-      }),
+export const gameUpdate: {
+  (model: Model, incoming: Message): (page: HarnessPage) => HarnessReturn
+  (page: HarnessPage, model: Model, incoming: Message): HarnessReturn
+} = Function.dual(
+  3,
+  (page: HarnessPage, model: Model, incoming: Message): HarnessReturn => {
+    const { settings } = page
+    const { config, freezeAfter, instrument } = settings
+    const isFrozenFrame =
+      incoming._tag === 'TickedFrame' && page.framesRun >= freezeAfter
+    const isFreezing = Number.isFinite(freezeAfter)
+    if (isFrozenFrame) {
+      return { model }
     }
-  }
-  if (
-    config.sync !== undefined &&
-    (incoming._tag === 'UpdatedSyncStatus' ||
-      incoming._tag === 'UpdatedPlayerScopeStatus')
-  ) {
-    return { model }
-  }
-  if (config.rotate && incoming._tag === 'CompletedDetectOrientationLock') {
-    return {
-      model: modifyFields(model, { orientationLock: () => 'Supported' }),
+    // NOTE: a director shot steps the co-op room itself, on the shot's clock.
+    if (config.director && incoming._tag === 'TickedRoomFrame') {
+      return { model }
     }
-  }
-  // NOTE: `install` keeps Chrome's offer on, and `greet` reads as the page
-  // just reloaded onto this build. The gift never reloads the harness: it
-  // stays mid-unwrap, as `unwrap` shows it.
-  if (config.install && incoming._tag === 'ChangedInstallOffer') {
-    return { model }
-  }
-  if (incoming._tag === 'CompletedWaitForUnwrap') {
-    return { model }
-  }
-  const message =
-    incoming._tag === 'TickedFrame' && isFreezing
-      ? Message.TickedFrame({ deltaTime: FIXED_FRAME_MS })
-      : config.greet && incoming._tag === 'CompletedReadUpdateMarker'
-        ? Message.CompletedReadUpdateMarker({
-            maybeBuild: Option.some(RUNNING_BUILD),
-          })
-        : incoming
-  if (message._tag === 'TickedFrame') {
-    page.framesRun++
-  }
-  window.__isFrozen = page.framesRun >= freezeAfter
-  const t0 = performance.now()
-  const result = update(model, message)
-  // NOTE: the frame tick is TickedFrame alone, or in an online run the
-  // room's TickedRoomFrame, which is the one that changes the Model there.
-  if (
-    instrument &&
-    (message._tag === 'TickedFrame' || message._tag === 'TickedRoomFrame') &&
-    result.model !== model
-  ) {
-    window.__timings.update.push(performance.now() - t0)
-    window.__timings.tickFrames.push(animationFrameTime())
-  }
-  const next = keepScene(settings, result, message)
-  window.__model = next.model
-  return next
-}
+    if (isFreezing && incoming._tag === 'CompletedGenerateSeed') {
+      return { model }
+    }
+    // NOTE: a frozen run starts counting frames once the surface is measured,
+    // so how long the first render takes cannot change which frame the
+    // measurement lands on, and two builds freeze on the same picture.
+    if (
+      isFreezing &&
+      incoming._tag === 'TickedFrame' &&
+      Option.isNone(model.maybeSurface)
+    ) {
+      return { model }
+    }
+    if (
+      config.fit !== undefined &&
+      incoming._tag === 'CompletedDetectScreenFit'
+    ) {
+      return {
+        model: modifyFields(model, {
+          screenFit: () =>
+            config.fit === 'home' ? 'HomeScreen' : 'Fullscreen',
+        }),
+      }
+    }
+    if (
+      config.sync !== undefined &&
+      (incoming._tag === 'UpdatedSyncStatus' ||
+        incoming._tag === 'UpdatedPlayerScopeStatus')
+    ) {
+      return { model }
+    }
+    if (config.rotate && incoming._tag === 'CompletedDetectOrientationLock') {
+      return {
+        model: modifyFields(model, { orientationLock: () => 'Supported' }),
+      }
+    }
+    // NOTE: `install` keeps Chrome's offer on, and `greet` reads as the page
+    // just reloaded onto this build. The gift never reloads the harness: it
+    // stays mid-unwrap, as `unwrap` shows it.
+    if (config.install && incoming._tag === 'ChangedInstallOffer') {
+      return { model }
+    }
+    if (incoming._tag === 'CompletedWaitForUnwrap') {
+      return { model }
+    }
+    const message =
+      incoming._tag === 'TickedFrame' && isFreezing
+        ? Message.TickedFrame({ deltaTime: FIXED_FRAME_MS })
+        : config.greet && incoming._tag === 'CompletedReadUpdateMarker'
+          ? Message.CompletedReadUpdateMarker({
+              maybeBuild: Option.some(RUNNING_BUILD),
+            })
+          : incoming
+    if (message._tag === 'TickedFrame') {
+      page.framesRun++
+    }
+    window.__isFrozen = page.framesRun >= freezeAfter
+    const t0 = performance.now()
+    const result = update(model, message)
+    // NOTE: the frame tick is TickedFrame alone, or in an online run the
+    // room's TickedRoomFrame, which is the one that changes the Model there.
+    if (
+      instrument &&
+      (message._tag === 'TickedFrame' || message._tag === 'TickedRoomFrame') &&
+      result.model !== model
+    ) {
+      window.__timings.update.push(performance.now() - t0)
+      window.__timings.tickFrames.push(animationFrameTime())
+    }
+    const next = keepScene(settings, result, message)
+    window.__model = next.model
+    return next
+  },
+)
 
 // NOTE: the Profile open on a tab, as openProfile (src/update/profile.ts)
 // opens it, without its menu check: the tab and the name draft, the input
@@ -268,10 +285,10 @@ const openProfileOn = (model: Model, tab: ProfileTab): HarnessReturn =>
 // NOTE: the scene's Model from the current config: seeded when it is frozen
 // or given a seed, with the Profile opened by `picker` or `profile`, and played
 // `tick` frames ahead.
-export const sceneOf = (
-  settings: SceneSettings,
-  model: Model,
-): HarnessReturn => {
+export const sceneOf: {
+  (model: Model): (settings: SceneSettings) => HarnessReturn
+  (settings: SceneSettings, model: Model): HarnessReturn
+} = Function.dual(2, (settings: SceneSettings, model: Model): HarnessReturn => {
   const { config, freezeAfter } = settings
   const seeded =
     config.seed !== undefined || Number.isFinite(freezeAfter)
@@ -364,4 +381,4 @@ export const sceneOf = (
   return config.tick === undefined
     ? dried
     : advance(settings, dried, config.tick)
-}
+})

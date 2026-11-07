@@ -5,23 +5,26 @@
 // `sfk-<TAG>-<viewport>-<scene>.png`.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsFindKitchen.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
+import { Effect } from 'effect'
+
+import { runHarnessAudit } from './harnessServer'
 import {
   DESKTOP_1280,
   PHONE_844,
-  TAG,
   UPRIGHT_390,
+  auditTag,
   deviceQuery,
   finish,
   harnessQuery,
   isPickedScene,
-  launch,
+  openBrowser,
   pickViewports,
   scenePages,
   settleAnimations,
   shot,
-  useHarness,
   wait,
 } from './lib'
+import { attempt } from './page'
 
 const VIEWPORTS = pickViewports([
   { ...DESKTOP_1280, name: 'desktop' },
@@ -55,29 +58,34 @@ const SCENES: ReadonlyArray<Scene> = [
   },
 ]
 
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev'])
-for (const viewport of VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* VIEWPORTS
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev'])
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
+        }
+        const page = yield* pages.open(
+          viewport,
+          harnessQuery(scene.query, deviceQuery(viewport)),
+        )
+        yield* settleAnimations(page)
+        const { hold } = scene
+        if (hold !== undefined) {
+          yield* attempt(() => page.keyboard.down(hold))
+          yield* wait(1500)
+          yield* attempt(() => page.keyboard.up(hold))
+          yield* wait(300)
+        }
+        yield* shot(page, `sfk-${tag}-${viewport.name}-${scene.name}`)
+        pages.release(page)
+      }
     }
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
-    )
-    await settleAnimations(page)
-    if (scene.hold !== undefined) {
-      await page.keyboard.down(scene.hold)
-      await wait(1500)
-      await page.keyboard.up(scene.hold)
-      await wait(300)
-    }
-    await shot(page, `sfk-${TAG}-${viewport.name}-${scene.name}`)
-    pages.release(page)
-  }
-}
-await pages.close()
-await browser.close()
-finish([], 'Shots taken.')
+    yield* pages.close
+    yield* finish([], 'Shots taken.')
+  }),
+)

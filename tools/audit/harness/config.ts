@@ -1,4 +1,12 @@
-import { Effect, Schema, SchemaGetter } from 'effect'
+import {
+  Array,
+  Effect,
+  Record,
+  type Result,
+  Schema,
+  SchemaGetter,
+  String,
+} from 'effect'
 
 import {
   DoorId,
@@ -36,7 +44,7 @@ const Flag = Schema.String.pipe(
 
 const Num = (fallback: number) =>
   Schema.FiniteFromString.pipe(
-    Schema.withDecodingDefaultKey(Effect.succeed(String(fallback))),
+    Schema.withDecodingDefaultKey(Effect.succeed(globalThis.String(fallback))),
   )
 
 const MaybeNum = Schema.optionalKey(Schema.FiniteFromString)
@@ -45,16 +53,16 @@ const Choice = <const L extends ReadonlyArray<string>>(literals: L) =>
   Schema.optionalKey(Schema.Literals(literals))
 
 const split = (text: string, separator: string) =>
-  text.split(separator).filter(part => part.length > 0)
+  Array.filter(String.split(separator)(text), part => part.length > 0)
 
 // NOTE: text split into its parts, which the next Schema decodes.
 const SplitBy = (separator: string, isKeepingEmpty = false) =>
   Schema.String.pipe(
     Schema.decodeTo(Schema.Array(Schema.String), {
       decode: SchemaGetter.transform(text =>
-        isKeepingEmpty ? text.split(separator) : split(text, separator),
+        isKeepingEmpty ? String.split(separator)(text) : split(text, separator),
       ),
-      encode: SchemaGetter.transform(parts => parts.join(separator)),
+      encode: SchemaGetter.transform(parts => Array.join(parts, separator)),
     }),
   )
 
@@ -71,7 +79,7 @@ const PointFromString = SplitBy(',', true).pipe(Schema.decodeTo(Point))
 const Puddles = Schema.String.pipe(
   Schema.decodeTo(Schema.Array(PointFromString), {
     decode: SchemaGetter.transform(text => split(text, ';')),
-    encode: SchemaGetter.transform(spots => spots.join(';')),
+    encode: SchemaGetter.transform(spots => Array.join(spots, ';')),
   }),
 )
 
@@ -90,13 +98,13 @@ const LOOK_PARTS = 9
 const Look = Schema.String.pipe(
   Schema.decodeTo(Schema.Array(Schema.String), {
     decode: SchemaGetter.transform(text => {
-      const parts = text.split(',')
-      return Array.from(
+      const parts = String.split(',')(text)
+      return globalThis.Array.from(
         { length: LOOK_PARTS },
         (_, index) => parts[index] ?? '',
       )
     }),
-    encode: SchemaGetter.transform(parts => parts.join(',')),
+    encode: SchemaGetter.transform(parts => Array.join(parts, ',')),
   }),
   Schema.decodeTo(
     Schema.Tuple([
@@ -360,8 +368,10 @@ export const HarnessConfig = Schema.Struct({
 })
 export type HarnessConfig = typeof HarnessConfig.Type
 
-export const decodeHarnessConfig = (search: string): HarnessConfig =>
-  Schema.decodeSync(HarnessConfig)(
-    Object.fromEntries(new URLSearchParams(search)),
+export const decodeHarnessConfig = (
+  search: string,
+): Result.Result<HarnessConfig, Schema.SchemaError> =>
+  Schema.decodeResult(HarnessConfig)(
+    Record.fromEntries(new URLSearchParams(search)),
     { onExcessProperty: 'error', errors: 'all' },
   )

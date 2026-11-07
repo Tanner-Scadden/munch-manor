@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { type AmmoItemId, maybeAmmoItemOf } from './ammoCounter'
@@ -392,19 +392,32 @@ const placedOffer = (offer: Offer, tag: PriceTag): Offer =>
 
 // NOTE: where an offer's tag hangs in the world, for the HTML button that
 // takes a click on it (src/purchaseHud.ts, ammoTagButtonView).
-export const tagBoxOf = (
-  model: Model,
-  offer: Offer,
-): Readonly<{ x: number; y: number; width: number; height: number }> => {
-  const tag = tagOf(model, offer)
-  const placed = placedOffer(offer, tag)
-  return {
-    x: tagLeft(placed, tag),
-    y: placed.spot.y,
-    width: tag.width,
-    height: tag.height,
-  }
-}
+export const tagBoxOf: {
+  (
+    offer: Offer,
+  ): (
+    model: Model,
+  ) => Readonly<{ x: number; y: number; width: number; height: number }>
+  (
+    model: Model,
+    offer: Offer,
+  ): Readonly<{ x: number; y: number; width: number; height: number }>
+} = Function.dual(
+  2,
+  (
+    model: Model,
+    offer: Offer,
+  ): Readonly<{ x: number; y: number; width: number; height: number }> => {
+    const tag = tagOf(model, offer)
+    const placed = placedOffer(offer, tag)
+    return {
+      x: tagLeft(placed, tag),
+      y: placed.spot.y,
+      width: tag.width,
+      height: tag.height,
+    }
+  },
+)
 
 // NOTE: what taking a prize gives up hangs under the TAKE tag, crossed
 // out: for the Clang Pan the knife, whose slot it takes; for a gun-slot
@@ -540,18 +553,23 @@ const purchaseShapes = (
 // NOTE: drawn on the overlay, over the actors and the HUD strip, placed
 // in the world by the screen camera, so a tag is never lost behind a
 // zombie at the boards or dimmed by the strip it hangs under.
-export const purchaseOverlayShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
-  Array.match(purchaseShapes(model, camera), {
-    onEmpty: () => [],
-    onNonEmpty: shapes => [
-      group({
-        translate: worldToView(camera, ZERO_VECTOR),
-        scale:
-          camera.scale === 1 ? undefined : { x: camera.scale, y: camera.scale },
-        shapes,
-      }),
-    ],
-  })
+export const purchaseOverlayShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+    Array.match(purchaseShapes(model, camera), {
+      onEmpty: () => [],
+      onNonEmpty: shapes => [
+        group({
+          translate: worldToView(camera, ZERO_VECTOR),
+          scale:
+            camera.scale === 1
+              ? undefined
+              : { x: camera.scale, y: camera.scale },
+          shapes,
+        }),
+      ],
+    }),
+)

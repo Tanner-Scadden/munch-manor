@@ -1,3 +1,16 @@
+import {
+  Array,
+  Config,
+  Console,
+  Effect,
+  FileSystem,
+  Order,
+  Path,
+  String,
+} from 'effect'
+import { ChildProcess, ChildProcessSpawner } from 'effect/process'
+import type { Page } from 'playwright-core'
+
 // The update chip, in two parts, as `s26-<TAG>-...png`.
 //
 // PART=layout (the default) puts a newer build in the harness Model and
@@ -12,30 +25,28 @@
 // visibilitychange, waits for the chip, taps it, and checks the reloaded
 // page runs the new build. Run it from tools/audit:
 //   PART=e2e bun shots26.ts
-import { type ChildProcess, execFileSync, spawn } from 'node:child_process'
-import { resolve } from 'node:path'
-import type { Page } from 'playwright-core'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
+import { runHarnessAuditWith } from './harnessServer'
 import {
   DESKTOP_1280,
   PHONE_667,
   PHONE_844,
-  TAG,
   type Viewport,
+  auditTag,
+  closePage,
+  countOf,
   deviceQuery,
   gotoScene,
   harnessUrl,
   isPickedScene,
-  launch,
+  openBrowser,
   openPage,
   settleAnimations,
   shot,
-  useHarness,
   wait,
 } from './lib'
-
-const PART = process.env['PART'] ?? 'layout'
-const ROOT = resolve(import.meta.dir, '../..')
+import { attempt, failWith } from './page'
 
 const VIEWPORTS: ReadonlyArray<Viewport> = [PHONE_667, PHONE_844, DESKTOP_1280]
 
@@ -81,193 +92,241 @@ const SCENES: ReadonlyArray<Scene> = [
 ]
 
 const chipReport = (page: Page) =>
-  page.evaluate(() => {
-    type Box = { x: number; y: number; width: number; height: number }
-    const toBox = (element: Element): Box => {
-      const { x, y, width, height } = element.getBoundingClientRect()
-      return { x, y, width, height }
-    }
-    const overlaps = (a: Box, b: Box) =>
-      a.x < b.x + b.width &&
-      b.x < a.x + a.width &&
-      a.y < b.y + b.height &&
-      b.y < a.y + a.height
-    const chip = document.querySelector('.home-gift')
-    if (chip === null) {
-      return { chip: undefined, overlaps: [] }
-    }
-    const chipBox = toBox(chip)
-    const others = Array.from(
-      document.querySelectorAll(
-        'button, .pause-help, .mode-choice, .preparation-controls',
-      ),
-    )
-      .filter(element => element !== chip && element.closest('dialog') === null)
-      .filter(element => {
+  attempt(() =>
+    page.evaluate(() => {
+      type Box = { x: number; y: number; width: number; height: number }
+      const toBox = (element: Element): Box => {
+        const { x, y, width, height } = element.getBoundingClientRect()
+        return { x, y, width, height }
+      }
+      const overlaps = (a: Box, b: Box) =>
+        a.x < b.x + b.width &&
+        b.x < a.x + a.width &&
+        a.y < b.y + b.height &&
+        b.y < a.y + a.height
+      const chip = document.querySelector('.home-gift')
+      if (chip === null) {
+        return { chip: undefined, overlaps: [] }
+      }
+      const chipBox = toBox(chip)
+      const overlapping: Array<string> = []
+      for (const element of globalThis.Array.from(
+        document.querySelectorAll(
+          'button, .pause-help, .mode-choice, .preparation-controls',
+        ),
+      )) {
+        if (element === chip || element.closest('dialog') !== null) {
+          continue
+        }
         const box = toBox(element)
         const style = getComputedStyle(element)
-        return (
+        const isShown =
           box.width > 0 &&
           style.visibility !== 'hidden' &&
           style.display !== 'none'
+        if (isShown && overlaps(chipBox, box)) {
+          overlapping.push(
+            element.getAttribute('aria-label') ?? element.className,
+          )
+        }
+      }
+      return {
+        chip: { label: chip.textContent, ...chipBox },
+        overlaps: overlapping,
+      }
+    }),
+  )
+
+const layout = (tag: string) =>
+  Effect.gen(function* () {
+    const browser = yield* openBrowser
+    for (const viewport of VIEWPORTS) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
+        }
+        const page = yield* openPage(browser, viewport)
+        yield* gotoScene(
+          page,
+          harnessUrl(scene.query, 'newer=next', deviceQuery(viewport)),
         )
-      })
-    return {
-      chip: { label: chip.textContent, ...chipBox },
-      overlaps: others
-        .filter(element => overlaps(chipBox, toBox(element)))
-        .map(
-          element => element.getAttribute('aria-label') ?? element.className,
-        ),
+        yield* settleAnimations(page)
+        const report = yield* chipReport(page)
+        const isRight = (report.chip !== undefined) === scene.hasChip
+        yield* Console.log(
+          `${viewport.name} ${scene.name}: ${
+            report.chip === undefined
+              ? 'no chip'
+              : `chip at ${Math.round(report.chip.x)},${Math.round(report.chip.y)} ${Math.round(report.chip.width)}x${Math.round(report.chip.height)}`
+          }${isRight ? '' : ' WRONG'}${
+            report.overlaps.length > 0
+              ? ` OVERLAPS ${Array.join(report.overlaps, ', ')}`
+              : ''
+          }`,
+        )
+        yield* shot(page, `s26-${tag}-${viewport.name}-${scene.name}`)
+        yield* closePage(page)
+      }
     }
   })
-
-const layout = async () => {
-  await useHarness()
-  const browser = await launch()
-  for (const viewport of VIEWPORTS) {
-    for (const scene of SCENES) {
-      if (!isPickedScene(scene.name)) {
-        continue
-      }
-      const page = await openPage(browser, viewport)
-      await gotoScene(
-        page,
-        harnessUrl(scene.query, 'newer=next', deviceQuery(viewport)),
-      )
-      await settleAnimations(page)
-      const report = await chipReport(page)
-      const isRight = (report.chip !== undefined) === scene.hasChip
-      console.log(
-        `${viewport.name} ${scene.name}: ${
-          report.chip === undefined
-            ? 'no chip'
-            : `chip at ${Math.round(report.chip.x)},${Math.round(report.chip.y)} ${Math.round(report.chip.width)}x${Math.round(report.chip.height)}`
-        }${isRight ? '' : ' WRONG'}${
-          report.overlaps.length > 0
-            ? ` OVERLAPS ${report.overlaps.join(', ')}`
-            : ''
-        }`,
-      )
-      await shot(page, `s26-${TAG}-${viewport.name}-${scene.name}`)
-      await page.context().close()
-    }
-  }
-  await browser.close()
-}
 
 const PREVIEW_PORT = 4186
 const PREVIEW = `http://localhost:${PREVIEW_PORT}/`
 
-const build = (id: string) => {
-  execFileSync('bun', ['run', 'build'], {
-    cwd: ROOT,
-    env: { ...process.env, BUILD_ID: id },
-    stdio: 'ignore',
-  })
-  const versionFile = execFileSync('cat', ['dist/version.json'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-  }).trim()
-  const bundled = execFileSync('grep', ['-rl', id, 'dist/assets'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-  }).trim()
-  console.log(`built ${id}: version.json ${versionFile}, id in ${bundled}`)
-}
+const rootDir = Effect.gen(function* () {
+  const path = yield* Path.Path
+  return path.resolve(import.meta.dir, '../..')
+})
 
-const serve = (): ChildProcess =>
-  spawn(
-    'bunx',
-    ['vite', 'preview', '--port', String(PREVIEW_PORT), '--strictPort'],
-    { cwd: ROOT, stdio: 'ignore' },
+const build = (id: string) =>
+  Effect.gen(function* () {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+    const fs = yield* FileSystem.FileSystem
+    const root = yield* rootDir
+    const code = yield* spawner.exitCode(
+      ChildProcess.make('bun', ['run', 'build'], {
+        cwd: root,
+        env: { BUILD_ID: id },
+        extendEnv: true,
+        stdin: 'ignore',
+        stdout: 'ignore',
+        stderr: 'ignore',
+      }),
+    )
+    if (code !== 0) {
+      return yield* failWith(`the build of ${id} exited with ${code}`)
+    }
+    const version = yield* fs.readFileString(`${root}/dist/version.json`)
+    const versionFile = String.trim(version)
+    const grepped = yield* spawner.string(
+      ChildProcess.make('grep', ['-rl', id, 'dist/assets'], { cwd: root }),
+    )
+    const bundled = String.trim(grepped)
+    yield* Console.log(
+      `built ${id}: version.json ${versionFile}, id in ${bundled}`,
+    )
+  })
+
+const serve = Effect.gen(function* () {
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+  const root = yield* rootDir
+  return yield* spawner.spawn(
+    ChildProcess.make(
+      'bunx',
+      [
+        'vite',
+        'preview',
+        '--port',
+        globalThis.String(PREVIEW_PORT),
+        '--strictPort',
+      ],
+      { cwd: root, stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' },
+    ),
   )
+})
 
 const runningBuild = (page: Page) =>
-  page.evaluate(async () => {
-    const scripts = Array.from(document.querySelectorAll('script[src]')).map(
-      script => script.getAttribute('src'),
-    )
-    return scripts.join(' ')
-  })
+  attempt(() =>
+    page.evaluate(() =>
+      globalThis.Array.from(
+        document.querySelectorAll('script[src]'),
+        script => script.getAttribute('src') ?? '',
+      ),
+    ),
+  ).pipe(Effect.map(scripts => Array.join(scripts, ' ')))
 
-const e2e = async () => {
-  build('e2e-one')
-  const server = serve()
-  await wait(2500)
-  const browser = await launch()
-  try {
-    const page = await openPage(browser, PHONE_667)
+const e2e = (tag: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const root = yield* rootDir
+    yield* build('e2e-one')
+    const server = yield* serve
+    yield* Effect.addFinalizer(() => server.kill().pipe(Effect.ignore))
+    yield* wait(2500)
+    const browser = yield* openBrowser
+    const page = yield* openPage(browser, PHONE_667)
     const versionRequests: Array<string> = []
     page.on('request', request => {
-      if (request.url().includes('version.json')) {
+      if (String.includes('version.json')(request.url())) {
         versionRequests.push(request.url())
       }
     })
-    await page.goto(PREVIEW)
-    await wait(2500)
-    console.log(`first load runs ${await runningBuild(page)}`)
-    console.log(
-      `chip before the rebuild: ${await page.locator('.home-gift').count()}`,
-    )
-    await shot(page, `s26-${TAG}-e2e-before`)
+    yield* attempt(() => page.goto(PREVIEW))
+    yield* wait(2500)
+    const firstBuild = yield* runningBuild(page)
+    yield* Console.log(`first load runs ${firstBuild}`)
+    const chipsBefore = yield* countOf(page, '.home-gift')
+    yield* Console.log(`chip before the rebuild: ${chipsBefore}`)
+    yield* shot(page, `s26-${tag}-e2e-before`)
 
-    build('e2e-two')
-    await page.evaluate(() =>
-      document.dispatchEvent(new Event('visibilitychange')),
+    yield* build('e2e-two')
+    yield* attempt(() =>
+      page.evaluate(() =>
+        document.dispatchEvent(new Event('visibilitychange')),
+      ),
     )
-    await page.locator('.home-gift').waitFor({ timeout: 5000 })
-    console.log(
-      `chip after visibilitychange: ${await page.locator('.home-gift').textContent()}`,
+    yield* attempt(() => page.locator('.home-gift').waitFor({ timeout: 5000 }))
+    const chipText = yield* attempt(() =>
+      page.locator('.home-gift').textContent(),
     )
-    console.log(`version.json requests: ${versionRequests.join(', ')}`)
-    await shot(page, `s26-${TAG}-e2e-chip`)
+    yield* Console.log(`chip after visibilitychange: ${chipText}`)
+    yield* Console.log(
+      `version.json requests: ${Array.join(versionRequests, ', ')}`,
+    )
+    yield* shot(page, `s26-${tag}-e2e-chip`)
 
-    await Promise.all([
-      page.waitForEvent('load'),
-      page.locator('.home-gift').tap(),
-    ])
-    await wait(2500)
-    const reloadedBundle = await runningBuild(page)
-    const servedBundle = execFileSync('ls', ['dist/assets'], {
-      cwd: ROOT,
-      encoding: 'utf8',
-    })
-      .split('\n')
-      .filter(name => name.endsWith('.js'))
-    console.log(`reloaded page runs ${reloadedBundle}`)
-    console.log(`dist now holds ${servedBundle.join(' ')}`)
-    console.log(
-      `reloaded into the new build: ${servedBundle.some(name => reloadedBundle.includes(name))}`,
+    yield* attempt(() =>
+      Promise.all([
+        page.waitForEvent('load'),
+        page.locator('.home-gift').tap(),
+      ]),
     )
-    console.log(
-      `chip after the reload: ${await page.locator('.home-gift').count()}`,
+    yield* wait(2500)
+    const reloadedBundle = yield* runningBuild(page)
+    const assets = yield* fs.readDirectory(`${root}/dist/assets`)
+    const servedBundle = Array.filter(Array.sort(assets, Order.String), name =>
+      String.endsWith('.js')(name),
     )
-    const isGreeted = await page
-      .locator('dialog[open] .greeting-panel')
-      .waitFor({ timeout: 5000 })
-      .then(
-        () => true,
-        () => false,
-      )
-    console.log(`greeted after the reload: ${isGreeted}`)
-    console.log(`address after the reload: ${page.url()}`)
-    await wait(1600)
-    await shot(page, `s26-${TAG}-e2e-after`)
-    await page.keyboard.press('Escape')
-    await wait(400)
-    console.log(
-      `greeting after Escape: ${await page.locator('dialog[open] .greeting-panel').count()}`,
+    yield* Console.log(`reloaded page runs ${reloadedBundle}`)
+    yield* Console.log(`dist now holds ${Array.join(servedBundle, ' ')}`)
+    yield* Console.log(
+      `reloaded into the new build: ${Array.some(servedBundle, name => String.includes(name)(reloadedBundle))}`,
     )
-    await page.reload()
-    await wait(2500)
-    console.log(
-      `greeting after another reload: ${await page.locator('dialog[open] .greeting-panel').count()}`,
+    const chipsAfter = yield* countOf(page, '.home-gift')
+    yield* Console.log(`chip after the reload: ${chipsAfter}`)
+    const isGreeted = yield* attempt(() =>
+      page.locator('dialog[open] .greeting-panel').waitFor({ timeout: 5000 }),
+    ).pipe(
+      Effect.as(true),
+      Effect.orElseSucceed(() => false),
     )
-  } finally {
-    await browser.close()
-    server.kill()
-  }
-}
+    yield* Console.log(`greeted after the reload: ${isGreeted}`)
+    yield* Console.log(`address after the reload: ${page.url()}`)
+    yield* wait(1600)
+    yield* shot(page, `s26-${tag}-e2e-after`)
+    yield* attempt(() => page.keyboard.press('Escape'))
+    yield* wait(400)
+    const greetingsAfterEscape = yield* countOf(
+      page,
+      'dialog[open] .greeting-panel',
+    )
+    yield* Console.log(`greeting after Escape: ${greetingsAfterEscape}`)
+    yield* attempt(() => page.reload())
+    yield* wait(2500)
+    const greetingsAfterReload = yield* countOf(
+      page,
+      'dialog[open] .greeting-panel',
+    )
+    yield* Console.log(`greeting after another reload: ${greetingsAfterReload}`)
+  })
 
-await (PART === 'e2e' ? e2e() : layout())
+// NOTE: the harness is served for both parts, though only `layout` shoots
+// it.
+runHarnessAuditWith(
+  Effect.gen(function* () {
+    const part = yield* Config.String('PART').pipe(Config.withDefault('layout'))
+    const tag = yield* auditTag
+    yield* part === 'e2e' ? e2e(tag) : layout(tag)
+  }),
+  NodeServices.layer,
+)

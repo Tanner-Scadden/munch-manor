@@ -1,4 +1,4 @@
-import { Option, Result } from 'effect'
+import { Function, Option, Result, Schema } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -91,24 +91,26 @@ const pageVisibilityInRun = (visibility: PageVisibility) =>
 
 // THE RUN'S MESSAGES
 
-type RunMessage =
-  | typeof Message.TickedFrame.Type
-  | typeof Message.PressedKey.Type
-  | typeof Message.BlurredWindow.Type
-  | typeof Message.ChangedPageVisibility.Type
-  | typeof Message.ClickedPauseButton.Type
-  | typeof Message.ClickedStartWaveButton.Type
-  | typeof Message.ClickedSwapButton.Type
-  | typeof Message.ClickedGunSlot.Type
-  | typeof Message.ClickedMeleeSlot.Type
-  | typeof Message.ClickedReloadButton.Type
-  | typeof Message.ClickedPlaceTrapButton.Type
-  | typeof Message.ClickedNextTrapButton.Type
-  | typeof Message.ClickedBuyButton.Type
-  | typeof Message.PressedBuyKey.Type
-  | typeof Message.PressedHoldButton.Type
-  | typeof Message.ClickedAmmoTag.Type
-  | typeof Message.ClickedMedicButton.Type
+const RunMessage = Schema.Union([
+  Message.TickedFrame,
+  Message.PressedKey,
+  Message.BlurredWindow,
+  Message.ChangedPageVisibility,
+  Message.ClickedPauseButton,
+  Message.ClickedStartWaveButton,
+  Message.ClickedSwapButton,
+  Message.ClickedGunSlot,
+  Message.ClickedMeleeSlot,
+  Message.ClickedReloadButton,
+  Message.ClickedPlaceTrapButton,
+  Message.ClickedNextTrapButton,
+  Message.ClickedBuyButton,
+  Message.PressedBuyKey,
+  Message.PressedHoldButton,
+  Message.ClickedAmmoTag,
+  Message.ClickedMedicButton,
+])
+type RunMessage = typeof RunMessage.Type
 
 // NOTE: Message.match, exhaustive over just these Messages. Effect's
 // Match would unify the Steps' types and drop the Binding evidence
@@ -139,7 +141,22 @@ const inRun = (model: Model, message: RunMessage) =>
 // given here. A handler hands it to `makeStep` itself, so the Step's
 // Binding evidence comes from its own single player Step:
 // `makeStep(orInRun(message, swapFromButton))`.
-export const orInRun =
-  <Offline>(message: RunMessage, offline: Offline) =>
-  (model: Model): ReturnType<typeof inRun> | Offline =>
-    isRunOn(model) ? inRun(model, message) : offline
+export const orInRun: {
+  <Offline>(
+    message: RunMessage,
+    offline: Offline,
+  ): (model: Model) => ReturnType<typeof inRun> | Offline
+  <Offline>(
+    model: Model,
+    message: RunMessage,
+    offline: Offline,
+  ): ReturnType<typeof inRun> | Offline
+} = Function.dual(
+  3,
+  <Offline>(
+    model: Model,
+    message: RunMessage,
+    offline: Offline,
+  ): ReturnType<typeof inRun> | Offline =>
+    isRunOn(model) ? inRun(model, message) : offline,
+)

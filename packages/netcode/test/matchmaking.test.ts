@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { Matchmaking } from '../src/index'
@@ -34,28 +34,29 @@ const arriveAll = (
   numbers: ReadonlyArray<number>,
   atMs = T0,
 ): Stepped =>
-  numbers.reduce<Stepped>(
+  Array.reduce<number, Stepped>(
+    numbers,
+    { matchmaker: start, actions: [] },
     (stepped, n) => {
       const next = arrive(stepped.matchmaker, player(n, atMs), atMs)
       return { matchmaker: next.matchmaker, actions: next.actions }
     },
-    { matchmaker: start, actions: [] },
   )
 
 const made = (actions: ReadonlyArray<Action>) =>
-  actions.flatMap(action =>
+  Array.flatMap(actions, action =>
     action._tag === 'MakeRoom'
-      ? [action.players.map(queued => queued.socket)]
+      ? [Array.map(action.players, queued => queued.socket)]
       : [],
   )
 
 const seats = (actions: ReadonlyArray<Action>) =>
-  actions.flatMap(action =>
+  Array.flatMap(actions, action =>
     action._tag === 'Seat' ? [[action.player.socket, action.code]] : [],
   )
 
 const waitingFor = (actions: ReadonlyArray<Action>, socket: string) =>
-  actions.flatMap(action =>
+  Array.flatMap(actions, action =>
     action._tag === 'Send' &&
     action.socket === socket &&
     action.message._tag === 'Waiting'
@@ -64,7 +65,7 @@ const waitingFor = (actions: ReadonlyArray<Action>, socket: string) =>
   )[0]
 
 const queueOf = (stepped: Stepped) =>
-  stepped.matchmaker.queue.map(queued => queued.socket)
+  Array.map(stepped.matchmaker.queue, queued => queued.socket)
 
 describe('the Quick Play queue', () => {
   test('one to three players wait, and the fourth makes a room of four', () => {
@@ -264,9 +265,10 @@ describe('continents', () => {
   })
 
   const arriveFrom = (players: ReadonlyArray<Matchmaking.Queued>) =>
-    players.reduce<Stepped>(
-      (stepped, queued) => arrive(stepped.matchmaker, queued, T0),
+    Array.reduce<Matchmaking.Queued, Stepped>(
+      players,
       { matchmaker: emptyMatchmaker, actions: [] },
+      (stepped, queued) => arrive(stepped.matchmaker, queued, T0),
     )
 
   test('four from one continent play together first', () => {
@@ -278,9 +280,9 @@ describe('continents', () => {
       from(5, 'EU'),
     ])
     expect(made(stepped.actions)).toEqual([['s2', 's3', 's4', 's5']])
-    expect(stepped.matchmaker.queue.map(queued => queued.socket)).toEqual([
-      's1',
-    ])
+    expect(
+      Array.map(stepped.matchmaker.queue, queued => queued.socket),
+    ).toEqual(['s1'])
   })
 
   test('a split four waits, then plays together once the wait widens', () => {
@@ -292,7 +294,7 @@ describe('continents', () => {
     ])
     expect(made(stepped.actions)).toEqual([])
     expect(
-      stepped.actions.filter(action => action._tag === 'WakeAt'),
+      Array.filter(stepped.actions, action => action._tag === 'WakeAt'),
     ).toContainEqual({
       _tag: 'WakeAt',
       atMs: T0 + Matchmaking.REGION_WIDEN_MS,

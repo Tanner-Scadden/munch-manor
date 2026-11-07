@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import { NEWS_DAYS, type NewsBullet, type NewsDay } from './changelog'
@@ -67,39 +67,52 @@ const pageButtonView = (
 
 // NOTE: a page button that would go nowhere is left out instead of disabled,
 // so every button on the panel does something when tapped.
-export const whatsNewBodyView = (
-  model: Model,
-  doneButton: Html,
-  h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => [
-  ...Option.match(maybeShownDay(model), {
-    onNone: () => [],
-    onSome: day => [dayView(day, h)],
-  }),
-  h.div(
-    [h.Class('panel-actions')],
-    [
-      ...(model.home.newsPage < NEWS_DAYS.length - 1
-        ? [
-            pageButtonView(
-              'Older',
-              'Older news',
-              Message.ClickedOlderNewsButton(),
-              h,
-            ),
-          ]
-        : []),
-      ...(model.home.newsPage > 0
-        ? [
-            pageButtonView(
-              'Newer',
-              'Newer news',
-              Message.ClickedNewerNewsButton(),
-              h,
-            ),
-          ]
-        : []),
-      doneButton,
-    ],
-  ),
-]
+export const whatsNewBodyView: {
+  (
+    doneButton: Html,
+    h: ApplicationViewBuilder,
+  ): (model: Model) => ReadonlyArray<Html>
+  (
+    model: Model,
+    doneButton: Html,
+    h: ApplicationViewBuilder,
+  ): ReadonlyArray<Html>
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    doneButton: Html,
+    h: ApplicationViewBuilder,
+  ): ReadonlyArray<Html> => [
+    ...Option.match(maybeShownDay(model), {
+      onNone: () => [],
+      onSome: day => [dayView(day, h)],
+    }),
+    h.div(
+      [h.Class('panel-actions')],
+      [
+        ...(model.home.newsPage < NEWS_DAYS.length - 1
+          ? [
+              pageButtonView(
+                'Older',
+                'Older news',
+                Message.ClickedOlderNewsButton(),
+                h,
+              ),
+            ]
+          : []),
+        ...(model.home.newsPage > 0
+          ? [
+              pageButtonView(
+                'Newer',
+                'Newer news',
+                Message.ClickedNewerNewsButton(),
+                h,
+              ),
+            ]
+          : []),
+        doneButton,
+      ],
+    ),
+  ],
+)

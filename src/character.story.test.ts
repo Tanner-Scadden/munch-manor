@@ -1,4 +1,4 @@
-import { Array, Match, Option, Schema, pipe } from 'effect'
+import { Array, Match, Option, Record, Schema, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
@@ -44,7 +44,7 @@ import { home } from './model.fixture'
 import { FreePrint, FreeShirtColor } from './playerData'
 import { playerShapes } from './playerView'
 import { imageColors } from './testPng'
-import { resolveFocusOption } from './testing'
+import { jsonOf, resolveFocusOption } from './testing'
 
 type PartMessage = typeof PartRadioGroupBlock.Message.Type
 
@@ -168,12 +168,15 @@ const optionsOfEveryPart = (base: Appearance): ReadonlyArray<PartOptions> => [
 const painted = (appearance: Appearance): string => {
   const palette = playerPalette(appearance)
   const { walk, idle } = playerPixels(appearance)
-  return JSON.stringify(
+  return jsonOf(
     Array.map([...walk, ...idle], rows =>
       Array.map(rows, row =>
-        Array.map(Array.fromIterable(row), symbol =>
-          symbol === '.' ? '.' : (palette[symbol] ?? `missing ${symbol}`),
-        ).join(' '),
+        Array.join(
+          Array.map(Array.fromIterable(row), symbol =>
+            symbol === '.' ? '.' : (palette[symbol] ?? `missing ${symbol}`),
+          ),
+          ' ',
+        ),
       ),
     ),
   )
@@ -288,7 +291,7 @@ describe('Character', () => {
       'ShirtColor',
       'Print',
     ])
-    const listed = Array.flatten(Object.values(Character.SECTION_PARTS))
+    const listed = Array.flatten(Record.values(Character.SECTION_PARTS))
     expect(Array.dedupe(listed).length).toBe(9)
     expect(Character.SECTION_TOGGLES.Body).toEqual(['Beard', 'Glasses'])
   })

@@ -24,13 +24,24 @@
 // makes JavaScriptCore and V8 disagree within the first two seconds, so
 // without --det-math that is expected (see README.md).
 
-import { Option, Schema } from 'effect'
-import { HttpClientRequest } from 'effect/http'
-import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import {
+  Array,
+  Clock,
+  Config,
+  Console,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Path,
+  Schema,
+  String,
+} from 'effect'
+import { FetchHttpClient, HttpClientRequest } from 'effect/http'
+import { pathToFileURL } from 'node:url'
+
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { askWorkerd } from './askWorkerd'
 import {
@@ -40,9 +51,9 @@ import {
   jsonTextOf,
   revive,
 } from './diff'
+import { commandOutput, infraBinary, serveWorkerd } from './process'
 import {
   DEFAULT_REQUEST,
-  type EngineDump,
   EngineRequest,
   type EngineRun,
   decodeEngineDump,
@@ -51,13 +62,8 @@ import {
   paramsOf,
 } from './request'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const root = resolve(here, '../..')
-const out = resolve(here, 'out')
+const here = import.meta.dirname
 
-const CHROME =
-  process.env['CHROME'] ??
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const WORKERD_PORT = 8797
 
 type EngineName = 'bun' | 'node' | 'chrome' | 'workerd'
@@ -67,6 +73,25 @@ const ALL_ENGINES: ReadonlyArray<EngineName> = [
   'chrome',
   'workerd',
 ]
+
+class EngineFailed extends Schema.TaggedError<
+  EngineFailed,
+  { readonly brand: unique symbol }
+>()('EngineFailed', { message: Schema.String }) {}
+
+class EnginesDisagree extends Schema.TaggedError<
+  EnginesDisagree,
+  { readonly brand: unique symbol }
+>()('EnginesDisagree', { pairs: Schema.Finite }) {}
+
+// NOTE: the value an Option holds, or the run fails with `reason`.
+const orFail = <A>(
+  maybe: Option.Option<A>,
+  reason: string,
+): Effect.Effect<A, EngineFailed> =>
+  Effect.fromOption(maybe).pipe(
+    Effect.mapError(() => EngineFailed.make({ message: reason })),
+  )
 
 // ARGUMENTS
 
@@ -86,127 +111,149 @@ const request: EngineRequest = {
   every: Number(option('--every') ?? DEFAULT_REQUEST.every),
   detMath: flag('--det-math'),
 }
-const engines = (option('--engines') ?? ALL_ENGINES.join(','))
-  .split(',')
-  .flatMap(name => ALL_ENGINES.filter(engine => engine === name))
+const engines = Array.flatMap(
+  String.split(',')(option('--engines') ?? Array.join(ALL_ENGINES, ',')),
+  name => Array.filter(ALL_ENGINES, engine => engine === name),
+)
 const asJson = flag('--json')
 
 // ENGINES
 
 const unescapeHtml = (text: string): string =>
-  text
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>')
-    .replaceAll('&quot;', '"')
-    .replaceAll('&#39;', "'")
-    .replaceAll('&amp;', '&')
+  String.replaceAll(
+    '&amp;',
+    '&',
+  )(
+    String.replaceAll(
+      '&#39;',
+      "'",
+    )(
+      String.replaceAll(
+        '&quot;',
+        '"',
+      )(String.replaceAll('&gt;', '>')(String.replaceAll('&lt;', '<')(text))),
+    ),
+  )
 
-const runCommand = (command: string, args: ReadonlyArray<string>): string => {
-  const result = spawnSync(command, [...args], {
-    cwd: root,
-    encoding: 'utf8',
-    maxBuffer: 512 * 1024 * 1024,
+const rootOf = Effect.gen(function* () {
+  const path = yield* Path.Path
+  return path.resolve(here, '../..')
+})
+
+const runCommand = (command: string, args: ReadonlyArray<string>) =>
+  Effect.flatMap(rootOf, cwd =>
+    commandOutput({ command, args, cwd }).pipe(
+      Effect.mapError(error => EngineFailed.make({ message: error.message })),
+    ),
+  )
+
+const outPath = (file: string) =>
+  Effect.gen(function* () {
+    const path = yield* Path.Path
+    return path.resolve(here, 'out', file)
   })
-  if (result.status !== 0) {
-    throw new Error(`${command} failed: ${result.stderr}`)
+
+const runChrome = (params: string) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const chrome = yield* Config.String('CHROME').pipe(
+        Config.withDefault(
+          '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        ),
+      )
+      // NOTE: a throwaway profile, so the run never touches the owner's
+      // Chrome. It goes with the scope.
+      const profile = yield* fs.makeTempDirectoryScoped({
+        prefix: 'determinism-chrome-',
+      })
+      const page = yield* outPath('page.html')
+      const dom = yield* runCommand(chrome, [
+        '--headless',
+        '--disable-gpu',
+        '--no-first-run',
+        '--disable-extensions',
+        `--user-data-dir=${profile}`,
+        '--dump-dom',
+        `${pathToFileURL(page).href}?${params}`,
+      ])
+      const answer = Option.flatMap(
+        String.match(/<pre id="answer">([\s\S]*?)<\/pre>/)(dom),
+        found => Option.fromNullishOr(found[1]),
+      )
+      const text = yield* orFail(
+        answer,
+        `Chrome printed no answer: ${String.slice(0, 400)(dom)}`,
+      )
+      return unescapeHtml(text)
+    }),
+  )
+
+const runWorkerd = (params: string) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const path = yield* Path.Path
+      const root = yield* rootOf
+      const override = yield* Config.option(Config.String('WORKERD'))
+      const maybeBinary = yield* infraBinary({
+        root,
+        name: 'workerd',
+        override,
+      })
+      const binary = yield* orFail(
+        maybeBinary,
+        'no workerd: run bun install in infra/, or set WORKERD',
+      )
+      yield* serveWorkerd({
+        binary,
+        config: path.resolve(here, 'workerd.capnp'),
+        cwd: here,
+      })
+      return yield* askWorkerd(
+        HttpClientRequest.get(`http://127.0.0.1:${WORKERD_PORT}/?${params}`),
+      )
+    }),
+  )
+
+const textFrom = (engine: EngineName, params: string) => {
+  switch (engine) {
+    case 'bun':
+      return runCommand('bun', ['tools/determinism/cli.ts', params])
+    case 'node':
+      return Effect.flatMap(outPath('cli.js'), cli =>
+        runCommand('node', [cli, params]),
+      )
+    case 'chrome':
+      return runChrome(params)
+    case 'workerd':
+      return runWorkerd(params)
   }
-  return result.stdout
 }
 
-const runChrome = (params: string): string => {
-  // NOTE: a throwaway profile, so the run never touches the owner's Chrome.
-  const profile = mkdtempSync(resolve(tmpdir(), 'determinism-chrome-'))
-  try {
-    const dom = runCommand(CHROME, [
-      '--headless',
-      '--disable-gpu',
-      '--no-first-run',
-      '--disable-extensions',
-      `--user-data-dir=${profile}`,
-      '--dump-dom',
-      `${pathToFileURL(resolve(out, 'page.html')).href}?${params}`,
-    ])
-    const answer = dom.match(/<pre id="answer">([\s\S]*?)<\/pre>/)?.[1]
-    if (answer === undefined) {
-      throw new Error(`Chrome printed no answer: ${dom.slice(0, 400)}`)
+const ask = (engine: EngineName, ofRequest: EngineRequest) =>
+  Effect.gen(function* () {
+    const text = yield* textFrom(engine, paramsOf(ofRequest))
+    const maybeError = decodeEngineError(text)
+    if (Option.isSome(maybeError)) {
+      return yield* EngineFailed.make({
+        message: `${engine}: ${globalThis.String(maybeError.value.error)}`,
+      })
     }
-    return unescapeHtml(answer)
-  } finally {
-    rmSync(profile, { recursive: true, force: true })
-  }
-}
-
-const workerdBinary = (): string | undefined => {
-  const commonDir = spawnSync(
-    'git',
-    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
-    { cwd: root, encoding: 'utf8' },
-  ).stdout.trim()
-  return [
-    process.env['WORKERD'],
-    resolve(root, 'infra/node_modules/.bin/workerd'),
-    commonDir === ''
-      ? undefined
-      : resolve(commonDir, '../infra/node_modules/.bin/workerd'),
-  ].find(path => path !== undefined && existsSync(path))
-}
-
-const runWorkerd = async (params: string): Promise<string> => {
-  const binary = workerdBinary()
-  if (binary === undefined) {
-    throw new Error('no workerd: run bun install in infra/, or set WORKERD')
-  }
-  const server = spawn(binary, ['serve', resolve(here, 'workerd.capnp')], {
-    cwd: here,
-    stdio: ['ignore', 'ignore', 'inherit'],
+    return text
   })
-  try {
-    return await askWorkerd(
-      HttpClientRequest.get(`http://127.0.0.1:${WORKERD_PORT}/?${params}`),
-    )
-  } finally {
-    server.kill()
-  }
-}
 
-const ask = async (engine: EngineName, ofRequest: EngineRequest) => {
-  const params = paramsOf(ofRequest)
-  const text =
-    engine === 'bun'
-      ? runCommand('bun', ['tools/determinism/cli.ts', params])
-      : engine === 'node'
-        ? runCommand('node', [resolve(out, 'cli.js'), params])
-        : engine === 'chrome'
-          ? runChrome(params)
-          : await runWorkerd(params)
-  const maybeError = decodeEngineError(text)
-  if (Option.isSome(maybeError)) {
-    throw new Error(`${engine}: ${String(maybeError.value.error)}`)
-  }
-  return text
-}
-
-const askRun = async (
-  engine: EngineName,
-  ofRequest: EngineRequest,
-): Promise<EngineRun> => {
-  const text = await ask(engine, ofRequest)
-  return Option.getOrThrowWith(
-    decodeEngineRun(text),
-    () => new Error(`${engine} answered no run`),
+const askRun = (engine: EngineName, ofRequest: EngineRequest) =>
+  Effect.flatMap(ask(engine, ofRequest), text =>
+    orFail(decodeEngineRun(text), `${engine} answered no run`),
   )
-}
 
-const askDump = async (
-  engine: EngineName,
-  frame: number,
-): Promise<EngineDump> => {
-  const text = await ask(engine, { ...request, dump: frame })
-  return Option.getOrThrowWith(
-    decodeEngineDump(text),
-    () => new Error(`${engine} answered no dump for frame ${frame}`),
+const askDump = (engine: EngineName, frame: number) =>
+  Effect.flatMap(ask(engine, { ...request, dump: frame }), text =>
+    orFail(
+      decodeEngineDump(text),
+      `${engine} answered no dump for frame ${frame}`,
+    ),
   )
-}
 
 // THE CHECK
 
@@ -221,87 +268,94 @@ type Divergence = Readonly<{
 type Pair = Readonly<{ a: EngineName; b: EngineName }>
 
 const pairsOf = (names: ReadonlyArray<EngineName>): ReadonlyArray<Pair> =>
-  names.flatMap((a, index) => names.slice(index + 1).map(b => ({ a, b })))
-
-const exactFrame = async (
-  pair: Pair,
-  checkpointFrame: number,
-): Promise<number> => {
-  if (request.every === 1 || checkpointFrame < 0) {
-    return checkpointFrame
-  }
-  const narrowed = { ...request, every: 1, frames: checkpointFrame + 1 }
-  const left = await askRun(pair.a, narrowed)
-  const right = await askRun(pair.b, narrowed)
-  return (
-    firstDivergentCheckpoint(left.checkpoints, right.checkpoints)?.frame ??
-    checkpointFrame
+  Array.flatMap(names, (a, index) =>
+    Array.map(names.slice(index + 1), b => ({ a, b })),
   )
-}
 
-const explain = async (pair: Pair, frame: number): Promise<Divergence> => {
-  if (frame < 0) {
-    return {
+const exactFrame = (pair: Pair, checkpointFrame: number) =>
+  Effect.gen(function* () {
+    if (request.every === 1 || checkpointFrame < 0) {
+      return checkpointFrame
+    }
+    const narrowed = { ...request, every: 1, frames: checkpointFrame + 1 }
+    const left = yield* askRun(pair.a, narrowed)
+    const right = yield* askRun(pair.b, narrowed)
+    return (
+      firstDivergentCheckpoint(left.checkpoints, right.checkpoints)?.frame ??
+      checkpointFrame
+    )
+  })
+
+const explain = (pair: Pair, frame: number) =>
+  Effect.gen(function* () {
+    if (frame < 0) {
+      const started: Divergence = {
+        ...pair,
+        frame,
+        fields: ['(the started run)'],
+        difference: undefined,
+      }
+      return started
+    }
+    const left = yield* askDump(pair.a, frame)
+    const right = yield* askDump(pair.b, frame)
+    const rightHashes = new Map(right.fieldHashes)
+    const fields = Array.map(
+      Array.filter(
+        left.fieldHashes,
+        ([field, hash]) => rightHashes.get(field) !== hash,
+      ),
+      ([field]) => field,
+    )
+    const divergence: Divergence = {
       ...pair,
       frame,
-      fields: ['(the started run)'],
-      difference: undefined,
+      fields,
+      difference: firstDifference(revive(left.state), revive(right.state)),
     }
-  }
-  const left = await askDump(pair.a, frame)
-  const right = await askDump(pair.b, frame)
-  const rightHashes = new Map(right.fieldHashes)
-  const fields = left.fieldHashes
-    .filter(([field, hash]) => rightHashes.get(field) !== hash)
-    .map(([field]) => field)
-  return {
-    ...pair,
-    frame,
-    fields,
-    difference: firstDifference(revive(left.state), revive(right.state)),
-  }
-}
+    return divergence
+  })
 
-if (!flag('--no-build')) {
-  runCommand('bun', ['tools/determinism/build.ts'])
-}
+const playEngines = Effect.forEach(engines, engine =>
+  Effect.gen(function* () {
+    const startedAt = yield* Clock.currentTimeMillis
+    const run = yield* askRun(engine, request)
+    if (!asJson) {
+      const endedAt = yield* Clock.currentTimeMillis
+      yield* Console.error(
+        `${run.engine}: ${run.frames} frames in ${((endedAt - startedAt) / 1000).toFixed(1)} s`,
+      )
+    }
+    return [engine, run] as const
+  }),
+)
 
-const runs = await engines.reduce<
-  Promise<ReadonlyArray<readonly [EngineName, EngineRun]>>
->(async (done, engine) => {
-  const previous = await done
-  const startedAt = performance.now()
-  const run = await askRun(engine, request)
-  if (!asJson) {
-    console.error(
-      `${run.engine}: ${run.frames} frames in ${((performance.now() - startedAt) / 1000).toFixed(1)} s`,
-    )
-  }
-  return [...previous, [engine, run] as const]
-}, Promise.resolve([]))
-const runOf = new Map(runs)
-
-const divergences = await pairsOf(engines).reduce<
-  Promise<ReadonlyArray<Divergence>>
->(async (done, pair) => {
-  const previous = await done
-  const left = runOf.get(pair.a)
-  const right = runOf.get(pair.b)
-  if (left === undefined || right === undefined) {
-    return previous
-  }
-  const checkpoint = firstDivergentCheckpoint(
-    left.checkpoints,
-    right.checkpoints,
+const divergencesOf = (
+  runs: ReadonlyArray<readonly [EngineName, EngineRun]>,
+) => {
+  const runOf = new Map(runs)
+  return Effect.map(
+    Effect.forEach(pairsOf(engines), pair => {
+      const left = runOf.get(pair.a)
+      const right = runOf.get(pair.b)
+      if (left === undefined || right === undefined) {
+        return Effect.succeed(Option.none<Divergence>())
+      }
+      const checkpoint = firstDivergentCheckpoint(
+        left.checkpoints,
+        right.checkpoints,
+      )
+      if (checkpoint === undefined) {
+        return Effect.succeed(Option.none<Divergence>())
+      }
+      return exactFrame(pair, checkpoint.frame).pipe(
+        Effect.flatMap(frame => explain(pair, frame)),
+        Effect.asSome,
+      )
+    }),
+    Array.getSomes,
   )
-  if (checkpoint === undefined) {
-    return previous
-  }
-  return [
-    ...previous,
-    await explain(pair, await exactFrame(pair, checkpoint.frame)),
-  ]
-}, Promise.resolve([]))
+}
 
 // THE REPORT
 
@@ -310,9 +364,9 @@ const shown = (value: unknown): string => {
     typeof value === 'number'
       ? Object.is(value, -0)
         ? '-0'
-        : String(value)
+        : globalThis.String(value)
       : jsonTextOf(value)
-  return text.length > 120 ? `${text.slice(0, 117)}...` : text
+  return text.length > 120 ? `${String.slice(0, 117)(text)}...` : text
 }
 
 // NOTE: the --json report. A difference's values are whatever the states
@@ -323,17 +377,17 @@ const Report = Schema.Struct({
     Schema.Struct({
       name: Schema.String,
       engine: Schema.String,
-      frames: Schema.Number,
+      frames: Schema.Finite,
       endPhase: Schema.String,
-      endWave: Schema.Number,
-      finalHash: Schema.UndefinedOr(Schema.Number),
+      endWave: Schema.Finite,
+      finalHash: Schema.UndefinedOr(Schema.Finite),
     }),
   ),
   divergences: Schema.Array(
     Schema.Struct({
       a: Schema.String,
       b: Schema.String,
-      frame: Schema.Number,
+      frame: Schema.Finite,
       fields: Schema.Array(Schema.String),
       difference: Schema.UndefinedOr(
         Schema.Struct({
@@ -347,51 +401,78 @@ const Report = Schema.Struct({
   unclassified: Schema.Array(Schema.String),
 })
 
-const unclassified = [...new Set(runs.flatMap(([, run]) => run.unclassified))]
-
-if (asJson) {
-  console.log(
-    Schema.encodeSync(Schema.fromJsonString(Report, { space: 2 }))({
-      request,
-      engines: runs.map(([name, run]) => ({
-        name,
-        engine: run.engine,
-        frames: run.frames,
-        endPhase: run.endPhase,
-        endWave: run.endWave,
-        finalHash: run.checkpoints.at(-1)?.[1],
-      })),
-      divergences,
-      unclassified,
-    }),
-  )
-} else {
-  console.log(
-    `Seed ${request.seed}, ${request.mode}, ${request.pattern} steps, ${request.frames} frames, hashed every ${request.every}, ${request.detMath ? 'deterministic Math' : "the engines' own Math"}`,
-  )
-  runs.forEach(([, run]) =>
-    console.log(
-      `  ${run.engine.padEnd(40)} ${String(run.frames).padStart(6)} frames, ended in ${run.endPhase} ${run.endWave}, final hash ${run.checkpoints.at(-1)?.[1]}`,
-    ),
-  )
-  if (divergences.length === 0) {
-    console.log('Every engine agrees on every hashed frame.')
-  }
-  divergences.forEach(divergence => {
-    console.log(
-      `${divergence.a} vs ${divergence.b}: first differ after frame ${divergence.frame}, in ${divergence.fields.join(', ')}`,
+const report = (
+  runs: ReadonlyArray<readonly [EngineName, EngineRun]>,
+  divergences: ReadonlyArray<Divergence>,
+) =>
+  Effect.gen(function* () {
+    const unclassified = [
+      ...new Set(Array.flatMap(runs, ([, run]) => run.unclassified)),
+    ]
+    if (asJson) {
+      const text = yield* Schema.encodeEffect(
+        Schema.fromJsonString(Report, { space: 2 }),
+      )({
+        request,
+        engines: Array.map(runs, ([name, run]) => ({
+          name,
+          engine: run.engine,
+          frames: run.frames,
+          endPhase: run.endPhase,
+          endWave: run.endWave,
+          finalHash: run.checkpoints.at(-1)?.[1],
+        })),
+        divergences,
+        unclassified,
+      })
+      yield* Console.log(text)
+      return
+    }
+    yield* Console.log(
+      `Seed ${request.seed}, ${request.mode}, ${request.pattern} steps, ${request.frames} frames, hashed every ${request.every}, ${request.detMath ? 'deterministic Math' : "the engines' own Math"}`,
     )
-    if (divergence.difference !== undefined) {
-      console.log(
-        `  first difference at ${divergence.difference.path}: ${shown(divergence.difference.a)} vs ${shown(divergence.difference.b)}`,
+    yield* Effect.forEach(runs, ([, run]) =>
+      Console.log(
+        `  ${String.padEnd(40)(run.engine)} ${String.padStart(6)(globalThis.String(run.frames))} frames, ended in ${run.endPhase} ${run.endWave}, final hash ${run.checkpoints.at(-1)?.[1]}`,
+      ),
+    )
+    if (divergences.length === 0) {
+      yield* Console.log('Every engine agrees on every hashed frame.')
+    }
+    yield* Effect.forEach(divergences, divergence =>
+      Effect.gen(function* () {
+        yield* Console.log(
+          `${divergence.a} vs ${divergence.b}: first differ after frame ${divergence.frame}, in ${Array.join(divergence.fields, ', ')}`,
+        )
+        if (divergence.difference !== undefined) {
+          yield* Console.log(
+            `  first difference at ${divergence.difference.path}: ${shown(divergence.difference.a)} vs ${shown(divergence.difference.b)}`,
+          )
+        }
+      }),
+    )
+    if (unclassified.length > 0) {
+      yield* Console.log(
+        `Model fields not in fields.ts, hashed as World: ${Array.join(unclassified, ', ')}`,
       )
     }
   })
-  if (unclassified.length > 0) {
-    console.log(
-      `Model fields not in fields.ts, hashed as World: ${unclassified.join(', ')}`,
-    )
-  }
-}
 
-process.exit(divergences.length === 0 ? 0 : 1)
+const program = Effect.gen(function* () {
+  if (!flag('--no-build')) {
+    yield* runCommand('bun', ['tools/determinism/build.ts'])
+  }
+  const runs = yield* playEngines
+  const divergences = yield* divergencesOf(runs)
+  yield* report(runs, divergences)
+  // NOTE: exits 1 when any two engines disagree.
+  if (divergences.length > 0) {
+    return yield* EnginesDisagree.make({ pairs: divergences.length })
+  }
+})
+
+NodeRuntime.runMain(
+  program.pipe(
+    Effect.provide(Layer.merge(NodeServices.layer, FetchHttpClient.layer)),
+  ),
+)

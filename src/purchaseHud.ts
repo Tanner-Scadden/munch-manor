@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option, String } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import { screenCameraOf, worldToView } from './camera'
@@ -35,12 +35,12 @@ const priceWords = (price: number): string =>
 
 const nameOf = (target: Purchasable): string =>
   Purchasable.match(target, {
-    Exit: ({ exit }) => exitName(exit).toLowerCase(),
-    Fridge: () => FRIDGE_NAME.toLowerCase(),
+    Exit: ({ exit }) => String.toLowerCase(exitName(exit)),
+    Fridge: () => String.toLowerCase(FRIDGE_NAME),
     Prize: () => 'the prize from the fridge, free',
     Ammo: () => 'ammo for the gun in your hands',
-    Stove: () => STOVE_NAME.toLowerCase(),
-    Valve: () => VALVE_NAME.toLowerCase(),
+    Stove: () => String.toLowerCase(STOVE_NAME),
+    Valve: () => String.toLowerCase(VALVE_NAME),
   })
 
 // NOTE: a weapon on offer is already paid for, so its button says TAKE
@@ -71,7 +71,7 @@ const labelOf = (model: Model, offer: Offer): string =>
         ? 'Only a gun from the stall cooks'
         : `Hold to cook your gun ${Option.match(maybeStovePerk(model), {
             onNone: () => '',
-            onSome: perk => GUN_PERK_NAMES[perk].toLowerCase(),
+            onSome: perk => String.toLowerCase(GUN_PERK_NAMES[perk]),
           })} for ${priceWords(offer.price)}`,
     Valve: () => `Hold to light the fireplace for ${priceWords(offer.price)}`,
   })
@@ -169,16 +169,17 @@ const holdButtonFor = (
   )
 }
 
-export const holdButtonView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const holdButtonView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   model.lastDevice === 'Touch'
     ? Option.match(maybeShownOffer(model), {
         onNone: () => h.empty,
         onSome: offer => holdButtonFor(model, offer, h),
       })
-    : h.empty
+    : h.empty,
+)
 
 // NOTE: the ammo window buys on a tap (src/purchase.ts, tapToBuy); the
 // rest stand or hold.
@@ -203,10 +204,10 @@ const announcementOf = (model: Model, offer: Offer): string => {
 
 // NOTE: spoken once as the player reaches a purchasable, and again when
 // the wallet's verdict changes, never while the fight goes on around it.
-export const purchaseAnnouncementView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const purchaseAnnouncementView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   h.p(
     [h.Class('sr-only'), h.Role('status'), h.AriaLive('polite')],
     [
@@ -215,7 +216,8 @@ export const purchaseAnnouncementView = (
         onSome: offer => announcementOf(model, offer),
       }),
     ],
-  )
+  ),
+)
 
 // THE AMMO TAG
 
@@ -265,11 +267,12 @@ const ammoTagButtonFor = (
   )
 }
 
-export const ammoTagButtonView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const ammoTagButtonView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   Option.match(maybeTapOffer(model, focusSlotOf(model)), {
     onNone: () => h.empty,
     onSome: offer => ammoTagButtonFor(model, offer, h),
-  })
+  }),
+)

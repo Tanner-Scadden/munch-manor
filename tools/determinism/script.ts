@@ -9,6 +9,7 @@
 // It imports only the game, effect, and foldkit: no DOM, no Node, no Bun, so
 // it runs the same in Bun, Node, Chrome, and workerd.
 
+import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_MAX_HP } from '../../src/constants'
@@ -60,26 +61,26 @@ const tapKey = (model: Model, code: string): Model =>
 
 const holdKeys = (model: Model, wanted: ReadonlyArray<string>): Model => {
   const held = new Set(model.input.pressedKeys)
-  const released = MOVE_KEYS.filter(
+  const released = Array.filter(
+    MOVE_KEYS,
     key => held.has(key) && !wanted.includes(key),
   )
-  const pressed = wanted.filter(key => !held.has(key))
-  const afterRelease = released.reduce(
-    (current, code) => send(current, Message.ReleasedKey({ code })),
-    model,
+  const pressed = Array.filter(wanted, key => !held.has(key))
+  const afterRelease = Array.reduce(released, model, (current, code) =>
+    send(current, Message.ReleasedKey({ code })),
   )
-  return pressed.reduce(
-    (current, code) => send(current, Message.PressedKey({ code })),
-    afterRelease,
+  return Array.reduce(pressed, afterRelease, (current, code) =>
+    send(current, Message.PressedKey({ code })),
   )
 }
 
 type Target = Readonly<{ x: number; y: number; distance: number }>
 
 const nearestZombie = (model: Model): Target | undefined =>
-  model.zombies
-    .filter(zombie => zombie.state._tag === 'Walking')
-    .reduce<Target | undefined>((best, zombie) => {
+  Array.reduce<Model['zombies'][number], Target | undefined>(
+    Array.filter(model.zombies, zombie => zombie.state._tag === 'Walking'),
+    undefined,
+    (best, zombie) => {
       const { player } = leadOf(model)
       const dx = zombie.x - player.x
       const dy = zombie.y - player.y
@@ -87,7 +88,8 @@ const nearestZombie = (model: Model): Target | undefined =>
       return best === undefined || distance < best.distance
         ? { x: zombie.x, y: zombie.y, distance }
         : best
-    }, undefined)
+    },
+  )
 
 // Through Preparation: let go of the trigger, close the stall, and start
 // the wave.
@@ -164,7 +166,10 @@ const pastTutorial = (model: Model): Model =>
 
 // A returning player's Model, seeded, measured, and started into a run: Enter
 // opens the lobby, E picks endless there, and Enter starts.
-export const startedRun = (seed: number, mode: ScriptMode): Model => {
+export const startedRun: {
+  (mode: ScriptMode): (seed: number) => Model
+  (seed: number, mode: ScriptMode): Model
+} = Function.dual(2, (seed: number, mode: ScriptMode): Model => {
   const ready = send(
     modifyFields(pastTutorial(asVeteran(initialModel)), {
       rngState: () => seed,
@@ -174,7 +179,7 @@ export const startedRun = (seed: number, mode: ScriptMode): Model => {
   )
   const inLobby = tapKey(ready, 'Enter')
   return tapKey(mode === 'Endless' ? tapKey(inLobby, 'KeyE') : inLobby, 'Enter')
-}
+})
 
 const godMode = (model: Model): Model =>
   leadOf(model).player.hp === PLAYER_MAX_HP
@@ -187,14 +192,16 @@ export const isPlaying = (model: Model): boolean =>
   model.phase._tag === 'Preparation' || model.phase._tag === 'Wave'
 
 // One whole frame: the script's inputs, then the tick, then god mode.
-export const playFrame = (
-  model: Model,
-  frame: number,
-  pattern: StepPattern,
-): Model =>
-  godMode(
-    send(
-      driveFrame(model, frame),
-      Message.TickedFrame({ deltaTime: stepMsOf(pattern, frame) }),
+export const playFrame: {
+  (frame: number, pattern: StepPattern): (model: Model) => Model
+  (model: Model, frame: number, pattern: StepPattern): Model
+} = Function.dual(
+  3,
+  (model: Model, frame: number, pattern: StepPattern): Model =>
+    godMode(
+      send(
+        driveFrame(model, frame),
+        Message.TickedFrame({ deltaTime: stepMsOf(pattern, frame) }),
+      ),
     ),
-  )
+)

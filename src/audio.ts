@@ -1,7 +1,7 @@
 import {
   Array,
-  Data,
   Effect,
+  Function,
   MutableRef,
   Schema,
   type Scope,
@@ -9,7 +9,7 @@ import {
 } from 'effect'
 
 import { RECIPES } from './audioRecipes'
-import { describeError } from './describeError'
+import { describeError, toBrowserError } from './describeError'
 import {
   type MusicCue,
   type MusicDeck,
@@ -52,9 +52,12 @@ export type AudioEngine = Readonly<{
   music: MusicDeck
 }>
 
-export class AudioEngineError extends Data.TaggedError('AudioEngineError')<{
-  readonly reason: string
-}> {}
+export class AudioEngineError extends Schema.TaggedError<
+  AudioEngineError,
+  { readonly brand: unique symbol }
+>()('AudioEngineError', {
+  reason: Schema.String,
+}) {}
 
 const MASTER_VOLUME = 0.55
 const NOISE_SECONDS = 0.5
@@ -109,14 +112,17 @@ export const acquireAudioEngine: Effect.Effect<
 > = pipe(
   Effect.try({
     try: buildEngine,
-    catch: error => new AudioEngineError({ reason: describeError(error) }),
+    catch: error => AudioEngineError.make({ reason: describeError(error) }),
   }),
   Effect.tap(engine => Effect.forkScoped(runMusicScheduler(engine.music))),
 )
 
 export const releaseAudioEngine = (engine: AudioEngine): Effect.Effect<void> =>
   pipe(
-    Effect.tryPromise(() => engine.context.close()),
+    Effect.tryPromise({
+      try: () => engine.context.close(),
+      catch: toBrowserError,
+    }),
     Effect.ignore,
   )
 
@@ -132,7 +138,7 @@ export const resumeAudio = (
         Effect.tryPromise({
           try: () => engine.context.resume(),
           catch: error =>
-            new AudioEngineError({ reason: describeError(error) }),
+            AudioEngineError.make({ reason: describeError(error) }),
         }),
         Effect.timeoutOption(RESUME_TIMEOUT),
         Effect.map(() => currentPlayback(engine)),
@@ -261,37 +267,56 @@ const startVoice = (
 const isAtVoiceLimit = (engine: AudioEngine): boolean =>
   MutableRef.get(engine.activeVoices) >= MAX_VOICES
 
-export const playSound = (
-  engine: AudioEngine,
-  sound: SoundEffect,
-  variation: number,
-): Effect.Effect<PlayOutcome, AudioEngineError> =>
-  Effect.suspend((): Effect.Effect<PlayOutcome, AudioEngineError> => {
-    if (currentPlayback(engine) === 'Suspended') {
-      return Effect.succeed('DroppedWhileSuspended')
-    } else if (isAtVoiceLimit(engine)) {
-      return Effect.succeed('DroppedAtVoiceLimit')
-    } else {
-      return Effect.try({
-        try: (): PlayOutcome => {
-          startVoice(engine, RECIPES[sound], variation)
-          return 'Played'
-        },
-        catch: error => new AudioEngineError({ reason: describeError(error) }),
-      })
-    }
-  })
+export const playSound: {
+  (
+    sound: SoundEffect,
+    variation: number,
+  ): (engine: AudioEngine) => Effect.Effect<PlayOutcome, AudioEngineError>
+  (
+    engine: AudioEngine,
+    sound: SoundEffect,
+    variation: number,
+  ): Effect.Effect<PlayOutcome, AudioEngineError>
+} = Function.dual(
+  3,
+  (
+    engine: AudioEngine,
+    sound: SoundEffect,
+    variation: number,
+  ): Effect.Effect<PlayOutcome, AudioEngineError> =>
+    Effect.suspend((): Effect.Effect<PlayOutcome, AudioEngineError> => {
+      if (currentPlayback(engine) === 'Suspended') {
+        return Effect.succeed('DroppedWhileSuspended')
+      } else if (isAtVoiceLimit(engine)) {
+        return Effect.succeed('DroppedAtVoiceLimit')
+      } else {
+        return Effect.try({
+          try: (): PlayOutcome => {
+            startVoice(engine, RECIPES[sound], variation)
+            return 'Played'
+          },
+          catch: error =>
+            AudioEngineError.make({ reason: describeError(error) }),
+        })
+      }
+    }),
+)
 
 // MUSIC
 
-export const playMusic = (
-  engine: AudioEngine,
-  cue: MusicCue,
-): Effect.Effect<void, AudioEngineError> =>
-  Effect.try({
-    try: () => cueMusic(engine.music, cue),
-    catch: error => new AudioEngineError({ reason: describeError(error) }),
-  })
+export const playMusic: {
+  (
+    cue: MusicCue,
+  ): (engine: AudioEngine) => Effect.Effect<void, AudioEngineError>
+  (engine: AudioEngine, cue: MusicCue): Effect.Effect<void, AudioEngineError>
+} = Function.dual(
+  2,
+  (engine: AudioEngine, cue: MusicCue): Effect.Effect<void, AudioEngineError> =>
+    Effect.try({
+      try: () => cueMusic(engine.music, cue),
+      catch: error => AudioEngineError.make({ reason: describeError(error) }),
+    }),
+)
 
 // VARIATION
 
@@ -299,9 +324,12 @@ const VARIATION_STEPS = 9
 const X_MIXER = 73
 const Y_MIXER = 151
 
-export const positionVariation = (x: number, y: number): number => {
+export const positionVariation: {
+  (y: number): (x: number) => number
+  (x: number, y: number): number
+} = Function.dual(2, (x: number, y: number): number => {
   const bucket =
     Math.abs(Math.floor(x) * X_MIXER + Math.floor(y) * Y_MIXER) %
     VARIATION_STEPS
   return (bucket / (VARIATION_STEPS - 1)) * 2 - 1
-}
+})

@@ -10,45 +10,45 @@ import { Schema } from 'effect'
 
 import { ZombieKind } from '../../../src/model'
 
-const ByKind = Schema.Record(ZombieKind, Schema.Number)
+const ByKind = Schema.Record(ZombieKind, Schema.Finite)
 // NOTE: a number by name: a count, or a share of a batch.
-export const Counts = Schema.Record(Schema.String, Schema.Number)
+export const Counts = Schema.Record(Schema.String, Schema.Finite)
 
 // What the bot pulled from the Mystery Leftovers fridge and what it did
 // with the fridge weapons: lids thrown and popped, Pan swings and the ones
 // that connected, sprays, and frozen zombies shattered.
 export const FridgeLog = Schema.Struct({
-  pulls: Schema.Number,
-  firstPullWave: Schema.Number,
+  pulls: Schema.Finite,
+  firstPullWave: Schema.Finite,
   prizes: Counts,
-  lids: Schema.Number,
-  pops: Schema.Number,
-  swings: Schema.Number,
-  clangs: Schema.Number,
-  sprays: Schema.Number,
-  shatters: Schema.Number,
+  lids: Schema.Finite,
+  pops: Schema.Finite,
+  swings: Schema.Finite,
+  clangs: Schema.Finite,
+  sprays: Schema.Finite,
+  shatters: Schema.Finite,
   // The fridge weapon carried when the run ended, or 'None'.
   endedWith: Schema.String,
   // Weapons taken from the fridge, and the knife's stabs and hits.
-  taken: Schema.Number,
-  stabs: Schema.Number,
-  stabHits: Schema.Number,
+  taken: Schema.Finite,
+  stabs: Schema.Finite,
+  stabHits: Schema.Finite,
   // Refills bought at the ammo window mid-wave.
-  counterBuys: Schema.Number,
+  counterBuys: Schema.Finite,
 })
 export type FridgeLog = typeof FridgeLog.Type
 
 // What the Big Leaguer, the Ankle Biter, and frenzied packs did in a run.
 export const NewKindLog = Schema.Struct({
-  throws: Schema.Number,
-  shields: Schema.Number,
-  throwHits: Schema.Number,
-  grabs: Schema.Number,
-  surfaced: Schema.Number,
-  frenzies: Schema.Number,
-  wipes: Schema.Number,
-  wipeBonus: Schema.Number,
-  heartsWhileClung: Schema.Number,
+  throws: Schema.Finite,
+  shields: Schema.Finite,
+  throwHits: Schema.Finite,
+  grabs: Schema.Finite,
+  surfaced: Schema.Finite,
+  frenzies: Schema.Finite,
+  wipes: Schema.Finite,
+  wipeBonus: Schema.Finite,
+  heartsWhileClung: Schema.Finite,
 })
 export type NewKindLog = typeof NewKindLog.Type
 
@@ -58,24 +58,24 @@ export type BossBlame = typeof BossBlame.Type
 // Each boss wave the run reached: whether the boss walked in, whether it
 // fell, how long it stood, and whether the run ended while it stood.
 export const BossFight = Schema.Struct({
-  wave: Schema.Number,
+  wave: Schema.Finite,
   arrived: Schema.Boolean,
   felled: Schema.Boolean,
-  fightMs: Schema.Number,
+  fightMs: Schema.Finite,
   diedToIt: Schema.Boolean,
-  stomps: Schema.Number,
-  stompHits: Schema.Number,
-  belches: Schema.Number,
-  charges: Schema.Number,
-  chargeHits: Schema.Number,
-  bonks: Schema.Number,
-  spits: Schema.Number,
-  spitHits: Schema.Number,
+  stomps: Schema.Finite,
+  stompHits: Schema.Finite,
+  belches: Schema.Finite,
+  charges: Schema.Finite,
+  chargeHits: Schema.Finite,
+  bonks: Schema.Finite,
+  spits: Schema.Finite,
+  spitHits: Schema.Finite,
   enraged: Schema.Boolean,
-  heartsLost: Schema.Number,
-  heartsByAttack: Schema.Record(BossBlame, Schema.Number),
-  damageTaken: Schema.Number,
-  aimedMs: Schema.Number,
+  heartsLost: Schema.Finite,
+  heartsByAttack: Schema.Record(BossBlame, Schema.Finite),
+  damageTaken: Schema.Finite,
+  aimedMs: Schema.Finite,
 })
 export type BossFight = typeof BossFight.Type
 
@@ -83,26 +83,26 @@ export type BossFight = typeof BossFight.Type
 // walks in, and the stretches with no zombie alive. A stretch is announced
 // while a warned pack still waits at its door or the dinner bell rings.
 const PackArrival = Schema.Struct({
-  atMs: Schema.Number,
-  pack: Schema.Number,
+  atMs: Schema.Finite,
+  pack: Schema.Finite,
   door: Schema.String,
-  size: Schema.Number,
+  size: Schema.Finite,
   kinds: Schema.Array(Schema.String),
   formation: Schema.String,
 })
 
 export const EmptyStretch = Schema.Struct({
-  fromMs: Schema.Number,
-  ms: Schema.Number,
-  announcedMs: Schema.Number,
+  fromMs: Schema.Finite,
+  ms: Schema.Finite,
+  announcedMs: Schema.Finite,
 })
 export type EmptyStretch = typeof EmptyStretch.Type
 
 export const WaveTimeline = Schema.Struct({
   packs: Schema.Array(PackArrival),
   empty: Schema.Array(EmptyStretch),
-  restMs: Schema.Array(Schema.Number),
-  lengthMs: Schema.Number,
+  restMs: Schema.Array(Schema.Finite),
+  lengthMs: Schema.Finite,
 })
 export type WaveTimeline = typeof WaveTimeline.Type
 
@@ -112,51 +112,51 @@ export type WaveTimeline = typeof WaveTimeline.Type
 // rules forbid) and its longest stretch, its length, and the most alive at
 // once.
 export const WaveLog = Schema.Struct({
-  heartsLost: Schema.Number,
-  pressureMs: Schema.Number,
-  relaxMs: Schema.Number,
-  quietMs: Schema.Number,
-  quietRunMs: Schema.Number,
-  longestQuietMs: Schema.Number,
-  lengthMs: Schema.Number,
-  peakAlive: Schema.Number,
+  heartsLost: Schema.Finite,
+  pressureMs: Schema.Finite,
+  relaxMs: Schema.Finite,
+  quietMs: Schema.Finite,
+  quietRunMs: Schema.Finite,
+  longestQuietMs: Schema.Finite,
+  lengthMs: Schema.Finite,
+  peakAlive: Schema.Finite,
 })
 export type WaveLog = typeof WaveLog.Type
 
 // A break the bot found the shop open in: the wave it came before, the
 // money it arrived with, and what it bought, in order.
 export const ShopVisit = Schema.Struct({
-  wave: Schema.Number,
-  money: Schema.Number,
+  wave: Schema.Finite,
+  money: Schema.Finite,
   bought: Schema.Array(Schema.String),
 })
 export type ShopVisit = typeof ShopVisit.Type
 
 export const RunResult = Schema.Struct({
-  seed: Schema.Number,
-  cleared: Schema.Number,
+  seed: Schema.Finite,
+  cleared: Schema.Finite,
   killedBy: Schema.optional(ZombieKind),
   victory: Schema.Boolean,
-  runMs: Schema.Number,
-  moneyAfterWave: Schema.Array(Schema.Number),
+  runMs: Schema.Finite,
+  moneyAfterWave: Schema.Array(Schema.Finite),
   hurtBy: ByKind,
-  maxAlive: Schema.Number,
-  pistolTier: Schema.Number,
-  spareTier: Schema.Number,
-  upgradeSpend: Schema.Number,
-  minHp: Schema.Number,
+  maxAlive: Schema.Finite,
+  pistolTier: Schema.Finite,
+  spareTier: Schema.Finite,
+  upgradeSpend: Schema.Finite,
+  minHp: Schema.Finite,
   waves: Schema.Array(WaveLog),
   shopVisits: Schema.Array(ShopVisit),
-  gnomesPlaced: Schema.Number,
+  gnomesPlaced: Schema.Finite,
   dropped: Counts,
   grabbed: Counts,
-  boostedMs: Schema.Number,
-  waveMs: Schema.Number,
+  boostedMs: Schema.Finite,
+  waveMs: Schema.Finite,
   timelines: Schema.Array(WaveTimeline),
   boss: Schema.Array(BossFight),
   newKinds: NewKindLog,
   // The wave whose break the kitchen was bought in, or 0 when it never was.
-  kitchenWave: Schema.Number,
+  kitchenWave: Schema.Finite,
   fridge: FridgeLog,
 })
 export type RunResult = typeof RunResult.Type
@@ -167,17 +167,17 @@ export const WaveOutcome = Schema.Literals(['Cleared', 'Died', 'TimedOut'])
 export type WaveOutcome = typeof WaveOutcome.Type
 
 export const WaveRun = Schema.Struct({
-  wave: Schema.Number,
-  snapshotSeed: Schema.Number,
-  waveSeed: Schema.Number,
+  wave: Schema.Finite,
+  snapshotSeed: Schema.Finite,
+  waveSeed: Schema.Finite,
   outcome: WaveOutcome,
-  heartsLost: Schema.Number,
-  lengthMs: Schema.Number,
-  emptyMs: Schema.Number,
-  quietMs: Schema.Number,
-  longestQuietMs: Schema.Number,
-  pressureMs: Schema.Number,
-  peakAlive: Schema.Number,
+  heartsLost: Schema.Finite,
+  lengthMs: Schema.Finite,
+  emptyMs: Schema.Finite,
+  quietMs: Schema.Finite,
+  longestQuietMs: Schema.Finite,
+  pressureMs: Schema.Finite,
+  peakAlive: Schema.Finite,
   killedBy: Schema.optional(ZombieKind),
   hurtBy: ByKind,
   // NOTE: the boss fight on a boss wave, for the wave pass's boss lines.

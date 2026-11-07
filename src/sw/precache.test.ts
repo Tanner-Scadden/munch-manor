@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'vitest'
+import { Array, Effect, String } from 'effect'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import {
   KILL_SWITCH_SOURCE,
@@ -40,7 +42,9 @@ describe('the precache list', () => {
   const list = precacheList(EMITTED, PUBLIC)
 
   test('holds every emitted asset, the shell under the root URL', () => {
-    const emittedAssets = EMITTED.filter(file => file.startsWith('assets/'))
+    const emittedAssets = Array.filter(EMITTED, file =>
+      String.startsWith('assets/')(file),
+    )
     expect(list).toEqual(expect.arrayContaining(emittedAssets))
     expect(list).toContain(SHELL_URL)
     expect(list).not.toContain('index.html')
@@ -102,7 +106,7 @@ describe('the drift check', () => {
   test('a listed file that was not deployed is caught', () => {
     expect(
       precacheDrift(
-        deployed.filter(file => file !== 'assets/sqlite3-k2cTanUO.wasm'),
+        Array.filter(deployed, file => file !== 'assets/sqlite3-k2cTanUO.wasm'),
         list,
       ).extra,
     ).toStrictEqual(['assets/sqlite3-k2cTanUO.wasm'])
@@ -110,19 +114,23 @@ describe('the drift check', () => {
 })
 
 describe('the worker source', () => {
-  test('starts with the build id and the list, and is a classic script', () => {
-    const source = serviceWorkerSource(
-      'abc123',
-      ['./', 'assets/a.js'],
-      'export {};\nconst CACHE = 1;\n',
-    )
-    expect(source.split('\n').slice(0, 2)).toStrictEqual([
-      'const BUILD = "abc123";',
-      'const PRECACHE = ["./","assets/a.js"];',
-    ])
-    expect(source).not.toMatch(/^export/m)
-    expect(source).toContain('const CACHE = 1;')
-  })
+  it.effect(
+    'starts with the build id and the list, and is a classic script',
+    () =>
+      Effect.gen(function* () {
+        const source = yield* serviceWorkerSource(
+          'abc123',
+          ['./', 'assets/a.js'],
+          'export {};\nconst CACHE = 1;\n',
+        )
+        expect(Array.take(String.split(source, '\n'), 2)).toStrictEqual([
+          'const BUILD = "abc123";',
+          'const PRECACHE = ["./","assets/a.js"];',
+        ])
+        expect(source).not.toMatch(/^export/m)
+        expect(source).toContain('const CACHE = 1;')
+      }),
+  )
 
   test('the kill switch unregisters and clears the caches', () => {
     expect(KILL_SWITCH_SOURCE).toContain('skipWaiting')

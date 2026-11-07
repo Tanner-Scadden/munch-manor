@@ -1,4 +1,4 @@
-import { Array, Record, pipe } from 'effect'
+import { Array, Function, Record, pipe } from 'effect'
 
 import type { Difficulty, TrapKind } from './model'
 import type { Modifier } from './modifiers'
@@ -18,22 +18,39 @@ const iconWidth = (pixels: ReadonlyArray<string>): number =>
 
 // NOTE: the icons are the game's own pixel maps turned into SVG, so the HTML
 // buttons over the canvas use the same chunky pixels as the canvas HUD.
-export const pixelIconUrl = (
-  pixels: ReadonlyArray<string>,
-  palette: Palette,
-  fit: 'Keep' | 'Stretch' = 'Keep',
-): string => {
-  const rects = pipe(
-    pixelRuns(pixels, palette),
-    Array.map(
-      ({ x, y, width, height, color }) =>
-        `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${color}"/>`,
-    ),
-    Array.join(''),
-  )
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${iconWidth(pixels)} ${pixels.length}"${fit === 'Stretch' ? ' preserveAspectRatio="none"' : ''} shape-rendering="crispEdges">${rects}</svg>`
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
-}
+// NOTE: a call is data-first when it starts with the pixel rows (an array);
+// the data-last form starts with the palette (a record).
+const isPixelsFirst = (args: IArguments): boolean => Array.isArray(args[0])
+
+export const pixelIconUrl: {
+  (
+    palette: Palette,
+    fit?: 'Keep' | 'Stretch',
+  ): (pixels: ReadonlyArray<string>) => string
+  (
+    pixels: ReadonlyArray<string>,
+    palette: Palette,
+    fit?: 'Keep' | 'Stretch',
+  ): string
+} = Function.dual(
+  isPixelsFirst,
+  (
+    pixels: ReadonlyArray<string>,
+    palette: Palette,
+    fit: 'Keep' | 'Stretch' = 'Keep',
+  ): string => {
+    const rects = pipe(
+      pixelRuns(pixels, palette),
+      Array.map(
+        ({ x, y, width, height, color }) =>
+          `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${color}"/>`,
+      ),
+      Array.join(''),
+    )
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${iconWidth(pixels)} ${pixels.length}"${fit === 'Stretch' ? ' preserveAspectRatio="none"' : ''} shape-rendering="crispEdges">${rects}</svg>`
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+  },
+)
 
 const icon = (pixels: ReadonlyArray<string>): string =>
   pixelIconUrl(pixels, ICON_PALETTE)

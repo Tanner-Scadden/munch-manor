@@ -11,20 +11,24 @@ import {
   Array,
   Clock,
   Console,
-  Data,
   type Duration,
   Effect,
   Exit,
+  Layer,
   Match,
   Option,
   Ref,
   Result,
   Schedule,
+  Schema,
   Scope,
   Stream,
+  String,
 } from 'effect'
+import { FetchHttpClient } from 'effect/http'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 import {
   ChangedReady,
   EndedGame,
@@ -49,11 +53,12 @@ import { type Mutation, generateKey, makePlayerId } from '@munch/sync-engine'
 
 import { playersOf } from '../../src/party'
 import { type OwnSeat, ROOM_WORLD, type RoomWorld } from '../../src/roomWorld'
-import { LOCAL_ORIGIN, startWorkerd } from './local'
+import { localOrigin, startWorkerd } from './local'
 
-class CheckFailed extends Data.TaggedError('CheckFailed')<{
-  readonly check: string
-}> {}
+class CheckFailed extends Schema.TaggedError<
+  CheckFailed,
+  { readonly brand: unique symbol }
+>()('CheckFailed', { check: Schema.String }) {}
 
 type Play = Session.Session<RoomWorld, OwnSeat>
 
@@ -73,12 +78,13 @@ interface Player {
   lobbyClient: Option.Option<LobbyClient>
 }
 
-const origin = process.argv[2] ?? LOCAL_ORIGIN
+// NOTE: the deploy named on the command line, else the local workerd.
+const originOf = Effect.map(localOrigin, local => process.argv[2] ?? local)
 
 const check = (name: string, holds: boolean) =>
   holds
     ? Console.log(`  ok  ${name}`)
-    : Effect.fail(new CheckFailed({ check: name }))
+    : Effect.fail(CheckFailed.make({ check: name }))
 
 // NOTE: polls until the condition holds, or fails the check after a while.
 const eventually = (
@@ -89,18 +95,19 @@ const eventually = (
   condition.pipe(
     Effect.filterOrFail(
       holds => holds,
-      () => new CheckFailed({ check: name }),
+      () => CheckFailed.make({ check: name }),
     ),
     Effect.retry(Schedule.spaced('50 millis')),
     Effect.timeoutOrElse({
       duration: within,
-      orElse: () => Effect.fail(new CheckFailed({ check: name })),
+      orElse: () => Effect.fail(CheckFailed.make({ check: name })),
     }),
     Effect.andThen(Console.log(`  ok  ${name}`)),
   )
 
 const signIn = (name: string) =>
   Effect.gen(function* () {
+    const origin = yield* originOf
     const key = yield* generateKey
     const playerId = yield* makePlayerId
     const session = yield* signInDevice(origin, key, playerId)
@@ -120,6 +127,7 @@ const signIn = (name: string) =>
 
 const follow = (player: Player, code: string) =>
   Effect.gen(function* () {
+    const origin = yield* originOf
     const client = yield* followLobby({
       origin,
       code,
@@ -150,18 +158,17 @@ const writeAs = <A, I>(
   Option.match(player.lobbyClient, {
     onNone: () =>
       Effect.fail(
-        new CheckFailed({ check: `${player.name} follows the lobby` }),
+        CheckFailed.make({ check: `${player.name} follows the lobby` }),
       ),
     onSome: client =>
-      Effect.mapError(
-        client.write(mutation, args),
-        () =>
-          new CheckFailed({ check: `${player.name} wrote ${mutation.name}` }),
+      Effect.mapError(client.write(mutation, args), () =>
+        CheckFailed.make({ check: `${player.name} wrote ${mutation.name}` }),
       ),
   })
 
 const joinGame = (player: Player, code: string) =>
   Effect.gen(function* () {
+    const origin = yield* originOf
     const scope = yield* Scope.make()
     const client = yield* Scope.provide(
       connectRoom({
@@ -239,7 +246,7 @@ const drive = (player: Player, index: number) =>
     const counted = Array.reduce(
       Array.getSomes(sent),
       ticked.session,
-      Session.countSent,
+      (session, bytes) => Session.countSent(session, bytes),
     )
     const rendered = Session.render(ROOM_WORLD, counted, nowMs)
     yield* Ref.set(player.play, rendered.session)
@@ -279,15 +286,16 @@ const report = (player: Player, seconds: number) =>
   })
 
 const program = Effect.gen(function* () {
+  const origin = yield* originOf
+  const local = yield* localOrigin
   const workerd =
-    origin === LOCAL_ORIGIN
-      ? Option.some(yield* Effect.tap(
+    origin === local
+      ? yield* Effect.asSome(
           Effect.andThen(
             Console.log('Starting the API Worker in workerd...'),
             startWorkerd,
           ),
-          () => Effect.void,
-        ))
+        )
       : Option.none()
   yield* Console.log(`Co-op end to end against ${origin}`)
   const [ana, bo, cy] = yield* Effect.all([
@@ -295,11 +303,21 @@ const program = Effect.gen(function* () {
     signIn('bo'),
     signIn('cy'),
   ])
-  const created = yield* createRoom(origin, ana.token, 'Ana')
+  const created = yield* createRoom({ origin, token: ana.token, name: 'Ana' })
   yield* Console.log(`  ok  ana created room ${created.code}`)
   const code = created.code
-  const boTicket = yield* joinRoom(origin, bo.token, code, '  Bo\u0007  ')
-  const cyTicket = yield* joinRoom(origin, cy.token, code.toLowerCase(), '')
+  const boTicket = yield* joinRoom({
+    origin,
+    token: bo.token,
+    code,
+    name: '  Bo\u0007  ',
+  })
+  const cyTicket = yield* joinRoom({
+    origin,
+    token: cy.token,
+    code: String.toLowerCase(code),
+    name: '',
+  })
   yield* check(
     'bo and cy joined in slots 1 and 2',
     boTicket.slot === 1 && cyTicket.slot === 2,
@@ -317,8 +335,10 @@ const program = Effect.gen(function* () {
           Option.exists(
             lobby,
             held =>
-              held.members.map(member => member.name).join(',') ===
-              'Ana,Bo,Player 3',
+              Array.join(
+                Array.map(held.members, member => member.name),
+                ',',
+              ) === 'Ana,Bo,Player 3',
           ),
         ),
     ),
@@ -342,7 +362,7 @@ const program = Effect.gen(function* () {
         lobby,
         held =>
           held.status === 'Lobby' &&
-          held.members.filter(member => member.ready).length === 2,
+          Array.filter(held.members, member => member.ready).length === 2,
       ),
     ),
   )
@@ -527,5 +547,6 @@ const program = Effect.gen(function* () {
 NodeRuntime.runMain(
   Effect.scoped(program).pipe(
     Effect.andThen(Effect.sync(() => process.exit(0))),
+    Effect.provide(Layer.merge(NodeServices.layer, FetchHttpClient.layer)),
   ),
 )

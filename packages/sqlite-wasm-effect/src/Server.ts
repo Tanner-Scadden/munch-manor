@@ -47,7 +47,7 @@ const EngineState = Data.taggedEnum<EngineState>()
 
 const Owner = Schema.Struct({
   session: Schema.String,
-  epoch: Schema.Number,
+  epoch: Schema.Finite,
 })
 type Owner = typeof Owner.Type
 

@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 
 import { type PlayerInput, moveOf } from './Protocol'
 import {
@@ -147,7 +147,10 @@ const numberOrder = (a: number, b: number): -1 | 0 | 1 =>
 
 // STEP
 
-export const moveDot = (dot: Dot, input: PlayerInput): Dot => {
+export const moveDot: {
+  (input: PlayerInput): (dot: Dot) => Dot
+  (dot: Dot, input: PlayerInput): Dot
+} = Function.dual(2, (dot: Dot, input: PlayerInput): Dot => {
   const move = moveOf(input)
   return {
     ...dot,
@@ -162,7 +165,7 @@ export const moveDot = (dot: Dot, input: PlayerInput): Dot => {
       ARENA_HEIGHT - DOT_RADIUS,
     ),
   }
-}
+})
 
 const moveWalker = (walker: Walker): Walker => {
   const x = walker.x + walker.vx * STEP_SECONDS
@@ -309,7 +312,7 @@ const readSnapshot = (reader: Reader): StandInWorld => {
   const dots = repeat(reader.u8(), () => readDot(reader))
   const walkerCount = reader.varint()
   if (walkerCount > MAX_WALKERS) {
-    throw new WireError({ reason: `${walkerCount} walkers` })
+    throw WireError.make({ reason: `${walkerCount} walkers` })
   }
   return {
     tick,
@@ -408,7 +411,7 @@ const diff = (writer: Writer, prev: StandInWorld, next: StandInWorld) => {
 }
 
 const missing = (what: string): never => {
-  throw new WireError({ reason: `A diff changed an unknown ${what}` })
+  throw WireError.make({ reason: `A diff changed an unknown ${what}` })
 }
 
 const applyDotChange = (reader: Reader, dots: ReadonlyArray<Dot>) => {
@@ -473,7 +476,7 @@ const applyDiff = (reader: Reader, prev: StandInWorld): StandInWorld => {
   )
   const walkerChanges = reader.varint()
   if (walkerChanges > MAX_WALKERS) {
-    throw new WireError({ reason: `${walkerChanges} walker changes` })
+    throw WireError.make({ reason: `${walkerChanges} walker changes` })
   }
   const walkers = Array.reduce(
     repeat(walkerChanges, () => 0),

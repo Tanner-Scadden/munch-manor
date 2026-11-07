@@ -15,7 +15,7 @@ import {
   VelocityNumber,
 } from './wireNumber'
 
-export const Vector = Schema.Struct({ x: Schema.Number, y: Schema.Number })
+export const Vector = Schema.Struct({ x: Schema.Finite, y: Schema.Finite })
 export type Vector = typeof Vector.Type
 
 export const Trigger = Schema.Literals(['Released', 'Held'])
@@ -61,9 +61,9 @@ export type GunPerk = typeof GunPerk.Type
 // most, and a new gun in its place comes plain, so the perk goes with it.
 export const CarriedGun = Schema.Struct({
   kind: WeaponKind,
-  rounds: Schema.Number,
-  loaded: Schema.Number,
-  tier: Schema.Number,
+  rounds: Schema.Finite,
+  loaded: Schema.Finite,
+  tier: Schema.Finite,
   perk: Schema.optionalKey(GunPerk),
 })
 export type CarriedGun = typeof CarriedGun.Type
@@ -116,7 +116,7 @@ export type Charge = typeof Charge.Type
 export const Player = Schema.Struct({
   x: PositionNumber,
   y: PositionNumber,
-  hp: Schema.Number,
+  hp: Schema.Finite,
   facing: Heading,
   fireCooldownMs: MillisNumber,
   knockback: Push,
@@ -163,17 +163,17 @@ export const ZombieAction = defineTaggedUnion({
   Roaming: {},
   Winded: { remainingMs: MillisNumber },
   Hefting: {
-    victimId: Schema.Number,
+    victimId: Schema.Finite,
     remainingMs: MillisNumber,
     durationMs: MillisNumber,
   },
-  Carried: { byId: Schema.Number },
+  Carried: { byId: Schema.Finite },
   Shielding: {
-    victimId: Schema.Number,
+    victimId: Schema.Finite,
     remainingMs: MillisNumber,
-    aim: Schema.Number,
+    aim: Schema.Finite,
   },
-  Shielded: { byId: Schema.Number },
+  Shielded: { byId: Schema.Finite },
   Flying: {
     from: Point,
     to: Point,
@@ -200,20 +200,20 @@ export type ZombieAction = typeof ZombieAction.Type
 // the bonus for wiping out the whole pack.
 export const Frenzy = defineTaggedUnion({
   Calm: {},
-  Frenzied: { pack: Schema.Number, apartMs: MillisNumber },
-  Fading: { pack: Schema.Number, remainingMs: MillisNumber },
-  Spent: { pack: Schema.Number },
+  Frenzied: { pack: Schema.Finite, apartMs: MillisNumber },
+  Fading: { pack: Schema.Finite, remainingMs: MillisNumber },
+  Spent: { pack: Schema.Finite },
 })
 export type Frenzy = typeof Frenzy.Type
 
 export const Zombie = Schema.Struct({
-  id: Schema.Number,
+  id: Schema.Finite,
   kind: ZombieKind,
   x: PositionNumber,
   y: PositionNumber,
-  speed: Schema.Number,
-  hp: Schema.Number,
-  maxHp: Schema.Number,
+  speed: Schema.Finite,
+  hp: Schema.Finite,
+  maxHp: Schema.Finite,
   knockback: Push,
   hitRemainingMs: MillisNumber,
   state: ZombieState,
@@ -271,25 +271,25 @@ export type BulletGlaze = typeof BulletGlaze.Type
 
 export const Pierce = defineTaggedUnion({
   Stops: {},
-  Skewers: { left: Schema.Number, struck: Schema.Array(Schema.Number) },
+  Skewers: { left: Schema.Finite, struck: Schema.Array(Schema.Finite) },
 })
 export type Pierce = typeof Pierce.Type
 
 export const Bullet = Schema.Struct({
-  id: Schema.Number,
+  id: Schema.Finite,
   x: PositionNumber,
   y: PositionNumber,
   velocityX: VelocityNumber,
   velocityY: VelocityNumber,
   remainingMs: MillisNumber,
   weapon: WeaponKind,
-  damage: Schema.Number,
+  damage: Schema.Finite,
   knockback: VelocityNumber,
   glaze: BulletGlaze,
   pierce: Pierce,
   // NOTE: the slot of the player or the gnome's owner who fired it, set
   // only in co-op, so a single player World is the same record it was.
-  shooter: Schema.optionalKey(Schema.Number),
+  shooter: Schema.optionalKey(Schema.Finite),
 })
 export type Bullet = typeof Bullet.Type
 
@@ -388,7 +388,7 @@ export const PickupKind = Schema.Literals([
 export type PickupKind = typeof PickupKind.Type
 
 export const Pickup = Schema.Struct({
-  id: Schema.Number,
+  id: Schema.Finite,
   kind: PickupKind,
   x: PositionNumber,
   y: PositionNumber,
@@ -420,10 +420,10 @@ export type Prize = typeof Prize.Type
 // (src/leftovers.ts), apart from the drops' and the waves', so a pull never
 // changes what drops or which zombies come.
 export const Loot = Schema.Struct({
-  rngState: Schema.Number,
+  rngState: Schema.Finite,
   dryMs: MillisNumber,
   prize: Prize,
-  fridgeRngState: Schema.Number,
+  fridgeRngState: Schema.Finite,
 })
 export type Loot = typeof Loot.Type
 
@@ -453,7 +453,7 @@ export const FridgeDoor = defineTaggedUnion({
   Shut: {},
   Open: {
     prize: FridgePrize,
-    slot: Schema.Number,
+    slot: Schema.Finite,
     remainingMs: MillisNumber,
     durationMs: MillisNumber,
   },
@@ -463,7 +463,7 @@ export const FridgeDoor = defineTaggedUnion({
   // time runs out; left, it sinks back into the fridge.
   Offering: {
     prize: FridgePrize,
-    slot: Schema.Number,
+    slot: Schema.Finite,
     remainingMs: MillisNumber,
     durationMs: MillisNumber,
   },
@@ -477,10 +477,10 @@ export type FridgeDoor = typeof FridgeDoor.Type
 // first pull of a round costs less (src/leftovers.ts).
 export const Fridge = Schema.Struct({
   door: FridgeDoor,
-  pulls: Schema.Number,
-  luck: Schema.Number,
-  cheapRound: Schema.Number,
-  cheapSlots: Schema.Array(Schema.Number),
+  pulls: Schema.Finite,
+  luck: Schema.Finite,
+  cheapRound: Schema.Finite,
+  cheapSlots: Schema.Array(Schema.Finite),
 })
 export type Fridge = typeof Fridge.Type
 
@@ -495,8 +495,8 @@ export type PantryGoodie = typeof PantryGoodie.Type
 // NOTE: `round` is the break it was stocked for, by its wave number, so a
 // break stocks it once and a taken stash stays Bare until the next break.
 export const Pantry = defineTaggedUnion({
-  Bare: { round: Schema.Number },
-  Stocked: { round: Schema.Number, goodie: PantryGoodie, cash: Schema.Number },
+  Bare: { round: Schema.Finite },
+  Stocked: { round: Schema.Finite, goodie: PantryGoodie, cash: Schema.Finite },
 })
 export type Pantry = typeof Pantry.Type
 export type PantryStash = typeof Pantry.Stocked.Type
@@ -505,16 +505,16 @@ export type PantryStash = typeof Pantry.Stocked.Type
 // it lands; `charge` (0 to 1) and `tier` size its blast. It names the seat
 // that threw it, as a bullet does, only in co-op.
 export const Lob = Schema.Struct({
-  id: Schema.Number,
+  id: Schema.Finite,
   x: PositionNumber,
   y: PositionNumber,
   from: Point,
   to: Point,
   remainingMs: MillisNumber,
   durationMs: MillisNumber,
-  charge: Schema.Number,
-  tier: Schema.Number,
-  shooter: Schema.optionalKey(Schema.Number),
+  charge: Schema.Finite,
+  tier: Schema.Finite,
+  shooter: Schema.optionalKey(Schema.Finite),
 })
 export type Lob = typeof Lob.Type
 
@@ -523,17 +523,17 @@ export type Lob = typeof Lob.Type
 // NOTE: the kitchen's stove bench (src/stove.ts): the perk it offers in
 // the break for `wave`, rolled from its own generator once each break.
 export const Stove = Schema.Struct({
-  rngState: Schema.Number,
+  rngState: Schema.Finite,
   perk: GunPerk,
-  wave: Schema.Number,
+  wave: Schema.Finite,
 })
 export type Stove = typeof Stove.Type
 
 // NOTE: one player's cooking at the stove: how many guns they have cooked
 // this run, which sets the price, and the break they last cooked in.
 export const Cooking = Schema.Struct({
-  cooks: Schema.Number,
-  lastWave: Schema.Number,
+  cooks: Schema.Finite,
+  lastWave: Schema.Finite,
 })
 export type Cooking = typeof Cooking.Type
 
@@ -542,15 +542,15 @@ export type Cooking = typeof Cooking.Type
 // for its kills, and `nextBurnMs` counts down to its next burn.
 export const GasValve = defineTaggedUnion({
   Shut: {},
-  Lit: { owner: Schema.Number, nextBurnMs: MillisNumber },
+  Lit: { owner: Schema.Finite, nextBurnMs: MillisNumber },
 })
 export type GasValve = typeof GasValve.Type
 
 export const Callout = Schema.Struct({
   kind: PickupKind,
   look: CalloutLook,
-  x: Schema.Number,
-  y: Schema.Number,
+  x: Schema.Finite,
+  y: Schema.Finite,
   ageMs: MillisNumber,
 })
 export type Callout = typeof Callout.Type
@@ -560,6 +560,6 @@ export type Callout = typeof Callout.Type
 // (src/ammoCounter.ts). Never part of the World.
 export const CounterSale = defineTaggedUnion({
   Quiet: {},
-  Selling: { ageMs: Schema.Number, line: Schema.Number },
+  Selling: { ageMs: Schema.Finite, line: Schema.Finite },
 })
 export type CounterSale = typeof CounterSale.Type

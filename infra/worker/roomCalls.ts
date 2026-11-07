@@ -1,3 +1,4 @@
+import { Function } from 'effect'
 import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
 import * as Result from 'effect/Result'
@@ -23,7 +24,7 @@ import {
   InternalJoin,
   ROOM_CODE_HEADER,
 } from './gameRoomCore.ts'
-import { type SyncCallFailed, tryCall } from './syncCore.ts'
+import { SyncCallFailed, tryCall } from './syncCore.ts'
 
 // NOTE: calls between the Worker, the GameRoom objects, and the
 // Matchmaker. Only the Worker and these objects can reach the internal
@@ -100,13 +101,13 @@ const CREATE_ATTEMPTS = 5
 
 const encodeCreate = Schema.encodeEffect(InternalCreate)
 const encodeJoin = Schema.encodeEffect(InternalJoin)
-const encodeListing = Schema.encodeSync(
+const encodeListing = Schema.encodeEffect(
   Schema.fromJsonString(Matchmaking.RoomListing),
 )
 
 // NOTE: a new room under a fresh code; a code already in use (409) draws
 // another, a few times.
-export const createRoomIn = (
+const createAttempt = (
   rooms: DurableObjectNamespace,
   playerId: string,
   name: string,
@@ -114,8 +115,8 @@ export const createRoomIn = (
   rank: number,
   calling: string,
   visibility: RoomVisibility,
-  region = '',
-  attempt = 0,
+  region: string,
+  attempt: number,
 ): Effect.Effect<Called, SyncCallFailed> =>
   Effect.gen(function* () {
     const code = yield* makeRoomCode
@@ -130,7 +131,7 @@ export const createRoomIn = (
       region,
     )
     return called.status === 409 && attempt + 1 < CREATE_ATTEMPTS
-      ? yield* createRoomIn(
+      ? yield* createAttempt(
           rooms,
           playerId,
           name,
@@ -144,19 +145,85 @@ export const createRoomIn = (
       : called
   })
 
-export const joinRoomIn = (
-  rooms: DurableObjectNamespace,
-  code: string,
-  playerId: string,
-  name: string,
-  look: string,
-  rank: number,
-  calling: string,
-): Effect.Effect<Called, SyncCallFailed> =>
-  Effect.flatMap(
-    Effect.orDie(encodeJoin({ playerId, name, look, rank, calling })),
-    body => callRoom(rooms, code, INTERNAL_PATHS.join, body),
-  )
+export const createRoomIn: {
+  (
+    playerId: string,
+    name: string,
+    look: string,
+    rank: number,
+    calling: string,
+    visibility: RoomVisibility,
+    region: string,
+  ): (rooms: DurableObjectNamespace) => Effect.Effect<Called, SyncCallFailed>
+  (
+    rooms: DurableObjectNamespace,
+    playerId: string,
+    name: string,
+    look: string,
+    rank: number,
+    calling: string,
+    visibility: RoomVisibility,
+    region: string,
+  ): Effect.Effect<Called, SyncCallFailed>
+} = Function.dual(
+  8,
+  (
+    rooms: DurableObjectNamespace,
+    playerId: string,
+    name: string,
+    look: string,
+    rank: number,
+    calling: string,
+    visibility: RoomVisibility,
+    region: string,
+  ): Effect.Effect<Called, SyncCallFailed> =>
+    createAttempt(
+      rooms,
+      playerId,
+      name,
+      look,
+      rank,
+      calling,
+      visibility,
+      region,
+      0,
+    ),
+)
+
+export const joinRoomIn: {
+  (
+    code: string,
+    playerId: string,
+    name: string,
+    look: string,
+    rank: number,
+    calling: string,
+  ): (rooms: DurableObjectNamespace) => Effect.Effect<Called, SyncCallFailed>
+  (
+    rooms: DurableObjectNamespace,
+    code: string,
+    playerId: string,
+    name: string,
+    look: string,
+    rank: number,
+    calling: string,
+  ): Effect.Effect<Called, SyncCallFailed>
+} = Function.dual(
+  7,
+  (
+    rooms: DurableObjectNamespace,
+    code: string,
+    playerId: string,
+    name: string,
+    look: string,
+    rank: number,
+    calling: string,
+  ): Effect.Effect<Called, SyncCallFailed> =>
+    Effect.flatMap(
+      Effect.orDie(encodeJoin({ playerId, name, look, rank, calling })),
+      body => callRoom(rooms, code, INTERNAL_PATHS.join, body),
+    ),
+)
 
 const decodeTicket = Schema.decodeOption(
   Schema.fromJsonString(RoomTicketSchema),
@@ -179,22 +246,39 @@ export const ticketOf = (
 
 // NOTE: a public room tells the Matchmaker how it stands. A failure is
 // logged; the next change says it again, and a stale listing ages out.
-export const reportListing = (
-  matchmakers: DurableObjectNamespace | undefined,
-  listing: Matchmaking.RoomListing,
-): Effect.Effect<void> =>
-  matchmakers === undefined
-    ? Effect.void
-    : tryCall('tell the matchmaker', () =>
-        matchmakers
-          .get(matchmakers.idFromName(MATCHMAKER_NAME))
-          .fetch(`https://matchmaker${LISTING_PATH}`, {
-            method: 'POST',
-            body: encodeListing(listing),
-          }),
-      ).pipe(
-        Effect.asVoid,
-        Effect.catchTag('SyncCallFailed', error =>
-          Effect.logWarning('Telling the matchmaker failed', error.cause),
+export const reportListing: {
+  (
+    listing: Matchmaking.RoomListing,
+  ): (matchmakers: DurableObjectNamespace | undefined) => Effect.Effect<void>
+  (
+    matchmakers: DurableObjectNamespace | undefined,
+    listing: Matchmaking.RoomListing,
+  ): Effect.Effect<void>
+} = Function.dual(
+  2,
+  (
+    matchmakers: DurableObjectNamespace | undefined,
+    listing: Matchmaking.RoomListing,
+  ): Effect.Effect<void> =>
+    matchmakers === undefined
+      ? Effect.void
+      : Effect.flatMap(
+          Effect.mapError(encodeListing(listing), cause =>
+            SyncCallFailed.make({ step: 'tell the matchmaker', cause }),
+          ),
+          body =>
+            tryCall('tell the matchmaker', () =>
+              matchmakers
+                .get(matchmakers.idFromName(MATCHMAKER_NAME))
+                .fetch(`https://matchmaker${LISTING_PATH}`, {
+                  method: 'POST',
+                  body,
+                }),
+            ),
+        ).pipe(
+          Effect.asVoid,
+          Effect.catchTag('SyncCallFailed', error =>
+            Effect.logWarning('Telling the matchmaker failed', error.cause),
+          ),
         ),
-      )
+)

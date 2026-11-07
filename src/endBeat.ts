@@ -1,4 +1,4 @@
-import { Array, Option, Schema } from 'effect'
+import { Array, Function, Option, Schema, String } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
@@ -8,6 +8,7 @@ import { isBotCrew } from './bots'
 import { callingsOpenedBy } from './calling'
 import { giftsOpenedBy } from './closet'
 import { awardsOf, crewOf, hasAwards, mvpOf } from './crewAwards'
+import { isObjectFirst, isObjectSecond } from './dualArgs'
 import { isEndScreen, withBests } from './home'
 import {
   type DifficultyBests,
@@ -82,8 +83,12 @@ export const TIMELINES: Readonly<Record<EndKind, Timeline>> = {
   },
 }
 
-export const progressOf = (ms: number, startMs: number, spanMs: number) =>
-  Math.min(1, Math.max(0, (ms - startMs) / spanMs))
+export const progressOf: {
+  (startMs: number, spanMs: number): (ms: number) => number
+  (ms: number, startMs: number, spanMs: number): number
+} = Function.dual(3, (ms: number, startMs: number, spanMs: number): number =>
+  Math.min(1, Math.max(0, (ms - startMs) / spanMs)),
+)
 
 export const easeOut = (t: number): number => 1 - (1 - t) ** 3
 
@@ -109,7 +114,7 @@ const MS_PER_SECOND = 1000
 
 const clockLabel = (ms: number): string => {
   const total = Math.floor(ms / MS_PER_SECOND)
-  return `${Math.floor(total / SECONDS_PER_MINUTE)}:${String(total % SECONDS_PER_MINUTE).padStart(2, '0')}`
+  return `${Math.floor(total / SECONDS_PER_MINUTE)}:${String.padStart(2, '0')(globalThis.String(total % SECONDS_PER_MINUTE))}`
 }
 
 export const plain = (shown: number): string => `${shown}`
@@ -173,30 +178,44 @@ export const tallyRowsOf = (model: Model): ReadonlyArray<TallyRow> =>
     ],
   })
 
-export const rowStartMs = (kind: EndKind, index: number): number =>
-  TIMELINES[kind].cardAtMs + ROW_GAP_MS + index * (ROW_MS + ROW_GAP_MS)
+export const rowStartMs: {
+  (index: number): (kind: EndKind) => number
+  (kind: EndKind, index: number): number
+} = Function.dual(
+  2,
+  (kind: EndKind, index: number): number =>
+    TIMELINES[kind].cardAtMs + ROW_GAP_MS + index * (ROW_MS + ROW_GAP_MS),
+)
 
-export const rowLandMs = (kind: EndKind, index: number): number =>
-  rowStartMs(kind, index) + ROW_MS
+export const rowLandMs: {
+  (index: number): (kind: EndKind) => number
+  (kind: EndKind, index: number): number
+} = Function.dual(
+  2,
+  (kind: EndKind, index: number): number => rowStartMs(kind, index) + ROW_MS,
+)
 
 // NOTE: a row counts up from 0 to its value over ROW_MS once its turn
 // comes, eased so the last digits tick slower.
-export const countedUp = (
-  value: number,
-  kind: EndKind,
-  index: number,
-  screenMs: number,
-): number =>
-  Math.round(
-    value * easeOut(progressOf(screenMs, rowStartMs(kind, index), ROW_MS)),
-  )
+export const countedUp: {
+  (kind: EndKind, index: number, screenMs: number): (value: number) => number
+  (value: number, kind: EndKind, index: number, screenMs: number): number
+} = Function.dual(
+  4,
+  (value: number, kind: EndKind, index: number, screenMs: number): number =>
+    Math.round(
+      value * easeOut(progressOf(screenMs, rowStartMs(kind, index), ROW_MS)),
+    ),
+)
 
-export const shownValue = (
-  row: TallyRow,
-  kind: EndKind,
-  index: number,
-  screenMs: number,
-): number => countedUp(row.value, kind, index, screenMs)
+export const shownValue: {
+  (kind: EndKind, index: number, screenMs: number): (row: TallyRow) => number
+  (row: TallyRow, kind: EndKind, index: number, screenMs: number): number
+} = Function.dual(
+  4,
+  (row: TallyRow, kind: EndKind, index: number, screenMs: number): number =>
+    countedUp(row.value, kind, index, screenMs),
+)
 
 const ROWS = 5
 
@@ -231,8 +250,14 @@ export const RANK_POP_MS = 360
 export const hasRankStrip = (model: Model): boolean =>
   Option.isSome(model.maybeRankGain)
 
-export const rankStripAtMs = (model: Model, kind: EndKind): number =>
-  (isCoop(model) ? crewDoneMs(kind) : doneMs(kind)) + RANK_GAP_MS
+export const rankStripAtMs: {
+  (kind: EndKind): (model: Model) => number
+  (model: Model, kind: EndKind): number
+} = Function.dual(
+  2,
+  (model: Model, kind: EndKind): number =>
+    (isCoop(model) ? crewDoneMs(kind) : doneMs(kind)) + RANK_GAP_MS,
+)
 
 export const isRankedUp = (model: Model): boolean =>
   Option.exists(model.maybeRankGain, ({ pointsBefore, gained }) =>
@@ -274,24 +299,42 @@ export const unlockStartMs = (index: number): number =>
 
 // NOTE: when the first unlock card starts to flip: once the bar is full and
 // the badge has popped.
-export const unlockFlipAtMs = (model: Model, kind: EndKind): number =>
-  rankStripAtMs(model, kind) +
-  RANK_FILL_MS +
-  (isRankedUp(model) ? RANK_POP_MS : 0)
+export const unlockFlipAtMs: {
+  (kind: EndKind): (model: Model) => number
+  (model: Model, kind: EndKind): number
+} = Function.dual(
+  2,
+  (model: Model, kind: EndKind): number =>
+    rankStripAtMs(model, kind) +
+    RANK_FILL_MS +
+    (isRankedUp(model) ? RANK_POP_MS : 0),
+)
 
 const unlockDurationMs = (count: number): number =>
   count === 0 ? 0 : unlockStartMs(count - 1) + CALLING_FLIP_MS
 
-export const rankDoneMs = (model: Model, kind: EndKind): number =>
-  unlockFlipAtMs(model, kind) + unlockDurationMs(unlocksOf(model).length)
+export const rankDoneMs: {
+  (kind: EndKind): (model: Model) => number
+  (model: Model, kind: EndKind): number
+} = Function.dual(
+  2,
+  (model: Model, kind: EndKind): number =>
+    unlockFlipAtMs(model, kind) + unlockDurationMs(unlocksOf(model).length),
+)
 
 // NOTE: the last unlock card stays a few seconds after it flips, its timer
 // draining along its foot, then fades away; a tap puts it away sooner.
 export const UNLOCK_LINGER_MS = 4000
 export const UNLOCK_FADE_MS = 300
 
-export const unlockGoneMs = (model: Model, kind: EndKind): number =>
-  rankDoneMs(model, kind) + UNLOCK_LINGER_MS
+export const unlockGoneMs: {
+  (kind: EndKind): (model: Model) => number
+  (model: Model, kind: EndKind): number
+} = Function.dual(
+  2,
+  (model: Model, kind: EndKind): number =>
+    rankDoneMs(model, kind) + UNLOCK_LINGER_MS,
+)
 
 const isUnlockCardUp = (model: Model, kind: EndKind): boolean =>
   Array.isReadonlyArrayNonEmpty(unlocksOf(model)) &&
@@ -340,67 +383,69 @@ const crossed = (fromMs: number, toMs: number, atMs: number): boolean =>
 // NOTE: the beat's sounds, for the frame that moves the clock from `fromMs`
 // to `toMs`: the stamp, the trophy, each skull, each row as it lands, and a
 // NEW BEST once its row lands.
-export const beatSounds = (
-  model: Model,
-  fromMs: number,
-  toMs: number,
-): ReadonlyArray<SoundEffect> =>
-  Option.match(endKindOf(model), {
-    onNone: () => [],
-    onSome: kind => {
-      const timeline = TIMELINES[kind]
-      const isCrew = isCoop(model)
-      const rows = tallyRowsOf(model)
-      const landings = isCrew
-        ? Array.range(0, CREW_ROWS - 1)
-        : Array.map(rows, (_, index) => index)
-      const isPast = (atMs: number): boolean => crossed(fromMs, toMs, atMs)
-      const skulls = Array.range(0, skullCountOf(model.difficulty.chosen) - 1)
-      return [
-        ...soundWhen(
-          isPast(timeline.stampAtMs),
-          kind === 'Munched' ? 'BossStomp' : 'Thud',
-        ),
-        ...soundWhen(isPast(timeline.trophyAtMs + TROPHY_DROP_MS), 'Clang'),
-        ...soundWhen(
-          kind === 'Won' &&
-            Array.some(skulls, index => isPast(skullAtMs(index))),
-          'Pop',
-        ),
-        ...soundWhen(
-          Array.some(landings, index => isPast(rowLandMs(kind, index))),
-          'Pop',
-        ),
-        ...soundWhen(
-          !isCrew &&
-            Array.some(
-              rows,
-              (row, index) => row.isBest && isPast(rowLandMs(kind, index)),
-            ),
-          'PowerUp',
-        ),
-        ...soundWhen(
-          isCrew && isPast(awardsAtMs(kind)) && hasAwards(crewOf(model)),
-          'PowerUp',
-        ),
-        ...soundWhen(
-          hasRankStrip(model) && isPast(rankStripAtMs(model, kind)),
-          'Pop',
-        ),
-        ...soundWhen(
-          isRankedUp(model) &&
-            isPast(rankStripAtMs(model, kind) + RANK_FILL_MS),
-          'RankUp',
-        ),
-        ...soundWhen(
-          Array.some(unlocksOf(model), (_, index) =>
-            isPast(unlockFlipAtMs(model, kind) + unlockStartMs(index)),
+export const beatSounds: {
+  (fromMs: number, toMs: number): (model: Model) => ReadonlyArray<SoundEffect>
+  (model: Model, fromMs: number, toMs: number): ReadonlyArray<SoundEffect>
+} = Function.dual(
+  3,
+  (model: Model, fromMs: number, toMs: number): ReadonlyArray<SoundEffect> =>
+    Option.match(endKindOf(model), {
+      onNone: () => [],
+      onSome: kind => {
+        const timeline = TIMELINES[kind]
+        const isCrew = isCoop(model)
+        const rows = tallyRowsOf(model)
+        const landings = isCrew
+          ? Array.range(0, CREW_ROWS - 1)
+          : Array.map(rows, (_, index) => index)
+        const isPast = (atMs: number): boolean => crossed(fromMs, toMs, atMs)
+        const skulls = Array.range(0, skullCountOf(model.difficulty.chosen) - 1)
+        return [
+          ...soundWhen(
+            isPast(timeline.stampAtMs),
+            kind === 'Munched' ? 'BossStomp' : 'Thud',
           ),
-          'LootPop',
-        ),
-      ]
-    },
-  })
+          ...soundWhen(isPast(timeline.trophyAtMs + TROPHY_DROP_MS), 'Clang'),
+          ...soundWhen(
+            kind === 'Won' &&
+              Array.some(skulls, index => isPast(skullAtMs(index))),
+            'Pop',
+          ),
+          ...soundWhen(
+            Array.some(landings, index => isPast(rowLandMs(kind, index))),
+            'Pop',
+          ),
+          ...soundWhen(
+            !isCrew &&
+              Array.some(
+                rows,
+                (row, index) => row.isBest && isPast(rowLandMs(kind, index)),
+              ),
+            'PowerUp',
+          ),
+          ...soundWhen(
+            isCrew && isPast(awardsAtMs(kind)) && hasAwards(crewOf(model)),
+            'PowerUp',
+          ),
+          ...soundWhen(
+            hasRankStrip(model) && isPast(rankStripAtMs(model, kind)),
+            'Pop',
+          ),
+          ...soundWhen(
+            isRankedUp(model) &&
+              isPast(rankStripAtMs(model, kind) + RANK_FILL_MS),
+            'RankUp',
+          ),
+          ...soundWhen(
+            Array.some(unlocksOf(model), (_, index) =>
+              isPast(unlockFlipAtMs(model, kind) + unlockStartMs(index)),
+            ),
+            'LootPop',
+          ),
+        ]
+      },
+    }),
+)
 
 const soundWhen = (
   isOn: boolean,
@@ -488,37 +533,49 @@ const higher = (maybeBest: Option.Option<number>, reached: number) =>
 // NOTE: the run records a finished run sets, on the frame it ends: the
 // most kills in a run, and in the campaign the furthest wave reached (a win
 // reaches the last wave). Endless keeps its own deepest wave in the bests.
-export const reachRecords = (
-  before: Model,
-  after: Model,
-  played: Difficulty = after.difficulty.chosen,
-): Model =>
-  !isEndScreen(before.phase) && isEndScreen(after.phase)
-    ? withBests(
-        after,
-        bests =>
-          modifyFields(bests, {
-            maybeMostKills: maybeMost =>
-              higher(maybeMost, totalKills(after.stats)),
-            maybeFurthestWave: maybeFurthest =>
-              RunMode.isAnyOf(['Campaign'])(after.mode)
-                ? higher(maybeFurthest, roundWave(after.phase))
-                : maybeFurthest,
-          }),
-        played,
-      )
-    : after
+export const reachRecords: {
+  (after: Model, played?: Difficulty): (before: Model) => Model
+  (before: Model, after: Model, played?: Difficulty): Model
+} = Function.dual(
+  isObjectSecond,
+  (
+    before: Model,
+    after: Model,
+    played: Difficulty = after.difficulty.chosen,
+  ): Model =>
+    !isEndScreen(before.phase) && isEndScreen(after.phase)
+      ? withBests(
+          after,
+          bests =>
+            modifyFields(bests, {
+              maybeMostKills: maybeMost =>
+                higher(maybeMost, totalKills(after.stats)),
+              maybeFurthestWave: maybeFurthest =>
+                RunMode.isAnyOf(['Campaign'])(after.mode)
+                  ? higher(maybeFurthest, roundWave(after.phase))
+                  : maybeFurthest,
+            }),
+          played,
+        )
+      : after,
+)
 
-export const noteRecords = (
-  before: Model,
-  after: Model,
-  played: Difficulty = after.difficulty.chosen,
-): Model =>
-  !isEndScreen(before.phase) && isEndScreen(after.phase)
-    ? modifyFields(after, {
-        runRecords: () => recordsBroken(before, after, played),
-      })
-    : after
+export const noteRecords: {
+  (after: Model, played?: Difficulty): (before: Model) => Model
+  (before: Model, after: Model, played?: Difficulty): Model
+} = Function.dual(
+  isObjectSecond,
+  (
+    before: Model,
+    after: Model,
+    played: Difficulty = after.difficulty.chosen,
+  ): Model =>
+    !isEndScreen(before.phase) && isEndScreen(after.phase)
+      ? modifyFields(after, {
+          runRecords: () => recordsBroken(before, after, played),
+        })
+      : after,
+)
 
 // SHARING
 
@@ -540,22 +597,25 @@ export const isShareCopied = (model: Model): boolean =>
 
 // NOTE: `played` is the run's difficulty: the player's own, or in an online
 // co-op run the room's.
-export const sharedRunOf = (
-  model: Model,
-  played: Difficulty = model.difficulty.chosen,
-): SharedRun => ({
-  outcome: Option.getOrElse(endKindOf(model), (): EndKind => 'Munched'),
-  isEndless: RunMode.isAnyOf(['Endless'])(model.mode),
-  wave: roundWave(model.phase),
-  difficulty: played,
-  kills: totalKills(model.stats),
-  // NOTE: bots are not a crew to boast of: a run with them posts as one
-  // player's run.
-  crew: isBotCrew(model) ? 1 : Math.max(1, crewOf(model).length),
-  ...(isBotCrew(model)
-    ? { maybeMvp: Option.none(), maybeOwnAward: Option.none() }
-    : crewBragsOf(model)),
-})
+export const sharedRunOf: {
+  (played?: Difficulty): (model: Model) => SharedRun
+  (model: Model, played?: Difficulty): SharedRun
+} = Function.dual(
+  isObjectFirst,
+  (model: Model, played: Difficulty = model.difficulty.chosen): SharedRun => ({
+    outcome: Option.getOrElse(endKindOf(model), (): EndKind => 'Munched'),
+    isEndless: RunMode.isAnyOf(['Endless'])(model.mode),
+    wave: roundWave(model.phase),
+    difficulty: played,
+    kills: totalKills(model.stats),
+    // NOTE: bots are not a crew to boast of: a run with them posts as one
+    // player's run.
+    crew: isBotCrew(model) ? 1 : Math.max(1, crewOf(model).length),
+    ...(isBotCrew(model)
+      ? { maybeMvp: Option.none(), maybeOwnAward: Option.none() }
+      : crewBragsOf(model)),
+  }),
+)
 
 // NOTE: the MVP, and the sharer's own first award but MVP, which the MVP's
 // line already names.

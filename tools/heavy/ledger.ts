@@ -1,9 +1,10 @@
-import { Effect, FileSystem, Option, pipe } from 'effect'
+import { Effect, FileSystem, Function, Option, pipe } from 'effect'
 import type { PlatformError } from 'effect/PlatformError'
 
 import { type Ledger, decodeLedger, encodeLedger } from './decision'
 import { readTextIfPresent } from './lock'
 
+/** @stability unstable */
 export const readLedger = (
   path: string,
 ): Effect.Effect<Ledger, never, FileSystem.FileSystem> =>
@@ -24,12 +25,27 @@ const writeLedger = (
     yield* fs.rename(draft, path)
   })
 
-export const updateLedger = (
-  path: string,
-  change: (ledger: Ledger) => Ledger,
-): Effect.Effect<Ledger, PlatformError, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const next = change(yield* readLedger(path))
-    yield* writeLedger(path, next)
-    return next
-  })
+/** @stability unstable */
+export const updateLedger: {
+  (
+    change: (ledger: Ledger) => Ledger,
+  ): (
+    path: string,
+  ) => Effect.Effect<Ledger, PlatformError, FileSystem.FileSystem>
+  (
+    path: string,
+    change: (ledger: Ledger) => Ledger,
+  ): Effect.Effect<Ledger, PlatformError, FileSystem.FileSystem>
+} = Function.dual(
+  2,
+  (
+    path: string,
+    change: (ledger: Ledger) => Ledger,
+  ): Effect.Effect<Ledger, PlatformError, FileSystem.FileSystem> =>
+    Effect.gen(function* () {
+      const value = yield* readLedger(path)
+      const next = change(value)
+      yield* writeLedger(path, next)
+      return next
+    }),
+)

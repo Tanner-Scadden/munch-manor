@@ -1,29 +1,50 @@
-import { Schema } from 'effect'
+import {
+  Array,
+  Config,
+  Console,
+  Effect,
+  Option,
+  Record,
+  Schema,
+  String,
+} from 'effect'
 
 import { encodeJson } from '../json'
-import { HARNESS, launch } from './lib'
+import { HARNESS, openBrowser, runAudit } from './lib'
 import { FrameRow, measureScenario } from './measure'
+import { attempt } from './page'
 import { SCENARIOS } from './scenarios'
 
-const BASE = process.env['BASE'] ?? HARNESS
-const SECONDS = Number(process.env['SECONDS'] ?? 6)
-const rates = (process.env['RATES'] ?? '1,4,6').split(',').map(Number)
-const only = process.env['ONLY']?.split(',')
+runAudit(
+  Effect.gen(function* () {
+    const base = yield* Config.String('BASE').pipe(Config.withDefault(HARNESS))
+    const seconds = yield* Config.String('SECONDS').pipe(
+      Config.withDefault('6'),
+      Config.map(Number),
+    )
+    const ratesText = yield* Config.String('RATES').pipe(
+      Config.withDefault('1,4,6'),
+    )
+    const rates = Array.map(String.split(',')(ratesText), Number)
+    const only = yield* Config.String('ONLY').pipe(
+      Config.map(String.split(',')),
+      Config.option,
+    )
+    const tag = yield* Config.String('TAG').pipe(Config.withDefault('run'))
 
-const browser = await launch()
-const results: Array<FrameRow> = []
-for (const name of Object.keys(SCENARIOS)) {
-  if (only !== undefined && !only.includes(name)) {
-    continue
-  }
-  for (const rate of rates) {
-    const row = await measureScenario(browser, BASE, name, rate, SECONDS)
-    console.log(encodeJson(FrameRow)(row))
-    results.push(row)
-  }
-}
-await browser.close()
-await Bun.write(
-  `${import.meta.dir}/perf-${process.env['TAG'] ?? 'run'}.json`,
-  encodeJson(Schema.Array(FrameRow), 1)(results),
+    const browser = yield* openBrowser
+    const results: Array<FrameRow> = []
+    for (const name of Record.keys(SCENARIOS)) {
+      if (Option.isSome(only) && !Array.contains(only.value, name)) {
+        continue
+      }
+      for (const rate of rates) {
+        const row = yield* measureScenario(browser, base, name, rate, seconds)
+        yield* Console.log(encodeJson(FrameRow)(row))
+        results.push(row)
+      }
+    }
+    const json = encodeJson(Schema.Array(FrameRow), 1)(results)
+    yield* attempt(() => Bun.write(`${import.meta.dir}/perf-${tag}.json`, json))
+  }),
 )

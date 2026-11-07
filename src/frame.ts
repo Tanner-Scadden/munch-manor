@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { assistAim } from './aimAssist'
@@ -14,6 +14,7 @@ import {
   STEP_EPSILON_MS,
 } from './constants'
 import { couchInputs, isCouchPlay } from './couch'
+import { isObjectSecond } from './dualArgs'
 import { ageFlight, launchPrize } from './fridgeReveal'
 import { clamp } from './geometry'
 import { advanceTells } from './heroTells'
@@ -280,19 +281,23 @@ const advanceFlourishes = (
     frameMs,
   )
 
-export const advanceCosmetics = (
-  model: Model,
-  frameMs: number,
-  worldMs: number,
-): Model =>
-  advanceBreakIdle(advanceFlourishes(model, frameMs, worldMs), worldMs)
+export const advanceCosmetics: {
+  (frameMs: number, worldMs: number): (model: Model) => Model
+  (model: Model, frameMs: number, worldMs: number): Model
+} = Function.dual(3, (model: Model, frameMs: number, worldMs: number): Model =>
+  advanceBreakIdle(advanceFlourishes(model, frameMs, worldMs), worldMs),
+)
 
 // NOTE: the camera leans toward the aim on the display's own time.
-export const leanFor = (model: Model, frameMs: number): Model =>
+export const leanFor: {
+  (frameMs: number): (model: Model) => Model
+  (model: Model, frameMs: number): Model
+} = Function.dual(2, (model: Model, frameMs: number): Model =>
   modifyFields(model, {
     cameraLean: lean =>
       leanCamera(lean, focusOf(model).intent.maybeAim, frameMs),
-  })
+  }),
+)
 
 const recordBestWave = (
   model: Model,
@@ -319,22 +324,28 @@ const recordBestWave = (
 // NOTE: the client's half of a round ending on a tick: the end screen's
 // clock starts, and a lost endless run records its best wave, under the
 // difficulty it was played on (an online co-op run's is the room's).
-export const endRoundOnClient = (
-  before: Model,
-  after: Model,
-  played: Difficulty = after.difficulty.chosen,
-): Model => {
-  if (
-    !isRoundActive(before.phase) ||
-    !Phase.isAnyOf(['Victory', 'GameOver'])(after.phase)
-  ) {
-    return after
-  }
-  const shown = modifyFields(after, { screenMs: () => 0 })
-  return Phase.isAnyOf(['GameOver'])(after.phase)
-    ? recordBestWave(shown, roundWave(after.phase), played)
-    : shown
-}
+export const endRoundOnClient: {
+  (after: Model, played?: Difficulty): (before: Model) => Model
+  (before: Model, after: Model, played?: Difficulty): Model
+} = Function.dual(
+  isObjectSecond,
+  (
+    before: Model,
+    after: Model,
+    played: Difficulty = after.difficulty.chosen,
+  ): Model => {
+    if (
+      !isRoundActive(before.phase) ||
+      !Phase.isAnyOf(['Victory', 'GameOver'])(after.phase)
+    ) {
+      return after
+    }
+    const shown = modifyFields(after, { screenMs: () => 0 })
+    return Phase.isAnyOf(['GameOver'])(after.phase)
+      ? recordBestWave(shown, roundWave(after.phase), played)
+      : shown
+  },
+)
 
 // NOTE: the client's half of what the ticks did to the round: a wave that
 // started raises the new zombie card, and a round that ended starts its
@@ -345,7 +356,10 @@ const followRound = (before: Model, after: Model): Model =>
 // NOTE: a frame runs the whole ticks its time owes and carries the rest,
 // then makes its cosmetics. Its `frameEvents` are every tick's events in
 // order, so the cosmetics, sounds, stats, and lessons see each one.
-export const advanceGame = (model: Model, deltaTime: number): Model => {
+export const advanceGame: {
+  (deltaTime: number): (model: Model) => Model
+  (model: Model, deltaTime: number): Model
+} = Function.dual(2, (model: Model, deltaTime: number): Model => {
   const frameMs = clampFrameDelta(deltaTime)
   const ticks = ticksIn(model.stepCarryMs + frameMs)
   const stepped = runTicks(
@@ -373,4 +387,4 @@ export const advanceGame = (model: Model, deltaTime: number): Model => {
       stepped.worldMs,
     ),
   )
-}
+})

@@ -1,4 +1,4 @@
-import { Array, Option, Record } from 'effect'
+import { Array, Function, Option, Record } from 'effect'
 
 import { PLAYER_MAX_HP } from './constants'
 import { type Modifiers, brokenKillPay, noModifiers } from './modifiers'
@@ -38,8 +38,13 @@ export const UNLOCK_RANKS: Readonly<Record<Calling, number>> = {
   LineCook: 15,
 }
 
-export const isCallingUnlocked = (calling: Calling, rank: number): boolean =>
-  rank >= UNLOCK_RANKS[calling]
+export const isCallingUnlocked: {
+  (rank: number): (calling: Calling) => boolean
+  (calling: Calling, rank: number): boolean
+} = Function.dual(
+  2,
+  (calling: Calling, rank: number): boolean => rank >= UNLOCK_RANKS[calling],
+)
 
 // OWNING
 
@@ -48,10 +53,14 @@ export const callingPriceOf = (calling: Calling): Option.Option<number> =>
   Record.get<string, number>(COSMETIC_PRICES, heroIdOf(calling))
 
 // NOTE: YOU is always owned; any other hero once bought.
-export const isCallingOwned = (
-  calling: Calling,
-  bought: SavedBoughtCosmetics,
-): boolean => calling === 'You' || Array.contains(bought, heroIdOf(calling))
+export const isCallingOwned: {
+  (bought: SavedBoughtCosmetics): (calling: Calling) => boolean
+  (calling: Calling, bought: SavedBoughtCosmetics): boolean
+} = Function.dual(
+  2,
+  (calling: Calling, bought: SavedBoughtCosmetics): boolean =>
+    calling === 'You' || Array.contains(bought, heroIdOf(calling)),
+)
 
 export const ownedCallings = (
   bought: SavedBoughtCosmetics,
@@ -62,43 +71,67 @@ export const ownedCallings = (
 // it shows its price and a pick tries it on), or locked (shows its rank).
 export type CallingStanding = 'Owned' | 'ForSale' | 'Locked'
 
-export const callingStandingOf = (
-  calling: Calling,
-  rank: number,
-  bought: SavedBoughtCosmetics,
-): CallingStanding =>
-  isCallingOwned(calling, bought)
-    ? 'Owned'
-    : isCallingUnlocked(calling, rank)
-      ? 'ForSale'
-      : 'Locked'
+export const callingStandingOf: {
+  (
+    rank: number,
+    bought: SavedBoughtCosmetics,
+  ): (calling: Calling) => CallingStanding
+  (
+    calling: Calling,
+    rank: number,
+    bought: SavedBoughtCosmetics,
+  ): CallingStanding
+} = Function.dual(
+  3,
+  (
+    calling: Calling,
+    rank: number,
+    bought: SavedBoughtCosmetics,
+  ): CallingStanding =>
+    isCallingOwned(calling, bought)
+      ? 'Owned'
+      : isCallingUnlocked(calling, rank)
+        ? 'ForSale'
+        : 'Locked',
+)
 
 // NOTE: whether the Bones cover a hero for sale.
-export const canAffordCalling = (rank: SavedRank, calling: Calling): boolean =>
+export const canAffordCalling: {
+  (calling: Calling): (rank: SavedRank) => boolean
+  (rank: SavedRank, calling: Calling): boolean
+} = Function.dual(2, (rank: SavedRank, calling: Calling): boolean =>
   Option.match(callingPriceOf(calling), {
     onNone: () => false,
     onSome: price => bonesBalanceOf(rank) >= price,
-  })
+  }),
+)
 
 // NOTE: the calling a run starts with: the one picked if it is owned, else
 // YOU. A synced pick this device has not bought (or an old save from when
 // rank alone opened heroes) starts YOU.
-export const callingForRun = (
-  chosen: Calling,
-  bought: SavedBoughtCosmetics,
-): Calling => (isCallingOwned(chosen, bought) ? chosen : 'You')
+export const callingForRun: {
+  (bought: SavedBoughtCosmetics): (chosen: Calling) => Calling
+  (chosen: Calling, bought: SavedBoughtCosmetics): Calling
+} = Function.dual(
+  2,
+  (chosen: Calling, bought: SavedBoughtCosmetics): Calling =>
+    isCallingOwned(chosen, bought) ? chosen : 'You',
+)
 
 // NOTE: the callings a rank up to `rank` opened that `before` had not.
-export const callingsOpenedBy = (
-  rankBefore: number,
-  rankAfter: number,
-): ReadonlyArray<Calling> =>
-  Array.filter(
-    CALLINGS,
-    calling =>
-      !isCallingUnlocked(calling, rankBefore) &&
-      isCallingUnlocked(calling, rankAfter),
-  )
+export const callingsOpenedBy: {
+  (rankAfter: number): (rankBefore: number) => ReadonlyArray<Calling>
+  (rankBefore: number, rankAfter: number): ReadonlyArray<Calling>
+} = Function.dual(
+  2,
+  (rankBefore: number, rankAfter: number): ReadonlyArray<Calling> =>
+    Array.filter(
+      CALLINGS,
+      calling =>
+        !isCallingUnlocked(calling, rankBefore) &&
+        isCallingUnlocked(calling, rankAfter),
+    ),
+)
 
 // HEARTS
 
@@ -135,10 +168,14 @@ export const speedScaleOf = ({ calling }: Wearer): number =>
 // 10% (rounded down) left him 8 under, and 5% rounded down 9; 5% to the nearest read 4 under.)
 const TRACK_STAR_MAGAZINE_PERCENT = 95
 
-export const magazineFor = (calling: Calling, magazine: number): number =>
+export const magazineFor: {
+  (magazine: number): (calling: Calling) => number
+  (calling: Calling, magazine: number): number
+} = Function.dual(2, (calling: Calling, magazine: number): number =>
   calling === 'TrackStar'
     ? Math.max(1, Math.round((magazine * TRACK_STAR_MAGAZINE_PERCENT) / 100))
-    : magazine
+    : magazine,
+)
 
 // PRICES
 
@@ -146,10 +183,14 @@ const PENNY_PRICE_PERCENT = 85
 
 // NOTE: Rattles charges the Penny Pincher 15% less, rounded to the nearest
 // dollar and never to nothing, except a price that was nothing already.
-export const shopPriceFor = (calling: Calling, price: number): number =>
+export const shopPriceFor: {
+  (price: number): (calling: Calling) => number
+  (calling: Calling, price: number): number
+} = Function.dual(2, (calling: Calling, price: number): number =>
   calling === 'PennyPincher' && price > 0
     ? Math.max(1, Math.round((price * PENNY_PRICE_PERCENT) / 100))
-    : price
+    : price,
+)
 
 // NOTE: a Plank Pile costs the Handyman half, and he mends boards for
 // nothing: the Handyman's one fewer heart cost 12 points of wins to YOU on
@@ -158,8 +199,12 @@ export const isRepairFree = (calling: Calling): boolean =>
   calling === 'Handyman'
 
 // NOTE: a Plank Pile costs the Handyman half.
-export const plankPriceFor = (calling: Calling, price: number): number =>
-  calling === 'Handyman' ? Math.round(price / 2) : price
+export const plankPriceFor: {
+  (price: number): (calling: Calling) => number
+  (calling: Calling, price: number): number
+} = Function.dual(2, (calling: Calling, price: number): number =>
+  calling === 'Handyman' ? Math.round(price / 2) : price,
+)
 
 // KILL PAY
 
@@ -169,16 +214,23 @@ export const plankPriceFor = (calling: Calling, price: number): number =>
 // pays $16, about 10% less over a run (a flat 15% rounded down cost a third
 // of the income, and the Penny Pincher won 9 points fewer than YOU).
 const PENNY_KILL_PERCENT = 80
-export const killPayFor = (
-  calling: Calling,
-  pay: number,
-  modifiers: Modifiers = noModifiers,
-): number => {
-  const broken = brokenKillPay(modifiers, pay)
-  return calling === 'PennyPincher' && broken > 0
-    ? Math.max(1, Math.round((broken * PENNY_KILL_PERCENT) / 100))
-    : broken
-}
+export const killPayFor: {
+  (pay: number, modifiers?: Modifiers): (calling: Calling) => number
+  (calling: Calling, pay: number, modifiers?: Modifiers): number
+} = Function.dual(
+  // NOTE: data-first has the pay second; data-last has the modifiers there or nothing.
+  (args: IArguments): boolean => typeof args[1] === 'number',
+  (
+    calling: Calling,
+    pay: number,
+    modifiers: Modifiers = noModifiers,
+  ): number => {
+    const broken = brokenKillPay(modifiers, pay)
+    return calling === 'PennyPincher' && broken > 0
+      ? Math.max(1, Math.round((broken * PENNY_KILL_PERCENT) / 100))
+      : broken
+  },
+)
 
 // THE STARTING GUN
 

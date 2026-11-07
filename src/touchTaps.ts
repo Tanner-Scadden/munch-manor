@@ -1,3 +1,4 @@
+import { Function } from 'effect'
 // NOTE: taps on touch screens, made from each finger's own pointer events
 // instead of the browser's click.
 //
@@ -50,10 +51,10 @@ const isInert = (element: Element): boolean =>
 
 // NOTE: listens on `root` until the returned function is called, and calls
 // `onTap` after each tap it makes.
-export const listenForTouchTaps = (
-  root: HTMLElement,
-  onTap: () => void,
-): (() => void) => {
+export const listenForTouchTaps: {
+  (onTap: () => void): (root: HTMLElement) => () => void
+  (root: HTMLElement, onTap: () => void): () => void
+} = Function.dual(2, (root: HTMLElement, onTap: () => void): (() => void) => {
   const presses = new Map<number, Press>()
   let echoUntil = -Infinity
   let isDispatching = false
@@ -132,4 +133,4 @@ export const listenForTouchTaps = (
     root.removeEventListener('click', onClick, capture)
     presses.clear()
   }
-}
+})

@@ -1,4 +1,4 @@
-import { Effect, Queue, Stream } from 'effect'
+import { Effect, Function, Queue, Stream } from 'effect'
 
 import { ApplicationDefinition } from './definition'
 import {
@@ -120,19 +120,25 @@ const sharePost = (post: SharePost): Promise<ShareOutcome> =>
 // stack: the tap (src/touchTaps.ts makes it a click), a mouse click, or
 // Enter on the focused button. The button's OnClick still sends
 // ClickedShareButton, which counts the share.
-export const listenForShareClicks = (
-  element: Element,
-  onSettled: (outcome: ShareOutcome) => void,
-): (() => void) => {
-  const onClick = (): void => {
-    const text = element.getAttribute(`data-${SHARE_TEXT_DATA}`) ?? ''
-    void sharePost({ text, url: GAME_URL }).then(onSettled)
-  }
-  element.addEventListener('click', onClick)
-  return () => {
-    element.removeEventListener('click', onClick)
-  }
-}
+export const listenForShareClicks: {
+  (onSettled: (outcome: ShareOutcome) => void): (element: Element) => () => void
+  (element: Element, onSettled: (outcome: ShareOutcome) => void): () => void
+} = Function.dual(
+  2,
+  (
+    element: Element,
+    onSettled: (outcome: ShareOutcome) => void,
+  ): (() => void) => {
+    const onClick = (): void => {
+      const text = element.getAttribute(`data-${SHARE_TEXT_DATA}`) ?? ''
+      void sharePost({ text, url: GAME_URL }).then(onSettled)
+    }
+    element.addEventListener('click', onClick)
+    return () => {
+      element.removeEventListener('click', onClick)
+    }
+  },
+)
 
 export const ShareFromClick = ApplicationDefinition.makeMountStream(
   'ShareFromClick',

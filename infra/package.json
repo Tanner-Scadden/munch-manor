@@ -7,7 +7,7 @@
     "plan": "alchemy plan",
     "destroy": "alchemy destroy",
     "typecheck": "effect-tsgo tsrs --noEmit",
-    "lint": "oxlint --report-unused-disable-directives-severity=error . && effect-tsgo oxlint --config .oxlintrc.effect.json --deny-warnings .",
+    "lint": "effect-tsgo --tsrs-lint oxlint --report-unused-disable-directives-severity=error . && effect-tsgo --tsrs-lint oxlint --config .oxlintrc.effect.json --deny-warnings .",
     "test": "bun --bun vitest run"
   },
   "dependencies": {
@@ -23,12 +23,11 @@
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261029.1",
     "@effect/sql-sqlite-bun": "4.0.7",
-    "@effect/tsgo": "0.62.0",
+    "@effect/tsgo": "0.67.5",
     "@effect/vitest": "4.0.7",
     "@types/bun": "1.4.4",
-    "oxlint": "1.89.0",
-    "oxlint-tsgolint": "7.0.2005",
-    "tsrs": "0.20.0-ts7.1.0-beta",
+    "oxlint": "1.92.0",
+    "tsrs": "0.23.0-ts7.1.0-beta",
     "typescript": "7.0.2",
     "vitest": "^5.0.2"
   }

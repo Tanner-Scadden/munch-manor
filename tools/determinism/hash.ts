@@ -26,6 +26,8 @@
 // be immutable; `cached: false` walks everything, and the test compares the
 // two to catch an update that mutates the Model in place.
 
+import { Array, Option, Record, String } from 'effect'
+
 import type { Model } from '../../src/model'
 import { gameplayEntriesOf } from './fields'
 
@@ -80,12 +82,28 @@ export const makeGameplayHasher = (
   const cache = new WeakMap<object, number>()
   const bits = new DataView(new ArrayBuffer(8))
 
+  // NOTE: each string's UTF-16 code units, read once: the keys and tags of
+  // a state repeat on every hashed tick.
+  const codeUnits = new Map<string, ReadonlyArray<number>>()
+  const codeUnitsOf = (text: string): ReadonlyArray<number> => {
+    const known = codeUnits.get(text)
+    if (known !== undefined) {
+      return known
+    }
+    const units = globalThis.Array.from({ length: text.length }, (_, index) =>
+      Option.getOrElse(String.charCodeAt(text, index), () => 0),
+    )
+    codeUnits.set(text, units)
+    return units
+  }
+
   const hashString = (hash: number, text: string): number => {
     // NOTE: a plain loop, since this runs for every key of every changed
     // object on every hashed tick.
+    const units = codeUnitsOf(text)
     let next = mix(mix(hash, TAG_STRING), text.length)
-    for (let index = 0; index < text.length; index++) {
-      next = mix(next, text.charCodeAt(index))
+    for (let index = 0; index < units.length; index++) {
+      next = mix(next, units[index] ?? 0)
     }
     return next
   }
@@ -114,21 +132,24 @@ export const makeGameplayHasher = (
 
   const walkObject = (value: object): number => {
     if (Array.isArray(value)) {
-      return value.reduce<number>(
-        (hash, item) => step(hash, item),
+      return Array.reduce(
+        value,
         mix(mix(SEED, TAG_ARRAY), value.length),
+        (hash, item) => step(hash, item),
       )
     }
     if (value instanceof Map) {
-      return [...value.entries()].reduce<number>(
-        (hash, [key, item]) => step(step(hash, key), item),
+      return Array.reduce(
+        [...value.entries()],
         mix(mix(SEED, TAG_MAP), value.size),
+        (hash, [key, item]) => step(step(hash, key), item),
       )
     }
     if (value instanceof Set) {
-      return [...value.values()].reduce<number>(
-        (hash, item) => step(hash, item),
+      return Array.reduce(
+        [...value.values()],
         mix(mix(SEED, TAG_SET), value.size),
+        (hash, item) => step(hash, item),
       )
     }
     if (!isRecord(value)) {
@@ -136,13 +157,14 @@ export const makeGameplayHasher = (
     }
     const tag = '_tag' in value ? value['_tag'] : undefined
     const tagged = step(mix(SEED, TAG_OBJECT), tag)
-    return Object.keys(value)
-      .filter(key => key !== '_tag' && value[key] !== undefined)
-      .sort()
-      .reduce<number>(
-        (hash, key) => step(hashString(hash, key), value[key]),
-        tagged,
-      )
+    return Array.reduce(
+      Array.filter(
+        Record.keys(value),
+        key => key !== '_tag' && value[key] !== undefined,
+      ).sort(),
+      tagged,
+      (hash, key) => step(hashString(hash, key), value[key]),
+    )
   }
 
   const step = (hash: number, value: unknown): number => {
@@ -175,13 +197,15 @@ export const makeGameplayHasher = (
   const fieldHashes = (
     model: Model,
   ): ReadonlyArray<readonly [string, number]> =>
-    gameplayEntriesOf(model).map(([field, value]) => [field, hashValue(value)])
+    Array.map(gameplayEntriesOf(model), ([field, value]) => [
+      field,
+      hashValue(value),
+    ])
 
   const hashModel = (model: Model): number =>
     finish(
-      fieldHashes(model).reduce(
-        (hash, [field, fieldHash]) => mix(hashString(hash, field), fieldHash),
-        SEED,
+      Array.reduce(fieldHashes(model), SEED, (hash, [field, fieldHash]) =>
+        mix(hashString(hash, field), fieldHash),
       ),
       0,
     )

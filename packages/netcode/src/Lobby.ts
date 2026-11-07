@@ -1,4 +1,13 @@
-import { Array, Effect, Option, Order, Schema, String, pipe } from 'effect'
+import {
+  Array,
+  Effect,
+  Function,
+  Option,
+  Order,
+  Schema,
+  String,
+  pipe,
+} from 'effect'
 import { SqlClient, type SqlError } from 'effect/sql'
 
 import {
@@ -51,7 +60,9 @@ export const roomCodeFromBytes = (bytes: Uint8Array): string =>
   pipe(
     globalThis.Array.from(bytes),
     Array.take(ROOM_CODE_LENGTH),
-    Array.map(byte => CODE_ALPHABET.charAt(byte & 31)),
+    Array.map(byte =>
+      Option.getOrElse(String.charAt(CODE_ALPHABET, byte & 31), () => ''),
+    ),
     Array.join(''),
   )
 
@@ -78,7 +89,9 @@ export const roomCodeOfScope = (scope: string): Option.Option<RoomCode> =>
     parseScopeId(scope),
     Option.filter(address => address.kind === ROOM_SCOPE_KIND),
     Option.flatMap(address => normalizeRoomCode(address.key)),
-    Option.filter(code => code === scope.slice(ROOM_SCOPE_KIND.length + 1)),
+    Option.filter(
+      code => code === String.slice(ROOM_SCOPE_KIND.length + 1)(scope),
+    ),
   )
 
 // NAMES
@@ -99,15 +112,24 @@ const CONTROL =
 export const defaultName = (slot: number): string => `Player ${slot + 1}`
 
 export const cleanName = (raw: string): string =>
-  globalThis.Array.from(raw.replace(CONTROL, '').replace(/\s+/g, ' ').trim())
-    .slice(0, MAX_NAME_LENGTH)
-    .join('')
-    .trim()
+  String.trim(
+    Array.join(
+      globalThis.Array.from(
+        String.trim(
+          String.replace(/\s+/g, ' ')(String.replace(CONTROL, '')(raw)),
+        ),
+      ).slice(0, MAX_NAME_LENGTH),
+      '',
+    ),
+  )
 
-export const displayName = (raw: string, slot: number): string => {
+export const displayName: {
+  (slot: number): (raw: string) => string
+  (raw: string, slot: number): string
+} = Function.dual(2, (raw: string, slot: number): string => {
   const cleaned = cleanName(raw)
   return cleaned === '' ? defaultName(slot) : cleaned
-}
+})
 
 export const NameInput = Schema.String.check(Schema.isMaxLength(MAX_NAME_INPUT))
 
@@ -136,7 +158,7 @@ export const cleanLook = (raw: string): string =>
 // It is for show beside a name: QUICK PLAY never groups by it.
 export const MAX_RANK_INPUT = 999
 
-export const RankInput = Schema.Number
+export const RankInput = Schema.Finite
 
 export const cleanRank = (raw: number): number =>
   Number.isFinite(raw)
@@ -211,15 +233,15 @@ export const ModifierMask = Schema.Int.check(
 
 export const RoomScore = Schema.Struct({
   playerId: Schema.String,
-  slot: Schema.Number,
-  score: Schema.Number,
+  slot: Schema.Finite,
+  score: Schema.Finite,
 })
 export type RoomScore = typeof RoomScore.Type
 
 export const RoomResult = Schema.Struct({
-  round: Schema.Number,
+  round: Schema.Finite,
   reason: ClosedReason,
-  ticks: Schema.Number,
+  ticks: Schema.Finite,
   scores: Schema.Array(RoomScore),
 })
 export type RoomResult = typeof RoomResult.Type
@@ -233,11 +255,11 @@ export const RoomRow = Schema.Struct({
   visibility: RoomVisibility,
   mode: RoomMode,
   difficulty: RoomDifficulty,
-  modifiers: Schema.Number,
-  kept: Schema.Number,
-  round: Schema.Number,
-  created_ms: Schema.Number,
-  updated_ms: Schema.Number,
+  modifiers: Schema.Finite,
+  kept: Schema.Finite,
+  round: Schema.Finite,
+  created_ms: Schema.Finite,
+  updated_ms: Schema.Finite,
   result: Schema.NullOr(RoomResultJson),
 })
 export type RoomRow = typeof RoomRow.Type
@@ -246,19 +268,21 @@ export const MemberRow = Schema.Struct({
   player_id: Schema.String,
   name: Schema.String,
   look: Schema.String,
-  rank: Schema.Number,
+  rank: Schema.Finite,
   calling: Schema.String,
-  nightmare: Schema.Number,
-  slot: Schema.Number,
-  ready: Schema.Number,
-  ping_ms: Schema.Number,
-  joined_ms: Schema.Number,
+  nightmare: Schema.Finite,
+  slot: Schema.Finite,
+  ready: Schema.Finite,
+  ping_ms: Schema.Finite,
+  joined_ms: Schema.Finite,
 })
 export type MemberRow = typeof MemberRow.Type
 
 const decodeRoomRows = Schema.decodeUnknownEffect(Schema.Array(RoomRow))
 const decodeMemberRows = Schema.decodeUnknownEffect(Schema.Array(MemberRow))
-const encodeResult = Schema.encodeSync(RoomResultJson)
+// NOTE: a RoomResult always encodes; a failure is a bug, so it dies.
+const encodeResult = (result: RoomResult): Effect.Effect<string> =>
+  Effect.orDie(Schema.encodeEffect(RoomResultJson)(result))
 
 // LOBBY
 
@@ -268,15 +292,15 @@ export const LobbyMember = Schema.Struct({
   playerId: Schema.String,
   name: Schema.String,
   look: Schema.String,
-  rank: Schema.Number,
+  rank: Schema.Finite,
   calling: Schema.String,
   canNightmare: Schema.Boolean,
-  slot: Schema.Number,
+  slot: Schema.Finite,
   ready: Schema.Boolean,
   // NOTE: the round trip the player last measured, sent with their READY
   // (so it costs no message of its own); 0 until then.
-  pingMs: Schema.Number,
-  joinedMs: Schema.Number,
+  pingMs: Schema.Finite,
+  joinedMs: Schema.Finite,
 })
 export type LobbyMember = typeof LobbyMember.Type
 
@@ -287,11 +311,11 @@ export const Lobby = Schema.Struct({
   visibility: RoomVisibility,
   mode: RoomMode,
   difficulty: RoomDifficulty,
-  modifiers: Schema.Number,
+  modifiers: Schema.Finite,
   canKeepGoing: Schema.Boolean,
-  round: Schema.Number,
-  createdMs: Schema.Number,
-  updatedMs: Schema.Number,
+  round: Schema.Finite,
+  createdMs: Schema.Finite,
+  updatedMs: Schema.Finite,
   result: Schema.Option(RoomResult),
   members: Schema.Array(LobbyMember),
 })
@@ -302,39 +326,42 @@ const bySlot = Order.mapInput(
   (member: LobbyMember) => member.slot,
 )
 
-export const lobbyOfRows = (
-  room: RoomRow,
-  members: ReadonlyArray<MemberRow>,
-): Lobby => ({
-  code: room.code,
-  host: room.host,
-  status: room.status,
-  visibility: room.visibility,
-  mode: room.mode,
-  difficulty: room.difficulty,
-  modifiers: room.modifiers,
-  canKeepGoing: room.kept !== 0,
-  round: room.round,
-  createdMs: room.created_ms,
-  updatedMs: room.updated_ms,
-  result: Option.fromNullishOr(room.result),
-  members: pipe(
-    members,
-    Array.map(member => ({
-      playerId: member.player_id,
-      name: member.name,
-      look: member.look,
-      rank: member.rank,
-      calling: member.calling,
-      canNightmare: member.nightmare !== 0,
-      slot: member.slot,
-      ready: member.ready !== 0,
-      pingMs: member.ping_ms,
-      joinedMs: member.joined_ms,
-    })),
-    Array.sort(bySlot),
-  ),
-})
+export const lobbyOfRows: {
+  (members: ReadonlyArray<MemberRow>): (room: RoomRow) => Lobby
+  (room: RoomRow, members: ReadonlyArray<MemberRow>): Lobby
+} = Function.dual(
+  2,
+  (room: RoomRow, members: ReadonlyArray<MemberRow>): Lobby => ({
+    code: room.code,
+    host: room.host,
+    status: room.status,
+    visibility: room.visibility,
+    mode: room.mode,
+    difficulty: room.difficulty,
+    modifiers: room.modifiers,
+    canKeepGoing: room.kept !== 0,
+    round: room.round,
+    createdMs: room.created_ms,
+    updatedMs: room.updated_ms,
+    result: Option.fromNullishOr(room.result),
+    members: pipe(
+      members,
+      Array.map(member => ({
+        playerId: member.player_id,
+        name: member.name,
+        look: member.look,
+        rank: member.rank,
+        calling: member.calling,
+        canNightmare: member.nightmare !== 0,
+        slot: member.slot,
+        ready: member.ready !== 0,
+        pingMs: member.ping_ms,
+        joinedMs: member.joined_ms,
+      })),
+      Array.sort(bySlot),
+    ),
+  }),
+)
 
 const decodeSnapshotRoom = Schema.decodeUnknownOption(Schema.Array(RoomRow))
 const decodeSnapshotMembers = Schema.decodeUnknownOption(
@@ -354,6 +381,7 @@ export const lobbyOfSnapshot = (
     ),
   )
 
+/** @stability unstable */
 export const readLobby = (
   context: ApplyContext,
 ): Effect.Effect<
@@ -363,25 +391,20 @@ export const readLobby = (
 > =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient
-    const rooms = yield* rejectBadRows(
-      decodeRoomRows(
-        yield* sql`SELECT code, host, status, visibility, mode, difficulty, modifiers, kept, round, created_ms, updated_ms, result
-          FROM ${context.table('room')} WHERE id = 1`,
-      ),
-    )
-    const members = yield* rejectBadRows(
-      decodeMemberRows(
-        yield* sql`SELECT player_id, name, look, rank, calling, nightmare, slot, ready, ping_ms, joined_ms
-          FROM ${context.table('members')}`,
-      ),
-    )
+    const value =
+      yield* sql`SELECT code, host, status, visibility, mode, difficulty, modifiers, kept, round, created_ms, updated_ms, result
+          FROM ${context.table('room')} WHERE id = 1`
+    const rooms = yield* rejectBadRows(decodeRoomRows(value))
+    const value_1 =
+      yield* sql`SELECT player_id, name, look, rank, calling, nightmare, slot, ready, ping_ms, joined_ms
+          FROM ${context.table('members')}`
+    const members = yield* rejectBadRows(decodeMemberRows(value_1))
     return Option.map(Array.head(rooms), room => lobbyOfRows(room, members))
   })
 
 const rejectBadRows = <A>(effect: Effect.Effect<A, Schema.SchemaError>) =>
-  Effect.mapError(
-    effect,
-    error => new MutationRejected({ reason: error.message }),
+  Effect.mapError(effect, error =>
+    MutationRejected.make({ reason: error.message }),
   )
 
 // RULES
@@ -392,8 +415,12 @@ export const freeSlot = (lobby: Lobby): Option.Option<number> =>
     slot => !Array.some(lobby.members, member => member.slot === slot),
   )
 
-export const isMember = (lobby: Lobby, playerId: string): boolean =>
-  Array.some(lobby.members, member => member.playerId === playerId)
+export const isMember: {
+  (playerId: string): (lobby: Lobby) => boolean
+  (lobby: Lobby, playerId: string): boolean
+} = Function.dual(2, (lobby: Lobby, playerId: string): boolean =>
+  Array.some(lobby.members, member => member.playerId === playerId),
+)
 
 export const everyoneReady = (lobby: Lobby): boolean =>
   Array.isReadonlyArrayNonEmpty(lobby.members) &&
@@ -407,7 +434,8 @@ export const canJoin = (lobby: Lobby): boolean =>
 export const isOpenToQuickPlay = (lobby: Lobby): boolean =>
   lobby.visibility === 'Public' && canJoin(lobby)
 
-const reject = (reason: string) => Effect.fail(new MutationRejected({ reason }))
+const reject = (reason: string) =>
+  Effect.fail(MutationRejected.make({ reason }))
 
 const requireLobby = (context: ApplyContext) =>
   Effect.flatMap(
@@ -481,6 +509,7 @@ const picksAfter = (
 
 // MUTATIONS
 
+/** @stability unstable */
 export const CreatedRoom = defineMutation({
   name: 'CreatedRoom',
   version: 5,
@@ -513,7 +542,8 @@ export const CreatedRoom = defineMutation({
   ) =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient
-      if (Option.isSome(yield* readLobby(context))) {
+      const value_2 = yield* readLobby(context)
+      if (Option.isSome(value_2)) {
         return yield* reject('This room already exists')
       }
       yield* sql`INSERT INTO ${context.table('room')} ${sql.insert({
@@ -545,6 +575,7 @@ export const CreatedRoom = defineMutation({
     }),
 })
 
+/** @stability unstable */
 export const JoinedRoom = defineMutation({
   name: 'JoinedRoom',
   version: 5,
@@ -589,6 +620,7 @@ export const JoinedRoom = defineMutation({
     }),
 })
 
+/** @stability unstable */
 export const ChangedReady = defineMutation({
   name: 'ChangedReady',
   version: 2,
@@ -633,6 +665,7 @@ export const ChangedReady = defineMutation({
 // NOTE: the host picks what the room plays next while it is in its lobby.
 // A change takes back everyone's READY, so nobody starts a run they did not
 // say yes to; picking what is already picked changes nothing.
+/** @stability unstable */
 export const ChangedPicks = defineMutation({
   name: 'ChangedPicks',
   version: 1,
@@ -668,6 +701,7 @@ export const ChangedPicks = defineMutation({
 // NOTE: the host picks the run's modifiers while the room is in its lobby,
 // as they pick the difficulty: a change takes back everyone's READY, and
 // picking what is already picked changes nothing.
+/** @stability unstable */
 export const ChangedModifiers = defineMutation({
   name: 'ChangedModifiers',
   version: 1,
@@ -695,6 +729,7 @@ export const ChangedModifiers = defineMutation({
 // its own callings when the host starts, and the Worker cannot check the
 // rank reached it, as with the rank itself. Nobody's READY changes: the pick
 // is the player's own and takes nothing back from the others.
+/** @stability unstable */
 export const ChangedMemberCalling = defineMutation({
   name: 'ChangedMemberCalling',
   version: 1,
@@ -730,6 +765,7 @@ export const ChangedMemberCalling = defineMutation({
 // same name the Profile keeps (src/profile.ts). The room cleans it as it
 // cleans a joining name (displayName), so an empty one becomes "Player N" by
 // seat. Nobody's READY changes: the name is the player's own.
+/** @stability unstable */
 export const ChangedMemberName = defineMutation({
   name: 'ChangedMemberName',
   version: 1,
@@ -766,6 +802,7 @@ export const ChangedMemberName = defineMutation({
     }),
 })
 
+/** @stability unstable */
 export const EndedGame = defineMutation({
   name: 'EndedGame',
   version: 1,
@@ -786,6 +823,7 @@ export const EndedGame = defineMutation({
 
 // NOTE: written by the room when a run ends, however it ended. The room is
 // back in its lobby, where everyone presses READY to keep going.
+/** @stability unstable */
 export const RecordedRoomResult = defineMutation({
   name: 'RecordedRoomResult',
   version: 1,
@@ -798,14 +836,16 @@ export const RecordedRoomResult = defineMutation({
       if (lobby.status !== 'Playing') {
         return yield* reject('No game to record')
       }
+      const encoded = yield* encodeResult(result)
       yield* touch(context, {
         status: 'Lobby',
-        result: encodeResult(result),
+        result: encoded,
         ...picksAfter(lobby, result),
       })
     }),
 })
 
+/** @stability unstable */
 export const KickedPlayer = defineMutation({
   name: 'KickedPlayer',
   version: 1,
@@ -830,6 +870,7 @@ export const KickedPlayer = defineMutation({
 // NOTE: a player leaving, or the room freeing a seat that was Away too
 // long. A host who leaves hands the room to the lowest slot left; the last
 // one out closes it.
+/** @stability unstable */
 export const LeftRoom = defineMutation({
   name: 'LeftRoom',
   version: 1,
@@ -867,6 +908,7 @@ const handOver = (context: ApplyContext, lobby: Lobby, next: LobbyMember) =>
 
 // SCOPE
 
+/** @stability unstable */
 export const RoomScope = defineScope({
   kind: ROOM_SCOPE_KIND,
   tables: ['room', 'members'],
@@ -984,7 +1026,7 @@ export const CreateRequest = Schema.Struct({
 export type CreateRequest = typeof CreateRequest.Type
 export type JoinRequest = typeof JoinRequest.Type
 
-export const RoomTicket = Schema.Struct({ code: RoomCode, slot: Schema.Number })
+export const RoomTicket = Schema.Struct({ code: RoomCode, slot: Schema.Finite })
 export type RoomTicket = typeof RoomTicket.Type
 
 export const RoomRefusal = Schema.TaggedUnion({

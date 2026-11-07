@@ -1,4 +1,4 @@
-import { Array, Option, Schema } from 'effect'
+import { Array, Function, Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { Message } from './message'
@@ -41,7 +41,7 @@ const decodeChange = Schema.decodeUnknownOption(
   Schema.Struct({ change: LobbyChange }),
 )
 
-export const picked = (current: Model, code: string) =>
+const pickedBy = (current: Model, code: string) =>
   Array.flatMap(pressKey(current, code).commands ?? [], command =>
     Option.match(decodeChange(command.args), {
       onNone: () => [],
@@ -51,3 +51,9 @@ export const picked = (current: Model, code: string) =>
           : [],
     }),
   )
+
+// NOTE: the mode and difficulty a key picks in the lobby, if it picks.
+export const picked: {
+  (code: string): (current: Model) => ReturnType<typeof pickedBy>
+  (current: Model, code: string): ReturnType<typeof pickedBy>
+} = Function.dual(2, pickedBy)

@@ -1,4 +1,4 @@
-import { Effect, Fiber } from 'effect'
+import { Array, Effect, Fiber } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
@@ -23,7 +23,7 @@ const fakeScope = (): FakeScope => {
       listeners.push(listener)
     },
     deliver: data =>
-      listeners.forEach(listener =>
+      Array.forEach(listeners, listener =>
         listener(new MessageEvent('message', { data })),
       ),
     posted,
@@ -54,9 +54,10 @@ describe('the worker', () => {
     Effect.gen(function* () {
       const scope = fakeScope()
       const held = holdEarlyMessages(scope)
-      scope.deliver(yield* openRequest)
+      const openRequest_1 = yield* openRequest
+      scope.deliver(openRequest_1)
 
-      const serving = yield* Effect.forkDetach(serveWorker(held))
+      const serving = yield* Effect.forkDetach(serveWorker(held, {}))
       const reply = yield* Effect.timeout(waitForReply(scope), '10 seconds')
       yield* Fiber.interrupt(serving)
 

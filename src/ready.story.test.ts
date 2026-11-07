@@ -50,10 +50,10 @@ const SURFACE_VIEW_X = (clientX: number): number =>
 
 const hintTexts = (current: Model): ReadonlyArray<string> =>
   Array.map(shownHints(current), ({ id }) =>
-    [
-      ...hintIcons(id, current.lastDevice),
-      hintWords(id, current.lastDevice),
-    ].join(' '),
+    Array.join(
+      [...hintIcons(id, current.lastDevice), hintWords(id, current.lastDevice)],
+      ' ',
+    ),
   )
 
 describe('input device', () => {

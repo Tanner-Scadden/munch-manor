@@ -53,6 +53,7 @@ import {
 import { asVeteran } from './veteran'
 import { freshGun, heldWeapon, inHandOf, maybePanOf, takePan } from './weapons'
 import { withWorld } from './world'
+import { Arsenal } from './worldSchema'
 
 // The Clang Pan in the melee slot (GAME_DESIGN.md, "The Clang Pan"):
 // taken from the fridge it replaces the knife, not a gun, and is drawn and
@@ -192,7 +193,10 @@ describe('the Clang Pan in the melee slot', () => {
       player: player =>
         modifyFields(player, {
           arsenal: () =>
-            holdingSecond(dry(freshGun('Shotgun')), dry(freshGun('Smg'))),
+            Arsenal.HoldingSecond({
+              first: dry(freshGun('Smg')),
+              second: dry(freshGun('Shotgun')),
+            }),
         }),
     })
     story(

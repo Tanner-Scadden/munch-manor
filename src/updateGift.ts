@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
@@ -52,10 +52,10 @@ const UPDATE_GIFT_LABEL = 'Update ready: tap to get it'
 // NOTE: a wrapped present under the gear on the home menu, with a little
 // paper NEW! tag on a string tied to its bow. It rattles now and then, the tag
 // swinging with it; a tap unwraps it and reloads onto the new build.
-export const updateGiftView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const updateGiftView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   isUpdateGiftShown(model)
     ? h.button(
         [
@@ -75,7 +75,8 @@ export const updateGiftView = (
           ),
         ],
       )
-    : h.empty
+    : h.empty,
+)
 
 // GREETING
 
@@ -164,10 +165,10 @@ const greetingPanelView = (
   ),
 ]
 
-export const updateGreetingView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const updateGreetingView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(
     {
       dialog: model.updateGreeting,
@@ -179,4 +180,5 @@ export const updateGreetingView = (
       binding: UpdateGreetingBinding,
     },
     h,
-  )
+  ),
+)

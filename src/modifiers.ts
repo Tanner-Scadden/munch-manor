@@ -1,4 +1,4 @@
-import { Array, Schema } from 'effect'
+import { Array, Function, Schema } from 'effect'
 
 // Run modifiers (GAME_DESIGN.md, "Decided"): opt-in rules that make a run
 // harder and pay more. They are World rules, so the co-op room runs them
@@ -48,18 +48,22 @@ const FIELD_OF: Readonly<Record<Modifier, keyof Modifiers>> = {
   Glass: 'glass',
 }
 
-export const isModifierOn = (
-  modifiers: Modifiers,
-  modifier: Modifier,
-): boolean => modifiers[FIELD_OF[modifier]]
+export const isModifierOn: {
+  (modifier: Modifier): (modifiers: Modifiers) => boolean
+  (modifiers: Modifiers, modifier: Modifier): boolean
+} = Function.dual(
+  2,
+  (modifiers: Modifiers, modifier: Modifier): boolean =>
+    modifiers[FIELD_OF[modifier]],
+)
 
-export const toggledModifier = (
-  modifiers: Modifiers,
-  modifier: Modifier,
-): Modifiers => ({
+export const toggledModifier: {
+  (modifier: Modifier): (modifiers: Modifiers) => Modifiers
+  (modifiers: Modifiers, modifier: Modifier): Modifiers
+} = Function.dual(2, (modifiers: Modifiers, modifier: Modifier): Modifiers => ({
   ...modifiers,
   [FIELD_OF[modifier]]: !isModifierOn(modifiers, modifier),
-})
+}))
 
 export const modifiersOn = (modifiers: Modifiers): ReadonlyArray<Modifier> =>
   Array.filter(MODIFIER_ORDER, modifier => isModifierOn(modifiers, modifier))
@@ -111,8 +115,12 @@ export const modifiersOfMask = (mask: number): Modifiers => ({
 
 // NOTE: Broke pays half of each kill, to the nearest dollar and never
 // nothing, as the Penny Pincher's cut rounds (src/calling.ts).
-export const brokenKillPay = (modifiers: Modifiers, pay: number): number =>
-  modifiers.broke && pay > 0 ? Math.max(1, Math.round(pay / 2)) : pay
+export const brokenKillPay: {
+  (pay: number): (modifiers: Modifiers) => number
+  (modifiers: Modifiers, pay: number): number
+} = Function.dual(2, (modifiers: Modifiers, pay: number): number =>
+  modifiers.broke && pay > 0 ? Math.max(1, Math.round(pay / 2)) : pay,
+)
 
 // NOTE: Big Crowd brings half as many zombies again.
 export const BIG_CROWD_SCALE = 1.5

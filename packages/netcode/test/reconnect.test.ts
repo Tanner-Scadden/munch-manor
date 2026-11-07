@@ -1,4 +1,4 @@
-import { Effect, Fiber, Ref } from 'effect'
+import { Array, Effect, Fiber, Ref } from 'effect'
 import { TestClock } from 'effect/testing'
 
 import { describe, expect, it } from '@effect/vitest'
@@ -33,10 +33,11 @@ describe('reconnecting', () => {
   it.effect('backs off while no try is heard, and stops when told', () =>
     Effect.gen(function* () {
       const tries = yield* play(['Unheard', 'Unheard', 'Unheard', 'Stopped'])
-      expect(tries.map(([attempt]) => attempt)).toEqual([0, 1, 2, 3])
-      const gaps = tries
-        .slice(1)
-        .map(([, atMs], index) => atMs - (tries[index]?.[1] ?? 0))
+      expect(Array.map(tries, ([attempt]) => attempt)).toEqual([0, 1, 2, 3])
+      const gaps = Array.map(
+        tries.slice(1),
+        ([, atMs], index) => atMs - (tries[index]?.[1] ?? 0),
+      )
       expect(gaps[1]!).toBeGreaterThan(gaps[0]!)
       expect(gaps[2]!).toBeGreaterThan(gaps[1]!)
     }),
@@ -52,7 +53,9 @@ describe('reconnecting', () => {
         'Unheard',
         'Stopped',
       ])
-      expect(tries.map(([attempt]) => attempt)).toEqual([0, 1, 2, 3, 0, 1])
+      expect(Array.map(tries, ([attempt]) => attempt)).toEqual([
+        0, 1, 2, 3, 0, 1,
+      ])
       const gapAt = (index: number) =>
         (tries[index]?.[1] ?? 0) - (tries[index - 1]?.[1] ?? 0)
       expect(gapAt(4)).toBeLessThan(gapAt(3))

@@ -5,15 +5,22 @@
 // between the splash-zombie markers, and a contact sheet of every size to
 // shots/icons.png.
 //   bun icons.ts
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import {
+  Array,
+  Console,
+  Effect,
+  FileSystem,
+  Option,
+  Path,
+  String,
+} from 'effect'
+import type { Browser } from 'playwright-core'
 
-import { launch } from './lib'
+import * as NodeServices from '@effect/platform-node/NodeServices'
+
+import { openBrowser, runAuditWith } from './lib'
+import { attempt, failWith } from './page'
 import { BIG_HEAD, PALETTE } from './zombieHead'
-
-const PUBLIC = resolve(import.meta.dir, '../../public')
-const INDEX_HTML = resolve(import.meta.dir, '../../index.html')
-const SHOTS = resolve(import.meta.dir, 'shots')
 
 const BACKGROUND = PALETTE['b'] ?? '#3b2160'
 
@@ -64,26 +71,29 @@ const SPARKLES: ReadonlyArray<readonly [number, number]> = [
   [5, 26],
 ]
 
-const BIG_ART: ReadonlyArray<string> = Array.from(
+const BIG_ART: ReadonlyArray<string> = globalThis.Array.from(
   { length: ART_SIZE },
   (_row, y) =>
-    Array.from({ length: ART_SIZE }, (_cell, x) => {
-      const headX = x - (ART_SIZE - (BIG_HEAD[0]?.length ?? 0)) / 2
-      const headCell = BIG_HEAD[y - HEAD_TOP]?.[headX]
-      if (headCell !== undefined && headCell !== '.') {
-        return headCell
-      }
-      if (SPARKLES.some(([sx, sy]) => sx === x && sy === y)) {
-        return 's'
-      }
-      return glowAt(x, y)
-    }).join(''),
+    Array.join(
+      globalThis.Array.from({ length: ART_SIZE }, (_cell, x) => {
+        const headX = x - (ART_SIZE - (BIG_HEAD[0]?.length ?? 0)) / 2
+        const headCell = BIG_HEAD[y - HEAD_TOP]?.[headX]
+        if (headCell !== undefined && headCell !== '.') {
+          return headCell
+        }
+        if (Array.some(SPARKLES, ([sx, sy]) => sx === x && sy === y)) {
+          return 's'
+        }
+        return glowAt(x, y)
+      }),
+      '',
+    ),
 )
 
 // SVG
 
 const assertSquare = (name: string, rows: ReadonlyArray<string>): void => {
-  rows.forEach((row, y) => {
+  Array.forEach(rows, (row, y) => {
     if (row.length !== rows.length) {
       throw new Error(
         `${name} row ${y} is ${row.length} wide, not ${rows.length}`,
@@ -93,7 +103,7 @@ const assertSquare = (name: string, rows: ReadonlyArray<string>): void => {
 }
 
 const svgFor = (rows: ReadonlyArray<string>): string => {
-  const rects = rows.flatMap((row, y) => {
+  const rects = Array.flatMap(rows, (row, y) => {
     const runs: Array<string> = []
     let start = 0
     for (let x = 1; x <= row.length; x++) {
@@ -113,7 +123,10 @@ const svgFor = (rows: ReadonlyArray<string>): string => {
     }
     return runs
   })
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${rows.length} ${rows.length}" shape-rendering="crispEdges">\n${rects.map(rect => `  ${rect}`).join('\n')}\n</svg>\n`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${rows.length} ${rows.length}" shape-rendering="crispEdges">\n${Array.join(
+    Array.map(rects, rect => `  ${rect}`),
+    '\n',
+  )}\n</svg>\n`
 }
 
 assertSquare('FAVICON', FAVICON)
@@ -124,16 +137,13 @@ const BIG_SVG = svgFor(BIG_ART)
 const dataUrl = (svg: string): string =>
   `data:image/svg+xml,${encodeURIComponent(svg)}`
 
-writeFileSync(`${PUBLIC}/favicon.svg`, FAVICON_SVG)
-console.log('wrote public/favicon.svg')
-
 // SPLASH
 
 // The loading splash shows the app icon's head on its own, without the glow,
 // inline in index.html so it paints before any request. One path per color
 // keeps it small.
-const SPLASH_HEAD = BIG_HEAD.filter(row =>
-  Array.from(row).some(cell => cell !== '.'),
+const SPLASH_HEAD = Array.filter(BIG_HEAD, row =>
+  Array.some(globalThis.Array.from(row), cell => cell !== '.'),
 )
 const SPLASH_START = '<!-- splash-zombie: written by tools/audit/icons.ts -->'
 const SPLASH_END = '<!-- /splash-zombie -->'
@@ -141,7 +151,7 @@ const SPLASH_END = '<!-- /splash-zombie -->'
 const splashSvg = (rows: ReadonlyArray<string>): string => {
   const width = rows[0]?.length ?? 0
   const pathsByColor = new Map<string, Array<string>>()
-  rows.forEach((row, y) => {
+  Array.forEach(rows, (row, y) => {
     let start = 0
     for (let x = 1; x <= row.length; x++) {
       if (x === row.length || row[x] !== row[start]) {
@@ -159,23 +169,13 @@ const splashSvg = (rows: ReadonlyArray<string>): string => {
       }
     }
   })
-  const paths = [...pathsByColor.entries()].map(
-    ([fill, runs]) => `        <path fill="${fill}" d="${runs.join('')}" />`,
+  const paths = Array.map(
+    [...pathsByColor.entries()],
+    ([fill, runs]) =>
+      `        <path fill="${fill}" d="${Array.join(runs, '')}" />`,
   )
-  return `<svg class="splash-zombie" viewBox="0 0 ${width} ${rows.length}" aria-hidden="true">\n${paths.join('\n')}\n      </svg>`
+  return `<svg class="splash-zombie" viewBox="0 0 ${width} ${rows.length}" aria-hidden="true">\n${Array.join(paths, '\n')}\n      </svg>`
 }
-
-const indexHtml = readFileSync(INDEX_HTML, 'utf8')
-const splashStart = indexHtml.indexOf(SPLASH_START)
-const splashEnd = indexHtml.indexOf(SPLASH_END)
-if (splashStart < 0 || splashEnd < splashStart) {
-  throw new Error('index.html is missing the splash-zombie markers')
-}
-writeFileSync(
-  INDEX_HTML,
-  `${indexHtml.slice(0, splashStart + SPLASH_START.length)}\n      ${splashSvg(SPLASH_HEAD)}\n      ${indexHtml.slice(splashEnd)}`,
-)
-console.log('wrote the splash head in index.html')
 
 // PNG ICONS
 
@@ -198,80 +198,131 @@ const iconPage = ({ size, share }: Icon): string => {
 </div></body></html>`
 }
 
-const browser = await launch()
-
-const render = async (
-  html: string,
-  width: number,
-  height: number,
-  path: string,
-): Promise<void> => {
-  const context = await browser.newContext({
-    viewport: { width, height },
-    deviceScaleFactor: 1,
-  })
-  const page = await context.newPage()
-  await page.setContent(html)
-  await page.waitForLoadState('load')
-  await page.screenshot({ path, clip: { x: 0, y: 0, width, height } })
-  await context.close()
-}
-
-for (const icon of ICONS) {
-  await render(iconPage(icon), icon.size, icon.size, `${PUBLIC}/${icon.file}`)
-  console.log(`wrote public/${icon.file}`)
-}
-
 // CONTACT SHEET
 
 // The favicon at tab sizes on a light and a dark tab bar, each app icon with
 // a phone's rounded corner mask, and the maskable icon in its safe circle.
-const fileUrl = (file: string): string => `file://${PUBLIC}/${file}`
 
-const tab = (background: string, text: string): string =>
-  `<div style="display:flex;gap:16px;align-items:center;padding:12px;background:${background};color:${text};font:13px sans-serif">
-${[16, 32, 48]
-  .map(
+const sheetOf = (publicDir: string): string => {
+  const fileUrl = (file: string): string => `file://${publicDir}/${file}`
+
+  const tab = (background: string, text: string): string =>
+    `<div style="display:flex;gap:16px;align-items:center;padding:12px;background:${background};color:${text};font:13px sans-serif">
+${Array.join(
+  Array.map(
+    [16, 32, 48],
     size =>
       `<div style="display:flex;gap:6px;align-items:center"><img style="width:${size}px;height:${size}px;image-rendering:pixelated" src="${dataUrl(FAVICON_SVG)}"><span>${size}</span></div>`,
-  )
-  .join('')}
+  ),
+  '',
+)}
 <span>Munch Manor</span>
 <img style="width:128px;height:128px;image-rendering:pixelated" src="${dataUrl(FAVICON_SVG)}"><span>16 at 8x</span></div>`
 
-const sheet = `<!doctype html><html><body style="margin:0;background:#888;font:12px sans-serif">
+  return `<!doctype html><html><body style="margin:0;background:#888;font:12px sans-serif">
 ${tab('#f1f3f4', '#202124')}
 ${tab('#202124', '#e8eaed')}
 <div style="display:flex;gap:16px;align-items:end;padding:12px;background:#d9d9d9">
-${ICONS.filter(icon => icon.file !== 'icon-maskable-512.png')
-  .map(
+${Array.join(
+  Array.map(
+    Array.filter(ICONS, icon => icon.file !== 'icon-maskable-512.png'),
     icon =>
       `<div><img style="width:${icon.size}px;height:${icon.size}px;border-radius:22%" src="${fileUrl(icon.file)}"><div>${icon.file}</div></div>`,
-  )
-  .join('')}
+  ),
+  '',
+)}
 <div><img style="width:512px;height:512px;clip-path:circle(40% at 50% 50%)" src="${fileUrl('icon-maskable-512.png')}"><div>maskable in the 80% safe circle</div></div>
 </div>
 <div style="display:flex;gap:16px;align-items:center;padding:12px;background:#1a1a1a;color:#eee">
-${[48, 60, 72]
-  .map(
+${Array.join(
+  Array.map(
+    [48, 60, 72],
     size =>
       `<div><img style="width:${size}px;height:${size}px;border-radius:22%" src="${fileUrl('apple-touch-icon.png')}"><div>${size}</div></div>`,
-  )
-  .join('')}
+  ),
+  '',
+)}
 <img style="width:72px;height:72px;clip-path:circle(50%)" src="${fileUrl('icon-maskable-512.png')}">
 </div></body></html>`
+}
 
-mkdirSync(SHOTS, { recursive: true })
-const sheetFile = `${SHOTS}/icons.html`
-writeFileSync(sheetFile, sheet)
-const context = await browser.newContext({
-  viewport: { width: 1520, height: 900 },
-  deviceScaleFactor: 1,
-})
-const page = await context.newPage()
-await page.goto(`file://${sheetFile}`)
-await page.screenshot({ path: `${SHOTS}/icons.png`, fullPage: true })
-await context.close()
-console.log('wrote tools/audit/shots/icons.png')
+// WRITING
 
-await browser.close()
+const render = (
+  browser: Browser,
+  html: string,
+  width: number,
+  height: number,
+  path: string,
+) =>
+  Effect.gen(function* () {
+    const context = yield* attempt(() =>
+      browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 }),
+    )
+    const page = yield* attempt(() => context.newPage())
+    yield* attempt(() => page.setContent(html))
+    yield* attempt(() => page.waitForLoadState('load'))
+    yield* attempt(() =>
+      page.screenshot({ path, clip: { x: 0, y: 0, width, height } }),
+    )
+    yield* attempt(() => context.close())
+  })
+
+runAuditWith(
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const publicDir = path.resolve(import.meta.dir, '../../public')
+    const indexFile = path.resolve(import.meta.dir, '../../index.html')
+    const shotsDir = path.resolve(import.meta.dir, 'shots')
+
+    yield* fs.writeFileString(`${publicDir}/favicon.svg`, FAVICON_SVG)
+    yield* Console.log('wrote public/favicon.svg')
+
+    const indexHtml = yield* fs.readFileString(indexFile)
+    const splashStart = String.indexOf(SPLASH_START)(indexHtml)
+    const splashEnd = String.indexOf(SPLASH_END)(indexHtml)
+    if (
+      Option.isNone(splashStart) ||
+      Option.isNone(splashEnd) ||
+      splashEnd.value < splashStart.value
+    ) {
+      return yield* failWith('index.html is missing the splash-zombie markers')
+    }
+    yield* fs.writeFileString(
+      indexFile,
+      `${String.slice(0, splashStart.value + SPLASH_START.length)(indexHtml)}\n      ${splashSvg(SPLASH_HEAD)}\n      ${String.slice(splashEnd.value)(indexHtml)}`,
+    )
+    yield* Console.log('wrote the splash head in index.html')
+
+    const browser = yield* openBrowser
+    for (const icon of ICONS) {
+      yield* render(
+        browser,
+        iconPage(icon),
+        icon.size,
+        icon.size,
+        `${publicDir}/${icon.file}`,
+      )
+      yield* Console.log(`wrote public/${icon.file}`)
+    }
+
+    yield* fs.makeDirectory(shotsDir, { recursive: true })
+    const sheetFile = `${shotsDir}/icons.html`
+    yield* fs.writeFileString(sheetFile, sheetOf(publicDir))
+    const context = yield* attempt(() =>
+      browser.newContext({
+        viewport: { width: 1520, height: 900 },
+        deviceScaleFactor: 1,
+      }),
+    )
+    const page = yield* attempt(() => context.newPage())
+    yield* attempt(() => page.goto(`file://${sheetFile}`))
+    yield* attempt(() =>
+      page.screenshot({ path: `${shotsDir}/icons.png`, fullPage: true }),
+    )
+    yield* attempt(() => context.close())
+    yield* Console.log('wrote tools/audit/shots/icons.png')
+  }),
+  NodeServices.layer,
+)

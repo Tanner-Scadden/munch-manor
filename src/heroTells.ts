@@ -1,4 +1,4 @@
-import { Array, pipe } from 'effect'
+import { Array, Function, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
@@ -117,27 +117,35 @@ const glint =
 // NOTE: where traps were mended since the last frame, if a Handyman stood at
 // the counter to do it (he mends for free; the room says nothing about who
 // bought, so a crew with a Handyman at the stall takes the credit).
-export const mendedSpots = (
-  model: Model,
-  watch: TellWatch,
-): ReadonlyArray<Vector> => {
-  const isHandymanAtStall = Array.some(
-    playersOf(model),
-    ({ player, seat }) =>
-      player.calling === 'Handyman' && isStanding(seat) && isNearStall(player),
-  )
-  if (!isHandymanAtStall) {
-    return []
-  }
-  const level = levelOf(model)
-  return pipe(
-    model.traps,
-    Array.filter(trap =>
-      Array.some(watch.traps, seen => seen.id === trap.id && seen.hp < trap.hp),
-    ),
-    Array.map(trap => trapCenter(level, trap)),
-  )
-}
+export const mendedSpots: {
+  (watch: TellWatch): (model: Model) => ReadonlyArray<Vector>
+  (model: Model, watch: TellWatch): ReadonlyArray<Vector>
+} = Function.dual(
+  2,
+  (model: Model, watch: TellWatch): ReadonlyArray<Vector> => {
+    const isHandymanAtStall = Array.some(
+      playersOf(model),
+      ({ player, seat }) =>
+        player.calling === 'Handyman' &&
+        isStanding(seat) &&
+        isNearStall(player),
+    )
+    if (!isHandymanAtStall) {
+      return []
+    }
+    const level = levelOf(model)
+    return pipe(
+      model.traps,
+      Array.filter(trap =>
+        Array.some(
+          watch.traps,
+          seen => seen.id === trap.id && seen.hp < trap.hp,
+        ),
+      ),
+      Array.map(trap => trapCenter(level, trap)),
+    )
+  },
+)
 
 const isKillPaid = (
   model: Model,
@@ -181,8 +189,12 @@ const TELLS: Readonly<Record<Calling, Tell>> = {
 // repairs, then what the frame saw of the World kept to be read against
 // next time. It runs on frames with no tick too, so a repair made between
 // frames shows once and is not seen again.
-export const advanceTells = (model: Model, worldMs: number): Model =>
-  isPlainCrew(model) ? model : tellsAfter(model, worldMs)
+export const advanceTells: {
+  (worldMs: number): (model: Model) => Model
+  (model: Model, worldMs: number): Model
+} = Function.dual(2, (model: Model, worldMs: number): Model =>
+  isPlainCrew(model) ? model : tellsAfter(model, worldMs),
+)
 
 // NOTE: a run of only YOU has no tell, and nothing to watch, so most runs
 // pay nothing here each frame.

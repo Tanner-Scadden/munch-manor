@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import { given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 
@@ -149,6 +149,6 @@ describe('a tap at the ammo window buys at once', () => {
     const { world, events } = stepWorld(pressed, soloInputs(idleIntent))
     expect(focusOf(world).wallet.balance).toBe(100 - PRICE)
     expect(heldGun(focusOf(world).player.arsenal).rounds).toBeGreaterThan(10)
-    expect(events.some(GameEvent.isAnyOf(['Purchased']))).toBe(true)
+    expect(Array.some(events, GameEvent.isAnyOf(['Purchased']))).toBe(true)
   })
 })

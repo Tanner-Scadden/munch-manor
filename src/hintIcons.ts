@@ -1,4 +1,4 @@
-import { Array, Option, String, pipe } from 'effect'
+import { Array, Function, Option, String, pipe } from 'effect'
 
 import { textPixels } from './font'
 import type { HintIcon } from './onboarding'
@@ -83,14 +83,20 @@ const iconOf = (
   frames: Array.map(frames, frameOf),
 })
 
-export const hintIconFrame = (
-  { frames, frameMs }: HintIconSprites,
-  ageMs: number,
-): Sprite =>
-  Option.getOrElse(
-    Array.get(frames, Math.floor(Math.max(0, ageMs) / frameMs) % frames.length),
-    () => Array.headNonEmpty(frames),
-  )
+export const hintIconFrame: {
+  (ageMs: number): (self: HintIconSprites) => Sprite
+  (self: HintIconSprites, ageMs: number): Sprite
+} = Function.dual(
+  2,
+  ({ frames, frameMs }: HintIconSprites, ageMs: number): Sprite =>
+    Option.getOrElse(
+      Array.get(
+        frames,
+        Math.floor(Math.max(0, ageMs) / frameMs) % frames.length,
+      ),
+      () => Array.headNonEmpty(frames),
+    ),
+)
 
 // KEYS
 
@@ -111,18 +117,21 @@ const keyWidth = (label: string): number =>
 // NOTE: light letters on a dark cap, and a press lights them yellow. Dark
 // letters on a light cap read backwards at this size: the eye takes the
 // light gaps between the strokes for the letters, and E turns into a 3.
-export const keyPixels = (label: string, isPressed: boolean): Pixels => {
+export const keyPixels: {
+  (isPressed: boolean): (label: string) => Pixels
+  (label: string, isPressed: boolean): Pixels
+} = Function.dual(2, (label: string, isPressed: boolean): Pixels => {
   const width = keyWidth(label)
-  const edge = `.${'o'.repeat(width - 2)}.`
+  const edge = `.${String.repeat(width - 2)('o')}.`
   const glyph = isPressed ? 'y' : 'w'
   const glyphRows = Array.map(
     textPixels(label),
     row => `oK${faceRow(row, 'K', glyph)}Ko`,
   )
   return isPressed
-    ? ['.'.repeat(width), edge, ...glyphRows, edge]
-    : [edge, ...glyphRows, `o${'S'.repeat(width - 2)}o`, edge]
-}
+    ? [String.repeat(width)('.'), edge, ...glyphRows, edge]
+    : [edge, ...glyphRows, `o${String.repeat(width - 2)('S')}o`, edge]
+})
 
 const KEY_HEIGHT = 8
 const KEY_FRAME_MS = 420
@@ -226,7 +235,7 @@ const ring = (color: string): Pixels =>
       '..c.....c..',
       '...ccccc...',
     ],
-    row => row.replaceAll('c', color),
+    row => String.replaceAll('c', color)(row),
   )
 
 const THUMB: Pixels = ['.hhh.', 'hhhhh', 'hhhhh', 'hhhhH', '.HHH.']
@@ -342,9 +351,9 @@ const GNOME = iconOf(16, 12, 200, [
 ])
 
 const slot = (color: string): Pixels => [
-  color.repeat(11),
-  ...Array.makeBy(6, () => `${color}${'.'.repeat(9)}${color}`),
-  color.repeat(11),
+  String.repeat(11)(color),
+  ...Array.makeBy(6, () => `${color}${String.repeat(9)('.')}${color}`),
+  String.repeat(11)(color),
 ]
 
 const PISTOL: Pixels = ['.mmmmmm', '.mMmmmm', '.MM....', 'MM.....']
@@ -387,7 +396,7 @@ const STALL = iconOf(11, 11, 300, [
 
 const meter = (filled: number): Pixels => {
   const color = filled >= 6 ? 'r' : 'y'
-  const fill = `${color.repeat(filled)}${'g'.repeat(6 - filled)}`
+  const fill = `${String.repeat(filled)(color)}${String.repeat(6 - filled)('g')}`
   return ['oooooooo', `o${fill}o`, 'oooooooo']
 }
 

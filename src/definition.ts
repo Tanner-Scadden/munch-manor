@@ -11,13 +11,14 @@ export const ApplicationDefinition = Block.makeDefinition('Application', {
   Message,
 })
 
+// NOTE: a Command and an OutMessage fold are made through the definition
+// itself (`ApplicationDefinition.makeCommand(...)`): exported alone, each is a
+// two-argument function with no pipeable form.
 export const {
   makeBinding,
-  makeCommand,
   makeComposition,
   makeManagedResources,
   makeNoopStep,
-  makeOutMessageFold,
   makeResource,
   makeStep,
   makeSubscriptions,

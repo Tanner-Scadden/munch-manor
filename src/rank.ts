@@ -1,3 +1,5 @@
+import { Function } from 'effect'
+
 import type { Difficulty, SavedRank } from './playerData'
 
 // Rank and Bones (GAME_DESIGN.md, "Rank and Bones"): the pure rules. A
@@ -117,14 +119,23 @@ export const rankProgressOf = (points: number): RankProgress => {
 // NOTE: the end card's rank strip reads everything from the points it is
 // showing, so a bar that fills past a rank's end turns into the next rank's
 // bar, and the number and the badge change as it goes.
-export const shownPointsOf = (
-  pointsBefore: number,
-  gained: number,
-  t: number,
-): number => pointsBefore + Math.round(gained * Math.min(1, Math.max(0, t)))
+export const shownPointsOf: {
+  (gained: number, t: number): (pointsBefore: number) => number
+  (pointsBefore: number, gained: number, t: number): number
+} = Function.dual(
+  3,
+  (pointsBefore: number, gained: number, t: number): number =>
+    pointsBefore + Math.round(gained * Math.min(1, Math.max(0, t))),
+)
 
-export const isRankUp = (pointsBefore: number, gained: number): boolean =>
-  rankOf(pointsBefore + gained) > rankOf(pointsBefore)
+export const isRankUp: {
+  (gained: number): (pointsBefore: number) => boolean
+  (pointsBefore: number, gained: number): boolean
+} = Function.dual(
+  2,
+  (pointsBefore: number, gained: number): boolean =>
+    rankOf(pointsBefore + gained) > rankOf(pointsBefore),
+)
 
 // BADGES
 
@@ -184,10 +195,10 @@ export const totalPointsOf = (rank: RankTotals): number =>
 export const bonesBalanceOf = (rank: RankTotals): number =>
   Math.max(0, rank.earnedBones + rank.veteranBones - rank.spentBones)
 
-export const grantedVeteran = (
-  rank: RankTotals,
-  totalKills: number,
-): RankTotals => {
+export const grantedVeteran: {
+  (totalKills: number): (rank: RankTotals) => RankTotals
+  (rank: RankTotals, totalKills: number): RankTotals
+} = Function.dual(2, (rank: RankTotals, totalKills: number): RankTotals => {
   if (rank.isVeteranGranted) {
     return rank
   }
@@ -198,4 +209,4 @@ export const grantedVeteran = (
     veteranBones: bonesForPoints(points),
     isVeteranGranted: true,
   }
-}
+})

@@ -32,9 +32,9 @@ export type CoopProblem = typeof CoopProblem.Type
 // NOTE: what a player writes to the room's lobby scope. The service fills
 // in who it is for (`by`), so the update never needs the player id.
 export const LobbyChange = defineTaggedUnion({
-  ChangedReady: { ready: Schema.Boolean, pingMs: Schema.Number },
+  ChangedReady: { ready: Schema.Boolean, pingMs: Schema.Finite },
   ChangedPicks: { mode: PickedMode, difficulty: RoomDifficulty },
-  ChangedModifiers: { modifiers: Schema.Number },
+  ChangedModifiers: { modifiers: Schema.Finite },
   ChangedMemberCalling: { calling: Calling },
   ChangedMemberName: { name: Schema.String },
   KickedPlayer: { playerId: Schema.String },
@@ -49,7 +49,7 @@ export const RoomRequest = defineTaggedUnion({
 })
 export type RoomRequest = typeof RoomRequest.Type
 
-export const RoomTicket = Schema.Struct({ code: RoomCode, slot: Schema.Number })
+export const RoomTicket = Schema.Struct({ code: RoomCode, slot: Schema.Finite })
 export type RoomTicket = typeof RoomTicket.Type
 
 // QUEUE
@@ -63,11 +63,11 @@ export type OfferAnswer = typeof OfferAnswer.Type
 
 export const Queue = Schema.Struct({
   names: Schema.Array(Schema.String),
-  waiting: Schema.Number,
-  position: Schema.Number,
-  groupSize: Schema.Number,
-  offerPlayers: Schema.Number,
-  accepted: Schema.Number,
+  waiting: Schema.Finite,
+  position: Schema.Finite,
+  groupSize: Schema.Finite,
+  offerPlayers: Schema.Finite,
+  accepted: Schema.Finite,
   answer: OfferAnswer,
 })
 export type Queue = typeof Queue.Type
@@ -94,10 +94,10 @@ type Departure = typeof Departure.Type
 // tick it started on, so each press rides at least one tick before the
 // next one replaces it.
 export const Presses = Schema.Struct({
-  queued: Schema.Array(Schema.Number),
-  held: Schema.Number,
-  presses: Schema.Number,
-  heldFrom: Schema.Number,
+  queued: Schema.Array(Schema.Finite),
+  held: Schema.Finite,
+  presses: Schema.Finite,
+  heldFrom: Schema.Finite,
 })
 export type Presses = typeof Presses.Type
 
@@ -116,7 +116,7 @@ export type NudgeReason = typeof NudgeReason.Type
 
 const Nudge = Schema.Struct({
   reason: NudgeReason,
-  count: Schema.Number,
+  count: Schema.Finite,
 })
 type Nudge = typeof Nudge.Type
 
@@ -134,22 +134,22 @@ type Nudge = typeof Nudge.Type
 // the room confirmed, for the audit's hit registration.
 export const Room = Schema.Struct({
   code: RoomCode,
-  slot: Schema.Number,
+  slot: Schema.Finite,
   maybePlayerId: Schema.Option(Schema.String),
   maybeLobby: Schema.Option(Lobby),
   link: Link,
-  droppedAtMs: Schema.Option(Schema.Number),
+  droppedAtMs: Schema.Option(Schema.Finite),
   session: RoomSession,
   maybeWorld: Schema.Option(WorldState),
   frameEvents: Schema.Array(GameEvent),
-  eventsTick: Schema.Number,
-  predictedShots: Schema.Number,
+  eventsTick: Schema.Finite,
+  predictedShots: Schema.Finite,
   tracers: Schema.Array(Bullet),
-  tracerCount: Schema.Number,
-  hits: Schema.Struct({ looked: Schema.Number, confirmed: Schema.Number }),
+  tracerCount: Schema.Finite,
+  hits: Schema.Struct({ looked: Schema.Finite, confirmed: Schema.Finite }),
   presses: Presses,
   share: Share,
-  codeCopies: Schema.Number,
+  codeCopies: Schema.Finite,
   departure: Departure,
   isPickingCalling: Schema.Boolean,
   maybeNameDraft: Schema.Option(Schema.String),
@@ -182,14 +182,14 @@ export const Model = Schema.Struct({
   screen: Screen,
   name: Schema.String,
   look: Schema.String,
-  rank: Schema.Number,
+  rank: Schema.Finite,
   calling: Calling,
-  rngState: Schema.Number,
+  rngState: Schema.Finite,
   // NOTE: the ids of the heroes and looks this player bought, so the lobby's
   // picker offers only the heroes they own.
   bought: SavedBoughtCosmetics,
   // NOTE: the player's Bones, for the BUY pill's price check.
-  bones: Schema.Number,
+  bones: Schema.Finite,
 })
 export type Model = typeof Model.Type
 

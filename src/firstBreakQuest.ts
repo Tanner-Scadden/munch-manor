@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
@@ -58,7 +58,10 @@ export const isQuestDone = (model: Model): boolean =>
 // NOTE: one frame of the quest: it starts once its break comes, finishes
 // once the Plank Pile is placed, ends if the wave starts first, and its
 // tick fades after a moment.
-export const advanceQuest = (model: Model, deltaMs: number): Model =>
+export const advanceQuest: {
+  (deltaMs: number): (model: Model) => Model
+  (model: Model, deltaMs: number): Model
+} = Function.dual(2, (model: Model, deltaMs: number): Model =>
   Tour.match(model.firstBreakQuest, {
     Waiting: () =>
       isQuestDue(model)
@@ -85,7 +88,8 @@ export const advanceQuest = (model: Model, deltaMs: number): Model =>
             : Tour.Done({ ageMs: ageMs + deltaMs }),
       }),
     Over: () => model,
-  })
+  }),
+)
 
 export const endQuest = (model: Model): Model =>
   Tour.isAnyOf(['Over'])(model.firstBreakQuest)

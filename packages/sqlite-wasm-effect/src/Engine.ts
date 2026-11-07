@@ -1,11 +1,11 @@
 import {
   Array,
-  Data,
   Effect,
   MutableRef,
   Predicate,
   Result,
   Schedule,
+  Schema,
   pipe,
 } from 'effect'
 
@@ -16,7 +16,7 @@ import sqlite3InitModule, {
 
 import {
   type ChangeOperation,
-  type DatabaseFailure,
+  DatabaseFailure,
   Persistence,
   type SqlValue,
   type TableChange,
@@ -45,9 +45,12 @@ interface EngineRows {
   readonly values: ReadonlyArray<ReadonlyArray<SqlValue>>
 }
 
-export class EngineOpenError extends Data.TaggedError('EngineOpenError')<{
-  readonly failure: DatabaseFailure
-}> {}
+export class EngineOpenError extends Schema.TaggedError<
+  EngineOpenError,
+  { readonly brand: unique symbol }
+>()('EngineOpenError', {
+  failure: DatabaseFailure,
+}) {}
 
 export interface OpenOptions {
   readonly file: string
@@ -96,16 +99,22 @@ const hasSyncAccessHandles = (): boolean =>
     'createSyncAccessHandle',
   )
 
-class OpfsUnavailable extends Data.TaggedError('OpfsUnavailable')<{
-  readonly reason: string
-}> {}
+class OpfsUnavailable extends Schema.TaggedError<
+  OpfsUnavailable,
+  { readonly brand: unique symbol }
+>()('OpfsUnavailable', {
+  reason: Schema.String,
+}) {}
 
-class OpfsAttemptError extends Data.TaggedError('OpfsAttemptError')<{
-  readonly cause: unknown
-}> {}
+class OpfsAttemptError extends Schema.TaggedError<
+  OpfsAttemptError,
+  { readonly brand: unique symbol }
+>()('OpfsAttemptError', {
+  cause: Schema.Unknown,
+}) {}
 
 const attemptFailed = (cause: unknown): OpfsAttemptError =>
-  new OpfsAttemptError({ cause })
+  OpfsAttemptError.make({ cause })
 
 // NOTE: forceReinitIfPreviouslyFailed is read by sqlite-wasm 3.54 but is
 // missing from its types, so the options are built apart from the call.
@@ -139,12 +148,12 @@ const openOpfs = (
             catch: attemptFailed,
           }),
         ),
-        Effect.mapError(
-          error => new OpfsUnavailable({ reason: describeError(error.cause) }),
+        Effect.mapError(error =>
+          OpfsUnavailable.make({ reason: describeError(error.cause) }),
         ),
       )
     : Effect.fail(
-        new OpfsUnavailable({
+        OpfsUnavailable.make({
           reason: 'This browser has no OPFS sync access handles',
         }),
       )
@@ -155,7 +164,7 @@ const openMemory = (
   Effect.try({
     try: (): Database => new sqlite3.oo1.DB(':memory:', 'c'),
     catch: error =>
-      new EngineOpenError({
+      EngineOpenError.make({
         failure: { code: 'SQLITE_CANTOPEN', message: describeError(error) },
       }),
   })
@@ -292,7 +301,7 @@ const loadSqlite: Effect.Effect<Sqlite3Static, EngineOpenError> =
   Effect.tryPromise({
     try: takeSqlite,
     catch: error =>
-      new EngineOpenError({
+      EngineOpenError.make({
         failure: { code: 'SQLITE_CANTOPEN', message: describeError(error) },
       }),
   })
@@ -319,7 +328,7 @@ export const openEngine = (
       engine.execute('PRAGMA foreign_keys = ON', []),
       Result.match({
         onSuccess: () => Effect.void,
-        onFailure: failure => Effect.fail(new EngineOpenError({ failure })),
+        onFailure: failure => Effect.fail(EngineOpenError.make({ failure })),
       }),
     )
     return engine

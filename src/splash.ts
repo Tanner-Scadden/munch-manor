@@ -1,4 +1,6 @@
-import { Effect, Option, Schedule, pipe } from 'effect'
+import { Effect, Function, Option, Schedule, pipe } from 'effect'
+
+import { type BrowserError, toBrowserError } from './describeError'
 
 // NOTE: the splash is plain HTML and CSS in index.html, outside the Foldkit
 // root, so it paints before any script runs. These effects are its only
@@ -17,13 +19,22 @@ const markProgress = (splash: HTMLElement, share: number): void => {
   splash.style.setProperty(PROGRESS_PROPERTY, String(share))
 }
 
-export const showSplashProgress = (loaded: number, total: number) =>
-  Effect.try(() => {
-    const maybeElement = maybeSplash()
-    if (Option.isSome(maybeElement)) {
-      markProgress(maybeElement.value, total > 0 ? loaded / total : 1)
-    }
-  })
+export const showSplashProgress: {
+  (total: number): (loaded: number) => Effect.Effect<void, BrowserError>
+  (loaded: number, total: number): Effect.Effect<void, BrowserError>
+} = Function.dual(
+  2,
+  (loaded: number, total: number): Effect.Effect<void, BrowserError> =>
+    Effect.try({
+      try: () => {
+        const maybeElement = maybeSplash()
+        if (Option.isSome(maybeElement)) {
+          markProgress(maybeElement.value, total > 0 ? loaded / total : 1)
+        }
+      },
+      catch: toBrowserError,
+    }),
+)
 
 const fadeOut = (splash: HTMLElement): HTMLElement => {
   splash.classList.add(GONE_CLASS)
@@ -32,13 +43,19 @@ const fadeOut = (splash: HTMLElement): HTMLElement => {
 }
 
 export const hideSplash = pipe(
-  Effect.try(() => Option.map(maybeSplash(), fadeOut)),
+  Effect.try({
+    try: () => Option.map(maybeSplash(), fadeOut),
+    catch: toBrowserError,
+  }),
   Effect.tap(() => Effect.sleep(FADE_MS)),
   Effect.flatMap(maybeElement =>
-    Effect.try(() => {
-      if (Option.isSome(maybeElement)) {
-        maybeElement.value.remove()
-      }
+    Effect.try({
+      try: () => {
+        if (Option.isSome(maybeElement)) {
+          maybeElement.value.remove()
+        }
+      },
+      catch: toBrowserError,
     }),
   ),
 )
@@ -78,10 +95,13 @@ export const loadStyles = pipe(
 )
 
 const decodeImage = (src: string) =>
-  Effect.tryPromise(() => {
-    const image = new Image()
-    image.src = src
-    return image.decode()
+  Effect.tryPromise({
+    try: () => {
+      const image = new Image()
+      image.src = src
+      return image.decode()
+    },
+    catch: toBrowserError,
   })
 
 // NOTE: an image that fails to decode still counts as done, so one bad
@@ -95,10 +115,18 @@ export const decodeImages = (
   })
 
 export const loadFonts = Effect.asVoid(
-  Effect.tryPromise(() => document.fonts.ready),
+  Effect.tryPromise({
+    try: () => document.fonts.ready,
+    catch: toBrowserError,
+  }),
 )
 
 // NOTE: a `load:<step>` performance mark as each load step finishes, which
 // tools/audit/splash.ts reads to time the steps behind the splash.
 export const markLoadStep = (step: string): Effect.Effect<void> =>
-  Effect.ignore(Effect.try(() => performance.mark(`load:${step}`)))
+  Effect.ignore(
+    Effect.try({
+      try: () => performance.mark(`load:${step}`),
+      catch: toBrowserError,
+    }),
+  )

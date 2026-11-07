@@ -1,4 +1,4 @@
-import { Array, Effect, Layer, Option } from 'effect'
+import { Array, Effect, Layer, Option, Schema } from 'effect'
 import {
   Command,
   expectOutMessage,
@@ -11,7 +11,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
 import {
-  type ClientFrame,
+  ClientFrame,
   type InputFrame,
   NEUTRAL_INPUT,
   PROTOCOL_VERSION,
@@ -467,28 +467,30 @@ describe('the lobby', () => {
 })
 
 // NOTE: the Input frames a return's SendRoomFrames carry.
+const decodeFrames = Schema.decodeUnknownOption(
+  Schema.Struct({ frames: Schema.Array(ClientFrame) }),
+)
+
 const sentInputs = (
   commands: ReadonlyArray<{ readonly name: string; readonly args?: unknown }>,
 ): ReadonlyArray<InputFrame> =>
-  commands.flatMap(command => {
-    const args = command.args
-    if (
-      command.name !== SendRoomFrames.name ||
-      typeof args !== 'object' ||
-      args === null ||
-      !('frames' in args) ||
-      !globalThis.Array.isArray(args.frames)
-    ) {
-      return []
-    }
-    return args.frames.filter(
-      (frame: ClientFrame): frame is InputFrame => frame._tag === 'Input',
-    )
-  })
+  Array.flatMap(commands, command =>
+    command.name === SendRoomFrames.name
+      ? Option.match(decodeFrames(command.args), {
+          onNone: () => [],
+          onSome: ({ frames }) =>
+            Array.filter(
+              frames,
+              (frame: ClientFrame): frame is InputFrame =>
+                frame._tag === 'Input',
+            ),
+        })
+      : [],
+  )
 
 const snapshotFrame = (tick: number) => {
   const writer = makeWriter()
-  coopWorld.snapshot(writer, stagedWorld([0, 1]))
+  coopWorld.snapshot(writer, stagedWorld([0, 1], []))
   return {
     _tag: 'Snapshot' as const,
     tick,
@@ -524,13 +526,17 @@ test('a second LEAVE while leaving sends nothing more', () => {
 
 describe('predicted shots', () => {
   const live = (): Model =>
-    [
-      received(
-        { _tag: 'Welcome', version: 1, slot: 0, state: 'Playing', tick: 0 },
-        1000,
-      ),
-      received(snapshotFrame(10), 1010),
-    ].reduce((current, next) => update(current, next).model, inRoom(0))
+    Array.reduce(
+      [
+        received(
+          { _tag: 'Welcome', version: 1, slot: 0, state: 'Playing', tick: 0 },
+          1000,
+        ),
+        received(snapshotFrame(10), 1010),
+      ],
+      inRoom(0),
+      (current, next) => update(current, next).model,
+    )
 
   const TRIGGER = { ...NEUTRAL_INPUT, aimX: AIM_REACH, buttons: FIRE_BUTTON }
 
@@ -656,9 +662,9 @@ describe('the room', () => {
       message(received(snapshotFrame(60), 1300)),
       model(current => {
         expect(roomOf(current).session.isResyncing).toBe(false)
-        expect(roomOf(current).session.frames.map(frame => frame.tick)).toEqual(
-          [60],
-        )
+        expect(
+          Array.map(roomOf(current).session.frames, frame => frame.tick),
+        ).toEqual([60])
       }),
     )
   })
@@ -740,8 +746,8 @@ describe('the room', () => {
           ...sentInputs(later.commands ?? []),
         ]
         expect(
-          inputs.some(input =>
-            input.samples.some(sample => sample.input.moveX === 127),
+          Array.some(inputs, input =>
+            Array.some(input.samples, sample => sample.input.moveX === 127),
           ),
         ).toBe(true)
       }),
@@ -768,22 +774,25 @@ describe('the room', () => {
         const firstTick = tickRoom(pressed, NEUTRAL_INPUT, 1100)
         const first = firstTick.model
         const firstHeld = roomOf(first).presses.held
-        expect(seatActionOf(stagedWorld([0, 1]).world, firstHeld)).toEqual(
+        expect(seatActionOf(stagedWorld([0, 1], []).world, firstHeld)).toEqual(
           Option.some(SeatAction.Swap()),
         )
         const secondTick = tickRoom(first, NEUTRAL_INPUT, 1150)
         const second = secondTick.model
         const secondHeld = roomOf(second).presses.held
         expect(secondHeld).not.toBe(firstHeld)
-        expect(seatActionOf(stagedWorld([0, 1]).world, secondHeld)).toEqual(
+        expect(seatActionOf(stagedWorld([0, 1], []).world, secondHeld)).toEqual(
           Option.some(SeatAction.Ready()),
         )
         const sent = tickRoom(second, NEUTRAL_INPUT, 1300)
-        const actions = [
-          ...sentInputs(firstTick.commands ?? []),
-          ...sentInputs(secondTick.commands ?? []),
-          ...sentInputs(sent.commands ?? []),
-        ].flatMap(input => input.samples.map(sample => sample.input.action))
+        const actions = Array.flatMap(
+          [
+            ...sentInputs(firstTick.commands ?? []),
+            ...sentInputs(secondTick.commands ?? []),
+            ...sentInputs(sent.commands ?? []),
+          ],
+          input => Array.map(input.samples, sample => sample.input.action),
+        )
         expect(actions).toContain(firstHeld)
         expect(actions).toContain(secondHeld)
       }),
@@ -813,20 +822,31 @@ describe('the room', () => {
         ).model
         expect(roomOf(late).presses.held).not.toBe(0)
         // The second run: the room says Welcome at tick 0 again.
-        const again = [
-          received(
-            { _tag: 'Welcome', version: 1, slot: 0, state: 'Playing', tick: 0 },
-            70_000,
-          ),
-          received(snapshotFrame(0), 70_010),
-        ].reduce((next, frame) => update(next, frame).model, late)
+        const again = Array.reduce(
+          [
+            received(
+              {
+                _tag: 'Welcome',
+                version: 1,
+                slot: 0,
+                state: 'Playing',
+                tick: 0,
+              },
+              70_000,
+            ),
+            received(snapshotFrame(0), 70_010),
+          ],
+          late,
+          (next, frame) => update(next, frame).model,
+        )
         expect(roomOf(again).presses).toEqual(noPresses)
         const pressed = pressAction(again, SeatAction.Ready())
         const ready = heldAction(actionCodeOf(SeatAction.Ready()), 1)
-        const held = Array.range(1, 6).reduce(
+        const held = Array.reduce(
+          Array.range(1, 6),
+          pressed,
           (next, frame) =>
             tickRoom(next, NEUTRAL_INPUT, 70_100 + frame * 50).model,
-          pressed,
         )
         expect(roomOf(held).presses.held).toBe(ready)
       }),
@@ -834,7 +854,7 @@ describe('the room', () => {
   })
 
   test('each event of the room reaches the drawing once, after any hit-stop', () => {
-    const played = playRoom(stagedWorld([0, 1]), 600)
+    const played = playRoom(stagedWorld([0, 1], []), 600)
     const later = playRoom(played, 30)
     const diff = makeWriter()
     coopWorld.diff(diff, played, later)
@@ -951,7 +971,10 @@ describe('the network service', () => {
     () =>
       Effect.gen(function* () {
         const fake = yield* makeFakeCoopNet(() => Effect.fail('Full'))
-        const result = yield* Effect.provide(
+        const handlers = yield* Layer.build(
+          Layer.provide(RequestRoom.layer, fake.layer),
+        )
+        const result = yield* Effect.provideContext(
           RequestRoom({
             request: RoomRequest.Join({ code: CODE }),
             name: 'Ana',
@@ -959,10 +982,11 @@ describe('the network service', () => {
             rank: 42,
             calling: 'Handyman',
           }).effect,
-          Layer.provide(RequestRoom.layer, fake.layer),
+          handlers,
         )
         expect(result).toEqual(Message.FailedRequestRoom({ problem: 'Full' }))
-        expect(yield* fake.calls).toEqual([
+        const calls_1 = yield* fake.calls
+        expect(calls_1).toEqual([
           {
             _tag: 'RequestRoom',
             request: RoomRequest.Join({ code: CODE }),

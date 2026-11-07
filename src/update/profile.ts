@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -40,7 +40,10 @@ const keepNameModel = (model: Model): Model => {
 
 export const keepName = modelStep(keepNameModel)
 
-export const typeName = (model: Model, value: string): UpdateReturn => ({
+export const typeName: {
+  (value: string): (model: Model) => UpdateReturn
+  (model: Model, value: string): UpdateReturn
+} = Function.dual(2, (model: Model, value: string): UpdateReturn => ({
   model: isProfileOpen(model)
     ? modifyFields(model, {
         profile: profile =>
@@ -50,7 +53,7 @@ export const typeName = (model: Model, value: string): UpdateReturn => ({
           }),
       })
     : model,
-})
+}))
 
 export const submitName = stepWhen(isProfileOpen, model =>
   playSounds([uiCue('Pop')])(keepNameModel(model)),

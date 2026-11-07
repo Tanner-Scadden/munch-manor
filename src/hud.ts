@@ -1,4 +1,4 @@
-import { Array, Option, String, pipe } from 'effect'
+import { Array, Function, Option, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { ammoLevelOf, isOutOfGuns } from './ammoWarning'
@@ -560,7 +560,10 @@ const slotLeftOf = (layout: HudLayout, index: number): number =>
 const slotWidthOf = (layout: HudLayout, index: number): number =>
   index === MELEE_SLOT_INDEX ? layout.slots.meleeWidth : layout.slots.gunWidth
 
-export const gunSlotBox = (screen: Screen, index: number): Box => {
+export const gunSlotBox: {
+  (index: number): (screen: Screen) => Box
+  (screen: Screen, index: number): Box
+} = Function.dual(2, (screen: Screen, index: number): Box => {
   const layout = hudLayoutFor(screen)
   return {
     x: slotLeftOf(layout, index),
@@ -568,7 +571,7 @@ export const gunSlotBox = (screen: Screen, index: number): Box => {
     width: slotWidthOf(layout, index),
     height: layout.slots.height,
   }
-}
+})
 
 export const gunClusterBox = (screen: Screen): Box => {
   const layout = hudLayoutFor(screen)
@@ -1008,40 +1011,58 @@ const HUD_STRIP_COLOR = 'rgba(20, 15, 24, 0.75)'
 // candles, and shelves made the hearts and the wave hard to read. A slim
 // dark strip behind the HUD rows backs them. Portrait has its own band
 // above the world, so it needs none.
-export const hudStripShapes = (
-  model: Model,
-  screen: Screen,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> => {
-  if (screen.layout !== 'Landscape' || !isHudShown(model.phase)) {
-    return []
-  }
-  const stripPiece = (left: number, right: number): Canvas.Shape =>
-    Canvas.Rect({
-      x: left,
-      y: 0,
-      width: right - left,
-      height: HUD_STRIP_HEIGHT,
-      fill: HUD_STRIP_COLOR,
+export const hudStripShapes: {
+  (
+    screen: Screen,
+    camera: Camera,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    screen: Screen,
+    camera: Camera,
+  ): ReadonlyArray<Canvas.Shape> => {
+    if (screen.layout !== 'Landscape' || !isHudShown(model.phase)) {
+      return []
+    }
+    const stripPiece = (left: number, right: number): Canvas.Shape =>
+      Canvas.Rect({
+        x: left,
+        y: 0,
+        width: right - left,
+        height: HUD_STRIP_HEIGHT,
+        fill: HUD_STRIP_COLOR,
+      })
+    return Option.match(maybeLeakSpan(model), {
+      onNone: () => [stripPiece(0, screen.width)],
+      onSome: ({ left, right }) => {
+        const gapLeft = Math.max(0, worldToView(camera, { x: left, y: 0 }).x)
+        const gapRight = Math.min(
+          screen.width,
+          worldToView(camera, { x: right, y: 0 }).x,
+        )
+        return [stripPiece(0, gapLeft), stripPiece(gapRight, screen.width)]
+      },
     })
-  return Option.match(maybeLeakSpan(model), {
-    onNone: () => [stripPiece(0, screen.width)],
-    onSome: ({ left, right }) => {
-      const gapLeft = Math.max(0, worldToView(camera, { x: left, y: 0 }).x)
-      const gapRight = Math.min(
-        screen.width,
-        worldToView(camera, { x: right, y: 0 }).x,
-      )
-      return [stripPiece(0, gapLeft), stripPiece(gapRight, screen.width)]
-    },
-  })
-}
+  },
+)
 
-export const hudShapes = (
-  model: Model,
-  screen: Screen,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
-  isHudShown(model.phase)
-    ? playHudShapes(model, hudLayoutFor(screen), camera)
-    : []
+export const hudShapes: {
+  (
+    screen: Screen,
+    camera: Camera,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, screen: Screen, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    screen: Screen,
+    camera: Camera,
+  ): ReadonlyArray<Canvas.Shape> =>
+    isHudShown(model.phase)
+      ? playHudShapes(model, hudLayoutFor(screen), camera)
+      : [],
+)

@@ -4,7 +4,7 @@
 // and the deterministic Math, so a bundle of it holds exactly what a co-op
 // room runs.
 
-import { Schema } from 'effect'
+import { Array, Effect, Schema } from 'effect'
 
 import type { PlayerInput } from '@munch/netcode'
 
@@ -18,6 +18,7 @@ import { type InputsByPlayer, stepWorld } from '../../src/stepWorld'
 import type { World } from '../../src/world'
 import { Intent } from '../../src/worldSchema'
 import { worldFromJson, worldToJson } from '../../src/worldWire'
+import { decodeJson, encodeJson } from '../json'
 import { installDeterministicMath } from './detMath'
 
 // NOTE: plain JSON both ways, so it crosses into any engine: the World and
@@ -29,31 +30,34 @@ export type PlayRequest = Readonly<{
   ticks: number
 }>
 
-const IntentJsonText = Schema.fromJsonString(Schema.toCodecJson(Intent))
+const IntentJson = Schema.toCodecJson(Intent)
+const encodeIntent = encodeJson(IntentJson)
+const decodeIntent = decodeJson(IntentJson)
 
-export const intentToJson = (intent: Intent): string =>
-  Schema.encodeSync(IntentJsonText)(intent)
+export const intentToJson = (intent: Intent): string => encodeIntent(intent)
 
 const play = (world: World, inputs: InputsByPlayer, ticks: number): World =>
   ticks <= 0 ? world : play(stepWorld(world, inputs).world, inputs, ticks - 1)
 
 const inputsOf = (request: PlayRequest): InputsByPlayer =>
   new Map(
-    request.intents.map(
-      ([slot, intent]) =>
-        [slot, Schema.decodeSync(IntentJsonText)(intent)] as const,
+    Array.map(
+      request.intents,
+      ([slot, intent]) => [slot, decodeIntent(intent)] as const,
     ),
   )
 
 // NOTE: the engines' own transcendental Math differs in its last bits
 // (tools/determinism/README.md), so both sides play with detMath to agree
 // bit for bit.
-export const playWorld = (request: PlayRequest): string => {
-  installDeterministicMath()
-  return worldToJson(
-    play(worldFromJson(request.world), inputsOf(request), request.ticks),
-  )
-}
+export const playWorld = (
+  request: PlayRequest,
+): Effect.Effect<string, Schema.SchemaError> =>
+  Effect.gen(function* () {
+    installDeterministicMath()
+    const world = yield* worldFromJson(request.world)
+    return yield* worldToJson(play(world, inputsOf(request), request.ticks))
+  })
 
 // NOTE: a co-op room from its seats and seed, each seat holding one input
 // the whole way, as the room's adapter steps it.
@@ -74,7 +78,7 @@ const playRoomTicks = (
     : playRoomTicks(
         stepRoomWorld(
           room,
-          request.inputs.map(([slot, input]) => ({
+          Array.map(request.inputs, ([slot, input]) => ({
             slot,
             input,
             presence: 'Here',
@@ -86,12 +90,16 @@ const playRoomTicks = (
         ticks - 1,
       )
 
-export const playRoomWorld = (request: RoomPlayRequest): string => {
-  installDeterministicMath()
-  const played = playRoomTicks(
-    startRoomWorld(request.slots, request.seed, DEFAULT_ROOM_SETTINGS),
-    request,
-    request.ticks,
-  )
-  return `${played.tick} ${worldToJson(played.world)}`
-}
+export const playRoomWorld = (
+  request: RoomPlayRequest,
+): Effect.Effect<string, Schema.SchemaError> =>
+  Effect.gen(function* () {
+    installDeterministicMath()
+    const played = playRoomTicks(
+      startRoomWorld(request.slots, request.seed, DEFAULT_ROOM_SETTINGS),
+      request,
+      request.ticks,
+    )
+    const world = yield* worldToJson(played.world)
+    return `${played.tick} ${world}`
+  })

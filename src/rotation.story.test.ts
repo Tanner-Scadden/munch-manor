@@ -8,7 +8,7 @@ import { Message } from './message'
 import { type Model, initialModel } from './model'
 import { loadingSave, readyAfterRead } from './model.fixture'
 import { decodeSave, encodeSave, restoreSave, saveOf } from './save'
-import { finishSplash } from './testing'
+import { finishSplash, jsonOf } from './testing'
 import { ApplyRotation } from './update/rotation'
 import { WriteSave } from './update/save'
 import { FetchBuild } from './update/version'
@@ -36,7 +36,7 @@ describe('the rotation setting in the save', () => {
     const { rotation: _rotation, ...withoutRotation } = saveOf(
       modifyFields(readyAfterRead, { shakeSetting: () => 'Off' }),
     )
-    const versionSeven = JSON.stringify({ ...withoutRotation, version: 7 })
+    const versionSeven = jsonOf({ ...withoutRotation, version: 7 })
     const migrated = Option.getOrThrow(decodeSave(versionSeven))
     expect(migrated.rotation).toBe('Landscape')
     expect(migrated.settings.shake).toBe('Off')

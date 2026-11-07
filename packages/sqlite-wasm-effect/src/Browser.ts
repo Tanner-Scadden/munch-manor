@@ -9,6 +9,7 @@ import {
   Schedule,
   type Scope,
   Stream,
+  String,
   pipe,
 } from 'effect'
 import type { SqlClient } from 'effect/sql'
@@ -23,7 +24,7 @@ import {
   encodeChannelMessage,
   encodeRequest,
 } from './Protocol'
-import { type Remote, type Sender, makeRemote } from './Remote'
+import { type Remote, type Sender, connectionError, makeRemote } from './Remote'
 import type { SqliteClient } from './SqliteClient'
 import {
   type ClientOptions,
@@ -149,9 +150,12 @@ const post =
   (target: { postMessage: (message: unknown) => void }) =>
   (message: unknown): Effect.Effect<void> =>
     pipe(
-      // NOTE: a Worker's postMessage takes no targetOrigin.
-      // oxlint-disable-next-line unicorn/require-post-message-target-origin
-      Effect.try(() => target.postMessage(message)),
+      Effect.try({
+        // NOTE: a Worker's postMessage takes no targetOrigin.
+        // oxlint-disable-next-line unicorn/require-post-message-target-origin
+        try: () => target.postMessage(message),
+        catch: cause => connectionError(describeError(cause), 'post'),
+      }),
       Effect.ignore,
     )
 
@@ -173,7 +177,7 @@ const isOwn = (session: string, response: Response): boolean =>
   response._tag === 'Changed' ||
   (Predicate.hasProperty(response, 'id') &&
     Predicate.isString(response.id) &&
-    response.id.startsWith(`${session}:`))
+    String.startsWith(`${session}:`)(response.id))
 
 // STATUS
 
@@ -254,6 +258,7 @@ const lead = (
 // starts its own worker, opens the same file, and says LeaderChanged, so the
 // other followers drop what they were waiting on. A browser without Web
 // Locks leads on its own, with no guard between tabs.
+/** @stability unstable */
 export const layer = (
   options: BrowserOptions,
 ): Layer.Layer<SqliteClient | SqlClient.SqlClient, SqliteOpenError> =>
@@ -271,7 +276,11 @@ export const layer = (
       const session = yield* Effect.sync(() => crypto.randomUUID())
       const channel = yield* pipe(
         Effect.acquireRelease(
-          Effect.try(() => new BroadcastChannel(`${name}:channel`)),
+          Effect.try({
+            try: () => new BroadcastChannel(`${name}:channel`),
+            catch: error =>
+              SqliteOpenError.make({ reason: describeError(error) }),
+          }),
           open => Effect.sync(() => open.close()),
         ),
         Effect.option,
@@ -317,7 +326,7 @@ export const layer = (
           duration: openTimeout,
           orElse: () =>
             Effect.fail(
-              new SqliteOpenError({ reason: 'No leader tab answered' }),
+              SqliteOpenError.make({ reason: 'No leader tab answered' }),
             ),
         }),
         Effect.flatMap(persistence => Ref.set(status, following(persistence))),
@@ -371,8 +380,8 @@ export const layer = (
 
       if (firstLock === 'Granted') {
         yield* openAsLeader.pipe(
-          Effect.mapError(
-            error => new SqliteOpenError({ reason: describeError(error) }),
+          Effect.mapError(error =>
+            SqliteOpenError.make({ reason: describeError(error) }),
           ),
         )
       } else {

@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Option, String } from 'effect'
 import {
   Command,
   all,
@@ -107,9 +107,12 @@ const MIN_TAP_PX = 48
 
 // NOTE: the body of the first rule for exactly this selector in menu.css.
 const ruleOf = (selectorText: string): string => {
-  const start = menuCss.indexOf(`\n${selectorText} {`)
-  vitestExpect(start, `${selectorText} has a rule`).toBeGreaterThanOrEqual(0)
-  return menuCss.slice(start, menuCss.indexOf('}', start))
+  const maybeStart = String.indexOf(`\n${selectorText} {`)(menuCss)
+  vitestExpect(Option.isSome(maybeStart), `${selectorText} has a rule`).toBe(
+    true,
+  )
+  const rest = String.slice(Option.getOrThrow(maybeStart))(menuCss)
+  return String.slice(0, Option.getOrThrow(String.indexOf('}')(rest)))(rest)
 }
 
 const pxOf = (rule: string, property: string): number =>
@@ -206,7 +209,9 @@ describe('the coffee in the home corner', () => {
   // overlap their children. tools/audit/taps.ts, shots33.ts, and shots34.ts
   // check the same in a real browser.
   test('the corner buttons are at least 48 px', () => {
-    const root = menuCss.slice(menuCss.indexOf(':root {'))
+    const root = String.slice(
+      Option.getOrThrow(String.indexOf(':root {')(menuCss)),
+    )(menuCss)
     vitestExpect(pxOf(root, '--menu-tap')).toBeGreaterThanOrEqual(MIN_TAP_PX)
     const button = ruleOf('.home-corner-button')
     vitestExpect(button).toMatch(/width: max\(var\(--menu-tap\),/)

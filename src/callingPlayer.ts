@@ -1,3 +1,4 @@
+import { Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { COOK_STARTING_LIDS, maxHpOf, startsWithCooker } from './calling'
@@ -25,7 +26,10 @@ const cookerOfCook = (calling: Calling): CarriedGun => {
 // gun. Everyone holds the Pop Pistol except the Line Cook, who holds the
 // Pressure Cooker in its place. A magazine is its calling's size. Its place
 // and the rest of it are kept.
-export const seatedAs = (player: Player, calling: Calling): Player =>
+export const seatedAs: {
+  (calling: Calling): (player: Player) => Player
+  (player: Player, calling: Calling): Player
+} = Function.dual(2, (player: Player, calling: Calling): Player =>
   modifyFields(player, {
     calling: () => calling,
     hp: () => maxHpOf({ calling }),
@@ -35,7 +39,8 @@ export const seatedAs = (player: Player, calling: Calling): Player =>
           ? cookerOfCook(calling)
           : freshGun('Pistol', calling),
       }),
-  })
+  }),
+)
 
 // NOTE: the player a run starts with for a calling.
 export const playerOfCalling = (calling: Calling): Player =>

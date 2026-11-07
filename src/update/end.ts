@@ -1,4 +1,4 @@
-import { Array, Effect, Option } from 'effect'
+import { Array, Effect, Function, Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -7,7 +7,7 @@ import { sendShareEvent } from '../analyticsBeacon'
 import { shareEventOf } from '../analyticsRun'
 import { CoopBinding } from '../bindings'
 import { isOpen as isCoopOpen } from '../coop/update'
-import { makeCommand, makeStep } from '../definition'
+import { ApplicationDefinition, makeStep } from '../definition'
 import {
   TIMELINES,
   beatSounds,
@@ -97,7 +97,10 @@ export const retry = (model: Model): Model =>
 
 // NOTE: on an end screen Enter retries, E starts endless, and K keeps a won
 // run going, once the restart grace is past.
-export const endFromKey = (model: Model, code: string): Model => {
+export const endFromKey: {
+  (code: string): (model: Model) => Model
+  (model: Model, code: string): Model
+} = Function.dual(2, (model: Model, code: string): Model => {
   if (Phase.isAnyOf(['Victory'])(model.phase) && isKeepGoingKey(code)) {
     return keepGoingWhenAllowed(model)
   } else if (isStartKey(code)) {
@@ -107,7 +110,7 @@ export const endFromKey = (model: Model, code: string): Model => {
   } else {
     return model
   }
-}
+})
 
 const AUDIO_KEYS: ReadonlyArray<string> = ['KeyM', 'KeyN']
 
@@ -123,10 +126,16 @@ const isEndActionKey = (code: string): boolean =>
 // before the restart grace, so a key held from the fight never retries or
 // leaves, and after it any key with nothing of its own to do. It does
 // nothing else, so one press never skips and acts at once.
-export const isBeatSkipKey = (model: Model, code: string): boolean =>
-  isEndScreen(model.phase) &&
-  !isBeatOver(model) &&
-  (endOffer(model) === 'Nothing' || !isEndActionKey(code))
+export const isBeatSkipKey: {
+  (code: string): (model: Model) => boolean
+  (model: Model, code: string): boolean
+} = Function.dual(
+  2,
+  (model: Model, code: string): boolean =>
+    isEndScreen(model.phase) &&
+    !isBeatOver(model) &&
+    (endOffer(model) === 'Nothing' || !isEndActionKey(code)),
+)
 
 // NOTE: a tap on the game skips the beat, in an online room too, and once
 // the beat is over it puts away an unlock card still up. It never starts a
@@ -191,21 +200,24 @@ export const runCardFromKey = (code: string) =>
 // SHARE
 
 // NOTE: a tap on SHARE, sent like a run summary, as an anonymous event.
-export const SendShareEvent = makeCommand('SendShareEvent', {
-  args: { event: ShareEvent },
-  messages: [Message.CompletedSendShareEvent, Message.FailedSendShareEvent],
-  handler: function* () {
-    return ({ event }) =>
-      sendShareEvent(event).pipe(
-        Effect.as(Message.CompletedSendShareEvent()),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedSendShareEvent({ reason: error.reason }),
+export const SendShareEvent = ApplicationDefinition.makeCommand(
+  'SendShareEvent',
+  {
+    args: { event: ShareEvent },
+    messages: [Message.CompletedSendShareEvent, Message.FailedSendShareEvent],
+    handler: function* () {
+      return ({ event }) =>
+        sendShareEvent(event).pipe(
+          Effect.as(Message.CompletedSendShareEvent()),
+          Effect.catch(error =>
+            Effect.succeed(
+              Message.FailedSendShareEvent({ reason: error.reason }),
+            ),
           ),
-        ),
-      )
+        )
+    },
   },
-})
+)
 
 // NOTE: a tap is counted once, as an anonymous event with the path it took,
 // only while the player shares play stats (src/analytics.ts, ShareEvent).

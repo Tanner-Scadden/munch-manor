@@ -2,7 +2,8 @@ import { Effect, Option, Random, pipe } from 'effect'
 
 import { generateVisitId } from './analyticsBeacon'
 import { spriteWarmUpSources } from './appearance'
-import { makeCommand } from './definition'
+import { ApplicationDefinition } from './definition'
+import { toBrowserError } from './describeError'
 import { Message } from './message'
 import { type ScreenFit, defaultAppearance } from './model'
 import {
@@ -23,7 +24,7 @@ import { readUpdateMarker } from './version'
 
 const UINT32_MAX = 0xffffffff
 
-export const GenerateSeed = makeCommand('GenerateSeed', {
+export const GenerateSeed = ApplicationDefinition.makeCommand('GenerateSeed', {
   messages: [Message.CompletedGenerateSeed],
   handler: function* () {
     return () =>
@@ -43,25 +44,26 @@ const COARSE_POINTER_QUERY = '(pointer: coarse)'
 const isTouchScreen = (): boolean =>
   window.matchMedia(COARSE_POINTER_QUERY).matches
 
-export const DetectInputDevice = makeCommand('DetectInputDevice', {
-  messages: [Message.CompletedDetectInputDevice],
-  handler: function* () {
-    return () =>
-      pipe(
-        Effect.try(isTouchScreen),
-        Effect.map(isMobile =>
-          Message.CompletedDetectInputDevice({
-            touchControls: isMobile ? 'Allowed' : 'Blocked',
-          }),
-        ),
-        Effect.catch(() =>
-          Effect.succeed(
+export const DetectInputDevice = ApplicationDefinition.makeCommand(
+  'DetectInputDevice',
+  {
+    messages: [Message.CompletedDetectInputDevice],
+    handler: function* () {
+      return () =>
+        pipe(
+          Effect.try({ try: isTouchScreen, catch: toBrowserError }),
+          Effect.map(isMobile =>
+            Message.CompletedDetectInputDevice({
+              touchControls: isMobile ? 'Allowed' : 'Blocked',
+            }),
+          ),
+          Effect.orElseSucceed(() =>
             Message.CompletedDetectInputDevice({ touchControls: 'Blocked' }),
           ),
-        ),
-      )
+        )
+    },
   },
-})
+)
 
 const isInstalledApp = (): boolean =>
   window.matchMedia('(display-mode: fullscreen)').matches ||
@@ -89,23 +91,24 @@ const detectScreenFit = (): ScreenFit => {
   }
 }
 
-export const DetectScreenFit = makeCommand('DetectScreenFit', {
-  messages: [Message.CompletedDetectScreenFit],
-  handler: function* () {
-    return () =>
-      pipe(
-        Effect.try(detectScreenFit),
-        Effect.map(screenFit =>
-          Message.CompletedDetectScreenFit({ screenFit }),
-        ),
-        Effect.catch(() =>
-          Effect.succeed(
+export const DetectScreenFit = ApplicationDefinition.makeCommand(
+  'DetectScreenFit',
+  {
+    messages: [Message.CompletedDetectScreenFit],
+    handler: function* () {
+      return () =>
+        pipe(
+          Effect.try({ try: detectScreenFit, catch: toBrowserError }),
+          Effect.map(screenFit =>
+            Message.CompletedDetectScreenFit({ screenFit }),
+          ),
+          Effect.orElseSucceed(() =>
             Message.CompletedDetectScreenFit({ screenFit: 'Unavailable' }),
           ),
-        ),
-      )
+        )
+    },
   },
-})
+)
 
 // NOTE: screen.orientation.lock exists in Chromium on every device, but only
 // a phone or tablet can turn, and iPhones have no lock at all. WebKit's
@@ -116,27 +119,28 @@ const canLockOrientation = (): boolean =>
   window.matchMedia(COARSE_POINTER_QUERY).matches &&
   !Reflect.has(navigator, 'standalone')
 
-export const DetectOrientationLock = makeCommand('DetectOrientationLock', {
-  messages: [Message.CompletedDetectOrientationLock],
-  handler: function* () {
-    return () =>
-      pipe(
-        Effect.try(canLockOrientation),
-        Effect.map(canLock =>
-          Message.CompletedDetectOrientationLock({
-            orientationLock: canLock ? 'Supported' : 'Unsupported',
-          }),
-        ),
-        Effect.catch(() =>
-          Effect.succeed(
+export const DetectOrientationLock = ApplicationDefinition.makeCommand(
+  'DetectOrientationLock',
+  {
+    messages: [Message.CompletedDetectOrientationLock],
+    handler: function* () {
+      return () =>
+        pipe(
+          Effect.try({ try: canLockOrientation, catch: toBrowserError }),
+          Effect.map(canLock =>
+            Message.CompletedDetectOrientationLock({
+              orientationLock: canLock ? 'Supported' : 'Unsupported',
+            }),
+          ),
+          Effect.orElseSucceed(() =>
             Message.CompletedDetectOrientationLock({
               orientationLock: 'Unsupported',
             }),
           ),
-        ),
-      )
+        )
+    },
   },
-})
+)
 
 // NOTE: `?local=2` to `?local=4` seats that many players at one keyboard,
 // for testing co-op offline (MULTIPLAYER.md, Phase 1). Dev builds only: a
@@ -148,41 +152,47 @@ export const localPlayersIn = (search: string): number => {
   return Number.isInteger(count) && count >= 1 ? Math.min(4, count) : 1
 }
 
-export const DetectLocalPlayers = makeCommand('DetectLocalPlayers', {
-  messages: [Message.CompletedDetectLocalPlayers],
-  handler: function* () {
-    return () =>
-      pipe(
-        Effect.try(() =>
-          import.meta.env.DEV ? localPlayersIn(location.search) : 1,
-        ),
-        Effect.map(count => Message.CompletedDetectLocalPlayers({ count })),
-        Effect.catch(() =>
-          Effect.succeed(Message.CompletedDetectLocalPlayers({ count: 1 })),
-        ),
-      )
+export const DetectLocalPlayers = ApplicationDefinition.makeCommand(
+  'DetectLocalPlayers',
+  {
+    messages: [Message.CompletedDetectLocalPlayers],
+    handler: function* () {
+      return () =>
+        pipe(
+          Effect.try({
+            try: () =>
+              import.meta.env.DEV ? localPlayersIn(location.search) : 1,
+            catch: toBrowserError,
+          }),
+          Effect.map(count => Message.CompletedDetectLocalPlayers({ count })),
+          Effect.orElseSucceed(() =>
+            Message.CompletedDetectLocalPlayers({ count: 1 }),
+          ),
+        )
+    },
   },
-})
+)
 
-export const ReadUpdateMarker = makeCommand('ReadUpdateMarker', {
-  messages: [Message.CompletedReadUpdateMarker],
-  handler: function* () {
-    return () =>
-      pipe(
-        readUpdateMarker,
-        Effect.map(maybeBuild =>
-          Message.CompletedReadUpdateMarker({ maybeBuild }),
-        ),
-        Effect.catch(() =>
-          Effect.succeed(
+export const ReadUpdateMarker = ApplicationDefinition.makeCommand(
+  'ReadUpdateMarker',
+  {
+    messages: [Message.CompletedReadUpdateMarker],
+    handler: function* () {
+      return () =>
+        pipe(
+          readUpdateMarker,
+          Effect.map(maybeBuild =>
+            Message.CompletedReadUpdateMarker({ maybeBuild }),
+          ),
+          Effect.orElseSucceed(() =>
             Message.CompletedReadUpdateMarker({ maybeBuild: Option.none() }),
           ),
-        ),
-      )
+        )
+    },
   },
-})
+)
 
-export const LoadStyles = makeCommand('LoadStyles', {
+export const LoadStyles = ApplicationDefinition.makeCommand('LoadStyles', {
   messages: [Message.CompletedLoadStyles],
   handler: function* () {
     return () =>
@@ -195,7 +205,7 @@ export const LoadStyles = makeCommand('LoadStyles', {
   },
 })
 
-export const LoadFonts = makeCommand('LoadFonts', {
+export const LoadFonts = ApplicationDefinition.makeCommand('LoadFonts', {
   messages: [Message.CompletedLoadFonts, Message.FailedLoadFonts],
   handler: function* () {
     return () =>
@@ -210,39 +220,45 @@ export const LoadFonts = makeCommand('LoadFonts', {
   },
 })
 
-export const AwaitFirstFrame = makeCommand('AwaitFirstFrame', {
-  messages: [Message.CompletedAwaitFirstFrame],
-  handler: function* () {
-    return () =>
-      pipe(
-        awaitFirstFrame,
-        Effect.andThen(markLoadStep('FirstFrame')),
-        Effect.as(Message.CompletedAwaitFirstFrame()),
-      )
+export const AwaitFirstFrame = ApplicationDefinition.makeCommand(
+  'AwaitFirstFrame',
+  {
+    messages: [Message.CompletedAwaitFirstFrame],
+    handler: function* () {
+      return () =>
+        pipe(
+          awaitFirstFrame,
+          Effect.andThen(markLoadStep('FirstFrame')),
+          Effect.as(Message.CompletedAwaitFirstFrame()),
+        )
+    },
   },
-})
+)
 
 // NOTE: the warm-up canvases start Foldkit loading every sprite image on the
 // first frame. This waits for that frame, then decodes the same sources, so
 // the splash stays up until the sprites are ready to draw.
-export const DecodeSprites = makeCommand('DecodeSprites', {
-  messages: [Message.CompletedDecodeSprites],
-  handler: function* () {
-    return () =>
-      pipe(
-        awaitFirstFrame,
-        Effect.andThen(
-          Effect.suspend(() =>
-            decodeImages(spriteWarmUpSources(defaultAppearance)),
+export const DecodeSprites = ApplicationDefinition.makeCommand(
+  'DecodeSprites',
+  {
+    messages: [Message.CompletedDecodeSprites],
+    handler: function* () {
+      return () =>
+        pipe(
+          awaitFirstFrame,
+          Effect.andThen(
+            Effect.suspend(() =>
+              decodeImages(spriteWarmUpSources(defaultAppearance)),
+            ),
           ),
-        ),
-        Effect.andThen(markLoadStep('Sprites')),
-        Effect.as(Message.CompletedDecodeSprites()),
-      )
+          Effect.andThen(markLoadStep('Sprites')),
+          Effect.as(Message.CompletedDecodeSprites()),
+        )
+    },
   },
-})
+)
 
-export const LoadSave = makeCommand('LoadSave', {
+export const LoadSave = ApplicationDefinition.makeCommand('LoadSave', {
   messages: [Message.CompletedLoadSave, Message.FailedLoadSave],
   handler: function* () {
     return () =>
@@ -257,45 +273,56 @@ export const LoadSave = makeCommand('LoadSave', {
   },
 })
 
-export const GenerateVisitId = makeCommand('GenerateVisitId', {
-  messages: [Message.CompletedGenerateVisitId],
-  handler: function* () {
-    return () =>
-      Effect.map(generateVisitId, visitId =>
-        Message.CompletedGenerateVisitId({ visitId }),
-      )
+export const GenerateVisitId = ApplicationDefinition.makeCommand(
+  'GenerateVisitId',
+  {
+    messages: [Message.CompletedGenerateVisitId],
+    handler: function* () {
+      return () =>
+        Effect.map(generateVisitId, visitId =>
+          Message.CompletedGenerateVisitId({ visitId }),
+        )
+    },
   },
-})
+)
 
 // NOTE: run summaries that ended offline on an earlier visit are sent now, in
 // the background, spaced out, so the Command is done at once.
-export const StartSummaryQueue = makeCommand('StartSummaryQueue', {
-  messages: [Message.CompletedStartSummaryQueue],
-  handler: function* () {
-    return () =>
-      Effect.as(
-        Effect.forkDetach(startSummaryQueue()),
-        Message.CompletedStartSummaryQueue(),
-      )
+export const StartSummaryQueue = ApplicationDefinition.makeCommand(
+  'StartSummaryQueue',
+  {
+    messages: [Message.CompletedStartSummaryQueue],
+    handler: function* () {
+      return () =>
+        Effect.as(
+          Effect.forkDetach(startSummaryQueue()),
+          Message.CompletedStartSummaryQueue(),
+        )
+    },
   },
-})
+)
 
 // BOOT
 
 // NOTE: a share sheet is there when the browser has navigator.share; only a
 // touch screen uses it (src/menus.ts).
-export const DetectShareSheet = makeCommand('DetectShareSheet', {
-  messages: [Message.CompletedDetectShareSheet],
-  handler: function* () {
-    return () =>
-      Effect.sync(() =>
-        Message.CompletedDetectShareSheet({
-          shareSheet:
-            typeof navigator.share === 'function' ? 'Available' : 'Unavailable',
-        }),
-      )
+export const DetectShareSheet = ApplicationDefinition.makeCommand(
+  'DetectShareSheet',
+  {
+    messages: [Message.CompletedDetectShareSheet],
+    handler: function* () {
+      return () =>
+        Effect.sync(() =>
+          Message.CompletedDetectShareSheet({
+            shareSheet:
+              typeof navigator.share === 'function'
+                ? 'Available'
+                : 'Unavailable',
+          }),
+        )
+    },
   },
-})
+)
 
 // NOTE: every Command init starts, in this order. A new LoadStep joins
 // LOAD_STEPS with a Command here that loads it.

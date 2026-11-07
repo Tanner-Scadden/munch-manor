@@ -1,4 +1,4 @@
-import { Array, Option, Order, pipe } from 'effect'
+import { Array, Function, Option, Order, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
@@ -49,17 +49,29 @@ const angleBetween = (facing: Vector, to: Vector): number => {
 // NOTE: whether a zombie's body is within `reachPx` of the player's edge
 // and inside the arc either side of the facing. One pressed against the
 // player counts from any side.
-export const isInArc =
+export const isInArc: {
+  (
+    reachPx: number,
+    halfArc: number,
+  ): (player: Player) => (zombie: Zombie) => boolean
+  (
+    player: Player,
+    reachPx: number,
+    halfArc: number,
+  ): (zombie: Zombie) => boolean
+} = Function.dual(
+  3,
   (player: Player, reachPx: number, halfArc: number) =>
-  (zombie: Zombie): boolean => {
-    const offset = { x: zombie.x - player.x, y: zombie.y - player.y }
-    const distance = Math.hypot(offset.x, offset.y)
-    return (
-      distance - bodyRadiusOf(zombie) - PLAYER_RADIUS <= reachPx &&
-      (distance <= PLAYER_RADIUS + bodyRadiusOf(zombie) ||
-        angleBetween(player.facing, offset) <= halfArc)
-    )
-  }
+    (zombie: Zombie): boolean => {
+      const offset = { x: zombie.x - player.x, y: zombie.y - player.y }
+      const distance = Math.hypot(offset.x, offset.y)
+      return (
+        distance - bodyRadiusOf(zombie) - PLAYER_RADIUS <= reachPx &&
+        (distance <= PLAYER_RADIUS + bodyRadiusOf(zombie) ||
+          angleBetween(player.facing, offset) <= halfArc)
+      )
+    },
+)
 
 const isRoaming = ZombieAction.isAnyOf(['Roaming'])
 
@@ -79,11 +91,10 @@ export type Struck = Readonly<{
 
 // NOTE: one zombie met by a blow: hurt, shoved away from the player, maybe
 // dazed, and killed if that was its last heart.
-export const strikeInMelee = (
-  player: Player,
-  zombie: Zombie,
-  blow: Blow,
-): Struck => {
+export const strikeInMelee: {
+  (zombie: Zombie, blow: Blow): (player: Player) => Struck
+  (player: Player, zombie: Zombie, blow: Blow): Struck
+} = Function.dual(3, (player: Player, zombie: Zombie, blow: Blow): Struck => {
   const direction = Option.getOrElse(
     directionBetween(player, zombie),
     () => player.facing,
@@ -114,7 +125,7 @@ export const strikeInMelee = (
       ...(dazed.hp <= 0 ? [killEvent(dazed, direction)] : []),
     ],
   }
-}
+})
 
 // NOTE: what a swing or a stab did: the zombies after it, its events (the
 // blow itself first), and whether it met anything.
@@ -125,49 +136,75 @@ export type Swing = Readonly<{
 }>
 
 // NOTE: a blow at each zombie `strikeOne` picks out; the rest are left be.
-export const swingAt = (
-  zombies: ReadonlyArray<Zombie>,
-  strikeOne: (zombie: Zombie) => Option.Option<Struck>,
-  swung: GameEvent,
-): Swing => {
-  const outcomes = Array.map(zombies, strikeOne)
-  return {
-    zombies: Array.map(zombies, (zombie, index) =>
-      Option.match(Option.flatten(Option.fromNullishOr(outcomes[index])), {
-        onNone: () => zombie,
-        onSome: outcome => outcome.zombie,
-      }),
-    ),
-    events: [
-      swung,
-      ...Array.flatMap(Array.getSomes(outcomes), ({ events }) => events),
-    ],
-    connected: Array.some(outcomes, Option.isSome),
-  }
-}
+export const swingAt: {
+  (
+    strikeOne: (zombie: Zombie) => Option.Option<Struck>,
+    swung: GameEvent,
+  ): (zombies: ReadonlyArray<Zombie>) => Swing
+  (
+    zombies: ReadonlyArray<Zombie>,
+    strikeOne: (zombie: Zombie) => Option.Option<Struck>,
+    swung: GameEvent,
+  ): Swing
+} = Function.dual(
+  3,
+  (
+    zombies: ReadonlyArray<Zombie>,
+    strikeOne: (zombie: Zombie) => Option.Option<Struck>,
+    swung: GameEvent,
+  ): Swing => {
+    const outcomes = Array.map(zombies, strikeOne)
+    return {
+      zombies: Array.map(zombies, (zombie, index) =>
+        Option.match(Option.flatten(Option.fromNullishOr(outcomes[index])), {
+          onNone: () => zombie,
+          onSome: outcome => outcome.zombie,
+        }),
+      ),
+      events: [
+        swung,
+        ...Array.flatMap(Array.getSomes(outcomes), ({ events }) => events),
+      ],
+      connected: Array.some(outcomes, Option.isSome),
+    }
+  },
+)
 
 // NOTE: the zombie nearest the player among those a test picks out, for a
 // blow that meets only one.
-export const maybeNearest = (
-  player: Player,
-  zombies: ReadonlyArray<Zombie>,
-  isMet: (zombie: Zombie) => boolean,
-): Option.Option<Zombie> =>
-  pipe(
-    Array.filter(zombies, isMet),
-    Array.match({
-      onEmpty: () => Option.none(),
-      onNonEmpty: met =>
-        Option.some(
-          Array.min(
-            met,
-            Order.mapInput(Order.Number, (zombie: Zombie) =>
-              Math.hypot(zombie.x - player.x, zombie.y - player.y),
+export const maybeNearest: {
+  (
+    zombies: ReadonlyArray<Zombie>,
+    isMet: (zombie: Zombie) => boolean,
+  ): (player: Player) => Option.Option<Zombie>
+  (
+    player: Player,
+    zombies: ReadonlyArray<Zombie>,
+    isMet: (zombie: Zombie) => boolean,
+  ): Option.Option<Zombie>
+} = Function.dual(
+  3,
+  (
+    player: Player,
+    zombies: ReadonlyArray<Zombie>,
+    isMet: (zombie: Zombie) => boolean,
+  ): Option.Option<Zombie> =>
+    pipe(
+      Array.filter(zombies, isMet),
+      Array.match({
+        onEmpty: () => Option.none(),
+        onNonEmpty: met =>
+          Option.some(
+            Array.min(
+              met,
+              Order.mapInput(Order.Number, (zombie: Zombie) =>
+                Math.hypot(zombie.x - player.x, zombie.y - player.y),
+              ),
             ),
           ),
-        ),
-    }),
-  )
+      }),
+    ),
+)
 
 export const countKills = (events: ReadonlyArray<GameEvent>): number =>
   Array.reduce(events, 0, (sum, event) =>
@@ -175,17 +212,19 @@ export const countKills = (events: ReadonlyArray<GameEvent>): number =>
   )
 
 // NOTE: a seat's own strike pays that seat and credits it the kills.
-export const payStriker = (
-  world: World,
-  slot: PlayerSlot,
-  events: ReadonlyArray<GameEvent>,
-): World => {
-  const bounty = bountyOf(levelOf(world), events)
-  const kills = countKills(events)
-  const paid = bounty > 0 ? earnKill(world, slot, bounty) : world
-  return isCoop(paid) && kills > 0
-    ? modifySeatRecord(paid, slot, seat =>
-        modifyFields(seat, { kills: count => count + kills }),
-      )
-    : paid
-}
+export const payStriker: {
+  (slot: PlayerSlot, events: ReadonlyArray<GameEvent>): (world: World) => World
+  (world: World, slot: PlayerSlot, events: ReadonlyArray<GameEvent>): World
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, events: ReadonlyArray<GameEvent>): World => {
+    const bounty = bountyOf(levelOf(world), events)
+    const kills = countKills(events)
+    const paid = bounty > 0 ? earnKill(world, slot, bounty) : world
+    return isCoop(paid) && kills > 0
+      ? modifySeatRecord(paid, slot, seat =>
+          modifyFields(seat, { kills: count => count + kills }),
+        )
+      : paid
+  },
+)

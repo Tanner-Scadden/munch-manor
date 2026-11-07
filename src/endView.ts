@@ -1,4 +1,4 @@
-import { Array, Option, Record, Result, String } from 'effect'
+import { Array, Function, Option, Record, Result, String } from 'effect'
 import type { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -449,10 +449,14 @@ const crewStripTop = (model: Model): number =>
 // NOTE: where a crew's card ends in the 180 high frame: the board, and the
 // strip's bar under it when there is one. A phone on its side puts the
 // buttons' tops at about 133 (END_BUTTONS_TOP_PX), so this stays above.
-export const crewCardBottomPx = (model: Model, hasStrip: boolean): number =>
+export const crewCardBottomPx: {
+  (hasStrip: boolean): (model: Model) => number
+  (model: Model, hasStrip: boolean): number
+} = Function.dual(2, (model: Model, hasStrip: boolean): number =>
   hasStrip
     ? crewStripTop(model) + STRIP_PX + 4
-    : CREW_BOARD_TOP_PX + crewBoardHeightPx(model) + 2
+    : CREW_BOARD_TOP_PX + crewBoardHeightPx(model) + 2,
+)
 
 export const END_BUTTONS_TOP_PX = 133
 
@@ -661,30 +665,41 @@ const confettiShapes = (ms: number): ReadonlyArray<Canvas.Shape> => {
 
 // NOTE: on a loss the player topples onto their back, pivoting on their
 // feet with a little bounce, the way they face.
-export const toppleShapes = (
-  model: Model,
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> => {
-  if (!Phase.isAnyOf(['GameOver'])(model.phase)) {
-    return shapes
-  }
-  const t = easeOutBack(progressOf(model.screenMs, FALL_START_MS, FALL_MS))
-  if (t <= 0) {
-    return shapes
-  }
-  const foot = {
-    x: focusOf(model).player.x,
-    y: playerFootY(focusOf(model).player),
-  }
-  const side = focusOf(model).player.facing.x < 0 ? 1 : -1
-  return [
-    group({
-      translate: foot,
-      rotate: side * QUARTER_TURN * t,
-      shapes: [group({ translate: { x: -foot.x, y: -foot.y }, shapes })],
-    }),
-  ]
-}
+export const toppleShapes: {
+  (
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (
+    model: Model,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (
+    model: Model,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): ReadonlyArray<Canvas.Shape> => {
+    if (!Phase.isAnyOf(['GameOver'])(model.phase)) {
+      return shapes
+    }
+    const t = easeOutBack(progressOf(model.screenMs, FALL_START_MS, FALL_MS))
+    if (t <= 0) {
+      return shapes
+    }
+    const foot = {
+      x: focusOf(model).player.x,
+      y: playerFootY(focusOf(model).player),
+    }
+    const side = focusOf(model).player.facing.x < 0 ? 1 : -1
+    return [
+      group({
+        translate: foot,
+        rotate: side * QUARTER_TURN * t,
+        shapes: [group({ translate: { x: -foot.x, y: -foot.y }, shapes })],
+      }),
+    ]
+  },
+)
 
 // NOTE: the fallen player is drawn in their own colors once the flash of
 // the last bite is over, not frozen white mid blink.
@@ -704,29 +719,42 @@ const CHOMP_MS = 180
 
 // NOTE: on a loss the zombies close by lunge at the fallen player in turn,
 // chomp, chomp, a few pixels each, as a picture only.
-export const chompShapes = (
-  model: Model,
-  zombie: Zombie,
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> => {
-  const dx = focusOf(model).player.x - zombie.x
-  const dy = focusOf(model).player.y - zombie.y
-  const distance = Math.hypot(dx, dy)
-  if (distance > CHOMP_REACH_PX || distance < 1) {
-    return shapes
-  }
-  const phase = (model.screenMs + zombie.id * 97) / CHOMP_MS
-  const lean = CHOMP_LEAN_PX * Math.max(0, Math.sin(phase * Math.PI))
-  return [
-    group({
-      translate: {
-        x: Math.round((dx / distance) * lean),
-        y: Math.round((dy / distance) * lean),
-      },
-      shapes,
-    }),
-  ]
-}
+export const chompShapes: {
+  (
+    zombie: Zombie,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (
+    model: Model,
+    zombie: Zombie,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (
+    model: Model,
+    zombie: Zombie,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): ReadonlyArray<Canvas.Shape> => {
+    const dx = focusOf(model).player.x - zombie.x
+    const dy = focusOf(model).player.y - zombie.y
+    const distance = Math.hypot(dx, dy)
+    if (distance > CHOMP_REACH_PX || distance < 1) {
+      return shapes
+    }
+    const phase = (model.screenMs + zombie.id * 97) / CHOMP_MS
+    const lean = CHOMP_LEAN_PX * Math.max(0, Math.sin(phase * Math.PI))
+    return [
+      group({
+        translate: {
+          x: Math.round((dx / distance) * lean),
+          y: Math.round((dy / distance) * lean),
+        },
+        shapes,
+      }),
+    ]
+  },
+)
 
 export const isChomping = Phase.isAnyOf(['GameOver'])
 

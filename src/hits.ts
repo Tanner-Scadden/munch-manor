@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
@@ -269,61 +269,65 @@ const skewer =
       },
     )
 
-export const resolveBulletHits = (
-  model: World,
-  seconds: number,
-  firstFreshId: number,
-): World => {
-  const freshShots = freshShotsOf(model, firstFreshId)
-  const hits = findBulletHits(
-    model.bullets,
-    model.zombies,
-    model.boss,
-    seconds,
-    freshShots,
-  )
-  if (Array.isReadonlyArrayEmpty(hits)) {
-    return resolveFriendlyFire(model, seconds, freshShots.from, firstFreshId)
-  }
+export const resolveBulletHits: {
+  (seconds: number, firstFreshId: number): (model: World) => World
+  (model: World, seconds: number, firstFreshId: number): World
+} = Function.dual(
+  3,
+  (model: World, seconds: number, firstFreshId: number): World => {
+    const freshShots = freshShotsOf(model, firstFreshId)
+    const hits = findBulletHits(
+      model.bullets,
+      model.zombies,
+      model.boss,
+      seconds,
+      freshShots,
+    )
+    if (Array.isReadonlyArrayEmpty(hits)) {
+      return resolveFriendlyFire(model, seconds, freshShots.from, firstFreshId)
+    }
 
-  const hitZombieIds = Array.dedupe(Array.map(hits, ({ zombieId }) => zombieId))
-  const zombies = Array.map(model.zombies, applyHits(hits))
-  const killedZombies = Array.filter(
-    zombies,
-    zombie => zombie.hp <= 0 && Array.contains(hitZombieIds, zombie.id),
-  )
-  const hitZombies = Array.filter(zombies, zombie =>
-    Array.contains(hitZombieIds, zombie.id),
-  )
-  const bounty = Array.reduce(
-    killedZombies,
-    0,
-    (sum, zombie) =>
-      sum + kitchenBounty(levelOf(model), zombie, statsOf(zombie).bounty),
-  )
-  const struck = modifyFields(model, {
-    bullets: Array.filterMap(skewer(hits)),
-    zombies: () => zombies,
-    stats: stats =>
-      countHits(
-        stats,
-        Array.filter(hits, ({ weapon }) => weapon !== TURRET_WEAPON).length,
-      ),
-    frameEvents: frameEvents => [
-      ...frameEvents,
-      ...Array.getSomes(Array.map(hitZombies, hitEventOn(hits))),
-      ...Array.map(killedZombies, killEventOn(hits)),
-    ],
-  })
-  return resolveFriendlyFire(
-    isCoop(model)
-      ? payKillers(creditLanded(struck, hits), hits, killedZombies)
-      : earnKill(struck, SOLO_SLOT, bounty),
-    seconds,
-    freshShots.from,
-    firstFreshId,
-  )
-}
+    const hitZombieIds = Array.dedupe(
+      Array.map(hits, ({ zombieId }) => zombieId),
+    )
+    const zombies = Array.map(model.zombies, applyHits(hits))
+    const killedZombies = Array.filter(
+      zombies,
+      zombie => zombie.hp <= 0 && Array.contains(hitZombieIds, zombie.id),
+    )
+    const hitZombies = Array.filter(zombies, zombie =>
+      Array.contains(hitZombieIds, zombie.id),
+    )
+    const bounty = Array.reduce(
+      killedZombies,
+      0,
+      (sum, zombie) =>
+        sum + kitchenBounty(levelOf(model), zombie, statsOf(zombie).bounty),
+    )
+    const struck = modifyFields(model, {
+      bullets: Array.filterMap(skewer(hits)),
+      zombies: () => zombies,
+      stats: stats =>
+        countHits(
+          stats,
+          Array.filter(hits, ({ weapon }) => weapon !== TURRET_WEAPON).length,
+        ),
+      frameEvents: frameEvents => [
+        ...frameEvents,
+        ...Array.getSomes(Array.map(hitZombies, hitEventOn(hits))),
+        ...Array.map(killedZombies, killEventOn(hits)),
+      ],
+    })
+    return resolveFriendlyFire(
+      isCoop(model)
+        ? payKillers(creditLanded(struck, hits), hits, killedZombies)
+        : earnKill(struck, SOLO_SLOT, bounty),
+      seconds,
+      freshShots.from,
+      firstFreshId,
+    )
+  },
+)
 
 // NOTE: in co-op a shot's sweep starts at its shooter's center, and a kill
 // pays the player whose shot landed last (decided 5).
@@ -493,5 +497,9 @@ const biteOnContact = (model: World, slot: PlayerSlot): World => {
   })
 }
 
-export const resolvePlayerContact = (model: World, slot: PlayerSlot): World =>
-  popBombers(biteOnContact(model, slot), slot)
+export const resolvePlayerContact: {
+  (slot: PlayerSlot): (model: World) => World
+  (model: World, slot: PlayerSlot): World
+} = Function.dual(2, (model: World, slot: PlayerSlot): World =>
+  popBombers(biteOnContact(model, slot), slot),
+)

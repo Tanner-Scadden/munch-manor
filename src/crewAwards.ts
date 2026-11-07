@@ -1,4 +1,4 @@
-import { Array, Option, Order, Result, pipe } from 'effect'
+import { Array, Function, Option, Order, Result, pipe } from 'effect'
 
 import type { Model } from './model'
 import type { CrewAward } from './names'
@@ -117,15 +117,23 @@ export const mvpOf = (
 
 // NOTE: every award a player won, in CREW_AWARDS order. A crew of one wins
 // nothing: there is nobody to beat.
-export const awardsOf = (
-  crew: ReadonlyArray<CrewMember>,
-  slot: PlayerSlot,
-): ReadonlyArray<CrewAward> =>
-  crew.length > 1
-    ? Array.filter(CREW_AWARDS, award =>
-        Option.exists(winnerOf(crew, award), winner => winner === slot),
-      )
-    : []
+export const awardsOf: {
+  (
+    slot: PlayerSlot,
+  ): (crew: ReadonlyArray<CrewMember>) => ReadonlyArray<CrewAward>
+  (crew: ReadonlyArray<CrewMember>, slot: PlayerSlot): ReadonlyArray<CrewAward>
+} = Function.dual(
+  2,
+  (
+    crew: ReadonlyArray<CrewMember>,
+    slot: PlayerSlot,
+  ): ReadonlyArray<CrewAward> =>
+    crew.length > 1
+      ? Array.filter(CREW_AWARDS, award =>
+          Option.exists(winnerOf(crew, award), winner => winner === slot),
+        )
+      : [],
+)
 
 export const hasAwards = (crew: ReadonlyArray<CrewMember>): boolean =>
   Array.some(crew, member =>

@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
@@ -38,54 +38,69 @@ export const callingPanelText = (
   }),
 })
 
-export const callingBodyView = (
-  model: Model,
-  renderInfo: Dialog.RenderInfo,
-  done: Html,
-  h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => [
-  callingCardsView(
-    {
-      look: Option.match(maybeBotOf(model), {
-        onNone: () => model.appearance,
-        onSome: bot => bot.look,
-      }),
-      chosen: Option.match(maybeBotOf(model), {
-        onNone: () => startingCallingOf(model),
-        onSome: bot => bot.calling,
-      }),
-      rank: rankOf(totalPointsOf(model.rank)),
-      bought: model.boughtCosmetics,
-      maybeTrying: model.home.maybeTryingCalling,
-      fresh: model.freshUnlocks,
-      attributesOf: (calling, isChosen) => [
-        ...(isChosen ? renderInfo.initialFocus : []),
-        h.OnClick(Message.ClickedCallingCardButton({ calling }), {
-          focusSelector: '.game-surface',
-          propagation: 'Stop',
+export const callingBodyView: {
+  (
+    renderInfo: Dialog.RenderInfo,
+    done: Html,
+    h: ApplicationViewBuilder,
+  ): (model: Model) => ReadonlyArray<Html>
+  (
+    model: Model,
+    renderInfo: Dialog.RenderInfo,
+    done: Html,
+    h: ApplicationViewBuilder,
+  ): ReadonlyArray<Html>
+} = Function.dual(
+  4,
+  (
+    model: Model,
+    renderInfo: Dialog.RenderInfo,
+    done: Html,
+    h: ApplicationViewBuilder,
+  ): ReadonlyArray<Html> => [
+    callingCardsView(
+      {
+        look: Option.match(maybeBotOf(model), {
+          onNone: () => model.appearance,
+          onSome: bot => bot.look,
         }),
-      ],
-    },
-    h,
-  ),
-  callingBalanceView(bonesBalanceOf(model.rank), h),
-  h.div(
-    [h.Class('panel-actions')],
-    [
-      ...Option.match(model.home.maybeTryingCalling, {
-        onNone: () => [],
-        onSome: calling => [
-          callingBuyView(
-            {
-              calling,
-              bones: bonesBalanceOf(model.rank),
-              onBuy: Message.ClickedBuyCallingButton(),
-            },
-            h,
-          ),
+        chosen: Option.match(maybeBotOf(model), {
+          onNone: () => startingCallingOf(model),
+          onSome: bot => bot.calling,
+        }),
+        rank: rankOf(totalPointsOf(model.rank)),
+        bought: model.boughtCosmetics,
+        maybeTrying: model.home.maybeTryingCalling,
+        fresh: model.freshUnlocks,
+        attributesOf: (calling, isChosen) => [
+          ...(isChosen ? renderInfo.initialFocus : []),
+          h.OnClick(Message.ClickedCallingCardButton({ calling }), {
+            focusSelector: '.game-surface',
+            propagation: 'Stop',
+          }),
         ],
-      }),
-      done,
-    ],
-  ),
-]
+      },
+      h,
+    ),
+    callingBalanceView(bonesBalanceOf(model.rank), h),
+    h.div(
+      [h.Class('panel-actions')],
+      [
+        ...Option.match(model.home.maybeTryingCalling, {
+          onNone: () => [],
+          onSome: calling => [
+            callingBuyView(
+              {
+                calling,
+                bones: bonesBalanceOf(model.rank),
+                onBuy: Message.ClickedBuyCallingButton(),
+              },
+              h,
+            ),
+          ],
+        }),
+        done,
+      ],
+    ),
+  ],
+)

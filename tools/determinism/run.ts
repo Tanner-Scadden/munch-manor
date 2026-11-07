@@ -25,6 +25,13 @@ export type RunOptions = Readonly<{
   noHitStop?: boolean
 }>
 
+// NOTE: a call after each frame, and a change made to the Model after each
+// frame, before it is hashed, such as throwing the cosmetics away.
+type RunHooks = Readonly<{
+  onFrame?: (frame: number, model: Model) => void
+  afterFrame?: (model: Model) => Model
+}>
+
 export type RunReport = Readonly<{
   frames: number
   endPhase: string
@@ -40,13 +47,8 @@ const waveOf = (model: Model): number =>
     : 0
 
 // Frames are numbered from 0; checkpoint frame f is the state after frame f.
-export const runScript = (
-  options: RunOptions,
-  onFrame?: (frame: number, model: Model) => void,
-  // NOTE: a change made to the Model after each frame, before it is hashed,
-  // such as throwing the cosmetics away.
-  afterFrame: (model: Model) => Model = model => model,
-): RunReport => {
+export const runScript = (options: RunOptions & RunHooks): RunReport => {
+  const { onFrame, afterFrame = (model: Model): Model => model } = options
   const hasher = makeGameplayHasher({ cached: options.cached })
   const start = startedRun(options.seed, options.mode)
   const checkpoints: Array<Checkpoint> = [[-1, hasher.hashModel(start)]]

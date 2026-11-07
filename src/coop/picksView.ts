@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import type { Lobby, PickedMode, RoomDifficulty } from '@munch/netcode'
@@ -203,61 +203,76 @@ const nudgeView = (room: Room, h: HtmlBuilder<Message>): Html =>
       ),
   })
 
-export const picksView = (
-  room: Room,
-  lobby: Lobby,
-  keyCapView: (key: string) => Html,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.div(
-    [
-      h.Class('coop-picks'),
-      h.DataAttribute('host', isPicking(room) ? 'Picking' : 'Watching'),
-      h.AriaLabel(
-        `${MODE_NAMES[pickedModeOf(lobby)]}, ${DIFFICULTIES[lobby.difficulty].name}`,
-      ),
-    ],
-    [
-      h.div(
-        [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Mode')],
-        [
-          ...Array.map(
-            Array.filter(MODE_PICKS, mode => canPickMode(lobby, mode)),
-            mode => modePickView(room, lobby, mode, h),
-          ),
-          isPicking(room) ? keyCapView('E') : h.empty,
-        ],
-      ),
-      h.div(
-        [
-          h.Class('coop-pick-group coop-skulls'),
-          h.Role('group'),
-          h.AriaLabel('Difficulty'),
-        ],
-        [
-          ...Array.map(DIFFICULTY_ORDER, difficulty =>
-            skullPickView(room, lobby, difficulty, h),
-          ),
-          isPicking(room) ? keyCapView('X') : h.empty,
-        ],
-      ),
-      h.div(
-        [
-          h.Class('coop-pick-group modifier-group'),
-          h.Role('group'),
-          h.AriaLabel('Modifiers'),
-        ],
-        [
-          ...Array.map(MODIFIER_ORDER, modifier =>
-            modifierPickView(room, lobby, modifier, h),
-          ),
-          bonusChipView(bonusPercentOf(modifiersOfMask(lobby.modifiers)), h),
-        ],
-      ),
-      h.div(
-        [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Hero')],
-        [callingPillView(room, [keyCapView('Y')], h)],
-      ),
-      nudgeView(room, h),
-    ],
-  )
+export const picksView: {
+  (
+    lobby: Lobby,
+    keyCapView: (key: string) => Html,
+    h: HtmlBuilder<Message>,
+  ): (room: Room) => Html
+  (
+    room: Room,
+    lobby: Lobby,
+    keyCapView: (key: string) => Html,
+    h: HtmlBuilder<Message>,
+  ): Html
+} = Function.dual(
+  4,
+  (
+    room: Room,
+    lobby: Lobby,
+    keyCapView: (key: string) => Html,
+    h: HtmlBuilder<Message>,
+  ): Html =>
+    h.div(
+      [
+        h.Class('coop-picks'),
+        h.DataAttribute('host', isPicking(room) ? 'Picking' : 'Watching'),
+        h.AriaLabel(
+          `${MODE_NAMES[pickedModeOf(lobby)]}, ${DIFFICULTIES[lobby.difficulty].name}`,
+        ),
+      ],
+      [
+        h.div(
+          [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Mode')],
+          [
+            ...Array.map(
+              Array.filter(MODE_PICKS, mode => canPickMode(lobby, mode)),
+              mode => modePickView(room, lobby, mode, h),
+            ),
+            isPicking(room) ? keyCapView('E') : h.empty,
+          ],
+        ),
+        h.div(
+          [
+            h.Class('coop-pick-group coop-skulls'),
+            h.Role('group'),
+            h.AriaLabel('Difficulty'),
+          ],
+          [
+            ...Array.map(DIFFICULTY_ORDER, difficulty =>
+              skullPickView(room, lobby, difficulty, h),
+            ),
+            isPicking(room) ? keyCapView('X') : h.empty,
+          ],
+        ),
+        h.div(
+          [
+            h.Class('coop-pick-group modifier-group'),
+            h.Role('group'),
+            h.AriaLabel('Modifiers'),
+          ],
+          [
+            ...Array.map(MODIFIER_ORDER, modifier =>
+              modifierPickView(room, lobby, modifier, h),
+            ),
+            bonusChipView(bonusPercentOf(modifiersOfMask(lobby.modifiers)), h),
+          ],
+        ),
+        h.div(
+          [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Hero')],
+          [callingPillView(room, [keyCapView('Y')], h)],
+        ),
+        nudgeView(room, h),
+      ],
+    ),
+)

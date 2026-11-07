@@ -2,6 +2,7 @@
 // whole 60 Hz ticks whatever the display's rate, so the same held inputs
 // over the same time play the same game at 30, 60, and 120 Hz.
 
+import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { Message } from '../../src/message'
@@ -40,10 +41,11 @@ const worldOf = (model: Model): Readonly<Record<string, unknown>> => {
 }
 
 const playFor = (model: Model, seconds: number, hz: number): Model =>
-  Array.from({ length: seconds * hz }).reduce<Model>(
+  Array.reduce(
+    globalThis.Array.from({ length: seconds * hz }),
+    model,
     current =>
       modelAfter(current, Message.TickedFrame({ deltaTime: 1000 / hz })),
-    model,
   )
 
 describe('the fixed step', () => {

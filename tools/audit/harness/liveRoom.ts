@@ -117,7 +117,7 @@ export const crowdedWorld = (zombies: number) => ({
 // NOTE: what the page asks of the room's Worker: start the room, or take a
 // frame from the page's seat.
 export const LiveRoomRequest = Schema.TaggedUnion({
-  Start: { seats: Schema.Number, zombies: Schema.Number },
+  Start: { seats: Schema.Finite, zombies: Schema.Finite },
   Send: { bytes: Schema.Uint8Array },
 })
 export type LiveRoomRequest = typeof LiveRoomRequest.Type

@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { PLAYER_WIDTH, playerSprites } from './appearance'
@@ -33,6 +33,7 @@ import {
   multiplyScales,
   squashPulse,
 } from './drawing'
+import { isObjectFirst } from './dualArgs'
 import { chargeOf } from './fridgeWeapons'
 import { clamp, vectorLength } from './geometry'
 import { KNIFE_RULES, maybeSlashShare } from './knife'
@@ -317,30 +318,33 @@ const lyingFrames = (model: Model, lying: Lying): SpriteSet => {
 // head toward where they face, with no gun in hand: the same images, so
 // nothing new is baked. Crawling plays the walk slower; a bled-out body
 // lies still and faded.
-export const lyingShapes = (
-  model: Model,
-  lying: Lying,
-): ReadonlyArray<Canvas.Shape> => {
-  const { player } = focusOf(model)
-  const facing: Facing = player.facing.x < 0 ? 'Left' : 'Right'
-  const foot = footPosition(player, PLAYER_FOOT_OFFSET)
-  return [
-    group({
-      translate: { x: foot.x, y: foot.y - BODY_MIDDLE_PX + LYING_DROP_PX },
-      rotate: facing === 'Left' ? -QUARTER_TURN : QUARTER_TURN,
-      opacity: lying === 'BledOut' ? BLED_OUT_OPACITY : playerOpacity(player),
-      shapes: [
-        group({
-          translate: { x: 0, y: BODY_MIDDLE_PX },
-          shapes: lyingFrames(model, lying)[
-            lying === 'BledOut' ? 'Normal' : playerTone(player)
-          ][facing],
-        }),
-      ],
-    }),
-    ...downSwingShapes(model),
-  ]
-}
+export const lyingShapes: {
+  (lying: Lying): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, lying: Lying): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, lying: Lying): ReadonlyArray<Canvas.Shape> => {
+    const { player } = focusOf(model)
+    const facing: Facing = player.facing.x < 0 ? 'Left' : 'Right'
+    const foot = footPosition(player, PLAYER_FOOT_OFFSET)
+    return [
+      group({
+        translate: { x: foot.x, y: foot.y - BODY_MIDDLE_PX + LYING_DROP_PX },
+        rotate: facing === 'Left' ? -QUARTER_TURN : QUARTER_TURN,
+        opacity: lying === 'BledOut' ? BLED_OUT_OPACITY : playerOpacity(player),
+        shapes: [
+          group({
+            translate: { x: 0, y: BODY_MIDDLE_PX },
+            shapes: lyingFrames(model, lying)[
+              lying === 'BledOut' ? 'Normal' : playerTone(player)
+            ][facing],
+          }),
+        ],
+      }),
+      ...downSwingShapes(model),
+    ]
+  },
+)
 
 // NOTE: a player who is down swings their melee slot (swingWhileDown in
 // src/simulation.ts): the knife's slash, or the Clang Pan over the body for
@@ -500,32 +504,35 @@ export const playerShadow = (player: Player): Canvas.Shape =>
   footShadow(player, PLAYER_FOOT_OFFSET, PLAYER_SHADOW_WIDTH, SHADOW_COLOR)
 
 // NOTE: `rise` lifts the bar over a hat (hatRiseOf in src/hatArt.ts).
-export const reloadBarShapes = (
-  player: Player,
-  rise = 0,
-): ReadonlyArray<Canvas.Shape> =>
-  Reload.match(player.reload, {
-    Ready: () => [],
-    Reloading: ({ remainingMs, durationMs }) => {
-      const progress =
-        durationMs > 0 ? clamp(1 - remainingMs / durationMs, 0, 1) : 1
-      const left = Math.round(player.x - RELOAD_BAR_WIDTH / 2)
-      const top = Math.round(player.y) - RELOAD_BAR_LIFT_PX - rise
-      return [
-        Canvas.Rect({
-          x: left - 1,
-          y: top - 1,
-          width: RELOAD_BAR_WIDTH + 2,
-          height: 3,
-          fill: RELOAD_BAR_BACK_COLOR,
-        }),
-        Canvas.Rect({
-          x: left,
-          y: top,
-          width: Math.max(1, Math.round(RELOAD_BAR_WIDTH * progress)),
-          height: 1,
-          fill: RELOAD_BAR_COLOR,
-        }),
-      ]
-    },
-  })
+export const reloadBarShapes: {
+  (rise?: number): (player: Player) => ReadonlyArray<Canvas.Shape>
+  (player: Player, rise?: number): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  isObjectFirst,
+  (player: Player, rise: number = 0): ReadonlyArray<Canvas.Shape> =>
+    Reload.match(player.reload, {
+      Ready: () => [],
+      Reloading: ({ remainingMs, durationMs }) => {
+        const progress =
+          durationMs > 0 ? clamp(1 - remainingMs / durationMs, 0, 1) : 1
+        const left = Math.round(player.x - RELOAD_BAR_WIDTH / 2)
+        const top = Math.round(player.y) - RELOAD_BAR_LIFT_PX - rise
+        return [
+          Canvas.Rect({
+            x: left - 1,
+            y: top - 1,
+            width: RELOAD_BAR_WIDTH + 2,
+            height: 3,
+            fill: RELOAD_BAR_BACK_COLOR,
+          }),
+          Canvas.Rect({
+            x: left,
+            y: top,
+            width: Math.max(1, Math.round(RELOAD_BAR_WIDTH * progress)),
+            height: 1,
+            fill: RELOAD_BAR_COLOR,
+          }),
+        ]
+      },
+    }),
+)

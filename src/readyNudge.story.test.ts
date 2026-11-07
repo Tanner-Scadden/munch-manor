@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import { given, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
@@ -47,13 +48,14 @@ describe('a break with no clock', () => {
     expect(
       waiting.phase._tag === 'Preparation' && waiting.phase.clock._tag,
     ).toBe('Waiting')
-    const stepped = Array.from({ length: 3000 }).reduce<Model>(
+    const stepped = Array.reduce(
+      globalThis.Array.from({ length: 3000 }),
+      waiting,
       current =>
         withWorld(
           current,
           world => stepWorld(world, soloInputs(idleIntent)).world,
         ),
-      waiting,
     )
     expect(stepped.phase._tag).toBe('Preparation')
     const one = withWorld(
@@ -161,12 +163,10 @@ describe('the nudge', () => {
 
 describe('the new zombie card', () => {
   test('a crew run, bots included, raises no card for a kind it has not met', () => {
-    const solo = modifyFields(
-      withWorld(home, world => startWaveEarly(beginPreparation(world, 2, 1))),
-      {
-        introducedKinds: () => [],
-      },
+    const soloWave = withWorld(home, world =>
+      startWaveEarly(beginPreparation(world, 2, 1)),
     )
+    const solo = modifyFields(soloWave, { introducedKinds: () => [] })
     const before = withWorld(
       modifyFields(home, { introducedKinds: () => [] }),
       world => beginPreparation(world, 2, 20_000),

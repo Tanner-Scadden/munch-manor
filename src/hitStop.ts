@@ -2,7 +2,7 @@
 // ticks, and the boss's fall slows it, so a hit lands. It is the World's: a
 // co-op room runs it too. The cosmetics a hit makes are in src/juice.ts.
 
-import { Array } from 'effect'
+import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -28,7 +28,10 @@ const BOSS_SLOW_MOTION_RATE = 0.25
 // NOTE: hit-stop counts whole ticks. A frozen tick runs no world, and a
 // freeze lasts its length rounded to whole ticks. Slow motion runs one world
 // tick each time its scaled time adds up to a whole tick.
-export const thawTick = (hitStop: HitStop, tickMs: number): Thaw =>
+export const thawTick: {
+  (tickMs: number): (hitStop: HitStop) => Thaw
+  (hitStop: HitStop, tickMs: number): Thaw
+} = Function.dual(2, (hitStop: HitStop, tickMs: number): Thaw =>
   HitStop.match(hitStop, {
     Running: () => ({ hitStop, worldMs: tickMs }),
     Slowed: ({ remainingMs, carryMs }) => {
@@ -56,7 +59,8 @@ export const thawTick = (hitStop: HitStop, tickMs: number): Thaw =>
         worldMs: 0,
       }
     },
-  })
+  }),
+)
 
 const killFreezeMs = (kills: number, cooldownMs: number): number =>
   kills > 0 && cooldownMs <= 0
@@ -94,14 +98,28 @@ const triggerHitStop = (
 
 // HITS
 
-export const countWhere = (
-  events: ReadonlyArray<GameEvent>,
-  isMatch: (event: GameEvent) => boolean,
-): number => Array.filter(events, isMatch).length
+export const countWhere: {
+  (
+    isMatch: (event: GameEvent) => boolean,
+  ): (events: ReadonlyArray<GameEvent>) => number
+  (
+    events: ReadonlyArray<GameEvent>,
+    isMatch: (event: GameEvent) => boolean,
+  ): number
+} = Function.dual(
+  2,
+  (
+    events: ReadonlyArray<GameEvent>,
+    isMatch: (event: GameEvent) => boolean,
+  ): number => Array.filter(events, isMatch).length,
+)
 
 // NOTE: hit-stop is decided on each tick's own events, since it decides
 // how much world time the next ticks get.
-export const stopForHits = (model: World, worldMs: number): World => {
+export const stopForHits: {
+  (worldMs: number): (model: World) => World
+  (model: World, worldMs: number): World
+} = Function.dual(2, (model: World, worldMs: number): World => {
   const events = model.frameEvents
   const isBossFelled = Array.some(
     events,
@@ -120,4 +138,4 @@ export const stopForHits = (model: World, worldMs: number): World => {
             worldMs,
           ),
   })
-}
+})

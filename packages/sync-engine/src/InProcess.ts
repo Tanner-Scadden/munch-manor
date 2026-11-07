@@ -57,6 +57,7 @@ const makeRandom = (seed: number) =>
 
 // HOST
 
+/** @stability unstable */
 export interface HostOptions {
   readonly definitions: ReadonlyArray<ScopeDefinition>
   readonly openDatabase: (
@@ -79,6 +80,7 @@ interface Scoped {
   readonly lock: Semaphore.Semaphore
 }
 
+/** @stability unstable */
 export interface Host {
   readonly server: (
     scope: string,
@@ -105,16 +107,18 @@ export interface Faults {
   readonly duplicated: number
 }
 
+/** @stability unstable */
 export const makeHost = (
   options: HostOptions,
 ): Effect.Effect<Host, never, Scope.Scope> =>
   Effect.gen(function* () {
+    const scope_1 = yield* Effect.scope
     // NOTE: the host's own child scope, made now, so what it opens later
     // (each scope's database, opened on its first message) closes when the
     // host does: after every client that connected since. Opened straight
     // into the caller's scope, a database closed before the clients using it,
     // and a client mid-message at the end waited out its request timeout.
-    const outer = yield* Scope.fork(yield* Effect.scope)
+    const outer = yield* Scope.fork(scope_1)
     const servers = yield* Ref.make<ReadonlyMap<string, Scoped>>(new Map())
     const creating = yield* Semaphore.make(1)
     const peers = yield* Ref.make<ReadonlyArray<Peer>>([])
@@ -227,7 +231,7 @@ export const makeHost = (
         ): Effect.Effect<Channel, TransportError, Scope.Scope> =>
           Effect.gen(function* () {
             if (!(yield* Ref.get(online))) {
-              return yield* new TransportError({ reason: 'Offline' })
+              return yield* TransportError.make({ reason: 'Offline' })
             }
             const inbox = yield* Queue.unbounded<
               ServerMessage,
@@ -237,7 +241,7 @@ export const makeHost = (
             const close = (reason: string) =>
               Effect.andThen(
                 Ref.set(closed, true),
-                Queue.fail(inbox, new TransportError({ reason })),
+                Queue.fail(inbox, TransportError.make({ reason })),
               )
             yield* Ref.update(closers, all =>
               Array.append(all, Effect.asVoid(close('Offline'))),
@@ -291,7 +295,7 @@ export const makeHost = (
               sendLock.withPermit(
                 Effect.gen(function* () {
                   if ((yield* Ref.get(closed)) || !(yield* Ref.get(online))) {
-                    return yield* new TransportError({ reason: 'Closed' })
+                    return yield* TransportError.make({ reason: 'Closed' })
                   }
                   if ((yield* random) < drop) {
                     yield* dropped

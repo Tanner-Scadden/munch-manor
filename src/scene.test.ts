@@ -49,6 +49,7 @@ import { asVeteran } from './veteran'
 import { view } from './view'
 import { pause } from './waves'
 import { STARTING_PISTOL, maxRounds } from './weapons'
+import { Arsenal } from './worldSchema'
 
 const PLAY_AGAIN =
   'Press Enter or choose Retry to play again, or E for an endless run. Press X or choose Share to post your run on X.'
@@ -372,15 +373,15 @@ describe('Shop', () => {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
-                holdingSecond(
-                  {
+                Arsenal.HoldingSecond({
+                  first: { ...STARTING_PISTOL, tier: 1 },
+                  second: {
                     kind: 'Smg',
                     rounds: maxRounds('Smg', 1),
                     loaded: 30,
                     tier: 1,
                   },
-                  { ...STARTING_PISTOL, tier: 1 },
-                ),
+                }),
             }),
         }),
       ),

@@ -28,11 +28,12 @@ import {
 } from './onboarding'
 import { focusOf, modifyFocus } from './party'
 import { maybeBubbleKind } from './stallBubble'
-import { holdingFirst, showDialog, tap, tick, ticks } from './testing'
+import { showDialog, tap, tick, ticks } from './testing'
 import { SetFullscreen } from './update/fullscreen'
 import { ShowInstallPrompt } from './update/home'
 import { keepGoing } from './update/run'
 import { STARTING_PISTOL } from './weapons'
+import { Arsenal } from './worldSchema'
 
 const TICK_MS = 50
 // NOTE: a 50 ms frame is three 60 Hz ticks; the moment a wave clears is
@@ -247,10 +248,10 @@ describe('gun slots on touch', () => {
       player: player =>
         modifyFields(player, {
           arsenal: () =>
-            holdingFirst(
-              { kind: 'Smg', rounds: 90, loaded: 30, tier: 0 },
-              { ...STARTING_PISTOL, loaded: 2 },
-            ),
+            Arsenal.HoldingFirst({
+              first: { ...STARTING_PISTOL, loaded: 2 },
+              second: { kind: 'Smg', rounds: 90, loaded: 30, tier: 0 },
+            }),
         }),
     },
   )

@@ -2,6 +2,7 @@ import type { Duration } from 'effect'
 import {
   Deferred,
   Effect,
+  Function,
   MutableHashMap,
   MutableRef,
   Option,
@@ -29,6 +30,7 @@ export interface Sender {
   readonly send: (request: Request) => Effect.Effect<void>
 }
 
+/** @stability unstable */
 export interface Remote {
   readonly session: string
   readonly call: (
@@ -41,25 +43,34 @@ export interface Remote {
   readonly changes: PubSub.PubSub<ReadonlyArray<TableChange>>
 }
 
-export const connectionError = (
-  message: string,
-  operation: string,
-  cause: unknown = message,
-): SqlError.SqlError =>
+/** @stability unstable */
+export const connectionError: {
+  (operation: string): (message: string) => SqlError.SqlError
+  (message: string, operation: string): SqlError.SqlError
+} = Function.dual(2, (message: string, operation: string): SqlError.SqlError =>
   SqlError.SqlError.make({
-    reason: SqlError.ConnectionError.make({ message, operation, cause }),
-  })
-
-export const databaseError = (
-  failure: DatabaseFailure,
-  operation: string,
-): SqlError.SqlError =>
-  SqlError.SqlError.make({
-    reason: SqlError.classifySqliteError(failure, {
-      message: failure.message,
+    reason: SqlError.ConnectionError.make({
+      message,
       operation,
+      cause: message,
     }),
-  })
+  }),
+)
+
+/** @stability unstable */
+export const databaseError: {
+  (operation: string): (failure: DatabaseFailure) => SqlError.SqlError
+  (failure: DatabaseFailure, operation: string): SqlError.SqlError
+} = Function.dual(
+  2,
+  (failure: DatabaseFailure, operation: string): SqlError.SqlError =>
+    SqlError.SqlError.make({
+      reason: SqlError.classifySqliteError(failure, {
+        message: failure.message,
+        operation,
+      }),
+    }),
+)
 
 const timeoutError = (operation: string): SqlError.SqlError =>
   SqlError.SqlError.make({
@@ -79,74 +90,78 @@ const responseId = (response: Response): Option.Option<string> =>
     Changed: () => Option.none(),
   })
 
-export const makeRemote = (
-  session: string,
-  initialSender: Sender,
-): Effect.Effect<Remote> =>
-  Effect.gen(function* () {
-    const pending = MutableHashMap.empty<
-      string,
-      Deferred.Deferred<Response, SqlError.SqlError>
-    >()
-    const counter = MutableRef.make(0)
-    const sender = yield* Ref.make(initialSender)
-    const changes = yield* PubSub.unbounded<ReadonlyArray<TableChange>>()
+/** @stability unstable */
+export const makeRemote: {
+  (initialSender: Sender): (session: string) => Effect.Effect<Remote>
+  (session: string, initialSender: Sender): Effect.Effect<Remote>
+} = Function.dual(
+  2,
+  (session: string, initialSender: Sender): Effect.Effect<Remote> =>
+    Effect.gen(function* () {
+      const pending = MutableHashMap.empty<
+        string,
+        Deferred.Deferred<Response, SqlError.SqlError>
+      >()
+      const counter = MutableRef.make(0)
+      const sender = yield* Ref.make(initialSender)
+      const changes = yield* PubSub.unbounded<ReadonlyArray<TableChange>>()
 
-    const nextId = (): string => {
-      const count = MutableRef.incrementAndGet(counter)
-      return `${session}:${count}`
-    }
+      const nextId = (): string => {
+        const count = MutableRef.incrementAndGet(counter)
+        return `${session}:${count}`
+      }
 
-    const send = (request: Request): Effect.Effect<void> =>
-      Effect.flatMap(Ref.get(sender), current => current.send(request))
+      const send = (request: Request): Effect.Effect<void> =>
+        Effect.flatMap(Ref.get(sender), current => current.send(request))
 
-    const call: Remote['call'] = (makeRequest, timeout, operation) =>
-      Effect.suspend(() => {
-        const id = nextId()
-        const deferred = Deferred.makeUnsafe<Response, SqlError.SqlError>()
-        MutableHashMap.set(pending, id, deferred)
-        return pipe(
-          send(makeRequest(id)),
-          Effect.andThen(Deferred.await(deferred)),
-          Effect.timeoutOrElse({
-            duration: timeout,
-            orElse: () => Effect.fail(timeoutError(operation)),
-          }),
-          Effect.onInterrupt(() =>
-            send(Request.cases.Cancel.make({ id, session })),
-          ),
-          Effect.ensuring(
-            Effect.sync(() => MutableHashMap.remove(pending, id)),
-          ),
-        )
-      })
+      const call: Remote['call'] = (makeRequest, timeout, operation) =>
+        Effect.suspend(() => {
+          const id = nextId()
+          const deferred = Deferred.makeUnsafe<Response, SqlError.SqlError>()
+          MutableHashMap.set(pending, id, deferred)
+          return pipe(
+            send(makeRequest(id)),
+            Effect.andThen(Deferred.await(deferred)),
+            Effect.timeoutOrElse({
+              duration: timeout,
+              orElse: () => Effect.fail(timeoutError(operation)),
+            }),
+            Effect.onInterrupt(() =>
+              send(Request.cases.Cancel.make({ id, session })),
+            ),
+            Effect.ensuring(
+              Effect.sync(() => MutableHashMap.remove(pending, id)),
+            ),
+          )
+        })
 
-    const receive = (response: Response): Effect.Effect<void> =>
-      Option.match(responseId(response), {
-        onNone: () =>
-          response._tag === 'Changed'
-            ? Effect.asVoid(PubSub.publish(changes, response.changes))
-            : Effect.void,
-        onSome: id =>
-          Option.match(MutableHashMap.get(pending, id), {
-            onNone: () => Effect.void,
-            onSome: deferred =>
-              Effect.asVoid(Deferred.succeed(deferred, response)),
-          }),
-      })
+      const receive = (response: Response): Effect.Effect<void> =>
+        Option.match(responseId(response), {
+          onNone: () =>
+            response._tag === 'Changed'
+              ? Effect.asVoid(PubSub.publish(changes, response.changes))
+              : Effect.void,
+          onSome: id =>
+            Option.match(MutableHashMap.get(pending, id), {
+              onNone: () => Effect.void,
+              onSome: deferred =>
+                Effect.asVoid(Deferred.succeed(deferred, response)),
+            }),
+        })
 
-    const useSender = (next: Sender, reason: string): Effect.Effect<void> =>
-      Effect.gen(function* () {
-        yield* Ref.set(sender, next)
-        const waiting = globalThis.Array.from(MutableHashMap.values(pending))
-        MutableHashMap.clear(pending)
-        yield* Effect.forEach(
-          waiting,
-          deferred =>
-            Deferred.fail(deferred, connectionError(reason, 'leader')),
-          { discard: true },
-        )
-      })
+      const useSender = (next: Sender, reason: string): Effect.Effect<void> =>
+        Effect.gen(function* () {
+          yield* Ref.set(sender, next)
+          const waiting = globalThis.Array.from(MutableHashMap.values(pending))
+          MutableHashMap.clear(pending)
+          yield* Effect.forEach(
+            waiting,
+            deferred =>
+              Deferred.fail(deferred, connectionError(reason, 'leader')),
+            { discard: true },
+          )
+        })
 
-    return { session, call, receive, useSender, changes }
-  })
+      return { session, call, receive, useSender, changes }
+    }),
+)

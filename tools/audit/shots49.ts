@@ -4,19 +4,22 @@
 // `s49-<TAG>-<viewport>-<scene>.png`. It exits with 1 when a phone's READY is
 // under 48 px, the button is covered at its center, or the nudge moves it.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shots49.ts
+import { Console, Effect, String } from 'effect'
+
+import { runHarnessAudit } from './harnessServer'
 import {
-  SHOT_VIEWPORTS,
-  TAG,
+  auditTag,
   deviceQuery,
   finish,
   harnessQuery,
   isPickedScene,
-  launch,
+  openBrowser,
   scenePages,
   settleAnimations,
   shot,
-  useHarness,
+  shotViewports,
 } from './lib'
+import { attempt } from './page'
 import { LEARNED } from './scenes'
 
 type Scene = Readonly<{ name: string; query: string; twin?: string }>
@@ -47,71 +50,80 @@ type Box = Readonly<{
 const boxes = new Map<string, Box>()
 const problems: Array<string> = []
 
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev'])
-for (const viewport of SHOT_VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* shotViewports
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev'])
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
+        }
+        const label = `${viewport.name} ${scene.name}`
+        const page = yield* pages.open(
+          viewport,
+          harnessQuery(scene.query, deviceQuery(viewport)),
+        )
+        yield* settleAnimations(page)
+        const found = yield* attempt(() =>
+          page.evaluate(() => {
+            const button = document.querySelector(
+              '.start-wave-pill, .start-wave-button',
+            )
+            if (button === null) {
+              return null
+            }
+            const rect = button.getBoundingClientRect()
+            const top = document.elementFromPoint(
+              rect.left + rect.width / 2,
+              rect.top + rect.height / 2,
+            )
+            return {
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height,
+              isHit: top !== null && button.contains(top),
+              nudge: button.getAttribute('data-nudge') ?? '',
+            }
+          }),
+        )
+        if (found === null) {
+          problems.push(`${label}: no READY button`)
+        } else {
+          boxes.set(`${viewport.name} ${scene.name}`, found)
+          if (viewport.isPhone && found.height < 47.5) {
+            problems.push(`${label}: READY is under 48 px tall`)
+          }
+          if (!found.isHit) {
+            problems.push(`${label}: READY is covered at its center`)
+          }
+          const wantsNudge = String.endsWith('nudge')(scene.name)
+          if (found.nudge !== (wantsNudge ? 'true' : 'false')) {
+            problems.push(`${label}: data-nudge is ${found.nudge}`)
+          }
+          const twin = boxes.get(`${viewport.name} ${scene.twin ?? ''}`)
+          if (
+            twin !== undefined &&
+            (twin.x !== found.x ||
+              twin.y !== found.y ||
+              twin.width !== found.width ||
+              twin.height !== found.height)
+          ) {
+            problems.push(`${label}: the nudge moved READY`)
+          }
+        }
+        yield* shot(page, `s49-${tag}-${viewport.name}-${scene.name}`)
+        yield* Console.log(`shot ${label}`)
+        pages.release(page)
+      }
     }
-    const label = `${viewport.name} ${scene.name}`
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
+    yield* pages.close
+    yield* finish(
+      problems,
+      'READY is big, uncovered, and holds still when it nudges.',
     )
-    await settleAnimations(page)
-    const found = await page.evaluate(() => {
-      const button = document.querySelector(
-        '.start-wave-pill, .start-wave-button',
-      )
-      if (button === null) {
-        return null
-      }
-      const rect = button.getBoundingClientRect()
-      const top = document.elementFromPoint(
-        rect.left + rect.width / 2,
-        rect.top + rect.height / 2,
-      )
-      return {
-        x: rect.x,
-        y: rect.y,
-        width: rect.width,
-        height: rect.height,
-        isHit: top !== null && button.contains(top),
-        nudge: button.getAttribute('data-nudge') ?? '',
-      }
-    })
-    if (found === null) {
-      problems.push(`${label}: no READY button`)
-    } else {
-      boxes.set(`${viewport.name} ${scene.name}`, found)
-      if (viewport.isPhone && found.height < 47.5) {
-        problems.push(`${label}: READY is under 48 px tall`)
-      }
-      if (!found.isHit) {
-        problems.push(`${label}: READY is covered at its center`)
-      }
-      const wantsNudge = scene.name.endsWith('nudge')
-      if (found.nudge !== (wantsNudge ? 'true' : 'false')) {
-        problems.push(`${label}: data-nudge is ${found.nudge}`)
-      }
-      const twin = boxes.get(`${viewport.name} ${scene.twin ?? ''}`)
-      if (
-        twin !== undefined &&
-        (twin.x !== found.x ||
-          twin.y !== found.y ||
-          twin.width !== found.width ||
-          twin.height !== found.height)
-      ) {
-        problems.push(`${label}: the nudge moved READY`)
-      }
-    }
-    await shot(page, `s49-${TAG}-${viewport.name}-${scene.name}`)
-    console.log(`shot ${label}`)
-    pages.release(page)
-  }
-}
-await pages.close()
-await browser.close()
-finish(problems, 'READY is big, uncovered, and holds still when it nudges.')
+  }),
+)

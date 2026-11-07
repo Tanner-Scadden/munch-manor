@@ -3,6 +3,8 @@
 // play makes a fresh one for every run and hands it to whatever reads or
 // writes it, so nothing of one run leaks into the next.
 
+import { Function } from 'effect'
+
 import type { BotOptions, Model, Vector } from './basics'
 import { type FridgeLog, type ShopVisitLog, emptyFridgeLog } from './logs'
 
@@ -68,7 +70,10 @@ export type BotState = {
 
 // A run's state before its first frame: the hand's stream starts at the
 // run's seed.
-export const freshState = (seed: number, options: BotOptions): BotState => ({
+export const freshState: {
+  (options: BotOptions): (seed: number) => BotState
+  (seed: number, options: BotOptions): BotState
+} = Function.dual(2, (seed: number, options: BotOptions): BotState => ({
   options,
   fridgePlan: GUN_PLAN,
   panPlanNow: GUN_PLAN,
@@ -82,4 +87,4 @@ export const freshState = (seed: number, options: BotOptions): BotState => ({
   gnomeTries: 0,
   gnomesPlaced: 0,
   shopVisits: [],
-})
+}))

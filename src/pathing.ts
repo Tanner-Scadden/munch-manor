@@ -1,4 +1,4 @@
-import { Array, Option, Order, pipe } from 'effect'
+import { Array, Function, Option, Order, pipe } from 'effect'
 
 import {
   type Level,
@@ -10,12 +10,12 @@ import {
   isOpenBlock,
   isWalkableTile,
   nearestDoor,
-  resolveCircle,
   tileCenter,
   tileIndex,
   tileIndexAt,
   tileOfIndex,
 } from './arena'
+import { resolveCircle } from './collision'
 import {
   DIRECT_CHASE_FULL_PX,
   DIRECT_CHASE_RANGE_PX,
@@ -158,19 +158,20 @@ const walkGraphFor = (level: Level, clearance: Clearance): WalkGraph => {
 
 type WalkGraphs = Readonly<{ narrow: WalkGraph; wide: WalkGraph }>
 
-const walkGraphsOf = perLevel(
-  (level): WalkGraphs => ({
-    narrow: walkGraphFor(level, 'Narrow'),
-    wide: walkGraphFor(level, 'Wide'),
-  }),
-)
+const walkGraphsOf = perLevel((level): WalkGraphs => ({
+  narrow: walkGraphFor(level, 'Narrow'),
+  wide: walkGraphFor(level, 'Wide'),
+}))
 
-export const distanceAt = (distances: Int32Array, index: number): number => {
+export const distanceAt: {
+  (index: number): (distances: Int32Array) => number
+  (distances: Int32Array, index: number): number
+} = Function.dual(2, (distances: Int32Array, index: number): number => {
   const distance = distances[index]
   return distance === undefined || distance === UNREACHED_TILE
     ? UNREACHED_DISTANCE
     : distance
-}
+})
 
 // NOTE: the field is a shortest path search with whole tile steps, so it
 // settles tiles one distance at a time. A tile stepped onto at a shorter
@@ -262,30 +263,59 @@ const fieldFrom = (
   distances: spread(level, origins, clearance, tolls),
 })
 
-export const flowFieldToward = (
-  level: Level,
-  target: Vector,
-  clearance: Clearance,
-  tolls: ReadonlyArray<Toll>,
-): FlowField => fieldFrom(level, [tileIndexAt(level, target)], clearance, tolls)
+export const flowFieldToward: {
+  (
+    target: Vector,
+    clearance: Clearance,
+    tolls: ReadonlyArray<Toll>,
+  ): (level: Level) => FlowField
+  (
+    level: Level,
+    target: Vector,
+    clearance: Clearance,
+    tolls: ReadonlyArray<Toll>,
+  ): FlowField
+} = Function.dual(
+  4,
+  (
+    level: Level,
+    target: Vector,
+    clearance: Clearance,
+    tolls: ReadonlyArray<Toll>,
+  ): FlowField =>
+    fieldFrom(level, [tileIndexAt(level, target)], clearance, tolls),
+)
 
 // NOTE: in co-op the field flows to every living player at once, one pass
 // from all their tiles, so each zombie walks downhill to whoever is nearest.
 // One target is flowFieldToward exactly. Both clearances are laid out from
 // the same tiles and tolls.
-export const flowFieldsToward = (
-  level: Level,
-  targets: Array.NonEmptyReadonlyArray<Vector>,
-  tolls: ReadonlyArray<Toll>,
-): Readonly<Record<Clearance, FlowField>> => {
-  const origins = Array.dedupe(
-    Array.map(targets, target => tileIndexAt(level, target)),
-  )
-  return {
-    Narrow: fieldFrom(level, origins, 'Narrow', tolls),
-    Wide: fieldFrom(level, origins, 'Wide', tolls),
-  }
-}
+export const flowFieldsToward: {
+  (
+    targets: Array.NonEmptyReadonlyArray<Vector>,
+    tolls: ReadonlyArray<Toll>,
+  ): (level: Level) => Readonly<Record<Clearance, FlowField>>
+  (
+    level: Level,
+    targets: Array.NonEmptyReadonlyArray<Vector>,
+    tolls: ReadonlyArray<Toll>,
+  ): Readonly<Record<Clearance, FlowField>>
+} = Function.dual(
+  3,
+  (
+    level: Level,
+    targets: Array.NonEmptyReadonlyArray<Vector>,
+    tolls: ReadonlyArray<Toll>,
+  ): Readonly<Record<Clearance, FlowField>> => {
+    const origins = Array.dedupe(
+      Array.map(targets, target => tileIndexAt(level, target)),
+    )
+    return {
+      Narrow: fieldFrom(level, origins, 'Narrow', tolls),
+      Wide: fieldFrom(level, origins, 'Wide', tolls),
+    }
+  },
+)
 
 const isOriginOf = (flowField: FlowField, index: number): boolean =>
   index === flowField.originIndex ||
@@ -354,8 +384,7 @@ const flowDirection = (
   position: Vector,
   halfWidth: number,
   clearance: Clearance,
-): Option.Option<Vector> =>
-{
+): Option.Option<Vector> => {
   const tile = downhillTile(level, flowField, position, clearance)
   return tile === -1
     ? Option.none()
@@ -444,54 +473,90 @@ const baitDistancePx = (
     tileIndexAt(level, position),
   ) * TILE_SIZE
 
-export const playerDistancePx = (
-  level: Level,
-  flowField: FlowField,
-  position: Vector,
-): number =>
-  distanceAt(flowField.distances, tileIndexAt(level, position)) * TILE_SIZE
+export const playerDistancePx: {
+  (flowField: FlowField, position: Vector): (level: Level) => number
+  (level: Level, flowField: FlowField, position: Vector): number
+} = Function.dual(
+  3,
+  (level: Level, flowField: FlowField, position: Vector): number =>
+    distanceAt(flowField.distances, tileIndexAt(level, position)) * TILE_SIZE,
+)
 
-export const maybeNearestBait = (
-  level: Level,
-  position: Vector,
-  doors: ReadonlyArray<DoorId>,
-  clearance: Clearance,
-  pullPx: number,
-): Option.Option<Bait> =>
-  pipe(
-    doors,
-    Array.map(door => ({
-      door,
-      distancePx: baitDistancePx(level, door, position, clearance),
-    })),
-    Array.filter(({ distancePx }) => distancePx <= pullPx),
-    Array.sort(
-      Order.mapInput(Order.Number, ({ distancePx }: Bait) => distancePx),
-    ),
-    Array.head,
-  )
-
-export const steerToBait = (
-  level: Level,
-  door: DoorId,
-  position: Vector,
-  halfWidth: number,
-  clearance: Clearance,
-): Vector =>
-  Option.getOrElse(
-    flowDirection(
-      level,
-      baitFieldsOf(level)[door][clearance],
-      position,
-      halfWidth,
-      clearance,
-    ),
-    () =>
-      Option.getOrElse(
-        directionBetween(position, level.doors[door].center),
-        () => ZERO_VECTOR,
+export const maybeNearestBait: {
+  (
+    position: Vector,
+    doors: ReadonlyArray<DoorId>,
+    clearance: Clearance,
+    pullPx: number,
+  ): (level: Level) => Option.Option<Bait>
+  (
+    level: Level,
+    position: Vector,
+    doors: ReadonlyArray<DoorId>,
+    clearance: Clearance,
+    pullPx: number,
+  ): Option.Option<Bait>
+} = Function.dual(
+  5,
+  (
+    level: Level,
+    position: Vector,
+    doors: ReadonlyArray<DoorId>,
+    clearance: Clearance,
+    pullPx: number,
+  ): Option.Option<Bait> =>
+    pipe(
+      doors,
+      Array.map(door => ({
+        door,
+        distancePx: baitDistancePx(level, door, position, clearance),
+      })),
+      Array.filter(({ distancePx }) => distancePx <= pullPx),
+      Array.sort(
+        Order.mapInput(Order.Number, ({ distancePx }: Bait) => distancePx),
       ),
-  )
+      Array.head,
+    ),
+)
+
+export const steerToBait: {
+  (
+    door: DoorId,
+    position: Vector,
+    halfWidth: number,
+    clearance: Clearance,
+  ): (level: Level) => Vector
+  (
+    level: Level,
+    door: DoorId,
+    position: Vector,
+    halfWidth: number,
+    clearance: Clearance,
+  ): Vector
+} = Function.dual(
+  5,
+  (
+    level: Level,
+    door: DoorId,
+    position: Vector,
+    halfWidth: number,
+    clearance: Clearance,
+  ): Vector =>
+    Option.getOrElse(
+      flowDirection(
+        level,
+        baitFieldsOf(level)[door][clearance],
+        position,
+        halfWidth,
+        clearance,
+      ),
+      () =>
+        Option.getOrElse(
+          directionBetween(position, level.doors[door].center),
+          () => ZERO_VECTOR,
+        ),
+    ),
+)
 
 // OUTSIDE
 
@@ -761,28 +826,49 @@ const takesTheYard = (
   (Array.isReadonlyArrayEmpty(barricaded) ||
     Array.contains(yardDoorsOf(level), bestEntry(level, flowField, position)))
 
-export const steerToward = (
-  level: Level,
-  flowField: FlowField,
-  position: Vector,
-  target: Vector,
-  halfWidth: number,
-  clearance: Clearance,
-  barricaded: ReadonlyArray<DoorId>,
-): Vector => {
-  if (
-    isInsideRoomAt(level, position) ||
-    takesTheYard(level, flowField, position, barricaded)
-  ) {
-    return insideSteering(
-      level,
-      flowField,
-      position,
-      target,
-      halfWidth,
-      clearance,
-    )
-  } else {
-    return outsideSteering(level, flowField, position, barricaded)
-  }
-}
+export const steerToward: {
+  (
+    flowField: FlowField,
+    position: Vector,
+    target: Vector,
+    halfWidth: number,
+    clearance: Clearance,
+    barricaded: ReadonlyArray<DoorId>,
+  ): (level: Level) => Vector
+  (
+    level: Level,
+    flowField: FlowField,
+    position: Vector,
+    target: Vector,
+    halfWidth: number,
+    clearance: Clearance,
+    barricaded: ReadonlyArray<DoorId>,
+  ): Vector
+} = Function.dual(
+  7,
+  (
+    level: Level,
+    flowField: FlowField,
+    position: Vector,
+    target: Vector,
+    halfWidth: number,
+    clearance: Clearance,
+    barricaded: ReadonlyArray<DoorId>,
+  ): Vector => {
+    if (
+      isInsideRoomAt(level, position) ||
+      takesTheYard(level, flowField, position, barricaded)
+    ) {
+      return insideSteering(
+        level,
+        flowField,
+        position,
+        target,
+        halfWidth,
+        clearance,
+      )
+    } else {
+      return outsideSteering(level, flowField, position, barricaded)
+    }
+  },
+)

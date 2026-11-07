@@ -71,7 +71,7 @@ export const decodePng = (src: string): Option.Option<DecodedPng> => {
   }
 
   return pipe(
-    Base64.decode(src.slice(PNG_PREFIX.length)),
+    Base64.decode(String.slice(PNG_PREFIX.length)(src)),
     Result.getSuccess,
     Option.flatMap(bytes => {
       const chunks = chunksFrom(bytes, 8)
@@ -103,7 +103,8 @@ export const decodePng = (src: string): Option.Option<DecodedPng> => {
   )
 }
 
-const hexPair = (value: number): string => value.toString(16).padStart(2, '0')
+const hexPair = (value: number): string =>
+  String.padStart(2, '0')(value.toString(16))
 
 export const hexOf = ({ r, g, b }: Rgba): string =>
   `#${hexPair(r)}${hexPair(g)}${hexPair(b)}`

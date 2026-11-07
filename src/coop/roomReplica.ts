@@ -1,5 +1,5 @@
 import type { Array } from 'effect'
-import { Data, Effect, Option, Ref, Result, Stream, pipe } from 'effect'
+import { Effect, Option, Ref, Result, Schema, Stream, pipe } from 'effect'
 
 import {
   type Lobby,
@@ -21,6 +21,9 @@ import {
   startSync,
 } from '@munch/sync-engine'
 
+import { writeLobbyChange } from './lobbyWrite'
+import type { CoopProblem, LobbyChange } from './model'
+
 // NOTE: co-op's side of the player database, built in the store's own chunk
 // (src/storeSqlite.ts) and handed to the game through PlayerStore. The room
 // lobby is the `room:<code>` sync scope (packages/netcode/src/Lobby.ts),
@@ -29,19 +32,22 @@ import {
 // tab runs sync, so a follower tab follows the lobby over its own socket
 // instead (see src/coop/net.ts).
 
-class RoomAccessError extends Data.TaggedError('RoomAccessError')<{
-  readonly reason: string
-}> {}
+class RoomAccessError extends Schema.TaggedError<
+  RoomAccessError,
+  { readonly brand: unique symbol }
+>()('RoomAccessError', {
+  reason: Schema.String,
+}) {}
 
 export interface RoomAccess {
   readonly playerId: Effect.Effect<string, RoomAccessError>
   readonly token: Effect.Effect<string, TokenUnavailable>
   readonly canFollow: Effect.Effect<boolean>
   readonly followRoom: (code: string) => Stream.Stream<Lobby, RoomAccessError>
-  readonly writeRoom: <A, I>(
-    mutation: Mutation<string, A, I>,
-    args: NoInfer<A>,
-  ) => Effect.Effect<string, RoomAccessError>
+  readonly writeRoom: (
+    by: string,
+    change: LobbyChange | 'Left',
+  ) => Effect.Effect<void, CoopProblem>
 }
 
 type RoomAccessOptions = Readonly<{
@@ -51,8 +57,9 @@ type RoomAccessOptions = Readonly<{
 }>
 
 const toAccessError = (error: { readonly message: string }) =>
-  new RoomAccessError({ reason: error.message })
+  RoomAccessError.make({ reason: error.message })
 
+/** @stability unstable */
 export const makeRoomAccess = ({
   database,
   identity,
@@ -96,10 +103,11 @@ export const makeRoomAccess = ({
             transports,
             credentials: pipe(
               identity.session,
-              Effect.map(session => ({ token: session.token, clientId })),
-              Effect.mapError(
-                error => new TransportError({ reason: error.failure._tag }),
-              ),
+              Effect.mapBoth({
+                onSuccess: session => ({ token: session.token, clientId }),
+                onFailure: error =>
+                  TransportError.make({ reason: error.failure._tag }),
+              }),
             ),
             refreshCredentials: identity.invalidate,
           })
@@ -121,35 +129,36 @@ export const makeRoomAccess = ({
         }),
       )
 
-    const writeRoom = <A, I>(
+    const writeMutation = <A, I>(
       mutation: Mutation<string, A, I>,
       args: NoInfer<A>,
     ) =>
       Effect.gen(function* () {
         const maybeReplica = yield* Ref.get(current)
         if (Option.isNone(maybeReplica)) {
-          return yield* new RoomAccessError({ reason: 'Not in a room' })
+          return yield* RoomAccessError.make({ reason: 'Not in a room' })
         }
         return yield* Effect.mapError(
           maybeReplica.value.run(mutation, args),
-          error => new RoomAccessError({ reason: String(error) }),
+          error => RoomAccessError.make({ reason: String(error) }),
         )
       })
 
     return {
-      playerId: Effect.mapError(
-        identity.playerId,
-        error => new RoomAccessError({ reason: error.failure._tag }),
+      playerId: Effect.mapError(identity.playerId, error =>
+        RoomAccessError.make({ reason: error.failure._tag }),
       ),
       token: pipe(
         identity.session,
-        Effect.map(session => session.token),
-        Effect.mapError(
-          error => new TokenUnavailable({ reason: error.failure._tag }),
-        ),
+        Effect.mapBoth({
+          onSuccess: session => session.token,
+          onFailure: error =>
+            TokenUnavailable.make({ reason: error.failure._tag }),
+        }),
       ),
       canFollow: Effect.map(database.role, role => role === 'Leader'),
       followRoom,
-      writeRoom,
+      writeRoom: (by: string, change: LobbyChange | 'Left') =>
+        writeLobbyChange(writeMutation, by, change),
     }
   })

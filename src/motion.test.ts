@@ -1,3 +1,4 @@
+import { Array, Record, String } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import callingCss from './calling.css?raw'
@@ -113,28 +114,37 @@ const MOVING_ART: Readonly<Record<string, string>> = {
 const MOVES = /(^|[\s;{])(transform|translate|scale|rotate)\s*:/
 
 const movingKeyframes = (css: string): ReadonlyArray<string> =>
-  [...css.matchAll(/@keyframes\s+([\w-]+)\s*\{([\s\S]*?)\n\}/g)]
-    .filter(([, , body]) => MOVES.test(body ?? ''))
-    .map(([, name]) => name ?? '')
+  Array.map(
+    Array.filter(
+      Array.fromIterable(
+        String.matchAll(/@keyframes\s+([\w-]+)\s*\{([\s\S]*?)\n\}/g)(css),
+      ),
+      ([, , body]) => MOVES.test(body ?? ''),
+    ),
+    ([, name]) => name ?? '',
+  )
 
 describe('animations that move', () => {
-  const found = CSS_FILES.flatMap(([file, css]) =>
-    movingKeyframes(css).map(name => ({ file, name })),
+  const found = Array.flatMap(CSS_FILES, ([file, css]) =>
+    Array.map(movingKeyframes(css), name => ({ file, name })),
   )
 
   test('reads every stylesheet', () => {
-    expect(CSS_FILES.filter(([, css]) => css.length === 0)).toEqual([])
+    expect(Array.filter(CSS_FILES, ([, css]) => css.length === 0)).toEqual([])
   })
 
   test('only move art, never a button or what holds one', () => {
-    const unlisted = found
-      .filter(({ name }) => !(name in MOVING_ART))
-      .map(({ file, name }) => `${file}: @keyframes ${name}`)
+    const unlisted = Array.map(
+      Array.filter(found, ({ name }) => !(name in MOVING_ART)),
+      ({ file, name }) => `${file}: @keyframes ${name}`,
+    )
     expect(unlisted).toEqual([])
   })
 
   test('the list names only keyframes that still move', () => {
-    const names = new Set(found.map(({ name }) => name))
-    expect(Object.keys(MOVING_ART).filter(name => !names.has(name))).toEqual([])
+    const names = new Set(Array.map(found, ({ name }) => name))
+    expect(
+      Array.filter(Record.keys(MOVING_ART), name => !names.has(name)),
+    ).toEqual([])
   })
 })

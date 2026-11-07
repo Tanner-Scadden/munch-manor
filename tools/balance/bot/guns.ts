@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 
 import { isFridgeWeapon } from '../../../src/fridgeWeapons'
 import { focusOf } from '../../../src/party'
@@ -19,16 +19,25 @@ export const panOf = (model: Model): Gun | undefined =>
 // The fridge weapon the bot carries in a gun slot (the Cooker or Brain
 // Freeze; the Pan is in the melee slot).
 export const fridgeSpareOf = (model: Model): Gun | undefined =>
-  gunsOfBot(model).find(gun => isFridgeWeapon(gun.kind))
+  Option.getOrUndefined(
+    Array.findFirst(gunsOfBot(model), gun => isFridgeWeapon(gun.kind)),
+  )
 
 export type FridgeSpare = Gun
 
 // The gun the bot bought from Rattles (the Barn Buster or the Chatterbox).
 export const firearmOf = (model: Model): Gun | undefined =>
-  gunsOfBot(model).find(gun => gun.kind === 'Smg' || gun.kind === 'Shotgun')
+  Option.getOrUndefined(
+    Array.findFirst(
+      gunsOfBot(model),
+      gun => gun.kind === 'Smg' || gun.kind === 'Shotgun',
+    ),
+  )
 
 export const pistolOf = (model: Model): Gun | undefined =>
-  gunsOfBot(model).find(gun => gun.kind === 'Pistol')
+  Option.getOrUndefined(
+    Array.findFirst(gunsOfBot(model), gun => gun.kind === 'Pistol'),
+  )
 
 // What the bot used to call its spare: the gun it bought, else its fridge
 // weapon. The pistol is never the spare.
@@ -72,7 +81,11 @@ export const weakerGun = (model: Model): Gun | undefined => {
 
 // A new gun replaces the one in the player's hands, so before it buys or
 // takes one the bot holds the gun it means to give up.
-export const holdToReplace = (model: Model, gun: Gun | undefined): Model =>
+export const holdToReplace: {
+  (gun: Gun | undefined): (model: Model) => Model
+  (model: Model, gun: Gun | undefined): Model
+} = Function.dual(2, (model: Model, gun: Gun | undefined): Model =>
   gun !== undefined && heldGun(focusOf(model).player.arsenal).kind !== gun.kind
     ? tapKey(model, 'KeyQ')
-    : model
+    : model,
+)

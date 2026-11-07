@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Option, String } from 'effect'
 import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
@@ -16,7 +16,9 @@ import { WIDE_SURFACE } from './testing'
 
 const WIDE_LEVEL = makeLevel(Array.map(ROOM_MAP, line => line + line))
 
-const NARROW_LEVEL = makeLevel(Array.map(ROOM_MAP, line => line.slice(0, 16)))
+const NARROW_LEVEL = makeLevel(
+  Array.map(ROOM_MAP, line => String.slice(0, 16)(line)),
+)
 
 const playingModel: Model = modifyFields(initialModel, {
   maybeSurface: () => Option.some(WIDE_SURFACE),

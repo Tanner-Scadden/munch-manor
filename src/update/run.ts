@@ -1,3 +1,4 @@
+import { Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { PREPARATION_MS } from '../constants'
@@ -24,8 +25,12 @@ const canStart = (model: Model): boolean =>
     GameOver: () => endOffer(model) === 'MenuAndModes',
   })
 
-export const startWhenAllowed = (model: Model, mode: RunMode): Model =>
-  canStart(model) ? startOrResume(model, mode) : model
+export const startWhenAllowed: {
+  (mode: RunMode): (model: Model) => Model
+  (model: Model, mode: RunMode): Model
+} = Function.dual(2, (model: Model, mode: RunMode): Model =>
+  canStart(model) ? startOrResume(model, mode) : model,
+)
 
 export const keepGoing = (model: Model): Model =>
   Phase.isAnyOf(['Victory'])(model.phase)
@@ -44,16 +49,26 @@ export const keepGoing = (model: Model): Model =>
 export const keepGoingWhenAllowed = (model: Model): Model =>
   canStart(model) ? keepGoing(model) : model
 
-export const startsRun = (before: Model, after: Model): boolean =>
-  !isRoundActive(before.phase) &&
-  !Phase.isAnyOf(['Paused'])(before.phase) &&
-  Phase.isAnyOf(['Preparation'])(after.phase)
+export const startsRun: {
+  (after: Model): (before: Model) => boolean
+  (before: Model, after: Model): boolean
+} = Function.dual(
+  2,
+  (before: Model, after: Model): boolean =>
+    !isRoundActive(before.phase) &&
+    !Phase.isAnyOf(['Paused'])(before.phase) &&
+    Phase.isAnyOf(['Preparation'])(after.phase),
+)
 
-export const startFromButton = (before: Model, started: Model): UpdateReturn =>
+export const startFromButton: {
+  (started: Model): (before: Model) => UpdateReturn
+  (before: Model, started: Model): UpdateReturn
+} = Function.dual(2, (before: Model, started: Model): UpdateReturn =>
   combine(withInput(started, releaseAll), [
     unlockAudio,
     playStartSoundWhen(startsRun(before, started)),
-  ])
+  ]),
+)
 
 export const isScreenAnimated = (phase: Phase): boolean =>
   Phase.isAnyOf(['Ready', 'Victory', 'GameOver'])(phase)

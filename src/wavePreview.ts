@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 import type { Html } from 'foldkit/html'
 
@@ -503,46 +503,49 @@ const floorMarkerShapes = (
     },
   })
 
-export const wavePreviewShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
-  Phase.match(model.phase, {
-    Ready: () => [],
-    Preparation: ({ wave, spawns }) => {
-      const level = levelOf(model)
-      const counts = doorCounts(spawns, model.traps, level.doorIds)
-      const window = screenOf(model).world
-      // NOTE: a crew's door markers carry no NEW tags (owner, 2026-11-01:
-      // "don't show new zombie info in multiplayer").
-      const debuts = isCoop(model) ? [] : debutKinds(wave)
-      return [
-        ...Array.flatMap(
-          placeCounts(level, camera, window, counts),
-          doorMarkerShapes(camera, window, model.elapsedMs, debuts),
-        ),
-        ...bossMarkerShapes(
-          level,
-          model.boss,
-          camera,
-          window,
-          model.elapsedMs,
-          counts,
-        ),
-        ...floorMarkerShapes(
-          floorCounts(spawns),
-          camera,
-          window,
-          model.elapsedMs,
-          debuts,
-        ),
-      ]
-    },
-    Wave: () => [],
-    Paused: () => [],
-    Victory: () => [],
-    GameOver: () => [],
-  })
+export const wavePreviewShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+    Phase.match(model.phase, {
+      Ready: () => [],
+      Preparation: ({ wave, spawns }) => {
+        const level = levelOf(model)
+        const counts = doorCounts(spawns, model.traps, level.doorIds)
+        const window = screenOf(model).world
+        // NOTE: a crew's door markers carry no NEW tags (owner, 2026-11-01:
+        // "don't show new zombie info in multiplayer").
+        const debuts = isCoop(model) ? [] : debutKinds(wave)
+        return [
+          ...Array.flatMap(
+            placeCounts(level, camera, window, counts),
+            doorMarkerShapes(camera, window, model.elapsedMs, debuts),
+          ),
+          ...bossMarkerShapes(
+            level,
+            model.boss,
+            camera,
+            window,
+            model.elapsedMs,
+            counts,
+          ),
+          ...floorMarkerShapes(
+            floorCounts(spawns),
+            camera,
+            window,
+            model.elapsedMs,
+            debuts,
+          ),
+        ]
+      },
+      Wave: () => [],
+      Paused: () => [],
+      Victory: () => [],
+      GameOver: () => [],
+    }),
+)
 
 // SCREEN READER
 
@@ -566,28 +569,60 @@ const bossLabel = (boss: Boss): string =>
       ` Boss: ${ZOMBIE_KINDS.Boss.name} comes through the ${door} door late in the wave.`,
   })
 
-export const wavePreviewLabel = (
-  wave: number,
-  spawns: ReadonlyArray<PlannedSpawn>,
-  traps: ReadonlyArray<Trap>,
-  boss: Boss,
-): string => {
-  const debuts = Array.map(debutKinds(wave), kind => ZOMBIE_KINDS[kind].name)
-  const debutText = Array.isReadonlyArrayEmpty(debuts)
-    ? ''
-    : ` New this wave: ${Array.join(debuts, ', ')}.`
-  const healthText =
-    endlessDepth(wave) > 0
-      ? ` Zombies have ${Math.round((hpScaleFor(wave) - 1) * 100)} percent more health.`
-      : ''
-  return `Coming in wave ${wave}. ${Array.join(Array.map(doorCounts(spawns, traps), doorPreviewLabel), '. ')}.${floorLabel(spawns)}${debutText}${healthText}${bossLabel(boss)}`
-}
+export const wavePreviewLabel: {
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    traps: ReadonlyArray<Trap>,
+    boss: Boss,
+  ): (wave: number) => string
+  (
+    wave: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    traps: ReadonlyArray<Trap>,
+    boss: Boss,
+  ): string
+} = Function.dual(
+  4,
+  (
+    wave: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    traps: ReadonlyArray<Trap>,
+    boss: Boss,
+  ): string => {
+    const debuts = Array.map(debutKinds(wave), kind => ZOMBIE_KINDS[kind].name)
+    const debutText = Array.isReadonlyArrayEmpty(debuts)
+      ? ''
+      : ` New this wave: ${Array.join(debuts, ', ')}.`
+    const healthText =
+      endlessDepth(wave) > 0
+        ? ` Zombies have ${Math.round((hpScaleFor(wave) - 1) * 100)} percent more health.`
+        : ''
+    return `Coming in wave ${wave}. ${Array.join(Array.map(doorCounts(spawns, traps), doorPreviewLabel), '. ')}.${floorLabel(spawns)}${debutText}${healthText}${bossLabel(boss)}`
+  },
+)
 
-export const wavePreviewView = (
-  wave: number,
-  spawns: ReadonlyArray<PlannedSpawn>,
-  traps: ReadonlyArray<Trap>,
-  boss: Boss,
-  h: ApplicationViewBuilder,
-): Html =>
-  h.p([h.Class('sr-only')], [wavePreviewLabel(wave, spawns, traps, boss)])
+export const wavePreviewView: {
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    traps: ReadonlyArray<Trap>,
+    boss: Boss,
+    h: ApplicationViewBuilder,
+  ): (wave: number) => Html
+  (
+    wave: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    traps: ReadonlyArray<Trap>,
+    boss: Boss,
+    h: ApplicationViewBuilder,
+  ): Html
+} = Function.dual(
+  5,
+  (
+    wave: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    traps: ReadonlyArray<Trap>,
+    boss: Boss,
+    h: ApplicationViewBuilder,
+  ): Html =>
+    h.p([h.Class('sr-only')], [wavePreviewLabel(wave, spawns, traps, boss)]),
+)

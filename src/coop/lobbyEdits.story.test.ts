@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import {
   Command,
   expectNoOutMessage,
@@ -64,7 +64,10 @@ describe('picking a hero in the lobby', () => {
         expect(current.calling).toBe('Handyman')
         expect(
           Option.exists(roomOf(current).maybeLobby, lobby =>
-            lobby.members.every(member => member.ready === (member.slot === 0)),
+            Array.every(
+              lobby.members,
+              member => member.ready === (member.slot === 0),
+            ),
           ),
         ).toBe(true)
       }),
@@ -217,7 +220,7 @@ describe('tapping a difficulty in the lobby', () => {
     update(inRoom(slot), lobbyUpdate(lobbyAt)).model
   const changes = (result: {
     commands?: ReadonlyArray<{ name: string }> | undefined
-  }) => (result.commands ?? []).map(command => command.name)
+  }) => Array.map(result.commands ?? [], command => command.name)
 
   test('the host changes it, and the room is told', () => {
     story(
@@ -327,7 +330,7 @@ describe('renaming yourself in the lobby', () => {
       expect(draftOf(submitted.model)).toEqual(Option.none())
       expect(submitted.outMessage).toBeUndefined()
       expect(
-        (submitted.commands ?? []).map(command => command.name),
+        Array.map(submitted.commands ?? [], command => command.name),
       ).not.toContain(ChangeLobby.name)
     }
   })

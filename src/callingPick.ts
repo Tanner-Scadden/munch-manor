@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { callingForRun, callingPriceOf, isCallingOwned } from './calling'
@@ -23,7 +23,10 @@ export const startingCallingOf = (model: Model): Calling =>
 
 // NOTE: the pick, if owned. The player at home is dressed in
 // it at once, so the menu shows the prop, and its NEW badge goes.
-export const chooseCalling = (model: Model, calling: Calling): Model =>
+export const chooseCalling: {
+  (calling: Calling): (model: Model) => Model
+  (model: Model, calling: Calling): Model
+} = Function.dual(2, (model: Model, calling: Calling): Model =>
   isPickable(model, calling)
     ? modifyFocus(
         modifyFields(withoutFresh(model, callingUnlockId(calling)), {
@@ -31,14 +34,19 @@ export const chooseCalling = (model: Model, calling: Calling): Model =>
         }),
         { player: () => playerOfCalling(calling) },
       )
-    : model
+    : model,
+)
 
 // NOTE: a hero for sale is tried on in the picker; its BUY pill buys it.
-export const tryOnCalling = (model: Model, calling: Calling): Model =>
+export const tryOnCalling: {
+  (calling: Calling): (model: Model) => Model
+  (model: Model, calling: Calling): Model
+} = Function.dual(2, (model: Model, calling: Calling): Model =>
   modifyFields(model, {
     home: home =>
       modifyFields(home, { maybeTryingCalling: () => Option.some(calling) }),
-  })
+  }),
+)
 
 export const withoutTryOn = (model: Model): Model =>
   modifyFields(model, {
@@ -50,7 +58,10 @@ export const withoutTryOn = (model: Model): Model =>
 // The spend and the bought id are what the sync mutation `BoughtCosmetic`
 // (src/playerScope.ts) repeats on every device. Nothing if the hero is owned
 // already, so a stale click buys nothing.
-export const buyCalling = (model: Model, calling: Calling): Model =>
+export const buyCalling: {
+  (calling: Calling): (model: Model) => Model
+  (model: Model, calling: Calling): Model
+} = Function.dual(2, (model: Model, calling: Calling): Model =>
   isCallingOwned(calling, model.boughtCosmetics)
     ? withoutTryOn(model)
     : chooseCalling(
@@ -65,4 +76,5 @@ export const buyCalling = (model: Model, calling: Calling): Model =>
           }),
         ),
         calling,
-      )
+      ),
+)

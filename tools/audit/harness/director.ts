@@ -1,4 +1,4 @@
-import { Array, Option, Schema } from 'effect'
+import { Array, Function, Option, Result, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { cameraOf, screenCameraOf, worldToView } from '@game/camera'
@@ -129,7 +129,12 @@ export const Plan = Schema.Struct({
 })
 export type Plan = typeof Plan.Type
 
-export const decodePlan = Schema.decodeUnknownSync(Schema.fromJsonString(Plan))
+const decodePlanJson = Schema.decodeResult(Schema.fromJsonString(Plan))
+
+// NOTE: the plan the video tool hands `start`; a bad one throws, as it
+// should, since the tool wrote it.
+export const decodePlan = (plan: string): Plan =>
+  Result.getOrThrow(decodePlanJson(plan))
 
 export type AudioCue =
   | Readonly<{
@@ -157,16 +162,20 @@ export type Return = Readonly<{
 type Step = (model: Model, message: Message) => Return
 
 // NOTE: the args the sound and music Commands carry, read back for the log.
-const decodeSoundArgs = Schema.decodeUnknownSync(
-  Schema.Struct({ sound: Schema.String, variation: Schema.Number }),
+const soundArgsOption = Schema.decodeUnknownOption(
+  Schema.Struct({ sound: Schema.String, variation: Schema.Finite }),
 )
-const decodeMusicArgs = Schema.decodeUnknownSync(
+const decodeSoundArgs = (args: unknown) =>
+  Option.getOrThrow(soundArgsOption(args))
+const musicArgsOption = Schema.decodeUnknownOption(
   Schema.Struct({
     mood: Schema.String,
     level: Schema.String,
     stinger: Schema.String,
   }),
 )
+const decodeMusicArgs = (args: unknown) =>
+  Option.getOrThrow(musicArgsOption(args))
 
 const FIXED_TICK_MS = 1000 / 60
 const TOUCH_POINTER_MOVE = 31
@@ -264,7 +273,10 @@ const audible = (model: Model): Model =>
 
 // NOTE: starts a shot on the scene the query staged: the log restarts with
 // the music the scene's phase plays, and a co-op shot seats the room.
-export const startShot = (model: Model, next: Plan): Return => {
+export const startShot: {
+  (next: Plan): (model: Model) => Return
+  (model: Model, next: Plan): Return
+} = Function.dual(2, (model: Model, next: Plan): Return => {
   plan = next
   stagedMembers = Option.match(
     Option.flatMap(roomOf(model), room => room.maybeLobby),
@@ -313,7 +325,7 @@ export const startShot = (model: Model, next: Plan): Return => {
       return { model: current, commands: opening }
     },
   })
-}
+})
 
 // SINGLE PLAYER
 
@@ -332,7 +344,7 @@ const nearestTo = (model: Model, from: Vector): Option.Option<Vector> =>
   Option.map(
     Array.head(
       byDistance(
-        Array.filter(model.zombies, isWalking).map(zombie => ({
+        Array.map(Array.filter(model.zombies, isWalking), zombie => ({
           x: zombie.x,
           y: zombie.y,
           distance: (zombie.x - from.x) ** 2 + (zombie.y - from.y) ** 2,
@@ -645,7 +657,7 @@ const botInput = (
       const walk = unit(toSpot)
       const nearest = Array.head(
         byDistance(
-          Array.filter(world.world.zombies, isWalking).map(zombie => ({
+          Array.map(Array.filter(world.world.zombies, isWalking), zombie => ({
             x: zombie.x,
             y: zombie.y,
             distance: (zombie.x - player.x) ** 2 + (zombie.y - player.y) ** 2,
@@ -768,7 +780,10 @@ const coopTick = (model: Model, isCaptured: boolean): Return =>
 
 // STEPPING
 
-export const stepShot = (model: Model, ticks: number, step: Step): Return => {
+export const stepShot: {
+  (ticks: number, step: Step): (model: Model) => Return
+  (model: Model, ticks: number, step: Step): Return
+} = Function.dual(3, (model: Model, ticks: number, step: Step): Return => {
   let current: Return = { model }
   for (let index = 0; index < ticks; index++) {
     const next = Option.isSome(maybeRoom)
@@ -784,4 +799,4 @@ export const stepShot = (model: Model, ticks: number, step: Step): Return => {
     tick++
   }
   return current
-}
+})

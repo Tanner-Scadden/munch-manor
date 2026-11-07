@@ -107,7 +107,10 @@ export const specialsOf = (calling: Calling): ReadonlyArray<Special> =>
 export const specialsNoteOf = (calling: Calling): string =>
   Array.isReadonlyArrayEmpty(SPECIALS[calling])
     ? SPECIAL_LINES.noSpecials
-    : Array.map(
-        SPECIALS[calling],
-        ({ isPerk, line }) => `${isPerk ? 'Plus' : 'Minus'}: ${line}`,
-      ).join('. ')
+    : Array.join(
+        Array.map(
+          SPECIALS[calling],
+          ({ isPerk, line }) => `${isPerk ? 'Plus' : 'Minus'}: ${line}`,
+        ),
+        '. ',
+      )

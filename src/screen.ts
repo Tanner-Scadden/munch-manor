@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { VIEW_HEIGHT, VIEW_WIDTH } from './constants'
@@ -156,13 +156,24 @@ export const landscapeFrameOffset = (screen: Screen): Vector => ({
   y: screen.world.y + Math.round((screen.world.height - VIEW_HEIGHT) / 2),
 })
 
-export const inLandscapeFrame = (
-  screen: Screen,
-  shapes: ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> =>
-  screen.layout === 'Landscape' || Array.isReadonlyArrayEmpty(shapes)
-    ? shapes
-    : [group({ translate: landscapeFrameOffset(screen), shapes })]
+export const inLandscapeFrame: {
+  (
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): (screen: Screen) => ReadonlyArray<Canvas.Shape>
+  (
+    screen: Screen,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (
+    screen: Screen,
+    shapes: ReadonlyArray<Canvas.Shape>,
+  ): ReadonlyArray<Canvas.Shape> =>
+    screen.layout === 'Landscape' || Array.isReadonlyArrayEmpty(shapes)
+      ? shapes
+      : [group({ translate: landscapeFrameOffset(screen), shapes })],
+)
 
 // SCREEN TO VIEW
 
@@ -179,25 +190,44 @@ const viewScale = (
 ): number =>
   Math.min(surface.width / screen.width, surface.height / screen.height)
 
-export const clientToView = (
-  surface: SurfaceRectangle,
-  client: Vector,
-  screen: ScreenSize = LANDSCAPE_SIZE,
-): Option.Option<Vector> => {
-  const scale = viewScale(surface, screen)
-  if (scale <= 0) {
-    return Option.none()
-  }
+export const clientToView: {
+  (
+    client: Vector,
+    screen?: ScreenSize,
+  ): (surface: SurfaceRectangle) => Option.Option<Vector>
+  (
+    surface: SurfaceRectangle,
+    client: Vector,
+    screen?: ScreenSize,
+  ): Option.Option<Vector>
+} = Function.dual(
+  // NOTE: data-first starts with the surface; data-last with the client point.
+  (args: IArguments): boolean =>
+    typeof args[0] === 'object' && 'width' in args[0],
+  (
+    surface: SurfaceRectangle,
+    client: Vector,
+    screen: ScreenSize = LANDSCAPE_SIZE,
+  ): Option.Option<Vector> => {
+    const scale = viewScale(surface, screen)
+    if (scale <= 0) {
+      return Option.none()
+    }
 
-  const viewLeft = surface.left + (surface.width - screen.width * scale) / 2
-  const viewTop = surface.top + (surface.height - screen.height * scale) / 2
-  return Option.some({
-    x: (client.x - viewLeft) / scale,
-    y: (client.y - viewTop) / scale,
-  })
-}
+    const viewLeft = surface.left + (surface.width - screen.width * scale) / 2
+    const viewTop = surface.top + (surface.height - screen.height * scale) / 2
+    return Option.some({
+      x: (client.x - viewLeft) / scale,
+      y: (client.y - viewTop) / scale,
+    })
+  },
+)
 
-export const isLeftHalf = (
-  surface: SurfaceRectangle,
-  clientX: number,
-): boolean => clientX < surface.left + surface.width / 2
+export const isLeftHalf: {
+  (clientX: number): (surface: SurfaceRectangle) => boolean
+  (surface: SurfaceRectangle, clientX: number): boolean
+} = Function.dual(
+  2,
+  (surface: SurfaceRectangle, clientX: number): boolean =>
+    clientX < surface.left + surface.width / 2,
+)

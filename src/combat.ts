@@ -1,4 +1,4 @@
-import { Array, Option, Order, pipe } from 'effect'
+import { Array, Function, Option, Order, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Level, levelOf } from './arena'
@@ -64,48 +64,79 @@ export const SHATTER_SCALE = 4
 
 export const isIcedSolid = ZombieAction.isAnyOf(['Frozen'])
 
-export const strikeZombie = (
-  zombie: Zombie,
-  { damage, direction, knockbackSpeed }: Strike,
-  cause: DeathCause,
-): Zombie => {
-  const isIced = isIcedSolid(zombie.action)
-  const hp = Math.max(0, zombie.hp - (isIced ? damage * SHATTER_SCALE : damage))
-  return modifyFields(zombie, {
-    hp: () => hp,
-    knockback: () =>
-      scaleVector(direction, knockbackSpeed * statsOf(zombie).knockbackScale),
-    hitRemainingMs: () => ZOMBIE_HIT_PULSE_MS,
-    state: state =>
-      hp > 0 ? state : deathState(zombie.kind, direction, cause),
-    action: action => (isIced ? ZombieAction.Roaming() : action),
-  })
-}
+export const strikeZombie: {
+  (arg1: Strike, cause: DeathCause): (zombie: Zombie) => Zombie
+  (zombie: Zombie, arg1: Strike, cause: DeathCause): Zombie
+} = Function.dual(
+  3,
+  (
+    zombie: Zombie,
+    { damage, direction, knockbackSpeed }: Strike,
+    cause: DeathCause,
+  ): Zombie => {
+    const isIced = isIcedSolid(zombie.action)
+    const hp = Math.max(
+      0,
+      zombie.hp - (isIced ? damage * SHATTER_SCALE : damage),
+    )
+    return modifyFields(zombie, {
+      hp: () => hp,
+      knockback: () =>
+        scaleVector(direction, knockbackSpeed * statsOf(zombie).knockbackScale),
+      hitRemainingMs: () => ZOMBIE_HIT_PULSE_MS,
+      state: state =>
+        hp > 0 ? state : deathState(zombie.kind, direction, cause),
+      action: action => (isIced ? ZombieAction.Roaming() : action),
+    })
+  },
+)
 
-export const hitEvent = (
-  zombie: Zombie,
-  at: Vector,
-  direction: Vector,
-  damage: number,
-  maybeShooter: Option.Option<number> = Option.none(),
-): GameEvent =>
-  GameEvent.ZombieHit({
-    x: at.x,
-    y: at.y,
-    direction,
-    damage,
-    kind: zombie.kind,
-    maybeShooter,
-  })
+export const hitEvent: {
+  (
+    at: Vector,
+    direction: Vector,
+    damage: number,
+    maybeShooter?: Option.Option<number>,
+  ): (zombie: Zombie) => GameEvent
+  (
+    zombie: Zombie,
+    at: Vector,
+    direction: Vector,
+    damage: number,
+    maybeShooter?: Option.Option<number>,
+  ): GameEvent
+} = Function.dual(
+  // NOTE: data-first has the damage fourth; data-last has the shooter there or nothing.
+  (args: IArguments): boolean => typeof args[3] === 'number',
+  (
+    zombie: Zombie,
+    at: Vector,
+    direction: Vector,
+    damage: number,
+    maybeShooter: Option.Option<number> = Option.none(),
+  ): GameEvent =>
+    GameEvent.ZombieHit({
+      x: at.x,
+      y: at.y,
+      direction,
+      damage,
+      kind: zombie.kind,
+      maybeShooter,
+    }),
+)
 
-export const killEvent = (zombie: Zombie, direction: Vector): GameEvent =>
+export const killEvent: {
+  (direction: Vector): (zombie: Zombie) => GameEvent
+  (zombie: Zombie, direction: Vector): GameEvent
+} = Function.dual(2, (zombie: Zombie, direction: Vector): GameEvent =>
   GameEvent.ZombieKilled({
     x: zombie.x,
     y: zombie.y,
     direction,
     bounty: statsOf(zombie).bounty,
     kind: zombie.kind,
-  })
+  }),
+)
 
 const invulnerableMsAt = (hp: number): number =>
   hp === 1 ? LAST_HEART_INVULNERABLE_MS : PLAYER_INVULNERABLE_MS
@@ -113,22 +144,38 @@ const invulnerableMsAt = (hp: number): number =>
 // NOTE: graceScale stretches the blink after the wound; a bite passes the
 // level's (src/difficulty.ts), so Easy and Normal forgive a crowd's bites
 // longer.
-export const woundPlayer = (
-  player: Player,
-  damage: number,
-  direction: Vector,
-  graceScale = 1,
-): Player => {
-  const hp = Math.max(0, player.hp - damage)
-  const durationMs =
-    invulnerableMsAt(hp) * graceScale * woundGraceScaleOf(player)
-  return modifyFields(player, {
-    hp: () => hp,
-    knockback: () => scaleVector(direction, PLAYER_KNOCKBACK_SPEED),
-    invulnerability: () =>
-      Invulnerability.Invulnerable({ remainingMs: durationMs, durationMs }),
-  })
-}
+export const woundPlayer: {
+  (
+    damage: number,
+    direction: Vector,
+    graceScale?: number,
+  ): (player: Player) => Player
+  (
+    player: Player,
+    damage: number,
+    direction: Vector,
+    graceScale?: number,
+  ): Player
+} = Function.dual(
+  // NOTE: data-first has the damage second; data-last has the direction there.
+  (args: IArguments): boolean => typeof args[1] === 'number',
+  (
+    player: Player,
+    damage: number,
+    direction: Vector,
+    graceScale: number = 1,
+  ): Player => {
+    const hp = Math.max(0, player.hp - damage)
+    const durationMs =
+      invulnerableMsAt(hp) * graceScale * woundGraceScaleOf(player)
+    return modifyFields(player, {
+      hp: () => hp,
+      knockback: () => scaleVector(direction, PLAYER_KNOCKBACK_SPEED),
+      invulnerability: () =>
+        Invulnerability.Invulnerable({ remainingMs: durationMs, durationMs }),
+    })
+  },
+)
 
 // BLASTS
 
@@ -144,13 +191,15 @@ export type BlastSpec = Readonly<{
 
 type Blasted<A> = Readonly<{ target: A; events: ReadonlyArray<GameEvent> }>
 
-export type BlastTarget<A> = Readonly<{
-  center: (target: A) => Vector
-  radius: (target: A) => number
-  isExposed: (target: A) => boolean
-  damageFrom: (blast: BlastSpec) => number
-  hurt: (target: A, strike: Strike) => Blasted<A>
-}>
+// NOTE: an interface, not a Readonly alias, so the checker can match
+// blastAll's two call signatures over its type parameter.
+export interface BlastTarget<A> {
+  readonly center: (target: A) => Vector
+  readonly radius: (target: A) => number
+  readonly isExposed: (target: A) => boolean
+  readonly damageFrom: (blast: BlastSpec) => number
+  readonly hurt: (target: A, strike: Strike) => Blasted<A>
+}
 
 // NOTE: the way a bullet flies, or none for a bullet that stands still.
 export const bulletDirection = (bullet: Bullet): Vector =>
@@ -180,20 +229,35 @@ const blastOne =
     })
   }
 
-export const blastAll = <A>(
-  blast: BlastSpec,
-  targets: ReadonlyArray<A>,
-  kind: BlastTarget<A>,
-): Readonly<{
+type BlastedAll<A> = Readonly<{
   targets: ReadonlyArray<A>
   events: ReadonlyArray<GameEvent>
-}> => {
-  const outcomes = Array.map(targets, blastOne(blast, kind))
-  return {
-    targets: Array.map(outcomes, ({ target }) => target),
-    events: Array.flatMap(outcomes, ({ events }) => events),
-  }
-}
+}>
+
+export const blastAll: {
+  <A>(
+    targets: ReadonlyArray<A>,
+    kind: BlastTarget<A>,
+  ): (blast: BlastSpec) => BlastedAll<A>
+  <A>(
+    blast: BlastSpec,
+    targets: ReadonlyArray<A>,
+    kind: BlastTarget<A>,
+  ): BlastedAll<A>
+} = Function.dual(
+  3,
+  <A>(
+    blast: BlastSpec,
+    targets: ReadonlyArray<A>,
+    kind: BlastTarget<A>,
+  ): BlastedAll<A> => {
+    const outcomes = Array.map(targets, blastOne(blast, kind))
+    return {
+      targets: Array.map(outcomes, ({ target }) => target),
+      events: Array.flatMap(outcomes, ({ events }) => events),
+    }
+  },
+)
 
 export const ZOMBIE_BLAST_TARGET: BlastTarget<Zombie> = {
   center: zombie => zombie,
@@ -260,14 +324,16 @@ const blastPlayers = (model: World, blast: BlastSpec): World =>
 // NOTE: a player's own blast on every standing teammate it reaches, never
 // on the player who set it off (the owner, 2026-11-02: "it sucks that it
 // hurts you").
-export const blastTeammates = (
-  model: World,
-  thrower: PlayerSlot,
-  blast: BlastSpec,
-): World =>
-  forEachSeatWhere(model, isStanding, (current, slot) =>
-    slot === thrower ? current : blastSeated(current, slot, blast),
-  )
+export const blastTeammates: {
+  (thrower: PlayerSlot, blast: BlastSpec): (model: World) => World
+  (model: World, thrower: PlayerSlot, blast: BlastSpec): World
+} = Function.dual(
+  3,
+  (model: World, thrower: PlayerSlot, blast: BlastSpec): World =>
+    forEachSeatWhere(model, isStanding, (current, slot) =>
+      slot === thrower ? current : blastSeated(current, slot, blast),
+    ),
+)
 
 const maybeBlastOf = (zombie: Zombie): Option.Option<BlastSpec> =>
   Behavior.match(statsOf(zombie).behavior, {
@@ -294,15 +360,16 @@ const maybeBlastOf = (zombie: Zombie): Option.Option<BlastSpec> =>
 
 // NOTE: what the kills among `events` pay, a kitchen kill a quarter more
 // (src/kitchenPay.ts).
-export const bountyOf = (
-  level: Level,
-  events: ReadonlyArray<GameEvent>,
-): number =>
+export const bountyOf: {
+  (events: ReadonlyArray<GameEvent>): (level: Level) => number
+  (level: Level, events: ReadonlyArray<GameEvent>): number
+} = Function.dual(2, (level: Level, events: ReadonlyArray<GameEvent>): number =>
   Array.reduce(events, 0, (sum, event) =>
     GameEvent.isAnyOf(['ZombieKilled'])(event)
       ? sum + kitchenBounty(level, event, event.bounty)
       : sum,
-  )
+  ),
+)
 
 const detonate = (model: World, bomberId: number): World => {
   const rest = Array.filter(model.zombies, ({ id }) => id !== bomberId)

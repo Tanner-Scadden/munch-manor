@@ -2,21 +2,24 @@ import {
   Array,
   Context,
   Effect,
+  Function,
   Layer,
   Schedule,
   Schema,
   type Scope,
+  String,
 } from 'effect'
 import { SqlClient } from 'effect/sql'
 
 import { SqliteClient } from '@munch/sqlite-wasm-effect'
 import { makeHub } from '@munch/sqlite-wasm-effect/in-process'
 
-import type { Authenticate } from '../src/Server'
 import {
   Actor,
+  type DeviceActor,
   type LocalDatabase,
   MutationRejected,
+  type ScopeAddress,
   Unauthorized,
   defineMutation,
   defineScope,
@@ -25,6 +28,7 @@ import {
 // A small scope for the tests: a profile row, a tally per kind, and slots
 // that only one player can claim, so the server has something to refuse.
 
+/** @stability unstable */
 export const Renamed = defineMutation({
   name: 'Renamed',
   version: 1,
@@ -42,16 +46,17 @@ export const Renamed = defineMutation({
 
 const MAX_COUNT = 100
 
+/** @stability unstable */
 export const Counted = defineMutation({
   name: 'Counted',
   version: 1,
-  args: Schema.Struct({ kind: Schema.String, count: Schema.Number }),
+  args: Schema.Struct({ kind: Schema.String, count: Schema.Finite }),
   scopes: ['notes'],
   writer: 'Owner',
   apply: ({ kind, count }, context) =>
     Effect.gen(function* () {
       if (count > MAX_COUNT) {
-        return yield* new MutationRejected({ reason: 'Too many at once' })
+        return yield* MutationRejected.make({ reason: 'Too many at once' })
       }
       const sql = yield* SqlClient.SqlClient
       yield* sql`INSERT INTO ${context.table('tally')} (kind, count)
@@ -60,6 +65,7 @@ export const Counted = defineMutation({
     }),
 })
 
+/** @stability unstable */
 export const Claimed = defineMutation({
   name: 'Claimed',
   version: 1,
@@ -72,12 +78,13 @@ export const Claimed = defineMutation({
       const taken =
         yield* sql`SELECT slot FROM ${context.table('slots')} WHERE slot = ${slot}`
       if (Array.isReadonlyArrayNonEmpty(taken)) {
-        return yield* new MutationRejected({ reason: `${slot} is taken` })
+        return yield* MutationRejected.make({ reason: `${slot} is taken` })
       }
       yield* sql`INSERT INTO ${context.table('slots')} (slot, by) VALUES (${slot}, ${by})`
     }),
 })
 
+/** @stability unstable */
 export const Stamped = defineMutation({
   name: 'Stamped',
   version: 1,
@@ -93,6 +100,7 @@ export const Stamped = defineMutation({
     }),
 })
 
+/** @stability unstable */
 export const Notes = defineScope({
   kind: 'notes',
   tables: ['profile', 'tally', 'slots'],
@@ -125,13 +133,28 @@ export const SCOPE = `notes:${PLAYER}`
 
 // NOTE: the tests' tokens are `<deviceId>:<playerId>`; real hosts verify a
 // signed token instead.
-export const authenticate: Authenticate = token => {
-  const [deviceId, playerId] = token.split(':')
-  return deviceId !== undefined && playerId !== undefined
-    ? Effect.succeed(Actor.cases.Device.make({ deviceId, playerId }))
-    : Effect.fail(new Unauthorized({ reason: 'Bad token' }))
-}
+export const authenticate: {
+  (
+    address: ScopeAddress,
+  ): (token: string) => Effect.Effect<DeviceActor, Unauthorized>
+  (
+    token: string,
+    address: ScopeAddress,
+  ): Effect.Effect<DeviceActor, Unauthorized>
+} = Function.dual(
+  2,
+  (
+    token: string,
+    _address: ScopeAddress,
+  ): Effect.Effect<DeviceActor, Unauthorized> => {
+    const [deviceId, playerId] = String.split(':')(token)
+    return playerId !== undefined
+      ? Effect.succeed(Actor.cases.Device.make({ deviceId, playerId }))
+      : Effect.fail(Unauthorized.make({ reason: 'Bad token' }))
+  },
+)
 
+/** @stability unstable */
 export const openServerDatabase: Effect.Effect<
   SqlClient.SqlClient,
   never,
@@ -142,6 +165,7 @@ export const openServerDatabase: Effect.Effect<
   return Context.get(context, SqlClient.SqlClient)
 })
 
+/** @stability unstable */
 export const openClientDatabase: Effect.Effect<
   LocalDatabase,
   never,

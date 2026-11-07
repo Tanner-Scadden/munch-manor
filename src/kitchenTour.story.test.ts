@@ -26,7 +26,7 @@ import {
   SOLO_SLOT,
   Tour,
 } from './model'
-import { AT_FRIDGE, atFridge, freshRunModel } from './model.fixture'
+import { AT_FRIDGE, atFridgeOnWave, freshRunModel } from './model.fixture'
 import { focusOf, modifyFocus, soloSeat } from './party'
 import { nextRandom } from './prng'
 import { forgetTutorial } from './save'
@@ -104,7 +104,7 @@ const atBoards = (): Model =>
 // NOTE: the same break with the kitchen open, at the fridge, its stream
 // set so the next draw would be `prize` without the tour's rig.
 const atOpenFridge = (prize: FridgePrize): Model => {
-  const opened = timedBreak(atFridge(5, 3))
+  const opened = timedBreak(atFridgeOnWave(3, 5))
   const seed = Option.getOrThrow(
     Array.findFirst(
       Array.makeBy(500, index => index + 1),

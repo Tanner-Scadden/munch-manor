@@ -10,75 +10,91 @@
 // ONLY picks scenes, such as `ONLY=wave,break`, and VIEWPORTS picks phones,
 // such as `VIEWPORTS=p390,l844`. SHOTS_PARALLEL sets how many scenes run at
 // once, each in its own browser context (3 by default).
-import type { Page } from 'playwright-core'
+import { Array, Effect } from 'effect'
 
+import { runHarnessAudit } from './harnessServer'
 import {
+  type Act,
   type Log,
   PHONE_844,
-  TAG,
+  type ScenePages,
   UPRIGHT_360,
   UPRIGHT_375,
   UPRIGHT_390,
   UPRIGHT_430,
   type Viewport,
+  auditTag,
   finish,
   forEachInOrder,
   isPickedScene,
-  launch,
+  openBrowser,
   parallelFrom,
   pickViewports,
   scenePages,
   settleAnimations,
   shot,
-  useHarness,
 } from './lib'
+import { attempt } from './page'
 
-const VIEWPORTS = pickViewports([
+const PICKABLE_VIEWPORTS: ReadonlyArray<Viewport> = [
   { ...UPRIGHT_390, name: 'p390' },
   { ...UPRIGHT_430, name: 'p430' },
   { ...UPRIGHT_360, name: 'p360' },
   { ...UPRIGHT_375, name: 'p375' },
   { ...PHONE_844, name: 'l844' },
-])
+]
 
 type Scene = Readonly<{
   name: string
   query: string
-  act?: (page: Page) => Promise<void>
+  act?: Act
 }>
 
-const clickButton = (name: RegExp) => async (page: Page) => {
-  await page.getByRole('button', { name }).first().click()
-  await page.locator('dialog[open]').first().waitFor({ state: 'visible' })
-}
+const clickButton =
+  (name: RegExp): Act =>
+  page =>
+    Effect.andThen(
+      attempt(() => page.getByRole('button', { name }).first().click()),
+      attempt(() =>
+        page.locator('dialog[open]').first().waitFor({ state: 'visible' }),
+      ),
+    )
 
 // NOTE: PLAY opens the single player lobby for a player who has learned to
 // move and fire (a screen, not a dialog).
 const LOBBY_QUERY = 'learned=move,fire&rank=300&calling=Handyman'
 
-const toLobby = async (page: Page) => {
-  await page.getByRole('button', { name: /^play/i }).first().click()
-  await page.locator('.coop[data-screen="Solo"]').waitFor({ state: 'visible' })
-}
+const toLobby: Act = page =>
+  Effect.andThen(
+    attempt(() => page.getByRole('button', { name: /^play/i }).first().click()),
+    attempt(() =>
+      page.locator('.coop[data-screen="Solo"]').waitFor({ state: 'visible' }),
+    ),
+  )
 
-const toLobbyHero = async (page: Page) => {
-  await toLobby(page)
-  await clickButton(/^hero/i)(page)
-}
+const toLobbyHero: Act = page =>
+  Effect.andThen(toLobby(page), clickButton(/^hero/i)(page))
 
-const fromHand = (name: RegExp) => async (page: Page) => {
-  await clickButton(/^more/i)(page)
-  await clickButton(name)(page)
-}
+const fromHand =
+  (name: RegExp): Act =>
+  page =>
+    Effect.andThen(clickButton(/^more/i)(page), clickButton(name)(page))
 
 // NOTE: a tap, not a click, so the game stays on its touch layout.
-const tapTab = (name: RegExp) => async (page: Page) => {
-  const box = await page.getByRole('tab', { name }).first().boundingBox()
-  if (box !== null) {
-    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
-  }
-  await settleAnimations(page)
-}
+const tapTab =
+  (name: RegExp): Act =>
+  page =>
+    Effect.gen(function* () {
+      const box = yield* attempt(() =>
+        page.getByRole('tab', { name }).first().boundingBox(),
+      )
+      if (box !== null) {
+        yield* attempt(() =>
+          page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2),
+        )
+      }
+      yield* settleAnimations(page)
+    })
 
 const SCENES: ReadonlyArray<Scene> = [
   {
@@ -116,13 +132,14 @@ const SCENES: ReadonlyArray<Scene> = [
   {
     name: 'home-hint-gone',
     query: '',
-    act: async page => {
-      // NOTE: the hint is drawn only upright, so landscape has none to tap.
-      const hint = page.getByRole('button', { name: /turn sideways/i })
-      if ((await hint.count()) > 0) {
-        await hint.click()
-      }
-    },
+    act: page =>
+      Effect.gen(function* () {
+        // NOTE: the hint is drawn only upright, so landscape has none to tap.
+        const hint = page.getByRole('button', { name: /turn sideways/i })
+        if ((yield* attempt(() => hint.count())) > 0) {
+          yield* attempt(() => hint.click())
+        }
+      }),
   },
   {
     name: 'bests',
@@ -178,137 +195,159 @@ const SCENES: ReadonlyArray<Scene> = [
 
 const MIN_SIDE = 48
 
-await useHarness()
-const browser = await launch()
+// NOTE: runs in the page, which has no Effect: plain loops, so no native
+// Array method is left for the Effect rules to flag.
+const readPortrait = () => {
+  const isShown = (element: Element) => {
+    const box = element.getBoundingClientRect()
+    const style = getComputedStyle(element)
+    return (
+      box.width > 0 && style.visibility !== 'hidden' && style.display !== 'none'
+    )
+  }
+  const isInScroller = (element: Element): boolean => {
+    const parent = element.parentElement
+    if (parent === null) {
+      return false
+    }
+    const overflow = getComputedStyle(parent).overflowY
+    return (
+      ((overflow === 'auto' || overflow === 'scroll') &&
+        parent.scrollHeight > parent.clientHeight) ||
+      isInScroller(parent)
+    )
+  }
+  const openDialog = document.querySelector('dialog[open]')
+  const buttons: Array<{
+    name: string
+    width: number
+    height: number
+    isHit: boolean
+    isOnScreen: boolean
+  }> = []
+  for (const button of document.querySelectorAll<HTMLElement>(
+    'button, a.home-support',
+  )) {
+    if (
+      !isShown(button) ||
+      (openDialog === null
+        ? button.closest('dialog') !== null
+        : !openDialog.contains(button))
+    ) {
+      continue
+    }
+    const box = button.getBoundingClientRect()
+    const hit = document.elementFromPoint(
+      box.x + box.width / 2,
+      box.y + box.height / 2,
+    )
+    buttons.push({
+      name: (button.getAttribute('aria-label') ?? button.innerText)
+        // NOTE: runs in the page, where effect's String is not loaded.
+        // @effect-diagnostics-next-line preferEffectString:off
+        .replace(/\s+/g, ' ')
+        // NOTE: runs in the page, where effect's String is not loaded.
+        // @effect-diagnostics-next-line preferEffectString:off
+        .slice(0, 40),
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+      isHit:
+        (hit !== null && button.contains(hit)) ||
+        (isInScroller(button) && (box.bottom > innerHeight || box.y < 0)),
+      isOnScreen:
+        isInScroller(button) ||
+        (box.x >= -1 &&
+          box.y >= -1 &&
+          box.right <= innerWidth + 1 &&
+          box.bottom <= innerHeight + 1),
+    })
+  }
+  const scroller = document.scrollingElement ?? document.documentElement
+  const pageScrolls = scroller.scrollHeight > innerHeight + 1
+  let offScreen = 0
+  for (const element of document.querySelectorAll(
+    'dialog[open], dialog[open] > *',
+  )) {
+    const box = element.getBoundingClientRect()
+    if (box.bottom > innerHeight + 1 || box.right > innerWidth + 1) {
+      offScreen++
+    }
+  }
+  return {
+    buttons,
+    pageScrolls,
+    offScreen,
+    layout:
+      document.querySelector('.game-root')?.getAttribute('data-layout') ?? '',
+  }
+}
 
-// NOTE: every scene plays 72 frames (1.2 s) at once and holds there, so the
-// pictures are the same on every run, and a page per screen and worker
-// switches scenes in place.
-const pages = scenePages(browser, ['device=touch', 'nodev', 'tick=72'])
-
-const checkScene = async (
+const checkScene = (
+  pages: ScenePages,
+  tag: string,
   viewport: Viewport,
   scene: Scene,
   log: Log,
-): Promise<ReadonlyArray<string>> => {
-  const problems: Array<string> = []
-  const page = await pages.open(viewport, scene.query)
-  if (scene.act !== undefined) {
-    await scene.act(page)
-  }
-  await settleAnimations(page)
-  const report = await page.evaluate(() => {
-    const isShown = (element: Element) => {
-      const box = element.getBoundingClientRect()
-      const style = getComputedStyle(element)
-      return (
-        box.width > 0 &&
-        style.visibility !== 'hidden' &&
-        style.display !== 'none'
-      )
+) =>
+  Effect.gen(function* () {
+    const problems: Array<string> = []
+    const page = yield* pages.open(viewport, scene.query)
+    if (scene.act !== undefined) {
+      yield* scene.act(page)
     }
-    const isInScroller = (element: Element): boolean => {
-      const parent = element.parentElement
-      if (parent === null) {
-        return false
-      }
-      const overflow = getComputedStyle(parent).overflowY
-      return (
-        ((overflow === 'auto' || overflow === 'scroll') &&
-          parent.scrollHeight > parent.clientHeight) ||
-        isInScroller(parent)
-      )
-    }
-    const openDialog = document.querySelector('dialog[open]')
-    const buttons = Array.from(
-      document.querySelectorAll<HTMLElement>('button, a.home-support'),
+    yield* settleAnimations(page)
+    const report = yield* attempt(() => page.evaluate(readPortrait))
+    yield* shot(page, `s34-${tag}-${viewport.name}-${scene.name}`)
+    const where = `${viewport.name} ${scene.name}`
+    log(
+      `${where} (${report.layout}): ${report.buttons.length} buttons${report.pageScrolls ? ', PAGE SCROLLS' : ''}`,
     )
-      .filter(isShown)
-      .filter(button =>
-        openDialog === null
-          ? button.closest('dialog') === null
-          : openDialog.contains(button),
-      )
-      .map(button => {
-        const box = button.getBoundingClientRect()
-        const hit = document.elementFromPoint(
-          box.x + box.width / 2,
-          box.y + box.height / 2,
+    if (report.pageScrolls) {
+      problems.push(`${where}: the page scrolls`)
+    }
+    if (report.offScreen > 0) {
+      problems.push(`${where}: ${report.offScreen} dialog parts off screen`)
+    }
+    for (const button of report.buttons) {
+      if (button.width < MIN_SIDE || button.height < MIN_SIDE) {
+        problems.push(
+          `${where}: "${button.name}" is ${button.width}x${button.height}`,
         )
-        return {
-          name: (button.getAttribute('aria-label') ?? button.innerText)
-            .replace(/\s+/g, ' ')
-            .slice(0, 40),
-          width: Math.round(box.width),
-          height: Math.round(box.height),
-          isHit:
-            (hit !== null && button.contains(hit)) ||
-            (isInScroller(button) && (box.bottom > innerHeight || box.y < 0)),
-          isOnScreen:
-            isInScroller(button) ||
-            (box.x >= -1 &&
-              box.y >= -1 &&
-              box.right <= innerWidth + 1 &&
-              box.bottom <= innerHeight + 1),
-        }
-      })
-    const scroller = document.scrollingElement ?? document.documentElement
-    const pageScrolls = scroller.scrollHeight > innerHeight + 1
-    const panels = Array.from(
-      document.querySelectorAll('dialog[open], dialog[open] > *'),
-    ).filter(element => {
-      const box = element.getBoundingClientRect()
-      return box.bottom > innerHeight + 1 || box.right > innerWidth + 1
-    })
-    return {
-      buttons,
-      pageScrolls,
-      offScreen: panels.length,
-      layout:
-        document.querySelector('.game-root')?.getAttribute('data-layout') ?? '',
+      }
+      if (!button.isHit) {
+        problems.push(`${where}: "${button.name}" is covered at its center`)
+      }
+      if (!button.isOnScreen) {
+        problems.push(`${where}: "${button.name}" is off screen`)
+      }
     }
+    pages.release(page)
+    return problems
   })
-  await shot(page, `s34-${TAG}-${viewport.name}-${scene.name}`)
-  const where = `${viewport.name} ${scene.name}`
-  log(
-    `${where} (${report.layout}): ${report.buttons.length} buttons${report.pageScrolls ? ', PAGE SCROLLS' : ''}`,
-  )
-  if (report.pageScrolls) {
-    problems.push(`${where}: the page scrolls`)
-  }
-  if (report.offScreen > 0) {
-    problems.push(`${where}: ${report.offScreen} dialog parts off screen`)
-  }
-  for (const button of report.buttons) {
-    if (button.width < MIN_SIDE || button.height < MIN_SIDE) {
-      problems.push(
-        `${where}: "${button.name}" is ${button.width}x${button.height}`,
-      )
-    }
-    if (!button.isHit) {
-      problems.push(`${where}: "${button.name}" is covered at its center`)
-    }
-    if (!button.isOnScreen) {
-      problems.push(`${where}: "${button.name}" is off screen`)
-    }
-  }
-  pages.release(page)
-  return problems
-}
 
-const UNITS = VIEWPORTS.flatMap(viewport =>
-  SCENES.filter(scene => isPickedScene(scene.name)).map(scene => ({
-    viewport,
-    scene,
-  })),
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* pickViewports(PICKABLE_VIEWPORTS)
+    const scenes = yield* Effect.filter(SCENES, scene =>
+      isPickedScene(scene.name),
+    )
+    const units = Array.flatMap(viewports, viewport =>
+      Array.map(scenes, scene => ({ viewport, scene })),
+    )
+    const browser = yield* openBrowser
+    // NOTE: every scene plays 72 frames (1.2 s) at once and holds there, so
+    // the pictures are the same on every run, and a page per screen and
+    // worker switches scenes in place.
+    const pages = scenePages(browser, ['device=touch', 'nodev', 'tick=72'])
+    const parallel = yield* parallelFrom('SHOTS_PARALLEL')
+    const problems = yield* forEachInOrder(
+      units,
+      parallel,
+      ({ viewport, scene }, log) =>
+        checkScene(pages, tag, viewport, scene, log),
+    )
+    yield* pages.close
+    yield* finish(Array.flatten(problems), 'no problems')
+  }),
 )
-
-const problems = await forEachInOrder(
-  UNITS,
-  parallelFrom('SHOTS_PARALLEL'),
-  ({ viewport, scene }, log) => checkScene(viewport, scene, log),
-)
-await pages.close()
-await browser.close()
-
-finish(problems.flat(), 'no problems')

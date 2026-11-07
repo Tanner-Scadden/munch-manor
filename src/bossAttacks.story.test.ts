@@ -11,6 +11,7 @@ import {
   CENTER_Y,
   WAVE_8_HP_SCALE,
   bossAt,
+  bossWithHpAt,
   eventsTagged,
   fightingBoss,
   fightingWith,
@@ -204,9 +205,12 @@ describe('telegraphed attacks', () => {
       ZOMBIE_KINDS.Boss.hp,
       WAVE_8_HP_SCALE * healthScale * bossHealthScale,
     )
-    const boss = modifyFields(bossAt(CENTER_X + 60, CENTER_Y, hardBossHp), {
-      maxHp: () => hardBossHp,
-    })
+    const boss = modifyFields(
+      bossWithHpAt(hardBossHp, CENTER_X + 60, CENTER_Y),
+      {
+        maxHp: () => hardBossHp,
+      },
+    )
     const start = modifyFields(
       inWave(
         FINAL_WAVE,
@@ -698,8 +702,8 @@ describe('enrage', () => {
   const third = BOSS_HP / 3
 
   test('he enrages once his health falls to a third, roaring once', () => {
-    const calm = bossAt(CENTER_X + 60, CENTER_Y, Math.floor(third) + 1)
-    const angry = bossAt(CENTER_X + 60, CENTER_Y, Math.floor(third))
+    const calm = bossWithHpAt(Math.floor(third) + 1, CENTER_X + 60, CENTER_Y)
+    const angry = bossWithHpAt(Math.floor(third), CENTER_X + 60, CENTER_Y)
     const quiet = BossMove.Stalking({ cooldownMs: 60_000 })
     story(
       update,

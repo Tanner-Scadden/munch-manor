@@ -1,4 +1,4 @@
-import { Array, Option, Record, pipe } from 'effect'
+import { Array, Option, Record, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { given, scene } from 'foldkit/scene'
@@ -54,9 +54,9 @@ describe('sprite images', () => {
     const second = spriteDataUrl([...PIXELS], { ...PALETTE })
     expect(Option.isSome(first)).toBe(true)
     expect(first).toEqual(second)
-    expect(Option.getOrThrow(first).startsWith('data:image/png;base64,')).toBe(
-      true,
-    )
+    expect(
+      String.startsWith('data:image/png;base64,')(Option.getOrThrow(first)),
+    ).toBe(true)
   })
 
   test('the PNG is the size of the pixel map and holds its exact colors', () => {

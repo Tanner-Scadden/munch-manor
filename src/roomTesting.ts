@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -70,39 +70,41 @@ const nearestZombie = (room: RoomWorld, at: Vector): Option.Option<Vector> =>
     Option.map(({ at: found }) => found),
   )
 
-export const scriptedInput = (
-  room: RoomWorld,
-  slot: number,
-  tick: number,
-): PlayerInput =>
-  Option.match(maybePlayerAt(room.world, slot), {
-    onNone: () => NEUTRAL_INPUT,
-    onSome: ({ player }) => {
-      const leg =
-        LEGS[Math.floor((tick + slot * 37) / LEG_TICKS) % LEGS.length] ??
-        LEGS[0]
-      const maybeAim = Option.flatMap(nearestZombie(room, player), target =>
-        normalize({ x: target.x - player.x, y: target.y - player.y }),
-      )
-      const ready = Phase.isAnyOf(['Preparation'])(room.world.phase)
-        ? heldAction(actionCodeOf(SeatAction.Ready()), room.world.phase.wave)
-        : 0
-      return {
-        moveX: Math.round((leg?.x ?? 0) * MOVE_SCALE),
-        moveY: Math.round((leg?.y ?? 0) * MOVE_SCALE),
-        aimX: Option.match(maybeAim, {
-          onNone: () => 0,
-          onSome: aim => Math.round(aim.x * AIM_REACH * 8) / 8,
-        }),
-        aimY: Option.match(maybeAim, {
-          onNone: () => 0,
-          onSome: aim => Math.round(aim.y * AIM_REACH * 8) / 8,
-        }),
-        buttons: Option.isSome(maybeAim) ? 1 : 0,
-        action: ready,
-      }
-    },
-  })
+export const scriptedInput: {
+  (slot: number, tick: number): (room: RoomWorld) => PlayerInput
+  (room: RoomWorld, slot: number, tick: number): PlayerInput
+} = Function.dual(
+  3,
+  (room: RoomWorld, slot: number, tick: number): PlayerInput =>
+    Option.match(maybePlayerAt(room.world, slot), {
+      onNone: () => NEUTRAL_INPUT,
+      onSome: ({ player }) => {
+        const leg =
+          LEGS[Math.floor((tick + slot * 37) / LEG_TICKS) % LEGS.length] ??
+          LEGS[0]
+        const maybeAim = Option.flatMap(nearestZombie(room, player), target =>
+          normalize({ x: target.x - player.x, y: target.y - player.y }),
+        )
+        const ready = Phase.isAnyOf(['Preparation'])(room.world.phase)
+          ? heldAction(actionCodeOf(SeatAction.Ready()), room.world.phase.wave)
+          : 0
+        return {
+          moveX: Math.round((leg?.x ?? 0) * MOVE_SCALE),
+          moveY: Math.round((leg?.y ?? 0) * MOVE_SCALE),
+          aimX: Option.match(maybeAim, {
+            onNone: () => 0,
+            onSome: aim => Math.round(aim.x * AIM_REACH * 8) / 8,
+          }),
+          aimY: Option.match(maybeAim, {
+            onNone: () => 0,
+            onSome: aim => Math.round(aim.y * AIM_REACH * 8) / 8,
+          }),
+          buttons: Option.isSome(maybeAim) ? 1 : 0,
+          action: ready,
+        }
+      },
+    }),
+)
 
 export const scriptedTicks = (room: RoomWorld): ReadonlyArray<PlayerTick> =>
   Array.map(playersOf(room.world), ({ seat: { slot } }) => ({
@@ -115,20 +117,30 @@ export const scriptedTicks = (room: RoomWorld): ReadonlyArray<PlayerTick> =>
 
 // NOTE: the room alone, `ticks` ticks of scripted players, calling `each`
 // with every World it steps to.
-export const playRoom = (
-  start: RoomWorld,
-  ticks: number,
-  each: (room: RoomWorld) => void = () => {},
-): RoomWorld =>
-  Array.reduce(
-    Array.makeBy(ticks, () => 0),
-    start,
-    room => {
-      const next = stepRoomWorld(room, scriptedTicks(room))
-      each(next)
-      return next
-    },
-  )
+// Data first when a tick count follows the room; data last has `each` there.
+export const playRoom: {
+  (
+    ticks: number,
+    each?: (room: RoomWorld) => void,
+  ): (start: RoomWorld) => RoomWorld
+  (start: RoomWorld, ticks: number, each?: (room: RoomWorld) => void): RoomWorld
+} = Function.dual(
+  (args: IArguments) => typeof args[1] === 'number',
+  (
+    start: RoomWorld,
+    ticks: number,
+    each: (room: RoomWorld) => void = () => {},
+  ): RoomWorld =>
+    Array.reduce(
+      Array.makeBy(ticks, () => 0),
+      start,
+      room => {
+        const next = stepRoomWorld(room, scriptedTicks(room))
+        each(next)
+        return next
+      },
+    ),
+)
 
 // A ROOM OVER A FAKE NETWORK
 
@@ -341,18 +353,22 @@ export const simulateRoom = (
   }
 }
 
-export const percentile = (
-  values: ReadonlyArray<number>,
-  fraction: number,
-): number => {
-  const sorted = Array.sort(values, (a: number, b: number) =>
-    a < b ? -1 : a > b ? 1 : 0,
-  )
-  return (
-    sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))] ??
-    0
-  )
-}
+export const percentile: {
+  (fraction: number): (values: ReadonlyArray<number>) => number
+  (values: ReadonlyArray<number>, fraction: number): number
+} = Function.dual(
+  2,
+  (values: ReadonlyArray<number>, fraction: number): number => {
+    const sorted = Array.sort(values, (a: number, b: number) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    )
+    return (
+      sorted[
+        Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))
+      ] ?? 0
+    )
+  },
+)
 
 export const mean = (values: ReadonlyArray<number>): number =>
   Array.isReadonlyArrayEmpty(values)

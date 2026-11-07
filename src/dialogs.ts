@@ -1,3 +1,4 @@
+import { Function } from 'effect'
 import {
   type Attribute,
   type ChildAttribute,
@@ -30,7 +31,7 @@ import { CLOSE_ICON } from './icons'
 
 type DialogModel = typeof DialogBlock.Model.Type
 
-export type DialogBinding =
+type DialogBinding =
   | typeof ShopDialogBinding
   | typeof ProfileDialogBinding
   | typeof PanelDialogBinding
@@ -135,10 +136,10 @@ const isShut = (dialog: DialogModel): boolean =>
 // `<dialog id="shop">` under an empty one that took every click. Keyed, a
 // cached dialog is found by its id wherever it moves. `dialogs.scene.test.ts`
 // holds every dialog to a key and every id to one element.
-export const dialogShell = (
-  shell: DialogShell,
-  h: ApplicationViewBuilder,
-): Html =>
+export const dialogShell: {
+  (h: ApplicationViewBuilder): (shell: DialogShell) => Html
+  (shell: DialogShell, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (shell: DialogShell, h: ApplicationViewBuilder): Html =>
   isShut(shell.dialog)
     ? lazyClosedShells(shell.dialog.id, closedShellView, [
         shell.binding,
@@ -148,15 +149,18 @@ export const dialogShell = (
         shell.panelClass,
         h,
       ])
-    : shellView(shell, h)
+    : shellView(shell, h),
+)
 
 // CORNER BUTTONS
 
-type CornerButton<Message> = Readonly<{
-  attributes: ReadonlyArray<Attribute<Message> | ChildAttribute>
-  className: string
-  label: string
-}>
+// NOTE: an object type, not Readonly<...>, so the pipeable check matches the
+// views' two signatures.
+type CornerButton<Message> = {
+  readonly attributes: ReadonlyArray<Attribute<Message> | ChildAttribute>
+  readonly className: string
+  readonly label: string
+}
 
 // NOTE: the one close button every menu dialog shares: a red pixel X on a
 // 32 px face, centered in a bigger see-through button, so it looks small
@@ -164,41 +168,60 @@ type CornerButton<Message> = Readonly<{
 // the button flush in its panel's corner so the face sits 8 px inside.
 // `attributes` carry what it does: a Dialog's `closeButton`, or an OnClick
 // for a screen that is not a Dialog, such as co-op's.
-export const closeButtonView = <Message>(
-  { attributes, className, label }: CornerButton<Message>,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      ...attributes,
-      h.Class(`menu-close ${className}`),
-      h.AriaLabel(label),
-      h.AriaKeyshortcuts('Escape'),
-    ],
-    [faceView(CLOSE_ICON, 'menu-close-icon', h)],
-  )
+export const closeButtonView: {
+  <Message>(h: HtmlBuilder<Message>): (self: CornerButton<Message>) => Html
+  <Message>(self: CornerButton<Message>, h: HtmlBuilder<Message>): Html
+} = Function.dual(
+  2,
+  <Message>(
+    { attributes, className, label }: CornerButton<Message>,
+    h: HtmlBuilder<Message>,
+  ): Html =>
+    h.button(
+      [
+        h.Type('button'),
+        ...attributes,
+        h.Class(`menu-close ${className}`),
+        h.AriaLabel(label),
+        h.AriaKeyshortcuts('Escape'),
+      ],
+      [faceView(CLOSE_ICON, 'menu-close-icon', h)],
+    ),
+)
 
 // NOTE: the matching back button: the same 48 px target and 32 px face in a
 // neutral fill, an arrow in place of the X. `extra` is for a key cap.
-export const backButtonView = <Message>(
-  {
-    attributes,
-    className,
-    label,
-    extra = [],
-  }: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      ...attributes,
-      h.Class(`menu-close menu-back ${className}`),
-      h.AriaLabel(label),
-    ],
-    [faceView(BACK_ICON, 'menu-back-icon', h), ...extra],
-  )
+export const backButtonView: {
+  <Message>(
+    h: HtmlBuilder<Message>,
+  ): (
+    self: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
+  ) => Html
+  <Message>(
+    self: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
+    h: HtmlBuilder<Message>,
+  ): Html
+} = Function.dual(
+  2,
+  <Message>(
+    {
+      attributes,
+      className,
+      label,
+      extra = [],
+    }: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
+    h: HtmlBuilder<Message>,
+  ): Html =>
+    h.button(
+      [
+        h.Type('button'),
+        ...attributes,
+        h.Class(`menu-close menu-back ${className}`),
+        h.AriaLabel(label),
+      ],
+      [faceView(BACK_ICON, 'menu-back-icon', h), ...extra],
+    ),
+)
 
 const faceView = <Message>(
   icon: string,

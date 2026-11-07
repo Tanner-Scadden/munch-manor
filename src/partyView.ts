@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -76,14 +76,25 @@ export const isLeadArmed = (model: Model): boolean =>
   Option.isNone(maybeLeadLyingOf(model))
 
 // NOTE: the lead's body: on its feet as `standing` draws it, or lying.
-export const leadBodyShapes = (
-  model: Model,
-  standing: () => ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> =>
-  Option.match(maybeLeadLyingOf(model), {
-    onNone: standing,
-    onSome: lying => lyingShapes(model, lying),
-  })
+export const leadBodyShapes: {
+  (
+    standing: () => ReadonlyArray<Canvas.Shape>,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (
+    model: Model,
+    standing: () => ReadonlyArray<Canvas.Shape>,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (
+    model: Model,
+    standing: () => ReadonlyArray<Canvas.Shape>,
+  ): ReadonlyArray<Canvas.Shape> =>
+    Option.match(maybeLeadLyingOf(model), {
+      onNone: standing,
+      onSome: lying => lyingShapes(model, lying),
+    }),
+)
 
 // TEAMMATES
 
@@ -135,8 +146,12 @@ export const mateShadowShapes = (
 
 // NOTE: the pixels a seat's hat stands over its head, from the look it
 // wears (a teammate's from the lobby), for the marks drawn over it.
-export const seatHatRiseOf = (model: Model, slot: PlayerSlot): number =>
-  hatRiseOf(lookOfSeat(model, slot))
+export const seatHatRiseOf: {
+  (slot: PlayerSlot): (model: Model) => number
+  (model: Model, slot: PlayerSlot): number
+} = Function.dual(2, (model: Model, slot: PlayerSlot): number =>
+  hatRiseOf(lookOfSeat(model, slot)),
+)
 
 const mateBodyShapes = ({
   model,
@@ -375,11 +390,10 @@ const MEDIC_SHAKE_MS = 90
 export const NAME_LIFT_CALLING_PX =
   MEDIC_BUBBLE_TIP_LIFT_PX + MEDIC_BUBBLE_HEIGHT + MEDIC_POP_PX
 
-export const medicBubbleShape = (
-  x: number,
-  y: number,
-  callMs: number,
-): Canvas.Shape => {
+export const medicBubbleShape: {
+  (y: number, callMs: number): (x: number) => Canvas.Shape
+  (x: number, y: number, callMs: number): Canvas.Shape
+} = Function.dual(3, (x: number, y: number, callMs: number): Canvas.Shape => {
   const isPopping = callMs < MEDIC_POP_MS
   const shake = isPopping
     ? 0
@@ -392,7 +406,7 @@ export const medicBubbleShape = (
       (isPopping ? MEDIC_POP_PX : 0),
     MEDIC_BUBBLE,
   )
-}
+})
 
 // NOTE: over every player's head in co-op: their seat's mark while they
 // stand; while they are down, the bleed bar and the revive icon. A
@@ -430,37 +444,44 @@ const seatMarkShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
       })
     : []
 
-export const mateOverheadShapes = (
-  model: Model,
-  mates: ReadonlyArray<MateModel>,
-): ReadonlyArray<Canvas.Shape> =>
-  isCoop(model)
-    ? [
-        ...Array.flatMap(mates, ({ model: mate, seat }) =>
-          isStanding(seat)
-            ? [
-                ...playerFlashShapes(focusOf(mate).player),
-                ...reloadBarShapes(
-                  focusOf(mate).player,
-                  hatRiseOf(mate.appearance),
-                ),
-              ]
-            : [],
-        ),
-        ...seatMarkShapes(model),
-      ]
-    : []
+export const mateOverheadShapes: {
+  (
+    mates: ReadonlyArray<MateModel>,
+  ): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, mates: ReadonlyArray<MateModel>): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (
+    model: Model,
+    mates: ReadonlyArray<MateModel>,
+  ): ReadonlyArray<Canvas.Shape> =>
+    isCoop(model)
+      ? [
+          ...Array.flatMap(mates, ({ model: mate, seat }) =>
+            isStanding(seat)
+              ? [
+                  ...playerFlashShapes(focusOf(mate).player),
+                  ...reloadBarShapes(
+                    focusOf(mate).player,
+                    hatRiseOf(mate.appearance),
+                  ),
+                ]
+              : [],
+          ),
+          ...seatMarkShapes(model),
+        ]
+      : [],
+)
 
 // NOTE: every player, the lead too, as their own seat's Model, for the end
 // card's crew: each wears their own look, as in the world.
 export const seatModelsOf = (
   model: Model,
-): ReadonlyArray<Readonly<{ slot: PlayerSlot; model: Model }>> => {
-  return Array.map(playersOf(model), ({ seat: { slot } }) => ({
+): ReadonlyArray<Readonly<{ slot: PlayerSlot; model: Model }>> =>
+  Array.map(playersOf(model), ({ seat: { slot } }) => ({
     slot,
     model: modifyFields(
       withWorld(model, world => focusSeat(world, slot)),
       { appearance: () => lookOfSeat(model, slot) },
     ),
   }))
-}

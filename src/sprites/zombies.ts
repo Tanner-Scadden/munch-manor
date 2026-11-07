@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 
 import type { ZombieKind } from '../model'
 import {
@@ -222,13 +222,16 @@ export const ZOMBIE_SPRITES: Readonly<Record<ZombieKind, ZombieSprites>> = {
   }),
 }
 
-export const wornFramesAt = (kind: ZombieKind, stage: number): WornFrames => {
+export const wornFramesAt: {
+  (stage: number): (kind: ZombieKind) => WornFrames
+  (kind: ZombieKind, stage: number): WornFrames
+} = Function.dual(2, (kind: ZombieKind, stage: number): WornFrames => {
   const { stages } = ZOMBIE_SPRITES[kind]
   return Option.getOrElse(
     Array.get(stages, Math.min(stage, stages.length - 1)),
     () => Array.headNonEmpty(stages),
   )
-}
+})
 
 export const BOSS_ICON = ZOMBIE_SPRITES.Boss.icon
 
@@ -308,39 +311,58 @@ const NO_FUSE: Readonly<Record<Facing, Sprite>> = { Left: [], Right: [] }
 // NOTE: the fuse is one prebuilt image for each length and walk frame, laid
 // over the Kaboomer's sprite in the same frame of reference, so it sways and
 // mirrors with him.
-export const kaboomerFuseSprite = (
-  length: number,
-  frameIndex: number,
-  facing: Facing,
-): Sprite =>
-  pipe(
-    Array.get(FUSE_SPRITES, length),
-    Option.flatMap(frames => Array.get(frames, frameIndex % WALK_SWAYS.length)),
-    Option.getOrElse(() => NO_FUSE),
-  )[facing]
+export const kaboomerFuseSprite: {
+  (frameIndex: number, facing: Facing): (length: number) => Sprite
+  (length: number, frameIndex: number, facing: Facing): Sprite
+} = Function.dual(
+  3,
+  (length: number, frameIndex: number, facing: Facing): Sprite =>
+    pipe(
+      Array.get(FUSE_SPRITES, length),
+      Option.flatMap(frames =>
+        Array.get(frames, frameIndex % WALK_SWAYS.length),
+      ),
+      Option.getOrElse(() => NO_FUSE),
+    )[facing],
+)
 
-export const kaboomerFuseTip = (
-  length: number,
-  frameIndex: number,
-  facing: Facing,
-): Readonly<{ x: number; y: number }> => {
-  const cell = fuseCell(frameIndex, Math.max(0, length - 1))
-  const x = cell.x - EXPLODER_ANCHOR_X
-  return {
-    x: facing === 'Right' ? x : -x - 1,
-    y: cell.y - EXPLODER_FRAME_HEIGHT - FUSE_HEADROOM,
-  }
-}
+export const kaboomerFuseTip: {
+  (
+    frameIndex: number,
+    facing: Facing,
+  ): (length: number) => Readonly<{ x: number; y: number }>
+  (
+    length: number,
+    frameIndex: number,
+    facing: Facing,
+  ): Readonly<{ x: number; y: number }>
+} = Function.dual(
+  3,
+  (
+    length: number,
+    frameIndex: number,
+    facing: Facing,
+  ): Readonly<{ x: number; y: number }> => {
+    const cell = fuseCell(frameIndex, Math.max(0, length - 1))
+    const x = cell.x - EXPLODER_ANCHOR_X
+    return {
+      x: facing === 'Right' ? x : -x - 1,
+      y: cell.y - EXPLODER_FRAME_HEIGHT - FUSE_HEADROOM,
+    }
+  },
+)
 
 // NOTE: a zombie walking outside the room, on the new zombie card or in the
 // title parade, with its props: the Kaboomer carries his fuse at full length.
-export const showcaseWalk = (
-  kind: ZombieKind,
-  stride: number,
-  facing: Facing,
-): Sprite => [
-  ...frameAt(ZOMBIE_SPRITES[kind].walk, stride).Normal[facing],
-  ...(kind === 'Exploder'
-    ? kaboomerFuseSprite(KABOOMER_FUSE_MAX, stride, facing)
-    : []),
-]
+export const showcaseWalk: {
+  (stride: number, facing: Facing): (kind: ZombieKind) => Sprite
+  (kind: ZombieKind, stride: number, facing: Facing): Sprite
+} = Function.dual(
+  3,
+  (kind: ZombieKind, stride: number, facing: Facing): Sprite => [
+    ...frameAt(ZOMBIE_SPRITES[kind].walk, stride).Normal[facing],
+    ...(kind === 'Exploder'
+      ? kaboomerFuseSprite(KABOOMER_FUSE_MAX, stride, facing)
+      : []),
+  ],
+)

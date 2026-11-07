@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Function } from 'effect'
 
 import { type Level, isInYardAt } from './arena'
 import type { Vector } from './worldSchema'
@@ -17,23 +17,29 @@ const KITCHEN_ROOM_ID = 'Kitchen'
 
 // NOTE: on a kitchen tile: inside the kitchen's room while its exit is
 // open, and not out in the yard beside it.
-export const isInKitchenAt = (level: Level, point: Vector): boolean =>
-  Array.some(
-    level.rooms,
-    ({ id, box, isOpen }) =>
-      id === KITCHEN_ROOM_ID &&
-      isOpen &&
-      point.x >= box.left &&
-      point.x < box.right &&
-      point.y >= box.top &&
-      point.y < box.bottom,
-  ) && !isInYardAt(level, point)
+export const isInKitchenAt: {
+  (point: Vector): (level: Level) => boolean
+  (level: Level, point: Vector): boolean
+} = Function.dual(
+  2,
+  (level: Level, point: Vector): boolean =>
+    Array.some(
+      level.rooms,
+      ({ id, box, isOpen }) =>
+        id === KITCHEN_ROOM_ID &&
+        isOpen &&
+        point.x >= box.left &&
+        point.x < box.right &&
+        point.y >= box.top &&
+        point.y < box.bottom,
+    ) && !isInYardAt(level, point),
+)
 
 // NOTE: what a kill at `point` pays before the killer's calling and the
 // run's modifiers have their say.
-export const kitchenBounty = (
-  level: Level,
-  point: Vector,
-  bounty: number,
-): number =>
-  isInKitchenAt(level, point) ? Math.round(bounty * KITCHEN_PAY_SCALE) : bounty
+export const kitchenBounty: {
+  (point: Vector, bounty: number): (level: Level) => number
+  (level: Level, point: Vector, bounty: number): number
+} = Function.dual(3, (level: Level, point: Vector, bounty: number): number =>
+  isInKitchenAt(level, point) ? Math.round(bounty * KITCHEN_PAY_SCALE) : bounty,
+)

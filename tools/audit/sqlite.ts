@@ -9,13 +9,13 @@
 //    Every reload after that still reads one whole, current save.
 // Run it through the heavy guard:
 //   BASE=http://localhost:4173/ bun run heavy -- bun tools/audit/sqlite.ts
-import { Schema } from 'effect'
+import { Array, Clock, Config, Console, Effect, Schema, String } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { encodeJson } from '../json'
-import { GAME, launch, nowMs, wait } from './lib'
+import { GAME, awaitGame, openBrowser, runAudit, wait } from './lib'
+import { attempt } from './page'
 
-const BASE = process.env['BASE'] ?? GAME
 const SAVE_KEY = 'munch-manor:save'
 
 const legacySave = {
@@ -46,33 +46,6 @@ const legacySave = {
   difficulty: { chosen: 'Normal', card: 'Seen', nightmare: 'Locked' },
 }
 
-const failures: Array<string> = []
-const check = (isOk: boolean, label: string) => {
-  console.log(`${isOk ? 'ok  ' : 'FAIL'} ${label}`)
-  if (!isOk) {
-    failures.push(label)
-  }
-}
-
-const browser = await launch()
-const context = await browser.newContext({
-  viewport: { width: 1280, height: 720 },
-})
-const errors: Array<string> = []
-const watch = (page: Page, name: string) => {
-  page.on('pageerror', error => errors.push(`${name}: ${error.message}`))
-  page.on('response', response => {
-    if (response.status() >= 400 && !response.url().endsWith('favicon.ico')) {
-      errors.push(`${name}: ${response.status()} ${response.url()}`)
-    }
-  })
-}
-
-const awaitGame = (page: Page) =>
-  page.waitForFunction(() => document.getElementById('splash') === null, {
-    timeout: 45_000,
-  })
-
 // NOTE: the gear on the home menu (#home-settings) opens the Profile on its
 // Settings tab, a list named "Game settings" of toggle buttons named by
 // their setting, with aria-pressed. It is opened once per page load.
@@ -82,137 +55,219 @@ const settingsList = (page: Page) =>
 const toggle = (page: Page, label: string) =>
   settingsList(page).getByRole('button', { name: label, exact: true })
 
-const openSettings = async (page: Page) => {
-  if (!(await settingsList(page).isVisible())) {
-    await page.click('#home-settings')
-    await settingsList(page).waitFor()
-  }
-}
+const openSettings = (page: Page) =>
+  Effect.gen(function* () {
+    const isOpen = yield* attempt(() => settingsList(page).isVisible())
+    if (!isOpen) {
+      yield* attempt(() => page.click('#home-settings'))
+      yield* attempt(() => settingsList(page).waitFor())
+    }
+  })
 
-const setting = async (page: Page, label: string) => {
-  await openSettings(page)
-  return toggle(page, label).getAttribute('aria-pressed')
-}
+const setting = (page: Page, label: string) =>
+  Effect.andThen(
+    openSettings(page),
+    attempt(() => toggle(page, label).getAttribute('aria-pressed')),
+  )
 
-const flip = async (page: Page, label: string) => {
-  await openSettings(page)
-  await toggle(page, label).click()
-}
+const flip = (page: Page, label: string) =>
+  Effect.andThen(
+    openSettings(page),
+    attempt(() => toggle(page, label).click()),
+  )
 
-const isMuted = async (page: Page) =>
-  (await setting(page, 'Sound')) === 'false' ? 'true' : 'false'
+const isMuted = (page: Page) =>
+  Effect.map(setting(page, 'Sound'), pressed =>
+    pressed === 'false' ? 'true' : 'false',
+  )
 const isMusicOn = (page: Page) => setting(page, 'Music')
 
 const legacyInStorage = (page: Page) =>
-  page.evaluate(key => localStorage.getItem(key), SAVE_KEY)
+  attempt(() => page.evaluate(key => localStorage.getItem(key), SAVE_KEY))
 
 const opfsFiles = (page: Page) =>
-  page.evaluate(async () => {
-    const found: Array<string> = []
-    const walk = async (dir: FileSystemDirectoryHandle, path: string) => {
-      for await (const [name, handle] of dir.entries()) {
-        if (handle instanceof FileSystemDirectoryHandle) {
-          await walk(handle, `${path}${name}/`)
-        } else {
-          found.push(`${path}${name}`)
+  attempt(() =>
+    page.evaluate(
+      // NOTE: runs in the page, where OPFS answers only by promises.
+      // @effect-diagnostics-next-line asyncFunction:off
+      async () => {
+        const found: Array<string> = []
+        // NOTE: runs in the page, where OPFS answers only by promises.
+        // @effect-diagnostics-next-line asyncFunction:off
+        const walk = async (dir: FileSystemDirectoryHandle, path: string) => {
+          for await (const [name, handle] of dir.entries()) {
+            if (handle instanceof FileSystemDirectoryHandle) {
+              await walk(handle, `${path}${name}/`)
+            } else {
+              found.push(`${path}${name}`)
+            }
+          }
         }
-      }
+        await walk(await navigator.storage.getDirectory(), '/')
+        return found
+      },
+    ),
+  )
+
+const both = <E>(
+  first: Effect.Effect<boolean, E>,
+  second: Effect.Effect<boolean, E>,
+) =>
+  Effect.flatMap(first, isFirst => (isFirst ? second : Effect.succeed(false)))
+
+runAudit(
+  Effect.gen(function* () {
+    const base = yield* Config.String('BASE').pipe(Config.withDefault(GAME))
+    const failures: Array<string> = []
+    const check = (isOk: boolean, label: string) =>
+      Effect.andThen(
+        Console.log(`${isOk ? 'ok  ' : 'FAIL'} ${label}`),
+        Effect.sync(() => {
+          if (!isOk) {
+            failures.push(label)
+          }
+        }),
+      )
+
+    const browser = yield* openBrowser
+    const context = yield* attempt(() =>
+      browser.newContext({
+        viewport: { width: 1280, height: 720 },
+      }),
+    )
+    const errors: Array<string> = []
+    const watch = (page: Page, name: string) => {
+      page.on('pageerror', error => errors.push(`${name}: ${error.message}`))
+      page.on('response', response => {
+        if (
+          response.status() >= 400 &&
+          !String.endsWith('favicon.ico')(response.url())
+        ) {
+          errors.push(`${name}: ${response.status()} ${response.url()}`)
+        }
+      })
     }
-    await walk(await navigator.storage.getDirectory(), '/')
-    return found
-  })
 
-const page = await context.newPage()
-watch(page, 'tab 1')
-await page.goto(new URL('version.json', BASE).href)
-await page.evaluate(([key, json]) => localStorage.setItem(key, json), [
-  SAVE_KEY,
-  encodeJson(Schema.Json)(legacySave),
-] as const)
+    const page = yield* attempt(() => context.newPage())
+    watch(page, 'tab 1')
+    yield* attempt(() => page.goto(new URL('version.json', base).href))
+    const legacyJson = encodeJson(Schema.Json)(legacySave)
+    yield* attempt(() =>
+      page.evaluate(([key, json]) => localStorage.setItem(key, json), [
+        SAVE_KEY,
+        legacyJson,
+      ] as const),
+    )
 
-const started = nowMs()
-await page.goto(BASE)
-await awaitGame(page)
-console.log(`     the first load took ${nowMs() - started} ms`)
-await wait(300)
-check(
-  (await isMuted(page)) === 'true',
-  'the localStorage save is imported on the first load',
-)
-const files = await opfsFiles(page)
-check(
-  files.some(file => file.startsWith('/.munch-manor/')),
-  `the database lives in OPFS (${files.length} files under /.munch-manor/)`,
-)
+    const started = yield* Clock.currentTimeMillis
+    yield* attempt(() => page.goto(base))
+    yield* awaitGame(page)
+    const loaded = yield* Clock.currentTimeMillis
+    yield* Console.log(`     the first load took ${loaded - started} ms`)
+    yield* wait(300)
+    const imported = yield* isMuted(page)
+    yield* check(
+      imported === 'true',
+      'the localStorage save is imported on the first load',
+    )
+    const files = yield* opfsFiles(page)
+    yield* check(
+      Array.some(files, file => String.startsWith('/.munch-manor/')(file)),
+      `the database lives in OPFS (${files.length} files under /.munch-manor/)`,
+    )
 
-await page.evaluate(key => localStorage.removeItem(key), SAVE_KEY)
-await flip(page, 'Sound')
-await flip(page, 'Music')
-await wait(600)
-check((await isMuted(page)) === 'false', 'the sound goes back on')
-check((await isMusicOn(page)) === 'false', 'the music goes off')
-check(
-  (await legacyInStorage(page)) === null,
-  'the change is not written to localStorage',
-)
+    yield* attempt(() =>
+      page.evaluate(key => localStorage.removeItem(key), SAVE_KEY),
+    )
+    yield* flip(page, 'Sound')
+    yield* flip(page, 'Music')
+    yield* wait(600)
+    const soundBack = yield* isMuted(page)
+    yield* check(soundBack === 'false', 'the sound goes back on')
+    const musicOff = yield* isMusicOn(page)
+    yield* check(musicOff === 'false', 'the music goes off')
+    const untouched = yield* legacyInStorage(page)
+    yield* check(
+      untouched === null,
+      'the change is not written to localStorage',
+    )
 
-await page.reload()
-await awaitGame(page)
-await wait(300)
-check(
-  (await isMuted(page)) === 'false' && (await isMusicOn(page)) === 'false',
-  'after a reload both settings came back from SQLite',
-)
+    yield* attempt(() => page.reload())
+    yield* awaitGame(page)
+    yield* wait(300)
+    const cameBack = yield* both(
+      Effect.map(isMuted(page), muted => muted === 'false'),
+      Effect.map(isMusicOn(page), music => music === 'false'),
+    )
+    yield* check(cameBack, 'after a reload both settings came back from SQLite')
 
-const second = await context.newPage()
-watch(second, 'tab 2')
-await second.goto(BASE)
-await awaitGame(second)
-await wait(300)
-check(
-  (await isMusicOn(second)) === 'false',
-  'a second tab reads the save through the leader',
-)
-await flip(second, 'Sound')
-await wait(600)
-check((await isMuted(second)) === 'true', 'the second tab mutes')
+    const second = yield* attempt(() => context.newPage())
+    watch(second, 'tab 2')
+    yield* attempt(() => second.goto(base))
+    yield* awaitGame(second)
+    yield* wait(300)
+    const secondMusic = yield* isMusicOn(second)
+    yield* check(
+      secondMusic === 'false',
+      'a second tab reads the save through the leader',
+    )
+    yield* flip(second, 'Sound')
+    yield* wait(600)
+    const secondMuted = yield* isMuted(second)
+    yield* check(secondMuted === 'true', 'the second tab mutes')
 
-await page.close()
-await wait(1500)
-await flip(second, 'Music')
-await wait(800)
-check(
-  (await isMusicOn(second)) === 'true',
-  'the second tab turns the music on after the leader closed',
-)
+    yield* attempt(() => page.close())
+    yield* wait(1500)
+    yield* flip(second, 'Music')
+    yield* wait(800)
+    const musicOn = yield* isMusicOn(second)
+    yield* check(
+      musicOn === 'true',
+      'the second tab turns the music on after the leader closed',
+    )
 
-await second.reload()
-await awaitGame(second)
-await wait(300)
-check(
-  (await isMuted(second)) === 'true' && (await isMusicOn(second)) === 'true',
-  'after the leader closed, a reload reads both changes from the second tab',
-)
+    yield* attempt(() => second.reload())
+    yield* awaitGame(second)
+    yield* wait(300)
+    const bothChanges = yield* both(
+      Effect.map(isMuted(second), muted => muted === 'true'),
+      Effect.map(isMusicOn(second), music => music === 'true'),
+    )
+    yield* check(
+      bothChanges,
+      'after the leader closed, a reload reads both changes from the second tab',
+    )
 
-const third = await context.newPage()
-watch(third, 'tab 3')
-await Promise.all([third.goto(BASE), second.reload()])
-await Promise.all([awaitGame(third), awaitGame(second)])
-await wait(300)
-check(
-  (await isMuted(third)) === 'true' && (await isMuted(second)) === 'true',
-  'two tabs loading at once both read the whole save',
-)
-check(
-  (await legacyInStorage(third)) === null,
-  'localStorage was never written while OPFS worked',
-)
-check(
-  errors.length === 0,
-  `no page errors${errors.length > 0 ? `: ${errors.join(' | ')}` : ''}`,
-)
+    const third = yield* attempt(() => context.newPage())
+    watch(third, 'tab 3')
+    yield* Effect.all(
+      [attempt(() => third.goto(base)), attempt(() => second.reload())],
+      { concurrency: 'unbounded' },
+    )
+    yield* Effect.all([awaitGame(third), awaitGame(second)], {
+      concurrency: 'unbounded',
+    })
+    yield* wait(300)
+    const wholeSave = yield* both(
+      Effect.map(isMuted(third), muted => muted === 'true'),
+      Effect.map(isMuted(second), muted => muted === 'true'),
+    )
+    yield* check(wholeSave, 'two tabs loading at once both read the whole save')
+    const neverWritten = yield* legacyInStorage(third)
+    yield* check(
+      neverWritten === null,
+      'localStorage was never written while OPFS worked',
+    )
+    yield* check(
+      errors.length === 0,
+      `no page errors${errors.length > 0 ? `: ${Array.join(errors, ' | ')}` : ''}`,
+    )
 
-await browser.close()
-if (failures.length > 0) {
-  process.exit(1)
-}
+    yield* attempt(() => browser.close())
+    if (failures.length > 0) {
+      yield* Effect.sync(() => {
+        process.exitCode = 1
+      })
+    }
+  }),
+)

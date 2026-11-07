@@ -1,7 +1,7 @@
 import { Effect, pipe } from 'effect'
 
 import { playMusic } from './audio'
-import { makeCommand } from './definition'
+import { ApplicationDefinition } from './definition'
 import { Message } from './message'
 import { type Model, Phase, Round } from './model'
 import { MusicLevel, MusicMood, MusicStinger } from './music'
@@ -15,7 +15,7 @@ import { FINAL_WAVE } from './wavePlans'
 
 // COMMAND
 
-export const CueMusic = makeCommand('CueMusic', {
+export const CueMusic = ApplicationDefinition.makeCommand('CueMusic', {
   args: { mood: MusicMood, level: MusicLevel, stinger: MusicStinger },
   messages: [Message.CompletedCueMusic, Message.FailedCueMusic],
   handler: function* () {

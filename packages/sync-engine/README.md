@@ -38,13 +38,13 @@ import {
 export const Counted = defineMutation({
   name: 'Counted',
   version: 1,
-  args: Schema.Struct({ kind: Schema.String, count: Schema.Number }),
+  args: Schema.Struct({ kind: Schema.String, count: Schema.Finite }),
   scopes: ['notes'],
   writer: 'Owner',
   apply: ({ kind, count }, context) =>
     Effect.gen(function* () {
       if (count > 100) {
-        return yield* new MutationRejected({ reason: 'Too many at once' })
+        return yield* MutationRejected.make({ reason: 'Too many at once' })
       }
       const sql = yield* SqlClient.SqlClient
       yield* sql`INSERT INTO ${context.table('tally')} (kind, count)
@@ -111,19 +111,19 @@ const sync =
   })
 ```
 
-| `Replica`         | What it does                                                                                              |
-| ----------------- | --------------------------------------------------------------------------------------------------------- |
-| `run(m, args)`    | Writes the outbox row and applies the mutation to the view in one transaction, returning its id           |
-| `receive(msg)`    | Applies one server message and says what happened: `Applied`, `Resync`, `Confirmed`, `Rejected`, `Failed` |
-| `pending`         | The outbox, oldest first, as protocol envelopes                                                           |
-| `confirmedSeq`    | The last seq the confirmed tables hold                                                                    |
-| `switchScope(id)` | Drops this kind's tables and outbox and points it at another scope, as linking a device does              |
-| `remoteChanges`   | Fires on every commit that applied something from the server, on every tab                                |
-| `localChanges`    | Fires on every commit that changed the outbox, on every tab                                               |
-| `status`          | The scope's `ScopeStatus` now and on every change, on every tab                                           |
-| `currentStatus`   | The `ScopeStatus` now                                                                                     |
-| `awaitSettled(id)`| Waits until a mutation this device made is `Confirmed { seq }` or `Rejected { code, reason }`             |
-| `startSession(s)` | Called by `startSync` as a session starts (`Leading` or `Reconnecting`); not for apps                     |
+| `Replica`          | What it does                                                                                              |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| `run(m, args)`     | Writes the outbox row and applies the mutation to the view in one transaction, returning its id           |
+| `receive(msg)`     | Applies one server message and says what happened: `Applied`, `Resync`, `Confirmed`, `Rejected`, `Failed` |
+| `pending`          | The outbox, oldest first, as protocol envelopes                                                           |
+| `confirmedSeq`     | The last seq the confirmed tables hold                                                                    |
+| `switchScope(id)`  | Drops this kind's tables and outbox and points it at another scope, as linking a device does              |
+| `remoteChanges`    | Fires on every commit that applied something from the server, on every tab                                |
+| `localChanges`     | Fires on every commit that changed the outbox, on every tab                                               |
+| `status`           | The scope's `ScopeStatus` now and on every change, on every tab                                           |
+| `currentStatus`    | The `ScopeStatus` now                                                                                     |
+| `awaitSettled(id)` | Waits until a mutation this device made is `Confirmed { seq }` or `Rejected { code, reason }`             |
+| `startSession(s)`  | Called by `startSync` as a session starts (`Leading` or `Reconnecting`); not for apps                     |
 
 **Scope status and connection health are separate.** `ScopeStatus` says how far the replica has got with its data: `Idle` (nothing from the server, not loading), `Loading` (joining for the first time), `Ready { seq, fresh }`, or `Failed { reason }` (the server refused the scope, with `Forbidden`, `VersionMismatch`, or `BadMessage`, before it was ever ready). Rows the confirmed tables hold from an earlier session open as `Ready { fresh: false }`, so an app can show them offline; the first snapshot or deltas this session makes it `fresh: true`. Once ready, a replica stays ready: a dropped connection or a refusal shows in `Sync.status` (`Following`, `Connecting`, `Online`, `Offline`), not here. A tab that takes the lead marks its rows not fresh until its own first sync. The status lives in `sync_status`, so follower tabs read the one the leader writes.
 

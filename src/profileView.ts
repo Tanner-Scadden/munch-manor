@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, String, pipe } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { Dialog, Tabs } from '@foldkit/ui'
@@ -298,7 +298,7 @@ const devicesView = (model: Model, h: ApplicationViewBuilder): Html => {
               h.DataAttribute('kind', kind),
               h.Style({ '--i': `${index}` }),
               h.AriaLabel(
-                index === 0 ? `This ${kind.toLowerCase()}` : 'Linked',
+                index === 0 ? `This ${String.toLowerCase(kind)}` : 'Linked',
               ),
             ],
             [
@@ -948,7 +948,10 @@ const panelView = (
   rankPlateView(model, h),
 ]
 
-export const profileView = (model: Model, h: ApplicationViewBuilder): Html =>
+export const profileView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(
     {
       dialog: model.profileDialog,
@@ -963,4 +966,5 @@ export const profileView = (model: Model, h: ApplicationViewBuilder): Html =>
       binding: ProfileDialogBinding,
     },
     h,
-  )
+  ),
+)

@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Box, levelOf } from './arena'
@@ -108,10 +108,10 @@ const cookPriceFor = (world: World, slot: PlayerSlot): number => {
 const canCook = (player: Player): boolean =>
   !isWieldingMelee(player) && isCookable(heldGun(player.arsenal).kind)
 
-export const stoveOffers = (
-  world: World,
-  slot: PlayerSlot,
-): ReadonlyArray<Offer> =>
+export const stoveOffers: {
+  (slot: PlayerSlot): (world: World) => ReadonlyArray<Offer>
+  (world: World, slot: PlayerSlot): ReadonlyArray<Offer>
+} = Function.dual(2, (world: World, slot: PlayerSlot): ReadonlyArray<Offer> =>
   Option.match(
     Option.filter(
       Option.zipWith(maybeStovePerk(world), stoveBoxOf(world), (_, box) => box),
@@ -133,7 +133,8 @@ export const stoveOffers = (
         },
       ],
     },
-  )
+  ),
+)
 
 // THE COOK
 
@@ -151,31 +152,33 @@ const cooked = (player: Player, perk: GunPerk): Player =>
       }),
   })
 
-export const cookGun = (
-  world: World,
-  slot: PlayerSlot,
-  price: number,
-): Option.Option<World> =>
-  Option.flatMap(maybeStovePerk(world), perk => {
-    const { player, wallet } = seatStateAt(world, slot)
-    if (
-      hasCookedThisBreak(world, slot) ||
-      !canCook(player) ||
-      wallet.balance < price
-    ) {
-      return Option.none()
-    }
-    const wave = world.stove.wave
-    return Option.some(
-      modifyFields(spendOn(world, slot, price), {
-        seats: atSeat(slot, {
-          player: current => cooked(current, perk),
-          cooking: cooking =>
-            modifyFields(cooking, {
-              cooks: cooks => cooks + 1,
-              lastWave: () => wave,
-            }),
+export const cookGun: {
+  (slot: PlayerSlot, price: number): (world: World) => Option.Option<World>
+  (world: World, slot: PlayerSlot, price: number): Option.Option<World>
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, price: number): Option.Option<World> =>
+    Option.flatMap(maybeStovePerk(world), perk => {
+      const { player, wallet } = seatStateAt(world, slot)
+      if (
+        hasCookedThisBreak(world, slot) ||
+        !canCook(player) ||
+        wallet.balance < price
+      ) {
+        return Option.none()
+      }
+      const wave = world.stove.wave
+      return Option.some(
+        modifyFields(spendOn(world, slot, price), {
+          seats: atSeat(slot, {
+            player: current => cooked(current, perk),
+            cooking: cooking =>
+              modifyFields(cooking, {
+                cooks: cooks => cooks + 1,
+                lastWave: () => wave,
+              }),
+          }),
         }),
-      }),
-    )
-  })
+      )
+    }),
+)

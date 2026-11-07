@@ -17,21 +17,33 @@
 //   bun run world:check
 
 import './globals'
-import { Option, Schema } from 'effect'
-import { HttpClientRequest } from 'effect/http'
+import {
+  Array,
+  Config,
+  Console,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Path,
+  Record,
+  Schema,
+  String,
+} from 'effect'
+import { FetchHttpClient, HttpClientRequest } from 'effect/http'
 import { modifyFields } from 'foldkit/struct'
-import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 import { PlayerInput } from '@munch/netcode'
 
 import { refreshIntent } from '../../src/frame'
 import { focusOf, modifySeat, seatCrew } from '../../src/party'
 import type { Intent } from '../../src/worldSchema'
 import { worldToJson } from '../../src/worldWire'
+import { encodeJson } from '../json'
 import { askWorkerd } from './askWorkerd'
+import { commandOutput, infraBinary, serveWorkerd } from './process'
 import { playFrame, startedRun } from './script'
 import {
   type PlayRequest,
@@ -41,10 +53,18 @@ import {
   playWorld,
 } from './worldPlay'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const root = resolve(here, '../..')
-const outdir = resolve(here, 'out')
+const here = import.meta.dirname
 const WORKERD_PORT = 8796
+
+class CheckFailed extends Schema.TaggedError<
+  CheckFailed,
+  { readonly brand: unique symbol }
+>()('CheckFailed', { message: Schema.String }) {}
+
+const rootOf = Effect.gen(function* () {
+  const path = yield* Path.Path
+  return path.resolve(here, '../..')
+})
 
 // NOTE: game modules a room must never carry: the client Model and its UI,
 // the views and art, the camera and raw input, audio, the store and sync,
@@ -87,165 +107,186 @@ const ALLOWED_PACKAGES: ReadonlyArray<RegExp> = [
   /node_modules\/foldkit\/dist\/(struct|schema)\//,
 ]
 
-const relativeOf = (path: string): string =>
-  path.startsWith(root) ? path.slice(root.length + 1) : path
+const relativeOf =
+  (root: string) =>
+  (path: string): string =>
+    String.startsWith(root)(path) ? String.slice(root.length + 1)(path) : path
 
-const bundle = async (): Promise<ReadonlyArray<string>> => {
-  mkdirSync(outdir, { recursive: true })
-  const result = await Bun.build({
-    entrypoints: [resolve(here, 'worldWorker.ts')],
-    outdir,
-    target: 'browser',
-    format: 'esm',
-    minify: false,
-    metafile: true,
-    plugins: [],
-    define: {},
+const bundle = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const root = yield* rootOf
+  const outdir = path.resolve(here, 'out')
+  yield* fs.makeDirectory(outdir, { recursive: true })
+  const result = yield* Effect.tryPromise({
+    try: () =>
+      Bun.build({
+        entrypoints: [path.resolve(here, 'worldWorker.ts')],
+        outdir,
+        target: 'browser',
+        format: 'esm',
+        minify: false,
+        metafile: true,
+        plugins: [],
+        define: {},
+      }),
+    catch: error =>
+      CheckFailed.make({
+        message: `the World did not bundle: ${globalThis.String(error)}`,
+      }),
   })
   if (!result.success || result.metafile === undefined) {
-    result.logs.forEach(log => console.error(log))
-    throw new Error('the World did not bundle')
+    yield* Effect.forEach(result.logs, log => Console.error(log))
+    return yield* CheckFailed.make({ message: 'the World did not bundle' })
   }
-  return Object.keys(result.metafile.inputs).map(path =>
-    relativeOf(resolve(root, path)),
+  return Array.map(Record.keys(result.metafile.inputs), input =>
+    relativeOf(root)(path.resolve(root, input)),
   )
-}
+})
 
 const problemsOf = (inputs: ReadonlyArray<string>): ReadonlyArray<string> =>
-  inputs.filter(path =>
-    path.includes('node_modules/')
-      ? !ALLOWED_PACKAGES.some(allowed => allowed.test(path))
-      : FORBIDDEN_GAME_MODULES.some(forbidden => forbidden.test(path)),
+  Array.filter(inputs, path =>
+    String.includes('node_modules/')(path)
+      ? !Array.some(ALLOWED_PACKAGES, allowed => allowed.test(path))
+      : Array.some(FORBIDDEN_GAME_MODULES, forbidden => forbidden.test(path)),
   )
 
-// NOTE: a binary from infra's packages, in this checkout or, from a
-// worktree with none installed, in the main one.
-const infraBinary = (name: string, override?: string): string | undefined => {
-  const commonDir = spawnSync(
-    'git',
-    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
-    { cwd: root, encoding: 'utf8' },
-  ).stdout.trim()
-  return [
-    override,
-    resolve(root, `infra/node_modules/.bin/${name}`),
-    commonDir === ''
-      ? undefined
-      : resolve(commonDir, `../infra/node_modules/.bin/${name}`),
-  ].find(path => path !== undefined && existsSync(path))
-}
-
-const workerdBinary = (): string | undefined =>
-  infraBinary('workerd', process.env['WORKERD'])
+// NOTE: a binary from infra's packages, or the run fails with `reason`.
+const infraBinaryOr = (
+  name: string,
+  override: Option.Option<string>,
+  reason: string,
+) =>
+  Effect.gen(function* () {
+    const root = yield* rootOf
+    const maybeBinary = yield* infraBinary({ root, name, override })
+    return yield* Effect.fromOption(maybeBinary).pipe(
+      Effect.mapError(() => CheckFailed.make({ message: reason })),
+    )
+  })
 
 // NOTE: every file of the repo infra's typecheck reads, by type or at run
 // time, from its own TypeScript and tsconfig.
-const infraTypeFiles = (): ReadonlyArray<string> => {
-  const binary = infraBinary('effect-tsgo')
-  if (binary === undefined) {
-    throw new Error('no effect-tsgo: run bun install in infra/')
-  }
-  const listed = spawnSync(binary, ['tsrs', '--noEmit', '--listFilesOnly'], {
-    cwd: resolve(root, 'infra'),
-    encoding: 'utf8',
-  })
-  if (listed.status !== 0) {
-    console.error(listed.stdout, listed.stderr)
-    throw new Error("infra's typecheck did not list its files")
-  }
-  return listed.stdout
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line !== '' && !line.includes('/node_modules/'))
-    .map(relativeOf)
-}
+const infraTypeFiles = Effect.gen(function* () {
+  const path = yield* Path.Path
+  const root = yield* rootOf
+  const binary = yield* infraBinaryOr(
+    'effect-tsgo',
+    Option.none(),
+    'no effect-tsgo: run bun install in infra/',
+  )
+  const listed = yield* commandOutput({
+    command: binary,
+    args: ['tsrs', '--noEmit', '--listFilesOnly'],
+    cwd: path.resolve(root, 'infra'),
+  }).pipe(
+    Effect.mapError(error =>
+      CheckFailed.make({
+        message: `infra's typecheck did not list its files: ${error.message}`,
+      }),
+    ),
+  )
+  return Array.map(
+    Array.filter(
+      Array.map(String.split('\n')(listed), line => String.trim(line)),
+      line => line !== '' && !String.includes('/node_modules/')(line),
+    ),
+    relativeOf(root),
+  )
+})
 
 const infraTypeProblemsOf = (
   files: ReadonlyArray<string>,
 ): ReadonlyArray<string> =>
-  files.filter(
+  Array.filter(
+    files,
     path =>
-      path.startsWith('src/') &&
-      !INFRA_OWN_MODULES.some(own => own.test(path)) &&
-      FORBIDDEN_GAME_MODULES.some(forbidden => forbidden.test(path)),
+      String.startsWith('src/')(path) &&
+      !Array.some(INFRA_OWN_MODULES, own => own.test(path)) &&
+      Array.some(FORBIDDEN_GAME_MODULES, forbidden => forbidden.test(path)),
   )
 
 // NOTE: the requests as JSON for the worker, which reads them back
 // (worldWorker.ts).
-const encodePlayRequest = Schema.encodeSync(
-  Schema.fromJsonString(
-    Schema.Struct({
-      world: Schema.String,
-      intents: Schema.Array(Schema.Tuple([Schema.Number, Schema.String])),
-      ticks: Schema.Number,
+const encodePlayRequest = encodeJson(
+  Schema.Struct({
+    world: Schema.String,
+    intents: Schema.Array(Schema.Tuple([Schema.Finite, Schema.String])),
+    ticks: Schema.Finite,
+  }),
+)
+const encodeRoomPlayRequest = encodeJson(
+  Schema.Struct({
+    slots: Schema.Array(Schema.Finite),
+    seed: Schema.Finite,
+    inputs: Schema.Array(Schema.Tuple([Schema.Finite, PlayerInput])),
+    ticks: Schema.Finite,
+  }),
+)
+
+// NOTE: a local workerd for this one request, gone once it answers.
+const playInWorkerd = (body: string, route: string) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const path = yield* Path.Path
+      const override = yield* Config.option(Config.String('WORKERD'))
+      const binary = yield* infraBinaryOr(
+        'workerd',
+        override,
+        'no workerd: run bun install in infra/, or set WORKERD',
+      )
+      yield* serveWorkerd({
+        binary,
+        config: path.resolve(here, 'worldWorkerd.capnp'),
+        cwd: here,
+      })
+      return yield* askWorkerd(
+        HttpClientRequest.post(`http://127.0.0.1:${WORKERD_PORT}${route}`).pipe(
+          HttpClientRequest.bodyText(body),
+        ),
+      )
     }),
-  ),
-)
-const encodeRoomPlayRequest = Schema.encodeSync(
-  Schema.fromJsonString(
-    Schema.Struct({
-      slots: Schema.Array(Schema.Number),
-      seed: Schema.Number,
-      inputs: Schema.Array(Schema.Tuple([Schema.Number, PlayerInput])),
-      ticks: Schema.Number,
-    }),
-  ),
-)
-
-const playInWorkerd = async (body: string, path = '/'): Promise<string> => {
-  const binary = workerdBinary()
-  if (binary === undefined) {
-    throw new Error('no workerd: run bun install in infra/, or set WORKERD')
-  }
-  const server = spawn(binary, ['serve', resolve(here, 'worldWorkerd.capnp')], {
-    cwd: here,
-    stdio: ['ignore', 'ignore', 'inherit'],
-  })
-  try {
-    return await askWorkerd(
-      HttpClientRequest.post(`http://127.0.0.1:${WORKERD_PORT}${path}`).pipe(
-        HttpClientRequest.bodyText(body),
-      ),
-    )
-  } finally {
-    server.kill()
-  }
-}
-
-const inputs = await bundle()
-const gameModules = inputs.filter(path => path.startsWith('src/'))
-const problems = problemsOf(inputs)
-console.log(
-  `The World's bundle: ${gameModules.length} game modules, ${inputs.length} in all.`,
-)
-if (problems.length > 0) {
-  console.error(
-    `It pulls in modules a room must not carry:\n  ${problems.join('\n  ')}`,
   )
-  process.exit(1)
-}
-console.log(
-  'No UI, art, audio, camera, input, store, sync, or netcode module in it.',
-)
 
-const typeFiles = infraTypeFiles()
-const typeProblems = infraTypeProblemsOf(typeFiles)
-console.log(
-  `Infra's typecheck: ${typeFiles.filter(path => path.startsWith('src/')).length} game modules, ${typeFiles.length} files of the repo in all.`,
-)
-if (typeProblems.length > 0) {
-  console.error(
-    `Its types reach modules a room must not carry (import the World's own types, not the client's):\n  ${typeProblems.join('\n  ')}`,
+const checkBundle = Effect.gen(function* () {
+  const inputs = yield* bundle
+  const gameModules = Array.filter(inputs, path =>
+    String.startsWith('src/')(path),
   )
-  process.exit(1)
-}
-console.log('No client module in its types either.')
+  const problems = problemsOf(inputs)
+  yield* Console.log(
+    `The World's bundle: ${gameModules.length} game modules, ${inputs.length} in all.`,
+  )
+  if (problems.length > 0) {
+    return yield* CheckFailed.make({
+      message: `It pulls in modules a room must not carry:\n  ${Array.join(problems, '\n  ')}`,
+    })
+  }
+  yield* Console.log(
+    'No UI, art, audio, camera, input, store, sync, or netcode module in it.',
+  )
+})
+
+const checkInfraTypes = Effect.gen(function* () {
+  const typeFiles = yield* infraTypeFiles
+  const typeProblems = infraTypeProblemsOf(typeFiles)
+  yield* Console.log(
+    `Infra's typecheck: ${Array.filter(typeFiles, path => String.startsWith('src/')(path)).length} game modules, ${typeFiles.length} files of the repo in all.`,
+  )
+  if (typeProblems.length > 0) {
+    return yield* CheckFailed.make({
+      message: `Its types reach modules a room must not carry (import the World's own types, not the client's):\n  ${Array.join(typeProblems, '\n  ')}`,
+    })
+  }
+  yield* Console.log('No client module in its types either.')
+})
 
 // NOTE: a World mid-wave, with zombies about, from the scripted player.
-const played = Array.from({ length: 900 }).reduce(
+const played = Array.reduce(
+  globalThis.Array.from({ length: 900 }),
+  startedRun(7, 'Campaign'),
   (model: ReturnType<typeof startedRun>, _, frame) =>
     playFrame(model, frame, 'Fixed60'),
-  startedRun(7, 'Campaign'),
 )
 const intended = refreshIntent(played)
 
@@ -275,39 +316,40 @@ const MATE_INTENTS: ReadonlyArray<Intent> = [
 
 const KNIFE_SEAT = 3
 
-const requestFor = (players: number): PlayRequest => ({
-  world: worldToJson(
-    modifySeat(seatCrew(intended, players), KNIFE_SEAT, {
-      player: player => modifyFields(player, { wield: () => 'Melee' }),
-    }),
-  ),
-  intents: [
-    [0, intentToJson(focusOf(intended).intent)],
-    ...MATE_INTENTS.slice(0, players - 1).map(
-      (intent, index) => [index + 1, intentToJson(intent)] as const,
+const requestFor = (players: number) =>
+  Effect.map(
+    worldToJson(
+      modifySeat(seatCrew(intended, players), KNIFE_SEAT, {
+        player: player => modifyFields(player, { wield: () => 'Melee' }),
+      }),
     ),
-  ],
-  ticks: 600,
-})
-
-const checkPlayers = async (players: number): Promise<void> => {
-  const request = requestFor(players)
-  const inWorkerd = await playInWorkerd(encodePlayRequest(request))
-  const inBun = playWorld(request)
-  if (inWorkerd !== inBun) {
-    console.error(
-      `workerd and Bun disagree after ${request.ticks} ticks with ${players} players.\n  workerd: ${inWorkerd.slice(0, 300)}`,
-    )
-    process.exit(1)
-  }
-  console.log(
-    `workerd plays ${request.ticks} ticks of the World with ${players} ${players === 1 ? 'player' : 'players'} exactly as Bun does.`,
+    (world): PlayRequest => ({
+      world,
+      intents: [
+        [0, intentToJson(focusOf(intended).intent)],
+        ...Array.map(
+          MATE_INTENTS.slice(0, players - 1),
+          (intent, index) => [index + 1, intentToJson(intent)] as const,
+        ),
+      ],
+      ticks: 600,
+    }),
   )
-}
 
-await checkPlayers(1)
-await checkPlayers(2)
-await checkPlayers(4)
+const checkPlayers = (players: number) =>
+  Effect.gen(function* () {
+    const request = yield* requestFor(players)
+    const inWorkerd = yield* playInWorkerd(encodePlayRequest(request), '/')
+    const inBun = yield* playWorld(request)
+    if (inWorkerd !== inBun) {
+      return yield* CheckFailed.make({
+        message: `workerd and Bun disagree after ${request.ticks} ticks with ${players} players.\n  workerd: ${String.slice(0, 300)(inWorkerd)}`,
+      })
+    }
+    yield* Console.log(
+      `workerd plays ${request.ticks} ticks of the World with ${players} ${players === 1 ? 'player' : 'players'} exactly as Bun does.`,
+    )
+  })
 
 // NOTE: a co-op room's World from its seats (src/roomWorld.ts): the lobby's
 // players walking and firing their own ways from the start of the run.
@@ -318,25 +360,41 @@ const ROOM_INPUTS: ReadonlyArray<RoomPlayRequest['inputs'][number]> = [
   [3, { moveX: 0, moveY: 0, aimX: -724, aimY: 724, buttons: 1, action: 0 }],
 ]
 
-const checkRoom = async (players: number): Promise<void> => {
-  const request: RoomPlayRequest = {
-    slots: ROOM_INPUTS.slice(0, players).map(([slot]) => slot),
-    seed: 11,
-    inputs: ROOM_INPUTS.slice(0, players),
-    ticks: 900,
-  }
-  const inWorkerd = await playInWorkerd(encodeRoomPlayRequest(request), '/room')
-  const inBun = playRoomWorld(request)
-  if (inWorkerd !== inBun) {
-    console.error(
-      `workerd and Bun disagree on a co-op room after ${request.ticks} ticks with ${players} players.\n  workerd: ${inWorkerd.slice(0, 300)}`,
+const checkRoom = (players: number) =>
+  Effect.gen(function* () {
+    const request: RoomPlayRequest = {
+      slots: Array.map(ROOM_INPUTS.slice(0, players), ([slot]) => slot),
+      seed: 11,
+      inputs: ROOM_INPUTS.slice(0, players),
+      ticks: 900,
+    }
+    const inWorkerd = yield* playInWorkerd(
+      encodeRoomPlayRequest(request),
+      '/room',
     )
-    process.exit(1)
-  }
-  console.log(
-    `workerd plays ${request.ticks} ticks of a co-op room with ${players} players exactly as Bun does.`,
-  )
-}
+    const inBun = yield* playRoomWorld(request)
+    if (inWorkerd !== inBun) {
+      return yield* CheckFailed.make({
+        message: `workerd and Bun disagree on a co-op room after ${request.ticks} ticks with ${players} players.\n  workerd: ${String.slice(0, 300)(inWorkerd)}`,
+      })
+    }
+    yield* Console.log(
+      `workerd plays ${request.ticks} ticks of a co-op room with ${players} players exactly as Bun does.`,
+    )
+  })
 
-await checkRoom(2)
-await checkRoom(4)
+const program = Effect.gen(function* () {
+  yield* checkBundle
+  yield* checkInfraTypes
+  yield* checkPlayers(1)
+  yield* checkPlayers(2)
+  yield* checkPlayers(4)
+  yield* checkRoom(2)
+  yield* checkRoom(4)
+})
+
+NodeRuntime.runMain(
+  program.pipe(
+    Effect.provide(Layer.merge(NodeServices.layer, FetchHttpClient.layer)),
+  ),
+)

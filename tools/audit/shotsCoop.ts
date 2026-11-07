@@ -10,22 +10,25 @@
 // screen, or a page that scrolls.
 //   TAG=after BASE=http://localhost:4174/ bun tools/audit/shotsCoop.ts
 // ONLY picks scenes, such as `ONLY=hub,lobby`, and VIEWPORTS picks screens.
+import { Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
-  SHOT_VIEWPORTS,
-  TAG,
   type Viewport,
+  auditTag,
+  closePage,
   deviceQuery,
   finish,
   harnessUrl,
   isPickedScene,
-  launch,
+  openBrowser,
   openPage,
   shot,
-  useHarness,
+  shotViewports,
   wait,
 } from './lib'
+import { attempt } from './page'
 
 const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
   { name: 'locked', query: '' },
@@ -65,84 +68,97 @@ const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
 
 const MIN_PHONE_TAP = 48
 
-const checkButtons = async (
+const checkButtons = (
   page: Page,
   viewport: Viewport,
   label: string,
   problems: Array<string>,
-) => {
-  const found = await page.evaluate(
-    ({ minTap, isPhone }) => {
-      // NOTE: the hero picker covers the lobby, so only its own buttons count.
-      const scope =
-        document.querySelector('.coop-calling-picker') ??
-        document.querySelector('.coop-name-picker') ??
-        document.querySelector('.coop') ??
-        document
-      const buttons = Array.from(scope.querySelectorAll('button'))
-      const lines: Array<string> = []
-      const scrolls =
-        document.scrollingElement !== null &&
-        (document.scrollingElement.scrollHeight > innerHeight + 1 ||
-          document.scrollingElement.scrollWidth > innerWidth + 1)
-      if (scrolls) {
-        lines.push('the page scrolls')
-      }
-      for (const button of buttons) {
-        const box = button.getBoundingClientRect()
-        if (box.width === 0 || box.height === 0) {
-          continue
-        }
-        const name = button.getAttribute('aria-label') ?? button.textContent
-        if (isPhone && (box.width < minTap || box.height < minTap)) {
-          lines.push(
-            `${name} is ${Math.round(box.width)}x${Math.round(box.height)}`,
-          )
-        }
-        const x = box.left + box.width / 2
-        const y = box.top + box.height / 2
-        if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) {
-          lines.push(`${name} is off screen`)
-          continue
-        }
-        const hit = document.elementFromPoint(x, y)
-        if (hit === null || !button.contains(hit)) {
-          lines.push(`${name} is covered at its center`)
-        }
-      }
-      return lines
-    },
-    { minTap: MIN_PHONE_TAP, isPhone: viewport.isPhone },
-  )
-  for (const line of found) {
-    problems.push(`${label}: ${line}`)
-  }
-}
-
-await useHarness()
-const browser = await launch()
-const problems: Array<string> = []
-for (const viewport of SHOT_VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
+) =>
+  Effect.gen(function* () {
+    const found = yield* attempt(() =>
+      page.evaluate(
+        ({ minTap, isPhone }) => {
+          // NOTE: the hero picker covers the lobby, so only its own buttons count.
+          const scope =
+            document.querySelector('.coop-calling-picker') ??
+            document.querySelector('.coop-name-picker') ??
+            document.querySelector('.coop') ??
+            document
+          const buttons = Array.from(scope.querySelectorAll('button'))
+          const lines: Array<string> = []
+          const scrolls =
+            document.scrollingElement !== null &&
+            (document.scrollingElement.scrollHeight > innerHeight + 1 ||
+              document.scrollingElement.scrollWidth > innerWidth + 1)
+          if (scrolls) {
+            lines.push('the page scrolls')
+          }
+          for (const button of buttons) {
+            const box = button.getBoundingClientRect()
+            if (box.width === 0 || box.height === 0) {
+              continue
+            }
+            const name = button.getAttribute('aria-label') ?? button.textContent
+            if (isPhone && (box.width < minTap || box.height < minTap)) {
+              lines.push(
+                `${name} is ${Math.round(box.width)}x${Math.round(box.height)}`,
+              )
+            }
+            const x = box.left + box.width / 2
+            const y = box.top + box.height / 2
+            if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) {
+              lines.push(`${name} is off screen`)
+              continue
+            }
+            const hit = document.elementFromPoint(x, y)
+            if (hit === null || !button.contains(hit)) {
+              lines.push(`${name} is covered at its center`)
+            }
+          }
+          return lines
+        },
+        { minTap: MIN_PHONE_TAP, isPhone: viewport.isPhone },
+      ),
+    )
+    for (const line of found) {
+      problems.push(`${label}: ${line}`)
     }
-    const page = await openPage(browser, viewport)
-    const label = `${viewport.name} ${scene.name}`
-    page.on('pageerror', error => problems.push(`${label}: ${String(error)}`))
-    await page.goto(harnessUrl('nodev', scene.query, deviceQuery(viewport)))
-    await page.waitForSelector('canvas')
-    await wait(900)
-    // NOTE: a shot shows an ended animation at its end, and the note's end
-    // is gone, so hold it at its start.
-    await page.addStyleTag({
-      content: '.coop-nudge { animation: none !important; opacity: 1; }',
-    })
-    await checkButtons(page, viewport, label, problems)
-    await shot(page, `coop-${TAG}-${viewport.name}-${scene.name}`)
-    console.log(`shot ${label}`)
-    await page.context().close()
-  }
-}
-await browser.close()
-finish(problems, 'The co-op pass found no problems.')
+  })
+
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* shotViewports
+    const browser = yield* openBrowser
+    const problems: Array<string> = []
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
+        }
+        const page = yield* openPage(browser, viewport)
+        const label = `${viewport.name} ${scene.name}`
+        page.on('pageerror', error =>
+          problems.push(`${label}: ${String(error)}`),
+        )
+        yield* attempt(() =>
+          page.goto(harnessUrl('nodev', scene.query, deviceQuery(viewport))),
+        )
+        yield* attempt(() => page.waitForSelector('canvas'))
+        yield* wait(900)
+        // NOTE: a shot shows an ended animation at its end, and the note's end
+        // is gone, so hold it at its start.
+        yield* attempt(() =>
+          page.addStyleTag({
+            content: '.coop-nudge { animation: none !important; opacity: 1; }',
+          }),
+        )
+        yield* checkButtons(page, viewport, label, problems)
+        yield* shot(page, `coop-${tag}-${viewport.name}-${scene.name}`)
+        yield* Console.log(`shot ${label}`)
+        yield* closePage(page)
+      }
+    }
+    yield* finish(problems, 'The co-op pass found no problems.')
+  }),
+)

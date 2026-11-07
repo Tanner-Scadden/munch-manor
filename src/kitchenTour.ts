@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
@@ -42,7 +42,10 @@ export const kitchenStepOf = (model: Model): Option.Option<KitchenStep> => {
   }
 }
 
-export const advanceKitchenTour = (model: Model, deltaMs: number): Model =>
+export const advanceKitchenTour: {
+  (deltaMs: number): (model: Model) => Model
+  (model: Model, deltaMs: number): Model
+} = Function.dual(2, (model: Model, deltaMs: number): Model =>
   Tour.match(model.kitchenTour, {
     Waiting: () =>
       isKitchenTourOn(model)
@@ -67,7 +70,8 @@ export const advanceKitchenTour = (model: Model, deltaMs: number): Model =>
             : Tour.Done({ ageMs: ageMs + deltaMs }),
       }),
     Over: () => model,
-  })
+  }),
+)
 
 // NOTE: skipping learns the timed breaks lesson, which ends the tour's
 // rules in the World: the clock runs and prices are back.

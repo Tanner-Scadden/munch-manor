@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import { deflateSync, inflateSync } from 'node:zlib'
 
 // A compressed PNG writer for the sprite atlas, and the reader that checks
@@ -13,7 +14,7 @@ export type Raster = Readonly<{
   pixels: Uint8Array
 }>
 
-const CRC_TABLE = Array.from({ length: 256 }, (_, byte) => {
+const CRC_TABLE = globalThis.Array.from({ length: 256 }, (_, byte) => {
   let crc = byte
   for (let bit = 0; bit < 8; bit++) {
     crc = (crc & 1) !== 0 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1
@@ -64,7 +65,7 @@ const filtered = (
   bytesPerPixel: number,
   filter: number,
 ): Buffer => {
-  const lines = rows.map((row, y) => {
+  const lines = Array.map(rows, (row, y) => {
     const above = rows[y - 1]
     const line = new Uint8Array(row.length + 1)
     line[0] = filter
@@ -90,12 +91,17 @@ const filtered = (
 const imageData = (
   rows: ReadonlyArray<Uint8Array>,
   bytesPerPixel: number,
-): Buffer =>
-  [FILTER_NONE, FILTER_SUB, FILTER_UP]
-    .map(filter =>
-      deflateSync(filtered(rows, bytesPerPixel, filter), { level: 9 }),
-    )
-    .reduce((best, next) => (next.length < best.length ? next : best))
+): Buffer => {
+  const candidates = Array.map(
+    Array.make(FILTER_NONE, FILTER_SUB, FILTER_UP),
+    filter => deflateSync(filtered(rows, bytesPerPixel, filter), { level: 9 }),
+  )
+  return Array.reduce(
+    Array.tailNonEmpty(candidates),
+    Array.headNonEmpty(candidates),
+    (best, next) => (next.length < best.length ? next : best),
+  )
+}
 
 const rowsOf = (
   bytes: Uint8Array,
@@ -103,7 +109,7 @@ const rowsOf = (
   height: number,
   bytesPerPixel: number,
 ): ReadonlyArray<Uint8Array> =>
-  Array.from({ length: height }, (_, y) =>
+  globalThis.Array.from({ length: height }, (_, y) =>
     bytes.subarray(y * width * bytesPerPixel, (y + 1) * width * bytesPerPixel),
   )
 
@@ -161,7 +167,7 @@ export const encodePng = (raster: Raster): Buffer => {
     ])
   }
   const rgb = Buffer.concat(
-    palette.colors.map(color =>
+    Array.map(palette.colors, color =>
       Buffer.from([
         (color >>> 24) & 0xff,
         (color >>> 16) & 0xff,
@@ -169,7 +175,7 @@ export const encodePng = (raster: Raster): Buffer => {
       ]),
     ),
   )
-  const alpha = Buffer.from(palette.colors.map(color => color & 0xff))
+  const alpha = Buffer.from(Array.map(palette.colors, color => color & 0xff))
   return Buffer.concat([
     SIGNATURE,
     header(width, height, COLOR_TYPE_INDEXED),

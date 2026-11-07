@@ -4,7 +4,7 @@ import { Schema } from 'effect'
 
 export const SqlValue = Schema.Union([
   Schema.Null,
-  Schema.Number,
+  Schema.Finite,
   Schema.String,
   Schema.BigInt,
   Schema.Uint8Array,
@@ -85,9 +85,17 @@ export const ChannelMessage = Schema.TaggedUnion({
 })
 export type ChannelMessage = typeof ChannelMessage.Type
 
-export const decodeRequest = Schema.decodeUnknownEffect(Request)
-export const encodeRequest = Schema.encodeEffect(Request)
-export const decodeResponse = Schema.decodeUnknownEffect(Response)
-export const encodeResponse = Schema.encodeEffect(Response)
-export const decodeChannelMessage = Schema.decodeUnknownEffect(ChannelMessage)
-export const encodeChannelMessage = Schema.encodeEffect(ChannelMessage)
+const decodeRequestWith = Schema.decodeUnknownEffect(Request)
+export const decodeRequest = (input: unknown) => decodeRequestWith(input)
+const encodeRequestWith = Schema.encodeEffect(Request)
+export const encodeRequest = (input: Request) => encodeRequestWith(input)
+const decodeResponseWith = Schema.decodeUnknownEffect(Response)
+export const decodeResponse = (input: unknown) => decodeResponseWith(input)
+const encodeResponseWith = Schema.encodeEffect(Response)
+export const encodeResponse = (input: Response) => encodeResponseWith(input)
+const decodeChannelMessageWith = Schema.decodeUnknownEffect(ChannelMessage)
+export const decodeChannelMessage = (input: unknown) =>
+  decodeChannelMessageWith(input)
+const encodeChannelMessageWith = Schema.encodeEffect(ChannelMessage)
+export const encodeChannelMessage = (input: ChannelMessage) =>
+  encodeChannelMessageWith(input)

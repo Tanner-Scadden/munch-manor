@@ -7,22 +7,24 @@
 // It checks that a hold at the window buys the rounds, and exits with 1 on
 // a miss.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shots44.ts
+import { Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
   DESKTOP_1280,
-  TAG,
   UPRIGHT_390,
+  auditTag,
   deviceQuery,
   finish,
   harnessQuery,
   isPickedScene,
-  launch,
+  openBrowser,
   pickViewports,
   scenePages,
   shot,
-  useHarness,
 } from './lib'
+import { type AuditFailed, attempt } from './page'
 
 const VIEWPORTS = pickViewports([
   { ...DESKTOP_1280, name: 'd1280' },
@@ -32,7 +34,11 @@ const VIEWPORTS = pickViewports([
 type Scene = Readonly<{
   name: string
   query: string
-  act?: (page: Page, problems: Array<string>, label: string) => Promise<void>
+  act?: (
+    page: Page,
+    problems: Array<string>,
+    label: string,
+  ) => Effect.Effect<void, AuditFailed>
 }>
 
 // NOTE: the stall stands at x 260 to 280, y 150 to 170, so (270, 176) is
@@ -58,14 +64,15 @@ const SCENES: ReadonlyArray<Scene> = [
   {
     name: 'sale',
     query: `${MID_WAVE}&rounds=20&${AT_WINDOW}&hold&tick=44`,
-    act: async (page, problems, label) => {
-      const balance = await page.evaluate(
-        () => window.__model.seats[0].wallet.balance,
-      )
-      if (balance >= 120) {
-        problems.push(`${label}: holding at the ammo window did not buy`)
-      }
-    },
+    act: (page, problems, label) =>
+      Effect.gen(function* () {
+        const balance = yield* attempt(() =>
+          page.evaluate(() => window.__model.seats[0].wallet.balance),
+        )
+        if (balance >= 120) {
+          problems.push(`${label}: holding at the ammo window did not buy`)
+        }
+      }),
   },
   {
     name: 'full',
@@ -73,28 +80,32 @@ const SCENES: ReadonlyArray<Scene> = [
   },
 ]
 
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev'])
-const problems: Array<string> = []
-for (const viewport of VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* VIEWPORTS
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev'])
+    const problems: Array<string> = []
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
+        }
+        const page = yield* pages.open(
+          viewport,
+          harnessQuery(scene.query, deviceQuery(viewport)),
+        )
+        const label = `${viewport.name} ${scene.name}`
+        if (scene.act !== undefined) {
+          yield* scene.act(page, problems, label)
+        }
+        yield* shot(page, `s44-${tag}-${viewport.name}-${scene.name}`)
+        yield* Console.log(`shot ${label}`)
+        pages.release(page)
+      }
     }
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
-    )
-    const label = `${viewport.name} ${scene.name}`
-    if (scene.act !== undefined) {
-      await scene.act(page, problems, label)
-    }
-    await shot(page, `s44-${TAG}-${viewport.name}-${scene.name}`)
-    console.log(`shot ${label}`)
-    pages.release(page)
-  }
-}
-await pages.close()
-await browser.close()
-finish(problems, 'The ammo window pass found no problems.')
+    yield* pages.close
+    yield* finish(problems, 'The ammo window pass found no problems.')
+  }),
+)

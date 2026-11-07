@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, Record, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { isBotCrew, maybeCrewBotAt } from './bots'
@@ -85,7 +85,7 @@ const TAG_PLATE = 'rgba(16, 10, 18, 0.72)'
 type TagGlyph = Readonly<{ width: number; sprite: ReadonlyArray<Canvas.Shape> }>
 
 const TAG_GLYPHS: ReadonlyMap<string, TagGlyph> = new Map(
-  Array.map(Object.entries(TAG_PIXELS), ([symbol, pixels]) => [
+  Array.map(Record.toEntries(TAG_PIXELS), ([symbol, pixels]) => [
     symbol,
     {
       width: Array.reduce(pixels, 0, (widest, row) =>
@@ -370,33 +370,36 @@ const clamp = (value: number, low: number, high: number): number =>
   Math.max(low, Math.min(high, value))
 
 // NOTE: in the overlay canvas's pixels, from the screen camera.
-export const coopEdgeShapes = (
-  model: Model,
-  camera: Camera,
-): ReadonlyArray<Canvas.Shape> => {
-  if (!isOnline(model)) {
-    return []
-  }
-  const ownSlot = leadSeatOf(model).slot
-  const left = camera.left + EDGE_INSET_PX
-  const top = camera.top + EDGE_INSET_PX
-  const right = camera.left + camera.width * camera.scale - EDGE_INSET_PX
-  const bottom = camera.top + camera.height * camera.scale - EDGE_INSET_PX
-  return pipe(
-    playersOf(model),
-    Array.filter(
-      ({ seat: { slot }, seat }) => slot !== ownSlot && !isBledOut(seat),
-    ),
-    Array.flatMap(({ seat: { slot }, seat, player }) => {
-      const at = worldToView(camera, player)
-      const isOnScreen =
-        at.x >= left && at.x <= right && at.y >= top && at.y <= bottom
-      if (isOnScreen) {
-        return []
-      }
-      const x = Math.round(clamp(at.x, left, right - BADGE_PX))
-      const y = Math.round(clamp(at.y, top, bottom - BADGE_PX))
-      return [badgeShapeOf(x, y, slot, isCallFresh(seat), model.elapsedMs)]
-    }),
-  )
-}
+export const coopEdgeShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> => {
+    if (!isOnline(model)) {
+      return []
+    }
+    const ownSlot = leadSeatOf(model).slot
+    const left = camera.left + EDGE_INSET_PX
+    const top = camera.top + EDGE_INSET_PX
+    const right = camera.left + camera.width * camera.scale - EDGE_INSET_PX
+    const bottom = camera.top + camera.height * camera.scale - EDGE_INSET_PX
+    return pipe(
+      playersOf(model),
+      Array.filter(
+        ({ seat: { slot }, seat }) => slot !== ownSlot && !isBledOut(seat),
+      ),
+      Array.flatMap(({ seat: { slot }, seat, player }) => {
+        const at = worldToView(camera, player)
+        const isOnScreen =
+          at.x >= left && at.x <= right && at.y >= top && at.y <= bottom
+        if (isOnScreen) {
+          return []
+        }
+        const x = Math.round(clamp(at.x, left, right - BADGE_PX))
+        const y = Math.round(clamp(at.y, top, bottom - BADGE_PX))
+        return [badgeShapeOf(x, y, slot, isCallFresh(seat), model.elapsedMs)]
+      }),
+    )
+  },
+)

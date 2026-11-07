@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { playedDifficultyOf } from './analyticsRun'
@@ -78,7 +78,10 @@ const paidBy = (run: Model, isEnded: boolean): Model['rankPaid'] => ({
 // the saved rank. At the end screen it also sets what the end card's rank
 // strip shows; leaving shows no card. A run that paid nothing because it
 // was guided shows no strip.
-export const earnRank = (before: Model, after: Model): Model => {
+export const earnRank: {
+  (after: Model): (before: Model) => Model
+  (before: Model, after: Model): Model
+} = Function.dual(2, (before: Model, after: Model): Model => {
   const isEnded = !isEndScreen(before.phase) && isEndScreen(after.phase)
   const isLeft = isInRun(before.phase) && isOnHome(after.phase)
   if (!isEnded && !isLeft) {
@@ -110,7 +113,7 @@ export const earnRank = (before: Model, after: Model): Model => {
               }),
       })
     : paid
-}
+})
 
 // NOTE: a save from before rank is granted its veteran start once, when
 // it is first read (loadSave in src/update/save.ts), from the kills it

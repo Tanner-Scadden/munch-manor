@@ -1,4 +1,4 @@
-import { Array, Option, Order, pipe } from 'effect'
+import { Array, Function, Option, Order, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { doorSpawnPoint, levelOf } from './arena'
@@ -182,10 +182,10 @@ const movedSpawns = (
 // drawn from the run's generator. Only doors change: every zombie, its kind,
 // and its time stay, so the wave's count and pacing hold, and the door
 // preview reads the new doors at once.
-export const joinNewDoors = (
-  model: World,
-  newDoors: ReadonlyArray<DoorId>,
-): World => {
+export const joinNewDoors: {
+  (newDoors: ReadonlyArray<DoorId>): (model: World) => World
+  (model: World, newDoors: ReadonlyArray<DoorId>): World
+} = Function.dual(2, (model: World, newDoors: ReadonlyArray<DoorId>): World => {
   if (
     !Phase.isAnyOf(['Preparation', 'Wave'])(model.phase) ||
     !Array.isReadonlyArrayNonEmpty(newDoors)
@@ -222,7 +222,7 @@ export const joinNewDoors = (
       }),
     rngState: () => rngState,
   })
-}
+})
 
 // PHASES
 
@@ -241,52 +241,63 @@ const breakClockFor = (model: World, wave: number): BreakClock =>
     ? BreakClock.Waiting({ elapsedMs: 0 })
     : BreakClock.Counting()
 
-export const beginPreparation = (
-  model: World,
-  wave: number,
-  durationMs: number,
-  clock: BreakClock = breakClockFor(model, wave),
-): World => {
-  const [waveState, rolled] = rollWave(
-    model.rngState,
-    wave,
-    levelOf(model).doorIds,
-  )
-  const { holds } = rolled
-  const spawns = crowdSpawns(
-    playerCountOf(model),
-    toughenSpawns(model.difficulty.chosen, rolled.spawns),
-    model.modifiers,
-  )
-  const [rngState, boss] = planBoss(
-    levelOf(model).doorIds,
-    waveState,
-    wave,
-    spawns,
-    model.difficulty.chosen,
-  )
-  return modifyFields(returnFallen(model), {
-    boss: () => boss,
-    frenzyPacks: () => frenzyPacksOf(spawns),
-    phase: () =>
-      Phase.Preparation({
-        wave,
-        remainingMs: durationMs,
-        durationMs,
-        spawns,
-        clock,
+export const beginPreparation: {
+  (
+    wave: number,
+    durationMs: number,
+    clock?: BreakClock,
+  ): (model: World) => World
+  (model: World, wave: number, durationMs: number, clock?: BreakClock): World
+} = Function.dual(
+  // NOTE: data-first has the duration third; data-last has the clock there or nothing.
+  (args: IArguments): boolean => typeof args[2] === 'number',
+  (
+    model: World,
+    wave: number,
+    durationMs: number,
+    clock: BreakClock = breakClockFor(model, wave),
+  ): World => {
+    const [waveState, rolled] = rollWave(
+      model.rngState,
+      wave,
+      levelOf(model).doorIds,
+    )
+    const { holds } = rolled
+    const spawns = crowdSpawns(
+      playerCountOf(model),
+      toughenSpawns(model.difficulty.chosen, rolled.spawns),
+      model.modifiers,
+    )
+    const [rngState, boss] = planBoss(
+      levelOf(model).doorIds,
+      waveState,
+      wave,
+      spawns,
+      model.difficulty.chosen,
+    )
+    return modifyFields(returnFallen(model), {
+      boss: () => boss,
+      frenzyPacks: () => frenzyPacksOf(spawns),
+      phase: () =>
+        Phase.Preparation({
+          wave,
+          remainingMs: durationMs,
+          durationMs,
+          spawns,
+          clock,
+        }),
+      pacing: () => ({
+        holds,
+        beat: Beat.Flowing(),
+        warnedPacks: [],
+        packDoors: [],
+        alarm: Alarm.Quiet(),
+        quietMs: 0,
       }),
-    pacing: () => ({
-      holds,
-      beat: Beat.Flowing(),
-      warnedPacks: [],
-      packDoors: [],
-      alarm: Alarm.Quiet(),
-      quietMs: 0,
-    }),
-    rngState: () => rngState,
-  })
-}
+      rngState: () => rngState,
+    })
+  },
+)
 
 export const isEndless = (model: World): boolean =>
   RunMode.isAnyOf(['Endless'])(model.mode)
@@ -569,7 +580,10 @@ const countDownBreak = (
       }),
   })
 
-export const advanceRound = (model: World, worldMs: number): World =>
+export const advanceRound: {
+  (worldMs: number): (model: World) => World
+  (model: World, worldMs: number): World
+} = Function.dual(2, (model: World, worldMs: number): World =>
   Phase.match(model.phase, {
     Ready: () => model,
     Preparation: preparation => {
@@ -588,7 +602,8 @@ export const advanceRound = (model: World, worldMs: number): World =>
     Paused: () => model,
     Victory: () => model,
     GameOver: () => model,
-  })
+  }),
+)
 
 export const roundWave = (phase: Phase): number =>
   Phase.match(phase, {
@@ -616,7 +631,11 @@ export const endWhenDefeated = (model: World): World => {
   })
 }
 
-export const zombiesRemaining = (
-  model: World,
-  spawns: ReadonlyArray<PlannedSpawn>,
-): number => spawns.length + Array.filter(model.zombies, isWalking).length
+export const zombiesRemaining: {
+  (spawns: ReadonlyArray<PlannedSpawn>): (model: World) => number
+  (model: World, spawns: ReadonlyArray<PlannedSpawn>): number
+} = Function.dual(
+  2,
+  (model: World, spawns: ReadonlyArray<PlannedSpawn>): number =>
+    spawns.length + Array.filter(model.zombies, isWalking).length,
+)

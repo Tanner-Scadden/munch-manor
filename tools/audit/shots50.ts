@@ -8,29 +8,31 @@
 // not scroll, and exits with 1 on any miss.
 //   TAG=after bun run heavy -- bun tools/audit/shots50.ts
 // ONLY picks scenes, such as `ONLY=guns,fridge`, and VIEWPORTS picks screens.
-import type { Page } from 'playwright-core'
+import { Console, Effect } from 'effect'
 
+import { runHarnessAudit } from './harnessServer'
 import {
-  SHOT_VIEWPORTS,
-  TAG,
+  type Act,
+  auditTag,
   deviceQuery,
   finish,
   fromHand,
   harnessQuery,
   inOrder,
   isPickedScene,
-  launch,
+  openBrowser,
   press,
   scenePages,
   settleAnimations,
   shot,
-  useHarness,
+  shotViewports,
 } from './lib'
+import { attempt } from './page'
 
 type Scene = Readonly<{
   name: string
   query: string
-  act?: (page: Page) => Promise<void>
+  act?: Act
 }>
 
 const SHOP = 'wave=5&money=180&gun=smg&tier=1&px=270&py=142'
@@ -78,61 +80,79 @@ const SCENES: ReadonlyArray<Scene> = [
   },
 ]
 
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev', 'tick=72'])
-const problems: Array<string> = []
-for (const viewport of SHOT_VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
-    }
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
-    )
-    if (scene.act !== undefined) {
-      await scene.act(page)
-    }
-    await settleAnimations(page)
-    const label = `${viewport.name} ${scene.name}`
-    const report = await page.evaluate(() => {
-      const dialog = document.querySelector('dialog[open]')
-      const scroller = document.scrollingElement ?? document.documentElement
-      const buttons = Array.from(
-        dialog?.querySelectorAll<HTMLElement>('button') ?? [],
-      )
-        .filter(button => button.getBoundingClientRect().width > 0)
-        .map(button => {
-          const box = button.getBoundingClientRect()
-          return {
-            name: (button.getAttribute('aria-label') ?? button.innerText).slice(
-              0,
-              30,
-            ),
-            width: Math.round(box.width),
-            height: Math.round(box.height),
-          }
-        })
-      return { buttons, pageScrolls: scroller.scrollHeight > innerHeight + 1 }
-    })
-    if (viewport.isPhone) {
-      for (const button of report.buttons) {
-        if (button.width < MIN_SIDE || button.height < MIN_SIDE) {
-          problems.push(
-            `${label}: "${button.name}" is ${button.width}x${button.height}`,
-          )
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* shotViewports
+    const browser = yield* openBrowser
+    const pages = scenePages(browser, ['nodev', 'tick=72'])
+    const problems: Array<string> = []
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
         }
+        const page = yield* pages.open(
+          viewport,
+          harnessQuery(scene.query, deviceQuery(viewport)),
+        )
+        if (scene.act !== undefined) {
+          yield* scene.act(page)
+        }
+        yield* settleAnimations(page)
+        const label = `${viewport.name} ${scene.name}`
+        const report = yield* attempt(() =>
+          page.evaluate(() => {
+            const dialog = document.querySelector('dialog[open]')
+            const scroller =
+              document.scrollingElement ?? document.documentElement
+            // NOTE: this runs in the page, where Effect's modules are not loaded,
+            // so it uses plain loops and the page's own String.
+            const buttons: Array<{
+              name: string
+              width: number
+              height: number
+            }> = []
+            for (const button of dialog?.querySelectorAll<HTMLElement>(
+              'button',
+            ) ?? []) {
+              const box = button.getBoundingClientRect()
+              if (box.width > 0) {
+                const text =
+                  button.getAttribute('aria-label') ?? button.innerText
+                buttons.push({
+                  // NOTE: runs in the page, where Effect's String is not loaded.
+                  // @effect-diagnostics-next-line preferEffectString:off
+                  name: text.slice(0, 30),
+                  width: Math.round(box.width),
+                  height: Math.round(box.height),
+                })
+              }
+            }
+            return {
+              buttons,
+              pageScrolls: scroller.scrollHeight > innerHeight + 1,
+            }
+          }),
+        )
+        if (viewport.isPhone) {
+          for (const button of report.buttons) {
+            if (button.width < MIN_SIDE || button.height < MIN_SIDE) {
+              problems.push(
+                `${label}: "${button.name}" is ${button.width}x${button.height}`,
+              )
+            }
+          }
+        }
+        if (report.pageScrolls) {
+          problems.push(`${label}: the page scrolls`)
+        }
+        yield* shot(page, `s50-${tag}-${viewport.name}-${scene.name}`)
+        yield* Console.log(`shot ${label}: ${report.buttons.length} buttons`)
+        pages.release(page)
       }
     }
-    if (report.pageScrolls) {
-      problems.push(`${label}: the page scrolls`)
-    }
-    await shot(page, `s50-${TAG}-${viewport.name}-${scene.name}`)
-    console.log(`shot ${label}: ${report.buttons.length} buttons`)
-    pages.release(page)
-  }
-}
-await pages.close()
-await browser.close()
-finish(problems, 'The shop guide pass found no problems.')
+    yield* pages.close
+    yield* finish(problems, 'The shop guide pass found no problems.')
+  }),
+)

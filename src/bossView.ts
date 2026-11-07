@@ -1,4 +1,4 @@
-import { Array, Option, String } from 'effect'
+import { Array, Function, Option, String } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { type Level, findStrike, levelOf } from './arena'
@@ -400,28 +400,43 @@ const ENRAGED = bakeText('ENRAGED', 'Alert')
 const BAR_GAP = 4
 const RAGE_BLINK_MS = 400
 
-export const bossBarShapes = (
-  bar: BossBar,
-  centerX: number,
-  y: number,
-  elapsedMs: number,
-): ReadonlyArray<Canvas.Shape> => {
-  const label = bar.isEnraged ? ENRAGED : BAR_NAME
-  const total = label.width + BAR_GAP + barWidthOf('Large')
-  const left = Math.round(centerX - total / 2)
-  const barLeft = left + label.width + BAR_GAP
-  const isBlinkOn = Math.floor(elapsedMs / RAGE_BLINK_MS) % 2 === 0
-  return [
-    placeBaked(label, { x: left, y, align: 'Left' }),
-    ...healthBarShapes(
-      'Large',
-      bar.isEnraged && isBlinkOn ? 'Rage' : 'Zombie',
-      barLeft,
-      y,
-      bar.hp / Math.max(1, bar.maxHp),
-    ),
-  ]
-}
+export const bossBarShapes: {
+  (
+    centerX: number,
+    y: number,
+    elapsedMs: number,
+  ): (bar: BossBar) => ReadonlyArray<Canvas.Shape>
+  (
+    bar: BossBar,
+    centerX: number,
+    y: number,
+    elapsedMs: number,
+  ): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  4,
+  (
+    bar: BossBar,
+    centerX: number,
+    y: number,
+    elapsedMs: number,
+  ): ReadonlyArray<Canvas.Shape> => {
+    const label = bar.isEnraged ? ENRAGED : BAR_NAME
+    const total = label.width + BAR_GAP + barWidthOf('Large')
+    const left = Math.round(centerX - total / 2)
+    const barLeft = left + label.width + BAR_GAP
+    const isBlinkOn = Math.floor(elapsedMs / RAGE_BLINK_MS) % 2 === 0
+    return [
+      placeBaked(label, { x: left, y, align: 'Left' }),
+      ...healthBarShapes(
+        'Large',
+        bar.isEnraged && isBlinkOn ? 'Rage' : 'Zombie',
+        barLeft,
+        y,
+        bar.hp / Math.max(1, bar.maxHp),
+      ),
+    ]
+  },
+)
 
 // ENTRANCE BAND
 

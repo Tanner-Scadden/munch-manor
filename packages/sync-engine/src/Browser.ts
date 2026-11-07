@@ -2,6 +2,7 @@ import {
   Array,
   type Cause,
   Effect,
+  Layer,
   Option,
   Queue,
   Ref,
@@ -59,16 +60,22 @@ const exchangeUrl = (origin: string, scope: string): string => {
   return url.toString()
 }
 
-// NOTE: every request goes through Effect's fetch client. Trace headers
-// stay off: the Worker's CORS rules allow only content-type and
-// authorization, so a traceparent header would fail the preflight.
-const withFetch = <A, E>(
+// NOTE: every request goes through Effect's fetch client, built for the
+// request and closed after it. Trace headers stay off: the Worker's CORS
+// rules allow only content-type and authorization, so a traceparent header
+// would fail the preflight.
+/** @stability unstable */
+export const withFetch = <A, E>(
   effect: Effect.Effect<A, E, HttpClient.HttpClient>,
 ): Effect.Effect<A, E> =>
-  pipe(
-    effect,
-    Effect.provideService(HttpClient.TracerPropagationEnabled, false),
-    Effect.provide(FetchHttpClient.layer),
+  Effect.scoped(
+    Effect.flatMap(Layer.build(FetchHttpClient.layer), client =>
+      pipe(
+        effect,
+        Effect.provideService(HttpClient.TracerPropagationEnabled, false),
+        Effect.provide(client),
+      ),
+    ),
   )
 
 const jsonPost = (url: string, body: string, token?: string) =>
@@ -106,13 +113,14 @@ export const webSocketTransport = (origin: string): Transport => ({
       const socket = yield* Effect.acquireRelease(
         Effect.try({
           try: () => new WebSocket(socketUrl(origin, scope)),
-          catch: error => new TransportError({ reason: String(error) }),
+          catch: error => TransportError.make({ reason: String(error) }),
         }),
         closeQuietly,
       )
-      const runFork = Effect.runForkWith(yield* Effect.context())
+      const value_1 = yield* Effect.context()
+      const runFork = Effect.runForkWith(value_1)
       const fail = (reason: string) =>
-        runFork(Queue.fail(inbox, new TransportError({ reason })))
+        runFork(Queue.fail(inbox, TransportError.make({ reason })))
       socket.addEventListener('message', event => {
         if (typeof event.data === 'string') {
           runFork(
@@ -141,7 +149,7 @@ export const webSocketTransport = (origin: string): Transport => ({
           const failed = () =>
             resume(
               Effect.fail(
-                new TransportError({ reason: 'Socket failed to open' }),
+                TransportError.make({ reason: 'Socket failed to open' }),
               ),
             )
           socket.addEventListener('open', opened, { once: true })
@@ -155,20 +163,19 @@ export const webSocketTransport = (origin: string): Transport => ({
           duration: OPEN_TIMEOUT,
           orElse: () =>
             Effect.fail(
-              new TransportError({ reason: 'Socket open timed out' }),
+              TransportError.make({ reason: 'Socket open timed out' }),
             ),
         }),
       )
       const send = (message: ClientMessage) =>
         Effect.flatMap(
-          Effect.mapError(
-            encodeClientMessage(message),
-            error => new TransportError({ reason: error.message }),
+          Effect.mapError(encodeClientMessage(message), error =>
+            TransportError.make({ reason: error.message }),
           ),
           json =>
             Effect.try({
               try: () => socket.send(json),
-              catch: error => new TransportError({ reason: String(error) }),
+              catch: error => TransportError.make({ reason: String(error) }),
             }),
         )
       return { send, messages: Stream.fromQueue(inbox) }
@@ -224,7 +231,7 @@ export const httpTransport = (origin: string): Transport => ({
               }
               const body = yield* Effect.mapError(
                 encodeExchange([maybeHello.value, ...extra]),
-                error => new TransportError({ reason: error.message }),
+                error => TransportError.make({ reason: error.message }),
               )
               const reply = yield* pipe(
                 HttpClient.execute(jsonPost(exchangeUrl(origin, scope), body)),
@@ -233,15 +240,14 @@ export const httpTransport = (origin: string): Transport => ({
                   HttpClientResponse.schemaBodyJson(ExchangeReply),
                 ),
                 withFetch,
-                Effect.mapError(
-                  error =>
-                    new TransportError({
-                      reason:
-                        error._tag === 'HttpClientError' &&
-                        error.reason._tag === 'StatusCodeError'
-                          ? `HTTP ${error.reason.response.status}`
-                          : error.message,
-                    }),
+                Effect.mapError(error =>
+                  TransportError.make({
+                    reason:
+                      error._tag === 'HttpClientError' &&
+                      error.reason._tag === 'StatusCodeError'
+                        ? `HTTP ${error.reason.response.status}`
+                        : error.message,
+                  }),
                 ),
               )
               yield* seen(reply)
@@ -273,7 +279,7 @@ export const httpTransport = (origin: string): Transport => ({
 // IDENTITY
 
 const unavailable = (): IdentityRefused =>
-  new IdentityRefused({
+  IdentityRefused.make({
     failure: IdentityFailure.cases.Unavailable.make({}),
   })
 
@@ -283,7 +289,7 @@ const refusedFrom = (response: HttpClientResponse.HttpClientResponse) =>
   pipe(
     HttpClientResponse.schemaBodyJson(IdentityFailure)(response),
     Effect.orElseSucceed(() => IdentityFailure.cases.Unavailable.make({})),
-    Effect.flatMap(failure => Effect.fail(new IdentityRefused({ failure }))),
+    Effect.flatMap(failure => Effect.fail(IdentityRefused.make({ failure }))),
   )
 
 const call = <A, I, E>(

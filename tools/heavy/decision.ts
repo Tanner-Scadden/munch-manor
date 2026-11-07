@@ -1,5 +1,6 @@
 import {
   Array,
+  Function,
   Match,
   Number,
   Option,
@@ -79,13 +80,13 @@ export const LockHolder = Schema.Struct({
   pid: Schema.Int.check(Schema.isGreaterThan(0)),
   command: Schema.String,
   cwd: Schema.String,
-  startedAt: Schema.Number,
+  startedAt: Schema.Finite,
   jobClass: Schema.optionalKey(ClassName),
-  cost: Schema.optionalKey(Schema.Number),
-  leaseMs: Schema.optionalKey(Schema.Number),
+  cost: Schema.optionalKey(Schema.Finite),
+  leaseMs: Schema.optionalKey(Schema.Finite),
   // NOTE: when the lease last began: the start, or the last boundary where
   // a chunked job offered to yield and nobody was waiting.
-  leaseFrom: Schema.optionalKey(Schema.Number),
+  leaseFrom: Schema.optionalKey(Schema.Finite),
 })
 export type LockHolder = typeof LockHolder.Type
 
@@ -105,37 +106,54 @@ export const LockState = Schema.TaggedUnion({
 })
 export type LockState = typeof LockState.Type
 
-export const classifyLock = (
-  maybeText: Option.Option<string>,
-  isAlive: (pid: number) => boolean,
-): LockState =>
-  Option.match(maybeText, {
-    onNone: () => LockState.cases.Free.make({}),
-    onSome: text =>
-      Option.match(decodeLockHolder(text), {
-        onNone: () => LockState.cases.Unreadable.make({ text }),
-        onSome: holder =>
-          isAlive(holder.pid)
-            ? LockState.cases.Held.make({ holder })
-            : LockState.cases.Stale.make({ holder }),
-      }),
-  })
+export const classifyLock: {
+  (
+    isAlive: (pid: number) => boolean,
+  ): (maybeText: Option.Option<string>) => LockState
+  (
+    maybeText: Option.Option<string>,
+    isAlive: (pid: number) => boolean,
+  ): LockState
+} = Function.dual(
+  2,
+  (
+    maybeText: Option.Option<string>,
+    isAlive: (pid: number) => boolean,
+  ): LockState =>
+    Option.match(maybeText, {
+      onNone: () => LockState.cases.Free.make({}),
+      onSome: text =>
+        Option.match(decodeLockHolder(text), {
+          onNone: () => LockState.cases.Unreadable.make({ text }),
+          onSome: holder =>
+            isAlive(holder.pid)
+              ? LockState.cases.Held.make({ holder })
+              : LockState.cases.Stale.make({ holder }),
+        }),
+    }),
+)
 
-export const isSameHolderValue = (
-  current: LockHolder,
-  holder: LockHolder,
-): boolean =>
-  current.pid === holder.pid && current.startedAt === holder.startedAt
+export const isSameHolderValue: {
+  (holder: LockHolder): (current: LockHolder) => boolean
+  (current: LockHolder, holder: LockHolder): boolean
+} = Function.dual(
+  2,
+  (current: LockHolder, holder: LockHolder): boolean =>
+    current.pid === holder.pid && current.startedAt === holder.startedAt,
+)
 
-export const isSameHolder = (
-  maybeText: Option.Option<string>,
-  holder: LockHolder,
-): boolean =>
-  pipe(
-    maybeText,
-    Option.flatMap(decodeLockHolder),
-    Option.exists(current => isSameHolderValue(current, holder)),
-  )
+export const isSameHolder: {
+  (holder: LockHolder): (maybeText: Option.Option<string>) => boolean
+  (maybeText: Option.Option<string>, holder: LockHolder): boolean
+} = Function.dual(
+  2,
+  (maybeText: Option.Option<string>, holder: LockHolder): boolean =>
+    pipe(
+      maybeText,
+      Option.flatMap(decodeLockHolder),
+      Option.exists(current => isSameHolderValue(current, holder)),
+    ),
+)
 
 // TURNS
 
@@ -143,7 +161,7 @@ export const isSameHolder = (
 // named by `turnFileKey`, so two worktrees never write the same file.
 export const HeldTurn = Schema.Struct({
   cwd: Schema.String,
-  at: Schema.Number,
+  at: Schema.Finite,
 })
 export type HeldTurn = typeof HeldTurn.Type
 
@@ -160,9 +178,12 @@ export const turnFileKey = (cwd: string): string =>
   pipe(
     Array.fromIterable(cwd),
     Array.reduce(0x811c9dc5, (hash, character) =>
-      Math.imul(hash ^ (character.codePointAt(0) ?? 0), 0x01000193),
+      Math.imul(
+        hash ^ Option.getOrElse(String.codePointAt(0)(character), () => 0),
+        0x01000193,
+      ),
     ),
-    hash => (hash >>> 0).toString(16).padStart(8, '0'),
+    hash => String.padStart(8, '0')((hash >>> 0).toString(16)),
   )
 
 // BUDGET LEDGER
@@ -184,20 +205,37 @@ export const decodeLedger = (text: string): Ledger =>
 export const encodeLedger = (ledger: Ledger): string =>
   `${encodeJson(Ledger, 2)(ledger)}\n`
 
-export const budgetKey = (repoRoot: string, branch: string): string =>
-  `${repoRoot}#${branch}`
+export const budgetKey: {
+  (branch: string): (repoRoot: string) => string
+  (repoRoot: string, branch: string): string
+} = Function.dual(
+  2,
+  (repoRoot: string, branch: string): string => `${repoRoot}#${branch}`,
+)
 
-export const batchesUsed = (ledger: Ledger, key: string): number =>
+export const batchesUsed: {
+  (key: string): (ledger: Ledger) => number
+  (ledger: Ledger, key: string): number
+} = Function.dual(2, (ledger: Ledger, key: string): number =>
   pipe(
     Record.get(ledger, key),
     Option.getOrElse(() => 0),
-  )
+  ),
+)
 
-export const recordBatch = (ledger: Ledger, key: string): Ledger =>
-  Record.set(ledger, key, batchesUsed(ledger, key) + 1)
+export const recordBatch: {
+  (key: string): (ledger: Ledger) => Ledger
+  (ledger: Ledger, key: string): Ledger
+} = Function.dual(2, (ledger: Ledger, key: string): Ledger =>
+  Record.set(ledger, key, batchesUsed(ledger, key) + 1),
+)
 
-export const resetBudget = (ledger: Ledger, key: string): Ledger =>
-  Record.remove(ledger, key)
+export const resetBudget: {
+  (key: string): (ledger: Ledger) => Ledger
+  (ledger: Ledger, key: string): Ledger
+} = Function.dual(2, (ledger: Ledger, key: string): Ledger =>
+  Record.remove(ledger, key),
+)
 
 // INVOCATION
 
@@ -325,12 +363,17 @@ const PARALLEL_SCRIPTS: ReadonlyArray<readonly [RegExp, string, number]> = [
   [auditScript('shots34'), 'SHOTS_PARALLEL', 1],
 ]
 
+// NOTE: the environment variables a Shared script's cost reads.
+export const PARALLEL_ENV_KEYS: ReadonlyArray<string> = Array.dedupe(
+  Array.map(PARALLEL_SCRIPTS, ([, key]) => key),
+)
+
 // NOTE: the command is split into words, so a script inside `sh -c "..."`
 // is still found.
 const commandWords = (command: ReadonlyArray<string>): ReadonlyArray<string> =>
   pipe(
     command,
-    Array.flatMap(part => part.split(/[\s;&|()'"]+/)),
+    Array.flatMap(part => String.split(/[\s;&|()'"]+/)(part)),
     Array.filter(String.isNonEmpty),
   )
 
@@ -343,22 +386,33 @@ const mentionsAny = (
 // NOTE: the most careful class a command names wins, and a command the
 // guard does not know is Timing, so a new heavy script runs alone until it
 // is listed.
-export const jobClassOf = (
-  command: ReadonlyArray<string>,
-  maybeOverride: Option.Option<JobClass>,
-): JobClass =>
-  Option.getOrElse(maybeOverride, () => {
-    const words = commandWords(command)
-    if (mentionsAny(words, TIMING_SCRIPTS)) {
-      return JobClass.cases.Timing.make({})
-    }
-    if (mentionsAny(words, CPU_SCRIPTS)) {
-      return JobClass.cases.Cpu.make({})
-    }
-    return mentionsAny(words, SHARED_SCRIPTS)
-      ? JobClass.cases.Shared.make({})
-      : JobClass.cases.Timing.make({})
-  })
+export const jobClassOf: {
+  (
+    maybeOverride: Option.Option<JobClass>,
+  ): (command: ReadonlyArray<string>) => JobClass
+  (
+    command: ReadonlyArray<string>,
+    maybeOverride: Option.Option<JobClass>,
+  ): JobClass
+} = Function.dual(
+  2,
+  (
+    command: ReadonlyArray<string>,
+    maybeOverride: Option.Option<JobClass>,
+  ): JobClass =>
+    Option.getOrElse(maybeOverride, () => {
+      const words = commandWords(command)
+      if (mentionsAny(words, TIMING_SCRIPTS)) {
+        return JobClass.cases.Timing.make({})
+      }
+      if (mentionsAny(words, CPU_SCRIPTS)) {
+        return JobClass.cases.Cpu.make({})
+      }
+      return mentionsAny(words, SHARED_SCRIPTS)
+        ? JobClass.cases.Shared.make({})
+        : JobClass.cases.Timing.make({})
+    }),
+)
 
 const parallelOf = (maybeValue: Option.Option<string>): number => {
   const value = globalThis.Number(
@@ -369,21 +423,32 @@ const parallelOf = (maybeValue: Option.Option<string>): number => {
 
 // NOTE: about one core per browser context. A Shared script that drives
 // one page costs 1, and taps.ts with TAPS_PARALLEL=3 costs 3.
-export const sharedCostOf = (
-  command: ReadonlyArray<string>,
-  env: (key: string) => Option.Option<string>,
-): number => {
-  const words = commandWords(command)
-  return pipe(
-    Array.findFirst(PARALLEL_SCRIPTS, ([pattern]) =>
-      mentionsAny(words, [pattern]),
-    ),
-    Option.match({
-      onNone: () => 1,
-      onSome: ([, key, perContext]) => parallelOf(env(key)) * perContext,
-    }),
-  )
-}
+export const sharedCostOf: {
+  (
+    env: (key: string) => Option.Option<string>,
+  ): (command: ReadonlyArray<string>) => number
+  (
+    command: ReadonlyArray<string>,
+    env: (key: string) => Option.Option<string>,
+  ): number
+} = Function.dual(
+  2,
+  (
+    command: ReadonlyArray<string>,
+    env: (key: string) => Option.Option<string>,
+  ): number => {
+    const words = commandWords(command)
+    return pipe(
+      Array.findFirst(PARALLEL_SCRIPTS, ([pattern]) =>
+        mentionsAny(words, [pattern]),
+      ),
+      Option.match({
+        onNone: () => 1,
+        onSome: ([, key, perContext]) => parallelOf(env(key)) * perContext,
+      }),
+    )
+  },
+)
 
 // DECISION
 
@@ -425,15 +490,15 @@ export type LockAction = typeof LockAction.Type
 // slot.
 export const Hold = Schema.TaggedUnion({
   Solo: {},
-  Shared: { slot: Schema.Number },
+  Shared: { slot: Schema.Finite },
 })
 export type Hold = typeof Hold.Type
 
 export const Decision = Schema.TaggedUnion({
   Run: {
     hold: Hold,
-    workers: Schema.Number,
-    cost: Schema.Number,
+    workers: Schema.Finite,
+    cost: Schema.Finite,
     lockAction: LockAction,
     notes: Schema.Array(Schema.String),
   },
@@ -444,28 +509,34 @@ export type Decision = typeof Decision.Type
 
 export const formatLoad = (load: number): string => load.toFixed(1)
 
-export const targetLoad = (
-  cores: number,
-  maybeOverride: Option.Option<number>,
-): number => Option.getOrElse(maybeOverride, () => cores * TARGET_SHARE)
+export const targetLoad: {
+  (maybeOverride: Option.Option<number>): (cores: number) => number
+  (cores: number, maybeOverride: Option.Option<number>): number
+} = Function.dual(
+  2,
+  (cores: number, maybeOverride: Option.Option<number>): number =>
+    Option.getOrElse(maybeOverride, () => cores * TARGET_SHARE),
+)
 
 const isOverloaded = (load: number, cores: number): boolean => load > cores
 
 // NOTE: the old cap for jobs that do not size to the budget.
-export const allowedWorkers = (
-  requested: number,
-  load: number,
-  cores: number,
-): number => {
-  const capped = Number.clamp(requested, {
-    minimum: 1,
-    maximum: MAX_OTHER_WORKERS,
-  })
-  if (load <= cores / 2) {
-    return capped
-  }
-  return Math.min(capped, Math.max(1, Math.floor((cores - load) / 2)))
-}
+export const allowedWorkers: {
+  (load: number, cores: number): (requested: number) => number
+  (requested: number, load: number, cores: number): number
+} = Function.dual(
+  3,
+  (requested: number, load: number, cores: number): number => {
+    const capped = Number.clamp(requested, {
+      minimum: 1,
+      maximum: MAX_OTHER_WORKERS,
+    })
+    if (load <= cores / 2) {
+      return capped
+    }
+    return Math.min(capped, Math.max(1, Math.floor((cores - load) / 2)))
+  },
+)
 
 const ordinal = (count: number): string =>
   pipe(
@@ -509,8 +580,14 @@ const leaseOf = (holder: LockHolder): number =>
 const leaseStartOf = (holder: LockHolder): number =>
   holder.leaseFrom ?? holder.startedAt
 
-export const isPastLease = (holder: LockHolder, now: number): boolean =>
-  now - leaseStartOf(holder) > leaseOf(holder)
+export const isPastLease: {
+  (now: number): (holder: LockHolder) => boolean
+  (holder: LockHolder, now: number): boolean
+} = Function.dual(
+  2,
+  (holder: LockHolder, now: number): boolean =>
+    now - leaseStartOf(holder) > leaseOf(holder),
+)
 
 const leaseMinutes = (holder: LockHolder): string =>
   `${globalThis.Number((leaseOf(holder) / 60_000).toFixed(1))} minute`
@@ -590,16 +667,18 @@ const waiterClassOf = (waiter: LockHolder): JobClass =>
 
 // NOTE: when the worktree last let go of a file within RECENT_TURN_MS, or
 // 0 when it has not.
-export const lastTurnAt = (
-  turns: ReadonlyArray<HeldTurn>,
-  cwd: string,
-  now: number,
-): number =>
-  pipe(
-    turns,
-    Array.filter(turn => turn.cwd === cwd && now - turn.at < RECENT_TURN_MS),
-    Array.reduce(0, (latest, turn) => Math.max(latest, turn.at)),
-  )
+export const lastTurnAt: {
+  (cwd: string, now: number): (turns: ReadonlyArray<HeldTurn>) => number
+  (turns: ReadonlyArray<HeldTurn>, cwd: string, now: number): number
+} = Function.dual(
+  3,
+  (turns: ReadonlyArray<HeldTurn>, cwd: string, now: number): number =>
+    pipe(
+      turns,
+      Array.filter(turn => turn.cwd === cwd && now - turn.at < RECENT_TURN_MS),
+      Array.reduce(0, (latest, turn) => Math.max(latest, turn.at)),
+    ),
+)
 
 type QueueKey = readonly [number, number, number]
 
@@ -621,18 +700,21 @@ const compareKeys = (first: QueueKey, second: QueueKey): number =>
 // first goes first. Within a worktree, or between worktrees with no recent
 // turn, the job that arrived first goes first. A chunked job that yields
 // arrives again, so it goes behind every job that arrived while it ran.
-export const isAheadInQueue = (
-  snapshot: Snapshot,
-  waiter: LockHolder,
-): boolean =>
-  compareKeys(
-    queueKeyOf(snapshot, waiter),
-    queueKeyOf(snapshot, {
-      cwd: snapshot.cwd,
-      startedAt: snapshot.arrivedAt,
-      pid: snapshot.pid,
-    }),
-  ) < 0
+export const isAheadInQueue: {
+  (waiter: LockHolder): (snapshot: Snapshot) => boolean
+  (snapshot: Snapshot, waiter: LockHolder): boolean
+} = Function.dual(
+  2,
+  (snapshot: Snapshot, waiter: LockHolder): boolean =>
+    compareKeys(
+      queueKeyOf(snapshot, waiter),
+      queueKeyOf(snapshot, {
+        cwd: snapshot.cwd,
+        startedAt: snapshot.arrivedAt,
+        pid: snapshot.pid,
+      }),
+    ) < 0,
+)
 
 const earlierWaiters = (snapshot: Snapshot): ReadonlyArray<LockHolder> =>
   Array.filter(snapshot.waiters, waiter => isAheadInQueue(snapshot, waiter))
@@ -764,7 +846,7 @@ const withLeasePart = (snapshot: Snapshot, reason: string): string => {
     return reason
   }
   const holder = snapshot.lock.holder
-  return reason.includes(describeHolder(holder))
+  return String.includes(describeHolder(holder))(reason)
     ? `${reason}; it ${leaseOverText(holder, snapshot.now)}`
     : `${reason}; ${pastLeasePart(holder, snapshot.now)}`
 }
@@ -945,34 +1027,49 @@ export const decide = (snapshot: Snapshot): Decision =>
 // theirs. Each one looks again after taking its own and backs off when it
 // finds a job it must not run beside, so at worst both back off and retry,
 // never both run. A CPU job and Shared jobs may run together.
-export const maybeConflictAfterTaking = (
-  jobClass: JobClass,
-  self: LockHolder,
-  lock: LockState,
-  shared: ReadonlyArray<SharedSlot>,
-): Option.Option<string> =>
-  JobClass.match(jobClass, {
-    Timing: () => {
-      const running = Array.filter(
-        liveSharedHolders(shared),
-        holder => !isSameHolderValue(holder, self),
-      )
-      return Array.isReadonlyArrayNonEmpty(running)
-        ? Option.some(
-            `a shared job started at the same time (${describeHolders(running)})`,
-          )
-        : Option.none()
-    },
-    Cpu: () => Option.none(),
-    Shared: () =>
-      LockState.isAnyOf(['Held'])(lock) &&
-      !isSameHolderValue(lock.holder, self) &&
-      JobClass.isAnyOf(['Timing'])(soloClassOf(lock.holder))
-        ? Option.some(
-            `a timing job started at the same time (${describeHolder(lock.holder)})`,
-          )
-        : Option.none(),
-  })
+export const maybeConflictAfterTaking: {
+  (
+    self: LockHolder,
+    lock: LockState,
+    shared: ReadonlyArray<SharedSlot>,
+  ): (jobClass: JobClass) => Option.Option<string>
+  (
+    jobClass: JobClass,
+    self: LockHolder,
+    lock: LockState,
+    shared: ReadonlyArray<SharedSlot>,
+  ): Option.Option<string>
+} = Function.dual(
+  4,
+  (
+    jobClass: JobClass,
+    self: LockHolder,
+    lock: LockState,
+    shared: ReadonlyArray<SharedSlot>,
+  ): Option.Option<string> =>
+    JobClass.match(jobClass, {
+      Timing: () => {
+        const running = Array.filter(
+          liveSharedHolders(shared),
+          holder => !isSameHolderValue(holder, self),
+        )
+        return Array.isReadonlyArrayNonEmpty(running)
+          ? Option.some(
+              `a shared job started at the same time (${describeHolders(running)})`,
+            )
+          : Option.none()
+      },
+      Cpu: () => Option.none(),
+      Shared: () =>
+        LockState.isAnyOf(['Held'])(lock) &&
+        !isSameHolderValue(lock.holder, self) &&
+        JobClass.isAnyOf(['Timing'])(soloClassOf(lock.holder))
+          ? Option.some(
+              `a timing job started at the same time (${describeHolder(lock.holder)})`,
+            )
+          : Option.none(),
+    }),
+)
 
 // HANDOVER
 
@@ -986,39 +1083,47 @@ export const Handover = Schema.TaggedUnion({
 })
 export type Handover = typeof Handover.Type
 
-export const decideHandover = (
-  selfPid: number,
-  waiters: ReadonlyArray<LockHolder>,
-): Handover => {
-  const others = Array.filter(waiters, waiter => waiter.pid !== selfPid)
-  return Array.isReadonlyArrayNonEmpty(others)
-    ? Handover.cases.HandOver.make({
-        reason: `${others.length === 1 ? '1 job is' : `${others.length} jobs are`} waiting (${describeHolders(others)})`,
-      })
-    : Handover.cases.Keep.make({})
-}
+export const decideHandover: {
+  (waiters: ReadonlyArray<LockHolder>): (selfPid: number) => Handover
+  (selfPid: number, waiters: ReadonlyArray<LockHolder>): Handover
+} = Function.dual(
+  2,
+  (selfPid: number, waiters: ReadonlyArray<LockHolder>): Handover => {
+    const others = Array.filter(waiters, waiter => waiter.pid !== selfPid)
+    return Array.isReadonlyArrayNonEmpty(others)
+      ? Handover.cases.HandOver.make({
+          reason: `${others.length === 1 ? '1 job is' : `${others.length} jobs are`} waiting (${describeHolders(others)})`,
+        })
+      : Handover.cases.Keep.make({})
+  },
+)
 
 // NOTE: the runs a chunk plays: HEAVY_CHUNK_RUNS when set (0 means no
 // chunks), or DEFAULT_CHUNK_RUNS rounded up to whole rounds of the workers.
-export const chunkRunsOf = (
-  workers: number,
-  maybeChunkRuns: Option.Option<number>,
-): number =>
-  Option.getOrElse(maybeChunkRuns, () => {
-    const perRound = Math.max(1, Math.floor(workers))
-    return Math.ceil(DEFAULT_CHUNK_RUNS / perRound) * perRound
-  })
+export const chunkRunsOf: {
+  (maybeChunkRuns: Option.Option<number>): (workers: number) => number
+  (workers: number, maybeChunkRuns: Option.Option<number>): number
+} = Function.dual(
+  2,
+  (workers: number, maybeChunkRuns: Option.Option<number>): number =>
+    Option.getOrElse(maybeChunkRuns, () => {
+      const perRound = Math.max(1, Math.floor(workers))
+      return Math.ceil(DEFAULT_CHUNK_RUNS / perRound) * perRound
+    }),
+)
 
 // NOTE: the next part of `total` to play after `done`, with `size` runs a
 // chunk. A size of 0 or less plays the rest at once.
-export const nextChunk = (
-  done: number,
-  total: number,
-  size: number,
-): readonly [number, number] => [
-  done,
-  size <= 0 ? total : Math.min(total, done + size),
-]
+export const nextChunk: {
+  (total: number, size: number): (done: number) => readonly [number, number]
+  (done: number, total: number, size: number): readonly [number, number]
+} = Function.dual(
+  3,
+  (done: number, total: number, size: number): readonly [number, number] => [
+    done,
+    size <= 0 ? total : Math.min(total, done + size),
+  ],
+)
 
 // TEST WORKERS
 
@@ -1055,14 +1160,17 @@ export const testWorkers = (
   )
 // REPORTING
 
-export const shouldReport = (
-  maybeLastReportAt: Option.Option<number>,
-  now: number,
-): boolean =>
-  Option.match(maybeLastReportAt, {
-    onNone: () => true,
-    onSome: lastReportAt => now - lastReportAt >= REPORT_EVERY_MS,
-  })
+export const shouldReport: {
+  (now: number): (maybeLastReportAt: Option.Option<number>) => boolean
+  (maybeLastReportAt: Option.Option<number>, now: number): boolean
+} = Function.dual(
+  2,
+  (maybeLastReportAt: Option.Option<number>, now: number): boolean =>
+    Option.match(maybeLastReportAt, {
+      onNone: () => true,
+      onSome: lastReportAt => now - lastReportAt >= REPORT_EVERY_MS,
+    }),
+)
 
 export const formatDuration = (ms: number): string => {
   const totalSeconds = Math.round(ms / 1000)

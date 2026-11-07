@@ -15,6 +15,8 @@
 // and the cross-engine report lists it, so a new field never hides a
 // divergence. Classify it here when it lands.
 
+import { Array, Option, Record } from 'effect'
+
 import type { Model } from '../../src/model'
 
 export type FieldClass = 'World' | 'Gate' | 'Derived' | 'Cosmetic' | 'Client'
@@ -167,8 +169,8 @@ const LEGACY_SEAT_FIELDS = [
 ] as const
 
 const CLASS_BY_FIELD: ReadonlyMap<string, FieldClass> = new Map([
-  ...Object.entries(FIELD_CLASSES),
-  ...LEGACY_SEAT_FIELDS.map((field): readonly [string, FieldClass] => [
+  ...Record.toEntries(FIELD_CLASSES),
+  ...Array.map(LEGACY_SEAT_FIELDS, (field): readonly [string, FieldClass] => [
     field,
     'World',
   ]),
@@ -192,10 +194,12 @@ const flatEntriesOf = (
   model: object,
 ): ReadonlyArray<readonly [string, unknown]> =>
   legacyEntriesOf(
-    Object.entries(model).flatMap(([field, value]: [string, unknown]) =>
-      field === 'world' && typeof value === 'object' && value !== null
-        ? Object.entries(value)
-        : [[field, value] as const],
+    Array.flatMap(
+      Record.toEntries(model),
+      ([field, value]: [string, unknown]) =>
+        field === 'world' && typeof value === 'object' && value !== null
+          ? Record.toEntries(value)
+          : [[field, value] as const],
     ),
   )
 
@@ -213,20 +217,25 @@ const isList = (value: unknown): value is ReadonlyArray<unknown> =>
 const legacyEntriesOf = (
   entries: ReadonlyArray<readonly [string, unknown]>,
 ): ReadonlyArray<readonly [string, unknown]> => {
-  const seats = entries.find(([field]) => field === 'seats')?.[1]
+  const seats = Option.getOrUndefined(
+    Option.map(
+      Array.findFirst(entries, ([field]) => field === 'seats'),
+      ([, value]) => value,
+    ),
+  )
   const lead = isList(seats) ? seats[0] : undefined
   if (!isList(seats) || !isRecord(lead)) {
     return entries
   }
   return [
-    ...entries
-      .filter(([field]) => field !== 'seats')
-      .map(([field, value]): readonly [string, unknown] =>
+    ...Array.map(
+      Array.filter(entries, ([field]) => field !== 'seats'),
+      ([field, value]): readonly [string, unknown] =>
         field === 'party' && isRecord(value) && value['_tag'] === 'Crew'
           ? [field, { _tag: 'Crew', lead: lead['seat'], mates: seats.slice(1) }]
           : [field, value],
-      ),
-    ...LEGACY_SEAT_FIELDS.map((field): readonly [string, unknown] => [
+    ),
+    ...Array.map(LEGACY_SEAT_FIELDS, (field): readonly [string, unknown] => [
       field,
       lead[field],
     ]),
@@ -249,23 +258,22 @@ const isSoloDefault = (field: string, value: unknown): boolean =>
 export const gameplayEntriesOf = (
   model: Model,
 ): ReadonlyArray<readonly [string, unknown]> =>
-  flatEntriesOf(model)
-    .filter(
-      ([field, value]) =>
-        isHashedClass(classOf(field)) && !isSoloDefault(field, value),
-    )
-    .sort(byField)
+  Array.filter(
+    flatEntriesOf(model),
+    ([field, value]) =>
+      isHashedClass(classOf(field)) && !isSoloDefault(field, value),
+  ).sort(byField)
 
 export const hashedFieldsOf = (model: Model): ReadonlyArray<string> =>
-  gameplayEntriesOf(model).map(([field]) => field)
+  Array.map(gameplayEntriesOf(model), ([field]) => field)
 
 // Model fields this table does not classify yet.
 export const unclassifiedFieldsOf = (model: Model): ReadonlyArray<string> =>
-  flatEntriesOf(model)
-    .map(([field]) => field)
-    .filter(field => classOf(field) === undefined)
-    .sort()
+  Array.filter(
+    Array.map(flatEntriesOf(model), ([field]) => field),
+    field => classOf(field) === undefined,
+  ).sort()
 
 // The gameplay part of a Model as a plain record, for dumps and diffs.
 export const gameplayOf = (model: Model): Readonly<Record<string, unknown>> =>
-  Object.fromEntries(gameplayEntriesOf(model))
+  Record.fromEntries(gameplayEntriesOf(model))

@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 
 import { CREW_AWARD_NAMES, type CrewAward } from './names'
 import type { Difficulty } from './playerData'
@@ -51,20 +51,24 @@ const AWARD_BRAGS: Readonly<Record<CrewAward, string>> = {
 }
 
 const crewBrags = (run: SharedRun): string =>
-  [
-    ...Option.match(run.maybeMvp, {
-      onNone: () => [],
-      onSome: ({ name, kills }) => [
-        `👑 ${CREW_AWARD_NAMES.Mvp}: ${name} with ${kills}.`,
+  Array.join(
+    Array.map(
+      [
+        ...Option.match(run.maybeMvp, {
+          onNone: () => [],
+          onSome: ({ name, kills }) => [
+            `👑 ${CREW_AWARD_NAMES.Mvp}: ${name} with ${kills}.`,
+          ],
+        }),
+        ...Option.match(run.maybeOwnAward, {
+          onNone: () => [],
+          onSome: award => [`${AWARD_BRAGS[award]}.`],
+        }),
       ],
-    }),
-    ...Option.match(run.maybeOwnAward, {
-      onNone: () => [],
-      onSome: award => [`${AWARD_BRAGS[award]}.`],
-    }),
-  ]
-    .map(brag => ` ${brag}`)
-    .join('')
+      brag => ` ${brag}`,
+    ),
+    '',
+  )
 
 const crewText = (run: SharedRun): string =>
   run.outcome === 'Won'

@@ -2,10 +2,11 @@ import type { Exit } from 'effect'
 import {
   Array,
   Context,
-  Data,
   Effect,
+  Function,
   Layer,
   Option,
+  Predicate,
   Record,
   Result,
   Scheduler,
@@ -72,7 +73,7 @@ import {
   rowOfSave,
 } from './playerScope'
 import {
-  type LinkProblem,
+  LinkProblem,
   PlayerChange,
   PlayerScopeStatus,
   RunSettled,
@@ -148,7 +149,7 @@ const PLAYER_MIGRATIONS = {
 const MAX_QUEUED_SUMMARIES = 20
 
 const QueuedSummaryRow = Schema.Struct({
-  id: Schema.Number,
+  id: Schema.Finite,
   body: Schema.String,
 })
 
@@ -163,7 +164,7 @@ type SyncSeed = typeof SyncSeed.Type
 
 const MetaRow = Schema.Struct({ value: Schema.String })
 
-const DevicesRow = Schema.Struct({ count: Schema.Number })
+const DevicesRow = Schema.Struct({ count: Schema.Finite })
 
 const boughtCosmeticsOf = (
   rows: ReadonlyArray<BoughtRow>,
@@ -254,13 +255,16 @@ export interface PlayerDatabase {
   readonly clearQueuedSummaries: Effect.Effect<void, PlayerDatabaseError>
 }
 
-class PlayerDatabaseError extends Data.TaggedError('PlayerDatabaseError')<{
-  readonly reason: string
-  readonly problem: LinkProblem
-}> {}
+class PlayerDatabaseError extends Schema.TaggedError<
+  PlayerDatabaseError,
+  { readonly brand: unique symbol }
+>()('PlayerDatabaseError', {
+  reason: Schema.String,
+  problem: LinkProblem,
+}) {}
 
 const toDatabaseError = (error: { readonly message: string }) =>
-  new PlayerDatabaseError({ reason: error.message, problem: 'Unavailable' })
+  PlayerDatabaseError.make({ reason: error.message, problem: 'Unavailable' })
 
 const linkProblemOf = (failure: IdentityFailure): LinkProblem =>
   IdentityFailure.match(failure, {
@@ -274,7 +278,7 @@ const linkProblemOf = (failure: IdentityFailure): LinkProblem =>
   })
 
 const fromRefused = (error: IdentityRefused) =>
-  new PlayerDatabaseError({
+  PlayerDatabaseError.make({
     reason: error.failure._tag,
     problem: linkProblemOf(error.failure),
   })
@@ -472,25 +476,25 @@ export interface SyncSetup {
 
 const offlineApi: IdentityApi = {
   challenge: Effect.fail(
-    new IdentityRefused({
+    IdentityRefused.make({
       failure: IdentityFailure.cases.Unavailable.make({}),
     }),
   ),
   session: () =>
     Effect.fail(
-      new IdentityRefused({
+      IdentityRefused.make({
         failure: IdentityFailure.cases.Unavailable.make({}),
       }),
     ),
   link: () =>
     Effect.fail(
-      new IdentityRefused({
+      IdentityRefused.make({
         failure: IdentityFailure.cases.Unavailable.make({}),
       }),
     ),
   redeem: () =>
     Effect.fail(
-      new IdentityRefused({
+      IdentityRefused.make({
         failure: IdentityFailure.cases.Unavailable.make({}),
       }),
     ),
@@ -553,236 +557,258 @@ const stateOf = (status: SyncStatus, devices: number): SyncState =>
     Offline: (): SyncState => SyncState.Offline({ devices }),
   })
 
-export const makePlayerDatabase = (
-  client: SqliteClientService,
-  legacy: LegacySave,
-  maybeSetup: Option.Option<SyncSetup> = Option.none(),
-): Effect.Effect<PlayerDatabase, PlayerDatabaseError, Scope.Scope> =>
-  Effect.gen(function* () {
-    const sql = client.sql
-    yield* pipe(
-      client.migrate(PLAYER_MIGRATIONS),
-      Effect.mapError(toDatabaseError),
-    )
-    const status = yield* client.status
+/** @stability unstable */
+export const makePlayerDatabase: {
+  (
+    legacy: LegacySave,
+    maybeSetup?: Option.Option<SyncSetup>,
+  ): (
+    client: SqliteClientService,
+  ) => Effect.Effect<PlayerDatabase, PlayerDatabaseError, Scope.Scope>
+  (
+    client: SqliteClientService,
+    legacy: LegacySave,
+    maybeSetup?: Option.Option<SyncSetup>,
+  ): Effect.Effect<PlayerDatabase, PlayerDatabaseError, Scope.Scope>
+} = Function.dual(
+  // NOTE: data-first starts with the client, the only argument that can
+  // migrate.
+  (args: IArguments): boolean => Predicate.hasProperty(args[0], 'migrate'),
+  (
+    client: SqliteClientService,
+    legacy: LegacySave,
+    maybeSetup: Option.Option<SyncSetup> = Option.none(),
+  ): Effect.Effect<PlayerDatabase, PlayerDatabaseError, Scope.Scope> =>
+    Effect.gen(function* () {
+      const sql = client.sql
+      yield* pipe(
+        client.migrate(PLAYER_MIGRATIONS),
+        Effect.mapError(toDatabaseError),
+      )
+      const status = yield* client.status
 
-    const identity = yield* pipe(
-      makeDeviceIdentity({
+      const identity = yield* pipe(
+        makeDeviceIdentity({
+          sql,
+          api: Option.match(maybeSetup, {
+            onNone: () => offlineApi,
+            onSome: setup => setup.identityApi,
+          }),
+        }),
+        Effect.mapError(toDatabaseError),
+      )
+      const playerId = yield* Effect.mapError(identity.playerId, fromRefused)
+      const database: LocalDatabase = {
         sql,
-        api: Option.match(maybeSetup, {
-          onNone: () => offlineApi,
-          onSome: setup => setup.identityApi,
+        changes: client.changes,
+        role: Effect.map(client.status, current => current.role),
+      }
+      const replica = yield* pipe(
+        makeReplica({
+          definition: PlayerScope,
+          database,
+          scope: playerScopeId(playerId),
         }),
-      }),
-      Effect.mapError(toDatabaseError),
-    )
-    const playerId = yield* Effect.mapError(identity.playerId, fromRefused)
-    const database: LocalDatabase = {
-      sql,
-      changes: client.changes,
-      role: Effect.map(client.status, current => current.role),
-    }
-    const replica = yield* pipe(
-      makeReplica({
-        definition: PlayerScope,
-        database,
-        scope: playerScopeId(playerId),
-      }),
-      Effect.mapError(toDatabaseError),
-    )
-
-    // NOTE: once per device, the save from before sync seeds the player
-    // scope as a pending SeededPlayer, so the server gets it on first sync.
-    yield* pipe(
-      Effect.gen(function* () {
-        const seeded = yield* readMeta(client, SYNC_SEED_KEY)
-        if (Option.isSome(seeded)) {
-          return
-        }
-        const maybeSave = yield* importLegacy(client, legacy)
-        yield* Option.match(maybeSave, {
-          onNone: () => Effect.void,
-          onSome: save => Effect.asVoid(replica.run(SeededPlayer, { save })),
-        })
-        const mark: SyncSeed = Option.isSome(maybeSave) ? 'Seeded' : 'Absent'
-        yield* markMeta(client, SYNC_SEED_KEY, mark)
-      }),
-      client.transaction,
-      Effect.mapError(error =>
-        error._tag === 'PlayerDatabaseError'
-          ? error
-          : new PlayerDatabaseError({
-              reason: error.message,
-              problem: 'Unavailable',
-            }),
-      ),
-    )
-
-    // NOTE: the changes go in one transaction, so a write that fails leaves
-    // nothing behind and the game can send the same changes again. A change
-    // the scope's own rules reject would be rejected on every retry, so it is
-    // logged and dropped on its own, and the rest still go in. A recorded
-    // run's mutation id comes back when there is a server to confirm it.
-    const write = (save: PlayerSave, changes: ReadonlyArray<PlayerChange>) =>
-      pipe(
-        Effect.gen(function* () {
-          const current = yield* readView(client)
-          if (Option.isNone(current)) {
-            yield* replica.run(SeededPlayer, { save })
-            return Option.none<string>()
-          }
-          const ran = yield* Effect.forEach(changes, change =>
-            pipe(
-              runChange(replica, change),
-              Effect.map(id =>
-                change._tag === 'RecordedRun'
-                  ? Option.some(id)
-                  : Option.none<string>(),
-              ),
-              Effect.catchTag('MutationRejected', error =>
-                Effect.as(
-                  Effect.logWarning(
-                    `Dropped ${change._tag}, which the player scope rejects`,
-                    error.reason,
-                  ),
-                  Option.none<string>(),
-                ),
-              ),
-            ),
-          )
-          return Option.isSome(maybeSetup)
-            ? Array.last(Array.getSomes(ran))
-            : Option.none<string>()
-        }),
-        client.transaction,
         Effect.mapError(toDatabaseError),
       )
 
-    const maybeSync: Option.Option<Sync> = yield* Option.match(maybeSetup, {
-      onNone: () => Effect.succeedNone,
-      onSome: setup =>
+      // NOTE: once per device, the save from before sync seeds the player
+      // scope as a pending SeededPlayer, so the server gets it on first sync.
+      yield* pipe(
         Effect.gen(function* () {
-          const clientId = yield* randomId(9)
-          const sync = yield* startSync({
-            replica,
-            transports: setup.transports,
-            credentials: pipe(
-              identity.session,
-              Effect.map(session => ({ token: session.token, clientId })),
-              Effect.mapError(
-                error => new TransportError({ reason: error.failure._tag }),
-              ),
-            ),
-            refreshCredentials: identity.invalidate,
+          const seeded = yield* readMeta(client, SYNC_SEED_KEY)
+          if (Option.isSome(seeded)) {
+            return
+          }
+          const maybeSave = yield* importLegacy(client, legacy)
+          yield* Option.match(maybeSave, {
+            onNone: () => Effect.void,
+            onSome: save => Effect.asVoid(replica.run(SeededPlayer, { save })),
           })
-          return Option.some(sync)
+          const mark: SyncSeed = Option.isSome(maybeSave) ? 'Seeded' : 'Absent'
+          yield* markMeta(client, SYNC_SEED_KEY, mark)
         }),
-    })
-
-    const savedChanges: Stream.Stream<StoreEvent> = pipe(
-      replica.remoteChanges,
-      Stream.mapEffect(() =>
-        pipe(
-          readView(client),
-          Effect.tapError(error =>
-            Effect.logError('Could not read the save sync changed', error),
-          ),
-          Effect.orElseSucceed(() => Option.none<PlayerSave>()),
+        client.transaction,
+        Effect.mapError(error =>
+          error._tag === 'PlayerDatabaseError'
+            ? error
+            : PlayerDatabaseError.make({
+                reason: error.message,
+                problem: 'Unavailable',
+              }),
         ),
-      ),
-      Stream.filterMap(maybeSave =>
-        Option.match(maybeSave, {
-          onNone: () => Result.failVoid,
-          onSome: save => Result.succeed(StoreEvent.SyncedSave({ save })),
-        }),
-      ),
-    )
+      )
 
-    const statusChanges: Stream.Stream<StoreEvent> = Option.match(maybeSync, {
-      onNone: () =>
-        Stream.make(StoreEvent.SyncStatus({ state: SyncState.LocalOnly() })),
-      onSome: sync =>
+      // NOTE: the changes go in one transaction, so a write that fails leaves
+      // nothing behind and the game can send the same changes again. A change
+      // the scope's own rules reject would be rejected on every retry, so it is
+      // logged and dropped on its own, and the rest still go in. A recorded
+      // run's mutation id comes back when there is a server to confirm it.
+      const write = (save: PlayerSave, changes: ReadonlyArray<PlayerChange>) =>
         pipe(
-          Stream.merge(
-            Stream.map(sync.status, next => ({ status: next })),
-            Stream.mapEffect(
-              Stream.concat(Stream.make(undefined), replica.remoteChanges),
-              () => Effect.map(sync.current, current => ({ status: current })),
-            ),
-          ),
-          Stream.mapEffect(({ status: current }) =>
-            Effect.map(readDevices(client), devices =>
-              StoreEvent.SyncStatus({ state: stateOf(current, devices) }),
-            ),
-          ),
-          Stream.changesWith((a, b) => sameSyncState(a.state, b.state)),
-        ),
-    })
-
-    const redeemLinkCode = (code: string) =>
-      Effect.gen(function* () {
-        const linked = yield* Effect.mapError(
-          identity.redeem(code),
-          fromRefused,
+          Effect.gen(function* () {
+            const current = yield* readView(client)
+            if (Option.isNone(current)) {
+              yield* replica.run(SeededPlayer, { save })
+              return Option.none<string>()
+            }
+            const ran = yield* Effect.forEach(changes, change =>
+              pipe(
+                runChange(replica, change),
+                Effect.map(id =>
+                  change._tag === 'RecordedRun'
+                    ? Option.some(id)
+                    : Option.none<string>(),
+                ),
+                Effect.catchTag('MutationRejected', error =>
+                  Effect.as(
+                    Effect.logWarning(
+                      `Dropped ${change._tag}, which the player scope rejects`,
+                      error.reason,
+                    ),
+                    Option.none<string>(),
+                  ),
+                ),
+              ),
+            )
+            return Option.isSome(maybeSetup)
+              ? Array.last(Array.getSomes(ran))
+              : Option.none<string>()
+          }),
+          client.transaction,
+          Effect.mapError(toDatabaseError),
         )
-        yield* Effect.mapError(
-          replica.switchScope(playerScopeId(linked.playerId)),
-          toDatabaseError,
-        )
-        yield* Option.match(maybeSync, {
-          onNone: () => Effect.void,
-          onSome: sync => sync.reconnect,
-        })
-      })
 
-    const maybeRoomAccess: Option.Option<RoomAccess> = yield* Option.match(
-      maybeSetup,
-      {
+      const maybeSync: Option.Option<Sync> = yield* Option.match(maybeSetup, {
         onNone: () => Effect.succeedNone,
         onSome: setup =>
-          Effect.asSome(
-            makeRoomAccess({
-              database,
-              identity,
+          Effect.gen(function* () {
+            const clientId = yield* randomId(9)
+            const sync = yield* startSync({
+              replica,
               transports: setup.transports,
+              credentials: pipe(
+                identity.session,
+                Effect.mapBoth({
+                  onSuccess: session => ({ token: session.token, clientId }),
+                  onFailure: error =>
+                    TransportError.make({ reason: error.failure._tag }),
+                }),
+              ),
+              refreshCredentials: identity.invalidate,
+            })
+            return Option.some(sync)
+          }),
+      })
+
+      const savedChanges: Stream.Stream<StoreEvent> = pipe(
+        replica.remoteChanges,
+        Stream.mapEffect(() =>
+          pipe(
+            readView(client),
+            Effect.tapError(error =>
+              Effect.logError('Could not read the save sync changed', error),
+            ),
+            Effect.orElseSucceed(() => Option.none<PlayerSave>()),
+          ),
+        ),
+        Stream.filterMap(maybeSave =>
+          Option.match(maybeSave, {
+            onNone: () => Result.failVoid,
+            onSome: save => Result.succeed(StoreEvent.SyncedSave({ save })),
+          }),
+        ),
+      )
+
+      const statusChanges: Stream.Stream<StoreEvent> = Option.match(maybeSync, {
+        onNone: () =>
+          Stream.make(StoreEvent.SyncStatus({ state: SyncState.LocalOnly() })),
+        onSome: sync =>
+          pipe(
+            Stream.merge(
+              Stream.map(sync.status, next => ({ status: next })),
+              Stream.mapEffect(
+                Stream.concat(Stream.make(undefined), replica.remoteChanges),
+                () =>
+                  Effect.map(sync.current, current => ({ status: current })),
+              ),
+            ),
+            Stream.mapEffect(({ status: current }) =>
+              Effect.map(readDevices(client), devices =>
+                StoreEvent.SyncStatus({ state: stateOf(current, devices) }),
+              ),
+            ),
+            Stream.changesWith((a, b) => sameSyncState(a.state, b.state)),
+          ),
+      })
+
+      const redeemLinkCode = (code: string) =>
+        Effect.gen(function* () {
+          const linked = yield* Effect.mapError(
+            identity.redeem(code),
+            fromRefused,
+          )
+          yield* Effect.mapError(
+            replica.switchScope(playerScopeId(linked.playerId)),
+            toDatabaseError,
+          )
+          yield* Option.match(maybeSync, {
+            onNone: () => Effect.void,
+            onSome: sync => sync.reconnect,
+          })
+        })
+
+      const maybeRoomAccess: Option.Option<RoomAccess> = yield* Option.match(
+        maybeSetup,
+        {
+          onNone: () => Effect.succeedNone,
+          onSome: setup =>
+            Effect.asSome(
+              makeRoomAccess({
+                database,
+                identity,
+                transports: setup.transports,
+              }),
+            ),
+        },
+      )
+
+      const scopeChanges: Stream.Stream<StoreEvent> = Stream.map(
+        replica.status,
+        next => StoreEvent.ScopeStatus({ status: scopeStatusOf(next) }),
+      )
+
+      return {
+        persistence: status.persistence,
+        load: readView(client).pipe(Effect.mapError(toDatabaseError)),
+        write,
+        awaitSettled: id =>
+          pipe(
+            replica.awaitSettled(id),
+            Effect.mapBoth({
+              onSuccess: runSettledOf,
+              onFailure: toDatabaseError,
             }),
           ),
-      },
-    )
-
-    const scopeChanges: Stream.Stream<StoreEvent> = Stream.map(
-      replica.status,
-      next => StoreEvent.ScopeStatus({ status: scopeStatusOf(next) }),
-    )
-
-    return {
-      persistence: status.persistence,
-      load: readView(client).pipe(Effect.mapError(toDatabaseError)),
-      write,
-      awaitSettled: id =>
-        pipe(
-          replica.awaitSettled(id),
-          Effect.map(runSettledOf),
+        events: Stream.mergeAll([savedChanges, statusChanges, scopeChanges], {
+          concurrency: 'unbounded',
+        }),
+        requestLinkCode: Effect.mapBoth(identity.createLinkCode, {
+          onSuccess: response => response.code,
+          onFailure: fromRefused,
+        }),
+        redeemLinkCode,
+        maybeRoomAccess,
+        queueSummary: body => queueSummaryRow(client, body),
+        takeQueuedSummary: takeSummaryRow(client),
+        clearQueuedSummaries: pipe(
+          client.sql`DELETE FROM queued_summaries`,
+          Effect.asVoid,
           Effect.mapError(toDatabaseError),
         ),
-      events: Stream.mergeAll([savedChanges, statusChanges, scopeChanges], {
-        concurrency: 'unbounded',
-      }),
-      requestLinkCode: Effect.map(
-        Effect.mapError(identity.createLinkCode, fromRefused),
-        response => response.code,
-      ),
-      redeemLinkCode,
-      maybeRoomAccess,
-      queueSummary: body => queueSummaryRow(client, body),
-      takeQueuedSummary: takeSummaryRow(client),
-      clearQueuedSummaries: pipe(
-        client.sql`DELETE FROM queued_summaries`,
-        Effect.asVoid,
-        Effect.mapError(toDatabaseError),
-      ),
-    }
-  })
+      }
+    }),
+)
 
 // BROWSER
 
@@ -798,39 +824,51 @@ const browserSetup = (origin: string): Effect.Effect<SyncSetup> =>
     }),
   )
 
-export const openPlayerDatabase = (
-  legacy: LegacySave,
-  syncOrigin: string,
-): Effect.Effect<PlayerDatabase, PlayerDatabaseError, Scope.Scope> =>
-  Effect.gen(function* () {
-    const context = yield* pipe(
-      Layer.build(
-        Browser.layer({
-          worker: takeStoreWorker,
-          leaderLock: takeLeaderLock,
-          name: STORE_NAME,
-          file: '/munch-manor.sqlite3',
-        }),
-      ),
-      Effect.mapError(
-        error =>
-          new PlayerDatabaseError({
+export const openPlayerDatabase: {
+  (
+    syncOrigin: string,
+  ): (
+    legacy: LegacySave,
+  ) => Effect.Effect<PlayerDatabase, PlayerDatabaseError, Scope.Scope>
+  (
+    legacy: LegacySave,
+    syncOrigin: string,
+  ): Effect.Effect<PlayerDatabase, PlayerDatabaseError, Scope.Scope>
+} = Function.dual(
+  2,
+  (
+    legacy: LegacySave,
+    syncOrigin: string,
+  ): Effect.Effect<PlayerDatabase, PlayerDatabaseError, Scope.Scope> =>
+    Effect.gen(function* () {
+      const context = yield* pipe(
+        Layer.build(
+          Browser.layer({
+            worker: takeStoreWorker,
+            leaderLock: takeLeaderLock,
+            name: STORE_NAME,
+            file: '/munch-manor.sqlite3',
+          }),
+        ),
+        Effect.mapError(error =>
+          PlayerDatabaseError.make({
             reason: error.reason,
             problem: 'Unavailable',
           }),
-      ),
-    )
-    yield* Effect.sync(releaseEarlyStoreWorker)
-    const maybeSetup =
-      syncOrigin === ''
-        ? Option.none()
-        : Option.some(yield* browserSetup(syncOrigin))
-    return yield* makePlayerDatabase(
-      Context.get(context, SqliteClient),
-      legacy,
-      maybeSetup,
-    )
-  })
+        ),
+      )
+      yield* Effect.sync(releaseEarlyStoreWorker)
+      const maybeSetup =
+        syncOrigin === ''
+          ? Option.none()
+          : yield* Effect.asSome(browserSetup(syncOrigin))
+      return yield* makePlayerDatabase(
+        Context.get(context, SqliteClient),
+        legacy,
+        maybeSetup,
+      )
+    }),
+)
 
 // OPEN ONCE
 

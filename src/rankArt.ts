@@ -1,4 +1,4 @@
-import { Array, Option, Record, pipe } from 'effect'
+import { Array, Function, Option, Record, String, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { BadgeTier } from './rank'
@@ -186,13 +186,14 @@ const shinedRows = (
   const line = frame * SHINE_STEP - 2
   return Array.map(pixels, (row, y) =>
     pipe(
-      row.split(''),
+      String.split('')(row),
       Array.map((cell, x) =>
-        !UNSHINED.includes(cell) && Math.abs(x + y - line) <= SHINE_WIDTH
+        !String.includes(cell)(UNSHINED) &&
+        Math.abs(x + y - line) <= SHINE_WIDTH
           ? 'S'
           : cell,
       ),
-      cells => cells.join(''),
+      cells => Array.join(cells, ''),
     ),
   )
 }
@@ -214,8 +215,14 @@ export const badgeSprite = (tier: BadgeTier): Sprite => BADGES[tier]
 
 // NOTE: the badge with the glint at `frame`, 0 to SHINE_FRAMES - 1; before
 // and after the sweep, the plain badge.
-export const shineSprite = (tier: BadgeTier, frame: number): Sprite =>
-  SHINES[tier][frame] ?? BADGES[tier]
+export const shineSprite: {
+  (frame: number): (tier: BadgeTier) => Sprite
+  (tier: BadgeTier, frame: number): Sprite
+} = Function.dual(
+  2,
+  (tier: BadgeTier, frame: number): Sprite =>
+    SHINES[tier][frame] ?? BADGES[tier],
+)
 
 type ArtImage = Readonly<{ src: string; width: number; height: number }>
 

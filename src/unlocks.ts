@@ -1,4 +1,4 @@
-import { Array } from 'effect'
+import { Array, Function, String } from 'effect'
 
 import { CALLINGS, UNLOCK_RANKS } from './calling'
 import { GIFTS, type Gift } from './closet'
@@ -13,10 +13,14 @@ import type { SavedSeenUnlocks } from './playerData'
 // the Model.
 
 const giftUnlockId = ({ kind, name }: Gift): string =>
-  `${kind.toLowerCase()}:${name}`
+  `${String.toLowerCase(kind)}:${name}`
 
-export const lookUnlockId = (kind: Gift['kind'], name: string): string =>
-  giftUnlockId({ kind, name, rank: 0 })
+export const lookUnlockId: {
+  (name: string): (kind: Gift['kind']) => string
+  (kind: Gift['kind'], name: string): string
+} = Function.dual(2, (kind: Gift['kind'], name: string): string =>
+  giftUnlockId({ kind, name, rank: 0 }),
+)
 
 export const callingUnlockId = (calling: string): string => `calling:${calling}`
 
@@ -56,24 +60,40 @@ export const unlocksAt = (rank: number): ReadonlyArray<string> => [
   ...callingUnlocksAt(rank),
 ]
 
-export const unseenOf = (
-  reached: ReadonlyArray<string>,
-  seen: SavedSeenUnlocks,
-): ReadonlyArray<string> =>
-  Array.filter(reached, id => !Array.contains(seen, id))
+export const unseenOf: {
+  (
+    seen: SavedSeenUnlocks,
+  ): (reached: ReadonlyArray<string>) => ReadonlyArray<string>
+  (
+    reached: ReadonlyArray<string>,
+    seen: SavedSeenUnlocks,
+  ): ReadonlyArray<string>
+} = Function.dual(
+  2,
+  (
+    reached: ReadonlyArray<string>,
+    seen: SavedSeenUnlocks,
+  ): ReadonlyArray<string> =>
+    Array.filter(reached, id => !Array.contains(seen, id)),
+)
 
-const isCallingId = (id: string): boolean => id.startsWith('calling:')
+const isCallingId = (id: string): boolean => String.startsWith('calling:')(id)
 
 export const isLookId = (id: string): boolean => !isCallingId(id)
 
 // NOTE: whether the Profile's Look tab, or the character picker, has an
 // unlock to show as new. The pips on the home menu's Profile and the Look
 // tab read the first, the picker's the second.
-export const hasUnseenLook = (rank: number, seen: SavedSeenUnlocks): boolean =>
-  Array.isReadonlyArrayNonEmpty(unseenOf(lookUnlocksAt(rank), seen))
+export const hasUnseenLook: {
+  (seen: SavedSeenUnlocks): (rank: number) => boolean
+  (rank: number, seen: SavedSeenUnlocks): boolean
+} = Function.dual(2, (rank: number, seen: SavedSeenUnlocks): boolean =>
+  Array.isReadonlyArrayNonEmpty(unseenOf(lookUnlocksAt(rank), seen)),
+)
 
-export const hasUnseenCalling = (
-  rank: number,
-  seen: SavedSeenUnlocks,
-): boolean =>
-  Array.isReadonlyArrayNonEmpty(unseenOf(callingUnlocksAt(rank), seen))
+export const hasUnseenCalling: {
+  (seen: SavedSeenUnlocks): (rank: number) => boolean
+  (rank: number, seen: SavedSeenUnlocks): boolean
+} = Function.dual(2, (rank: number, seen: SavedSeenUnlocks): boolean =>
+  Array.isReadonlyArrayNonEmpty(unseenOf(callingUnlocksAt(rank), seen)),
+)

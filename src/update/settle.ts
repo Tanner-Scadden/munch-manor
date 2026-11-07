@@ -1,9 +1,10 @@
-import { Effect, Option, pipe } from 'effect'
+import { Effect, Function, Option, pipe } from 'effect'
 import { Update } from 'foldkit'
 
 import { RunSummary } from '../analytics'
 import { maybeRunOutcome, runSummaryOf } from '../analyticsRun'
-import { makeCommand } from '../definition'
+import { ApplicationDefinition } from '../definition'
+import { isObjectFirst } from '../dualArgs'
 import { noteRecords, reachRecords } from '../endBeat'
 import { countRunFrom, forgetNewEntriesFrom } from '../home'
 import { Message } from '../message'
@@ -25,22 +26,25 @@ import type { UpdateStep } from './step'
 
 // COMMAND
 
-export const SendRunSummary = makeCommand('SendRunSummary', {
-  args: { summary: RunSummary },
-  messages: [Message.CompletedSendRunSummary, Message.FailedSendRunSummary],
-  handler: function* () {
-    return ({ summary }) =>
-      pipe(
-        sendOrQueueRunSummary(summary),
-        Effect.as(Message.CompletedSendRunSummary()),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedSendRunSummary({ reason: error.reason }),
+export const SendRunSummary = ApplicationDefinition.makeCommand(
+  'SendRunSummary',
+  {
+    args: { summary: RunSummary },
+    messages: [Message.CompletedSendRunSummary, Message.FailedSendRunSummary],
+    handler: function* () {
+      return ({ summary }) =>
+        pipe(
+          sendOrQueueRunSummary(summary),
+          Effect.as(Message.CompletedSendRunSummary()),
+          Effect.catch(error =>
+            Effect.succeed(
+              Message.FailedSendRunSummary({ reason: error.reason }),
+            ),
           ),
-        ),
-      )
+        )
+    },
   },
-})
+)
 
 // ANALYTICS
 
@@ -84,34 +88,40 @@ const sendRunSummaryFrom =
 // Nightmare, the run count and its summary, the new zombie badges, the fridge
 // prizes pulled, and the save. Each looks only at the root's own fields, so a child Message that
 // changes nothing but its child needs none of them.
-export const afterMessage = (
-  before: Model,
-  saveWrite: SaveWrite = 'Write',
-): ReadonlyArray<UpdateStep> => [
-  cueMusicFrom(before),
-  focusEndMenuFrom(before),
-  applyRotationFrom(before),
-  settleNightmareFrom(before),
-  unlockNightmareFrom(before),
-  stepModel => ({
-    model: earnRank(before, stepModel),
-  }),
-  stepModel => ({
-    model: countRunFrom(
-      before,
-      reachRecords(
+export const afterMessage: {
+  (saveWrite?: SaveWrite): (before: Model) => ReadonlyArray<UpdateStep>
+  (before: Model, saveWrite?: SaveWrite): ReadonlyArray<UpdateStep>
+} = Function.dual(
+  isObjectFirst,
+  (
+    before: Model,
+    saveWrite: SaveWrite = 'Write',
+  ): ReadonlyArray<UpdateStep> => [
+    cueMusicFrom(before),
+    focusEndMenuFrom(before),
+    applyRotationFrom(before),
+    settleNightmareFrom(before),
+    unlockNightmareFrom(before),
+    stepModel => ({
+      model: earnRank(before, stepModel),
+    }),
+    stepModel => ({
+      model: countRunFrom(
         before,
-        noteRecords(before, stepModel, runDifficultyOf(stepModel)),
+        reachRecords(
+          before,
+          noteRecords(before, stepModel, runDifficultyOf(stepModel)),
+          runDifficultyOf(stepModel),
+        ),
         runDifficultyOf(stepModel),
       ),
-      runDifficultyOf(stepModel),
-    ),
-  }),
-  sendRunSummaryFrom(before),
-  stepModel => ({ model: forgetNewEntriesFrom(before, stepModel) }),
-  stepModel => ({ model: notePulledPrize(stepModel) }),
-  writeSaveFrom(before, saveWrite),
-]
+    }),
+    sendRunSummaryFrom(before),
+    stepModel => ({ model: forgetNewEntriesFrom(before, stepModel) }),
+    stepModel => ({ model: notePulledPrize(stepModel) }),
+    writeSaveFrom(before, saveWrite),
+  ],
+)
 
 // NOTE: a synced save is taken from the store, so writing it back would
 // echo it. Its Messages pass `Synced`.
@@ -125,7 +135,13 @@ export type SaveWrite = 'Write' | 'Synced'
 // that runs inside a handler (a dialog the handler closes) settles again,
 // which only matters if the fold changes what the save, the music, or the
 // run count read; none does (see "Blocks and Bindings" in AGENTS.md).
-export const settled =
+export const settled: {
+  (saveWrite?: SaveWrite): (step: UpdateStep) => UpdateStep
+  (step: UpdateStep, saveWrite?: SaveWrite): UpdateStep
+} = Function.dual(
+  // NOTE: data-first starts with the Step; data-last with the save write or nothing.
+  (args: IArguments): boolean => typeof args[0] === 'function',
   (step: UpdateStep, saveWrite: SaveWrite = 'Write'): UpdateStep =>
-  before =>
-    Update.combineSteps(before, [step, ...afterMessage(before, saveWrite)])
+    before =>
+      Update.combineSteps(before, [step, ...afterMessage(before, saveWrite)]),
+)

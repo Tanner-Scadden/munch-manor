@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Record, Result, pipe } from 'effect'
 
 import { ZERO_VECTOR, normalize } from './geometry'
 import { type ActionKeys, keyActionOf } from './keyActions'
@@ -133,17 +133,23 @@ const intentOf = (model: Model, slot: PlayerSlot, couch: CouchKeys): Intent => {
 
 // NOTE: every player's intent for a tick: player 1's from the client's own
 // input and camera, the rest from their keys.
-export const couchInputs = (model: Model, leadIntent: Intent): InputsByPlayer =>
-  new Map([
-    [leadSeatOf(model).slot, leadIntent],
-    ...Array.filterMap(couchSlots(model), slot =>
-      Option.match(Option.fromNullishOr(COUCH_KEYS.get(slot)), {
-        onNone: () => Result.failVoid,
-        onSome: couch =>
-          Result.succeed([slot, intentOf(model, slot, couch)] as const),
-      }),
-    ),
-  ])
+export const couchInputs: {
+  (leadIntent: Intent): (model: Model) => InputsByPlayer
+  (model: Model, leadIntent: Intent): InputsByPlayer
+} = Function.dual(
+  2,
+  (model: Model, leadIntent: Intent): InputsByPlayer =>
+    new Map([
+      [leadSeatOf(model).slot, leadIntent],
+      ...Array.filterMap(couchSlots(model), slot =>
+        Option.match(Option.fromNullishOr(COUCH_KEYS.get(slot)), {
+          onNone: () => Result.failVoid,
+          onSome: couch =>
+            Result.succeed([slot, intentOf(model, slot, couch)] as const),
+        }),
+      ),
+    ]),
+)
 
 // PRESSES
 
@@ -154,7 +160,7 @@ const maybePressOf = (model: Model, code: string): Option.Option<CouchPress> =>
     couchSlots(model),
     Array.findFirst(slot =>
       Option.exists(Option.fromNullishOr(COUCH_KEYS.get(slot)), couch =>
-        Object.values(couch).includes(code),
+        Record.values(couch).includes(code),
       ),
     ),
     Option.flatMap(slot =>
@@ -165,10 +171,16 @@ const maybePressOf = (model: Model, code: string): Option.Option<CouchPress> =>
     ),
   )
 
-export const isCouchKey = (model: Model, code: string): boolean =>
-  isCouchPlay(model) &&
-  isRoundActive(model.phase) &&
-  Option.isSome(maybePressOf(model, code))
+export const isCouchKey: {
+  (code: string): (model: Model) => boolean
+  (model: Model, code: string): boolean
+} = Function.dual(
+  2,
+  (model: Model, code: string): boolean =>
+    isCouchPlay(model) &&
+    isRoundActive(model.phase) &&
+    Option.isSome(maybePressOf(model, code)),
+)
 
 const atCounterPress = (
   model: Model,
@@ -213,14 +225,18 @@ const fieldPress = (
 
 // NOTE: a couch player's key, held for their intent and applied as their
 // seat's action.
-export const pressCouchKey = (model: Model, code: string): Model =>
+export const pressCouchKey: {
+  (code: string): (model: Model) => Model
+  (model: Model, code: string): Model
+} = Function.dual(2, (model: Model, code: string): Model =>
   Option.match(maybePressOf(model, code), {
     onNone: () => model,
     onSome: press =>
       isAtCounter(model, press.slot)
         ? atCounterPress(model, press, code)
         : fieldPress(model, press, code),
-  })
+  }),
+)
 
 // CAMERA
 

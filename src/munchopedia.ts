@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import type { KillCounts, Model, ZombieKind } from './model'
@@ -76,11 +76,21 @@ export const entryName = (kind: ZombieKind): string => ZOMBIE_KINDS[kind].name
 
 // NOTE: Uncle Chunk is counted once each time he is beaten, so his kills are
 // the times he was beaten and he unlocks the same way as the rest.
-export const killsOf = (kills: KillCounts, kind: ZombieKind): number =>
-  kills[kind]
+export const killsOf: {
+  (kind: ZombieKind): (kills: KillCounts) => number
+  (kills: KillCounts, kind: ZombieKind): number
+} = Function.dual(
+  2,
+  (kills: KillCounts, kind: ZombieKind): number => kills[kind],
+)
 
-export const isDiscovered = (kills: KillCounts, kind: ZombieKind): boolean =>
-  killsOf(kills, kind) > 0
+export const isDiscovered: {
+  (kind: ZombieKind): (kills: KillCounts) => boolean
+  (kills: KillCounts, kind: ZombieKind): boolean
+} = Function.dual(
+  2,
+  (kills: KillCounts, kind: ZombieKind): boolean => killsOf(kills, kind) > 0,
+)
 
 export const discoveredKinds = (kills: KillCounts): ReadonlyArray<ZombieKind> =>
   pipe(
@@ -89,11 +99,14 @@ export const discoveredKinds = (kills: KillCounts): ReadonlyArray<ZombieKind> =>
     Array.filter(kind => isDiscovered(kills, kind)),
   )
 
-export const newlyDiscovered = (
-  before: KillCounts,
-  after: KillCounts,
-): ReadonlyArray<ZombieKind> =>
-  Array.filter(discoveredKinds(after), kind => !isDiscovered(before, kind))
+export const newlyDiscovered: {
+  (after: KillCounts): (before: KillCounts) => ReadonlyArray<ZombieKind>
+  (before: KillCounts, after: KillCounts): ReadonlyArray<ZombieKind>
+} = Function.dual(
+  2,
+  (before: KillCounts, after: KillCounts): ReadonlyArray<ZombieKind> =>
+    Array.filter(discoveredKinds(after), kind => !isDiscovered(before, kind)),
+)
 
 export const unopenedKinds = (model: Model): ReadonlyArray<ZombieKind> =>
   Array.filter(
@@ -181,16 +194,19 @@ const entryFrames = (kind: ZombieKind): ReadonlyArray<EntryFrame> => {
 
 const ENTRY_STRIDE_MS = 200
 
-export const entryFrameAt = (
-  kind: ZombieKind,
-  screenMs: number,
-): Option.Option<EntryFrame> => {
-  const frames = entryFrames(kind)
-  return Array.get(
-    frames,
-    Math.floor(screenMs / ENTRY_STRIDE_MS) % Math.max(1, frames.length),
-  )
-}
+export const entryFrameAt: {
+  (screenMs: number): (kind: ZombieKind) => Option.Option<EntryFrame>
+  (kind: ZombieKind, screenMs: number): Option.Option<EntryFrame>
+} = Function.dual(
+  2,
+  (kind: ZombieKind, screenMs: number): Option.Option<EntryFrame> => {
+    const frames = entryFrames(kind)
+    return Array.get(
+      frames,
+      Math.floor(screenMs / ENTRY_STRIDE_MS) % Math.max(1, frames.length),
+    )
+  },
+)
 
 export const firstEntryFrame = (kind: ZombieKind): Option.Option<EntryFrame> =>
   Array.head(entryFrames(kind))

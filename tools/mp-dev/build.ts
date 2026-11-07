@@ -3,37 +3,79 @@
 // MP_DEV_API_ORIGIN (set by the preview deploy in infra/alchemy.run.ts),
 // else the page's own origin; `?api=` on the page overrides either.
 //   MP_DEV_API_ORIGIN=http://127.0.0.1:8798 bun tools/mp-dev/build.ts
-import { Schema } from 'effect'
-import { copyFileSync, mkdirSync, rmSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { Config, Console, Effect, FileSystem, Path, Schema } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 
-const here = dirname(fileURLToPath(import.meta.url))
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
-// NOTE: Bun's `define` takes the value as source text: a JSON string.
-const stringSource = Schema.encodeSync(Schema.fromJsonString(Schema.String))
-const outdir = resolve(here, 'dist/page')
+import { encodeJson } from '../json'
 
-export const buildPage = async (apiOrigin: string): Promise<void> => {
-  rmSync(outdir, { recursive: true, force: true })
-  mkdirSync(outdir, { recursive: true })
-  const result = await Bun.build({
-    entrypoints: [resolve(here, 'main.ts')],
-    outdir,
-    target: 'browser',
-    format: 'esm',
-    minify: true,
-    metafile: false,
-    plugins: [],
-    define: { __MP_API_ORIGIN__: stringSource(apiOrigin) },
+const here = import.meta.dirname
+
+class PageFailed extends Schema.TaggedError<
+  PageFailed,
+  { readonly brand: unique symbol }
+>()('PageFailed', { message: Schema.String }) {}
+
+const outdirOf = Effect.gen(function* () {
+  const path = yield* Path.Path
+  return path.resolve(here, 'dist/page')
+})
+
+/** @stability unstable */
+export const buildPage = (
+  apiOrigin: string,
+): Effect.Effect<
+  void,
+  PageFailed | PlatformError,
+  FileSystem.FileSystem | Path.Path
+> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const outdir = yield* outdirOf
+    yield* fs.remove(outdir, { recursive: true, force: true })
+    yield* fs.makeDirectory(outdir, { recursive: true })
+    const result = yield* Effect.tryPromise({
+      try: () =>
+        Bun.build({
+          entrypoints: [path.resolve(here, 'main.ts')],
+          outdir,
+          target: 'browser',
+          format: 'esm',
+          minify: true,
+          metafile: false,
+          plugins: [],
+          // NOTE: Bun's `define` takes the value as source text: a JSON
+          // string.
+          define: { __MP_API_ORIGIN__: encodeJson(Schema.String)(apiOrigin) },
+        }),
+      catch: error =>
+        PageFailed.make({
+          message: `The dev page did not build: ${globalThis.String(error)}`,
+        }),
+    })
+    if (!result.success) {
+      return yield* PageFailed.make({
+        message: `The dev page did not build: ${globalThis.String(result.logs)}`,
+      })
+    }
+    yield* fs.copyFile(
+      path.resolve(here, 'index.html'),
+      path.resolve(outdir, 'index.html'),
+    )
   })
-  if (!result.success) {
-    throw new Error(`The dev page did not build: ${String(result.logs)}`)
-  }
-  copyFileSync(resolve(here, 'index.html'), resolve(outdir, 'index.html'))
-}
 
 if (import.meta.main) {
-  await buildPage(process.env['MP_DEV_API_ORIGIN'] ?? '')
-  console.log(`Built the co-op dev page into ${outdir}`)
+  NodeRuntime.runMain(
+    Effect.gen(function* () {
+      const apiOrigin = yield* Config.String('MP_DEV_API_ORIGIN').pipe(
+        Config.withDefault(''),
+      )
+      yield* buildPage(apiOrigin)
+      const outdir = yield* outdirOf
+      yield* Console.log(`Built the co-op dev page into ${outdir}`)
+    }).pipe(Effect.provide(NodeServices.layer)),
+  )
 }

@@ -1,6 +1,9 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { Array, Effect, Schema } from 'effect'
 
+import { afterEach, describe, expect, it, test, vi } from '@effect/vitest'
+
+import { describeError } from './describeError'
 import type { ShareOutcome } from './model'
 import { SHARE_TEXT_DATA, listenForShareClicks } from './mount'
 import { GAME_URL } from './share'
@@ -36,13 +39,25 @@ const clickOn = (button: HTMLElement) => {
   isClicking = false
 }
 
-// NOTE: the outcome lands a few promise hops after the click.
+class NeverSettled extends Schema.TaggedError<
+  NeverSettled,
+  { readonly brand: unique symbol }
+>()('NeverSettled', {
+  reason: Schema.String,
+}) {}
+
+// NOTE: the outcome lands a few promise hops after the click, so the tests
+// that wait for it run on real timers (`it.live`).
 const settlesAs = (
   outcomes: ReadonlyArray<ShareOutcome>,
   expected: ShareOutcome,
 ) =>
-  vi.waitFor(() => {
-    expect(outcomes).toEqual([expected])
+  Effect.tryPromise({
+    try: () =>
+      vi.waitFor(() => {
+        expect(outcomes).toEqual([expected])
+      }),
+    catch: error => NeverSettled.make({ reason: describeError(error) }),
   })
 
 const stubBrowser = (
@@ -74,58 +89,81 @@ afterEach(() => {
 })
 
 describe('SHARE in the click itself', () => {
-  test('opens the share sheet on the click own stack, with the post and the game', async () => {
-    stubBrowser(
-      () => Promise.resolve(),
-      () => Promise.resolve(),
-    )
-    const { button, outcomes } = shareButton()
-    clickOn(button)
-    expect(calls).toEqual([
-      { name: 'share', data: { text: TEXT, url: GAME_URL }, isInClick: true },
-    ])
-    await settlesAs(outcomes, 'Shared')
-  })
+  // NOTE: the share outcome lands on real promise hops (settlesAs).
+  it.live(
+    'opens the share sheet on the click own stack, with the post and the game',
+    () =>
+      Effect.gen(function* () {
+        stubBrowser(
+          () => Promise.resolve(),
+          () => Promise.resolve(),
+        )
+        const { button, outcomes } = shareButton()
+        clickOn(button)
+        expect(calls).toEqual([
+          {
+            name: 'share',
+            data: { text: TEXT, url: GAME_URL },
+            isInClick: true,
+          },
+        ])
+        yield* settlesAs(outcomes, 'Shared')
+      }),
+  )
 
-  test('a sheet the player closes is Cancelled, and nothing is copied', async () => {
-    stubBrowser(
-      () => Promise.reject(new DOMException('closed', 'AbortError')),
-      () => Promise.resolve(),
-    )
-    const { button, outcomes } = shareButton()
-    clickOn(button)
-    await settlesAs(outcomes, 'Cancelled')
-    expect(calls.map(call => call.name)).toEqual(['share'])
-  })
+  // NOTE: the share outcome lands on real promise hops (settlesAs).
+  it.live('a sheet the player closes is Cancelled, and nothing is copied', () =>
+    Effect.gen(function* () {
+      stubBrowser(
+        () => Promise.reject(new DOMException('closed', 'AbortError')),
+        () => Promise.resolve(),
+      )
+      const { button, outcomes } = shareButton()
+      clickOn(button)
+      yield* settlesAs(outcomes, 'Cancelled')
+      expect(Array.map(calls, call => call.name)).toEqual(['share'])
+    }),
+  )
 
-  test('a sheet the browser refuses copies the post instead', async () => {
-    stubBrowser(
-      () => Promise.reject(new DOMException('no', 'NotAllowedError')),
-      () => Promise.resolve(),
-    )
-    const { button, outcomes } = shareButton()
-    clickOn(button)
-    await settlesAs(outcomes, 'Copied')
-    expect(calls.map(call => call.name)).toEqual(['share', 'copy'])
-  })
+  // NOTE: the share outcome lands on real promise hops (settlesAs).
+  it.live('a sheet the browser refuses copies the post instead', () =>
+    Effect.gen(function* () {
+      stubBrowser(
+        () => Promise.reject(new DOMException('no', 'NotAllowedError')),
+        () => Promise.resolve(),
+      )
+      const { button, outcomes } = shareButton()
+      clickOn(button)
+      yield* settlesAs(outcomes, 'Copied')
+      expect(Array.map(calls, call => call.name)).toEqual(['share', 'copy'])
+    }),
+  )
 
-  test('with no share sheet the click copies the words and the link at once', async () => {
-    stubBrowser(undefined, () => Promise.resolve())
-    const { button, outcomes } = shareButton()
-    clickOn(button)
-    expect(calls).toEqual([
-      { name: 'copy', data: `${TEXT} ${GAME_URL}`, isInClick: true },
-    ])
-    await settlesAs(outcomes, 'Copied')
-  })
+  // NOTE: the share outcome lands on real promise hops (settlesAs).
+  it.live(
+    'with no share sheet the click copies the words and the link at once',
+    () =>
+      Effect.gen(function* () {
+        stubBrowser(undefined, () => Promise.resolve())
+        const { button, outcomes } = shareButton()
+        clickOn(button)
+        expect(calls).toEqual([
+          { name: 'copy', data: `${TEXT} ${GAME_URL}`, isInClick: true },
+        ])
+        yield* settlesAs(outcomes, 'Copied')
+      }),
+  )
 
-  test('a clipboard that refuses ends Failed', async () => {
-    stubBrowser(undefined, () => Promise.reject(new Error('denied')))
-    const { button, outcomes } = shareButton()
-    clickOn(button)
-    await settlesAs(outcomes, 'Failed')
-    expect(calls.map(call => call.name)).toEqual(['copy'])
-  })
+  // NOTE: the share outcome lands on real promise hops (settlesAs).
+  it.live('a clipboard that refuses ends Failed', () =>
+    Effect.gen(function* () {
+      stubBrowser(undefined, () => Promise.reject(new Error('denied')))
+      const { button, outcomes } = shareButton()
+      clickOn(button)
+      yield* settlesAs(outcomes, 'Failed')
+      expect(Array.map(calls, call => call.name)).toEqual(['copy'])
+    }),
+  )
 
   test('stops listening when the Mount ends', () => {
     stubBrowser(undefined, () => Promise.resolve())

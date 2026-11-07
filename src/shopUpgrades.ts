@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 
 import { MS_PER_SECOND } from './constants'
 import { WEAPONS, maxRounds, statsAt } from './weapons'
@@ -25,7 +25,10 @@ const FRIDGE_TIER_WORDS: Readonly<
   Pan: ['A wider swing', 'Dents half as fast', 'Hold for a ground smash'],
 }
 
-export const upgradeChanges = (weapon: WeaponKind, tier: number): string =>
+export const upgradeChanges: {
+  (tier: number): (weapon: WeaponKind) => string
+  (weapon: WeaponKind, tier: number): string
+} = Function.dual(2, (weapon: WeaponKind, tier: number): string =>
   Option.match(
     Option.flatMap(Option.fromNullishOr(FRIDGE_TIER_WORDS[weapon]), words =>
       Array.get(words, tier),
@@ -34,7 +37,8 @@ export const upgradeChanges = (weapon: WeaponKind, tier: number): string =>
       onSome: words => `${words}.`,
       onNone: () => gunUpgradeChanges(weapon, tier),
     },
-  )
+  ),
+)
 
 const gunUpgradeChanges = (weapon: WeaponKind, tier: number): string => {
   const before = statsAt(weapon, tier)

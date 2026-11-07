@@ -1,6 +1,8 @@
 // Where the balance bot walks in a fight: over a safe pickup, out of the
 // boss's and the floor's tells, around the boss when it kites or engages.
 
+import { Array, Function, Option } from 'effect'
+
 import { BOSS_RULES } from '../../../src/boss'
 import { CHUCKER_RULES } from '../../../src/chucker'
 import { CRAWLER_RULES } from '../../../src/crawler'
@@ -14,17 +16,18 @@ import {
   steerToward,
   walking,
 } from './basics'
+import { isKnobSet, knobNumber } from './knobs'
 
 // Keeps its distance from the nearest zombie only once it is inside the
 // comfort radius, the way a player plants their feet to shoot until
 // something gets close, and drifts back toward the middle otherwise.
-export const FLEE_PX = Number(process.env['FLEE_PX'] ?? 36)
+export const FLEE_PX = knobNumber('FLEE_PX', 36)
 
 // It walks over a pickup when nothing is inside its comfort radius, the
 // pickup is close, and no zombie stands near the pickup. NO_PICKUPS=1 keeps
 // it from ever going for one.
-const IGNORES_PICKUPS = process.env['NO_PICKUPS'] !== undefined
-const PICKUP_SEEK_PX = Number(process.env['PICKUP_SEEK_PX'] ?? 90)
+const IGNORES_PICKUPS = isKnobSet('NO_PICKUPS')
+const PICKUP_SEEK_PX = knobNumber('PICKUP_SEEK_PX', 90)
 const PICKUP_SAFE_PX = 28
 
 export const safePickup = (model: Model): Vector | undefined => {
@@ -32,16 +35,15 @@ export const safePickup = (model: Model): Vector | undefined => {
     return undefined
   }
   const zombies = walking(model)
-  return model.pickups
-    .filter(
-      pickup =>
-        distance(focusOf(model).player, pickup) < PICKUP_SEEK_PX &&
-        zombies.every(zombie => distance(zombie, pickup) > PICKUP_SAFE_PX),
-    )
-    .sort(
-      (a, b) =>
-        distance(focusOf(model).player, a) - distance(focusOf(model).player, b),
-    )[0]
+  return Array.filter(
+    model.pickups,
+    pickup =>
+      distance(focusOf(model).player, pickup) < PICKUP_SEEK_PX &&
+      Array.every(zombies, zombie => distance(zombie, pickup) > PICKUP_SAFE_PX),
+  ).sort(
+    (a, b) =>
+      distance(focusOf(model).player, a) - distance(focusOf(model).player, b),
+  )[0]
 }
 
 // It dodges the boss the way a player who has seen his tells does: out of a
@@ -49,16 +51,18 @@ export const safePickup = (model: Model): Vector | undefined => {
 // marker or a puddle. It keeps a wider berth from the boss than from the
 // horde, since the boss is wider. KITE=1 is the player who never learns the
 // tells: it only runs to the far side of the room from the boss and shoots.
-const DODGE_MARGIN_PX = Number(process.env['DODGE_MARGIN'] ?? 10)
-const NO_DODGE = process.env['NO_DODGE'] !== undefined
-export const KITES = process.env['KITE'] !== undefined
+const DODGE_MARGIN_PX = knobNumber('DODGE_MARGIN', 10)
+const NO_DODGE = isKnobSet('NO_DODGE')
+export const KITES = isKnobSet('KITE')
 const BOSS_BODY_PX = 12
 const PLAYER_BODY_PX = 4
 
 export const bossOf = (model: Model) => {
   const { boss } = model
   return boss._tag === 'Fighting'
-    ? walking(model).find(zombie => zombie.id === boss.id)
+    ? Option.getOrUndefined(
+        Array.findFirst(walking(model), zombie => zombie.id === boss.id),
+      )
     : undefined
 }
 
@@ -105,12 +109,13 @@ const laneDodge = (
 const clearSide = (model: Model, boss: Vector): Vector => {
   const toward = steerToward(boss, focusOf(model).player)
   const across = { x: -toward.y, y: toward.x }
-  const crowd = walking(model)
-    .filter(zombie => zombie.kind !== 'Boss')
-    .sort(
-      (a, b) =>
-        distance(focusOf(model).player, a) - distance(focusOf(model).player, b),
-    )[0]
+  const crowd = Array.filter(
+    walking(model),
+    zombie => zombie.kind !== 'Boss',
+  ).sort(
+    (a, b) =>
+      distance(focusOf(model).player, a) - distance(focusOf(model).player, b),
+  )[0]
   if (crowd === undefined) {
     return across
   }
@@ -129,15 +134,18 @@ const clearSide = (model: Model, boss: Vector): Vector => {
 
 // It steps off a thrown Groaner's landing mark the way it steps off a glob's,
 // and keeps clear of the cracks where an Ankle Biter is about to come up.
-const LANDING_MARGIN_PX = Number(process.env['LANDING_MARGIN'] ?? 6)
-const CRACK_BERTH_PX = Number(process.env['CRACK_BERTH'] ?? 8)
+const LANDING_MARGIN_PX = knobNumber('LANDING_MARGIN', 6)
+const CRACK_BERTH_PX = knobNumber('CRACK_BERTH', 8)
 
 const landingDodge = (model: Model): Vector | undefined => {
-  const mark = model.zombies.find(
-    zombie =>
-      zombie.action._tag === 'Flying' &&
-      distance(focusOf(model).player, zombie.action.to) <
-        CHUCKER_RULES.landRadius + PLAYER_BODY_PX + LANDING_MARGIN_PX,
+  const mark = Option.getOrUndefined(
+    Array.findFirst(
+      model.zombies,
+      zombie =>
+        zombie.action._tag === 'Flying' &&
+        distance(focusOf(model).player, zombie.action.to) <
+          CHUCKER_RULES.landRadius + PLAYER_BODY_PX + LANDING_MARGIN_PX,
+    ),
   )
   if (mark?.action._tag !== 'Flying') {
     return undefined
@@ -149,11 +157,14 @@ const landingDodge = (model: Model): Vector | undefined => {
 }
 
 const crackDodge = (model: Model): Vector | undefined => {
-  const crack = model.zombies.find(
-    zombie =>
-      zombie.action._tag === 'Burrowed' &&
-      distance(focusOf(model).player, zombie) <
-        CRAWLER_RULES.holdPx + CRACK_BERTH_PX,
+  const crack = Option.getOrUndefined(
+    Array.findFirst(
+      model.zombies,
+      zombie =>
+        zombie.action._tag === 'Burrowed' &&
+        distance(focusOf(model).player, zombie) <
+          CRAWLER_RULES.holdPx + CRACK_BERTH_PX,
+    ),
   )
   return crack === undefined
     ? undefined
@@ -172,13 +183,17 @@ export const telegraphDodge = (model: Model): Vector | undefined => {
     return undefined
   }
   const boss = bossOf(model)
-  const marker = model.boss.globs.find(
-    glob =>
-      (glob._tag === 'Flying' &&
-        distance(focusOf(model).player, glob.to) <
-          BOSS_RULES.spitRadius + PLAYER_BODY_PX + DODGE_MARGIN_PX) ||
-      (glob._tag === 'Pooled' &&
-        distance(focusOf(model).player, glob.at) < BOSS_RULES.puddleRadius + 2),
+  const marker = Option.getOrUndefined(
+    Array.findFirst(
+      model.boss.globs,
+      glob =>
+        (glob._tag === 'Flying' &&
+          distance(focusOf(model).player, glob.to) <
+            BOSS_RULES.spitRadius + PLAYER_BODY_PX + DODGE_MARGIN_PX) ||
+        (glob._tag === 'Pooled' &&
+          distance(focusOf(model).player, glob.at) <
+            BOSS_RULES.puddleRadius + 2),
+    ),
   )
   if (marker !== undefined) {
     const center = marker._tag === 'Flying' ? marker.to : marker.at
@@ -212,7 +227,7 @@ export const telegraphDodge = (model: Model): Vector | undefined => {
   )
 }
 
-export const BOSS_BERTH_PX = Number(process.env['BOSS_BERTH'] ?? 16)
+export const BOSS_BERTH_PX = knobNumber('BOSS_BERTH', 16)
 
 // A frenzied zombie closes the gap faster, so the bot backs off from it
 // sooner, in proportion to the frenzy's extra speed.
@@ -232,22 +247,28 @@ const KITE_SPOTS: Array<Vector> = [
   { x: 280, y: 150 },
 ]
 
-export const kiteAway = (model: Model, boss: Vector): Vector => {
+export const kiteAway: {
+  (boss: Vector): (model: Model) => Vector
+  (model: Model, boss: Vector): Vector
+} = Function.dual(2, (model: Model, boss: Vector): Vector => {
   const spot =
     [...KITE_SPOTS].sort((a, b) => distance(b, boss) - distance(a, boss))[0] ??
     focusOf(model).player
   return distance(focusOf(model).player, spot) > 6
     ? steerToward(focusOf(model).player, spot)
     : { x: 0, y: 0 }
-}
+})
 
 // ENGAGE=1 holds the middle distance from the boss: outside his stomp
 // trigger, inside his charge range. It walks into the horde to get there,
 // so it does worse than the default, which holds the middle of the room.
-export const ENGAGES = process.env['ENGAGE'] !== undefined
-const ENGAGE_PX = Number(process.env['ENGAGE_PX'] ?? 58)
+export const ENGAGES = isKnobSet('ENGAGE')
+const ENGAGE_PX = knobNumber('ENGAGE_PX', 58)
 
-export const engage = (model: Model, boss: Vector): Vector => {
+export const engage: {
+  (boss: Vector): (model: Model) => Vector
+  (model: Model, boss: Vector): Vector
+} = Function.dual(2, (model: Model, boss: Vector): Vector => {
   const away = steerToward(boss, focusOf(model).player)
   const spot = {
     x: boss.x + (away.x === 0 && away.y === 0 ? 1 : away.x) * ENGAGE_PX,
@@ -256,4 +277,4 @@ export const engage = (model: Model, boss: Vector): Vector => {
   return distance(focusOf(model).player, spot) > 6
     ? steerToward(focusOf(model).player, spot)
     : { x: 0, y: 0 }
-}
+})

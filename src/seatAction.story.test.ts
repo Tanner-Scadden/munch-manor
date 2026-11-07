@@ -49,12 +49,13 @@ describe('the rules single player now shares with the room', () => {
   })
 
   test('at a shared keyboard, the new zombie card holds no hand, as in a room', () => {
-    const couchWithCard = modifyFields(
-      withWorld(withArsenal(quietWave(3), holdingFirst(SHOTGUN)), world =>
-        seatCrew(world, 2),
-      ),
-      { debutCard: () => DebutCard.Showing({ kind: 'Runner', ageMs: 0 }) },
+    const couch = withWorld(
+      withArsenal(quietWave(3), holdingFirst(SHOTGUN)),
+      world => seatCrew(world, 2),
     )
+    const couchWithCard = modifyFields(couch, {
+      debutCard: () => DebutCard.Showing({ kind: 'Runner', ageMs: 0 }),
+    })
     story(
       update,
       given(couchWithCard),

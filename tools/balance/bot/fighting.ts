@@ -1,7 +1,7 @@
 // How the balance bot fights: the Pan's stance, the knife, where it walks
 // in a wave, and how it aims and fires like a fair player.
 
-import { Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 
 import { assistAim } from '../../../src/aimAssist'
 import { isOutOfGuns } from '../../../src/ammoWarning'
@@ -57,6 +57,7 @@ import {
   stickyTarget,
   withinSenses,
 } from './hand'
+import { isKnobSet, knobNumber } from './knobs'
 import { isInKitchen, routeTo } from './route'
 import { type BotState, type Zombie } from './state'
 
@@ -74,9 +75,10 @@ const panStance = (state: BotState, model: Model): Vector | undefined => {
     return undefined
   }
   const { player } = focusOf(model)
-  const threat = walking(model)
-    .filter(zombie => !isPannable(zombie))
-    .sort((a, b) => distance(player, a) - distance(player, b))[0]
+  const threat = Array.filter(
+    walking(model),
+    zombie => !isPannable(zombie),
+  ).sort((a, b) => distance(player, a) - distance(player, b))[0]
   if (
     threat !== undefined &&
     distance(player, threat) <
@@ -86,7 +88,9 @@ const panStance = (state: BotState, model: Model): Vector | undefined => {
       { at: threat, radius: bodyRadiusOf(threat) },
     ])
   }
-  const target = walking(model).find(zombie => zombie.id === panTarget.id)
+  const target = Option.getOrUndefined(
+    Array.findFirst(walking(model), zombie => zombie.id === panTarget.id),
+  )
   if (target === undefined) {
     return undefined
   }
@@ -121,7 +125,8 @@ export const isGunIdle = (model: Model): boolean => {
 }
 
 const isWithinKnife = (model: Model): boolean =>
-  walking(model).some(
+  Array.some(
+    walking(model),
     zombie =>
       distance(focusOf(model).player, zombie) -
         bodyRadiusOf(zombie) -
@@ -131,7 +136,10 @@ const isWithinKnife = (model: Model): boolean =>
 
 // With the Pan in the melee slot the same rules draw it, and while its
 // plan swings it the bot keeps it out.
-export const handleKnife = (state: BotState, model: Model): Model => {
+export const handleKnife: {
+  (model: Model): (state: BotState) => Model
+  (state: BotState, model: Model): Model
+} = Function.dual(2, (state: BotState, model: Model): Model => {
   if (!isWieldingMelee(focusOf(model).player)) {
     return isWithinKnife(model) && isGunIdle(model)
       ? tapKey(model, KEYS.knife)
@@ -142,9 +150,12 @@ export const handleKnife = (state: BotState, model: Model): Model => {
     !isGunIdle(model)
     ? tapKey(model, 'KeyQ')
     : model
-}
+})
 
-export const kite = (state: BotState, model: Model): Vector => {
+export const kite: {
+  (model: Model): (state: BotState) => Vector
+  (state: BotState, model: Model): Vector
+} = Function.dual(2, (state: BotState, model: Model): Vector => {
   const { player } = focusOf(model)
   const dodge = telegraphDodge(model)
   if (dodge !== undefined) {
@@ -160,11 +171,16 @@ export const kite = (state: BotState, model: Model): Vector => {
     (zombie.frenzy._tag === 'Frenzied' ? frenzyBerthPx() : 0)
   // A zombie frozen solid by Brain Freeze cannot bite, so it is not fled,
   // and the human bot flees only what it has noticed: in view, or heard.
-  const fled = withinSenses(model)
-    .filter(zombie => !KITES || zombie.kind !== 'Boss')
-    .filter(zombie => zombie.action._tag !== 'Frozen')
-    .filter(zombie => isNoticed(state, model, zombie))
-    .sort((a, b) => reach(a) - reach(b))
+  const fled = Array.filter(
+    Array.filter(
+      Array.filter(
+        withinSenses(model),
+        zombie => !KITES || zombie.kind !== 'Boss',
+      ),
+      zombie => zombie.action._tag !== 'Frozen',
+    ),
+    zombie => isNoticed(state, model, zombie),
+  ).sort((a, b) => reach(a) - reach(b))
   const nearest = fled[0]
   if (nearest !== undefined && reach(nearest) < FLEE_PX) {
     // It runs the way a person does: away from the zombie it is watching,
@@ -197,24 +213,22 @@ export const kite = (state: BotState, model: Model): Vector => {
   return distance(player, ROOM_CENTER) > 40
     ? steerToward(player, ROOM_CENTER)
     : { x: 0, y: 0 }
-}
+})
 
 // The bot is a fair player, not an aimbot: it re-aims only every few
 // frames and its hand shakes. The human bot (bot/hand.ts) also reacts late,
 // trails and overshoots its target, and steps a little less often; AIM=sharp
 // is the old bot, whose only miss is AIM_NOISE.
-export const AIM_EVERY_FRAMES = Number(process.env['AIM_EVERY'] ?? 5)
-const AIM_NOISE_RADIANS = Number(process.env['AIM_NOISE'] ?? 0.22)
-export const MOVE_EVERY_FRAMES = Number(
-  process.env['MOVE_EVERY'] ?? (IS_SHARP ? 4 : 6),
-)
+export const AIM_EVERY_FRAMES = knobNumber('AIM_EVERY', 5)
+const AIM_NOISE_RADIANS = knobNumber('AIM_NOISE', 0.22)
+export const MOVE_EVERY_FRAMES = knobNumber('MOVE_EVERY', IS_SHARP ? 4 : 6)
 
 // It shoots the nearest zombie it can see, but while the boss stands it
 // shoots him unless something else is within FOCUS_PX, and it always shoots
 // him while he is dazed.
 // NO_FOCUS=1 always shoots the nearest.
-const FOCUSES_BOSS = process.env['NO_FOCUS'] === undefined
-const FOCUS_PX = Number(process.env['FOCUS_PX'] ?? 60)
+const FOCUSES_BOSS = !isKnobSet('NO_FOCUS')
+const FOCUS_PX = knobNumber('FOCUS_PX', 60)
 // A Big Leaguer holding his shield toward the bot, and the zombie he holds,
 // only soak up shots, so the bot shoots something else while there is
 // anything else to shoot.
@@ -231,19 +245,19 @@ const isBehindShield = (model: Model, zombie: Model['zombies'][number]) => {
 }
 
 export const nearestVisible = (model: Model) => {
-  const inSight = walking(model)
-    .filter(zombie =>
-      hasLineOfSight(levelOf(model), focusOf(model).player, zombie),
-    )
-    .sort(
-      (a, b) =>
-        distance(focusOf(model).player, a) - distance(focusOf(model).player, b),
-    )
-  const open = inSight.filter(zombie => !isBehindShield(model, zombie))
+  const inSight = Array.filter(walking(model), zombie =>
+    hasLineOfSight(levelOf(model), focusOf(model).player, zombie),
+  ).sort(
+    (a, b) =>
+      distance(focusOf(model).player, a) - distance(focusOf(model).player, b),
+  )
+  const open = Array.filter(inSight, zombie => !isBehindShield(model, zombie))
   const visible = open.length > 0 ? open : inSight
   const nearest = visible[0]
   const boss = FOCUSES_BOSS
-    ? visible.find(zombie => zombie.kind === 'Boss')
+    ? Option.getOrUndefined(
+        Array.findFirst(visible, zombie => zombie.kind === 'Boss'),
+      )
     : undefined
   const isDazed =
     model.boss._tag === 'Fighting' && model.boss.move._tag === 'Dazed'
@@ -274,8 +288,9 @@ export const topOff = (model: Model): Model => {
 // trigger is held, the aim from where the bot last pointed bends onto the
 // zombie it is almost on, in view of the phone's window. NO_ASSIST=1 plays
 // either without it.
-const maybeAssistScreen =
-  process.env['NO_ASSIST'] === undefined ? maybeWindowScreen : undefined
+const maybeAssistScreen = !isKnobSet('NO_ASSIST')
+  ? maybeWindowScreen
+  : undefined
 const AIM_REACH_PX = 40
 
 const assistedPoint = (model: Model, rawPoint: Vector): Vector => {
@@ -301,7 +316,10 @@ const assistedPoint = (model: Model, rawPoint: Vector): Vector => {
   })
 }
 
-export const holdAssistedAim = (state: BotState, model: Model): Model => {
+export const holdAssistedAim: {
+  (model: Model): (state: BotState) => Model
+  (state: BotState, model: Model): Model
+} = Function.dual(2, (state: BotState, model: Model): Model => {
   if (
     maybeAssistScreen === undefined ||
     state.maybeRawAim === undefined ||
@@ -311,42 +329,61 @@ export const holdAssistedAim = (state: BotState, model: Model): Model => {
   }
   const point = assistedPoint(model, state.maybeRawAim)
   return send(model, Message.MovedMouse({ clientX: point.x, clientY: point.y }))
-}
+})
 
 // Points the mouse at target, with the sharp hand's shake or the human
 // hand's error, and returns the screen point it aimed at.
-export const aimAt = (
-  state: BotState,
-  model: Model,
-  target: Vector,
-  humanError?: number,
-): { model: Model; point: Vector } => {
-  const angle =
-    Math.atan2(
-      target.y - focusOf(model).player.y,
-      target.x - focusOf(model).player.x,
-    ) +
-    (humanError ??
-      (nextBotRandom(state) + nextBotRandom(state) - 1) * AIM_NOISE_RADIANS)
-  state.maybeAimAngle = angle
-  // The mouse lives in screen pixels, so the aim point goes through the
-  // camera, which scrolls once the kitchen is open.
-  const rawPoint = worldToView(screenCameraOf(model), {
-    x: focusOf(model).player.x + Math.cos(angle) * AIM_REACH_PX,
-    y: focusOf(model).player.y + Math.sin(angle) * AIM_REACH_PX,
-  })
-  state.maybeRawAim = rawPoint
-  const point = assistedPoint(model, rawPoint)
-  return {
-    model: send(
-      model,
-      Message.MovedMouse({ clientX: point.x, clientY: point.y }),
-    ),
-    point,
-  }
-}
+// humanError is the human hand's miss; undefined shakes the sharp hand.
+export const aimAt: {
+  (
+    model: Model,
+    target: Vector,
+    humanError: number | undefined,
+  ): (state: BotState) => { model: Model; point: Vector }
+  (
+    state: BotState,
+    model: Model,
+    target: Vector,
+    humanError: number | undefined,
+  ): { model: Model; point: Vector }
+} = Function.dual(
+  4,
+  (
+    state: BotState,
+    model: Model,
+    target: Vector,
+    humanError: number | undefined,
+  ): { model: Model; point: Vector } => {
+    const angle =
+      Math.atan2(
+        target.y - focusOf(model).player.y,
+        target.x - focusOf(model).player.x,
+      ) +
+      (humanError ??
+        (nextBotRandom(state) + nextBotRandom(state) - 1) * AIM_NOISE_RADIANS)
+    state.maybeAimAngle = angle
+    // The mouse lives in screen pixels, so the aim point goes through the
+    // camera, which scrolls once the kitchen is open.
+    const rawPoint = worldToView(screenCameraOf(model), {
+      x: focusOf(model).player.x + Math.cos(angle) * AIM_REACH_PX,
+      y: focusOf(model).player.y + Math.sin(angle) * AIM_REACH_PX,
+    })
+    state.maybeRawAim = rawPoint
+    const point = assistedPoint(model, rawPoint)
+    return {
+      model: send(
+        model,
+        Message.MovedMouse({ clientX: point.x, clientY: point.y }),
+      ),
+      point,
+    }
+  },
+)
 
-export const pressFire = (model: Model, point: Vector): Model =>
+export const pressFire: {
+  (point: Vector): (model: Model) => Model
+  (model: Model, point: Vector): Model
+} = Function.dual(2, (model: Model, point: Vector): Model =>
   model.input.mouseButton._tag === 'Held'
     ? model
     : send(
@@ -357,46 +394,64 @@ export const pressFire = (model: Model, point: Vector): Model =>
           clientX: point.x,
           clientY: point.y,
         }),
-      )
+      ),
+)
 
 export const holdFire = (model: Model): Model =>
   model.input.mouseButton._tag === 'Held'
     ? send(model, Message.ReleasedPointer({ pointerId: 1 }))
     : model
 
-export const aimAndFire = (
-  state: BotState,
-  model: Model,
-  frame: number,
-  maybeTarget?: Zombie,
-): Model => {
-  if (frame % AIM_EVERY_FRAMES !== 0) {
-    return holdAssistedAim(state, model)
-  }
-  const target =
-    maybeTarget ?? stickyTarget(state, model, nearestVisible(model))
-  if (target === undefined) {
-    return topOff(holdFire(model))
-  }
-  return aimAndShoot(state, model, target, frame)
-}
+// maybeTarget is the zombie to shoot; undefined picks the nearest in view.
+export const aimAndFire: {
+  (
+    model: Model,
+    frame: number,
+    maybeTarget: Zombie | undefined,
+  ): (state: BotState) => Model
+  (
+    state: BotState,
+    model: Model,
+    frame: number,
+    maybeTarget: Zombie | undefined,
+  ): Model
+} = Function.dual(
+  4,
+  (
+    state: BotState,
+    model: Model,
+    frame: number,
+    maybeTarget: Zombie | undefined,
+  ): Model => {
+    if (frame % AIM_EVERY_FRAMES !== 0) {
+      return holdAssistedAim(state, model)
+    }
+    const target =
+      maybeTarget ?? stickyTarget(state, model, nearestVisible(model))
+    if (target === undefined) {
+      return topOff(holdFire(model))
+    }
+    return aimAndShoot(state, model, target, frame)
+  },
+)
 
 // Aims at target and pulls the trigger, once the human hand has reacted to
 // it; until then the trigger rests.
-export const aimAndShoot = (
-  state: BotState,
-  model: Model,
-  target: Zombie,
-  frame: number,
-): Model => {
-  if (IS_SHARP) {
-    const aimed = aimAt(state, model, target)
+export const aimAndShoot: {
+  (model: Model, target: Zombie, frame: number): (state: BotState) => Model
+  (state: BotState, model: Model, target: Zombie, frame: number): Model
+} = Function.dual(
+  4,
+  (state: BotState, model: Model, target: Zombie, frame: number): Model => {
+    if (IS_SHARP) {
+      const aimed = aimAt(state, model, target, undefined)
+      return pressFire(aimed.model, aimed.point)
+    }
+    const sight = humanSight(state, target, frame)
+    if (sight === undefined) {
+      return holdFire(model)
+    }
+    const aimed = aimAt(state, model, sight.at, sight.error)
     return pressFire(aimed.model, aimed.point)
-  }
-  const sight = humanSight(state, target, frame)
-  if (sight === undefined) {
-    return holdFire(model)
-  }
-  const aimed = aimAt(state, model, sight.at, sight.error)
-  return pressFire(aimed.model, aimed.point)
-}
+  },
+)

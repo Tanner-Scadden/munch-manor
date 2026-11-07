@@ -1,4 +1,4 @@
-import { Array, Option, String, pipe } from 'effect'
+import { Array, Function, Option, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { Tabs } from '@foldkit/ui'
@@ -22,14 +22,18 @@ export const ProfileTabsBlock = Tabs.makeBlock<ProfileTab>()
 
 // NOTE: plays an effect in the Profile. The count moves on every time, so
 // the view swaps the element and the CSS animation starts over.
-export const withProfileFx = (model: Model, fx: ProfileFx): Model =>
+export const withProfileFx: {
+  (fx: ProfileFx): (model: Model) => Model
+  (model: Model, fx: ProfileFx): Model
+} = Function.dual(2, (model: Model, fx: ProfileFx): Model =>
   modifyFields(model, {
     profile: profile =>
       modifyFields(profile, {
         fx: () => fx,
         fxCount: count => count + 1,
       }),
-  })
+  }),
+)
 
 // NAME
 
@@ -127,7 +131,10 @@ export const GOOFY_NAMES: Array.NonEmptyReadonlyArray<string> = [
 
 // NOTE: a roll draws from the Model's seeded generator and never lands on
 // the name already showing.
-export const rollName = (state: number, current: string): Seeded<string> => {
+export const rollName: {
+  (current: string): (state: number) => Seeded<string>
+  (state: number, current: string): Seeded<string>
+} = Function.dual(2, (state: number, current: string): Seeded<string> => {
   const others = Array.filter(GOOFY_NAMES, name => name !== current)
   const { value, nextState } = nextRandom(state)
   const index = Math.min(others.length - 1, Math.floor(value * others.length))
@@ -138,4 +145,4 @@ export const rollName = (state: number, current: string): Seeded<string> => {
       Option.getOrElse(() => Array.headNonEmpty(GOOFY_NAMES)),
     ),
   ]
-}
+})

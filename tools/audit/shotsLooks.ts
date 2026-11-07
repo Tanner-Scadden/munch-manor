@@ -4,36 +4,50 @@
 // the hit flash for four mixed looks, as `slooks-<TAG>-<viewport>.png`, the
 // whole sheet, on a desktop, a landscape phone, and an upright phone.
 //   TAG=after bun run heavy -- bun tools/audit/shotsLooks.ts
+import { Console, Effect } from 'effect'
+
+import { runHarnessAudit } from './harnessServer'
 import {
   SHOTS_DIR,
-  SHOT_VIEWPORTS,
-  TAG,
+  auditTag,
+  closePage,
   gotoScene,
   harnessUrl,
-  launch,
+  openBrowser,
   openPage,
-  useHarness,
+  shotViewports,
 } from './lib'
+import { attempt } from './page'
 
-await useHarness()
-const browser = await launch()
-for (const viewport of SHOT_VIEWPORTS) {
-  const page = await openPage(browser, viewport)
-  await gotoScene(page, harnessUrl('looksheet', 'freeze=10'))
-  // NOTE: the page never scrolls, so the shot grows the screen to the
-  // sheet's height instead, keeping its width.
-  const height = await page.evaluate(
-    () =>
-      document.querySelector('.look-sheet')?.getBoundingClientRect().bottom ??
-      0,
-  )
-  await page.setViewportSize({
-    width: viewport.width,
-    height: Math.max(viewport.height, Math.ceil(height) + 16),
-  })
-  const path = `${SHOTS_DIR}/slooks-${TAG}-${viewport.name}.png`
-  await page.screenshot({ path, fullPage: true, animations: 'disabled' })
-  console.log(path)
-  await page.context().close()
-}
-await browser.close()
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* shotViewports
+    const browser = yield* openBrowser
+    for (const viewport of viewports) {
+      const page = yield* openPage(browser, viewport)
+      yield* gotoScene(page, harnessUrl('looksheet', 'freeze=10'))
+      // NOTE: the page never scrolls, so the shot grows the screen to the
+      // sheet's height instead, keeping its width.
+      const height = yield* attempt(() =>
+        page.evaluate(
+          () =>
+            document.querySelector('.look-sheet')?.getBoundingClientRect()
+              .bottom ?? 0,
+        ),
+      )
+      yield* attempt(() =>
+        page.setViewportSize({
+          width: viewport.width,
+          height: Math.max(viewport.height, Math.ceil(height) + 16),
+        }),
+      )
+      const path = `${SHOTS_DIR}/slooks-${tag}-${viewport.name}.png`
+      yield* attempt(() =>
+        page.screenshot({ path, fullPage: true, animations: 'disabled' }),
+      )
+      yield* Console.log(path)
+      yield* closePage(page)
+    }
+  }),
+)

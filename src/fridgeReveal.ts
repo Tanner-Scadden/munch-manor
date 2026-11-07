@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { levelOf } from './arena'
@@ -96,10 +96,10 @@ export type RevealStage =
   | Readonly<{ _tag: 'Spinning'; face: FridgePrize; step: number }>
   | Readonly<{ _tag: 'Landed'; sinceMs: number }>
 
-export const revealStageAt = (
-  prize: FridgePrize,
-  elapsedMs: number,
-): RevealStage => {
+export const revealStageAt: {
+  (elapsedMs: number): (prize: FridgePrize) => RevealStage
+  (prize: FridgePrize, elapsedMs: number): RevealStage
+} = Function.dual(2, (prize: FridgePrize, elapsedMs: number): RevealStage => {
   if (elapsedMs >= REVEAL_RULES.landMs) {
     return { _tag: 'Landed', sinceMs: elapsedMs - REVEAL_RULES.landMs }
   }
@@ -116,7 +116,7 @@ export const revealStageAt = (
     face: Option.getOrElse(Array.get(PRIZE_ORDER, faceIndex), () => prize),
     step,
   }
-}
+})
 
 // NOTE: the reveal the door shows right now, if it shows one: the prize,
 // who pulled it, and how long since the door opened. A weapon on offer has
@@ -156,16 +156,19 @@ const isLanded = (reveal: DoorReveal): boolean =>
 // NOTE: the prize whose spin stopped between two frames, for its sting.
 // A door that opens already landed (a co-op client that caught up late)
 // still stings once.
-export const maybeLandedBetween = (
-  before: FridgeDoor,
-  after: FridgeDoor,
-): Option.Option<FridgePrize> =>
-  pipe(
-    doorRevealOf(after),
-    Option.filter(isLanded),
-    Option.filter(() => !Option.exists(doorRevealOf(before), isLanded)),
-    Option.map(({ prize }) => prize),
-  )
+export const maybeLandedBetween: {
+  (after: FridgeDoor): (before: FridgeDoor) => Option.Option<FridgePrize>
+  (before: FridgeDoor, after: FridgeDoor): Option.Option<FridgePrize>
+} = Function.dual(
+  2,
+  (before: FridgeDoor, after: FridgeDoor): Option.Option<FridgePrize> =>
+    pipe(
+      doorRevealOf(after),
+      Option.filter(isLanded),
+      Option.filter(() => !Option.exists(doorRevealOf(before), isLanded)),
+      Option.map(({ prize }) => prize),
+    ),
+)
 
 // THE SPOT
 
@@ -184,7 +187,10 @@ export const prizeSpotOf = (world: World): Option.Option<Vector> =>
 
 // NOTE: the player took the weapon on offer this frame: its icon starts
 // for the HUD slot. Only the puller sees it, since only they took it.
-export const launchPrize = (before: World, after: Model): Model =>
+export const launchPrize: {
+  (after: Model): (before: World) => Model
+  (before: World, after: Model): Model
+} = Function.dual(2, (before: World, after: Model): Model =>
   FridgeDoor.match(before.fridge.door, {
     Shut: () => after,
     Open: () => after,
@@ -202,14 +208,18 @@ export const launchPrize = (before: World, after: Model): Model =>
               }),
           })
         : after,
-  })
+  }),
+)
 
 const isWeapon = (
   prize: FridgePrize,
 ): prize is Extract<FridgePrize, WeaponKind> =>
   prize === 'Cooker' || prize === 'Pan' || prize === 'Freeze'
 
-export const ageFlight = (model: Model, frameMs: number): Model =>
+export const ageFlight: {
+  (frameMs: number): (model: Model) => Model
+  (model: Model, frameMs: number): Model
+} = Function.dual(2, (model: Model, frameMs: number): Model =>
   PrizeFlight.match(model.prizeFlight, {
     Grounded: () => model,
     Flying: flight =>
@@ -219,4 +229,5 @@ export const ageFlight = (model: Model, frameMs: number): Model =>
             ? PrizeFlight.Grounded()
             : PrizeFlight.Flying({ ...flight, ageMs: flight.ageMs + frameMs }),
       }),
-  })
+  }),
+)

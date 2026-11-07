@@ -24,10 +24,24 @@
 // curve, and which zombie kinds cost the bot the most hearts. Nothing here
 // ships with the game.
 
-import { Data, Effect, Predicate, Schema } from 'effect'
+import {
+  Array,
+  Config,
+  Console,
+  Effect,
+  Option,
+  Predicate,
+  Record,
+  Ref,
+  Schema,
+  String,
+} from 'effect'
+import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 import { Window } from 'happy-dom'
-import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { encodeJson, readJsonFile, writeJsonFile } from '../json'
 import type { BotOptions } from './bot/basics'
@@ -55,25 +69,40 @@ const { nextChunk } = await import('../heavy/decision')
 // tables in place before the runs, so a balance idea can be tried without
 // touching src. Bake the winning numbers into src afterwards.
 // NOTE: the tables a tune module may edit in place.
-const tuneTables = async () => ({
-  WAVE_PLANS: (await import('../../src/wavePlans')).WAVE_PLANS,
-  ZOMBIE_KINDS: (await import('../../src/zombies')).ZOMBIE_KINDS,
-  SHOP_ITEMS: (await import('../../src/shop')).SHOP_ITEMS,
-  WEAPONS: (await import('../../src/weapons')).WEAPONS,
-  UPGRADE_TIERS: (await import('../../src/weapons')).UPGRADE_TIERS,
-  TRAPS: (await import('../../src/traps')).TRAPS,
-  DROP_CHANCE: (await import('../../src/powerups')).DROP_CHANCE,
-  DROP_RULES: (await import('../../src/powerups')).DROP_RULES,
-  BOOSTS: (await import('../../src/powerups')).BOOSTS,
-  PICKUPS: (await import('../../src/powerups')).PICKUPS,
-  BOSS_RULES: (await import('../../src/boss')).BOSS_RULES,
-  CHUCKER_RULES: (await import('../../src/chucker')).CHUCKER_RULES,
-  CRAWLER_RULES: (await import('../../src/crawler')).CRAWLER_RULES,
-  FRENZY_RULES: (await import('../../src/frenzy')).FRENZY_RULES,
-  BAIT_RULES: (await import('../../src/traps')).BAIT_RULES,
-  DIFFICULTIES: (await import('../../src/difficulty')).DIFFICULTIES,
-})
-type TuneTables = Awaited<ReturnType<typeof tuneTables>>
+const tuneTables = Effect.map(
+  Effect.all({
+    wavePlans: Effect.promise(() => import('../../src/wavePlans')),
+    zombies: Effect.promise(() => import('../../src/zombies')),
+    shop: Effect.promise(() => import('../../src/shop')),
+    weapons: Effect.promise(() => import('../../src/weapons')),
+    traps: Effect.promise(() => import('../../src/traps')),
+    powerups: Effect.promise(() => import('../../src/powerups')),
+    boss: Effect.promise(() => import('../../src/boss')),
+    chucker: Effect.promise(() => import('../../src/chucker')),
+    crawler: Effect.promise(() => import('../../src/crawler')),
+    frenzy: Effect.promise(() => import('../../src/frenzy')),
+    difficulty: Effect.promise(() => import('../../src/difficulty')),
+  }),
+  modules => ({
+    WAVE_PLANS: modules.wavePlans.WAVE_PLANS,
+    ZOMBIE_KINDS: modules.zombies.ZOMBIE_KINDS,
+    SHOP_ITEMS: modules.shop.SHOP_ITEMS,
+    WEAPONS: modules.weapons.WEAPONS,
+    UPGRADE_TIERS: modules.weapons.UPGRADE_TIERS,
+    TRAPS: modules.traps.TRAPS,
+    DROP_CHANCE: modules.powerups.DROP_CHANCE,
+    DROP_RULES: modules.powerups.DROP_RULES,
+    BOOSTS: modules.powerups.BOOSTS,
+    PICKUPS: modules.powerups.PICKUPS,
+    BOSS_RULES: modules.boss.BOSS_RULES,
+    CHUCKER_RULES: modules.chucker.CHUCKER_RULES,
+    CRAWLER_RULES: modules.crawler.CRAWLER_RULES,
+    FRENZY_RULES: modules.frenzy.FRENZY_RULES,
+    BAIT_RULES: modules.traps.BAIT_RULES,
+    DIFFICULTIES: modules.difficulty.DIFFICULTIES,
+  }),
+)
+type TuneTables = Effect.Success<typeof tuneTables>
 
 // NOTE: a tune module is the caller's own script: its default export is
 // checked to be a function, and is trusted to take the tables.
@@ -83,12 +112,29 @@ const TuneModule = Schema.Struct({
       Predicate.isFunction(value),
   ),
 })
-const TUNE = process.env['TUNE']
-if (TUNE !== undefined) {
-  const tunePath = TUNE.startsWith('/') ? TUNE : `${process.cwd()}/${TUNE}`
-  const tune = Schema.decodeUnknownSync(TuneModule)(await import(tunePath))
-  tune.default(await tuneTables())
-}
+
+class TuneFailed extends Schema.TaggedError<
+  TuneFailed,
+  { readonly brand: unique symbol }
+>()('TuneFailed', {
+  path: Schema.String,
+  reason: Schema.String,
+}) {}
+
+const applyTune = (tune: string) =>
+  Effect.gen(function* () {
+    const tunePath = String.startsWith('/')(tune)
+      ? tune
+      : `${process.cwd()}/${tune}`
+    const loaded: unknown = yield* Effect.tryPromise({
+      try: () => import(tunePath),
+      catch: error =>
+        TuneFailed.make({ path: tunePath, reason: globalThis.String(error) }),
+    })
+    const module = yield* Schema.decodeUnknownEffect(TuneModule)(loaded)
+    const tables = yield* tuneTables
+    module.default(tables)
+  })
 
 // ARGUMENTS
 
@@ -97,44 +143,59 @@ const flagValue = (name: string): string | undefined => {
   const at = argv.indexOf(name)
   return at === -1 ? undefined : argv[at + 1]
 }
-const positional = argv.filter(
+const positional = Array.filter(
+  argv,
   (arg, index) =>
-    !arg.startsWith('--') && argv[index - 1]?.startsWith('--') !== true,
+    !String.startsWith('--')(arg) &&
+    !String.startsWith('--')(argv[index - 1] ?? ''),
 )
 
-const IS_ENDLESS = process.env['MODE'] === 'endless'
-const OPTIONS: BotOptions = {
-  ...DEFAULT_OPTIONS,
-  difficulty: parseDifficulty(process.env['DIFFICULTY']),
-  mode: IS_ENDLESS ? 'Endless' : 'Campaign',
-  swapsBack: process.env['SWAP'] !== undefined,
-  noUpgrades: process.env['NO_UPGRADES'] !== undefined,
-  calling: parseCalling(process.env['CALLING']),
-  modifiers: parseModifiers(process.env['MODS']),
+const SimulateConfig = Config.all({
+  maybeTune: Config.String('TUNE').pipe(Config.option),
+  maybeMode: Config.String('MODE').pipe(Config.option),
+  maybeDifficulty: Config.String('DIFFICULTY').pipe(Config.option),
+  maybeSwap: Config.String('SWAP').pipe(Config.option),
+  maybeNoUpgrades: Config.String('NO_UPGRADES').pipe(Config.option),
+  maybeCalling: Config.String('CALLING').pipe(Config.option),
+  maybeMods: Config.String('MODS').pipe(Config.option),
+  maybeKite: Config.String('KITE').pipe(Config.option),
+  maybeNoPickups: Config.String('NO_PICKUPS').pipe(Config.option),
+  maybeWorkers: Config.String('WORKERS').pipe(Config.option),
+  maybeTimeline: Config.String('TIMELINE').pipe(Config.option),
+  maybeWorkerSlice: Config.String('WORKER_SLICE').pipe(Config.option),
+  maybeWorkerSlots: Config.String('WORKER_SLOTS').pipe(Config.option),
+  maybeWorkerOut: Config.String('WORKER_OUT').pipe(Config.option),
+})
+
+// NOTE: what the whole batch reads, from the flags and the environment.
+type Setup = {
+  readonly options: BotOptions
+  readonly isEndless: boolean
+  readonly kites: boolean
+  readonly ignoresPickups: boolean
+  readonly hasTimeline: boolean
+  readonly waveFlag: string | undefined
+  readonly jsonOut: string | undefined
+  readonly runs: number
+  readonly firstSeed: number
+  readonly seedOffset: number
+  readonly slots: number
+  readonly isChunked: boolean
+  readonly started: number
 }
-const DIFFICULTY = OPTIONS.difficulty
-const SWAPS_BACK = OPTIONS.swapsBack
-const NO_UPGRADES = OPTIONS.noUpgrades
-const KITES = process.env['KITE'] !== undefined
-const IGNORES_PICKUPS = process.env['NO_PICKUPS'] !== undefined
-const WAVE_FLAG = flagValue('--wave')
-const JSON_OUT = flagValue('--json')
-const runs = Number(flagValue('--runs') ?? positional[0] ?? 40)
-const firstSeed = Number(flagValue('--first-seed') ?? positional[1] ?? 1)
-const seedOffset = Number(flagValue('--seed-offset') ?? 0)
-if (!Number.isInteger(seedOffset) || seedOffset < 0) {
-  throw new Error('--seed-offset must be a whole number of runs, 0 or more')
-}
-const slots = Number(flagValue('--slots') ?? 10)
-const seedAt = (index: number) => seedFrom(firstSeed, seedOffset + index)
-const WORKERS = Math.max(1, Number(process.env['WORKERS'] ?? 1))
-const IS_CHUNKED = turn.isUnderGuard()
-const started = performance.now()
-const STYLE = SWAPS_BACK ? 'SwapsBack' : 'Default'
+
+const styleOf = (setup: Setup) =>
+  setup.options.swapsBack ? 'SwapsBack' : 'Default'
+
+const seedAt = (setup: Setup, index: number) =>
+  seedFrom(setup.firstSeed, setup.seedOffset + index)
 
 const waveList = (flag: string): Array<number> => {
   if (flag === 'all') {
-    return Array.from({ length: FINAL_WAVE }, (_, index) => index + 1)
+    return globalThis.Array.from(
+      { length: FINAL_WAVE },
+      (_, index) => index + 1,
+    )
   }
   const wave = Number(flag)
   if (!Number.isInteger(wave) || wave < 1 || wave > FINAL_WAVE) {
@@ -156,50 +217,65 @@ const waveList = (flag: string): Array<number> => {
 
 // NOTE: an env var holding from:to, two whole numbers.
 const rangeFrom = (text: string): readonly [number, number] => {
-  const [from, to] = text.split(':').map(Number)
-  if (from === undefined || to === undefined) {
+  const [from, ...rest] = Array.map(String.split(':')(text), Number)
+  const to = rest[0]
+  if (to === undefined) {
     throw new Error(`Expected from:to, got ${text}`)
   }
   return [from, to]
 }
 
-const WORKER_SLICE = process.env['WORKER_SLICE']
-if (WORKER_SLICE !== undefined) {
-  const [from, to] = rangeFrom(WORKER_SLICE)
-  const [slotFrom, slotTo] = rangeFrom(
-    process.env['WORKER_SLOTS'] ?? `0:${slots}`,
-  )
-  const out = process.env['WORKER_OUT']
-  if (out === undefined) {
-    throw new Error('A worker needs WORKER_OUT')
-  }
-  if (WAVE_FLAG === undefined) {
-    writeJsonFile(
-      RunResults,
-      out,
-      Array.from({ length: to - from }, (_, offset) =>
-        runOnce(seedAt(from + offset), OPTIONS),
-      ),
+class WorkerFailed extends Schema.TaggedError<
+  WorkerFailed,
+  { readonly brand: unique symbol }
+>()('WorkerFailed', {
+  message: Schema.String,
+}) {}
+
+// NOTE: plays this process's share as a worker and writes it to `out`.
+const playAsWorker = (
+  setup: Setup,
+  slice: string,
+  maybeSlots: Option.Option<string>,
+  maybeOut: Option.Option<string>,
+) =>
+  Effect.gen(function* () {
+    const [from, to] = rangeFrom(slice)
+    const [slotFrom, slotTo] = rangeFrom(
+      Option.getOrElse(maybeSlots, () => `0:${setup.slots}`),
     )
-  } else {
-    writeJsonFile(
-      WaveRuns,
-      out,
-      playWavePass(
-        { waves: waveList(WAVE_FLAG), runs, slots, firstSeed, seedOffset },
-        OPTIONS,
-        slot => slot >= slotFrom && slot < slotTo && slot % to === from,
-      ),
-    )
-  }
-  process.exit(0)
-}
+    if (Option.isNone(maybeOut)) {
+      return yield* Effect.die(new Error('A worker needs WORKER_OUT'))
+    }
+    const out = maybeOut.value
+    if (setup.waveFlag === undefined) {
+      yield* writeJsonFile(
+        RunResults,
+        out,
+        globalThis.Array.from({ length: to - from }, (_, offset) =>
+          runOnce(seedAt(setup, from + offset), setup.options),
+        ),
+      )
+    } else {
+      yield* writeJsonFile(
+        WaveRuns,
+        out,
+        playWavePass(
+          {
+            waves: waveList(setup.waveFlag),
+            runs: setup.runs,
+            slots: setup.slots,
+            firstSeed: setup.firstSeed,
+            seedOffset: setup.seedOffset,
+          },
+          setup.options,
+          slot => slot >= slotFrom && slot < slotTo && slot % to === from,
+        ),
+      )
+    }
+  })
 
 const SELF = fileURLToPath(import.meta.url)
-
-class WorkerFailed extends Data.TaggedError('WorkerFailed')<{
-  message: string
-}> {}
 
 // NOTE: plays one worker's share in a child process and reads back what it
 // wrote, decoded with `schema`.
@@ -208,326 +284,222 @@ const runWorker = <A>(
   slice: string,
   index: number,
   slotRange?: string,
-): Promise<ReadonlyArray<A>> =>
-  Effect.runPromise(
-    Effect.callback<ReadonlyArray<A>, WorkerFailed>(resume => {
-      const out = `/tmp/simulate-${process.pid}-${index}.json`
-      const child = spawn(process.execPath, [SELF, ...argv], {
-        env: {
-          ...process.env,
-          WORKER_SLICE: slice,
-          WORKER_OUT: out,
-          ...(slotRange === undefined ? {} : { WORKER_SLOTS: slotRange }),
-        },
-        stdio: 'inherit',
+) =>
+  Effect.gen(function* () {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+    const out = `/tmp/simulate-${process.pid}-${index}.json`
+    const code = yield* spawner
+      .exitCode(
+        ChildProcess.make(process.execPath, [SELF, ...argv], {
+          env: {
+            WORKER_SLICE: slice,
+            WORKER_OUT: out,
+            ...(slotRange === undefined ? {} : { WORKER_SLOTS: slotRange }),
+          },
+          extendEnv: true,
+          stdin: 'inherit',
+          stdout: 'inherit',
+          stderr: 'inherit',
+          detached: false,
+        }),
+      )
+      .pipe(
+        Effect.mapError(error => WorkerFailed.make({ message: error.message })),
+      )
+    if (code !== 0) {
+      return yield* WorkerFailed.make({
+        message: `worker ${index} exited with ${globalThis.String(code)}`,
       })
-      child.on('error', error =>
-        resume(Effect.fail(new WorkerFailed({ message: error.message }))),
-      )
-      child.on('exit', code =>
-        resume(
-          code === 0
-            ? Effect.sync(() => readJsonFile(schema, out))
-            : Effect.fail(
-                new WorkerFailed({
-                  message: `worker ${index} exited with ${String(code)}`,
-                }),
-              ),
-        ),
-      )
-    }),
-  )
+    }
+    return yield* readJsonFile(schema, out)
+  })
 
-// NOTE: the guard may give a later chunk more or fewer workers.
-let workers = WORKERS
-
-const playRange = async (
-  first: number,
-  end: number,
-): Promise<Array<RunResult>> => {
-  if (workers === 1) {
-    return Array.from({ length: end - first }, (_, offset) =>
-      runOnce(seedAt(first + offset), OPTIONS),
+const playRange = (setup: Setup, workers: number, first: number, end: number) =>
+  Effect.gen(function* () {
+    if (workers === 1) {
+      return globalThis.Array.from({ length: end - first }, (_, offset) =>
+        runOnce(seedAt(setup, first + offset), setup.options),
+      )
+    }
+    const per = Math.ceil((end - first) / workers)
+    const slices = Array.filter(
+      globalThis.Array.from(
+        { length: workers },
+        (_, index) =>
+          [
+            first + index * per,
+            Math.min(end, first + (index + 1) * per),
+          ] as const,
+      ),
+      ([from, to]) => to > from,
     )
-  }
-  const per = Math.ceil((end - first) / workers)
-  const slices = Array.from(
-    { length: workers },
-    (_, index) =>
-      [first + index * per, Math.min(end, first + (index + 1) * per)] as const,
-  ).filter(([from, to]) => to > from)
-  const outputs = await Promise.all(
-    slices.map(([from, to], index) =>
-      runWorker(RunResults, `${from}:${to}`, index),
-    ),
-  )
-  return outputs.flat()
-}
+    const outputs = yield* Effect.all(
+      Array.map(slices, ([from, to], index) =>
+        runWorker(RunResults, `${from}:${to}`, index),
+      ),
+      { concurrency: 'unbounded' },
+    )
+    return Array.flatten(outputs)
+  })
+
+// NOTE: the guard may give a later chunk more or fewer workers. Returns the
+// workers for the next chunk.
+const yieldTurn = (label: string, workers: Ref.Ref<number>) =>
+  Effect.gen(function* () {
+    const current = yield* Ref.get(workers)
+    const maybeNext = yield* turn.yieldTurn(label)
+    yield* Ref.set(
+      workers,
+      Option.getOrElse(maybeNext, () => current),
+    )
+  })
 
 // NOTE: plays the runs in chunks, in seed order, yielding the guard's turn
 // between chunks. Run i is always seed i, so the results do not depend on
 // where the chunks fall.
-const playAll = async (): Promise<Array<RunResult>> => {
-  const results: Array<RunResult> = []
-  for (let done = 0; done < runs;) {
-    if (done > 0) {
-      workers = await turn.yieldTurnAsync(`${done} of ${runs} runs`, workers)
+const playAll = (setup: Setup, workers: Ref.Ref<number>) =>
+  Effect.gen(function* () {
+    const results: Array<RunResult> = []
+    for (let done = 0; done < setup.runs;) {
+      if (done > 0) {
+        yield* yieldTurn(`${done} of ${setup.runs} runs`, workers)
+      }
+      const count = yield* Ref.get(workers)
+      const [from, to] = nextChunk(
+        done,
+        setup.runs,
+        setup.isChunked ? turn.chunkRuns(count) : 0,
+      )
+      results.push(...(yield* playRange(setup, count, from, to)))
+      done = to
     }
-    const [from, to] = nextChunk(
-      done,
-      runs,
-      IS_CHUNKED ? turn.chunkRuns(workers) : 0,
-    )
-    results.push(...(await playRange(from, to)))
-    done = to
-  }
-  return results
-}
+    return results
+  })
 
-const playSlots = async (
+const playSlots = (
+  setup: Setup,
+  workers: number,
   waves: Array<number>,
   slotFrom: number,
   slotTo: number,
-): Promise<Array<WaveRun>> => {
-  const pass = { waves, runs, slots, firstSeed, seedOffset }
-  const count = Math.min(workers, slotTo - slotFrom)
-  if (count === 1) {
-    return playWavePass(
-      pass,
-      OPTIONS,
-      slot => slot >= slotFrom && slot < slotTo,
+) =>
+  Effect.gen(function* () {
+    const pass = {
+      waves,
+      runs: setup.runs,
+      slots: setup.slots,
+      firstSeed: setup.firstSeed,
+      seedOffset: setup.seedOffset,
+    }
+    const count = Math.min(workers, slotTo - slotFrom)
+    if (count === 1) {
+      return playWavePass(
+        pass,
+        setup.options,
+        slot => slot >= slotFrom && slot < slotTo,
+      )
+    }
+    const outputs = yield* Effect.all(
+      globalThis.Array.from({ length: count }, (_, index) =>
+        runWorker(
+          WaveRuns,
+          `${index}:${count}`,
+          index,
+          `${slotFrom}:${slotTo}`,
+        ),
+      ),
+      { concurrency: 'unbounded' },
     )
-  }
-  const outputs = await Promise.all(
-    Array.from({ length: count }, (_, index) =>
-      runWorker(WaveRuns, `${index}:${count}`, index, `${slotFrom}:${slotTo}`),
-    ),
-  )
-  return outputs.flat()
-}
+    return Array.flatten(outputs)
+  })
 
 // NOTE: a wave pass chunks by snapshot slot, one slot a worker, so each
 // slot's snapshots are found once. The runs are sorted by wave and run, so
 // the order never depends on the chunks or the workers.
-const playWaves = async (waves: Array<number>): Promise<Array<WaveRun>> => {
-  const waveRuns: Array<WaveRun> = []
-  for (let done = 0; done < slots;) {
-    if (done > 0) {
-      workers = await turn.yieldTurnAsync(
-        `${done} of ${slots} snapshot slots`,
-        workers,
+const playWaves = (
+  setup: Setup,
+  workers: Ref.Ref<number>,
+  waves: Array<number>,
+) =>
+  Effect.gen(function* () {
+    const waveRuns: Array<WaveRun> = []
+    for (let done = 0; done < setup.slots;) {
+      if (done > 0) {
+        yield* yieldTurn(`${done} of ${setup.slots} snapshot slots`, workers)
+      }
+      const count = yield* Ref.get(workers)
+      const [from, to] = nextChunk(
+        done,
+        setup.slots,
+        setup.isChunked && turn.chunkRuns(count) > 0 ? count : 0,
       )
+      waveRuns.push(...(yield* playSlots(setup, count, waves, from, to)))
+      done = to
     }
-    const [from, to] = nextChunk(
-      done,
-      slots,
-      IS_CHUNKED && turn.chunkRuns(workers) > 0 ? workers : 0,
+    return waveRuns.sort(
+      (first, second) =>
+        first.wave - second.wave || first.waveSeed - second.waveSeed,
     )
-    waveRuns.push(...(await playSlots(waves, from, to)))
-    done = to
-  }
-  return waveRuns.sort(
-    (first, second) =>
-      first.wave - second.wave || first.waveSeed - second.waveSeed,
-  )
-}
+  })
 
-const writeJson = (value: unknown) => {
-  if (JSON_OUT !== undefined) {
-    writeJsonFile(Schema.Unknown, JSON_OUT, value)
-    console.log(`\nWrote the summary to ${JSON_OUT}`)
-  }
-}
+const writeJson = (setup: Setup, value: unknown) =>
+  Effect.gen(function* () {
+    if (setup.jsonOut !== undefined) {
+      yield* writeJsonFile(Schema.Unknown, setup.jsonOut, value)
+      yield* Console.log(`\nWrote the summary to ${setup.jsonOut}`)
+    }
+  })
 
 // WAVE SNAPSHOT PASS
 
-if (WAVE_FLAG !== undefined) {
-  const waves = waveList(WAVE_FLAG)
-  const waveRuns = await playWaves(waves)
-  const pass = summary.summarizeWavePass(waveRuns, waves, {
-    difficulty: DIFFICULTY,
-    style: STYLE,
-    runsPerWave: runs,
-    slots,
-    wallSeconds: (performance.now() - started) / 1000,
-  })
-  console.log(summary.formatWavePass(pass))
-  waves.forEach(wave => {
-    const fights = waveRuns.flatMap(({ boss, outcome, ...run }) =>
-      run.wave === wave && boss?.arrived === true
-        ? [{ fight: boss, cleared: outcome === 'Cleared' }]
-        : [],
-    )
-    if (fights.length === 0) {
-      return
+const reportWavePass = (
+  setup: Setup,
+  waves: Array<number>,
+  waveRuns: Array<WaveRun>,
+) =>
+  Effect.gen(function* () {
+    const pass = summary.summarizeWavePass(waveRuns, waves, {
+      difficulty: setup.options.difficulty,
+      style: styleOf(setup),
+      runsPerWave: setup.runs,
+      slots: setup.slots,
+      wallSeconds: (performance.now() - setup.started) / 1000,
+    })
+    yield* Console.log(summary.formatWavePass(pass))
+    for (const wave of waves) {
+      const fights = Array.flatMap(waveRuns, ({ boss, outcome, ...run }) =>
+        run.wave === wave && boss?.arrived === true
+          ? [{ fight: boss, cleared: outcome === 'Cleared' }]
+          : [],
+      )
+      if (fights.length === 0) {
+        continue
+      }
+      const kills = Array.map(
+        Array.filter(fights, ({ fight, cleared }) => cleared && fight.felled),
+        ({ fight }) => fight.fightMs / 1000,
+      )
+      const sumOf = (pick: (fight: BossFight) => number) =>
+        Array.reduce(fights, 0, (total, { fight }) => total + pick(fight))
+      yield* Console.log(
+        `\nBoss on wave ${wave}: arrived in ${fights.length}, felled in ${Array.filter(fights, ({ fight }) => fight.felled).length}, died with him standing ${Array.filter(fights, ({ fight }) => fight.diedToIt).length}, enraged in ${Array.filter(fights, ({ fight }) => fight.enraged).length}`,
+      )
+      yield* Console.log(
+        `  kill time in cleared runs: median ${summary.median(kills).toFixed(1)} s (p25 ${summary.quantile(kills, 0.25).toFixed(1)}, p75 ${summary.quantile(kills, 0.75).toFixed(1)}, n=${kills.length}); health taken a second aimed at him ${(sumOf(fight => fight.damageTaken) / Math.max(1, sumOf(fight => fight.aimedMs) / 1000)).toFixed(2)}, a second of fight ${(sumOf(fight => fight.damageTaken) / Math.max(1, sumOf(fight => fight.fightMs) / 1000)).toFixed(2)}; hearts lost while he stood ${(sumOf(fight => fight.heartsLost) / fights.length).toFixed(2)} a fight`,
+      )
     }
-    const kills = fights
-      .filter(({ fight, cleared }) => cleared && fight.felled)
-      .map(({ fight }) => fight.fightMs / 1000)
-    const sumOf = (pick: (fight: BossFight) => number) =>
-      fights.reduce((total, { fight }) => total + pick(fight), 0)
-    console.log(
-      `\nBoss on wave ${wave}: arrived in ${fights.length}, felled in ${fights.filter(({ fight }) => fight.felled).length}, died with him standing ${fights.filter(({ fight }) => fight.diedToIt).length}, enraged in ${fights.filter(({ fight }) => fight.enraged).length}`,
-    )
-    console.log(
-      `  kill time in cleared runs: median ${summary.median(kills).toFixed(1)} s (p25 ${summary.quantile(kills, 0.25).toFixed(1)}, p75 ${summary.quantile(kills, 0.75).toFixed(1)}, n=${kills.length}); health taken a second aimed at him ${(sumOf(fight => fight.damageTaken) / Math.max(1, sumOf(fight => fight.aimedMs) / 1000)).toFixed(2)}, a second of fight ${(sumOf(fight => fight.damageTaken) / Math.max(1, sumOf(fight => fight.fightMs) / 1000)).toFixed(2)}; hearts lost while he stood ${(sumOf(fight => fight.heartsLost) / fights.length).toFixed(2)} a fight`,
-    )
+    yield* writeJson(setup, pass)
   })
-  writeJson(pass)
-  process.exit(0)
-}
 
 // CAMPAIGN
 
 const median = (values: Array<number>): number => summary.median(values)
 
-const results = await playAll()
-const elapsed = (performance.now() - started) / 1000
-
-const lastWave = IS_ENDLESS
-  ? Math.max(...results.map(result => result.cleared + 1))
-  : FINAL_WAVE
-console.log(
-  `${runs} ${IS_ENDLESS ? 'endless' : 'campaign'} runs on ${DIFFICULTY} in ${elapsed.toFixed(1)} s${NO_UPGRADES ? ', no upgrades' : ''}${SWAPS_BACK ? ', swaps back to the spare' : ''}${KITES ? ', kites the boss' : ''}`,
-)
-console.log('\nWave  reached  cleared')
-for (let wave = 1; wave <= lastWave; wave++) {
-  const reached = results.filter(result => result.cleared >= wave - 1).length
-  const cleared = results.filter(result => result.cleared >= wave).length
-  console.log(
-    `${String(wave).padStart(4)}  ${((100 * reached) / runs).toFixed(0).padStart(6)}%  ${((100 * cleared) / runs).toFixed(0).padStart(6)}%`,
-  )
-}
-const deaths = results
-  .filter(result => !result.victory)
-  .map(result => result.cleared + 1)
-const wins = results.filter(result => result.victory)
 const mean = (values: Array<number>): number =>
-  values.length === 0 ? 0 : values.reduce((a, b) => a + b, 0) / values.length
-console.log(
-  '\nWave  died  hearts lost  pressure s  relax s  length s  peak alive  (means over runs that played the wave)',
-)
-for (let wave = 1; wave <= lastWave; wave++) {
-  const logs = results.flatMap(r => r.waves[wave - 1] ?? [])
-  const died = deaths.filter(death => death === wave).length
-  console.log(
-    `${String(wave).padStart(4)}  ${((100 * died) / runs).toFixed(0).padStart(3)}%  ${mean(
-      logs.map(l => l.heartsLost),
-    )
-      .toFixed(2)
-      .padStart(11)}  ${mean(logs.map(l => l.pressureMs / 1000))
-      .toFixed(1)
-      .padStart(10)}  ${mean(logs.map(l => l.relaxMs / 1000))
-      .toFixed(1)
-      .padStart(7)}  ${mean(logs.map(l => l.lengthMs / 1000))
-      .toFixed(0)
-      .padStart(8)}  ${mean(logs.map(l => l.peakAlive))
-      .toFixed(1)
-      .padStart(10)}`,
-  )
-}
-console.log(`\nVictories: ${wins.length} of ${runs}`)
-console.log(
-  `Close calls: ${wins.filter(r => r.minHp <= 1).length} of ${wins.length} wins reached 1 heart`,
-)
-console.log(`Median wave of death: ${median(deaths)}`)
-if (IS_ENDLESS) {
-  const reached = results.map(result => result.cleared + 1)
-  console.log(
-    `Endless wave reached: median ${median(reached)}, best ${Math.max(...reached)}, worst ${Math.min(...reached)}`,
-  )
-}
-console.log(
-  `Upgrades at the end: spare tier median ${median(results.map(r => r.spareTier))}, pistol tier median ${median(results.map(r => r.pistolTier))}, spent median $${median(results.map(r => r.upgradeSpend))}`,
-)
-console.log(
-  `Gnomes placed per run: median ${median(results.map(r => r.gnomesPlaced))}, most ${Math.max(...results.map(r => r.gnomesPlaced))}`,
-)
-const kitchenWaves = results.map(r => r.kitchenWave).filter(wave => wave > 0)
-console.log(
-  `Kitchen bought: ${((100 * kitchenWaves.length) / Math.max(1, results.length)).toFixed(0)}% of runs, in the break before wave ${kitchenWaves.length > 0 ? median(kitchenWaves) : '-'} (median)`,
-)
-const pullers = results.filter(r => r.fridge.pulls > 0)
-const countsJson = encodeJson(Schema.Record(Schema.String, Schema.Number))
-const emptyCounts = (): Record<string, number> => ({})
-const fridgeTotals = results.reduce(
-  (totals, { fridge }) => {
-    Object.entries(fridge.prizes).forEach(([prize, count]) => {
-      totals.prizes[prize] = (totals.prizes[prize] ?? 0) + count
-    })
-    totals.ended[fridge.endedWith] = (totals.ended[fridge.endedWith] ?? 0) + 1
-    totals.lids += fridge.lids
-    totals.pops += fridge.pops
-    totals.swings += fridge.swings
-    totals.clangs += fridge.clangs
-    totals.sprays += fridge.sprays
-    totals.shatters += fridge.shatters
-    totals.taken += fridge.taken
-    totals.stabs += fridge.stabs
-    totals.stabHits += fridge.stabHits
-    totals.counterBuys += fridge.counterBuys
-    return totals
-  },
-  {
-    prizes: emptyCounts(),
-    ended: emptyCounts(),
-    lids: 0,
-    pops: 0,
-    swings: 0,
-    clangs: 0,
-    sprays: 0,
-    shatters: 0,
-    taken: 0,
-    stabs: 0,
-    stabHits: 0,
-    counterBuys: 0,
-  },
-)
-const fridgeWins = (prize: string) =>
-  results.filter(r => (r.fridge.prizes[prize] ?? 0) > 0)
-console.log(
-  `Fridge: pulled in ${((100 * pullers.length) / Math.max(1, results.length)).toFixed(0)}% of runs, ${results.reduce((sum, r) => sum + r.fridge.pulls, 0)} pulls, first in the break before wave ${pullers.length > 0 ? median(pullers.map(r => r.fridge.firstPullWave)) : '-'} (median)`,
-)
-console.log(
-  `Fridge prizes: ${countsJson(fridgeTotals.prizes)}; carried at the end: ${countsJson(fridgeTotals.ended)}`,
-)
-console.log(
-  `Fridge weapons taken: ${fridgeTotals.taken}. Knife: ${fridgeTotals.stabs} stabs, ${fridgeTotals.stabHits} hits (${(fridgeTotals.stabs / Math.max(1, results.length)).toFixed(1)} stabs a run).`,
-)
-console.log(
-  `Ammo window: ${fridgeTotals.counterBuys} refills mid-wave (${(fridgeTotals.counterBuys / Math.max(1, results.length)).toFixed(1)} a run)`,
-)
-console.log(
-  `Fridge weapons: ${fridgeTotals.lids} lids, ${fridgeTotals.pops} pops, ${fridgeTotals.swings} swings (${fridgeTotals.clangs} clangs), ${fridgeTotals.sprays} sprays, ${fridgeTotals.shatters} shatters`,
-)
-console.log(
-  `Wins by fridge weapon pulled: ${['Cooker', 'Pan', 'Freeze']
-    .map(prize => {
-      const pulled = fridgeWins(prize)
-      return `${prize} ${pulled.filter(r => r.victory).length}/${pulled.length}`
-    })
-    .join(
-      ', ',
-    )}, none ${results.filter(r => r.fridge.pulls === 0 && r.victory).length}/${results.filter(r => r.fridge.pulls === 0).length}`,
-)
-console.log(
-  `Median run length: ${(median(results.map(r => r.runMs)) / 60000).toFixed(2)} min`,
-)
-console.log(
-  `Median win length: ${(median(wins.map(r => r.runMs)) / 60000).toFixed(2)} min`,
-)
-console.log(
-  '\nMoney earned by the end of wave (median of runs that cleared it)',
-)
-for (let wave = 1; wave <= lastWave; wave++) {
-  const values = results.flatMap(r => r.moneyAfterWave[wave - 1] ?? [])
-  if (values.length > 0) {
-    console.log(`  wave ${wave}: $${median(values)}`)
-  }
-}
-console.log(
-  '\nShop visits: money on arrival (median, p25 to p75) and what the bot bought (share of visits)',
-)
+  values.length === 0
+    ? 0
+    : Array.reduce(values, 0, (a, b) => a + b) / values.length
+
 const quantile = (values: Array<number>, q: number): number => {
   if (values.length === 0) {
     return 0
@@ -535,233 +507,517 @@ const quantile = (values: Array<number>, q: number): number => {
   const sorted = [...values].sort((a, b) => a - b)
   return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0
 }
-for (let wave = 2; wave <= lastWave; wave++) {
-  const { money, visits, bought } = summary.tallyShopVisits(results, wave)
-  if (visits === 0) {
-    continue
-  }
-  const shares = bought
-    .map(([item, n]) => `${item} ${((100 * n) / visits).toFixed(0)}%`)
-    .join(', ')
-  console.log(
-    `  before wave ${wave}: $${median([...money])} ($${quantile([...money], 0.25)} to $${quantile([...money], 0.75)}), n=${visits}: ${shares}`,
-  )
-}
-const hurt = results.reduce((sum, r) => {
-  KINDS.forEach(kind => {
-    sum[kind] += r.hurtBy[kind]
+
+const reportCampaign = (
+  setup: Setup,
+  results: Array<RunResult>,
+  elapsed: number,
+) =>
+  Effect.gen(function* () {
+    const lastWave = setup.isEndless
+      ? Math.max(...Array.map(results, result => result.cleared + 1))
+      : FINAL_WAVE
+    yield* Console.log(
+      `${setup.runs} ${setup.isEndless ? 'endless' : 'campaign'} runs on ${setup.options.difficulty} in ${elapsed.toFixed(1)} s${setup.options.noUpgrades ? ', no upgrades' : ''}${setup.options.swapsBack ? ', swaps back to the spare' : ''}${setup.kites ? ', kites the boss' : ''}`,
+    )
+    yield* Console.log('\nWave  reached  cleared')
+    for (let wave = 1; wave <= lastWave; wave++) {
+      const reached = Array.filter(
+        results,
+        result => result.cleared >= wave - 1,
+      ).length
+      const cleared = Array.filter(
+        results,
+        result => result.cleared >= wave,
+      ).length
+      yield* Console.log(
+        `${String.padStart(4)(globalThis.String(wave))}  ${String.padStart(6)(((100 * reached) / setup.runs).toFixed(0))}%  ${String.padStart(6)(((100 * cleared) / setup.runs).toFixed(0))}%`,
+      )
+    }
+    const deaths = Array.map(
+      Array.filter(results, result => !result.victory),
+      result => result.cleared + 1,
+    )
+    const wins = Array.filter(results, result => result.victory)
+    yield* Console.log(
+      '\nWave  died  hearts lost  pressure s  relax s  length s  peak alive  (means over runs that played the wave)',
+    )
+    for (let wave = 1; wave <= lastWave; wave++) {
+      const logs = Array.flatMap(results, r =>
+        Array.fromNullishOr(r.waves[wave - 1]),
+      )
+      const died = Array.filter(deaths, death => death === wave).length
+      yield* Console.log(
+        `${String.padStart(4)(globalThis.String(wave))}  ${String.padStart(3)(((100 * died) / setup.runs).toFixed(0))}%  ${String.padStart(
+          11,
+        )(
+          mean(Array.map(logs, l => l.heartsLost)).toFixed(2),
+        )}  ${String.padStart(10)(
+          mean(Array.map(logs, l => l.pressureMs / 1000)).toFixed(1),
+        )}  ${String.padStart(7)(
+          mean(Array.map(logs, l => l.relaxMs / 1000)).toFixed(1),
+        )}  ${String.padStart(8)(
+          mean(Array.map(logs, l => l.lengthMs / 1000)).toFixed(0),
+        )}  ${String.padStart(10)(
+          mean(Array.map(logs, l => l.peakAlive)).toFixed(1),
+        )}`,
+      )
+    }
+    yield* Console.log(`\nVictories: ${wins.length} of ${setup.runs}`)
+    yield* Console.log(
+      `Close calls: ${Array.filter(wins, r => r.minHp <= 1).length} of ${wins.length} wins reached 1 heart`,
+    )
+    yield* Console.log(`Median wave of death: ${median(deaths)}`)
+    if (setup.isEndless) {
+      const reached = Array.map(results, result => result.cleared + 1)
+      yield* Console.log(
+        `Endless wave reached: median ${median(reached)}, best ${Math.max(...reached)}, worst ${Math.min(...reached)}`,
+      )
+    }
+    yield* Console.log(
+      `Upgrades at the end: spare tier median ${median(Array.map(results, r => r.spareTier))}, pistol tier median ${median(Array.map(results, r => r.pistolTier))}, spent median $${median(Array.map(results, r => r.upgradeSpend))}`,
+    )
+    yield* Console.log(
+      `Gnomes placed per run: median ${median(Array.map(results, r => r.gnomesPlaced))}, most ${Math.max(...Array.map(results, r => r.gnomesPlaced))}`,
+    )
+    const kitchenWaves = Array.filter(
+      Array.map(results, r => r.kitchenWave),
+      wave => wave > 0,
+    )
+    yield* Console.log(
+      `Kitchen bought: ${((100 * kitchenWaves.length) / Math.max(1, results.length)).toFixed(0)}% of runs, in the break before wave ${kitchenWaves.length > 0 ? median(kitchenWaves) : '-'} (median)`,
+    )
+    const pullers = Array.filter(results, r => r.fridge.pulls > 0)
+    const countsJson = encodeJson(Schema.Record(Schema.String, Schema.Finite))
+    const emptyCounts = (): Record<string, number> => ({})
+    const fridgeTotals = Array.reduce(
+      results,
+      {
+        prizes: emptyCounts(),
+        ended: emptyCounts(),
+        lids: 0,
+        pops: 0,
+        swings: 0,
+        clangs: 0,
+        sprays: 0,
+        shatters: 0,
+        taken: 0,
+        stabs: 0,
+        stabHits: 0,
+        counterBuys: 0,
+      },
+      (totals, { fridge }) => {
+        Array.forEach(Record.toEntries(fridge.prizes), ([prize, count]) => {
+          totals.prizes[prize] = (totals.prizes[prize] ?? 0) + count
+        })
+        totals.ended[fridge.endedWith] =
+          (totals.ended[fridge.endedWith] ?? 0) + 1
+        totals.lids += fridge.lids
+        totals.pops += fridge.pops
+        totals.swings += fridge.swings
+        totals.clangs += fridge.clangs
+        totals.sprays += fridge.sprays
+        totals.shatters += fridge.shatters
+        totals.taken += fridge.taken
+        totals.stabs += fridge.stabs
+        totals.stabHits += fridge.stabHits
+        totals.counterBuys += fridge.counterBuys
+        return totals
+      },
+    )
+    const fridgeWins = (prize: string) =>
+      Array.filter(results, r => (r.fridge.prizes[prize] ?? 0) > 0)
+    yield* Console.log(
+      `Fridge: pulled in ${((100 * pullers.length) / Math.max(1, results.length)).toFixed(0)}% of runs, ${Array.reduce(results, 0, (sum, r) => sum + r.fridge.pulls)} pulls, first in the break before wave ${pullers.length > 0 ? median(Array.map(pullers, r => r.fridge.firstPullWave)) : '-'} (median)`,
+    )
+    yield* Console.log(
+      `Fridge prizes: ${countsJson(fridgeTotals.prizes)}; carried at the end: ${countsJson(fridgeTotals.ended)}`,
+    )
+    yield* Console.log(
+      `Fridge weapons taken: ${fridgeTotals.taken}. Knife: ${fridgeTotals.stabs} stabs, ${fridgeTotals.stabHits} hits (${(fridgeTotals.stabs / Math.max(1, results.length)).toFixed(1)} stabs a run).`,
+    )
+    yield* Console.log(
+      `Ammo window: ${fridgeTotals.counterBuys} refills mid-wave (${(fridgeTotals.counterBuys / Math.max(1, results.length)).toFixed(1)} a run)`,
+    )
+    yield* Console.log(
+      `Fridge weapons: ${fridgeTotals.lids} lids, ${fridgeTotals.pops} pops, ${fridgeTotals.swings} swings (${fridgeTotals.clangs} clangs), ${fridgeTotals.sprays} sprays, ${fridgeTotals.shatters} shatters`,
+    )
+    yield* Console.log(
+      `Wins by fridge weapon pulled: ${Array.join(
+        Array.map(['Cooker', 'Pan', 'Freeze'], prize => {
+          const pulled = fridgeWins(prize)
+          return `${prize} ${Array.filter(pulled, r => r.victory).length}/${pulled.length}`
+        }),
+        ', ',
+      )}, none ${Array.filter(results, r => r.fridge.pulls === 0 && r.victory).length}/${Array.filter(results, r => r.fridge.pulls === 0).length}`,
+    )
+    yield* Console.log(
+      `Median run length: ${(median(Array.map(results, r => r.runMs)) / 60000).toFixed(2)} min`,
+    )
+    yield* Console.log(
+      `Median win length: ${(median(Array.map(wins, r => r.runMs)) / 60000).toFixed(2)} min`,
+    )
+    yield* Console.log(
+      '\nMoney earned by the end of wave (median of runs that cleared it)',
+    )
+    for (let wave = 1; wave <= lastWave; wave++) {
+      const values = Array.flatMap(results, r =>
+        Array.fromNullishOr(r.moneyAfterWave[wave - 1]),
+      )
+      if (values.length > 0) {
+        yield* Console.log(`  wave ${wave}: $${median(values)}`)
+      }
+    }
+    yield* Console.log(
+      '\nShop visits: money on arrival (median, p25 to p75) and what the bot bought (share of visits)',
+    )
+    for (let wave = 2; wave <= lastWave; wave++) {
+      const { money, visits, bought } = summary.tallyShopVisits(results, wave)
+      if (visits === 0) {
+        continue
+      }
+      const shares = Array.join(
+        Array.map(
+          bought,
+          ([item, n]) => `${item} ${((100 * n) / visits).toFixed(0)}%`,
+        ),
+        ', ',
+      )
+      yield* Console.log(
+        `  before wave ${wave}: $${median([...money])} ($${quantile([...money], 0.25)} to $${quantile([...money], 0.75)}), n=${visits}: ${shares}`,
+      )
+    }
+    const hurt = Array.reduce(results, emptyHurt(), (sum, r) => {
+      Array.forEach(KINDS, kind => {
+        sum[kind] += r.hurtBy[kind]
+      })
+      return sum
+    })
+    const totalHurt = Array.reduce(Record.values(hurt), 0, (a, b) => a + b)
+    yield* Console.log('\nHearts lost by kind')
+    for (const kind of KINDS) {
+      yield* Console.log(
+        `  ${String.padEnd(9)(kind)} ${String.padStart(5)(globalThis.String(hurt[kind]))}  ${((100 * hurt[kind]) / Math.max(1, totalHurt)).toFixed(0)}%`,
+      )
+    }
+
+    const pickupKinds = [
+      ...new Set(
+        Array.flatMap(results, r => [
+          ...Record.keys(r.dropped),
+          ...Record.keys(r.grabbed),
+        ]),
+      ),
+    ].sort()
+    const sumOf = (
+      pick: (r: RunResult) => Record<string, number>,
+      kind: string,
+    ) => Array.reduce(results, 0, (sum, r) => sum + (pick(r)[kind] ?? 0))
+    const totalDropped = Array.reduce(
+      pickupKinds,
+      0,
+      (sum, kind) => sum + sumOf(r => r.dropped, kind),
+    )
+    const totalGrabbed = Array.reduce(
+      pickupKinds,
+      0,
+      (sum, kind) => sum + sumOf(r => r.grabbed, kind),
+    )
+    yield* Console.log(
+      `\nPickups: ${(totalDropped / setup.runs).toFixed(1)} dropped and ${(totalGrabbed / setup.runs).toFixed(1)} grabbed a run${setup.ignoresPickups ? ' (the bot ignores them)' : ''}, boosted ${(
+        (100 * Array.reduce(results, 0, (sum, r) => sum + r.boostedMs)) /
+        Math.max(
+          1,
+          Array.reduce(results, 0, (sum, r) => sum + r.waveMs),
+        )
+      ).toFixed(0)}% of wave time`,
+    )
+    for (const kind of pickupKinds) {
+      yield* Console.log(
+        `  ${String.padEnd(9)(kind)} dropped ${String.padStart(5)(globalThis.String(sumOf(r => r.dropped, kind)))}  grabbed ${String.padStart(5)(globalThis.String(sumOf(r => r.grabbed, kind)))}`,
+      )
+    }
+
+    const fights = Array.flatMap(results, r => r.boss)
+    const fightWaves = [
+      ...new Set(Array.map(fights, fight => fight.wave)),
+    ].sort((a, b) => a - b)
+    yield* Console.log('\nBoss fights (per boss wave reached)')
+    for (const bossWave of fightWaves) {
+      const atWave = Array.filter(fights, fight => fight.wave === bossWave)
+      const arrived = Array.filter(atWave, fight => fight.arrived)
+      const felled = Array.filter(atWave, fight => fight.felled)
+      const diedTo = Array.filter(atWave, fight => fight.diedToIt)
+      const diedAtWave = Array.filter(
+        results,
+        r => !r.victory && r.cleared + 1 === bossWave,
+      ).length
+      const perFight = (pick: (fight: BossFight) => number) =>
+        (
+          Array.reduce(arrived, 0, (sum, fight) => sum + pick(fight)) /
+          Math.max(1, arrived.length)
+        ).toFixed(1)
+      const share = (part: number, whole: number) =>
+        `${((100 * part) / Math.max(1, whole)).toFixed(0)}%`
+      const sum = (pick: (fight: BossFight) => number) =>
+        Array.reduce(arrived, 0, (total, fight) => total + pick(fight))
+      const wonKills = Array.map(
+        Array.filter(
+          Array.flatMap(
+            Array.filter(
+              results,
+              (r: RunResult) => r.victory || r.cleared >= bossWave,
+            ),
+            (r: RunResult) => r.boss,
+          ),
+          (fight: BossFight) => fight.wave === bossWave && fight.felled,
+        ),
+        (fight: BossFight) => fight.fightMs,
+      )
+      const lostToBoss = sum(fight => fight.heartsLost)
+      const waveHearts = Array.reduce(
+        results,
+        0,
+        (total, r) => total + (r.waves[bossWave - 1]?.heartsLost ?? 0),
+      )
+      yield* Console.log(
+        `  wave ${bossWave}: reached ${atWave.length}, boss arrived ${arrived.length}, felled ${felled.length}, runs that died with it standing ${diedTo.length} of ${diedAtWave} deaths on the wave`,
+      )
+      yield* Console.log(
+        `    fight: median ${(median(Array.map(arrived, fight => fight.fightMs)) / 1000).toFixed(1)} s, kill time in runs that cleared the wave median ${(median(wonKills) / 1000).toFixed(1)} s (p25 ${(quantile(wonKills, 0.25) / 1000).toFixed(1)}, p75 ${(quantile(wonKills, 0.75) / 1000).toFixed(1)}, n=${wonKills.length}), enraged in ${share(Array.filter(arrived, fight => fight.enraged).length, arrived.length)}`,
+      )
+      yield* Console.log(
+        `    a fight: stomps ${perFight(fight => fight.stomps)} (${share(
+          sum(fight => fight.stompHits),
+          sum(fight => fight.stomps),
+        )} hit), charges ${perFight(fight => fight.charges)} (${share(
+          sum(fight => fight.chargeHits),
+          sum(fight => fight.charges),
+        )} hit, ${share(
+          sum(fight => fight.bonks),
+          sum(fight => fight.charges),
+        )} bonked), spits ${perFight(fight => fight.spits)} (${share(
+          sum(fight => fight.spitHits),
+          sum(fight => fight.spits),
+        )} hit), belches ${perFight(fight => fight.belches)}`,
+      )
+      yield* Console.log(
+        `    his health taken a second of fight ${(sum(fight => fight.damageTaken) / Math.max(1, sum(fight => fight.fightMs) / 1000)).toFixed(2)}, a second aimed at him ${(sum(fight => fight.damageTaken) / Math.max(1, sum(fight => fight.aimedMs) / 1000)).toFixed(2)}, aimed at him ${share(
+          sum(fight => fight.aimedMs),
+          sum(fight => fight.fightMs),
+        )} of the fight`,
+      )
+      yield* Console.log(
+        `    hearts lost while he stood ${lostToBoss} (${share(lostToBoss, waveHearts)} of the wave's ${waveHearts}): stomp ${sum(fight => fight.heartsByAttack.Stomp)}, charge ${sum(fight => fight.heartsByAttack.Charge)}, glob ${sum(fight => fight.heartsByAttack.Glob)}, his bite ${sum(fight => fight.heartsByAttack.Bite)}, the rest to the crowd`,
+      )
+    }
+
+    const newKindTotal = (pick: (log: NewKindLog) => number) =>
+      Array.reduce(results, 0, (sum, r) => sum + pick(r.newKinds))
+    const perRun = (pick: (log: NewKindLog) => number) =>
+      (newKindTotal(pick) / Math.max(1, setup.runs)).toFixed(1)
+    yield* Console.log('\nNew kinds and frenzy (per run)')
+    yield* Console.log(
+      `  Big Leaguer throws ${perRun(log => log.throws)}, shields ${perRun(log => log.shields)}, landed on the bot ${perRun(log => log.throwHits)} (${(
+        (100 * newKindTotal(log => log.throwHits)) /
+        Math.max(
+          1,
+          newKindTotal(log => log.throws),
+        )
+      ).toFixed(0)}%)`,
+    )
+    yield* Console.log(
+      `  Ankle Biters surfaced ${perRun(log => log.surfaced)}, grabbed the bot ${perRun(log => log.grabs)}, hearts lost while held ${perRun(log => log.heartsWhileClung)}`,
+    )
+    yield* Console.log(
+      `  Frenzied packs ${perRun(log => log.frenzies)}, wiped for the bonus ${perRun(log => log.wipes)}, bonus paid $${perRun(log => log.wipeBonus)}`,
+    )
+
+    yield* Console.log(
+      `\nMost zombies on screen at once: median ${median(Array.map(results, r => r.maxAlive))}, worst ${Math.max(...Array.map(results, r => r.maxAlive))}`,
+    )
+    if (setup.hasTimeline) {
+      yield* reportTimelines(results, lastWave)
+    }
+
+    yield* writeJson(
+      setup,
+      summary.summarizeCampaign(results, {
+        difficulty: setup.options.difficulty,
+        kind: setup.options.mode,
+        style: styleOf(setup),
+        wallSeconds: elapsed,
+        lastWave,
+      }),
+    )
   })
-  return sum
-}, emptyHurt())
-const totalHurt = Object.values(hurt).reduce((a, b) => a + b, 0)
-console.log('\nHearts lost by kind')
-KINDS.forEach(kind => {
-  console.log(
-    `  ${kind.padEnd(9)} ${String(hurt[kind]).padStart(5)}  ${((100 * hurt[kind]) / Math.max(1, totalHurt)).toFixed(0)}%`,
-  )
-})
-
-const pickupKinds = [
-  ...new Set(
-    results.flatMap(r => [
-      ...Object.keys(r.dropped),
-      ...Object.keys(r.grabbed),
-    ]),
-  ),
-].sort()
-const sumOf = (pick: (r: RunResult) => Record<string, number>, kind: string) =>
-  results.reduce((sum, r) => sum + (pick(r)[kind] ?? 0), 0)
-const totalDropped = pickupKinds.reduce(
-  (sum, kind) => sum + sumOf(r => r.dropped, kind),
-  0,
-)
-const totalGrabbed = pickupKinds.reduce(
-  (sum, kind) => sum + sumOf(r => r.grabbed, kind),
-  0,
-)
-console.log(
-  `\nPickups: ${(totalDropped / runs).toFixed(1)} dropped and ${(totalGrabbed / runs).toFixed(1)} grabbed a run${IGNORES_PICKUPS ? ' (the bot ignores them)' : ''}, boosted ${(
-    (100 * results.reduce((sum, r) => sum + r.boostedMs, 0)) /
-    Math.max(
-      1,
-      results.reduce((sum, r) => sum + r.waveMs, 0),
-    )
-  ).toFixed(0)}% of wave time`,
-)
-pickupKinds.forEach(kind => {
-  console.log(
-    `  ${kind.padEnd(9)} dropped ${String(sumOf(r => r.dropped, kind)).padStart(5)}  grabbed ${String(sumOf(r => r.grabbed, kind)).padStart(5)}`,
-  )
-})
-
-const fights = results.flatMap(r => r.boss)
-const fightWaves = [...new Set(fights.map(fight => fight.wave))].sort(
-  (a, b) => a - b,
-)
-console.log('\nBoss fights (per boss wave reached)')
-fightWaves.forEach(bossWave => {
-  const atWave = fights.filter(fight => fight.wave === bossWave)
-  const arrived = atWave.filter(fight => fight.arrived)
-  const felled = atWave.filter(fight => fight.felled)
-  const diedTo = atWave.filter(fight => fight.diedToIt)
-  const diedAtWave = results.filter(
-    r => !r.victory && r.cleared + 1 === bossWave,
-  ).length
-  const perFight = (pick: (fight: BossFight) => number) =>
-    (
-      arrived.reduce((sum, fight) => sum + pick(fight), 0) /
-      Math.max(1, arrived.length)
-    ).toFixed(1)
-  const share = (part: number, whole: number) =>
-    `${((100 * part) / Math.max(1, whole)).toFixed(0)}%`
-  const sum = (pick: (fight: BossFight) => number) =>
-    arrived.reduce((total, fight) => total + pick(fight), 0)
-  const wonKills = results
-    .filter(r => r.victory || r.cleared >= bossWave)
-    .flatMap(r => r.boss)
-    .filter(fight => fight.wave === bossWave && fight.felled)
-    .map(fight => fight.fightMs)
-  const lostToBoss = sum(fight => fight.heartsLost)
-  const waveHearts = results.reduce(
-    (total, r) => total + (r.waves[bossWave - 1]?.heartsLost ?? 0),
-    0,
-  )
-  console.log(
-    `  wave ${bossWave}: reached ${atWave.length}, boss arrived ${arrived.length}, felled ${felled.length}, runs that died with it standing ${diedTo.length} of ${diedAtWave} deaths on the wave`,
-  )
-  console.log(
-    `    fight: median ${(median(arrived.map(fight => fight.fightMs)) / 1000).toFixed(1)} s, kill time in runs that cleared the wave median ${(median(wonKills) / 1000).toFixed(1)} s (p25 ${(quantile(wonKills, 0.25) / 1000).toFixed(1)}, p75 ${(quantile(wonKills, 0.75) / 1000).toFixed(1)}, n=${wonKills.length}), enraged in ${share(arrived.filter(fight => fight.enraged).length, arrived.length)}`,
-  )
-  console.log(
-    `    a fight: stomps ${perFight(fight => fight.stomps)} (${share(
-      sum(fight => fight.stompHits),
-      sum(fight => fight.stomps),
-    )} hit), charges ${perFight(fight => fight.charges)} (${share(
-      sum(fight => fight.chargeHits),
-      sum(fight => fight.charges),
-    )} hit, ${share(
-      sum(fight => fight.bonks),
-      sum(fight => fight.charges),
-    )} bonked), spits ${perFight(fight => fight.spits)} (${share(
-      sum(fight => fight.spitHits),
-      sum(fight => fight.spits),
-    )} hit), belches ${perFight(fight => fight.belches)}`,
-  )
-  console.log(
-    `    his health taken a second of fight ${(sum(fight => fight.damageTaken) / Math.max(1, sum(fight => fight.fightMs) / 1000)).toFixed(2)}, a second aimed at him ${(sum(fight => fight.damageTaken) / Math.max(1, sum(fight => fight.aimedMs) / 1000)).toFixed(2)}, aimed at him ${share(
-      sum(fight => fight.aimedMs),
-      sum(fight => fight.fightMs),
-    )} of the fight`,
-  )
-  console.log(
-    `    hearts lost while he stood ${lostToBoss} (${share(lostToBoss, waveHearts)} of the wave's ${waveHearts}): stomp ${sum(fight => fight.heartsByAttack.Stomp)}, charge ${sum(fight => fight.heartsByAttack.Charge)}, glob ${sum(fight => fight.heartsByAttack.Glob)}, his bite ${sum(fight => fight.heartsByAttack.Bite)}, the rest to the crowd`,
-  )
-})
-
-const newKindTotal = (pick: (log: NewKindLog) => number) =>
-  results.reduce((sum, r) => sum + pick(r.newKinds), 0)
-const perRun = (pick: (log: NewKindLog) => number) =>
-  (newKindTotal(pick) / Math.max(1, runs)).toFixed(1)
-console.log('\nNew kinds and frenzy (per run)')
-console.log(
-  `  Big Leaguer throws ${perRun(log => log.throws)}, shields ${perRun(log => log.shields)}, landed on the bot ${perRun(log => log.throwHits)} (${(
-    (100 * newKindTotal(log => log.throwHits)) /
-    Math.max(
-      1,
-      newKindTotal(log => log.throws),
-    )
-  ).toFixed(0)}%)`,
-)
-console.log(
-  `  Ankle Biters surfaced ${perRun(log => log.surfaced)}, grabbed the bot ${perRun(log => log.grabs)}, hearts lost while held ${perRun(log => log.heartsWhileClung)}`,
-)
-console.log(
-  `  Frenzied packs ${perRun(log => log.frenzies)}, wiped for the bonus ${perRun(log => log.wipes)}, bonus paid $${perRun(log => log.wipeBonus)}`,
-)
-
-console.log(
-  `\nMost zombies on screen at once: median ${median(results.map(r => r.maxAlive))}, worst ${Math.max(...results.map(r => r.maxAlive))}`,
-)
 
 // TIMELINE
 
 const seconds = (ms: number) => (ms / 1000).toFixed(1)
 
-const printTimeline = (result: RunResult) => {
-  console.log(
-    `\nTimeline of seed ${result.seed} (wall seconds from wave start)`,
-  )
-  result.timelines.forEach((timeline, index) => {
-    const gaps = timeline.packs
-      .slice(1)
-      .map((arrival, at) => arrival.atMs - (timeline.packs[at]?.atMs ?? 0))
-    console.log(
-      `  Wave ${index + 1}: ${seconds(timeline.lengthMs)} s, ${timeline.packs.length} packs, rests ${timeline.restMs.map(seconds).join(', ') || 'none'}, longest gap between packs ${seconds(Math.max(0, ...gaps))} s`,
+const printTimeline = (result: RunResult) =>
+  Effect.gen(function* () {
+    yield* Console.log(
+      `\nTimeline of seed ${result.seed} (wall seconds from wave start)`,
     )
-    console.log(
-      `    ${timeline.packs
-        .map(
-          arrival =>
-            `${seconds(arrival.atMs)} ${arrival.door[0]}${arrival.size}${arrival.formation === 'Squad' || arrival.formation === 'Trickle' ? '' : arrival.formation[0]}${new Set(arrival.kinds).size > 1 ? '*' : ''}`,
+    for (const [index, timeline] of result.timelines.entries()) {
+      const gaps = Array.map(
+        timeline.packs.slice(1),
+        (arrival, at) => arrival.atMs - (timeline.packs[at]?.atMs ?? 0),
+      )
+      yield* Console.log(
+        `  Wave ${index + 1}: ${seconds(timeline.lengthMs)} s, ${timeline.packs.length} packs, rests ${Array.join(Array.map(timeline.restMs, seconds), ', ') || 'none'}, longest gap between packs ${seconds(Math.max(0, ...gaps))} s`,
+      )
+      yield* Console.log(
+        `    ${Array.join(
+          Array.map(
+            timeline.packs,
+            arrival =>
+              `${seconds(arrival.atMs)} ${arrival.door[0]}${arrival.size}${arrival.formation === 'Squad' || arrival.formation === 'Trickle' ? '' : arrival.formation[0]}${new Set(arrival.kinds).size > 1 ? '*' : ''}`,
+          ),
+          '  ',
+        )}`,
+      )
+      const empties = Array.filter(
+        timeline.empty,
+        stretch => stretch.ms >= 1000,
+      )
+      if (empties.length > 0) {
+        yield* Console.log(
+          `    empty room: ${Array.join(
+            Array.map(
+              empties,
+              stretch =>
+                `${seconds(stretch.fromMs)} for ${seconds(stretch.ms)} (quiet ${seconds(quietPartMs(stretch))})`,
+            ),
+            ', ',
+          )}`,
         )
-        .join('  ')}`,
+      }
+    }
+  })
+
+const reportTimelines = (results: Array<RunResult>, lastWave: number) =>
+  Effect.gen(function* () {
+    const firstResult = results[0]
+    if (firstResult === undefined) {
+      return
+    }
+    yield* printTimeline(firstResult)
+    yield* Console.log(
+      '\nWave  first pack s  packs  sizes (min to max, distinct)  empty s  longest empty s  longest quiet s (mean, worst)  rests s',
     )
-    const empties = timeline.empty.filter(stretch => stretch.ms >= 1000)
-    if (empties.length > 0) {
-      console.log(
-        `    empty room: ${empties
-          .map(
-            stretch =>
-              `${seconds(stretch.fromMs)} for ${seconds(stretch.ms)} (quiet ${seconds(quietPartMs(stretch))})`,
-          )
-          .join(', ')}`,
+    for (let wave = 1; wave <= lastWave; wave++) {
+      const timelines = Array.flatMap(results, r =>
+        Array.fromNullishOr(r.timelines[wave - 1]),
+      )
+      if (timelines.length === 0) {
+        continue
+      }
+      const sizes = Array.flatMap(timelines, t =>
+        Array.map(t.packs, p => p.size),
+      )
+      const distinct = mean(
+        Array.map(
+          timelines,
+          t => new Set(Array.map(t.packs, p => p.size)).size,
+        ),
+      )
+      const longestQuiet = Array.map(timelines, t =>
+        Math.max(0, ...Array.map(t.empty, quietPartMs)),
+      )
+      yield* Console.log(
+        `${String.padStart(4)(globalThis.String(wave))}  ${String.padStart(12)(seconds(mean(Array.map(timelines, t => t.packs[0]?.atMs ?? 0))))}  ${String.padStart(
+          5,
+        )(
+          mean(Array.map(timelines, t => t.packs.length)).toFixed(1),
+        )}  ${String.padStart(29)(`${Math.min(...sizes)} to ${Math.max(...sizes)}, ${distinct.toFixed(1)}`)}  ${String.padStart(
+          7,
+        )(
+          seconds(
+            mean(
+              Array.map(timelines, t =>
+                Array.reduce(t.empty, 0, (sum, e) => sum + e.ms),
+              ),
+            ),
+          ),
+        )}  ${String.padStart(15)(
+          seconds(
+            mean(
+              Array.map(timelines, t =>
+                Math.max(0, ...Array.map(t.empty, e => e.ms)),
+              ),
+            ),
+          ),
+        )}  ${String.padStart(30)(`${seconds(mean(longestQuiet))}, ${seconds(Math.max(...longestQuiet))}`)}  ${seconds(mean(Array.flatMap(timelines, t => t.restMs)))}`,
       )
     }
   })
-}
 
-const firstResult = results[0]
-if (process.env['TIMELINE'] !== undefined && firstResult !== undefined) {
-  printTimeline(firstResult)
-  console.log(
-    '\nWave  first pack s  packs  sizes (min to max, distinct)  empty s  longest empty s  longest quiet s (mean, worst)  rests s',
-  )
-  for (let wave = 1; wave <= lastWave; wave++) {
-    const timelines = results.flatMap(r => r.timelines[wave - 1] ?? [])
-    if (timelines.length === 0) {
-      continue
-    }
-    const sizes = timelines.flatMap(t => t.packs.map(p => p.size))
-    const distinct = mean(
-      timelines.map(t => new Set(t.packs.map(p => p.size)).size),
-    )
-    const longestQuiet = timelines.map(t =>
-      Math.max(0, ...t.empty.map(quietPartMs)),
-    )
-    console.log(
-      `${String(wave).padStart(4)}  ${seconds(mean(timelines.map(t => t.packs[0]?.atMs ?? 0))).padStart(12)}  ${mean(
-        timelines.map(t => t.packs.length),
-      )
-        .toFixed(1)
-        .padStart(
-          5,
-        )}  ${`${Math.min(...sizes)} to ${Math.max(...sizes)}, ${distinct.toFixed(1)}`.padStart(29)}  ${seconds(
-        mean(timelines.map(t => t.empty.reduce((sum, e) => sum + e.ms, 0))),
-      ).padStart(7)}  ${seconds(
-        mean(timelines.map(t => Math.max(0, ...t.empty.map(e => e.ms)))),
-      ).padStart(
-        15,
-      )}  ${`${seconds(mean(longestQuiet))}, ${seconds(Math.max(...longestQuiet))}`.padStart(30)}  ${seconds(mean(timelines.flatMap(t => t.restMs)))}`,
+// THE BATCH
+
+const program = Effect.gen(function* () {
+  const config = yield* SimulateConfig
+  if (Option.isSome(config.maybeTune)) {
+    yield* applyTune(config.maybeTune.value)
+  }
+  const isFlagSet = (maybe: Option.Option<string>) => Option.isSome(maybe)
+  const seedOffset = Number(flagValue('--seed-offset') ?? 0)
+  if (!Number.isInteger(seedOffset) || seedOffset < 0) {
+    return yield* Effect.die(
+      new Error('--seed-offset must be a whole number of runs, 0 or more'),
     )
   }
-}
+  const isEndless = Option.contains(config.maybeMode, 'endless')
+  const setup: Setup = {
+    options: {
+      ...DEFAULT_OPTIONS,
+      difficulty: parseDifficulty(
+        Option.getOrUndefined(config.maybeDifficulty),
+      ),
+      mode: isEndless ? 'Endless' : 'Campaign',
+      swapsBack: isFlagSet(config.maybeSwap),
+      noUpgrades: isFlagSet(config.maybeNoUpgrades),
+      calling: parseCalling(Option.getOrUndefined(config.maybeCalling)),
+      modifiers: parseModifiers(Option.getOrUndefined(config.maybeMods)),
+    },
+    isEndless,
+    kites: isFlagSet(config.maybeKite),
+    ignoresPickups: isFlagSet(config.maybeNoPickups),
+    hasTimeline: isFlagSet(config.maybeTimeline),
+    waveFlag: flagValue('--wave'),
+    jsonOut: flagValue('--json'),
+    runs: Number(flagValue('--runs') ?? positional[0] ?? 40),
+    firstSeed: Number(flagValue('--first-seed') ?? positional[1] ?? 1),
+    seedOffset,
+    slots: Number(flagValue('--slots') ?? 10),
+    isChunked: turn.isUnderGuard(),
+    started: performance.now(),
+  }
 
-writeJson(
-  summary.summarizeCampaign(results, {
-    difficulty: DIFFICULTY,
-    kind: OPTIONS.mode,
-    style: STYLE,
-    wallSeconds: elapsed,
-    lastWave,
-  }),
-)
+  if (Option.isSome(config.maybeWorkerSlice)) {
+    return yield* playAsWorker(
+      setup,
+      config.maybeWorkerSlice.value,
+      config.maybeWorkerSlots,
+      config.maybeWorkerOut,
+    )
+  }
+
+  const workers = yield* Ref.make(
+    Math.max(1, Number(Option.getOrElse(config.maybeWorkers, () => '1'))),
+  )
+
+  if (setup.waveFlag !== undefined) {
+    const waves = waveList(setup.waveFlag)
+    const waveRuns = yield* playWaves(setup, workers, waves)
+    return yield* reportWavePass(setup, waves, waveRuns)
+  }
+
+  const results = yield* playAll(setup, workers)
+  const elapsed = (performance.now() - setup.started) / 1000
+  yield* reportCampaign(setup, results, elapsed)
+})
+
+NodeRuntime.runMain(program.pipe(Effect.provide(NodeServices.layer)))

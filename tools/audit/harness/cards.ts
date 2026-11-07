@@ -1,4 +1,4 @@
-import { Array, Match } from 'effect'
+import { Array, Function, Match, String } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { playerSprites } from '@game/appearance'
@@ -173,7 +173,7 @@ const headShapes = (
       (row, y): readonly [string, number] => [row, y],
     ),
     ...Array.makeBy(drop, (gap): readonly [string, number] => [
-      mouthRow.replace(/[wt]/g, 'm'),
+      String.replace(/[wt]/g, 'm')(mouthRow),
       JAW_ROW + gap,
     ]),
     ...Array.map(
@@ -383,14 +383,23 @@ const couchShapes = (
   ]
 }
 
-export const cardShapes = (
-  card: CardName,
-  screen: CardScreen,
-  age: number,
-): ReadonlyArray<Canvas.Shape> =>
-  Match.value(card).pipe(
-    Match.when('Title', () => titleShapes(screen, age)),
-    Match.when('End', () => endShapes(screen, age)),
-    Match.when('Couch', () => couchShapes(screen, age)),
-    Match.exhaustive,
-  )
+export const cardShapes: {
+  (
+    screen: CardScreen,
+    age: number,
+  ): (card: CardName) => ReadonlyArray<Canvas.Shape>
+  (card: CardName, screen: CardScreen, age: number): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  3,
+  (
+    card: CardName,
+    screen: CardScreen,
+    age: number,
+  ): ReadonlyArray<Canvas.Shape> =>
+    Match.value(card).pipe(
+      Match.when('Title', () => titleShapes(screen, age)),
+      Match.when('End', () => endShapes(screen, age)),
+      Match.when('Couch', () => couchShapes(screen, age)),
+      Match.exhaustive,
+    ),
+)

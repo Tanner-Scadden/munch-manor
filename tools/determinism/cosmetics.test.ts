@@ -32,7 +32,7 @@ describe('cosmetics', () => {
       cached: true,
     } as const
     const full = runScript(options)
-    const stripped = runScript(options, undefined, stripCosmetics)
+    const stripped = runScript({ ...options, afterFrame: stripCosmetics })
     expect(full.frames).toBeGreaterThan(600)
     expect(
       firstDivergentCheckpoint(full.checkpoints, stripped.checkpoints),

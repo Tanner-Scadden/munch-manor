@@ -1,4 +1,14 @@
-import { Context, Effect, Exit, Layer, Option, Schedule, Stream } from 'effect'
+import {
+  Array,
+  Context,
+  Effect,
+  Exit,
+  Layer,
+  Option,
+  Schedule,
+  Stream,
+  String,
+} from 'effect'
 import { SqlClient } from 'effect/sql'
 
 import { describe, expect, it, test } from '@effect/vitest'
@@ -85,7 +95,7 @@ const push = <A, I>(
     counter += 1
     const result = yield* server.push(device(playerId), [
       {
-        id: `mutation-${counter.toString().padStart(4, '0')}`,
+        id: `mutation-${String.padStart(4, '0')(counter.toString())}`,
         name: mutation.name,
         version: mutation.version,
         args: yield* encodeArgs(mutation, args),
@@ -185,7 +195,7 @@ describe('the room scope', () => {
         expect(lobby.host).toBe(ANA)
         expect(lobby.status).toBe('Lobby')
         expect(
-          lobby.members.map(member => [
+          Array.map(lobby.members, member => [
             member.playerId,
             member.slot,
             member.name,
@@ -196,19 +206,19 @@ describe('the room scope', () => {
           [CY, 2, 'cy the great'],
           [DEE, 3, 'dee the grea'],
         ])
-        expect(lobby.members.map(member => member.look)).toEqual([
+        expect(Array.map(lobby.members, member => member.look)).toEqual([
           'Male.Crop.Brown.Light.Blue',
           'Female.Bun.Pink.Tan.Teal',
           '',
           '',
         ])
         // NOTE: a rank is for show, so the scope only keeps it in range.
-        expect(lobby.members.map(member => member.rank)).toEqual([
+        expect(Array.map(lobby.members, member => member.rank)).toEqual([
           40, 12, 999, 3,
         ])
         // NOTE: a calling is text the scope keeps when it is one short
         // word; the Worker checks it against the game's callings.
-        expect(lobby.members.map(member => member.calling)).toEqual([
+        expect(Array.map(lobby.members, member => member.calling)).toEqual([
           'Handyman',
           'LineCook',
           'You',
@@ -219,20 +229,23 @@ describe('the room scope', () => {
 
   it('cleanCalling keeps one short word and else reads as YOU', () => {
     expect(
-      [
-        'Handyman',
-        'LineCook',
-        '',
-        'two words',
-        'Line.Cook',
-        'x'.repeat(25),
-      ].map(cleanCalling),
+      Array.map(
+        [
+          'Handyman',
+          'LineCook',
+          '',
+          'two words',
+          'Line.Cook',
+          String.repeat(25)('x'),
+        ],
+        cleanCalling,
+      ),
     ).toEqual(['Handyman', 'LineCook', 'You', 'You', 'You', 'You'])
   })
 
   it('cleanRank keeps a whole number from 1 to 999', () => {
     expect(
-      [0, -5, 1, 7.9, 999, 1000, Number.NaN, Infinity].map(cleanRank),
+      Array.map([0, -5, 1, 7.9, 999, 1000, Number.NaN, Infinity], cleanRank),
     ).toEqual([1, 1, 1, 7, 999, 999, 1, 1])
   })
 
@@ -266,8 +279,8 @@ describe('the room scope', () => {
       yield* sql`INSERT INTO members (player_id, name, slot, ready, joined_ms)
         VALUES ('old', 'Old', 1, 0, 5)`
       const lobby = yield* lobbyOf(server)
-      expect(lobby.members.map(member => member.rank)).toEqual([9, 1])
-      expect(lobby.members.map(member => member.calling)).toEqual([
+      expect(Array.map(lobby.members, member => member.rank)).toEqual([9, 1])
+      expect(Array.map(lobby.members, member => member.calling)).toEqual([
         'LineCook',
         'You',
       ])
@@ -278,17 +291,26 @@ describe('the room scope', () => {
     Effect.gen(function* () {
       const server = yield* created
       yield* seat(server, BO)
-      expect(
-        yield* push(server, BO, ChangedReady, { by: BO, ready: true }),
-      ).toBe('Acked')
-      expect(
-        yield* push(server, BO, ChangedReady, { by: ANA, ready: true }),
-      ).toMatch(/^Rejected: Forbidden/)
-      expect(
-        yield* push(server, EVE, ChangedReady, { by: EVE, ready: true }),
-      ).toMatch(/^Rejected: Forbidden/)
+      const value = yield* push(server, BO, ChangedReady, {
+        by: BO,
+        ready: true,
+      })
+      expect(value).toBe('Acked')
+      const value_1 = yield* push(server, BO, ChangedReady, {
+        by: ANA,
+        ready: true,
+      })
+      expect(value_1).toMatch(/^Rejected: Forbidden/)
+      const value_2 = yield* push(server, EVE, ChangedReady, {
+        by: EVE,
+        ready: true,
+      })
+      expect(value_2).toMatch(/^Rejected: Forbidden/)
       const lobby = yield* lobbyOf(server)
-      expect(lobby.members.map(member => member.ready)).toEqual([false, true])
+      expect(Array.map(lobby.members, member => member.ready)).toEqual([
+        false,
+        true,
+      ])
     }),
   )
 
@@ -304,11 +326,14 @@ describe('the room scope', () => {
         const lobby = yield* lobbyOf(server)
         expect(lobby.status).toBe('Playing')
         expect(lobby.round).toBe(1)
-        expect(lobby.members.every(member => !member.ready)).toBe(true)
-        expect(yield* seat(server, CY)).toMatchObject({ _tag: 'Refused' })
-        expect(
-          yield* push(server, BO, ChangedReady, { by: BO, ready: true }),
-        ).toMatch(/Not in the lobby/)
+        expect(Array.every(lobby.members, member => !member.ready)).toBe(true)
+        const value_3 = yield* seat(server, CY)
+        expect(value_3).toMatchObject({ _tag: 'Refused' })
+        const value_4 = yield* push(server, BO, ChangedReady, {
+          by: BO,
+          ready: true,
+        })
+        expect(value_4).toMatch(/Not in the lobby/)
       }),
   )
 
@@ -320,10 +345,10 @@ describe('the room scope', () => {
         yield* seat(server, BO)
         yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
         yield* push(server, BO, ChangedReady, { by: BO, ready: true })
-        expect(yield* push(server, BO, EndedGame, { by: BO })).toMatch(
-          /Only the host/,
-        )
-        expect(yield* push(server, ANA, EndedGame, { by: ANA })).toBe('Acked')
+        const value_5 = yield* push(server, BO, EndedGame, { by: BO })
+        expect(value_5).toMatch(/Only the host/)
+        const value_6 = yield* push(server, ANA, EndedGame, { by: ANA })
+        expect(value_6).toBe('Acked')
         yield* server.runServer(
           RecordedRoomResult,
           {
@@ -344,7 +369,8 @@ describe('the room scope', () => {
         expect(
           Option.map(back.result, result => result.scores[1]?.score),
         ).toEqual(Option.some(5))
-        expect(yield* seat(server, CY)).toMatchObject({ _tag: 'Applied' })
+        const value_7 = yield* seat(server, CY)
+        expect(value_7).toMatchObject({ _tag: 'Applied' })
         yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
         yield* push(server, BO, ChangedReady, { by: BO, ready: true })
         yield* push(server, CY, ChangedReady, { by: CY, ready: true })
@@ -363,30 +389,27 @@ describe('the room scope', () => {
         const fresh = yield* lobbyOf(server)
         expect([fresh.mode, fresh.difficulty]).toEqual(['Campaign', 'Normal'])
         yield* push(server, BO, ChangedReady, { by: BO, ready: true })
-        expect(
-          yield* push(server, BO, ChangedPicks, {
-            by: BO,
-            mode: 'Endless',
-            difficulty: 'Hard',
-          }),
-        ).toMatch(/Only the host/)
-        expect(
-          yield* push(server, ANA, ChangedPicks, {
-            by: ANA,
-            mode: 'KeepGoing',
-            difficulty: 'Normal',
-          }),
-        ).toMatch(/No run to keep going/)
-        expect(
-          yield* push(server, ANA, ChangedPicks, {
-            by: ANA,
-            mode: 'Endless',
-            difficulty: 'Hard',
-          }),
-        ).toBe('Acked')
+        const value_8 = yield* push(server, BO, ChangedPicks, {
+          by: BO,
+          mode: 'Endless',
+          difficulty: 'Hard',
+        })
+        expect(value_8).toMatch(/Only the host/)
+        const value_9 = yield* push(server, ANA, ChangedPicks, {
+          by: ANA,
+          mode: 'KeepGoing',
+          difficulty: 'Normal',
+        })
+        expect(value_9).toMatch(/No run to keep going/)
+        const value_10 = yield* push(server, ANA, ChangedPicks, {
+          by: ANA,
+          mode: 'Endless',
+          difficulty: 'Hard',
+        })
+        expect(value_10).toBe('Acked')
         const picked = yield* lobbyOf(server)
         expect([picked.mode, picked.difficulty]).toEqual(['Endless', 'Hard'])
-        expect(picked.members.map(member => member.ready)).toEqual([
+        expect(Array.map(picked.members, member => member.ready)).toEqual([
           false,
           false,
         ])
@@ -397,17 +420,16 @@ describe('the room scope', () => {
           difficulty: 'Hard',
         })
         expect(
-          (yield* lobbyOf(server)).members.map(member => member.ready),
+          Array.map((yield* lobbyOf(server)).members, member => member.ready),
         ).toEqual([false, true])
         yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
         expect((yield* lobbyOf(server)).status).toBe('Playing')
-        expect(
-          yield* push(server, ANA, ChangedPicks, {
-            by: ANA,
-            mode: 'Campaign',
-            difficulty: 'Easy',
-          }),
-        ).toMatch(/Not in the lobby/)
+        const value_11 = yield* push(server, ANA, ChangedPicks, {
+          by: ANA,
+          mode: 'Campaign',
+          difficulty: 'Easy',
+        })
+        expect(value_11).toMatch(/Not in the lobby/)
       }),
   )
 
@@ -419,29 +441,35 @@ describe('the room scope', () => {
         yield* seat(server, BO)
         expect((yield* lobbyOf(server)).modifiers).toBe(0)
         yield* push(server, BO, ChangedReady, { by: BO, ready: true })
-        expect(
-          yield* push(server, BO, ChangedModifiers, { by: BO, modifiers: 8 }),
-        ).toMatch(/Only the host/)
+        const value_12 = yield* push(server, BO, ChangedModifiers, {
+          by: BO,
+          modifiers: 8,
+        })
+        expect(value_12).toMatch(/Only the host/)
         expect((yield* lobbyOf(server)).modifiers).toBe(0)
-        expect(
-          yield* push(server, ANA, ChangedModifiers, { by: ANA, modifiers: 9 }),
-        ).toBe('Acked')
+        const value_13 = yield* push(server, ANA, ChangedModifiers, {
+          by: ANA,
+          modifiers: 9,
+        })
+        expect(value_13).toBe('Acked')
         const picked = yield* lobbyOf(server)
         expect(picked.modifiers).toBe(9)
-        expect(picked.members.map(member => member.ready)).toEqual([
+        expect(Array.map(picked.members, member => member.ready)).toEqual([
           false,
           false,
         ])
         yield* push(server, BO, ChangedReady, { by: BO, ready: true })
         yield* push(server, ANA, ChangedModifiers, { by: ANA, modifiers: 9 })
         expect(
-          (yield* lobbyOf(server)).members.map(member => member.ready),
+          Array.map((yield* lobbyOf(server)).members, member => member.ready),
         ).toEqual([false, true])
         yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
         expect((yield* lobbyOf(server)).status).toBe('Playing')
-        expect(
-          yield* push(server, ANA, ChangedModifiers, { by: ANA, modifiers: 0 }),
-        ).toMatch(/Not in the lobby/)
+        const value_14 = yield* push(server, ANA, ChangedModifiers, {
+          by: ANA,
+          modifiers: 0,
+        })
+        expect(value_14).toMatch(/Not in the lobby/)
         expect((yield* lobbyOf(server)).modifiers).toBe(9)
       }),
   )
@@ -468,19 +496,19 @@ describe('the room scope', () => {
         const server = yield* created
         yield* seat(server, BO)
         const callings = Effect.map(lobbyOf(server), lobby =>
-          lobby.members.map(member => member.calling),
+          Array.map(lobby.members, member => member.calling),
         )
         yield* push(server, BO, ChangedReady, { by: BO, ready: true })
-        expect(
-          yield* push(server, BO, ChangedMemberCalling, {
-            by: BO,
-            calling: 'LineCook',
-          }),
-        ).toBe('Acked')
-        expect(yield* callings).toEqual(['Handyman', 'LineCook'])
+        const value_15 = yield* push(server, BO, ChangedMemberCalling, {
+          by: BO,
+          calling: 'LineCook',
+        })
+        expect(value_15).toBe('Acked')
+        const callings_1 = yield* callings
+        expect(callings_1).toEqual(['Handyman', 'LineCook'])
         // NOTE: the pick is the player's own, so nobody's READY goes.
         expect(
-          (yield* lobbyOf(server)).members.map(member => member.ready),
+          Array.map((yield* lobbyOf(server)).members, member => member.ready),
         ).toEqual([false, true])
         // NOTE: a word that is not one short word is cleaned to YOU, as at
         // create and join; the Worker decodes the rest when the host starts.
@@ -488,27 +516,25 @@ describe('the room scope', () => {
           by: BO,
           calling: 'not a calling!',
         })
-        expect(yield* callings).toEqual(['Handyman', 'You'])
-        expect(
-          yield* push(server, ANA, ChangedMemberCalling, {
-            by: BO,
-            calling: 'LineCook',
-          }),
-        ).not.toBe('Acked')
-        expect(
-          yield* push(server, CY, ChangedMemberCalling, {
-            by: CY,
-            calling: 'LineCook',
-          }),
-        ).toMatch(/Not in this room|member/i)
+        const callings_2 = yield* callings
+        expect(callings_2).toEqual(['Handyman', 'You'])
+        const value_16 = yield* push(server, ANA, ChangedMemberCalling, {
+          by: BO,
+          calling: 'LineCook',
+        })
+        expect(value_16).not.toBe('Acked')
+        const value_17 = yield* push(server, CY, ChangedMemberCalling, {
+          by: CY,
+          calling: 'LineCook',
+        })
+        expect(value_17).toMatch(/Not in this room|member/i)
         yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
         expect((yield* lobbyOf(server)).status).toBe('Playing')
-        expect(
-          yield* push(server, BO, ChangedMemberCalling, {
-            by: BO,
-            calling: 'TrackStar',
-          }),
-        ).toMatch(/Not in the lobby/)
+        const value_18 = yield* push(server, BO, ChangedMemberCalling, {
+          by: BO,
+          calling: 'TrackStar',
+        })
+        expect(value_18).toMatch(/Not in the lobby/)
       }),
   )
 
@@ -519,19 +545,18 @@ describe('the room scope', () => {
         const server = yield* created
         yield* seat(server, BO)
         const names = Effect.map(lobbyOf(server), lobby =>
-          lobby.members.map(member => member.name),
+          Array.map(lobby.members, member => member.name),
         )
         yield* push(server, BO, ChangedReady, { by: BO, ready: true })
-        expect(
-          yield* push(server, BO, ChangedMemberName, {
-            by: BO,
-            name: '  Gravy   Dave ',
-          }),
-        ).toBe('Acked')
+        const value_19 = yield* push(server, BO, ChangedMemberName, {
+          by: BO,
+          name: '  Gravy   Dave ',
+        })
+        expect(value_19).toBe('Acked')
         expect((yield* names)[1]).toBe('Gravy Dave')
         // NOTE: the name is the player's own, so nobody's READY goes.
         expect(
-          (yield* lobbyOf(server)).members.map(member => member.ready),
+          Array.map((yield* lobbyOf(server)).members, member => member.ready),
         ).toEqual([false, true])
         // NOTE: too long is cut to the limit, as at join; empty is "Player N".
         yield* push(server, BO, ChangedMemberName, {
@@ -541,17 +566,23 @@ describe('the room scope', () => {
         expect((yield* names)[1]).toBe('Extraordinar')
         yield* push(server, BO, ChangedMemberName, { by: BO, name: '   ' })
         expect((yield* names)[1]).toBe('Player 2')
-        expect(
-          yield* push(server, ANA, ChangedMemberName, { by: BO, name: 'Mine' }),
-        ).not.toBe('Acked')
-        expect(
-          yield* push(server, CY, ChangedMemberName, { by: CY, name: 'Cy' }),
-        ).toMatch(/Not in this room|member/i)
+        const value_20 = yield* push(server, ANA, ChangedMemberName, {
+          by: BO,
+          name: 'Mine',
+        })
+        expect(value_20).not.toBe('Acked')
+        const value_21 = yield* push(server, CY, ChangedMemberName, {
+          by: CY,
+          name: 'Cy',
+        })
+        expect(value_21).toMatch(/Not in this room|member/i)
         expect((yield* names)[1]).toBe('Player 2')
         yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
-        expect(
-          yield* push(server, BO, ChangedMemberName, { by: BO, name: 'Late' }),
-        ).toMatch(/Not in the lobby/)
+        const value_22 = yield* push(server, BO, ChangedMemberName, {
+          by: BO,
+          name: 'Late',
+        })
+        expect(value_22).toMatch(/Not in the lobby/)
       }),
   )
 
@@ -565,12 +596,14 @@ describe('the room scope', () => {
           mode: 'Campaign',
           difficulty: 'Nightmare',
         })
-      expect(yield* nightmare(locked, ANA)).toMatch(/Nightmare is locked/)
+      const value_23 = yield* nightmare(locked, ANA)
+      expect(value_23).toMatch(/Nightmare is locked/)
       expect((yield* lobbyOf(locked)).difficulty).toBe('Normal')
 
       const unlocked = yield* createdBy(true)
       yield* seat(unlocked, BO)
-      expect(yield* nightmare(unlocked, ANA)).toBe('Acked')
+      const value_24 = yield* nightmare(unlocked, ANA)
+      expect(value_24).toBe('Acked')
       yield* push(unlocked, ANA, ChangedReady, { by: ANA, ready: true })
       yield* push(unlocked, BO, ChangedReady, { by: BO, ready: true })
       expect((yield* lobbyOf(unlocked)).status).toBe('Playing')
@@ -590,8 +623,9 @@ describe('the room scope', () => {
         'Hard',
         false,
       ])
-      expect(handed.members.map(member => member.ready)).toEqual([false])
-      expect(yield* nightmare(unlocked, BO)).toMatch(/Nightmare is locked/)
+      expect(Array.map(handed.members, member => member.ready)).toEqual([false])
+      const value_25 = yield* nightmare(unlocked, BO)
+      expect(value_25).toMatch(/Nightmare is locked/)
     }),
   )
 
@@ -618,13 +652,12 @@ describe('the room scope', () => {
         mode: 'Campaign',
         difficulty: 'Normal',
       })
-      expect(
-        yield* push(server, ANA, ChangedPicks, {
-          by: ANA,
-          mode: 'KeepGoing',
-          difficulty: 'Normal',
-        }),
-      ).toBe('Acked')
+      const value_26 = yield* push(server, ANA, ChangedPicks, {
+        by: ANA,
+        mode: 'KeepGoing',
+        difficulty: 'Normal',
+      })
+      expect(value_26).toBe('Acked')
       yield* playRound
       expect((yield* lobbyOf(server)).mode).toBe('KeepGoing')
       yield* record(2, 'GameOver')
@@ -641,7 +674,7 @@ describe('the room scope', () => {
       yield* seat(server, CY)
       const joined = yield* lobbyOf(server)
       expect([joined.mode, joined.canKeepGoing]).toEqual(['Endless', false])
-      expect(joined.members.map(member => member.ready)).toEqual([
+      expect(Array.map(joined.members, member => member.ready)).toEqual([
         false,
         false,
         false,
@@ -670,11 +703,13 @@ describe('the room scope', () => {
           },
           'created-room',
         )
-        expect(isOpenToQuickPlay(yield* lobbyOf(server))).toBe(true)
+        const value_27 = yield* lobbyOf(server)
+        expect(isOpenToQuickPlay(value_27)).toBe(true)
         yield* seat(server, BO)
         yield* seat(server, CY)
         yield* seat(server, DEE)
-        expect(isOpenToQuickPlay(yield* lobbyOf(server))).toBe(false)
+        const value_28 = yield* lobbyOf(server)
+        expect(isOpenToQuickPlay(value_28)).toBe(false)
       }),
   )
 
@@ -685,17 +720,25 @@ describe('the room scope', () => {
         const server = yield* created
         yield* seat(server, BO)
         yield* seat(server, CY)
-        expect(
-          yield* push(server, BO, KickedPlayer, { by: BO, playerId: CY }),
-        ).toMatch(/Only the host/)
-        expect(
-          yield* push(server, ANA, KickedPlayer, { by: ANA, playerId: CY }),
-        ).toBe('Acked')
-        expect(yield* push(server, ANA, LeftRoom, { by: ANA })).toBe('Acked')
+        const value_29 = yield* push(server, BO, KickedPlayer, {
+          by: BO,
+          playerId: CY,
+        })
+        expect(value_29).toMatch(/Only the host/)
+        const value_30 = yield* push(server, ANA, KickedPlayer, {
+          by: ANA,
+          playerId: CY,
+        })
+        expect(value_30).toBe('Acked')
+        const value_31 = yield* push(server, ANA, LeftRoom, { by: ANA })
+        expect(value_31).toBe('Acked')
         const handed = yield* lobbyOf(server)
         expect(handed.host).toBe(BO)
-        expect(handed.members.map(member => member.playerId)).toEqual([BO])
-        expect(yield* push(server, BO, LeftRoom, { by: BO })).toBe('Acked')
+        expect(Array.map(handed.members, member => member.playerId)).toEqual([
+          BO,
+        ])
+        const value_32 = yield* push(server, BO, LeftRoom, { by: BO })
+        expect(value_32).toBe('Acked')
         expect((yield* lobbyOf(server)).status).toBe('Closed')
       }),
   )
@@ -710,7 +753,7 @@ describe('the room scope', () => {
                 deviceId: `${token}-d`,
               }),
             )
-          : Effect.fail(new Unauthorized({ reason: 'No token' }))
+          : Effect.fail(Unauthorized.make({ reason: 'No token' }))
       const host = yield* makeHost({
         definitions: [RoomScope],
         openDatabase,
@@ -772,13 +815,19 @@ describe('the room scope', () => {
       const lobby = yield* settle(
         Effect.repeat(lobbyOf(server), {
           until: ({ members }) =>
-            members.find(member => member.playerId === BO)?.ready === true,
+            Option.exists(
+              Array.findFirst(members, member => member.playerId === BO),
+              member => member.ready,
+            ),
           schedule: Schedule.spaced('10 millis'),
         }),
       )
-      expect(lobby.members.find(member => member.playerId === BO)?.ready).toBe(
-        true,
-      )
+      expect(
+        Option.map(
+          Array.findFirst(lobby.members, member => member.playerId === BO),
+          member => member.ready,
+        ),
+      ).toEqual(Option.some(true))
     }),
   )
 })

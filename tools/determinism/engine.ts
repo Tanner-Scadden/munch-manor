@@ -7,6 +7,8 @@
 // - A dump (`dump` set): the gameplay state after that frame, with each
 //   field's hash, as exact JSON, for the orchestrator to diff.
 
+import { Function } from 'effect'
+
 import { installDeterministicMath } from './detMath'
 import { exactJson } from './diff'
 import { gameplayOf, unclassifiedFieldsOf } from './fields'
@@ -21,7 +23,10 @@ import {
 import { type RunOptions, runScript } from './run'
 import { startedRun } from './script'
 
-export const answer = (engine: string, request: EngineRequest): string => {
+export const answer: {
+  (request: EngineRequest): (engine: string) => string
+  (engine: string, request: EngineRequest): string
+} = Function.dual(2, (engine: string, request: EngineRequest): string => {
   if (request.detMath) {
     installDeterministicMath()
   }
@@ -38,15 +43,19 @@ export const answer = (engine: string, request: EngineRequest): string => {
   if (dumpFrame !== undefined) {
     const hasher = makeGameplayHasher()
     const dumps: Array<EngineDump> = []
-    runScript({ ...options, frames: dumpFrame + 1 }, (frame, model) => {
-      if (frame === dumpFrame) {
-        dumps.push({
-          engine,
-          frame,
-          fieldHashes: hasher.fieldHashes(model),
-          state: exactJson(gameplayOf(model)),
-        })
-      }
+    runScript({
+      ...options,
+      frames: dumpFrame + 1,
+      onFrame: (frame, model) => {
+        if (frame === dumpFrame) {
+          dumps.push({
+            engine,
+            frame,
+            fieldHashes: hasher.fieldHashes(model),
+            state: exactJson(gameplayOf(model)),
+          })
+        }
+      },
     })
     return encodeEngineDump(
       dumps[0] ?? { engine, frame: dumpFrame, missing: true },
@@ -62,4 +71,4 @@ export const answer = (engine: string, request: EngineRequest): string => {
     unclassified: unclassifiedFieldsOf(startedRun(request.seed, request.mode)),
   }
   return encodeEngineRun(run)
-}
+})

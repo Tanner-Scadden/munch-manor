@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
@@ -166,11 +166,12 @@ describe('the reset', () => {
 
 describe('teammate bots', () => {
   test('pick only from the heroes the player owns', () => {
-    const rolls = Array.from({ length: 12 })
+    const rolls = globalThis.Array.from({ length: 12 })
     const heroesOf = (start: Model): ReadonlyArray<Calling> =>
-      rolls
-        .map<Calling>(() => 'You')
-        .reduce<ReadonlyArray<Calling>>((picked, _roll, index) => {
+      Array.reduce(
+        Array.map(rolls, () => 'You'),
+        Array.empty<Calling>(),
+        (picked, _roll, index) => {
           const seated = addBot(
             withoutBots(
               modifyFields(start, {
@@ -179,11 +180,12 @@ describe('teammate bots', () => {
             ),
           )
           return [...picked, seated.home.bots[0]?.calling ?? 'You']
-        }, [])
+        },
+      )
     expect(new Set(heroesOf(player(20, 0)))).toEqual(new Set(['You']))
     const mixed = new Set(heroesOf(player(20, 0, ['hero:LineCook'])))
     expect(
-      [...mixed].every(calling => ['You', 'LineCook'].includes(calling)),
+      Array.every([...mixed], calling => ['You', 'LineCook'].includes(calling)),
     ).toBe(true)
   })
 

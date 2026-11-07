@@ -4,7 +4,7 @@
 // so look at it: a prop should sit on the head with no gap and no head
 // showing through it.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsProps.ts
-import { Array } from 'effect'
+import { Array, Effect } from 'effect'
 
 import { playerPalette, playerPixels } from '@game/appearance'
 import { CALLINGS } from '@game/calling'
@@ -12,14 +12,16 @@ import { pixelIconUrl } from '@game/icons'
 import { type Appearance, defaultAppearance } from '@game/model'
 import { HairStyle } from '@game/playerData'
 
-import { TAG, finish, launch, shot } from './lib'
+import { auditTag, finish, openBrowser, runAudit, shot } from './lib'
+import { attempt } from './page'
 
 const SCALE = 8
 
 const cell = (look: Appearance, calling: (typeof CALLINGS)[number]) => {
   const pixels = playerPixels(look, calling)
   const palette = playerPalette(look)
-  return [...pixels.idle, ...pixels.walk.slice(0, 2)].map(
+  return Array.map(
+    [...pixels.idle, ...pixels.walk.slice(0, 2)],
     rows =>
       `<span class="frame" style='background-image:${pixelIconUrl(rows, palette)}'></span>`,
   )
@@ -38,20 +40,33 @@ body { background: #3a1e26; margin: 8px; font: 12px monospace; color: #f4f1de; }
 .row { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 10px; }
 .group { display: flex; gap: 2px; align-items: flex-end; }
 .frame { display: inline-block; width: ${8 * SCALE}px; height: ${13 * SCALE}px; background: center / contain no-repeat; image-rendering: pixelated; }
-</style>${Array.map(
-  looks,
-  look =>
-    `<div class="row"><span style="width:90px">${look.body} ${look.hairStyle}</span>${Array.map(
-      CALLINGS,
-      calling => `<span class="group">${cell(look, calling).join('')}</span>`,
-    ).join('')}</div>`,
-).join('')}`
+</style>${Array.join(
+  Array.map(
+    looks,
+    look =>
+      `<div class="row"><span style="width:90px">${look.body} ${look.hairStyle}</span>${Array.join(
+        Array.map(
+          CALLINGS,
+          calling =>
+            `<span class="group">${Array.join(cell(look, calling), '')}</span>`,
+        ),
+        '',
+      )}</div>`,
+  ),
+  '',
+)}`
 
-const browser = await launch()
-const page = await browser.newPage({
-  viewport: { width: 2300, height: 1450 },
-})
-await page.setContent(html)
-await shot(page, `s48-${TAG}-props`)
-await browser.close()
-finish([], 'The prop sheet is shot: look at it.')
+runAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const browser = yield* openBrowser
+    const page = yield* attempt(() =>
+      browser.newPage({
+        viewport: { width: 2300, height: 1450 },
+      }),
+    )
+    yield* attempt(() => page.setContent(html))
+    yield* shot(page, `s48-${tag}-props`)
+    yield* finish([], 'The prop sheet is shot: look at it.')
+  }),
+)

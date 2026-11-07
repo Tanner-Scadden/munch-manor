@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import { botSeatsFor } from './bots'
@@ -7,6 +7,7 @@ import { startingCallingOf } from './callingPick'
 import { type Special, specialsNoteOf, specialsOf } from './callingSpecials'
 import type { ApplicationViewBuilder } from './composition'
 import { BOT_ICON, portraitOf } from './coop/icons'
+import { backButtonView } from './dialogs'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
@@ -32,7 +33,6 @@ import {
   lobbyControlId,
 } from './lobby'
 import { newPipView } from './lookGearView'
-import { backButtonView } from './dialogs'
 import { callingPropView, iconView, keyCapView, rankTagView } from './menuParts'
 import { isLobbyUp } from './menuState'
 import { Message } from './message'
@@ -562,7 +562,10 @@ const startButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
 
 // VIEW
 
-export const lobbyView = (model: Model, h: ApplicationViewBuilder): Html =>
+export const lobbyView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   isLobbyUp(model)
     ? h.section(
         [
@@ -583,4 +586,5 @@ export const lobbyView = (model: Model, h: ApplicationViewBuilder): Html =>
           ),
         ],
       )
-    : h.empty
+    : h.empty,
+)

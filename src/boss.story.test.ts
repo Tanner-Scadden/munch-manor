@@ -18,6 +18,7 @@ import {
   CENTER_X,
   CENTER_Y,
   bossAt,
+  bossWithHpAt,
   eventsTagged,
   fightingBoss,
   fightingWith,
@@ -378,7 +379,7 @@ describe('victory', () => {
       }),
     )
 
-    const lastLegs = bossAt(CENTER_X + 60, CENTER_Y, 1)
+    const lastLegs = bossWithHpAt(1, CENTER_X + 60, CENTER_Y)
     const frames = Math.ceil(ZOMBIE_KINDS.Boss.dyingMs / FRAME_MS) + 120
     story(
       update,
@@ -410,7 +411,7 @@ describe('victory', () => {
   })
 
   test('a Groaner still standing holds victory after the boss falls', () => {
-    const lastLegs = bossAt(CENTER_X + 60, CENTER_Y, 1)
+    const lastLegs = bossWithHpAt(1, CENTER_X + 60, CENTER_Y)
     const straggler = zombieOf('Shambler', 300, 30, 30, { hp: 3 })
     story(
       update,

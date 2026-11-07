@@ -1,4 +1,4 @@
-import { Effect, Option, Stream } from 'effect'
+import { Effect, Function, Option, Stream } from 'effect'
 import { TestClock } from 'effect/testing'
 
 // TESTING
@@ -39,15 +39,26 @@ export const settle = <A, E, R>(
 
 // NOTE: the first value a stream shows that passes, waited for with settle.
 // The status streams start with the current value, so nothing is missed.
-export const first = <A, E, R>(
-  stream: Stream.Stream<A, E, R>,
-  isDone: (value: A) => boolean,
-): Effect.Effect<A, E, R> =>
-  settle(
-    Effect.flatMap(Stream.runHead(Stream.filter(stream, isDone)), maybe =>
-      Option.match(maybe, {
-        onNone: () => Effect.die(new Error('The stream ended')),
-        onSome: Effect.succeed,
-      }),
+export const first: {
+  <A, E, R>(
+    isDone: (value: A) => boolean,
+  ): (stream: Stream.Stream<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(
+    stream: Stream.Stream<A, E, R>,
+    isDone: (value: A) => boolean,
+  ): Effect.Effect<A, E, R>
+} = Function.dual(
+  2,
+  <A, E, R>(
+    stream: Stream.Stream<A, E, R>,
+    isDone: (value: A) => boolean,
+  ): Effect.Effect<A, E, R> =>
+    settle(
+      Effect.flatMap(Stream.runHead(Stream.filter(stream, isDone)), maybe =>
+        Option.match(maybe, {
+          onNone: () => Effect.die(new Error('The stream ended')),
+          onSome: Effect.succeed,
+        }),
+      ),
     ),
-  )
+)

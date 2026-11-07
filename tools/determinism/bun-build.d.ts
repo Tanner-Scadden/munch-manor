@@ -10,7 +10,9 @@ declare namespace Bun {
     ): void
     onLoad(
       options: { filter: RegExp; namespace: string },
-      callback: (args: OnLoadArgs) => { contents: string; loader: 'js' },
+      callback: (
+        args: OnLoadArgs,
+      ) => Promise<{ contents: string; loader: 'js' }>,
     ): void
   }
   type BunPlugin = { name: string; setup(build: PluginBuilder): void }
@@ -20,6 +22,7 @@ declare namespace Bun {
     outputs: ReadonlyArray<{ size: number; path: string }>
     metafile?: { inputs: Record<string, unknown> }
   }
+  function file(path: string): { text(): Promise<string> }
   function build(options: {
     entrypoints: Array<string>
     outdir: string

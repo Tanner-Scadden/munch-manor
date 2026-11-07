@@ -1,6 +1,7 @@
 // NOTE: the look sheet (`looksheet`): every look part's options on one
 // canvas, and walk frames, facings, and the hit flash for a few mixed looks.
 
+import { Array } from 'effect'
 import { Canvas } from 'foldkit'
 import { type Document } from 'foldkit/html'
 import { modifyFields } from 'foldkit/struct'
@@ -76,15 +77,15 @@ const lookSheetShapes = (): Array<Canvas.Shape> => {
   }
   const base = defaultAppearance
   const rows: ReadonlyArray<ReadonlyArray<Appearance>> = [
-    BODIES.map(body => modifyFields(base, { body: () => body })),
-    BODIES.map(body =>
+    Array.map(BODIES, body => modifyFields(base, { body: () => body })),
+    Array.map(BODIES, body =>
       modifyFields(base, {
         body: () => body,
         outfit: () => 'Dress',
         hairStyle: () => 'Long',
       }),
     ),
-    BODIES.map(body =>
+    Array.map(BODIES, body =>
       modifyFields(base, {
         body: () => body,
         outfit: () => 'Overalls',
@@ -93,25 +94,25 @@ const lookSheetShapes = (): Array<Canvas.Shape> => {
         glasses: () => true,
       }),
     ),
-    HAIR_STYLES.map(hairStyle =>
+    Array.map(HAIR_STYLES, hairStyle =>
       modifyFields(base, { hairStyle: () => hairStyle }),
     ),
-    HAIR_COLORS.map(hairColor =>
+    Array.map(HAIR_COLORS, hairColor =>
       modifyFields(base, {
         hairColor: () => hairColor,
         hairStyle: () => 'Long',
       }),
     ),
-    SKIN_TONES.map(skinTone =>
+    Array.map(SKIN_TONES, skinTone =>
       modifyFields(base, { skinTone: () => skinTone }),
     ),
-    SHIRT_COLORS.map(shirtColor =>
+    Array.map(SHIRT_COLORS, shirtColor =>
       modifyFields(base, { shirtColor: () => shirtColor }),
     ),
-    OUTFITS.map(outfit => modifyFields(base, { outfit: () => outfit })),
-    PRINTS.map(print => modifyFields(base, { print: () => print })),
-    OUTFITS.flatMap(outfit =>
-      PRINTS.map(print =>
+    Array.map(OUTFITS, outfit => modifyFields(base, { outfit: () => outfit })),
+    Array.map(PRINTS, print => modifyFields(base, { print: () => print })),
+    Array.flatMap(OUTFITS, outfit =>
+      Array.map(PRINTS, print =>
         modifyFields(base, {
           outfit: () => outfit,
           print: () => print,
@@ -119,14 +120,14 @@ const lookSheetShapes = (): Array<Canvas.Shape> => {
         }),
       ),
     ),
-    ON_OFF.flatMap(beard =>
-      ON_OFF.map(glasses =>
+    Array.flatMap(ON_OFF, beard =>
+      Array.map(ON_OFF, glasses =>
         modifyFields(base, { beard: () => beard, glasses: () => glasses }),
       ),
     ),
   ]
-  rows.forEach((row, r) =>
-    row.forEach((appearance, c) =>
+  Array.forEach(rows, (row, r) =>
+    Array.forEach(row, (appearance, c) =>
       draw(
         appearance,
         c * CELL_W + 8,
@@ -180,12 +181,12 @@ const lookSheetShapes = (): Array<Canvas.Shape> => {
       glasses: true,
     },
   ]
-  samples.forEach((appearance, i) => {
+  Array.forEach(samples, (appearance, i) => {
     const y = rows.length * CELL_H + 18 + i * CELL_H
-    ;[0, 1, 2, 3].forEach(f =>
+    Array.forEach([0, 1, 2, 3], f =>
       draw(appearance, 8 + f * CELL_W, y, 'walk', f, 'Right', 'Normal'),
     )
-    ;[0, 1].forEach(f =>
+    Array.forEach([0, 1], f =>
       draw(appearance, 8 + (4 + f) * CELL_W, y, 'idle', f, 'Right', 'Normal'),
     )
     draw(appearance, 8 + 6 * CELL_W, y, 'walk', 0, 'Left', 'Normal')

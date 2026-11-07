@@ -8,6 +8,7 @@ import {
   Schema,
   type Scope,
   Stream,
+  String,
 } from 'effect'
 import type { SqlClient, SqlError } from 'effect/sql'
 
@@ -39,10 +40,10 @@ import {
   openServerDatabase,
 } from './fixtures'
 
-const Tally = Schema.Struct({ kind: Schema.String, count: Schema.Number })
+const Tally = Schema.Struct({ kind: Schema.String, count: Schema.Finite })
 const Profile = Schema.Struct({
   name: Schema.String,
-  stamped_ms: Schema.Number,
+  stamped_ms: Schema.Finite,
 })
 const Slot = Schema.Struct({ slot: Schema.String, by: Schema.String })
 
@@ -186,8 +187,10 @@ describe('rebuild plus replay', () => {
       const confirmed = yield* readState(device.database.sql, 'sync_confirmed_')
       expect(tallyOf(view, 'runs')).toBe(5)
       expect(tallyOf(confirmed, 'runs')).toBe(3)
-      expect(yield* device.replica.pending).toHaveLength(1)
-      expect(yield* device.replica.confirmedSeq).toBe(1)
+      const pending_1 = yield* device.replica.pending
+      expect(pending_1).toHaveLength(1)
+      const confirmedSeq_1 = yield* device.replica.confirmedSeq
+      expect(confirmedSeq_1).toBe(1)
     }),
   )
 
@@ -221,7 +224,8 @@ describe('rebuild plus replay', () => {
       )
       const view = yield* viewOf(device)
       expect(tallyOf(view, 'runs')).toBe(3)
-      expect(yield* device.replica.confirmedSeq).toBe(3)
+      const confirmedSeq_2 = yield* device.replica.confirmedSeq
+      expect(confirmedSeq_2).toBe(3)
     }),
   )
 
@@ -239,7 +243,8 @@ describe('rebuild plus replay', () => {
       )
       expect(receipt._tag).toBe('Rejected')
       expect((yield* viewOf(device)).slots).toHaveLength(0)
-      expect(yield* device.replica.pending).toHaveLength(0)
+      const pending_2 = yield* device.replica.pending
+      expect(pending_2).toHaveLength(0)
     }),
   )
 
@@ -250,7 +255,8 @@ describe('rebuild plus replay', () => {
         device.replica.run(Counted, { kind: 'runs', count: 500 }),
       )
       expect(Exit.isFailure(exit)).toBe(true)
-      expect(yield* device.replica.pending).toHaveLength(0)
+      const pending_3 = yield* device.replica.pending
+      expect(pending_3).toHaveLength(0)
       expect((yield* viewOf(device)).tally).toHaveLength(0)
     }),
   )
@@ -327,7 +333,8 @@ describe('the server', () => {
             reply => reply._tag === 'Rejected' && reply.code,
           ),
         ).toEqual(['UnknownMutation', 'Outdated', 'InvalidArgs'])
-        expect(yield* server.head).toBe(0)
+        const head_1 = yield* server.head
+        expect(head_1).toBe(0)
         const outsider = yield* server.checkRead(stranger)
         expect(outsider._tag).toBe('Forbidden')
       }),
@@ -341,7 +348,8 @@ describe('the server', () => {
       const again = yield* server.runServer(Stamped, {}, 'server-stamp-1')
       expect(firstTry._tag).toBe('Applied')
       expect(again._tag).toBe('Duplicate')
-      expect(yield* server.head).toBe(1)
+      const head_2 = yield* server.head
+      expect(head_2).toBe(1)
     }),
   )
 
@@ -356,7 +364,10 @@ describe('the server', () => {
           deviceId: 'a',
         })
         const envelopes = yield* Effect.forEach(Array.range(1, 10), n =>
-          envelope(`mutation-${String(n).padStart(4, '0')}`, n),
+          envelope(
+            `mutation-${String.padStart(4, '0')(globalThis.String(n))}`,
+            n,
+          ),
         )
         yield* server.push(owner, envelopes)
         const fresh = yield* server.join({ lastSeq: 0, mode: 'Catchup' })
@@ -367,8 +378,10 @@ describe('the server', () => {
         ).toEqual([9, 10])
         const device = yield* openDevice()
         yield* device.replica.receive(fresh)
-        expect(tallyOf(yield* viewOf(device), 'runs')).toBe(55)
-        expect(yield* device.replica.confirmedSeq).toBe(10)
+        const value_1 = yield* viewOf(device)
+        expect(tallyOf(value_1, 'runs')).toBe(55)
+        const confirmedSeq_3 = yield* device.replica.confirmedSeq
+        expect(confirmedSeq_3).toBe(10)
         const trimmed = yield* server.join({ lastSeq: 6, mode: 'Catchup' })
         expect(trimmed._tag).toBe('Snapshot')
       }),
@@ -426,13 +439,15 @@ describe('convergence over a bad network', () => {
       expect(laptopConfirmed).toEqual(laptopView)
       const serverTally =
         server._tag === 'Snapshot'
-          ? Array.sort(
-              yield* Schema.decodeUnknownEffect(Schema.Array(Tally))(
+          ? yield* Effect.map(
+              Schema.decodeUnknownEffect(Schema.Array(Tally))(
                 server.tables['tally'],
               ),
-              Order.mapInput(
-                Order.String,
-                (row: typeof Tally.Type) => row.kind,
+              Array.sort(
+                Order.mapInput(
+                  Order.String,
+                  (row: typeof Tally.Type) => row.kind,
+                ),
               ),
             )
           : []

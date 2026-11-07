@@ -1,4 +1,13 @@
-import { Array, Effect, Layer, Match, Option, Result, Schema } from 'effect'
+import {
+  Array,
+  Effect,
+  Function,
+  Layer,
+  Match,
+  Option,
+  Result,
+  Schema,
+} from 'effect'
 import { Dom, type Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -15,12 +24,13 @@ import {
 } from '@munch/netcode'
 import { QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
+import { toBrowserError } from '../describeError'
 import { DIFFICULTY_ORDER } from '../difficulty'
 import { Calling, type SavedBoughtCosmetics } from '../playerData'
 import { eventsBetween } from '../roomWorld'
 import { stepWhen } from '../stepWhen'
 import { CoopComposition } from './composition'
-import { makeCommand } from './definition'
+import { CoopDefinition } from './definition'
 import { makeEdits } from './lobbyEdits'
 import { Message, OutMessage } from './message'
 import {
@@ -74,7 +84,7 @@ import { coopWorld } from './seam'
 
 // COMMAND
 
-export const FocusCoopElement = makeCommand('FocusCoopElement', {
+export const FocusCoopElement = CoopDefinition.makeCommand('FocusCoopElement', {
   args: { id: Schema.String },
   messages: [Message.CompletedFocusCoopElement],
   handler: function* () {
@@ -86,12 +96,12 @@ export const FocusCoopElement = makeCommand('FocusCoopElement', {
   },
 })
 
-export const RequestRoom = makeCommand('RequestRoom', {
+export const RequestRoom = CoopDefinition.makeCommand('RequestRoom', {
   args: {
     request: RoomRequest,
     name: Schema.String,
     look: Schema.String,
-    rank: Schema.Number,
+    rank: Schema.Finite,
     calling: Calling,
   },
   messages: [Message.SucceededRequestRoom, Message.FailedRequestRoom],
@@ -108,7 +118,7 @@ export const RequestRoom = makeCommand('RequestRoom', {
   },
 })
 
-export const AnswerOffer = makeCommand('AnswerOffer', {
+export const AnswerOffer = CoopDefinition.makeCommand('AnswerOffer', {
   args: { accept: Schema.Boolean },
   messages: [Message.CompletedAnswerOffer],
   handler: function* () {
@@ -119,7 +129,7 @@ export const AnswerOffer = makeCommand('AnswerOffer', {
   },
 })
 
-export const CancelQuickPlay = makeCommand('CancelQuickPlay', {
+export const CancelQuickPlay = CoopDefinition.makeCommand('CancelQuickPlay', {
   messages: [Message.CompletedCancelQuickPlay],
   handler: function* () {
     return () =>
@@ -129,7 +139,7 @@ export const CancelQuickPlay = makeCommand('CancelQuickPlay', {
   },
 })
 
-export const ChangeLobby = makeCommand('ChangeLobby', {
+export const ChangeLobby = CoopDefinition.makeCommand('ChangeLobby', {
   args: { change: LobbyChange },
   messages: [Message.CompletedChangeLobby, Message.FailedChangeLobby],
   handler: function* () {
@@ -143,7 +153,7 @@ export const ChangeLobby = makeCommand('ChangeLobby', {
   },
 })
 
-export const SendRoomFrames = makeCommand('SendRoomFrames', {
+export const SendRoomFrames = CoopDefinition.makeCommand('SendRoomFrames', {
   args: { frames: Schema.Array(ClientFrame) },
   messages: [Message.CompletedSendRoomFrames],
   handler: function* () {
@@ -154,7 +164,7 @@ export const SendRoomFrames = makeCommand('SendRoomFrames', {
   },
 })
 
-export const LeaveRoom = makeCommand('LeaveRoom', {
+export const LeaveRoom = CoopDefinition.makeCommand('LeaveRoom', {
   messages: [Message.CompletedLeaveRoom],
   handler: function* () {
     return () =>
@@ -166,7 +176,7 @@ export const LeaveRoom = makeCommand('LeaveRoom', {
 
 // NOTE: the session could not apply a message from the room, so it asks
 // for a new socket, whose link brings a fresh Snapshot.
-export const ResyncRoom = makeCommand('ResyncRoom', {
+export const ResyncRoom = CoopDefinition.makeCommand('ResyncRoom', {
   messages: [Message.CompletedResyncRoom],
   handler: function* () {
     return () =>
@@ -178,7 +188,7 @@ export const ResyncRoom = makeCommand('ResyncRoom', {
 
 // NOTE: the phone's own share sheet where there is one, else the link on the
 // clipboard. Either way the button shows what happened with an icon.
-export const ShareRoomLink = makeCommand('ShareRoomLink', {
+export const ShareRoomLink = CoopDefinition.makeCommand('ShareRoomLink', {
   args: { code: Schema.String },
   messages: [Message.CompletedShareRoomLink],
   handler: function* () {
@@ -186,16 +196,20 @@ export const ShareRoomLink = makeCommand('ShareRoomLink', {
       Effect.gen(function* () {
         const url = linkOf(code)
         if (typeof navigator.share === 'function') {
-          yield* Effect.tryPromise(() =>
-            navigator.share({ title: 'Munch Manor', url }),
-          )
+          yield* Effect.tryPromise({
+            try: () => navigator.share({ title: 'Munch Manor', url }),
+            catch: toBrowserError,
+          })
           return Message.CompletedShareRoomLink({ share: 'Shared' })
         }
-        yield* Effect.tryPromise(() => navigator.clipboard.writeText(url))
+        yield* Effect.tryPromise({
+          try: () => navigator.clipboard.writeText(url),
+          catch: toBrowserError,
+        })
         return Message.CompletedShareRoomLink({ share: 'Copied' })
       }).pipe(
-        Effect.catch(() =>
-          Effect.succeed(Message.CompletedShareRoomLink({ share: 'Idle' })),
+        Effect.orElseSucceed(() =>
+          Message.CompletedShareRoomLink({ share: 'Idle' }),
         ),
       )
   },
@@ -203,15 +217,18 @@ export const ShareRoomLink = makeCommand('ShareRoomLink', {
 
 // NOTE: a tap on the lobby's room code puts the code on the clipboard, to
 // paste in a chat. A browser with no clipboard (an insecure page) fails.
-export const CopyRoomCode = makeCommand('CopyRoomCode', {
+export const CopyRoomCode = CoopDefinition.makeCommand('CopyRoomCode', {
   args: { code: Schema.String },
   messages: [Message.CompletedCopyRoomCode],
   handler: function* () {
     return ({ code }) =>
-      Effect.tryPromise(() => navigator.clipboard.writeText(code)).pipe(
+      Effect.tryPromise({
+        try: () => navigator.clipboard.writeText(code),
+        catch: toBrowserError,
+      }).pipe(
         Effect.as(Message.CompletedCopyRoomCode({ copy: 'Copied' })),
-        Effect.catch(() =>
-          Effect.succeed(Message.CompletedCopyRoomCode({ copy: 'Failed' })),
+        Effect.orElseSucceed(() =>
+          Message.CompletedCopyRoomCode({ copy: 'Failed' }),
         ),
       )
   },
@@ -219,7 +236,7 @@ export const CopyRoomCode = makeCommand('CopyRoomCode', {
 
 // NOTE: the room's code rides in the address, so a reload rejoins the same
 // seat and the address bar is itself the invite.
-export const RememberRoom = makeCommand('RememberRoom', {
+export const RememberRoom = CoopDefinition.makeCommand('RememberRoom', {
   args: { maybeCode: Schema.Option(Schema.String) },
   messages: [Message.CompletedRememberRoom],
   handler: function* () {
@@ -424,60 +441,79 @@ const hasGivenUp = (room: Room, nowMs: number): boolean =>
 // to draw and the events it reached come out. The parent reads `maybeWorld`
 // and `frameEvents` after it (src/coopPlay.ts). While the parent holds its
 // picture still for hit-stop, the events wait in the session for it.
-export const tickRoom = (
-  model: Model,
-  controls: PlayerInput,
-  nowMs: number,
-  isPictureHeld = false,
-): UpdateReturn =>
-  inRoom(model, room => {
-    if (hasGivenUp(room, nowMs)) {
-      return leaveFor(model, 'Dropped')
-    }
-    const presses = pressFor(room.presses, room.session.inputTick)
-    const ticked = Session.tickInput(
-      coopWorld,
-      room.session,
-      { ...controls, action: presses.held },
-      nowMs,
-    )
-    const rendered = Session.render(coopWorld, ticked.session, nowMs)
-    const predictedShots = shotsBetween(
-      room.session.predicted,
-      ticked.session.predicted,
-    )
-    const reached = Math.max(
-      0,
-      Math.min(
-        Math.floor(rendered.renderTick),
-        Option.match(Array.last(rendered.session.frames), {
-          onNone: () => 0,
-          onSome: newest => newest.tick,
-        }),
-      ),
-    )
-    const from = startOfEvents(room, rendered.session.frames)
-    const next = withRoom(model, {
-      ...room,
-      link: isLost(room, nowMs) ? 'Lost' : room.link,
-      droppedAtMs:
-        room.link === 'Online'
-          ? Option.none()
-          : Option.orElseSome(room.droppedAtMs, () => nowMs),
-      session: rendered.session,
-      maybeWorld: Option.orElse(rendered.world, () => room.maybeWorld),
-      frameEvents:
-        reached > from && !isPictureHeld
-          ? eventsBetween(rendered.session.frames, from, reached)
-          : [],
-      eventsTick: isPictureHeld ? from : Math.max(from, reached),
-      predictedShots,
-      presses,
-    })
-    return Array.isReadonlyArrayNonEmpty(ticked.outgoing)
-      ? { model: next, commands: [SendRoomFrames({ frames: ticked.outgoing })] }
-      : { model: next }
-  })
+export const tickRoom: {
+  (
+    controls: PlayerInput,
+    nowMs: number,
+    isPictureHeld?: boolean,
+  ): (model: Model) => UpdateReturn
+  (
+    model: Model,
+    controls: PlayerInput,
+    nowMs: number,
+    isPictureHeld?: boolean,
+  ): UpdateReturn
+} = Function.dual(
+  // NOTE: data-first has the clock third; data-last has it second.
+  (args: IArguments): boolean => typeof args[2] === 'number',
+  (
+    model: Model,
+    controls: PlayerInput,
+    nowMs: number,
+    isPictureHeld: boolean = false,
+  ): UpdateReturn =>
+    inRoom(model, room => {
+      if (hasGivenUp(room, nowMs)) {
+        return leaveFor(model, 'Dropped')
+      }
+      const presses = pressFor(room.presses, room.session.inputTick)
+      const ticked = Session.tickInput(
+        coopWorld,
+        room.session,
+        { ...controls, action: presses.held },
+        nowMs,
+      )
+      const rendered = Session.render(coopWorld, ticked.session, nowMs)
+      const predictedShots = shotsBetween(
+        room.session.predicted,
+        ticked.session.predicted,
+      )
+      const reached = Math.max(
+        0,
+        Math.min(
+          Math.floor(rendered.renderTick),
+          Option.match(Array.last(rendered.session.frames), {
+            onNone: () => 0,
+            onSome: newest => newest.tick,
+          }),
+        ),
+      )
+      const from = startOfEvents(room, rendered.session.frames)
+      const next = withRoom(model, {
+        ...room,
+        link: isLost(room, nowMs) ? 'Lost' : room.link,
+        droppedAtMs:
+          room.link === 'Online'
+            ? Option.none()
+            : Option.orElseSome(room.droppedAtMs, () => nowMs),
+        session: rendered.session,
+        maybeWorld: Option.orElse(rendered.world, () => room.maybeWorld),
+        frameEvents:
+          reached > from && !isPictureHeld
+            ? eventsBetween(rendered.session.frames, from, reached)
+            : [],
+        eventsTick: isPictureHeld ? from : Math.max(from, reached),
+        predictedShots,
+        presses,
+      })
+      return Array.isReadonlyArrayNonEmpty(ticked.outgoing)
+        ? {
+            model: next,
+            commands: [SendRoomFrames({ frames: ticked.outgoing })],
+          }
+        : { model: next }
+    }),
+)
 
 const toggleReady = (model: Model, room: Room): UpdateReturn =>
   Option.match(meIn(room), {
@@ -676,8 +712,12 @@ const heardInQueue = (
 
 // NOTE: the parent hands co-op every key while it is open, so the home
 // menu's keys stay out of the way.
-export const pressKey = (model: Model, code: string): UpdateReturn =>
-  keyOnScreen(model, code)
+export const pressKey: {
+  (code: string): (model: Model) => UpdateReturn
+  (model: Model, code: string): UpdateReturn
+} = Function.dual(2, (model: Model, code: string): UpdateReturn =>
+  keyOnScreen(model, code),
+)
 
 const releaseKey = (model: Model, _code: string): UpdateReturn => ({
   model,
@@ -687,34 +727,61 @@ const releaseKey = (model: Model, _code: string): UpdateReturn => ({
 
 // NOTE: opening co-op lands on the hub, or straight in a room's join when a
 // `?room=` link brought the player here.
-export const open = (
-  model: Model,
-  name: string,
-  maybeCode: Option.Option<string>,
-  look = '',
-  rank = 1,
-  calling: Calling = 'You',
-  bought: SavedBoughtCosmetics = [],
-  bones = 0,
-  rngState = 0,
-): UpdateReturn => {
-  const named = modifyFields(model, {
-    name: () => name,
-    look: () => look,
-    rank: () => rank,
-    calling: () => calling,
-    rngState: () => rngState,
-    bought: () => bought,
-    bones: () => bones,
-  })
-  return Option.match(maybeCode, {
-    onNone: () => ({
-      model: hub(named, Option.none()),
-      commands: [FocusCoopElement({ id: QUICK_PLAY_BUTTON_ID })],
-    }),
-    onSome: code => ask(named, RoomRequest.Join({ code })),
-  })
-}
+export const open: {
+  (
+    name: string,
+    maybeCode: Option.Option<string>,
+    look?: string,
+    rank?: number,
+    calling?: Calling,
+    bought?: SavedBoughtCosmetics,
+    bones?: number,
+    rngState?: number,
+  ): (model: Model) => UpdateReturn
+  (
+    model: Model,
+    name: string,
+    maybeCode: Option.Option<string>,
+    look?: string,
+    rank?: number,
+    calling?: Calling,
+    bought?: SavedBoughtCosmetics,
+    bones?: number,
+    rngState?: number,
+  ): UpdateReturn
+} = Function.dual(
+  // NOTE: data-first has the name, a string, second; data-last has the
+  // maybe code, an Option, there.
+  (args: IArguments): boolean => typeof args[1] === 'string',
+  (
+    model: Model,
+    name: string,
+    maybeCode: Option.Option<string>,
+    look: string = '',
+    rank: number = 1,
+    calling: Calling = 'You',
+    bought: SavedBoughtCosmetics = [],
+    bones: number = 0,
+    rngState: number = 0,
+  ): UpdateReturn => {
+    const named = modifyFields(model, {
+      name: () => name,
+      look: () => look,
+      rank: () => rank,
+      calling: () => calling,
+      rngState: () => rngState,
+      bought: () => bought,
+      bones: () => bones,
+    })
+    return Option.match(maybeCode, {
+      onNone: () => ({
+        model: hub(named, Option.none()),
+        commands: [FocusCoopElement({ id: QUICK_PLAY_BUTTON_ID })],
+      }),
+      onSome: code => ask(named, RoomRequest.Join({ code })),
+    })
+  },
+)
 
 export const isOpen = (model: Model): boolean =>
   !Screen.isAnyOf(['Closed'])(model.screen)
@@ -854,7 +921,9 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
       inRoom(model, room => ({
         model: withRoom(model, {
           ...room,
-          session: Array.reduce(bytes, room.session, Session.countSent),
+          session: Array.reduce(bytes, room.session, (session, sent) =>
+            Session.countSent(session, sent),
+          ),
         }),
       })),
 

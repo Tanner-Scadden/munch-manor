@@ -1,5 +1,5 @@
 import type { Duration } from 'effect'
-import { Effect, Queue, Stream, pipe } from 'effect'
+import { Array, Effect, Function, Queue, Stream, pipe } from 'effect'
 
 import { openEngine, warmEngine } from './Engine'
 import { decodeRequest, encodeResponse } from './Protocol'
@@ -30,31 +30,38 @@ const messagesFrom = (scope: WorkerScope): Stream.Stream<unknown> =>
     ),
   )
 
-export const serveWorker = (
-  scope: WorkerScope,
-  options: WorkerOptions = {},
-): Effect.Effect<void> =>
-  Effect.scoped(
-    Effect.gen(function* () {
-      const server = yield* makeServer({
-        open: openEngine,
-        transactionIdleTimeout: options.transactionIdleTimeout,
-        respond: response =>
-          pipe(
-            encodeResponse(response),
-            Effect.flatMap(encoded =>
-              // NOTE: a worker scope's postMessage takes no targetOrigin.
-              // oxlint-disable-next-line unicorn/require-post-message-target-origin
-              Effect.sync(() => scope.postMessage(encoded)),
+export const serveWorker: {
+  (options: WorkerOptions): (scope: WorkerScope) => Effect.Effect<void>
+  (scope: WorkerScope, options: WorkerOptions): Effect.Effect<void>
+} = Function.dual(
+  2,
+  (scope: WorkerScope, options: WorkerOptions): Effect.Effect<void> =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const server = yield* makeServer({
+          open: openEngine,
+          transactionIdleTimeout: options.transactionIdleTimeout,
+          respond: response =>
+            pipe(
+              encodeResponse(response),
+              Effect.flatMap(encoded =>
+                // NOTE: a worker scope's postMessage takes no targetOrigin.
+                // oxlint-disable-next-line unicorn/require-post-message-target-origin
+                Effect.sync(() => scope.postMessage(encoded)),
+              ),
+              Effect.ignore,
             ),
+        })
+        yield* Stream.runForEach(messagesFrom(scope), data =>
+          pipe(
+            decodeRequest(data),
+            Effect.flatMap(server.offer),
             Effect.ignore,
           ),
-      })
-      yield* Stream.runForEach(messagesFrom(scope), data =>
-        pipe(decodeRequest(data), Effect.flatMap(server.offer), Effect.ignore),
-      )
-    }),
-  )
+        )
+      }),
+    ),
+)
 
 // NOTE: a request posted to a worker before its script has run is handed
 // to whatever listens when the script's first run ends. The server's own
@@ -67,7 +74,7 @@ export const holdEarlyMessages = (scope: WorkerScope): WorkerScope => {
     if (listeners.length === 0) {
       held.push(event)
     } else {
-      listeners.forEach(listener => listener(event))
+      Array.forEach(listeners, listener => listener(event))
     }
   })
   return {
@@ -76,7 +83,7 @@ export const holdEarlyMessages = (scope: WorkerScope): WorkerScope => {
     postMessage: message => scope.postMessage(message),
     addEventListener: (_type, listener) => {
       listeners.push(listener)
-      held.splice(0).forEach(listener)
+      Array.forEach(held.splice(0), listener)
     },
   }
 }

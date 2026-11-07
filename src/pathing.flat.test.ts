@@ -9,6 +9,7 @@ import {
   tileIndex,
   tileOfIndex,
 } from './arena'
+import { EVERY_LEVEL } from './model.fixture'
 import {
   type Clearance,
   UNREACHED_DISTANCE,
@@ -16,7 +17,6 @@ import {
   flowFieldToward,
   flowFieldsToward,
 } from './pathing'
-import { EVERY_LEVEL } from './model.fixture'
 import type { Toll } from './worldSchema'
 
 // NOTE: the search the flat one replaced, kept as the oracle: neighbors in
@@ -70,7 +70,7 @@ const oracleSpread = (
   clearance: Clearance,
   tolls: ReadonlyArray<Toll>,
 ): ReadonlyArray<number> => {
-  const tollMap = new Map(tolls.map(({ index, cost }) => [index, cost]))
+  const tollMap = new Map(Array.map(tolls, ({ index, cost }) => [index, cost]))
   const distances = Array.makeBy(level.tileCount, () => UNREACHED_DISTANCE)
   const buckets = new Map<number, Array<number>>([[0, [...origins]]])
   let depth = 0
@@ -110,7 +110,7 @@ const TOLLS: ReadonlyArray<Toll> = [
 ]
 
 describe('the flat flow field answers as the search it replaced did', () => {
-  test.each(EVERY_LEVEL.map(level => [level.key, level] as const))(
+  test.each(Array.map(EVERY_LEVEL, level => [level.key, level] as const))(
     '%s: from every seventh tile, both clearances, with and without tolls',
     (_, level) => {
       for (const clearance of ['Narrow', 'Wide'] as const) {
@@ -128,18 +128,24 @@ describe('the flat flow field answers as the search it replaced did', () => {
     },
   )
 
-  test.each(EVERY_LEVEL.map(level => [level.key, level] as const))(
+  test.each(Array.map(EVERY_LEVEL, level => [level.key, level] as const))(
     '%s: from several players at once',
     (_, level) => {
-      const places = [3, 150, 400, 700, 150].map(index =>
+      const places = Array.map([3, 150, 400, 700, 150], index =>
         tileCenter(tileOfIndex(level, index % level.tileCount)),
       )
-      const fields = flowFieldsToward(level, [places[0]!, ...places.slice(1)], TOLLS)
+      const fields = flowFieldsToward(
+        level,
+        [places[0]!, ...places.slice(1)],
+        TOLLS,
+      )
       const origins = Array.dedupe(
-        places.map(place =>
+        Array.map(places, place =>
           Option.getOrThrow(
             Array.findFirstIndex(
-              Array.makeBy(level.tileCount, index => tileCenter(tileOfIndex(level, index))),
+              Array.makeBy(level.tileCount, index =>
+                tileCenter(tileOfIndex(level, index)),
+              ),
               center => center.x === place.x && center.y === place.y,
             ),
           ),

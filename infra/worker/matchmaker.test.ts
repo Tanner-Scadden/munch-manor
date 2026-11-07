@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import * as Effect from 'effect/Effect'
 import * as Result from 'effect/Result'
 
@@ -47,10 +48,10 @@ const fakeIo = (fake: Fake): MatchmakerIo => ({
       if (fake.failMaking) {
         return Result.fail(RoomRefusal.cases.Unavailable.make({}))
       }
-      fake.made.push(players.map(player => player.socket))
+      fake.made.push(Array.map(players, player => player.socket))
       return Result.succeed({
         code: 'NEWRM',
-        tickets: players.map((player, slot) => ({
+        tickets: Array.map(players, (player, slot) => ({
           socket: player.socket,
           ticket: ok({ code: 'NEWRM', slot }),
         })),
@@ -96,10 +97,13 @@ const setUp = Effect.gen(function* () {
 })
 
 const lastWaiting = (fake: Fake, socket: string) =>
-  fake.sent
-    .filter(([to, message]) => to === socket && message._tag === 'Waiting')
-    .map(([, message]) => message)
-    .at(-1)
+  Array.map(
+    Array.filter(
+      fake.sent,
+      ([to, message]) => to === socket && message._tag === 'Waiting',
+    ),
+    ([, message]) => message,
+  ).at(-1)
 
 describe('the Matchmaker', () => {
   it.effect('four arrivals make a room, and each hears Matched', () =>
@@ -118,7 +122,8 @@ describe('the Matchmaker', () => {
       expect(fake.made).toEqual([['s1', 's2', 's3', 's4']])
       expect(fake.closed).toEqual(['s1', 's2', 's3', 's4'])
       expect(
-        fake.sent.filter(([, message]) => message._tag === 'Matched').length,
+        Array.filter(fake.sent, ([, message]) => message._tag === 'Matched')
+          .length,
       ).toBe(4)
       expect(fake.state.queue).toEqual([])
     }),
@@ -157,7 +162,9 @@ describe('the Matchmaker', () => {
           ['s1', 'OPENR'],
           ['s2', 'OPENR'],
         ])
-        expect(fake.state.rooms.map(room => room.code)).toEqual(['OPENR'])
+        expect(Array.map(fake.state.rooms, room => room.code)).toEqual([
+          'OPENR',
+        ])
       }),
   )
 
@@ -170,9 +177,10 @@ describe('the Matchmaker', () => {
       yield* arrive(3)
       yield* arrive(4)
       expect(
-        fake.sent
-          .filter(([, message]) => message._tag === 'Refused')
-          .map(([to]) => to),
+        Array.map(
+          Array.filter(fake.sent, ([, message]) => message._tag === 'Refused'),
+          ([to]) => to,
+        ),
       ).toEqual(['s1', 's2', 's3', 's4'])
       expect(fake.state.queue).toEqual([])
     }),

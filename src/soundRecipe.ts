@@ -1,3 +1,4 @@
+import { Function } from 'effect'
 // NOTE: how a sound is written: tone and noise layers, each with its pitch
 // points and envelope. src/audioRecipes.ts and src/zombieRecipes.ts write
 // the game's sounds in it, and src/audio.ts plays them.
@@ -30,14 +31,47 @@ export type Recipe = Readonly<{
   noises: ReadonlyArray<NoiseLayer>
 }>
 
-export const envelope = (
-  peak: number,
-  attackSeconds: number,
-  decaySeconds: number,
-  delaySeconds = 0,
-): Envelope => ({ delaySeconds, peak, attackSeconds, decaySeconds })
+// NOTE: a layer's envelope that starts with the sound, and one that waits
+// `delaySeconds` first.
+export const envelope: {
+  (attackSeconds: number, decaySeconds: number): (peak: number) => Envelope
+  (peak: number, attackSeconds: number, decaySeconds: number): Envelope
+} = Function.dual(
+  3,
+  (peak: number, attackSeconds: number, decaySeconds: number): Envelope => ({
+    delaySeconds: 0,
+    peak,
+    attackSeconds,
+    decaySeconds,
+  }),
+)
 
-export const at = (atSeconds: number, frequency: number): PitchPoint => ({
+export const delayedEnvelope: {
+  (
+    attackSeconds: number,
+    decaySeconds: number,
+    delaySeconds: number,
+  ): (peak: number) => Envelope
+  (
+    peak: number,
+    attackSeconds: number,
+    decaySeconds: number,
+    delaySeconds: number,
+  ): Envelope
+} = Function.dual(
+  4,
+  (
+    peak: number,
+    attackSeconds: number,
+    decaySeconds: number,
+    delaySeconds: number,
+  ): Envelope => ({ delaySeconds, peak, attackSeconds, decaySeconds }),
+)
+
+export const at: {
+  (frequency: number): (atSeconds: number) => PitchPoint
+  (atSeconds: number, frequency: number): PitchPoint
+} = Function.dual(2, (atSeconds: number, frequency: number): PitchPoint => ({
   atSeconds,
   frequency,
-})
+}))

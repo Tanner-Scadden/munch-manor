@@ -1,4 +1,4 @@
-import { Array, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 
 import {
   type ClientFrame,
@@ -188,25 +188,31 @@ export const makeSession = <W, Own>(nowMs: number): Session<W, Own> => ({
 })
 
 // NOTE: a new socket. What it learns starts over; the counters do not.
-export const reconnecting = <W, Own>(
-  session: Session<W, Own>,
-  nowMs: number,
-): Session<W, Own> => ({
-  ...makeSession<W, Own>(nowMs),
-  rttMs: session.rttMs,
-  stats: session.stats,
-})
+export const reconnecting: {
+  <W, Own>(nowMs: number): (session: Session<W, Own>) => Session<W, Own>
+  <W, Own>(session: Session<W, Own>, nowMs: number): Session<W, Own>
+} = Function.dual(
+  2,
+  <W, Own>(session: Session<W, Own>, nowMs: number): Session<W, Own> => ({
+    ...makeSession<W, Own>(nowMs),
+    rttMs: session.rttMs,
+    stats: session.stats,
+  }),
+)
 
 // CLOCK
 
-export const roomTickAt = (
-  session: Session<unknown, unknown>,
-  nowMs: number,
-): number =>
-  Option.match(session.anchor, {
-    onNone: () => 0,
-    onSome: anchor => anchor.tick + (nowMs - anchor.atMs) / TICK_MS,
-  })
+export const roomTickAt: {
+  (nowMs: number): (session: Session<unknown, unknown>) => number
+  (session: Session<unknown, unknown>, nowMs: number): number
+} = Function.dual(
+  2,
+  (session: Session<unknown, unknown>, nowMs: number): number =>
+    Option.match(session.anchor, {
+      onNone: () => 0,
+      onSome: anchor => anchor.tick + (nowMs - anchor.atMs) / TICK_MS,
+    }),
+)
 
 // NOTE: a message with tick T arriving now says the room is at about T plus
 // half a round trip. Small differences are eased in so the clock does not
@@ -237,14 +243,17 @@ const reanchor = <W, Own>(
   return { ...session, anchor: Option.some(anchor) }
 }
 
-export const inputTickAt = (
-  session: Session<unknown, unknown>,
-  nowMs: number,
-): number =>
-  Math.floor(
-    roomTickAt(session, nowMs) +
-      (session.rttMs / 2 + INPUT_MARGIN_MS) / TICK_MS,
-  )
+export const inputTickAt: {
+  (nowMs: number): (session: Session<unknown, unknown>) => number
+  (session: Session<unknown, unknown>, nowMs: number): number
+} = Function.dual(
+  2,
+  (session: Session<unknown, unknown>, nowMs: number): number =>
+    Math.floor(
+      roomTickAt(session, nowMs) +
+        (session.rttMs / 2 + INPUT_MARGIN_MS) / TICK_MS,
+    ),
+)
 
 // RECEIVING
 
@@ -359,137 +368,160 @@ const startPlaying = <W, Own>(
 const PLAYING: SessionPhase = { _tag: 'Playing' }
 const WAITING: SessionPhase = { _tag: 'Waiting' }
 
-export const receive = <W, Own>(
-  world: World<W, Own>,
-  session: Session<W, Own>,
-  frame: ServerFrame,
-  bytes: number,
-  nowMs: number,
-): Result.Result<Session<W, Own>, WireError> => {
-  const heard = counted(session, bytes, nowMs)
-  const ok = (
-    next: Session<W, Own>,
-  ): Result.Result<Session<W, Own>, WireError> => Result.succeed(next)
-  return ServerFrame.match(frame, {
-    Welcome: welcome =>
-      ok({
-        ...heard,
-        phase: welcome.state === 'Playing' ? PLAYING : WAITING,
-        slot: Option.some(welcome.slot),
-        seq: 0,
-        ack: 0,
-        frames: [],
-        away: [],
-      }),
-    Refused: refused =>
-      ok({
-        ...heard,
-        phase: { _tag: 'Refused', reason: refused.reason },
-      }),
-    Snapshot: snapshot =>
-      Result.match(readAll(snapshot.world, world.readSnapshot), {
-        onFailure: () => ok(needsResync(heard)),
-        onSuccess: read => {
-          const received = { tick: snapshot.tick, world: read, atMs: nowMs }
-          const anchored = reanchor(
-            {
-              ...heard,
-              phase: PLAYING,
-              ack: snapshot.ack,
-              frames: [received],
-              lastArrival: Option.some({ tick: snapshot.tick, atMs: nowMs }),
-              isResyncing: false,
-            },
-            snapshot.tick,
-            nowMs,
-          )
-          return ok(
-            reconcile(
-              world,
+export const receive: {
+  <W, Own>(
+    session: Session<W, Own>,
+    frame: ServerFrame,
+    bytes: number,
+    nowMs: number,
+  ): (world: World<W, Own>) => Result.Result<Session<W, Own>, WireError>
+  <W, Own>(
+    world: World<W, Own>,
+    session: Session<W, Own>,
+    frame: ServerFrame,
+    bytes: number,
+    nowMs: number,
+  ): Result.Result<Session<W, Own>, WireError>
+} = Function.dual(
+  5,
+  <W, Own>(
+    world: World<W, Own>,
+    session: Session<W, Own>,
+    frame: ServerFrame,
+    bytes: number,
+    nowMs: number,
+  ): Result.Result<Session<W, Own>, WireError> => {
+    const heard = counted(session, bytes, nowMs)
+    const ok = (
+      next: Session<W, Own>,
+    ): Result.Result<Session<W, Own>, WireError> => Result.succeed(next)
+    return ServerFrame.match(frame, {
+      Welcome: welcome =>
+        ok({
+          ...heard,
+          phase: welcome.state === 'Playing' ? PLAYING : WAITING,
+          slot: Option.some(welcome.slot),
+          seq: 0,
+          ack: 0,
+          frames: [],
+          away: [],
+        }),
+      Refused: refused =>
+        ok({
+          ...heard,
+          phase: { _tag: 'Refused', reason: refused.reason },
+        }),
+      Snapshot: snapshot =>
+        Result.match(readAll(snapshot.world, world.readSnapshot), {
+          onFailure: () => ok(needsResync(heard)),
+          onSuccess: read => {
+            const received = { tick: snapshot.tick, world: read, atMs: nowMs }
+            const anchored = reanchor(
               {
-                ...startPlaying(anchored, nowMs),
-                predicted: Option.none(),
-                shown: Option.none(),
+                ...heard,
+                phase: PLAYING,
+                ack: snapshot.ack,
+                frames: [received],
+                lastArrival: Option.some({ tick: snapshot.tick, atMs: nowMs }),
+                isResyncing: false,
               },
-              received,
-            ),
-          )
-        },
-      }),
-    Delta: delta =>
-      heard.isResyncing
-        ? ok(heard)
-        : pipe(
-            Array.findFirst(heard.frames, held => held.tick === delta.base),
-            Option.flatMap(base =>
-              Result.getSuccess(
-                readAll(delta.diff, reader =>
-                  world.applyDiff(reader, base.world),
+              snapshot.tick,
+              nowMs,
+            )
+            return ok(
+              reconcile(
+                world,
+                {
+                  ...startPlaying(anchored, nowMs),
+                  predicted: Option.none(),
+                  shown: Option.none(),
+                },
+                received,
+              ),
+            )
+          },
+        }),
+      Delta: delta =>
+        heard.isResyncing
+          ? ok(heard)
+          : pipe(
+              Array.findFirst(heard.frames, held => held.tick === delta.base),
+              Option.flatMap(base =>
+                Result.getSuccess(
+                  readAll(delta.diff, reader =>
+                    world.applyDiff(reader, base.world),
+                  ),
                 ),
               ),
+              Option.match({
+                onNone: () => ok(needsResync(heard)),
+                onSome: read => {
+                  const received = {
+                    tick: delta.tick,
+                    world: read,
+                    atMs: nowMs,
+                  }
+                  const anchored = reanchor(
+                    {
+                      ...arrived(heard, delta.tick, nowMs),
+                      ack: delta.ack,
+                      rtts: Array.isReadonlyArrayEmpty(delta.pings)
+                        ? heard.rtts
+                        : delta.pings,
+                      frames: keepRecent(Array.append(heard.frames, received)),
+                    },
+                    delta.tick,
+                    nowMs,
+                  )
+                  return ok(reconcile(world, anchored, received))
+                },
+              }),
             ),
-            Option.match({
-              onNone: () => ok(needsResync(heard)),
-              onSome: read => {
-                const received = { tick: delta.tick, world: read, atMs: nowMs }
-                const anchored = reanchor(
-                  {
-                    ...arrived(heard, delta.tick, nowMs),
-                    ack: delta.ack,
-                    rtts: Array.isReadonlyArrayEmpty(delta.pings)
-                      ? heard.rtts
-                      : delta.pings,
-                    frames: keepRecent(Array.append(heard.frames, received)),
-                  },
-                  delta.tick,
-                  nowMs,
-                )
-                return ok(reconcile(world, anchored, received))
+      Pong: pong =>
+        ok(
+          Option.match(
+            Array.findFirst(heard.pings, ping => ping.nonce === pong.nonce),
+            {
+              onNone: () => heard,
+              onSome: ping => {
+                const sample = nowMs - ping.sentMs
+                const rttMs =
+                  heard.rttMs === 0
+                    ? sample
+                    : heard.rttMs * 0.75 + sample * 0.25
+                return {
+                  ...heard,
+                  rttMs,
+                  pings: Array.filter(
+                    heard.pings,
+                    other => other.nonce !== pong.nonce,
+                  ),
+                }
               },
-            }),
-          ),
-    Pong: pong =>
-      ok(
-        Option.match(
-          Array.findFirst(heard.pings, ping => ping.nonce === pong.nonce),
-          {
-            onNone: () => heard,
-            onSome: ping => {
-              const sample = nowMs - ping.sentMs
-              const rttMs =
-                heard.rttMs === 0 ? sample : heard.rttMs * 0.75 + sample * 0.25
-              return {
-                ...heard,
-                rttMs,
-                pings: Array.filter(
-                  heard.pings,
-                  other => other.nonce !== pong.nonce,
-                ),
-              }
             },
-          },
+          ),
         ),
-      ),
-    Away: away =>
-      ok({
-        ...heard,
-        away: Array.dedupe(Array.append(heard.away, away.slot)),
-      }),
-    Back: back =>
-      ok({
-        ...heard,
-        away: Array.filter(heard.away, slot => slot !== back.slot),
-      }),
-    Kicked: () => ok({ ...heard, phase: { _tag: 'Kicked' } }),
-    RoomClosed: closed =>
-      ok({
-        ...heard,
-        phase: { _tag: 'Ended', reason: closed.reason },
-        predicted: Option.none(),
-        shown: Option.none(),
-      }),
-  })
-}
+      Away: away =>
+        ok({
+          ...heard,
+          away: Array.dedupe(Array.append(heard.away, away.slot)),
+        }),
+      Back: back =>
+        ok({
+          ...heard,
+          away: Array.filter(heard.away, slot => slot !== back.slot),
+        }),
+      Kicked: () => ok({ ...heard, phase: { _tag: 'Kicked' } }),
+      RoomClosed: closed =>
+        ok({
+          ...heard,
+          phase: { _tag: 'Ended', reason: closed.reason },
+          predicted: Option.none(),
+          shown: Option.none(),
+        }),
+    })
+  },
+)
 
 // SENDING
 
@@ -522,78 +554,107 @@ export interface Ticked<W, Own> {
 // NOTE: once a frame, with the input the player holds now. It runs your
 // player forward to the input tick due now, records the samples, and says
 // what to send. Nothing runs or goes out unless a game is on.
-export const tickInput = <W, Own>(
-  world: World<W, Own>,
-  session: Session<W, Own>,
-  input: PlayerInput,
-  nowMs: number,
-): Ticked<W, Own> => {
-  if (session.phase._tag !== 'Playing' || Option.isNone(session.anchor)) {
-    return { session, outgoing: [] }
-  }
-  const target = inputTickAt(session, nowMs)
-  const from = Math.max(session.inputTick, target - MAX_PREDICTED_TICKS)
-  const ticks = Array.range(from + 1, Math.max(from + 1, target))
-  const due = target > session.inputTick ? ticks : []
-  const newest = Option.map(Array.last(session.frames), frame => frame.world)
-  const stepped = Array.reduce(due, session, (current, tick) => ({
-    ...current,
-    inputTick: tick,
-    history: Array.append(current.history, { tick, input }),
-    samples: appendSample(current.samples, input),
-    samplesFrom: Array.isReadonlyArrayEmpty(current.samples)
-      ? tick
-      : current.samplesFrom,
-    predicted: Option.flatMap(current.predicted, own =>
-      Option.map(newest, latest => world.own.step(own, input, latest)),
-    ),
-  }))
-  const sinceSent = nowMs - stepped.sentMs
-  const wantsInput =
-    Array.isReadonlyArrayNonEmpty(stepped.samples) &&
-    ((hasChange(stepped) && sinceSent >= INPUT_INTERVAL_MS) ||
-      sinceSent >= HEARTBEAT_MS ||
-      stepped.samples.length >= MAX_SAMPLES_PER_INPUT)
-  const withInput: Ticked<W, Own> = wantsInput
-    ? {
-        session: {
-          ...stepped,
-          seq: stepped.seq + 1,
-          samples: [],
-          samplesFrom: stepped.inputTick + 1,
-          sentInput: input,
-          sentMs: nowMs,
-          stats: { ...stepped.stats, inputsOut: stepped.stats.inputsOut + 1 },
-        },
-        outgoing: [
-          {
-            _tag: 'Input',
+export const tickInput: {
+  <W, Own>(
+    session: Session<W, Own>,
+    input: PlayerInput,
+    nowMs: number,
+  ): (world: World<W, Own>) => Ticked<W, Own>
+  <W, Own>(
+    world: World<W, Own>,
+    session: Session<W, Own>,
+    input: PlayerInput,
+    nowMs: number,
+  ): Ticked<W, Own>
+} = Function.dual(
+  4,
+  <W, Own>(
+    world: World<W, Own>,
+    session: Session<W, Own>,
+    input: PlayerInput,
+    nowMs: number,
+  ): Ticked<W, Own> => {
+    if (session.phase._tag !== 'Playing' || Option.isNone(session.anchor)) {
+      return { session, outgoing: [] }
+    }
+    const target = inputTickAt(session, nowMs)
+    const from = Math.max(session.inputTick, target - MAX_PREDICTED_TICKS)
+    const ticks = Array.range(from + 1, Math.max(from + 1, target))
+    const due = target > session.inputTick ? ticks : []
+    const newest = Option.map(Array.last(session.frames), frame => frame.world)
+    const stepped = Array.reduce(due, session, (current, tick) => ({
+      ...current,
+      inputTick: tick,
+      history: Array.append(current.history, { tick, input }),
+      samples: appendSample(current.samples, input),
+      samplesFrom: Array.isReadonlyArrayEmpty(current.samples)
+        ? tick
+        : current.samplesFrom,
+      predicted: Option.flatMap(current.predicted, own =>
+        Option.map(newest, latest => world.own.step(own, input, latest)),
+      ),
+    }))
+    const sinceSent = nowMs - stepped.sentMs
+    const wantsInput =
+      Array.isReadonlyArrayNonEmpty(stepped.samples) &&
+      ((hasChange(stepped) && sinceSent >= INPUT_INTERVAL_MS) ||
+        sinceSent >= HEARTBEAT_MS ||
+        stepped.samples.length >= MAX_SAMPLES_PER_INPUT)
+    const withInput: Ticked<W, Own> = wantsInput
+      ? {
+          session: {
+            ...stepped,
             seq: stepped.seq + 1,
-            tick: stepped.samplesFrom,
-            seen: Math.max(0, Math.floor(viewTickAt(stepped, nowMs))),
-            rttMs: Math.min(MAX_RTT_MS, Math.round(stepped.rttMs)),
-            samples: stepped.samples,
+            samples: [],
+            samplesFrom: stepped.inputTick + 1,
+            sentInput: input,
+            sentMs: nowMs,
+            stats: { ...stepped.stats, inputsOut: stepped.stats.inputsOut + 1 },
           },
-        ],
-      }
-    : { session: stepped, outgoing: [] }
-  return withInput
-}
+          outgoing: [
+            {
+              _tag: 'Input',
+              seq: stepped.seq + 1,
+              tick: stepped.samplesFrom,
+              seen: Math.max(0, Math.floor(viewTickAt(stepped, nowMs))),
+              rttMs: Math.min(MAX_RTT_MS, Math.round(stepped.rttMs)),
+              samples: stepped.samples,
+            },
+          ],
+        }
+      : { session: stepped, outgoing: [] }
+    return withInput
+  },
+)
 
 // NOTE: the round trip comes from the socket's free ping (a text ping the
 // room's Durable Object answers by itself, never billed and never waking
 // it), not from a message the room is billed for. `sentMs` is when it went.
-export const heardPong = <W, Own>(
-  session: Session<W, Own>,
-  sentMs: number,
-  nowMs: number,
-): Session<W, Own> => {
-  const sample = Math.max(0, nowMs - sentMs)
-  return {
-    ...session,
-    rttMs: session.rttMs === 0 ? sample : session.rttMs * 0.75 + sample * 0.25,
-  }
-}
+export const heardPong: {
+  <W, Own>(
+    sentMs: number,
+    nowMs: number,
+  ): (session: Session<W, Own>) => Session<W, Own>
+  <W, Own>(
+    session: Session<W, Own>,
+    sentMs: number,
+    nowMs: number,
+  ): Session<W, Own>
+} = Function.dual(
+  3,
+  <W, Own>(
+    session: Session<W, Own>,
+    sentMs: number,
+    nowMs: number,
+  ): Session<W, Own> => {
+    const sample = Math.max(0, nowMs - sentMs)
+    return {
+      ...session,
+      rttMs:
+        session.rttMs === 0 ? sample : session.rttMs * 0.75 + sample * 0.25,
+    }
+  },
+)
 
 // NOTE: a message's arrival against when its tick says it should arrive:
 // the spread is the jitter, and the delay to draw behind eases toward it.
@@ -630,22 +691,29 @@ const arrived = <W, Own>(
   })
 
 // NOTE: the room tick this client draws everyone else at now.
-export const viewTickAt = (
-  session: Session<unknown, unknown>,
-  nowMs: number,
-): number => roomTickAt(session, nowMs) - session.interpolationMs / TICK_MS
+export const viewTickAt: {
+  (nowMs: number): (session: Session<unknown, unknown>) => number
+  (session: Session<unknown, unknown>, nowMs: number): number
+} = Function.dual(
+  2,
+  (session: Session<unknown, unknown>, nowMs: number): number =>
+    roomTickAt(session, nowMs) - session.interpolationMs / TICK_MS,
+)
 
-export const countSent = <W, Own>(
-  session: Session<W, Own>,
-  bytes: number,
-): Session<W, Own> => ({
-  ...session,
-  stats: {
-    ...session.stats,
-    bytesOut: session.stats.bytesOut + bytes,
-    framesOut: session.stats.framesOut + 1,
-  },
-})
+export const countSent: {
+  <W, Own>(bytes: number): (session: Session<W, Own>) => Session<W, Own>
+  <W, Own>(session: Session<W, Own>, bytes: number): Session<W, Own>
+} = Function.dual(
+  2,
+  <W, Own>(session: Session<W, Own>, bytes: number): Session<W, Own> => ({
+    ...session,
+    stats: {
+      ...session.stats,
+      bytesOut: session.stats.bytesOut + bytes,
+      framesOut: session.stats.framesOut + 1,
+    },
+  }),
+)
 
 // RENDERING
 
@@ -667,44 +735,60 @@ const bracket = <W>(
 // NOTE: the world to draw now: everyone INTERPOLATION_MS behind the room's
 // clock (held at the newest message if the next is late), with your own
 // player where you predicted it, eased.
-export const render = <W, Own>(
-  world: World<W, Own>,
-  session: Session<W, Own>,
-  nowMs: number,
-): Rendered<W, Own> => {
-  const renderTick = viewTickAt(session, nowMs)
-  const others = Option.map(Array.last(session.frames), newest =>
-    Option.match(bracket(session.frames, renderTick), {
-      onNone: () =>
-        Option.match(Array.head(session.frames), {
-          onNone: () => newest.world,
-          onSome: oldest =>
-            renderTick < oldest.tick ? oldest.world : newest.world,
-        }),
-      onSome: ([from, to]) =>
-        to.tick === from.tick
-          ? to.world
-          : world.interpolate(
-              from.world,
-              to.world,
-              (renderTick - from.tick) / (to.tick - from.tick),
-            ),
-    }),
-  )
-  const ease = Math.min(1, Math.max(0, (nowMs - session.renderedMs) / EASE_MS))
-  const shown = Option.flatMap(session.shown, current =>
-    Option.map(session.predicted, predicted =>
-      world.own.blend(current, predicted, ease),
-    ),
-  )
-  return {
-    session: { ...session, shown, renderedMs: nowMs },
-    world: Option.map(others, drawn =>
-      Option.match(Option.all([session.slot, shown]), {
-        onNone: () => drawn,
-        onSome: ([slot, own]) => world.own.put(drawn, slot, own),
+export const render: {
+  <W, Own>(
+    session: Session<W, Own>,
+    nowMs: number,
+  ): (world: World<W, Own>) => Rendered<W, Own>
+  <W, Own>(
+    world: World<W, Own>,
+    session: Session<W, Own>,
+    nowMs: number,
+  ): Rendered<W, Own>
+} = Function.dual(
+  3,
+  <W, Own>(
+    world: World<W, Own>,
+    session: Session<W, Own>,
+    nowMs: number,
+  ): Rendered<W, Own> => {
+    const renderTick = viewTickAt(session, nowMs)
+    const others = Option.map(Array.last(session.frames), newest =>
+      Option.match(bracket(session.frames, renderTick), {
+        onNone: () =>
+          Option.match(Array.head(session.frames), {
+            onNone: () => newest.world,
+            onSome: oldest =>
+              renderTick < oldest.tick ? oldest.world : newest.world,
+          }),
+        onSome: ([from, to]) =>
+          to.tick === from.tick
+            ? to.world
+            : world.interpolate(
+                from.world,
+                to.world,
+                (renderTick - from.tick) / (to.tick - from.tick),
+              ),
       }),
-    ),
-    renderTick,
-  }
-}
+    )
+    const ease = Math.min(
+      1,
+      Math.max(0, (nowMs - session.renderedMs) / EASE_MS),
+    )
+    const shown = Option.flatMap(session.shown, current =>
+      Option.map(session.predicted, predicted =>
+        world.own.blend(current, predicted, ease),
+      ),
+    )
+    return {
+      session: { ...session, shown, renderedMs: nowMs },
+      world: Option.map(others, drawn =>
+        Option.match(Option.all([session.slot, shown]), {
+          onNone: () => drawn,
+          onSome: ([slot, own]) => world.own.put(drawn, slot, own),
+        }),
+      ),
+      renderTick,
+    }
+  },
+)

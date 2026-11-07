@@ -1,4 +1,4 @@
-import { Array, Effect, Option } from 'effect'
+import { Array, Effect, Option, Record, String } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 
@@ -48,7 +48,13 @@ import {
   unvisitedHome,
   writeLegacySave,
 } from './save'
-import { finishSplash, resolveFocusLobby, showDialog, tick } from './testing'
+import {
+  finishSplash,
+  jsonOf,
+  resolveFocusLobby,
+  showDialog,
+  tick,
+} from './testing'
 import { FocusTutorialReset, WriteSave } from './update/save'
 import { asVeteran } from './veteran'
 import { ZOMBIE_KIND_ORDER } from './zombies'
@@ -236,7 +242,7 @@ describe('the schema', () => {
 
   test('a version 1 save still loads, as Normal with the card still to come, sharing on, and no bests', () => {
     const { difficulty: _, ...withoutDifficulty } = versionTwoSave
-    const json = JSON.stringify({
+    const json = jsonOf({
       ...withoutDifficulty,
       version: 1,
       settings: SETTINGS_BEFORE_SHARING,
@@ -252,7 +258,7 @@ describe('the schema', () => {
   })
 
   test('a version 2 save keeps every field, starts the bests at zero, and turns sharing on', () => {
-    const json = JSON.stringify({
+    const json = jsonOf({
       ...versionTwoSave,
       version: 2,
       settings: SETTINGS_BEFORE_SHARING,
@@ -273,7 +279,7 @@ describe('the schema', () => {
   })
 
   test("a version 3 save keeps its bests and turns sharing on, with What's New unseen and no Munchopedia entry opened", () => {
-    const json = JSON.stringify({
+    const json = jsonOf({
       ...versionThreeSave,
       version: 3,
       settings: SETTINGS_BEFORE_SHARING,
@@ -291,7 +297,7 @@ describe('the schema', () => {
   })
 
   test("a version 4 save, the live game's, keeps its home menu and turns sharing on", () => {
-    const json = JSON.stringify({
+    const json = jsonOf({
       ...versionFiveSave,
       version: 4,
       settings: SETTINGS_BEFORE_SHARING,
@@ -300,7 +306,7 @@ describe('the schema', () => {
   })
 
   test('a version 6 save keeps everything and gets the bold cursor', () => {
-    const json = JSON.stringify({ ...versionSixSave, version: 6 })
+    const json = jsonOf({ ...versionSixSave, version: 6 })
     expect(decodeSave(json)).toEqual(Option.some(boldCursorSave))
     const restored = restoreSave(
       initialModel,
@@ -310,9 +316,9 @@ describe('the schema', () => {
   })
 
   test('a version 9 save keeps everything, its look read as the closest current one', () => {
-    const json = JSON.stringify({ ...versionNineSave, version: 9 })
+    const json = jsonOf({ ...versionNineSave, version: 9 })
     expect(decodeSave(json)).toEqual(Option.some(migratedSave))
-    const male = JSON.stringify({
+    const male = jsonOf({
       ...versionNineSave,
       version: 9,
       appearance: {
@@ -348,7 +354,7 @@ describe('the schema', () => {
       makeup: 'Glam',
       extra: 'Shades',
     }
-    const json = JSON.stringify({
+    const json = jsonOf({
       ...learnedSave,
       version: 10,
       appearance: manyParts,
@@ -368,7 +374,7 @@ describe('the schema', () => {
         gunSkin: 'Stock',
       }),
     )
-    const plain = JSON.stringify({
+    const plain = jsonOf({
       ...learnedSave,
       version: 10,
       appearance: {
@@ -414,7 +420,7 @@ describe('the schema', () => {
   })
 
   test('a version 9 save with a look no build ever made reads as no save', () => {
-    const json = JSON.stringify({
+    const json = jsonOf({
       ...versionNineSave,
       version: 9,
       appearance: { ...LEGACY_LOOK, body: 'Robot' },
@@ -423,7 +429,7 @@ describe('the schema', () => {
   })
 
   test('a version 8 save keeps everything, with no name yet', () => {
-    const json = JSON.stringify({ ...versionEightSave, version: 8 })
+    const json = jsonOf({ ...versionEightSave, version: 8 })
     expect(decodeSave(json)).toEqual(Option.some(unnamedSave))
     const restored = restoreSave(
       initialModel,
@@ -458,7 +464,7 @@ describe('the schema', () => {
   })
 
   test('a version 5 save keeps everything, with no power-up seen yet', () => {
-    const json = JSON.stringify({ ...versionFiveSave, version: 5 })
+    const json = jsonOf({ ...versionFiveSave, version: 5 })
     expect(decodeSave(json)).toEqual(Option.some(neverSeenSave))
     const restored = restoreSave(
       initialModel,
@@ -485,7 +491,7 @@ describe('the schema', () => {
   })
 
   test("the preview's version 4 save keeps its sharing, with the home menu unvisited", () => {
-    const json = JSON.stringify({ ...versionThreeSave, version: 4 })
+    const json = jsonOf({ ...versionThreeSave, version: 4 })
     expect(decodeSave(json)).toEqual(
       Option.some({ ...neverSeenSave, home: unvisitedHome }),
     )
@@ -510,11 +516,13 @@ describe('the schema', () => {
     const json = Option.getOrThrow(encodeSave(learnedSave))
     expect(decodeSave(`{"version":${SAVE_VERSION},`)).toEqual(Option.none())
     expect(
-      decodeSave(json.replace(`"version":${SAVE_VERSION}`, '"version":0')),
+      decodeSave(
+        String.replace(`"version":${SAVE_VERSION}`, '"version":0')(json),
+      ),
     ).toEqual(Option.none())
-    expect(
-      decodeSave(JSON.stringify({ ...learnedSave, settings: undefined })),
-    ).toEqual(Option.none())
+    expect(decodeSave(jsonOf({ ...learnedSave, settings: undefined }))).toEqual(
+      Option.none(),
+    )
   })
 })
 
@@ -525,15 +533,18 @@ describe('the legacy localStorage copy', () => {
     Effect.gen(function* () {
       yield* writeLegacySave(learnedSave)
       expect(localStorage.getItem(SAVE_KEY)).not.toBeNull()
-      expect(yield* readLegacySave).toEqual(Option.some(learnedSave))
+      const readLegacySave_1 = yield* readLegacySave
+      expect(readLegacySave_1).toEqual(Option.some(learnedSave))
     }),
   )
 
   it.effect('a missing or corrupted save reads as no save', () =>
     Effect.gen(function* () {
-      expect(yield* readLegacySave).toEqual(Option.none())
+      const readLegacySave_2 = yield* readLegacySave
+      expect(readLegacySave_2).toEqual(Option.none())
       localStorage.setItem(SAVE_KEY, 'not json at all')
-      expect(yield* readLegacySave).toEqual(Option.none())
+      const readLegacySave_3 = yield* readLegacySave
+      expect(readLegacySave_3).toEqual(Option.none())
     }),
   )
 })
@@ -602,7 +613,7 @@ describe('loading the save', () => {
       model(current => {
         expect(current.saveStatus).toBe('Read')
         expect(isPracticeGateHeld(current)).toBe(true)
-        expect(shownHints(current).map(({ id }) => id)).toContain('Move')
+        expect(Array.map(shownHints(current), ({ id }) => id)).toContain('Move')
       }),
     )
   })
@@ -897,7 +908,10 @@ describe('writing the save', () => {
       model(current => {
         expect(focusOf(current).player.x).not.toBe(focusOf(fighting).player.x)
         expect(
-          SAVED_FIELDS.filter(field => fighting[field] !== current[field]),
+          Array.filter(
+            SAVED_FIELDS,
+            field => fighting[field] !== current[field],
+          ),
         ).toEqual([])
         expect(hasSaveFieldsChanged(fighting, current)).toBe(false)
       }),
@@ -919,8 +933,8 @@ describe('writing the save', () => {
       }),
       { wallet: wallet => modifyFields(wallet, { balance: () => 300 }) },
     )
-    const savedFromInitial = Object.fromEntries(
-      SAVED_FIELDS.map(field => [field, initialModel[field]]),
+    const savedFromInitial = Record.fromEntries(
+      Array.map(SAVED_FIELDS, field => [field, initialModel[field]]),
     )
     expect(saveOf({ ...played, ...savedFromInitial })).toEqual(
       saveOf(initialModel),
@@ -1045,12 +1059,15 @@ describe('the veteran grant', () => {
     update(loadingSave, Message.CompletedLoadSave({ maybeSave }))
 
   const writesOf = (result: ReturnType<typeof update>) =>
-    (result.commands ?? []).filter(command => command.name === WriteSave.name)
+    Array.filter(
+      result.commands ?? [],
+      command => command.name === WriteSave.name,
+    )
 
   // NOTE: a save from before rank, as the previous build wrote it.
   const beforeRank = (killsByKind: Record<string, number>) => {
     const { rank: _rank, ...rest } = learnedSave
-    const json = JSON.stringify({
+    const json = jsonOf({
       ...rest,
       version: 12,
       bests: { ...learnedSave.bests, killsByKind },
@@ -1107,7 +1124,7 @@ describe('the calling in the save', () => {
 
   test('a save from before callings picks YOU', () => {
     const { calling: _calling, ...rest } = learnedSave
-    const json = JSON.stringify({ ...rest, version: 13 })
+    const json = jsonOf({ ...rest, version: 13 })
     const migrated = Option.getOrThrow(decodeSave(json))
     expect(migrated.calling).toBe('You')
     expect(migrated.version).toBe(SAVE_VERSION)

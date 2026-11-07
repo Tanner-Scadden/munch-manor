@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import * as Clock from 'effect/Clock'
 import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
@@ -150,21 +151,23 @@ describe('the room host', () => {
         { concurrency: 'unbounded' },
       )
       expect(
-        tickets.map(result => Result.map(result, ticket => ticket.slot)),
+        Array.map(tickets, result => Result.map(result, ticket => ticket.slot)),
       ).toEqual([Result.succeed(1), Result.succeed(2), Result.succeed(3)])
       const rejoined = yield* host.join(CY, 'name', '', 1, 'You', false, [])
       expect(rejoined).toEqual(Result.succeed({ code: CODE, slot: 2 }))
       const full = yield* host.join(EVE, 'name', '', 1, 'You', false, [])
       expect(full).toEqual(Result.fail({ _tag: 'Full' }))
       const lobby = yield* lobbyOf(host)
-      expect(lobby.members.map(member => member.look)).toEqual([
+      expect(Array.map(lobby.members, member => member.look)).toEqual([
         'Broad.Short.Brown.Light.Blue.AAAA',
         '',
         '',
         '',
       ])
-      expect(lobby.members.map(member => member.rank)).toEqual([7, 12, 1, 1])
-      expect(lobby.members.map(member => member.calling)).toEqual([
+      expect(Array.map(lobby.members, member => member.rank)).toEqual([
+        7, 12, 1, 1,
+      ])
+      expect(Array.map(lobby.members, member => member.calling)).toEqual([
         'Handyman',
         'LineCook',
         'You',
@@ -196,7 +199,7 @@ describe('the room host', () => {
         yield* host.join(CY, 'Cy', '', 1, '<b>LineCook</b>', false, [])
         yield* host.join(DEE, 'Dee', '', 1, 'PennyPincher', false, [])
         const lobby = yield* lobbyOf(host)
-        expect(lobby.members.map(member => member.calling)).toEqual([
+        expect(Array.map(lobby.members, member => member.calling)).toEqual([
           'TrackStar',
           'You',
           'You',
@@ -223,29 +226,25 @@ describe('the room host', () => {
       yield* host.join(BO, 'Bo', '', 1, 'You', false, [])
       yield* host.join(CY, 'Cy', '', 1, 'You', false, [])
       const bo = fakeSocket()
-      yield* host.scope.onMessage(bo, hello(yield* tokenOf(BO)), [bo])
-      yield* host.scope.onMessage(
-        bo,
-        yield* pushOf(
-          ChangedMemberCalling,
-          { by: BO, calling: 'LineCook' },
-          'calling-bo-0001',
-        ),
-        [bo],
+      const value = yield* tokenOf(BO)
+      yield* host.scope.onMessage(bo, hello(value), [bo])
+      const value_1 = yield* pushOf(
+        ChangedMemberCalling,
+        { by: BO, calling: 'LineCook' },
+        'calling-bo-0001',
       )
+      yield* host.scope.onMessage(bo, value_1, [bo])
       const cy = fakeSocket()
-      yield* host.scope.onMessage(cy, hello(yield* tokenOf(CY)), [cy])
-      yield* host.scope.onMessage(
-        cy,
-        yield* pushOf(
-          ChangedMemberCalling,
-          { by: CY, calling: 'Wizard' },
-          'calling-cy-0001',
-        ),
-        [cy],
+      const value_2 = yield* tokenOf(CY)
+      yield* host.scope.onMessage(cy, hello(value_2), [cy])
+      const value_3 = yield* pushOf(
+        ChangedMemberCalling,
+        { by: CY, calling: 'Wizard' },
+        'calling-cy-0001',
       )
+      yield* host.scope.onMessage(cy, value_3, [cy])
       const lobby = yield* lobbyOf(host)
-      expect(lobby.members.map(member => member.calling)).toEqual([
+      expect(Array.map(lobby.members, member => member.calling)).toEqual([
         'TrackStar',
         'LineCook',
         'Wizard',
@@ -269,7 +268,9 @@ describe('the room host', () => {
       yield* host.join(CY, 'Cy', '', 4.9, 'You', false, [])
       yield* host.join(DEE, 'Dee', '', Number.NaN, 'You', false, [])
       const lobby = yield* lobbyOf(host)
-      expect(lobby.members.map(member => member.rank)).toEqual([999, 1, 4, 1])
+      expect(Array.map(lobby.members, member => member.rank)).toEqual([
+        999, 1, 4, 1,
+      ])
     }),
   )
 
@@ -352,15 +353,14 @@ describe('the room host', () => {
       'Female.Mohawk.Pink.Deep.Teal.AAAA',
       'Slim.Mohawk.Pink.Deep.Teal.AAAA.AAAA',
     ]
-    expect(junks.map(lookOfRequest)).toEqual(junks.map(() => ''))
+    expect(Array.map(junks, lookOfRequest)).toEqual(Array.map(junks, () => ''))
   })
 
   it.effect('joining a room that does not exist says so', () =>
     Effect.gen(function* () {
       const host = yield* roomHost
-      expect(yield* host.join(BO, 'name', '', 1, 'You', false, [])).toEqual(
-        Result.fail({ _tag: 'NoRoom' }),
-      )
+      const value_4 = yield* host.join(BO, 'name', '', 1, 'You', false, [])
+      expect(value_4).toEqual(Result.fail({ _tag: 'NoRoom' }))
     }),
   )
 
@@ -370,11 +370,10 @@ describe('the room host', () => {
       yield* host.create(ANA, 'Ana', '', 1, 'You', false, CODE, 'Private')
       const member = fakeSocket()
       const stranger = fakeSocket()
-      yield* host.scope.onMessage(member, hello(yield* tokenOf(ANA)), [member])
-      yield* host.scope.onMessage(stranger, hello(yield* tokenOf(BO)), [
-        member,
-        stranger,
-      ])
+      const value_5 = yield* tokenOf(ANA)
+      yield* host.scope.onMessage(member, hello(value_5), [member])
+      const value_6 = yield* tokenOf(BO)
+      yield* host.scope.onMessage(stranger, hello(value_6), [member, stranger])
       expect(decodeTagged(member.sent[0] ?? '{}')._tag).toBe('Snapshot')
       expect(fromJson(stranger.sent[0] ?? '{}')).toMatchObject({
         _tag: 'Failed',
@@ -390,34 +389,35 @@ describe('the room host', () => {
         const host = yield* roomHost
         yield* host.create(ANA, 'Ana', '', 1, 'You', false, CODE, 'Private')
         const ana = fakeSocket()
-        yield* host.scope.onMessage(ana, hello(yield* tokenOf(ANA)), [ana])
+        const value_7 = yield* tokenOf(ANA)
+        yield* host.scope.onMessage(ana, hello(value_7), [ana])
         yield* host.join(BO, 'name', '', 1, 'You', false, [ana])
         expect(fromJson(ana.sent.at(-1) ?? '{}')).toMatchObject({
           _tag: 'Deltas',
         })
         const bo = fakeSocket()
-        yield* host.scope.onMessage(bo, hello(yield* tokenOf(BO)), [ana, bo])
-        const ready = yield* host.scope.onMessage(
-          bo,
-          yield* pushOf(ChangedReady, { by: BO, ready: true }, 'ready-bo-0001'),
-          [ana, bo],
+        const value_8 = yield* tokenOf(BO)
+        yield* host.scope.onMessage(bo, hello(value_8), [ana, bo])
+        const value_9 = yield* pushOf(
+          ChangedReady,
+          { by: BO, ready: true },
+          'ready-bo-0001',
         )
-        expect(yield* reactionsOf(ready)).toEqual([{ _tag: 'MaybeStart' }])
+        const ready = yield* host.scope.onMessage(bo, value_9, [ana, bo])
+        const value_10 = yield* reactionsOf(ready)
+        expect(value_10).toEqual([{ _tag: 'MaybeStart' }])
         expect((yield* lobbyOf(host)).status).toBe('Lobby')
-        const started = yield* host.scope.onMessage(
-          ana,
-          yield* pushOf(
-            ChangedReady,
-            { by: ANA, ready: true },
-            'ready-ana-0001',
-          ),
-          [ana, bo],
+        const value_11 = yield* pushOf(
+          ChangedReady,
+          { by: ANA, ready: true },
+          'ready-ana-0001',
         )
-        expect(yield* reactionsOf(started)).toEqual([{ _tag: 'MaybeStart' }])
+        const started = yield* host.scope.onMessage(ana, value_11, [ana, bo])
+        const value_12 = yield* reactionsOf(started)
+        expect(value_12).toEqual([{ _tag: 'MaybeStart' }])
         expect((yield* lobbyOf(host)).status).toBe('Playing')
-        expect(yield* host.join(CY, 'name', '', 1, 'You', false, [])).toEqual(
-          Result.fail({ _tag: 'Started' }),
-        )
+        const value_13 = yield* host.join(CY, 'name', '', 1, 'You', false, [])
+        expect(value_13).toEqual(Result.fail({ _tag: 'Started' }))
       }),
   )
 
@@ -427,19 +427,22 @@ describe('the room host', () => {
       yield* host.create(ANA, 'Ana', '', 1, 'You', false, CODE, 'Private')
       yield* host.join(BO, 'name', '', 1, 'You', false, [])
       const ana = fakeSocket()
-      yield* host.scope.onMessage(ana, hello(yield* tokenOf(ANA)), [ana])
-      const kicked = yield* host.scope.onMessage(
-        ana,
-        yield* pushOf(KickedPlayer, { by: ANA, playerId: BO }, 'kick-bo-00001'),
-        [ana],
+      const value_14 = yield* tokenOf(ANA)
+      yield* host.scope.onMessage(ana, hello(value_14), [ana])
+      const value_15 = yield* pushOf(
+        KickedPlayer,
+        { by: ANA, playerId: BO },
+        'kick-bo-00001',
       )
-      expect(yield* reactionsOf(kicked)).toEqual([
+      const kicked = yield* host.scope.onMessage(ana, value_15, [ana])
+      const value_16 = yield* reactionsOf(kicked)
+      expect(value_16).toEqual([
         { _tag: 'DropPlayer', playerId: BO, kicked: true },
       ])
       yield* host.join(BO, 'name', '', 1, 'You', false, [])
       yield* host.freeSeat(BO, 1, [ana])
       expect(
-        (yield* lobbyOf(host)).members.map(member => member.playerId),
+        Array.map((yield* lobbyOf(host)).members, member => member.playerId),
       ).toEqual([ANA])
     }),
   )
@@ -454,12 +457,10 @@ describe('a game socket Hello', () => {
 
   it.effect('is accepted for a member with a good token', () =>
     Effect.gen(function* () {
-      const answer = yield* answerHello(
-        helloFrame(yield* tokenOf(ANA)),
-        SECRET,
-        yield* lobbyWith,
-        yield* Clock.currentTimeMillis,
-      )
+      const token = yield* tokenOf(ANA)
+      const lobby = yield* lobbyWith
+      const now = yield* Clock.currentTimeMillis
+      const answer = yield* answerHello(helloFrame(token), SECRET, lobby, now)
       expect(answer).toEqual({
         _tag: 'Accept',
         playerId: ANA,
@@ -473,6 +474,10 @@ describe('a game socket Hello', () => {
     Effect.gen(function* () {
       const lobby = yield* lobbyWith
       const now = yield* Clock.currentTimeMillis
+      const oldVersionToken = yield* tokenOf(ANA)
+      const expiredToken = yield* tokenOf(ANA, now - 1)
+      const strangerToken = yield* tokenOf(BO)
+      const noLobbyToken = yield* tokenOf(ANA)
       const answers = yield* Effect.all(
         [
           answerHello({ _tag: 'Leave' }, SECRET, lobby, now),
@@ -481,31 +486,21 @@ describe('a game socket Hello', () => {
               _tag: 'Hello',
               minVersion: 1,
               maxVersion: 1,
-              token: yield* tokenOf(ANA),
+              token: oldVersionToken,
             },
             SECRET,
             lobby,
             now,
           ),
           answerHello(helloFrame('forged.token'), SECRET, lobby, now),
-          answerHello(
-            helloFrame(yield* tokenOf(ANA, now - 1)),
-            SECRET,
-            lobby,
-            now,
-          ),
-          answerHello(helloFrame(yield* tokenOf(BO)), SECRET, lobby, now),
-          answerHello(
-            helloFrame(yield* tokenOf(ANA)),
-            SECRET,
-            Option.none(),
-            now,
-          ),
+          answerHello(helloFrame(expiredToken), SECRET, lobby, now),
+          answerHello(helloFrame(strangerToken), SECRET, lobby, now),
+          answerHello(helloFrame(noLobbyToken), SECRET, Option.none(), now),
         ],
         { concurrency: 'unbounded' },
       )
       expect(
-        answers.map(answer =>
+        Array.map(answers, answer =>
           answer._tag === 'Refuse' ? answer.reason : 'Accept',
         ),
       ).toEqual([
@@ -601,14 +596,17 @@ describe('a public room', () => {
       yield* host.create(ANA, 'Ana', '', 1, 'You', false, CODE, 'Public')
       yield* host.join(BO, '  Bo\u0000  ', '', 1, 'You', false, [])
       const lobby = yield* lobbyOf(host)
-      expect(lobby.members.map(member => member.name)).toEqual(['Ana', 'Bo'])
+      expect(Array.map(lobby.members, member => member.name)).toEqual([
+        'Ana',
+        'Bo',
+      ])
       expect(listingOf(lobby)).toEqual(
         Option.some({ code: CODE, members: 2, open: true }),
       )
       yield* host.join(CY, '', '', 1, 'You', false, [])
       yield* host.join(DEE, 'Dee', '', 1, 'You', false, [])
       const full = yield* lobbyOf(host)
-      expect(full.members.map(member => member.name)).toEqual([
+      expect(Array.map(full.members, member => member.name)).toEqual([
         'Ana',
         'Bo',
         'Player 3',
@@ -624,7 +622,8 @@ describe('a public room', () => {
     Effect.gen(function* () {
       const host = yield* roomHost
       yield* host.create(ANA, 'Ana', '', 1, 'You', false, CODE, 'Private')
-      expect(listingOf(yield* lobbyOf(host))).toEqual(Option.none())
+      const lobby = yield* lobbyOf(host)
+      expect(listingOf(lobby)).toEqual(Option.none())
     }),
   )
 })

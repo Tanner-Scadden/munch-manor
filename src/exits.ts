@@ -1,4 +1,4 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -65,10 +65,14 @@ export const boxAround = (boxes: ReadonlyArray<Box>): Option.Option<Box> =>
       ),
   })
 
-export const exitBoxOf = (level: Level, exit: ExitId): Option.Option<Box> =>
+export const exitBoxOf: {
+  (exit: ExitId): (level: Level) => Option.Option<Box>
+  (level: Level, exit: ExitId): Option.Option<Box>
+} = Function.dual(2, (level: Level, exit: ExitId): Option.Option<Box> =>
   Option.flatMap(maybeExit(level, exit), ({ tiles }) =>
     boxAround(Array.map(tiles, tileBox)),
-  )
+  ),
+)
 
 const closedExitBoxes = (
   level: Level,
@@ -116,7 +120,10 @@ export const maybePadlockedExit = (model: World): Option.Option<Box> =>
     ? Option.map(Array.head(closedExitBoxes(levelOf(model))), ({ box }) => box)
     : Option.none()
 
-export const spendOn = (model: World, slot: PlayerSlot, price: number): World =>
+export const spendOn: {
+  (slot: PlayerSlot, price: number): (model: World) => World
+  (model: World, slot: PlayerSlot, price: number): World
+} = Function.dual(3, (model: World, slot: PlayerSlot, price: number): World =>
   modifyFields(model, {
     seats: atSeat(slot, {
       wallet: wallet =>
@@ -124,42 +131,58 @@ export const spendOn = (model: World, slot: PlayerSlot, price: number): World =>
     }),
     stats: stats =>
       modifyFields(stats, { purchases: purchases => purchases + 1 }),
-  })
+  }),
+)
 
 // NOTE: buying the exit opens it for the rest of the run, and its spawn
 // doors join the wave shown or under way at once (joinNewDoors in
 // src/waves.ts), drawn from the run's generator. The boards smash where
 // the doorway meets the parlour floor.
-export const buyExit = (
-  model: World,
-  slot: PlayerSlot,
-  exit: ExitId,
-  price: number,
-): Option.Option<World> => {
-  const level = levelOf(model)
-  const maybeBox = Option.flatMap(
-    Option.filter(maybeExit(level, exit), ({ isOpen }) => !isOpen),
-    () => exitBoxOf(level, exit),
-  )
-  if (
-    Option.isNone(maybeBox) ||
-    !isExitOfferOpenFor(model.phase) ||
-    seatStateAt(model, slot).wallet.balance < price
-  ) {
-    return Option.none()
-  }
-  const box = maybeBox.value
-  const opened = modifyFields(spendOn(model, slot, price), {
-    level: state => openExitIn(state, exit),
-    frameEvents: frameEvents => [
-      ...frameEvents,
-      GameEvent.ExitOpened({ x: (box.left + box.right) / 2, y: box.bottom }),
-    ],
-  })
-  return Option.some(
-    joinNewDoors(
-      opened,
-      Array.difference(levelOf(opened).doorIds, level.doorIds),
-    ),
-  )
-}
+export const buyExit: {
+  (
+    slot: PlayerSlot,
+    exit: ExitId,
+    price: number,
+  ): (model: World) => Option.Option<World>
+  (
+    model: World,
+    slot: PlayerSlot,
+    exit: ExitId,
+    price: number,
+  ): Option.Option<World>
+} = Function.dual(
+  4,
+  (
+    model: World,
+    slot: PlayerSlot,
+    exit: ExitId,
+    price: number,
+  ): Option.Option<World> => {
+    const level = levelOf(model)
+    const maybeBox = Option.flatMap(
+      Option.filter(maybeExit(level, exit), ({ isOpen }) => !isOpen),
+      () => exitBoxOf(level, exit),
+    )
+    if (
+      Option.isNone(maybeBox) ||
+      !isExitOfferOpenFor(model.phase) ||
+      seatStateAt(model, slot).wallet.balance < price
+    ) {
+      return Option.none()
+    }
+    const box = maybeBox.value
+    const opened = modifyFields(spendOn(model, slot, price), {
+      level: state => openExitIn(state, exit),
+      frameEvents: frameEvents => [
+        ...frameEvents,
+        GameEvent.ExitOpened({ x: (box.left + box.right) / 2, y: box.bottom }),
+      ],
+    })
+    return Option.some(
+      joinNewDoors(
+        opened,
+        Array.difference(levelOf(opened).doorIds, level.doorIds),
+      ),
+    )
+  },
+)

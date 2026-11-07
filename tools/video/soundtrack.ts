@@ -1,4 +1,5 @@
-import { Array, Data, Effect, FileSystem, Path, Schema } from 'effect'
+import { Array, Effect, FileSystem, Option, Path, Schema, String } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import type { Browser } from 'playwright-core'
 
 import { FRAMES_PER_SECOND } from './shotList'
@@ -10,9 +11,13 @@ import { type ClipCue, SoundtrackRequestJson, cueAt } from './soundtrackRequest'
 // engine in headless Chrome (audioPage.ts, bundled here), offline, and
 // writes the mix as a 16 bit stereo WAV.
 
-class SoundtrackFailed extends Data.TaggedError('SoundtrackFailed')<{
-  readonly reason: string
-}> {}
+class SoundtrackFailed extends Schema.TaggedError<
+  SoundtrackFailed,
+  { readonly brand: unique symbol }
+>()('SoundtrackFailed', { message: Schema.String }) {}
+
+const failedWith = (error: unknown): SoundtrackFailed =>
+  SoundtrackFailed.make({ message: globalThis.String(error) })
 
 const SAMPLE_RATE = 48_000
 const CHANNELS = 2
@@ -37,25 +42,31 @@ const bundleAudioPage = Effect.gen(function* () {
           'import.meta.env': PRODUCTION_ENV,
         },
       }),
-    catch: error => new SoundtrackFailed({ reason: String(error) }),
+    catch: failedWith,
   })
   const output = result.outputs[0]
   if (!result.success || output === undefined) {
-    return yield* new SoundtrackFailed({
-      reason: result.logs.map(log => log.message).join('\n'),
+    return yield* SoundtrackFailed.make({
+      message: Array.join(
+        Array.map(result.logs, log => log.message),
+        '\n',
+      ),
     })
   }
   return yield* Effect.tryPromise({
     try: () => output.text(),
-    catch: error => new SoundtrackFailed({ reason: String(error) }),
+    catch: failedWith,
   })
 })
 
 const wavHeader = (dataBytes: number): Uint8Array => {
   const header = new DataView(new ArrayBuffer(44))
   const ascii = (offset: number, text: string) =>
-    Array.forEach(text.split(''), (char, index) =>
-      header.setUint8(offset + index, char.charCodeAt(0)),
+    Array.forEach(String.split('')(text), (char, index) =>
+      header.setUint8(
+        offset + index,
+        Option.getOrElse(String.charCodeAt(char, 0), () => 0),
+      ),
     )
   ascii(0, 'RIFF')
   header.setUint32(4, 36 + dataBytes, true)
@@ -92,12 +103,49 @@ const fadeTail = (pcm: Int16Array): Int16Array => {
   return faded
 }
 
-export const renderSoundtrack = (
-  browser: Browser,
-  cues: ReadonlyArray<ClipCue>,
-  frames: number,
-  outPath: string,
-) =>
+// NOTE: one page in its own context for the render, closed after.
+const renderInPage = (browser: Browser, script: string, request: string) =>
+  Effect.acquireUseRelease(
+    Effect.tryPromise({ try: () => browser.newContext(), catch: failedWith }),
+    context =>
+      Effect.gen(function* () {
+        const page = yield* Effect.tryPromise({
+          try: () => context.newPage(),
+          catch: failedWith,
+        })
+        yield* Effect.tryPromise({
+          try: () =>
+            page.setContent('<!doctype html><title>soundtrack</title>'),
+          catch: failedWith,
+        })
+        yield* Effect.tryPromise({
+          try: () => page.addScriptTag({ content: script }),
+          catch: failedWith,
+        })
+        return yield* Effect.tryPromise({
+          try: () => page.evaluate(json => window.__renderAudio(json), request),
+          catch: failedWith,
+        })
+      }),
+    context => Effect.promise(() => context.close()),
+  )
+
+/** @stability unstable */
+export const renderSoundtrack = ({
+  browser,
+  cues,
+  frames,
+  outPath,
+}: Readonly<{
+  browser: Browser
+  cues: ReadonlyArray<ClipCue>
+  frames: number
+  outPath: string
+}>): Effect.Effect<
+  number,
+  SoundtrackFailed | Schema.SchemaError | PlatformError,
+  FileSystem.FileSystem | Path.Path
+> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const script = yield* bundleAudioPage
@@ -107,23 +155,7 @@ export const renderSoundtrack = (
       sampleRate: SAMPLE_RATE,
       cues: Array.map(cues, cue => cueAt(cue, FRAMES_PER_SECOND)),
     })
-    const base64 = yield* Effect.tryPromise({
-      try: async () => {
-        const context = await browser.newContext()
-        try {
-          const page = await context.newPage()
-          await page.setContent('<!doctype html><title>soundtrack</title>')
-          await page.addScriptTag({ content: script })
-          return await page.evaluate(
-            json => window.__renderAudio(json),
-            request,
-          )
-        } finally {
-          await context.close()
-        }
-      },
-      catch: error => new SoundtrackFailed({ reason: String(error) }),
-    })
+    const base64 = yield* renderInPage(browser, script, request)
     const bytes = Buffer.from(base64, 'base64')
     const pcm = fadeTail(
       new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2),

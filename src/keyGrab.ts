@@ -1,3 +1,4 @@
+import { Function } from 'effect'
 import type { Html } from 'foldkit/html'
 import { modifyFields } from 'foldkit/struct'
 
@@ -94,10 +95,10 @@ const NO_EXTENSION_ICON = pixelIconUrl(
 // NOTE: shown once, over everything but never in the way: its own
 // animation fades it out, and it takes no pointer. It sits at the root, so
 // moving between screens never plays it again.
-export const keyGrabToastView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const keyGrabToastView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   isKeyGrabToastShown(model)
     ? h.div(
         [h.Key('key-grab-toast'), h.Class('key-grab-toast'), h.Role('status')],
@@ -121,4 +122,5 @@ export const keyGrabToastView = (
           ),
         ],
       )
-    : h.empty
+    : h.empty,
+)

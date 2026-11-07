@@ -292,7 +292,7 @@ export const roomModel = (settings: SceneSettings): Model => {
       ['Thrower', 15, 180, 100],
       ['Crawler', 2, 50, 118],
     ]
-    const zombies = rows.flatMap(([kind, maxHp, left, y], row) =>
+    const zombies = Array.flatMap(rows, ([kind, maxHp, left, y], row) =>
       globalThis.Array.from(
         { length: ZOMBIE_KINDS[kind].wear.length + 1 },
         (_, stage) =>
@@ -320,7 +320,7 @@ export const roomModel = (settings: SceneSettings): Model => {
       ['Thrower', 15],
       ['Tank', 36],
     ]
-    const zombies = kinds.map(([kind, maxHp], index) =>
+    const zombies = Array.map(kinds, ([kind, maxHp], index) =>
       standing(1000 + index, kind, 70 + index * 24, 100, maxHp, 0),
     )
     model = modifyFields(model, {
@@ -375,7 +375,7 @@ export const roomModel = (settings: SceneSettings): Model => {
       y: (target.y - by) / toTarget,
     }
     const windMs = config.windMs
-    const puddles = (config.puddles ?? []).map(([x, y]): Glob => ({
+    const puddles = Array.map(config.puddles ?? [], ([x, y]): Glob => ({
       _tag: 'Pooled',
       at: { x, y },
       remainingMs: config.puddleMs,
@@ -503,7 +503,7 @@ export const roomModel = (settings: SceneSettings): Model => {
       'Shambler',
       'Exploder',
     ]
-    kinds.forEach((kind, index) =>
+    Array.forEach(kinds, (kind, index) =>
       staged.push(
         stagedZombie(
           1720 + index,
@@ -773,7 +773,7 @@ export const roomModel = (settings: SceneSettings): Model => {
     const pickupY = config.pickupY
     model = modifyFields(model, {
       pickups: () =>
-        pickupKinds.map((kind, index) => ({
+        Array.map(pickupKinds, (kind, index) => ({
           id: 3000 + index,
           kind,
           x: Math.round(160 + (index - (pickupKinds.length - 1) / 2) * 26),
@@ -786,7 +786,8 @@ export const roomModel = (settings: SceneSettings): Model => {
   if (seenPowerUps.length > 0) {
     model = modifyFields(model, { seenPowerUps: () => seenPowerUps })
   }
-  const boostKinds = kindsOf(config.boosts).filter(
+  const boostKinds = Array.filter(
+    kindsOf(config.boosts),
     kind => kind !== 'Burp' && kind !== 'Heart',
   )
   if (boostKinds.length > 0) {
@@ -796,7 +797,7 @@ export const roomModel = (settings: SceneSettings): Model => {
         const next: { -readonly [Kind in keyof Boosts]: Boosts[Kind] } = {
           ...boosts,
         }
-        boostKinds.forEach((kind, index) => {
+        Array.forEach(boostKinds, (kind, index) => {
           next[kind] = {
             _tag: 'On',
             remainingMs: Math.max(1, boostMs - index * 2200),

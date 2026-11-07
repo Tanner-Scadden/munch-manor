@@ -16,7 +16,7 @@ const MaybeJoiner = Schema.Option(
   Schema.Struct({
     name: Schema.String,
     look: Schema.String,
-    rank: Schema.Number,
+    rank: Schema.Finite,
     calling: Calling,
   }),
 )

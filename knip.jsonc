@@ -50,8 +50,6 @@
         // NOTE: tools/video borrows tools/audit's install (its tsconfig paths).
         "playwright-core",
       ],
-      // NOTE: a script the atlas test spawns with `bun`, an entry above.
-      "ignoreUnresolved": ["tools/sprites/build.ts"],
     },
     "packages/*": {
       "project": ["**/*.ts"],
@@ -60,8 +58,9 @@
       // NOTE: github.ts is its own Alchemy app, deployed by hand.
       "entry": ["alchemy.run.ts", "github.ts", "worker/main.ts"],
       "project": ["**/*.ts"],
-      // NOTE: the compiler `effect-tsgo tsrs` runs.
-      "ignoreDependencies": ["tsrs"],
+      // NOTE: the compiler `effect-tsgo tsrs` runs, and the oxlint CLI that
+      // `effect-tsgo --tsrs-lint oxlint` runs.
+      "ignoreDependencies": ["tsrs", "oxlint"],
     },
     "tools/audit": {
       "entry": [

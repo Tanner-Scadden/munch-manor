@@ -2,7 +2,7 @@
 // the queue, a lobby, or a room's arena, with a fake network that never
 // answers.
 
-import { Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import * as CoopModel from '@game/coop/model'
@@ -31,7 +31,7 @@ const coopRoom = (
   extra: Partial<CoopModel.Room> = {},
 ): CoopModel.Room => {
   const world = stagedWorld(
-    members.map(member => member.slot),
+    Array.map(members, member => member.slot),
     members,
   )
   return {
@@ -46,7 +46,7 @@ const coopRoom = (
         ? playingSession(world, 0)
         : Session.makeSession(0)),
       rttMs: COOP_PINGS[0] ?? 0,
-      rtts: members.map(member => ({
+      rtts: Array.map(members, member => ({
         slot: member.slot,
         rttMs: COOP_PINGS[member.slot] ?? 0,
       })),
@@ -83,7 +83,9 @@ const COOP_RUNS = [
 
 const withRuns = (room: RoomWorld, phase: Phase): RoomWorld => ({
   ...room,
-  world: COOP_RUNS.reduce(
+  world: Array.reduce(
+    COOP_RUNS,
+    modifyFields(room.world, { phase: () => phase }),
     (world, [kills, revives, downs, fired, hit, earned, balance], slot) =>
       modifySeatRecord(
         modifySeat(world, slot, {
@@ -103,7 +105,6 @@ const withRuns = (room: RoomWorld, phase: Phase): RoomWorld => ({
           shotsHit: hit ?? 0,
         }),
       ),
-    modifyFields(room.world, { phase: () => phase }),
   ),
 })
 
@@ -172,7 +173,7 @@ const coopScreen = (
       },
     })
   const members = (count: number, readyCount = 0) =>
-    COOP_NAMES.slice(0, count).map((name, slot) =>
+    Array.map(COOP_NAMES.slice(0, count), (name, slot) =>
       modifyFields(
         memberOf(
           slot,
@@ -264,7 +265,7 @@ const coopScreen = (
     }
     case 'keep': {
       const room = coopRoom(
-        members(2).map(member =>
+        Array.map(members(2), member =>
           member.slot === 0
             ? modifyFields(member, { canNightmare: () => true })
             : member,
@@ -290,7 +291,7 @@ const coopScreen = (
     case 'ready':
       return Screen.InRoom({
         room: coopRoom(
-          members(3, 3).map((member, slot) =>
+          Array.map(members(3, 3), (member, slot) =>
             slot === 2 ? modifyFields(member, { ready: () => false }) : member,
           ),
           'Lobby',
@@ -307,7 +308,7 @@ const coopScreen = (
               round: 1,
               reason: 'GameOver' as const,
               ticks: 10800,
-              scores: members(3).map((member, slot) => ({
+              scores: Array.map(members(3), (member, slot) => ({
                 playerId: member.playerId,
                 slot,
                 score: [7, 12, 3][slot] ?? 0,
@@ -385,7 +386,10 @@ const withModifiersPicked = (
 
 // NOTE: a staged run draws its room's World as the game, one frame of it,
 // as an online run does (src/coopPlay.ts).
-export const withCoop = (config: HarnessConfig, model: Model): Model => {
+export const withCoop: {
+  (model: Model): (config: HarnessConfig) => Model
+  (config: HarnessConfig, model: Model): Model
+} = Function.dual(2, (config: HarnessConfig, model: Model): Model => {
   const stage = config.coop
   if (stage === undefined) {
     return model
@@ -407,4 +411,4 @@ export const withCoop = (config: HarnessConfig, model: Model): Model => {
   return stage === 'card' || stage === 'cardwon' || stage === 'cardduo'
     ? modifyFields(drawn, { screenMs: () => 60_000 })
     : drawn
-}
+})

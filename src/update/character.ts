@@ -1,11 +1,11 @@
-import { Effect, Option, Schema } from 'effect'
+import { Effect, Function, Option, Schema } from 'effect'
 import { Dom } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { randomAppearance } from '../appearance'
 import * as Character from '../character'
 import { type GearTap, canAfford, gearTapOf, priceOf } from '../closet'
-import { makeCommand } from '../definition'
+import { ApplicationDefinition } from '../definition'
 import { Message } from '../message'
 import {
   type ClosetCueKind,
@@ -91,40 +91,48 @@ const GEAR_TAPS: Readonly<Record<GearTap, GearReturn>> = {
 // `buyPreview`), and leaves the look as it was and shakes the padlock if it
 // is a gift not reached yet. Any pick ends an earlier try-on and clears the
 // picked look's NEW badge.
-export const chooseLook =
+export const chooseLook: {
+  (value: string): (part: LookPart) => UpdateStep
+  (part: LookPart, value: string): UpdateStep
+} = Function.dual(
+  2,
   (part: LookPart, value: string): UpdateStep =>
-  stepModel =>
-    Option.match(Character.gearOf(part), {
-      onNone: () =>
-        playSounds([uiCue('Pop')])(
-          withProfileFx(
-            wearing(withoutPreview(stepModel), part, value),
-            'Poof',
+    stepModel =>
+      Option.match(Character.gearOf(part), {
+        onNone: () =>
+          playSounds([uiCue('Pop')])(
+            withProfileFx(
+              wearing(withoutPreview(stepModel), part, value),
+              'Poof',
+            ),
           ),
-        ),
-      onSome: ({ kind, worn }) =>
-        GEAR_TAPS[
-          gearTapOf(
-            kind,
-            value,
-            worn(stepModel.appearance),
-            stepModel.boughtCosmetics,
-            rankOf(totalPointsOf(stepModel.rank)),
-          )
-        ](withoutFresh(stepModel, lookUnlockId(kind, value)), part, value),
-    })
+        onSome: ({ kind, worn }) =>
+          GEAR_TAPS[
+            gearTapOf(
+              kind,
+              value,
+              worn(stepModel.appearance),
+              stepModel.boughtCosmetics,
+              rankOf(totalPointsOf(stepModel.rank)),
+            )
+          ](withoutFresh(stepModel, lookUnlockId(kind, value)), part, value),
+      }),
+)
 
-export const FocusLookOption = makeCommand('FocusLookOption', {
-  args: { part: LookPart, value: Schema.String },
-  messages: [Message.CompletedFocusLookOption],
-  handler: function* () {
-    return ({ part, value }) =>
-      Dom.focus(`[data-look-option="${part}.${value}"]`).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedFocusLookOption()),
-      )
+export const FocusLookOption = ApplicationDefinition.makeCommand(
+  'FocusLookOption',
+  {
+    args: { part: LookPart, value: Schema.String },
+    messages: [Message.CompletedFocusLookOption],
+    handler: function* () {
+      return ({ part, value }) =>
+        Dom.focus(`[data-look-option="${part}.${value}"]`).pipe(
+          Effect.ignore,
+          Effect.as(Message.CompletedFocusLookOption()),
+        )
+    },
   },
-})
+)
 
 const bought = (
   model: Model,

@@ -20,25 +20,25 @@ interface Seen {
 // and keeps what was sent, so a test reads both sides.
 const fakeFetch = (responses: ReadonlyArray<() => Response>) => {
   const seen: Array<Seen> = []
-  const fetch: typeof globalThis.fetch = async (input, init) => {
-    const body =
-      init?.body === undefined || init.body === null
-        ? ''
-        : await new Response(init.body).text()
-    seen.push({
-      url:
-        typeof input === 'string'
-          ? input
-          : input instanceof URL
-            ? input.href
-            : input.url,
-      method: init?.method,
-      headers: new Headers(init?.headers),
-      body,
+  const fetch: typeof globalThis.fetch = (input, init) =>
+    (init?.body === undefined || init.body === null
+      ? Promise.resolve('')
+      : new Response(init.body).text()
+    ).then(body => {
+      seen.push({
+        url:
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url,
+        method: init?.method,
+        headers: new Headers(init?.headers),
+        body,
+      })
+      const next = responses[seen.length - 1]
+      return next === undefined ? new Response(null, { status: 500 }) : next()
     })
-    const next = responses[seen.length - 1]
-    return next === undefined ? new Response(null, { status: 500 }) : next()
-  }
   return { seen, fetch }
 }
 
@@ -79,7 +79,7 @@ describe('the browser identity client', () => {
       )
       expect(exit).toEqual(
         Exit.fail(
-          new IdentityRefused({
+          IdentityRefused.make({
             failure: IdentityFailure.cases.WrongCode.make({}),
           }),
         ),
@@ -92,7 +92,7 @@ describe('the browser identity client', () => {
   it.effect('a refusal without a failure, or no answer, is Unavailable', () =>
     Effect.gen(function* () {
       const unavailable = Option.some(
-        new IdentityRefused({
+        IdentityRefused.make({
           failure: IdentityFailure.cases.Unavailable.make({}),
         }),
       )
@@ -101,18 +101,24 @@ describe('the browser identity client', () => {
       const { fetch: proxyPage } = fakeFetch([
         () => new Response('<html>Bad gateway</html>', { status: 502 }),
       ])
-      expect(
-        errorOf(yield* exitWith(proxyPage, httpIdentityApi(ORIGIN).challenge)),
-      ).toEqual(unavailable)
+      const value = yield* exitWith(
+        proxyPage,
+        httpIdentityApi(ORIGIN).challenge,
+      )
+      expect(errorOf(value)).toEqual(unavailable)
       const offline: typeof globalThis.fetch = () =>
         Promise.reject(new TypeError('Failed to fetch'))
-      expect(
-        errorOf(yield* exitWith(offline, httpIdentityApi(ORIGIN).challenge)),
-      ).toEqual(unavailable)
+      const value_1 = yield* exitWith(
+        offline,
+        httpIdentityApi(ORIGIN).challenge,
+      )
+      expect(errorOf(value_1)).toEqual(unavailable)
       const { fetch: garbled } = fakeFetch([() => Response.json({ nope: 1 })])
-      expect(
-        errorOf(yield* exitWith(garbled, httpIdentityApi(ORIGIN).challenge)),
-      ).toEqual(unavailable)
+      const value_2 = yield* exitWith(
+        garbled,
+        httpIdentityApi(ORIGIN).challenge,
+      )
+      expect(errorOf(value_2)).toEqual(unavailable)
     }),
   )
 })
@@ -146,7 +152,8 @@ describe('the HTTP transport', () => {
       )
       expect(Exit.isSuccess(exit)).toBe(true)
       expect(seen[0]?.url).toBe(`${ORIGIN}/sync/exchange?scope=notes%3Aada`)
-      expect(yield* decodeExchange(seen[0]?.body ?? '')).toEqual([hello])
+      const value_3 = yield* decodeExchange(seen[0]?.body ?? '')
+      expect(value_3).toEqual([hello])
       expect(seen[0]?.headers.has('traceparent')).toBe(false)
     }),
   )

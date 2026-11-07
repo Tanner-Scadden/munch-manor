@@ -1,3 +1,4 @@
+import { Function, Record, String } from 'effect'
 import * as Clock from 'effect/Clock'
 import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
@@ -27,6 +28,7 @@ import {
 import {
   CORS_HEADERS,
   bearerOf,
+  isWebSocketUpgrade,
   json,
   syncErrorResponse,
   tryCall,
@@ -61,21 +63,21 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
     }
     const rooms = env.GAME_ROOMS
     if (rooms === undefined) {
-      return refusalResponse(RoomRefusal.cases.Unavailable.make({}))
+      return yield* refusalResponse(RoomRefusal.cases.Unavailable.make({}))
     }
     if (url.pathname === ROOM_PATHS.quick) {
       const matchmakers = env.MATCHMAKER
       if (matchmakers === undefined) {
-        return refusalResponse(RoomRefusal.cases.Unavailable.make({}))
+        return yield* refusalResponse(RoomRefusal.cases.Unavailable.make({}))
       }
-      if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
+      if (!isWebSocketUpgrade(request)) {
         return json(426, '{}')
       }
       const stub = matchmakers.get(matchmakers.idFromName(MATCHMAKER_NAME))
       const response = yield* tryCall('open the quick play socket', () =>
         stub.fetch(request.url, {
           headers: {
-            ...Object.fromEntries(request.headers.entries()),
+            ...Record.fromEntries(request.headers.entries()),
             [REGION_HEADER]: continentOf(request),
           },
         }),
@@ -88,16 +90,16 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
     if (url.pathname === ROOM_PATHS.socket) {
       const maybeCode = normalizeRoomCode(url.searchParams.get('code') ?? '')
       if (Option.isNone(maybeCode)) {
-        return refusalResponse(RoomRefusal.cases.NoRoom.make({}))
+        return yield* refusalResponse(RoomRefusal.cases.NoRoom.make({}))
       }
-      if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
+      if (!isWebSocketUpgrade(request)) {
         return json(426, '{}')
       }
       const stub = rooms.get(rooms.idFromName(roomScopeId(maybeCode.value)))
       const response = yield* tryCall('open the room socket', () =>
         stub.fetch(request.url, {
           headers: {
-            ...Object.fromEntries(request.headers.entries()),
+            ...Record.fromEntries(request.headers.entries()),
             [ROOM_CODE_HEADER]: maybeCode.value,
           },
         }),
@@ -118,12 +120,12 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
       }),
     )
     if (Result.isFailure(claims)) {
-      return refusalResponse(
+      return yield* refusalResponse(
         RoomRefusal.cases.Unauthorized.make({ reason: claims.failure.reason }),
       )
     }
     if (!(yield* isWithinRate(env, request))) {
-      return refusalResponse(RoomRefusal.cases.RateLimited.make({}))
+      return yield* refusalResponse(RoomRefusal.cases.RateLimited.make({}))
     }
     const playerId = claims.success.playerId
     const text = yield* tryCall('read the body', () => request.text())
@@ -163,7 +165,7 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
         normalizeRoomCode(body.code),
       )
       if (Option.isNone(maybeCode) || Option.isNone(maybeBody)) {
-        return refusalResponse(RoomRefusal.cases.NoRoom.make({}))
+        return yield* refusalResponse(RoomRefusal.cases.NoRoom.make({}))
       }
       const called = yield* joinRoomIn(
         rooms,
@@ -180,14 +182,27 @@ const routeRoomPath = (request: Request, env: GameRoomBindings, url: URL) =>
   })
 
 // NOTE: the /room paths. Every failure is answered here.
-export const routeRoom = (
-  request: Request,
-  env: GameRoomBindings,
-): Effect.Effect<Option.Option<Response>> =>
-  Effect.suspend(() => {
-    const url = new URL(request.url)
-    return url.pathname.startsWith('/room/')
-      ? Effect.asSome(syncErrorResponse(routeRoomPath(request, env, url)))
-      : Effect.succeedNone
-  })
-
+export const routeRoom: {
+  (
+    env: GameRoomBindings,
+  ): (request: Request) => Effect.Effect<Option.Option<Response>>
+  (
+    request: Request,
+    env: GameRoomBindings,
+  ): Effect.Effect<Option.Option<Response>>
+} = Function.dual(
+  2,
+  (
+    request: Request,
+    env: GameRoomBindings,
+  ): Effect.Effect<Option.Option<Response>> =>
+    Effect.suspend(() => {
+      const url = new URL(request.url)
+      return String.startsWith('/room/')(url.pathname)
+        ? routeRoomPath(request, env, url).pipe(
+            syncErrorResponse,
+            Effect.asSome,
+          )
+        : Effect.succeedNone
+    }),
+)

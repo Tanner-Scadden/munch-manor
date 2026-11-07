@@ -2,7 +2,7 @@
 // buying the kitchen, the ammo window mid-wave, the fridge, planks and
 // gnomes, and the plan that picks between them.
 
-import { Option, Schema } from 'effect'
+import { Array, Function, Option, Schema, String } from 'effect'
 import { toParentMessage } from 'foldkit/test'
 
 import { DialogBlock } from '@foldkit/ui'
@@ -62,6 +62,7 @@ import {
   spareOf,
   weakerGun,
 } from './guns'
+import { isKnobSet, knobNumber, knobText } from './knobs'
 import { isInKitchen } from './route'
 import { type BotState } from './state'
 
@@ -85,12 +86,12 @@ export const STALL_BELOW: Vector = {
 // takes the spare to its top tier before it upgrades the pistol.
 // NO_GNOME=1 keeps the old bot that never buys a gnome, and NO_PLANKS=1 a
 // bot that never buys a Plank Pile, to check planks help without carrying.
-const NO_GNOME = process.env['NO_GNOME'] !== undefined
-const NO_PLANKS = process.env['NO_PLANKS'] !== undefined
+const NO_GNOME = isKnobSet('NO_GNOME')
+const NO_PLANKS = isKnobSet('NO_PLANKS')
 // NOTE: GUN=shotgun plays a Barn Buster run: the bot buys the shotgun as its
 // gun, never trades it for the Chatterbox, and upgrades it as it would any gun.
-const IS_SHOTGUN_RUN = process.env['GUN'] === 'shotgun'
-const RESERVE = Number(process.env['RESERVE'] ?? 30)
+const IS_SHOTGUN_RUN = knobText('GUN') === 'shotgun'
+const RESERVE = knobNumber('RESERVE', 30)
 
 type ItemId = Parameters<typeof priceFor>[2]
 type SpareKind = FridgeSpare['kind']
@@ -111,9 +112,16 @@ const UPGRADES: Partial<Record<SpareKind, ItemId>> = {
 }
 
 // The gun a purchase would replace, if it is a gun.
-export const replacedBy = (model: Model, item: ItemId): Gun | undefined => {
+export const replacedBy: {
+  (item: ItemId): (model: Model) => Gun | undefined
+  (model: Model, item: ItemId): Gun | undefined
+} = Function.dual(2, (model: Model, item: ItemId): Gun | undefined => {
   if (item === 'Pistol') {
-    return gunsOfBot(model).find(isSpent) ?? weakerGun(model)
+    return (
+      Option.getOrUndefined(
+        Array.findFirst(gunsOfBot(model), gun => isSpent(gun)),
+      ) ?? weakerGun(model)
+    )
   }
   if (item !== 'Smg' && item !== 'Shotgun') {
     return undefined
@@ -123,16 +131,18 @@ export const replacedBy = (model: Model, item: ItemId): Gun | undefined => {
     return undefined
   }
   return (
-    guns.find(gun => gun.kind === 'Shotgun') ??
-    guns.find(isSpent) ??
+    Option.getOrUndefined(
+      Array.findFirst(guns, gun => gun.kind === 'Shotgun'),
+    ) ??
+    Option.getOrUndefined(Array.findFirst(guns, gun => isSpent(gun))) ??
     weakerGun(model)
   )
-}
+})
 
-export const wantedPurchase = (
-  state: BotState,
-  model: Model,
-): ItemId | undefined => {
+export const wantedPurchase: {
+  (model: Model): (state: BotState) => ItemId | undefined
+  (state: BotState, model: Model): ItemId | undefined
+} = Function.dual(2, (state: BotState, model: Model): ItemId | undefined => {
   const firearm = firearmOf(model)
   const fridge = fridgeSpareOf(model)
   const spare = spareOf(model)
@@ -183,7 +193,7 @@ export const wantedPurchase = (
   ) {
     return 'Smg'
   }
-  const refills = [firearm, fridge].flatMap(gun => {
+  const refills = Array.flatMap([firearm, fridge], gun => {
     if (gun === undefined) {
       return []
     }
@@ -198,19 +208,21 @@ export const wantedPurchase = (
   }
   const barricades =
     focusOf(model).trapStock.Barricade +
-    model.traps.filter(trap => trap._tag === 'Barricade').length
+    Array.filter(model.traps, trap => trap._tag === 'Barricade').length
   if (!NO_PLANKS && barricades < 2 && isAvailable('Barricade')) {
     return 'Barricade'
   }
   if (focusOf(model).player.hp <= 4 && isAvailable('Heart')) {
     return 'Heart'
   }
-  const repairs = model.traps
-    .map(trap => repairItemId(trap.id))
-    .filter(item => isAvailable(item))
-  const repairTotal = repairs.reduce(
-    (total, item) => total + priceFor(model, focusSlotOf(model), item),
+  const repairs = Array.filter(
+    Array.map(model.traps, trap => repairItemId(trap.id)),
+    item => isAvailable(item),
+  )
+  const repairTotal = Array.reduce(
+    repairs,
     0,
+    (total, item) => total + priceFor(model, focusSlotOf(model), item),
   )
   if (repairs.length > 0 && repairTotal <= 25) {
     return repairs[0]
@@ -220,7 +232,7 @@ export const wantedPurchase = (
   }
   const turrets =
     focusOf(model).trapStock.Turret +
-    model.traps.filter(trap => trap._tag === 'Turret').length
+    Array.filter(model.traps, trap => trap._tag === 'Turret').length
   // A fridge weapon's upgrades (Rattles' line for a carried Cooker or Pan)
   // come after the hearts, planks, repairs, and the first gnome.
   const spareUpgrade = UPGRADES[spare.kind]
@@ -275,7 +287,7 @@ export const wantedPurchase = (
     return 'Turret'
   }
   return undefined
-}
+})
 
 // THE KITCHEN
 
@@ -283,7 +295,7 @@ export const wantedPurchase = (
 // holds the SMG at its second upgrade, both Plank Piles, and a Grumpy Gnome,
 // while it keeps its reserve. It walks to the boarded door and holds the interact key. KITCHEN=0 is the bot
 // that never opens it, to see what the kitchen does to a run.
-const NO_KITCHEN = process.env['KITCHEN'] === '0'
+const NO_KITCHEN = knobText('KITCHEN') === '0'
 export const KITCHEN_DOOR_PUSH: Vector = { x: 70, y: 16 }
 
 export const isKitchenOpen = (model: Model) =>
@@ -291,11 +303,11 @@ export const isKitchenOpen = (model: Model) =>
 
 const turretCount = (model: Model) =>
   focusOf(model).trapStock.Turret +
-  model.traps.filter(trap => trap._tag === 'Turret').length
+  Array.filter(model.traps, trap => trap._tag === 'Turret').length
 
 const plankCount = (model: Model) =>
   focusOf(model).trapStock.Barricade +
-  model.traps.filter(trap => trap._tag === 'Barricade').length
+  Array.filter(model.traps, trap => trap._tag === 'Barricade').length
 
 const wantsKitchen = (model: Model): boolean => {
   const spare = firearmOf(model)
@@ -318,7 +330,7 @@ const wantsKitchen = (model: Model): boolean => {
 // (src/ammoCounter.ts) and holds the interact key until it buys. It keeps
 // shooting on the way, so standing alone never buys for it. AMMO=0 is the
 // bot that never uses the window.
-const NO_AMMO_WINDOW = process.env['AMMO'] === '0'
+const NO_AMMO_WINDOW = knobText('AMMO') === '0'
 export const AMMO_WINDOW_NEAR_PX = 70
 
 const wantsAmmoWindow = (model: Model): boolean => {
@@ -343,30 +355,36 @@ const isAtAmmoOffer = (model: Model): boolean =>
     offer => offer.target._tag === 'Ammo',
   )
 
-export const holdingAtWindow = (
-  model: Model,
-  keys: Set<string>,
-): Set<string> =>
+export const holdingAtWindow: {
+  (keys: Set<string>): (model: Model) => Set<string>
+  (model: Model, keys: Set<string>): Set<string>
+} = Function.dual(2, (model: Model, keys: Set<string>): Set<string> =>
   wantsAmmoWindow(model) && isAtAmmoOffer(model)
     ? new Set([...keys, KEYS.interact])
-    : keys
+    : keys,
+)
 
-export const towardWindow = (model: Model, direction: Vector): Vector =>
+export const towardWindow: {
+  (direction: Vector): (model: Model) => Vector
+  (model: Model, direction: Vector): Vector
+} = Function.dual(2, (model: Model, direction: Vector): Vector =>
   wantsAmmoWindow(model) && !isAtAmmoOffer(model)
     ? steerToward(focusOf(model).player, STALL_BELOW)
-    : direction
+    : direction,
+)
 
 // The bot buys the room as a player does: it holds the interact key at the
 // boards until the hold fills (src/purchase.ts), mid-wave too when it
 // happens to stand there while it wants the room.
-export const holdingAtKitchen = (
-  model: Model,
-  keys: Set<string>,
-): Set<string> =>
+export const holdingAtKitchen: {
+  (keys: Set<string>): (model: Model) => Set<string>
+  (model: Model, keys: Set<string>): Set<string>
+} = Function.dual(2, (model: Model, keys: Set<string>): Set<string> =>
   wantsKitchen(model) &&
   Option.isSome(maybeOfferInReach(model, focusSlotOf(model)))
     ? new Set([...keys, KEYS.interact])
-    : keys
+    : keys,
+)
 
 // THE FRIDGE
 
@@ -377,7 +395,7 @@ export const holdingAtKitchen = (
 // pulls while the door is open or slammed. A weapon is offered, not given:
 // see wouldTake.
 // FRIDGE=0 is the bot that never pulls.
-const NO_FRIDGE = process.env['FRIDGE'] === '0'
+const NO_FRIDGE = knobText('FRIDGE') === '0'
 const FRIDGE_STAND_PX = 6
 
 export const fridgeStand = (model: Model): Vector | undefined =>
@@ -429,7 +447,11 @@ export const wouldTake = (model: Model): boolean => {
 // the weapons the fridge can still give it (never the one it carries) must
 // beat its weaker gun. Otherwise the pull buys a prize it walks away from.
 const wouldTakeAnyPrize = (model: Model): boolean =>
-  FRIDGE_PRIZES.filter(kind => !isCarrying(focusOf(model).player, kind)).every(
+  Array.every(
+    Array.filter(
+      FRIDGE_PRIZES,
+      kind => !isCarrying(focusOf(model).player, kind),
+    ),
     kind => beatsWeaker(model, kind),
   )
 
@@ -479,13 +501,16 @@ export const fridgeKeys = (model: Model): Set<string> =>
 const closeShopDialog = () =>
   toParentMessage(ShopDialogBinding, DialogBlock.Message.RequestedClose())
 
-export const shop = (state: BotState, model: Model): Model => {
+export const shop: {
+  (model: Model): (state: BotState) => Model
+  (state: BotState, model: Model): Model
+} = Function.dual(2, (state: BotState, model: Model): Model => {
   const item = wantedPurchase(state, model)
   if (item === undefined) {
     return send(model, closeShopDialog())
   }
   const bought = send(model, Message.ClickedBuyButton({ item }))
-  if (item.endsWith('Upgrade')) {
+  if (String.endsWith('Upgrade')(item)) {
     state.spentOnUpgrades +=
       focusOf(model).wallet.balance - focusOf(bought).wallet.balance
   }
@@ -494,12 +519,18 @@ export const shop = (state: BotState, model: Model): Model => {
     focusOf(bought).wallet.balance !== focusOf(model).wallet.balance &&
     phase._tag === 'Preparation'
   ) {
-    state.shopVisits.find(visit => visit.wave === phase.wave)?.bought.push(item)
+    const maybeVisit = Array.findFirst(
+      state.shopVisits,
+      visit => visit.wave === phase.wave,
+    )
+    if (Option.isSome(maybeVisit)) {
+      maybeVisit.value.bought.push(item)
+    }
   }
   return focusOf(bought).wallet.balance === focusOf(model).wallet.balance
     ? send(bought, closeShopDialog())
     : bought
-}
+})
 
 // The bot holds the parlour, so its planks go in the parlour's doorways.
 const isParlourDoor = Schema.is(
@@ -513,19 +544,20 @@ export const busiestDoor = (model: Model) => {
   // Counts follow the planks already up: a boarded door's packs come through
   // the next open door, so the second pile goes where they pile up.
   const counts = new Map<string, number>()
-  doorCounts(model.phase.spawns, model.traps, levelOf(model).doorIds).forEach(
+  Array.forEach(
+    doorCounts(model.phase.spawns, model.traps, levelOf(model).doorIds),
     ({ door, count }) => {
       counts.set(door, count)
     },
   )
   const boarded = new Set<string>(
-    model.traps.flatMap(trap => (trap._tag === 'Barricade' ? [trap.door] : [])),
+    Array.flatMap(model.traps, trap =>
+      trap._tag === 'Barricade' ? [trap.door] : [],
+    ),
   )
-  return [...counts.entries()]
-    .flatMap(([door, count]) =>
-      !boarded.has(door) && isParlourDoor(door) ? [{ door, count }] : [],
-    )
-    .sort((a, b) => b.count - a.count)[0]?.door
+  return Array.flatMap([...counts.entries()], ([door, count]) =>
+    !boarded.has(door) && isParlourDoor(door) ? [{ door, count }] : [],
+  ).sort((a, b) => b.count - a.count)[0]?.door
 }
 
 type PrepPlan =
@@ -547,39 +579,41 @@ export const gnomeSpot = (model: Model): Vector =>
   GNOME_SPOTS[
     Math.min(
       GNOME_SPOTS.length - 1,
-      model.traps.filter(trap => trap._tag === 'Turret').length,
+      Array.filter(model.traps, trap => trap._tag === 'Turret').length,
     )
   ] ?? focusOf(model).player
 
-export const prepPlan = (
-  state: BotState,
-  model: Model,
-  shopped: boolean,
-): PrepPlan => {
-  if (
-    isShopOpenFor(model.phase) &&
-    !shopped &&
-    wantedPurchase(state, model) !== undefined
-  ) {
-    return 'Shop'
-  }
-  if (wantsKitchen(model)) {
-    return 'Kitchen'
-  }
-  if (
-    focusOf(model).trapStock.Barricade > 0 &&
-    busiestDoor(model) !== undefined
-  ) {
-    return 'Barricade'
-  }
-  if (focusOf(model).trapStock.Turret > 0 && state.gnomeTries < 90) {
-    return 'Gnome'
-  }
-  if (wantsFridge(state, model)) {
-    return 'Fridge'
-  }
-  if (isInKitchen(focusOf(model).player)) {
-    return 'Return'
-  }
-  return 'Go'
-}
+export const prepPlan: {
+  (model: Model, shopped: boolean): (state: BotState) => PrepPlan
+  (state: BotState, model: Model, shopped: boolean): PrepPlan
+} = Function.dual(
+  3,
+  (state: BotState, model: Model, shopped: boolean): PrepPlan => {
+    if (
+      isShopOpenFor(model.phase) &&
+      !shopped &&
+      wantedPurchase(state, model) !== undefined
+    ) {
+      return 'Shop'
+    }
+    if (wantsKitchen(model)) {
+      return 'Kitchen'
+    }
+    if (
+      focusOf(model).trapStock.Barricade > 0 &&
+      busiestDoor(model) !== undefined
+    ) {
+      return 'Barricade'
+    }
+    if (focusOf(model).trapStock.Turret > 0 && state.gnomeTries < 90) {
+      return 'Gnome'
+    }
+    if (wantsFridge(state, model)) {
+      return 'Fridge'
+    }
+    if (isInKitchen(focusOf(model).player)) {
+      return 'Return'
+    }
+    return 'Go'
+  },
+)

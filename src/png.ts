@@ -1,4 +1,4 @@
-import { Array, Option, String, pipe } from 'effect'
+import { Array, Function, Option, String, pipe } from 'effect'
 import { Base64 } from 'effect/encoding'
 
 // COLOR
@@ -23,10 +23,10 @@ const fromHex = (hex: string): Option.Option<Rgba> => {
   }
 
   return Option.some({
-    r: hexByte(full.slice(0, 2)),
-    g: hexByte(full.slice(2, 4)),
-    b: hexByte(full.slice(4, 6)),
-    a: full.length === 8 ? hexByte(full.slice(6, 8)) : 255,
+    r: hexByte(String.slice(0, 2)(full)),
+    g: hexByte(String.slice(2, 4)(full)),
+    b: hexByte(String.slice(4, 6)(full)),
+    a: full.length === 8 ? hexByte(String.slice(6, 8)(full)) : 255,
   })
 }
 
@@ -46,7 +46,7 @@ const fromFunctional = (color: string): Option.Option<Rgba> =>
 
 export const parseColor = (color: string): Option.Option<Rgba> =>
   String.startsWith('#')(color)
-    ? fromHex(color.slice(1))
+    ? fromHex(String.slice(1)(color))
     : fromFunctional(color)
 
 // NOTE: the same source over blend a canvas uses when a later rectangle
@@ -144,22 +144,24 @@ const scanlinesOf = (
 
 // NOTE: the RGBA pixels the PNG holds, row after row with no filter bytes,
 // for tests and the atlas generator to read without a PNG decoder.
-export const rasterOf = (
-  width: number,
-  height: number,
-  fills: ReadonlyArray<Fill>,
-): Uint8Array => {
-  const lines = scanlinesOf(width, height, fills)
-  const raster = new Uint8Array(width * height * BYTES_PER_PIXEL)
-  for (let y = 0; y < height; y++) {
-    const start = y * rowLength(width) + 1
-    raster.set(
-      lines.subarray(start, start + width * BYTES_PER_PIXEL),
-      y * width * BYTES_PER_PIXEL,
-    )
-  }
-  return raster
-}
+export const rasterOf: {
+  (height: number, fills: ReadonlyArray<Fill>): (width: number) => Uint8Array
+  (width: number, height: number, fills: ReadonlyArray<Fill>): Uint8Array
+} = Function.dual(
+  3,
+  (width: number, height: number, fills: ReadonlyArray<Fill>): Uint8Array => {
+    const lines = scanlinesOf(width, height, fills)
+    const raster = new Uint8Array(width * height * BYTES_PER_PIXEL)
+    for (let y = 0; y < height; y++) {
+      const start = y * rowLength(width) + 1
+      raster.set(
+        lines.subarray(start, start + width * BYTES_PER_PIXEL),
+        y * width * BYTES_PER_PIXEL,
+      )
+    }
+    return raster
+  },
+)
 
 // PNG
 
@@ -226,7 +228,9 @@ const concatBytes = (
 }
 
 const asciiBytes = (text: string): ReadonlyArray<number> =>
-  Array.map(String.split(text, ''), letter => letter.charCodeAt(0))
+  Array.map(String.split(text, ''), letter =>
+    Option.getOrElse(String.charCodeAt(letter, 0), () => 0),
+  )
 
 const chunk = (type: string, data: Uint8Array): Uint8Array => {
   const typed = concatBytes([asciiBytes(type), data])
@@ -285,9 +289,11 @@ const pngBytes = (
     chunk('IEND', new Uint8Array(0)),
   ])
 
-export const pngDataUrl = (
-  width: number,
-  height: number,
-  fills: ReadonlyArray<Fill>,
-): string =>
-  `data:image/png;base64,${Base64.encode(pngBytes(width, height, fills))}`
+export const pngDataUrl: {
+  (height: number, fills: ReadonlyArray<Fill>): (width: number) => string
+  (width: number, height: number, fills: ReadonlyArray<Fill>): string
+} = Function.dual(
+  3,
+  (width: number, height: number, fills: ReadonlyArray<Fill>): string =>
+    `data:image/png;base64,${Base64.encode(pngBytes(width, height, fills))}`,
+)

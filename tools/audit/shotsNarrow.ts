@@ -7,27 +7,28 @@
 // scrolls sideways, or (on the Look tab) a button is under 44 px.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsNarrow.ts
 // ONLY picks scenes, and VIEWPORTS picks screens.
+import { Config, Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
+import { runHarnessAudit } from './harnessServer'
 import {
-  TAG,
+  type Act,
+  auditTag,
   deviceQuery,
   finish,
   fromHand,
   harnessQuery,
   inOrder,
   isPickedScene,
-  launch,
+  openBrowser,
   openLobby,
   pickViewports,
   press,
   scenePages,
   settleAnimations,
-  useHarness,
   wait,
 } from './lib'
-
-const SHOTS = process.env['NARROW_SHOTS'] ?? '/tmp/narrow-shots'
+import { attempt } from './page'
 
 const VIEWPORTS = pickViewports([
   { name: 'p360', width: 360, height: 780, scale: 3, isPhone: true },
@@ -42,25 +43,32 @@ const MIN_LOOK_TAP = 44
 type Scene = Readonly<{
   name: string
   query: string
-  act?: (page: Page) => Promise<void>
+  act?: Act
   isLook?: boolean
 }>
 
 // NOTE: a tap, not a click, so the game stays on its touch layout.
-const tapTab = (name: RegExp) => async (page: Page) => {
-  const tab = page.getByRole('tab', { name }).first()
-  const box = (await tab.count()) === 0 ? null : await tab.boundingBox()
-  if (box !== null) {
-    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
-  }
-  await settleAnimations(page)
-}
+const tapTab =
+  (name: RegExp): Act =>
+  page =>
+    Effect.gen(function* () {
+      const tab = page.getByRole('tab', { name }).first()
+      const count = yield* attempt(() => tab.count())
+      const box = count === 0 ? null : yield* attempt(() => tab.boundingBox())
+      if (box !== null) {
+        yield* attempt(() =>
+          page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2),
+        )
+      }
+      yield* settleAnimations(page)
+    })
 
-const lobby = async (page: Page) => {
-  await openLobby(page)
-  await wait(500)
-  await settleAnimations(page)
-}
+const lobby: Act = page =>
+  Effect.gen(function* () {
+    yield* openLobby(page)
+    yield* wait(500)
+    yield* settleAnimations(page)
+  })
 
 const PROFILE = `${LEARNED}&rank=2400&bones=120`
 
@@ -137,94 +145,124 @@ type Report = Readonly<{
   pageScrolls: boolean
 }>
 
-const inspect = (page: Page, minTap: number): Promise<Report> =>
-  page.evaluate((min: number) => {
-    const root =
-      document.querySelector('dialog[open]') ??
-      document.querySelector('.coop') ??
-      document.body
-    const label = (el: Element) =>
-      `${el.tagName.toLowerCase()}.${String(el.className).split(' ').join('.')}:${(el.getAttribute('aria-label') ?? el.textContent).trim().slice(0, 24)}`
-    // NOTE: the screen-reader text, the canvases, and the world behind a
-    // menu are not the menu.
-    const all = [root, ...root.querySelectorAll('*')].filter(el => {
-      const box = el.getBoundingClientRect()
-      return (
-        box.width > 0 &&
-        box.height > 0 &&
-        el.closest('.sr-only, canvas, .world-window, .floor-layers') === null
-      )
-    })
-    const past = all
-      .filter(el => {
+const inspect = (page: Page, minTap: number) =>
+  attempt((): Promise<Report> =>
+    page.evaluate((min: number) => {
+      // NOTE: this runs in the page, where Effect's modules are not loaded,
+      // so it reads the elements with plain loops and the page's own String.
+      const root =
+        document.querySelector('dialog[open]') ??
+        document.querySelector('.coop') ??
+        document.body
+      const label = (el: Element) => {
+        const classes = globalThis.String(el.className)
+        const name = el.getAttribute('aria-label') ?? el.textContent
+        // NOTE: runs in the page, where Effect's String is not loaded.
+        // @effect-diagnostics-next-line preferEffectString:off
+        return `${el.tagName.toLowerCase()}.${classes.replaceAll(' ', '.')}:${name.trim().slice(0, 24)}`
+      }
+      const MAX_LISTED = 8
+      const past: Array<string> = []
+      const sideways: Array<string> = []
+      // NOTE: the screen-reader text, the canvases, and the world behind a
+      // menu are not the menu.
+      for (const el of [root, ...root.querySelectorAll('*')]) {
         const box = el.getBoundingClientRect()
-        return box.right > innerWidth + 1 || box.left < -1
-      })
-      .slice(0, 8)
-      .map(label)
-    const sideways = all
-      .filter(el => el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0)
-      .filter(el => getComputedStyle(el).display !== 'inline')
-      .slice(0, 8)
-      .map(label)
-    const small =
-      min === 0
-        ? []
-        : [...root.querySelectorAll('button')]
-            .filter(el => el.getBoundingClientRect().height > 0)
-            .filter(el => el.getBoundingClientRect().height < min)
-            .map(label)
-    const scroller = document.scrollingElement ?? document.documentElement
-    return {
-      past,
-      sideways,
-      small,
-      pageScrolls:
-        scroller.scrollHeight > innerHeight + 1 ||
-        scroller.scrollWidth > innerWidth + 1,
-    }
-  }, minTap)
+        if (
+          box.width <= 0 ||
+          box.height <= 0 ||
+          el.closest('.sr-only, canvas, .world-window, .floor-layers') !== null
+        ) {
+          continue
+        }
+        if (
+          past.length < MAX_LISTED &&
+          (box.right > innerWidth + 1 || box.left < -1)
+        ) {
+          past.push(label(el))
+        }
+        if (
+          sideways.length < MAX_LISTED &&
+          el.scrollWidth > el.clientWidth + 1 &&
+          el.clientWidth > 0 &&
+          getComputedStyle(el).display !== 'inline'
+        ) {
+          sideways.push(label(el))
+        }
+      }
+      const small: Array<string> = []
+      if (min !== 0) {
+        for (const el of root.querySelectorAll('button')) {
+          const height = el.getBoundingClientRect().height
+          if (height > 0 && height < min) {
+            small.push(label(el))
+          }
+        }
+      }
+      const scroller = document.scrollingElement ?? document.documentElement
+      return {
+        past,
+        sideways,
+        small,
+        pageScrolls:
+          scroller.scrollHeight > innerHeight + 1 ||
+          scroller.scrollWidth > innerWidth + 1,
+      }
+    }, minTap),
+  )
 
-const problems: Array<string> = []
-await useHarness()
-const browser = await launch()
-const pages = scenePages(browser, ['nodev', 'tick=72'])
-for (const viewport of VIEWPORTS) {
-  for (const scene of SCENES) {
-    if (!isPickedScene(scene.name)) {
-      continue
-    }
-    const page = await pages.open(
-      viewport,
-      harnessQuery(scene.query, deviceQuery(viewport)),
+runHarnessAudit(
+  Effect.gen(function* () {
+    const tag = yield* auditTag
+    const viewports = yield* VIEWPORTS
+    const shots = yield* Config.String('NARROW_SHOTS').pipe(
+      Config.withDefault('/tmp/narrow-shots'),
     )
-    await settleAnimations(page)
-    if (scene.act !== undefined) {
-      await scene.act(page)
+    const browser = yield* openBrowser
+    const problems: Array<string> = []
+    const pages = scenePages(browser, ['nodev', 'tick=72'])
+    for (const viewport of viewports) {
+      for (const scene of SCENES) {
+        if (!(yield* isPickedScene(scene.name))) {
+          continue
+        }
+        const page = yield* pages.open(
+          viewport,
+          harnessQuery(scene.query, deviceQuery(viewport)),
+        )
+        yield* settleAnimations(page)
+        if (scene.act !== undefined) {
+          yield* scene.act(page)
+        }
+        yield* settleAnimations(page)
+        const where = `${viewport.name} ${scene.name}`
+        const report = yield* inspect(
+          page,
+          scene.isLook === true ? MIN_LOOK_TAP : 0,
+        )
+        for (const item of report.past) {
+          problems.push(`${where}: past the edge: ${item}`)
+        }
+        for (const item of report.sideways) {
+          problems.push(`${where}: scrolls sideways: ${item}`)
+        }
+        for (const item of report.small) {
+          problems.push(`${where}: under ${MIN_LOOK_TAP} px tall: ${item}`)
+        }
+        if (report.pageScrolls) {
+          problems.push(`${where}: the page scrolls`)
+        }
+        yield* attempt(() =>
+          page.screenshot({
+            path: `${shots}/narrow-${tag}-${viewport.name}-${scene.name}.png`,
+            animations: 'disabled',
+          }),
+        )
+        yield* Console.log(`shot ${where}`)
+        pages.release(page)
+      }
     }
-    await settleAnimations(page)
-    const where = `${viewport.name} ${scene.name}`
-    const report = await inspect(page, scene.isLook === true ? MIN_LOOK_TAP : 0)
-    for (const item of report.past) {
-      problems.push(`${where}: past the edge: ${item}`)
-    }
-    for (const item of report.sideways) {
-      problems.push(`${where}: scrolls sideways: ${item}`)
-    }
-    for (const item of report.small) {
-      problems.push(`${where}: under ${MIN_LOOK_TAP} px tall: ${item}`)
-    }
-    if (report.pageScrolls) {
-      problems.push(`${where}: the page scrolls`)
-    }
-    await page.screenshot({
-      path: `${SHOTS}/narrow-${TAG}-${viewport.name}-${scene.name}.png`,
-      animations: 'disabled',
-    })
-    console.log(`shot ${where}`)
-    pages.release(page)
-  }
-}
-await pages.close()
-await browser.close()
-finish(problems, 'The narrow phone pass found no problems.')
+    yield* pages.close
+    yield* finish(problems, 'The narrow phone pass found no problems.')
+  }),
+)

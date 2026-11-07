@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from './composition'
@@ -25,10 +25,10 @@ const badgeView = <Message>(rank: number, h: HtmlBuilder<Message>): Html =>
 
 // NOTE: the badge a rank wears and its number, for a card that says which
 // rank it needs (src/callingCards.ts).
-export const rankMarkView = <Message>(
-  rank: number,
-  h: HtmlBuilder<Message>,
-): Html =>
+export const rankMarkView: {
+  <Message>(h: HtmlBuilder<Message>): (rank: number) => Html
+  <Message>(rank: number, h: HtmlBuilder<Message>): Html
+} = Function.dual(2, <Message>(rank: number, h: HtmlBuilder<Message>): Html =>
   h.span(
     [
       h.Class('rank-chip'),
@@ -36,11 +36,15 @@ export const rankMarkView = <Message>(
       h.AriaHidden(true),
     ],
     [badgeView(rank, h), h.span([h.Class('rank-number')], [`${rank}`])],
-  )
+  ),
+)
 
 // NOTE: the badge and its number, a small chip under the player on the
 // home menu.
-export const rankChipView = (model: Model, h: ApplicationViewBuilder): Html => {
+export const rankChipView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html => {
   const { rank } = rankProgressOf(totalPointsOf(model.rank))
   return h.span(
     [
@@ -50,42 +54,44 @@ export const rankChipView = (model: Model, h: ApplicationViewBuilder): Html => {
     ],
     [badgeView(rank, h), h.span([h.Class('rank-number')], [`${rank}`])],
   )
-}
+})
 
 // NOTE: a pixel bone and a count, `scale` times its pixels, for the Bones
 // the plate holds and the closet spends.
-export const boneCountView = <Message>(
-  count: number,
-  className: string,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.span(
-    [h.Class(className), h.AriaHidden(true)],
-    [
-      ...Option.match(BONE_IMAGE, {
-        onNone: () => [],
-        onSome: image => [
-          h.img([
-            h.Class('rank-bone-img'),
-            h.Src(image.src),
-            h.Alt(''),
-            h.Style({
-              width: `${image.width * ART_SCALE}px`,
-              height: `${image.height * ART_SCALE}px`,
-            }),
-          ]),
-        ],
-      }),
-      h.span([h.Class('rank-bones-count')], [`${count}`]),
-    ],
-  )
+export const boneCountView: {
+  <Message>(className: string, h: HtmlBuilder<Message>): (count: number) => Html
+  <Message>(count: number, className: string, h: HtmlBuilder<Message>): Html
+} = Function.dual(
+  3,
+  <Message>(count: number, className: string, h: HtmlBuilder<Message>): Html =>
+    h.span(
+      [h.Class(className), h.AriaHidden(true)],
+      [
+        ...Option.match(BONE_IMAGE, {
+          onNone: () => [],
+          onSome: image => [
+            h.img([
+              h.Class('rank-bone-img'),
+              h.Src(image.src),
+              h.Alt(''),
+              h.Style({
+                width: `${image.width * ART_SCALE}px`,
+                height: `${image.height * ART_SCALE}px`,
+              }),
+            ]),
+          ],
+        }),
+        h.span([h.Class('rank-bones-count')], [`${count}`]),
+      ],
+    ),
+)
 
 // NOTE: the Profile's plate: the badge and rank, the bar filled by how far
 // into the rank the points are, and the Bones balance by a pixel bone.
-export const rankPlateView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html => {
+export const rankPlateView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html => {
   const progress = rankProgressOf(totalPointsOf(model.rank))
   const bones = bonesBalanceOf(model.rank)
   return h.div(
@@ -117,4 +123,4 @@ export const rankPlateView = (
       boneCountView(bones, 'rank-bones', h),
     ],
   )
-}
+})

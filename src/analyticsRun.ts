@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Function, Option, String } from 'effect'
 
 import type { Lobby } from '@munch/netcode'
 
@@ -74,31 +74,34 @@ const summaryScreenFit = (screenFit: ScreenFit): SummaryScreenFit =>
 // goes home (src/update/coop.ts, leftRoom). Keeping going after a win
 // starts no new run: when that run ends it reports again, as Endless, with
 // the whole run's stats.
-export const maybeRunOutcome = (
-  before: Model,
-  after: Model,
-): Option.Option<RunOutcome> => {
-  if (!isInRun(before.phase)) {
-    return Option.none()
-  }
+export const maybeRunOutcome: {
+  (after: Model): (before: Model) => Option.Option<RunOutcome>
+  (before: Model, after: Model): Option.Option<RunOutcome>
+} = Function.dual(
+  2,
+  (before: Model, after: Model): Option.Option<RunOutcome> => {
+    if (!isInRun(before.phase)) {
+      return Option.none()
+    }
 
-  return Phase.match(after.phase, {
-    Ready: () => Option.some(QuitRun.make({})),
-    Preparation: () => Option.none(),
-    Wave: () => Option.none(),
-    Paused: () => Option.none(),
-    Victory: () => Option.some(WonRun.make({})),
-    GameOver: () =>
-      Option.some(
-        LostRun.make({
-          killedBy: Option.getOrElse(
-            after.stats.maybeLastHurtBy,
-            () => UNKNOWN_CAUSE,
-          ),
-        }),
-      ),
-  })
-}
+    return Phase.match(after.phase, {
+      Ready: () => Option.some(QuitRun.make({})),
+      Preparation: () => Option.none(),
+      Wave: () => Option.none(),
+      Paused: () => Option.none(),
+      Victory: () => Option.some(WonRun.make({})),
+      GameOver: () =>
+        Option.some(
+          LostRun.make({
+            killedBy: Option.getOrElse(
+              after.stats.maybeLastHurtBy,
+              () => UNKNOWN_CAUSE,
+            ),
+          }),
+        ),
+    })
+  },
+)
 
 // NOTE: leaving a run resets the Model's run, so a Quit is read from the
 // Model just before it. Game Over and Victory keep the run until the next.
@@ -116,7 +119,7 @@ const hashKey = (text: string): string => {
   let first = 0xdeadbeef
   let second = 0x41c6ce57
   for (let index = 0; index < text.length; index++) {
-    const code = text.charCodeAt(index)
+    const code = Option.getOrElse(String.charCodeAt(text, index), () => 0)
     first = Math.imul(first ^ code, 0x9e3779b1)
     second = Math.imul(second ^ code, 0x5f356495)
   }
@@ -125,7 +128,7 @@ const hashKey = (text: string): string => {
   second = Math.imul(second ^ (second >>> 16), 0x85ebca6b)
   second ^= Math.imul(first ^ (first >>> 13), 0xc2b2ae35)
   const lane = (value: number): string =>
-    (value >>> 0).toString(HEX).padStart(HALF_KEY_LENGTH, '0')
+    String.padStart(HALF_KEY_LENGTH, '0')((value >>> 0).toString(HEX))
   return `${lane(second)}${lane(first)}`
 }
 
@@ -172,36 +175,53 @@ const partyOf = (run: Model, visitId: string): SummaryParty => {
 export const playedDifficultyOf = (run: Model): Difficulty =>
   Option.getOrElse(run.maybeRoomDifficulty, () => run.difficulty.chosen)
 
-export const runSummaryOf = (
-  before: Model,
-  after: Model,
-  outcome: RunOutcome,
-  visitId: string,
-  build: string,
-): RunSummary => {
-  const run = finalRun(before, after, outcome)
-  const { stats } = run
-  return {
-    version: RUN_SUMMARY_VERSION,
-    visitId,
-    build,
-    mode: RunMode.isAnyOf(['Endless'])(run.mode) ? 'Endless' : 'Campaign',
-    difficulty: playedDifficultyOf(run),
-    wave: roundWave(run.phase),
-    outcome,
-    runMs: Math.round(stats.runMs),
-    kills: stats.kills,
-    heartsLost: stats.heartsLost,
-    purchases: stats.purchases,
-    powerUpsGrabbed: stats.powerUpsGrabbed,
-    trapsPlaced: stats.trapsPlaced,
-    device: run.lastDevice,
-    screenFit: summaryScreenFit(run.screenFit),
-    frameTime: frameTimeBucket(stats),
-    party: partyOf(run, visitId),
-    modifiers: maskOfModifiers(effectiveModifiersOf(run)),
-  }
-}
+export const runSummaryOf: {
+  (
+    after: Model,
+    outcome: RunOutcome,
+    visitId: string,
+    build: string,
+  ): (before: Model) => RunSummary
+  (
+    before: Model,
+    after: Model,
+    outcome: RunOutcome,
+    visitId: string,
+    build: string,
+  ): RunSummary
+} = Function.dual(
+  5,
+  (
+    before: Model,
+    after: Model,
+    outcome: RunOutcome,
+    visitId: string,
+    build: string,
+  ): RunSummary => {
+    const run = finalRun(before, after, outcome)
+    const { stats } = run
+    return {
+      version: RUN_SUMMARY_VERSION,
+      visitId,
+      build,
+      mode: RunMode.isAnyOf(['Endless'])(run.mode) ? 'Endless' : 'Campaign',
+      difficulty: playedDifficultyOf(run),
+      wave: roundWave(run.phase),
+      outcome,
+      runMs: Math.round(stats.runMs),
+      kills: stats.kills,
+      heartsLost: stats.heartsLost,
+      purchases: stats.purchases,
+      powerUpsGrabbed: stats.powerUpsGrabbed,
+      trapsPlaced: stats.trapsPlaced,
+      device: run.lastDevice,
+      screenFit: summaryScreenFit(run.screenFit),
+      frameTime: frameTimeBucket(stats),
+      party: partyOf(run, visitId),
+      modifiers: maskOfModifiers(effectiveModifiersOf(run)),
+    }
+  },
+)
 
 // SHARE
 
@@ -216,14 +236,29 @@ const shareScreenOf = (isWon: boolean, isCrew: boolean): ShareScreen => {
 // NOTE: a tap on SHARE as its event: which end screen, a crew's or one
 // player's, and the run's mode and difficulty. `played` is the run's
 // difficulty, the room's in an online co-op run.
-export const shareEventOf = (
-  model: Model,
-  visitId: string,
-  build: string,
-  played: Difficulty,
-  path: SharePath,
-): ShareEvent => {
-  return {
+export const shareEventOf: {
+  (
+    visitId: string,
+    build: string,
+    played: Difficulty,
+    path: SharePath,
+  ): (model: Model) => ShareEvent
+  (
+    model: Model,
+    visitId: string,
+    build: string,
+    played: Difficulty,
+    path: SharePath,
+  ): ShareEvent
+} = Function.dual(
+  5,
+  (
+    model: Model,
+    visitId: string,
+    build: string,
+    played: Difficulty,
+    path: SharePath,
+  ): ShareEvent => ({
     version: SHARE_EVENT_VERSION,
     visitId,
     build,
@@ -234,5 +269,5 @@ export const shareEventOf = (
     mode: RunMode.isAnyOf(['Endless'])(model.mode) ? 'Endless' : 'Campaign',
     difficulty: played,
     path,
-  }
-}
+  }),
+)

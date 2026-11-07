@@ -1,4 +1,4 @@
-import { Array, Option, Record, Result, Schema, pipe } from 'effect'
+import { Array, Function, Option, Record, Result, Schema, pipe } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
@@ -140,7 +140,7 @@ export const BOOST_WARNING_MS = 2000
 const PickupEffect = defineTaggedUnion({
   Boost: { boost: BoostKind },
   Burp: {},
-  Heal: { hearts: Schema.Number },
+  Heal: { hearts: Schema.Finite },
 })
 type PickupEffect = typeof PickupEffect.Type
 
@@ -259,8 +259,12 @@ export const TUTORIAL_DROP: PickupKind = 'RapidFire'
 
 const isOn = BoostTimer.isAnyOf(['On'])
 
-export const isBoosted = (boosts: Boosts, kind: BoostKind): boolean =>
-  isOn(boosts[kind])
+export const isBoosted: {
+  (kind: BoostKind): (boosts: Boosts) => boolean
+  (boosts: Boosts, kind: BoostKind): boolean
+} = Function.dual(2, (boosts: Boosts, kind: BoostKind): boolean =>
+  isOn(boosts[kind]),
+)
 
 const activeBoosts = (boosts: Boosts): ReadonlyArray<BoostStats> =>
   Array.filterMap(BOOST_KIND_ORDER, kind =>
@@ -291,16 +295,25 @@ const boostWeapon = (stats: WeaponStats, boosts: Boosts): WeaponStats =>
       knockback * productOf(boosts, ({ knockbackScale }) => knockbackScale),
   })
 
-export const firingStats = (
-  boosts: Boosts,
-  kind: WeaponKind,
-  tier: number,
-): WeaponStats => boostWeapon(statsAt(kind, tier), boosts)
+export const firingStats: {
+  (kind: WeaponKind, tier: number): (boosts: Boosts) => WeaponStats
+  (boosts: Boosts, kind: WeaponKind, tier: number): WeaponStats
+} = Function.dual(
+  3,
+  (boosts: Boosts, kind: WeaponKind, tier: number): WeaponStats =>
+    boostWeapon(statsAt(kind, tier), boosts),
+)
 
-export const playerSpeed = (boosts: Boosts, player: Player): number =>
-  PLAYER_SPEED *
-  speedScaleOf(player) *
-  productOf(boosts, ({ speedScale }) => speedScale)
+export const playerSpeed: {
+  (player: Player): (boosts: Boosts) => number
+  (boosts: Boosts, player: Player): number
+} = Function.dual(
+  2,
+  (boosts: Boosts, player: Player): number =>
+    PLAYER_SPEED *
+    speedScaleOf(player) *
+    productOf(boosts, ({ speedScale }) => speedScale),
+)
 
 export const isAmmoFree = (boosts: Boosts): boolean =>
   Array.some(activeBoosts(boosts), ({ ammo }) => ammo === 'Free')
@@ -326,10 +339,14 @@ export const bulletPierce = (boosts: Boosts): Pierce => {
     : Pierce.Stops()
 }
 
-export const keepTopped = (player: Player, boosts: Boosts): Player =>
+export const keepTopped: {
+  (boosts: Boosts): (player: Player) => Player
+  (player: Player, boosts: Boosts): Player
+} = Function.dual(2, (player: Player, boosts: Boosts): Player =>
   isAmmoFree(boosts) && (isReloading(player) || canReload(player))
     ? finishReload(player)
-    : player
+    : player,
+)
 
 // TIMERS
 
@@ -741,11 +758,10 @@ const dropLoot = (before: World, model: World, worldMs: number): World =>
 // NOTE: a player at the stall's counter or an exit's offer holds still: in
 // single player the whole world does, in co-op only their own boosts and
 // grabs (decided row 8).
-export const advancePowerUps = (
-  before: World,
-  model: World,
-  worldMs: number,
-): World => {
+export const advancePowerUps: {
+  (model: World, worldMs: number): (before: World) => World
+  (before: World, model: World, worldMs: number): World
+} = Function.dual(3, (before: World, model: World, worldMs: number): World => {
   if (!isCoop(model)) {
     return isAtCounter(focusOf(model).shop)
       ? model
@@ -773,4 +789,4 @@ export const advancePowerUps = (
       }),
     grabbed => dropLoot(before, grabbed, worldMs),
   )
-}
+})

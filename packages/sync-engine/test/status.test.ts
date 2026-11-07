@@ -144,9 +144,8 @@ describe('scope status', () => {
       const host = yield* makeTestHost()
       const device = yield* openDevice()
       yield* device.replica.run(Counted, { kind: 'runs', count: 1 })
-      expect(yield* device.replica.currentStatus).toEqual(
-        ScopeStatus.cases.Idle.make({}),
-      )
+      const currentStatus_1 = yield* device.replica.currentStatus
+      expect(currentStatus_1).toEqual(ScopeStatus.cases.Idle.make({}))
       const seen = yield* recordStatuses(device.replica)
       yield* connect(host, device.replica, 'phone')
       const statuses = yield* lastSeen(seen, isFreshReady)
@@ -169,26 +168,28 @@ describe('scope status', () => {
         yield* Scope.close(firstSession, Exit.void)
 
         const notFresh = ScopeStatus.cases.Ready.make({ seq: 1, fresh: false })
-        expect(yield* (yield* openReplica(database)).currentStatus).toEqual(
-          notFresh,
-        )
+        const currentStatus_2 = yield* (yield* openReplica(database))
+          .currentStatus
+        expect(currentStatus_2).toEqual(notFresh)
         // A tab closed after a receipt committed but before its status
         // moved: the stored seq is behind the confirmed one.
         const behind = yield* Schema.encodeEffect(
           Schema.fromJsonString(ScopeStatus),
         )(ScopeStatus.cases.Ready.make({ seq: 0, fresh: true }))
         yield* database.sql`UPDATE sync_status SET status = ${behind}`
-        expect(yield* (yield* openReplica(database)).currentStatus).toEqual(
-          notFresh,
-        )
+        const currentStatus_3 = yield* (yield* openReplica(database))
+          .currentStatus
+        expect(currentStatus_3).toEqual(notFresh)
         // A database synced by a build from before the status table.
         yield* database.sql`DELETE FROM sync_status`
         const reopened = yield* openReplica(database)
-        expect(yield* reopened.currentStatus).toEqual(notFresh)
+        const currentStatus_4 = yield* reopened.currentStatus
+        expect(currentStatus_4).toEqual(notFresh)
         const { net, sync } = yield* connect(host, reopened, 'phone')
         yield* net.setOnline(false)
         yield* first(sync.status, connectionIs('Offline'))
-        expect(yield* reopened.currentStatus).toEqual(
+        const currentStatus_5 = yield* reopened.currentStatus
+        expect(currentStatus_5).toEqual(
           ScopeStatus.cases.Ready.make({ seq: 1, fresh: false }),
         )
         yield* net.setOnline(true)
@@ -308,14 +309,16 @@ describe('switching scopes', () => {
           'laptop',
           Ref.get(player),
         )
-        expect(yield* settle(Deferred.await(opening))).toBe(SCOPE)
+        const value = yield* settle(Deferred.await(opening))
+        expect(value).toBe(SCOPE)
 
         yield* Ref.set(player, 'bob')
         yield* device.replica.switchScope('notes:bob')
         yield* sync.reconnect
         yield* Deferred.succeed(gate, undefined)
 
-        expect(yield* first(device.replica.status, isFreshReady)).toEqual(
+        const value_1 = yield* first(device.replica.status, isFreshReady)
+        expect(value_1).toEqual(
           ScopeStatus.cases.Ready.make({ seq: 1, fresh: true }),
         )
       }),
@@ -349,9 +352,8 @@ describe('awaiting a settlement', () => {
       yield* net.setOnline(true)
       const settled = yield* settle(device.replica.awaitSettled(id))
       expect(settled).toEqual(Settled.cases.Confirmed.make({ seq: 2 }))
-      expect(yield* settle(Fiber.join(receipt))).toEqual(
-        Option.some({ _tag: 'Confirmed', id, seq: 2 }),
-      )
+      const value_2 = yield* settle(Fiber.join(receipt))
+      expect(value_2).toEqual(Option.some({ _tag: 'Confirmed', id, seq: 2 }))
     }),
   )
 
@@ -378,9 +380,8 @@ describe('awaiting a settlement', () => {
           reason: 'crown is taken',
         }),
       )
-      expect(yield* settle(laptop.replica.awaitSettled(second))).toEqual(
-        settled,
-      )
+      const value_3 = yield* settle(laptop.replica.awaitSettled(second))
+      expect(value_3).toEqual(settled)
     }),
   )
 
@@ -394,13 +395,12 @@ describe('awaiting a settlement', () => {
       yield* device.replica.receive(
         ServerMessage.cases.Acked.make({ id, seq: 0 }),
       )
-      expect(yield* device.replica.pending).toHaveLength(0)
-      expect(yield* device.replica.awaitSettled(id)).toEqual(
-        Settled.cases.Confirmed.make({ seq: 0 }),
-      )
-      expect(yield* device.replica.awaitSettled('never-made-0001')).toEqual(
-        Settled.cases.Confirmed.make({ seq: 0 }),
-      )
+      const pending_1 = yield* device.replica.pending
+      expect(pending_1).toHaveLength(0)
+      const value_4 = yield* device.replica.awaitSettled(id)
+      expect(value_4).toEqual(Settled.cases.Confirmed.make({ seq: 0 }))
+      const value_5 = yield* device.replica.awaitSettled('never-made-0001')
+      expect(value_5).toEqual(Settled.cases.Confirmed.make({ seq: 0 }))
     }),
   )
 

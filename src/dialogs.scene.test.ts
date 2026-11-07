@@ -1,4 +1,4 @@
-import { Array, Option, Order } from 'effect'
+import { Array, Option, Order, String } from 'effect'
 import {
   Mount,
   all,
@@ -59,24 +59,27 @@ const idOf = (node: VNodeLike): string | undefined => {
 }
 
 const isDialog = (node: VNodeLike): boolean =>
-  node.sel?.split(/[#.]/)[0] === 'dialog'
+  node.sel !== undefined && String.split(node.sel, /[#.]/)[0] === 'dialog'
 
 const idsOf = (nodes: ReadonlyArray<VNodeLike>): ReadonlyArray<string> =>
-  nodes.flatMap(node => {
+  Array.flatMap(nodes, node => {
     const id = idOf(node)
     return id === undefined ? [] : [id]
   })
 
 const duplicateIds = (root: VNodeLike): ReadonlyArray<string> => {
   const ids = idsOf(nodesOf(root))
-  return ids.filter((id, index) => ids.indexOf(id) !== index)
+  return Array.filter(ids, (id, index) => ids.indexOf(id) !== index)
 }
 
 const unkeyedDialogs = (root: VNodeLike): ReadonlyArray<string> =>
-  nodesOf(root)
-    .filter(isDialog)
-    .filter(node => node.key !== idOf(node))
-    .map(node => idOf(node) ?? '(no id)')
+  Array.map(
+    Array.filter(
+      Array.filter(nodesOf(root), isDialog),
+      node => node.key !== idOf(node),
+    ),
+    node => idOf(node) ?? '(no id)',
+  )
 
 const DIALOG_IDS = [
   'home-screen-steps',
@@ -92,7 +95,7 @@ const holdsDialogsApart = tap<Model, Message>(({ html }) => {
   expectValue(duplicateIds(root)).toEqual([])
   expectValue(unkeyedDialogs(root)).toEqual([])
   expectValue(
-    Array.sort(idsOf(nodesOf(root).filter(isDialog)), Order.String),
+    Array.sort(idsOf(Array.filter(nodesOf(root), isDialog)), Order.String),
   ).toEqual(Array.sort(DIALOG_IDS, Order.String))
 })
 

@@ -1,4 +1,6 @@
+import { Function, String } from 'effect'
 import * as DateTime from 'effect/DateTime'
+import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
 import * as Schema from 'effect/Schema'
 
@@ -39,9 +41,13 @@ export const bodySize = (body: string): BodySize =>
 
 // NOTE: this version, or version 1 from a build cached before co-op
 // summaries, stored as a solo run.
-export const decodeSummary = Schema.decodeUnknownEffect(PostedRunJson)
+const decodePostedRun = Schema.decodeUnknownEffect(PostedRunJson)
 
-export const decodeShare = Schema.decodeUnknownEffect(PostedShareJson)
+export const decodeSummary = (input: unknown) => decodePostedRun(input)
+
+const decodePostedShare = Schema.decodeUnknownEffect(PostedShareJson)
+
+export const decodeShare = (input: unknown) => decodePostedShare(input)
 
 // RATE LIMITS
 
@@ -72,7 +78,7 @@ const isoOf = (nowMs: number): string =>
   DateTime.formatIso(DateTime.makeUnsafe(nowMs))
 
 export const utcDay = (nowMs: number): string =>
-  isoOf(nowMs).slice(0, DAY_LENGTH)
+  String.slice(0, DAY_LENGTH)(isoOf(nowMs))
 
 // RETENTION
 
@@ -90,11 +96,14 @@ export const retentionCutoffDay = (nowMs: number): string =>
 // NOTE: the address bucket is a hash of the IP with a secret salt and the UTC
 // day, so it changes every day and cannot be reversed without the salt. It is
 // only ever a rate limit key: it is never stored or logged.
-export const addressHashInput = (
-  salt: string,
-  day: string,
-  address: string,
-): string => `${salt}:${day}:${address}`
+export const addressHashInput: {
+  (day: string, address: string): (salt: string) => string
+  (salt: string, day: string, address: string): string
+} = Function.dual(
+  3,
+  (salt: string, day: string, address: string): string =>
+    `${salt}:${day}:${address}`,
+)
 
 export const visitRateKey = (visitId: string): string => `visit:${visitId}`
 
@@ -103,7 +112,7 @@ export const addressRateKey = (addressHash: string): string =>
 
 // ROWS
 
-const KillsJson = Schema.fromJsonString(SummaryKills)
+const encodeKills = Schema.encodeEffect(Schema.fromJsonString(SummaryKills))
 
 export type RunRow = Readonly<{
   received_at: string
@@ -171,30 +180,39 @@ const partyColumnsOf = (party: SummaryParty | SummaryPartyV2): PartyColumns =>
 const summaryPartyColumns = (summary: PostedRunSummary): PartyColumns =>
   summary.version === 1 ? SOLO_COLUMNS : partyColumnsOf(summary.party)
 
-export const rowOf = (summary: PostedRunSummary, nowMs: number): RunRow => ({
-  received_at: isoOf(nowMs),
-  received_day: utcDay(nowMs),
-  summary_version: summary.version,
-  visit_id: summary.visitId,
-  build: summary.build,
-  mode: summary.mode,
-  difficulty: summary.difficulty,
-  wave: summary.wave,
-  outcome: summary.outcome._tag,
-  killed_by:
-    summary.outcome._tag === 'GameOver' ? summary.outcome.killedBy : null,
-  run_ms: summary.runMs,
-  hearts_lost: summary.heartsLost,
-  purchases: summary.purchases,
-  power_ups_grabbed: summary.powerUpsGrabbed,
-  traps_placed: summary.trapsPlaced,
-  device: summary.device,
-  screen_fit: summary.screenFit,
-  frame_time: summary.frameTime,
-  kills: Schema.encodeSync(KillsJson)(summary.kills),
-  ...summaryPartyColumns(summary),
-  modifiers: 'modifiers' in summary ? summary.modifiers : 0,
-})
+// NOTE: the kills go in as JSON text. They were decoded from the same
+// Schema, so the encode cannot fail; if it did, the request dies as before.
+export const rowOf: {
+  (nowMs: number): (summary: PostedRunSummary) => Effect.Effect<RunRow>
+  (summary: PostedRunSummary, nowMs: number): Effect.Effect<RunRow>
+} = Function.dual(
+  2,
+  (summary: PostedRunSummary, nowMs: number): Effect.Effect<RunRow> =>
+    Effect.map(Effect.orDie(encodeKills(summary.kills)), (kills): RunRow => ({
+      received_at: isoOf(nowMs),
+      received_day: utcDay(nowMs),
+      summary_version: summary.version,
+      visit_id: summary.visitId,
+      build: summary.build,
+      mode: summary.mode,
+      difficulty: summary.difficulty,
+      wave: summary.wave,
+      outcome: summary.outcome._tag,
+      killed_by:
+        summary.outcome._tag === 'GameOver' ? summary.outcome.killedBy : null,
+      run_ms: summary.runMs,
+      hearts_lost: summary.heartsLost,
+      purchases: summary.purchases,
+      power_ups_grabbed: summary.powerUpsGrabbed,
+      traps_placed: summary.trapsPlaced,
+      device: summary.device,
+      screen_fit: summary.screenFit,
+      frame_time: summary.frameTime,
+      kills,
+      ...summaryPartyColumns(summary),
+      modifiers: 'modifiers' in summary ? summary.modifiers : 0,
+    })),
+)
 
 export type ShareRow = Readonly<{
   received_at: string
@@ -210,17 +228,20 @@ export type ShareRow = Readonly<{
 
 // NOTE: a version 1 event came before the share sheet, so its path was the
 // link.
-export const shareRowOf = (
-  event: ShareEvent | ShareEventV1,
-  nowMs: number,
-): ShareRow => ({
-  received_at: isoOf(nowMs),
-  received_day: utcDay(nowMs),
-  event_version: event.version,
-  visit_id: event.visitId,
-  build: event.build,
-  screen: event.screen,
-  mode: event.mode,
-  difficulty: event.difficulty,
-  path: 'path' in event ? event.path : 'Link',
-})
+export const shareRowOf: {
+  (nowMs: number): (event: ShareEvent | ShareEventV1) => ShareRow
+  (event: ShareEvent | ShareEventV1, nowMs: number): ShareRow
+} = Function.dual(
+  2,
+  (event: ShareEvent | ShareEventV1, nowMs: number): ShareRow => ({
+    received_at: isoOf(nowMs),
+    received_day: utcDay(nowMs),
+    event_version: event.version,
+    visit_id: event.visitId,
+    build: event.build,
+    screen: event.screen,
+    mode: event.mode,
+    difficulty: event.difficulty,
+    path: 'path' in event ? event.path : 'Link',
+  }),
+)

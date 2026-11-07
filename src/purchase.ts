@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { ammoCounterOffers, sellAmmo } from './ammoCounter'
@@ -72,16 +72,16 @@ export type Offer = Readonly<{
   isFull: boolean
 }>
 
-export const offersOf = (
-  world: World,
-  slot: PlayerSlot,
-): ReadonlyArray<Offer> => [
+export const offersOf: {
+  (slot: PlayerSlot): (world: World) => ReadonlyArray<Offer>
+  (world: World, slot: PlayerSlot): ReadonlyArray<Offer>
+} = Function.dual(2, (world: World, slot: PlayerSlot): ReadonlyArray<Offer> => [
   ...exitOffers(world),
   ...fridgeOffers(world, slot),
   ...ammoCounterOffers(world, slot),
   ...stoveOffers(world, slot),
   ...valveOffers(world),
-]
+])
 
 const buy = (
   world: World,
@@ -97,10 +97,10 @@ const buy = (
     Valve: () => buyValve(world, slot, offer.price),
   })
 
-export const isSamePurchasable = (
-  first: Purchasable,
-  second: Purchasable,
-): boolean =>
+export const isSamePurchasable: {
+  (second: Purchasable): (first: Purchasable) => boolean
+  (first: Purchasable, second: Purchasable): boolean
+} = Function.dual(2, (first: Purchasable, second: Purchasable): boolean =>
   Purchasable.match(first, {
     Exit: ({ exit }) => second._tag === 'Exit' && second.exit === exit,
     Fridge: () => second._tag === 'Fridge',
@@ -108,7 +108,8 @@ export const isSamePurchasable = (
     Ammo: () => second._tag === 'Ammo',
     Stove: () => second._tag === 'Stove',
     Valve: () => second._tag === 'Valve',
-  })
+  }),
+)
 
 // NOTE: how long the key holds to buy: half a second, but two at the
 // stove, since a cook is a choice for the rest of the run. Standing fills
@@ -125,10 +126,10 @@ const reachOf = (world: World, slot: PlayerSlot, offer: Offer): number =>
 // NOTE: a downed or bled-out player buys nothing (src/simulation.ts,
 // visitStall), so nothing is in their reach: no lit tag, hold button, or
 // spoken price for them.
-export const maybeOfferInReach = (
-  world: World,
-  slot: PlayerSlot,
-): Option.Option<Offer> =>
+export const maybeOfferInReach: {
+  (slot: PlayerSlot): (world: World) => Option.Option<Offer>
+  (world: World, slot: PlayerSlot): Option.Option<Offer>
+} = Function.dual(2, (world: World, slot: PlayerSlot): Option.Option<Offer> =>
   pipe(
     isOnFeet(seatStateAt(world, slot).seat) ? offersOf(world, slot) : [],
     Array.filter(offer => reachOf(world, slot, offer) <= offer.reachPx),
@@ -146,22 +147,29 @@ export const maybeOfferInReach = (
           ),
         ),
     }),
-  )
+  ),
+)
 
-export const maybeOfferOf = (
-  world: World,
-  slot: PlayerSlot,
-  target: Purchasable,
-): Option.Option<Offer> =>
-  Array.findFirst(offersOf(world, slot), offer =>
-    isSamePurchasable(offer.target, target),
-  )
+export const maybeOfferOf: {
+  (
+    slot: PlayerSlot,
+    target: Purchasable,
+  ): (world: World) => Option.Option<Offer>
+  (world: World, slot: PlayerSlot, target: Purchasable): Option.Option<Offer>
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, target: Purchasable): Option.Option<Offer> =>
+    Array.findFirst(offersOf(world, slot), offer =>
+      isSamePurchasable(offer.target, target),
+    ),
+)
 
-export const shortfallFor = (
-  world: World,
-  slot: PlayerSlot,
-  offer: Offer,
-): number => Math.max(0, offer.price - seatStateAt(world, slot).wallet.balance)
+export const shortfallFor: {
+  (slot: PlayerSlot, offer: Offer): (world: World) => number
+  (world: World, slot: PlayerSlot, offer: Offer): number
+} = Function.dual(3, (world: World, slot: PlayerSlot, offer: Offer): number =>
+  Math.max(0, offer.price - seatStateAt(world, slot).wallet.balance),
+)
 
 // NOTE: how far the hold has filled, from 0 to 1. `heldMs` counts in the
 // key's time: standing adds to it at half speed.
@@ -178,15 +186,21 @@ export const holdProgress = (purchase: Purchase): number =>
 // NOTE: standing still to buy: not moving, firing, or stabbing (the
 // trigger, with the knife in hand), the shop shut, and the wave past its
 // first moments.
-export const isStandingToBuy = (world: World, slot: PlayerSlot): boolean =>
-  seatStateAt(world, slot).intent.move.x === 0 &&
-  seatStateAt(world, slot).intent.move.y === 0 &&
-  seatStateAt(world, slot).intent.trigger === 'Released' &&
-  !ShopState.isAnyOf(['Browsing'])(seatStateAt(world, slot).shop) &&
-  !(
-    Phase.isAnyOf(['Wave'])(world.phase) &&
-    world.phase.elapsedMs < PURCHASE_RULES.waveGraceMs
-  )
+export const isStandingToBuy: {
+  (slot: PlayerSlot): (world: World) => boolean
+  (world: World, slot: PlayerSlot): boolean
+} = Function.dual(
+  2,
+  (world: World, slot: PlayerSlot): boolean =>
+    seatStateAt(world, slot).intent.move.x === 0 &&
+    seatStateAt(world, slot).intent.move.y === 0 &&
+    seatStateAt(world, slot).intent.trigger === 'Released' &&
+    !ShopState.isAnyOf(['Browsing'])(seatStateAt(world, slot).shop) &&
+    !(
+      Phase.isAnyOf(['Wave'])(world.phase) &&
+      world.phase.elapsedMs < PURCHASE_RULES.waveGraceMs
+    ),
+)
 
 const STAND_RATE = PURCHASE_RULES.holdMs / PURCHASE_RULES.standMs
 
@@ -239,89 +253,91 @@ const complete = (world: World, slot: PlayerSlot, offer: Offer): World =>
 
 // NOTE: one tick of the seat at `slot` at whatever it may be holding the
 // interact key beside. Called for standing players.
-export const advancePurchase = (
-  world: World,
-  slot: PlayerSlot,
-  deltaMs: number,
-): World => {
-  const isHeld = seatStateAt(world, slot).intent.interact === 'Held'
-  const isStanding = isStandingToBuy(world, slot)
-  const fromIdle = (): World =>
-    Option.match(maybeOfferInReach(world, slot), {
-      onNone: () => world,
-      onSome: offer =>
-        isHeld
-          ? press(world, slot, offer)
-          : isStanding &&
-              !offer.isFull &&
-              shortfallFor(world, slot, offer) === 0
-            ? withPurchase(
-                world,
-                slot,
-                Purchase.Holding({
-                  target: offer.target,
-                  heldMs: deltaMs * STAND_RATE,
-                }),
-              )
-            : world,
-    })
-  return Purchase.match(seatStateAt(world, slot).purchase, {
-    Idle: fromIdle,
-    Holding: ({ target, heldMs }) => {
-      const maybeHeld = Option.filter(maybeOfferInReach(world, slot), offer =>
-        isSamePurchasable(offer.target, target),
-      )
-      if ((!isHeld && !isStanding) || Option.isNone(maybeHeld)) {
-        return withPurchase(world, slot, Purchase.Idle())
-      }
-      const nextMs = heldMs + (isHeld ? deltaMs : deltaMs * STAND_RATE)
-      return nextMs >= holdMsOf(target)
-        ? complete(world, slot, maybeHeld.value)
-        : withPurchase(
-            world,
-            slot,
-            Purchase.Holding({ target, heldMs: nextMs }),
-          )
-    },
-    Refused: ({ target, shortBy, sinceMs }) => {
-      const nextMs = Math.min(PURCHASE_RULES.refusedMs, sinceMs + deltaMs)
-      return !isHeld && nextMs >= PURCHASE_RULES.refusedMs
-        ? withPurchase(world, slot, Purchase.Idle())
-        : withPurchase(
-            world,
-            slot,
-            Purchase.Refused({ target, shortBy, sinceMs: nextMs }),
-          )
-    },
-    Done: () =>
-      isHeld
-        ? world
-        : withPurchase(
-            world,
-            slot,
-            isStanding ? Purchase.Spent() : Purchase.Idle(),
-          ),
-    Spent: () =>
-      isHeld
-        ? fromIdle()
-        : isStanding
-          ? world
-          : withPurchase(world, slot, Purchase.Idle()),
-    Tapped: ({ target }) =>
-      Option.match(
-        Option.filter(maybeOfferInReach(world, slot), offer =>
+export const advancePurchase: {
+  (slot: PlayerSlot, deltaMs: number): (world: World) => World
+  (world: World, slot: PlayerSlot, deltaMs: number): World
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, deltaMs: number): World => {
+    const isHeld = seatStateAt(world, slot).intent.interact === 'Held'
+    const isStanding = isStandingToBuy(world, slot)
+    const fromIdle = (): World =>
+      Option.match(maybeOfferInReach(world, slot), {
+        onNone: () => world,
+        onSome: offer =>
+          isHeld
+            ? press(world, slot, offer)
+            : isStanding &&
+                !offer.isFull &&
+                shortfallFor(world, slot, offer) === 0
+              ? withPurchase(
+                  world,
+                  slot,
+                  Purchase.Holding({
+                    target: offer.target,
+                    heldMs: deltaMs * STAND_RATE,
+                  }),
+                )
+              : world,
+      })
+    return Purchase.match(seatStateAt(world, slot).purchase, {
+      Idle: fromIdle,
+      Holding: ({ target, heldMs }) => {
+        const maybeHeld = Option.filter(maybeOfferInReach(world, slot), offer =>
           isSamePurchasable(offer.target, target),
+        )
+        if ((!isHeld && !isStanding) || Option.isNone(maybeHeld)) {
+          return withPurchase(world, slot, Purchase.Idle())
+        }
+        const nextMs = heldMs + (isHeld ? deltaMs : deltaMs * STAND_RATE)
+        return nextMs >= holdMsOf(target)
+          ? complete(world, slot, maybeHeld.value)
+          : withPurchase(
+              world,
+              slot,
+              Purchase.Holding({ target, heldMs: nextMs }),
+            )
+      },
+      Refused: ({ target, shortBy, sinceMs }) => {
+        const nextMs = Math.min(PURCHASE_RULES.refusedMs, sinceMs + deltaMs)
+        return !isHeld && nextMs >= PURCHASE_RULES.refusedMs
+          ? withPurchase(world, slot, Purchase.Idle())
+          : withPurchase(
+              world,
+              slot,
+              Purchase.Refused({ target, shortBy, sinceMs: nextMs }),
+            )
+      },
+      Done: () =>
+        isHeld
+          ? world
+          : withPurchase(
+              world,
+              slot,
+              isStanding ? Purchase.Spent() : Purchase.Idle(),
+            ),
+      Spent: () =>
+        isHeld
+          ? fromIdle()
+          : isStanding
+            ? world
+            : withPurchase(world, slot, Purchase.Idle()),
+      Tapped: ({ target }) =>
+        Option.match(
+          Option.filter(maybeOfferInReach(world, slot), offer =>
+            isSamePurchasable(offer.target, target),
+          ),
+          {
+            onNone: () => withPurchase(world, slot, Purchase.Idle()),
+            onSome: offer =>
+              offer.isFull || shortfallFor(world, slot, offer) > 0
+                ? refuse(world, slot, offer)
+                : complete(world, slot, offer),
+          },
         ),
-        {
-          onNone: () => withPurchase(world, slot, Purchase.Idle()),
-          onSome: offer =>
-            offer.isFull || shortfallFor(world, slot, offer) > 0
-              ? refuse(world, slot, offer)
-              : complete(world, slot, offer),
-        },
-      ),
-  })
-}
+    })
+  },
+)
 
 // TAP TO BUY
 
@@ -338,21 +354,27 @@ const isTappable = (offer: Offer): boolean =>
   Purchasable.isAnyOf(['Ammo'])(offer.target)
 
 // NOTE: the offer in reach a tap buys at once, if any.
-export const maybeTapOffer = (
-  world: World,
-  slot: PlayerSlot,
-): Option.Option<Offer> =>
-  Option.filter(maybeOfferInReach(world, slot), isTappable)
+export const maybeTapOffer: {
+  (slot: PlayerSlot): (world: World) => Option.Option<Offer>
+  (world: World, slot: PlayerSlot): Option.Option<Offer>
+} = Function.dual(2, (world: World, slot: PlayerSlot): Option.Option<Offer> =>
+  Option.filter(maybeOfferInReach(world, slot), isTappable),
+)
 
-export const tapToBuy = (
-  world: World,
-  slot: PlayerSlot,
-): Option.Option<World> =>
+export const tapToBuy: {
+  (slot: PlayerSlot): (world: World) => Option.Option<World>
+  (world: World, slot: PlayerSlot): Option.Option<World>
+} = Function.dual(2, (world: World, slot: PlayerSlot): Option.Option<World> =>
   Option.map(maybeTapOffer(world, slot), offer =>
     withPurchase(world, slot, Purchase.Tapped({ target: offer.target })),
-  )
+  ),
+)
 
 // NOTE: whether the interact key belongs to a purchasable right now, so a
 // press there holds to buy instead of starting the wave.
-export const isInteractTaken = (world: World, slot: PlayerSlot): boolean =>
-  Option.isSome(maybeOfferInReach(world, slot))
+export const isInteractTaken: {
+  (slot: PlayerSlot): (world: World) => boolean
+  (world: World, slot: PlayerSlot): boolean
+} = Function.dual(2, (world: World, slot: PlayerSlot): boolean =>
+  Option.isSome(maybeOfferInReach(world, slot)),
+)

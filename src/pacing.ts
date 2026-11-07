@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { type Level, boxCenter, distanceToBox, levelOf } from './arena'
@@ -276,49 +276,76 @@ const rest = (
 // QUIET_HURRY_MS of quiet it skips ahead to the next pack's warning, never
 // past a hold. Only timing changes, never a door or a kind, so the preview
 // stays exact.
-export const stepBeat = (
-  pacing: Pacing,
-  clockMs: number,
-  worldMs: number,
-  crowd: Crowd,
-  intensity: number,
-  spawns: ReadonlyArray<PlannedSpawn>,
-): Paced => {
-  const quieted = modifyFields(pacing, {
-    quietMs: quietMs =>
-      isRoomQuiet(pacing, crowd, spawns) ? quietMs + worldMs : 0,
-  })
-  return Beat.match(quieted.beat, {
-    Flowing: () => hurry(flow(quieted, clockMs, worldMs), spawns),
-    Fading: ({ releaseBelow, relaxMs, waitedMs }) => ({
-      pacing: withBeat(
-        quieted,
-        fade(releaseBelow, relaxMs, waitedMs + worldMs, crowd),
-      ),
-      clockMs,
-      spawns,
-    }),
-    Resting: ({ remainingMs, extendedMs, trickled }) =>
-      rest(
-        quieted,
-        { remainingMs, extendedMs, trickled },
+export const stepBeat: {
+  (
+    clockMs: number,
+    worldMs: number,
+    crowd: Crowd,
+    intensity: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): (pacing: Pacing) => Paced
+  (
+    pacing: Pacing,
+    clockMs: number,
+    worldMs: number,
+    crowd: Crowd,
+    intensity: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): Paced
+} = Function.dual(
+  6,
+  (
+    pacing: Pacing,
+    clockMs: number,
+    worldMs: number,
+    crowd: Crowd,
+    intensity: number,
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): Paced => {
+    const quieted = modifyFields(pacing, {
+      quietMs: quietMs =>
+        isRoomQuiet(pacing, crowd, spawns) ? quietMs + worldMs : 0,
+    })
+    return Beat.match(quieted.beat, {
+      Flowing: () => hurry(flow(quieted, clockMs, worldMs), spawns),
+      Fading: ({ releaseBelow, relaxMs, waitedMs }) => ({
+        pacing: withBeat(
+          quieted,
+          fade(releaseBelow, relaxMs, waitedMs + worldMs, crowd),
+        ),
         clockMs,
-        worldMs,
-        intensity,
         spawns,
-      ),
-  })
-}
+      }),
+      Resting: ({ remainingMs, extendedMs, trickled }) =>
+        rest(
+          quieted,
+          { remainingMs, extendedMs, trickled },
+          clockMs,
+          worldMs,
+          intensity,
+          spawns,
+        ),
+    })
+  },
+)
 
-export const waitingCount = (
-  spawns: ReadonlyArray<PlannedSpawn>,
-  clockMs: number,
-): number => Array.filter(spawns, isDue(clockMs)).length
+export const waitingCount: {
+  (clockMs: number): (spawns: ReadonlyArray<PlannedSpawn>) => number
+  (spawns: ReadonlyArray<PlannedSpawn>, clockMs: number): number
+} = Function.dual(
+  2,
+  (spawns: ReadonlyArray<PlannedSpawn>, clockMs: number): number =>
+    Array.filter(spawns, isDue(clockMs)).length,
+)
 
 // TELEGRAPHS
 
-export const warningPoint = (level: Level, door: DoorId): Vector =>
-  boxCenter(level.thresholds[door].box)
+export const warningPoint: {
+  (door: DoorId): (level: Level) => Vector
+  (level: Level, door: DoorId): Vector
+} = Function.dual(2, (level: Level, door: DoorId): Vector =>
+  boxCenter(level.thresholds[door].box),
+)
 
 const firstOfEachPack = (
   spawns: ReadonlyArray<PlannedSpawn>,
@@ -382,18 +409,31 @@ const isDueToWarn =
 // a fade, a relax, or the boss's entrance: its spawns come stalledMs sooner
 // on the clock, so it walks in when its warning ends. Only timing changes,
 // never a door or a kind, so the preview stays exact.
-export const keepWarnedOnTime = (
-  spawns: ReadonlyArray<PlannedSpawn>,
-  warnedPacks: ReadonlyArray<number>,
-  stalledMs: number,
-): ReadonlyArray<PlannedSpawn> =>
-  stalledMs <= 0 || Array.isReadonlyArrayEmpty(warnedPacks)
-    ? spawns
-    : Array.map(spawns, spawn =>
-        isThroughDoor(spawn) && isWarned(warnedPacks)(spawn)
-          ? modifyFields(spawn, { atMs: atMs => atMs - stalledMs })
-          : spawn,
-      )
+export const keepWarnedOnTime: {
+  (
+    warnedPacks: ReadonlyArray<number>,
+    stalledMs: number,
+  ): (spawns: ReadonlyArray<PlannedSpawn>) => ReadonlyArray<PlannedSpawn>
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    warnedPacks: ReadonlyArray<number>,
+    stalledMs: number,
+  ): ReadonlyArray<PlannedSpawn>
+} = Function.dual(
+  3,
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    warnedPacks: ReadonlyArray<number>,
+    stalledMs: number,
+  ): ReadonlyArray<PlannedSpawn> =>
+    stalledMs <= 0 || Array.isReadonlyArrayEmpty(warnedPacks)
+      ? spawns
+      : Array.map(spawns, spawn =>
+          isThroughDoor(spawn) && isWarned(warnedPacks)(spawn)
+            ? modifyFields(spawn, { atMs: atMs => atMs - stalledMs })
+            : spawn,
+        ),
+)
 
 const noPacks: ReadonlyArray<number> = []
 
@@ -402,176 +442,260 @@ const noPacks: ReadonlyArray<number> = []
 // every zombie in the room and every one of a warned pack still to come
 // takes a place, and a pack warns, in time order, while one is left for its
 // first zombie. So a door only rattles for a pack that can come in.
-export const packsWaitingToWarn = (
-  spawns: ReadonlyArray<PlannedSpawn>,
-  warnedPacks: ReadonlyArray<number>,
-  zombieCount: number,
-  clockMs: number,
-  isHeld: boolean,
-): ReadonlyArray<number> => {
-  const packs = pipe(
-    spawns,
-    Array.filter(isDueToWarn(warnedPacks, clockMs)),
-    Array.sort(bySpawnTime),
-    firstOfEachPack,
-  )
-  if (isHeld) {
-    return Array.map(packs, ({ pack }) => pack)
-  }
+export const packsWaitingToWarn: {
+  (
+    warnedPacks: ReadonlyArray<number>,
+    zombieCount: number,
+    clockMs: number,
+    isHeld: boolean,
+  ): (spawns: ReadonlyArray<PlannedSpawn>) => ReadonlyArray<number>
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    warnedPacks: ReadonlyArray<number>,
+    zombieCount: number,
+    clockMs: number,
+    isHeld: boolean,
+  ): ReadonlyArray<number>
+} = Function.dual(
+  5,
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    warnedPacks: ReadonlyArray<number>,
+    zombieCount: number,
+    clockMs: number,
+    isHeld: boolean,
+  ): ReadonlyArray<number> => {
+    const packs = pipe(
+      spawns,
+      Array.filter(isDueToWarn(warnedPacks, clockMs)),
+      Array.sort(bySpawnTime),
+      firstOfEachPack,
+    )
+    if (isHeld) {
+      return Array.map(packs, ({ pack }) => pack)
+    }
 
-  const coming = Array.filter(
-    spawns,
-    spawn => isThroughDoor(spawn) && isWarned(warnedPacks)(spawn),
-  ).length
-  return Array.reduce(
-    packs,
-    { places: ZOMBIE_ALIVE_MAX - zombieCount - coming, waiting: noPacks },
-    ({ places, waiting }, { pack }) =>
-      places > 0
-        ? {
-            places:
-              places -
-              Array.filter(spawns, spawn => spawn.pack === pack).length,
-            waiting,
-          }
-        : { places, waiting: Array.append(waiting, pack) },
-  ).waiting
-}
+    const coming = Array.filter(
+      spawns,
+      spawn => isThroughDoor(spawn) && isWarned(warnedPacks)(spawn),
+    ).length
+    return Array.reduce(
+      packs,
+      { places: ZOMBIE_ALIVE_MAX - zombieCount - coming, waiting: noPacks },
+      ({ places, waiting }, { pack }) =>
+        places > 0
+          ? {
+              places:
+                places -
+                Array.filter(spawns, spawn => spawn.pack === pack).length,
+              waiting,
+            }
+          : { places, waiting: Array.append(waiting, pack) },
+    ).waiting
+  },
+)
 
 // NOTE: a pack waiting to warn stays a whole warning away on the clock, its
 // first zombie PACK_WARNING_MS ahead and the rest at their gaps behind it,
 // so once it may warn it walks in when the warning ends.
-export const delayWaitingPacks = (
-  spawns: ReadonlyArray<PlannedSpawn>,
-  waiting: ReadonlyArray<number>,
-  clockMs: number,
-): ReadonlyArray<PlannedSpawn> => {
-  if (Array.isReadonlyArrayEmpty(waiting)) {
-    return spawns
-  }
-  // NOTE: how far each waiting pack shifts, found once in one pass over the
-  // spawns: its first zombie's time decides it.
-  const firsts = Array.map(waiting, () => Number.POSITIVE_INFINITY)
-  Array.forEach(spawns, spawn => {
-    const at = waiting.indexOf(spawn.pack)
-    if (at >= 0) {
-      firsts[at] = Math.min(firsts[at] ?? spawn.atMs, spawn.atMs)
+export const delayWaitingPacks: {
+  (
+    waiting: ReadonlyArray<number>,
+    clockMs: number,
+  ): (spawns: ReadonlyArray<PlannedSpawn>) => ReadonlyArray<PlannedSpawn>
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    waiting: ReadonlyArray<number>,
+    clockMs: number,
+  ): ReadonlyArray<PlannedSpawn>
+} = Function.dual(
+  3,
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    waiting: ReadonlyArray<number>,
+    clockMs: number,
+  ): ReadonlyArray<PlannedSpawn> => {
+    if (Array.isReadonlyArrayEmpty(waiting)) {
+      return spawns
     }
-  })
-  return Array.map(spawns, spawn => {
-    const at = waiting.indexOf(spawn.pack)
-    if (at < 0) {
-      return spawn
+    // NOTE: how far each waiting pack shifts, found once in one pass over the
+    // spawns: its first zombie's time decides it.
+    const firsts = Array.map(waiting, () => Number.POSITIVE_INFINITY)
+    Array.forEach(spawns, spawn => {
+      const at = waiting.indexOf(spawn.pack)
+      if (at >= 0) {
+        firsts[at] = Math.min(firsts[at] ?? spawn.atMs, spawn.atMs)
+      }
+    })
+    return Array.map(spawns, spawn => {
+      const at = waiting.indexOf(spawn.pack)
+      if (at < 0) {
+        return spawn
+      }
+      const firstMs = firsts[at] ?? spawn.atMs
+      const shiftMs = Math.max(0, clockMs + PACK_WARNING_MS - firstMs)
+      return modifyFields(spawn, { atMs: atMs => atMs + shiftMs })
+    })
+  },
+)
+
+export const warnPacks: {
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    routed: ReadonlyArray<PlannedSpawn>,
+    clockMs: number,
+    waiting: ReadonlyArray<number>,
+  ): (model: World) => World
+  (
+    model: World,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    routed: ReadonlyArray<PlannedSpawn>,
+    clockMs: number,
+    waiting: ReadonlyArray<number>,
+  ): World
+} = Function.dual(
+  5,
+  (
+    model: World,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    routed: ReadonlyArray<PlannedSpawn>,
+    clockMs: number,
+    waiting: ReadonlyArray<number>,
+  ): World => {
+    const warnedPacks = model.pacing.warnedPacks
+    const fresh = pipe(
+      routed,
+      Array.filter(
+        spawn =>
+          isDueToWarn(warnedPacks, clockMs)(spawn) &&
+          !Array.contains(waiting, spawn.pack),
+      ),
+      firstOfEachPack,
+    )
+    const frenzied = Array.filter(fresh, spawn =>
+      isFrenzyPack(model.frenzyPacks, spawn.pack),
+    )
+    if (Array.isReadonlyArrayEmpty(fresh)) {
+      return model
     }
-    const firstMs = firsts[at] ?? spawn.atMs
-    const shiftMs = Math.max(0, clockMs + PACK_WARNING_MS - firstMs)
-    return modifyFields(spawn, { atMs: atMs => atMs + shiftMs })
-  })
-}
 
-export const warnPacks = (
-  model: World,
-  spawns: ReadonlyArray<PlannedSpawn>,
-  routed: ReadonlyArray<PlannedSpawn>,
-  clockMs: number,
-  waiting: ReadonlyArray<number>,
-): World => {
-  const warnedPacks = model.pacing.warnedPacks
-  const fresh = pipe(
-    routed,
-    Array.filter(
-      spawn =>
-        isDueToWarn(warnedPacks, clockMs)(spawn) &&
-        !Array.contains(waiting, spawn.pack),
-    ),
-    firstOfEachPack,
-  )
-  const frenzied = Array.filter(fresh, spawn =>
-    isFrenzyPack(model.frenzyPacks, spawn.pack),
-  )
-  if (Array.isReadonlyArrayEmpty(fresh)) {
-    return model
-  }
+    return modifyFields(model, {
+      pacing: pacing =>
+        modifyFields(pacing, {
+          warnedPacks: () => [
+            ...warnedPacks,
+            ...Array.map(fresh, ({ pack }) => pack),
+          ],
+          packDoors: packDoors => [
+            ...packDoors,
+            ...Array.map(fresh, ({ pack, door }) => ({
+              pack,
+              planned: plannedDoorOf(spawns, routed, pack),
+              door,
+            })),
+          ],
+          alarm: alarm => ringFor(alarm, fresh),
+        }),
+      frameEvents: frameEvents => [
+        ...frameEvents,
+        ...Array.map(fresh, warnedEvent(levelOf(model))),
+        ...Array.map(frenzied, frenziedEvent(levelOf(model))),
+      ],
+    })
+  },
+)
 
-  return modifyFields(model, {
-    pacing: pacing =>
-      modifyFields(pacing, {
-        warnedPacks: () => [
-          ...warnedPacks,
-          ...Array.map(fresh, ({ pack }) => pack),
-        ],
-        packDoors: packDoors => [
-          ...packDoors,
-          ...Array.map(fresh, ({ pack, door }) => ({
-            pack,
-            planned: plannedDoorOf(spawns, routed, pack),
-            door,
-          })),
-        ],
-        alarm: alarm => ringFor(alarm, fresh),
-      }),
-    frameEvents: frameEvents => [
-      ...frameEvents,
-      ...Array.map(fresh, warnedEvent(levelOf(model))),
-      ...Array.map(frenzied, frenziedEvent(levelOf(model))),
-    ],
-  })
-}
-
-export const quietAlarm = (alarm: Alarm, worldMs: number): Alarm =>
+export const quietAlarm: {
+  (worldMs: number): (alarm: Alarm) => Alarm
+  (alarm: Alarm, worldMs: number): Alarm
+} = Function.dual(2, (alarm: Alarm, worldMs: number): Alarm =>
   Alarm.match(alarm, {
     Quiet: () => alarm,
     Ringing: ({ remainingMs }) =>
       remainingMs > worldMs
         ? Alarm.Ringing({ remainingMs: remainingMs - worldMs })
         : Alarm.Quiet(),
-  })
+  }),
+)
 
-export const rattlingDoors = (
-  routed: ReadonlyArray<PlannedSpawn>,
-  warnedPacks: ReadonlyArray<number>,
-): ReadonlyArray<DoorId> =>
-  pipe(
-    routed,
-    Array.filter(
-      spawn => isThroughDoor(spawn) && Array.contains(warnedPacks, spawn.pack),
+export const rattlingDoors: {
+  (
+    warnedPacks: ReadonlyArray<number>,
+  ): (routed: ReadonlyArray<PlannedSpawn>) => ReadonlyArray<DoorId>
+  (
+    routed: ReadonlyArray<PlannedSpawn>,
+    warnedPacks: ReadonlyArray<number>,
+  ): ReadonlyArray<DoorId>
+} = Function.dual(
+  2,
+  (
+    routed: ReadonlyArray<PlannedSpawn>,
+    warnedPacks: ReadonlyArray<number>,
+  ): ReadonlyArray<DoorId> =>
+    pipe(
+      routed,
+      Array.filter(
+        spawn =>
+          isThroughDoor(spawn) && Array.contains(warnedPacks, spawn.pack),
+      ),
+      Array.map(({ door }) => door),
+      Array.dedupe,
     ),
-    Array.map(({ door }) => door),
-    Array.dedupe,
-  )
+)
 
 // DOORWAY CAMPING
 
 const isCampingDoor = (level: Level, player: Vector, door: DoorId): boolean =>
   distanceToBox(player, level.thresholds[door].box) <= DOOR_CAMP_REACH_PX
 
-export const delayCampedPacks = (
-  level: Level,
-  spawns: ReadonlyArray<PlannedSpawn>,
-  routed: ReadonlyArray<PlannedSpawn>,
-  clockMs: number,
-  worldMs: number,
-  players: ReadonlyArray<Vector>,
-): ReadonlyArray<PlannedSpawn> => {
-  const campedPacks = pipe(
-    routed,
-    Array.filter(
-      spawn =>
-        isDue(clockMs)(spawn) &&
-        isThroughDoor(spawn) &&
-        Array.some(players, player => isCampingDoor(level, player, spawn.door)),
-    ),
-    Array.map(({ pack }) => pack),
-    Array.dedupe,
-  )
-  return Array.isReadonlyArrayEmpty(campedPacks)
-    ? spawns
-    : Array.map(spawns, spawn =>
-        Array.contains(campedPacks, spawn.pack)
-          ? modifyFields(spawn, { atMs: atMs => atMs + worldMs })
-          : spawn,
-      )
-}
+export const delayCampedPacks: {
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+    routed: ReadonlyArray<PlannedSpawn>,
+    clockMs: number,
+    worldMs: number,
+    players: ReadonlyArray<Vector>,
+  ): (level: Level) => ReadonlyArray<PlannedSpawn>
+  (
+    level: Level,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    routed: ReadonlyArray<PlannedSpawn>,
+    clockMs: number,
+    worldMs: number,
+    players: ReadonlyArray<Vector>,
+  ): ReadonlyArray<PlannedSpawn>
+} = Function.dual(
+  6,
+  (
+    level: Level,
+    spawns: ReadonlyArray<PlannedSpawn>,
+    routed: ReadonlyArray<PlannedSpawn>,
+    clockMs: number,
+    worldMs: number,
+    players: ReadonlyArray<Vector>,
+  ): ReadonlyArray<PlannedSpawn> => {
+    const campedPacks = pipe(
+      routed,
+      Array.filter(
+        spawn =>
+          isDue(clockMs)(spawn) &&
+          isThroughDoor(spawn) &&
+          Array.some(players, player =>
+            isCampingDoor(level, player, spawn.door),
+          ),
+      ),
+      Array.map(({ pack }) => pack),
+      Array.dedupe,
+    )
+    return Array.isReadonlyArrayEmpty(campedPacks)
+      ? spawns
+      : Array.map(spawns, spawn =>
+          Array.contains(campedPacks, spawn.pack)
+            ? modifyFields(spawn, { atMs: atMs => atMs + worldMs })
+            : spawn,
+        )
+  },
+)
 
 // INTENSITY
 
@@ -587,22 +711,39 @@ const isClose =
 // NOTE: in co-op, `heartsLost` is the whole crew's and a zombie counts as
 // close when it is close to any player, so the music rises for everyone
 // when anyone is in trouble. One player counts exactly as before.
-export const advanceIntensity = (
-  intensity: number,
-  heartsLost: number,
-  zombies: ReadonlyArray<Zombie>,
-  players: ReadonlyArray<Vector>,
-  deltaMs: number,
-): number => {
-  const seconds = deltaMs / MS_PER_SECOND
-  const close = Array.filter(zombies, zombie =>
-    Array.some(players, player => isClose(player)(zombie)),
-  ).length
-  const decayed = intensity * Math.exp(-INTENSITY_DECAY_PER_SECOND * seconds)
-  return Math.min(
-    INTENSITY_MAX,
-    decayed +
-      heartsLost * INTENSITY_PER_HEART +
-      close * INTENSITY_PER_CLOSE_ZOMBIE_PER_SECOND * seconds,
-  )
-}
+export const advanceIntensity: {
+  (
+    heartsLost: number,
+    zombies: ReadonlyArray<Zombie>,
+    players: ReadonlyArray<Vector>,
+    deltaMs: number,
+  ): (intensity: number) => number
+  (
+    intensity: number,
+    heartsLost: number,
+    zombies: ReadonlyArray<Zombie>,
+    players: ReadonlyArray<Vector>,
+    deltaMs: number,
+  ): number
+} = Function.dual(
+  5,
+  (
+    intensity: number,
+    heartsLost: number,
+    zombies: ReadonlyArray<Zombie>,
+    players: ReadonlyArray<Vector>,
+    deltaMs: number,
+  ): number => {
+    const seconds = deltaMs / MS_PER_SECOND
+    const close = Array.filter(zombies, zombie =>
+      Array.some(players, player => isClose(player)(zombie)),
+    ).length
+    const decayed = intensity * Math.exp(-INTENSITY_DECAY_PER_SECOND * seconds)
+    return Math.min(
+      INTENSITY_MAX,
+      decayed +
+        heartsLost * INTENSITY_PER_HEART +
+        close * INTENSITY_PER_CLOSE_ZOMBIE_PER_SECOND * seconds,
+    )
+  },
+)

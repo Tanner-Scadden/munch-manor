@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Option, Struct } from 'effect'
 import {
   all,
   click,
@@ -38,7 +38,11 @@ const withKills = (
       modifyFields(bests, {
         killsByKind: byKind => ({ ...byKind, ...kills }),
         totalKills: () =>
-          Array.reduce(Object.values(kills), 0, (sum, count) => sum + count),
+          Array.reduce(
+            Struct.keys(kills),
+            0,
+            (sum, kind) => sum + (kills[kind] ?? 0),
+          ),
       }),
   })
 

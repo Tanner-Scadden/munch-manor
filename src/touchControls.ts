@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import { isOutOfGuns } from './ammoWarning'
@@ -79,31 +79,49 @@ type IconButton = Readonly<{
   maybePressed?: boolean
 }>
 
-export const iconButtonView = (
-  button: IconButton,
-  h: ApplicationViewBuilder,
-  children: ReadonlyArray<Html> = [],
-): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.Class(`icon-button ${button.className}`),
-      h.AriaLabel(button.label),
-      ...(button.keys === undefined ? [] : [h.AriaKeyshortcuts(button.keys)]),
-      ...(button.maybePressed === undefined
-        ? []
-        : [h.AriaPressed(button.maybePressed ? 'true' : 'false')]),
-      h.OnClick(button.message, { focusSelector: '.game-surface' }),
-    ],
-    [
-      h.span([
-        h.Class('icon-button-glyph'),
-        h.AriaHidden(true),
-        h.Style({ backgroundImage: button.icon }),
-      ]),
-      ...children,
-    ],
-  )
+// NOTE: a call is data-first when its second argument is the view builder;
+// in the data-last form it is the children (an array), or missing.
+const isButtonFirst = (args: IArguments): boolean =>
+  args.length >= 2 && !Array.isArray(args[1])
+
+export const iconButtonView: {
+  (
+    h: ApplicationViewBuilder,
+    children?: ReadonlyArray<Html>,
+  ): (button: IconButton) => Html
+  (
+    button: IconButton,
+    h: ApplicationViewBuilder,
+    children?: ReadonlyArray<Html>,
+  ): Html
+} = Function.dual(
+  isButtonFirst,
+  (
+    button: IconButton,
+    h: ApplicationViewBuilder,
+    children: ReadonlyArray<Html> = [],
+  ): Html =>
+    h.button(
+      [
+        h.Type('button'),
+        h.Class(`icon-button ${button.className}`),
+        h.AriaLabel(button.label),
+        ...(button.keys === undefined ? [] : [h.AriaKeyshortcuts(button.keys)]),
+        ...(button.maybePressed === undefined
+          ? []
+          : [h.AriaPressed(button.maybePressed ? 'true' : 'false')]),
+        h.OnClick(button.message, { focusSelector: '.game-surface' }),
+      ],
+      [
+        h.span([
+          h.Class('icon-button-glyph'),
+          h.AriaHidden(true),
+          h.Style({ backgroundImage: button.icon }),
+        ]),
+        ...children,
+      ],
+    ),
+)
 
 const isOnTouch = (model: Model): boolean => model.lastDevice === 'Touch'
 
@@ -640,46 +658,49 @@ const clusterView = (
   )
 }
 
-export const gunClusterView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
-  isClusterUp(model) ? clusterView(model, screenOf(model), h) : h.empty
+export const gunClusterView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
+  isClusterUp(model) ? clusterView(model, screenOf(model), h) : h.empty,
+)
 
 // STICKS
 
-export const stickView = (
-  stick: Stick,
-  label: string,
-  h: ApplicationViewBuilder,
-): Html =>
-  Stick.match(stick, {
-    Idle: () => h.empty,
-    Active: active => {
-      const offset = thumbOffset(active)
-      return h.div(
-        [
-          h.Class('touch-stick'),
-          h.DataAttribute('stick', label),
-          h.AriaHidden(true),
-          h.Style({
-            left: `${active.originX - STICK_RADIUS_PX}px`,
-            top: `${active.originY - STICK_RADIUS_PX}px`,
-            width: `${STICK_RADIUS_PX * 2}px`,
-            height: `${STICK_RADIUS_PX * 2}px`,
-          }),
-        ],
-        [
-          h.div([
-            h.Class('touch-stick-thumb'),
+export const stickView: {
+  (label: string, h: ApplicationViewBuilder): (stick: Stick) => Html
+  (stick: Stick, label: string, h: ApplicationViewBuilder): Html
+} = Function.dual(
+  3,
+  (stick: Stick, label: string, h: ApplicationViewBuilder): Html =>
+    Stick.match(stick, {
+      Idle: () => h.empty,
+      Active: active => {
+        const offset = thumbOffset(active)
+        return h.div(
+          [
+            h.Class('touch-stick'),
+            h.DataAttribute('stick', label),
+            h.AriaHidden(true),
             h.Style({
-              transform: `translate(${offset.x}px, ${offset.y}px)`,
+              left: `${active.originX - STICK_RADIUS_PX}px`,
+              top: `${active.originY - STICK_RADIUS_PX}px`,
+              width: `${STICK_RADIUS_PX * 2}px`,
+              height: `${STICK_RADIUS_PX * 2}px`,
             }),
-          ]),
-        ],
-      )
-    },
-  })
+          ],
+          [
+            h.div([
+              h.Class('touch-stick-thumb'),
+              h.Style({
+                transform: `translate(${offset.x}px, ${offset.y}px)`,
+              }),
+            ]),
+          ],
+        )
+      },
+    }),
+)
 
 // PREPARATION
 
@@ -700,10 +721,10 @@ const preparationTimerView = (
     ],
   )
 
-export const preparationControlsView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const preparationControlsView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   Phase.match(model.phase, {
     Ready: () => h.empty,
     Preparation: ({ wave, remainingMs, spawns, clock }) =>
@@ -718,7 +739,8 @@ export const preparationControlsView = (
     Paused: () => h.empty,
     Victory: () => h.empty,
     GameOver: () => h.empty,
-  })
+  }),
+)
 
 // GHOST STICKS
 
@@ -727,10 +749,10 @@ const GHOST_LABELS: Readonly<Record<GhostStick, string>> = {
   Aim: 'AIM + SHOOT',
 }
 
-export const ghostSticksView = (
-  model: Model,
-  h: ApplicationViewBuilder,
-): Html =>
+export const ghostSticksView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   Array.match(shownGhostSticks(model), {
     onEmpty: () => h.empty,
     onNonEmpty: ghosts =>
@@ -747,4 +769,5 @@ export const ghostSticksView = (
           ),
         ),
       ),
-  })
+  }),
+)

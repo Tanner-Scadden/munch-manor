@@ -1,4 +1,4 @@
-import { Array, Option, Order, pipe } from 'effect'
+import { Array, Function, Option, Order, pipe } from 'effect'
 
 import { type Level, hasLineOfSight } from './arena'
 import type { Camera } from './camera'
@@ -48,43 +48,60 @@ const pullOf = (offset: number): number => {
         Math.max(0, (outerRadians - size) / (outerRadians - innerRadians))
 }
 
-export const assistAim = (
-  level: Level,
-  camera: Camera,
-  from: Vector,
-  zombies: ReadonlyArray<Zombie>,
-  aim: Vector,
-): Vector => {
-  const aimAngle = Math.atan2(aim.y, aim.x)
-  return pipe(
-    zombies,
-    Array.filter(
-      zombie =>
-        ZombieState.isAnyOf(['Walking'])(zombie.state) &&
-        !OUT_OF_REACH(zombie.action) &&
-        isInView(camera, zombie),
-    ),
-    Array.map((zombie): Pull => ({
-      zombie,
-      offset: angleBetween(
-        aimAngle,
-        Math.atan2(zombie.y - from.y, zombie.x - from.x),
+export const assistAim: {
+  (
+    camera: Camera,
+    from: Vector,
+    zombies: ReadonlyArray<Zombie>,
+    aim: Vector,
+  ): (level: Level) => Vector
+  (
+    level: Level,
+    camera: Camera,
+    from: Vector,
+    zombies: ReadonlyArray<Zombie>,
+    aim: Vector,
+  ): Vector
+} = Function.dual(
+  5,
+  (
+    level: Level,
+    camera: Camera,
+    from: Vector,
+    zombies: ReadonlyArray<Zombie>,
+    aim: Vector,
+  ): Vector => {
+    const aimAngle = Math.atan2(aim.y, aim.x)
+    return pipe(
+      zombies,
+      Array.filter(
+        zombie =>
+          ZombieState.isAnyOf(['Walking'])(zombie.state) &&
+          !OUT_OF_REACH(zombie.action) &&
+          isInView(camera, zombie),
       ),
-      distance: Math.hypot(zombie.x - from.x, zombie.y - from.y),
-    })),
-    Array.filter(
-      ({ offset, distance }) =>
-        distance <= AIM_ASSIST.reachPx &&
-        Math.abs(offset) < AIM_ASSIST.outerRadians,
-    ),
-    Array.sort(byPull),
-    Array.findFirst(({ zombie }) => hasLineOfSight(level, from, zombie)),
-    Option.match({
-      onNone: () => aim,
-      onSome: ({ offset }) => {
-        const angle = aimAngle + pullOf(offset)
-        return { x: Math.cos(angle), y: Math.sin(angle) }
-      },
-    }),
-  )
-}
+      Array.map((zombie): Pull => ({
+        zombie,
+        offset: angleBetween(
+          aimAngle,
+          Math.atan2(zombie.y - from.y, zombie.x - from.x),
+        ),
+        distance: Math.hypot(zombie.x - from.x, zombie.y - from.y),
+      })),
+      Array.filter(
+        ({ offset, distance }) =>
+          distance <= AIM_ASSIST.reachPx &&
+          Math.abs(offset) < AIM_ASSIST.outerRadians,
+      ),
+      Array.sort(byPull),
+      Array.findFirst(({ zombie }) => hasLineOfSight(level, from, zombie)),
+      Option.match({
+        onNone: () => aim,
+        onSome: ({ offset }) => {
+          const angle = aimAngle + pullOf(offset)
+          return { x: Math.cos(angle), y: Math.sin(angle) }
+        },
+      }),
+    )
+  },
+)

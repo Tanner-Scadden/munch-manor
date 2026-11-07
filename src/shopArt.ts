@@ -1,4 +1,4 @@
-import { Array, Record, Schema } from 'effect'
+import { Array, Function, Record, Schema } from 'effect'
 
 import { pixelIconUrl } from './icons'
 import {
@@ -24,14 +24,19 @@ import { HEART_PIXELS } from './sprites/hearts'
 // can draw it at a whole multiple and the pixels stay square.
 export type ShopArt = Readonly<{ url: string; width: number; height: number }>
 
-export const artOf = (
-  pixels: ReadonlyArray<string>,
-  palette: Palette,
-): ShopArt => ({
-  url: pixelIconUrl(pixels, palette),
-  width: Array.reduce(pixels, 0, (widest, row) => Math.max(widest, row.length)),
-  height: pixels.length,
-})
+export const artOf: {
+  (palette: Palette): (pixels: ReadonlyArray<string>) => ShopArt
+  (pixels: ReadonlyArray<string>, palette: Palette): ShopArt
+} = Function.dual(
+  2,
+  (pixels: ReadonlyArray<string>, palette: Palette): ShopArt => ({
+    url: pixelIconUrl(pixels, palette),
+    width: Array.reduce(pixels, 0, (widest, row) =>
+      Math.max(widest, row.length),
+    ),
+    height: pixels.length,
+  }),
+)
 
 // PALETTE
 
@@ -140,9 +145,15 @@ const GUN_ART: Readonly<Record<WeaponKind, ReadonlyArray<ShopArt>>> =
     ),
   )
 
-export const gunArt = (weapon: WeaponKind, tier: number): ShopArt =>
-  GUN_ART[weapon][Math.min(tier, GUN_TIER_TRIMS.length - 1)] ??
-  artOf(GUN_PIXELS[weapon], GUN_BASE)
+export const gunArt: {
+  (tier: number): (weapon: WeaponKind) => ShopArt
+  (weapon: WeaponKind, tier: number): ShopArt
+} = Function.dual(
+  2,
+  (weapon: WeaponKind, tier: number): ShopArt =>
+    GUN_ART[weapon][Math.min(tier, GUN_TIER_TRIMS.length - 1)] ??
+    artOf(GUN_PIXELS[weapon], GUN_BASE),
+)
 
 // GOODS
 

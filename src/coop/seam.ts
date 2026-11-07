@@ -55,7 +55,7 @@ export const WorldState = Schema.declare(
 
 // READOUT
 
-const encodeReadout = Schema.encodeSync(ReadoutJson)
+const encodeReadout = Schema.encodeOption(ReadoutJson)
 
 // NOTE: read once, when the page loads (the room link drops the param
 // after joining), so a frame never asks. Nothing is encoded without it.
@@ -66,7 +66,9 @@ const IS_AUDITED =
 // NOTE: the World as the audit's readout, through its Schema
 // (src/coop/readout.ts), or nothing when the page was not asked for one.
 export const readoutOf = (room: WorldState): string =>
-  IS_AUDITED ? encodeReadout(readoutFields(room)) : ''
+  IS_AUDITED
+    ? Option.getOrElse(encodeReadout(readoutFields(room)), () => '')
+    : ''
 
 const readoutFields = (room: WorldState) => ({
   tick: room.tick,

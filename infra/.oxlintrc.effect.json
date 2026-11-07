@@ -1,13 +1,63 @@
 {
   "$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
+  // NOTE: every Effect rule at error: the strict preset, plus each rule it
+  // leaves out (the ones off by default). Rule options, such as the allowed
+  // unstable APIs, come from the language service plugin in tsconfig.base.json.
   "extends": ["./node_modules/@effect/tsgo/oxlint-presets/strict.json"],
+  // NOTE: oxlint's own rules run in the other pass (.oxlintrc.json), which
+  // stock oxlint and editors can read without the effecttsgo plugin.
   "categories": {
     "correctness": "off"
   },
   "rules": {
-    // NOTE: the same exceptions as the root .oxlintrc.effect.json.
-    "effecttsgo/schema-number": "off",
-    "effecttsgo/catch-to-or-else-succeed": "off",
-    "effecttsgo/unstable-api-usage": "off"
+    "effecttsgo/any-unknown-in-error-context": "error",
+    "effecttsgo/api-stability-leak": "error",
+    "effecttsgo/async-function": "error",
+    "effecttsgo/crypto-random-uuid": "error",
+    "effecttsgo/crypto-random-uuid-in-effect": "error",
+    "effecttsgo/deterministic-keys": "error",
+    "effecttsgo/effect-do-notation": "error",
+    "effecttsgo/effect-try-without-catch": "error",
+    "effecttsgo/extends-native-error": "error",
+    "effecttsgo/global-console": "error",
+    "effecttsgo/global-console-in-effect": "error",
+    "effecttsgo/global-date": "error",
+    "effecttsgo/global-date-in-effect": "error",
+    "effecttsgo/global-fetch": "error",
+    "effecttsgo/global-fetch-in-effect": "error",
+    "effecttsgo/global-json": "error",
+    "effecttsgo/global-json-in-effect": "error",
+    "effecttsgo/global-random": "error",
+    "effecttsgo/global-random-in-effect": "error",
+    "effecttsgo/global-timers": "error",
+    "effecttsgo/global-timers-in-effect": "error",
+    "effecttsgo/instance-of-schema": "error",
+    "effecttsgo/map-map-error-to-map-both": "error",
+    "effecttsgo/missed-pipeable-opportunity": "error",
+    "effecttsgo/missing-effect-service-dependency": "error",
+    "effecttsgo/missing-pipeable-signature": "error",
+    "effecttsgo/nested-effect-gen-yield": "error",
+    "effecttsgo/new-promise": "error",
+    "effecttsgo/new-schema-class": "error",
+    "effecttsgo/node-builtin-import": "error",
+    "effecttsgo/prefer-barrel-import": "error",
+    "effecttsgo/prefer-effect-array": "error",
+    "effecttsgo/prefer-effect-record": "error",
+    "effecttsgo/prefer-effect-string": "error",
+    "effecttsgo/prefer-namespace-import": "error",
+    "effecttsgo/prefer-schema-tagged-error": "error",
+    "effecttsgo/prefer-schema-type-property": "error",
+    "effecttsgo/process-env": "error",
+    "effecttsgo/process-env-in-effect": "error",
+    "effecttsgo/provide-merge-all-to-array": "error",
+    "effecttsgo/schema-sync": "error",
+    "effecttsgo/schema-union-of-literals": "error",
+    "effecttsgo/service-not-as-class": "error",
+    "effecttsgo/strict-boolean-expressions": "error",
+    "effecttsgo/strict-effect-provide": "error",
+    "effecttsgo/type-union-to-schema-union": "error",
+    "effecttsgo/unnecessary-arrow-block": "error",
+    "effecttsgo/unsafe-effect-type-assertion": "error",
+    "effecttsgo/yield-in-call-argument": "error"
   }
 }

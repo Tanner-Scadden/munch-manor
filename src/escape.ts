@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Function, Option } from 'effect'
 
 import {
   type Level,
@@ -126,76 +126,78 @@ const gapTo = (at: Vector, threat: Threat): number =>
 
 // NOTE: the heading to run with zombies close: a unit vector, or zero with
 // no threats.
-export const escapeHeading = (
-  level: Level,
-  from: Vector,
-  threats: ReadonlyArray<Threat>,
-): Vector => {
-  const maybeNearest = Array.reduce(
-    threats,
-    Option.none<Threat>(),
-    (nearest, threat) =>
-      Option.match(nearest, {
-        onNone: () => Option.some(threat),
-        onSome: held =>
-          gapTo(from, threat) < gapTo(from, held)
-            ? Option.some(threat)
-            : nearest,
-      }),
-  )
-  if (Option.isNone(maybeNearest)) {
-    return ZERO_VECTOR
-  }
-  const away = Option.getOrElse(
-    directionBetween(maybeNearest.value.at, from),
-    () => unitAt(0, 1),
-  )
-  let best = away
-  let bestScore = Number.NEGATIVE_INFINITY
-  for (const unit of HEADING_UNITS) {
-    const reach = freeLength(level, from, unit, LOOK_PX)
-    if (reach < PROBE_STEP_PX) {
-      continue
-    }
-    const landing = { x: from.x + unit.x * reach, y: from.y + unit.y * reach }
-    let clearance = Number.POSITIVE_INFINITY
-    let closest = maybeNearest.value
-    let brushes = false
-    for (const threat of threats) {
-      const gap = gapTo(landing, threat)
-      if (gap < clearance) {
-        clearance = gap
-        closest = threat
-      }
-      const passing = distanceBetween(
-        closestPointOnSegment(threat.at, from, landing),
-        threat.at,
-      )
-      // NOTE: a zombie the bot is already touching does not block the way
-      // out; one it would walk into does.
-      if (
-        passing - threat.radius < PLAYER_RADIUS + PASS_MARGIN_PX &&
-        gapTo(from, threat) > PLAYER_RADIUS + PASS_MARGIN_PX
-      ) {
-        brushes = true
-      }
-    }
-    const { open, onward } = prospectAt(
-      level,
-      landing,
-      Option.getOrElse(directionBetween(closest.at, landing), () => unit),
+export const escapeHeading: {
+  (from: Vector, threats: ReadonlyArray<Threat>): (level: Level) => Vector
+  (level: Level, from: Vector, threats: ReadonlyArray<Threat>): Vector
+} = Function.dual(
+  3,
+  (level: Level, from: Vector, threats: ReadonlyArray<Threat>): Vector => {
+    const maybeNearest = Array.reduce(
+      threats,
+      Option.none<Threat>(),
+      (nearest, threat) =>
+        Option.match(nearest, {
+          onNone: () => Option.some(threat),
+          onSome: held =>
+            gapTo(from, threat) < gapTo(from, held)
+              ? Option.some(threat)
+              : nearest,
+        }),
     )
-    const score =
-      clearance +
-      open * OPEN_WEIGHT +
-      onward * ONWARD_WEIGHT +
-      reach * REACH_WEIGHT +
-      (unit.x * away.x + unit.y * away.y) * AWAY_WEIGHT -
-      (brushes ? BRUSH_PENALTY : 0)
-    if (score > bestScore) {
-      bestScore = score
-      best = unit
+    if (Option.isNone(maybeNearest)) {
+      return ZERO_VECTOR
     }
-  }
-  return best
-}
+    const away = Option.getOrElse(
+      directionBetween(maybeNearest.value.at, from),
+      () => unitAt(0, 1),
+    )
+    let best = away
+    let bestScore = Number.NEGATIVE_INFINITY
+    for (const unit of HEADING_UNITS) {
+      const reach = freeLength(level, from, unit, LOOK_PX)
+      if (reach < PROBE_STEP_PX) {
+        continue
+      }
+      const landing = { x: from.x + unit.x * reach, y: from.y + unit.y * reach }
+      let clearance = Number.POSITIVE_INFINITY
+      let closest = maybeNearest.value
+      let brushes = false
+      for (const threat of threats) {
+        const gap = gapTo(landing, threat)
+        if (gap < clearance) {
+          clearance = gap
+          closest = threat
+        }
+        const passing = distanceBetween(
+          closestPointOnSegment(threat.at, from, landing),
+          threat.at,
+        )
+        // NOTE: a zombie the bot is already touching does not block the way
+        // out; one it would walk into does.
+        if (
+          passing - threat.radius < PLAYER_RADIUS + PASS_MARGIN_PX &&
+          gapTo(from, threat) > PLAYER_RADIUS + PASS_MARGIN_PX
+        ) {
+          brushes = true
+        }
+      }
+      const { open, onward } = prospectAt(
+        level,
+        landing,
+        Option.getOrElse(directionBetween(closest.at, landing), () => unit),
+      )
+      const score =
+        clearance +
+        open * OPEN_WEIGHT +
+        onward * ONWARD_WEIGHT +
+        reach * REACH_WEIGHT +
+        (unit.x * away.x + unit.y * away.y) * AWAY_WEIGHT -
+        (brushes ? BRUSH_PENALTY : 0)
+      if (score > bestScore) {
+        bestScore = score
+        best = unit
+      }
+    }
+    return best
+  },
+)

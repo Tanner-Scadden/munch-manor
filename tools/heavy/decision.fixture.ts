@@ -2,7 +2,7 @@
 // class, waiting jobs, and checks on a Decision. tools/heavy/decision.test.ts
 // and tools/heavy/queue.test.ts start from it.
 
-import { Option } from 'effect'
+import { Function, Option } from 'effect'
 
 import {
   BudgetPolicy,
@@ -48,18 +48,24 @@ export const SHOTS: LockHolder = {
   cost: 1,
 }
 
-export const held = (slot: number, holder: LockHolder): SharedSlot => ({
+export const held: {
+  (holder: LockHolder): (slot: number) => SharedSlot
+  (slot: number, holder: LockHolder): SharedSlot
+} = Function.dual(2, (slot: number, holder: LockHolder): SharedSlot => ({
   slot,
   lock: LockState.cases.Held.make({ holder }),
-})
+}))
 
-export const waiting = (
-  holder: LockHolder,
-  arrivedBeforeMs: number,
-): LockHolder => ({
-  ...holder,
-  startedAt: NOW - 2000 - arrivedBeforeMs,
-})
+export const waiting: {
+  (arrivedBeforeMs: number): (holder: LockHolder) => LockHolder
+  (holder: LockHolder, arrivedBeforeMs: number): LockHolder
+} = Function.dual(
+  2,
+  (holder: LockHolder, arrivedBeforeMs: number): LockHolder => ({
+    ...holder,
+    startedAt: NOW - 2000 - arrivedBeforeMs,
+  }),
+)
 
 // NOTE: 12 cores, a target of 8.4, a load of 2, nothing running.
 export const BASE: Snapshot = {

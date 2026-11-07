@@ -1,4 +1,14 @@
-import { Array, Data, Effect, FileSystem, Option, Path, pipe } from 'effect'
+import {
+  Array,
+  Effect,
+  FileSystem,
+  Option,
+  Path,
+  Schema,
+  String,
+  pipe,
+} from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import type { Browser, Page } from 'playwright-core'
 
 import { textPixels } from '../../src/font'
@@ -28,15 +38,18 @@ import { type ClipCue, decodeAudioLog } from './soundtrackRequest'
 // split screen of devices, and dissolves are drawn over the page, so a
 // captured frame is the finished frame.
 
-class PageFailed extends Data.TaggedError('PageFailed')<{
-  readonly step: string
-  readonly reason: string
-}> {}
+class PageFailed extends Schema.TaggedError<
+  PageFailed,
+  { readonly brand: unique symbol }
+>()('PageFailed', { step: Schema.String, reason: Schema.String }) {}
 
-const onPage = <A>(step: string, run: () => Promise<A>) =>
+const onPage = <A>(
+  step: string,
+  run: () => Promise<A>,
+): Effect.Effect<A, PageFailed> =>
   Effect.tryPromise({
     try: run,
-    catch: error => new PageFailed({ step, reason: String(error) }),
+    catch: error => PageFailed.make({ step, reason: globalThis.String(error) }),
   })
 
 // NOTE: the CSS size and device scale of each format. Both are six screen
@@ -71,22 +84,34 @@ const HIDE_HUD_CSS = `
   visibility: hidden !important;
 }`
 
-export const openShotPage = (browser: Browser, format: Format) =>
-  onPage('open the page', async () => {
+export const openShotPage = ({
+  browser,
+  format,
+}: Readonly<{ browser: Browser; format: Format }>): Effect.Effect<
+  Page,
+  PageFailed
+> =>
+  Effect.gen(function* () {
     const viewport = VIEWPORTS[format]
-    const context = await browser.newContext({
-      viewport: { width: viewport.width, height: viewport.height },
-      deviceScaleFactor: viewport.scale,
-      ...(viewport.isTouch ? { isMobile: true, hasTouch: true } : {}),
-    })
-    const page = await context.newPage()
+    const context = yield* onPage('open the page', () =>
+      browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        deviceScaleFactor: viewport.scale,
+        ...(viewport.isTouch ? { isMobile: true, hasTouch: true } : {}),
+      }),
+    )
+    const page = yield* onPage('open the page', () => context.newPage())
     // NOTE: the page's animation clock stands still, so an animation
     // starts and stays at its first frame until `holdAnimations` sets it
     // to the shot's clock, however long a capture takes. A short one can
     // no longer run out unseen between two captures.
-    const devTools = await context.newCDPSession(page)
-    await devTools.send('Animation.enable')
-    await devTools.send('Animation.setPlaybackRate', { playbackRate: 0 })
+    const devTools = yield* onPage('open the page', () =>
+      context.newCDPSession(page),
+    )
+    yield* onPage('open the page', () => devTools.send('Animation.enable'))
+    yield* onPage('open the page', () =>
+      devTools.send('Animation.setPlaybackRate', { playbackRate: 0 }),
+    )
     return page
   })
 
@@ -106,7 +131,7 @@ const CAPTION_COLORS: Readonly<Record<string, string>> = {
 const CAPTION_OUTLINE = '#140c10'
 const CAPTION_SHADOW = '#2a1418'
 
-export type CaptionDrawing = Readonly<{
+type CaptionDrawing = Readonly<{
   rows: ReadonlyArray<string>
   pixel: number
   color: string
@@ -118,7 +143,7 @@ const captionDrawing = (
   caption: Caption,
   frameWidth: number,
 ): CaptionDrawing => {
-  const rows = textPixels(caption.text.toUpperCase())
+  const rows = textPixels(String.toUpperCase(caption.text))
   const width = (rows[0]?.length ?? 0) + 2
   const pixel =
     caption.pixel ??
@@ -168,7 +193,7 @@ type Base =
   | Readonly<{ kind: 'Devices'; src: string; devices: ReadonlyArray<Device> }>
   | Readonly<{ kind: 'Frame'; src: string }>
 
-export type Overlay = Readonly<{
+type Overlay = Readonly<{
   base: Base | undefined
   captions: ReadonlyArray<CaptionDrawing>
   // NOTE: a finished frame laid over everything at this opacity, for a
@@ -180,7 +205,8 @@ export type Overlay = Readonly<{
 }>
 
 // NOTE: runs in the page: the overlay with the shot's base, captions,
-// dissolve, and fade.
+// dissolve, and fade. Effect is not loaded there, so it speaks promises.
+// @effect-diagnostics-next-line asyncFunction:off
 const paintOverlay = async ({
   base,
   captions,
@@ -205,6 +231,8 @@ const paintOverlay = async ({
   if (context === null) {
     return
   }
+  // NOTE: in the page too, with no Effect.
+  // @effect-diagnostics-next-line asyncFunction:off
   const load = async (src: string): Promise<HTMLImageElement> => {
     const image = new Image()
     image.src = src
@@ -493,7 +521,7 @@ const DEVICE_LAYOUTS: Readonly<
       outer: { x: 8, y: 44, width: 176, height: 102 },
       screen: { x: 12, y: 48, width: 168, height: 94 },
     },
-    phones: [192, 234, 276].map((x, index) => ({
+    phones: Array.map([192, 234, 276], (x, index) => ({
       outer: { x, y: index === 1 ? 46 : 56, width: 38, height: 76 },
       screen: {
         x: x + 3,
@@ -508,7 +536,7 @@ const DEVICE_LAYOUTS: Readonly<
       outer: { x: 6, y: 62, width: 168, height: 96 },
       screen: { x: 10, y: 66, width: 160, height: 88 },
     },
-    phones: [10, 65, 120].map((x, index) => ({
+    phones: Array.map([10, 65, 120], (x, index) => ({
       outer: { x, y: index === 1 ? 186 : 196, width: 50, height: 100 },
       screen: {
         x: x + 3,
@@ -624,10 +652,19 @@ const awaitTick = (page: Page, tick: number) =>
   )
 
 const capture = (page: Page, overlay: Overlay) =>
-  onPage('capture', async () => {
-    await page.evaluate(paintOverlay, overlay)
-    return page.screenshot({ type: 'png', caret: 'hide', animations: 'allow' })
-  })
+  Effect.andThen(
+    onPage('capture', () => page.evaluate(paintOverlay, overlay)),
+    onPage('capture', () =>
+      page.screenshot({ type: 'png', caret: 'hide', animations: 'allow' }),
+    ),
+  )
+
+// NOTE: waits for the page to settle, then sets its animations to `tick`.
+const settleAt = (step: string, page: Page, tick: number) =>
+  Effect.andThen(
+    onPage(step, () => whenSettled(page)),
+    onPage(step, () => page.evaluate(holdAnimations, tick)),
+  )
 
 // NOTE: writes a frame in place of whatever is there. A repeated frame is a
 // hard link, so the old name is removed first, not written through.
@@ -641,21 +678,35 @@ const replaceFrame = (file: string, png: Uint8Array) =>
 const readSource = (file: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    return pngSource(yield* fs.readFile(file))
+    const value_1 = yield* fs.readFile(file)
+    return pngSource(value_1)
   })
 
 // NOTE: plays a shot and writes its frames from `firstFrame` on, as
 // frame-000000.png and up in `dir`. The frames before `overlapEnd` are the
 // last shot's end: this shot's start dissolves over them, frame by frame.
-export const captureShot = (
-  page: Page,
-  shot: Shot,
-  format: Format,
-  dir: string,
-  firstFrame: number,
-  overlapEnd: number,
-  log: (line: string) => Effect.Effect<void>,
-) =>
+/** @stability unstable */
+export const captureShot = ({
+  page,
+  shot,
+  format,
+  dir,
+  firstFrame,
+  overlapEnd,
+  log,
+}: Readonly<{
+  page: Page
+  shot: Shot
+  format: Format
+  dir: string
+  firstFrame: number
+  overlapEnd: number
+  log: (line: string) => Effect.Effect<void>
+}>): Effect.Effect<
+  ShotFrames,
+  PageFailed | PlatformError | Schema.SchemaError,
+  FileSystem.FileSystem | Path.Path
+> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
@@ -666,10 +717,8 @@ export const captureShot = (
       'nodev',
       isTouch ? 'device=touch' : '',
     )
-    yield* onPage('load the scene', async () => {
-      await page.goto(harnessUrl(query))
-      await waitForReady(page)
-    })
+    yield* onPage('load the scene', () => page.goto(harnessUrl(query)))
+    yield* onPage('load the scene', () => waitForReady(page))
     if (shot.hideHud === true) {
       yield* onPage('hide the HUD', () =>
         page.addStyleTag({ content: HIDE_HUD_CSS }).then(() => undefined),
@@ -702,10 +751,7 @@ export const captureShot = (
       // NOTE: what is animating already, such as a co-op room's countdown
       // or a dialog opening, starts on the shot's clock at tick 0, so the
       // skipped ticks play it out too.
-      yield* onPage('start the animations', async () => {
-        await whenSettled(page)
-        await page.evaluate(holdAnimations, 0)
-      })
+      yield* settleAt('start the animations', page, 0)
       yield* onPage('skip', () =>
         page.evaluate(n => window.__director.step(n), skip),
       )
@@ -731,10 +777,7 @@ export const captureShot = (
         )
         yield* awaitTick(page, tick)
       }
-      yield* onPage('settle', async () => {
-        await whenSettled(page)
-        await page.evaluate(holdAnimations, tick)
-      })
+      yield* settleAt('settle', page, tick)
       const isDevices =
         shot.devices !== undefined &&
         shot.devices.from <= tick &&
@@ -744,13 +787,15 @@ export const captureShot = (
       // picture, taken first with the overlay clear.
       let base: Base | undefined = undefined
       if (isDevices) {
-        const src = pngSource(yield* capture(page, EMPTY_OVERLAY))
+        const value_2 = yield* capture(page, EMPTY_OVERLAY)
+        const src = pngSource(value_2)
         const seats: Seats = yield* onPage('read the seats', () =>
           page.evaluate(() => window.__director.seats()),
         )
         base = { kind: 'Devices', src, devices: devicesOf(format, seats) }
       } else if (Option.isSome(maybeCrop)) {
-        const src = pngSource(yield* capture(page, EMPTY_OVERLAY))
+        const value_3 = yield* capture(page, EMPTY_OVERLAY)
+        const src = pngSource(value_3)
         base = { kind: 'Camera', src, crop: maybeCrop.value }
       }
       const overlay: Overlay = {
@@ -781,7 +826,8 @@ export const captureShot = (
         } else if (Option.isSome(maybeFirst)) {
           yield* fs.link(maybeFirst.value, file)
         } else {
-          yield* replaceFrame(file, yield* capture(page, overlay))
+          const value_4 = yield* capture(page, overlay)
+          yield* replaceFrame(file, value_4)
           maybeFirst = Option.some(file)
         }
         frame++
@@ -791,11 +837,10 @@ export const captureShot = (
       }
     }
     const reached = yield* directedTick(page)
-    const audio = yield* decodeAudioLog(
-      yield* onPage('read the audio log', () =>
-        page.evaluate((): unknown => window.__director.audio()),
-      ),
+    const value_5 = yield* onPage('read the audio log', () =>
+      page.evaluate((): unknown => window.__director.audio()),
     )
+    const audio = yield* decodeAudioLog(value_5)
     // NOTE: a sound logged on tick t is heard on the first frame that
     // shows the world after it.
     const captured = [...frameOfTick.entries()]
@@ -824,12 +869,22 @@ export const captureShot = (
 // NOTE: the clip's last `overlap` frames dissolve into its first ones, so
 // the clip plays round with no seam: frame i shows the head's frame i with
 // the tail's frame i over it, thinning out. The tail is then dropped.
-export const loopFrames = (
-  page: Page,
-  dir: string,
-  frames: number,
-  overlap: number,
-) =>
+/** @stability unstable */
+export const loopFrames = ({
+  page,
+  dir,
+  frames,
+  overlap,
+}: Readonly<{
+  page: Page
+  dir: string
+  frames: number
+  overlap: number
+}>): Effect.Effect<
+  number,
+  PageFailed | PlatformError,
+  FileSystem.FileSystem | Path.Path
+> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
@@ -837,11 +892,13 @@ export const loopFrames = (
     for (let index = 0; index < overlap; index++) {
       const head = path.join(dir, frameName(index))
       const tail = path.join(dir, frameName(tailStart + index))
+      const headSource = yield* readSource(head)
+      const tailSource = yield* readSource(tail)
       const png = yield* capture(page, {
         ...EMPTY_OVERLAY,
-        base: { kind: 'Frame', src: yield* readSource(head) },
+        base: { kind: 'Frame', src: headSource },
         dissolve: {
-          src: yield* readSource(tail),
+          src: tailSource,
           alpha: 1 - (index + 1) / (overlap + 1),
         },
       })
@@ -854,4 +911,4 @@ export const loopFrames = (
   })
 
 export const frameName = (frame: number): string =>
-  `frame-${String(frame).padStart(6, '0')}.png`
+  `frame-${String.padStart(6, '0')(globalThis.String(frame))}.png`
