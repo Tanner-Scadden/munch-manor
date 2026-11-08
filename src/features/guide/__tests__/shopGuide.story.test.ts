@@ -1,20 +1,27 @@
 import { Array, Option } from 'effect'
-import { Command, given, message, model, steps, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { afterEach, describe, expect, test } from 'vitest'
 
-import { Dialog, DialogBlock } from '@foldkit/ui'
+import { afterEach, describe, expect, it, test } from '@effect/vitest'
+import { DialogBlock } from '@foldkit/ui'
 
+import { MunchopediaBinding, ShopDialogBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { FridgeDoor } from '../../../app/model'
-import { Child, update } from '../../../app/pureApp'
 import { home } from '../../../test/model.fixture'
-import { press, ticks } from '../../../test/testing'
+import {
+  APPLICATION,
+  closeDialog,
+  press,
+  resolveGuideFocus,
+  ticks,
+} from '../../../test/testing'
 import { TRAPS } from '../../../world/gear/traps'
 import { UPGRADE_TIERS, WEAPONS } from '../../../world/gear/weapons'
 import { EXIT_RULES } from '../../../world/level/exits'
 import { modifyFocus } from '../../../world/party/party'
 import { SHOP_ITEMS } from '../../../world/shop/shop'
+import { GuideBinding as MunchopediaGuideBinding } from '../../munchopedia/bindings'
 import { Message as MunchopediaMessage } from '../../munchopedia/message'
 import {
   FRAMES_TO_STALL,
@@ -23,6 +30,10 @@ import {
   preparing,
   resolveShowShop,
 } from '../../shop/__tests__/shop.fixture'
+import {
+  DialogBinding,
+  GuideBinding as ShopGuideBinding,
+} from '../../shop/bindings'
 import { Message as ShopMessage } from '../../shop/message'
 import { Message as GuideMessage } from '../message'
 import { GuideStatus } from '../model'
@@ -32,7 +43,6 @@ import {
   isEntryKnown,
   prizeUnlockId,
 } from '../shopGuide'
-import { FocusGuideControl } from '../steps'
 
 const entry = (section: Parameters<typeof entriesOf>[0], id: string) =>
   Option.getOrThrow(
@@ -42,114 +52,129 @@ const entry = (section: Parameters<typeof entriesOf>[0], id: string) =>
 const barOf = (found: GuideEntry, stat: string) =>
   Option.getOrThrow(Array.findFirst(found.bars, bar => bar.stat === stat))
 
-const atCounter = steps(
+const atCounter = Story.steps(
   press('KeyD'),
   ...ticks(FRAMES_TO_STALL, SHOP_FRAME_MS),
   resolveShowShop,
-)
-
-const resolveFocusGuide = Command.resolve(
-  FocusGuideControl,
-  GuideMessage.CompletedFocusControl(),
 )
 
 const closedShop = () =>
   modifyFocus(besideStall(preparing(3)), { shopCategory: () => 'Traps' })
 
 describe('the ? in Rattles shop', () => {
-  test('opens the guide on the tab being looked at, and back returns to the shelves', () => {
-    story(
-      update,
-      given(closedShop()),
-      atCounter,
-      message(Child.shop(ShopMessage.ClickedGuideButton({ section: 'Traps' }))),
-      resolveFocusGuide,
-      model(({ shopDialog: { guide: shopGuide } }) => {
-        expect(shopGuide.status).toEqual(GuideStatus.Open({ section: 'Traps' }))
-      }),
-      message(
-        Child.shopGuide(
+  it.effect(
+    'opens the guide on the tab being looked at, and back returns to the shelves',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(closedShop()),
+        atCounter,
+        Story.messageIn(
+          ShopDialogBinding,
+          ShopMessage.ClickedGuideButton({ section: 'Traps' }),
+        ),
+        resolveGuideFocus,
+        Story.model(({ shopDialog: { guide: shopGuide } }) => {
+          expect(shopGuide.status).toEqual(
+            GuideStatus.Open({ section: 'Traps' }),
+          )
+        }),
+        Story.messageIn(
+          [ShopDialogBinding, ShopGuideBinding],
           GuideMessage.ClickedSectionButton({ section: 'Fridge' }),
         ),
+        Story.model(({ shopDialog: { guide: shopGuide } }) => {
+          expect(shopGuide.status).toEqual(
+            GuideStatus.Open({ section: 'Fridge' }),
+          )
+        }),
+        Story.messageIn(
+          [ShopDialogBinding, ShopGuideBinding],
+          GuideMessage.ClickedBackButton(),
+        ),
+        resolveGuideFocus,
+        Story.model(({ shopDialog: { guide: shopGuide } }) => {
+          expect(shopGuide.status).toEqual(GuideStatus.Closed())
+        }),
       ),
-      model(({ shopDialog: { guide: shopGuide } }) => {
-        expect(shopGuide.status).toEqual(
-          GuideStatus.Open({ section: 'Fridge' }),
-        )
-      }),
-      message(Child.shopGuide(GuideMessage.ClickedBackButton())),
-      resolveFocusGuide,
-      model(({ shopDialog: { guide: shopGuide } }) => {
-        expect(shopGuide.status).toEqual(GuideStatus.Closed())
-      }),
-    )
-  })
+  )
 
-  test('the ? key toggles the guide from the keyboard', () => {
-    story(
-      update,
-      given(closedShop()),
+  it.effect('the ? key toggles the guide from the keyboard', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(closedShop()),
       atCounter,
       press('Slash'),
-      resolveFocusGuide,
-      model(({ shopDialog: { guide: shopGuide } }) => {
+      resolveGuideFocus,
+      Story.model(({ shopDialog: { guide: shopGuide } }) => {
         expect(GuideStatus.isAnyOf(['Open'])(shopGuide.status)).toBe(true)
       }),
       press('Slash'),
-      resolveFocusGuide,
-      model(({ shopDialog: { guide: shopGuide } }) => {
+      resolveGuideFocus,
+      Story.model(({ shopDialog: { guide: shopGuide } }) => {
         expect(shopGuide.status).toEqual(GuideStatus.Closed())
       }),
-    )
-  })
+    ),
+  )
 
-  test('closing the dialog with the guide up lands back on the shop, not out of it', () => {
-    story(
-      update,
-      given(closedShop()),
-      atCounter,
-      message(Child.shop(ShopMessage.ClickedGuideButton({ section: 'Traps' }))),
-      resolveFocusGuide,
-      message(Child.shopDialog(DialogBlock.Message.CanceledDialog())),
-      Command.resolve(
-        Dialog.test.CloseDialog,
-        DialogBlock.Message.CompletedCloseDialog(),
+  it.effect(
+    'closing the dialog with the guide up lands back on the shop, not out of it',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(closedShop()),
+        atCounter,
+        Story.messageIn(
+          ShopDialogBinding,
+          ShopMessage.ClickedGuideButton({ section: 'Traps' }),
+        ),
+        resolveGuideFocus,
+        Story.messageIn(
+          [ShopDialogBinding, DialogBinding],
+          DialogBlock.Message.CanceledDialog(),
+        ),
+        closeDialog(),
+        resolveShowShop,
+        Story.model(
+          ({ shopDialog: { guide: shopGuide }, seats: [{ shop }] }) => {
+            expect(shopGuide.status).toEqual(GuideStatus.Closed())
+            expect(shop._tag).toBe('Browsing')
+          },
+        ),
       ),
-      resolveShowShop,
-      model(({ shopDialog: { guide: shopGuide }, seats: [{ shop }] }) => {
-        expect(shopGuide.status).toEqual(GuideStatus.Closed())
-        expect(shop._tag).toBe('Browsing')
-      }),
-    )
-  })
+  )
 })
 
 describe('the Munchopedia Shop page', () => {
-  test('the Shop tile opens the guide on Guns, and a section button turns it', () => {
-    story(
-      update,
-      given(home),
-      message(Message.ClickedMunchopediaButton()),
-      resolveShowShop,
-      message(Child.munchopedia(MunchopediaMessage.ClickedShopButton())),
-      resolveFocusGuide,
-      model(({ munchopedia }) => {
-        expect(munchopedia.guide.status).toEqual(
-          GuideStatus.Open({ section: 'Guns' }),
-        )
-      }),
-      message(
-        Child.munchopediaGuide(
+  it.effect(
+    'the Shop tile opens the guide on Guns, and a section button turns it',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(home),
+        Story.message(Message.ClickedMunchopediaButton()),
+        resolveShowShop,
+        Story.messageIn(
+          MunchopediaBinding,
+          MunchopediaMessage.ClickedShopButton(),
+        ),
+        resolveGuideFocus,
+        Story.model(({ munchopedia }) => {
+          expect(munchopedia.guide.status).toEqual(
+            GuideStatus.Open({ section: 'Guns' }),
+          )
+        }),
+        Story.messageIn(
+          [MunchopediaBinding, MunchopediaGuideBinding],
           GuideMessage.ClickedSectionButton({ section: 'House' }),
         ),
+        Story.model(({ munchopedia }) => {
+          expect(munchopedia.guide.status).toEqual(
+            GuideStatus.Open({ section: 'House' }),
+          )
+        }),
       ),
-      model(({ munchopedia }) => {
-        expect(munchopedia.guide.status).toEqual(
-          GuideStatus.Open({ section: 'House' }),
-        )
-      }),
-    )
-  })
+  )
 })
 
 describe('what the entries read', () => {
@@ -243,10 +268,10 @@ describe('the fridge prizes', () => {
     }
   })
 
-  test('the fridge door opening on a prize writes it down, once', () => {
-    story(
-      update,
-      given(
+  it.effect('the fridge door opening on a prize writes it down, once', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(besideStall(preparing(3)), {
           fridge: fridge =>
             modifyFields(fridge, {
@@ -261,12 +286,12 @@ describe('the fridge prizes', () => {
         }),
       ),
       ...ticks(2, SHOP_FRAME_MS),
-      model(({ seenUnlocks }) => {
+      Story.model(({ seenUnlocks }) => {
         expect(
           Array.filter(seenUnlocks, id => id === prizeUnlockId('Freeze')),
         ).toHaveLength(1)
         expect(seenUnlocks).not.toContain(prizeUnlockId('Cooker'))
       }),
-    )
-  })
+    ),
+  )
 })

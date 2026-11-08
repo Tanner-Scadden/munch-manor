@@ -1,19 +1,25 @@
 import { Array, Option } from 'effect'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
-import { Dialog, DialogBlock } from '@foldkit/ui'
+import { describe, expect, it, test } from '@effect/vitest'
+import { DialogBlock } from '@foldkit/ui'
 
+import { ShopDialogBinding } from '../../../app/bindings'
 import { CoopBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { AudioState, Lesson, type Model } from '../../../app/model'
-import { Child, initialModel, update } from '../../../app/pureApp'
+import { initialModel, update } from '../../../app/pureApp'
 import { PlaySound } from '../../../app/update/sound'
 import { positionVariation } from '../../../audio/audio'
-import { Message as ShopMessage } from '../../../features/shop/message'
 import { withShopDialogOpen } from '../../../test/model.fixture'
 import { withSeat } from '../../../test/model.fixture'
+import {
+  APPLICATION,
+  buyAtCounter,
+  closeDialog,
+  showDialog,
+} from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import {
   DEFAULT_ROOM_SETTINGS,
@@ -45,6 +51,7 @@ import { freshRoom, maybeRoomOf } from '../../coop/roomState'
 import { FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom } from '../../coop/update'
+import { DialogBinding } from '../../shop/bindings'
 
 // An online co-op run in the root (src/features/onlineRun/coopPlay.ts): the room's World drawn
 // as the game, this player's own seat as the player, presses sent to the
@@ -94,22 +101,25 @@ const queuedOf = (current: Model): ReadonlyArray<number> =>
   })
 
 describe('an online co-op run', () => {
-  test('the room World draws as the game with this player as the player', () => {
-    const ownX = Option.getOrThrow(maybePlayerAt(roomWorld.world, OWN_SLOT))
-      .player.x
-    story(
-      update,
-      given(inRun(roomWorld)),
-      message(roomFrame(100)),
-      model(current => {
-        expect(current.phase._tag).toBe('Preparation')
-        expect(leadSeatOf(current).slot).toBe(OWN_SLOT)
-        expect(focusOf(current).player.x).toBe(ownX)
-        expect(current.party._tag).toBe('Crew')
-        expect(current.lessons).toEqual(graduated.lessons)
-      }),
-    )
-  })
+  it.effect(
+    'the room World draws as the game with this player as the player',
+    () => {
+      const ownX = Option.getOrThrow(maybePlayerAt(roomWorld.world, OWN_SLOT))
+        .player.x
+      return Story.story(
+        APPLICATION,
+        Story.given(inRun(roomWorld)),
+        Story.message(roomFrame(100)),
+        Story.model(current => {
+          expect(current.phase._tag).toBe('Preparation')
+          expect(leadSeatOf(current).slot).toBe(OWN_SLOT)
+          expect(focusOf(current).player.x).toBe(ownX)
+          expect(current.party._tag).toBe('Crew')
+          expect(current.lessons).toEqual(graduated.lessons)
+        }),
+      )
+    },
+  )
 
   test('the room copy of your own shot stays quiet; a teammate shot sounds', () => {
     const shot = (slot: number, x: number) =>
@@ -144,49 +154,52 @@ describe('an online co-op run', () => {
     ])
   })
 
-  test('a wave with a zombie you have not met raises no card in co-op, and the run goes on', () => {
-    const waveWorld: RoomWorld = {
-      ...roomWorld,
-      world: startWaveEarly(roomWorld.world),
-    }
-    const newcomer = modifyFields(inRun(roomWorld), {
-      introducedKinds: () => [],
-    })
-    const drawWave = (current: Model): Model =>
-      modifyFields(current, {
-        coop: coop =>
-          modifyFields(coop, {
-            screen: () =>
-              Option.match(maybeRoomOf(coop), {
-                onNone: () => coop.screen,
-                onSome: room =>
-                  Screen.InRoom({
-                    room: {
-                      ...room,
-                      session: playingSession(waveWorld, OWN_SLOT),
-                    },
-                  }),
-              }),
-          }),
+  it.effect(
+    'a wave with a zombie you have not met raises no card in co-op, and the run goes on',
+    () => {
+      const waveWorld: RoomWorld = {
+        ...roomWorld,
+        world: startWaveEarly(roomWorld.world),
+      }
+      const newcomer = modifyFields(inRun(roomWorld), {
+        introducedKinds: () => [],
       })
-    story(
-      update,
-      given(newcomer),
-      message(roomFrame(100)),
-      model(current => {
-        expect(current.debutCard._tag).toBe('Hidden')
-      }),
-      model(current => {
-        const waved = update(drawWave(current), roomFrame(200)).model
-        expect(waved.phase._tag).toBe('Wave')
-        expect(waved.debutCard._tag).toBe('Hidden')
-        expect(waved.introducedKinds).toEqual([])
-        const later = update(waved, roomFrame(300)).model
-        expect(later.phase._tag).toBe('Wave')
-        expect(later.debutCard._tag).toBe('Hidden')
-      }),
-    )
-  })
+      const drawWave = (current: Model): Model =>
+        modifyFields(current, {
+          coop: coop =>
+            modifyFields(coop, {
+              screen: () =>
+                Option.match(maybeRoomOf(coop), {
+                  onNone: () => coop.screen,
+                  onSome: room =>
+                    Screen.InRoom({
+                      room: {
+                        ...room,
+                        session: playingSession(waveWorld, OWN_SLOT),
+                      },
+                    }),
+                }),
+            }),
+        })
+      return Story.story(
+        APPLICATION,
+        Story.given(newcomer),
+        Story.message(roomFrame(100)),
+        Story.model(current => {
+          expect(current.debutCard._tag).toBe('Hidden')
+        }),
+        Story.model(current => {
+          const waved = update(drawWave(current), roomFrame(200)).model
+          expect(waved.phase._tag).toBe('Wave')
+          expect(waved.debutCard._tag).toBe('Hidden')
+          expect(waved.introducedKinds).toEqual([])
+          const later = update(waved, roomFrame(300)).model
+          expect(later.phase._tag).toBe('Wave')
+          expect(later.debutCard._tag).toBe('Hidden')
+        }),
+      )
+    },
+  )
 
   test('a footstep sounds by how near it is to this player, not the lead', () => {
     const own = Option.getOrThrow(
@@ -346,18 +359,18 @@ describe('an online co-op run', () => {
     ).toBe(true)
   })
 
-  test('presses go to the room, and there is no pause', () => {
-    story(
-      update,
-      given(inRun(roomWorld)),
-      message(roomFrame(100)),
-      message(Message.PressedKey({ code: 'KeyQ' })),
-      message(Message.ClickedReloadButton()),
-      message(Message.PressedKey({ code: 'Enter' })),
-      message(Message.ClickedPauseButton()),
-      message(Message.PressedKey({ code: 'Escape' })),
-      message(Message.TickedFrame({ deltaTime: 16 })),
-      model(current => {
+  it.effect('presses go to the room, and there is no pause', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(inRun(roomWorld)),
+      Story.message(roomFrame(100)),
+      Story.message(Message.PressedKey({ code: 'KeyQ' })),
+      Story.message(Message.ClickedReloadButton()),
+      Story.message(Message.PressedKey({ code: 'Enter' })),
+      Story.message(Message.ClickedPauseButton()),
+      Story.message(Message.PressedKey({ code: 'Escape' })),
+      Story.message(Message.TickedFrame({ deltaTime: 16 })),
+      Story.model(current => {
         expect(queuedOf(current)).toEqual([
           actionCodeOf(SeatAction.Swap()),
           actionCodeOf(SeatAction.Reload()),
@@ -365,89 +378,89 @@ describe('an online co-op run', () => {
         ])
         expect(current.phase._tag).toBe('Preparation')
       }),
-    )
-  })
+    ),
+  )
 
-  test('the room opening the stall opens the shop, and closing it tells the room', () => {
-    const atStall = {
-      ...roomWorld,
-      world: withSeat(
-        beginPreparation(roomWorld.world, 2, 20_000),
-        OWN_SLOT,
-        world =>
-          modifyFocus(world, {
-            shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-          }),
-      ),
-    }
-    story(
-      update,
-      given(inRun(atStall)),
-      message(roomFrame(100)),
-      Command.resolve(
-        Dialog.test.ShowDialog,
-        DialogBlock.Message.SucceededShowDialog(),
-      ),
-      model(current => {
-        expect(current.shopDialog.dialog.isOpen).toBe(true)
-      }),
-      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Shotgun' }))),
-      message(Child.shopDialog(DialogBlock.Message.CanceledDialog())),
-      Command.resolve(
-        Dialog.test.CloseDialog,
-        DialogBlock.Message.CompletedCloseDialog(),
-      ),
-      model(current => {
-        expect(current.shopDialog.dialog.isOpen).toBe(false)
-        expect(Array.takeRight(queuedOf(current), 2)).toEqual([
-          actionCodeOf(SeatAction.Buy({ item: 'Shotgun' })),
-          actionCodeOf(SeatAction.LeaveCounter()),
-        ])
-      }),
-    )
-  })
+  it.effect(
+    'the room opening the stall opens the shop, and closing it tells the room',
+    () => {
+      const atStall = {
+        ...roomWorld,
+        world: withSeat(
+          beginPreparation(roomWorld.world, 2, 20_000),
+          OWN_SLOT,
+          world =>
+            modifyFocus(world, {
+              shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+            }),
+        ),
+      }
+      return Story.story(
+        APPLICATION,
+        Story.given(inRun(atStall)),
+        Story.message(roomFrame(100)),
+        showDialog(),
+        Story.model(current => {
+          expect(current.shopDialog.dialog.isOpen).toBe(true)
+        }),
+        buyAtCounter('Shotgun'),
+        Story.messageIn(
+          [ShopDialogBinding, DialogBinding],
+          DialogBlock.Message.CanceledDialog(),
+        ),
+        closeDialog(),
+        Story.model(current => {
+          expect(current.shopDialog.dialog.isOpen).toBe(false)
+          expect(Array.takeRight(queuedOf(current), 2)).toEqual([
+            actionCodeOf(SeatAction.Buy({ item: 'Shotgun' })),
+            actionCodeOf(SeatAction.LeaveCounter()),
+          ])
+        }),
+      )
+    },
+  )
 
-  test('the room sending the player off the counter closes the shop', () => {
-    const offCounter = {
-      ...roomWorld,
-      world: withSeat(startWaveEarly(roomWorld.world), OWN_SLOT, world =>
-        modifyFocus(world, { shop: () => ShopState.Dismissed() }),
-      ),
-    }
-    const shopping = modifyFocus(withShopDialogOpen(inRun(offCounter)), {
-      shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-    })
-    story(
-      update,
-      given(shopping),
-      message(roomFrame(100)),
-      Command.resolve(
-        Dialog.test.CloseDialog,
-        DialogBlock.Message.CompletedCloseDialog(),
-      ),
-      model(current => {
-        expect(current.shopDialog.dialog.isOpen).toBe(false)
-        expect(focusOf(current).shop).toEqual(ShopState.Dismissed())
-      }),
-    )
-  })
+  it.effect(
+    'the room sending the player off the counter closes the shop',
+    () => {
+      const offCounter = {
+        ...roomWorld,
+        world: withSeat(startWaveEarly(roomWorld.world), OWN_SLOT, world =>
+          modifyFocus(world, { shop: () => ShopState.Dismissed() }),
+        ),
+      }
+      const shopping = modifyFocus(withShopDialogOpen(inRun(offCounter)), {
+        shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+      })
+      return Story.story(
+        APPLICATION,
+        Story.given(shopping),
+        Story.message(roomFrame(100)),
+        closeDialog(),
+        Story.model(current => {
+          expect(current.shopDialog.dialog.isOpen).toBe(false)
+          expect(focusOf(current).shop).toEqual(ShopState.Dismissed())
+        }),
+      )
+    },
+  )
 
-  test('leaving the room goes home', () => {
-    story(
-      update,
-      given(inRun(roomWorld)),
-      message(roomFrame(100)),
-      message(Child.message(CoopBinding, CoopMessage.CompletedLeaveRoom())),
-      Command.resolve(RememberRoom, CoopMessage.CompletedRememberRoom()),
-      Command.resolve(
+  it.effect('leaving the room goes home', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(inRun(roomWorld)),
+      Story.message(roomFrame(100)),
+      Story.messageIn(CoopBinding, CoopMessage.CompletedLeaveRoom()),
+      Story.Command.resolve(RememberRoom, CoopMessage.CompletedRememberRoom()),
+      Story.Command.resolve(
         FocusCoopElement,
         CoopMessage.CompletedFocusCoopElement(),
       ),
-      model(current => {
+      Story.model(current => {
         expect(current.coop.screen._tag).toBe('Hub')
         expect(current.phase._tag).toBe('Ready')
         expect(current.party._tag).toBe('Solo')
       }),
-    )
-  })
+    ),
+  )
 })

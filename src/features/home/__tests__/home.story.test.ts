@@ -1,11 +1,11 @@
-import { Array, Option } from 'effect'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
-import { Dialog, DialogBlock } from '@foldkit/ui'
+import { describe, expect, it, test } from '@effect/vitest'
 
 import changelogMarkdown from '../../../../CHANGELOG.md?raw'
+import { LobbyBinding, MunchopediaBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import {
   type Model,
@@ -14,13 +14,14 @@ import {
   type ZombieKind,
   noKills,
 } from '../../../app/model'
-import { Child, update } from '../../../app/pureApp'
 import { WriteSave } from '../../../app/update/save'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { saveOf } from '../../../platform/save'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN, readyModel } from '../../../test/model.fixture'
 import {
+  APPLICATION,
+  closeDialog,
   openLobbyByKey,
   press,
   resolveFocusLobby,
@@ -77,7 +78,7 @@ const dyingWith = (
   )
 
 const expectPanel = (panel: MenuPanel) =>
-  model((current: Model) => {
+  Story.model((current: Model) => {
     expect(current.panelDialog.isOpen).toBe(true)
     expect(current.panel).toBe(panel)
   })
@@ -182,128 +183,142 @@ describe('the home menu keys', () => {
     Array.forEach(codes, code => expect(gameKeys).not.toContain(code))
   })
 
-  test('L, Z, and I open their panels, and C and O open the Profile on Look and Settings', () => {
-    const opens: ReadonlyArray<readonly [string, MenuPanel]> = [
-      ['KeyL', 'WhatsNew'],
-      ['KeyZ', 'Munchopedia'],
-      ['KeyI', 'HowToPlay'],
-    ]
-    Array.forEach(opens, ([code, panel]) =>
-      story(
-        update,
-        given(readyModel),
-        press(code),
-        showDialog(),
-        expectPanel(panel),
-      ),
-    )
-    story(
-      update,
-      given(readyModel),
-      press('KeyC'),
-      showDialog(),
-      model(current => {
-        expect(current.profileDialog.isOpen).toBe(true)
-        expect(current.profile.tab).toBe('Look')
+  it.effect(
+    'L, Z, and I open their panels, and C and O open the Profile on Look and Settings',
+    () =>
+      Effect.gen(function* () {
+        const opens: ReadonlyArray<readonly [string, MenuPanel]> = [
+          ['KeyL', 'WhatsNew'],
+          ['KeyZ', 'Munchopedia'],
+          ['KeyI', 'HowToPlay'],
+        ]
+        yield* Effect.forEach(opens, ([code, panel]) =>
+          Story.story(
+            APPLICATION,
+            Story.given(readyModel),
+            press(code),
+            showDialog(),
+            expectPanel(panel),
+          ),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(readyModel),
+          press('KeyC'),
+          showDialog(),
+          Story.model(current => {
+            expect(current.profileDialog.isOpen).toBe(true)
+            expect(current.profile.tab).toBe('Look')
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(readyModel),
+          press('KeyO'),
+          showDialog(),
+          Story.model(current => {
+            expect(current.profileDialog.isOpen).toBe(true)
+            expect(current.profile.tab).toBe('Settings')
+            expect(current.panelDialog.isOpen).toBe(false)
+          }),
+        )
       }),
-    )
-    story(
-      update,
-      given(readyModel),
-      press('KeyO'),
-      showDialog(),
-      model(current => {
-        expect(current.profileDialog.isOpen).toBe(true)
-        expect(current.profile.tab).toBe('Settings')
-        expect(current.panelDialog.isOpen).toBe(false)
-      }),
-    )
-  })
+  )
 
-  test('the rail keys and E do nothing in a wave', () => {
-    const fighting = modifyFields(readyModel, {
-      phase: () =>
-        Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-    })
-    Array.forEach(['KeyL', 'KeyZ', 'KeyI', 'KeyO', 'KeyE'], code =>
-      story(
-        update,
-        given(fighting),
-        press(code),
-        model(current => {
-          expect(current.panelDialog.isOpen).toBe(false)
-          expect(current.profileDialog.isOpen).toBe(false)
-          expect(current.home.mode).toBe('Campaign')
-        }),
-      ),
-    )
-  })
+  it.effect('the rail keys and E do nothing in a wave', () =>
+    Effect.gen(function* () {
+      const fighting = modifyFields(readyModel, {
+        phase: () =>
+          Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+      })
+      yield* Effect.forEach(['KeyL', 'KeyZ', 'KeyI', 'KeyO', 'KeyE'], code =>
+        Story.story(
+          APPLICATION,
+          Story.given(fighting),
+          press(code),
+          Story.model(current => {
+            expect(current.panelDialog.isOpen).toBe(false)
+            expect(current.profileDialog.isOpen).toBe(false)
+            expect(current.home.mode).toBe('Campaign')
+          }),
+        ),
+      )
+    }),
+  )
 })
 
 describe('the mode in the lobby', () => {
-  test('E and the mode tiles switch the mode back and forth, and start nothing', () => {
-    story(
-      update,
-      given(readyModel),
-      openLobbyByKey,
-      press('KeyE'),
-      resolveFocusLobby(),
-      model(current => {
-        expect(current.home.mode).toBe('Endless')
-        expect(Phase.guards.Ready(current.phase)).toBe(true)
-      }),
-      message(
-        Child.lobby(LobbyMessage.ClickedModeButton({ mode: 'Campaign' })),
+  it.effect(
+    'E and the mode tiles switch the mode back and forth, and start nothing',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(readyModel),
+        openLobbyByKey,
+        press('KeyE'),
+        resolveFocusLobby(),
+        Story.model(current => {
+          expect(current.home.mode).toBe('Endless')
+          expect(Phase.guards.Ready(current.phase)).toBe(true)
+        }),
+        Story.messageIn(
+          LobbyBinding,
+          LobbyMessage.ClickedModeButton({ mode: 'Campaign' }),
+        ),
+        resolveFocusLobby(),
+        Story.model(current => {
+          expect(current.home.mode).toBe('Campaign')
+          expect(Phase.guards.Ready(current.phase)).toBe(true)
+        }),
       ),
-      resolveFocusLobby(),
-      model(current => {
-        expect(current.home.mode).toBe('Campaign')
-        expect(Phase.guards.Ready(current.phase)).toBe(true)
-      }),
-    )
-  })
+  )
 
-  test('E on the home menu itself does nothing now', () => {
-    story(
-      update,
-      given(readyModel),
+  it.effect('E on the home menu itself does nothing now', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
       press('KeyE'),
-      model(current => {
+      Story.model(current => {
         expect(current.home.mode).toBe('Campaign')
       }),
-    )
-  })
+    ),
+  )
 
-  test('START plays the chosen mode', () => {
-    story(
-      update,
-      given(readyModel),
-      message(Message.ClickedPlayButton()),
-      resolveFocusLobby(),
-      message(Child.lobby(LobbyMessage.ClickedModeButton({ mode: 'Endless' }))),
-      resolveFocusLobby(),
-      message(Child.lobby(LobbyMessage.ClickedStartButton())),
-      model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.mode).toEqual(RunMode.Endless())
-      }),
-    )
-    story(
-      update,
-      given(readyModel),
-      message(Message.ClickedPlayButton()),
-      resolveFocusLobby(),
-      message(Child.lobby(LobbyMessage.ClickedStartButton())),
-      model(current => {
-        expect(current.mode).toEqual(RunMode.Campaign())
-      }),
-    )
-  })
+  it.effect('START plays the chosen mode', () =>
+    Effect.gen(function* () {
+      yield* Story.story(
+        APPLICATION,
+        Story.given(readyModel),
+        Story.message(Message.ClickedPlayButton()),
+        resolveFocusLobby(),
+        Story.messageIn(
+          LobbyBinding,
+          LobbyMessage.ClickedModeButton({ mode: 'Endless' }),
+        ),
+        resolveFocusLobby(),
+        Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
+        Story.model(current => {
+          expect(Phase.guards.Preparation(current.phase)).toBe(true)
+          expect(current.mode).toEqual(RunMode.Endless())
+        }),
+      )
+      yield* Story.story(
+        APPLICATION,
+        Story.given(readyModel),
+        Story.message(Message.ClickedPlayButton()),
+        resolveFocusLobby(),
+        Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
+        Story.model(current => {
+          expect(current.mode).toEqual(RunMode.Campaign())
+        }),
+      )
+    }),
+  )
 
-  test('the chosen mode stays when the player comes home', () => {
-    story(
-      update,
-      given(readyModel),
+  it.effect('the chosen mode stays when the player comes home', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
       openLobbyByKey,
       press('KeyE'),
       resolveFocusLobby(),
@@ -311,64 +326,66 @@ describe('the mode in the lobby', () => {
       press('Escape'),
       press('KeyH'),
       showDialog(),
-      message(Message.ClickedLeaveRunButton()),
-      Command.resolve(
-        Dialog.test.CloseDialog,
-        DialogBlock.Message.CompletedCloseDialog(),
-      ),
-      model(current => {
+      Story.message(Message.ClickedLeaveRunButton()),
+      closeDialog(),
+      Story.model(current => {
         expect(Phase.guards.Ready(current.phase)).toBe(true)
         expect(current.home.mode).toBe('Endless')
         expect(current.lobby.status).toBe('Closed')
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe("What's New", () => {
-  test('shows a dot until the newest day is opened, and the seen day is saved', () => {
-    story(
-      update,
-      given(homeAfterRead),
-      model(current => {
-        expect(isNewsUnseen(current)).toBe(true)
-      }),
-      message(Message.ClickedWhatsNewButton()),
-      showDialog(),
-      Command.expectHas(WriteSave),
-      writeSave(),
-      model(current => {
-        expect(isNewsUnseen(current)).toBe(false)
-        expect(saveOf(current).home.seenNewsDay).toBe(
-          Option.getOrThrow(Array.head(NEWS_DAYS)).date,
-        )
-      }),
-    )
-  })
-
-  test('Older and Newer page through the days and stop at either end', () => {
-    const lastPage = NEWS_DAYS.length - 1
-    story(
-      update,
-      given(readyModel),
-      message(Message.ClickedWhatsNewButton()),
-      showDialog(),
-      message(Message.ClickedNewerNewsButton()),
-      model(current => {
-        expect(current.home.newsPage).toBe(0)
-      }),
-      ...Array.makeBy(NEWS_DAYS.length + 1, () =>
-        message(Message.ClickedOlderNewsButton()),
+  it.effect(
+    'shows a dot until the newest day is opened, and the seen day is saved',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(homeAfterRead),
+        Story.model(current => {
+          expect(isNewsUnseen(current)).toBe(true)
+        }),
+        Story.message(Message.ClickedWhatsNewButton()),
+        showDialog(),
+        Story.Command.expectHas(WriteSave),
+        writeSave(),
+        Story.model(current => {
+          expect(isNewsUnseen(current)).toBe(false)
+          expect(saveOf(current).home.seenNewsDay).toBe(
+            Option.getOrThrow(Array.head(NEWS_DAYS)).date,
+          )
+        }),
       ),
-      model(current => {
-        expect(current.home.newsPage).toBe(lastPage)
-      }),
-      message(Message.ClickedNewerNewsButton()),
-      model(current => {
-        expect(current.home.newsPage).toBe(Math.max(0, lastPage - 1))
-      }),
-    )
-  })
+  )
+
+  it.effect(
+    'Older and Newer page through the days and stop at either end',
+    () => {
+      const lastPage = NEWS_DAYS.length - 1
+      return Story.story(
+        APPLICATION,
+        Story.given(readyModel),
+        Story.message(Message.ClickedWhatsNewButton()),
+        showDialog(),
+        Story.message(Message.ClickedNewerNewsButton()),
+        Story.model(current => {
+          expect(current.home.newsPage).toBe(0)
+        }),
+        ...Array.makeBy(NEWS_DAYS.length + 1, () =>
+          Story.message(Message.ClickedOlderNewsButton()),
+        ),
+        Story.model(current => {
+          expect(current.home.newsPage).toBe(lastPage)
+        }),
+        Story.message(Message.ClickedNewerNewsButton()),
+        Story.model(current => {
+          expect(current.home.newsPage).toBe(Math.max(0, lastPage - 1))
+        }),
+      )
+    },
+  )
 })
 
 describe('the Munchopedia', () => {
@@ -384,113 +401,129 @@ describe('the Munchopedia', () => {
     expect(isDiscovered(tallied.bests.killsByKind, 'Shambler')).toBe(false)
   })
 
-  test('the first kill of a kind raises NEW ENTRY and the rail dot when the run ends', () => {
-    story(
-      update,
-      given(
-        withKills(dyingWith(readyModel, { Runner: 1, Shambler: 3 }), {
-          Shambler: 5,
+  it.effect(
+    'the first kill of a kind raises NEW ENTRY and the rail dot when the run ends',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          withKills(dyingWith(readyModel, { Runner: 1, Shambler: 3 }), {
+            Shambler: 5,
+          }),
+        ),
+        tick(FIXED_STEP_MS),
+        Story.model(current => {
+          expect(Phase.guards.GameOver(current.phase)).toBe(true)
+          expect(current.home.newEntries).toEqual(['Runner'])
+          expect(unopenedKinds(current)).toEqual(['Shambler', 'Runner'])
+          expect(hasUnopenedEntry(current)).toBe(true)
         }),
       ),
-      tick(FIXED_STEP_MS),
-      model(current => {
-        expect(Phase.guards.GameOver(current.phase)).toBe(true)
-        expect(current.home.newEntries).toEqual(['Runner'])
-        expect(unopenedKinds(current)).toEqual(['Shambler', 'Runner'])
-        expect(hasUnopenedEntry(current)).toBe(true)
-      }),
-    )
-  })
+  )
 
-  test('opening a new entry clears its NEW ENTRY and dot, and the opened entry is saved', () => {
-    const fresh = modifyFields(withKills(homeAfterRead, { Runner: 1 }), {
-      home: menu => modifyFields(menu, { newEntries: () => ['Runner'] }),
-    })
-    story(
-      update,
-      given(fresh),
-      message(Message.ClickedNewEntryButton({ kind: 'Runner' })),
-      showDialog(),
-      Command.expectHas(WriteSave),
-      writeSave(),
-      expectPanel('Munchopedia'),
-      model(current => {
-        expect(current.munchopedia.page).toEqual(
-          MunchopediaPage.Entry({ kind: 'Runner' }),
-        )
-        expect(current.home.newEntries).toEqual([])
-        expect(hasUnopenedEntry(current)).toBe(false)
-        expect(saveOf(current).home.openedEntries).toEqual(['Runner'])
-      }),
-    )
-  })
+  it.effect(
+    'opening a new entry clears its NEW ENTRY and dot, and the opened entry is saved',
+    () => {
+      const fresh = modifyFields(withKills(homeAfterRead, { Runner: 1 }), {
+        home: menu => modifyFields(menu, { newEntries: () => ['Runner'] }),
+      })
+      return Story.story(
+        APPLICATION,
+        Story.given(fresh),
+        Story.message(Message.ClickedNewEntryButton({ kind: 'Runner' })),
+        showDialog(),
+        Story.Command.expectHas(WriteSave),
+        writeSave(),
+        expectPanel('Munchopedia'),
+        Story.model(current => {
+          expect(current.munchopedia.page).toEqual(
+            MunchopediaPage.Entry({ kind: 'Runner' }),
+          )
+          expect(current.home.newEntries).toEqual([])
+          expect(hasUnopenedEntry(current)).toBe(false)
+          expect(saveOf(current).home.openedEntries).toEqual(['Runner'])
+        }),
+      )
+    },
+  )
 
-  test('a locked entry opens as a silhouette and is not marked as opened', () => {
-    story(
-      update,
-      given(readyModel),
-      message(Message.ClickedMunchopediaButton()),
-      showDialog(),
-      message(
-        Child.munchopedia(
+  it.effect(
+    'a locked entry opens as a silhouette and is not marked as opened',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(readyModel),
+        Story.message(Message.ClickedMunchopediaButton()),
+        showDialog(),
+        Story.messageIn(
+          MunchopediaBinding,
           MunchopediaMessage.ClickedEntryButton({ kind: 'Tank' }),
         ),
+        Story.Command.expectNone(),
+        Story.model(current => {
+          expect(current.munchopedia.page).toEqual(
+            MunchopediaPage.Entry({ kind: 'Tank' }),
+          )
+          expect(current.home.openedEntries).toEqual([])
+        }),
+        Story.messageIn(
+          MunchopediaBinding,
+          MunchopediaMessage.ClickedListButton(),
+        ),
+        Story.model(current => {
+          expect(current.munchopedia.page).toEqual(MunchopediaPage.List())
+        }),
       ),
-      Command.expectNone(),
-      model(current => {
-        expect(current.munchopedia.page).toEqual(
-          MunchopediaPage.Entry({ kind: 'Tank' }),
-        )
-        expect(current.home.openedEntries).toEqual([])
-      }),
-      message(Child.munchopedia(MunchopediaMessage.ClickedListButton())),
-      model(current => {
-        expect(current.munchopedia.page).toEqual(MunchopediaPage.List())
-      }),
-    )
-  })
+  )
 
-  test('the NEW ENTRY pop goes away when the next run starts, but the dot stays', () => {
-    const fresh = modifyFields(withKills(readyModel, { Runner: 1 }), {
-      home: menu => modifyFields(menu, { newEntries: () => ['Runner'] }),
-    })
-    story(
-      update,
-      given(fresh),
-      startRunFromHome,
-      model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.home.newEntries).toEqual([])
-        expect(hasUnopenedEntry(current)).toBe(true)
-      }),
-    )
-  })
+  it.effect(
+    'the NEW ENTRY pop goes away when the next run starts, but the dot stays',
+    () => {
+      const fresh = modifyFields(withKills(readyModel, { Runner: 1 }), {
+        home: menu => modifyFields(menu, { newEntries: () => ['Runner'] }),
+      })
+      return Story.story(
+        APPLICATION,
+        Story.given(fresh),
+        startRunFromHome,
+        Story.model(current => {
+          expect(Phase.guards.Preparation(current.phase)).toBe(true)
+          expect(current.home.newEntries).toEqual([])
+          expect(hasUnopenedEntry(current)).toBe(true)
+        }),
+      )
+    },
+  )
 
-  test('a kind already found raises no NEW ENTRY', () => {
-    story(
-      update,
-      given(withKills(dyingWith(readyModel, { Runner: 4 }), { Runner: 9 })),
+  it.effect('a kind already found raises no NEW ENTRY', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        withKills(dyingWith(readyModel, { Runner: 4 }), { Runner: 9 }),
+      ),
       tick(FIXED_STEP_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.bests.killsByKind.Runner).toBe(13)
         expect(current.home.newEntries).toEqual([])
       }),
-    )
-  })
+    ),
+  )
 
-  test('Uncle Chunk unlocks when he is beaten, and his entry counts every win over him', () => {
-    story(
-      update,
-      given(dyingWith(readyModel, { Boss: 1, Shambler: 20 })),
-      tick(FIXED_STEP_MS),
-      model(current => {
-        expect(isDiscovered(current.bests.killsByKind, 'Boss')).toBe(true)
-        expect(current.bests.killsByKind['Boss']).toBe(1)
-        expect(current.home.newEntries).toEqual(['Shambler', 'Boss'])
-        expect(saveOf(current).bests.killsByKind['Boss']).toBe(1)
-      }),
-    )
-  })
+  it.effect(
+    'Uncle Chunk unlocks when he is beaten, and his entry counts every win over him',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(dyingWith(readyModel, { Boss: 1, Shambler: 20 })),
+        tick(FIXED_STEP_MS),
+        Story.model(current => {
+          expect(isDiscovered(current.bests.killsByKind, 'Boss')).toBe(true)
+          expect(current.bests.killsByKind['Boss']).toBe(1)
+          expect(current.home.newEntries).toEqual(['Shambler', 'Boss'])
+          expect(saveOf(current).bests.killsByKind['Boss']).toBe(1)
+        }),
+      ),
+  )
 
   test('badges come at 10, 100, and 1,000', () => {
     expect(earnedBadges(9)).toEqual([])

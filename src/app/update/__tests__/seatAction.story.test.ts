@@ -1,10 +1,9 @@
 import { Array, Option } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
-import { Child } from '../../../app/pureApp'
-import { Message as ShopMessage } from '../../../features/shop/message'
+import { describe, expect, it, test } from '@effect/vitest'
+
 import {
   DISTANT_SPAWN,
   quietWave,
@@ -12,7 +11,12 @@ import {
   withArsenal,
   withSeat,
 } from '../../../test/model.fixture'
-import { SHOTGUN, holdingFirst } from '../../../test/testing'
+import {
+  APPLICATION,
+  SHOTGUN,
+  buyAtCounter,
+  holdingFirst,
+} from '../../../test/testing'
 import { inHandOf } from '../../../world/gear/weapons'
 import {
   DEFAULT_ROOM_SETTINGS,
@@ -34,13 +38,12 @@ import {
 } from '../../../world/step/stepWorld'
 import { Message } from '../../message'
 import { BreakClock, DebutCard, Phase, ShopState } from '../../model'
-import { update } from '../../pureApp'
 
 // Where single player's own copy of a player action disagreed with the
 // co-op room's, before both ran the one rule in src/world/step/stepWorld.ts.
 
 describe('the rules single player now shares with the room', () => {
-  test('a buy only rings up in a break the shop is open for', () => {
+  it.effect('a buy only rings up in a break the shop is open for', () => {
     const browsingMidWave = modifyFocus(
       modifyFields(readyModel, {
         phase: () =>
@@ -51,11 +54,11 @@ describe('the rules single player now shares with the room', () => {
         shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
       },
     )
-    story(
-      update,
-      given(browsingMidWave),
-      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Shotgun' }))),
-      model(current => {
+    return Story.story(
+      APPLICATION,
+      Story.given(browsingMidWave),
+      buyAtCounter('Shotgun'),
+      Story.model(current => {
         expect(focusOf(current).wallet).toEqual(focusOf(browsingMidWave).wallet)
         expect(focusOf(current).player.arsenal).toEqual(
           focusOf(browsingMidWave).player.arsenal,
@@ -64,23 +67,26 @@ describe('the rules single player now shares with the room', () => {
     )
   })
 
-  test('at a shared keyboard, the new zombie card holds no hand, as in a room', () => {
-    const couch = withWorld(
-      withArsenal(quietWave(3), holdingFirst(SHOTGUN)),
-      world => seatCrew(world, 2),
-    )
-    const couchWithCard = modifyFields(couch, {
-      debutCard: () => DebutCard.Showing({ kind: 'Runner', ageMs: 0 }),
-    })
-    story(
-      update,
-      given(couchWithCard),
-      message(Message.ClickedSwapButton()),
-      model(current => {
-        expect(inHandOf(focusOf(current).player)).toBe('Shotgun')
-      }),
-    )
-  })
+  it.effect(
+    'at a shared keyboard, the new zombie card holds no hand, as in a room',
+    () => {
+      const couch = withWorld(
+        withArsenal(quietWave(3), holdingFirst(SHOTGUN)),
+        world => seatCrew(world, 2),
+      )
+      const couchWithCard = modifyFields(couch, {
+        debutCard: () => DebutCard.Showing({ kind: 'Runner', ageMs: 0 }),
+      })
+      return Story.story(
+        APPLICATION,
+        Story.given(couchWithCard),
+        Story.message(Message.ClickedSwapButton()),
+        Story.model(current => {
+          expect(inHandOf(focusOf(current).player)).toBe('Shotgun')
+        }),
+      )
+    },
+  )
 })
 
 describe('the stall outside the break', () => {

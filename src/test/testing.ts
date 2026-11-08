@@ -9,6 +9,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
+import { LobbyBinding, ShopDialogBinding } from '../app/bindings'
 import { layer } from '../app/block'
 import { ApplicationBlock } from '../app/definition'
 import { Message } from '../app/message'
@@ -35,10 +36,14 @@ import { ReadRoomLink } from '../app/update/coop'
 import { HideSplash, ShowLoadProgress, WriteSave } from '../app/update/save'
 import { PlaySound } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
+import { Message as CoopMessage } from '../features/coop/message'
+import { ChangeLobby, FocusCoopElement } from '../features/coop/steps'
 import type { ShareOutcome } from '../features/end/share'
 import { Message as GuideMessage } from '../features/guide/message'
 import { FocusGuideControl } from '../features/guide/steps'
+import { Message as HeroPickerMessage } from '../features/heroes/message'
 import { endOffer } from '../features/home/home'
+import { HeroPickerBinding } from '../features/lobby/bindings'
 import { Message as LobbyMessage } from '../features/lobby/message'
 import type { LobbyControl } from '../features/lobby/model'
 import { FocusLobbyControl } from '../features/lobby/steps'
@@ -48,6 +53,7 @@ import {
   shownHints,
 } from '../features/onboarding/onboarding'
 import { PartRadioGroupBlock } from '../features/profile/blocks/look/lookRadios'
+import { Message as ShopMessage } from '../features/shop/message'
 import {
   FIXED_STEP_MS,
   RESTART_GRACE_MS,
@@ -55,6 +61,7 @@ import {
   STICK_RADIUS_PX,
   ZOMBIE_MAX_HP,
 } from '../shared/constants'
+import type { Calling } from '../shared/playerData'
 import { FRIDGE_RULES } from '../world/fridge/leftovers'
 import { TRAPS } from '../world/gear/traps'
 import {
@@ -70,6 +77,7 @@ import {
   Arsenal,
   type CarriedGun,
   type Player,
+  type ShopItemId,
   Trap,
 } from '../world/schema/worldSchema'
 import { PURCHASE_RULES } from '../world/shop/purchase'
@@ -168,13 +176,46 @@ export const showDialog = () =>
 // emit a Message from one of them (Scene.Subscription.emit).
 export const SCENE_SUBSCRIPTIONS = subscriptions
 
-// NOTE: what every root Scene runs: the root's update, view, and
-// Subscriptions.
+// NOTE: the older plain Scene's root, `scene(ROOT, ...)`, until the last
+// Scene on it is Block-aware (`Scene.scene(APPLICATION, ...)`).
 export const ROOT = { update, view, subscriptions: SCENE_SUBSCRIPTIONS }
 
-// NOTE: the root as a Block-aware Story takes it, for a test that reaches a
-// child's own child by its Binding path (`Story.messageIn([...], ...)`).
+// NOTE: the root as a Block-aware Story and Scene take it:
+// `Story.story(APPLICATION, Story.given(model), ...)`. A child's Message
+// goes in by its Binding, or a grandchild's by its Binding path
+// (`Story.messageIn([ShopDialogBinding, DialogBinding], ...)`).
 export const APPLICATION = { block: ApplicationBlock, layer }
+
+// NOTE: a group of root Story steps (`Story.steps(...)`) held as a value
+// apart from the Story it goes into, such as a table's row.
+export type RootSteps = Story.StoryStepsStep<
+  Model,
+  (model: Model) => void,
+  Parameters<typeof update>[1],
+  never
+>
+
+// NOTE: a row picked in Rattles' shop dialog, by tap or click.
+export const buyAtCounter = (item: ShopItemId) =>
+  Story.messageIn(ShopDialogBinding, ShopMessage.ClickedBuyButton({ item }))
+
+// NOTE: a hero's card tapped in the single player lobby's hero picker.
+export const tapLobbyHero = (calling: Calling) =>
+  Story.messageIn(
+    [LobbyBinding, HeroPickerBinding],
+    HeroPickerMessage.ClickedCard({ calling }),
+  )
+
+// NOTE: co-op's own Commands a root Story reaches: focus moved in co-op's
+// screens, and a change to the room's lobby sent.
+export const resolveFocusCoop = () =>
+  Story.Command.resolve(
+    FocusCoopElement,
+    CoopMessage.CompletedFocusCoopElement(),
+  )
+
+export const resolveChangeLobby = () =>
+  Story.Command.resolve(ChangeLobby, CoopMessage.CompletedChangeLobby())
 
 // NOTE: the shop guide's focus Command, in either parent.
 export const resolveGuideFocus = Story.Command.resolve(
@@ -367,7 +408,7 @@ export const nextFrame = (current: Model): Model =>
 
 // NOTE: the Model a Message leaves, for a test that starts from a Command's
 // result, which no Subscription emits.
-// NOTE: a root Message, a child's envelope included (`Child.lobby(...)`).
+// NOTE: a root Message, as the root update takes it.
 type AnyMessage = Parameters<typeof update>[1]
 
 export const modelAfter: {

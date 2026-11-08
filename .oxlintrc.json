@@ -42,11 +42,18 @@
     "no-shadow": "error",
     "unicorn/require-post-message-target-origin": "error",
     // NOTE: a scene's tap step runs its expects, as do @effect/vitest's
-    // it.effect and it.live, and vitest takes a message as expect's second
-    // argument.
+    // it.effect, it.effect.each, and it.live, and vitest takes a message as
+    // expect's second argument.
     "vitest/no-standalone-expect": [
       "error",
-      { "additionalTestBlockFunctions": ["tap", "it.effect", "it.live"] }
+      {
+        "additionalTestBlockFunctions": [
+          "tap",
+          "it.effect",
+          "it.effect.each",
+          "it.live"
+        ]
+      }
     ],
     "vitest/valid-expect": ["error", { "maxArgs": 2 }],
     // NOTE: story() and scene() assert through their steps.

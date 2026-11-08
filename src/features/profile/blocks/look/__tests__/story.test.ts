@@ -1,10 +1,9 @@
-import { Array, Match, Option, Record, Schema, pipe } from 'effect'
+import { Array, Effect, Match, Option, Record, Schema, pipe } from 'effect'
 import { type Canvas, Story } from 'foldkit'
-import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
-import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
+import { RadioGroup } from '@foldkit/ui'
 
 import { ProfileBinding } from '../../../../../app/bindings'
 import { Message } from '../../../../../app/message'
@@ -14,7 +13,7 @@ import {
   Phase,
   defaultAppearance,
 } from '../../../../../app/model'
-import { Child, initialModel, update } from '../../../../../app/pureApp'
+import { initialModel } from '../../../../../app/pureApp'
 import {
   BODIES,
   HAIR_COLORS,
@@ -42,6 +41,7 @@ import {
   APPLICATION,
   jsonOf,
   resolveFocusOption,
+  showDialog,
 } from '../../../../../test/testing'
 import { CharacterBinding } from '../../../composition'
 import * as Character from '../block'
@@ -103,7 +103,10 @@ const choose = (part: LookPart, index: number, value: string) => {
 }
 
 const rollDice = () =>
-  message(Child.character(Character.Message.ClickedDiceButton()))
+  Story.messageIn(
+    [ProfileBinding, CharacterBinding],
+    Character.Message.ClickedDiceButton(),
+  )
 
 const PICKED: Appearance = {
   body: 'Slim',
@@ -120,7 +123,10 @@ const PICKED: Appearance = {
 }
 
 const flip = (toggle: 'Beard' | 'Glasses') =>
-  message(Child.character(Character.Message.ClickedToggle({ toggle })))
+  Story.messageIn(
+    [ProfileBinding, CharacterBinding],
+    Character.Message.ClickedToggle({ toggle }),
+  )
 
 const flipIn = (toggle: 'Beard' | 'Glasses') =>
   Story.messageIn(
@@ -238,28 +244,28 @@ describe('Character', () => {
       resolveFocusOption(),
       flipIn('Beard'),
       flipIn('Glasses'),
-      model(({ appearance }) => {
+      Story.model(({ appearance }) => {
         expect(appearance).toEqual(PICKED)
       }),
     ),
   )
 
-  test('the beard and the glasses each come off with a second tap', () => {
-    story(
-      update,
-      given(home),
+  it.effect('the beard and the glasses each come off with a second tap', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(home),
       flip('Beard'),
-      model(({ appearance, profile }) => {
+      Story.model(({ appearance, profile }) => {
         expect(appearance.beard).toBe(true)
         expect(profile.fx).toBe('Poof')
       }),
       flip('Glasses'),
       flip('Beard'),
-      model(({ appearance }) => {
+      Story.model(({ appearance }) => {
         expect(appearance).toEqual({ ...defaultAppearance, glasses: true })
       }),
-    )
-  })
+    ),
+  )
 
   it.effect('a word that is not one of the options leaves the look alone', () =>
     Story.story(
@@ -269,7 +275,7 @@ describe('Character', () => {
       resolveFocusOption(),
       choose('Print', 0, 'Plaid'),
       resolveFocusOption(),
-      model(({ appearance }) => {
+      Story.model(({ appearance }) => {
         expect(appearance).toEqual(defaultAppearance)
       }),
     ),
@@ -279,7 +285,7 @@ describe('Character', () => {
     Story.story(
       APPLICATION,
       Story.given(home),
-      model(({ profile }) => {
+      Story.model(({ profile }) => {
         expect(profile.character.section).toBe('Body')
       }),
       Story.messageIn(
@@ -289,11 +295,11 @@ describe('Character', () => {
           value: 'Outfit',
         }),
       ),
-      Command.resolve(
+      Story.Command.resolve(
         RadioGroup.test.FocusOption,
         SectionRadioGroupBlock.Message.CompletedFocusOption(),
       ),
-      model(({ profile, appearance }) => {
+      Story.model(({ profile, appearance }) => {
         expect(profile.character.section).toBe('Outfit')
         expect(appearance).toEqual(home.appearance)
       }),
@@ -311,83 +317,81 @@ describe('Character', () => {
     expect(Character.SECTION_TOGGLES.Body).toEqual(['Beard', 'Glasses'])
   })
 
-  test('C opens the Profile on Look on the title and the end screens, never mid-run', () => {
-    const pressC = (given_: Model) =>
-      story(
-        update,
-        given(given_),
-        message(Message.PressedKey({ code: 'KeyC' })),
-        Command.resolve(
-          Dialog.test.ShowDialog,
-          DialogBlock.Message.SucceededShowDialog(),
-        ),
-        model(({ profile, profileDialog }) => {
-          expect(profileDialog.isOpen).toBe(true)
-          expect(profile.tab).toBe('Look')
-        }),
-      )
-    pressC(home)
-    pressC(
-      modifyFields(home, {
-        phase: () => Phase.GameOver({ wave: 3 }),
-        screenMs: () => RESTART_GRACE_MS,
-      }),
-    )
+  it.effect(
+    'C opens the Profile on Look on the title and the end screens, never mid-run',
+    () =>
+      Effect.gen(function* () {
+        const pressC = (given_: Model) =>
+          Story.story(
+            APPLICATION,
+            Story.given(given_),
+            Story.message(Message.PressedKey({ code: 'KeyC' })),
+            showDialog(),
+            Story.model(({ profile, profileDialog }) => {
+              expect(profileDialog.isOpen).toBe(true)
+              expect(profile.tab).toBe('Look')
+            }),
+          )
+        yield* pressC(home)
+        yield* pressC(
+          modifyFields(home, {
+            phase: () => Phase.GameOver({ wave: 3 }),
+            screenMs: () => RESTART_GRACE_MS,
+          }),
+        )
 
-    story(
-      update,
-      given(
-        modifyFields(home, {
-          phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
-        }),
-      ),
-      message(Message.PressedKey({ code: 'KeyC' })),
-      model(({ profileDialog }) => {
-        expect(profileDialog.isOpen).toBe(false)
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFields(home, {
+              phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
+            }),
+          ),
+          Story.message(Message.PressedKey({ code: 'KeyC' })),
+          Story.model(({ profileDialog }) => {
+            expect(profileDialog.isOpen).toBe(false)
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFields(home, {
+              phase: () => Phase.GameOver({ wave: 3 }),
+              screenMs: () => 0,
+            }),
+          ),
+          Story.message(Message.ClickedCharacterButton()),
+          Story.model(({ profileDialog }) => {
+            expect(profileDialog.isOpen).toBe(false)
+          }),
+        )
       }),
-    )
-    story(
-      update,
-      given(
-        modifyFields(home, {
-          phase: () => Phase.GameOver({ wave: 3 }),
-          screenMs: () => 0,
-        }),
-      ),
-      message(Message.ClickedCharacterButton()),
-      model(({ profileDialog }) => {
-        expect(profileDialog.isOpen).toBe(false)
+  )
+
+  it.effect(
+    'the dice rolls the same look from the same seed and moves the seed on',
+    () =>
+      Effect.gen(function* () {
+        const rollFrom = (seed: number) =>
+          Story.story(
+            APPLICATION,
+            Story.given(modifyFields(home, { cosmeticRngState: () => seed })),
+            rollDice(),
+          )
+        const first = yield* rollFrom(1234)
+        const again = yield* rollFrom(1234)
+        expect(again.appearance).toEqual(first.appearance)
+        expect(again.cosmeticRngState).toBe(first.cosmeticRngState)
+        expect(first.cosmeticRngState).not.toBe(1234)
+        expect(first.appearance).not.toEqual(defaultAppearance)
+
+        const rolled = yield* Effect.forEach(Array.range(1, 40), rollFrom)
+        const looks = Array.dedupe(
+          Array.map(rolled, ({ appearance }) => appearanceKey(appearance)),
+        )
+        expect(looks.length).toBeGreaterThan(20)
       }),
-    )
-  })
-
-  test('the dice rolls the same look from the same seed and moves the seed on', () => {
-    const rollFrom = (seed: number): Model => {
-      const holder: { current: Model } = { current: home }
-      story(
-        update,
-        given(modifyFields(home, { cosmeticRngState: () => seed })),
-        rollDice(),
-        model(rolled => {
-          holder.current = rolled
-        }),
-      )
-      return holder.current
-    }
-    const first = rollFrom(1234)
-    const again = rollFrom(1234)
-    expect(again.appearance).toEqual(first.appearance)
-    expect(again.cosmeticRngState).toBe(first.cosmeticRngState)
-    expect(first.cosmeticRngState).not.toBe(1234)
-    expect(first.appearance).not.toEqual(defaultAppearance)
-
-    const looks = pipe(
-      Array.range(1, 40),
-      Array.map(seed => appearanceKey(rollFrom(seed).appearance)),
-      Array.dedupe,
-    )
-    expect(looks.length).toBeGreaterThan(20)
-  })
+  )
 
   test('the dice never hands back the look you already have', () => {
     Array.forEach(Array.range(0, 300), seed => {
@@ -420,49 +424,53 @@ describe('Character', () => {
     expect(seen(look => `${look.glasses}`)).toBe(ON_OFF.length)
   })
 
-  test('the look lasts through new runs, endless, keep going, and restarts', () => {
-    story(
-      update,
-      given(withLook(home, PICKED)),
-      message(Message.ClickedCampaignButton()),
-      model(({ phase, appearance }) => {
-        expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
-        expect(appearance).toEqual(PICKED)
+  it.effect(
+    'the look lasts through new runs, endless, keep going, and restarts',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(withLook(home, PICKED)),
+          Story.message(Message.ClickedCampaignButton()),
+          Story.model(({ phase, appearance }) => {
+            expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
+            expect(appearance).toEqual(PICKED)
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFields(withLook(home, PICKED), {
+              phase: () => Phase.GameOver({ wave: 4 }),
+              screenMs: () => RESTART_GRACE_MS,
+            }),
+          ),
+          Story.message(Message.ClickedEndlessButton()),
+          Story.model(({ phase, appearance }) => {
+            expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
+            expect(appearance).toEqual(PICKED)
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFields(withLook(home, PICKED), {
+              phase: () => Phase.Victory(),
+              screenMs: () => RESTART_GRACE_MS,
+            }),
+          ),
+          Story.message(Message.ClickedKeepGoingButton()),
+          Story.model(({ appearance }) => {
+            expect(appearance).toEqual(PICKED)
+          }),
+          Story.message(Message.PressedKey({ code: 'Escape' })),
+          Story.message(Message.PressedKey({ code: 'Escape' })),
+          Story.model(({ appearance }) => {
+            expect(appearance).toEqual(PICKED)
+          }),
+        )
       }),
-    )
-    story(
-      update,
-      given(
-        modifyFields(withLook(home, PICKED), {
-          phase: () => Phase.GameOver({ wave: 4 }),
-          screenMs: () => RESTART_GRACE_MS,
-        }),
-      ),
-      message(Message.ClickedEndlessButton()),
-      model(({ phase, appearance }) => {
-        expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
-        expect(appearance).toEqual(PICKED)
-      }),
-    )
-    story(
-      update,
-      given(
-        modifyFields(withLook(home, PICKED), {
-          phase: () => Phase.Victory(),
-          screenMs: () => RESTART_GRACE_MS,
-        }),
-      ),
-      message(Message.ClickedKeepGoingButton()),
-      model(({ appearance }) => {
-        expect(appearance).toEqual(PICKED)
-      }),
-      message(Message.PressedKey({ code: 'Escape' })),
-      message(Message.PressedKey({ code: 'Escape' })),
-      model(({ appearance }) => {
-        expect(appearance).toEqual(PICKED)
-      }),
-    )
-  })
+  )
 
   test('the player sprite wears the chosen skin and shirt', () => {
     const plainPicked: Appearance = { ...PICKED, print: 'Plain' }

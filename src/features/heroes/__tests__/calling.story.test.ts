@@ -1,17 +1,28 @@
-import { Array, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it, test } from '@effect/vitest'
+import { Dialog } from '@foldkit/ui'
+
+import { LobbyBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { type Model } from '../../../app/model'
-import { Child, update } from '../../../app/pureApp'
-import { Message as HeroPickerMessage } from '../../../features/heroes/message'
+import { WriteSave } from '../../../app/update/save'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { advanceJuice } from '../../../render/juice'
 import { PLAYER_MAX_HP, PLAYER_SPEED } from '../../../shared/constants'
 import type { Calling } from '../../../shared/playerData'
 import { heroesBoughtBy, readyAfterRead } from '../../../test/model.fixture'
-import { modelAfter } from '../../../test/testing'
+import {
+  APPLICATION,
+  closeDialog,
+  press,
+  resolveFocusLobby,
+  showDialog,
+  tapLobbyHero,
+  writeSave,
+} from '../../../test/testing'
 import { playerSpeed } from '../../../world/gear/powerups'
 import {
   freshGun,
@@ -54,82 +65,140 @@ const ranked = (rank: number, calling: Calling): Model =>
     calling: () => calling,
   })
 
-const inLobby = (model: Model): Model =>
-  modelAfter(model, Message.ClickedPlayButton())
+// NOTE: PLAY opens the lobby with START focused.
+const openLobby = Story.steps(
+  Story.message(Message.ClickedPlayButton()),
+  resolveFocusLobby(),
+)
 
-const started = (model: Model): Model =>
-  modelAfter(inLobby(model), Child.lobby(LobbyMessage.ClickedStartButton()))
+const clickStart = Story.messageIn(
+  LobbyBinding,
+  LobbyMessage.ClickedStartButton(),
+)
 
-const pickInPicker = (model: Model, calling: Calling): Model =>
-  modelAfter(
-    modelAfter(inLobby(model), Child.lobby(LobbyMessage.ClickedHeroButton())),
-    Child.lobbyHero(HeroPickerMessage.ClickedCard({ calling })),
+// NOTE: the hero card opens the picker, which marks the heroes this rank
+// has reached as seen, and a card is tapped in it.
+const pickInPicker = (calling: Calling) =>
+  Story.steps(
+    Story.messageIn(LobbyBinding, LobbyMessage.ClickedHeroButton()),
+    showDialog(),
+    writeSave(),
+    tapLobbyHero(calling),
+  )
+
+// NOTE: the run a player of this rank and calling starts from the lobby.
+const startedAs = (rank: number, calling: Calling) =>
+  Story.story(
+    APPLICATION,
+    Story.given(ranked(rank, calling)),
+    openLobby,
+    clickStart,
   )
 
 describe('a run starts with the calling picked', () => {
-  test('YOU holds the pistol and every heart', () => {
-    const run = started(ranked(1, 'You'))
-    expect(focusOf(run).player.calling).toBe('You')
-    expect(focusOf(run).player.hp).toBe(PLAYER_MAX_HP)
-    expect(heldGun(focusOf(run).player.arsenal).kind).toBe('Pistol')
-  })
+  it.effect('YOU holds the pistol and every heart', () =>
+    Effect.map(startedAs(1, 'You'), run => {
+      expect(focusOf(run).player.calling).toBe('You')
+      expect(focusOf(run).player.hp).toBe(PLAYER_MAX_HP)
+      expect(heldGun(focusOf(run).player.arsenal).kind).toBe('Pistol')
+    }),
+  )
 
-  test('the Handyman starts with 4 hearts', () => {
-    const run = started(ranked(3, 'Handyman'))
-    expect(focusOf(run).player.calling).toBe('Handyman')
-    expect(focusOf(run).player.hp).toBe(PLAYER_MAX_HP - 1)
-  })
+  it.effect('the Handyman starts with 4 hearts', () =>
+    Effect.map(startedAs(3, 'Handyman'), run => {
+      expect(focusOf(run).player.calling).toBe('Handyman')
+      expect(focusOf(run).player.hp).toBe(PLAYER_MAX_HP - 1)
+    }),
+  )
 
-  test('a calling its rank has not reached starts as YOU', () => {
-    const run = started(ranked(2, 'LineCook'))
-    expect(run.calling).toBe('LineCook')
-    expect(focusOf(run).player.calling).toBe('You')
-    expect(heldGun(focusOf(run).player.arsenal).kind).toBe('Pistol')
-  })
+  it.effect('a calling its rank has not reached starts as YOU', () =>
+    Effect.map(startedAs(2, 'LineCook'), run => {
+      expect(run.calling).toBe('LineCook')
+      expect(focusOf(run).player.calling).toBe('You')
+      expect(heldGun(focusOf(run).player.arsenal).kind).toBe('Pistol')
+    }),
+  )
 
-  test('the Line Cook starts with the Pressure Cooker, not the pistol', () => {
-    const run = started(ranked(15, 'LineCook'))
-    expect(heldGun(focusOf(run).player.arsenal).kind).toBe('Cooker')
-    expect(maybeCarried(focusOf(run).player, 'Pistol')).toEqual(Option.none())
-    expect(looseRounds(heldGun(focusOf(run).player.arsenal))).toBeGreaterThan(0)
-    expect(heldGun(focusOf(run).player.arsenal).rounds).toBe(14)
-  })
+  it.effect(
+    'the Line Cook starts with the Pressure Cooker, not the pistol',
+    () =>
+      Effect.map(startedAs(15, 'LineCook'), run => {
+        expect(heldGun(focusOf(run).player.arsenal).kind).toBe('Cooker')
+        expect(maybeCarried(focusOf(run).player, 'Pistol')).toEqual(
+          Option.none(),
+        )
+        expect(
+          looseRounds(heldGun(focusOf(run).player.arsenal)),
+        ).toBeGreaterThan(0)
+        expect(heldGun(focusOf(run).player.arsenal).rounds).toBe(14)
+      }),
+  )
 
-  test('the Track Star starts with a 13 round pistol magazine', () => {
-    const run = started(ranked(6, 'TrackStar'))
-    expect(heldGun(focusOf(run).player.arsenal).loaded).toBe(13)
-  })
+  it.effect('the Track Star starts with a 13 round pistol magazine', () =>
+    Effect.map(startedAs(6, 'TrackStar'), run => {
+      expect(heldGun(focusOf(run).player.arsenal).loaded).toBe(13)
+    }),
+  )
 })
 
 describe('the picker', () => {
-  test('the key opens it', () => {
-    const opened = update(
-      inLobby(ranked(3, 'You')),
-      Message.PressedKey({ code: 'KeyY' }),
-    )
-    expect(isHeroPickerUp(opened.model.lobby)).toBe(true)
-  })
+  it.effect('the key opens it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(ranked(3, 'You')),
+      openLobby,
+      press('KeyY'),
+      Story.model(current => {
+        expect(isHeroPickerUp(current.lobby)).toBe(true)
+      }),
+      showDialog(),
+      writeSave(),
+    ),
+  )
 
-  test('picks an unlocked calling, which closes it, and dresses the player', () => {
-    const picked = pickInPicker(ranked(3, 'You'), 'Handyman')
-    expect(picked.calling).toBe('Handyman')
-    expect(focusOf(picked).player.calling).toBe('Handyman')
-    expect(isHeroPickerUp(picked.lobby)).toBe(false)
-  })
+  it.effect(
+    'picks an unlocked calling, which closes it, and dresses the player',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(ranked(3, 'You')),
+        openLobby,
+        pickInPicker('Handyman'),
+        Story.model(picked => {
+          expect(picked.calling).toBe('Handyman')
+          expect(focusOf(picked).player.calling).toBe('Handyman')
+          expect(isHeroPickerUp(picked.lobby)).toBe(false)
+        }),
+        Story.Command.expectExact(Dialog.test.CloseDialog, WriteSave),
+        closeDialog(),
+        writeSave(),
+      ),
+  )
 
-  test('refuses a locked calling', () => {
-    const refused = pickInPicker(ranked(5, 'You'), 'PennyPincher')
-    expect(refused.calling).toBe('You')
-  })
+  it.effect('refuses a locked calling', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(ranked(5, 'You')),
+      openLobby,
+      pickInPicker('PennyPincher'),
+      Story.model(refused => {
+        expect(refused.calling).toBe('You')
+      }),
+    ),
+  )
 
-  test('is never picked during a run', () => {
-    const run = started(ranked(6, 'You'))
-    const tried = update(
-      run,
-      Child.lobbyHero(HeroPickerMessage.ClickedCard({ calling: 'TrackStar' })),
-    ).model
-    expect(tried.calling).toBe('You')
-  })
+  it.effect('is never picked during a run', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(ranked(6, 'You')),
+      openLobby,
+      clickStart,
+      tapLobbyHero('TrackStar'),
+      Story.model(tried => {
+        expect(tried.calling).toBe('You')
+      }),
+    ),
+  )
 })
 
 describe('the quirks in play', () => {
@@ -211,23 +280,26 @@ describe('the quirks in play', () => {
     expect(paid('PennyPincher')).toBe(16)
   })
 
-  test('Rattles never sells the Line Cook the pistol', () => {
-    const cook = shopping('LineCook')
-    expect(verdictFor(cook, focusSlotOf(cook), 'Pistol')._tag).toBe('Refused')
-    expect(
-      verdictFor(shopping('You'), focusSlotOf(shopping('You')), 'Pistol')._tag,
-    ).toBe('Refused')
-    const withoutPistol = modifyFocus(shopping('You'), {
-      player: player =>
-        modifyFields(player, {
-          arsenal: () =>
-            focusOf(started(ranked(15, 'LineCook'))).player.arsenal,
-        }),
-    })
-    expect(
-      verdictFor(withoutPistol, focusSlotOf(withoutPistol), 'Pistol')._tag,
-    ).toBe('Available')
-  })
+  it.effect('Rattles never sells the Line Cook the pistol', () =>
+    Effect.gen(function* () {
+      const cook = shopping('LineCook')
+      expect(verdictFor(cook, focusSlotOf(cook), 'Pistol')._tag).toBe('Refused')
+      expect(
+        verdictFor(shopping('You'), focusSlotOf(shopping('You')), 'Pistol')
+          ._tag,
+      ).toBe('Refused')
+      const cookRun = yield* startedAs(15, 'LineCook')
+      const withoutPistol = modifyFocus(shopping('You'), {
+        player: player =>
+          modifyFields(player, {
+            arsenal: () => focusOf(cookRun).player.arsenal,
+          }),
+      })
+      expect(
+        verdictFor(withoutPistol, focusSlotOf(withoutPistol), 'Pistol')._tag,
+      ).toBe('Available')
+    }),
+  )
 })
 
 describe('what the player sees of a calling', () => {
