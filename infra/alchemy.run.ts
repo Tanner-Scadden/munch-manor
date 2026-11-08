@@ -9,6 +9,8 @@ import { createRequire } from 'node:module'
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as GitHub from '@alchemy.run/github'
 
+import { SITE_INPUTS } from './siteInputs'
+
 const PRODUCTION_STAGE = 'prod'
 
 const stageName = (base: string, stage: string): string =>
@@ -153,23 +155,9 @@ const Website = (apiUrl: Output.Output<string | undefined>) =>
         VITE_API_ORIGIN: Output.map(apiUrl, url => url ?? ''),
         VITE_COOP: 'On',
       },
-      // NOTE: every input of the game's build. src/changelog.ts reads
-      // CHANGELOG.md at build time, patches/ holds the Foldkit patch that
-      // `bun install` applies, and tools/sprites/ builds the sprite atlas.
+      // NOTE: rebuilt only when an input changes (siteInputs.ts).
       memo: {
-        include: [
-          'src/**',
-          'packages/*/src/**',
-          'packages/*/package.json',
-          'public/**',
-          'patches/**',
-          'tools/sprites/**',
-          'index.html',
-          'CHANGELOG.md',
-          'vite.config.ts',
-          'tsconfig.json',
-          'package.json',
-        ],
+        include: [...SITE_INPUTS],
         lockfile: true,
       },
     })

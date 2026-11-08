@@ -80,7 +80,11 @@ jobs:
       name: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
       url: ${{ steps.deploy.outputs.url }}
     steps:
+      # NOTE: the whole history, so the site check can diff the build that is
+      # live against this commit.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.13
@@ -123,17 +127,30 @@ jobs:
           else
             hard_url="$URL"
           fi
+          build_of() {
+            curl -s "$hard_url/version.json?check=$1" | grep -oE '"build" *: *"[^"]*"' | grep -oE '"[^"]*"$' | tr -d '"' || true
+          }
+          # NOTE: the site is memoized on its inputs (infra/siteInputs.ts), so
+          # a push that changes none of them leaves the live build, stamped
+          # with the commit that last changed the site, in place. That build
+          # is the one to want then; otherwise this commit's.
+          wanted="$GITHUB_SHA"
+          live=$(build_of live)
+          if [ -n "$live" ] && [ "$live" != "$GITHUB_SHA" ] && git cat-file -e "$live^{commit}" 2>/dev/null \
+            && git diff --name-only "$live" "$GITHUB_SHA" | xargs bun infra/sameSite.ts; then
+            wanted="$live"
+          fi
           # NOTE: a new build can take a couple of minutes to reach every
           # edge, so this waits up to three before it fails.
           for attempt in $(seq 1 36); do
             status=$(curl -s -o /dev/null -w '%{http_code}' "$hard_url/")
-            build=$(curl -s "$hard_url/version.json?check=$attempt" | grep -oE '"build" *: *"[^"]*"' | grep -oE '"[^"]*"$' | tr -d '"' || true)
-            if [ "$status" = "200" ] && [ "$build" = "$GITHUB_SHA" ]; then
+            build=$(build_of "$attempt")
+            if [ "$status" = "200" ] && [ "$build" = "$wanted" ]; then
               echo "$hard_url answered 200 with build $build"
               break
             fi
             if [ "$attempt" = "36" ]; then
-              echo "$hard_url answered $status with build '$build', wanted $GITHUB_SHA"
+              echo "$hard_url answered $status with build '$build', wanted $wanted"
               exit 1
             fi
             sleep 5

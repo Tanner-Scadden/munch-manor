@@ -55,8 +55,9 @@
       "project": ["**/*.ts"],
     },
     "infra": {
-      // NOTE: github.ts is its own Alchemy app, deployed by hand.
-      "entry": ["alchemy.run.ts", "github.ts", "worker/main.ts"],
+      // NOTE: github.ts is its own Alchemy app, deployed by hand, and
+      // sameSite.ts a script the deploy workflow runs.
+      "entry": ["alchemy.run.ts", "github.ts", "sameSite.ts", "worker/main.ts"],
       "project": ["**/*.ts"],
       // NOTE: the compiler `effect-tsgo tsrs` runs, and the oxlint CLI that
       // `effect-tsgo --tsrs-lint oxlint` runs.
