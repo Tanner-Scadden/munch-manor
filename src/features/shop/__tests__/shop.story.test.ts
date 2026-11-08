@@ -5,7 +5,6 @@ import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { ShopDialogBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import {
   type Bullet,
@@ -62,6 +61,7 @@ import {
 } from '../../../world/shop/shop'
 import { FINAL_WAVE } from '../../../world/waves/wavePlans'
 import { waveBonus } from '../../../world/waves/waves'
+import { Message as ShopMessage } from '../message'
 import {
   FRAMES_TO_STALL,
   GRACE_TICK_MS,
@@ -230,7 +230,7 @@ describe('the shop stall', () => {
       resolveShowShop,
       model(({ seats: [{ shop }], shopDialog, input }) => {
         expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Shotgun' }))
-        expect(shopDialog.isOpen).toBe(true)
+        expect(shopDialog.dialog.isOpen).toBe(true)
         expect(input.pressedKeys).toEqual([])
       }),
     )
@@ -246,7 +246,7 @@ describe('the shop stall', () => {
         Command.expectNone(),
         model(({ seats: [{ shop }], shopDialog }) => {
           expect(shop).toEqual(ShopState.Away())
-          expect(shopDialog.isOpen).toBe(false)
+          expect(shopDialog.dialog.isOpen).toBe(false)
         }),
       )
 
@@ -274,7 +274,7 @@ describe('the shop stall', () => {
       resolveShowShop,
       model(({ seats: [{ shop }], shopDialog }) => {
         expect(ShopState.guards.Browsing(shop)).toBe(true)
-        expect(shopDialog.isOpen).toBe(true)
+        expect(shopDialog.dialog.isOpen).toBe(true)
       }),
     )
   })
@@ -331,9 +331,7 @@ describe('the shop stall', () => {
       ...ticks(FRAMES_TO_STALL, SHOP_FRAME_MS),
       resolveShowShop,
       release('KeyD'),
-      message(
-        Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
-      ),
+      message(Child.shopDialog(DialogBlock.Message.CanceledDialog())),
       resolveCloseShop,
       model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(ShopState.Dismissed())
@@ -391,7 +389,7 @@ describe('buying', () => {
     story(
       update,
       given(browsing(withMoney(shopReady, 100))),
-      message(Message.ClickedBuyButton({ item: 'Shotgun' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Shotgun' }))),
       resolveFocusShopItem,
       model(({ seats: [{ wallet, player }], particles }) => {
         expect(wallet.balance).toBe(100 - SHOP_ITEMS.Shotgun.price)
@@ -401,7 +399,7 @@ describe('buying', () => {
           Array.filter(particles, ({ kind }) => kind === 'Coin'),
         ).toHaveLength(COINS_PER_PURCHASE)
       }),
-      message(Message.PressedBuyKey({ item: 'ShotgunShells' })),
+      message(Child.shop(ShopMessage.PressedBuyKey({ item: 'ShotgunShells' }))),
       model(({ seats: [{ wallet, player }] }) => {
         expect(wallet.balance).toBe(
           100 - SHOP_ITEMS.Shotgun.price - SHOP_ITEMS.ShotgunShells.price,
@@ -420,7 +418,7 @@ describe('buying', () => {
           holdingSecond(gun('Shotgun', 3)),
         ),
       ),
-      message(Message.ClickedBuyButton({ item: 'Smg' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Smg' }))),
       model(({ seats: [{ player, wallet }] }) => {
         expect(player.arsenal).toEqual(
           holdingSecond(gun('Smg', startingRounds('Smg'))),
@@ -434,12 +432,12 @@ describe('buying', () => {
     story(
       update,
       given(withHp(browsing(withMoney(shopReady, 60)), PLAYER_MAX_HP - 1)),
-      message(Message.ClickedBuyButton({ item: 'Heart' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Heart' }))),
       model(({ seats: [{ player, wallet }] }) => {
         expect(player.hp).toBe(PLAYER_MAX_HP)
         expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
       }),
-      message(Message.ClickedBuyButton({ item: 'Heart' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Heart' }))),
       model(({ seats: [{ player, wallet }] }) => {
         expect(player.hp).toBe(PLAYER_MAX_HP)
         expect(wallet.balance).toBe(60 - SHOP_ITEMS.Heart.price)
@@ -459,7 +457,7 @@ describe('buying', () => {
           StockTag.Done({ label: 'GLASS' }),
         )
       }),
-      message(Message.ClickedBuyButton({ item: 'Heart' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Heart' }))),
       model(current => {
         expect(focusOf(current).player.hp).toBe(1)
         expect(focusOf(current).wallet.balance).toBe(200)
@@ -475,7 +473,7 @@ describe('buying', () => {
       story(
         update,
         given(start),
-        message(Message.ClickedBuyButton({ item })),
+        message(Child.shop(ShopMessage.ClickedBuyButton({ item }))),
         model(current => {
           expect(focusOf(current).wallet).toEqual(focusOf(start).wallet)
           expect(focusOf(current).player).toEqual(focusOf(start).player)
@@ -505,7 +503,7 @@ describe('buying', () => {
           Array.last(itemsIn(current, focusSlotOf(current), 'Guns')),
         ).toEqual(Option.some('LaserSight'))
       }),
-      message(Message.ClickedBuyButton({ item: 'LaserSight' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'LaserSight' }))),
       model(({ seats: [{ laserSight, wallet }] }) => {
         expect(laserSight).toBe('None')
         expect(wallet.balance).toBe(LASER_SIGHT_PRICE - 1)
@@ -514,12 +512,12 @@ describe('buying', () => {
     story(
       update,
       given(browsing(withMoney(shopReady, LASER_SIGHT_PRICE + 10))),
-      message(Message.ClickedBuyButton({ item: 'LaserSight' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'LaserSight' }))),
       model(({ seats: [{ laserSight, wallet }] }) => {
         expect(laserSight).toBe('Fitted')
         expect(wallet.balance).toBe(10)
       }),
-      message(Message.ClickedBuyButton({ item: 'LaserSight' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'LaserSight' }))),
       model(({ seats: [{ wallet }] }) => {
         expect(wallet.balance).toBe(10)
       }),
@@ -535,7 +533,9 @@ describe('buying', () => {
           'ShotgunShells',
         ),
       ),
-      message(Message.ClickedBuyButton({ item: 'ShotgunShells' })),
+      message(
+        Child.shop(ShopMessage.ClickedBuyButton({ item: 'ShotgunShells' })),
+      ),
       model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(holdingSpare(48))
       }),
@@ -852,9 +852,7 @@ describe('the stall entrance', () => {
       tick(SHOP_FRAME_MS),
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
-      message(
-        Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
-      ),
+      message(Child.shopDialog(DialogBlock.Message.CanceledDialog())),
       resolveCloseShop,
       ...ticks(10, SHOP_FRAME_MS),
       Command.expectNone(),
@@ -892,7 +890,7 @@ describe('the stall entrance', () => {
       Command.expectNone(),
       model(current => {
         expect(focusOf(current).shop).toEqual(ShopState.Away())
-        expect(current.shopDialog.isOpen).toBe(false)
+        expect(current.shopDialog.dialog.isOpen).toBe(false)
         expect(stallPrompt(current, focusSlotOf(current))).toBe('None')
       }),
     )

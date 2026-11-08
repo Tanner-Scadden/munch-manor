@@ -1,22 +1,16 @@
 import { DialogBlock } from '@foldkit/ui'
 
 import { CoopBlock } from '../features/coop'
-import { GuideBlock } from '../features/guide/block'
-import { placedIn } from '../features/guide/model'
 import { lobbyPicksOf } from '../features/home/home'
 import { LobbyBlock } from '../features/lobby/block'
 import { MunchopediaBlock } from '../features/munchopedia/block'
 import { ProfileBlock } from '../features/profile/block'
-import { ShopTabsBlock } from '../features/shop/shopTabs'
-import { focusOf } from '../world/party/party'
-import { isBrowsing } from '../world/shop/shop'
+import { ShopBlock } from '../features/shop/block'
 import {
   HAND_DIALOG_ID,
   HOME_SCREEN_STEPS_ID,
   PANEL_DIALOG_ID,
   PROFILE_DIALOG_ID,
-  SHOP_DIALOG_ID,
-  SHOP_TABS_ID,
   UPDATE_GREETING_ID,
 } from './clientSchema'
 import { makeRequiredFieldBinding } from './definition'
@@ -31,11 +25,6 @@ import { isPanelOpen } from './menuState'
 // module that imports it (FOLDKIT.md, "OutMessage policies").
 
 // DIALOGS
-
-export const ShopDialogBinding = makeRequiredFieldBinding(DialogBlock, {
-  field: 'shopDialog',
-  init: { contextToArgs: () => [{ id: SHOP_DIALOG_ID }] },
-})
 
 export const ProfileDialogBinding = makeRequiredFieldBinding(DialogBlock, {
   field: 'profileDialog',
@@ -62,20 +51,12 @@ export const UpdateGreetingBinding = makeRequiredFieldBinding(DialogBlock, {
   init: { contextToArgs: () => [{ id: UPDATE_GREETING_ID }] },
 })
 
-// TABS
+// THE SHOP
 
-export const ShopTabsBinding = makeRequiredFieldBinding(ShopTabsBlock, {
-  field: 'shopTabs',
-  init: { contextToArgs: () => [{ id: SHOP_TABS_ID }] },
-  delivery: { when: model => isBrowsing(focusOf(model).shop) },
-})
-
-// THE SHOP GUIDE
-
-// NOTE: the guide in Rattles' shop dialog, opened by its ? (src/app/update/shopGuide.ts).
-export const ShopGuideBinding = makeRequiredFieldBinding(GuideBlock, {
-  field: 'shopGuide',
-  init: { contextToArgs: () => placedIn('Shop') },
+// NOTE: Rattles' shop dialog, with its tabs and its guide inside. It
+// follows the World's shop (syncShopDialog in src/app/update/shop.ts).
+export const ShopDialogBinding = makeRequiredFieldBinding(ShopBlock, {
+  field: 'shopDialog',
 })
 
 // THE MUNCHOPEDIA

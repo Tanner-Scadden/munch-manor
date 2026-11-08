@@ -82,7 +82,7 @@ describe('the ammo window mid-wave', () => {
           100 - SHOP_ITEMS.SmgRounds.price,
         )
         expect(focusOf(current).shop).toEqual(ShopState.Away())
-        expect(current.shopDialog.isOpen).toBe(false)
+        expect(current.shopDialog.dialog.isOpen).toBe(false)
       }),
     )
   })

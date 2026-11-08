@@ -78,7 +78,6 @@ export const FIELD_CLASSES = {
 
   difficultyCard: 'Client',
   shopDialog: 'Client',
-  shopTabs: 'Client',
   trapHint: 'Client',
   ammoTip: 'Client',
   firstBreakQuest: 'Client',
@@ -145,7 +144,6 @@ export const FIELD_CLASSES = {
   profileDialog: 'Client',
   rotationSetting: 'Client',
   shopChatter: 'Client',
-  shopGuide: 'Client',
   localPlayers: 'Client',
   crewBots: 'Client',
 } satisfies Partial<Record<keyof Model, FieldClass>>
@@ -166,15 +164,18 @@ const LEGACY_SEAT_FIELDS = [
   'purchase',
 ] as const
 
-// NOTE: the Profile's fields at the root of a Model before the Profile was
-// a Block (src/features/profile/), now inside `profile`. A run before that
-// change hashes them as the client fields they are, so it and a run after
-// it hash alike.
-const LEGACY_PROFILE_FIELDS = [
+// NOTE: client fields at the root of a Model before their feature became a
+// Block: the Profile's (src/features/profile/), now inside `profile`, and
+// the shop dialog's tabs and guide (src/features/shop/), now inside
+// `shopDialog`. A run before that change hashes them as the client fields
+// they are, so it and a run after it hash alike.
+const LEGACY_CLIENT_FIELDS = [
   'character',
   'profileTabs',
   'linkFlow',
   'tutorialReset',
+  'shopTabs',
+  'shopGuide',
 ] as const
 
 const CLASS_BY_FIELD: ReadonlyMap<string, FieldClass> = new Map([
@@ -184,7 +185,7 @@ const CLASS_BY_FIELD: ReadonlyMap<string, FieldClass> = new Map([
     'World',
   ]),
   ...Array.map(
-    LEGACY_PROFILE_FIELDS,
+    LEGACY_CLIENT_FIELDS,
     (field): readonly [string, FieldClass] => [field, 'Client'],
   ),
 ])

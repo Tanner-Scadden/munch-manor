@@ -13,6 +13,7 @@ import {
 } from '../../app/frame'
 import type { Model } from '../../app/model'
 import { freshRun } from '../../app/runReset'
+import { syncShopDialog } from '../../app/update/shop'
 import {
   frameSoundCues,
   fridgeLandCues,
@@ -49,7 +50,6 @@ import { footfallNearness } from '../../world/zombies/zombies'
 import type { Room as CoopRoom } from '../coop/model'
 import { launchPrize } from '../fridge/fridgeReveal'
 import { ageDebutCard, raiseDebutCardFrom } from '../onboarding/onboarding'
-import { syncShopDialog } from '../shop/update'
 import { maybeRunRoom, runDifficultyOf } from './onlineRun'
 
 // The root's half of an online co-op run (MULTIPLAYER.md, Phase 2): the

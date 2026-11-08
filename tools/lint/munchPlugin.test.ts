@@ -136,6 +136,7 @@ tester.run('no-binding-field-write', ruleOf('no-binding-field-write'), {
       'const next = modifyFields(model, { coop: coop => keepTracers(coop) })',
     ),
     one('const next = modifyFields(model, { shopDialog: () => closed })'),
+    one('const next = modifyFields(shop, { dialog: () => closed })'),
   ],
 })
 

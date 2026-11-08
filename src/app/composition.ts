@@ -8,8 +8,7 @@ import { forgetAskedMode } from '../features/home/update'
 import { LobbyBlock } from '../features/lobby/block'
 import { MunchopediaBlock } from '../features/munchopedia/block'
 import { ProfileBlock } from '../features/profile/block'
-import { ShopTabsBlock } from '../features/shop/shopTabs'
-import { leaveShop, selectCategory } from '../features/shop/update'
+import { ShopBlock } from '../features/shop/block'
 import {
   CoopBinding,
   HandDialogBinding,
@@ -20,8 +19,6 @@ import {
   ProfileBinding,
   ProfileDialogBinding,
   ShopDialogBinding,
-  ShopGuideBinding,
-  ShopTabsBinding,
   UpdateGreetingBinding,
 } from './bindings'
 import {
@@ -39,6 +36,7 @@ import {
   leftRoom,
   neededNewerBuild,
 } from './update/coop'
+import { orBuyInRun } from './update/coopRun'
 import {
   addLobbyBot,
   buyHero,
@@ -66,7 +64,13 @@ import {
   submitName,
   switchedTab,
 } from './update/profile'
-import { isGuideEscape, reopenForGuide } from './update/shopGuide'
+import {
+  buy,
+  chooseCategory,
+  closedShop,
+  focusItem,
+  moveFocus,
+} from './update/shop'
 import { modelStep } from './update/step'
 
 // NOTE: each child's OutMessage fold. The Bindings live in src/app/bindings.ts,
@@ -76,18 +80,6 @@ import { modelStep } from './update/step'
 // whole delivery, fold included, from `update` in src/app/main.ts.
 
 // DIALOGS
-
-const ShopDialogBindingWithOutMessagePolicy =
-  ShopDialogBinding.withOutMessagePolicy({
-    fold: ApplicationBlock.makeOutMessageFold(DialogBlock, {
-      Opened: makeNoopStep,
-      Closed: () =>
-        makeStep(before =>
-          isGuideEscape(before) ? reopenForGuide : leaveShop,
-        ),
-      CompletedClose: makeNoopStep,
-    }),
-  })
 
 const ProfileDialogBindingWithOutMessagePolicy =
   ProfileDialogBinding.withOutMessagePolicy({
@@ -122,20 +114,27 @@ const HomeScreenStepsBindingWithOutMessagePolicy =
 const UpdateGreetingBindingWithOutMessagePolicy =
   UpdateGreetingBinding.withOutMessagePolicy({ fold: dialogWithoutPolicy })
 
-// TABS
+// THE SHOP
 
-const ShopTabsBindingWithOutMessagePolicy =
-  ShopTabsBinding.withOutMessagePolicy({
-    fold: ApplicationBlock.makeOutMessageFold(ShopTabsBlock, {
-      Selected: ({ value }) => selectCategory(value),
+// NOTE: the shop tells what the player did at the counter; the root makes
+// each as the lead seat's action in the World (an online run's buy goes to
+// the room), and judges a close: Escape with the guide up only puts the
+// guide away (src/app/update/shop.ts).
+const ShopDialogBindingWithOutMessagePolicy =
+  ShopDialogBinding.withOutMessagePolicy({
+    fold: ApplicationBlock.makeOutMessageFold(ShopBlock, {
+      PickedItem: ({ item }) => makeStep(orBuyInRun(item, buy(item))),
+      MovedFocus: ({ item }) => moveFocus(item),
+      FocusedItem: ({ item }) => focusItem(item),
+      ChoseCategory: ({ category }) => chooseCategory(category),
+      Closed: () => closedShop,
     }),
   })
 
 // THE MUNCHOPEDIA
 
 // NOTE: an entry opened clears its NEW ENTRY, and a zombie already found is
-// saved as opened. The shop guide (ShopGuideBinding, and the Munchopedia's
-// own) tells its parent nothing, so it has no fold.
+// saved as opened.
 const MunchopediaBindingWithOutMessagePolicy =
   MunchopediaBinding.withOutMessagePolicy({
     fold: ApplicationBlock.makeOutMessageFold(MunchopediaBlock, {
@@ -203,8 +202,6 @@ const CoopBindingWithOutMessagePolicy = CoopBinding.withOutMessagePolicy({
 export const ApplicationComposition = makeComposition({
   bindings: [
     ShopDialogBindingWithOutMessagePolicy,
-    ShopTabsBindingWithOutMessagePolicy,
-    ShopGuideBinding,
     ProfileDialogBindingWithOutMessagePolicy,
     PanelDialogBindingWithOutMessagePolicy,
     HandDialogBindingWithOutMessagePolicy,

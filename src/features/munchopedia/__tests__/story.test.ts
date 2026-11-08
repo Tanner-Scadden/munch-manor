@@ -2,6 +2,7 @@ import { Story } from 'foldkit'
 
 import { describe, expect, it } from '@effect/vitest'
 
+import { resolveGuideFocus } from '../../../test/testing'
 import { Message as GuideMessage } from '../../guide/message'
 import { GuideStatus } from '../../guide/model'
 import { FocusGuideControl } from '../../guide/steps'
@@ -19,17 +20,12 @@ import { MunchopediaPage } from '../model'
 
 const MUNCHOPEDIA = { block: MunchopediaBlock, layer: MunchopediaLayer }
 
-const guideFocused = Story.Command.resolve(
-  FocusGuideControl,
-  GuideMessage.CompletedFocusControl(),
-)
-
 const openShop = Story.steps(
   Story.message(Message.ClickedShopButton()),
   Story.Command.expectExact(
     FocusGuideControl({ placement: 'Munchopedia', target: 'Back' }),
   ),
-  guideFocused,
+  resolveGuideFocus,
 )
 
 describe('the Munchopedia Block', () => {
@@ -85,7 +81,7 @@ describe('the Munchopedia Block', () => {
         Story.Command.expectExact(
           FocusGuideControl({ placement: 'Munchopedia', target: 'Opener' }),
         ),
-        guideFocused,
+        resolveGuideFocus,
         Story.model(model => {
           expect(model.guide.status).toEqual(GuideStatus.Closed())
           expect(model.page).toEqual(MunchopediaPage.List())

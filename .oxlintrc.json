@@ -364,8 +364,10 @@
     },
     {
       // NOTE: co-op, the Profile, the Profile's Look tab, the solo lobby,
-      // the hero picker, the Munchopedia, and the shop guide are child
-      // Blocks: only their own code builds their Messages.
+      // the hero picker, the Munchopedia, the shop guide, and the shop
+      // dialog are child Blocks: only their own code builds their Messages.
+      // The shop's folder also holds the root's own stall and HUD buy
+      // button, so only its Block's modules are listed.
       "files": [
         "src/features/coop/*.ts",
         "src/features/profile/*.ts",
@@ -373,7 +375,8 @@
         "src/features/lobby/*.ts",
         "src/features/heroes/*.ts",
         "src/features/munchopedia/*.ts",
-        "src/features/guide/*.ts"
+        "src/features/guide/*.ts",
+        "src/features/shop/{block,bindings,composition,inMessage,inMessageUpdate,layer,message,model,steps,update,view}.ts"
       ],
       "rules": { "foldkit/no-child-message-construction-in-root": "error" }
     },

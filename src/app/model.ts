@@ -3,11 +3,10 @@ import { Option, Schema } from 'effect'
 import { DialogBlock } from '@foldkit/ui'
 
 import * as Coop from '../features/coop/model'
-import { GuideBlock } from '../features/guide/block'
 import * as Lobby from '../features/lobby/model'
 import * as Munchopedia from '../features/munchopedia/model'
 import * as Profile from '../features/profile/model'
-import { ShopTabsBlock } from '../features/shop/shopTabs'
+import { ShopBlock } from '../features/shop/block'
 import {
   LastRunSync,
   PlayerChange,
@@ -160,12 +159,9 @@ export const Model = Schema.Struct({
   decals: Schema.Array(Decal),
   dustCooldownMs: Schema.Finite,
   tellWatch: TellWatch,
-  shopDialog: DialogBlock.Model,
-  shopTabs: ShopTabsBlock.Model,
+  // NOTE: Rattles' shop dialog, with its tabs and guide (src/features/shop/).
+  shopDialog: ShopBlock.Model,
   shopChatter: ShopChatter,
-  // NOTE: the shop guide the ? opens in Rattles' shop dialog
-  // (src/features/guide/).
-  shopGuide: GuideBlock.Model,
   shake: Shake,
   popups: Schema.Array(Popup),
   streak: Streak,
@@ -305,13 +301,11 @@ export const noBests: PlayerBests = {
 // its Binding (src/app/bindings.ts) when the root's init runs.
 type ChildField =
   | 'shopDialog'
-  | 'shopTabs'
   | 'homeScreenSteps'
   | 'updateGreeting'
   | 'profile'
   | 'lobby'
   | 'munchopedia'
-  | 'shopGuide'
   | 'profileDialog'
   | 'coop'
   | 'panelDialog'

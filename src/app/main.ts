@@ -40,7 +40,6 @@ import { MunchopediaPage } from '../features/munchopedia/model'
 import { endQuest } from '../features/onboarding/firstBreakQuest'
 import { skipKitchenTour } from '../features/onboarding/kitchenTour'
 import { skipDebutCard } from '../features/onboarding/onboarding'
-import { buy, focusShopItem, moveShopFocus } from '../features/shop/update'
 import {
   type PointerPress,
   moveMouse,
@@ -115,7 +114,6 @@ import {
   takeSyncedSave,
 } from './update/save'
 import { afterMessage } from './update/settle'
-import { openShopGuide } from './update/shopGuide'
 import {
   ResumeAudio,
   notePlayOutcome,
@@ -397,32 +395,6 @@ const handlers = makeUpdate({
 
   ClickedNextTrapButton: (model, message) =>
     Update.combineSteps(model, [makeStep(orInRun(message, clickNextTrap))]),
-
-  ClickedBuyButton: (model, message) =>
-    Update.combineSteps(model, [
-      makeStep(
-        orInRun(message, (buyingModel: Model) =>
-          buy(buyingModel, message.item),
-        ),
-      ),
-    ]),
-
-  PressedBuyKey: (model, message) =>
-    Update.combineSteps(model, [
-      makeStep(
-        orInRun(message, (buyingModel: Model) =>
-          buy(buyingModel, message.item),
-        ),
-      ),
-    ]),
-
-  MovedShopFocus: (model, { item }) => moveShopFocus(model, item),
-
-  FocusedShopItem: (model, { item }) => ({ model: focusShopItem(model, item) }),
-
-  CompletedFocusShopItem: model => ({ model }),
-
-  ClickedShopGuideButton: openShopGuide,
 
   AcquiredAudioEngine: model => ({
     model: modifyFields(model, { audio: () => AudioState.Suspended() }),

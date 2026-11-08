@@ -134,6 +134,16 @@ export const heroesBoughtBy = (rank: number): ReadonlyArray<string> =>
 
 // NOTE: a returning player on the home menu: the tutorial is done, so no
 // lesson or first-run card gets in the way.
+// NOTE: Rattles' shop dialog shown, as if the frame had opened it, for a
+// test that starts at the counter.
+export const withShopDialogOpen = (model: Model): Model =>
+  modifyFields(model, {
+    shopDialog: shop =>
+      modifyFields(shop, {
+        dialog: dialog => modifyFields(dialog, { isOpen: () => true }),
+      }),
+  })
+
 export const home: Model = asVeteran(initialModel)
 
 // NOTE: the home menu once the save has been read, so the menu's buttons are

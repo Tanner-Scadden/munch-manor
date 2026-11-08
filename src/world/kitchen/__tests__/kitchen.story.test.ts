@@ -115,7 +115,7 @@ describe('holding to buy the kitchen open', () => {
         )
         expect(holdProgress(focusOf(current).purchase)).toBeGreaterThan(0.8)
         expect(focusOf(current).shop).toEqual(ShopState.Away())
-        expect(current.shopDialog.isOpen).toBe(false)
+        expect(current.shopDialog.dialog.isOpen).toBe(false)
         expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
       }),
       ...ticks(4, FRAME_MS),
@@ -282,7 +282,7 @@ describe('holding to buy the kitchen open', () => {
         expect(
           Option.exists(shambler, ({ x, y }) => x !== 150 || y !== 104),
         ).toBe(true)
-        expect(current.shopDialog.isOpen).toBe(false)
+        expect(current.shopDialog.dialog.isOpen).toBe(false)
       }),
     )
   })

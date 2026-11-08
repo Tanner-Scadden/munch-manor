@@ -22,7 +22,11 @@ import {
   PISTOL_RELOAD_MS,
   PREPARATION_MS,
 } from '../../../shared/constants'
-import { DISTANT_SPAWN, withArsenal } from '../../../test/model.fixture'
+import {
+  DISTANT_SPAWN,
+  withArsenal,
+  withShopDialogOpen,
+} from '../../../test/model.fixture'
 import {
   countdownTicks,
   holdFire,
@@ -313,9 +317,7 @@ describe('reload pauses', () => {
 
   test('a reload does not progress while the shop is open', () => {
     const shopping = modifyFocus(
-      modifyFields(withPistolLoaded(preparing, 3), {
-        shopDialog: dialog => ({ ...dialog, isOpen: true }),
-      }),
+      withShopDialogOpen(withPistolLoaded(preparing, 3)),
       {
         shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
         player: player =>
@@ -511,9 +513,7 @@ describe('the idle reload below Hard', () => {
 
   test('nothing reloads at the counter', () => {
     const shopping = modifyFocus(
-      modifyFields(withPistolLoaded(preparing, 3), {
-        shopDialog: dialog => ({ ...dialog, isOpen: true }),
-      }),
+      withShopDialogOpen(withPistolLoaded(preparing, 3)),
       { shop: () => ShopState.Browsing({ focusedItem: 'Heart' }) },
     )
     story(

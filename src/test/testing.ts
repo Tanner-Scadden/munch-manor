@@ -9,6 +9,8 @@ import { modifyFields } from 'foldkit/struct'
 
 import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
+import { layer } from '../app/block'
+import { ApplicationBlock } from '../app/definition'
 import { Message } from '../app/message'
 import {
   type Bullet,
@@ -34,6 +36,8 @@ import { ReadRoomLink } from '../app/update/coop'
 import { HideSplash, ShowLoadProgress, WriteSave } from '../app/update/save'
 import { PlaySound } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
+import { Message as GuideMessage } from '../features/guide/message'
+import { FocusGuideControl } from '../features/guide/steps'
 import { endOffer } from '../features/home/home'
 import { Message as LobbyMessage } from '../features/lobby/message'
 import type { LobbyControl } from '../features/lobby/model'
@@ -167,6 +171,16 @@ export const SCENE_SUBSCRIPTIONS = subscriptions
 // NOTE: what every root Scene runs: the root's update, view, and
 // Subscriptions.
 export const ROOT = { update, view, subscriptions: SCENE_SUBSCRIPTIONS }
+
+// NOTE: the root as a Block-aware Story takes it, for a test that reaches a
+// child's own child by its Binding path (`Story.messageIn([...], ...)`).
+export const APPLICATION = { block: ApplicationBlock, layer }
+
+// NOTE: the shop guide's focus Command, in either parent.
+export const resolveGuideFocus = Story.Command.resolve(
+  FocusGuideControl,
+  GuideMessage.CompletedFocusControl(),
+)
 
 export const emitPressedKey = (code: string) =>
   Scene.Subscription.emit(

@@ -5,7 +5,6 @@ import { afterEach, describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { ShopDialogBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { FridgeDoor } from '../../../app/model'
 import { Child, update } from '../../../app/pureApp'
@@ -24,6 +23,7 @@ import {
   preparing,
   resolveShowShop,
 } from '../../shop/__tests__/shop.fixture'
+import { Message as ShopMessage } from '../../shop/message'
 import { Message as GuideMessage } from '../message'
 import { GuideStatus } from '../model'
 import {
@@ -62,9 +62,9 @@ describe('the ? in Rattles shop', () => {
       update,
       given(closedShop()),
       atCounter,
-      message(Message.ClickedShopGuideButton()),
+      message(Child.shop(ShopMessage.ClickedGuideButton({ section: 'Traps' }))),
       resolveFocusGuide,
-      model(({ shopGuide }) => {
+      model(({ shopDialog: { guide: shopGuide } }) => {
         expect(shopGuide.status).toEqual(GuideStatus.Open({ section: 'Traps' }))
       }),
       message(
@@ -72,14 +72,14 @@ describe('the ? in Rattles shop', () => {
           GuideMessage.ClickedSectionButton({ section: 'Fridge' }),
         ),
       ),
-      model(({ shopGuide }) => {
+      model(({ shopDialog: { guide: shopGuide } }) => {
         expect(shopGuide.status).toEqual(
           GuideStatus.Open({ section: 'Fridge' }),
         )
       }),
       message(Child.shopGuide(GuideMessage.ClickedBackButton())),
       resolveFocusGuide,
-      model(({ shopGuide }) => {
+      model(({ shopDialog: { guide: shopGuide } }) => {
         expect(shopGuide.status).toEqual(GuideStatus.Closed())
       }),
     )
@@ -92,12 +92,12 @@ describe('the ? in Rattles shop', () => {
       atCounter,
       press('Slash'),
       resolveFocusGuide,
-      model(({ shopGuide }) => {
+      model(({ shopDialog: { guide: shopGuide } }) => {
         expect(GuideStatus.isAnyOf(['Open'])(shopGuide.status)).toBe(true)
       }),
       press('Slash'),
       resolveFocusGuide,
-      model(({ shopGuide }) => {
+      model(({ shopDialog: { guide: shopGuide } }) => {
         expect(shopGuide.status).toEqual(GuideStatus.Closed())
       }),
     )
@@ -108,17 +108,15 @@ describe('the ? in Rattles shop', () => {
       update,
       given(closedShop()),
       atCounter,
-      message(Message.ClickedShopGuideButton()),
+      message(Child.shop(ShopMessage.ClickedGuideButton({ section: 'Traps' }))),
       resolveFocusGuide,
-      message(
-        Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
-      ),
+      message(Child.shopDialog(DialogBlock.Message.CanceledDialog())),
       Command.resolve(
         Dialog.test.CloseDialog,
         DialogBlock.Message.CompletedCloseDialog(),
       ),
       resolveShowShop,
-      model(({ shopGuide, seats: [{ shop }] }) => {
+      model(({ shopDialog: { guide: shopGuide }, seats: [{ shop }] }) => {
         expect(shopGuide.status).toEqual(GuideStatus.Closed())
         expect(shop._tag).toBe('Browsing')
       }),

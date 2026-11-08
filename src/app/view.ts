@@ -1,5 +1,5 @@
 import { Array, Option, Result, pipe } from 'effect'
-import type { Document, Html } from 'foldkit/html'
+import { type Document, type Html, createKeyedLazy } from 'foldkit/html'
 
 import { awardsOf, crewOf } from '../features/end/crewAwards'
 import { isRunCardHeld } from '../features/end/endBeat'
@@ -27,11 +27,11 @@ import { questTrackerView } from '../features/onboarding/questView'
 import type { ViewInputs as ProfileViewInputs } from '../features/profile/block'
 import { joinName, tabOf } from '../features/profile/profile'
 import { rankPlateView } from '../features/rank/rankBadgeView'
+import { isShopShut } from '../features/shop/model'
 import {
   ammoTagButtonView,
   purchaseAnnouncementView,
 } from '../features/shop/purchaseHud'
-import { shopDialogView } from '../features/shop/shopView'
 import { victorySupportView } from '../features/support/supportView'
 import { hasUnseenCalling, hasUnseenLook } from '../features/unlocks/unlocks'
 import { keyGrabToastView } from '../input/keyGrab'
@@ -78,6 +78,7 @@ import {
   LobbyBinding,
   ProfileBinding,
   ProfileDialogBinding,
+  ShopDialogBinding,
 } from './bindings'
 import {
   ApplicationComposition,
@@ -311,6 +312,35 @@ const profileInputs = (model: Model): ProfileViewInputs => ({
     orientationLock: model.orientationLock,
   },
 })
+
+// NOTE: Rattles' shop dialog draws the World as the root holds it, handed
+// over as a function so it is read only while the dialog shows. Shut, it
+// shows nothing, so it comes from a lazy slot and redraws only when the
+// shop's Model changes, as the menu dialogs do (`dialogShell`).
+const shopEmbed = (
+  shop: Model['shopDialog'],
+  scene: () => Option.Option<Model>,
+  h: ApplicationViewBuilder,
+): Html =>
+  h.block(
+    ShopDialogBinding.embedView({
+      slotId: 'shop-dialog',
+      model: shop,
+      viewInputs: { scene },
+    }),
+  )
+
+const NO_SCENE = () => Option.none<Model>()
+
+const shutShopView = (shop: Model['shopDialog'], h: ApplicationViewBuilder) =>
+  shopEmbed(shop, NO_SCENE, h)
+
+const lazyShutShop = createKeyedLazy()
+
+const shopDialogView = (model: Model, h: ApplicationViewBuilder): Html =>
+  isShopShut(model.shopDialog)
+    ? lazyShutShop('shop-dialog', shutShopView, [model.shopDialog, h])
+    : shopEmbed(model.shopDialog, () => Option.some(model), h)
 
 // NOTE: the Profile's Dialog is the root's (menuState reads it); the Profile
 // Block draws the tabs and pages inside it, and the root the rank plate.

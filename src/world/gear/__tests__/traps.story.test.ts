@@ -20,7 +20,9 @@ import {
   type ZombieKind,
   ZombieState,
 } from '../../../app/model'
+import { Child } from '../../../app/pureApp'
 import { initialModel, update } from '../../../app/pureApp'
+import { Message as ShopMessage } from '../../../features/shop/message'
 import {
   FIRE_INTERVAL_MS,
   FIXED_STEP_MS,
@@ -193,14 +195,14 @@ describe('buying traps', () => {
           wallet: () => ({ balance: 300, earned: 150, shown: 150 }),
         }),
       ),
-      message(Message.ClickedBuyButton({ item: 'Barricade' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Barricade' }))),
       model(({ seats: [{ wallet, trapStock, selectedTrap }], trapHint }) => {
         expect(wallet.balance).toBe(300 - TRAPS.Barricade.price)
         expect(trapStock).toEqual({ Barricade: 1, Turret: 0 })
         expect(selectedTrap).toBe('Barricade')
         expect(trapHint).toEqual(TrapHint.Showing())
       }),
-      message(Message.ClickedBuyButton({ item: 'Turret' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Turret' }))),
       model(({ seats: [{ wallet, trapStock }] }) => {
         expect(wallet.balance).toBe(
           300 - TRAPS.Barricade.price - TRAPS.Turret.price,
@@ -226,7 +228,7 @@ describe('buying traps', () => {
           },
         ),
       ),
-      message(Message.ClickedBuyButton({ item: 'Turret' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Turret' }))),
       model(({ seats: [{ wallet, trapStock }] }) => {
         expect(wallet.balance).toBe(500)
         expect(trapStock.Turret).toBe(1)
@@ -255,7 +257,7 @@ describe('buying traps', () => {
           Verdict.Refused({ reason: 'Two Plank Piles max' }),
         )
       }),
-      message(Message.ClickedBuyButton({ item: 'Barricade' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Barricade' }))),
       model(({ seats: [{ wallet, trapStock }] }) => {
         expect(wallet.balance).toBe(500)
         expect(trapStock.Barricade).toBe(1)
@@ -1013,7 +1015,9 @@ describe('between waves', () => {
     story(
       update,
       given(shopping),
-      message(Message.ClickedBuyButton({ item: repairItemId(1) })),
+      message(
+        Child.shop(ShopMessage.ClickedBuyButton({ item: repairItemId(1) })),
+      ),
       model(current => {
         expect(focusOf(current).wallet.balance).toBe(100 - plankPrice)
         expect(Array.map(current.traps, ({ hp }) => hp)).toEqual([
@@ -1027,11 +1031,15 @@ describe('between waves', () => {
           stockTag(current, focusSlotOf(current), repairItemId(2)),
         ).toEqual(StockTag.Price({ price: gnomePrice }))
       }),
-      message(Message.ClickedBuyButton({ item: repairItemId(1) })),
+      message(
+        Child.shop(ShopMessage.ClickedBuyButton({ item: repairItemId(1) })),
+      ),
       model(({ seats: [{ wallet }] }) => {
         expect(wallet.balance).toBe(100 - plankPrice)
       }),
-      message(Message.ClickedBuyButton({ item: repairItemId(2) })),
+      message(
+        Child.shop(ShopMessage.ClickedBuyButton({ item: repairItemId(2) })),
+      ),
       model(({ seats: [{ wallet }], traps }) => {
         expect(wallet.balance).toBe(100 - plankPrice - gnomePrice)
         expect(Array.map(traps, ({ hp }) => hp)).toEqual([

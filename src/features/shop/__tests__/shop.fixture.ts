@@ -8,7 +8,6 @@ import { modifyFields } from 'foldkit/struct'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { Message } from '../../../app/message'
 import {
   type Arsenal,
   type CarriedGun,
@@ -28,7 +27,8 @@ import { holdingSecond } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { magazineOf } from '../../../world/gear/weapons'
 import { modifyFocus } from '../../../world/party/party'
-import { FocusShopItem } from '../update'
+import { Message as ShopMessage } from '../message'
+import { FocusItem } from '../steps'
 
 export const SHOP_FRAME_MS = 50
 export const FRAMES_TO_STALL = 3
@@ -75,8 +75,8 @@ export const browsing = (base: Model): Model =>
   })
 
 export const resolveFocusShopItem = Command.resolve(
-  FocusShopItem,
-  Message.CompletedFocusShopItem(),
+  FocusItem,
+  ShopMessage.CompletedFocusItem(),
 )
 
 export const focusedOn: {

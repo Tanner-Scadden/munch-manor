@@ -9,6 +9,8 @@ import { Story } from 'foldkit'
 import type { BlockOfBinding } from 'foldkit/block'
 import { toParentMessageFor } from 'foldkit/test'
 
+import type { DialogBlock } from '@foldkit/ui'
+
 import { HeroPickerBinding as CoopHeroPickerBinding } from '../features/coop/bindings'
 import type { GuideBlock } from '../features/guide/block'
 import type { HeroPickerBlock } from '../features/heroes/block'
@@ -17,11 +19,17 @@ import { GuideBinding as MunchopediaGuideBinding } from '../features/munchopedia
 import type { CharacterBlock } from '../features/profile/blocks/look/block'
 import { CharacterBinding } from '../features/profile/composition'
 import {
+  GuideBinding as ShopGuideBinding,
+  DialogBinding as ShopInnerDialogBinding,
+  TabsBinding as ShopTabsBinding,
+} from '../features/shop/bindings'
+import type { ShopTabsBlock } from '../features/shop/shopTabs'
+import {
   CoopBinding,
   LobbyBinding,
   MunchopediaBinding,
   ProfileBinding,
-  ShopGuideBinding,
+  ShopDialogBinding,
 } from './bindings'
 import { layer } from './block'
 import { ApplicationBlock } from './definition'
@@ -46,6 +54,7 @@ const inProfile = toParentMessageFor(application, ProfileBinding)
 const inLobby = toParentMessageFor(application, LobbyBinding)
 const inCoop = toParentMessageFor(application, CoopBinding)
 const inMunchopedia = toParentMessageFor(application, MunchopediaBinding)
+const inShop = toParentMessageFor(application, ShopDialogBinding)
 
 type ProfileMessage = BlockOfBinding<typeof ProfileBinding>['Message']['Type']
 type CharacterMessage = typeof CharacterBlock.Message.Type
@@ -55,6 +64,12 @@ type MunchopediaMessage = BlockOfBinding<
   typeof MunchopediaBinding
 >['Message']['Type']
 type GuideMessage = typeof GuideBlock.Message.Type
+type ShopMessage = BlockOfBinding<typeof ShopDialogBinding>['Message']['Type']
+type DialogMessage = typeof DialogBlock.Message.Type
+type ShopTabsMessage = typeof ShopTabsBlock.Message.Type
+
+const shop = (shopMessage: ShopMessage) =>
+  message(ShopDialogBinding, shopMessage)
 
 const profile = (profileMessage: ProfileMessage) =>
   message(ProfileBinding, profileMessage)
@@ -70,8 +85,10 @@ const lobby = (lobbyMessage: LobbyMessage) =>
 // Profile Message, `inProfile` maps one of its children's (the tabs, the
 // Look tab) to the Profile's, and `character` delivers a Look tab Message.
 // `lobby` delivers a single player lobby Message, `lobbyHero` one of its
-// hero picker's, and `coopHero` one of co-op's hero picker's. `shopGuide`
-// delivers the shop guide's in Rattles' shop, `munchopedia` a Munchopedia
+// hero picker's, and `coopHero` one of co-op's hero picker's. `shop`
+// delivers a Message of Rattles' shop dialog, `shopDialog` one of the
+// Dialog it stands in, `shopTabs` one of its tabs', and `shopGuide` one of
+// its guide's; `munchopedia` a Munchopedia
 // Message, and `munchopediaGuide` one of the guide on its Shop page. A Look tab radio group's Message is a grandchild's grandchild: a
 // Block-aware Story delivers it with `Story.messageIn([ProfileBinding,
 // CharacterBinding, BodyBinding], ...)`.
@@ -86,8 +103,13 @@ export const Child = {
     lobby(inLobby(HeroPickerBinding, pickerMessage)),
   coopHero: (pickerMessage: HeroPickerMessage) =>
     message(CoopBinding, inCoop(CoopHeroPickerBinding, pickerMessage)),
+  shop,
+  shopDialog: (dialogMessage: DialogMessage) =>
+    shop(inShop(ShopInnerDialogBinding, dialogMessage)),
+  shopTabs: (tabsMessage: ShopTabsMessage) =>
+    shop(inShop(ShopTabsBinding, tabsMessage)),
   shopGuide: (guideMessage: GuideMessage) =>
-    message(ShopGuideBinding, guideMessage),
+    shop(inShop(ShopGuideBinding, guideMessage)),
   munchopedia: (munchopediaMessage: MunchopediaMessage) =>
     message(MunchopediaBinding, munchopediaMessage),
   munchopediaGuide: (guideMessage: GuideMessage) =>

@@ -15,7 +15,9 @@ import {
   Tour,
   TrapHint,
 } from '../../../app/model'
+import { Child } from '../../../app/pureApp'
 import { initialModel, update } from '../../../app/pureApp'
+import { Message as ShopMessage } from '../../../features/shop/message'
 import { forgetTutorial } from '../../../platform/save'
 import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
@@ -71,7 +73,10 @@ const browsing = (current: Model): Model =>
   })
 
 const buyPlanks = (current: Model): Model =>
-  update(current, Message.ClickedBuyButton({ item: 'Barricade' })).model
+  update(
+    current,
+    Child.shop(ShopMessage.ClickedBuyButton({ item: 'Barricade' })),
+  ).model
 
 const away = (current: Model): Model =>
   modifyFocus(current, { shop: () => ShopState.Dismissed() })

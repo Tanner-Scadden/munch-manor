@@ -3,6 +3,8 @@ import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
+import { Child } from '../../../app/pureApp'
+import { Message as ShopMessage } from '../../../features/shop/message'
 import {
   DISTANT_SPAWN,
   quietWave,
@@ -52,7 +54,7 @@ describe('the rules single player now shares with the room', () => {
     story(
       update,
       given(browsingMidWave),
-      message(Message.ClickedBuyButton({ item: 'Shotgun' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Shotgun' }))),
       model(current => {
         expect(focusOf(current).wallet).toEqual(focusOf(browsingMidWave).wallet)
         expect(focusOf(current).player.arsenal).toEqual(

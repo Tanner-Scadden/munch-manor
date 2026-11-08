@@ -1,13 +1,12 @@
 import { Array, Option, String } from 'effect'
 
+import { focusSlotOf } from '../../world/party/party'
 import {
-  type Model,
   Phase,
   ShopChatter,
   type ShopItemId,
   type TrapKind,
-} from '../../app/model'
-import { focusSlotOf } from '../../world/party/party'
+} from '../../world/schema/worldSchema'
 import {
   ShopGood,
   Verdict,
@@ -15,6 +14,7 @@ import {
   totalAffordable,
   verdictFor,
 } from '../../world/shop/shop'
+import type { ShopScene } from './block'
 
 // MOOD
 
@@ -161,7 +161,7 @@ const BROKE_MOOD: Mood = 'Sad'
 const BOUGHT_MOOD: Mood = 'Delighted'
 const REFUSED_MOOD: Mood = 'Shrugging'
 
-export const moodOf = (model: Model): Mood =>
+export const moodOf = (model: ShopScene): Mood =>
   ShopChatter.match(model.shopChatter, {
     Greeting: () =>
       totalAffordable(model, focusSlotOf(model)) === 0
@@ -174,10 +174,10 @@ export const moodOf = (model: Model): Mood =>
 
 const NEED_PREFIX = 'Need $'
 
-const wavesSeen = (model: Model): number =>
+const wavesSeen = (model: ShopScene): number =>
   Phase.isAnyOf(['Preparation'])(model.phase) ? model.phase.wave : 0
 
-export const chatterLine = (model: Model): string => {
+export const chatterLine = (model: ShopScene): string => {
   const index = model.stats.purchases
   return ShopChatter.match(model.shopChatter, {
     Greeting: () =>

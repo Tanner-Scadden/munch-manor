@@ -21,8 +21,9 @@ import { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
 import indexHtml from '../../../index.html?raw'
 import { FEEDBACK_RUNS } from '../../features/home/home'
 import { DEBUT_CARD_MIN_MS } from '../../features/onboarding/onboarding'
+import { Message as ShopMessage } from '../../features/shop/message'
 import { ShopTabsBlock } from '../../features/shop/shopTabs'
-import { FocusShopItem } from '../../features/shop/update'
+import { FocusItem } from '../../features/shop/steps'
 import {
   FIXED_STEP_MS,
   GAME_TITLE,
@@ -261,15 +262,15 @@ describe('Shop', () => {
       expect(smgButton).toHaveAttr('aria-disabled', 'true'),
       expect(text('Need $30 more')).toExist(),
       keydown(shotgunButton, 'ArrowDown'),
-      Command.resolve(FocusShopItem, Message.CompletedFocusShopItem()),
+      Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
       keydown(smgButton, 'Enter'),
       expect(text('You have $70')).toExist(),
       keydown(smgButton, 'ArrowUp'),
-      Command.resolve(FocusShopItem, Message.CompletedFocusShopItem()),
+      Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
       keydown(shotgunButton, 'Enter'),
       Command.resolve(
-        FocusShopItem({ item: 'ShotgunShells' }),
-        Message.CompletedFocusShopItem(),
+        FocusItem({ item: 'ShotgunShells' }),
+        ShopMessage.CompletedFocusItem(),
       ),
       expect(text('You have $35')).toExist(),
       expect(shotgunButton).toBeAbsent(),
@@ -288,18 +289,18 @@ describe('Shop', () => {
       expect(text('Need $15 more')).toExist(),
       keydown(shellsButton, 'ArrowDown'),
       Command.resolve(
-        FocusShopItem({ item: 'ShotgunUpgrade' }),
-        Message.CompletedFocusShopItem(),
+        FocusItem({ item: 'ShotgunUpgrade' }),
+        ShopMessage.CompletedFocusItem(),
       ),
       keydown(shotgunUpgradeButton, 'ArrowDown'),
       Command.resolve(
-        FocusShopItem({ item: 'Smg' }),
-        Message.CompletedFocusShopItem(),
+        FocusItem({ item: 'Smg' }),
+        ShopMessage.CompletedFocusItem(),
       ),
       keydown(smgButton, 'Home'),
       Command.resolve(
-        FocusShopItem({ item: 'PistolUpgrade' }),
-        Message.CompletedFocusShopItem(),
+        FocusItem({ item: 'PistolUpgrade' }),
+        ShopMessage.CompletedFocusItem(),
       ),
       expect(
         role('button', {
@@ -440,7 +441,7 @@ describe('Shop', () => {
       ).toExist(),
       expect(selector('[data-verdict="refused"] #shop-item-Smg')).toExist(),
       click(shotgunButton),
-      Command.resolve(FocusShopItem, Message.CompletedFocusShopItem()),
+      Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
       expect(role('tab', { name: 'Guns, nothing you can buy' })).toExist(),
       expect(role('tab', { name: 'Health, nothing you can buy' })).toExist(),
       expect(text('Nothing you can buy right now')).toExist(),

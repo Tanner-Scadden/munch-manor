@@ -5,6 +5,7 @@ import { isOpen as isCoopScreenOpen } from '../features/coop/update'
 import { isHeroPickerUp, isLobbyShown } from '../features/lobby/model'
 import { ProfileTab } from '../features/profile/model'
 import { tabOf } from '../features/profile/profile'
+import { isShopShown } from '../features/shop/model'
 import { RESTART_GRACE_MS } from '../shared/constants'
 import { MenuPanel, type Model, Phase } from './model'
 
@@ -49,7 +50,7 @@ const phaseState = (model: Model): MenuState =>
   })
 
 export const menuState = (model: Model): MenuState => {
-  if (model.shopDialog.isOpen) {
+  if (isShopShown(model.shopDialog)) {
     return MenuState.Shop()
   } else if (model.profileDialog.isOpen) {
     return MenuState.Profile({ tab: tabOf(model.profile) })
