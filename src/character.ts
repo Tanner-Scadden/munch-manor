@@ -46,8 +46,8 @@ export type Message = typeof Message.Type
 const OutMessage = defineMessageUnion({
   ChoseLook: { part: LookPart, value: Schema.String },
   FlippedLook: { toggle: LookToggle },
-  RequestedRandomLook: {},
-  RequestedBuy: {},
+  RolledDice: {},
+  ClickedBuy: {},
 })
 type OutMessage = typeof OutMessage.Type
 
@@ -372,8 +372,8 @@ export const update = CharacterComposition.makeUpdate({
   ClickedToggle: makeOutMessageStep.fromMessage(({ toggle }) =>
     OutMessage.FlippedLook({ toggle }),
   ),
-  ClickedDiceButton: makeOutMessageStep(() => OutMessage.RequestedRandomLook()),
-  ClickedBuyButton: makeOutMessageStep(() => OutMessage.RequestedBuy()),
+  ClickedDiceButton: makeOutMessageStep(() => OutMessage.RolledDice()),
+  ClickedBuyButton: makeOutMessageStep(() => OutMessage.ClickedBuy()),
   ClickedGearOption: makeOutMessageStep.fromMessage(({ part, value }) =>
     OutMessage.ChoseLook({ part, value }),
   ),

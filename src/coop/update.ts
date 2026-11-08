@@ -66,14 +66,12 @@ import {
   isInLobby,
   isKickedFrom,
   isPicking,
-  keepTracers,
   learnLobby,
   linkOf,
   maybeRoomOf,
   meIn,
   nextOf,
   pickedModeOf,
-  pressAction,
   pressFor,
   shotsBetween,
   startOfEvents,
@@ -267,7 +265,7 @@ export type UpdateReturn = Update.ReturnWithOutMessage<
   CoopHandlers
 >
 
-const edits = makeEdits<
+export const edits = makeEdits<
   ReturnType<typeof ChangeLobby> | ReturnType<typeof FocusCoopElement>
 >({
   changeLobby: change => ChangeLobby({ change }),
@@ -719,10 +717,6 @@ export const pressKey: {
   keyOnScreen(model, code),
 )
 
-const releaseKey = (model: Model, _code: string): UpdateReturn => ({
-  model,
-})
-
 // OPEN
 
 // NOTE: opening co-op lands on the hub, or straight in a room's join when a
@@ -796,6 +790,14 @@ const inRoom = (
     onNone: () => ({ model }),
     onSome: toReturn,
   })
+
+// NOTE: READY and LEAVE by button here, or by the parent's request
+// (inMessageUpdate.ts).
+export const toggleReadyInRoom = (model: Model): UpdateReturn =>
+  inRoom(model, room => toggleReady(model, room))
+
+export const leaveRoom = (model: Model): UpdateReturn =>
+  inRoom(model, room => leave(model, room))
 
 const inQueue = (
   model: Model,
@@ -927,7 +929,7 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
         }),
       })),
 
-    ClickedReadyButton: () => inRoom(model, room => toggleReady(model, room)),
+    ClickedReadyButton: () => toggleReadyInRoom(model),
 
     ClickedKickButton: ({ playerId }) =>
       inRoom(model, room =>
@@ -997,7 +999,7 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
 
     FailedChangeLobby: () => ({ model }),
 
-    ClickedLeaveButton: () => inRoom(model, room => leave(model, room)),
+    ClickedLeaveButton: () => leaveRoom(model),
 
     CompletedResyncRoom: () => ({ model }),
 
@@ -1037,50 +1039,6 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
     CompletedRememberRoom: () => ({ model }),
 
     CompletedFocusCoopElement: () => ({ model }),
-
-    RequestedOpen: ({
-      name,
-      maybeCode,
-      look,
-      rank,
-      calling,
-      rngState,
-      bought,
-      bones,
-    }) =>
-      open(
-        model,
-        name,
-        maybeCode,
-        look,
-        rank,
-        calling,
-        bought,
-        bones,
-        rngState,
-      ),
-
-    RequestedBoughtHero: ({ calling, bought, bones }) =>
-      edits.boughtHero(model, calling, bought, bones),
-
-    RequestedPressKey: ({ code }) => pressKey(model, code),
-
-    RequestedReleaseKey: ({ code }) => releaseKey(model, code),
-
-    RequestedTickRoom: ({ controls, nowMs, isPictureHeld }) =>
-      tickRoom(model, controls, nowMs, isPictureHeld),
-
-    RequestedPressAction: ({ action }) => ({
-      model: pressAction(model, action),
-    }),
-
-    RequestedKeepTracers: ({ tracers, fired, looked, confirmed }) => ({
-      model: keepTracers(model, tracers, fired, looked, confirmed),
-    }),
-
-    RequestedToggleReady: () => inRoom(model, room => toggleReady(model, room)),
-
-    RequestedLeave: () => inRoom(model, room => leave(model, room)),
   })
 
 // NOTE: a delivered Message that drops the room tells the parent, unless it
@@ -1093,10 +1051,6 @@ const delivered = (model: Model, message: Message): UpdateReturn => {
     ? { ...result, outMessage: OutMessage.LeftRoom() }
     : result
 }
-
-// NOTE: the parent's requests (the Block's operations) run as they are.
-const requested = (model: Model, message: Message): UpdateReturn =>
-  updateMessage(model, message)
 
 export const update = CoopComposition.makeUpdate({
   ClickedQuickPlayButton: delivered,
@@ -1143,15 +1097,6 @@ export const update = CoopComposition.makeUpdate({
   CompletedCopyRoomCode: delivered,
   CompletedRememberRoom: delivered,
   CompletedFocusCoopElement: delivered,
-  RequestedOpen: requested,
-  RequestedBoughtHero: requested,
-  RequestedPressKey: requested,
-  RequestedReleaseKey: requested,
-  RequestedTickRoom: requested,
-  RequestedPressAction: requested,
-  RequestedKeepTracers: requested,
-  RequestedToggleReady: requested,
-  RequestedLeave: requested,
 })
 
 // HANDLERS
