@@ -3,6 +3,7 @@ import { Block } from 'foldkit'
 
 import type { Appearance } from '../model'
 import type { SavedBoughtCosmetics } from '../playerData'
+import { InMessage } from './inMessage'
 import { Message, OutMessage } from './message'
 import { Model } from './model'
 import { CoopNet } from './net'
@@ -17,9 +18,10 @@ export type ViewInputs = Readonly<{
 }>
 
 // NOTE: co-op's public contract. Its Commands and Subscriptions are authored
-// through it, so their names belong to co-op (`Coop/RequestRoom`). Its
-// operations are the parent's requests, each a local Message that runs
-// through co-op's update and may tell the parent something.
+// through it, so their names belong to co-op (`Coop/RequestRoom`). The
+// parent's requests are its InMessages, each generating a Binding method
+// (`RequestedPressKey` is `CoopBinding.requestPressKey({ code })`); those
+// that may tell the parent something declare it in `inMessageOutputs`.
 const CoopKey = Symbol('Coop')
 export const CoopBlock = Block.make('Coop', {
   key: CoopKey,
@@ -28,38 +30,15 @@ export const CoopBlock = Block.make('Coop', {
   effects: { services: [CoopNet] },
   Model,
   Message,
+  InMessage,
   OutMessage,
-  operations: {
-    requestOpen: { message: Message.RequestedOpen, outMessage: OutMessage },
-    requestBoughtHero: {
-      message: Message.RequestedBoughtHero,
-      outMessage: OutMessage,
-    },
-    requestPressKey: {
-      message: Message.RequestedPressKey,
-      outMessage: OutMessage,
-    },
-    requestReleaseKey: {
-      message: Message.RequestedReleaseKey,
-      outMessage: OutMessage,
-    },
-    requestTickRoom: {
-      message: Message.RequestedTickRoom,
-      outMessage: OutMessage,
-    },
-    requestPressAction: {
-      message: Message.RequestedPressAction,
-      outMessage: OutMessage,
-    },
-    requestToggleReady: {
-      message: Message.RequestedToggleReady,
-      outMessage: OutMessage,
-    },
-    requestLeave: { message: Message.RequestedLeave, outMessage: OutMessage },
-    requestKeepTracers: {
-      message: Message.RequestedKeepTracers,
-      outMessage: OutMessage,
-    },
+  inMessageOutputs: {
+    RequestedOpen: { outMessage: OutMessage },
+    RequestedBoughtHero: { outMessage: OutMessage },
+    RequestedPressKey: { outMessage: OutMessage },
+    RequestedTickRoom: { outMessage: OutMessage },
+    RequestedToggleReady: { outMessage: OutMessage },
+    RequestedLeave: { outMessage: OutMessage },
   },
 })
 

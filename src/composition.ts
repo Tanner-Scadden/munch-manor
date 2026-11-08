@@ -118,8 +118,8 @@ const CharacterBindingWithOutMessagePolicy =
     fold: ApplicationBlock.makeOutMessageFold(CharacterBlock, {
       ChoseLook: ({ part, value }) => settled(chooseLook(part, value)),
       FlippedLook: ({ toggle }) => settled(flipLook(toggle)),
-      RequestedRandomLook: () => settled(rollLook),
-      RequestedBuy: () => settled(buyPreview),
+      RolledDice: () => settled(rollLook),
+      ClickedBuy: () => settled(buyPreview),
     }),
   })
 

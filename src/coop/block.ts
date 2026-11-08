@@ -2,6 +2,7 @@ import { Layer } from 'effect'
 
 import { CoopComposition } from './composition'
 import { CoopBlock } from './definition'
+import { inMessageUpdate } from './inMessageUpdate'
 import { initialModel } from './model'
 import { subscriptions } from './subscriptions'
 import { CommandsLayer, update } from './update'
@@ -16,6 +17,7 @@ const EffectsLayer = Layer.merge(CommandsLayer, subscriptions.layer)
 export const CoopLayer = CoopBlock.makeLayer({
   init,
   update,
+  inMessageUpdate,
   view,
   subscriptions,
   EffectsLayer,

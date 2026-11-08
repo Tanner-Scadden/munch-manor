@@ -5,28 +5,13 @@ import { PickedMode, RoomDifficulty } from '@munch/netcode'
 import { LobbyEvent, QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
 import { Modifier } from '../modifiers'
-import { Calling, SavedBoughtCosmetics } from '../playerData'
-import { SeatAction } from '../stepWorld'
-import { Bullet } from '../worldSchema'
+import { Calling } from '../playerData'
 import { CodeCopy, CoopProblem, NudgeReason, Share } from './model'
-
-// NOTE: this client's controls for one room frame, the shape of netcode's
-// PlayerInput. PlayerInput's own Schema checks each field's wire range, and
-// a Message's payload goes through its Schema when it is built, so a stray
-// aim beyond the range would throw on every frame. The session packs the
-// input for the wire itself, so the Message carries plain numbers.
-const Controls = Schema.Struct({
-  moveX: Schema.Finite,
-  moveY: Schema.Finite,
-  aimX: Schema.Finite,
-  aimY: Schema.Finite,
-  buttons: Schema.Finite,
-  action: Schema.Finite,
-})
-type Controls = typeof Controls.Type
 
 // MESSAGE
 
+// NOTE: co-op's own facts. The parent's requests are its InMessages
+// (inMessage.ts).
 export const Message = defineMessageUnion({
   ClickedQuickPlayButton: {},
   ClickedCodeButton: {},
@@ -72,37 +57,6 @@ export const Message = defineMessageUnion({
   CompletedCopyRoomCode: { copy: CodeCopy },
   CompletedRememberRoom: {},
   CompletedFocusCoopElement: {},
-  RequestedOpen: {
-    name: Schema.String,
-    maybeCode: Schema.Option(Schema.String),
-    look: Schema.String,
-    rank: Schema.Finite,
-    calling: Calling,
-    rngState: Schema.Finite,
-    bought: SavedBoughtCosmetics,
-    bones: Schema.Finite,
-  },
-  RequestedBoughtHero: {
-    calling: Calling,
-    bought: SavedBoughtCosmetics,
-    bones: Schema.Finite,
-  },
-  RequestedPressKey: { code: Schema.String },
-  RequestedReleaseKey: { code: Schema.String },
-  RequestedTickRoom: {
-    controls: Controls,
-    nowMs: Schema.Finite,
-    isPictureHeld: Schema.Boolean,
-  },
-  RequestedPressAction: { action: SeatAction },
-  RequestedToggleReady: {},
-  RequestedLeave: {},
-  RequestedKeepTracers: {
-    tracers: Schema.Array(Bullet),
-    fired: Schema.Finite,
-    looked: Schema.Finite,
-    confirmed: Schema.Finite,
-  },
 })
 export type Message = typeof Message.Type
 

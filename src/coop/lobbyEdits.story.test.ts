@@ -4,16 +4,20 @@ import {
   expectNoOutMessage,
   expectOutMessage,
   given,
+  inMessage,
   message,
   model,
   story,
 } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 
-import { describe, expect, test } from '@effect/vitest'
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { GOOFY_NAMES } from '../profile'
 import { roomSettingsOf } from '../roomWorld'
+import { CoopLayer } from './block'
+import { CoopBlock } from './definition'
+import { InMessage } from './inMessage'
 import { Message, OutMessage } from './message'
 import { LobbyChange, type Model } from './model'
 import { update } from './pureCoop'
@@ -144,38 +148,42 @@ describe('buying a hero in the lobby', () => {
     expect(tapped.commands).toBeUndefined()
   })
 
-  test('BUY asks the parent to spend the Bones, once, and the answer picks the hero', () => {
-    story(
-      update,
-      given(picker(150)),
-      message(Message.ClickedCallingPick({ calling: 'TrackStar' })),
-      message(Message.ClickedBuyCallingButton()),
-      expectOutMessage(OutMessage.BoughtCalling({ calling: 'TrackStar' })),
-      message(
-        Message.RequestedBoughtHero({
-          calling: 'TrackStar',
-          bought: ['hero:Handyman', 'hero:TrackStar'],
-          bones: 50,
+  // NOTE: the parent's answer is an InMessage, so this Story runs on co-op's
+  // acquired Block, not its plain update.
+  it.effect(
+    'BUY asks the parent to spend the Bones, once, and the answer picks the hero',
+    () =>
+      story(
+        { block: CoopBlock, layer: CoopLayer },
+        given(picker(150)),
+        message(Message.ClickedCallingPick({ calling: 'TrackStar' })),
+        message(Message.ClickedBuyCallingButton()),
+        expectOutMessage(OutMessage.BoughtCalling({ calling: 'TrackStar' })),
+        inMessage(
+          InMessage.RequestedBoughtHero({
+            calling: 'TrackStar',
+            bought: ['hero:Handyman', 'hero:TrackStar'],
+            bones: 50,
+          }),
+        ),
+        expectNoOutMessage(),
+        Command.resolve(
+          ChangeLobby({
+            change: LobbyChange.ChangedMemberCalling({ calling: 'TrackStar' }),
+          }),
+          Message.CompletedChangeLobby(),
+        ),
+        Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+        model(current => {
+          expect(current.calling).toBe('TrackStar')
+          expect(current.bones).toBe(50)
+          expect(roomOf(current).isPickingCalling).toBe(false)
+          expect(tryingOf(current)).toEqual(Option.none())
         }),
+        message(Message.ClickedBuyCallingButton()),
+        expectNoOutMessage(),
       ),
-      expectNoOutMessage(),
-      Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedMemberCalling({ calling: 'TrackStar' }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
-      model(current => {
-        expect(current.calling).toBe('TrackStar')
-        expect(current.bones).toBe(50)
-        expect(roomOf(current).isPickingCalling).toBe(false)
-        expect(tryingOf(current)).toEqual(Option.none())
-      }),
-      message(Message.ClickedBuyCallingButton()),
-      expectNoOutMessage(),
-    )
-  })
+  )
 
   test('too few Bones, and BUY sends nothing', () => {
     const short = update(
