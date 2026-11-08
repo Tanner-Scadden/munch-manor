@@ -81,18 +81,37 @@ import { attempt, evaluateAs, failWith } from './page'
 // HEROES
 
 // NOTE: each page plays a different hero, unlocked by the rank its save holds
-// (RANKS 3, 8, 10 reach the Handyman at 3, the Track Star at 6, the Penny
-// Pincher at 10). The host picks at home, through the single player lobby's hero card
-// and picker; each guest picks in the lobby, through the lobby's own pill. Every
-// page must then see the others' prop icons in the lobby, and the room must
-// seat each slot as its hero.
+// (RANKS 6, 8, 10 reach the Handyman at 3, the Track Star at 6, the Penny
+// Pincher at 10) and bought with the Bones that rank's veteran grant pays (75,
+// 122, 180: the heroes cost 60, 100, 150). The host picks at home, through the
+// single player lobby's hero card and picker; each guest picks in the lobby,
+// through the lobby's own pill. A hero for sale is tried on by its card and
+// bought with the picker's BUY pill. Every page must then see the others' prop
+// icons in the lobby, and the room must seat each slot as its hero.
 const HEROES = ['Handyman', 'TrackStar', 'PennyPincher'] as const
+
+// NOTE: buys the hero just tried on when it is for sale, then closes the
+// picker if it is still open.
+const buyAndClose = (page: Page) =>
+  Effect.gen(function* () {
+    const buy = page.locator('.calling-buy:not([disabled])').first()
+    if (yield* attempt(() => buy.isVisible())) {
+      yield* attempt(() => buy.click())
+    }
+    const isPickerOpen = yield* attempt(() =>
+      page.locator('.calling-card').first().isVisible(),
+    )
+    if (isPickerOpen) {
+      yield* attempt(() => page.keyboard.press('Escape'))
+    }
+  })
 
 const pickAtHome = (page: Page, hero: string) =>
   Effect.gen(function* () {
     yield* attempt(() => page.click('#home-play'))
     yield* attempt(() => page.click('#lobby-hero'))
     yield* attempt(() => page.click(`.calling-card[data-calling="${hero}"]`))
+    yield* buyAndClose(page)
     yield* attempt(() => page.click('#lobby-back'))
   })
 
@@ -102,6 +121,7 @@ const pickInLobby = (page: Page, hero: string) =>
     yield* attempt(() =>
       page.click(`.coop-calling-picker .calling-card[data-calling="${hero}"]`),
     )
+    yield* buyAndClose(page)
   })
 
 // NOTE: the hero each filled seat shows, in seat order; YOU shows none.

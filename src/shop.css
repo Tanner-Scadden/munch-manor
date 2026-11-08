@@ -178,7 +178,8 @@
   display: inline-block;
   color: var(--shop-gold);
   font: bold var(--shop-big) monospace;
-  text-shadow: calc(2 * var(--shop-u)) calc(2 * var(--shop-u)) 0 var(--menu-ink-on-gold);
+  text-shadow: calc(2 * var(--shop-u)) calc(2 * var(--shop-u)) 0
+    var(--menu-ink-on-gold);
   animation: shop-bump 0.35s ease-out;
 }
 
