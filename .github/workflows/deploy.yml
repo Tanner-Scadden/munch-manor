@@ -123,14 +123,16 @@ jobs:
           else
             hard_url="$URL"
           fi
-          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+          # NOTE: a new build can take a couple of minutes to reach every
+          # edge, so this waits up to three before it fails.
+          for attempt in $(seq 1 36); do
             status=$(curl -s -o /dev/null -w '%{http_code}' "$hard_url/")
             build=$(curl -s "$hard_url/version.json?check=$attempt" | grep -oE '"build" *: *"[^"]*"' | grep -oE '"[^"]*"$' | tr -d '"' || true)
             if [ "$status" = "200" ] && [ "$build" = "$GITHUB_SHA" ]; then
               echo "$hard_url answered 200 with build $build"
               break
             fi
-            if [ "$attempt" = "12" ]; then
+            if [ "$attempt" = "36" ]; then
               echo "$hard_url answered $status with build '$build', wanted $GITHUB_SHA"
               exit 1
             fi
@@ -147,15 +149,38 @@ jobs:
       - name: Check the analytics API answers
         env:
           API_URL: ${{ steps.deploy.outputs.api_url }}
+        # NOTE: Cloudflare's bot protection can challenge GitHub's runner on
+        # the custom domain, so production's health is checked at the API's
+        # workers.dev address, as the site's build is above.
         run: |
           test -n "$API_URL"
-          for attempt in 1 2 3 4 5 6; do
-            body=$(curl -s "$API_URL/api/health" || true)
-            if [ "$body" = '{"status":"Ok","database":"Ok"}' ]; then echo "$API_URL/api/health answered $body"; exit 0; fi
+          if [ "$STAGE" = "prod" ]; then
+            hard_url=https://munch-manor-api.tanner-scadden.workers.dev
+          else
+            hard_url="$API_URL"
+          fi
+          healthy=false
+          for attempt in $(seq 1 12); do
+            body=$(curl -s "$hard_url/api/health" || true)
+            if [ "$body" = '{"status":"Ok","database":"Ok"}' ]; then
+              echo "$hard_url/api/health answered $body"
+              healthy=true
+              break
+            fi
             sleep 5
           done
-          echo "$API_URL/api/health answered $body"
-          exit 1
+          if [ "$healthy" != true ]; then
+            echo "$hard_url/api/health answered $body"
+            exit 1
+          fi
+          if [ "$hard_url" != "$API_URL" ]; then
+            status=$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/api/health")
+            case "$status" in
+              200) echo "$API_URL/api/health answered 200" ;;
+              403) echo "::warning::$API_URL answered 403 to GitHub's runner (Cloudflare bot protection); the workers.dev address above is healthy" ;;
+              *) echo "$API_URL/api/health answered $status"; exit 1 ;;
+            esac
+          fi
       # NOTE: production also answers at its old workers.dev addresses, on
       # purpose: saves and installed apps are bound to their origin, so they
       # must keep serving (see "Two origins" in PLATFORM.md).
