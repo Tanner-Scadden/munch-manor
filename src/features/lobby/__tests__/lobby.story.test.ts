@@ -1,12 +1,14 @@
-import { Option } from 'effect'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it } from '@effect/vitest'
+
+import { LobbyBinding } from '../../../app/bindings'
 import { MenuState, isLobbyOpen, menuState } from '../../../app/menuState'
 import { Message } from '../../../app/message'
 import { DifficultyCard, Lesson, Phase, RunMode } from '../../../app/model'
-import { Child, initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import { Message as HeroPickerMessage } from '../../../features/heroes/message'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
@@ -16,6 +18,7 @@ import {
   readyModel,
 } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   closeDialog,
   openLobbyByKey,
   press,
@@ -26,45 +29,48 @@ import {
 import { pointsForRank } from '../../../world/heroes/rank'
 import { focusOf } from '../../../world/party/party'
 import { FocusHomeButton } from '../../home/update'
+import { HeroPickerBinding } from '../bindings'
 import { FocusLobbyControl } from '../steps'
 
 // The single player lobby (src/features/lobby/lobby.ts, src/features/lobby/update.ts): PLAY opens
 // it, START plays what it holds, and BACK and Esc go home.
 
 describe('PLAY opens the lobby', () => {
-  test('a tap on PLAY opens it, focuses START, and starts no run', () => {
-    story(
-      update,
-      given(readyModel),
-      message(Message.ClickedPlayButton()),
-      Command.resolve(
+  it.effect('a tap on PLAY opens it, focuses START, and starts no run', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
+      Story.message(Message.ClickedPlayButton()),
+      Story.Command.resolve(
         FocusLobbyControl({ control: 'Start' }),
         LobbyMessage.CompletedFocusControl(),
       ),
-      model(current => {
+      Story.model(current => {
         expect(current.lobby.status).toBe('Open')
         expect(isLobbyOpen(current)).toBe(true)
         expect(menuState(current)._tag).toBe('Lobby')
         expect(Phase.guards.Ready(current.phase)).toBe(true)
         expect(current.lobby.maybeFocus).toEqual(Option.some('Start'))
       }),
-    )
-  })
+    ),
+  )
 
-  test('Enter does the same, and the home keys that are not the lobby stop answering', () => {
-    story(
-      update,
-      given(readyModel),
-      openLobbyByKey,
-      press('KeyV'),
-      press('KeyO'),
-      model(current => {
-        expect(MenuState.isAnyOf(['Lobby'])(menuState(current))).toBe(true)
-        expect(current.handDialog.isOpen).toBe(false)
-        expect(current.profileDialog.isOpen).toBe(false)
-      }),
-    )
-  })
+  it.effect(
+    'Enter does the same, and the home keys that are not the lobby stop answering',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(readyModel),
+        openLobbyByKey,
+        press('KeyV'),
+        press('KeyO'),
+        Story.model(current => {
+          expect(MenuState.isAnyOf(['Lobby'])(menuState(current))).toBe(true)
+          expect(current.handDialog.isOpen).toBe(false)
+          expect(current.profileDialog.isOpen).toBe(false)
+        }),
+      ),
+  )
 })
 
 describe('START plays what the lobby holds', () => {
@@ -76,74 +82,79 @@ describe('START plays what the lobby holds', () => {
     home: home => modifyFields(home, { mode: () => 'Endless' }),
   })
 
-  test('the run has the chosen mode, difficulty, and hero, and the lobby is gone', () => {
-    story(
-      update,
-      given(chosen),
-      message(Message.ClickedPlayButton()),
-      resolveFocusLobby(),
-      message(Child.lobby(LobbyMessage.ClickedStartButton())),
-      model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.mode).toEqual(RunMode.Endless())
-        expect(current.difficulty.chosen).toBe('Hard')
-        expect(focusOf(current).player.calling).toBe('Handyman')
-        expect(current.lobby.status).toBe('Closed')
-        expect(isLobbyOpen(current)).toBe(false)
-      }),
-    )
-  })
+  it.effect(
+    'the run has the chosen mode, difficulty, and hero, and the lobby is gone',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(chosen),
+        Story.message(Message.ClickedPlayButton()),
+        resolveFocusLobby(),
+        Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
+        Story.model(current => {
+          expect(Phase.guards.Preparation(current.phase)).toBe(true)
+          expect(current.mode).toEqual(RunMode.Endless())
+          expect(current.difficulty.chosen).toBe('Hard')
+          expect(focusOf(current).player.calling).toBe('Handyman')
+          expect(current.lobby.status).toBe('Closed')
+          expect(isLobbyOpen(current)).toBe(false)
+        }),
+      ),
+  )
 
-  test('picks made in the lobby are what START plays', () => {
-    story(
-      update,
-      given(readyModel),
+  it.effect('picks made in the lobby are what START plays', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
       openLobbyByKey,
-      message(Child.lobby(LobbyMessage.ClickedModeButton({ mode: 'Endless' }))),
-      resolveFocusLobby(),
-      message(
-        Child.lobby(
-          LobbyMessage.ClickedDifficultyButton({ difficulty: 'Easy' }),
-        ),
+      Story.messageIn(
+        LobbyBinding,
+        LobbyMessage.ClickedModeButton({ mode: 'Endless' }),
       ),
       resolveFocusLobby(),
-      message(Child.lobby(LobbyMessage.ClickedStartButton())),
-      model(current => {
+      Story.messageIn(
+        LobbyBinding,
+        LobbyMessage.ClickedDifficultyButton({ difficulty: 'Easy' }),
+      ),
+      resolveFocusLobby(),
+      Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
+      Story.model(current => {
         expect(current.mode).toEqual(RunMode.Endless())
         expect(current.difficulty.chosen).toBe('Easy')
       }),
-    )
-  })
+    ),
+  )
 
-  test('Enter after a pick starts, since the pick moved focus to START', () => {
-    story(
-      update,
-      given(readyModel),
-      openLobbyByKey,
-      message(
-        Child.lobby(
+  it.effect(
+    'Enter after a pick starts, since the pick moved focus to START',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(readyModel),
+        openLobbyByKey,
+        Story.messageIn(
+          LobbyBinding,
           LobbyMessage.ClickedDifficultyButton({ difficulty: 'Hard' }),
         ),
+        resolveFocusLobby(),
+        press('Enter'),
+        Story.model(current => {
+          expect(Phase.guards.Preparation(current.phase)).toBe(true)
+          expect(current.difficulty.chosen).toBe('Hard')
+        }),
       ),
-      resolveFocusLobby(),
-      press('Enter'),
-      model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.difficulty.chosen).toBe('Hard')
-      }),
-    )
-  })
+  )
 
-  test('START does nothing when no lobby is open', () => {
-    story(
-      update,
-      given(readyModel),
-      message(Child.lobby(LobbyMessage.ClickedStartButton())),
-      model(current => {
+  it.effect('START does nothing when no lobby is open', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
+      Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
+      Story.model(current => {
         expect(Phase.guards.Ready(current.phase)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('the hero card', () => {
@@ -152,86 +163,92 @@ describe('the hero card', () => {
     boughtCosmetics: () => heroesBoughtBy(3),
   })
 
-  test('opens the hero picker over the lobby, and a pick lands back in the lobby', () => {
-    story(
-      update,
-      given(ranked),
-      openLobbyByKey,
-      message(Child.lobby(LobbyMessage.ClickedHeroButton())),
-      showDialog(),
-      model(current => {
-        expect(menuState(current)._tag).toBe('HeroPicker')
-        expect(current.lobby.status).toBe('Open')
-      }),
-      message(
-        Child.lobbyHero(HeroPickerMessage.ClickedCard({ calling: 'Handyman' })),
+  it.effect(
+    'opens the hero picker over the lobby, and a pick lands back in the lobby',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(ranked),
+        openLobbyByKey,
+        Story.messageIn(LobbyBinding, LobbyMessage.ClickedHeroButton()),
+        showDialog(),
+        Story.model(current => {
+          expect(menuState(current)._tag).toBe('HeroPicker')
+          expect(current.lobby.status).toBe('Open')
+        }),
+        Story.messageIn(
+          [LobbyBinding, HeroPickerBinding],
+          HeroPickerMessage.ClickedCard({ calling: 'Handyman' }),
+        ),
+        closeDialog(),
+        Story.model(current => {
+          expect(current.calling).toBe('Handyman')
+          expect(menuState(current)._tag).toBe('Lobby')
+        }),
       ),
-      closeDialog(),
-      model(current => {
-        expect(current.calling).toBe('Handyman')
-        expect(menuState(current)._tag).toBe('Lobby')
-      }),
-    )
-  })
+  )
 
-  test('Y opens it from the keyboard', () => {
-    story(
-      update,
-      given(ranked),
+  it.effect('Y opens it from the keyboard', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(ranked),
       openLobbyByKey,
       press('KeyY'),
       showDialog(),
-      model(current => {
+      Story.model(current => {
         expect(menuState(current)._tag).toBe('HeroPicker')
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('BACK and Esc', () => {
-  test('the BACK button closes the lobby and focuses PLAY', () => {
-    story(
-      update,
-      given(readyModel),
+  it.effect('the BACK button closes the lobby and focuses PLAY', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
       openLobbyByKey,
-      message(Child.lobby(LobbyMessage.ClickedBackButton())),
-      Command.resolve(
+      Story.messageIn(LobbyBinding, LobbyMessage.ClickedBackButton()),
+      Story.Command.resolve(
         FocusHomeButton({ button: 'Play' }),
         Message.CompletedFocusHomeButton(),
       ),
-      model(current => {
+      Story.model(current => {
         expect(current.lobby.status).toBe('Closed')
         expect(Phase.guards.Ready(current.phase)).toBe(true)
         expect(menuState(current)._tag).toBe('Home')
       }),
-    )
-  })
+    ),
+  )
 
-  test('Esc does the same, and keeps the picks it holds', () => {
-    story(
-      update,
-      given(readyModel),
+  it.effect('Esc does the same, and keeps the picks it holds', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
       openLobbyByKey,
-      message(Child.lobby(LobbyMessage.ClickedModeButton({ mode: 'Endless' }))),
+      Story.messageIn(
+        LobbyBinding,
+        LobbyMessage.ClickedModeButton({ mode: 'Endless' }),
+      ),
       resolveFocusLobby(),
       press('Escape'),
-      Command.resolve(
+      Story.Command.resolve(
         FocusHomeButton({ button: 'Play' }),
         Message.CompletedFocusHomeButton(),
       ),
-      model(current => {
+      Story.model(current => {
         expect(menuState(current)._tag).toBe('Home')
         expect(current.home.mode).toBe('Endless')
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('the arrow keys', () => {
-  test('walk the lobby from START, wrap, and go back', () => {
-    story(
-      update,
-      given(readyModel),
+  it.effect('walk the lobby from START, wrap, and go back', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
       openLobbyByKey,
       press('ArrowRight'),
       resolveFocusLobby('Back'),
@@ -243,8 +260,8 @@ describe('the arrow keys', () => {
       resolveFocusLobby('Start'),
       press('ArrowLeft'),
       resolveFocusLobby('Glass'),
-    )
-  })
+    ),
+  )
 })
 
 describe('what skips the lobby', () => {
@@ -257,77 +274,83 @@ describe('what skips the lobby', () => {
     screenMs: () => RESTART_GRACE_MS,
   })
 
-  test('RETRY replays the same settings and never opens the lobby', () => {
-    story(
-      update,
-      given(ended),
-      message(Message.ClickedRetryButton()),
-      model(current => {
+  it.effect('RETRY replays the same settings and never opens the lobby', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(ended),
+      Story.message(Message.ClickedRetryButton()),
+      Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.mode).toEqual(RunMode.Endless())
         expect(current.difficulty.chosen).toBe('Hard')
         expect(current.lobby.status).toBe('Closed')
       }),
-    )
-  })
+    ),
+  )
 
-  test('KEEP GOING from Victory skips it too', () => {
-    story(
-      update,
-      given(
+  it.effect('KEEP GOING from Victory skips it too', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(readyModel, {
           phase: () => Phase.Victory(),
           screenMs: () => RESTART_GRACE_MS,
         }),
       ),
-      message(Message.ClickedKeepGoingButton()),
-      model(current => {
+      Story.message(Message.ClickedKeepGoingButton()),
+      Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.mode).toEqual(RunMode.Endless())
         expect(current.lobby.status).toBe('Closed')
       }),
-    )
-  })
+    ),
+  )
 
-  test('a brand new player in the practice gate starts the tutorial with PLAY', () => {
-    story(
-      update,
-      given(newPlayerCardSeen),
-      message(Message.ClickedPlayButton()),
-      model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.lobby.status).toBe('Closed')
+  it.effect(
+    'a brand new player in the practice gate starts the tutorial with PLAY',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(newPlayerCardSeen),
+          Story.message(Message.ClickedPlayButton()),
+          Story.model(current => {
+            expect(Phase.guards.Preparation(current.phase)).toBe(true)
+            expect(current.lobby.status).toBe('Closed')
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(newPlayerCardSeen),
+          press('Enter'),
+          Story.model(current => {
+            expect(Phase.guards.Preparation(current.phase)).toBe(true)
+            expect(current.lobby.status).toBe('Closed')
+          }),
+        )
       }),
-    )
-    story(
-      update,
-      given(newPlayerCardSeen),
-      press('Enter'),
-      model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.lobby.status).toBe('Closed')
-      }),
-    )
-  })
+  )
 
-  test('a new player who has not picked a difficulty is still asked, not sent to the lobby', () => {
-    story(
-      update,
-      given(
-        modifyFields(initialModel, {
-          difficultyCard: () => DifficultyCard.Unseen(),
+  it.effect(
+    'a new player who has not picked a difficulty is still asked, not sent to the lobby',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(initialModel, {
+            difficultyCard: () => DifficultyCard.Unseen(),
+          }),
+        ),
+        Story.message(Message.ClickedPlayButton()),
+        showDialog(),
+        Story.model(current => {
+          expect(current.panel).toBe('Difficulty')
+          expect(current.lobby.status).toBe('Closed')
         }),
       ),
-      message(Message.ClickedPlayButton()),
-      showDialog(),
-      model(current => {
-        expect(current.panel).toBe('Difficulty')
-        expect(current.lobby.status).toBe('Closed')
-      }),
-    )
-  })
+  )
 
-  test('a player who has learned to move and shoot gets the lobby', () => {
+  it.effect('a player who has learned to move and shoot gets the lobby', () => {
     const learnedBoth = modifyFields(newPlayerCardSeen, {
       lessons: lessons =>
         modifyFields(lessons, {
@@ -335,11 +358,11 @@ describe('what skips the lobby', () => {
           fire: () => Lesson.Learned({ atMs: 0 }),
         }),
     })
-    story(
-      update,
-      given(learnedBoth),
+    return Story.story(
+      APPLICATION,
+      Story.given(learnedBoth),
       startRunFromHome,
-      model(current => {
+      Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
       }),
     )

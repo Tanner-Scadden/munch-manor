@@ -1,23 +1,20 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Effect, Option, pipe } from 'effect'
 import { Story } from 'foldkit'
-import { Command, given, message, model, steps, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
 import { DialogBlock, RadioGroup, Tabs } from '@foldkit/ui'
 
 import { ProfileBinding, ProfileDialogBinding } from '../../../app/bindings'
-import { layer } from '../../../app/block'
-import { ApplicationBlock } from '../../../app/definition'
 import { Message } from '../../../app/message'
 import { AudioState, type Model, Phase } from '../../../app/model'
-import { Child, update } from '../../../app/pureApp'
 import { WriteSave } from '../../../app/update/save'
 import { PlaySound } from '../../../app/update/sound'
 import { changesBetween } from '../../../platform/playerSync'
 import { saveOf } from '../../../platform/save'
 import { readyAfterRead } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   closeDialog,
   press,
   showDialog,
@@ -42,10 +39,8 @@ import {
 } from '../profile'
 
 const closeProfile = () =>
-  steps(
-    message(
-      Child.message(ProfileDialogBinding, DialogBlock.Message.CanceledDialog()),
-    ),
+  Story.steps(
+    Story.messageIn(ProfileDialogBinding, DialogBlock.Message.CanceledDialog()),
     closeDialog(),
   )
 
@@ -56,26 +51,22 @@ const tabIndex = (tab: ProfileTab): number =>
   )
 
 const selectTab = (tab: ProfileTab) =>
-  steps(
-    message(
-      Child.profile(
-        Child.inProfile(
-          TabsBinding,
-          ProfileTabsBlock.Message.SelectedTab({
-            index: tabIndex(tab),
-            value: tab,
-          }),
-        ),
-      ),
+  Story.steps(
+    Story.messageIn(
+      [ProfileBinding, TabsBinding],
+      ProfileTabsBlock.Message.SelectedTab({
+        index: tabIndex(tab),
+        value: tab,
+      }),
     ),
-    Command.resolve(
+    Story.Command.resolve(
       Tabs.test.FocusTab({ id: 'profile-tabs', index: tabIndex(tab) }),
       ProfileTabsBlock.Message.CompletedFocusTab(),
     ),
   )
 
 const expectOpenOn = (tab: ProfileTab) =>
-  model((current: Model) => {
+  Story.model((current: Model) => {
     expect(current.profileDialog.isOpen).toBe(true)
     expect(current.profile.tab).toBe(tab)
     expect(current.panelDialog.isOpen).toBe(false)
@@ -88,111 +79,117 @@ const openOn = (tab: ProfileTab): Model =>
   })
 
 describe('the Profile', () => {
-  test('the gear and O open it on Settings; the Character card, the player, and C open it on Look', () => {
-    story(
-      update,
-      given(readyAfterRead),
-      message(Message.ClickedSettingsButton()),
-      showDialog(),
-      expectOpenOn('Settings'),
-    )
-    story(
-      update,
-      given(readyAfterRead),
-      press('KeyO'),
-      showDialog(),
-      expectOpenOn('Settings'),
-    )
-    story(
-      update,
-      given(readyAfterRead),
-      message(Message.ClickedCharacterButton()),
-      showDialog(),
-      expectOpenOn('Look'),
-    )
-    story(
-      update,
-      given(readyAfterRead),
-      press('KeyC'),
-      showDialog(),
-      expectOpenOn('Look'),
-    )
-  })
+  it.effect(
+    'the gear and O open it on Settings; the Character card, the player, and C open it on Look',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(readyAfterRead),
+          Story.message(Message.ClickedSettingsButton()),
+          showDialog(),
+          expectOpenOn('Settings'),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(readyAfterRead),
+          press('KeyO'),
+          showDialog(),
+          expectOpenOn('Settings'),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(readyAfterRead),
+          Story.message(Message.ClickedCharacterButton()),
+          showDialog(),
+          expectOpenOn('Look'),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(readyAfterRead),
+          press('KeyC'),
+          showDialog(),
+          expectOpenOn('Look'),
+        )
+      }),
+  )
 
   test('the tabs are data, in order: Look, Name, Account, Settings', () => {
     expect(PROFILE_TABS).toEqual(['Look', 'Name', 'Account', 'Settings'])
   })
 
-  test('never opens mid-run, and the gear only from the menu itself', () => {
-    const fighting = modifyFields(readyAfterRead, {
-      phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
-    })
-    Array.forEach(
-      [
-        Message.ClickedSettingsButton(),
-        Message.ClickedCharacterButton(),
-        Message.PressedKey({ code: 'KeyC' }),
-        Message.PressedKey({ code: 'KeyO' }),
-      ],
-      sent =>
-        story(
-          update,
-          given(fighting),
-          message(sent),
-          model(current => {
-            expect(current.profileDialog.isOpen).toBe(false)
+  it.effect('never opens mid-run, and the gear only from the menu itself', () =>
+    Effect.gen(function* () {
+      const fighting = modifyFields(readyAfterRead, {
+        phase: () => Phase.Wave({ wave: 2, elapsedMs: 0, spawns: [] }),
+      })
+      yield* Effect.forEach(
+        [
+          Message.ClickedSettingsButton(),
+          Message.ClickedCharacterButton(),
+          Message.PressedKey({ code: 'KeyC' }),
+          Message.PressedKey({ code: 'KeyO' }),
+        ],
+        sent =>
+          Story.story(
+            APPLICATION,
+            Story.given(fighting),
+            Story.message(sent),
+            Story.model(current => {
+              expect(current.profileDialog.isOpen).toBe(false)
+            }),
+          ),
+      )
+    }),
+  )
+
+  it.effect(
+    'a tab switch shows that tab and asks the tutorial reset again',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(openOn('Settings'), {
+            profile: profile =>
+              modifyFields(profile, { tutorialReset: () => 'Asking' }),
           }),
         ),
-    )
-  })
-
-  test('a tab switch shows that tab and asks the tutorial reset again', () => {
-    story(
-      update,
-      given(
-        modifyFields(openOn('Settings'), {
-          profile: profile =>
-            modifyFields(profile, { tutorialReset: () => 'Asking' }),
+        selectTab('Account'),
+        Story.model(current => {
+          expect(current.profile.tab).toBe('Account')
+          expect(current.profile.tutorialReset).toBe('Idle')
+        }),
+        selectTab('Name'),
+        Story.model(current => {
+          expect(current.profile.tab).toBe('Name')
         }),
       ),
-      selectTab('Account'),
-      model(current => {
-        expect(current.profile.tab).toBe('Account')
-        expect(current.profile.tutorialReset).toBe('Idle')
-      }),
-      selectTab('Name'),
-      model(current => {
-        expect(current.profile.tab).toBe('Name')
-      }),
-    )
-  })
+  )
 
-  test('a tab switch plays a page flip once sound is on', () => {
-    story(
-      update,
-      given(modifyFields(openOn('Look'), { audio: () => AudioState.Ready() })),
-      message(
-        Child.profile(
-          Child.inProfile(
-            TabsBinding,
-            ProfileTabsBlock.Message.SelectedTab({ index: 1, value: 'Name' }),
-          ),
-        ),
+  it.effect('a tab switch plays a page flip once sound is on', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(openOn('Look'), { audio: () => AudioState.Ready() }),
       ),
-      Command.expectExact(
+      Story.messageIn(
+        [ProfileBinding, TabsBinding],
+        ProfileTabsBlock.Message.SelectedTab({ index: 1, value: 'Name' }),
+      ),
+      Story.Command.expectExact(
         Tabs.test.FocusTab({ id: 'profile-tabs', index: 1 }),
         PlaySound({ sound: 'Whoosh', variation: 0 }),
       ),
-      Command.resolve(
+      Story.Command.resolve(
         PlaySound({ sound: 'Whoosh', variation: 0 }),
         Message.CompletedPlaySound({ sound: 'Whoosh', outcome: 'Played' }),
       ),
-      Command.resolve(
+      Story.Command.resolve(
         Tabs.test.FocusTab({ id: 'profile-tabs', index: 1 }),
         ProfileTabsBlock.Message.CompletedFocusTab(),
       ),
-    )
-  })
+    ),
+  )
 })
 
 describe('the name', () => {
@@ -223,144 +220,158 @@ describe('the name', () => {
     ).toBe('Zed Head')
   })
 
-  test('typing shows on the stone and is kept, saved, and synced only once the player is done', () => {
-    story(
-      update,
-      given(openOn('Name')),
-      message(
-        Child.profile(
+  it.effect(
+    'typing shows on the stone and is kept, saved, and synced only once the player is done',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(openOn('Name')),
+        Story.messageIn(
+          ProfileBinding,
           ProfileMessage.UpdatedNameDraft({ value: '  Sir   Nibbles of Doom' }),
         ),
+        Story.Command.expectNone(),
+        Story.model(current => {
+          expect(current.profile.nameDraft).toBe('Sir Nibbles ')
+          expect(current.playerName).toBe('')
+        }),
+        Story.messageIn(ProfileBinding, ProfileMessage.SubmittedName()),
+        Story.Command.expectHas(WriteSave),
+        Story.model(current => {
+          expect(current.playerName).toBe('Sir Nibbles')
+          expect(current.profile.nameDraft).toBe('Sir Nibbles')
+          expect(
+            changesBetween(saveOf(openOn('Name')), saveOf(current)),
+          ).toEqual([{ _tag: 'ChangedName', name: 'Sir Nibbles' }])
+        }),
+        writeSave(),
       ),
-      Command.expectNone(),
-      model(current => {
-        expect(current.profile.nameDraft).toBe('Sir Nibbles ')
-        expect(current.playerName).toBe('')
-      }),
-      message(Child.profile(ProfileMessage.SubmittedName())),
-      Command.expectHas(WriteSave),
-      model(current => {
-        expect(current.playerName).toBe('Sir Nibbles')
-        expect(current.profile.nameDraft).toBe('Sir Nibbles')
-        expect(changesBetween(saveOf(openOn('Name')), saveOf(current))).toEqual(
-          [{ _tag: 'ChangedName', name: 'Sir Nibbles' }],
+  )
+
+  it.effect(
+    'leaving the field, another tab, or closing keeps what was typed',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(openOn('Name')),
+          Story.messageIn(
+            ProfileBinding,
+            ProfileMessage.UpdatedNameDraft({ value: 'Hambone' }),
+          ),
+          Story.messageIn(ProfileBinding, ProfileMessage.BlurredNameInput()),
+          Story.model(current => {
+            expect(current.playerName).toBe('Hambone')
+          }),
+          writeSave(),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(openOn('Name')),
+          Story.messageIn(
+            ProfileBinding,
+            ProfileMessage.UpdatedNameDraft({ value: 'Gobbler' }),
+          ),
+          selectTab('Account'),
+          Story.model(current => {
+            expect(current.playerName).toBe('Gobbler')
+          }),
+          writeSave(),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(openOn('Name')),
+          Story.messageIn(
+            ProfileBinding,
+            ProfileMessage.UpdatedNameDraft({ value: 'Tot Terror' }),
+          ),
+          closeProfile(),
+          Story.model(current => {
+            expect(current.profileDialog.isOpen).toBe(false)
+            expect(current.playerName).toBe('Tot Terror')
+          }),
+          writeSave(),
         )
       }),
-      writeSave(),
-    )
-  })
+  )
 
-  test('leaving the field, another tab, or closing keeps what was typed', () => {
-    story(
-      update,
-      given(openOn('Name')),
-      message(
-        Child.profile(ProfileMessage.UpdatedNameDraft({ value: 'Hambone' })),
+  it.effect('clearing the name goes back to the placeholder', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(openOn('Name'), { playerName: () => 'Hambone' }),
       ),
-      message(Child.profile(ProfileMessage.BlurredNameInput())),
-      model(current => {
-        expect(current.playerName).toBe('Hambone')
-      }),
-      writeSave(),
-    )
-    story(
-      update,
-      given(openOn('Name')),
-      message(
-        Child.profile(ProfileMessage.UpdatedNameDraft({ value: 'Gobbler' })),
+      Story.messageIn(
+        ProfileBinding,
+        ProfileMessage.UpdatedNameDraft({ value: '   ' }),
       ),
-      selectTab('Account'),
-      model(current => {
-        expect(current.playerName).toBe('Gobbler')
-      }),
-      writeSave(),
-    )
-    story(
-      update,
-      given(openOn('Name')),
-      message(
-        Child.profile(ProfileMessage.UpdatedNameDraft({ value: 'Tot Terror' })),
-      ),
-      closeProfile(),
-      model(current => {
-        expect(current.profileDialog.isOpen).toBe(false)
-        expect(current.playerName).toBe('Tot Terror')
-      }),
-      writeSave(),
-    )
-  })
-
-  test('clearing the name goes back to the placeholder', () => {
-    story(
-      update,
-      given(modifyFields(openOn('Name'), { playerName: () => 'Hambone' })),
-      message(Child.profile(ProfileMessage.UpdatedNameDraft({ value: '   ' }))),
-      message(Child.profile(ProfileMessage.SubmittedName())),
-      model(current => {
+      Story.messageIn(ProfileBinding, ProfileMessage.SubmittedName()),
+      Story.model(current => {
         expect(current.playerName).toBe('')
         expect(shownName(current.playerName)).toBe(DEFAULT_NAME)
       }),
       writeSave(),
-    )
-  })
+    ),
+  )
 
-  test('opening the Profile starts the field from the saved name', () => {
-    story(
-      update,
-      given(
+  it.effect('opening the Profile starts the field from the saved name', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(readyAfterRead, {
           playerName: () => 'Baron Burp',
           profile: profile => modifyFields(profile, { nameDraft: () => 'x' }),
         }),
       ),
-      message(Message.ClickedSettingsButton()),
+      Story.message(Message.ClickedSettingsButton()),
       showDialog(),
-      model(current => {
+      Story.model(current => {
         expect(current.profile.nameDraft).toBe('Baron Burp')
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('the name dice', () => {
-  const rollFrom = (seed: number, name = ''): Model => {
-    const holder: { current: Model } = { current: readyAfterRead }
-    story(
-      update,
-      given(
+  // NOTE: the Model the dice leaves; its save is written last and changes
+  // none of what the tests read.
+  const rollFrom = (seed: number, name = '') =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(openOn('Name'), {
           cosmeticRngState: () => seed,
           playerName: () => name,
           profile: profile => modifyFields(profile, { nameDraft: () => name }),
         }),
       ),
-      message(Child.profile(ProfileMessage.ClickedNameDiceButton())),
-      model(rolled => {
-        holder.current = rolled
-      }),
+      Story.messageIn(ProfileBinding, ProfileMessage.ClickedNameDiceButton()),
       writeSave(),
     )
-    return holder.current
-  }
 
-  test('rolls the same goofy name from the same cosmetic seed, moves it on, leaves the run seed alone, and spins', () => {
-    const first = rollFrom(1234)
-    const again = rollFrom(1234)
-    expect(again.playerName).toBe(first.playerName)
-    expect(again.cosmeticRngState).toBe(first.cosmeticRngState)
-    expect(first.cosmeticRngState).not.toBe(1234)
-    expect(first.rngState).toBe(readyAfterRead.rngState)
-    expect(GOOFY_NAMES).toContain(first.playerName)
-    expect(first.profile.nameDraft).toBe(first.playerName)
-    expect(first.profile.fx).toBe('Spin')
-    expect(first.profile.fxCount).toBe(1)
-    const names = pipe(
-      Array.range(1, 60),
-      Array.map(seed => rollFrom(seed).playerName),
-      Array.dedupe,
-    )
-    expect(names.length).toBeGreaterThan(20)
-  })
+  it.effect(
+    'rolls the same goofy name from the same cosmetic seed, moves it on, leaves the run seed alone, and spins',
+    () =>
+      Effect.gen(function* () {
+        const first = yield* rollFrom(1234)
+        const again = yield* rollFrom(1234)
+        expect(again.playerName).toBe(first.playerName)
+        expect(again.cosmeticRngState).toBe(first.cosmeticRngState)
+        expect(first.cosmeticRngState).not.toBe(1234)
+        expect(first.rngState).toBe(readyAfterRead.rngState)
+        expect(GOOFY_NAMES).toContain(first.playerName)
+        expect(first.profile.nameDraft).toBe(first.playerName)
+        expect(first.profile.fx).toBe('Spin')
+        expect(first.profile.fxCount).toBe(1)
+        const rolled = yield* Effect.forEach(Array.range(1, 60), seed =>
+          rollFrom(seed),
+        )
+        const names = Array.dedupe(
+          Array.map(rolled, ({ playerName }) => playerName),
+        )
+        expect(names.length).toBeGreaterThan(20)
+      }),
+  )
 
   test('never lands on the name already showing', () => {
     Array.forEach(Array.range(0, 300), seed => {
@@ -383,17 +394,17 @@ describe('the name dice', () => {
 describe('the Look tab', () => {
   it.effect('a new part puffs a poof, and the dice spins', () =>
     Story.story(
-      { block: ApplicationBlock, layer },
+      APPLICATION,
       Story.given(openOn('Look')),
       Story.messageIn(
         [ProfileBinding, CharacterBinding, Character.ShirtColorBinding],
         PartRadioGroupBlock.Message.SelectedOption({ index: 3, value: 'Teal' }),
       ),
-      Command.resolve(
+      Story.Command.resolve(
         RadioGroup.test.FocusOption,
         PartRadioGroupBlock.Message.CompletedFocusOption(),
       ),
-      model(current => {
+      Story.model(current => {
         expect(current.appearance.shirtColor).toBe('Teal')
         expect(current.profile.fx).toBe('Poof')
         expect(current.profile.fxCount).toBe(1)
@@ -403,7 +414,7 @@ describe('the Look tab', () => {
         [ProfileBinding, CharacterBinding],
         Character.Message.ClickedDiceButton(),
       ),
-      model(current => {
+      Story.model(current => {
         expect(current.profile.fx).toBe('Spin')
         expect(current.profile.fxCount).toBe(2)
       }),

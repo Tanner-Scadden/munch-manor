@@ -1,8 +1,10 @@
 import { Option } from 'effect'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it } from '@effect/vitest'
+
+import { ProfileBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import {
   BreakClock,
@@ -16,7 +18,7 @@ import {
   type TutorialChoice,
   freshLessons,
 } from '../../../app/model'
-import { Child, update } from '../../../app/pureApp'
+import { update } from '../../../app/pureApp'
 import { WriteSave } from '../../../app/update/save'
 import {
   decodeSave,
@@ -27,11 +29,13 @@ import {
 import { KITCHEN_FIRST_WAVE, SHOP_FIRST_WAVE } from '../../../shared/constants'
 import { DISTANT_SPAWN, newPlayerReady } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   closeDialog,
   hintIds,
   nextFrame,
   showDialog,
   tick,
+  writeSave,
 } from '../../../test/testing'
 import { isPracticeGateHeld } from '../../../world/run/lessons'
 import { isKitchenTourOn } from '../../../world/run/tutorialRules'
@@ -51,9 +55,9 @@ const firstVisit: Model = modifyFields(newPlayerReady, {
 })
 
 const chooseTutorial = (choice: TutorialChoice) =>
-  message(Message.ClickedTutorialChoiceButton({ choice }))
+  Story.message(Message.ClickedTutorialChoiceButton({ choice }))
 
-const pickNormal = message(
+const pickNormal = Story.message(
   Message.ClickedDifficultyCardButton({ difficulty: 'Normal' }),
 )
 
@@ -105,107 +109,114 @@ const reloaded = (current: Model): Model =>
   )
 
 describe('the first-run card', () => {
-  test('TUTORIAL is lit by default, and SKIP IT stays lit until a difficulty starts the run', () => {
-    story(
-      update,
-      given(firstVisit),
-      message(Message.ClickedCampaignButton()),
-      showDialog(),
-      model(current => {
-        expect(current.difficultyCard).toEqual(
-          DifficultyCard.Asking({
-            mode: RunMode.Campaign(),
-            tutorial: 'Tutorial',
-          }),
-        )
-      }),
-      chooseTutorial('Skip'),
-      model(current => {
-        expect(current.difficultyCard).toEqual(
-          DifficultyCard.Asking({ mode: RunMode.Campaign(), tutorial: 'Skip' }),
-        )
-        expect(current.lessons).toEqual(freshLessons)
-      }),
-      chooseTutorial('Tutorial'),
-      model(current => {
-        expect(current.difficultyCard).toEqual(
-          DifficultyCard.Asking({
-            mode: RunMode.Campaign(),
-            tutorial: 'Tutorial',
-          }),
-        )
-      }),
-    )
-  })
+  it.effect(
+    'TUTORIAL is lit by default, and SKIP IT stays lit until a difficulty starts the run',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(firstVisit),
+        Story.message(Message.ClickedCampaignButton()),
+        showDialog(),
+        Story.model(current => {
+          expect(current.difficultyCard).toEqual(
+            DifficultyCard.Asking({
+              mode: RunMode.Campaign(),
+              tutorial: 'Tutorial',
+            }),
+          )
+        }),
+        chooseTutorial('Skip'),
+        Story.model(current => {
+          expect(current.difficultyCard).toEqual(
+            DifficultyCard.Asking({
+              mode: RunMode.Campaign(),
+              tutorial: 'Skip',
+            }),
+          )
+          expect(current.lessons).toEqual(freshLessons)
+        }),
+        chooseTutorial('Tutorial'),
+        Story.model(current => {
+          expect(current.difficultyCard).toEqual(
+            DifficultyCard.Asking({
+              mode: RunMode.Campaign(),
+              tutorial: 'Tutorial',
+            }),
+          )
+        }),
+      ),
+  )
 
-  test('a tutorial pick with no card up does nothing', () => {
-    story(
-      update,
-      given(firstVisit),
+  it.effect('a tutorial pick with no card up does nothing', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(firstVisit),
       chooseTutorial('Skip'),
-      Command.expectNone(),
-      model(current => {
+      Story.Command.expectNone(),
+      Story.model(current => {
         expect(current.difficultyCard).toEqual(DifficultyCard.Unseen())
         expect(current.lessons).toEqual(freshLessons)
       }),
-    )
-  })
+    ),
+  )
 
-  test('SKIP IT and a difficulty start a run with no practice gate, no hints, no guided first break, and no kitchen tour, kept in the save', () => {
-    story(
-      update,
-      given(firstVisit),
-      message(Message.ClickedCampaignButton()),
+  it.effect(
+    'SKIP IT and a difficulty start a run with no practice gate, no hints, no guided first break, and no kitchen tour, kept in the save',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(firstVisit),
+        Story.message(Message.ClickedCampaignButton()),
+        showDialog(),
+        chooseTutorial('Skip'),
+        pickNormal,
+        closeDialog(),
+        Story.Command.expectHas(WriteSave),
+        Story.model(current => {
+          expect(saveOf(current).onboarding.lessons).toEqual({
+            move: 'Learned',
+            fire: 'Learned',
+            startWave: 'Pending',
+            shop: 'Pending',
+            swap: 'Pending',
+            pickup: 'Pending',
+            timedBreaks: 'Learned',
+            openBreak: 'Learned',
+          })
+        }),
+        writeSave(),
+        tick(50),
+        tick(3000),
+        Story.model(current => {
+          expect(Phase.guards.Preparation(current.phase)).toBe(true)
+          expect(current.difficulty.chosen).toBe('Normal')
+          expect(isPracticeGateHeld(current)).toBe(false)
+          expect(hintIds(current)).toEqual([])
+          expect(isGuidedFirstBreakOn(current)).toBe(false)
+          expect(isKitchenTourDue(current)).toBe(false)
+
+          const nextVisit = reloaded(current)
+          expect(isLearned(nextVisit.lessons.move)).toBe(true)
+          expect(isLearned(nextVisit.lessons.fire)).toBe(true)
+          expect(isGuidedFirstBreakOn(nextVisit)).toBe(false)
+          expect(isKitchenTourDue(nextVisit)).toBe(false)
+          expect(nextVisit.introducedKinds).toEqual([])
+        }),
+      ),
+  )
+
+  it.effect('TUTORIAL, the default, starts the tutorial', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(firstVisit),
+      Story.message(Message.ClickedCampaignButton()),
       showDialog(),
-      chooseTutorial('Skip'),
       pickNormal,
       closeDialog(),
-      Command.expectHas(WriteSave),
-      model(current => {
-        expect(saveOf(current).onboarding.lessons).toEqual({
-          move: 'Learned',
-          fire: 'Learned',
-          startWave: 'Pending',
-          shop: 'Pending',
-          swap: 'Pending',
-          pickup: 'Pending',
-          timedBreaks: 'Learned',
-          openBreak: 'Learned',
-        })
-      }),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      writeSave(),
       tick(50),
       tick(3000),
-      model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.difficulty.chosen).toBe('Normal')
-        expect(isPracticeGateHeld(current)).toBe(false)
-        expect(hintIds(current)).toEqual([])
-        expect(isGuidedFirstBreakOn(current)).toBe(false)
-        expect(isKitchenTourDue(current)).toBe(false)
-
-        const nextVisit = reloaded(current)
-        expect(isLearned(nextVisit.lessons.move)).toBe(true)
-        expect(isLearned(nextVisit.lessons.fire)).toBe(true)
-        expect(isGuidedFirstBreakOn(nextVisit)).toBe(false)
-        expect(isKitchenTourDue(nextVisit)).toBe(false)
-        expect(nextVisit.introducedKinds).toEqual([])
-      }),
-    )
-  })
-
-  test('TUTORIAL, the default, starts the tutorial', () => {
-    story(
-      update,
-      given(firstVisit),
-      message(Message.ClickedCampaignButton()),
-      showDialog(),
-      pickNormal,
-      closeDialog(),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      tick(50),
-      tick(3000),
-      model(current => {
+      Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(isPracticeGateHeld(current)).toBe(true)
         expect(hintIds(current)).toContain('Move')
@@ -213,10 +224,10 @@ describe('the first-run card', () => {
         expect(isKitchenTourDue(current)).toBe(true)
         expect(current.lessons.openBreak).toEqual(Lesson.Pending())
       }),
-    )
-  })
+    ),
+  )
 
-  test("Settings' Reset tutorial brings a skipped tutorial back", () => {
+  it.effect("Settings' Reset tutorial brings a skipped tutorial back", () => {
     const skipped = reloaded(
       update(
         update(
@@ -226,33 +237,37 @@ describe('the first-run card', () => {
         Message.ClickedDifficultyCardButton({ difficulty: 'Normal' }),
       ).model,
     )
-    story(
-      update,
-      given(modifyFields(skipped, { saveStatus: () => 'Read' })),
-      model(current => {
+    return Story.story(
+      APPLICATION,
+      Story.given(modifyFields(skipped, { saveStatus: () => 'Read' })),
+      Story.model(current => {
         expect(isGuidedFirstBreakOn(current)).toBe(false)
       }),
-      message(Message.ClickedSettingsButton()),
+      Story.message(Message.ClickedSettingsButton()),
       showDialog(),
-      message(Child.profile(ProfileMessage.ClickedResetTutorialButton())),
-      Command.resolve(
+      Story.messageIn(
+        ProfileBinding,
+        ProfileMessage.ClickedResetTutorialButton(),
+      ),
+      Story.Command.resolve(
         FocusTutorialReset,
         ProfileMessage.CompletedFocusTutorialReset(),
       ),
-      message(
-        Child.profile(ProfileMessage.ClickedConfirmResetTutorialButton()),
+      Story.messageIn(
+        ProfileBinding,
+        ProfileMessage.ClickedConfirmResetTutorialButton(),
       ),
-      Command.expectHas(WriteSave),
-      model(current => {
+      Story.Command.expectHas(WriteSave),
+      Story.model(current => {
         expect(current.lessons).toEqual(freshLessons)
         expect(isGuidedFirstBreakOn(current)).toBe(true)
         expect(isKitchenTourDue(current)).toBe(true)
       }),
-      Command.resolve(
+      Story.Command.resolve(
         FocusTutorialReset,
         ProfileMessage.CompletedFocusTutorialReset(),
       ),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      writeSave(),
     )
   })
 })

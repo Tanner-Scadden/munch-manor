@@ -1,8 +1,8 @@
-import { Array, Option } from 'effect'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it, test } from '@effect/vitest'
 import { NEUTRAL_INPUT, type PlayerInput } from '@munch/netcode'
 
 import { Message } from '../../../app/message'
@@ -14,17 +14,18 @@ import {
   ShopState,
   type Zombie,
 } from '../../../app/model'
-import { Child } from '../../../app/pureApp'
 import { initialModel, update } from '../../../app/pureApp'
 import { Message as ShopMessage } from '../../../features/shop/message'
 import { FocusItem } from '../../../features/shop/steps'
 import { FIXED_STEP_MS, PISTOL_MAGAZINE } from '../../../shared/constants'
 import { DISTANT_SPAWN, withSeat } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   FIRE_LIFT,
   FIRE_PRESS,
   FIRE_PUSH,
   SURFACE,
+  buyAtCounter,
   holdFire,
   holdingFirst,
   holdingSecond,
@@ -162,16 +163,16 @@ describe('the knife', () => {
     expect(focusOf(back).player.reload._tag).toBe('Reloading')
   })
 
-  test('a tap on the knife slot puts the knife in hand', () => {
-    story(
-      update,
-      given(fightingWith([])),
-      message(Message.ClickedMeleeSlot()),
-      model(({ seats: [{ player }] }) => {
+  it.effect('a tap on the knife slot puts the knife in hand', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fightingWith([])),
+      Story.message(Message.ClickedMeleeSlot()),
+      Story.model(({ seats: [{ player }] }) => {
         expect(player.wield).toBe('Melee')
       }),
-    )
-  })
+    ),
+  )
 
   test('a second tap on the knife slot does nothing, not even a reload', () => {
     const emptyPistol = modifyFocus(fightingWith([]), {
@@ -206,44 +207,49 @@ describe('the knife', () => {
     expect(stabsIn(seen)).toBe(0)
   })
 
-  test('in hand, fire stabs the zombie in front for a little damage and a small shove', () => {
-    story(
-      update,
-      given(knifed([tough(900, PLAYER_X + 10)])),
-      holdFire,
-      tick(FRAME_MS),
-      model(current => {
-        const hit = zombieById(current, 900)
-        expect(hit.hp).toBe(99 - KNIFE_RULES.damage)
-        expect(hit.knockback.x).toBeGreaterThan(0)
-        expect(hit.knockback.x).toBeLessThanOrEqual(KNIFE_RULES.knockback)
-        expect(Array.map(current.frameEvents, ({ _tag }) => _tag)).toEqual(
-          expect.arrayContaining(['KnifeStabbed', 'KnifeHit', 'ZombieHit']),
-        )
-        expect(current.bullets).toHaveLength(0)
-        expect(heldGun(focusOf(current).player.arsenal).loaded).toBe(
-          PISTOL_MAGAZINE,
-        )
-      }),
-    )
-  })
+  it.effect(
+    'in hand, fire stabs the zombie in front for a little damage and a small shove',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(knifed([tough(900, PLAYER_X + 10)])),
+        holdFire,
+        tick(FRAME_MS),
+        Story.model(current => {
+          const hit = zombieById(current, 900)
+          expect(hit.hp).toBe(99 - KNIFE_RULES.damage)
+          expect(hit.knockback.x).toBeGreaterThan(0)
+          expect(hit.knockback.x).toBeLessThanOrEqual(KNIFE_RULES.knockback)
+          expect(Array.map(current.frameEvents, ({ _tag }) => _tag)).toEqual(
+            expect.arrayContaining(['KnifeStabbed', 'KnifeHit', 'ZombieHit']),
+          )
+          expect(current.bullets).toHaveLength(0)
+          expect(heldGun(focusOf(current).player.arsenal).loaded).toBe(
+            PISTOL_MAGAZINE,
+          )
+        }),
+      ),
+  )
 
-  test('a stab meets only the nearest zombie in front, never one behind', () => {
-    const near = tough(900, PLAYER_X + 9)
-    const farther = tough(901, PLAYER_X + 14, ROW_Y + 2)
-    const behind = tough(902, PLAYER_X - 9)
-    story(
-      update,
-      given(knifed([near, farther, behind])),
-      holdFire,
-      tick(FRAME_MS),
-      model(current => {
-        expect(zombieById(current, 900).hp).toBe(98)
-        expect(zombieById(current, 901).hp).toBe(99)
-        expect(zombieById(current, 902).hp).toBe(99)
-      }),
-    )
-  })
+  it.effect(
+    'a stab meets only the nearest zombie in front, never one behind',
+    () => {
+      const near = tough(900, PLAYER_X + 9)
+      const farther = tough(901, PLAYER_X + 14, ROW_Y + 2)
+      const behind = tough(902, PLAYER_X - 9)
+      return Story.story(
+        APPLICATION,
+        Story.given(knifed([near, farther, behind])),
+        holdFire,
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(zombieById(current, 900).hp).toBe(98)
+          expect(zombieById(current, 901).hp).toBe(99)
+          expect(zombieById(current, 902).hp).toBe(99)
+        }),
+      )
+    },
+  )
 
   test('fire held stabs on repeat, one stab per cooldown and no faster', () => {
     const lug = zombieOf('Tank', 900, PLAYER_X + 12, ROW_Y, { hp: 99 })
@@ -281,11 +287,11 @@ describe('the knife', () => {
     ).toBe(2)
   })
 
-  test('Q puts the knife away for the last gun held', () => {
+  it.effect('Q puts the knife away for the last gun held', () => {
     const smg = freshGun('Smg')
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         modifyFocus(fightingWith([]), {
           player: player =>
             modifyFields(player, { arsenal: () => holdingSecond(smg) }),
@@ -294,72 +300,77 @@ describe('the knife', () => {
       press('KeyF'),
       release('KeyF'),
       press('KeyQ'),
-      model(({ seats: [{ player }] }) => {
+      Story.model(({ seats: [{ player }] }) => {
         expect(player.wield).toBe('Gun')
         expect(heldGun(player.arsenal)).toEqual(smg)
       }),
       release('KeyQ'),
       press('KeyQ'),
-      model(({ seats: [{ player }] }) => {
+      Story.model(({ seats: [{ player }] }) => {
         expect(heldWeapon(player.arsenal)).toBe('Pistol')
       }),
     )
   })
 
-  test('a tap on either gun slot leaves the knife for that gun', () => {
-    const smg = freshGun('Smg')
-    const armed = modifyFocus(fightingWith([]), {
-      player: player =>
-        modifyFields(player, { arsenal: () => holdingSecond(smg) }),
-    })
-    story(
-      update,
-      given(armed),
-      message(Message.ClickedMeleeSlot()),
-      message(Message.ClickedGunSlot({ slot: 'First' })),
-      model(({ seats: [{ player }] }) => {
-        expect(player.wield).toBe('Gun')
-        expect(heldWeapon(player.arsenal)).toBe('Pistol')
-      }),
-    )
-    const emptySmg = modifyFields(smg, { loaded: () => 0 })
-    story(
-      update,
-      given(
-        modifyFocus(armed, {
-          player: player =>
-            modifyFields(player, { arsenal: () => holdingSecond(emptySmg) }),
+  it.effect('a tap on either gun slot leaves the knife for that gun', () =>
+    Effect.gen(function* () {
+      const smg = freshGun('Smg')
+      const armed = modifyFocus(fightingWith([]), {
+        player: player =>
+          modifyFields(player, { arsenal: () => holdingSecond(smg) }),
+      })
+      yield* Story.story(
+        APPLICATION,
+        Story.given(armed),
+        Story.message(Message.ClickedMeleeSlot()),
+        Story.message(Message.ClickedGunSlot({ slot: 'First' })),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(player.wield).toBe('Gun')
+          expect(heldWeapon(player.arsenal)).toBe('Pistol')
         }),
-      ),
-      message(Message.ClickedMeleeSlot()),
-      message(Message.ClickedGunSlot({ slot: 'Second' })),
-      model(({ seats: [{ player }] }) => {
-        expect(player.wield).toBe('Gun')
-        expect(heldGun(player.arsenal)).toEqual(emptySmg)
-        expect(player.reload._tag).toBe('Ready')
-      }),
-    )
-  })
+      )
+      const emptySmg = modifyFields(smg, { loaded: () => 0 })
+      yield* Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFocus(armed, {
+            player: player =>
+              modifyFields(player, { arsenal: () => holdingSecond(emptySmg) }),
+          }),
+        ),
+        Story.message(Message.ClickedMeleeSlot()),
+        Story.message(Message.ClickedGunSlot({ slot: 'Second' })),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(player.wield).toBe('Gun')
+          expect(heldGun(player.arsenal)).toEqual(emptySmg)
+          expect(player.reload._tag).toBe('Ready')
+        }),
+      )
+    }),
+  )
 
-  test('R with the knife out puts the last gun back and reloads it', () => {
-    const empty = modifyFocus(fightingWith([]), {
-      player: player =>
-        modifyFields(player, {
-          arsenal: () =>
-            pistolOnly(modifyFields(STARTING_PISTOL, { loaded: () => 0 })),
-          wield: () => 'Melee',
+  it.effect(
+    'R with the knife out puts the last gun back and reloads it',
+    () => {
+      const empty = modifyFocus(fightingWith([]), {
+        player: player =>
+          modifyFields(player, {
+            arsenal: () =>
+              pistolOnly(modifyFields(STARTING_PISTOL, { loaded: () => 0 })),
+            wield: () => 'Melee',
+          }),
+      })
+      return Story.story(
+        APPLICATION,
+        Story.given(empty),
+        press('KeyR'),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(player.wield).toBe('Gun')
+          expect(player.reload._tag).toBe('Reloading')
         }),
-    })
-    story(
-      update,
-      given(empty),
-      press('KeyR'),
-      model(({ seats: [{ player }] }) => {
-        expect(player.wield).toBe('Gun')
-        expect(player.reload._tag).toBe('Reloading')
-      }),
-    )
-  })
+      )
+    },
+  )
 
   test('with every gun dry, the next pull draws the knife by itself', () => {
     const dry = (gun: CarriedGun): CarriedGun =>
@@ -385,30 +396,30 @@ describe('the knife', () => {
     expect(zombieById(lastOf(stabbing), 900).hp).toBeLessThan(99)
   })
 
-  test('it rests while the player browses the shop', () => {
-    story(
-      update,
-      given(
+  it.effect('it rests while the player browses the shop', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFocus(knifed([tough(900, PLAYER_X + 10)]), {
           shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
         }),
       ),
       holdFire,
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(zombieById(current, 900).hp).toBe(99)
       }),
-    )
-  })
+    ),
+  )
 
-  test('a kill with the knife pays the bounty', () => {
+  it.effect('a kill with the knife pays the bounty', () => {
     const doomed = zombieOf('Shambler', 900, PLAYER_X + 10, ROW_Y, { hp: 1 })
-    story(
-      update,
-      given(knifed([doomed])),
+    return Story.story(
+      APPLICATION,
+      Story.given(knifed([doomed])),
       holdFire,
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(focusOf(current).wallet.earned).toBeGreaterThan(0)
         expect(
           Array.some(current.frameEvents, GameEvent.isAnyOf(['ZombieKilled'])),
@@ -417,7 +428,7 @@ describe('the knife', () => {
     )
   })
 
-  test('a new gun goes in hand, putting the knife away', () => {
+  it.effect('a new gun goes in hand, putting the knife away', () => {
     const shopping = modifyFocus(
       modifyFields(knifed([]), {
         phase: () =>
@@ -433,12 +444,12 @@ describe('the knife', () => {
         shop: () => ShopState.Browsing({ focusedItem: 'Smg' }),
       },
     )
-    story(
-      update,
-      given(shopping),
-      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Smg' }))),
-      Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
-      model(({ seats: [{ player }] }) => {
+    return Story.story(
+      APPLICATION,
+      Story.given(shopping),
+      buyAtCounter('Smg'),
+      Story.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
+      Story.model(({ seats: [{ player }] }) => {
         expect(player.wield).toBe('Gun')
         expect(heldWeapon(player.arsenal)).toBe('Smg')
       }),
@@ -469,67 +480,72 @@ describe('two gun slots', () => {
       player: player => modifyFields(player, { arsenal: () => arsenal }),
     })
 
-  test('the first gun bought fills the empty second slot', () => {
-    story(
-      update,
-      given(browsing(armed(pistolOnly()), 200)),
-      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Smg' }))),
-      model(({ seats: [{ player }] }) => {
+  it.effect('the first gun bought fills the empty second slot', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(browsing(armed(pistolOnly()), 200)),
+      buyAtCounter('Smg'),
+      Story.model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(holdingSecond(freshGun('Smg')))
       }),
-    )
-  })
+    ),
+  )
 
-  test('with both slots full, a third gun replaces the pistol held in hand', () => {
-    story(
-      update,
-      given(browsing(armed(holdingFirst(freshGun('Smg'))), 200)),
-      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Shotgun' }))),
-      Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
-      model(({ seats: [{ player }] }) => {
-        expect(player.arsenal).toEqual(
-          Arsenal.HoldingFirst({
-            first: freshGun('Shotgun'),
-            second: freshGun('Smg'),
-          }),
-        )
-        expect(
-          Array.some(gunsOf(player.arsenal), gun => gun.kind === 'Pistol'),
-        ).toBe(false)
-      }),
-    )
-  })
-
-  test('Rattles sells the pistol back for $0, even to an empty wallet', () => {
-    const traded = browsing(
-      armed(
-        Arsenal.HoldingSecond({
-          first: freshGun('Smg'),
-          second: freshGun('Shotgun'),
+  it.effect(
+    'with both slots full, a third gun replaces the pistol held in hand',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(browsing(armed(holdingFirst(freshGun('Smg'))), 200)),
+        buyAtCounter('Shotgun'),
+        Story.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(player.arsenal).toEqual(
+            Arsenal.HoldingFirst({
+              first: freshGun('Shotgun'),
+              second: freshGun('Smg'),
+            }),
+          )
+          expect(
+            Array.some(gunsOf(player.arsenal), gun => gun.kind === 'Pistol'),
+          ).toBe(false)
         }),
       ),
-      0,
-    )
-    expect(SHOP_ITEMS.Pistol.price).toBe(0)
-    expect(verdictFor(traded, focusSlotOf(traded), 'Pistol')._tag).toBe(
-      'Available',
-    )
-    story(
-      update,
-      given(traded),
-      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Pistol' }))),
-      model(({ seats: [{ player, wallet }] }) => {
-        expect(player.arsenal).toEqual(
+  )
+
+  it.effect(
+    'Rattles sells the pistol back for $0, even to an empty wallet',
+    () => {
+      const traded = browsing(
+        armed(
           Arsenal.HoldingSecond({
             first: freshGun('Smg'),
-            second: STARTING_PISTOL,
+            second: freshGun('Shotgun'),
           }),
-        )
-        expect(heldGun(player.arsenal).loaded).toBe(PISTOL_MAGAZINE)
-        expect(wallet.balance).toBe(0)
-      }),
-    )
-  })
+        ),
+        0,
+      )
+      expect(SHOP_ITEMS.Pistol.price).toBe(0)
+      expect(verdictFor(traded, focusSlotOf(traded), 'Pistol')._tag).toBe(
+        'Available',
+      )
+      return Story.story(
+        APPLICATION,
+        Story.given(traded),
+        buyAtCounter('Pistol'),
+        Story.model(({ seats: [{ player, wallet }] }) => {
+          expect(player.arsenal).toEqual(
+            Arsenal.HoldingSecond({
+              first: freshGun('Smg'),
+              second: STARTING_PISTOL,
+            }),
+          )
+          expect(heldGun(player.arsenal).loaded).toBe(PISTOL_MAGAZINE)
+          expect(wallet.balance).toBe(0)
+        }),
+      )
+    },
+  )
 
   test('the pistol is not sold to a player who carries it', () => {
     expect(
@@ -576,21 +592,19 @@ describe('two gun slots', () => {
     expect(stuckAfter.wield).toBe('Melee')
   })
 
-  test('the pistol upgrade goes with the pistol, wherever it sits', () => {
-    story(
-      update,
-      given(browsing(armed(holdingSecond(freshGun('Smg'))), 1000)),
-      message(
-        Child.shop(ShopMessage.ClickedBuyButton({ item: 'PistolUpgrade' })),
-      ),
-      model(({ seats: [{ player }] }) => {
+  it.effect('the pistol upgrade goes with the pistol, wherever it sits', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(browsing(armed(holdingSecond(freshGun('Smg'))), 1000)),
+      buyAtCounter('PistolUpgrade'),
+      Story.model(({ seats: [{ player }] }) => {
         expect(gunsOf(player.arsenal)[0]).toEqual(
           modifyFields(STARTING_PISTOL, { tier: () => 1 }),
         )
         expect(magazineOf('Pistol', 1)).toBeGreaterThan(PISTOL_MAGAZINE)
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('the knife in co-op', () => {

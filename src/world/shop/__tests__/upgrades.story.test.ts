@@ -1,8 +1,10 @@
-import { Array, Option } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it, test } from '@effect/vitest'
+
+import { ShopDialogBinding } from '../../../app/bindings'
 import {
   Arsenal,
   type CarriedGun,
@@ -12,12 +14,11 @@ import {
   ShopState,
   type WeaponKind,
 } from '../../../app/model'
-import { Child } from '../../../app/pureApp'
-import { update } from '../../../app/pureApp'
 import { Message as ShopMessage } from '../../../features/shop/message'
 import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN, newPlayerReady } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   RESTART_GRACE_TICKS,
   holdFire,
   holdingSecond,
@@ -71,7 +72,7 @@ const spare = (kind: WeaponKind, rounds: number, tier = 0): CarriedGun => ({
 })
 
 const buy = (item: ShopItemId) =>
-  message(Child.shop(ShopMessage.PressedBuyKey({ item })))
+  Story.messageIn(ShopDialogBinding, ShopMessage.PressedBuyKey({ item }))
 
 const tierPrices = (kind: WeaponKind): ReadonlyArray<number> =>
   Array.map(UPGRADE_TIERS[kind], ({ price }) => price)
@@ -105,7 +106,7 @@ describe('upgrade tiers', () => {
     })
   })
 
-  test.each(UPGRADES)(
+  it.effect.each(UPGRADES)(
     'buying each $kind tier deducts its price, raises the tier, and is refused once maxed',
     ({ item, kind, arsenal }) => {
       const prices = tierPrices(kind)
@@ -114,14 +115,14 @@ describe('upgrade tiers', () => {
       const spentAfter = (tier: number): number =>
         Array.reduce(Array.take(prices, tier), 0, (sum, price) => sum + price)
 
-      story(
-        update,
-        given(browsing(start, arsenal)),
+      return Story.story(
+        APPLICATION,
+        Story.given(browsing(start, arsenal)),
         ...Array.flatMap(
           Array.makeBy(3, tier => tier + 1),
           tier => [
             buy(item),
-            model((current: Model) => {
+            Story.model((current: Model) => {
               expect(tierOf(focusOf(current).player, kind)).toBe(tier)
               expect(focusOf(current).wallet.balance).toBe(
                 start - spentAfter(tier),
@@ -129,13 +130,13 @@ describe('upgrade tiers', () => {
             }),
           ],
         ),
-        model(current => {
+        Story.model(current => {
           expect(verdictFor(current, focusSlotOf(current), item)).toEqual(
             Verdict.Refused({ reason: 'Fully upgraded' }),
           )
         }),
         buy(item),
-        model(current => {
+        Story.model(current => {
           expect(tierOf(focusOf(current).player, kind)).toBe(3)
           expect(focusOf(current).wallet.balance).toBe(7)
         }),
@@ -143,88 +144,100 @@ describe('upgrade tiers', () => {
     },
   )
 
-  test('an upgrade is refused when broke, and the shop says how much is missing', () => {
-    const price = tierPrices('Pistol')[0] ?? 0
-    story(
-      update,
-      given(browsing(price - 5, pistolOnly())),
-      model(current => {
-        expect(
-          verdictFor(current, focusSlotOf(current), 'PistolUpgrade'),
-        ).toEqual(Verdict.Refused({ reason: 'Need $5 more' }))
-      }),
-      buy('PistolUpgrade'),
-      model(({ seats: [{ player, wallet }] }) => {
-        expect(pistolOf(player).tier).toBe(0)
-        expect(wallet.balance).toBe(price - 5)
-      }),
-    )
-  })
+  it.effect(
+    'an upgrade is refused when broke, and the shop says how much is missing',
+    () => {
+      const price = tierPrices('Pistol')[0] ?? 0
+      return Story.story(
+        APPLICATION,
+        Story.given(browsing(price - 5, pistolOnly())),
+        Story.model(current => {
+          expect(
+            verdictFor(current, focusSlotOf(current), 'PistolUpgrade'),
+          ).toEqual(Verdict.Refused({ reason: 'Need $5 more' }))
+        }),
+        buy('PistolUpgrade'),
+        Story.model(({ seats: [{ player, wallet }] }) => {
+          expect(pistolOf(player).tier).toBe(0)
+          expect(wallet.balance).toBe(price - 5)
+        }),
+      )
+    },
+  )
 
-  test('a spare gun upgrade needs that gun in the second slot', () => {
-    story(
-      update,
-      given(browsing(1000, holdingSecond(spare('Smg', 120)))),
-      model(current => {
+  it.effect('a spare gun upgrade needs that gun in the second slot', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(browsing(1000, holdingSecond(spare('Smg', 120)))),
+      Story.model(current => {
         expect(
           verdictFor(current, focusSlotOf(current), 'ShotgunUpgrade'),
         ).toEqual(Verdict.Refused({ reason: 'Needs the Barn Buster' }))
       }),
       buy('ShotgunUpgrade'),
-      model(({ seats: [{ wallet, player }] }) => {
+      Story.model(({ seats: [{ wallet, player }] }) => {
         expect(wallet.balance).toBe(1000)
         expect(tierOf(player, 'Shotgun')).toBe(0)
       }),
-    )
-  })
+    ),
+  )
 
-  test('firing reads the effective stats of the held gun at its tier', () => {
-    const fighting = (arsenal: Arsenal): Model =>
-      modifyFocus(
-        modifyFields(newPlayerReady, {
-          phase: () =>
-            Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-        }),
-        {
-          player: player =>
-            modifyFields(player, {
-              arsenal: () => arsenal,
+  it.effect(
+    'firing reads the effective stats of the held gun at its tier',
+    () =>
+      Effect.gen(function* () {
+        const fighting = (arsenal: Arsenal): Model =>
+          modifyFocus(
+            modifyFields(newPlayerReady, {
+              phase: () =>
+                Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
             }),
-        },
-      )
+            {
+              player: player =>
+                modifyFields(player, {
+                  arsenal: () => arsenal,
+                }),
+            },
+          )
 
-    story(
-      update,
-      given(fighting(pistolOnly({ ...STARTING_PISTOL, tier: 3 }))),
-      holdFire,
-      tick(FRAME_MS),
-      model(({ bullets, seats: [{ player }] }) => {
-        expect(
-          Array.map(bullets, ({ damage, knockback }) => [damage, knockback]),
-        ).toEqual([[2, statsAt('Pistol', 3).knockback]])
-        expect(statsAt('Pistol', 3).knockback).toBeGreaterThan(
-          statsAt('Pistol', 0).knockback,
+        yield* Story.story(
+          APPLICATION,
+          Story.given(fighting(pistolOnly({ ...STARTING_PISTOL, tier: 3 }))),
+          holdFire,
+          tick(FRAME_MS),
+          Story.model(({ bullets, seats: [{ player }] }) => {
+            expect(
+              Array.map(bullets, ({ damage, knockback }) => [
+                damage,
+                knockback,
+              ]),
+            ).toEqual([[2, statsAt('Pistol', 3).knockback]])
+            expect(statsAt('Pistol', 3).knockback).toBeGreaterThan(
+              statsAt('Pistol', 0).knockback,
+            )
+            expect(player.fireCooldownMs).toBe(
+              statsAt('Pistol', 3).fireIntervalMs - FRAME_MS,
+            )
+            expect(statsAt('Pistol', 3).fireIntervalMs).toBeLessThan(
+              statsAt('Pistol', 0).fireIntervalMs,
+            )
+          }),
         )
-        expect(player.fireCooldownMs).toBe(
-          statsAt('Pistol', 3).fireIntervalMs - FRAME_MS,
-        )
-        expect(statsAt('Pistol', 3).fireIntervalMs).toBeLessThan(
-          statsAt('Pistol', 0).fireIntervalMs,
+
+        yield* Story.story(
+          APPLICATION,
+          Story.given(fighting(holdingSecond(spare('Shotgun', 16, 1)))),
+          holdFire,
+          tick(FRAME_MS),
+          Story.model(({ bullets }) => {
+            expect(bullets.length).toBe(statsAt('Shotgun', 1).pellets)
+            expect(bullets.length).toBeGreaterThan(
+              statsAt('Shotgun', 0).pellets,
+            )
+          }),
         )
       }),
-    )
-
-    story(
-      update,
-      given(fighting(holdingSecond(spare('Shotgun', 16, 1)))),
-      holdFire,
-      tick(FRAME_MS),
-      model(({ bullets }) => {
-        expect(bullets.length).toBe(statsAt('Shotgun', 1).pellets)
-        expect(bullets.length).toBeGreaterThan(statsAt('Shotgun', 0).pellets)
-      }),
-    )
-  })
+  )
 
   test('every Barn Buster tier reloads faster than the one before', () => {
     Array.forEach([1, 2, 3], tier => {
@@ -234,66 +247,71 @@ describe('upgrade tiers', () => {
     })
   })
 
-  test('a tier that raises the ammo cap lets a refill go past the old cap', () => {
-    const baseCap = maxRounds('Smg', 0)
-    const raisedCap = maxRounds('Smg', 2)
-    expect(raisedCap).toBeGreaterThan(baseCap)
+  it.effect(
+    'a tier that raises the ammo cap lets a refill go past the old cap',
+    () => {
+      const baseCap = maxRounds('Smg', 0)
+      const raisedCap = maxRounds('Smg', 2)
+      expect(raisedCap).toBeGreaterThan(baseCap)
 
-    story(
-      update,
-      given(browsing(1000, holdingSecond(spare('Smg', baseCap, 2)))),
-      buy('SmgRounds'),
-      model(({ seats: [{ player }] }) => {
-        expect(
-          Option.map(maybeSpareGun(player.arsenal), ({ rounds }) => rounds),
-        ).toEqual(Option.some(Math.min(raisedCap, baseCap + 120)))
-      }),
-    )
-  })
+      return Story.story(
+        APPLICATION,
+        Story.given(browsing(1000, holdingSecond(spare('Smg', baseCap, 2)))),
+        buy('SmgRounds'),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(
+            Option.map(maybeSpareGun(player.arsenal), ({ rounds }) => rounds),
+          ).toEqual(Option.some(Math.min(raisedCap, baseCap + 120)))
+        }),
+      )
+    },
+  )
 })
 
 describe('tier resets', () => {
-  test('buying a different spare gun replaces the slot and its upgrades', () => {
-    story(
-      update,
-      given(browsing(1000, holdingSecond(spare('Shotgun', 30, 2)))),
-      buy('Smg'),
-      model(({ seats: [{ player }] }) => {
-        expect(
-          Option.map(maybeSpareGun(player.arsenal), gun => gun.tier),
-        ).toEqual(Option.some(0))
-        expect(tierOf(player, 'Smg')).toBe(0)
-        expect(tierOf(player, 'Shotgun')).toBe(0)
-      }),
-      buy('Shotgun'),
-      model(({ seats: [{ player }] }) => {
-        expect(maybeSpareGun(player.arsenal)).toEqual(
-          Option.some(spare('Shotgun', 16, 0)),
-        )
-      }),
-    )
-  })
+  it.effect(
+    'buying a different spare gun replaces the slot and its upgrades',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(browsing(1000, holdingSecond(spare('Shotgun', 30, 2)))),
+        buy('Smg'),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(
+            Option.map(maybeSpareGun(player.arsenal), gun => gun.tier),
+          ).toEqual(Option.some(0))
+          expect(tierOf(player, 'Smg')).toBe(0)
+          expect(tierOf(player, 'Shotgun')).toBe(0)
+        }),
+        buy('Shotgun'),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(maybeSpareGun(player.arsenal)).toEqual(
+            Option.some(spare('Shotgun', 16, 0)),
+          )
+        }),
+      ),
+  )
 
-  test('the pistol tier survives a spare gun purchase', () => {
-    story(
-      update,
-      given(
+  it.effect('the pistol tier survives a spare gun purchase', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFocus(browsing(1000, pistolOnly()), {
           player: player =>
             withPistol(player, pistol => ({ ...pistol, tier: 2 })),
         }),
       ),
       buy('Smg'),
-      model(({ seats: [{ player }] }) => {
+      Story.model(({ seats: [{ player }] }) => {
         expect(pistolOf(player).tier).toBe(2)
       }),
-    )
-  })
+    ),
+  )
 
-  test('a new run starts every gun at its base tier', () => {
-    story(
-      update,
-      given(
+  it.effect('a new run starts every gun at its base tier', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFocus(
           modifyFields(newPlayerReady, {
             phase: () => Phase.GameOver({ wave: 5 }),
@@ -315,13 +333,13 @@ describe('tier resets', () => {
       ),
       ...Array.makeBy(RESTART_GRACE_TICKS, () => tick(GRACE_TICK_MS)),
       press('Enter'),
-      model(({ phase, seats: [{ player }] }) => {
+      Story.model(({ phase, seats: [{ player }] }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(pistolOf(player).tier).toBe(0)
         expect(player.arsenal).toEqual(pistolOnly())
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('tier names', () => {

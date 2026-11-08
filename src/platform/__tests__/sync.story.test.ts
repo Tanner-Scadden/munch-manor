@@ -1,11 +1,13 @@
-import { Option } from 'effect'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it, test } from '@effect/vitest'
+
+import { ProfileBinding } from '../../app/bindings'
 import { Message } from '../../app/message'
 import { Loading, type Model } from '../../app/model'
-import { Child, initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import {
   AwaitRunSettled,
   ReloadSyncedSave,
@@ -13,6 +15,7 @@ import {
 } from '../../app/update/save'
 import { Message as ProfileMessage } from '../../features/profile/message'
 import { RedeemLinkCode, RequestLinkCode } from '../../features/profile/update'
+import { APPLICATION, writeSave } from '../../test/testing'
 import {
   LastRunSync,
   LinkFlow,
@@ -48,35 +51,38 @@ const fromAnotherDevice = (base: Model): PlayerSave => {
 }
 
 describe('a save from another device', () => {
-  test('replaces the look, settings, and bests, and writes nothing back', () => {
-    const synced = fromAnotherDevice(read)
-    story(
-      update,
-      given(read),
-      message(Message.UpdatedSyncedSave({ save: synced })),
-      model(current => {
-        expect(current.appearance.shirtColor).toBe('Purple')
-        expect(current.musicSetting).toBe('Off')
-        expect(current.bests.runsPlayed).toBe(9)
-        expect(current.bests.killsByKind.Shambler).toBe(390)
-        expect(current.bests.killsByKind.Tank).toBe(10)
-      }),
-      Command.expectNone(),
-    )
-  })
+  it.effect(
+    'replaces the look, settings, and bests, and writes nothing back',
+    () => {
+      const synced = fromAnotherDevice(read)
+      return Story.story(
+        APPLICATION,
+        Story.given(read),
+        Story.message(Message.UpdatedSyncedSave({ save: synced })),
+        Story.model(current => {
+          expect(current.appearance.shirtColor).toBe('Purple')
+          expect(current.musicSetting).toBe('Off')
+          expect(current.bests.runsPlayed).toBe(9)
+          expect(current.bests.killsByKind.Shambler).toBe(390)
+          expect(current.bests.killsByKind.Tank).toBe(10)
+        }),
+        Story.Command.expectNone(),
+      )
+    },
+  )
 
-  test('a change after it writes only that change', () => {
+  it.effect('a change after it writes only that change', () => {
     const synced = fromAnotherDevice(read)
     const afterSync = modifyFields(read, {
       appearance: () => synced.appearance,
       musicSetting: () => 'Off',
     })
-    story(
-      update,
-      given(read),
-      message(Message.UpdatedSyncedSave({ save: synced })),
-      message(Message.ClickedMuteButton()),
-      Command.expectHas(
+    return Story.story(
+      APPLICATION,
+      Story.given(read),
+      Story.message(Message.UpdatedSyncedSave({ save: synced })),
+      Story.message(Message.ClickedMuteButton()),
+      Story.Command.expectHas(
         WriteSave({
           save: saveOf(
             modifyFields(afterSync, {
@@ -100,34 +106,34 @@ describe('a save from another device', () => {
           ],
         }),
       ),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      writeSave(),
     )
   })
 })
 
 describe('a save from sync during a write', () => {
-  test('waits for the write, then reads the store again', () => {
+  it.effect('waits for the write, then reads the store again', () => {
     const synced = fromAnotherDevice(read)
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(read, {
           soundSetting: () => 'Muted',
           writesInFlight: () => 1,
         }),
       ),
-      message(Message.UpdatedSyncedSave({ save: synced })),
-      model(current => {
+      Story.message(Message.UpdatedSyncedSave({ save: synced })),
+      Story.model(current => {
         expect(current.soundSetting).toBe('Muted')
         expect(current.musicSetting).toBe('On')
         expect(current.syncedSave).toBe('Stale')
       }),
-      message(Message.CompletedWriteSave()),
-      model(current => {
+      Story.message(Message.CompletedWriteSave()),
+      Story.model(current => {
         expect(current.writesInFlight).toBe(0)
         expect(current.syncedSave).toBe('Current')
       }),
-      Command.resolve(
+      Story.Command.resolve(
         ReloadSyncedSave,
         Message.CompletedReloadSyncedSave({
           maybeSave: Option.some({
@@ -136,7 +142,7 @@ describe('a save from sync during a write', () => {
           }),
         }),
       ),
-      model(current => {
+      Story.model(current => {
         expect(current.soundSetting).toBe('Muted')
         expect(current.musicSetting).toBe('Off')
       }),
@@ -145,230 +151,255 @@ describe('a save from sync during a write', () => {
 })
 
 describe('the sync status line', () => {
-  test('says where the save is', () => {
-    story(
-      update,
-      given(read),
-      message(
-        Message.UpdatedSyncStatus({ state: SyncState.Synced({ devices: 2 }) }),
-      ),
-      model(current => {
-        expect(syncStateText(current.syncState)).toBe(
-          'Synced. Linked to 2 devices',
-        )
-      }),
-      message(
-        Message.UpdatedSyncStatus({ state: SyncState.Offline({ devices: 2 }) }),
-      ),
-      model(current => {
-        expect(syncStateText(current.syncState)).toBe('Offline, will sync')
-      }),
-    )
-    expect(syncStateText(SyncState.Synced({ devices: 1 }))).toBe('Synced')
-    expect(syncStateText(SyncState.LocalOnly())).toBe('Saved on this device')
-  })
+  it.effect('says where the save is', () =>
+    Effect.gen(function* () {
+      yield* Story.story(
+        APPLICATION,
+        Story.given(read),
+        Story.message(
+          Message.UpdatedSyncStatus({
+            state: SyncState.Synced({ devices: 2 }),
+          }),
+        ),
+        Story.model(current => {
+          expect(syncStateText(current.syncState)).toBe(
+            'Synced. Linked to 2 devices',
+          )
+        }),
+        Story.message(
+          Message.UpdatedSyncStatus({
+            state: SyncState.Offline({ devices: 2 }),
+          }),
+        ),
+        Story.model(current => {
+          expect(syncStateText(current.syncState)).toBe('Offline, will sync')
+        }),
+      )
+      expect(syncStateText(SyncState.Synced({ devices: 1 }))).toBe('Synced')
+      expect(syncStateText(SyncState.LocalOnly())).toBe('Saved on this device')
+    }),
+  )
 })
 
 describe('the player scope status', () => {
-  test('cached progress shows while connecting, and a refused scope says so', () => {
-    const cached = PlayerScopeStatus.Ready({ seq: 7, fresh: false })
-    story(
-      update,
-      given(read),
-      message(Message.UpdatedSyncStatus({ state: SyncState.Connecting() })),
-      message(Message.UpdatedPlayerScopeStatus({ status: cached })),
-      model(current => {
-        expect(current.playerScopeStatus).toEqual(cached)
+  it.effect(
+    'cached progress shows while connecting, and a refused scope says so',
+    () =>
+      Effect.gen(function* () {
+        const cached = PlayerScopeStatus.Ready({ seq: 7, fresh: false })
+        yield* Story.story(
+          APPLICATION,
+          Story.given(read),
+          Story.message(
+            Message.UpdatedSyncStatus({ state: SyncState.Connecting() }),
+          ),
+          Story.message(Message.UpdatedPlayerScopeStatus({ status: cached })),
+          Story.model(current => {
+            expect(current.playerScopeStatus).toEqual(cached)
+            expect(
+              devicesStatusText(current.syncState, current.playerScopeStatus),
+            ).toBe('Connecting. Showing saved progress')
+          }),
+          Story.message(
+            Message.UpdatedPlayerScopeStatus({
+              status: PlayerScopeStatus.Ready({ seq: 8, fresh: true }),
+            }),
+          ),
+          Story.message(
+            Message.UpdatedSyncStatus({
+              state: SyncState.Synced({ devices: 1 }),
+            }),
+          ),
+          Story.model(current => {
+            expect(
+              devicesStatusText(current.syncState, current.playerScopeStatus),
+            ).toBe('Synced')
+          }),
+          Story.Command.expectNone(),
+        )
         expect(
-          devicesStatusText(current.syncState, current.playerScopeStatus),
-        ).toBe('Connecting. Showing saved progress')
-      }),
-      message(
-        Message.UpdatedPlayerScopeStatus({
-          status: PlayerScopeStatus.Ready({ seq: 8, fresh: true }),
-        }),
-      ),
-      message(
-        Message.UpdatedSyncStatus({ state: SyncState.Synced({ devices: 1 }) }),
-      ),
-      model(current => {
+          devicesStatusText(
+            SyncState.Offline({ devices: 1 }),
+            PlayerScopeStatus.Failed({ reason: 'Forbidden: no' }),
+          ),
+        ).toBe('Sync is not working on this device')
         expect(
-          devicesStatusText(current.syncState, current.playerScopeStatus),
-        ).toBe('Synced')
+          devicesStatusText(SyncState.LocalOnly(), PlayerScopeStatus.Idle()),
+        ).toBe('Saved on this device')
       }),
-      Command.expectNone(),
-    )
-    expect(
-      devicesStatusText(
-        SyncState.Offline({ devices: 1 }),
-        PlayerScopeStatus.Failed({ reason: 'Forbidden: no' }),
-      ),
-    ).toBe('Sync is not working on this device')
-    expect(
-      devicesStatusText(SyncState.LocalOnly(), PlayerScopeStatus.Idle()),
-    ).toBe('Saved on this device')
-  })
+  )
 })
 
 describe('a recorded run reaching the server', () => {
-  test('waits on the run the write recorded, then knows it was confirmed', () => {
-    story(
-      update,
-      given(read),
-      message(Message.ClickedMuteButton()),
-      Command.resolve(
-        WriteSave,
-        Message.CompletedWriteSaveWithRun({ runId: 'run-0001' }),
-      ),
-      model(current => {
-        expect(current.writesInFlight).toBe(0)
-        expect(current.lastRunSync).toEqual(
-          LastRunSync.Waiting({ id: 'run-0001' }),
-        )
-      }),
-      Command.expectHas(AwaitRunSettled({ runId: 'run-0001' })),
-      Command.resolve(
-        AwaitRunSettled,
-        Message.SettledRecordedRun({
-          runId: 'run-0001',
-          settled: RunSettled.Confirmed({ seq: 12 }),
+  it.effect(
+    'waits on the run the write recorded, then knows it was confirmed',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(read),
+        Story.message(Message.ClickedMuteButton()),
+        Story.Command.resolve(
+          WriteSave,
+          Message.CompletedWriteSaveWithRun({ runId: 'run-0001' }),
+        ),
+        Story.model(current => {
+          expect(current.writesInFlight).toBe(0)
+          expect(current.lastRunSync).toEqual(
+            LastRunSync.Waiting({ id: 'run-0001' }),
+          )
+        }),
+        Story.Command.expectHas(AwaitRunSettled({ runId: 'run-0001' })),
+        Story.Command.resolve(
+          AwaitRunSettled,
+          Message.SettledRecordedRun({
+            runId: 'run-0001',
+            settled: RunSettled.Confirmed({ seq: 12 }),
+          }),
+        ),
+        Story.model(current => {
+          expect(current.lastRunSync).toEqual(
+            LastRunSync.Confirmed({ seq: 12 }),
+          )
         }),
       ),
-      model(current => {
-        expect(current.lastRunSync).toEqual(LastRunSync.Confirmed({ seq: 12 }))
-      }),
-    )
-  })
+  )
 
-  test('a rejected run says why, and an older run never overwrites a newer one', () => {
-    story(
-      update,
-      given(
-        modifyFields(read, {
-          lastRunSync: () => LastRunSync.Waiting({ id: 'run-0002' }),
+  it.effect(
+    'a rejected run says why, and an older run never overwrites a newer one',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(read, {
+            lastRunSync: () => LastRunSync.Waiting({ id: 'run-0002' }),
+          }),
+        ),
+        Story.message(
+          Message.SettledRecordedRun({
+            runId: 'run-0001',
+            settled: RunSettled.Confirmed({ seq: 3 }),
+          }),
+        ),
+        Story.model(current => {
+          expect(current.lastRunSync).toEqual(
+            LastRunSync.Waiting({ id: 'run-0002' }),
+          )
         }),
-      ),
-      message(
-        Message.SettledRecordedRun({
-          runId: 'run-0001',
-          settled: RunSettled.Confirmed({ seq: 3 }),
+        Story.message(
+          Message.SettledRecordedRun({
+            runId: 'run-0002',
+            settled: RunSettled.Rejected({ reason: 'Precondition: too many' }),
+          }),
+        ),
+        Story.model(current => {
+          expect(current.lastRunSync).toEqual(
+            LastRunSync.Rejected({ reason: 'Precondition: too many' }),
+          )
         }),
+        Story.Command.expectNone(),
       ),
-      model(current => {
-        expect(current.lastRunSync).toEqual(
-          LastRunSync.Waiting({ id: 'run-0002' }),
-        )
-      }),
-      message(
-        Message.SettledRecordedRun({
-          runId: 'run-0002',
-          settled: RunSettled.Rejected({ reason: 'Precondition: too many' }),
-        }),
-      ),
-      model(current => {
-        expect(current.lastRunSync).toEqual(
-          LastRunSync.Rejected({ reason: 'Precondition: too many' }),
-        )
-      }),
-      Command.expectNone(),
-    )
-  })
+  )
 
-  test('a wait the store could not finish stops claiming to know', () => {
-    story(
-      update,
-      given(
+  it.effect('a wait the store could not finish stops claiming to know', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(read, {
           lastRunSync: () => LastRunSync.Waiting({ id: 'run-0003' }),
         }),
       ),
-      message(
+      Story.message(
         Message.FailedAwaitRunSettled({ runId: 'run-0003', reason: 'closed' }),
       ),
-      model(current => {
+      Story.model(current => {
         expect(current.lastRunSync).toEqual(LastRunSync.NoRun())
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('linking a device', () => {
-  test('Link another device asks for a code and shows it', () => {
-    story(
-      update,
-      given(read),
-      message(Child.profile(ProfileMessage.ClickedLinkDeviceButton())),
-      model(current => {
+  it.effect('Link another device asks for a code and shows it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(read),
+      Story.messageIn(ProfileBinding, ProfileMessage.ClickedLinkDeviceButton()),
+      Story.model(current => {
         expect(current.profile.linkFlow).toEqual(LinkFlow.Requesting())
       }),
-      Command.expectExact(RequestLinkCode()),
-      Command.resolve(
+      Story.Command.expectExact(RequestLinkCode()),
+      Story.Command.resolve(
         RequestLinkCode,
         ProfileMessage.SucceededRequestLinkCode({ code: 'ABC234' }),
       ),
-      model(current => {
+      Story.model(current => {
         expect(current.profile.linkFlow).toEqual(
           LinkFlow.Showing({ code: 'ABC234' }),
         )
       }),
-      message(Child.profile(ProfileMessage.ClickedCancelLinkButton())),
-      model(current => {
+      Story.messageIn(ProfileBinding, ProfileMessage.ClickedCancelLinkButton()),
+      Story.model(current => {
         expect(current.profile.linkFlow).toEqual(LinkFlow.Idle())
       }),
-    )
-  })
+    ),
+  )
 
-  test('Use a code sends what was typed, in capitals', () => {
-    story(
-      update,
-      given(read),
-      message(Child.profile(ProfileMessage.ClickedUseCodeButton())),
-      message(
-        Child.profile(ProfileMessage.UpdatedLinkCode({ value: 'abc234' })),
+  it.effect('Use a code sends what was typed, in capitals', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(read),
+      Story.messageIn(ProfileBinding, ProfileMessage.ClickedUseCodeButton()),
+      Story.messageIn(
+        ProfileBinding,
+        ProfileMessage.UpdatedLinkCode({ value: 'abc234' }),
       ),
-      model(current => {
+      Story.model(current => {
         expect(current.profile.linkFlow).toEqual(
           LinkFlow.Entering({ code: 'ABC234' }),
         )
       }),
-      message(Child.profile(ProfileMessage.SubmittedLinkCode())),
-      model(current => {
+      Story.messageIn(ProfileBinding, ProfileMessage.SubmittedLinkCode()),
+      Story.model(current => {
         expect(current.profile.linkFlow).toEqual(
           LinkFlow.Redeeming({ code: 'ABC234' }),
         )
       }),
-      Command.expectExact(RedeemLinkCode({ code: 'ABC234' })),
-      Command.resolve(
+      Story.Command.expectExact(RedeemLinkCode({ code: 'ABC234' })),
+      Story.Command.resolve(
         RedeemLinkCode,
         ProfileMessage.FailedRedeemLinkCode({ problem: 'WrongCode' }),
       ),
-      model(current => {
+      Story.model(current => {
         expect(current.profile.linkFlow).toEqual(
           LinkFlow.Failed({ problem: 'WrongCode' }),
         )
       }),
-      message(
-        Child.profile(ProfileMessage.UpdatedLinkCode({ value: 'xyz789' })),
+      Story.messageIn(
+        ProfileBinding,
+        ProfileMessage.UpdatedLinkCode({ value: 'xyz789' }),
       ),
-      message(Child.profile(ProfileMessage.SubmittedLinkCode())),
-      Command.resolve(RedeemLinkCode, ProfileMessage.SucceededRedeemLinkCode()),
-      model(current => {
+      Story.messageIn(ProfileBinding, ProfileMessage.SubmittedLinkCode()),
+      Story.Command.resolve(
+        RedeemLinkCode,
+        ProfileMessage.SucceededRedeemLinkCode(),
+      ),
+      Story.model(current => {
         expect(current.profile.linkFlow).toEqual(LinkFlow.Linked())
       }),
-    )
-  })
+    ),
+  )
 
-  test('submitting with nothing to submit does nothing', () => {
-    story(
-      update,
-      given(read),
-      message(Child.profile(ProfileMessage.SubmittedLinkCode())),
-      Command.expectNone(),
-      model(current => {
+  it.effect('submitting with nothing to submit does nothing', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(read),
+      Story.messageIn(ProfileBinding, ProfileMessage.SubmittedLinkCode()),
+      Story.Command.expectNone(),
+      Story.model(current => {
         expect(current.profile.linkFlow).toEqual(LinkFlow.Idle())
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('changes as mutations', () => {
@@ -421,22 +452,25 @@ describe('the power-ups seen across devices', () => {
     ])
   })
 
-  test('a save from another device adds its kinds to the ones seen here', () => {
-    const here = modifyFields(read, { seenPowerUps: () => ['Speed'] })
-    story(
-      update,
-      given(here),
-      message(
-        Message.UpdatedSyncedSave({
-          save: { ...saveOf(here), seenPowerUps: ['Damage', 'Heart'] },
+  it.effect(
+    'a save from another device adds its kinds to the ones seen here',
+    () => {
+      const here = modifyFields(read, { seenPowerUps: () => ['Speed'] })
+      return Story.story(
+        APPLICATION,
+        Story.given(here),
+        Story.message(
+          Message.UpdatedSyncedSave({
+            save: { ...saveOf(here), seenPowerUps: ['Damage', 'Heart'] },
+          }),
+        ),
+        Story.model(current => {
+          expect(current.seenPowerUps).toEqual(['Speed', 'Damage', 'Heart'])
         }),
-      ),
-      model(current => {
-        expect(current.seenPowerUps).toEqual(['Speed', 'Damage', 'Heart'])
-      }),
-      Command.expectNone(),
-    )
-  })
+        Story.Command.expectNone(),
+      )
+    },
+  )
 
   test('a failed write keeps the kinds seen and the reset in order', () => {
     const seen = PlayerChange.SawPowerUps({ kinds: ['Pierce'] })
@@ -466,61 +500,67 @@ describe('a write the store could not make', () => {
   const muted = modifyFields(read, { soundSetting: () => 'Muted' })
   const quiet = modifyFields(muted, { musicSetting: () => 'Off' })
 
-  test('goes out again with the next change, with what the fields hold now', () => {
-    story(
-      update,
-      given(read),
-      message(Message.ClickedMuteButton()),
-      Command.resolve(
-        WriteSave,
-        Message.FailedWriteSave({
-          reason: 'disk full',
-          changes: [
-            PlayerChange.ChangedSettings({ settings: saveOf(muted).settings }),
-            ranOne,
-          ],
+  it.effect(
+    'goes out again with the next change, with what the fields hold now',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(read),
+        Story.message(Message.ClickedMuteButton()),
+        Story.Command.resolve(
+          WriteSave,
+          Message.FailedWriteSave({
+            reason: 'disk full',
+            changes: [
+              PlayerChange.ChangedSettings({
+                settings: saveOf(muted).settings,
+              }),
+              ranOne,
+            ],
+          }),
+        ),
+        Story.model(current => {
+          expect(current.writesInFlight).toBe(0)
+          expect(current.unsavedChanges).toHaveLength(2)
+        }),
+        Story.message(Message.ClickedMusicButton()),
+        Story.Command.expectHas(
+          WriteSave({
+            save: saveOf(quiet),
+            changes: [
+              PlayerChange.ChangedSettings({
+                settings: saveOf(quiet).settings,
+              }),
+              ranOne,
+            ],
+          }),
+        ),
+        Story.model(current => {
+          expect(current.unsavedChanges).toEqual([])
+          expect(current.writesInFlight).toBe(1)
+        }),
+        writeSave(),
+        Story.model(current => {
+          expect(current.unsavedChanges).toEqual([])
+          expect(current.writesInFlight).toBe(0)
         }),
       ),
-      model(current => {
-        expect(current.writesInFlight).toBe(0)
-        expect(current.unsavedChanges).toHaveLength(2)
-      }),
-      message(Message.ClickedMusicButton()),
-      Command.expectHas(
-        WriteSave({
-          save: saveOf(quiet),
-          changes: [
-            PlayerChange.ChangedSettings({ settings: saveOf(quiet).settings }),
-            ranOne,
-          ],
-        }),
-      ),
-      model(current => {
-        expect(current.unsavedChanges).toEqual([])
-        expect(current.writesInFlight).toBe(1)
-      }),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      model(current => {
-        expect(current.unsavedChanges).toEqual([])
-        expect(current.writesInFlight).toBe(0)
-      }),
-    )
-  })
+  )
 
-  test('a write that worked leaves nothing to send again', () => {
-    story(
-      update,
-      given(read),
-      message(Message.ClickedMuteButton()),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      message(Message.ClickedMusicButton()),
-      Command.expectHas(
+  it.effect('a write that worked leaves nothing to send again', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(read),
+      Story.message(Message.ClickedMuteButton()),
+      writeSave(),
+      Story.message(Message.ClickedMusicButton()),
+      Story.Command.expectHas(
         WriteSave({
           save: saveOf(quiet),
           changes: changesBetween(saveOf(muted), saveOf(quiet)),
         }),
       ),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
-    )
-  })
+      writeSave(),
+    ),
+  )
 })

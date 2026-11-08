@@ -1,14 +1,22 @@
-import { Array, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it, test } from '@effect/vitest'
 import { makeReader, makeWriter } from '@munch/netcode'
 
 import { CoopBinding } from '../../../app/bindings'
 import type { Model } from '../../../app/model'
-import { Child, update } from '../../../app/pureApp'
+import { WriteSave } from '../../../app/update/save'
 import { PLAYER_MAX_HP } from '../../../shared/constants'
+import type { Calling } from '../../../shared/playerData'
 import { heroesBoughtBy, readyAfterRead } from '../../../test/model.fixture'
+import {
+  APPLICATION,
+  resolveChangeLobby,
+  resolveFocusCoop,
+  writeSave,
+} from '../../../test/testing'
 import { heldGun } from '../../../world/gear/weapons'
 import { COOK_STARTING_LIDS } from '../../../world/heroes/calling'
 import { pointsForRank } from '../../../world/heroes/rank'
@@ -22,9 +30,11 @@ import {
 } from '../../../world/net/roomWorld'
 import { focusOf, maybePlayerAt } from '../../../world/party/party'
 import { Phase } from '../../../world/schema/worldSchema'
+import { HeroPickerBinding } from '../../coop/bindings'
 import { Message as CoopMessage } from '../../coop/message'
 import { Screen as CoopScreen } from '../../coop/model'
 import { freshRoom } from '../../coop/roomState'
+import { ChangeLobby, FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf } from '../../coop/testing'
 import { Message as HeroPickerMessage } from '../../heroes/message'
 
@@ -122,6 +132,12 @@ describe('KEEP GOING', () => {
   })
 })
 
+const tapCard = (calling: Calling) =>
+  Story.messageIn(
+    [CoopBinding, HeroPickerBinding],
+    HeroPickerMessage.ClickedCard({ calling }),
+  )
+
 describe('picking a hero in the lobby', () => {
   const pointed = (rank: number): Model =>
     modifyFields(readyAfterRead, {
@@ -144,25 +160,32 @@ describe('picking a hero in the lobby', () => {
       }),
     })
 
-  test("is the player's pick at home too, and saved", () => {
-    const result = update(
-      pointed(4),
-      Child.coopHero(HeroPickerMessage.ClickedCard({ calling: 'Handyman' })),
-    )
-    expect(result.model.calling).toBe('Handyman')
-    expect(focusOf(result.model).player.calling).toBe('Handyman')
-    expect(Array.map(result.commands ?? [], command => command.name)).toContain(
-      'Application/WriteSave',
-    )
-  })
+  it.effect("is the player's pick at home too, and saved", () =>
+    Story.story(
+      APPLICATION,
+      Story.given(pointed(4)),
+      tapCard('Handyman'),
+      Story.Command.expectExact(ChangeLobby, FocusCoopElement, WriteSave),
+      Story.model(current => {
+        expect(current.calling).toBe('Handyman')
+        expect(focusOf(current).player.calling).toBe('Handyman')
+      }),
+      resolveChangeLobby(),
+      resolveFocusCoop(),
+      writeSave(),
+    ),
+  )
 
-  test('a hero the rank has not reached changes nothing at home', () => {
-    const result = update(
-      pointed(4),
-      Child.coopHero(HeroPickerMessage.ClickedCard({ calling: 'LineCook' })),
-    )
-    expect(result.model.calling).toBe(pointed(4).calling)
-  })
+  it.effect('a hero the rank has not reached changes nothing at home', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(pointed(4)),
+      tapCard('LineCook'),
+      Story.model(current => {
+        expect(current.calling).toBe(pointed(4).calling)
+      }),
+    ),
+  )
 })
 
 describe('renaming yourself in the lobby', () => {
@@ -181,24 +204,32 @@ describe('renaming yourself in the lobby', () => {
     }),
   })
 
-  test("is the player's name at home too, and saved", () => {
-    const result = update(
-      naming,
-      Child.message(CoopBinding, CoopMessage.SubmittedName()),
-    )
-    expect(result.model.playerName).toBe('Gravy Dave')
-    expect(Array.map(result.commands ?? [], command => command.name)).toContain(
-      'Application/WriteSave',
-    )
-  })
+  it.effect("is the player's name at home too, and saved", () =>
+    Story.story(
+      APPLICATION,
+      Story.given(naming),
+      Story.messageIn(CoopBinding, CoopMessage.SubmittedName()),
+      Story.Command.expectExact(ChangeLobby, FocusCoopElement, WriteSave),
+      Story.model(current => {
+        expect(current.playerName).toBe('Gravy Dave')
+      }),
+      resolveChangeLobby(),
+      resolveFocusCoop(),
+      writeSave(),
+    ),
+  )
 
-  test('a cancelled rename changes nothing at home', () => {
-    const result = update(
-      naming,
-      Child.message(CoopBinding, CoopMessage.ClickedNameCancel()),
-    )
-    expect(result.model.playerName).toBe('Old')
-  })
+  it.effect('a cancelled rename changes nothing at home', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(naming),
+      Story.messageIn(CoopBinding, CoopMessage.ClickedNameCancel()),
+      Story.model(current => {
+        expect(current.playerName).toBe('Old')
+      }),
+      resolveFocusCoop(),
+    ),
+  )
 })
 
 describe('buying a hero in the lobby', () => {
@@ -229,51 +260,90 @@ describe('buying a hero in the lobby', () => {
       },
     }),
   })
-  const buy = (model: Model) =>
-    update(model, Child.coopHero(HeroPickerMessage.ClickedBuyButton()))
+  const clickBuy = Story.messageIn(
+    [CoopBinding, HeroPickerBinding],
+    HeroPickerMessage.ClickedBuyButton(),
+  )
 
-  test('spends the Bones once, saves, and the hero is the pick in the room', () => {
-    const result = buy(trying)
-    expect(result.model.boughtCosmetics).toContain('hero:TrackStar')
-    expect(result.model.rank.spentBones).toBe(100)
-    expect(result.model.calling).toBe('TrackStar')
-    expect(result.model.coop.calling).toBe('TrackStar')
-    expect(result.model.coop.bones).toBe(50)
-    expect(result.model.coop.bought).toContain('hero:TrackStar')
-    expect(Array.map(result.commands ?? [], command => command.name)).toEqual(
-      expect.arrayContaining(['Application/WriteSave']),
-    )
-  })
-
-  test('a second tap buys nothing more', () => {
-    const once = buy(trying).model
-    const again = buy(
-      modifyFields(once, {
-        coop: coop => ({
-          ...coop,
-          screen: trying.coop.screen,
+  it.effect(
+    'spends the Bones once, saves, and the hero is the pick in the room',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(trying),
+        clickBuy,
+        Story.Command.expectExact(ChangeLobby, FocusCoopElement, WriteSave),
+        Story.model(current => {
+          expect(current.boughtCosmetics).toContain('hero:TrackStar')
+          expect(current.rank.spentBones).toBe(100)
+          expect(current.calling).toBe('TrackStar')
+          expect(current.coop.calling).toBe('TrackStar')
+          expect(current.coop.bones).toBe(50)
+          expect(current.coop.bought).toContain('hero:TrackStar')
         }),
+        resolveChangeLobby(),
+        resolveFocusCoop(),
+        writeSave(),
+      ),
+  )
+
+  // NOTE: co-op's screen put back as it was before the buy, so the second
+  // tap reaches the root again.
+  it.effect('a second tap buys nothing more', () =>
+    Effect.gen(function* () {
+      const once = yield* Story.story(
+        APPLICATION,
+        Story.given(trying),
+        clickBuy,
+        resolveChangeLobby(),
+        resolveFocusCoop(),
+        writeSave(),
+      )
+      yield* Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(once, {
+            coop: coop => ({ ...coop, screen: trying.coop.screen }),
+          }),
+        ),
+        clickBuy,
+        Story.model(again => {
+          expect(again.rank.spentBones).toBe(100)
+        }),
+      )
+    }),
+  )
+
+  it.effect('the root checks the Bones itself, whatever co-op believes', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(trying, {
+          rank: current => ({ ...current, earnedBones: 99 }),
+        }),
+      ),
+      clickBuy,
+      Story.model(current => {
+        expect(current.rank.spentBones).toBe(0)
+        expect(current.boughtCosmetics).not.toContain('hero:TrackStar')
       }),
-    )
-    expect(again.model.rank.spentBones).toBe(100)
-  })
+    ),
+  )
 
-  test('the root checks the Bones itself, whatever co-op believes', () => {
-    const stale = modifyFields(trying, {
-      rank: current => ({ ...current, earnedBones: 99 }),
-    })
-    const result = buy(stale)
-    expect(result.model.rank.spentBones).toBe(0)
-    expect(result.model.boughtCosmetics).not.toContain('hero:TrackStar')
-  })
-
-  test('too few Bones buys nothing', () => {
-    const poor = modifyFields(trying, {
-      rank: current => ({ ...current, earnedBones: 99 }),
-      coop: coop => ({ ...coop, bones: 99 }),
-    })
-    const result = buy(poor)
-    expect(result.model.rank.spentBones).toBe(0)
-    expect(result.model.boughtCosmetics).not.toContain('hero:TrackStar')
-  })
+  it.effect('too few Bones buys nothing', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(trying, {
+          rank: current => ({ ...current, earnedBones: 99 }),
+          coop: coop => ({ ...coop, bones: 99 }),
+        }),
+      ),
+      clickBuy,
+      Story.model(current => {
+        expect(current.rank.spentBones).toBe(0)
+        expect(current.boughtCosmetics).not.toContain('hero:TrackStar')
+      }),
+    ),
+  )
 })

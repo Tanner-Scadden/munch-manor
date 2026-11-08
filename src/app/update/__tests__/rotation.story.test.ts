@@ -1,7 +1,8 @@
-import { Option } from 'effect'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message as ProfileMessage } from '../../../features/profile/message'
 import {
@@ -11,21 +12,27 @@ import {
   saveOf,
 } from '../../../platform/save'
 import { loadingSave, readyAfterRead } from '../../../test/model.fixture'
-import { finishSplash, jsonOf } from '../../../test/testing'
+import {
+  APPLICATION,
+  finishSplash,
+  jsonOf,
+  writeSave,
+} from '../../../test/testing'
+import { ProfileBinding } from '../../bindings'
 import { Message } from '../../message'
 import { type Model } from '../../model'
-import { Child, initialModel, update } from '../../pureApp'
+import { initialModel } from '../../pureApp'
 import { ApplyRotation } from '../rotation'
-import { WriteSave } from '../save'
 import { FetchBuild } from '../version'
 
 const onPhone = (base: Model): Model =>
   modifyFields(base, { orientationLock: () => 'Supported' })
 
 const applied = (rotation: 'Landscape' | 'Auto') =>
-  Command.resolve(ApplyRotation({ rotation }), Message.CompletedApplyRotation())
-
-const savedWrite = Command.resolve(WriteSave, Message.CompletedWriteSave())
+  Story.Command.resolve(
+    ApplyRotation({ rotation }),
+    Message.CompletedApplyRotation(),
+  )
 
 describe('the rotation setting in the save', () => {
   test('round-trips through the save', () => {
@@ -50,101 +57,114 @@ describe('the rotation setting in the save', () => {
 })
 
 describe('applying the rotation', () => {
-  test('a loaded save on a phone that can lock applies its rotation', () => {
-    const autoSave = {
-      ...saveOf(readyAfterRead),
-      rotation: 'Auto' as const,
-    }
-    story(
-      update,
-      given(onPhone(loadingSave)),
-      message(Message.CompletedLoadSave({ maybeSave: Option.some(autoSave) })),
-      finishSplash,
-      applied('Auto'),
-      model(current => {
-        expect(current.rotationSetting).toBe('Auto')
-      }),
-    )
-  })
+  it.effect(
+    'a loaded save on a phone that can lock applies its rotation',
+    () => {
+      const autoSave = {
+        ...saveOf(readyAfterRead),
+        rotation: 'Auto' as const,
+      }
+      return Story.story(
+        APPLICATION,
+        Story.given(onPhone(loadingSave)),
+        Story.message(
+          Message.CompletedLoadSave({ maybeSave: Option.some(autoSave) }),
+        ),
+        finishSplash,
+        applied('Auto'),
+        Story.model(current => {
+          expect(current.rotationSetting).toBe('Auto')
+        }),
+      )
+    },
+  )
 
-  test('finding a phone that can lock locks it to landscape by default', () => {
-    story(
-      update,
-      given(readyAfterRead),
-      message(
-        Message.CompletedDetectOrientationLock({
-          orientationLock: 'Supported',
+  it.effect(
+    'finding a phone that can lock locks it to landscape by default',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(readyAfterRead),
+        Story.message(
+          Message.CompletedDetectOrientationLock({
+            orientationLock: 'Supported',
+          }),
+        ),
+        applied('Landscape'),
+        Story.model(current => {
+          expect(current.orientationLock).toBe('Supported')
+          expect(current.rotationSetting).toBe('Landscape')
         }),
       ),
-      applied('Landscape'),
-      model(current => {
-        expect(current.orientationLock).toBe('Supported')
-        expect(current.rotationSetting).toBe('Landscape')
-      }),
-    )
-  })
+  )
 
-  test('ROTATE switches to Auto and back, applying and saving each', () => {
-    story(
-      update,
-      given(onPhone(readyAfterRead)),
-      message(
-        Child.profile(
-          ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
-        ),
+  it.effect('ROTATE switches to Auto and back, applying and saving each', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(onPhone(readyAfterRead)),
+      Story.messageIn(
+        ProfileBinding,
+        ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
       ),
       applied('Auto'),
-      savedWrite,
-      model(current => {
+      writeSave(),
+      Story.model(current => {
         expect(current.rotationSetting).toBe('Auto')
         expect(saveOf(current).rotation).toBe('Auto')
       }),
-      message(
-        Child.profile(
-          ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
-        ),
+      Story.messageIn(
+        ProfileBinding,
+        ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
       ),
       applied('Landscape'),
-      savedWrite,
-      model(current => {
+      writeSave(),
+      Story.model(current => {
         expect(current.rotationSetting).toBe('Landscape')
       }),
-    )
-  })
+    ),
+  )
 
-  test('full screen coming on and the page coming back apply it again', () => {
-    const auto = onPhone(
-      modifyFields(readyAfterRead, { rotationSetting: () => 'Auto' }),
-    )
-    story(
-      update,
-      given(auto),
-      message(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
-      applied('Auto'),
-    )
-    story(
-      update,
-      given(modifyFields(auto, { pageVisibility: () => 'Hidden' })),
-      message(Message.ChangedPageVisibility({ visibility: 'Visible' })),
-      applied('Auto'),
-      Command.resolve(FetchBuild, Message.FailedFetchBuild({ reason: 'test' })),
-    )
-  })
+  it.effect(
+    'full screen coming on and the page coming back apply it again',
+    () =>
+      Effect.gen(function* () {
+        const auto = onPhone(
+          modifyFields(readyAfterRead, { rotationSetting: () => 'Auto' }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(auto),
+          Story.message(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
+          applied('Auto'),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(modifyFields(auto, { pageVisibility: () => 'Hidden' })),
+          Story.message(
+            Message.ChangedPageVisibility({ visibility: 'Visible' }),
+          ),
+          applied('Auto'),
+          Story.Command.resolve(
+            FetchBuild,
+            Message.FailedFetchBuild({ reason: 'test' }),
+          ),
+        )
+      }),
+  )
 
-  test('a desktop or an iPhone never locks and ignores ROTATE', () => {
-    story(
-      update,
-      given(readyAfterRead),
-      message(
-        Child.profile(
-          ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
-        ),
+  it.effect('a desktop or an iPhone never locks and ignores ROTATE', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyAfterRead),
+      Story.messageIn(
+        ProfileBinding,
+        ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
       ),
-      message(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
-      Command.expectNone(),
-      model(current => {
+      Story.message(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
+      Story.Command.expectNone(),
+      Story.model(current => {
         expect(current.rotationSetting).toBe('Landscape')
       }),
-    )
-  })
+    ),
+  )
 })

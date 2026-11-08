@@ -1,10 +1,11 @@
-import { Array, Option, Order, Struct } from 'effect'
+import { Array, Effect, Option, Order, Struct } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it, test } from '@effect/vitest'
 import { DialogBlock } from '@foldkit/ui'
 
-import { Message as ShopMessage } from '../../../features/shop/message'
+import { DialogBinding } from '../../../features/shop/bindings'
 import { withShopDialogOpen } from '../../../test/model.fixture'
 import {
   DISTANT_SPAWN,
@@ -16,9 +17,13 @@ import {
   withSeatLife,
 } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   BELOW_NORTH_DOOR,
+  type RootSteps,
   SHOTGUN,
   WORLD_KEYS,
+  buyAtCounter,
+  closeDialog,
   holdingFirst,
   withPistol,
 } from '../../../test/testing'
@@ -32,9 +37,9 @@ import { COOP_RULES, leadSeatOf, modifyFocus } from '../../../world/party/party'
 import type { World } from '../../../world/schema/world'
 import { idleIntent } from '../../../world/schema/worldSchema'
 import { SeatAction, applySeatAction } from '../../../world/step/stepWorld'
+import { ShopDialogBinding } from '../../bindings'
 import { Message } from '../../message'
 import { BreakClock, Life, type Model, Phase, ShopState } from '../../model'
-import { Child, update } from '../../pureApp'
 
 // One rule set for player actions (AGENTS.md "Code shape"): every seat
 // action, pressed through single player's own Messages, leaves the World
@@ -58,13 +63,13 @@ const ruleFieldsOf = (world: World) => ({
   ),
 })
 
-// NOTE: a Message the root's update takes, its children's included.
-type RootMessage = Parameters<typeof update>[1]
-
+// NOTE: a row's presses are the Story steps single player takes, as one
+// group: the root's own Messages, or a child's by its Binding, with the
+// Commands they leave resolved.
 type Row = Readonly<{
   from: Model
   action: SeatAction
-  presses: ReadonlyArray<RootMessage>
+  presses: RootSteps
 }>
 
 const inWave = quietWave(3)
@@ -121,17 +126,19 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
   Swap: {
     from: withArsenal(inWave, holdingFirst(SHOTGUN)),
     action: SeatAction.Swap(),
-    presses: [Message.ClickedSwapButton()],
+    presses: Story.steps(Story.message(Message.ClickedSwapButton())),
   },
   Melee: {
     from: inWave,
     action: SeatAction.Melee(),
-    presses: [Message.ClickedMeleeSlot()],
+    presses: Story.steps(Story.message(Message.ClickedMeleeSlot())),
   },
   Draw: {
     from: withKnifeOut(withArsenal(inWave, holdingFirst(SHOTGUN))),
     action: SeatAction.Draw({ slot: 'Second' }),
-    presses: [Message.ClickedGunSlot({ slot: 'Second' })],
+    presses: Story.steps(
+      Story.message(Message.ClickedGunSlot({ slot: 'Second' })),
+    ),
   },
   Reload: {
     from: withKnifeOut(
@@ -143,57 +150,57 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
       }),
     ),
     action: SeatAction.Reload(),
-    presses: [Message.ClickedReloadButton()],
+    presses: Story.steps(Story.message(Message.ClickedReloadButton())),
   },
   PlaceTrap: {
     from: withTraps(inBreak, 1, 0),
     action: SeatAction.PlaceTrap(),
-    presses: [Message.ClickedPlaceTrapButton()],
+    presses: Story.steps(Story.message(Message.ClickedPlaceTrapButton())),
   },
   NextTrap: {
     from: withTraps(inWave, 1, 1),
     action: SeatAction.NextTrap(),
-    presses: [Message.ClickedNextTrapButton()],
+    presses: Story.steps(Story.message(Message.ClickedNextTrapButton())),
   },
   Buy: {
     from: atCounter,
     action: SeatAction.Buy({ item: 'Heart' }),
-    presses: [Child.shop(ShopMessage.ClickedBuyButton({ item: 'Heart' }))],
+    presses: Story.steps(buyAtCounter('Heart')),
   },
   // NOTE: the shop dialog closed: its close, then the Command's result.
   LeaveCounter: {
     from: atCounter,
     action: SeatAction.LeaveCounter(),
-    presses: [
-      Child.shopDialog(DialogBlock.Message.CanceledDialog()),
-      Child.shopDialog(DialogBlock.Message.CompletedCloseDialog()),
-    ],
+    presses: Story.steps(
+      Story.messageIn(
+        [ShopDialogBinding, DialogBinding],
+        DialogBlock.Message.CanceledDialog(),
+      ),
+      closeDialog(),
+    ),
   },
   Ready: {
     from: inBreak,
     action: SeatAction.Ready(),
-    presses: [Message.ClickedStartWaveButton()],
+    presses: Story.steps(Story.message(Message.ClickedStartWaveButton())),
   },
   BuyAmmo: {
     from: midWaveAtStall('Smg', 10),
     action: SeatAction.BuyAmmo(),
-    presses: [Message.ClickedAmmoTag()],
+    presses: Story.steps(Story.message(Message.ClickedAmmoTag())),
   },
   CallMedic: {
     from: downedLead,
     action: SeatAction.CallMedic(),
-    presses: [Message.ClickedMedicButton()],
+    presses: Story.steps(Story.message(Message.ClickedMedicButton())),
   },
 }
 
 const TAGS = Struct.keys(ROWS)
 
-// NOTE: single player's side: its Messages through the root's update.
-const inSinglePlayer = (
-  from: Model,
-  presses: ReadonlyArray<RootMessage>,
-): Model =>
-  Array.reduce(presses, from, (current, press) => update(current, press).model)
+// NOTE: single player's side: its presses through the root's update.
+const inSinglePlayer = (from: Model, presses: RootSteps) =>
+  Story.story(APPLICATION, Story.given(from), presses)
 
 // NOTE: the room's side: the press read back from its wire code, on the
 // seat that pressed it.
@@ -217,15 +224,16 @@ describe('one rule set for player actions', () => {
     )
   })
 
-  test.each(TAGS)('%s through single player matches the room', tag => {
-    const { from, action, presses } = ROWS[tag]
-    const roomWorld = inRoom(from, action)
-    expect(
-      ruleFieldsOf(roomWorld),
-      'the row starts where the action does something',
-    ).not.toEqual(ruleFieldsOf(from))
-    expect(ruleFieldsOf(inSinglePlayer(from, presses))).toEqual(
-      ruleFieldsOf(roomWorld),
-    )
-  })
+  it.effect.each(TAGS)('%s through single player matches the room', tag =>
+    Effect.gen(function* () {
+      const { from, action, presses } = ROWS[tag]
+      const roomWorld = inRoom(from, action)
+      expect(
+        ruleFieldsOf(roomWorld),
+        'the row starts where the action does something',
+      ).not.toEqual(ruleFieldsOf(from))
+      const played = yield* inSinglePlayer(from, presses)
+      expect(ruleFieldsOf(played)).toEqual(ruleFieldsOf(roomWorld))
+    }),
+  )
 })

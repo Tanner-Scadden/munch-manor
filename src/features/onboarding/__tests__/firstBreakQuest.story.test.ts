@@ -1,7 +1,8 @@
-import { Option } from 'effect'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
@@ -15,13 +16,16 @@ import {
   Tour,
   TrapHint,
 } from '../../../app/model'
-import { Child } from '../../../app/pureApp'
-import { initialModel, update } from '../../../app/pureApp'
-import { Message as ShopMessage } from '../../../features/shop/message'
+import { initialModel } from '../../../app/pureApp'
 import { forgetTutorial } from '../../../platform/save'
 import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
-import { BELOW_NORTH_DOOR, nextFrame, press } from '../../../test/testing'
+import {
+  APPLICATION,
+  BELOW_NORTH_DOOR,
+  buyAtCounter,
+  press,
+} from '../../../test/testing'
 import { asTutorialDone, asVeteran } from '../../../test/veteran'
 import { TRAPS } from '../../../world/gear/traps'
 import { focusOf, focusSlotOf, modifyFocus } from '../../../world/party/party'
@@ -72,102 +76,192 @@ const browsing = (current: Model): Model =>
     shopCategory: () => 'Traps',
   })
 
-const buyPlanks = (current: Model): Model =>
-  update(
-    current,
-    Child.shop(ShopMessage.ClickedBuyButton({ item: 'Barricade' })),
-  ).model
+// NOTE: the Plank Pile's row picked in Rattles' shop dialog.
+const buyPlanks = buyAtCounter('Barricade')
+
+const frame = Story.message(Message.TickedFrame({ deltaTime: FRAME_MS }))
 
 const away = (current: Model): Model =>
   modifyFocus(current, { shop: () => ShopState.Dismissed() })
 
 describe('the guided first break', () => {
-  test('walks a new player from the stall to buying to placing, then START WAVE', () => {
-    const started = nextFrame(firstBreak())
-    expect(started.firstBreakQuest).toEqual(Tour.Running())
-    expect(stepOf(started)).toEqual(Option.some('Shop'))
+  it.effect(
+    'walks a new player from the stall to buying to placing, then START WAVE',
+    () =>
+      Effect.gen(function* () {
+        const started = yield* Story.story(
+          APPLICATION,
+          Story.given(firstBreak()),
+          frame,
+          Story.model(current => {
+            expect(current.firstBreakQuest).toEqual(Tour.Running())
+            expect(stepOf(current)).toEqual(Option.some('Shop'))
+          }),
+        )
+        const bought = yield* Story.story(
+          APPLICATION,
+          Story.given(browsing(started)),
+          Story.model(current => {
+            expect(stepOf(current)).toEqual(Option.some('Buy'))
+          }),
+          buyPlanks,
+          Story.model(current => {
+            expect(focusOf(current).trapStock.Barricade).toBe(1)
+          }),
+        )
+        expect(stepOf(away(bought))).toEqual(Option.some('Place'))
+        expect(Option.isSome(maybeQuestDoor(away(bought)))).toBe(true)
 
-    const shopping = browsing(started)
-    expect(stepOf(shopping)).toEqual(Option.some('Buy'))
-
-    const bought = buyPlanks(shopping)
-    expect(focusOf(bought).trapStock.Barricade).toBe(1)
-    expect(stepOf(away(bought))).toEqual(Option.some('Place'))
-    expect(Option.isSome(maybeQuestDoor(away(bought)))).toBe(true)
-
-    story(
-      update,
-      given(away(bought)),
-      press('KeyT'),
-      model(current => {
-        expect(current.trapHint).toEqual(TrapHint.Seen())
+        yield* Story.story(
+          APPLICATION,
+          Story.given(away(bought)),
+          press('KeyT'),
+          Story.model(current => {
+            expect(current.trapHint).toEqual(TrapHint.Seen())
+          }),
+          frame,
+          Story.model(current => {
+            expect(Tour.isAnyOf(['Done'])(current.firstBreakQuest)).toBe(true)
+            expect(stepOf(current)).toEqual(Option.none())
+            expect(isStartWaveBeckoning(current)).toBe(true)
+          }),
+          Story.Command.resolveAll(),
+        )
       }),
-      message(Message.TickedFrame({ deltaTime: FRAME_MS })),
-      model(current => {
-        expect(Tour.isAnyOf(['Done'])(current.firstBreakQuest)).toBe(true)
+  )
+
+  it.effect('with no money for it, the first Plank Pile is free', () =>
+    Effect.gen(function* () {
+      const started = yield* Story.story(
+        APPLICATION,
+        Story.given(firstBreak()),
+        frame,
+      )
+      expect(focusOf(started).wallet.balance).toBeLessThan(
+        TRAPS.Barricade.price,
+      )
+      expect(priceFor(started, focusSlotOf(started), 'Barricade')).toBe(0)
+      yield* Story.story(
+        APPLICATION,
+        Story.given(browsing(started)),
+        buyPlanks,
+        Story.model(bought => {
+          expect(focusOf(bought).trapStock.Barricade).toBe(1)
+          expect(focusOf(bought).wallet.balance).toBe(
+            focusOf(started).wallet.balance,
+          )
+          expect(priceFor(bought, focusSlotOf(bought), 'Barricade')).toBe(
+            TRAPS.Barricade.price,
+          )
+        }),
+      )
+    }),
+  )
+
+  it.effect('the skip button ends it at any step', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(firstBreak()),
+      frame,
+      Story.message(Message.ClickedSkipQuestButton()),
+      Story.model(skipped => {
+        expect(skipped.firstBreakQuest).toEqual(Tour.Over())
+      }),
+      frame,
+      Story.model(current => {
         expect(stepOf(current)).toEqual(Option.none())
-        expect(isStartWaveBeckoning(current)).toBe(true)
       }),
-      Command.resolveAll(),
-    )
-  })
+    ),
+  )
 
-  test('with no money for it, the first Plank Pile is free', () => {
-    const started = nextFrame(firstBreak())
-    expect(focusOf(started).wallet.balance).toBeLessThan(TRAPS.Barricade.price)
-    expect(priceFor(started, focusSlotOf(started), 'Barricade')).toBe(0)
-    const bought = buyPlanks(browsing(started))
-    expect(focusOf(bought).trapStock.Barricade).toBe(1)
-    expect(focusOf(bought).wallet.balance).toBe(focusOf(started).wallet.balance)
-    expect(priceFor(bought, focusSlotOf(bought), 'Barricade')).toBe(
-      TRAPS.Barricade.price,
-    )
-  })
-
-  test('the skip button ends it at any step', () => {
-    const started = nextFrame(firstBreak())
-    const skipped = update(started, Message.ClickedSkipQuestButton()).model
-    expect(skipped.firstBreakQuest).toEqual(Tour.Over())
-    expect(stepOf(nextFrame(skipped))).toEqual(Option.none())
-  })
-
-  test('starting the wave ends it', () => {
-    const started = nextFrame(firstBreak())
-    const waved = update(started, Message.ClickedStartWaveButton()).model
-    expect(Phase.isAnyOf(['Wave'])(waved.phase)).toBe(true)
-    expect(nextFrame(waved).firstBreakQuest).toEqual(Tour.Over())
-  })
-
-  test('runs once per save: a player who has shopped or bought a trap never sees it', () => {
-    const shopped = firstBreak(
-      modifyFields(asVeteran(initialModel), {
-        lessons: lessons =>
-          modifyFields(lessons, { shop: () => Lesson.Learned({ atMs: 0 }) }),
+  it.effect('starting the wave ends it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(firstBreak()),
+      frame,
+      Story.message(Message.ClickedStartWaveButton()),
+      Story.model(waved => {
+        expect(Phase.isAnyOf(['Wave'])(waved.phase)).toBe(true)
       }),
-    )
-    expect(nextFrame(shopped).firstBreakQuest).toEqual(Tour.Waiting())
-    const trapper = firstBreak(
-      modifyFields(asVeteran(initialModel), {
-        trapHint: () => TrapHint.Seen(),
+      frame,
+      Story.model(current => {
+        expect(current.firstBreakQuest).toEqual(Tour.Over())
       }),
-    )
-    expect(nextFrame(trapper).firstBreakQuest).toEqual(Tour.Waiting())
-    const done = firstBreak(asTutorialDone(asVeteran(initialModel)))
-    expect(stepOf(nextFrame(done))).toEqual(Option.none())
-    expect(isFirstPlankFree(done, focusSlotOf(done), 'Barricade')).toBe(false)
-  })
+    ),
+  )
 
-  test('a tutorial reset plays it again', () => {
-    const done = firstBreak(asTutorialDone(asVeteran(initialModel)))
-    const reset = firstBreak(forgetTutorial(done))
-    expect(nextFrame(reset).firstBreakQuest).toEqual(Tour.Running())
-  })
+  it.effect(
+    'runs once per save: a player who has shopped or bought a trap never sees it',
+    () => {
+      const shopped = firstBreak(
+        modifyFields(asVeteran(initialModel), {
+          lessons: lessons =>
+            modifyFields(lessons, { shop: () => Lesson.Learned({ atMs: 0 }) }),
+        }),
+      )
+      const trapper = firstBreak(
+        modifyFields(asVeteran(initialModel), {
+          trapHint: () => TrapHint.Seen(),
+        }),
+      )
+      const done = firstBreak(asTutorialDone(asVeteran(initialModel)))
+      expect(isFirstPlankFree(done, focusSlotOf(done), 'Barricade')).toBe(false)
+      return Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(shopped),
+          frame,
+          Story.model(current => {
+            expect(current.firstBreakQuest).toEqual(Tour.Waiting())
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(trapper),
+          frame,
+          Story.model(current => {
+            expect(current.firstBreakQuest).toEqual(Tour.Waiting())
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(done),
+          frame,
+          Story.model(current => {
+            expect(stepOf(current)).toEqual(Option.none())
+          }),
+        )
+      })
+    },
+  )
 
-  test('in co-op it never runs and planks cost full price', () => {
+  it.effect('a tutorial reset plays it again', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        firstBreak(
+          forgetTutorial(firstBreak(asTutorialDone(asVeteran(initialModel)))),
+        ),
+      ),
+      frame,
+      Story.model(current => {
+        expect(current.firstBreakQuest).toEqual(Tour.Running())
+      }),
+    ),
+  )
+
+  it.effect('in co-op it never runs and planks cost full price', () => {
     const crew = modifyFields(firstBreak(), {
       party: () => Party.Crew(),
     })
-    expect(stepOf(nextFrame(crew))).toEqual(Option.none())
     expect(isFirstPlankFree(crew, focusSlotOf(crew), 'Barricade')).toBe(false)
+    return Story.story(
+      APPLICATION,
+      Story.given(crew),
+      frame,
+      Story.model(current => {
+        expect(stepOf(current)).toEqual(Option.none())
+      }),
+    )
   })
 })
