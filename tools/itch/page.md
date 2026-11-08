@@ -34,10 +34,19 @@ the images and the clip came from the screenshot scripts and
 >
 > **Play with friends.** CO-OP puts up to four of you in one room: QUICK PLAY finds a crew, or share a five-letter code. Revive each other. Argue about who gets the shotgun.
 >
-> **On your phone too.** Two thumbs, upright or sideways. Install it to your home screen and it plays offline.
+> **On your phone too.** Two thumbs, upright or sideways. Play it at [munchmanor.com](https://munchmanor.com) to install it to your home screen and play offline.
 >
 > **Controls.** WASD to move, mouse to aim and shoot, R to reload, F for the knife, Enter to start a wave. On a phone, one thumb moves and the other aims.
 >
+> **Easy on everyone.** Turn off screen shake, mute sound or music on their own, pause any time, or play on Easy. Every menu works with a keyboard and a screen reader, and the menus hold still if your device asks for less motion.
+>
 > Free, in your browser, no account. Your progress saves on your device, and links across devices if you want.
 >
-> Made with love and a worrying number of zombie sounds. Also at [munchmanor.com](https://munchmanor.com).
+> Made with love and a worrying number of zombie sounds. Also at [munchmanor.com](https://munchmanor.com). Open source at https://github.com/Tanner-Scadden/munch-manor
+
+## Metadata and the other tabs
+
+- Metadata: inputs Keyboard, Mouse, Touchscreen; sessions A few minutes; server-based multiplayer, 1 to 4 players; English; accessibility Interactive tutorial; no sensitive content.
+- Interact, Notifications: "email owners on new uploads" is off, since CI uploads after every deploy that changes the game.
+- Build settings: semantic versioning and unique versions stay off (CI's versions are `itch-<commit>`).
+- Ratings on; no geo restrictions; no third-party analytics (the game has its own, anonymous).
