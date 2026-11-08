@@ -42,8 +42,12 @@ export const ROOM_CODE_LENGTH = 5
 
 export const ROOM_PARAM = 'room'
 
+// NOTE: where a shared room link points. A build hosted inside another
+// site's frame (itch.io, tools/itch/build.sh) sets VITE_ROOM_LINK_BASE to the
+// game's own address, as its frame's address is the host's file server and
+// the host's page passes no `?room=` in; the rest use their own address.
 export const linkOf = (code: string): string => {
-  const url = new URL(location.href)
+  const url = new URL(import.meta.env.VITE_ROOM_LINK_BASE ?? location.href)
   url.search = ''
   url.hash = ''
   url.searchParams.set(ROOM_PARAM, code)

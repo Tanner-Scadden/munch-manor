@@ -38,3 +38,6 @@ tools/video/out/
 
 # The Foldkit source, cloned locally for reference (bun run foldkit:source)
 repos/
+
+# itch.io upload zips (bun run build:itch)
+tools/itch/out/

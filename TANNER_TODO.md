@@ -4,6 +4,8 @@ Things the game is blocked on until the owner does or decides them. Agents add a
 
 ## To do
 
+- [ ] **Make the itch.io page public.** Added 2026-11-07. https://tannerscadden.itch.io/munch-manor is filled in and the game plays there, as a Draft. Look it over (Edit game; drag the clip to the front of the screenshots if you like), then set Visibility to Public and save. New builds upload themselves after each deploy.
+
 - [ ] **Let GitHub's runners through Cloudflare for munchmanor.com (optional).** Added 2026-11-01. The deploy check now uses the workers.dev address and treats the custom domain's 403 as a warning, so deploys no longer fail. To get the real check back: Cloudflare dashboard, munchmanor.com, Security, WAF, Custom rules, add a rule "Skip" for requests with the header `X-Deploy-Check: <a random secret>` (skip Bot Fight Mode / Super Bot Fight Mode and Browser Integrity Check), or turn off Bot Fight Mode under Security, Bots. Then tell an agent, who adds the header (stored as a GitHub secret) to the workflow's custom domain check.
 
 - [ ] **Turn on device emulation so agents can test on an Android emulator (and iOS Simulator).** This lets an agent check the installed app's ROTATE toggle and test touch, portrait, and the PWA on real mobile browsers, without your phone.
