@@ -3,10 +3,11 @@ import type { Block } from 'foldkit'
 import { DialogBlock } from '@foldkit/ui'
 
 import { CoopBlock } from '../features/coop'
+import { openedEntry } from '../features/home/home'
 import { forgetAskedMode } from '../features/home/update'
 import { LobbyBlock } from '../features/lobby/block'
+import { MunchopediaBlock } from '../features/munchopedia/block'
 import { ProfileBlock } from '../features/profile/block'
-import { isGuideEscape, reopenForGuide } from '../features/shop/guideUpdate'
 import { ShopTabsBlock } from '../features/shop/shopTabs'
 import { leaveShop, selectCategory } from '../features/shop/update'
 import {
@@ -14,10 +15,12 @@ import {
   HandDialogBinding,
   HomeScreenStepsBinding,
   LobbyBinding,
+  MunchopediaBinding,
   PanelDialogBinding,
   ProfileBinding,
   ProfileDialogBinding,
   ShopDialogBinding,
+  ShopGuideBinding,
   ShopTabsBinding,
   UpdateGreetingBinding,
 } from './bindings'
@@ -63,6 +66,8 @@ import {
   submitName,
   switchedTab,
 } from './update/profile'
+import { isGuideEscape, reopenForGuide } from './update/shopGuide'
+import { modelStep } from './update/step'
 
 // NOTE: each child's OutMessage fold. The Bindings live in src/app/bindings.ts,
 // where Steps and views reach them; these folds call Steps, so they stay
@@ -123,6 +128,18 @@ const ShopTabsBindingWithOutMessagePolicy =
   ShopTabsBinding.withOutMessagePolicy({
     fold: ApplicationBlock.makeOutMessageFold(ShopTabsBlock, {
       Selected: ({ value }) => selectCategory(value),
+    }),
+  })
+
+// THE MUNCHOPEDIA
+
+// NOTE: an entry opened clears its NEW ENTRY, and a zombie already found is
+// saved as opened. The shop guide (ShopGuideBinding, and the Munchopedia's
+// own) tells its parent nothing, so it has no fold.
+const MunchopediaBindingWithOutMessagePolicy =
+  MunchopediaBinding.withOutMessagePolicy({
+    fold: ApplicationBlock.makeOutMessageFold(MunchopediaBlock, {
+      OpenedEntry: ({ kind }) => modelStep(model => openedEntry(model, kind)),
     }),
   })
 
@@ -187,6 +204,7 @@ export const ApplicationComposition = makeComposition({
   bindings: [
     ShopDialogBindingWithOutMessagePolicy,
     ShopTabsBindingWithOutMessagePolicy,
+    ShopGuideBinding,
     ProfileDialogBindingWithOutMessagePolicy,
     PanelDialogBindingWithOutMessagePolicy,
     HandDialogBindingWithOutMessagePolicy,
@@ -194,6 +212,7 @@ export const ApplicationComposition = makeComposition({
     UpdateGreetingBindingWithOutMessagePolicy,
     ProfileBindingWithOutMessagePolicy,
     LobbyBindingWithOutMessagePolicy,
+    MunchopediaBindingWithOutMessagePolicy,
     CoopBindingWithOutMessagePolicy,
   ],
   mounts,

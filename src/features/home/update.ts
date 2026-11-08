@@ -5,6 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import {
   HandDialogBinding,
   HomeScreenStepsBinding,
+  MunchopediaBinding,
   PanelDialogBinding,
   UpdateGreetingBinding,
 } from '../../app/bindings'
@@ -28,7 +29,6 @@ import {
   type InstallOutcome,
   type MenuPanel,
   type Model,
-  MunchopediaPage,
   type RunMode,
   type TutorialChoice,
 } from '../../app/model'
@@ -66,6 +66,7 @@ import {
   settleNightmare,
   unlockNightmare,
 } from '../../world/run/difficulty'
+import { MunchopediaPage } from '../munchopedia/model'
 import { skipTutorial } from '../onboarding/onboarding'
 import { runDifficultyOf } from '../onlineRun/onlineRun'
 import { NEWS_DAYS } from '../whatsNew/changelog'
@@ -88,7 +89,6 @@ import {
   maybeHandCardOfKey,
   returnHome,
   seeNews,
-  showMunchopediaPage,
   steppedHomeFocus,
   turnNewsPage,
 } from './home'
@@ -343,24 +343,17 @@ export const openWhatsNew = makeStep(model =>
     : unchanged,
 )
 
-const showPage = (page: MunchopediaPage) =>
-  modelStep(model => showMunchopediaPage(model, page))
-
+// NOTE: the Munchopedia (src/features/munchopedia/) opens afresh on the page
+// asked for; an entry opened says so to its fold (src/app/composition.ts).
 export const openMunchopedia = (page: MunchopediaPage) =>
   makeStep(model =>
     isPanelAllowed(model, 'Munchopedia')
-      ? Update.combineSteps([showPage(page), openPanel('Munchopedia')])
+      ? Update.combineSteps([
+          MunchopediaBinding.requestOpen({ page }),
+          openPanel('Munchopedia'),
+        ])
       : unchanged,
   )
-
-export const turnMunchopediaPage: {
-  (page: MunchopediaPage): (model: Model) => UpdateReturn
-  (model: Model, page: MunchopediaPage): UpdateReturn
-} = Function.dual(2, (model: Model, page: MunchopediaPage): UpdateReturn => ({
-  model: isPanelOpen(model, 'Munchopedia')
-    ? showMunchopediaPage(model, page)
-    : model,
-}))
 
 export const turnNews: {
   (step: number): (model: Model) => UpdateReturn

@@ -15,7 +15,6 @@ import {
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 
-import { Message } from '../../../app/message'
 import { FridgeDoor, type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { PREPARATION_MS } from '../../../shared/constants'
@@ -29,8 +28,9 @@ import {
   walkIntoStallInScene,
 } from '../../../test/testing'
 import { modifyFocus } from '../../../world/party/party'
-import { FocusShopGuide } from '../guideUpdate'
+import { Message as GuideMessage } from '../message'
 import { prizeUnlockId } from '../shopGuide'
+import { FocusGuideControl } from '../steps'
 
 const atStall = (): Model =>
   modifyFocus(
@@ -67,8 +67,8 @@ const help = role('button', { name: 'Shop guide' })
 const back = role('button', { name: 'Back to the shop' })
 const guide = selector('.sg')
 const resolveFocusGuide = Command.resolve(
-  FocusShopGuide,
-  Message.CompletedFocusShopGuide(),
+  FocusGuideControl,
+  GuideMessage.CompletedFocusControl(),
 )
 
 describe('the ? in the shop', () => {
@@ -156,12 +156,20 @@ describe('the Munchopedia Shop page', () => {
       inside(
         role('dialog', { name: 'Munchopedia' }),
         click(role('button', { name: /^Shop,/ })),
+      ),
+      resolveFocusGuide,
+      inside(
+        role('dialog', { name: 'Munchopedia' }),
         expect(guide).toExist(),
         expect(selector("[data-entry='Pistol']")).toExist(),
         click(role('button', { name: 'House' })),
         expect(selector("[data-entry='Boards']")).toExist(),
         expect(selector("[data-entry='Pistol']")).toBeAbsent(),
         click(role('button', { name: 'Back to the Munchopedia' })),
+      ),
+      resolveFocusGuide,
+      inside(
+        role('dialog', { name: 'Munchopedia' }),
         expect(guide).toBeAbsent(),
         expect(role('button', { name: /^Shop,/ })).toExist(),
       ),

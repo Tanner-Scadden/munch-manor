@@ -4,7 +4,11 @@ import type { Html } from 'foldkit/html'
 import type { Dialog, Tabs } from '@foldkit/ui'
 import { Button } from '@foldkit/ui'
 
-import { ShopDialogBinding, ShopTabsBinding } from '../../app/bindings'
+import {
+  ShopDialogBinding,
+  ShopGuideBinding,
+  ShopTabsBinding,
+} from '../../app/bindings'
 import type { ApplicationViewBuilder } from '../../app/composition'
 import { closeButtonView, dialogShell } from '../../app/dialogs'
 import { Message } from '../../app/message'
@@ -12,7 +16,6 @@ import {
   type Model,
   type ShopCategory,
   ShopChatter,
-  ShopGuide,
   type ShopItemId,
   ShopState,
   Trap,
@@ -60,6 +63,8 @@ import {
   trapShelves,
   verdictFor,
 } from '../../world/shop/shop'
+import { isGuideOpen } from '../guide/model'
+import { GUIDE_FOCUS_IDS } from '../guide/shopGuide'
 import {
   HEART_EMPTY,
   HEART_FULL,
@@ -75,7 +80,6 @@ import {
   gunArt,
   itemArt,
 } from './shopArt'
-import { shopGuideDialogView, shopHelpButtonView } from './shopGuideView'
 import {
   BAR_SEGMENTS,
   type GunBars,
@@ -1083,6 +1087,22 @@ const balanceView = (model: Model, h: ApplicationViewBuilder): Html =>
     ? evenBalanceView(model, h)
     : oddBalanceView(model, h)
 
+// NOTE: the ? beside the shop's close button opens the guide
+// (src/features/guide/) on the tab the player was looking at. A real
+// button, so Tab and Enter reach it, and the guide gives it focus back.
+const shopHelpButtonView = (h: ApplicationViewBuilder): Html =>
+  h.button(
+    [
+      h.Type('button'),
+      h.Id(GUIDE_FOCUS_IDS.Shop.opener),
+      h.Class('shop-help'),
+      h.AriaLabel('Shop guide'),
+      h.AriaKeyshortcuts('?'),
+      h.OnClick(Message.ClickedShopGuideButton(), { propagation: 'Stop' }),
+    ],
+    ['?'],
+  )
+
 const panelView = (
   model: Model,
   { title, description, closeButton, initialFocus }: Dialog.RenderInfo,
@@ -1109,9 +1129,7 @@ const panelView = (
           h.span([h.Class('shop-summary sr-only')], [affordSummary(model)]),
         ],
       ),
-      ...(ShopGuide.isAnyOf(['Closed'])(model.shopGuide)
-        ? [shopHelpButtonView(h)]
-        : []),
+      ...(isGuideOpen(model.shopGuide) ? [] : [shopHelpButtonView(h)]),
       closeButtonView(
         {
           attributes: closeButton,
@@ -1122,10 +1140,18 @@ const panelView = (
       ),
     ],
   ),
-  ShopGuide.match(model.shopGuide, {
-    Closed: () => categoriesView(model, initialFocus, h),
-    Open: ({ section }) => shopGuideDialogView(model.seenUnlocks, section, h),
-  }),
+  isGuideOpen(model.shopGuide)
+    ? h.block(
+        ShopGuideBinding.embedView({
+          slotId: 'shop-guide',
+          model: model.shopGuide,
+          viewInputs: {
+            seenUnlocks: model.seenUnlocks,
+            trailingActions: () => [],
+          },
+        }),
+      )
+    : categoriesView(model, initialFocus, h),
 ]
 
 export const shopDialogView: {

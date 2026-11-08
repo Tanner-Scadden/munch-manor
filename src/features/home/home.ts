@@ -8,7 +8,6 @@ import {
   type HomeMode,
   type KillCounts,
   type Model,
-  MunchopediaPage,
   Phase,
   RunMode,
   RunTally,
@@ -296,33 +295,20 @@ export const turnNewsPage: {
 
 // MUNCHOPEDIA
 
-const openEntry = (model: Model, kind: ZombieKind): Model =>
+// NOTE: an entry the Munchopedia opened (its OutMessage `OpenedEntry`):
+// its NEW ENTRY goes, and a zombie already found is saved as opened.
+export const openedEntry: {
+  (kind: ZombieKind): (model: Model) => Model
+  (model: Model, kind: ZombieKind): Model
+} = Function.dual(2, (model: Model, kind: ZombieKind): Model =>
   modifyFields(model, {
     home: home =>
       modifyFields(home, {
-        munchopediaPage: () => MunchopediaPage.Entry({ kind }),
         newEntries: Array.filter(fresh => fresh !== kind),
         openedEntries: opened =>
           isDiscovered(model.bests.killsByKind, kind)
             ? Array.union(opened, [kind])
             : opened,
-      }),
-  })
-
-export const showMunchopediaPage: {
-  (page: MunchopediaPage): (model: Model) => Model
-  (model: Model, page: MunchopediaPage): Model
-} = Function.dual(2, (model: Model, page: MunchopediaPage): Model =>
-  MunchopediaPage.match(page, {
-    List: () =>
-      modifyFields(model, {
-        home: home =>
-          modifyFields(home, { munchopediaPage: () => MunchopediaPage.List() }),
-      }),
-    Entry: ({ kind }) => openEntry(model, kind),
-    Shop: () =>
-      modifyFields(model, {
-        home: home => modifyFields(home, { munchopediaPage: () => page }),
       }),
   }),
 )

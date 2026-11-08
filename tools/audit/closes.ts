@@ -1,8 +1,9 @@
 // The close button pass: every menu dialog's shared close X (the shop, the
-// MORE hand, Settings, What's New, the Munchopedia and
-// an entry, How to play, the character picker, and the difficulty picker) on an 844x390 landscape
-// phone, 390x844 and 375x667 upright phones, all with touch, and 1280x720
-// and 1920x1080 with a mouse, as `closes-<TAG>-<viewport>-<scene>.png`.
+// MORE hand, Settings, What's New, the Munchopedia, an entry, and its Shop
+// guide, How to play, the character picker, the lobby's hero picker, the
+// install steps, and the update greeting) on an 844x390 landscape phone,
+// 390x844 and 375x667 upright phones, all with touch, and 1280x720 and
+// 1920x1080 with a mouse, as `closes-<TAG>-<viewport>-<scene>.png`.
 // For each close it checks:
 //   - the button is at least 48 px and on screen, and its visible face is
 //     smaller (26 to 34 px on a phone, at most 40 px on a desktop),
@@ -12,10 +13,11 @@
 //   - the button's box does not cross any other button, link, or tab in the
 //     dialog, or its title, Rattles' bubble, the wallet, or the tabs' text,
 //   - a real tap (a click on a desktop) on the face's center and on two
-//     opposite corners of the hit area each sends exactly one RequestedClose
-//     and no other tap Message, reaches nothing behind it, and closes the
-//     dialog,
-//   - Escape sends one RequestedClose and closes the dialog.
+//     opposite corners of the hit area each sends exactly one
+//     ClickedCloseButton (the Dialog's, or the hero picker's own) and no
+//     other tap Message, reaches nothing behind it, and closes the dialog,
+//   - Escape sends one CanceledDialog (the Dialog's cancel) and closes the
+//     dialog.
 // Then it buys in the shop with a tap (a click on a desktop), opened from its
 // query and again after co-op's screen (`buy` and `buy-after-coop`): there
 // must be one `<dialog id="shop">`, one open dialog, no repeated id, a buy
@@ -94,9 +96,16 @@ const SCENES: ReadonlyArray<Scene> = [
     query: 'kills=Shambler:40,Runner:3',
     open: [MANOR, '#hand-card-munchopedia', '.munch-tile'],
   },
+  {
+    name: 'munchopedia-shop',
+    query: 'kills=Shambler:40,Runner:3',
+    open: [MANOR, '#hand-card-munchopedia', '#munch-shop-tile'],
+  },
+  // NOTE: the difficulty panel opens only to ask a new player first, and
+  // that question has no close (the lobby picks the difficulty after), so
+  // it is not here.
   { name: 'howto', query: '', open: [MANOR, '#hand-card-howtoplay'] },
   { name: 'character', query: '', open: [MANOR, '#hand-card-character'] },
-  { name: 'difficulty', query: 'ask', open: ['#home-play'] },
   {
     name: 'hero',
     query: LOBBY_QUERY,
@@ -114,7 +123,9 @@ const INSET = 2
 const OPEN_TIMEOUT_MS = 10_000
 const CLOSE_TIMEOUT_MS = 3000
 
-const CLOSE = 'dialog[open] .menu-close'
+// NOTE: BACK shares the close's look (`menu-close menu-back`) and stands
+// before it on a Munchopedia entry and its Shop guide, so it is left out.
+const CLOSE = 'dialog[open] .menu-close:not(.menu-back)'
 
 // NOTE: what a close button must never cover: the dialog's other controls
 // and the text a player reads first. A tab panel takes focus so it can
@@ -158,10 +169,18 @@ type Placed = Readonly<{
   points: ReadonlyArray<Readonly<{ name: string; point: Point }>>
 }>
 
-const isRequestedClose = (tag: string) =>
-  String.endsWith(':RequestedClose')(tag)
+// NOTE: how a close arrives, by Foldkit's Dialog Messages
+// (@foldkit/ui's dialog): a tap on the shared X is the Dialog's
+// ClickedCloseButton (the hero picker's own X sends its picker's
+// ClickedCloseButton, which closes its Dialog), and Escape is the Dialog's
+// CanceledDialog. Each tag is the delivery chain, such as
+// `GotPanelDialogMessage:ClickedCloseButton`.
+type CloseTag = 'ClickedCloseButton' | 'CanceledDialog'
+
+const isCloseTag = (close: CloseTag) => (tag: string) =>
+  String.endsWith(`:${close}`)(tag)
 const TAP_LEAVES =
-  /(^|:)(Clicked\w*|SelectedOption|SelectedTab|RequestedClose|PressedPointer)$/
+  /(^|:)(Clicked\w*|SelectedOption|SelectedTab|CanceledDialog|PressedPointer)$/
 
 const press = (page: Page, viewport: Viewport, point: Point) =>
   attempt(() =>
@@ -282,12 +301,90 @@ const placeClose = (page: Page) =>
     ),
   )
 
+// NOTE: a close flush in a panel's corner has the corner of its target
+// under the panel's rounded corner, which clips what the panel holds: no
+// tap can land there, on the button or on anything else in the panel, so a
+// point outside the clipping panel's rounded inner edge is left out.
 const missedPoints = (page: Page, placed: Placed) =>
   attempt(() =>
     page.evaluate(
       ({ selector, points }) => {
         const button = document.querySelector(selector)
+        const clipperOf = (element: Element | null): Element | null => {
+          for (
+            let at = element?.parentElement ?? null;
+            at !== null;
+            at = at.parentElement
+          ) {
+            const style = getComputedStyle(at)
+            if (
+              style.overflowX !== 'visible' ||
+              style.overflowY !== 'visible'
+            ) {
+              return at
+            }
+          }
+          return null
+        }
+        const clipper = clipperOf(button)
+        const isClippedAway = (point: Point) => {
+          if (clipper === null) {
+            return false
+          }
+          const style = getComputedStyle(clipper)
+          const box = clipper.getBoundingClientRect()
+          const border = parseFloat(style.borderTopWidth)
+          const top = box.top + border
+          const bottom = box.bottom - border
+          const left = box.left + border
+          const right = box.right - border
+          const corners = [
+            {
+              radius: style.borderTopLeftRadius,
+              x: left,
+              y: top,
+              sx: 1,
+              sy: 1,
+            },
+            {
+              radius: style.borderTopRightRadius,
+              x: right,
+              y: top,
+              sx: -1,
+              sy: 1,
+            },
+            {
+              radius: style.borderBottomLeftRadius,
+              x: left,
+              y: bottom,
+              sx: 1,
+              sy: -1,
+            },
+            {
+              radius: style.borderBottomRightRadius,
+              x: right,
+              y: bottom,
+              sx: -1,
+              sy: -1,
+            },
+          ]
+          // NOTE: runs in the page, which has no effect module.
+          // @effect-diagnostics-next-line preferEffectArray:off
+          return corners.some(corner => {
+            const inner = Math.max(0, parseFloat(corner.radius) - border)
+            const cx = corner.x + corner.sx * inner
+            const cy = corner.y + corner.sy * inner
+            const isInCornerSquare =
+              (point.x - cx) * corner.sx < 0 && (point.y - cy) * corner.sy < 0
+            return (
+              isInCornerSquare && Math.hypot(point.x - cx, point.y - cy) > inner
+            )
+          })
+        }
         const isMissed = ({ point }: { point: Point }) => {
+          if (isClippedAway(point)) {
+            return false
+          }
           const hit = document.elementFromPoint(point.x, point.y)
           return button === null || hit === null || !button.contains(hit)
         }
@@ -447,6 +544,7 @@ const checkClosing = (
   viewport: Viewport,
   scene: Scene,
   how: string,
+  close: CloseTag,
   act: CloseAct,
   log: Log,
 ) =>
@@ -463,10 +561,10 @@ const checkClosing = (
     const isClosed = yield* waitForClosed(page)
     const tags = yield* messages(page)
     pages.release(page)
-    const closes = Array.filter(tags, isRequestedClose)
+    const closes = Array.filter(tags, isCloseTag(close))
     const strays = Array.filter(
       tags,
-      tag => TAP_LEAVES.test(tag) && !isRequestedClose(tag),
+      tag => TAP_LEAVES.test(tag) && !isCloseTag(close)(tag),
     )
     const isOk = closes.length === 1 && strays.length === 0 && isClosed
     log(
@@ -537,6 +635,7 @@ const checkScene = (
         viewport,
         scene,
         `${viewport.isPhone ? 'tap' : 'click'} ${name}`,
+        'ClickedCloseButton',
         (tapPage, placedNow) =>
           Option.match(
             Array.findFirst(placedNow.points, p => p.name === name),
@@ -556,6 +655,7 @@ const checkScene = (
       viewport,
       scene,
       'Escape',
+      'CanceledDialog',
       tapPage => attempt(() => tapPage.keyboard.press('Escape')),
       log,
     )

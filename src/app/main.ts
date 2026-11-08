@@ -33,18 +33,13 @@ import {
   showHelpLine,
   startOrAsk,
   stepHandFocus,
-  turnMunchopediaPage,
   turnNews,
   unwrapUpdateGift,
 } from '../features/home/update'
+import { MunchopediaPage } from '../features/munchopedia/model'
 import { endQuest } from '../features/onboarding/firstBreakQuest'
 import { skipKitchenTour } from '../features/onboarding/kitchenTour'
 import { skipDebutCard } from '../features/onboarding/onboarding'
-import {
-  closeShopGuide,
-  openShopGuide,
-  showShopGuide,
-} from '../features/shop/guideUpdate'
 import { buy, focusShopItem, moveShopFocus } from '../features/shop/update'
 import {
   type PointerPress,
@@ -69,7 +64,6 @@ import {
   LOAD_STEPS,
   Loading,
   type Model,
-  MunchopediaPage,
   type PointerDevice,
   RunMode,
   cosmeticSeedOf,
@@ -121,6 +115,7 @@ import {
   takeSyncedSave,
 } from './update/save'
 import { afterMessage } from './update/settle'
+import { openShopGuide } from './update/shopGuide'
 import {
   ResumeAudio,
   notePlayOutcome,
@@ -426,15 +421,8 @@ const handlers = makeUpdate({
   FocusedShopItem: (model, { item }) => ({ model: focusShopItem(model, item) }),
 
   CompletedFocusShopItem: model => ({ model }),
-  CompletedFocusShopGuide: model => ({ model }),
 
-  ClickedShopGuideButton: model => openShopGuide(model),
-
-  ClickedShopGuideSectionButton: (model, { section }) => ({
-    model: showShopGuide(model, section),
-  }),
-
-  ClickedShopGuideBackButton: model => closeShopGuide(model),
+  ClickedShopGuideButton: openShopGuide,
 
   AcquiredAudioEngine: model => ({
     model: modifyFields(model, { audio: () => AudioState.Suspended() }),
@@ -640,18 +628,6 @@ const handlers = makeUpdate({
       closeHand,
       openMunchopedia(MunchopediaPage.List()),
     ]),
-
-  ClickedMunchopediaEntryButton: (model, { kind }) =>
-    turnMunchopediaPage(model, MunchopediaPage.Entry({ kind })),
-
-  ClickedMunchopediaListButton: model =>
-    turnMunchopediaPage(model, MunchopediaPage.List()),
-
-  ClickedMunchopediaShopButton: model =>
-    turnMunchopediaPage(model, MunchopediaPage.Shop({ section: 'Guns' })),
-
-  ClickedMunchopediaShopSectionButton: (model, { section }) =>
-    turnMunchopediaPage(model, MunchopediaPage.Shop({ section })),
 
   ClickedNewEntryButton: (model, { kind }) =>
     Update.combineSteps(model, [

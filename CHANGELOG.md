@@ -2,6 +2,10 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 8, 2026: Fat fingers welcome
+
+- 👆 Taps land where you aim: the Profile's close button no longer steals taps from its tabs, and the shop guide's BACK is full size on phones.
+
 ## November 7, 2026: Skip to the munching
 
 - 🤝 Co-op is open from your very first visit. Grab a friend's room link and jump straight in.

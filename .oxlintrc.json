@@ -191,7 +191,6 @@
       "files": [
         "src/app/update/*.ts",
         "src/features/*/update.ts",
-        "src/features/shop/guideUpdate.ts",
         "src/app/main.ts",
         "src/app/runFlow.ts",
         "src/features/couch/couch.ts"
@@ -365,14 +364,16 @@
     },
     {
       // NOTE: co-op, the Profile, the Profile's Look tab, the solo lobby,
-      // and the hero picker are child Blocks: only their own code builds
-      // their Messages.
+      // the hero picker, the Munchopedia, and the shop guide are child
+      // Blocks: only their own code builds their Messages.
       "files": [
         "src/features/coop/*.ts",
         "src/features/profile/*.ts",
         "src/features/profile/blocks/look/*.ts",
         "src/features/lobby/*.ts",
-        "src/features/heroes/*.ts"
+        "src/features/heroes/*.ts",
+        "src/features/munchopedia/*.ts",
+        "src/features/guide/*.ts"
       ],
       "rules": { "foldkit/no-child-message-construction-in-root": "error" }
     },

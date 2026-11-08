@@ -3,7 +3,11 @@ import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
 
-import { HandDialogBinding, PanelDialogBinding } from '../../app/bindings'
+import {
+  HandDialogBinding,
+  MunchopediaBinding,
+  PanelDialogBinding,
+} from '../../app/bindings'
 import type { ApplicationViewBuilder } from '../../app/composition'
 import { closeButtonView, dialogShell } from '../../app/dialogs'
 import { Message } from '../../app/message'
@@ -54,12 +58,12 @@ import { IS_COOP_RELEASED } from '../coop/release'
 import { installTileView } from '../install/installView'
 import { iconView, isKeyboard, keyCapView } from '../menus/menuParts'
 import { helpLabel, howToPlayView } from '../menus/pauseHelp'
-import { munchopediaBodyView, munchopediaText } from '../munchopedia/guideView'
 import {
   ENTRY_COUNT,
   discoveredKinds,
   entryName,
   hasUnopenedEntry,
+  munchopediaText,
 } from '../munchopedia/munchopedia'
 import { rankChipView } from '../rank/rankBadgeView'
 import { hasUnseenLook } from '../unlocks/unlocks'
@@ -1041,7 +1045,21 @@ const panelBodyView = (
   } else if (model.panel === 'WhatsNew') {
     return whatsNewBodyView(model, doneButtonView(renderInfo, h), h)
   } else if (model.panel === 'Munchopedia') {
-    return munchopediaBodyView(model, doneButtonView(renderInfo, h), h)
+    return [
+      h.block(
+        MunchopediaBinding.embedView({
+          slotId: 'munchopedia',
+          model: model.munchopedia,
+          viewInputs: {
+            killsByKind: model.bests.killsByKind,
+            openedEntries: model.home.openedEntries,
+            seenUnlocks: model.seenUnlocks,
+            screenMs: model.screenMs,
+            doneButton: () => doneButtonView(renderInfo, h),
+          },
+        }),
+      ),
+    ]
   } else if (model.panel === 'Difficulty') {
     return [
       ...tutorialChoicesView(model, h),

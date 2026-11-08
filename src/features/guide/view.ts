@@ -1,42 +1,39 @@
-import { Array, Function, Option } from 'effect'
+import { Array, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
-import type { ShopGuideSection } from '../../app/clientSchema'
-import type { ApplicationViewBuilder } from '../../app/composition'
 import { backButtonView } from '../../app/dialogs'
-import { Message, type Message as MessageType } from '../../app/message'
+import type { ShopGuideSection } from '../../shared/nameKeys'
 import { SHOP_GUIDE_NAME } from '../../world/names'
-import { type ShopArt } from './shopArt'
+import type { ShopArt } from '../shop/shopArt'
+import { BAR_SEGMENTS } from '../shop/shopStats'
+import type { ViewInputs } from './block'
+import { GuideComposition, type GuideViewBuilder } from './composition'
+import { Message } from './message'
+import { type GuidePlacement, GuideStatus, type Model } from './model'
 import {
+  GUIDE_FOCUS_IDS,
   type GuideBar,
   type GuideChip,
   type GuideEntry,
   type LadderStep,
   SECTION_ORDER,
-  SHOP_GUIDE_BACK_ID,
-  SHOP_GUIDE_OPEN_ID,
   STAT_NAMES,
   entriesOf,
   isEntryKnown,
   sectionName,
 } from './shopGuide'
 import { guideArtOf, sectionArtOf } from './shopGuideArt'
-import { BAR_SEGMENTS } from './shopStats'
 
-// NOTE: the shop guide's view, shared by the Munchopedia's Shop page and the
-// ? in Rattles' shop. Chunky bars, the item's art, one short line, and its
-// upgrade ladder as icons. A fridge prize not pulled yet is a dark ??? card.
+// NOTE: the guide's view, the same in Rattles' shop and on the Munchopedia's
+// Shop page. Chunky bars, the item's art, one short line, and its upgrade
+// ladder as icons. A fridge prize not pulled yet is a dark ??? card.
 
 const UNKNOWN_NAME = '???'
 const UNKNOWN_LINE = 'Pull the fridge to find out.'
 
 // PICTURES
 
-const artView = (
-  art: ShopArt,
-  className: string,
-  h: ApplicationViewBuilder,
-): Html =>
+const artView = (art: ShopArt, className: string, h: GuideViewBuilder): Html =>
   h.span([
     h.Class(`sg-art ${className}`),
     h.AriaHidden(true),
@@ -54,7 +51,7 @@ const barLabel = (bar: GuideBar): string =>
     bar.best > bar.now ? `, ${bar.best} fully upgraded` : ''
   }`
 
-const segmentView = (bar: GuideBar, index: number, h: ApplicationViewBuilder) =>
+const segmentView = (bar: GuideBar, index: number, h: GuideViewBuilder) =>
   h.span([
     h.Class(
       index < bar.now
@@ -65,7 +62,7 @@ const segmentView = (bar: GuideBar, index: number, h: ApplicationViewBuilder) =>
     ),
   ])
 
-const barView = (bar: GuideBar, h: ApplicationViewBuilder): Html =>
+const barView = (bar: GuideBar, h: GuideViewBuilder): Html =>
   h.li(
     [
       h.Class('sg-bar'),
@@ -89,7 +86,7 @@ const barView = (bar: GuideBar, h: ApplicationViewBuilder): Html =>
 
 const barsView = (
   bars: ReadonlyArray<GuideBar>,
-  h: ApplicationViewBuilder,
+  h: GuideViewBuilder,
 ): ReadonlyArray<Html> =>
   Array.isReadonlyArrayNonEmpty(bars)
     ? [
@@ -104,7 +101,7 @@ const barsView = (
 
 const priceTag = (price: number): string => `$${price}`
 
-const stepView = (step: LadderStep, h: ApplicationViewBuilder): Html =>
+const stepView = (step: LadderStep, h: GuideViewBuilder): Html =>
   h.li(
     [h.Class('sg-step')],
     [
@@ -115,7 +112,7 @@ const stepView = (step: LadderStep, h: ApplicationViewBuilder): Html =>
 
 const ladderView = (
   ladder: ReadonlyArray<LadderStep>,
-  h: ApplicationViewBuilder,
+  h: GuideViewBuilder,
 ): ReadonlyArray<Html> =>
   Array.isReadonlyArrayNonEmpty(ladder)
     ? [
@@ -126,7 +123,7 @@ const ladderView = (
       ]
     : []
 
-const chipView = (chip: GuideChip, h: ApplicationViewBuilder): Html =>
+const chipView = (chip: GuideChip, h: GuideViewBuilder): Html =>
   h.li(
     [h.Class('sg-chip-item')],
     [artView(guideArtOf(chip.art), 'sg-chip-art', h), chip.label],
@@ -134,7 +131,7 @@ const chipView = (chip: GuideChip, h: ApplicationViewBuilder): Html =>
 
 const chipsView = (
   chips: ReadonlyArray<GuideChip>,
-  h: ApplicationViewBuilder,
+  h: GuideViewBuilder,
 ): ReadonlyArray<Html> =>
   Array.isReadonlyArrayNonEmpty(chips)
     ? [
@@ -149,7 +146,7 @@ const chipsView = (
 
 const knownFacts = (
   entry: GuideEntry,
-  h: ApplicationViewBuilder,
+  h: GuideViewBuilder,
 ): ReadonlyArray<Html> => [
   h.p([h.Class('sg-line')], [entry.line]),
   ...barsView(entry.bars, h),
@@ -160,7 +157,7 @@ const knownFacts = (
 const entryView = (
   entry: GuideEntry,
   seenUnlocks: ReadonlyArray<string>,
-  h: ApplicationViewBuilder,
+  h: GuideViewBuilder,
 ): Html => {
   const isKnown = isEntryKnown(seenUnlocks, entry)
   return h.li(
@@ -207,8 +204,7 @@ const entryView = (
 const sectionButtonView = (
   section: ShopGuideSection,
   chosen: ShopGuideSection,
-  sectionMessage: (section: ShopGuideSection) => MessageType,
-  h: ApplicationViewBuilder,
+  h: GuideViewBuilder,
 ): Html =>
   h.li(
     [h.Class('sg-section-item')],
@@ -219,7 +215,9 @@ const sectionButtonView = (
           h.Class('sg-section'),
           h.DataAttribute('section', section),
           h.AriaPressed(section === chosen ? 'true' : 'false'),
-          h.OnClick(sectionMessage(section), { propagation: 'Stop' }),
+          h.OnClick(Message.ClickedSectionButton({ section }), {
+            propagation: 'Stop',
+          }),
         ],
         [
           artView(sectionArtOf(section), 'sg-section-art', h),
@@ -230,105 +228,89 @@ const sectionButtonView = (
   )
 
 // NOTE: the whole guide: the section buttons over the chosen section's cards.
-export const shopGuideView: {
-  (
-    section: ShopGuideSection,
-    sectionMessage: (section: ShopGuideSection) => MessageType,
-    h: ApplicationViewBuilder,
-  ): (seenUnlocks: ReadonlyArray<string>) => Html
-  (
-    seenUnlocks: ReadonlyArray<string>,
-    section: ShopGuideSection,
-    sectionMessage: (section: ShopGuideSection) => MessageType,
-    h: ApplicationViewBuilder,
-  ): Html
-} = Function.dual(
-  4,
-  (
-    seenUnlocks: ReadonlyArray<string>,
-    section: ShopGuideSection,
-    sectionMessage: (section: ShopGuideSection) => MessageType,
-    h: ApplicationViewBuilder,
-  ): Html =>
-    h.div(
-      [h.Class('sg'), h.AriaLabel(`${SHOP_GUIDE_NAME} guide`)],
-      [
-        h.ul(
-          [h.Class('sg-sections'), h.AriaLabel('Shop guide sections')],
-          Array.map(SECTION_ORDER, other =>
-            sectionButtonView(other, section, sectionMessage, h),
-          ),
-        ),
-        h.ul(
-          [
-            h.Class('sg-entries'),
-            h.DataAttribute('section', section),
-            h.AriaLabel(sectionName(section)),
-          ],
-          Array.map(entriesOf(section), entry =>
-            entryView(entry, seenUnlocks, h),
-          ),
-        ),
-      ],
-    ),
-)
-
-// IN RATTLES' SHOP
-
-// NOTE: the ? beside the shop's close button opens the guide on the tab the
-// player was looking at. A real button, so Tab and Enter reach it.
-export const shopHelpButtonView = (h: ApplicationViewBuilder): Html =>
-  h.button(
+const sectionsView = (
+  seenUnlocks: ReadonlyArray<string>,
+  section: ShopGuideSection,
+  h: GuideViewBuilder,
+): Html =>
+  h.div(
+    [h.Class('sg'), h.AriaLabel(`${SHOP_GUIDE_NAME} guide`)],
     [
-      h.Type('button'),
-      h.Id(SHOP_GUIDE_OPEN_ID),
-      h.Class('shop-help'),
-      h.AriaLabel('Shop guide'),
-      h.AriaKeyshortcuts('?'),
-      h.OnClick(Message.ClickedShopGuideButton(), { propagation: 'Stop' }),
+      h.ul(
+        [h.Class('sg-sections'), h.AriaLabel('Shop guide sections')],
+        Array.map(SECTION_ORDER, other => sectionButtonView(other, section, h)),
+      ),
+      h.ul(
+        [
+          h.Class('sg-entries'),
+          h.DataAttribute('section', section),
+          h.AriaLabel(sectionName(section)),
+        ],
+        Array.map(entriesOf(section), entry =>
+          entryView(entry, seenUnlocks, h),
+        ),
+      ),
     ],
-    ['?'],
   )
 
-export const shopGuideDialogView: {
-  (
-    section: ShopGuideSection,
-    h: ApplicationViewBuilder,
-  ): (seenUnlocks: ReadonlyArray<string>) => Html
-  (
-    seenUnlocks: ReadonlyArray<string>,
-    section: ShopGuideSection,
-    h: ApplicationViewBuilder,
-  ): Html
-} = Function.dual(
-  3,
-  (
-    seenUnlocks: ReadonlyArray<string>,
-    section: ShopGuideSection,
-    h: ApplicationViewBuilder,
-  ): Html =>
-    h.div(
-      [h.Class('sg-shop')],
-      [
-        backButtonView(
-          {
-            attributes: [
-              h.Id(SHOP_GUIDE_BACK_ID),
-              h.OnClick(Message.ClickedShopGuideBackButton(), {
-                propagation: 'Stop',
-              }),
-            ],
-            className: 'sg-back',
-            label: 'Back to the shop',
-          },
-          h,
-        ),
-        shopGuideView(
-          seenUnlocks,
-          section,
-          next => Message.ClickedShopGuideSectionButton({ section: next }),
-          h,
-        ),
+// WHERE IT STANDS
+
+const BACK_LABELS: Readonly<Record<GuidePlacement, string>> = {
+  Shop: 'Back to the shop',
+  Munchopedia: 'Back to the Munchopedia',
+}
+
+const backView = (placement: GuidePlacement, h: GuideViewBuilder): Html =>
+  backButtonView(
+    {
+      attributes: [
+        h.Id(GUIDE_FOCUS_IDS[placement].back),
+        h.OnClick(Message.ClickedBackButton(), { propagation: 'Stop' }),
       ],
-    ),
+      className: placement === 'Shop' ? 'sg-back' : 'munch-back',
+      label: BACK_LABELS[placement],
+    },
+    h,
+  )
+
+// NOTE: in the shop dialog's body, BACK over the guide. On the Munchopedia's
+// panel, the guide over the panel's actions row: BACK, then the panel's own
+// Done. Its box takes no room of its own, so the panel lays them out as the
+// rest of its pages.
+const openView = (
+  model: Model,
+  section: ShopGuideSection,
+  inputs: ViewInputs,
+  h: GuideViewBuilder,
+): Html =>
+  model.placement === 'Shop'
+    ? h.div(
+        [h.Class('sg-shop')],
+        [
+          backView(model.placement, h),
+          sectionsView(inputs.seenUnlocks, section, h),
+        ],
+      )
+    : h.div(
+        [h.Class('sg-panel')],
+        [
+          sectionsView(inputs.seenUnlocks, section, h),
+          h.div(
+            [h.Class('panel-actions')],
+            [backView(model.placement, h), ...inputs.trailingActions()],
+          ),
+        ],
+      )
+
+const view = GuideComposition.makeView.withInputs<ViewInputs>(
+  (model, inputs, h) =>
+    GuideStatus.match(model.status, {
+      Closed: () => h.empty,
+      Open: ({ section }) => openView(model, section, inputs, h),
+    }),
 )
+
+// NOTE: the guide's view, gathered here so it is not exported alone: a
+// view is a function of three arguments with no pipeable form, and Foldkit
+// knows a view by its identity. src/features/guide/layer.ts completes it.
+export const guideImplementation = { view }

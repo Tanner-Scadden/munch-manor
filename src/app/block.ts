@@ -3,7 +3,9 @@ import { Layer } from 'effect'
 import { Dialog, Tabs } from '@foldkit/ui'
 
 import { CoopLayer } from '../features/coop'
+import { GuideLayer } from '../features/guide/layer'
 import { LobbyLayer } from '../features/lobby/layer'
+import { MunchopediaLayer } from '../features/munchopedia/layer'
 import { ProfileLayer } from '../features/profile/layer'
 import { ApplicationBlock } from './definition'
 import { EffectsLayer } from './layer'
@@ -12,9 +14,21 @@ import { subscriptions } from './subscriptions'
 import { managedResources } from './update/sound'
 import { view } from './view'
 
-// NOTE: the root's implementation Layer, with every child's: the dialogs,
-// the shop's tabs, the Profile, the lobby, and co-op. The Program and the tests take
-// it with the Block, `{ block: ApplicationBlock, layer }`.
+// NOTE: every child's implementation Layer: the dialogs, the shop's tabs
+// and guide, the Munchopedia, the Profile, the lobby, and co-op. The audit
+// harness (tools/audit/harness/entry.ts) completes the root with them too.
+export const ChildLayers = Layer.mergeAll(
+  Dialog.layer,
+  Tabs.layer,
+  GuideLayer,
+  MunchopediaLayer,
+  ProfileLayer,
+  LobbyLayer,
+  CoopLayer,
+)
+
+// NOTE: the root's implementation Layer, with every child's. The Program
+// and the tests take it with the Block, `{ block: ApplicationBlock, layer }`.
 export const layer = ApplicationBlock.makeLayer({
   init,
   update,
@@ -22,14 +36,4 @@ export const layer = ApplicationBlock.makeLayer({
   subscriptions,
   managedResources,
   EffectsLayer,
-}).pipe(
-  Layer.provide(
-    Layer.mergeAll(
-      Dialog.layer,
-      Tabs.layer,
-      ProfileLayer,
-      LobbyLayer,
-      CoopLayer,
-    ),
-  ),
-)
+}).pipe(Layer.provide(ChildLayers))

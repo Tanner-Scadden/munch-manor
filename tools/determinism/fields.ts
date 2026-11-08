@@ -141,6 +141,7 @@ export const FIELD_CLASSES = {
   playerName: 'Client',
   profile: 'Client',
   lobby: 'Client',
+  munchopedia: 'Client',
   profileDialog: 'Client',
   rotationSetting: 'Client',
   shopChatter: 'Client',

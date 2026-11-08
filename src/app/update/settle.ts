@@ -2,6 +2,7 @@ import { Effect, Function, Option, pipe } from 'effect'
 
 import { cueMusicFrom } from '../../audio/musicPlan'
 import { noteRecords, reachRecords } from '../../features/end/endBeat'
+import { notePulledPrize } from '../../features/guide/shopGuide'
 import { countRunFrom, forgetNewEntriesFrom } from '../../features/home/home'
 import {
   focusEndMenuFrom,
@@ -10,7 +11,6 @@ import {
 } from '../../features/home/update'
 import { runDifficultyOf } from '../../features/onlineRun/onlineRun'
 import { earnRank } from '../../features/rank/rankRun'
-import { notePulledPrize } from '../../features/shop/shopGuide'
 import { RunSummary } from '../../platform/analytics'
 import { maybeRunOutcome, runSummaryOf } from '../../platform/analyticsRun'
 import { sendOrQueueRunSummary } from '../../platform/summaryQueue'

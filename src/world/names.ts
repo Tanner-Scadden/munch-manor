@@ -312,7 +312,7 @@ export const SPECIAL_LINES = {
 
 // THE SHOP GUIDE
 
-// NOTE: the Munchopedia's Shop page and the ? in Rattles' shop (src/features/shop/shopGuide.ts).
+// NOTE: the Munchopedia's Shop page and the ? in Rattles' shop (src/features/guide/shopGuide.ts).
 export const SHOP_GUIDE_NAME = 'Shop'
 
 export const SHOP_GUIDE_SECTION_NAMES: Readonly<

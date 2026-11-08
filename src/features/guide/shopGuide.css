@@ -287,6 +287,12 @@
   --px: 2px;
 }
 
+/* NOTE: on the Munchopedia's panel the guide's box takes no room of its
+   own: the guide and its actions row lay out as the panel's own children. */
+.sg-panel {
+  display: contents;
+}
+
 /* IN THE SHOP */
 
 .sg-shop {
@@ -301,6 +307,9 @@
 }
 
 .sg-back {
+  /* NOTE: the guide below takes the rest of a short dialog; BACK keeps its
+     full 48 px target rather than shrink to make room. */
+  flex: none;
   align-self: flex-start;
 }
 

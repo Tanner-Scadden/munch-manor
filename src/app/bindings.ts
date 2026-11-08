@@ -1,8 +1,11 @@
 import { DialogBlock } from '@foldkit/ui'
 
 import { CoopBlock } from '../features/coop'
+import { GuideBlock } from '../features/guide/block'
+import { placedIn } from '../features/guide/model'
 import { lobbyPicksOf } from '../features/home/home'
 import { LobbyBlock } from '../features/lobby/block'
+import { MunchopediaBlock } from '../features/munchopedia/block'
 import { ProfileBlock } from '../features/profile/block'
 import { ShopTabsBlock } from '../features/shop/shopTabs'
 import { focusOf } from '../world/party/party'
@@ -17,6 +20,7 @@ import {
   UPDATE_GREETING_ID,
 } from './clientSchema'
 import { makeRequiredFieldBinding } from './definition'
+import { isPanelOpen } from './menuState'
 
 // NOTE: every child of the root, each placed on its Model field, so its
 // generated Message is `Got<Field>Message` (GotShopDialogMessage). Each
@@ -64,6 +68,23 @@ export const ShopTabsBinding = makeRequiredFieldBinding(ShopTabsBlock, {
   field: 'shopTabs',
   init: { contextToArgs: () => [{ id: SHOP_TABS_ID }] },
   delivery: { when: model => isBrowsing(focusOf(model).shop) },
+})
+
+// THE SHOP GUIDE
+
+// NOTE: the guide in Rattles' shop dialog, opened by its ? (src/app/update/shopGuide.ts).
+export const ShopGuideBinding = makeRequiredFieldBinding(GuideBlock, {
+  field: 'shopGuide',
+  init: { contextToArgs: () => placedIn('Shop') },
+})
+
+// THE MUNCHOPEDIA
+
+// NOTE: the Munchopedia in the menu panel, with the shop guide inside for
+// its Shop page. Its taps count only while its panel is up.
+export const MunchopediaBinding = makeRequiredFieldBinding(MunchopediaBlock, {
+  field: 'munchopedia',
+  delivery: { when: model => isPanelOpen(model, 'Munchopedia') },
 })
 
 // THE PROFILE

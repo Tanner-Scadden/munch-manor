@@ -1,7 +1,13 @@
 import type { HouseSpot, ShopGuideSection } from '../../app/clientSchema'
 import type { FridgePrize } from '../../world/schema/worldSchema'
-import { HEART_FULL, RATTLES_ART, artOf, gunArt, itemArt } from './shopArt'
-import type { ShopArt } from './shopArt'
+import {
+  HEART_FULL,
+  RATTLES_ART,
+  artOf,
+  gunArt,
+  itemArt,
+} from '../shop/shopArt'
+import type { ShopArt } from '../shop/shopArt'
 import { GuideArt } from './shopGuide'
 
 // NOTE: the shop guide's pictures. Guns, goods, and traps are the shop's own

@@ -10,11 +10,19 @@ import type { BlockOfBinding } from 'foldkit/block'
 import { toParentMessageFor } from 'foldkit/test'
 
 import { HeroPickerBinding as CoopHeroPickerBinding } from '../features/coop/bindings'
+import type { GuideBlock } from '../features/guide/block'
 import type { HeroPickerBlock } from '../features/heroes/block'
 import { HeroPickerBinding } from '../features/lobby/bindings'
+import { GuideBinding as MunchopediaGuideBinding } from '../features/munchopedia/bindings'
 import type { CharacterBlock } from '../features/profile/blocks/look/block'
 import { CharacterBinding } from '../features/profile/composition'
-import { CoopBinding, LobbyBinding, ProfileBinding } from './bindings'
+import {
+  CoopBinding,
+  LobbyBinding,
+  MunchopediaBinding,
+  ProfileBinding,
+  ShopGuideBinding,
+} from './bindings'
 import { layer } from './block'
 import { ApplicationBlock } from './definition'
 import type { Model } from './model'
@@ -37,11 +45,16 @@ const message = toParentMessageFor(application)
 const inProfile = toParentMessageFor(application, ProfileBinding)
 const inLobby = toParentMessageFor(application, LobbyBinding)
 const inCoop = toParentMessageFor(application, CoopBinding)
+const inMunchopedia = toParentMessageFor(application, MunchopediaBinding)
 
 type ProfileMessage = BlockOfBinding<typeof ProfileBinding>['Message']['Type']
 type CharacterMessage = typeof CharacterBlock.Message.Type
 type LobbyMessage = BlockOfBinding<typeof LobbyBinding>['Message']['Type']
 type HeroPickerMessage = typeof HeroPickerBlock.Message.Type
+type MunchopediaMessage = BlockOfBinding<
+  typeof MunchopediaBinding
+>['Message']['Type']
+type GuideMessage = typeof GuideBlock.Message.Type
 
 const profile = (profileMessage: ProfileMessage) =>
   message(ProfileBinding, profileMessage)
@@ -57,7 +70,9 @@ const lobby = (lobbyMessage: LobbyMessage) =>
 // Profile Message, `inProfile` maps one of its children's (the tabs, the
 // Look tab) to the Profile's, and `character` delivers a Look tab Message.
 // `lobby` delivers a single player lobby Message, `lobbyHero` one of its
-// hero picker's, and `coopHero` one of co-op's hero picker's. A Look tab radio group's Message is a grandchild's grandchild: a
+// hero picker's, and `coopHero` one of co-op's hero picker's. `shopGuide`
+// delivers the shop guide's in Rattles' shop, `munchopedia` a Munchopedia
+// Message, and `munchopediaGuide` one of the guide on its Shop page. A Look tab radio group's Message is a grandchild's grandchild: a
 // Block-aware Story delivers it with `Story.messageIn([ProfileBinding,
 // CharacterBinding, BodyBinding], ...)`.
 export const Child = {
@@ -71,4 +86,13 @@ export const Child = {
     lobby(inLobby(HeroPickerBinding, pickerMessage)),
   coopHero: (pickerMessage: HeroPickerMessage) =>
     message(CoopBinding, inCoop(CoopHeroPickerBinding, pickerMessage)),
+  shopGuide: (guideMessage: GuideMessage) =>
+    message(ShopGuideBinding, guideMessage),
+  munchopedia: (munchopediaMessage: MunchopediaMessage) =>
+    message(MunchopediaBinding, munchopediaMessage),
+  munchopediaGuide: (guideMessage: GuideMessage) =>
+    message(
+      MunchopediaBinding,
+      inMunchopedia(MunchopediaGuideBinding, guideMessage),
+    ),
 }

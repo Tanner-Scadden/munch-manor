@@ -84,6 +84,15 @@
   min-height: 0;
 }
 
+/* NOTE: the close sits flush in the Profile's top right corner, a 48 px
+   target, so the first row of a tab (the Look tab's sections, the setting
+   tiles) stops short of it and never runs under its target. Upright, the
+   Profile lays out its own way. */
+.game-root:not([data-layout='Portrait']) .profile .look-sections,
+.game-root:not([data-layout='Portrait']) .profile .setting-tiles {
+  margin-right: calc(var(--menu-tap) - var(--menu-pad));
+}
+
 /* TABS */
 
 .profile-tabs {
