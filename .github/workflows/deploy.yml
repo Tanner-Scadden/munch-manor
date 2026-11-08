@@ -210,6 +210,48 @@ jobs:
             test "$status" = "200"
           done
 
+  # NOTE: production also plays on itch.io
+  # (https://tannerscadden.itch.io/munch-manor). After a deploy to main, the
+  # same commit is built for itch (tools/itch/build.sh) and pushed with butler,
+  # unless nothing the site is built from changed since the build itch has
+  # (infra/sameSite.ts), so a push of docs or CI makes no new itch build.
+  itch:
+    needs: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+      - run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile
+        working-directory: infra
+      - name: Install butler
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/butler.zip" https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q "$RUNNER_TEMP/butler.zip" -d "$RUNNER_TEMP/butler"
+          chmod +x "$RUNNER_TEMP/butler/butler"
+          echo "$RUNNER_TEMP/butler" >> "$GITHUB_PATH"
+      - name: Push the build to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          TARGET: tannerscadden/munch-manor:html5
+        run: |
+          live=$(butler status "$TARGET" | grep -oE 'itch-[0-9a-f]+' | head -1 | sed 's/^itch-//' || true)
+          if [ -n "$live" ] && git cat-file -e "$live^{commit}" 2>/dev/null \
+            && git diff --name-only "$live" "$GITHUB_SHA" | xargs bun infra/sameSite.ts; then
+            echo "itch.io already has build itch-$live, and nothing the site is built from changed since"
+            exit 0
+          fi
+          bun run build:itch
+          zip=$(ls tools/itch/out/munch-manor-itch-*.zip)
+          butler push "$zip" "$TARGET" --userversion "$(basename "$zip" .zip | sed 's/^munch-manor-//')"
+
   cleanup:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest

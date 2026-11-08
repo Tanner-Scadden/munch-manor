@@ -46,7 +46,7 @@ Alchemy skips the build and the upload when none of `src/`, `packages/*/src/`, `
 
 **The static build.** `bun run build` writes a static site to `dist/`. Vite's `base` is `'./'`, so every asset path is relative and `dist/` works from any sub-path. Check it with `bunx vite preview` before publishing. It needs an HTTP server: opening `dist/index.html` straight from disk does not load the module script.
 
-**itch.io.** Zip the contents of `dist/` with `index.html` at the top of the zip, upload it as an HTML game, and set the viewport to 16:9 with fullscreen allowed. A build without `VITE_API_ORIGIN` sends no analytics and keeps the save on the device.
+**itch.io.** `bun run build:itch` (`tools/itch/build.sh`) builds against production's API, so co-op, device linking, and run summaries work from itch's frame, writes the self-removing service worker, points a shared room link at munchmanor.com (`VITE_ROOM_LINK_BASE`), and zips `dist/` with `index.html` at the top into `tools/itch/out/`. The page is https://tannerscadden.itch.io/munch-manor (its words and settings are in `tools/itch/page.md`). After each production deploy, the workflow's `itch` job builds the same commit and pushes it with butler to `tannerscadden/munch-manor:html5`, unless nothing the site is built from changed since the build itch has. By hand: `BUTLER_API_KEY=$(security find-generic-password -s itch-api-key -w) butler push tools/itch/out/<zip> tannerscadden/munch-manor:html5`. A plain build without `VITE_API_ORIGIN` sends no analytics and keeps the save on the device.
 
 ## Commands
 
@@ -124,14 +124,21 @@ The report and the smoke test use `CLOUDFLARE_API_TOKEN` (or the keychain token)
 
 Never put a token in the repo or in a `VITE_` variable, which Vite inlines into the game.
 
-- **Local:** the API token in the macOS keychain under `cloudflare-api-token`. It is broad: it can also create API tokens, which `github.ts` needs.
-- **CI:** the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` Actions secrets, written by `github.ts`. That token is the account-owned `munch-manor-ci` token with Workers Scripts Write, Secrets Store Write, Account Settings Read, Workers Tail Read, and D1 Write (for the analytics databases). Secrets Store Write is needed because Alchemy reads the state store's token by binding it to a short-lived preview Worker.
+- **Local:** the API token in the macOS keychain under `cloudflare-api-token`. It is broad: it can also create API tokens, which `github.ts` needs. The itch.io API key (account `tannerscadden`) is in the keychain under `itch-api-key`.
+- **CI:** the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` Actions secrets, and `BUTLER_API_KEY` (the itch.io key, for uploads with butler), all written by `github.ts`. That token is the account-owned `munch-manor-ci` token with Workers Scripts Write, Secrets Store Write, Account Settings Read, Workers Tail Read, and D1 Write (for the analytics databases). Secrets Store Write is needed because Alchemy reads the state store's token by binding it to a short-lived preview Worker.
 
-To rotate the CI token or change its permissions, edit `github.ts` and run, with the keychain token and `GITHUB_TOKEN=$(gh auth token)` exported:
+To rotate the CI token, the itch.io key, or change permissions, edit `github.ts` (or update the keychain item) and run:
 
 ```sh
-bun alchemy deploy github.ts --stage prod
+export CLOUDFLARE_API_TOKEN=$(security find-generic-password -s cloudflare-api-token -w)
+export CLOUDFLARE_ACCOUNT_ID=<the 32 character account id>
+export GITHUB_TOKEN=$(gh auth token)
+export ITCH_API_KEY=$(security find-generic-password -s itch-api-key -w)
+bun alchemy plan github.ts --stage prod     # check what changes first
+bun alchemy deploy github.ts --stage prod --yes
 ```
+
+To replace the itch.io key, generate a new one on itch.io (Settings, API keys), store it with `security add-generic-password -U -s itch-api-key -a munch-manor -w`, which prompts for it so it stays out of the shell history, and deploy as above.
 
 If the repository is renamed, change `REPOSITORY` and deploy twice, the second time with `--force`. The rename makes Alchemy replace each secret: it writes the new one, then deletes the old one, and GitHub redirects the old name to the same repository, so the delete removes the secret just written. The forced deploy writes it again. Check with `gh secret list`.
 
