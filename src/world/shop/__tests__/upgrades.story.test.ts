@@ -3,7 +3,6 @@ import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { Message } from '../../../app/message'
 import {
   Arsenal,
   type CarriedGun,
@@ -13,7 +12,9 @@ import {
   ShopState,
   type WeaponKind,
 } from '../../../app/model'
+import { Child } from '../../../app/pureApp'
 import { update } from '../../../app/pureApp'
+import { Message as ShopMessage } from '../../../features/shop/message'
 import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN, newPlayerReady } from '../../../test/model.fixture'
 import {
@@ -69,7 +70,8 @@ const spare = (kind: WeaponKind, rounds: number, tier = 0): CarriedGun => ({
   tier,
 })
 
-const buy = (item: ShopItemId) => message(Message.PressedBuyKey({ item }))
+const buy = (item: ShopItemId) =>
+  message(Child.shop(ShopMessage.PressedBuyKey({ item })))
 
 const tierPrices = (kind: WeaponKind): ReadonlyArray<number> =>
   Array.map(UPGRADE_TIERS[kind], ({ price }) => price)

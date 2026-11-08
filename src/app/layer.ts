@@ -11,7 +11,6 @@ import {
   ShowInstallPrompt,
   WaitForUnwrap,
 } from '../features/home/update'
-import { FocusShopItem } from '../features/shop/update'
 import {
   AwaitFirstFrame,
   DecodeSprites,
@@ -64,7 +63,6 @@ export const CommandsLayer = Layer.mergeAll(
   ResumeAudio.layer,
   PlaySound.layer,
   CueMusic.layer,
-  FocusShopItem.layer,
   FetchBuild.layer,
   WaitForUnwrap.layer,
   ReloadPage.layer,

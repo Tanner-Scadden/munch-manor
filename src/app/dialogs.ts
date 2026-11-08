@@ -16,7 +16,6 @@ import type {
   HomeScreenStepsBinding,
   PanelDialogBinding,
   ProfileDialogBinding,
-  ShopDialogBinding,
   UpdateGreetingBinding,
 } from './bindings'
 import type {
@@ -32,7 +31,6 @@ import type {
 type DialogModel = typeof DialogBlock.Model.Type
 
 type DialogBinding =
-  | typeof ShopDialogBinding
   | typeof ProfileDialogBinding
   | typeof PanelDialogBinding
   | typeof HandDialogBinding

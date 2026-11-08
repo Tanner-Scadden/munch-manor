@@ -167,9 +167,14 @@ const OPEN_CASES: ReadonlyArray<OpenCase> = [
   { name: 'nothing open', model: homeAfterRead, opensDialog: false },
   {
     name: 'the shop',
-    model: modifyFocus(modifyFields(atStall, { shopDialog: opened }), {
-      shop: () => ShopState.Browsing({ focusedItem: 'SmgRounds' }),
-    }),
+    model: modifyFocus(
+      modifyFields(atStall, {
+        shopDialog: shop => modifyFields(shop, { dialog: opened }),
+      }),
+      {
+        shop: () => ShopState.Browsing({ focusedItem: 'SmgRounds' }),
+      },
+    ),
     opensDialog: true,
   },
   {

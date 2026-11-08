@@ -425,13 +425,9 @@ export type Tour = typeof Tour.Type
 export const HintBand = Schema.Literals(['Top', 'Bottom'])
 export type HintBand = typeof HintBand.Type
 
-export const SHOP_DIALOG_ID = 'shop'
-
 export const HOME_SCREEN_STEPS_ID = 'home-screen-steps'
 
 export const UPDATE_GREETING_ID = 'update-greeting'
-
-export const SHOP_TABS_ID = 'shop-tabs'
 
 export const PROFILE_DIALOG_ID = 'profile'
 

@@ -4,7 +4,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { ShopGuideSection } from '../../shared/nameKeys'
 
 // NOTE: where a guide stands, fixed when its parent binds it: in Rattles'
-// shop dialog, opened by its ? (the root's `shopGuide`), or on the
+// shop dialog, opened by its ? (the shop dialog's `guide`), or on the
 // Munchopedia's Shop page (the Munchopedia's `guide`). It picks the back
 // button's words and the ids focus moves between.
 export const GuidePlacement = Schema.Literals(['Shop', 'Munchopedia'])

@@ -27,7 +27,8 @@ import { type UpdateStep, modelStep, unchanged, withInput } from './step'
 // is no pause (decided 7). Everything else (moving, aiming, the dialogs,
 // the menus, audio, the save) runs as it does in single player. Each
 // of these handlers in src/app/main.ts wraps its single player Step in
-// `orInRun`, which checks isRunOn once and matches the Message.
+// `orInRun`, which checks isRunOn once and matches the Message; the shop's
+// buy, an OutMessage, goes through `orBuyInRun`.
 
 const pressInRun = (action: SeatAction) =>
   makeStep(() => Update.combineSteps([unlockAudio, pressInRoom(action)]))
@@ -108,8 +109,6 @@ const RunMessage = Schema.Union([
   Message.ClickedReloadButton,
   Message.ClickedPlaceTrapButton,
   Message.ClickedNextTrapButton,
-  Message.ClickedBuyButton,
-  Message.PressedBuyKey,
   Message.PressedHoldButton,
   Message.ClickedAmmoTag,
   Message.ClickedMedicButton,
@@ -134,8 +133,6 @@ const inRun = (model: Model, message: RunMessage) =>
     ClickedReloadButton: () => pressInRun(SeatAction.Reload()),
     ClickedPlaceTrapButton: () => pressInRun(SeatAction.PlaceTrap()),
     ClickedNextTrapButton: () => pressInRun(SeatAction.NextTrap()),
-    ClickedBuyButton: ({ item }) => buyInRun(item),
-    PressedBuyKey: ({ item }) => buyInRun(item),
     PressedHoldButton: () => tapInRun,
     ClickedAmmoTag: () => tapInRun,
     ClickedMedicButton: () => pressInRun(SeatAction.CallMedic()),
@@ -163,4 +160,27 @@ export const orInRun: {
     offline: Offline,
   ): ReturnType<typeof inRun> | Offline =>
     isRunOn(model) ? inRun(model, message) : offline,
+)
+
+// NOTE: a row picked in the shop dialog is no root Message but the shop's
+// PickedItem (src/app/composition.ts): its buy in an online run, or the
+// single player Step given here, as `orInRun` does for a Message.
+export const orBuyInRun: {
+  <Offline>(
+    item: ShopItemId,
+    offline: Offline,
+  ): (model: Model) => ReturnType<typeof buyInRun> | Offline
+  <Offline>(
+    model: Model,
+    item: ShopItemId,
+    offline: Offline,
+  ): ReturnType<typeof buyInRun> | Offline
+} = Function.dual(
+  3,
+  <Offline>(
+    model: Model,
+    item: ShopItemId,
+    offline: Offline,
+  ): ReturnType<typeof buyInRun> | Offline =>
+    isRunOn(model) ? buyInRun(item) : offline,
 )

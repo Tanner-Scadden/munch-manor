@@ -1,27 +1,10 @@
-import { Array, Function, Match, Option, String, pipe } from 'effect'
+import { Array, Match, Option, String, pipe } from 'effect'
 import type { Html } from 'foldkit/html'
 
-import type { Dialog, Tabs } from '@foldkit/ui'
+import type { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
 import { Button } from '@foldkit/ui'
 
-import {
-  ShopDialogBinding,
-  ShopGuideBinding,
-  ShopTabsBinding,
-} from '../../app/bindings'
-import type { ApplicationViewBuilder } from '../../app/composition'
-import { closeButtonView, dialogShell } from '../../app/dialogs'
-import { Message } from '../../app/message'
-import {
-  type Model,
-  type ShopCategory,
-  ShopChatter,
-  type ShopItemId,
-  ShopState,
-  Trap,
-  TrapHint,
-  type WeaponKind,
-} from '../../app/model'
+import { closeButtonView } from '../../app/dialogs'
 import { COIN_SYMBOL } from '../../art/font'
 import { ROUNDS_ICON } from '../../art/icons'
 import { TILE_SIZE } from '../../shared/constants'
@@ -39,6 +22,15 @@ import {
 import { maxHpOf } from '../../world/heroes/calling'
 import { levelOf } from '../../world/level/arena'
 import { focusOf, focusSlotOf } from '../../world/party/party'
+import {
+  type ShopCategory,
+  ShopChatter,
+  type ShopItemId,
+  ShopState,
+  Trap,
+  TrapHint,
+  type WeaponKind,
+} from '../../world/schema/worldSchema'
 import {
   GunShelf,
   SHOP_CATEGORIES,
@@ -63,8 +55,12 @@ import {
   trapShelves,
   verdictFor,
 } from '../../world/shop/shop'
-import { isGuideOpen } from '../guide/model'
 import { GUIDE_FOCUS_IDS } from '../guide/shopGuide'
+import { DialogBinding, GuideBinding, TabsBinding } from './bindings'
+import type { ShopScene, ViewInputs } from './block'
+import { ShopComposition, type ShopViewBuilder } from './composition'
+import { Message } from './message'
+import { type Model, isShopGuideOpen } from './model'
 import {
   HEART_EMPTY,
   HEART_FULL,
@@ -87,7 +83,10 @@ import {
   gunBars,
   ownedNote,
 } from './shopStats'
+import type { ShopTabsBlock } from './shopTabs'
 import { type Mood, chatterLine, moodOf } from './shopkeeper'
+
+type TabsModel = typeof ShopTabsBlock.Model.Type
 
 // FOCUS
 
@@ -111,20 +110,16 @@ const keyMessage = (
 ): Option.Option<Message> => {
   if (key === 'ArrowDown') {
     return Option.some(
-      Message.MovedShopFocus({ item: neighborItem(items, item, 1) }),
+      Message.MovedFocus({ item: neighborItem(items, item, 1) }),
     )
   } else if (key === 'ArrowUp') {
     return Option.some(
-      Message.MovedShopFocus({ item: neighborItem(items, item, -1) }),
+      Message.MovedFocus({ item: neighborItem(items, item, -1) }),
     )
   } else if (key === 'Home') {
-    return Option.some(
-      Message.MovedShopFocus({ item: Array.headNonEmpty(items) }),
-    )
+    return Option.some(Message.MovedFocus({ item: Array.headNonEmpty(items) }))
   } else if (key === 'End') {
-    return Option.some(
-      Message.MovedShopFocus({ item: Array.lastNonEmpty(items) }),
-    )
+    return Option.some(Message.MovedFocus({ item: Array.lastNonEmpty(items) }))
   } else if (key === 'Enter') {
     return Option.some(Message.PressedBuyKey({ item }))
   } else {
@@ -134,12 +129,12 @@ const keyMessage = (
 
 // MONEY
 
-const coinIconView = (h: ApplicationViewBuilder): Html =>
+const coinIconView = (h: ShopViewBuilder): Html =>
   h.span([h.Class('coin-icon'), h.AriaHidden(true)])
 
 const NOT_DIGIT = /\D/
 
-const moneyView = (amount: string, h: ApplicationViewBuilder): Html =>
+const moneyView = (amount: string, h: ShopViewBuilder): Html =>
   h.span(
     [h.Class('money')],
     [coinIconView(h), h.span([h.Class('sr-only')], [COIN_SYMBOL]), amount],
@@ -147,7 +142,7 @@ const moneyView = (amount: string, h: ApplicationViewBuilder): Html =>
 
 const afterCoin = (
   part: string,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): ReadonlyArray<Html | string> => {
   const amountLength = Option.getOrElse(
     String.search(part, NOT_DIGIT),
@@ -161,7 +156,7 @@ const afterCoin = (
 
 const withCoins = (
   text: string,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): ReadonlyArray<Html | string> =>
   pipe(
     String.split(text, COIN_SYMBOL),
@@ -171,11 +166,7 @@ const withCoins = (
 
 // PICTURES
 
-const artView = (
-  art: ShopArt,
-  className: string,
-  h: ApplicationViewBuilder,
-): Html =>
+const artView = (art: ShopArt, className: string, h: ShopViewBuilder): Html =>
   h.span([
     h.Class(`shop-art ${className}`),
     h.AriaHidden(true),
@@ -190,7 +181,7 @@ const segmentsView = (
   filled: number,
   ghost: number,
   total: number,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): ReadonlyArray<Html> =>
   Array.makeBy(total, index =>
     h.span([
@@ -209,7 +200,7 @@ const barView = (
   label: string,
   now: number,
   next: number,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   h.span(
     [h.Class('shop-bar'), h.Title(label)],
@@ -225,11 +216,7 @@ const barView = (
 const barsLabel = (bars: GunBars): string =>
   `Power ${bars.hit}, speed ${bars.rate}, magazine ${bars.load}, out of ${BAR_SEGMENTS}`
 
-const barsView = (
-  now: GunBars,
-  next: GunBars,
-  h: ApplicationViewBuilder,
-): Html =>
+const barsView = (now: GunBars, next: GunBars, h: ShopViewBuilder): Html =>
   h.span(
     [h.Class('shop-bars'), h.Role('img'), h.AriaLabel(barsLabel(now))],
     [
@@ -239,13 +226,13 @@ const barsView = (
     ],
   )
 
-const heartsView = (model: Model, h: ApplicationViewBuilder): Html =>
+const heartsView = (scene: ShopScene, h: ShopViewBuilder): Html =>
   h.span(
     [h.Class('shop-hearts'), h.AriaHidden(true)],
-    Array.makeBy(maxHpOf(focusOf(model).player), index =>
+    Array.makeBy(maxHpOf(focusOf(scene).player), index =>
       artView(
-        index < focusOf(model).player.hp ? HEART_FULL : HEART_EMPTY,
-        index === focusOf(model).player.hp
+        index < focusOf(scene).player.hp ? HEART_FULL : HEART_EMPTY,
+        index === focusOf(scene).player.hp
           ? 'shop-heart is-next'
           : 'shop-heart',
         h,
@@ -253,11 +240,7 @@ const heartsView = (model: Model, h: ApplicationViewBuilder): Html =>
     ),
   )
 
-const countDotsView = (
-  have: number,
-  most: number,
-  h: ApplicationViewBuilder,
-): Html =>
+const countDotsView = (have: number, most: number, h: ShopViewBuilder): Html =>
   h.span(
     [h.Class('shop-dots'), h.AriaHidden(true)],
     Array.makeBy(most, index =>
@@ -265,7 +248,7 @@ const countDotsView = (
     ),
   )
 
-const healthBarView = (share: number, h: ApplicationViewBuilder): Html =>
+const healthBarView = (share: number, h: ShopViewBuilder): Html =>
   h.span(
     [h.Class('shop-gauge'), h.AriaHidden(true)],
     [
@@ -286,12 +269,8 @@ const percentOf = (value: number, total: number): string =>
 
 // NOTE: a tiny map of the room with a dot where the trap stands, so two
 // planks at two doors tell apart without words.
-const mapPipView = (
-  model: Model,
-  trap: Trap,
-  h: ApplicationViewBuilder,
-): Html => {
-  const level = levelOf(model)
+const mapPipView = (scene: ShopScene, trap: Trap, h: ShopViewBuilder): Html => {
+  const level = levelOf(scene)
   const spot = Trap.match(trap, {
     Barricade: ({ door }) => level.doors[door].center,
     Turret: ({ column, row }) => ({
@@ -314,14 +293,14 @@ const mapPipView = (
 }
 
 const gaugeView = (
-  model: Model,
+  scene: ShopScene,
   weapon: WeaponKind,
   rounds: number,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html => {
   const { have, gain, most } = ammoGauge(
-    model,
-    focusSlotOf(model),
+    scene,
+    focusSlotOf(scene),
     weapon,
     rounds,
   )
@@ -348,8 +327,8 @@ const gaugeView = (
   )
 }
 
-const swapBadgeView = (model: Model, h: ApplicationViewBuilder): Html =>
-  Option.match(maybeReplacedGun(focusOf(model).player.arsenal), {
+const swapBadgeView = (scene: ShopScene, h: ShopViewBuilder): Html =>
+  Option.match(maybeReplacedGun(focusOf(scene).player.arsenal), {
     onNone: () => h.empty,
     onSome: spare =>
       h.span(
@@ -366,7 +345,7 @@ const swapBadgeView = (model: Model, h: ApplicationViewBuilder): Html =>
 // from a playtester who traded up and never knew the new gun could run dry.
 const roundsView = (
   maybeRounds: Option.Option<number>,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   h.span(
     [
@@ -388,17 +367,17 @@ const roundsView = (
   )
 
 const carriedRounds = (
-  model: Model,
+  scene: ShopScene,
   weapon: WeaponKind,
 ): Option.Option<number> =>
   hasEndlessRounds(weapon)
     ? Option.none()
-    : Option.map(maybeCarried(focusOf(model).player, weapon), gun => gun.rounds)
+    : Option.map(maybeCarried(focusOf(scene).player, weapon), gun => gun.rounds)
 
 const metaView = (
-  model: Model,
+  scene: ShopScene,
   item: ShopItemId,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   ShopGood.match(shopItem(item).good, {
     Gun: ({ weapon }) =>
@@ -412,20 +391,20 @@ const metaView = (
               : Option.some(startingRounds(weapon)),
             h,
           ),
-          swapBadgeView(model, h),
+          swapBadgeView(scene, h),
         ],
       ),
-    Ammo: ({ weapon, rounds }) => gaugeView(model, weapon, rounds, h),
+    Ammo: ({ weapon, rounds }) => gaugeView(scene, weapon, rounds, h),
     Upgrade: () => h.empty,
-    Heart: () => heartsView(model, h),
+    Heart: () => heartsView(scene, h),
     Trap: ({ kind }) =>
       countDotsView(
-        ownedCount(model, focusSlotOf(model), kind),
+        ownedCount(scene, focusSlotOf(scene), kind),
         TRAPS[kind].limit,
         h,
       ),
     Repair: () =>
-      Option.match(maybeRepairTrap(model, item), {
+      Option.match(maybeRepairTrap(scene, item), {
         onNone: () => h.empty,
         onSome: trap => healthBarView(healthShare(trap), h),
       }),
@@ -435,11 +414,11 @@ const metaView = (
 // TAGS
 
 const tagView = (
-  model: Model,
+  scene: ShopScene,
   item: ShopItemId,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
-  StockTag.match(stockTag(model, focusSlotOf(model), item), {
+  StockTag.match(stockTag(scene, focusSlotOf(scene), item), {
     Price: ({ price }) =>
       price === 0 && ShopGood.isAnyOf(['Trap'])(shopItem(item).good)
         ? h.span([h.Class('shop-tag is-free shop-item-price')], ['FREE'])
@@ -460,7 +439,7 @@ const tagView = (
 
 const COIN_BURST = 6
 
-const burstView = (h: ApplicationViewBuilder): Html =>
+const burstView = (h: ShopViewBuilder): Html =>
   h.span(
     [h.Class('shop-burst'), h.AriaHidden(true)],
     Array.makeBy(COIN_BURST, () =>
@@ -468,38 +447,38 @@ const burstView = (h: ApplicationViewBuilder): Html =>
     ),
   )
 
-const stampChildren = (h: ApplicationViewBuilder): ReadonlyArray<Html> => [
+const stampChildren = (h: ShopViewBuilder): ReadonlyArray<Html> => [
   h.span([h.Class('shop-stamp-word')], ['MINE!']),
   burstView(h),
 ]
 
-const evenStampView = (h: ApplicationViewBuilder): Html =>
+const evenStampView = (h: ShopViewBuilder): Html =>
   h.span([h.Class('shop-stamp'), h.AriaHidden(true)], stampChildren(h))
 
-const oddStampView = (h: ApplicationViewBuilder): Html =>
+const oddStampView = (h: ShopViewBuilder): Html =>
   h.span([h.Class('shop-stamp'), h.AriaHidden(true)], stampChildren(h))
 
 // NOTE: two view functions, so two buys of the same row in a row each get a
 // fresh stamp element and its animation plays again.
-const stampView = (model: Model, h: ApplicationViewBuilder): Html =>
-  model.stats.purchases % 2 === 0 ? evenStampView(h) : oddStampView(h)
+const stampView = (scene: ShopScene, h: ShopViewBuilder): Html =>
+  scene.stats.purchases % 2 === 0 ? evenStampView(h) : oddStampView(h)
 
-const isJustBought = (model: Model, item: ShopItemId): boolean =>
-  ShopChatter.match(model.shopChatter, {
+const isJustBought = (scene: ShopScene, item: ShopItemId): boolean =>
+  ShopChatter.match(scene.shopChatter, {
     Greeting: () => false,
     Bought: ({ item: bought }) => bought === item,
     TooPricey: () => false,
     Refused: () => false,
   })
 
-const evenNopeView = (h: ApplicationViewBuilder): Html =>
+const evenNopeView = (h: ShopViewBuilder): Html =>
   h.span([h.Class('shop-nope'), h.AriaHidden(true)])
 
-const oddNopeView = (h: ApplicationViewBuilder): Html =>
+const oddNopeView = (h: ShopViewBuilder): Html =>
   h.span([h.Class('shop-nope'), h.AriaHidden(true)])
 
-const isJustRefused = (model: Model, item: ShopItemId): boolean =>
-  ShopChatter.match(model.shopChatter, {
+const isJustRefused = (scene: ShopScene, item: ShopItemId): boolean =>
+  ShopChatter.match(scene.shopChatter, {
     Greeting: () => false,
     Bought: () => false,
     TooPricey: ({ item: refused }) => refused === item,
@@ -516,25 +495,25 @@ const noteId = (item: ShopItemId): string => `${shopItemElementId(item)}-note`
 const reasonId = (item: ShopItemId): string =>
   `${shopItemElementId(item)}-reason`
 
-const focusedItem = (model: Model): ShopItemId =>
-  ShopState.match(focusOf(model).shop, {
+const focusedItem = (scene: ShopScene): ShopItemId =>
+  ShopState.match(focusOf(scene).shop, {
     Away: () =>
       Array.headNonEmpty(
-        itemsIn(model, focusSlotOf(model), focusOf(model).shopCategory),
+        itemsIn(scene, focusSlotOf(scene), focusOf(scene).shopCategory),
       ),
     Browsing: browsing => browsing.focusedItem,
     Dismissed: () =>
       Array.headNonEmpty(
-        itemsIn(model, focusSlotOf(model), focusOf(model).shopCategory),
+        itemsIn(scene, focusSlotOf(scene), focusOf(scene).shopCategory),
       ),
   })
 
 const reasonView = (
-  model: Model,
+  scene: ShopScene,
   item: ShopItemId,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
-  Verdict.match(verdictFor(model, focusSlotOf(model), item), {
+  Verdict.match(verdictFor(scene, focusSlotOf(scene), item), {
     Available: () => h.empty,
     Refused: ({ reason }) =>
       h.span(
@@ -542,7 +521,7 @@ const reasonView = (
           h.Id(reasonId(item)),
           h.Class(
             StockTag.isAnyOf(['Short'])(
-              stockTag(model, focusSlotOf(model), item),
+              stockTag(scene, focusSlotOf(scene), item),
             )
               ? 'shop-item-reason shop-need'
               : 'shop-item-reason sr-only',
@@ -552,22 +531,22 @@ const reasonView = (
       ),
   })
 
-const shortName = (model: Model, item: ShopItemId): string =>
+const shortName = (scene: ShopScene, item: ShopItemId): string =>
   ShopGood.match(shopItem(item).good, {
-    Gun: () => itemName(model, focusSlotOf(model), item),
-    Ammo: () => itemName(model, focusSlotOf(model), item),
+    Gun: () => itemName(scene, focusSlotOf(scene), item),
+    Ammo: () => itemName(scene, focusSlotOf(scene), item),
     Upgrade: ({ weapon }) =>
       Option.match(
-        maybeNextTier(weapon, tierOf(focusOf(model).player, weapon)),
+        maybeNextTier(weapon, tierOf(focusOf(scene).player, weapon)),
         {
           onNone: () => tierName(weapon, maxTier(weapon)),
-          onSome: () => nextGunName(model, focusSlotOf(model), weapon),
+          onSome: () => nextGunName(scene, focusSlotOf(scene), weapon),
         },
       ),
-    Heart: () => itemName(model, focusSlotOf(model), item),
-    Trap: () => itemName(model, focusSlotOf(model), item),
+    Heart: () => itemName(scene, focusSlotOf(scene), item),
+    Trap: () => itemName(scene, focusSlotOf(scene), item),
     Repair: () => '',
-    Sight: () => itemName(model, focusSlotOf(model), item),
+    Sight: () => itemName(scene, focusSlotOf(scene), item),
   })
 
 type RowShape = Readonly<{
@@ -576,9 +555,9 @@ type RowShape = Readonly<{
 }>
 
 const itemArtView = (
-  model: Model,
+  scene: ShopScene,
   item: ShopItemId,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   ShopGood.match(shopItem(item).good, {
     Gun: () => artView(itemArt(item), 'shop-card-art', h),
@@ -591,7 +570,7 @@ const itemArtView = (
             gunArt(
               weapon,
               Math.min(
-                tierOf(focusOf(model).player, weapon) + 1,
+                tierOf(focusOf(scene).player, weapon) + 1,
                 maxTier(weapon),
               ),
             ),
@@ -604,14 +583,14 @@ const itemArtView = (
     Heart: () => artView(itemArt(item), 'shop-card-art', h),
     Trap: () => artView(itemArt(item), 'shop-card-art', h),
     Repair: () =>
-      Option.match(maybeRepairTrap(model, item), {
+      Option.match(maybeRepairTrap(scene, item), {
         onNone: () => artView(itemArt(item), 'shop-card-art', h),
         onSome: trap =>
           h.span(
             [h.Class('shop-card-art shop-repair-art'), h.AriaHidden(true)],
             [
               artView(TRAP_ART[trap._tag], 'shop-repair-trap', h),
-              mapPipView(model, trap, h),
+              mapPipView(scene, trap, h),
             ],
           ),
       }),
@@ -619,22 +598,22 @@ const itemArtView = (
   })
 
 const rowView = (
-  model: Model,
+  scene: ShopScene,
   item: ShopItemId,
   shape: RowShape,
   initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html => {
-  const verdict = verdictFor(model, focusSlotOf(model), item)
+  const verdict = verdictFor(scene, focusSlotOf(scene), item)
   const isRefused = Verdict.isAnyOf(['Refused'])(verdict)
-  const isFocused = focusedItem(model) === item
+  const isFocused = focusedItem(scene) === item
   const describedBy = Array.join(
     isRefused
       ? [detailsId(item), noteId(item), reasonId(item)]
       : [detailsId(item), noteId(item)],
     ' ',
   )
-  const tag = stockTag(model, focusSlotOf(model), item)
+  const tag = stockTag(scene, focusSlotOf(scene), item)
 
   return h.keyed('li')(
     item,
@@ -642,7 +621,7 @@ const rowView = (
       h.Class(shape.rowClass),
       h.DataAttribute('verdict', isRefused ? 'refused' : 'available'),
       h.DataAttribute('stock', tag._tag),
-      h.DataAttribute('fresh', isFreshTrap(model, item) ? 'true' : 'false'),
+      h.DataAttribute('fresh', isFreshTrap(scene, item) ? 'true' : 'false'),
     ],
     [
       Button.view(
@@ -659,15 +638,15 @@ const rowView = (
                 ...(isFocused ? initialFocus : []),
                 h.Id(shopItemElementId(item)),
                 h.Class(shape.itemClass),
-                h.AriaLabel(itemAriaLabel(model, focusSlotOf(model), item)),
+                h.AriaLabel(itemAriaLabel(scene, focusSlotOf(scene), item)),
                 h.AriaDescribedBy(describedBy),
-                h.OnFocus(Message.FocusedShopItem({ item })),
+                h.OnFocus(Message.FocusedItem({ item })),
                 h.OnKeyDownPreventDefault(key =>
                   keyMessage(
                     itemsIn(
-                      model,
-                      focusSlotOf(model),
-                      focusOf(model).shopCategory,
+                      scene,
+                      focusSlotOf(scene),
+                      focusOf(scene).shopCategory,
                     ),
                     item,
                     key,
@@ -675,25 +654,25 @@ const rowView = (
                 ),
               ],
               [
-                itemArtView(model, item, h),
+                itemArtView(scene, item, h),
                 h.span(
                   [h.Class('shop-card-name shop-item-name')],
-                  [shortName(model, item)],
+                  [shortName(scene, item)],
                 ),
-                metaView(model, item, h),
-                tagView(model, item, h),
-                reasonView(model, item, h),
+                metaView(scene, item, h),
+                tagView(scene, item, h),
+                reasonView(scene, item, h),
                 h.span(
                   [h.Id(detailsId(item)), h.Class('sr-only')],
-                  [itemBlurb(model, focusSlotOf(model), item)],
+                  [itemBlurb(scene, focusSlotOf(scene), item)],
                 ),
                 h.span(
                   [h.Id(noteId(item)), h.Class('sr-only')],
-                  [ownedNote(model, focusSlotOf(model), item)],
+                  [ownedNote(scene, focusSlotOf(scene), item)],
                 ),
-                isJustBought(model, item) ? stampView(model, h) : h.empty,
-                isJustRefused(model, item)
-                  ? model.stats.purchases % 2 === 0
+                isJustBought(scene, item) ? stampView(scene, h) : h.empty,
+                isJustRefused(scene, item)
+                  ? scene.stats.purchases % 2 === 0
                     ? evenNopeView(h)
                     : oddNopeView(h)
                   : h.empty,
@@ -707,13 +686,13 @@ const rowView = (
 }
 
 const itemView = (
-  model: Model,
+  scene: ShopScene,
   item: ShopItemId,
   initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   rowView(
-    model,
+    scene,
     item,
     {
       rowClass: 'shop-row',
@@ -726,13 +705,13 @@ const itemView = (
 // NOTE: a row that spans the whole tab in one slim line, so an extra good
 // under the gun cards never pushes the shop past a short phone's screen.
 const wideItemView = (
-  model: Model,
+  scene: ShopScene,
   item: ShopItemId,
   initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   rowView(
-    model,
+    scene,
     item,
     {
       rowClass: 'shop-row shop-row-wide',
@@ -743,13 +722,13 @@ const wideItemView = (
   )
 
 const subItemView = (
-  model: Model,
+  scene: ShopScene,
   item: ShopItemId,
   initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   rowView(
-    model,
+    scene,
     item,
     {
       rowClass: 'shop-row shop-subrow',
@@ -764,7 +743,7 @@ const subItemView = (
 const tierPipsView = (
   weapon: WeaponKind,
   tier: number,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   h.span(
     [
@@ -785,8 +764,8 @@ const tierPipsView = (
     ),
   )
 
-const ownedBadge = (model: Model, weapon: WeaponKind): string =>
-  isHolding(focusOf(model).player, weapon) ? 'IN HAND' : 'OWNED'
+const ownedBadge = (scene: ShopScene, weapon: WeaponKind): string =>
+  isHolding(focusOf(scene).player, weapon) ? 'IN HAND' : 'OWNED'
 
 const nextBars = (weapon: WeaponKind, tier: number): GunBars =>
   Option.match(maybeNextTier(weapon, tier), {
@@ -794,8 +773,8 @@ const nextBars = (weapon: WeaponKind, tier: number): GunBars =>
     onSome: () => gunBars(weapon, tier + 1),
   })
 
-const isGunJustBought = (model: Model, weapon: WeaponKind): boolean =>
-  ShopChatter.match(model.shopChatter, {
+const isGunJustBought = (scene: ShopScene, weapon: WeaponKind): boolean =>
+  ShopChatter.match(scene.shopChatter, {
     Greeting: () => false,
     Bought: ({ item }) =>
       ShopGood.match(shopItem(item).good, {
@@ -812,13 +791,13 @@ const isGunJustBought = (model: Model, weapon: WeaponKind): boolean =>
   })
 
 const ownedGunView = (
-  model: Model,
+  scene: ShopScene,
   weapon: WeaponKind,
   tier: number,
   status: string,
   items: Array.NonEmptyReadonlyArray<ShopItemId>,
   initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html => {
   const name = tierName(weapon, tier)
   return h.keyed('li')(
@@ -827,7 +806,7 @@ const ownedGunView = (
       h.Class('shop-gun'),
       h.DataAttribute(
         'held',
-        isHolding(focusOf(model).player, weapon) ? 'true' : 'false',
+        isHolding(focusOf(scene).player, weapon) ? 'true' : 'false',
       ),
     ],
     [
@@ -842,7 +821,7 @@ const ownedGunView = (
               tierPipsView(weapon, tier, h),
             ],
           ),
-          h.span([h.Class('shop-gun-owned')], [ownedBadge(model, weapon)]),
+          h.span([h.Class('shop-gun-owned')], [ownedBadge(scene, weapon)]),
         ],
       ),
       h.div(
@@ -851,64 +830,64 @@ const ownedGunView = (
           barsView(gunBars(weapon, tier), nextBars(weapon, tier), h),
           weapon === 'Pan'
             ? h.empty
-            : roundsView(carriedRounds(model, weapon), h),
+            : roundsView(carriedRounds(scene, weapon), h),
         ],
       ),
       h.span([h.Class('sr-only')], [status]),
       h.ul(
         [h.Class('shop-subrows'), h.AriaLabel(`For your ${name}`)],
-        Array.map(items, item => subItemView(model, item, initialFocus, h)),
+        Array.map(items, item => subItemView(scene, item, initialFocus, h)),
       ),
-      isGunJustBought(model, weapon) ? stampView(model, h) : h.empty,
+      isGunJustBought(scene, weapon) ? stampView(scene, h) : h.empty,
     ],
   )
 }
 
 const gunShelfView = (
-  model: Model,
+  scene: ShopScene,
   shelf: GunShelf,
   initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   GunShelf.match(shelf, {
-    ForSale: ({ item }) => itemView(model, item, initialFocus, h),
+    ForSale: ({ item }) => itemView(scene, item, initialFocus, h),
     Owned: ({ weapon, tier, status, items }) =>
-      ownedGunView(model, weapon, tier, status, items, initialFocus, h),
+      ownedGunView(scene, weapon, tier, status, items, initialFocus, h),
   })
 
 const categoryRowsView = (
-  model: Model,
+  scene: ShopScene,
   category: ShopCategory,
   initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): ReadonlyArray<Html> =>
   Match.value(category).pipe(
     Match.when('Guns', () => [
-      ...Array.map(gunShelves(model, focusSlotOf(model)), shelf =>
-        gunShelfView(model, shelf, initialFocus, h),
+      ...Array.map(gunShelves(scene, focusSlotOf(scene)), shelf =>
+        gunShelfView(scene, shelf, initialFocus, h),
       ),
-      wideItemView(model, 'LaserSight', initialFocus, h),
+      wideItemView(scene, 'LaserSight', initialFocus, h),
     ]),
     Match.when('Traps', () =>
-      Array.map(trapShelves(model), shelf =>
-        trapShelfView(model, shelf, initialFocus, h),
+      Array.map(trapShelves(scene), shelf =>
+        trapShelfView(scene, shelf, initialFocus, h),
       ),
     ),
     Match.orElse(() =>
-      Array.map(itemsIn(model, focusSlotOf(model), category), item =>
-        itemView(model, item, initialFocus, h),
+      Array.map(itemsIn(scene, focusSlotOf(scene), category), item =>
+        itemView(scene, item, initialFocus, h),
       ),
     ),
   )
 
 const trapShelfView = (
-  model: Model,
+  scene: ShopScene,
   shelf: TrapShelf,
   initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   Array.match(shelf.repairs, {
-    onEmpty: () => itemView(model, shelf.item, initialFocus, h),
+    onEmpty: () => itemView(scene, shelf.item, initialFocus, h),
     onNonEmpty: repairs =>
       h.keyed('li')(
         `shelf-${shelf.kind}`,
@@ -920,9 +899,9 @@ const trapShelfView = (
               h.AriaLabel(`${TRAPS[shelf.kind].name} and repairs`),
             ],
             [
-              subItemView(model, shelf.item, initialFocus, h),
+              subItemView(scene, shelf.item, initialFocus, h),
               ...Array.map(repairs, item =>
-                subItemView(model, item, initialFocus, h),
+                subItemView(scene, item, initialFocus, h),
               ),
             ],
           ),
@@ -937,15 +916,15 @@ const SHOP_TITLE = "Rattles' Bone Bazaar"
 const thingsLabel = (count: number): string =>
   count === 1 ? '1 thing' : `${count} things`
 
-const affordSummary = (model: Model): string => {
-  const count = totalAffordable(model, focusSlotOf(model))
+const affordSummary = (scene: ShopScene): string => {
+  const count = totalAffordable(scene, focusSlotOf(scene))
   return count === 0
     ? 'Nothing you can buy right now'
     : `${thingsLabel(count)} you can buy now`
 }
 
-const tabLabel = (model: Model, category: ShopCategory): string => {
-  const count = affordableCount(model, focusSlotOf(model), category)
+const tabLabel = (scene: ShopScene, category: ShopCategory): string => {
+  const count = affordableCount(scene, focusSlotOf(scene), category)
   return count === 0
     ? `${SHOP_CATEGORIES[category].label}, nothing you can buy`
     : `${SHOP_CATEGORIES[category].label}, ${count} you can buy`
@@ -953,27 +932,27 @@ const tabLabel = (model: Model, category: ShopCategory): string => {
 
 // NOTE: until the first trap is bought, the TRAPS tab wears a NEW tag and
 // its traps pulse, so a player sees traps are bought here, from Rattles.
-const isTrapNew = (model: Model): boolean =>
-  TrapHint.isAnyOf(['Unseen'])(model.trapHint)
+const isTrapNew = (scene: ShopScene): boolean =>
+  TrapHint.isAnyOf(['Unseen'])(scene.trapHint)
 
-const isFreshTraps = (model: Model, category: ShopCategory): boolean =>
-  category === 'Traps' && isTrapNew(model)
+const isFreshTraps = (scene: ShopScene, category: ShopCategory): boolean =>
+  category === 'Traps' && isTrapNew(scene)
 
-const isFreshTrap = (model: Model, item: ShopItemId): boolean =>
-  isTrapNew(model) && ShopGood.isAnyOf(['Trap'])(shopItem(item).good)
+const isFreshTrap = (scene: ShopScene, item: ShopItemId): boolean =>
+  isTrapNew(scene) && ShopGood.isAnyOf(['Trap'])(shopItem(item).good)
 
 const tabButtonView = (
-  model: Model,
+  scene: ShopScene,
   tab: Tabs.TabInfo<ShopCategory>,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html => {
-  const count = affordableCount(model, focusSlotOf(model), tab.value)
+  const count = affordableCount(scene, focusSlotOf(scene), tab.value)
   return h.button(
-    [...tab.tab, h.Class('shop-tab'), h.AriaLabel(tabLabel(model, tab.value))],
+    [...tab.tab, h.Class('shop-tab'), h.AriaLabel(tabLabel(scene, tab.value))],
     [
       artView(TAB_ART[tab.value], 'shop-tab-icon', h),
       h.span([h.Class('shop-tab-label')], [SHOP_CATEGORIES[tab.value].label]),
-      isFreshTraps(model, tab.value)
+      isFreshTraps(scene, tab.value)
         ? h.span([h.Class('shop-tab-new')], ['NEW'])
         : h.empty,
       h.span(
@@ -988,40 +967,41 @@ const tabButtonView = (
 }
 
 const categoryPanelView = (
-  model: Model,
+  scene: ShopScene,
   tab: Tabs.TabInfo<ShopCategory>,
   initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   h.div(
     [...tab.panel, h.Class('shop-tabpanel')],
     [
       h.p(
         [h.Class('shop-rule sr-only')],
-        [SHOP_CATEGORIES[tab.value].blurb(model)],
+        [SHOP_CATEGORIES[tab.value].blurb(scene)],
       ),
       h.ul(
         [
           h.Class(`shop-items shop-items-${String.toLowerCase(tab.value)}`),
           h.AriaLabel(`${SHOP_CATEGORIES[tab.value].label} for sale`),
         ],
-        categoryRowsView(model, tab.value, initialFocus, h),
+        categoryRowsView(scene, tab.value, initialFocus, h),
       ),
     ],
   )
 
 const categoriesView = (
-  model: Model,
+  scene: ShopScene,
+  tabsModel: TabsModel,
   initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): Html =>
   h.block(
-    ShopTabsBinding.embedView({
-      slotId: model.shopTabs.id,
-      model: model.shopTabs,
+    TabsBinding.embedView({
+      slotId: tabsModel.id,
+      model: tabsModel,
       viewInputs: {
         tabs: SHOP_CATEGORY_ORDER,
-        selectedValue: focusOf(model).shopCategory,
+        selectedValue: focusOf(scene).shopCategory,
         ariaLabel: 'Shop sections',
         toView: ({ tablist, tabs, activeIndex }) =>
           h.div(
@@ -1029,13 +1009,13 @@ const categoriesView = (
             [
               h.div(
                 [...tablist, h.Class('shop-tabs')],
-                Array.map(tabs, tab => tabButtonView(model, tab, h)),
+                Array.map(tabs, tab => tabButtonView(scene, tab, h)),
               ),
               ...pipe(
                 tabs,
                 Array.filter(tab => tab.index === activeIndex),
                 Array.map(tab =>
-                  categoryPanelView(model, tab, initialFocus, h),
+                  categoryPanelView(scene, tab, initialFocus, h),
                 ),
               ),
             ],
@@ -1051,8 +1031,8 @@ const MOOD_LABELS: Readonly<Record<Mood, string>> = {
   Shrugging: 'shrugging',
 }
 
-const keeperView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const mood = moodOf(model)
+const keeperView = (scene: ShopScene, h: ShopViewBuilder): Html => {
+  const mood = moodOf(scene)
   return h.span(
     [
       h.Class('shop-keeper'),
@@ -1064,33 +1044,33 @@ const keeperView = (model: Model, h: ApplicationViewBuilder): Html => {
   )
 }
 
-const evenBalanceView = (model: Model, h: ApplicationViewBuilder): Html =>
+const evenBalanceView = (scene: ShopScene, h: ShopViewBuilder): Html =>
   h.span(
     [h.Class('shop-balance')],
     [
       h.span([h.Class('sr-only')], ['You have ']),
-      ...withCoins(`$${focusOf(model).wallet.balance}`, h),
+      ...withCoins(`$${focusOf(scene).wallet.balance}`, h),
     ],
   )
 
-const oddBalanceView = (model: Model, h: ApplicationViewBuilder): Html =>
+const oddBalanceView = (scene: ShopScene, h: ShopViewBuilder): Html =>
   h.span(
     [h.Class('shop-balance')],
     [
       h.span([h.Class('sr-only')], ['You have ']),
-      ...withCoins(`$${focusOf(model).wallet.balance}`, h),
+      ...withCoins(`$${focusOf(scene).wallet.balance}`, h),
     ],
   )
 
-const balanceView = (model: Model, h: ApplicationViewBuilder): Html =>
-  model.stats.purchases % 2 === 0
-    ? evenBalanceView(model, h)
-    : oddBalanceView(model, h)
+const balanceView = (scene: ShopScene, h: ShopViewBuilder): Html =>
+  scene.stats.purchases % 2 === 0
+    ? evenBalanceView(scene, h)
+    : oddBalanceView(scene, h)
 
 // NOTE: the ? beside the shop's close button opens the guide
 // (src/features/guide/) on the tab the player was looking at. A real
 // button, so Tab and Enter reach it, and the guide gives it focus back.
-const shopHelpButtonView = (h: ApplicationViewBuilder): Html =>
+const shopHelpButtonView = (scene: ShopScene, h: ShopViewBuilder): Html =>
   h.button(
     [
       h.Type('button'),
@@ -1098,38 +1078,42 @@ const shopHelpButtonView = (h: ApplicationViewBuilder): Html =>
       h.Class('shop-help'),
       h.AriaLabel('Shop guide'),
       h.AriaKeyshortcuts('?'),
-      h.OnClick(Message.ClickedShopGuideButton(), { propagation: 'Stop' }),
+      h.OnClick(
+        Message.ClickedGuideButton({ section: focusOf(scene).shopCategory }),
+        { propagation: 'Stop' },
+      ),
     ],
     ['?'],
   )
 
 const panelView = (
   model: Model,
+  scene: ShopScene,
   { title, description, closeButton, initialFocus }: Dialog.RenderInfo,
-  h: ApplicationViewBuilder,
+  h: ShopViewBuilder,
 ): ReadonlyArray<Html> => [
   h.header(
     [h.Class('shop-header')],
     [
-      keeperView(model, h),
+      keeperView(scene, h),
       h.div(
         [h.Class('shop-speech')],
         [
           h.h2([...title, h.Class('shop-title')], [SHOP_TITLE]),
           h.p(
             [...description, h.Class('shop-greeting'), h.AriaLive('polite')],
-            withCoins(chatterLine(model), h),
+            withCoins(chatterLine(scene), h),
           ),
         ],
       ),
       h.p(
         [h.Class('shop-wallet'), h.Role('status')],
         [
-          balanceView(model, h),
-          h.span([h.Class('shop-summary sr-only')], [affordSummary(model)]),
+          balanceView(scene, h),
+          h.span([h.Class('shop-summary sr-only')], [affordSummary(scene)]),
         ],
       ),
-      ...(isGuideOpen(model.shopGuide) ? [] : [shopHelpButtonView(h)]),
+      ...(isShopGuideOpen(model) ? [] : [shopHelpButtonView(scene, h)]),
       closeButtonView(
         {
           attributes: closeButton,
@@ -1140,33 +1124,66 @@ const panelView = (
       ),
     ],
   ),
-  isGuideOpen(model.shopGuide)
+  isShopGuideOpen(model)
     ? h.block(
-        ShopGuideBinding.embedView({
+        GuideBinding.embedView({
           slotId: 'shop-guide',
-          model: model.shopGuide,
+          model: model.guide,
           viewInputs: {
-            seenUnlocks: model.seenUnlocks,
+            seenUnlocks: scene.seenUnlocks,
             trailingActions: () => [],
           },
         }),
       )
-    : categoriesView(model, initialFocus, h),
+    : categoriesView(scene, model.tabs, initialFocus, h),
 ]
 
-export const shopDialogView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  dialogShell(
-    {
-      dialog: model.shopDialog,
-      dialogClass: 'shop-dialog',
-      backdropClass: 'shop-backdrop',
-      panelClass: 'shop-panel',
-      panelView: renderInfo => panelView(model, renderInfo, h),
-      binding: ShopDialogBinding,
-    },
-    h,
-  ),
+// THE DIALOG
+
+type DialogModel = typeof DialogBlock.Model.Type
+
+const dialogView = (
+  dialog: DialogModel,
+  toPanel: (renderInfo: Dialog.RenderInfo) => ReadonlyArray<Html>,
+  h: ShopViewBuilder,
+): Html =>
+  h.block(
+    DialogBinding.embedView({
+      slotId: dialog.id,
+      model: dialog,
+      viewInputs: {
+        hasDescription: true,
+        toView: renderInfo =>
+          h.dialog(
+            [h.Key(dialog.id), ...renderInfo.dialog, h.Class('shop-dialog')],
+            renderInfo.isVisible
+              ? [
+                  h.div([...renderInfo.backdrop, h.Class('shop-backdrop')]),
+                  h.div(
+                    [...renderInfo.panel, h.Class('shop-panel')],
+                    toPanel(renderInfo),
+                  ),
+                ]
+              : [],
+          ),
+      },
+    }),
+  )
+
+// NOTE: the `<dialog>` is keyed on its id, open or shut, as the root's menu
+// dialogs are (`dialogShell` in src/app/dialogs.ts tells why). With no
+// scene, while the shop is shut, it shows nothing.
+const view = ShopComposition.makeView.withInputs<ViewInputs>(
+  (model, inputs, h) =>
+    dialogView(
+      model.dialog,
+      renderInfo =>
+        Option.match(inputs.scene(), {
+          onNone: () => [],
+          onSome: scene => panelView(model, scene, renderInfo, h),
+        }),
+      h,
+    ),
 )
+
+export const shopImplementation = { view }

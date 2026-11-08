@@ -6,10 +6,9 @@ import { Array, Function, Option, Schema, String } from 'effect'
 
 import { DialogBlock } from '@foldkit/ui'
 
-import { ShopDialogBinding } from '../../../src/app/bindings'
-import { Message } from '../../../src/app/message'
 import { Child } from '../../../src/app/pureApp'
 import { ammoLevelOf } from '../../../src/features/hud/ammoWarning'
+import { Message as ShopMessage } from '../../../src/features/shop/message'
 import { isFridgeWeapon } from '../../../src/world/fridge/fridgeWeapons'
 import {
   FRIDGE_RULES,
@@ -503,10 +502,10 @@ export const fridgeKeys = (model: Model): Set<string> =>
     ? new Set([KEYS.interact])
     : new Set()
 
-// NOTE: what the shop dialog's close button sends: a Dialog Message in its
-// Binding's envelope (src/app/composition.ts).
+// NOTE: what the shop dialog's close button sends: a Dialog Message inside
+// the shop's, in the root's envelope (src/app/pureApp.ts, Child).
 const closeShopDialog = () =>
-  Child.message(ShopDialogBinding, DialogBlock.Message.ClickedCloseButton())
+  Child.shopDialog(DialogBlock.Message.ClickedCloseButton())
 
 export const shop: {
   (model: Model): (state: BotState) => Model
@@ -516,7 +515,7 @@ export const shop: {
   if (item === undefined) {
     return send(model, closeShopDialog())
   }
-  const bought = send(model, Message.ClickedBuyButton({ item }))
+  const bought = send(model, Child.shop(ShopMessage.ClickedBuyButton({ item })))
   if (String.endsWith('Upgrade')(item)) {
     state.spentOnUpgrades +=
       focusOf(model).wallet.balance - focusOf(bought).wallet.balance

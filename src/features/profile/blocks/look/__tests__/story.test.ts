@@ -7,8 +7,6 @@ import { describe, expect, it, test } from '@effect/vitest'
 import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
 import { ProfileBinding } from '../../../../../app/bindings'
-import { layer } from '../../../../../app/block'
-import { ApplicationBlock } from '../../../../../app/definition'
 import { Message } from '../../../../../app/message'
 import {
   Appearance,
@@ -42,12 +40,14 @@ import { RESTART_GRACE_MS } from '../../../../../shared/constants'
 import { FreePrint, FreeShirtColor } from '../../../../../shared/playerData'
 import { home } from '../../../../../test/model.fixture'
 import { imageColors } from '../../../../../test/testPng'
-import { jsonOf, resolveFocusOption } from '../../../../../test/testing'
+import {
+  APPLICATION,
+  jsonOf,
+  resolveFocusOption,
+} from '../../../../../test/testing'
 import { CharacterBinding } from '../../../composition'
 import * as Character from '../block'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from '../lookRadios'
-
-const APPLICATION = { block: ApplicationBlock, layer }
 
 // NOTE: a part's radio group Message, delivered down its path: the
 // Profile, the Look tab, and that part's own Binding. Only a Block-aware

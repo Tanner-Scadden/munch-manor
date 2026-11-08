@@ -45,6 +45,7 @@ import {
   DISTANT_SPAWN,
   pickupAt,
   withPickups,
+  withShopDialogOpen,
 } from '../../../test/model.fixture'
 import {
   SURFACE,
@@ -757,12 +758,9 @@ describe('timers', () => {
 
   test('boosts, pickups, and callouts stand still while the shop is open', () => {
     expectStaysFrozen(
-      modifyFocus(
-        modifyFields(preparing, {
-          shopDialog: dialog => ({ ...dialog, isOpen: true }),
-        }),
-        { shop: () => ShopState.Browsing({ focusedItem: 'Heart' }) },
-      ),
+      modifyFocus(withShopDialogOpen(preparing), {
+        shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
+      }),
     )
   })
 

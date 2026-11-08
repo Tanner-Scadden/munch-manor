@@ -16,7 +16,7 @@ export type ViewInputs = Readonly<{
 }>
 
 // NOTE: the shop guide's public contract, bound twice: in Rattles' shop
-// dialog (the root's ShopGuideBinding, src/app/bindings.ts) and on the
+// dialog (the shop's GuideBinding, src/features/shop/bindings.ts) and on the
 // Munchopedia's Shop page (src/features/munchopedia/bindings.ts). Its
 // parent opens and closes it; it turns its sections, goes back, and moves
 // focus on its own.

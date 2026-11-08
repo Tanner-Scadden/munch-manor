@@ -14,8 +14,10 @@ import {
   ShopState,
   type Zombie,
 } from '../../../app/model'
+import { Child } from '../../../app/pureApp'
 import { initialModel, update } from '../../../app/pureApp'
-import { FocusShopItem } from '../../../features/shop/update'
+import { Message as ShopMessage } from '../../../features/shop/message'
+import { FocusItem } from '../../../features/shop/steps'
 import { FIXED_STEP_MS, PISTOL_MAGAZINE } from '../../../shared/constants'
 import { DISTANT_SPAWN, withSeat } from '../../../test/model.fixture'
 import {
@@ -434,8 +436,8 @@ describe('the knife', () => {
     story(
       update,
       given(shopping),
-      message(Message.ClickedBuyButton({ item: 'Smg' })),
-      Command.resolve(FocusShopItem, Message.CompletedFocusShopItem()),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Smg' }))),
+      Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
       model(({ seats: [{ player }] }) => {
         expect(player.wield).toBe('Gun')
         expect(heldWeapon(player.arsenal)).toBe('Smg')
@@ -471,7 +473,7 @@ describe('two gun slots', () => {
     story(
       update,
       given(browsing(armed(pistolOnly()), 200)),
-      message(Message.ClickedBuyButton({ item: 'Smg' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Smg' }))),
       model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(holdingSecond(freshGun('Smg')))
       }),
@@ -482,8 +484,8 @@ describe('two gun slots', () => {
     story(
       update,
       given(browsing(armed(holdingFirst(freshGun('Smg'))), 200)),
-      message(Message.ClickedBuyButton({ item: 'Shotgun' })),
-      Command.resolve(FocusShopItem, Message.CompletedFocusShopItem()),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Shotgun' }))),
+      Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
       model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(
           Arsenal.HoldingFirst({
@@ -515,7 +517,7 @@ describe('two gun slots', () => {
     story(
       update,
       given(traded),
-      message(Message.ClickedBuyButton({ item: 'Pistol' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Pistol' }))),
       model(({ seats: [{ player, wallet }] }) => {
         expect(player.arsenal).toEqual(
           Arsenal.HoldingSecond({
@@ -578,7 +580,9 @@ describe('two gun slots', () => {
     story(
       update,
       given(browsing(armed(holdingSecond(freshGun('Smg'))), 1000)),
-      message(Message.ClickedBuyButton({ item: 'PistolUpgrade' })),
+      message(
+        Child.shop(ShopMessage.ClickedBuyButton({ item: 'PistolUpgrade' })),
+      ),
       model(({ seats: [{ player }] }) => {
         expect(gunsOf(player.arsenal)[0]).toEqual(
           modifyFields(STARTING_PISTOL, { tier: () => 1 }),

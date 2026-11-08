@@ -5,12 +5,14 @@ import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { CoopBinding, ShopDialogBinding } from '../../../app/bindings'
+import { CoopBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { AudioState, Lesson, type Model } from '../../../app/model'
 import { Child, initialModel, update } from '../../../app/pureApp'
 import { PlaySound } from '../../../app/update/sound'
 import { positionVariation } from '../../../audio/audio'
+import { Message as ShopMessage } from '../../../features/shop/message'
+import { withShopDialogOpen } from '../../../test/model.fixture'
 import { withSeat } from '../../../test/model.fixture'
 import { asVeteran } from '../../../test/veteran'
 import {
@@ -387,18 +389,16 @@ describe('an online co-op run', () => {
         DialogBlock.Message.SucceededShowDialog(),
       ),
       model(current => {
-        expect(current.shopDialog.isOpen).toBe(true)
+        expect(current.shopDialog.dialog.isOpen).toBe(true)
       }),
-      message(Message.ClickedBuyButton({ item: 'Shotgun' })),
-      message(
-        Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
-      ),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Shotgun' }))),
+      message(Child.shopDialog(DialogBlock.Message.CanceledDialog())),
       Command.resolve(
         Dialog.test.CloseDialog,
         DialogBlock.Message.CompletedCloseDialog(),
       ),
       model(current => {
-        expect(current.shopDialog.isOpen).toBe(false)
+        expect(current.shopDialog.dialog.isOpen).toBe(false)
         expect(Array.takeRight(queuedOf(current), 2)).toEqual([
           actionCodeOf(SeatAction.Buy({ item: 'Shotgun' })),
           actionCodeOf(SeatAction.LeaveCounter()),
@@ -414,12 +414,9 @@ describe('an online co-op run', () => {
         modifyFocus(world, { shop: () => ShopState.Dismissed() }),
       ),
     }
-    const shopping = modifyFocus(
-      modifyFields(inRun(offCounter), {
-        shopDialog: dialog => modifyFields(dialog, { isOpen: () => true }),
-      }),
-      { shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }) },
-    )
+    const shopping = modifyFocus(withShopDialogOpen(inRun(offCounter)), {
+      shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+    })
     story(
       update,
       given(shopping),
@@ -429,7 +426,7 @@ describe('an online co-op run', () => {
         DialogBlock.Message.CompletedCloseDialog(),
       ),
       model(current => {
-        expect(current.shopDialog.isOpen).toBe(false)
+        expect(current.shopDialog.dialog.isOpen).toBe(false)
         expect(focusOf(current).shop).toEqual(ShopState.Dismissed())
       }),
     )

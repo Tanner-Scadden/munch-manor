@@ -3,10 +3,8 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { DialogBlock, Tabs } from '@foldkit/ui'
+import { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
 
-import { ShopDialogBinding, ShopTabsBinding } from '../../../app/bindings'
-import { Message } from '../../../app/message'
 import {
   type Model,
   Phase,
@@ -18,7 +16,7 @@ import {
 } from '../../../app/model'
 import { Child, update } from '../../../app/pureApp'
 import { PLAYER_MAX_HP, SHAMBLER_BOUNTY } from '../../../shared/constants'
-import { withArsenal } from '../../../test/model.fixture'
+import { withArsenal, withShopDialogOpen } from '../../../test/model.fixture'
 import {
   RESTART_GRACE_TICKS,
   holdingFirst,
@@ -38,8 +36,9 @@ import {
   totalAffordable,
 } from '../../../world/shop/shop'
 import { waveBonus } from '../../../world/waves/waves'
+import { Message as ShopMessage } from '../message'
 import { ShopTabsBlock } from '../shopTabs'
-import { FocusShopItem } from '../update'
+import { FocusItem } from '../steps'
 import {
   FRAMES_TO_STALL,
   GRACE_TICK_MS,
@@ -62,8 +61,7 @@ describe('shop categories', () => {
 
   const selectTab = (value: ShopCategory) =>
     message(
-      Child.message(
-        ShopTabsBinding,
+      Child.shopTabs(
         ShopTabsBlock.Message.SelectedTab({
           index: Option.getOrElse(
             Array.findFirstIndex(SHOP_CATEGORY_ORDER, tab => tab === value),
@@ -82,7 +80,7 @@ describe('shop categories', () => {
   test('choosing a tab shows its items, focuses its first item, and moves keyboard focus to the tab', () => {
     story(
       update,
-      given(browsing(withMoney(shopReady, 100))),
+      given(withShopDialogOpen(browsing(withMoney(shopReady, 100)))),
       model(({ seats: [{ shopCategory }] }) => {
         expect(shopCategory).toBe('Guns')
       }),
@@ -105,15 +103,14 @@ describe('shop categories', () => {
   test('the shop reopens on the last tab chosen in the run, and a new run starts on Guns', () => {
     story(
       update,
-      given(browsing(withMoney(shopReady, 100))),
+      given(withShopDialogOpen(browsing(withMoney(shopReady, 100)))),
       selectTab('Health'),
       resolveFocusTab,
-      message(
-        Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
+      message(Child.shopDialog(DialogBlock.Message.CanceledDialog())),
+      Command.resolve(
+        Dialog.test.CloseDialog,
+        DialogBlock.Message.CompletedCloseDialog(),
       ),
-      // NOTE: the fixture browses with the dialog already down, which the
-      // next frame takes as a dialog that failed to show.
-      ...ticks(1, SHOP_FRAME_MS),
       model(({ seats: [{ shop, shopCategory }] }) => {
         expect(shop).toEqual(ShopState.Dismissed())
         expect(shopCategory).toBe('Health')
@@ -198,7 +195,7 @@ describe('shop categories', () => {
     story(
       update,
       given(browsing(withMoney(shopReady, WAVE_ONE_PAY))),
-      message(Message.ClickedBuyButton({ item: 'Shotgun' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Shotgun' }))),
       resolveFocusShopItem,
       model(({ seats: [{ wallet, player }] }) => {
         expect(wallet.balance).toBe(WAVE_ONE_PAY - SHOP_ITEMS.Shotgun.price)
@@ -282,15 +279,15 @@ describe('ammo and upgrades under the gun', () => {
     story(
       update,
       given(browsing(withMoney(shopReady, 200))),
-      message(Message.PressedBuyKey({ item: 'Shotgun' })),
-      Command.expectExact(FocusShopItem({ item: 'ShotgunShells' })),
+      message(Child.shop(ShopMessage.PressedBuyKey({ item: 'Shotgun' }))),
+      Command.expectExact(FocusItem({ item: 'ShotgunShells' })),
       resolveFocusShopItem,
       model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(
           ShopState.Browsing({ focusedItem: 'ShotgunShells' }),
         )
       }),
-      message(Message.PressedBuyKey({ item: 'ShotgunShells' })),
+      message(Child.shop(ShopMessage.PressedBuyKey({ item: 'ShotgunShells' }))),
       Command.expectNone(),
       model(({ seats: [{ shop, player }] }) => {
         expect(shop).toEqual(
@@ -310,8 +307,8 @@ describe('ammo and upgrades under the gun', () => {
           'Smg',
         ),
       ),
-      message(Message.ClickedBuyButton({ item: 'Smg' })),
-      Command.expectExact(FocusShopItem({ item: 'SmgRounds' })),
+      message(Child.shop(ShopMessage.ClickedBuyButton({ item: 'Smg' }))),
+      Command.expectExact(FocusItem({ item: 'SmgRounds' })),
       resolveFocusShopItem,
       model(({ seats: [{ shop, player }] }) => {
         expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'SmgRounds' }))
@@ -326,7 +323,7 @@ describe('ammo and upgrades under the gun', () => {
     story(
       update,
       given(browsing(withMoney(shopReady, 10))),
-      message(Message.PressedBuyKey({ item: 'Shotgun' })),
+      message(Child.shop(ShopMessage.PressedBuyKey({ item: 'Shotgun' }))),
       Command.expectNone(),
       model(({ seats: [{ shop }] }) => {
         expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'Shotgun' }))
@@ -396,19 +393,21 @@ describe('what Rattles says', () => {
       model(({ shopChatter }) => {
         expect(shopChatter).toEqual(ShopChatter.Greeting())
       }),
-      message(Message.PressedBuyKey({ item: 'ShotgunShells' })),
+      message(Child.shop(ShopMessage.PressedBuyKey({ item: 'ShotgunShells' }))),
       model(({ shopChatter }) => {
         expect(shopChatter).toEqual(
           ShopChatter.Refused({ item: 'ShotgunShells' }),
         )
       }),
-      message(Message.PressedBuyKey({ item: 'ShotgunUpgrade' })),
+      message(
+        Child.shop(ShopMessage.PressedBuyKey({ item: 'ShotgunUpgrade' })),
+      ),
       model(({ shopChatter }) => {
         expect(shopChatter).toEqual(
           ShopChatter.TooPricey({ item: 'ShotgunUpgrade' }),
         )
       }),
-      message(Message.PressedBuyKey({ item: 'Heart' })),
+      message(Child.shop(ShopMessage.PressedBuyKey({ item: 'Heart' }))),
       model(({ shopChatter, seats: [{ wallet }] }) => {
         expect(shopChatter).toEqual(ShopChatter.Bought({ item: 'Heart' }))
         expect(wallet.balance).toBe(5)

@@ -62,9 +62,13 @@ describe('menuState', () => {
     expect(tagOf(modifyFields(inCoop, { updateGreeting: opened }))).toBe(
       'UpdateGreeting',
     )
-    expect(tagOf(modifyFields(veteranFighting, { shopDialog: opened }))).toBe(
-      'Shop',
-    )
+    expect(
+      tagOf(
+        modifyFields(veteranFighting, {
+          shopDialog: shop => modifyFields(shop, { dialog: opened }),
+        }),
+      ),
+    ).toBe('Shop')
     expect(isOnHomeMenu(modifyFields(home, { updateGreeting: opened }))).toBe(
       false,
     )

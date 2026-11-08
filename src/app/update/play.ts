@@ -30,7 +30,6 @@ import {
   moveHintBand,
   skipDebutCard,
 } from '../../features/onboarding/onboarding'
-import { closeShop, syncShopDialog } from '../../features/shop/update'
 import {
   type PointerPress,
   isPauseKey,
@@ -72,7 +71,7 @@ import { coopFromKey, isCoopOpen, pressCoopKey, releaseCoopKey } from './coop'
 import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
-import { shopGuideFromKey } from './shopGuide'
+import { closeShop, shopFromKey, syncShopDialog } from './shop'
 import {
   ammoTickCues,
   frameSoundCues,
@@ -409,7 +408,7 @@ export const pressedKey = (code: string) =>
           ),
         ),
         unlockAudio,
-        shopGuideFromKey(code),
+        shopFromKey(code),
       ])
     }
 

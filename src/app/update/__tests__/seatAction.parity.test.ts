@@ -4,6 +4,8 @@ import { describe, expect, test } from 'vitest'
 
 import { DialogBlock } from '@foldkit/ui'
 
+import { Message as ShopMessage } from '../../../features/shop/message'
+import { withShopDialogOpen } from '../../../test/model.fixture'
 import {
   DISTANT_SPAWN,
   crewInWave,
@@ -30,7 +32,6 @@ import { COOP_RULES, leadSeatOf, modifyFocus } from '../../../world/party/party'
 import type { World } from '../../../world/schema/world'
 import { idleIntent } from '../../../world/schema/worldSchema'
 import { SeatAction, applySeatAction } from '../../../world/step/stepWorld'
-import { ShopDialogBinding } from '../../bindings'
 import { Message } from '../../message'
 import { BreakClock, Life, type Model, Phase, ShopState } from '../../model'
 import { Child, update } from '../../pureApp'
@@ -101,15 +102,10 @@ const inBreak = modifyFocus(
 
 // NOTE: at the counter with the dialog up and a heart down. Rattles' focus
 // stays on the Shotgun row, so a buy moves no focus.
-const atCounter = modifyFocus(
-  modifyFields(inBreak, {
-    shopDialog: dialog => modifyFields(dialog, { isOpen: () => true }),
-  }),
-  {
-    shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-    player: player => modifyFields(player, { hp: hp => hp - 1 }),
-  },
-)
+const atCounter = modifyFocus(withShopDialogOpen(inBreak), {
+  shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+  player: player => modifyFields(player, { hp: hp => hp - 1 }),
+})
 
 // NOTE: a crew in a fight with the lead down, their last shout cooled.
 const downedLead = withSeatLife(
@@ -162,18 +158,15 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
   Buy: {
     from: atCounter,
     action: SeatAction.Buy({ item: 'Heart' }),
-    presses: [Message.ClickedBuyButton({ item: 'Heart' })],
+    presses: [Child.shop(ShopMessage.ClickedBuyButton({ item: 'Heart' }))],
   },
   // NOTE: the shop dialog closed: its close, then the Command's result.
   LeaveCounter: {
     from: atCounter,
     action: SeatAction.LeaveCounter(),
     presses: [
-      Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
-      Child.message(
-        ShopDialogBinding,
-        DialogBlock.Message.CompletedCloseDialog(),
-      ),
+      Child.shopDialog(DialogBlock.Message.CanceledDialog()),
+      Child.shopDialog(DialogBlock.Message.CompletedCloseDialog()),
     ],
   },
   Ready: {

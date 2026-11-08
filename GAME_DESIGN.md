@@ -266,7 +266,7 @@ From a playtest on 2026-10-28 ("I tried going to the side of it and got lost"). 
 
 #### Shop categories and the price ramp
 
-From a playtest on 2026-10-28 ("Shop should have categories, and be more of a ramp up"). Proposed, not decided. The rules are in `src/world/shop/shop.ts`, the dialog in `src/features/shop/shopView.ts`.
+From a playtest on 2026-10-28 ("Shop should have categories, and be more of a ramp up"). Proposed, not decided. The rules are in `src/world/shop/shop.ts`, the dialog in `src/features/shop/view.ts`.
 
 - **Categories.** Three tabs: GUNS (each gun with its ammo and upgrades, then the Laser Sight, a dear one-run buy that draws where the held gun's shot goes), HEALTH (the Pickled Heart), and TRAPS. Arrows, Home, End, and Enter work as a menu; tabs are at least 48 px tall. The shop opens on the last tab used; a new run starts on GUNS.
 - **Affordable at a glance.** Each tab has a badge counting what the player can buy now. A row's price is a gold coin tag when affordable, grey with the shortfall when not, and one word (FULL, MAX, OWNED) when done.
@@ -284,7 +284,7 @@ From a playtest on 2026-10-28. Proposed, not decided. The layout is `gunShelves`
 
 #### The shop at a glance
 
-Built on 2026-10-29 at the owner's request ("The shop doesn't feel engaging"), under "Show, don't explain". No price or rule changed. The view is `src/features/shop/shopView.ts`, the art `src/features/shop/shopArt.ts`, Rattles' lines `src/features/shop/shopkeeper.ts`, the styles `src/features/shop/shop.css`.
+Built on 2026-10-29 at the owner's request ("The shop doesn't feel engaging"), under "Show, don't explain". No price or rule changed. The view is `src/features/shop/view.ts`, the art `src/features/shop/shopArt.ts`, Rattles' lines `src/features/shop/shopkeeper.ts`, the styles `src/features/shop/shop.css`.
 
 - **Rattles at the counter.** His face and one short line: a grin hello (sad when nothing is affordable), coin eyes on a buy, a tear and "Need $35 more. No IOUs!" when short, a shrug when a row is full. The line is `shopChatter` in the Model, picked from the purchase count and wave.
 - **Pictures over sentences.** Each row is its art, its name, and its tag. Guns show power, speed, and magazine as bars, with the next tier's gain blinking gold; ammo is a fill bar, hearts a row of hearts, traps dots. Long descriptions are for screen readers only.
