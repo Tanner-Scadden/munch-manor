@@ -10,7 +10,6 @@ import {
   press,
   release,
   resolveGuideFocus,
-  showDialog,
   ticks,
 } from '../../../test/testing'
 import { ShopState } from '../../../world/schema/worldSchema'
@@ -40,14 +39,12 @@ import {
 
 const SHOP = { block: ShopBlock, layer: ShopLayer }
 
-const shown = showDialog()
-
 const closed = closeDialog()
 
 const opened = Story.steps(
   Story.inMessage(InMessage.RequestedOpen()),
   Story.expectNoOutMessage(),
-  shown,
+  resolveShowShop,
 )
 
 const guideUp = Story.steps(
@@ -299,7 +296,7 @@ describe('the shop dialog in the root', () => {
         DialogBlock.Message.CanceledDialog(),
       ),
       closed,
-      shown,
+      resolveShowShop,
       Story.model(({ shopDialog, seats: [{ shop }] }) => {
         expect(isShopShown(shopDialog)).toBe(true)
         expect(isShopGuideOpen(shopDialog)).toBe(false)

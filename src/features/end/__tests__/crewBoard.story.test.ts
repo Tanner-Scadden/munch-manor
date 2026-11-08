@@ -1,11 +1,10 @@
-import { Array, Match, Option } from 'effect'
-import type { Canvas } from 'foldkit'
-import { given, model, story } from 'foldkit/story'
+import { Array, Effect, Match, Option } from 'effect'
+import { type Canvas, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Life, type Model, Phase } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import { PORTRAIT_WIDTH } from '../../../render/screen'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
@@ -18,7 +17,7 @@ import {
   placeSeat,
   withSeatLife,
 } from '../../../test/model.fixture'
-import { ticks, zombieOf } from '../../../test/testing'
+import { APPLICATION, ticks, zombieOf } from '../../../test/testing'
 import { WEAPONS } from '../../../world/gear/weapons'
 import {
   COOP_RULES,
@@ -85,95 +84,106 @@ const seatOf = (current: Model, slot: number): Seat =>
 // THE WORLD COUNTS
 
 describe("each seat's run in the World", () => {
-  test('going down counts a down, and a revive counts for whoever stood by', () => {
-    const bitten = pipeline(
-      placeSeat(0, RIGHT_X - 8, ROW_Y),
-      placeSeat(1, RIGHT_X, ROW_Y, 1),
-      current =>
-        modifyFields(current, {
-          zombies: () => [zombieOf('Shambler', 900, RIGHT_X + 5, ROW_Y)],
-        }),
-    )(crewInWave(2))
-    story(
-      update,
-      given(bitten),
-      ...ticks(1, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).life._tag).toBe('Downed')
-        expect(seatOf(current, 1).downs).toBe(1)
-        expect(seatOf(current, 0).downs).toBe(0)
+  it.effect(
+    'going down counts a down, and a revive counts for whoever stood by',
+    () =>
+      Effect.gen(function* () {
+        const bitten = pipeline(
+          placeSeat(0, RIGHT_X - 8, ROW_Y),
+          placeSeat(1, RIGHT_X, ROW_Y, 1),
+          current =>
+            modifyFields(current, {
+              zombies: () => [zombieOf('Shambler', 900, RIGHT_X + 5, ROW_Y)],
+            }),
+        )(crewInWave(2))
+        yield* Story.story(
+          APPLICATION,
+          Story.given(bitten),
+          ...ticks(1, TICK_MS),
+          Story.model(current => {
+            expect(seatOf(current, 1).life._tag).toBe('Downed')
+            expect(seatOf(current, 1).downs).toBe(1)
+            expect(seatOf(current, 0).downs).toBe(0)
+          }),
+        )
+        const downedBeside = pipeline(
+          placeSeat(0, RIGHT_X - 8, ROW_Y),
+          placeSeat(1, RIGHT_X, ROW_Y, 0),
+          withSeatLife(
+            1,
+            Life.Downed({
+              bleedMs: COOP_RULES.bleedOutMs,
+              reviveMs: 0,
+              callMs: 0,
+            }),
+          ),
+        )(crewInWave(3))
+        yield* Story.story(
+          APPLICATION,
+          Story.given(placeSeat(2, LEFT_X, ROW_Y)(downedBeside)),
+          ...ticks(Math.ceil(COOP_RULES.reviveMs / TICK_MS), TICK_MS),
+          Story.model(current => {
+            expect(seatOf(current, 1).life._tag).toBe('Standing')
+            expect(seatOf(current, 0).revives).toBe(1)
+            expect(seatOf(current, 1).revives).toBe(0)
+            expect(seatOf(current, 2).revives).toBe(0)
+          }),
+        )
       }),
-    )
-    const downedBeside = pipeline(
-      placeSeat(0, RIGHT_X - 8, ROW_Y),
-      placeSeat(1, RIGHT_X, ROW_Y, 0),
-      withSeatLife(
-        1,
-        Life.Downed({ bleedMs: COOP_RULES.bleedOutMs, reviveMs: 0, callMs: 0 }),
-      ),
-    )(crewInWave(3))
-    story(
-      update,
-      given(placeSeat(2, LEFT_X, ROW_Y)(downedBeside)),
-      ...ticks(Math.ceil(COOP_RULES.reviveMs / TICK_MS), TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).life._tag).toBe('Standing')
-        expect(seatOf(current, 0).revives).toBe(1)
-        expect(seatOf(current, 1).revives).toBe(0)
-        expect(seatOf(current, 2).revives).toBe(0)
-      }),
-    )
-  })
+  )
 
-  test('a shot fired counts for its shooter, and one that lands counts as a hit', () => {
-    const firingSeatZero = new Map<number, Intent>([
-      [0, { ...idleIntent, trigger: 'Held' }],
-    ])
-    const fired = withWorld(
-      placeSeat(
-        1,
-        RIGHT_X,
-        ROW_Y + 40,
-      )(placeSeat(0, LEFT_X, ROW_Y)(crewInWave(2))),
-      world => stepWorld(world, firingSeatZero).world,
-    )
-    expect(seatOf(fired, 0).shotsFired).toBe(1)
-    expect(seatOf(fired, 1).shotsFired).toBe(0)
+  it.effect(
+    'a shot fired counts for its shooter, and one that lands counts as a hit',
+    () => {
+      const firingSeatZero = new Map<number, Intent>([
+        [0, { ...idleIntent, trigger: 'Held' }],
+      ])
+      const fired = withWorld(
+        placeSeat(
+          1,
+          RIGHT_X,
+          ROW_Y + 40,
+        )(placeSeat(0, LEFT_X, ROW_Y)(crewInWave(2))),
+        world => stepWorld(world, firingSeatZero).world,
+      )
+      expect(seatOf(fired, 0).shotsFired).toBe(1)
+      expect(seatOf(fired, 1).shotsFired).toBe(0)
 
-    const landing = pipeline(
-      placeSeat(0, LEFT_X, ROW_Y),
-      placeSeat(1, RIGHT_X, ROW_Y + 40),
-      current =>
-        modifyFields(current, {
-          zombies: () => [zombieOf('Shambler', 900, 150, ROW_Y, { hp: 99 })],
-          bullets: () => [
-            {
-              id: 800,
-              x: 140,
-              y: ROW_Y,
-              velocityX: 300,
-              velocityY: 0,
-              remainingMs: 1000,
-              weapon: 'Pistol' as const,
-              damage: WEAPONS.Pistol.damage,
-              knockback: 0,
-              glaze: 'Plain' as const,
-              pierce: Pierce.Stops(),
-              shooter: 1,
-            },
-          ],
+      const landing = pipeline(
+        placeSeat(0, LEFT_X, ROW_Y),
+        placeSeat(1, RIGHT_X, ROW_Y + 40),
+        current =>
+          modifyFields(current, {
+            zombies: () => [zombieOf('Shambler', 900, 150, ROW_Y, { hp: 99 })],
+            bullets: () => [
+              {
+                id: 800,
+                x: 140,
+                y: ROW_Y,
+                velocityX: 300,
+                velocityY: 0,
+                remainingMs: 1000,
+                weapon: 'Pistol' as const,
+                damage: WEAPONS.Pistol.damage,
+                knockback: 0,
+                glaze: 'Plain' as const,
+                pierce: Pierce.Stops(),
+                shooter: 1,
+              },
+            ],
+          }),
+      )(crewInWave(2))
+      return Story.story(
+        APPLICATION,
+        Story.given(landing),
+        ...ticks(2, TICK_MS),
+        Story.model(current => {
+          expect(seatOf(current, 1).shotsHit).toBe(1)
+          expect(seatOf(current, 0).shotsHit).toBe(0)
         }),
-    )(crewInWave(2))
-    story(
-      update,
-      given(landing),
-      ...ticks(2, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).shotsHit).toBe(1)
-        expect(seatOf(current, 0).shotsHit).toBe(0)
-      }),
-    )
-  })
+      )
+    },
+  )
 })
 
 // THE AWARDS

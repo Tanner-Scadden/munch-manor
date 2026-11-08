@@ -1,6 +1,8 @@
-import { Option } from 'effect'
+import { Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Boss, KitchenCall, type Model, Phase } from '../../../app/model'
 import { cameraOf } from '../../../render/camera'
@@ -9,7 +11,12 @@ import {
   freshRunModel,
   pastTimedBreaks,
 } from '../../../test/model.fixture'
-import { BELOW_KITCHEN_DOOR, nextFrame } from '../../../test/testing'
+import {
+  APPLICATION,
+  BELOW_KITCHEN_DOOR,
+  FRAME_MS,
+  ticks,
+} from '../../../test/testing'
 import { openExitIn } from '../../../world/level/arena'
 import { levelOf } from '../../../world/level/arena'
 import { modifyFocus } from '../../../world/party/party'
@@ -34,9 +41,6 @@ const breakAt = (wave: number): Model =>
       }),
   })
 
-const frames = (current: Model, count: number): Model =>
-  count <= 0 ? current : frames(nextFrame(current), count - 1)
-
 const FRAMES_PER_CALL = Math.ceil(CALL_MS / (1000 / 60)) + 20
 
 const withKitchenOpen = (current: Model): Model =>
@@ -51,45 +55,93 @@ const callDrawn = (current: Model): boolean =>
   soupBubbleShapes(current, cameraOf(current)).length > 0
 
 describe('Rattles pointing at the boards', () => {
-  test('hollers in the first break the kitchen is on sale', () => {
-    const called = frames(breakAt(3), 2)
-    expect(isCalling(called)).toBe(true)
-    expect(callDrawn(called)).toBe(true)
-  })
+  it.effect('hollers in the first break the kitchen is on sale', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(breakAt(3)),
+      ...ticks(2, FRAME_MS),
+      Story.model(called => {
+        expect(isCalling(called)).toBe(true)
+        expect(callDrawn(called)).toBe(true)
+      }),
+    ),
+  )
 
-  test('says nothing before the kitchen is on sale', () => {
-    const early = frames(breakAt(2), 2)
-    expect(isCalling(early)).toBe(false)
-    expect(callDrawn(early)).toBe(false)
-  })
+  it.effect('says nothing before the kitchen is on sale', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(breakAt(2)),
+      ...ticks(2, FRAME_MS),
+      Story.model(early => {
+        expect(isCalling(early)).toBe(false)
+        expect(callDrawn(early)).toBe(false)
+      }),
+    ),
+  )
 
-  test('hollers once in a break, then hushes for the rest of it', () => {
-    const hushed = frames(breakAt(3), FRAMES_PER_CALL)
-    expect(isCalling(hushed)).toBe(false)
-    expect(callDrawn(hushed)).toBe(false)
-    expect(isCalling(frames(hushed, 120))).toBe(false)
-  })
+  it.effect('hollers once in a break, then hushes for the rest of it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(breakAt(3)),
+      ...ticks(FRAMES_PER_CALL, FRAME_MS),
+      Story.model(hushed => {
+        expect(isCalling(hushed)).toBe(false)
+        expect(callDrawn(hushed)).toBe(false)
+      }),
+      ...ticks(120, FRAME_MS),
+      Story.model(later => {
+        expect(isCalling(later)).toBe(false)
+      }),
+    ),
+  )
 
-  test('hollers again in the next break until the boards are open', () => {
-    const hushed = frames(breakAt(3), FRAMES_PER_CALL)
-    const nextBreak = frames(
-      modifyFields(hushed, { phase: () => breakAt(4).phase }),
-      2,
-    )
-    expect(isCalling(nextBreak)).toBe(true)
-  })
+  it.effect('hollers again in the next break until the boards are open', () =>
+    Effect.gen(function* () {
+      const hushed = yield* Story.story(
+        APPLICATION,
+        Story.given(breakAt(3)),
+        ...ticks(FRAMES_PER_CALL, FRAME_MS),
+      )
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(modifyFields(hushed, { phase: () => breakAt(4).phase })),
+        ...ticks(2, FRAME_MS),
+        Story.model(nextBreak => {
+          expect(isCalling(nextBreak)).toBe(true)
+        }),
+      )
+    }),
+  )
 
-  test('stays quiet once the kitchen is open', () => {
-    const opened = frames(withKitchenOpen(breakAt(3)), 2)
-    expect(isCalling(opened)).toBe(false)
-    expect(callDrawn(opened)).toBe(false)
-  })
+  it.effect('stays quiet once the kitchen is open', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(withKitchenOpen(breakAt(3))),
+      ...ticks(2, FRAME_MS),
+      Story.model(opened => {
+        expect(isCalling(opened)).toBe(false)
+        expect(callDrawn(opened)).toBe(false)
+      }),
+    ),
+  )
 
-  test('stops when the boards open mid-holler', () => {
-    const called = frames(breakAt(3), 2)
-    const opened = frames(withKitchenOpen(called), 2)
-    expect(callDrawn(opened)).toBe(false)
-  })
+  it.effect('stops when the boards open mid-holler', () =>
+    Effect.gen(function* () {
+      const called = yield* Story.story(
+        APPLICATION,
+        Story.given(breakAt(3)),
+        ...ticks(2, FRAME_MS),
+      )
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(withKitchenOpen(called)),
+        ...ticks(2, FRAME_MS),
+        Story.model(opened => {
+          expect(callDrawn(opened)).toBe(false)
+        }),
+      )
+    }),
+  )
 })
 
 describe('the rooms counter', () => {

@@ -1,7 +1,8 @@
-import { Array, Option, Result } from 'effect'
-import { given, model, story } from 'foldkit/story'
+import { Array, Effect, Option, Result } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
@@ -10,13 +11,14 @@ import {
   type Model,
   PrizeFlight,
 } from '../../../app/model'
-import { update } from '../../../app/pureApp'
-import { PlaySound } from '../../../app/update/sound'
+import type { SoundEffect } from '../../../audio/audio'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { atFridge, fridgeSeededFor } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   FIXED_FRAME,
   HOLD_TICKS,
+  checkPendingSounds,
   press,
   release,
   ticks,
@@ -47,35 +49,9 @@ const audibleAtFridge = (balance: number): Model =>
     musicSetting: () => 'Off',
   })
 
-// NOTE: replays Messages through `update` and keeps, for each Message, the
-// sounds its Commands ask for, so a test can say on which frame a sound
-// plays.
-type Step = Readonly<{ model: Model; sounds: ReadonlyArray<unknown> }>
-
-const replay = (
-  start: Model,
-  messages: ReadonlyArray<Message>,
-): ReadonlyArray<Step> =>
-  Array.reduce(messages, Array.empty<Step>(), (steps, next) => {
-    const current = Option.match(Array.last(steps), {
-      onNone: () => start,
-      onSome: step => step.model,
-    })
-    const result = update(current, next)
-    return [
-      ...steps,
-      {
-        model: result.model,
-        sounds: Array.map(
-          Array.filter(
-            result.commands ?? [],
-            command => command.name === PlaySound.name,
-          ),
-          command => command.args?.['sound'],
-        ),
-      },
-    ]
-  })
+// NOTE: the Model after each Message of a pull and the sounds its Commands
+// ask for, so a test can say on which frame a sound plays.
+type Step = Readonly<{ model: Model; sounds: ReadonlyArray<SoundEffect> }>
 
 const pullMessages: ReadonlyArray<Message> = [
   Message.PressedKey({ code: 'Enter' }),
@@ -86,6 +62,24 @@ const pullMessages: ReadonlyArray<Message> = [
     () => FIXED_FRAME,
   ),
 ]
+
+// NOTE: a Story of the pull from `start` that keeps each Message's Step,
+// playing its sounds before the next. The Steps are a timeline no one
+// Model holds, so each is kept as it goes by.
+const pull = (start: Model) =>
+  Effect.gen(function* () {
+    const steps: Array<Step> = []
+    const keep = (simulation: Story.StorySimulation<Model, Message>) =>
+      checkPendingSounds(sounds => {
+        steps.push({ model: simulation.model, sounds })
+      })(simulation)
+    yield* Story.story(
+      APPLICATION,
+      Story.given(start),
+      ...Array.flatMap(pullMessages, next => [Story.message(next), keep]),
+    )
+    return steps
+  })
 
 const firstStepWith = (
   steps: ReadonlyArray<Step>,
@@ -152,40 +146,38 @@ describe('the spin', () => {
 })
 
 describe('the sting', () => {
-  test.each([
+  it.effect.each([
     ['Freeze', 'PrizeJackpot'],
     ['Dud', 'PrizeWomp'],
     ['Sandwich', 'PrizeChomp'],
     ['Cooker', 'PowerUp'],
   ] as const)(
     'a pull of %s spins at once and plays %s only when it lands',
-    (prize, sting) => {
-      const steps = replay(
-        fridgeSeededFor(audibleAtFridge(200), prize),
-        pullMessages,
-      )
-      const opened = openedAt(steps)
-      expect(firstStepWith(steps, 'FridgeSpin')).toEqual(Option.some(opened))
-      const landed = Option.getOrThrow(firstStepWith(steps, sting))
-      const landedMs = (landed - opened) * FRAME_MS
-      expect(landedMs).toBeGreaterThanOrEqual(REVEAL_RULES.landMs - FRAME_MS)
-      expect(landedMs).toBeLessThanOrEqual(REVEAL_RULES.landMs + FRAME_MS + 1)
-      expect(
-        Array.filter(steps, step => Array.contains(step.sounds, sting)).length,
-      ).toBe(1)
-    },
+    ([prize, sting]) =>
+      Effect.gen(function* () {
+        const steps = yield* pull(fridgeSeededFor(audibleAtFridge(200), prize))
+        const opened = openedAt(steps)
+        expect(firstStepWith(steps, 'FridgeSpin')).toEqual(Option.some(opened))
+        const landed = Option.getOrThrow(firstStepWith(steps, sting))
+        const landedMs = (landed - opened) * FRAME_MS
+        expect(landedMs).toBeGreaterThanOrEqual(REVEAL_RULES.landMs - FRAME_MS)
+        expect(landedMs).toBeLessThanOrEqual(REVEAL_RULES.landMs + FRAME_MS + 1)
+        expect(
+          Array.filter(steps, step => Array.contains(step.sounds, sting))
+            .length,
+        ).toBe(1)
+      }),
   )
 
-  test('the door shows the pull from the moment it opens', () => {
-    const steps = replay(
-      fridgeSeededFor(audibleAtFridge(200), 'Pan'),
-      pullMessages,
-    )
-    const opened = Option.getOrThrow(Array.get(steps, openedAt(steps)))
-    const reveal = Option.getOrThrow(doorRevealOf(opened.model.fridge.door))
-    expect(reveal.prize).toBe('Pan')
-    expect(reveal.elapsedMs).toBeLessThan(REVEAL_RULES.landMs / 4)
-  })
+  it.effect('the door shows the pull from the moment it opens', () =>
+    Effect.gen(function* () {
+      const steps = yield* pull(fridgeSeededFor(audibleAtFridge(200), 'Pan'))
+      const opened = Option.getOrThrow(Array.get(steps, openedAt(steps)))
+      const reveal = Option.getOrThrow(doorRevealOf(opened.model.fridge.door))
+      expect(reveal.prize).toBe('Pan')
+      expect(reveal.elapsedMs).toBeLessThan(REVEAL_RULES.landMs / 4)
+    }),
+  )
 })
 
 describe('the take', () => {
@@ -203,47 +195,49 @@ describe('the take', () => {
         }),
     })
 
-  test('a taken weapon flies into its slot, then the slot pulses and settles', () => {
-    story(
-      update,
-      given(offering('Freeze', 0)),
-      model(current => {
-        expect(current.prizeFlight).toEqual(PrizeFlight.Grounded())
-      }),
-      press('Enter'),
-      ...ticks(HOLD_TICKS, FRAME_MS),
-      model(current => {
-        expect(FridgeDoor.isAnyOf(['Offering'])(current.fridge.door)).toBe(
-          false,
-        )
-        expect(current.prizeFlight).toMatchObject({
-          _tag: 'Flying',
-          prize: 'Freeze',
-        })
-      }),
-      release('Enter'),
-      ...ticks(
-        Math.ceil((REVEAL_RULES.flightMs + REVEAL_RULES.pulseMs) / FRAME_MS) +
-          1,
-        FRAME_MS,
+  it.effect(
+    'a taken weapon flies into its slot, then the slot pulses and settles',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(offering('Freeze', 0)),
+        Story.model(current => {
+          expect(current.prizeFlight).toEqual(PrizeFlight.Grounded())
+        }),
+        press('Enter'),
+        ...ticks(HOLD_TICKS, FRAME_MS),
+        Story.model(current => {
+          expect(FridgeDoor.isAnyOf(['Offering'])(current.fridge.door)).toBe(
+            false,
+          )
+          expect(current.prizeFlight).toMatchObject({
+            _tag: 'Flying',
+            prize: 'Freeze',
+          })
+        }),
+        release('Enter'),
+        ...ticks(
+          Math.ceil((REVEAL_RULES.flightMs + REVEAL_RULES.pulseMs) / FRAME_MS) +
+            1,
+          FRAME_MS,
+        ),
+        Story.model(current => {
+          expect(current.prizeFlight).toEqual(PrizeFlight.Grounded())
+        }),
       ),
-      model(current => {
-        expect(current.prizeFlight).toEqual(PrizeFlight.Grounded())
-      }),
-    )
-  })
+  )
 
-  test('a prize left in the fridge flies nowhere', () => {
-    story(
-      update,
-      given(offering('Pan', 0)),
+  it.effect('a prize left in the fridge flies nowhere', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(offering('Pan', 0)),
       ...ticks(Math.ceil(5000 / FRAME_MS) + 2, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.fridge.door._tag).not.toBe('Offering')
         expect(current.prizeFlight).toEqual(PrizeFlight.Grounded())
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('the gun a prize would replace', () => {

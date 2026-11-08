@@ -1,7 +1,8 @@
-import { Array } from 'effect'
-import { Subscription, given, scene, tap } from 'foldkit/scene'
+import { Array, Effect } from 'effect'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { FIXED_STEP_MS } from '../../shared/constants'
 import {
@@ -10,9 +11,9 @@ import {
   inPortrait,
 } from '../../test/model.fixture'
 import {
+  APPLICATION,
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
-  ROOT,
   SCENE_SUBSCRIPTIONS,
   measureSurfaceAs,
   nodesOf,
@@ -62,24 +63,22 @@ const reusedRoots = (
 const describeNode = (node: VNodeLike): string => node.sel ?? '(text)'
 
 // NOTE: renders the model, then one more frame, and hands back the reused
-// VNodes' keys and the selectors of any reused VNode without one.
-const reuseAcrossAFrame = (
+// VNodes' keys and the selectors of any reused VNode without one. The two
+// frames' views are kept from the Scene's taps: Scene compares no two views.
+const reuseAcrossAFrame = Effect.fnUntraced(function* (
   model: Model,
   surface: typeof PHONE_LANDSCAPE,
-): Readonly<{
-  keys: ReadonlyArray<string>
-  unkeyed: ReadonlyArray<string>
-}> => {
+) {
   const frames: Array<VNodeLike> = []
-  const keep = tap<Model, Message>(({ html }) => {
+  const keep = Scene.tap<Model, Message>(({ html }) => {
     frames.push(html)
   })
-  scene(
-    ROOT,
-    given(model),
+  yield* Scene.scene(
+    APPLICATION,
+    Scene.given(model),
     measureSurfaceAs(surface),
     keep,
-    Subscription.emit(
+    Scene.Subscription.emit(
       SCENE_SUBSCRIPTIONS.frame,
       Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
     ),
@@ -99,7 +98,7 @@ const reuseAcrossAFrame = (
       describeNode,
     ),
   }
-}
+})
 
 const fighting: Model = modifyFields(asVeteran(initialModel), {
   lastDevice: () => 'Touch',
@@ -108,30 +107,48 @@ const fighting: Model = modifyFields(asVeteran(initialModel), {
 })
 
 describe('cached VNodes', () => {
-  test('on the home menu, every VNode a frame reuses is keyed', () => {
-    const { keys, unkeyed } = reuseAcrossAFrame(homeAfterRead, PHONE_LANDSCAPE)
-    expect(unkeyed).toEqual([])
-    expect(keys).toEqual(
-      expect.arrayContaining(['room-layer', 'decal-layer', 'sprite-warm-up']),
-    )
-  })
+  it.effect('on the home menu, every VNode a frame reuses is keyed', () =>
+    Effect.gen(function* () {
+      const { keys, unkeyed } = yield* reuseAcrossAFrame(
+        homeAfterRead,
+        PHONE_LANDSCAPE,
+      )
+      expect(unkeyed).toEqual([])
+      expect(keys).toEqual(
+        expect.arrayContaining(['room-layer', 'decal-layer', 'sprite-warm-up']),
+      )
+    }),
+  )
 
-  test('in a landscape fight, every VNode a frame reuses is keyed', () => {
-    const { keys, unkeyed } = reuseAcrossAFrame(fighting, PHONE_LANDSCAPE)
-    expect(unkeyed).toEqual([])
-    expect(keys).toEqual(
-      expect.arrayContaining(['room-layer', 'sprite-warm-up', 'shop']),
-    )
-  })
+  it.effect('in a landscape fight, every VNode a frame reuses is keyed', () =>
+    Effect.gen(function* () {
+      const { keys, unkeyed } = yield* reuseAcrossAFrame(
+        fighting,
+        PHONE_LANDSCAPE,
+      )
+      expect(unkeyed).toEqual([])
+      expect(keys).toEqual(
+        expect.arrayContaining(['room-layer', 'sprite-warm-up', 'shop']),
+      )
+    }),
+  )
 
-  test('in a portrait fight, the thumb area and every other reused VNode is keyed', () => {
-    const { keys, unkeyed } = reuseAcrossAFrame(
-      inPortrait(fighting),
-      PHONE_PORTRAIT,
-    )
-    expect(unkeyed).toEqual([])
-    expect(keys).toEqual(
-      expect.arrayContaining(['room-layer', 'sprite-warm-up', 'thumb-area']),
-    )
-  })
+  it.effect(
+    'in a portrait fight, the thumb area and every other reused VNode is keyed',
+    () =>
+      Effect.gen(function* () {
+        const { keys, unkeyed } = yield* reuseAcrossAFrame(
+          inPortrait(fighting),
+          PHONE_PORTRAIT,
+        )
+        expect(unkeyed).toEqual([])
+        expect(keys).toEqual(
+          expect.arrayContaining([
+            'room-layer',
+            'sprite-warm-up',
+            'thumb-area',
+          ]),
+        )
+      }),
+  )
 })

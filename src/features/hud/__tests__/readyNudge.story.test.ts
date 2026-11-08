@@ -1,17 +1,17 @@
 import { Array } from 'effect'
-import { given, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Model, Phase, Tour } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import {
   crewInWave,
   home,
   onHard,
   pastTimedBreaks,
 } from '../../../test/model.fixture'
-import { press, tap, tick, ticks } from '../../../test/testing'
+import { APPLICATION, press, tap, tick, ticks } from '../../../test/testing'
 import { modifyFocus } from '../../../world/party/party'
 import { withWorld } from '../../../world/schema/world'
 import { idleIntent } from '../../../world/schema/worldSchema'
@@ -80,20 +80,22 @@ describe('a break with no clock', () => {
     expect(both.phase._tag).toBe('Wave')
   })
 
-  test('a solo break on Normal waits for Enter, however long the player takes', () => {
-    story(
-      update,
-      given(soloBreak()),
-      ...ticks(400, 100),
-      model(current => {
-        expect(current.phase._tag).toBe('Preparation')
-      }),
-      tap('Enter'),
-      model(current => {
-        expect(current.phase._tag).toBe('Wave')
-      }),
-    )
-  })
+  it.effect(
+    'a solo break on Normal waits for Enter, however long the player takes',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(soloBreak()),
+        ...ticks(400, 100),
+        Story.model(current => {
+          expect(current.phase._tag).toBe('Preparation')
+        }),
+        tap('Enter'),
+        Story.model(current => {
+          expect(current.phase._tag).toBe('Wave')
+        }),
+      ),
+  )
 
   test('Hard keeps its clock', () => {
     const hard = withWorld(onHard(pastTimedBreaks(home)), world =>
@@ -132,25 +134,27 @@ describe('the nudge', () => {
     expect(isWaitingOnYou(idleFor(hard, SOLO_NUDGE_MS * 2))).toBe(false)
   })
 
-  test('the nudge runs through frames, and Enter ends the break and the nudge', () => {
-    story(
-      update,
-      given(soloBreak()),
-      ...ticks(Math.ceil(SOLO_NUDGE_MS / 50) + 4, 50),
-      model(current => {
-        expect(isWaitingOnYou(current)).toBe(true)
-      }),
-      press('Enter'),
-      model(current => {
-        expect(current.phase._tag).toBe('Wave')
-        expect(isWaitingOnYou(current)).toBe(false)
-      }),
-      tick(50),
-      model(current => {
-        expect(current.breakIdleMs).toBe(0)
-      }),
-    )
-  })
+  it.effect(
+    'the nudge runs through frames, and Enter ends the break and the nudge',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(soloBreak()),
+        ...ticks(Math.ceil(SOLO_NUDGE_MS / 50) + 4, 50),
+        Story.model(current => {
+          expect(isWaitingOnYou(current)).toBe(true)
+        }),
+        press('Enter'),
+        Story.model(current => {
+          expect(current.phase._tag).toBe('Wave')
+          expect(isWaitingOnYou(current)).toBe(false)
+        }),
+        tick(50),
+        Story.model(current => {
+          expect(current.breakIdleMs).toBe(0)
+        }),
+      ),
+  )
 
   test('in a crew, the last one not READY is nudged soon, and a pressed READY clears it', () => {
     const waiting = crewReadied(crewBreak(), 1)

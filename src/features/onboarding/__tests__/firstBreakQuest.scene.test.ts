@@ -1,11 +1,12 @@
-import { click, expect, given, role, scene } from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test } from 'vitest'
+
+import { describe, it } from '@effect/vitest'
 
 import { BreakClock, type Model, Phase, Tour } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { PREPARATION_MS } from '../../../shared/constants'
-import { ROOT, measureSurface } from '../../../test/testing'
+import { APPLICATION, measureSurface } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 
 const questBreak: Model = modifyFields(asVeteran(initialModel), {
@@ -20,69 +21,79 @@ const questBreak: Model = modifyFields(asVeteran(initialModel), {
   firstBreakQuest: () => Tour.Running(),
 })
 
-const tracker = role('region', { name: 'First break' })
+const tracker = Scene.role('region', { name: 'First break' })
 
 describe('the first break tracker', () => {
-  test('shows the step at hand and skips on a tap', () => {
-    scene(
-      ROOT,
-      given(questBreak),
+  it.effect('shows the step at hand and skips on a tap', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(questBreak),
       measureSurface,
-      expect(tracker).toExist(),
-      expect(
-        role('listitem', { name: "Walk to Rattles' stall, now" }),
+      Scene.expect(tracker).toExist(),
+      Scene.expect(
+        Scene.role('listitem', { name: "Walk to Rattles' stall, now" }),
       ).toExist(),
-      expect(role('listitem', { name: 'Buy a Plank Pile' })).toExist(),
-      click(role('button', { name: 'Skip the first break tour' })),
-      expect(tracker).toBeAbsent(),
-    )
-  })
+      Scene.expect(
+        Scene.role('listitem', { name: 'Buy a Plank Pile' }),
+      ).toExist(),
+      Scene.click(Scene.role('button', { name: 'Skip the first break tour' })),
+      Scene.expect(tracker).toBeAbsent(),
+    ),
+  )
 
-  test('done, every step is ticked and the skip button goes', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('done, every step is ticked and the skip button goes', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFields(questBreak, {
           firstBreakQuest: () => Tour.Done({ ageMs: 0 }),
         }),
       ),
       measureSurface,
-      expect(role('listitem', { name: 'Put it in a doorway, done' })).toExist(),
-      expect(
-        role('button', { name: 'Skip the first break tour' }),
+      Scene.expect(
+        Scene.role('listitem', { name: 'Put it in a doorway, done' }),
+      ).toExist(),
+      Scene.expect(
+        Scene.role('button', { name: 'Skip the first break tour' }),
       ).toBeAbsent(),
-    )
-  })
+    ),
+  )
 })
 
 describe('the kitchen tour tracker', () => {
-  test('shows the held clock and the boards step, and skips on a tap', () => {
-    scene(
-      ROOT,
-      given(
-        modifyFields(asVeteran(initialModel), {
-          phase: () =>
-            Phase.Preparation({
-              wave: 3,
-              remainingMs: PREPARATION_MS,
-              durationMs: PREPARATION_MS,
-              spawns: [],
-            }),
-          kitchenTour: () => Tour.Running(),
-        }),
+  it.effect(
+    'shows the held clock and the boards step, and skips on a tap',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(
+          modifyFields(asVeteran(initialModel), {
+            phase: () =>
+              Phase.Preparation({
+                wave: 3,
+                remainingMs: PREPARATION_MS,
+                durationMs: PREPARATION_MS,
+                spawns: [],
+              }),
+            kitchenTour: () => Tour.Running(),
+          }),
+        ),
+        measureSurface,
+        Scene.expect(Scene.role('region', { name: 'Kitchen tour' })).toExist(),
+        Scene.expect(Scene.role('region', { name: 'Kitchen tour' })).toHaveAttr(
+          'data-side',
+          'Right',
+        ),
+        Scene.expect(
+          Scene.role('img', { name: 'The break clock waits' }),
+        ).toExist(),
+        Scene.expect(
+          Scene.role('listitem', { name: 'Open the kitchen, free, now' }),
+        ).toExist(),
+        Scene.click(Scene.role('button', { name: 'Skip the kitchen tour' })),
+        Scene.expect(
+          Scene.role('region', { name: 'Kitchen tour' }),
+        ).toBeAbsent(),
       ),
-      measureSurface,
-      expect(role('region', { name: 'Kitchen tour' })).toExist(),
-      expect(role('region', { name: 'Kitchen tour' })).toHaveAttr(
-        'data-side',
-        'Right',
-      ),
-      expect(role('img', { name: 'The break clock waits' })).toExist(),
-      expect(
-        role('listitem', { name: 'Open the kitchen, free, now' }),
-      ).toExist(),
-      click(role('button', { name: 'Skip the kitchen tour' })),
-      expect(role('region', { name: 'Kitchen tour' })).toBeAbsent(),
-    )
-  })
+  )
 })

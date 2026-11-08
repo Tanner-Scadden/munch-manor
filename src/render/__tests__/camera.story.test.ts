@@ -1,15 +1,16 @@
 import { Array, Option, String } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { deriveIntent } from '../../input/input'
 import type { Input } from '../../input/inputSchema'
 import { VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
-import { WIDE_SURFACE } from '../../test/testing'
+import { APPLICATION, WIDE_SURFACE } from '../../test/testing'
 import { PARLOUR, ROOM_MAP, makeLevel } from '../../world/level/arena'
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { cameraFor, cameraOf, viewToWorld, worldToView } from '../camera'
@@ -124,16 +125,16 @@ describe('camera', () => {
     expect(viewToWorld(camera, leftOfPlayer)).toEqual({ x: 340, y: 90 })
   })
 
-  test('in the arena, the mouse aims where it points on the screen', () => {
-    story(
-      update,
-      given(
+  it.effect('in the arena, the mouse aims where it points on the screen', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFocus(playingModel, {
           player: player => ({ ...player, x: 100, y: 90 }),
         }),
       ),
-      message(Message.MovedMouse({ clientX: 1000, clientY: 360 })),
-      model(current => {
+      Story.message(Message.MovedMouse({ clientX: 1000, clientY: 360 })),
+      Story.model(current => {
         expect(cameraOf(current)).toMatchObject({ x: 0, y: 0 })
         expect(current.input.maybeMouseInView).toEqual(
           Option.some({ x: 250, y: 90 }),
@@ -142,6 +143,6 @@ describe('camera', () => {
           Option.some({ x: 1, y: 0 }),
         )
       }),
-    )
-  })
+    ),
+  )
 })

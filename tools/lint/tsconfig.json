@@ -4,7 +4,10 @@
     "lib": ["ES2022"],
     "types": ["bun"],
     // NOTE: Bun's types come from tools/audit's install, as tools/video's do.
-    "typeRoots": ["../audit/node_modules/@types"]
+    "typeRoots": ["../audit/node_modules/@types"],
+    // NOTE: oxlint loads munchPlugin.ts in Node, which strips the types but
+    // resolves an import only by its full file name (`./testRules.ts`).
+    "allowImportingTsExtensions": true
   },
   "include": ["./**/*.ts"]
 }

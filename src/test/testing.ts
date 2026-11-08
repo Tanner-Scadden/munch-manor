@@ -3,7 +3,15 @@
 // Models live in `model.fixture.ts`. `tools/lint/duplicateHelpers.ts`
 // fails a helper copied between test files: add it here instead.
 
-import { Array, Function, Match, Option, Schema, Struct } from 'effect'
+import {
+  Array,
+  type Effect,
+  Function,
+  Match,
+  Option,
+  Schema,
+  Struct,
+} from 'effect'
 import { Canvas, Scene, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -176,8 +184,9 @@ export const showDialog = () =>
 // emit a Message from one of them (Scene.Subscription.emit).
 export const SCENE_SUBSCRIPTIONS = subscriptions
 
-// NOTE: the older plain Scene's root, `scene(ROOT, ...)`, until the last
-// Scene on it is Block-aware (`Scene.scene(APPLICATION, ...)`).
+// NOTE: the plain Scene's root, `scene(ROOT, ...)`, for a Scene under
+// src/world/ or one that reaches no child (AGENTS.md "Where a plain Story
+// may stay"); the rest are Block-aware (`Scene.scene(APPLICATION, ...)`).
 export const ROOT = { update, view, subscriptions: SCENE_SUBSCRIPTIONS }
 
 // NOTE: the root as a Block-aware Story and Scene take it:
@@ -400,11 +409,6 @@ export const ticksFor: {
   (ms: number, frameMs: number): Array.NonEmptyArray<TickStep> =>
     ticks(Math.round(ms / frameMs), frameMs),
 )
-
-// NOTE: the Model one fixed-step frame later, for a test that plays frames
-// by hand and looks at each.
-export const nextFrame = (current: Model): Model =>
-  update(current, Message.TickedFrame({ deltaTime: FIXED_STEP_MS })).model
 
 // NOTE: the Model a Message leaves, for a test that starts from a Command's
 // result, which no Subscription emits.
@@ -901,3 +905,53 @@ export const randoms = (seed: number) => {
     return state / 4294967296
   }
 }
+
+// STORIES THAT RETURN A MODEL
+
+// NOTE: the Model root Messages leave, played through a Block-aware Story,
+// for a test that reads the outcome or a Scene that starts from it (the
+// surface measured again, which only a Mount reports). The Story fails on
+// a Command they leave pending.
+export const modelAfterMessages: {
+  (messages: ReadonlyArray<Message>): (model: Model) => Effect.Effect<Model>
+  (model: Model, messages: ReadonlyArray<Message>): Effect.Effect<Model>
+} = Function.dual(2, (model: Model, messages: ReadonlyArray<Message>) =>
+  Story.story(
+    APPLICATION,
+    Story.given(model),
+    ...Array.map(messages, message => Story.message(message)),
+  ),
+)
+
+// RUNS AND SOUNDS IN STORIES
+
+// NOTE: a run started from home by PLAY and START, as a Story: its first
+// Model, for a test that starts from there.
+export const startedRun = (model: Model) =>
+  Story.story(APPLICATION, Story.given(model), startRunFromHome)
+
+// NOTE: a step that hands the sounds the pending Commands would play to a
+// check, then plays them, for a frame whose sounds' variations hang on
+// where they happen, so no exact Command can be named.
+export const checkPendingSounds =
+  (check: (sounds: ReadonlyArray<SoundEffect>) => void) =>
+  <StoryModel, StoryMessage, OutMessage>(
+    simulation: Story.StorySimulation<StoryModel, StoryMessage, OutMessage>,
+  ): Story.StorySimulation<StoryModel, StoryMessage, OutMessage> => {
+    const cues = Array.getSomes(
+      Array.map(simulation.commands, command =>
+        Story.Command.argsOf(PlaySound)(command),
+      ),
+    )
+    check(Array.map(cues, ({ sound }) => sound))
+    return Array.reduce(cues, simulation, (current, cue) =>
+      Story.Command.resolve(
+        PlaySound(cue),
+        Message.CompletedPlaySound({ sound: cue.sound, outcome: 'Played' }),
+      )(current),
+    )
+  }
+
+// NOTE: plays whatever sounds the last frame left pending, so a Story of
+// frames ends with every Command resolved.
+export const playPendingSounds = checkPendingSounds(Function.constVoid)

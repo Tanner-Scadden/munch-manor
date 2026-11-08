@@ -1,22 +1,11 @@
-import { Option, String } from 'effect'
-import {
-  Command,
-  all,
-  expect,
-  expectAll,
-  given,
-  inside,
-  nth,
-  role,
-  scene,
-  selector,
-} from 'foldkit/scene'
+import { Effect, Option, String } from 'effect'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test, expect as vitestExpect } from 'vitest'
+
+import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
-import { update, view } from '../../../app/pureApp'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import {
   fighting,
@@ -25,9 +14,9 @@ import {
   withNewerBuild,
 } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
-  ROOT,
   emitPressedKey,
   measureSurface,
   measureSurfaceAs,
@@ -40,8 +29,8 @@ import { ClickSupportLink } from '../../home/update'
 
 const TEST_LINK = 'https://buy.stripe.com/test_coffee'
 
-const coffeeLink = role('link', { name: /buy the shopkeeper a coffee/i })
-const homeCoffee = role('link', { name: /^Buy Rattles a coffee/ })
+const coffeeLink = Scene.role('link', { name: /buy the shopkeeper a coffee/i })
+const homeCoffee = Scene.role('link', { name: /^Buy Rattles a coffee/ })
 
 const withLink = (model: Model): Model =>
   modifyFields(model, { maybeSupportUrl: () => Option.some(TEST_LINK) })
@@ -67,42 +56,43 @@ const NEVER_ON: ReadonlyArray<readonly [string, Model]> = [
 ]
 
 describe('the coffee button', () => {
-  test.each(SHOWN_ON)(
+  it.effect.each(SHOWN_ON)(
     'is not drawn on %s while the link is empty',
-    (_name, model) => {
-      scene(
-        { update, view },
-        given(withoutLink(model)),
+    ([_name, model]) =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(withoutLink(model)),
         measureSurface,
         ...settleEndShareOf(model),
-        expect(coffeeLink).toBeAbsent(),
-      )
-    },
+        Scene.expect(coffeeLink).toBeAbsent(),
+      ),
   )
 
-  test.each(SHOWN_ON)('opens the link in a new tab from %s', (_name, model) => {
-    scene(
-      { update, view },
-      given(withLink(model)),
-      measureSurface,
-      ...settleEndShareOf(model),
-      expect(coffeeLink).toExist(),
-      expect(coffeeLink).toHaveAttr('href', TEST_LINK),
-      expect(coffeeLink).toHaveAttr('target', '_blank'),
-      expect(coffeeLink).toHaveAttr('rel', 'noopener noreferrer'),
-    )
-  })
+  it.effect.each(SHOWN_ON)(
+    'opens the link in a new tab from %s',
+    ([_name, model]) =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(withLink(model)),
+        measureSurface,
+        ...settleEndShareOf(model),
+        Scene.expect(coffeeLink).toExist(),
+        Scene.expect(coffeeLink).toHaveAttr('href', TEST_LINK),
+        Scene.expect(coffeeLink).toHaveAttr('target', '_blank'),
+        Scene.expect(coffeeLink).toHaveAttr('rel', 'noopener noreferrer'),
+      ),
+  )
 
-  test.each(NEVER_ON)('is never drawn on %s', (_name, model) => {
-    scene(
-      { update, view },
-      given(model),
+  it.effect.each(NEVER_ON)('is never drawn on %s', ([_name, model]) =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(model),
       measureSurface,
       ...settleEndShareOf(model),
-      expect(coffeeLink).toBeAbsent(),
-      expect(homeCoffee).toBeAbsent(),
-    )
-  })
+      Scene.expect(coffeeLink).toBeAbsent(),
+      Scene.expect(homeCoffee).toBeAbsent(),
+    ),
+  )
 })
 
 // THE HOME CORNER
@@ -143,67 +133,76 @@ const LAYOUTS = [
 ] as const
 
 describe('the coffee in the home corner', () => {
-  test('is a real link to the tip jar that opens in a new tab, named for Rattles', () => {
-    scene(
-      ROOT,
-      given(withLink(home)),
-      measureSurface,
-      expect(homeCoffee).toExist(),
-      expect(homeCoffee).toHaveAttr('href', TEST_LINK),
-      expect(homeCoffee).toHaveAttr('target', '_blank'),
-      expect(homeCoffee).toHaveAttr('rel', 'noopener noreferrer'),
-      expect(homeCoffee).toHaveAttr('title', 'Buy Rattles a coffee'),
-      expect(selector('a.home-support')).toExist(),
-    )
-  })
+  it.effect(
+    'is a real link to the tip jar that opens in a new tab, named for Rattles',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(withLink(home)),
+        measureSurface,
+        Scene.expect(homeCoffee).toExist(),
+        Scene.expect(homeCoffee).toHaveAttr('href', TEST_LINK),
+        Scene.expect(homeCoffee).toHaveAttr('target', '_blank'),
+        Scene.expect(homeCoffee).toHaveAttr('rel', 'noopener noreferrer'),
+        Scene.expect(homeCoffee).toHaveAttr('title', 'Buy Rattles a coffee'),
+        Scene.expect(Scene.selector('a.home-support')).toExist(),
+      ),
+  )
 
-  test('is absent from the home menu while the link is empty', () => {
-    scene(
-      ROOT,
-      given(withoutLink(home)),
+  it.effect('is absent from the home menu while the link is empty', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(withoutLink(home)),
       measureSurface,
-      expect(selector('.home-settings')).toExist(),
-      expect(homeCoffee).toBeAbsent(),
-      expect(selector('.home-support')).toBeAbsent(),
-    )
-  })
+      Scene.expect(Scene.selector('.home-settings')).toExist(),
+      Scene.expect(homeCoffee).toBeAbsent(),
+      Scene.expect(Scene.selector('.home-support')).toBeAbsent(),
+    ),
+  )
 
-  test('is not drawn in a run, even with the link', () => {
-    scene(
-      ROOT,
-      given(withLink(fighting)),
+  it.effect('is not drawn in a run, even with the link', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(withLink(fighting)),
       measureSurface,
-      expect(homeCoffee).toBeAbsent(),
-    )
-  })
+      Scene.expect(homeCoffee).toBeAbsent(),
+    ),
+  )
 
-  test('is no TIP JAR card in the hand', () => {
-    scene(
-      ROOT,
-      given(withLink(home)),
+  it.effect('is no TIP JAR card in the hand', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(withLink(home)),
       measureSurface,
       ...openHandInScene(),
-      expect(role('link', { name: /tip jar/i })).toBeAbsent(),
-      expectAll(all.selector('.hand-card[data-card="Support"]')).toHaveCount(0),
-    )
-  })
+      Scene.expect(Scene.role('link', { name: /tip jar/i })).toBeAbsent(),
+      Scene.expectAll(
+        Scene.all.selector('.hand-card[data-card="Support"]'),
+      ).toHaveCount(0),
+    ),
+  )
 
-  test('B clicks the coffee link, and does nothing without a link', () => {
-    scene(
-      ROOT,
-      given(withLink(home)),
-      measureSurface,
-      emitPressedKey('KeyB'),
-      Command.resolve(ClickSupportLink(), Message.CompletedClickSupportLink()),
-    )
-    scene(
-      ROOT,
-      given(withoutLink(home)),
-      measureSurface,
-      emitPressedKey('KeyB'),
-      Command.expectNone(),
-    )
-  })
+  it.effect('B clicks the coffee link, and does nothing without a link', () =>
+    Effect.gen(function* () {
+      yield* Scene.scene(
+        APPLICATION,
+        Scene.given(withLink(home)),
+        measureSurface,
+        emitPressedKey('KeyB'),
+        Scene.Command.resolve(
+          ClickSupportLink(),
+          Message.CompletedClickSupportLink(),
+        ),
+      )
+      yield* Scene.scene(
+        APPLICATION,
+        Scene.given(withoutLink(home)),
+        measureSurface,
+        emitPressedKey('KeyB'),
+        Scene.Command.expectNone(),
+      )
+    }),
+  )
 
   // NOTE: Scene's page has no layout engine, so the sizes are read from
   // menu.css and the places from the DOM: every corner control is a
@@ -229,38 +228,41 @@ describe('the coffee in the home corner', () => {
     ).toBeGreaterThanOrEqual(4)
   })
 
-  test.each(LAYOUTS)(
+  it.effect.each(LAYOUTS)(
     'in %s the coffee stands just left of the gear, apart from the gift and the install tile',
-    (_name, model, surface, layout) => {
-      scene(
-        ROOT,
-        given(model),
+    ([_name, model, surface, layout]) =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(model),
         measureSurfaceAs(surface),
-        expect(selector(`[data-layout='${layout}']`)).toExist(),
-        inside(
-          nth(all.selector('.home-corner .home-corner-row'), 0),
-          expectAll(all.selector('.home-corner-button')).toHaveCount(3),
-          expect(nth(all.selector('.home-corner-button'), 0)).toHaveClass(
-            'home-fullscreen',
-          ),
-          expect(nth(all.selector('.home-corner-button'), 1)).toHaveId(
-            'home-support',
-          ),
-          expect(nth(all.selector('.home-corner-button'), 2)).toHaveId(
-            'home-settings',
-          ),
+        Scene.expect(Scene.selector(`[data-layout='${layout}']`)).toExist(),
+        Scene.inside(
+          Scene.nth(Scene.all.selector('.home-corner .home-corner-row'), 0),
+          Scene.expectAll(
+            Scene.all.selector('.home-corner-button'),
+          ).toHaveCount(3),
+          Scene.expect(
+            Scene.nth(Scene.all.selector('.home-corner-button'), 0),
+          ).toHaveClass('home-fullscreen'),
+          Scene.expect(
+            Scene.nth(Scene.all.selector('.home-corner-button'), 1),
+          ).toHaveId('home-support'),
+          Scene.expect(
+            Scene.nth(Scene.all.selector('.home-corner-button'), 2),
+          ).toHaveId('home-settings'),
         ),
-        inside(
-          nth(all.selector('.home-corner .home-corner-row'), 1),
-          expectAll(all.selector('.home-corner-button')).toHaveCount(2),
-          expect(nth(all.selector('.home-corner-button'), 0)).toHaveId(
-            'home-gift',
-          ),
-          expect(nth(all.selector('.home-corner-button'), 1)).toHaveId(
-            'home-install',
-          ),
+        Scene.inside(
+          Scene.nth(Scene.all.selector('.home-corner .home-corner-row'), 1),
+          Scene.expectAll(
+            Scene.all.selector('.home-corner-button'),
+          ).toHaveCount(2),
+          Scene.expect(
+            Scene.nth(Scene.all.selector('.home-corner-button'), 0),
+          ).toHaveId('home-gift'),
+          Scene.expect(
+            Scene.nth(Scene.all.selector('.home-corner-button'), 1),
+          ).toHaveId('home-install'),
         ),
-      )
-    },
+      ),
   )
 })

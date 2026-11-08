@@ -1,34 +1,16 @@
-import { Option } from 'effect'
-import {
-  Command,
-  all,
-  click,
-  expect,
-  expectAll,
-  first,
-  given,
-  role,
-  scene,
-  selector,
-} from 'foldkit/scene'
-import {
-  Command as StoryCommand,
-  message,
-  model,
-  story,
-  given as storyGiven,
-} from 'foldkit/story'
+import { Effect, Option } from 'effect'
+import { Scene, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect as expectValue, test } from 'vitest'
 
+import { describe, expect as expectValue, it } from '@effect/vitest'
 import type { LobbyMember } from '@munch/netcode'
 
 import { Message } from '../../../app/message'
 import { Lesson, type Model, Phase } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import {
-  ROOT,
+  APPLICATION,
   endButtons,
   measureSurface,
   shareMountEnded,
@@ -84,14 +66,14 @@ const onRoomCard = (
 
 const lost = onRoomCard(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)
 
-const runItBack = role('button', { name: /^Run it back/ })
-const lobbyButton = role('button', { name: /^Lobby/ })
-const leaveButton = role('button', { name: 'Leave the room' })
-const heads = all.selector('.end-button-head')
-const litHeads = all.selector('.end-button-head[data-in="In"]')
+const runItBack = Scene.role('button', { name: /^Run it back/ })
+const lobbyButton = Scene.role('button', { name: /^Lobby/ })
+const leaveButton = Scene.role('button', { name: 'Leave the room' })
+const heads = Scene.all.selector('.end-button-head')
+const litHeads = Scene.all.selector('.end-button-head[data-in="In"]')
 
 const readyUp = (ready: boolean) =>
-  StoryCommand.resolve(
+  Story.Command.resolve(
     ChangeLobby({
       change: LobbyChange.ChangedReady({ ready, pingMs: 0 }),
     }),
@@ -99,60 +81,67 @@ const readyUp = (ready: boolean) =>
   )
 
 describe("an online room's end card", () => {
-  test('shows the tally with no scrim, and LEAVE, RUN IT BACK, LOBBY, SHARE', () => {
-    scene(
-      ROOT,
-      given(lost),
-      measureSurface,
-      expect(selector('.coop[data-screen="RunCard"]')).toExist(),
-      expect(selector('.coop-lobby')).toBeAbsent(),
-      expect(selector('.coop-leave')).toBeAbsent(),
-      expectAll(endButtons).toHaveCount(4),
-      expect(first(endButtons)).toHaveText('LEAVEH'),
-      expect(runItBack).toHaveAttr('aria-keyshortcuts', 'Enter'),
-      expect(runItBack).toHaveAttr('aria-pressed', 'false'),
-      expect(runItBack).toHaveAccessibleName(
-        'Run it back with this crew: 1 of 2 in',
+  it.effect(
+    'shows the tally with no scrim, and LEAVE, RUN IT BACK, LOBBY, SHARE',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(lost),
+        measureSurface,
+        Scene.expect(Scene.selector('.coop[data-screen="RunCard"]')).toExist(),
+        Scene.expect(Scene.selector('.coop-lobby')).toBeAbsent(),
+        Scene.expect(Scene.selector('.coop-leave')).toBeAbsent(),
+        Scene.expectAll(endButtons).toHaveCount(4),
+        Scene.expect(Scene.first(endButtons)).toHaveText('LEAVEH'),
+        Scene.expect(runItBack).toHaveAttr('aria-keyshortcuts', 'Enter'),
+        Scene.expect(runItBack).toHaveAttr('aria-pressed', 'false'),
+        Scene.expect(runItBack).toHaveAccessibleName(
+          'Run it back with this crew: 1 of 2 in',
+        ),
+        Scene.expectAll(heads).toHaveCount(2),
+        Scene.expectAll(litHeads).toHaveCount(1),
+        Scene.expect(lobbyButton).toHaveAttr('aria-keyshortcuts', 'L'),
+        shareMountSettles('Cancelled'),
       ),
-      expectAll(heads).toHaveCount(2),
-      expectAll(litHeads).toHaveCount(1),
-      expect(lobbyButton).toHaveAttr('aria-keyshortcuts', 'L'),
-      shareMountSettles('Cancelled'),
-    )
-  })
+  )
 
-  test('RUN IT BACK readies this player in the room, and the heads light', () => {
-    scene(
-      ROOT,
-      given(lost),
-      measureSurface,
-      shareMountSettles('Cancelled'),
-      click(runItBack),
-      Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedReady({ ready: true, pingMs: 0 }),
-        }),
-        CoopMessage.CompletedChangeLobby(),
-      ),
-    )
-    const lobbyIn = onRoomCard(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS, [
-      memberOf(0, 'Ana', true),
-      memberOf(OWN_SLOT, 'Bo', true),
-    ])
-    scene(
-      ROOT,
-      given(lobbyIn),
-      measureSurface,
-      expect(runItBack).toHaveAttr('aria-pressed', 'true'),
-      expectAll(litHeads).toHaveCount(2),
-      shareMountSettles('Cancelled'),
-    )
-  })
+  it.effect(
+    'RUN IT BACK readies this player in the room, and the heads light',
+    () =>
+      Effect.gen(function* () {
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(lost),
+          measureSurface,
+          shareMountSettles('Cancelled'),
+          Scene.click(runItBack),
+          Scene.Command.resolve(
+            ChangeLobby({
+              change: LobbyChange.ChangedReady({ ready: true, pingMs: 0 }),
+            }),
+            CoopMessage.CompletedChangeLobby(),
+          ),
+        )
+        const lobbyIn = onRoomCard(
+          Phase.GameOver({ wave: 4 }),
+          RESTART_GRACE_MS,
+          [memberOf(0, 'Ana', true), memberOf(OWN_SLOT, 'Bo', true)],
+        )
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(lobbyIn),
+          measureSurface,
+          Scene.expect(runItBack).toHaveAttr('aria-pressed', 'true'),
+          Scene.expectAll(litHeads).toHaveCount(2),
+          shareMountSettles('Cancelled'),
+        )
+      }),
+  )
 
-  test('after a win the room keeps going, so the button says so', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('after a win the room keeps going, so the button says so', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         onRoomCard(
           Phase.Victory(),
           RESTART_GRACE_MS,
@@ -161,134 +150,152 @@ describe("an online room's end card", () => {
         ),
       ),
       measureSurface,
-      expect(role('button', { name: /^Keep going with this crew/ })).toHaveText(
-        'KEEP GOINGENTER',
-      ),
+      Scene.expect(
+        Scene.role('button', { name: /^Keep going with this crew/ }),
+      ).toHaveText('KEEP GOINGENTER'),
       shareMountSettles('Cancelled'),
-    )
-  })
+    ),
+  )
 
-  test('LOBBY lets the lobby in, and LEAVE leaves the room', () => {
-    scene(
-      ROOT,
-      given(lost),
-      measureSurface,
-      shareMountSettles('Cancelled'),
-      click(lobbyButton),
-      shareMountEnded(),
-      expect(selector('.coop[data-screen="Lobby"]')).toExist(),
-      expect(runItBack).toBeAbsent(),
-    )
-    scene(
-      ROOT,
-      given(lost),
-      measureSurface,
-      shareMountSettles('Cancelled'),
-      click(leaveButton),
-      Command.resolve(LeaveRoom, CoopMessage.CompletedLeaveRoom()),
-      Command.resolve(RememberRoom, CoopMessage.CompletedRememberRoom()),
-      Command.resolve(
-        FocusCoopElement,
-        CoopMessage.CompletedFocusCoopElement(),
-      ),
-      expect(selector('.coop[data-screen="Hub"]')).toExist(),
-    )
-  })
+  it.effect('LOBBY lets the lobby in, and LEAVE leaves the room', () =>
+    Effect.gen(function* () {
+      yield* Scene.scene(
+        APPLICATION,
+        Scene.given(lost),
+        measureSurface,
+        shareMountSettles('Cancelled'),
+        Scene.click(lobbyButton),
+        shareMountEnded(),
+        Scene.expect(Scene.selector('.coop[data-screen="Lobby"]')).toExist(),
+        Scene.expect(runItBack).toBeAbsent(),
+      )
+      yield* Scene.scene(
+        APPLICATION,
+        Scene.given(lost),
+        measureSurface,
+        shareMountSettles('Cancelled'),
+        Scene.click(leaveButton),
+        Scene.Command.resolve(LeaveRoom, CoopMessage.CompletedLeaveRoom()),
+        Scene.Command.resolve(
+          RememberRoom,
+          CoopMessage.CompletedRememberRoom(),
+        ),
+        Scene.Command.resolve(
+          FocusCoopElement,
+          CoopMessage.CompletedFocusCoopElement(),
+        ),
+        Scene.expect(Scene.selector('.coop[data-screen="Hub"]')).toExist(),
+      )
+    }),
+  )
 })
 
 describe("an online room's end card from keys and taps", () => {
-  test('the card holds until the player picks, then L lets the lobby in', () => {
-    const later = modifyFields(lost, { screenMs: () => 60_000 })
-    expectValue(isRunCardHeld(later)).toBe(true)
-    story(
-      update,
-      storyGiven(later),
-      message(Message.PressedKey({ code: 'KeyL' })),
-      model(current => {
-        expectValue(isRunCardHeld(current)).toBe(false)
-      }),
-    )
-  })
+  it.effect(
+    'the card holds until the player picks, then L lets the lobby in',
+    () => {
+      const later = modifyFields(lost, { screenMs: () => 60_000 })
+      expectValue(isRunCardHeld(later)).toBe(true)
+      return Story.story(
+        APPLICATION,
+        Story.given(later),
+        Story.message(Message.PressedKey({ code: 'KeyL' })),
+        Story.model(current => {
+          expectValue(isRunCardHeld(current)).toBe(false)
+        }),
+      )
+    },
+  )
 
-  test('Enter is RUN IT BACK, a second Enter takes it back', () => {
-    story(
-      update,
-      storyGiven(lost),
-      message(Message.PressedKey({ code: 'Enter' })),
-      readyUp(true),
-    )
-    story(
-      update,
-      storyGiven(
-        onRoomCard(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS, [
-          memberOf(0, 'Ana'),
-          memberOf(OWN_SLOT, 'Bo', true),
-        ]),
-      ),
-      message(Message.ClickedRunItBackButton()),
-      readyUp(false),
-    )
-  })
+  it.effect('Enter is RUN IT BACK, a second Enter takes it back', () =>
+    Effect.gen(function* () {
+      yield* Story.story(
+        APPLICATION,
+        Story.given(lost),
+        Story.message(Message.PressedKey({ code: 'Enter' })),
+        readyUp(true),
+      )
+      yield* Story.story(
+        APPLICATION,
+        Story.given(
+          onRoomCard(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS, [
+            memberOf(0, 'Ana'),
+            memberOf(OWN_SLOT, 'Bo', true),
+          ]),
+        ),
+        Story.message(Message.ClickedRunItBackButton()),
+        readyUp(false),
+      )
+    }),
+  )
 
-  test('before the grace a key only skips the beat', () => {
-    story(
-      update,
-      storyGiven(onRoomCard(Phase.GameOver({ wave: 4 }), 0)),
-      message(Message.PressedKey({ code: 'Enter' })),
-      model(current => {
+  it.effect('before the grace a key only skips the beat', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(onRoomCard(Phase.GameOver({ wave: 4 }), 0)),
+      Story.message(Message.PressedKey({ code: 'Enter' })),
+      Story.model(current => {
         expectValue(current.screenMs).toBeGreaterThan(0)
         expectValue(isRunCardHeld(current)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 
-  test('a tap on the game never drops the card', () => {
+  it.effect('a tap on the game never drops the card', () => {
     const later = modifyFields(lost, { screenMs: () => 60_000 })
-    expectValue(
-      isRunCardHeld(update(later, Message.ClickedRunItBackButton()).model),
-    ).toBe(true)
-    story(
-      update,
-      storyGiven(later),
-      message(
-        Message.PressedPointer({
-          pointerId: 1,
-          device: 'Touch',
-          clientX: 100,
-          clientY: 100,
+    return Effect.gen(function* () {
+      yield* Story.story(
+        APPLICATION,
+        Story.given(later),
+        Story.message(Message.ClickedRunItBackButton()),
+        readyUp(true),
+        Story.model(current => {
+          expectValue(isRunCardHeld(current)).toBe(true)
         }),
-      ),
-      model(current => {
-        expectValue(isRunCardHeld(current)).toBe(true)
-      }),
-    )
+      )
+      yield* Story.story(
+        APPLICATION,
+        Story.given(later),
+        Story.message(
+          Message.PressedPointer({
+            pointerId: 1,
+            device: 'Touch',
+            clientX: 100,
+            clientY: 100,
+          }),
+        ),
+        Story.model(current => {
+          expectValue(isRunCardHeld(current)).toBe(true)
+        }),
+      )
+    })
   })
 
-  test('H leaves the room', () => {
-    story(
-      update,
-      storyGiven(lost),
-      message(Message.PressedKey({ code: 'KeyH' })),
-      model(current => {
+  it.effect('H leaves the room', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(lost),
+      Story.message(Message.PressedKey({ code: 'KeyH' })),
+      Story.model(current => {
         expectValue(
           Option.map(maybeRoomOf(current.coop), room => room.departure),
         ).toEqual(Option.some('Leaving'))
       }),
-      StoryCommand.resolve(LeaveRoom, CoopMessage.CompletedLeaveRoom()),
-      StoryCommand.resolve(RememberRoom, CoopMessage.CompletedRememberRoom()),
-      StoryCommand.resolve(
+      Story.Command.resolve(LeaveRoom, CoopMessage.CompletedLeaveRoom()),
+      Story.Command.resolve(RememberRoom, CoopMessage.CompletedRememberRoom()),
+      Story.Command.resolve(
         FocusCoopElement,
         CoopMessage.CompletedFocusCoopElement(),
       ),
-      model(current => {
+      Story.model(current => {
         expectValue(current.coop.screen._tag).toBe('Hub')
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe("an online room's next run", () => {
-  test('starts straight from the card once everyone is in', () => {
+  it.effect('starts straight from the card once everyone is in', () => {
     const nextWorld = startRoomWorld([0, OWN_SLOT], 9, DEFAULT_ROOM_SETTINGS)
     const playing = modifyFields(lost, {
       isRunCardDropped: () => true,
@@ -313,11 +320,11 @@ describe("an online room's next run", () => {
             }),
         }),
     })
-    story(
-      update,
-      storyGiven(playing),
-      message(Message.TickedRoomFrame({ nowMs: 100 })),
-      model(current => {
+    return Story.story(
+      APPLICATION,
+      Story.given(playing),
+      Story.message(Message.TickedRoomFrame({ nowMs: 100 })),
+      Story.model(current => {
         expectValue(current.phase._tag).toBe('Preparation')
         expectValue(current.isRunCardDropped).toBe(false)
       }),

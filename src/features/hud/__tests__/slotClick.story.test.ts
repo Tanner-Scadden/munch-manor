@@ -1,15 +1,21 @@
 import { Array, Option } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { GameEvent, type Model, Phase } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import type { PointerDevice } from '../../../input/inputSchema'
 import { screenOf } from '../../../render/screen'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
-import { FIXED_FRAME, SURFACE, holdingFirst } from '../../../test/testing'
+import {
+  APPLICATION,
+  FIXED_FRAME,
+  SURFACE,
+  holdingFirst,
+} from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { freshGun, heldWeapon } from '../../../world/gear/weapons'
 import { modifyFocus } from '../../../world/party/party'
@@ -90,118 +96,127 @@ const hasFired = (current: Model): boolean =>
   Array.some(current.frameEvents, GameEvent.isAnyOf(['Fired']))
 
 describe('a press on a HUD slot', () => {
-  test('mid-wave, a mouse press on the knife slot shoots through it and leaves the knife be', () => {
-    const { view } = slotMiddle(midWave, MELEE_SLOT_INDEX)
-    story(
-      update,
-      given(midWave),
-      message(pressSlot(midWave, MELEE_SLOT_INDEX, 'Mouse', MOUSE)),
-      model(({ input, lastDevice }) => {
-        expect(input.mouseButton._tag).toBe('Held')
-        expect(lastDevice).toBe('KeyboardMouse')
-        const aim = Option.getOrThrow(input.maybeMouseInView)
-        expect(aim.x).toBeCloseTo(view.x)
-        expect(aim.y).toBeCloseTo(view.y)
-      }),
-      message(FIXED_FRAME),
-      model(current => {
-        expect(hasFired(current)).toBe(true)
-      }),
-      message(Message.ReleasedPointer({ pointerId: MOUSE })),
-      message(Message.ClickedMeleeSlot()),
-      model(({ seats: [{ player }], input }) => {
-        expect(player.wield).toBe('Gun')
-        expect(heldWeapon(player.arsenal)).toBe('Pistol')
-        expect(input.mouseButton._tag).toBe('Released')
-        expect(input.slotClick).toBe('Acts')
-      }),
-    )
-  })
+  it.effect(
+    'mid-wave, a mouse press on the knife slot shoots through it and leaves the knife be',
+    () => {
+      const { view } = slotMiddle(midWave, MELEE_SLOT_INDEX)
+      return Story.story(
+        APPLICATION,
+        Story.given(midWave),
+        Story.message(pressSlot(midWave, MELEE_SLOT_INDEX, 'Mouse', MOUSE)),
+        Story.model(({ input, lastDevice }) => {
+          expect(input.mouseButton._tag).toBe('Held')
+          expect(lastDevice).toBe('KeyboardMouse')
+          const aim = Option.getOrThrow(input.maybeMouseInView)
+          expect(aim.x).toBeCloseTo(view.x)
+          expect(aim.y).toBeCloseTo(view.y)
+        }),
+        Story.message(FIXED_FRAME),
+        Story.model(current => {
+          expect(hasFired(current)).toBe(true)
+        }),
+        Story.message(Message.ReleasedPointer({ pointerId: MOUSE })),
+        Story.message(Message.ClickedMeleeSlot()),
+        Story.model(({ seats: [{ player }], input }) => {
+          expect(player.wield).toBe('Gun')
+          expect(heldWeapon(player.arsenal)).toBe('Pistol')
+          expect(input.mouseButton._tag).toBe('Released')
+          expect(input.slotClick).toBe('Acts')
+        }),
+      )
+    },
+  )
 
-  test('mid-wave, a mouse press on the other gun slot shoots and does not swap', () => {
-    story(
-      update,
-      given(midWave),
-      message(pressSlot(midWave, 1, 'Mouse', MOUSE)),
-      message(FIXED_FRAME),
-      model(current => {
-        expect(hasFired(current)).toBe(true)
-      }),
-      message(Message.ReleasedPointer({ pointerId: MOUSE })),
-      message(Message.ClickedGunSlot({ slot: 'Second' })),
-      model(({ seats: [{ player }] }) => {
-        expect(heldWeapon(player.arsenal)).toBe('Pistol')
-      }),
-    )
-  })
+  it.effect(
+    'mid-wave, a mouse press on the other gun slot shoots and does not swap',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(midWave),
+        Story.message(pressSlot(midWave, 1, 'Mouse', MOUSE)),
+        Story.message(FIXED_FRAME),
+        Story.model(current => {
+          expect(hasFired(current)).toBe(true)
+        }),
+        Story.message(Message.ReleasedPointer({ pointerId: MOUSE })),
+        Story.message(Message.ClickedGunSlot({ slot: 'Second' })),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(heldWeapon(player.arsenal)).toBe('Pistol')
+        }),
+      ),
+  )
 
-  test('mid-wave, a tap on the knife slot still draws the knife and fires nothing', () => {
-    story(
-      update,
-      given(midWave),
-      message(pressSlot(midWave, MELEE_SLOT_INDEX, 'Touch', FINGER)),
-      model(({ input, lastDevice }) => {
-        expect(input.mouseButton._tag).toBe('Released')
-        expect(input.aimStick._tag).toBe('Idle')
-        expect(input.moveStick._tag).toBe('Idle')
-        expect(lastDevice).toBe('Touch')
-      }),
-      message(Message.ReleasedPointer({ pointerId: FINGER })),
-      message(Message.ClickedMeleeSlot()),
-      model(({ seats: [{ player }] }) => {
-        expect(player.wield).toBe('Melee')
-      }),
-      message(FIXED_FRAME),
-      model(current => {
-        expect(hasFired(current)).toBe(false)
-      }),
-    )
-  })
+  it.effect(
+    'mid-wave, a tap on the knife slot still draws the knife and fires nothing',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(midWave),
+        Story.message(pressSlot(midWave, MELEE_SLOT_INDEX, 'Touch', FINGER)),
+        Story.model(({ input, lastDevice }) => {
+          expect(input.mouseButton._tag).toBe('Released')
+          expect(input.aimStick._tag).toBe('Idle')
+          expect(input.moveStick._tag).toBe('Idle')
+          expect(lastDevice).toBe('Touch')
+        }),
+        Story.message(Message.ReleasedPointer({ pointerId: FINGER })),
+        Story.message(Message.ClickedMeleeSlot()),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(player.wield).toBe('Melee')
+        }),
+        Story.message(FIXED_FRAME),
+        Story.model(current => {
+          expect(hasFired(current)).toBe(false)
+        }),
+      ),
+  )
 
-  test('in a break, a mouse click on the knife slot draws the knife and fires nothing', () => {
-    story(
-      update,
-      given(inBreak),
-      message(pressSlot(inBreak, MELEE_SLOT_INDEX, 'Mouse', MOUSE)),
-      model(({ input }) => {
-        expect(input.mouseButton._tag).toBe('Released')
-      }),
-      message(Message.ReleasedPointer({ pointerId: MOUSE })),
-      message(Message.ClickedMeleeSlot()),
-      model(({ seats: [{ player }] }) => {
-        expect(player.wield).toBe('Melee')
-      }),
-      message(FIXED_FRAME),
-      model(current => {
-        expect(hasFired(current)).toBe(false)
-      }),
-    )
-  })
+  it.effect(
+    'in a break, a mouse click on the knife slot draws the knife and fires nothing',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(inBreak),
+        Story.message(pressSlot(inBreak, MELEE_SLOT_INDEX, 'Mouse', MOUSE)),
+        Story.model(({ input }) => {
+          expect(input.mouseButton._tag).toBe('Released')
+        }),
+        Story.message(Message.ReleasedPointer({ pointerId: MOUSE })),
+        Story.message(Message.ClickedMeleeSlot()),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(player.wield).toBe('Melee')
+        }),
+        Story.message(FIXED_FRAME),
+        Story.model(current => {
+          expect(hasFired(current)).toBe(false)
+        }),
+      ),
+  )
 
-  test('in a break, a mouse click on the other gun slot swaps to it', () => {
-    story(
-      update,
-      given(inBreak),
-      message(pressSlot(inBreak, 1, 'Mouse', MOUSE)),
-      message(Message.ReleasedPointer({ pointerId: MOUSE })),
-      message(Message.ClickedGunSlot({ slot: 'Second' })),
-      model(({ seats: [{ player }] }) => {
+  it.effect('in a break, a mouse click on the other gun slot swaps to it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(inBreak),
+      Story.message(pressSlot(inBreak, 1, 'Mouse', MOUSE)),
+      Story.message(Message.ReleasedPointer({ pointerId: MOUSE })),
+      Story.message(Message.ClickedGunSlot({ slot: 'Second' })),
+      Story.model(({ seats: [{ player }] }) => {
         expect(heldWeapon(player.arsenal)).toBe('Smg')
       }),
-    )
-  })
+    ),
+  )
 
-  test('only the one click passes through: the next activation acts', () => {
-    story(
-      update,
-      given(midWave),
-      message(pressSlot(midWave, MELEE_SLOT_INDEX, 'Mouse', MOUSE)),
-      message(Message.ReleasedPointer({ pointerId: MOUSE })),
-      message(Message.ClickedMeleeSlot()),
-      message(Message.ClickedMeleeSlot()),
-      model(({ seats: [{ player }] }) => {
+  it.effect('only the one click passes through: the next activation acts', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(midWave),
+      Story.message(pressSlot(midWave, MELEE_SLOT_INDEX, 'Mouse', MOUSE)),
+      Story.message(Message.ReleasedPointer({ pointerId: MOUSE })),
+      Story.message(Message.ClickedMeleeSlot()),
+      Story.message(Message.ClickedMeleeSlot()),
+      Story.model(({ seats: [{ player }] }) => {
         expect(player.wield).toBe('Melee')
       }),
-    )
-  })
+    ),
+  )
 })

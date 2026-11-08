@@ -1,13 +1,12 @@
-import { Array, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { describe, expect, it, test } from '@effect/vitest'
+import { describe, expect, it } from '@effect/vitest'
 
 import { LobbyBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import { Message as HeroPickerMessage } from '../../../features/heroes/message'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
@@ -19,6 +18,7 @@ import {
   press,
   resolveFocusLobby,
   showDialog,
+  startedRun,
 } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
 import { atSeatBy, playersOf } from '../../../world/party/party'
@@ -317,89 +317,87 @@ describe('START with bots', () => {
     ),
   )
 
-  test('the crowd is the co-op crowd: more zombies planned for a bigger crew', () => {
-    const spawnsOf = (bots: number) => {
-      let current = withCrew
-      current = Array.reduce(Array.range(1, bots), current, step =>
-        modifyFields(step, {
+  it.effect(
+    'the crowd is the co-op crowd: more zombies planned for a bigger crew',
+    () =>
+      Effect.gen(function* () {
+        const spawnsOf = (bots: number) =>
+          startedRun(
+            modifyFields(withCrew, {
+              home: home =>
+                modifyFields(home, {
+                  bots: () =>
+                    Array.makeBy(bots, () => ({
+                      name: 'Bolts',
+                      calling: 'You' as const,
+                      look: withCrew.appearance,
+                    })),
+                }),
+            }),
+          ).pipe(
+            Effect.map(({ phase }) =>
+              phase._tag === 'Preparation' ? phase.spawns.length : 0,
+            ),
+          )
+        const crowd = yield* spawnsOf(3)
+        const alone = yield* spawnsOf(0)
+        expect(crowd).toBeGreaterThan(alone)
+      }),
+  )
+
+  it.effect('RETRY plays with the same bots and heroes', () =>
+    Effect.gen(function* () {
+      const run = yield* startedRun(
+        modifyFields(withCrew, {
           home: home =>
             modifyFields(home, {
-              bots: list => [
-                ...list,
-                { name: 'Bolts', calling: 'You', look: step.appearance },
+              bots: () => [
+                {
+                  name: 'Gizmo',
+                  calling: 'LineCook',
+                  look: withCrew.appearance,
+                },
               ],
             }),
         }),
       )
-      const started = update(
-        current,
-        Message.PressedKey({ code: 'Enter' }),
-      ).model
-      const run = update(started, Message.PressedKey({ code: 'Enter' })).model
-      return run.phase._tag === 'Preparation' ? run.phase.spawns.length : 0
-    }
-    expect(spawnsOf(3)).toBeGreaterThan(spawnsOf(0))
-  })
-
-  it.effect('RETRY plays with the same bots and heroes', () => {
-    const ended = modifyFields(
-      update(
-        update(
-          modifyFields(withCrew, {
-            home: home =>
-              modifyFields(home, {
-                bots: () => [
-                  {
-                    name: 'Gizmo',
-                    calling: 'LineCook',
-                    look: withCrew.appearance,
-                  },
-                ],
-              }),
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(run, {
+            phase: () => Phase.GameOver({ wave: 2 }),
+            screenMs: () => RESTART_GRACE_MS,
           }),
-          Message.PressedKey({ code: 'Enter' }),
-        ).model,
-        Message.PressedKey({ code: 'Enter' }),
-      ).model,
-      {
-        phase: () => Phase.GameOver({ wave: 2 }),
-        screenMs: () => RESTART_GRACE_MS,
-      },
-    )
-    return Story.story(
-      APPLICATION,
-      Story.given(ended),
-      Story.message(Message.ClickedRetryButton()),
-      Story.model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(playersOf(current)).toHaveLength(2)
-        expect(current.crewBots[0]?.name).toBe('Gizmo')
-        expect(playersOf(current)[1]?.player.calling).toBe('LineCook')
-      }),
-    )
-  })
+        ),
+        Story.message(Message.ClickedRetryButton()),
+        Story.model(current => {
+          expect(Phase.guards.Preparation(current.phase)).toBe(true)
+          expect(playersOf(current)).toHaveLength(2)
+          expect(current.crewBots[0]?.name).toBe('Gizmo')
+          expect(playersOf(current)[1]?.player.calling).toBe('LineCook')
+        }),
+      )
+    }),
+  )
 })
 
 describe('rank for a run with bots', () => {
-  const botted = update(
-    update(
-      modifyFields(readyModel, {
-        home: home =>
-          modifyFields(home, {
-            bots: () =>
-              Array.makeBy(3, index => ({
-                name: `Bot${index}`,
-                calling: 'You' as const,
-                look: readyModel.appearance,
-              })),
-          }),
-      }),
-      Message.PressedKey({ code: 'Enter' }),
-    ).model,
-    Message.PressedKey({ code: 'Enter' }),
-  ).model
+  // NOTE: a run started with three bots seated.
+  const botted = startedRun(
+    modifyFields(readyModel, {
+      home: home =>
+        modifyFields(home, {
+          bots: () =>
+            Array.makeBy(3, index => ({
+              name: `Bot${index}`,
+              calling: 'You' as const,
+              look: readyModel.appearance,
+            })),
+        }),
+    }),
+  )
 
-  const revivedFour = (run: typeof botted) =>
+  const revivedFour = (run: Model) =>
     modifyFields(run, {
       seats: atSeatBy(SOLO_SLOT, state =>
         modifyFields(state, {
@@ -409,19 +407,25 @@ describe('rank for a run with bots', () => {
       phase: () => Phase.GameOver({ wave: 3 }),
     })
 
-  const pointsOf = (run: typeof botted) =>
-    earnRank(botted, revivedFour(run)).rank.earnedPoints
+  const pointsOf = (start: Model, run: Model) =>
+    earnRank(start, revivedFour(run)).rank.earnedPoints
 
-  test('pays no revive points: a bot is not a teammate to farm', () => {
-    const withoutRevives = earnRank(
-      botted,
-      modifyFields(botted, { phase: () => Phase.GameOver({ wave: 3 }) }),
-    ).rank.earnedPoints
-    expect(pointsOf(botted)).toBe(withoutRevives)
-  })
+  it.effect('pays no revive points: a bot is not a teammate to farm', () =>
+    Effect.gen(function* () {
+      const run = yield* botted
+      const withoutRevives = earnRank(
+        run,
+        modifyFields(run, { phase: () => Phase.GameOver({ wave: 3 }) }),
+      ).rank.earnedPoints
+      expect(pointsOf(run, run)).toBe(withoutRevives)
+    }),
+  )
 
-  test('the same revives in a crew of people do pay', () => {
-    const people = modifyFields(botted, { crewBots: () => [] })
-    expect(pointsOf(people)).toBeGreaterThan(pointsOf(botted))
-  })
+  it.effect('the same revives in a crew of people do pay', () =>
+    Effect.gen(function* () {
+      const run = yield* botted
+      const people = modifyFields(run, { crewBots: () => [] })
+      expect(pointsOf(run, people)).toBeGreaterThan(pointsOf(run, run))
+    }),
+  )
 })

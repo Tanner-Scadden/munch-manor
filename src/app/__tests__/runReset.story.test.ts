@@ -1,10 +1,12 @@
-import { Array, Record } from 'effect'
-import { given, message, model, steps, story } from 'foldkit/story'
+import { Array, Effect, Record } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { readyModel } from '../../test/model.fixture'
 import {
+  APPLICATION,
   closeDialog,
   press,
   release,
@@ -15,7 +17,6 @@ import {
 import { modifyFocus } from '../../world/party/party'
 import { Message } from '../message'
 import { type Model, Phase, TrapNotice, freshLoot } from '../model'
-import { update } from '../pureApp'
 
 // NOTE: listed here by hand, not read from the reset itself, so a field the
 // reset forgets shows up as a difference.
@@ -54,82 +55,86 @@ const RUN_FIELDS = [
 const runState = (current: Model) =>
   Record.fromEntries(Array.map(RUN_FIELDS, field => [field, current[field]]))
 
-const leaveForHome = steps(
+const leaveForHome = Story.steps(
   press('Escape'),
   press('KeyH'),
   showDialog(),
-  message(Message.ClickedLeaveRunButton()),
+  Story.message(Message.ClickedLeaveRunButton()),
   closeDialog(),
 )
 
 describe('going home', () => {
-  test('resets every run field, and the next run starts like a fresh one', () => {
-    const played: Array<Model> = []
-    story(
-      update,
-      given(readyModel),
-      startRunFromHome,
-      press('KeyD'),
-      press('KeyS'),
-      ...ticks(40, 16),
-      release('KeyD'),
-      release('KeyS'),
-      model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.elapsedMs).toBeGreaterThan(0)
-        played.push(current)
-      }),
-    )
-    const messy = modifyFocus(
-      modifyFields(played[0]!, {
-        cameraLean: () => ({ x: 12, y: -7 }),
-        dustCooldownMs: () => 90,
-        trapNotice: () =>
-          TrapNotice.Refused({ reason: 'No room', remainingMs: 800 }),
-        hintBand: () => 'Bottom',
-        loot: loot => modifyFields(loot, { dryMs: () => 5000 }),
-      }),
-      {
-        shopCategory: () => 'Traps',
-        selectedTrap: () => 'Turret',
-        intent: intent =>
-          modifyFields(intent, { move: () => ({ x: 1, y: 0 }) }),
-      },
-    )
-
-    const atHome: Array<Model> = []
-    story(
-      update,
-      given(messy),
-      leaveForHome,
-      model(current => {
-        expect(Phase.guards.Ready(current.phase)).toBe(true)
-        expect(runState(current)).toEqual(
-          runState({ ...readyModel, loot: freshLoot(current.rngState) }),
+  it.effect(
+    'resets every run field, and the next run starts like a fresh one',
+    () =>
+      Effect.gen(function* () {
+        const played: Array<Model> = []
+        yield* Story.story(
+          APPLICATION,
+          Story.given(readyModel),
+          startRunFromHome,
+          press('KeyD'),
+          press('KeyS'),
+          ...ticks(40, 16),
+          release('KeyD'),
+          release('KeyS'),
+          Story.model(current => {
+            expect(Phase.guards.Preparation(current.phase)).toBe(true)
+            expect(current.elapsedMs).toBeGreaterThan(0)
+            played.push(current)
+          }),
         )
-        atHome.push(current)
-      }),
-    )
+        const messy = modifyFocus(
+          modifyFields(played[0]!, {
+            cameraLean: () => ({ x: 12, y: -7 }),
+            dustCooldownMs: () => 90,
+            trapNotice: () =>
+              TrapNotice.Refused({ reason: 'No room', remainingMs: 800 }),
+            hintBand: () => 'Bottom',
+            loot: loot => modifyFields(loot, { dryMs: () => 5000 }),
+          }),
+          {
+            shopCategory: () => 'Traps',
+            selectedTrap: () => 'Turret',
+            intent: intent =>
+              modifyFields(intent, { move: () => ({ x: 1, y: 0 }) }),
+          },
+        )
 
-    const wentHome = atHome[0]!
-    const freshStart: Array<Model> = []
-    story(
-      update,
-      given({ ...readyModel, rngState: wentHome.rngState }),
-      startRunFromHome,
-      model(current => {
-        freshStart.push(current)
+        const atHome: Array<Model> = []
+        yield* Story.story(
+          APPLICATION,
+          Story.given(messy),
+          leaveForHome,
+          Story.model(current => {
+            expect(Phase.guards.Ready(current.phase)).toBe(true)
+            expect(runState(current)).toEqual(
+              runState({ ...readyModel, loot: freshLoot(current.rngState) }),
+            )
+            atHome.push(current)
+          }),
+        )
+
+        const wentHome = atHome[0]!
+        const freshStart: Array<Model> = []
+        yield* Story.story(
+          APPLICATION,
+          Story.given({ ...readyModel, rngState: wentHome.rngState }),
+          startRunFromHome,
+          Story.model(current => {
+            freshStart.push(current)
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(wentHome),
+          startRunFromHome,
+          Story.model(current => {
+            expect(Phase.guards.Preparation(current.phase)).toBe(true)
+            expect(current.phase).toEqual(freshStart[0]!.phase)
+            expect(runState(current)).toEqual(runState(freshStart[0]!))
+          }),
+        )
       }),
-    )
-    story(
-      update,
-      given(wentHome),
-      startRunFromHome,
-      model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.phase).toEqual(freshStart[0]!.phase)
-        expect(runState(current)).toEqual(runState(freshStart[0]!))
-      }),
-    )
-  })
+  )
 })

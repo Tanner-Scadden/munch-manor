@@ -1,15 +1,17 @@
-import { Option } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { screenCameraOf, worldToView } from '../../render/camera'
 import { FIXED_STEP_MS, STICK_RADIUS_PX } from '../../shared/constants'
 import { DISTANT_SPAWN } from '../../test/model.fixture'
 import {
+  APPLICATION,
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
   tick,
@@ -93,69 +95,77 @@ const mouseAimingRight = (zombieAngle: number): Model => {
 }
 
 describe('aim assist on touch', () => {
-  test('held upright, a held aim a few degrees off a zombie lands on it', () => {
-    story(
-      update,
-      given(aimingRight('Portrait', 0.06)),
-      tick(FIXED_STEP_MS),
-      model(current => {
-        expect(aimAngleOf(current)).toBeCloseTo(0.06, 5)
-      }),
-    )
-  })
+  it.effect(
+    'held upright, a held aim a few degrees off a zombie lands on it',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(aimingRight('Portrait', 0.06)),
+        tick(FIXED_STEP_MS),
+        Story.model(current => {
+          expect(aimAngleOf(current)).toBeCloseTo(0.06, 5)
+        }),
+      ),
+  )
 
-  test('held sideways, a held aim a few degrees off a zombie lands on it', () => {
-    story(
-      update,
-      given(aimingRight('Landscape', 0.06)),
-      tick(FIXED_STEP_MS),
-      model(current => {
-        expect(aimAngleOf(current)).toBeCloseTo(0.06, 5)
-      }),
-    )
-  })
+  it.effect(
+    'held sideways, a held aim a few degrees off a zombie lands on it',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(aimingRight('Landscape', 0.06)),
+        tick(FIXED_STEP_MS),
+        Story.model(current => {
+          expect(aimAngleOf(current)).toBeCloseTo(0.06, 5)
+        }),
+      ),
+  )
 
-  test('past the inner cone the pull fades, and past the outer cone it is gone', () => {
-    const between = (AIM_ASSIST.innerRadians + AIM_ASSIST.outerRadians) / 2
-    story(
-      update,
-      given(aimingRight('Landscape', between)),
-      tick(FIXED_STEP_MS),
-      model(current => {
-        expect(aimAngleOf(current)).toBeCloseTo(between / 2, 5)
+  it.effect(
+    'past the inner cone the pull fades, and past the outer cone it is gone',
+    () =>
+      Effect.gen(function* () {
+        const between = (AIM_ASSIST.innerRadians + AIM_ASSIST.outerRadians) / 2
+        yield* Story.story(
+          APPLICATION,
+          Story.given(aimingRight('Landscape', between)),
+          tick(FIXED_STEP_MS),
+          Story.model(current => {
+            expect(aimAngleOf(current)).toBeCloseTo(between / 2, 5)
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(aimingRight('Portrait', AIM_ASSIST.outerRadians + 0.05)),
+          tick(FIXED_STEP_MS),
+          Story.model(current => {
+            expect(aimAngleOf(current)).toBeCloseTo(0, 5)
+          }),
+        )
       }),
-    )
-    story(
-      update,
-      given(aimingRight('Portrait', AIM_ASSIST.outerRadians + 0.05)),
+  )
+
+  it.effect('a held mouse goes exactly where it points', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(mouseAimingRight(0.06)),
       tick(FIXED_STEP_MS),
-      model(current => {
+      Story.model(current => {
         expect(aimAngleOf(current)).toBeCloseTo(0, 5)
       }),
-    )
-  })
+    ),
+  )
 
-  test('a held mouse goes exactly where it points', () => {
-    story(
-      update,
-      given(mouseAimingRight(0.06)),
+  it.effect('a key press hands the aim back to the player, untouched', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(aimingRight('Landscape', 0.06)),
+      Story.message(Message.PressedKey({ code: 'KeyW' })),
       tick(FIXED_STEP_MS),
-      model(current => {
-        expect(aimAngleOf(current)).toBeCloseTo(0, 5)
-      }),
-    )
-  })
-
-  test('a key press hands the aim back to the player, untouched', () => {
-    story(
-      update,
-      given(aimingRight('Landscape', 0.06)),
-      message(Message.PressedKey({ code: 'KeyW' })),
-      tick(FIXED_STEP_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.lastDevice).toBe('KeyboardMouse')
         expect(aimAngleOf(current)).toBeCloseTo(0, 5)
       }),
-    )
-  })
+    ),
+  )
 })

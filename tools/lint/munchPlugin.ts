@@ -10,6 +10,15 @@ import { Array, Option, Record, String } from 'effect'
 import { definePlugin, defineRule } from '@oxlint/plugins'
 import type { ESTree, SourceCode } from '@oxlint/plugins'
 
+import {
+  hasName,
+  importSource,
+  importedName,
+  isStringLiteral,
+  propertyName,
+} from './ast.ts'
+import { liveTestNote, noFloatingStory, noRunInTests } from './testRules.ts'
+
 type Node = ESTree.Node
 
 const isTagMember = (
@@ -26,11 +35,6 @@ const isTagName = (node: Node): node is ESTree.IdentifierReference =>
 
 const unwrapChain = (node: ESTree.Expression): Node =>
   node.type === 'ChainExpression' ? node.expression : node
-
-const isStringLiteral = (
-  node: Node | null | undefined,
-): node is ESTree.StringLiteral =>
-  node?.type === 'Literal' && typeof node.value === 'string'
 
 // NOTE: the source text of X in `X._tag === 'Name'` or of a tag held in
 // a variable, `tag === 'Name'` (either side, === or !==), or of the shared X in `X._tag === 'A' || X._tag === 'B'`, or of the
@@ -215,20 +219,6 @@ const isJsonObject = (node: ESTree.Expression): boolean =>
     node.object.name === 'globalThis' &&
     node.property.type === 'Identifier' &&
     node.property.name === 'JSON')
-
-const propertyName = (node: ESTree.MemberExpression): string | undefined =>
-  node.computed
-    ? isStringLiteral(node.property)
-      ? node.property.value
-      : undefined
-    : node.property.type === 'Identifier'
-      ? node.property.name
-      : undefined
-
-const hasName = (
-  names: ReadonlySet<string>,
-  name: string | undefined,
-): boolean => name !== undefined && names.has(name)
 
 const RAW_JSON_METHODS: ReadonlySet<string> = new Set(['parse', 'stringify'])
 
@@ -473,70 +463,6 @@ const commandBesideUpdate = defineRule({
               message: `${command.name} is never returned here: define a Command beside the update that returns it, and its .layer joins CommandsLayer in src/app/layer.ts (AGENTS.md "Code shape").`,
             }),
         )
-      },
-    }
-  },
-})
-
-// NOTE: the ways to run an Effect by hand: off `Effect`, a `Runtime`, or a
-// `ManagedRuntime` (`runtime.runPromise(...)`), or imported by name. A test
-// runs its Effect with `it.effect` from @effect/vitest instead, which gives
-// it a Scope and the TestClock.
-const RUN_METHODS: ReadonlySet<string> = new Set([
-  'runPromise',
-  'runPromiseExit',
-  'runSync',
-  'runSyncExit',
-  'runFork',
-  'runCallback',
-])
-
-const RUN_IN_TESTS_MESSAGE =
-  'A test runs its Effect with it.effect from @effect/vitest (it.live for real time, layer(...) to share a Layer), not by hand or through a runtime (AGENTS.md "Code shape").'
-
-const EFFECT_MODULES = /^effect(\/(Effect|Runtime|ManagedRuntime))?$/
-
-const importSource = (node: ESTree.ImportSpecifier): string | undefined =>
-  node.parent.type === 'ImportDeclaration'
-    ? node.parent.source.value
-    : undefined
-
-const importedName = (node: ESTree.ImportSpecifier): string =>
-  isStringLiteral(node.imported) ? node.imported.value : node.imported.name
-
-const noRunInTests = defineRule({
-  meta: {
-    type: 'problem',
-    docs: {
-      description:
-        "Run a test's Effect with it.effect from @effect/vitest, not Effect.runPromise, runSync, runFork, or a runtime's.",
-    },
-  },
-  create(context) {
-    return {
-      MemberExpression(node) {
-        if (hasName(RUN_METHODS, propertyName(node))) {
-          context.report({ node, message: RUN_IN_TESTS_MESSAGE })
-        }
-      },
-      ImportSpecifier(node) {
-        if (
-          EFFECT_MODULES.test(importSource(node) ?? '') &&
-          RUN_METHODS.has(importedName(node))
-        ) {
-          context.report({ node, message: RUN_IN_TESTS_MESSAGE })
-        }
-      },
-      // NOTE: a runtime of the test's own: `ManagedRuntime.make(layer)`.
-      CallExpression(node) {
-        if (
-          node.callee.type === 'MemberExpression' &&
-          node.callee.object.type === 'Identifier' &&
-          node.callee.object.name === 'ManagedRuntime' &&
-          propertyName(node.callee) === 'make'
-        ) {
-          context.report({ node, message: RUN_IN_TESTS_MESSAGE })
-        }
       },
     }
   },
@@ -911,47 +837,6 @@ const folderImports = defineRule({
   },
 })
 
-// NOTE: `it.live(...)` runs a test on the real clock, which a loaded
-// machine can slow into a timeout. The TestClock is the default, so a live
-// test says why it needs real time in a NOTE right above it.
-const isItLive = (node: ESTree.Expression): boolean =>
-  node.type === 'MemberExpression' &&
-  !node.computed &&
-  node.object.type === 'Identifier' &&
-  node.object.name === 'it' &&
-  propertyName(node) === 'live'
-
-const liveTestNote = defineRule({
-  meta: {
-    type: 'suggestion',
-    docs: {
-      description:
-        'A test on the real clock (it.live) says why in a NOTE right above it.',
-    },
-  },
-  create(context) {
-    return {
-      ExpressionStatement(node) {
-        const call = node.expression
-        if (call.type !== 'CallExpression' || !isItLive(call.callee)) {
-          return
-        }
-        const hasNote = Array.some(
-          context.sourceCode.getCommentsBefore(node),
-          comment => String.startsWith('NOTE:')(String.trim(comment.value)),
-        )
-        if (!hasNote) {
-          context.report({
-            node,
-            message:
-              'it.live runs on the real clock: use it.effect and the TestClock (settle, first), or say why this needs real time in a // NOTE: right above it (AGENTS.md "Code shape").',
-          })
-        }
-      },
-    }
-  },
-})
-
 // NOTE: a comment that silences a rule: oxlint's or the Effect language
 // service's.
 const SILENCER = /^\s*(oxlint-disable|@effect-diagnostics)/
@@ -1016,6 +901,7 @@ export default definePlugin({
     'no-menu-field': noMenuField,
     'command-beside-update': commandBesideUpdate,
     'no-run-in-tests': noRunInTests,
+    'no-floating-story': noFloatingStory,
     'tap-by-click': tapByClick,
     'seat-action-once': seatActionOnce,
     'key-action-once': keyActionOnce,

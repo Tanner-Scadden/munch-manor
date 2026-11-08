@@ -1,14 +1,19 @@
 import { Array, Option } from 'effect'
-import type { Canvas } from 'foldkit'
-import { given, message, model, story } from 'foldkit/story'
+import { type Canvas, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { type Model, Phase, type Vector } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { BULLET_STEP_PX, TILE_SIZE } from '../../shared/constants'
-import { SHOTGUN, holdingFirst, holdingSecond } from '../../test/testing'
+import {
+  APPLICATION,
+  SHOTGUN,
+  holdingFirst,
+  holdingSecond,
+} from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import { isSolidAt, levelOf } from '../../world/level/arena'
 import { focusOf, modifyFocus } from '../../world/party/party'
@@ -37,7 +42,7 @@ const unfitted: Model = modifyFocus(fighting, { laserSight: () => 'None' })
 const THUMB = 70
 
 const thumbAim = (dx: number, dy: number) => [
-  message(
+  Story.message(
     Message.PressedPointer({
       pointerId: THUMB,
       device: 'Touch',
@@ -45,7 +50,7 @@ const thumbAim = (dx: number, dy: number) => [
       clientY: 200,
     }),
   ),
-  message(
+  Story.message(
     Message.MovedPointer({
       pointerId: THUMB,
       clientX: 600 + dx,
@@ -54,7 +59,7 @@ const thumbAim = (dx: number, dy: number) => [
   ),
 ]
 
-const liftThumb = message(Message.ReleasedPointer({ pointerId: THUMB }))
+const liftThumb = Story.message(Message.ReleasedPointer({ pointerId: THUMB }))
 
 const onlyPath = (current: Model) => {
   const shapes = aimSightShapes(current)
@@ -75,38 +80,38 @@ const pointOf = (instruction: Canvas.PathInstruction): Vector => {
 }
 
 describe('the laser sight', () => {
-  test('shows nothing until it is bought, whichever device aims', () => {
-    story(
-      update,
-      given(unfitted),
-      message(Message.MovedMouse({ clientX: 700, clientY: 200 })),
-      model(current => {
+  it.effect('shows nothing until it is bought, whichever device aims', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(unfitted),
+      Story.message(Message.MovedMouse({ clientX: 700, clientY: 200 })),
+      Story.model(current => {
         expect(aimSightShapes(current)).toEqual([])
       }),
       ...thumbAim(50, 0),
-      model(current => {
+      Story.model(current => {
         expect(aimSightShapes(current)).toEqual([])
       }),
-    )
-  })
+    ),
+  )
 
-  test('once fitted it shows for the mouse', () => {
-    story(
-      update,
-      given(fighting),
-      message(Message.MovedMouse({ clientX: 700, clientY: 200 })),
-      model(current => {
+  it.effect('once fitted it shows for the mouse', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
+      Story.message(Message.MovedMouse({ clientX: 700, clientY: 200 })),
+      Story.model(current => {
         expect(aimSightShapes(current)).toHaveLength(1)
       }),
-    )
-  })
+    ),
+  )
 
-  test('draws a laser line for the pistol that stops at the wall', () => {
-    story(
-      update,
-      given(fighting),
+  it.effect('draws a laser line for the pistol that stops at the wall', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
       ...thumbAim(50, 0),
-      model(current => {
+      Story.model(current => {
         const laser = onlyPath(current)
         expect(laser.fill).toBeUndefined()
         expect(laser.instructions).toHaveLength(2)
@@ -125,13 +130,13 @@ describe('the laser sight', () => {
           true,
         )
       }),
-    )
-  })
+    ),
+  )
 
-  test('draws a fan as wide as the shotgun spread', () => {
-    story(
-      update,
-      given(
+  it.effect('draws a fan as wide as the shotgun spread', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFocus(fighting, {
           player: player =>
             modifyFields(player, {
@@ -140,7 +145,7 @@ describe('the laser sight', () => {
         }),
       ),
       ...thumbAim(50, 0),
-      model(current => {
+      Story.model(current => {
         const fan = onlyPath(current)
         expect(fan.fill).toBeDefined()
         expect(fan.instructions).toHaveLength(4)
@@ -159,17 +164,17 @@ describe('the laser sight', () => {
         expect(left.x).toBeGreaterThan(from.x)
         expect(right.x).toBeGreaterThan(from.x)
       }),
-    )
-  })
+    ),
+  )
 
-  test('stops at a doorway instead of leaving the room', () => {
-    story(
-      update,
-      given(
+  it.effect('stops at a doorway instead of leaving the room', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFocus(fighting, { player: player => ({ ...player, y: 90 }) }),
       ),
       ...thumbAim(50, 0),
-      model(current => {
+      Story.model(current => {
         const [, to] = Array.map(onlyPath(current).instructions, pointOf)
         expect(to).toBeDefined()
         if (to === undefined) {
@@ -177,28 +182,28 @@ describe('the laser sight', () => {
         }
         expect(to.x).toBeLessThan(levelOf(current).columns * TILE_SIZE)
       }),
-    )
-  })
+    ),
+  )
 
-  test('follows whichever device aims', () => {
-    story(
-      update,
-      given(fighting),
+  it.effect('follows whichever device aims', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
       ...thumbAim(0, -50),
-      model(current => {
+      Story.model(current => {
         const to = Option.getOrThrow(
           Array.get(Array.map(onlyPath(current).instructions, pointOf), 1),
         )
         expect(to.y).toBeLessThan(focusOf(current).player.y)
       }),
       liftThumb,
-      message(Message.MovedMouse({ clientX: 700, clientY: 200 })),
-      model(current => {
+      Story.message(Message.MovedMouse({ clientX: 700, clientY: 200 })),
+      Story.model(current => {
         const to = Option.getOrThrow(
           Array.get(Array.map(onlyPath(current).instructions, pointOf), 1),
         )
         expect(to.x).toBeGreaterThan(focusOf(current).player.x)
       }),
-    )
-  })
+    ),
+  )
 })

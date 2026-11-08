@@ -1,22 +1,14 @@
 import { Array, String } from 'effect'
-import {
-  click,
-  expect,
-  focus,
-  given,
-  inside,
-  role,
-  scene,
-  selector,
-} from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test, expect as vitestExpect } from 'vitest'
+
+import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
 import type { Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import type { InputDevice } from '../../../input/inputSchema'
 import {
-  ROOT,
+  APPLICATION,
   measureSurface,
   openHandInScene,
   pickCardInScene,
@@ -38,16 +30,15 @@ const homeOn = (device: InputDevice): Model =>
 
 const DEVICES: ReadonlyArray<InputDevice> = ['KeyboardMouse', 'Touch']
 
-const howToPlay = role('dialog', { name: 'How to play' })
+const howToPlay = Scene.role('dialog', { name: 'How to play' })
 
 const cardButton = (card: (typeof CONTROL_CARDS)[number]) =>
-  selector(`#${helpCardElementId(card.id)}`)
+  Scene.selector(`#${helpCardElementId(card.id)}`)
 
 const lineOf = (card: (typeof CONTROL_CARDS)[number]) =>
-  selector(`#${helpLineElementId(card.id)}`)
+  Scene.selector(`#${helpLineElementId(card.id)}`)
 
-const openHowToPlay = (device: InputDevice) => [
-  given(homeOn(device)),
+const openHowToPlay = [
   measureSurface,
   ...openHandInScene(),
   ...pickCardInScene(/^How to play:/),
@@ -75,40 +66,47 @@ describe('How to play lines', () => {
     },
   )
 
-  test('a keyboard player focuses each card to read its line', () => {
-    scene(
-      ROOT,
-      ...openHowToPlay('KeyboardMouse'),
-      inside(
+  it.effect('a keyboard player focuses each card to read its line', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(homeOn('KeyboardMouse')),
+      ...openHowToPlay,
+      Scene.inside(
         howToPlay,
         ...Array.flatMap(CONTROL_CARDS, card => [
-          expect(cardButton(card)).toHaveAttr('aria-expanded', 'false'),
-          focus(cardButton(card)),
-          expect(cardButton(card)).toHaveAttr('aria-expanded', 'true'),
-          expect(cardButton(card)).toHaveAttr('data-open', 'true'),
-          expect(lineOf(card)).toHaveText(helpLineOf(card.id, 'KeyboardMouse')),
+          Scene.expect(cardButton(card)).toHaveAttr('aria-expanded', 'false'),
+          Scene.focus(cardButton(card)),
+          Scene.expect(cardButton(card)).toHaveAttr('aria-expanded', 'true'),
+          Scene.expect(cardButton(card)).toHaveAttr('data-open', 'true'),
+          Scene.expect(lineOf(card)).toHaveText(
+            helpLineOf(card.id, 'KeyboardMouse'),
+          ),
         ]),
       ),
-    )
-  })
+    ),
+  )
 
-  test('a touch player taps a card to read its line, and another to switch', () => {
-    const first = Array.headNonEmpty(CONTROL_CARDS)
-    const second = Array.lastNonEmpty(CONTROL_CARDS)
-    scene(
-      ROOT,
-      ...openHowToPlay('Touch'),
-      inside(
-        howToPlay,
-        ...Array.flatMap(CONTROL_CARDS, card => [
-          click(cardButton(card)),
-          expect(cardButton(card)).toHaveAttr('aria-expanded', 'true'),
-          expect(lineOf(card)).toHaveText(helpLineOf(card.id, 'Touch')),
-        ]),
-        click(cardButton(first)),
-        expect(cardButton(first)).toHaveAttr('aria-expanded', 'true'),
-        expect(cardButton(second)).toHaveAttr('aria-expanded', 'false'),
-      ),
-    )
-  })
+  it.effect(
+    'a touch player taps a card to read its line, and another to switch',
+    () => {
+      const first = Array.headNonEmpty(CONTROL_CARDS)
+      const second = Array.lastNonEmpty(CONTROL_CARDS)
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(homeOn('Touch')),
+        ...openHowToPlay,
+        Scene.inside(
+          howToPlay,
+          ...Array.flatMap(CONTROL_CARDS, card => [
+            Scene.click(cardButton(card)),
+            Scene.expect(cardButton(card)).toHaveAttr('aria-expanded', 'true'),
+            Scene.expect(lineOf(card)).toHaveText(helpLineOf(card.id, 'Touch')),
+          ]),
+          Scene.click(cardButton(first)),
+          Scene.expect(cardButton(first)).toHaveAttr('aria-expanded', 'true'),
+          Scene.expect(cardButton(second)).toHaveAttr('aria-expanded', 'false'),
+        ),
+      )
+    },
+  )
 })

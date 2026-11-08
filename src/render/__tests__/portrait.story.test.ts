@@ -1,12 +1,13 @@
-import { Array, Option } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { refreshIntent } from '../../app/frame'
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { moveHintBand } from '../../features/onboarding/onboarding'
 import { Stick } from '../../input/inputSchema'
 import {
@@ -16,8 +17,10 @@ import {
 } from '../../shared/constants'
 import { DISTANT_SPAWN } from '../../test/model.fixture'
 import {
+  APPLICATION,
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
+  modelAfterMessages,
   scoring,
   ticks,
 } from '../../test/testing'
@@ -66,15 +69,15 @@ const standingAt = (base: Model, x: number, y: number): Model =>
   modifyFocus(base, { player: player => ({ ...player, x, y }) })
 
 const pressThumb = (pointerId: number, clientX: number, clientY: number) =>
-  message(
+  Story.message(
     Message.PressedPointer({ pointerId, device: 'Touch', clientX, clientY }),
   )
 
 const moveThumb = (pointerId: number, clientX: number, clientY: number) =>
-  message(Message.MovedPointer({ pointerId, clientX, clientY }))
+  Story.message(Message.MovedPointer({ pointerId, clientX, clientY }))
 
 const rotateTo = (surface: typeof PHONE_PORTRAIT) =>
-  message(Message.MeasuredGameSurface(surface))
+  Story.message(Message.MeasuredGameSurface(surface))
 
 describe('the portrait screen', () => {
   test('is a touch phone held upright, as wide as a landscape phone is tall', () => {
@@ -299,32 +302,34 @@ describe('the aim lean', () => {
     ).toEqual({ x: CAMERA_LEAN_PX, y: 0 })
   })
 
-  test('the right thumb leans the camera toward the aim, and letting go brings it back', () => {
-    story(
-      update,
-      given(standingAt(fightingInPortrait, 160, 120)),
-      pressThumb(RIGHT_THUMB, 300, 700),
-      moveThumb(RIGHT_THUMB, 300 + STICK_RADIUS_PX, 700),
-      ...ticks(90, FRAME_MS),
-      model(current => {
-        expect(current.cameraLean.x).toBeGreaterThan(CAMERA_LEAN_PX - 1)
-        expect(current.cameraLean.x).toBeLessThanOrEqual(CAMERA_LEAN_PX)
-        expect(Math.abs(current.cameraLean.y)).toBeLessThan(0.5)
-        const camera = cameraOf(current)
-        expect(camera.x).toBeGreaterThan(93)
-        expect(focusOf(current).player.x - camera.x).toBeLessThan(135 / 2)
-      }),
-      message(Message.ReleasedPointer({ pointerId: RIGHT_THUMB })),
-      ...ticks(120, FRAME_MS),
-      model(current => {
-        expect(current.cameraLean).toEqual({ x: 0, y: 0 })
-      }),
-    )
-  })
+  it.effect(
+    'the right thumb leans the camera toward the aim, and letting go brings it back',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(standingAt(fightingInPortrait, 160, 120)),
+        pressThumb(RIGHT_THUMB, 300, 700),
+        moveThumb(RIGHT_THUMB, 300 + STICK_RADIUS_PX, 700),
+        ...ticks(90, FRAME_MS),
+        Story.model(current => {
+          expect(current.cameraLean.x).toBeGreaterThan(CAMERA_LEAN_PX - 1)
+          expect(current.cameraLean.x).toBeLessThanOrEqual(CAMERA_LEAN_PX)
+          expect(Math.abs(current.cameraLean.y)).toBeLessThan(0.5)
+          const camera = cameraOf(current)
+          expect(camera.x).toBeGreaterThan(93)
+          expect(focusOf(current).player.x - camera.x).toBeLessThan(135 / 2)
+        }),
+        Story.message(Message.ReleasedPointer({ pointerId: RIGHT_THUMB })),
+        ...ticks(120, FRAME_MS),
+        Story.model(current => {
+          expect(current.cameraLean).toEqual({ x: 0, y: 0 })
+        }),
+      ),
+  )
 
-  test('the same messages lean the camera the same way every time', () => {
-    const leanAfter = (): Model => {
-      const steps = [
+  it.effect('the same messages lean the camera the same way every time', () => {
+    const leanAfter = () =>
+      modelAfterMessages(standingAt(fightingInPortrait, 200, 100), [
         Message.PressedPointer({
           pointerId: RIGHT_THUMB,
           device: 'Touch',
@@ -339,63 +344,57 @@ describe('the aim lean', () => {
         ...Array.makeBy(37, index =>
           Message.TickedFrame({ deltaTime: 10 + (index % 7) }),
         ),
-      ]
-      return Array.reduce(
-        steps,
-        standingAt(fightingInPortrait, 200, 100),
-        (current, next) => update(current, next).model,
-      )
-    }
-    const first = leanAfter()
-    const second = leanAfter()
-    expect(first.cameraLean).toEqual(second.cameraLean)
-    expect(first.cameraLean.x).toBeLessThan(0)
+      ])
+    return Effect.gen(function* () {
+      const first = yield* leanAfter()
+      const second = yield* leanAfter()
+      expect(first.cameraLean).toEqual(second.cameraLean)
+      expect(first.cameraLean.x).toBeLessThan(0)
+    })
   })
 })
 
 describe('portrait input', () => {
-  test('the sticks stay in screen space wherever the camera is', () => {
-    const aimFrom = (x: number): Model =>
-      Array.reduce(
-        [
-          Message.PressedPointer({
-            pointerId: RIGHT_THUMB,
-            device: 'Touch',
-            clientX: 300,
-            clientY: 700,
-          }),
-          Message.MovedPointer({
-            pointerId: RIGHT_THUMB,
-            clientX: 300,
-            clientY: 700 - STICK_RADIUS_PX,
-          }),
-          Message.PressedPointer({
-            pointerId: LEFT_THUMB,
-            device: 'Touch',
-            clientX: 80,
-            clientY: 700,
-          }),
-        ],
-        standingAt(fightingInPortrait, x, 120),
-        (current, next) => update(current, next).model,
-      )
-    const atLeftWall = aimFrom(20)
-    const atRightWall = aimFrom(300)
-    expect(cameraOf(atLeftWall).x).not.toBe(cameraOf(atRightWall).x)
-    Array.forEach([atLeftWall, atRightWall], fighting => {
-      expect(fighting.input.aimStick).toEqual(
-        Stick.Active({
+  it.effect('the sticks stay in screen space wherever the camera is', () => {
+    const aimFrom = (x: number) =>
+      modelAfterMessages(standingAt(fightingInPortrait, x, 120), [
+        Message.PressedPointer({
           pointerId: RIGHT_THUMB,
-          originX: 300,
-          originY: 700,
-          currentX: 300,
-          currentY: 700 - STICK_RADIUS_PX,
+          device: 'Touch',
+          clientX: 300,
+          clientY: 700,
         }),
-      )
-      expect(Stick.isAnyOf(['Active'])(fighting.input.moveStick)).toBe(true)
-      expect(focusOf(fighting).intent.maybeAim).toEqual(
-        Option.some({ x: 0, y: -1 }),
-      )
+        Message.MovedPointer({
+          pointerId: RIGHT_THUMB,
+          clientX: 300,
+          clientY: 700 - STICK_RADIUS_PX,
+        }),
+        Message.PressedPointer({
+          pointerId: LEFT_THUMB,
+          device: 'Touch',
+          clientX: 80,
+          clientY: 700,
+        }),
+      ])
+    return Effect.gen(function* () {
+      const atLeftWall = yield* aimFrom(20)
+      const atRightWall = yield* aimFrom(300)
+      expect(cameraOf(atLeftWall).x).not.toBe(cameraOf(atRightWall).x)
+      Array.forEach([atLeftWall, atRightWall], fighting => {
+        expect(fighting.input.aimStick).toEqual(
+          Stick.Active({
+            pointerId: RIGHT_THUMB,
+            originX: 300,
+            originY: 700,
+            currentX: 300,
+            currentY: 700 - STICK_RADIUS_PX,
+          }),
+        )
+        expect(Stick.isAnyOf(['Active'])(fighting.input.moveStick)).toBe(true)
+        expect(focusOf(fighting).intent.maybeAim).toEqual(
+          Option.some({ x: 0, y: -1 }),
+        )
+      })
     })
   })
 
@@ -477,40 +476,43 @@ describe('the hint band on a zoomed phone', () => {
 })
 
 describe('turning the phone', () => {
-  test('mid-wave, the run, the money, and both thumbs carry over, with no pause', () => {
-    const rich = modifyFocus(
-      modifyFields(standingAt(fightingInLandscape, 120, 90), {
-        stats: scoring(340),
-      }),
-      { wallet: () => ({ balance: 75, earned: 120, shown: 75 }) },
-    )
-    story(
-      update,
-      given(rich),
-      pressThumb(LEFT_THUMB, 120, 300),
-      pressThumb(RIGHT_THUMB, 700, 300),
-      moveThumb(RIGHT_THUMB, 700 + STICK_RADIUS_PX, 300),
-      rotateTo(PHONE_PORTRAIT),
-      model(current => {
-        expect(isPortrait(current)).toBe(true)
-        expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-        expect(scoreOf(current.stats)).toBe(340)
-        expect(focusOf(current).wallet.balance).toBe(75)
-        expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(true)
-        expect(Stick.isAnyOf(['Active'])(current.input.aimStick)).toBe(true)
-        expect(focusOf(current).intent.trigger).toBe('Held')
-      }),
-      ...ticks(3, FRAME_MS),
-      model(current => {
-        expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-        expect(current.stats.shotsFired).toBeGreaterThan(0)
-      }),
-      rotateTo(PHONE_LANDSCAPE),
-      model(current => {
-        expect(isPortrait(current)).toBe(false)
-        expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
-        expect(Stick.isAnyOf(['Active'])(current.input.aimStick)).toBe(true)
-      }),
-    )
-  })
+  it.effect(
+    'mid-wave, the run, the money, and both thumbs carry over, with no pause',
+    () => {
+      const rich = modifyFocus(
+        modifyFields(standingAt(fightingInLandscape, 120, 90), {
+          stats: scoring(340),
+        }),
+        { wallet: () => ({ balance: 75, earned: 120, shown: 75 }) },
+      )
+      return Story.story(
+        APPLICATION,
+        Story.given(rich),
+        pressThumb(LEFT_THUMB, 120, 300),
+        pressThumb(RIGHT_THUMB, 700, 300),
+        moveThumb(RIGHT_THUMB, 700 + STICK_RADIUS_PX, 300),
+        rotateTo(PHONE_PORTRAIT),
+        Story.model(current => {
+          expect(isPortrait(current)).toBe(true)
+          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+          expect(scoreOf(current.stats)).toBe(340)
+          expect(focusOf(current).wallet.balance).toBe(75)
+          expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(true)
+          expect(Stick.isAnyOf(['Active'])(current.input.aimStick)).toBe(true)
+          expect(focusOf(current).intent.trigger).toBe('Held')
+        }),
+        ...ticks(3, FRAME_MS),
+        Story.model(current => {
+          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+          expect(current.stats.shotsFired).toBeGreaterThan(0)
+        }),
+        rotateTo(PHONE_LANDSCAPE),
+        Story.model(current => {
+          expect(isPortrait(current)).toBe(false)
+          expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
+          expect(Stick.isAnyOf(['Active'])(current.input.aimStick)).toBe(true)
+        }),
+      )
+    },
+  )
 })

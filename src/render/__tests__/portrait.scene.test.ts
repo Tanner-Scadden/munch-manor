@@ -1,21 +1,12 @@
-import { Array, Match } from 'effect'
-import type { Canvas } from 'foldkit'
-import {
-  click,
-  expect,
-  given,
-  role,
-  scene,
-  selector,
-  text,
-  within,
-} from 'foldkit/scene'
+import { Array, Effect, Match } from 'effect'
+import { type Canvas, Scene, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test, expect as vitestExpect } from 'vitest'
+
+import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { BreakClock, type Model, Phase } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { isTurnHintShown } from '../../features/home/home'
 import { TURN_HINT_TEXT } from '../../features/home/homeView'
 import {
@@ -28,10 +19,11 @@ import { wavePreviewShapes } from '../../features/hud/wavePreview'
 import { restoreSave, saveOf } from '../../platform/save'
 import { DISTANT_SPAWN, inPortrait } from '../../test/model.fixture'
 import {
+  APPLICATION,
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
-  ROOT,
   measureSurfaceAs,
+  modelAfterMessages,
   rectsOf,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
@@ -83,7 +75,7 @@ const gunSlotFills = (model: Model): ReadonlyArray<Box> =>
       rect.width === gunSlotBox(screenOf(model), 0).width - 2,
   )
 
-const root = selector('.game-root')
+const root = Scene.selector('.game-root')
 const measure = (surface: typeof PHONE_PORTRAIT) => measureSurfaceAs(surface)
 
 // NOTE: the surface's MeasureGameSurface Mount reports once per Scene, so a
@@ -92,12 +84,10 @@ const measure = (surface: typeof PHONE_PORTRAIT) => measureSurfaceAs(surface)
 const remeasured = (
   model: Model,
   surfaces: ReadonlyArray<typeof PHONE_PORTRAIT>,
-): Model =>
-  Array.reduce(
-    surfaces,
+) =>
+  modelAfterMessages(
     model,
-    (current, surface) =>
-      update(current, Message.MeasuredGameSurface(surface)).model,
+    Array.map(surfaces, surface => Message.MeasuredGameSurface(surface)),
   )
 
 describe('the portrait HUD and thumb area', () => {
@@ -126,16 +116,25 @@ describe('the portrait HUD and thumb area', () => {
     })
   })
 
-  test('the reload button sits in the row, past the melee slot', () => {
-    scene(
-      ROOT,
-      given(fighting),
+  it.effect('the reload button sits in the row, past the melee slot', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(fighting),
       measure(PHONE_PORTRAIT),
-      expect(selector('.reload-button')).toHaveAttr('data-layout', 'Portrait'),
-      expect(selector('.reload-button')).toHaveStyle('bottom', '0px'),
-      expect(selector('.reload-button')).toHaveStyle('height', '100%'),
-    )
-  })
+      Scene.expect(Scene.selector('.reload-button')).toHaveAttr(
+        'data-layout',
+        'Portrait',
+      ),
+      Scene.expect(Scene.selector('.reload-button')).toHaveStyle(
+        'bottom',
+        '0px',
+      ),
+      Scene.expect(Scene.selector('.reload-button')).toHaveStyle(
+        'height',
+        '100%',
+      ),
+    ),
+  )
 
   // NOTE: a 360 px phone held upright is the narrowest, at 2 CSS pixels to a
   // HUD pixel, so a 48 px target is 24 HUD pixels there.
@@ -189,231 +188,287 @@ describe('the portrait HUD and thumb area', () => {
     ).toHaveLength(0)
   })
 
-  test('the gun cluster buttons follow the guns into the thumb area', () => {
-    scene(
-      ROOT,
-      given(fighting),
+  it.effect('the gun cluster buttons follow the guns into the thumb area', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(fighting),
       measure(PHONE_PORTRAIT),
-      expect(root).toHaveAttr('data-layout', 'Portrait'),
-      expect(selector('.gun-cluster')).toHaveAttr('data-layout', 'Portrait'),
-      expect(selector('.gun-cluster')).toHaveStyle(
+      Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
+      Scene.expect(Scene.selector('.gun-cluster')).toHaveAttr(
+        'data-layout',
+        'Portrait',
+      ),
+      Scene.expect(Scene.selector('.gun-cluster')).toHaveStyle(
         'bottom',
         '1.2820512820512822%',
       ),
-      expect(
-        within(selector('.gun-cluster'), role('group', { name: 'Your guns' })),
+      Scene.expect(
+        Scene.within(
+          Scene.selector('.gun-cluster'),
+          Scene.role('group', { name: 'Your guns' }),
+        ),
       ).toExist(),
-      expect(role('button', { name: 'Pause' })).toExist(),
-    )
-  })
+      Scene.expect(Scene.role('button', { name: 'Pause' })).toExist(),
+    ),
+  )
 })
 
 describe('turning the phone', () => {
-  test('switches the layout live mid-wave and keeps fighting', () => {
-    scene(
-      ROOT,
-      given(fighting),
-      measure(PHONE_LANDSCAPE),
-      expect(root).toHaveAttr('data-layout', 'Landscape'),
-      expect(root).toHaveStyle('--screen-w', '320'),
-      expect(role('status')).toHaveText('Fighting wave 3 of 10.'),
-    )
-    scene(
-      ROOT,
-      given(remeasured(fighting, [PHONE_LANDSCAPE])),
-      measure(PHONE_PORTRAIT),
-      expect(root).toHaveAttr('data-layout', 'Portrait'),
-      expect(root).toHaveStyle('--screen-w', '180'),
-      expect(root).toHaveStyle('--screen-h', '390'),
-      expect(role('status')).toHaveText('Fighting wave 3 of 10.'),
-      expect(role('dialog', { name: 'Turn your phone sideways' })).toBeAbsent(),
-      expect(role('group', { name: 'Your guns' })).toExist(),
-      expect(root).toHaveStyle('--frame-top', '74'),
-      expect(selector('.thumb-area')).toExist(),
-    )
-    scene(
-      ROOT,
-      given(remeasured(fighting, [PHONE_LANDSCAPE, PHONE_PORTRAIT])),
-      measure(PHONE_LANDSCAPE),
-      expect(root).toHaveAttr('data-layout', 'Landscape'),
-      expect(root).toHaveStyle('--frame-top', '0'),
-      expect(selector('.thumb-area')).toBeAbsent(),
-      expect(role('status')).toHaveText('Fighting wave 3 of 10.'),
-    )
-  })
+  it.effect('switches the layout live mid-wave and keeps fighting', () =>
+    Effect.gen(function* () {
+      yield* Scene.scene(
+        APPLICATION,
+        Scene.given(fighting),
+        measure(PHONE_LANDSCAPE),
+        Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
+        Scene.expect(root).toHaveStyle('--screen-w', '320'),
+        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3 of 10.'),
+      )
+      const wide = yield* remeasured(fighting, [PHONE_LANDSCAPE])
+      yield* Scene.scene(
+        APPLICATION,
+        Scene.given(wide),
+        measure(PHONE_PORTRAIT),
+        Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
+        Scene.expect(root).toHaveStyle('--screen-w', '180'),
+        Scene.expect(root).toHaveStyle('--screen-h', '390'),
+        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3 of 10.'),
+        Scene.expect(
+          Scene.role('dialog', { name: 'Turn your phone sideways' }),
+        ).toBeAbsent(),
+        Scene.expect(Scene.role('group', { name: 'Your guns' })).toExist(),
+        Scene.expect(root).toHaveStyle('--frame-top', '74'),
+        Scene.expect(Scene.selector('.thumb-area')).toExist(),
+      )
+      const turned = yield* remeasured(fighting, [
+        PHONE_LANDSCAPE,
+        PHONE_PORTRAIT,
+      ])
+      yield* Scene.scene(
+        APPLICATION,
+        Scene.given(turned),
+        measure(PHONE_LANDSCAPE),
+        Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
+        Scene.expect(root).toHaveStyle('--frame-top', '0'),
+        Scene.expect(Scene.selector('.thumb-area')).toBeAbsent(),
+        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3 of 10.'),
+      )
+    }),
+  )
 
-  test('a keyboard and mouse keep the landscape layout in a tall window', () => {
-    scene(
-      ROOT,
-      given(modifyFields(fighting, { lastDevice: () => 'KeyboardMouse' })),
-      measure(PHONE_PORTRAIT),
-      expect(root).toHaveAttr('data-layout', 'Landscape'),
-      expect(role('status')).toHaveText('Fighting wave 3 of 10.'),
-    )
-  })
+  it.effect(
+    'a keyboard and mouse keep the landscape layout in a tall window',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(
+          modifyFields(fighting, { lastDevice: () => 'KeyboardMouse' }),
+        ),
+        measure(PHONE_PORTRAIT),
+        Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
+        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3 of 10.'),
+      ),
+  )
 })
 
 describe('the world zoom on phones', () => {
-  const worldCanvas = selector('.game-canvas')
-  const worldWindow = selector('.world-window')
+  const worldCanvas = Scene.selector('.game-canvas')
+  const worldWindow = Scene.selector('.world-window')
 
-  test('a phone on its side draws 240 by 135 of the room over the whole screen', () => {
-    scene(
-      ROOT,
-      given(fighting),
-      measure(PHONE_LANDSCAPE),
-      expect(root).toHaveAttr('data-layout', 'Landscape'),
-      expect(worldCanvas).toHaveAttr('width', '240'),
-      expect(worldCanvas).toHaveAttr('height', '135'),
-      expect(worldWindow).toHaveStyle('width', '100%'),
-      expect(worldWindow).toHaveStyle('height', '100%'),
-    )
-  })
+  it.effect(
+    'a phone on its side draws 240 by 135 of the room over the whole screen',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(fighting),
+        measure(PHONE_LANDSCAPE),
+        Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
+        Scene.expect(worldCanvas).toHaveAttr('width', '240'),
+        Scene.expect(worldCanvas).toHaveAttr('height', '135'),
+        Scene.expect(worldWindow).toHaveStyle('width', '100%'),
+        Scene.expect(worldWindow).toHaveStyle('height', '100%'),
+      ),
+  )
 
-  test('a phone held upright draws 120 by 160 of the room in the window over the thumbs', () => {
-    scene(
-      ROOT,
-      given(fighting),
-      measure(PHONE_PORTRAIT),
-      expect(root).toHaveAttr('data-layout', 'Portrait'),
-      expect(worldCanvas).toHaveAttr('width', '120'),
-      expect(worldCanvas).toHaveAttr('height', '160'),
-      expect(worldWindow).toHaveStyle('height', `${(240 / 390) * 100}%`),
-      expect(selector('.thumb-area')).toExist(),
-    )
-  })
+  it.effect(
+    'a phone held upright draws 120 by 160 of the room in the window over the thumbs',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(fighting),
+        measure(PHONE_PORTRAIT),
+        Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
+        Scene.expect(worldCanvas).toHaveAttr('width', '120'),
+        Scene.expect(worldCanvas).toHaveAttr('height', '160'),
+        Scene.expect(worldWindow).toHaveStyle(
+          'height',
+          `${(240 / 390) * 100}%`,
+        ),
+        Scene.expect(Scene.selector('.thumb-area')).toExist(),
+      ),
+  )
 
-  test('a keyboard and mouse draw the whole room, in a wide or a tall window', () => {
-    Array.forEach([PHONE_LANDSCAPE, PHONE_PORTRAIT], surface => {
-      scene(
-        ROOT,
-        given(modifyFields(fighting, { lastDevice: () => 'KeyboardMouse' })),
-        measure(surface),
-        expect(worldCanvas).toHaveAttr('width', '320'),
-        expect(worldCanvas).toHaveAttr('height', '180'),
-      )
-    })
-  })
+  it.effect(
+    'a keyboard and mouse draw the whole room, in a wide or a tall window',
+    () =>
+      Effect.forEach([PHONE_LANDSCAPE, PHONE_PORTRAIT], surface =>
+        Scene.scene(
+          APPLICATION,
+          Scene.given(
+            modifyFields(fighting, { lastDevice: () => 'KeyboardMouse' }),
+          ),
+          measure(surface),
+          Scene.expect(worldCanvas).toHaveAttr('width', '320'),
+          Scene.expect(worldCanvas).toHaveAttr('height', '180'),
+        ),
+      ),
+  )
 })
 
 describe('the portrait home menu', () => {
-  test('keeps every slot: the player, the MORE deck, and PLAY alone with CO-OP, and no bests badge before a best', () => {
-    scene(
-      ROOT,
-      given(onTouch(Phase.Ready())),
-      measure(PHONE_PORTRAIT),
-      expect(root).toHaveAttr('data-layout', 'Portrait'),
-      expect(role('button', { name: /^More:/ })).toExist(),
-      expect(role('region', { name: /^Your bests/ })).toBeAbsent(),
-      expect(role('group', { name: 'Play' })).toExist(),
-      expect(role('button', { name: /^Play/ })).toExist(),
-      expect(role('button', { name: /^Difficulty/ })).toBeAbsent(),
-      expect(selector('.home-hero')).toExist(),
-    )
-  })
+  it.effect(
+    'keeps every slot: the player, the MORE deck, and PLAY alone with CO-OP, and no bests badge before a best',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(onTouch(Phase.Ready())),
+        measure(PHONE_PORTRAIT),
+        Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
+        Scene.expect(Scene.role('button', { name: /^More:/ })).toExist(),
+        Scene.expect(
+          Scene.role('region', { name: /^Your bests/ }),
+        ).toBeAbsent(),
+        Scene.expect(Scene.role('group', { name: 'Play' })).toExist(),
+        Scene.expect(Scene.role('button', { name: /^Play/ })).toExist(),
+        Scene.expect(
+          Scene.role('button', { name: /^Difficulty/ }),
+        ).toBeAbsent(),
+        Scene.expect(Scene.selector('.home-hero')).toExist(),
+      ),
+  )
 })
 
 describe('the turn hint', () => {
-  const turnHint = role('button', { name: TURN_HINT_TEXT })
+  const turnHint = Scene.role('button', { name: TURN_HINT_TEXT })
 
-  test('shows the tipping phone with its line on the portrait home menu', () => {
-    scene(
-      ROOT,
-      given(onTouch(Phase.Ready())),
-      measure(PHONE_PORTRAIT),
-      expect(turnHint).toExist(),
-      expect(selector('.home-turn-hint')).toExist(),
-      expect(selector('.home-turn-icon')).toExist(),
-      expect(text(TURN_HINT_TEXT)).toExist(),
-    )
-  })
-
-  test('goes when the phone turns, and does not come back when it turns upright again', () => {
-    scene(
-      ROOT,
-      given(remeasured(onTouch(Phase.Ready()), [PHONE_PORTRAIT])),
-      measure(PHONE_LANDSCAPE),
-      expect(root).toHaveAttr('data-layout', 'Landscape'),
-      expect(turnHint).toBeAbsent(),
-    )
-    scene(
-      ROOT,
-      given(
-        remeasured(onTouch(Phase.Ready()), [PHONE_PORTRAIT, PHONE_LANDSCAPE]),
+  it.effect(
+    'shows the tipping phone with its line on the portrait home menu',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(onTouch(Phase.Ready())),
+        measure(PHONE_PORTRAIT),
+        Scene.expect(turnHint).toExist(),
+        Scene.expect(Scene.selector('.home-turn-hint')).toExist(),
+        Scene.expect(Scene.selector('.home-turn-icon')).toExist(),
+        Scene.expect(Scene.text(TURN_HINT_TEXT)).toExist(),
       ),
-      measure(PHONE_PORTRAIT),
-      expect(root).toHaveAttr('data-layout', 'Portrait'),
-      expect(turnHint).toBeAbsent(),
-    )
-  })
+  )
 
-  test('goes on a tap and stays gone, leaving PLAY and the rest to tap', () => {
-    scene(
-      ROOT,
-      given(onTouch(Phase.Ready())),
-      measure(PHONE_PORTRAIT),
-      expect(role('button', { name: /^Play/ })).toExist(),
-      click(turnHint),
-      expect(turnHint).toBeAbsent(),
-      expect(role('button', { name: /^Play/ })).toExist(),
-    )
-  })
+  it.effect(
+    'goes when the phone turns, and does not come back when it turns upright again',
+    () =>
+      Effect.gen(function* () {
+        const upright = yield* remeasured(onTouch(Phase.Ready()), [
+          PHONE_PORTRAIT,
+        ])
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(upright),
+          measure(PHONE_LANDSCAPE),
+          Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
+          Scene.expect(turnHint).toBeAbsent(),
+        )
+        const turnedBack = yield* remeasured(onTouch(Phase.Ready()), [
+          PHONE_PORTRAIT,
+          PHONE_LANDSCAPE,
+        ])
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(turnedBack),
+          measure(PHONE_PORTRAIT),
+          Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
+          Scene.expect(turnHint).toBeAbsent(),
+        )
+      }),
+  )
 
-  test('is not shown again once the save of a player who dismissed it is loaded', () => {
-    const dismissed = update(
-      remeasured(onTouch(Phase.Ready()), [PHONE_PORTRAIT]),
-      Message.ClickedTurnHint(),
-    ).model
-    const saved = saveOf(dismissed)
-    vitestExpect(saved.home.turnHintSeen).toBe(true)
-    const reloaded = remeasured(restoreSave(onTouch(Phase.Ready()), saved), [
-      PHONE_PORTRAIT,
-    ])
-    vitestExpect(isTurnHintShown(reloaded)).toBe(false)
-    vitestExpect(
-      isTurnHintShown(remeasured(onTouch(Phase.Ready()), [PHONE_PORTRAIT])),
-    ).toBe(true)
-    scene(
-      ROOT,
-      given(reloaded),
-      measure(PHONE_PORTRAIT),
-      expect(turnHint).toBeAbsent(),
-    )
-  })
+  it.effect(
+    'goes on a tap and stays gone, leaving PLAY and the rest to tap',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(onTouch(Phase.Ready())),
+        measure(PHONE_PORTRAIT),
+        Scene.expect(Scene.role('button', { name: /^Play/ })).toExist(),
+        Scene.click(turnHint),
+        Scene.expect(turnHint).toBeAbsent(),
+        Scene.expect(Scene.role('button', { name: /^Play/ })).toExist(),
+      ),
+  )
 
-  test('is not on the landscape home menu', () => {
-    scene(
-      ROOT,
-      given(onTouch(Phase.Ready())),
+  it.effect(
+    'is not shown again once the save of a player who dismissed it is loaded',
+    () =>
+      Effect.gen(function* () {
+        const upright = yield* remeasured(onTouch(Phase.Ready()), [
+          PHONE_PORTRAIT,
+        ])
+        vitestExpect(isTurnHintShown(upright)).toBe(true)
+        const dismissed = yield* Story.story(
+          APPLICATION,
+          Story.given(upright),
+          Story.message(Message.ClickedTurnHint()),
+        )
+        const saved = saveOf(dismissed)
+        vitestExpect(saved.home.turnHintSeen).toBe(true)
+        const reloaded = yield* remeasured(
+          restoreSave(onTouch(Phase.Ready()), saved),
+          [PHONE_PORTRAIT],
+        )
+        vitestExpect(isTurnHintShown(reloaded)).toBe(false)
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(reloaded),
+          measure(PHONE_PORTRAIT),
+          Scene.expect(turnHint).toBeAbsent(),
+        )
+      }),
+  )
+
+  it.effect('is not on the landscape home menu', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(onTouch(Phase.Ready())),
       measure(PHONE_LANDSCAPE),
-      expect(role('group', { name: 'Play' })).toExist(),
-      expect(turnHint).toBeAbsent(),
-    )
-  })
+      Scene.expect(Scene.role('group', { name: 'Play' })).toExist(),
+      Scene.expect(turnHint).toBeAbsent(),
+    ),
+  )
 
-  test('is not shown mid-run in portrait', () => {
-    scene(
-      ROOT,
-      given(fighting),
+  it.effect('is not shown mid-run in portrait', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(fighting),
       measure(PHONE_PORTRAIT),
-      expect(root).toHaveAttr('data-layout', 'Portrait'),
-      expect(turnHint).toBeAbsent(),
-    )
-  })
+      Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
+      Scene.expect(turnHint).toBeAbsent(),
+    ),
+  )
 
-  test('is not shown on a keyboard and mouse in a tall window', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('is not shown on a keyboard and mouse in a tall window', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFields(onTouch(Phase.Ready()), {
           lastDevice: () => 'KeyboardMouse',
         }),
       ),
       measure(PHONE_PORTRAIT),
-      expect(role('group', { name: 'Play' })).toExist(),
-      expect(turnHint).toBeAbsent(),
-    )
-  })
+      Scene.expect(Scene.role('group', { name: 'Play' })).toExist(),
+      Scene.expect(turnHint).toBeAbsent(),
+    ),
+  )
 })
 
 describe('the portrait door preview', () => {

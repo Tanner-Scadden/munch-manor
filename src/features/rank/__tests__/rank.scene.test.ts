@@ -1,20 +1,11 @@
-import {
-  all,
-  click,
-  expect,
-  expectAll,
-  given,
-  inside,
-  role,
-  scene,
-  selector,
-} from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test } from 'vitest'
+
+import { describe, it } from '@effect/vitest'
 
 import { homeAfterRead } from '../../../test/model.fixture'
 import {
-  ROOT,
+  APPLICATION,
   measureSurface,
   profileDialog,
   settingsButton,
@@ -30,62 +21,71 @@ const ranked = modifyFields(homeAfterRead, {
 })
 
 describe('the rank badge', () => {
-  test('sits under the player on the home menu with the rank number', () => {
-    scene(
-      ROOT,
-      given(ranked),
+  it.effect('sits under the player on the home menu with the rank number', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(ranked),
       measureSurface,
-      expect(selector('.home-hero .rank-chip')).toExist(),
-      expect(selector('.home-hero .rank-number')).toHaveText('2'),
-      expect(selector('.home-hero .rank-chip')).toHaveAttr('data-tier', 'Wood'),
-    )
-  })
+      Scene.expect(Scene.selector('.home-hero .rank-chip')).toExist(),
+      Scene.expect(Scene.selector('.home-hero .rank-number')).toHaveText('2'),
+      Scene.expect(Scene.selector('.home-hero .rank-chip')).toHaveAttr(
+        'data-tier',
+        'Wood',
+      ),
+    ),
+  )
 
-  test('changes its look every 10 ranks', () => {
+  it.effect('changes its look every 10 ranks', () => {
     const tin = modifyFields(homeAfterRead, {
       rank: rank => ({ ...rank, earnedPoints: 2200 }),
     })
-    scene(
-      ROOT,
-      given(tin),
+    return Scene.scene(
+      APPLICATION,
+      Scene.given(tin),
       measureSurface,
-      expect(selector('.home-hero .rank-number')).toHaveText('11'),
-      expect(selector('.home-hero .rank-chip')).toHaveAttr('data-tier', 'Tin'),
+      Scene.expect(Scene.selector('.home-hero .rank-number')).toHaveText('11'),
+      Scene.expect(Scene.selector('.home-hero .rank-chip')).toHaveAttr(
+        'data-tier',
+        'Tin',
+      ),
     )
   })
 
-  test('a new player is rank 1', () => {
-    scene(
-      ROOT,
-      given(homeAfterRead),
+  it.effect('a new player is rank 1', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(homeAfterRead),
       measureSurface,
-      expect(selector('.home-hero .rank-number')).toHaveText('1'),
-    )
-  })
+      Scene.expect(Scene.selector('.home-hero .rank-number')).toHaveText('1'),
+    ),
+  )
 })
 
 describe('the Profile rank plate', () => {
-  test('shows the rank, the bar to the next, and the Bones', () => {
-    scene(
-      ROOT,
-      given(ranked),
+  it.effect('shows the rank, the bar to the next, and the Bones', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(ranked),
       measureSurface,
-      click(settingsButton),
+      Scene.click(settingsButton),
       ...showDialogInScene(),
-      expect(profileDialog).toExist(),
-      inside(
-        role('group', {
+      Scene.expect(profileDialog).toExist(),
+      Scene.inside(
+        Scene.role('group', {
           name: 'Rank 2, 62 of 125 points to the next. 16 Bones.',
         }),
-        expect(selector('.rank-number')).toHaveText('2'),
-        expect(selector('.rank-bones-count')).toHaveText('16'),
-        expectAll(all.selector('.rank-bar-fill')).toHaveCount(1),
+        Scene.expect(Scene.selector('.rank-number')).toHaveText('2'),
+        Scene.expect(Scene.selector('.rank-bones-count')).toHaveText('16'),
+        Scene.expectAll(Scene.all.selector('.rank-bar-fill')).toHaveCount(1),
       ),
-      expect(selector('.rank-bar-fill')).toHaveStyle('width', '50%'),
-    )
-  })
+      Scene.expect(Scene.selector('.rank-bar-fill')).toHaveStyle(
+        'width',
+        '50%',
+      ),
+    ),
+  )
 
-  test('counts the veteran grant and takes away spent Bones', () => {
+  it.effect('counts the veteran grant and takes away spent Bones', () => {
     const veteran = modifyFields(homeAfterRead, {
       rank: rank => ({
         ...rank,
@@ -95,14 +95,16 @@ describe('the Profile rank plate', () => {
         spentBones: 10,
       }),
     })
-    scene(
-      ROOT,
-      given(veteran),
+    return Scene.scene(
+      APPLICATION,
+      Scene.given(veteran),
       measureSurface,
-      click(settingsButton),
+      Scene.click(settingsButton),
       ...showDialogInScene(),
-      expect(selector('.profile-rank .rank-number')).toHaveText('3'),
-      expect(selector('.rank-bones-count')).toHaveText('25'),
+      Scene.expect(Scene.selector('.profile-rank .rank-number')).toHaveText(
+        '3',
+      ),
+      Scene.expect(Scene.selector('.rank-bones-count')).toHaveText('25'),
     )
   })
 })

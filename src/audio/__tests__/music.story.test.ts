@@ -1,7 +1,8 @@
-import { Array, Option } from 'effect'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import {
@@ -13,12 +14,14 @@ import {
   ZombieAction,
   ZombieState,
 } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { PlaySound, ResumeAudio } from '../../app/update/sound'
 import { FetchBuild } from '../../app/update/version'
 import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '../../shared/constants'
 import {
+  APPLICATION,
   SURFACE,
+  press,
   resolveFocusLobby,
   resolvePlayed,
   tick,
@@ -68,107 +71,111 @@ const fighting = (wave: number, audio: AudioState): Model =>
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [FAR_AWAY_SPAWN] }),
   })
 
-const pressKey = (code: string) => message(Message.PressedKey({ code }))
-
 const resolveCue = (mood: MusicMood) =>
-  Command.resolve(CueMusic, Message.CompletedCueMusic({ mood }))
+  Story.Command.resolve(CueMusic, Message.CompletedCueMusic({ mood }))
 
 describe('music follows the phase', () => {
-  test('the title and Preparation share the creep loop, cued once audio is ready', () => {
-    story(
-      update,
-      given(titleScreen(AudioState.Locked())),
-      pressKey('Enter'),
-      resolveFocusLobby(),
-      pressKey('Enter'),
-      Command.expectNone(),
-      message(Message.AcquiredAudioEngine()),
-      Command.expectExact(ResumeAudio),
-      Command.resolve(
-        ResumeAudio,
-        Message.CompletedResumeAudio({ playback: 'Running' }),
+  it.effect(
+    'the title and Preparation share the creep loop, cued once audio is ready',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(titleScreen(AudioState.Locked())),
+        press('Enter'),
+        resolveFocusLobby(),
+        press('Enter'),
+        Story.Command.expectNone(),
+        Story.message(Message.AcquiredAudioEngine()),
+        Story.Command.expectExact(ResumeAudio),
+        Story.Command.resolve(
+          ResumeAudio,
+          Message.CompletedResumeAudio({ playback: 'Running' }),
+        ),
+        Story.Command.expectExact(
+          PlaySound({ sound: 'Start', variation: 0 }),
+          CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
+        ),
+        resolvePlayed('Start'),
+        resolveCue('Creep'),
       ),
-      Command.expectExact(
-        PlaySound({ sound: 'Start', variation: 0 }),
-        CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
-      ),
-      resolvePlayed('Start'),
-      resolveCue('Creep'),
-    )
-  })
+  )
 
-  test('a title that is already audible keeps the creep loop into Preparation', () => {
-    story(
-      update,
-      given(titleScreen(AudioState.Ready())),
-      pressKey('Enter'),
-      resolveFocusLobby(),
-      resolvePlayed('Pop'),
-      pressKey('Enter'),
-      model(({ phase }) => {
-        expect(phase._tag).toBe('Preparation')
-      }),
-      Command.expectExact(PlaySound({ sound: 'Start', variation: 0 })),
-      resolvePlayed('Start'),
-    )
-  })
+  it.effect(
+    'a title that is already audible keeps the creep loop into Preparation',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(titleScreen(AudioState.Ready())),
+        press('Enter'),
+        resolveFocusLobby(),
+        resolvePlayed('Pop'),
+        press('Enter'),
+        Story.model(({ phase }) => {
+          expect(phase._tag).toBe('Preparation')
+        }),
+        Story.Command.expectExact(PlaySound({ sound: 'Start', variation: 0 })),
+        resolvePlayed('Start'),
+      ),
+  )
 
-  test('a wave romps, a pause ducks it, a resume restores it, and a cleared wave sneaks back with a stinger', () => {
-    story(
-      update,
-      given(preparing(1, [], AudioState.Ready())),
-      pressKey('Enter'),
-      Command.expectExact(
-        CueMusic({ mood: 'Romp', level: 'Full', stinger: 'None' }),
+  it.effect(
+    'a wave romps, a pause ducks it, a resume restores it, and a cleared wave sneaks back with a stinger',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(preparing(1, [], AudioState.Ready())),
+        press('Enter'),
+        Story.Command.expectExact(
+          CueMusic({ mood: 'Romp', level: 'Full', stinger: 'None' }),
+        ),
+        resolveCue('Romp'),
+        press('Escape'),
+        Story.Command.expectExact(
+          CueMusic({ mood: 'Romp', level: 'Ducked', stinger: 'None' }),
+        ),
+        resolveCue('Romp'),
+        press('Escape'),
+        Story.Command.expectExact(
+          CueMusic({ mood: 'Romp', level: 'Full', stinger: 'None' }),
+        ),
+        resolveCue('Romp'),
+        tick(FRAME_MS),
+        Story.model(({ phase }) => {
+          expect(phase._tag).toBe('Preparation')
+        }),
+        Story.Command.expectHas(
+          CueMusic({ mood: 'Creep', level: 'Full', stinger: 'Cleared' }),
+        ),
+        resolveCue('Creep'),
+        resolvePlayed('Payday'),
       ),
-      resolveCue('Romp'),
-      pressKey('Escape'),
-      Command.expectExact(
-        CueMusic({ mood: 'Romp', level: 'Ducked', stinger: 'None' }),
-      ),
-      resolveCue('Romp'),
-      pressKey('Escape'),
-      Command.expectExact(
-        CueMusic({ mood: 'Romp', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Romp'),
-      tick(FRAME_MS),
-      model(({ phase }) => {
-        expect(phase._tag).toBe('Preparation')
-      }),
-      Command.expectHas(
-        CueMusic({ mood: 'Creep', level: 'Full', stinger: 'Cleared' }),
-      ),
-      resolveCue('Creep'),
-      resolvePlayed('Payday'),
-    )
-  })
+  )
 
-  test('the finale wave stampedes and Victory plays its stinger', () => {
-    story(
-      update,
-      given(preparing(FINAL_WAVE, [], AudioState.Ready())),
-      pressKey('Enter'),
-      Command.expectExact(
+  it.effect('the finale wave stampedes and Victory plays its stinger', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(preparing(FINAL_WAVE, [], AudioState.Ready())),
+      press('Enter'),
+      Story.Command.expectExact(
         CueMusic({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
       ),
       resolveCue('Stampede'),
       tick(FRAME_MS),
-      model(({ phase }) => {
+      Story.model(({ phase }) => {
         expect(phase).toEqual(Phase.Victory())
       }),
-      Command.expectHas(
+      Story.Command.expectHas(
         CueMusic({ mood: 'Silence', level: 'Full', stinger: 'Victory' }),
       ),
       resolveCue('Silence'),
       resolvePlayed('Payday'),
-    )
-  })
+    ),
+  )
 
-  test('GameOver plays its stinger', () => {
-    story(
-      update,
-      given(
+  it.effect('GameOver plays its stinger', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFocus(
           modifyFields(fighting(3, AudioState.Ready()), {
             zombies: () => [
@@ -192,194 +199,204 @@ describe('music follows the phase', () => {
         ),
       ),
       tick(FRAME_MS),
-      model(({ phase }) => {
+      Story.model(({ phase }) => {
         expect(phase._tag).toBe('GameOver')
       }),
-      Command.expectHas(
+      Story.Command.expectHas(
         CueMusic({ mood: 'Silence', level: 'Full', stinger: 'GameOver' }),
       ),
       resolveCue('Silence'),
       resolvePlayed('PlayerHurt'),
-    )
-  })
+    ),
+  )
 
-  test('a frame that changes nothing about the phase sends no music Command', () => {
-    story(
-      update,
-      given(fighting(2, AudioState.Ready())),
-      tick(FRAME_MS),
-      tick(FRAME_MS),
-      Command.expectNone(),
-    )
-  })
+  it.effect(
+    'a frame that changes nothing about the phase sends no music Command',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(fighting(2, AudioState.Ready())),
+        tick(FRAME_MS),
+        tick(FRAME_MS),
+        Story.Command.expectNone(),
+      ),
+  )
 })
 
 describe('music only plays when it can be heard', () => {
-  test('no music Commands while audio is locked, unlocking, suspended, or unavailable', () => {
-    const silentStates = [
-      AudioState.Locked(),
-      AudioState.Unlocking(),
-      AudioState.Suspended(),
-      AudioState.Unavailable(),
-    ]
-    Array.forEach(silentStates, audio => {
-      story(
-        update,
-        given(
-          modifyFields(preparing(1, [FAR_AWAY_SPAWN], audio), {
-            phase: () =>
-              Phase.Preparation({
-                wave: 1,
-                remainingMs: 1,
-                durationMs: 15_000,
-                spawns: [FAR_AWAY_SPAWN],
+  it.effect(
+    'no music Commands while audio is locked, unlocking, suspended, or unavailable',
+    () =>
+      Effect.gen(function* () {
+        const silentStates = [
+          AudioState.Locked(),
+          AudioState.Unlocking(),
+          AudioState.Suspended(),
+          AudioState.Unavailable(),
+        ]
+        yield* Effect.forEach(silentStates, audio =>
+          Story.story(
+            APPLICATION,
+            Story.given(
+              modifyFields(preparing(1, [FAR_AWAY_SPAWN], audio), {
+                phase: () =>
+                  Phase.Preparation({
+                    wave: 1,
+                    remainingMs: 1,
+                    durationMs: 15_000,
+                    spawns: [FAR_AWAY_SPAWN],
+                  }),
               }),
-          }),
-        ),
-        tick(FRAME_MS),
-        model(({ phase }) => {
-          expect(phase._tag).toBe('Wave')
-        }),
-        Command.expectNone(),
-      )
-    })
-  })
+            ),
+            tick(FRAME_MS),
+            Story.model(({ phase }) => {
+              expect(phase._tag).toBe('Wave')
+            }),
+            Story.Command.expectNone(),
+          ),
+        )
+      }),
+  )
 
-  test('with music off, a phase change sends no music Command', () => {
-    story(
-      update,
-      given(
+  it.effect('with music off, a phase change sends no music Command', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(preparing(1, [FAR_AWAY_SPAWN], AudioState.Ready()), {
           musicSetting: () => 'Off',
         }),
       ),
-      pressKey('Enter'),
-      model(({ phase }) => {
+      press('Enter'),
+      Story.model(({ phase }) => {
         expect(phase._tag).toBe('Wave')
       }),
-      Command.expectNone(),
-    )
-  })
+      Story.Command.expectNone(),
+    ),
+  )
 
-  test('N toggles music off and back on', () => {
-    story(
-      update,
-      given(fighting(2, AudioState.Ready())),
-      pressKey('KeyN'),
-      model(({ musicSetting }) => {
+  it.effect('N toggles music off and back on', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting(2, AudioState.Ready())),
+      press('KeyN'),
+      Story.model(({ musicSetting }) => {
         expect(musicSetting).toBe('Off')
       }),
-      Command.expectExact(
+      Story.Command.expectExact(
         CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
       ),
       resolveCue('Silence'),
-      pressKey('KeyN'),
-      model(({ musicSetting }) => {
+      press('KeyN'),
+      Story.model(({ musicSetting }) => {
         expect(musicSetting).toBe('On')
       }),
-      Command.expectExact(
+      Story.Command.expectExact(
         CueMusic({ mood: 'Romp', level: 'Full', stinger: 'None' }),
       ),
       resolveCue('Romp'),
-    )
-  })
+    ),
+  )
 
-  test('the music button toggles music and unlocks audio', () => {
-    story(
-      update,
-      given(titleScreen(AudioState.Locked())),
-      message(Message.ClickedMusicButton()),
-      model(({ musicSetting, audio }) => {
+  it.effect('the music button toggles music and unlocks audio', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(titleScreen(AudioState.Locked())),
+      Story.message(Message.ClickedMusicButton()),
+      Story.model(({ musicSetting, audio }) => {
         expect(musicSetting).toBe('Off')
         expect(audio).toEqual(AudioState.Unlocking())
       }),
-      Command.expectNone(),
-      message(Message.ClickedMusicButton()),
-      model(({ musicSetting }) => {
+      Story.Command.expectNone(),
+      Story.message(Message.ClickedMusicButton()),
+      Story.model(({ musicSetting }) => {
         expect(musicSetting).toBe('On')
       }),
-    )
-  })
+    ),
+  )
 
-  test('the music button on an audible title stops and restarts the creep loop', () => {
-    story(
-      update,
-      given(titleScreen(AudioState.Ready())),
-      message(Message.ClickedMusicButton()),
-      Command.expectExact(
-        CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+  it.effect(
+    'the music button on an audible title stops and restarts the creep loop',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(titleScreen(AudioState.Ready())),
+        Story.message(Message.ClickedMusicButton()),
+        Story.Command.expectExact(
+          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+        ),
+        resolveCue('Silence'),
+        Story.message(Message.ClickedMusicButton()),
+        Story.Command.expectExact(
+          CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
+        ),
+        resolveCue('Creep'),
       ),
-      resolveCue('Silence'),
-      message(Message.ClickedMusicButton()),
-      Command.expectExact(
-        CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Creep'),
-    )
-  })
+  )
 
-  test('mute silences the music, and unmuting brings it back', () => {
-    story(
-      update,
-      given(fighting(FINAL_WAVE, AudioState.Ready())),
-      pressKey('KeyM'),
-      model(({ soundSetting, musicSetting }) => {
+  it.effect('mute silences the music, and unmuting brings it back', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting(FINAL_WAVE, AudioState.Ready())),
+      press('KeyM'),
+      Story.model(({ soundSetting, musicSetting }) => {
         expect(soundSetting).toBe('Muted')
         expect(musicSetting).toBe('On')
       }),
-      Command.expectExact(
+      Story.Command.expectExact(
         CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
       ),
       resolveCue('Silence'),
-      pressKey('KeyN'),
-      pressKey('KeyN'),
-      Command.expectNone(),
-      pressKey('KeyM'),
-      Command.expectExact(
+      press('KeyN'),
+      press('KeyN'),
+      Story.Command.expectNone(),
+      press('KeyM'),
+      Story.Command.expectExact(
         CueMusic({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
       ),
       resolveCue('Stampede'),
-    )
-  })
+    ),
+  )
 
-  test('a hidden tab silences the title music, and coming back resumes it', () => {
-    story(
-      update,
-      given(titleScreen(AudioState.Ready())),
-      message(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
-      Command.expectExact(
-        CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+  it.effect(
+    'a hidden tab silences the title music, and coming back resumes it',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(titleScreen(AudioState.Ready())),
+        Story.message(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
+        Story.Command.expectExact(
+          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+        ),
+        resolveCue('Silence'),
+        Story.message(Message.ChangedPageVisibility({ visibility: 'Visible' })),
+        Story.Command.expectExact(
+          CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
+          FetchBuild,
+        ),
+        resolveCue('Creep'),
+        Story.Command.resolve(
+          FetchBuild,
+          Message.FailedFetchBuild({ reason: 'offline' }),
+        ),
       ),
-      resolveCue('Silence'),
-      message(Message.ChangedPageVisibility({ visibility: 'Visible' })),
-      Command.expectExact(
-        CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
-        FetchBuild,
-      ),
-      resolveCue('Creep'),
-      Command.resolve(
-        FetchBuild,
-        Message.FailedFetchBuild({ reason: 'offline' }),
-      ),
-    )
-  })
+  )
 
-  test('a muted run plays no stinger when it ends', () => {
-    story(
-      update,
-      given(
+  it.effect('a muted run plays no stinger when it ends', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(preparing(FINAL_WAVE, [], AudioState.Ready()), {
           soundSetting: () => 'Muted',
         }),
       ),
-      pressKey('Enter'),
+      press('Enter'),
       tick(FRAME_MS),
-      model(({ phase }) => {
+      Story.model(({ phase }) => {
         expect(phase).toEqual(Phase.Victory())
       }),
-      Command.expectNone(),
-    )
-  })
+      Story.Command.expectNone(),
+    ),
+  )
 })
 
 describe('the end stingers stop when the music goes quiet', () => {
@@ -389,53 +406,53 @@ describe('the end stingers stop when the music goes quiet', () => {
       screenMs: () => 0,
     })
 
-  test('mute during the Victory stinger stops it', () => {
-    story(
-      update,
-      given(victoryScreen(AudioState.Ready())),
-      pressKey('KeyM'),
-      model(({ soundSetting }) => {
+  it.effect('mute during the Victory stinger stops it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(victoryScreen(AudioState.Ready())),
+      press('KeyM'),
+      Story.model(({ soundSetting }) => {
         expect(soundSetting).toBe('Muted')
       }),
-      Command.expectExact(
+      Story.Command.expectExact(
         CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
       ),
       resolveCue('Silence'),
-    )
-  })
+    ),
+  )
 
-  test('turning music off during the Game Over stinger stops it', () => {
-    story(
-      update,
-      given(
+  it.effect('turning music off during the Game Over stinger stops it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(victoryScreen(AudioState.Ready()), {
           phase: () => Phase.GameOver({ wave: 4 }),
         }),
       ),
-      message(Message.ClickedMusicButton()),
-      model(({ musicSetting }) => {
+      Story.message(Message.ClickedMusicButton()),
+      Story.model(({ musicSetting }) => {
         expect(musicSetting).toBe('Off')
       }),
-      Command.expectExact(
+      Story.Command.expectExact(
         CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
       ),
       resolveCue('Silence'),
-    )
-  })
+    ),
+  )
 
-  test('unmuting on the Victory screen does not replay the stinger', () => {
-    story(
-      update,
-      given(
+  it.effect('unmuting on the Victory screen does not replay the stinger', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(victoryScreen(AudioState.Ready()), {
           soundSetting: () => 'Muted',
         }),
       ),
-      pressKey('KeyM'),
-      model(({ soundSetting }) => {
+      press('KeyM'),
+      Story.model(({ soundSetting }) => {
         expect(soundSetting).toBe('On')
       }),
-      Command.expectNone(),
-    )
-  })
+      Story.Command.expectNone(),
+    ),
+  )
 })

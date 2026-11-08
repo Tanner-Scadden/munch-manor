@@ -1,7 +1,8 @@
-import { Array, Option } from 'effect'
-import { given, message, model, steps, story } from 'foldkit/story'
+import { Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
@@ -10,7 +11,7 @@ import {
   Phase,
   type ZombieKind,
 } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import {
   FIRST_PREPARATION_MS,
   FIXED_STEP_MS,
@@ -18,6 +19,7 @@ import {
 } from '../../../shared/constants'
 import { newPlayerCardSeen, onHard } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   SHOWN_TICKS,
   hintIds,
   holdFire,
@@ -46,7 +48,7 @@ const CARD_TICKS = Math.ceil(DEBUT_CARD_MIN_MS / TICK_MS)
 const AUTO_TICKS = Math.ceil(DEBUT_CARD_MS / TICK_MS)
 
 const touchUp = (pointerId: number) =>
-  message(Message.ReleasedPointer({ pointerId }))
+  Story.message(Message.ReleasedPointer({ pointerId }))
 
 const cardKind = (current: Model): Option.Option<ZombieKind> =>
   DebutCard.match(current.debutCard, {
@@ -82,249 +84,284 @@ const clearingWave = (wave: number, base: Model): Model =>
 const introduced = (base: Model, kinds: ReadonlyArray<ZombieKind>): Model =>
   modifyFields(base, { introducedKinds: () => kinds })
 
-const atWaveStart = (kinds: ReadonlyArray<ZombieKind>): Model => {
+// NOTE: the break before wave 2, with these kinds met; START WAVE
+// (`startWave`) starts wave 2.
+const beforeWave2 = (kinds: ReadonlyArray<ZombieKind>): Model => {
   const [, spawns] = rollSpawns(1, 2)
-  return update(
-    modifyFields(introduced(asVeteran(newPlayerCardSeen), kinds), {
-      phase: () =>
-        Phase.Preparation({
-          wave: 2,
-          remainingMs: PREPARATION_MS,
-          durationMs: PREPARATION_MS,
-          spawns,
-        }),
-    }),
-    Message.ClickedStartWaveButton(),
-  ).model
+  return modifyFields(introduced(asVeteran(newPlayerCardSeen), kinds), {
+    phase: () =>
+      Phase.Preparation({
+        wave: 2,
+        remainingMs: PREPARATION_MS,
+        durationMs: PREPARATION_MS,
+        spawns,
+      }),
+  })
 }
 
+const startWave = Story.message(Message.ClickedStartWaveButton())
+
 describe('new zombie card', () => {
-  test('wave 6 brings the Big Leaguer card and wave 7 the Ankle Biter card', () => {
-    const startOf = (wave: number, kinds: ReadonlyArray<ZombieKind>) => {
-      const [, spawns] = rollSpawns(1, wave)
-      return modifyFields(introduced(asVeteran(newPlayerCardSeen), kinds), {
-        phase: () =>
-          Phase.Preparation({
-            wave,
-            remainingMs: PREPARATION_MS,
-            durationMs: PREPARATION_MS,
-            spawns,
+  it.effect(
+    'wave 6 brings the Big Leaguer card and wave 7 the Ankle Biter card',
+    () =>
+      Effect.gen(function* () {
+        const startOf = (wave: number, kinds: ReadonlyArray<ZombieKind>) => {
+          const [, spawns] = rollSpawns(1, wave)
+          return modifyFields(introduced(asVeteran(newPlayerCardSeen), kinds), {
+            phase: () =>
+              Phase.Preparation({
+                wave,
+                remainingMs: PREPARATION_MS,
+                durationMs: PREPARATION_MS,
+                spawns,
+              }),
+          })
+        }
+
+        yield* Story.story(
+          APPLICATION,
+          Story.given(startOf(6, ['Shambler', 'Runner', 'Exploder', 'Tank'])),
+          Story.message(Message.ClickedStartWaveButton()),
+          Story.model(current => {
+            expect(cardKind(current)).toStrictEqual(Option.some('Thrower'))
           }),
-      })
-    }
+        )
 
-    story(
-      update,
-      given(startOf(6, ['Shambler', 'Runner', 'Exploder', 'Tank'])),
-      message(Message.ClickedStartWaveButton()),
-      model(current => {
-        expect(cardKind(current)).toStrictEqual(Option.some('Thrower'))
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            startOf(7, ['Shambler', 'Runner', 'Exploder', 'Tank', 'Thrower']),
+          ),
+          Story.message(Message.ClickedStartWaveButton()),
+          Story.model(current => {
+            expect(cardKind(current)).toStrictEqual(Option.some('Crawler'))
+          }),
+        )
       }),
-    )
+  )
 
-    story(
-      update,
-      given(startOf(7, ['Shambler', 'Runner', 'Exploder', 'Tank', 'Thrower'])),
-      message(Message.ClickedStartWaveButton()),
-      model(current => {
-        expect(cardKind(current)).toStrictEqual(Option.some('Crawler'))
-      }),
-    )
-  })
-
-  test('stays out of Preparation and comes up when the wave starts', () => {
-    story(
-      update,
-      given(newPlayerCardSeen),
+  it.effect('stays out of Preparation and comes up when the wave starts', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(newPlayerCardSeen),
       tap('Enter'),
-      model(current => {
+      Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(cardKind(current)).toStrictEqual(Option.none())
         expect(hintIds(current)).toEqual(['Move', 'Fire'])
       }),
-      message(Message.ClickedStartWaveButton()),
-      model(current => {
+      Story.message(Message.ClickedStartWaveButton()),
+      Story.model(current => {
         expect(Phase.guards.Wave(current.phase)).toBe(true)
         expect(cardKind(current)).toStrictEqual(Option.some('Shambler'))
         expect(hintIds(current)).toEqual([])
       }),
-    )
-  })
+    ),
+  )
 
-  test('does not hold up the Preparation countdown, and comes up when it runs out', () => {
-    story(
-      update,
-      given(
-        clearingWave(
-          3,
-          onHard(
-            introduced(asVeteran(newPlayerCardSeen), ['Shambler', 'Runner']),
+  it.effect(
+    'does not hold up the Preparation countdown, and comes up when it runs out',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          clearingWave(
+            3,
+            onHard(
+              introduced(asVeteran(newPlayerCardSeen), ['Shambler', 'Runner']),
+            ),
           ),
         ),
-      ),
-      // NOTE: one 60 Hz tick clears the wave; a 50 ms frame is three.
-      tick(FIXED_STEP_MS),
-      model(current => {
-        expect(cardKind(current)).toStrictEqual(Option.none())
-        expect(remainingMs(current)).toBe(PREPARATION_MS)
-      }),
-      ...ticks(4, TICK_MS),
-      model(current => {
-        expect(remainingMs(current)).toBeCloseTo(PREPARATION_MS - 4 * TICK_MS)
-      }),
-      ...ticks(Math.ceil(PREPARATION_MS / TICK_MS), TICK_MS),
-      model(current => {
-        expect(Phase.guards.Wave(current.phase)).toBe(true)
-        expect(cardKind(current)).toStrictEqual(Option.some('Exploder'))
-      }),
-    )
-  })
-
-  test('introduces each kind once per session', () => {
-    story(
-      update,
-      given(atWaveStart(['Shambler'])),
-      ...ticks(AUTO_TICKS, TICK_MS),
-      model(current => {
-        expect(cardKind(current)).toStrictEqual(Option.none())
-        expect(current.introducedKinds).toEqual(['Shambler', 'Runner'])
-      }),
-    )
-
-    story(
-      update,
-      given(atWaveStart(['Shambler', 'Runner'])),
-      model(current => {
-        expect(Phase.guards.Wave(current.phase)).toBe(true)
-        expect(cardKind(current)).toStrictEqual(Option.none())
-      }),
-    )
-
-    story(
-      update,
-      given(
-        introduced(
-          modifyFields(newPlayerCardSeen, {
-            phase: () => Phase.GameOver({ wave: 1 }),
-            screenMs: () => 1e6,
-          }),
-          ['Shambler'],
-        ),
-      ),
-      tap('Enter'),
-      message(Message.ClickedStartWaveButton()),
-      model(current => {
-        expect(Phase.guards.Wave(current.phase)).toBe(true)
-        expect(cardKind(current)).toStrictEqual(Option.none())
-      }),
-    )
-  })
-
-  test('in endless, only kinds not yet introduced this session get a card', () => {
-    const victorious = (kinds: ReadonlyArray<ZombieKind>): Model =>
-      introduced(
-        modifyFields(asVeteran(newPlayerCardSeen), {
-          phase: () => Phase.Victory(),
-          screenMs: () => 1e6,
+        // NOTE: one 60 Hz tick clears the wave; a 50 ms frame is three.
+        tick(FIXED_STEP_MS),
+        Story.model(current => {
+          expect(cardKind(current)).toStrictEqual(Option.none())
+          expect(remainingMs(current)).toBe(PREPARATION_MS)
         }),
-        kinds,
-      )
-
-    story(
-      update,
-      given(
-        victorious([
-          'Shambler',
-          'Runner',
-          'Exploder',
-          'Tank',
-          'Thrower',
-          'Crawler',
-        ]),
-      ),
-      tap('KeyK'),
-      message(Message.ClickedStartWaveButton()),
-      model(current => {
-        expect(Phase.guards.Wave(current.phase)).toBe(true)
-        expect(cardKind(current)).toStrictEqual(Option.none())
-      }),
-    )
-
-    story(
-      update,
-      given(
-        victorious(['Shambler', 'Runner', 'Exploder', 'Thrower', 'Crawler']),
-      ),
-      tap('KeyK'),
-      model(current => {
-        expect(cardKind(current)).toStrictEqual(Option.none())
-      }),
-      message(Message.ClickedStartWaveButton()),
-      model(current => {
-        expect(cardKind(current)).toStrictEqual(Option.some('Tank'))
-      }),
-    )
-  })
-
-  test('holds the world still while it is up, then lets the wave go on its own', () => {
-    story(
-      update,
-      given(atWaveStart(['Shambler'])),
-      press('KeyD'),
-      ...ticks(AUTO_TICKS - 1, TICK_MS),
-      model(current => {
-        expect(cardKind(current)).toStrictEqual(Option.some('Runner'))
-        expect(waveClockMs(current)).toBe(0)
-        expect(current.zombies).toEqual([])
-        expect(focusOf(current).player.x).toBe(focusOf(initialModel).player.x)
-      }),
-      tick(TICK_MS),
-      model(current => {
-        expect(cardKind(current)).toStrictEqual(Option.none())
-      }),
-      ...ticks(4, TICK_MS),
-      model(current => {
-        expect(waveClockMs(current)).toBeGreaterThan(0)
-        expect(focusOf(current).player.x).toBeGreaterThan(
-          focusOf(initialModel).player.x,
-        )
-      }),
-    )
-  })
-
-  test('a click, a tap, Enter, or GOT IT skip it, but only after a short minimum', () => {
-    const skips = [
-      tap('Enter'),
-      steps(
-        mouseDown(700, 200),
-        message(Message.ReleasedPointer({ pointerId: 1 })),
-      ),
-      steps(touchDown(4, 100, 200), touchUp(4)),
-      message(Message.ClickedDebutCardButton()),
-    ]
-    Array.forEach(skips, skip => {
-      story(
-        update,
-        given(atWaveStart(['Shambler'])),
-        skip,
-        model(current => {
-          expect(cardKind(current)).toStrictEqual(Option.some('Runner'))
+        ...ticks(4, TICK_MS),
+        Story.model(current => {
+          expect(remainingMs(current)).toBeCloseTo(PREPARATION_MS - 4 * TICK_MS)
         }),
-        ...ticks(CARD_TICKS, TICK_MS),
-        skip,
-        model(current => {
+        ...ticks(Math.ceil(PREPARATION_MS / TICK_MS), TICK_MS),
+        Story.model(current => {
+          expect(Phase.guards.Wave(current.phase)).toBe(true)
+          expect(cardKind(current)).toStrictEqual(Option.some('Exploder'))
+        }),
+      ),
+  )
+
+  it.effect('introduces each kind once per session', () =>
+    Effect.gen(function* () {
+      yield* Story.story(
+        APPLICATION,
+        Story.given(beforeWave2(['Shambler'])),
+        startWave,
+        ...ticks(AUTO_TICKS, TICK_MS),
+        Story.model(current => {
           expect(cardKind(current)).toStrictEqual(Option.none())
           expect(current.introducedKinds).toEqual(['Shambler', 'Runner'])
-          expect(Phase.guards.Wave(current.phase)).toBe(true)
         }),
       )
-    })
-  })
 
-  test('movement and the other keys and buttons leave it up', () => {
-    story(
-      update,
-      given(atWaveStart(['Shambler'])),
+      yield* Story.story(
+        APPLICATION,
+        Story.given(beforeWave2(['Shambler', 'Runner'])),
+        startWave,
+        Story.model(current => {
+          expect(Phase.guards.Wave(current.phase)).toBe(true)
+          expect(cardKind(current)).toStrictEqual(Option.none())
+        }),
+      )
+
+      yield* Story.story(
+        APPLICATION,
+        Story.given(
+          introduced(
+            modifyFields(newPlayerCardSeen, {
+              phase: () => Phase.GameOver({ wave: 1 }),
+              screenMs: () => 1e6,
+            }),
+            ['Shambler'],
+          ),
+        ),
+        tap('Enter'),
+        Story.message(Message.ClickedStartWaveButton()),
+        Story.model(current => {
+          expect(Phase.guards.Wave(current.phase)).toBe(true)
+          expect(cardKind(current)).toStrictEqual(Option.none())
+        }),
+      )
+    }),
+  )
+
+  it.effect(
+    'in endless, only kinds not yet introduced this session get a card',
+    () =>
+      Effect.gen(function* () {
+        const victorious = (kinds: ReadonlyArray<ZombieKind>): Model =>
+          introduced(
+            modifyFields(asVeteran(newPlayerCardSeen), {
+              phase: () => Phase.Victory(),
+              screenMs: () => 1e6,
+            }),
+            kinds,
+          )
+
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            victorious([
+              'Shambler',
+              'Runner',
+              'Exploder',
+              'Tank',
+              'Thrower',
+              'Crawler',
+            ]),
+          ),
+          tap('KeyK'),
+          Story.message(Message.ClickedStartWaveButton()),
+          Story.model(current => {
+            expect(Phase.guards.Wave(current.phase)).toBe(true)
+            expect(cardKind(current)).toStrictEqual(Option.none())
+          }),
+        )
+
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            victorious([
+              'Shambler',
+              'Runner',
+              'Exploder',
+              'Thrower',
+              'Crawler',
+            ]),
+          ),
+          tap('KeyK'),
+          Story.model(current => {
+            expect(cardKind(current)).toStrictEqual(Option.none())
+          }),
+          Story.message(Message.ClickedStartWaveButton()),
+          Story.model(current => {
+            expect(cardKind(current)).toStrictEqual(Option.some('Tank'))
+          }),
+        )
+      }),
+  )
+
+  it.effect(
+    'holds the world still while it is up, then lets the wave go on its own',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(beforeWave2(['Shambler'])),
+        startWave,
+        press('KeyD'),
+        ...ticks(AUTO_TICKS - 1, TICK_MS),
+        Story.model(current => {
+          expect(cardKind(current)).toStrictEqual(Option.some('Runner'))
+          expect(waveClockMs(current)).toBe(0)
+          expect(current.zombies).toEqual([])
+          expect(focusOf(current).player.x).toBe(focusOf(initialModel).player.x)
+        }),
+        tick(TICK_MS),
+        Story.model(current => {
+          expect(cardKind(current)).toStrictEqual(Option.none())
+        }),
+        ...ticks(4, TICK_MS),
+        Story.model(current => {
+          expect(waveClockMs(current)).toBeGreaterThan(0)
+          expect(focusOf(current).player.x).toBeGreaterThan(
+            focusOf(initialModel).player.x,
+          )
+        }),
+      ),
+  )
+
+  it.effect(
+    'a click, a tap, Enter, or GOT IT skip it, but only after a short minimum',
+    () =>
+      Effect.gen(function* () {
+        const skips = [
+          tap('Enter'),
+          Story.steps(
+            mouseDown(700, 200),
+            Story.message(Message.ReleasedPointer({ pointerId: 1 })),
+          ),
+          Story.steps(touchDown(4, 100, 200), touchUp(4)),
+          Story.message(Message.ClickedDebutCardButton()),
+        ]
+        yield* Effect.forEach(
+          skips,
+          skip =>
+            Story.story(
+              APPLICATION,
+              Story.given(beforeWave2(['Shambler'])),
+              startWave,
+              skip,
+              Story.model(current => {
+                expect(cardKind(current)).toStrictEqual(Option.some('Runner'))
+              }),
+              ...ticks(CARD_TICKS, TICK_MS),
+              skip,
+              Story.model(current => {
+                expect(cardKind(current)).toStrictEqual(Option.none())
+                expect(current.introducedKinds).toEqual(['Shambler', 'Runner'])
+                expect(Phase.guards.Wave(current.phase)).toBe(true)
+              }),
+            ),
+          { discard: true },
+        )
+      }),
+  )
+
+  it.effect('movement and the other keys and buttons leave it up', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(beforeWave2(['Shambler'])),
+      startWave,
       ...ticks(CARD_TICKS, TICK_MS),
       press('KeyW'),
       press('KeyD'),
@@ -332,35 +369,36 @@ describe('new zombie card', () => {
       tap('KeyQ'),
       tap('KeyT'),
       tap('KeyM'),
-      message(Message.MovedMouse({ clientX: 700, clientY: 100 })),
-      message(Message.ClickedSwapButton()),
-      message(Message.ClickedReloadButton()),
-      message(Message.ClickedPlaceTrapButton()),
+      Story.message(Message.MovedMouse({ clientX: 700, clientY: 100 })),
+      Story.message(Message.ClickedSwapButton()),
+      Story.message(Message.ClickedReloadButton()),
+      Story.message(Message.ClickedPlaceTrapButton()),
       tick(TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(cardKind(current)).toStrictEqual(Option.some('Runner'))
         expect(current.stats.shotsFired).toBe(0)
       }),
-    )
-  })
+    ),
+  )
 
-  test('Escape pauses it, and it carries on after resuming', () => {
-    story(
-      update,
-      given(atWaveStart(['Shambler'])),
+  it.effect('Escape pauses it, and it carries on after resuming', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(beforeWave2(['Shambler'])),
+      startWave,
       ...ticks(CARD_TICKS, TICK_MS),
       tap('Escape'),
-      model(current => {
+      Story.model(current => {
         expect(Phase.guards.Paused(current.phase)).toBe(true)
       }),
       ...ticks(AUTO_TICKS, TICK_MS),
       tap('Escape'),
-      model(current => {
+      Story.model(current => {
         expect(Phase.guards.Wave(current.phase)).toBe(true)
         expect(cardKind(current)).toStrictEqual(Option.some('Runner'))
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('touch first play', () => {
@@ -368,152 +406,158 @@ describe('touch first play', () => {
     lastDevice: () => 'Touch',
   })
 
-  test('shows both stick ghosts, and keeps the aim ghost until the player aims and fires', () => {
-    story(
-      update,
-      given(touchPlayer),
-      touchDown(1, 400, 200),
-      touchUp(1),
-      message(Message.ClickedCampaignButton()),
-      model(current => {
-        expect(shownGhostSticks(current)).toEqual(['Move', 'Aim'])
-      }),
-      touchDown(2, 700, 200),
-      ...ticks(10, TICK_MS),
-      model(current => {
-        expect(current.stats.shotsFired).toBe(0)
-        expect(shownGhostSticks(current)).toEqual(['Move'])
-      }),
-      touchUp(2),
-      ...ticks(SHOWN_TICKS, TICK_MS),
-      model(current => {
-        expect(isLearned(current.lessons.fire)).toBe(false)
-        expect(shownGhostSticks(current)).toEqual(['Move', 'Aim'])
-      }),
-      touchDown(3, 100, 200),
-      touchMove(3, 160, 200),
-      ...ticks(10, TICK_MS),
-      touchUp(3),
-      model(current => {
-        expect(isLearned(current.lessons.move)).toBe(true)
-        expect(shownGhostSticks(current)).toEqual(['Aim'])
-      }),
-      touchDown(4, 700, 200),
-      touchMove(4, 760, 180),
-      ...ticks(30, TICK_MS),
-      touchUp(4),
-      model(current => {
-        expect(isLearned(current.lessons.fire)).toBe(true)
-        expect(shownGhostSticks(current)).toEqual([])
-      }),
-    )
-  })
+  it.effect(
+    'shows both stick ghosts, and keeps the aim ghost until the player aims and fires',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(touchPlayer),
+        touchDown(1, 400, 200),
+        touchUp(1),
+        Story.message(Message.ClickedCampaignButton()),
+        Story.model(current => {
+          expect(shownGhostSticks(current)).toEqual(['Move', 'Aim'])
+        }),
+        touchDown(2, 700, 200),
+        ...ticks(10, TICK_MS),
+        Story.model(current => {
+          expect(current.stats.shotsFired).toBe(0)
+          expect(shownGhostSticks(current)).toEqual(['Move'])
+        }),
+        touchUp(2),
+        ...ticks(SHOWN_TICKS, TICK_MS),
+        Story.model(current => {
+          expect(isLearned(current.lessons.fire)).toBe(false)
+          expect(shownGhostSticks(current)).toEqual(['Move', 'Aim'])
+        }),
+        touchDown(3, 100, 200),
+        touchMove(3, 160, 200),
+        ...ticks(10, TICK_MS),
+        touchUp(3),
+        Story.model(current => {
+          expect(isLearned(current.lessons.move)).toBe(true)
+          expect(shownGhostSticks(current)).toEqual(['Aim'])
+        }),
+        touchDown(4, 700, 200),
+        touchMove(4, 760, 180),
+        ...ticks(30, TICK_MS),
+        touchUp(4),
+        Story.model(current => {
+          expect(isLearned(current.lessons.fire)).toBe(true)
+          expect(shownGhostSticks(current)).toEqual([])
+        }),
+      ),
+  )
 
-  test('shows no ghosts on keyboard and mouse', () => {
-    story(
-      update,
-      given(newPlayerCardSeen),
+  it.effect('shows no ghosts on keyboard and mouse', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(newPlayerCardSeen),
       tap('Enter'),
-      model(current => {
+      Story.model(current => {
         expect(hintIds(current)).toEqual(['Move', 'Fire'])
         expect(shownGhostSticks(current)).toEqual([])
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('tutorial hints', () => {
-  test('do not clear on unrelated input or a quick nudge', () => {
-    story(
-      update,
-      given(newPlayerCardSeen),
+  it.effect('do not clear on unrelated input or a quick nudge', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(newPlayerCardSeen),
       tap('Enter'),
       tap('KeyQ'),
       tap('KeyM'),
       tap('KeyM'),
       tap('KeyG'),
       tap('Digit2'),
-      message(Message.MovedMouse({ clientX: 700, clientY: 100 })),
+      Story.message(Message.MovedMouse({ clientX: 700, clientY: 100 })),
       press('KeyD'),
       tick(TICK_MS),
       release('KeyD'),
       holdFire,
       releaseFire,
       ...ticks(SHOWN_TICKS, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(isLearned(current.lessons.move)).toBe(false)
         expect(isLearned(current.lessons.fire)).toBe(false)
         expect(shownGhostSticks(current)).toEqual(['Move', 'Aim'])
       }),
-    )
-  })
+    ),
+  )
 
-  test('stay up for a minimum time even when the action is done at once', () => {
-    story(
-      update,
-      given(newPlayerCardSeen),
-      tap('Enter'),
-      press('KeyD'),
-      ...ticks(10, TICK_MS),
-      release('KeyD'),
-      model(current => {
-        expect(current.practice.movedPx).toBeGreaterThan(24)
-        expect(hintIds(current)).toEqual(['Move', 'Fire'])
-      }),
-      ...ticks(SHOWN_TICKS, TICK_MS),
-      model(current => {
-        expect(hintIds(current)).toEqual(['Fire'])
-      }),
-    )
-  })
+  it.effect(
+    'stay up for a minimum time even when the action is done at once',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(newPlayerCardSeen),
+        tap('Enter'),
+        press('KeyD'),
+        ...ticks(10, TICK_MS),
+        release('KeyD'),
+        Story.model(current => {
+          expect(current.practice.movedPx).toBeGreaterThan(24)
+          expect(hintIds(current)).toEqual(['Move', 'Fire'])
+        }),
+        ...ticks(SHOWN_TICKS, TICK_MS),
+        Story.model(current => {
+          expect(hintIds(current)).toEqual(['Fire'])
+        }),
+      ),
+  )
 })
 
 describe('wave 1 practice gate', () => {
-  test('wave 1 waits for the player to move, aim, and fire, and START WAVE skips it', () => {
-    story(
-      update,
-      given(newPlayerCardSeen),
-      tap('Enter'),
-      ...ticks(Math.ceil((FIRST_PREPARATION_MS * 3) / TICK_MS), TICK_MS),
-      tap('KeyR'),
-      model(current => {
-        expect(remainingMs(current)).toBe(FIRST_PREPARATION_MS)
-      }),
-      message(Message.ClickedStartWaveButton()),
-      model(current => {
-        expect(Phase.guards.Wave(current.phase)).toBe(true)
-      }),
-    )
-  })
+  it.effect(
+    'wave 1 waits for the player to move, aim, and fire, and START WAVE skips it',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(newPlayerCardSeen),
+        tap('Enter'),
+        ...ticks(Math.ceil((FIRST_PREPARATION_MS * 3) / TICK_MS), TICK_MS),
+        tap('KeyR'),
+        Story.model(current => {
+          expect(remainingMs(current)).toBe(FIRST_PREPARATION_MS)
+        }),
+        Story.message(Message.ClickedStartWaveButton()),
+        Story.model(current => {
+          expect(Phase.guards.Wave(current.phase)).toBe(true)
+        }),
+      ),
+  )
 
-  test('the countdown starts once both lessons are learned', () => {
-    story(
-      update,
-      given(newPlayerCardSeen),
+  it.effect('the countdown starts once both lessons are learned', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(newPlayerCardSeen),
       tap('Enter'),
       press('KeyD'),
       ...ticks(10, TICK_MS),
       release('KeyD'),
-      message(Message.MovedMouse({ clientX: 700, clientY: 100 })),
+      Story.message(Message.MovedMouse({ clientX: 700, clientY: 100 })),
       mouseDown(700, 100),
       ...ticks(SHOWN_TICKS, TICK_MS),
-      message(Message.ReleasedPointer({ pointerId: 1 })),
-      model(current => {
+      Story.message(Message.ReleasedPointer({ pointerId: 1 })),
+      Story.model(current => {
         expect(isLearned(current.lessons.move)).toBe(true)
         expect(isLearned(current.lessons.fire)).toBe(true)
       }),
       ...ticks(Math.ceil(FIRST_PREPARATION_MS / TICK_MS) + 1, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(Phase.guards.Wave(current.phase)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 
-  test('only holds wave 1', () => {
+  it.effect('only holds wave 1', () => {
     const [, spawns] = rollSpawns(1, 2)
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(introduced(newPlayerCardSeen, ['Shambler', 'Runner']), {
           phase: () =>
             Phase.Preparation({
@@ -525,7 +569,7 @@ describe('wave 1 practice gate', () => {
         }),
       ),
       ...ticks(Math.ceil(1000 / TICK_MS) + 1, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(Phase.guards.Wave(current.phase)).toBe(true)
       }),
     )

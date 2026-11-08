@@ -1,10 +1,11 @@
-import { expect, given, scene, selector } from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test } from 'vitest'
+
+import { describe, it } from '@effect/vitest'
 
 import { Arsenal, type CarriedGun, type Model } from '../../../app/model'
 import { fighting } from '../../../test/model.fixture'
-import { ROOT, measureSurface } from '../../../test/testing'
+import { APPLICATION, measureSurface } from '../../../test/testing'
 import { freshGun } from '../../../world/gear/weapons'
 import { modifyFocus } from '../../../world/party/party'
 
@@ -21,24 +22,24 @@ const onTouchWith = (first: CarriedGun, second: CarriedGun): Model =>
       }),
   })
 
-const knifeSlot = selector('.gun-slot-button[data-slot="Melee"]')
+const knifeSlot = Scene.selector('.gun-slot-button[data-slot="Melee"]')
 
 describe('the knife when the guns run dry', () => {
-  test('the knife slot pulses once every gun is dry', () => {
-    scene(
-      ROOT,
-      given(onTouchWith(dry(freshGun('Shotgun')), dry(freshGun('Smg')))),
+  it.effect('the knife slot pulses once every gun is dry', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(onTouchWith(dry(freshGun('Shotgun')), dry(freshGun('Smg')))),
       measureSurface,
-      expect(knifeSlot).toHaveAttr('data-out', 'true'),
-    )
-  })
+      Scene.expect(knifeSlot).toHaveAttr('data-out', 'true'),
+    ),
+  )
 
-  test('a gun with rounds left keeps the knife slot plain', () => {
-    scene(
-      ROOT,
-      given(onTouchWith(freshGun('Shotgun'), dry(freshGun('Smg')))),
+  it.effect('a gun with rounds left keeps the knife slot plain', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(onTouchWith(freshGun('Shotgun'), dry(freshGun('Smg')))),
       measureSurface,
-      expect(knifeSlot).toHaveAttr('data-out', 'false'),
-    )
-  })
+      Scene.expect(knifeSlot).toHaveAttr('data-out', 'false'),
+    ),
+  )
 })
