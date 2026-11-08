@@ -36,7 +36,7 @@ import {
   unlockStartMs,
   unlocksOf,
 } from '../end/endBeat'
-import { PART_OF_KIND, chooseLook } from '../look/block'
+import { PART_OF_KIND, chooseLook } from '../profile/blocks/look/block'
 import { BONE, BONE_SIZE, badgeSprite, shineSprite } from './rankArt'
 
 // The rank strip on the end card, in the landscape frame: the badge, the

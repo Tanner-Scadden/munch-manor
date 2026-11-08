@@ -1,39 +1,19 @@
 import { Array, Function, Option, String, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
-import { Tabs } from '@foldkit/ui'
-
-import type { Model, ProfileFx, ProfileTab } from '../../app/model'
 import { type Seeded, nextRandom } from '../../shared/prng'
+import type { Model, ProfileTab } from './model'
 
 // TABS
 
 // NOTE: the tabs as data, in the order they stand down the side (across the
 // top in portrait). Stats would be one more entry here and one
-// more literal in ProfileTab.
+// more literal in ProfileTab (src/features/profile/model.ts).
 export const PROFILE_TABS: Array.NonEmptyReadonlyArray<ProfileTab> = [
   'Look',
   'Name',
   'Account',
   'Settings',
 ]
-
-export const ProfileTabsBlock = Tabs.makeBlock<ProfileTab>()
-
-// NOTE: plays an effect in the Profile. The count moves on every time, so
-// the view swaps the element and the CSS animation starts over.
-export const withProfileFx: {
-  (fx: ProfileFx): (model: Model) => Model
-  (model: Model, fx: ProfileFx): Model
-} = Function.dual(2, (model: Model, fx: ProfileFx): Model =>
-  modifyFields(model, {
-    profile: profile =>
-      modifyFields(profile, {
-        fx: () => fx,
-        fxCount: count => count + 1,
-      }),
-  }),
-)
 
 // NAME
 
@@ -44,6 +24,11 @@ export const MAX_NAME_LENGTH = 12
 export const DEFAULT_NAME = 'Survivor'
 
 export const NAME_INPUT_ID = 'profile-name-input'
+
+// SETTINGS
+
+export const RESET_TUTORIAL_BUTTON_ID = 'reset-tutorial'
+export const KEEP_TUTORIAL_BUTTON_ID = 'keep-tutorial'
 
 const UNPRINTABLE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu
 const SPACES = /\s+/g
@@ -81,7 +66,8 @@ export const shownName = (name: string): string =>
 
 // NOTE: the hook for the co-op client: the name a join request carries. An
 // empty name is sent as it is, and the room seats the player as "Player N".
-export const joinName = (model: Model): string => model.playerName
+export const joinName = (model: Readonly<{ playerName: string }>): string =>
+  model.playerName
 
 // THE NAME DICE
 
@@ -146,3 +132,6 @@ export const rollName: {
     ),
   ]
 })
+
+// NOTE: the tab the Profile has open, for the root's Dialog and menuState.
+export const tabOf = (profile: Model): ProfileTab => profile.tab

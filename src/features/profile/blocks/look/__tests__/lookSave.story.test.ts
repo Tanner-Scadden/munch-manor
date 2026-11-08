@@ -3,14 +3,14 @@ import { describe, expect, test } from 'vitest'
 
 import { cleanLook } from '@munch/netcode'
 
-import { defaultAppearance } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
+import { defaultAppearance } from '../../../../../app/model'
+import { initialModel } from '../../../../../app/pureApp'
 import {
   SAVE_VERSION,
   decodeSave,
   restoreSave,
   saveOf,
-} from '../../../platform/save'
+} from '../../../../../platform/save'
 import {
   type Appearance,
   GunSkin,
@@ -20,11 +20,11 @@ import {
   ShirtColor,
   lookCodeOf,
   lookOfCode,
-} from '../../../shared/playerData'
-import { legacySave } from '../../../test/store.fixture'
-import { jsonOf } from '../../../test/testing'
-import { pointsForRank } from '../../../world/heroes/rank'
-import { unlocksAt } from '../../unlocks/unlocks'
+} from '../../../../../shared/playerData'
+import { legacySave } from '../../../../../test/store.fixture'
+import { jsonOf } from '../../../../../test/testing'
+import { pointsForRank } from '../../../../../world/heroes/rank'
+import { unlocksAt } from '../../../../unlocks/unlocks'
 import { HAT_ART } from '../hatArt'
 
 // The hat, shirt color, print, and gun skin in what is kept and what is

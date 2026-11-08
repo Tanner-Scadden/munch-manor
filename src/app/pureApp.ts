@@ -6,9 +6,12 @@
 
 import { Effect, Function } from 'effect'
 import { Story } from 'foldkit'
+import type { BlockOfBinding } from 'foldkit/block'
 import { toParentMessageFor } from 'foldkit/test'
 
-import { CharacterBinding } from './bindings'
+import type { CharacterBlock } from '../features/profile/blocks/look/block'
+import { CharacterBinding } from '../features/profile/composition'
+import { ProfileBinding } from './bindings'
 import { layer } from './block'
 import { ApplicationBlock } from './definition'
 import type { Model } from './model'
@@ -27,14 +30,29 @@ export const { init, update, view, subscriptions } = application
 // included. src/app/model.ts's `initialModel` holds only the root's own fields.
 export const initialModel: Model = init().model
 
+const message = toParentMessageFor(application)
+const inProfile = toParentMessageFor(application, ProfileBinding)
+
+type ProfileMessage = BlockOfBinding<typeof ProfileBinding>['Message']['Type']
+type CharacterMessage = typeof CharacterBlock.Message.Type
+
+const profile = (profileMessage: ProfileMessage) =>
+  message(ProfileBinding, profileMessage)
+
 // NOTE: a child's Message as the root's generated envelope
 // (`GotCoopMessage`, `GotShopDialogMessage`, ...), for `Story.message`,
 // `update`, and the tools:
 // `Child.message(CoopBinding, CoopMessage.ClickedReady())`. A record, since
-// the mapper is generic and cannot be made dual. `look` maps a Look tab
-// radio group's Message to the Look tab's, so a test delivers one as
-// `Child.message(CharacterBinding, Child.look(BodyBinding, ...))`.
+// the mapper is generic and cannot be made dual. `profile` delivers a
+// Profile Message, `inProfile` maps one of its children's (the tabs, the
+// Look tab) to the Profile's, and `character` delivers a Look tab Message.
+// A Look tab radio group's Message is a grandchild's grandchild: a
+// Block-aware Story delivers it with `Story.messageIn([ProfileBinding,
+// CharacterBinding, BodyBinding], ...)`.
 export const Child = {
-  message: toParentMessageFor(application),
-  look: toParentMessageFor(application, CharacterBinding),
+  message,
+  profile,
+  inProfile,
+  character: (characterMessage: CharacterMessage) =>
+    profile(inProfile(CharacterBinding, characterMessage)),
 }

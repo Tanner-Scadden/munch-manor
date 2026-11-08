@@ -180,9 +180,6 @@ export const steppedHandCard: {
     ),
 )
 
-export const RESET_TUTORIAL_BUTTON_ID = 'reset-tutorial'
-export const KEEP_TUTORIAL_BUTTON_ID = 'keep-tutorial'
-
 export const steppedHomeFocus: {
   (
     maybeFocus: Option.Option<HomeButton>,

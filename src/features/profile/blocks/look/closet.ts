@@ -12,8 +12,8 @@ import {
   type SavedBoughtCosmetics,
   type SavedRank,
   cosmeticIdOf,
-} from '../../shared/playerData'
-import { bonesBalanceOf } from '../../world/heroes/rank'
+} from '../../../../shared/playerData'
+import { bonesBalanceOf } from '../../../../world/heroes/rank'
 
 // The closet (GAME_DESIGN.md, "Rank and Bones"): the pure rules for the
 // earned looks, hats, shirt colors, prints, and gun skins, which the Look

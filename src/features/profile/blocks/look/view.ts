@@ -6,12 +6,11 @@ import type { RadioGroup } from '@foldkit/ui'
 
 import {
   type Appearance,
-  type CharacterPicker,
   type LookPart,
   LookSection,
   type LookToggle,
   type Print,
-} from '../../app/model'
+} from '../../../../app/model'
 import {
   BODIES,
   HAIR_COLORS,
@@ -31,26 +30,26 @@ import {
   playerPixels,
   playerSprites,
   printSwatchRows,
-} from '../../art/appearance'
-import { DICE_ICON, pixelIconUrl } from '../../art/icons'
-import { type Facing, frameAt, group } from '../../art/sprite'
-import { gunPictureOf, gunSprite } from '../../art/sprites/guns'
-import { GUN_HOLD_PX } from '../../render/playerView'
+} from '../../../../art/appearance'
+import { DICE_ICON, pixelIconUrl } from '../../../../art/icons'
+import { type Facing, frameAt, group } from '../../../../art/sprite'
+import { gunPictureOf, gunSprite } from '../../../../art/sprites/guns'
+import { GUN_HOLD_PX } from '../../../../render/playerView'
 import {
   PLAYER_FOOT_OFFSET,
   PLAYER_WALK_FRAME_MS,
   SHADOW_COLOR,
-} from '../../shared/constants'
+} from '../../../../shared/constants'
 import {
   type Calling,
   type CosmeticKind,
   GunSkin,
   Hat,
-} from '../../shared/playerData'
-import { startingGunKind } from '../../world/heroes/calling'
-import { rankOf, totalPointsOf } from '../../world/heroes/rank'
-import { HAT_NAMES, hatNameOf } from '../../world/names'
-import { lookUnlockId } from '../unlocks/unlocks'
+} from '../../../../shared/playerData'
+import { startingGunKind } from '../../../../world/heroes/calling'
+import { rankOf, totalPointsOf } from '../../../../world/heroes/rank'
+import { HAT_NAMES, hatNameOf } from '../../../../world/names'
+import { lookUnlockId } from '../../../unlocks/unlocks'
 import {
   CharacterComposition,
   type CharacterViewBuilder,
@@ -76,6 +75,7 @@ import {
   gearTagView,
   newBadgeView,
 } from './lookGearView'
+import type { CharacterPicker } from './model'
 
 // PARTS
 
@@ -885,5 +885,5 @@ const view = CharacterComposition.makeView.withInputs<ViewInputs>(
 // NOTE: the Look tab's implementation, gathered here so the view is not
 // exported: a view is a function of three arguments with no pipeable form,
 // and Foldkit knows a view by its identity, so it cannot be wrapped in one.
-// src/features/look/layer.ts completes it as the Block's Layer.
+// src/features/profile/blocks/look/layer.ts completes it as the Block's Layer.
 export const characterImplementation = { init, update, view }

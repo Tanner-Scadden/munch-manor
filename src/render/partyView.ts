@@ -14,7 +14,7 @@ import {
 import { maybeCrewBotAt } from '../features/bots/bots'
 import { seatLookOf } from '../features/coop/looks'
 import { maybeRoomOf } from '../features/coop/roomState'
-import { hatRiseOf } from '../features/look/hatArt'
+import { hatRiseOf } from '../features/profile/blocks/look/hatArt'
 import { PLAYER_RADIUS } from '../shared/constants'
 import { isCallFresh } from '../world/party/medic'
 import {

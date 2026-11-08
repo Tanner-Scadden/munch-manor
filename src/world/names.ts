@@ -247,7 +247,7 @@ export const BOT_NAMES: Array.NonEmptyReadonlyArray<string> = [
   'Pixel',
 ]
 
-// NOTE: the closet's hats (src/features/look/closet.ts), read on focus and aloud.
+// NOTE: the closet's hats (src/features/profile/blocks/look/closet.ts), read on focus and aloud.
 export const HAT_NAMES: Readonly<Record<Hat, string>> = {
   None: 'No hat',
   PartyHat: 'Party Hat',

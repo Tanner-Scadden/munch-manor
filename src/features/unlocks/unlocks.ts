@@ -2,7 +2,7 @@ import { Array, Function, String } from 'effect'
 
 import type { SavedSeenUnlocks } from '../../shared/playerData'
 import { CALLINGS, UNLOCK_RANKS } from '../../world/heroes/calling'
-import { GIFTS, type Gift } from '../look/closet'
+import { GIFTS, type Gift } from '../profile/blocks/look/closet'
 
 // NEW badges (GAME_DESIGN.md, "Rank and Bones"): an unlock the player has
 // reached and not seen yet wears a NEW badge until the Look tab or the

@@ -257,7 +257,7 @@ export const ChangedSettings = defineMutation({
 // look, 2 the many-part one). The row may still hold an older look until the
 // first change, so it is read as StoredAppearance. A look worn but not owned
 // is not checked against what the player owns here: it is shown as stock
-// (lookInOwned in src/features/look/closet.ts).
+// (lookInOwned in src/features/profile/blocks/look/closet.ts).
 /** @stability unstable */
 export const ChangedAppearance = defineMutation({
   name: 'ChangedAppearance',

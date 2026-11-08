@@ -21,7 +21,7 @@ import { describe, test, expect as vitestExpect } from 'vitest'
 import { Message } from '../../../app/message'
 import { type HandCard, type Model, Phase } from '../../../app/model'
 import { ApplyRotation } from '../../../app/update/rotation'
-import { FocusTutorialReset, WriteSave } from '../../../app/update/save'
+import { WriteSave } from '../../../app/update/save'
 import { noSavedBests, restoreSave, saveOf } from '../../../platform/save'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import { home } from '../../../test/model.fixture'
@@ -46,11 +46,13 @@ import {
   showDialogInScene,
 } from '../../../test/testing'
 import { pause } from '../../../world/waves/waves'
+import { Message as ProfileMessage } from '../../profile/message'
 import {
   KEEP_TUTORIAL_BUTTON_ID,
   RESET_TUTORIAL_BUTTON_ID,
-  withBests,
-} from '../home'
+} from '../../profile/profile'
+import { FocusTutorialReset } from '../../profile/update'
+import { withBests } from '../home'
 import { FocusHandCard, FocusHomeButton } from '../update'
 
 const playCluster = role('group', { name: 'Play' })
@@ -625,7 +627,7 @@ describe('Home menu', () => {
     const focusReset = (id: string) =>
       Command.resolve(
         FocusTutorialReset({ id }),
-        Message.CompletedFocusTutorialReset(),
+        ProfileMessage.CompletedFocusTutorialReset(),
       )
     scene(
       ROOT,

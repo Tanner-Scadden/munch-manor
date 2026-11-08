@@ -1,13 +1,15 @@
 import { Array, Match, Option, Record, Schema, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
+import { type Canvas, Story } from 'foldkit'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it, test } from '@effect/vitest'
 import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
-import { CharacterBinding } from '../../../app/bindings'
-import { Message } from '../../../app/message'
+import { ProfileBinding } from '../../../../../app/bindings'
+import { layer } from '../../../../../app/block'
+import { ApplicationBlock } from '../../../../../app/definition'
+import { Message } from '../../../../../app/message'
 import {
   Appearance,
   type LookPart,
@@ -15,8 +17,8 @@ import {
   type Model,
   Phase,
   defaultAppearance,
-} from '../../../app/model'
-import { Child, initialModel, update } from '../../../app/pureApp'
+} from '../../../../../app/model'
+import { Child, initialModel, update } from '../../../../../app/pureApp'
 import {
   BODIES,
   HAIR_COLORS,
@@ -34,58 +36,75 @@ import {
   playerPixels,
   playerSprites,
   randomAppearance,
-} from '../../../art/appearance'
-import { playerShapes } from '../../../render/playerView'
-import { RESTART_GRACE_MS } from '../../../shared/constants'
-import { FreePrint, FreeShirtColor } from '../../../shared/playerData'
-import { home } from '../../../test/model.fixture'
-import { imageColors } from '../../../test/testPng'
-import { jsonOf, resolveFocusOption } from '../../../test/testing'
+} from '../../../../../art/appearance'
+import { playerShapes } from '../../../../../render/playerView'
+import { RESTART_GRACE_MS } from '../../../../../shared/constants'
+import { FreePrint, FreeShirtColor } from '../../../../../shared/playerData'
+import { home } from '../../../../../test/model.fixture'
+import { imageColors } from '../../../../../test/testPng'
+import { jsonOf, resolveFocusOption } from '../../../../../test/testing'
+import { CharacterBinding } from '../../../composition'
 import * as Character from '../block'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from '../lookRadios'
 
-type PartMessage = typeof PartRadioGroupBlock.Message.Type
+const APPLICATION = { block: ApplicationBlock, layer }
 
-// NOTE: a part's radio group Message as the Look tab hears it, through
-// that part's own Binding.
-const partMessage = (part: LookPart, partGroupMessage: PartMessage) => {
+// NOTE: a part's radio group Message, delivered down its path: the
+// Profile, the Look tab, and that part's own Binding. Only a Block-aware
+// Story builds a grandchild's envelopes.
+const choose = (part: LookPart, index: number, value: string) => {
+  const selected = PartRadioGroupBlock.Message.SelectedOption({ index, value })
   switch (part) {
     case 'Body':
-      return Child.look(Character.BodyBinding, partGroupMessage)
+      return Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.BodyBinding],
+        selected,
+      )
     case 'HairStyle':
-      return Child.look(Character.HairStyleBinding, partGroupMessage)
+      return Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.HairStyleBinding],
+        selected,
+      )
     case 'HairColor':
-      return Child.look(Character.HairColorBinding, partGroupMessage)
+      return Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.HairColorBinding],
+        selected,
+      )
     case 'SkinTone':
-      return Child.look(Character.SkinToneBinding, partGroupMessage)
+      return Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.SkinToneBinding],
+        selected,
+      )
     case 'ShirtColor':
-      return Child.look(Character.ShirtColorBinding, partGroupMessage)
+      return Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.ShirtColorBinding],
+        selected,
+      )
     case 'Outfit':
-      return Child.look(Character.OutfitBinding, partGroupMessage)
+      return Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.OutfitBinding],
+        selected,
+      )
     case 'Print':
-      return Child.look(Character.PrintBinding, partGroupMessage)
+      return Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.PrintBinding],
+        selected,
+      )
     case 'Hat':
-      return Child.look(Character.HatBinding, partGroupMessage)
+      return Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.HatBinding],
+        selected,
+      )
     case 'GunSkin':
-      return Child.look(Character.GunSkinBinding, partGroupMessage)
+      return Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.GunSkinBinding],
+        selected,
+      )
   }
 }
 
-const choose = (part: LookPart, index: number, value: string) =>
-  message(
-    Child.message(
-      CharacterBinding,
-      partMessage(
-        part,
-        PartRadioGroupBlock.Message.SelectedOption({ index, value }),
-      ),
-    ),
-  )
-
 const rollDice = () =>
-  message(
-    Child.message(CharacterBinding, Character.Message.ClickedDiceButton()),
-  )
+  message(Child.character(Character.Message.ClickedDiceButton()))
 
 const PICKED: Appearance = {
   body: 'Slim',
@@ -102,11 +121,12 @@ const PICKED: Appearance = {
 }
 
 const flip = (toggle: 'Beard' | 'Glasses') =>
-  message(
-    Child.message(
-      CharacterBinding,
-      Character.Message.ClickedToggle({ toggle }),
-    ),
+  message(Child.character(Character.Message.ClickedToggle({ toggle })))
+
+const flipIn = (toggle: 'Beard' | 'Glasses') =>
+  Story.messageIn(
+    [ProfileBinding, CharacterBinding],
+    Character.Message.ClickedToggle({ toggle }),
   )
 
 const withLook = (base: Model, appearance: Appearance): Model =>
@@ -199,10 +219,10 @@ describe('Character', () => {
     })
   })
 
-  test('picking each part stores it in the appearance', () => {
-    story(
-      update,
-      given(home),
+  it.effect('picking each part stores it in the appearance', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(home),
       choose('Body', 0, 'Slim'),
       resolveFocusOption(),
       choose('HairStyle', 4, 'Mohawk'),
@@ -217,13 +237,13 @@ describe('Character', () => {
       resolveFocusOption(),
       choose('Print', 2, 'Rainbow'),
       resolveFocusOption(),
-      flip('Beard'),
-      flip('Glasses'),
+      flipIn('Beard'),
+      flipIn('Glasses'),
       model(({ appearance }) => {
         expect(appearance).toEqual(PICKED)
       }),
-    )
-  })
+    ),
+  )
 
   test('the beard and the glasses each come off with a second tap', () => {
     story(
@@ -242,10 +262,10 @@ describe('Character', () => {
     )
   })
 
-  test('a word that is not one of the options leaves the look alone', () => {
-    story(
-      update,
-      given(home),
+  it.effect('a word that is not one of the options leaves the look alone', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(home),
       choose('Body', 0, 'Female'),
       resolveFocusOption(),
       choose('Print', 0, 'Plaid'),
@@ -253,37 +273,35 @@ describe('Character', () => {
       model(({ appearance }) => {
         expect(appearance).toEqual(defaultAppearance)
       }),
-    )
-  })
+    ),
+  )
 
-  test('the little tabs switch which parts show, and keep the look', () => {
-    story(
-      update,
-      given(home),
-      model(({ character }) => {
-        expect(character.section).toBe('Body')
+  it.effect('the little tabs switch which parts show, and keep the look', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(home),
+      model(({ profile }) => {
+        expect(profile.character.section).toBe('Body')
       }),
-      message(
-        Child.message(
-          CharacterBinding,
-          Child.look(
-            Character.SectionsBinding,
-            SectionRadioGroupBlock.Message.SelectedOption({
-              index: 2,
-              value: 'Outfit',
-            }),
-          ),
-        ),
+      Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.SectionsBinding],
+        SectionRadioGroupBlock.Message.SelectedOption({
+          index: 2,
+          value: 'Outfit',
+        }),
       ),
       Command.resolve(
         RadioGroup.test.FocusOption,
         SectionRadioGroupBlock.Message.CompletedFocusOption(),
       ),
-      model(({ character, appearance }) => {
-        expect(character.section).toBe('Outfit')
+      model(({ profile, appearance }) => {
+        expect(profile.character.section).toBe('Outfit')
         expect(appearance).toEqual(home.appearance)
       }),
-    )
+    ),
+  )
+
+  test('the little tabs are data: their parts and toggles', () => {
     expect(Character.SECTION_PARTS.Outfit).toEqual([
       'Outfit',
       'ShirtColor',

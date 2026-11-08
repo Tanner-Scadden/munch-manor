@@ -5,14 +5,14 @@ import { describe, expect, test } from 'vitest'
 
 import { Message } from '../../app/message'
 import { Loading, type Model } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { Child, initialModel, update } from '../../app/pureApp'
 import {
   AwaitRunSettled,
-  RedeemLinkCode,
   ReloadSyncedSave,
-  RequestLinkCode,
   WriteSave,
 } from '../../app/update/save'
+import { Message as ProfileMessage } from '../../features/profile/message'
+import { RedeemLinkCode, RequestLinkCode } from '../../features/profile/update'
 import {
   LastRunSync,
   LinkFlow,
@@ -297,21 +297,23 @@ describe('linking a device', () => {
     story(
       update,
       given(read),
-      message(Message.ClickedLinkDeviceButton()),
+      message(Child.profile(ProfileMessage.ClickedLinkDeviceButton())),
       model(current => {
-        expect(current.linkFlow).toEqual(LinkFlow.Requesting())
+        expect(current.profile.linkFlow).toEqual(LinkFlow.Requesting())
       }),
       Command.expectExact(RequestLinkCode()),
       Command.resolve(
         RequestLinkCode,
-        Message.SucceededRequestLinkCode({ code: 'ABC234' }),
+        ProfileMessage.SucceededRequestLinkCode({ code: 'ABC234' }),
       ),
       model(current => {
-        expect(current.linkFlow).toEqual(LinkFlow.Showing({ code: 'ABC234' }))
+        expect(current.profile.linkFlow).toEqual(
+          LinkFlow.Showing({ code: 'ABC234' }),
+        )
       }),
-      message(Message.ClickedCancelLinkButton()),
+      message(Child.profile(ProfileMessage.ClickedCancelLinkButton())),
       model(current => {
-        expect(current.linkFlow).toEqual(LinkFlow.Idle())
+        expect(current.profile.linkFlow).toEqual(LinkFlow.Idle())
       }),
     )
   })
@@ -320,30 +322,38 @@ describe('linking a device', () => {
     story(
       update,
       given(read),
-      message(Message.ClickedUseCodeButton()),
-      message(Message.UpdatedLinkCode({ value: 'abc234' })),
+      message(Child.profile(ProfileMessage.ClickedUseCodeButton())),
+      message(
+        Child.profile(ProfileMessage.UpdatedLinkCode({ value: 'abc234' })),
+      ),
       model(current => {
-        expect(current.linkFlow).toEqual(LinkFlow.Entering({ code: 'ABC234' }))
+        expect(current.profile.linkFlow).toEqual(
+          LinkFlow.Entering({ code: 'ABC234' }),
+        )
       }),
-      message(Message.SubmittedLinkCode()),
+      message(Child.profile(ProfileMessage.SubmittedLinkCode())),
       model(current => {
-        expect(current.linkFlow).toEqual(LinkFlow.Redeeming({ code: 'ABC234' }))
+        expect(current.profile.linkFlow).toEqual(
+          LinkFlow.Redeeming({ code: 'ABC234' }),
+        )
       }),
       Command.expectExact(RedeemLinkCode({ code: 'ABC234' })),
       Command.resolve(
         RedeemLinkCode,
-        Message.FailedRedeemLinkCode({ problem: 'WrongCode' }),
+        ProfileMessage.FailedRedeemLinkCode({ problem: 'WrongCode' }),
       ),
       model(current => {
-        expect(current.linkFlow).toEqual(
+        expect(current.profile.linkFlow).toEqual(
           LinkFlow.Failed({ problem: 'WrongCode' }),
         )
       }),
-      message(Message.UpdatedLinkCode({ value: 'xyz789' })),
-      message(Message.SubmittedLinkCode()),
-      Command.resolve(RedeemLinkCode, Message.SucceededRedeemLinkCode()),
+      message(
+        Child.profile(ProfileMessage.UpdatedLinkCode({ value: 'xyz789' })),
+      ),
+      message(Child.profile(ProfileMessage.SubmittedLinkCode())),
+      Command.resolve(RedeemLinkCode, ProfileMessage.SucceededRedeemLinkCode()),
       model(current => {
-        expect(current.linkFlow).toEqual(LinkFlow.Linked())
+        expect(current.profile.linkFlow).toEqual(LinkFlow.Linked())
       }),
     )
   })
@@ -352,10 +362,10 @@ describe('linking a device', () => {
     story(
       update,
       given(read),
-      message(Message.SubmittedLinkCode()),
+      message(Child.profile(ProfileMessage.SubmittedLinkCode())),
       Command.expectNone(),
       model(current => {
-        expect(current.linkFlow).toEqual(LinkFlow.Idle())
+        expect(current.profile.linkFlow).toEqual(LinkFlow.Idle())
       }),
     )
   })

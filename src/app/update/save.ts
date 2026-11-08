@@ -1,15 +1,9 @@
-import { Array, Effect, Function, Option, Schema, String, pipe } from 'effect'
-import { Dom } from 'foldkit'
+import { Array, Effect, Function, Option, Schema, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  KEEP_TUTORIAL_BUTTON_ID,
-  RESET_TUTORIAL_BUTTON_ID,
-} from '../../features/home/home'
 import { grantVeteran } from '../../features/rank/rankRun'
 import {
   LastRunSync,
-  LinkFlow,
   PlayerChange,
   RunSettled,
   changesBetween,
@@ -26,15 +20,8 @@ import { hideSplash, showSplashProgress } from '../../platform/splash'
 import { PlayerStore } from '../../platform/store'
 import { SEEN_BASELINE } from '../../shared/playerData'
 import { ApplicationBlock } from '../definition'
-import { isProfileOpenOn } from '../menuState'
 import { Message } from '../message'
-import {
-  LOAD_STEPS,
-  type LoadStep,
-  Loading,
-  type Model,
-  type TutorialReset,
-} from '../model'
+import { LOAD_STEPS, type LoadStep, Loading, type Model } from '../model'
 import type { UpdateReturn, UpdateStep } from './step'
 
 // COMMAND
@@ -125,54 +112,6 @@ export const ReloadSyncedSave = ApplicationBlock.makeCommand(
           Effect.orElseSucceed(() =>
             Message.CompletedReloadSyncedSave({ maybeSave: Option.none() }),
           ),
-        )
-    },
-  },
-)
-
-export const RequestLinkCode = ApplicationBlock.makeCommand('RequestLinkCode', {
-  messages: [Message.SucceededRequestLinkCode, Message.FailedRequestLinkCode],
-  handler: function* () {
-    return () =>
-      pipe(
-        PlayerStore.use(store => store.requestLinkCode),
-        Effect.map(code => Message.SucceededRequestLinkCode({ code })),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedRequestLinkCode({ problem: error.problem }),
-          ),
-        ),
-      )
-  },
-})
-
-export const RedeemLinkCode = ApplicationBlock.makeCommand('RedeemLinkCode', {
-  args: { code: Schema.String },
-  messages: [Message.SucceededRedeemLinkCode, Message.FailedRedeemLinkCode],
-  handler: function* () {
-    return ({ code }) =>
-      pipe(
-        PlayerStore.use(store => store.redeemLinkCode(code)),
-        Effect.as(Message.SucceededRedeemLinkCode()),
-        Effect.catch(error =>
-          Effect.succeed(
-            Message.FailedRedeemLinkCode({ problem: error.problem }),
-          ),
-        ),
-      )
-  },
-})
-
-export const FocusTutorialReset = ApplicationBlock.makeCommand(
-  'FocusTutorialReset',
-  {
-    args: { id: Schema.String },
-    messages: [Message.CompletedFocusTutorialReset],
-    handler: function* () {
-      return ({ id }) =>
-        Dom.focus(`#${id}`).pipe(
-          Effect.ignore,
-          Effect.as(Message.CompletedFocusTutorialReset()),
         )
     },
   },
@@ -384,91 +323,4 @@ export const failWrite: {
         unsavedChanges: unsaved => [...changes, ...unsaved],
       }),
     ),
-)
-
-// LINKING
-
-export const startLinking = (model: Model): UpdateReturn =>
-  LinkFlow.match(model.linkFlow, {
-    Requesting: () => ({ model }),
-    Redeeming: () => ({ model }),
-    Idle: () => requestLinkCode(model),
-    Showing: () => requestLinkCode(model),
-    Entering: () => requestLinkCode(model),
-    Linked: () => requestLinkCode(model),
-    Failed: () => requestLinkCode(model),
-  })
-
-const requestLinkCode = (model: Model): UpdateReturn => ({
-  model: modifyFields(model, { linkFlow: () => LinkFlow.Requesting() }),
-  commands: [RequestLinkCode()],
-})
-
-export const typeLinkCode: {
-  (value: string): (model: Model) => UpdateReturn
-  (model: Model, value: string): UpdateReturn
-} = Function.dual(2, (model: Model, value: string): UpdateReturn =>
-  LinkFlow.isAnyOf(['Entering', 'Failed'])(model.linkFlow)
-    ? {
-        model: modifyFields(model, {
-          linkFlow: () =>
-            LinkFlow.Entering({
-              code: String.slice(0, 7)(String.toUpperCase(value)),
-            }),
-        }),
-      }
-    : { model },
-)
-
-export const submitLinkCode = (model: Model): UpdateReturn =>
-  LinkFlow.match(model.linkFlow, {
-    Entering: ({ code }) => ({
-      model: modifyFields(model, {
-        linkFlow: () => LinkFlow.Redeeming({ code }),
-      }),
-      commands: [RedeemLinkCode({ code })],
-    }),
-    Idle: () => ({ model }),
-    Requesting: () => ({ model }),
-    Showing: () => ({ model }),
-    Redeeming: () => ({ model }),
-    Linked: () => ({ model }),
-    Failed: () => ({ model }),
-  })
-
-// TUTORIAL RESET
-
-export const askToResetTutorial = (model: Model): UpdateReturn =>
-  isProfileOpenOn(model, 'Settings')
-    ? {
-        model: modifyFields(model, { tutorialReset: () => 'Asking' }),
-        commands: [FocusTutorialReset({ id: KEEP_TUTORIAL_BUTTON_ID })],
-      }
-    : { model }
-
-export const answerTutorialReset: {
-  (
-    forget: (model: Model) => Model,
-    tutorialReset: TutorialReset,
-  ): (model: Model) => UpdateReturn
-  (
-    model: Model,
-    forget: (model: Model) => Model,
-    tutorialReset: TutorialReset,
-  ): UpdateReturn
-} = Function.dual(
-  3,
-  (
-    model: Model,
-    forget: (model: Model) => Model,
-    tutorialReset: TutorialReset,
-  ): UpdateReturn =>
-    model.tutorialReset === 'Asking'
-      ? {
-          model: modifyFields(forget(model), {
-            tutorialReset: () => tutorialReset,
-          }),
-          commands: [FocusTutorialReset({ id: RESET_TUTORIAL_BUTTON_ID })],
-        }
-      : { model },
 )

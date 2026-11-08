@@ -1,4 +1,4 @@
-import type { Appearance, Hat } from '../../shared/playerData'
+import type { Appearance, Hat } from '../../../../shared/playerData'
 
 // The closet's hats as pixel maps (GAME_DESIGN.md, "Rank and Bones"), all
 // original. A hat is eight pixels wide like the figure. Its rows start

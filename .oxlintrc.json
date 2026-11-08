@@ -364,9 +364,13 @@
       "rules": { "foldkit/no-child-message-construction-in-root": "off" }
     },
     {
-      // NOTE: co-op and the Look tab are child Blocks: only their own code
-      // builds their Messages.
-      "files": ["src/features/coop/*.ts", "src/features/look/*.ts"],
+      // NOTE: co-op, the Profile, and the Profile's Look tab are child
+      // Blocks: only their own code builds their Messages.
+      "files": [
+        "src/features/coop/*.ts",
+        "src/features/profile/*.ts",
+        "src/features/profile/blocks/look/*.ts"
+      ],
       "rules": { "foldkit/no-child-message-construction-in-root": "error" }
     },
     {

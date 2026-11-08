@@ -35,9 +35,6 @@ import {
   showHelpLine,
   startOrAsk,
   stepHandFocus,
-  toggleCursor,
-  toggleShake,
-  toggleShareStats,
   turnMunchopediaPage,
   turnNews,
   unwrapUpdateGift,
@@ -60,13 +57,6 @@ import { endQuest } from '../features/onboarding/firstBreakQuest'
 import { skipKitchenTour } from '../features/onboarding/kitchenTour'
 import { skipDebutCard } from '../features/onboarding/onboarding'
 import {
-  leaveNameInput,
-  openProfile,
-  rollNameDice,
-  submitName,
-  typeName,
-} from '../features/profile/update'
-import {
   closeShopGuide,
   openShopGuide,
   showShopGuide,
@@ -83,8 +73,6 @@ import {
   releaseSticks,
 } from '../input/input'
 import { noteMissedKeyDown } from '../input/keyGrab'
-import { LinkFlow } from '../platform/playerSync'
-import { forgetTutorial } from '../platform/save'
 import { RUNNING_BUILD, isGreetingDue } from '../platform/version'
 import { isRoundActive } from '../world/waves/waves'
 import { bootCommands } from './boot'
@@ -135,11 +123,9 @@ import {
   useDevice,
   withSlotClick,
 } from './update/play'
-import { toggleRotation } from './update/rotation'
+import { openProfile } from './update/profile'
 import { keepGoingWhenAllowed, startFromButton, startsRun } from './update/run'
 import {
-  answerTutorialReset,
-  askToResetTutorial,
   failWrite,
   finishLoading,
   finishWrite,
@@ -147,21 +133,16 @@ import {
   forgetRunWait,
   loadSave,
   settleRun,
-  startLinking,
-  submitLinkCode,
   takeSyncedSave,
-  typeLinkCode,
 } from './update/save'
 import { afterMessage } from './update/settle'
 import {
   ResumeAudio,
   notePlayOutcome,
-  playSounds,
   playStartSoundWhen,
   tapSound,
   toggleMusic,
   toggleSound,
-  uiCue,
   unlockAudio,
 } from './update/sound'
 import {
@@ -335,8 +316,6 @@ const handlers = makeUpdate({
 
   ClickedMusicButton: model => unlockAudio(toggleMusic(model)),
 
-  ClickedCursorButton: model => ({ model: toggleCursor(model) }),
-
   ClickedCampaignButton: model =>
     Update.combineSteps(model, [startOrAsk(RunMode.Campaign())]),
 
@@ -361,14 +340,6 @@ const handlers = makeUpdate({
 
   ClickedCharacterButton: model =>
     Update.combineSteps(model, [unlockAudio, closeHand, openProfile('Look')]),
-
-  UpdatedNameDraft: (model, { value }) => typeName(model, value),
-
-  SubmittedName: model => submitName(model),
-
-  BlurredNameInput: model => leaveNameInput(model),
-
-  ClickedNameDiceButton: model => rollNameDice(model),
 
   ClickedStartWaveButton: (model, message) =>
     Update.combineSteps(model, [makeStep(orInRun(message, clickStartWave))]),
@@ -430,8 +401,6 @@ const handlers = makeUpdate({
 
   CompletedApplyRotation: model => ({ model }),
 
-  ClickedRotationButton: model => ({ model: toggleRotation(model) }),
-
   ClickedInstallButton: model =>
     Update.combineSteps(model, [unlockAudio, tapSound, pressInstall]),
 
@@ -481,7 +450,6 @@ const handlers = makeUpdate({
   }),
 
   ClickedShopGuideBackButton: model => closeShopGuide(model),
-  CompletedFocusLookOption: model => ({ model }),
 
   AcquiredAudioEngine: model => ({
     model: modifyFields(model, { audio: () => AudioState.Suspended() }),
@@ -582,8 +550,6 @@ const handlers = makeUpdate({
 
   ClickedStayButton: model => Update.combineSteps(model, [closePanel]),
 
-  ClickedShakeButton: model => ({ model: toggleShake(model) }),
-
   ClickedCallingCardButton: (model, { calling }) =>
     Update.combineSteps(model, [pickCalling(calling)]),
 
@@ -644,8 +610,6 @@ const handlers = makeUpdate({
 
   FailedWriteSave: (model, { changes }) => failWrite(model, changes),
 
-  ClickedShareStatsButton: model => ({ model: toggleShareStats(model) }),
-
   CompletedGenerateVisitId: (model, { visitId }) => ({
     model: modifyFields(model, { maybeVisitId: () => Option.some(visitId) }),
   }),
@@ -659,16 +623,6 @@ const handlers = makeUpdate({
   CompletedSendShareEvent: model => ({ model }),
 
   FailedSendShareEvent: model => ({ model }),
-
-  ClickedResetTutorialButton: model => askToResetTutorial(model),
-
-  ClickedConfirmResetTutorialButton: model =>
-    answerTutorialReset(model, forgetTutorial, 'Done'),
-
-  ClickedCancelResetTutorialButton: model =>
-    answerTutorialReset(model, unchangedModel => unchangedModel, 'Idle'),
-
-  CompletedFocusTutorialReset: model => ({ model }),
 
   UpdatedSyncedSave: (model, { save }) => takeSyncedSave(model, save),
 
@@ -690,44 +644,6 @@ const handlers = makeUpdate({
     settleRun(model, runId, settled),
 
   FailedAwaitRunSettled: (model, { runId }) => forgetRunWait(model, runId),
-
-  ClickedLinkDeviceButton: model => startLinking(model),
-
-  SucceededRequestLinkCode: (model, { code }) =>
-    playSounds([uiCue('Whoosh')])(
-      modifyFields(model, { linkFlow: () => LinkFlow.Showing({ code }) }),
-    ),
-
-  FailedRequestLinkCode: (model, { problem }) => ({
-    model: modifyFields(model, {
-      linkFlow: () => LinkFlow.Failed({ problem }),
-    }),
-  }),
-
-  ClickedUseCodeButton: model => ({
-    model: modifyFields(model, {
-      linkFlow: () => LinkFlow.Entering({ code: '' }),
-    }),
-  }),
-
-  UpdatedLinkCode: (model, { value }) => typeLinkCode(model, value),
-
-  SubmittedLinkCode: model => submitLinkCode(model),
-
-  SucceededRedeemLinkCode: model =>
-    playSounds([uiCue('PowerUp')])(
-      modifyFields(model, { linkFlow: () => LinkFlow.Linked() }),
-    ),
-
-  FailedRedeemLinkCode: (model, { problem }) => ({
-    model: modifyFields(model, {
-      linkFlow: () => LinkFlow.Failed({ problem }),
-    }),
-  }),
-
-  ClickedCancelLinkButton: model => ({
-    model: modifyFields(model, { linkFlow: () => LinkFlow.Idle() }),
-  }),
 
   ClickedPlayButton: model => Update.combineSteps(model, [playFromHome]),
 

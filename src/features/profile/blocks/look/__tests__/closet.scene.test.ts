@@ -17,11 +17,10 @@ import { describe, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { Message } from '../../../app/message'
-import type { Model } from '../../../app/model'
-import { FocusLookOption } from '../../../app/update/look'
-import { WriteSave } from '../../../app/update/save'
-import { homeAfterRead } from '../../../test/model.fixture'
+import { Message } from '../../../../../app/message'
+import type { Model } from '../../../../../app/model'
+import { WriteSave } from '../../../../../app/update/save'
+import { homeAfterRead } from '../../../../../test/model.fixture'
 import {
   ROOT,
   closeButton,
@@ -33,12 +32,14 @@ import {
   openLookSection,
   resolveFocusOptionInScene,
   showDialogInScene,
-} from '../../../test/testing'
-import { noRank, pointsForRank } from '../../../world/heroes/rank'
-import { unlocksAt } from '../../unlocks/unlocks'
+} from '../../../../../test/testing'
+import { noRank, pointsForRank } from '../../../../../world/heroes/rank'
+import { unlocksAt } from '../../../../unlocks/unlocks'
+import { FocusLookOption } from '../../../inMessageUpdate'
+import { Message as ProfileMessage } from '../../../message'
 
-// The Look tab's rows of earned looks (src/features/look/view.ts,
-// src/features/look/lookGearView.ts): an option in one of four states, a pick that wears
+// The Look tab's rows of earned looks (src/features/profile/blocks/look/view.ts,
+// src/features/profile/blocks/look/lookGearView.ts): an option in one of four states, a pick that wears
 // or buys, the arrow keys that only move, and the NEW badges.
 
 const closet: Model = modifyFields(homeAfterRead, {
@@ -180,7 +181,10 @@ describe('the gear rows', () => {
       expect(buyPill).toHaveText('BUY40'),
       expect(balance).toHaveText('90'),
       click(buyPill),
-      Command.resolve(FocusLookOption, Message.CompletedFocusLookOption()),
+      Command.resolve(
+        FocusLookOption,
+        ProfileMessage.CompletedFocusLookOption(),
+      ),
       Command.resolve(WriteSave, Message.CompletedWriteSave()),
       expect(buyPill).toBeAbsent(),
       expect(lookOptionIn('Hat', 'Colander')).toHaveAttr(
@@ -216,7 +220,10 @@ describe('the gear rows', () => {
       click(lookOptionIn('Gun skin', 'Candy')),
       expect(buyPill).toHaveText('BUY60'),
       click(buyPill),
-      Command.resolve(FocusLookOption, Message.CompletedFocusLookOption()),
+      Command.resolve(
+        FocusLookOption,
+        ProfileMessage.CompletedFocusLookOption(),
+      ),
       Command.resolve(WriteSave, Message.CompletedWriteSave()),
       expect(lookOptionIn('Gun skin', 'Candy')).toHaveAttr(
         'aria-checked',

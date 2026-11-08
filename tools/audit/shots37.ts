@@ -127,7 +127,7 @@ const readProfile = () => {
   for (const row of document.querySelectorAll('.look-row')) {
     // NOTE: the chosen option grows a little, so only a whole line of
     // difference is a wrap. A long list takes even lines (balancedColumns in
-    // src/features/look/view.ts); what must never happen is an option left on a
+    // src/features/profile/blocks/look/view.ts); what must never happen is an option left on a
     // line of its own, or a line not much more than half as full as the
     // first.
     const lines = new Map<number, number>()

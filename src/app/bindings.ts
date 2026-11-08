@@ -1,8 +1,7 @@
 import { DialogBlock } from '@foldkit/ui'
 
 import { CoopBlock } from '../features/coop'
-import { CharacterBlock } from '../features/look/block'
-import { ProfileTabsBlock } from '../features/profile/profile'
+import { ProfileBlock } from '../features/profile/block'
 import { ShopTabsBlock } from '../features/shop/shopTabs'
 import { focusOf } from '../world/party/party'
 import { isBrowsing } from '../world/shop/shop'
@@ -11,13 +10,11 @@ import {
   HOME_SCREEN_STEPS_ID,
   PANEL_DIALOG_ID,
   PROFILE_DIALOG_ID,
-  PROFILE_TABS_ID,
   SHOP_DIALOG_ID,
   SHOP_TABS_ID,
   UPDATE_GREETING_ID,
 } from './clientSchema'
 import { makeRequiredFieldBinding } from './definition'
-import { isProfileOpen } from './menuState'
 
 // NOTE: every child of the root, each placed on its Model field, so its
 // generated Message is `Got<Field>Message` (GotShopDialogMessage). Each
@@ -61,23 +58,18 @@ export const UpdateGreetingBinding = makeRequiredFieldBinding(DialogBlock, {
 
 // TABS
 
-// NOTE: tabs only answer while their dialog is up.
-export const ProfileTabsBinding = makeRequiredFieldBinding(ProfileTabsBlock, {
-  field: 'profileTabs',
-  init: { contextToArgs: () => [{ id: PROFILE_TABS_ID }] },
-  delivery: { when: isProfileOpen },
-})
-
 export const ShopTabsBinding = makeRequiredFieldBinding(ShopTabsBlock, {
   field: 'shopTabs',
   init: { contextToArgs: () => [{ id: SHOP_TABS_ID }] },
   delivery: { when: model => isBrowsing(focusOf(model).shop) },
 })
 
-// THE LOOK TAB
+// THE PROFILE
 
-export const CharacterBinding = makeRequiredFieldBinding(CharacterBlock, {
-  field: 'character',
+// NOTE: the Profile panel inside ProfileDialogBinding's Dialog: its tabs,
+// the Look tab, the name being typed, and the device link flow.
+export const ProfileBinding = makeRequiredFieldBinding(ProfileBlock, {
+  field: 'profile',
 })
 
 // CO-OP

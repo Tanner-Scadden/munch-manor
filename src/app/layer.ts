@@ -34,15 +34,11 @@ import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
 import { subscriptions } from './subscriptions'
 import { ReadRoomLink } from './update/coop'
 import { SetFullscreen } from './update/fullscreen'
-import { FocusLookOption } from './update/look'
 import { ApplyRotation } from './update/rotation'
 import {
   AwaitRunSettled,
-  FocusTutorialReset,
   HideSplash,
-  RedeemLinkCode,
   ReloadSyncedSave,
-  RequestLinkCode,
   ShowLoadProgress,
   WriteSave,
 } from './update/save'
@@ -70,7 +66,6 @@ export const CommandsLayer = Layer.mergeAll(
   ResumeAudio.layer,
   PlaySound.layer,
   CueMusic.layer,
-  FocusLookOption.layer,
   FocusShopItem.layer,
   FocusShopGuide.layer,
   FetchBuild.layer,
@@ -96,12 +91,9 @@ export const CommandsLayer = Layer.mergeAll(
   WriteSave.layer,
   AwaitRunSettled.layer,
   ReloadSyncedSave.layer,
-  RequestLinkCode.layer,
-  RedeemLinkCode.layer,
   GenerateVisitId.layer,
   StartSummaryQueue.layer,
   SendRunSummary.layer,
-  FocusTutorialReset.layer,
   managedResources.layer,
 )
 

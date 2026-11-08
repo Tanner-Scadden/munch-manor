@@ -1,12 +1,12 @@
 import { Function, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
-import type { ClosetCueKind } from '../../app/model'
-import { PADLOCK_ICON } from '../../art/icons'
-import type { CosmeticKind } from '../../shared/playerData'
-import { iconView } from '../menus/menuParts'
-import { boneCountView, rankMarkView } from '../rank/rankBadgeView'
+import { PADLOCK_ICON } from '../../../../art/icons'
+import type { CosmeticKind } from '../../../../shared/playerData'
+import { iconView } from '../../../menus/menuParts'
+import { boneCountView, rankMarkView } from '../../../rank/rankBadgeView'
 import { type Standing, sourceOf } from './closet'
+import type { ClosetCueKind } from './model'
 
 // The earned looks in the Look tab's rows: a hat, shirt color, print, or gun
 // skin is worn (the selected one), owned (a pick wears it), for sale (a bone

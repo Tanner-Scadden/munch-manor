@@ -33,7 +33,7 @@ layer(NodeServices.layer)(
             [
               'src/features/home/homeView.ts',
               'src/app/layers.ts',
-              'src/features/look/view.ts',
+              'src/features/profile/blocks/look/view.ts',
             ],
             isViewFile,
           )

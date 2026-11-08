@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import coopCss from '../../features/coop/coop.css?raw'
 import callingCss from '../../features/heroes/calling.css?raw'
 import menuCss from '../../features/home/menu.css?raw'
-import closetCss from '../../features/look/closet.css?raw'
+import closetCss from '../../features/profile/blocks/look/closet.css?raw'
 import profileCss from '../../features/profile/profile.css?raw'
 import shopCss from '../../features/shop/shop.css?raw'
 import stylesCss from '../styles.css?raw'
@@ -27,7 +27,7 @@ const CSS_FILES: ReadonlyArray<readonly [string, string]> = [
   ['src/features/home/menu.css', menuCss],
   ['src/features/profile/profile.css', profileCss],
   ['src/features/heroes/calling.css', callingCss],
-  ['src/features/look/closet.css', closetCss],
+  ['src/features/profile/blocks/look/closet.css', closetCss],
   ['src/features/shop/shop.css', shopCss],
   ['src/features/coop/coop.css', coopCss],
 ]

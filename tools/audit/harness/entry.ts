@@ -38,7 +38,7 @@ import { modelStep } from '@game/app/update/step'
 import { view } from '@game/app/view'
 import { CoopLayer } from '@game/features/coop'
 import { quietCoopNet } from '@game/features/coop/testing'
-import { CharacterLayer } from '@game/features/look/layer'
+import { ProfileLayer } from '@game/features/profile/layer'
 import { quietLayer as quietInstallPrompt } from '@game/platform/install'
 import { layer as PlayerStoreLayer } from '@game/platform/store'
 import { screenOf } from '@game/render/screen'
@@ -357,7 +357,7 @@ const harnessLayer = ApplicationBlock.makeLayer({
   ),
 }).pipe(
   Layer.provide(
-    Layer.mergeAll(Dialog.layer, Tabs.layer, CharacterLayer, CoopLayer),
+    Layer.mergeAll(Dialog.layer, Tabs.layer, ProfileLayer, CoopLayer),
   ),
 )
 

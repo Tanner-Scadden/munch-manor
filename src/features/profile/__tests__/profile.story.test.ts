@@ -1,22 +1,16 @@
 import { Array, Option, pipe } from 'effect'
+import { Story } from 'foldkit'
 import { Command, given, message, model, steps, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it, test } from '@effect/vitest'
 import { DialogBlock, RadioGroup, Tabs } from '@foldkit/ui'
 
-import {
-  CharacterBinding,
-  ProfileDialogBinding,
-  ProfileTabsBinding,
-} from '../../../app/bindings'
+import { ProfileBinding, ProfileDialogBinding } from '../../../app/bindings'
+import { layer } from '../../../app/block'
+import { ApplicationBlock } from '../../../app/definition'
 import { Message } from '../../../app/message'
-import {
-  AudioState,
-  type Model,
-  Phase,
-  type ProfileTab,
-} from '../../../app/model'
+import { AudioState, type Model, Phase } from '../../../app/model'
 import { Child, update } from '../../../app/pureApp'
 import { WriteSave } from '../../../app/update/save'
 import { PlaySound } from '../../../app/update/sound'
@@ -29,14 +23,16 @@ import {
   showDialog,
   writeSave,
 } from '../../../test/testing'
-import * as Character from '../../look/block'
-import { PartRadioGroupBlock } from '../../look/lookRadios'
+import * as Character from '../blocks/look/block'
+import { PartRadioGroupBlock } from '../blocks/look/lookRadios'
+import { CharacterBinding, TabsBinding } from '../composition'
+import { Message as ProfileMessage } from '../message'
+import { type ProfileTab, ProfileTabsBlock } from '../model'
 import {
   DEFAULT_NAME,
   GOOFY_NAMES,
   MAX_NAME_LENGTH,
   PROFILE_TABS,
-  ProfileTabsBlock,
   cleanName,
   draftName,
   joinName,
@@ -62,12 +58,14 @@ const tabIndex = (tab: ProfileTab): number =>
 const selectTab = (tab: ProfileTab) =>
   steps(
     message(
-      Child.message(
-        ProfileTabsBinding,
-        ProfileTabsBlock.Message.SelectedTab({
-          index: tabIndex(tab),
-          value: tab,
-        }),
+      Child.profile(
+        Child.inProfile(
+          TabsBinding,
+          ProfileTabsBlock.Message.SelectedTab({
+            index: tabIndex(tab),
+            value: tab,
+          }),
+        ),
       ),
     ),
     Command.resolve(
@@ -152,12 +150,15 @@ describe('the Profile', () => {
     story(
       update,
       given(
-        modifyFields(openOn('Settings'), { tutorialReset: () => 'Asking' }),
+        modifyFields(openOn('Settings'), {
+          profile: profile =>
+            modifyFields(profile, { tutorialReset: () => 'Asking' }),
+        }),
       ),
       selectTab('Account'),
       model(current => {
         expect(current.profile.tab).toBe('Account')
-        expect(current.tutorialReset).toBe('Idle')
+        expect(current.profile.tutorialReset).toBe('Idle')
       }),
       selectTab('Name'),
       model(current => {
@@ -171,9 +172,11 @@ describe('the Profile', () => {
       update,
       given(modifyFields(openOn('Look'), { audio: () => AudioState.Ready() })),
       message(
-        Child.message(
-          ProfileTabsBinding,
-          ProfileTabsBlock.Message.SelectedTab({ index: 1, value: 'Name' }),
+        Child.profile(
+          Child.inProfile(
+            TabsBinding,
+            ProfileTabsBlock.Message.SelectedTab({ index: 1, value: 'Name' }),
+          ),
         ),
       ),
       Command.expectExact(
@@ -224,13 +227,17 @@ describe('the name', () => {
     story(
       update,
       given(openOn('Name')),
-      message(Message.UpdatedNameDraft({ value: '  Sir   Nibbles of Doom' })),
+      message(
+        Child.profile(
+          ProfileMessage.UpdatedNameDraft({ value: '  Sir   Nibbles of Doom' }),
+        ),
+      ),
       Command.expectNone(),
       model(current => {
         expect(current.profile.nameDraft).toBe('Sir Nibbles ')
         expect(current.playerName).toBe('')
       }),
-      message(Message.SubmittedName()),
+      message(Child.profile(ProfileMessage.SubmittedName())),
       Command.expectHas(WriteSave),
       model(current => {
         expect(current.playerName).toBe('Sir Nibbles')
@@ -247,8 +254,10 @@ describe('the name', () => {
     story(
       update,
       given(openOn('Name')),
-      message(Message.UpdatedNameDraft({ value: 'Hambone' })),
-      message(Message.BlurredNameInput()),
+      message(
+        Child.profile(ProfileMessage.UpdatedNameDraft({ value: 'Hambone' })),
+      ),
+      message(Child.profile(ProfileMessage.BlurredNameInput())),
       model(current => {
         expect(current.playerName).toBe('Hambone')
       }),
@@ -257,7 +266,9 @@ describe('the name', () => {
     story(
       update,
       given(openOn('Name')),
-      message(Message.UpdatedNameDraft({ value: 'Gobbler' })),
+      message(
+        Child.profile(ProfileMessage.UpdatedNameDraft({ value: 'Gobbler' })),
+      ),
       selectTab('Account'),
       model(current => {
         expect(current.playerName).toBe('Gobbler')
@@ -267,7 +278,9 @@ describe('the name', () => {
     story(
       update,
       given(openOn('Name')),
-      message(Message.UpdatedNameDraft({ value: 'Tot Terror' })),
+      message(
+        Child.profile(ProfileMessage.UpdatedNameDraft({ value: 'Tot Terror' })),
+      ),
       closeProfile(),
       model(current => {
         expect(current.profileDialog.isOpen).toBe(false)
@@ -281,8 +294,8 @@ describe('the name', () => {
     story(
       update,
       given(modifyFields(openOn('Name'), { playerName: () => 'Hambone' })),
-      message(Message.UpdatedNameDraft({ value: '   ' })),
-      message(Message.SubmittedName()),
+      message(Child.profile(ProfileMessage.UpdatedNameDraft({ value: '   ' }))),
+      message(Child.profile(ProfileMessage.SubmittedName())),
       model(current => {
         expect(current.playerName).toBe('')
         expect(shownName(current.playerName)).toBe(DEFAULT_NAME)
@@ -321,7 +334,7 @@ describe('the name dice', () => {
           profile: profile => modifyFields(profile, { nameDraft: () => name }),
         }),
       ),
-      message(Message.ClickedNameDiceButton()),
+      message(Child.profile(ProfileMessage.ClickedNameDiceButton())),
       model(rolled => {
         holder.current = rolled
       }),
@@ -368,21 +381,13 @@ describe('the name dice', () => {
 })
 
 describe('the Look tab', () => {
-  test('a new part puffs a poof, and the dice spins', () => {
-    story(
-      update,
-      given(openOn('Look')),
-      message(
-        Child.message(
-          CharacterBinding,
-          Child.look(
-            Character.ShirtColorBinding,
-            PartRadioGroupBlock.Message.SelectedOption({
-              index: 3,
-              value: 'Teal',
-            }),
-          ),
-        ),
+  it.effect('a new part puffs a poof, and the dice spins', () =>
+    Story.story(
+      { block: ApplicationBlock, layer },
+      Story.given(openOn('Look')),
+      Story.messageIn(
+        [ProfileBinding, CharacterBinding, Character.ShirtColorBinding],
+        PartRadioGroupBlock.Message.SelectedOption({ index: 3, value: 'Teal' }),
       ),
       Command.resolve(
         RadioGroup.test.FocusOption,
@@ -394,14 +399,15 @@ describe('the Look tab', () => {
         expect(current.profile.fxCount).toBe(1)
       }),
       writeSave(),
-      message(
-        Child.message(CharacterBinding, Character.Message.ClickedDiceButton()),
+      Story.messageIn(
+        [ProfileBinding, CharacterBinding],
+        Character.Message.ClickedDiceButton(),
       ),
       model(current => {
         expect(current.profile.fx).toBe('Spin')
         expect(current.profile.fxCount).toBe(2)
       }),
       writeSave(),
-    )
-  })
+    ),
+  )
 })

@@ -2,8 +2,10 @@ import { Function, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
 import { isOpen as isCoopScreenOpen } from '../features/coop/update'
+import { ProfileTab } from '../features/profile/model'
+import { tabOf } from '../features/profile/profile'
 import { RESTART_GRACE_MS } from '../shared/constants'
-import { MenuPanel, type Model, Phase, ProfileTab } from './model'
+import { MenuPanel, type Model, Phase } from './model'
 
 // NOTE: what the player is looking at, derived from the Model and never
 // stored. Update's gates and the view both read it, so "is a menu open"
@@ -48,7 +50,7 @@ export const menuState = (model: Model): MenuState => {
   if (model.shopDialog.isOpen) {
     return MenuState.Shop()
   } else if (model.profileDialog.isOpen) {
-    return MenuState.Profile({ tab: model.profile.tab })
+    return MenuState.Profile({ tab: tabOf(model.profile) })
   } else if (model.panelDialog.isOpen) {
     return MenuState.Panel({ panel: model.panel })
   } else if (model.handDialog.isOpen) {

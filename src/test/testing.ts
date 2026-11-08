@@ -37,12 +37,12 @@ import { PlaySound } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
 import { endOffer } from '../features/home/home'
 import { FocusLobbyControl } from '../features/lobby/update'
-import { PartRadioGroupBlock } from '../features/look/lookRadios'
 import {
   type HintId,
   LESSON_MIN_SHOWN_MS,
   shownHints,
 } from '../features/onboarding/onboarding'
+import { PartRadioGroupBlock } from '../features/profile/blocks/look/lookRadios'
 import {
   FIXED_STEP_MS,
   RESTART_GRACE_MS,

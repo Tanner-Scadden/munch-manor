@@ -7,14 +7,9 @@
 import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  Melee,
-  type Model,
-  MouseButton,
-  type ProfileTab,
-  type Zombie,
-} from '@game/app/model'
+import { Melee, type Model, MouseButton, type Zombie } from '@game/app/model'
 import { withInput } from '@game/app/update/step'
+import type { ProfileTab } from '@game/features/profile/model'
 import { markLooksSeen } from '@game/features/unlocks/update'
 import { pressHoldButton, pressKey, releaseAll } from '@game/input/input'
 import { PLAYER_MAX_HP } from '@game/shared/constants'
@@ -123,15 +118,15 @@ export const logMessage = (incoming: unknown) => {
 }
 
 // NOTE: the Profile's state open on a tab, as openProfile
-// (src/features/profile/update.ts) sets it, without its menu check: the tab and the
-// name draft, the input let go. The Dialog's own open is its Binding's
+// (src/app/update/profile.ts) and the Profile's RequestedOpen set it,
+// without its menu check: the tab and the name draft, the input let go. The Dialog's own open is its Binding's
 // operation, which the scene's init runs (entry.ts).
 const preparedProfile = (model: Model, tab: ProfileTab): Model =>
   withInput(
     modifyFields(tab === 'Look' ? markLooksSeen(model) : model, {
-      tutorialReset: () => 'Idle',
       profile: profile =>
         modifyFields(profile, {
+          tutorialReset: () => 'Idle',
           tab: () => tab,
           fx: () => 'Still',
           nameDraft: () => model.playerName,
@@ -184,8 +179,11 @@ export const sceneOf: {
     lookSection === undefined
       ? opened
       : modifyFields(opened, {
-          character: picker =>
-            modifyFields(picker, { section: () => lookSection }),
+          profile: profile =>
+            modifyFields(profile, {
+              character: picker =>
+                modifyFields(picker, { section: () => lookSection }),
+            }),
         })
   const holding = config.hold
     ? modifyFields(sectioned, {
