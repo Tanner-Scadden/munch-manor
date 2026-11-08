@@ -1,26 +1,15 @@
 import { Option } from 'effect'
-import {
-  Command,
-  all,
-  click,
-  expect,
-  expectAll,
-  given,
-  inside,
-  role,
-  scene,
-  selector,
-  text,
-} from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test } from 'vitest'
+
+import { describe, it } from '@effect/vitest'
 
 import { FridgeDoor, type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { PREPARATION_MS } from '../../../shared/constants'
 import { home } from '../../../test/model.fixture'
 import {
-  ROOT,
+  APPLICATION,
   emitPressedKey,
   measureSurface,
   openHandInScene,
@@ -63,116 +52,134 @@ const atStall = (): Model =>
     },
   )
 
-const help = role('button', { name: 'Shop guide' })
-const back = role('button', { name: 'Back to the shop' })
-const guide = selector('.sg')
-const resolveFocusGuide = Command.resolve(
+const help = Scene.role('button', { name: 'Shop guide' })
+const back = Scene.role('button', { name: 'Back to the shop' })
+const guide = Scene.selector('.sg')
+const resolveFocusGuide = Scene.Command.resolve(
   FocusGuideControl,
   GuideMessage.CompletedFocusControl(),
 )
 
 describe('the ? in the shop', () => {
-  test('opens the guide on the tab being looked at, with bars and an upgrade ladder, and Back returns to the shelves', () => {
-    scene(
-      ROOT,
-      given(atStall()),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      expect(role('tab', { name: /^Guns,/ })).toExist(),
-      expect(guide).toBeAbsent(),
-      click(help),
-      resolveFocusGuide,
-      expect(guide).toExist(),
-      expect(help).toBeAbsent(),
-      expect(role('tab', { name: /^Guns,/ })).toBeAbsent(),
-      expect(role('button', { name: 'Guns', pressed: true })).toExist(),
-      inside(
-        selector("[data-entry='Shotgun']"),
-        expect(selector('.sg-name')).toExist(),
-        expect(role('img', { name: /^Power \d of 5/ })).toExist(),
-        expectAll(all.selector('.sg-step')).toHaveCount(3),
+  it.effect(
+    'opens the guide on the tab being looked at, with bars and an upgrade ladder, and Back returns to the shelves',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(atStall()),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        Scene.expect(Scene.role('tab', { name: /^Guns,/ })).toExist(),
+        Scene.expect(guide).toBeAbsent(),
+        Scene.click(help),
+        resolveFocusGuide,
+        Scene.expect(guide).toExist(),
+        Scene.expect(help).toBeAbsent(),
+        Scene.expect(Scene.role('tab', { name: /^Guns,/ })).toBeAbsent(),
+        Scene.expect(
+          Scene.role('button', { name: 'Guns', pressed: true }),
+        ).toExist(),
+        Scene.inside(
+          Scene.selector("[data-entry='Shotgun']"),
+          Scene.expect(Scene.selector('.sg-name')).toExist(),
+          Scene.expect(Scene.role('img', { name: /^Power \d of 5/ })).toExist(),
+          Scene.expectAll(Scene.all.selector('.sg-step')).toHaveCount(3),
+        ),
+        Scene.click(Scene.role('button', { name: 'Traps' })),
+        Scene.expect(Scene.selector("[data-entry='Turret']")).toExist(),
+        Scene.click(back),
+        resolveFocusGuide,
+        Scene.expect(guide).toBeAbsent(),
+        Scene.expect(help).toExist(),
+        Scene.expect(Scene.role('tab', { name: /^Guns,/ })).toExist(),
       ),
-      click(role('button', { name: 'Traps' })),
-      expect(selector("[data-entry='Turret']")).toExist(),
-      click(back),
-      resolveFocusGuide,
-      expect(guide).toBeAbsent(),
-      expect(help).toExist(),
-      expect(role('tab', { name: /^Guns,/ })).toExist(),
-    )
-  })
+  )
 
-  test('the ? key opens the guide with no pointer, and again puts it away', () => {
-    scene(
-      ROOT,
-      given(atStall()),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      emitPressedKey('Slash'),
-      resolveFocusGuide,
-      expect(guide).toExist(),
-      emitPressedKey('Slash'),
-      resolveFocusGuide,
-      expect(guide).toBeAbsent(),
-    )
-  })
+  it.effect(
+    'the ? key opens the guide with no pointer, and again puts it away',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(atStall()),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        emitPressedKey('Slash'),
+        resolveFocusGuide,
+        Scene.expect(guide).toExist(),
+        emitPressedKey('Slash'),
+        resolveFocusGuide,
+        Scene.expect(guide).toBeAbsent(),
+      ),
+  )
 
-  test('the fridge shows ??? until a prize is pulled, then its card fills in', () => {
-    const pulled = modifyFields(atStall(), {
-      seenUnlocks: () => [prizeUnlockId('Freeze')],
-      fridge: fridge => modifyFields(fridge, { door: () => FridgeDoor.Shut() }),
-    })
-    scene(
-      ROOT,
-      given(pulled),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      click(help),
-      resolveFocusGuide,
-      click(role('button', { name: 'Fridge' })),
-      expectAll(all.selector("[data-known='Unknown']")).toHaveCount(4),
-      expectAll(all.selector("[data-known='Known']")).toHaveCount(1),
-      inside(
-        selector("[data-entry='Freeze']"),
-        expect(selector('.sg-bars')).toExist(),
-      ),
-      inside(
-        selector("[data-entry='Cooker']"),
-        expect(selector('.sg-bars')).toBeAbsent(),
-        expect(text('???')).toExist(),
-      ),
-    )
-  })
+  it.effect(
+    'the fridge shows ??? until a prize is pulled, then its card fills in',
+    () => {
+      const pulled = modifyFields(atStall(), {
+        seenUnlocks: () => [prizeUnlockId('Freeze')],
+        fridge: fridge =>
+          modifyFields(fridge, { door: () => FridgeDoor.Shut() }),
+      })
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(pulled),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        Scene.click(help),
+        resolveFocusGuide,
+        Scene.click(Scene.role('button', { name: 'Fridge' })),
+        Scene.expectAll(
+          Scene.all.selector("[data-known='Unknown']"),
+        ).toHaveCount(4),
+        Scene.expectAll(Scene.all.selector("[data-known='Known']")).toHaveCount(
+          1,
+        ),
+        Scene.inside(
+          Scene.selector("[data-entry='Freeze']"),
+          Scene.expect(Scene.selector('.sg-bars')).toExist(),
+        ),
+        Scene.inside(
+          Scene.selector("[data-entry='Cooker']"),
+          Scene.expect(Scene.selector('.sg-bars')).toBeAbsent(),
+          Scene.expect(Scene.text('???')).toExist(),
+        ),
+      )
+    },
+  )
 })
 
 describe('the Munchopedia Shop page', () => {
-  test('the Shop tile opens the guide, sections switch, and Back returns to the zombies', () => {
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      ...openHandInScene(),
-      ...pickCardInScene(/^Munchopedia:/),
-      inside(
-        role('dialog', { name: 'Munchopedia' }),
-        click(role('button', { name: /^Shop,/ })),
+  it.effect(
+    'the Shop tile opens the guide, sections switch, and Back returns to the zombies',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        ...openHandInScene(),
+        ...pickCardInScene(/^Munchopedia:/),
+        Scene.inside(
+          Scene.role('dialog', { name: 'Munchopedia' }),
+          Scene.click(Scene.role('button', { name: /^Shop,/ })),
+        ),
+        resolveFocusGuide,
+        Scene.inside(
+          Scene.role('dialog', { name: 'Munchopedia' }),
+          Scene.expect(guide).toExist(),
+          Scene.expect(Scene.selector("[data-entry='Pistol']")).toExist(),
+          Scene.click(Scene.role('button', { name: 'House' })),
+          Scene.expect(Scene.selector("[data-entry='Boards']")).toExist(),
+          Scene.expect(Scene.selector("[data-entry='Pistol']")).toBeAbsent(),
+          Scene.click(
+            Scene.role('button', { name: 'Back to the Munchopedia' }),
+          ),
+        ),
+        resolveFocusGuide,
+        Scene.inside(
+          Scene.role('dialog', { name: 'Munchopedia' }),
+          Scene.expect(guide).toBeAbsent(),
+          Scene.expect(Scene.role('button', { name: /^Shop,/ })).toExist(),
+        ),
       ),
-      resolveFocusGuide,
-      inside(
-        role('dialog', { name: 'Munchopedia' }),
-        expect(guide).toExist(),
-        expect(selector("[data-entry='Pistol']")).toExist(),
-        click(role('button', { name: 'House' })),
-        expect(selector("[data-entry='Boards']")).toExist(),
-        expect(selector("[data-entry='Pistol']")).toBeAbsent(),
-        click(role('button', { name: 'Back to the Munchopedia' })),
-      ),
-      resolveFocusGuide,
-      inside(
-        role('dialog', { name: 'Munchopedia' }),
-        expect(guide).toBeAbsent(),
-        expect(role('button', { name: /^Shop,/ })).toExist(),
-      ),
-    )
-  })
+  )
 })

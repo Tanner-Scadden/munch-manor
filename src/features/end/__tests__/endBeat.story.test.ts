@@ -1,11 +1,11 @@
-import { Array, Option } from 'effect'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { AudioState, type Model, Phase, RunMode } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import { PlaySound } from '../../../app/update/sound'
 import { mergeRunRecords } from '../../../platform/playerScope'
 import { RUNNING_BUILD } from '../../../platform/version'
@@ -16,7 +16,7 @@ import {
 } from '../../../shared/constants'
 import { noSavedRunRecords } from '../../../shared/playerData'
 import { lastHeart, readyModel } from '../../../test/model.fixture'
-import { press, tick } from '../../../test/testing'
+import { APPLICATION, press, tick } from '../../../test/testing'
 import { focusOf, modifyFocus, seatCrew } from '../../../world/party/party'
 import { withWorld } from '../../../world/schema/world'
 import { bestsFor, withBests } from '../../home/home'
@@ -55,116 +55,127 @@ const audible = (base: Model): Model =>
 const gameOver = Phase.GameOver({ wave: 4 })
 
 describe('the death beat', () => {
-  test('the last bite starts the beat: the clock from 0 and the lens', () => {
-    story(
-      update,
-      given(lastHeart(midRun)),
-      message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
-      model(after => {
-        expect(after.phase).toEqual(gameOver)
-        expect(after.screenMs).toBe(0)
-        expect(lensOf(after)).toEqual(Option.some({ zoom: 1, saturation: 1 }))
-      }),
-      ...Array.makeBy(1, () => tick(400)),
-      model(after => {
-        expect(after.screenMs).toBe(MAX_FRAME_DELTA_MS)
-        const lens = Option.getOrThrow(lensOf(after))
-        expect(lens.zoom).toBeGreaterThan(1)
-        expect(lens.saturation).toBeLessThan(1)
-      }),
-    )
-  })
+  it.effect(
+    'the last bite starts the beat: the clock from 0 and the lens',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(lastHeart(midRun)),
+        Story.message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
+        Story.model(after => {
+          expect(after.phase).toEqual(gameOver)
+          expect(after.screenMs).toBe(0)
+          expect(lensOf(after)).toEqual(Option.some({ zoom: 1, saturation: 1 }))
+        }),
+        ...Array.makeBy(1, () => tick(400)),
+        Story.model(after => {
+          expect(after.screenMs).toBe(MAX_FRAME_DELTA_MS)
+          const lens = Option.getOrThrow(lensOf(after))
+          expect(lens.zoom).toBeGreaterThan(1)
+          expect(lens.saturation).toBeLessThan(1)
+        }),
+      ),
+  )
 
-  test('the stamp lands with a stomp and a shake', () => {
+  it.effect('the stamp lands with a stomp and a shake', () => {
     const stampAtMs = TIMELINES.Munched.stampAtMs
-    story(
-      update,
-      given(audible(onEndScreen(gameOver, stampAtMs - 10))),
+    return Story.story(
+      APPLICATION,
+      Story.given(audible(onEndScreen(gameOver, stampAtMs - 10))),
       tick(20),
-      model(after => {
+      Story.model(after => {
         expect(after.shake.trauma).toBeGreaterThan(0)
       }),
-      Command.expectHas(PlaySound({ sound: 'BossStomp', variation: 0 })),
-      Command.resolve(
+      Story.Command.expectHas(PlaySound({ sound: 'BossStomp', variation: 0 })),
+      Story.Command.resolve(
         PlaySound,
         Message.CompletedPlaySound({ sound: 'Pop', outcome: 'Played' }),
       ),
     )
   })
 
-  test('the world stands still while the beat plays', () => {
-    const zombiesAt = (current: Model) =>
-      Array.map(current.zombies, zombie => [zombie.x, zombie.y])
-    const fallen = update(
-      lastHeart(midRun),
-      Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
-    ).model
-    story(
-      update,
-      given(fallen),
-      ...Array.makeBy(20, () => tick(50)),
-      model(after => {
-        expect(zombiesAt(after)).toEqual(zombiesAt(fallen))
-        expect(focusOf(after).player).toEqual(focusOf(fallen).player)
-        expect(after.phase).toEqual(gameOver)
-      }),
-    )
-  })
+  it.effect('the world stands still while the beat plays', () =>
+    Effect.gen(function* () {
+      const zombiesAt = (current: Model) =>
+        Array.map(current.zombies, zombie => [zombie.x, zombie.y])
+      const fallen = yield* Story.story(
+        APPLICATION,
+        Story.given(lastHeart(midRun)),
+        tick(FIXED_STEP_MS),
+      )
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(fallen),
+        ...Array.makeBy(20, () => tick(50)),
+        Story.model(after => {
+          expect(zombiesAt(after)).toEqual(zombiesAt(fallen))
+          expect(focusOf(after).player).toEqual(focusOf(fallen).player)
+          expect(after.phase).toEqual(gameOver)
+        }),
+      )
+    }),
+  )
 })
 
 describe('skipping and retrying', () => {
-  test('any key in the beat skips to the finished card, and does nothing else', () => {
-    story(
-      update,
-      given(onEndScreen(gameOver, 100)),
-      press('KeyW'),
-      model(after => {
-        expect(after.screenMs).toBe(doneMs('Munched'))
-        expect(after.phase).toEqual(gameOver)
-      }),
-    )
-  })
-
-  test('Enter before the restart grace only skips, so a held key never retries', () => {
-    story(
-      update,
-      given(onEndScreen(gameOver, 100)),
-      press('Enter'),
-      model(after => {
-        expect(after.phase).toEqual(gameOver)
-        expect(after.screenMs).toBe(doneMs('Munched'))
-      }),
-      press('Enter'),
-      model(after => {
-        expect(after.phase._tag).toBe('Preparation')
-      }),
-    )
-  })
-
-  test('Enter after the grace retries at once, mid beat, in the run own mode', () => {
-    story(
-      update,
-      given(
-        modifyFields(
-          onEndScreen(Phase.GameOver({ wave: 13 }), RESTART_GRACE_MS),
-          {
-            mode: () => RunMode.Endless(),
-          },
-        ),
+  it.effect(
+    'any key in the beat skips to the finished card, and does nothing else',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(onEndScreen(gameOver, 100)),
+        press('KeyW'),
+        Story.model(after => {
+          expect(after.screenMs).toBe(doneMs('Munched'))
+          expect(after.phase).toEqual(gameOver)
+        }),
       ),
-      press('Enter'),
-      model(after => {
-        expect(after.phase._tag).toBe('Preparation')
-        expect(after.mode).toEqual(RunMode.Endless())
-      }),
-    )
-  })
+  )
 
-  test('a tap on the game skips the beat but never starts a run', () => {
-    story(
-      update,
-      given(onEndScreen(Phase.Victory(), 200)),
-      message(
+  it.effect(
+    'Enter before the restart grace only skips, so a held key never retries',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(onEndScreen(gameOver, 100)),
+        press('Enter'),
+        Story.model(after => {
+          expect(after.phase).toEqual(gameOver)
+          expect(after.screenMs).toBe(doneMs('Munched'))
+        }),
+        press('Enter'),
+        Story.model(after => {
+          expect(after.phase._tag).toBe('Preparation')
+        }),
+      ),
+  )
+
+  it.effect(
+    'Enter after the grace retries at once, mid beat, in the run own mode',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(
+            onEndScreen(Phase.GameOver({ wave: 13 }), RESTART_GRACE_MS),
+            {
+              mode: () => RunMode.Endless(),
+            },
+          ),
+        ),
+        press('Enter'),
+        Story.model(after => {
+          expect(after.phase._tag).toBe('Preparation')
+          expect(after.mode).toEqual(RunMode.Endless())
+        }),
+      ),
+  )
+
+  it.effect('a tap on the game skips the beat but never starts a run', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(onEndScreen(Phase.Victory(), 200)),
+      Story.message(
         Message.PressedPointer({
           pointerId: 1,
           device: 'Touch',
@@ -172,23 +183,23 @@ describe('skipping and retrying', () => {
           clientY: 100,
         }),
       ),
-      model(after => {
+      Story.model(after => {
         expect(after.screenMs).toBe(doneMs('Won'))
         expect(after.phase).toEqual(Phase.Victory())
       }),
-    )
-  })
+    ),
+  )
 
-  test('RETRY starts the run again', () => {
-    story(
-      update,
-      given(onEndScreen(gameOver, doneMs('Munched'))),
-      message(Message.ClickedRetryButton()),
-      model(after => {
+  it.effect('RETRY starts the run again', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(onEndScreen(gameOver, doneMs('Munched'))),
+      Story.message(Message.ClickedRetryButton()),
+      Story.model(after => {
         expect(after.phase._tag).toBe('Preparation')
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('the tally', () => {
@@ -264,30 +275,32 @@ describe('NEW BEST', () => {
       ),
     )
 
-  test('falling deeper than the endless best is a NEW BEST on the wave', () => {
-    story(
-      update,
-      given(endlessAt(12, 14)),
-      message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
-      model(after => {
-        expect(after.runRecords).toEqual(['Wave'])
-        expect(tallyRowsOf(after)[0]?.isBest).toBe(true)
-      }),
-    )
-  })
+  it.effect(
+    'falling deeper than the endless best is a NEW BEST on the wave',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(endlessAt(12, 14)),
+        Story.message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
+        Story.model(after => {
+          expect(after.runRecords).toEqual(['Wave'])
+          expect(tallyRowsOf(after)[0]?.isBest).toBe(true)
+        }),
+      ),
+  )
 
-  test('falling short of it, or matching it, is no NEW BEST', () => {
-    story(
-      update,
-      given(endlessAt(14, 14)),
-      message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
-      model(after => {
+  it.effect('falling short of it, or matching it, is no NEW BEST', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(endlessAt(14, 14)),
+      Story.message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
+      Story.model(after => {
         expect(after.runRecords).toEqual([])
       }),
-    )
-  })
+    ),
+  )
 
-  test('a NEW BEST bursts with its own sound as its row lands', () => {
+  it.effect('a NEW BEST bursts with its own sound as its row lands', () => {
     const best = modifyFields(
       audible(onEndScreen(Phase.GameOver({ wave: 14 }), 0)),
       {
@@ -296,12 +309,12 @@ describe('NEW BEST', () => {
       },
     )
     const landMs = rowLandMs('Munched', 0)
-    story(
-      update,
-      given(modifyFields(best, { screenMs: () => landMs - 5 })),
+    return Story.story(
+      APPLICATION,
+      Story.given(modifyFields(best, { screenMs: () => landMs - 5 })),
       tick(10),
-      Command.expectHas(PlaySound({ sound: 'PowerUp', variation: 0 })),
-      Command.resolveAll(
+      Story.Command.expectHas(PlaySound({ sound: 'PowerUp', variation: 0 })),
+      Story.Command.resolveAll(
         [
           PlaySound,
           Message.CompletedPlaySound({ sound: 'Pop', outcome: 'Played' }),
@@ -336,63 +349,67 @@ describe('the run records', () => {
       ),
     )
 
-  const fall = message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS }))
+  const fall = Story.message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS }))
 
-  test('a campaign death past the furthest wave is a NEW BEST, and is kept', () => {
-    story(
-      update,
-      given(campaignAt(3, 100)),
-      fall,
-      model(after => {
-        expect(after.runRecords).toEqual(['Wave'])
-        expect(tallyRowsOf(after)[0]?.isBest).toBe(true)
-        expect(bestsFor(after).maybeFurthestWave).toEqual(Option.some(5))
-        expect(bestsFor(after).maybeMostKills).toEqual(Option.some(100))
-      }),
-    )
-  })
+  it.effect(
+    'a campaign death past the furthest wave is a NEW BEST, and is kept',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(campaignAt(3, 100)),
+        fall,
+        Story.model(after => {
+          expect(after.runRecords).toEqual(['Wave'])
+          expect(tallyRowsOf(after)[0]?.isBest).toBe(true)
+          expect(bestsFor(after).maybeFurthestWave).toEqual(Option.some(5))
+          expect(bestsFor(after).maybeMostKills).toEqual(Option.some(100))
+        }),
+      ),
+  )
 
-  test('dying on the furthest wave again is no NEW BEST', () => {
-    story(
-      update,
-      given(campaignAt(5, 100)),
+  it.effect('dying on the furthest wave again is no NEW BEST', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(campaignAt(5, 100)),
       fall,
-      model(after => {
+      Story.model(after => {
         expect(after.runRecords).toEqual([])
         expect(bestsFor(after).maybeFurthestWave).toEqual(Option.some(5))
       }),
-    )
-  })
+    ),
+  )
 
-  test('more kills than ever in one run is a NEW BEST on SPLATTED, and is kept', () => {
-    story(
-      update,
-      given(campaignAt(9, 20)),
-      fall,
-      model(after => {
-        expect(after.runRecords).toEqual(['Kills'])
-        expect(tallyRowsOf(after)[1]?.isBest).toBe(true)
-        expect(bestsFor(after).maybeMostKills).toEqual(Option.some(34))
-        expect(bestsFor(after).maybeFurthestWave).toEqual(Option.some(9))
-      }),
-    )
-  })
+  it.effect(
+    'more kills than ever in one run is a NEW BEST on SPLATTED, and is kept',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(campaignAt(9, 20)),
+        fall,
+        Story.model(after => {
+          expect(after.runRecords).toEqual(['Kills'])
+          expect(tallyRowsOf(after)[1]?.isBest).toBe(true)
+          expect(bestsFor(after).maybeMostKills).toEqual(Option.some(34))
+          expect(bestsFor(after).maybeFurthestWave).toEqual(Option.some(9))
+        }),
+      ),
+  )
 
-  test('matching the most kills is no NEW BEST', () => {
-    story(
-      update,
-      given(campaignAt(9, 34)),
+  it.effect('matching the most kills is no NEW BEST', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(campaignAt(9, 34)),
       fall,
-      model(after => {
+      Story.model(after => {
         expect(after.runRecords).toEqual([])
       }),
-    )
-  })
+    ),
+  )
 
-  test('a first run sets both records without a NEW BEST', () => {
-    story(
-      update,
-      given(
+  it.effect('a first run sets both records without a NEW BEST', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         lastHeart(
           modifyFields(midRun, {
             phase: () => Phase.Wave({ wave: 5, elapsedMs: 4000, spawns: [] }),
@@ -400,13 +417,13 @@ describe('the run records', () => {
         ),
       ),
       fall,
-      model(after => {
+      Story.model(after => {
         expect(after.runRecords).toEqual([])
         expect(bestsFor(after).maybeFurthestWave).toEqual(Option.some(5))
         expect(Option.isSome(bestsFor(after).maybeMostKills)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 
   test('two devices merge their records to the larger of each', () => {
     const record = (furthestWave: number | null, mostKills: number | null) => ({
@@ -544,116 +561,119 @@ describe('sharing a run', () => {
       },
     })
 
-  test('the boot finds the share sheet', () => {
-    story(
-      update,
-      given(readyModel),
-      message(Message.CompletedDetectShareSheet({ shareSheet: 'Available' })),
-      model(after => {
+  it.effect('the boot finds the share sheet', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
+      Story.message(
+        Message.CompletedDetectShareSheet({ shareSheet: 'Available' }),
+      ),
+      Story.model(after => {
         expect(after.shareSheet).toBe('Available')
       }),
-    )
-  })
+    ),
+  )
 
   // NOTE: the sheet itself opens in the click (ShareFromClick), so the tap's
   // Message only counts it.
-  test.each([
+  it.effect.each([
     ['a phone', 'Touch'],
     ['a desktop', 'KeyboardMouse'],
   ] as const)(
     'a tap on SHARE on %s with a share sheet only counts it, on the Sheet path',
-    (_name, device) => {
-      story(
-        update,
-        given(
+    ([_name, device]) =>
+      Story.story(
+        APPLICATION,
+        Story.given(
           modifyFields(
             withSheet(counted(onEndScreen(gameOver, doneMs('Munched')), 'On')),
             { lastDevice: () => device },
           ),
         ),
-        message(Message.ClickedShareButton()),
-        Command.expectExact(deathEvent('Sheet')),
-        Command.resolve(SendShareEvent, Message.CompletedSendShareEvent()),
-      )
-    },
+        Story.message(Message.ClickedShareButton()),
+        Story.Command.expectExact(deathEvent('Sheet')),
+        Story.Command.resolve(
+          SendShareEvent,
+          Message.CompletedSendShareEvent(),
+        ),
+      ),
   )
 
-  test('with no share sheet the share counts on the Copy path', () => {
-    story(
-      update,
-      given(counted(onEndScreen(gameOver, doneMs('Munched')), 'On')),
-      message(Message.ClickedShareButton()),
-      model(after => {
+  it.effect('with no share sheet the share counts on the Copy path', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(counted(onEndScreen(gameOver, doneMs('Munched')), 'On')),
+      Story.message(Message.ClickedShareButton()),
+      Story.model(after => {
         expect(sharePathOf(after)).toBe('Copy')
       }),
-      Command.expectExact(deathEvent('Copy')),
-      Command.resolve(SendShareEvent, Message.CompletedSendShareEvent()),
-    )
-  })
+      Story.Command.expectExact(deathEvent('Copy')),
+      Story.Command.resolve(SendShareEvent, Message.CompletedSendShareEvent()),
+    ),
+  )
 
-  test('a copied post flashes COPIED! on SHARE for a moment', () => {
+  it.effect('a copied post flashes COPIED! on SHARE for a moment', () => {
     const atEnd = onEndScreen(gameOver, doneMs('Munched'))
-    story(
-      update,
-      given(atEnd),
-      message(Message.SettledShare({ outcome: 'Copied' })),
-      Command.expectNone(),
-      model(after => {
+    return Story.story(
+      APPLICATION,
+      Story.given(atEnd),
+      Story.message(Message.SettledShare({ outcome: 'Copied' })),
+      Story.Command.expectNone(),
+      Story.model(after => {
         expect(after.maybeShareCopiedAtMs).toEqual(Option.some(atEnd.screenMs))
         expect(isShareCopied(after)).toBe(true)
       }),
       ...Array.makeBy(Math.ceil(SHARE_COPIED_MS / 50), () => tick(50)),
-      model(after => {
+      Story.model(after => {
         expect(isShareCopied(after)).toBe(false)
       }),
     )
   })
 
-  test.each(['Shared', 'Cancelled', 'Failed'] as const)(
+  it.effect.each(['Shared', 'Cancelled', 'Failed'] as const)(
     'a share that ends %s leaves SHARE as it was',
-    outcome => {
-      story(
-        update,
-        given(onEndScreen(gameOver, doneMs('Munched'))),
-        message(Message.SettledShare({ outcome })),
-        Command.expectNone(),
-        model(after => {
+    outcome =>
+      Story.story(
+        APPLICATION,
+        Story.given(onEndScreen(gameOver, doneMs('Munched'))),
+        Story.message(Message.SettledShare({ outcome })),
+        Story.Command.expectNone(),
+        Story.model(after => {
           expect(isShareCopied(after)).toBe(false)
         }),
-      )
-    },
+      ),
   )
 
-  test('nothing is counted when play stats are off', () => {
-    story(
-      update,
-      given(counted(onEndScreen(gameOver, doneMs('Munched')), 'Off')),
-      message(Message.ClickedShareButton()),
-      Command.expectNone(),
-    )
-  })
+  it.effect('nothing is counted when play stats are off', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(counted(onEndScreen(gameOver, doneMs('Munched')), 'Off')),
+      Story.message(Message.ClickedShareButton()),
+      Story.Command.expectNone(),
+    ),
+  )
 
-  test('X is no longer a share key', () => {
-    story(
-      update,
-      given(
+  it.effect('X is no longer a share key', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         withSheet(counted(onEndScreen(gameOver, RESTART_GRACE_MS * 4), 'On')),
       ),
       press('KeyX'),
-      Command.expectNone(),
-    )
-  })
+      Story.Command.expectNone(),
+    ),
+  )
 
-  test('a crew win is counted from the co-op victory screen', () => {
+  it.effect('a crew win is counted from the co-op victory screen', () => {
     const crewed = withWorld(
       counted(onEndScreen(Phase.Victory(), doneMs('Won')), 'On'),
       world => seatCrew(world, 3),
     )
-    story(
-      update,
-      given(crewed),
-      message(Message.ClickedShareButton()),
-      Command.expectExact(
+    return Story.story(
+      APPLICATION,
+      Story.given(crewed),
+      Story.message(Message.ClickedShareButton()),
+      Story.Command.expectExact(
         SendShareEvent({
           event: {
             version: 2,
@@ -666,7 +686,7 @@ describe('sharing a run', () => {
           },
         }),
       ),
-      Command.resolve(SendShareEvent, Message.CompletedSendShareEvent()),
+      Story.Command.resolve(SendShareEvent, Message.CompletedSendShareEvent()),
     )
   })
 })

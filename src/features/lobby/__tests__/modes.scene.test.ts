@@ -1,18 +1,8 @@
-import { Array, Option } from 'effect'
-import {
-  Command,
-  Subscription,
-  click,
-  expect,
-  given,
-  role,
-  scene,
-  selector,
-  text,
-} from 'foldkit/scene'
+import { Array, Effect, Option } from 'effect'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test } from 'vitest'
 
+import { describe, it } from '@effect/vitest'
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import { Message } from '../../../app/message'
@@ -24,7 +14,7 @@ import {
   RESTART_GRACE_MS,
 } from '../../../shared/constants'
 import {
-  ROOT,
+  APPLICATION,
   SCENE_SUBSCRIPTIONS,
   holdingSecond,
   keepGoingButton,
@@ -44,141 +34,157 @@ import { asVeteran } from '../../../test/veteran'
 import { modifyFocus } from '../../../world/party/party'
 import { withBests } from '../../home/home'
 
-const endlessModeButton = role('button', { name: 'Endless' })
+const endlessModeButton = Scene.role('button', { name: 'Endless' })
 const START_PROMPT =
   'Press Enter, or use the Start wave button, to start it now.'
 
 describe('Mode choice', () => {
-  test('the home menu offers PLAY alone, and the lobby picks endless and starts it', () => {
-    scene(
-      ROOT,
-      given(asVeteran(initialModel)),
-      measureSurface,
-      expect(playButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
-      expect(endlessModeButton).toBeAbsent(),
-      expect(selector('.home-key')).toExist(),
-      expect(keepGoingButton).toBeAbsent(),
-      ...openLobbyInScene(),
-      expect(endlessModeButton).toHaveAttr('aria-pressed', 'false'),
-      click(endlessModeButton),
-      resolveFocusLobbyInScene(),
-      expect(endlessModeButton).toHaveAttr('aria-pressed', 'true'),
-      expect(lobbyMode('Campaign')).toHaveAttr('aria-pressed', 'false'),
-      click(lobbyStartButton),
-      expect(role('status')).toHaveText(
-        `Get ready for endless wave 1. ${START_PROMPT}`,
+  it.effect(
+    'the home menu offers PLAY alone, and the lobby picks endless and starts it',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(asVeteran(initialModel)),
+        measureSurface,
+        Scene.expect(playButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
+        Scene.expect(endlessModeButton).toBeAbsent(),
+        Scene.expect(Scene.selector('.home-key')).toExist(),
+        Scene.expect(keepGoingButton).toBeAbsent(),
+        ...openLobbyInScene(),
+        Scene.expect(endlessModeButton).toHaveAttr('aria-pressed', 'false'),
+        Scene.click(endlessModeButton),
+        resolveFocusLobbyInScene(),
+        Scene.expect(endlessModeButton).toHaveAttr('aria-pressed', 'true'),
+        Scene.expect(lobbyMode('Campaign')).toHaveAttr('aria-pressed', 'false'),
+        Scene.click(lobbyStartButton),
+        Scene.expect(Scene.role('status')).toHaveText(
+          `Get ready for endless wave 1. ${START_PROMPT}`,
+        ),
+        Scene.expect(playEndlessButton).toBeAbsent(),
       ),
-      expect(playEndlessButton).toBeAbsent(),
-    )
-  })
+  )
 
-  test('the Play button starts the 10 wave campaign', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('the Play button starts the 10 wave campaign', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFields(asVeteran(initialModel), {
           mode: () => RunMode.Endless(),
         }),
       ),
       measureSurface,
       ...startRunInScene(),
-      expect(role('status')).toHaveText(
+      Scene.expect(Scene.role('status')).toHaveText(
         `Get ready for wave 1 of 10. ${START_PROMPT}`,
       ),
-    )
-  })
+    ),
+  )
 
-  test('touch shows the buttons without key badges, and PLAY as its icon alone', () => {
-    scene(
-      ROOT,
-      given(modifyFields(initialModel, { lastDevice: () => 'Touch' })),
-      measureSurface,
-      expect(playButton).toExist(),
-      expect(playButton).toHaveText(''),
-      expect(selector('.home-play-icon')).toExist(),
-      expect(selector('.home-key')).toBeAbsent(),
-    )
-  })
-
-  test('Victory offers Keep going after the grace, and it carries on into wave 11', () => {
-    const victorious: Model = modifyFocus(
-      modifyFields(asVeteran(initialModel), { phase: () => Phase.Victory() }),
-      {
-        wallet: () => ({ balance: 321, earned: 1900, shown: 321 }),
-        player: player =>
-          modifyFields(player, {
-            arsenal: () =>
-              holdingSecond({ kind: 'Smg', rounds: 99, loaded: 40, tier: 2 }),
-          }),
-      },
-    )
-    scene(
-      ROOT,
-      given(victorious),
-      measureSurface,
-      expect(keepGoingButton).toBeAbsent(),
-      ...Array.makeBy(Math.ceil(RESTART_GRACE_MS / 50), () =>
-        Subscription.emit(
-          SCENE_SUBSCRIPTIONS.frame,
-          Message.TickedFrame({ deltaTime: 50 }),
-        ),
-      ),
-      expect(keepGoingButton).toHaveAttr('aria-keyshortcuts', 'K'),
-      expect(retryButton).toExist(),
-      shareMountSettles('Cancelled'),
-      click(keepGoingButton),
-      shareMountEnded(),
-      expect(role('status')).toHaveText(
-        `Get ready for endless wave 11. There is no timer this break. ${START_PROMPT} The shop stall in the bottom right corner is open. Walk up to it from any side to browse.`,
-      ),
-      expect(
-        text(
-          'You have $321. Holding the Chatterbox DELUXE. Other slot: Pop Pistol, upgrade tier 0 of 3.',
-        ),
-      ).toExist(),
-    )
-  })
-
-  test('Game Over and Victory ask the player to tell whoever sent the game what they think', () => {
-    const FEEDBACK = 'Tell whoever sent you this what you think!'
-    Array.forEach([Phase.GameOver({ wave: 4 }), Phase.Victory()], phase => {
-      scene(
-        ROOT,
-        given(modifyFields(initialModel, { phase: () => phase })),
+  it.effect(
+    'touch shows the buttons without key badges, and PLAY as its icon alone',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(modifyFields(initialModel, { lastDevice: () => 'Touch' })),
         measureSurface,
-        expect(role('status')).toContainText(FEEDBACK),
-      )
-    })
-    scene(
-      ROOT,
-      given(initialModel),
-      measureSurface,
-      expect(role('status')).not.toContainText(FEEDBACK),
-    )
-  })
+        Scene.expect(playButton).toExist(),
+        Scene.expect(playButton).toHaveText(''),
+        Scene.expect(Scene.selector('.home-play-icon')).toExist(),
+        Scene.expect(Scene.selector('.home-key')).toBeAbsent(),
+      ),
+  )
 
-  test('an endless Game Over reads out the wave reached and your best', () => {
-    scene(
-      ROOT,
-      given(
-        modifyFields(
-          withBests(initialModel, bests =>
-            modifyFields(bests, {
-              maybeBestEndlessWave: () => Option.some(14),
+  it.effect(
+    'Victory offers Keep going after the grace, and it carries on into wave 11',
+    () => {
+      const victorious: Model = modifyFocus(
+        modifyFields(asVeteran(initialModel), { phase: () => Phase.Victory() }),
+        {
+          wallet: () => ({ balance: 321, earned: 1900, shown: 321 }),
+          player: player =>
+            modifyFields(player, {
+              arsenal: () =>
+                holdingSecond({ kind: 'Smg', rounds: 99, loaded: 40, tier: 2 }),
             }),
+        },
+      )
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(victorious),
+        measureSurface,
+        Scene.expect(keepGoingButton).toBeAbsent(),
+        ...Array.makeBy(Math.ceil(RESTART_GRACE_MS / 50), () =>
+          Scene.Subscription.emit(
+            SCENE_SUBSCRIPTIONS.frame,
+            Message.TickedFrame({ deltaTime: 50 }),
           ),
-          {
-            mode: () => RunMode.Endless(),
-            phase: () => Phase.GameOver({ wave: 12 }),
-          },
+        ),
+        Scene.expect(keepGoingButton).toHaveAttr('aria-keyshortcuts', 'K'),
+        Scene.expect(retryButton).toExist(),
+        shareMountSettles('Cancelled'),
+        Scene.click(keepGoingButton),
+        shareMountEnded(),
+        Scene.expect(Scene.role('status')).toHaveText(
+          `Get ready for endless wave 11. There is no timer this break. ${START_PROMPT} The shop stall in the bottom right corner is open. Walk up to it from any side to browse.`,
+        ),
+        Scene.expect(
+          Scene.text(
+            'You have $321. Holding the Chatterbox DELUXE. Other slot: Pop Pistol, upgrade tier 0 of 3.',
+          ),
+        ).toExist(),
+      )
+    },
+  )
+
+  it.effect(
+    'Game Over and Victory ask the player to tell whoever sent the game what they think',
+    () =>
+      Effect.gen(function* () {
+        const FEEDBACK = 'Tell whoever sent you this what you think!'
+        yield* Effect.forEach(
+          [Phase.GameOver({ wave: 4 }), Phase.Victory()],
+          phase =>
+            Scene.scene(
+              APPLICATION,
+              Scene.given(modifyFields(initialModel, { phase: () => phase })),
+              measureSurface,
+              Scene.expect(Scene.role('status')).toContainText(FEEDBACK),
+            ),
+          { discard: true },
+        )
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(initialModel),
+          measureSurface,
+          Scene.expect(Scene.role('status')).not.toContainText(FEEDBACK),
+        )
+      }),
+  )
+
+  it.effect(
+    'an endless Game Over reads out the wave reached and your best',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(
+          modifyFields(
+            withBests(initialModel, bests =>
+              modifyFields(bests, {
+                maybeBestEndlessWave: () => Option.some(14),
+              }),
+            ),
+            {
+              mode: () => RunMode.Endless(),
+              phase: () => Phase.GameOver({ wave: 12 }),
+            },
+          ),
+        ),
+        measureSurface,
+        Scene.expect(Scene.role('status')).toContainText(
+          'Wave reached: 12. Your best: wave 14.',
         ),
       ),
-      measureSurface,
-      expect(role('status')).toContainText(
-        'Wave reached: 12. Your best: wave 14.',
-      ),
-    )
-  })
+  )
 })
 
 describe('Upgrades in the shop', () => {
@@ -217,66 +223,75 @@ describe('Upgrades in the shop', () => {
     },
   )
 
-  test('names the next tier, says what changes, buys it, and shows MAX once done', () => {
-    const nextShotgunTier = role('button', {
-      name: 'Barn Buster 3000, upgrade for Barn Buster DELUXE, $320',
-    })
-    scene(
-      ROOT,
-      given(atStall),
-      measureSurface,
-      Subscription.emit(
-        SCENE_SUBSCRIPTIONS.frame,
-        Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
-      ),
-      Command.resolve(
-        Dialog.test.ShowDialog,
-        DialogBlock.Message.SucceededShowDialog(),
-      ),
-      expect(role('tab', { name: /^Guns,/ })).toHaveAttr(
-        'aria-selected',
-        'true',
-      ),
-      expect(role('heading', { name: 'Barn Buster DELUXE' })).toExist(),
-      expect(
-        text(
-          'Hits for 2 instead of 1. Reloads in 0.75 s instead of 0.9. Holds 80 shells instead of 64.',
+  it.effect(
+    'names the next tier, says what changes, buys it, and shows MAX once done',
+    () => {
+      const nextShotgunTier = Scene.role('button', {
+        name: 'Barn Buster 3000, upgrade for Barn Buster DELUXE, $320',
+      })
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(atStall),
+        measureSurface,
+        Scene.Subscription.emit(
+          SCENE_SUBSCRIPTIONS.frame,
+          Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
         ),
-      ).toExist(),
-      expect(role('img', { name: 'Tier 2 of 3' })).toExist(),
-      expect(
-        role('button', {
-          name: 'Beefy Pop Pistol, upgrade for Pop Pistol, $200',
-        }),
-      ).not.toHaveAttr('aria-disabled', 'true'),
-      expect(
-        role('button', {
-          name: 'Beefy Chatterbox, upgrade for Chatterbox, $60',
-        }),
-      ).toBeAbsent(),
-      click(nextShotgunTier),
-      expect(text('You have $80')).toExist(),
-      expect(role('heading', { name: 'Barn Buster 3000' })).toExist(),
-      expect(role('img', { name: 'Tier 3 of 3' })).toExist(),
-      expect(
-        role('button', { name: 'Barn Buster 3000, fully upgraded' }),
-      ).toHaveAttr('aria-disabled', 'true'),
-      expect(text('Fully upgraded')).toExist(),
-      expect(text('MAX')).toExist(),
-      expect(
-        role('button', {
-          name: 'Beefy Pop Pistol, upgrade for Pop Pistol, $200',
-        }),
-      ).toHaveAttr('aria-disabled', 'true'),
-      expect(text('Need $120 more')).toExist(),
-      expect(
-        text(
-          'Two guns. A new one replaces the one in your hands, upgrades and all.',
+        Scene.Command.resolve(
+          Dialog.test.ShowDialog,
+          DialogBlock.Message.SucceededShowDialog(),
         ),
-      ).toExist(),
-      expect(
-        text('Replaces your Barn Buster 3000, and its upgrades are lost'),
-      ).toExist(),
-    )
-  })
+        Scene.expect(Scene.role('tab', { name: /^Guns,/ })).toHaveAttr(
+          'aria-selected',
+          'true',
+        ),
+        Scene.expect(
+          Scene.role('heading', { name: 'Barn Buster DELUXE' }),
+        ).toExist(),
+        Scene.expect(
+          Scene.text(
+            'Hits for 2 instead of 1. Reloads in 0.75 s instead of 0.9. Holds 80 shells instead of 64.',
+          ),
+        ).toExist(),
+        Scene.expect(Scene.role('img', { name: 'Tier 2 of 3' })).toExist(),
+        Scene.expect(
+          Scene.role('button', {
+            name: 'Beefy Pop Pistol, upgrade for Pop Pistol, $200',
+          }),
+        ).not.toHaveAttr('aria-disabled', 'true'),
+        Scene.expect(
+          Scene.role('button', {
+            name: 'Beefy Chatterbox, upgrade for Chatterbox, $60',
+          }),
+        ).toBeAbsent(),
+        Scene.click(nextShotgunTier),
+        Scene.expect(Scene.text('You have $80')).toExist(),
+        Scene.expect(
+          Scene.role('heading', { name: 'Barn Buster 3000' }),
+        ).toExist(),
+        Scene.expect(Scene.role('img', { name: 'Tier 3 of 3' })).toExist(),
+        Scene.expect(
+          Scene.role('button', { name: 'Barn Buster 3000, fully upgraded' }),
+        ).toHaveAttr('aria-disabled', 'true'),
+        Scene.expect(Scene.text('Fully upgraded')).toExist(),
+        Scene.expect(Scene.text('MAX')).toExist(),
+        Scene.expect(
+          Scene.role('button', {
+            name: 'Beefy Pop Pistol, upgrade for Pop Pistol, $200',
+          }),
+        ).toHaveAttr('aria-disabled', 'true'),
+        Scene.expect(Scene.text('Need $120 more')).toExist(),
+        Scene.expect(
+          Scene.text(
+            'Two guns. A new one replaces the one in your hands, upgrades and all.',
+          ),
+        ).toExist(),
+        Scene.expect(
+          Scene.text(
+            'Replaces your Barn Buster 3000, and its upgrades are lost',
+          ),
+        ).toExist(),
+      )
+    },
+  )
 })

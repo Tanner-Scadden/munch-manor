@@ -1,6 +1,8 @@
-import { Array, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
@@ -12,7 +14,6 @@ import {
   SOLO_SLOT,
   Tour,
 } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import { forgetTutorial } from '../../../platform/save'
 import { cameraOf } from '../../../render/camera'
 import { FIXED_STEP_MS } from '../../../shared/constants'
@@ -23,10 +24,12 @@ import {
   freshRunModel,
 } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   BELOW_KITCHEN_DOOR,
   FRIDGE_OPEN_TICKS,
-  HOLD_TICKS,
-  nextFrame,
+  type RootSteps,
+  holdToBuy,
+  ticks,
 } from '../../../test/testing'
 import { asTutorialDone } from '../../../test/veteran'
 import {
@@ -52,22 +55,6 @@ import { type KitchenStep, kitchenStepOf } from '../kitchenTour'
 const FRAME_MS = FIXED_STEP_MS
 const OFFER_FRAMES = Math.ceil(FRIDGE_RULES.offerMs / FRAME_MS) + 2
 const BREAK_MS = 15_000
-
-const frames = (current: Model, count: number): Model =>
-  Array.reduce(
-    Array.makeBy(count, () => 0),
-    current,
-    nextFrame,
-  )
-
-const holdEnter = (current: Model): Model =>
-  update(
-    frames(
-      update(current, Message.PressedKey({ code: 'Enter' })).model,
-      HOLD_TICKS,
-    ),
-    Message.ReleasedKey({ code: 'Enter' }),
-  ).model
 
 const remainingOf = (current: Model): number =>
   Phase.match(current.phase, {
@@ -142,129 +129,241 @@ const walkAway = (current: Model): Model =>
       }),
   })
 
+// NOTE: the Model `steps` leave from `start`, for a test that changes it
+// in a way no Message does before it goes on.
+const after = (start: Model, ...steps: ReadonlyArray<RootSteps>) =>
+  Story.story(APPLICATION, Story.given(start), ...steps)
+
+const frames = (count: number): RootSteps =>
+  Story.steps(...ticks(count, FRAME_MS))
+
 describe('the kitchen tour', () => {
-  test('holds the clock, gives the kitchen away, and points at the fridge', () => {
-    const started = frames(atBoards(), 10)
-    expect(isTourRunning(started)).toBe(true)
-    expect(stepOf(started)).toEqual(Option.some('Boards'))
-    expect(remainingOf(started)).toBe(BREAK_MS)
-    expect(exitPriceFor(started)).toBe(0)
-
-    const opened = holdEnter(started)
-    expect(isKitchenOpen(levelOf(opened))).toBe(true)
-    expect(focusOf(opened).wallet.balance).toBe(5)
-    expect(stepOf(opened)).toEqual(Option.some('Fridge'))
-    expect(remainingOf(frames(opened, 10))).toBe(BREAK_MS)
-  })
-
-  test('the free pull is always a weapon, from the fridge stream', () => {
-    Array.forEach(['Sandwich', 'Dud', 'Cooker'] as const, prize => {
-      const start = frames(atOpenFridge(prize), 1)
-      expect(fridgePriceFor(start, SOLO_SLOT)).toBe(0)
-      const pulled = holdEnter(start)
-      expect(focusOf(pulled).wallet.balance).toBe(5)
-      expect(pulled.fridge.pulls).toBe(1)
-      const door = pulled.fridge.door
-      const pulledPrize = FridgeDoor.isAnyOf(['Open', 'Offering'])(door)
-        ? door.prize
-        : 'Dud'
-      expect(isFridgePrizeWeapon(pulledPrize)).toBe(true)
-      expect(pulled.loot.fridgeRngState).not.toBe(start.loot.fridgeRngState)
-      expect(stepOf(pulled)).toEqual(Option.some('Choose'))
-      expect(remainingOf(frames(pulled, 5))).toBe(BREAK_MS)
-    })
-  })
-
-  test('taking the prize ends it, and the clock runs', () => {
-    const offered = frames(
-      holdEnter(frames(atOpenFridge('Cooker'), 1)),
-      FRIDGE_OPEN_TICKS,
-    )
-    expect(FridgeDoor.isAnyOf(['Offering'])(offered.fridge.door)).toBe(true)
-    const taken = frames(holdEnter(offered), 1)
-    expect(isTourDone(taken)).toBe(true)
-    expect(remainingOf(frames(taken, 10))).toBeLessThan(BREAK_MS)
-  })
-
-  test('walking away from the prize ends it, and the clock runs', () => {
-    const offered = frames(
-      holdEnter(frames(atOpenFridge('Pan'), 1)),
-      FRIDGE_OPEN_TICKS,
-    )
-    const left = frames(walkAway(offered), 3)
-    expect(isTourDone(left)).toBe(true)
-    expect(remainingOf(frames(left, 10))).toBeLessThan(BREAK_MS)
-  })
-
-  test('letting the prize time out ends it, and the clock runs', () => {
-    const offered = frames(
-      holdEnter(frames(atOpenFridge('Pan'), 1)),
-      FRIDGE_OPEN_TICKS,
-    )
-    const sunk = frames(offered, OFFER_FRAMES)
-    expect(isTourDone(sunk)).toBe(true)
-    expect(remainingOf(frames(sunk, 10))).toBeLessThan(BREAK_MS)
-  })
-
-  test.each(['Sandwich', 'Dud'] as const)(
-    'a %s settled at once counts as trying the fridge',
-    prize => {
-      const running = frames(atOpenFridge('Cooker'), 1)
-      const gagged = modifyFields(running, {
-        fridge: fridge =>
-          modifyFields(fridge, {
-            pulls: () => 1,
-            door: () =>
-              FridgeDoor.Open({
-                prize,
-                slot: soloSeat.slot,
-                remainingMs: FRIDGE_RULES.openMs,
-                durationMs: FRIDGE_RULES.openMs,
-              }),
-          }),
-      })
-      expect(isKitchenTourOn(gagged)).toBe(true)
-      const shut = frames(gagged, FRIDGE_OPEN_TICKS)
-      expect(isTourDone(shut)).toBe(true)
-      expect(remainingOf(frames(shut, 10))).toBeLessThan(BREAK_MS)
-    },
+  it.effect(
+    'holds the clock, gives the kitchen away, and points at the fridge',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(atBoards()),
+        frames(10),
+        Story.model(started => {
+          expect(isTourRunning(started)).toBe(true)
+          expect(stepOf(started)).toEqual(Option.some('Boards'))
+          expect(remainingOf(started)).toBe(BREAK_MS)
+          expect(exitPriceFor(started)).toBe(0)
+        }),
+        holdToBuy,
+        Story.model(opened => {
+          expect(isKitchenOpen(levelOf(opened))).toBe(true)
+          expect(focusOf(opened).wallet.balance).toBe(5)
+          expect(stepOf(opened)).toEqual(Option.some('Fridge'))
+        }),
+        frames(10),
+        Story.model(later => {
+          expect(remainingOf(later)).toBe(BREAK_MS)
+        }),
+      ),
   )
 
-  test("Rattles' trap bubble steps aside while the kitchen tour runs", () => {
-    const running = frames(atBoards(), 2)
-    expect(isTourRunning(running)).toBe(true)
-    expect(maybeBubbleKind(running, cameraOf(running))).toEqual(Option.none())
-  })
+  it.effect.each(['Sandwich', 'Dud', 'Cooker'] as const)(
+    'the free pull of a %s stream is always a weapon, from the fridge stream',
+    prize =>
+      Effect.gen(function* () {
+        const start = yield* after(atOpenFridge(prize), frames(1))
+        expect(fridgePriceFor(start, SOLO_SLOT)).toBe(0)
+        return yield* Story.story(
+          APPLICATION,
+          Story.given(start),
+          holdToBuy,
+          Story.model(pulled => {
+            expect(focusOf(pulled).wallet.balance).toBe(5)
+            expect(pulled.fridge.pulls).toBe(1)
+            const door = pulled.fridge.door
+            const pulledPrize = FridgeDoor.isAnyOf(['Open', 'Offering'])(door)
+              ? door.prize
+              : 'Dud'
+            expect(isFridgePrizeWeapon(pulledPrize)).toBe(true)
+            expect(pulled.loot.fridgeRngState).not.toBe(
+              start.loot.fridgeRngState,
+            )
+            expect(stepOf(pulled)).toEqual(Option.some('Choose'))
+          }),
+          frames(5),
+          Story.model(later => {
+            expect(remainingOf(later)).toBe(BREAK_MS)
+          }),
+        )
+      }),
+  )
 
-  test('the skip button ends it: the clock runs and prices are back', () => {
-    const started = frames(atBoards(), 2)
-    const skipped = update(
-      started,
-      Message.ClickedSkipKitchenTourButton(),
-    ).model
-    expect(skipped.kitchenTour).toEqual(Tour.Over())
-    expect(exitPriceFor(skipped)).toBe(EXIT_RULES.price)
-    expect(remainingOf(frames(skipped, 10))).toBeLessThan(BREAK_MS)
-  })
+  // NOTE: the free pull made and its door open on the prize.
+  const offering = Story.steps(frames(1), holdToBuy, frames(FRIDGE_OPEN_TICKS))
 
-  test('runs once per save, and a tutorial reset plays it again', () => {
-    const done = asTutorialDone(atBoards())
-    expect(isKitchenTourOn(done)).toBe(false)
-    expect(stepOf(frames(done, 2))).toEqual(Option.none())
-    expect(remainingOf(frames(done, 10))).toBeLessThan(BREAK_MS)
-    expect(exitPriceFor(done)).toBe(EXIT_RULES.price)
+  it.effect('taking the prize ends it, and the clock runs', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(atOpenFridge('Cooker')),
+      offering,
+      Story.model(offered => {
+        expect(FridgeDoor.isAnyOf(['Offering'])(offered.fridge.door)).toBe(true)
+      }),
+      holdToBuy,
+      frames(1),
+      Story.model(taken => {
+        expect(isTourDone(taken)).toBe(true)
+      }),
+      frames(10),
+      Story.model(later => {
+        expect(remainingOf(later)).toBeLessThan(BREAK_MS)
+      }),
+    ),
+  )
 
-    const reset = forgetTutorial(done)
-    expect(isTourRunning(frames(reset, 2))).toBe(true)
-  })
+  it.effect('walking away from the prize ends it, and the clock runs', () =>
+    Effect.gen(function* () {
+      const offered = yield* after(atOpenFridge('Pan'), offering)
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(walkAway(offered)),
+        frames(3),
+        Story.model(left => {
+          expect(isTourDone(left)).toBe(true)
+        }),
+        frames(10),
+        Story.model(later => {
+          expect(remainingOf(later)).toBeLessThan(BREAK_MS)
+        }),
+      )
+    }),
+  )
 
-  test('in co-op it never runs: full prices and the shared clock keeps going', () => {
-    const crew = modifyFields(atBoards(), {
-      party: () => Party.Crew(),
-    })
-    expect(isKitchenTourOn(crew)).toBe(false)
-    expect(exitPriceFor(crew)).toBe(EXIT_RULES.price)
-    expect(fridgePriceFor(crew, SOLO_SLOT)).toBe(FRIDGE_RULES.firstPrice)
-    expect(stepOf(frames(crew, 2))).toEqual(Option.none())
-  })
+  it.effect('letting the prize time out ends it, and the clock runs', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(atOpenFridge('Pan')),
+      offering,
+      frames(OFFER_FRAMES),
+      Story.model(sunk => {
+        expect(isTourDone(sunk)).toBe(true)
+      }),
+      frames(10),
+      Story.model(later => {
+        expect(remainingOf(later)).toBeLessThan(BREAK_MS)
+      }),
+    ),
+  )
+
+  it.effect.each(['Sandwich', 'Dud'] as const)(
+    'a %s settled at once counts as trying the fridge',
+    prize =>
+      Effect.gen(function* () {
+        const running = yield* after(atOpenFridge('Cooker'), frames(1))
+        const gagged = modifyFields(running, {
+          fridge: fridge =>
+            modifyFields(fridge, {
+              pulls: () => 1,
+              door: () =>
+                FridgeDoor.Open({
+                  prize,
+                  slot: soloSeat.slot,
+                  remainingMs: FRIDGE_RULES.openMs,
+                  durationMs: FRIDGE_RULES.openMs,
+                }),
+            }),
+        })
+        expect(isKitchenTourOn(gagged)).toBe(true)
+        return yield* Story.story(
+          APPLICATION,
+          Story.given(gagged),
+          frames(FRIDGE_OPEN_TICKS),
+          Story.model(shut => {
+            expect(isTourDone(shut)).toBe(true)
+          }),
+          frames(10),
+          Story.model(later => {
+            expect(remainingOf(later)).toBeLessThan(BREAK_MS)
+          }),
+        )
+      }),
+  )
+
+  it.effect(
+    "Rattles' trap bubble steps aside while the kitchen tour runs",
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(atBoards()),
+        frames(2),
+        Story.model(running => {
+          expect(isTourRunning(running)).toBe(true)
+          expect(maybeBubbleKind(running, cameraOf(running))).toEqual(
+            Option.none(),
+          )
+        }),
+      ),
+  )
+
+  it.effect('the skip button ends it: the clock runs and prices are back', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(atBoards()),
+      frames(2),
+      Story.message(Message.ClickedSkipKitchenTourButton()),
+      Story.model(skipped => {
+        expect(skipped.kitchenTour).toEqual(Tour.Over())
+        expect(exitPriceFor(skipped)).toBe(EXIT_RULES.price)
+      }),
+      frames(10),
+      Story.model(later => {
+        expect(remainingOf(later)).toBeLessThan(BREAK_MS)
+      }),
+    ),
+  )
+
+  it.effect('runs once per save, and a tutorial reset plays it again', () =>
+    Effect.gen(function* () {
+      const done = asTutorialDone(atBoards())
+      expect(isKitchenTourOn(done)).toBe(false)
+      expect(exitPriceFor(done)).toBe(EXIT_RULES.price)
+      yield* Story.story(
+        APPLICATION,
+        Story.given(done),
+        frames(2),
+        Story.model(later => {
+          expect(stepOf(later)).toEqual(Option.none())
+        }),
+        frames(8),
+        Story.model(later => {
+          expect(remainingOf(later)).toBeLessThan(BREAK_MS)
+        }),
+      )
+      return yield* Story.story(
+        APPLICATION,
+        Story.given(forgetTutorial(done)),
+        frames(2),
+        Story.model(reset => {
+          expect(isTourRunning(reset)).toBe(true)
+        }),
+      )
+    }),
+  )
+
+  it.effect(
+    'in co-op it never runs: full prices and the shared clock keeps going',
+    () => {
+      const crew = modifyFields(atBoards(), {
+        party: () => Party.Crew(),
+      })
+      expect(isKitchenTourOn(crew)).toBe(false)
+      expect(exitPriceFor(crew)).toBe(EXIT_RULES.price)
+      expect(fridgePriceFor(crew, SOLO_SLOT)).toBe(FRIDGE_RULES.firstPrice)
+      return Story.story(
+        APPLICATION,
+        Story.given(crew),
+        frames(2),
+        Story.model(later => {
+          expect(stepOf(later)).toEqual(Option.none())
+        }),
+      )
+    },
+  )
 })

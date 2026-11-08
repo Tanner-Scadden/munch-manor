@@ -1,23 +1,8 @@
-import { Array } from 'effect'
-import {
-  Command,
-  all,
-  click,
-  expect,
-  expectAll,
-  given,
-  inside,
-  keydown,
-  role,
-  scene,
-  selector,
-  submit,
-  text,
-  type,
-} from 'foldkit/scene'
+import { Effect } from 'effect'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test } from 'vitest'
 
+import { describe, it } from '@effect/vitest'
 import { Tabs } from '@foldkit/ui'
 
 import { Message } from '../../../app/message'
@@ -26,7 +11,7 @@ import { WriteSave } from '../../../app/update/save'
 import { LinkFlow, SyncState } from '../../../platform/playerSync'
 import { homeAfterRead } from '../../../test/model.fixture'
 import {
-  ROOT,
+  APPLICATION,
   closeButton,
   closeDialogInScene,
   emitPressedKey,
@@ -49,9 +34,9 @@ const synced: Model = modifyFields(homeAfterRead, {
   syncState: () => SyncState.Synced({ devices: 2 }),
 })
 
-const tab = (name: string) => role('tab', { name })
+const tab = (name: string) => Scene.role('tab', { name })
 const focusTab = (index: number) =>
-  Command.resolve(
+  Scene.Command.resolve(
     Tabs.test.FocusTab({ id: 'profile-tabs', index }),
     ProfileTabsBlock.Message.CompletedFocusTab(),
   )
@@ -64,250 +49,288 @@ const measureUpright = measureSurfaceAs({
 })
 
 describe('the Profile', () => {
-  test('the gear opens it on Settings: four tabs, sound and friends, and no devices or stats sharing', () => {
-    scene(
-      ROOT,
-      given(synced),
-      measureSurface,
-      click(settingsButton),
-      ...showDialogInScene(),
-      expect(profileDialog).toExist(),
-      inside(
-        role('tablist', { name: 'Profile' }),
-        expectAll(all.role('tab')).toHaveCount(4),
+  it.effect(
+    'the gear opens it on Settings: four tabs, sound and friends, and no devices or stats sharing',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(synced),
+        measureSurface,
+        Scene.click(settingsButton),
+        ...showDialogInScene(),
+        Scene.expect(profileDialog).toExist(),
+        Scene.inside(
+          Scene.role('tablist', { name: 'Profile' }),
+          Scene.expectAll(Scene.all.role('tab')).toHaveCount(4),
+        ),
+        Scene.expect(tab('Look')).toExist(),
+        Scene.expect(tab('Name')).toExist(),
+        Scene.expect(tab('Account')).toExist(),
+        Scene.expect(tab('Settings')).toHaveAttr('aria-selected', 'true'),
+        Scene.expect(Scene.role('tablist', { name: 'Profile' })).toHaveAttr(
+          'aria-orientation',
+          'vertical',
+        ),
+        Scene.expect(Scene.role('button', { name: 'Sound' })).toExist(),
+        Scene.expect(
+          Scene.role('button', { name: 'Reset tutorial' }),
+        ).toExist(),
+        Scene.expect(Scene.role('button', { name: 'Use a code' })).toBeAbsent(),
+        Scene.expect(
+          Scene.role('button', { name: 'Link another device' }),
+        ).toBeAbsent(),
+        Scene.expect(
+          Scene.role('button', { name: 'Share anonymous play stats' }),
+        ).toBeAbsent(),
+        Scene.expect(Scene.role('button', { name: /^Devices/ })).toBeAbsent(),
+        Scene.click(closeButton),
+        ...closeDialogInScene(),
+        Scene.expect(profileDialog).toBeAbsent(),
       ),
-      expect(tab('Look')).toExist(),
-      expect(tab('Name')).toExist(),
-      expect(tab('Account')).toExist(),
-      expect(tab('Settings')).toHaveAttr('aria-selected', 'true'),
-      expect(role('tablist', { name: 'Profile' })).toHaveAttr(
-        'aria-orientation',
-        'vertical',
+  )
+
+  it.effect(
+    'the arrow keys move between the tabs, down the side in landscape',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(homeAfterRead),
+        measureSurface,
+        emitPressedKey('KeyC'),
+        ...showDialogInScene(),
+        Scene.expect(tab('Look')).toHaveAttr('aria-selected', 'true'),
+        Scene.expect(Scene.role('group', { name: 'Body' })).toBeAbsent(),
+        Scene.expect(
+          Scene.role('radiogroup', { name: 'Body shape' }),
+        ).toExist(),
+        Scene.keydown(tab('Look'), 'ArrowDown'),
+        focusTab(1),
+        Scene.expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
+        Scene.expect(Scene.role('textbox', { name: 'Your name' })).toExist(),
+        Scene.keydown(tab('Name'), 'ArrowDown'),
+        focusTab(2),
+        Scene.expect(tab('Account')).toHaveAttr('aria-selected', 'true'),
+        Scene.keydown(tab('Account'), 'ArrowUp'),
+        focusTab(1),
+        Scene.expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
+        Scene.keydown(tab('Name'), 'End'),
+        focusTab(3),
+        Scene.expect(tab('Settings')).toHaveAttr('aria-selected', 'true'),
       ),
-      expect(role('button', { name: 'Sound' })).toExist(),
-      expect(role('button', { name: 'Reset tutorial' })).toExist(),
-      expect(role('button', { name: 'Use a code' })).toBeAbsent(),
-      expect(role('button', { name: 'Link another device' })).toBeAbsent(),
-      expect(
-        role('button', { name: 'Share anonymous play stats' }),
-      ).toBeAbsent(),
-      expect(role('button', { name: /^Devices/ })).toBeAbsent(),
-      click(closeButton),
-      ...closeDialogInScene(),
-      expect(profileDialog).toBeAbsent(),
-    )
-  })
+  )
 
-  test('the arrow keys move between the tabs, down the side in landscape', () => {
-    scene(
-      ROOT,
-      given(homeAfterRead),
-      measureSurface,
-      emitPressedKey('KeyC'),
-      ...showDialogInScene(),
-      expect(tab('Look')).toHaveAttr('aria-selected', 'true'),
-      expect(role('group', { name: 'Body' })).toBeAbsent(),
-      expect(role('radiogroup', { name: 'Body shape' })).toExist(),
-      keydown(tab('Look'), 'ArrowDown'),
-      focusTab(1),
-      expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
-      expect(role('textbox', { name: 'Your name' })).toExist(),
-      keydown(tab('Name'), 'ArrowDown'),
-      focusTab(2),
-      expect(tab('Account')).toHaveAttr('aria-selected', 'true'),
-      keydown(tab('Account'), 'ArrowUp'),
-      focusTab(1),
-      expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
-      keydown(tab('Name'), 'End'),
-      focusTab(3),
-      expect(tab('Settings')).toHaveAttr('aria-selected', 'true'),
-    )
-  })
-
-  test('upright on a phone the tabs run across the top, and the arrows go left and right', () => {
-    scene(
-      ROOT,
-      given(onTouch),
-      measureUpright,
-      click(role('button', { name: 'Your character: change how you look' })),
-      ...showDialogInScene(),
-      expect(role('tablist', { name: 'Profile' })).toHaveAttr(
-        'aria-orientation',
-        'horizontal',
+  it.effect(
+    'upright on a phone the tabs run across the top, and the arrows go left and right',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(onTouch),
+        measureUpright,
+        Scene.click(
+          Scene.role('button', { name: 'Your character: change how you look' }),
+        ),
+        ...showDialogInScene(),
+        Scene.expect(Scene.role('tablist', { name: 'Profile' })).toHaveAttr(
+          'aria-orientation',
+          'horizontal',
+        ),
+        Scene.keydown(tab('Look'), 'ArrowRight'),
+        focusTab(1),
+        Scene.expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
       ),
-      keydown(tab('Look'), 'ArrowRight'),
-      focusTab(1),
-      expect(tab('Name')).toHaveAttr('aria-selected', 'true'),
-    )
-  })
+  )
 
-  test('a tap on a tab switches to it', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('a tap on a tab switches to it', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFields(onTouch, {
           syncState: () => SyncState.Synced({ devices: 2 }),
         }),
       ),
       measureSurface,
-      click(settingsButton),
+      Scene.click(settingsButton),
       ...showDialogInScene(),
-      click(tab('Account')),
+      Scene.click(tab('Account')),
       focusTab(2),
-      expect(tab('Account')).toHaveAttr('aria-selected', 'true'),
-      expect(role('list', { name: 'Your 2 devices' })).toExist(),
-      expect(role('status')).toExist(),
-      click(tab('Look')),
+      Scene.expect(tab('Account')).toHaveAttr('aria-selected', 'true'),
+      Scene.expect(Scene.role('list', { name: 'Your 2 devices' })).toExist(),
+      Scene.expect(Scene.role('status')).toExist(),
+      Scene.click(tab('Look')),
       focusTab(0),
-      expect(role('button', { name: 'Roll a random look' })).toExist(),
-    )
-  })
+      Scene.expect(
+        Scene.role('button', { name: 'Roll a random look' }),
+      ).toExist(),
+    ),
+  )
 })
 
 describe('the Name tab', () => {
-  const nameField = role('textbox', { name: 'Your name' })
-  const stone = selector('.name-stone-name')
+  const nameField = Scene.role('textbox', { name: 'Your name' })
+  const stone = Scene.selector('.name-stone-name')
 
-  test('the stone shows the placeholder, then the name as it is typed, and Enter keeps it', () => {
-    scene(
-      ROOT,
-      given(homeAfterRead),
-      measureSurface,
-      click(settingsButton),
-      ...showDialogInScene(),
-      click(tab('Name')),
-      focusTab(1),
-      expect(stone).toHaveText('Survivor'),
-      expect(nameField).toHaveAttr('placeholder', 'Survivor'),
-      expect(role('img', { name: '12 letters left' })).toExist(),
-      type(nameField, 'Gravy Dave'),
-      expect(stone).toHaveText('Gravy Dave'),
-      expect(role('img', { name: '2 letters left' })).toExist(),
-      submit(selector('.name-tab')),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      expect(nameField).toHaveValue('Gravy Dave'),
-    )
-  })
+  it.effect(
+    'the stone shows the placeholder, then the name as it is typed, and Enter keeps it',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(homeAfterRead),
+        measureSurface,
+        Scene.click(settingsButton),
+        ...showDialogInScene(),
+        Scene.click(tab('Name')),
+        focusTab(1),
+        Scene.expect(stone).toHaveText('Survivor'),
+        Scene.expect(nameField).toHaveAttr('placeholder', 'Survivor'),
+        Scene.expect(Scene.role('img', { name: '12 letters left' })).toExist(),
+        Scene.type(nameField, 'Gravy Dave'),
+        Scene.expect(stone).toHaveText('Gravy Dave'),
+        Scene.expect(Scene.role('img', { name: '2 letters left' })).toExist(),
+        Scene.submit(Scene.selector('.name-tab')),
+        Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
+        Scene.expect(nameField).toHaveValue('Gravy Dave'),
+      ),
+  )
 
-  test('the dice rolls a goofy name onto the stone', () => {
-    scene(
-      ROOT,
-      given(modifyFields(homeAfterRead, { cosmeticRngState: () => 99 })),
+  it.effect('the dice rolls a goofy name onto the stone', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(modifyFields(homeAfterRead, { cosmeticRngState: () => 99 })),
       measureSurface,
-      click(settingsButton),
+      Scene.click(settingsButton),
       ...showDialogInScene(),
-      click(tab('Name')),
+      Scene.click(tab('Name')),
       focusTab(1),
-      click(role('button', { name: 'Roll a goofy name' })),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      expect(stone).not.toHaveText('Survivor'),
-      expect(selector('.name-stone')).toHaveAttr('data-fx', 'Spin'),
-    )
-  })
+      Scene.click(Scene.role('button', { name: 'Roll a goofy name' })),
+      Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      Scene.expect(stone).not.toHaveText('Survivor'),
+      Scene.expect(Scene.selector('.name-stone')).toHaveAttr('data-fx', 'Spin'),
+    ),
+  )
 })
 
 describe('the Account tab', () => {
-  test("Use a code says this device will take the other device's progress before Link", () => {
-    scene(
-      ROOT,
-      given(synced),
-      measureSurface,
-      click(settingsButton),
-      ...showDialogInScene(),
-      click(tab('Account')),
-      focusTab(2),
-      expect(text(LINK_TAKES_PROGRESS_NOTE)).toBeAbsent(),
-      click(role('button', { name: 'Use a code' })),
-      expect(text(LINK_TAKES_PROGRESS_NOTE)).toExist(),
-      expect(role('textbox', { name: LINK_TAKES_PROGRESS_NOTE })).toExist(),
-      expect(role('button', { name: 'Link' })).toExist(),
-    )
-  })
+  it.effect(
+    "Use a code says this device will take the other device's progress before Link",
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(synced),
+        measureSurface,
+        Scene.click(settingsButton),
+        ...showDialogInScene(),
+        Scene.click(tab('Account')),
+        focusTab(2),
+        Scene.expect(Scene.text(LINK_TAKES_PROGRESS_NOTE)).toBeAbsent(),
+        Scene.click(Scene.role('button', { name: 'Use a code' })),
+        Scene.expect(Scene.text(LINK_TAKES_PROGRESS_NOTE)).toExist(),
+        Scene.expect(
+          Scene.role('textbox', { name: LINK_TAKES_PROGRESS_NOTE }),
+        ).toExist(),
+        Scene.expect(Scene.role('button', { name: 'Link' })).toExist(),
+      ),
+  )
 
-  test('summoning asks for a code and shows it in big letters', () => {
-    scene(
-      ROOT,
-      given(synced),
+  it.effect('summoning asks for a code and shows it in big letters', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(synced),
       measureSurface,
-      click(settingsButton),
+      Scene.click(settingsButton),
       ...showDialogInScene(),
-      click(tab('Account')),
+      Scene.click(tab('Account')),
       focusTab(2),
-      click(role('button', { name: 'Link another device' })),
-      Command.resolve(
+      Scene.click(Scene.role('button', { name: 'Link another device' })),
+      Scene.Command.resolve(
         RequestLinkCode,
         ProfileMessage.SucceededRequestLinkCode({ code: 'KZ7QWM' }),
       ),
-      expect(role('paragraph', { name: 'Link code K Z 7 Q W M' })).toExist(),
-      expectAll(all.selector('.account-code-letter')).toHaveCount(6),
-    )
-  })
+      Scene.expect(
+        Scene.role('paragraph', { name: 'Link code K Z 7 Q W M' }),
+      ).toExist(),
+      Scene.expectAll(Scene.all.selector('.account-code-letter')).toHaveCount(
+        6,
+      ),
+    ),
+  )
 
-  test('the devices zap together once linked', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('the devices zap together once linked', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFields(synced, {
           profile: profile =>
             modifyFields(profile, { linkFlow: () => LinkFlow.Linked() }),
         }),
       ),
       measureSurface,
-      click(settingsButton),
+      Scene.click(settingsButton),
       ...showDialogInScene(),
-      click(tab('Account')),
+      Scene.click(tab('Account')),
       focusTab(2),
-      expect(selector('.account-zap')).toExist(),
-      expect(
-        text("Linked! This device now uses your other device's progress."),
+      Scene.expect(Scene.selector('.account-zap')).toExist(),
+      Scene.expect(
+        Scene.text(
+          "Linked! This device now uses your other device's progress.",
+        ),
       ).toExist(),
-    )
-  })
+    ),
+  )
 
-  test('stats sharing is one icon toggle, its note read aloud', () => {
-    const shareToggle = role('button', { name: 'Share anonymous play stats' })
-    scene(
-      ROOT,
-      given(homeAfterRead),
+  it.effect('stats sharing is one icon toggle, its note read aloud', () => {
+    const shareToggle = Scene.role('button', {
+      name: 'Share anonymous play stats',
+    })
+    return Scene.scene(
+      APPLICATION,
+      Scene.given(homeAfterRead),
       measureSurface,
-      click(settingsButton),
+      Scene.click(settingsButton),
       ...showDialogInScene(),
-      click(tab('Account')),
+      Scene.click(tab('Account')),
       focusTab(2),
-      expect(shareToggle).toHaveAttr('aria-pressed', 'true'),
-      expect(shareToggle).toHaveAttr('aria-describedby', 'share-stats-note'),
-      expect(text(SHARE_STATS_NOTE)).toExist(),
-      click(shareToggle),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      expect(shareToggle).toHaveAttr('aria-pressed', 'false'),
-      expect(role('button', { name: 'Link another device' })).toBeAbsent(),
+      Scene.expect(shareToggle).toHaveAttr('aria-pressed', 'true'),
+      Scene.expect(shareToggle).toHaveAttr(
+        'aria-describedby',
+        'share-stats-note',
+      ),
+      Scene.expect(Scene.text(SHARE_STATS_NOTE)).toExist(),
+      Scene.click(shareToggle),
+      Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
+      Scene.expect(shareToggle).toHaveAttr('aria-pressed', 'false'),
+      Scene.expect(
+        Scene.role('button', { name: 'Link another device' }),
+      ).toBeAbsent(),
     )
   })
 })
 
 describe('every entry point', () => {
-  test('lands on its tab', () => {
-    Array.forEach(
+  it.effect('lands on its tab', () =>
+    Effect.forEach(
       [
-        { open: click(settingsButton), tab: 'Settings' },
+        { open: Scene.click(settingsButton), tab: 'Settings' },
         { open: emitPressedKey('KeyO'), tab: 'Settings' },
         { open: emitPressedKey('KeyC'), tab: 'Look' },
         {
-          open: click(
-            role('button', { name: 'Your character: change how you look' }),
+          open: Scene.click(
+            Scene.role('button', {
+              name: 'Your character: change how you look',
+            }),
           ),
           tab: 'Look',
         },
       ],
       ({ open, tab: name }) =>
-        scene(
-          ROOT,
-          given(homeAfterRead),
+        Scene.scene(
+          APPLICATION,
+          Scene.given(homeAfterRead),
           measureSurface,
           open,
           ...showDialogInScene(),
-          expect(tab(name)).toHaveAttr('aria-selected', 'true'),
+          Scene.expect(tab(name)).toHaveAttr('aria-selected', 'true'),
         ),
-    )
-  })
+      { discard: true },
+    ),
+  )
 })

@@ -1,11 +1,11 @@
-import { Array } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Effect } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { DebutCard, type Model, Phase, Reload, RunMode } from '../../app/model'
-import { update } from '../../app/pureApp'
 import { DEBUT_CARD_MIN_MS } from '../../features/onboarding/onboarding'
 import { RESTART_GRACE_MS } from '../../shared/constants'
 import {
@@ -14,6 +14,7 @@ import {
   readyModel,
 } from '../../test/model.fixture'
 import {
+  APPLICATION,
   SHOTGUN,
   openLobbyByKey,
   press,
@@ -59,69 +60,69 @@ const isPaused = (current: Model): boolean =>
   Phase.isAnyOf(['Paused'])(current.phase)
 
 describe('one key per action: removed keys do nothing', () => {
-  test('the arrow keys do not move the player', () => {
-    Array.forEach(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'], code =>
-      story(
-        update,
-        given(fighting),
+  it.effect('the arrow keys do not move the player', () =>
+    Effect.forEach(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'], code =>
+      Story.story(
+        APPLICATION,
+        Story.given(fighting),
         press(code),
-        model(({ seats: [{ intent }] }) => {
+        Story.model(({ seats: [{ intent }] }) => {
           expect(intent.move).toEqual({ x: 0, y: 0 })
         }),
         tick(FRAME_MS),
-        model(({ seats: [{ player }] }) => {
+        Story.model(({ seats: [{ player }] }) => {
           expect(player.x).toBe(focusOf(fighting).player.x)
           expect(player.y).toBe(focusOf(fighting).player.y)
         }),
       ),
-    )
-  })
+    ),
+  )
 
-  test('Space does not fire', () => {
-    story(
-      update,
-      given(fighting),
+  it.effect('Space does not fire', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
       press('Space'),
-      model(({ seats: [{ intent }] }) => {
+      Story.model(({ seats: [{ intent }] }) => {
         expect(intent.trigger).toBe('Released')
       }),
       tick(FRAME_MS),
       tick(FRAME_MS),
-      model(({ stats, bullets }) => {
+      Story.model(({ stats, bullets }) => {
         expect(stats.shotsFired).toBe(0)
         expect(bullets).toEqual([])
       }),
-    )
-  })
+    ),
+  )
 
-  test('E, 1, and 2 do not swap or pick a gun', () => {
-    Array.forEach(['KeyE', 'Digit1', 'Digit2'], code =>
-      story(
-        update,
-        given(fighting),
+  it.effect('E, 1, and 2 do not swap or pick a gun', () =>
+    Effect.forEach(['KeyE', 'Digit1', 'Digit2'], code =>
+      Story.story(
+        APPLICATION,
+        Story.given(fighting),
         tap(code),
-        model(({ seats: [{ player }] }) => {
+        Story.model(({ seats: [{ player }] }) => {
           expect(player.arsenal).toEqual(focusOf(fighting).player.arsenal)
         }),
       ),
-    )
-  })
+    ),
+  )
 
-  test('P does not pause a wave or Preparation', () => {
-    Array.forEach(ROUNDS, ([start]) =>
-      story(
-        update,
-        given(start),
+  it.effect('P does not pause a wave or Preparation', () =>
+    Effect.forEach(ROUNDS, ([start]) =>
+      Story.story(
+        APPLICATION,
+        Story.given(start),
         tap('KeyP'),
-        model(current => {
+        Story.model(current => {
           expect(isPaused(current)).toBe(false)
         }),
       ),
-    )
-  })
+    ),
+  )
 
-  test('Space does not start a run from the title or Game Over', () => {
-    Array.forEach(
+  it.effect('Space does not start a run from the title or Game Over', () =>
+    Effect.forEach(
       [
         readyModel,
         modifyFields(readyModel, {
@@ -130,77 +131,84 @@ describe('one key per action: removed keys do nothing', () => {
         }),
       ],
       start =>
-        story(
-          update,
-          given(start),
+        Story.story(
+          APPLICATION,
+          Story.given(start),
           tap('Space'),
-          model(({ phase }) => {
+          Story.model(({ phase }) => {
             expect(phase).toEqual(start.phase)
           }),
         ),
-    )
-  })
+    ),
+  )
 
-  test('Space does not start the wave early or skip the new zombie card', () => {
-    story(
-      update,
-      given(preparing),
-      tap('Space'),
-      model(({ phase }) => {
-        expect(phase).toEqual(WAVE_2_BREAK)
+  it.effect(
+    'Space does not start the wave early or skip the new zombie card',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(preparing),
+          tap('Space'),
+          Story.model(({ phase }) => {
+            expect(phase).toEqual(WAVE_2_BREAK)
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(withDebutCard),
+          tap('Space'),
+          Story.model(({ debutCard }) => {
+            expect(debutCard).toEqual(withDebutCard.debutCard)
+          }),
+        )
       }),
-    )
-    story(
-      update,
-      given(withDebutCard),
-      tap('Space'),
-      model(({ debutCard }) => {
-        expect(debutCard).toEqual(withDebutCard.debutCard)
-      }),
-    )
-  })
+  )
 
-  test('Enter and Space do not resume a paused round', () => {
-    Array.forEach(['Enter', 'Space'], code =>
-      story(
-        update,
-        given(fighting),
+  it.effect('Enter and Space do not resume a paused round', () =>
+    Effect.forEach(['Enter', 'Space'], code =>
+      Story.story(
+        APPLICATION,
+        Story.given(fighting),
         tap('Escape'),
         tap(code),
-        model(current => {
+        Story.model(current => {
           expect(current.phase).toEqual(Phase.Paused({ round: WAVE_2_FIGHT }))
         }),
       ),
-    )
-  })
+    ),
+  )
 })
 
 describe('one key per action: the kept keys work', () => {
-  test('W, A, S, and D move', () => {
-    const moves: ReadonlyArray<readonly [string, { x: number; y: number }]> = [
-      ['KeyW', { x: 0, y: -1 }],
-      ['KeyA', { x: -1, y: 0 }],
-      ['KeyS', { x: 0, y: 1 }],
-      ['KeyD', { x: 1, y: 0 }],
-    ]
-    Array.forEach(moves, ([code, move]) =>
-      story(
-        update,
-        given(fighting),
-        press(code),
-        model(({ seats: [{ intent }] }) => {
-          expect(intent.move).toEqual(move)
-        }),
-      ),
-    )
-  })
+  it.effect('W, A, S, and D move', () =>
+    Effect.gen(function* () {
+      const moves: ReadonlyArray<readonly [string, { x: number; y: number }]> =
+        [
+          ['KeyW', { x: 0, y: -1 }],
+          ['KeyA', { x: -1, y: 0 }],
+          ['KeyS', { x: 0, y: 1 }],
+          ['KeyD', { x: 1, y: 0 }],
+        ]
+      yield* Effect.forEach(moves, ([code, move]) =>
+        Story.story(
+          APPLICATION,
+          Story.given(fighting),
+          press(code),
+          Story.model(({ seats: [{ intent }] }) => {
+            expect(intent.move).toEqual(move)
+          }),
+        ),
+      )
+    }),
+  )
 
-  test('Q swaps guns both ways', () => {
-    story(
-      update,
-      given(fighting),
+  it.effect('Q swaps guns both ways', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
       tap('KeyQ'),
-      model(({ seats: [{ player }] }) => {
+      Story.model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(
           Arsenal.HoldingSecond({
             first: { ...STARTING_PISTOL, loaded: 3 },
@@ -209,156 +217,162 @@ describe('one key per action: the kept keys work', () => {
         )
       }),
       tap('KeyQ'),
-      model(({ seats: [{ player }] }) => {
+      Story.model(({ seats: [{ player }] }) => {
         expect(player.arsenal).toEqual(focusOf(fighting).player.arsenal)
       }),
-    )
-  })
+    ),
+  )
 
-  test('R reloads', () => {
-    story(
-      update,
-      given(fighting),
+  it.effect('R reloads', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
       tap('KeyR'),
-      model(({ seats: [{ player }] }) => {
+      Story.model(({ seats: [{ player }] }) => {
         expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 
-  test('G picks the next trap and T places it', () => {
-    story(
-      update,
-      given(
+  it.effect('G picks the next trap and T places it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFocus(preparing, {
           trapStock: () => ({ Barricade: 1, Turret: 1 }),
           selectedTrap: () => 'Barricade',
         }),
       ),
       tap('KeyG'),
-      model(({ seats: [{ selectedTrap }] }) => {
+      Story.model(({ seats: [{ selectedTrap }] }) => {
         expect(selectedTrap).toBe('Turret')
       }),
       tap('KeyT'),
-      model(({ traps, seats: [{ trapStock }] }) => {
+      Story.model(({ traps, seats: [{ trapStock }] }) => {
         expect(traps).toHaveLength(1)
         expect(trapStock.Turret).toBe(0)
       }),
-    )
-  })
+    ),
+  )
 
-  test('Enter starts a campaign, starts the wave, and skips the new zombie card', () => {
-    story(
-      update,
-      given(readyModel),
-      openLobbyByKey,
-      tap('Enter'),
-      model(({ phase, mode }) => {
-        expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
-        expect(mode).toEqual(RunMode.Campaign())
+  it.effect(
+    'Enter starts a campaign, starts the wave, and skips the new zombie card',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(readyModel),
+          openLobbyByKey,
+          tap('Enter'),
+          Story.model(({ phase, mode }) => {
+            expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
+            expect(mode).toEqual(RunMode.Campaign())
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(preparing),
+          tap('Enter'),
+          Story.model(({ phase }) => {
+            expect(Phase.isAnyOf(['Wave'])(phase)).toBe(true)
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(withDebutCard),
+          tap('Enter'),
+          Story.model(({ debutCard }) => {
+            expect(debutCard).toEqual(DebutCard.Hidden())
+          }),
+        )
       }),
-    )
-    story(
-      update,
-      given(preparing),
-      tap('Enter'),
-      model(({ phase }) => {
-        expect(Phase.isAnyOf(['Wave'])(phase)).toBe(true)
-      }),
-    )
-    story(
-      update,
-      given(withDebutCard),
-      tap('Enter'),
-      model(({ debutCard }) => {
-        expect(debutCard).toEqual(DebutCard.Hidden())
-      }),
-    )
-  })
+  )
 
-  test('E switches the lobby mode to endless, and Enter plays it', () => {
-    story(
-      update,
-      given(readyModel),
+  it.effect('E switches the lobby mode to endless, and Enter plays it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
       openLobbyByKey,
       tap('KeyE'),
       resolveFocusLobby(),
-      model(({ phase, home }) => {
+      Story.model(({ phase, home }) => {
         expect(Phase.isAnyOf(['Ready'])(phase)).toBe(true)
         expect(home.mode).toBe('Endless')
       }),
       tap('Enter'),
-      model(({ phase, mode }) => {
+      Story.model(({ phase, mode }) => {
         expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
         expect(mode).toEqual(RunMode.Endless())
       }),
-    )
-  })
+    ),
+  )
 
-  test('Esc pauses a wave or Preparation and Esc resumes it', () => {
-    Array.forEach(ROUNDS, ([start, round]) =>
-      story(
-        update,
-        given(start),
+  it.effect('Esc pauses a wave or Preparation and Esc resumes it', () =>
+    Effect.forEach(ROUNDS, ([start, round]) =>
+      Story.story(
+        APPLICATION,
+        Story.given(start),
         tap('Escape'),
-        model(current => {
+        Story.model(current => {
           expect(current.phase).toEqual(Phase.Paused({ round }))
         }),
         tick(FRAME_MS),
         tap('Escape'),
-        model(current => {
+        Story.model(current => {
           expect(current.phase).toEqual(start.phase)
         }),
       ),
-    )
-  })
+    ),
+  )
 
-  test('M mutes and N turns the music off', () => {
-    story(
-      update,
-      given(fighting),
+  it.effect('M mutes and N turns the music off', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
       tap('KeyM'),
       tap('KeyN'),
-      model(({ soundSetting, musicSetting }) => {
+      Story.model(({ soundSetting, musicSetting }) => {
         expect(soundSetting).toBe('Muted')
         expect(musicSetting).toBe('Off')
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('the PAUSE button', () => {
-  test('pauses a wave or Preparation, and does nothing elsewhere', () => {
-    Array.forEach(ROUNDS, ([start, round]) =>
-      story(
-        update,
-        given(start),
-        message(Message.ClickedPauseButton()),
-        model(current => {
-          expect(current.phase).toEqual(Phase.Paused({ round }))
+  it.effect('pauses a wave or Preparation, and does nothing elsewhere', () =>
+    Effect.gen(function* () {
+      yield* Effect.forEach(ROUNDS, ([start, round]) =>
+        Story.story(
+          APPLICATION,
+          Story.given(start),
+          Story.message(Message.ClickedPauseButton()),
+          Story.model(current => {
+            expect(current.phase).toEqual(Phase.Paused({ round }))
+          }),
+        ),
+      )
+      yield* Story.story(
+        APPLICATION,
+        Story.given(readyModel),
+        Story.message(Message.ClickedPauseButton()),
+        Story.model(({ phase }) => {
+          expect(phase).toEqual(readyModel.phase)
         }),
-      ),
-    )
-    story(
-      update,
-      given(readyModel),
-      message(Message.ClickedPauseButton()),
-      model(({ phase }) => {
-        expect(phase).toEqual(readyModel.phase)
-      }),
-    )
-  })
+      )
+    }),
+  )
 
-  test('lets go of held keys so nothing moves after resuming', () => {
-    story(
-      update,
-      given(fighting),
+  it.effect('lets go of held keys so nothing moves after resuming', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
       press('KeyD'),
-      message(Message.ClickedPauseButton()),
-      model(({ input, seats: [{ intent }] }) => {
+      Story.message(Message.ClickedPauseButton()),
+      Story.model(({ input, seats: [{ intent }] }) => {
         expect(input.pressedKeys).toEqual([])
         expect(intent.move).toEqual({ x: 0, y: 0 })
       }),
-    )
-  })
+    ),
+  )
 })

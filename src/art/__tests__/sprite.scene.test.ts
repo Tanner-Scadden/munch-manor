@@ -1,7 +1,6 @@
 import { Array, Option, Record, String, pipe } from 'effect'
-import { Canvas } from 'foldkit'
+import { Canvas, Scene } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
-import { given, scene } from 'foldkit/scene'
 import { afterEach, describe, expect, test } from 'vitest'
 
 import type { Message } from '../../app/message'
@@ -307,7 +306,11 @@ const paintWithFoldkit = (
     rendered.push(node)
     return node
   }
-  scene({ update: (model: number) => ({ model }), view: canvasView }, given(0))
+  // NOTE: a plain Scene over a bare canvas view: no game, no Block.
+  Scene.scene(
+    { update: (model: number) => ({ model }), view: canvasView },
+    Scene.given(0),
+  )
   const draws: Array<DrawCall> = []
   const smoothing: Array<boolean> = []
   const element = document.createElement('canvas')

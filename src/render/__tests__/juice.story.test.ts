@@ -1,7 +1,8 @@
-import { Array, Option, pipe } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Array, Effect, Option, pipe } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import {
@@ -14,7 +15,7 @@ import {
   Streak,
   type Zombie,
 } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import {
   BLOOD_PER_HIT,
   BLOOD_PER_KILL,
@@ -47,6 +48,7 @@ import {
 } from '../../shared/constants'
 import { playingModel, withZombies } from '../../test/model.fixture'
 import {
+  APPLICATION,
   FRAME_MS,
   MUZZLE_X,
   bulletInto,
@@ -83,29 +85,33 @@ describe('particles and decals', () => {
 
   const HEALTH_THAT_KEEPS_ITS_PARTS = 6
 
-  test('a hit sprays blood along the bullet and the shot ejects a shell', () => {
-    story(
-      update,
-      given(shotZombieModel(HEALTH_THAT_KEEPS_ITS_PARTS)),
-      holdFire,
-      tick(FRAME_MS),
-      model(({ particles }) => {
-        const blood = Array.filter(particles, ({ kind }) => kind === 'Blood')
-        expect(blood).toHaveLength(BLOOD_PER_HIT)
-        expect(Array.every(blood, ({ velocityX }) => velocityX > 0)).toBe(true)
-        expect(countKind(particles, 'Shell')).toBe(1)
-        expect(countKind(particles, 'MeatGib')).toBe(0)
-      }),
-    )
-  })
+  it.effect(
+    'a hit sprays blood along the bullet and the shot ejects a shell',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(shotZombieModel(HEALTH_THAT_KEEPS_ITS_PARTS)),
+        holdFire,
+        tick(FRAME_MS),
+        Story.model(({ particles }) => {
+          const blood = Array.filter(particles, ({ kind }) => kind === 'Blood')
+          expect(blood).toHaveLength(BLOOD_PER_HIT)
+          expect(Array.every(blood, ({ velocityX }) => velocityX > 0)).toBe(
+            true,
+          )
+          expect(countKind(particles, 'Shell')).toBe(1)
+          expect(countKind(particles, 'MeatGib')).toBe(0)
+        }),
+      ),
+  )
 
-  test('a kill pops red and green gibs upward', () => {
-    story(
-      update,
-      given(shotZombieModel(1)),
+  it.effect('a kill pops red and green gibs upward', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(shotZombieModel(1)),
       holdFire,
       tick(FRAME_MS),
-      model(({ particles }) => {
+      Story.model(({ particles }) => {
         expect(countKind(particles, 'MeatGib')).toBe(MEAT_GIBS_PER_KILL)
         expect(countKind(particles, 'RotGib')).toBe(ROT_GIBS_PER_KILL)
         expect(countKind(particles, 'Blood')).toBe(
@@ -117,59 +123,63 @@ describe('particles and decals', () => {
         )
         expect(Array.every(gibs, ({ velocityZ }) => velocityZ > 0)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 
-  test('particles expire and what lands leaves decals on whole pixels', () => {
-    story(
-      update,
-      given(shotZombieModel(1)),
-      holdFire,
-      tick(FRAME_MS),
-      releaseFire,
-      model(({ decals }) => {
-        expect(decals).toEqual([])
-      }),
-      ...landingFrames,
-      model(({ particles, decals }) => {
-        expect(particles).toEqual([])
-        expect(countKind(decals, 'Blood')).toBe(BLOOD_PER_HIT + BLOOD_PER_KILL)
-        expect(countKind(decals, 'Meat')).toBe(MEAT_GIBS_PER_KILL)
-        expect(countKind(decals, 'Rot')).toBe(ROT_GIBS_PER_KILL)
-        expect(countKind(decals, 'Shell')).toBe(1)
-        expect(
-          Array.every(
-            decals,
-            ({ x, y }) => Number.isInteger(x) && Number.isInteger(y),
-          ),
-        ).toBe(true)
-      }),
-    )
-  })
+  it.effect(
+    'particles expire and what lands leaves decals on whole pixels',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(shotZombieModel(1)),
+        holdFire,
+        tick(FRAME_MS),
+        releaseFire,
+        Story.model(({ decals }) => {
+          expect(decals).toEqual([])
+        }),
+        ...landingFrames,
+        Story.model(({ particles, decals }) => {
+          expect(particles).toEqual([])
+          expect(countKind(decals, 'Blood')).toBe(
+            BLOOD_PER_HIT + BLOOD_PER_KILL,
+          )
+          expect(countKind(decals, 'Meat')).toBe(MEAT_GIBS_PER_KILL)
+          expect(countKind(decals, 'Rot')).toBe(ROT_GIBS_PER_KILL)
+          expect(countKind(decals, 'Shell')).toBe(1)
+          expect(
+            Array.every(
+              decals,
+              ({ x, y }) => Number.isInteger(x) && Number.isInteger(y),
+            ),
+          ).toBe(true)
+        }),
+      ),
+  )
 
-  test('walking kicks up a dust puff every dust interval', () => {
+  it.effect('walking kicks up a dust puff every dust interval', () => {
     const framesBeforeSecondPuff = Math.ceil(DUST_INTERVAL_MS / FRAME_MS)
 
-    story(
-      update,
-      given(playingModel),
-      message(Message.PressedKey({ code: 'KeyD' })),
+    return Story.story(
+      APPLICATION,
+      Story.given(playingModel),
+      Story.message(Message.PressedKey({ code: 'KeyD' })),
       tick(FRAME_MS),
-      model(({ particles }) => {
+      Story.model(({ particles }) => {
         expect(countKind(particles, 'Dust')).toBe(1)
       }),
       ...ticks(framesBeforeSecondPuff - 2, FRAME_MS),
-      model(({ particles }) => {
+      Story.model(({ particles }) => {
         expect(countKind(particles, 'Dust')).toBe(1)
       }),
       tick(FRAME_MS),
-      model(({ particles }) => {
+      Story.model(({ particles }) => {
         expect(countKind(particles, 'Dust')).toBe(2)
       }),
     )
   })
 
-  test('particle and decal caps hold under a flood of kills', () => {
+  it.effect('particle and decal caps hold under a flood of kills', () => {
     const floodSize = 40
     const victims = Array.makeBy(floodSize, index =>
       modifyFields(
@@ -198,16 +208,16 @@ describe('particles and decals', () => {
       decals: () => Array.makeBy(DECAL_MAX, () => oldDecal),
     })
 
-    story(
-      update,
-      given(floodModel),
+    return Story.story(
+      APPLICATION,
+      Story.given(floodModel),
       tick(FRAME_MS),
-      model(({ particles, stats }) => {
+      Story.model(({ particles, stats }) => {
         expect(scoreOf(stats)).toBe(floodSize * SCORE_PER_ZOMBIE)
         expect(particles).toHaveLength(PARTICLE_MAX)
       }),
       ...landingFrames,
-      model(({ particles, decals }) => {
+      Story.model(({ particles, decals }) => {
         expect(particles).toEqual([])
         expect(decals).toHaveLength(DECAL_MAX)
         expect(countKind(decals, 'Shell')).toBeLessThan(DECAL_MAX)
@@ -216,7 +226,7 @@ describe('particles and decals', () => {
     )
   })
 
-  test('a new round clears the particles and decals', () => {
+  it.effect('a new round clears the particles and decals', () => {
     const messyModel = modifyFields(playingModel, {
       phase: () => Phase.GameOver({ wave: 2 }),
       screenMs: () => RESTART_GRACE_MS,
@@ -237,11 +247,11 @@ describe('particles and decals', () => {
       dustCooldownMs: () => 40,
     })
 
-    story(
-      update,
-      given(messyModel),
-      message(Message.PressedKey({ code: 'Enter' })),
-      model(({ phase, particles, decals, dustCooldownMs }) => {
+    return Story.story(
+      APPLICATION,
+      Story.given(messyModel),
+      Story.message(Message.PressedKey({ code: 'Enter' })),
+      Story.model(({ phase, particles, decals, dustCooldownMs }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(particles).toEqual([])
         expect(decals).toEqual([])
@@ -250,11 +260,10 @@ describe('particles and decals', () => {
     )
   })
 
-  const playParticleSession = (seed: number): Model => {
-    const sessions: Array<Model> = []
-    story(
-      update,
-      given(
+  const playParticleSession = (seed: number) =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         withZombies(
           modifyFields(playingModel, { cosmeticRngState: () => seed }),
           [
@@ -265,32 +274,33 @@ describe('particles and decals', () => {
         ),
       ),
       holdFire,
-      message(Message.PressedKey({ code: 'KeyD' })),
+      Story.message(Message.PressedKey({ code: 'KeyD' })),
       ...ticks(40, FRAME_MS),
-      model(finalModel => {
-        sessions.push(finalModel)
+    )
+
+  it.effect(
+    'the same seed and Messages produce the same particles and decals',
+    () =>
+      Effect.gen(function* () {
+        const first = yield* playParticleSession(1234)
+        const second = yield* playParticleSession(1234)
+
+        expect(countKind(first.particles, 'MeatGib')).toBeGreaterThan(0)
+        expect(countKind(first.particles, 'Dust')).toBeGreaterThan(0)
+        expect(first.decals.length).toBeGreaterThan(0)
+        expect(second.particles).toEqual(first.particles)
+        expect(second.decals).toEqual(first.decals)
+        expect(second.rngState).toBe(first.rngState)
       }),
-    )
-    return Option.getOrThrow(Array.head(sessions))
-  }
+  )
 
-  test('the same seed and Messages produce the same particles and decals', () => {
-    const first = playParticleSession(1234)
-    const second = playParticleSession(1234)
-
-    expect(countKind(first.particles, 'MeatGib')).toBeGreaterThan(0)
-    expect(countKind(first.particles, 'Dust')).toBeGreaterThan(0)
-    expect(first.decals.length).toBeGreaterThan(0)
-    expect(second.particles).toEqual(first.particles)
-    expect(second.decals).toEqual(first.decals)
-    expect(second.rngState).toBe(first.rngState)
-  })
-
-  test('a different seed scatters the particles differently', () => {
-    expect(playParticleSession(1234).particles).not.toEqual(
-      playParticleSession(98765).particles,
-    )
-  })
+  it.effect('a different seed scatters the particles differently', () =>
+    Effect.gen(function* () {
+      const first = yield* playParticleSession(1234)
+      const other = yield* playParticleSession(98765)
+      expect(other.particles).not.toEqual(first.particles)
+    }),
+  )
 })
 
 const doomedZombieAt = (id: number, x: number, y: number): Zombie =>
@@ -368,38 +378,42 @@ const kindsAndValues = (model_: Model) =>
   Array.map(model_.popups, ({ kind, value }) => [kind, value])
 
 describe('screen shake', () => {
-  test('a shot, a kill, and a hurt add rising trauma', () => {
-    story(
-      update,
-      given(playingModel),
-      holdFire,
-      tick(FRAME_MS),
-      model(({ shake }) => {
-        expect(shake).toEqual({ trauma: 0, offset: { x: 0, y: 0 } })
-      }),
-    )
+  it.effect('a shot, a kill, and a hurt add rising trauma', () =>
+    Effect.gen(function* () {
+      yield* Story.story(
+        APPLICATION,
+        Story.given(playingModel),
+        holdFire,
+        tick(FRAME_MS),
+        Story.model(({ shake }) => {
+          expect(shake).toEqual({ trauma: 0, offset: { x: 0, y: 0 } })
+        }),
+      )
 
-    story(
-      update,
-      given(withZombies(playingModel, [doomedZombieAt(100, MUZZLE_X, 90)])),
-      holdFire,
-      tick(FRAME_MS),
-      model(({ shake }) => {
-        expect(shake.trauma).toBeCloseTo(SHAKE_TRAUMA_KILL)
-      }),
-    )
+      yield* Story.story(
+        APPLICATION,
+        Story.given(
+          withZombies(playingModel, [doomedZombieAt(100, MUZZLE_X, 90)]),
+        ),
+        holdFire,
+        tick(FRAME_MS),
+        Story.model(({ shake }) => {
+          expect(shake.trauma).toBeCloseTo(SHAKE_TRAUMA_KILL)
+        }),
+      )
 
-    story(
-      update,
-      given(withZombies(playingModel, [contactZombie(100)])),
-      tick(FRAME_MS),
-      model(({ shake }) => {
-        expect(shake.trauma).toBeCloseTo(SHAKE_TRAUMA_HURT)
-      }),
-    )
+      yield* Story.story(
+        APPLICATION,
+        Story.given(withZombies(playingModel, [contactZombie(100)])),
+        tick(FRAME_MS),
+        Story.model(({ shake }) => {
+          expect(shake.trauma).toBeCloseTo(SHAKE_TRAUMA_HURT)
+        }),
+      )
 
-    expect(SHAKE_TRAUMA_HURT).toBeGreaterThan(SHAKE_TRAUMA_KILL * 4)
-  })
+      expect(SHAKE_TRAUMA_HURT).toBeGreaterThan(SHAKE_TRAUMA_KILL * 4)
+    }),
+  )
 
   const holdingSpare = (weapon: 'Shotgun' | 'Smg'): Model =>
     modifyFocus(playingModel, {
@@ -410,189 +424,211 @@ describe('screen shake', () => {
         }),
     })
 
-  const shakeWhileFiring = (
-    base: Model,
-  ): ReadonlyArray<Readonly<{ trauma: number; x: number; y: number }>> => {
-    const frames: Array<Readonly<{ trauma: number; x: number; y: number }>> = []
-    story(
-      update,
-      given(base),
-      holdFire,
-      ...Array.flatMap(ticks(180, FRAME_MS), frame => [
-        frame,
-        model(({ shake }: Model) => {
-          frames.push({ trauma: shake.trauma, ...shake.offset })
+  // NOTE: the shake on every frame, kept from the Story's per-frame
+  // asserts: Story compares no more than two Models.
+  const shakeWhileFiring = (base: Model) =>
+    Effect.gen(function* () {
+      const frames: Array<Readonly<{ trauma: number; x: number; y: number }>> =
+        []
+      yield* Story.story(
+        APPLICATION,
+        Story.given(base),
+        holdFire,
+        ...Array.flatMap(ticks(180, FRAME_MS), frame => [
+          frame,
+          Story.model(({ shake }: Model) => {
+            frames.push({ trauma: shake.trauma, ...shake.offset })
+          }),
+        ]),
+        Story.model(({ stats }) => {
+          expect(stats.shotsFired).toBeGreaterThan(2)
         }),
-      ]),
-      model(({ stats }) => {
-        expect(stats.shotsFired).toBeGreaterThan(2)
-      }),
-    )
-    return frames
-  }
-
-  test('held fire from the pistol and the Chatterbox never moves the screen', () => {
-    Array.forEach([playingModel, holdingSpare('Smg')], base => {
-      expect(
-        Array.every(shakeWhileFiring(base), ({ x, y }) => x === 0 && y === 0),
-      ).toBe(true)
-    })
-  })
-
-  test('held fire from the Barn Buster kicks a little and stays under the firing cap', () => {
-    const frames = shakeWhileFiring(holdingSpare('Shotgun'))
-    expect(Array.some(frames, ({ trauma }) => trauma > 0)).toBe(true)
-    expect(
-      Array.every(
-        frames,
-        ({ trauma, x, y }) =>
-          trauma <= SHAKE_FIRING_TRAUMA_MAX &&
-          Math.abs(x) <= 1 &&
-          Math.abs(y) <= 1,
-      ),
-    ).toBe(true)
-  })
-
-  test('trauma is capped, stays on whole pixels within the max, and decays to rest', () => {
-    // NOTE: one tick more than the exact decay, since whole ticks of
-    // 1000/60 ms sum a hair short of it.
-    const decayFrames =
-      Math.ceil(SHAKE_TRAUMA_MAX / SHAKE_DECAY_PER_SECOND / (FRAME_MS / 1000)) +
-      1
-    const offsets: Array<{ x: number; y: number }> = []
-    const recordOffset = model(({ shake }: Model) => {
-      offsets.push(shake.offset)
+      )
+      return frames
     })
 
-    story(
-      update,
-      given(massacreModel(10)),
-      tick(FRAME_MS),
-      model(({ shake }) => {
-        expect(shake.trauma).toBe(SHAKE_TRAUMA_MAX)
-      }),
-      ...Array.flatMap(ticks(decayFrames, FRAME_MS), frame => [
-        frame,
-        recordOffset,
-      ]),
-      model(({ shake }) => {
-        expect(shake).toEqual({ trauma: 0, offset: { x: 0, y: 0 } })
-      }),
-    )
-
-    expect(Array.some(offsets, ({ x, y }) => x !== 0 || y !== 0)).toBe(true)
-    expect(
-      Array.every(
-        offsets,
-        ({ x, y }) =>
-          Number.isInteger(x) &&
-          Number.isInteger(y) &&
-          Math.abs(x) <= SHAKE_MAX_PX &&
-          Math.abs(y) <= SHAKE_MAX_PX,
+  it.effect(
+    'held fire from the pistol and the Chatterbox never moves the screen',
+    () =>
+      Effect.forEach([playingModel, holdingSpare('Smg')], base =>
+        Effect.map(shakeWhileFiring(base), frames => {
+          expect(Array.every(frames, ({ x, y }) => x === 0 && y === 0)).toBe(
+            true,
+          )
+        }),
       ),
-    ).toBe(true)
-  })
+  )
+
+  it.effect(
+    'held fire from the Barn Buster kicks a little and stays under the firing cap',
+    () =>
+      Effect.gen(function* () {
+        const frames = yield* shakeWhileFiring(holdingSpare('Shotgun'))
+        expect(Array.some(frames, ({ trauma }) => trauma > 0)).toBe(true)
+        expect(
+          Array.every(
+            frames,
+            ({ trauma, x, y }) =>
+              trauma <= SHAKE_FIRING_TRAUMA_MAX &&
+              Math.abs(x) <= 1 &&
+              Math.abs(y) <= 1,
+          ),
+        ).toBe(true)
+      }),
+  )
+
+  it.effect(
+    'trauma is capped, stays on whole pixels within the max, and decays to rest',
+    () =>
+      Effect.gen(function* () {
+        // NOTE: one tick more than the exact decay, since whole ticks of
+        // 1000/60 ms sum a hair short of it.
+        const decayFrames =
+          Math.ceil(
+            SHAKE_TRAUMA_MAX / SHAKE_DECAY_PER_SECOND / (FRAME_MS / 1000),
+          ) + 1
+        const offsets: Array<{ x: number; y: number }> = []
+        const recordOffset = Story.model(({ shake }: Model) => {
+          offsets.push(shake.offset)
+        })
+
+        yield* Story.story(
+          APPLICATION,
+          Story.given(massacreModel(10)),
+          tick(FRAME_MS),
+          Story.model(({ shake }) => {
+            expect(shake.trauma).toBe(SHAKE_TRAUMA_MAX)
+          }),
+          ...Array.flatMap(ticks(decayFrames, FRAME_MS), frame => [
+            frame,
+            recordOffset,
+          ]),
+          Story.model(({ shake }) => {
+            expect(shake).toEqual({ trauma: 0, offset: { x: 0, y: 0 } })
+          }),
+        )
+
+        expect(Array.some(offsets, ({ x, y }) => x !== 0 || y !== 0)).toBe(true)
+        expect(
+          Array.every(
+            offsets,
+            ({ x, y }) =>
+              Number.isInteger(x) &&
+              Number.isInteger(y) &&
+              Math.abs(x) <= SHAKE_MAX_PX &&
+              Math.abs(y) <= SHAKE_MAX_PX,
+          ),
+        ).toBe(true)
+      }),
+  )
 })
 
 describe('hit-stop', () => {
-  test('a kill freezes zombies, bullets, and time for the stop, then resumes', () => {
-    const frozenTicks = freezeTicks(HIT_STOP_KILL_MS)
+  it.effect(
+    'a kill freezes zombies, bullets, and time for the stop, then resumes',
+    () => {
+      const frozenTicks = freezeTicks(HIT_STOP_KILL_MS)
 
-    story(
-      update,
-      given(freezeModel),
-      tick(FRAME_MS),
-      model(nextModel => {
-        expect(Array.map(nextModel.frameEvents, ({ _tag }) => _tag)).toEqual([
-          'ZombieHit',
-          'ZombieKilled',
-        ])
-        expect(nextModel.hitStop).toEqual(
-          HitStop.Frozen({ remainingMs: HIT_STOP_KILL_MS }),
-        )
-        expectWorldAdvancedBy(nextModel, FRAME_MS)
-      }),
-      tick(FRAME_MS),
-      model(nextModel => {
-        expect(nextModel.frameEvents).toEqual([])
-        expect(HitStop.guards.Frozen(nextModel.hitStop)).toBe(true)
-        expectWorldAdvancedBy(nextModel, FRAME_MS)
-      }),
-      ...ticks(frozenTicks - 1, FRAME_MS),
-      model(nextModel => {
-        expect(HitStop.guards.Running(nextModel.hitStop)).toBe(true)
-        expectWorldAdvancedBy(nextModel, FRAME_MS)
-      }),
-      tick(FRAME_MS),
-      model(nextModel => {
-        expectWorldAdvancedBy(nextModel, 2 * FRAME_MS)
-      }),
-      tick(FRAME_MS),
-      model(nextModel => {
-        expectWorldAdvancedBy(nextModel, 3 * FRAME_MS)
-      }),
-    )
-  })
-
-  test('a hurt freezes longer than a kill', () => {
-    story(
-      update,
-      given(withZombies(playingModel, [contactZombie(100)])),
-      tick(FRAME_MS),
-      model(({ hitStop }) => {
-        expect(hitStop).toEqual(
-          HitStop.Frozen({ remainingMs: HIT_STOP_HURT_MS }),
-        )
-      }),
-      ...waitOutFreeze(HIT_STOP_HURT_MS),
-      model(({ hitStop, elapsedMs }) => {
-        expect(HitStop.guards.Running(hitStop)).toBe(true)
-        expect(elapsedMs).toBe(FRAME_MS)
-      }),
-    )
-
-    expect(HIT_STOP_HURT_MS).toBeGreaterThan(HIT_STOP_KILL_MS)
-  })
-
-  test('overlapping kills do not stretch the stop past its cap', () => {
-    story(
-      update,
-      given(massacreModel(30)),
-      tick(FRAME_MS),
-      model(({ hitStop, stats }) => {
-        expect(scoreOf(stats)).toBe(30 * SCORE_PER_ZOMBIE)
-        expect(hitStop).toEqual(
-          HitStop.Frozen({ remainingMs: HIT_STOP_KILL_MAX_MS }),
-        )
-      }),
-    )
-
-    story(
-      update,
-      given(
-        modifyFields(massacreModel(3), {
-          zombies: zombies => [...zombies, contactZombie(700)],
+      return Story.story(
+        APPLICATION,
+        Story.given(freezeModel),
+        tick(FRAME_MS),
+        Story.model(nextModel => {
+          expect(Array.map(nextModel.frameEvents, ({ _tag }) => _tag)).toEqual([
+            'ZombieHit',
+            'ZombieKilled',
+          ])
+          expect(nextModel.hitStop).toEqual(
+            HitStop.Frozen({ remainingMs: HIT_STOP_KILL_MS }),
+          )
+          expectWorldAdvancedBy(nextModel, FRAME_MS)
         }),
-      ),
-      tick(FRAME_MS),
-      model(({ hitStop }) => {
-        expect(hitStop).toEqual(
-          HitStop.Frozen({ remainingMs: HIT_STOP_MAX_MS }),
-        )
-      }),
-    )
-  })
+        tick(FRAME_MS),
+        Story.model(nextModel => {
+          expect(nextModel.frameEvents).toEqual([])
+          expect(HitStop.guards.Frozen(nextModel.hitStop)).toBe(true)
+          expectWorldAdvancedBy(nextModel, FRAME_MS)
+        }),
+        ...ticks(frozenTicks - 1, FRAME_MS),
+        Story.model(nextModel => {
+          expect(HitStop.guards.Running(nextModel.hitStop)).toBe(true)
+          expectWorldAdvancedBy(nextModel, FRAME_MS)
+        }),
+        tick(FRAME_MS),
+        Story.model(nextModel => {
+          expectWorldAdvancedBy(nextModel, 2 * FRAME_MS)
+        }),
+        tick(FRAME_MS),
+        Story.model(nextModel => {
+          expectWorldAdvancedBy(nextModel, 3 * FRAME_MS)
+        }),
+      )
+    },
+  )
 
-  test('a kill right after a stop ends does not freeze again', () => {
-    story(
-      update,
-      given(
+  it.effect('a hurt freezes longer than a kill', () =>
+    Effect.gen(function* () {
+      yield* Story.story(
+        APPLICATION,
+        Story.given(withZombies(playingModel, [contactZombie(100)])),
+        tick(FRAME_MS),
+        Story.model(({ hitStop }) => {
+          expect(hitStop).toEqual(
+            HitStop.Frozen({ remainingMs: HIT_STOP_HURT_MS }),
+          )
+        }),
+        ...waitOutFreeze(HIT_STOP_HURT_MS),
+        Story.model(({ hitStop, elapsedMs }) => {
+          expect(HitStop.guards.Running(hitStop)).toBe(true)
+          expect(elapsedMs).toBe(FRAME_MS)
+        }),
+      )
+
+      expect(HIT_STOP_HURT_MS).toBeGreaterThan(HIT_STOP_KILL_MS)
+    }),
+  )
+
+  it.effect('overlapping kills do not stretch the stop past its cap', () =>
+    Effect.gen(function* () {
+      yield* Story.story(
+        APPLICATION,
+        Story.given(massacreModel(30)),
+        tick(FRAME_MS),
+        Story.model(({ hitStop, stats }) => {
+          expect(scoreOf(stats)).toBe(30 * SCORE_PER_ZOMBIE)
+          expect(hitStop).toEqual(
+            HitStop.Frozen({ remainingMs: HIT_STOP_KILL_MAX_MS }),
+          )
+        }),
+      )
+
+      yield* Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(massacreModel(3), {
+            zombies: zombies => [...zombies, contactZombie(700)],
+          }),
+        ),
+        tick(FRAME_MS),
+        Story.model(({ hitStop }) => {
+          expect(hitStop).toEqual(
+            HitStop.Frozen({ remainingMs: HIT_STOP_MAX_MS }),
+          )
+        }),
+      )
+    }),
+  )
+
+  it.effect('a kill right after a stop ends does not freeze again', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(freezeModel, {
           hitStop: () => HitStop.Running({ cooldownMs: HIT_STOP_COOLDOWN_MS }),
         }),
       ),
       tick(FRAME_MS),
-      model(({ hitStop, frameEvents }) => {
+      Story.model(({ hitStop, frameEvents }) => {
         expect(Array.some(frameEvents, GameEvent.guards.ZombieKilled)).toBe(
           true,
         )
@@ -600,169 +636,191 @@ describe('hit-stop', () => {
           HitStop.Running({ cooldownMs: HIT_STOP_COOLDOWN_MS - FRAME_MS }),
         )
       }),
-    )
-  })
+    ),
+  )
 
-  test('input during a stop is kept and acted on when it resumes', () => {
-    story(
-      update,
-      given(freezeModel),
+  it.effect('input during a stop is kept and acted on when it resumes', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(freezeModel),
       tick(FRAME_MS),
-      message(Message.PressedKey({ code: 'KeyD' })),
+      Story.message(Message.PressedKey({ code: 'KeyD' })),
       tick(FRAME_MS),
-      model(({ seats: [{ player, intent }], input }) => {
+      Story.model(({ seats: [{ player, intent }], input }) => {
         expect(input.pressedKeys).toEqual(['KeyD'])
         expect(intent.move).toEqual({ x: 1, y: 0 })
         expect(player.x).toBe(PARLOUR.width / 2)
       }),
       ...ticks(freezeTicks(HIT_STOP_KILL_MS) - 1, FRAME_MS),
-      model(({ seats: [{ player }] }) => {
+      Story.model(({ seats: [{ player }] }) => {
         expect(player.x).toBe(PARLOUR.width / 2)
       }),
       tick(FRAME_MS),
-      model(({ seats: [{ player }] }) => {
+      Story.model(({ seats: [{ player }] }) => {
         expect(player.x).toBeCloseTo(
           PARLOUR.width / 2 + (PLAYER_SPEED * FRAME_MS) / 1000,
         )
       }),
-    )
-  })
+    ),
+  )
 
-  test('a new round clears the stop, the shake, the numbers, and the streak', () => {
-    story(
-      update,
-      given(massacreModel(4)),
-      tick(FRAME_MS),
-      model(nextModel => {
-        expect(HitStop.guards.Frozen(nextModel.hitStop)).toBe(true)
-        expect(nextModel.shake.trauma).toBeGreaterThan(0)
-        expect(nextModel.popups).not.toEqual([])
-        expect(Streak.guards.Hot(nextModel.streak)).toBe(true)
-      }),
-      message(Message.PressedKey({ code: 'Escape' })),
-      message(Message.PressedKey({ code: 'Escape' })),
-      model(({ phase }) => {
-        expect(Phase.guards.Wave(phase)).toBe(true)
-      }),
-    )
+  it.effect(
+    'a new round clears the stop, the shake, the numbers, and the streak',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(massacreModel(4)),
+          tick(FRAME_MS),
+          Story.model(nextModel => {
+            expect(HitStop.guards.Frozen(nextModel.hitStop)).toBe(true)
+            expect(nextModel.shake.trauma).toBeGreaterThan(0)
+            expect(nextModel.popups).not.toEqual([])
+            expect(Streak.guards.Hot(nextModel.streak)).toBe(true)
+          }),
+          Story.message(Message.PressedKey({ code: 'Escape' })),
+          Story.message(Message.PressedKey({ code: 'Escape' })),
+          Story.model(({ phase }) => {
+            expect(Phase.guards.Wave(phase)).toBe(true)
+          }),
+        )
 
-    story(
-      update,
-      given(
-        modifyFields(massacreModel(4), {
-          phase: () => Phase.GameOver({ wave: 3 }),
-          screenMs: () => RESTART_GRACE_MS,
-          hitStop: () => HitStop.Frozen({ remainingMs: 30 }),
-          shake: () => ({ trauma: 0.5, offset: { x: 1, y: -1 } }),
-          streak: () => Streak.Hot({ count: 4, remainingMs: 100 }),
-        }),
-      ),
-      message(Message.PressedKey({ code: 'Enter' })),
-      model(nextModel => {
-        expect(nextModel.hitStop).toEqual(initialModel.hitStop)
-        expect(nextModel.shake).toEqual(initialModel.shake)
-        expect(nextModel.popups).toEqual([])
-        expect(nextModel.streak).toEqual(Streak.Cold())
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFields(massacreModel(4), {
+              phase: () => Phase.GameOver({ wave: 3 }),
+              screenMs: () => RESTART_GRACE_MS,
+              hitStop: () => HitStop.Frozen({ remainingMs: 30 }),
+              shake: () => ({ trauma: 0.5, offset: { x: 1, y: -1 } }),
+              streak: () => Streak.Hot({ count: 4, remainingMs: 100 }),
+            }),
+          ),
+          Story.message(Message.PressedKey({ code: 'Enter' })),
+          Story.model(nextModel => {
+            expect(nextModel.hitStop).toEqual(initialModel.hitStop)
+            expect(nextModel.shake).toEqual(initialModel.shake)
+            expect(nextModel.popups).toEqual([])
+            expect(nextModel.streak).toEqual(Streak.Cold())
+          }),
+        )
       }),
-    )
-  })
+  )
 })
 
 describe('damage numbers', () => {
-  test('a hit pops the damage dealt and a kill pops the money it pays', () => {
-    story(
-      update,
-      given(
-        withZombies(playingModel, [zombieAt(100, MUZZLE_X, 90, { speed: 0 })]),
-      ),
-      holdFire,
-      tick(FRAME_MS),
-      model(nextModel => {
-        expect(kindsAndValues(nextModel)).toEqual([['Damage', PISTOL_DAMAGE]])
-      }),
-    )
+  it.effect(
+    'a hit pops the damage dealt and a kill pops the money it pays',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            withZombies(playingModel, [
+              zombieAt(100, MUZZLE_X, 90, { speed: 0 }),
+            ]),
+          ),
+          holdFire,
+          tick(FRAME_MS),
+          Story.model(nextModel => {
+            expect(kindsAndValues(nextModel)).toEqual([
+              ['Damage', PISTOL_DAMAGE],
+            ])
+          }),
+        )
 
-    story(
-      update,
-      given(withZombies(playingModel, [doomedZombieAt(100, MUZZLE_X, 90)])),
-      holdFire,
-      tick(FRAME_MS),
-      model(nextModel => {
-        expect(kindsAndValues(nextModel)).toEqual([
-          ['Damage', PISTOL_DAMAGE],
-          ['Kill', SHAMBLER_BOUNTY],
-        ])
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            withZombies(playingModel, [doomedZombieAt(100, MUZZLE_X, 90)]),
+          ),
+          holdFire,
+          tick(FRAME_MS),
+          Story.model(nextModel => {
+            expect(kindsAndValues(nextModel)).toEqual([
+              ['Damage', PISTOL_DAMAGE],
+              ['Kill', SHAMBLER_BOUNTY],
+            ])
+          }),
+        )
       }),
-    )
-  })
+  )
 
-  test('numbers age through the stop and expire after their lifetime', () => {
-    const damageFrames = Math.ceil(DAMAGE_POPUP_LIFETIME_MS / FRAME_MS)
-    const killFrames = Math.ceil(KILL_POPUP_LIFETIME_MS / FRAME_MS)
+  it.effect(
+    'numbers age through the stop and expire after their lifetime',
+    () => {
+      const damageFrames = Math.ceil(DAMAGE_POPUP_LIFETIME_MS / FRAME_MS)
+      const killFrames = Math.ceil(KILL_POPUP_LIFETIME_MS / FRAME_MS)
 
-    story(
-      update,
-      given(withZombies(playingModel, [doomedZombieAt(100, MUZZLE_X, 90)])),
-      holdFire,
-      tick(FRAME_MS),
-      releaseFire,
-      tick(FRAME_MS),
-      model(({ popups, hitStop }) => {
-        expect(HitStop.guards.Frozen(hitStop)).toBe(true)
-        expect(Array.map(popups, ({ ageMs }) => ageMs)).toEqual([
-          FRAME_MS,
-          FRAME_MS,
-        ])
-      }),
-      ...ticks(damageFrames - 1, FRAME_MS),
-      model(({ popups }) => {
-        expect(Array.map(popups, ({ kind }) => kind)).toEqual(['Kill'])
-      }),
-      ...ticks(killFrames - damageFrames, FRAME_MS),
-      model(({ popups }) => {
-        expect(popups).toEqual([])
-      }),
-    )
-  })
+      return Story.story(
+        APPLICATION,
+        Story.given(
+          withZombies(playingModel, [doomedZombieAt(100, MUZZLE_X, 90)]),
+        ),
+        holdFire,
+        tick(FRAME_MS),
+        releaseFire,
+        tick(FRAME_MS),
+        Story.model(({ popups, hitStop }) => {
+          expect(HitStop.guards.Frozen(hitStop)).toBe(true)
+          expect(Array.map(popups, ({ ageMs }) => ageMs)).toEqual([
+            FRAME_MS,
+            FRAME_MS,
+          ])
+        }),
+        ...ticks(damageFrames - 1, FRAME_MS),
+        Story.model(({ popups }) => {
+          expect(Array.map(popups, ({ kind }) => kind)).toEqual(['Kill'])
+        }),
+        ...ticks(killFrames - damageFrames, FRAME_MS),
+        Story.model(({ popups }) => {
+          expect(popups).toEqual([])
+        }),
+      )
+    },
+  )
 
-  test('the live count never passes the cap and keeps the newest', () => {
-    story(
-      update,
-      given(massacreModel(20)),
+  it.effect('the live count never passes the cap and keeps the newest', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(massacreModel(20)),
       tick(FRAME_MS),
-      model(({ popups }) => {
+      Story.model(({ popups }) => {
         expect(popups).toHaveLength(POPUP_MAX)
         expect(Array.every(popups, ({ ageMs }) => ageMs === 0)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('kill streak', () => {
-  test('counts kills, holds through the stop, and goes cold after a gap', () => {
-    const coldFrames = Math.ceil(STREAK_WINDOW_MS / FRAME_MS)
+  it.effect(
+    'counts kills, holds through the stop, and goes cold after a gap',
+    () => {
+      const coldFrames = Math.ceil(STREAK_WINDOW_MS / FRAME_MS)
 
-    story(
-      update,
-      given(massacreModel(3)),
-      tick(FRAME_MS),
-      model(({ streak }) => {
-        expect(streak).toEqual(
-          Streak.Hot({ count: 3, remainingMs: STREAK_WINDOW_MS }),
-        )
-      }),
-      ...waitOutFreeze(HIT_STOP_KILL_MAX_MS),
-      model(({ streak }) => {
-        expect(streak).toEqual(
-          Streak.Hot({ count: 3, remainingMs: STREAK_WINDOW_MS }),
-        )
-      }),
-      ...ticks(coldFrames, FRAME_MS),
-      model(({ streak }) => {
-        expect(streak).toEqual(Streak.Cold())
-      }),
-    )
-  })
+      return Story.story(
+        APPLICATION,
+        Story.given(massacreModel(3)),
+        tick(FRAME_MS),
+        Story.model(({ streak }) => {
+          expect(streak).toEqual(
+            Streak.Hot({ count: 3, remainingMs: STREAK_WINDOW_MS }),
+          )
+        }),
+        ...waitOutFreeze(HIT_STOP_KILL_MAX_MS),
+        Story.model(({ streak }) => {
+          expect(streak).toEqual(
+            Streak.Hot({ count: 3, remainingMs: STREAK_WINDOW_MS }),
+          )
+        }),
+        ...ticks(coldFrames, FRAME_MS),
+        Story.model(({ streak }) => {
+          expect(streak).toEqual(Streak.Cold())
+        }),
+      )
+    },
+  )
 })
 
 describe('juice determinism', () => {
@@ -771,14 +829,16 @@ describe('juice determinism', () => {
       kind: () => 'Tank',
     })
 
-  const playJuiceSession = (seed: number): ReadonlyArray<Model> => {
+  // NOTE: every frame's Model, kept from the Story's per-frame asserts:
+  // Story compares no more than two Models.
+  const playJuiceSession = Effect.fnUntraced(function* (seed: number) {
     const frames: Array<Model> = []
-    const record = model((frame: Model) => {
+    const record = Story.model((frame: Model) => {
       frames.push(frame)
     })
-    story(
-      update,
-      given(
+    yield* Story.story(
+      APPLICATION,
+      Story.given(
         withZombies(
           modifyFields(playingModel, { cosmeticRngState: () => seed }),
           [bigKillAt(100, 200), bigKillAt(101, 230), bigKillAt(102, 260)],
@@ -788,7 +848,7 @@ describe('juice determinism', () => {
       ...Array.flatMap(ticks(60, FRAME_MS), frame => [frame, record]),
     )
     return frames
-  }
+  })
 
   const juiceOf = ({ shake, hitStop, popups, streak }: Model) => ({
     shake,
@@ -797,25 +857,33 @@ describe('juice determinism', () => {
     streak,
   })
 
-  test('the same seed and Messages give the same shake, stops, and numbers', () => {
-    const first = playJuiceSession(1234)
-    const second = playJuiceSession(1234)
+  it.effect(
+    'the same seed and Messages give the same shake, stops, and numbers',
+    () =>
+      Effect.gen(function* () {
+        const first = yield* playJuiceSession(1234)
+        const second = yield* playJuiceSession(1234)
 
-    expect(
-      Array.some(first, ({ hitStop }) => HitStop.guards.Frozen(hitStop)),
-    ).toBe(true)
-    expect(
-      Array.some(
-        first,
-        ({ shake }) => shake.offset.x !== 0 || shake.offset.y !== 0,
-      ),
-    ).toBe(true)
-    expect(Array.map(second, juiceOf)).toEqual(Array.map(first, juiceOf))
-  })
+        expect(
+          Array.some(first, ({ hitStop }) => HitStop.guards.Frozen(hitStop)),
+        ).toBe(true)
+        expect(
+          Array.some(
+            first,
+            ({ shake }) => shake.offset.x !== 0 || shake.offset.y !== 0,
+          ),
+        ).toBe(true)
+        expect(Array.map(second, juiceOf)).toEqual(Array.map(first, juiceOf))
+      }),
+  )
 
-  test('a different seed shakes differently', () => {
-    expect(
-      Array.map(playJuiceSession(98765), ({ shake }) => shake),
-    ).not.toEqual(Array.map(playJuiceSession(1234), ({ shake }) => shake))
-  })
+  it.effect('a different seed shakes differently', () =>
+    Effect.gen(function* () {
+      const other = yield* playJuiceSession(98765)
+      const first = yield* playJuiceSession(1234)
+      expect(Array.map(other, ({ shake }) => shake)).not.toEqual(
+        Array.map(first, ({ shake }) => shake),
+      )
+    }),
+  )
 })

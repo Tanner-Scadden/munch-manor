@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { Array, Effect, Option, Record, String } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
@@ -30,7 +31,6 @@ import {
   RESET_TUTORIAL_BUTTON_ID,
 } from '../../features/profile/profile'
 import { FocusTutorialReset } from '../../features/profile/update'
-// @vitest-environment happy-dom
 import { FIXED_STEP_MS } from '../../shared/constants'
 import { noSavedRunRecords } from '../../shared/playerData'
 import { DISTANT_SPAWN, loadingSave } from '../../test/model.fixture'

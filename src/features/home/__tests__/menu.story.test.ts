@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Array, Effect, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -10,9 +10,18 @@ import { PanelDialogBinding } from '../../../app/bindings'
 import {
   AwaitFirstFrame,
   DecodeSprites,
+  DetectInputDevice,
+  DetectLocalPlayers,
+  DetectOrientationLock,
+  DetectScreenFit,
+  DetectShareSheet,
+  GenerateSeed,
+  GenerateVisitId,
   LoadFonts,
   LoadSave,
   LoadStyles,
+  ReadUpdateMarker,
+  StartSummaryQueue,
 } from '../../../app/boot'
 import { Message } from '../../../app/message'
 import {
@@ -22,7 +31,7 @@ import {
   RunTally,
   noKills,
 } from '../../../app/model'
-import { init, initialModel } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import { maybeKeyDownMessage } from '../../../app/subscriptions'
 import { ReadRoomLink } from '../../../app/update/coop'
 import { HideSplash, ShowLoadProgress } from '../../../app/update/save'
@@ -314,39 +323,119 @@ describe('the loading splash', () => {
       Message.CompletedShowLoadProgress(),
     )
 
+  // NOTE: the boot's Commands that are not load steps, answered as a
+  // desktop with one player, no share sheet, and no update waiting.
+  const answerDeviceChecks = Story.steps(
+    Story.Command.resolve(
+      GenerateSeed(),
+      Message.CompletedGenerateSeed({ seed: 1 }),
+    ),
+    Story.Command.resolve(
+      GenerateVisitId(),
+      Message.CompletedGenerateVisitId({ visitId: 'visit' }),
+    ),
+    Story.Command.resolve(
+      StartSummaryQueue(),
+      Message.CompletedStartSummaryQueue(),
+    ),
+    Story.Command.resolve(
+      DetectInputDevice(),
+      Message.CompletedDetectInputDevice({ touchControls: 'Blocked' }),
+    ),
+    Story.Command.resolve(
+      DetectShareSheet(),
+      Message.CompletedDetectShareSheet({ shareSheet: 'Unavailable' }),
+    ),
+    Story.Command.resolve(
+      DetectScreenFit(),
+      Message.CompletedDetectScreenFit({ screenFit: 'Unknown' }),
+    ),
+    Story.Command.resolve(
+      DetectOrientationLock(),
+      Message.CompletedDetectOrientationLock({
+        orientationLock: 'Unsupported',
+      }),
+    ),
+    Story.Command.resolve(
+      DetectLocalPlayers(),
+      Message.CompletedDetectLocalPlayers({ count: 1 }),
+    ),
+    Story.Command.resolve(
+      ReadUpdateMarker(),
+      Message.CompletedReadUpdateMarker({ maybeBuild: Option.none() }),
+    ),
+  )
+
   it.effect(
     'waits for the save, the styles, the fonts, the first frame, and the sprites, shows progress, then hides once',
-    () => {
-      const init_ = init()
-      expect(init_.model.loading).toEqual(
-        Loading.Loading({
-          pending: ['Save', 'Styles', 'Fonts', 'FirstFrame', 'Sprites'],
-        }),
-      )
-      return Story.story(
+    () =>
+      Story.story(
         APPLICATION,
-        Story.given(init_.model),
-        Story.message(Message.CompletedLoadStyles()),
-        Story.Command.expectExact(ShowLoadProgress({ loaded: 1, total: 5 })),
+        Story.init(),
+        Story.model(({ loading }) => {
+          expect(loading).toEqual(
+            Loading.Loading({
+              pending: ['Save', 'Styles', 'Fonts', 'FirstFrame', 'Sprites'],
+            }),
+          )
+        }),
+        // NOTE: init asks for every load step.
+        Story.Command.expectHas(
+          LoadSave(),
+          LoadStyles(),
+          LoadFonts(),
+          AwaitFirstFrame(),
+          DecodeSprites(),
+        ),
+        answerDeviceChecks,
+        Story.Command.resolve(LoadStyles(), Message.CompletedLoadStyles()),
+        Story.Command.expectExact(
+          ShowLoadProgress({ loaded: 1, total: 5 }),
+          LoadSave(),
+          LoadFonts(),
+          AwaitFirstFrame(),
+          DecodeSprites(),
+        ),
         resolveProgress(1),
-        Story.message(Message.CompletedLoadFonts()),
-        Story.Command.expectExact(ShowLoadProgress({ loaded: 2, total: 5 })),
+        Story.Command.resolve(LoadFonts(), Message.CompletedLoadFonts()),
+        Story.Command.expectExact(
+          ShowLoadProgress({ loaded: 2, total: 5 }),
+          LoadSave(),
+          AwaitFirstFrame(),
+          DecodeSprites(),
+        ),
         resolveProgress(2),
         Story.model(({ loading }) => {
           expect(loading).toEqual(
             Loading.Loading({ pending: ['Save', 'FirstFrame', 'Sprites'] }),
           )
         }),
-        Story.message(Message.CompletedAwaitFirstFrame()),
-        Story.Command.expectExact(ShowLoadProgress({ loaded: 3, total: 5 })),
+        Story.Command.resolve(
+          AwaitFirstFrame(),
+          Message.CompletedAwaitFirstFrame(),
+        ),
+        Story.Command.expectExact(
+          ShowLoadProgress({ loaded: 3, total: 5 }),
+          LoadSave(),
+          DecodeSprites(),
+        ),
         resolveProgress(3),
-        Story.message(Message.CompletedDecodeSprites()),
-        Story.Command.expectExact(ShowLoadProgress({ loaded: 4, total: 5 })),
+        Story.Command.resolve(
+          DecodeSprites(),
+          Message.CompletedDecodeSprites(),
+        ),
+        Story.Command.expectExact(
+          ShowLoadProgress({ loaded: 4, total: 5 }),
+          LoadSave(),
+        ),
         resolveProgress(4),
         Story.model(({ loading }) => {
           expect(loading).toEqual(Loading.Loading({ pending: ['Save'] }))
         }),
-        Story.message(Message.CompletedLoadSave({ maybeSave: Option.none() })),
+        Story.Command.resolve(
+          LoadSave(),
+          Message.CompletedLoadSave({ maybeSave: Option.none() }),
+        ),
         // NOTE: the bar fills before the splash goes.
         Story.Command.expectExactInOrder(
           ShowLoadProgress({ loaded: 5, total: 5 }),
@@ -363,8 +452,7 @@ describe('the loading splash', () => {
         }),
         Story.message(Message.CompletedAwaitFirstFrame()),
         Story.Command.expectNone(),
-      )
-    },
+      ),
   )
 
   it.effect('a font that fails to load still lets the game in', () =>
@@ -388,17 +476,4 @@ describe('the loading splash', () => {
       ),
     ),
   )
-
-  test('init asks for every load step', () => {
-    const names = Array.map(init().commands ?? [], command => command.name)
-    expect(names).toEqual(
-      expect.arrayContaining([
-        LoadSave().name,
-        LoadStyles().name,
-        LoadFonts().name,
-        AwaitFirstFrame().name,
-        DecodeSprites().name,
-      ]),
-    )
-  })
 })

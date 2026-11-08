@@ -1,8 +1,9 @@
-import { Array, Option, Schema, pipe } from 'effect'
+import { Option, Schema } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
-import { Message } from '../../../app/message'
+import { describe, expect, it, test } from '@effect/vitest'
+
 import {
   AmmoTip,
   Arsenal,
@@ -12,14 +13,21 @@ import {
   type Model,
   Phase,
 } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
-import { PlaySound } from '../../../app/update/sound'
+import { initialModel } from '../../../app/pureApp'
 import { restoreSave, saveOf } from '../../../platform/save'
 import { cameraOf } from '../../../render/camera'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { SavedOnboarding } from '../../../shared/playerData'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
-import { FIRE_PRESS, FIRE_PUSH, SURFACE } from '../../../test/testing'
+import {
+  APPLICATION,
+  SURFACE,
+  checkPendingSounds,
+  holdFire,
+  playPendingSounds,
+  tick,
+  ticks,
+} from '../../../test/testing'
 import { STARTING_PISTOL, freshGun } from '../../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../../world/party/party'
 import { maybeBubbleKind } from '../../shop/stallBubble'
@@ -93,67 +101,85 @@ describe('how low a gun is', () => {
   })
 })
 
-// NOTE: one frame through the game's own update, firing, so the sound
-// Commands of that frame can be read.
-const firedFrame = (start: Model) => {
-  const pressed = update(update(start, FIRE_PRESS).model, FIRE_PUSH).model
-  return update(pressed, Message.TickedFrame({ deltaTime: FRAME_MS }))
-}
-
-const soundsOfFrame = (start: Model): ReadonlyArray<unknown> =>
-  pipe(
-    firedFrame(start).commands ?? [],
-    Array.filter(command => command.name === PlaySound.name),
-    Array.map(command => command.args?.['sound']),
-  )
-
-const framesOf = (start: Model, count: number): Model =>
-  Array.reduce(
-    Array.makeBy(count, () => 0),
-    start,
-    current =>
-      update(current, Message.TickedFrame({ deltaTime: FRAME_MS })).model,
-  )
+// NOTE: one frame with the trigger held, whose sound Commands are read.
+const firedFrame = Story.steps(holdFire, tick(FRAME_MS))
 
 describe('the last shots tick', () => {
-  test('each of the last few shots plays a low tick', () => {
-    expect(soundsOfFrame(fightingWith(smg(3, 3)))).toContain('AmmoTick')
-  })
+  it.effect('each of the last few shots plays a low tick', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fightingWith(smg(3, 3))),
+      firedFrame,
+      checkPendingSounds(sounds => {
+        expect(sounds).toContain('AmmoTick')
+      }),
+    ),
+  )
 
-  test('a gun with plenty left fires without the tick', () => {
-    const sounds = soundsOfFrame(fightingWith(smg(150, 30)))
-    expect(sounds).toContain('SmgShot')
-    expect(sounds).not.toContain('AmmoTick')
-  })
+  it.effect('a gun with plenty left fires without the tick', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fightingWith(smg(150, 30))),
+      firedFrame,
+      checkPendingSounds(sounds => {
+        expect(sounds).toContain('SmgShot')
+        expect(sounds).not.toContain('AmmoTick')
+      }),
+    ),
+  )
 })
 
 describe("Rattles' call about ammo", () => {
-  test('the first time a gun runs low, Rattles calls once, and the save keeps it', () => {
-    const called = framesOf(fightingWith(smg(40, 30)), 1)
-    expect(AmmoTip.isAnyOf(['Showing'])(called.ammoTip)).toBe(true)
-    expect(saveOf(called).onboarding.ammoTip).toBe('Seen')
-    expect(maybeBubbleKind(called, cameraOf(called))).toEqual(
-      Option.some('Ammo'),
-    )
-    const done = framesOf(called, Math.ceil(AMMO_TIP_MS / FRAME_MS) + 1)
-    expect(done.ammoTip).toEqual(AmmoTip.Seen())
-    expect(
-      restoreSave(fightingWith(smg(10, 10)), saveOf(done)).ammoTip,
-    ).toEqual(AmmoTip.Seen())
-  })
+  it.effect(
+    'the first time a gun runs low, Rattles calls once, and the save keeps it',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(fightingWith(smg(40, 30))),
+        tick(FRAME_MS),
+        Story.model(called => {
+          expect(AmmoTip.isAnyOf(['Showing'])(called.ammoTip)).toBe(true)
+          expect(saveOf(called).onboarding.ammoTip).toBe('Seen')
+          expect(maybeBubbleKind(called, cameraOf(called))).toEqual(
+            Option.some('Ammo'),
+          )
+        }),
+        ...ticks(Math.ceil(AMMO_TIP_MS / FRAME_MS) + 1, FRAME_MS),
+        Story.model(done => {
+          expect(done.ammoTip).toEqual(AmmoTip.Seen())
+          expect(
+            restoreSave(fightingWith(smg(10, 10)), saveOf(done)).ammoTip,
+          ).toEqual(AmmoTip.Seen())
+        }),
+        playPendingSounds,
+      ),
+  )
 
-  test('a gun with plenty left never calls', () => {
-    expect(framesOf(fightingWith(smg(150, 30)), 10).ammoTip).toEqual(
-      AmmoTip.Unseen(),
-    )
-  })
+  it.effect('a gun with plenty left never calls', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fightingWith(smg(150, 30))),
+      ...ticks(10, FRAME_MS),
+      Story.model(({ ammoTip }) => {
+        expect(ammoTip).toEqual(AmmoTip.Unseen())
+      }),
+    ),
+  )
 
-  test('once seen, a low gun never calls again', () => {
-    const seen = modifyFields(fightingWith(smg(20, 20)), {
-      ammoTip: () => AmmoTip.Seen(),
-    })
-    expect(framesOf(seen, 5).ammoTip).toEqual(AmmoTip.Seen())
-  })
+  it.effect('once seen, a low gun never calls again', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(fightingWith(smg(20, 20)), {
+          ammoTip: () => AmmoTip.Seen(),
+        }),
+      ),
+      ...ticks(5, FRAME_MS),
+      Story.model(({ ammoTip }) => {
+        expect(ammoTip).toEqual(AmmoTip.Seen())
+      }),
+    ),
+  )
 
   test('an onboarding saved before the ammo tip reads it as unseen', () => {
     const { ammoTip: _dropped, ...older } = saveOf(initialModel).onboarding

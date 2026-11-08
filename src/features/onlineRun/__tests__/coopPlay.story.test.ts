@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -9,14 +9,15 @@ import { ShopDialogBinding } from '../../../app/bindings'
 import { CoopBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { AudioState, Lesson, type Model } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import { PlaySound } from '../../../app/update/sound'
-import { positionVariation } from '../../../audio/audio'
+import { type SoundEffect, positionVariation } from '../../../audio/audio'
 import { withShopDialogOpen } from '../../../test/model.fixture'
 import { withSeat } from '../../../test/model.fixture'
 import {
   APPLICATION,
   buyAtCounter,
+  checkPendingSounds,
   closeDialog,
   showDialog,
 } from '../../../test/testing'
@@ -50,7 +51,7 @@ import { Screen } from '../../coop/model'
 import { freshRoom, maybeRoomOf } from '../../coop/roomState'
 import { FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
-import { RememberRoom } from '../../coop/update'
+import { RememberRoom, SendRoomFrames } from '../../coop/update'
 import { DialogBinding } from '../../shop/bindings'
 
 // An online co-op run in the root (src/features/onlineRun/coopPlay.ts): the room's World drawn
@@ -94,6 +95,34 @@ const inRun = (world: RoomWorld, isAnchored = false): Model =>
 
 const roomFrame = (nowMs: number) => Message.TickedRoomFrame({ nowMs })
 
+const countOf = (
+  sounds: ReadonlyArray<SoundEffect>,
+  sound: SoundEffect,
+): number => Array.filter(sounds, heard => heard === sound).length
+
+// NOTE: the run with the room's session swapped for one holding `world`,
+// as a new World arriving from the room would leave it.
+const showing = (current: Model, world: RoomWorld): Model =>
+  modifyFields(current, {
+    coop: coop =>
+      modifyFields(coop, {
+        screen: () =>
+          Option.match(maybeRoomOf(coop), {
+            onNone: () => coop.screen,
+            onSome: room =>
+              Screen.InRoom({
+                room: { ...room, session: playingSession(world, OWN_SLOT) },
+              }),
+          }),
+      }),
+  })
+
+// NOTE: an anchored room's frame sends this player's input to the room.
+const sendFrames = Story.Command.resolve(
+  SendRoomFrames,
+  CoopMessage.CompletedSendRoomFrames({ bytes: [] }),
+)
+
 const queuedOf = (current: Model): ReadonlyArray<number> =>
   Option.match(maybeRoomOf(current.coop), {
     onNone: () => [],
@@ -121,51 +150,197 @@ describe('an online co-op run', () => {
     },
   )
 
-  test('the room copy of your own shot stays quiet; a teammate shot sounds', () => {
-    const shot = (slot: number, x: number) =>
-      GameEvent.Fired({
-        x,
-        y: 60,
-        direction: { x: 1, y: 0 },
-        weapon: 'Shotgun',
-        maybeShooter: Option.some(slot),
+  it.effect(
+    'the room copy of your own shot stays quiet; a teammate shot sounds',
+    () => {
+      const shot = (slot: number, x: number) =>
+        GameEvent.Fired({
+          x,
+          y: 60,
+          direction: { x: 1, y: 0 },
+          weapon: 'Shotgun',
+          maybeShooter: Option.some(slot),
+        })
+      const withShots: RoomWorld = {
+        ...roomWorld,
+        tick: 1,
+        events: [{ tick: 1, events: [shot(OWN_SLOT, 40), shot(0, 200)] }],
+      }
+      const audible = modifyFields(inRun(withShots, true), {
+        audio: () => AudioState.Ready(),
+        soundSetting: () => 'On',
       })
-    const withShots: RoomWorld = {
-      ...roomWorld,
-      tick: 1,
-      events: [{ tick: 1, events: [shot(OWN_SLOT, 40), shot(0, 200)] }],
-    }
-    const audible = modifyFields(inRun(withShots, true), {
-      audio: () => AudioState.Ready(),
-      soundSetting: () => 'On',
-    })
-    const shotSounds = (current: Model, frame: number) =>
-      Array.filter(
-        update(current, roomFrame(frame)).commands ?? [],
-        command =>
-          command.name === PlaySound.name &&
-          command.args !== undefined &&
-          'sound' in command.args &&
-          command.args['sound'] === 'ShotgunBlast',
+      return Story.story(
+        APPLICATION,
+        Story.given(audible),
+        Story.message(roomFrame(2000)),
+        Story.Command.expectHas(
+          PlaySound({
+            sound: 'ShotgunBlast',
+            variation: positionVariation(200, 60),
+          }),
+        ),
+        checkPendingSounds(sounds => {
+          expect(countOf(sounds, 'ShotgunBlast')).toBe(1)
+        }),
+        sendFrames,
       )
-    const heard = shotSounds(audible, 2000)
-    expect(Array.map(heard, command => command.args)).toEqual([
-      { sound: 'ShotgunBlast', variation: positionVariation(200, 60) },
-    ])
-  })
+    },
+  )
 
   it.effect(
     'a wave with a zombie you have not met raises no card in co-op, and the run goes on',
-    () => {
-      const waveWorld: RoomWorld = {
-        ...roomWorld,
-        world: startWaveEarly(roomWorld.world),
-      }
-      const newcomer = modifyFields(inRun(roomWorld), {
-        introducedKinds: () => [],
-      })
-      const drawWave = (current: Model): Model =>
-        modifyFields(current, {
+    () =>
+      Effect.gen(function* () {
+        const waveWorld: RoomWorld = {
+          ...roomWorld,
+          world: startWaveEarly(roomWorld.world),
+        }
+        const newcomer = modifyFields(inRun(roomWorld), {
+          introducedKinds: () => [],
+        })
+        const preparing = yield* Story.story(
+          APPLICATION,
+          Story.given(newcomer),
+          Story.message(roomFrame(100)),
+          Story.model(current => {
+            expect(current.debutCard._tag).toBe('Hidden')
+          }),
+        )
+        return yield* Story.story(
+          APPLICATION,
+          Story.given(showing(preparing, waveWorld)),
+          Story.message(roomFrame(200)),
+          Story.model(waved => {
+            expect(waved.phase._tag).toBe('Wave')
+            expect(waved.debutCard._tag).toBe('Hidden')
+            expect(waved.introducedKinds).toEqual([])
+          }),
+          Story.message(roomFrame(300)),
+          Story.model(later => {
+            expect(later.phase._tag).toBe('Wave')
+            expect(later.debutCard._tag).toBe('Hidden')
+          }),
+        )
+      }),
+  )
+
+  it.effect(
+    'a footstep sounds by how near it is to this player, not the lead',
+    () =>
+      Effect.gen(function* () {
+        const own = Option.getOrThrow(
+          maybePlayerAt(roomWorld.world, OWN_SLOT),
+        ).player
+        const step = (x: number, y: number) =>
+          GameEvent.Footfall({ x, y, kind: 'Tank', nearness: 0 })
+        const stomps = (x: number, y: number, heard: number) =>
+          Story.story(
+            APPLICATION,
+            Story.given(
+              modifyFields(
+                inRun(
+                  {
+                    ...roomWorld,
+                    tick: 1,
+                    events: [{ tick: 1, events: [step(x, y)] }],
+                  },
+                  true,
+                ),
+                {
+                  audio: () => AudioState.Ready(),
+                  soundSetting: () => 'On',
+                },
+              ),
+            ),
+            Story.message(roomFrame(2000)),
+            checkPendingSounds(sounds => {
+              expect(countOf(sounds, 'Stomp')).toBe(heard)
+            }),
+            sendFrames,
+          )
+        yield* stomps(own.x + 10, own.y, 1)
+        yield* stomps(own.x + 200, own.y, 0)
+      }),
+  )
+
+  it.effect(
+    'a lost co-op endless run records its best wave on the room difficulty',
+    () =>
+      Effect.gen(function* () {
+        const endless = (phase: Phase): RoomWorld => ({
+          ...roomWorld,
+          world: modifyFields(startWaveEarly(roomWorld.world), {
+            mode: () => RunMode.Endless(),
+            difficulty: difficulty =>
+              modifyFields(difficulty, { chosen: () => 'Hard' }),
+            phase: current =>
+              Phase.isAnyOf(['GameOver'])(phase) ? phase : current,
+          }),
+        })
+        const playing = yield* Story.story(
+          APPLICATION,
+          Story.given(inRun(endless(Phase.Ready()))),
+          Story.message(roomFrame(100)),
+          Story.model(current => {
+            expect(current.phase._tag).toBe('Wave')
+          }),
+        )
+        return yield* Story.story(
+          APPLICATION,
+          Story.given(showing(playing, endless(Phase.GameOver({ wave: 14 })))),
+          Story.message(roomFrame(200)),
+          Story.model(lost => {
+            expect(lost.phase._tag).toBe('GameOver')
+            expect(lost.difficulty.chosen).toBe(graduated.difficulty.chosen)
+            expect(lost.bests.byDifficulty.Hard.maybeBestEndlessWave).toEqual(
+              Option.some(14),
+            )
+            expect(lost.bests.byDifficulty.Normal.maybeBestEndlessWave).toEqual(
+              graduated.bests.byDifficulty.Normal.maybeBestEndlessWave,
+            )
+          }),
+        )
+      }),
+  )
+
+  it.effect(
+    'your own shots draw from your own tracers; everyone else from the room',
+    () =>
+      Effect.gen(function* () {
+        const own = Option.getOrThrow(
+          maybePlayerAt(roomWorld.world, OWN_SLOT),
+        ).player
+        const bulletAt = (
+          id: number,
+          shooter: number,
+          weapon: Bullet['weapon'],
+        ): Bullet => ({
+          id,
+          x: own.x + 30,
+          y: own.y,
+          velocityX: 200,
+          velocityY: 0,
+          remainingMs: 600,
+          weapon,
+          damage: 1,
+          knockback: 0,
+          glaze: 'Plain',
+          pierce: Pierce.Stops(),
+          shooter,
+        })
+        const withBullets: RoomWorld = {
+          ...roomWorld,
+          world: modifyFields(roomWorld.world, {
+            bullets: () => [
+              bulletAt(40, OWN_SLOT, 'Pistol'),
+              bulletAt(41, 0, 'Pistol'),
+              bulletAt(42, OWN_SLOT, 'Peashooter'),
+            ],
+          }),
+        }
+        const tracer = { ...bulletAt(-1, OWN_SLOT, 'Pistol'), x: own.x + 10 }
+        const withTracer = modifyFields(inRun(withBullets), {
           coop: coop =>
             modifyFields(coop, {
               screen: () =>
@@ -173,172 +348,33 @@ describe('an online co-op run', () => {
                   onNone: () => coop.screen,
                   onSome: room =>
                     Screen.InRoom({
-                      room: {
-                        ...room,
-                        session: playingSession(waveWorld, OWN_SLOT),
-                      },
+                      room: { ...room, tracers: [tracer], tracerCount: 1 },
                     }),
                 }),
             }),
         })
-      return Story.story(
-        APPLICATION,
-        Story.given(newcomer),
-        Story.message(roomFrame(100)),
-        Story.model(current => {
-          expect(current.debutCard._tag).toBe('Hidden')
-        }),
-        Story.model(current => {
-          const waved = update(drawWave(current), roomFrame(200)).model
-          expect(waved.phase._tag).toBe('Wave')
-          expect(waved.debutCard._tag).toBe('Hidden')
-          expect(waved.introducedKinds).toEqual([])
-          const later = update(waved, roomFrame(300)).model
-          expect(later.phase._tag).toBe('Wave')
-          expect(later.debutCard._tag).toBe('Hidden')
-        }),
-      )
-    },
-  )
-
-  test('a footstep sounds by how near it is to this player, not the lead', () => {
-    const own = Option.getOrThrow(
-      maybePlayerAt(roomWorld.world, OWN_SLOT),
-    ).player
-    const step = (x: number, y: number) =>
-      GameEvent.Footfall({ x, y, kind: 'Tank', nearness: 0 })
-    const stomps = (x: number, y: number) =>
-      Array.filter(
-        update(
-          modifyFields(
-            inRun(
-              {
-                ...roomWorld,
-                tick: 1,
-                events: [{ tick: 1, events: [step(x, y)] }],
-              },
-              true,
-            ),
-            {
-              audio: () => AudioState.Ready(),
-              soundSetting: () => 'On',
+        const flownOf = (current: Model) =>
+          Option.getOrThrow(
+            Array.findFirst(current.bullets, bullet => bullet.id === -1),
+          )
+        return yield* Story.story(
+          APPLICATION,
+          Story.given(withTracer),
+          Story.message(roomFrame(100)),
+          Story.models(
+            Story.steps(Story.message(roomFrame(150))),
+            (drawn, later) => {
+              expect(Array.map(drawn.bullets, bullet => bullet.id)).toEqual([
+                41, 42, -1,
+              ])
+              expect(flownOf(drawn).x).toBeGreaterThan(tracer.x)
+              expect(flownOf(later).x).toBeGreaterThan(flownOf(drawn).x)
+              expect(later.zombies).toEqual(drawn.zombies)
             },
           ),
-          roomFrame(2000),
-        ).commands ?? [],
-        command =>
-          command.name === PlaySound.name &&
-          command.args !== undefined &&
-          'sound' in command.args &&
-          command.args['sound'] === 'Stomp',
-      ).length
-    expect(stomps(own.x + 10, own.y)).toBe(1)
-    expect(stomps(own.x + 200, own.y)).toBe(0)
-  })
-
-  test('a lost co-op endless run records its best wave on the room difficulty', () => {
-    const endless = (phase: Phase): RoomWorld => ({
-      ...roomWorld,
-      world: modifyFields(startWaveEarly(roomWorld.world), {
-        mode: () => RunMode.Endless(),
-        difficulty: difficulty =>
-          modifyFields(difficulty, { chosen: () => 'Hard' }),
-        phase: current =>
-          Phase.isAnyOf(['GameOver'])(phase) ? phase : current,
+        )
       }),
-    })
-    const showing = (current: Model, world: RoomWorld): Model =>
-      modifyFields(current, {
-        coop: coop =>
-          modifyFields(coop, {
-            screen: () =>
-              Option.match(maybeRoomOf(coop), {
-                onNone: () => coop.screen,
-                onSome: room =>
-                  Screen.InRoom({
-                    room: {
-                      ...room,
-                      session: playingSession(world, OWN_SLOT),
-                    },
-                  }),
-              }),
-          }),
-      })
-    const playing = update(inRun(endless(Phase.Ready())), roomFrame(100)).model
-    expect(playing.phase._tag).toBe('Wave')
-    const lost = update(
-      showing(playing, endless(Phase.GameOver({ wave: 14 }))),
-      roomFrame(200),
-    ).model
-    expect(lost.phase._tag).toBe('GameOver')
-    expect(lost.difficulty.chosen).toBe(graduated.difficulty.chosen)
-    expect(lost.bests.byDifficulty.Hard.maybeBestEndlessWave).toEqual(
-      Option.some(14),
-    )
-    expect(lost.bests.byDifficulty.Normal.maybeBestEndlessWave).toEqual(
-      graduated.bests.byDifficulty.Normal.maybeBestEndlessWave,
-    )
-  })
-
-  test('your own shots draw from your own tracers; everyone else from the room', () => {
-    const own = Option.getOrThrow(
-      maybePlayerAt(roomWorld.world, OWN_SLOT),
-    ).player
-    const bulletAt = (
-      id: number,
-      shooter: number,
-      weapon: Bullet['weapon'],
-    ): Bullet => ({
-      id,
-      x: own.x + 30,
-      y: own.y,
-      velocityX: 200,
-      velocityY: 0,
-      remainingMs: 600,
-      weapon,
-      damage: 1,
-      knockback: 0,
-      glaze: 'Plain',
-      pierce: Pierce.Stops(),
-      shooter,
-    })
-    const withBullets: RoomWorld = {
-      ...roomWorld,
-      world: modifyFields(roomWorld.world, {
-        bullets: () => [
-          bulletAt(40, OWN_SLOT, 'Pistol'),
-          bulletAt(41, 0, 'Pistol'),
-          bulletAt(42, OWN_SLOT, 'Peashooter'),
-        ],
-      }),
-    }
-    const tracer = { ...bulletAt(-1, OWN_SLOT, 'Pistol'), x: own.x + 10 }
-    const withTracer = modifyFields(inRun(withBullets), {
-      coop: coop =>
-        modifyFields(coop, {
-          screen: () =>
-            Option.match(maybeRoomOf(coop), {
-              onNone: () => coop.screen,
-              onSome: room =>
-                Screen.InRoom({
-                  room: { ...room, tracers: [tracer], tracerCount: 1 },
-                }),
-            }),
-        }),
-    })
-    const drawn = update(withTracer, roomFrame(100)).model
-    expect(Array.map(drawn.bullets, bullet => bullet.id)).toEqual([41, 42, -1])
-    const flown = Option.getOrThrow(
-      Array.findFirst(drawn.bullets, bullet => bullet.id === -1),
-    )
-    expect(flown.x).toBeGreaterThan(tracer.x)
-    const later = update(drawn, roomFrame(150)).model
-    const further = Option.getOrThrow(
-      Array.findFirst(later.bullets, bullet => bullet.id === -1),
-    )
-    expect(further.x).toBeGreaterThan(flown.x)
-    expect(later.zombies).toEqual(drawn.zombies)
-  })
+  )
 
   test('a predicted shot fires its tracers from the muzzle on the same frame', () => {
     const world = ownWorldOf(roomWorld, OWN_SLOT)

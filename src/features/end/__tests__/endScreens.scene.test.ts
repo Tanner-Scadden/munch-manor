@@ -1,35 +1,17 @@
-import { Array, Option } from 'effect'
-import {
-  Command,
-  Mount,
-  Subscription,
-  all,
-  click,
-  expect,
-  expectAll,
-  first,
-  given,
-  role,
-  scene,
-  selector,
-} from 'foldkit/scene'
-import {
-  Command as StoryCommand,
-  message,
-  story,
-  given as storyGiven,
-} from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Scene, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test } from 'vitest'
+
+import { describe, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
 import { ShareFromClick } from '../../../app/mount'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import { withNewerBuild } from '../../../test/model.fixture'
 import {
-  ROOT,
+  APPLICATION,
   SCENE_SUBSCRIPTIONS,
   emitPressedKey,
   endButtons,
@@ -48,17 +30,17 @@ import { SendShareEvent } from '../update'
 
 const tickPastGrace = () =>
   Array.makeBy(Math.ceil(RESTART_GRACE_MS / 50), () =>
-    Subscription.emit(
+    Scene.Subscription.emit(
       SCENE_SUBSCRIPTIONS.frame,
       Message.TickedFrame({ deltaTime: 50 }),
     ),
   )
 
-const menuButton = role('button', { name: /^Menu: back/ })
-const shareButton = role('button', { name: 'Share your run' })
-const copiedButton = role('button', { name: 'Share: copied' })
-const updateNote = selector('.mode-button-gift')
-const menuOnlyButtons = all.selector('.mode-choice .mode-button')
+const menuButton = Scene.role('button', { name: /^Menu: back/ })
+const shareButton = Scene.role('button', { name: 'Share your run' })
+const copiedButton = Scene.role('button', { name: 'Share: copied' })
+const updateNote = Scene.selector('.mode-button-gift')
+const menuOnlyButtons = Scene.all.selector('.mode-choice .mode-button')
 
 const END_PHASES: ReadonlyArray<readonly [string, Phase]> = [
   ['Game Over', Phase.GameOver({ wave: 4 })],
@@ -72,55 +54,64 @@ const onEndScreen = (phase: Phase, screenMs: number): Model =>
   })
 
 describe('the end screens', () => {
-  test('Game Over puts HOME first, then RETRY and SHARE', () => {
-    scene(
-      ROOT,
-      given(onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)),
+  it.effect('Game Over puts HOME first, then RETRY and SHARE', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)),
       measureSurface,
-      expectAll(endButtons).toHaveCount(3),
-      expect(first(endButtons)).toHaveText('HOMEH'),
-      expect(menuButton).toHaveAttr('aria-keyshortcuts', 'H'),
-      expect(retryButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
-      expect(retryButton).toHaveText('RETRYENTER'),
-      expect(shareButton).not.toHaveAttr('aria-keyshortcuts'),
-      expect(shareButton).toHaveText('SHARE'),
+      Scene.expectAll(endButtons).toHaveCount(3),
+      Scene.expect(Scene.first(endButtons)).toHaveText('HOMEH'),
+      Scene.expect(menuButton).toHaveAttr('aria-keyshortcuts', 'H'),
+      Scene.expect(retryButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
+      Scene.expect(retryButton).toHaveText('RETRYENTER'),
+      Scene.expect(shareButton).not.toHaveAttr('aria-keyshortcuts'),
+      Scene.expect(shareButton).toHaveText('SHARE'),
       shareMountSettles('Shared'),
-      expect(updateNote).toBeAbsent(),
-    )
-  })
+      Scene.expect(updateNote).toBeAbsent(),
+    ),
+  )
 
-  test('Victory puts HOME first, then AGAIN, Keep going, and SHARE', () => {
-    scene(
-      ROOT,
-      given(onEndScreen(Phase.Victory(), RESTART_GRACE_MS)),
+  it.effect('Victory puts HOME first, then AGAIN, Keep going, and SHARE', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(onEndScreen(Phase.Victory(), RESTART_GRACE_MS)),
       measureSurface,
-      expectAll(endButtons).toHaveCount(4),
-      expect(first(endButtons)).toHaveText('HOMEH'),
-      expect(retryButton).toHaveText('AGAINENTER'),
-      expect(keepGoingButton).toExist(),
-      expect(shareButton).toExist(),
-      expect(updateNote).toBeAbsent(),
+      Scene.expectAll(endButtons).toHaveCount(4),
+      Scene.expect(Scene.first(endButtons)).toHaveText('HOMEH'),
+      Scene.expect(retryButton).toHaveText('AGAINENTER'),
+      Scene.expect(keepGoingButton).toExist(),
+      Scene.expect(shareButton).toExist(),
+      Scene.expect(updateNote).toBeAbsent(),
       shareMountSettles('Cancelled'),
-    )
-  })
+    ),
+  )
 
-  test('SHARE carries the run post and the Mount that shares it in the click', () => {
-    const gameOver = onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)
-    scene(
-      ROOT,
-      given(gameOver),
-      measureSurface,
-      expect(shareButton).toHaveAttr('data-share-text', shareTextOf(gameOver)),
-      expect(selector('a#end-share-button')).toBeAbsent(),
-      Mount.expectHas(ShareFromClick),
-      shareMountSettles('Cancelled'),
-    )
-  })
+  it.effect(
+    'SHARE carries the run post and the Mount that shares it in the click',
+    () => {
+      const gameOver = onEndScreen(
+        Phase.GameOver({ wave: 4 }),
+        RESTART_GRACE_MS,
+      )
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(gameOver),
+        measureSurface,
+        Scene.expect(shareButton).toHaveAttr(
+          'data-share-text',
+          shareTextOf(gameOver),
+        ),
+        Scene.expect(Scene.selector('a#end-share-button')).toBeAbsent(),
+        Scene.Mount.expectHas(ShareFromClick),
+        shareMountSettles('Cancelled'),
+      )
+    },
+  )
 
-  test('a tap on SHARE skips the beat and counts the share', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('a tap on SHARE skips the beat and counts the share', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFields(
           onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS),
           {
@@ -131,111 +122,113 @@ describe('the end screens', () => {
       ),
       measureSurface,
       shareMountSettles('Shared'),
-      click(shareButton),
-      Command.expectHas(SendShareEvent),
-      Command.resolve(SendShareEvent, Message.CompletedSendShareEvent()),
-      expect(shareButton).toHaveText('SHARE'),
-    )
-  })
+      Scene.click(shareButton),
+      Scene.Command.expectHas(SendShareEvent),
+      Scene.Command.resolve(SendShareEvent, Message.CompletedSendShareEvent()),
+      Scene.expect(shareButton).toHaveText('SHARE'),
+    ),
+  )
 
-  test.each(END_PHASES)(
+  it.effect.each(END_PHASES)(
     'a post copied on %s flashes COPIED! on SHARE, then SHARE comes back',
-    (_name, phase) => {
-      scene(
-        ROOT,
-        given(onEndScreen(phase, RESTART_GRACE_MS)),
+    ([_name, phase]) =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(onEndScreen(phase, RESTART_GRACE_MS)),
         measureSurface,
         shareMountSettles('Copied'),
-        expect(copiedButton).toHaveText('COPIED!'),
+        Scene.expect(copiedButton).toHaveText('COPIED!'),
         ...Array.makeBy(Math.ceil(SHARE_COPIED_MS / 50), () =>
-          Subscription.emit(
+          Scene.Subscription.emit(
             SCENE_SUBSCRIPTIONS.frame,
             Message.TickedFrame({ deltaTime: 50 }),
           ),
         ),
-        expect(shareButton).toHaveText('SHARE'),
-      )
-    },
+        Scene.expect(shareButton).toHaveText('SHARE'),
+      ),
   )
 
-  test.each(END_PHASES)(
+  it.effect.each(END_PHASES)(
     '%s with a new version waiting offers only MENU, wearing a gift, and it lands on the gift',
-    (_name, phase) => {
-      scene(
-        ROOT,
-        given(withNewerBuild(onEndScreen(phase, RESTART_GRACE_MS))),
+    ([_name, phase]) =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(withNewerBuild(onEndScreen(phase, RESTART_GRACE_MS))),
         measureSurface,
-        expectAll(menuOnlyButtons).toHaveCount(1),
-        expect(menuButton).toHaveAttr('aria-keyshortcuts', 'Enter H'),
-        expect(menuButton).toHaveAccessibleName(
+        Scene.expectAll(menuOnlyButtons).toHaveCount(1),
+        Scene.expect(menuButton).toHaveAttr('aria-keyshortcuts', 'Enter H'),
+        Scene.expect(menuButton).toHaveAccessibleName(
           'Menu: back home, where a new version is waiting',
         ),
-        expect(updateNote).toExist(),
-        expect(retryButton).toBeAbsent(),
-        expect(shareButton).toBeAbsent(),
-        expect(keepGoingButton).toBeAbsent(),
-        expect(updateChip).toBeAbsent(),
-        click(menuButton),
-        expect(manorButton).toExist(),
-        expect(updateChip).toExist(),
-      )
-    },
+        Scene.expect(updateNote).toExist(),
+        Scene.expect(retryButton).toBeAbsent(),
+        Scene.expect(shareButton).toBeAbsent(),
+        Scene.expect(keepGoingButton).toBeAbsent(),
+        Scene.expect(updateChip).toBeAbsent(),
+        Scene.click(menuButton),
+        Scene.expect(manorButton).toExist(),
+        Scene.expect(updateChip).toExist(),
+      ),
   )
 
-  test.each(END_PHASES)(
+  it.effect.each(END_PHASES)(
     '%s skips the beat on an early Enter, then focuses MENU, and Enter goes home',
-    (_name, phase) => {
-      scene(
-        ROOT,
-        given(withNewerBuild(onEndScreen(phase, 0))),
+    ([_name, phase]) =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(withNewerBuild(onEndScreen(phase, 0))),
         measureSurface,
-        expect(menuButton).toBeAbsent(),
+        Scene.expect(menuButton).toBeAbsent(),
         ...tickPastGrace().slice(0, 2),
         emitPressedKey('Enter'),
-        expect(manorButton).toBeAbsent(),
-        Command.expectExact(FocusEndMenuButton),
-        Command.resolve(
+        Scene.expect(manorButton).toBeAbsent(),
+        Scene.Command.expectExact(FocusEndMenuButton),
+        Scene.Command.resolve(
           FocusEndMenuButton,
           Message.CompletedFocusEndMenuButton(),
         ),
-        expect(menuButton).toExist(),
-        expect(updateNote).toExist(),
+        Scene.expect(menuButton).toExist(),
+        Scene.expect(updateNote).toExist(),
         emitPressedKey('Enter'),
-        expect(manorButton).toExist(),
-        expect(updateChip).toExist(),
-      )
-    },
+        Scene.expect(manorButton).toExist(),
+        Scene.expect(updateChip).toExist(),
+      ),
   )
 
   // NOTE: the newer build arrives as FetchBuild's result, which a Scene
   // cannot send by itself: the Story sends it and checks the focus, and the
   // Scene draws the Model it left.
-  test('a new version found on Game Over swaps the choices for MENU', () => {
-    const gameOver = onEndScreen(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)
-    const found = Message.CompletedFetchBuild({ build: 'newer-build' })
-    scene(
-      ROOT,
-      given(gameOver),
-      measureSurface,
-      expect(retryButton).toExist(),
-      shareMountSettles('Cancelled'),
-    )
-    story(
-      update,
-      storyGiven(gameOver),
-      message(found),
-      StoryCommand.expectExact(FocusEndMenuButton),
-      StoryCommand.resolve(
-        FocusEndMenuButton,
-        Message.CompletedFocusEndMenuButton(),
-      ),
-    )
-    scene(
-      ROOT,
-      given(update(gameOver, found).model),
-      measureSurface,
-      expect(retryButton).toBeAbsent(),
-      expect(updateNote).toExist(),
-    )
-  })
+  it.effect('a new version found on Game Over swaps the choices for MENU', () =>
+    Effect.gen(function* () {
+      const gameOver = onEndScreen(
+        Phase.GameOver({ wave: 4 }),
+        RESTART_GRACE_MS,
+      )
+      const found = Message.CompletedFetchBuild({ build: 'newer-build' })
+      yield* Scene.scene(
+        APPLICATION,
+        Scene.given(gameOver),
+        measureSurface,
+        Scene.expect(retryButton).toExist(),
+        shareMountSettles('Cancelled'),
+      )
+      const versionFound = yield* Story.story(
+        APPLICATION,
+        Story.given(gameOver),
+        Story.message(found),
+        Story.Command.expectExact(FocusEndMenuButton),
+        Story.Command.resolve(
+          FocusEndMenuButton,
+          Message.CompletedFocusEndMenuButton(),
+        ),
+      )
+      yield* Scene.scene(
+        APPLICATION,
+        Scene.given(versionFound),
+        measureSurface,
+        Scene.expect(retryButton).toBeAbsent(),
+        Scene.expect(updateNote).toExist(),
+      )
+    }),
+  )
 })

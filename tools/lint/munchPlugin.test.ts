@@ -99,6 +99,54 @@ tester.run('no-run-in-tests', ruleOf('no-run-in-tests'), {
   ],
 })
 
+tester.run('no-floating-story', ruleOf('no-floating-story'), {
+  valid: [
+    "it.effect('runs', () => Story.story(APPLICATION, Story.given(home)))",
+    "it.effect('runs', () => { return Scene.scene(APPLICATION, Scene.given(home)) })",
+    "it.effect.each(rows)('runs %s', row => Story.story(APPLICATION, Story.given(row)))",
+    'it.effect("binds", () => Effect.gen(function* () { const done = yield* Story.story(APPLICATION, Story.given(home)); expect(done).toBe(home) }))',
+    "it.effect('loops', () => Effect.forEach(SEEDS, seed => Story.story(APPLICATION, Story.given(seeded(seed)))))",
+    "it.effect('all', () => Effect.all(Array.map(SEEDS, seed => Story.story(APPLICATION, Story.given(seeded(seed))))))",
+    "it.effect('maps', () => Story.story(APPLICATION, Story.given(home)).pipe(Effect.map(done => done.phase)))",
+    'const bulletsAfter = (model) => Story.story(APPLICATION, Story.given(model)).pipe(Effect.map(({ bullets }) => bullets))',
+    "import { story } from 'foldkit/story'\nit.effect('bare', () => story(CO_OP, given(home)))",
+    // NOTE: the plain form over an update function runs on the spot.
+    "import { story } from 'foldkit/story'\ntest('plain', () => { story(update, given(home)) })",
+    "import { scene } from 'foldkit/scene'\ntest('plain', () => { scene(ROOT, given(home)) })",
+    "test('plain', () => { story(coopUpdate, given(home)) })",
+    "test('plain', () => { Scene.scene({ update, view }, Scene.given(home)) })",
+  ],
+  invalid: [
+    one(
+      "test('never runs', () => Story.story(APPLICATION, Story.given(home)))",
+    ),
+    one(
+      "it('never runs', () => { return Scene.scene(APPLICATION, Scene.given(home)) })",
+    ),
+    one(
+      "it.effect('drops', () => Effect.gen(function* () { Array.forEach(SEEDS, seed => Story.story(APPLICATION, Story.given(seeded(seed)))) }))",
+    ),
+    one(
+      "it.effect('drops', () => Effect.gen(function* () { Array.map(SEEDS, seed => Story.story(APPLICATION, Story.given(seeded(seed)))) }))",
+    ),
+    one(
+      "it.effect('drops', () => Effect.gen(function* () { Story.story(APPLICATION, Story.given(home)) }))",
+    ),
+    one(
+      "it.effect('drops', () => Effect.gen(function* () { SEEDS.forEach(function* (seed) { yield* Story.story(APPLICATION, Story.given(seed)) }) }))",
+    ),
+    one(
+      "describe('a sweep', () => { Array.forEach(SEEDS, seed => { it.effect('x', () => Effect.void); Story.story(APPLICATION, Story.given(seed)) }) })",
+    ),
+    one(
+      "import { story as runStory } from 'foldkit/story'\ntest('bare', () => runStory(CO_OP, given(home)))",
+    ),
+    one(
+      "test('a Block', () => { Scene.scene({ block: ShopBlock, layer, viewInputs }, Scene.given(home)) })",
+    ),
+  ],
+})
+
 tester.run('tap-by-click', ruleOf('tap-by-click'), {
   valid: ['const attributes = [OnClick(Pressed()), OnPointerDown(Held())]'],
   invalid: [one('const attributes = [h.OnPointerUp(Released())]')],

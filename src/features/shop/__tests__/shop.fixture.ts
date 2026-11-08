@@ -3,10 +3,8 @@
 // src/features/shop/__tests__/shopDialog.story.test.ts start from it.
 
 import { Function, Option } from 'effect'
-import { Command } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-
-import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import {
   type Arsenal,
@@ -23,7 +21,7 @@ import {
   pastFirstBreak,
   withPlayerAt,
 } from '../../../test/model.fixture'
-import { holdingSecond } from '../../../test/testing'
+import { holdingSecond, showDialog } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { magazineOf } from '../../../world/gear/weapons'
 import { modifyFocus } from '../../../world/party/party'
@@ -42,10 +40,7 @@ export const shopReady: Model = modifyFields(
 )
 
 export const GRACE_TICK_MS = 50
-export const resolveShowShop = Command.resolve(
-  Dialog.test.ShowDialog,
-  DialogBlock.Message.SucceededShowDialog(),
-)
+export const resolveShowShop = showDialog()
 
 export const preparing = (wave: number): Phase =>
   Phase.Preparation({
@@ -74,7 +69,7 @@ export const browsing = (base: Model): Model =>
     shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
   })
 
-export const resolveFocusShopItem = Command.resolve(
+export const resolveFocusShopItem = Story.Command.resolve(
   FocusItem,
   ShopMessage.CompletedFocusItem(),
 )

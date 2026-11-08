@@ -1,18 +1,8 @@
 import { Option } from 'effect'
-import {
-  Command,
-  click,
-  expect,
-  given,
-  keydown,
-  role,
-  scene,
-  selector,
-  within,
-} from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test } from 'vitest'
 
+import { describe, it } from '@effect/vitest'
 import { Tabs } from '@foldkit/ui'
 
 import {
@@ -25,7 +15,7 @@ import {
 import { initialModel } from '../../../app/pureApp'
 import { PREPARATION_MS } from '../../../shared/constants'
 import {
-  ROOT,
+  APPLICATION,
   holdingSecond,
   measureSurface,
   walkIntoStallInScene,
@@ -73,118 +63,152 @@ const atStall = (balance: number, arsenal: Arsenal): Model =>
 const holdingSmg = (rounds: number, tier: number): Arsenal =>
   holdingSecond({ kind: 'Smg', rounds, loaded: 30, tier })
 
-const keeper = role('img', { name: /^Rattles the skeleton/ })
-const bubble = selector('.shop-greeting')
+const keeper = Scene.role('img', { name: /^Rattles the skeleton/ })
+const bubble = Scene.selector('.shop-greeting')
 
 describe('the shop at a glance', () => {
-  test('a row the player cannot afford is dimmed, greys its tag, and shows the shortfall', () => {
-    const pistolUpgrade = selector('#shop-item-PistolUpgrade')
-    scene(
-      ROOT,
-      given(atStall(180, holdingSmg(200, 1))),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      expect(
-        selector('[data-stock="Short"] #shop-item-PistolUpgrade'),
-      ).toExist(),
-      expect(within(pistolUpgrade, selector('.shop-tag'))).toHaveClass(
-        'is-short',
-      ),
-      expect(within(pistolUpgrade, selector('.shop-tag'))).toHaveText('$200'),
-      expect(within(pistolUpgrade, selector('.shop-need'))).toHaveText(
-        'Need $20 more',
-      ),
-      expect(within(pistolUpgrade, selector('.shop-need'))).not.toHaveClass(
-        'sr-only',
-      ),
-      expect(selector('[data-stock="Price"] #shop-item-SmgUpgrade')).toExist(),
-      expect(
-        within(selector('#shop-item-SmgUpgrade'), selector('.shop-need')),
-      ).toBeAbsent(),
-    )
-  })
+  it.effect(
+    'a row the player cannot afford is dimmed, greys its tag, and shows the shortfall',
+    () => {
+      const pistolUpgrade = Scene.selector('#shop-item-PistolUpgrade')
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(atStall(180, holdingSmg(200, 1))),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        Scene.expect(
+          Scene.selector('[data-stock="Short"] #shop-item-PistolUpgrade'),
+        ).toExist(),
+        Scene.expect(
+          Scene.within(pistolUpgrade, Scene.selector('.shop-tag')),
+        ).toHaveClass('is-short'),
+        Scene.expect(
+          Scene.within(pistolUpgrade, Scene.selector('.shop-tag')),
+        ).toHaveText('$200'),
+        Scene.expect(
+          Scene.within(pistolUpgrade, Scene.selector('.shop-need')),
+        ).toHaveText('Need $20 more'),
+        Scene.expect(
+          Scene.within(pistolUpgrade, Scene.selector('.shop-need')),
+        ).not.toHaveClass('sr-only'),
+        Scene.expect(
+          Scene.selector('[data-stock="Price"] #shop-item-SmgUpgrade'),
+        ).toExist(),
+        Scene.expect(
+          Scene.within(
+            Scene.selector('#shop-item-SmgUpgrade'),
+            Scene.selector('.shop-need'),
+          ),
+        ).toBeAbsent(),
+      )
+    },
+  )
 
-  test('a full row says so in one word on its tag and keeps the reason for screen readers', () => {
-    const drum = selector('#shop-item-SmgRounds')
-    scene(
-      ROOT,
-      given(atStall(180, holdingSmg(360, 1))),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      expect(selector('[data-stock="Done"] #shop-item-SmgRounds')).toExist(),
-      expect(within(drum, selector('.shop-tag'))).toHaveText('FULL'),
-      expect(within(drum, selector('.shop-item-reason'))).toHaveClass(
-        'sr-only',
-      ),
-    )
-  })
+  it.effect(
+    'a full row says so in one word on its tag and keeps the reason for screen readers',
+    () => {
+      const drum = Scene.selector('#shop-item-SmgRounds')
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(atStall(180, holdingSmg(360, 1))),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        Scene.expect(
+          Scene.selector('[data-stock="Done"] #shop-item-SmgRounds'),
+        ).toExist(),
+        Scene.expect(
+          Scene.within(drum, Scene.selector('.shop-tag')),
+        ).toHaveText('FULL'),
+        Scene.expect(
+          Scene.within(drum, Scene.selector('.shop-item-reason')),
+        ).toHaveClass('sr-only'),
+      )
+    },
+  )
 
-  test('an upgrade row names the next tier, and its gun card previews what it adds', () => {
-    const upgrade = selector('#shop-item-SmgUpgrade')
-    scene(
-      ROOT,
-      given(atStall(180, holdingSmg(200, 1))),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      expect(within(upgrade, selector('.shop-card-name'))).toHaveText(
-        'Chatterbox DELUXE',
-      ),
-      expect(within(upgrade, selector('.shop-upgrade-arrow'))).toExist(),
-      expect(role('img', { name: 'Tier 1 of 3' })).toExist(),
-      expect(
-        selector('.shop-gun[data-held="true"] .shop-pip.is-next'),
-      ).toExist(),
-      expect(
-        selector('.shop-gun[data-held="true"] .shop-seg.is-next'),
-      ).toExist(),
-      click(upgrade),
-      expect(role('img', { name: 'Tier 2 of 3' })).toExist(),
-      expect(within(upgrade, selector('.shop-card-name'))).toHaveText(
-        'Chatterbox 3000',
-      ),
-    )
-  })
+  it.effect(
+    'an upgrade row names the next tier, and its gun card previews what it adds',
+    () => {
+      const upgrade = Scene.selector('#shop-item-SmgUpgrade')
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(atStall(180, holdingSmg(200, 1))),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        Scene.expect(
+          Scene.within(upgrade, Scene.selector('.shop-card-name')),
+        ).toHaveText('Chatterbox DELUXE'),
+        Scene.expect(
+          Scene.within(upgrade, Scene.selector('.shop-upgrade-arrow')),
+        ).toExist(),
+        Scene.expect(Scene.role('img', { name: 'Tier 1 of 3' })).toExist(),
+        Scene.expect(
+          Scene.selector('.shop-gun[data-held="true"] .shop-pip.is-next'),
+        ).toExist(),
+        Scene.expect(
+          Scene.selector('.shop-gun[data-held="true"] .shop-seg.is-next'),
+        ).toExist(),
+        Scene.click(upgrade),
+        Scene.expect(Scene.role('img', { name: 'Tier 2 of 3' })).toExist(),
+        Scene.expect(
+          Scene.within(upgrade, Scene.selector('.shop-card-name')),
+        ).toHaveText('Chatterbox 3000'),
+      )
+    },
+  )
 
-  test('Rattles greets, grins at a buy with a stamp, and is sad when the player is short', () => {
-    scene(
-      ROOT,
-      given(atStall(180, holdingSmg(200, 1))),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      expect(keeper).toHaveAttr('data-mood', 'Grinning'),
-      expect(selector('.shop-stamp')).toBeAbsent(),
-      click(selector('#shop-item-SmgRounds')),
-      expect(keeper).toHaveAttr('data-mood', 'Delighted'),
-      expect(
-        within(selector('#shop-item-SmgRounds'), selector('.shop-stamp')),
-      ).toExist(),
-      expect(selector('.shop-balance')).toHaveText('You have $160'),
-      keydown(selector('#shop-item-PistolUpgrade'), 'Enter'),
-      expect(keeper).toHaveAttr('data-mood', 'Sad'),
-      expect(bubble).toHaveText('Need $40 more. No IOUs!'),
-      expect(selector('.shop-stamp')).toBeAbsent(),
-      expect(
-        within(selector('#shop-item-PistolUpgrade'), selector('.shop-nope')),
-      ).toExist(),
-      expect(selector('.shop-balance')).toHaveText('You have $160'),
-      click(role('tab', { name: /^Traps,/ })),
-      Command.resolve(
-        Tabs.test.FocusTab,
-        ShopTabsBlock.Message.CompletedFocusTab(),
+  it.effect(
+    'Rattles greets, grins at a buy with a stamp, and is sad when the player is short',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(atStall(180, holdingSmg(200, 1))),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        Scene.expect(keeper).toHaveAttr('data-mood', 'Grinning'),
+        Scene.expect(Scene.selector('.shop-stamp')).toBeAbsent(),
+        Scene.click(Scene.selector('#shop-item-SmgRounds')),
+        Scene.expect(keeper).toHaveAttr('data-mood', 'Delighted'),
+        Scene.expect(
+          Scene.within(
+            Scene.selector('#shop-item-SmgRounds'),
+            Scene.selector('.shop-stamp'),
+          ),
+        ).toExist(),
+        Scene.expect(Scene.selector('.shop-balance')).toHaveText(
+          'You have $160',
+        ),
+        Scene.keydown(Scene.selector('#shop-item-PistolUpgrade'), 'Enter'),
+        Scene.expect(keeper).toHaveAttr('data-mood', 'Sad'),
+        Scene.expect(bubble).toHaveText('Need $40 more. No IOUs!'),
+        Scene.expect(Scene.selector('.shop-stamp')).toBeAbsent(),
+        Scene.expect(
+          Scene.within(
+            Scene.selector('#shop-item-PistolUpgrade'),
+            Scene.selector('.shop-nope'),
+          ),
+        ).toExist(),
+        Scene.expect(Scene.selector('.shop-balance')).toHaveText(
+          'You have $160',
+        ),
+        Scene.click(Scene.role('tab', { name: /^Traps,/ })),
+        Scene.Command.resolve(
+          Tabs.test.FocusTab,
+          ShopTabsBlock.Message.CompletedFocusTab(),
+        ),
+        Scene.expect(keeper).toHaveAttr('data-mood', 'Grinning'),
       ),
-      expect(keeper).toHaveAttr('data-mood', 'Grinning'),
-    )
-  })
+  )
 
-  test('a player with nothing to buy gets a sad hello', () => {
-    scene(
-      ROOT,
-      given(atStall(5, holdingSmg(360, 1))),
+  it.effect('a player with nothing to buy gets a sad hello', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(atStall(5, holdingSmg(360, 1))),
       measureSurface,
       ...walkIntoStallInScene(),
-      expect(keeper).toHaveAttr('data-mood', 'Sad'),
-    )
-  })
+      Scene.expect(keeper).toHaveAttr('data-mood', 'Sad'),
+    ),
+  )
 })
 
 describe('repairing placed traps', () => {
@@ -207,70 +231,89 @@ describe('repairing placed traps', () => {
     }),
     { shopCategory: () => 'Traps' },
   )
-  const westPlank = selector('#shop-item-Repair-1')
-  const northPlank = selector('#shop-item-Repair-2')
+  const westPlank = Scene.selector('#shop-item-Repair-1')
+  const northPlank = Scene.selector('#shop-item-Repair-2')
 
-  test('each placed plank gets its own row with a map pip, a health bar, and its own price or FULL', () => {
-    scene(
-      ROOT,
-      given(withPlanks),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      expect(
-        role('button', { name: 'Repair the Plank Pile at the West door, $24' }),
-      ).toExist(),
-      expect(within(westPlank, selector('.shop-tag'))).toHaveText('$24'),
-      expect(within(westPlank, selector('.shop-map-dot'))).toExist(),
-      expect(within(westPlank, selector('.shop-health'))).toHaveStyle(
-        'width',
-        '50%',
+  it.effect(
+    'each placed plank gets its own row with a map pip, a health bar, and its own price or FULL',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(withPlanks),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        Scene.expect(
+          Scene.role('button', {
+            name: 'Repair the Plank Pile at the West door, $24',
+          }),
+        ).toExist(),
+        Scene.expect(
+          Scene.within(westPlank, Scene.selector('.shop-tag')),
+        ).toHaveText('$24'),
+        Scene.expect(
+          Scene.within(westPlank, Scene.selector('.shop-map-dot')),
+        ).toExist(),
+        Scene.expect(
+          Scene.within(westPlank, Scene.selector('.shop-health')),
+        ).toHaveStyle('width', '50%'),
+        Scene.expect(
+          Scene.within(northPlank, Scene.selector('.shop-tag')),
+        ).toHaveText('FULL'),
+        Scene.expect(
+          Scene.selector('[data-stock="Done"] #shop-item-Repair-2'),
+        ).toExist(),
+        Scene.click(westPlank),
+        Scene.expect(
+          Scene.within(westPlank, Scene.selector('.shop-tag')),
+        ).toHaveText('FULL'),
+        Scene.expect(Scene.selector('.shop-balance')).toHaveText(
+          'You have $76',
+        ),
       ),
-      expect(within(northPlank, selector('.shop-tag'))).toHaveText('FULL'),
-      expect(selector('[data-stock="Done"] #shop-item-Repair-2')).toExist(),
-      click(westPlank),
-      expect(within(westPlank, selector('.shop-tag'))).toHaveText('FULL'),
-      expect(selector('.shop-balance')).toHaveText('You have $76'),
-    )
-  })
+  )
 
-  test('with nothing placed, the trap tab has no repair rows', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('with nothing placed, the trap tab has no repair rows', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFocus(atStall(100, holdingSmg(200, 1)), {
           shopCategory: () => 'Traps',
         }),
       ),
       measureSurface,
       ...walkIntoStallInScene(),
-      expect(role('button', { name: /^Repair the/ })).toBeAbsent(),
-      expect(role('button', { name: 'Buy Plank Pile for $95' })).toExist(),
-    )
-  })
+      Scene.expect(Scene.role('button', { name: /^Repair the/ })).toBeAbsent(),
+      Scene.expect(
+        Scene.role('button', { name: 'Buy Plank Pile for $95' }),
+      ).toExist(),
+    ),
+  )
 })
 
 // NOTE: from playtests: traps looked like something a button builds, and a
 // bought gun's ammo looked endless like the pistol's.
 describe('what the shop teaches', () => {
-  test('until the first trap is bought, TRAPS wears NEW and its traps pulse', () => {
-    scene(
-      ROOT,
-      given(
-        modifyFocus(atStall(100, holdingSmg(200, 0)), {
-          shopCategory: () => 'Traps',
-        }),
+  it.effect(
+    'until the first trap is bought, TRAPS wears NEW and its traps pulse',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(
+          modifyFocus(atStall(100, holdingSmg(200, 0)), {
+            shopCategory: () => 'Traps',
+          }),
+        ),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        Scene.expect(Scene.selector('.shop-tab-new')).toHaveText('NEW'),
+        Scene.expect(Scene.selector('.shop-row[data-fresh="true"]')).toExist(),
       ),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      expect(selector('.shop-tab-new')).toHaveText('NEW'),
-      expect(selector('.shop-row[data-fresh="true"]')).toExist(),
-    )
-  })
+  )
 
-  test('once a trap has been bought, TRAPS is plain', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('once a trap has been bought, TRAPS is plain', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFocus(
           modifyFields(atStall(100, holdingSmg(200, 0)), {
             trapHint: () => TrapHint.Seen(),
@@ -280,19 +323,23 @@ describe('what the shop teaches', () => {
       ),
       measureSurface,
       ...walkIntoStallInScene(),
-      expect(selector('.shop-tab-new')).toBeAbsent(),
-      expect(selector('.shop-row[data-fresh="true"]')).toBeAbsent(),
-    )
-  })
+      Scene.expect(Scene.selector('.shop-tab-new')).toBeAbsent(),
+      Scene.expect(Scene.selector('.shop-row[data-fresh="true"]')).toBeAbsent(),
+    ),
+  )
 
-  test("each gun shows its rounds: the pistol's endless, the others a count", () => {
-    scene(
-      ROOT,
-      given(atStall(100, holdingSmg(200, 0))),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      expect(selector('.shop-rounds.is-endless')).toHaveText('∞'),
-      expect(selector('[data-held="true"] .shop-rounds')).toHaveText('200'),
-    )
-  })
+  it.effect(
+    "each gun shows its rounds: the pistol's endless, the others a count",
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(atStall(100, holdingSmg(200, 0))),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        Scene.expect(Scene.selector('.shop-rounds.is-endless')).toHaveText('∞'),
+        Scene.expect(
+          Scene.selector('[data-held="true"] .shop-rounds'),
+        ).toHaveText('200'),
+      ),
+  )
 })

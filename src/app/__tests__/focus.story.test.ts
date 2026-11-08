@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
-import { Array, Option } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { MouseButton, Stick } from '../../input/inputSchema'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../shared/constants'
@@ -11,11 +12,10 @@ import {
   WAVE_2_FIGHT,
   readyModel,
 } from '../../test/model.fixture'
-import { holdingFirst, tick } from '../../test/testing'
+import { APPLICATION, holdingFirst, tick } from '../../test/testing'
 import { modifyFocus } from '../../world/party/party'
 import { Message } from '../message'
 import { Arsenal, type Model, Phase, RunMode, ShopState } from '../model'
-import { update } from '../pureApp'
 import {
   type KeyDown,
   maybeKeyDownMessage,
@@ -34,9 +34,9 @@ const pausedModel: Model = modifyFields(readyModel, {
   phase: () => Phase.Paused({ round: WAVE_2_FIGHT }),
 })
 
-const blurWindow = message(Message.BlurredWindow())
+const blurWindow = Story.message(Message.BlurredWindow())
 
-const mouseDown = message(
+const mouseDown = Story.message(
   Message.PressedPointer({
     pointerId: MOUSE_POINTER,
     device: 'Mouse',
@@ -50,7 +50,7 @@ const keyDownOn = (target: EventTarget, code: string) =>
     maybeKeyDownMessage({ code, repeat: false, target } satisfies KeyDown),
     {
       onNone: () => [],
-      onSome: keyMessage => [message(keyMessage)],
+      onSome: keyMessage => [Story.message(keyMessage)],
     },
   )
 
@@ -67,60 +67,70 @@ const gameSurfaceElement = (): HTMLDivElement => {
 }
 
 describe('leaving the window', () => {
-  test('a window blur pauses a wave and lets go of every key and the trigger', () => {
-    story(
-      update,
-      given(fightingModel),
-      message(Message.PressedKey({ code: 'KeyD' })),
-      mouseDown,
-      blurWindow,
-      model(({ phase, input, seats: [{ intent }] }) => {
-        expect(phase).toEqual(Phase.Paused({ round: WAVE_2_FIGHT }))
-        expect(input.pressedKeys).toEqual([])
-        expect(input.mouseButton).toEqual(MouseButton.Released())
-        expect(intent.trigger).toBe('Released')
-      }),
-      tick(FRAME_MS),
-      model(({ phase }) => {
-        expect(phase).toEqual(Phase.Paused({ round: WAVE_2_FIGHT }))
-      }),
-    )
-  })
-
-  test('a window blur in Preparation closes the shop and pauses the countdown', () => {
-    story(
-      update,
-      given(
-        modifyFocus(modifyFields(readyModel, { phase: () => WAVE_2_BREAK }), {
-          shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+  it.effect(
+    'a window blur pauses a wave and lets go of every key and the trigger',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(fightingModel),
+        Story.message(Message.PressedKey({ code: 'KeyD' })),
+        mouseDown,
+        blurWindow,
+        Story.model(({ phase, input, seats: [{ intent }] }) => {
+          expect(phase).toEqual(Phase.Paused({ round: WAVE_2_FIGHT }))
+          expect(input.pressedKeys).toEqual([])
+          expect(input.mouseButton).toEqual(MouseButton.Released())
+          expect(intent.trigger).toBe('Released')
+        }),
+        tick(FRAME_MS),
+        Story.model(({ phase }) => {
+          expect(phase).toEqual(Phase.Paused({ round: WAVE_2_FIGHT }))
         }),
       ),
-      blurWindow,
-      model(({ phase, seats: [{ shop }] }) => {
-        expect(phase).toEqual(Phase.Paused({ round: WAVE_2_BREAK }))
-        expect(ShopState.guards.Browsing(shop)).toBe(false)
-      }),
-    )
-  })
+  )
 
-  test('a window blur leaves the title, the end screens, and the pause screen alone', () => {
-    const screens: ReadonlyArray<Model> = [
-      readyModel,
-      modifyFields(readyModel, { phase: () => Phase.GameOver({ wave: 3 }) }),
-      modifyFields(readyModel, { phase: () => Phase.Victory() }),
-      pausedModel,
-    ]
-    Array.forEach(screens, screen => {
-      story(
-        update,
-        given(screen),
+  it.effect(
+    'a window blur in Preparation closes the shop and pauses the countdown',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFocus(modifyFields(readyModel, { phase: () => WAVE_2_BREAK }), {
+            shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+          }),
+        ),
         blurWindow,
-        model(({ phase }) => {
-          expect(phase).toEqual(screen.phase)
+        Story.model(({ phase, seats: [{ shop }] }) => {
+          expect(phase).toEqual(Phase.Paused({ round: WAVE_2_BREAK }))
+          expect(ShopState.guards.Browsing(shop)).toBe(false)
         }),
-      )
-    })
-  })
+      ),
+  )
+
+  it.effect(
+    'a window blur leaves the title, the end screens, and the pause screen alone',
+    () =>
+      Effect.gen(function* () {
+        const screens: ReadonlyArray<Model> = [
+          readyModel,
+          modifyFields(readyModel, {
+            phase: () => Phase.GameOver({ wave: 3 }),
+          }),
+          modifyFields(readyModel, { phase: () => Phase.Victory() }),
+          pausedModel,
+        ]
+        yield* Effect.forEach(screens, screen =>
+          Story.story(
+            APPLICATION,
+            Story.given(screen),
+            blurWindow,
+            Story.model(({ phase }) => {
+              expect(phase).toEqual(screen.phase)
+            }),
+          ),
+        )
+      }),
+  )
 
   test('only a blur aimed at the window itself counts, not focus moving between elements', () => {
     const blurs: Array<Option.Option<Message>> = []
@@ -148,34 +158,36 @@ describe('leaving the window', () => {
 })
 
 describe('resuming', () => {
-  test('the click that resumes does not fire, and the next click does', () => {
-    story(
-      update,
-      given(pausedModel),
-      mouseDown,
-      model(({ phase, input, seats: [{ intent }] }) => {
-        expect(phase).toEqual(WAVE_2_FIGHT)
-        expect(input.mouseButton).toEqual(MouseButton.Released())
-        expect(intent.trigger).toBe('Released')
-      }),
-      tick(FRAME_MS),
-      model(({ stats }) => {
-        expect(stats.shotsFired).toBe(0)
-      }),
-      message(Message.ReleasedPointer({ pointerId: MOUSE_POINTER })),
-      mouseDown,
-      tick(FRAME_MS),
-      model(({ stats }) => {
-        expect(stats.shotsFired).toBe(1)
-      }),
-    )
-  })
+  it.effect(
+    'the click that resumes does not fire, and the next click does',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(pausedModel),
+        mouseDown,
+        Story.model(({ phase, input, seats: [{ intent }] }) => {
+          expect(phase).toEqual(WAVE_2_FIGHT)
+          expect(input.mouseButton).toEqual(MouseButton.Released())
+          expect(intent.trigger).toBe('Released')
+        }),
+        tick(FRAME_MS),
+        Story.model(({ stats }) => {
+          expect(stats.shotsFired).toBe(0)
+        }),
+        Story.message(Message.ReleasedPointer({ pointerId: MOUSE_POINTER })),
+        mouseDown,
+        tick(FRAME_MS),
+        Story.model(({ stats }) => {
+          expect(stats.shotsFired).toBe(1)
+        }),
+      ),
+  )
 
-  test('the tap that resumes does not take the aim stick', () => {
-    story(
-      update,
-      given(modifyFields(pausedModel, { lastDevice: () => 'Touch' })),
-      message(
+  it.effect('the tap that resumes does not take the aim stick', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(modifyFields(pausedModel, { lastDevice: () => 'Touch' })),
+      Story.message(
         Message.PressedPointer({
           pointerId: RIGHT_THUMB,
           device: 'Touch',
@@ -183,76 +195,84 @@ describe('resuming', () => {
           clientY: 200,
         }),
       ),
-      model(({ phase, input }) => {
+      Story.model(({ phase, input }) => {
         expect(phase).toEqual(WAVE_2_FIGHT)
         expect(input.aimStick).toEqual(Stick.Idle())
       }),
-    )
-  })
+    ),
+  )
 
-  test('Esc resumes without firing, and a movement key held through the pause still moves', () => {
-    story(
-      update,
-      given(pausedModel),
-      message(Message.PressedKey({ code: 'KeyD' })),
-      message(Message.PressedKey({ code: 'Escape' })),
-      model(({ phase, input, seats: [{ intent }] }) => {
-        expect(phase).toEqual(WAVE_2_FIGHT)
-        expect(input.pressedKeys).toEqual(['KeyD'])
-        expect(intent.trigger).toBe('Released')
-        expect(intent.move).toEqual({ x: 1, y: 0 })
-      }),
-    )
-  })
+  it.effect(
+    'Esc resumes without firing, and a movement key held through the pause still moves',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(pausedModel),
+        Story.message(Message.PressedKey({ code: 'KeyD' })),
+        Story.message(Message.PressedKey({ code: 'Escape' })),
+        Story.model(({ phase, input, seats: [{ intent }] }) => {
+          expect(phase).toEqual(WAVE_2_FIGHT)
+          expect(input.pressedKeys).toEqual(['KeyD'])
+          expect(intent.trigger).toBe('Released')
+          expect(intent.move).toEqual({ x: 1, y: 0 })
+        }),
+      ),
+  )
 })
 
 describe('keys on a focused button', () => {
-  test('Space on the focused Swap button swaps once and does not fire', () => {
-    const swapButton = buttonElement()
-    story(
-      update,
-      given(
-        modifyFocus(fightingModel, {
-          player: player =>
-            modifyFields(player, {
-              arsenal: () =>
-                holdingFirst({
-                  kind: 'Shotgun',
-                  rounds: 20,
-                  loaded: 6,
-                  tier: 0,
-                }),
-            }),
+  it.effect(
+    'Space on the focused Swap button swaps once and does not fire',
+    () => {
+      const swapButton = buttonElement()
+      return Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFocus(fightingModel, {
+            player: player =>
+              modifyFields(player, {
+                arsenal: () =>
+                  holdingFirst({
+                    kind: 'Shotgun',
+                    rounds: 20,
+                    loaded: 6,
+                    tier: 0,
+                  }),
+              }),
+          }),
+        ),
+        ...keyDownOn(swapButton, 'Space'),
+        Story.message(Message.ClickedSwapButton()),
+        Story.model(({ seats: [{ player, intent }], input }) => {
+          expect(Arsenal.guards.HoldingSecond(player.arsenal)).toBe(true)
+          expect(input.pressedKeys).toEqual([])
+          expect(intent.trigger).toBe('Released')
         }),
-      ),
-      ...keyDownOn(swapButton, 'Space'),
-      message(Message.ClickedSwapButton()),
-      model(({ seats: [{ player, intent }], input }) => {
-        expect(Arsenal.guards.HoldingSecond(player.arsenal)).toBe(true)
-        expect(input.pressedKeys).toEqual([])
-        expect(intent.trigger).toBe('Released')
-      }),
-    )
-  })
+      )
+    },
+  )
 
-  test('Enter on the focused Endless button starts endless, not a campaign', () => {
-    const endlessButton = buttonElement()
-    story(
-      update,
-      given(
-        modifyFields(readyModel, {
-          phase: () => Phase.GameOver({ wave: 3 }),
-          screenMs: () => RESTART_GRACE_MS,
+  it.effect(
+    'Enter on the focused Endless button starts endless, not a campaign',
+    () => {
+      const endlessButton = buttonElement()
+      return Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(readyModel, {
+            phase: () => Phase.GameOver({ wave: 3 }),
+            screenMs: () => RESTART_GRACE_MS,
+          }),
+        ),
+        ...keyDownOn(endlessButton, 'Enter'),
+        Story.message(Message.ClickedEndlessButton()),
+        Story.model(({ mode, phase }) => {
+          expect(mode).toEqual(RunMode.Endless())
+          expect(Phase.guards.Preparation(phase)).toBe(true)
         }),
-      ),
-      ...keyDownOn(endlessButton, 'Enter'),
-      message(Message.ClickedEndlessButton()),
-      model(({ mode, phase }) => {
-        expect(mode).toEqual(RunMode.Endless())
-        expect(Phase.guards.Preparation(phase)).toBe(true)
-      }),
-    )
-  })
+      )
+    },
+  )
 
   test('Space on a span inside a button is left to the button', () => {
     const button = buttonElement()

@@ -1,16 +1,17 @@
 // @vitest-environment happy-dom
 import { Option } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
-import { describe, expect, test } from 'vitest'
+import { Story } from 'foldkit'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../app/message'
-import { update } from '../../app/pureApp'
 import {
   type KeyDown,
   isKeptFromBrowser,
   maybeKeyDownMessage,
 } from '../../app/subscriptions'
 import { fighting } from '../../test/model.fixture'
+import { APPLICATION } from '../../test/testing'
 import {
   KEY_WATCH_QUIET_MS,
   type KeyUp,
@@ -77,19 +78,24 @@ describe('game keys and the browser', () => {
     expect(isKeptFromBrowser(keyDown('Enter', { target: button }))).toBe(false)
   })
 
-  test('Command lets go of held keys, since macOS drops their keyups', () => {
-    const command = maybeKeyDownMessage(keyDown('MetaLeft', { metaKey: true }))
-    expect(command).toEqual(Option.some(Message.PressedMetaKey()))
-    story(
-      update,
-      given(fighting),
-      message(Message.PressedKey({ code: 'KeyD' })),
-      message(Message.PressedMetaKey()),
-      model(({ input }) => {
-        expect(input.pressedKeys).toEqual([])
-      }),
-    )
-  })
+  it.effect(
+    'Command lets go of held keys, since macOS drops their keyups',
+    () => {
+      const command = maybeKeyDownMessage(
+        keyDown('MetaLeft', { metaKey: true }),
+      )
+      expect(command).toEqual(Option.some(Message.PressedMetaKey()))
+      return Story.story(
+        APPLICATION,
+        Story.given(fighting),
+        Story.message(Message.PressedKey({ code: 'KeyD' })),
+        Story.message(Message.PressedMetaKey()),
+        Story.model(({ input }) => {
+          expect(input.pressedKeys).toEqual([])
+        }),
+      )
+    },
+  )
 })
 
 const AFTER_QUIET = KEY_WATCH_QUIET_MS + 1
@@ -117,34 +123,34 @@ describe('a browser extension grabbing keys', () => {
     expect(isGrabbedKeyUp(keyUp({ code: 'ArrowRight' }))).toBe(false)
   })
 
-  test('the toast shows on the second grabbed key, never the first', () => {
-    story(
-      update,
-      given(fighting),
-      message(Message.MissedKeyDown({ code: 'KeyD' })),
-      model(current => {
+  it.effect('the toast shows on the second grabbed key, never the first', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
+      Story.message(Message.MissedKeyDown({ code: 'KeyD' })),
+      Story.model(current => {
         expect(isKeyGrabToastShown(current)).toBe(false)
       }),
-      message(Message.MissedKeyDown({ code: 'KeyD' })),
-      model(current => {
+      Story.message(Message.MissedKeyDown({ code: 'KeyD' })),
+      Story.model(current => {
         expect(isKeyGrabToastShown(current)).toBe(true)
       }),
-      message(Message.MissedKeyDown({ code: 'KeyT' })),
-      model(current => {
+      Story.message(Message.MissedKeyDown({ code: 'KeyT' })),
+      Story.model(current => {
         expect(current.missedKeyDowns).toBe(2)
       }),
-    )
-  })
+    ),
+  )
 
-  test('the toast never pauses or stops the wave', () => {
-    story(
-      update,
-      given(fighting),
-      message(Message.MissedKeyDown({ code: 'KeyD' })),
-      message(Message.MissedKeyDown({ code: 'KeyD' })),
-      model(({ phase }) => {
+  it.effect('the toast never pauses or stops the wave', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fighting),
+      Story.message(Message.MissedKeyDown({ code: 'KeyD' })),
+      Story.message(Message.MissedKeyDown({ code: 'KeyD' })),
+      Story.model(({ phase }) => {
         expect(phase).toEqual(fighting.phase)
       }),
-    )
-  })
+    ),
+  )
 })

@@ -1,23 +1,15 @@
 import { Array, Predicate, Record, Result, String } from 'effect'
-import {
-  Subscription,
-  all,
-  expectAll,
-  given,
-  inside,
-  role,
-  scene,
-  tap,
-} from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test, expect as vitestExpect } from 'vitest'
+
+import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
 import { ATLAS_SHEET } from '../../test/atlasHtml.setup'
 import { fighting, home } from '../../test/model.fixture'
 import {
-  ROOT,
+  APPLICATION,
   SCENE_SUBSCRIPTIONS,
   measureSurface,
   openHandInScene,
@@ -56,17 +48,17 @@ const sheetUsesIn = (node: Node): ReadonlyArray<string> => [
 ]
 
 const noSheetInHtml = () => [
-  tap(({ html }) => {
+  Scene.tap(({ html }) => {
     vitestExpect(sheetUsesIn(html)).toEqual([])
   }),
 ]
 
 // NOTE: an image of its own, encoded from the sprite's pixels.
 const ownImages = (selected: string, count: number) => [
-  expectAll(all.selector(selected)).toHaveCount(count),
-  expectAll(all.selector(`${selected}[src^="data:image/png"]`)).toHaveCount(
-    count,
-  ),
+  Scene.expectAll(Scene.all.selector(selected)).toHaveCount(count),
+  Scene.expectAll(
+    Scene.all.selector(`${selected}[src^="data:image/png"]`),
+  ).toHaveCount(count),
 ]
 
 const pausedOn = (device: Model['lastDevice']): Model =>
@@ -87,60 +79,64 @@ const FRAMES_BY_DEVICE: Readonly<Record<Model['lastDevice'], number>> = {
 }
 
 describe('sprites in HTML', () => {
-  test('How to play shows each card its own frames, not the atlas sheet', () => {
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      ...noSheetInHtml(),
-      ...openHandInScene(),
-      ...noSheetInHtml(),
-      ...pickCardInScene(/^How to play:/),
-      inside(
-        role('dialog', { name: 'How to play' }),
-        ...ownImages(HELP_FRAMES, FRAMES_BY_DEVICE.KeyboardMouse),
+  it.effect(
+    'How to play shows each card its own frames, not the atlas sheet',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        ...noSheetInHtml(),
+        ...openHandInScene(),
+        ...noSheetInHtml(),
+        ...pickCardInScene(/^How to play:/),
+        Scene.inside(
+          Scene.role('dialog', { name: 'How to play' }),
+          ...ownImages(HELP_FRAMES, FRAMES_BY_DEVICE.KeyboardMouse),
+        ),
+        ...noSheetInHtml(),
       ),
-      ...noSheetInHtml(),
-    )
-  })
+  )
 
-  test.each(['KeyboardMouse', 'Touch'] as const)(
+  it.effect.each(['KeyboardMouse', 'Touch'] as const)(
     'the pause screen shows the %s cards without the atlas sheet',
-    device => {
-      scene(
-        ROOT,
-        given(pausedOn(device)),
+    device =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(pausedOn(device)),
         measureSurface,
         ...noSheetInHtml(),
         ...ownImages(HELP_FRAMES, FRAMES_BY_DEVICE[device]),
-      )
-    },
+      ),
   )
 
-  test('the Munchopedia list shows each zombie its own image', () => {
-    scene(
-      ROOT,
-      given(home),
+  it.effect('the Munchopedia list shows each zombie its own image', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(home),
       measureSurface,
       ...openHandInScene(),
       ...pickCardInScene(/^Munchopedia:/),
-      inside(role('dialog', { name: 'Munchopedia' }), ...ownImages('img', 7)),
+      Scene.inside(
+        Scene.role('dialog', { name: 'Munchopedia' }),
+        ...ownImages('img', 7),
+      ),
       ...noSheetInHtml(),
-    )
-  })
+    ),
+  )
 
-  test('the character picker shows no atlas sheet', () => {
-    scene(
-      ROOT,
-      given(home),
+  it.effect('the character picker shows no atlas sheet', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(home),
       measureSurface,
       ...openHandInScene(),
       ...pickCardInScene(/^Character:/),
       ...noSheetInHtml(),
-      Subscription.emit(
+      Scene.Subscription.emit(
         SCENE_SUBSCRIPTIONS.keyboard,
         Message.PressedKey({ code: 'Escape' }),
       ),
-    )
-  })
+    ),
+  )
 })

@@ -1,15 +1,15 @@
 // @vitest-environment happy-dom
 import { Effect, Fiber, Layer, Option, Stream } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { describe, expect, it, test } from '@effect/vitest'
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { subscriptions } from '../../app/subscriptions'
-import { SURFACE } from '../../test/testing'
+import { APPLICATION, SURFACE } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import { focusOf } from '../../world/party/party'
 import { isTrackingPointer } from '../input'
@@ -26,7 +26,7 @@ const playingModel: Model = modifyFields(asVeteran(initialModel), {
 })
 
 const touchDown = (pointerId: number, clientX: number) =>
-  message(
+  Story.message(
     Message.PressedPointer({
       pointerId,
       device: 'Touch',
@@ -65,56 +65,61 @@ const firstReleaseMessage = (dispatch: () => void) => {
 }
 
 describe('stuck sticks', () => {
-  test('a quick tap that lifts before any frame leaves no stick held', () => {
-    story(
-      update,
-      given(playingModel),
-      touchDown(LEFT_THUMB, 100),
-      touchDown(RIGHT_THUMB, 700),
-      message(Message.ReleasedPointer({ pointerId: LEFT_THUMB })),
-      message(Message.CancelledPointer({ pointerId: RIGHT_THUMB })),
-      model(after => {
-        expect(isAnyStickActive(after)).toBe(false)
-        expect(isTrackingPointer(after.input)).toBe(false)
-        expect(focusOf(after).intent.trigger).toBe('Released')
-      }),
-    )
-  })
-
-  test('lifting every finger lets go of both sticks but not the mouse', () => {
-    story(
-      update,
-      given(
-        modifyFields(playingModel, {
-          input: input =>
-            modifyFields(input, {
-              mouseButton: () => MouseButton.Held({ pointerId: MOUSE_POINTER }),
-            }),
+  it.effect(
+    'a quick tap that lifts before any frame leaves no stick held',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(playingModel),
+        touchDown(LEFT_THUMB, 100),
+        touchDown(RIGHT_THUMB, 700),
+        Story.message(Message.ReleasedPointer({ pointerId: LEFT_THUMB })),
+        Story.message(Message.CancelledPointer({ pointerId: RIGHT_THUMB })),
+        Story.model(after => {
+          expect(isAnyStickActive(after)).toBe(false)
+          expect(isTrackingPointer(after.input)).toBe(false)
+          expect(focusOf(after).intent.trigger).toBe('Released')
         }),
       ),
-      touchDown(LEFT_THUMB, 100),
-      touchDown(RIGHT_THUMB, 700),
-      message(Message.ReleasedEveryTouch()),
-      model(after => {
-        expect(isAnyStickActive(after)).toBe(false)
-        expect(after.input.mouseButton).toEqual(
-          MouseButton.Held({ pointerId: MOUSE_POINTER }),
-        )
-      }),
-    )
-  })
+  )
 
-  test('releasing a pointer nothing tracks changes nothing', () => {
-    story(
-      update,
-      given(playingModel),
+  it.effect(
+    'lifting every finger lets go of both sticks but not the mouse',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(playingModel, {
+            input: input =>
+              modifyFields(input, {
+                mouseButton: () =>
+                  MouseButton.Held({ pointerId: MOUSE_POINTER }),
+              }),
+          }),
+        ),
+        touchDown(LEFT_THUMB, 100),
+        touchDown(RIGHT_THUMB, 700),
+        Story.message(Message.ReleasedEveryTouch()),
+        Story.model(after => {
+          expect(isAnyStickActive(after)).toBe(false)
+          expect(after.input.mouseButton).toEqual(
+            MouseButton.Held({ pointerId: MOUSE_POINTER }),
+          )
+        }),
+      ),
+  )
+
+  it.effect('releasing a pointer nothing tracks changes nothing', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(playingModel),
       touchDown(LEFT_THUMB, 100),
-      message(Message.ReleasedPointer({ pointerId: 404 })),
-      model(after => {
+      Story.message(Message.ReleasedPointer({ pointerId: 404 })),
+      Story.model(after => {
         expect(Stick.isAnyOf(['Active'])(after.input.moveStick)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 
   // NOTE: real document events, heard on a real timer (firstReleaseMessage).
   it.live('releases are heard while no pointer is tracked', () =>

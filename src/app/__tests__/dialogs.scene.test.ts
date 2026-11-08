@@ -1,26 +1,15 @@
 import { Array, Option, Order, String } from 'effect'
-import {
-  Mount,
-  all,
-  click,
-  expect,
-  expectAll,
-  given,
-  inside,
-  scene,
-  selector,
-  tap,
-} from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect as expectValue, test } from 'vitest'
 
+import { describe, expect as expectValue, it } from '@effect/vitest'
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import * as Coop from '../../features/coop/model'
 import { PREPARATION_MS } from '../../shared/constants'
 import { homeAfterRead } from '../../test/model.fixture'
 import {
-  ROOT,
+  APPLICATION,
   holdingSecond,
   measureSurface,
   nodesOf,
@@ -91,7 +80,7 @@ const DIALOG_IDS = [
   'profile',
 ]
 
-const holdsDialogsApart = tap<Model, Message>(({ html }) => {
+const holdsDialogsApart = Scene.tap<Model, Message>(({ html }) => {
   const root: VNodeLike = html
   expectValue(duplicateIds(root)).toEqual([])
   expectValue(unkeyedDialogs(root)).toEqual([])
@@ -137,23 +126,29 @@ const atStall: Model = modifyFocus(
 )
 
 describe('the shop dialog', () => {
-  test('walking into the stall opens one shop, keyed on its id, and its buy buttons buy', () => {
-    scene(
-      ROOT,
-      given(atStall),
-      measureSurface,
-      ...walkIntoStallInScene(),
-      expectAll(all.selector('dialog#shop')).toHaveCount(1),
-      expectAll(all.selector('dialog[open]')).toHaveCount(1),
-      holdsDialogsApart,
-      inside(
-        selector('dialog#shop'),
-        expect(selector('.shop-balance')).toHaveText('You have $180'),
-        click(selector('#shop-item-SmgRounds')),
-        expect(selector('.shop-balance')).toHaveText('You have $160'),
+  it.effect(
+    'walking into the stall opens one shop, keyed on its id, and its buy buttons buy',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(atStall),
+        measureSurface,
+        ...walkIntoStallInScene(),
+        Scene.expectAll(Scene.all.selector('dialog#shop')).toHaveCount(1),
+        Scene.expectAll(Scene.all.selector('dialog[open]')).toHaveCount(1),
+        holdsDialogsApart,
+        Scene.inside(
+          Scene.selector('dialog#shop'),
+          Scene.expect(Scene.selector('.shop-balance')).toHaveText(
+            'You have $180',
+          ),
+          Scene.click(Scene.selector('#shop-item-SmgRounds')),
+          Scene.expect(Scene.selector('.shop-balance')).toHaveText(
+            'You have $160',
+          ),
+        ),
       ),
-    )
-  })
+  )
 })
 
 const opened = (dialog: DialogModel): DialogModel => ({
@@ -220,23 +215,22 @@ const OPEN_CASES: ReadonlyArray<OpenCase> = [
 ]
 
 describe('every menu dialog', () => {
-  test.each(OPEN_CASES)(
+  it.effect.each(OPEN_CASES)(
     'with $name, each dialog is in the page once, keyed on its id, and no id repeats',
-    ({ model, opensDialog }) => {
-      scene(
-        ROOT,
-        given(model),
+    ({ model, opensDialog }) =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(model),
         measureSurface,
         ...(opensDialog
           ? [
-              Mount.resolve(
+              Scene.Mount.resolve(
                 Dialog.test.AcquireResources,
                 DialogBlock.Message.SucceededAcquireResources(),
               ),
             ]
           : []),
         holdsDialogsApart,
-      )
-    },
+      ),
   )
 })

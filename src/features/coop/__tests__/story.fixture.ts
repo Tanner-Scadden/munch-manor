@@ -1,25 +1,36 @@
-import { Array, Function, Option, Schema } from 'effect'
+import { Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { initialModel } from '../../../app/pureApp'
+import { CoopBlock } from '../block'
+import { InMessage } from '../inMessage'
+import { CoopLayer } from '../layer'
 import { Message } from '../message'
-import { LobbyChange, type Model, type Room, Screen } from '../model'
-import { initialModel } from '../pureCoop'
+import { type Model, type Room, Screen } from '../model'
 import { freshRoom, maybeRoomOf } from '../roomState'
 import { CODE, type lobbyOf } from '../testing'
-import { open, pressKey } from '../update'
+import { open } from '../update'
 
-// What the co-op Story tests start from: a player on the hub with one hero
-// bought, a room around them, and the lobby's changes read back off a key.
+// What the co-op Story and Scene tests start from: co-op's Block on its own,
+// a player on the hub with one hero bought, and a room around them.
 
-export const onHub: Model = open(
-  initialModel,
-  '',
-  Option.none(),
-  '',
-  1,
-  'You',
-  ['hero:Handyman'],
-).model
+// NOTE: co-op's Block as a Block-aware Story takes it:
+// `Story.story(COOP, Story.given(onHub), ...)`. Its requests from the root go
+// in with `Story.inMessage(InMessage.RequestedPressKey({ code }))`.
+export const COOP = { block: CoopBlock, layer: CoopLayer }
+
+// NOTE: a key the root hands co-op while it is open.
+export const pressed = (code: string) =>
+  Story.inMessage(InMessage.RequestedPressKey({ code }))
+
+// NOTE: co-op's whole start Model, its hero picker's field included, as the
+// root's CoopBinding starts it.
+const startModel: Model = initialModel.coop
+
+export const onHub: Model = open(startModel, '', Option.none(), '', 1, 'You', [
+  'hero:Handyman',
+]).model
 
 export const roomOf = (current: Model): Room =>
   Option.getOrThrow(maybeRoomOf(current))
@@ -32,23 +43,9 @@ export const inRoom = (slot: number): Model =>
 export const lobbyUpdate = (lobby: ReturnType<typeof lobbyOf>) =>
   Message.ReceivedLobbyEvent({ event: { _tag: 'Updated', lobby } })
 
-const decodeChange = Schema.decodeUnknownOption(
-  Schema.Struct({ change: LobbyChange }),
-)
-
-const pickedBy = (current: Model, code: string) =>
-  Array.flatMap(pressKey(current, code).commands ?? [], command =>
-    Option.match(decodeChange(command.args), {
-      onNone: () => [],
-      onSome: ({ change }) =>
-        LobbyChange.isAnyOf(['ChangedPicks'])(change)
-          ? [change.mode, change.difficulty]
-          : [],
-    }),
-  )
-
-// NOTE: the mode and difficulty a key picks in the lobby, if it picks.
-export const picked: {
-  (code: string): (current: Model) => ReturnType<typeof pickedBy>
-  (current: Model, code: string): ReturnType<typeof pickedBy>
-} = Function.dual(2, pickedBy)
+// NOTE: co-op on the screen a Scene looks at, with one hero bought.
+export const coopAt = (screen: Screen): Model =>
+  modifyFields(startModel, {
+    screen: () => screen,
+    bought: () => ['hero:Handyman'],
+  })

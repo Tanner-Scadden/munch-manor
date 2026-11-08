@@ -1,22 +1,8 @@
-import { Array, Option } from 'effect'
-import {
-  Command,
-  all,
-  click,
-  expect,
-  expectAll,
-  given,
-  inside,
-  keydown,
-  pointerDown,
-  role,
-  scene,
-  selector,
-  text,
-  within,
-} from 'foldkit/scene'
+import { Array, Cause, Effect, Exit, Option } from 'effect'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test, expect as vitestExpect } from 'vitest'
+
+import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
@@ -26,7 +12,7 @@ import { noSavedBests, restoreSave, saveOf } from '../../../platform/save'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import { home } from '../../../test/model.fixture'
 import {
-  ROOT,
+  APPLICATION,
   closeButton,
   closeDialogInScene,
   emitPressedKey,
@@ -56,30 +42,40 @@ import { withBests } from '../home'
 import type { HandCard } from '../homeSchema'
 import { FocusHandCard, FocusHomeButton } from '../update'
 
-const playCluster = role('group', { name: 'Play' })
-const hand = role('dialog', { name: 'The manor' })
+const playCluster = Scene.role('group', { name: 'Play' })
+const hand = Scene.role('dialog', { name: 'The manor' })
 const CARD_NAMES = {
   Character: 'Character: change how you look',
   Munchopedia: 'Munchopedia: every zombie you have splatted',
   WhatsNew: "What's new: the latest changes",
   HowToPlay: 'How to play: the controls',
 } as const
-const characterCard = role('button', { name: CARD_NAMES.Character })
-const munchopediaCard = role('button', { name: /^Munchopedia:/ })
-const whatsNewCard = role('button', { name: /^What's new:/ })
-const howToPlayCard = role('button', { name: CARD_NAMES.HowToPlay })
+const characterCard = Scene.role('button', { name: CARD_NAMES.Character })
+const munchopediaCard = Scene.role('button', { name: /^Munchopedia:/ })
+const whatsNewCard = Scene.role('button', { name: /^What's new:/ })
+const howToPlayCard = Scene.role('button', { name: CARD_NAMES.HowToPlay })
 const munchopediaName = /^Munchopedia:/
 const whatsNewName = /^What's new:/
-const pauseMenuButton = role('button', { name: 'Menu: leave this run' })
-const endMenuButton = role('button', { name: 'Menu: back to the home screen' })
-const leaveQuestion = role('dialog', { name: 'Leave this run?' })
-const bests = role('button', { name: /^Your bests, Normal/ })
+const pauseMenuButton = Scene.role('button', { name: 'Menu: leave this run' })
+const endMenuButton = Scene.role('button', {
+  name: 'Menu: back to the home screen',
+})
+const leaveQuestion = Scene.role('dialog', { name: 'Leave this run?' })
+const bests = Scene.role('button', { name: /^Your bests, Normal/ })
 
 // NOTE: Scene refuses a pointerdown that no handler on the element or its
 // ancestors would receive. That refusal is the check: a press on these
 // buttons has no path to the game surface's pointerdown handler.
 const NO_POINTERDOWN_PATH =
   /neither it nor any ancestor has a pointerdown handler/
+
+// NOTE: a Block-aware Scene's refusal fails its Effect, so the check reads
+// it from the failure's cause.
+const expectNoPointerdownPath = <A, E>(exit: Exit.Exit<A, E>): void => {
+  vitestExpect(
+    Exit.isFailure(exit) ? Cause.pretty(exit.cause) : 'the press went in',
+  ).toMatch(NO_POINTERDOWN_PATH)
+}
 
 const PREPARING = 'Get ready for wave 1 of 10.'
 const PAUSED =
@@ -98,234 +94,270 @@ const afterGrace = (phase: Phase): Model =>
   })
 
 describe('Home menu', () => {
-  test('fills the slots: the gear, the MORE deck, and PLAY with CO-OP, no mode, difficulty, or hero pill, with a key badge on every button on a keyboard, and no bests badge before a best', () => {
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      inside(
-        playCluster,
-        expectAll(all.role('button')).toHaveCount(2),
-        expect(playButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
-        expect(role('button', { name: 'Co-op: play with friends' })).toHaveAttr(
-          'aria-keyshortcuts',
-          'J',
+  it.effect(
+    'fills the slots: the gear, the MORE deck, and PLAY with CO-OP, no mode, difficulty, or hero pill, with a key badge on every button on a keyboard, and no bests badge before a best',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        Scene.inside(
+          playCluster,
+          Scene.expectAll(Scene.all.role('button')).toHaveCount(2),
+          Scene.expect(playButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
+          Scene.expect(
+            Scene.role('button', { name: 'Co-op: play with friends' }),
+          ).toHaveAttr('aria-keyshortcuts', 'J'),
+        ),
+        Scene.expect(Scene.selector('.home-pick')).toBeAbsent(),
+        Scene.expect(Scene.role('button', { name: /^Mode:/ })).toBeAbsent(),
+        Scene.expect(
+          Scene.role('button', { name: /^Difficulty:/ }),
+        ).toBeAbsent(),
+        Scene.expect(Scene.role('button', { name: /^Hero:/ })).toBeAbsent(),
+        Scene.expect(manorButton).toHaveAttr('aria-keyshortcuts', 'V'),
+        Scene.expect(manorButton).toHaveAttr('aria-haspopup', 'dialog'),
+        Scene.inside(
+          Scene.selector('.home-corner'),
+          Scene.expect(settingsButton).toHaveAttr('aria-keyshortcuts', 'O'),
+          Scene.expect(settingsButton).toHaveAttr('aria-haspopup', 'dialog'),
+          Scene.expect(
+            Scene.role('link', { name: /^Buy Rattles a coffee/ }),
+          ).toHaveAttr('aria-keyshortcuts', 'B'),
+        ),
+        Scene.expectAll(
+          Scene.all.selector('.home-stage .home-key'),
+        ).toHaveCount(5),
+        Scene.expect(
+          Scene.role('button', { name: 'Your character: change how you look' }),
+        ).toHaveAttr('aria-haspopup', 'dialog'),
+        Scene.expect(Scene.role('button', { name: 'Mute sound' })).toBeAbsent(),
+        Scene.expect(bests).toBeAbsent(),
+        Scene.expect(
+          Scene.text('No bests yet. Go get chewed on.'),
+        ).toBeAbsent(),
+      ),
+  )
+
+  it.effect(
+    'the MANOR hand deals a card for each page with its key, and CLOSE puts it away',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(
+          modifyFields(home, { maybeSupportUrl: () => Option.none() }),
+        ),
+        measureSurface,
+        Scene.expect(hand).toBeAbsent(),
+        ...openHandInScene(),
+        Scene.inside(
+          hand,
+          Scene.expectAll(Scene.all.selector('.hand-card')).toHaveCount(5),
+          Scene.expect(characterCard).toHaveAttr('aria-keyshortcuts', 'C'),
+          Scene.expect(munchopediaCard).toHaveAttr('aria-keyshortcuts', 'Z'),
+          Scene.expect(whatsNewCard).toHaveAttr('aria-keyshortcuts', 'L'),
+          Scene.expect(howToPlayCard).toHaveAttr('aria-keyshortcuts', 'I'),
+          Scene.expect(Scene.role('link', { name: /^Tip jar/ })).toBeAbsent(),
+          Scene.click(closeButton),
+        ),
+        ...closeDialogInScene(),
+        Scene.expect(hand).toBeAbsent(),
+        Scene.expect(manorButton).toExist(),
+      ),
+  )
+
+  it.effect(
+    'V deals the hand from the keyboard, and the arrow keys walk its cards, the Code card last, and wrap',
+    () => {
+      const focusCard = (card: HandCard) =>
+        Scene.Command.resolve(
+          FocusHandCard({ card }),
+          Message.CompletedFocusHandCard(),
+        )
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(
+          modifyFields(home, { maybeSupportUrl: () => Option.none() }),
+        ),
+        measureSurface,
+        emitPressedKey('KeyV'),
+        ...showDialogInScene(),
+        Scene.expect(hand).toExist(),
+        Scene.keydown(characterCard, 'ArrowRight'),
+        focusCard('Munchopedia'),
+        Scene.keydown(howToPlayCard, 'ArrowDown'),
+        focusCard('Code'),
+        Scene.keydown(Scene.role('link', { name: /^Code:/ }), 'ArrowRight'),
+        focusCard('Character'),
+        Scene.keydown(characterCard, 'ArrowLeft'),
+        focusCard('Code'),
+      )
+    },
+  )
+
+  it.effect(
+    'the hand deals no tip jar card: the coffee stands in the corner',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        ...openHandInScene(),
+        Scene.inside(
+          hand,
+          Scene.expectAll(Scene.all.selector('.hand-card')).toHaveCount(5),
+          Scene.expect(Scene.role('link', { name: /coffee/i })).toBeAbsent(),
         ),
       ),
-      expect(selector('.home-pick')).toBeAbsent(),
-      expect(role('button', { name: /^Mode:/ })).toBeAbsent(),
-      expect(role('button', { name: /^Difficulty:/ })).toBeAbsent(),
-      expect(role('button', { name: /^Hero:/ })).toBeAbsent(),
-      expect(manorButton).toHaveAttr('aria-keyshortcuts', 'V'),
-      expect(manorButton).toHaveAttr('aria-haspopup', 'dialog'),
-      inside(
-        selector('.home-corner'),
-        expect(settingsButton).toHaveAttr('aria-keyshortcuts', 'O'),
-        expect(settingsButton).toHaveAttr('aria-haspopup', 'dialog'),
-        expect(role('link', { name: /^Buy Rattles a coffee/ })).toHaveAttr(
-          'aria-keyshortcuts',
-          'B',
+  )
+
+  it.effect(
+    'the Code card is the last card, a plain link to the source on GitHub that opens in a new tab',
+    () => {
+      const codeCard = Scene.role('link', { name: /^Code:/ })
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        Scene.expect(codeCard).toBeAbsent(),
+        ...openHandInScene(),
+        Scene.inside(
+          hand,
+          Scene.expect(codeCard).toHaveAttr(
+            'href',
+            'https://github.com/Tanner-Scadden/munch-manor',
+          ),
+          Scene.expect(codeCard).toHaveAttr('target', '_blank'),
+          Scene.expect(codeCard).toHaveAttr('rel', 'noopener noreferrer'),
+          Scene.expect(codeCard).toHaveAttr('data-card', 'Code'),
+          Scene.expect(codeCard).toHaveId('hand-card-code'),
+          Scene.expect(
+            Scene.within(codeCard, Scene.selector('.hand-card-title')),
+          ).toHaveText('CODE'),
+          Scene.expect(
+            Scene.within(codeCard, Scene.selector('.home-key')),
+          ).toBeAbsent(),
         ),
-      ),
-      expectAll(all.selector('.home-stage .home-key')).toHaveCount(5),
-      expect(
-        role('button', { name: 'Your character: change how you look' }),
-      ).toHaveAttr('aria-haspopup', 'dialog'),
-      expect(role('button', { name: 'Mute sound' })).toBeAbsent(),
-      expect(bests).toBeAbsent(),
-      expect(text('No bests yet. Go get chewed on.')).toBeAbsent(),
-    )
-  })
+      )
+    },
+  )
 
-  test('the MANOR hand deals a card for each page with its key, and CLOSE puts it away', () => {
-    scene(
-      ROOT,
-      given(modifyFields(home, { maybeSupportUrl: () => Option.none() })),
-      measureSurface,
-      expect(hand).toBeAbsent(),
-      ...openHandInScene(),
-      inside(
-        hand,
-        expectAll(all.selector('.hand-card')).toHaveCount(5),
-        expect(characterCard).toHaveAttr('aria-keyshortcuts', 'C'),
-        expect(munchopediaCard).toHaveAttr('aria-keyshortcuts', 'Z'),
-        expect(whatsNewCard).toHaveAttr('aria-keyshortcuts', 'L'),
-        expect(howToPlayCard).toHaveAttr('aria-keyshortcuts', 'I'),
-        expect(role('link', { name: /^Tip jar/ })).toBeAbsent(),
-        click(closeButton),
-      ),
-      ...closeDialogInScene(),
-      expect(hand).toBeAbsent(),
-      expect(manorButton).toExist(),
-    )
-  })
-
-  test('V deals the hand from the keyboard, and the arrow keys walk its cards, the Code card last, and wrap', () => {
-    const focusCard = (card: HandCard) =>
-      Command.resolve(FocusHandCard({ card }), Message.CompletedFocusHandCard())
-    scene(
-      ROOT,
-      given(modifyFields(home, { maybeSupportUrl: () => Option.none() })),
-      measureSurface,
-      emitPressedKey('KeyV'),
-      ...showDialogInScene(),
-      expect(hand).toExist(),
-      keydown(characterCard, 'ArrowRight'),
-      focusCard('Munchopedia'),
-      keydown(howToPlayCard, 'ArrowDown'),
-      focusCard('Code'),
-      keydown(role('link', { name: /^Code:/ }), 'ArrowRight'),
-      focusCard('Character'),
-      keydown(characterCard, 'ArrowLeft'),
-      focusCard('Code'),
-    )
-  })
-
-  test('the hand deals no tip jar card: the coffee stands in the corner', () => {
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      ...openHandInScene(),
-      inside(
-        hand,
-        expectAll(all.selector('.hand-card')).toHaveCount(5),
-        expect(role('link', { name: /coffee/i })).toBeAbsent(),
-      ),
-    )
-  })
-
-  test('the Code card is the last card, a plain link to the source on GitHub that opens in a new tab', () => {
-    const codeCard = role('link', { name: /^Code:/ })
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      expect(codeCard).toBeAbsent(),
-      ...openHandInScene(),
-      inside(
-        hand,
-        expect(codeCard).toHaveAttr(
-          'href',
-          'https://github.com/Tanner-Scadden/munch-manor',
-        ),
-        expect(codeCard).toHaveAttr('target', '_blank'),
-        expect(codeCard).toHaveAttr('rel', 'noopener noreferrer'),
-        expect(codeCard).toHaveAttr('data-card', 'Code'),
-        expect(codeCard).toHaveId('hand-card-code'),
-        expect(within(codeCard, selector('.hand-card-title'))).toHaveText(
-          'CODE',
-        ),
-        expect(within(codeCard, selector('.home-key'))).toBeAbsent(),
-      ),
-    )
-  })
-
-  test('each card opens its own page from the hand', () => {
-    Array.forEach(
+  it.effect('each card opens its own page from the hand', () =>
+    Effect.forEach(
       [
         { name: CARD_NAMES.Character, dialog: 'Profile' },
         { name: CARD_NAMES.Munchopedia, dialog: 'Munchopedia' },
         { name: `${CARD_NAMES.WhatsNew}. Something new`, dialog: "What's new" },
         { name: CARD_NAMES.HowToPlay, dialog: 'How to play' },
       ],
-      ({ name, dialog }) => {
-        scene(
-          ROOT,
-          given(home),
+      ({ name, dialog }) =>
+        Scene.scene(
+          APPLICATION,
+          Scene.given(home),
           measureSurface,
           ...openHandInScene(),
           ...pickCardInScene(name),
-          expect(hand).toBeAbsent(),
-          expect(role('dialog', { name: dialog })).toExist(),
+          Scene.expect(hand).toBeAbsent(),
+          Scene.expect(Scene.role('dialog', { name: dialog })).toExist(),
+        ),
+      { discard: true },
+    ),
+  )
+
+  it.effect(
+    'PLAY opens the lobby, a pick changes the difficulty without starting a run, and BACK goes home',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        ...openLobbyInScene(),
+        Scene.expect(lobbyScreen).toExist(),
+        Scene.expect(playButton).toBeAbsent(),
+        Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
+        Scene.click(Scene.role('button', { name: /^Hard:/ })),
+        resolveFocusLobbyInScene(),
+        Scene.expect(Scene.role('button', { name: /^Hard:/ })).toHaveAttr(
+          'aria-pressed',
+          'true',
+        ),
+        Scene.expect(Scene.selector('.coop[data-screen="Solo"]')).toExist(),
+        Scene.click(lobbyBackButton),
+        Scene.Command.resolve(
+          FocusHomeButton({ button: 'Play' }),
+          Message.CompletedFocusHomeButton(),
+        ),
+        Scene.expect(lobbyScreen).toBeAbsent(),
+        Scene.expect(playButton).toExist(),
+        Scene.expect(manorButton).toExist(),
+      ),
+  )
+
+  it.effect(
+    'Esc goes back from the lobby, and X and E pick on a keyboard while a tap does on touch',
+    () =>
+      Effect.gen(function* () {
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(home),
+          measureSurface,
+          ...openLobbyInScene(),
+          emitPressedKey('KeyX'),
+          resolveFocusLobbyInScene(),
+          Scene.expect(Scene.role('button', { name: /^Hard:/ })).toHaveAttr(
+            'aria-pressed',
+            'true',
+          ),
+          emitPressedKey('KeyE'),
+          resolveFocusLobbyInScene(),
+          Scene.expect(Scene.role('button', { name: 'Endless' })).toHaveAttr(
+            'aria-pressed',
+            'true',
+          ),
+          emitPressedKey('Escape'),
+          Scene.Command.resolve(
+            FocusHomeButton({ button: 'Play' }),
+            Message.CompletedFocusHomeButton(),
+          ),
+          Scene.expect(lobbyScreen).toBeAbsent(),
         )
-      },
-    )
-  })
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(modifyFields(home, { lastDevice: () => 'Touch' })),
+          measureSurface,
+          ...openLobbyInScene(),
+          Scene.expect(Scene.selector('.home-key')).toBeAbsent(),
+          Scene.click(Scene.role('button', { name: /^Easy:/ })),
+          resolveFocusLobbyInScene(),
+          Scene.expect(Scene.role('button', { name: /^Easy:/ })).toHaveAttr(
+            'aria-pressed',
+            'true',
+          ),
+        )
+      }),
+  )
 
-  test('PLAY opens the lobby, a pick changes the difficulty without starting a run, and BACK goes home', () => {
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      ...openLobbyInScene(),
-      expect(lobbyScreen).toExist(),
-      expect(playButton).toBeAbsent(),
-      expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
-      click(role('button', { name: /^Hard:/ })),
-      resolveFocusLobbyInScene(),
-      expect(role('button', { name: /^Hard:/ })).toHaveAttr(
-        'aria-pressed',
-        'true',
+  it.effect(
+    'touch shows the same buttons in the same slots without key badges',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(modifyFields(home, { lastDevice: () => 'Touch' })),
+        measureSurface,
+        Scene.inside(
+          playCluster,
+          Scene.expectAll(Scene.all.role('button')).toHaveCount(2),
+        ),
+        Scene.expect(manorButton).toExist(),
+        Scene.expect(settingsButton).toExist(),
+        Scene.expect(Scene.selector('.home-key')).toBeAbsent(),
       ),
-      expect(selector('.coop[data-screen="Solo"]')).toExist(),
-      click(lobbyBackButton),
-      Command.resolve(
-        FocusHomeButton({ button: 'Play' }),
-        Message.CompletedFocusHomeButton(),
-      ),
-      expect(lobbyScreen).toBeAbsent(),
-      expect(playButton).toExist(),
-      expect(manorButton).toExist(),
-    )
-  })
+  )
 
-  test('Esc goes back from the lobby, and X and E pick on a keyboard while a tap does on touch', () => {
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      ...openLobbyInScene(),
-      emitPressedKey('KeyX'),
-      resolveFocusLobbyInScene(),
-      expect(role('button', { name: /^Hard:/ })).toHaveAttr(
-        'aria-pressed',
-        'true',
-      ),
-      emitPressedKey('KeyE'),
-      resolveFocusLobbyInScene(),
-      expect(role('button', { name: 'Endless' })).toHaveAttr(
-        'aria-pressed',
-        'true',
-      ),
-      emitPressedKey('Escape'),
-      Command.resolve(
-        FocusHomeButton({ button: 'Play' }),
-        Message.CompletedFocusHomeButton(),
-      ),
-      expect(lobbyScreen).toBeAbsent(),
-    )
-    scene(
-      ROOT,
-      given(modifyFields(home, { lastDevice: () => 'Touch' })),
-      measureSurface,
-      ...openLobbyInScene(),
-      expect(selector('.home-key')).toBeAbsent(),
-      click(role('button', { name: /^Easy:/ })),
-      resolveFocusLobbyInScene(),
-      expect(role('button', { name: /^Easy:/ })).toHaveAttr(
-        'aria-pressed',
-        'true',
-      ),
-    )
-  })
-
-  test('touch shows the same buttons in the same slots without key badges', () => {
-    scene(
-      ROOT,
-      given(modifyFields(home, { lastDevice: () => 'Touch' })),
-      measureSurface,
-      inside(playCluster, expectAll(all.role('button')).toHaveCount(2)),
-      expect(manorButton).toExist(),
-      expect(settingsButton).toExist(),
-      expect(selector('.home-key')).toBeAbsent(),
-    )
-  })
-
-  test('shows your best endless wave, fastest win, and kills', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('shows your best endless wave, fastest win, and kills', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFields(
           withBests(home, current => ({
             ...current,
@@ -338,36 +370,36 @@ describe('Home menu', () => {
         ),
       ),
       measureSurface,
-      inside(
+      Scene.inside(
         bests,
-        expect(text('12')).toExist(),
-        expect(text('6:42')).toExist(),
-        expect(text('341')).toExist(),
+        Scene.expect(Scene.text('12')).toExist(),
+        Scene.expect(Scene.text('6:42')).toExist(),
+        Scene.expect(Scene.text('341')).toExist(),
       ),
-      expect(
-        role('button', {
+      Scene.expect(
+        Scene.role('button', {
           name: /Best endless wave 12, Fastest win 6:42, Zombies splatted 341\. Opens the Munchopedia/,
         }),
       ).toExist(),
-    )
-  })
+    ),
+  )
 
-  test('the bests badge is a button that opens the Munchopedia', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('the bests badge is a button that opens the Munchopedia', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFields(home, {
           bests: current => modifyFields(current, { totalKills: () => 12 }),
         }),
       ),
       measureSurface,
-      click(bests),
+      Scene.click(bests),
       ...showDialogInScene(),
-      expect(role('dialog', { name: 'Munchopedia' })).toExist(),
-    )
-  })
+      Scene.expect(Scene.role('dialog', { name: 'Munchopedia' })).toExist(),
+    ),
+  )
 
-  test('a loaded save shows the bests from earlier visits', () => {
+  it.effect('a loaded save shows the bests from earlier visits', () => {
     const saved = {
       ...saveOf(home),
       bests: {
@@ -381,115 +413,133 @@ describe('Home menu', () => {
         },
       },
     }
-    scene(
-      ROOT,
-      given(restoreSave(home, saved)),
+    return Scene.scene(
+      APPLICATION,
+      Scene.given(restoreSave(home, saved)),
       measureSurface,
-      inside(bests, expect(text('9')).toExist(), expect(text('97')).toExist()),
-    )
-  })
-
-  test('Enter opens the lobby, and Enter again plays the mode E chose there', () => {
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      emitPressedKey('Enter'),
-      resolveFocusLobbyInScene(),
-      expect(lobbyScreen).toExist(),
-      expect(manorButton).toBeAbsent(),
-      emitPressedKey('Enter'),
-      expect(role('status')).toContainText(PREPARING),
-      expect(lobbyScreen).toBeAbsent(),
-    )
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      inside(
-        playCluster,
-        expect(selector('.home-play')).toHaveAttr('id', 'home-play'),
+      Scene.inside(
+        bests,
+        Scene.expect(Scene.text('9')).toExist(),
+        Scene.expect(Scene.text('97')).toExist(),
       ),
-      emitPressedKey('KeyE'),
-      expect(lobbyScreen).toBeAbsent(),
-      emitPressedKey('Enter'),
-      resolveFocusLobbyInScene(),
-      emitPressedKey('KeyE'),
-      resolveFocusLobbyInScene(),
-      expect(role('button', { name: 'Endless' })).toHaveAttr(
-        'aria-pressed',
-        'true',
+    )
+  })
+
+  it.effect(
+    'Enter opens the lobby, and Enter again plays the mode E chose there',
+    () =>
+      Effect.gen(function* () {
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(home),
+          measureSurface,
+          emitPressedKey('Enter'),
+          resolveFocusLobbyInScene(),
+          Scene.expect(lobbyScreen).toExist(),
+          Scene.expect(manorButton).toBeAbsent(),
+          emitPressedKey('Enter'),
+          Scene.expect(Scene.role('status')).toContainText(PREPARING),
+          Scene.expect(lobbyScreen).toBeAbsent(),
+        )
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(home),
+          measureSurface,
+          Scene.inside(
+            playCluster,
+            Scene.expect(Scene.selector('.home-play')).toHaveAttr(
+              'id',
+              'home-play',
+            ),
+          ),
+          emitPressedKey('KeyE'),
+          Scene.expect(lobbyScreen).toBeAbsent(),
+          emitPressedKey('Enter'),
+          resolveFocusLobbyInScene(),
+          emitPressedKey('KeyE'),
+          resolveFocusLobbyInScene(),
+          Scene.expect(Scene.role('button', { name: 'Endless' })).toHaveAttr(
+            'aria-pressed',
+            'true',
+          ),
+          emitPressedKey('Enter'),
+          Scene.expect(Scene.role('status')).toContainText(
+            'Get ready for endless wave 1.',
+          ),
+        )
+      }),
+  )
+
+  it.effect(
+    'C opens the Profile straight from the menu, without the hand',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        emitPressedKey('KeyC'),
+        ...showDialogInScene(),
+        Scene.expect(Scene.role('dialog', { name: 'Profile' })).toExist(),
+        Scene.expect(Scene.role('tab', { name: 'Look' })).toHaveAttr(
+          'aria-selected',
+          'true',
+        ),
+        Scene.expect(hand).toBeAbsent(),
       ),
-      emitPressedKey('Enter'),
-      expect(role('status')).toContainText('Get ready for endless wave 1.'),
-    )
-  })
+  )
 
-  test('C opens the Profile straight from the menu, without the hand', () => {
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      emitPressedKey('KeyC'),
-      ...showDialogInScene(),
-      expect(role('dialog', { name: 'Profile' })).toExist(),
-      expect(role('tab', { name: 'Look' })).toHaveAttr('aria-selected', 'true'),
-      expect(hand).toBeAbsent(),
-    )
-  })
-
-  test('L, Z, I, and O open their pages straight from the menu', () => {
-    Array.forEach(
+  it.effect('L, Z, I, and O open their pages straight from the menu', () =>
+    Effect.forEach(
       [
         { key: 'KeyL', dialog: "What's new" },
         { key: 'KeyZ', dialog: 'Munchopedia' },
         { key: 'KeyI', dialog: 'How to play' },
         { key: 'KeyO', dialog: 'Profile' },
       ],
-      ({ key, dialog }) => {
-        scene(
-          ROOT,
-          given(home),
+      ({ key, dialog }) =>
+        Scene.scene(
+          APPLICATION,
+          Scene.given(home),
           measureSurface,
           emitPressedKey(key),
           ...showDialogInScene(),
-          expect(role('dialog', { name: dialog })).toExist(),
-          expect(hand).toBeAbsent(),
-        )
-      },
-    )
-  })
+          Scene.expect(Scene.role('dialog', { name: dialog })).toExist(),
+          Scene.expect(hand).toBeAbsent(),
+        ),
+      { discard: true },
+    ),
+  )
 
-  test('without a support link the arrow keys skip the coffee', () => {
-    scene(
-      ROOT,
-      given(modifyFields(home, { maybeSupportUrl: () => Option.none() })),
+  it.effect('without a support link the arrow keys skip the coffee', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(modifyFields(home, { maybeSupportUrl: () => Option.none() })),
       measureSurface,
       emitPressedKey('ArrowRight'),
-      Command.resolve(
+      Scene.Command.resolve(
         FocusHomeButton({ button: 'Play' }),
         Message.CompletedFocusHomeButton(),
       ),
       emitPressedKey('ArrowUp'),
-      Command.resolve(
+      Scene.Command.resolve(
         FocusHomeButton({ button: 'Settings' }),
         Message.CompletedFocusHomeButton(),
       ),
       emitPressedKey('ArrowUp'),
-      Command.resolve(
+      Scene.Command.resolve(
         FocusHomeButton({ button: 'Manor' }),
         Message.CompletedFocusHomeButton(),
       ),
-    )
-  })
+    ),
+  )
 
-  test('arrow keys walk the buttons in order and wrap', () => {
-    scene(
-      ROOT,
-      given(home),
+  it.effect('arrow keys walk the buttons in order and wrap', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(home),
       measureSurface,
       emitPressedKey('ArrowRight'),
-      Command.resolve(
+      Scene.Command.resolve(
         FocusHomeButton({ button: 'Play' }),
         Message.CompletedFocusHomeButton(),
       ),
@@ -497,23 +547,23 @@ describe('Home menu', () => {
         ['Coop', 'Manor', 'Support', 'Settings', 'Play'] as const,
         button => [
           emitPressedKey('ArrowDown'),
-          Command.resolve(
+          Scene.Command.resolve(
             FocusHomeButton({ button }),
             Message.CompletedFocusHomeButton(),
           ),
         ],
       ),
       emitPressedKey('ArrowUp'),
-      Command.resolve(
+      Scene.Command.resolve(
         FocusHomeButton({ button: 'Settings' }),
         Message.CompletedFocusHomeButton(),
       ),
-    )
-  })
+    ),
+  )
 
   // NOTE: every menu dialog closes with the one shared button: the red X on
   // a small face inside a 48 px see-through button, on the Escape key.
-  test.each([
+  it.effect.each([
     { dialog: 'The manor', open: openHandInScene() },
     {
       dialog: 'Profile',
@@ -533,244 +583,290 @@ describe('Home menu', () => {
     },
     {
       dialog: 'Profile',
-      open: [click(settingsButton), ...showDialogInScene()],
+      open: [Scene.click(settingsButton), ...showDialogInScene()],
     },
     {
       dialog: 'Hero',
       open: [
         ...openLobbyInScene(),
-        click(role('button', { name: /^Hero:/ })),
+        Scene.click(Scene.role('button', { name: /^Hero:/ })),
         ...showDialogInScene(),
       ],
     },
-  ])('$dialog (#$#) closes with the shared close X', ({ dialog, open }) => {
-    scene(
-      ROOT,
-      given(home),
+  ])('$dialog (#$#) closes with the shared close X', ({ dialog, open }) =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(home),
       measureSurface,
       ...open,
-      inside(
-        role('dialog', { name: dialog }),
-        expect(closeButton).toHaveClass('menu-close'),
-        expect(closeButton).toHaveAttr('aria-keyshortcuts', 'Escape'),
-        expect(within(closeButton, selector('.menu-close-face'))).toExist(),
-        expect(within(closeButton, selector('.menu-close-icon'))).toExist(),
-        expect(closeButton).toHaveText(''),
-        click(closeButton),
+      Scene.inside(
+        Scene.role('dialog', { name: dialog }),
+        Scene.expect(closeButton).toHaveClass('menu-close'),
+        Scene.expect(closeButton).toHaveAttr('aria-keyshortcuts', 'Escape'),
+        Scene.expect(
+          Scene.within(closeButton, Scene.selector('.menu-close-face')),
+        ).toExist(),
+        Scene.expect(
+          Scene.within(closeButton, Scene.selector('.menu-close-icon')),
+        ).toExist(),
+        Scene.expect(closeButton).toHaveText(''),
+        Scene.click(closeButton),
       ),
       ...closeDialogInScene(),
-      expect(role('dialog', { name: dialog })).toBeAbsent(),
-    )
-  })
+      Scene.expect(Scene.role('dialog', { name: dialog })).toBeAbsent(),
+    ),
+  )
 
-  test('How to play shows the controls as cards for the device, and its X closes it', () => {
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      ...openHandInScene(),
-      ...pickCardInScene(CARD_NAMES.HowToPlay),
-      inside(
-        role('dialog', { name: 'How to play' }),
-        inside(
-          role('list', { name: 'Controls' }),
-          expectAll(all.role('listitem')).toHaveCount(10),
+  it.effect(
+    'How to play shows the controls as cards for the device, and its X closes it',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        ...openHandInScene(),
+        ...pickCardInScene(CARD_NAMES.HowToPlay),
+        Scene.inside(
+          Scene.role('dialog', { name: 'How to play' }),
+          Scene.inside(
+            Scene.role('list', { name: 'Controls' }),
+            Scene.expectAll(Scene.all.role('listitem')).toHaveCount(10),
+          ),
+          Scene.expect(Scene.role('list', { name: 'More keys' })).toExist(),
+          Scene.expect(Scene.role('region', { name: 'On the menu' })).toExist(),
+          Scene.click(Scene.role('button', { name: 'Close' })),
         ),
-        expect(role('list', { name: 'More keys' })).toExist(),
-        expect(role('region', { name: 'On the menu' })).toExist(),
-        click(role('button', { name: 'Close' })),
+        ...closeDialogInScene(),
+        Scene.expect(
+          Scene.role('dialog', { name: 'How to play' }),
+        ).toBeAbsent(),
+        Scene.expect(manorButton).toExist(),
       ),
-      ...closeDialogInScene(),
-      expect(role('dialog', { name: 'How to play' })).toBeAbsent(),
-      expect(manorButton).toExist(),
-    )
-  })
+  )
 
-  test('the gear opens the Profile on Settings, and its tiles toggle sound, music, screen shake, and the big cursor', () => {
-    const soundToggle = role('button', { name: 'Sound' })
-    const musicToggle = role('button', { name: 'Music' })
-    const shakeToggle = role('button', { name: 'Screen shake' })
-    const cursorToggle = role('button', { name: 'Big cursor' })
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      click(settingsButton),
-      ...showDialogInScene(),
-      expect(role('dialog', { name: 'Profile' })).toExist(),
-      expect(role('tab', { name: 'Settings' })).toHaveAttr(
-        'aria-selected',
-        'true',
-      ),
-      expect(soundToggle).toHaveAttr('aria-pressed', 'true'),
-      expect(soundToggle).toHaveAttr('aria-keyshortcuts', 'M'),
-      expect(musicToggle).toHaveAttr('aria-keyshortcuts', 'N'),
-      expect(shakeToggle).toHaveAttr('aria-pressed', 'true'),
-      expect(role('button', { name: 'Full screen' })).toBeAbsent(),
-      click(soundToggle),
-      expect(soundToggle).toHaveAttr('aria-pressed', 'false'),
-      click(musicToggle),
-      expect(musicToggle).toHaveAttr('aria-pressed', 'false'),
-      click(shakeToggle),
-      expect(shakeToggle).toHaveAttr('aria-pressed', 'false'),
-      expect(cursorToggle).toHaveAttr('aria-pressed', 'true'),
-      expect(selector('.game-root')).toHaveAttr('data-cursor', 'Bold'),
-      click(cursorToggle),
-      expect(cursorToggle).toHaveAttr('aria-pressed', 'false'),
-      expect(selector('.game-root')).toHaveAttr('data-cursor', 'Thin'),
-    )
-  })
-
-  test('Reset tutorial asks first, then says the tips will show again', () => {
-    const resetButton = role('button', { name: 'Reset tutorial' })
-    const keepButton = role('button', { name: 'Keep' })
-    const confirmButton = role('button', { name: 'Reset' })
-    const focusReset = (id: string) =>
-      Command.resolve(
-        FocusTutorialReset({ id }),
-        ProfileMessage.CompletedFocusTutorialReset(),
+  it.effect(
+    'the gear opens the Profile on Settings, and its tiles toggle sound, music, screen shake, and the big cursor',
+    () => {
+      const soundToggle = Scene.role('button', { name: 'Sound' })
+      const musicToggle = Scene.role('button', { name: 'Music' })
+      const shakeToggle = Scene.role('button', { name: 'Screen shake' })
+      const cursorToggle = Scene.role('button', { name: 'Big cursor' })
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(home),
+        measureSurface,
+        Scene.click(settingsButton),
+        ...showDialogInScene(),
+        Scene.expect(Scene.role('dialog', { name: 'Profile' })).toExist(),
+        Scene.expect(Scene.role('tab', { name: 'Settings' })).toHaveAttr(
+          'aria-selected',
+          'true',
+        ),
+        Scene.expect(soundToggle).toHaveAttr('aria-pressed', 'true'),
+        Scene.expect(soundToggle).toHaveAttr('aria-keyshortcuts', 'M'),
+        Scene.expect(musicToggle).toHaveAttr('aria-keyshortcuts', 'N'),
+        Scene.expect(shakeToggle).toHaveAttr('aria-pressed', 'true'),
+        Scene.expect(
+          Scene.role('button', { name: 'Full screen' }),
+        ).toBeAbsent(),
+        Scene.click(soundToggle),
+        Scene.expect(soundToggle).toHaveAttr('aria-pressed', 'false'),
+        Scene.click(musicToggle),
+        Scene.expect(musicToggle).toHaveAttr('aria-pressed', 'false'),
+        Scene.click(shakeToggle),
+        Scene.expect(shakeToggle).toHaveAttr('aria-pressed', 'false'),
+        Scene.expect(cursorToggle).toHaveAttr('aria-pressed', 'true'),
+        Scene.expect(Scene.selector('.game-root')).toHaveAttr(
+          'data-cursor',
+          'Bold',
+        ),
+        Scene.click(cursorToggle),
+        Scene.expect(cursorToggle).toHaveAttr('aria-pressed', 'false'),
+        Scene.expect(Scene.selector('.game-root')).toHaveAttr(
+          'data-cursor',
+          'Thin',
+        ),
       )
-    scene(
-      ROOT,
-      given(modifyFields(home, { saveStatus: () => 'Read' })),
-      measureSurface,
-      click(settingsButton),
-      ...showDialogInScene(),
-      click(resetButton),
-      focusReset(KEEP_TUTORIAL_BUTTON_ID),
-      expect(text('Show the tips again?')).toExist(),
-      click(keepButton),
-      focusReset(RESET_TUTORIAL_BUTTON_ID),
-      expect(keepButton).toBeAbsent(),
-      click(resetButton),
-      focusReset(KEEP_TUTORIAL_BUTTON_ID),
-      click(confirmButton),
-      focusReset(RESET_TUTORIAL_BUTTON_ID),
-      Command.resolve(WriteSave, Message.CompletedWriteSave()),
-      expect(text('Tips are back.')).toExist(),
-    )
-  })
+    },
+  )
 
-  test('a press on a menu button never reaches the game surface', () => {
-    Array.forEach([playButton, manorButton, settingsButton], button => {
-      vitestExpect(() =>
-        scene(
-          ROOT,
-          given(modifyFields(home, { lastDevice: () => 'Touch' })),
-          measureSurface,
-          pointerDown(button, { pointerType: 'touch', pointerId: 4 }),
-        ),
-      ).toThrow(NO_POINTERDOWN_PATH)
-    })
-  })
+  it.effect(
+    'Reset tutorial asks first, then says the tips will show again',
+    () => {
+      const resetButton = Scene.role('button', { name: 'Reset tutorial' })
+      const keepButton = Scene.role('button', { name: 'Keep' })
+      const confirmButton = Scene.role('button', { name: 'Reset' })
+      const focusReset = (id: string) =>
+        Scene.Command.resolve(
+          FocusTutorialReset({ id }),
+          ProfileMessage.CompletedFocusTutorialReset(),
+        )
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(modifyFields(home, { saveStatus: () => 'Read' })),
+        measureSurface,
+        Scene.click(settingsButton),
+        ...showDialogInScene(),
+        Scene.click(resetButton),
+        focusReset(KEEP_TUTORIAL_BUTTON_ID),
+        Scene.expect(Scene.text('Show the tips again?')).toExist(),
+        Scene.click(keepButton),
+        focusReset(RESET_TUTORIAL_BUTTON_ID),
+        Scene.expect(keepButton).toBeAbsent(),
+        Scene.click(resetButton),
+        focusReset(KEEP_TUTORIAL_BUTTON_ID),
+        Scene.click(confirmButton),
+        focusReset(RESET_TUTORIAL_BUTTON_ID),
+        Scene.Command.resolve(WriteSave, Message.CompletedWriteSave()),
+        Scene.expect(Scene.text('Tips are back.')).toExist(),
+      )
+    },
+  )
+
+  it.effect('a press on a menu button never reaches the game surface', () =>
+    Effect.forEach(
+      [playButton, manorButton, settingsButton],
+      button =>
+        Effect.exit(
+          Scene.scene(
+            APPLICATION,
+            Scene.given(modifyFields(home, { lastDevice: () => 'Touch' })),
+            measureSurface,
+            Scene.pointerDown(button, { pointerType: 'touch', pointerId: 4 }),
+          ),
+        ).pipe(Effect.map(expectNoPointerdownPath)),
+      { discard: true },
+    ),
+  )
 })
 
 describe('Menu from a run', () => {
-  test('the pause screen asks before leaving: Stay keeps the run paused', () => {
-    scene(
-      ROOT,
-      given(pausedRound),
-      measureSurface,
-      expect(pauseMenuButton).toHaveAttr('aria-keyshortcuts', 'H'),
-      click(pauseMenuButton),
-      ...showDialogInScene(),
-      expect(leaveQuestion).toExist(),
-      click(role('button', { name: 'Stay' })),
-      ...closeDialogInScene(),
-      expect(leaveQuestion).toBeAbsent(),
-      expect(role('status')).toHaveText(PAUSED),
-    )
-  })
+  it.effect(
+    'the pause screen asks before leaving: Stay keeps the run paused',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(pausedRound),
+        measureSurface,
+        Scene.expect(pauseMenuButton).toHaveAttr('aria-keyshortcuts', 'H'),
+        Scene.click(pauseMenuButton),
+        ...showDialogInScene(),
+        Scene.expect(leaveQuestion).toExist(),
+        Scene.click(Scene.role('button', { name: 'Stay' })),
+        ...closeDialogInScene(),
+        Scene.expect(leaveQuestion).toBeAbsent(),
+        Scene.expect(Scene.role('status')).toHaveText(PAUSED),
+      ),
+  )
 
-  test('Leave goes back to the home menu', () => {
-    scene(
-      ROOT,
-      given(pausedRound),
+  it.effect('Leave goes back to the home menu', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(pausedRound),
       measureSurface,
       emitPressedKey('KeyH'),
       ...showDialogInScene(),
-      inside(leaveQuestion, click(role('button', { name: 'Leave' }))),
-      ...closeDialogInScene(),
-      expect(manorButton).toExist(),
-      expect(pauseMenuButton).toBeAbsent(),
-    )
-  })
-
-  test('a press on the pause MENU button never reaches the game surface, so it cannot resume the run', () => {
-    vitestExpect(() =>
-      scene(
-        ROOT,
-        given(pausedRound),
-        measureSurface,
-        pointerDown(pauseMenuButton, { pointerType: 'touch', pointerId: 2 }),
+      Scene.inside(
+        leaveQuestion,
+        Scene.click(Scene.role('button', { name: 'Leave' })),
       ),
-    ).toThrow(NO_POINTERDOWN_PATH)
-  })
+      ...closeDialogInScene(),
+      Scene.expect(manorButton).toExist(),
+      Scene.expect(pauseMenuButton).toBeAbsent(),
+    ),
+  )
 
-  test('Game Over and Victory offer Menu after the grace, and it goes home', () => {
-    Array.forEach([Phase.GameOver({ wave: 4 }), Phase.Victory()], phase => {
-      scene(
-        ROOT,
-        given(modifyFields(home, { phase: () => phase })),
-        measureSurface,
-        expect(endMenuButton).toBeAbsent(),
-      )
-      scene(
-        ROOT,
-        given(afterGrace(phase)),
-        measureSurface,
-        shareMountSettles('Cancelled'),
-        expect(endMenuButton).toHaveAttr('aria-keyshortcuts', 'H'),
-        click(endMenuButton),
-        shareMountEnded(),
-        expect(manorButton).toExist(),
-      )
-      scene(
-        ROOT,
-        given(afterGrace(phase)),
-        measureSurface,
-        shareMountSettles('Cancelled'),
-        emitPressedKey('KeyH'),
-        shareMountEnded(),
-        expect(manorButton).toExist(),
-      )
-    })
-  })
+  it.effect(
+    'a press on the pause MENU button never reaches the game surface, so it cannot resume the run',
+    () =>
+      Effect.exit(
+        Scene.scene(
+          APPLICATION,
+          Scene.given(pausedRound),
+          measureSurface,
+          Scene.pointerDown(pauseMenuButton, {
+            pointerType: 'touch',
+            pointerId: 2,
+          }),
+        ),
+      ).pipe(Effect.map(expectNoPointerdownPath)),
+  )
+
+  it.effect(
+    'Game Over and Victory offer Menu after the grace, and it goes home',
+    () =>
+      Effect.forEach(
+        [Phase.GameOver({ wave: 4 }), Phase.Victory()],
+        phase =>
+          Effect.gen(function* () {
+            yield* Scene.scene(
+              APPLICATION,
+              Scene.given(modifyFields(home, { phase: () => phase })),
+              measureSurface,
+              Scene.expect(endMenuButton).toBeAbsent(),
+            )
+            yield* Scene.scene(
+              APPLICATION,
+              Scene.given(afterGrace(phase)),
+              measureSurface,
+              shareMountSettles('Cancelled'),
+              Scene.expect(endMenuButton).toHaveAttr('aria-keyshortcuts', 'H'),
+              Scene.click(endMenuButton),
+              shareMountEnded(),
+              Scene.expect(manorButton).toExist(),
+            )
+            yield* Scene.scene(
+              APPLICATION,
+              Scene.given(afterGrace(phase)),
+              measureSurface,
+              shareMountSettles('Cancelled'),
+              emitPressedKey('KeyH'),
+              shareMountEnded(),
+              Scene.expect(manorButton).toExist(),
+            )
+          }),
+        { discard: true },
+      ),
+  )
 })
 
 describe('the rotation tile', () => {
-  const rotateTile = role('button', { name: 'Turn with the phone' })
+  const rotateTile = Scene.role('button', { name: 'Turn with the phone' })
 
-  test('Settings shows ROTATE only on a phone that can lock how it turns', () => {
-    scene(
-      ROOT,
-      given(home),
-      measureSurface,
-      click(settingsButton),
-      ...showDialogInScene(),
-      expect(role('dialog', { name: 'Profile' })).toExist(),
-      expect(rotateTile).toBeAbsent(),
-    )
-    scene(
-      ROOT,
-      given(
-        modifyFields(home, {
-          lastDevice: () => 'Touch',
-          orientationLock: () => 'Supported',
-        }),
-      ),
-      measureSurface,
-      click(settingsButton),
-      ...showDialogInScene(),
-      expect(rotateTile).toHaveAttr('aria-pressed', 'false'),
-      expect(rotateTile).toContainText('LOCKED'),
-      click(rotateTile),
-      Command.resolve(
-        ApplyRotation({ rotation: 'Auto' }),
-        Message.CompletedApplyRotation(),
-      ),
-      expect(rotateTile).toHaveAttr('aria-pressed', 'true'),
-      expect(rotateTile).toContainText('AUTO'),
-    )
-  })
+  it.effect(
+    'Settings shows ROTATE only on a phone that can lock how it turns',
+    () =>
+      Effect.gen(function* () {
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(home),
+          measureSurface,
+          Scene.click(settingsButton),
+          ...showDialogInScene(),
+          Scene.expect(Scene.role('dialog', { name: 'Profile' })).toExist(),
+          Scene.expect(rotateTile).toBeAbsent(),
+        )
+        yield* Scene.scene(
+          APPLICATION,
+          Scene.given(
+            modifyFields(home, {
+              lastDevice: () => 'Touch',
+              orientationLock: () => 'Supported',
+            }),
+          ),
+          measureSurface,
+          Scene.click(settingsButton),
+          ...showDialogInScene(),
+          Scene.expect(rotateTile).toHaveAttr('aria-pressed', 'false'),
+          Scene.expect(rotateTile).toContainText('LOCKED'),
+          Scene.click(rotateTile),
+          Scene.Command.resolve(
+            ApplyRotation({ rotation: 'Auto' }),
+            Message.CompletedApplyRotation(),
+          ),
+          Scene.expect(rotateTile).toHaveAttr('aria-pressed', 'true'),
+          Scene.expect(rotateTile).toContainText('AUTO'),
+        )
+      }),
+  )
 })

@@ -1,11 +1,10 @@
-import { Array, Option } from 'effect'
-import { given, model, story } from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
-import { Message } from '../../../app/message'
+import { describe, expect, it, test } from '@effect/vitest'
+
 import { type Bot, type Model, Phase } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import { cameraFocus } from '../../../render/camera'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
 import {
@@ -18,7 +17,13 @@ import {
   withSeatLife,
   withZombies,
 } from '../../../test/model.fixture'
-import { press, release, ticks, zombieOf } from '../../../test/testing'
+import {
+  APPLICATION,
+  press,
+  release,
+  ticks,
+  zombieOf,
+} from '../../../test/testing'
 import {
   maybePlayerAt,
   modifyFocus,
@@ -59,71 +64,80 @@ const seatOf = (current: Model, slot: number) =>
   Option.getOrThrow(maybePlayerAt(current, slot))
 
 describe('in a fight', () => {
-  test('a bot shoots the zombie in front of it', () => {
+  it.effect('a bot shoots the zombie in front of it', () => {
     const fight = withZombies(
       placeSeat(1, 60, 60)(placeSeat(0, 30, 60)(crew())),
       [zombieOf('Shambler', 7, 110, 60, { hp: 6 })],
     )
-    story(
-      update,
-      given(fight),
+    return Story.story(
+      APPLICATION,
+      Story.given(fight),
       ...ticks(40, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(seatOf(current, 1).seat.shotsFired).toBeGreaterThan(0)
         expect(seatOf(current, 0).seat.shotsFired).toBe(0)
       }),
     )
   })
 
-  test('a bot keeps its distance: it backs off a zombie on top of it', () => {
-    const fight = withZombies(
-      placeSeat(1, 100, 60)(placeSeat(0, 30, 60)(crew())),
-      [zombieOf('Tank', 7, 112, 60)],
-    )
-    story(
-      update,
-      given(fight),
-      ...ticks(30, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).player.x).toBeLessThan(100)
-      }),
-    )
-  })
+  it.effect(
+    'a bot keeps its distance: it backs off a zombie on top of it',
+    () => {
+      const fight = withZombies(
+        placeSeat(1, 100, 60)(placeSeat(0, 30, 60)(crew())),
+        [zombieOf('Tank', 7, 112, 60)],
+      )
+      return Story.story(
+        APPLICATION,
+        Story.given(fight),
+        ...ticks(30, TICK_MS),
+        Story.model(current => {
+          expect(seatOf(current, 1).player.x).toBeLessThan(100)
+        }),
+      )
+    },
+  )
 
-  test('a bot does not back itself into a corner: it gets out and keeps moving', () => {
-    const cornered = withZombies(
-      placeSeat(1, 25, 155)(placeSeat(0, 200, 60)(crew())),
-      [zombieOf('Tank', 7, 50, 130, { speed: 20 })],
-    )
-    story(
-      update,
-      given(cornered),
-      ...ticks(90, TICK_MS),
-      model(current => {
-        const bot = seatOf(current, 1).player
-        expect(Math.hypot(bot.x - 10, bot.y - 170)).toBeGreaterThan(45)
-      }),
-    )
-  })
+  it.effect(
+    'a bot does not back itself into a corner: it gets out and keeps moving',
+    () => {
+      const cornered = withZombies(
+        placeSeat(1, 25, 155)(placeSeat(0, 200, 60)(crew())),
+        [zombieOf('Tank', 7, 50, 130, { speed: 20 })],
+      )
+      return Story.story(
+        APPLICATION,
+        Story.given(cornered),
+        ...ticks(90, TICK_MS),
+        Story.model(current => {
+          const bot = seatOf(current, 1).player
+          expect(Math.hypot(bot.x - 10, bot.y - 170)).toBeGreaterThan(45)
+        }),
+      )
+    },
+  )
 
-  test('a bot revives a downed human by standing still beside them', () => {
-    const downed = withSeatLife(
-      0,
-      Life.Downed({ bleedMs: 10_000, reviveMs: 0, callMs: 0 }),
-    )(placeSeat(1, 120, 60)(placeSeat(0, 30, 60, 0)(crew())))
-    story(
-      update,
-      given(downed),
-      model(current => {
-        expect(seatOf(current, 0).seat.life._tag).toBe('Downed')
-      }),
-      ...ticks(360, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 0).seat.life._tag).toBe('Standing')
-        expect(seatOf(current, 1).seat.revives).toBe(1)
-      }),
-    )
-  })
+  it.effect(
+    'a bot revives a downed human by standing still beside them',
+    () => {
+      const downed = withSeatLife(
+        0,
+        Life.Downed({ bleedMs: 10_000, reviveMs: 0, callMs: 0 }),
+      )(placeSeat(1, 120, 60)(placeSeat(0, 30, 60, 0)(crew())))
+      return Story.story(
+        APPLICATION,
+        Story.given(downed),
+        Story.model(current => {
+          expect(seatOf(current, 0).seat.life._tag).toBe('Downed')
+        }),
+        ...ticks(360, TICK_MS),
+        Story.model(current => {
+          expect(seatOf(current, 0).seat.life._tag).toBe('Standing')
+          expect(seatOf(current, 1).seat.revives).toBe(1)
+        }),
+      )
+    },
+  )
 
   test('a downed bot sits out, and the human can revive it', () => {
     const downed = withSeatLife(
@@ -141,125 +155,130 @@ describe('on its own', () => {
       seatOf(current, first).player.y - seatOf(current, second).player.y,
     )
 
-  test('a bot does not follow the human: it walks to its own post', () => {
+  it.effect('a bot does not follow the human: it walks to its own post', () => {
     const apart = modifyFields(
       placeSeat(1, 150, 90)(placeSeat(0, 40, 140)(crew())),
       { phase: () => BREAK },
     )
-    story(
-      update,
-      given(apart),
+    return Story.story(
+      APPLICATION,
+      Story.given(apart),
       ...ticks(240, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(distance(current, 0, 1)).toBeGreaterThan(60)
         expect(seatOf(current, 1).player.x).not.toBeCloseTo(150)
       }),
     )
   })
 
-  test('two bots side by side split up to posts of their own', () => {
+  it.effect('two bots side by side split up to posts of their own', () => {
     const twoBots = modifyFields(
       placeSeat(2, 152, 90)(placeSeat(1, 148, 90)(crewInWave(3))),
       { crewBots: () => [BOT, BOT], phase: () => BREAK },
     )
-    story(
-      update,
-      given(twoBots),
+    return Story.story(
+      APPLICATION,
+      Story.given(twoBots),
       ...ticks(300, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(distance(current, 1, 2)).toBeGreaterThan(60)
       }),
     )
   })
 
-  test('a bot hunts a zombie out of its sight range instead of waiting by the human', () => {
-    const far = withZombies(
-      placeSeat(1, 40, 70)(placeSeat(0, 30, 140)(crew())),
-      [zombieOf('Shambler', 7, 190, 70, { speed: 0, hp: 6 })],
-    )
-    story(
-      update,
-      given(far),
-      ...ticks(180, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).player.x).toBeGreaterThan(80)
-        expect(seatOf(current, 1).seat.shotsFired).toBeGreaterThan(0)
-      }),
-    )
-  })
+  it.effect(
+    'a bot hunts a zombie out of its sight range instead of waiting by the human',
+    () => {
+      const far = withZombies(
+        placeSeat(1, 40, 70)(placeSeat(0, 30, 140)(crew())),
+        [zombieOf('Shambler', 7, 190, 70, { speed: 0, hp: 6 })],
+      )
+      return Story.story(
+        APPLICATION,
+        Story.given(far),
+        ...ticks(180, TICK_MS),
+        Story.model(current => {
+          expect(seatOf(current, 1).player.x).toBeGreaterThan(80)
+          expect(seatOf(current, 1).seat.shotsFired).toBeGreaterThan(0)
+        }),
+      )
+    },
+  )
 })
 
 describe('power-ups', () => {
   const boostOf = (current: Model, slot: number) =>
     seatOf(current, slot).boosts.Damage._tag
 
-  test('a bot goes for a power-up near it, like a player would', () => {
+  it.effect('a bot goes for a power-up near it, like a player would', () => {
     const start = withPickups(
       placeSeat(1, 150, 90)(placeSeat(0, 30, 140)(crew())),
       [pickupAt(900, 'Damage', 150, 135)],
     )
-    story(
-      update,
-      given(start),
+    return Story.story(
+      APPLICATION,
+      Story.given(start),
       ...ticks(60, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(boostOf(current, 1)).toBe('On')
         expect(current.pickups).toEqual([])
       }),
     )
   })
 
-  test('it leaves one the human is nearer to', () => {
+  it.effect('it leaves one the human is nearer to', () => {
     const start = withPickups(
       placeSeat(1, 150, 90)(placeSeat(0, 150, 150)(crew())),
       [pickupAt(900, 'Damage', 150, 135)],
     )
-    story(
-      update,
-      given(start),
+    return Story.story(
+      APPLICATION,
+      Story.given(start),
       ...ticks(60, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(boostOf(current, 1)).toBe('Off')
         expect(current.pickups).toHaveLength(1)
       }),
     )
   })
 
-  test('it leaves a Heart at full health, and takes one when hurt', () => {
-    const start = (hp: number) =>
-      withPickups(placeSeat(1, 150, 90, hp)(placeSeat(0, 30, 140)(crew())), [
-        pickupAt(900, 'Heart', 150, 135),
-      ])
-    story(
-      update,
-      given(start(PLAYER_MAX_HP)),
-      ...ticks(60, TICK_MS),
-      model(current => {
-        expect(current.pickups).toHaveLength(1)
-      }),
-    )
-    story(
-      update,
-      given(start(2)),
-      ...ticks(60, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).player.hp).toBe(3)
-        expect(current.pickups).toEqual([])
-      }),
-    )
-  })
+  it.effect('it leaves a Heart at full health, and takes one when hurt', () =>
+    Effect.gen(function* () {
+      const start = (hp: number) =>
+        withPickups(placeSeat(1, 150, 90, hp)(placeSeat(0, 30, 140)(crew())), [
+          pickupAt(900, 'Heart', 150, 135),
+        ])
+      yield* Story.story(
+        APPLICATION,
+        Story.given(start(PLAYER_MAX_HP)),
+        ...ticks(60, TICK_MS),
+        Story.model(current => {
+          expect(current.pickups).toHaveLength(1)
+        }),
+      )
+      yield* Story.story(
+        APPLICATION,
+        Story.given(start(2)),
+        ...ticks(60, TICK_MS),
+        Story.model(current => {
+          expect(seatOf(current, 1).player.hp).toBe(3)
+          expect(current.pickups).toEqual([])
+        }),
+      )
+    }),
+  )
 
-  test('it grabs one in a break too', () => {
+  it.effect('it grabs one in a break too', () => {
     const stocked = withPickups(
       placeSeat(1, 150, 90)(placeSeat(0, 30, 140)(crew())),
       [pickupAt(900, 'Damage', 150, 135)],
     )
     const start = modifyFields(stocked, { phase: () => BREAK })
-    story(
-      update,
-      given(start),
+    return Story.story(
+      APPLICATION,
+      Story.given(start),
       ...ticks(60, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(boostOf(current, 1)).toBe('On')
       }),
     )
@@ -269,34 +288,36 @@ describe('power-ups', () => {
 describe('in a break', () => {
   const inBreak = modifyFields(crew(), { phase: () => BREAK })
 
-  test('presses READY with the human, and the wave starts', () => {
-    story(
-      update,
-      given(inBreak),
+  it.effect('presses READY with the human, and the wave starts', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(inBreak),
       press('Enter'),
       release('Enter'),
       ...ticks(3, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.phase._tag).toBe('Wave')
       }),
-    )
-  })
+    ),
+  )
 
-  test('presses READY after a short wait on its own, and the wave still waits for the human', () => {
-    story(
-      update,
-      given(inBreak),
-      ...ticks(40, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).seat.readiness).toBe('Waiting')
-      }),
-      ...ticks(300, TICK_MS),
-      model(current => {
-        expect(current.phase._tag).toBe('Preparation')
-        expect(seatOf(current, 1).seat.readiness).toBe('Ready')
-      }),
-    )
-  })
+  it.effect(
+    'presses READY after a short wait on its own, and the wave still waits for the human',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(inBreak),
+        ...ticks(40, TICK_MS),
+        Story.model(current => {
+          expect(seatOf(current, 1).seat.readiness).toBe('Waiting')
+        }),
+        ...ticks(300, TICK_MS),
+        Story.model(current => {
+          expect(current.phase._tag).toBe('Preparation')
+          expect(seatOf(current, 1).seat.readiness).toBe('Ready')
+        }),
+      ),
+  )
 
   const wounded = (current: Model) =>
     atSeat(current, 1, world =>
@@ -306,27 +327,27 @@ describe('in a break', () => {
       }),
     )
 
-  test('buys a heart at the stall when the human is elsewhere', () => {
-    story(
-      update,
-      given(placeSeat(0, 40, 40)(wounded(inBreak))),
+  it.effect('buys a heart at the stall when the human is elsewhere', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(placeSeat(0, 40, 40)(wounded(inBreak))),
       ...ticks(900, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(seatOf(current, 1).player.hp).toBeGreaterThan(3)
         expect(seatOf(current, 1).wallet.balance).toBeLessThan(200)
       }),
-    )
-  })
+    ),
+  )
 
-  test('never takes the human spot at the stall', () => {
+  it.effect('never takes the human spot at the stall', () => {
     const humanAtStall = placeSeat(
       0,
       STALL_BOX.left - 6,
       (STALL_BOX.top + STALL_BOX.bottom) / 2,
     )(wounded(inBreak))
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         atSeat(humanAtStall, 0, world =>
           modifyFocus(world, {
             shop: () => ShopState.Browsing({ focusedItem: 'Heart' }),
@@ -334,7 +355,7 @@ describe('in a break', () => {
         ),
       ),
       ...ticks(600, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(seatOf(current, 1).player.hp).toBe(3)
         expect(
           Math.hypot(
@@ -357,22 +378,22 @@ describe('the same World gives the same bot', () => {
     expect(botInputs(fight, [1]).get(1)?.trigger).toBe('Held')
   })
 
-  test('replaying the same frames plays the same run', () => {
-    const run = (): Model => {
-      let current = withZombies(
-        placeSeat(1, 60, 60)(placeSeat(0, 30, 60)(crew())),
-        [zombieOf('Shambler', 7, 110, 60, { speed: 12 })],
-      )
-      for (let frame = 0; frame < 200; frame += 1) {
-        current = update(
-          current,
-          Message.TickedFrame({ deltaTime: TICK_MS }),
-        ).model
-      }
-      return current
-    }
-    expect(playersOf(run())).toEqual(playersOf(run()))
-  })
+  it.effect('replaying the same frames plays the same run', () =>
+    Effect.gen(function* () {
+      const run = Story.story(
+        APPLICATION,
+        Story.given(
+          withZombies(placeSeat(1, 60, 60)(placeSeat(0, 30, 60)(crew())), [
+            zombieOf('Shambler', 7, 110, 60, { speed: 12 }),
+          ]),
+        ),
+        ...ticks(200, TICK_MS),
+      ).pipe(Effect.map(playersOf))
+      const first = yield* run
+      const second = yield* run
+      expect(second).toEqual(first)
+    }),
+  )
 })
 
 describe('what the player sees', () => {

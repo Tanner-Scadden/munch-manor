@@ -1,9 +1,9 @@
-import { Array, Option, String, pipe } from 'effect'
-import type { Canvas } from 'foldkit'
+import { Array, Effect, Option, String, pipe } from 'effect'
+import { type Canvas, Scene } from 'foldkit'
 import type { Html } from 'foldkit/html'
-import { Subscription, given, scene } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { WARM_UP_CLASS, sceneShapes } from '../../app/layers'
 import { Message } from '../../app/message'
@@ -40,7 +40,7 @@ import {
   type ZombieKind,
   ZombieState,
 } from '../../app/model'
-import { initialModel, update, view } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { startOrResume } from '../../app/runFlow'
 import {
   BLAST_MAX,
@@ -51,6 +51,7 @@ import {
   ZOMBIE_ALIVE_MAX,
 } from '../../shared/constants'
 import {
+  APPLICATION,
   SCENE_SUBSCRIPTIONS,
   WIDE_SURFACE,
   holdingSecond,
@@ -515,27 +516,26 @@ type FrameCost = Readonly<{
 
 type Measured = FrameCost & Readonly<{ steadyImagesDrawn: number }>
 
-const measureFrames = (model: Model): Measured => {
+// NOTE: the canvases of the frame once the surface is measured, and of the
+// next frame, once the mouse moves: the steady frame. Kept from the Scene's
+// taps, since a Scene compares no two views.
+const measureFrames = Effect.fnUntraced(function* (model: Model) {
   const renders: Array<ReadonlyArray<CanvasNode>> = []
-  const recordingView = (...args: Parameters<typeof view>) => {
-    const rendered = view(...args)
-    renders.push(canvasNodes(rendered.body))
-    return rendered
-  }
-  scene(
-    { update, view: recordingView, subscriptions: SCENE_SUBSCRIPTIONS },
-    given(model),
+  const keep = Scene.tap<Model, Message>(({ html }) => {
+    renders.push(canvasNodes(html))
+  })
+  yield* Scene.scene(
+    APPLICATION,
+    Scene.given(model),
     measureSurfaceAs(WIDE_SURFACE),
-    Subscription.emit(
+    keep,
+    Scene.Subscription.emit(
       SCENE_SUBSCRIPTIONS.mouseAim,
       Message.MovedMouse({ clientX: 900, clientY: 300 }),
     ),
+    keep,
   )
-  const last = Option.getOrElse(Array.last(renders), () => [])
-  const beforeLast = Option.getOrElse(
-    Array.get(renders, renders.length - 2),
-    () => [],
-  )
+  const [beforeLast = [], last = []] = renders
   const steady = paintCanvases(beforeLast, last)
   return {
     shapesBuilt: flatShapeCount(sceneShapes(model)),
@@ -544,8 +544,8 @@ const measureFrames = (model: Model): Measured => {
     steadyShapesPainted: steady.shapesPainted,
     fullRepaintPaintOps: paintCanvases([], last).paintOps,
     steadyImagesDrawn: steady.imagesDrawn,
-  }
-}
+  } satisfies Measured
+})
 
 // BUDGETS
 
@@ -725,23 +725,24 @@ const SCENARIOS: ReadonlyArray<Readonly<{ name: string; model: Model }>> = [
 ]
 
 describe('Frame cost', () => {
-  test.each(SCENARIOS)(
+  it.effect.each(SCENARIOS)(
     '$name stays within the canvas work budget',
-    ({ model }) => {
-      const measured = measureFrames(model)
-      const report = `measured ${jsonOf(measured)}\nbudget   ${jsonOf(BUDGET)}`
-      Array.forEach(BUDGET_KEYS, key => {
-        expect(
-          measured[key],
-          `${key} is over budget.\n${report}`,
-        ).toBeLessThanOrEqual(BUDGET[key])
-      })
-    },
+    ({ model }) =>
+      Effect.gen(function* () {
+        const measured = yield* measureFrames(model)
+        const report = `measured ${jsonOf(measured)}\nbudget   ${jsonOf(BUDGET)}`
+        Array.forEach(BUDGET_KEYS, key => {
+          expect(
+            measured[key],
+            `${key} is over budget.\n${report}`,
+          ).toBeLessThanOrEqual(BUDGET[key])
+        })
+      }),
   )
 
-  test.each(SCENARIOS)('$name draws its sprites as images', ({ model }) => {
-    expect(measureFrames(model).steadyImagesDrawn).toBeGreaterThanOrEqual(
-      IMAGES_DRAWN_MIN,
-    )
-  })
+  it.effect.each(SCENARIOS)('$name draws its sprites as images', ({ model }) =>
+    Effect.map(measureFrames(model), ({ steadyImagesDrawn }) => {
+      expect(steadyImagesDrawn).toBeGreaterThanOrEqual(IMAGES_DRAWN_MIN)
+    }),
+  )
 })

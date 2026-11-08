@@ -41,7 +41,7 @@
     "eqeqeq": ["error", "always"],
     "no-shadow": "error",
     "unicorn/require-post-message-target-origin": "error",
-    // NOTE: a scene's tap step runs its expects, as do @effect/vitest's
+    // NOTE: a scene's tap step (`Scene.tap`) runs its expects, as do @effect/vitest's
     // it.effect, it.effect.each, and it.live, and vitest takes a message as
     // expect's second argument.
     "vitest/no-standalone-expect": [
@@ -49,6 +49,7 @@
       {
         "additionalTestBlockFunctions": [
           "tap",
+          "Scene.tap",
           "it.effect",
           "it.effect.each",
           "it.live"
@@ -374,7 +375,8 @@
     },
     {
       // NOTE: tests and their shared setup run Effects with it.effect from
-      // @effect/vitest, never by hand (munch/no-run-in-tests).
+      // @effect/vitest, never by hand (munch/no-run-in-tests), and every
+      // Block-aware Story and Scene they build runs (munch/no-floating-story).
       "files": [
         "**/*.test.ts",
         "**/test/**/*.ts",
@@ -384,7 +386,10 @@
         "src/test/vitest-setup.ts",
         "src/test/testPng.ts"
       ],
-      "rules": { "munch/no-run-in-tests": "error" }
+      "rules": {
+        "munch/no-run-in-tests": "error",
+        "munch/no-floating-story": "error"
+      }
     },
     // NOTE: the files allowed raw JSON.parse and JSON.stringify, each with
     // its reason. Everything else reads and writes JSON through a Schema.

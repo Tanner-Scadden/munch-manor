@@ -1,13 +1,8 @@
-import { Array, Option, Result, pipe } from 'effect'
-import {
-  Command,
-  type StorySimulation,
-  given,
-  model,
-  story,
-} from 'foldkit/story'
+import { Array, Effect, Option, Result, pipe } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import {
@@ -19,7 +14,6 @@ import {
   type Zombie,
   ZombieKind,
 } from '../../app/model'
-import { update } from '../../app/pureApp'
 import { PlaySound } from '../../app/update/sound'
 import { frameAt } from '../../art/sprite'
 import {
@@ -29,7 +23,7 @@ import {
 } from '../../art/sprites/zombies'
 import { DECAL_MAX, FIXED_STEP_MS, PARTICLE_MAX } from '../../shared/constants'
 import { quietWave } from '../../test/model.fixture'
-import { bulletInto, tick, zombieOf } from '../../test/testing'
+import { APPLICATION, bulletInto, tick, zombieOf } from '../../test/testing'
 import { PARLOUR } from '../../world/level/arena'
 import {
   ZOMBIE_KINDS,
@@ -128,61 +122,67 @@ describe('wear stages', () => {
 })
 
 describe('parts coming off', () => {
-  test('a Groaner sheds its arm, then its scalp, once each, and nothing on the kill', () => {
-    const groaner = zombieOf('Shambler', 100, FAR_X, ROW_Y, { hp: 3 })
-    const shed: Array<
-      ReadonlyArray<Readonly<{ kind: ZombieKind; stage: number }>>
-    > = []
-    const record = model((current: Model) => {
-      shed.push(shedIn(current.frameEvents))
-    })
-    story(
-      update,
-      given(withScene([groaner], [bulletInto(500, groaner)])),
-      tick(FRAME_MS),
-      record,
-      tick(FRAME_MS),
-      record,
-      model(current => {
-        expect(current.zombies[0]?.hp).toBe(2)
-      }),
-    )
-    expect(shed).toEqual([[{ kind: 'Shambler', stage: 0 }], []])
+  it.effect(
+    'a Groaner sheds its arm, then its scalp, once each, and nothing on the kill',
+    () =>
+      Effect.gen(function* () {
+        const groaner = zombieOf('Shambler', 100, FAR_X, ROW_Y, { hp: 3 })
+        const shed: Array<
+          ReadonlyArray<Readonly<{ kind: ZombieKind; stage: number }>>
+        > = []
+        const record = Story.model((current: Model) => {
+          shed.push(shedIn(current.frameEvents))
+        })
+        yield* Story.story(
+          APPLICATION,
+          Story.given(withScene([groaner], [bulletInto(500, groaner)])),
+          tick(FRAME_MS),
+          record,
+          tick(FRAME_MS),
+          record,
+          Story.model(current => {
+            expect(current.zombies[0]?.hp).toBe(2)
+          }),
+        )
+        expect(shed).toEqual([[{ kind: 'Shambler', stage: 0 }], []])
 
-    const halfWorn = modifyFields(groaner, { hp: () => 2 })
-    const nearlyGone = modifyFields(groaner, { hp: () => 1 })
-    story(
-      update,
-      given(withScene([halfWorn], [bulletInto(501, halfWorn)])),
-      tick(FRAME_MS),
-      model(({ frameEvents }) => {
-        expect(shedIn(frameEvents)).toEqual([{ kind: 'Shambler', stage: 1 }])
+        const halfWorn = modifyFields(groaner, { hp: () => 2 })
+        const nearlyGone = modifyFields(groaner, { hp: () => 1 })
+        yield* Story.story(
+          APPLICATION,
+          Story.given(withScene([halfWorn], [bulletInto(501, halfWorn)])),
+          tick(FRAME_MS),
+          Story.model(({ frameEvents }) => {
+            expect(shedIn(frameEvents)).toEqual([
+              { kind: 'Shambler', stage: 1 },
+            ])
+          }),
+          tick(FRAME_MS),
+          Story.model(({ frameEvents }) => {
+            expect(shedIn(frameEvents)).toEqual([])
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(withScene([nearlyGone], [bulletInto(502, nearlyGone)])),
+          tick(FRAME_MS),
+          Story.model(({ frameEvents }) => {
+            expect(
+              Array.some(frameEvents, GameEvent.isAnyOf(['ZombieKilled'])),
+            ).toBe(true)
+            expect(shedIn(frameEvents)).toEqual([])
+          }),
+        )
       }),
-      tick(FRAME_MS),
-      model(({ frameEvents }) => {
-        expect(shedIn(frameEvents)).toEqual([])
-      }),
-    )
-    story(
-      update,
-      given(withScene([nearlyGone], [bulletInto(502, nearlyGone)])),
-      tick(FRAME_MS),
-      model(({ frameEvents }) => {
-        expect(
-          Array.some(frameEvents, GameEvent.isAnyOf(['ZombieKilled'])),
-        ).toBe(true)
-        expect(shedIn(frameEvents)).toEqual([])
-      }),
-    )
-  })
+  )
 
-  test('one big hit past two thresholds sheds both parts in order', () => {
+  it.effect('one big hit past two thresholds sheds both parts in order', () => {
     const lug = zombieOf('Tank', 100, FAR_X, ROW_Y, { hp: 36 })
-    story(
-      update,
-      given(withScene([lug], [bulletInto(500, lug, { damage: 19 })])),
+    return Story.story(
+      APPLICATION,
+      Story.given(withScene([lug], [bulletInto(500, lug, { damage: 19 })])),
       tick(FRAME_MS),
-      model(({ frameEvents, zombies }) => {
+      Story.model(({ frameEvents, zombies }) => {
         expect(zombies[0]?.hp).toBe(17)
         expect(shedIn(frameEvents)).toEqual([
           { kind: 'Tank', stage: 0 },
@@ -192,30 +192,35 @@ describe('parts coming off', () => {
     )
   })
 
-  test('the part flies off and lands as a decal that stays', () => {
-    const groaner = zombieOf('Shambler', 100, FAR_X, ROW_Y, { hp: 3 })
-    const landed: Array<ReadonlyArray<Decal>> = []
-    story(
-      update,
-      given(withScene([groaner], [bulletInto(500, groaner)])),
-      tick(FRAME_MS),
-      model(({ particles }) => {
-        const arms = Array.filter(particles, ({ kind }) => kind === 'GreenLimb')
-        expect(arms).toHaveLength(1)
-        expect(Array.every(arms, ({ velocityZ }) => velocityZ > 0)).toBe(true)
-      }),
-      ...Array.makeBy(150, () => tick(FRAME_MS)),
-      model(({ decals, particles }) => {
-        landed.push(decals)
-        expect(
-          Array.filter(particles, ({ kind }) => kind === 'GreenLimb'),
-        ).toHaveLength(0)
-      }),
-    )
-    expect(
-      Array.filter(landed[0] ?? [], ({ kind }) => kind === 'GreenLimb'),
-    ).toHaveLength(1)
-  })
+  it.effect('the part flies off and lands as a decal that stays', () =>
+    Effect.gen(function* () {
+      const groaner = zombieOf('Shambler', 100, FAR_X, ROW_Y, { hp: 3 })
+      const landed: Array<ReadonlyArray<Decal>> = []
+      yield* Story.story(
+        APPLICATION,
+        Story.given(withScene([groaner], [bulletInto(500, groaner)])),
+        tick(FRAME_MS),
+        Story.model(({ particles }) => {
+          const arms = Array.filter(
+            particles,
+            ({ kind }) => kind === 'GreenLimb',
+          )
+          expect(arms).toHaveLength(1)
+          expect(Array.every(arms, ({ velocityZ }) => velocityZ > 0)).toBe(true)
+        }),
+        ...Array.makeBy(150, () => tick(FRAME_MS)),
+        Story.model(({ decals, particles }) => {
+          landed.push(decals)
+          expect(
+            Array.filter(particles, ({ kind }) => kind === 'GreenLimb'),
+          ).toHaveLength(0)
+        }),
+      )
+      expect(
+        Array.filter(landed[0] ?? [], ({ kind }) => kind === 'GreenLimb'),
+      ).toHaveLength(1)
+    }),
+  )
 })
 
 describe('caps', () => {
@@ -249,39 +254,43 @@ describe('caps', () => {
     height: 1,
   })
 
-  test('a whole crowd shedding at once never passes the particle or decal caps', () => {
-    const packed = modifyFields(withScene(crowd), {
-      particles: () => Array.makeBy(PARTICLE_MAX, fullParticle),
-      decals: () => Array.makeBy(DECAL_MAX, fullDecal),
-    })
-    const heavyHits = (current: Model): Model =>
-      reload(
-        current,
-        Array.map(current.zombies, (zombie, index) =>
-          bulletInto(900 + index, zombie, { damage: 9 }),
-        ),
-      )
-    const shedCounts: Array<number> = []
-    story(
-      update,
-      given(heavyHits(packed)),
-      tick(FRAME_MS),
-      model(current => {
-        shedCounts.push(shedIn(current.frameEvents).length)
-        expect(current.particles.length).toBeLessThanOrEqual(PARTICLE_MAX)
-        expect(current.decals.length).toBeLessThanOrEqual(DECAL_MAX)
+  it.effect(
+    'a whole crowd shedding at once never passes the particle or decal caps',
+    () =>
+      Effect.gen(function* () {
+        const packed = modifyFields(withScene(crowd), {
+          particles: () => Array.makeBy(PARTICLE_MAX, fullParticle),
+          decals: () => Array.makeBy(DECAL_MAX, fullDecal),
+        })
+        const heavyHits = (current: Model): Model =>
+          reload(
+            current,
+            Array.map(current.zombies, (zombie, index) =>
+              bulletInto(900 + index, zombie, { damage: 9 }),
+            ),
+          )
+        const shedCounts: Array<number> = []
+        yield* Story.story(
+          APPLICATION,
+          Story.given(heavyHits(packed)),
+          tick(FRAME_MS),
+          Story.model(current => {
+            shedCounts.push(shedIn(current.frameEvents).length)
+            expect(current.particles.length).toBeLessThanOrEqual(PARTICLE_MAX)
+            expect(current.decals.length).toBeLessThanOrEqual(DECAL_MAX)
+          }),
+          ...Array.makeBy(200, () => tick(FRAME_MS)),
+          Story.model(current => {
+            expect(current.particles.length).toBeLessThanOrEqual(PARTICLE_MAX)
+            expect(current.decals.length).toBe(DECAL_MAX)
+            expect(
+              Array.some(current.decals, ({ kind }) => kind === 'PotLid'),
+            ).toBe(true)
+          }),
+        )
+        expect(shedCounts).toEqual([crowd.length])
       }),
-      ...Array.makeBy(200, () => tick(FRAME_MS)),
-      model(current => {
-        expect(current.particles.length).toBeLessThanOrEqual(PARTICLE_MAX)
-        expect(current.decals.length).toBe(DECAL_MAX)
-        expect(
-          Array.some(current.decals, ({ kind }) => kind === 'PotLid'),
-        ).toBe(true)
-      }),
-    )
-    expect(shedCounts).toEqual([crowd.length])
-  })
+  )
 })
 
 describe('the Big Lug armor', () => {
@@ -299,7 +308,7 @@ describe('the Big Lug armor', () => {
     })
 
   const soundsOf = (
-    commands: StorySimulation<Model, Message>['commands'],
+    commands: Story.StorySimulation<Model, Message>['commands'],
   ): ReadonlyArray<unknown> =>
     pipe(
       commands,
@@ -319,8 +328,8 @@ describe('the Big Lug armor', () => {
 
   const heardSounds: Array<ReadonlyArray<unknown>> = []
   const hear = <StoryModel, StoryMessage, OutMessage>(
-    simulation: StorySimulation<StoryModel, StoryMessage, OutMessage>,
-  ): StorySimulation<StoryModel, StoryMessage, OutMessage> => {
+    simulation: Story.StorySimulation<StoryModel, StoryMessage, OutMessage>,
+  ): Story.StorySimulation<StoryModel, StoryMessage, OutMessage> => {
     heardSounds.push(soundsOf(simulation.commands))
     return simulation
   }
@@ -330,46 +339,47 @@ describe('the Big Lug armor', () => {
     kind: string,
   ): number => Array.filter(items, item => item.kind === kind).length
 
-  test.each(ARMOR)(
+  it.effect.each(ARMOR)(
     'stage $stage knocks off the $part once, with a clang, sparks, and a plate on the floor',
-    ({ stage, hp, part }) => {
-      heardSounds.length = 0
-      const lug = lugAt(hp)
-      const scene = withScene([lug], [bulletInto(500, lug, { damage: 9 })])
-      story(
-        update,
-        given(modifyFields(scene, { audio: () => AudioState.Ready() })),
-        tick(FRAME_MS),
-        hear,
-        Command.resolveAll(...Array.makeBy(12, playedResolver)),
-      )
-      const landed: Array<Model> = []
-      story(
-        update,
-        given(scene),
-        tick(FRAME_MS),
-        model(({ frameEvents, particles, zombies }) => {
-          expect(zombies[0]?.hp).toBe(hp - 9)
-          expect(shedIn(frameEvents)).toEqual([{ kind: 'Tank', stage }])
-          expect(countOf(particles, part)).toBe(1)
-          expect(countOf(particles, 'Spark')).toBeGreaterThan(0)
-        }),
-        tick(FRAME_MS),
-        model(({ frameEvents }) => {
-          expect(shedIn(frameEvents)).toEqual([])
-        }),
-        ...Array.makeBy(150, () => tick(FRAME_MS)),
-        model(current => {
-          landed.push(current)
-        }),
-      )
-      expect(heardSounds[0]).toContain('Clang')
-      expect(heardSounds[0]).not.toContain('LimbPop')
-      const after = landed[0]
-      expect(after).toBeDefined()
-      expect(countOf(after?.decals ?? [], part)).toBe(1)
-      expect(countOf(after?.particles ?? [], part)).toBe(0)
-    },
+    ({ stage, hp, part }) =>
+      Effect.gen(function* () {
+        heardSounds.length = 0
+        const lug = lugAt(hp)
+        const scene = withScene([lug], [bulletInto(500, lug, { damage: 9 })])
+        yield* Story.story(
+          APPLICATION,
+          Story.given(modifyFields(scene, { audio: () => AudioState.Ready() })),
+          tick(FRAME_MS),
+          hear,
+          Story.Command.resolveAll(...Array.makeBy(12, playedResolver)),
+        )
+        const landed: Array<Model> = []
+        yield* Story.story(
+          APPLICATION,
+          Story.given(scene),
+          tick(FRAME_MS),
+          Story.model(({ frameEvents, particles, zombies }) => {
+            expect(zombies[0]?.hp).toBe(hp - 9)
+            expect(shedIn(frameEvents)).toEqual([{ kind: 'Tank', stage }])
+            expect(countOf(particles, part)).toBe(1)
+            expect(countOf(particles, 'Spark')).toBeGreaterThan(0)
+          }),
+          tick(FRAME_MS),
+          Story.model(({ frameEvents }) => {
+            expect(shedIn(frameEvents)).toEqual([])
+          }),
+          ...Array.makeBy(150, () => tick(FRAME_MS)),
+          Story.model(current => {
+            landed.push(current)
+          }),
+        )
+        expect(heardSounds[0]).toContain('Clang')
+        expect(heardSounds[0]).not.toContain('LimbPop')
+        const after = landed[0]
+        expect(after).toBeDefined()
+        expect(countOf(after?.decals ?? [], part)).toBe(1)
+        expect(countOf(after?.particles ?? [], part)).toBe(0)
+      }),
   )
 
   test('the last stage leaves the bare zombie, without any armor in his frames', () => {
