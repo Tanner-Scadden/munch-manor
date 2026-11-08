@@ -5,6 +5,7 @@
 import { Option, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
+import { HouseSpot, MapId, ShopGuideSection } from './nameKeys'
 import { Appearance, Calling } from './playerData'
 import { MillisNumber } from './wireNumber'
 import {
@@ -286,10 +287,6 @@ export type HomeMode = typeof HomeMode.Type
 export const HomeLobby = Schema.Literals(['Closed', 'Open'])
 export type HomeLobby = typeof HomeLobby.Type
 
-// NOTE: the maps a run can be played on (src/lobby.ts). One for now.
-export const MapId = Schema.Literals(['Manor'])
-export type MapId = typeof MapId.Type
-
 // NOTE: every control the lobby's arrow keys walk, in order: BACK, the hero
 // card, each crew seat (a + BOT tile, or a bot's hero card with its x), the
 // two modes, the four difficulties, then START.
@@ -325,28 +322,6 @@ export const Bot = Schema.Struct({
   look: Appearance,
 })
 export type Bot = typeof Bot.Type
-
-// NOTE: the shop guide's sections, the shop's tabs and then the fridge's
-// prizes and the rest of the house (src/shopGuide.ts).
-export const ShopGuideSection = Schema.Literals([
-  'Guns',
-  'Health',
-  'Traps',
-  'Fridge',
-  'House',
-])
-export type ShopGuideSection = typeof ShopGuideSection.Type
-
-// NOTE: the places around the house the shop guide shows (src/shopGuide.ts).
-export const HouseSpot = Schema.Literals([
-  'Stall',
-  'Window',
-  'Boards',
-  'Fridge',
-  'Stove',
-  'Valve',
-])
-export type HouseSpot = typeof HouseSpot.Type
 
 // NOTE: the guide inside Rattles' shop dialog, opened by its ? button. It
 // stands in the dialog's body, so closing it lands back on the shelves.
@@ -567,3 +542,5 @@ export const TellWatch = Schema.Struct({
 export type TellWatch = typeof TellWatch.Type
 
 export const noTellWatch: TellWatch = { traps: [], earned: [] }
+
+export { HouseSpot, MapId, ShopGuideSection }

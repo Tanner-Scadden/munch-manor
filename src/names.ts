@@ -2,8 +2,8 @@ import { Array, Function, Option } from 'effect'
 
 import type { PickedMode } from '@munch/netcode'
 
-import type { HouseSpot, MapId, ShopGuideSection } from './clientSchema'
 import type { Modifier } from './modifiers'
+import type { HouseSpot, MapId, ShopGuideSection } from './nameKeys'
 import { type Calling, type CosmeticKind, Hat } from './playerData'
 import type {
   FixedShopItemId,
