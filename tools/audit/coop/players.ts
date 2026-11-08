@@ -12,7 +12,7 @@ import {
 } from 'effect'
 import type { Browser, BrowserContext, Page } from 'playwright-core'
 
-import { pointsForRank } from '@game/rank'
+import { pointsForRank } from '@game/world/heroes/rank'
 
 import { encodeJson } from '../../json'
 import { SHOTS_DIR, pollUntil } from '../lib'
@@ -67,7 +67,7 @@ const GRADUATE_SAVE = {
 
 // NOTE: each page plays at its own rank, so every page can check that it
 // reads the others' in the lobby. The save holds a kill for each point the
-// veteran grant pays (src/rank.ts), up to rank 10.
+// veteran grant pays (src/world/heroes/rank.ts), up to rank 10.
 export const RANKS = [6, 8, 10]
 
 const bestsOfRank = (rank: number) => ({

@@ -5,21 +5,29 @@ import { modifyFields } from 'foldkit/struct'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 import { expect, layer } from '@effect/vitest'
 
-import { levelOf } from '../../src/arena'
-import { sceneShapes } from '../../src/layers'
-import { type Model, Phase } from '../../src/model'
-import { fighting, withActors } from '../../src/model.fixture'
-import { occludersOf } from '../../src/occluders'
-import { initialModel } from '../../src/pureApp'
-import { roomShapes } from '../../src/room'
-import { standInKeyOf } from '../../src/spriteAtlas'
-import { SURFACE, imagesIn, openFloorSpot, zombieOf } from '../../src/testing'
-import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../../src/zombies'
+import { sceneShapes } from '../../src/app/layers'
+import { type Model, Phase } from '../../src/app/model'
+import { initialModel } from '../../src/app/pureApp'
+import { standInKeyOf } from '../../src/art/spriteAtlas'
+import { occludersOf } from '../../src/render/occluders'
+import { roomShapes } from '../../src/render/room/room'
+import { fighting, withActors } from '../../src/test/model.fixture'
+import {
+  SURFACE,
+  imagesIn,
+  openFloorSpot,
+  zombieOf,
+} from '../../src/test/testing'
+import { levelOf } from '../../src/world/level/arena'
+import {
+  ZOMBIE_KINDS,
+  ZOMBIE_KIND_ORDER,
+} from '../../src/world/zombies/zombies'
 import { decodeJson } from '../json'
 import { SpriteKeys } from './manifest'
 
 // NOTE: the atlas holds what ./build.ts finds: every sprite built
-// as the modules load, and the ones src/spritePrecompile.ts builds. A sprite
+// as the modules load, and the ones src/art/spritePrecompile.ts builds. A sprite
 // first built while drawing a scene would miss the atlas and be encoded on
 // the main thread mid-game, so these scenes must draw only sprites the
 // generator found. The generator runs in its own process, so the keys it

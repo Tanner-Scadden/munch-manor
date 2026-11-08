@@ -17,7 +17,7 @@
 
 import { Array, Option, Record } from 'effect'
 
-import type { Model } from '../../src/model'
+import type { Model } from '../../src/app/model'
 
 export type FieldClass = 'World' | 'Gate' | 'Derived' | 'Cosmetic' | 'Client'
 

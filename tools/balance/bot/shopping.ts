@@ -6,41 +6,48 @@ import { Array, Function, Option, Schema, String } from 'effect'
 
 import { DialogBlock } from '@foldkit/ui'
 
-import { isCounterOpen, maybeAmmoItemOf } from '../../../src/ammoCounter'
-import { ammoLevelOf } from '../../../src/ammoWarning'
-import { distanceToBox, levelOf } from '../../../src/arena'
-import { ShopDialogBinding } from '../../../src/bindings'
-import { maxHpOf } from '../../../src/calling'
-import { doorCounts } from '../../../src/endlessWaves'
-import {
-  EXIT_RULES,
-  KITCHEN_EXIT,
-  isExitOfferOpenFor,
-} from '../../../src/exits'
-import { isFridgeWeapon } from '../../../src/fridgeWeapons'
+import { ShopDialogBinding } from '../../../src/app/bindings'
+import { Message } from '../../../src/app/message'
+import { Child } from '../../../src/app/pureApp'
+import { ammoLevelOf } from '../../../src/features/hud/ammoWarning'
+import { isFridgeWeapon } from '../../../src/world/fridge/fridgeWeapons'
 import {
   FRIDGE_RULES,
   fridgeBoxOf,
   fridgePriceFor,
-} from '../../../src/leftovers'
-import { Message } from '../../../src/message'
-import { focusOf, focusSlotOf, leadSeatOf } from '../../../src/party'
-import { maybeOfferInReach } from '../../../src/purchase'
-import { Child } from '../../../src/pureApp'
-import {
-  STALL_BOX,
-  isShopOpenFor,
-  priceFor,
-  repairItemId,
-  verdictFor,
-} from '../../../src/shop'
+} from '../../../src/world/fridge/leftovers'
 import {
   freshGun,
   heldGun,
   isCarrying,
   maxRounds,
   maxTier,
-} from '../../../src/weapons'
+} from '../../../src/world/gear/weapons'
+import { maxHpOf } from '../../../src/world/heroes/calling'
+import { distanceToBox, levelOf } from '../../../src/world/level/arena'
+import {
+  EXIT_RULES,
+  KITCHEN_EXIT,
+  isExitOfferOpenFor,
+} from '../../../src/world/level/exits'
+import {
+  focusOf,
+  focusSlotOf,
+  leadSeatOf,
+} from '../../../src/world/party/party'
+import {
+  isCounterOpen,
+  maybeAmmoItemOf,
+} from '../../../src/world/shop/ammoCounter'
+import { maybeOfferInReach } from '../../../src/world/shop/purchase'
+import {
+  STALL_BOX,
+  isShopOpenFor,
+  priceFor,
+  repairItemId,
+  verdictFor,
+} from '../../../src/world/shop/shop'
+import { doorCounts } from '../../../src/world/waves/endlessWaves'
 import {
   KEYS,
   type Model,
@@ -327,7 +334,7 @@ const wantsKitchen = (model: Model): boolean => {
 
 // Mid-wave, when the gun in its hands runs low and it stands near the
 // stall with the price in hand, the bot walks up to the ammo window
-// (src/ammoCounter.ts) and holds the interact key until it buys. It keeps
+// (src/world/shop/ammoCounter.ts) and holds the interact key until it buys. It keeps
 // shooting on the way, so standing alone never buys for it. AMMO=0 is the
 // bot that never uses the window.
 const NO_AMMO_WINDOW = knobText('AMMO') === '0'
@@ -374,7 +381,7 @@ export const towardWindow: {
 )
 
 // The bot buys the room as a player does: it holds the interact key at the
-// boards until the hold fills (src/purchase.ts), mid-wave too when it
+// boards until the hold fills (src/world/shop/purchase.ts), mid-wave too when it
 // happens to stand there while it wants the room.
 export const holdingAtKitchen: {
   (keys: Set<string>): (model: Model) => Set<string>
@@ -497,7 +504,7 @@ export const fridgeKeys = (model: Model): Set<string> =>
     : new Set()
 
 // NOTE: what the shop dialog's close button sends: a Dialog Message in its
-// Binding's envelope (src/composition.ts).
+// Binding's envelope (src/app/composition.ts).
 const closeShopDialog = () =>
   Child.message(ShopDialogBinding, DialogBlock.Message.ClickedCloseButton())
 

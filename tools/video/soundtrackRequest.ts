@@ -1,7 +1,7 @@
 import { type Effect, Function, Schema } from 'effect'
 
-import { MusicLevel, MusicMood, MusicStinger } from '../../src/music'
-import { SoundEffect } from '../../src/soundEffect'
+import { MusicLevel, MusicMood, MusicStinger } from '../../src/audio/music'
+import { SoundEffect } from '../../src/shared/soundEffect'
 
 // NOTE: what the tool asks the soundtrack page for (audioPage.ts): the
 // sounds and music cues at their second, the length, and the sample rate.

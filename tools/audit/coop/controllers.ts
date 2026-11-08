@@ -4,9 +4,13 @@
 import { Array, Clock, Effect, Function, Option } from 'effect'
 import type { Page } from 'playwright-core'
 
-import { PARLOUR, isWalkableTile, tileCoordinate } from '@game/arena'
-import { TILE_SIZE } from '@game/constants'
-import { type Readout } from '@game/coop/readout'
+import { type Readout } from '@game/features/coop/readout'
+import { TILE_SIZE } from '@game/shared/constants'
+import {
+  PARLOUR,
+  isWalkableTile,
+  tileCoordinate,
+} from '@game/world/level/arena'
 
 import { pollUntil } from '../lib'
 import { type AuditFailed, attempt, failWith } from '../page'

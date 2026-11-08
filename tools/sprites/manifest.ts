@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 
 // NOTE: the atlas manifest ./build.ts writes and ./vitePlugin.ts reads, as
-// a Schema of src/spriteAtlas.ts's SpriteAtlas, so the JSON goes through it.
+// a Schema of src/art/spriteAtlas.ts's SpriteAtlas, so the JSON goes through it.
 const AtlasEntry = Schema.Tuple([
   Schema.Finite,
   Schema.Finite,

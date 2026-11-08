@@ -15,8 +15,8 @@ import {
   pipe,
 } from 'effect'
 
-import { DIFFICULTY_ORDER } from '../../src/difficulty'
-import type { Difficulty } from '../../src/model'
+import type { Difficulty } from '../../src/app/model'
+import { DIFFICULTY_ORDER } from '../../src/world/run/difficulty'
 import { type BalanceModel, type WaveRow, loadoutLabel } from './model'
 import type { CampaignSummary, WavePassSummary } from './summary'
 import {

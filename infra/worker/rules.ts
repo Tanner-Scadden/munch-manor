@@ -14,7 +14,7 @@ import {
   SummaryKills,
   type SummaryParty,
   type SummaryPartyV2,
-} from '../../src/analytics.ts'
+} from '../../src/platform/analytics.ts'
 
 // BODY SIZE
 

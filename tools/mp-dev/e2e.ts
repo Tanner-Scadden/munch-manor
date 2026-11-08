@@ -51,8 +51,12 @@ import {
 } from '@munch/netcode/browser'
 import { type Mutation, generateKey, makePlayerId } from '@munch/sync-engine'
 
-import { playersOf } from '../../src/party'
-import { type OwnSeat, ROOM_WORLD, type RoomWorld } from '../../src/roomWorld'
+import {
+  type OwnSeat,
+  ROOM_WORLD,
+  type RoomWorld,
+} from '../../src/world/net/roomWorld'
+import { playersOf } from '../../src/world/party/party'
 import { localOrigin, startWorkerd } from './local'
 
 class CheckFailed extends Schema.TaggedError<

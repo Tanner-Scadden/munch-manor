@@ -17,12 +17,12 @@
 // Two kinds of file are checked apart:
 //
 // - Test files, against each other and the shared test homes
-//   (`src/testing.ts`, `src/model.fixture.ts` and the other `*.fixture.ts`
+//   (`src/test/testing.ts`, `src/test/model.fixture.ts` and the other `*.fixture.ts`
 //   files, a package's `test/fixtures.ts`, infra's `worker/testing.ts`), so a
 //   copy of what is already shared fails as well.
 // - Game modules, the rest of `src`, each package's `src`, and infra's
-//   Worker: a canvas helper belongs in `src/drawing.ts`, a menu helper in
-//   `src/menuParts.ts`, and anything else in the module it is about.
+//   Worker: a canvas helper belongs in `src/render/drawing.ts`, a menu helper in
+//   `src/features/menus/menuParts.ts`, and anything else in the module it is about.
 //
 // Files are compared within one code base: `src` and `tools` together, each
 // package under `packages/`, and `infra`.
@@ -50,7 +50,7 @@ import * as NodeServices from '@effect/platform-node/NodeServices'
 
 // NOTE: test support that is no test file but is shared like one.
 const TEST_HOMES: ReadonlyArray<string> = [
-  'src/testing.ts',
+  'src/test/testing.ts',
   'src/**/*.fixture.ts',
   'tools/**/*.fixture.ts',
   'packages/*/test/fixtures.ts',
@@ -67,9 +67,9 @@ type Kind = Readonly<{
 const isTestSupport = (file: string): boolean =>
   String.endsWith('.test.ts')(file) ||
   String.includes('/test/')(file) ||
-  file === 'src/testing.ts' ||
+  file === 'src/test/testing.ts' ||
   String.endsWith('.fixture.ts')(file) ||
-  file === 'src/vitest-setup.ts' ||
+  file === 'src/test/vitest-setup.ts' ||
   file === 'infra/worker/testing.ts'
 
 const KINDS: ReadonlyArray<Kind> = [
@@ -84,7 +84,7 @@ const KINDS: ReadonlyArray<Kind> = [
     ],
     isSkipped: () => false,
     advice:
-      "share each from src/testing.ts or src/model.fixture.ts (a package's test/fixtures.ts, infra's worker/testing.ts)",
+      "share each from src/test/testing.ts or src/test/model.fixture.ts (a package's test/fixtures.ts, infra's worker/testing.ts)",
   },
   {
     name: 'helper',
@@ -96,7 +96,7 @@ const KINDS: ReadonlyArray<Kind> = [
     ],
     isSkipped: file => isTestSupport(file) || String.endsWith('.d.ts')(file),
     advice:
-      'share each: canvas helpers from src/drawing.ts, menu view helpers from src/menuParts.ts, the rest from the module they are about',
+      'share each: canvas helpers from src/render/drawing.ts, menu view helpers from src/features/menus/menuParts.ts, the rest from the module they are about',
   },
 ]
 
@@ -117,28 +117,28 @@ const ALLOWED: ReadonlyArray<
       'the orchestrator loads request.ts without the game, and determinism:diff copies it into an older checkout',
   },
   {
-    file: 'src/analytics.ts',
+    file: 'src/platform/analytics.ts',
     name: 'SummaryKind',
     reason:
       'the analytics Worker bundles analytics.ts without the game; analytics.story.test.ts checks it matches ZombieKind',
   },
   {
-    file: 'src/analytics.ts',
+    file: 'src/platform/analytics.ts',
     name: 'SummaryMode',
     reason:
       'the analytics Worker bundles analytics.ts without the game; analytics.story.test.ts checks it matches HomeMode',
   },
   {
-    file: 'src/analytics.ts',
+    file: 'src/platform/analytics.ts',
     name: 'SummaryDevice',
     reason:
       'the analytics Worker bundles analytics.ts without the game; analytics.story.test.ts checks it matches InputDevice',
   },
   {
-    file: 'src/font.ts',
+    file: 'src/art/font.ts',
     name: 'coinRect',
     reason:
-      'src/drawing.ts imports font.ts, so the coin, built as font.ts loads, cannot take rect from it',
+      'src/render/drawing.ts imports font.ts, so the coin, built as font.ts loads, cannot take rect from it',
   },
   {
     file: 'tools/sprites/manifest.ts',
@@ -320,7 +320,7 @@ type Helper = Readonly<{
 }>
 
 // NOTE: a relative import as a path from the root, so `./zombies` in src and
-// `../../src/zombies` in tools name the same module.
+// `../../src/world/zombies/zombies` in tools name the same module.
 const moduleOf = (path: Path.Path, file: string, source: string): string =>
   String.startsWith('.')(source)
     ? String.replace(
@@ -555,9 +555,9 @@ const exportedNames = (file: string, text: string): ReadonlyArray<string> =>
   )
 
 // NOTE: two shared test homes of one code base that export the same name,
-// as `readyModel` once meant one Model in src/model.fixture.ts and another
-// in src/shop.fixture.ts, and `FRAME_MS` 16.7 ms in src/testing.ts and 50
-// in src/shop.fixture.ts. A test that imports the name gets whichever file
+// as `readyModel` once meant one Model in src/test/model.fixture.ts and another
+// in src/features/shop/__tests__/shop.fixture.ts, and `FRAME_MS` 16.7 ms in src/test/testing.ts and 50
+// in src/features/shop/__tests__/shop.fixture.ts. A test that imports the name gets whichever file
 // it happened to name, so each shared name lives in one home, and a
 // different value gets a name that says which.
 const sharedNameClashes = (root: string) =>

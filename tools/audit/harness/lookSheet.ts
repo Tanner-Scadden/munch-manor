@@ -6,6 +6,8 @@ import { Canvas } from 'foldkit'
 import { type Document } from 'foldkit/html'
 import { modifyFields } from 'foldkit/struct'
 
+import type { ApplicationComposition } from '@game/app/composition'
+import { type Appearance, defaultAppearance } from '@game/app/model'
 import {
   BODIES,
   HAIR_COLORS,
@@ -16,13 +18,11 @@ import {
   SHIRT_COLORS,
   SKIN_TONES,
   playerSprites,
-} from '@game/appearance'
-import type { ApplicationComposition } from '@game/composition'
-import { SHADOW_COLOR } from '@game/constants'
-import { type Appearance, defaultAppearance } from '@game/model'
-import { FLOOR_COLOR } from '@game/roomPalette'
-import { frameAt, group } from '@game/sprite'
-import { gunSprite } from '@game/sprites/guns'
+} from '@game/art/appearance'
+import { frameAt, group } from '@game/art/sprite'
+import { gunSprite } from '@game/art/sprites/guns'
+import { FLOOR_COLOR } from '@game/render/room/roomPalette'
+import { SHADOW_COLOR } from '@game/shared/constants'
 
 export type ViewHtml = Parameters<
   Parameters<typeof ApplicationComposition.makeView>[0]

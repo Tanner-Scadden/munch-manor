@@ -37,10 +37,10 @@ import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 import { PlayerInput } from '@munch/netcode'
 
-import { refreshIntent } from '../../src/frame'
-import { focusOf, modifySeat, seatCrew } from '../../src/party'
-import type { Intent } from '../../src/worldSchema'
-import { worldToJson } from '../../src/worldWire'
+import { refreshIntent } from '../../src/app/frame'
+import { worldToJson } from '../../src/world/net/worldWire'
+import { focusOf, modifySeat, seatCrew } from '../../src/world/party/party'
+import type { Intent } from '../../src/world/schema/worldSchema'
 import { encodeJson } from '../json'
 import { askWorkerd } from './askWorkerd'
 import { commandOutput, infraBinary, serveWorkerd } from './process'
@@ -66,40 +66,21 @@ const rootOf = Effect.gen(function* () {
   return path.resolve(here, '../..')
 })
 
-// NOTE: game modules a room must never carry: the client Model and its UI,
-// the views and art, the camera and raw input, audio, the store and sync,
-// analytics, onboarding's hints, the run reset, the cosmetics, and the
-// client's own Schemas.
-const FORBIDDEN_GAME_MODULES: ReadonlyArray<RegExp> = [
-  /^src\/model\.ts$/,
-  /^src\/clientSchema\.ts$/,
-  /^src\/(main|pureApp)\.ts$/,
-  /^src\/entry\.ts$/,
-  /^src\/view\.ts$/,
-  /View\.ts$/,
-  /^src\/(camera|input|screen|touchControls|thumbArea)\.ts$/,
-  /^src\/(sprite|spriteAtlas|png|font|icons|layers|drawing)\.ts$/,
-  /^src\/(room|roomPalette|roomFloor|roomWalls|roomCover)\.ts$/,
-  /^src\/sprites\//,
-  /^src\/(audio|audioRecipes|zombieRecipes|soundRecipe)\.ts$/,
-  /^src\/(music|musicPlan)\.ts$/,
-  /^src\/(store|storeSqlite|save|playerScope|playerSync)\.ts$/,
-  /^src\/(commands|subscriptions|analyticsBeacon|support|changelog)\.ts$/,
-  /^src\/(onboarding|runReset|frame|hud|menus|screens|juice)\.ts$/,
-  /^src\/(particles|particlePhysics|particleBursts)\.ts$/,
-  /^src\/(crewAwards|tallyIcons|callingArt|callingPick|hatArt|closet|unlocks|lookGearView)\.ts$/,
-  /^src\/update\//,
-  /^src\/coop\//,
-  /^src\/roomTesting\.ts$/,
-  /^packages\//,
-]
+// NOTE: the game modules a room may carry: the World's own folder and the
+// small helpers under it (AGENTS.md "Folders"), but none of their tests.
+// munch/folder-imports keeps src/world/ importing only those, so a client
+// module here means that rule was silenced or bypassed.
+const ROOM_FOLDERS = /^src\/(world|shared)\//
+
+const isRoomModule = (path: string): boolean =>
+  ROOM_FOLDERS.test(path) && !String.includes('/__tests__/')(path)
 
 // NOTE: what infra's typecheck may see that a room may not carry: the
-// player scope the sync Worker serves (infra/tsconfig.json includes it), and
-// the packages the Worker is built on.
+// player scope the sync Worker serves and the run summary the analytics
+// Worker decodes (infra/tsconfig.json includes them).
 const INFRA_OWN_MODULES: ReadonlyArray<RegExp> = [
-  /^src\/playerScope\.ts$/,
-  /^packages\//,
+  /^src\/platform\/playerScope\.ts$/,
+  /^src\/platform\/analytics\.ts$/,
 ]
 
 const ALLOWED_PACKAGES: ReadonlyArray<RegExp> = [
@@ -144,11 +125,15 @@ const bundle = Effect.gen(function* () {
   )
 })
 
+// NOTE: a package other than Effect and Foldkit's pure modules, any of the
+// netcode package's runtime code, or a game module outside the room's
+// folders.
 const problemsOf = (inputs: ReadonlyArray<string>): ReadonlyArray<string> =>
   Array.filter(inputs, path =>
     String.includes('node_modules/')(path)
       ? !Array.some(ALLOWED_PACKAGES, allowed => allowed.test(path))
-      : Array.some(FORBIDDEN_GAME_MODULES, forbidden => forbidden.test(path)),
+      : String.startsWith('packages/')(path) ||
+        (String.startsWith('src/')(path) && !isRoomModule(path)),
   )
 
 // NOTE: a binary from infra's packages, or the run fails with `reason`.
@@ -202,8 +187,8 @@ const infraTypeProblemsOf = (
     files,
     path =>
       String.startsWith('src/')(path) &&
-      !Array.some(INFRA_OWN_MODULES, own => own.test(path)) &&
-      Array.some(FORBIDDEN_GAME_MODULES, forbidden => forbidden.test(path)),
+      !isRoomModule(path) &&
+      !Array.some(INFRA_OWN_MODULES, own => own.test(path)),
   )
 
 // NOTE: the requests as JSON for the worker, which reads them back
@@ -351,7 +336,7 @@ const checkPlayers = (players: number) =>
     )
   })
 
-// NOTE: a co-op room's World from its seats (src/roomWorld.ts): the lobby's
+// NOTE: a co-op room's World from its seats (src/world/net/roomWorld.ts): the lobby's
 // players walking and firing their own ways from the start of the run.
 const ROOM_INPUTS: ReadonlyArray<RoomPlayRequest['inputs'][number]> = [
   [0, { moveX: 90, moveY: -90, aimX: 0, aimY: -1024, buttons: 1, action: 0 }],

@@ -14,7 +14,7 @@ import {
   NightmareLock,
   PickupKind,
   ZombieKind,
-} from '@game/model'
+} from '@game/app/model'
 import {
   Body,
   Calling,
@@ -27,7 +27,7 @@ import {
   Print,
   ShirtColor,
   SkinTone,
-} from '@game/playerData'
+} from '@game/shared/playerData'
 
 // NOTE: the harness's query string, decoded once. An unknown key or a bad
 // value throws when the page loads, so a typo in an audit script fails loudly
@@ -299,7 +299,7 @@ export const HarnessConfig = Schema.Struct({
   rank: MaybeNum,
   rankgain: MaybeNum,
   // The run modifiers on, as the lobby's mask: Friendly Fire 1, Big Crowd 2,
-  // Broke 4, Glass 8 (src/modifiers.ts)
+  // Broke 4, Glass 8 (src/world/run/modifiers.ts)
   mods: MaybeNum,
   // The earned looks: the hat and gun skin worn, the cosmetic ids bought
   // (`Fez`, `skin:Candy`), and the Bones earned (over the tenth of the

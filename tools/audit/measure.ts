@@ -9,7 +9,7 @@ import {
 } from 'effect'
 import type { Browser, CDPSession, Page } from 'playwright-core'
 
-import { Vector } from '@game/entitySchema'
+import { Vector } from '@game/world/schema/entitySchema'
 
 import { canvasRect, closePage, desktop, modelAs, toClient, wait } from './lib'
 import {

@@ -23,7 +23,7 @@ import {
   SOLO_PARTY,
   type ShareEvent,
   ShareEventJson,
-} from '../../src/analytics.ts'
+} from '../../src/platform/analytics.ts'
 import {
   COOP_DEATH_WAVES,
   COOP_GAMES,

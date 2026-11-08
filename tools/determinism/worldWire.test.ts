@@ -1,24 +1,24 @@
-// The World on the binary wire (src/worldCodec.ts), in single player: a
+// The World on the binary wire (src/world/net/worldCodec.ts), in single player: a
 // snapshot reads back as the World, and a client that applies every diff
 // holds what a snapshot of the room's World gives. The co-op room's own
-// round trips are in src/roomWorld.test.ts.
+// round trips are in src/world/net/__tests__/roomWorld.test.ts.
 
 import { Array, Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { makeReader, makeWriter } from '../../packages/netcode/src/Wire'
-import { refreshIntent } from '../../src/frame'
-import { focusOf } from '../../src/party'
-import { soloInputs, stepWorld } from '../../src/stepWorld'
-import { WORLD_KEYS } from '../../src/testing'
-import type { World } from '../../src/world'
+import { refreshIntent } from '../../src/app/frame'
+import { WORLD_KEYS } from '../../src/test/testing'
 import {
   isSameOnWire,
   readWorld,
   readWorldDiff,
   writeWorld,
   writeWorldDiff,
-} from '../../src/worldCodec'
+} from '../../src/world/net/worldCodec'
+import { focusOf } from '../../src/world/party/party'
+import type { World } from '../../src/world/schema/world'
+import { soloInputs, stepWorld } from '../../src/world/step/stepWorld'
 import { firstDifference } from './diff'
 import { playFrame, startedRun } from './script'
 

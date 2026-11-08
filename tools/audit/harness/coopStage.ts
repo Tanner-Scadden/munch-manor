@@ -5,19 +5,19 @@
 import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import * as CoopModel from '@game/coop/model'
+import { Message } from '@game/app/message'
+import { type Model, Phase } from '@game/app/model'
+import { update } from '@game/app/pureApp'
+import * as CoopModel from '@game/features/coop/model'
 import {
   CODE as COOP_CODE,
   lobbyOf,
   memberOf,
   playingSession,
   stagedWorld,
-} from '@game/coop/testing'
-import { Message } from '@game/message'
-import { type Model, Phase } from '@game/model'
-import { modifySeat, modifySeatRecord } from '@game/party'
-import { update } from '@game/pureApp'
-import type { RoomWorld } from '@game/roomWorld'
+} from '@game/features/coop/testing'
+import type { RoomWorld } from '@game/world/net/roomWorld'
+import { modifySeat, modifySeatRecord } from '@game/world/party/party'
 import { Session } from '@munch/netcode'
 
 import { type HarnessConfig } from './config'
@@ -385,7 +385,7 @@ const withModifiersPicked = (
   )
 
 // NOTE: a staged run draws its room's World as the game, one frame of it,
-// as an online run does (src/coopPlay.ts).
+// as an online run does (src/features/onlineRun/coopPlay.ts).
 export const withCoop: {
   (model: Model): (config: HarnessConfig) => Model
   (config: HarnessConfig, model: Model): Model

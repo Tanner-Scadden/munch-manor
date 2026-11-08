@@ -174,3 +174,81 @@ tester.run('disable-needs-reason', ruleOf('disable-needs-reason'), {
     ),
   ],
 })
+
+tester.run('folder-imports', ruleOf('folder-imports'), {
+  valid: [
+    {
+      code: "import { stepWorld } from '../step/stepWorld'",
+      filename: '/repo/src/world/net/roomWorld.ts',
+    },
+    {
+      code: "import { mulberry32 } from '../../shared/prng'",
+      filename: '/repo/src/world/step/firing.ts',
+    },
+    {
+      code: "import { Array } from 'effect'\nimport { modifyFields } from 'foldkit/struct'",
+      filename: '/repo/src/world/step/firing.ts',
+    },
+    {
+      code: "import type { Reader } from '@munch/netcode'",
+      filename: '/repo/src/world/net/worldCodec.ts',
+    },
+    {
+      code: "import { type Reader } from '@munch/netcode'",
+      filename: '/repo/src/world/net/worldCodec.ts',
+    },
+    {
+      code: "import { Model } from '../model'",
+      filename: '/repo/src/app/update/play.ts',
+    },
+    {
+      code: "import { home } from '../../test/model.fixture'",
+      filename: '/repo/src/world/zombies/__tests__/boss.story.test.ts',
+    },
+    {
+      code: "import { bossAt } from './boss.fixture'",
+      filename: '/repo/src/world/zombies/__tests__/bossAttacks.story.test.ts',
+    },
+    {
+      code: "import { Html } from 'foldkit/html'",
+      filename: '/repo/src/features/home/homeView.ts',
+    },
+  ],
+  invalid: [
+    {
+      code: "import type { Model } from '../../app/model'",
+      filename: '/repo/src/world/step/simulation.ts',
+      errors: 1,
+    },
+    {
+      code: "export { screenOf } from '../render/screen'",
+      filename: '/repo/src/world/names.ts',
+      errors: 1,
+    },
+    {
+      code: "import { PlayerInput } from '@munch/netcode'",
+      filename: '/repo/src/world/net/roomWorld.ts',
+      errors: 1,
+    },
+    {
+      code: "import { Html } from 'foldkit/html'",
+      filename: '/repo/src/world/step/firing.ts',
+      errors: 1,
+    },
+    {
+      code: "import { ZOMBIE_SPEED } from '../world/zombies/zombies'",
+      filename: '/repo/src/shared/constants.ts',
+      errors: 1,
+    },
+    {
+      code: "const testing = import('../../test/testing')",
+      filename: '/repo/src/features/home/update.ts',
+      errors: 1,
+    },
+    {
+      code: "import { atStall } from './__tests__/shop.fixture'",
+      filename: '/repo/src/features/shop/update.ts',
+      errors: 1,
+    },
+  ],
+})

@@ -19,7 +19,7 @@ import type { BrowserContext } from 'playwright-core'
 // visit and on a returning player's repeat visit. It saves screenshots along
 // the way as `splash-<TAG>-<profile>-<visit>-<moment>.png`.
 // It also prints when each load step finished (the `load:<step>` marks from
-// src/splash.ts), each move of the progress bar, the main thread's long
+// src/platform/splash.ts), each move of the progress bar, the main thread's long
 // tasks, and with PROFILE=1 the functions that took the most CPU time before
 // the splash hid, and with NETWORK=1 every request the page and its workers
 // made, with when it started and finished. ONLY=<profile> runs one profile.

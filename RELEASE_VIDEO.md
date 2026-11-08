@@ -33,7 +33,7 @@ The plan for the launch video. It is shot once co-op works (multiplayer Phase 3,
 
 - **Scripted, deterministic runs.** Multiplayer Phase 0 makes the game step deterministic, so a shot is a seed plus recorded inputs that replay exactly, as many times as the edit needs.
 - **Rendered offline, frame by frame.** A director mode in the audit harness steps the game one fixed tick at a time and saves each frame at a whole-number scale (crisp pixels at 1080p, no dropped frames, no capture lag). It can hide the HUD, frame the camera, and slow a moment down.
-- **Audio from the game itself.** The music is data in `src/music.ts`, so it renders through an `OfflineAudioContext`, and the sound effects are placed at the frames their events fire. No licensed music.
+- **Audio from the game itself.** The music is data in `src/audio/music.ts`, so it renders through an `OfflineAudioContext`, and the sound effects are placed at the frames their events fire. No licensed music.
 - **Assembled with ffmpeg** from a shot list file, so a new build can re-render the whole cut with one command (`bun run video`).
 - **Text overlays** use the game's own pixel font, so they match.
 

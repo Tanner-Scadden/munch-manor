@@ -19,7 +19,7 @@ import {
   sessionMessage,
 } from '@munch/sync-engine'
 
-import { ChangedSettings, PlayerScope } from '../../src/playerScope.ts'
+import { ChangedSettings, PlayerScope } from '../../src/platform/playerScope.ts'
 import {
   type DirectoryHost,
   type Linked,

@@ -1,7 +1,7 @@
 import { type Effect, Schema } from 'effect'
 
-import { MusicLevel, MusicMood, MusicStinger } from '../../src/music'
-import { Difficulty } from '../../src/playerData'
+import { MusicLevel, MusicMood, MusicStinger } from '../../src/audio/music'
+import { Difficulty } from '../../src/shared/playerData'
 
 // THE SHOT LIST
 //

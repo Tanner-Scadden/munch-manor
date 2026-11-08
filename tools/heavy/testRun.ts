@@ -2,7 +2,7 @@
 // guard's budget. `bun run test` is the fast tier, every project but `sim`.
 // `bun run test:full` (the `--full` flag) adds the `sim` project, the whole
 // wave replays and seed sweeps (see vitest.config.ts). Any other arguments go
-// on to vitest, such as `bun run test -- src/kaboomer.story.test.ts` or
+// on to vitest, such as `bun run test -- src/world/zombies/__tests__/kaboomer.story.test.ts` or
 // `bun run test -- --changed`.
 //
 // It never queues and takes no lock. It reads the budget once, gives vitest

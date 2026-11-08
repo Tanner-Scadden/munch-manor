@@ -3,12 +3,12 @@
 
 import { Array, Function, Option } from 'effect'
 
-import { BOSS_RULES } from '../../../src/boss'
-import { CHUCKER_RULES } from '../../../src/chucker'
-import { CRAWLER_RULES } from '../../../src/crawler'
-import { FRENZY_RULES } from '../../../src/frenzy'
-import { focusOf } from '../../../src/party'
-import { BossMove } from '../../../src/worldSchema'
+import { focusOf } from '../../../src/world/party/party'
+import { BossMove } from '../../../src/world/schema/worldSchema'
+import { BOSS_RULES } from '../../../src/world/zombies/boss'
+import { CHUCKER_RULES } from '../../../src/world/zombies/chucker'
+import { CRAWLER_RULES } from '../../../src/world/zombies/crawler'
+import { FRENZY_RULES } from '../../../src/world/zombies/frenzy'
 import {
   type Model,
   type Vector,

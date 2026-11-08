@@ -10,7 +10,7 @@ import {
 import { ChildProcess } from 'effect/process'
 import type { Plugin, ViteDevServer } from 'vite'
 
-import type { SpriteAtlas } from '../../src/spriteAtlas.ts'
+import type { SpriteAtlas } from '../../src/art/spriteAtlas.ts'
 import { encodeJson, readJsonFile } from '../json.ts'
 import { nodeRuntime, textOf } from '../node.ts'
 import { AtlasEntries, SpriteAtlasManifest } from './manifest.ts'
@@ -20,7 +20,7 @@ import { AtlasEntries, SpriteAtlasManifest } from './manifest.ts'
 // when no sprite changed. `virtual:sprite-atlas` imports each file with
 // `?url&no-inline`, so a build emits it with a content hash in its name (and
 // the service worker's precache list picks it up from the bundle), and
-// exports the manifest with those URLs. src/spriteAtlasBoot.ts hands it to
+// exports the manifest with those URLs. src/art/spriteAtlasBoot.ts hands it to
 // the game before any sprite is built.
 //
 // A production build runs the generator first and waits for it. The dev

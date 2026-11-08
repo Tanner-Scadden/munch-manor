@@ -23,9 +23,9 @@ Vitest's own breakdown of the main run: tests 39 to 42%, import 31 to 36%, envir
 
 ### Where the time goes
 
-1. **One file is the long pole.** `src/pacing.story.test.ts` takes 13.6 s on its own, and a file is vitest's unit of parallel work, so no worker count makes the run shorter than that file. One of its tests, "no wave leaves the room empty and unannounced for more than a second", plays every wave for five seeds and takes 7.8 s.
+1. **One file is the long pole.** `src/world/waves/__tests__/pacing.story.test.ts` takes 13.6 s on its own, and a file is vitest's unit of parallel work, so no worker count makes the run shorter than that file. One of its tests, "no wave leaves the room empty and unannounced for more than a second", plays every wave for five seeds and takes 7.8 s.
 2. **Ten tests are over half the test time.** Out of 975 tests, 704 run in under 10 ms, and only 18 take 300 ms or more. Those 18 take 24.8 s of the 38.2 s spent in tests, and the 10 tests over 1 s take 21 s. All 18 are whole-wave replays: seed sweeps, "the same seed replays identically" double runs, the wave 2 balance smoke pass, and the in-engine determinism check.
-3. **Every file imports the whole game again.** With `isolate: true` (the default), each of the 65 files evaluates its module graph from scratch. A Story file that imports `update` spends about 630 ms importing: `src/main.ts` 505 ms in total, `src/sprite.ts` 126 ms of its own (PNG encoding and base64 at module load), the `effect` barrel 90 ms (pulled in by Foldkit's Scene matchers in the setup file, for every file, Story files included), `src/screens.ts` 42 ms of its own, and `@foldkit/ui` 102 ms. A CPU profile of the same import in Bun puts about 90 ms in sprite and PNG work (base64 35 ms, `png.ts` 28 ms with `crc32` the top function, `sprite.ts` 24 ms) out of 300 ms.
+3. **Every file imports the whole game again.** With `isolate: true` (the default), each of the 65 files evaluates its module graph from scratch. A Story file that imports `update` spends about 630 ms importing: `src/app/main.ts` 505 ms in total, `src/art/sprite.ts` 126 ms of its own (PNG encoding and base64 at module load), the `effect` barrel 90 ms (pulled in by Foldkit's Scene matchers in the setup file, for every file, Story files included), `src/features/menus/screens.ts` 42 ms of its own, and `@foldkit/ui` 102 ms. A CPU profile of the same import in Bun puts about 90 ms in sprite and PNG work (base64 35 ms, `png.ts` 28 ms with `crc32` the top function, `sprite.ts` 24 ms) out of 300 ms.
 4. **Every file pays for a DOM.** All files run in happy-dom. Only 26 of 65 files touch the DOM (Scene tests, plus a few Story tests that build elements, dispatch window events, or use localStorage). The other 39 could run in plain Node.
 
 ### The 20 slowest tests
@@ -53,14 +53,14 @@ Vitest's own breakdown of the main run: tests 39 to 42%, import 31 to 36%, envir
 | 0.29 s | store            | power-ups seen on two devices at once are all kept                          | SQLite wasm                         |
 | 0.27 s | store            | the live game's version 4 save moves from localStorage into SQLite ...      | SQLite wasm                         |
 
-Not slow, and worth keeping in the default run: `tools/balance/model.test.ts` (34 tests, 10 ms), `tools/heavy/decision.test.ts` (74 tests, 10 ms), and `src/perf.scene.test.ts` (the shape and paint budgets, 140 ms).
+Not slow, and worth keeping in the default run: `tools/balance/model.test.ts` (34 tests, 10 ms), `tools/heavy/decision.test.ts` (74 tests, 10 ms), and `src/render/__tests__/perf.scene.test.ts` (the shape and paint budgets, 140 ms).
 
 There are 23 tests named "the same seed ..." or "replays identically" across 13 files. Each one plays its own feature twice and compares. The determinism harness in `tools/determinism/` already does that for a whole run, with a skewed clock and `Math.random`, and names the first field that diverges.
 
 ### Configuration today
 
-- `vitest.config.ts`: `environment: 'happy-dom'` for every file, the default `forks` pool, `isolate: true`, one setup file (`src/vitest-setup.ts`, Foldkit's Scene matchers), Foldkit inlined, a 30 s timeout. Vitest 5's file system module cache (`fsModuleCache`) is already on by default.
-- `tools/heavy/testRun.ts` runs three vitest processes one after another (the game, then each package) and passes no extra arguments, so `bun run test -- src/kaboomer.story.test.ts` does not narrow the run.
+- `vitest.config.ts`: `environment: 'happy-dom'` for every file, the default `forks` pool, `isolate: true`, one setup file (`src/test/vitest-setup.ts`, Foldkit's Scene matchers), Foldkit inlined, a 30 s timeout. Vitest 5's file system module cache (`fsModuleCache`) is already on by default.
+- `tools/heavy/testRun.ts` runs three vitest processes one after another (the game, then each package) and passes no extra arguments, so `bun run test -- src/world/zombies/__tests__/kaboomer.story.test.ts` does not narrow the run.
 - CI (`.github/workflows/deploy.yml`) runs the same `bun run test`.
 
 ### Experiments (same suite, 4 workers, two runs each)
@@ -89,7 +89,7 @@ After that, the slowest files are `horde.story` (4.0 s, of which 3.8 s is three 
 
 How the 60 test files in `src/` build their Models:
 
-- 51 import `src/testing.ts`.
+- 51 import `src/test/testing.ts`.
 - They declare 413 top-level helpers of their own between them.
 - `fighting` is used 194 times. It is redefined locally in 7 files, with more variants named `fightingModel`, `fightingWith`, `fightingWave`, `fightingInPortrait`, `inWave`, `onPhase`, and `preparing` (the last in 4 files).
 - `modifyFields(initialModel | fighting, ...)` is spelled out 75 times, and `asVeteran` is used 73 times.
@@ -231,7 +231,7 @@ src/test/
   golden.ts      golden replay files: read, compare, update
 ```
 
-`src/testing.ts` becomes a re-export of `src/test/` while files migrate, then goes away.
+`src/test/testing.ts` becomes a re-export of `src/test/` while files migrate, then goes away.
 
 ### The DSL
 
@@ -296,7 +296,7 @@ The harness's `HarnessConfig` Schema (`?wave=8&start=wave&crowd=30&gun=smg`) alr
 
 **1. `kaboomer.story.test.ts`, "a shot Kaboomer pops a fifth of a second later".**
 
-Today (`src/kaboomer.story.test.ts:130`): a local `kaboomerAt` that restates every Zombie field, a local `sceneWith`, and frame arithmetic.
+Today (`src/world/zombies/__tests__/kaboomer.story.test.ts:130`): a local `kaboomerAt` that restates every Zombie field, a local `sceneWith`, and frame arithmetic.
 
 ```ts
 gameStory(
@@ -440,7 +440,7 @@ Gains below are measured unless marked as an estimate.
 
 Smaller items:
 
-- **Lazy sprite baking.** `src/sprite.ts` spends 126 ms of its own at import, encoding PNGs and base64 for sprites built at module scope. `src/screens.ts` adds 42 ms.
+- **Lazy sprite baking.** `src/art/sprite.ts` spends 126 ms of its own at import, encoding PNGs and base64 for sprites built at module scope. `src/features/menus/screens.ts` adds 42 ms.
   - With isolation off, that is paid once per worker, so it barely moves the full run. It is about a quarter of the import in a single-file `related` run, and it also delays game boot.
   - Build sprites on first use from a cache, as `appearance.ts` already does. That fits the `AGENTS.md` rule ("once at module scope or in a cache").
   - This overlaps with the images work in `docs/IMAGES_PLAN.md`, so do it there, once.

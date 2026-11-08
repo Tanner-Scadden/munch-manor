@@ -30,7 +30,11 @@ layer(NodeServices.layer)(
       () =>
         Effect.gen(function* () {
           const found = yield* Effect.forEach(
-            ['src/homeView.ts', 'src/layers.ts', 'src/characterView.ts'],
+            [
+              'src/features/home/homeView.ts',
+              'src/app/layers.ts',
+              'src/features/look/view.ts',
+            ],
             isViewFile,
           )
           expect(found).toStrictEqual([true, true, true])
@@ -42,7 +46,11 @@ layer(NodeServices.layer)(
       () =>
         Effect.gen(function* () {
           const found = yield* Effect.forEach(
-            ['src/simulation.ts', 'src/pathing.ts', 'src/effectsView.ts'],
+            [
+              'src/world/step/simulation.ts',
+              'src/world/level/pathing.ts',
+              'src/render/effectsView.ts',
+            ],
             isViewFile,
           )
           expect(found).toStrictEqual([false, false, false])

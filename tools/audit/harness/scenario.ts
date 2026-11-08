@@ -5,9 +5,6 @@
 import { Array, Option, Record } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { addBot } from '@game/bots'
-import { playerOfCalling } from '@game/callingPlayer'
-import { isEndScreen, withBests } from '@game/home'
 import {
   DifficultyCard,
   FridgeDoor,
@@ -19,14 +16,21 @@ import {
   TrapHint,
   type Zombie,
   ZombieAction,
-} from '@game/model'
-import { bonusPercentOf, modifiersOfMask } from '@game/modifiers'
-import { modifyFocus } from '@game/party'
-import { heroIdOf } from '@game/playerData'
-import { LinkFlow, PlayerScopeStatus, SyncState } from '@game/playerSync'
-import { rankOf, totalPointsOf } from '@game/rank'
-import { prizeUnlockId } from '@game/shopGuide'
-import { unlocksAt } from '@game/unlocks'
+} from '@game/app/model'
+import { addBot } from '@game/features/bots/bots'
+import { isEndScreen, withBests } from '@game/features/home/home'
+import { prizeUnlockId } from '@game/features/shop/shopGuide'
+import { unlocksAt } from '@game/features/unlocks/unlocks'
+import {
+  LinkFlow,
+  PlayerScopeStatus,
+  SyncState,
+} from '@game/platform/playerSync'
+import { heroIdOf } from '@game/shared/playerData'
+import { playerOfCalling } from '@game/world/heroes/callingPlayer'
+import { rankOf, totalPointsOf } from '@game/world/heroes/rank'
+import { modifyFocus } from '@game/world/party/party'
+import { bonusPercentOf, modifiersOfMask } from '@game/world/run/modifiers'
 
 import { withCoop } from './coopStage'
 import { CALM, ROAMING, roomModel } from './room'

@@ -4,15 +4,15 @@
 import { Array, Effect, Function, Option, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 
-import { type Readout, ReadoutJson } from '@game/coop/readout'
-import { Vector } from '@game/entitySchema'
+import { type Readout, ReadoutJson } from '@game/features/coop/readout'
+import { Vector } from '@game/world/schema/entitySchema'
 
 import { type AuditFailed, attempt, decodedFrom, evaluateAs } from '../page'
 
 // THE ROOM'S WORLD, AS THE PAGE DRAWS IT
 
-// NOTE: the readout src/coop/seam.ts `readoutOf` writes on the arena, in
-// the Schema both sides share (src/coop/readout.ts).
+// NOTE: the readout src/features/coop/seam.ts `readoutOf` writes on the arena, in
+// the Schema both sides share (src/features/coop/readout.ts).
 export type Seat = Readout['players'][number]
 
 const Net = Schema.Struct({

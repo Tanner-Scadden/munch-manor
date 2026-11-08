@@ -9,7 +9,7 @@
 import { Array, Option } from 'effect'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { focusOf } from '../../src/party'
+import { focusOf } from '../../src/world/party/party'
 import { firstDifference, firstDivergentCheckpoint } from './diff'
 import { gameplayOf, hashedFieldsOf } from './fields'
 import { makeGameplayHasher } from './hash'

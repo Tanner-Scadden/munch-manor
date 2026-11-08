@@ -82,7 +82,7 @@ The same API Worker serves `/sync` for the sync engine (see "What phase 4 built"
 
 - **Durable Objects.** `SyncScope` (one per `player:<id>`, by name) and `SyncDirectory` (one, named `directory`) are SQLite backed, so they run on the free plan, and declared as `Cloudflare.DurableObject` bindings on the API Worker; Alchemy adds them as new SQLite classes. Their SQL goes through `@effect/sql-sqlite-do` 4.1.0. They are plain classes with `fetch` and `webSocketMessage`, so the bundle never imports `cloudflare:workers`.
 - **Secrets and limits.** `SyncSecret` (an `Alchemy.Random` per stage) signs tokens and nonces. `SYNC_BY_ADDRESS` (namespace 7103) allows 30 identity requests a minute per address. Sockets and exchanges need a valid token in their Hello.
-- **The shared files.** The Worker bundles `src/playerScope.ts`, `src/playerData.ts`, and the engine against infra's Effect, the same way as `src/analytics.ts`.
+- **The shared files.** The Worker bundles `src/platform/playerScope.ts`, `src/shared/playerData.ts`, and the engine against infra's Effect, the same way as `src/platform/analytics.ts`.
 
 ## Co-op rooms
 
@@ -104,7 +104,7 @@ On every stage the API Worker also serves co-op rooms (see "What Phases 2 and 3 
 
 The game posts one run summary per run to its stage's API Worker (see "Analytics" in `PLATFORM.md`). The Website gets the API Worker's URL as `VITE_API_ORIGIN`, which Vite inlines into the game.
 
-- **Two Effects.** The Worker imports `src/analytics.ts`, which the game shares. Its `effect` import would otherwise resolve from the game's `node_modules`, a second copy of Effect 4.1.0 beside infra's, so three things point it at infra's own copy: the Worker bundle's `resolve.alias` in `alchemy.run.ts`, `paths` in `tsconfig.json`, and the `one-effect` plugin in `vitest.config.ts` for the tests, which also inlines `foldkit` so it uses that copy. Keep `src/analytics.ts` importing only `effect`.
+- **Two Effects.** The Worker imports `src/platform/analytics.ts`, which the game shares. Its `effect` import would otherwise resolve from the game's `node_modules`, a second copy of Effect 4.1.0 beside infra's, so three things point it at infra's own copy: the Worker bundle's `resolve.alias` in `alchemy.run.ts`, `paths` in `tsconfig.json`, and the `one-effect` plugin in `vitest.config.ts` for the tests, which also inlines `foldkit` so it uses that copy. Keep `src/platform/analytics.ts` importing only `effect`.
 - **Migrations.** Add a new numbered file to `migrations/`, such as `0002_add_column.sql`. Never edit one that has shipped: Alchemy records each file's hash in the database's `__alchemy_migrations` table and applies new files in order on the next deploy.
 - **Secrets.** The address salt is an `Alchemy.Random`, made once per stage and kept in Alchemy's state. It reaches the Worker as a `secret_text` binding.
 - **Rate limits.** Cloudflare Rate Limiting bindings, namespaces 7101 (per visit) and 7102 (per address bucket), shared by every stage.

@@ -6,7 +6,7 @@
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { type Model, stillShake } from '../../src/model'
+import { type Model, stillShake } from '../../src/app/model'
 import { firstDivergentCheckpoint } from './diff'
 import { runScript } from './run'
 

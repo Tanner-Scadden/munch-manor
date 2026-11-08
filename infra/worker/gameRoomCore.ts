@@ -44,7 +44,11 @@ import {
   verifyToken,
 } from '@munch/sync-engine'
 
-import { callingOfCode, lookCodeOf, lookOfCode } from '../../src/playerData.ts'
+import {
+  callingOfCode,
+  lookCodeOf,
+  lookOfCode,
+} from '../../src/shared/playerData.ts'
 import {
   type ScopeHost,
   type ScopeHostFailed,
@@ -338,7 +342,7 @@ export const roomHostOnce: {
 )
 
 // NOTE: a look a player sent is kept only when it reads back as one of the
-// game's looks (src/playerData.ts); anything else seats them with none,
+// game's looks (src/shared/playerData.ts); anything else seats them with none,
 // and the game draws their seat's own look.
 export const lookOfRequest = (look: string): string =>
   Option.match(lookOfCode(look), {
@@ -347,7 +351,7 @@ export const lookOfRequest = (look: string): string =>
   })
 
 // NOTE: a calling a player sent is kept only when it reads back as one of
-// the game's callings (src/playerData.ts); anything else seats them as YOU.
+// the game's callings (src/shared/playerData.ts); anything else seats them as YOU.
 // The Worker cannot check the player's rank reached it: like the rank, it
 // is for show and for the seat's gun and hearts, never for scoring.
 const callingOfRequest = (calling: string): string =>

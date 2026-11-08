@@ -1,8 +1,8 @@
 import { Array, Function, Option } from 'effect'
 
-import { isFridgeWeapon } from '../../../src/fridgeWeapons'
-import { focusOf } from '../../../src/party'
-import { gunsOf, heldGun, maybePanOf } from '../../../src/weapons'
+import { isFridgeWeapon } from '../../../src/world/fridge/fridgeWeapons'
+import { gunsOf, heldGun, maybePanOf } from '../../../src/world/gear/weapons'
+import { focusOf } from '../../../src/world/party/party'
 import { type Model, tapKey } from './basics'
 
 // THE GUNS

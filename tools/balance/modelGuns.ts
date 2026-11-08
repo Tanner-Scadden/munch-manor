@@ -3,8 +3,8 @@
 
 import { Function } from 'effect'
 
-import type { WeaponKind } from '../../src/model'
-import { effectiveStats } from '../../src/weapons'
+import type { WeaponKind } from '../../src/app/model'
+import { effectiveStats } from '../../src/world/gear/weapons'
 
 export type Gun = 'Pistol' | 'Shotgun' | 'Smg'
 export type SpareGun = 'Shotgun' | 'Smg'

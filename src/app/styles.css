@@ -1,0 +1,1284 @@
+@import 'tailwindcss';
+@import '../features/home/menu.css';
+@import '../features/shop/shop.css';
+@import '../features/shop/shopGuide.css';
+@import '../features/profile/profile.css';
+@import '../features/heroes/calling.css';
+@import '../features/look/closet.css';
+@import '../features/coop/coop.css';
+@import '../features/lobby/lobby.css';
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+  background: #000;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-root {
+  --screen-w: 320;
+  --screen-h: 180;
+  --aim-cursor: crosshair;
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  overflow: hidden;
+  background: #000;
+}
+
+.game-surface {
+  position: absolute;
+  top: env(safe-area-inset-top, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
+  left: env(safe-area-inset-left, 0px);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+  cursor: var(--aim-cursor);
+}
+
+/* The bold cursor: a 32 px yellow crosshair with a dark outline and an open
+   middle, so the aim point stays visible on the dark floor. The system
+   crosshair stands in where a custom cursor is refused. */
+.game-root[data-cursor='Bold'] {
+  --aim-cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32' shape-rendering='crispEdges'%3E%3Cg fill='%23140c10'%3E%3Crect x='14' y='1' width='4' height='10'/%3E%3Crect x='14' y='21' width='4' height='10'/%3E%3Crect x='1' y='14' width='10' height='4'/%3E%3Crect x='21' y='14' width='10' height='4'/%3E%3Crect x='13' y='13' width='6' height='6'/%3E%3C/g%3E%3Cg fill='%23ffd23f'%3E%3Crect x='15' y='2' width='2' height='8'/%3E%3Crect x='15' y='22' width='2' height='8'/%3E%3Crect x='2' y='15' width='8' height='2'/%3E%3Crect x='22' y='15' width='8' height='2'/%3E%3Crect x='15' y='15' width='2' height='2'/%3E%3C/g%3E%3C/svg%3E")
+      16 16,
+    crosshair;
+}
+
+.game-frame {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+}
+
+.game-stage {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  overflow: hidden;
+}
+
+.world-window {
+  position: absolute;
+  overflow: hidden;
+}
+
+/* NOTE: the end of a run zooms and drains this, never the overlay. */
+.world-lens {
+  position: absolute;
+  inset: 0;
+}
+
+.thumb-area {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.floor-layers,
+.overlay-layer-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.floor-layer-canvas,
+.game-canvas,
+.overlay-layer-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
+.touch-stick {
+  position: fixed;
+  box-sizing: border-box;
+  border: 3px solid rgba(244, 241, 222, 0.45);
+  border-radius: var(--menu-radius-pill);
+  background: rgba(244, 241, 222, 0.08);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touch-stick[data-stick='aim'] {
+  border-color: rgba(255, 224, 102, 0.55);
+}
+
+.touch-stick-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--menu-radius-pill);
+  background: rgba(244, 241, 222, 0.55);
+}
+
+.touch-stick[data-stick='aim'] .touch-stick-thumb {
+  background: rgba(255, 224, 102, 0.65);
+}
+
+.game-surface:focus {
+  outline: none;
+}
+
+.corner-buttons {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 6px);
+  right: calc(env(safe-area-inset-right, 0px) + 6px);
+  display: flex;
+  gap: 8px;
+}
+
+.icon-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: var(--menu-border) solid var(--menu-line-strong);
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-glass);
+  opacity: 0.6;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 80ms linear;
+}
+
+.icon-button:active,
+.icon-button:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  .icon-button:hover {
+    opacity: 1;
+  }
+}
+
+.icon-button:active {
+  box-shadow: inset 0 0 0 3px rgba(255, 224, 102, 0.6);
+  background: rgba(40, 30, 20, 0.85);
+}
+
+.icon-button:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
+}
+
+.icon-button-glyph {
+  display: block;
+  width: 20px;
+  height: 20px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.mute-button[aria-pressed='true'] {
+  border-color: rgba(255, 107, 94, 0.75);
+}
+
+.music-button[aria-pressed='false'] {
+  border-color: rgba(255, 107, 94, 0.75);
+}
+
+.fullscreen-button[aria-pressed='true'] {
+  border-color: rgba(255, 224, 102, 0.75);
+}
+
+.pause-button .icon-button-glyph {
+  width: 12px;
+  height: 14px;
+}
+
+.cluster-button.place-icon-button {
+  border-color: rgba(155, 227, 106, 0.8);
+}
+
+.place-icon-button .icon-button-glyph {
+  width: 24px;
+  height: 20px;
+}
+
+.cluster-button.place-icon-button[aria-disabled='true'] {
+  border-color: rgba(255, 107, 94, 0.8);
+  cursor: not-allowed;
+}
+
+/* MEDIC: a downed player's shout, a red cross on a red-edged pill. It
+   glows in place while the shout rings (data-fresh). */
+
+.cluster-button.medic-button {
+  border-radius: var(--menu-radius-pill);
+  width: 56px;
+  height: 56px;
+  border-color: rgba(232, 52, 58, 0.95);
+  background: rgba(70, 12, 16, 0.85);
+  opacity: 1;
+}
+
+.medic-button .icon-button-glyph {
+  width: 27px;
+  height: 27px;
+}
+
+.medic-button[data-fresh='true'] {
+  animation: medic-glow 240ms steps(2, jump-none) infinite;
+}
+
+@keyframes medic-glow {
+  from {
+    box-shadow: 0 0 0 0 rgba(232, 52, 58, 0);
+  }
+  to {
+    box-shadow: 0 0 10px 4px rgba(255, 120, 110, 0.85);
+  }
+}
+
+/* THE AMMO TAG: a clear button over the ammo window's tag on the canvas,
+   so a click or a tap on the tag buys at once. Centered on the tag, never
+   smaller than a fingertip. */
+
+.ammo-tag-button {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ammo-tag-button:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
+}
+
+/* HOLD TO BUY: the touch button at a purchasable. A gold ring fills round
+   it while the finger holds (--hold, 0 to 1); a press the wallet cannot
+   cover shakes it red. */
+
+.cluster-button.hold-buy-button {
+  border-radius: var(--menu-radius-pill);
+  width: 56px;
+  height: 56px;
+  border-color: rgba(255, 210, 63, 0.9);
+  background: rgba(58, 36, 8, 0.85);
+  opacity: 1;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.cluster-button.hold-buy-button[data-short='true'] {
+  border-color: rgba(255, 74, 79, 0.85);
+}
+
+.hold-buy-button .icon-button-glyph {
+  width: 24px;
+  height: 24px;
+}
+
+.hold-buy-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: var(--menu-radius-pill);
+  background: conic-gradient(
+    var(--menu-coin) calc(var(--hold, 0) * 360deg),
+    rgba(20, 12, 16, 0.6) 0
+  );
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 5px),
+    #000 calc(100% - 4px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 5px),
+    #000 calc(100% - 4px)
+  );
+  pointer-events: none;
+}
+
+.hold-buy-button.is-refused {
+  border-color: var(--menu-red);
+  background: rgba(90, 20, 24, 0.9);
+  animation: hold-buy-shake 450ms linear;
+}
+
+.hold-buy-price {
+  color: var(--menu-gold);
+}
+
+.hold-buy-button[data-short='true'] .hold-buy-price {
+  color: #ff8a7a;
+}
+
+@keyframes hold-buy-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15%,
+  45%,
+  75% {
+    transform: translateX(-3px);
+  }
+  30%,
+  60%,
+  90% {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hold-buy-button.is-refused {
+    animation: none;
+  }
+}
+
+.icon-button-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 18px;
+  padding: 0 3px;
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-ink-on-gold);
+  color: var(--menu-ink);
+  font: bold 11px/16px monospace;
+  text-align: center;
+}
+
+.hud-tap-frame {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
+  left: env(safe-area-inset-left, 0px);
+  container-type: size;
+  pointer-events: none;
+}
+
+.hud-tap-stage {
+  /* One HUD pixel in CSS, so HTML drawn over the canvas HUD matches it. */
+  --hud-px: min(100cqw / var(--screen-w), 100cqh / var(--screen-h));
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: min(100cqw, 100cqh * var(--screen-w) / var(--screen-h));
+  height: min(100cqh, 100cqw * var(--screen-h) / var(--screen-w));
+  pointer-events: none;
+}
+
+.gun-cluster {
+  position: absolute;
+  pointer-events: none;
+}
+
+.gun-slots {
+  position: absolute;
+  inset: 0;
+}
+
+.gun-slot-button {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--menu-radius-sm);
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.gun-slot-button:active {
+  background: rgba(255, 224, 102, 0.2);
+}
+
+.gun-slot-button:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
+}
+
+/* Mid-wave a mouse click on a slot is a shot at the world beneath
+   (isSlotPressAShot in src/app/update/play.ts), so the slots wear the aim
+   cursor and do not light up under a mouse. A tap still lights them. */
+.gun-slots[data-click='World'] .gun-slot-button {
+  cursor: var(--aim-cursor);
+}
+
+.gun-cluster[data-device='KeyboardMouse']
+  .gun-slots[data-click='World']
+  .gun-slot-button:active {
+  background: transparent;
+}
+
+.gun-cluster-side {
+  position: absolute;
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: none;
+}
+
+/* RELOAD: always on the touch HUD, past the melee slot. The button is the
+   thumb's target, at least 48px; its face is one more HUD slot, sized in the HUD's pixels (--hud-px), bright while a
+   reload would load rounds and dim like a slot not in hand while not. */
+
+.reload-button {
+  position: absolute;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 0;
+  border: 0;
+  border-radius: var(--menu-radius-sm);
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.reload-face {
+  box-sizing: border-box;
+  flex: none;
+  border: var(--hud-px) solid var(--menu-gold);
+  background: rgba(8, 10, 12, 0.6) center / calc(9 * var(--hud-px))
+    calc(8 * var(--hud-px)) no-repeat;
+  image-rendering: pixelated;
+}
+
+.reload-button[data-ready='false'] .reload-face {
+  border-color: rgba(244, 241, 222, 0.25);
+  opacity: var(--menu-dim);
+}
+
+.reload-button:active .reload-face {
+  background-color: rgba(255, 224, 102, 0.3);
+}
+
+.reload-button:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
+}
+
+.gun-cluster-side > * {
+  flex: none;
+}
+
+.cluster-button {
+  pointer-events: auto;
+  border-color: rgba(255, 224, 102, 0.7);
+}
+
+.gun-cluster-top {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  display: flex;
+  pointer-events: none;
+}
+
+.gun-cluster-top > button {
+  position: relative;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.key-badge {
+  position: absolute;
+  top: -9px;
+  right: 4px;
+  padding: 0 4px;
+  border: 1px solid rgba(244, 241, 222, 0.6);
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-ink-on-gold);
+  color: var(--menu-ink);
+  font: bold 10px/12px monospace;
+  pointer-events: none;
+}
+
+.gun-slot-button .key-badge {
+  top: auto;
+  bottom: calc(100% - 2px);
+  right: 50%;
+  transform: translateX(50%);
+}
+
+.gun-slot-button[data-held='true'] .key-badge {
+  border-color: var(--menu-gold);
+  color: var(--menu-gold);
+}
+
+.start-wave-button .key-badge {
+  color: var(--menu-gold);
+  border-color: currentColor;
+}
+
+.start-wave-button,
+.start-wave-pill {
+  min-width: 132px;
+  min-height: var(--menu-tap);
+  padding: 0 18px;
+  border: var(--menu-border-panel) solid #fff3b0;
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-gold);
+  box-shadow: 0 3px 0 #7a5c00;
+  color: var(--menu-ink-on-gold);
+  font: bold 16px monospace;
+  letter-spacing: 1px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Pressed READY in a crew: green, so a glance tells who is holding the break. */
+.start-wave-pill[data-ready='Ready'],
+.start-wave-button[data-ready='Ready'] {
+  border-color: #d8ffc0;
+  background: var(--menu-green);
+  box-shadow: 0 3px 0 #2f6b1c;
+}
+
+.start-wave-pill:active {
+  filter: brightness(0.85);
+}
+
+/* Until the player has started a wave once, the button itself pulses, in
+   place of a START WAVE label in the room. So does the place trap button
+   once the first trap is bought, until one is placed. */
+.place-icon-button[data-beckon='true'],
+.start-wave-pill[data-beckon='true'],
+.start-wave-button[data-beckon='true'] {
+  opacity: 1;
+  animation: start-wave-beckon 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes start-wave-beckon {
+  from {
+    box-shadow: 0 0 0 0 rgba(255, 224, 102, 0);
+  }
+  to {
+    box-shadow: 0 0 0 5px rgba(255, 224, 102, 0.45);
+  }
+}
+
+/* The break is waiting on this player (src/features/hud/readyNudge.ts): READY glows and
+   brightens in place. It never moves, and it stays on until pressed. */
+.start-wave-pill[data-nudge='true'],
+.start-wave-button[data-nudge='true'] {
+  animation: ready-nudge 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes ready-nudge {
+  from {
+    filter: brightness(1);
+    box-shadow:
+      0 3px 0 #7a5c00,
+      0 0 0 0 rgba(255, 255, 255, 0);
+  }
+  to {
+    filter: brightness(1.3);
+    box-shadow:
+      0 3px 0 #7a5c00,
+      0 0 0 6px rgba(255, 255, 255, 0.6),
+      0 0 18px 6px rgba(255, 224, 102, 0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start-wave-pill[data-nudge='true'],
+  .start-wave-button[data-nudge='true'] {
+    animation: none;
+    box-shadow:
+      0 3px 0 #7a5c00,
+      0 0 0 4px rgba(255, 255, 255, 0.7);
+  }
+
+  .place-icon-button[data-beckon='true'],
+  .start-wave-pill[data-beckon='true'],
+  .start-wave-button[data-beckon='true'] {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(255, 224, 102, 0.45);
+  }
+}
+
+.start-wave-pill:focus-visible,
+.start-wave-button:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
+}
+
+.mode-choice {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+}
+
+.mode-group {
+  display: flex;
+  gap: 10px;
+}
+
+.mode-button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 120px;
+  min-height: 48px;
+  padding: 4px 16px;
+  border: 2px solid rgba(255, 224, 102, 0.8);
+  border-radius: var(--menu-radius-sm);
+  background: rgba(8, 10, 12, 0.75);
+  color: var(--menu-gold);
+  font: bold 14px monospace;
+  letter-spacing: 1px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.keep-going-button {
+  border-color: rgba(155, 227, 106, 0.9);
+  color: var(--menu-green);
+}
+
+.character-button {
+  border-color: rgba(255, 157, 240, 0.85);
+  color: var(--menu-pink);
+}
+
+.mode-button-detail {
+  color: var(--menu-ink-dim);
+  font-size: 10px;
+  font-weight: normal;
+}
+
+.mode-button-key {
+  position: absolute;
+  top: -9px;
+  right: 6px;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-ink-on-gold);
+  font-size: 10px;
+}
+
+@media (hover: hover) {
+  .mode-button:hover {
+    background: rgba(40, 30, 20, 0.85);
+  }
+}
+
+.mode-button:active {
+  box-shadow: inset 0 0 0 3px rgba(255, 224, 102, 0.6);
+  background: rgba(60, 40, 20, 0.95);
+}
+
+.mode-button:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
+}
+
+.money {
+  white-space: nowrap;
+}
+
+.coin-icon {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.15em;
+  vertical-align: -0.1em;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'><path fill='%235a3510' d='M0 2h7v3H0zM1 1h5v5H1zM2 0h3v7H2z'/><path fill='%23ffd23f' d='M1 2h5v3H1zM2 1h3v5H2z'/><path fill='%23fff3b0' d='M2 1h2v1H2zM1 2h1v2H1z'/><path fill='%23d9962a' d='M5 2h1v3H5zM2 5h3v1H2z'/><path fill='%23c98a1a' d='M3 2h1v3H3z'/></svg>")
+    center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.debut-card {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.debut-card-button {
+  position: relative;
+  min-width: 120px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 3px solid #ff8a3d;
+  border-radius: var(--menu-radius-sm);
+  background: rgba(24, 14, 22, 0.94);
+  color: var(--menu-gold);
+  font: bold 14px monospace;
+  letter-spacing: 1px;
+  cursor: pointer;
+  touch-action: manipulation;
+  pointer-events: auto;
+}
+
+@media (hover: hover) {
+  .debut-card-button:hover {
+    background: rgba(60, 30, 20, 0.95);
+  }
+}
+
+.debut-card-button:focus-visible {
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
+}
+
+.debut-card-key {
+  position: absolute;
+  top: -9px;
+  right: 6px;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: var(--menu-radius-sm);
+  background: var(--menu-ink-on-gold);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+.ghost-sticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ghost-stick {
+  position: absolute;
+  bottom: 22%;
+  width: 112px;
+  height: 112px;
+  margin-left: -56px;
+  box-sizing: border-box;
+  border: 2px dashed rgba(244, 241, 222, 0.6);
+  border-radius: var(--menu-radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ghost-pulse 1.4s ease-in-out infinite;
+}
+
+.ghost-stick[data-ghost='Move'] {
+  left: 22%;
+}
+
+.ghost-stick[data-ghost='Aim'] {
+  left: 78%;
+  border-color: rgba(255, 224, 102, 0.75);
+}
+
+.ghost-stick-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--menu-radius-pill);
+  background: rgba(244, 241, 222, 0.4);
+  animation: ghost-drag 1.4s ease-in-out infinite;
+}
+
+.ghost-stick[data-ghost='Aim'] .ghost-stick-thumb {
+  background: rgba(255, 224, 102, 0.5);
+}
+
+/* NOTE: the label sits above its ghost, out on the floor, so on a landscape
+   phone it never covers the stall or the gun slots in the bottom corners. */
+.ghost-stick-label {
+  position: absolute;
+  bottom: 100%;
+  margin-bottom: 6px;
+  padding: 2px 6px;
+  border-radius: var(--menu-radius-sm);
+  background: rgba(8, 10, 12, 0.7);
+  color: var(--menu-ink);
+  font: bold 13px monospace;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.ghost-stick[data-ghost='Aim'] .ghost-stick-label {
+  color: var(--menu-gold);
+}
+
+@keyframes ghost-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes ghost-drag {
+  0%,
+  20% {
+    transform: translate(0, 0);
+  }
+  60%,
+  80% {
+    transform: translate(26px, -14px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghost-stick,
+  .ghost-stick-thumb {
+    animation: none;
+  }
+}
+
+.pause-help-frame {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
+  left: env(safe-area-inset-left, 0px);
+  container-type: size;
+  pointer-events: none;
+}
+
+.pause-help {
+  --arena-px: min(100cqw / var(--screen-w), 100cqh / var(--screen-h));
+  position: absolute;
+  left: 50%;
+  top: calc(
+    (100cqh - var(--screen-h) * var(--arena-px)) / 2 + 97 * var(--arena-px)
+  );
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  width: min(232 * var(--arena-px), 48em);
+  max-height: calc(118 * var(--arena-px));
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  overflow: hidden;
+  padding: 0.6em 0.8em 0.7em;
+  border: var(--menu-border-panel) solid var(--menu-green);
+  border-radius: var(--menu-radius-lg);
+  background: rgba(28, 22, 34, 0.95);
+  color: var(--menu-ink);
+  font: round(clamp(9px, 4.2 * var(--arena-px), 24px), 1px) / 1.3
+    var(--menu-font);
+  pointer-events: auto;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.pause-help-title {
+  margin: 0;
+  color: var(--menu-green);
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.preparation-controls[data-device='Touch'] {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+}
+
+.debut-card-button {
+  animation: debut-prompt-in 220ms ease-out;
+}
+
+@keyframes debut-prompt-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .debut-card-button {
+    animation: none;
+  }
+}
+
+/* A BROWSER EXTENSION GRABBING KEYS (src/input/keyGrab.ts) */
+
+.key-grab-toast {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 24px);
+  padding: 8px 14px;
+  border: 2px solid var(--menu-red);
+  border-radius: var(--menu-radius-md);
+  background: rgba(8, 10, 12, 0.9);
+  color: var(--menu-ink);
+  font: bold 12px/1.3 monospace;
+  pointer-events: none;
+  z-index: 30;
+  animation: key-grab-toast 7s steps(28, end) forwards;
+}
+
+.key-grab-icons {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.key-grab-icon {
+  width: 32px;
+  height: 32px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+@keyframes key-grab-toast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -12px);
+  }
+  6%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .key-grab-toast {
+    animation-timing-function: step-end;
+  }
+}
+
+/* THE GUIDED FIRST BREAK: the tracker under the hearts. */
+
+.quest-frame {
+  position: fixed;
+  inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  container-type: size;
+  pointer-events: none;
+}
+
+.quest-tracker {
+  --arena-px: min(100cqw / var(--screen-w), 100cqh / var(--screen-h));
+  position: absolute;
+  left: calc(
+    (100cqw - var(--screen-w) * var(--arena-px)) / 2 + 4 * var(--arena-px)
+  );
+  top: calc(
+    (100cqh - var(--screen-h) * var(--arena-px)) / 2 + (var(--world-top) + 24) *
+      var(--arena-px)
+  );
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 8px;
+  border: 2px solid rgba(255, 224, 102, 0.6);
+  border-radius: var(--menu-radius-md);
+  background: rgba(20, 15, 24, 0.85);
+  color: var(--menu-ink);
+  font: bold 11px monospace;
+  pointer-events: auto;
+}
+
+.quest-tracker[data-done='true'] {
+  border-color: var(--menu-green);
+  animation: quest-fade 2.6s steps(26, end) forwards;
+}
+
+@keyframes quest-fade {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.quest-held {
+  width: 22px;
+  height: 14px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.quest-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quest-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  border-radius: var(--menu-radius-sm);
+  opacity: 0.4;
+}
+
+.quest-step[data-state='Now'] {
+  background: rgba(255, 224, 102, 0.18);
+  box-shadow: inset 0 0 0 2px var(--menu-gold);
+  opacity: 1;
+  animation: quest-now 0.8s ease-in-out infinite alternate;
+}
+
+.quest-step[data-state='Done'] {
+  opacity: 0.85;
+}
+
+@keyframes quest-now {
+  to {
+    transform: translateY(-2px);
+  }
+}
+
+.quest-step-icon {
+  width: 22px;
+  height: 20px;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.quest-step-word {
+  color: var(--menu-gold);
+  letter-spacing: 1px;
+}
+
+.quest-step-tick {
+  position: absolute;
+  right: -2px;
+  bottom: -4px;
+  color: var(--menu-green);
+  font-size: 13px;
+  text-shadow: 0 1px 0 var(--menu-ink-on-gold);
+}
+
+/* The skip button's tap area is a full 48 px, as every touch target is,
+   but the negative margin keeps the tracker as slim as its 32 px face. */
+.quest-skip {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  margin: -8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--menu-ink);
+  font: bold 16px monospace;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.quest-skip::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: var(--menu-radius-sm);
+  background: rgba(244, 241, 222, 0.1);
+}
+
+.quest-skip:focus-visible {
+  outline: none;
+}
+
+.quest-skip:focus-visible::before {
+  outline: var(--menu-focus);
+  outline-offset: var(--menu-focus-offset);
+}
+
+.quest-confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.quest-confetti-bit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  background: hsl(calc(var(--bit) * 36deg) 90% 60%);
+  animation: quest-confetti 0.9s ease-out forwards;
+  --angle: calc(var(--bit) * 36deg);
+}
+
+@keyframes quest-confetti {
+  from {
+    transform: rotate(var(--angle)) translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: rotate(var(--angle)) translateX(46px);
+    opacity: 0;
+  }
+}
+
+/* In landscape the tracker docks in the top corner away from what it
+   teaches; in portrait it sits in the band above the world, at the right,
+   compact, so it never covers the room. */
+.quest-tracker[data-side='Right'] {
+  left: auto;
+  right: calc(
+    (100cqw - var(--screen-w) * var(--arena-px)) / 2 + 4 * var(--arena-px)
+  );
+}
+
+.game-root[data-layout='Portrait'] .quest-tracker {
+  left: auto;
+  right: calc(
+    (100cqw - var(--screen-w) * var(--arena-px)) / 2 + 3 * var(--arena-px)
+  );
+  /* Just above the world, and never higher than the pause button's foot,
+     so the skip button's tap area stays clear of it on narrow phones. */
+  top: max(
+    58px,
+    calc(
+      (100cqh - var(--screen-h) * var(--arena-px)) / 2 +
+        (var(--world-top) - 2) * var(--arena-px) - 36px
+    )
+  );
+  gap: 3px;
+  padding: 2px 2px 2px 4px;
+  border-width: 1px;
+}
+
+.game-root[data-layout='Portrait'] .quest-steps {
+  gap: 3px;
+}
+
+.game-root[data-layout='Portrait'] .quest-step {
+  padding: 2px 3px;
+}
+
+.game-root[data-layout='Portrait'] .quest-step-word {
+  display: none;
+}
+
+.game-root[data-layout='Portrait'] .quest-step-icon {
+  width: 16px;
+  height: 14px;
+}
+
+/* In portrait the band's pause button sits just above the tracker, so the
+   skip button's 48 px tap area grows down over the world's top edge
+   instead of up into it. */
+.game-root[data-layout='Portrait'] .quest-skip {
+  margin: 0 -8px -16px;
+  padding-bottom: 16px;
+  align-self: flex-start;
+}
+
+.game-root[data-layout='Portrait'] .quest-skip::before {
+  inset: 0 8px 16px;
+}
+
+.game-root[data-layout='Portrait'] .quest-held {
+  width: 14px;
+  height: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quest-step[data-state='Now'],
+  .quest-confetti-bit {
+    animation: none;
+  }
+}
+
+/* PORTRAIT */
+
+.game-root[data-layout='Portrait'] .pause-help {
+  top: calc(
+    (100cqh - var(--screen-h) * var(--arena-px)) / 2 + (var(--frame-top) + 38) *
+      var(--arena-px)
+  );
+  transform: translateX(-50%);
+  width: calc(100cqw - 16px);
+  max-height: calc(
+    (var(--screen-h) - var(--frame-top) - 38 - 44) * var(--arena-px)
+  );
+  font-size: 12px;
+}
+
+.game-root[data-layout='Portrait'] .mode-choice {
+  flex-direction: column;
+  width: calc(100vw - 16px);
+  max-width: 480px;
+}
+
+.game-root[data-layout='Portrait'] .mode-group {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 8px;
+}
+
+.game-root[data-layout='Portrait'] .mode-button {
+  min-width: 0;
+  padding: 4px 6px;
+}
+
+.game-root[data-layout='Portrait'] .debut-card {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 25dvh);
+}

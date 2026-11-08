@@ -116,7 +116,7 @@ const soundsOf = (
 }
 
 // NOTE: the music's first note sounds a moment after its cue, as the
-// game's does (START_DELAY_SECONDS in src/music.ts).
+// game's does (START_DELAY_SECONDS in src/audio/music.ts).
 const MUSIC_START_FRAMES = 0.05 * FRAMES_PER_SECOND
 
 // NOTE: how far each cut (the middle of a dissolve) lands from the score's

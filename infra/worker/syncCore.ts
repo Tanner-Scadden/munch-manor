@@ -46,7 +46,7 @@ import {
   PLAYER_SCOPE_KIND,
   PlayerScope,
   playerScopeId,
-} from '../../src/playerScope.ts'
+} from '../../src/platform/playerScope.ts'
 
 // NOTE: the sync Worker's logic, kept apart from the Durable Object classes
 // in sync.ts so `bun test` can run it without the Workers runtime. One

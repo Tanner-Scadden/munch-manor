@@ -39,7 +39,7 @@ const gameDomain = (stage: string) =>
 const apiDomain = (stage: string) =>
   stage === PRODUCTION_STAGE ? { domain: `api.${DOMAIN}` } : {}
 
-// NOTE: the Worker imports src/analytics.ts, which the game shares, so its
+// NOTE: the Worker imports src/platform/analytics.ts, which the game shares, so its
 // `effect` import would resolve from the game's node_modules (Foldkit pins an
 // older Effect). The alias bundles infra's one copy of Effect for the shared
 // Schema and the HttpApi alike. It points at the built files, since an alias
@@ -144,7 +144,7 @@ const Website = (apiUrl: Output.Output<string | undefined>) =>
       // paths then missed, so unknown paths answer 404 instead.
       assets: { notFoundHandling: 'none' },
       // NOTE: VITE_ variables are inlined into the game's bundle. This one
-      // tells the game where to post run summaries (src/analyticsBeacon.ts),
+      // tells the game where to post run summaries (src/platform/analyticsBeacon.ts),
       // sync, and open co-op rooms. It is the API Worker's primary URL:
       // https://api.munchmanor.com in production, its workers.dev URL
       // elsewhere. The API allows any origin, so the build served at the old

@@ -1,18 +1,18 @@
 import { Array, Function } from 'effect'
 
-import { isOutOfGuns } from '../../../src/ammoWarning'
-import { hasLineOfSight, levelOf } from '../../../src/arena'
-import { PLAYER_RADIUS } from '../../../src/constants'
+import { isOutOfGuns } from '../../../src/features/hud/ammoWarning'
+import { PLAYER_RADIUS } from '../../../src/shared/constants'
 import {
   COOKER_RULES,
   FREEZE_RULES,
   cookerFullMs,
   isFridgeWeapon,
   isSmallKind,
-} from '../../../src/fridgeWeapons'
-import { focusOf } from '../../../src/party'
-import { heldGun, isWieldingMelee } from '../../../src/weapons'
-import { bodyRadiusOf } from '../../../src/zombies'
+} from '../../../src/world/fridge/fridgeWeapons'
+import { heldGun, isWieldingMelee } from '../../../src/world/gear/weapons'
+import { hasLineOfSight, levelOf } from '../../../src/world/level/arena'
+import { focusOf } from '../../../src/world/party/party'
+import { bodyRadiusOf } from '../../../src/world/zombies/zombies'
 import {
   KEYS,
   type Model,

@@ -13,7 +13,7 @@ const BUILT_STYLESHEET =
 // NOTE: the built stylesheet would block the first paint, splash included,
 // until it downloads. Preloading it instead lets the inline splash in
 // index.html paint at once. The game waits for it before the splash goes:
-// see LoadStyles in src/main.ts.
+// see LoadStyles in src/app/main.ts.
 const loadStylesBehindSplash = (): Plugin => ({
   name: 'load-styles-behind-splash',
   apply: 'build',
@@ -27,10 +27,10 @@ const loadStylesBehindSplash = (): Plugin => ({
   },
 })
 
-const EARLY_ENTRY = 'src/early.ts'
+const EARLY_ENTRY = 'src/platform/early.ts'
 
-// NOTE: src/early.ts starts the SQLite worker before the game's modules run
-// (see src/storeEarly.ts). Bundled into the game's entry, it would wait for
+// NOTE: src/platform/early.ts starts the SQLite worker before the game's modules run
+// (see src/platform/storeEarly.ts). Bundled into the game's entry, it would wait for
 // the whole bundle to download, and the worker would not start until the
 // bundle finished its first long task. So the build emits it as its own small
 // entry, and the page loads it ahead of the game's.
@@ -89,7 +89,7 @@ export default defineConfig({
   // break that, so it is left out. The SQLite worker is an ES module worker,
   // since it shares chunks with the game.
   optimizeDeps: {
-    entries: ['src/entry.ts'],
+    entries: ['src/app/entry.ts'],
     exclude: ['@sqlite.org/sqlite-wasm'],
   },
   worker: {

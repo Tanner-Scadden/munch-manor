@@ -8,10 +8,10 @@
 // CALLING picks the calling (Handyman by default).
 import { Config, Effect, Option, Schema } from 'effect'
 
-import { Calling } from '@game/playerData'
-import { initialModel } from '@game/pureApp'
-import { pointsForRank } from '@game/rank'
-import { SAVE_KEY, encodeSave, saveOf } from '@game/save'
+import { initialModel } from '@game/app/pureApp'
+import { SAVE_KEY, encodeSave, saveOf } from '@game/platform/save'
+import { Calling } from '@game/shared/playerData'
+import { pointsForRank } from '@game/world/heroes/rank'
 
 import {
   DESKTOP_1280,

@@ -13,19 +13,19 @@ import {
   DetectScreenFit,
   GenerateSeed,
   ReadUpdateMarker,
-} from '@game/boot'
+} from '@game/app/boot'
 import {
   Message,
   type RestoredPageFromCache,
   type TickedFrame,
-} from '@game/message'
-import { CueMusic } from '@game/musicPlan'
-import { PlayerStore } from '@game/store'
-import { subscriptions } from '@game/subscriptions'
-import { WaitForUnwrap } from '@game/update/home'
-import { PlaySound } from '@game/update/sound'
-import { FetchBuild } from '@game/update/version'
-import { RUNNING_BUILD } from '@game/version'
+} from '@game/app/message'
+import { subscriptions } from '@game/app/subscriptions'
+import { PlaySound } from '@game/app/update/sound'
+import { FetchBuild } from '@game/app/update/version'
+import { CueMusic } from '@game/audio/musicPlan'
+import { WaitForUnwrap } from '@game/features/home/update'
+import { PlayerStore } from '@game/platform/store'
+import { RUNNING_BUILD } from '@game/platform/version'
 
 import * as Director from './director'
 import { type HarnessPage } from './settings'

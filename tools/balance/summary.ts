@@ -14,7 +14,7 @@ import {
   pipe,
 } from 'effect'
 
-import { Difficulty, HomeMode } from '../../src/model'
+import { Difficulty, HomeMode } from '../../src/app/model'
 import type { Kind } from './bot/basics'
 import { Counts, type RunResult, type WaveRun } from './bot/results'
 

@@ -662,7 +662,7 @@ describe('jobClassOf', () => {
     expect(classOf('bun', 'tools/audit/shots.ts')).toStrictEqual(
       JobClass.cases.Timing.make({}),
     )
-    expect(classOf('bun', 'src/save.ts')).toStrictEqual(
+    expect(classOf('bun', 'src/platform/save.ts')).toStrictEqual(
       JobClass.cases.Timing.make({}),
     )
     expect(classOf('sleep', '30')).toStrictEqual(JobClass.cases.Timing.make({}))

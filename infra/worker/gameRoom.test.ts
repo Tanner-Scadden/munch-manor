@@ -23,7 +23,7 @@ import {
   signToken,
 } from '@munch/sync-engine'
 
-import { roomSettingsOf } from '../../src/roomWorld.ts'
+import { roomSettingsOf } from '../../src/world/net/roomWorld.ts'
 import {
   DELETE_AFTER_MS,
   type RoomHost,
@@ -177,7 +177,7 @@ describe('the room host', () => {
   )
 
   // NOTE: a calling is kept only when it reads back as one of the game's
-  // callings (src/playerData.ts); a made-up word, a look code, a markup
+  // callings (src/shared/playerData.ts); a made-up word, a look code, a markup
   // string, or nothing seats the player as YOU. The Worker cannot check the
   // player's rank reached it.
   it.effect(
@@ -275,7 +275,7 @@ describe('the room host', () => {
   )
 
   // NOTE: the look a player sends is kept only when it is one of the game's
-  // looks (src/playerData.ts): the simple look, or an older code (five
+  // looks (src/shared/playerData.ts): the simple look, or an older code (five
   // words from the first look, or the many-part look's five letters) read
   // as its closest simple look. Anything else seats the player with none.
   it('a sent look is kept when it is a real look, and dropped when it is junk', () => {

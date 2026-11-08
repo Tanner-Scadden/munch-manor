@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { focusOf } from '../../src/party'
+import { focusOf } from '../../src/world/party/party'
 import { encodeJson } from '../json'
 import { waveSeedAt } from './bot'
 import { DEFAULT_OPTIONS } from './bot/basics'

@@ -17,7 +17,7 @@ import { BIG_HEAD, PALETTE } from './zombieHead'
 
 // SOURCES
 
-// The logo is private to src/screens.ts, so it is loaded with a few exports
+// The logo is private to src/features/menus/screens.ts, so it is loaded with a few exports
 // added. The head is the app icon's (zombieHead.ts).
 plugin({
   name: 'og-sources',
@@ -64,10 +64,12 @@ runAuditWith(
     const OUT = `${ROOT}/public/og-image.png`
     const SHOTS = path.resolve(import.meta.dir, 'shots')
 
-    const screensModule = yield* attempt(() => import('../../src/screens.ts'))
+    const screensModule = yield* attempt(
+      () => import('../../src/features/menus/screens.ts'),
+    )
     const screens = yield* Schema.decodeUnknownEffect(Screens)(screensModule)
     const font: { textPixels: (text: string) => Rows } = yield* attempt(
-      () => import('../../src/font.ts'),
+      () => import('../../src/art/font.ts'),
     )
 
     // CARD

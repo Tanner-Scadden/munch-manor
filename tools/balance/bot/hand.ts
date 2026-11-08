@@ -11,8 +11,8 @@
 
 import { Array, Function, Option } from 'effect'
 
-import { hasLineOfSight, levelOf } from '../../../src/arena'
-import { focusOf } from '../../../src/party'
+import { hasLineOfSight, levelOf } from '../../../src/world/level/arena'
+import { focusOf } from '../../../src/world/party/party'
 import {
   FRAME_MS,
   type Model,

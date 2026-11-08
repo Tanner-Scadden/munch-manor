@@ -14,12 +14,12 @@
 import { Array, Effect, String } from 'effect'
 import type { Browser, Page } from 'playwright-core'
 
-import { playerPalette, playerPixels } from '@game/appearance'
-import { pixelIconUrl } from '@game/icons'
-import { type Appearance, defaultAppearance } from '@game/model'
-import { GunSkin, Print, ShirtColor } from '@game/playerData'
-import { gunPictureOf } from '@game/sprites/guns'
-import { WeaponKind } from '@game/worldSchema'
+import { type Appearance, defaultAppearance } from '@game/app/model'
+import { playerPalette, playerPixels } from '@game/art/appearance'
+import { pixelIconUrl } from '@game/art/icons'
+import { gunPictureOf } from '@game/art/sprites/guns'
+import { GunSkin, Print, ShirtColor } from '@game/shared/playerData'
+import { WeaponKind } from '@game/world/schema/worldSchema'
 
 import { runHarnessAudit } from './harnessServer'
 import {

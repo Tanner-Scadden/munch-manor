@@ -4,33 +4,33 @@
 
 import { Array, Function, Option, Record, String } from 'effect'
 
-import { levelOf } from '../../../src/arena'
-import { CALLINGS } from '../../../src/calling'
+import { Message } from '../../../src/app/message'
+import type {
+  Difficulty,
+  Model as GameModel,
+  ZombieKind,
+} from '../../../src/app/model'
+import { update } from '../../../src/app/pureApp'
 import {
   type Camera,
   cameraFocus,
   cameraFor,
   worldWindowOf,
-} from '../../../src/camera'
-import { Message } from '../../../src/message'
-import type {
-  Difficulty,
-  Model as GameModel,
-  ZombieKind,
-} from '../../../src/model'
+} from '../../../src/render/camera'
+import {
+  DEFAULT_PORTRAIT_SCREEN,
+  LANDSCAPE_TOUCH_SCREEN,
+  type Screen,
+} from '../../../src/render/screen'
+import type { Calling } from '../../../src/shared/playerData'
+import { CALLINGS } from '../../../src/world/heroes/calling'
+import { levelOf } from '../../../src/world/level/arena'
 import {
   MODIFIER_ORDER,
   type Modifiers,
   noModifiers,
   toggledModifier,
-} from '../../../src/modifiers'
-import type { Calling } from '../../../src/playerData'
-import { update } from '../../../src/pureApp'
-import {
-  DEFAULT_PORTRAIT_SCREEN,
-  LANDSCAPE_TOUCH_SCREEN,
-  type Screen,
-} from '../../../src/screen'
+} from '../../../src/world/run/modifiers'
 import { knobText } from './knobs'
 
 export type Model = GameModel

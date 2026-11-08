@@ -333,7 +333,7 @@ const noConditionalStep = defineRule({
           context.report({
             node,
             message:
-              'A Step run on a condition: use stepWhen(isDue, step) from src/stepWhen.ts, or match the union when the condition narrows it (AGENTS.md "Code shape").',
+              'A Step run on a condition: use stepWhen(isDue, step) from src/app/stepWhen.ts, or match the union when the condition narrows it (AGENTS.md "Code shape").',
           })
         }
       },
@@ -372,7 +372,7 @@ const noWorldSpread = defineRule({
             context.report({
               node: property,
               message:
-                'A World spread over a Model: use withWorld(model, step) from src/world.ts (AGENTS.md "Code shape").',
+                'A World spread over a Model: use withWorld(model, step) from src/world/schema/world.ts (AGENTS.md "Code shape").',
             })
           }
         })
@@ -382,7 +382,7 @@ const noWorldSpread = defineRule({
 })
 
 // NOTE: the Model fields that say which menu is up. menuState in
-// src/menuState.ts reads them; everything else reads menuState. A new
+// src/app/menuState.ts reads them; everything else reads menuState. A new
 // dialog Binding joins this list and MenuState together.
 const DIALOG_FIELDS: ReadonlySet<string> = new Set([
   'shopDialog',
@@ -421,7 +421,7 @@ const noMenuField = defineRule({
           context.report({
             node,
             message:
-              'Which menu is up comes from menuState(model) in src/menuState.ts (or isCoopOpen for co-op), so every gate agrees (AGENTS.md "Code shape").',
+              'Which menu is up comes from menuState(model) in src/app/menuState.ts (or isCoopOpen for co-op), so every gate agrees (AGENTS.md "Code shape").',
           })
         }
       },
@@ -470,7 +470,7 @@ const commandBesideUpdate = defineRule({
           command =>
             context.report({
               node: command,
-              message: `${command.name} is never returned here: define a Command beside the update that returns it, and its .layer joins CommandsLayer in src/layer.ts (AGENTS.md "Code shape").`,
+              message: `${command.name} is never returned here: define a Command beside the update that returns it, and its .layer joins CommandsLayer in src/app/layer.ts (AGENTS.md "Code shape").`,
             }),
         )
       },
@@ -542,7 +542,7 @@ const noRunInTests = defineRule({
   },
 })
 
-// NOTE: a press acts on its OnClick. src/touchTaps.ts makes every touch tap
+// NOTE: a press acts on its OnClick. src/input/touchTaps.ts makes every touch tap
 // a click from that finger's own pointer events, so a button works with
 // another finger on the glass and acts once. A handler on a touch's or a
 // mouse's release, or on a touch's start, would act beside that click, or
@@ -559,14 +559,14 @@ const RELEASE_HANDLERS: ReadonlySet<string> = new Set([
 ])
 
 const TAP_BY_CLICK_MESSAGE =
-  'Act on OnClick: src/touchTaps.ts turns every touch tap into a click, so the press works with another finger down and acts once. OnPointerDown is the one press handler for acting as a finger lands.'
+  'Act on OnClick: src/input/touchTaps.ts turns every touch tap into a click, so the press works with another finger down and acts once. OnPointerDown is the one press handler for acting as a finger lands.'
 
 const tapByClick = defineRule({
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Act on OnClick (made from each finger by src/touchTaps.ts), never on a touch or mouse release or a touch start.',
+        'Act on OnClick (made from each finger by src/input/touchTaps.ts), never on a touch or mouse release or a touch start.',
     },
   },
   create(context) {
@@ -580,9 +580,9 @@ const tapByClick = defineRule({
   },
 })
 
-// NOTE: a player action's rule lives once, in src/stepWorld.ts, where the
+// NOTE: a player action's rule lives once, in src/world/step/stepWorld.ts, where the
 // co-op room runs it; single player applies it through its lead seat
-// (src/update/action.ts). A client module that imports a rule's own steps,
+// (src/app/update/action.ts). A client module that imports a rule's own steps,
 // or writes the fields a seat action owns, is deciding the action again.
 const SEAT_ACTION_STEPS: ReadonlySet<string> = new Set([
   'swapInHand',
@@ -617,7 +617,7 @@ const SEAT_WRITERS: ReadonlyArray<string> = [
 ]
 
 const SEAT_ACTION_MESSAGE =
-  'A player action\'s rule lives once, in src/stepWorld.ts: apply it as a seat action (actAsLead or tryAsLead in src/update/action.ts) and wrap only the client cues around it (AGENTS.md "Code shape").'
+  'A player action\'s rule lives once, in src/world/step/stepWorld.ts: apply it as a seat action (actAsLead or tryAsLead in src/app/update/action.ts) and wrap only the client cues around it (AGENTS.md "Code shape").'
 
 const keyName = (property: ESTree.ObjectPropertyKind): string | undefined =>
   property.type === 'Property' && !property.computed
@@ -633,7 +633,7 @@ const seatActionOnce = defineRule({
     type: 'problem',
     docs: {
       description:
-        "Apply a player action as a seat action from src/stepWorld.ts, never with the rule's own steps.",
+        "Apply a player action as a seat action from src/world/step/stepWorld.ts, never with the rule's own steps.",
     },
   },
   create(context) {
@@ -672,14 +672,14 @@ const seatActionOnce = defineRule({
 })
 
 // NOTE: READY's key is the interact key, held to buy at a purchasable, so
-// only the one key table (src/keyActions.ts) asks whether the interact is
+// only the one key table (src/input/keyActions.ts) asks whether the interact is
 // taken. A key handler that asks itself is mapping keys to actions again.
 const keyActionOnce = defineRule({
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Map a key to a seat action through src/keyActions.ts, the one key table.',
+        'Map a key to a seat action through src/input/keyActions.ts, the one key table.',
     },
   },
   create(context) {
@@ -689,7 +689,7 @@ const keyActionOnce = defineRule({
           context.report({
             node,
             message:
-              'A key presses a seat action through keyActionOf or playerKeyAction in src/keyActions.ts, which also keeps READY\'s key from starting a wave at a purchasable (AGENTS.md "Code shape").',
+              'A key presses a seat action through keyActionOf or playerKeyAction in src/input/keyActions.ts, which also keeps READY\'s key from starting a wave at a purchasable (AGENTS.md "Code shape").',
           })
         }
       },
@@ -698,7 +698,7 @@ const keyActionOnce = defineRule({
 })
 
 // NOTE: the Model fields a child Block lives on through its Binding
-// (src/composition.ts). The root asks the child through its operations and
+// (src/app/composition.ts). The root asks the child through its operations and
 // never writes the field itself. A new Binding joins this list.
 const BINDING_FIELDS: ReadonlySet<string> = new Set([
   ...DIALOG_FIELDS,
@@ -737,6 +737,148 @@ const noBindingFieldWrite = defineRule({
                 'A child Block\'s field changes only through its Binding: call an operation (CoopBinding.requestKeepTracers(...)) from a makeStep (AGENTS.md "Blocks and Bindings").',
             }),
         )
+      },
+    }
+  },
+})
+
+// NOTE: the folders of src (AGENTS.md "Folders"). src/world/ is what the
+// co-op room loads, so it reaches only itself and src/shared/; src/shared/
+// reaches only itself. Both import only the packages the room's bundle
+// carries (Effect and Foldkit's pure struct and schema modules) and the
+// netcode package's types. Shipped code never imports a test home
+// (src/test/) or a test's folder (__tests__/). Tests may import anything.
+const SRC_PATH = /(?:^|\/)src\/(.*)$/
+
+const FOLDERS_ALLOWED: Readonly<Record<string, ReadonlyArray<string>>> = {
+  world: ['world', 'shared'],
+  shared: ['shared'],
+}
+
+const ROOM_PACKAGES = /^(effect(\/.*)?|foldkit\/(struct|schema))$/
+
+const ROOM_TYPE_PACKAGES = /^@munch\/netcode$/
+
+const isTestPath = (path: string): boolean =>
+  String.startsWith('test/')(path) || String.includes('__tests__/')(path)
+
+// NOTE: a relative import's path under src, from the importer's path under
+// src, or none when it leaves src.
+const resolveUnderSrc = (
+  importer: string,
+  spec: string,
+): Option.Option<string> =>
+  Option.map(
+    Array.reduce(
+      String.split('/')(spec),
+      Option.some(Array.dropRight(String.split('/')(importer), 1)),
+      (maybeSegments, segment) =>
+        Option.flatMap(maybeSegments, segments =>
+          segment === '.'
+            ? Option.some(segments)
+            : segment === '..'
+              ? Array.isReadonlyArrayNonEmpty(segments)
+                ? Option.some(Array.dropRight(segments, 1))
+                : Option.none()
+              : Option.some(Array.append(segments, segment)),
+        ),
+    ),
+    Array.join('/'),
+  )
+
+const folderOf = (path: string): string =>
+  Option.getOrElse(Array.head(String.split('/')(path)), () => '')
+
+const FOLDER_IMPORTS_MESSAGE = (
+  folder: string,
+  allowed: ReadonlyArray<string>,
+): string =>
+  `src/${folder}/ imports only ${Array.join(
+    Array.map(allowed, name => `src/${name}/`),
+    ' and ',
+  )}${folder === 'world' ? ', since the co-op room loads it,' : ''} and Effect and Foldkit's struct and schema modules (AGENTS.md "Folders").`
+
+const folderImports = defineRule({
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Keep src/world/ to what the co-op room may load, src/shared/ to itself, and tests out of shipped code.',
+    },
+  },
+  create(context) {
+    const match = SRC_PATH.exec(String.replaceAll('\\', '/')(context.filename))
+    const importer = match?.[1]
+    if (importer === undefined || isTestPath(importer)) {
+      return {}
+    }
+    const folder = folderOf(importer)
+    const allowed = FOLDERS_ALLOWED[folder]
+    const check = (
+      node: Node,
+      source: ESTree.StringLiteral | ESTree.Expression | null | undefined,
+      isTypeOnly: boolean,
+    ): void => {
+      if (!isStringLiteral(source)) {
+        return
+      }
+      const spec = source.value
+      if (!String.startsWith('.')(spec)) {
+        if (
+          allowed !== undefined &&
+          !ROOM_PACKAGES.test(spec) &&
+          !(isTypeOnly && ROOM_TYPE_PACKAGES.test(spec))
+        ) {
+          context.report({
+            node,
+            message: FOLDER_IMPORTS_MESSAGE(folder, allowed),
+          })
+        }
+        return
+      }
+      const maybeTarget = resolveUnderSrc(importer, spec)
+      if (Option.isNone(maybeTarget)) {
+        return
+      }
+      const target = maybeTarget.value
+      if (isTestPath(target)) {
+        context.report({
+          node,
+          message:
+            'Shipped code never imports a test home (src/test/) or a test\'s folder (__tests__/) (AGENTS.md "Folders").',
+        })
+        return
+      }
+      if (allowed !== undefined && !Array.contains(allowed, folderOf(target))) {
+        context.report({
+          node,
+          message: FOLDER_IMPORTS_MESSAGE(folder, allowed),
+        })
+      }
+    }
+    return {
+      ImportDeclaration(node) {
+        check(
+          node,
+          node.source,
+          node.importKind === 'type' ||
+            (node.specifiers.length > 0 &&
+              Array.every(
+                node.specifiers,
+                specifier =>
+                  specifier.type === 'ImportSpecifier' &&
+                  specifier.importKind === 'type',
+              )),
+        )
+      },
+      ExportNamedDeclaration(node) {
+        check(node, node.source, node.exportKind === 'type')
+      },
+      ExportAllDeclaration(node) {
+        check(node, node.source, node.exportKind === 'type')
+      },
+      ImportExpression(node) {
+        check(node, node.source, false)
       },
     }
   },
@@ -853,5 +995,6 @@ export default definePlugin({
     'no-binding-field-write': noBindingFieldWrite,
     'live-test-note': liveTestNote,
     'disable-needs-reason': disableNeedsReason,
+    'folder-imports': folderImports,
   },
 })

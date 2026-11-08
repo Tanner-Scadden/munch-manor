@@ -19,7 +19,12 @@ import {
   pipe,
 } from 'effect'
 
-import { BOSS_RULES, bossHp, hasBoss } from '../../src/boss'
+import type {
+  Difficulty,
+  Hold,
+  PlannedSpawn,
+  ZombieKind,
+} from '../../src/app/model'
 import {
   FADE_MAX_MS,
   PACK_WARNING_MS,
@@ -27,28 +32,27 @@ import {
   RELAX_QUIET_MAX_MS,
   RELAX_TRICKLE_MAX,
   ZOMBIE_ALIVE_MAX,
-} from '../../src/constants'
+} from '../../src/shared/constants'
+import { TRAPS } from '../../src/world/gear/traps'
+import { UPGRADE_TIERS, WEAPONS } from '../../src/world/gear/weapons'
+import { EXIT_RULES } from '../../src/world/level/exits'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
   toughenSpawns,
-} from '../../src/difficulty'
-import { rollWave } from '../../src/endlessWaves'
-import { EXIT_RULES } from '../../src/exits'
-import { FRENZY_RULES, frenzyPacksOf } from '../../src/frenzy'
-import type {
-  Difficulty,
-  Hold,
-  PlannedSpawn,
-  ZombieKind,
-} from '../../src/model'
-import { STRAGGLER_KINDS } from '../../src/pacing'
-import { SHOP_ITEMS } from '../../src/shop'
-import { TRAPS } from '../../src/traps'
-import { FINAL_WAVE } from '../../src/wavePlans'
-import { waveBonus } from '../../src/waves'
-import { UPGRADE_TIERS, WEAPONS } from '../../src/weapons'
-import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER, scaledHp } from '../../src/zombies'
+} from '../../src/world/run/difficulty'
+import { SHOP_ITEMS } from '../../src/world/shop/shop'
+import { rollWave } from '../../src/world/waves/endlessWaves'
+import { STRAGGLER_KINDS } from '../../src/world/waves/pacing'
+import { FINAL_WAVE } from '../../src/world/waves/wavePlans'
+import { waveBonus } from '../../src/world/waves/waves'
+import { BOSS_RULES, bossHp, hasBoss } from '../../src/world/zombies/boss'
+import { FRENZY_RULES, frenzyPacksOf } from '../../src/world/zombies/frenzy'
+import {
+  ZOMBIE_KINDS,
+  ZOMBIE_KIND_ORDER,
+  scaledHp,
+} from '../../src/world/zombies/zombies'
 import {
   type Gun,
   type SpareGun,
@@ -404,7 +408,7 @@ export const flowRules = (assumptions: Assumptions): FlowRules => ({
 })
 
 // NOTE: a Straggler is a lone Shambler, Runner, or Kaboomer, the kind a
-// quiet relax may pull in early, as the trickle in src/pacing.ts does.
+// quiet relax may pull in early, as the trickle in src/world/waves/pacing.ts does.
 export type Arrival = 'Straggler' | 'Pack'
 
 export type Incoming = Readonly<{ atMs: number; hp: number; arrival: Arrival }>
@@ -516,7 +520,7 @@ type Clock = Readonly<{
 }>
 
 // NOTE: a quiet relax pulls the soonest straggler in now, up to trickleMax,
-// then ends, as the trickle in src/pacing.ts does.
+// then ends, as the trickle in src/world/waves/pacing.ts does.
 const trickled = (
   flow: Flow,
   beat: Readonly<{ _tag: 'Resting'; remainingMs: number; trickled: number }>,
@@ -603,7 +607,7 @@ const advanceClock = (flow: Flow, waiting: number, rules: FlowRules): Clock => {
 }
 
 // NOTE: after a quiet stretch the wave clock skips to the next pack's
-// warning, never past a hold, as QUIET_HURRY_MS does in src/pacing.ts.
+// warning, never past a hold, as QUIET_HURRY_MS does in src/world/waves/pacing.ts.
 const hurried = (flow: Flow, rules: FlowRules): number =>
   flow.beat._tag === 'Flowing' && flow.quietMs >= rules.quietHurryMs
     ? pipe(
