@@ -7,7 +7,7 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import { ShopDialogBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
-import { FridgeDoor, MunchopediaPage, ShopGuide } from '../../../app/model'
+import { FridgeDoor } from '../../../app/model'
 import { Child, update } from '../../../app/pureApp'
 import { home } from '../../../test/model.fixture'
 import { press, ticks } from '../../../test/testing'
@@ -16,20 +16,23 @@ import { UPGRADE_TIERS, WEAPONS } from '../../../world/gear/weapons'
 import { EXIT_RULES } from '../../../world/level/exits'
 import { modifyFocus } from '../../../world/party/party'
 import { SHOP_ITEMS } from '../../../world/shop/shop'
-import { FocusShopGuide } from '../guideUpdate'
-import {
-  type GuideEntry,
-  entriesOf,
-  isEntryKnown,
-  prizeUnlockId,
-} from '../shopGuide'
+import { Message as MunchopediaMessage } from '../../munchopedia/message'
 import {
   FRAMES_TO_STALL,
   SHOP_FRAME_MS,
   besideStall,
   preparing,
   resolveShowShop,
-} from './shop.fixture'
+} from '../../shop/__tests__/shop.fixture'
+import { Message as GuideMessage } from '../message'
+import { GuideStatus } from '../model'
+import {
+  type GuideEntry,
+  entriesOf,
+  isEntryKnown,
+  prizeUnlockId,
+} from '../shopGuide'
+import { FocusGuideControl } from '../steps'
 
 const entry = (section: Parameters<typeof entriesOf>[0], id: string) =>
   Option.getOrThrow(
@@ -46,8 +49,8 @@ const atCounter = steps(
 )
 
 const resolveFocusGuide = Command.resolve(
-  FocusShopGuide,
-  Message.CompletedFocusShopGuide(),
+  FocusGuideControl,
+  GuideMessage.CompletedFocusControl(),
 )
 
 const closedShop = () =>
@@ -62,16 +65,22 @@ describe('the ? in Rattles shop', () => {
       message(Message.ClickedShopGuideButton()),
       resolveFocusGuide,
       model(({ shopGuide }) => {
-        expect(shopGuide).toEqual(ShopGuide.Open({ section: 'Traps' }))
+        expect(shopGuide.status).toEqual(GuideStatus.Open({ section: 'Traps' }))
       }),
-      message(Message.ClickedShopGuideSectionButton({ section: 'Fridge' })),
+      message(
+        Child.shopGuide(
+          GuideMessage.ClickedSectionButton({ section: 'Fridge' }),
+        ),
+      ),
       model(({ shopGuide }) => {
-        expect(shopGuide).toEqual(ShopGuide.Open({ section: 'Fridge' }))
+        expect(shopGuide.status).toEqual(
+          GuideStatus.Open({ section: 'Fridge' }),
+        )
       }),
-      message(Message.ClickedShopGuideBackButton()),
+      message(Child.shopGuide(GuideMessage.ClickedBackButton())),
       resolveFocusGuide,
       model(({ shopGuide }) => {
-        expect(shopGuide).toEqual(ShopGuide.Closed())
+        expect(shopGuide.status).toEqual(GuideStatus.Closed())
       }),
     )
   })
@@ -84,12 +93,12 @@ describe('the ? in Rattles shop', () => {
       press('Slash'),
       resolveFocusGuide,
       model(({ shopGuide }) => {
-        expect(ShopGuide.isAnyOf(['Open'])(shopGuide)).toBe(true)
+        expect(GuideStatus.isAnyOf(['Open'])(shopGuide.status)).toBe(true)
       }),
       press('Slash'),
       resolveFocusGuide,
       model(({ shopGuide }) => {
-        expect(shopGuide).toEqual(ShopGuide.Closed())
+        expect(shopGuide.status).toEqual(GuideStatus.Closed())
       }),
     )
   })
@@ -110,7 +119,7 @@ describe('the ? in Rattles shop', () => {
       ),
       resolveShowShop,
       model(({ shopGuide, seats: [{ shop }] }) => {
-        expect(shopGuide).toEqual(ShopGuide.Closed())
+        expect(shopGuide.status).toEqual(GuideStatus.Closed())
         expect(shop._tag).toBe('Browsing')
       }),
     )
@@ -124,18 +133,21 @@ describe('the Munchopedia Shop page', () => {
       given(home),
       message(Message.ClickedMunchopediaButton()),
       resolveShowShop,
-      message(Message.ClickedMunchopediaShopButton()),
-      model(({ home: menu }) => {
-        expect(menu.munchopediaPage).toEqual(
-          MunchopediaPage.Shop({ section: 'Guns' }),
+      message(Child.munchopedia(MunchopediaMessage.ClickedShopButton())),
+      resolveFocusGuide,
+      model(({ munchopedia }) => {
+        expect(munchopedia.guide.status).toEqual(
+          GuideStatus.Open({ section: 'Guns' }),
         )
       }),
       message(
-        Message.ClickedMunchopediaShopSectionButton({ section: 'House' }),
+        Child.munchopediaGuide(
+          GuideMessage.ClickedSectionButton({ section: 'House' }),
+        ),
       ),
-      model(({ home: menu }) => {
-        expect(menu.munchopediaPage).toEqual(
-          MunchopediaPage.Shop({ section: 'House' }),
+      model(({ munchopedia }) => {
+        expect(munchopedia.guide.status).toEqual(
+          GuideStatus.Open({ section: 'House' }),
         )
       }),
     )

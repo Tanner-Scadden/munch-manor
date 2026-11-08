@@ -10,7 +10,6 @@ import { Message } from '../../../app/message'
 import {
   type MenuPanel,
   type Model,
-  MunchopediaPage,
   Phase,
   RunMode,
   type ZombieKind,
@@ -32,6 +31,8 @@ import {
   writeSave,
 } from '../../../test/testing'
 import { modifyFocus } from '../../../world/party/party'
+import { Message as MunchopediaMessage } from '../../munchopedia/message'
+import { MunchopediaPage } from '../../munchopedia/model'
 import {
   MUNCHOPEDIA,
   earnedBadges,
@@ -414,7 +415,7 @@ describe('the Munchopedia', () => {
       writeSave(),
       expectPanel('Munchopedia'),
       model(current => {
-        expect(current.home.munchopediaPage).toEqual(
+        expect(current.munchopedia.page).toEqual(
           MunchopediaPage.Entry({ kind: 'Runner' }),
         )
         expect(current.home.newEntries).toEqual([])
@@ -430,17 +431,21 @@ describe('the Munchopedia', () => {
       given(readyModel),
       message(Message.ClickedMunchopediaButton()),
       showDialog(),
-      message(Message.ClickedMunchopediaEntryButton({ kind: 'Tank' })),
+      message(
+        Child.munchopedia(
+          MunchopediaMessage.ClickedEntryButton({ kind: 'Tank' }),
+        ),
+      ),
       Command.expectNone(),
       model(current => {
-        expect(current.home.munchopediaPage).toEqual(
+        expect(current.munchopedia.page).toEqual(
           MunchopediaPage.Entry({ kind: 'Tank' }),
         )
         expect(current.home.openedEntries).toEqual([])
       }),
-      message(Message.ClickedMunchopediaListButton()),
+      message(Child.munchopedia(MunchopediaMessage.ClickedListButton())),
       model(current => {
-        expect(current.home.munchopediaPage).toEqual(MunchopediaPage.List())
+        expect(current.munchopedia.page).toEqual(MunchopediaPage.List())
       }),
     )
   })

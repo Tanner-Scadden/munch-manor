@@ -21,8 +21,8 @@ import { Canvas, Dom, Program, Runtime } from 'foldkit'
 import { type Document } from 'foldkit/html'
 import { modifyFields } from 'foldkit/struct'
 
-import { Dialog, Tabs } from '@foldkit/ui'
 import { ProfileDialogBinding } from '@game/app/bindings'
+import { ChildLayers } from '@game/app/block'
 import { LoadSave, bootCommands } from '@game/app/boot'
 import { ApplicationComposition } from '@game/app/composition'
 import { ApplicationBlock, makeNoopStep } from '@game/app/definition'
@@ -36,10 +36,7 @@ import { subscriptions } from '@game/app/subscriptions'
 import { managedResources } from '@game/app/update/sound'
 import { modelStep } from '@game/app/update/step'
 import { view } from '@game/app/view'
-import { CoopLayer } from '@game/features/coop'
 import { quietCoopNet } from '@game/features/coop/testing'
-import { LobbyLayer } from '@game/features/lobby/layer'
-import { ProfileLayer } from '@game/features/profile/layer'
 import { quietLayer as quietInstallPrompt } from '@game/platform/install'
 import { layer as PlayerStoreLayer } from '@game/platform/store'
 import { screenOf } from '@game/render/screen'
@@ -356,17 +353,7 @@ const harnessLayer = ApplicationBlock.makeLayer({
     EffectsLayer,
     sceneHandlers({ page, wake: directorWake }),
   ),
-}).pipe(
-  Layer.provide(
-    Layer.mergeAll(
-      Dialog.layer,
-      Tabs.layer,
-      ProfileLayer,
-      LobbyLayer,
-      CoopLayer,
-    ),
-  ),
-)
+}).pipe(Layer.provide(ChildLayers))
 
 // NOTE: the services are built once for the page and shared by every
 // scene, as one runtime shared them before scenes restarted it: the player

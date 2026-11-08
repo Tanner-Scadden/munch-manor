@@ -30,7 +30,6 @@ import {
   moveHintBand,
   skipDebutCard,
 } from '../../features/onboarding/onboarding'
-import { shopGuideFromKey } from '../../features/shop/guideUpdate'
 import { closeShop, syncShopDialog } from '../../features/shop/update'
 import {
   type PointerPress,
@@ -73,6 +72,7 @@ import { coopFromKey, isCoopOpen, pressCoopKey, releaseCoopKey } from './coop'
 import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
+import { shopGuideFromKey } from './shopGuide'
 import {
   ammoTickCues,
   frameSoundCues,

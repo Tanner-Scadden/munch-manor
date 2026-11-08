@@ -3,7 +3,9 @@ import { Option, Schema } from 'effect'
 import { DialogBlock } from '@foldkit/ui'
 
 import * as Coop from '../features/coop/model'
+import { GuideBlock } from '../features/guide/block'
 import * as Lobby from '../features/lobby/model'
+import * as Munchopedia from '../features/munchopedia/model'
 import * as Profile from '../features/profile/model'
 import { ShopTabsBlock } from '../features/shop/shopTabs'
 import {
@@ -94,7 +96,6 @@ import {
   RunTally,
   SaveStatus,
   ScreenFit,
-  ShopGuide,
   SurfaceRectangle,
   SyncedSaveState,
   TellWatch,
@@ -162,7 +163,9 @@ export const Model = Schema.Struct({
   shopDialog: DialogBlock.Model,
   shopTabs: ShopTabsBlock.Model,
   shopChatter: ShopChatter,
-  shopGuide: ShopGuide,
+  // NOTE: the shop guide the ? opens in Rattles' shop dialog
+  // (src/features/guide/).
+  shopGuide: GuideBlock.Model,
   shake: Shake,
   popups: Schema.Array(Popup),
   streak: Streak,
@@ -213,6 +216,7 @@ export const Model = Schema.Struct({
   appearance: Appearance,
   profile: Profile.Model,
   lobby: Lobby.Model,
+  munchopedia: Munchopedia.Model,
   profileDialog: DialogBlock.Model,
   playerName: PlayerName,
   coop: Coop.Model,
@@ -306,6 +310,8 @@ type ChildField =
   | 'updateGreeting'
   | 'profile'
   | 'lobby'
+  | 'munchopedia'
+  | 'shopGuide'
   | 'profileDialog'
   | 'coop'
   | 'panelDialog'
@@ -338,7 +344,6 @@ export const initialModel: OwnModel = {
   stove: freshStove(DEFAULT_SEED),
   gasValve: shutValve,
   shopChatter: ShopChatter.Greeting(),
-  shopGuide: ShopGuide.Closed(),
   elapsedMs: 0,
   frameEvents: [],
   hitStop: initialHitStop,

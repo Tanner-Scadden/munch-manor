@@ -18,8 +18,8 @@ import {
   ZombieAction,
 } from '@game/app/model'
 import { addBot } from '@game/features/bots/bots'
+import { prizeUnlockId } from '@game/features/guide/shopGuide'
 import { isEndScreen, withBests } from '@game/features/home/home'
-import { prizeUnlockId } from '@game/features/shop/shopGuide'
 import { unlocksAt } from '@game/features/unlocks/unlocks'
 import {
   LinkFlow,

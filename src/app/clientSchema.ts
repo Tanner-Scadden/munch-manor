@@ -295,23 +295,9 @@ export const Bot = Schema.Struct({
 })
 export type Bot = typeof Bot.Type
 
-// NOTE: the guide inside Rattles' shop dialog, opened by its ? button. It
-// stands in the dialog's body, so closing it lands back on the shelves.
-export const ShopGuide = defineTaggedUnion({
-  Closed: {},
-  Open: { section: ShopGuideSection },
-})
-export type ShopGuide = typeof ShopGuide.Type
-
-export const MunchopediaPage = defineTaggedUnion({
-  List: {},
-  Entry: { kind: ZombieKind },
-  Shop: { section: ShopGuideSection },
-})
-export type MunchopediaPage = typeof MunchopediaPage.Type
-
-// NOTE: the home menu's own state. The mode toggle and the open pages last
-// for the page session. The newest What's New day seen and the Munchopedia
+// NOTE: the home menu's own state. The mode toggle and the What's New page
+// last for the page session (the Munchopedia's page is its own Block's,
+// src/features/munchopedia/). The newest What's New day seen and the Munchopedia
 // entries opened are kept in the on-device save (src/platform/save.ts). newEntries are
 // the kinds unlocked by the last counted run, for the NEW ENTRY pop.
 export const HomeMenu = Schema.Struct({
@@ -322,7 +308,6 @@ export const HomeMenu = Schema.Struct({
   bots: Schema.Array(Bot),
   maybeSeenNewsDay: Schema.Option(Schema.String),
   newsPage: Schema.Finite,
-  munchopediaPage: MunchopediaPage,
   openedEntries: Schema.Array(ZombieKind),
   isTurnHintSeen: Schema.Boolean,
   newEntries: Schema.Array(ZombieKind),
@@ -334,7 +319,6 @@ export const freshHomeMenu: HomeMenu = {
   bots: [],
   maybeSeenNewsDay: Option.none(),
   newsPage: 0,
-  munchopediaPage: MunchopediaPage.List(),
   openedEntries: [],
   isTurnHintSeen: false,
   newEntries: [],

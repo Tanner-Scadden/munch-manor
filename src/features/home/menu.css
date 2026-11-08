@@ -2620,6 +2620,13 @@ button.help-card:focus-visible {
   width: min(680px, calc(100vw - 16px));
 }
 
+/* NOTE: the Munchopedia's Block draws its page in one box that takes no
+   room of its own, so the page and its actions row lay out as the panel's
+   children. */
+.munch-body {
+  display: contents;
+}
+
 .munch-list {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

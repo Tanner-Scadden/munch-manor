@@ -117,6 +117,14 @@ export const unopenedKinds = (model: Model): ReadonlyArray<ZombieKind> =>
 export const hasUnopenedEntry = (model: Model): boolean =>
   Array.isReadonlyArrayNonEmpty(unopenedKinds(model))
 
+// NOTE: the menu panel's title and blurb over the Munchopedia.
+export const munchopediaText = (
+  model: Model,
+): Readonly<{ title: string; blurb: string }> => ({
+  title: 'Munchopedia',
+  blurb: `${discoveredKinds(model.bests.killsByKind).length} of ${ENTRY_COUNT} discovered, ${countLabel(model.bests.totalKills)} zombies splatted`,
+})
+
 // BADGES
 
 type Badge = Readonly<{ threshold: number; name: string }>

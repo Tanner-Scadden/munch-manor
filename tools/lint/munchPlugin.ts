@@ -700,7 +700,8 @@ const keyActionOnce = defineRule({
 // NOTE: the Model fields a child Block lives on through its Binding
 // (src/app/bindings.ts, the Profile's own in
 // src/features/profile/composition.ts, the lobby's in
-// src/features/lobby/bindings.ts, and co-op's in
+// src/features/lobby/bindings.ts, the Munchopedia's in
+// src/features/munchopedia/bindings.ts, and co-op's in
 // src/features/coop/bindings.ts). The parent asks the child through its
 // operations and never writes the field itself. A new Binding joins this
 // list.
@@ -713,6 +714,9 @@ const BINDING_FIELDS: ReadonlySet<string> = new Set([
   'lobby',
   'heroPicker',
   'heroDialog',
+  'shopGuide',
+  'munchopedia',
+  'guide',
   'coop',
 ])
 

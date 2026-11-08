@@ -2,7 +2,11 @@ import { Effect, Function, Option, Result } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { CoopBinding, ShopDialogBinding } from '../../app/bindings'
+import {
+  CoopBinding,
+  ShopDialogBinding,
+  ShopGuideBinding,
+} from '../../app/bindings'
 import { ApplicationBlock, makeStep } from '../../app/definition'
 import { refreshIntent } from '../../app/frame'
 import { isShopDialogOpen } from '../../app/menuState'
@@ -41,7 +45,6 @@ import {
 import { ActionRefusal, SeatAction } from '../../world/step/stepWorld'
 import { learnShop } from '../onboarding/onboarding'
 import { isRunOn } from '../onlineRun/onlineRun'
-import { forgetShopGuide } from './guideUpdate'
 
 // COMMAND
 
@@ -110,7 +113,7 @@ const greetAtCounter: UpdateStep = stepModel => ({
 const enterShop = makeStep(() =>
   Update.combineSteps([
     greetAtCounter,
-    forgetShopGuide,
+    ShopGuideBinding.requestClose(),
     ShopDialogBinding.requestOpen(),
     playSounds([uiCue('ShopBell')]),
   ]),

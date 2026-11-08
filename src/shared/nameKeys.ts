@@ -9,7 +9,7 @@ export const MapId = Schema.Literals(['Manor'])
 export type MapId = typeof MapId.Type
 
 // NOTE: the shop guide's sections, the shop's tabs and then the fridge's
-// prizes and the rest of the house (src/features/shop/shopGuide.ts).
+// prizes and the rest of the house (src/features/guide/shopGuide.ts).
 export const ShopGuideSection = Schema.Literals([
   'Guns',
   'Health',
@@ -19,7 +19,7 @@ export const ShopGuideSection = Schema.Literals([
 ])
 export type ShopGuideSection = typeof ShopGuideSection.Type
 
-// NOTE: the places around the house the shop guide shows (src/features/shop/shopGuide.ts).
+// NOTE: the places around the house the shop guide shows (src/features/guide/shopGuide.ts).
 export const HouseSpot = Schema.Literals([
   'Stall',
   'Window',
