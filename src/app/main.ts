@@ -13,7 +13,6 @@ import {
 } from '../features/end/update'
 import { isTurnHintShown, seeTurnHint } from '../features/home/home'
 import {
-  buyHero,
   closeHand,
   closePanel,
   greetUpdate,
@@ -25,7 +24,6 @@ import {
   openPanel,
   openSettingsFromGear,
   openWhatsNew,
-  pickCalling,
   pickFromCard,
   pickTutorialChoice,
   pressInstall,
@@ -39,20 +37,6 @@ import {
   turnNews,
   unwrapUpdateGift,
 } from '../features/home/update'
-import {
-  addLobbyBot,
-  backFromLobby,
-  blurredLobbyControl,
-  dropLobbyBot,
-  focusedLobbyControl,
-  openLobbyBotHero,
-  openLobbyHero,
-  pickLobbyDifficulty,
-  pickLobbyMode,
-  pickLobbyModifier,
-  playFromHome,
-  startFromLobby,
-} from '../features/lobby/update'
 import { endQuest } from '../features/onboarding/firstBreakQuest'
 import { skipKitchenTour } from '../features/onboarding/kitchenTour'
 import { skipDebutCard } from '../features/onboarding/onboarding'
@@ -95,6 +79,7 @@ import { stepWhen } from './stepWhen'
 import { askForRoomLink, openCoop, tickRoomFrame } from './update/coop'
 import { orInRun } from './update/coopRun'
 import { toggleFullscreen } from './update/fullscreen'
+import { playFromHome } from './update/lobby'
 import {
   asAllowedPress,
   buyAmmoFromHoldButton,
@@ -550,11 +535,6 @@ const handlers = makeUpdate({
 
   ClickedStayButton: model => Update.combineSteps(model, [closePanel]),
 
-  ClickedCallingCardButton: (model, { calling }) =>
-    Update.combineSteps(model, [pickCalling(calling)]),
-
-  ClickedBuyCallingButton: model => Update.combineSteps(model, [buyHero]),
-
   ClickedDifficultyCardButton: (model, { difficulty }) =>
     Update.combineSteps(model, [pickFromCard(difficulty)]),
 
@@ -646,43 +626,6 @@ const handlers = makeUpdate({
   FailedAwaitRunSettled: (model, { runId }) => forgetRunWait(model, runId),
 
   ClickedPlayButton: model => Update.combineSteps(model, [playFromHome]),
-
-  ClickedLobbyBackButton: model => Update.combineSteps(model, [backFromLobby]),
-
-  ClickedLobbyStartButton: model =>
-    Update.combineSteps(model, [startFromLobby]),
-
-  ClickedLobbyHeroButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound, openLobbyHero]),
-
-  ClickedLobbyAddBotButton: model => Update.combineSteps(model, [addLobbyBot]),
-
-  ClickedLobbyDropBotButton: (model, { index }) =>
-    Update.combineSteps(model, [dropLobbyBot(index)]),
-
-  ClickedLobbyBotHeroButton: (model, { index }) =>
-    Update.combineSteps(model, [
-      unlockAudio,
-      tapSound,
-      openLobbyBotHero(index),
-    ]),
-
-  ClickedLobbyModeButton: (model, { mode }) =>
-    Update.combineSteps(model, [pickLobbyMode(mode)]),
-
-  ClickedLobbyDifficultyButton: (model, { difficulty }) =>
-    Update.combineSteps(model, [pickLobbyDifficulty(difficulty)]),
-
-  ClickedLobbyModifierButton: (model, { modifier }) =>
-    Update.combineSteps(model, [pickLobbyModifier(modifier)]),
-
-  FocusedLobbyControl: (model, { control }) => ({
-    model: focusedLobbyControl(model, control),
-  }),
-
-  BlurredLobbyControl: model => ({ model: blurredLobbyControl(model) }),
-
-  CompletedFocusLobbyControl: model => ({ model }),
 
   ClickedWhatsNewButton: model =>
     Update.combineSteps(model, [unlockAudio, closeHand, openWhatsNew]),

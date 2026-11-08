@@ -1,24 +1,18 @@
 import { Array, Function, Option, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
 
-import {
-  type Difficulty,
-  type HomeLobby,
-  type HomeMode,
-  type LobbyControl,
-  type MapId,
-  type Model,
-} from '../../app/model'
+import type { HomeMode, MapId } from '../../app/clientSchema'
 import { FOCUS_STEP_OFFSET } from '../../input/input'
+import type { Difficulty } from '../../shared/playerData'
 import { DIFFICULTY_ORDER, isLocked } from '../../world/run/difficulty'
 import { MODIFIER_ORDER, type Modifier } from '../../world/run/modifiers'
+import type { DifficultySetting } from '../../world/schema/worldSchema'
 import type { FocusStep } from '../../world/step/stepWorld'
-import { activeBots } from '../bots/bots'
+import type { LobbyControl, LobbyPicks } from './model'
 
 // The single player lobby (GAME_DESIGN.md, "The single player lobby"): PLAY
 // opens it, and it holds what a run is picked from, mirroring co-op's lobby.
-// The rules here are pure; the Steps are in src/features/lobby/update.ts and the
-// view in src/features/lobby/lobbyView.ts.
+// The rules here are pure; the Block's Steps are in
+// src/features/lobby/steps.ts and its view in src/features/lobby/view.ts.
 
 // CONTROLS
 
@@ -78,6 +72,9 @@ const LOBBY_CONTROL_IDS: Readonly<Record<LobbyControl, string>> = {
 
 export const lobbyControlId = (control: LobbyControl): string =>
   LOBBY_CONTROL_IDS[control]
+
+// NOTE: the Dialog the hero picker opens in, over the lobby.
+export const HERO_DIALOG_ID = 'lobby-hero-dialog'
 
 type LobbyKey = Readonly<{ code: string; cap: string; name: string }>
 
@@ -141,12 +138,9 @@ export const MODE_CONTROLS: Readonly<Record<HomeMode, LobbyControl>> = {
 
 // NOTE: X steps to the next difficulty the player may pick, around the
 // four, skipping a locked Nightmare.
-export const nextDifficultyOf = (model: Model): Difficulty => {
+export const nextDifficultyOf = (setting: DifficultySetting): Difficulty => {
   const from = Option.getOrElse(
-    Array.findFirstIndex(
-      DIFFICULTY_ORDER,
-      level => level === model.difficulty.chosen,
-    ),
+    Array.findFirstIndex(DIFFICULTY_ORDER, level => level === setting.chosen),
     () => 0,
   )
   const count = DIFFICULTY_ORDER.length
@@ -155,44 +149,35 @@ export const nextDifficultyOf = (model: Model): Difficulty => {
       Array.get(DIFFICULTY_ORDER, (from + offset + 1) % count),
     ),
     Array.getSomes,
-    Array.findFirst(level => !isLocked(model.difficulty, level)),
-    Option.getOrElse(() => model.difficulty.chosen),
+    Array.findFirst(level => !isLocked(setting, level)),
+    Option.getOrElse(() => setting.chosen),
   )
 }
+
+// BOTS
+
+// NOTE: whether a bot sits in the crew: as many as the seats leave
+// (src/features/bots/bots.ts, botSeatsFor).
+const hasSeatedBot = (picks: LobbyPicks): boolean =>
+  Array.isReadonlyArrayNonEmpty(Array.take(picks.bots, picks.botSeats))
 
 // MODIFIERS
 
 // NOTE: Friendly Fire needs a teammate to hit, so it is dim and cannot be
 // turned on until a bot sits in the crew. The rest are always there.
 export const isModifierPickable: {
-  (modifier: Modifier): (model: Model) => boolean
-  (model: Model, modifier: Modifier): boolean
+  (modifier: Modifier): (picks: LobbyPicks) => boolean
+  (picks: LobbyPicks, modifier: Modifier): boolean
 } = Function.dual(
   2,
-  (model: Model, modifier: Modifier): boolean =>
-    modifier !== 'FriendlyFire' ||
-    Array.isReadonlyArrayNonEmpty(activeBots(model)),
+  (picks: LobbyPicks, modifier: Modifier): boolean =>
+    modifier !== 'FriendlyFire' || hasSeatedBot(picks),
 )
 
 // MAPS
 
 // NOTE: the maps a run can be played on, as data: a new map is one more id
-// here, its name in src/world/names.ts, and its picture in src/features/lobby/lobbyView.ts. The
-// manor is the only one for now, so nothing is picked and the level logic
-// (src/world/level/arena.ts) is untouched.
+// here, its name in src/world/names.ts, and its picture in
+// src/features/lobby/view.ts. The manor is the only one for now, so nothing
+// is picked and the level logic (src/world/level/arena.ts) is untouched.
 export const MAPS: Array.NonEmptyReadonlyArray<MapId> = ['Manor']
-
-// STATE
-
-export const withLobby: {
-  (lobby: HomeLobby): (model: Model) => Model
-  (model: Model, lobby: HomeLobby): Model
-} = Function.dual(2, (model: Model, lobby: HomeLobby): Model =>
-  modifyFields(model, {
-    home: home =>
-      modifyFields(home, {
-        lobby: () => lobby,
-        maybeLobbyFocus: () => Option.none(),
-      }),
-  }),
-)

@@ -444,3 +444,9 @@
 .coop-calling-actions .calling-buy:disabled {
   opacity: 1;
 }
+
+/* NOTE: the picker's box inside the solo lobby's Dialog takes no room of
+   its own, so the panel lays out the cards, the Bones, and the actions. */
+.calling-picker {
+  display: contents;
+}

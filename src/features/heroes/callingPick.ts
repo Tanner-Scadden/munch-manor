@@ -41,24 +41,7 @@ export const chooseCalling: {
     : model,
 )
 
-// NOTE: a hero for sale is tried on in the picker; its BUY pill buys it.
-export const tryOnCalling: {
-  (calling: Calling): (model: Model) => Model
-  (model: Model, calling: Calling): Model
-} = Function.dual(2, (model: Model, calling: Calling): Model =>
-  modifyFields(model, {
-    home: home =>
-      modifyFields(home, { maybeTryingCalling: () => Option.some(calling) }),
-  }),
-)
-
-export const withoutTryOn = (model: Model): Model =>
-  modifyFields(model, {
-    home: home =>
-      modifyFields(home, { maybeTryingCalling: () => Option.none() }),
-  })
-
-// NOTE: the Bones spent on the hero being tried on, which is then the pick.
+// NOTE: the Bones spent on a hero for sale, which is then the pick.
 // The spend and the bought id are what the sync mutation `BoughtCosmetic`
 // (src/platform/playerScope.ts) repeats on every device. Nothing if the hero is owned
 // already, so a stale click buys nothing.
@@ -67,18 +50,16 @@ export const buyCalling: {
   (model: Model, calling: Calling): Model
 } = Function.dual(2, (model: Model, calling: Calling): Model =>
   isCallingOwned(calling, model.boughtCosmetics)
-    ? withoutTryOn(model)
+    ? model
     : chooseCalling(
-        withoutTryOn(
-          modifyFields(model, {
-            rank: rank =>
-              modifyFields(rank, {
-                spentBones: spent =>
-                  spent + Option.getOrElse(callingPriceOf(calling), () => 0),
-              }),
-            boughtCosmetics: bought => [...bought, heroIdOf(calling)],
-          }),
-        ),
+        modifyFields(model, {
+          rank: rank =>
+            modifyFields(rank, {
+              spentBones: spent =>
+                spent + Option.getOrElse(callingPriceOf(calling), () => 0),
+            }),
+          boughtCosmetics: bought => [...bought, heroIdOf(calling)],
+        }),
         calling,
       ),
 )

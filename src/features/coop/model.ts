@@ -5,6 +5,7 @@ import { Lobby, PickedMode, RoomCode, RoomDifficulty } from '@munch/netcode'
 
 import { Calling, SavedBoughtCosmetics } from '../../shared/playerData'
 import { Bullet, GameEvent } from '../../world/schema/worldSchema'
+import { HeroPickerBlock } from '../heroes/block'
 import { RoomSession, WorldState } from './seam'
 
 // NOTE: co-op's own state, a Block the root Model holds. Nothing here is
@@ -151,10 +152,8 @@ export const Room = Schema.Struct({
   share: Share,
   codeCopies: Schema.Finite,
   departure: Departure,
-  isPickingCalling: Schema.Boolean,
   maybeNameDraft: Schema.Option(Schema.String),
   maybeNudge: Schema.Option(Nudge),
-  maybeTryingCalling: Schema.Option(Calling),
 })
 export type Room = typeof Room.Type
 
@@ -190,10 +189,14 @@ export const Model = Schema.Struct({
   bought: SavedBoughtCosmetics,
   // NOTE: the player's Bones, for the BUY pill's price check.
   bones: Schema.Finite,
+  // NOTE: the hero picker the lobby's pill opens, a child Block.
+  heroPicker: HeroPickerBlock.Model,
 })
 export type Model = typeof Model.Type
 
-export const initialModel: Model = {
+// NOTE: co-op's own fields as it starts, closed; the picker starts from its
+// own init through its Binding.
+export const initialModel: Omit<Model, 'heroPicker'> = {
   screen: Screen.Closed(),
   name: '',
   look: '',

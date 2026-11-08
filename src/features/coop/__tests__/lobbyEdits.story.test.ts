@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import {
   Command,
   expectNoOutMessage,
@@ -6,6 +6,7 @@ import {
   given,
   inMessage,
   message,
+  messageIn,
   model,
   story,
 } from 'foldkit/story'
@@ -13,92 +14,146 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
+import type { Calling } from '../../../shared/playerData'
 import { roomSettingsOf } from '../../../world/net/roomWorld'
+import { Message as HeroPickerMessage } from '../../heroes/message'
+import { isPickerOpen } from '../../heroes/model'
 import { GOOFY_NAMES } from '../../profile/profile'
+import { HeroPickerBinding } from '../bindings'
 import { CoopBlock } from '../block'
 import { InMessage } from '../inMessage'
 import { CoopLayer } from '../layer'
 import { Message, OutMessage } from '../message'
 import { LobbyChange, type Model } from '../model'
 import { update } from '../pureCoop'
+import { CALLING_PILL_ID } from '../roomState'
+import { ChangeLobby, FocusCoopElement } from '../steps'
 import { lobbyOf, memberOf } from '../testing'
-import { ChangeLobby, FocusCoopElement, pressKey } from '../update'
+import { pressKey } from '../update'
 import { inRoom, lobbyUpdate, picked, roomOf } from './story.fixture'
+
+const CO_OP = { block: CoopBlock, layer: CoopLayer }
+
+const pressed = (code: string) =>
+  inMessage(InMessage.RequestedPressKey({ code }))
+
+const tapCard = (calling: Calling) =>
+  messageIn(HeroPickerBinding, HeroPickerMessage.ClickedCard({ calling }))
+
+const tapBuy = messageIn(
+  HeroPickerBinding,
+  HeroPickerMessage.ClickedBuyButton(),
+)
+
+const isUp = (current: Model): boolean => isPickerOpen(current.heroPicker)
+
+const focusPill = Command.resolve(
+  FocusCoopElement({ id: CALLING_PILL_ID }),
+  Message.CompletedFocusCoopElement(),
+)
 
 describe('picking a hero in the lobby', () => {
   const ANA_RANK_4 = memberOf(0, 'Ana', true, '', false, 4)
   const BO = memberOf(1, 'Bo')
   const lobbyAt4 = lobbyOf([ANA_RANK_4, BO])
-  const opened = (): Model =>
-    update(
-      update(inRoom(0), lobbyUpdate(lobbyAt4)).model,
-      Message.ClickedCallingPill(),
-    ).model
+  const lobbied = (): Model => update(inRoom(0), lobbyUpdate(lobbyAt4)).model
 
-  test('the pill and Y open the picker, and Y or Escape close it', () => {
-    const lobbied = update(inRoom(0), lobbyUpdate(lobbyAt4)).model
-    expect(roomOf(lobbied).isPickingCalling).toBe(false)
-    const byKey = pressKey(lobbied, 'KeyY').model
-    expect(roomOf(byKey).isPickingCalling).toBe(true)
-    expect(roomOf(pressKey(byKey, 'KeyY').model).isPickingCalling).toBe(false)
-    expect(roomOf(pressKey(byKey, 'Escape').model).isPickingCalling).toBe(false)
-    expect(roomOf(opened()).isPickingCalling).toBe(true)
-  })
-
-  test('Enter and the picks wait while it is open', () => {
-    const up = opened()
-    expect(pressKey(up, 'Enter').commands).toBeUndefined()
-    expect(picked(up, 'KeyE')).toEqual([])
-  })
-
-  test('a hero the rank reached goes to the lobby and the parent, and READY stays', () => {
+  it.effect('the pill and Y open the picker, and Y or Escape close it', () =>
     story(
-      update,
-      given(opened()),
-      message(Message.ClickedCallingPick({ calling: 'Handyman' })),
-      expectOutMessage(OutMessage.ChoseCalling({ calling: 'Handyman' })),
-      Command.resolve(
-        ChangeLobby({
-          change: LobbyChange.ChangedMemberCalling({ calling: 'Handyman' }),
-        }),
-        Message.CompletedChangeLobby(),
-      ),
-      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+      CO_OP,
+      given(lobbied()),
       model(current => {
-        expect(roomOf(current).isPickingCalling).toBe(false)
-        expect(current.calling).toBe('Handyman')
-        expect(
-          Option.exists(roomOf(current).maybeLobby, lobby =>
-            Array.every(
-              lobby.members,
-              member => member.ready === (member.slot === 0),
-            ),
-          ),
-        ).toBe(true)
+        expect(isUp(current)).toBe(false)
       }),
-    )
-  })
+      pressed('KeyY'),
+      model(current => {
+        expect(isUp(current)).toBe(true)
+      }),
+      pressed('KeyY'),
+      model(current => {
+        expect(isUp(current)).toBe(false)
+      }),
+      message(Message.ClickedCallingPill()),
+      model(current => {
+        expect(isUp(current)).toBe(true)
+      }),
+      pressed('Escape'),
+      model(current => {
+        expect(isUp(current)).toBe(false)
+      }),
+    ),
+  )
 
-  test('a hero the rank has not reached, or the one already worn, sends nothing', () => {
+  it.effect('Enter and the picks wait while it is open', () =>
     story(
-      update,
-      given(opened()),
-      message(Message.ClickedCallingPick({ calling: 'LineCook' })),
+      CO_OP,
+      given(lobbied()),
+      message(Message.ClickedCallingPill()),
+      pressed('Enter'),
+      pressed('KeyE'),
       Command.expectNone(),
       model(current => {
-        expect(roomOf(current).isPickingCalling).toBe(true)
+        expect(isUp(current)).toBe(true)
       }),
-      message(Message.ClickedCallingPick({ calling: 'You' })),
-      Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
-      model(current => {
-        expect(roomOf(current).isPickingCalling).toBe(false)
-      }),
-    )
-  })
+    ),
+  )
+
+  it.effect(
+    'a hero the rank reached goes to the lobby and the parent, and READY stays',
+    () =>
+      story(
+        CO_OP,
+        given(lobbied()),
+        message(Message.ClickedCallingPill()),
+        tapCard('Handyman'),
+        expectOutMessage(OutMessage.ChoseCalling({ calling: 'Handyman' })),
+        Command.resolve(
+          ChangeLobby({
+            change: LobbyChange.ChangedMemberCalling({ calling: 'Handyman' }),
+          }),
+          Message.CompletedChangeLobby(),
+        ),
+        focusPill,
+        model(current => {
+          expect(isUp(current)).toBe(false)
+          expect(current.calling).toBe('Handyman')
+          expect(
+            Option.exists(roomOf(current).maybeLobby, lobby =>
+              Array.every(
+                lobby.members,
+                member => member.ready === (member.slot === 0),
+              ),
+            ),
+          ).toBe(true)
+        }),
+      ),
+  )
+
+  it.effect(
+    'a hero the rank has not reached, or the one already worn, sends nothing',
+    () =>
+      story(
+        CO_OP,
+        given(lobbied()),
+        message(Message.ClickedCallingPill()),
+        tapCard('LineCook'),
+        Command.expectNone(),
+        expectNoOutMessage(),
+        model(current => {
+          expect(isUp(current)).toBe(true)
+        }),
+        tapCard('You'),
+        expectNoOutMessage(),
+        focusPill,
+        model(current => {
+          expect(isUp(current)).toBe(false)
+        }),
+      ),
+  )
 
   test('a hero changed in the lobby is the one the start seats', () => {
     const changed = update(
-      update(inRoom(0), lobbyUpdate(lobbyAt4)).model,
+      lobbied(),
       lobbyUpdate({
         ...lobbyAt4,
         members: [{ ...ANA_RANK_4, calling: 'Handyman' }, BO],
@@ -113,13 +168,17 @@ describe('picking a hero in the lobby', () => {
     ])
   })
 
-  test('a started run closes the picker', () => {
-    const playing = update(
-      opened(),
-      lobbyUpdate({ ...lobbyAt4, status: 'Playing' }),
-    )
-    expect(roomOf(playing.model).isPickingCalling).toBe(false)
-  })
+  it.effect('a started run closes the picker', () =>
+    story(
+      CO_OP,
+      given(lobbied()),
+      message(Message.ClickedCallingPill()),
+      message(lobbyUpdate({ ...lobbyAt4, status: 'Playing' })),
+      model(current => {
+        expect(isUp(current)).toBe(false)
+      }),
+    ),
+  )
 })
 
 describe('buying a hero in the lobby', () => {
@@ -127,37 +186,39 @@ describe('buying a hero in the lobby', () => {
   // Penny Pincher (rank 10).
   const ANA = memberOf(0, 'Ana', false, '', false, 7)
   const lobbyAt = lobbyOf([ANA, memberOf(1, 'Bo')])
-  const picker = (bones: number): Model =>
-    modifyFields(
-      update(
-        update(inRoom(0), lobbyUpdate(lobbyAt)).model,
-        Message.ClickedCallingPill(),
-      ).model,
-      { bones: () => bones },
-    )
-  const tryingOf = (current: Model) => roomOf(current).maybeTryingCalling
+  const lobbied = (bones: number): Model =>
+    modifyFields(update(inRoom(0), lobbyUpdate(lobbyAt)).model, {
+      bones: () => bones,
+    })
+  const pickerWith = (bones: number) =>
+    given(update(lobbied(bones), Message.ClickedCallingPill()).model)
+  const tryingOf = (current: Model) => current.heroPicker.maybeTrying
 
-  test('a hero for sale is tried on, not picked, and nothing is sent', () => {
-    const tapped = update(
-      picker(150),
-      Message.ClickedCallingPick({ calling: 'TrackStar' }),
-    )
-    expect(tryingOf(tapped.model)).toEqual(Option.some('TrackStar'))
-    expect(roomOf(tapped.model).isPickingCalling).toBe(true)
-    expect(tapped.outMessage).toBeUndefined()
-    expect(tapped.commands).toBeUndefined()
-  })
+  it.effect(
+    'a hero for sale is tried on, not picked, and nothing is sent',
+    () =>
+      story(
+        CO_OP,
+        pickerWith(150),
+        tapCard('TrackStar'),
+        expectNoOutMessage(),
+        Command.expectNone(),
+        model(current => {
+          expect(tryingOf(current)).toEqual(Option.some('TrackStar'))
+          expect(isUp(current)).toBe(true)
+          expect(current.calling).toBe('You')
+        }),
+      ),
+  )
 
-  // NOTE: the parent's answer is an InMessage, so this Story runs on co-op's
-  // acquired Block, not its plain update.
   it.effect(
     'BUY asks the parent to spend the Bones, once, and the answer picks the hero',
     () =>
       story(
-        { block: CoopBlock, layer: CoopLayer },
-        given(picker(150)),
-        message(Message.ClickedCallingPick({ calling: 'TrackStar' })),
-        message(Message.ClickedBuyCallingButton()),
+        CO_OP,
+        pickerWith(150),
+        tapCard('TrackStar'),
+        tapBuy,
         expectOutMessage(OutMessage.BoughtCalling({ calling: 'TrackStar' })),
         inMessage(
           InMessage.RequestedBoughtHero({
@@ -173,54 +234,68 @@ describe('buying a hero in the lobby', () => {
           }),
           Message.CompletedChangeLobby(),
         ),
-        Command.resolve(FocusCoopElement, Message.CompletedFocusCoopElement()),
+        focusPill,
         model(current => {
           expect(current.calling).toBe('TrackStar')
           expect(current.bones).toBe(50)
-          expect(roomOf(current).isPickingCalling).toBe(false)
+          expect(isUp(current)).toBe(false)
           expect(tryingOf(current)).toEqual(Option.none())
         }),
-        message(Message.ClickedBuyCallingButton()),
+        tapBuy,
         expectNoOutMessage(),
       ),
   )
 
-  test('too few Bones, and BUY sends nothing', () => {
-    const short = update(
-      picker(99),
-      Message.ClickedCallingPick({ calling: 'TrackStar' }),
-    ).model
-    const tapped = update(short, Message.ClickedBuyCallingButton())
-    expect(tapped.outMessage).toBeUndefined()
-    expect(tryingOf(tapped.model)).toEqual(Option.some('TrackStar'))
-  })
+  it.effect('too few Bones, and BUY sends nothing', () =>
+    story(
+      CO_OP,
+      pickerWith(99),
+      tapCard('TrackStar'),
+      tapBuy,
+      expectNoOutMessage(),
+      model(current => {
+        expect(tryingOf(current)).toEqual(Option.some('TrackStar'))
+      }),
+    ),
+  )
 
-  test('a hero below your rank stays shut', () => {
-    const tapped = update(
-      picker(1000),
-      Message.ClickedCallingPick({ calling: 'PennyPincher' }),
-    )
-    expect(tryingOf(tapped.model)).toEqual(Option.none())
-    expect(tapped.outMessage).toBeUndefined()
-    expect(
-      update(tapped.model, Message.ClickedBuyCallingButton()).outMessage,
-    ).toBeUndefined()
-  })
+  it.effect('a hero below your rank stays shut', () =>
+    story(
+      CO_OP,
+      pickerWith(1000),
+      tapCard('PennyPincher'),
+      expectNoOutMessage(),
+      model(current => {
+        expect(tryingOf(current)).toEqual(Option.none())
+      }),
+      tapBuy,
+      expectNoOutMessage(),
+    ),
+  )
 
-  test('closing the picker, or the room starting, ends the try-on', () => {
-    const trying = update(
-      picker(150),
-      Message.ClickedCallingPick({ calling: 'TrackStar' }),
-    ).model
-    expect(
-      tryingOf(update(trying, Message.ClickedCallingDone()).model),
-    ).toEqual(Option.none())
-    expect(
-      tryingOf(
-        update(trying, lobbyUpdate({ ...lobbyAt, status: 'Playing' })).model,
+  it.effect('closing the picker, or the room starting, ends the try-on', () =>
+    Effect.all([
+      story(
+        CO_OP,
+        pickerWith(150),
+        tapCard('TrackStar'),
+        messageIn(HeroPickerBinding, HeroPickerMessage.ClickedCloseButton()),
+        model(current => {
+          expect(tryingOf(current)).toEqual(Option.none())
+          expect(isUp(current)).toBe(false)
+        }),
       ),
-    ).toEqual(Option.none())
-  })
+      story(
+        CO_OP,
+        pickerWith(150),
+        tapCard('TrackStar'),
+        message(lobbyUpdate({ ...lobbyAt, status: 'Playing' })),
+        model(current => {
+          expect(tryingOf(current)).toEqual(Option.none())
+        }),
+      ),
+    ]),
+  )
 })
 
 describe('tapping a difficulty in the lobby', () => {

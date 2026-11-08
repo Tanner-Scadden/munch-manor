@@ -5,7 +5,9 @@ import { describe, expect, test } from 'vitest'
 
 import { Message } from '../../../app/message'
 import type { Model } from '../../../app/model'
-import { update } from '../../../app/pureApp'
+import { Child, update } from '../../../app/pureApp'
+import { Message as HeroPickerMessage } from '../../../features/heroes/message'
+import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { restoreSave, saveOf } from '../../../platform/save'
 import type { Calling } from '../../../shared/playerData'
 import { readyAfterRead } from '../../../test/model.fixture'
@@ -20,6 +22,7 @@ import { callingStandingOf } from '../../../world/heroes/calling'
 import { bonesBalanceOf, pointsForRank } from '../../../world/heroes/rank'
 import { focusOf } from '../../../world/party/party'
 import { addBot } from '../../bots/bots'
+import { isHeroPickerUp } from '../../lobby/model'
 import { startingCallingOf } from '../callingPick'
 
 // Buying a hero with Bones (src/features/heroes/callingPick.ts, src/features/home/update.ts): a rank
@@ -43,11 +46,11 @@ const player = (
 const inPicker = (start: Model): Model =>
   modelAfter(
     modelAfter(start, Message.ClickedPlayButton()),
-    Message.ClickedLobbyHeroButton(),
+    Child.lobby(LobbyMessage.ClickedHeroButton()),
   )
 
 const tapOf = (calling: Calling) =>
-  Message.ClickedCallingCardButton({ calling })
+  Child.lobbyHero(HeroPickerMessage.ClickedCard({ calling }))
 
 const tap = (current: Model, calling: Calling): Model =>
   modelAfter(current, tapOf(calling))
@@ -60,24 +63,24 @@ const withoutBots = (current: Model): Model =>
 describe('a hero for sale', () => {
   test('is locked below its rank: a tap tries nothing on', () => {
     const tapped = tap(inPicker(player(2, 500)), 'Handyman')
-    expect(tapped.home.maybeTryingCalling).toEqual(Option.none())
+    expect(tapped.lobby.heroPicker.maybeTrying).toEqual(Option.none())
     expect(tapped.calling).toBe('You')
     expect(callingStandingOf('Handyman', 2, [])).toBe('Locked')
   })
 
   test('is tried on at its rank, and nothing is spent or picked yet', () => {
     const tapped = tap(inPicker(player(3, 500)), 'Handyman')
-    expect(tapped.home.maybeTryingCalling).toEqual(Option.some('Handyman'))
+    expect(tapped.lobby.heroPicker.maybeTrying).toEqual(Option.some('Handyman'))
     expect(tapped.calling).toBe('You')
     expect(tapped.boughtCosmetics).toEqual([])
-    expect(tapped.panel).toBe('Calling')
+    expect(isHeroPickerUp(tapped.lobby)).toBe(true)
   })
 
   test('an owned hero ends a try-on and is the pick', () => {
     const tried = tap(inPicker(player(6, 500, ['hero:TrackStar'])), 'Handyman')
-    expect(tried.home.maybeTryingCalling).toEqual(Option.some('Handyman'))
+    expect(tried.lobby.heroPicker.maybeTrying).toEqual(Option.some('Handyman'))
     const picked = tap(tried, 'TrackStar')
-    expect(picked.home.maybeTryingCalling).toEqual(Option.none())
+    expect(picked.lobby.heroPicker.maybeTrying).toEqual(Option.none())
     expect(picked.calling).toBe('TrackStar')
   })
 
@@ -86,11 +89,11 @@ describe('a hero for sale', () => {
       update,
       given(player(3, 100)),
       openLobbyByKey,
-      message(Message.ClickedLobbyHeroButton()),
+      message(Child.lobby(LobbyMessage.ClickedHeroButton())),
       showDialog(),
       message(tapOf('Handyman')),
       writeSave(),
-      message(Message.ClickedBuyCallingButton()),
+      message(Child.lobbyHero(HeroPickerMessage.ClickedBuyButton())),
       writeSave(),
       closeDialog(),
       model(current => {
@@ -99,7 +102,7 @@ describe('a hero for sale', () => {
         expect(bonesBalanceOf(current.rank)).toBe(40)
         expect(current.calling).toBe('Handyman')
         expect(focusOf(current).player.calling).toBe('Handyman')
-        expect(current.home.maybeTryingCalling).toEqual(Option.none())
+        expect(current.lobby.heroPicker.maybeTrying).toEqual(Option.none())
       }),
     )
   })
@@ -107,18 +110,18 @@ describe('a hero for sale', () => {
   test('with too few Bones, BUY changes nothing and the try-on stays', () => {
     const bought = modelAfter(
       tap(inPicker(player(3, 59)), 'Handyman'),
-      Message.ClickedBuyCallingButton(),
+      Child.lobbyHero(HeroPickerMessage.ClickedBuyButton()),
     )
     expect(bought.boughtCosmetics).toEqual([])
     expect(bought.rank.spentBones).toBe(0)
-    expect(bought.home.maybeTryingCalling).toEqual(Option.some('Handyman'))
-    expect(bought.panel).toBe('Calling')
+    expect(bought.lobby.heroPicker.maybeTrying).toEqual(Option.some('Handyman'))
+    expect(isHeroPickerUp(bought.lobby)).toBe(true)
   })
 
   test('with exactly the price, BUY works and leaves nothing', () => {
     const bought = modelAfter(
       tap(inPicker(player(15, 200)), 'LineCook'),
-      Message.ClickedBuyCallingButton(),
+      Child.lobbyHero(HeroPickerMessage.ClickedBuyButton()),
     )
     expect(bought.boughtCosmetics).toEqual(['hero:LineCook'])
     expect(bonesBalanceOf(bought.rank)).toBe(0)
@@ -127,19 +130,25 @@ describe('a hero for sale', () => {
   test('BUY with no try-on buys nothing', () => {
     const bought = modelAfter(
       inPicker(player(3, 500)),
-      Message.ClickedBuyCallingButton(),
+      Child.lobbyHero(HeroPickerMessage.ClickedBuyButton()),
     )
     expect(bought.boughtCosmetics).toEqual([])
   })
 
   test('a hero already owned is not paid for again', () => {
     const owned = modifyFields(inPicker(player(3, 500, ['hero:Handyman'])), {
-      home: home =>
-        modifyFields(home, {
-          maybeTryingCalling: () => Option.some('Handyman'),
+      lobby: lobby =>
+        modifyFields(lobby, {
+          heroPicker: picker =>
+            modifyFields(picker, {
+              maybeTrying: () => Option.some('Handyman'),
+            }),
         }),
     })
-    const again = modelAfter(owned, Message.ClickedBuyCallingButton())
+    const again = modelAfter(
+      owned,
+      Child.lobbyHero(HeroPickerMessage.ClickedBuyButton()),
+    )
     expect(again.rank.spentBones).toBe(0)
     expect(again.boughtCosmetics).toEqual(['hero:Handyman'])
   })
@@ -193,12 +202,12 @@ describe('teammate bots', () => {
     const picking = modelAfter(
       modelAfter(
         modelAfter(player(20, 500), Message.ClickedPlayButton()),
-        Message.ClickedLobbyAddBotButton(),
+        Child.lobby(LobbyMessage.ClickedAddBotButton()),
       ),
-      Message.ClickedLobbyBotHeroButton({ index: 0 }),
+      Child.lobby(LobbyMessage.ClickedBotHeroButton({ index: 0 })),
     )
     const tapped = modelAfter(picking, tapOf('LineCook'))
-    expect(tapped.home.maybeTryingCalling).toEqual(Option.none())
+    expect(tapped.lobby.heroPicker.maybeTrying).toEqual(Option.none())
     expect(tapped.home.bots[0]?.calling).not.toBe('LineCook')
   })
 })

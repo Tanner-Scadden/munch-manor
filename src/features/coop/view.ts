@@ -1,5 +1,5 @@
 import { Array, Option, Order, String, pipe } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+import type { Html } from 'foldkit/html'
 
 import {
   type Lobby,
@@ -14,10 +14,11 @@ import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '../../art/icons'
 import { seatColorOf } from '../../render/partyView'
 import type { Calling } from '../../shared/playerData'
 import { CALLING_NAMES } from '../../world/names'
+import { type Model as HeroPickerModel, isPickerOpen } from '../heroes/model'
 import { callingPropView, iconView, rankTagView } from '../menus/menuParts'
+import { HeroPickerBinding } from './bindings'
 import type { ViewInputs } from './block'
-import { callingPickerView } from './callingPicker'
-import { CoopComposition } from './composition'
+import { CoopComposition, type CoopViewBuilder } from './composition'
 import {
   AWAY_ICON,
   CHECK_ICON,
@@ -71,7 +72,7 @@ const lookOf = (inputs: ViewInputs, room: Room, seat: number) =>
 const keyCapView = (
   inputs: ViewInputs,
   cap: string,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html =>
   inputs.isKeyboard
     ? h.span([h.Class('coop-key'), h.AriaHidden(true)], [cap])
@@ -80,11 +81,11 @@ const keyCapView = (
 const portraitView = (
   look: Appearance,
   className: string,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
   calling: Calling = 'You',
 ): Html => iconView(`coop-portrait ${className}`, portraitOf(look, calling), h)
 
-const coopCloseView = (h: HtmlBuilder<Message>): Html =>
+const coopCloseView = (h: CoopViewBuilder): Html =>
   closeButtonView(
     {
       attributes: [h.OnClick(Message.ClickedCloseButton())],
@@ -97,7 +98,7 @@ const coopCloseView = (h: HtmlBuilder<Message>): Html =>
 const coopBackView = (
   label: string,
   message: Message,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html =>
   backButtonView(
     {
@@ -134,7 +135,7 @@ const PROBLEM_LINES: Readonly<Record<CoopProblem, string>> = {
 
 const problemView = (
   maybeProblem: Option.Option<CoopProblem>,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html =>
   Option.match(maybeProblem, {
     onNone: () => h.empty,
@@ -165,7 +166,7 @@ const pingGrade = (rttMs: number): 'Good' | 'Ok' | 'Bad' =>
 const pingView = (
   rttMs: number,
   className: string,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html =>
   rttMs <= 0
     ? h.empty
@@ -183,7 +184,7 @@ const ownPingOf = (room: Room): number => Math.round(room.session.rttMs)
 
 // HUB
 
-const quickHeadsView = (h: HtmlBuilder<Message>): Html =>
+const quickHeadsView = (h: CoopViewBuilder): Html =>
   h.span(
     [h.Class('coop-quick-heads'), h.AriaHidden(true)],
     Array.map(Array.range(0, MAX_PLAYERS - 1), seat =>
@@ -194,7 +195,7 @@ const quickHeadsView = (h: HtmlBuilder<Message>): Html =>
 const hubView = (
   maybeProblem: Option.Option<CoopProblem>,
   inputs: ViewInputs,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html =>
   h.keyed('div')(
     'hub',
@@ -271,7 +272,7 @@ const slotState = (typed: string, index: number): string => {
   }
 }
 
-const codeSlotsView = (typed: string, h: HtmlBuilder<Message>): Html =>
+const codeSlotsView = (typed: string, h: CoopViewBuilder): Html =>
   h.span(
     [h.Class('coop-slots'), h.AriaHidden(true)],
     Array.map(Array.range(0, ROOM_CODE_LENGTH - 1), index =>
@@ -288,7 +289,7 @@ const codeSlotsView = (typed: string, h: HtmlBuilder<Message>): Html =>
 const codeView = (
   typed: string,
   maybeProblem: Option.Option<CoopProblem>,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html =>
   h.keyed('div')(
     'code',
@@ -339,7 +340,7 @@ const queueSeatView = (
   queue: Queue,
   inputs: ViewInputs,
   seat: number,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html => {
   const isFilled = seat < queue.waiting
   const isMe = seat === queue.position - 1
@@ -366,11 +367,7 @@ const queueSeatView = (
   )
 }
 
-const offerView = (
-  queue: Queue,
-  inputs: ViewInputs,
-  h: HtmlBuilder<Message>,
-) => {
+const offerView = (queue: Queue, inputs: ViewInputs, h: CoopViewBuilder) => {
   if (queue.offerPlayers === 0 || queue.answer === 'Waiting') {
     return h.empty
   }
@@ -424,7 +421,7 @@ const offerView = (
 const queueView = (
   queue: Queue,
   inputs: ViewInputs,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html =>
   h.keyed('div')(
     'queue',
@@ -458,7 +455,7 @@ const ROOM_CODE_COPIED = 'COPIED!'
 
 // NOTE: a tap on the code copies it, and COPIED! flashes over it, afresh
 // for each copy (keyed by the count), fading in place.
-const roomCodeView = (room: Room, h: HtmlBuilder<Message>): Html =>
+const roomCodeView = (room: Room, h: CoopViewBuilder): Html =>
   h.button(
     [
       h.Type('button'),
@@ -487,7 +484,7 @@ const roomCodeView = (room: Room, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
-const shareButtonView = (room: Room, h: HtmlBuilder<Message>): Html =>
+const shareButtonView = (room: Room, h: CoopViewBuilder): Html =>
   h.button(
     [
       h.Type('button'),
@@ -508,7 +505,7 @@ const shareButtonView = (room: Room, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
-const leaveButtonView = (room: Room, h: HtmlBuilder<Message>): Html =>
+const leaveButtonView = (room: Room, h: CoopViewBuilder): Html =>
   h.button(
     [
       h.Type('button'),
@@ -525,7 +522,7 @@ const seatView = (
   lobby: Lobby,
   inputs: ViewInputs,
   seat: number,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html =>
   Option.match(
     Array.findFirst(lobby.members, member => member.slot === seat),
@@ -583,7 +580,7 @@ const memberSeatView = (
   lobby: Lobby,
   inputs: ViewInputs,
   member: LobbyMember,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html => {
   const isMe = Option.exists(room.maybePlayerId, id => id === member.playerId)
   const isTheHost = lobby.host === member.playerId
@@ -655,7 +652,7 @@ const resultView = (
   room: Room,
   lobby: Lobby,
   inputs: ViewInputs,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html =>
   Option.match(lobby.result, {
     onNone: () => h.empty,
@@ -756,7 +753,7 @@ const callingAt = (lobby: Lobby, slot: number): Calling =>
 const readyButtonView = (
   room: Room,
   inputs: ViewInputs,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html => {
   const isReady = Option.exists(meIn(room), me => me.ready)
   return h.button(
@@ -785,8 +782,9 @@ const readyButtonView = (
 
 const lobbyView = (
   room: Room,
+  heroPicker: HeroPickerModel,
   inputs: ViewInputs,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html =>
   h.keyed('div')(
     'lobby',
@@ -817,18 +815,34 @@ const lobbyView = (
       Option.match(room.maybeLobby, {
         onNone: () => h.empty,
         onSome: lobby =>
-          picksView(room, lobby, key => keyCapView(inputs, key, h), h),
+          picksView(
+            room,
+            {
+              lobby,
+              isPickerOpen: isPickerOpen(heroPicker),
+              keyCapView: key => keyCapView(inputs, key, h),
+            },
+            h,
+          ),
       }),
       readyButtonView(room, inputs, h),
       Option.match(meIn(room), {
         onNone: () => h.empty,
         onSome: me =>
-          callingPickerView(
-            room,
-            lookOf(inputs, room, me.slot),
-            inputs.bought,
-            inputs.bones,
-            h,
+          h.block(
+            HeroPickerBinding.embedView({
+              slotId: 'coop-hero-picker',
+              model: heroPicker,
+              viewInputs: {
+                look: lookOf(inputs, room, me.slot),
+                chosen: callingOfMember(me),
+                rank: me.rank,
+                bought: inputs.bought,
+                bones: inputs.bones,
+                fresh: [],
+                layout: 'Overlay',
+              },
+            }),
           ),
       }),
       namePickerView(room, h),
@@ -837,7 +851,7 @@ const lobbyView = (
 
 // ARENA
 
-const countdownView = (room: Room, h: HtmlBuilder<Message>): Html =>
+const countdownView = (room: Room, h: CoopViewBuilder): Html =>
   h.keyed('div')(
     `countdown-${Option.match(room.maybeLobby, { onNone: () => 0, onSome: lobby => lobby.round })}`,
     [h.Class('coop-countdown'), h.AriaHidden(true)],
@@ -855,7 +869,7 @@ const countdownView = (room: Room, h: HtmlBuilder<Message>): Html =>
 
 // NOTE: Zz while the link tries again; past 20 seconds it says LOST THE ROOM
 // and offers the way out, with the tries going on behind it.
-const awayView = (room: Room, h: HtmlBuilder<Message>): Html =>
+const awayView = (room: Room, h: CoopViewBuilder): Html =>
   room.link === 'Reconnecting' || room.link === 'Lost'
     ? h.div(
         [h.Class('coop-away'), h.Role('status'), h.AriaLabel('Reconnecting')],
@@ -866,7 +880,7 @@ const awayView = (room: Room, h: HtmlBuilder<Message>): Html =>
       )
     : h.empty
 
-const lostView = (room: Room, h: HtmlBuilder<Message>): Html =>
+const lostView = (room: Room, h: CoopViewBuilder): Html =>
   h.div(
     [h.Class('coop-away-lost')],
     [
@@ -895,7 +909,7 @@ const lostView = (room: Room, h: HtmlBuilder<Message>): Html =>
 
 // NOTE: the link's numbers, for the audit harness and the curious: the
 // round trip, what came down, and how far your own player was corrected.
-const netView = (room: Room, h: HtmlBuilder<Message>): Html => {
+const netView = (room: Room, h: CoopViewBuilder): Html => {
   const { stats } = room.session
   return h.div([
     h.Class('coop-net'),
@@ -931,7 +945,7 @@ const netView = (room: Room, h: HtmlBuilder<Message>): Html => {
 // socket reconnects, and the trophy when the run ends.
 // NOTE: every player's bars in their seat's color, your own from your
 // own pings and the rest as the room last shared them.
-const arenaPingsView = (room: Room, h: HtmlBuilder<Message>): Html =>
+const arenaPingsView = (room: Room, h: CoopViewBuilder): Html =>
   h.div(
     [h.Class('coop-arena-pings'), h.AriaLabel('Connections')],
     Array.map(
@@ -973,7 +987,7 @@ const arenaPingsView = (room: Room, h: HtmlBuilder<Message>): Html =>
     ),
   )
 
-const arenaView = (room: Room, h: HtmlBuilder<Message>): Html =>
+const arenaView = (room: Room, h: CoopViewBuilder): Html =>
   h.div(
     [h.Class('coop-arena')],
     [
@@ -992,15 +1006,16 @@ const arenaView = (room: Room, h: HtmlBuilder<Message>): Html =>
 // it: no scrim, and nothing to take a tap.
 const roomView = (
   room: Room,
+  heroPicker: HeroPickerModel,
   inputs: ViewInputs,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html => {
   if (inputs.isRunCardUp) {
     return h.empty
   } else if (!isInLobby(room)) {
     return arenaView(room, h)
   } else {
-    return lobbyView(room, inputs, h)
+    return lobbyView(room, heroPicker, inputs, h)
   }
 }
 
@@ -1045,7 +1060,7 @@ export const view = CoopComposition.makeView.withInputs<ViewInputs>(
                 codeView(typed, maybeProblem, h),
               Asking: ({ request }) => askingView(request, h),
               Queue: ({ queue }) => queueView(queue, inputs, h),
-              InRoom: ({ room }) => roomView(room, inputs, h),
+              InRoom: ({ room }) => roomView(room, model.heroPicker, inputs, h),
             }),
           ],
         ),

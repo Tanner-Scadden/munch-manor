@@ -42,13 +42,9 @@ import {
 import { Message as CoopMessage } from '../../coop/message'
 import { LobbyChange, Screen } from '../../coop/model'
 import { freshRoom, maybeRoomOf } from '../../coop/roomState'
+import { ChangeLobby, FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
-import {
-  ChangeLobby,
-  FocusCoopElement,
-  LeaveRoom,
-  RememberRoom,
-} from '../../coop/update'
+import { LeaveRoom, RememberRoom } from '../../coop/update'
 import { isRunCardHeld } from '../../end/endBeat'
 
 // An online co-op run's end card (src/features/menus/menus.ts, src/features/end/update.ts): the

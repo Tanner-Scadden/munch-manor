@@ -40,6 +40,7 @@ import {
 import { update } from '../pureCoop'
 import { cleanCode, freshRoom, pressAction } from '../roomState'
 import { coopWorld } from '../seam'
+import { ChangeLobby, FocusCoopElement } from '../steps'
 import {
   CODE,
   lobbyOf,
@@ -50,8 +51,6 @@ import {
 import {
   AnswerOffer,
   CancelQuickPlay,
-  ChangeLobby,
-  FocusCoopElement,
   LeaveRoom,
   RememberRoom,
   RequestRoom,

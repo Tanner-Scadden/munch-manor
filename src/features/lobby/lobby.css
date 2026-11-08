@@ -327,3 +327,9 @@
 .lobby-seats .coop-seat {
   animation: none;
 }
+
+/* NOTE: the lobby screen and the hero picker's Dialog share one box that
+   takes no room of its own: each places itself. */
+.lobby-layer {
+  display: contents;
+}

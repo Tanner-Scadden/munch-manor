@@ -11,7 +11,6 @@ import {
   ShowInstallPrompt,
   WaitForUnwrap,
 } from '../features/home/update'
-import { FocusLobbyControl } from '../features/lobby/update'
 import { FocusShopGuide } from '../features/shop/guideUpdate'
 import { FocusShopItem } from '../features/shop/update'
 import {
@@ -76,7 +75,6 @@ export const CommandsLayer = Layer.mergeAll(
   UpdateServiceWorker.layer,
   FocusHomeButton.layer,
   FocusHandCard.layer,
-  FocusLobbyControl.layer,
   FocusEndMenuButton.layer,
   ClickSupportLink.layer,
   SendShareEvent.layer,

@@ -45,4 +45,10 @@ export const CoopBlock = Block.make('Coop', {
 // NOTE: Commands are made through the Block itself
 // (`CoopBlock.makeCommand(...)`): exported alone, makeCommand is a
 // two-argument function with no pipeable form.
-export const { makeComposition, makeSubscriptions } = CoopBlock
+export const {
+  makeComposition,
+  makeNoopStep,
+  makeRequiredFieldBinding,
+  makeStep,
+  makeSubscriptions,
+} = CoopBlock

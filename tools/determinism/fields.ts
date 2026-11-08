@@ -140,6 +140,7 @@ export const FIELD_CLASSES = {
   orientationLock: 'Client',
   playerName: 'Client',
   profile: 'Client',
+  lobby: 'Client',
   profileDialog: 'Client',
   rotationSetting: 'Client',
   shopChatter: 'Client',

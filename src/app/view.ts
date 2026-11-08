@@ -4,7 +4,7 @@ import type { Document, Html } from 'foldkit/html'
 import { awardsOf, crewOf } from '../features/end/crewAwards'
 import { isRunCardHeld } from '../features/end/endBeat'
 import { startingCallingOf } from '../features/heroes/callingPick'
-import { bestsFor, feedbackSentence } from '../features/home/home'
+import { bestsFor, feedbackSentence, lobbyPicksOf } from '../features/home/home'
 import {
   homeMenuView,
   manorHandView,
@@ -12,7 +12,8 @@ import {
   newEntryNoticeView,
 } from '../features/home/homeView'
 import { homeScreenGuideView } from '../features/install/installView'
-import { lobbyView } from '../features/lobby/lobbyView'
+import type { ViewInputs as LobbyViewInputs } from '../features/lobby/block'
+import { isKeyboard } from '../features/menus/menuParts'
 import {
   cornerButtonsView,
   debutCardView,
@@ -24,7 +25,7 @@ import { pauseHelpView } from '../features/menus/pauseHelp'
 import { isOpenBreak } from '../features/onboarding/onboarding'
 import { questTrackerView } from '../features/onboarding/questView'
 import type { ViewInputs as ProfileViewInputs } from '../features/profile/block'
-import { tabOf } from '../features/profile/profile'
+import { joinName, tabOf } from '../features/profile/profile'
 import { rankPlateView } from '../features/rank/rankBadgeView'
 import {
   ammoTagButtonView,
@@ -32,7 +33,7 @@ import {
 } from '../features/shop/purchaseHud'
 import { shopDialogView } from '../features/shop/shopView'
 import { victorySupportView } from '../features/support/supportView'
-import { hasUnseenLook } from '../features/unlocks/unlocks'
+import { hasUnseenCalling, hasUnseenLook } from '../features/unlocks/unlocks'
 import { keyGrabToastView } from '../input/keyGrab'
 import {
   ghostSticksView,
@@ -72,7 +73,12 @@ import { isShopOpenFor } from '../world/shop/shop'
 import { FINAL_WAVE } from '../world/waves/wavePlans'
 import { isRoundActive, roundWave } from '../world/waves/waves'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../world/zombies/zombies'
-import { CoopBinding, ProfileBinding, ProfileDialogBinding } from './bindings'
+import {
+  CoopBinding,
+  LobbyBinding,
+  ProfileBinding,
+  ProfileDialogBinding,
+} from './bindings'
 import {
   ApplicationComposition,
   type ApplicationViewBuilder,
@@ -346,6 +352,39 @@ const profileDialogView = (model: Model, h: ApplicationViewBuilder): Html =>
     },
     h,
   )
+
+// THE LOBBY
+
+// NOTE: the root's fields the lobby shows: the player's seat, and what the
+// hero picker's cards read.
+const lobbyInputs = (model: Model): LobbyViewInputs => {
+  const rank = rankOf(totalPointsOf(model.rank))
+  return {
+    picks: lobbyPicksOf(model),
+    name: joinName(model),
+    look: model.appearance,
+    rank,
+    calling: startingCallingOf(model),
+    isHeroNew: hasUnseenCalling(rank, model.seenUnlocks),
+    bought: model.boughtCosmetics,
+    bones: bonesBalanceOf(model.rank),
+    fresh: model.freshUnlocks,
+    isKeyboard: isKeyboard(model),
+  }
+}
+
+// NOTE: the lobby is drawn only while it is up, so a closed one costs the
+// frame nothing.
+const lobbyView = (model: Model, h: ApplicationViewBuilder): Html =>
+  isLobbyUp(model)
+    ? h.block(
+        LobbyBinding.embedView({
+          slotId: 'lobby',
+          model: model.lobby,
+          viewInputs: lobbyInputs(model),
+        }),
+      )
+    : h.empty
 
 // VIEW
 

@@ -2,6 +2,7 @@ import { Function, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
 import { isOpen as isCoopScreenOpen } from '../features/coop/update'
+import { isHeroPickerUp, isLobbyShown } from '../features/lobby/model'
 import { ProfileTab } from '../features/profile/model'
 import { tabOf } from '../features/profile/profile'
 import { RESTART_GRACE_MS } from '../shared/constants'
@@ -10,8 +11,8 @@ import { MenuPanel, type Model, Phase } from './model'
 // NOTE: what the player is looking at, derived from the Model and never
 // stored. Update's gates and the view both read it, so "is a menu open"
 // has one answer. The dialogs come first, top to bottom (the shop's
-// dialog also opens in a co-op run), then the single player lobby, then
-// co-op's own screens, then the phase. Only this module reads a dialog's `isOpen` or `model.coop.screen`
+// dialog also opens in a co-op run), then the hero picker over the single
+// player lobby, the lobby, co-op's own screens, and the phase. Only this module reads a dialog's `isOpen` or `model.coop.screen`
 // (munch/no-menu-field).
 export const MenuState = defineTaggedUnion({
   Shop: {},
@@ -20,6 +21,7 @@ export const MenuState = defineTaggedUnion({
   Hand: {},
   InstallSteps: {},
   UpdateGreeting: {},
+  HeroPicker: {},
   Lobby: {},
   Coop: {},
   Home: {},
@@ -59,6 +61,8 @@ export const menuState = (model: Model): MenuState => {
     return MenuState.InstallSteps()
   } else if (model.updateGreeting.isOpen) {
     return MenuState.UpdateGreeting()
+  } else if (isHeroPickerUp(model.lobby)) {
+    return MenuState.HeroPicker()
   } else if (isLobbyUp(model)) {
     return MenuState.Lobby()
   } else if (isCoopScreenOpen(model.coop)) {
@@ -74,7 +78,7 @@ export const isOnHomeMenu = (model: Model): boolean =>
   MenuState.isAnyOf(['Home'])(menuState(model))
 
 // NOTE: the lobby is on screen, whatever dialog is over it (the hero picker).
-export const isLobbyUp = (model: Model): boolean => model.home.lobby === 'Open'
+export const isLobbyUp = (model: Model): boolean => isLobbyShown(model.lobby)
 
 export const isLobbyOpen = (model: Model): boolean =>
   MenuState.isAnyOf(['Lobby'])(menuState(model))

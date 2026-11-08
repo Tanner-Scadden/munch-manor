@@ -2,13 +2,8 @@ import { Array, Function, Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { Message } from '../message'
-import {
-  LobbyChange,
-  type Model,
-  type Room,
-  Screen,
-  initialModel,
-} from '../model'
+import { LobbyChange, type Model, type Room, Screen } from '../model'
+import { initialModel } from '../pureCoop'
 import { freshRoom, maybeRoomOf } from '../roomState'
 import { CODE, type lobbyOf } from '../testing'
 import { open, pressKey } from '../update'

@@ -9,9 +9,12 @@ import { Story } from 'foldkit'
 import type { BlockOfBinding } from 'foldkit/block'
 import { toParentMessageFor } from 'foldkit/test'
 
+import { HeroPickerBinding as CoopHeroPickerBinding } from '../features/coop/bindings'
+import type { HeroPickerBlock } from '../features/heroes/block'
+import { HeroPickerBinding } from '../features/lobby/bindings'
 import type { CharacterBlock } from '../features/profile/blocks/look/block'
 import { CharacterBinding } from '../features/profile/composition'
-import { ProfileBinding } from './bindings'
+import { CoopBinding, LobbyBinding, ProfileBinding } from './bindings'
 import { layer } from './block'
 import { ApplicationBlock } from './definition'
 import type { Model } from './model'
@@ -32,12 +35,19 @@ export const initialModel: Model = init().model
 
 const message = toParentMessageFor(application)
 const inProfile = toParentMessageFor(application, ProfileBinding)
+const inLobby = toParentMessageFor(application, LobbyBinding)
+const inCoop = toParentMessageFor(application, CoopBinding)
 
 type ProfileMessage = BlockOfBinding<typeof ProfileBinding>['Message']['Type']
 type CharacterMessage = typeof CharacterBlock.Message.Type
+type LobbyMessage = BlockOfBinding<typeof LobbyBinding>['Message']['Type']
+type HeroPickerMessage = typeof HeroPickerBlock.Message.Type
 
 const profile = (profileMessage: ProfileMessage) =>
   message(ProfileBinding, profileMessage)
+
+const lobby = (lobbyMessage: LobbyMessage) =>
+  message(LobbyBinding, lobbyMessage)
 
 // NOTE: a child's Message as the root's generated envelope
 // (`GotCoopMessage`, `GotShopDialogMessage`, ...), for `Story.message`,
@@ -46,7 +56,8 @@ const profile = (profileMessage: ProfileMessage) =>
 // the mapper is generic and cannot be made dual. `profile` delivers a
 // Profile Message, `inProfile` maps one of its children's (the tabs, the
 // Look tab) to the Profile's, and `character` delivers a Look tab Message.
-// A Look tab radio group's Message is a grandchild's grandchild: a
+// `lobby` delivers a single player lobby Message, `lobbyHero` one of its
+// hero picker's, and `coopHero` one of co-op's hero picker's. A Look tab radio group's Message is a grandchild's grandchild: a
 // Block-aware Story delivers it with `Story.messageIn([ProfileBinding,
 // CharacterBinding, BodyBinding], ...)`.
 export const Child = {
@@ -55,4 +66,9 @@ export const Child = {
   inProfile,
   character: (characterMessage: CharacterMessage) =>
     profile(inProfile(CharacterBinding, characterMessage)),
+  lobby,
+  lobbyHero: (pickerMessage: HeroPickerMessage) =>
+    lobby(inLobby(HeroPickerBinding, pickerMessage)),
+  coopHero: (pickerMessage: HeroPickerMessage) =>
+    message(CoopBinding, inCoop(CoopHeroPickerBinding, pickerMessage)),
 }

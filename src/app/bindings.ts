@@ -1,6 +1,8 @@
 import { DialogBlock } from '@foldkit/ui'
 
 import { CoopBlock } from '../features/coop'
+import { lobbyPicksOf } from '../features/home/home'
+import { LobbyBlock } from '../features/lobby/block'
 import { ProfileBlock } from '../features/profile/block'
 import { ShopTabsBlock } from '../features/shop/shopTabs'
 import { focusOf } from '../world/party/party'
@@ -70,6 +72,15 @@ export const ShopTabsBinding = makeRequiredFieldBinding(ShopTabsBlock, {
 // the Look tab, the name being typed, and the device link flow.
 export const ProfileBinding = makeRequiredFieldBinding(ProfileBlock, {
   field: 'profile',
+})
+
+// THE LOBBY
+
+// NOTE: the single player lobby PLAY opens, with its hero picker inside.
+// The picks are the root's, handed to its update as context.
+export const LobbyBinding = makeRequiredFieldBinding(LobbyBlock, {
+  field: 'lobby',
+  delivery: { toUpdateContext: model => [lobbyPicksOf(model)] },
 })
 
 // CO-OP

@@ -1,10 +1,11 @@
 import { Function, Option } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+import type { Html } from 'foldkit/html'
 
 import { closeButtonView } from '../../app/dialogs'
 import { DICE_ICON } from '../../art/icons'
 import { iconView } from '../menus/menuParts'
 import { DEFAULT_NAME, MAX_NAME_LENGTH } from '../profile/profile'
+import type { CoopViewBuilder } from './composition'
 import { PENCIL_ICON } from './icons'
 import { Message } from './message'
 import type { Room } from './model'
@@ -15,9 +16,9 @@ import { NAME_BUTTON_ID, NAME_INPUT_ID, isInLobby } from './roomState'
 // (src/features/profile/profile.ts). Enter or OK keeps it, Esc or the X leaves it as it was.
 
 export const nameButtonView: {
-  (h: HtmlBuilder<Message>): (name: string) => Html
-  (name: string, h: HtmlBuilder<Message>): Html
-} = Function.dual(2, (name: string, h: HtmlBuilder<Message>): Html =>
+  (h: CoopViewBuilder): (name: string) => Html
+  (name: string, h: CoopViewBuilder): Html
+} = Function.dual(2, (name: string, h: CoopViewBuilder): Html =>
   h.button(
     [
       h.Type('button'),
@@ -37,9 +38,9 @@ export const nameButtonView: {
 // NOTE: over the top of the lobby, not centered, so a phone's keyboard in
 // landscape leaves it in sight. The field is 16 px or more, or iOS zooms.
 export const namePickerView: {
-  (h: HtmlBuilder<Message>): (room: Room) => Html
-  (room: Room, h: HtmlBuilder<Message>): Html
-} = Function.dual(2, (room: Room, h: HtmlBuilder<Message>): Html =>
+  (h: CoopViewBuilder): (room: Room) => Html
+  (room: Room, h: CoopViewBuilder): Html
+} = Function.dual(2, (room: Room, h: CoopViewBuilder): Html =>
   Option.match(room.maybeNameDraft, {
     onNone: () => h.empty,
     onSome: draft =>

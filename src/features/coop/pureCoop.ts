@@ -16,3 +16,6 @@ const coop = Effect.runSync(
 )
 
 export const { update, view } = coop
+
+// NOTE: co-op's whole start Model, its hero picker's field included.
+export const initialModel = coop.init().model

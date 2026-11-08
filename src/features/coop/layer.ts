@@ -1,5 +1,6 @@
 import { Layer } from 'effect'
 
+import { HeroPickerLayer } from '../heroes/layer'
 import { CoopBlock } from './block'
 import { CoopComposition } from './composition'
 import { inMessageUpdate } from './inMessageUpdate'
@@ -21,4 +22,4 @@ export const CoopLayer = CoopBlock.makeLayer({
   view,
   subscriptions,
   EffectsLayer,
-})
+}).pipe(Layer.provide(HeroPickerLayer))

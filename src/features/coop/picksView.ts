@@ -1,5 +1,5 @@
 import { Array, Function, Option } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+import type { Html } from 'foldkit/html'
 
 import type { Lobby, PickedMode, RoomDifficulty } from '@munch/netcode'
 
@@ -11,7 +11,7 @@ import {
   SKULL_OFF_ICON,
   TROPHY_ICON,
 } from '../../art/icons'
-import { MODE_NAMES } from '../../world/names'
+import { CALLING_NAMES, MODE_NAMES } from '../../world/names'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
@@ -24,21 +24,26 @@ import {
   isModifierOn,
   modifiersOfMask,
 } from '../../world/run/modifiers'
+import { PROP_ICONS } from '../heroes/callingArt'
+import { specialsNoteOf } from '../heroes/callingSpecials'
 import {
   bonusChipView,
   modifierFaceView,
   modifierLabel,
 } from '../lobby/modifiersView'
 import { iconView } from '../menus/menuParts'
-import { callingPillView } from './callingPicker'
+import type { CoopViewBuilder } from './composition'
 import { CROWN_ICON } from './icons'
+import { callingOfMember } from './looks'
 import { Message } from './message'
 import type { NudgeReason, Room } from './model'
 import {
+  CALLING_PILL_ID,
   MODE_PICKS,
   canPickDifficulty,
   canPickMode,
   isPicking,
+  meIn,
   pickedModeOf,
 } from './roomState'
 
@@ -58,7 +63,7 @@ const pickAttributes = (
   canPick: boolean,
   message: Message,
   reason: NudgeReason,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ) =>
   canPick
     ? [h.OnClick(message)]
@@ -68,7 +73,7 @@ const modePickView = (
   room: Room,
   lobby: Lobby,
   mode: PickedMode,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html => {
   const isChosen = pickedModeOf(lobby) === mode
   return h.keyed('button')(
@@ -106,7 +111,7 @@ const skullPickView = (
   room: Room,
   lobby: Lobby,
   difficulty: RoomDifficulty,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html => {
   const isLit = skullIndexOf(difficulty) <= skullIndexOf(lobby.difficulty)
   const isLocked = !canPickDifficulty(lobby, difficulty)
@@ -153,7 +158,7 @@ const modifierPickView = (
   room: Room,
   lobby: Lobby,
   modifier: Modifier,
-  h: HtmlBuilder<Message>,
+  h: CoopViewBuilder,
 ): Html => {
   const isOn = isModifierOn(modifiersOfMask(lobby.modifiers), modifier)
   return h.keyed('button')(
@@ -178,7 +183,7 @@ const modifierPickView = (
 
 // NOTE: the note a tap on a pick that is not yours leaves: it fades in
 // place over the picks (no movement), and a new tap starts it again.
-const nudgeView = (room: Room, h: HtmlBuilder<Message>): Html =>
+const nudgeView = (room: Room, h: CoopViewBuilder): Html =>
   Option.match(room.maybeNudge, {
     onNone: () => h.empty,
     onSome: ({ reason, count }) =>
@@ -203,25 +208,56 @@ const nudgeView = (room: Room, h: HtmlBuilder<Message>): Html =>
       ),
   })
 
+// NOTE: the hero pill beside the mode and difficulty picks: the player's own
+// hero, which opens the hero picker over the lobby (src/features/heroes/),
+// so a hero can change while the room waits. Every member has one, as the
+// host alone picks the mode and difficulty.
+const callingPillView = (
+  room: Room,
+  isPickerOpen: boolean,
+  keyCap: Html,
+  h: CoopViewBuilder,
+): Html =>
+  Option.match(meIn(room), {
+    onNone: () => h.empty,
+    onSome: me => {
+      const calling = callingOfMember(me)
+      return h.button(
+        [
+          h.Type('button'),
+          h.Id(CALLING_PILL_ID),
+          h.Class('coop-pick coop-calling-pill'),
+          h.DataAttribute('calling', calling),
+          h.AriaLabel(
+            `Hero: ${CALLING_NAMES[calling]}. ${specialsNoteOf(calling)}. Change it`,
+          ),
+          h.AriaHasPopup('dialog'),
+          h.AriaExpanded(isPickerOpen),
+          h.AriaKeyshortcuts('Y'),
+          h.OnClick(Message.ClickedCallingPill()),
+        ],
+        [iconView('coop-calling-pill-icon', PROP_ICONS[calling], h), keyCap],
+      )
+    },
+  })
+
+// NOTE: an object type, not Readonly<...>, so the pipeable check matches the
+// view's two signatures.
+type PicksInput = {
+  readonly lobby: Lobby
+  readonly isPickerOpen: boolean
+  readonly keyCapView: (key: string) => Html
+}
+
 export const picksView: {
-  (
-    lobby: Lobby,
-    keyCapView: (key: string) => Html,
-    h: HtmlBuilder<Message>,
-  ): (room: Room) => Html
-  (
-    room: Room,
-    lobby: Lobby,
-    keyCapView: (key: string) => Html,
-    h: HtmlBuilder<Message>,
-  ): Html
+  (input: PicksInput, h: CoopViewBuilder): (room: Room) => Html
+  (room: Room, input: PicksInput, h: CoopViewBuilder): Html
 } = Function.dual(
-  4,
+  3,
   (
     room: Room,
-    lobby: Lobby,
-    keyCapView: (key: string) => Html,
-    h: HtmlBuilder<Message>,
+    { lobby, isPickerOpen, keyCapView }: PicksInput,
+    h: CoopViewBuilder,
   ): Html =>
     h.div(
       [
@@ -270,7 +306,7 @@ export const picksView: {
         ),
         h.div(
           [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Hero')],
-          [callingPillView(room, [keyCapView('Y')], h)],
+          [callingPillView(room, isPickerOpen, keyCapView('Y'), h)],
         ),
         nudgeView(room, h),
       ],
