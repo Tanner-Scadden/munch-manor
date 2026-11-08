@@ -1,16 +1,16 @@
 import { Array, Option } from 'effect'
-import type { Canvas } from 'foldkit'
-import { given, model, story } from 'foldkit/story'
+import { type Canvas, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Model, Phase } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import { freshRun } from '../../../app/runReset'
 import { roomShapes } from '../../../render/room/room'
 import { MAX_FRAME_DELTA_MS } from '../../../shared/constants'
 import { imageColors } from '../../../test/testPng'
-import { ticks } from '../../../test/testing'
+import { APPLICATION, ticks } from '../../../test/testing'
 import {
   type LevelSpec,
   MANOR,
@@ -178,17 +178,17 @@ describe('the manor', () => {
     expect(drawsBoards(roomShapes(opened))).toBe(false)
   })
 
-  test('keeps its level through a wave', () => {
+  it.effect('keeps its level through a wave', () => {
     const fighting: Model = modifyFields(initialModel, {
       maybeSurface: () =>
         Option.some({ left: 0, top: 0, width: 800, height: 400 }),
       phase: () => Phase.Wave({ wave: 1, elapsedMs: 0, spawns: [] }),
     })
-    story(
-      update,
-      given(fighting),
+    return Story.story(
+      APPLICATION,
+      Story.given(fighting),
       ...ticks(30, MAX_FRAME_DELTA_MS),
-      model(current => {
+      Story.model(current => {
         expect(levelOf(current)).toBe(MANOR)
       }),
     )

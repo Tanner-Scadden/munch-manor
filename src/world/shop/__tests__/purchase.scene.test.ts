@@ -1,17 +1,8 @@
 import { Array, Option } from 'effect'
-import {
-  Subscription,
-  click,
-  expect,
-  given,
-  pointerDown,
-  role,
-  scene,
-  selector,
-  text,
-} from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test, expect as vitestExpect } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { FridgeDoor, type Model, Phase } from '../../../app/model'
@@ -26,8 +17,8 @@ import {
   pastTimedBreaks,
 } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   HOLD_TICKS,
-  ROOT,
   SCENE_SUBSCRIPTIONS,
   measureSurface,
 } from '../../../test/testing'
@@ -57,72 +48,78 @@ const atBoards = (device: InputDevice, balance: number): Model =>
     },
   )
 
-const holdButton = role('button', {
+const holdButton = Scene.role('button', {
   name: `Hold to open the kitchen for ${EXIT_RULES.price} dollars`,
 })
 
 const frames = (count: number) =>
   Array.makeBy(count, () =>
-    Subscription.emit(
+    Scene.Subscription.emit(
       SCENE_SUBSCRIPTIONS.frame,
       Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
     ),
   )
 
 describe('holding to buy on touch', () => {
-  test('at the boards a hold button sits by the guns, and holding it buys the kitchen', () => {
-    scene(
-      ROOT,
-      given(atBoards('Touch', 85)),
-      measureSurface,
-      expect(holdButton).toExist(),
-      expect(holdButton).toHaveAttr('data-short', 'false'),
-      pointerDown(holdButton, { pointerType: 'touch', pointerId: 4 }),
-      ...frames(HOLD_TICKS - 8),
-      expect(holdButton).toExist(),
-      ...frames(8),
-      expect(holdButton).toBeAbsent(),
-      Subscription.emit(
-        SCENE_SUBSCRIPTIONS.pointerReleases,
-        Message.ReleasedPointer({ pointerId: 4 }),
+  it.effect(
+    'at the boards a hold button sits by the guns, and holding it buys the kitchen',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(atBoards('Touch', 85)),
+        measureSurface,
+        Scene.expect(holdButton).toExist(),
+        Scene.expect(holdButton).toHaveAttr('data-short', 'false'),
+        Scene.pointerDown(holdButton, { pointerType: 'touch', pointerId: 4 }),
+        ...frames(HOLD_TICKS - 8),
+        Scene.expect(holdButton).toExist(),
+        ...frames(8),
+        Scene.expect(holdButton).toBeAbsent(),
+        Scene.Subscription.emit(
+          SCENE_SUBSCRIPTIONS.pointerReleases,
+          Message.ReleasedPointer({ pointerId: 4 }),
+        ),
       ),
-    )
-  })
+  )
 
-  test('short of the price the button says so, and a hold only shakes it', () => {
-    scene(
-      ROOT,
-      given(atBoards('Touch', EXIT_RULES.price - 5)),
-      measureSurface,
-      expect(holdButton).toHaveAttr('data-short', 'true'),
-      expect(holdButton).toHaveAttr('aria-disabled', 'true'),
-      pointerDown(holdButton, { pointerType: 'touch', pointerId: 4 }),
-      ...frames(2),
-      expect(selector('.hold-buy-button.is-refused')).toExist(),
-      ...frames(HOLD_TICKS),
-      expect(holdButton).toExist(),
-      Subscription.emit(
-        SCENE_SUBSCRIPTIONS.pointerReleases,
-        Message.ReleasedPointer({ pointerId: 4 }),
+  it.effect(
+    'short of the price the button says so, and a hold only shakes it',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(atBoards('Touch', EXIT_RULES.price - 5)),
+        measureSurface,
+        Scene.expect(holdButton).toHaveAttr('data-short', 'true'),
+        Scene.expect(holdButton).toHaveAttr('aria-disabled', 'true'),
+        Scene.pointerDown(holdButton, { pointerType: 'touch', pointerId: 4 }),
+        ...frames(2),
+        Scene.expect(Scene.selector('.hold-buy-button.is-refused')).toExist(),
+        ...frames(HOLD_TICKS),
+        Scene.expect(holdButton).toExist(),
+        Scene.Subscription.emit(
+          SCENE_SUBSCRIPTIONS.pointerReleases,
+          Message.ReleasedPointer({ pointerId: 4 }),
+        ),
       ),
-    )
-  })
+  )
 })
 
 describe('holding to buy on a keyboard', () => {
-  test('no button shows, and a screen reader hears the price and the key', () => {
-    scene(
-      ROOT,
-      given(atBoards('KeyboardMouse', 85)),
-      measureSurface,
-      expect(holdButton).toBeAbsent(),
-      expect(
-        text(
-          `the kitchen, ${EXIT_RULES.price} dollars. Stand still or hold Enter to buy.`,
-        ),
-      ).toExist(),
-    )
-  })
+  it.effect(
+    'no button shows, and a screen reader hears the price and the key',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(atBoards('KeyboardMouse', 85)),
+        measureSurface,
+        Scene.expect(holdButton).toBeAbsent(),
+        Scene.expect(
+          Scene.text(
+            `the kitchen, ${EXIT_RULES.price} dollars. Stand still or hold Enter to buy.`,
+          ),
+        ).toExist(),
+      ),
+  )
 })
 
 describe('taking a fridge prize on touch', () => {
@@ -153,26 +150,28 @@ describe('taking a fridge prize on touch', () => {
     )
   }
 
-  const takeButton = role('button', {
+  const takeButton = Scene.role('button', {
     name: 'Hold to take the prize from the fridge',
   })
 
-  test('the hold button says TAKE, not a price, and holding it takes the prize', () => {
-    scene(
-      ROOT,
-      given(offered()),
-      measureSurface,
-      expect(takeButton).toExist(),
-      expect(selector('.hold-buy-price')).toHaveText('TAKE'),
-      pointerDown(takeButton, { pointerType: 'touch', pointerId: 4 }),
-      ...frames(HOLD_TICKS),
-      expect(takeButton).toBeAbsent(),
-      Subscription.emit(
-        SCENE_SUBSCRIPTIONS.pointerReleases,
-        Message.ReleasedPointer({ pointerId: 4 }),
+  it.effect(
+    'the hold button says TAKE, not a price, and holding it takes the prize',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(offered()),
+        measureSurface,
+        Scene.expect(takeButton).toExist(),
+        Scene.expect(Scene.selector('.hold-buy-price')).toHaveText('TAKE'),
+        Scene.pointerDown(takeButton, { pointerType: 'touch', pointerId: 4 }),
+        ...frames(HOLD_TICKS),
+        Scene.expect(takeButton).toBeAbsent(),
+        Scene.Subscription.emit(
+          SCENE_SUBSCRIPTIONS.pointerReleases,
+          Message.ReleasedPointer({ pointerId: 4 }),
+        ),
       ),
-    )
-  })
+  )
 })
 
 describe('the price tag in a zoomed phone window', () => {
@@ -186,51 +185,50 @@ describe('the price tag in a zoomed phone window', () => {
     )
 
   test('hangs on the boards while the window shows them', () => {
-    vitestExpect(tagsFor(upright(26))).not.toHaveLength(0)
+    expect(tagsFor(upright(26))).not.toHaveLength(0)
   })
 
   test('is not drawn over the HUD band once the window has followed the player away', () => {
-    vitestExpect(cameraOf(upright(170)).y).toBe(20)
-    vitestExpect(tagsFor(upright(170))).toHaveLength(0)
+    expect(cameraOf(upright(170)).y).toBe(20)
+    expect(tagsFor(upright(170))).toHaveLength(0)
   })
 })
 
 describe('the ammo tag', () => {
-  const ammoTag = selector('.ammo-tag-button')
+  const ammoTag = Scene.selector('.ammo-tag-button')
 
-  test.each(['KeyboardMouse', 'Touch'] as const)(
+  it.effect.each(['KeyboardMouse', 'Touch'] as const)(
     'with %s, a click on the tag at the window buys at once',
-    device => {
-      scene(
-        ROOT,
-        given(
+    device =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(
           modifyFields(midWaveAtStall('Smg', maxRounds('Smg', 0) - 1), {
             lastDevice: () => device,
           }),
         ),
         measureSurface,
-        expect(ammoTag).toExist(),
-        expect(ammoTag).toHaveAttr(
+        Scene.expect(ammoTag).toExist(),
+        Scene.expect(ammoTag).toHaveAttr(
           'aria-label',
           `Buy ammo for ${SHOP_ITEMS.SmgRounds.price} dollars`,
         ),
-        click(ammoTag),
+        Scene.click(ammoTag),
         ...frames(1),
-        expect(ammoTag).toHaveAttr('aria-label', 'Your gun is full'),
-      )
-    },
+        Scene.expect(ammoTag).toHaveAttr('aria-label', 'Your gun is full'),
+      ),
   )
 
-  test('away from the window there is no tag to click', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('away from the window there is no tag to click', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFocus(midWaveAtStall('Smg', 10), {
           player: player => modifyFields(player, { x: () => 40 }),
         }),
       ),
       measureSurface,
-      expect(ammoTag).toBeAbsent(),
-    )
-  })
+      Scene.expect(ammoTag).toBeAbsent(),
+    ),
+  )
 })

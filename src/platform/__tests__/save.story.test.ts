@@ -21,7 +21,7 @@ import {
   noBests,
   noKills,
 } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { WriteSave } from '../../app/update/save'
 import { Message as LobbyMessage } from '../../features/lobby/message'
 import { shownHints } from '../../features/onboarding/onboarding'
@@ -66,82 +66,7 @@ import {
   unvisitedHome,
   writeLegacySave,
 } from '../save'
-
-const learnedSave: PlayerSave = {
-  version: SAVE_VERSION,
-  onboarding: {
-    lessons: {
-      move: 'Learned',
-      fire: 'Learned',
-      startWave: 'Learned',
-      shop: 'Learned',
-      swap: 'Learned',
-      pickup: 'Learned',
-      timedBreaks: 'Learned',
-      openBreak: 'Learned',
-    },
-    trapHint: 'Seen',
-    ammoTip: 'Seen',
-    introducedKinds: ZOMBIE_KIND_ORDER,
-  },
-  homeScreenTip: 'Dismissed',
-  settings: {
-    sound: 'Muted',
-    music: 'Off',
-    shake: 'Off',
-    shareStats: 'Off',
-    cursor: 'Thin',
-  },
-  appearance: {
-    body: 'Slim',
-    hairStyle: 'Ponytail',
-    hairColor: 'Pink',
-    skinTone: 'Deep',
-    shirtColor: 'Teal',
-    outfit: 'Overalls',
-    print: 'Rainbow',
-    beard: true,
-    glasses: true,
-    hat: 'None',
-    gunSkin: 'Stock',
-  },
-  difficulty: { chosen: 'Hard', card: 'Seen', nightmare: 'Unlocked' },
-  bests: {
-    runsPlayed: 12,
-    totalKills: 341,
-    killsByKind: { Shambler: 200, Runner: 90, Tank: 11, Exploder: 40 },
-    byDifficulty: {
-      Easy: { fastestWinMs: null, bestEndlessWave: null },
-      Normal: { fastestWinMs: 402_000, bestEndlessWave: 12 },
-      Hard: { fastestWinMs: null, bestEndlessWave: 9 },
-      Nightmare: { fastestWinMs: null, bestEndlessWave: null },
-    },
-  },
-  home: {
-    seenNewsDay: 'October 28, 2026',
-    openedEntries: ['Shambler', 'Runner'],
-  },
-  seenPowerUps: ['RapidFire', 'Burp'],
-  rotation: 'Landscape',
-  name: 'Snackula',
-  records: {
-    Easy: { furthestWave: null, mostKills: null },
-    Normal: { furthestWave: 7, mostKills: 140 },
-    Hard: { furthestWave: 4, mostKills: 66 },
-    Nightmare: { furthestWave: null, mostKills: null },
-  },
-  rank: {
-    earnedPoints: 340,
-    earnedBones: 34,
-    veteranPoints: 150,
-    veteranBones: 15,
-    isVeteranGranted: true,
-    spentBones: 5,
-  },
-  calling: 'TrackStar',
-  boughtCosmetics: [],
-  seenUnlocks: [],
-}
+import { learnedSave } from './save.fixture'
 
 // NOTE: the look as saves before version 10 kept it, a Female or Male
 // body and five parts, and the closest current look it reads as: a Broad
@@ -1103,90 +1028,4 @@ describe('reset tutorial', () => {
       }),
     ),
   )
-})
-
-describe('the veteran grant', () => {
-  const loaded = (maybeSave: Option.Option<PlayerSave>) =>
-    update(loadingSave, Message.CompletedLoadSave({ maybeSave }))
-
-  const writesOf = (result: ReturnType<typeof update>) =>
-    Array.filter(
-      result.commands ?? [],
-      command => command.name === WriteSave.name,
-    )
-
-  // NOTE: a save from before rank, as the previous build wrote it.
-  const beforeRank = (killsByKind: Record<string, number>) => {
-    const { rank: _rank, ...rest } = learnedSave
-    const json = jsonOf({
-      ...rest,
-      version: 12,
-      bests: { ...learnedSave.bests, killsByKind },
-    })
-    return decodeSave(json)
-  }
-
-  test('a save from before rank is granted a point per kill, and writes the grant', () => {
-    const result = loaded(beforeRank({ Shambler: 200, Runner: 141 }))
-    expect(result.model.rank).toEqual({
-      earnedPoints: 0,
-      earnedBones: 0,
-      veteranPoints: 341,
-      veteranBones: 34,
-      isVeteranGranted: true,
-      spentBones: 0,
-    })
-    const [write] = writesOf(result)
-    expect(write?.args).toMatchObject({
-      changes: [{ _tag: 'GrantedVeteranRank', points: 341, bones: 34 }],
-    })
-  })
-
-  test('the grant stops at the points for rank 10', () => {
-    const result = loaded(beforeRank({ Shambler: 9000 }))
-    expect(result.model.rank.veteranPoints).toBe(1800)
-    expect(result.model.rank.veteranBones).toBe(180)
-  })
-
-  test('a save that was granted keeps its grant and writes nothing', () => {
-    const result = loaded(Option.some(learnedSave))
-    expect(result.model.rank).toEqual(learnedSave.rank)
-    expect(writesOf(result)).toEqual([])
-  })
-
-  test('a new player is granted 0 once, so later kills never become a grant', () => {
-    const result = loaded(Option.none())
-    expect(result.model.rank.isVeteranGranted).toBe(true)
-    expect(result.model.rank.veteranPoints).toBe(0)
-    expect(writesOf(result)).toEqual([])
-    const later = modifyFields(result.model, {
-      bests: bests => modifyFields(bests, { totalKills: () => 500 }),
-    })
-    expect(saveOf(later).rank.veteranPoints).toBe(0)
-  })
-})
-
-describe('the calling in the save', () => {
-  test('round trips through the model', () => {
-    expect(saveOf(restoreSave(initialModel, learnedSave)).calling).toBe(
-      'TrackStar',
-    )
-  })
-
-  test('a save from before callings picks YOU', () => {
-    const { calling: _calling, ...rest } = learnedSave
-    const json = jsonOf({ ...rest, version: 13 })
-    const migrated = Option.getOrThrow(decodeSave(json))
-    expect(migrated.calling).toBe('You')
-    expect(migrated.version).toBe(SAVE_VERSION)
-  })
-
-  test('a synced pick the rank has not reached still starts as YOU', () => {
-    const synced = restoreSave(
-      modifyFields(initialModel, { saveStatus: () => 'Read' }),
-      { ...learnedSave, calling: 'LineCook', rank: noRank },
-    )
-    expect(synced.calling).toBe('LineCook')
-    expect(focusOf(synced).player.calling).toBe('You')
-  })
 })

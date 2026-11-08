@@ -1,8 +1,10 @@
-// The game's init, update, and view as plain synchronous functions, for the
-// tools that replay the game (the balance bot, the determinism tools, the
-// audit harness, the sprite atlas) and the tests' named Models
-// (`initialModel`). Tests drive the root through Block-aware Stories and
-// Scenes over `APPLICATION` (src/test/testing.ts), not through this update.
+// The game's update as a plain synchronous function, for the tools that
+// replay the game (the balance bot, the determinism tools, the audit
+// harness, the sprite atlas), the whole start Model the tests' named Models
+// build on (`initialModel`), and the root's Subscriptions for a Scene to emit
+// from. Tests drive the root through Block-aware Stories and Scenes over
+// `APPLICATION` (src/test/testing.ts), never through this update
+// (munch/no-plain-story).
 // The app itself never imports this module: the Program takes the Block and
 // its Layer (src/app/entry.ts).
 
@@ -23,11 +25,11 @@ const application = Effect.runSync(
   Story.withBlock({ block: ApplicationBlock, layer }, Function.identity),
 )
 
-export const { init, update, view, subscriptions } = application
+export const { update, subscriptions } = application
 
 // NOTE: the whole Model a fresh game starts with, every child's field
 // included. src/app/model.ts's `initialModel` holds only the root's own fields.
-export const initialModel: Model = init().model
+export const initialModel: Model = application.init().model
 
 // NOTE: for the tools that play the game without a Story (the balance bot
 // buys at Rattles' counter and closes his dialog): `inRoot` makes a child's

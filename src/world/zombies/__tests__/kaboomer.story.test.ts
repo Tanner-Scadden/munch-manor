@@ -1,8 +1,8 @@
-import { Array, Option, Result } from 'effect'
-import type { Canvas } from 'foldkit'
-import { given, model, story } from 'foldkit/story'
+import { Array, Effect, Option, Result } from 'effect'
+import { type Canvas, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import {
   type Bullet,
@@ -14,7 +14,7 @@ import {
   ZombieAction,
   ZombieState,
 } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import { KABOOMER_FUSE_MAX } from '../../../art/sprites/zombies'
 import { wavePreviewLabel } from '../../../features/hud/wavePreview'
 import {
@@ -25,7 +25,7 @@ import {
 import { debutPitch } from '../../../screens/game/menus'
 import { FIXED_STEP_MS, HIT_STOP_KILL_MAX_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
-import { bulletInto, tick, ticks } from '../../../test/testing'
+import { APPLICATION, bulletInto, tick, ticks } from '../../../test/testing'
 import { PARLOUR } from '../../level/arena'
 import { focusOf } from '../../party/party'
 import { rollSpawns } from '../../waves/endlessWaves'
@@ -85,52 +85,55 @@ const circleRadii = (shapes: ReadonlyArray<Canvas.Shape>) =>
   )
 
 describe('the Kaboomer', () => {
-  test('a Kaboomer that reaches the player lights up with its blast ring on the floor before he pops', () => {
-    expect(BOMBER?.contactFuseMs).toBe(340)
-    const contactMs = BOMBER?.contactFuseMs ?? 0
-    const radius = BOMBER?.blastRadius ?? 0
-    const touching = kaboomerAt(1, CENTER_X + 6, CENTER_Y)
+  it.effect(
+    'a Kaboomer that reaches the player lights up with its blast ring on the floor before he pops',
+    () => {
+      expect(BOMBER?.contactFuseMs).toBe(340)
+      const contactMs = BOMBER?.contactFuseMs ?? 0
+      const radius = BOMBER?.blastRadius ?? 0
+      const touching = kaboomerAt(1, CENTER_X + 6, CENTER_Y)
 
-    story(
-      update,
-      given(sceneWith([touching])),
-      tick(FRAME_MS),
-      model(current => {
-        const [kaboomer] = current.zombies
-        expect(kaboomer?.state).toEqual(
-          ZombieState.Fusing({ remainingMs: contactMs }),
-        )
-        expect(
-          circleRadii(zombieGroundShapes(current.zombies, current.elapsedMs)),
-        ).toContain(radius)
-      }),
-      ...ticks(Math.floor(contactMs / FRAME_MS) - 1, FRAME_MS),
-      model(current => {
-        expect(blewUp(current)).toBe(false)
-        expect(current.zombies).toHaveLength(1)
-      }),
-      ...ticks(2, FRAME_MS),
-      model(current => {
-        expect(current.zombies).toHaveLength(0)
-      }),
-    )
-  })
+      return Story.story(
+        APPLICATION,
+        Story.given(sceneWith([touching])),
+        tick(FRAME_MS),
+        Story.model(current => {
+          const [kaboomer] = current.zombies
+          expect(kaboomer?.state).toEqual(
+            ZombieState.Fusing({ remainingMs: contactMs }),
+          )
+          expect(
+            circleRadii(zombieGroundShapes(current.zombies, current.elapsedMs)),
+          ).toContain(radius)
+        }),
+        ...ticks(Math.floor(contactMs / FRAME_MS) - 1, FRAME_MS),
+        Story.model(current => {
+          expect(blewUp(current)).toBe(false)
+          expect(current.zombies).toHaveLength(1)
+        }),
+        ...ticks(2, FRAME_MS),
+        Story.model(current => {
+          expect(current.zombies).toHaveLength(0)
+        }),
+      )
+    },
+  )
 
-  test('a shot Kaboomer pops a fifth of a second later', () => {
+  it.effect('a shot Kaboomer pops a fifth of a second later', () => {
     expect(BOMBER?.shotFuseMs).toBe(200)
     const gasbag = kaboomerAt(1, CENTER_X + 60, CENTER_Y, 3)
     const shotMs = BOMBER?.shotFuseMs ?? 0
 
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         sceneWith(
           [gasbag],
           [bulletInto(5, gasbag, { damage: 3, knockback: 0 })],
         ),
       ),
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(
           ZombieState.isAnyOf(['Fusing'])(
             Option.getOrThrow(Array.head(current.zombies)).state,
@@ -138,51 +141,55 @@ describe('the Kaboomer', () => {
         ).toBe(true)
       }),
       ...ticks(Math.floor(shotMs / FRAME_MS) - 1, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.zombies).toHaveLength(1)
       }),
       ...ticks(2 + Math.ceil(HIT_STOP_KILL_MAX_MS / FRAME_MS), FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.zombies).toHaveLength(0)
       }),
     )
   })
 
-  test('chains still ripple, each caught Kaboomer a chain fuse after the last, whatever his health', () => {
-    expect(BOMBER?.chainFuseMs).toBe(150)
-    const tough = (BOMBER?.zombieDamage ?? 0) + 4
-    const first = kaboomerAt(1, 220, 60, 3)
-    const second = { ...kaboomerAt(2, 236, 60, tough), maxHp: tough }
-    const blastFrames: Array<number> = []
-    const recorded = Array.flatMap(
-      Array.makeBy(80, index => index),
-      index => [
-        tick(FRAME_MS),
-        model((current: Model) => {
-          if (blewUp(current)) {
-            blastFrames.push(index)
-          }
-        }),
-      ],
-    )
+  it.effect(
+    'chains still ripple, each caught Kaboomer a chain fuse after the last, whatever his health',
+    () =>
+      Effect.gen(function* () {
+        expect(BOMBER?.chainFuseMs).toBe(150)
+        const tough = (BOMBER?.zombieDamage ?? 0) + 4
+        const first = kaboomerAt(1, 220, 60, 3)
+        const second = { ...kaboomerAt(2, 236, 60, tough), maxHp: tough }
+        const blastFrames: Array<number> = []
+        const recorded = Array.flatMap(
+          Array.makeBy(80, index => index),
+          index => [
+            tick(FRAME_MS),
+            Story.model((current: Model) => {
+              if (blewUp(current)) {
+                blastFrames.push(index)
+              }
+            }),
+          ],
+        )
 
-    story(
-      update,
-      given(
-        sceneWith(
-          [first, second],
-          [bulletInto(5, first, { damage: 3, knockback: 0 })],
-        ),
-      ),
-      ...recorded,
-    )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            sceneWith(
+              [first, second],
+              [bulletInto(5, first, { damage: 3, knockback: 0 })],
+            ),
+          ),
+          ...recorded,
+        )
 
-    expect(blastFrames).toHaveLength(2)
-    const [firstBlast, secondBlast] = blastFrames
-    expect(
-      ((secondBlast ?? 0) - (firstBlast ?? 0)) * FRAME_MS,
-    ).toBeGreaterThanOrEqual((BOMBER?.chainFuseMs ?? 0) - FRAME_MS)
-  })
+        expect(blastFrames).toHaveLength(2)
+        const [firstBlast, secondBlast] = blastFrames
+        expect(
+          ((secondBlast ?? 0) - (firstBlast ?? 0)) * FRAME_MS,
+        ).toBeGreaterThanOrEqual((BOMBER?.chainFuseMs ?? 0) - FRAME_MS)
+      }),
+  )
 
   test('his fuse burns shorter in a few steps as he closes in and each time he is shot', () => {
     const player = modifyFields(focusOf(initialModel).player, {

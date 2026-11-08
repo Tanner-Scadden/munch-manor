@@ -2,29 +2,30 @@
 // whole 60 Hz ticks whatever the display's rate, so the same held inputs
 // over the same time play the same game at 30, 60, and 120 Hz.
 
-import { Array } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { Array, Effect } from 'effect'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../src/app/message'
 import type { Model } from '../../src/app/model'
-import { modelAfter } from '../../src/test/testing'
+import { playedThrough } from '../../src/test/testing'
 import { firstDifference } from './diff'
 import { gameplayOf } from './fields'
 import { startedRun } from './script'
 
-const holding = (model: Model): Model =>
-  modelAfter(
-    modelAfter(
-      modelAfter(model, Message.PressedKey({ code: 'KeyD' })),
-      Message.MovedMouse({ clientX: 300, clientY: 40 }),
-    ),
-    Message.PressedPointer({
-      pointerId: 1,
-      device: 'Mouse',
-      clientX: 300,
-      clientY: 40,
-    }),
-  )
+// NOTE: the script's run (its start is the determinism tool's own), past
+// the break, with D held and the mouse held down on a spot up and right.
+const started = playedThrough(startedRun(3, 'Campaign'), [
+  Message.PressedKey({ code: 'Enter' }),
+  Message.PressedKey({ code: 'KeyD' }),
+  Message.MovedMouse({ clientX: 300, clientY: 40 }),
+  Message.PressedPointer({
+    pointerId: 1,
+    device: 'Mouse',
+    clientX: 300,
+    clientY: 40,
+  }),
+])
 
 // NOTE: a frame's events are all its ticks' events, so a 30 Hz frame holds
 // two ticks' worth, and the run stats count frames and their real time.
@@ -40,37 +41,37 @@ const worldOf = (model: Model): Readonly<Record<string, unknown>> => {
   return { ...rest, stats: counts }
 }
 
-const playFor = (model: Model, seconds: number, hz: number): Model =>
-  Array.reduce(
-    globalThis.Array.from({ length: seconds * hz }),
-    model,
-    current =>
-      modelAfter(current, Message.TickedFrame({ deltaTime: 1000 / hz })),
+const playFor = (seconds: number, hz: number) =>
+  Effect.flatMap(started, model =>
+    playedThrough(
+      model,
+      Array.makeBy(seconds * hz, () =>
+        Message.TickedFrame({ deltaTime: 1000 / hz }),
+      ),
+    ),
   )
 
 describe('the fixed step', () => {
-  const started = holding(
-    modelAfter(
-      startedRun(3, 'Campaign'),
-      Message.PressedKey({ code: 'Enter' }),
-    ),
+  it.effect('120 Hz frames play the same ticks as 60 Hz frames', () =>
+    Effect.gen(function* () {
+      const at60 = yield* playFor(4, 60)
+      const at120 = yield* playFor(4, 120)
+      expect(firstDifference(worldOf(at60), worldOf(at120))).toBe(undefined)
+    }),
   )
-  const at60 = playFor(started, 4, 60)
 
-  test('120 Hz frames play the same ticks as 60 Hz frames', () => {
-    expect(
-      firstDifference(worldOf(at60), worldOf(playFor(started, 4, 120))),
-    ).toBe(undefined)
-  })
+  it.effect('30 Hz frames play the same ticks as 60 Hz frames', () =>
+    Effect.gen(function* () {
+      const at60 = yield* playFor(4, 60)
+      const at30 = yield* playFor(4, 30)
+      expect(firstDifference(worldOf(at60), worldOf(at30))).toBe(undefined)
+    }),
+  )
 
-  test('30 Hz frames play the same ticks as 60 Hz frames', () => {
-    expect(
-      firstDifference(worldOf(at60), worldOf(playFor(started, 4, 30))),
-    ).toBe(undefined)
-  })
-
-  test('a 60 Hz frame is one tick and leaves no carry', () => {
-    expect(at60.stepCarryMs).toBe(0)
-    expect(at60.elapsedMs).toBeGreaterThan(0)
-  })
+  it.effect('a 60 Hz frame is one tick and leaves no carry', () =>
+    Effect.map(playFor(4, 60), at60 => {
+      expect(at60.stepCarryMs).toBe(0)
+      expect(at60.elapsedMs).toBeGreaterThan(0)
+    }),
+  )
 })

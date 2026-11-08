@@ -1,7 +1,8 @@
 import { Array, Option } from 'effect'
-import { given, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import {
   Arsenal,
@@ -19,7 +20,7 @@ import {
   ShopState,
   Trap,
 } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import {
   FIXED_STEP_MS,
   IDLE_RELOAD_MS,
@@ -36,6 +37,7 @@ import {
   withSeatLife,
 } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   countdownTicks,
   ticks,
   withPistol,
@@ -78,7 +80,7 @@ import {
   targetsOf,
 } from '../party'
 
-// Co-op's World rules (MULTIPLAYER.md, Phase 1), played through `update`
+// Co-op's World rules (MULTIPLAYER.md, Phase 1), played through the root's Story
 // with two and four players in one World.
 
 const TICK_MS = FIXED_STEP_MS
@@ -129,10 +131,10 @@ const bulletAt = (
 })
 
 describe('who the zombies hunt', () => {
-  test('each zombie walks to the standing player nearest it', () => {
-    story(
-      update,
-      given(
+  it.effect('each zombie walks to the standing player nearest it', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         pipeline(
           placeSeat(0, LEFT_X, ROW_Y),
           placeSeat(1, RIGHT_X, ROW_Y),
@@ -146,7 +148,7 @@ describe('who the zombies hunt', () => {
         )(crewInWave(2)),
       ),
       ...ticks(30, TICK_MS),
-      model(current => {
+      Story.model(current => {
         const [nearLeft, nearRight] = current.zombies
         expect(nearLeft?.x).toBeLessThan(LEFT_X + 40)
         expect(nearRight?.x).toBeGreaterThan(RIGHT_X - 40)
@@ -154,13 +156,13 @@ describe('who the zombies hunt', () => {
           flowFieldsToward(MANOR, targetsOf(current), []).Narrow.moreOrigins,
         ).toHaveLength(1)
       }),
-    )
-  })
+    ),
+  )
 
-  test('a downed player is not hunted', () => {
-    story(
-      update,
-      given(
+  it.effect('a downed player is not hunted', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         pipeline(
           placeSeat(0, LEFT_X, ROW_Y),
           placeSeat(1, RIGHT_X, ROW_Y, 0),
@@ -177,11 +179,11 @@ describe('who the zombies hunt', () => {
         )(crewInWave(2)),
       ),
       ...ticks(30, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.zombies[0]?.x).toBeLessThan(RIGHT_X - 30)
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('downed, revived, and bled out', () => {
@@ -194,20 +196,20 @@ describe('downed, revived, and bled out', () => {
       }),
   )(crewInWave(2))
 
-  test('a player at zero hearts goes down and the run goes on', () => {
-    story(
-      update,
-      given(bitten),
+  it.effect('a player at zero hearts goes down and the run goes on', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(bitten),
       ...ticks(1, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(seatOf(current, 1).life._tag).toBe('Downed')
         expect(
           Array.some(current.frameEvents, GameEvent.isAnyOf(['PlayerDowned'])),
         ).toBe(true)
         expect(current.phase._tag).toBe('Wave')
       }),
-    )
-  })
+    ),
+  )
 
   const downedBeside = pipeline(
     placeSeat(0, RIGHT_X - 8, ROW_Y),
@@ -220,26 +222,28 @@ describe('downed, revived, and bled out', () => {
 
   const reviveTicks = Math.ceil(COOP_RULES.reviveMs / TICK_MS)
 
-  test('a teammate standing still beside them for 2 s revives them with 2 hearts', () => {
-    story(
-      update,
-      given(downedBeside),
-      ...ticks(reviveTicks - 2, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).life._tag).toBe('Downed')
-      }),
-      ...ticks(2, TICK_MS),
-      model(current => {
-        expect(seatOf(current, 1).life._tag).toBe('Standing')
-        expect(seatedAt(current, 1).player.hp).toBe(COOP_RULES.reviveHearts)
-      }),
-    )
-  })
+  it.effect(
+    'a teammate standing still beside them for 2 s revives them with 2 hearts',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(downedBeside),
+        ...ticks(reviveTicks - 2, TICK_MS),
+        Story.model(current => {
+          expect(seatOf(current, 1).life._tag).toBe('Downed')
+        }),
+        ...ticks(2, TICK_MS),
+        Story.model(current => {
+          expect(seatOf(current, 1).life._tag).toBe('Standing')
+          expect(seatedAt(current, 1).player.hp).toBe(COOP_RULES.reviveHearts)
+        }),
+      ),
+  )
 
-  test('the run ends when everyone is down', () => {
-    story(
-      update,
-      given(
+  it.effect('the run ends when everyone is down', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         pipeline(
           placeSeat(0, LEFT_X, ROW_Y, 0),
           withSeatLife(
@@ -249,65 +253,71 @@ describe('downed, revived, and bled out', () => {
         )(crewInWave(2)),
       ),
       ...ticks(1, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.phase._tag).toBe('GameOver')
       }),
-    )
-  })
+    ),
+  )
 
-  test('bled-out and downed players come back free at the next break', () => {
-    const clearing = Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })
-    story(
-      update,
-      given(
-        pipeline(
-          withSeatLife(1, Life.BledOut()),
-          placeSeat(1, RIGHT_X, ROW_Y, 0),
-          withSeatLife(
-            2,
-            Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 }),
-          ),
-          placeSeat(2, LEFT_X, ROW_Y, 0),
-        )(crewInWave(4, clearing)),
-      ),
-      ...ticks(1, TICK_MS),
-      model(current => {
-        expect(current.phase._tag).toBe('Preparation')
-        Array.forEach(playersOf(current), ({ seat }) => {
-          expect(seat.life._tag).toBe('Standing')
-        })
-        expect(seatedAt(current, 1).player.hp).toBe(COOP_RULES.reviveHearts)
-        expect(seatedAt(current, 2).player.hp).toBe(COOP_RULES.reviveHearts)
-      }),
-    )
-  })
+  it.effect(
+    'bled-out and downed players come back free at the next break',
+    () => {
+      const clearing = Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })
+      return Story.story(
+        APPLICATION,
+        Story.given(
+          pipeline(
+            withSeatLife(1, Life.BledOut()),
+            placeSeat(1, RIGHT_X, ROW_Y, 0),
+            withSeatLife(
+              2,
+              Life.Downed({ bleedMs: 1e9, reviveMs: 0, callMs: 0 }),
+            ),
+            placeSeat(2, LEFT_X, ROW_Y, 0),
+          )(crewInWave(4, clearing)),
+        ),
+        ...ticks(1, TICK_MS),
+        Story.model(current => {
+          expect(current.phase._tag).toBe('Preparation')
+          Array.forEach(playersOf(current), ({ seat }) => {
+            expect(seat.life._tag).toBe('Standing')
+          })
+          expect(seatedAt(current, 1).player.hp).toBe(COOP_RULES.reviveHearts)
+          expect(seatedAt(current, 2).player.hp).toBe(COOP_RULES.reviveHearts)
+        }),
+      )
+    },
+  )
 })
 
 describe('money', () => {
-  test('the wave clear bonus is split evenly, the odd dollars to the first seats', () => {
-    const clearing = Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })
-    const bonus = waveBonus(3)
-    story(
-      update,
-      given(crewInWave(4, clearing)),
-      ...ticks(1, TICK_MS),
-      model(current => {
-        const paid = Array.map(
-          playersOf(current),
-          ({ wallet }) => wallet.balance,
-        )
-        expect(Array.reduce(paid, 0, (sum, each) => sum + each)).toBe(bonus)
-        expect(Math.max(...paid) - Math.min(...paid)).toBeLessThanOrEqual(1)
-        expect(paid[0]).toBe(Math.ceil(bonus / 4))
-      }),
-    )
-  })
+  it.effect(
+    'the wave clear bonus is split evenly, the odd dollars to the first seats',
+    () => {
+      const clearing = Phase.Wave({ wave: 3, elapsedMs: 0, spawns: [] })
+      const bonus = waveBonus(3)
+      return Story.story(
+        APPLICATION,
+        Story.given(crewInWave(4, clearing)),
+        ...ticks(1, TICK_MS),
+        Story.model(current => {
+          const paid = Array.map(
+            playersOf(current),
+            ({ wallet }) => wallet.balance,
+          )
+          expect(Array.reduce(paid, 0, (sum, each) => sum + each)).toBe(bonus)
+          expect(Math.max(...paid) - Math.min(...paid)).toBeLessThanOrEqual(1)
+          expect(paid[0]).toBe(Math.ceil(bonus / 4))
+        }),
+      )
+    },
+  )
 
-  test('a kill pays the player whose shot landed', () => {
+  it.effect('a kill pays the player whose shot landed', () => {
     const bounty = ZOMBIE_KINDS.Shambler.bounty
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         pipeline(
           placeSeat(0, LEFT_X, ROW_Y),
           placeSeat(1, RIGHT_X, ROW_Y + 40),
@@ -319,7 +329,7 @@ describe('money', () => {
         )(crewInWave(2)),
       ),
       ...ticks(2, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(seatedAt(current, 1).wallet.balance).toBe(bounty)
         expect(seatOf(current, 1).kills).toBe(1)
         expect(seatedAt(current, 0).wallet.balance).toBe(0)
@@ -590,27 +600,27 @@ describe('friendly fire', () => {
       }),
     )(current)
 
-  test('a teammate’s shot passes through on Normal', () => {
-    story(
-      update,
-      given(inTheLine(crewInWave(2))),
+  it.effect('a teammate’s shot passes through on Normal', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(inTheLine(crewInWave(2))),
       ...ticks(2, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(seatedAt(current, 1).player.hp).toBe(PLAYER_MAX_HP)
       }),
-    )
-  })
+    ),
+  )
 
-  test('a teammate’s shot passes through on Nightmare too', () => {
+  it.effect('a teammate’s shot passes through on Nightmare too', () => {
     const nightmare = modifyFields(crewInWave(2), {
       difficulty: difficulty =>
         modifyFields(difficulty, { chosen: () => 'Nightmare' }),
     })
-    story(
-      update,
-      given(inTheLine(nightmare)),
+    return Story.story(
+      APPLICATION,
+      Story.given(inTheLine(nightmare)),
       ...ticks(2, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(seatedAt(current, 1).player.hp).toBe(PLAYER_MAX_HP)
       }),
     )
@@ -634,7 +644,7 @@ describe('friendly fire', () => {
     expect(seatedAt(blasted, 1).player.hp).toBe(PLAYER_MAX_HP - 1)
   })
 
-  test('single player never shoots itself', () => {
+  it.effect('single player never shoots itself', () => {
     const solo = pipeline(placeSeat(0, 150, ROW_Y), world =>
       modifyFields(world, {
         difficulty: difficulty =>
@@ -642,11 +652,11 @@ describe('friendly fire', () => {
         bullets: () => [bulletAt(800, 140, ROW_Y, 300, 0)],
       }),
     )(crewInWave(1))
-    story(
-      update,
-      given(solo),
+    return Story.story(
+      APPLICATION,
+      Story.given(solo),
       ...ticks(2, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
       }),
     )
@@ -784,10 +794,10 @@ describe('the world never pauses in co-op', () => {
     expect(stepped.phase._tag).toBe('Wave')
   })
 
-  test('a kill never freezes the World', () => {
-    story(
-      update,
-      given(
+  it.effect('a kill never freezes the World', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         pipeline(placeSeat(0, LEFT_X, ROW_Y), current =>
           modifyFields(current, {
             zombies: () => [zombieOf('Shambler', 900, 150, ROW_Y, { hp: 1 })],
@@ -796,12 +806,12 @@ describe('the world never pauses in co-op', () => {
         )(crewInWave(2)),
       ),
       ...ticks(2, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.zombies[0]?.hp).toBe(0)
         expect(HitStop.isAnyOf(['Running'])(current.hitStop)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('away and pickups', () => {

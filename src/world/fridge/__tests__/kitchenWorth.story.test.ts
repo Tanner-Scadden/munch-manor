@@ -1,9 +1,11 @@
-import { Array, Option } from 'effect'
-import { given, model, story } from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import {
+  type Arsenal,
   type Model,
   Pantry,
   type PantryGoodie,
@@ -11,7 +13,6 @@ import {
   SOLO_SLOT,
   type Zombie,
 } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import { oddsPips } from '../../../features/fridge/fridgeView'
 import { FIXED_STEP_MS, SHAMBLER_BOUNTY } from '../../../shared/constants'
 import {
@@ -22,11 +23,14 @@ import {
   withSeat,
 } from '../../../test/model.fixture'
 import {
+  APPLICATION,
+  FIXED_FRAME,
   FRIDGE_OPEN_TICKS,
   bulletInto,
   holdToBuy,
   holdingSecond,
   pistolOnly,
+  playedThrough,
   tick,
   ticks,
   zombieOf,
@@ -95,44 +99,48 @@ describe('the fridge is worth a pull', () => {
     expect(oddsPips(0)).toBe(0)
   })
 
-  test('the first pull of a round is cheaper; the next one this break and mid-wave is not', () => {
-    story(
-      update,
-      given(fridgeSeededFor(atFridge(300), 'Dud')),
-      model(current => {
-        expect(fridgePriceOf(current)).toEqual(
-          Option.some(FRIDGE_RULES.firstPrice),
-        )
-      }),
-      holdToBuy,
-      model(current => {
-        expect(focusOf(current).wallet.balance).toBe(
-          300 - FRIDGE_RULES.firstPrice + DUD_REFUND,
-        )
-      }),
-      ...ticks(FRIDGE_OPEN_TICKS + 2, FRAME_MS),
-      model(current => {
-        expect(fridgePriceOf(current)).toEqual(Option.some(FRIDGE_RULES.price))
-        const fighting = modifyFields(current, {
-          phase: () =>
-            Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-        })
-        expect(fridgePriceFor(fighting, SOLO_SLOT)).toBe(FRIDGE_RULES.price)
-        const nextBreak = modifyFields(current, {
-          phase: () =>
-            Phase.Preparation({
-              wave: 6,
-              remainingMs: 60_000,
-              durationMs: 60_000,
-              spawns: [DISTANT_SPAWN],
-            }),
-        })
-        expect(fridgePriceFor(nextBreak, SOLO_SLOT)).toBe(
-          FRIDGE_RULES.firstPrice,
-        )
-      }),
-    )
-  })
+  it.effect(
+    'the first pull of a round is cheaper; the next one this break and mid-wave is not',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(fridgeSeededFor(atFridge(300), 'Dud')),
+        Story.model(current => {
+          expect(fridgePriceOf(current)).toEqual(
+            Option.some(FRIDGE_RULES.firstPrice),
+          )
+        }),
+        holdToBuy,
+        Story.model(current => {
+          expect(focusOf(current).wallet.balance).toBe(
+            300 - FRIDGE_RULES.firstPrice + DUD_REFUND,
+          )
+        }),
+        ...ticks(FRIDGE_OPEN_TICKS + 2, FRAME_MS),
+        Story.model(current => {
+          expect(fridgePriceOf(current)).toEqual(
+            Option.some(FRIDGE_RULES.price),
+          )
+          const fighting = modifyFields(current, {
+            phase: () =>
+              Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+          })
+          expect(fridgePriceFor(fighting, SOLO_SLOT)).toBe(FRIDGE_RULES.price)
+          const nextBreak = modifyFields(current, {
+            phase: () =>
+              Phase.Preparation({
+                wave: 6,
+                remainingMs: 60_000,
+                durationMs: 60_000,
+                spawns: [DISTANT_SPAWN],
+              }),
+          })
+          expect(fridgePriceFor(nextBreak, SOLO_SLOT)).toBe(
+            FRIDGE_RULES.firstPrice,
+          )
+        }),
+      ),
+  )
 
   test('a pull mid-wave spends that round, so the break before it already did', () => {
     const fighting = modifyFields(atFridge(300), {
@@ -163,10 +171,10 @@ describe('the fridge is worth a pull', () => {
     ).toEqual(Option.some(300 - FRIDGE_RULES.firstPrice))
   })
 
-  test('the Sandwich heals a heart and burps the Dud refund back', () => {
-    story(
-      update,
-      given(
+  it.effect('the Sandwich heals a heart and burps the Dud refund back', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         fridgeSeededFor(
           modifyFocus(atFridge(100), {
             player: player => modifyFields(player, { hp: () => 2 }),
@@ -175,23 +183,28 @@ describe('the fridge is worth a pull', () => {
         ),
       ),
       holdToBuy,
-      model(current => {
+      Story.model(current => {
         expect(focusOf(current).player.hp).toBe(3)
         expect(focusOf(current).wallet.balance).toBe(
           100 - FRIDGE_RULES.firstPrice + DUD_REFUND,
         )
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('a prize keeps the tier of the gun it replaces', () => {
-  const takeWith = (smgTier: number, prize: 'Cooker' | 'Freeze'): Model => {
+  // NOTE: the fridge's prize taken with a Chatterbox of `smgTier` in hand,
+  // checked against the arsenal it should leave.
+  const takeWith = (
+    smgTier: number,
+    prize: 'Cooker' | 'Freeze',
+    expected: Arsenal,
+  ) => {
     const smg = modifyFields(freshGun('Smg'), { tier: () => smgTier })
-    let taken = atFridge(100)
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         fridgeSeededFor(
           modifyFocus(atFridge(100), {
             player: player =>
@@ -203,30 +216,28 @@ describe('a prize keeps the tier of the gun it replaces', () => {
       holdToBuy,
       ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       holdToBuy,
-      model(current => {
-        taken = current
+      Story.model(current => {
+        expect(focusOf(current).player.arsenal).toEqual(expected)
       }),
     )
-    return taken
   }
 
-  test('an upgraded Chatterbox gives way to a Cooker at its tier', () => {
-    expect(focusOf(takeWith(2, 'Cooker')).player.arsenal).toEqual(
-      holdingSecond(freshGun('Cooker', 'You', 2)),
-    )
-  })
+  it.effect('an upgraded Chatterbox gives way to a Cooker at its tier', () =>
+    takeWith(2, 'Cooker', holdingSecond(freshGun('Cooker', 'You', 2))),
+  )
 
-  test("the tier stops at the prize's own top tier, and Brain Freeze has none", () => {
-    const top = maxTier('Cooker')
-    const smg = modifyFields(freshGun('Smg'), { tier: () => top + 2 })
-    const player = modifyFields(focusOf(atFridge(0)).player, {
-      arsenal: () => holdingSecond(smg),
-    })
-    expect(carriedTierFor(player, 'Cooker')).toBe(top)
-    expect(focusOf(takeWith(2, 'Freeze')).player.arsenal).toEqual(
-      holdingSecond(freshGun('Freeze')),
-    )
-  })
+  it.effect(
+    "the tier stops at the prize's own top tier, and Brain Freeze has none",
+    () => {
+      const top = maxTier('Cooker')
+      const smg = modifyFields(freshGun('Smg'), { tier: () => top + 2 })
+      const player = modifyFields(focusOf(atFridge(0)).player, {
+        arsenal: () => holdingSecond(smg),
+      })
+      expect(carriedTierFor(player, 'Cooker')).toBe(top)
+      return takeWith(2, 'Freeze', holdingSecond(freshGun('Freeze')))
+    },
+  )
 
   test('into an empty slot it starts at tier 0', () => {
     const pistol = modifyFields(freshGun('Pistol'), { tier: () => 2 })
@@ -250,71 +261,95 @@ const atPantry = (current: Model): Model =>
       }),
   })
 
+// NOTE: the Model one fixed-step frame leaves.
+const afterFrame = (current: Model): Effect.Effect<Model> =>
+  playedThrough(current, [FIXED_FRAME])
+
 const stocked = (current: Model, goodie: PantryGoodie, cash = 20): Model =>
   modifyFields(current, {
     pantry: () => Pantry.Stocked({ round: 5, goodie, cash }),
   })
 
 describe('the pantry stash', () => {
-  test('a break with the kitchen open stocks it; a boarded kitchen never does', () => {
-    story(
-      update,
-      given(atFridge(0)),
-      tick(FRAME_MS),
-      model(current => {
-        expect(Option.isSome(maybeStash(current))).toBe(true)
-      }),
-    )
-    story(
-      update,
-      given(modifyFields(atFridge(0), { level: () => freshRunModel().level })),
-      ...ticks(3, FRAME_MS),
-      model(current => {
-        expect(Option.isNone(maybeStash(current))).toBe(true)
-        expect(current.pantry).toEqual(Pantry.Bare({ round: 0 }))
-      }),
-    )
-  })
-
-  test('its goodie is cash from 15 to 30, Lids, or a heart, by the World generator, which it never moves', () => {
-    const rolls = Array.makeBy(60, index => {
-      const start = modifyFields(atFridge(0), { rngState: () => index * 7919 })
-      const next = update(start, ticks(1, FRAME_MS)[0]!.message).model
-      expect(next.rngState).toBe(start.rngState)
-      expect(next.loot).toEqual(start.loot)
-      return Option.getOrThrow(maybeStash(next))
-    })
-    const goodies = Array.dedupe(Array.map(rolls, ({ goodie }) => goodie))
-    expect(goodies).toHaveLength(3)
-    Array.forEach(rolls, ({ cash }) => {
-      expect(cash).toBeGreaterThanOrEqual(PANTRY_RULES.minCash)
-      expect(cash).toBeLessThanOrEqual(PANTRY_RULES.maxCash)
-    })
-  })
-
-  test('walking onto it takes it, once a break, and the next break restocks', () => {
-    story(
-      update,
-      given(atPantry(stocked(atFridge(0), 'Cash', 23))),
-      tick(FRAME_MS),
-      model(current => {
-        expect(focusOf(current).wallet.balance).toBe(23)
-        expect(current.pantry).toEqual(Pantry.Bare({ round: 5 }))
-        expect(
-          Array.some(
-            current.frameEvents,
-            event => event._tag === 'PantryTaken',
+  it.effect(
+    'a break with the kitchen open stocks it; a boarded kitchen never does',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(atFridge(0)),
+          tick(FRAME_MS),
+          Story.model(current => {
+            expect(Option.isSome(maybeStash(current))).toBe(true)
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFields(atFridge(0), { level: () => freshRunModel().level }),
           ),
-        ).toBe(true)
-        expect(
-          Array.some(current.popups, ({ kind }) => kind === 'Payday'),
-        ).toBe(true)
+          ...ticks(3, FRAME_MS),
+          Story.model(current => {
+            expect(Option.isNone(maybeStash(current))).toBe(true)
+            expect(current.pantry).toEqual(Pantry.Bare({ round: 0 }))
+          }),
+        )
       }),
-      ...ticks(30, FRAME_MS),
-      model(current => {
-        expect(focusOf(current).wallet.balance).toBe(23)
-        expect(Option.isNone(maybeStash(current))).toBe(true)
-        const nextBreak = modifyFields(current, {
+  )
+
+  it.effect(
+    'its goodie is cash from 15 to 30, Lids, or a heart, by the World generator, which it never moves',
+    () =>
+      Effect.gen(function* () {
+        const rolls = yield* Effect.forEach(Array.range(0, 59), index => {
+          const start = modifyFields(atFridge(0), {
+            rngState: () => index * 7919,
+          })
+          return afterFrame(start).pipe(
+            Effect.map(next => {
+              expect(next.rngState).toBe(start.rngState)
+              expect(next.loot).toEqual(start.loot)
+              return Option.getOrThrow(maybeStash(next))
+            }),
+          )
+        })
+        const goodies = Array.dedupe(Array.map(rolls, ({ goodie }) => goodie))
+        expect(goodies).toHaveLength(3)
+        Array.forEach(rolls, ({ cash }) => {
+          expect(cash).toBeGreaterThanOrEqual(PANTRY_RULES.minCash)
+          expect(cash).toBeLessThanOrEqual(PANTRY_RULES.maxCash)
+        })
+      }),
+  )
+
+  it.effect(
+    'walking onto it takes it, once a break, and the next break restocks',
+    () =>
+      Effect.gen(function* () {
+        const taken = yield* Story.story(
+          APPLICATION,
+          Story.given(atPantry(stocked(atFridge(0), 'Cash', 23))),
+          tick(FRAME_MS),
+          Story.model(current => {
+            expect(focusOf(current).wallet.balance).toBe(23)
+            expect(current.pantry).toEqual(Pantry.Bare({ round: 5 }))
+            expect(
+              Array.some(
+                current.frameEvents,
+                event => event._tag === 'PantryTaken',
+              ),
+            ).toBe(true)
+            expect(
+              Array.some(current.popups, ({ kind }) => kind === 'Payday'),
+            ).toBe(true)
+          }),
+          ...ticks(30, FRAME_MS),
+          Story.model(current => {
+            expect(focusOf(current).wallet.balance).toBe(23)
+            expect(Option.isNone(maybeStash(current))).toBe(true)
+          }),
+        )
+        const nextBreak = modifyFields(taken, {
           phase: () =>
             Phase.Preparation({
               wave: 6,
@@ -323,80 +358,94 @@ describe('the pantry stash', () => {
               spawns: [DISTANT_SPAWN],
             }),
         })
-        const restocked = update(
-          nextBreak,
-          ticks(1, FRAME_MS)[0]!.message,
-        ).model
+        const restocked = yield* afterFrame(nextBreak)
         expect(restocked.pantry.round).toBe(6)
         expect(focusOf(restocked).wallet.balance).toBeGreaterThan(23)
       }),
-    )
-  })
+  )
 
-  test('in co-op the first to walk on takes it, and a teammate there too gets nothing', () => {
-    const crew = withWorld(atPantry(stocked(atFridge(0), 'Cash', 25)), world =>
-      withSeat(seatCrew(world, 2), 1, seat =>
-        modifyFocus(seat, {
-          player: player =>
-            modifyFields(player, {
-              x: () => PANTRY_SPOT.x + 2,
-              y: () => PANTRY_SPOT.y,
-            }),
-        }),
-      ),
-    )
-    const next = update(crew, ticks(1, FRAME_MS)[0]!.message).model
-    const balances = Array.map(next.seats, ({ wallet }) => wallet.balance)
-    expect(balances).toEqual([25, 0])
-  })
+  it.effect(
+    'in co-op the first to walk on takes it, and a teammate there too gets nothing',
+    () =>
+      Effect.gen(function* () {
+        const crew = withWorld(
+          atPantry(stocked(atFridge(0), 'Cash', 25)),
+          world =>
+            withSeat(seatCrew(world, 2), 1, seat =>
+              modifyFocus(seat, {
+                player: player =>
+                  modifyFields(player, {
+                    x: () => PANTRY_SPOT.x + 2,
+                    y: () => PANTRY_SPOT.y,
+                  }),
+              }),
+            ),
+        )
+        const next = yield* afterFrame(crew)
+        const balances = Array.map(next.seats, ({ wallet }) => wallet.balance)
+        expect(balances).toEqual([25, 0])
+      }),
+  )
 
-  test('mid-wave it is gone', () => {
-    const fighting = modifyFields(atPantry(stocked(atFridge(0), 'Cash')), {
-      phase: () =>
-        Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
-    })
-    const next = update(fighting, ticks(1, FRAME_MS)[0]!.message).model
-    expect(focusOf(next).wallet.balance).toBe(0)
-    expect(Option.isNone(maybeStash(next))).toBe(true)
-  })
+  it.effect('mid-wave it is gone', () =>
+    Effect.gen(function* () {
+      const fighting = modifyFields(atPantry(stocked(atFridge(0), 'Cash')), {
+        phase: () =>
+          Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
+      })
+      const next = yield* afterFrame(fighting)
+      expect(focusOf(next).wallet.balance).toBe(0)
+      expect(Option.isNone(maybeStash(next))).toBe(true)
+    }),
+  )
 
-  test('Lids fill a Cooker carrier; without a Cooker they pay the cash', () => {
-    const cooker = modifyFields(freshGun('Cooker'), { rounds: () => 4 })
-    const carrier = modifyFocus(atPantry(stocked(atFridge(0), 'Lids', 18)), {
-      player: player =>
-        modifyFields(player, { arsenal: () => holdingSecond(cooker) }),
-    })
-    const filled = update(carrier, ticks(1, FRAME_MS)[0]!.message).model
-    expect(focusOf(filled).player.arsenal).toEqual(
-      holdingSecond(modifyFields(cooker, { rounds: () => 12 })),
-    )
-    expect(focusOf(filled).wallet.balance).toBe(0)
-    const none = update(
-      atPantry(stocked(atFridge(0), 'Lids', 18)),
-      ticks(1, FRAME_MS)[0]!.message,
-    ).model
-    expect(focusOf(none).wallet.balance).toBe(18)
-  })
+  it.effect(
+    'Lids fill a Cooker carrier; without a Cooker they pay the cash',
+    () =>
+      Effect.gen(function* () {
+        const cooker = modifyFields(freshGun('Cooker'), { rounds: () => 4 })
+        const carrier = modifyFocus(
+          atPantry(stocked(atFridge(0), 'Lids', 18)),
+          {
+            player: player =>
+              modifyFields(player, { arsenal: () => holdingSecond(cooker) }),
+          },
+        )
+        const filled = yield* afterFrame(carrier)
+        expect(focusOf(filled).player.arsenal).toEqual(
+          holdingSecond(modifyFields(cooker, { rounds: () => 12 })),
+        )
+        expect(focusOf(filled).wallet.balance).toBe(0)
+        const none = yield* afterFrame(
+          atPantry(stocked(atFridge(0), 'Lids', 18)),
+        )
+        expect(focusOf(none).wallet.balance).toBe(18)
+      }),
+  )
 
-  test('a heart heals the hurt; at full health, or in Glass, it pays the cash', () => {
-    const hurt = modifyFocus(atPantry(stocked(atFridge(0), 'Heart', 17)), {
-      player: player => modifyFields(player, { hp: () => 2 }),
-    })
-    const healed = update(hurt, ticks(1, FRAME_MS)[0]!.message).model
-    expect(focusOf(healed).player.hp).toBe(3)
-    expect(focusOf(healed).wallet.balance).toBe(0)
-    const whole = update(
-      atPantry(stocked(atFridge(0), 'Heart', 17)),
-      ticks(1, FRAME_MS)[0]!.message,
-    ).model
-    expect(focusOf(whole).wallet.balance).toBe(17)
-    const glass = modifyFields(hurt, {
-      modifiers: modifiers => modifyFields(modifiers, { glass: () => true }),
-    })
-    const paid = update(glass, ticks(1, FRAME_MS)[0]!.message).model
-    expect(focusOf(paid).player.hp).toBe(2)
-    expect(focusOf(paid).wallet.balance).toBe(17)
-  })
+  it.effect(
+    'a heart heals the hurt; at full health, or in Glass, it pays the cash',
+    () =>
+      Effect.gen(function* () {
+        const hurt = modifyFocus(atPantry(stocked(atFridge(0), 'Heart', 17)), {
+          player: player => modifyFields(player, { hp: () => 2 }),
+        })
+        const healed = yield* afterFrame(hurt)
+        expect(focusOf(healed).player.hp).toBe(3)
+        expect(focusOf(healed).wallet.balance).toBe(0)
+        const whole = yield* afterFrame(
+          atPantry(stocked(atFridge(0), 'Heart', 17)),
+        )
+        expect(focusOf(whole).wallet.balance).toBe(17)
+        const glass = modifyFields(hurt, {
+          modifiers: modifiers =>
+            modifyFields(modifiers, { glass: () => true }),
+        })
+        const paid = yield* afterFrame(glass)
+        expect(focusOf(paid).player.hp).toBe(2)
+        expect(focusOf(paid).wallet.balance).toBe(17)
+      }),
+  )
 })
 
 // KITCHEN KILL PAY
@@ -418,48 +467,50 @@ describe('kitchen kill pay', () => {
     })
   }
 
-  test('a kill on a kitchen tile pays a quarter more, rounded, with a popup and coins to say so', () => {
-    story(
-      update,
-      given(shotDown(KITCHEN_SPOT)),
-      tick(FRAME_MS),
-      model(current => {
-        const pay = Math.round(SHAMBLER_BOUNTY * KITCHEN_PAY_SCALE)
-        expect(focusOf(current).wallet.balance).toBe(pay)
-        expect(
-          Array.some(
-            current.popups,
-            ({ kind, value }) => kind === 'Kill' && value === pay,
-          ),
-        ).toBe(true)
-        expect(
-          Array.some(current.particles, ({ kind }) => kind === 'Coin'),
-        ).toBe(true)
-      }),
-    )
-  })
+  it.effect(
+    'a kill on a kitchen tile pays a quarter more, rounded, with a popup and coins to say so',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(shotDown(KITCHEN_SPOT)),
+        tick(FRAME_MS),
+        Story.model(current => {
+          const pay = Math.round(SHAMBLER_BOUNTY * KITCHEN_PAY_SCALE)
+          expect(focusOf(current).wallet.balance).toBe(pay)
+          expect(
+            Array.some(
+              current.popups,
+              ({ kind, value }) => kind === 'Kill' && value === pay,
+            ),
+          ).toBe(true)
+          expect(
+            Array.some(current.particles, ({ kind }) => kind === 'Coin'),
+          ).toBe(true)
+        }),
+      ),
+  )
 
-  test('a Big Lug in the kitchen pays 25 for 20', () => {
-    story(
-      update,
-      given(shotDown(KITCHEN_SPOT, 'Tank')),
+  it.effect('a Big Lug in the kitchen pays 25 for 20', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(shotDown(KITCHEN_SPOT, 'Tank')),
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(focusOf(current).wallet.balance).toBe(25)
       }),
-    )
-  })
+    ),
+  )
 
-  test('in the parlour a kill pays as it always has', () => {
-    story(
-      update,
-      given(shotDown(PARLOUR_SPOT)),
+  it.effect('in the parlour a kill pays as it always has', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(shotDown(PARLOUR_SPOT)),
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(focusOf(current).wallet.balance).toBe(SHAMBLER_BOUNTY)
       }),
-    )
-  })
+    ),
+  )
 
   test('the kitchen counts only while it is open, and never out in the yard', () => {
     const open = levelOf({

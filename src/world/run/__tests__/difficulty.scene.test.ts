@@ -1,22 +1,14 @@
 import { Option } from 'effect'
-import {
-  click,
-  expect,
-  given,
-  inside,
-  role,
-  scene,
-  selector,
-  text,
-} from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test } from 'vitest'
+
+import { describe, it } from '@effect/vitest'
 
 import { type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import {
-  ROOT,
+  APPLICATION,
   lockedNightmare,
   measureSurface,
   openLobbyInScene,
@@ -27,121 +19,126 @@ import {
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 
-const card = role('dialog', { name: 'How tough are you?' })
-const easy = role('button', { name: 'Easy: Just here for the vibes' })
-const normal = role('button', {
+const card = Scene.role('dialog', { name: 'How tough are you?' })
+const easy = Scene.role('button', { name: 'Easy: Just here for the vibes' })
+const normal = Scene.role('button', {
   name: "Normal: The way it's meant to be played",
 })
-const hard = role('button', { name: 'Hard: They bite back' })
-const openNightmare = role('button', {
+const hard = Scene.role('button', { name: 'Hard: They bite back' })
+const openNightmare = Scene.role('button', {
   name: 'Nightmare: No mercy. Bring snacks',
 })
 
 describe('the difficulty card', () => {
-  test('the first PLAY shows four choices with Nightmare locked', () => {
-    scene(
-      ROOT,
-      given(initialModel),
+  it.effect('the first PLAY shows four choices with Nightmare locked', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(initialModel),
       measureSurface,
-      click(playButton),
+      Scene.click(playButton),
       ...showDialogInScene(),
-      inside(
+      Scene.inside(
         card,
-        expect(easy).toExist(),
-        expect(normal).toExist(),
-        expect(hard).toExist(),
-        expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
-        expect(text('Beat Hard to unlock')).toBeAbsent(),
-        expect(
-          selector("[data-difficulty='Nightmare'] .difficulty-unlock"),
+        Scene.expect(easy).toExist(),
+        Scene.expect(normal).toExist(),
+        Scene.expect(hard).toExist(),
+        Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
+        Scene.expect(Scene.text('Beat Hard to unlock')).toBeAbsent(),
+        Scene.expect(
+          Scene.selector("[data-difficulty='Nightmare'] .difficulty-unlock"),
         ).toExist(),
       ),
-    )
-  })
+    ),
+  )
 
-  test('the first PLAY offers TUTORIAL, lit, or SKIP IT, and a tap lights SKIP IT', () => {
-    const tutorial = role('button', { name: 'Play the tutorial' })
-    const skip = role('button', { name: 'Skip the tutorial' })
-    scene(
-      ROOT,
-      given(initialModel),
-      measureSurface,
-      click(playButton),
-      ...showDialogInScene(),
-      inside(
-        card,
-        expect(tutorial).toHaveAttr('aria-pressed', 'true'),
-        expect(tutorial).toContainText('TUTORIAL'),
-        expect(skip).toHaveAttr('aria-pressed', 'false'),
-        expect(skip).toContainText('SKIP IT'),
-      ),
-      click(skip),
-      inside(
-        card,
-        expect(tutorial).toHaveAttr('aria-pressed', 'false'),
-        expect(skip).toHaveAttr('aria-pressed', 'true'),
-      ),
-    )
-  })
+  it.effect(
+    'the first PLAY offers TUTORIAL, lit, or SKIP IT, and a tap lights SKIP IT',
+    () => {
+      const tutorial = Scene.role('button', { name: 'Play the tutorial' })
+      const skip = Scene.role('button', { name: 'Skip the tutorial' })
+      return Scene.scene(
+        APPLICATION,
+        Scene.given(initialModel),
+        measureSurface,
+        Scene.click(playButton),
+        ...showDialogInScene(),
+        Scene.inside(
+          card,
+          Scene.expect(tutorial).toHaveAttr('aria-pressed', 'true'),
+          Scene.expect(tutorial).toContainText('TUTORIAL'),
+          Scene.expect(skip).toHaveAttr('aria-pressed', 'false'),
+          Scene.expect(skip).toContainText('SKIP IT'),
+        ),
+        Scene.click(skip),
+        Scene.inside(
+          card,
+          Scene.expect(tutorial).toHaveAttr('aria-pressed', 'false'),
+          Scene.expect(skip).toHaveAttr('aria-pressed', 'true'),
+        ),
+      )
+    },
+  )
 
-  test('after a Hard win Nightmare is open, with a NEW badge', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('after a Hard win Nightmare is open, with a NEW badge', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFields(initialModel, {
           difficulty: () => ({ chosen: 'Hard', nightmare: 'JustUnlocked' }),
         }),
       ),
       measureSurface,
-      click(playButton),
+      Scene.click(playButton),
       ...showDialogInScene(),
-      inside(
+      Scene.inside(
         card,
-        expect(openNightmare).toExist(),
-        expect(openNightmare).not.toHaveAttr('aria-disabled', 'true'),
-        expect(text('NEW!')).toExist(),
+        Scene.expect(openNightmare).toExist(),
+        Scene.expect(openNightmare).not.toHaveAttr('aria-disabled', 'true'),
+        Scene.expect(Scene.text('NEW!')).toExist(),
       ),
-    )
-  })
+    ),
+  )
 })
 
 describe('the difficulty in the lobby', () => {
   const skull = (name: string) =>
-    role('button', { name: new RegExp(`^${name}`) })
+    Scene.role('button', { name: new RegExp(`^${name}`) })
 
-  test('shows four skulls, marks the chosen level, and keeps Nightmare locked', () => {
-    scene(
-      ROOT,
-      given(asVeteran(initialModel)),
-      measureSurface,
-      expect(selector('.coop-skull-pick')).toBeAbsent(),
-      ...openLobbyInScene(),
-      expect(skull('Easy')).toHaveAttr('aria-pressed', 'false'),
-      expect(skull('Normal')).toHaveAttr('aria-pressed', 'true'),
-      expect(skull('Hard')).toHaveAttr('aria-pressed', 'false'),
-      expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
-      expect(skull('Normal')).toHaveAttr('aria-pressed', 'true'),
-      click(skull('Hard')),
-      resolveFocusLobbyInScene(),
-      expect(skull('Hard')).toHaveAttr('aria-pressed', 'true'),
-      expect(skull('Normal')).toHaveAttr('aria-pressed', 'false'),
-    )
-  })
+  it.effect(
+    'shows four skulls, marks the chosen level, and keeps Nightmare locked',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(asVeteran(initialModel)),
+        measureSurface,
+        Scene.expect(Scene.selector('.coop-skull-pick')).toBeAbsent(),
+        ...openLobbyInScene(),
+        Scene.expect(skull('Easy')).toHaveAttr('aria-pressed', 'false'),
+        Scene.expect(skull('Normal')).toHaveAttr('aria-pressed', 'true'),
+        Scene.expect(skull('Hard')).toHaveAttr('aria-pressed', 'false'),
+        Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
+        Scene.expect(skull('Normal')).toHaveAttr('aria-pressed', 'true'),
+        Scene.click(skull('Hard')),
+        resolveFocusLobbyInScene(),
+        Scene.expect(skull('Hard')).toHaveAttr('aria-pressed', 'true'),
+        Scene.expect(skull('Normal')).toHaveAttr('aria-pressed', 'false'),
+      ),
+  )
 
-  test('a Hard win opens Nightmare with a NEW pip', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('a Hard win opens Nightmare with a NEW pip', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         modifyFields(asVeteran(initialModel), {
           difficulty: () => ({ chosen: 'Hard', nightmare: 'JustUnlocked' }),
         }),
       ),
       measureSurface,
       ...openLobbyInScene(),
-      expect(skull('Nightmare')).not.toHaveAttr('aria-disabled', 'true'),
-      expect(selector('.coop-skull-pick .new-pip')).toExist(),
-    )
-  })
+      Scene.expect(skull('Nightmare')).not.toHaveAttr('aria-disabled', 'true'),
+      Scene.expect(Scene.selector('.coop-skull-pick .new-pip')).toExist(),
+    ),
+  )
 })
 
 const ended = (phase: Phase, base: Model): Model =>
@@ -151,10 +148,10 @@ const ended = (phase: Phase, base: Model): Model =>
   })
 
 describe('the end screens', () => {
-  test('Game Over names the difficulty', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('Game Over names the difficulty', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         ended(
           Phase.GameOver({ wave: 4 }),
           modifyFields(initialModel, {
@@ -164,14 +161,14 @@ describe('the end screens', () => {
       ),
       measureSurface,
       shareMountSettles('Cancelled'),
-      expect(role('status')).toContainText('Difficulty: Hard.'),
-    )
-  })
+      Scene.expect(Scene.role('status')).toContainText('Difficulty: Hard.'),
+    ),
+  )
 
-  test('a Hard Victory names the difficulty and the unlock', () => {
-    scene(
-      ROOT,
-      given(
+  it.effect('a Hard Victory names the difficulty and the unlock', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
         ended(
           Phase.Victory(),
           modifyFields(initialModel, {
@@ -182,9 +179,9 @@ describe('the end screens', () => {
       ),
       measureSurface,
       shareMountSettles('Cancelled'),
-      expect(role('status')).toContainText(
+      Scene.expect(Scene.role('status')).toContainText(
         'Difficulty: Hard. Nightmare unlocked!',
       ),
-    )
-  })
+    ),
+  )
 })

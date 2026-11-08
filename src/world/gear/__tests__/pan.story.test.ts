@@ -1,8 +1,8 @@
 import { Array, Option } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
 
+import { describe, expect, it, test } from '@effect/vitest'
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
 import { Message } from '../../../app/message'
@@ -16,7 +16,7 @@ import {
   Phase,
   type Zombie,
 } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import { gunIcon } from '../../../art/sprites/guns'
 import {
   REPLACED_KNIFE,
@@ -27,6 +27,7 @@ import { FIXED_STEP_MS } from '../../../shared/constants'
 import { nextRandom } from '../../../shared/prng'
 import { DISTANT_SPAWN, atFridge, withSeat } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   FRIDGE_OPEN_TICKS,
   SURFACE,
   holdFire,
@@ -106,34 +107,39 @@ const swungIn = (current: Model): boolean =>
   Array.some(current.frameEvents, GameEvent.isAnyOf(['PanSwung']))
 
 describe('the Clang Pan in the melee slot', () => {
-  test('taking it from the fridge keeps both guns and puts the Pan in hand', () => {
-    const pullsPan = modifyFocus(
-      modifyFields(atFridge(100), {
-        fridge: fridge =>
-          modifyFields(fridge, {
-            door: () =>
-              FridgeDoor.Offering({
-                prize: 'Pan',
-                slot: 0,
-                remainingMs: FRIDGE_RULES.offerMs,
-                durationMs: FRIDGE_RULES.offerMs,
-              }),
-          }),
-      }),
-      { player: player => modifyFields(player, { arsenal: () => BOTH_GUNS }) },
-    )
-    story(
-      update,
-      given(pullsPan),
-      press('Enter'),
-      ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
-      model(current => {
-        expect(focusOf(current).player.arsenal).toEqual(BOTH_GUNS)
-        expect(focusOf(current).player.melee).toEqual(withPan())
-        expect(inHandOf(focusOf(current).player)).toBe('Pan')
-      }),
-    )
-  })
+  it.effect(
+    'taking it from the fridge keeps both guns and puts the Pan in hand',
+    () => {
+      const pullsPan = modifyFocus(
+        modifyFields(atFridge(100), {
+          fridge: fridge =>
+            modifyFields(fridge, {
+              door: () =>
+                FridgeDoor.Offering({
+                  prize: 'Pan',
+                  slot: 0,
+                  remainingMs: FRIDGE_RULES.offerMs,
+                  durationMs: FRIDGE_RULES.offerMs,
+                }),
+            }),
+        }),
+        {
+          player: player => modifyFields(player, { arsenal: () => BOTH_GUNS }),
+        },
+      )
+      return Story.story(
+        APPLICATION,
+        Story.given(pullsPan),
+        press('Enter'),
+        ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
+        Story.model(current => {
+          expect(focusOf(current).player.arsenal).toEqual(BOTH_GUNS)
+          expect(focusOf(current).player.melee).toEqual(withPan())
+          expect(inHandOf(focusOf(current).player)).toBe('Pan')
+        }),
+      )
+    },
+  )
 
   test('the melee slot shows the Pan, its tier, and its dent meter, not the knife', () => {
     const knifeLook = meleeSlotLook(focusOf(initialModel).player)
@@ -153,19 +159,19 @@ describe('the Clang Pan in the melee slot', () => {
     expect(panLook.maybeMeter).toEqual(Option.some(6 / 24))
   })
 
-  test('F draws it, then fire swings it on repeat', () => {
+  it.effect('F draws it, then fire swings it on repeat', () => {
     const bigLug = zombieOf('Tank', 900, PLAYER_X + 12, ROW_Y, { hp: 99 })
-    story(
-      update,
-      given(panFight([bigLug])),
+    return Story.story(
+      APPLICATION,
+      Story.given(panFight([bigLug])),
       press('KeyF'),
-      model(current => {
+      Story.model(current => {
         expect(inHandOf(focusOf(current).player)).toBe('Pan')
         expect(heldWeapon(focusOf(current).player.arsenal)).toBe('Smg')
       }),
       holdFire,
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(swungIn(current)).toBe(true)
         expect(
           Array.some(current.frameEvents, GameEvent.isAnyOf(['KnifeStabbed'])),
@@ -175,7 +181,7 @@ describe('the Clang Pan in the melee slot', () => {
         ).toBe(23)
       }),
       ...ticks(tickCountFor(PAN_RULES.swingMs), FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(
           Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
         ).toBe(22)
@@ -183,50 +189,55 @@ describe('the Clang Pan in the melee slot', () => {
     )
   })
 
-  test('a tap on the melee slot draws it, and Q goes back to the last gun', () => {
-    story(
-      update,
-      given(panFight()),
-      message(Message.ClickedMeleeSlot()),
-      model(current => {
-        expect(inHandOf(focusOf(current).player)).toBe('Pan')
-      }),
-      press('KeyQ'),
-      model(current => {
-        expect(inHandOf(focusOf(current).player)).toBe('Smg')
-      }),
-    )
-  })
-
-  test('with every gun dry, the next pull draws the Pan by itself, and fire swings it', () => {
-    const dry = (gun: CarriedGun): CarriedGun =>
-      modifyFields(gun, { rounds: () => 0, loaded: () => 0 })
-    const allDry = modifyFocus(panFight([groanerAhead(900)]), {
-      player: player =>
-        modifyFields(player, {
-          arsenal: () =>
-            Arsenal.HoldingSecond({
-              first: dry(freshGun('Smg')),
-              second: dry(freshGun('Shotgun')),
-            }),
+  it.effect(
+    'a tap on the melee slot draws it, and Q goes back to the last gun',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(panFight()),
+        Story.message(Message.ClickedMeleeSlot()),
+        Story.model(current => {
+          expect(inHandOf(focusOf(current).player)).toBe('Pan')
         }),
-    })
-    story(
-      update,
-      given(allDry),
-      holdFire,
-      tick(FRAME_MS),
-      model(current => {
-        expect(inHandOf(focusOf(current).player)).toBe('Pan')
-      }),
-      ...ticks(tickCountFor(PAN_RULES.swingMs), FRAME_MS),
-      model(current => {
-        expect(
-          Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
-        ).toBe(23)
-      }),
-    )
-  })
+        press('KeyQ'),
+        Story.model(current => {
+          expect(inHandOf(focusOf(current).player)).toBe('Smg')
+        }),
+      ),
+  )
+
+  it.effect(
+    'with every gun dry, the next pull draws the Pan by itself, and fire swings it',
+    () => {
+      const dry = (gun: CarriedGun): CarriedGun =>
+        modifyFields(gun, { rounds: () => 0, loaded: () => 0 })
+      const allDry = modifyFocus(panFight([groanerAhead(900)]), {
+        player: player =>
+          modifyFields(player, {
+            arsenal: () =>
+              Arsenal.HoldingSecond({
+                first: dry(freshGun('Smg')),
+                second: dry(freshGun('Shotgun')),
+              }),
+          }),
+      })
+      return Story.story(
+        APPLICATION,
+        Story.given(allDry),
+        holdFire,
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(inHandOf(focusOf(current).player)).toBe('Pan')
+        }),
+        ...ticks(tickCountFor(PAN_RULES.swingMs), FRAME_MS),
+        Story.model(current => {
+          expect(
+            Option.getOrThrow(maybePanOf(focusOf(current).player)).loaded,
+          ).toBe(23)
+        }),
+      )
+    },
+  )
 
   test('a second Pan never comes out of the fridge: its share goes to the rest', () => {
     const holder = modifyFields(focusOf(atFridge(500)).player, {
@@ -272,16 +283,16 @@ describe('the Clang Pan in the melee slot', () => {
     )
   })
 
-  test('a new run starts with the knife in the melee slot again', () => {
+  it.effect('a new run starts with the knife in the melee slot again', () => {
     const over = modifyFields(panFight(), {
       phase: () => Phase.GameOver({ wave: 6 }),
       screenMs: () => 5000,
     })
-    story(
-      update,
-      given(over),
+    return Story.story(
+      APPLICATION,
+      Story.given(over),
       press('Enter'),
-      model(current => {
+      Story.model(current => {
         expect(focusOf(current).player.melee).toEqual(Melee.Knife())
       }),
     )

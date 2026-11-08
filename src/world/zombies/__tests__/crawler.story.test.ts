@@ -1,7 +1,8 @@
-import { Array, Option } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
@@ -13,9 +14,15 @@ import {
   ZombieAction,
   ZombieState,
 } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import { FIXED_STEP_MS } from '../../../shared/constants'
-import { bulletInto, hasEvent, tick, ticks } from '../../../test/testing'
+import {
+  APPLICATION,
+  bulletInto,
+  hasEvent,
+  tick,
+  ticks,
+} from '../../../test/testing'
 import { PARLOUR, isSolidAt } from '../../level/arena'
 import { focusOf } from '../../party/party'
 import { doorCounts, floorCounts, rollSpawns } from '../../waves/endlessWaves'
@@ -84,55 +91,58 @@ const distanceToPlayer = (current: Model, zombie: Zombie): number =>
   )
 
 describe('the Ankle Biter', () => {
-  test('comes up through the floor after a quick 0.6 s telegraph, out of reach until then', () => {
-    expect(CRAWLER_RULES.surfaceMs).toBe(600)
-    story(
-      update,
-      given(waveWith([spawnOf('Crawler', 0, 1)])),
-      tick(FRAME_MS),
-      model(current => {
-        expect(hasEvent(current, 'CrawlerStirred')).toBe(true)
-        expect(hasEvent(current, 'PackWarned')).toBe(false)
-        const crawler = crawlerIn(current)
-        expect(crawler.action).toEqual(
-          ZombieAction.Burrowed({
-            remainingMs: CRAWLER_RULES.surfaceMs,
-            durationMs: CRAWLER_RULES.surfaceMs,
-          }),
-        )
-        expect(distanceToPlayer(current, crawler)).toBeGreaterThanOrEqual(
-          CRAWLER_RULES.clearPx,
-        )
-      }),
-      ...ticks(framesFor(CRAWLER_RULES.surfaceMs) - 1, FRAME_MS),
-      model(current => {
-        expect(
-          ZombieAction.isAnyOf(['Burrowed'])(crawlerIn(current).action),
-        ).toBe(true)
-      }),
-      ...ticks(1, FRAME_MS),
-      model(current => {
-        expect(hasEvent(current, 'CrawlerSurfaced')).toBe(true)
-        expect(crawlerIn(current).action).toEqual(ZombieAction.Roaming())
-      }),
-    )
-  })
+  it.effect(
+    'comes up through the floor after a quick 0.6 s telegraph, out of reach until then',
+    () => {
+      expect(CRAWLER_RULES.surfaceMs).toBe(600)
+      return Story.story(
+        APPLICATION,
+        Story.given(waveWith([spawnOf('Crawler', 0, 1)])),
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(hasEvent(current, 'CrawlerStirred')).toBe(true)
+          expect(hasEvent(current, 'PackWarned')).toBe(false)
+          const crawler = crawlerIn(current)
+          expect(crawler.action).toEqual(
+            ZombieAction.Burrowed({
+              remainingMs: CRAWLER_RULES.surfaceMs,
+              durationMs: CRAWLER_RULES.surfaceMs,
+            }),
+          )
+          expect(distanceToPlayer(current, crawler)).toBeGreaterThanOrEqual(
+            CRAWLER_RULES.clearPx,
+          )
+        }),
+        ...ticks(framesFor(CRAWLER_RULES.surfaceMs) - 1, FRAME_MS),
+        Story.model(current => {
+          expect(
+            ZombieAction.isAnyOf(['Burrowed'])(crawlerIn(current).action),
+          ).toBe(true)
+        }),
+        ...ticks(1, FRAME_MS),
+        Story.model(current => {
+          expect(hasEvent(current, 'CrawlerSurfaced')).toBe(true)
+          expect(crawlerIn(current).action).toEqual(ZombieAction.Roaming())
+        }),
+      )
+    },
+  )
 
-  test('a buried Ankle Biter cannot be shot', () => {
+  it.effect('a buried Ankle Biter cannot be shot', () => {
     const buried = crawlerAt(
       CENTER_X + 60,
       CENTER_Y,
       ZombieAction.Burrowed({ remainingMs: 1000, durationMs: 1500 }),
     )
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(waveWith([], [buried]), {
           bullets: () => [bulletInto(700, buried, { damage: 5, knockback: 0 })],
         }),
       ),
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(crawlerIn(current).hp).toBe(2)
         expect(hasEvent(current, 'ZombieHit')).toBe(false)
       }),
@@ -164,90 +174,105 @@ describe('the Ankle Biter', () => {
     })
   })
 
-  test('stays under the floor while the player stands on its cracks', () => {
-    const ready = crawlerAt(
-      CENTER_X + 10,
-      CENTER_Y,
-      ZombieAction.Burrowed({ remainingMs: 100, durationMs: 1500 }),
-    )
-    story(
-      update,
-      given(waveWith([], [ready])),
-      ...ticks(40, FRAME_MS),
-      model(current => {
-        expect(
-          ZombieAction.isAnyOf(['Burrowed'])(crawlerIn(current).action),
-        ).toBe(true)
-        expect(hasEvent(current, 'CrawlerSurfaced')).toBe(false)
-      }),
-      message(Message.PressedKey({ code: 'KeyA' })),
-      ...ticks(50, FRAME_MS),
-      model(current => {
-        expect(
-          ZombieAction.isAnyOf(['Roaming', 'Clinging', 'Winded'])(
-            crawlerIn(current).action,
-          ),
-        ).toBe(true)
-      }),
-    )
-  })
+  it.effect(
+    'stays under the floor while the player stands on its cracks',
+    () => {
+      const ready = crawlerAt(
+        CENTER_X + 10,
+        CENTER_Y,
+        ZombieAction.Burrowed({ remainingMs: 100, durationMs: 1500 }),
+      )
+      return Story.story(
+        APPLICATION,
+        Story.given(waveWith([], [ready])),
+        ...ticks(40, FRAME_MS),
+        Story.model(current => {
+          expect(
+            ZombieAction.isAnyOf(['Burrowed'])(crawlerIn(current).action),
+          ).toBe(true)
+          expect(hasEvent(current, 'CrawlerSurfaced')).toBe(false)
+        }),
+        Story.message(Message.PressedKey({ code: 'KeyA' })),
+        ...ticks(50, FRAME_MS),
+        Story.model(current => {
+          expect(
+            ZombieAction.isAnyOf(['Roaming', 'Clinging', 'Winded'])(
+              crawlerIn(current).action,
+            ),
+          ).toBe(true)
+        }),
+      )
+    },
+  )
 
-  test('grabs the player by the ankles, slowing them to half speed, then lets go', () => {
-    const grabbing = crawlerAt(CENTER_X + 3, CENTER_Y, ZombieAction.Roaming())
-    const walked = (start: Model, frames: number) => (current: Model) =>
-      Math.abs(focusOf(current).player.x - focusOf(start).player.x) / frames
+  it.effect(
+    'grabs the player by the ankles, slowing them to half speed, then lets go',
+    () =>
+      Effect.gen(function* () {
+        const grabbing = crawlerAt(
+          CENTER_X + 3,
+          CENTER_Y,
+          ZombieAction.Roaming(),
+        )
+        const walked = (start: Model, frames: number) => (current: Model) =>
+          Math.abs(focusOf(current).player.x - focusOf(start).player.x) / frames
 
-    const free = waveWith([], [])
-    const held = waveWith([], [grabbing])
-    const clingFrames = Math.floor(CRAWLER_RULES.clingMs / FRAME_MS) - 6
-    const freeSpeeds: Array<number> = []
-    const heldSpeeds: Array<number> = []
+        const free = waveWith([], [])
+        const held = waveWith([], [grabbing])
+        const clingFrames = Math.floor(CRAWLER_RULES.clingMs / FRAME_MS) - 6
+        const freeSpeeds: Array<number> = []
+        const heldSpeeds: Array<number> = []
 
-    story(
-      update,
-      given(free),
-      tick(FRAME_MS),
-      message(Message.PressedKey({ code: 'KeyD' })),
-      ...ticks(clingFrames, FRAME_MS),
-      model(current => {
-        freeSpeeds.push(walked(free, clingFrames)(current))
-      }),
-    )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(free),
+          tick(FRAME_MS),
+          Story.message(Message.PressedKey({ code: 'KeyD' })),
+          ...ticks(clingFrames, FRAME_MS),
+          Story.model(current => {
+            freeSpeeds.push(walked(free, clingFrames)(current))
+          }),
+        )
 
-    story(
-      update,
-      given(held),
-      tick(FRAME_MS),
-      model(current => {
-        expect(hasEvent(current, 'AnklesGrabbed')).toBe(true)
-        expect(
-          ZombieAction.isAnyOf(['Clinging'])(crawlerIn(current).action),
-        ).toBe(true)
-        expect(focusOf(current).player.hp).toBe(focusOf(initialModel).player.hp)
-      }),
-      message(Message.PressedKey({ code: 'KeyD' })),
-      ...ticks(clingFrames, FRAME_MS),
-      model(current => {
-        heldSpeeds.push(walked(held, clingFrames)(current))
-        expect(distanceToPlayer(current, crawlerIn(current))).toBeLessThan(8)
-      }),
-      ...ticks(12, FRAME_MS),
-      model(current => {
-        expect(
-          ZombieAction.isAnyOf(['Winded'])(crawlerIn(current).action),
-        ).toBe(true)
-      }),
-    )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(held),
+          tick(FRAME_MS),
+          Story.model(current => {
+            expect(hasEvent(current, 'AnklesGrabbed')).toBe(true)
+            expect(
+              ZombieAction.isAnyOf(['Clinging'])(crawlerIn(current).action),
+            ).toBe(true)
+            expect(focusOf(current).player.hp).toBe(
+              focusOf(initialModel).player.hp,
+            )
+          }),
+          Story.message(Message.PressedKey({ code: 'KeyD' })),
+          ...ticks(clingFrames, FRAME_MS),
+          Story.model(current => {
+            heldSpeeds.push(walked(held, clingFrames)(current))
+            expect(distanceToPlayer(current, crawlerIn(current))).toBeLessThan(
+              8,
+            )
+          }),
+          ...ticks(12, FRAME_MS),
+          Story.model(current => {
+            expect(
+              ZombieAction.isAnyOf(['Winded'])(crawlerIn(current).action),
+            ).toBe(true)
+          }),
+        )
 
-    const [freeSpeed] = freeSpeeds
-    const [heldSpeed] = heldSpeeds
-    expect(heldSpeed).toBeDefined()
-    expect(freeSpeed).toBeDefined()
-    expect(heldSpeed ?? 0).toBeCloseTo(
-      (freeSpeed ?? 0) * CRAWLER_RULES.clingSlow,
-      1,
-    )
-  })
+        const [freeSpeed] = freeSpeeds
+        const [heldSpeed] = heldSpeeds
+        expect(heldSpeed).toBeDefined()
+        expect(freeSpeed).toBeDefined()
+        expect(heldSpeed ?? 0).toBeCloseTo(
+          (freeSpeed ?? 0) * CRAWLER_RULES.clingSlow,
+          1,
+        )
+      }),
+  )
 
   test('the preview counts Ankle Biters as FLOOR, never at a door', () => {
     Array.forEach([1, 2, 3, 99, 31337], seed => {

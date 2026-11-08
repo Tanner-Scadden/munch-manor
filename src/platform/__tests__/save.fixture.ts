@@ -1,0 +1,80 @@
+// The save a returning player's device holds, every field set, which the
+// save tests load, write, and migrate from.
+import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
+import { type PlayerSave, SAVE_VERSION } from '../save'
+
+export const learnedSave: PlayerSave = {
+  version: SAVE_VERSION,
+  onboarding: {
+    lessons: {
+      move: 'Learned',
+      fire: 'Learned',
+      startWave: 'Learned',
+      shop: 'Learned',
+      swap: 'Learned',
+      pickup: 'Learned',
+      timedBreaks: 'Learned',
+      openBreak: 'Learned',
+    },
+    trapHint: 'Seen',
+    ammoTip: 'Seen',
+    introducedKinds: ZOMBIE_KIND_ORDER,
+  },
+  homeScreenTip: 'Dismissed',
+  settings: {
+    sound: 'Muted',
+    music: 'Off',
+    shake: 'Off',
+    shareStats: 'Off',
+    cursor: 'Thin',
+  },
+  appearance: {
+    body: 'Slim',
+    hairStyle: 'Ponytail',
+    hairColor: 'Pink',
+    skinTone: 'Deep',
+    shirtColor: 'Teal',
+    outfit: 'Overalls',
+    print: 'Rainbow',
+    beard: true,
+    glasses: true,
+    hat: 'None',
+    gunSkin: 'Stock',
+  },
+  difficulty: { chosen: 'Hard', card: 'Seen', nightmare: 'Unlocked' },
+  bests: {
+    runsPlayed: 12,
+    totalKills: 341,
+    killsByKind: { Shambler: 200, Runner: 90, Tank: 11, Exploder: 40 },
+    byDifficulty: {
+      Easy: { fastestWinMs: null, bestEndlessWave: null },
+      Normal: { fastestWinMs: 402_000, bestEndlessWave: 12 },
+      Hard: { fastestWinMs: null, bestEndlessWave: 9 },
+      Nightmare: { fastestWinMs: null, bestEndlessWave: null },
+    },
+  },
+  home: {
+    seenNewsDay: 'October 28, 2026',
+    openedEntries: ['Shambler', 'Runner'],
+  },
+  seenPowerUps: ['RapidFire', 'Burp'],
+  rotation: 'Landscape',
+  name: 'Snackula',
+  records: {
+    Easy: { furthestWave: null, mostKills: null },
+    Normal: { furthestWave: 7, mostKills: 140 },
+    Hard: { furthestWave: 4, mostKills: 66 },
+    Nightmare: { furthestWave: null, mostKills: null },
+  },
+  rank: {
+    earnedPoints: 340,
+    earnedBones: 34,
+    veteranPoints: 150,
+    veteranBones: 15,
+    isVeteranGranted: true,
+    spentBones: 5,
+  },
+  calling: 'TrackStar',
+  boughtCosmetics: [],
+  seenUnlocks: [],
+}

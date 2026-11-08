@@ -122,16 +122,17 @@ const STORY_NAMESPACES: Readonly<Record<string, string>> = {
 const PLAIN_UPDATE = /^(update|ROOT)$|Update$/
 
 // NOTE: the plain form's subject: an update function by name, or a record
-// of update and view with no Block in it (`{ update, view }`).
+// with an update in it (`{ update, view }`). A Block's config never has one
+// (`{ block, layer }`, `{ ...COOP, viewInputs }`).
 const isPlainSubject = (node: Node | undefined): boolean =>
   (node?.type === 'Identifier' && PLAIN_UPDATE.test(node.name)) ||
   (node?.type === 'ObjectExpression' &&
-    !Array.some(
+    Array.some(
       node.properties,
       property =>
         property.type === 'Property' &&
         property.key.type === 'Identifier' &&
-        property.key.name === 'block',
+        property.key.name === 'update',
     ))
 
 // NOTE: a test runner that runs the Effect its callback returns. A plain
@@ -308,6 +309,77 @@ export const noFloatingStory = defineRule({
         }
         if (!isKept(node)) {
           context.report({ node, message: FLOATING_STORY_MESSAGE })
+        }
+      },
+    }
+  },
+})
+
+// NOTE: a test drives the game as a Block-aware Story or Scene over the
+// root (`APPLICATION` in src/test/testing.ts) or a child Block, never the
+// plain form over an update function, which skips the Block's graph
+// (`story(update, ...)`, `Scene.scene({ update, view }, ...)`), nor
+// pureApp's acquired update, view, or init called by hand. A view of its
+// own over the acquired root is a custom renderer, written inside
+// `Story.withBlock(...)` (FOLDKIT.md "Testing"). The one plain Scene left,
+// over a bare canvas with no Block, is named in the config's override.
+const PURE_APP = /(^|\/)app\/pureApp$/
+
+const PURE_RUNNERS: ReadonlySet<string> = new Set(['update', 'view', 'init'])
+
+const PLAIN_STORY_MESSAGE =
+  'Drive the game through a Block-aware Story or Scene over APPLICATION (src/test/testing.ts) or a child Block, not a plain story or scene over an update function or pureApp\'s update, view, or init; a view of its own goes inside Story.withBlock (AGENTS.md "Tests drive the root through Block-aware Stories and Scenes").'
+
+const isWithBlockCall = (node: Node): boolean =>
+  node.type === 'CallExpression' &&
+  calleePath(node.callee).at(-1) === 'withBlock'
+
+const insideWithBlock = (node: Node): boolean =>
+  node.parent !== null &&
+  (isWithBlockCall(node.parent) || insideWithBlock(node.parent))
+
+export const noPlainStory = defineRule({
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        "Drive the game through a Block-aware Story or Scene, not a plain one over an update function or pureApp's update, view, or init.",
+    },
+  },
+  create(context) {
+    return {
+      ImportSpecifier(node) {
+        const source = importSource(node) ?? ''
+        const name = importedName(node)
+        const isTypeOnly =
+          node.importKind === 'type' ||
+          (node.parent.type === 'ImportDeclaration' &&
+            node.parent.importKind === 'type')
+        if (
+          (STORY_MODULES.test(source) &&
+            source !== 'foldkit' &&
+            (name === 'story' || name === 'scene')) ||
+          (PURE_APP.test(source) && PURE_RUNNERS.has(name) && !isTypeOnly)
+        ) {
+          context.report({ node, message: PLAIN_STORY_MESSAGE })
+        }
+      },
+      CallExpression(node) {
+        const path = calleePath(node.callee)
+        const isStoryCall =
+          path.length === 2 &&
+          Option.isSome(
+            Option.filter(
+              Record.get(STORY_NAMESPACES, path[0] ?? ''),
+              name => name === path[1],
+            ),
+          )
+        if (
+          isStoryCall &&
+          isPlainSubject(node.arguments[0]) &&
+          !insideWithBlock(node)
+        ) {
+          context.report({ node, message: PLAIN_STORY_MESSAGE })
         }
       },
     }

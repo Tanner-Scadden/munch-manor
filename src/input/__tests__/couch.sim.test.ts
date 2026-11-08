@@ -1,11 +1,22 @@
-import { Array, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../shared/constants'
+import {
+  APPLICATION,
+  changeModel,
+  isPlaying,
+  messageIfAny,
+  playedThrough,
+  resolveFocusLobby,
+  settleRunCommands,
+} from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import {
   focusOf,
@@ -25,10 +36,16 @@ import { withWorld } from '../../world/schema/world'
 // zombies came in promptly after their warning, and 2, 3, 5, and 7 did
 // after. The seed is one whose run plays through; a change that moves the
 // run may need another.
+// NOTE: the run is played as Block-aware Stories: a break one frame to a
+// Story, since the players act on the frame's first Model, and a wave in
+// stretches of WAVE_STRETCH frames, each player's choice made by
+// `messageIfAny` on the Model it finds. A stretch the wave ends in is cut
+// at the frame it ended on, and the run goes on from there.
 
 const SURFACE = { left: 0, top: 0, width: 320, height: 180 }
 const MAX_FRAMES = 120_000
 const FRAMES_PER_MOVE = 75
+const WAVE_STRETCH = 120
 
 const P1_MOVES: ReadonlyArray<ReadonlyArray<string>> = [
   ['KeyW'],
@@ -53,32 +70,19 @@ const MOVE_KEYS = [
   'KeyL',
 ]
 
-const send = (current: Model, sent: Message): Model =>
-  update(current, sent).model
+const FRAME = Message.TickedFrame({ deltaTime: FIXED_STEP_MS })
 
-const tap = (current: Model, code: string): Model =>
-  send(
-    send(current, Message.PressedKey({ code })),
-    Message.ReleasedKey({ code }),
-  )
+const isHeld = (current: Model, code: string): boolean =>
+  Array.contains(current.input.pressedKeys, code)
 
-const hold = (current: Model, wanted: ReadonlyArray<string>): Model => {
-  const held = current.input.pressedKeys
-  const released = Array.reduce(
-    Array.filter(MOVE_KEYS, key => held.includes(key) && !wanted.includes(key)),
-    current,
-    (model, code) => send(model, Message.ReleasedKey({ code })),
-  )
-  return Array.reduce(
-    Array.filter(wanted, key => !held.includes(key)),
-    released,
-    (model, code) => send(model, Message.PressedKey({ code })),
-  )
-}
+const tap = (code: string): ReadonlyArray<Message> => [
+  Message.PressedKey({ code }),
+  Message.ReleasedKey({ code }),
+]
 
 type Target = Readonly<{ x: number; y: number; distance: number }>
 
-const nearestZombie = (current: Model): Target | undefined =>
+const nearestZombie = (current: Model): Option.Option<Target> =>
   Array.reduce(
     Array.filter(current.zombies, zombie => zombie.state._tag === 'Walking'),
     Option.none<Target>(),
@@ -90,7 +94,7 @@ const nearestZombie = (current: Model): Target | undefined =>
         ? Option.some({ x: zombie.x, y: zombie.y, distance })
         : best
     },
-  ).pipe(Option.getOrUndefined)
+  )
 
 // NOTE: the breaks have no clock on Normal, so a player the READY key finds
 // at a purchasable (held there to buy) would hold the break forever. The
@@ -103,48 +107,35 @@ const walking = (frame: number): ReadonlyArray<string> => {
   ]
 }
 
-const prepare = (current: Model, frame: number): Model => {
-  const still = hold(current, walking(frame))
-  const leftStall =
-    focusOf(still).shop._tag === 'Browsing' ? tap(still, 'Escape') : still
-  return tap(tap(tap(leftStall, 'KeyO'), 'KeyY'), 'Enter')
+// NOTE: the move keys let go and pressed to walk the pattern at `frame`, from
+// the keys the Model holds.
+const holdFor = (current: Model, frame: number): ReadonlyArray<Message> => {
+  const wanted = walking(frame)
+  return [
+    ...Array.map(
+      Array.filter(
+        MOVE_KEYS,
+        key => isHeld(current, key) && !Array.contains(wanted, key),
+      ),
+      code => Message.ReleasedKey({ code }),
+    ),
+    ...Array.map(
+      Array.filter(wanted, key => !isHeld(current, key)),
+      code => Message.PressedKey({ code }),
+    ),
+  ]
 }
 
-const fight = (current: Model, frame: number): Model => {
-  const moved = hold(current, walking(frame))
-  const firing = moved.input.pressedKeys.includes('KeyU')
-    ? moved
-    : send(moved, Message.PressedKey({ code: 'KeyU' }))
-  const target = nearestZombie(firing)
-  if (frame % 4 !== 0 || target === undefined) {
-    return firing
-  }
-  const aimed = send(
-    firing,
-    Message.MovedMouse({ clientX: target.x, clientY: target.y }),
-  )
-  return aimed.input.mouseButton._tag === 'Held'
-    ? aimed
-    : send(
-        aimed,
-        Message.PressedPointer({
-          pointerId: 1,
-          device: 'Mouse',
-          clientX: target.x,
-          clientY: target.y,
-        }),
-      )
-}
-
-const drive = (current: Model, frame: number): Model =>
-  Phase.matchOrElse(
-    current.phase,
-    {
-      Preparation: () => prepare(current, frame),
-      Wave: () => fight(current, frame),
-    },
-    () => current,
-  )
+// NOTE: a frame of a break, from its first Model: walk, step off the stall,
+// press both players' READY and the lead's, then the frame.
+const breakFrame = (current: Model, frame: number): ReadonlyArray<Message> => [
+  ...holdFor(current, frame),
+  ...(focusOf(current).shop._tag === 'Browsing' ? tap('Escape') : []),
+  ...tap('KeyO'),
+  ...tap('KeyY'),
+  ...tap('Enter'),
+  FRAME,
+]
 
 const refillHearts = (current: Model): Model =>
   withWorld(current, world =>
@@ -155,47 +146,137 @@ const refillHearts = (current: Model): Model =>
     ),
   )
 
-const isPlaying = (current: Model): boolean =>
-  current.phase._tag === 'Preparation' || current.phase._tag === 'Wave'
+// NOTE: a frame of a wave, each choice made on the Model it finds: walk the
+// pattern, hold U, every fourth frame aim at the nearest zombie and hold the
+// mouse button down, then the frame, and the hearts refilled.
+const waveFrame = (frame: number) => [
+  ...Array.map(MOVE_KEYS, code =>
+    messageIfAny(current =>
+      isHeld(current, code) && !Array.contains(walking(frame), code)
+        ? Option.some(Message.ReleasedKey({ code }))
+        : Option.none(),
+    ),
+  ),
+  ...Array.map(walking(frame), code =>
+    messageIfAny(current =>
+      isHeld(current, code)
+        ? Option.none()
+        : Option.some(Message.PressedKey({ code })),
+    ),
+  ),
+  messageIfAny(current =>
+    isHeld(current, 'KeyU')
+      ? Option.none()
+      : Option.some(Message.PressedKey({ code: 'KeyU' })),
+  ),
+  ...(frame % 4 === 0
+    ? [
+        messageIfAny(current =>
+          Option.map(nearestZombie(current), ({ x, y }) =>
+            Message.MovedMouse({ clientX: x, clientY: y }),
+          ),
+        ),
+        messageIfAny(current =>
+          current.input.mouseButton._tag === 'Held'
+            ? Option.none()
+            : Option.map(nearestZombie(current), ({ x, y }) =>
+                Message.PressedPointer({
+                  pointerId: 1,
+                  device: 'Mouse',
+                  clientX: x,
+                  clientY: y,
+                }),
+              ),
+        ),
+      ]
+    : []),
+  Story.message(FRAME),
+  changeModel(refillHearts),
+]
+
+// NOTE: up to `length` frames of a wave from `start`, and the Model each
+// frame left, gathered in an array the Story alone fills.
+const waveStretch = (start: Model, first: number, length: number) =>
+  Effect.suspend(() => {
+    const ends: Array<Model> = []
+    return Story.story(
+      APPLICATION,
+      Story.given(start),
+      ...Array.flatMap(
+        Array.makeBy(length, index => first + index),
+        frame => [
+          ...waveFrame(frame),
+          Story.model((current: Model) => {
+            ends.push(current)
+          }),
+        ],
+      ),
+      settleRunCommands,
+    ).pipe(Effect.as<ReadonlyArray<Model>>(ends))
+  })
 
 type Played = Readonly<{ end: Model; frames: number }>
 
-const play = (start: Model): Played =>
-  Array.reduce(
-    globalThis.Array.from({ length: MAX_FRAMES }),
-    { end: start, frames: 0 },
-    (played, _, frame) =>
-      isPlaying(played.end)
-        ? {
-            end: refillHearts(
-              send(
-                drive(played.end, frame),
-                Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
+const playFrom = (played: Played): Effect.Effect<Played> =>
+  played.frames >= MAX_FRAMES || !isPlaying(played.end)
+    ? Effect.succeed(played)
+    : Effect.flatMap(
+        Phase.guards.Preparation(played.end.phase)
+          ? Effect.map(
+              playedThrough(played.end, breakFrame(played.end, played.frames)),
+              end => ({ end: refillHearts(end), frames: played.frames + 1 }),
+            )
+          : Effect.map(
+              waveStretch(
+                played.end,
+                played.frames,
+                Math.min(WAVE_STRETCH, MAX_FRAMES - played.frames),
               ),
+              ends => {
+                const over = Array.findFirstIndex(
+                  ends,
+                  current => !Phase.guards.Wave(current.phase),
+                )
+                const last = Option.getOrElse(over, () => ends.length - 1)
+                return {
+                  end: Option.getOrThrow(Array.get(ends, last)),
+                  frames: played.frames + last + 1,
+                }
+              },
             ),
-            frames: frame + 1,
-          }
-        : played,
-  )
+        playFrom,
+      )
 
 describe('two keyboards on one desktop', () => {
-  test('play a whole campaign to Victory', () => {
-    const ready = send(
-      modifyFields(asVeteran(initialModel), {
-        rngState: () => 4,
-        localPlayers: () => 2,
-        difficulty: () => ({ chosen: 'Normal', nightmare: 'Unlocked' }),
+  it.effect(
+    'play a whole campaign to Victory',
+    () =>
+      Effect.gen(function* () {
+        const ready = yield* playedThrough(
+          modifyFields(asVeteran(initialModel), {
+            rngState: () => 4,
+            localPlayers: () => 2,
+            difficulty: () => ({ chosen: 'Normal', nightmare: 'Unlocked' }),
+          }),
+          [Message.MeasuredGameSurface(SURFACE)],
+        )
+        const started = yield* Story.story(
+          APPLICATION,
+          Story.given(ready),
+          ...Array.map(tap('Enter'), Story.message),
+          resolveFocusLobby(),
+          ...Array.map(tap('Enter'), Story.message),
+          settleRunCommands,
+        )
+        expect(playersOf(started)).toHaveLength(2)
+        const { end, frames } = yield* playFrom({ end: started, frames: 0 })
+        expect(end.phase._tag).toBe('Victory')
+        const [lead, mate] = playersOf(end)
+        expect(lead?.wallet.earned).toBeGreaterThan(0)
+        expect(mate?.wallet.earned).toBeGreaterThan(0)
+        expect(mate?.seat.kills).toBeGreaterThan(0)
+        expect(frames).toBeLessThan(MAX_FRAMES)
       }),
-      Message.MeasuredGameSurface(SURFACE),
-    )
-    const started = tap(tap(ready, 'Enter'), 'Enter')
-    expect(playersOf(started)).toHaveLength(2)
-    const { end, frames } = play(started)
-    expect(end.phase._tag).toBe('Victory')
-    const [lead, mate] = playersOf(end)
-    expect(lead?.wallet.earned).toBeGreaterThan(0)
-    expect(mate?.wallet.earned).toBeGreaterThan(0)
-    expect(mate?.seat.kills).toBeGreaterThan(0)
-    expect(frames).toBeLessThan(MAX_FRAMES)
-  }, 300_000)
+    300_000,
+  )
 })

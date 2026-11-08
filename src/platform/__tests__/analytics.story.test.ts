@@ -1,4 +1,4 @@
-import { Array, Effect, Option, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import { FetchHttpClient } from 'effect/http'
 import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
@@ -21,7 +21,7 @@ import {
   freshStats,
   noKills,
 } from '../../app/model'
-import { init, initialModel } from '../../app/pureApp'
+import { initialModel } from '../../app/pureApp'
 import { WriteSave } from '../../app/update/save'
 import { SendRunSummary } from '../../app/update/settle'
 import { Message as ProfileMessage } from '../../features/profile/message'
@@ -30,6 +30,7 @@ import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '../../shared/constants'
 import {
   APPLICATION,
   SURFACE,
+  bootWithoutVisitId,
   closeDialog,
   jsonOf,
   showDialog,
@@ -463,19 +464,24 @@ describe('the sharing setting', () => {
     )
   })
 
-  it.effect('the visit id comes from a Command at start', () => {
-    expect(Array.map(init().commands ?? [], command => command.name)).toContain(
-      GenerateVisitId().name,
-    )
-    return Story.story(
+  it.effect('the visit id comes from a Command at start', () =>
+    Story.story(
       APPLICATION,
-      Story.given(modifyFields(home, { maybeVisitId: () => Option.none() })),
-      Story.message(Message.CompletedGenerateVisitId({ visitId: VISIT_ID })),
+      Story.init(),
+      Story.model(({ maybeVisitId }) => {
+        expect(maybeVisitId).toEqual(Option.none())
+      }),
+      Story.Command.expectHas(GenerateVisitId()),
+      Story.Command.resolve(
+        GenerateVisitId(),
+        Message.CompletedGenerateVisitId({ visitId: VISIT_ID }),
+      ),
       Story.model(({ maybeVisitId }) => {
         expect(maybeVisitId).toEqual(Option.some(VISIT_ID))
       }),
-    )
-  })
+      bootWithoutVisitId,
+    ),
+  )
 })
 
 describe('the beacon', () => {

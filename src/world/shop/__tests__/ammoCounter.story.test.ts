@@ -1,7 +1,8 @@
 import { Array } from 'effect'
-import { given, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import {
   CounterSale,
@@ -10,10 +11,15 @@ import {
   Purchase,
   ShopState,
 } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN, midWaveAtStall } from '../../../test/model.fixture'
-import { STAND_TICKS, press, release, ticks } from '../../../test/testing'
+import {
+  APPLICATION,
+  STAND_TICKS,
+  press,
+  release,
+  ticks,
+} from '../../../test/testing'
 import { freshGun, heldGun, maxRounds } from '../../gear/weapons'
 import { focusOf, focusSlotOf, modifyFocus } from '../../party/party'
 import type { World } from '../../schema/world'
@@ -67,66 +73,75 @@ describe('the ammo window mid-wave', () => {
     expect(lids?.price).toBe(SHOP_ITEMS.LidStack.price)
   })
 
-  test('holding Enter at the window refills the gun in the hands and takes the price', () => {
-    story(
-      update,
-      given(midWaveAtStall('Smg', 10)),
-      press('Enter'),
-      ...ticks(HOLD_TICKS, FRAME_MS),
-      release('Enter'),
-      model(current => {
-        const gun = heldGun(focusOf(current).player.arsenal)
-        expect(gun.kind).toBe('Smg')
-        expect(gun.rounds).toBeGreaterThan(10)
-        expect(focusOf(current).wallet.balance).toBe(
-          100 - SHOP_ITEMS.SmgRounds.price,
-        )
-        expect(focusOf(current).shop).toEqual(ShopState.Away())
-        expect(current.shopDialog.dialog.isOpen).toBe(false)
-      }),
-    )
-  })
+  it.effect(
+    'holding Enter at the window refills the gun in the hands and takes the price',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(midWaveAtStall('Smg', 10)),
+        press('Enter'),
+        ...ticks(HOLD_TICKS, FRAME_MS),
+        release('Enter'),
+        Story.model(current => {
+          const gun = heldGun(focusOf(current).player.arsenal)
+          expect(gun.kind).toBe('Smg')
+          expect(gun.rounds).toBeGreaterThan(10)
+          expect(focusOf(current).wallet.balance).toBe(
+            100 - SHOP_ITEMS.SmgRounds.price,
+          )
+          expect(focusOf(current).shop).toEqual(ShopState.Away())
+          expect(current.shopDialog.dialog.isOpen).toBe(false)
+        }),
+      ),
+  )
 
-  test('standing still at the window buys too, and Rattles slides the rounds across', () => {
-    story(
-      update,
-      given(midWaveAtStall('Shotgun', 0)),
-      ...ticks(STAND_TICKS, FRAME_MS),
-      model(current => {
-        expect(heldGun(focusOf(current).player.arsenal).rounds).toBeGreaterThan(
-          0,
-        )
-        expect(focusOf(current).wallet.balance).toBe(
-          100 - SHOP_ITEMS.ShotgunShells.price,
-        )
-        expect(CounterSale.isAnyOf(['Selling'])(current.counterSale)).toBe(true)
-        expect(isAtAmmoWindow(current, focusSlotOf(current))).toBe(true)
-      }),
-    )
-  })
+  it.effect(
+    'standing still at the window buys too, and Rattles slides the rounds across',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(midWaveAtStall('Shotgun', 0)),
+        ...ticks(STAND_TICKS, FRAME_MS),
+        Story.model(current => {
+          expect(
+            heldGun(focusOf(current).player.arsenal).rounds,
+          ).toBeGreaterThan(0)
+          expect(focusOf(current).wallet.balance).toBe(
+            100 - SHOP_ITEMS.ShotgunShells.price,
+          )
+          expect(CounterSale.isAnyOf(['Selling'])(current.counterSale)).toBe(
+            true,
+          )
+          expect(isAtAmmoWindow(current, focusSlotOf(current))).toBe(true)
+        }),
+      ),
+  )
 
-  test('a full gun shows FULL: a press is refused and standing never buys', () => {
-    const full = midWaveAtStall('Smg', maxRounds('Smg', 0))
-    const [offer] = ammoOffers(full)
-    expect(offer?.isFull).toBe(true)
-    story(
-      update,
-      given(full),
-      ...ticks(STAND_TICKS * 2, FRAME_MS),
-      model(current => {
-        expect(focusOf(current).wallet.balance).toBe(100)
-        expect(focusOf(current).purchase).toEqual(Purchase.Idle())
-      }),
-      press('Enter'),
-      ...ticks(2, FRAME_MS),
-      model(current => {
-        expect(Purchase.isAnyOf(['Refused'])(focusOf(current).purchase)).toBe(
-          true,
-        )
-        expect(focusOf(current).wallet.balance).toBe(100)
-      }),
-    )
-  })
+  it.effect(
+    'a full gun shows FULL: a press is refused and standing never buys',
+    () => {
+      const full = midWaveAtStall('Smg', maxRounds('Smg', 0))
+      const [offer] = ammoOffers(full)
+      expect(offer?.isFull).toBe(true)
+      return Story.story(
+        APPLICATION,
+        Story.given(full),
+        ...ticks(STAND_TICKS * 2, FRAME_MS),
+        Story.model(current => {
+          expect(focusOf(current).wallet.balance).toBe(100)
+          expect(focusOf(current).purchase).toEqual(Purchase.Idle())
+        }),
+        press('Enter'),
+        ...ticks(2, FRAME_MS),
+        Story.model(current => {
+          expect(Purchase.isAnyOf(['Refused'])(focusOf(current).purchase)).toBe(
+            true,
+          )
+          expect(focusOf(current).wallet.balance).toBe(100)
+        }),
+      )
+    },
+  )
 
   test('it sells nothing else mid-wave: the only offer at the stall is ammo', () => {
     const current = midWaveAtStall('Smg', 0)

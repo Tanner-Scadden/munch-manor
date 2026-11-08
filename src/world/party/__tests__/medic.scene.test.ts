@@ -1,6 +1,7 @@
-import { click, expect, given, scene, selector } from 'foldkit/scene'
+import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, test } from 'vitest'
+
+import { describe, it } from '@effect/vitest'
 
 import { Life, type Model } from '../../../app/model'
 import {
@@ -9,7 +10,7 @@ import {
   placeSeat,
   withSeatLife,
 } from '../../../test/model.fixture'
-import { ROOT, measureSurface } from '../../../test/testing'
+import { APPLICATION, measureSurface } from '../../../test/testing'
 import { MEDIC_RULES } from '../medic'
 import { COOP_RULES } from '../party'
 
@@ -17,7 +18,7 @@ import { COOP_RULES } from '../party'
 // for your own downed player, and only then. A tap shouts, and the button
 // glows while the shout rings.
 
-const medicButton = selector('.medic-button')
+const medicButton = Scene.selector('.medic-button')
 
 const onTouch = (base: Model): Model =>
   modifyFields(base, { lastDevice: () => 'Touch' })
@@ -35,34 +36,36 @@ const downedLead = (callMs: number) =>
   )(fighting)
 
 describe('the MEDIC button', () => {
-  test('is not there while you stand, nor for a teammate who is down', () => {
-    scene(
-      ROOT,
-      given(
-        withSeatLife(
-          1,
-          Life.Downed({
-            bleedMs: COOP_RULES.bleedOutMs,
-            reviveMs: 0,
-            callMs: 0,
-          }),
-        )(fighting),
+  it.effect(
+    'is not there while you stand, nor for a teammate who is down',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(
+          withSeatLife(
+            1,
+            Life.Downed({
+              bleedMs: COOP_RULES.bleedOutMs,
+              reviveMs: 0,
+              callMs: 0,
+            }),
+          )(fighting),
+        ),
+        measureSurface,
+        Scene.expect(medicButton).toBeAbsent(),
       ),
-      measureSurface,
-      expect(medicButton).toBeAbsent(),
-    )
-  })
+  )
 
-  test('shows while you are down, and a tap shouts MEDIC!', () => {
-    scene(
-      ROOT,
-      given(downedLead(MEDIC_RULES.cooldownMs)),
+  it.effect('shows while you are down, and a tap shouts MEDIC!', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(downedLead(MEDIC_RULES.cooldownMs)),
       measureSurface,
-      expect(medicButton).toExist(),
-      expect(medicButton).toHaveAttr('aria-label', 'MEDIC!'),
-      expect(medicButton).toHaveAttr('data-fresh', 'false'),
-      click(medicButton),
-      expect(medicButton).toHaveAttr('data-fresh', 'true'),
-    )
-  })
+      Scene.expect(medicButton).toExist(),
+      Scene.expect(medicButton).toHaveAttr('aria-label', 'MEDIC!'),
+      Scene.expect(medicButton).toHaveAttr('data-fresh', 'false'),
+      Scene.click(medicButton),
+      Scene.expect(medicButton).toHaveAttr('data-fresh', 'true'),
+    ),
+  )
 })

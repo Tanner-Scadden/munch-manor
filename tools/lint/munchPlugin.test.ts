@@ -144,6 +144,32 @@ tester.run('no-floating-story', ruleOf('no-floating-story'), {
     one(
       "test('a Block', () => { Scene.scene({ block: ShopBlock, layer, viewInputs }, Scene.given(home)) })",
     ),
+    one(
+      "test('a spread config', () => { Scene.scene({ ...COOP, viewInputs }, Scene.given(home)) })",
+    ),
+  ],
+})
+
+tester.run('no-plain-story', ruleOf('no-plain-story'), {
+  valid: [
+    "import { Scene, Story } from 'foldkit'\nit.effect('runs', () => Story.story(APPLICATION, Story.given(home)))",
+    "it.effect('a child', () => Scene.scene({ block: ShopBlock, layer, viewInputs }, Scene.given(home)))",
+    "it.effect('a spread config', () => Scene.scene({ ...COOP, viewInputs }, Scene.given(home)))",
+    "import { initialModel, subscriptions, type update } from '../app/pureApp'",
+    "import type { update } from '../../app/pureApp'",
+    // NOTE: a view of its own over the acquired root, a custom renderer.
+    "it.effect('title', () => Story.withBlock(APPLICATION, block => Scene.scene({ update: block.update, view: titled(block.view) }, Scene.given(home))))",
+  ],
+  invalid: [
+    one("import { story } from 'foldkit/story'"),
+    one("import { given, scene } from 'foldkit/scene'"),
+    one("import { initialModel, update } from '../../app/pureApp'"),
+    one("import { init } from '../../../src/app/pureApp'"),
+    one("test('plain', () => { Story.story(update, Story.given(home)) })"),
+    one("test('plain', () => { Scene.scene(ROOT, Scene.given(home)) })"),
+    one(
+      "test('plain', () => { Scene.scene({ update, view }, Scene.given(home)) })",
+    ),
   ],
 })
 

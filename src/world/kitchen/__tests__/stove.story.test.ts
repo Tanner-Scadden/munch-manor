@@ -1,7 +1,8 @@
-import { Array, Option } from 'effect'
-import { given, model, story } from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import {
   type CarriedGun,
@@ -12,7 +13,6 @@ import {
   Pierce,
   Purchase,
 } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import {
   FIXED_STEP_MS,
   PISTOL_DAMAGE,
@@ -30,6 +30,7 @@ import {
   kitchenBreak,
 } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   FRIDGE_OPEN_TICKS,
   HOLD_TICKS,
   holdEnter,
@@ -112,25 +113,28 @@ const cookedPistol = (perk: GunPerk): CarriedGun => ({
 })
 
 describe('the stove rolls its perk', () => {
-  test('each break rolls one perk from its own generator, and keeps it all break', () => {
-    const start = atStove(500)
-    const firstState = start.stove.rngState
-    story(
-      update,
-      given(start),
-      tick(FRAME_MS),
-      model(current => {
-        expect(current.stove.wave).toBe(5)
-        expect(current.stove.perk).toBe(rolledFrom(firstState))
-        expect(current.stove.rngState).toBe(nextRandom(firstState).nextState)
-      }),
-      ...ticks(30, FRAME_MS),
-      model(current => {
-        expect(current.stove.perk).toBe(rolledFrom(firstState))
-        expect(current.stove.rngState).toBe(nextRandom(firstState).nextState)
-      }),
-    )
-  })
+  it.effect(
+    'each break rolls one perk from its own generator, and keeps it all break',
+    () => {
+      const start = atStove(500)
+      const firstState = start.stove.rngState
+      return Story.story(
+        APPLICATION,
+        Story.given(start),
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(current.stove.wave).toBe(5)
+          expect(current.stove.perk).toBe(rolledFrom(firstState))
+          expect(current.stove.rngState).toBe(nextRandom(firstState).nextState)
+        }),
+        ...ticks(30, FRAME_MS),
+        Story.model(current => {
+          expect(current.stove.perk).toBe(rolledFrom(firstState))
+          expect(current.stove.rngState).toBe(nextRandom(firstState).nextState)
+        }),
+      )
+    },
+  )
 
   test('the next break rolls again from where the last left off, and no other roll moves', () => {
     const rolled = rollStove(atStove(500))
@@ -151,28 +155,32 @@ describe('the stove rolls its perk', () => {
 })
 
 describe('cooking a gun', () => {
-  test('holding Enter at the stove for a second pays and cooks the perk into the gun in hand', () => {
-    story(
-      update,
-      given(offering(withArsenalOf(atStove(500), freshGun('Smg')), 'Crispy')),
-      press('Enter'),
-      ...ticks(HOLD_TICKS, FRAME_MS),
-      model(current => {
-        expect(Option.isNone(heldPerk(current))).toBe(true)
-        expect(focusOf(current).wallet.balance).toBe(500)
-      }),
-      ...ticks(COOK_TICKS - HOLD_TICKS, FRAME_MS),
-      release('Enter'),
-      model(current => {
-        expect(heldPerk(current)).toEqual(Option.some('Crispy'))
-        expect(focusOf(current).wallet.balance).toBe(
-          500 - STOVE_RULES.prices[0],
-        )
-        expect(focusOf(current).cooking).toEqual({ cooks: 1, lastWave: 5 })
-        expect(current.stats.purchases).toBe(1)
-      }),
-    )
-  })
+  it.effect(
+    'holding Enter at the stove for a second pays and cooks the perk into the gun in hand',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          offering(withArsenalOf(atStove(500), freshGun('Smg')), 'Crispy'),
+        ),
+        press('Enter'),
+        ...ticks(HOLD_TICKS, FRAME_MS),
+        Story.model(current => {
+          expect(Option.isNone(heldPerk(current))).toBe(true)
+          expect(focusOf(current).wallet.balance).toBe(500)
+        }),
+        ...ticks(COOK_TICKS - HOLD_TICKS, FRAME_MS),
+        release('Enter'),
+        Story.model(current => {
+          expect(heldPerk(current)).toEqual(Option.some('Crispy'))
+          expect(focusOf(current).wallet.balance).toBe(
+            500 - STOVE_RULES.prices[0],
+          )
+          expect(focusOf(current).cooking).toEqual({ cooks: 1, lastWave: 5 })
+          expect(current.stats.purchases).toBe(1)
+        }),
+      ),
+  )
 
   test('the price climbs with each cook: $90, $180, then $300 for good', () => {
     const priceAt = (cooks: number): number =>
@@ -184,47 +192,51 @@ describe('cooking a gun', () => {
     ])
   })
 
-  test('one cook a break: once cooked the stove offers nothing more until the next break', () => {
-    story(
-      update,
-      given(offering(atStove(1000), 'Spicy')),
-      ...cook,
-      model(current => {
-        expect(heldPerk(current)).toEqual(Option.some('Spicy'))
-        expect(Option.isNone(stoveOffer(current))).toBe(true)
-      }),
-      ...cook,
-      model(current => {
-        expect(focusOf(current).wallet.balance).toBe(
-          1000 - STOVE_RULES.prices[0],
+  it.effect(
+    'one cook a break: once cooked the stove offers nothing more until the next break',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(offering(atStove(1000), 'Spicy')),
+          ...cook,
+          Story.model(current => {
+            expect(heldPerk(current)).toEqual(Option.some('Spicy'))
+            expect(Option.isNone(stoveOffer(current))).toBe(true)
+          }),
+          ...cook,
+          Story.model(current => {
+            expect(focusOf(current).wallet.balance).toBe(
+              1000 - STOVE_RULES.prices[0],
+            )
+            expect(focusOf(current).cooking.cooks).toBe(1)
+          }),
         )
-        expect(focusOf(current).cooking.cooks).toBe(1)
+        const nextBreak = rollStove(
+          withCooking(
+            modifyFields(atStove(1000), { phase: () => kitchenBreak(6) }),
+            1,
+            5,
+          ),
+        )
+        expect(Option.map(stoveOffer(nextBreak), ({ price }) => price)).toEqual(
+          Option.some(STOVE_RULES.prices[1]),
+        )
       }),
-    )
-    const nextBreak = rollStove(
-      withCooking(
-        modifyFields(atStove(1000), { phase: () => kitchenBreak(6) }),
-        1,
-        5,
-      ),
-    )
-    expect(Option.map(stoveOffer(nextBreak), ({ price }) => price)).toEqual(
-      Option.some(STOVE_RULES.prices[1]),
-    )
-  })
+  )
 
-  test('cooking a gun that has a perk puts the new one in its place', () => {
-    story(
-      update,
-      given(
+  it.effect('cooking a gun that has a perk puts the new one in its place', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         offering(withArsenalOf(atStove(500), cookedPistol('Hearty')), 'Spicy'),
       ),
       ...cook,
-      model(current => {
+      Story.model(current => {
         expect(heldPerk(current)).toEqual(Option.some('Spicy'))
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('what the stove will not cook', () => {
@@ -233,51 +245,53 @@ describe('what the stove will not cook', () => {
   })
   const freezeInHand = withArsenalOf(atStove(500), freshGun('Freeze'))
 
-  test.each([
+  it.effect.each([
     ['the knife', knifeOut],
     ['a fridge weapon', freezeInHand],
-  ])('%s in hand is refused, briefly, and nothing is cooked', (_, base) => {
-    story(
-      update,
-      given(base),
-      tick(FRAME_MS),
-      model(current => {
-        expect(Option.map(stoveOffer(current), ({ isFull }) => isFull)).toEqual(
-          Option.some(true),
-        )
-      }),
-      press('Enter'),
-      tick(FRAME_MS),
-      model(current => {
-        expect(Purchase.isAnyOf(['Refused'])(focusOf(current).purchase)).toBe(
-          true,
-        )
-        expect(
-          Array.some(
-            current.frameEvents,
-            GameEvent.isAnyOf(['PurchaseRefused']),
-          ),
-        ).toBe(true)
-      }),
-      ...ticks(COOK_TICKS, FRAME_MS),
-      release('Enter'),
-      model(current => {
-        expect(focusOf(current).wallet.balance).toBe(500)
-        expect(focusOf(current).cooking.cooks).toBe(0)
-        expect(Option.isNone(heldPerk(current))).toBe(true)
-      }),
-    )
-  })
+  ] as const)(
+    '%s in hand is refused, briefly, and nothing is cooked',
+    ([, base]) =>
+      Story.story(
+        APPLICATION,
+        Story.given(base),
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(
+            Option.map(stoveOffer(current), ({ isFull }) => isFull),
+          ).toEqual(Option.some(true))
+        }),
+        press('Enter'),
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(Purchase.isAnyOf(['Refused'])(focusOf(current).purchase)).toBe(
+            true,
+          )
+          expect(
+            Array.some(
+              current.frameEvents,
+              GameEvent.isAnyOf(['PurchaseRefused']),
+            ),
+          ).toBe(true)
+        }),
+        ...ticks(COOK_TICKS, FRAME_MS),
+        release('Enter'),
+        Story.model(current => {
+          expect(focusOf(current).wallet.balance).toBe(500)
+          expect(focusOf(current).cooking.cooks).toBe(0)
+          expect(Option.isNone(heldPerk(current))).toBe(true)
+        }),
+      ),
+  )
 })
 
 describe('what each perk does', () => {
-  test('Spicy hits 30% harder and glows hot', () => {
-    story(
-      update,
-      given(withPistolOf(midWave, cookedPistol('Spicy'))),
+  it.effect('Spicy hits 30% harder and glows hot', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(withPistolOf(midWave, cookedPistol('Spicy'))),
       holdFire,
       tick(FRAME_MS),
-      model(({ bullets }) => {
+      Story.model(({ bullets }) => {
         const bullet = Option.getOrThrow(Array.head(bullets))
         expect(bullet.damage).toBeCloseTo(
           PISTOL_DAMAGE * PERK_RULES.spicyDamageScale,
@@ -285,69 +299,80 @@ describe('what each perk does', () => {
         )
         expect(bullet.glaze).toBe('Spicy')
       }),
-    )
-  })
+    ),
+  )
 
-  test('Crispy skewers one zombie more', () => {
-    story(
-      update,
-      given(withPistolOf(midWave, cookedPistol('Crispy'))),
+  it.effect('Crispy skewers one zombie more', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(withPistolOf(midWave, cookedPistol('Crispy'))),
       holdFire,
       tick(FRAME_MS),
-      model(({ bullets }) => {
+      Story.model(({ bullets }) => {
         const bullet = Option.getOrThrow(Array.head(bullets))
         expect(bullet.pierce).toEqual(
           Pierce.Skewers({ left: PERK_RULES.crispyPierce, struck: [] }),
         )
         expect(bullet.damage).toBe(PISTOL_DAMAGE)
       }),
-    )
-  })
+    ),
+  )
 
-  test('Hearty holds a quarter more, rounded, and a reload fills it', () => {
-    const hearty = cookedPistol('Hearty')
-    const bigger = Math.round(PISTOL_MAGAZINE * PERK_RULES.heartyMagazineScale)
-    expect(carriedMagazine('You', hearty)).toBe(bigger)
-    expect(carriedMagazine('You', freshGun('Pistol'))).toBe(PISTOL_MAGAZINE)
-    story(
-      update,
-      given(withPistolOf(midWave, { ...hearty, loaded: 0 })),
-      press('KeyR'),
-      ...ticksFor(PISTOL_RELOAD_MS + 100, FRAME_MS),
-      model(current => {
-        expect(heldGun(focusOf(current).player.arsenal).loaded).toBe(bigger)
-      }),
-    )
-  })
+  it.effect(
+    'Hearty holds a quarter more, rounded, and a reload fills it',
+    () => {
+      const hearty = cookedPistol('Hearty')
+      const bigger = Math.round(
+        PISTOL_MAGAZINE * PERK_RULES.heartyMagazineScale,
+      )
+      expect(carriedMagazine('You', hearty)).toBe(bigger)
+      expect(carriedMagazine('You', freshGun('Pistol'))).toBe(PISTOL_MAGAZINE)
+      return Story.story(
+        APPLICATION,
+        Story.given(withPistolOf(midWave, { ...hearty, loaded: 0 })),
+        press('KeyR'),
+        ...ticksFor(PISTOL_RELOAD_MS + 100, FRAME_MS),
+        Story.model(current => {
+          expect(heldGun(focusOf(current).player.arsenal).loaded).toBe(bigger)
+        }),
+      )
+    },
+  )
 
-  test('a new gun in its place comes plain: the perk goes with the old gun', () => {
-    const spicySmg: CarriedGun = { ...freshGun('Smg'), perk: 'Spicy' }
-    const crispyPistol = cookedPistol('Crispy')
-    const start = fridgeSeededFor(
-      modifyFocus(atFridge(500), {
-        player: player =>
-          modifyFields(player, {
-            arsenal: () =>
-              Arsenal.HoldingSecond({ first: crispyPistol, second: spicySmg }),
-          }),
-      }),
-      'Cooker',
-    )
-    const pull = holdEnter(HOLD_TICKS)
-    story(
-      update,
-      given(start),
-      ...pull,
-      ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
-      ...pull,
-      model(current => {
-        expect(focusOf(current).player.arsenal).toEqual(
-          Arsenal.HoldingSecond({
-            first: crispyPistol,
-            second: freshGun('Cooker'),
-          }),
-        )
-      }),
-    )
-  })
+  it.effect(
+    'a new gun in its place comes plain: the perk goes with the old gun',
+    () => {
+      const spicySmg: CarriedGun = { ...freshGun('Smg'), perk: 'Spicy' }
+      const crispyPistol = cookedPistol('Crispy')
+      const start = fridgeSeededFor(
+        modifyFocus(atFridge(500), {
+          player: player =>
+            modifyFields(player, {
+              arsenal: () =>
+                Arsenal.HoldingSecond({
+                  first: crispyPistol,
+                  second: spicySmg,
+                }),
+            }),
+        }),
+        'Cooker',
+      )
+      const pull = holdEnter(HOLD_TICKS)
+      return Story.story(
+        APPLICATION,
+        Story.given(start),
+        ...pull,
+        ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
+        ...pull,
+        Story.model(current => {
+          expect(focusOf(current).player.arsenal).toEqual(
+            Arsenal.HoldingSecond({
+              first: crispyPistol,
+              second: freshGun('Cooker'),
+            }),
+          )
+        }),
+      )
+    },
+  )
 })
