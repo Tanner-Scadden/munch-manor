@@ -1,7 +1,7 @@
 import { Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { endOffer } from '../../features/home/home'
+import { endOffer } from '../../features/end/endOffer'
 import { releaseAll } from '../../input/input'
 import { PREPARATION_MS } from '../../shared/constants'
 import { modifyFocus } from '../../world/party/party'

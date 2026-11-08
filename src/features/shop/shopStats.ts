@@ -1,5 +1,6 @@
 import { Array, Function, Option } from 'effect'
 
+import { BAR_SEGMENTS } from '../../art/shopArt'
 import { TRAPS, healthShare, placedCount } from '../../world/gear/traps'
 import {
   SHOP_GUNS,
@@ -36,8 +37,6 @@ export type GunBars = Readonly<{
   rate: number
   load: number
 }>
-
-export const BAR_SEGMENTS = 5
 
 const ALL_TIERS = Array.flatMap(SHOP_GUNS, weapon =>
   Array.makeBy(maxTier(weapon) + 1, tier => statsAt(weapon, tier)),

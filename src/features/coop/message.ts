@@ -4,9 +4,14 @@ import { defineMessageUnion } from 'foldkit/message'
 import { PickedMode, RoomDifficulty } from '@munch/netcode'
 import { LobbyEvent, QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
+import {
+  CodeCopy,
+  CoopProblem,
+  NudgeReason,
+  Share,
+} from '../../domain/coopRoom'
 import { Calling } from '../../shared/playerData'
 import { Modifier } from '../../world/run/modifiers'
-import { CodeCopy, CoopProblem, NudgeReason, Share } from './model'
 
 // MESSAGE
 

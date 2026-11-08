@@ -1,7 +1,7 @@
 import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { activeBots, seatCallings } from '../features/bots/bots'
+import { activeBots, seatCallings } from '../domain/bots'
 import {
   raiseDebutCard,
   settleLessons,

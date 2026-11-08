@@ -8,6 +8,7 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import { Message } from '../../../app/message'
 import { type Model, Phase, RunMode } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import { withBests } from '../../../domain/run'
 import {
   FIXED_STEP_MS,
   PREPARATION_MS,
@@ -32,7 +33,6 @@ import {
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { modifyFocus } from '../../../world/party/party'
-import { withBests } from '../../home/home'
 
 const endlessModeButton = Scene.role('button', { name: 'Endless' })
 const START_PROMPT =

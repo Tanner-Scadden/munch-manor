@@ -8,7 +8,7 @@ import { modifyFields } from 'foldkit/struct'
 import { Message } from '@game/app/message'
 import { type Model, Phase } from '@game/app/model'
 import { update } from '@game/app/pureApp'
-import * as CoopModel from '@game/features/coop/model'
+import * as CoopModel from '@game/domain/coopRoom'
 import {
   CODE as COOP_CODE,
   lobbyOf,
@@ -386,7 +386,7 @@ const pickerOf = (stage: HarnessConfig['coop']): HeroPickerModel => {
 }
 
 // NOTE: a staged run draws its room's World as the game, one frame of it,
-// as an online run does (src/features/onlineRun/coopPlay.ts).
+// as an online run does (src/app/update/coopPlay.ts).
 export const withCoop: {
   (model: Model): (config: HarnessConfig) => Model
   (config: HarnessConfig, model: Model): Model

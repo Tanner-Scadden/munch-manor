@@ -16,9 +16,9 @@ import {
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { startOrResume } from '../../../app/runFlow'
-import { addBot } from '../../../features/bots/bots'
+import { addBot } from '../../../domain/bots'
+import { effectiveModifiersOf } from '../../../domain/onlineRun'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
-import { effectiveModifiersOf } from '../../../features/onlineRun/onlineRun'
 import {
   FIXED_STEP_MS,
   PLAYER_MAX_HP,

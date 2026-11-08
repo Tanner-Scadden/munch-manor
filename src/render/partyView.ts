@@ -3,6 +3,7 @@ import { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
+import { seatLookOf } from '../art/seatLooks'
 import {
   type Sprite,
   TOP_LEFT,
@@ -11,10 +12,9 @@ import {
   placeAt,
   spriteShapes,
 } from '../art/sprite'
-import { maybeCrewBotAt } from '../features/bots/bots'
-import { seatLookOf } from '../features/coop/looks'
-import { maybeRoomOf } from '../features/coop/roomState'
-import { hatRiseOf } from '../features/profile/blocks/look/hatArt'
+import { hatRiseOf } from '../art/sprites/hatArt'
+import { maybeCrewBotAt } from '../domain/bots'
+import { maybeRoomOf } from '../domain/coopRoom'
 import { PLAYER_RADIUS } from '../shared/constants'
 import type { Appearance } from '../shared/playerData'
 import { isCallFresh } from '../world/party/medic'
@@ -104,7 +104,7 @@ export type MateModel = Readonly<{ model: Model; seat: Seat }>
 // NOTE: the client Model as each teammate's seat would show it, so the
 // player's own views draw them. Only co-op pays for it, and a frame builds
 // them once for the views that need them. Online, each teammate wears their
-// own look from the lobby (src/features/coop/looks.ts).
+// own look from the lobby (src/art/seatLooks.ts).
 export const mateModelsOf = (model: Model): ReadonlyArray<MateModel> => {
   if (!isCoop(model)) {
     return []

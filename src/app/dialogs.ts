@@ -1,27 +1,28 @@
 import { Function } from 'effect'
-import {
-  type Attribute,
-  type ChildAttribute,
-  type Html,
-  type HtmlBuilder,
-  createKeyedLazy,
-} from 'foldkit/html'
+import { type Html, createKeyedLazy } from 'foldkit/html'
 
 import type { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { CLOSE_ICON } from '../art/icons'
-import { BACK_ICON } from '../features/coop/icons'
-import type {
+import {
+  type MunchopediaView,
+  manorHandInsidesView,
+  menuPanelInsidesView,
+} from '../screens/home/homeView'
+import { homeScreenGuideInsidesView } from '../screens/home/installView'
+import { updateGreetingInsidesView } from '../screens/home/updateGift'
+import {
   HandDialogBinding,
   HomeScreenStepsBinding,
+  MunchopediaBinding,
   PanelDialogBinding,
-  ProfileDialogBinding,
+  type ProfileDialogBinding,
   UpdateGreetingBinding,
 } from './bindings'
 import type {
   ApplicationAttribute,
   ApplicationViewBuilder,
 } from './composition'
+import type { Model } from './model'
 
 // NOTE: the root's dialogs, each a Dialog Binding in src/app/composition.ts.
 // Opening and closing one is its Binding's `requestOpen` and
@@ -150,83 +151,97 @@ export const dialogShell: {
     : shellView(shell, h),
 )
 
-// CORNER BUTTONS
+// THE ROOT'S DIALOGS
 
-// NOTE: an object type, not Readonly<...>, so the pipeable check matches the
-// views' two signatures.
-type CornerButton<Message> = {
-  readonly attributes: ReadonlyArray<Attribute<Message> | ChildAttribute>
-  readonly className: string
-  readonly label: string
-}
+// NOTE: each root Dialog Binding in its shell, around the insides its screen
+// draws.
 
-// NOTE: the one close button every menu dialog shares: a red pixel X on a
-// 32 px face, centered in a bigger see-through button, so it looks small
-// but a thumb still has a 48 px target. `className` only places it, with
-// the button flush in its panel's corner so the face sits 8 px inside.
-// `attributes` carry what it does: a Dialog's `closeButton`, or an OnClick
-// for a screen that is not a Dialog, such as co-op's.
-export const closeButtonView: {
-  <Message>(h: HtmlBuilder<Message>): (self: CornerButton<Message>) => Html
-  <Message>(self: CornerButton<Message>, h: HtmlBuilder<Message>): Html
-} = Function.dual(
-  2,
-  <Message>(
-    { attributes, className, label }: CornerButton<Message>,
-    h: HtmlBuilder<Message>,
-  ): Html =>
-    h.button(
-      [
-        h.Type('button'),
-        ...attributes,
-        h.Class(`menu-close ${className}`),
-        h.AriaLabel(label),
-        h.AriaKeyshortcuts('Escape'),
-      ],
-      [faceView(CLOSE_ICON, 'menu-close-icon', h)],
-    ),
-)
-
-// NOTE: the matching back button: the same 48 px target and 32 px face in a
-// neutral fill, an arrow in place of the X. `extra` is for a key cap.
-export const backButtonView: {
-  <Message>(
-    h: HtmlBuilder<Message>,
-  ): (
-    self: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
-  ) => Html
-  <Message>(
-    self: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
-    h: HtmlBuilder<Message>,
-  ): Html
-} = Function.dual(
-  2,
-  <Message>(
-    {
-      attributes,
-      className,
-      label,
-      extra = [],
-    }: CornerButton<Message> & Readonly<{ extra?: ReadonlyArray<Html> }>,
-    h: HtmlBuilder<Message>,
-  ): Html =>
-    h.button(
-      [
-        h.Type('button'),
-        ...attributes,
-        h.Class(`menu-close menu-back ${className}`),
-        h.AriaLabel(label),
-      ],
-      [faceView(BACK_ICON, 'menu-back-icon', h), ...extra],
-    ),
-)
-
-const faceView = <Message>(
-  icon: string,
-  iconClass: string,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.span(
-    [h.Class('menu-close-face'), h.AriaHidden(true)],
-    [h.span([h.Class(iconClass), h.Style({ backgroundImage: icon })])],
+// NOTE: the Munchopedia in the menu panel, through its Binding, built at
+// module scope so a frame makes no closure for it.
+const munchopediaView: MunchopediaView = (model, doneButton, h) =>
+  h.block(
+    MunchopediaBinding.embedView({
+      slotId: 'munchopedia',
+      model: model.munchopedia,
+      viewInputs: {
+        killsByKind: model.bests.killsByKind,
+        openedEntries: model.home.openedEntries,
+        seenUnlocks: model.seenUnlocks,
+        screenMs: model.screenMs,
+        doneButton,
+      },
+    }),
   )
+
+export const manorHandView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
+  dialogShell(
+    {
+      dialog: model.handDialog,
+      dialogClass: 'hand-dialog',
+      backdropClass: 'hand-backdrop',
+      panelClass: 'hand',
+      dialogAttributes: [h.DataAttribute('device', model.lastDevice)],
+      panelView: renderInfo => manorHandInsidesView(model, renderInfo, h),
+      binding: HandDialogBinding,
+    },
+    h,
+  ),
+)
+
+export const menuPanelView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
+  dialogShell(
+    {
+      dialog: model.panelDialog,
+      dialogClass: 'panel-dialog',
+      backdropClass: 'panel-backdrop',
+      panelClass: 'panel',
+      dialogAttributes: [h.DataAttribute('panel', model.panel)],
+      panelView: renderInfo =>
+        menuPanelInsidesView(model, renderInfo, munchopediaView, h),
+      binding: PanelDialogBinding,
+    },
+    h,
+  ),
+)
+
+export const homeScreenGuideView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
+  dialogShell(
+    {
+      dialog: model.homeScreenSteps,
+      dialogClass: 'panel-dialog',
+      backdropClass: 'panel-backdrop',
+      panelClass: 'panel install-guide',
+      dialogAttributes: [h.DataAttribute('panel', 'HomeScreen')],
+      panelView: renderInfo => homeScreenGuideInsidesView(renderInfo, h),
+      binding: HomeScreenStepsBinding,
+    },
+    h,
+  ),
+)
+
+export const updateGreetingView: {
+  (h: ApplicationViewBuilder): (model: Model) => Html
+  (model: Model, h: ApplicationViewBuilder): Html
+} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
+  dialogShell(
+    {
+      dialog: model.updateGreeting,
+      dialogClass: 'panel-dialog',
+      backdropClass: 'panel-backdrop',
+      panelClass: 'panel greeting-panel',
+      dialogAttributes: [h.DataAttribute('panel', 'Updated')],
+      panelView: renderInfo => updateGreetingInsidesView(renderInfo, h),
+      binding: UpdateGreetingBinding,
+    },
+    h,
+  ),
+)

@@ -1,8 +1,8 @@
 import { Array, Function, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { AmmoTip } from '../../app/clientSchema'
 import type { Model } from '../../app/model'
+import { AmmoTip } from '../../domain/clientSchema'
 import { isObjectFirst } from '../../shared/dualArgs'
 import type { Calling } from '../../shared/playerData'
 import {

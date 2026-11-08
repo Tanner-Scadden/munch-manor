@@ -2,14 +2,6 @@ import { Array, Option, Record, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { type Palette, mirrorRows } from '../../art/sprite'
-import {
-  fridgeShapes,
-  ovenShapes,
-  pantryShapes,
-  prepTableShapes,
-  sacksShapes,
-  sinkShapes,
-} from '../../features/kitchen/kitchenView'
 import { TILE_SIZE } from '../../shared/constants'
 import {
   COVER_SYMBOLS,
@@ -20,6 +12,14 @@ import {
   tilesWithSymbol,
 } from '../../world/level/arena'
 import { pixelArt, rect } from '../drawing'
+import {
+  fridgeShapes,
+  ovenShapes,
+  pantryShapes,
+  prepTableShapes,
+  sacksShapes,
+  sinkShapes,
+} from './kitchenView'
 import {
   BONE_COLOR,
   type Box,

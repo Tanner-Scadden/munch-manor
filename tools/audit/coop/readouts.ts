@@ -11,7 +11,7 @@ import { type AuditFailed, attempt, decodedFrom, evaluateAs } from '../page'
 
 // THE ROOM'S WORLD, AS THE PAGE DRAWS IT
 
-// NOTE: the readout src/features/coop/seam.ts `readoutOf` writes on the arena, in
+// NOTE: the readout src/features/coop/auditReadout.ts `readoutOf` writes on the arena, in
 // the Schema both sides share (src/features/coop/readout.ts).
 export type Seat = Readout['players'][number]
 

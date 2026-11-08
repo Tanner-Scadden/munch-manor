@@ -2,19 +2,14 @@ import { Effect, Schema, String, pipe } from 'effect'
 import { Dom } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { cleanName, draftName, shownName } from '../../domain/playerName'
 import { LinkFlow } from '../../platform/playerSync'
 import { PlayerStore } from '../../platform/store'
 import { ProfileBlock, makeNoopStep, makeOutMessageStep } from './block'
 import { ProfileComposition } from './composition'
 import { Message, OutMessage } from './message'
 import type { Model } from './model'
-import {
-  KEEP_TUTORIAL_BUTTON_ID,
-  RESET_TUTORIAL_BUTTON_ID,
-  cleanName,
-  draftName,
-  shownName,
-} from './profile'
+import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from './profile'
 import { keepName, submitName } from './steps'
 
 // COMMANDS

@@ -1,10 +1,10 @@
 import { Array, Function } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import { KitchenCall } from '../../app/clientSchema'
 import type { Model } from '../../app/model'
 import { textShapes, textWidth } from '../../art/font'
 import { type Palette, TOP_LEFT, spriteShapes } from '../../art/sprite'
+import { KitchenCall } from '../../domain/clientSchema'
 import { placeSprite, rect } from '../../render/drawing'
 import { type Level, levelOf } from '../../world/level/arena'
 import { Phase } from '../../world/schema/worldSchema'

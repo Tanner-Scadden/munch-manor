@@ -5,7 +5,7 @@ import type { Difficulty, SavedRank } from '../../shared/playerData'
 // Rank and Bones (GAME_DESIGN.md, "Rank and Bones"): the pure rules. A
 // finished run pays rank points; points make a rank; a tenth of a run's
 // points are Bones, a currency kept for good. Nothing here reads the Model:
-// src/features/rank/rankRun.ts reads a run into a `RunPayInput`, and the save keeps what
+// src/features/end/rankRun.ts reads a run into a `RunPayInput`, and the save keeps what
 // was earned (src/shared/playerData.ts, SavedRank).
 
 // POINTS FOR A RUN

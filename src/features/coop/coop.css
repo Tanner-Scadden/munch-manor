@@ -1715,7 +1715,7 @@
 
 /* MODIFIERS: four tiles that make a run harder and pay more, a picture over
    a word, lit gold when on, and the bonus they add up to at the end. The
-   single player lobby and the co-op lobby share them (src/features/lobby/modifiersView.ts).
+   single player lobby and the co-op lobby share them (src/ui/modifiersView.ts).
    A tile only fades and lights in place. */
 
 .modifier-group {

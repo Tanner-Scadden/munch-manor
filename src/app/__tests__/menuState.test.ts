@@ -2,7 +2,7 @@ import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { Screen } from '../../features/coop/model'
+import { Screen } from '../../domain/coopRoom'
 import { RESTART_GRACE_MS } from '../../shared/constants'
 import { home, veteranFighting } from '../../test/model.fixture'
 import { pause } from '../../world/waves/waves'

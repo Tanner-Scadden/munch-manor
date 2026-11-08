@@ -6,9 +6,12 @@ import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { AudioState, type Model, Phase, RunMode } from '../../../app/model'
+import { SendShareEvent } from '../../../app/update/end'
 import { PlaySound } from '../../../app/update/sound'
+import { withBests } from '../../../domain/run'
 import { mergeRunRecords } from '../../../platform/playerScope'
 import { RUNNING_BUILD } from '../../../platform/version'
+import { bestsFor } from '../../../screens/home/home'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
@@ -19,7 +22,6 @@ import { lastHeart, readyModel } from '../../../test/model.fixture'
 import { APPLICATION, press, tick } from '../../../test/testing'
 import { focusOf, modifyFocus, seatCrew } from '../../../world/party/party'
 import { withWorld } from '../../../world/schema/world'
-import { bestsFor, withBests } from '../../home/home'
 import {
   SHARE_COPIED_MS,
   TIMELINES,
@@ -33,7 +35,6 @@ import {
   tallyRowsOf,
 } from '../endBeat'
 import { GAME_URL, copiedLineOf, sharePostOf, shareText } from '../share'
-import { SendShareEvent } from '../update'
 
 const midRun: Model = modifyFields(readyModel, {
   phase: () => Phase.Wave({ wave: 4, elapsedMs: 4000, spawns: [] }),

@@ -1,11 +1,12 @@
 import { Option } from 'effect'
 
+import { maybeRoomOf } from '../../domain/coopRoom'
 import { isPickerOpen } from '../heroes/model'
 import { HeroPickerBinding } from './bindings'
 import { makeStep } from './block'
 import { CoopComposition } from './composition'
 import type { Model } from './model'
-import { CALLING_KEY, keepTracers, maybeRoomOf, pressAction } from './roomState'
+import { CALLING_KEY, keepTracers, pressAction } from './roomState'
 import { boughtHero, closeStrayPicker, lobbyMeOf, togglePicker } from './steps'
 import {
   leaveRoom,

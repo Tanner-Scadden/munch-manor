@@ -1,8 +1,9 @@
 import { Array, Function, Option, Result, Schema, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { type HintBand, Tour } from '../../app/clientSchema'
 import type { Model } from '../../app/model'
+import type { HintIcon } from '../../art/hintIcons'
+import { type HintBand, Tour } from '../../domain/clientSchema'
 import { type InputDevice, Stick } from '../../input/inputSchema'
 import { screenCameraOf, worldToView } from '../../render/camera'
 import { landscapeFrameOffset, screenOf } from '../../render/screen'
@@ -289,31 +290,11 @@ export const moveHintBand = (model: Model): Model =>
 // wave 1 on a keyboard, and the key that places a trap once one is bought.
 // Everything else is taught where the player acts, never as a label in the
 // middle of the room, which a playtester took for a place to walk to: the
-// stall waves and calls with a bubble (src/features/shop/stallBubble.ts), START WAVE and
-// the other gun pulse (src/input/touchControls.ts, src/features/hud/hud.ts), a goodie wears a
+// stall waves and calls with a bubble (src/screens/game/stallBubble.ts), START WAVE and
+// the other gun pulse (src/screens/game/touchControls.ts, src/screens/game/hud.ts), a goodie wears a
 // bouncing arrow (src/render/powerupView.ts), and the break's countdown blinks.
 export const HintId = Schema.Literals(['Move', 'Fire', 'Barricade', 'Turret'])
 export type HintId = typeof HintId.Type
-
-// NOTE: a hint shows instead of explaining: a small moving picture of the
-// key, mouse, thumb, or thing to use, and at most three words. A part with no
-// words is a picture that leads into the next part, such as the T key before
-// the planks. How to play draws the same pictures (src/features/menus/pauseHelp.ts).
-export const HintIcon = Schema.Literals([
-  'Wasd',
-  'Mouse',
-  'MoveStick',
-  'AimStick',
-  'Tap',
-  'KeyT',
-  'KeyQ',
-  'Goodie',
-  'PlankDoor',
-  'Gnome',
-  'Guns',
-  'Stall',
-])
-export type HintIcon = typeof HintIcon.Type
 
 export type HintPart = Readonly<{ icon: HintIcon; words: string }>
 

@@ -1,11 +1,11 @@
 import { Clock, Effect, Option, Schema, Stream } from 'effect'
 
+import { Screen, maybeRoomOf } from '../../domain/coopRoom'
 import { Calling } from '../../shared/playerData'
 import { makeSubscriptions } from './block'
 import { Message } from './message'
-import { type Model, Screen } from './model'
+import { type Model } from './model'
 import { CoopNet } from './net'
-import { maybeRoomOf } from './roomState'
 
 // NOTE: co-op's streams, each running while the Model needs it: the QUICK
 // PLAY socket while queued, and the lobby and the game socket while in a

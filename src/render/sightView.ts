@@ -1,7 +1,6 @@
 import { Option } from 'effect'
 import { Canvas } from 'foldkit'
 
-import type { Model } from '../app/model'
 import { MS_PER_SECOND } from '../shared/constants'
 import { firingStats } from '../world/gear/powerups'
 import {
@@ -13,6 +12,7 @@ import {
 import { type Level, findReach, levelOf } from '../world/level/arena'
 import { focusOf } from '../world/party/party'
 import type { Vector } from '../world/schema/entitySchema'
+import type { World } from '../world/schema/world'
 import { addVectors, scaleVector } from '../world/step/geometry'
 
 // NOTE: the sight is a shop upgrade for the run, and it shows for any aim,
@@ -26,7 +26,7 @@ const FAN_EDGE_COLOR = 'rgba(255, 58, 63, 0.35)'
 
 // NOTE: the knife and the Pan fire nothing, so the sight goes dark while
 // the melee slot is in hand.
-const hasSight = (model: Model): boolean =>
+const hasSight = (model: World): boolean =>
   focusOf(model).laserSight === 'Fitted' &&
   !isWieldingMelee(focusOf(model).player)
 
@@ -75,7 +75,7 @@ const fanShapes = (
   }),
 ]
 
-export const aimSightShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+export const aimSightShapes = (model: World): ReadonlyArray<Canvas.Shape> => {
   if (!hasSight(model)) {
     return []
   }

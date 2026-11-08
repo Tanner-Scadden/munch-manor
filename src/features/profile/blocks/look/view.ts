@@ -27,6 +27,14 @@ import {
 import { DICE_ICON, pixelIconUrl } from '../../../../art/icons'
 import { type Facing, frameAt, group } from '../../../../art/sprite'
 import { gunPictureOf, gunSprite } from '../../../../art/sprites/guns'
+import {
+  type Standing,
+  canAfford,
+  priceOf,
+  standingOf,
+} from '../../../../domain/closet'
+import { type LookPart, chooseLook } from '../../../../domain/looks'
+import { lookUnlockId } from '../../../../domain/unlocks'
 import { GUN_HOLD_PX } from '../../../../render/playerView'
 import {
   PLAYER_FOOT_OFFSET,
@@ -41,10 +49,10 @@ import {
   Hat,
   type Print,
 } from '../../../../shared/playerData'
+import { newBadgeView } from '../../../../ui/menuParts'
 import { startingGunKind } from '../../../../world/heroes/calling'
 import { rankOf, totalPointsOf } from '../../../../world/heroes/rank'
 import { HAT_NAMES, hatNameOf } from '../../../../world/names'
-import { lookUnlockId } from '../../../unlocks/unlocks'
 import {
   CharacterComposition,
   type CharacterViewBuilder,
@@ -54,7 +62,6 @@ import {
   SECTION_TOGGLES,
   SectionsBinding,
   type ViewInputs,
-  chooseLook,
   flipLook,
   gearOf,
   init,
@@ -62,15 +69,13 @@ import {
   partGroupOf,
   update,
 } from './block'
-import { type Standing, canAfford, priceOf, standingOf } from './closet'
 import {
   buyPillView,
   cueAttributes,
   gearNote,
   gearTagView,
-  newBadgeView,
 } from './lookGearView'
-import { type LookPart, LookSection, type LookToggle } from './lookSchema'
+import { LookSection, type LookToggle } from './lookSchema'
 import type { CharacterPicker } from './model'
 
 // PARTS

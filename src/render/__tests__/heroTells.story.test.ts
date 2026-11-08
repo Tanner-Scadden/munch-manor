@@ -5,7 +5,8 @@ import { describe, expect, test } from 'vitest'
 import { GameEvent, type Model, Trap, defaultAppearance } from '../../app/model'
 import { mendCues } from '../../app/update/sound'
 import { BODIES, OUTFITS, playerPixels } from '../../art/appearance'
-import { Screen } from '../../features/coop/model'
+import { HAT_ART } from '../../art/sprites/hatArt'
+import { Screen } from '../../domain/coopRoom'
 import { freshRoom } from '../../features/coop/roomState'
 import {
   CODE,
@@ -14,7 +15,6 @@ import {
   playingSession,
 } from '../../features/coop/testing'
 import { coopNameShapes } from '../../features/onlineRun/coopMarksView'
-import { HAT_ART } from '../../features/profile/blocks/look/hatArt'
 import type { Appearance, Calling } from '../../shared/playerData'
 import {
   FIGHTING_PHASE,

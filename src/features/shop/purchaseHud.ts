@@ -7,6 +7,7 @@ import { HOLD_ICON } from '../../art/icons'
 import { InputMessage, RunButtonMessage } from '../../input/message'
 import { screenCameraOf, worldToView } from '../../render/camera'
 import { screenOf } from '../../render/screen'
+import { percentOf } from '../../ui/menuParts'
 import { maybeStovePerk } from '../../world/kitchen/stove'
 import { exitName } from '../../world/level/exits'
 import {
@@ -27,7 +28,6 @@ import {
   maybeTapOffer,
   shortfallFor,
 } from '../../world/shop/purchase'
-import { percentOf } from '../menus/menuParts'
 import { tagBoxOf } from './purchaseView'
 
 // NOTE: the kitchen tour's free boards and pull are read as free.

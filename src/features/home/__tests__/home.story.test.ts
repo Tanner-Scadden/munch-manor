@@ -17,6 +17,11 @@ import {
 import { WriteSave } from '../../../app/update/save'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { saveOf } from '../../../platform/save'
+import {
+  HOME_BUTTONS,
+  HOME_KEYS,
+  isNewsUnseen,
+} from '../../../screens/home/home'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN, readyModel } from '../../../test/model.fixture'
 import {
@@ -45,7 +50,6 @@ import {
   newsHeadline,
   parseChangelog,
 } from '../../whatsNew/changelog'
-import { HOME_BUTTONS, HOME_KEYS, isNewsUnseen } from '../home'
 import type { MenuPanel } from '../homeSchema'
 
 const homeAfterRead: Model = modifyFields(readyModel, {

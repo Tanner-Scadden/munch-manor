@@ -4,7 +4,7 @@ import { Story } from 'foldkit'
 import { describe, expect, it } from '@effect/vitest'
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { defaultAppearance } from '../../../app/clientSchema'
+import { defaultAppearance } from '../../../domain/clientSchema'
 import { noModifiers } from '../../../world/run/modifiers'
 import { PickOutcome } from '../../heroes/inMessage'
 import { Message as HeroPickerMessage } from '../../heroes/message'

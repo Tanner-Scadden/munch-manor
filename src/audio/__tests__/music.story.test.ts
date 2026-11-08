@@ -15,6 +15,7 @@ import {
   ZombieState,
 } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
+import { CueMusic } from '../../app/update/music'
 import { PlaySound, ResumeAudio } from '../../app/update/sound'
 import { FetchBuild } from '../../app/update/version'
 import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '../../shared/constants'
@@ -31,7 +32,6 @@ import { PARLOUR } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
 import type { MusicMood } from '../music'
-import { CueMusic } from '../musicPlan'
 
 const FRAME_MS = FIXED_STEP_MS
 const FAR_AWAY_SPAWN: PlannedSpawn = {

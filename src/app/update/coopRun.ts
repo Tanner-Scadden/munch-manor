@@ -2,7 +2,7 @@ import { Function, Option, Result, Schema } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { isRunOn } from '../../features/onlineRun/onlineRun'
+import { isRunOn } from '../../domain/onlineRun'
 import { isPauseKey, pressKey, releaseAll } from '../../input/input'
 import { playerKeyAction } from '../../input/keyActions'
 import type { PageVisibility } from '../../platform/deviceSchema'

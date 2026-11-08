@@ -1,10 +1,11 @@
 import { Array, Function, Option, String } from 'effect'
 import { Canvas } from 'foldkit'
 
-import type { HintBand, Model } from '../app/model'
+import type { Model } from '../app/model'
 import { bakeText, placeBaked } from '../art/font'
 import { group } from '../art/sprite'
 import { BOSS_ICON } from '../art/sprites/zombies'
+import type { HintBand } from '../domain/clientSchema'
 import { VIEW_WIDTH } from '../shared/constants'
 import { type Level, findStrike, levelOf } from '../world/level/arena'
 import {

@@ -5,6 +5,8 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Life, type Model, Phase } from '../../../app/model'
+import { badgeSprite } from '../../../art/rankArt'
+import { Screen } from '../../../domain/coopRoom'
 import { PORTRAIT_WIDTH } from '../../../render/screen'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
@@ -33,10 +35,8 @@ import {
   idleIntent,
 } from '../../../world/schema/worldSchema'
 import { stepWorld } from '../../../world/step/stepWorld'
-import { Screen } from '../../coop/model'
 import { freshRoom } from '../../coop/roomState'
 import { CODE, lobbyOf, memberOf } from '../../coop/testing'
-import { badgeSprite } from '../../rank/rankArt'
 import {
   type CrewMember,
   SHARPSHOOTER_MIN_SHOTS,

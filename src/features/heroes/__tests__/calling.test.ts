@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 
 import { defaultAppearance } from '../../../app/model'
 import { playerPixels } from '../../../art/appearance'
+import { specialsOf } from '../../../domain/callingSpecials'
 import { PLAYER_MAX_HP } from '../../../shared/constants'
 import { heldGun } from '../../../world/gear/weapons'
 import {
@@ -27,7 +28,6 @@ import {
 } from '../../../world/heroes/calling'
 import { playerOfCalling } from '../../../world/heroes/callingPlayer'
 import { initialPlayer } from '../../../world/schema/worldSchema'
-import { specialsOf } from '../callingSpecials'
 
 // The callings' rules (src/world/heroes/calling.ts), each a pure function of a calling.
 

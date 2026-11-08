@@ -2,6 +2,8 @@ import { Effect, Option, Schema, pipe } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { callingOfMember } from '../../art/seatLooks'
+import { LobbyChange, isInLobby, maybeRoomOf } from '../../domain/coopRoom'
 import type { Calling } from '../../shared/playerData'
 import {
   type CallingStanding,
@@ -14,11 +16,10 @@ import { isPickerOpen } from '../heroes/model'
 import { HeroPickerBinding } from './bindings'
 import { CoopBlock, makeNoopStep, makeStep } from './block'
 import { makeEdits } from './lobbyEdits'
-import { callingOfMember } from './looks'
 import { Message, OutMessage } from './message'
-import { LobbyChange, type Model } from './model'
+import { type Model } from './model'
 import { CoopNet } from './net'
-import { CALLING_PILL_ID, isInLobby, maybeRoomOf, meIn } from './roomState'
+import { CALLING_PILL_ID, meIn } from './roomState'
 
 // Co-op's Steps that its update, its InMessages, and the hero picker's fold
 // share (FOLDKIT.md, "File organization"), with the two Commands they

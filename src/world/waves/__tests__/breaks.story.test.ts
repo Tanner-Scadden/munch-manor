@@ -17,16 +17,16 @@ import {
 } from '../../../app/model'
 import { initialModel, update } from '../../../app/pureApp'
 import { SetFullscreen } from '../../../app/update/fullscreen'
+import { ShowInstallPrompt } from '../../../app/update/home'
 import { keepGoing } from '../../../app/update/run'
-import { ShowInstallPrompt } from '../../../features/home/update'
 import {
   DEBUT_CARD_MIN_MS,
   DEBUT_CARD_MS,
   isCountdownBeckoning,
   shownHints,
 } from '../../../features/onboarding/onboarding'
-import { maybeBubbleKind } from '../../../features/shop/stallBubble'
 import { cameraOf } from '../../../render/camera'
+import { maybeBubbleKind } from '../../../screens/game/stallBubble'
 import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
 import { home, onHard, pastTimedBreaks } from '../../../test/model.fixture'
 import { showDialog, tap, tick, ticks } from '../../../test/testing'

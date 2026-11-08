@@ -1,7 +1,7 @@
 import { Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { Screen, screenInRoom } from '../../../features/coop/model'
+import { Screen, screenInRoom } from '../../../domain/coopRoom'
 import { freshRoom } from '../../../features/coop/roomState'
 
 describe('values built without validating', () => {

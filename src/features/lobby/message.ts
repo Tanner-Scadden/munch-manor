@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 
-import { HomeMode } from '../../app/clientSchema'
+import { HomeMode } from '../../domain/clientSchema'
 import { Calling, Difficulty } from '../../shared/playerData'
 import { Modifier } from '../../world/run/modifiers'
 import { LobbyControl } from './model'

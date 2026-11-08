@@ -8,16 +8,6 @@ import {
   type RoomScore,
 } from '@munch/netcode'
 
-import { backButtonView, closeButtonView } from '../../app/dialogs'
-import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '../../art/icons'
-import { seatColorOf } from '../../render/partyView'
-import type { Appearance, Calling } from '../../shared/playerData'
-import { CALLING_NAMES } from '../../world/names'
-import { type Model as HeroPickerModel, isPickerOpen } from '../heroes/model'
-import { callingPropView, iconView, rankTagView } from '../menus/menuParts'
-import { HeroPickerBinding } from './bindings'
-import type { ViewInputs } from './block'
-import { CoopComposition, type CoopViewBuilder } from './composition'
 import {
   AWAY_ICON,
   CHECK_ICON,
@@ -33,17 +23,29 @@ import {
   WAIT_ICON,
   WIFI_ICONS,
   portraitOf,
-} from './icons'
-import { callingOfMember, seatLook, seatLookOf } from './looks'
-import { Message } from './message'
+} from '../../art/coopIcons'
+import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '../../art/icons'
+import { callingOfMember, seatLook, seatLookOf } from '../../art/seatLooks'
 import {
   type CoopProblem,
-  type Model,
   type Queue,
   type Room,
   RoomRequest,
   Screen,
-} from './model'
+  isInLobby,
+} from '../../domain/coopRoom'
+import { seatColorOf } from '../../render/partyView'
+import type { Appearance, Calling } from '../../shared/playerData'
+import { backButtonView, closeButtonView } from '../../ui/cornerButtons'
+import { callingPropView, iconView, rankTagView } from '../../ui/menuParts'
+import { CALLING_NAMES } from '../../world/names'
+import { type Model as HeroPickerModel, isPickerOpen } from '../heroes/model'
+import { readoutOf } from './auditReadout'
+import { HeroPickerBinding } from './bindings'
+import type { ViewInputs } from './block'
+import { CoopComposition, type CoopViewBuilder } from './composition'
+import { Message } from './message'
+import { type Model } from './model'
 import { askingView, poofView, queueRollView } from './motionArt'
 import { nameButtonView, namePickerView } from './namePicker'
 import { picksView } from './picksView'
@@ -53,10 +55,8 @@ import {
   READY_BUTTON_ID,
   ROOM_CODE_LENGTH,
   isHost,
-  isInLobby,
   meIn,
 } from './roomState'
-import { readoutOf } from './seam'
 
 // INPUTS
 
@@ -939,7 +939,7 @@ const netView = (room: Room, h: CoopViewBuilder): Html => {
 }
 
 // NOTE: the run itself is the game's own scene under this overlay
-// (src/features/onlineRun/coopPlay.ts), drawn from the room's World with the game's views.
+// (src/app/update/coopPlay.ts), drawn from the room's World with the game's views.
 // Co-op adds only what the room is: LEAVE, the countdown, Away while the
 // socket reconnects, and the trophy when the run ends.
 // NOTE: every player's bars in their seat's color, your own from your
@@ -1001,7 +1001,7 @@ const arenaView = (room: Room, h: CoopViewBuilder): Html =>
   )
 
 // NOTE: while the root's end card is up the room's choices are its buttons
-// (RUN IT BACK, LOBBY, LEAVE in src/features/menus/menus.ts), so co-op draws nothing over
+// (RUN IT BACK, LOBBY, LEAVE in src/screens/game/menus.ts), so co-op draws nothing over
 // it: no scrim, and nothing to take a tap.
 const roomView = (
   room: Room,

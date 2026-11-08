@@ -16,17 +16,17 @@ import {
   updateCheckActivity,
 } from '../../app/subscriptions'
 import {
+  FocusEndMenuButton,
+  ReloadPage,
+  WaitForUnwrap,
+} from '../../app/update/home'
+import {
   FetchBuild,
   RegisterServiceWorker,
   UpdateServiceWorker,
   recordRemoteBuild,
   registerServiceWorkerAfterSplash,
 } from '../../app/update/version'
-import {
-  FocusEndMenuButton,
-  ReloadPage,
-  WaitForUnwrap,
-} from '../../features/home/update'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../shared/constants'
 import { WAVE_3_BREAK, fighting } from '../../test/model.fixture'
 import { APPLICATION, showDialog } from '../../test/testing'

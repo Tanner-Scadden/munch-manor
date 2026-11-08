@@ -22,6 +22,8 @@ import {
 } from '../../art/icons'
 import { type Sprite, group, placeAt, spriteShapes } from '../../art/sprite'
 import { ZOMBIE_SPRITES } from '../../art/sprites/zombies'
+import { effectiveModifiersOf } from '../../domain/onlineRun'
+import { isAskingForFeedback } from '../../domain/run'
 import { QUARTER_TURN, rect } from '../../render/drawing'
 import { playerFootY } from '../../render/playerView'
 import { FEEDBACK_LINE, VIEW_HEIGHT, VIEW_WIDTH } from '../../shared/constants'
@@ -33,9 +35,6 @@ import { Invulnerability, type Zombie } from '../../world/schema/entitySchema'
 import { Phase } from '../../world/schema/worldSchema'
 import { roundWave } from '../../world/waves/waves'
 import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
-import { isAskingForFeedback } from '../home/home'
-import { effectiveModifiersOf } from '../onlineRun/onlineRun'
-import { STRIP_PX, rankStripShapes } from '../rank/rankStripView'
 import {
   PANEL_EDGE,
   PANEL_FILL,
@@ -66,6 +65,7 @@ import {
   skullCountOf,
   tallyRowsOf,
 } from './endBeat'
+import { STRIP_PX, rankStripShapes } from './rankStripView'
 import { ICON_SHIFT, TALLY_ICONS, type TallyIcon } from './tallyIcons'
 
 // The end of a run on the overlay canvas, in the landscape frame: the flash,

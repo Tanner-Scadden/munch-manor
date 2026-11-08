@@ -5,8 +5,13 @@ import { modifyFields } from 'foldkit/struct'
 import type { ShopGuideSection } from '../../shared/nameKeys'
 import { GuideBlock } from './block'
 import { Message } from './message'
-import { GuidePlacement, GuideStatus, type Model, isGuideOpen } from './model'
-import { GUIDE_FOCUS_IDS } from './shopGuide'
+import {
+  GUIDE_FOCUS_IDS,
+  GuidePlacement,
+  GuideStatus,
+  type Model,
+  isGuideOpen,
+} from './model'
 
 // The guide's own transitions, shared by its update and its InMessages
 // (FOLDKIT.md, "File organization").

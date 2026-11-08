@@ -6,6 +6,7 @@ import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
+import { ClickSupportLink } from '../../../app/update/home'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import {
   fighting,
@@ -25,7 +26,6 @@ import {
 } from '../../../test/testing'
 import { pause } from '../../../world/waves/waves'
 import menuCss from '../../home/menu.css?raw'
-import { ClickSupportLink } from '../../home/update'
 
 const TEST_LINK = 'https://buy.stripe.com/test_coffee'
 

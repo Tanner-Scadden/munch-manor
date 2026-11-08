@@ -1,8 +1,8 @@
 import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { Tour } from '../../app/clientSchema'
 import type { Model } from '../../app/model'
+import { Tour } from '../../domain/clientSchema'
 import { barricadedDoors } from '../../world/gear/traps'
 import { levelOf } from '../../world/level/arena'
 import { focusOf, isCoop } from '../../world/party/party'

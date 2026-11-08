@@ -2,29 +2,14 @@ import { Array, Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  activeBots,
-  addBot,
-  removeBot,
-  setBotCalling,
-} from '../../features/bots/bots'
+import { activeBots, addBot, removeBot, setBotCalling } from '../../domain/bots'
+import { isOnHome } from '../../domain/run'
+import { markCallingsSeen } from '../../domain/unlocks'
 import { buyCalling, chooseCalling } from '../../features/heroes/callingPick'
 import { PickOutcome } from '../../features/heroes/inMessage'
-import {
-  isOnHome,
-  lobbyPicksOf,
-  runModeOf,
-  switchMode,
-} from '../../features/home/home'
-import {
-  FocusHomeButton,
-  isAskingDifficultyFirst,
-  startOrAsk,
-  startWithMode,
-} from '../../features/home/update'
 import { isLearned } from '../../features/onboarding/onboarding'
-import { markCallingsSeen } from '../../features/unlocks/update'
 import { isStartKey, releaseAll } from '../../input/input'
+import { lobbyPicksOf, runModeOf, switchMode } from '../../screens/home/home'
 import type { Calling, Difficulty } from '../../shared/playerData'
 import {
   type CallingStanding,
@@ -39,6 +24,12 @@ import { LobbyBinding } from '../bindings'
 import { makeStep } from '../definition'
 import { isOnHomeMenu } from '../menuState'
 import type { HomeMode, Model } from '../model'
+import {
+  FocusHomeButton,
+  isAskingDifficultyFirst,
+  startOrAsk,
+  startWithMode,
+} from './home'
 import { playSounds, tapSound, uiCue, unlockAudio } from './sound'
 import {
   type UpdateStep,

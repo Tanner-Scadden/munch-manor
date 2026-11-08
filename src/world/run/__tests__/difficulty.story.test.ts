@@ -5,8 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, it, test } from '@effect/vitest'
 import { DialogBlock } from '@foldkit/ui'
 
-import { LobbyBinding } from '../../../app/bindings'
-import { PanelDialogBinding } from '../../../app/bindings'
+import { LobbyBinding, PanelDialogBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import {
   type Difficulty,
@@ -22,8 +21,8 @@ import {
   ZombieState,
 } from '../../../app/model'
 import { update } from '../../../app/pureApp'
-import { bestsFor } from '../../../features/home/home'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
+import { bestsFor } from '../../../screens/home/home'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { newPlayerReady, readyModel } from '../../../test/model.fixture'
 import {

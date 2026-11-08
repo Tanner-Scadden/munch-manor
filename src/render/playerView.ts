@@ -503,7 +503,7 @@ export const playerFootY = (player: Player): number =>
 export const playerShadow = (player: Player): Canvas.Shape =>
   footShadow(player, PLAYER_FOOT_OFFSET, PLAYER_SHADOW_WIDTH, SHADOW_COLOR)
 
-// NOTE: `rise` lifts the bar over a hat (hatRiseOf in src/features/profile/blocks/look/hatArt.ts).
+// NOTE: `rise` lifts the bar over a hat (hatRiseOf in src/art/sprites/hatArt.ts).
 export const reloadBarShapes: {
   (rise?: number): (player: Player) => ReadonlyArray<Canvas.Shape>
   (player: Player, rise?: number): ReadonlyArray<Canvas.Shape>

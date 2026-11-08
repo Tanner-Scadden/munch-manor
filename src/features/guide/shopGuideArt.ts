@@ -1,5 +1,3 @@
-import type { HouseSpot, ShopGuideSection } from '../../shared/nameKeys'
-import type { FridgePrize } from '../../world/schema/worldSchema'
 import {
   HEART_FULL,
   RATTLES_ART,
@@ -7,11 +5,13 @@ import {
   artOf,
   gunArt,
   itemArt,
-} from '../shop/shopArt'
+} from '../../art/shopArt'
+import type { HouseSpot, ShopGuideSection } from '../../shared/nameKeys'
+import type { FridgePrize } from '../../world/schema/worldSchema'
 import { GuideArt } from './shopGuide'
 
 // NOTE: the shop guide's pictures. Guns, goods, and traps are the shop's own
-// art (src/features/shop/shopArt.ts); the fridge's gags and the places around the house are
+// art (src/art/shopArt.ts); the fridge's gags and the places around the house are
 // drawn here, as pixel maps turned into SVG once at module scope.
 
 const INK = '#140c10'
@@ -190,6 +190,3 @@ const SECTION_ART: Readonly<Record<ShopGuideSection, ShopArt>> = {
 
 export const sectionArtOf = (section: ShopGuideSection): ShopArt =>
   SECTION_ART[section]
-
-// NOTE: the Shop tile on the Munchopedia's list wears Rattles' face.
-export const SHOP_TILE_ART: ShopArt = RATTLES_ART.Grinning

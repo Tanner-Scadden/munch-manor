@@ -3,11 +3,11 @@ import type { Html } from 'foldkit/html'
 
 import { MAX_PLAYERS } from '@munch/netcode'
 
-import { iconView } from '../menus/menuParts'
+import { DOOR_ICON, POOF_ICON, portraitOf } from '../../art/coopIcons'
+import { seatLook } from '../../art/seatLooks'
+import { RoomRequest } from '../../domain/coopRoom'
+import { iconView } from '../../ui/menuParts'
 import type { CoopViewBuilder } from './composition'
-import { DOOR_ICON, POOF_ICON, portraitOf } from './icons'
-import { seatLook } from './looks'
-import { RoomRequest } from './model'
 
 // NOTE: co-op's moving art, all of it aria-hidden pictures that move inside
 // boxes that stay put (src/app/__tests__/motion.test.ts): the request in flight, the

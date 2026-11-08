@@ -2,6 +2,7 @@ import { Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
+import { callingUnlockId, withoutFresh } from '../../domain/unlocks'
 import { type Calling, heroIdOf } from '../../shared/playerData'
 import {
   callingForRun,
@@ -10,8 +11,6 @@ import {
 } from '../../world/heroes/calling'
 import { playerOfCalling } from '../../world/heroes/callingPlayer'
 import { modifyFocus } from '../../world/party/party'
-import { callingUnlockId } from '../unlocks/unlocks'
-import { withoutFresh } from '../unlocks/update'
 
 // NOTE: the calling picked before a run (GAME_DESIGN.md, "Rank and Bones").
 // The pick is saved and synced, but a run starts with it only if this

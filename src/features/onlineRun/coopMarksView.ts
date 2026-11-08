@@ -4,6 +4,9 @@ import { Canvas } from 'foldkit'
 import type { Model } from '../../app/model'
 import { textShapes } from '../../art/font'
 import { TOP_LEFT, bakeShapes, placeAt, spriteShapes } from '../../art/sprite'
+import { isBotCrew, maybeCrewBotAt } from '../../domain/bots'
+import { maybeRoomOf } from '../../domain/coopRoom'
+import { seatNamesOf } from '../../domain/onlineRun'
 import { type Camera, worldToView } from '../../render/camera'
 import {
   NAME_LIFT_CALLING_PX,
@@ -22,9 +25,6 @@ import {
 } from '../../world/party/party'
 import type { Seat } from '../../world/schema/worldSchema'
 import { isBreak } from '../../world/waves/waves'
-import { isBotCrew, maybeCrewBotAt } from '../bots/bots'
-import { maybeRoomOf } from '../coop/roomState'
-import { seatNamesOf } from './onlineRun'
 
 // What an online co-op run adds over the players (MULTIPLAYER.md, Phase
 // 2): each teammate's name over their head, READY over everyone who is

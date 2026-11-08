@@ -22,7 +22,7 @@
 //   copy of what is already shared fails as well.
 // - Game modules, the rest of `src`, each package's `src`, and infra's
 //   Worker: a canvas helper belongs in `src/render/drawing.ts`, a menu helper in
-//   `src/features/menus/menuParts.ts`, and anything else in the module it is about.
+//   `src/ui/menuParts.ts`, and anything else in the module it is about.
 //
 // Files are compared within one code base: `src` and `tools` together, each
 // package under `packages/`, and `infra`.
@@ -96,7 +96,7 @@ const KINDS: ReadonlyArray<Kind> = [
     ],
     isSkipped: file => isTestSupport(file) || String.endsWith('.d.ts')(file),
     advice:
-      'share each: canvas helpers from src/render/drawing.ts, menu view helpers from src/features/menus/menuParts.ts, the rest from the module they are about',
+      'share each: canvas helpers from src/render/drawing.ts, menu view helpers from src/ui/menuParts.ts, the rest from the module they are about',
   },
 ]
 

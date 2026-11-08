@@ -4,6 +4,8 @@ import { modifyFields } from 'foldkit/struct'
 
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
+import { isLeftFromRoom, maybeRunRoom } from '../../domain/onlineRun'
+import { cleanName, joinName } from '../../domain/playerName'
 import { IS_COOP_RELEASED } from '../../features/coop/release'
 import { readRoomLink } from '../../features/coop/roomState'
 import * as Coop from '../../features/coop/update'
@@ -12,15 +14,9 @@ import {
   chooseCalling,
   startingCallingOf,
 } from '../../features/heroes/callingPick'
-import { isCoopKey } from '../../features/home/home'
-import { FocusHomeButton, goHome } from '../../features/home/update'
-import { playRoomFrame } from '../../features/onlineRun/coopPlay'
-import {
-  isLeftFromRoom,
-  maybeRunRoom,
-} from '../../features/onlineRun/onlineRun'
-import { cleanName, joinName } from '../../features/profile/profile'
+import { isCoopKey } from '../../screens/home/home'
 import { type Calling, lookCodeOf } from '../../shared/playerData'
+import { stepWhen } from '../../shared/stepWhen'
 import { callingStandingOf, canAffordCalling } from '../../world/heroes/calling'
 import { bonesBalanceOf, rankOf, totalPointsOf } from '../../world/heroes/rank'
 import type { SeatAction } from '../../world/step/stepWorld'
@@ -29,7 +25,8 @@ import { ApplicationBlock, makeStep } from '../definition'
 import { MenuState, menuState } from '../menuState'
 import { Message } from '../message'
 import type { Model } from '../model'
-import { stepWhen } from '../stepWhen'
+import { playRoomFrame } from './coopPlay'
+import { FocusHomeButton, goHome } from './home'
 import { playSounds, tapSound, uiCue, unlockAudio } from './sound'
 import {
   type UpdateStep,
@@ -125,7 +122,7 @@ export const neededNewerBuild: UpdateStep = stepModel =>
 
 // NOTE: the room's frame clock is the root's (src/app/subscriptions.ts). In a
 // run the room gets this client's controls and the root draws what came
-// back (src/features/onlineRun/coopPlay.ts); in a lobby the room ticks with none.
+// back (src/app/update/coopPlay.ts); in a lobby the room ticks with none.
 const tickRoomFrame = (nowMs: number) =>
   makeStep(model =>
     Option.isSome(maybeRunRoom(model))

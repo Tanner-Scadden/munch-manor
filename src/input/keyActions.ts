@@ -8,7 +8,7 @@ import { SeatAction } from '../world/step/stepWorld'
 // The keys that press a seat action (src/world/step/stepWorld.ts), in one table that
 // single player, co-op's client, and the couch all read. Each seat names
 // its own key for each action: player 1 the usual keys, a couch player a
-// block of their own (src/features/couch/couch.ts).
+// block of their own (src/input/couch.ts).
 
 // NOTE: held to buy at a purchasable (src/world/shop/purchase.ts), pressed to buy at
 // the ammo window, pressed for READY elsewhere, and while downed, MEDIC!

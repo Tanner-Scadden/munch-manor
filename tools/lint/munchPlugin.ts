@@ -7,8 +7,12 @@
 
 import { Array, Option, Record, String } from 'effect'
 
-import { definePlugin, defineRule } from '@oxlint/plugins'
-import type { ESTree, SourceCode } from '@oxlint/plugins'
+import {
+  type ESTree,
+  type SourceCode,
+  definePlugin,
+  defineRule,
+} from '@oxlint/plugins'
 
 import {
   hasName,
@@ -323,7 +327,7 @@ const noConditionalStep = defineRule({
           context.report({
             node,
             message:
-              'A Step run on a condition: use stepWhen(isDue, step) from src/app/stepWhen.ts, or match the union when the condition narrows it (AGENTS.md "Code shape").',
+              'A Step run on a condition: use stepWhen(isDue, step) from src/shared/stepWhen.ts, or match the union when the condition narrows it (AGENTS.md "Code shape").',
           })
         }
       },
@@ -680,13 +684,33 @@ const noBindingFieldWrite = defineRule({
   },
 })
 
-// NOTE: the folders of src (AGENTS.md "Folders"). src/world/ is what the
-// co-op room loads, so it reaches only itself and src/shared/; src/shared/
-// reaches only itself. Both import only the packages the room's bundle
-// carries (Effect and Foldkit's pure struct and schema modules) and the
-// netcode package's types. Shipped code never imports a test home
-// (src/test/) or a test's folder (__tests__/). Tests may import anything.
+// NOTE: the folders of src (AGENTS.md "Folders"), in layers that import only
+// down: src/app/ over src/screens/ (one folder per screen, each apart from
+// the others) over src/features/ over the shared client layers
+// (src/ui/, src/domain/, src/render/, src/art/, src/audio/, src/input/,
+// src/platform/, which import each other freely) over src/world/ over
+// src/shared/. src/world/ is what the co-op room loads, so it reaches only
+// itself and src/shared/; src/shared/ reaches only itself. Both import only
+// the packages the room's bundle carries (Effect and Foldkit's pure struct
+// and schema modules) and the netcode package's types. Shipped code never
+// imports a test home (src/test/) or a test's folder (__tests__/). Tests
+// may import anything.
 const SRC_PATH = /(?:^|\/)src\/(.*)$/
+
+const LAYER_RANKS: Readonly<Record<string, number>> = {
+  app: 5,
+  screens: 4,
+  features: 3,
+  ui: 2,
+  domain: 2,
+  render: 2,
+  art: 2,
+  audio: 2,
+  input: 2,
+  platform: 2,
+  world: 1,
+  shared: 0,
+}
 
 const FOLDERS_ALLOWED: Readonly<Record<string, ReadonlyArray<string>>> = {
   world: ['world', 'shared'],
@@ -696,6 +720,38 @@ const FOLDERS_ALLOWED: Readonly<Record<string, ReadonlyArray<string>>> = {
 const ROOM_PACKAGES = /^(effect(\/.*)?|foldkit\/(struct|schema))$/
 
 const ROOM_TYPE_PACKAGES = /^@munch\/netcode$/
+
+// NOTE: the one way up: a type, never a value, of the root's one Model and
+// of its view builder. A feature's rules and views, and the client layers'
+// drawing, read the root's Model, which is the World's fields beside the
+// client's own (src/app/model.ts); a view built with the root's builder
+// sends the root's Messages. Each is a type, so it brings no module along.
+const ROOT_TYPES: Readonly<Record<string, ReadonlyArray<string>>> = {
+  'app/model': ['Model'],
+  'app/composition': ['ApplicationViewBuilder', 'ApplicationAttribute'],
+}
+
+// NOTE: a feature never imports another, but for a parent Block that binds a
+// child Block (FOLDKIT.md "File organization"): the parent imports the
+// child's contract, the files a Binding needs and nothing more.
+const CHILD_BLOCKS: Readonly<Record<string, ReadonlyArray<string>>> = {
+  // NOTE: the single player lobby opens the hero picker from its hero card.
+  lobby: ['heroes'],
+  // NOTE: co-op's lobby opens the same hero picker from its hero pill.
+  coop: ['heroes'],
+  // NOTE: Rattles' shop dialog shows the shop guide behind its ?.
+  shop: ['guide'],
+  // NOTE: the Munchopedia shows the shop guide on its Shop page.
+  munchopedia: ['guide'],
+}
+
+const CONTRACT_FILES: ReadonlyArray<string> = [
+  'block',
+  'layer',
+  'model',
+  'message',
+  'inMessage',
+]
 
 const isTestPath = (path: string): boolean =>
   String.startsWith('test/')(path) || String.includes('__tests__/')(path)
@@ -727,6 +783,45 @@ const resolveUnderSrc = (
 const folderOf = (path: string): string =>
   Option.getOrElse(Array.head(String.split('/')(path)), () => '')
 
+// NOTE: the feature (or screen) a path under src/features/ (or src/screens/)
+// belongs to: its folder there.
+const featureOf = (path: string): string =>
+  Option.getOrElse(Array.get(String.split('/')(path), 1), () => '')
+
+const withoutExtension = (path: string): string =>
+  String.replace(/\.ts$/, '')(path)
+
+// NOTE: a file straight in a feature's folder that its parent may import:
+// `features/heroes/block`, not `features/heroes/view`.
+const isContractOf = (child: string, target: string): boolean => {
+  const segments = String.split('/')(withoutExtension(target))
+  return (
+    segments.length === 3 &&
+    segments[1] === child &&
+    Array.contains(CONTRACT_FILES, segments[2] ?? '')
+  )
+}
+
+const isChildContract = (importer: string, target: string): boolean =>
+  Array.some(CHILD_BLOCKS[featureOf(importer)] ?? [], child =>
+    isContractOf(child, target),
+  )
+
+// NOTE: a type-only import of exactly the root's types ROOT_TYPES lists.
+const isRootType = (
+  target: string,
+  isTypeOnly: boolean,
+  names: ReadonlyArray<string>,
+): boolean => {
+  const allowed = ROOT_TYPES[withoutExtension(target)]
+  return (
+    isTypeOnly &&
+    allowed !== undefined &&
+    Array.isReadonlyArrayNonEmpty(names) &&
+    Array.every(names, name => Array.contains(allowed, name))
+  )
+}
+
 // NOTE: the root's Message union is only the join of its groups, each in
 // the folder of the feature that sends it (AGENTS.md "Folders"), so code
 // below src/app/ builds and types its Messages from its own group.
@@ -734,6 +829,15 @@ const ROOT_MESSAGE_PATH = 'app/message'
 
 const ROOT_MESSAGE_IMPORT_MESSAGE =
   'Only src/app/ imports the root\'s Message union (src/app/message.ts). Build and type a Message from its group, in the folder of the feature that sends it (AGENTS.md "Folders").'
+
+const UPWARD_MESSAGE = (folder: string, target: string): string =>
+  `src/${folder}/ imports only its own layer and the ones below it (app, then screens, then features, then ui, domain, render, art, audio, input, and platform, then world, then shared), not src/${target}. Move what both need down to the layer they share, or move the code that puts them together up. The one way up is \`import type\` of the root's Model or view builder (AGENTS.md "Folders").`
+
+const SIBLING_MESSAGE = (feature: string, target: string): string =>
+  `src/features/${feature}/ never imports another feature (src/${target}): move what both need down, or wire them in src/app/. Only a parent Block imports the contract (${Array.join(CONTRACT_FILES, ', ')}) of a child it binds (AGENTS.md "Folders").`
+
+const SCREEN_MESSAGE = (screen: string, target: string): string =>
+  `src/screens/${screen}/ never imports another screen (src/${target}): move what both need down to a feature or a shared layer (AGENTS.md "Folders").`
 
 const FOLDER_IMPORTS_MESSAGE = (
   folder: string,
@@ -744,12 +848,27 @@ const FOLDER_IMPORTS_MESSAGE = (
     ' and ',
   )}${folder === 'world' ? ', since the co-op room loads it,' : ''} and Effect and Foldkit's struct and schema modules (AGENTS.md "Folders").`
 
+// NOTE: the names a declaration imports: none for a bare or namespace
+// import, which the root's types never allow.
+const importedNamesOf = (
+  node: ESTree.ImportDeclaration,
+): ReadonlyArray<string> => {
+  const named = Array.filter(
+    node.specifiers,
+    (specifier): specifier is ESTree.ImportSpecifier =>
+      specifier.type === 'ImportSpecifier',
+  )
+  return named.length === node.specifiers.length
+    ? Array.map(named, importedName)
+    : []
+}
+
 const folderImports = defineRule({
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Keep src/world/ to what the co-op room may load, src/shared/ to itself, tests out of shipped code, and the root Message union in src/app/.',
+        'Keep the layers of src one way (app over screens over features over the client layers over world over shared), screens apart, features apart but for a parent and its child Block, src/world/ to what the co-op room may load, tests out of shipped code, and the root Message union in src/app/.',
     },
   },
   create(context) {
@@ -764,6 +883,7 @@ const folderImports = defineRule({
       node: Node,
       source: ESTree.StringLiteral | ESTree.Expression | null | undefined,
       isTypeOnly: boolean,
+      names: ReadonlyArray<string>,
     ): void => {
       if (!isStringLiteral(source)) {
         return
@@ -802,11 +922,40 @@ const folderImports = defineRule({
         })
         return
       }
-      if (
-        folder !== 'app' &&
-        String.replace(/\.ts$/, '')(target) === ROOT_MESSAGE_PATH
-      ) {
+      if (folder !== 'app' && withoutExtension(target) === ROOT_MESSAGE_PATH) {
         context.report({ node, message: ROOT_MESSAGE_IMPORT_MESSAGE })
+        return
+      }
+      const importerRank = LAYER_RANKS[folder]
+      const targetRank = LAYER_RANKS[folderOf(target)]
+      if (importerRank === undefined || targetRank === undefined) {
+        return
+      }
+      if (targetRank > importerRank && !isRootType(target, isTypeOnly, names)) {
+        context.report({ node, message: UPWARD_MESSAGE(folder, target) })
+        return
+      }
+      if (
+        folder === 'screens' &&
+        folderOf(target) === 'screens' &&
+        featureOf(importer) !== featureOf(target)
+      ) {
+        context.report({
+          node,
+          message: SCREEN_MESSAGE(featureOf(importer), target),
+        })
+        return
+      }
+      if (
+        folder === 'features' &&
+        folderOf(target) === 'features' &&
+        featureOf(importer) !== featureOf(target) &&
+        !isChildContract(importer, target)
+      ) {
+        context.report({
+          node,
+          message: SIBLING_MESSAGE(featureOf(importer), target),
+        })
       }
     }
     return {
@@ -822,16 +971,17 @@ const folderImports = defineRule({
                   specifier.type === 'ImportSpecifier' &&
                   specifier.importKind === 'type',
               )),
+          importedNamesOf(node),
         )
       },
       ExportNamedDeclaration(node) {
-        check(node, node.source, node.exportKind === 'type')
+        check(node, node.source, node.exportKind === 'type', [])
       },
       ExportAllDeclaration(node) {
-        check(node, node.source, node.exportKind === 'type')
+        check(node, node.source, node.exportKind === 'type', [])
       },
       ImportExpression(node) {
-        check(node, node.source, false)
+        check(node, node.source, false, [])
       },
     }
   },

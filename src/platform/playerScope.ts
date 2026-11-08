@@ -257,7 +257,7 @@ export const ChangedSettings = defineMutation({
 // look, 2 the many-part one). The row may still hold an older look until the
 // first change, so it is read as StoredAppearance. A look worn but not owned
 // is not checked against what the player owns here: it is shown as stock
-// (lookInOwned in src/features/profile/blocks/look/closet.ts).
+// (lookInOwned in src/domain/closet.ts).
 /** @stability unstable */
 export const ChangedAppearance = defineMutation({
   name: 'ChangedAppearance',
@@ -448,7 +448,7 @@ const encodeUnlocks = Schema.encodeEffect(
   Schema.fromJsonString(SavedSeenUnlocks),
 )
 
-// NOTE: the unlocks a device saw (src/features/unlocks/unlocks.ts), added to the ones the
+// NOTE: the unlocks a device saw (src/domain/unlocks.ts), added to the ones the
 // player has seen on any device. A union, so two devices offline at once
 // both keep what they saw, in whatever order the server gets them. The
 // baseline mark of a row from before NEW badges goes, as the ids it stood for

@@ -1,13 +1,13 @@
 import { Array, Record } from 'effect'
 
-import { defaultAppearance } from '../app/model'
-import { SEAT_LOOKS } from '../features/coop/looks'
+import { defaultAppearance } from '../domain/clientSchema'
 import { occludersOf } from '../render/occluders'
 import { roomShapes } from '../render/room/room'
 import { CALLINGS } from '../world/heroes/calling'
 import { LEVEL_SPECS, type LevelSpec, levelFor } from '../world/level/arena'
 import type { ExitId } from '../world/schema/entitySchema'
 import { playerSprites } from './appearance'
+import { SEAT_LOOKS } from './seatLooks'
 
 // NOTE: most sprites are built as their modules load, and the atlas
 // generator (tools/sprites/build.ts) finds them by loading the modules. These

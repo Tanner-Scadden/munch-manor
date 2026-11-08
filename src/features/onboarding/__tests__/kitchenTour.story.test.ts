@@ -16,6 +16,7 @@ import {
 } from '../../../app/model'
 import { forgetTutorial } from '../../../platform/save'
 import { cameraOf } from '../../../render/camera'
+import { maybeBubbleKind } from '../../../screens/game/stallBubble'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { nextRandom } from '../../../shared/prng'
 import {
@@ -44,7 +45,6 @@ import { levelOf } from '../../../world/level/arena'
 import { EXIT_RULES, exitPriceFor } from '../../../world/level/exits'
 import { focusOf, modifyFocus, soloSeat } from '../../../world/party/party'
 import { isKitchenTourOn } from '../../../world/run/tutorialRules'
-import { maybeBubbleKind } from '../../shop/stallBubble'
 import { type KitchenStep, kitchenStepOf } from '../kitchenTour'
 
 // NOTE: chapter 2 of the guided tutorial (src/features/onboarding/kitchenTour.ts and

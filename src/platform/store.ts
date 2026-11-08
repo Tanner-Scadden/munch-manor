@@ -1,6 +1,6 @@
-import type { Duration } from 'effect'
 import {
   Context,
+  type Duration,
   Effect,
   Fiber,
   Layer,
@@ -12,7 +12,6 @@ import {
 } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
-import type { RoomAccess } from '../features/coop/roomReplica'
 import {
   LinkProblem,
   type PlayerChange,
@@ -20,6 +19,7 @@ import {
   StoreEvent,
   SyncState,
 } from './playerSync'
+import type { RoomAccess } from './roomReplica'
 import { type PlayerSave, readLegacySave, writeLegacySave } from './save'
 import { loadStoreModule } from './storeEarly'
 import type { PlayerDatabase } from './storeSqlite'

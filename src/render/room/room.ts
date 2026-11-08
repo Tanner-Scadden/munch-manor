@@ -9,11 +9,6 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
-import {
-  kitchenFloorShapes,
-  kitchenWallShapes,
-  openedExitShapes,
-} from '../../features/kitchen/kitchenView'
 import { TILE_SIZE } from '../../shared/constants'
 import {
   type Exit,
@@ -23,6 +18,11 @@ import {
   PARLOUR_SPEC,
   openExit,
 } from '../../world/level/arena'
+import {
+  kitchenFloorShapes,
+  kitchenWallShapes,
+  openedExitShapes,
+} from './kitchenView'
 import { allCoverShapes } from './roomCover'
 import {
   type Floor,

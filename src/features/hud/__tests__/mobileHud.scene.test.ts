@@ -9,6 +9,7 @@ import { HomeScreenStepsBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { BreakClock, type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import { ShowInstallPrompt } from '../../../app/update/home'
 import { PREPARATION_MS } from '../../../shared/constants'
 import {
   APPLICATION,
@@ -23,7 +24,6 @@ import { asVeteran } from '../../../test/veteran'
 import { tierName } from '../../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../../world/party/party'
 import { type Player } from '../../../world/schema/worldSchema'
-import { ShowInstallPrompt } from '../../home/update'
 
 const SMG_NAME = tierName('Smg', 0)
 

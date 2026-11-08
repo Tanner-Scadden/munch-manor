@@ -1,19 +1,7 @@
-// The Look tab's Schemas: a look's parts, its two toggles, and its sections.
+// The Look tab's Schemas: a look's two toggles and its sections. Its parts
+// are src/domain/looks.ts.
 
 import { Schema } from 'effect'
-
-export const LookPart = Schema.Literals([
-  'Body',
-  'HairStyle',
-  'HairColor',
-  'SkinTone',
-  'ShirtColor',
-  'Outfit',
-  'Print',
-  'Hat',
-  'GunSkin',
-])
-export type LookPart = typeof LookPart.Type
 
 // NOTE: the look's two on and off parts, each one tap.
 export const LookToggle = Schema.Literals(['Beard', 'Glasses'])

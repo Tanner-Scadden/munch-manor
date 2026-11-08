@@ -13,7 +13,7 @@ import { ROOT, measureSurface } from '../../../test/testing'
 import { MEDIC_RULES } from '../medic'
 import { COOP_RULES } from '../party'
 
-// The MEDIC button (src/input/touchControls.ts): a red cross over the touch row
+// The MEDIC button (src/screens/game/touchControls.ts): a red cross over the touch row
 // for your own downed player, and only then. A tap shouts, and the button
 // glows while the shout rings.
 

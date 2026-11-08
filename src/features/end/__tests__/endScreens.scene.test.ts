@@ -8,6 +8,9 @@ import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
 import { ShareFromClick } from '../../../app/mount'
 import { initialModel } from '../../../app/pureApp'
+import { SendShareEvent } from '../../../app/update/end'
+import { FocusEndMenuButton } from '../../../app/update/home'
+import { shareTextOf } from '../../../screens/game/menus'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import { withNewerBuild } from '../../../test/model.fixture'
 import {
@@ -23,10 +26,7 @@ import {
   updateChip,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
-import { FocusEndMenuButton } from '../../home/update'
-import { shareTextOf } from '../../menus/menus'
 import { SHARE_COPIED_MS } from '../endBeat'
-import { SendShareEvent } from '../update'
 
 const tickPastGrace = () =>
   Array.makeBy(Math.ceil(RESTART_GRACE_MS / 50), () =>

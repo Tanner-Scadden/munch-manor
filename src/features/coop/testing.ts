@@ -9,11 +9,18 @@ import {
   Session,
 } from '@munch/netcode'
 
+import {
+  type CoopProblem,
+  type LobbyChange,
+  type RoomRequest,
+  type RoomSession,
+  type RoomTicket,
+  type WorldState,
+  coopWorld,
+} from '../../domain/coopRoom'
 import type { Calling } from '../../shared/playerData'
 import { roomSettingsOf, roomWorldFor } from '../../world/net/roomWorld'
-import type { CoopProblem, LobbyChange, RoomRequest, RoomTicket } from './model'
 import { CoopNet } from './net'
-import { type RoomSession, type WorldState, coopWorld } from './seam'
 
 // NOTE: co-op without a network, for tests and the audit harness. The fake
 // answers each room request from `answer`, never streams anything, and

@@ -201,7 +201,7 @@
         "src/features/*/update.ts",
         "src/app/main.ts",
         "src/app/runFlow.ts",
-        "src/features/couch/couch.ts"
+        "src/input/couch.ts"
       ],
       "rules": { "munch/seat-action-once": "error" }
     },
@@ -294,7 +294,7 @@
         "src/render/screen.ts",
         "src/render/camera.ts",
         "src/world/step/geometry.ts",
-        "src/features/menus/screens.ts",
+        "src/screens/game/overlay.ts",
         "src/features/end/endView.ts",
         "src/render/bossView.ts"
       ],

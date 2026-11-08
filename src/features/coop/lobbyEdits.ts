@@ -2,18 +2,23 @@ import { Option, String } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
+  LobbyChange,
+  type NudgeReason,
+  type Room,
+  isInLobby,
+} from '../../domain/coopRoom'
+import { cleanName, draftName, rollName } from '../../domain/playerName'
+import {
   type Modifier,
   maskOfModifiers,
   modifiersOfMask,
   toggledModifier,
 } from '../../world/run/modifiers'
-import { cleanName, draftName, rollName } from '../profile/profile'
 import { OutMessage } from './message'
-import { LobbyChange, type Model, type NudgeReason, type Room } from './model'
+import { type Model } from './model'
 import {
   NAME_BUTTON_ID,
   NAME_INPUT_ID,
-  isInLobby,
   isPicking,
   meIn,
   withRoom,

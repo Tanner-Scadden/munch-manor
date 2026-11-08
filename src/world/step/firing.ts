@@ -582,7 +582,7 @@ export const catchUpShots: {
 
 // TRACERS
 
-// NOTE: a co-op client's own shot, drawn the instant it fires (src/features/onlineRun/coopPlay.ts):
+// NOTE: a co-op client's own shot, drawn the instant it fires (src/app/update/coopPlay.ts):
 // the pellets the gun it holds would fire from where it stands, aimed as
 // it aims, with the client's cosmetic stream for the spread. They hurt
 // nothing; the room's own copy of the shot decides every hit.

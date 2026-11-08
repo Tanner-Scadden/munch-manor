@@ -5,20 +5,19 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, it } from '@effect/vitest'
 
 import { defaultAppearance } from '../../../app/model'
-import { type Appearance, lookCodeOf } from '../../../shared/playerData'
-import { badgeImage } from '../../rank/rankArt'
-import type { ViewInputs } from '../block'
-import { portraitOf } from '../icons'
-import { seatLook } from '../looks'
-import { Message } from '../message'
+import { portraitOf } from '../../../art/coopIcons'
+import { badgeImage } from '../../../art/rankArt'
+import { seatLook } from '../../../art/seatLooks'
 import {
   LobbyChange,
-  type Model,
   type Room,
   RoomRequest,
   Screen,
-  emptyQueue,
-} from '../model'
+} from '../../../domain/coopRoom'
+import { type Appearance, lookCodeOf } from '../../../shared/playerData'
+import type { ViewInputs } from '../block'
+import { Message } from '../message'
+import { type Model, emptyQueue } from '../model'
 import { freshRoom } from '../roomState'
 import { ChangeLobby, FocusCoopElement } from '../steps'
 import {

@@ -6,6 +6,8 @@ import { describe, expect, it, test } from '@effect/vitest'
 
 import { Boss, KitchenCall, type Model, Phase } from '../../../app/model'
 import { cameraOf } from '../../../render/camera'
+import { kitchenLeakShapes } from '../../../render/room/kitchenLeak'
+import { soupBubbleShapes } from '../../../screens/game/stallBubble'
 import {
   DISTANT_SPAWN,
   freshRunModel,
@@ -17,15 +19,12 @@ import {
   FRAME_MS,
   ticks,
 } from '../../../test/testing'
-import { openExitIn } from '../../../world/level/arena'
-import { levelOf } from '../../../world/level/arena'
+import { levelOf, openExitIn } from '../../../world/level/arena'
 import { modifyFocus } from '../../../world/party/party'
-import { soupBubbleShapes } from '../../shop/stallBubble'
 import { CALL_MS, maybeKitchenSound } from '../kitchenCall'
-import { kitchenLeakShapes } from '../kitchenLeak'
 import { roomsCounterShapes, roomsOf } from '../roomsFound'
 
-// NOTE: finding the kitchen (src/features/kitchen/kitchenCall.ts, src/features/kitchen/kitchenLeak.ts,
+// NOTE: finding the kitchen (src/features/kitchen/kitchenCall.ts, src/render/room/kitchenLeak.ts,
 // src/features/kitchen/roomsFound.ts): Rattles hollers about the boards once in each break
 // until they are open, the boards leak light and steam, and a counter in
 // the break shows how many rooms are found.

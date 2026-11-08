@@ -294,7 +294,7 @@ export const StartSummaryQueue = ApplicationBlock.makeCommand(
 // BOOT
 
 // NOTE: a share sheet is there when the browser has navigator.share; only a
-// touch screen uses it (src/features/menus/menus.ts).
+// touch screen uses it (src/screens/game/menus.ts).
 export const DetectShareSheet = ApplicationBlock.makeCommand(
   'DetectShareSheet',
   {

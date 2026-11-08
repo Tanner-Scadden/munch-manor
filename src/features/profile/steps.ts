@@ -1,12 +1,12 @@
 import { Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import type { LookPart } from '../../domain/looks'
+import { cleanName } from '../../domain/playerName'
 import { makeStep } from './block'
-import type { LookPart } from './blocks/look/lookSchema'
 import type { ClosetCueKind, ProfileFx } from './blocks/look/model'
 import { OutMessage } from './message'
 import type { Model, ProfileTab } from './model'
-import { cleanName } from './profile'
 
 // NOTE: the Profile's own transitions, shared by its update, its
 // InMessages, and its children's folds (FOLDKIT.md, "File organization").

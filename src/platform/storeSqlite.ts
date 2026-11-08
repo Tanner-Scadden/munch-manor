@@ -1,8 +1,8 @@
-import type { Exit } from 'effect'
 import {
   Array,
   Context,
   Effect,
+  type Exit,
   Function,
   Layer,
   Option,
@@ -41,7 +41,6 @@ import {
   startSync,
 } from '@munch/sync-engine'
 
-import { type RoomAccess, makeRoomAccess } from '../features/coop/roomReplica'
 import { API_ORIGIN } from './apiOrigin'
 import {
   BoughtCosmetic,
@@ -80,6 +79,7 @@ import {
   StoreEvent,
   SyncState,
 } from './playerSync'
+import { type RoomAccess, makeRoomAccess } from './roomReplica'
 import {
   type PlayerSave,
   SAVE_VERSION,

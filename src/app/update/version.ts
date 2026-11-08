@@ -3,13 +3,6 @@ import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import {
-  greetUpdate,
-  newsFromGreeting,
-  reloadOntoNewerBuild,
-  rewrapUpdateGift,
-  unwrapUpdateGift,
-} from '../../features/home/update'
-import {
   isUsingServiceWorker,
   registerServiceWorker,
   updateServiceWorker,
@@ -24,6 +17,13 @@ import {
 import { ApplicationBlock } from '../definition'
 import { Message } from '../message'
 import type { Model } from '../model'
+import {
+  greetUpdate,
+  newsFromGreeting,
+  reloadOntoNewerBuild,
+  rewrapUpdateGift,
+  unwrapUpdateGift,
+} from './home'
 import { tapSound, unlockAudio } from './sound'
 import { type UpdateReturn, combine, defineHandlers } from './step'
 

@@ -25,7 +25,7 @@ Vitest's own breakdown of the main run: tests 39 to 42%, import 31 to 36%, envir
 
 1. **One file is the long pole.** `src/world/waves/__tests__/pacing.story.test.ts` takes 13.6 s on its own, and a file is vitest's unit of parallel work, so no worker count makes the run shorter than that file. One of its tests, "no wave leaves the room empty and unannounced for more than a second", plays every wave for five seeds and takes 7.8 s.
 2. **Ten tests are over half the test time.** Out of 975 tests, 704 run in under 10 ms, and only 18 take 300 ms or more. Those 18 take 24.8 s of the 38.2 s spent in tests, and the 10 tests over 1 s take 21 s. All 18 are whole-wave replays: seed sweeps, "the same seed replays identically" double runs, the wave 2 balance smoke pass, and the in-engine determinism check.
-3. **Every file imports the whole game again.** With `isolate: true` (the default), each of the 65 files evaluates its module graph from scratch. A Story file that imports `update` spends about 630 ms importing: `src/app/main.ts` 505 ms in total, `src/art/sprite.ts` 126 ms of its own (PNG encoding and base64 at module load), the `effect` barrel 90 ms (pulled in by Foldkit's Scene matchers in the setup file, for every file, Story files included), `src/features/menus/screens.ts` 42 ms of its own, and `@foldkit/ui` 102 ms. A CPU profile of the same import in Bun puts about 90 ms in sprite and PNG work (base64 35 ms, `png.ts` 28 ms with `crc32` the top function, `sprite.ts` 24 ms) out of 300 ms.
+3. **Every file imports the whole game again.** With `isolate: true` (the default), each of the 65 files evaluates its module graph from scratch. A Story file that imports `update` spends about 630 ms importing: `src/app/main.ts` 505 ms in total, `src/art/sprite.ts` 126 ms of its own (PNG encoding and base64 at module load), the `effect` barrel 90 ms (pulled in by Foldkit's Scene matchers in the setup file, for every file, Story files included), `src/screens/game/overlay.ts` 42 ms of its own, and `@foldkit/ui` 102 ms. A CPU profile of the same import in Bun puts about 90 ms in sprite and PNG work (base64 35 ms, `png.ts` 28 ms with `crc32` the top function, `sprite.ts` 24 ms) out of 300 ms.
 4. **Every file pays for a DOM.** All files run in happy-dom. Only 26 of 65 files touch the DOM (Scene tests, plus a few Story tests that build elements, dispatch window events, or use localStorage). The other 39 could run in plain Node.
 
 ### The 20 slowest tests
@@ -440,7 +440,7 @@ Gains below are measured unless marked as an estimate.
 
 Smaller items:
 
-- **Lazy sprite baking.** `src/art/sprite.ts` spends 126 ms of its own at import, encoding PNGs and base64 for sprites built at module scope. `src/features/menus/screens.ts` adds 42 ms.
+- **Lazy sprite baking.** `src/art/sprite.ts` spends 126 ms of its own at import, encoding PNGs and base64 for sprites built at module scope. `src/screens/game/overlay.ts` adds 42 ms.
   - With isolation off, that is paid once per worker, so it barely moves the full run. It is about a quarter of the import in a single-file `related` run, and it also delays game boot.
   - Build sprites on first use from a cache, as `appearance.ts` already does. That fits the `AGENTS.md` rule ("once at module scope or in a cache").
   - This overlaps with the images work in `docs/IMAGES_PLAN.md`, so do it there, once.

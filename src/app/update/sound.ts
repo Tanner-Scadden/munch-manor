@@ -214,7 +214,7 @@ const maybeEventSoundCue = (event: GameEvent): Option.Option<SoundCue> =>
   }))
 
 // NOTE: a co-op client predicts its own shots and sounds them at once
-// (src/features/onlineRun/coopPlay.ts), so the room's own copy of each, later, stays quiet.
+// (src/app/update/coopPlay.ts), so the room's own copy of each, later, stays quiet.
 export const isOwnShot: {
   (ownSlot: number): (event: GameEvent) => boolean
   (event: GameEvent, ownSlot: number): boolean

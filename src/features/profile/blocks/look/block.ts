@@ -3,24 +3,16 @@ import { Block } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  type Appearance,
-  Body,
-  type Calling,
-  type CosmeticKind,
-  GunSkin,
-  HairColor,
-  HairStyle,
-  Hat,
-  Outfit,
-  Print,
-  type SavedBoughtCosmetics,
-  type SavedRank,
-  ShirtColor,
-  SkinTone,
+import { LookPart } from '../../../../domain/looks'
+import type {
+  Appearance,
+  Calling,
+  CosmeticKind,
+  SavedBoughtCosmetics,
+  SavedRank,
 } from '../../../../shared/playerData'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from './lookRadios'
-import { LookPart, type LookSection, LookToggle } from './lookSchema'
+import { type LookSection, LookToggle } from './lookSchema'
 import {
   CharacterPicker,
   type ClosetCue,
@@ -92,96 +84,19 @@ export const flipLook: {
       : modifyFields(appearance, { glasses: isOn => !isOn }),
 )
 
-const readAs =
-  <A extends string>(schema: Schema.Codec<A>) =>
-  (value: string): Option.Option<A> =>
-    Schema.decodeUnknownOption(schema)(value)
-
-type Part = Readonly<{
-  read: (picker: CharacterPicker) => PartRadioGroupModel
-  choose: (appearance: Appearance, value: string) => Appearance
-}>
-
-// NOTE: each part's radio group in the picker, and how a chosen word lands
-// in the look. A word that is not one of the part's options leaves the
-// look as it was.
-const PARTS: Readonly<Record<LookPart, Part>> = {
-  Body: {
-    read: picker => picker.body,
-    choose: (appearance, value) =>
-      Option.match(readAs(Body)(value), {
-        onNone: () => appearance,
-        onSome: body => modifyFields(appearance, { body: () => body }),
-      }),
-  },
-  HairStyle: {
-    read: picker => picker.hairStyle,
-    choose: (appearance, value) =>
-      Option.match(readAs(HairStyle)(value), {
-        onNone: () => appearance,
-        onSome: hairStyle =>
-          modifyFields(appearance, { hairStyle: () => hairStyle }),
-      }),
-  },
-  HairColor: {
-    read: picker => picker.hairColor,
-    choose: (appearance, value) =>
-      Option.match(readAs(HairColor)(value), {
-        onNone: () => appearance,
-        onSome: hairColor =>
-          modifyFields(appearance, { hairColor: () => hairColor }),
-      }),
-  },
-  SkinTone: {
-    read: picker => picker.skinTone,
-    choose: (appearance, value) =>
-      Option.match(readAs(SkinTone)(value), {
-        onNone: () => appearance,
-        onSome: skinTone =>
-          modifyFields(appearance, { skinTone: () => skinTone }),
-      }),
-  },
-  ShirtColor: {
-    read: picker => picker.shirtColor,
-    choose: (appearance, value) =>
-      Option.match(readAs(ShirtColor)(value), {
-        onNone: () => appearance,
-        onSome: shirtColor =>
-          modifyFields(appearance, { shirtColor: () => shirtColor }),
-      }),
-  },
-  Outfit: {
-    read: picker => picker.outfit,
-    choose: (appearance, value) =>
-      Option.match(readAs(Outfit)(value), {
-        onNone: () => appearance,
-        onSome: outfit => modifyFields(appearance, { outfit: () => outfit }),
-      }),
-  },
-  Print: {
-    read: picker => picker.print,
-    choose: (appearance, value) =>
-      Option.match(readAs(Print)(value), {
-        onNone: () => appearance,
-        onSome: print => modifyFields(appearance, { print: () => print }),
-      }),
-  },
-  Hat: {
-    read: picker => picker.hat,
-    choose: (appearance, value) =>
-      Option.match(readAs(Hat)(value), {
-        onNone: () => appearance,
-        onSome: hat => modifyFields(appearance, { hat: () => hat }),
-      }),
-  },
-  GunSkin: {
-    read: picker => picker.gunSkin,
-    choose: (appearance, value) =>
-      Option.match(readAs(GunSkin)(value), {
-        onNone: () => appearance,
-        onSome: gunSkin => modifyFields(appearance, { gunSkin: () => gunSkin }),
-      }),
-  },
+// NOTE: each part's radio group in the picker.
+const PART_GROUPS: Readonly<
+  Record<LookPart, (picker: CharacterPicker) => PartRadioGroupModel>
+> = {
+  Body: picker => picker.body,
+  HairStyle: picker => picker.hairStyle,
+  HairColor: picker => picker.hairColor,
+  SkinTone: picker => picker.skinTone,
+  ShirtColor: picker => picker.shirtColor,
+  Outfit: picker => picker.outfit,
+  Print: picker => picker.print,
+  Hat: picker => picker.hat,
+  GunSkin: picker => picker.gunSkin,
 }
 
 export type Gear = Readonly<{
@@ -189,7 +104,7 @@ export type Gear = Readonly<{
   worn: (appearance: Appearance) => string
 }>
 
-// NOTE: the four parts that hold earned looks (src/features/profile/blocks/look/closet.ts), by the kind
+// NOTE: the four parts that hold earned looks (src/domain/closet.ts), by the kind
 // of look and what each wears now. Their rows pick by a click and not by
 // the radio group, so a look not owned is never the selected one. Every
 // other part is free and is simply chosen.
@@ -198,14 +113,6 @@ const GEAR: Readonly<Partial<Record<LookPart, Gear>>> = {
   Print: { kind: 'Print', worn: appearance => appearance.print },
   Hat: { kind: 'Hat', worn: appearance => appearance.hat },
   GunSkin: { kind: 'Skin', worn: appearance => appearance.gunSkin },
-}
-
-// NOTE: the part of the look each kind of earned look sits on.
-export const PART_OF_KIND: Readonly<Record<CosmeticKind, LookPart>> = {
-  Hat: 'Hat',
-  Shirt: 'ShirtColor',
-  Print: 'Print',
-  Skin: 'GunSkin',
 }
 
 export const gearOf = (part: LookPart): Option.Option<Gear> =>
@@ -217,16 +124,7 @@ export const partGroupOf: {
 } = Function.dual(
   2,
   (picker: CharacterPicker, part: LookPart): PartRadioGroupModel =>
-    PARTS[part].read(picker),
-)
-
-export const chooseLook: {
-  (part: LookPart, value: string): (appearance: Appearance) => Appearance
-  (appearance: Appearance, part: LookPart, value: string): Appearance
-} = Function.dual(
-  3,
-  (appearance: Appearance, part: LookPart, value: string): Appearance =>
-    PARTS[part].choose(appearance, value),
+    PART_GROUPS[part](picker),
 )
 
 // BLOCK

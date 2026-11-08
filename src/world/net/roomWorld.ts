@@ -869,7 +869,7 @@ export const roomWorldFor: {
 )
 
 // NOTE: the room's World with the lobby's first settings, as the client
-// names it (src/features/coop/seam.ts), the dev page plays it, and tests step it.
+// names it (src/domain/coopRoom.ts), the dev page plays it, and tests step it.
 export const ROOM_WORLD = roomWorldFor(DEFAULT_ROOM_SETTINGS)
 
 // NOTE: the World a client draws itself in: its own seat first (src/world/party/party.ts,

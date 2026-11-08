@@ -5,7 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect as expectValue, it } from '@effect/vitest'
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import * as Coop from '../../features/coop/model'
+import * as Coop from '../../domain/coopRoom'
 import { PREPARATION_MS } from '../../shared/constants'
 import { homeAfterRead } from '../../test/model.fixture'
 import {

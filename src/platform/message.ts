@@ -63,7 +63,7 @@ export const DeviceMessage = defineMessageUnion(deviceCases)
 export type DeviceMessage = typeof DeviceMessage.Type
 
 // NOTE: installing the game: the install tile and Chrome's prompt, handled
-// with the home menu (src/features/home/update.ts).
+// with the home menu (src/app/update/home.ts).
 export const installCases = {
   ClickedInstallButton: {},
   ChangedInstallOffer: { installOffer: InstallOffer },

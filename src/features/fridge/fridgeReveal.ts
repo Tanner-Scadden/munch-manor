@@ -1,8 +1,8 @@
 import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { PrizeFlight } from '../../app/clientSchema'
 import type { Model } from '../../app/model'
+import { PrizeFlight } from '../../domain/clientSchema'
 import { FRIDGE_SPIN_STEPS_MS } from '../../shared/constants'
 import type { SoundEffect } from '../../shared/soundEffect'
 import {

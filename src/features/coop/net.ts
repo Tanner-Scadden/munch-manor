@@ -25,17 +25,17 @@ import {
   startQuickPlay,
 } from '@munch/netcode/browser'
 
-import { API_ORIGIN } from '../../platform/apiOrigin'
-import { PlayerStore } from '../../platform/store'
-import type { Calling } from '../../shared/playerData'
-import { writeLobbyChange } from './lobbyWrite'
 import {
   type CoopProblem,
   type LobbyChange,
   RoomRequest,
   type RoomTicket,
-} from './model'
-import type { RoomAccess } from './roomReplica'
+} from '../../domain/coopRoom'
+import { API_ORIGIN } from '../../platform/apiOrigin'
+import { writeLobbyChange } from '../../platform/lobbyWrite'
+import type { RoomAccess } from '../../platform/roomReplica'
+import { PlayerStore } from '../../platform/store'
+import type { Calling } from '../../shared/playerData'
 
 // SERVICE
 

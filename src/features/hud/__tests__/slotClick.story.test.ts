@@ -8,6 +8,7 @@ import { Message } from '../../../app/message'
 import { GameEvent, type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import type { PointerDevice } from '../../../input/inputSchema'
+import { MELEE_SLOT_INDEX, gunSlotBox } from '../../../render/hudLayout'
 import { screenOf } from '../../../render/screen'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import {
@@ -19,7 +20,6 @@ import {
 import { asVeteran } from '../../../test/veteran'
 import { freshGun, heldWeapon } from '../../../world/gear/weapons'
 import { modifyFocus } from '../../../world/party/party'
-import { MELEE_SLOT_INDEX, gunSlotBox } from '../hud'
 
 // The HUD's gun and knife slots sit at the bottom middle, over the world.
 // Mid-wave a mouse click there is a shot at the zombie beneath, not a swap,

@@ -2,10 +2,10 @@ import { Array, Function, Match, String } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { playerSprites } from '@game/art/appearance'
+import { SEAT_LOOKS } from '@game/art/seatLooks'
 import { frameAt, group } from '@game/art/sprite'
-import { SEAT_LOOKS } from '@game/features/coop/looks'
-import { logoShapes } from '@game/features/menus/screens'
 import { rect } from '@game/render/drawing'
+import { logoShapes } from '@game/screens/game/overlay'
 
 import { BIG_HEAD, PALETTE } from '../zombieHead'
 

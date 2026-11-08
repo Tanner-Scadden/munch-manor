@@ -1,7 +1,7 @@
 import { Function, Option } from 'effect'
 
 import type { Model } from '../app/model'
-import { couchFocus } from '../features/couch/couch'
+import { couchFocus } from '../input/couch'
 import { CAMERA_LEAN_EASE_MS, CAMERA_LEAN_PX } from '../shared/constants'
 import { type Level, levelOf } from '../world/level/arena'
 import { focusOf } from '../world/party/party'
@@ -79,7 +79,7 @@ export const cameraFor: {
 )
 
 // NOTE: players sharing one keyboard share one camera, on the middle of
-// them all (src/features/couch/couch.ts).
+// them all (src/input/couch.ts).
 export const cameraFocus = (model: Model): Vector =>
   Option.getOrElse(couchFocus(model), () => ({
     x: focusOf(model).player.x + model.cameraLean.x,

@@ -23,11 +23,11 @@ import {
 import { pointsForRank } from '../../../world/heroes/rank'
 import { atSeatBy, playersOf } from '../../../world/party/party'
 import { SOLO_SLOT } from '../../../world/schema/worldSchema'
+import { earnRank } from '../../end/rankRun'
 import { HeroPickerBinding } from '../../lobby/bindings'
 import { isHeroPickerUp } from '../../lobby/model'
-import { earnRank } from '../../rank/rankRun'
 
-// Teammate bots in the single player lobby (src/features/bots/bots.ts, src/features/lobby/update.ts):
+// Teammate bots in the single player lobby (src/domain/bots.ts, src/features/lobby/update.ts):
 // + BOT seats one, the x sends it home, its hero card picks its hero, START
 // runs with them seated, and RETRY keeps them.
 

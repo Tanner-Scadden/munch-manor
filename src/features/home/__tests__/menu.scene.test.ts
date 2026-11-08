@@ -6,8 +6,10 @@ import { describe, it, expect as vitestExpect } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
+import { FocusHandCard, FocusHomeButton } from '../../../app/update/home'
 import { ApplyRotation } from '../../../app/update/rotation'
 import { WriteSave } from '../../../app/update/save'
+import { withBests } from '../../../domain/run'
 import { noSavedBests, restoreSave, saveOf } from '../../../platform/save'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import { home } from '../../../test/model.fixture'
@@ -38,9 +40,7 @@ import {
   RESET_TUTORIAL_BUTTON_ID,
 } from '../../profile/profile'
 import { FocusTutorialReset } from '../../profile/update'
-import { withBests } from '../home'
 import type { HandCard } from '../homeSchema'
-import { FocusHandCard, FocusHomeButton } from '../update'
 
 const playCluster = Scene.role('group', { name: 'Play' })
 const hand = Scene.role('dialog', { name: 'The manor' })

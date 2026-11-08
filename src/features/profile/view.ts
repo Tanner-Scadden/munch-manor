@@ -27,6 +27,12 @@ import {
   TURN_PHONE_ICON,
   ZAP_ICON,
 } from '../../art/icons'
+import {
+  DEFAULT_NAME,
+  MAX_NAME_LENGTH,
+  nameLength,
+  shownName,
+} from '../../domain/playerName'
 import type { InputDevice } from '../../input/inputSchema'
 import {
   LinkFlow,
@@ -35,9 +41,8 @@ import {
   devicesStatusText,
   linkProblemText,
 } from '../../platform/playerSync'
-import { iconView } from '../menus/menuParts'
+import { iconView, newPipView } from '../../ui/menuParts'
 import type { ViewInputs } from './block'
-import { newPipView } from './blocks/look/lookGearView'
 import {
   CharacterBinding,
   ProfileComposition,
@@ -47,14 +52,10 @@ import {
 import { Message, type SettingTile } from './message'
 import type { Model, ProfileTab } from './model'
 import {
-  DEFAULT_NAME,
   KEEP_TUTORIAL_BUTTON_ID,
-  MAX_NAME_LENGTH,
   NAME_INPUT_ID,
   PROFILE_TABS,
   RESET_TUTORIAL_BUTTON_ID,
-  nameLength,
-  shownName,
 } from './profile'
 
 // TABS
