@@ -3,7 +3,7 @@
 
 import { Array, Config, Console, Effect, Option, String } from 'effect'
 
-import { AUDIT_PARAM } from '@game/coop/readout'
+import { AUDIT_PARAM } from '@game/features/coop/readout'
 
 type CoopConfig = Readonly<{
   base: string
@@ -29,7 +29,7 @@ export const coopConfig = Effect.gen(function* () {
     return yield* Effect.sync(() => process.exit(2))
   }
   // NOTE: the game writes its readout of the room's World only on a page
-  // loaded with this param (src/coop/readout.ts), since encoding it costs
+  // loaded with this param (src/features/coop/readout.ts), since encoding it costs
   // every frame.
   const audited = new URL(maybeBase.value)
   audited.searchParams.set(AUDIT_PARAM, '1')

@@ -19,7 +19,7 @@
 import { Array, Config, Effect, Option, String } from 'effect'
 import { type CDPSession, type Page, webkit } from 'playwright-core'
 
-import { PROFILE_TABS } from '@game/profile'
+import { PROFILE_TABS } from '@game/features/profile/profile'
 
 import { runHarnessAudit } from './harnessServer'
 import {

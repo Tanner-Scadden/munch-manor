@@ -10,8 +10,8 @@ import {
   type Types,
 } from 'effect'
 
-import { ZombieKind } from '../../../src/model'
-import { ZOMBIE_KINDS } from '../../../src/zombies'
+import { ZombieKind } from '../../../src/app/model'
+import { ZOMBIE_KINDS } from '../../../src/world/zombies/zombies'
 import { FRAME_MS, type Kind, type Model } from './basics'
 import type * as Results from './results'
 import type { BossBlame, EmptyStretch } from './results'

@@ -64,7 +64,7 @@
     {
       // NOTE: the service worker runs outside the Effect runtime and speaks
       // the Fetch API (the same exception as tsconfig.base.json).
-      "files": ["src/sw/worker.ts"],
+      "files": ["src/platform/sw/worker.ts"],
       "rules": {
         "effecttsgo/global-fetch": "off",
         "effecttsgo/global-timers": "off",

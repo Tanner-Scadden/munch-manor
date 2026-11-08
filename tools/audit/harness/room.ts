@@ -5,15 +5,6 @@
 import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { levelOf, openExitIn } from '@game/arena'
-import { BOSS_RULES, hasBoss, planBoss } from '@game/boss'
-import { activeBots, addBot, seatCallings } from '@game/bots'
-import { cameraOf, worldToView } from '@game/camera'
-import { DECAL_MAX } from '@game/constants'
-import { noteRecords } from '@game/endBeat'
-import { rollSpawns } from '@game/endlessWaves'
-import { KITCHEN_EXIT } from '@game/exits'
-import { withBests } from '@game/home'
 import {
   Arsenal,
   type Boosts,
@@ -33,9 +24,19 @@ import {
   type WeaponKind,
   type Zombie,
   type ZombieKind,
-} from '@game/model'
-import { raiseDebutCard } from '@game/onboarding'
-import { advanceParticles } from '@game/particles'
+} from '@game/app/model'
+import { initialModel } from '@game/app/pureApp'
+import { startOrResume } from '@game/app/runFlow'
+import { activeBots, addBot, seatCallings } from '@game/features/bots/bots'
+import { noteRecords } from '@game/features/end/endBeat'
+import { withBests } from '@game/features/home/home'
+import { raiseDebutCard } from '@game/features/onboarding/onboarding'
+import { cameraOf, worldToView } from '@game/render/camera'
+import { advanceParticles } from '@game/render/particles/particles'
+import { DECAL_MAX } from '@game/shared/constants'
+import { STARTING_PISTOL, freshGun, mapGuns } from '@game/world/gear/weapons'
+import { levelOf, openExitIn } from '@game/world/level/arena'
+import { KITCHEN_EXIT } from '@game/world/level/exits'
 import {
   creditKills,
   focusOf,
@@ -43,16 +44,19 @@ import {
   modifyFocus,
   playersOf,
   seatCrew,
-} from '@game/party'
-import { initialModel } from '@game/pureApp'
-import { startOrResume } from '@game/runFlow'
-import { shedParts } from '@game/simulation'
-import { SeatAction, applySeatAction } from '@game/stepWorld'
-import { planFor } from '@game/wavePlans'
-import { pause } from '@game/waves'
-import { STARTING_PISTOL, freshGun, mapGuns } from '@game/weapons'
-import { withWorld } from '@game/world'
-import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER, scaledHp } from '@game/zombies'
+} from '@game/world/party/party'
+import { withWorld } from '@game/world/schema/world'
+import { shedParts } from '@game/world/step/simulation'
+import { SeatAction, applySeatAction } from '@game/world/step/stepWorld'
+import { rollSpawns } from '@game/world/waves/endlessWaves'
+import { planFor } from '@game/world/waves/wavePlans'
+import { pause } from '@game/world/waves/waves'
+import { BOSS_RULES, hasBoss, planBoss } from '@game/world/zombies/boss'
+import {
+  ZOMBIE_KINDS,
+  ZOMBIE_KIND_ORDER,
+  scaledHp,
+} from '@game/world/zombies/zombies'
 
 import { type SceneSettings } from './settings'
 

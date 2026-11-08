@@ -1,12 +1,12 @@
 // NOTE: the `coop=live` room in a Web Worker, off the page's main thread as
 // the real room is on the server. Seat 0 is the page, over postMessage
 // (liveNet.ts) with a fixed delay each way; the other seats are scripted
-// players, each with a Session of its own, as src/roomTesting.ts plays them.
+// players, each with a Session of its own, as src/test/roomTesting.ts plays them.
 
 import { Array, Effect, Option, Result, Schedule, Schema } from 'effect'
 
-import { scriptedInput } from '@game/roomTesting'
-import type { OwnSeat, RoomWorld } from '@game/roomWorld'
+import { scriptedInput } from '@game/test/roomTesting'
+import type { OwnSeat, RoomWorld } from '@game/world/net/roomWorld'
 import {
   type ClientFrame,
   NEUTRAL_INPUT,

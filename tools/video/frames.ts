@@ -11,7 +11,7 @@ import {
 import type { PlatformError } from 'effect/PlatformError'
 import type { Browser, Page } from 'playwright-core'
 
-import { textPixels } from '../../src/font'
+import { textPixels } from '../../src/art/font'
 import {
   harnessQuery,
   harnessUrl,

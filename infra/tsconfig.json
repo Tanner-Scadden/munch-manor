@@ -12,9 +12,9 @@
   "include": [
     "*.ts",
     "worker/**/*.ts",
-    "../src/analytics.ts",
-    "../src/playerData.ts",
-    "../src/playerScope.ts",
+    "../src/platform/analytics.ts",
+    "../src/shared/playerData.ts",
+    "../src/platform/playerScope.ts",
     "../tools/analytics/queries.ts"
   ]
 }

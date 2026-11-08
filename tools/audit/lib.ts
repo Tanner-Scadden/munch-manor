@@ -16,7 +16,7 @@ import {
 import { type Browser, type Page, chromium } from 'playwright-core'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
-import { Vector } from '@game/entitySchema'
+import { Vector } from '@game/world/schema/entitySchema'
 
 import { harnessBaseUrl } from './harnessServer'
 import { type AuditFailed, attempt, evaluateAs, failWith } from './page'

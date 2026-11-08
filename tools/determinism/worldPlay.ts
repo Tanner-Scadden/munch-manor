@@ -1,5 +1,5 @@
 // The World played on its own: the same few ticks in any engine, from a
-// World as JSON, and a co-op room's World (src/roomWorld.ts) from its seats
+// World as JSON, and a co-op room's World (src/world/net/roomWorld.ts) from its seats
 // and seed. It imports only the step, the room's adapter and binary wire,
 // and the deterministic Math, so a bundle of it holds exactly what a co-op
 // room runs.
@@ -13,11 +13,11 @@ import {
   type RoomWorld,
   startRoomWorld,
   stepRoomWorld,
-} from '../../src/roomWorld'
-import { type InputsByPlayer, stepWorld } from '../../src/stepWorld'
-import type { World } from '../../src/world'
-import { Intent } from '../../src/worldSchema'
-import { worldFromJson, worldToJson } from '../../src/worldWire'
+} from '../../src/world/net/roomWorld'
+import { worldFromJson, worldToJson } from '../../src/world/net/worldWire'
+import type { World } from '../../src/world/schema/world'
+import { Intent } from '../../src/world/schema/worldSchema'
+import { type InputsByPlayer, stepWorld } from '../../src/world/step/stepWorld'
 import { decodeJson, encodeJson } from '../json'
 import { installDeterministicMath } from './detMath'
 

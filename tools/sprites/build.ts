@@ -1,7 +1,7 @@
 // Builds the sprite atlas (docs/IMAGES_PLAN.md): loads the game's modules in
 // stand-in mode, so every sprite they build is recorded by its content key
 // instead of encoded, adds the sprites built later on first use
-// (src/spritePrecompile.ts), and packs them into PNG files with a manifest
+// (src/art/spritePrecompile.ts), and packs them into PNG files with a manifest
 // from key to box. The Vite plugin in ./vitePlugin.ts runs it for every
 // production build and serves the result to the game.
 //   bun tools/sprites/build.ts <out dir>   writes the files, or reuses them
@@ -21,12 +21,12 @@ import {
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
-import { rasterOf } from '../../src/png'
+import { rasterOf } from '../../src/art/png'
 import {
   type AtlasEntry,
   type SpriteAtlas,
   useSpriteMode,
-} from '../../src/spriteAtlas'
+} from '../../src/art/spriteAtlas'
 import { encodeJson, readJsonFile } from '../json'
 import { SpriteAtlasManifest, SpriteKeys } from './manifest'
 import { packShelves } from './pack'
@@ -36,13 +36,13 @@ Object.assign(globalThis, { __BUILD_ID__: 'sprites' })
 
 useSpriteMode('StandIn')
 
-// NOTE: the modules src/entry.ts runs, which build every sprite made at load.
+// NOTE: the modules src/app/entry.ts runs, which build every sprite made at load.
 // They load only now, in stand-in mode: a static import would run first.
-const { spriteContents } = await import('../../src/sprite')
-await import('../../src/view')
-await import('../../src/main')
-await import('../../src/boot')
-const { precompileSprites } = await import('../../src/spritePrecompile')
+const { spriteContents } = await import('../../src/art/sprite')
+await import('../../src/app/view')
+await import('../../src/app/main')
+await import('../../src/app/boot')
+const { precompileSprites } = await import('../../src/art/spritePrecompile')
 precompileSprites()
 
 const contents = spriteContents()

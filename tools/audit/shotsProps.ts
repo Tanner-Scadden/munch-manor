@@ -6,11 +6,11 @@
 //   TAG=after bun run heavy -- --shared bun tools/audit/shotsProps.ts
 import { Array, Effect } from 'effect'
 
-import { playerPalette, playerPixels } from '@game/appearance'
-import { CALLINGS } from '@game/calling'
-import { pixelIconUrl } from '@game/icons'
-import { type Appearance, defaultAppearance } from '@game/model'
-import { HairStyle } from '@game/playerData'
+import { type Appearance, defaultAppearance } from '@game/app/model'
+import { playerPalette, playerPixels } from '@game/art/appearance'
+import { pixelIconUrl } from '@game/art/icons'
+import { HairStyle } from '@game/shared/playerData'
+import { CALLINGS } from '@game/world/heroes/calling'
 
 import { auditTag, finish, openBrowser, runAudit, shot } from './lib'
 import { attempt } from './page'

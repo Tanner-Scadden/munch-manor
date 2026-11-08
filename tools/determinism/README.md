@@ -14,7 +14,7 @@ The two heavy ones play whole runs, so they go through the guard like every heav
 
 `script.ts` is a returning player (`asVeteran`), seeded, playing the campaign or endless at Normal. Each frame it sends the input Messages for that frame, then `TickedFrame`. It moves in a fixed pattern, aims at the nearest walking zombie every fourth frame, holds the trigger, presses Enter through each Preparation, and closes the stall if it opens. God mode refills its hearts, so the room fills to the alive cap. It uses no trig of its own, so any difference comes from the game.
 
-Frame lengths come from a pattern: `Fixed60` (every frame 1000/60 ms, the room's tick) or `Mixed` (60, 120, 30, and 40 Hz frames in a cycle, like a real display). The world steps in whole 60 Hz ticks with a carry (`advanceGame` in `src/simulation.ts`), so a 60 Hz frame is exactly one tick; `fixedStep.test.ts` checks that 30, 60, and 120 Hz frames play the same ticks.
+Frame lengths come from a pattern: `Fixed60` (every frame 1000/60 ms, the room's tick) or `Mixed` (60, 120, 30, and 40 Hz frames in a cycle, like a real display). The world steps in whole 60 Hz ticks with a carry (`advanceGame` in `src/world/step/simulation.ts`), so a 60 Hz frame is exactly one tick; `fixedStep.test.ts` checks that 30, 60, and 120 Hz frames play the same ticks.
 
 ## The gameplay hash
 

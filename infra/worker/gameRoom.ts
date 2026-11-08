@@ -47,9 +47,9 @@ import {
   type RoomWorld,
   roomSettingsOf,
   roomWorldFor,
-} from '../../src/roomWorld.ts'
-import type { World as GameState } from '../../src/world.ts'
-import { worldFromJson, worldToJson } from '../../src/worldWire.ts'
+} from '../../src/world/net/roomWorld.ts'
+import { worldFromJson, worldToJson } from '../../src/world/net/worldWire.ts'
+import type { World as GameState } from '../../src/world/schema/world.ts'
 import {
   INTERNAL_PATHS,
   InternalCreate,
@@ -88,7 +88,7 @@ import {
 // READY makes it Playing. A public room tells the Matchmaker (matchmaker.ts)
 // whenever its lobby changes. See MULTIPLAYER.md, Phase 2 and 3.
 //
-// The world is the game's own (src/roomWorld.ts): `stepWorld` over the
+// The world is the game's own (src/world/net/roomWorld.ts): `stepWorld` over the
 // lobby's seats, with the mode and difficulty the host picked. A won
 // campaign's last World is kept in storage, so the next run can keep going
 // into endless (Lobby.ts, KeepGoing) even after the object hibernates.

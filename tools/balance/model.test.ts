@@ -1,7 +1,7 @@
 import { Array, Number, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { DIFFICULTY_ORDER } from '../../src/difficulty'
+import { DIFFICULTY_ORDER } from '../../src/world/run/difficulty'
 import {
   ASSUMPTIONS,
   type Catalog,

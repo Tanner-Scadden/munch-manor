@@ -1,0 +1,505 @@
+import { Array, Function, Option, Result } from 'effect'
+import { modifyFields } from 'foldkit/struct'
+
+import {
+  BULLET_RADIUS,
+  FIXED_STEP_MS,
+  PLAYER_RADIUS,
+  ZOMBIE_BUMP_SPEED,
+} from '../../shared/constants'
+import { TURRET_WEAPON } from '../gear/traps'
+import { kitchenBounty } from '../kitchen/kitchenPay'
+import { levelOf } from '../level/arena'
+import {
+  atSeat,
+  creditKills,
+  creditShots,
+  earnKill,
+  focusOf,
+  isCoop,
+  maybePlayerAt,
+  maybeShooterOf,
+  modifySeatRecord,
+  payTo,
+  seatStateAt,
+} from '../party/party'
+import { resolveFriendlyFire } from '../party/revive'
+import { biteDamage, biteGraceScale } from '../run/difficulty'
+import { countHits } from '../run/stats'
+import type { World } from '../schema/world'
+import {
+  type Boss,
+  type Bullet,
+  GameEvent,
+  Invulnerability,
+  Pierce,
+  type Player,
+  type PlayerSlot,
+  SOLO_SLOT,
+  type Vector,
+  type WeaponKind,
+  type Zombie,
+  ZombieState,
+} from '../schema/worldSchema'
+import { woundScaleOf } from '../zombies/boss'
+import { maybeShieldFor } from '../zombies/chucker'
+import { MAX_BODY_RADIUS_PX, groundedGrid } from '../zombies/zombieGrid'
+import { Behavior, bodyRadiusOf, isFree, statsOf } from '../zombies/zombies'
+import {
+  bulletDirection,
+  hitEvent,
+  killEvent,
+  strikeZombie,
+  woundPlayer,
+} from './combat'
+import {
+  ZERO_VECTOR,
+  circlesOverlap,
+  closestPointOnSegment,
+  directionBetween,
+  scaleVector,
+} from './geometry'
+import { queryBox, queryBuffer } from './grid'
+
+type BulletHit = Readonly<{
+  bulletId: number
+  zombieId: number
+  x: number
+  y: number
+  direction: Vector
+  weapon: WeaponKind
+  damage: number
+  knockback: number
+  maybeShooter: Option.Option<number>
+}>
+
+type Contact = Readonly<{ zombie: Zombie; point: Vector; reach: number }>
+
+const maybeContact = (
+  from: Vector,
+  to: Vector,
+  zombie: Zombie,
+): Option.Option<Contact> => {
+  const point = closestPointOnSegment(zombie, from, to)
+  return circlesOverlap(point, BULLET_RADIUS, zombie, bodyRadiusOf(zombie))
+    ? Option.some({
+        zombie,
+        point,
+        reach: Math.hypot(point.x - from.x, point.y - from.y),
+      })
+    : Option.none()
+}
+
+const struckBy = (bullet: Bullet): ReadonlyArray<number> =>
+  Pierce.match(bullet.pierce, {
+    Stops: () => [],
+    Skewers: ({ struck }) => struck,
+  })
+
+const shieldedTarget = (bullet: Bullet, zombie: Zombie): number =>
+  Pierce.isAnyOf(['Stops'])(bullet.pierce)
+    ? Option.getOrElse(
+        maybeShieldFor(zombie, bulletDirection(bullet)),
+        () => zombie.id,
+      )
+    : zombie.id
+
+// NOTE: the player's shots fired this frame. Their sweep starts at the
+// player's center, not the muzzle, so a zombie hugging the player, closer than
+// the muzzle, is still the first thing a point-blank shot hits.
+type FreshShots = Readonly<{
+  firstId: number
+  endId: number
+  from: (bullet: Bullet) => Vector
+}>
+
+const sweepStart = (
+  bullet: Bullet,
+  seconds: number,
+  freshShots: FreshShots,
+): Vector =>
+  bullet.id >= freshShots.firstId && bullet.id < freshShots.endId
+    ? freshShots.from(bullet)
+    : {
+        x: bullet.x - bullet.velocityX * seconds,
+        y: bullet.y - bullet.velocityY * seconds,
+      }
+
+// NOTE: a bullet only meets the grounded zombies in the cells its sweep (grown
+// by the widest reach) crosses, taken in list order, so the first nearest
+// contact wins a tie as it did over the whole list.
+const findBulletHits = (
+  bullets: ReadonlyArray<Bullet>,
+  zombies: ReadonlyArray<Zombie>,
+  boss: Boss,
+  seconds: number,
+  freshShots: FreshShots,
+): ReadonlyArray<BulletHit> => {
+  if (Array.isReadonlyArrayEmpty(bullets)) {
+    return []
+  }
+
+  const grid = groundedGrid(zombies)
+  const near = queryBuffer(grid)
+  const growPx = BULLET_RADIUS + MAX_BODY_RADIUS_PX
+  const hits: Array<BulletHit> = []
+  for (const bullet of bullets) {
+    const from = sweepStart(bullet, seconds, freshShots)
+    const struck = struckBy(bullet)
+    const count = queryBox(
+      grid,
+      near,
+      Math.min(from.x, bullet.x) - growPx,
+      Math.min(from.y, bullet.y) - growPx,
+      Math.max(from.x, bullet.x) + growPx,
+      Math.max(from.y, bullet.y) + growPx,
+    )
+    let nearest: Contact | undefined = undefined
+    for (let at = 0; at < count; at++) {
+      const zombie = zombies[near[at] ?? 0]
+      if (zombie !== undefined && !Array.contains(struck, zombie.id)) {
+        const contact = maybeContact(from, bullet, zombie)
+        if (
+          Option.isSome(contact) &&
+          (nearest === undefined || contact.value.reach < nearest.reach)
+        ) {
+          nearest = contact.value
+        }
+      }
+    }
+    if (nearest !== undefined) {
+      hits.push({
+        bulletId: bullet.id,
+        zombieId: shieldedTarget(bullet, nearest.zombie),
+        x: nearest.point.x,
+        y: nearest.point.y,
+        direction: bulletDirection(bullet),
+        weapon: bullet.weapon,
+        damage: bullet.damage * woundScaleOf(boss, nearest.zombie),
+        knockback: bullet.knockback,
+        maybeShooter: maybeShooterOf(bullet),
+      })
+    }
+  }
+  return hits
+}
+
+const totalDamage = (hits: ReadonlyArray<BulletHit>): number =>
+  Array.reduce(hits, 0, (sum, hit) => sum + hit.damage)
+
+const strongestKnockback = (hits: ReadonlyArray<BulletHit>): number =>
+  Array.reduce(hits, 0, (strongest, hit) => Math.max(strongest, hit.knockback))
+
+const hitsOn = (
+  hits: ReadonlyArray<BulletHit>,
+  zombieId: number,
+): ReadonlyArray<BulletHit> =>
+  Array.filter(hits, hit => hit.zombieId === zombieId)
+
+const applyHits =
+  (hits: ReadonlyArray<BulletHit>) =>
+  (zombie: Zombie): Zombie => {
+    const zombieHits = hitsOn(hits, zombie.id)
+    return Option.match(Array.last(zombieHits), {
+      onNone: () => zombie,
+      onSome: lastHit =>
+        strikeZombie(
+          zombie,
+          {
+            damage: totalDamage(zombieHits),
+            direction: lastHit.direction,
+            knockbackSpeed: strongestKnockback(zombieHits),
+          },
+          'Shot',
+        ),
+    })
+  }
+
+const hitEventOn =
+  (hits: ReadonlyArray<BulletHit>) =>
+  (zombie: Zombie): Option.Option<GameEvent> => {
+    const zombieHits = hitsOn(hits, zombie.id)
+    return Option.map(
+      Array.last(zombieHits),
+      ({ x, y, direction, maybeShooter }) =>
+        hitEvent(
+          zombie,
+          { x, y },
+          direction,
+          totalDamage(zombieHits),
+          maybeShooter,
+        ),
+    )
+  }
+
+const killEventOn =
+  (hits: ReadonlyArray<BulletHit>) =>
+  (zombie: Zombie): GameEvent =>
+    killEvent(
+      zombie,
+      Option.match(Array.last(hitsOn(hits, zombie.id)), {
+        onNone: () => ZERO_VECTOR,
+        onSome: ({ direction }) => direction,
+      }),
+    )
+
+const skewer =
+  (hits: ReadonlyArray<BulletHit>) =>
+  (bullet: Bullet): Result.Result<Bullet, void> =>
+    Option.match(
+      Array.findFirst(hits, ({ bulletId }) => bulletId === bullet.id),
+      {
+        onNone: () => Result.succeed(bullet),
+        onSome: ({ zombieId }) =>
+          Pierce.match(bullet.pierce, {
+            Stops: () => Result.failVoid,
+            Skewers: ({ left, struck }) =>
+              left > 0
+                ? Result.succeed(
+                    modifyFields(bullet, {
+                      pierce: () =>
+                        Pierce.Skewers({
+                          left: left - 1,
+                          struck: [...struck, zombieId],
+                        }),
+                    }),
+                  )
+                : Result.failVoid,
+          }),
+      },
+    )
+
+export const resolveBulletHits: {
+  (seconds: number, firstFreshId: number): (model: World) => World
+  (model: World, seconds: number, firstFreshId: number): World
+} = Function.dual(
+  3,
+  (model: World, seconds: number, firstFreshId: number): World => {
+    const freshShots = freshShotsOf(model, firstFreshId)
+    const hits = findBulletHits(
+      model.bullets,
+      model.zombies,
+      model.boss,
+      seconds,
+      freshShots,
+    )
+    if (Array.isReadonlyArrayEmpty(hits)) {
+      return resolveFriendlyFire(model, seconds, freshShots.from, firstFreshId)
+    }
+
+    const hitZombieIds = Array.dedupe(
+      Array.map(hits, ({ zombieId }) => zombieId),
+    )
+    const zombies = Array.map(model.zombies, applyHits(hits))
+    const killedZombies = Array.filter(
+      zombies,
+      zombie => zombie.hp <= 0 && Array.contains(hitZombieIds, zombie.id),
+    )
+    const hitZombies = Array.filter(zombies, zombie =>
+      Array.contains(hitZombieIds, zombie.id),
+    )
+    const bounty = Array.reduce(
+      killedZombies,
+      0,
+      (sum, zombie) =>
+        sum + kitchenBounty(levelOf(model), zombie, statsOf(zombie).bounty),
+    )
+    const struck = modifyFields(model, {
+      bullets: Array.filterMap(skewer(hits)),
+      zombies: () => zombies,
+      stats: stats =>
+        countHits(
+          stats,
+          Array.filter(hits, ({ weapon }) => weapon !== TURRET_WEAPON).length,
+        ),
+      frameEvents: frameEvents => [
+        ...frameEvents,
+        ...Array.getSomes(Array.map(hitZombies, hitEventOn(hits))),
+        ...Array.map(killedZombies, killEventOn(hits)),
+      ],
+    })
+    return resolveFriendlyFire(
+      isCoop(model)
+        ? payKillers(creditLanded(struck, hits), hits, killedZombies)
+        : earnKill(struck, SOLO_SLOT, bounty),
+      seconds,
+      freshShots.from,
+      firstFreshId,
+    )
+  },
+)
+
+// NOTE: in co-op a shot's sweep starts at its shooter's center, and a kill
+// pays the player whose shot landed last (decided 5).
+const freshShotsOf = (model: World, firstFreshId: number): FreshShots => ({
+  firstId: firstFreshId,
+  endId: model.nextEntityId,
+  from: isCoop(model)
+    ? bullet =>
+        Option.match(
+          Option.flatMap(maybeShooterOf(bullet), slot =>
+            maybePlayerAt(model, slot),
+          ),
+          {
+            onNone: (): Vector => focusOf(model).player,
+            onSome: ({ player }): Vector => player,
+          },
+        )
+    : () => focusOf(model).player,
+})
+
+// NOTE: each shooter's shots that landed, for their aim on the crew
+// board. A gnome's peas are its owner's trap, not their aim.
+const creditLanded = (model: World, hits: ReadonlyArray<BulletHit>): World => {
+  const shooters = Array.filterMap(hits, ({ weapon, maybeShooter }) =>
+    weapon === TURRET_WEAPON
+      ? Result.failVoid
+      : Result.fromOption(maybeShooter, () => undefined),
+  )
+  return Array.reduce(Array.dedupe(shooters), model, (current, slot) =>
+    creditShots(
+      current,
+      slot,
+      0,
+      Array.filter(shooters, shooter => shooter === slot).length,
+    ),
+  )
+}
+
+const payKillers = (
+  model: World,
+  hits: ReadonlyArray<BulletHit>,
+  killed: ReadonlyArray<Zombie>,
+): World =>
+  Array.reduce(killed, model, (current, zombie) => {
+    const maybeKiller = Option.flatMap(
+      Array.last(hitsOn(hits, zombie.id)),
+      ({ maybeShooter }) => maybeShooter,
+    )
+    const paid = payTo(
+      current,
+      maybeKiller,
+      kitchenBounty(levelOf(current), zombie, statsOf(zombie).bounty),
+    )
+    return Option.match(maybeKiller, {
+      onNone: () => paid,
+      onSome: slot => creditKills(paid, slot, 1),
+    })
+  })
+
+const bumpAttacker =
+  (attacker: Zombie, direction: Vector) =>
+  (zombie: Zombie): Zombie =>
+    zombie.id === attacker.id
+      ? modifyFields(zombie, {
+          knockback: () =>
+            scaleVector(
+              direction,
+              -ZOMBIE_BUMP_SPEED * statsOf(attacker).knockbackScale,
+            ),
+        })
+      : zombie
+
+const bitePlayer = (
+  model: World,
+  slot: PlayerSlot,
+  attacker: Zombie,
+): World => {
+  const { player } = seatStateAt(model, slot)
+  const direction = Option.getOrElse(directionBetween(attacker, player), () =>
+    scaleVector(player.facing, -1),
+  )
+  return modifyFields(model, {
+    seats: atSeat(slot, {
+      player: () =>
+        woundPlayer(
+          player,
+          biteDamage(model.difficulty.chosen, statsOf(attacker).contactDamage),
+          direction,
+          biteGraceScale(model.difficulty.chosen),
+        ),
+    }),
+    zombies: Array.map(bumpAttacker(attacker, direction)),
+    frameEvents: Array.append(
+      GameEvent.PlayerHurt({
+        x: player.x,
+        y: player.y,
+        direction,
+        source: attacker.kind,
+      }),
+    ),
+  })
+}
+
+const isTouching =
+  (player: Player) =>
+  (zombie: Zombie): boolean =>
+    isFree(zombie) &&
+    circlesOverlap(zombie, bodyRadiusOf(zombie), player, PLAYER_RADIUS)
+
+const isBrawler = (zombie: Zombie): boolean =>
+  Behavior.isAnyOf(['Brawler', 'Thrower'])(statsOf(zombie).behavior)
+
+const popOnContact =
+  (player: Player) =>
+  (zombie: Zombie): Zombie =>
+    isTouching(player)(zombie)
+      ? Behavior.match(statsOf(zombie).behavior, {
+          Brawler: () => zombie,
+          Bomber: ({ contactFuseMs }) =>
+            modifyFields(zombie, {
+              state: () => ZombieState.Fusing({ remainingMs: contactFuseMs }),
+            }),
+          Thrower: () => zombie,
+          Crawler: () => zombie,
+        })
+      : zombie
+
+const popBombers = (model: World, slot: PlayerSlot): World =>
+  modifyFields(model, {
+    zombies: Array.map(popOnContact(seatStateAt(model, slot).player)),
+  })
+
+// NOTE: in co-op a zombie must keep touching a player for their seat's
+// bite grace before it bites (see Seat); single player bites at once.
+const biteOnContact = (model: World, slot: PlayerSlot): World => {
+  const { player, seat } = seatStateAt(model, slot)
+  if (Invulnerability.isAnyOf(['Invulnerable'])(player.invulnerability)) {
+    return model
+  }
+
+  const isTouched = isTouching(player)
+  const maybeAttacker = Array.findFirst(
+    model.zombies,
+    zombie => isBrawler(zombie) && isTouched(zombie),
+  )
+  if (!isCoop(model)) {
+    return Option.match(maybeAttacker, {
+      onNone: () => model,
+      onSome: attacker => bitePlayer(model, slot, attacker),
+    })
+  }
+  return Option.match(maybeAttacker, {
+    onNone: () =>
+      seat.touchedMs === 0
+        ? model
+        : modifySeatRecord(model, slot, current =>
+            modifyFields(current, { touchedMs: () => 0 }),
+          ),
+    onSome: attacker =>
+      seat.touchedMs >= seat.graceMs
+        ? bitePlayer(model, slot, attacker)
+        : modifySeatRecord(model, slot, current =>
+            modifyFields(current, {
+              touchedMs: touched => touched + FIXED_STEP_MS,
+            }),
+          ),
+  })
+}
+
+export const resolvePlayerContact: {
+  (slot: PlayerSlot): (model: World) => World
+  (model: World, slot: PlayerSlot): World
+} = Function.dual(2, (model: World, slot: PlayerSlot): World =>
+  popBombers(biteOnContact(model, slot), slot),
+)

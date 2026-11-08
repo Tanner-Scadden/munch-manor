@@ -5,9 +5,9 @@
 import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import { Message } from '../../src/message'
-import type { Model } from '../../src/model'
-import { modelAfter } from '../../src/testing'
+import { Message } from '../../src/app/message'
+import type { Model } from '../../src/app/model'
+import { modelAfter } from '../../src/test/testing'
 import { firstDifference } from './diff'
 import { gameplayOf } from './fields'
 import { startedRun } from './script'

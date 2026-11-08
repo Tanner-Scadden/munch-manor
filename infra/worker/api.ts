@@ -17,7 +17,11 @@ import type * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as SqlClient from 'effect/sql/SqlClient'
 import type * as SqlError from 'effect/sql/SqlError'
 
-import { HEALTH_PATH, RUNS_PATH, SHARES_PATH } from '../../src/analytics.ts'
+import {
+  HEALTH_PATH,
+  RUNS_PATH,
+  SHARES_PATH,
+} from '../../src/platform/analytics.ts'
 import {
   type RateDecision,
   type RunRow,

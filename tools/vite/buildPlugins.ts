@@ -23,7 +23,7 @@ import {
   precacheDrift,
   precacheList,
   serviceWorkerSource,
-} from '../../src/sw/precache.ts'
+} from '../../src/platform/sw/precache.ts'
 import { encodeJson } from '../json.ts'
 import { nodeRuntime } from '../node.ts'
 
@@ -33,7 +33,7 @@ const ROOT = Array.join(
   '/',
 )
 
-const WORKER_SOURCE = `${ROOT}/src/sw/worker.ts`
+const WORKER_SOURCE = `${ROOT}/src/platform/sw/worker.ts`
 
 const DEV_BUILD = 'dev'
 
@@ -156,7 +156,7 @@ class PrecacheDrifted extends Schema.TaggedError<
 >()('PrecacheDrifted', { message: Schema.String }) {}
 
 // Writes sw.js, the service worker that lets the game cold start offline
-// (src/sw/worker.ts), with this build's id and its precache list: every file
+// (src/platform/sw/worker.ts), with this build's id and its precache list: every file
 // Vite emitted and every file copied from public/, less NOT_PRECACHED. Once
 // dist is written it checks the list against the files on disk and fails the
 // build if they drift. KILL_SERVICE_WORKER=1 writes the kill switch instead.

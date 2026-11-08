@@ -104,12 +104,13 @@
         "munch/command-beside-update": "error",
         "munch/key-action-once": "error",
         "munch/no-binding-field-write": "error",
+        "munch/folder-imports": "error",
         "no-restricted-properties": [
           "error",
           {
             "object": "Math",
             "property": "random",
-            "message": "update is pure: draw from the seeded generator in the Model (src/prng.ts)."
+            "message": "update is pure: draw from the seeded generator in the Model (src/shared/prng.ts)."
           },
           {
             "object": "Date",
@@ -124,7 +125,7 @@
           {
             "object": "performance",
             "property": "now",
-            "message": "Frame time is read once, in src/subscriptions.ts."
+            "message": "Frame time is read once, in src/app/subscriptions.ts."
           },
           {
             "object": "Data",
@@ -140,15 +141,15 @@
           "error",
           {
             "name": "localStorage",
-            "message": "Persistent data goes through PlayerStore (src/store.ts)."
+            "message": "Persistent data goes through PlayerStore (src/platform/store.ts)."
           },
           {
             "name": "sessionStorage",
-            "message": "Persistent data goes through PlayerStore (src/store.ts)."
+            "message": "Persistent data goes through PlayerStore (src/platform/store.ts)."
           },
           {
             "name": "indexedDB",
-            "message": "Persistent data goes through PlayerStore (src/store.ts)."
+            "message": "Persistent data goes through PlayerStore (src/platform/store.ts)."
           },
           {
             "name": "setTimeout",
@@ -184,13 +185,16 @@
     },
     {
       // NOTE: single player's handlers apply a player action as a seat
-      // action (src/stepWorld.ts), the rule the co-op room runs, and never
-      // decide one again (AGENTS.md "Code shape").
+      // action (src/world/step/stepWorld.ts), the rule the co-op room runs,
+      // and never decide one again (AGENTS.md "Code shape"). The handlers'
+      // Steps live in app/update and in each feature's update.ts.
       "files": [
-        "src/update/**/*.ts",
-        "src/main.ts",
-        "src/runFlow.ts",
-        "src/couch.ts"
+        "src/app/update/*.ts",
+        "src/features/*/update.ts",
+        "src/features/shop/guideUpdate.ts",
+        "src/app/main.ts",
+        "src/app/runFlow.ts",
+        "src/features/couch/couch.ts"
       ],
       "rules": { "munch/seat-action-once": "error" }
     },
@@ -201,8 +205,8 @@
       "files": [
         "src/**/*.test.ts",
         "src/**/*.fixture.ts",
-        "src/testing.ts",
-        "src/vitest-setup.ts"
+        "src/test/testing.ts",
+        "src/test/vitest-setup.ts"
       ],
       "rules": {
         "no-restricted-imports": "off",
@@ -213,7 +217,7 @@
           {
             "object": "Math",
             "property": "random",
-            "message": "Tests replay seeds: use the seeded generator (src/prng.ts)."
+            "message": "Tests replay seeds: use the seeded generator (src/shared/prng.ts)."
           },
           {
             "object": "Date",
@@ -241,7 +245,7 @@
     },
     {
       // NOTE: the frame clock is read here and nowhere else.
-      "files": ["src/subscriptions.ts"],
+      "files": ["src/app/subscriptions.ts"],
       "rules": {
         "no-restricted-properties": [
           "error",
@@ -257,11 +261,11 @@
       // NOTE: the store is where storage lives: save.ts keeps the legacy
       // localStorage copy that store.ts falls back to.
       "files": [
-        "src/save.ts",
-        "src/store.ts",
-        "src/storeSqlite.ts",
-        "src/storeEarly.ts",
-        "src/store.worker.ts"
+        "src/platform/save.ts",
+        "src/platform/store.ts",
+        "src/platform/storeSqlite.ts",
+        "src/platform/storeEarly.ts",
+        "src/platform/store.worker.ts"
       ],
       "rules": {
         "no-restricted-globals": "off"
@@ -269,7 +273,7 @@
     },
     {
       // NOTE: the service worker runs outside the game and the Effect runtime.
-      "files": ["src/sw/worker.ts"],
+      "files": ["src/platform/sw/worker.ts"],
       "rules": {
         "no-restricted-globals": "off"
       }
@@ -279,13 +283,13 @@
       // (camera, geometry), or draw deliberately inside inLandscapeFrame
       // (screens, endView, bossView).
       "files": [
-        "src/constants.ts",
-        "src/screen.ts",
-        "src/camera.ts",
-        "src/geometry.ts",
-        "src/screens.ts",
-        "src/endView.ts",
-        "src/bossView.ts"
+        "src/shared/constants.ts",
+        "src/render/screen.ts",
+        "src/render/camera.ts",
+        "src/world/step/geometry.ts",
+        "src/features/menus/screens.ts",
+        "src/features/end/endView.ts",
+        "src/render/bossView.ts"
       ],
       "rules": {
         "no-restricted-imports": "off"
@@ -351,15 +355,30 @@
       }
     },
     {
+      // NOTE: the root Block's own views and Steps live in these folders,
+      // split by feature, and build the root's Messages (src/app/message.ts).
+      // The rule knows a root Message only by a sibling `./message` path, so
+      // it reads `../../app/message` as a child's. It stays on in the folders
+      // that hold a child Block (the next override).
+      "files": ["src/{features,input,audio,platform,render,art}/**/*.ts"],
+      "rules": { "foldkit/no-child-message-construction-in-root": "off" }
+    },
+    {
+      // NOTE: co-op and the Look tab are child Blocks: only their own code
+      // builds their Messages.
+      "files": ["src/features/coop/*.ts", "src/features/look/*.ts"],
+      "rules": { "foldkit/no-child-message-construction-in-root": "error" }
+    },
+    {
       // NOTE: menuState derives which menu is up from these fields, so it is
       // the one place that reads them (munch/no-menu-field).
-      "files": ["src/menuState.ts"],
+      "files": ["src/app/menuState.ts"],
       "rules": { "munch/no-menu-field": "off" }
     },
     {
       // NOTE: the one key table, the one place that asks whether READY's
       // key is held to buy (munch/key-action-once).
-      "files": ["src/keyActions.ts"],
+      "files": ["src/input/keyActions.ts"],
       "rules": { "munch/key-action-once": "off" }
     },
     {
@@ -371,8 +390,8 @@
         "**/*.fixture.ts",
         "**/*.setup.ts",
         "**/{testing,Testing,roomTesting}.ts",
-        "src/vitest-setup.ts",
-        "src/testPng.ts"
+        "src/test/vitest-setup.ts",
+        "src/test/testPng.ts"
       ],
       "rules": { "munch/no-run-in-tests": "error" }
     },
@@ -387,7 +406,7 @@
     {
       // NOTE: writes the service worker's build id and precache list as
       // JavaScript literals into its source, not JSON to be read back.
-      "files": ["src/sw/precache.ts"],
+      "files": ["src/platform/sw/precache.ts"],
       "rules": { "munch/no-raw-json": "off" }
     }
   ],

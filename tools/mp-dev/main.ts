@@ -60,17 +60,17 @@ import {
   makePlayerId,
 } from '@munch/sync-engine'
 
-import { MANOR, levelOf } from '../../src/arena'
-import { playersOf } from '../../src/party'
+import { nextAnimationFrame } from '../../src/platform/splash'
+import { MANOR, levelOf } from '../../src/world/level/arena'
 import {
   type OwnSeat,
   ROOM_WORLD,
   type RoomWorld,
   actionCodeOf,
   heldAction,
-} from '../../src/roomWorld'
-import { nextAnimationFrame } from '../../src/splash'
-import { SeatAction } from '../../src/stepWorld'
+} from '../../src/world/net/roomWorld'
+import { playersOf } from '../../src/world/party/party'
+import { SeatAction } from '../../src/world/step/stepWorld'
 
 declare const __MP_API_ORIGIN__: string
 

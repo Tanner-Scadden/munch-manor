@@ -1,8 +1,8 @@
 import { Array as EffectArray, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { beginPreparation } from '../../../src/waves'
-import { withWorld } from '../../../src/world'
+import { withWorld } from '../../../src/world/schema/world'
+import { beginPreparation } from '../../../src/world/waves/waves'
 import { play, seedAt, startedRun, waveSeedAt } from '../bot'
 import { type BotOptions, type Model } from './basics'
 import { emptyWaveLog } from './logs'

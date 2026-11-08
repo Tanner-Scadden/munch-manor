@@ -1,14 +1,14 @@
 import { Array, Effect, MutableRef, Order, Schema, pipe } from 'effect'
 import { TestClock } from 'effect/testing'
 
-import { acquireAudioEngine, playMusic, playSound } from '../../src/audio'
+import { acquireAudioEngine, playMusic, playSound } from '../../src/audio/audio'
 import type {} from '../audit/page'
 import { type Cue, SoundtrackRequestJson } from './soundtrackRequest'
 
 // THE SOUNDTRACK, OFFLINE
 //
 // NOTE: runs in headless Chrome (bundled by soundtrack.ts). The game's own
-// audio engine (src/audio.ts) is built around an OfflineAudioContext
+// audio engine (src/audio/audio.ts) is built around an OfflineAudioContext
 // instead of a live one, and its music scheduler runs on a test clock that
 // this file moves on in 40 ms steps, as the real one ticks. The context's
 // clock is moved to each step and each cue in turn, so every sound starts

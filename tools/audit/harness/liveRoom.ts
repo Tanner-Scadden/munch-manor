@@ -7,14 +7,14 @@
 import { Array, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { modifySeat } from '@game/party'
+import { freshGun } from '@game/world/gear/weapons'
 import {
   DEFAULT_ROOM_SETTINGS,
   ROOM_WORLD,
   type RoomWorld,
   startRoomWorld,
-} from '@game/roomWorld'
-import { freshGun } from '@game/weapons'
+} from '@game/world/net/roomWorld'
+import { modifySeat } from '@game/world/party/party'
 import {
   Arsenal,
   Frenzy,
@@ -24,8 +24,8 @@ import {
   ZombieAction,
   type ZombieKind,
   ZombieState,
-} from '@game/worldSchema'
-import { ZOMBIE_KINDS } from '@game/zombies'
+} from '@game/world/schema/worldSchema'
+import { ZOMBIE_KINDS } from '@game/world/zombies/zombies'
 
 // NOTE: `coop=live`'s room without `seats` or `crowd`.
 export const LIVE_SEATS = 4

@@ -6,8 +6,8 @@
 
 import { Function } from 'effect'
 
-import type { Model } from '../../src/model'
-import type { Player, ShopState } from '../../src/worldSchema'
+import type { Model } from '../../src/app/model'
+import type { Player, ShopState } from '../../src/world/schema/worldSchema'
 
 type Lead = Readonly<{ player: Player; shop: ShopState }>
 

@@ -52,11 +52,11 @@
           "@munch/sqlite-wasm-effect",
           "@munch/sync-engine",
           "@munch/netcode",
-          "munch-manor/coop/lobbyWrite",
-          "munch-manor/coop/roomReplica#makeRoomAccess",
-          "munch-manor/playerScope",
-          "munch-manor/storeSqlite",
-          "munch-manor/store.fixture",
+          "munch-manor/features/coop/lobbyWrite",
+          "munch-manor/features/coop/roomReplica#makeRoomAccess",
+          "munch-manor/platform/playerScope",
+          "munch-manor/platform/storeSqlite",
+          "munch-manor/test/store.fixture",
           "munch-manor/tools",
           "munch-manor-infra/worker"
         ],
@@ -214,7 +214,7 @@
           {
             // NOTE: the service worker runs outside the Effect runtime and
             // speaks the Fetch API.
-            "include": ["src/sw/worker.ts"],
+            "include": ["src/platform/sw/worker.ts"],
             "options": {
               "diagnosticSeverity": {
                 "globalFetch": "off",

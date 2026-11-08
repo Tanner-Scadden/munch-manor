@@ -12,11 +12,11 @@
 import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { PLAYER_MAX_HP } from '../../src/constants'
-import { Message } from '../../src/message'
-import { Lesson, type Model, Phase } from '../../src/model'
-import { initialModel, update } from '../../src/pureApp'
-import { asVeteran } from '../../src/veteran'
+import { Message } from '../../src/app/message'
+import { Lesson, type Model, Phase } from '../../src/app/model'
+import { initialModel, update } from '../../src/app/pureApp'
+import { PLAYER_MAX_HP } from '../../src/shared/constants'
+import { asVeteran } from '../../src/test/veteran'
 import { leadOf, withLeadPlayer } from './lead'
 import type { ScriptMode, StepPattern } from './request'
 

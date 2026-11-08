@@ -3,7 +3,7 @@ import { type Plugin, defineConfig } from 'vitest/config'
 
 const INFRA = import.meta.dirname
 
-// NOTE: src/analytics.ts, src/playerData.ts, src/playerScope.ts, the sync
+// NOTE: src/platform/analytics.ts, src/shared/playerData.ts, src/platform/playerScope.ts, the sync
 // engine in packages/sync-engine, and the netcode in packages/netcode are
 // shared with the game, so their `effect` imports would resolve from the
 // game's own node_modules, an older Effect, and two Effects would meet in

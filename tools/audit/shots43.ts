@@ -220,7 +220,7 @@ const shootDeath = (
 // what it was handed, whether the tap's user activation was live, and
 // whether the click was still being dispatched (window.event), as iOS
 // Safari's share sheet needs. A tap on a phone goes through the game's own
-// touch taps (src/touchTaps.ts); a desktop clicks.
+// touch taps (src/input/touchTaps.ts); a desktop clicks.
 const ShareMode = Schema.Literals(['Sheet', 'Refused', 'Copy'])
 type ShareMode = typeof ShareMode.Type
 

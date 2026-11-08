@@ -5,7 +5,7 @@
 
 import type { Option } from 'effect'
 
-import type { Model } from '@game/model'
+import type { Model } from '@game/app/model'
 
 import type { HarnessConfig } from './config'
 

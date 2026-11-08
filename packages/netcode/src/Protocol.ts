@@ -26,9 +26,9 @@ import {
 // refused rather than handed messages it cannot read. Version 3: an Input
 // says which room tick its player was looking at (`seen`) and its round
 // trip, and a Delta can carry everyone's round trips (`pings`). Version 4:
-// the World holds each seat's hold-to-buy (src/purchase.ts), the interact
+// the World holds each seat's hold-to-buy (src/world/shop/purchase.ts), the interact
 // hold rides as button bit 2, and the BuyExit seat action is gone, which
-// moved the codes of LeaveCounter and Ready (src/roomWorld.ts pins them).
+// moved the codes of LeaveCounter and Ready (src/world/net/roomWorld.ts pins them).
 // Version 5: the Mystery Leftovers fridge and its weapons. The World holds
 // the fridge, the Cooker's lids in flight, each player's charge, and the
 // new zombie actions; the shop sells the fridge weapons' upgrades and
@@ -40,10 +40,10 @@ import {
 // the pistol back, whose code follows the old ones.
 // Version 8: the boss's brace target and rush length go as positions, not
 // unit values, so a client draws the charge lane where the room aims it.
-// Version 9: standing still buys as the hold does (src/purchase.ts), and a
+// Version 9: standing still buys as the hold does (src/world/shop/purchase.ts), and a
 // seat's purchase can be Spent, waiting for its player to move before
 // standing buys again; a version 8 client cannot read it.
-// Version 10: the ammo window mid-wave (src/ammoCounter.ts), a seat's
+// Version 10: the ammo window mid-wave (src/world/shop/ammoCounter.ts), a seat's
 // purchase can target the stall's Ammo.
 // Version 11: the knife is a third slot. Each player holds a gun or the
 // knife (`wield`), the knife is drawn by a press (a new action code, as is

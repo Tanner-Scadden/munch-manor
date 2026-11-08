@@ -63,7 +63,7 @@ export interface StandInWorld {
 
 // RANDOM
 
-// NOTE: mulberry32, as in src/prng.ts: integer math only, so exact in
+// NOTE: mulberry32, as in src/shared/prng.ts: integer math only, so exact in
 // every engine.
 const nextRandom = (state: number): readonly [number, number] => {
   const t = (state + 0x6d2b79f5) | 0

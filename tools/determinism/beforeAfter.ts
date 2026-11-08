@@ -260,14 +260,47 @@ const copyHarness = (base: string) =>
       Array.filter(entries, entry => entry !== 'out'),
       entry => fs.copy(path.resolve(here, entry), path.resolve(target, entry)),
     )
-    // NOTE: the harness plays the game through src/pureApp.ts. A base from
+    // NOTE: a base from before src/ was in folders (November 2026) has every
+    // module flat in src/: each module the harness imports by its folder
+    // path gets a shim there that re-exports the flat one.
+    const harnessFiles = yield* Effect.forEach(
+      Array.filter(entries, entry => String.endsWith('.ts')(entry)),
+      entry => fs.readFileString(path.resolve(here, entry)),
+    )
+    const imported = Array.dedupe(
+      Array.flatMap(harnessFiles, text =>
+        Array.map(
+          Array.fromIterable(
+            String.matchAll(/'\.\.\/\.\.\/src\/([\w/.-]+)'/g)(text),
+          ),
+          ([, module]) => module ?? '',
+        ),
+      ),
+    )
+    yield* Effect.forEach(imported, module =>
+      Effect.gen(function* () {
+        const shim = path.resolve(base, 'src', `${module}.ts`)
+        const flat = path.resolve(base, 'src', `${path.basename(module)}.ts`)
+        if ((yield* fs.exists(shim)) || !(yield* fs.exists(flat))) {
+          return
+        }
+        yield* fs.makeDirectory(path.dirname(shim), { recursive: true })
+        const relative = path.relative(path.dirname(shim), flat)
+        yield* fs.writeFileString(
+          shim,
+          `export * from './${String.slice(0, -3)(relative)}'\n`,
+        )
+      }),
+    )
+    // NOTE: the harness plays the game through src/app/pureApp.ts. A base from
     // before the Foldkit 0.170 preview has none; its update was callable and
     // its initialModel whole, so a shim there hands both out the same way.
-    const pureApp = path.resolve(base, 'src/pureApp.ts')
+    const pureApp = path.resolve(base, 'src/app/pureApp.ts')
     if (!(yield* fs.exists(pureApp))) {
+      yield* fs.makeDirectory(path.dirname(pureApp), { recursive: true })
       yield* fs.writeFileString(
         pureApp,
-        "export { update } from './main'\nexport { initialModel } from './model'\n",
+        "export { update } from '../main'\nexport { initialModel } from '../model'\n",
       )
     }
   })

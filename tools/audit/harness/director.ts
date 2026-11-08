@@ -1,29 +1,23 @@
 import { Array, Function, Option, Result, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { cameraOf, screenCameraOf, worldToView } from '@game/camera'
-import { PLAYER_MAX_HP, STICK_RADIUS_PX } from '@game/constants'
-import * as CoopModel from '@game/coop/model'
-import { type WorldState, coopWorld } from '@game/coop/seam'
-import { Message } from '@game/message'
+import { Message } from '@game/app/message'
 import {
   AudioState,
   type Model,
   MouseButton,
   Stick,
   type Vector,
-} from '@game/model'
-import { CueMusic, cueMusicFrom } from '@game/musicPlan'
-import {
-  focusOf,
-  isDowned,
-  modifySeat,
-  modifySeatRecord,
-  playersOf,
-  seatStateAt,
-} from '@game/party'
-import { Difficulty } from '@game/playerData'
-import { update } from '@game/pureApp'
+} from '@game/app/model'
+import { update } from '@game/app/pureApp'
+import { PlaySound } from '@game/app/update/sound'
+import { CueMusic, cueMusicFrom } from '@game/audio/musicPlan'
+import * as CoopModel from '@game/features/coop/model'
+import { type WorldState, coopWorld } from '@game/features/coop/seam'
+import { cameraOf, screenCameraOf, worldToView } from '@game/render/camera'
+import { screenOf } from '@game/render/screen'
+import { PLAYER_MAX_HP, STICK_RADIUS_PX } from '@game/shared/constants'
+import { Difficulty } from '@game/shared/playerData'
 import {
   AIM_REACH,
   DEFAULT_ROOM_SETTINGS,
@@ -32,12 +26,18 @@ import {
   actionCodeOf,
   heldAction,
   roomWorldFor,
-} from '@game/roomWorld'
-import { screenOf } from '@game/screen'
-import { SeatAction } from '@game/stepWorld'
-import { PlaySound } from '@game/update/sound'
-import { Life } from '@game/worldSchema'
-import { isWalking } from '@game/zombies'
+} from '@game/world/net/roomWorld'
+import {
+  focusOf,
+  isDowned,
+  modifySeat,
+  modifySeatRecord,
+  playersOf,
+  seatStateAt,
+} from '@game/world/party/party'
+import { Life } from '@game/world/schema/worldSchema'
+import { SeatAction } from '@game/world/step/stepWorld'
+import { isWalking } from '@game/world/zombies/zombies'
 import {
   type LobbyMember,
   NEUTRAL_INPUT,
@@ -231,7 +231,7 @@ export const seatsOnScreen = (
 // COMMANDS
 
 // NOTE: the sound and music Commands become log lines. The rest are the
-// pure update's (src/pureApp.ts), which the page's runtime cannot run, so a
+// pure update's (src/app/pureApp.ts), which the page's runtime cannot run, so a
 // shot's ticks give the runtime only their Model.
 const logAudio = (
   commands: ReadonlyArray<Readonly<{ name: string; args?: unknown }>>,
@@ -781,7 +781,7 @@ const coopTick = (model: Model, isCaptured: boolean): Return =>
         },
       }))
       // NOTE: the game's own handler for the room's frame, as an online
-      // run gets it (src/update/coop.ts).
+      // run gets it (src/app/update/coop.ts).
       const drawn = update(staged, Message.TickedRoomFrame({ nowMs }))
       return isCaptured ? drawn : { model: drawn.model }
     },

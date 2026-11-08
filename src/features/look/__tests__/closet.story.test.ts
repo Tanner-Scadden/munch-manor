@@ -1,0 +1,670 @@
+import { Array, Option, Record, String, pipe } from 'effect'
+import { Command, given, message, model, story } from 'foldkit/story'
+import { modifyFields } from 'foldkit/struct'
+import { describe, expect, test } from 'vitest'
+
+import { CharacterBinding } from '../../../app/bindings'
+import { Message } from '../../../app/message'
+import {
+  type LookPart,
+  type Model,
+  Reload,
+  defaultAppearance,
+} from '../../../app/model'
+import { Child, update } from '../../../app/pureApp'
+import { FocusLookOption } from '../../../app/update/look'
+import { WriteSave } from '../../../app/update/save'
+import { playerPixels, randomAppearance } from '../../../art/appearance'
+import { PlayerChange } from '../../../platform/playerSync'
+import { restoreSave, saveOf } from '../../../platform/save'
+import { reloadBarShapes } from '../../../render/playerView'
+import {
+  type Appearance,
+  COSMETIC_GIFT_RANKS,
+  COSMETIC_PRICES,
+  GiftHat,
+  type SavedRank,
+  SoldHat,
+} from '../../../shared/playerData'
+import { readyAfterRead } from '../../../test/model.fixture'
+import { writeSave } from '../../../test/testing'
+import {
+  bonesBalanceOf,
+  noRank,
+  pointsForRank,
+  rankOf,
+} from '../../../world/heroes/rank'
+import { focusOf } from '../../../world/party/party'
+import * as Character from '../block'
+import {
+  GIFTS,
+  gearTapOf,
+  giftsOpenedBy,
+  isOwned,
+  lookInOwned,
+  sourceOf,
+  standingOf,
+} from '../closet'
+import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, hatRiseOf } from '../hatArt'
+
+// The earned looks (src/features/look/closet.ts, src/app/update/look.ts): hats, shirt
+// colors, prints, and gun skins are worn, bought with Bones, or gifted by
+// rank, picked in the Look tab's rows (a look for sale is tried on first),
+// and a worn hat shows over a calling's prop.
+
+const HATS = [...GiftHat.literals, ...SoldHat.literals]
+
+const closetWith = (
+  rank: Partial<SavedRank>,
+  look: Partial<Appearance> = {},
+  bought: ReadonlyArray<string> = [],
+): Model =>
+  modifyFields(readyAfterRead, {
+    rank: () => ({ ...noRank, ...rank }),
+    boughtCosmetics: () => bought,
+    appearance: current => ({ ...current, ...look }),
+    profile: profile => modifyFields(profile, { tab: () => 'Look' }),
+    profileDialog: dialog => modifyFields(dialog, { isOpen: () => true }),
+  })
+
+const rankPoints = (rank: number): Partial<SavedRank> => ({
+  earnedPoints: pointsForRank(rank),
+})
+
+const pick = (part: LookPart, value: string) =>
+  message(
+    Child.message(
+      CharacterBinding,
+      Character.Message.ClickedGearOption({ part, value }),
+    ),
+  )
+
+const withLook = (look: Partial<Appearance>): Appearance => ({
+  ...defaultAppearance,
+  ...look,
+})
+
+const withHat = (hat: Appearance['hat']) => withLook({ hat })
+
+// NOTE: one sold look of each kind: the part it sits on, its name, the
+// field it wears, and its price.
+const SOLD = [
+  { id: 'Fez', part: 'Hat', name: 'Fez', field: 'hat', price: 50 },
+  {
+    id: 'shirt:Midnight',
+    part: 'ShirtColor',
+    name: 'Midnight',
+    field: 'shirtColor',
+    price: 20,
+  },
+  {
+    id: 'print:Skull',
+    part: 'Print',
+    name: 'Skull',
+    field: 'print',
+    price: 20,
+  },
+  {
+    id: 'skin:Candy',
+    part: 'GunSkin',
+    name: 'Candy',
+    field: 'gunSkin',
+    price: 60,
+  },
+] as const
+
+const buy = () =>
+  message(Child.message(CharacterBinding, Character.Message.ClickedBuyButton()))
+
+describe.each(SOLD)('buying $id', ({ id, part, name, field, price }) => {
+  test('a pick only tries it on: nothing is spent, worn, or saved', () => {
+    const before = closetWith({ earnedBones: 80 })
+    story(
+      update,
+      given(before),
+      pick(part, name),
+      model(current => {
+        expect(current.profile.maybePreview).toEqual(
+          Option.some({ part, value: name }),
+        )
+        expect(current.appearance).toEqual(before.appearance)
+        expect(current.boughtCosmetics).toEqual([])
+        expect(current.rank.spentBones).toBe(0)
+        expect(saveOf(current)).toEqual(saveOf(before))
+      }),
+      Command.expectNone(),
+    )
+  })
+
+  test('the BUY pill spends its price, owns it for good, and puts it on', () => {
+    const before = closetWith({ earnedBones: 80 })
+    const after = modifyFields(before, {
+      appearance: current => ({ ...current, [field]: name }),
+      boughtCosmetics: () => [id],
+      rank: rank => ({ ...rank, spentBones: price }),
+    })
+    story(
+      update,
+      given(before),
+      pick(part, name),
+      buy(),
+      model(current => {
+        expect(current.appearance[field]).toBe(name)
+        expect(current.boughtCosmetics).toEqual([id])
+        expect(bonesBalanceOf(current.rank)).toBe(80 - price)
+        expect(Option.isNone(current.profile.maybePreview)).toBe(true)
+        expect(current.profile.closetCue).toMatchObject({
+          part,
+          value: name,
+          kind: 'Bought',
+        })
+      }),
+      Command.expectHas(FocusLookOption),
+      Command.expectHas(WriteSave),
+      Command.resolve(FocusLookOption, Message.CompletedFocusLookOption()),
+      Command.expectExact(
+        WriteSave({
+          save: saveOf(after),
+          changes: [
+            PlayerChange.ChangedAppearance({ appearance: after.appearance }),
+            PlayerChange.BoughtCosmetic({ id }),
+          ],
+        }),
+      ),
+      writeSave(),
+    )
+  })
+
+  test('short of Bones a pick still tries it on and BUY only shakes', () => {
+    story(
+      update,
+      given(closetWith({ earnedBones: price - 1 })),
+      pick(part, name),
+      model(current => {
+        expect(Option.isSome(current.profile.maybePreview)).toBe(true)
+      }),
+      buy(),
+      model(current => {
+        expect(current.appearance[field]).toBe(defaultAppearance[field])
+        expect(current.boughtCosmetics).toEqual([])
+        expect(bonesBalanceOf(current.rank)).toBe(price - 1)
+        expect(current.profile.closetCue.kind).toBe('Short')
+        expect(Option.isSome(current.profile.maybePreview)).toBe(true)
+      }),
+      Command.expectNone(),
+    )
+  })
+
+  test('picking the worn look ends the try-on and changes nothing', () => {
+    const before = closetWith({ earnedBones: 200 })
+    story(
+      update,
+      given(before),
+      pick(part, name),
+      pick(part, before.appearance[field]),
+      model(current => {
+        expect(Option.isNone(current.profile.maybePreview)).toBe(true)
+        expect(current.appearance).toEqual(before.appearance)
+      }),
+      Command.expectNone(),
+    )
+  })
+
+  test('rolling the dice ends the try-on', () => {
+    story(
+      update,
+      given(closetWith({ earnedBones: 200 })),
+      pick(part, name),
+      message(
+        Child.message(CharacterBinding, Character.Message.ClickedDiceButton()),
+      ),
+      model(current => {
+        expect(Option.isNone(current.profile.maybePreview)).toBe(true)
+        expect(current.boughtCosmetics).toEqual([])
+      }),
+      writeSave(),
+    )
+  })
+
+  test('is paid once: owned, a pick wears it and costs nothing', () => {
+    story(
+      update,
+      given(closetWith({ earnedBones: 200 }, {}, [id])),
+      pick(part, name),
+      model(current => {
+        expect(current.appearance[field]).toBe(name)
+        expect(current.boughtCosmetics).toEqual([id])
+        expect(current.rank.spentBones).toBe(0)
+        expect(current.profile.closetCue.kind).not.toBe('Bought')
+        expect(Option.isNone(current.profile.maybePreview)).toBe(true)
+      }),
+      writeSave(),
+    )
+  })
+})
+
+describe('the Bones', () => {
+  test('the balance is earned plus the veteran grant minus what is spent', () => {
+    story(
+      update,
+      given(closetWith({ earnedBones: 30, veteranBones: 20, spentBones: 0 })),
+      pick('Hat', 'Fez'),
+      buy(),
+      model(current => {
+        expect(current.boughtCosmetics).toEqual(['Fez'])
+        expect(bonesBalanceOf(current.rank)).toBe(0)
+      }),
+      Command.resolve(FocusLookOption, Message.CompletedFocusLookOption()),
+      writeSave(),
+    )
+  })
+
+  test('the same shake twice in a row still replays: the count moves', () => {
+    story(
+      update,
+      given(closetWith({})),
+      pick('Hat', 'Fez'),
+      buy(),
+      model(current => {
+        expect(current.profile.closetCue.count).toBe(1)
+      }),
+      buy(),
+      model(current => {
+        expect(current.profile.closetCue.count).toBe(2)
+      }),
+    )
+  })
+
+  test('the prices are the catalog: 20 Bones a color or print, 60 a gun skin', () => {
+    expect(COSMETIC_PRICES['shirt:Midnight']).toBe(20)
+    expect(COSMETIC_PRICES['shirt:Coral']).toBe(20)
+    expect(COSMETIC_PRICES['print:Skull']).toBe(20)
+    expect(COSMETIC_PRICES['print:Flames']).toBe(20)
+    expect(
+      Array.map(
+        ['Candy', 'Bone', 'Neon'],
+        skin => COSMETIC_PRICES[`skin:${skin}`],
+      ),
+    ).toEqual([60, 60, 60])
+  })
+})
+
+describe('gifts', () => {
+  test.each(GIFTS)(
+    '$kind $name is locked below rank $rank and shakes',
+    gift => {
+      const part = Character.PART_OF_KIND[gift.kind]
+      story(
+        update,
+        given(closetWith(rankPoints(gift.rank - 1))),
+        pick(part, gift.name),
+        model(current => {
+          expect(current.profile.closetCue.kind).toBe('Short')
+          expect(current.appearance).toEqual(readyAfterRead.appearance)
+          expect(current.boughtCosmetics).toEqual([])
+        }),
+        Command.expectNone(),
+      )
+    },
+  )
+
+  test.each(GIFTS)('$kind $name is free at rank $rank', gift => {
+    const part = Character.PART_OF_KIND[gift.kind]
+    const before = closetWith(rankPoints(gift.rank))
+    expect(rankOf(before.rank.earnedPoints)).toBe(gift.rank)
+    story(
+      update,
+      given(before),
+      pick(part, gift.name),
+      model(current => {
+        expect(current.boughtCosmetics).toEqual([])
+        expect(current.rank.spentBones).toBe(0)
+        expect(current.profile.closetCue.kind).not.toBe('Short')
+        expect(current.appearance).not.toEqual(readyAfterRead.appearance)
+      }),
+      writeSave(),
+    )
+  })
+
+  test('are the ranks the decision lists', () => {
+    expect(
+      Array.map(
+        Array.filter(GIFTS, ({ rank }) => rank >= 16),
+        ({ kind, name, rank }) => `${rank} ${kind} ${name}`,
+      ),
+    ).toEqual([
+      '16 Shirt Gold',
+      '17 Print Polka',
+      '18 Skin Gold',
+      '19 Shirt Glow',
+      '20 Print Checker',
+      '22 Skin Slime',
+    ])
+  })
+
+  test('a rank up reaches the gifts between its ranks', () => {
+    expect(Array.map(giftsOpenedBy(1, 2), ({ name }) => name)).toEqual([
+      'PartyHat',
+    ])
+    expect(giftsOpenedBy(2, 2)).toEqual([])
+    expect(Array.map(giftsOpenedBy(3, 6), ({ name }) => name)).toEqual([
+      'BucketHat',
+      'PomBeanie',
+    ])
+    expect(Array.map(giftsOpenedBy(15, 22), ({ name }) => name)).toEqual([
+      'Gold',
+      'Polka',
+      'Gold',
+      'Glow',
+      'Checker',
+      'Slime',
+    ])
+    expect(giftsOpenedBy(1, 99)).toHaveLength(16)
+  })
+
+  test('no gift shares a rank with a calling or with another gift', () => {
+    const ranks = Record.values(COSMETIC_GIFT_RANKS)
+    Array.forEach([3, 6, 10, 15], rank => {
+      expect(ranks).not.toContain(rank)
+    })
+    expect(new Set(ranks).size).toBe(ranks.length)
+  })
+})
+
+describe('wearing', () => {
+  test('a free color and print are put on with a pick', () => {
+    story(
+      update,
+      given(closetWith({})),
+      pick('ShirtColor', 'Red'),
+      writeSave(),
+      pick('Print', 'Stripes'),
+      writeSave(),
+      model(current => {
+        expect(current.appearance.shirtColor).toBe('Red')
+        expect(current.appearance.print).toBe('Stripes')
+        expect(current.rank.spentBones).toBe(0)
+      }),
+    )
+  })
+
+  test('the hat and skin worn go back with the free options', () => {
+    story(
+      update,
+      given(
+        closetWith({}, { hat: 'Fez', gunSkin: 'Candy' }, ['Fez', 'skin:Candy']),
+      ),
+      pick('Hat', 'None'),
+      writeSave(),
+      pick('GunSkin', 'Stock'),
+      writeSave(),
+      model(current => {
+        expect(current.appearance.hat).toBe('None')
+        expect(current.appearance.gunSkin).toBe('Stock')
+        expect(current.boughtCosmetics).toEqual(['Fez', 'skin:Candy'])
+      }),
+    )
+  })
+
+  test('picking the one worn writes nothing', () => {
+    story(
+      update,
+      given(closetWith({}, { shirtColor: 'Teal' })),
+      pick('ShirtColor', 'Teal'),
+      model(current => {
+        expect(current.appearance.shirtColor).toBe('Teal')
+      }),
+      Command.expectNone(),
+    )
+  })
+
+  test('another owned hat replaces the worn one', () => {
+    story(
+      update,
+      given(closetWith({}, { hat: 'Fez' }, ['Fez', 'Colander'])),
+      pick('Hat', 'Colander'),
+      model(current => {
+        expect(current.appearance.hat).toBe('Colander')
+      }),
+      writeSave(),
+    )
+  })
+
+  test('the look dice keeps the hat and the gun skin on', () => {
+    const onLook = closetWith({}, { hat: 'Fez', gunSkin: 'Candy' }, [
+      'Fez',
+      'skin:Candy',
+    ])
+    story(
+      update,
+      given(onLook),
+      message(
+        Child.message(CharacterBinding, Character.Message.ClickedDiceButton()),
+      ),
+      model(current => {
+        expect(current.appearance.hat).toBe('Fez')
+        expect(current.appearance.gunSkin).toBe('Candy')
+        expect(current.appearance.hairStyle).not.toBe(
+          onLook.appearance.hairStyle,
+        )
+      }),
+      writeSave(),
+    )
+  })
+})
+
+describe('the dice', () => {
+  const rolls = (bought: ReadonlyArray<string>, rank: number) =>
+    pipe(
+      Array.range(0, 599),
+      Array.map(
+        seed =>
+          randomAppearance(seed * 31 + 7, defaultAppearance, bought, rank)[1],
+      ),
+    )
+  const colorsOf = (looks: ReadonlyArray<Appearance>) =>
+    new Set(Array.map(looks, look => look.shirtColor))
+  const printsOf = (looks: ReadonlyArray<Appearance>) =>
+    new Set(Array.map(looks, look => look.print))
+
+  test('never rolls a color or print that is not free or owned', () => {
+    const none = rolls([], 1)
+    expect([...colorsOf(none)].sort()).toEqual([
+      'Blue',
+      'Pink',
+      'Purple',
+      'Red',
+      'Teal',
+      'Yellow',
+    ])
+    expect([...printsOf(none)].sort()).toEqual(['Plain', 'Rainbow', 'Stripes'])
+  })
+
+  test('rolls the ones bought or gifted by rank, and only those', () => {
+    const some = rolls(['shirt:Midnight', 'print:Skull'], 16)
+    expect(colorsOf(some)).toContain('Midnight')
+    expect(colorsOf(some)).toContain('Gold')
+    expect(colorsOf(some)).not.toContain('Coral')
+    expect(colorsOf(some)).not.toContain('Glow')
+    expect(printsOf(some)).toContain('Skull')
+    expect(printsOf(some)).not.toContain('Polka')
+    expect(printsOf(some)).not.toContain('Flames')
+  })
+})
+
+describe('the standing of an option', () => {
+  test('is worn, owned, for sale, or locked', () => {
+    const bought = ['Fez']
+    expect(standingOf('Hat', 'Fez', 'Fez', bought, 1)).toBe('Worn')
+    expect(standingOf('Hat', 'Fez', 'None', bought, 1)).toBe('Owned')
+    expect(standingOf('Hat', 'Plunger', 'None', bought, 1)).toBe('ForSale')
+    expect(standingOf('Hat', 'TopHat', 'None', bought, 1)).toBe('Locked')
+    expect(standingOf('Hat', 'TopHat', 'None', bought, 11)).toBe('Owned')
+    expect(standingOf('Shirt', 'Blue', 'Red', [], 1)).toBe('Owned')
+    expect(standingOf('Shirt', 'Gold', 'Blue', [], 15)).toBe('Locked')
+    expect(standingOf('Shirt', 'Gold', 'Gold', [], 16)).toBe('Worn')
+    expect(standingOf('Skin', 'Stock', 'Candy', [], 1)).toBe('Owned')
+  })
+
+  test('a pick is read from the standing: a look for sale is tried on', () => {
+    expect(gearTapOf('Hat', 'Fez', 'Fez', ['Fez'], 1)).toBe('Stay')
+    expect(gearTapOf('Hat', 'Fez', 'None', ['Fez'], 1)).toBe('Wear')
+    expect(gearTapOf('Hat', 'Plunger', 'None', [], 1)).toBe('Preview')
+    expect(gearTapOf('Skin', 'Candy', 'Stock', [], 1)).toBe('Preview')
+    expect(gearTapOf('Hat', 'TopHat', 'None', [], 1)).toBe('Locked')
+  })
+
+  test('a bought look is owned at any rank, a gift only by rank', () => {
+    expect(isOwned('Hat', 'None', [], 1)).toBe(true)
+    expect(isOwned('Hat', 'Fez', [], 99)).toBe(false)
+    expect(isOwned('Hat', 'Fez', ['Fez'], 1)).toBe(true)
+    expect(isOwned('Hat', 'PartyHat', [], 2)).toBe(true)
+    expect(isOwned('Hat', 'PartyHat', [], 1)).toBe(false)
+    expect(isOwned('Shirt', 'Midnight', ['shirt:Midnight'], 1)).toBe(true)
+    expect(isOwned('Shirt', 'Midnight', ['skin:Midnight'], 1)).toBe(false)
+    expect(sourceOf('Skin', 'Stock')).toEqual({ kind: 'Free' })
+    expect(sourceOf('Skin', 'Bone')).toEqual({ kind: 'Sold', price: 60 })
+    expect(sourceOf('Skin', 'Slime')).toEqual({ kind: 'Gift', rank: 22 })
+  })
+
+  test('a look worn but not owned goes back to the free one', () => {
+    const worn = withLook({
+      hat: 'Fez',
+      shirtColor: 'Midnight',
+      print: 'Skull',
+      gunSkin: 'Candy',
+    })
+    expect(lookInOwned(worn, [], 1)).toEqual(
+      withLook({
+        hat: 'None',
+        shirtColor: 'Blue',
+        print: 'Plain',
+        gunSkin: 'Stock',
+      }),
+    )
+    expect(
+      lookInOwned(
+        worn,
+        ['Fez', 'shirt:Midnight', 'print:Skull', 'skin:Candy'],
+        1,
+      ),
+    ).toBe(worn)
+    expect(lookInOwned(withLook({ hat: 'PartyHat' }), [], 2).hat).toBe(
+      'PartyHat',
+    )
+  })
+
+  test('a synced save restores a look only if it is owned', () => {
+    const saved = saveOf(
+      closetWith({ earnedBones: 80 }, { hat: 'Fez', gunSkin: 'Neon' }, []),
+    )
+    const restored = restoreSave(closetWith({}), saved)
+    expect(restored.appearance.hat).toBe('None')
+    expect(restored.appearance.gunSkin).toBe('Stock')
+    const owned = restoreSave(
+      closetWith({}),
+      saveOf(
+        closetWith({ earnedBones: 80 }, { hat: 'Fez', gunSkin: 'Neon' }, [
+          'Fez',
+          'skin:Neon',
+        ]),
+      ),
+    )
+    expect(owned.appearance.hat).toBe('Fez')
+    expect(owned.appearance.gunSkin).toBe('Neon')
+    expect(owned.boughtCosmetics).toEqual(['Fez', 'skin:Neon'])
+  })
+})
+
+// NOTE: the blank row and the six rows of the face, over the torso.
+const HEAD_ROWS_OVER_BODY = 7
+
+describe('the hat on the sprite', () => {
+  const look = withHat('TopHat')
+
+  test('every calling shows the worn hat, and its headgear only under a bare head', () => {
+    const bare = playerPixels(withHat('None'))
+    const hatted = playerPixels(look)
+    expect(hatted.idle[0].length).toBe(
+      bare.idle[0].length + HAT_ART.TopHat.above,
+    )
+    Array.forEach(
+      ['Handyman', 'TrackStar', 'PennyPincher', 'LineCook'] as const,
+      calling => {
+        const heroHatted = playerPixels(look, calling)
+        const bareHeaded = playerPixels(withHat('None'), calling)
+        const headRows = HAT_ART.TopHat.above + HEAD_ROWS_OVER_BODY
+        expect(heroHatted.idle[0].slice(0, headRows)).toEqual(
+          playerPixels(look).idle[0].slice(0, headRows),
+        )
+        expect(heroHatted).not.toEqual(bareHeaded)
+        expect(bareHeaded).not.toEqual(playerPixels(withHat('None')))
+      },
+    )
+  })
+
+  test('the feet stay where they were: only rows at the top are added', () => {
+    Array.forEach(HATS, hat => {
+      const bare = playerPixels(withHat('None'))
+      const hatted = playerPixels(withHat(hat))
+      const grown = HAT_ART[hat].above
+      expect(grown).toBeLessThanOrEqual(MAX_HAT_ABOVE)
+      Array.forEach(hatted.walk, (frame, index) => {
+        const bareFrame = bare.walk[index] ?? []
+        expect(frame.slice(grown + 8)).toEqual(bareFrame.slice(8))
+        expect(frame).toHaveLength(bareFrame.length + grown)
+      })
+    })
+  })
+
+  test('no hat reaches the eyes: their row is the same with every hat', () => {
+    const EYES_ROW = 4
+    Array.forEach(HATS, hat => {
+      const art = HAT_ART[hat]
+      const rowsOverFace = art.rows.length - art.above
+      expect(rowsOverFace).toBeLessThanOrEqual(EYES_ROW - 1)
+      const bare = playerPixels(withHat('None')).idle[0]
+      const hatted = playerPixels(withHat(hat)).idle[0]
+      // NOTE: the idle frame has one blank row over the face.
+      expect(hatted[art.above + 1 + EYES_ROW]).toEqual(bare[1 + EYES_ROW])
+    })
+  })
+
+  test('a hat is eight pixels wide and every symbol has a color', () => {
+    Array.forEach(Record.values(HAT_ART), art => {
+      Array.forEach(art.rows, row => {
+        expect(row).toHaveLength(8)
+        Array.forEach(String.split('')(row), symbol => {
+          expect(symbol === '.' || symbol in HAT_COLORS).toBe(true)
+        })
+      })
+    })
+  })
+})
+
+describe('the marks over a hat', () => {
+  test('rise by what the sprite grew, and by nothing for a bare head', () => {
+    expect(hatRiseOf(withHat('None'))).toBe(0)
+    Array.forEach(HATS, hat => {
+      const grown =
+        playerPixels(withHat(hat)).idle[0].length -
+        playerPixels(withHat('None')).idle[0].length
+      expect(hatRiseOf(withHat(hat))).toBeGreaterThan(grown)
+    })
+    expect(hatRiseOf(withHat('WitchHat'))).toBeGreaterThan(
+      hatRiseOf(withHat('Fez')),
+    )
+  })
+
+  test('the reload bar stands that much higher', () => {
+    const reloading = {
+      ...focusOf(readyAfterRead).player,
+      reload: Reload.Reloading({ remainingMs: 500, durationMs: 1000 }),
+    }
+    const yOf = (rise: number) => {
+      const [back] = reloadBarShapes(reloading, rise)
+      return back?._tag === 'Rect' ? back.y : Number.NaN
+    }
+    expect(yOf(0) - yOf(6)).toBe(6)
+  })
+})

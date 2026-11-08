@@ -3,7 +3,7 @@
 
 import { modifyFields } from 'foldkit/struct'
 
-import { type Model, initialHitStop } from '../../src/model'
+import { type Model, initialHitStop } from '../../src/app/model'
 import type { Checkpoint } from './diff'
 import { makeGameplayHasher } from './hash'
 import {

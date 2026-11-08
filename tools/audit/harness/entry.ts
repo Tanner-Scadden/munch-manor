@@ -5,7 +5,7 @@
 
 // NOTE: next, so the build's prebuilt sprite atlas is in place before any
 // game module builds a sprite, as in the game's own entry.
-import '@game/spriteAtlasBoot'
+import '@game/art/spriteAtlasBoot'
 import './harness.css'
 import {
   Array,
@@ -22,28 +22,28 @@ import { type Document } from 'foldkit/html'
 import { modifyFields } from 'foldkit/struct'
 
 import { Dialog, Tabs } from '@foldkit/ui'
-import { PARLOUR } from '@game/arena'
-import { ProfileDialogBinding } from '@game/bindings'
-import { LoadSave, bootCommands } from '@game/boot'
-import { CharacterLayer } from '@game/characterBlock'
-import { ApplicationComposition } from '@game/composition'
-import { CoopLayer } from '@game/coop'
-import { quietCoopNet } from '@game/coop/testing'
-import { ApplicationBlock, makeNoopStep } from '@game/definition'
-import { quietLayer as quietInstallPrompt } from '@game/install'
-import { EffectsLayer } from '@game/layer'
-import { sceneShapes } from '@game/layers'
-import { update } from '@game/main'
-import type { Message } from '@game/message'
-import { type Model, initialModel as gameInitialModel } from '@game/model'
-import { update as pureUpdate } from '@game/pureApp'
-import { screenOf } from '@game/screen'
-import { STALL_BOX } from '@game/shop'
-import { layer as PlayerStoreLayer } from '@game/store'
-import { subscriptions } from '@game/subscriptions'
-import { managedResources } from '@game/update/sound'
-import { modelStep } from '@game/update/step'
-import { view } from '@game/view'
+import { ProfileDialogBinding } from '@game/app/bindings'
+import { LoadSave, bootCommands } from '@game/app/boot'
+import { ApplicationComposition } from '@game/app/composition'
+import { ApplicationBlock, makeNoopStep } from '@game/app/definition'
+import { EffectsLayer } from '@game/app/layer'
+import { sceneShapes } from '@game/app/layers'
+import { update } from '@game/app/main'
+import type { Message } from '@game/app/message'
+import { type Model, initialModel as gameInitialModel } from '@game/app/model'
+import { update as pureUpdate } from '@game/app/pureApp'
+import { subscriptions } from '@game/app/subscriptions'
+import { managedResources } from '@game/app/update/sound'
+import { modelStep } from '@game/app/update/step'
+import { view } from '@game/app/view'
+import { CoopLayer } from '@game/features/coop'
+import { quietCoopNet } from '@game/features/coop/testing'
+import { CharacterLayer } from '@game/features/look/layer'
+import { quietLayer as quietInstallPrompt } from '@game/platform/install'
+import { layer as PlayerStoreLayer } from '@game/platform/store'
+import { screenOf } from '@game/render/screen'
+import { PARLOUR } from '@game/world/level/arena'
+import { STALL_BOX } from '@game/world/shop/shop'
 
 import { cardShapes } from './cards'
 import { type HarnessConfig, decodeHarnessConfig } from './config'
@@ -214,7 +214,7 @@ const harnessInit = ApplicationComposition.makeInit(() => {
 // THE DIRECTOR
 
 // NOTE: a director step is the game's own update, with what the scene adds.
-// A shot plays on the game's pure update (src/pureApp.ts), so the sounds and
+// A shot plays on the game's pure update (src/app/pureApp.ts), so the sounds and
 // music each tick asks for are logged by tick, and the runtime takes the
 // Model it reaches. The other Commands a shot's ticks give do not run.
 const directorStep = (model: Model, message: Message): Director.Return => {

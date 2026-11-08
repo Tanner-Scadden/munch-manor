@@ -35,7 +35,7 @@ The game is developed on one laptop (12 cores), often with several agents at onc
 
 ## Job classes
 
-`jobClassOf` in `decision.ts` reads the class from the command's words, so a script inside `sh -c "..."` counts too. A script counts by its bare name (`taps.ts`, `./taps.ts`) or under an `audit/` folder, so `src/save.ts` is not the save audit. A command that names several classes takes the most careful one, and a command the guard does not know is Timing, so a new heavy script runs alone until it is listed.
+`jobClassOf` in `decision.ts` reads the class from the command's words, so a script inside `sh -c "..."` counts too. A script counts by its bare name (`taps.ts`, `./taps.ts`) or under an `audit/` folder, so `src/platform/save.ts` is not the save audit. A command that names several classes takes the most careful one, and a command the guard does not know is Timing, so a new heavy script runs alone until it is listed.
 
 | Class  | Commands                                                                                                                                           | Runs                                                                                      | Cost                                                                                                                        |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |

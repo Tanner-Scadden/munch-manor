@@ -60,7 +60,7 @@ const { KINDS, emptyHurt, quietPartMs } = await import('./bot/logs')
 const { RunResults, WaveRuns } = await import('./bot/results')
 const { runOnce, seedAt: seedFrom } = await import('./bot')
 const { playWavePass } = await import('./bot/snapshots')
-const { FINAL_WAVE } = await import('../../src/wavePlans')
+const { FINAL_WAVE } = await import('../../src/world/waves/wavePlans')
 const summary = await import('./summary')
 const turn = await import('../heavy/turn')
 const { nextChunk } = await import('../heavy/decision')
@@ -71,17 +71,17 @@ const { nextChunk } = await import('../heavy/decision')
 // NOTE: the tables a tune module may edit in place.
 const tuneTables = Effect.map(
   Effect.all({
-    wavePlans: Effect.promise(() => import('../../src/wavePlans')),
-    zombies: Effect.promise(() => import('../../src/zombies')),
-    shop: Effect.promise(() => import('../../src/shop')),
-    weapons: Effect.promise(() => import('../../src/weapons')),
-    traps: Effect.promise(() => import('../../src/traps')),
-    powerups: Effect.promise(() => import('../../src/powerups')),
-    boss: Effect.promise(() => import('../../src/boss')),
-    chucker: Effect.promise(() => import('../../src/chucker')),
-    crawler: Effect.promise(() => import('../../src/crawler')),
-    frenzy: Effect.promise(() => import('../../src/frenzy')),
-    difficulty: Effect.promise(() => import('../../src/difficulty')),
+    wavePlans: Effect.promise(() => import('../../src/world/waves/wavePlans')),
+    zombies: Effect.promise(() => import('../../src/world/zombies/zombies')),
+    shop: Effect.promise(() => import('../../src/world/shop/shop')),
+    weapons: Effect.promise(() => import('../../src/world/gear/weapons')),
+    traps: Effect.promise(() => import('../../src/world/gear/traps')),
+    powerups: Effect.promise(() => import('../../src/world/gear/powerups')),
+    boss: Effect.promise(() => import('../../src/world/zombies/boss')),
+    chucker: Effect.promise(() => import('../../src/world/zombies/chucker')),
+    crawler: Effect.promise(() => import('../../src/world/zombies/crawler')),
+    frenzy: Effect.promise(() => import('../../src/world/zombies/frenzy')),
+    difficulty: Effect.promise(() => import('../../src/world/run/difficulty')),
   }),
   modules => ({
     WAVE_PLANS: modules.wavePlans.WAVE_PLANS,

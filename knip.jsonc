@@ -10,11 +10,11 @@
   "workspaces": {
     ".": {
       "entry": [
-        // NOTE: index.html loads src/entry.ts (knip's Vite plugin finds it).
-        // vite.config.ts emits src/early.ts as its own chunk and bundles the
+        // NOTE: index.html loads src/app/entry.ts (knip's Vite plugin finds it).
+        // vite.config.ts emits src/platform/early.ts as its own chunk and bundles the
         // service worker from source.
-        "src/early.ts",
-        "src/sw/worker.ts",
+        "src/platform/early.ts",
+        "src/platform/sw/worker.ts",
         "tools/analytics/{report,smoke}.ts",
         "tools/balance/{nightly,simulate}.ts",
         "tools/determinism/{beforeAfter,build,cli,crossEngine,page,worker,worldWorker}.ts",
@@ -34,8 +34,8 @@
         "entry": [
           "src/**/*.test.ts",
           "tools/**/*.test.ts",
-          "src/vitest-setup.ts",
-          "src/atlasHtml.setup.ts",
+          "src/test/vitest-setup.ts",
+          "src/test/atlasHtml.setup.ts",
         ],
       },
       "ignoreDependencies": [

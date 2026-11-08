@@ -135,7 +135,7 @@ export const NameInput = Schema.String.check(Schema.isMaxLength(MAX_NAME_INPUT))
 
 // LOOKS
 
-// NOTE: a player's look as the game writes it (src/playerData.ts,
+// NOTE: a player's look as the game writes it (src/shared/playerData.ts,
 // lookCodeOf): a few words joined by dots, such as
 // `Female.Ponytail.Ginger.Tan.Teal`. The scope keeps it as text and knows
 // nothing of what the words mean; anything else becomes '', which the game
@@ -152,7 +152,7 @@ export const cleanLook = (raw: string): string =>
 // RANKS
 
 // NOTE: a player's rank as the game works it out from their points
-// (src/rank.ts): a whole number from 1. The scope keeps what the client
+// (src/world/heroes/rank.ts): a whole number from 1. The scope keeps what the client
 // says and cannot check it, so it clamps nonsense: a missing, fractional,
 // or non-finite number reads as 1, and nothing goes above MAX_RANK_INPUT.
 // It is for show beside a name: QUICK PLAY never groups by it.
@@ -167,7 +167,7 @@ export const cleanRank = (raw: number): number =>
 
 // CALLINGS
 
-// NOTE: a player's calling as the game writes it (src/playerData.ts,
+// NOTE: a player's calling as the game writes it (src/shared/playerData.ts,
 // `Calling`): one short word, such as `Handyman`. Like a look, the scope
 // keeps it as text and knows nothing of what the words mean; anything that
 // is not a short word becomes DEFAULT_CALLING, which the game plays as no
@@ -222,7 +222,7 @@ export type RoomDifficulty = typeof RoomDifficulty.Type
 export const DEFAULT_MODE: PickedMode = 'Campaign'
 export const DEFAULT_DIFFICULTY: RoomDifficulty = 'Normal'
 
-// NOTE: the run modifiers the host picked (src/modifiers.ts in the game), as
+// NOTE: the run modifiers the host picked (src/world/run/modifiers.ts in the game), as
 // a mask with a bit for each: Friendly Fire 1, Big Crowd 2, Broke 4, Glass 8.
 // The room does not read them, it hands the mask to the game's rules when it
 // starts the run. 0 is none.
@@ -762,7 +762,7 @@ export const ChangedMemberCalling = defineMutation({
 })
 
 // NOTE: a player renames themselves while the room is in its lobby, the
-// same name the Profile keeps (src/profile.ts). The room cleans it as it
+// same name the Profile keeps (src/features/profile/profile.ts). The room cleans it as it
 // cleans a joining name (displayName), so an empty one becomes "Player N" by
 // seat. Nobody's READY changes: the name is the player's own.
 /** @stability unstable */

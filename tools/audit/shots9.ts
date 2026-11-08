@@ -9,7 +9,7 @@ import {
 } from 'effect'
 
 import * as NodeServices from '@effect/platform-node/NodeServices'
-import { Vector } from '@game/entitySchema'
+import { Vector } from '@game/world/schema/entitySchema'
 
 import { encodeJson } from '../json'
 import { runHarnessAuditWith } from './harnessServer'

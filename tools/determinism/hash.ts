@@ -28,7 +28,7 @@
 
 import { Array, Option, Record, String } from 'effect'
 
-import type { Model } from '../../src/model'
+import type { Model } from '../../src/app/model'
 import { gameplayEntriesOf } from './fields'
 
 const C1 = 0xcc9e2d51

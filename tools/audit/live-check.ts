@@ -1,6 +1,6 @@
 import { Console, Effect, Schema } from 'effect'
 
-import { WARM_UP_CLASS } from '@game/layers'
+import { WARM_UP_CLASS } from '@game/app/layers'
 
 import { encodeJson } from '../json'
 import { openBrowser, runAudit, wait } from './lib'
@@ -8,7 +8,7 @@ import { attempt } from './page'
 
 // Loads a deployed copy of the game in headless Chrome and checks that it
 // boots: the page answers 200, the four game canvases mount, and nothing
-// throws. The sprite warm-up canvases from src/layers.ts are not counted.
+// throws. The sprite warm-up canvases from src/app/layers.ts are not counted.
 // Usage: bun live-check.ts [url]
 
 const URL = process.argv[2] ?? 'https://munchmanor.com/'

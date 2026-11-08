@@ -1,10 +1,10 @@
 import { Effect, Function, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 
-import type { Level } from '@game/arena'
-import { describeError } from '@game/describeError'
-import type { Model } from '@game/model'
-import type { STALL_BOX } from '@game/shop'
+import type { Model } from '@game/app/model'
+import { describeError } from '@game/shared/describeError'
+import type { Level } from '@game/world/level/arena'
+import type { STALL_BOX } from '@game/world/shop/shop'
 
 import type { AudioCue, seatsOnScreen } from './harness/director'
 

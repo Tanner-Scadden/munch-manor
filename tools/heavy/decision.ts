@@ -329,7 +329,7 @@ export const jobKindOf = (command: ReadonlyArray<string>): JobKind =>
     : JobKind.cases.Other.make({})
 
 // NOTE: a script counts by its name alone (`taps.ts`, `./taps.ts`) or under
-// an `audit/` folder (`tools/audit/taps.ts`), so `src/save.ts` is not the
+// an `audit/` folder (`tools/audit/taps.ts`), so `src/platform/save.ts` is not the
 // save audit.
 const auditScript = (names: string): RegExp =>
   new RegExp(`^(?:(?:.*/)?audit/|\\./)?(?:${names})\\.ts$`)

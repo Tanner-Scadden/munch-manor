@@ -27,7 +27,7 @@ import { tmpdir } from 'node:os'
 
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
-import { describeError } from '@game/describeError'
+import { describeError } from '@game/shared/describeError'
 
 export const HARNESS = 'http://localhost:4174/'
 

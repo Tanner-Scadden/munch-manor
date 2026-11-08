@@ -3,17 +3,18 @@
 
 import { Array, Function, Option } from 'effect'
 
-import { assistAim } from '../../../src/aimAssist'
-import { isOutOfGuns } from '../../../src/ammoWarning'
-import { hasLineOfSight, levelOf } from '../../../src/arena'
-import { screenCameraOf, viewToWorld, worldToView } from '../../../src/camera'
-import { maybeShieldFor } from '../../../src/chucker'
-import { PLAYER_RADIUS } from '../../../src/constants'
-import { escapeHeading } from '../../../src/escape'
-import { isSmallKind } from '../../../src/fridgeWeapons'
-import { KNIFE_RULES } from '../../../src/knife'
-import { Message } from '../../../src/message'
-import { focusOf } from '../../../src/party'
+import { Message } from '../../../src/app/message'
+import { escapeHeading } from '../../../src/features/bots/escape'
+import { isOutOfGuns } from '../../../src/features/hud/ammoWarning'
+import { assistAim } from '../../../src/input/aimAssist'
+import {
+  screenCameraOf,
+  viewToWorld,
+  worldToView,
+} from '../../../src/render/camera'
+import { PLAYER_RADIUS } from '../../../src/shared/constants'
+import { isSmallKind } from '../../../src/world/fridge/fridgeWeapons'
+import { KNIFE_RULES } from '../../../src/world/gear/knife'
 import {
   canReload,
   heldGun,
@@ -21,8 +22,11 @@ import {
   heldStats,
   isReloading,
   isWieldingMelee,
-} from '../../../src/weapons'
-import { bodyRadiusOf } from '../../../src/zombies'
+} from '../../../src/world/gear/weapons'
+import { hasLineOfSight, levelOf } from '../../../src/world/level/arena'
+import { focusOf } from '../../../src/world/party/party'
+import { maybeShieldFor } from '../../../src/world/zombies/chucker'
+import { bodyRadiusOf } from '../../../src/world/zombies/zombies'
 import {
   KEYS,
   type Model,
@@ -184,7 +188,7 @@ export const kite: {
   const nearest = fled[0]
   if (nearest !== undefined && reach(nearest) < FLEE_PX) {
     // It runs the way a person does: away from the zombie it is watching,
-    // along a wall and out of corners (src/escape.ts), but blind to the rest
+    // along a wall and out of corners (src/features/bots/escape.ts), but blind to the rest
     // of the crowd. Weaving through every gap, as the teammate bots do, won
     // Normal 40% and Hard 49% on 2026-11-03, far past what people manage.
     return escapeHeading(levelOf(model), player, [
@@ -284,7 +288,7 @@ export const topOff = (model: Model): Model => {
 }
 
 // VIEW=portrait and VIEW=touch also get the touch aim assist
-// (src/aimAssist.ts) the way the game gives it to a phone: every tick the
+// (src/input/aimAssist.ts) the way the game gives it to a phone: every tick the
 // trigger is held, the aim from where the bot last pointed bends onto the
 // zombie it is almost on, in view of the phone's window. NO_ASSIST=1 plays
 // either without it.

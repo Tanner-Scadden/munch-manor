@@ -7,19 +7,19 @@
 import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { PLAYER_MAX_HP } from '@game/constants'
-import { pressHoldButton, pressKey, releaseAll } from '@game/input'
 import {
   Melee,
   type Model,
   MouseButton,
   type ProfileTab,
   type Zombie,
-} from '@game/model'
-import { modifyFocus } from '@game/party'
-import { withInput } from '@game/update/step'
-import { markLooksSeen } from '@game/update/unlocks'
-import { freshGun, mapGuns } from '@game/weapons'
+} from '@game/app/model'
+import { withInput } from '@game/app/update/step'
+import { markLooksSeen } from '@game/features/unlocks/update'
+import { pressHoldButton, pressKey, releaseAll } from '@game/input/input'
+import { PLAYER_MAX_HP } from '@game/shared/constants'
+import { freshGun, mapGuns } from '@game/world/gear/weapons'
+import { modifyFocus } from '@game/world/party/party'
 
 import { CALM, ROAMING } from './room'
 import { type SceneSettings } from './settings'
@@ -123,7 +123,7 @@ export const logMessage = (incoming: unknown) => {
 }
 
 // NOTE: the Profile's state open on a tab, as openProfile
-// (src/update/profile.ts) sets it, without its menu check: the tab and the
+// (src/features/profile/update.ts) sets it, without its menu check: the tab and the
 // name draft, the input let go. The Dialog's own open is its Binding's
 // operation, which the scene's init runs (entry.ts).
 const preparedProfile = (model: Model, tab: ProfileTab): Model =>

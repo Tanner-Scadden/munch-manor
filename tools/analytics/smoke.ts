@@ -10,7 +10,7 @@ import {
   type RunSummary,
   RunSummaryJson,
   SOLO_PARTY,
-} from '../../src/analytics'
+} from '../../src/platform/analytics'
 
 // Posts one made-up run summary to a deployed analytics Worker, the way the
 // game's beacon does, and checks /api/health. The run is marked with the

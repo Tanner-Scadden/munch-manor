@@ -1,8 +1,9 @@
 // NOTE: AGENTS.md "Where things are" is the map of `src`, so it must stay
 // true. Fails when a module or stylesheet in `src` is not named in the first
-// column of the file table, or when the table names a file that does not
-// exist. Test files (`*.test.ts`) are left out: each sits beside what it
-// tests.
+// column of a file table, or when a table names a file that does not exist.
+// Each table sits under a `#### \`src/<folder>/\`` heading, and its paths are
+// under that folder. Tests and their fixtures are left out: each sits in a
+// `__tests__/` folder beside what it tests.
 //
 //   bun tools/lint/fileTable.ts [root]
 
@@ -39,27 +40,38 @@ class TableDrifted extends Schema.TaggedError<
   override readonly [Runtime.errorReported] = false
 }
 
-// NOTE: the files a row names: every backticked path in its first cell.
+const FOLDER_HEADING = /^#### `src\/([^`]*)`/
+
+// NOTE: the files a row names, under `src`: every backticked path in its
+// first cell, under the folder of the heading above it.
 const namedIn = (table: string): ReadonlySet<string> =>
   new Set(
-    Array.flatMap(
-      Array.filter(String.split('\n')(table), line =>
-        String.startsWith('| `')(line),
-      ),
-      (line: string) =>
-        Array.map(
+    Array.reduce(
+      String.split('\n')(table),
+      { folder: '', named: Array.empty<string>() },
+      ({ folder, named }, line) => {
+        const heading = FOLDER_HEADING.exec(line)
+        if (heading !== null) {
+          return { folder: heading[1] ?? '', named }
+        }
+        if (!String.startsWith('| `')(line)) {
+          return { folder, named }
+        }
+        const paths = Array.map(
           Array.fromIterable(
             String.matchAll(/`([^`]+)`/g)(
               Option.getOrElse(Array.get(String.split('|')(line), 1), () => ''),
             ),
           ),
-          ([, path]) => path ?? '',
-        ),
-    ),
+          ([, path]) => `${folder}${path ?? ''}`,
+        )
+        return { folder, named: Array.appendAll(named, paths) }
+      },
+    ).named,
   )
 
 const isMapped = (file: string): boolean =>
-  !String.endsWith('.test.ts')(file) && !String.endsWith('.d.ts')(file)
+  !String.includes('__tests__/')(file) && !String.endsWith('.d.ts')(file)
 
 const program = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem

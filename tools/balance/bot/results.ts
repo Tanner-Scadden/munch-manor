@@ -8,7 +8,7 @@
 
 import { Schema } from 'effect'
 
-import { ZombieKind } from '../../../src/model'
+import { ZombieKind } from '../../../src/app/model'
 
 const ByKind = Schema.Record(ZombieKind, Schema.Finite)
 // NOTE: a number by name: a count, or a share of a batch.

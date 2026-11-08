@@ -1,4 +1,4 @@
-@import '@game/styles.css';
+@import '@game/app/styles.css';
 @source '../../../src';
 
 .look-sheet {
