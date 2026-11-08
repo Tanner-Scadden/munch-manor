@@ -1,7 +1,8 @@
-import { Array, Option, Result } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Array, Effect, Option, Result } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
@@ -13,13 +14,13 @@ import {
   type Model,
   type Zombie,
 } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import {
   PLAYER_KNOCKBACK_SPEED,
   PLAYER_MAX_HP,
   ZOMBIE_ALIVE_MAX,
 } from '../../../shared/constants'
 import {
+  APPLICATION,
   FRAME_MS,
   bulletInto,
   tick,
@@ -58,95 +59,103 @@ const bossIn = (current: Model): Zombie =>
 describe('telegraphed attacks', () => {
   const ready = BossMove.Stalking({ cooldownMs: 0 })
 
-  const attackLog = (
-    start: Model,
-    frames: number,
-  ): ReadonlyArray<ReadonlyArray<GameEvent['_tag']>> => {
-    const log: Array<ReadonlyArray<GameEvent['_tag']>> = []
-    story(
-      update,
-      given(start),
-      ...Array.flatMap(ticks(frames, FRAME_MS), frame => [
-        frame,
-        model((current: Model) => {
-          log.push(
-            Array.filterMap(current.frameEvents, event =>
-              GameEvent.isAnyOf(['BossWoundUp', 'BossStomped', 'BossBelched'])(
-                event,
-              )
-                ? Result.succeed(event._tag)
-                : Result.failVoid,
-            ),
-          )
-        }),
-      ]),
-    )
-    return log
-  }
+  // NOTE: each frame's attack tags, gathered in an array only this Story
+  // fills.
+  const attackLog = (start: Model, frames: number) =>
+    Effect.suspend(() => {
+      const log: Array<ReadonlyArray<GameEvent['_tag']>> = []
+      return Story.story(
+        APPLICATION,
+        Story.given(start),
+        ...Array.flatMap(ticks(frames, FRAME_MS), frame => [
+          frame,
+          Story.model((current: Model) => {
+            log.push(
+              Array.filterMap(current.frameEvents, event =>
+                GameEvent.isAnyOf([
+                  'BossWoundUp',
+                  'BossStomped',
+                  'BossBelched',
+                ])(event)
+                  ? Result.succeed(event._tag)
+                  : Result.failVoid,
+              ),
+            )
+          }),
+        ]),
+      ).pipe(Effect.as<ReadonlyArray<ReadonlyArray<GameEvent['_tag']>>>(log))
+    })
 
   const windUpFrames = (attack: BossAttack): number =>
     Math.ceil(BOSS_RULES.windUpMs[attack] / FRAME_MS)
 
-  test('a stomp winds up for its whole wind-up before it lands', () => {
-    const boss = bossAt(CENTER_X + 20, CENTER_Y)
-    const log = attackLog(
-      inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(ready), [boss]),
-      windUpFrames('Stomp') + 2,
-    )
-    const flat = Array.flatten(log)
-    expect(Array.take(flat, 2)).toEqual(['BossWoundUp', 'BossStomped'])
-    const woundAt = Array.findFirstIndex(log, tags =>
-      Array.contains(tags, 'BossWoundUp'),
-    )
-    const stompAt = Array.findFirstIndex(log, tags =>
-      Array.contains(tags, 'BossStomped'),
-    )
-    expect(
-      Option.getOrThrow(stompAt) - Option.getOrThrow(woundAt),
-    ).toBeGreaterThanOrEqual(windUpFrames('Stomp') - 1)
-  })
+  it.effect('a stomp winds up for its whole wind-up before it lands', () =>
+    Effect.gen(function* () {
+      const boss = bossAt(CENTER_X + 20, CENTER_Y)
+      const log = yield* attackLog(
+        inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(ready), [boss]),
+        windUpFrames('Stomp') + 2,
+      )
+      const flat = Array.flatten(log)
+      expect(Array.take(flat, 2)).toEqual(['BossWoundUp', 'BossStomped'])
+      const woundAt = Array.findFirstIndex(log, tags =>
+        Array.contains(tags, 'BossWoundUp'),
+      )
+      const stompAt = Array.findFirstIndex(log, tags =>
+        Array.contains(tags, 'BossStomped'),
+      )
+      expect(
+        Option.getOrThrow(stompAt) - Option.getOrThrow(woundAt),
+      ).toBeGreaterThanOrEqual(windUpFrames('Stomp') - 1)
+    }),
+  )
 
-  test('a stomp hurts a player inside the ring and knocks them out of it', () => {
-    const boss = bossAt(CENTER_X + 20, CENTER_Y)
-    story(
-      update,
-      given(
-        inWave(
-          FINAL_WAVE,
-          [spawnAt(1e9, 0)],
-          fightingBoss(
-            BossMove.WindingUp({
-              attack: 'Stomp',
-              remainingMs: 10,
-              durationMs: BOSS_RULES.windUpMs.Stomp,
-            }),
+  it.effect(
+    'a stomp hurts a player inside the ring and knocks them out of it',
+    () => {
+      const boss = bossAt(CENTER_X + 20, CENTER_Y)
+      return Story.story(
+        APPLICATION,
+        Story.given(
+          inWave(
+            FINAL_WAVE,
+            [spawnAt(1e9, 0)],
+            fightingBoss(
+              BossMove.WindingUp({
+                attack: 'Stomp',
+                remainingMs: 10,
+                durationMs: BOSS_RULES.windUpMs.Stomp,
+              }),
+            ),
+            [boss],
           ),
-          [boss],
         ),
-      ),
-      tick(FRAME_MS),
-      model(current => {
-        expect(focusOf(current).player.hp).toBe(
-          PLAYER_MAX_HP - BOSS_RULES.stompDamage,
-        )
-        expect(focusOf(current).player.knockback.x).toBeLessThan(0)
-        expect(eventsTagged(current.frameEvents, 'BossStomped')).toHaveLength(1)
-        expect(
-          BossMove.isAnyOf(['Recovering'])(
-            Option.getOrThrow(
-              Option.liftPredicate(current.boss, Boss.guards.Fighting),
-            ).move,
-          ),
-        ).toBe(true)
-      }),
-    )
-  })
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(focusOf(current).player.hp).toBe(
+            PLAYER_MAX_HP - BOSS_RULES.stompDamage,
+          )
+          expect(focusOf(current).player.knockback.x).toBeLessThan(0)
+          expect(eventsTagged(current.frameEvents, 'BossStomped')).toHaveLength(
+            1,
+          )
+          expect(
+            BossMove.isAnyOf(['Recovering'])(
+              Option.getOrThrow(
+                Option.liftPredicate(current.boss, Boss.guards.Fighting),
+              ).move,
+            ),
+          ).toBe(true)
+        }),
+      )
+    },
+  )
 
-  test('a player who stepped out of the ring is not hurt', () => {
+  it.effect('a player who stepped out of the ring is not hurt', () => {
     const boss = bossAt(CENTER_X + BOSS_RULES.stompRadius + 12, CENTER_Y)
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         inWave(
           FINAL_WAVE,
           [spawnAt(1e9, 0)],
@@ -161,101 +170,109 @@ describe('telegraphed attacks', () => {
         ),
       ),
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(eventsTagged(current.frameEvents, 'BossStomped')).toHaveLength(1)
         expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
       }),
     )
   })
 
-  test('once his belch is ready he winds up a belch, then burps up a Groaner', () => {
-    const boss = bossAt(CENTER_X + 60, CENTER_Y)
-    const start = inWave(
-      FINAL_WAVE,
-      [spawnAt(1e9, 0)],
-      fightingWith(ready, { belchMs: 0 }),
-      [boss],
-    )
-    const log = attackLog(start, windUpFrames('Belch') + 2)
-    expect(Array.take(Array.flatten(log), 2)).toEqual([
-      'BossWoundUp',
-      'BossBelched',
-    ])
-    story(
-      update,
-      given(start),
-      ...ticks(windUpFrames('Belch') + 2, FRAME_MS),
-      model(current => {
-        const groaners = Array.filter(
-          current.zombies,
-          ({ kind }) => kind === 'Shambler',
+  it.effect(
+    'once his belch is ready he winds up a belch, then burps up a Groaner',
+    () =>
+      Effect.gen(function* () {
+        const boss = bossAt(CENTER_X + 60, CENTER_Y)
+        const start = inWave(
+          FINAL_WAVE,
+          [spawnAt(1e9, 0)],
+          fightingWith(ready, { belchMs: 0 }),
+          [boss],
         )
-        expect(groaners).toHaveLength(BOSS_RULES.belchCount)
-        expect(
-          Array.every(
-            groaners,
-            ({ hp }) =>
-              hp === scaledHp(ZOMBIE_KINDS.Shambler.hp, WAVE_8_HP_SCALE),
-          ),
-        ).toBe(true)
-        expect(fightOf(current).belchMs).toBeGreaterThan(
-          BOSS_RULES.belchEveryMs - 2 * FRAME_MS,
-        )
-      }),
-    )
-  })
-
-  test("on Hard his Groaners take the level's health but not his boss health", () => {
-    const { healthScale, bossHealthScale } = DIFFICULTIES.Hard
-    const hardBossHp = scaledHp(
-      ZOMBIE_KINDS.Boss.hp,
-      WAVE_8_HP_SCALE * healthScale * bossHealthScale,
-    )
-    const boss = modifyFields(
-      bossWithHpAt(hardBossHp, CENTER_X + 60, CENTER_Y),
-      {
-        maxHp: () => hardBossHp,
-      },
-    )
-    const start = modifyFields(
-      inWave(
-        FINAL_WAVE,
-        [spawnAt(1e9, 0)],
-        fightingWith(ready, { belchMs: 0 }),
-        [boss],
-      ),
-      {
-        difficulty: setting => modifyFields(setting, { chosen: () => 'Hard' }),
-      },
-    )
-    story(
-      update,
-      given(start),
-      ...ticks(windUpFrames('Belch') + 2, FRAME_MS),
-      model(current => {
-        const groaners = Array.filter(
-          current.zombies,
-          ({ kind }) => kind === 'Shambler',
-        )
-        expect(groaners).toHaveLength(BOSS_RULES.belchCount)
-        expect(Array.map(groaners, ({ hp }) => hp)).toEqual(
-          Array.replicate(
-            scaledHp(ZOMBIE_KINDS.Shambler.hp, WAVE_8_HP_SCALE * healthScale),
-            BOSS_RULES.belchCount,
-          ),
+        const log = yield* attackLog(start, windUpFrames('Belch') + 2)
+        expect(Array.take(Array.flatten(log), 2)).toEqual([
+          'BossWoundUp',
+          'BossBelched',
+        ])
+        return yield* Story.story(
+          APPLICATION,
+          Story.given(start),
+          ...ticks(windUpFrames('Belch') + 2, FRAME_MS),
+          Story.model(current => {
+            const groaners = Array.filter(
+              current.zombies,
+              ({ kind }) => kind === 'Shambler',
+            )
+            expect(groaners).toHaveLength(BOSS_RULES.belchCount)
+            expect(
+              Array.every(
+                groaners,
+                ({ hp }) =>
+                  hp === scaledHp(ZOMBIE_KINDS.Shambler.hp, WAVE_8_HP_SCALE),
+              ),
+            ).toBe(true)
+            expect(fightOf(current).belchMs).toBeGreaterThan(
+              BOSS_RULES.belchEveryMs - 2 * FRAME_MS,
+            )
+          }),
         )
       }),
-    )
-  })
+  )
 
-  test('it never belches past the alive cap', () => {
+  it.effect(
+    "on Hard his Groaners take the level's health but not his boss health",
+    () => {
+      const { healthScale, bossHealthScale } = DIFFICULTIES.Hard
+      const hardBossHp = scaledHp(
+        ZOMBIE_KINDS.Boss.hp,
+        WAVE_8_HP_SCALE * healthScale * bossHealthScale,
+      )
+      const boss = modifyFields(
+        bossWithHpAt(hardBossHp, CENTER_X + 60, CENTER_Y),
+        {
+          maxHp: () => hardBossHp,
+        },
+      )
+      const start = modifyFields(
+        inWave(
+          FINAL_WAVE,
+          [spawnAt(1e9, 0)],
+          fightingWith(ready, { belchMs: 0 }),
+          [boss],
+        ),
+        {
+          difficulty: setting =>
+            modifyFields(setting, { chosen: () => 'Hard' }),
+        },
+      )
+      return Story.story(
+        APPLICATION,
+        Story.given(start),
+        ...ticks(windUpFrames('Belch') + 2, FRAME_MS),
+        Story.model(current => {
+          const groaners = Array.filter(
+            current.zombies,
+            ({ kind }) => kind === 'Shambler',
+          )
+          expect(groaners).toHaveLength(BOSS_RULES.belchCount)
+          expect(Array.map(groaners, ({ hp }) => hp)).toEqual(
+            Array.replicate(
+              scaledHp(ZOMBIE_KINDS.Shambler.hp, WAVE_8_HP_SCALE * healthScale),
+              BOSS_RULES.belchCount,
+            ),
+          )
+        }),
+      )
+    },
+  )
+
+  it.effect('it never belches past the alive cap', () => {
     const boss = bossAt(CENTER_X + 90, CENTER_Y)
     const crowd = Array.makeBy(ZOMBIE_ALIVE_MAX - 1, index =>
       zombieOf('Shambler', 200 + index, 30 + index * 4, 160, { hp: 3 }),
     )
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         inWave(
           FINAL_WAVE,
           [spawnAt(1e9, 0)],
@@ -270,20 +287,20 @@ describe('telegraphed attacks', () => {
         ),
       ),
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(eventsTagged(current.frameEvents, 'BossBelched')).toHaveLength(1)
         expect(current.zombies.length).toBe(ZOMBIE_ALIVE_MAX)
       }),
     )
   })
 
-  test('it stands still while it winds up and recovers', () => {
+  it.effect('it stands still while it winds up and recovers', () => {
     const boss = modifyFields(bossAt(CENTER_X + 60, CENTER_Y), {
       speed: () => 10,
     })
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         inWave(
           FINAL_WAVE,
           [spawnAt(1e9, 0)],
@@ -298,7 +315,7 @@ describe('telegraphed attacks', () => {
         ),
       ),
       ...ticks(10, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         const moved = Option.getOrThrow(
           Array.findFirst(current.zombies, ({ id }) => id === BOSS_ID),
         )
@@ -314,23 +331,22 @@ describe('far attacks', () => {
   const FAR_X = CENTER_X + 90
   const PLAYER = { x: CENTER_X, y: CENTER_Y }
 
-  const tagsLog = (
-    start: Model,
-    frames: number,
-  ): ReadonlyArray<ReadonlyArray<GameEvent['_tag']>> => {
-    const log: Array<ReadonlyArray<GameEvent['_tag']>> = []
-    story(
-      update,
-      given(start),
-      ...Array.flatMap(ticks(frames, FRAME_MS), frame => [
-        frame,
-        model((current: Model) => {
-          log.push(Array.map(current.frameEvents, ({ _tag }) => _tag))
-        }),
-      ]),
-    )
-    return log
-  }
+  // NOTE: each frame's event tags, gathered in an array only this Story
+  // fills.
+  const tagsLog = (start: Model, frames: number) =>
+    Effect.suspend(() => {
+      const log: Array<ReadonlyArray<GameEvent['_tag']>> = []
+      return Story.story(
+        APPLICATION,
+        Story.given(start),
+        ...Array.flatMap(ticks(frames, FRAME_MS), frame => [
+          frame,
+          Story.model((current: Model) => {
+            log.push(Array.map(current.frameEvents, ({ _tag }) => _tag))
+          }),
+        ]),
+      ).pipe(Effect.as<ReadonlyArray<ReadonlyArray<GameEvent['_tag']>>>(log))
+    })
 
   const firstFrameWith = (
     log: ReadonlyArray<ReadonlyArray<GameEvent['_tag']>>,
@@ -342,231 +358,276 @@ describe('far attacks', () => {
 
   const framesOf = (ms: number): number => Math.ceil(ms / FRAME_MS)
 
-  test('from far away he braces toward where the player stands, then rushes', () => {
-    const start = inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(ready), [
-      bossAt(FAR_X, CENTER_Y),
-    ])
-    story(
-      update,
-      given(start),
-      tick(FRAME_MS),
-      model(current => {
-        const { move } = fightOf(current)
-        expect(BossMove.isAnyOf(['Bracing'])(move)).toBe(true)
-        expect(BossMove.isAnyOf(['Bracing'])(move) && move.target).toEqual(
-          PLAYER,
+  it.effect(
+    'from far away he braces toward where the player stands, then rushes',
+    () =>
+      Effect.gen(function* () {
+        const start = inWave(
+          FINAL_WAVE,
+          [spawnAt(1e9, 0)],
+          fightingBoss(ready),
+          [bossAt(FAR_X, CENTER_Y)],
         )
-        expect(eventsTagged(current.frameEvents, 'BossWoundUp')).toEqual([
-          GameEvent.BossWoundUp({ x: FAR_X, y: CENTER_Y, attack: 'Charge' }),
-        ])
+        yield* Story.story(
+          APPLICATION,
+          Story.given(start),
+          tick(FRAME_MS),
+          Story.model(current => {
+            const { move } = fightOf(current)
+            expect(BossMove.isAnyOf(['Bracing'])(move)).toBe(true)
+            expect(BossMove.isAnyOf(['Bracing'])(move) && move.target).toEqual(
+              PLAYER,
+            )
+            expect(eventsTagged(current.frameEvents, 'BossWoundUp')).toEqual([
+              GameEvent.BossWoundUp({
+                x: FAR_X,
+                y: CENTER_Y,
+                attack: 'Charge',
+              }),
+            ])
+          }),
+        )
+        const log = yield* tagsLog(
+          sturdy(start),
+          framesOf(BOSS_RULES.windUpMs.Charge) + 4,
+        )
+        expect(
+          firstFrameWith(log, 'BossRushed') -
+            firstFrameWith(log, 'BossWoundUp'),
+        ).toBeGreaterThanOrEqual(framesOf(BOSS_RULES.windUpMs.Charge) - 1)
       }),
-    )
-    const log = tagsLog(sturdy(start), framesOf(BOSS_RULES.windUpMs.Charge) + 4)
-    expect(
-      firstFrameWith(log, 'BossRushed') - firstFrameWith(log, 'BossWoundUp'),
-    ).toBeGreaterThanOrEqual(framesOf(BOSS_RULES.windUpMs.Charge) - 1)
-  })
+  )
 
-  test('the rush follows the line locked at the brace, not the player', () => {
-    const offLine = { x: CENTER_X, y: CENTER_Y + 40 }
-    const bystander = zombieOf('Shambler', 300, CENTER_X + 45, CENTER_Y + 4, {
-      hp: 3,
-    })
-    const ys: Array<number> = []
-    const moves: Array<BossMove['_tag']> = []
-    const ends: Array<Model> = []
-    story(
-      update,
-      given(
-        modifyFocus(
+  it.effect(
+    'the rush follows the line locked at the brace, not the player',
+    () =>
+      Effect.gen(function* () {
+        const offLine = { x: CENTER_X, y: CENTER_Y + 40 }
+        const bystander = zombieOf(
+          'Shambler',
+          300,
+          CENTER_X + 45,
+          CENTER_Y + 4,
+          {
+            hp: 3,
+          },
+        )
+        const ys: Array<number> = []
+        const moves: Array<BossMove['_tag']> = []
+        const ends: Array<Model> = []
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFocus(
+              inWave(
+                FINAL_WAVE,
+                [spawnAt(1e9, 0)],
+                fightingBoss(
+                  BossMove.Bracing({
+                    target: PLAYER,
+                    remainingMs: 10,
+                    durationMs: BOSS_RULES.windUpMs.Charge,
+                  }),
+                ),
+                [bossAt(FAR_X, CENTER_Y), bystander],
+              ),
+              {
+                player: player =>
+                  modifyFields(player, {
+                    x: () => offLine.x,
+                    y: () => offLine.y,
+                  }),
+              },
+            ),
+          ),
+          ...Array.flatMap(ticks(60, FRAME_MS), frame => [
+            frame,
+            Story.model((current: Model) => {
+              ys.push(bossIn(current).y)
+              moves.push(fightOf(current).move._tag)
+              ends.push(current)
+            }),
+          ]),
+        )
+        expect(moves).toContain('Rushing')
+        expect(Array.every(ys, y => Math.abs(y - CENTER_Y) < 0.01)).toBe(true)
+        const recovered = Option.getOrThrow(
+          Array.findFirst(ends, current =>
+            BossMove.isAnyOf(['Recovering'])(fightOf(current).move),
+          ),
+        )
+        expect(bossIn(recovered).x).toBeCloseTo(
+          PLAYER.x - BOSS_RULES.chargeOvershootPx,
+          0,
+        )
+        expect(focusOf(recovered).player.hp).toBe(PLAYER_MAX_HP)
+        const bowled = Option.getOrThrow(
+          Array.findFirst(recovered.zombies, ({ id }) => id === 300),
+        )
+        expect(bowled.y).toBeGreaterThan(CENTER_Y + 6)
+      }),
+  )
+
+  it.effect(
+    'a rush that reaches the player costs 2 hearts and throws them aside',
+    () =>
+      Effect.gen(function* () {
+        const hurtAt: Array<Model> = []
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            inWave(
+              FINAL_WAVE,
+              [spawnAt(1e9, 0)],
+              fightingBoss(
+                BossMove.Bracing({
+                  target: PLAYER,
+                  remainingMs: 10,
+                  durationMs: BOSS_RULES.windUpMs.Charge,
+                }),
+              ),
+              [bossAt(FAR_X, CENTER_Y + 2)],
+            ),
+          ),
+          ...Array.flatMap(ticks(40, FRAME_MS), frame => [
+            frame,
+            Story.model((current: Model) => {
+              if (focusOf(current).player.hp < PLAYER_MAX_HP) {
+                hurtAt.push(current)
+              }
+            }),
+          ]),
+        )
+        const hurt = Option.getOrThrow(Array.head(hurtAt))
+        expect(focusOf(hurt).player.hp).toBe(
+          PLAYER_MAX_HP - BOSS_RULES.chargeDamage,
+        )
+        expect(eventsTagged(hurt.frameEvents, 'BossRammed')).toHaveLength(1)
+        expect(
+          Math.hypot(
+            focusOf(hurt).player.knockback.x,
+            focusOf(hurt).player.knockback.y,
+          ),
+        ).toBeGreaterThan(PLAYER_KNOCKBACK_SPEED)
+      }),
+  )
+
+  it.effect(
+    'a rush into a wall stuns him, and shots hurt him double while he is dazed',
+    () =>
+      Effect.gen(function* () {
+        const wallBound = bossAt(100, 60)
+        const states: Array<Model> = []
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            inWave(
+              FINAL_WAVE,
+              [spawnAt(1e9, 0)],
+              fightingBoss(
+                BossMove.Rushing({
+                  direction: { x: 0, y: -1 },
+                  remainingPx: 100,
+                }),
+              ),
+              [wallBound],
+            ),
+          ),
+          ...Array.flatMap(ticks(20, FRAME_MS), frame => [
+            frame,
+            Story.model((current: Model) => {
+              states.push(current)
+            }),
+          ]),
+        )
+        const bonked = Option.getOrThrow(
+          Array.findFirst(states, current =>
+            Array.isReadonlyArrayNonEmpty(
+              eventsTagged(current.frameEvents, 'BossBonked'),
+            ),
+          ),
+        )
+        expect(fightOf(bonked).move).toEqual(
+          BossMove.Dazed({
+            remainingMs: BOSS_RULES.dazedMs,
+            durationMs: BOSS_RULES.dazedMs,
+          }),
+        )
+        expect(bossIn(bonked).y).toBeLessThan(40)
+        const dazedBoss = bossIn(bonked)
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFields(bonked, {
+              bullets: () => [bulletInto(1, dazedBoss)],
+              frameEvents: () => [],
+            }),
+          ),
+          tick(FRAME_MS),
+          Story.model(current => {
+            expect(bossIn(current).hp).toBe(dazedBoss.hp - 2)
+          }),
+          ...ticks(framesOf(BOSS_RULES.dazedMs), FRAME_MS),
+          Story.model(current => {
+            expect(BossMove.isAnyOf(['Dazed'])(fightOf(current).move)).toBe(
+              false,
+            )
+          }),
+        )
+      }),
+  )
+
+  it.effect(
+    'he spits a glob at the player, its mark fills, then it lands and pools',
+    () =>
+      Effect.gen(function* () {
+        const start = sturdy(
           inWave(
             FINAL_WAVE,
             [spawnAt(1e9, 0)],
-            fightingBoss(
-              BossMove.Bracing({
-                target: PLAYER,
-                remainingMs: 10,
-                durationMs: BOSS_RULES.windUpMs.Charge,
+            fightingWith(ready, { nextFar: 'Spit' }),
+            [bossAt(FAR_X, CENTER_Y)],
+          ),
+        )
+        const log = yield* tagsLog(
+          start,
+          framesOf(BOSS_RULES.windUpMs.Spit + BOSS_RULES.spitFlightMs) + 4,
+        )
+        const spatAt = firstFrameWith(log, 'BossSpat')
+        const landedAt = firstFrameWith(log, 'GlobLanded')
+        expect(spatAt).toBeGreaterThanOrEqual(
+          framesOf(BOSS_RULES.windUpMs.Spit) - 1,
+        )
+        expect(landedAt - spatAt).toBeGreaterThanOrEqual(
+          framesOf(BOSS_RULES.spitFlightMs) - 1,
+        )
+        return yield* Story.story(
+          APPLICATION,
+          Story.given(start),
+          ...ticks(spatAt + 1, FRAME_MS),
+          Story.model(current => {
+            expect(fightOf(current).globs).toEqual([
+              Glob.Flying({
+                from: { x: FAR_X, y: CENTER_Y },
+                to: PLAYER,
+                remainingMs: BOSS_RULES.spitFlightMs,
+                durationMs: BOSS_RULES.spitFlightMs,
               }),
-            ),
-            [bossAt(FAR_X, CENTER_Y), bystander],
-          ),
-          {
-            player: player =>
-              modifyFields(player, { x: () => offLine.x, y: () => offLine.y }),
-          },
-        ),
-      ),
-      ...Array.flatMap(ticks(60, FRAME_MS), frame => [
-        frame,
-        model((current: Model) => {
-          ys.push(bossIn(current).y)
-          moves.push(fightOf(current).move._tag)
-          ends.push(current)
-        }),
-      ]),
-    )
-    expect(moves).toContain('Rushing')
-    expect(Array.every(ys, y => Math.abs(y - CENTER_Y) < 0.01)).toBe(true)
-    const recovered = Option.getOrThrow(
-      Array.findFirst(ends, current =>
-        BossMove.isAnyOf(['Recovering'])(fightOf(current).move),
-      ),
-    )
-    expect(bossIn(recovered).x).toBeCloseTo(
-      PLAYER.x - BOSS_RULES.chargeOvershootPx,
-      0,
-    )
-    expect(focusOf(recovered).player.hp).toBe(PLAYER_MAX_HP)
-    const bowled = Option.getOrThrow(
-      Array.findFirst(recovered.zombies, ({ id }) => id === 300),
-    )
-    expect(bowled.y).toBeGreaterThan(CENTER_Y + 6)
-  })
-
-  test('a rush that reaches the player costs 2 hearts and throws them aside', () => {
-    const hurtAt: Array<Model> = []
-    story(
-      update,
-      given(
-        inWave(
-          FINAL_WAVE,
-          [spawnAt(1e9, 0)],
-          fightingBoss(
-            BossMove.Bracing({
-              target: PLAYER,
-              remainingMs: 10,
-              durationMs: BOSS_RULES.windUpMs.Charge,
-            }),
-          ),
-          [bossAt(FAR_X, CENTER_Y + 2)],
-        ),
-      ),
-      ...Array.flatMap(ticks(40, FRAME_MS), frame => [
-        frame,
-        model((current: Model) => {
-          if (focusOf(current).player.hp < PLAYER_MAX_HP) {
-            hurtAt.push(current)
-          }
-        }),
-      ]),
-    )
-    const hurt = Option.getOrThrow(Array.head(hurtAt))
-    expect(focusOf(hurt).player.hp).toBe(
-      PLAYER_MAX_HP - BOSS_RULES.chargeDamage,
-    )
-    expect(eventsTagged(hurt.frameEvents, 'BossRammed')).toHaveLength(1)
-    expect(
-      Math.hypot(
-        focusOf(hurt).player.knockback.x,
-        focusOf(hurt).player.knockback.y,
-      ),
-    ).toBeGreaterThan(PLAYER_KNOCKBACK_SPEED)
-  })
-
-  test('a rush into a wall stuns him, and shots hurt him double while he is dazed', () => {
-    const wallBound = bossAt(100, 60)
-    const states: Array<Model> = []
-    story(
-      update,
-      given(
-        inWave(
-          FINAL_WAVE,
-          [spawnAt(1e9, 0)],
-          fightingBoss(
-            BossMove.Rushing({ direction: { x: 0, y: -1 }, remainingPx: 100 }),
-          ),
-          [wallBound],
-        ),
-      ),
-      ...Array.flatMap(ticks(20, FRAME_MS), frame => [
-        frame,
-        model((current: Model) => {
-          states.push(current)
-        }),
-      ]),
-    )
-    const bonked = Option.getOrThrow(
-      Array.findFirst(states, current =>
-        Array.isReadonlyArrayNonEmpty(
-          eventsTagged(current.frameEvents, 'BossBonked'),
-        ),
-      ),
-    )
-    expect(fightOf(bonked).move).toEqual(
-      BossMove.Dazed({
-        remainingMs: BOSS_RULES.dazedMs,
-        durationMs: BOSS_RULES.dazedMs,
-      }),
-    )
-    expect(bossIn(bonked).y).toBeLessThan(40)
-    const dazedBoss = bossIn(bonked)
-    story(
-      update,
-      given(
-        modifyFields(bonked, {
-          bullets: () => [bulletInto(1, dazedBoss)],
-          frameEvents: () => [],
-        }),
-      ),
-      tick(FRAME_MS),
-      model(current => {
-        expect(bossIn(current).hp).toBe(dazedBoss.hp - 2)
-      }),
-      ...ticks(framesOf(BOSS_RULES.dazedMs), FRAME_MS),
-      model(current => {
-        expect(BossMove.isAnyOf(['Dazed'])(fightOf(current).move)).toBe(false)
-      }),
-    )
-  })
-
-  test('he spits a glob at the player, its mark fills, then it lands and pools', () => {
-    const start = sturdy(
-      inWave(
-        FINAL_WAVE,
-        [spawnAt(1e9, 0)],
-        fightingWith(ready, { nextFar: 'Spit' }),
-        [bossAt(FAR_X, CENTER_Y)],
-      ),
-    )
-    const log = tagsLog(
-      start,
-      framesOf(BOSS_RULES.windUpMs.Spit + BOSS_RULES.spitFlightMs) + 4,
-    )
-    const spatAt = firstFrameWith(log, 'BossSpat')
-    const landedAt = firstFrameWith(log, 'GlobLanded')
-    expect(spatAt).toBeGreaterThanOrEqual(
-      framesOf(BOSS_RULES.windUpMs.Spit) - 1,
-    )
-    expect(landedAt - spatAt).toBeGreaterThanOrEqual(
-      framesOf(BOSS_RULES.spitFlightMs) - 1,
-    )
-    story(
-      update,
-      given(start),
-      ...ticks(spatAt + 1, FRAME_MS),
-      model(current => {
-        expect(fightOf(current).globs).toEqual([
-          Glob.Flying({
-            from: { x: FAR_X, y: CENTER_Y },
-            to: PLAYER,
-            remainingMs: BOSS_RULES.spitFlightMs,
-            durationMs: BOSS_RULES.spitFlightMs,
+            ])
           }),
-        ])
-      }),
-      ...ticks(landedAt - spatAt, FRAME_MS),
-      model(current => {
-        expect(fightOf(current).globs).toEqual([
-          Glob.Pooled({
-            at: PLAYER,
-            remainingMs: BOSS_RULES.puddleMs,
-            durationMs: BOSS_RULES.puddleMs,
+          ...ticks(landedAt - spatAt, FRAME_MS),
+          Story.model(current => {
+            expect(fightOf(current).globs).toEqual([
+              Glob.Pooled({
+                at: PLAYER,
+                remainingMs: BOSS_RULES.puddleMs,
+                durationMs: BOSS_RULES.puddleMs,
+              }),
+            ])
           }),
-        ])
+        )
       }),
-    )
-  })
+  )
 
   const landing = (playerAt: { x: number; y: number }): Model =>
     modifyFocus(
@@ -591,228 +652,227 @@ describe('far attacks', () => {
       },
     )
 
-  test('a glob that lands on the player costs a heart, and one that misses does not', () => {
-    story(
-      update,
-      given(landing(PLAYER)),
-      tick(FRAME_MS),
-      model(current => {
-        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
-      }),
-      ...ticks(2, FRAME_MS),
-      model(current => {
-        expect(focusOf(current).player.hp).toBe(
-          PLAYER_MAX_HP - BOSS_RULES.spitDamage,
+  it.effect(
+    'a glob that lands on the player costs a heart, and one that misses does not',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(landing(PLAYER)),
+          tick(FRAME_MS),
+          Story.model(current => {
+            expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
+          }),
+          ...ticks(2, FRAME_MS),
+          Story.model(current => {
+            expect(focusOf(current).player.hp).toBe(
+              PLAYER_MAX_HP - BOSS_RULES.spitDamage,
+            )
+          }),
+        )
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            landing({ x: PLAYER.x, y: PLAYER.y + BOSS_RULES.spitRadius + 6 }),
+          ),
+          ...ticks(3, FRAME_MS),
+          Story.model(current => {
+            expect(
+              eventsTagged(current.frameEvents, 'GlobLanded'),
+            ).toHaveLength(1)
+            expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
+          }),
         )
       }),
-    )
-    story(
-      update,
-      given(landing({ x: PLAYER.x, y: PLAYER.y + BOSS_RULES.spitRadius + 6 })),
-      ...ticks(3, FRAME_MS),
-      model(current => {
-        expect(eventsTagged(current.frameEvents, 'GlobLanded')).toHaveLength(1)
-        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
-      }),
-    )
-  })
+  )
 
-  test('a puddle slows the player who walks through it, then dries up', () => {
-    const walkedFrom = (globs: ReadonlyArray<Glob>): number => {
-      const ends: Array<number> = []
-      story(
-        update,
-        given(
-          sturdy(
+  it.effect(
+    'a puddle slows the player who walks through it, then dries up',
+    () =>
+      Effect.gen(function* () {
+        const walkedFrom = (globs: ReadonlyArray<Glob>) =>
+          Story.story(
+            APPLICATION,
+            Story.given(
+              sturdy(
+                inWave(
+                  FINAL_WAVE,
+                  [spawnAt(1e9, 0)],
+                  fightingWith(BossMove.Stalking({ cooldownMs: 60_000 }), {
+                    globs,
+                  }),
+                  [bossAt(FAR_X + 40, CENTER_Y - 60)],
+                ),
+              ),
+            ),
+            Story.message(Message.PressedKey({ code: 'KeyA' })),
+            ...ticks(6, FRAME_MS),
+          ).pipe(Effect.map(end => CENTER_X - focusOf(end).player.x))
+        const puddle = Glob.Pooled({
+          at: PLAYER,
+          remainingMs: BOSS_RULES.puddleMs,
+          durationMs: BOSS_RULES.puddleMs,
+        })
+        const slowed = yield* walkedFrom([puddle])
+        const free = yield* walkedFrom([])
+        expect(slowed / free).toBeCloseTo(BOSS_RULES.puddleSlow, 1)
+        return yield* Story.story(
+          APPLICATION,
+          Story.given(
             inWave(
               FINAL_WAVE,
               [spawnAt(1e9, 0)],
               fightingWith(BossMove.Stalking({ cooldownMs: 60_000 }), {
-                globs,
+                globs: [puddle],
               }),
               [bossAt(FAR_X + 40, CENTER_Y - 60)],
             ),
           ),
-        ),
-        message(Message.PressedKey({ code: 'KeyA' })),
-        ...ticks(6, FRAME_MS),
-        model(current => {
-          ends.push(focusOf(current).player.x)
-        }),
-      )
-      return CENTER_X - Option.getOrThrow(Array.head(ends))
-    }
-    const puddle = Glob.Pooled({
-      at: PLAYER,
-      remainingMs: BOSS_RULES.puddleMs,
-      durationMs: BOSS_RULES.puddleMs,
-    })
-    expect(walkedFrom([puddle]) / walkedFrom([])).toBeCloseTo(
-      BOSS_RULES.puddleSlow,
-      1,
-    )
-    story(
-      update,
-      given(
-        inWave(
-          FINAL_WAVE,
-          [spawnAt(1e9, 0)],
-          fightingWith(BossMove.Stalking({ cooldownMs: 60_000 }), {
-            globs: [puddle],
+          ...ticks(framesOf(BOSS_RULES.puddleMs) + 1, FRAME_MS),
+          Story.model(current => {
+            expect(fightOf(current).globs).toEqual([])
           }),
-          [bossAt(FAR_X + 40, CENTER_Y - 60)],
-        ),
-      ),
-      ...ticks(framesOf(BOSS_RULES.puddleMs) + 1, FRAME_MS),
-      model(current => {
-        expect(fightOf(current).globs).toEqual([])
+        )
       }),
-    )
-  })
+  )
 
-  test('while the player stays far his belch comes sooner', () => {
-    const belchLeft = (bossX: number): number => {
-      const lefts: Array<number> = []
-      story(
-        update,
-        given(
-          sturdy(
-            inWave(
-              FINAL_WAVE,
-              [spawnAt(1e9, 0)],
-              fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
-              [bossAt(bossX, CENTER_Y)],
+  it.effect('while the player stays far his belch comes sooner', () =>
+    Effect.gen(function* () {
+      const belchLeft = (bossX: number) =>
+        Story.story(
+          APPLICATION,
+          Story.given(
+            sturdy(
+              inWave(
+                FINAL_WAVE,
+                [spawnAt(1e9, 0)],
+                fightingBoss(BossMove.Stalking({ cooldownMs: 60_000 })),
+                [bossAt(bossX, CENTER_Y)],
+              ),
             ),
           ),
-        ),
-        ...ticks(62, FRAME_MS),
-        model(current => {
-          lefts.push(fightOf(current).belchMs)
-        }),
+          ...ticks(62, FRAME_MS),
+        ).pipe(Effect.map(end => fightOf(end).belchMs))
+      const elapsed = 62 * FRAME_MS
+      const near = yield* belchLeft(CENTER_X + 60)
+      const far = yield* belchLeft(FAR_X)
+      expect(near).toBeCloseTo(BOSS_RULES.firstBelchMs - elapsed, 6)
+      expect(far).toBeCloseTo(
+        BOSS_RULES.firstBelchMs - elapsed * BOSS_RULES.belchFarRate,
+        6,
       )
-      return Option.getOrThrow(Array.head(lefts))
-    }
-    const elapsed = 62 * FRAME_MS
-    expect(belchLeft(CENTER_X + 60)).toBeCloseTo(
-      BOSS_RULES.firstBelchMs - elapsed,
-      6,
-    )
-    expect(belchLeft(FAR_X)).toBeCloseTo(
-      BOSS_RULES.firstBelchMs - elapsed * BOSS_RULES.belchFarRate,
-      6,
-    )
-  })
+    }),
+  )
 })
 
 describe('enrage', () => {
   const third = BOSS_HP / 3
 
-  test('he enrages once his health falls to a third, roaring once', () => {
-    const calm = bossWithHpAt(Math.floor(third) + 1, CENTER_X + 60, CENTER_Y)
-    const angry = bossWithHpAt(Math.floor(third), CENTER_X + 60, CENTER_Y)
-    const quiet = BossMove.Stalking({ cooldownMs: 60_000 })
-    story(
-      update,
-      given(inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(quiet), [calm])),
-      tick(FRAME_MS),
-      model(current => {
-        expect(fightOf(current).mood).toBe('Calm')
-        expect(eventsTagged(current.frameEvents, 'BossEnraged')).toEqual([])
-      }),
-    )
-    story(
-      update,
-      given(
-        inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(quiet), [angry]),
-      ),
-      tick(FRAME_MS),
-      model(current => {
-        expect(fightOf(current).mood).toBe('Enraged')
-        expect(eventsTagged(current.frameEvents, 'BossEnraged')).toHaveLength(1)
-        expect(maybeBossBar(current)).toEqual(
-          Option.some({
-            name: 'Uncle Chunk',
-            hp: Math.floor(third),
-            maxHp: BOSS_HP,
-            isEnraged: true,
-          }),
-        )
-      }),
-      tick(FRAME_MS),
-      model(current => {
-        expect(eventsTagged(current.frameEvents, 'BossEnraged')).toEqual([])
-      }),
-    )
-  })
-
-  test('enraged, he walks faster and waits less between attacks', () => {
-    const walked = (mood: 'Calm' | 'Enraged'): number => {
-      const xs: Array<number> = []
-      story(
-        update,
-        given(
-          sturdy(
-            inWave(
-              FINAL_WAVE,
-              [spawnAt(1e9, 0)],
-              fightingWith(BossMove.Stalking({ cooldownMs: 60_000 }), {
-                mood,
-              }),
-              [
-                modifyFields(bossAt(CENTER_X + 64, CENTER_Y), {
-                  speed: () => 10,
-                }),
-              ],
-            ),
-          ),
-        ),
-        ...ticks(20, FRAME_MS),
-        model(current => {
-          xs.push(bossIn(current).x)
-        }),
-      )
-      return CENTER_X + 64 - Option.getOrThrow(Array.head(xs))
-    }
-    expect(walked('Enraged') / walked('Calm')).toBeCloseTo(
-      BOSS_RULES.enrageSpeedScale,
-      1,
-    )
-    const gapAfterStomp = (mood: 'Calm' | 'Enraged'): number => {
-      const gaps: Array<number> = []
-      story(
-        update,
-        given(
-          sturdy(
-            inWave(
-              FINAL_WAVE,
-              [spawnAt(1e9, 0)],
-              fightingWith(
-                BossMove.WindingUp({
-                  attack: 'Stomp',
-                  remainingMs: 10,
-                  durationMs: BOSS_RULES.windUpMs.Stomp,
-                }),
-                { mood },
-              ),
-              [bossAt(CENTER_X + 20, CENTER_Y)],
-            ),
-          ),
+  it.effect('he enrages once his health falls to a third, roaring once', () =>
+    Effect.gen(function* () {
+      const calm = bossWithHpAt(Math.floor(third) + 1, CENTER_X + 60, CENTER_Y)
+      const angry = bossWithHpAt(Math.floor(third), CENTER_X + 60, CENTER_Y)
+      const quiet = BossMove.Stalking({ cooldownMs: 60_000 })
+      yield* Story.story(
+        APPLICATION,
+        Story.given(
+          inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(quiet), [calm]),
         ),
         tick(FRAME_MS),
-        model(current => {
-          const { move } = fightOf(current)
-          gaps.push(
-            BossMove.isAnyOf(['Recovering'])(move) ? move.cooldownMs : -1,
-          )
+        Story.model(current => {
+          expect(fightOf(current).mood).toBe('Calm')
+          expect(eventsTagged(current.frameEvents, 'BossEnraged')).toEqual([])
         }),
       )
-      return Option.getOrThrow(Array.head(gaps))
-    }
-    expect(gapAfterStomp('Calm')).toBe(BOSS_RULES.cooldownMs.Stomp)
-    expect(gapAfterStomp('Enraged')).toBe(
-      BOSS_RULES.cooldownMs.Stomp * BOSS_RULES.enrageGapScale,
-    )
-  })
+      yield* Story.story(
+        APPLICATION,
+        Story.given(
+          inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(quiet), [angry]),
+        ),
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(fightOf(current).mood).toBe('Enraged')
+          expect(eventsTagged(current.frameEvents, 'BossEnraged')).toHaveLength(
+            1,
+          )
+          expect(maybeBossBar(current)).toEqual(
+            Option.some({
+              name: 'Uncle Chunk',
+              hp: Math.floor(third),
+              maxHp: BOSS_HP,
+              isEnraged: true,
+            }),
+          )
+        }),
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(eventsTagged(current.frameEvents, 'BossEnraged')).toEqual([])
+        }),
+      )
+    }),
+  )
+
+  it.effect('enraged, he walks faster and waits less between attacks', () =>
+    Effect.gen(function* () {
+      const walked = (mood: 'Calm' | 'Enraged') =>
+        Story.story(
+          APPLICATION,
+          Story.given(
+            sturdy(
+              inWave(
+                FINAL_WAVE,
+                [spawnAt(1e9, 0)],
+                fightingWith(BossMove.Stalking({ cooldownMs: 60_000 }), {
+                  mood,
+                }),
+                [
+                  modifyFields(bossAt(CENTER_X + 64, CENTER_Y), {
+                    speed: () => 10,
+                  }),
+                ],
+              ),
+            ),
+          ),
+          ...ticks(20, FRAME_MS),
+        ).pipe(Effect.map(end => CENTER_X + 64 - bossIn(end).x))
+      const enraged = yield* walked('Enraged')
+      const calm = yield* walked('Calm')
+      expect(enraged / calm).toBeCloseTo(BOSS_RULES.enrageSpeedScale, 1)
+      const gapAfterStomp = (mood: 'Calm' | 'Enraged') =>
+        Story.story(
+          APPLICATION,
+          Story.given(
+            sturdy(
+              inWave(
+                FINAL_WAVE,
+                [spawnAt(1e9, 0)],
+                fightingWith(
+                  BossMove.WindingUp({
+                    attack: 'Stomp',
+                    remainingMs: 10,
+                    durationMs: BOSS_RULES.windUpMs.Stomp,
+                  }),
+                  { mood },
+                ),
+                [bossAt(CENTER_X + 20, CENTER_Y)],
+              ),
+            ),
+          ),
+          tick(FRAME_MS),
+        ).pipe(
+          Effect.map(end => {
+            const { move } = fightOf(end)
+            return BossMove.isAnyOf(['Recovering'])(move) ? move.cooldownMs : -1
+          }),
+        )
+      const calmGap = yield* gapAfterStomp('Calm')
+      const enragedGap = yield* gapAfterStomp('Enraged')
+      expect(calmGap).toBe(BOSS_RULES.cooldownMs.Stomp)
+      expect(enragedGap).toBe(
+        BOSS_RULES.cooldownMs.Stomp * BOSS_RULES.enrageGapScale,
+      )
+    }),
+  )
 })
 
 describe('one tell at a time', () => {
@@ -827,10 +887,10 @@ describe('one tell at a time', () => {
     return flying + moving
   }
 
-  test('he waits for a glob to land before he winds up a stomp', () => {
-    story(
-      update,
-      given(
+  it.effect('he waits for a glob to land before he winds up a stomp', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         sturdy(
           inWave(
             FINAL_WAVE,
@@ -850,14 +910,14 @@ describe('one tell at a time', () => {
         ),
       ),
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(BossMove.isAnyOf(['Stalking'])(fightOf(current).move)).toBe(true)
       }),
       ...ticks(
         Math.ceil(300 / FRAME_MS) + Math.ceil(BOSS_RULES.retryMs / FRAME_MS),
         FRAME_MS,
       ),
-      model(current => {
+      Story.model(current => {
         expect(
           Array.filter(fightOf(current).globs, Glob.isAnyOf(['Flying'])),
         ).toEqual([])
@@ -865,51 +925,52 @@ describe('one tell at a time', () => {
           true,
         )
       }),
-    )
-  })
+    ),
+  )
 
-  test('across a whole fight, no frame shows two tells', () => {
-    const tells: Array<number> = []
-    const tags: Array<GameEvent['_tag']> = []
-    story(
-      update,
-      given(
-        sturdy(
-          inWave(
-            FINAL_WAVE,
-            [spawnAt(1e9, 0)],
-            fightingWith(BossMove.Stalking({ cooldownMs: 0 }), {
-              nextFar: 'Spit',
-              belchMs: 2000,
-            }),
-            [
-              modifyFields(bossAt(CENTER_X + 120, CENTER_Y), {
-                speed: () => 10,
+  it.effect('across a whole fight, no frame shows two tells', () =>
+    Effect.gen(function* () {
+      const tells: Array<number> = []
+      const tags: Array<GameEvent['_tag']> = []
+      yield* Story.story(
+        APPLICATION,
+        Story.given(
+          sturdy(
+            inWave(
+              FINAL_WAVE,
+              [spawnAt(1e9, 0)],
+              fightingWith(BossMove.Stalking({ cooldownMs: 0 }), {
+                nextFar: 'Spit',
+                belchMs: 2000,
               }),
-            ],
+              [
+                modifyFields(bossAt(CENTER_X + 120, CENTER_Y), {
+                  speed: () => 10,
+                }),
+              ],
+            ),
           ),
         ),
-      ),
-      ...Array.flatMap(ticks(900, FRAME_MS), frame => [
-        frame,
-        model((current: Model) => {
-          tells.push(tellsOf(current))
-          tags.push(...Array.map(current.frameEvents, ({ _tag }) => _tag))
-        }),
-      ]),
-    )
-    expect(Math.max(...tells)).toBe(1)
-    expect(tags).toContain('BossSpat')
-    expect(tags).toContain('BossStomped')
-    expect(tags).toContain('BossBelched')
-  })
+        ...Array.flatMap(ticks(900, FRAME_MS), frame => [
+          frame,
+          Story.model((current: Model) => {
+            tells.push(tellsOf(current))
+            tags.push(...Array.map(current.frameEvents, ({ _tag }) => _tag))
+          }),
+        ]),
+      )
+      expect(Math.max(...tells)).toBe(1)
+      expect(tags).toContain('BossSpat')
+      expect(tags).toContain('BossStomped')
+      expect(tags).toContain('BossBelched')
+    }),
+  )
 })
 
 describe('attack pace by difficulty', () => {
   const ready = BossMove.Stalking({ cooldownMs: 0 })
 
   const cooldownAfterStomp = (difficulty: 'Normal' | 'Hard' | 'Nightmare') => {
-    let cooldownMs = -1
     const start = modifyFields(
       inWave(FINAL_WAVE, [spawnAt(1e9, 0)], fightingBoss(ready), [
         bossAt(CENTER_X + 20, CENTER_Y),
@@ -919,44 +980,51 @@ describe('attack pace by difficulty', () => {
           modifyFields(setting, { chosen: () => difficulty }),
       },
     )
-    story(
-      update,
-      given(sturdy(start)),
+    return Story.story(
+      APPLICATION,
+      Story.given(sturdy(start)),
       ...ticks(Math.ceil(BOSS_RULES.windUpMs.Stomp / FRAME_MS) + 2, FRAME_MS),
-      model(current => {
-        const { move } = fightOf(current)
-        expect(move._tag).toBe('Recovering')
-        cooldownMs = BossMove.isAnyOf(['Recovering'])(move)
-          ? move.cooldownMs
-          : -1
+      Story.model(current => {
+        expect(fightOf(current).move._tag).toBe('Recovering')
+      }),
+    ).pipe(
+      Effect.map(end => {
+        const { move } = fightOf(end)
+        return BossMove.isAnyOf(['Recovering'])(move) ? move.cooldownMs : -1
       }),
     )
-    return cooldownMs
   }
 
-  test('Normal keeps the table cooldown exactly', () => {
-    expect(DIFFICULTIES.Normal.bossAttackPace).toBe(1)
-    expect(BOSS_RULES.cooldownMs).toEqual({
-      Stomp: 1600,
-      Belch: 1200,
-      Spit: 4500,
-      Charge: 3000,
-    })
-    expect(cooldownAfterStomp('Normal')).toBe(BOSS_RULES.cooldownMs.Stomp)
-  })
+  it.effect('Normal keeps the table cooldown exactly', () =>
+    Effect.gen(function* () {
+      expect(DIFFICULTIES.Normal.bossAttackPace).toBe(1)
+      expect(BOSS_RULES.cooldownMs).toEqual({
+        Stomp: 1600,
+        Belch: 1200,
+        Spit: 4500,
+        Charge: 3000,
+      })
+      const normal = yield* cooldownAfterStomp('Normal')
+      expect(normal).toBe(BOSS_RULES.cooldownMs.Stomp)
+    }),
+  )
 
-  test('Hard and Nightmare rest for less, by the difficulty table', () => {
-    expect(DIFFICULTIES.Hard.bossAttackPace).toBeLessThan(1)
-    expect(DIFFICULTIES.Nightmare.bossAttackPace).toBeLessThan(
-      DIFFICULTIES.Hard.bossAttackPace,
-    )
-    expect(cooldownAfterStomp('Hard')).toBeCloseTo(
-      BOSS_RULES.cooldownMs.Stomp * DIFFICULTIES.Hard.bossAttackPace,
-    )
-    expect(cooldownAfterStomp('Nightmare')).toBeCloseTo(
-      BOSS_RULES.cooldownMs.Stomp * DIFFICULTIES.Nightmare.bossAttackPace,
-    )
-  })
+  it.effect('Hard and Nightmare rest for less, by the difficulty table', () =>
+    Effect.gen(function* () {
+      expect(DIFFICULTIES.Hard.bossAttackPace).toBeLessThan(1)
+      expect(DIFFICULTIES.Nightmare.bossAttackPace).toBeLessThan(
+        DIFFICULTIES.Hard.bossAttackPace,
+      )
+      const hard = yield* cooldownAfterStomp('Hard')
+      const nightmare = yield* cooldownAfterStomp('Nightmare')
+      expect(hard).toBeCloseTo(
+        BOSS_RULES.cooldownMs.Stomp * DIFFICULTIES.Hard.bossAttackPace,
+      )
+      expect(nightmare).toBeCloseTo(
+        BOSS_RULES.cooldownMs.Stomp * DIFFICULTIES.Nightmare.bossAttackPace,
+      )
+    }),
+  )
 
   test('a faster pace leaves the tells alone', () => {
     expect(BOSS_RULES.windUpMs).toEqual({

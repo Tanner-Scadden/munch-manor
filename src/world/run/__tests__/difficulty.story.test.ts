@@ -20,7 +20,6 @@ import {
   ZombieAction,
   ZombieState,
 } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { bestsFor } from '../../../screens/home/home'
 import { FIXED_STEP_MS } from '../../../shared/constants'
@@ -29,11 +28,12 @@ import {
   APPLICATION,
   closeDialog,
   openLobbyByKey,
+  playPendingSounds,
   press,
   resolveFocusLobby,
   showDialog,
   startRunFromHome,
-  startedRunOf,
+  startedRun,
   tick,
 } from '../../../test/testing'
 import { focusOf, modifyFocus } from '../../party/party'
@@ -301,26 +301,33 @@ describe('unlocking Nightmare', () => {
 })
 
 describe('the multipliers', () => {
-  const startedOn = (difficulty: Difficulty): Model =>
-    startedRunOf(withDifficulty(readyModel, difficulty, 'Unlocked'))
-
-  test('each difficulty scales the same wave by its health and speed', () => {
-    const normal = preparationSpawns(startedOn('Normal'))
-    const easy = preparationSpawns(startedOn('Easy'))
-    const nightmare = preparationSpawns(startedOn('Nightmare'))
-    expect(Array.isReadonlyArrayNonEmpty(normal)).toBe(true)
-    expect(Array.map(easy, ({ kind, door }) => [kind, door])).toEqual(
-      Array.map(normal, ({ kind, door }) => [kind, door]),
+  const spawnsOn = (difficulty: Difficulty) =>
+    Effect.map(
+      startedRun(withDifficulty(readyModel, difficulty, 'Unlocked')),
+      preparationSpawns,
     )
-    Array.forEach(Array.zip(normal, easy), ([base, scaled]) => {
-      expect(scaled.hpScale).toBeCloseTo((base.hpScale * 0.6) / 0.75)
-      expect(scaled.speedScale).toBeCloseTo((base.speedScale * 0.8) / 0.84)
-    })
-    Array.forEach(Array.zip(normal, nightmare), ([base, scaled]) => {
-      expect(scaled.hpScale).toBeCloseTo((base.hpScale * 1.16) / 0.75)
-      expect(scaled.speedScale).toBeCloseTo((base.speedScale * 1.02) / 0.84)
-    })
-  })
+
+  it.effect(
+    'each difficulty scales the same wave by its health and speed',
+    () =>
+      Effect.gen(function* () {
+        const normal = yield* spawnsOn('Normal')
+        const easy = yield* spawnsOn('Easy')
+        const nightmare = yield* spawnsOn('Nightmare')
+        expect(Array.isReadonlyArrayNonEmpty(normal)).toBe(true)
+        expect(Array.map(easy, ({ kind, door }) => [kind, door])).toEqual(
+          Array.map(normal, ({ kind, door }) => [kind, door]),
+        )
+        Array.forEach(Array.zip(normal, easy), ([base, scaled]) => {
+          expect(scaled.hpScale).toBeCloseTo((base.hpScale * 0.6) / 0.75)
+          expect(scaled.speedScale).toBeCloseTo((base.speedScale * 0.8) / 0.84)
+        })
+        Array.forEach(Array.zip(normal, nightmare), ([base, scaled]) => {
+          expect(scaled.hpScale).toBeCloseTo((base.hpScale * 1.16) / 0.75)
+          expect(scaled.speedScale).toBeCloseTo((base.speedScale * 1.02) / 0.84)
+        })
+      }),
+  )
 
   test('bites round to whole hearts and never drop below one', () => {
     expect(biteDamage('Easy', 1)).toBe(1)
@@ -331,44 +338,54 @@ describe('the multipliers', () => {
     expect(biteDamage('Nightmare', 2)).toBe(3)
   })
 
-  test('a Big Lug bites one heart on Easy, two on Normal, and three on Nightmare', () => {
-    const lug: Zombie = {
-      id: 900,
-      kind: 'Tank',
-      x: 168,
-      y: 95,
-      speed: 0,
-      hp: ZOMBIE_KINDS.Tank.hp,
-      maxHp: ZOMBIE_KINDS.Tank.hp,
-      knockback: { x: 0, y: 0 },
-      hitRemainingMs: 0,
-      state: ZombieState.Walking(),
-      action: ZombieAction.Roaming(),
-      frenzy: Frenzy.Calm(),
-    }
-    const bitten = (difficulty: Difficulty): number =>
-      focusOf(
-        update(
-          modifyFocus(
-            modifyFields(withDifficulty(readyModel, difficulty, 'Unlocked'), {
-              phase: () => Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [] }),
-              zombies: () => [lug],
-            }),
-            {
-              player: player =>
-                modifyFields(player, {
-                  x: () => 160,
-                  y: () => 95,
-                  invulnerability: () => Invulnerability.Vulnerable(),
-                }),
-            },
+  it.effect(
+    'a Big Lug bites one heart on Easy, two on Normal, and three on Nightmare',
+    () => {
+      const lug: Zombie = {
+        id: 900,
+        kind: 'Tank',
+        x: 168,
+        y: 95,
+        speed: 0,
+        hp: ZOMBIE_KINDS.Tank.hp,
+        maxHp: ZOMBIE_KINDS.Tank.hp,
+        knockback: { x: 0, y: 0 },
+        hitRemainingMs: 0,
+        state: ZombieState.Walking(),
+        action: ZombieAction.Roaming(),
+        frenzy: Frenzy.Calm(),
+      }
+      const full = focusOf(readyModel).player.hp
+      const bites = (difficulty: Difficulty, hearts: number) =>
+        Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFocus(
+              modifyFields(withDifficulty(readyModel, difficulty, 'Unlocked'), {
+                phase: () => Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [] }),
+                zombies: () => [lug],
+              }),
+              {
+                player: player =>
+                  modifyFields(player, {
+                    x: () => 160,
+                    y: () => 95,
+                    invulnerability: () => Invulnerability.Vulnerable(),
+                  }),
+              },
+            ),
           ),
-          Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
-        ).model,
-      ).player.hp
-    const full = focusOf(readyModel).player.hp
-    expect(full - bitten('Easy')).toBe(1)
-    expect(full - bitten('Normal')).toBe(2)
-    expect(full - bitten('Nightmare')).toBe(3)
-  })
+          tick(FIXED_STEP_MS),
+          Story.model(current => {
+            expect(full - focusOf(current).player.hp).toBe(hearts)
+          }),
+          playPendingSounds,
+        )
+      return Effect.gen(function* () {
+        yield* bites('Easy', 1)
+        yield* bites('Normal', 2)
+        yield* bites('Nightmare', 3)
+      })
+    },
+  )
 })

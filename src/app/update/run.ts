@@ -32,7 +32,7 @@ export const startWhenAllowed: {
   canStart(model) ? startOrResume(model, mode) : model,
 )
 
-export const keepGoing = (model: Model): Model =>
+const keepGoing = (model: Model): Model =>
   Phase.isAnyOf(['Victory'])(model.phase)
     ? withWorld(
         modifyFocus(

@@ -1,7 +1,8 @@
 import { Array, Option } from 'effect'
-import { given, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import {
   Invulnerability,
@@ -9,10 +10,16 @@ import {
   Phase,
   type Zombie,
 } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
-import { PARLOUR_SPOT, ticks, westPlank, zombieOf } from '../../../test/testing'
+import {
+  APPLICATION,
+  PARLOUR_SPOT,
+  ticks,
+  westPlank,
+  zombieOf,
+} from '../../../test/testing'
 import { isInsideRoomAt, levelOf, openExitIn } from '../../level/arena'
 import { KITCHEN_EXIT } from '../../level/exits'
 import { modifyFocus } from '../../party/party'
@@ -73,20 +80,22 @@ const outside = (current: Model): ReadonlyArray<Zombie> =>
   )
 
 describe('a crowd in the yard', () => {
-  test('walks through the yard to the north door and into the parlour', () => {
-    story(
-      update,
-      given(stuckInTheYard),
-      model(current => {
-        expect(outside(current)).toHaveLength(crowd.length)
-      }),
-      ...ticks(Math.ceil((SECONDS * 1000) / FRAME_MS), FRAME_MS),
-      model(current => {
-        expect(current.zombies).toHaveLength(crowd.length)
-        expect(
-          Array.map(outside(current), ({ id, x, y }) => ({ id, x, y })),
-        ).toEqual([])
-      }),
-    )
-  })
+  it.effect(
+    'walks through the yard to the north door and into the parlour',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(stuckInTheYard),
+        Story.model(current => {
+          expect(outside(current)).toHaveLength(crowd.length)
+        }),
+        ...ticks(Math.ceil((SECONDS * 1000) / FRAME_MS), FRAME_MS),
+        Story.model(current => {
+          expect(current.zombies).toHaveLength(crowd.length)
+          expect(
+            Array.map(outside(current), ({ id, x, y }) => ({ id, x, y })),
+          ).toEqual([])
+        }),
+      ),
+  )
 })

@@ -1,7 +1,8 @@
-import { Array, Option, Order, Record, pipe } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Array, Effect, Function, Option, Order, Record, pipe } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
@@ -21,7 +22,7 @@ import {
   ZombieState,
   calmPacing,
 } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { initialModel } from '../../../app/pureApp'
 import {
   DINNER_BELL_MS,
   FADE_RELEASE_BELOW,
@@ -38,7 +39,14 @@ import {
   ZOMBIE_ALIVE_MAX,
 } from '../../../shared/constants'
 import { NORMAL_BITE_GRACE } from '../../../test/model.fixture'
-import { tick, ticks, ticksFor } from '../../../test/testing'
+import {
+  APPLICATION,
+  changeModel,
+  settleRunCommands,
+  tick,
+  ticks,
+  ticksFor,
+} from '../../../test/testing'
 import {
   PARLOUR,
   isInsideRoomAt,
@@ -145,27 +153,27 @@ const OPPOSITE: Readonly<Record<DoorId, DoorId>> = {
 }
 
 describe('packs', () => {
-  test('a squad comes from one door, one zombie every pack gap', () => {
+  it.effect('a squad comes from one door, one zombie every pack gap', () => {
     const squad = [
       spawnAt(1000, 'West', 7),
       spawnAt(1000 + PACK_GAP_MS, 'West', 7),
       spawnAt(1000 + 2 * PACK_GAP_MS, 'West', 7),
     ]
-    story(
-      update,
-      given(waveModel(squad)),
+    return Story.story(
+      APPLICATION,
+      Story.given(waveModel(squad)),
       // NOTE: a frame past the second, as sixty 1000/60 ms ticks sum to a
       // hair under it.
       ...ticksFor(1000 + FRAME_MS, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(arrivedDoors(current)).toEqual(['West'])
       }),
       ...ticksFor(PACK_GAP_MS + FRAME_MS, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(arrivedDoors(current)).toEqual(['West', 'West'])
       }),
       ...ticksFor(PACK_GAP_MS, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(arrivedDoors(current)).toEqual(['West', 'West', 'West'])
       }),
     )
@@ -211,61 +219,64 @@ describe('packs', () => {
     })
   })
 
-  test('a horde comes from every door at once and rings the dinner bell', () => {
-    const [, spawns] = rollSpawns(5, FINAL_WAVE)
-    const hordeFirsts = pipe(
-      packsOf(spawns),
-      Array.filter(pack =>
-        Array.every(pack, ({ formation }) => formation === 'Horde'),
-      ),
-      Array.map(pack => Option.getOrThrow(Array.head(pack))),
-    )
-    const firstHordeVolley = volleyOf(
-      Option.getOrThrow(Array.head(hordeFirsts)).pack,
-    )
-    const firstVolley = Array.filter(
-      hordeFirsts,
-      ({ pack }) => volleyOf(pack) === firstHordeVolley,
-    )
-    expect(sortedDoors(Array.map(firstVolley, ({ door }) => door))).toEqual(
-      EVERY_DOOR,
-    )
-    expect(new Set(Array.map(firstVolley, ({ atMs }) => atMs)).size).toBe(1)
+  it.effect(
+    'a horde comes from every door at once and rings the dinner bell',
+    () => {
+      const [, spawns] = rollSpawns(5, FINAL_WAVE)
+      const hordeFirsts = pipe(
+        packsOf(spawns),
+        Array.filter(pack =>
+          Array.every(pack, ({ formation }) => formation === 'Horde'),
+        ),
+        Array.map(pack => Option.getOrThrow(Array.head(pack))),
+      )
+      const firstHordeVolley = volleyOf(
+        Option.getOrThrow(Array.head(hordeFirsts)).pack,
+      )
+      const firstVolley = Array.filter(
+        hordeFirsts,
+        ({ pack }) => volleyOf(pack) === firstHordeVolley,
+      )
+      expect(sortedDoors(Array.map(firstVolley, ({ door }) => door))).toEqual(
+        EVERY_DOOR,
+      )
+      expect(new Set(Array.map(firstVolley, ({ atMs }) => atMs)).size).toBe(1)
 
-    const horde = Array.map(EVERY_DOOR, (door, index) =>
-      spawnAt(PACK_WARNING_MS + 500, door, index, 'Horde'),
-    )
-    story(
-      update,
-      given(waveModel(horde)),
-      ...ticksFor(500, FRAME_MS),
-      model(current => {
-        expect(
-          Array.filter(current.frameEvents, GameEvent.guards.PackWarned),
-        ).toHaveLength(4)
-        expect(current.pacing.alarm).toEqual(
-          Alarm.Ringing({ remainingMs: DINNER_BELL_MS }),
-        )
-      }),
-      ...ticksFor(PACK_WARNING_MS, FRAME_MS),
-      model(current => {
-        expect(sortedDoors(arrivedDoors(current))).toEqual(EVERY_DOOR)
-      }),
-      ...ticksFor(DINNER_BELL_MS, FRAME_MS),
-      model(current => {
-        expect(current.pacing.alarm).toEqual(Alarm.Quiet())
-      }),
-    )
-  })
+      const horde = Array.map(EVERY_DOOR, (door, index) =>
+        spawnAt(PACK_WARNING_MS + 500, door, index, 'Horde'),
+      )
+      return Story.story(
+        APPLICATION,
+        Story.given(waveModel(horde)),
+        ...ticksFor(500, FRAME_MS),
+        Story.model(current => {
+          expect(
+            Array.filter(current.frameEvents, GameEvent.guards.PackWarned),
+          ).toHaveLength(4)
+          expect(current.pacing.alarm).toEqual(
+            Alarm.Ringing({ remainingMs: DINNER_BELL_MS }),
+          )
+        }),
+        ...ticksFor(PACK_WARNING_MS, FRAME_MS),
+        Story.model(current => {
+          expect(sortedDoors(arrivedDoors(current))).toEqual(EVERY_DOOR)
+        }),
+        ...ticksFor(DINNER_BELL_MS, FRAME_MS),
+        Story.model(current => {
+          expect(current.pacing.alarm).toEqual(Alarm.Quiet())
+        }),
+      )
+    },
+  )
 })
 
 describe('telegraphs', () => {
-  test('a pack rattles its door a second before it walks in', () => {
+  it.effect('a pack rattles its door a second before it walks in', () => {
     const atMs = 3000
     const warnedAt = atMs - PACK_WARNING_MS
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         waveModel(
           [spawnAt(atMs, 'East', 1), spawnAt(atMs + 200, 'East', 1)],
           calmPacing,
@@ -273,11 +284,11 @@ describe('telegraphs', () => {
         ),
       ),
       ...ticksFor(warnedAt - FRAME_MS, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.pacing.warnedPacks).toEqual([])
       }),
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(
           Array.filter(current.frameEvents, GameEvent.guards.PackWarned),
         ).toEqual([
@@ -292,45 +303,48 @@ describe('telegraphs', () => {
         expect(arrivedDoors(current)).toEqual([])
       }),
       tick(FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(
           Array.filter(current.frameEvents, GameEvent.guards.PackWarned),
         ).toEqual([])
       }),
       ...ticksFor(PACK_WARNING_MS, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(arrivedDoors(current)).toEqual(['East'])
       }),
     )
   })
 
-  test('standing in a doorway holds its pack at that door until the player steps away', () => {
-    const inNorthDoorway = (base: Model): Model =>
-      modifyFocus(base, {
-        player: player => modifyFields(player, { x: () => 220, y: () => 24 }),
-      })
-    story(
-      update,
-      given(
-        inNorthDoorway(
-          waveModel([spawnAt(500, 'North', 2), spawnAt(700, 'West', 3)]),
+  it.effect(
+    'standing in a doorway holds its pack at that door until the player steps away',
+    () => {
+      const inNorthDoorway = (base: Model): Model =>
+        modifyFocus(base, {
+          player: player => modifyFields(player, { x: () => 220, y: () => 24 }),
+        })
+      return Story.story(
+        APPLICATION,
+        Story.given(
+          inNorthDoorway(
+            waveModel([spawnAt(500, 'North', 2), spawnAt(700, 'West', 3)]),
+          ),
         ),
-      ),
-      ...ticksFor(3000, FRAME_MS),
-      model(current => {
-        expect(arrivedDoors(current)).toEqual(['West'])
-        const pending = Phase.guards.Wave(current.phase)
-          ? current.phase.spawns
-          : []
-        expect(Array.map(pending, ({ door }) => door)).toEqual(['North'])
-      }),
-      message(Message.PressedKey({ code: 'KeyS' })),
-      ...ticksFor(1000, FRAME_MS),
-      model(current => {
-        expect(sortedDoors(arrivedDoors(current))).toEqual(['North', 'West'])
-      }),
-    )
-  })
+        ...ticksFor(3000, FRAME_MS),
+        Story.model(current => {
+          expect(arrivedDoors(current)).toEqual(['West'])
+          const pending = Phase.guards.Wave(current.phase)
+            ? current.phase.spawns
+            : []
+          expect(Array.map(pending, ({ door }) => door)).toEqual(['North'])
+        }),
+        Story.message(Message.PressedKey({ code: 'KeyS' })),
+        ...ticksFor(1000, FRAME_MS),
+        Story.model(current => {
+          expect(sortedDoors(arrivedDoors(current))).toEqual(['North', 'West'])
+        }),
+      )
+    },
+  )
 })
 
 // NOTE: a warned zombie stands in its doorway no later than this after its
@@ -364,79 +378,82 @@ describe('from warning to doorway', () => {
     ['Shambler', 'South'],
     ['Thrower', 'East'],
   ]
-  test.each(cases)(
+  it.effect.each(cases)(
     'a %s at the %s door is in its doorway a beat after its warning ends',
-    (kind, door) => {
-      story(
-        update,
-        given(
+    ([kind, door]) =>
+      Story.story(
+        APPLICATION,
+        Story.given(
           waveModel([kindAt(kind, PACK_WARNING_MS, door, 1)], calmPacing, [
             lingerer,
           ]),
         ),
         tick(FRAME_MS),
-        model(current => {
+        Story.model(current => {
           expect(current.pacing.warnedPacks).toEqual([1])
         }),
         ...ticksFor(PACK_WARNING_MS - FRAME_MS, FRAME_MS),
-        model(current => {
+        Story.model(current => {
           expect(newcomersInRoom(current)).toEqual([])
         }),
         ...ticksFor(ARRIVAL_BEAT_MS, FRAME_MS),
-        model(current => {
+        Story.model(current => {
           expect(
             Array.map(newcomersInRoom(current), zombie => zombie.kind),
           ).toEqual([kind])
         }),
-      )
-    },
+      ),
   )
 
-  test('a pack warned just before a hold walks in when its warning ends, not after the fade', () => {
-    story(
-      update,
-      given(
-        waveModel(
-          [spawnAt(PACK_WARNING_MS, 'West', 1)],
-          holdAt(500),
-          crowdOf(FADE_RELEASE_BELOW + 2),
-        ),
-      ),
-      tick(FRAME_MS),
-      model(current => {
-        expect(current.pacing.warnedPacks).toEqual([1])
-      }),
-      ...ticksFor(PACK_WARNING_MS - FRAME_MS + ARRIVAL_BEAT_MS, FRAME_MS),
-      model(current => {
-        expect(Beat.isAnyOf(['Fading'])(current.pacing.beat)).toBe(true)
-        expect(waveClock(current)).toBe(500)
-        expect(
-          Array.map(
-            newcomersInRoom(current),
-            zombie => nearestDoor(PARLOUR, zombie).id,
+  it.effect(
+    'a pack warned just before a hold walks in when its warning ends, not after the fade',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          waveModel(
+            [spawnAt(PACK_WARNING_MS, 'West', 1)],
+            holdAt(500),
+            crowdOf(FADE_RELEASE_BELOW + 2),
           ),
-        ).toEqual(['West'])
-      }),
-    )
-  })
-
-  test('a pack waits to warn while the alive cap has no place for it', () => {
-    story(
-      update,
-      given(
-        waveModel(
-          [spawnAt(PACK_WARNING_MS, 'West', 1)],
-          calmPacing,
-          crowdOf(ZOMBIE_ALIVE_MAX),
         ),
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(current.pacing.warnedPacks).toEqual([1])
+        }),
+        ...ticksFor(PACK_WARNING_MS - FRAME_MS + ARRIVAL_BEAT_MS, FRAME_MS),
+        Story.model(current => {
+          expect(Beat.isAnyOf(['Fading'])(current.pacing.beat)).toBe(true)
+          expect(waveClock(current)).toBe(500)
+          expect(
+            Array.map(
+              newcomersInRoom(current),
+              zombie => nearestDoor(PARLOUR, zombie).id,
+            ),
+          ).toEqual(['West'])
+        }),
       ),
-      ...ticksFor(3000, FRAME_MS),
-      model(current => {
-        expect(current.pacing.warnedPacks).toEqual([])
-        expect(current.zombies.length).toBe(ZOMBIE_ALIVE_MAX)
-      }),
-    )
-  })
+  )
+
+  it.effect(
+    'a pack waits to warn while the alive cap has no place for it',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          waveModel(
+            [spawnAt(PACK_WARNING_MS, 'West', 1)],
+            calmPacing,
+            crowdOf(ZOMBIE_ALIVE_MAX),
+          ),
+        ),
+        ...ticksFor(3000, FRAME_MS),
+        Story.model(current => {
+          expect(current.pacing.warnedPacks).toEqual([])
+          expect(current.zombies.length).toBe(ZOMBIE_ALIVE_MAX)
+        }),
+      ),
+  )
 })
 
 describe('sawtooth', () => {
@@ -449,129 +466,151 @@ describe('sawtooth', () => {
   })
   const afterHold = [spawnAt(HOLD_AT_MS + 1500, 'South', 4)]
 
-  test('a fade holds every later pack until the room thins', () => {
-    story(
-      update,
-      given(waveModel(afterHold, held, crowdOf(FADE_RELEASE_BELOW))),
+  it.effect('a fade holds every later pack until the room thins', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(waveModel(afterHold, held, crowdOf(FADE_RELEASE_BELOW))),
       ...ticksFor(HOLD_AT_MS + 10_000, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(waveClock(current)).toBe(HOLD_AT_MS)
         expect(Beat.guards.Fading(current.pacing.beat)).toBe(true)
         expect(current.zombies).toHaveLength(FADE_RELEASE_BELOW)
       }),
-    )
-  })
+    ),
+  )
 
-  test('once the room has thinned, a relax passes before the next pack', () => {
-    story(
-      update,
-      given(waveModel(afterHold, held, crowdOf(FADE_RELEASE_BELOW - 1))),
-      ...ticksFor(HOLD_AT_MS + FRAME_MS, FRAME_MS),
-      model(current => {
-        expect(waveClock(current)).toBe(HOLD_AT_MS)
-        expect(Beat.guards.Resting(current.pacing.beat)).toBe(true)
-      }),
-      ...ticksFor(RELAX_MS - FRAME_MS, FRAME_MS),
-      model(current => {
-        expect(waveClock(current)).toBe(HOLD_AT_MS)
-      }),
-      ...ticksFor(1500 + 2 * FRAME_MS, FRAME_MS),
-      model(current => {
-        expect(Beat.guards.Flowing(current.pacing.beat)).toBe(true)
-        expect(arrivedDoors(current)).toContain('South')
-      }),
-    )
-  })
-
-  test('high intensity lengthens a relax by up to its cap, and low intensity does not', () => {
-    const resting = modifyFields(calmPacing, {
-      beat: () =>
-        Beat.Resting({ remainingMs: 500, extendedMs: 0, trickled: 0 }),
-    })
-    const restLength = (intensity: number): number => {
-      const clocks: Array<number> = []
-      story(
-        update,
-        given(
-          modifyFields(
-            waveModel([spawnAt(100_000, 'North', 9)], resting, [lingerer]),
-            { intensity: () => intensity },
-          ),
+  it.effect(
+    'once the room has thinned, a relax passes before the next pack',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          waveModel(afterHold, held, crowdOf(FADE_RELEASE_BELOW - 1)),
         ),
-        ...Array.flatMap(ticksFor(8000, FRAME_MS), frame => [
-          frame,
-          model((current: Model) => {
-            clocks.push(waveClock(current))
-          }),
-        ]),
-      )
-      return Array.filter(clocks, clock => clock === 0).length * FRAME_MS
-    }
-    const calm = restLength(0)
-    const tense = restLength(0.9)
-    expect(calm).toBeLessThanOrEqual(500)
-    expect(tense).toBeGreaterThanOrEqual(500 + RELAX_EXTEND_MAX_MS - FRAME_MS)
-    expect(tense).toBeLessThanOrEqual(500 + RELAX_EXTEND_MAX_MS + FRAME_MS)
-  })
+        ...ticksFor(HOLD_AT_MS + FRAME_MS, FRAME_MS),
+        Story.model(current => {
+          expect(waveClock(current)).toBe(HOLD_AT_MS)
+          expect(Beat.guards.Resting(current.pacing.beat)).toBe(true)
+        }),
+        ...ticksFor(RELAX_MS - FRAME_MS, FRAME_MS),
+        Story.model(current => {
+          expect(waveClock(current)).toBe(HOLD_AT_MS)
+        }),
+        ...ticksFor(1500 + 2 * FRAME_MS, FRAME_MS),
+        Story.model(current => {
+          expect(Beat.guards.Flowing(current.pacing.beat)).toBe(true)
+          expect(arrivedDoors(current)).toContain('South')
+        }),
+      ),
+  )
+
+  it.effect(
+    'high intensity lengthens a relax by up to its cap, and low intensity does not',
+    () =>
+      Effect.gen(function* () {
+        const resting = modifyFields(calmPacing, {
+          beat: () =>
+            Beat.Resting({ remainingMs: 500, extendedMs: 0, trickled: 0 }),
+        })
+        // NOTE: the frames the wave clock stands at 0, gathered in an
+        // array the Story alone fills, as `recordTicks` gathers Models.
+        const restLength = (intensity: number) =>
+          Effect.suspend(() => {
+            const clocks: Array<number> = []
+            return Story.story(
+              APPLICATION,
+              Story.given(
+                modifyFields(
+                  waveModel([spawnAt(100_000, 'North', 9)], resting, [
+                    lingerer,
+                  ]),
+                  { intensity: () => intensity },
+                ),
+              ),
+              ...Array.flatMap(ticksFor(8000, FRAME_MS), frame => [
+                frame,
+                Story.model((current: Model) => {
+                  clocks.push(waveClock(current))
+                }),
+              ]),
+            ).pipe(
+              Effect.map(
+                () =>
+                  Array.filter(clocks, clock => clock === 0).length * FRAME_MS,
+              ),
+            )
+          })
+        const calm = yield* restLength(0)
+        const tense = yield* restLength(0.9)
+        expect(calm).toBeLessThanOrEqual(500)
+        expect(tense).toBeGreaterThanOrEqual(
+          500 + RELAX_EXTEND_MAX_MS - FRAME_MS,
+        )
+        expect(tense).toBeLessThanOrEqual(500 + RELAX_EXTEND_MAX_MS + FRAME_MS)
+      }),
+  )
 })
 
 describe('mercy', () => {
   const biter = standingZombie(900, 162, 90)
-  const bittenAt = (hp: number): Model => {
-    const models: Array<Model> = []
-    story(
-      update,
-      given(
+  // NOTE: the Model one frame of a bite leaves, at `hp` hearts.
+  const bittenAt = (hp: number) =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFocus(
           waveModel([spawnAt(100_000, 'North', 9)], calmPacing, [biter]),
           { player: player => modifyFields(player, { hp: () => hp }) },
         ),
       ),
       tick(FRAME_MS),
-      model((current: Model) => {
-        models.push(current)
-      }),
     )
-    return Option.getOrThrow(Array.head(models))
-  }
 
-  test('the blink after a hit lasts longer at the last heart, without drawing a random number', () => {
-    const lastHeart = bittenAt(2)
-    const roomy = bittenAt(3)
-    expect(focusOf(lastHeart).player.hp).toBe(1)
-    expect(focusOf(lastHeart).player.invulnerability).toEqual(
-      Invulnerability.Invulnerable({
-        remainingMs: LAST_HEART_INVULNERABLE_MS * NORMAL_BITE_GRACE,
-        durationMs: LAST_HEART_INVULNERABLE_MS * NORMAL_BITE_GRACE,
+  it.effect(
+    'the blink after a hit lasts longer at the last heart, without drawing a random number',
+    () =>
+      Effect.gen(function* () {
+        const lastHeart = yield* bittenAt(2)
+        const roomy = yield* bittenAt(3)
+        expect(focusOf(lastHeart).player.hp).toBe(1)
+        expect(focusOf(lastHeart).player.invulnerability).toEqual(
+          Invulnerability.Invulnerable({
+            remainingMs: LAST_HEART_INVULNERABLE_MS * NORMAL_BITE_GRACE,
+            durationMs: LAST_HEART_INVULNERABLE_MS * NORMAL_BITE_GRACE,
+          }),
+        )
+        expect(LAST_HEART_INVULNERABLE_MS).toBe(PLAYER_INVULNERABLE_MS * 1.5)
+        expect(focusOf(roomy).player.invulnerability).toEqual(
+          Invulnerability.Invulnerable({
+            remainingMs: PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE,
+            durationMs: PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE,
+          }),
+        )
+        expect(lastHeart.rngState).toBe(roomy.rngState)
       }),
-    )
-    expect(LAST_HEART_INVULNERABLE_MS).toBe(PLAYER_INVULNERABLE_MS * 1.5)
-    expect(focusOf(roomy).player.invulnerability).toEqual(
-      Invulnerability.Invulnerable({
-        remainingMs: PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE,
-        durationMs: PLAYER_INVULNERABLE_MS * NORMAL_BITE_GRACE,
-      }),
-    )
-    expect(lastHeart.rngState).toBe(roomy.rngState)
-  })
+  )
 
-  test('losing a heart raises intensity, and it decays while nothing is close', () => {
-    const bitten = bittenAt(3)
-    expect(bitten.intensity).toBeGreaterThanOrEqual(INTENSITY_PER_HEART)
-    story(
-      update,
-      given(
-        modifyFields(waveModel([spawnAt(100_000, 'North', 9)]), {
-          intensity: () => 0.5,
-        }),
-      ),
-      ...ticksFor(2000, FRAME_MS),
-      model(current => {
-        expect(current.intensity).toBeLessThan(0.5)
-        expect(current.intensity).toBeGreaterThan(0)
+  it.effect(
+    'losing a heart raises intensity, and it decays while nothing is close',
+    () =>
+      Effect.gen(function* () {
+        const bitten = yield* bittenAt(3)
+        expect(bitten.intensity).toBeGreaterThanOrEqual(INTENSITY_PER_HEART)
+        return yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFields(waveModel([spawnAt(100_000, 'North', 9)]), {
+              intensity: () => 0.5,
+            }),
+          ),
+          ...ticksFor(2000, FRAME_MS),
+          Story.model(current => {
+            expect(current.intensity).toBeLessThan(0.5)
+            expect(current.intensity).toBeGreaterThan(0)
+          }),
+        )
       }),
-    )
-  })
+  )
 })
 
 type Frame = Readonly<{
@@ -580,30 +619,34 @@ type Frame = Readonly<{
   arrived: ReadonlyArray<DoorId>
 }>
 
-// NOTE: plays frames as a player who kills each zombie the frame it walks
-// in, and notes the doors the new ones came through.
-const playEmptied = (start: Model, ms: number): ReadonlyArray<Frame> =>
-  Array.mapAccum(
-    Array.makeBy(Math.round(ms / FRAME_MS), index => index),
-    start,
-    (current): readonly [Model, Frame] => {
-      const next = update(
-        current,
-        Message.TickedFrame({ deltaTime: FRAME_MS }),
-      ).model
-      return [
-        modifyFields(next, { zombies: () => [] }),
-        {
-          clockMs: waveClock(next),
-          beat: next.pacing.beat._tag,
-          arrived: Array.map(
-            next.zombies,
-            zombie => nearestDoor(PARLOUR, zombie).id,
-          ),
-        },
-      ]
-    },
-  )[1]
+const frameOf = (next: Model): Frame => ({
+  clockMs: waveClock(next),
+  beat: next.pacing.beat._tag,
+  arrived: Array.map(next.zombies, zombie => nearestDoor(PARLOUR, zombie).id),
+})
+
+// NOTE: plays `ms` of frames as a player who kills each zombie the frame
+// it walks in (`changeModel`), and notes the doors the new ones came
+// through, gathered in an array the Story alone fills.
+const playEmptied = (start: Model, ms: number) =>
+  Effect.suspend(() => {
+    const frames: Array<Frame> = []
+    return Story.story(
+      APPLICATION,
+      Story.given(start),
+      ...Array.flatMap(
+        Array.makeBy(Math.round(ms / FRAME_MS), Function.constVoid),
+        () => [
+          tick(FRAME_MS),
+          Story.model((current: Model) => {
+            frames.push(frameOf(current))
+          }),
+          changeModel(current => modifyFields(current, { zombies: () => [] })),
+        ],
+      ),
+      settleRunCommands,
+    ).pipe(Effect.as<ReadonlyArray<Frame>>(frames))
+  })
 
 describe('determinism and the preview', () => {
   test('the same seed rolls the same packs, doors, and holds', () => {
@@ -620,123 +663,137 @@ describe('determinism and the preview', () => {
 })
 
 describe('dead air', () => {
-  test('an empty, quiet room pulls the next pack forward to its warning', () => {
-    const atMs = 10_000
-    story(
-      update,
-      given(waveModel([spawnAt(atMs, 'East', 1)])),
-      ...ticksFor(QUIET_HURRY_MS - FRAME_MS, FRAME_MS),
-      model(current => {
-        expect(current.pacing.warnedPacks).toEqual([])
-      }),
-      ...ticksFor(2 * FRAME_MS, FRAME_MS),
-      model(current => {
-        expect(current.pacing.warnedPacks).toEqual([1])
-        expect(waveClock(current)).toBeLessThan(atMs)
-      }),
-      ...ticksFor(PACK_WARNING_MS, FRAME_MS),
-      model(current => {
-        expect(arrivedDoors(current)).toEqual(['East'])
-      }),
-    )
-  })
+  it.effect(
+    'an empty, quiet room pulls the next pack forward to its warning',
+    () => {
+      const atMs = 10_000
+      return Story.story(
+        APPLICATION,
+        Story.given(waveModel([spawnAt(atMs, 'East', 1)])),
+        ...ticksFor(QUIET_HURRY_MS - FRAME_MS, FRAME_MS),
+        Story.model(current => {
+          expect(current.pacing.warnedPacks).toEqual([])
+        }),
+        ...ticksFor(2 * FRAME_MS, FRAME_MS),
+        Story.model(current => {
+          expect(current.pacing.warnedPacks).toEqual([1])
+          expect(waveClock(current)).toBeLessThan(atMs)
+        }),
+        ...ticksFor(PACK_WARNING_MS, FRAME_MS),
+        Story.model(current => {
+          expect(arrivedDoors(current)).toEqual(['East'])
+        }),
+      )
+    },
+  )
 
-  test('a hurry never skips a hold', () => {
-    const holdAtMs = 4000
-    const holding: Pacing = modifyFields(calmPacing, {
-      holds: () => [
-        { atMs: holdAtMs, releaseBelow: FADE_RELEASE_BELOW, relaxMs: 20_000 },
-      ],
-    })
-    // NOTE: read on the tick the hold's fade begins, since a relax that
-    // starts quiet trickles its straggler in a few ticks later.
-    const fadeStarts: Array<Model> = []
-    story(
-      update,
-      given(waveModel([spawnAt(holdAtMs + 3000, 'West', 2)], holding)),
-      ...Array.flatMap(
-        ticks(
-          Math.ceil((QUIET_HURRY_MS + 2 * FRAME_MS) / FIXED_STEP_MS),
-          FIXED_STEP_MS,
-        ),
-        frame => [
-          frame,
-          model((current: Model) => {
-            expect(waveClock(current)).toBeLessThanOrEqual(holdAtMs)
-            if (
-              Beat.guards.Fading(current.pacing.beat) &&
-              Array.isReadonlyArrayEmpty(fadeStarts)
-            ) {
-              fadeStarts.push(current)
-            }
-          }),
+  it.effect('a hurry never skips a hold', () =>
+    Effect.gen(function* () {
+      const holdAtMs = 4000
+      const holding: Pacing = modifyFields(calmPacing, {
+        holds: () => [
+          { atMs: holdAtMs, releaseBelow: FADE_RELEASE_BELOW, relaxMs: 20_000 },
         ],
-      ),
-    )
-    const fadeStart = Option.getOrThrow(Array.head(fadeStarts))
-    expect(waveClock(fadeStart)).toBe(holdAtMs)
-    expect(fadeStart.pacing.warnedPacks).toEqual([])
-  })
+      })
+      // NOTE: read on the tick the hold's fade begins, since a relax that
+      // starts quiet trickles its straggler in a few ticks later.
+      const fadeStarts: Array<Model> = []
+      yield* Story.story(
+        APPLICATION,
+        Story.given(waveModel([spawnAt(holdAtMs + 3000, 'West', 2)], holding)),
+        ...Array.flatMap(
+          ticks(
+            Math.ceil((QUIET_HURRY_MS + 2 * FRAME_MS) / FIXED_STEP_MS),
+            FIXED_STEP_MS,
+          ),
+          frame => [
+            frame,
+            Story.model((current: Model) => {
+              expect(waveClock(current)).toBeLessThanOrEqual(holdAtMs)
+              if (
+                Beat.guards.Fading(current.pacing.beat) &&
+                Array.isReadonlyArrayEmpty(fadeStarts)
+              ) {
+                fadeStarts.push(current)
+              }
+            }),
+          ],
+        ),
+      )
+      const fadeStart = Option.getOrThrow(Array.head(fadeStarts))
+      expect(waveClock(fadeStart)).toBe(holdAtMs)
+      expect(fadeStart.pacing.warnedPacks).toEqual([])
+    }),
+  )
 
-  test('an empty room warns its next pack within half a second', () => {
-    story(
-      update,
-      given(waveModel([spawnAt(30_000, 'West', 3)])),
+  it.effect('an empty room warns its next pack within half a second', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(waveModel([spawnAt(30_000, 'West', 3)])),
       ...ticksFor(500 - FRAME_MS, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.pacing.warnedPacks).toEqual([])
       }),
       ...ticksFor(2 * FRAME_MS, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(current.pacing.warnedPacks).toEqual([3])
       }),
-    )
-  })
+    ),
+  )
 
-  test('a relax with a zombie left runs its course', () => {
+  it.effect('a relax with a zombie left runs its course', () => {
     const resting = modifyFields(calmPacing, {
       beat: () =>
         Beat.Resting({ remainingMs: 2500, extendedMs: 0, trickled: 0 }),
     })
-    story(
-      update,
-      given(waveModel([spawnAt(100_000, 'North', 9)], resting, [lingerer])),
+    return Story.story(
+      APPLICATION,
+      Story.given(
+        waveModel([spawnAt(100_000, 'North', 9)], resting, [lingerer]),
+      ),
       ...ticksFor(2500 - 2 * FRAME_MS, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(waveClock(current)).toBe(0)
         expect(Beat.guards.Resting(current.pacing.beat)).toBe(true)
       }),
       ...ticksFor(3 * FRAME_MS, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(Beat.guards.Flowing(current.pacing.beat)).toBe(true)
       }),
     )
   })
 
-  test('a relax in an empty room trickles in two stragglers, then ends', () => {
-    const resting = modifyFields(calmPacing, {
-      beat: () =>
-        Beat.Resting({ remainingMs: 10_000, extendedMs: 0, trickled: 0 }),
-    })
-    const squad = [spawnAt(40_000, 'East', 7), spawnAt(40_200, 'East', 7)]
-    const spawns = [
-      ...squad,
-      spawnAt(50_000, 'South', 8, 'Trickle'),
-      spawnAt(60_000, 'West', 9, 'Trickle'),
-    ]
-    const frames = playEmptied(waveModel(spawns, resting), 3000)
-    const arrivalsBy = (ms: number) =>
-      Array.flatMap(Array.take(frames, ms / FRAME_MS), ({ arrived }) => arrived)
-    expect(arrivalsBy(500 - FRAME_MS)).toEqual([])
-    expect(arrivalsBy(500 + FRAME_MS)).toEqual(['South'])
-    expect(arrivalsBy(1000 + 2 * FRAME_MS)).toEqual(['South', 'West'])
-    expect(arrivalsBy(1500)).toEqual(['South', 'West'])
-    expect(arrivalsBy(3000)).toContain('East')
-    const clocks = Array.map(frames, ({ clockMs }) => clockMs)
-    expect(Array.take(clocks, 1000 / FRAME_MS)).toEqual(
-      Array.makeBy(1000 / FRAME_MS, () => 0),
-    )
-  })
+  it.effect(
+    'a relax in an empty room trickles in two stragglers, then ends',
+    () =>
+      Effect.gen(function* () {
+        const resting = modifyFields(calmPacing, {
+          beat: () =>
+            Beat.Resting({ remainingMs: 10_000, extendedMs: 0, trickled: 0 }),
+        })
+        const squad = [spawnAt(40_000, 'East', 7), spawnAt(40_200, 'East', 7)]
+        const spawns = [
+          ...squad,
+          spawnAt(50_000, 'South', 8, 'Trickle'),
+          spawnAt(60_000, 'West', 9, 'Trickle'),
+        ]
+        const frames = yield* playEmptied(waveModel(spawns, resting), 3000)
+        const arrivalsBy = (ms: number) =>
+          Array.flatMap(
+            Array.take(frames, ms / FRAME_MS),
+            ({ arrived }) => arrived,
+          )
+        expect(arrivalsBy(500 - FRAME_MS)).toEqual([])
+        expect(arrivalsBy(500 + FRAME_MS)).toEqual(['South'])
+        expect(arrivalsBy(1000 + 2 * FRAME_MS)).toEqual(['South', 'West'])
+        expect(arrivalsBy(1500)).toEqual(['South', 'West'])
+        expect(arrivalsBy(3000)).toContain('East')
+        const clocks = Array.map(frames, ({ clockMs }) => clockMs)
+        expect(Array.take(clocks, 1000 / FRAME_MS)).toEqual(
+          Array.makeBy(1000 / FRAME_MS, () => 0),
+        )
+      }),
+  )
 })
 
 describe('fades', () => {
@@ -747,27 +804,27 @@ describe('fades', () => {
   })
   const later = [spawnAt(5000, 'South', 4)]
 
-  test('a fade holds while six are alive', () => {
-    story(
-      update,
-      given(waveModel(later, holding, crowdOf(6))),
+  it.effect('a fade holds while six are alive', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(waveModel(later, holding, crowdOf(6))),
       ...ticksFor(3000, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(Beat.guards.Fading(current.pacing.beat)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 
-  test('a fade lets go once five are left', () => {
-    story(
-      update,
-      given(waveModel(later, holding, crowdOf(5))),
+  it.effect('a fade lets go once five are left', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(waveModel(later, holding, crowdOf(5))),
       ...ticksFor(500 + 2 * FRAME_MS, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(Beat.guards.Resting(current.pacing.beat)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('spawn variety', () => {

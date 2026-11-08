@@ -3,15 +3,7 @@
 // Models live in `model.fixture.ts`. `tools/lint/duplicateHelpers.ts`
 // fails a helper copied between test files: add it here instead.
 
-import {
-  Array,
-  type Effect,
-  Function,
-  Match,
-  Option,
-  Schema,
-  Struct,
-} from 'effect'
+import { Array, Effect, Function, Match, Option, Schema, Struct } from 'effect'
 import { Canvas, Scene, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
@@ -19,6 +11,21 @@ import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
 import { LobbyBinding, ShopDialogBinding } from '../app/bindings'
 import { layer } from '../app/block'
+import {
+  AwaitFirstFrame,
+  DecodeSprites,
+  DetectInputDevice,
+  DetectLocalPlayers,
+  DetectOrientationLock,
+  DetectScreenFit,
+  DetectShareSheet,
+  GenerateSeed,
+  LoadFonts,
+  LoadSave,
+  LoadStyles,
+  ReadUpdateMarker,
+  StartSummaryQueue,
+} from '../app/boot'
 import { ApplicationBlock } from '../app/definition'
 import { Message } from '../app/message'
 import {
@@ -26,6 +33,7 @@ import {
   Frenzy,
   GameEvent,
   type Model,
+  Phase,
   Pierce,
   type RunStats,
   type Vector,
@@ -39,11 +47,12 @@ import {
   MeasureGameSurface,
   ShareFromClick,
 } from '../app/mount'
-import { subscriptions, update, view } from '../app/pureApp'
+import { subscriptions, type update } from '../app/pureApp'
 import { ReadRoomLink } from '../app/update/coop'
 import { HideSplash, ShowLoadProgress, WriteSave } from '../app/update/save'
 import { PlaySound } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
+import { CueMusic } from '../app/update/music'
 import { Message as CoopMessage } from '../features/coop/message'
 import { ChangeLobby, FocusCoopElement } from '../features/coop/steps'
 import { endOffer } from '../features/end/endOffer'
@@ -183,11 +192,6 @@ export const showDialog = () =>
 // NOTE: the root's Subscriptions, its children's included, so a Scene can
 // emit a Message from one of them (Scene.Subscription.emit).
 export const SCENE_SUBSCRIPTIONS = subscriptions
-
-// NOTE: the plain Scene's root, `scene(ROOT, ...)`, for a Scene under
-// src/world/ or one that reaches no child (AGENTS.md "Where a plain Story
-// may stay"); the rest are Block-aware (`Scene.scene(APPLICATION, ...)`).
-export const ROOT = { update, view, subscriptions: SCENE_SUBSCRIPTIONS }
 
 // NOTE: the root as a Block-aware Story and Scene take it:
 // `Story.story(APPLICATION, Story.given(model), ...)`. A child's Message
@@ -410,19 +414,6 @@ export const ticksFor: {
     ticks(Math.round(ms / frameMs), frameMs),
 )
 
-// NOTE: the Model a Message leaves, for a test that starts from a Command's
-// result, which no Subscription emits.
-// NOTE: a root Message, as the root update takes it.
-type AnyMessage = Parameters<typeof update>[1]
-
-export const modelAfter: {
-  (message: AnyMessage): (model: Model) => Model
-  (model: Model, message: AnyMessage): Model
-} = Function.dual(
-  2,
-  (model: Model, message: AnyMessage): Model => update(model, message).model,
-)
-
 // NOTE: how many fixed-step frames it takes to play at least `ms`.
 export const tickCountFor = (ms: number): number =>
   Math.ceil(ms / FIXED_STEP_MS)
@@ -488,6 +479,53 @@ export const finishSplash = Story.steps(
   ),
 )
 
+// NOTE: every Command init starts but the visit id, answered as a desktop
+// with one player, no share sheet, no update waiting, and no save, with
+// the load bar, the splash, and the room link they lead to, for a Story
+// from `Story.init()` about something other than the boot itself
+// (src/features/home/__tests__/menu.story.test.ts walks the boot step by
+// step).
+export const bootWithoutVisitId = Story.Command.resolveAll(
+  [GenerateSeed(), Message.CompletedGenerateSeed({ seed: 1 })],
+  [StartSummaryQueue(), Message.CompletedStartSummaryQueue()],
+  [
+    DetectInputDevice(),
+    Message.CompletedDetectInputDevice({ touchControls: 'Blocked' }),
+  ],
+  [
+    DetectShareSheet(),
+    Message.CompletedDetectShareSheet({ shareSheet: 'Unavailable' }),
+  ],
+  [
+    DetectScreenFit(),
+    Message.CompletedDetectScreenFit({ screenFit: 'Unknown' }),
+  ],
+  [
+    DetectOrientationLock(),
+    Message.CompletedDetectOrientationLock({ orientationLock: 'Unsupported' }),
+  ],
+  [DetectLocalPlayers(), Message.CompletedDetectLocalPlayers({ count: 1 })],
+  [
+    ReadUpdateMarker(),
+    Message.CompletedReadUpdateMarker({ maybeBuild: Option.none() }),
+  ],
+  [LoadStyles(), Message.CompletedLoadStyles()],
+  [LoadFonts(), Message.CompletedLoadFonts()],
+  [AwaitFirstFrame(), Message.CompletedAwaitFirstFrame()],
+  [DecodeSprites(), Message.CompletedDecodeSprites()],
+  [LoadSave(), Message.CompletedLoadSave({ maybeSave: Option.none() })],
+  ...Array.makeBy(
+    5,
+    index =>
+      [
+        ShowLoadProgress({ loaded: index + 1, total: 5 }),
+        Message.CompletedShowLoadProgress(),
+      ] as const,
+  ),
+  [HideSplash(), Message.CompletedHideSplash()],
+  [ReadRoomLink, Message.CompletedReadRoomLink({ maybeCode: Option.none() })],
+)
+
 // NOTE: PLAY by Enter opens the single player lobby with START focused; Enter
 // again starts the run with what the lobby holds. A test about something
 // else than the lobby starts its run with `startRunFromHome`.
@@ -501,32 +539,12 @@ export const openLobbyByKey = Story.steps(press('Enter'), resolveFocusLobby())
 
 export const startRunFromHome = Story.steps(openLobbyByKey, press('Enter'))
 
-// NOTE: the same two Enters on a Model, for a test that wants the run's
-// first Model and nothing between.
-export const startedRunOf = (model: Model): Model =>
-  modelAfter(
-    modelAfter(model, Message.PressedKey({ code: 'Enter' })),
-    Message.PressedKey({ code: 'Enter' }),
-  )
-
 // READING A MODEL
 
-// NOTE: every event the Messages raise, frame by frame, in order.
-export const eventsOver: {
-  (messages: ReadonlyArray<Message>): (start: Model) => ReadonlyArray<GameEvent>
-  (start: Model, messages: ReadonlyArray<Message>): ReadonlyArray<GameEvent>
-} = Function.dual(
-  2,
-  (start: Model, messages: ReadonlyArray<Message>): ReadonlyArray<GameEvent> =>
-    Array.reduce(
-      messages,
-      { current: start, events: Array.empty<GameEvent>() },
-      ({ current, events }, sent) => {
-        const next = update(current, sent).model
-        return { current: next, events: [...events, ...next.frameEvents] }
-      },
-    ).events,
-)
+// NOTE: a run still being played: a break or a wave, for a sim that plays
+// until it ends.
+export const isPlaying = (current: Model): boolean =>
+  Phase.isAnyOf(['Preparation', 'Wave'])(current.phase)
 
 export const zombieById: {
   (id: number): (current: Model) => Zombie
@@ -952,6 +970,128 @@ export const checkPendingSounds =
     )
   }
 
+// NOTE: a step that hands the args of every pending Command one
+// Definition matches (`checkPendingArgs(Story.Command.argsOf(WriteSave))`) to a check, and
+// leaves them pending, for a test about a few of a Command's args, where
+// `Story.Command.expectExact` would need the whole value.
+export const checkPendingArgs =
+  <Args>(argsOf: (pending: Story.AnyCommand) => Option.Option<Args>) =>
+  (check: (pending: ReadonlyArray<Args>) => void) =>
+  <StoryModel, StoryMessage, OutMessage>(
+    simulation: Story.StorySimulation<StoryModel, StoryMessage, OutMessage>,
+  ): Story.StorySimulation<StoryModel, StoryMessage, OutMessage> => {
+    check(
+      Array.getSomes(
+        Array.map(simulation.commands, command => argsOf(command)),
+      ),
+    )
+    return simulation
+  }
+
 // NOTE: plays whatever sounds the last frame left pending, so a Story of
 // frames ends with every Command resolved.
 export const playPendingSounds = checkPendingSounds(Function.constVoid)
+
+// NOTE: completes every sound, music cue, and save write left pending, each
+// with the Message its handler answers on success, for a Story that plays
+// many frames of a run (a whole wave, a replay) and is about the World, not
+// its Commands. Any other pending Command stays, so the Story still fails on
+// one it did not expect.
+export const settleRunCommands = <StoryModel, StoryMessage, OutMessage>(
+  simulation: Story.StorySimulation<StoryModel, StoryMessage, OutMessage>,
+): Story.StorySimulation<StoryModel, StoryMessage, OutMessage> =>
+  Array.reduce(simulation.commands, simulation, (current, command) =>
+    Option.match(Story.Command.argsOf(PlaySound)(command), {
+      onSome: cue =>
+        Story.Command.resolve(
+          PlaySound(cue),
+          Message.CompletedPlaySound({ sound: cue.sound, outcome: 'Played' }),
+        )(current),
+      onNone: () =>
+        Option.match(Story.Command.argsOf(CueMusic)(command), {
+          onSome: cue =>
+            Story.Command.resolve(
+              CueMusic(cue),
+              Message.CompletedCueMusic({ mood: cue.mood }),
+            )(current),
+          onNone: () =>
+            Option.isSome(Story.Command.argsOf(WriteSave)(command))
+              ? writeSave()(current)
+              : current,
+        }),
+    }),
+  )
+
+// NOTE: a Message the game takes at any moment and answers with nothing (a
+// right click's menu kept shut), what `messageIfAny` sends when its choice
+// is to send nothing.
+const IDLE = Message.SuppressedContextMenu()
+
+// NOTE: a Story step that sends the Message `choose` picks from the Model it
+// finds when the step runs, or nothing, for a sim whose players act on what
+// they see (`Story.messageWith` always sends one): the bots that press READY
+// in a break, aim at the nearest zombie, or let go of a key they hold.
+export const messageIfAny = (
+  choose: (current: Model) => Option.Option<Message>,
+) =>
+  Story.messageWith((current: Model) =>
+    Option.getOrElse(choose(current), () => IDLE),
+  )
+
+// NOTE: a change to the Model in the middle of a Story, as `Story.given`
+// makes one at its start, for a sim whose rule is its own and not the
+// game's: every heart full again after each frame, or every zombie gone the
+// frame it walks in. No Message makes it, so no handler runs.
+export const changeModel =
+  (change: (current: Model) => Model) =>
+  <StoryMessage, OutMessage>(
+    simulation: Story.StorySimulation<Model, StoryMessage, OutMessage>,
+  ): Story.StorySimulation<Model, StoryMessage, OutMessage> => ({
+    ...simulation,
+    model: change(simulation.model),
+  })
+
+// NOTE: the Model root Messages leave, played through a Block-aware Story
+// with every sound, cue, and save write they raise completed
+// (`settleRunCommands`), for a replay or a sim that reads where a run got to.
+export const playedThrough: {
+  (messages: ReadonlyArray<Message>): (model: Model) => Effect.Effect<Model>
+  (model: Model, messages: ReadonlyArray<Message>): Effect.Effect<Model>
+} = Function.dual(2, (model: Model, messages: ReadonlyArray<Message>) =>
+  Story.story(
+    APPLICATION,
+    Story.given(model),
+    ...Array.map(messages, message => Story.message(message)),
+    settleRunCommands,
+  ),
+)
+
+// NOTE: every event the Messages raise, frame by frame, in order, played
+// through a Block-aware Story from `start`. Each frame's events are read
+// off the Model it leaves (a frame's `frameEvents` hold that frame's only),
+// gathered in an array the Story alone fills, as `recordTicks` gathers its
+// Models.
+export const eventsOver: {
+  (
+    messages: ReadonlyArray<Message>,
+  ): (start: Model) => Effect.Effect<ReadonlyArray<GameEvent>>
+  (
+    start: Model,
+    messages: ReadonlyArray<Message>,
+  ): Effect.Effect<ReadonlyArray<GameEvent>>
+} = Function.dual(2, (start: Model, messages: ReadonlyArray<Message>) =>
+  Effect.suspend(() => {
+    const events: Array<GameEvent> = []
+    return Story.story(
+      APPLICATION,
+      Story.given(start),
+      ...Array.flatMap(messages, sent => [
+        Story.message(sent),
+        Story.model((current: Model) => {
+          events.push(...current.frameEvents)
+        }),
+      ]),
+      settleRunCommands,
+    ).pipe(Effect.as<ReadonlyArray<GameEvent>>(events))
+  }),
+)

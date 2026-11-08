@@ -1,10 +1,10 @@
 import { Array, Option } from 'effect'
-import { given, model, story } from 'foldkit/story'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { GasValve, type Model, Phase } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
@@ -12,7 +12,13 @@ import {
   freshRunModel,
   kitchenBreak,
 } from '../../../test/model.fixture'
-import { HOLD_TICKS, holdEnter, ticks, zombieOf } from '../../../test/testing'
+import {
+  APPLICATION,
+  HOLD_TICKS,
+  holdEnter,
+  ticks,
+  zombieOf,
+} from '../../../test/testing'
 import { levelOf } from '../../level/arena'
 import {
   focusOf,
@@ -107,37 +113,40 @@ describe('turning the gas valve', () => {
     expect(isValveOffered(atValve(500, kitchenBreak(5)))).toBe(true)
   })
 
-  test('holding Enter at the valve pays, lights the fireplace for good, and it is never sold again', () => {
-    story(
-      update,
-      given(atValve(500, midWave)),
-      ...turn,
-      model(current => {
-        expect(focusOf(current).wallet.balance).toBe(500 - VALVE_RULES.price)
-        expect(
-          GasValve.isAnyOf(['Lit'])(current.gasValve) && current.gasValve.owner,
-        ).toBe(focusSlotOf(current))
-        expect(isValveOffered(current)).toBe(false)
-      }),
-      ...turn,
-      model(current => {
-        expect(focusOf(current).wallet.balance).toBe(500 - VALVE_RULES.price)
-        expect(current.stats.purchases).toBe(1)
-      }),
-    )
-  })
+  it.effect(
+    'holding Enter at the valve pays, lights the fireplace for good, and it is never sold again',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(atValve(500, midWave)),
+        ...turn,
+        Story.model(current => {
+          expect(focusOf(current).wallet.balance).toBe(500 - VALVE_RULES.price)
+          expect(
+            GasValve.isAnyOf(['Lit'])(current.gasValve) &&
+              current.gasValve.owner,
+          ).toBe(focusSlotOf(current))
+          expect(isValveOffered(current)).toBe(false)
+        }),
+        ...turn,
+        Story.model(current => {
+          expect(focusOf(current).wallet.balance).toBe(500 - VALVE_RULES.price)
+          expect(current.stats.purchases).toBe(1)
+        }),
+      ),
+  )
 
-  test('short of the price, a press buys nothing', () => {
-    story(
-      update,
-      given(atValve(VALVE_RULES.price - 1, midWave)),
+  it.effect('short of the price, a press buys nothing', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(atValve(VALVE_RULES.price - 1, midWave)),
       ...turn,
-      model(current => {
+      Story.model(current => {
         expect(GasValve.isAnyOf(['Shut'])(current.gasValve)).toBe(true)
         expect(focusOf(current).wallet.balance).toBe(VALVE_RULES.price - 1)
       }),
-    )
-  })
+    ),
+  )
 })
 
 describe('the lit fireplace', () => {
@@ -151,28 +160,28 @@ describe('the lit fireplace', () => {
     expect(hpOf(later, 901)).toBe(20)
   })
 
-  test('never burns a player standing in it', () => {
+  it.effect('never burns a player standing in it', () => {
     const start = litWith(20)
-    story(
-      update,
-      given(start),
+    return Story.story(
+      APPLICATION,
+      Story.given(start),
       ...ticks(BURN_TICKS * 4, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(focusOf(current).player.hp).toBe(focusOf(start).player.hp)
         expect(hpOf(current, 900)).toBeLessThan(20)
       }),
     )
   })
 
-  test('a shut valve burns nothing', () => {
+  it.effect('a shut valve burns nothing', () => {
     const shut = modifyFields(litWith(20), {
       gasValve: () => GasValve.Shut(),
     })
-    story(
-      update,
-      given(shut),
+    return Story.story(
+      APPLICATION,
+      Story.given(shut),
       ...ticks(BURN_TICKS * 4, FRAME_MS),
-      model(current => {
+      Story.model(current => {
         expect(hpOf(current, 900)).toBe(20)
       }),
     )

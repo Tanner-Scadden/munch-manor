@@ -1,9 +1,9 @@
 import { Option } from 'effect'
-import { given, model, story } from 'foldkit/story'
-import { describe, expect, test } from 'vitest'
+import { Story } from 'foldkit'
+
+import { describe, expect, it } from '@effect/vitest'
 
 import type { Model } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   crewInWave,
@@ -11,7 +11,7 @@ import {
   placeSeat,
   untouchableSeat,
 } from '../../../test/model.fixture'
-import { ticks } from '../../../test/testing'
+import { APPLICATION, ticks } from '../../../test/testing'
 import { maybePlayerAt } from '../party'
 
 // A downed player's whole bleed, played out (src/world/party/__tests__/medic.story.test.ts has
@@ -26,11 +26,11 @@ const lifeOf = (current: Model): string =>
 describe('bleeding out', () => {
   // NOTE: on no hearts, the lead falls on the first tick and bleeds from
   // the next.
-  test('a downed player alone lasts 20 s', () => {
+  it.effect('a downed player alone lasts 20 s', () => {
     const bleedTicks = Math.ceil(20_000 / TICK_MS)
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         pipeline(
           placeSeat(0, 60, 104, 0),
           placeSeat(1, 240, 104),
@@ -38,12 +38,12 @@ describe('bleeding out', () => {
         )(crewInWave(2)),
       ),
       ...ticks(bleedTicks - 2, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(lifeOf(current)).toBe('Downed')
         expect(current.phase._tag).toBe('Wave')
       }),
       ...ticks(4, TICK_MS),
-      model(current => {
+      Story.model(current => {
         expect(lifeOf(current)).toBe('BledOut')
         expect(current.phase._tag).toBe('Wave')
       }),

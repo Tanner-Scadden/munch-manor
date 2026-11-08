@@ -2,7 +2,7 @@ import { Array, Effect, Option } from 'effect'
 import { Scene, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
+import { describe, it, expect as vitestExpect } from '@effect/vitest'
 import { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
 
 import indexHtml from '../../../index.html?raw'
@@ -33,7 +33,7 @@ import { Arsenal } from '../../world/schema/worldSchema'
 import { pause } from '../../world/waves/waves'
 import { Message } from '../message'
 import { DifficultyCard, type Model, Phase, Reload } from '../model'
-import { initialModel, update, view } from '../pureApp'
+import { initialModel } from '../pureApp'
 
 const PLAY_AGAIN =
   'Press Enter or choose Retry to play again, or E for an endless run. Press X or choose Share to post your run on X.'
@@ -779,28 +779,35 @@ describe('Run stats', () => {
 })
 
 describe('Title', () => {
-  const titledView = (...[current, h]: Parameters<typeof view>) => {
-    const document = view(current, h)
-    return h.div(
-      [h.DataAttribute('document-title', document.title)],
-      [document.body],
-    )
-  }
-
-  // NOTE: a plain Scene over pureApp's update and a view that shows the
-  // document's title, which a Block-aware Scene's view has no place for.
-  test('the working title names the document, the page, and index.html', () => {
-    vitestExpect(indexHtml).toContain(`<title>${GAME_TITLE}</title>`)
-    Scene.scene(
-      { update, view: titledView },
-      Scene.given(initialModel),
-      measureSurface,
-      Scene.expect(
-        Scene.selector(`[data-document-title="${GAME_TITLE}"]`),
-      ).toExist(),
-      Scene.expect(Scene.role('heading', { name: GAME_TITLE })).toExist(),
-    )
-  })
+  // NOTE: a Block-aware Scene draws the document's body only, so this one
+  // renders the acquired root through a view of its own that also shows
+  // the document's title (FOLDKIT.md "Testing": `withBlock` for a custom
+  // renderer).
+  it.effect(
+    'the working title names the document, the page, and index.html',
+    () =>
+      Story.withBlock(APPLICATION, block => {
+        vitestExpect(indexHtml).toContain(`<title>${GAME_TITLE}</title>`)
+        return Scene.scene(
+          {
+            update: block.update,
+            view: (...[current, h]: Parameters<typeof block.view>) => {
+              const document = block.view(current, h)
+              return h.div(
+                [h.DataAttribute('document-title', document.title)],
+                [document.body],
+              )
+            },
+          },
+          Scene.given(initialModel),
+          measureSurface,
+          Scene.expect(
+            Scene.selector(`[data-document-title="${GAME_TITLE}"]`),
+          ).toExist(),
+          Scene.expect(Scene.role('heading', { name: GAME_TITLE })).toExist(),
+        )
+      }),
+  )
 })
 
 const CARD_TICKS = Math.ceil(DEBUT_CARD_MIN_MS / 50)

@@ -1,7 +1,8 @@
-import { Array, Option } from 'effect'
-import { given, message, model, story } from 'foldkit/story'
+import { Array, Effect, Option } from 'effect'
+import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import { describe, expect, test } from 'vitest'
+
+import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
@@ -10,7 +11,6 @@ import {
   type PlannedSpawn,
   type Zombie,
 } from '../../../app/model'
-import { update } from '../../../app/pureApp'
 import {
   FIRST_PREPARATION_MS,
   FIXED_STEP_MS,
@@ -18,6 +18,7 @@ import {
 } from '../../../shared/constants'
 import { plannedSpawn, readyModel } from '../../../test/model.fixture'
 import {
+  APPLICATION,
   RESTART_GRACE_TICKS,
   bulletInto,
   doomed,
@@ -58,291 +59,314 @@ const killShot = (base: Model, zombie: Zombie): Model =>
 const farAway = zombieAt(101, 40, 150)
 
 describe('preparation', () => {
-  test('the first preparation is short, counts down, and starts wave 1 with its plan', () => {
-    const frames = Math.ceil(FIRST_PREPARATION_MS / FRAME_MS)
-    const plans: Array<ReadonlyArray<PlannedSpawn>> = []
+  it.effect(
+    'the first preparation is short, counts down, and starts wave 1 with its plan',
+    () => {
+      const frames = Math.ceil(FIRST_PREPARATION_MS / FRAME_MS)
+      const plans: Array<ReadonlyArray<PlannedSpawn>> = []
 
-    story(
-      update,
-      given(readyModel),
-      startRunFromHome,
-      release('Enter'),
-      model(({ phase }) => {
-        const preparation = Option.getOrThrow(
-          Option.liftPredicate(phase, Phase.guards.Preparation),
-        )
-        expect(preparation.wave).toBe(1)
-        expect(preparation.remainingMs).toBe(FIRST_PREPARATION_MS)
-        expect(preparation.durationMs).toBe(FIRST_PREPARATION_MS)
-        expect(Array.isReadonlyArrayNonEmpty(preparation.spawns)).toBe(true)
-        plans.push(preparation.spawns)
-      }),
-      ...ticks(10, FRAME_MS),
-      model(({ phase }) => {
-        const preparation = Option.getOrThrow(
-          Option.liftPredicate(phase, Phase.guards.Preparation),
-        )
-        expect(preparation.wave).toBe(1)
-        expect(preparation.remainingMs).toBeCloseTo(
-          FIRST_PREPARATION_MS - 10 * FRAME_MS,
-        )
-        expect(preparation.durationMs).toBe(FIRST_PREPARATION_MS)
-        expect(preparation.spawns).toEqual(Option.getOrThrow(Array.head(plans)))
-      }),
-      ...ticks(frames - 11, FRAME_MS),
-      model(({ phase }) => {
-        expect(Phase.guards.Preparation(phase)).toBe(true)
-      }),
-      tick(FRAME_MS),
-      model(({ phase }) => {
-        expect(phase).toEqual(
-          Phase.Wave({
-            wave: 1,
-            elapsedMs: 0,
-            spawns: Option.getOrThrow(Array.head(plans)),
-          }),
-        )
-      }),
-    )
-  })
+      return Story.story(
+        APPLICATION,
+        Story.given(readyModel),
+        startRunFromHome,
+        release('Enter'),
+        Story.model(({ phase }) => {
+          const preparation = Option.getOrThrow(
+            Option.liftPredicate(phase, Phase.guards.Preparation),
+          )
+          expect(preparation.wave).toBe(1)
+          expect(preparation.remainingMs).toBe(FIRST_PREPARATION_MS)
+          expect(preparation.durationMs).toBe(FIRST_PREPARATION_MS)
+          expect(Array.isReadonlyArrayNonEmpty(preparation.spawns)).toBe(true)
+          plans.push(preparation.spawns)
+        }),
+        ...ticks(10, FRAME_MS),
+        Story.model(({ phase }) => {
+          const preparation = Option.getOrThrow(
+            Option.liftPredicate(phase, Phase.guards.Preparation),
+          )
+          expect(preparation.wave).toBe(1)
+          expect(preparation.remainingMs).toBeCloseTo(
+            FIRST_PREPARATION_MS - 10 * FRAME_MS,
+          )
+          expect(preparation.durationMs).toBe(FIRST_PREPARATION_MS)
+          expect(preparation.spawns).toEqual(
+            Option.getOrThrow(Array.head(plans)),
+          )
+        }),
+        ...ticks(frames - 11, FRAME_MS),
+        Story.model(({ phase }) => {
+          expect(Phase.guards.Preparation(phase)).toBe(true)
+        }),
+        tick(FRAME_MS),
+        Story.model(({ phase }) => {
+          expect(phase).toEqual(
+            Phase.Wave({
+              wave: 1,
+              elapsedMs: 0,
+              spawns: Option.getOrThrow(Array.head(plans)),
+            }),
+          )
+        }),
+      )
+    },
+  )
 
-  test('the player can move and shoot during preparation', () => {
-    story(
-      update,
-      given(readyModel),
+  it.effect('the player can move and shoot during preparation', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(readyModel),
       startRunFromHome,
       release('Enter'),
       press('KeyD'),
       holdFire,
       ...ticks(4, FRAME_MS),
-      model(({ phase, seats: [{ player }], bullets }) => {
+      Story.model(({ phase, seats: [{ player }], bullets }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(player.x).toBeGreaterThan(PARLOUR.width / 2)
         expect(Array.isReadonlyArrayNonEmpty(bullets)).toBe(true)
       }),
-    )
-  })
+    ),
+  )
 
-  test('Enter starts the wave early, and R and Space do not', () => {
-    const skipWith = (code: string) =>
-      story(
-        update,
-        given(readyModel),
+  it.effect('Enter starts the wave early, and R and Space do not', () =>
+    Effect.gen(function* () {
+      const skipWith = (code: string) =>
+        Story.story(
+          APPLICATION,
+          Story.given(readyModel),
+          startRunFromHome,
+          release('Enter'),
+          tick(FRAME_MS),
+          press(code),
+          Story.model(({ phase }) => {
+            expect(phase._tag).toBe(code === 'Enter' ? 'Wave' : 'Preparation')
+          }),
+        )
+
+      yield* skipWith('Enter')
+      yield* skipWith('KeyR')
+      yield* skipWith('Space')
+    }),
+  )
+
+  it.effect(
+    'the Start wave button starts the wave early and does nothing mid-wave',
+    () => {
+      const started: Array<Phase> = []
+      return Story.story(
+        APPLICATION,
+        Story.given(readyModel),
         startRunFromHome,
-        release('Enter'),
-        tick(FRAME_MS),
-        press(code),
-        model(({ phase }) => {
-          expect(phase._tag).toBe(code === 'Enter' ? 'Wave' : 'Preparation')
+        Story.message(Message.ClickedStartWaveButton()),
+        Story.model(({ phase }) => {
+          expect(Phase.guards.Wave(phase)).toBe(true)
+          started.push(phase)
+        }),
+        Story.message(Message.ClickedStartWaveButton()),
+        Story.model(({ phase }) => {
+          expect(Array.head(started)).toEqual(Option.some(phase))
         }),
       )
-
-    skipWith('Enter')
-    skipWith('KeyR')
-    skipWith('Space')
-  })
-
-  test('the Start wave button starts the wave early and does nothing mid-wave', () => {
-    const started: Array<Phase> = []
-    story(
-      update,
-      given(readyModel),
-      startRunFromHome,
-      message(Message.ClickedStartWaveButton()),
-      model(({ phase }) => {
-        expect(Phase.guards.Wave(phase)).toBe(true)
-        started.push(phase)
-      }),
-      message(Message.ClickedStartWaveButton()),
-      model(({ phase }) => {
-        expect(Array.head(started)).toEqual(Option.some(phase))
-      }),
-    )
-  })
+    },
+  )
 })
 
 describe('waves', () => {
-  test('a wave with zombies still to spawn does not end when the room is empty', () => {
-    story(
-      update,
-      given(inWave(2, [plannedSpawn(5000)], [])),
-      ...ticks(8, FRAME_MS),
-      model(({ phase, zombies }) => {
-        expect(zombies).toEqual([])
-        const wave = Option.getOrThrow(
-          Option.liftPredicate(phase, Phase.guards.Wave),
-        )
-        expect(wave.wave).toBe(2)
-        expect(wave.elapsedMs).toBeCloseTo(8 * FRAME_MS)
-        expect(wave.spawns).toEqual([plannedSpawn(5000)])
-      }),
-      ...ticks(80, FRAME_MS),
-      model(({ phase, zombies }) => {
-        expect(zombies).toHaveLength(1)
-        expect(Phase.guards.Wave(phase)).toBe(true)
-      }),
-    )
-  })
-
-  test('a wave whose plan is spent ends only when the last zombie dies, and hearts carry over', () => {
-    story(
-      update,
-      given(
-        modifyFocus(killShot(inWave(2, [], [doomed, farAway]), doomed), {
-          player: player => modifyFields(player, { hp: () => 3 }),
+  it.effect(
+    'a wave with zombies still to spawn does not end when the room is empty',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(inWave(2, [plannedSpawn(5000)], [])),
+        ...ticks(8, FRAME_MS),
+        Story.model(({ phase, zombies }) => {
+          expect(zombies).toEqual([])
+          const wave = Option.getOrThrow(
+            Option.liftPredicate(phase, Phase.guards.Wave),
+          )
+          expect(wave.wave).toBe(2)
+          expect(wave.elapsedMs).toBeCloseTo(8 * FRAME_MS)
+          expect(wave.spawns).toEqual([plannedSpawn(5000)])
+        }),
+        ...ticks(80, FRAME_MS),
+        Story.model(({ phase, zombies }) => {
+          expect(zombies).toHaveLength(1)
+          expect(Phase.guards.Wave(phase)).toBe(true)
         }),
       ),
-      tick(FRAME_MS),
-      model(({ phase }) => {
-        expect(Phase.guards.Wave(phase)).toBe(true)
-      }),
-      model(current => {
-        expect(current.zombies).toHaveLength(2)
-      }),
-    )
+  )
 
-    story(
-      update,
-      given(
-        modifyFocus(killShot(inWave(2, [], [doomed]), doomed), {
-          player: player => modifyFields(player, { hp: () => 3 }),
-        }),
-      ),
-      tick(FRAME_MS),
-      model(({ phase, seats: [{ player }] }) => {
-        const preparation = Option.getOrThrow(
-          Option.liftPredicate(phase, Phase.guards.Preparation),
+  it.effect(
+    'a wave whose plan is spent ends only when the last zombie dies, and hearts carry over',
+    () =>
+      Effect.gen(function* () {
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFocus(killShot(inWave(2, [], [doomed, farAway]), doomed), {
+              player: player => modifyFields(player, { hp: () => 3 }),
+            }),
+          ),
+          tick(FRAME_MS),
+          Story.model(({ phase }) => {
+            expect(Phase.guards.Wave(phase)).toBe(true)
+          }),
+          Story.model(current => {
+            expect(current.zombies).toHaveLength(2)
+          }),
         )
-        expect(preparation.wave).toBe(3)
-        expect(preparation.remainingMs).toBe(PREPARATION_MS)
-        expect(player.hp).toBe(3)
-      }),
-    )
-  })
 
-  test('clearing the final wave gives Victory with the score', () => {
-    story(
-      update,
-      given(
+        yield* Story.story(
+          APPLICATION,
+          Story.given(
+            modifyFocus(killShot(inWave(2, [], [doomed]), doomed), {
+              player: player => modifyFields(player, { hp: () => 3 }),
+            }),
+          ),
+          tick(FRAME_MS),
+          Story.model(({ phase, seats: [{ player }] }) => {
+            const preparation = Option.getOrThrow(
+              Option.liftPredicate(phase, Phase.guards.Preparation),
+            )
+            expect(preparation.wave).toBe(3)
+            expect(preparation.remainingMs).toBe(PREPARATION_MS)
+            expect(player.hp).toBe(3)
+          }),
+        )
+      }),
+  )
+
+  it.effect('clearing the final wave gives Victory with the score', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(killShot(inWave(FINAL_WAVE, [], [doomed]), doomed), {
           stats: scoring(990),
         }),
       ),
       // NOTE: one 60 Hz tick lands the kill; the world stops with it.
       tick(FIXED_STEP_MS),
-      model(({ phase, stats }) => {
+      Story.model(({ phase, stats }) => {
         expect(phase).toEqual(Phase.Victory())
         expect(scoreOf(stats)).toBe(1000)
       }),
       ...ticks(5, FRAME_MS),
-      model(({ elapsedMs }) => {
+      Story.model(({ elapsedMs }) => {
         expect(elapsedMs).toBe(FIXED_STEP_MS)
       }),
       ...ticks(RESTART_GRACE_TICKS, GRACE_TICK_MS),
       press('Enter'),
-      model(({ phase, stats }) => {
+      Story.model(({ phase, stats }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(scoreOf(stats)).toBe(0)
       }),
-    )
-  })
+    ),
+  )
 
-  test('dying during preparation gives GameOver on the upcoming wave', () => {
-    story(
-      update,
-      given(
-        modifyFocus(
-          modifyFields(readyModel, {
-            phase: () =>
-              Phase.Preparation({
-                wave: 4,
-                remainingMs: 9000,
-                durationMs: PREPARATION_MS,
-                spawns: [plannedSpawn(0)],
-              }),
-            zombies: () => [
-              zombieAt(100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
-            ],
-          }),
-          { player: player => modifyFields(player, { hp: () => 1 }) },
+  it.effect(
+    'dying during preparation gives GameOver on the upcoming wave',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFocus(
+            modifyFields(readyModel, {
+              phase: () =>
+                Phase.Preparation({
+                  wave: 4,
+                  remainingMs: 9000,
+                  durationMs: PREPARATION_MS,
+                  spawns: [plannedSpawn(0)],
+                }),
+              zombies: () => [
+                zombieAt(100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
+              ],
+            }),
+            { player: player => modifyFields(player, { hp: () => 1 }) },
+          ),
         ),
+        tick(FRAME_MS),
+        Story.model(({ phase, seats: [{ player }] }) => {
+          expect(player.hp).toBe(0)
+          expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
+        }),
       ),
-      tick(FRAME_MS),
-      model(({ phase, seats: [{ player }] }) => {
-        expect(player.hp).toBe(0)
-        expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
-      }),
-    )
-  })
+  )
 
-  test('a death in the same frame as the last kill is still a GameOver', () => {
-    story(
-      update,
-      given(
-        modifyFocus(
-          modifyFields(killShot(inWave(FINAL_WAVE, [], [doomed]), doomed), {
-            zombies: zombies => [
-              ...zombies,
-              zombieAt(102, PARLOUR.width / 2 - 2, PARLOUR.height / 2),
-            ],
-          }),
-          { player: player => modifyFields(player, { hp: () => 1 }) },
+  it.effect(
+    'a death in the same frame as the last kill is still a GameOver',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFocus(
+            modifyFields(killShot(inWave(FINAL_WAVE, [], [doomed]), doomed), {
+              zombies: zombies => [
+                ...zombies,
+                zombieAt(102, PARLOUR.width / 2 - 2, PARLOUR.height / 2),
+              ],
+            }),
+            { player: player => modifyFields(player, { hp: () => 1 }) },
+          ),
         ),
+        tick(FRAME_MS),
+        Story.model(({ phase }) => {
+          expect(phase).toEqual(Phase.GameOver({ wave: FINAL_WAVE }))
+        }),
       ),
-      tick(FRAME_MS),
-      model(({ phase }) => {
-        expect(phase).toEqual(Phase.GameOver({ wave: FINAL_WAVE }))
-      }),
-    )
-  })
+  )
 })
 
 describe('pause', () => {
-  test('pausing preparation freezes its timer and Escape resumes it rather than skipping', () => {
-    const preparation = Phase.Preparation({
-      wave: 3,
-      remainingMs: 12_345,
-      durationMs: PREPARATION_MS,
-      spawns: [plannedSpawn(100)],
-    })
+  it.effect(
+    'pausing preparation freezes its timer and Escape resumes it rather than skipping',
+    () => {
+      const preparation = Phase.Preparation({
+        wave: 3,
+        remainingMs: 12_345,
+        durationMs: PREPARATION_MS,
+        spawns: [plannedSpawn(100)],
+      })
 
-    story(
-      update,
-      given(modifyFields(readyModel, { phase: () => preparation })),
-      press('Escape'),
-      model(({ phase }) => {
-        expect(phase).toEqual(Phase.Paused({ round: preparation }))
-      }),
-      ...ticks(30, FRAME_MS),
-      press('Escape'),
-      model(({ phase }) => {
-        expect(phase).toEqual(preparation)
-      }),
-    )
-  })
+      return Story.story(
+        APPLICATION,
+        Story.given(modifyFields(readyModel, { phase: () => preparation })),
+        press('Escape'),
+        Story.model(({ phase }) => {
+          expect(phase).toEqual(Phase.Paused({ round: preparation }))
+        }),
+        ...ticks(30, FRAME_MS),
+        press('Escape'),
+        Story.model(({ phase }) => {
+          expect(phase).toEqual(preparation)
+        }),
+      )
+    },
+  )
 
-  test('pausing a wave keeps its clock and remaining spawns', () => {
+  it.effect('pausing a wave keeps its clock and remaining spawns', () => {
     const wave = Phase.Wave({
       wave: 5,
       elapsedMs: 4321,
       spawns: [plannedSpawn(8000), plannedSpawn(9000)],
     })
 
-    story(
-      update,
-      given(
+    return Story.story(
+      APPLICATION,
+      Story.given(
         modifyFields(readyModel, {
           phase: () => wave,
           zombies: () => [farAway],
         }),
       ),
-      message(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
+      Story.message(Message.ChangedPageVisibility({ visibility: 'Hidden' })),
       ...ticks(30, FRAME_MS),
-      model(({ phase, zombies }) => {
+      Story.model(({ phase, zombies }) => {
         expect(phase).toEqual(Phase.Paused({ round: wave }))
         expect(zombies).toEqual([farAway])
       }),
-      message(
+      Story.message(
         Message.PressedPointer({
           pointerId: 1,
           device: 'Mouse',
@@ -350,7 +374,7 @@ describe('pause', () => {
           clientY: 200,
         }),
       ),
-      model(({ phase }) => {
+      Story.model(({ phase }) => {
         expect(phase).toEqual(wave)
       }),
     )

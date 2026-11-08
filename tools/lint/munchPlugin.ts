@@ -21,7 +21,12 @@ import {
   isStringLiteral,
   propertyName,
 } from './ast.ts'
-import { liveTestNote, noFloatingStory, noRunInTests } from './testRules.ts'
+import {
+  liveTestNote,
+  noFloatingStory,
+  noPlainStory,
+  noRunInTests,
+} from './testRules.ts'
 
 type Node = ESTree.Node
 
@@ -1052,6 +1057,7 @@ export default definePlugin({
     'command-beside-update': commandBesideUpdate,
     'no-run-in-tests': noRunInTests,
     'no-floating-story': noFloatingStory,
+    'no-plain-story': noPlainStory,
     'tap-by-click': tapByClick,
     'seat-action-once': seatActionOnce,
     'key-action-once': keyActionOnce,

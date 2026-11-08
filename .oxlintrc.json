@@ -377,6 +377,8 @@
       // NOTE: tests and their shared setup run Effects with it.effect from
       // @effect/vitest, never by hand (munch/no-run-in-tests), and every
       // Block-aware Story and Scene they build runs (munch/no-floating-story).
+      // They drive the game through Block-aware Stories and Scenes, not a
+      // plain one or pureApp's update, view, or init (munch/no-plain-story).
       "files": [
         "**/*.test.ts",
         "**/test/**/*.ts",
@@ -388,8 +390,16 @@
       ],
       "rules": {
         "munch/no-run-in-tests": "error",
-        "munch/no-floating-story": "error"
+        "munch/no-floating-story": "error",
+        "munch/no-plain-story": "error"
       }
+    },
+    {
+      // NOTE: the patched Canvas painter checked on a bare canvas view: a
+      // plain Scene over a view of its own with no game and no Block, so
+      // there is no Block-aware form to drive (munch/no-plain-story).
+      "files": ["src/art/__tests__/sprite.scene.test.ts"],
+      "rules": { "munch/no-plain-story": "off" }
     },
     // NOTE: the files allowed raw JSON.parse and JSON.stringify, each with
     // its reason. Everything else reads and writes JSON through a Schema.
