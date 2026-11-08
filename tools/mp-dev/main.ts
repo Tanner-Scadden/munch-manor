@@ -273,7 +273,8 @@ const quickPlay = (
             Heard: ({ message }) =>
               Match.valueTags(message, {
                 Matched: ({ code, slot }) => Effect.succeedSome({ code, slot }),
-                Refused: ({ reason }) => QuickPlayEnded.make({ message: reason }),
+                Refused: ({ reason }) =>
+                  QuickPlayEnded.make({ message: reason }),
                 Waiting: waiting =>
                   Effect.gen(function* () {
                     const offered = waiting.offerPlayers > 0
