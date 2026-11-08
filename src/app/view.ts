@@ -34,6 +34,7 @@ import {
 } from '../features/shop/purchaseHud'
 import { victorySupportView } from '../features/support/supportView'
 import { hasUnseenCalling, hasUnseenLook } from '../features/unlocks/unlocks'
+import type { PointerDevice } from '../input/inputSchema'
 import { keyGrabToastView } from '../input/keyGrab'
 import {
   ghostSticksView,
@@ -88,14 +89,7 @@ import { closeButtonView, dialogShell } from './dialogs'
 import { gameStageView } from './layers'
 import { isLobbyUp } from './menuState'
 import { Message, type PressedPointer } from './message'
-import {
-  DebutCard,
-  type Model,
-  Phase,
-  type PointerDevice,
-  RunMode,
-  type RunStats,
-} from './model'
+import { DebutCard, type Model, Phase, RunMode, type RunStats } from './model'
 import { ListenForTouchTaps, MeasureGameSurface } from './mount'
 import { isCoopOpen } from './update/coop'
 

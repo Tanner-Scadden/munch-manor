@@ -1,6 +1,5 @@
 import { Function, Option } from 'effect'
 
-import type { Appearance } from '../../app/model'
 import {
   appearanceKey,
   playerPalette,
@@ -8,7 +7,7 @@ import {
 } from '../../art/appearance'
 import { pixelIconUrl } from '../../art/icons'
 import { isObjectFirst } from '../../shared/dualArgs'
-import type { Calling } from '../../shared/playerData'
+import type { Appearance, Calling } from '../../shared/playerData'
 
 // NOTE: co-op's own pixel icons, the same chunky SVG pixels as the home
 // menu's (src/art/icons.ts).

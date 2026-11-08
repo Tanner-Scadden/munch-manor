@@ -11,7 +11,6 @@ import { Message } from '../../app/message'
 import {
   Frenzy,
   HomeMode,
-  InputDevice,
   type Model,
   Phase,
   type Zombie,
@@ -25,6 +24,7 @@ import { Child, init, initialModel, update } from '../../app/pureApp'
 import { WriteSave } from '../../app/update/save'
 import { SendRunSummary } from '../../app/update/settle'
 import { Message as ProfileMessage } from '../../features/profile/message'
+import { InputDevice } from '../../input/inputSchema'
 import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '../../shared/constants'
 import { SURFACE, closeDialog, jsonOf, showDialog } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'

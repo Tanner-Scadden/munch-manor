@@ -10,17 +10,7 @@ import {
 } from '../../app/bindings'
 import type { ApplicationViewBuilder } from '../../app/composition'
 import { closeButtonView, dialogShell } from '../../app/dialogs'
-import { Message } from '../../app/message'
-import {
-  type Difficulty,
-  DifficultyCard,
-  type HandCard,
-  type HomeButton,
-  type MenuPanel,
-  type Model,
-  Phase,
-  type TutorialChoice,
-} from '../../app/model'
+import { DifficultyCard, type Model } from '../../app/model'
 import {
   AIM_ICON,
   CHARACTER_ICON,
@@ -43,7 +33,10 @@ import {
   TROPHY_ICON,
   TURN_PHONE_ICON,
 } from '../../art/icons'
+import { DeviceMessage } from '../../platform/message'
 import { updateGiftView } from '../../platform/updateGift'
+import type { TutorialChoice } from '../../shared/nameKeys'
+import type { Difficulty } from '../../shared/playerData'
 import { rankOf, totalPointsOf } from '../../world/heroes/rank'
 import { MULTIPLAYER_NAME, TUTORIAL_CHOICE_NAMES } from '../../world/names'
 import {
@@ -53,6 +46,7 @@ import {
   isLocked,
 } from '../../world/run/difficulty'
 import { durationLabel } from '../../world/run/stats'
+import { Phase } from '../../world/schema/worldSchema'
 import { COOP_ICON } from '../coop/icons'
 import { IS_COOP_RELEASED } from '../coop/release'
 import { installTileView } from '../install/installView'
@@ -87,6 +81,8 @@ import {
   isTurnHintShown,
   steppedHandCard,
 } from './home'
+import type { HandCard, HomeButton, MenuPanel } from './homeSchema'
+import { HomeMessage } from './message'
 
 // KEY BADGES
 
@@ -101,8 +97,8 @@ const keyBadgeView = (
 const homeFocusAttributes = (button: HomeButton, h: ApplicationViewBuilder) => [
   h.Id(homeButtonId(button)),
   h.AriaKeyshortcuts(HOME_KEYS[button].name),
-  h.OnFocus(Message.FocusedHomeButton({ button })),
-  h.OnBlur(Message.BlurredHomeButton()),
+  h.OnFocus(HomeMessage.FocusedHomeButton({ button })),
+  h.OnBlur(HomeMessage.BlurredHomeButton()),
 ]
 
 const homeButtonAttributes = (
@@ -121,7 +117,7 @@ const playButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
       h.Class('home-play'),
       h.DataAttribute('mode', model.home.mode),
       h.AriaLabel('Play'),
-      h.OnClick(Message.ClickedPlayButton(), { propagation: 'Stop' }),
+      h.OnClick(HomeMessage.ClickedPlayButton(), { propagation: 'Stop' }),
     ],
     [
       h.span(
@@ -167,7 +163,7 @@ const coopButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
       ...homeButtonAttributes('Coop', h),
       h.Class('home-coop'),
       h.AriaLabel('Co-op: play with friends'),
-      h.OnClick(Message.ClickedCoopButton(), { propagation: 'Stop' }),
+      h.OnClick(HomeMessage.ClickedCoopButton(), { propagation: 'Stop' }),
     ],
     [
       iconView('home-coop-icon', COOP_ICON, h),
@@ -230,11 +226,11 @@ const maybeCardTally = (model: Model, card: HandCard): Option.Option<string> =>
       )
     : Option.none()
 
-const CARD_MESSAGES: Readonly<Record<KeyedHandCard, Message>> = {
-  Character: Message.ClickedCharacterButton(),
-  Munchopedia: Message.ClickedMunchopediaButton(),
-  WhatsNew: Message.ClickedWhatsNewButton(),
-  HowToPlay: Message.ClickedHowToPlayButton(),
+const CARD_MESSAGES: Readonly<Record<KeyedHandCard, HomeMessage>> = {
+  Character: HomeMessage.ClickedCharacterButton(),
+  Munchopedia: HomeMessage.ClickedMunchopediaButton(),
+  WhatsNew: HomeMessage.ClickedWhatsNewButton(),
+  HowToPlay: HomeMessage.ClickedHowToPlayButton(),
 }
 
 const hasNews = (model: Model, card: HandCard): boolean => {
@@ -300,7 +296,7 @@ const manorButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
       h.Class('home-manor'),
       h.AriaLabel(manorAriaLabel(model)),
       h.AriaHasPopup('dialog'),
-      h.OnClick(Message.ClickedManorButton(), { propagation: 'Stop' }),
+      h.OnClick(HomeMessage.ClickedManorButton(), { propagation: 'Stop' }),
     ],
     [
       iconView('home-manor-icon', HAND_ICON, h),
@@ -313,7 +309,7 @@ const manorButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
 const handKeyMessage = (
   card: HandCard,
   key: string,
-): Option.Option<Message> => {
+): Option.Option<HomeMessage> => {
   const step =
     key === 'ArrowRight' || key === 'ArrowDown'
       ? 1
@@ -323,7 +319,7 @@ const handKeyMessage = (
   return step === 0
     ? Option.none()
     : Option.map(steppedHandCard(HAND_CARDS, card, step), next =>
-        Message.SteppedHandFocus({ card: next }),
+        HomeMessage.SteppedHandFocus({ card: next }),
       )
 }
 
@@ -521,7 +517,7 @@ const bestsView = (model: Model, h: ApplicationViewBuilder): Html =>
             )}. Opens the Munchopedia`,
           ),
           h.AriaHasPopup('dialog'),
-          h.OnClick(Message.ClickedMunchopediaButton(), {
+          h.OnClick(HomeMessage.ClickedMunchopediaButton(), {
             propagation: 'Stop',
           }),
         ],
@@ -549,7 +545,7 @@ const heroButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
       h.Tabindex(-1),
       h.AriaLabel('Your character: change how you look'),
       h.AriaHasPopup('dialog'),
-      h.OnClick(Message.ClickedCharacterButton(), { propagation: 'Stop' }),
+      h.OnClick(HomeMessage.ClickedCharacterButton(), { propagation: 'Stop' }),
     ],
     [rankChipView(model, h)],
   )
@@ -564,7 +560,9 @@ const fullscreenButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
           h.Class('home-corner-button home-fullscreen'),
           h.AriaLabel('Full screen'),
           h.AriaPressed(model.fullscreen === 'On' ? 'true' : 'false'),
-          h.OnClick(Message.ClickedFullscreenButton(), { propagation: 'Stop' }),
+          h.OnClick(DeviceMessage.ClickedFullscreenButton(), {
+            propagation: 'Stop',
+          }),
         ],
         [iconView('home-corner-icon', FULLSCREEN_ICON, h)],
       )
@@ -579,7 +577,7 @@ const settingsButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
       h.Class('home-corner-button home-settings'),
       h.AriaLabel('Settings'),
       h.AriaHasPopup('dialog'),
-      h.OnClick(Message.ClickedSettingsButton(), { propagation: 'Stop' }),
+      h.OnClick(HomeMessage.ClickedSettingsButton(), { propagation: 'Stop' }),
     ],
     [
       iconView('home-corner-icon', SETTINGS_ICON, h),
@@ -608,7 +606,9 @@ const supportButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
           h.Rel('noopener noreferrer'),
           h.AriaLabel(`${COFFEE_LABEL}. Opens in a new tab`),
           h.Title(COFFEE_LABEL),
-          h.OnClick(Message.ClickedSupportButton(), { propagation: 'Stop' }),
+          h.OnClick(HomeMessage.ClickedSupportButton(), {
+            propagation: 'Stop',
+          }),
         ],
         [
           ...Array.makeBy(STEAM_WISPS, wisp =>
@@ -647,7 +647,7 @@ const newEntryButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
           h.AriaLabel(
             `New Munchopedia entry: ${Option.getOrElse(newEntryText(model), () => '')}. Open it`,
           ),
-          h.OnClick(Message.ClickedNewEntryButton({ kind }), {
+          h.OnClick(HomeMessage.ClickedNewEntryButton({ kind }), {
             propagation: 'Stop',
           }),
         ],
@@ -702,7 +702,7 @@ const turnHintView = (model: Model, h: ApplicationViewBuilder): Html =>
           h.Class('home-turn-hint'),
           h.Tabindex(-1),
           h.AriaLabel(TURN_HINT_TEXT),
-          h.OnClick(Message.ClickedTurnHint(), { propagation: 'Stop' }),
+          h.OnClick(HomeMessage.ClickedTurnHint(), { propagation: 'Stop' }),
         ],
         [
           iconView('home-turn-icon', TURN_PHONE_ICON, h),
@@ -772,7 +772,7 @@ export const pauseMenuButtonView: {
           h.AriaLabel('Menu: leave this run'),
           h.AriaKeyshortcuts('H'),
           h.AriaHasPopup('dialog'),
-          h.OnClick(Message.ClickedMenuButton(), { propagation: 'Stop' }),
+          h.OnClick(HomeMessage.ClickedMenuButton(), { propagation: 'Stop' }),
         ],
         [
           'MENU',
@@ -878,7 +878,7 @@ const difficultyChoiceView = (
         : []),
       h.AriaLabel(difficultyLabel(model, difficulty)),
       ...(locked ? [h.AriaDisabled(true)] : []),
-      h.OnClick(Message.ClickedDifficultyCardButton({ difficulty }), {
+      h.OnClick(HomeMessage.ClickedDifficultyCardButton({ difficulty }), {
         focusSelector: '.game-surface',
         propagation: 'Stop',
       }),
@@ -939,7 +939,7 @@ const tutorialChoiceView = (
       h.DataAttribute('state', chosen === choice ? 'Chosen' : 'Other'),
       h.AriaPressed(chosen === choice ? 'true' : 'false'),
       h.AriaLabel(TUTORIAL_CHOICE_LABELS[choice]),
-      h.OnClick(Message.ClickedTutorialChoiceButton({ choice }), {
+      h.OnClick(HomeMessage.ClickedTutorialChoiceButton({ choice }), {
         focusSelector: `.difficulty-choice[data-difficulty="${difficulty}"]`,
         propagation: 'Stop',
       }),
@@ -1087,7 +1087,7 @@ const panelBodyView = (
             [
               h.Type('button'),
               h.Class('panel-button panel-leave'),
-              h.OnClick(Message.ClickedLeaveRunButton(), {
+              h.OnClick(HomeMessage.ClickedLeaveRunButton(), {
                 focusSelector: '.game-surface',
                 propagation: 'Stop',
               }),
@@ -1100,7 +1100,9 @@ const panelBodyView = (
               h.Type('button'),
               h.Class('panel-button panel-stay'),
               h.AriaKeyshortcuts('Escape'),
-              h.OnClick(Message.ClickedStayButton(), { propagation: 'Stop' }),
+              h.OnClick(HomeMessage.ClickedStayButton(), {
+                propagation: 'Stop',
+              }),
             ],
             ['Stay'],
           ),

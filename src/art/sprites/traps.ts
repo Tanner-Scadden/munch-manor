@@ -1,7 +1,7 @@
 import { Array, Option, Record, String, pipe } from 'effect'
 
-import type { TrapKind } from '../../app/model'
 import type { TrapStage } from '../../world/gear/traps'
+import type { TrapKind } from '../../world/schema/entitySchema'
 import {
   type Palette,
   type Sprite,

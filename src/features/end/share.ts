@@ -1,4 +1,4 @@
-import { Array, Option } from 'effect'
+import { Array, Option, Schema } from 'effect'
 
 import type { Difficulty } from '../../shared/playerData'
 import { CREW_AWARD_NAMES, type CrewAward } from '../../world/names'
@@ -7,6 +7,23 @@ import { CREW_AWARD_NAMES, type CrewAward } from '../../world/names'
 // Every word a shared post says lives here, so the owner can tweak the voice
 // in one place. The link is the game's address and nothing else: no
 // tracking parameters and no tokens.
+
+// NOTE: whether the browser has a share sheet (navigator.share). SHARE
+// opens it where there is one and copies the post everywhere else; the
+// share event counts which (src/platform/analytics.ts, SharePath).
+export const ShareSheet = Schema.Literals(['Available', 'Unavailable'])
+export type ShareSheet = typeof ShareSheet.Type
+
+// NOTE: how a tap on SHARE ended: the sheet shared it or the player closed
+// it, or the post went to the clipboard (no sheet, or a refused one), or
+// nothing worked. Only Copied shows: SHARE flashes COPIED!.
+export const ShareOutcome = Schema.Literals([
+  'Shared',
+  'Cancelled',
+  'Copied',
+  'Failed',
+])
+export type ShareOutcome = typeof ShareOutcome.Type
 
 export const GAME_URL = 'https://munchmanor.com'
 

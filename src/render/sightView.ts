@@ -1,7 +1,7 @@
 import { Option } from 'effect'
 import { Canvas } from 'foldkit'
 
-import type { Model, Vector } from '../app/model'
+import type { Model } from '../app/model'
 import { MS_PER_SECOND } from '../shared/constants'
 import { firingStats } from '../world/gear/powerups'
 import {
@@ -12,6 +12,7 @@ import {
 } from '../world/gear/weapons'
 import { type Level, findReach, levelOf } from '../world/level/arena'
 import { focusOf } from '../world/party/party'
+import type { Vector } from '../world/schema/entitySchema'
 import { addVectors, scaleVector } from '../world/step/geometry'
 
 // NOTE: the sight is a shop upgrade for the run, and it shows for any aim,

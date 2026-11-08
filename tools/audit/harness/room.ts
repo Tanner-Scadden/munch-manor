@@ -11,16 +11,12 @@ import {
   type Boss,
   type BossMove,
   BreakClock,
-  type Decal,
-  type DecalKind,
   type Glob,
   Melee,
   type Model,
-  MouseButton,
   Phase,
   type PickupKind,
   RunMode,
-  Stick,
   type WeaponKind,
   type Zombie,
   type ZombieKind,
@@ -31,8 +27,10 @@ import { activeBots, addBot, seatCallings } from '@game/features/bots/bots'
 import { noteRecords } from '@game/features/end/endBeat'
 import { withBests } from '@game/features/home/home'
 import { raiseDebutCard } from '@game/features/onboarding/onboarding'
+import { MouseButton, Stick } from '@game/input/inputSchema'
 import { cameraOf, worldToView } from '@game/render/camera'
 import { advanceParticles } from '@game/render/particles/particles'
+import type { Decal, DecalKind } from '@game/render/renderSchema'
 import { DECAL_MAX } from '@game/shared/constants'
 import { STARTING_PISTOL, freshGun, mapGuns } from '@game/world/gear/weapons'
 import { levelOf, openExitIn } from '@game/world/level/arena'
@@ -58,7 +56,7 @@ import {
   scaledHp,
 } from '@game/world/zombies/zombies'
 
-import { type SceneSettings } from './settings'
+import type { SceneSettings } from './settings'
 
 export const ROAMING: Zombie['action'] = { _tag: 'Roaming' }
 export const CALM: Zombie['frenzy'] = { _tag: 'Calm' }

@@ -1,32 +1,33 @@
 import { Effect, pipe } from 'effect'
 
 import { ApplicationBlock } from '../app/definition'
-import { Message } from '../app/message'
-import { type Model, Phase, Round } from '../app/model'
+import type { Model } from '../app/model'
 import {
   AudioEngineResource,
   audioFailureReason,
   isSoundAudible,
 } from '../app/update/sound'
 import type { UpdateStep } from '../app/update/step'
+import { Phase, Round } from '../world/schema/worldSchema'
 import { FINAL_WAVE } from '../world/waves/wavePlans'
 import { playMusic } from './audio'
+import { SoundMessage } from './message'
 import { MusicLevel, MusicMood, MusicStinger } from './music'
 
 // COMMAND
 
 export const CueMusic = ApplicationBlock.makeCommand('CueMusic', {
   args: { mood: MusicMood, level: MusicLevel, stinger: MusicStinger },
-  messages: [Message.CompletedCueMusic, Message.FailedCueMusic],
+  messages: [SoundMessage.CompletedCueMusic, SoundMessage.FailedCueMusic],
   handler: function* () {
     return cue =>
       pipe(
         AudioEngineResource.get,
         Effect.flatMap(engine => playMusic(engine, cue)),
-        Effect.as(Message.CompletedCueMusic({ mood: cue.mood })),
+        Effect.as(SoundMessage.CompletedCueMusic({ mood: cue.mood })),
         Effect.catch(error =>
           Effect.succeed(
-            Message.FailedCueMusic({
+            SoundMessage.FailedCueMusic({
               mood: cue.mood,
               reason: audioFailureReason(error),
             }),

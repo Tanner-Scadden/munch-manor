@@ -801,6 +801,14 @@ const resolveUnderSrc = (
 const folderOf = (path: string): string =>
   Option.getOrElse(Array.head(String.split('/')(path)), () => '')
 
+// NOTE: the root's Message union is only the join of its groups, each in
+// the folder of the feature that sends it (AGENTS.md "Folders"), so code
+// below src/app/ builds and types its Messages from its own group.
+const ROOT_MESSAGE_PATH = 'app/message'
+
+const ROOT_MESSAGE_IMPORT_MESSAGE =
+  'Only src/app/ imports the root\'s Message union (src/app/message.ts). Build and type a Message from its group, in the folder of the feature that sends it (AGENTS.md "Folders").'
+
 const FOLDER_IMPORTS_MESSAGE = (
   folder: string,
   allowed: ReadonlyArray<string>,
@@ -815,7 +823,7 @@ const folderImports = defineRule({
     type: 'problem',
     docs: {
       description:
-        'Keep src/world/ to what the co-op room may load, src/shared/ to itself, and tests out of shipped code.',
+        'Keep src/world/ to what the co-op room may load, src/shared/ to itself, tests out of shipped code, and the root Message union in src/app/.',
     },
   },
   create(context) {
@@ -866,6 +874,13 @@ const folderImports = defineRule({
           node,
           message: FOLDER_IMPORTS_MESSAGE(folder, allowed),
         })
+        return
+      }
+      if (
+        folder !== 'app' &&
+        String.replace(/\.ts$/, '')(target) === ROOT_MESSAGE_PATH
+      ) {
+        context.report({ node, message: ROOT_MESSAGE_IMPORT_MESSAGE })
       }
     }
     return {

@@ -1,9 +1,11 @@
 import { Array, Function, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import type { Model, SurfaceRectangle, Vector } from '../app/model'
+import type { Model } from '../app/model'
 import { group } from '../art/sprite'
+import type { SurfaceRectangle } from '../input/inputSchema'
 import { VIEW_HEIGHT, VIEW_WIDTH } from '../shared/constants'
+import type { Vector } from '../world/schema/entitySchema'
 import { clamp } from '../world/step/geometry'
 
 // LAYOUT

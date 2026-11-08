@@ -1,14 +1,7 @@
 import { Array, Option, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import {
-  Charge,
-  FridgeDoor,
-  type FridgePrize,
-  type Lob,
-  type Model,
-  type Player,
-} from '../../app/model'
+import type { Model } from '../../app/model'
 import {
   type Sprite,
   bakeShapes,
@@ -32,6 +25,13 @@ import {
 } from '../../world/fridge/leftovers'
 import { distanceToBox, levelOf } from '../../world/level/arena'
 import { focusOf, focusSlotOf } from '../../world/party/party'
+import {
+  Charge,
+  FridgeDoor,
+  type FridgePrize,
+  type Lob,
+  type Player,
+} from '../../world/schema/entitySchema'
 import { FRIDGE_RISE_PX, isKitchenShown } from '../kitchen/kitchenView'
 import { type Rarity, revealOf } from './fridgeReveal'
 import { prizeSprite } from './fridgeRevealView'

@@ -1,20 +1,19 @@
 import { Array, Function, Option, String } from 'effect'
 import { Canvas } from 'foldkit'
 
-import {
-  Boss,
-  BossMove,
-  Glob,
-  type HintBand,
-  type Model,
-  type Vector,
-  type Zombie,
-} from '../app/model'
+import type { HintBand, Model } from '../app/model'
 import { bakeText, placeBaked } from '../art/font'
 import { group } from '../art/sprite'
 import { BOSS_ICON } from '../art/sprites/zombies'
 import { VIEW_WIDTH } from '../shared/constants'
 import { type Level, findStrike, levelOf } from '../world/level/arena'
+import {
+  BossMove,
+  Glob,
+  type Vector,
+  type Zombie,
+} from '../world/schema/entitySchema'
+import { Boss } from '../world/schema/worldSchema'
 import { clamp } from '../world/step/geometry'
 import {
   BOSS_RULES,

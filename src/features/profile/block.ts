@@ -1,12 +1,12 @@
 import { Schema } from 'effect'
 import { Block } from 'foldkit'
 
+import type { InputDevice } from '../../input/inputSchema'
 import type {
   FullscreenSetting,
-  InputDevice,
   OrientationLock,
   ScreenFit,
-} from '../../app/clientSchema'
+} from '../../platform/deviceSchema'
 import type {
   LastRunSync,
   PlayerScopeStatus,

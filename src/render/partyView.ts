@@ -2,7 +2,7 @@ import { Array, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import type { Appearance, Model } from '../app/model'
+import type { Model } from '../app/model'
 import {
   type Sprite,
   TOP_LEFT,
@@ -16,6 +16,7 @@ import { seatLookOf } from '../features/coop/looks'
 import { maybeRoomOf } from '../features/coop/roomState'
 import { hatRiseOf } from '../features/profile/blocks/look/hatArt'
 import { PLAYER_RADIUS } from '../shared/constants'
+import type { Appearance } from '../shared/playerData'
 import { isCallFresh } from '../world/party/medic'
 import {
   COOP_RULES,

@@ -1,12 +1,7 @@
 import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  type Decal,
-  GameEvent,
-  type Model,
-  type Particle,
-} from '../../app/model'
+import type { Model } from '../../app/model'
 import {
   BLOOD_PER_HIT,
   BLOOD_SPRAY_SPREAD,
@@ -38,8 +33,10 @@ import { WEAPONS, heldWeapon } from '../../world/gear/weapons'
 import { isInKitchenAt } from '../../world/kitchen/kitchenPay'
 import { type Level, levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
+import { GameEvent } from '../../world/schema/worldSchema'
 import { ZERO_VECTOR, vectorLength } from '../../world/step/geometry'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
+import type { Decal, Particle } from '../renderSchema'
 import {
   BLOOD_SPEED,
   CLANG_SPARKS,

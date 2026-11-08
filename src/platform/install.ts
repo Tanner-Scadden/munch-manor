@@ -9,8 +9,8 @@ import {
   pipe,
 } from 'effect'
 
-import type { InstallOffer, InstallOutcome } from '../app/model'
 import { toBrowserError } from '../shared/describeError'
+import type { InstallOffer, InstallOutcome } from './deviceSchema'
 
 // SERVICE
 

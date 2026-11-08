@@ -1,16 +1,15 @@
 import { Array, Function, Record, Schema } from 'effect'
 
-import {
-  FixedShopItemId,
-  type ShopCategory,
-  type ShopItemId,
-  type TrapKind,
-  type WeaponKind,
-} from '../../app/model'
 import { pixelIconUrl } from '../../art/icons'
 import type { Palette } from '../../art/sprite'
 import { GUN_TIER_TRIMS } from '../../art/sprites/guns'
 import { HEART_PIXELS } from '../../art/sprites/hearts'
+import type { TrapKind, WeaponKind } from '../../world/schema/entitySchema'
+import {
+  FixedShopItemId,
+  type ShopCategory,
+  type ShopItemId,
+} from '../../world/schema/worldSchema'
 import {
   MOOD_FACES,
   type Mood,

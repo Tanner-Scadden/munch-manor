@@ -53,15 +53,8 @@ import { Heading, MillisNumber, PositionNumber, UnitNumber } from './wireNumber'
 
 export {
   Appearance,
-  Body,
   Difficulty,
-  HairColor,
-  HairStyle,
-  Outfit,
-  Print,
   RotationSetting,
-  ShirtColor,
-  SkinTone,
 } from '../../shared/playerData'
 export * from './entitySchema'
 

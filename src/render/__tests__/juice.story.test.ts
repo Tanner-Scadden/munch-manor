@@ -6,11 +6,9 @@ import { describe, expect, test } from 'vitest'
 import { Message } from '../../app/message'
 import {
   type Bullet,
-  type Decal,
   GameEvent,
   HitStop,
   type Model,
-  type Particle,
   Phase,
   Pierce,
   Streak,
@@ -65,6 +63,7 @@ import {
 import { PARLOUR } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
 import { scoreOf } from '../../world/run/stats'
+import type { Decal, Particle } from '../renderSchema'
 
 describe('particles and decals', () => {
   const countKind = (

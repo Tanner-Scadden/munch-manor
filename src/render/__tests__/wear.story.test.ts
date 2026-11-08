@@ -13,10 +13,8 @@ import { Message } from '../../app/message'
 import {
   AudioState,
   type Bullet,
-  type Decal,
   GameEvent,
   type Model,
-  type Particle,
   type ParticleKind,
   type Zombie,
   ZombieKind,
@@ -40,6 +38,7 @@ import {
   wearAt,
 } from '../../world/zombies/zombies'
 import { healthBarShapes } from '../healthBarView'
+import type { Decal, Particle } from '../renderSchema'
 import { zombieHealthBarShapes } from '../zombieView'
 
 const FRAME_MS = FIXED_STEP_MS

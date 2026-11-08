@@ -1,15 +1,6 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
-import {
-  type BoostKind,
-  BoostTimer,
-  type Boosts,
-  type Callout,
-  type Pickup,
-  type PickupKind,
-  type Player,
-} from '../app/model'
 import { type BakedText, bakeText, placeBaked } from '../art/font'
 import { TOP_LEFT, group, placeAt, spriteShapes } from '../art/sprite'
 import { PICKUP_SPRITES } from '../art/sprites/pickups'
@@ -24,6 +15,15 @@ import {
   PICKUP_BLINK_MS,
   PICKUP_LIFETIME_MS,
 } from '../world/gear/powerups'
+import {
+  type BoostKind,
+  BoostTimer,
+  type Boosts,
+  type Callout,
+  type Pickup,
+  type PickupKind,
+  type Player,
+} from '../world/schema/entitySchema'
 import { clamp } from '../world/step/geometry'
 import { type Camera, viewBoxOf, worldToView } from './camera'
 import { FULL_TURN } from './drawing'

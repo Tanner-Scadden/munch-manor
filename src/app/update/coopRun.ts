@@ -5,6 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { isRunOn } from '../../features/onlineRun/onlineRun'
 import { isPauseKey, pressKey, releaseAll } from '../../input/input'
 import { playerKeyAction } from '../../input/keyActions'
+import type { PageVisibility } from '../../platform/deviceSchema'
 import { focusOf, focusSlotOf } from '../../world/party/party'
 import { maybeTapOffer } from '../../world/shop/purchase'
 import { isAtCounter } from '../../world/shop/shop'
@@ -15,7 +16,7 @@ import {
 } from '../../world/step/stepWorld'
 import { makeStep } from '../definition'
 import { Message } from '../message'
-import { type Model, type PageVisibility, type ShopItemId } from '../model'
+import type { Model, ShopItemId } from '../model'
 import { pressInRoom } from './coop'
 import { playSounds, toggleAudioFromKey, uiCue, unlockAudio } from './sound'
 import { type UpdateStep, modelStep, unchanged, withInput } from './step'
@@ -26,7 +27,8 @@ import { type UpdateStep, modelStep, unchanged, withInput } from './step'
 // to the room as a seat action, the frame comes from the room, and there
 // is no pause (decided 7). Everything else (moving, aiming, the dialogs,
 // the menus, audio, the save) runs as it does in single player. Each
-// of these handlers in src/app/main.ts wraps its single player Step in
+// of these handlers (src/app/update/input.ts, and the frame's in
+// src/app/main.ts) wraps its single player Step in
 // `orInRun`, which checks isRunOn once and matches the Message; the shop's
 // buy, an OutMessage, goes through `orBuyInRun`.
 

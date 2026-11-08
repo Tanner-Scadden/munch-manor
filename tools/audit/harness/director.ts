@@ -2,18 +2,13 @@ import { Array, Function, Option, Result, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { Message } from '@game/app/message'
-import {
-  AudioState,
-  type Model,
-  MouseButton,
-  Stick,
-  type Vector,
-} from '@game/app/model'
+import { AudioState, type Model, type Vector } from '@game/app/model'
 import { update } from '@game/app/pureApp'
 import { PlaySound } from '@game/app/update/sound'
 import { CueMusic, cueMusicFrom } from '@game/audio/musicPlan'
 import * as CoopModel from '@game/features/coop/model'
 import { type WorldState, coopWorld } from '@game/features/coop/seam'
+import { MouseButton, Stick } from '@game/input/inputSchema'
 import { cameraOf, screenCameraOf, worldToView } from '@game/render/camera'
 import { screenOf } from '@game/render/screen'
 import { PLAYER_MAX_HP, STICK_RADIUS_PX } from '@game/shared/constants'

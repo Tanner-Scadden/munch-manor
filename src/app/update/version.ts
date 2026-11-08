@@ -1,6 +1,14 @@
 import { Effect, Function, Option, pipe } from 'effect'
+import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import {
+  greetUpdate,
+  newsFromGreeting,
+  reloadOntoNewerBuild,
+  rewrapUpdateGift,
+  unwrapUpdateGift,
+} from '../../features/home/update'
 import {
   isUsingServiceWorker,
   registerServiceWorker,
@@ -10,12 +18,14 @@ import {
   RUNNING_BUILD,
   fetchRemoteBuild,
   isCheckingForUpdates,
+  isGreetingDue,
   maybeNewerBuild,
 } from '../../platform/version'
 import { ApplicationBlock } from '../definition'
 import { Message } from '../message'
 import type { Model } from '../model'
-import type { UpdateReturn } from './step'
+import { tapSound, unlockAudio } from './sound'
+import { type UpdateReturn, combine, defineHandlers } from './step'
 
 // COMMAND
 
@@ -110,3 +120,38 @@ export const registerServiceWorkerAfterSplash: {
     ? { model, commands: [RegisterServiceWorker()] }
     : { model },
 )
+
+// NOTE: the build check, the update gift, and the service worker
+// (src/platform/message.ts).
+export const versionHandlers = defineHandlers({
+  TickedUpdateCheck: model => checkForUpdate(model),
+
+  CompletedFetchBuild: (model, { build }) =>
+    recordRemoteBuild(model, RUNNING_BUILD, build),
+
+  FailedFetchBuild: model => ({ model }),
+
+  ClickedUpdateButton: model => combine(model, [unlockAudio, unwrapUpdateGift]),
+
+  CompletedWaitForUnwrap: model => reloadOntoNewerBuild(model),
+
+  CompletedReadUpdateMarker: (model, { maybeBuild }) =>
+    Update.combineSteps(model, [
+      greetUpdate(isGreetingDue(RUNNING_BUILD, maybeBuild)),
+    ]),
+
+  ClickedUpdateGreetingNewsButton: model =>
+    Update.combineSteps(model, [unlockAudio, tapSound, newsFromGreeting]),
+
+  CompletedReloadPage: model => ({ model }),
+
+  FailedReloadPage: model => ({ model: rewrapUpdateGift(model) }),
+
+  CompletedRegisterServiceWorker: model => ({ model }),
+
+  FailedRegisterServiceWorker: model => ({ model }),
+
+  CompletedUpdateServiceWorker: model => ({ model }),
+
+  FailedUpdateServiceWorker: model => ({ model }),
+})

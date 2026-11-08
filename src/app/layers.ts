@@ -20,6 +20,7 @@ import { bossBandShapes } from '../render/bossView'
 import { type Camera, toScreenCamera, worldCameraFor } from '../render/camera'
 import { decalShapes } from '../render/effectsView'
 import { calloutShapes } from '../render/powerupView'
+import type { Decal } from '../render/renderSchema'
 import { manorRoomImages, roomShapes } from '../render/room/room'
 import { FLOOR_COLOR } from '../render/room/roomPalette'
 import { type Screen, inLandscapeFrame, screenOf } from '../render/screen'
@@ -28,13 +29,7 @@ import { type Level, levelOf } from '../world/level/arena'
 import { focusOf } from '../world/party/party'
 import { isRoundActive } from '../world/waves/waves'
 import type { ApplicationViewBuilder } from './composition'
-import {
-  type Decal,
-  type Model,
-  Phase,
-  type Vector,
-  defaultAppearance,
-} from './model'
+import { type Model, Phase, type Vector, defaultAppearance } from './model'
 
 // OVERLAY
 

@@ -10,8 +10,6 @@ import { ProfileBinding } from '../../../../../app/bindings'
 import { Message } from '../../../../../app/message'
 import {
   Appearance,
-  type LookPart,
-  type LookToggle,
   type Model,
   Phase,
   defaultAppearance,
@@ -48,6 +46,7 @@ import {
 import { CharacterBinding } from '../../../composition'
 import * as Character from '../block'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from '../lookRadios'
+import type { LookPart, LookToggle } from '../lookSchema'
 
 // NOTE: a part's radio group Message, delivered down its path: the
 // Profile, the Look tab, and that part's own Binding. Only a Block-aware

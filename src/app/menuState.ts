@@ -2,12 +2,13 @@ import { Function, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
 import { isOpen as isCoopScreenOpen } from '../features/coop/update'
+import { MenuPanel } from '../features/home/homeSchema'
 import { isHeroPickerUp, isLobbyShown } from '../features/lobby/model'
 import { ProfileTab } from '../features/profile/model'
 import { tabOf } from '../features/profile/profile'
 import { isShopShown } from '../features/shop/model'
 import { RESTART_GRACE_MS } from '../shared/constants'
-import { MenuPanel, type Model, Phase } from './model'
+import { type Model, Phase } from './model'
 
 // NOTE: what the player is looking at, derived from the Model and never
 // stored. Update's gates and the view both read it, so "is a menu open"

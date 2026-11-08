@@ -1,10 +1,11 @@
 import { Function, Option } from 'effect'
 
-import type { Model, Vector } from '../app/model'
+import type { Model } from '../app/model'
 import { couchFocus } from '../features/couch/couch'
 import { CAMERA_LEAN_EASE_MS, CAMERA_LEAN_PX } from '../shared/constants'
 import { type Level, levelOf } from '../world/level/arena'
 import { focusOf } from '../world/party/party'
+import type { Vector } from '../world/schema/entitySchema'
 import { ZERO_VECTOR, clamp, scaleVector } from '../world/step/geometry'
 import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
 

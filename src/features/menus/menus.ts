@@ -5,14 +5,7 @@ import type { LobbyMember } from '@munch/netcode'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
 import { isProfileOpen } from '../../app/menuState'
-import { Message } from '../../app/message'
-import {
-  DebutCard,
-  type Model,
-  Phase,
-  RunMode,
-  type ZombieKind,
-} from '../../app/model'
+import type { Model } from '../../app/model'
 import { SHARE_TEXT_DATA, ShareFromClick } from '../../app/mount'
 import {
   ENDLESS_ICON,
@@ -28,7 +21,12 @@ import {
   SOUND_OFF_ICON,
   SOUND_ON_ICON,
 } from '../../art/icons'
+import { SoundMessage } from '../../audio/message'
+import { RunButtonMessage } from '../../input/message'
 import { iconButtonView } from '../../input/touchControls'
+import { DeviceMessage } from '../../platform/message'
+import type { ZombieKind } from '../../world/schema/entitySchema'
+import { DebutCard, Phase, RunMode } from '../../world/schema/worldSchema'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
 import { CHECK_ICON, COOP_ICON, LEAVE_ICON, portraitOf } from '../coop/icons'
@@ -37,6 +35,7 @@ import type { Room as CoopRoom } from '../coop/model'
 import { maybeRoomOf, meIn, pickedModeOf } from '../coop/roomState'
 import { isOpen as isCoopOpen } from '../coop/update'
 import { isRunCardHeld, isShareCopied, sharedRunOf } from '../end/endBeat'
+import { EndMessage } from '../end/message'
 import { shareText } from '../end/share'
 import {
   END_LEAVE_ROOM_BUTTON_ID,
@@ -47,6 +46,8 @@ import {
   endOffer,
 } from '../home/home'
 import { pauseMenuButtonView } from '../home/homeView'
+import { HomeMessage } from '../home/message'
+import { OnboardingMessage } from '../onboarding/message'
 import { canSkipDebutCard } from '../onboarding/onboarding'
 import { runDifficultyOf } from '../onlineRun/onlineRun'
 
@@ -80,7 +81,7 @@ const muteButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
       label: 'Mute sound',
       icon: isMuted ? SOUND_OFF_ICON : SOUND_ON_ICON,
       keys: 'M',
-      message: Message.ClickedMuteButton(),
+      message: SoundMessage.ClickedMuteButton(),
       maybePressed: isMuted,
     },
     h,
@@ -95,7 +96,7 @@ const musicButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
       label: 'Music',
       icon: isOn ? MUSIC_ON_ICON : MUSIC_OFF_ICON,
       keys: 'N',
-      message: Message.ClickedMusicButton(),
+      message: SoundMessage.ClickedMusicButton(),
       maybePressed: isOn,
     },
     h,
@@ -109,7 +110,7 @@ const pauseButtonView = (h: ApplicationViewBuilder): Html =>
       label: 'Pause',
       icon: PAUSE_ICON,
       keys: 'Escape',
-      message: Message.ClickedPauseButton(),
+      message: RunButtonMessage.ClickedPauseButton(),
     },
     h,
   )
@@ -121,7 +122,7 @@ const fullscreenButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
           className: 'corner-button fullscreen-button',
           label: 'Full screen',
           icon: FULLSCREEN_ICON,
-          message: Message.ClickedFullscreenButton(),
+          message: DeviceMessage.ClickedFullscreenButton(),
           maybePressed: model.fullscreen === 'On',
         },
         h,
@@ -182,7 +183,7 @@ const menuOnlyView = (model: Model, h: ApplicationViewBuilder): Html =>
           h.Class('mode-button menu-button is-primary'),
           h.AriaLabel('Menu: back home, where a new version is waiting'),
           h.AriaKeyshortcuts('Enter H'),
-          h.OnClick(Message.ClickedMenuButton(), {
+          h.OnClick(HomeMessage.ClickedMenuButton(), {
             focusSelector: '.game-surface',
             propagation: 'Stop',
           }),
@@ -219,7 +220,7 @@ type EndButton = Readonly<{
   label: string
   maybeKey: Option.Option<Readonly<{ cap: string; name: string }>>
   ariaLabel: string
-  message: Message
+  message: HomeMessage | EndMessage
   maybePressed: Option.Option<boolean>
   heads: ReadonlyArray<CrewHead>
 }>
@@ -231,7 +232,7 @@ const HOME_BUTTON: EndButton = {
   label: 'HOME',
   maybeKey: Option.some({ cap: 'H', name: 'H' }),
   ariaLabel: 'Menu: back to the home screen',
-  message: Message.ClickedMenuButton(),
+  message: HomeMessage.ClickedMenuButton(),
   maybePressed: Option.none(),
   heads: [],
 }
@@ -246,7 +247,7 @@ const retryButton = (model: Model): EndButton => ({
     Campaign: () => `Retry: a new campaign of ${FINAL_WAVE} waves`,
     Endless: () => 'Retry: a new endless run',
   }),
-  message: Message.ClickedRetryButton(),
+  message: EndMessage.ClickedRetryButton(),
   maybePressed: Option.none(),
   heads: [],
 })
@@ -258,7 +259,7 @@ const KEEP_GOING_BUTTON: EndButton = {
   label: 'KEEP GOING',
   maybeKey: Option.some({ cap: 'K', name: 'K' }),
   ariaLabel: `Keep going: carry on into endless from wave ${FINAL_WAVE + 1} with your money, guns, and traps`,
-  message: Message.ClickedKeepGoingButton(),
+  message: EndMessage.ClickedKeepGoingButton(),
   maybePressed: Option.none(),
   heads: [],
 }
@@ -273,7 +274,7 @@ const shareButton = (model: Model): EndButton => {
     label: isCopied ? 'COPIED!' : 'SHARE',
     maybeKey: Option.none(),
     ariaLabel: isCopied ? 'Share: copied' : 'Share your run',
-    message: Message.ClickedShareButton(),
+    message: EndMessage.ClickedShareButton(),
     maybePressed: Option.none(),
     heads: [],
   }
@@ -367,7 +368,7 @@ const LEAVE_ROOM_BUTTON: EndButton = {
   label: 'LEAVE',
   maybeKey: Option.some({ cap: 'H', name: 'H' }),
   ariaLabel: 'Leave the room',
-  message: Message.ClickedLeaveRoomButton(),
+  message: EndMessage.ClickedLeaveRoomButton(),
   maybePressed: Option.none(),
   heads: [],
 }
@@ -379,7 +380,7 @@ const ROOM_LOBBY_BUTTON: EndButton = {
   label: 'LOBBY',
   maybeKey: Option.some({ cap: 'L', name: 'L' }),
   ariaLabel: "Lobby: the room's seats and picks",
-  message: Message.ClickedRoomLobbyButton(),
+  message: EndMessage.ClickedRoomLobbyButton(),
   maybePressed: Option.none(),
   heads: [],
 }
@@ -426,7 +427,7 @@ const runItBackButton = (model: Model, room: CoopRoom): EndButton => {
     label: isKeepGoing ? 'KEEP GOING' : 'RUN IT BACK',
     maybeKey: Option.some({ cap: 'ENTER', name: 'Enter' }),
     ariaLabel: `${isKeepGoing ? 'Keep going' : 'Run it back'} with this crew: ${inCount} of ${heads.length} in`,
-    message: Message.ClickedRunItBackButton(),
+    message: EndMessage.ClickedRunItBackButton(),
     maybePressed: Option.some(Option.exists(meIn(room), me => me.ready)),
     heads,
   }
@@ -497,7 +498,7 @@ const debutCardButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
           h.Class('debut-card-button'),
           h.DataAttribute('device', model.lastDevice),
           h.AriaKeyshortcuts('Enter'),
-          h.OnClick(Message.ClickedDebutCardButton(), {
+          h.OnClick(OnboardingMessage.ClickedDebutCardButton(), {
             focusSelector: '.game-surface',
           }),
         ],

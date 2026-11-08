@@ -1,8 +1,8 @@
 import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 
-import { LookPart, LookToggle } from '../../app/clientSchema'
 import { LinkProblem } from '../../platform/playerSync'
+import { LookPart, LookToggle } from './blocks/look/lookSchema'
 import { ProfileTab } from './model'
 
 // NOTE: the Settings tab's tiles and the Account tab's STATS tile. The

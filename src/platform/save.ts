@@ -12,20 +12,11 @@ import { modifyFields } from 'foldkit/struct'
 
 import {
   AmmoTip,
-  DebutCard,
-  type DifficultyBests,
   DifficultyCard,
-  type KillCounts,
-  Lesson,
-  type Lessons,
   type Model,
-  PickupKind,
   type PlayerBests,
   Tour,
-  TrapHint,
-  ZombieKind,
   freshLessons,
-  noPractice,
 } from '../app/model'
 import { lookInOwned } from '../features/profile/blocks/look/closet'
 import { cleanName } from '../features/profile/profile'
@@ -65,6 +56,16 @@ import { callingForRun } from '../world/heroes/calling'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
 import { noRank, rankOf, totalPointsOf } from '../world/heroes/rank'
 import { modifyFocus } from '../world/party/party'
+import { PickupKind, ZombieKind } from '../world/schema/entitySchema'
+import {
+  DebutCard,
+  type DifficultyBests,
+  type KillCounts,
+  Lesson,
+  type Lessons,
+  TrapHint,
+  noPractice,
+} from '../world/schema/worldSchema'
 
 export {
   PlayerSave,

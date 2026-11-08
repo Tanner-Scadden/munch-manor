@@ -1,19 +1,7 @@
 import { Array, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
-import {
-  type Blast,
-  type Bullet,
-  type BulletGlaze,
-  type Decal,
-  type DecalKind,
-  type DoorId,
-  type Model,
-  type Particle,
-  type ParticleKind,
-  Phase,
-  type Popup,
-} from '../app/model'
+import type { Model } from '../app/model'
 import { type TextTone, textWidth } from '../art/font'
 import { group } from '../art/sprite'
 import {
@@ -77,6 +65,13 @@ import {
 } from '../shared/constants'
 import { type Level, levelOf } from '../world/level/arena'
 import { SAVE_WORDS } from '../world/names'
+import type {
+  Bullet,
+  BulletGlaze,
+  DoorId,
+  ParticleKind,
+} from '../world/schema/entitySchema'
+import { type Blast, Phase, type Popup } from '../world/schema/worldSchema'
 import { clamp } from '../world/step/geometry'
 import { routeSpawns } from '../world/waves/doorRoute'
 import { rattlingDoors } from '../world/waves/pacing'
@@ -84,6 +79,7 @@ import { bossRattleDoors } from '../world/zombies/boss'
 import type { Camera } from './camera'
 import { centeredGlyphs, centeredRect, progressBetween } from './drawing'
 import { POPUP_LIFETIME_MS } from './juice'
+import type { Decal, DecalKind, Particle } from './renderSchema'
 
 // BULLETS
 

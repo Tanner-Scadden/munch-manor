@@ -2,18 +2,6 @@ import { Array, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
 import {
-  Boss,
-  BossMove,
-  Frenzy,
-  type PlantedAttack,
-  type Player,
-  type Vector,
-  type Zombie,
-  ZombieAction,
-  type ZombieKind,
-  ZombieState,
-} from '../app/model'
-import {
   type Facing,
   type Sprite,
   type SpriteFrames,
@@ -48,6 +36,18 @@ import {
   ZOMBIE_HIT_PULSE_MS,
   ZOMBIE_HIT_SQUASH,
 } from '../shared/constants'
+import {
+  BossMove,
+  Frenzy,
+  type PlantedAttack,
+  type Player,
+  type Vector,
+  type Zombie,
+  ZombieAction,
+  type ZombieKind,
+  ZombieState,
+} from '../world/schema/entitySchema'
+import { Boss } from '../world/schema/worldSchema'
 import { clamp } from '../world/step/geometry'
 import { isEnraged } from '../world/zombies/boss'
 import {

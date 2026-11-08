@@ -1,13 +1,14 @@
-import type { Layer } from 'effect'
-import { Function } from 'effect'
-import { Update } from 'foldkit'
+import { Function, type Layer } from 'effect'
+import { type Block, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { releaseAll } from '../../input/input'
+import type { Input } from '../../input/inputSchema'
+import type { ApplicationComposition } from '../composition'
 import { refreshIntent } from '../frame'
 import type { CommandsLayer } from '../layer'
 import type { Message } from '../message'
-import type { Input, Model } from '../model'
+import type { Model } from '../model'
 
 // NOTE: the handlers the root's Commands need, read off the Layer that
 // supplies them, so a plain Step can return any root Command. A Step that
@@ -54,3 +55,26 @@ export const combine: {
   (model: Model, steps: ReadonlyArray<UpdateStep>): UpdateReturn =>
     Update.combineSteps(model, steps),
 )
+
+// NOTE: a group of the root's local handlers, authored beside the Steps it
+// calls and spread into the one exhaustive `makeUpdate` in src/app/main.ts.
+// The record keeps each handler's own result type, and its parameters are
+// typed by the tag, as they would be inline.
+// The Model a handler receives inside the Composition: it carries the
+// registered Binding graph, so a connected Step applies to it.
+type HandlerModel = Model &
+  Update.GraphCapability<
+    Model,
+    Block.RequirementsOfBindings<(typeof ApplicationComposition)['bindings']>
+  >
+
+type Handlers = {
+  readonly [Tag in Message['_tag']]?: (
+    model: HandlerModel,
+    message: (typeof Message)[Tag]['Type'],
+  ) => unknown
+}
+
+export const defineHandlers = <const Group extends Handlers>(
+  group: Group,
+): Group => group

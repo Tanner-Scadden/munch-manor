@@ -354,33 +354,6 @@
       }
     },
     {
-      // NOTE: the root Block's own views and Steps live in these folders,
-      // split by feature, and build the root's Messages (src/app/message.ts).
-      // The rule knows a root Message only by a sibling `./message` path, so
-      // it reads `../../app/message` as a child's. It stays on in the folders
-      // that hold a child Block (the next override).
-      "files": ["src/{features,input,audio,platform,render,art}/**/*.ts"],
-      "rules": { "foldkit/no-child-message-construction-in-root": "off" }
-    },
-    {
-      // NOTE: co-op, the Profile, the Profile's Look tab, the solo lobby,
-      // the hero picker, the Munchopedia, the shop guide, and the shop
-      // dialog are child Blocks: only their own code builds their Messages.
-      // The shop's folder also holds the root's own stall and HUD buy
-      // button, so only its Block's modules are listed.
-      "files": [
-        "src/features/coop/*.ts",
-        "src/features/profile/*.ts",
-        "src/features/profile/blocks/look/*.ts",
-        "src/features/lobby/*.ts",
-        "src/features/heroes/*.ts",
-        "src/features/munchopedia/*.ts",
-        "src/features/guide/*.ts",
-        "src/features/shop/{block,bindings,composition,inMessage,inMessageUpdate,layer,message,model,steps,update,view}.ts"
-      ],
-      "rules": { "foldkit/no-child-message-construction-in-root": "error" }
-    },
-    {
       // NOTE: menuState derives which menu is up from these fields, so it is
       // the one place that reads them (munch/no-menu-field).
       "files": ["src/app/menuState.ts"],

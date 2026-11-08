@@ -2,9 +2,9 @@ import { Array, Function, Option, Record, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
-import { HouseSpot, type ShopGuideSection } from '../../app/clientSchema'
 import type { Model } from '../../app/model'
 import { TRAP_REPAIR_SHARE, TURRET_RANGE_PX } from '../../shared/constants'
+import { HouseSpot, type ShopGuideSection } from '../../shared/nameKeys'
 import {
   COOKER_RULES,
   FREEZE_RULES,

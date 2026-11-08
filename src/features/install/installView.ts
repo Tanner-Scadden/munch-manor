@@ -6,7 +6,6 @@ import type { Dialog } from '@foldkit/ui'
 import { HomeScreenStepsBinding } from '../../app/bindings'
 import type { ApplicationViewBuilder } from '../../app/composition'
 import { closeButtonView, dialogShell } from '../../app/dialogs'
-import { Message } from '../../app/message'
 import type { Model } from '../../app/model'
 import {
   ADD_TO_HOME_SCREEN_ICON,
@@ -14,6 +13,7 @@ import {
   INSTALL_ICON,
   SHARE_ICON,
 } from '../../art/icons'
+import { InstallMessage } from '../../platform/message'
 import { isInstallTileShown } from '../home/home'
 
 // TILE
@@ -39,7 +39,9 @@ export const installTileView: {
           h.DataAttribute('tip', model.homeScreenTip),
           h.AriaLabel(tileLabel(model)),
           ...(model.installOffer === 'Ready' ? [] : [h.AriaHasPopup('dialog')]),
-          h.OnClick(Message.ClickedInstallButton(), { propagation: 'Stop' }),
+          h.OnClick(InstallMessage.ClickedInstallButton(), {
+            propagation: 'Stop',
+          }),
         ],
         [
           h.span([

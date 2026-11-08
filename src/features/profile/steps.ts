@@ -1,8 +1,8 @@
 import { Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import type { LookPart } from '../../app/clientSchema'
 import { makeStep } from './block'
+import type { LookPart } from './blocks/look/lookSchema'
 import type { ClosetCueKind, ProfileFx } from './blocks/look/model'
 import { OutMessage } from './message'
 import type { Model, ProfileTab } from './model'

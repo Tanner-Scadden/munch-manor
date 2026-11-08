@@ -3,12 +3,7 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import {
-  type LookPart,
-  type Model,
-  Reload,
-  defaultAppearance,
-} from '../../../../../app/model'
+import { type Model, Reload, defaultAppearance } from '../../../../../app/model'
 import { Child, update } from '../../../../../app/pureApp'
 import { WriteSave } from '../../../../../app/update/save'
 import { playerPixels, randomAppearance } from '../../../../../art/appearance'
@@ -45,6 +40,7 @@ import {
   standingOf,
 } from '../closet'
 import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, hatRiseOf } from '../hatArt'
+import type { LookPart } from '../lookSchema'
 
 // The earned looks (src/features/profile/blocks/look/closet.ts, src/app/update/look.ts): hats, shirt
 // colors, prints, and gun skins are worn, bought with Bones, or gifted by

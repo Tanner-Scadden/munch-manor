@@ -4,14 +4,18 @@ import { modifyFields } from 'foldkit/struct'
 
 import { CoopBinding } from '../../app/bindings'
 import { ApplicationBlock, makeStep } from '../../app/definition'
-import { Message } from '../../app/message'
-import { type Model, Phase, RunMode, type ShareOutcome } from '../../app/model'
+import type { Model } from '../../app/model'
 import { stepWhen } from '../../app/stepWhen'
-import { keepGoingWhenAllowed, startWhenAllowed } from '../../app/update/run'
-import { playSounds, uiCue } from '../../app/update/sound'
+import {
+  keepGoingWhenAllowed,
+  startFromButton,
+  startWhenAllowed,
+} from '../../app/update/run'
+import { playSounds, uiCue, unlockAudio } from '../../app/update/sound'
 import {
   type UpdateStep,
   combine,
+  defineHandlers,
   toModel,
   unchanged,
 } from '../../app/update/step'
@@ -29,6 +33,7 @@ import { shareEventOf } from '../../platform/analyticsRun'
 import { RUNNING_BUILD } from '../../platform/version'
 import { advanceJuice } from '../../render/juice'
 import { advanceParticles } from '../../render/particles/particles'
+import { Phase, RunMode } from '../../world/schema/worldSchema'
 import { isOpen as isCoopOpen } from '../coop/update'
 import { endOffer, isEndScreen } from '../home/home'
 import { runDifficultyOf } from '../onlineRun/onlineRun'
@@ -43,6 +48,8 @@ import {
   sharePathOf,
   skipBeat,
 } from './endBeat'
+import { EndMessage } from './message'
+import type { ShareOutcome } from './share'
 
 // The end of a run in update (the beat itself is src/features/end/endBeat.ts): its
 // frame, its keys and taps, RETRY, and sharing the run.
@@ -97,7 +104,7 @@ export const advanceEndScreen =
 
 // NOTE: RETRY plays the run's own mode again: a campaign from wave 1, or
 // endless from wave 1.
-export const retry = (model: Model): Model =>
+const retry = (model: Model): Model =>
   startWhenAllowed(model, model.mode)
 
 // NOTE: on an end screen Enter retries, E starts endless, and K keeps a won
@@ -162,7 +169,7 @@ export const skipFromPointer = (model: Model): Model =>
 const isRunCardOffered = (model: Model): boolean =>
   isCoopOpen(model.coop) && endOffer(model) !== 'Nothing'
 
-export const runItBack = makeStep(model =>
+const runItBack = makeStep(model =>
   isRunCardOffered(model)
     ? Update.combineSteps([
         toModel(skipBeat(model)),
@@ -171,11 +178,11 @@ export const runItBack = makeStep(model =>
     : unchanged,
 )
 
-export const toRoomLobby = makeStep(model =>
+const toRoomLobby = makeStep(model =>
   isRunCardOffered(model) ? toModel(dropRunCard(model)) : unchanged,
 )
 
-export const leaveRoomFromCard = makeStep(model =>
+const leaveRoomFromCard = makeStep(model =>
   isRunCardOffered(model) ? CoopBinding.requestLeave() : unchanged,
 )
 
@@ -207,14 +214,17 @@ export const runCardFromKey = (code: string) =>
 // NOTE: a tap on SHARE, sent like a run summary, as an anonymous event.
 export const SendShareEvent = ApplicationBlock.makeCommand('SendShareEvent', {
   args: { event: ShareEvent },
-  messages: [Message.CompletedSendShareEvent, Message.FailedSendShareEvent],
+  messages: [
+    EndMessage.CompletedSendShareEvent,
+    EndMessage.FailedSendShareEvent,
+  ],
   handler: function* () {
     return ({ event }) =>
       sendShareEvent(event).pipe(
-        Effect.as(Message.CompletedSendShareEvent()),
+        Effect.as(EndMessage.CompletedSendShareEvent()),
         Effect.catch(error =>
           Effect.succeed(
-            Message.FailedSendShareEvent({ reason: error.reason }),
+            EndMessage.FailedSendShareEvent({ reason: error.reason }),
           ),
         ),
       )
@@ -243,7 +253,7 @@ const shareEventCommands = (model: Model) =>
 
 // NOTE: the share itself runs in the button's own click (ShareFromClick in
 // src/app/mount.ts), so the tap here only skips the beat and counts it.
-export const shareFromButton: UpdateStep = model =>
+const shareFromButton: UpdateStep = model =>
   combine(skipBeat(model), [
     stepWhen(
       (skipped: Model) => isEndScreen(skipped.phase),
@@ -254,7 +264,7 @@ export const shareFromButton: UpdateStep = model =>
 // NOTE: a post that went to the clipboard flashes COPIED! on SHARE, timed
 // by the end screen's clock. A share sheet shows itself, and a failure
 // leaves SHARE as it was, ready for another tap.
-export const settleShare =
+const settleShare =
   (outcome: ShareOutcome): UpdateStep =>
   model =>
     outcome === 'Copied'
@@ -264,3 +274,32 @@ export const settleShare =
           }),
         }
       : { model }
+
+// NOTE: the end card's buttons and SHARE (./message.ts).
+export const endHandlers = defineHandlers({
+  ClickedKeepGoingButton: model =>
+    startFromButton(model, keepGoingWhenAllowed(model)),
+
+  ClickedRetryButton: model => startFromButton(model, retry(model)),
+
+  ClickedShareButton: model => combine(model, [unlockAudio, shareFromButton]),
+
+  ClickedRunItBackButton: model =>
+    Update.combineSteps(model, [unlockAudio, runItBack]),
+
+  ClickedRoomLobbyButton: model =>
+    Update.combineSteps(model, [unlockAudio, toRoomLobby]),
+
+  ClickedLeaveRoomButton: model =>
+    Update.combineSteps(model, [unlockAudio, leaveRoomFromCard]),
+
+  SettledShare: (model, { outcome }) => settleShare(outcome)(model),
+
+  CompletedSendShareEvent: model => ({ model }),
+
+  FailedSendShareEvent: model => ({ model }),
+
+  CompletedDetectShareSheet: (model, { shareSheet }) => ({
+    model: modifyFields(model, { shareSheet: () => shareSheet }),
+  }),
+})

@@ -3,7 +3,7 @@ import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
 
-import type { Bot, HomeMode, MapId } from '../../app/clientSchema'
+import type { Bot, HomeMode } from '../../app/clientSchema'
 import { backButtonView } from '../../app/dialogs'
 import {
   CAMPAIGN_ICON,
@@ -15,6 +15,7 @@ import {
   SKULL_ICONS,
   SKULL_OFF_ICON,
 } from '../../art/icons'
+import type { MapId } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
 import { CALLING_NAMES, MAP_NAMES, MODE_NAMES } from '../../world/names'
 import {

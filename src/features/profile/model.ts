@@ -2,7 +2,6 @@ import { Option, Schema } from 'effect'
 
 import { Tabs } from '@foldkit/ui'
 
-import { TutorialReset } from '../../app/clientSchema'
 import { LinkFlow } from '../../platform/playerSync'
 import {
   CharacterPicker,
@@ -10,6 +9,9 @@ import {
   LookPreview,
   ProfileFx,
 } from './blocks/look/model'
+
+const TutorialReset = Schema.Literals(['Idle', 'Asking', 'Done'])
+type TutorialReset = typeof TutorialReset.Type
 
 // NOTE: the Profile's tabs, in order. A new tab, such as Cosmetics or
 // Stats, is one more literal here and one more entry in PROFILE_TABS

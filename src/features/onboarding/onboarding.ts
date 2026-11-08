@@ -1,13 +1,9 @@
 import { Array, Function, Option, Result, Schema, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  type HintBand,
-  type InputDevice,
-  Stick,
-  Tour,
-} from '../../app/clientSchema'
+import { type HintBand, Tour } from '../../app/clientSchema'
 import type { Model } from '../../app/model'
+import { type InputDevice, Stick } from '../../input/inputSchema'
 import { screenCameraOf, worldToView } from '../../render/camera'
 import { landscapeFrameOffset, screenOf } from '../../render/screen'
 import { TURRET_WEAPON, maybeSelectedKind } from '../../world/gear/traps'

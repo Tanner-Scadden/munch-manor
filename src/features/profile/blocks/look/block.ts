@@ -6,25 +6,21 @@ import { modifyFields } from 'foldkit/struct'
 import {
   type Appearance,
   Body,
-  HairColor,
-  HairStyle,
-  LookPart,
-  type LookSection,
-  LookToggle,
-  Outfit,
-  Print,
-  ShirtColor,
-  SkinTone,
-} from '../../../../app/model'
-import {
   type Calling,
   type CosmeticKind,
   GunSkin,
+  HairColor,
+  HairStyle,
   Hat,
+  Outfit,
+  Print,
   type SavedBoughtCosmetics,
   type SavedRank,
+  ShirtColor,
+  SkinTone,
 } from '../../../../shared/playerData'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from './lookRadios'
+import { LookPart, type LookSection, LookToggle } from './lookSchema'
 import {
   CharacterPicker,
   type ClosetCue,

@@ -2,13 +2,7 @@ import { Array, Function, Option, Schema, String } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  type DifficultyBests,
-  type Model,
-  Phase,
-  RunMode,
-  type RunRecord,
-} from '../../app/model'
+import type { Model, RunRecord } from '../../app/model'
 import type { SoundEffect } from '../../audio/audio'
 import type { SharePath } from '../../platform/analytics'
 import { isObjectFirst, isObjectSecond } from '../../shared/dualArgs'
@@ -17,6 +11,11 @@ import { callingsOpenedBy } from '../../world/heroes/calling'
 import { isRankUp, rankOf } from '../../world/heroes/rank'
 import { focusOf, isCoop, leadSeatOf } from '../../world/party/party'
 import { accuracyPercent, totalKills } from '../../world/run/stats'
+import {
+  type DifficultyBests,
+  Phase,
+  RunMode,
+} from '../../world/schema/worldSchema'
 import { roundWave } from '../../world/waves/waves'
 import { isBotCrew } from '../bots/bots'
 import { isEndScreen, withBests } from '../home/home'

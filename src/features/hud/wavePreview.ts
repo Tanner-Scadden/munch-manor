@@ -3,16 +3,7 @@ import { Canvas } from 'foldkit'
 import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
-import {
-  type Boss,
-  type DoorId,
-  type Model,
-  Phase,
-  type PlannedSpawn,
-  type Trap,
-  type Vector,
-  type ZombieKind,
-} from '../../app/model'
+import type { Model } from '../../app/model'
 import {
   COUNT_SPRITES,
   GLYPH_HEIGHT,
@@ -28,6 +19,17 @@ import { type Box, screenOf } from '../../render/screen'
 import { DOOR_OUTWARD, type Level, levelOf } from '../../world/level/arena'
 import { exitBoxOf } from '../../world/level/exits'
 import { isCoop } from '../../world/party/party'
+import type {
+  DoorId,
+  Vector,
+  ZombieKind,
+} from '../../world/schema/entitySchema'
+import {
+  type Boss,
+  Phase,
+  type PlannedSpawn,
+  type Trap,
+} from '../../world/schema/worldSchema'
 import { clamp } from '../../world/step/geometry'
 import {
   type DoorCount,

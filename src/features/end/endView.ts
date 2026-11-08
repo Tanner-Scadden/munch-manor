@@ -2,12 +2,7 @@ import { Array, Function, Option, Record, Result, String } from 'effect'
 import type { Canvas } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  Invulnerability,
-  type Model,
-  Phase,
-  type Zombie,
-} from '../../app/model'
+import type { Model } from '../../app/model'
 import {
   type BakedText,
   GLYPH_HEIGHT,
@@ -34,6 +29,8 @@ import type { Difficulty } from '../../shared/playerData'
 import { focusOf, isCoop, modifyFocus } from '../../world/party/party'
 import { modifiersOn } from '../../world/run/modifiers'
 import { defeatQuip, victoryVerdict } from '../../world/run/stats'
+import { Invulnerability, type Zombie } from '../../world/schema/entitySchema'
+import { Phase } from '../../world/schema/worldSchema'
 import { roundWave } from '../../world/waves/waves'
 import { ZOMBIE_KIND_ORDER } from '../../world/zombies/zombies'
 import { isAskingForFeedback } from '../home/home'

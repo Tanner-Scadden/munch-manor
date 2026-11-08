@@ -10,8 +10,8 @@ import {
 } from 'effect'
 import { FetchHttpClient, HttpClient, HttpClientResponse } from 'effect/http'
 
-import { Phase } from '../app/model'
 import { describeError } from '../shared/describeError'
+import { Phase } from '../world/schema/worldSchema'
 
 // BUILD
 

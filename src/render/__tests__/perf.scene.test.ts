@@ -18,15 +18,12 @@ import {
   BulletGlaze,
   type CarriedGun,
   Charge,
-  type Decal,
-  DecalKind,
   Frenzy,
   FridgeDoor,
   Glob,
   Lesson,
   type Model,
   Oven,
-  type Particle,
   ParticleKind,
   Phase,
   type Pickup,
@@ -71,6 +68,7 @@ import { rollSpawns } from '../../world/waves/endlessWaves'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
 import { BOSS_RULES } from '../../world/zombies/boss'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
+import { type Decal, DecalKind, type Particle } from '../renderSchema'
 
 // WORST-CASE ROOMS
 

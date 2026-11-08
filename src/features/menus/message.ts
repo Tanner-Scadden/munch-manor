@@ -1,0 +1,27 @@
+import { Schema } from 'effect'
+import { defineMessageUnion } from 'foldkit/message'
+
+// NOTE: the How to play cards (src/features/menus/pauseHelp.ts). One card at a time shows
+// its line of how to do it: the one focused or tapped last, until the
+// panel closes.
+export const HelpCard = Schema.Literals([
+  'Move',
+  'Aim',
+  'Reload',
+  'Swap',
+  'Knife',
+  'Shop',
+  'Traps',
+  'Goodies',
+  'Leftovers',
+  'Charge',
+])
+export type HelpCard = typeof HelpCard.Type
+
+// NOTE: the How to play panel's cards (src/features/menus/pauseHelp.ts),
+// handled in src/features/home/update.ts with the other panels.
+export const helpCases = {
+  FocusedHelpCard: { card: HelpCard },
+  ClickedHelpCard: { card: HelpCard },
+}
+export const HelpMessage = defineMessageUnion(helpCases)

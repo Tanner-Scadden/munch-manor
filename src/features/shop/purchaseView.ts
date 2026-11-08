@@ -1,7 +1,7 @@
 import { Array, Function, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import { type Model, Purchasable, Purchase } from '../../app/model'
+import type { Model } from '../../app/model'
 import {
   type BakedText,
   GLYPH_HEIGHT,
@@ -26,7 +26,12 @@ import { VALVE_RULES } from '../../world/kitchen/gasValve'
 import { STOVE_RULES, maybeStovePerk } from '../../world/kitchen/stove'
 import { EXIT_RULES } from '../../world/level/exits'
 import { focusOf, focusSlotOf } from '../../world/party/party'
-import { FridgeDoor, type GunPerk } from '../../world/schema/worldSchema'
+import {
+  FridgeDoor,
+  type GunPerk,
+  Purchasable,
+  Purchase,
+} from '../../world/schema/worldSchema'
 import { type AmmoItemId, maybeAmmoItemOf } from '../../world/shop/ammoCounter'
 import {
   type Offer,

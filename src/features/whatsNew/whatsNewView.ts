@@ -2,9 +2,9 @@ import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
-import { Message } from '../../app/message'
 import type { Model } from '../../app/model'
 import { NEWS_DAYS, type NewsBullet, type NewsDay } from './changelog'
+import { WhatsNewMessage } from './message'
 
 // WHAT'S NEW
 
@@ -52,7 +52,7 @@ const dayView = (day: NewsDay, h: ApplicationViewBuilder): Html =>
 const pageButtonView = (
   label: string,
   ariaLabel: string,
-  message: Message,
+  message: WhatsNewMessage,
   h: ApplicationViewBuilder,
 ): Html =>
   h.button(
@@ -96,7 +96,7 @@ export const whatsNewBodyView: {
               pageButtonView(
                 'Older',
                 'Older news',
-                Message.ClickedOlderNewsButton(),
+                WhatsNewMessage.ClickedOlderNewsButton(),
                 h,
               ),
             ]
@@ -106,7 +106,7 @@ export const whatsNewBodyView: {
               pageButtonView(
                 'Newer',
                 'Newer news',
-                Message.ClickedNewerNewsButton(),
+                WhatsNewMessage.ClickedNewerNewsButton(),
                 h,
               ),
             ]

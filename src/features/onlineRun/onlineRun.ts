@@ -1,10 +1,14 @@
 import { Array, Option, String } from 'effect'
 
-import { type Model, Phase } from '../../app/model'
+import type { Model } from '../../app/model'
 import { rankOf, totalPointsOf } from '../../world/heroes/rank'
 import { isCoop, leadSeatOf, playerCountOf } from '../../world/party/party'
 import type { Modifiers } from '../../world/run/modifiers'
-import type { Difficulty, PlayerSlot } from '../../world/schema/worldSchema'
+import {
+  type Difficulty,
+  Phase,
+  type PlayerSlot,
+} from '../../world/schema/worldSchema'
 import { isRoundActive } from '../../world/waves/waves'
 import { botNameOf, botSlotOf, isBotCrew } from '../bots/bots'
 import type { Room as CoopRoom } from '../coop/model'

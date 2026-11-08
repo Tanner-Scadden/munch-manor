@@ -1,18 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  HoldButton,
-  type Input,
-  type Intent,
-  MouseButton,
-  type Player,
-  type PointerDevice,
-  Stick,
-  type SurfaceRectangle,
-  type Trigger,
-  type Vector,
-} from '../app/model'
 import { type Camera, viewToWorld } from '../render/camera'
 import { clientToView, isLeftHalf } from '../render/screen'
 import {
@@ -20,6 +8,12 @@ import {
   STICK_FIRE_ZONE,
   STICK_RADIUS_PX,
 } from '../shared/constants'
+import type {
+  Intent,
+  Player,
+  Trigger,
+  Vector,
+} from '../world/schema/entitySchema'
 import {
   ZERO_VECTOR,
   addVectors,
@@ -30,6 +24,14 @@ import {
   vectorLength,
 } from '../world/step/geometry'
 import type { FocusStep } from '../world/step/stepWorld'
+import {
+  HoldButton,
+  type Input,
+  MouseButton,
+  type PointerDevice,
+  Stick,
+  type SurfaceRectangle,
+} from './inputSchema'
 import { INTERACT_KEY } from './keyActions'
 
 // KEYS

@@ -1,7 +1,6 @@
 import { Option } from 'effect'
 import type { Block } from 'foldkit'
 
-import { PROFILE_TABS_ID } from '../../app/clientSchema'
 import {
   ProfileBlock,
   makeComposition,
@@ -12,6 +11,7 @@ import {
 import { CharacterBlock } from './blocks/look/block'
 import { OutMessage } from './message'
 import { ProfileTabsBlock } from './model'
+import { PROFILE_TABS_ID } from './profile'
 import { switchTab, withFx, withoutPreview } from './steps'
 
 // NOTE: the Profile's children: its tab strip and the Look tab. A tab

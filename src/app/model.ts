@@ -3,10 +3,28 @@ import { Option, Schema } from 'effect'
 import { DialogBlock } from '@foldkit/ui'
 
 import * as Coop from '../features/coop/model'
+import { ShareSheet } from '../features/end/share'
+import { HomeButton, MenuPanel } from '../features/home/homeSchema'
 import * as Lobby from '../features/lobby/model'
+import { HelpCard } from '../features/menus/message'
 import * as Munchopedia from '../features/munchopedia/model'
 import * as Profile from '../features/profile/model'
 import { ShopBlock } from '../features/shop/block'
+import {
+  Input,
+  InputDevice,
+  Orientation,
+  SurfaceRectangle,
+  TouchControls,
+  idleInput,
+} from '../input/inputSchema'
+import {
+  FullscreenSetting,
+  InstallOffer,
+  OrientationLock,
+  PageVisibility,
+  ScreenFit,
+} from '../platform/deviceSchema'
 import {
   LastRunSync,
   PlayerChange,
@@ -14,6 +32,7 @@ import {
   SyncState,
 } from '../platform/playerSync'
 import { SUPPORT_URL, maybeSupportUrlOf } from '../platform/support'
+import { Decal, Particle, TellWatch, noTellWatch } from '../render/renderSchema'
 import { DEFAULT_SEED } from '../shared/constants'
 import {
   Appearance,
@@ -71,81 +90,30 @@ import {
   AmmoTip,
   AudioState,
   Bot,
-  Decal,
   DifficultyCard,
-  FullscreenSetting,
   HintBand,
-  HomeButton,
   HomeMenu,
-  Input,
-  InputDevice,
-  InstallOffer,
   KitchenCall,
   type LoadStep,
   Loading,
-  MenuPanel,
-  Orientation,
-  OrientationLock,
-  PageVisibility,
-  Particle,
   PlayerBests,
   PrizeFlight,
   RankGain,
   RankPaid,
   RunTally,
   SaveStatus,
-  ScreenFit,
-  SurfaceRectangle,
   SyncedSaveState,
-  TellWatch,
-  TouchControls,
   Tour,
   UpdateGift,
   cosmeticSeedOf,
   defaultAppearance,
   freshHomeMenu,
   freshLessons,
-  idleInput,
   noRankPaid,
-  noTellWatch,
 } from './clientSchema'
 
 export * from './clientSchema'
 export * from '../world/schema/worldSchema'
-
-// NOTE: the How to play cards (src/features/menus/pauseHelp.ts). One card at a time shows
-// its line of how to do it: the one focused or tapped last, until the
-// panel closes.
-export const HelpCard = Schema.Literals([
-  'Move',
-  'Aim',
-  'Reload',
-  'Swap',
-  'Knife',
-  'Shop',
-  'Traps',
-  'Goodies',
-  'Leftovers',
-  'Charge',
-])
-export type HelpCard = typeof HelpCard.Type
-
-// NOTE: whether the browser has a share sheet (navigator.share). SHARE
-// opens it where there is one and copies the post everywhere else; the
-// share event counts which (src/platform/analytics.ts, SharePath).
-export const ShareSheet = Schema.Literals(['Available', 'Unavailable'])
-export type ShareSheet = typeof ShareSheet.Type
-
-// NOTE: how a tap on SHARE ended: the sheet shared it or the player closed
-// it, or the post went to the clipboard (no sheet, or a refused one), or
-// nothing worked. Only Copied shows: SHARE flashes COPIED!.
-export const ShareOutcome = Schema.Literals([
-  'Shared',
-  'Cancelled',
-  'Copied',
-  'Failed',
-])
-export type ShareOutcome = typeof ShareOutcome.Type
 
 // NOTE: a record the run that just ended broke, for its NEW BEST: the
 // deepest endless wave, or the fastest win (src/features/end/endBeat.ts).

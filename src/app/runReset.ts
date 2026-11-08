@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { startingCallingOf } from '../features/heroes/callingPick'
 import { deriveIntent } from '../input/input'
 import { cameraFor } from '../render/camera'
+import { noTellWatch } from '../render/renderSchema'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
 import { freshOvens } from '../world/kitchen/kitchen'
 import { MANOR, startingLevel } from '../world/level/arena'
@@ -33,7 +34,6 @@ import {
   RunTally,
   cosmeticSeedOf,
   noRankPaid,
-  noTellWatch,
 } from './clientSchema'
 import type { Model } from './model'
 

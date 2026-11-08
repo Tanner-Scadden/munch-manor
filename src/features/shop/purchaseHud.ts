@@ -2,9 +2,9 @@ import { Function, Option, String } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
-import { Message } from '../../app/message'
-import { type Model, Purchasable, Purchase } from '../../app/model'
+import type { Model } from '../../app/model'
 import { HOLD_ICON } from '../../art/icons'
+import { InputMessage, RunButtonMessage } from '../../input/message'
 import { screenCameraOf, worldToView } from '../../render/camera'
 import { screenOf } from '../../render/screen'
 import { maybeStovePerk } from '../../world/kitchen/stove'
@@ -16,6 +16,7 @@ import {
   VALVE_NAME,
 } from '../../world/names'
 import { focusOf, focusSlotOf } from '../../world/party/party'
+import { Purchasable, Purchase } from '../../world/schema/worldSchema'
 import {
   type Offer,
   PURCHASE_RULES,
@@ -133,10 +134,10 @@ const toPressedHoldButton = (
   _clientX: number,
   _clientY: number,
   pointerId: number,
-): Option.Option<Message> =>
+): Option.Option<RunButtonMessage> =>
   pointerType === 'mouse'
     ? Option.none()
-    : Option.some(Message.PressedHoldButton({ pointerId }))
+    : Option.some(RunButtonMessage.PressedHoldButton({ pointerId }))
 
 const holdButtonFor = (
   model: Model,
@@ -157,7 +158,7 @@ const holdButtonFor = (
       h.DataAttribute('short', isShort ? 'true' : 'false'),
       h.Style({ '--hold': `${progressAt(model, offer)}` }),
       h.OnPointerDown(toPressedHoldButton),
-      h.OnContextMenu(Message.SuppressedContextMenu()),
+      h.OnContextMenu(InputMessage.SuppressedContextMenu()),
     ],
     [
       h.span([h.Class('hold-buy-ring'), h.AriaHidden(true)]),
@@ -262,7 +263,7 @@ const ammoTagButtonFor = (
               width: `max(40px, ${percentOf((box.width + TAG_HIT_PAD * 2) * camera.scale, screen.width)})`,
               height: `max(40px, ${percentOf((box.height + TAG_HIT_PAD * 2) * camera.scale, screen.height)})`,
             }),
-            h.OnClick(Message.ClickedAmmoTag(), {
+            h.OnClick(RunButtonMessage.ClickedAmmoTag(), {
               focusSelector: '.game-surface',
             }),
           ]),

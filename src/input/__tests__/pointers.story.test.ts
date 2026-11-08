@@ -6,13 +6,14 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { Message } from '../../app/message'
-import { type Model, MouseButton, Phase, Stick } from '../../app/model'
+import { type Model, Phase } from '../../app/model'
 import { initialModel, update } from '../../app/pureApp'
 import { subscriptions } from '../../app/subscriptions'
 import { SURFACE } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import { focusOf } from '../../world/party/party'
 import { isTrackingPointer } from '../input'
+import { MouseButton, Stick } from '../inputSchema'
 
 const LEFT_THUMB = 11
 const RIGHT_THUMB = 12

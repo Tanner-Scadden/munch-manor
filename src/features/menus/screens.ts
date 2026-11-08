@@ -1,17 +1,7 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
-import {
-  Alarm,
-  type Appearance,
-  DebutCard,
-  type HintBand,
-  type InputDevice,
-  type Model,
-  Phase,
-  RunMode,
-  type ZombieKind,
-} from '../../app/model'
+import type { HintBand, Model } from '../../app/model'
 import { playerSprites } from '../../art/appearance'
 import {
   type BakedText,
@@ -35,6 +25,7 @@ import {
 } from '../../art/sprite'
 import { gunSprite } from '../../art/sprites/guns'
 import { ZOMBIE_SPRITES, showcaseWalk } from '../../art/sprites/zombies'
+import type { InputDevice } from '../../input/inputSchema'
 import { type Screen, landscapeFrameOffset } from '../../render/screen'
 import {
   GAME_TITLE,
@@ -46,10 +37,17 @@ import {
   WAVE_BANNER_MS,
   WAVE_CLEARED_BANNER_MS,
 } from '../../shared/constants'
-import type { Calling } from '../../shared/playerData'
+import type { Appearance, Calling } from '../../shared/playerData'
 import { heldGun } from '../../world/gear/weapons'
 import { focusOf, isCoop } from '../../world/party/party'
-import type { WeaponKind } from '../../world/schema/worldSchema'
+import type { ZombieKind } from '../../world/schema/entitySchema'
+import {
+  Alarm,
+  DebutCard,
+  Phase,
+  RunMode,
+  type WeaponKind,
+} from '../../world/schema/worldSchema'
 import { clamp } from '../../world/step/geometry'
 import { endlessDepth, hpScaleFor } from '../../world/waves/endlessWaves'
 import { FINAL_WAVE, debutKinds } from '../../world/waves/wavePlans'
