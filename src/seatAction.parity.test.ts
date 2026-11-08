@@ -1,12 +1,10 @@
 import { Array, Option, Order, Struct } from 'effect'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { DialogBlock } from '@foldkit/ui'
 
 import { ShopDialogBinding } from './bindings'
-import { update } from './main'
 import { MEDIC_RULES } from './medic'
 import { Message } from './message'
 import { BreakClock, Life, type Model, Phase, ShopState } from './model'
@@ -20,6 +18,7 @@ import {
   withSeatLife,
 } from './model.fixture'
 import { COOP_RULES, leadSeatOf, modifyFocus } from './party'
+import { Child, update } from './pureApp'
 import { actionCodeOf, heldAction, seatActionOf } from './roomWorld'
 import { SeatAction, applySeatAction } from './stepWorld'
 import {
@@ -166,8 +165,8 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
     from: atCounter,
     action: SeatAction.LeaveCounter(),
     presses: [
-      toParentMessage(ShopDialogBinding, DialogBlock.Message.RequestedClose()),
-      toParentMessage(
+      Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
+      Child.message(
         ShopDialogBinding,
         DialogBlock.Message.CompletedCloseDialog(),
       ),

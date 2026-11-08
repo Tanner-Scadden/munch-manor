@@ -2,7 +2,6 @@
 import { Array, Option } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
@@ -17,18 +16,11 @@ import {
 } from './boot'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from './constants'
 import { bestsFor, returnHome, withBests } from './home'
-import { init, update } from './main'
 import { Message } from './message'
-import {
-  Loading,
-  type Model,
-  Phase,
-  RunTally,
-  initialModel,
-  noKills,
-} from './model'
+import { Loading, type Model, Phase, RunTally, noKills } from './model'
 import { DISTANT_SPAWN, home, veteranFighting } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
+import { Child, init, initialModel, update } from './pureApp'
 import { scoreOf } from './stats'
 import { maybeKeyDownMessage } from './subscriptions'
 import { scoring, showDialog } from './testing'
@@ -206,10 +198,7 @@ describe('leaving a run', () => {
         expect(Phase.guards.Paused(phase)).toBe(true)
       }),
       message(
-        toParentMessage(
-          PanelDialogBinding,
-          DialogBlock.Message.RequestedClose(),
-        ),
+        Child.message(PanelDialogBinding, DialogBlock.Message.CanceledDialog()),
       ),
       Command.resolve(
         Dialog.test.CloseDialog,
@@ -229,10 +218,7 @@ describe('leaving a run', () => {
       message(Message.PressedKey({ code: 'KeyH' })),
       showDialog(),
       message(
-        toParentMessage(
-          PanelDialogBinding,
-          DialogBlock.Message.RequestedClose(),
-        ),
+        Child.message(PanelDialogBinding, DialogBlock.Message.CanceledDialog()),
       ),
       message(Message.ClickedLeaveRunButton()),
       Command.resolve(

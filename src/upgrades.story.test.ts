@@ -4,7 +4,6 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS, PREPARATION_MS } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   Arsenal,
@@ -18,6 +17,7 @@ import {
 import { DISTANT_SPAWN, newPlayerReady } from './model.fixture'
 import { TIER_LADDER } from './names'
 import { focusOf, focusSlotOf, modifyFocus } from './party'
+import { update } from './pureApp'
 import { Verdict, verdictFor } from './shop'
 import {
   RESTART_GRACE_TICKS,

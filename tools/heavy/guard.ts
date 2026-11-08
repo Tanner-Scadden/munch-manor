@@ -408,13 +408,7 @@ const execute = (
   BudgetRefused | NotYet | PlatformError,
   FileSystem.FileSystem | Scope.Scope
 > =>
-  Decision.match<
-    Effect.Effect<
-      Plan,
-      BudgetRefused | NotYet | PlatformError,
-      FileSystem.FileSystem | Scope.Scope
-    >
-  >(decide(snapshot), {
+  Decision.match(decide(snapshot), {
     Refuse: ({ reason }) => Effect.fail(BudgetRefused.make({ reason })),
     Wait: ({ reason }) =>
       reportWait(waitLog, reason).pipe(
@@ -855,17 +849,9 @@ const failWith = (message: string): Effect.Effect<never, GuardExit> =>
     Effect.andThen(Effect.fail(GuardExit.make({ code: FAILURE_EXIT_CODE }))),
   )
 
-type Guarded = ReturnType<typeof runGuarded>
-
 /** @stability unstable */
 export const program = Effect.suspend(() =>
-  Invocation.match<
-    Effect.Effect<
-      void,
-      Effect.Error<Guarded> | GuardExit,
-      Effect.Services<Guarded>
-    >
-  >(parseArguments(Array.drop(process.argv, 2)), {
+  Invocation.match(parseArguments(Array.drop(process.argv, 2)), {
     ShowUsage: ({ problem }) => failWith(`${problem}\n${USAGE}`),
     ResetBudget: () => resetThisBudget,
     RunCommand: ({ command, budgetPolicy, maybeClassOverride }) =>

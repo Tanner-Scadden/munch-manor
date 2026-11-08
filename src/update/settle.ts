@@ -3,7 +3,7 @@ import { Update } from 'foldkit'
 
 import { RunSummary } from '../analytics'
 import { maybeRunOutcome, runSummaryOf } from '../analyticsRun'
-import { ApplicationDefinition } from '../definition'
+import { ApplicationBlock } from '../definition'
 import { isObjectFirst } from '../dualArgs'
 import { noteRecords, reachRecords } from '../endBeat'
 import { countRunFrom, forgetNewEntriesFrom } from '../home'
@@ -26,25 +26,22 @@ import type { UpdateStep } from './step'
 
 // COMMAND
 
-export const SendRunSummary = ApplicationDefinition.makeCommand(
-  'SendRunSummary',
-  {
-    args: { summary: RunSummary },
-    messages: [Message.CompletedSendRunSummary, Message.FailedSendRunSummary],
-    handler: function* () {
-      return ({ summary }) =>
-        pipe(
-          sendOrQueueRunSummary(summary),
-          Effect.as(Message.CompletedSendRunSummary()),
-          Effect.catch(error =>
-            Effect.succeed(
-              Message.FailedSendRunSummary({ reason: error.reason }),
-            ),
+export const SendRunSummary = ApplicationBlock.makeCommand('SendRunSummary', {
+  args: { summary: RunSummary },
+  messages: [Message.CompletedSendRunSummary, Message.FailedSendRunSummary],
+  handler: function* () {
+    return ({ summary }) =>
+      pipe(
+        sendOrQueueRunSummary(summary),
+        Effect.as(Message.CompletedSendRunSummary()),
+        Effect.catch(error =>
+          Effect.succeed(
+            Message.FailedSendRunSummary({ reason: error.reason }),
           ),
-        )
-    },
+        ),
+      )
   },
-)
+})
 
 // ANALYTICS
 

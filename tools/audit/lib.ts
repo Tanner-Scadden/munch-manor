@@ -785,8 +785,9 @@ export const toClient: {
 )
 
 // NOTE: the player and the zombies, as much of the Model as aiming needs.
+// NOTE: the lead seat's player, single player's only one.
 export const AimView = Schema.Struct({
-  player: Vector,
+  seats: Schema.NonEmptyArray(Schema.Struct({ player: Vector })),
   zombies: Schema.Array(
     Schema.Struct({
       x: Schema.Finite,
@@ -799,7 +800,8 @@ export type AimView = typeof AimView.Type
 type AimZombie = AimView['zombies'][number]
 
 export const nearestZombie = (m: AimView): AimZombie | undefined => {
-  const distance = (z: Vector) => Math.hypot(z.x - m.player.x, z.y - m.player.y)
+  const player = m.seats[0].player
+  const distance = (z: Vector) => Math.hypot(z.x - player.x, z.y - player.y)
   return Option.getOrUndefined(
     Array.reduce(
       Array.filter(m.zombies, z => z.state._tag !== 'Dying'),

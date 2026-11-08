@@ -5,7 +5,6 @@ import { cameraOf, screenCameraOf, worldToView } from '@game/camera'
 import { PLAYER_MAX_HP, STICK_RADIUS_PX } from '@game/constants'
 import * as CoopModel from '@game/coop/model'
 import { type WorldState, coopWorld } from '@game/coop/seam'
-import { update } from '@game/main'
 import { Message } from '@game/message'
 import {
   AudioState,
@@ -24,6 +23,7 @@ import {
   seatStateAt,
 } from '@game/party'
 import { Difficulty } from '@game/playerData'
+import { update } from '@game/pureApp'
 import {
   AIM_REACH,
   DEFAULT_ROOM_SETTINGS,
@@ -152,9 +152,7 @@ export type AudioCue =
     }>
 
 // NOTE: one Command the game's update gives back.
-export type GameCommand = NonNullable<
-  ReturnType<typeof update>['commands']
->[number]
+type GameCommand = NonNullable<ReturnType<typeof update>['commands']>[number]
 export type Return = Readonly<{
   model: Model
   commands?: ReadonlyArray<GameCommand> | undefined
@@ -232,34 +230,45 @@ export const seatsOnScreen = (
 
 // COMMANDS
 
-// NOTE: the sound and music Commands become log lines; the rest run.
+// NOTE: the sound and music Commands become log lines. The rest are the
+// pure update's (src/pureApp.ts), which the page's runtime cannot run, so a
+// shot's ticks give the runtime only their Model.
 const logAudio = (
-  commands: ReadonlyArray<GameCommand>,
+  commands: ReadonlyArray<Readonly<{ name: string; args?: unknown }>>,
   atTick: number,
-): ReadonlyArray<GameCommand> =>
-  Array.filter(commands, command => {
+): void =>
+  Array.forEach(commands, command => {
     if (command.name === PlaySound.name) {
       const { sound, variation } = decodeSoundArgs(command.args)
       cues.push({ tick: atTick, _tag: 'Sound', sound, variation })
-      return false
     } else if (command.name === CueMusic.name) {
       cues.push({
         tick: atTick,
         _tag: 'Music',
         ...decodeMusicArgs(command.args),
       })
-      return false
-    } else {
-      return true
     }
   })
 
-// NOTE: a Message between ticks, such as a click on the shop, is heard
-// with the next tick.
-export const logBetweenTicks = (result: Return): Return =>
-  isShooting
-    ? { ...result, commands: logAudio(result.commands ?? [], tick) }
-    : result
+// NOTE: a sound or music cue the page's runtime asks for during a shot,
+// from a Message between ticks such as a click on the shop, is heard with
+// the next tick (handlers.ts answers the runtime's audio Commands with these).
+export const logSound: {
+  (variation: number): (sound: string) => void
+  (sound: string, variation: number): void
+} = Function.dual(2, (sound: string, variation: number): void => {
+  if (isShooting) {
+    cues.push({ tick, _tag: 'Sound', sound, variation })
+  }
+})
+
+export const logMusic = (
+  cue: Readonly<{ mood: string; level: string; stinger: string }>,
+): void => {
+  if (isShooting) {
+    cues.push({ tick, _tag: 'Music', ...cue })
+  }
+}
 
 // NOTE: audible, so update asks for every sound and music change; the
 // Commands never reach the page's audio engine.
@@ -287,7 +296,7 @@ export const startShot: {
   scriptedKeys.clear()
   cues = []
   const heard = audible(model)
-  const opening = logAudio(cueMusicFrom(model)(heard).commands ?? [], 0)
+  logAudio(cueMusicFrom(model)(heard).commands ?? [], 0)
   const maybeCoop = Option.fromNullishOr(next.coop)
   maybeRoom = Option.map(maybeCoop, coop => ({
     world: roomWorldFor({
@@ -297,7 +306,7 @@ export const startShot: {
     nowMs: 0,
   }))
   return Option.match(maybeCoop, {
-    onNone: () => ({ model: heard, commands: opening }),
+    onNone: () => ({ model: heard }),
     onSome: coop => {
       // NOTE: a room staged in its lobby (such as `coop=host`, four seats)
       // starts playing here.
@@ -322,7 +331,7 @@ export const startShot: {
       }
       isPrerolled = true
       cues = Array.filter(cues, cue => cue._tag === 'Music')
-      return { model: current, commands: opening }
+      return { model: current }
     },
   })
 })
@@ -789,13 +798,8 @@ export const stepShot: {
     const next = Option.isSome(maybeRoom)
       ? coopTick(current.model, true)
       : soloTick(current.model, step)
-    current = {
-      model: next.model,
-      commands: [
-        ...(current.commands ?? []),
-        ...logAudio(next.commands ?? [], tick),
-      ],
-    }
+    logAudio(next.commands ?? [], tick)
+    current = { model: next.model }
     tick++
   }
   return current

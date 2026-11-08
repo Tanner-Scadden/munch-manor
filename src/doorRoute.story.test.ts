@@ -7,7 +7,6 @@ import { PARLOUR, distanceToBox, isInsideRoomAt, nearestDoor } from './arena'
 import { PREPARATION_MS } from './constants'
 import { drawSurfacingSpot } from './crawler'
 import { doorCounts } from './endlessWaves'
-import { update } from './main'
 import { Message } from './message'
 import {
   type DoorId,
@@ -20,9 +19,9 @@ import {
   type Zombie,
   ZombieAction,
   ZombieState,
-  initialModel,
 } from './model'
 import { modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { ticks } from './testing'
 import { TRAPS, trapBox } from './traps'
 

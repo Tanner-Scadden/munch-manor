@@ -5,7 +5,6 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   Arsenal,
@@ -18,6 +17,7 @@ import {
 } from './model'
 import { WAVE_2_BREAK, WAVE_2_FIGHT, readyModel } from './model.fixture'
 import { modifyFocus } from './party'
+import { update } from './pureApp'
 import {
   type KeyDown,
   maybeKeyDownMessage,

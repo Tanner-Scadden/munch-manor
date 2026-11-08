@@ -3,11 +3,11 @@ import { given, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { update } from './main'
 import { type Model, Phase, Tour } from './model'
 import { crewInWave, home, onHard, pastTimedBreaks } from './model.fixture'
 import { raiseDebutCardFrom } from './onboarding'
 import { modifyFocus } from './party'
+import { update } from './pureApp'
 import {
   CREW_NUDGE_MS,
   LAST_ONE_NUDGE_MS,

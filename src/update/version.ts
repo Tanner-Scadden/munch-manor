@@ -1,7 +1,7 @@
 import { Effect, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { ApplicationDefinition } from '../definition'
+import { ApplicationBlock } from '../definition'
 import { Message } from '../message'
 import type { Model } from '../model'
 import {
@@ -19,7 +19,7 @@ import type { UpdateReturn } from './step'
 
 // COMMAND
 
-export const FetchBuild = ApplicationDefinition.makeCommand('FetchBuild', {
+export const FetchBuild = ApplicationBlock.makeCommand('FetchBuild', {
   messages: [Message.CompletedFetchBuild, Message.FailedFetchBuild],
   handler: function* () {
     return () =>
@@ -33,7 +33,7 @@ export const FetchBuild = ApplicationDefinition.makeCommand('FetchBuild', {
   },
 })
 
-export const RegisterServiceWorker = ApplicationDefinition.makeCommand(
+export const RegisterServiceWorker = ApplicationBlock.makeCommand(
   'RegisterServiceWorker',
   {
     messages: [
@@ -55,7 +55,7 @@ export const RegisterServiceWorker = ApplicationDefinition.makeCommand(
   },
 )
 
-export const UpdateServiceWorker = ApplicationDefinition.makeCommand(
+export const UpdateServiceWorker = ApplicationBlock.makeCommand(
   'UpdateServiceWorker',
   {
     messages: [

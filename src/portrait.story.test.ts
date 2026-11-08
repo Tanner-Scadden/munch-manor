@@ -14,12 +14,12 @@ import {
 } from './camera'
 import { CAMERA_LEAN_PX, FIXED_STEP_MS, STICK_RADIUS_PX } from './constants'
 import { refreshIntent } from './frame'
-import { update } from './main'
 import { Message } from './message'
-import { type Model, Phase, Stick, initialModel } from './model'
+import { type Model, Phase, Stick } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { moveHintBand } from './onboarding'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import {
   LANDSCAPE_SCREEN,
   PORTRAIT_HUD_PX,

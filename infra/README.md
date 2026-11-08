@@ -1,6 +1,6 @@
 # Infra
 
-The Cloudflare side of Munch Manor, declared with [Alchemy](https://alchemy.run/). It has its own `package.json` because Alchemy 2.0.0-beta.84 imports `effect/Crypto`, which Effect 4.1 removed, so `infra/` stays on `effect` 4.0.7 while the game and the packages run 4.0.6, the Effect the Foldkit Block preview accepts. Versions are pinned exactly, since Alchemy v2 is still in beta.
+The Cloudflare side of Munch Manor, declared with [Alchemy](https://alchemy.run/). It has its own `package.json`, with Alchemy 2.0.0-beta.85 on `effect` 4.1.0, the same Effect the game, the packages, and the Foldkit Block preview use. Versions are pinned exactly, since Alchemy v2 is still in beta; move `effect` here and in the root `package.json` together.
 
 | File                                               | What it holds                                                                                           |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -80,7 +80,7 @@ The same API Worker serves `/sync` for the sync engine (see "What phase 4 built"
 | `GET /sync/socket?scope=`    | the scope's `SyncScope`                        | The WebSocket, accepted with the Hibernation API                    |
 | `POST /sync/exchange?scope=` | the scope's `SyncScope`                        | The HTTP fallback: a batch of protocol messages in, the replies out |
 
-- **Durable Objects.** `SyncScope` (one per `player:<id>`, by name) and `SyncDirectory` (one, named `directory`) are SQLite backed, so they run on the free plan, and declared as `Cloudflare.DurableObject` bindings on the API Worker; Alchemy adds them as new SQLite classes. Their SQL goes through `@effect/sql-sqlite-do` 4.0.7. They are plain classes with `fetch` and `webSocketMessage`, so the bundle never imports `cloudflare:workers`.
+- **Durable Objects.** `SyncScope` (one per `player:<id>`, by name) and `SyncDirectory` (one, named `directory`) are SQLite backed, so they run on the free plan, and declared as `Cloudflare.DurableObject` bindings on the API Worker; Alchemy adds them as new SQLite classes. Their SQL goes through `@effect/sql-sqlite-do` 4.1.0. They are plain classes with `fetch` and `webSocketMessage`, so the bundle never imports `cloudflare:workers`.
 - **Secrets and limits.** `SyncSecret` (an `Alchemy.Random` per stage) signs tokens and nonces. `SYNC_BY_ADDRESS` (namespace 7103) allows 30 identity requests a minute per address. Sockets and exchanges need a valid token in their Hello.
 - **The shared files.** The Worker bundles `src/playerScope.ts`, `src/playerData.ts`, and the engine against infra's Effect, the same way as `src/analytics.ts`.
 
@@ -104,7 +104,7 @@ On every stage the API Worker also serves co-op rooms (see "What Phases 2 and 3 
 
 The game posts one run summary per run to its stage's API Worker (see "Analytics" in `PLATFORM.md`). The Website gets the API Worker's URL as `VITE_API_ORIGIN`, which Vite inlines into the game.
 
-- **Two Effects.** The Worker imports `src/analytics.ts`, which the game shares. Its `effect` import would otherwise resolve from the game's `node_modules` (Effect 4.0.6), so three things point it at infra's Effect 4.0.7: the Worker bundle's `resolve.alias` in `alchemy.run.ts`, `paths` in `tsconfig.json`, and the `one-effect` plugin in `vitest.config.ts` for the tests. Keep `src/analytics.ts` importing only `effect`.
+- **Two Effects.** The Worker imports `src/analytics.ts`, which the game shares. Its `effect` import would otherwise resolve from the game's `node_modules`, a second copy of Effect 4.1.0 beside infra's, so three things point it at infra's own copy: the Worker bundle's `resolve.alias` in `alchemy.run.ts`, `paths` in `tsconfig.json`, and the `one-effect` plugin in `vitest.config.ts` for the tests, which also inlines `foldkit` so it uses that copy. Keep `src/analytics.ts` importing only `effect`.
 - **Migrations.** Add a new numbered file to `migrations/`, such as `0002_add_column.sql`. Never edit one that has shipped: Alchemy records each file's hash in the database's `__alchemy_migrations` table and applies new files in order on the next deploy.
 - **Secrets.** The address salt is an `Alchemy.Random`, made once per stage and kept in Alchemy's state. It reaches the Worker as a `secret_text` binding.
 - **Rate limits.** Cloudflare Rate Limiting bindings, namespaces 7101 (per visit) and 7102 (per address bucket), shared by every stage.

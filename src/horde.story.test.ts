@@ -14,7 +14,6 @@ import {
 } from './constants'
 import { rollSpawns } from './endlessWaves'
 import { vectorLength } from './geometry'
-import { update } from './main'
 import {
   type Bullet,
   GameEvent,
@@ -29,6 +28,7 @@ import {
 } from './model'
 import { DISTANT_SPAWN, quietWave, withActors } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
+import { update } from './pureApp'
 import { blastFrames, recordTicks, tick, ticks, zombieOf } from './testing'
 import {
   FINAL_WAVE,

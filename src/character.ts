@@ -8,6 +8,7 @@ import {
   type Appearance,
   Body,
   CharacterPicker,
+  type ClosetCueKind,
   HairColor,
   HairStyle,
   LookPart,
@@ -15,10 +16,18 @@ import {
   LookToggle,
   Outfit,
   Print,
+  type ProfileFx,
   ShirtColor,
   SkinTone,
 } from './model'
-import { type CosmeticKind, GunSkin, Hat } from './playerData'
+import {
+  type Calling,
+  type CosmeticKind,
+  GunSkin,
+  Hat,
+  type SavedBoughtCosmetics,
+  type SavedRank,
+} from './playerData'
 
 // MESSAGE
 
@@ -223,24 +232,55 @@ export const chooseLook: {
 
 // BLOCK
 
-const CharacterDefinition = Block.makeDefinition('Character', {
+// NOTE: what the root hands the Look tab's view each frame: the look worn,
+// what is owned and new, and the Profile's effects.
+export type ViewInputs = Readonly<{
+  appearance: Appearance
+  calling: Calling
+  screenMs: number
+  fx: ProfileFx
+  fxCount: number
+  bought: SavedBoughtCosmetics
+  rank: SavedRank
+  fresh: ReadonlyArray<string>
+  maybePreview: Option.Option<Readonly<{ part: LookPart; value: string }>>
+  cue: Readonly<{
+    part: LookPart
+    value: string
+    kind: ClosetCueKind
+    count: number
+  }>
+}>
+
+const CharacterKey = Symbol('Character')
+export const CharacterBlock = Block.make('Character', {
+  key: CharacterKey,
+  InitArgs: Schema.Tuple([]),
+  view: { kind: 'Element', Inputs: Block.makeInputContract<ViewInputs>() },
   Model: CharacterPicker,
   Message,
   OutMessage,
 })
 
-const { makeBinding, makeOutMessageForward, makeOutMessageFold } =
-  CharacterDefinition
+const {
+  makeFieldsStep,
+  makeOutMessageFold,
+  makeOutMessageForward,
+  makeOutMessageStep,
+  makeRequiredFieldBinding,
+} = CharacterBlock
 
 // NOTE: a little tab's choice changes only which parts show. It plays no
 // poof, since the look itself is the same.
-export const SectionsBinding = makeBinding(SectionRadioGroupBlock, {
-  field: 'sections',
-  init: false,
-}).withOutMessagePolicy({
+export const SectionsBinding = makeRequiredFieldBinding(
+  SectionRadioGroupBlock,
+  {
+    field: 'sections',
+    init: { contextToArgs: () => [{ id: 'look-sections' }] },
+  },
+).withOutMessagePolicy({
   fold: makeOutMessageFold(SectionRadioGroupBlock, {
-    Selected: ({ value }) =>
-      CharacterDefinition.makeFieldsStep(() => ({ section: () => value })),
+    Selected: ({ value }) => makeFieldsStep(() => ({ section: () => value })),
   }),
 })
 
@@ -251,49 +291,49 @@ const forwardPart = (part: LookPart) =>
     Selected: ({ value }) => OutMessage.ChoseLook({ part, value }),
   })
 
-export const BodyBinding = makeBinding(PartRadioGroupBlock, {
+export const BodyBinding = makeRequiredFieldBinding(PartRadioGroupBlock, {
   field: 'body',
-  init: false,
+  init: { contextToArgs: () => [{ id: 'look-body' }] },
 }).withOutMessagePolicy({ forward: forwardPart('Body') })
 
-export const HairStyleBinding = makeBinding(PartRadioGroupBlock, {
+export const HairStyleBinding = makeRequiredFieldBinding(PartRadioGroupBlock, {
   field: 'hairStyle',
-  init: false,
+  init: { contextToArgs: () => [{ id: 'look-hair-style' }] },
 }).withOutMessagePolicy({ forward: forwardPart('HairStyle') })
 
-export const HairColorBinding = makeBinding(PartRadioGroupBlock, {
+export const HairColorBinding = makeRequiredFieldBinding(PartRadioGroupBlock, {
   field: 'hairColor',
-  init: false,
+  init: { contextToArgs: () => [{ id: 'look-hair-color' }] },
 }).withOutMessagePolicy({ forward: forwardPart('HairColor') })
 
-export const SkinToneBinding = makeBinding(PartRadioGroupBlock, {
+export const SkinToneBinding = makeRequiredFieldBinding(PartRadioGroupBlock, {
   field: 'skinTone',
-  init: false,
+  init: { contextToArgs: () => [{ id: 'look-skin-tone' }] },
 }).withOutMessagePolicy({ forward: forwardPart('SkinTone') })
 
-export const ShirtColorBinding = makeBinding(PartRadioGroupBlock, {
+export const ShirtColorBinding = makeRequiredFieldBinding(PartRadioGroupBlock, {
   field: 'shirtColor',
-  init: false,
+  init: { contextToArgs: () => [{ id: 'look-shirt-color' }] },
 }).withOutMessagePolicy({ forward: forwardPart('ShirtColor') })
 
-export const OutfitBinding = makeBinding(PartRadioGroupBlock, {
+export const OutfitBinding = makeRequiredFieldBinding(PartRadioGroupBlock, {
   field: 'outfit',
-  init: false,
+  init: { contextToArgs: () => [{ id: 'look-outfit' }] },
 }).withOutMessagePolicy({ forward: forwardPart('Outfit') })
 
-export const PrintBinding = makeBinding(PartRadioGroupBlock, {
+export const PrintBinding = makeRequiredFieldBinding(PartRadioGroupBlock, {
   field: 'print',
-  init: false,
+  init: { contextToArgs: () => [{ id: 'look-print' }] },
 }).withOutMessagePolicy({ forward: forwardPart('Print') })
 
-export const HatBinding = makeBinding(PartRadioGroupBlock, {
+export const HatBinding = makeRequiredFieldBinding(PartRadioGroupBlock, {
   field: 'hat',
-  init: false,
+  init: { contextToArgs: () => [{ id: 'look-hat' }] },
 }).withOutMessagePolicy({ forward: forwardPart('Hat') })
 
-export const GunSkinBinding = makeBinding(PartRadioGroupBlock, {
+export const GunSkinBinding = makeRequiredFieldBinding(PartRadioGroupBlock, {
   field: 'gunSkin',
-  init: false,
+  init: { contextToArgs: () => [{ id: 'look-gun-skin' }] },
 }).withOutMessagePolicy({ forward: forwardPart('GunSkin') })
 
 export const PART_BINDINGS = {
@@ -308,7 +348,7 @@ export const PART_BINDINGS = {
   GunSkin: GunSkinBinding,
 } as const
 
-export const CharacterComposition = CharacterDefinition.makeComposition({
+export const CharacterComposition = CharacterBlock.makeComposition({
   bindings: [
     SectionsBinding,
     BodyBinding,
@@ -329,20 +369,18 @@ export type CharacterViewBuilder = Block.ViewBuilderFor<
 // UPDATE
 
 export const update = CharacterComposition.makeUpdate({
-  ClickedToggle: CharacterDefinition.makeOutMessageStep.fromMessage(
-    ({ toggle }) => OutMessage.FlippedLook({ toggle }),
+  ClickedToggle: makeOutMessageStep.fromMessage(({ toggle }) =>
+    OutMessage.FlippedLook({ toggle }),
   ),
-  ClickedDiceButton: CharacterDefinition.makeOutMessageStep(() =>
-    OutMessage.RequestedRandomLook(),
-  ),
-  ClickedBuyButton: CharacterDefinition.makeOutMessageStep(() =>
-    OutMessage.RequestedBuy(),
-  ),
-  ClickedGearOption: CharacterDefinition.makeOutMessageStep.fromMessage(
-    ({ part, value }) => OutMessage.ChoseLook({ part, value }),
+  ClickedDiceButton: makeOutMessageStep(() => OutMessage.RequestedRandomLook()),
+  ClickedBuyButton: makeOutMessageStep(() => OutMessage.RequestedBuy()),
+  ClickedGearOption: makeOutMessageStep.fromMessage(({ part, value }) =>
+    OutMessage.ChoseLook({ part, value }),
   ),
 })
 
-export const init = CharacterComposition.makeInit(
-  (picker: CharacterPicker) => ({ model: picker }),
-)
+// NOTE: the Look tab starts on Body, and each radio group starts from its
+// own init through its Binding.
+export const init = CharacterComposition.makeInit(() => ({
+  model: { section: 'Body' },
+}))

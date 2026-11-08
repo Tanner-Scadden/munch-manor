@@ -644,7 +644,7 @@ index 957a042..8d119b8 100644
          isAnyMessageDeferred,
          completeBoot,
 diff --git a/dist/runtime/renderer.js b/dist/runtime/renderer.js
-index 357fe7e..57b4d90 100644
+index b180e6d..80e50c6 100644
 --- a/dist/runtime/renderer.js
 +++ b/dist/runtime/renderer.js
 @@ -22,7 +22,7 @@ import { __decideViewTransition, __silenceViewTransitionRejections, } from './vi
@@ -674,7 +674,7 @@ index 357fe7e..57b4d90 100644
      // NOTE: the Model behind the DOM currently on screen, which is what a
      // View Transition animates away from. Seeded with `initModel` because
      // the init render paints it, and advanced only where a render actually
-@@ -431,11 +442,23 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+@@ -435,11 +446,23 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
      // would strand any `Render.afterCommit` registered against it, and
      // the Dom helpers that gate on it would never run their DOM work.
      const renderFramePlain = () => {
@@ -698,7 +698,7 @@ index 357fe7e..57b4d90 100644
          isRenderFrameScheduled = false;
          const isRestoringLiveView = isLiveViewRestorePending;
          isLiveViewRestorePending = false;
-@@ -472,11 +495,38 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+@@ -476,11 +499,38 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
          // the render runs later, inside the transition's update callback.
          if (Option.isNone(maybeResolvedViewTransition)) {
              runRenderFrameBody();
@@ -737,7 +737,7 @@ index 357fe7e..57b4d90 100644
      };
      // NOTE: render frames run as plain JavaScript inside the
      // requestAnimationFrame callback. Messages arriving between frames mark
-@@ -491,6 +541,9 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+@@ -495,6 +545,9 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
          }
          isRenderFrameScheduled = true;
          commitNotifier.markCommitPending();
@@ -850,36 +850,49 @@ index fa19443..0dce512 100644
                      if (inputValue !== undefined && inputValue !== tag) {
                          return make(value);
 diff --git a/dist/struct/index.js b/dist/struct/index.js
-index edbf519..f0048b7 100644
+index ba9a9ce..f23de13 100644
 --- a/dist/struct/index.js
 +++ b/dist/struct/index.js
-@@ -1,7 +1,24 @@
--import { Struct } from 'effect';
-+// NOTE: patched (see the game's patches/README.md). Effect's `Struct.evolve`
-+// walks every key of the struct with `Reflect.ownKeys` and
-+// `propertyIsEnumerable`, which made it the top cost of a frame on a large
-+// Model. This copies the struct with a spread, which keeps the same own
-+// enumerable keys in the same order, then applies only the given transforms,
-+// to keys the struct has, as `evolve` does.
-+const evolveFast = (self, transforms) => {
-+    const out = { ...self };
-+    for (const key of Object.keys(transforms)) {
-+        if (Object.hasOwn(out, key)) {
-+            out[key] = transforms[key](out[key]);
+@@ -1,15 +1,23 @@
+ import { Function } from 'effect';
++// NOTE: patched (see the game's patches/README.md). Upstream walks every key
++// of the struct with `Reflect.ownKeys` and `propertyIsEnumerable` on each
++// call, the top cost of a frame on a large Model. This runs only the given
++// transforms, on own enumerable keys the struct has, copies the struct with a
++// spread (the same own enumerable keys, in the same order) only when a field
++// changes, and returns the original struct when every transformed field is
++// unchanged according to `Object.is`, as upstream does.
+ const transformFields = (source, transforms) => {
+-    const output = {};
+-    let isChanged = false;
+-    for (const key of Reflect.ownKeys(source)) {
++    let output;
++    for (const key of Reflect.ownKeys(transforms)) {
+         if (!Object.prototype.propertyIsEnumerable.call(source, key)) {
+             continue;
+         }
+         const value = source[key];
+-        const nextValue = Object.hasOwn(transforms, key)
+-            ? transforms[key](value)
+-            : value;
++        const nextValue = transforms[key](value);
++        if (Object.is(value, nextValue)) {
++            continue;
 +        }
-+    }
-+    return out;
-+};
- /** Immutably modifies fields of a struct by applying transform functions. Each transformer must return its field's existing type. Wraps Effect's `Struct.evolve` with stricter key checking. */
--export const modifyFields = Struct.evolve;
-+export const modifyFields = function (self, transforms) {
-+    if (arguments.length >= 2) {
-+        return evolveFast(self, transforms);
-+    }
-+    return (struct) => evolveFast(struct, self);
-+};
- /** Creates a field modifier for a base shape. Use in generic helpers whose Model extends that shape. Transformers are checked against the base shape, and the returned function preserves the Model's subtype and all fields not in the transform. */
--export const makeModifyFieldsFor = () => (model, transforms) => 
--/* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
--Struct.evolve(model, transforms);
-+export const makeModifyFieldsFor = () => (model, transforms) => evolveFast(model, transforms);
++        output ??= { ...source };
+         if (key === '__proto__') {
+             Object.defineProperty(output, key, {
+                 value: nextValue,
+@@ -21,11 +29,8 @@ const transformFields = (source, transforms) => {
+         else {
+             output[key] = nextValue;
+         }
+-        if (!Object.is(value, nextValue)) {
+-            isChanged = true;
+-        }
+     }
+-    return isChanged ? output : source;
++    return output ?? source;
+ };
+ /**
+  * Immutably modifies fields of a struct by applying transform functions. Each

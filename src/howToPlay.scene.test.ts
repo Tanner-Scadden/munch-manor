@@ -12,13 +12,14 @@ import {
 import { modifyFields } from 'foldkit/struct'
 import { describe, test, expect as vitestExpect } from 'vitest'
 
-import { type InputDevice, type Model, initialModel } from './model'
+import { type InputDevice, type Model } from './model'
 import {
   CONTROL_CARDS,
   helpCardElementId,
   helpLineElementId,
   helpLineOf,
 } from './pauseHelp'
+import { initialModel } from './pureApp'
 import {
   ROOT,
   measureSurface,

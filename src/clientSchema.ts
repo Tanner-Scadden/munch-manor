@@ -5,7 +5,12 @@
 import { Option, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
-import { HouseSpot, MapId, ShopGuideSection } from './nameKeys'
+import {
+  HouseSpot,
+  MapId,
+  ShopGuideSection,
+  TutorialChoice,
+} from './nameKeys'
 import { Appearance, Calling } from './playerData'
 import { MillisNumber } from './wireNumber'
 import {
@@ -432,10 +437,11 @@ export const LookSection = Schema.Literals(['Body', 'Hair', 'Outfit', 'Gear'])
 export type LookSection = typeof LookSection.Type
 
 // NOTE: the first PLAY or ENDLESS of the session asks for a difficulty.
-// Asking holds the mode to start once one is picked.
+// Asking holds the mode to start once one is picked, and whether to play
+// the tutorial.
 export const DifficultyCard = defineTaggedUnion({
   Unseen: {},
-  Asking: { mode: RunMode },
+  Asking: { mode: RunMode, tutorial: TutorialChoice },
   Seen: {},
 })
 export type DifficultyCard = typeof DifficultyCard.Type
@@ -484,6 +490,14 @@ export const HOME_SCREEN_STEPS_ID = 'home-screen-steps'
 export const UPDATE_GREETING_ID = 'update-greeting'
 
 export const SHOP_TABS_ID = 'shop-tabs'
+
+export const PROFILE_DIALOG_ID = 'profile'
+
+export const PROFILE_TABS_ID = 'profile-tabs'
+
+export const PANEL_DIALOG_ID = 'menu-panel'
+
+export const HAND_DIALOG_ID = 'manor-hand'
 
 export const idleInput: Input = {
   pressedKeys: [],
@@ -543,4 +557,4 @@ export type TellWatch = typeof TellWatch.Type
 
 export const noTellWatch: TellWatch = { traps: [], earned: [] }
 
-export { HouseSpot, MapId, ShopGuideSection }
+export { HouseSpot, MapId, ShopGuideSection, TutorialChoice }

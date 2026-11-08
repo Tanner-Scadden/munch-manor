@@ -5,11 +5,11 @@ import { describe, expect, test } from 'vitest'
 
 import { ammoCounterOffers, isAtAmmoWindow } from './ammoCounter'
 import { FIXED_STEP_MS } from './constants'
-import { update } from './main'
 import { CounterSale, Phase, Purchasable, Purchase, ShopState } from './model'
 import { DISTANT_SPAWN, midWaveAtStall } from './model.fixture'
 import { focusOf, focusSlotOf, modifyFocus } from './party'
 import { PURCHASE_RULES, offersOf } from './purchase'
+import { update } from './pureApp'
 import {
   SHOP_ITEMS,
   STALL_BOX,

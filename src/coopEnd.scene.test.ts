@@ -35,9 +35,9 @@ import {
   RememberRoom,
 } from './coop/update'
 import { isRunCardHeld } from './endBeat'
-import { update } from './main'
 import { Message } from './message'
-import { Lesson, type Model, Phase, initialModel } from './model'
+import { Lesson, type Model, Phase } from './model'
+import { initialModel, update } from './pureApp'
 import { DEFAULT_ROOM_SETTINGS, startRoomWorld } from './roomWorld'
 import {
   ROOT,

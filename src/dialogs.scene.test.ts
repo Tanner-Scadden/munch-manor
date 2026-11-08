@@ -19,9 +19,10 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import { PREPARATION_MS } from './constants'
 import * as Coop from './coop/model'
 import type { Message } from './message'
-import { type Model, Phase, ShopState, initialModel } from './model'
+import { type Model, Phase, ShopState } from './model'
 import { homeAfterRead } from './model.fixture'
 import { modifyFocus } from './party'
+import { initialModel } from './pureApp'
 import {
   ROOT,
   holdingSecond,

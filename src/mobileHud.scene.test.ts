@@ -21,17 +21,16 @@ import {
   model as storyModel,
 } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, test, expect as vitestExpect } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import { HomeScreenStepsBinding } from './bindings'
 import { PREPARATION_MS } from './constants'
-import { update } from './main'
 import { Message } from './message'
-import { BreakClock, type Model, Phase, initialModel } from './model'
+import { BreakClock, type Model, Phase } from './model'
 import { focusOf, modifyFocus } from './party'
+import { Child, initialModel, update } from './pureApp'
 import {
   ROOT,
   SCENE_SUBSCRIPTIONS,
@@ -540,14 +539,14 @@ describe('the install tile', () => {
   test('Escape closes the guide too', () => {
     const shown = update(
       update(onIphone, Message.ClickedInstallButton()).model,
-      toParentMessage(
+      Child.message(
         HomeScreenStepsBinding,
         DialogBlock.Message.SucceededShowDialog(),
       ),
     ).model
-    const escaped = toParentMessage(
+    const escaped = Child.message(
       HomeScreenStepsBinding,
-      DialogBlock.Message.RequestedClose(),
+      DialogBlock.Message.CanceledDialog(),
     )
     story(
       update,

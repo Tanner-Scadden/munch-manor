@@ -1,9 +1,8 @@
 import { Layer } from 'effect'
-import { Block } from 'foldkit'
 
 import { CoopComposition } from './composition'
-import { Message } from './message'
-import { type Model, initialModel } from './model'
+import { CoopBlock } from './definition'
+import { initialModel } from './model'
 import { subscriptions } from './subscriptions'
 import { CommandsLayer, update } from './update'
 import { view } from './view'
@@ -12,26 +11,12 @@ const init = CoopComposition.makeInit(() => ({ model: initialModel }))
 
 const EffectsLayer = Layer.merge(CommandsLayer, subscriptions.layer)
 
-const prepare = () =>
-  CoopComposition.prepareBlock({
-    init,
-    update,
-    view,
-    subscriptions,
-    EffectsLayer,
-    operations: {
-      requestOpen: Message.RequestedOpen,
-      requestBoughtHero: Message.RequestedBoughtHero,
-      requestPressKey: Message.RequestedPressKey,
-      requestReleaseKey: Message.RequestedReleaseKey,
-      requestTickRoom: Message.RequestedTickRoom,
-      requestPressAction: Message.RequestedPressAction,
-      requestToggleReady: Message.RequestedToggleReady,
-      requestLeave: Message.RequestedLeave,
-      requestKeepTracers: Message.RequestedKeepTracers,
-    },
-  })
-export const CoopBlock: Block.FromAssemblyWithViewAndOutMessage<
-  typeof Model,
-  typeof prepare
-> = Block.assemble(prepare)
+// NOTE: co-op's implementation Layer. The root's Layer (src/block.ts)
+// provides it.
+export const CoopLayer = CoopBlock.makeLayer({
+  init,
+  update,
+  view,
+  subscriptions,
+  EffectsLayer,
+})

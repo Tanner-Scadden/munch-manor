@@ -8,10 +8,10 @@ import { describe, expect, test } from 'vitest'
 import { PREPARATION_MS } from './constants'
 import { rollSpawns } from './endlessWaves'
 import { frenzyPacksOf } from './frenzy'
-import { update } from './main'
 import { Message } from './message'
-import { type Model, Phase, initialModel } from './model'
+import { type Model, Phase } from './model'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { asVeteran } from './veteran'
 
 describe('the Ankle Biter', () => {

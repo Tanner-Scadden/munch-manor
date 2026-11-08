@@ -11,7 +11,6 @@ import {
   pickPrize,
   prizeWeights,
 } from './leftovers'
-import { update } from './main'
 import { Message } from './message'
 import {
   FridgeDoor,
@@ -39,6 +38,7 @@ import {
 } from './party'
 import { nextRandom } from './prng'
 import { PURCHASE_RULES, offersOf } from './purchase'
+import { update } from './pureApp'
 import { stepWorld } from './stepWorld'
 import {
   FRIDGE_OPEN_TICKS,

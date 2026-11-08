@@ -4,7 +4,6 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { CONTACT_ALLOWANCE_PX, FIXED_STEP_MS, PLAYER_RADIUS } from './constants'
-import { update } from './main'
 import {
   Frenzy,
   GameEvent,
@@ -13,10 +12,10 @@ import {
   Phase,
   type Zombie,
   ZombieAction,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { holdFire, holdingSecond, ticks, zombieOf } from './testing'
 import { WEAPONS } from './weapons'
 import { ZOMBIE_KINDS, bodyRadiusOf } from './zombies'

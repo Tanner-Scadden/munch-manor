@@ -31,7 +31,6 @@ import {
   Phase,
   type PlannedSpawn,
   type Zombie,
-  initialModel,
 } from './model'
 import {
   atSeatBy,
@@ -44,6 +43,7 @@ import {
 } from './party'
 import { heroIdOf } from './playerData'
 import { nextRandom } from './prng'
+import { initialModel } from './pureApp'
 import { grantedVeteran } from './rank'
 import { freshRun } from './runReset'
 import { STALL_BOX } from './shop'

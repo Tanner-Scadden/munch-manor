@@ -12,7 +12,6 @@ import {
   PAN_RULES,
   lidBlastRadius,
 } from './fridgeWeapons'
-import { update } from './main'
 import { Message } from './message'
 import {
   Arsenal,
@@ -24,10 +23,10 @@ import {
   Phase,
   type Zombie,
   ZombieAction,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import {
   FIRE_LIFT,
   FIRE_PRESS,

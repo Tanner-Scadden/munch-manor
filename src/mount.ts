@@ -1,6 +1,6 @@
 import { Effect, Function, Queue, Stream } from 'effect'
 
-import { ApplicationDefinition } from './definition'
+import { ApplicationBlock } from './definition'
 import {
   type MeasuredGameSurface,
   Message,
@@ -18,7 +18,7 @@ const measure = (element: Element): MeasuredGameSurface => {
 
 // NOTE: the game surface's place on the page, measured when it mounts and
 // again whenever it or the window resizes, so pointer input maps onto it.
-export const MeasureGameSurface = ApplicationDefinition.makeMountStream(
+export const MeasureGameSurface = ApplicationBlock.makeMountStream(
   'MeasureGameSurface',
   {
     messages: [Message.MeasuredGameSurface],
@@ -55,7 +55,7 @@ export const MeasureGameSurface = ApplicationDefinition.makeMountStream(
 // so a button works with another finger on the glass (src/touchTaps.ts).
 // The tapped button's own OnClick sends its Message; this Mount only says a
 // finger tapped.
-export const ListenForTouchTaps = ApplicationDefinition.makeMountStream(
+export const ListenForTouchTaps = ApplicationBlock.makeMountStream(
   'ListenForTouchTaps',
   {
     messages: [Message.TappedWithTouch],
@@ -140,7 +140,7 @@ export const listenForShareClicks: {
   },
 )
 
-export const ShareFromClick = ApplicationDefinition.makeMountStream(
+export const ShareFromClick = ApplicationBlock.makeMountStream(
   'ShareFromClick',
   {
     messages: [Message.SettledShare],

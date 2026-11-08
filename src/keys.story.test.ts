@@ -4,12 +4,12 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { RESTART_GRACE_MS } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import { DebutCard, type Model, Phase, Reload, RunMode } from './model'
 import { WAVE_2_BREAK, WAVE_2_FIGHT, readyModel } from './model.fixture'
 import { DEBUT_CARD_MIN_MS } from './onboarding'
 import { focusOf, modifyFocus } from './party'
+import { update } from './pureApp'
 import {
   SHOTGUN,
   openLobbyByKey,

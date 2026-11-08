@@ -63,6 +63,7 @@ import {
   openWhatsNew,
   pickCalling,
   pickFromCard,
+  pickTutorialChoice,
   pressInstall,
   reloadOntoNewerBuild,
   rewrapUpdateGift,
@@ -718,6 +719,12 @@ export const update = ApplicationComposition.makeUpdate({
   ClickedDifficultyCardButton: (model, { difficulty }) =>
     Update.combineSteps(model, [
       pickFromCard(difficulty),
+      ...afterMessage(model),
+    ]),
+
+  ClickedTutorialChoiceButton: (model, { choice }) =>
+    Update.combineSteps(model, [
+      pickTutorialChoice(choice),
       ...afterMessage(model),
     ]),
 

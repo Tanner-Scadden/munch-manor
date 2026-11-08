@@ -3,7 +3,6 @@ import { given, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS } from './constants'
-import { update } from './main'
 import type { Model } from './model'
 import {
   crewInWave,
@@ -12,6 +11,7 @@ import {
   untouchableSeat,
 } from './model.fixture'
 import { maybePlayerAt } from './party'
+import { update } from './pureApp'
 import { ticks } from './testing'
 
 // A downed player's whole bleed, played out (src/medic.story.test.ts has

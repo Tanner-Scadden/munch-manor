@@ -3,7 +3,8 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 
 import { PREPARATION_MS } from './constants'
-import { BreakClock, type Model, Phase, Tour, initialModel } from './model'
+import { BreakClock, type Model, Phase, Tour } from './model'
+import { initialModel } from './pureApp'
 import { ROOT, measureSurface } from './testing'
 import { asVeteran } from './veteran'
 

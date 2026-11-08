@@ -9,15 +9,8 @@ import {
   PREPARATION_MS,
 } from './constants'
 import { rollSpawns } from './endlessWaves'
-import { update } from './main'
 import { Message } from './message'
-import {
-  DebutCard,
-  type Model,
-  Phase,
-  type ZombieKind,
-  initialModel,
-} from './model'
+import { DebutCard, type Model, Phase, type ZombieKind } from './model'
 import { newPlayerCardSeen, onHard } from './model.fixture'
 import {
   DEBUT_CARD_MIN_MS,
@@ -26,6 +19,7 @@ import {
   shownGhostSticks,
 } from './onboarding'
 import { focusOf } from './party'
+import { initialModel, update } from './pureApp'
 import {
   SHOWN_TICKS,
   hintIds,

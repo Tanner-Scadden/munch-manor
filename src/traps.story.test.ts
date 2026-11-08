@@ -12,7 +12,6 @@ import {
   RESTART_GRACE_MS,
   TURRET_RANGE_PX,
 } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   GameEvent,
@@ -29,11 +28,11 @@ import {
   type Zombie,
   type ZombieKind,
   ZombieState,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN, WAVE_2_FIGHT, pastFirstBreak } from './model.fixture'
 import { focusOf, focusSlotOf, modifyFocus } from './party'
 import { distanceAt, flowFieldToward } from './pathing'
+import { initialModel, update } from './pureApp'
 import {
   StockTag,
   Verdict,

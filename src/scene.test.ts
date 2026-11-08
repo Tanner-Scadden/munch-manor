@@ -19,21 +19,14 @@ import { describe, test, expect as vitestExpect } from 'vitest'
 import { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
 
 import indexHtml from '../index.html?raw'
-import type { ApplicationViewBuilder } from './composition'
 import { FIXED_STEP_MS, GAME_TITLE, PREPARATION_MS } from './constants'
 import { FEEDBACK_RUNS } from './home'
-import { update } from './main'
 import { Message } from './message'
-import {
-  DifficultyCard,
-  type Model,
-  Phase,
-  Reload,
-  initialModel,
-} from './model'
+import { DifficultyCard, type Model, Phase, Reload } from './model'
 import { pastFirstBreak } from './model.fixture'
 import { DEBUT_CARD_MIN_MS } from './onboarding'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update, view } from './pureApp'
 import { ShopTabsBlock } from './shopTabs'
 import {
   ROOT,
@@ -46,7 +39,6 @@ import {
 } from './testing'
 import { FocusShopItem } from './update/shop'
 import { asVeteran } from './veteran'
-import { view } from './view'
 import { pause } from './waves'
 import { STARTING_PISTOL, maxRounds } from './weapons'
 import { Arsenal } from './worldSchema'
@@ -680,7 +672,7 @@ describe('Run stats', () => {
 })
 
 describe('Title', () => {
-  const titledView = (current: Model, h: ApplicationViewBuilder) => {
+  const titledView = (...[current, h]: Parameters<typeof view>) => {
     const document = view(current, h)
     return h.div(
       [h.DataAttribute('document-title', document.title)],

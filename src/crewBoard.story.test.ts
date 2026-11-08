@@ -36,7 +36,6 @@ import {
   END_BUTTONS_TOP_PX,
   crewCardBottomPx,
 } from './endView'
-import { update } from './main'
 import { Life, type Model, Phase } from './model'
 import {
   atSeat,
@@ -49,6 +48,7 @@ import {
   withSeatLife,
 } from './model.fixture'
 import { COOP_RULES, maybePlayerAt, modifyFocus, playersOf } from './party'
+import { update } from './pureApp'
 import { badgeSprite } from './rankArt'
 import { PORTRAIT_WIDTH } from './screen'
 import { stepWorld } from './stepWorld'

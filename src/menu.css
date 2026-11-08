@@ -198,7 +198,7 @@
 }
 
 .home-play-face::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(
@@ -211,7 +211,7 @@
   animation: play-shine 4s ease-in-out 1s infinite;
 }
 
-.home-play[data-mode='Endless'] .home-play-face {
+.home-play[data-mode="Endless"] .home-play-face {
   background: linear-gradient(#a6f3ea, var(--menu-teal) 55%, #3aa89c);
   box-shadow:
     inset 0 3px 0 rgba(255, 255, 255, 0.45),
@@ -259,21 +259,19 @@
 }
 
 /* NOTE: CO-OP is a bar of two bobbing heads in pink and teal sitting on
-   PLAY, so the cluster grows up, not across the room. Locked, it greys out
-   under a padlock and the tutorial's aim icon. */
+   PLAY, so the cluster grows up, not across the room. */
 .home-stage .home-coop {
   position: absolute;
   right: 0;
   bottom: calc(100% + 3 * var(--a));
   display: grid;
   grid-template-areas:
-    'icon lock'
-    'label label';
+    "icon"
+    "label";
   align-content: center;
   justify-content: center;
   justify-items: center;
   align-items: center;
-  column-gap: max(4px, 1.5 * var(--a));
   row-gap: 1px;
   width: max(112px, 54 * var(--a));
   height: var(--pick-h);
@@ -308,58 +306,12 @@
   }
 }
 
-.home-stage .home-coop[data-lock='Locked'] {
-  border-color: var(--menu-line-strong);
-  background: var(--menu-glass);
-  box-shadow: var(--menu-lift);
-}
-
-.home-coop[data-lock='Locked'] .home-coop-icon {
-  opacity: var(--menu-dim);
-  filter: grayscale(1);
-  animation: none;
-}
-
 .home-coop-label {
   grid-area: label;
   color: var(--menu-pink);
   font: bold round(clamp(9px, 2.6 * var(--a), 14px), 1px) / 1 var(--menu-font);
   letter-spacing: 1px;
   pointer-events: none;
-}
-
-.home-coop[data-lock='Locked'] .home-coop-label {
-  color: var(--menu-ink);
-  opacity: var(--menu-dim);
-}
-
-.home-coop-lock {
-  grid-area: lock;
-  display: flex;
-  justify-content: center;
-  gap: 3px;
-  pointer-events: none;
-}
-
-.home-coop-lock-icon {
-  width: max(14px, 5 * var(--a));
-  height: max(14px, 5 * var(--a));
-  background: center / contain no-repeat;
-  image-rendering: pixelated;
-}
-
-.home-stage .home-coop[data-lock='Locked']:active .home-coop-lock {
-  animation: home-coop-nope 300ms ease-out;
-}
-
-@keyframes home-coop-nope {
-  25% {
-    translate: -4px 0;
-  }
-
-  60% {
-    translate: 4px 0;
-  }
 }
 
 /* NOTE: a difficulty reads as a row of skulls: the home menu's first-run
@@ -468,7 +420,7 @@
 }
 
 .manor-pip::after {
-  content: '';
+  content: "";
   position: absolute;
   top: -5px;
   right: -5px;
@@ -590,25 +542,25 @@
   pointer-events: none;
 }
 
-.hand-card[data-card='Character'] {
+.hand-card[data-card="Character"] {
   --tint: var(--menu-pink);
 }
 
-.hand-card[data-card='Munchopedia'] {
+.hand-card[data-card="Munchopedia"] {
   --tint: var(--menu-green);
 }
 
-.hand-card[data-card='WhatsNew'] {
+.hand-card[data-card="WhatsNew"] {
   --tint: var(--menu-gold);
 }
 
 /* NOTE: GitHub's mark stays as GitHub draws it: white, smooth, never
    pixelated. Only the card's frame wears the game's style, in slate. */
-.hand-card[data-card='Code'] {
+.hand-card[data-card="Code"] {
   --tint: #c9d1d9;
 }
 
-.hand-card[data-card='Code'] .hand-card-icon {
+.hand-card[data-card="Code"] .hand-card-icon {
   image-rendering: auto;
 }
 
@@ -681,7 +633,8 @@
   border-radius: var(--menu-radius-sm);
   background: var(--menu-red);
   color: var(--menu-sunken);
-  font: bold round(clamp(10px, 2.6 * var(--a), 15px), 1px) / 1.3 var(--menu-font);
+  font: bold round(clamp(10px, 2.6 * var(--a), 15px), 1px) / 1.3
+    var(--menu-font);
   rotate: 8deg;
   box-shadow: var(--menu-lift);
   pointer-events: none;
@@ -778,15 +731,15 @@
   min-height: var(--menu-tap);
 }
 
-.home-bests[data-difficulty='Easy'] {
+.home-bests[data-difficulty="Easy"] {
   --level: var(--menu-green);
 }
 
-.home-bests[data-difficulty='Hard'] {
+.home-bests[data-difficulty="Hard"] {
   --level: var(--menu-orange);
 }
 
-.home-bests[data-difficulty='Nightmare'] {
+.home-bests[data-difficulty="Nightmare"] {
   --level: var(--menu-red);
 }
 
@@ -886,7 +839,7 @@
   flex-direction: column;
 }
 
-.support-link[data-placement='Victory'] {
+.support-link[data-placement="Victory"] {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 6px);
   left: calc(env(safe-area-inset-left, 0px) + 6px);
@@ -927,7 +880,8 @@
   border-radius: var(--menu-radius-pill);
   background: rgba(20, 36, 14, 0.94);
   color: var(--menu-ink);
-  font: round(clamp(10px, 3.4 * var(--a, 2px), 24px), 1px) / 1.2 var(--menu-font);
+  font: round(clamp(10px, 3.4 * var(--a, 2px), 24px), 1px) / 1.2
+    var(--menu-font);
   animation: menu-fade-in 0.35s ease-out both;
 }
 
@@ -1198,7 +1152,7 @@
   animation-delay: -0.7s;
 }
 
-.home-gift[data-state='Wrapped'] .gift-art {
+.home-gift[data-state="Wrapped"] .gift-art {
   animation: gift-rattle 3.6s ease-in-out infinite;
 }
 
@@ -1215,7 +1169,7 @@
 
 /* NOTE: the string, from the tag's tied end up to the bow. */
 .gift-tag::after {
-  content: '';
+  content: "";
   position: absolute;
   left: calc(100% - 6px);
   bottom: 50%;
@@ -1251,23 +1205,23 @@
   white-space: nowrap;
 }
 
-.home-gift[data-state='Wrapped'] .gift-tag {
+.home-gift[data-state="Wrapped"] .gift-tag {
   animation: gift-tag-swing 3.6s ease-in-out infinite;
 }
 
-.home-gift[data-state='Unwrapping'] .gift-lid {
+.home-gift[data-state="Unwrapping"] .gift-lid {
   animation: gift-lid-fly 0.6s ease-out forwards;
 }
 
-.home-gift[data-state='Unwrapping'] .gift-zombie {
+.home-gift[data-state="Unwrapping"] .gift-zombie {
   animation: gift-zombie-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 0.08s forwards;
 }
 
-.home-gift[data-state='Unwrapping'] .gift-sparkle {
+.home-gift[data-state="Unwrapping"] .gift-sparkle {
   animation: gift-burst 0.6s ease-out forwards;
 }
 
-.home-gift[data-state='Unwrapping'] .gift-tag {
+.home-gift[data-state="Unwrapping"] .gift-tag {
   animation: gift-tag-wave 0.3s ease-in-out infinite alternate;
 }
 
@@ -1383,8 +1337,8 @@
   height: 58%;
 }
 
-.home-install[data-tip='Unseen']::after {
-  content: '';
+.home-install[data-tip="Unseen"]::after {
+  content: "";
   position: absolute;
   inset: -2px;
   border: 3px solid var(--menu-teal);
@@ -1393,7 +1347,7 @@
   animation: install-ring 1.8s ease-out infinite;
 }
 
-.home-install[data-tip='Unseen'] .home-install-icon {
+.home-install[data-tip="Unseen"] .home-install-icon {
   animation: install-bob 1.8s ease-in-out infinite;
 }
 
@@ -1423,7 +1377,7 @@
 
 /* HOME SCREEN GUIDE: three big picture steps for an iPhone. */
 
-.panel-dialog[data-panel='HomeScreen'] .panel {
+.panel-dialog[data-panel="HomeScreen"] .panel {
   --panel-accent: var(--menu-teal);
   width: min(420px, calc(100vw - 24px));
 }
@@ -1447,7 +1401,7 @@
 }
 
 .install-step:not(:last-child)::after {
-  content: '';
+  content: "";
   position: absolute;
   top: calc(min(84px, 22vw) / 2 - 7px);
   right: -17px;
@@ -1540,7 +1494,7 @@
 
 /* UPDATE GREETING: the party after the gift reloads onto a new version. */
 
-.panel-dialog[data-panel='Updated'] .panel {
+.panel-dialog[data-panel="Updated"] .panel {
   --panel-accent: var(--menu-gold);
   width: min(400px, calc(100vw - 24px));
   overflow-x: hidden;
@@ -1583,7 +1537,7 @@
   rotate: 28deg;
 }
 
-.panel-dialog[data-panel='Updated'] .greeting-title {
+.panel-dialog[data-panel="Updated"] .greeting-title {
   justify-content: center;
   padding-left: calc(var(--menu-tap) - var(--menu-pad));
   font-size: 20px;
@@ -1726,7 +1680,7 @@
   .install-step-face,
   .greeting-gift-zombie,
   .greeting-bullet,
-  .panel-dialog[data-panel='Updated'] .greeting-title,
+  .panel-dialog[data-panel="Updated"] .greeting-title,
   .greeting-confetti-piece {
     animation: none !important;
   }
@@ -1826,14 +1780,16 @@
 
 .panel-button:active,
 .setting-tile:active,
-.difficulty-choice:active {
+.difficulty-choice:active,
+.tutorial-choice:active {
   box-shadow: var(--menu-press);
   filter: brightness(1.3);
 }
 
 .panel-button:focus-visible,
 .setting-tile:focus-visible,
-.difficulty-choice:focus-visible {
+.difficulty-choice:focus-visible,
+.tutorial-choice:focus-visible {
   outline: var(--menu-focus);
   outline-offset: 2px;
 }
@@ -1841,16 +1797,17 @@
 @media (hover: hover) {
   .panel-button:hover,
   .setting-tile:hover,
-  .difficulty-choice:hover {
+  .difficulty-choice:hover,
+  .tutorial-choice:hover {
     filter: brightness(1.15);
   }
 }
 
-.panel-dialog[data-panel='LeaveRun'] .panel {
+.panel-dialog[data-panel="LeaveRun"] .panel {
   --panel-accent: #ff8a7d;
 }
 
-.panel-dialog[data-panel='HowToPlay'] .panel {
+.panel-dialog[data-panel="HowToPlay"] .panel {
   width: min(600px, calc(100vw - 16px));
 }
 
@@ -1898,7 +1855,7 @@
   touch-action: manipulation;
 }
 
-.setting-tile[aria-pressed='true'] {
+.setting-tile[aria-pressed="true"] {
   border-color: var(--menu-green);
   background: var(--menu-green-deep);
   color: var(--menu-green-hi);
@@ -1913,7 +1870,7 @@
   pointer-events: none;
 }
 
-.setting-tile[aria-pressed='true'] .setting-tile-icon {
+.setting-tile[aria-pressed="true"] .setting-tile-icon {
   opacity: 1;
 }
 
@@ -2067,7 +2024,7 @@ button.help-card:focus-visible {
   letter-spacing: 0;
 }
 
-.help-card[data-open='true'] {
+.help-card[data-open="true"] {
   justify-content: center;
   background: #3a2f47;
   box-shadow:
@@ -2075,16 +2032,16 @@ button.help-card:focus-visible {
     inset 0 0 0 2px var(--menu-gold);
 }
 
-.help-card[data-open='true'] .help-card-picture {
+.help-card[data-open="true"] .help-card-picture {
   display: none;
 }
 
-.help-card[data-open='true'] .help-card-action {
+.help-card[data-open="true"] .help-card-action {
   color: var(--menu-gold);
   font-size: 11px;
 }
 
-.help-card[data-open='true'] .help-card-line {
+.help-card[data-open="true"] .help-card-line {
   display: block;
 }
 
@@ -2123,24 +2080,24 @@ button.help-card:focus-visible {
   animation-delay: calc((var(--frame) - var(--frames)) * var(--frame-ms));
 }
 
-.help-card-frame[data-frames='1'] {
+.help-card-frame[data-frames="1"] {
   visibility: visible;
   animation: none;
 }
 
-.help-card-frame[data-frames='3'] {
+.help-card-frame[data-frames="3"] {
   animation-name: help-frames-3;
 }
 
-.help-card-frame[data-frames='4'] {
+.help-card-frame[data-frames="4"] {
   animation-name: help-frames-4;
 }
 
-.help-card-frame[data-frames='5'] {
+.help-card-frame[data-frames="5"] {
   animation-name: help-frames-5;
 }
 
-.help-card-frame[data-frames='6'] {
+.help-card-frame[data-frames="6"] {
   animation-name: help-frames-6;
 }
 
@@ -2254,14 +2211,14 @@ button.help-card:focus-visible {
     animation: none;
   }
 
-  .help-card-frame[data-frame='0'] {
+  .help-card-frame[data-frame="0"] {
     visibility: visible;
   }
 }
 
 /* DIFFICULTY: chunky tiles, each its skulls and one word. */
 
-.panel-dialog[data-panel='Difficulty'] .panel {
+.panel-dialog[data-panel="Difficulty"] .panel {
   width: min(480px, calc(100vw - 16px));
 }
 
@@ -2291,15 +2248,15 @@ button.help-card:focus-visible {
   touch-action: manipulation;
 }
 
-.difficulty-choice[data-difficulty='Easy'] {
+.difficulty-choice[data-difficulty="Easy"] {
   --level: var(--menu-green);
 }
 
-.difficulty-choice[data-difficulty='Hard'] {
+.difficulty-choice[data-difficulty="Hard"] {
   --level: var(--menu-orange);
 }
 
-.difficulty-choice[data-difficulty='Nightmare'] {
+.difficulty-choice[data-difficulty="Nightmare"] {
   --level: var(--menu-red);
 }
 
@@ -2319,7 +2276,7 @@ button.help-card:focus-visible {
   pointer-events: none;
 }
 
-.difficulty-choice[data-chosen='Chosen'] {
+.difficulty-choice[data-chosen="Chosen"] {
   border-color: var(--level);
   background: var(--menu-surface-hi);
   box-shadow:
@@ -2328,7 +2285,7 @@ button.help-card:focus-visible {
     0 4px 0 rgba(0, 0, 0, 0.45);
 }
 
-.difficulty-choice[aria-disabled='true'] {
+.difficulty-choice[aria-disabled="true"] {
   border-style: dashed;
   opacity: var(--menu-dim);
   cursor: not-allowed;
@@ -2370,6 +2327,66 @@ button.help-card:focus-visible {
   .difficulty-choice {
     min-height: 48px;
     padding: 4px 10px;
+  }
+}
+
+/* NOTE: the first-run card's TUTORIAL or SKIP IT: two halves of one pill
+   over the tiles, the pick lit. Lighting one only recolors it in place. */
+.tutorial-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--menu-gap-sm);
+  padding: var(--menu-gap-sm);
+  border: 2px solid var(--menu-line);
+  border-radius: var(--menu-radius-pill);
+  background: var(--menu-sunken);
+}
+
+.tutorial-choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: var(--menu-tap);
+  padding: 4px 12px;
+  border: 2px solid transparent;
+  border-radius: var(--menu-radius-pill);
+  background: transparent;
+  color: var(--menu-ink-faint);
+  font: bold var(--menu-text-size) var(--menu-font);
+  letter-spacing: 1px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tutorial-choice[data-state="Chosen"] {
+  border-color: var(--menu-teal);
+  background: var(--menu-surface-hi);
+  color: var(--menu-ink);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--menu-teal) 40%, transparent);
+}
+
+.tutorial-choice-icon {
+  width: var(--menu-icon-sm);
+  height: var(--menu-icon-sm);
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.tutorial-choice[data-state="Chosen"] .tutorial-choice-icon {
+  opacity: 1;
+}
+
+.tutorial-choice-name {
+  pointer-events: none;
+}
+
+@media (max-height: 500px) {
+  .tutorial-choice {
+    padding: 2px 10px;
   }
 }
 
@@ -2513,7 +2530,7 @@ button.help-card:focus-visible {
   }
 }
 
-.manor-pip[data-card='WhatsNew'] {
+.manor-pip[data-card="WhatsNew"] {
   animation: pip-bounce 1.1s ease-in-out infinite;
 }
 
@@ -2551,14 +2568,14 @@ button.help-card:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .home-manor-icon,
   .home-settings .home-corner-icon,
-  .manor-pip[data-card='WhatsNew'] {
+  .manor-pip[data-card="WhatsNew"] {
     animation: none;
   }
 }
 
 /* WHAT'S NEW */
 
-.panel-dialog[data-panel='WhatsNew'] .panel {
+.panel-dialog[data-panel="WhatsNew"] .panel {
   --panel-accent: var(--menu-gold);
   width: min(560px, calc(100vw - 16px));
 }
@@ -2598,7 +2615,7 @@ button.help-card:focus-visible {
 
 /* MUNCHOPEDIA */
 
-.panel-dialog[data-panel='Munchopedia'] .panel {
+.panel-dialog[data-panel="Munchopedia"] .panel {
   --panel-accent: var(--menu-green);
   width: min(680px, calc(100vw - 16px));
 }
@@ -2634,7 +2651,7 @@ button.help-card:focus-visible {
   touch-action: manipulation;
 }
 
-.munch-tile[data-known='Unknown'] {
+.munch-tile[data-known="Unknown"] {
   border-style: dashed;
   color: var(--menu-ink-faint);
 }
@@ -2659,7 +2676,7 @@ button.help-card:focus-visible {
   pointer-events: none;
 }
 
-.munch-sprite[data-known='Unknown'] {
+.munch-sprite[data-known="Unknown"] {
   filter: brightness(0);
   opacity: 0.75;
 }
@@ -2775,19 +2792,19 @@ button.help-card:focus-visible {
   font: bold 11px var(--menu-font);
 }
 
-.munch-badge[data-earned='Earned'][data-badge='Bronze'] {
+.munch-badge[data-earned="Earned"][data-badge="Bronze"] {
   border-color: #d08a4a;
   background: rgba(208, 138, 74, 0.2);
   color: #f0b07a;
 }
 
-.munch-badge[data-earned='Earned'][data-badge='Silver'] {
+.munch-badge[data-earned="Earned"][data-badge="Silver"] {
   border-color: #c8d0d8;
   background: rgba(200, 208, 216, 0.2);
   color: #eef2f6;
 }
 
-.munch-badge[data-earned='Earned'][data-badge='Gold'] {
+.munch-badge[data-earned="Earned"][data-badge="Gold"] {
   border-color: var(--menu-gold);
   background: rgba(255, 224, 102, 0.22);
   color: var(--menu-gold);
@@ -2941,54 +2958,54 @@ button.help-card:focus-visible {
 
 /* NOTE: upright, the MANOR deck stands at the bottom left, and the cluster
    to its right stacks CO-OP over a wide PLAY. */
-.game-root[data-layout='Portrait'] .home-stage {
+.game-root[data-layout="Portrait"] .home-stage {
   --manor-w: max(88px, 42 * var(--a));
 }
 
-.game-root[data-layout='Portrait'] .home-play-cluster {
+.game-root[data-layout="Portrait"] .home-play-cluster {
   left: calc(4 * var(--a) + var(--manor-w) + 3 * var(--a));
   flex-direction: column-reverse;
   height: auto;
 }
 
-.game-root[data-layout='Portrait'] .home-play {
+.game-root[data-layout="Portrait"] .home-play {
   width: auto;
   min-height: max(52px, 24 * var(--a));
 }
 
-.game-root[data-layout='Portrait'] .home-stage .home-coop {
+.game-root[data-layout="Portrait"] .home-stage .home-coop {
   position: relative;
   bottom: auto;
   width: auto;
   height: 48px;
 }
 
-.game-root[data-layout='Portrait'] .home-stage .home-manor {
+.game-root[data-layout="Portrait"] .home-stage .home-manor {
   width: var(--manor-w);
   height: calc(max(52px, 24 * var(--a)) + 48px + 3 * var(--a) + 8 * var(--a));
 }
 
-.game-root[data-layout='Portrait'] .home-bests {
+.game-root[data-layout="Portrait"] .home-bests {
   max-width: calc(172 * var(--a) - 2 * max(48px, 12 * var(--a)) - 12px);
 }
 
-.game-root[data-layout='Portrait'] .home-stage .home-hero {
+.game-root[data-layout="Portrait"] .home-stage .home-hero {
   left: calc(70 * var(--a));
   top: calc((112 + var(--frame-top)) * var(--a));
 }
 
-.game-root[data-layout='Portrait'] .home-stage .new-entry {
+.game-root[data-layout="Portrait"] .home-stage .new-entry {
   top: calc((80 + var(--frame-top)) * var(--a));
 }
 
-.game-root[data-layout='Portrait'] .hand {
+.game-root[data-layout="Portrait"] .hand {
   --manor-w: max(88px, 42 * var(--a));
   --card-w: max(96px, 50 * var(--a));
   --card-h: max(120px, 62 * var(--a));
   --deck-h: calc(max(52px, 24 * var(--a)) + 48px + 3 * var(--a) + 8 * var(--a));
 }
 
-.game-root[data-layout='Portrait'] .hand-cards {
+.game-root[data-layout="Portrait"] .hand-cards {
   bottom: calc(var(--stage-y) + 4 * var(--a) + var(--deck-h) + 8 * var(--a));
   flex-wrap: wrap;
   justify-content: center;
@@ -2996,34 +3013,34 @@ button.help-card:focus-visible {
   row-gap: max(10px, 4 * var(--a));
 }
 
-.game-root[data-layout='Portrait'] .hand-card {
+.game-root[data-layout="Portrait"] .hand-card {
   translate: 0 0;
 }
 
-.game-root[data-layout='Portrait'] .hand-slot:nth-child(odd) .hand-card-face {
+.game-root[data-layout="Portrait"] .hand-slot:nth-child(odd) .hand-card-face {
   rotate: -2deg;
 }
 
-.game-root[data-layout='Portrait'] .hand-slot:nth-child(even) .hand-card-face {
+.game-root[data-layout="Portrait"] .hand-slot:nth-child(even) .hand-card-face {
   rotate: 2deg;
 }
 
-.game-root[data-layout='Portrait'] .hand-close {
+.game-root[data-layout="Portrait"] .hand-close {
   --hand-deck-w: var(--manor-w);
   --hand-deck-h: var(--deck-h);
 }
 
-.game-root[data-layout='Portrait'] .help-cards {
+.game-root[data-layout="Portrait"] .help-cards {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.game-root[data-layout='Portrait'] .setting-tiles {
+.game-root[data-layout="Portrait"] .setting-tiles {
   flex-wrap: wrap;
 }
 
 /* NOTE: the turn hint is only drawn in portrait, so it has no landscape rule.
    It sits just above the rail row. Only the pill takes taps. */
-.game-root[data-layout='Portrait'] .home-turn-hint {
+.game-root[data-layout="Portrait"] .home-turn-hint {
   position: absolute;
   left: calc(4 * var(--a) + var(--manor-w) + 3 * var(--a));
   right: calc(4 * var(--a));
@@ -3088,7 +3105,7 @@ button.help-card:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .game-root[data-layout='Portrait'] .home-turn-hint,
+  .game-root[data-layout="Portrait"] .home-turn-hint,
   .home-turn-icon {
     animation: none;
   }
@@ -3154,22 +3171,22 @@ button.help-card:focus-visible {
   image-rendering: pixelated;
 }
 
-.end-button[data-look='Retry'] {
+.end-button[data-look="Retry"] {
   border-color: var(--menu-green);
   background: var(--menu-green);
   color: var(--menu-sunken);
 }
 
-.end-button[data-look='Retry'] .end-button-icon {
+.end-button[data-look="Retry"] .end-button-icon {
   animation: end-retry-spin 2.4s ease-in-out infinite;
 }
 
-.end-button[data-look='KeepGoing'] {
+.end-button[data-look="KeepGoing"] {
   border-color: var(--menu-green);
   color: var(--menu-green);
 }
 
-.end-button[data-look='Share'] {
+.end-button[data-look="Share"] {
   border-color: var(--menu-gold);
   color: var(--menu-gold);
 }
@@ -3177,17 +3194,17 @@ button.help-card:focus-visible {
 /* NOTE: an online room's card (src/menus.ts): LEAVE in red, LOBBY in co-op pink,
    and RUN IT BACK with its crew's heads, each lit once they are in. Once
    this player is in, the button sinks, pressed. */
-.end-button[data-look='Leave'] {
+.end-button[data-look="Leave"] {
   border-color: var(--menu-red);
   color: var(--menu-red);
 }
 
-.end-button[data-look='Lobby'] {
+.end-button[data-look="Lobby"] {
   border-color: var(--menu-pink);
   color: var(--menu-pink);
 }
 
-.end-button[aria-pressed='true'] {
+.end-button[aria-pressed="true"] {
   box-shadow: var(--menu-press);
   filter: brightness(0.85);
 }
@@ -3216,7 +3233,7 @@ button.help-card:focus-visible {
     filter 120ms linear;
 }
 
-.end-button-head[data-in='In'] {
+.end-button-head[data-in="In"] {
   opacity: 1;
   filter: none;
 }
@@ -3271,11 +3288,11 @@ button.help-card:focus-visible {
 }
 
 /* NOTE: upright, the row spans the card and its columns share it evenly. */
-.game-root[data-layout='Portrait'] .mode-choice.end-actions {
+.game-root[data-layout="Portrait"] .mode-choice.end-actions {
   gap: var(--menu-gap);
 }
 
-.game-root[data-layout='Portrait'] .end-button {
+.game-root[data-layout="Portrait"] .end-button {
   min-width: 0;
   padding: 6px 4px;
 }
@@ -3283,7 +3300,7 @@ button.help-card:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .end-button,
   .end-button > *,
-  .end-button[data-look='Retry'] .end-button-icon {
+  .end-button[data-look="Retry"] .end-button-icon {
     animation: none;
   }
 }

@@ -5,8 +5,9 @@ import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS } from './constants'
 import { Message } from './message'
-import { type Model, Phase, initialModel } from './model'
+import { type Model, Phase } from './model'
 import { DISTANT_SPAWN, homeAfterRead, inPortrait } from './model.fixture'
+import { initialModel } from './pureApp'
 import {
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,

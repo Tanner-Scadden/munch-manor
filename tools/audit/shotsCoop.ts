@@ -1,5 +1,6 @@
-// The co-op pass: the CO-OP tile on the home menu (open and locked), the
-// hub and its problem line, the code entry, asking, the QUICK PLAY queue,
+// The co-op pass: the CO-OP tile on the home menu (a new player's, open from
+// the first visit, and a staged one), the hub and its problem line, the
+// code entry, asking, the QUICK PLAY queue,
 // the offer to start with fewer and its accepted look, the lobby (with a
 // host's kicks, READY stamps, and the last run's result), and the in-room
 // arena (playing, away, and ended), on a 1280x720 desktop, an 844x390
@@ -31,7 +32,7 @@ import {
 import { attempt } from './page'
 
 const SCENES: ReadonlyArray<Readonly<{ name: string; query: string }>> = [
-  { name: 'locked', query: '' },
+  { name: 'new', query: '' },
   { name: 'tile', query: 'coop=tile' },
   { name: 'hub', query: 'coop=hub' },
   { name: 'problem', query: 'coop=problem' },

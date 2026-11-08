@@ -2,6 +2,11 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 7, 2026: Skip to the munching
+
+- 🤝 Co-op is open from your very first visit. Grab a friend's room link and jump straight in.
+- ⏩ Played before? Tap SKIP IT on the first difficulty card and go straight into a real run, no tutorial.
+
 ## November 3, 2026: Now we're cooking
 
 - 🔥 The kitchen is worth the trip: cook a perk into your gun at the stove (Spicy, Crispy, or Hearty), turn the gas valve to light the parlour fireplace and roast whatever walks past, and raid the pantry for a free goodie every break. Kills in the kitchen pay extra too.

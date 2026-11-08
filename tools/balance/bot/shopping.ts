@@ -3,7 +3,6 @@
 // gnomes, and the plan that picks between them.
 
 import { Array, Function, Option, Schema, String } from 'effect'
-import { toParentMessage } from 'foldkit/test'
 
 import { DialogBlock } from '@foldkit/ui'
 
@@ -27,6 +26,7 @@ import {
 import { Message } from '../../../src/message'
 import { focusOf, focusSlotOf, leadSeatOf } from '../../../src/party'
 import { maybeOfferInReach } from '../../../src/purchase'
+import { Child } from '../../../src/pureApp'
 import {
   STALL_BOX,
   isShopOpenFor,
@@ -499,7 +499,7 @@ export const fridgeKeys = (model: Model): Set<string> =>
 // NOTE: what the shop dialog's close button sends: a Dialog Message in its
 // Binding's envelope (src/composition.ts).
 const closeShopDialog = () =>
-  toParentMessage(ShopDialogBinding, DialogBlock.Message.RequestedClose())
+  Child.message(ShopDialogBinding, DialogBlock.Message.ClickedCloseButton())
 
 export const shop: {
   (model: Model): (state: BotState) => Model

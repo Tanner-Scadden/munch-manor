@@ -20,13 +20,9 @@ import {
   tileIndex,
 } from './arena'
 import { MAX_FRAME_DELTA_MS } from './constants'
-import { update } from './main'
-import { type Model, Phase, initialModel } from './model'
-import {
-  UNREACHED_DISTANCE,
-  distanceAt,
-  flowFieldToward,
-} from './pathing'
+import { type Model, Phase } from './model'
+import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from './pathing'
+import { initialModel, update } from './pureApp'
 import { roomShapes } from './room'
 import { freshRun } from './runReset'
 import { imageColors } from './testPng'

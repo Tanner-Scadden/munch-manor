@@ -7,7 +7,6 @@ import { PARLOUR } from './arena'
 import { FIXED_STEP_MS } from './constants'
 import { rollSpawns } from './endlessWaves'
 import { FRENZY_RULES, frenzyPace, frenzyPacksOf } from './frenzy'
-import { update } from './main'
 import {
   Frenzy,
   GameEvent,
@@ -16,9 +15,9 @@ import {
   Phase,
   type PlannedSpawn,
   type Zombie,
-  initialModel,
 } from './model'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { bulletInto, tick, ticks, zombieAt } from './testing'
 
 const FRAME_MS = FIXED_STEP_MS

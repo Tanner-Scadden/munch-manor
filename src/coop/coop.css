@@ -117,7 +117,8 @@
   border-radius: var(--menu-radius-sm);
   background: var(--menu-gold);
   color: #241a06;
-  font: bold round(clamp(11px, 2.4 * var(--coop-unit), 16px), 1px) / 1.2 var(--menu-font);
+  font: bold round(clamp(11px, 2.4 * var(--coop-unit), 16px), 1px) / 1.2
+    var(--menu-font);
   text-overflow: ellipsis;
   white-space: nowrap;
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
@@ -182,7 +183,8 @@
   border-radius: var(--menu-radius-pill);
   background: var(--menu-red-deep);
   color: var(--menu-red);
-  font: bold round(clamp(13px, 2.6 * var(--coop-unit), 18px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(13px, 2.6 * var(--coop-unit), 18px), 1px) / 1
+    var(--menu-font);
   letter-spacing: 1px;
   animation: coop-wobble 420ms ease-out;
 }
@@ -208,6 +210,17 @@
   }
 }
 
+/* NOTE: each screen is keyed (src/coop/view.ts), so a change of screen
+   mounts the new one, and it fades up in place: nothing slides, so a
+   finger finds every button where it lands. */
+.coop-hub,
+.coop-code,
+.coop-queue,
+.coop-asking,
+.coop-lobby {
+  animation: coop-in 200ms ease-out;
+}
+
 /* HUB: one huge QUICK PLAY, then CODE and NEW ROOM. */
 
 .coop-hub,
@@ -231,7 +244,8 @@
   gap: 10px;
   margin: 0;
   color: var(--menu-ink);
-  font: bold round(clamp(20px, 6 * var(--coop-unit), 44px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(20px, 6 * var(--coop-unit), 44px), 1px) / 1
+    var(--menu-font);
   letter-spacing: 2px;
   text-shadow:
     3px 0 0 var(--coop-pink),
@@ -308,7 +322,8 @@
 }
 
 .coop-quick-label {
-  font: bold round(clamp(22px, 7 * var(--coop-unit), 46px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(22px, 7 * var(--coop-unit), 46px), 1px) / 1
+    var(--menu-font);
   letter-spacing: 1px;
   text-align: left;
   text-shadow: 0 2px 0 rgba(255, 255, 255, 0.4);
@@ -371,7 +386,8 @@
 }
 
 .coop-tile-label {
-  font: bold round(clamp(14px, 4 * var(--coop-unit), 26px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(14px, 4 * var(--coop-unit), 26px), 1px) / 1
+    var(--menu-font);
   letter-spacing: 1px;
 }
 
@@ -428,7 +444,8 @@
   border-radius: var(--menu-radius-md);
   background: var(--menu-sunken);
   box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.4);
-  font: bold round(clamp(28px, 8 * var(--coop-unit), 56px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(28px, 8 * var(--coop-unit), 56px), 1px) / 1
+    var(--menu-font);
 }
 
 .coop-slot[data-state='Filled'] {
@@ -467,7 +484,8 @@
   border-radius: var(--menu-radius-md);
   background: var(--menu-primary);
   color: var(--menu-ink-on-green);
-  font: bold round(clamp(20px, 6 * var(--coop-unit), 40px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(20px, 6 * var(--coop-unit), 40px), 1px) / 1
+    var(--menu-font);
   box-shadow: 0 5px 0 #2f6a1a;
 }
 
@@ -479,7 +497,10 @@
   filter: brightness(0.2);
 }
 
-/* ASKING: three heads bouncing in turn. */
+/* ASKING: the request in flight. A new room is a door swinging open with
+   three heads hopping through it in turn; a code is its five tiles lit one
+   after another as if being checked, over three heads hopping. All of it
+   is aria-hidden art in a box that stays put (src/coop/motionArt.ts). */
 
 .coop-bounce {
   display: flex;
@@ -508,6 +529,198 @@
 
   60% {
     translate: 0 0;
+  }
+}
+
+.coop-doorway {
+  --coop-door-h: clamp(84px, 26 * var(--coop-unit), 170px);
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: calc(var(--coop-door-h) * 2.6);
+  height: var(--coop-door-h);
+}
+
+.coop-door {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: calc(var(--coop-door-h) * 7 / 12);
+  height: 100%;
+  border: 4px solid var(--menu-gold-deep);
+  border-bottom: 0;
+  box-sizing: border-box;
+  background: #0b0710;
+  perspective: 300px;
+}
+
+/* NOTE: the warm light of the new room. A still (reduced motion, or a
+   shot) shows the door open in it with the heads lined up to go in; the
+   motion runs from there: the door swings open once and then sways in the
+   draft, the light flickers, and the heads hop through one by one. */
+.coop-door-light {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(#fff1a0, var(--menu-gold) 60%, #e0b830);
+  animation: coop-door-light 1.6s ease-in-out infinite;
+}
+
+.coop-door-leaf {
+  position: absolute;
+  inset: 0;
+  background: center / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  transform-origin: left center;
+  transform: rotateY(-70deg);
+  animation:
+    coop-door-open 520ms cubic-bezier(0.3, 1.4, 0.5, 1) both,
+    coop-door-sway 1.6s ease-in-out 520ms infinite;
+}
+
+@keyframes coop-door-open {
+  from {
+    transform: rotateY(0deg);
+  }
+}
+
+@keyframes coop-door-sway {
+  0%,
+  100% {
+    transform: rotateY(-70deg);
+  }
+
+  50% {
+    transform: rotateY(-58deg);
+  }
+}
+
+@keyframes coop-door-light {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* NOTE: each head hops twice to the doorway and is gone into the light, a
+   third of the loop behind the one before it. */
+.coop-walker {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  height: 78%;
+  animation: coop-walk 2.4s linear infinite;
+}
+
+.coop-walker:nth-child(1) {
+  translate: calc(var(--coop-door-h) * 1.5) 0;
+}
+
+.coop-walker:nth-child(2) {
+  translate: calc(var(--coop-door-h) * 0.75) 0;
+  animation-delay: -0.8s;
+}
+
+.coop-walker:nth-child(3) {
+  animation-delay: -1.6s;
+}
+
+@keyframes coop-walk {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+
+  8% {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  24% {
+    translate: calc(var(--coop-door-h) * 0.55) -22%;
+  }
+
+  40% {
+    translate: calc(var(--coop-door-h) * 1.1) 0;
+  }
+
+  56% {
+    translate: calc(var(--coop-door-h) * 1.6) -22%;
+  }
+
+  72% {
+    opacity: 1;
+    translate: calc(var(--coop-door-h) * 2.05) 0;
+  }
+
+  84%,
+  100% {
+    opacity: 0;
+    translate: calc(var(--coop-door-h) * 2.15) 0;
+  }
+}
+
+.coop-checking {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: max(14px, 4 * var(--coop-unit));
+}
+
+.coop-check-tiles {
+  display: flex;
+  gap: clamp(6px, 1.6 * var(--coop-unit), 12px);
+}
+
+.coop-check-tile {
+  display: grid;
+  place-items: center;
+  width: clamp(40px, 10 * var(--coop-unit), 70px);
+  aspect-ratio: 4 / 5;
+  border: 3px solid var(--menu-gold);
+  border-radius: var(--menu-radius-md);
+  background: var(--menu-gold-deep);
+  color: var(--menu-gold);
+  font: bold round(clamp(24px, 7 * var(--coop-unit), 48px), 1px) / 1
+    var(--menu-font);
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.4);
+  animation: coop-check 1.5s ease-in-out infinite;
+}
+
+.coop-check-tile:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.coop-check-tile:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.coop-check-tile:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+.coop-check-tile:nth-child(5) {
+  animation-delay: 0.6s;
+}
+
+/* NOTE: a glow, not a move: the tile lights teal and settles back. */
+@keyframes coop-check {
+  15% {
+    border-color: var(--coop-teal);
+    background: #15403c;
+    color: var(--coop-teal);
+    filter: brightness(1.4);
+    box-shadow:
+      inset 0 -5px 0 rgba(0, 0, 0, 0.4),
+      0 0 16px rgba(95, 212, 200, 0.7);
+  }
+
+  40% {
+    filter: none;
   }
 }
 
@@ -561,14 +774,69 @@
 
 .coop-queue-head {
   height: 62%;
-  animation: coop-bob 1.4s ease-in-out infinite;
+  animation:
+    coop-drop 460ms cubic-bezier(0.3, 1.5, 0.5, 1) both,
+    coop-bob 1.4s ease-in-out 460ms infinite;
 }
 
-.coop-queue-empty {
-  margin: auto;
-  color: var(--menu-ink-faint);
-  font: bold round(clamp(28px, 8 * var(--coop-unit), 56px), 1px) / 1 var(--menu-font);
-  animation: coop-blink 1.4s step-end infinite;
+/* NOTE: a player who arrives drops their head into the seat with a bounce. */
+@keyframes coop-drop {
+  from {
+    opacity: 0;
+    translate: 0 -60%;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* NOTE: an empty seat's slot machine: a dim strip of the seat looks rolls
+   upward behind a window and loops on the look it began with. */
+.coop-roll {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 62%;
+  margin-top: auto;
+  overflow: hidden;
+  mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent);
+}
+
+.coop-roll-strip {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 500%;
+  animation: coop-roll 1.6s steps(4, end) infinite;
+}
+
+.coop-roll-head {
+  flex: none;
+  height: 20%;
+  opacity: 0.35;
+  filter: grayscale(1) brightness(0.7);
+}
+
+.coop-queue-seat:nth-child(even) .coop-roll-strip {
+  animation-duration: 1.2s;
+}
+
+@keyframes coop-roll {
+  to {
+    translate: 0 -80%;
+  }
+}
+
+/* NOTE: once the player says yes to start, every seat with someone in it
+   lights green in place: the group is formed. */
+.coop-queue[data-answer='Accepted'] .coop-queue-seat[data-state='Filled'] {
+  border-color: var(--menu-green);
+  background: var(--menu-green-deep);
+  box-shadow: 0 0 20px rgba(155, 227, 106, 0.6);
+  animation: coop-pop 320ms ease-out;
 }
 
 .coop-offer {
@@ -611,7 +879,8 @@
 }
 
 .coop-offer-label {
-  font: bold round(clamp(18px, 5.5 * var(--coop-unit), 36px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(18px, 5.5 * var(--coop-unit), 36px), 1px) / 1
+    var(--menu-font);
   letter-spacing: 1px;
 }
 
@@ -733,7 +1002,8 @@
   border-radius: var(--menu-radius-sm);
   background: var(--menu-green-deep);
   color: var(--menu-green);
-  font: bold round(clamp(12px, 3.5 * var(--coop-unit), 18px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(12px, 3.5 * var(--coop-unit), 18px), 1px) / 1
+    var(--menu-font);
   white-space: nowrap;
   pointer-events: none;
   animation: coop-code-copied 1400ms ease-out forwards;
@@ -764,7 +1034,8 @@
   border-radius: var(--menu-radius-sm);
   background: var(--menu-gold-deep);
   color: var(--menu-gold);
-  font: bold round(clamp(22px, 6.5 * var(--coop-unit), 44px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(22px, 6.5 * var(--coop-unit), 44px), 1px) / 1
+    var(--menu-font);
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
 }
 
@@ -774,6 +1045,40 @@
 
 .coop-room-code-symbol:nth-child(even) {
   rotate: 2deg;
+}
+
+/* NOTE: the code's symbols flip over one after another as the lobby shows.
+   They are aria-hidden art inside the code's button, which stays put. */
+.coop-room-code-symbol {
+  animation: coop-flip 380ms ease-out both;
+}
+
+.coop-room-code-symbol:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.coop-room-code-symbol:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.coop-room-code-symbol:nth-child(4) {
+  animation-delay: 210ms;
+}
+
+.coop-room-code-symbol:nth-child(5) {
+  animation-delay: 280ms;
+}
+
+@keyframes coop-flip {
+  from {
+    opacity: 0;
+    scale: 1 0;
+  }
+
+  60% {
+    opacity: 1;
+    scale: 1 1.15;
+  }
 }
 
 .coop-seat {
@@ -836,7 +1141,86 @@
   border-style: dashed;
   border-color: var(--menu-line-strong);
   background: rgba(20, 15, 24, 0.6);
-  animation: none;
+  animation: coop-in 260ms ease-out both;
+}
+
+/* NOTE: the seats fade up one after another as the lobby shows, each in
+   place; a seat that fills later flashes as it always has. */
+.coop-seat:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.coop-seat:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.coop-seat:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+/* NOTE: dust where a head lands in a seat (Arrive) or a seat empties
+   (Leave). `--coop-settled` is 0 while the lobby first shows, so the empty
+   seats there do not puff as if someone had just left. */
+@property --coop-settled {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+.coop-seats {
+  animation: coop-settle 600ms linear;
+}
+
+@keyframes coop-settle {
+  from,
+  to {
+    --coop-settled: 0;
+  }
+}
+
+.coop-poof {
+  position: absolute;
+  inset: auto 0 18%;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.coop-poof-cloud {
+  width: 70%;
+  aspect-ratio: 13 / 7;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  opacity: 0;
+  animation: coop-poof 520ms ease-out;
+}
+
+.coop-poof[data-poof='Leave'] .coop-poof-cloud {
+  animation-name: coop-poof-out;
+}
+
+@keyframes coop-poof {
+  0% {
+    opacity: 0.9;
+    scale: 0.5;
+  }
+
+  100% {
+    opacity: 0;
+    scale: 1.4;
+  }
+}
+
+@keyframes coop-poof-out {
+  0% {
+    opacity: calc(0.9 * var(--coop-settled));
+    scale: 0.5;
+  }
+
+  100% {
+    opacity: 0;
+    scale: 1.4;
+  }
 }
 
 .coop-seat[data-me='Me'] {
@@ -847,7 +1231,8 @@
 .coop-seat-empty {
   margin: auto;
   color: var(--menu-ink-faint);
-  font: bold round(clamp(30px, 9 * var(--coop-unit), 60px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(30px, 9 * var(--coop-unit), 60px), 1px) / 1
+    var(--menu-font);
   animation: coop-blink 1.6s step-end infinite;
 }
 
@@ -962,7 +1347,8 @@
   align-items: center;
   gap: 4px;
   color: var(--menu-gold);
-  font: bold round(clamp(16px, 4 * var(--coop-unit), 24px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(16px, 4 * var(--coop-unit), 24px), 1px) / 1
+    var(--menu-font);
 }
 
 .coop-result-score {
@@ -1031,7 +1417,8 @@
 }
 
 .coop-ready-label {
-  font: bold round(clamp(24px, 7.5 * var(--coop-unit), 50px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(24px, 7.5 * var(--coop-unit), 50px), 1px) / 1
+    var(--menu-font);
   letter-spacing: 2px;
 }
 
@@ -1256,7 +1643,8 @@
   border-radius: var(--menu-radius-pill);
   background: #241a06;
   color: var(--menu-gold);
-  font: bold round(clamp(13px, 2.6 * var(--coop-unit), 18px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(13px, 2.6 * var(--coop-unit), 18px), 1px) / 1
+    var(--menu-font);
   letter-spacing: 1px;
   white-space: nowrap;
   translate: -50% -50%;
@@ -1355,7 +1743,8 @@
 
 .modifier-name {
   max-width: 100%;
-  font: bold round(clamp(8px, 1.7 * var(--coop-unit), 10px), 1px) / 1.05 var(--menu-font);
+  font: bold round(clamp(8px, 1.7 * var(--coop-unit), 10px), 1px) / 1.05
+    var(--menu-font);
   letter-spacing: 1px;
   color: var(--menu-ink-dim);
   text-align: center;
@@ -1389,7 +1778,8 @@
   border: 2px solid var(--menu-line-strong);
   border-radius: var(--menu-radius-pill);
   color: var(--menu-ink-faint);
-  font: bold round(clamp(11px, 2.4 * var(--coop-unit), 15px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(11px, 2.4 * var(--coop-unit), 15px), 1px) / 1
+    var(--menu-font);
   letter-spacing: 1px;
   white-space: nowrap;
 }
@@ -1468,6 +1858,20 @@
   .coop {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  /* NOTE: art that only says "working on it" by moving holds still: the
+     door stands open in its light, the heads line up at it, the empty
+     queue seat shows one dim look. Dust never puffs. */
+  .coop .coop-door-leaf,
+  .coop .coop-door-light,
+  .coop .coop-walker,
+  .coop .coop-roll-strip {
+    animation: none !important;
+  }
+
+  .coop .coop-poof {
+    display: none;
   }
 }
 

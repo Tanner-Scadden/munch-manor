@@ -1,17 +1,14 @@
-// NOTE: the harness's update around the game's: what a scene keeps after
-// every update (`god`, `gasroom`), freezing and `tick`, the Message log,
-// and the scene's first Model with the Profile, a hold, or a melee set up.
+// NOTE: what the harness adds to the game's update: what a scene keeps after
+// every update (`god`, `gasroom`), the Message log, and the scene's first
+// Model with the Profile, a hold, or a melee set up. Freezing, `tick`, and
+// the other scene settings that change what reaches update are handler
+// Layers in entry.ts.
 
 import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 
-import { DialogBlock } from '@foldkit/ui'
-import { ProfileDialogBinding } from '@game/bindings'
 import { PLAYER_MAX_HP } from '@game/constants'
 import { pressHoldButton, pressKey, releaseAll } from '@game/input'
-import { update } from '@game/main'
-import { Message } from '@game/message'
 import {
   Melee,
   type Model,
@@ -20,19 +17,12 @@ import {
   type Zombie,
 } from '@game/model'
 import { modifyFocus } from '@game/party'
-import { stepWhen } from '@game/stepWhen'
 import { withInput } from '@game/update/step'
 import { markLooksSeen } from '@game/update/unlocks'
-import { RUNNING_BUILD } from '@game/version'
 import { freshGun, mapGuns } from '@game/weapons'
 
-import type * as Director from './director'
 import { CALM, ROAMING } from './room'
-import {
-  type HarnessPage,
-  type SceneSettings,
-  animationFrameTime,
-} from './settings'
+import { type SceneSettings } from './settings'
 
 // NOTE: `hold` holds the interact key (on touch, a finger on the hold
 // button) from the first frame, so `tick=N` shows the ring N frames in.
@@ -82,7 +72,8 @@ const topUpGasbags = (gasbagRoom: number, model: Model): Model => {
   })
 }
 
-const FIXED_FRAME_MS = 1000 / 60
+// NOTE: any dispatch's tag, a child's envelope included.
+type TaggedMessage = Readonly<{ _tag: string }>
 
 const QUIET_MESSAGES = new Set([
   'TickedFrame',
@@ -94,62 +85,24 @@ const QUIET_MESSAGES = new Set([
   'FailedPlaySound',
 ])
 
-export type HarnessReturn = Director.Return
-
 // NOTE: what the harness adds after every update: full health with `god`,
-// and fresh Kaboomers at the doors with `gasroom`.
+// and fresh Kaboomers at the doors with `gasroom`. Every dispatch reaches it,
+// a child's envelope too, so it reads only the tag.
 export const keepScene: {
-  (
-    result: HarnessReturn,
-    message: Message,
-  ): (settings: SceneSettings) => HarnessReturn
-  (
-    settings: SceneSettings,
-    result: HarnessReturn,
-    message: Message,
-  ): HarnessReturn
+  (model: Model, message: TaggedMessage): (settings: SceneSettings) => Model
+  (settings: SceneSettings, model: Model, message: TaggedMessage): Model
 } = Function.dual(
   3,
-  (
-    settings: SceneSettings,
-    result: HarnessReturn,
-    message: Message,
-  ): HarnessReturn => {
+  (settings: SceneSettings, model: Model, message: TaggedMessage): Model => {
     const { god, gasbagRoom } = settings
     const kept = god
-      ? {
-          ...result,
-          model: modifyFocus(result.model, {
-            player: p => ({ ...p, hp: PLAYER_MAX_HP }),
-          }),
-        }
-      : result
+      ? modifyFocus(model, { player: p => ({ ...p, hp: PLAYER_MAX_HP }) })
+      : model
     return gasbagRoom > 0 && message._tag === 'TickedFrame'
-      ? { ...kept, model: topUpGasbags(gasbagRoom, kept.model) }
+      ? topUpGasbags(gasbagRoom, kept)
       : kept
   },
 )
-
-// NOTE: `tick=N` plays N frames of a fixed 1/60 second at once, before the
-// first render, and holds the picture there. The game is deterministic, so
-// this is the picture `freeze=N` waits N real frames for, with no waiting.
-// The Commands those frames give, such as opening the shop's dialog, run
-// once the scene is in, as they would have frame by frame.
-const advance = (
-  settings: SceneSettings,
-  scene: HarnessReturn,
-  frames: number,
-): HarnessReturn => {
-  let current = scene.model
-  const commands = [...(scene.commands ?? [])]
-  for (let frame = 0; frame < frames; frame++) {
-    const message = Message.TickedFrame({ deltaTime: FIXED_FRAME_MS })
-    const next = keepScene(settings, update(current, message), message)
-    current = next.model
-    commands.push(...(next.commands ?? []))
-  }
-  return { model: current, commands }
-}
 
 // NOTE: every Message the runtime dispatches, its children's envelopes
 // included, as `Tag:ChildTag` chains, for the tap and close audits. The
@@ -169,216 +122,112 @@ export const logMessage = (incoming: unknown) => {
   }
 }
 
-export const gameUpdate: {
-  (model: Model, incoming: Message): (page: HarnessPage) => HarnessReturn
-  (page: HarnessPage, model: Model, incoming: Message): HarnessReturn
-} = Function.dual(
-  3,
-  (page: HarnessPage, model: Model, incoming: Message): HarnessReturn => {
-    const { settings } = page
-    const { config, freezeAfter, instrument } = settings
-    const isFrozenFrame =
-      incoming._tag === 'TickedFrame' && page.framesRun >= freezeAfter
-    const isFreezing = Number.isFinite(freezeAfter)
-    if (isFrozenFrame) {
-      return { model }
-    }
-    // NOTE: a director shot steps the co-op room itself, on the shot's clock.
-    if (config.director && incoming._tag === 'TickedRoomFrame') {
-      return { model }
-    }
-    if (isFreezing && incoming._tag === 'CompletedGenerateSeed') {
-      return { model }
-    }
-    // NOTE: a frozen run starts counting frames once the surface is measured,
-    // so how long the first render takes cannot change which frame the
-    // measurement lands on, and two builds freeze on the same picture.
-    if (
-      isFreezing &&
-      incoming._tag === 'TickedFrame' &&
-      Option.isNone(model.maybeSurface)
-    ) {
-      return { model }
-    }
-    if (
-      config.fit !== undefined &&
-      incoming._tag === 'CompletedDetectScreenFit'
-    ) {
-      return {
-        model: modifyFields(model, {
-          screenFit: () =>
-            config.fit === 'home' ? 'HomeScreen' : 'Fullscreen',
+// NOTE: the Profile's state open on a tab, as openProfile
+// (src/update/profile.ts) sets it, without its menu check: the tab and the
+// name draft, the input let go. The Dialog's own open is its Binding's
+// operation, which the scene's init runs (entry.ts).
+const preparedProfile = (model: Model, tab: ProfileTab): Model =>
+  withInput(
+    modifyFields(tab === 'Look' ? markLooksSeen(model) : model, {
+      tutorialReset: () => 'Idle',
+      profile: profile =>
+        modifyFields(profile, {
+          tab: () => tab,
+          fx: () => 'Still',
+          nameDraft: () => model.playerName,
         }),
-      }
-    }
-    if (
-      config.sync !== undefined &&
-      (incoming._tag === 'UpdatedSyncStatus' ||
-        incoming._tag === 'UpdatedPlayerScopeStatus')
-    ) {
-      return { model }
-    }
-    if (config.rotate && incoming._tag === 'CompletedDetectOrientationLock') {
-      return {
-        model: modifyFields(model, { orientationLock: () => 'Supported' }),
-      }
-    }
-    // NOTE: `install` keeps Chrome's offer on, and `greet` reads as the page
-    // just reloaded onto this build. The gift never reloads the harness: it
-    // stays mid-unwrap, as `unwrap` shows it.
-    if (config.install && incoming._tag === 'ChangedInstallOffer') {
-      return { model }
-    }
-    if (incoming._tag === 'CompletedWaitForUnwrap') {
-      return { model }
-    }
-    const message =
-      incoming._tag === 'TickedFrame' && isFreezing
-        ? Message.TickedFrame({ deltaTime: FIXED_FRAME_MS })
-        : config.greet && incoming._tag === 'CompletedReadUpdateMarker'
-          ? Message.CompletedReadUpdateMarker({
-              maybeBuild: Option.some(RUNNING_BUILD),
-            })
-          : incoming
-    if (message._tag === 'TickedFrame') {
-      page.framesRun++
-    }
-    window.__isFrozen = page.framesRun >= freezeAfter
-    const t0 = performance.now()
-    const result = update(model, message)
-    // NOTE: the frame tick is TickedFrame alone, or in an online run the
-    // room's TickedRoomFrame, which is the one that changes the Model there.
-    if (
-      instrument &&
-      (message._tag === 'TickedFrame' || message._tag === 'TickedRoomFrame') &&
-      result.model !== model
-    ) {
-      window.__timings.update.push(performance.now() - t0)
-      window.__timings.tickFrames.push(animationFrameTime())
-    }
-    const next = keepScene(settings, result, message)
-    window.__model = next.model
-    return next
-  },
-)
-
-// NOTE: the Profile open on a tab, as openProfile (src/update/profile.ts)
-// opens it, without its menu check: the tab and the name draft, the input
-// let go, then the Dialog's own open through its Binding.
-const openProfileOn = (model: Model, tab: ProfileTab): HarnessReturn =>
-  update(
-    withInput(
-      modifyFields(tab === 'Look' ? markLooksSeen(model) : model, {
-        tutorialReset: () => 'Idle',
-        profile: profile =>
-          modifyFields(profile, {
-            tab: () => tab,
-            fx: () => 'Still',
-            nameDraft: () => model.playerName,
-          }),
-      }),
-      releaseAll,
-    ),
-    toParentMessage(ProfileDialogBinding, DialogBlock.Message.RequestedOpen()),
+    }),
+    releaseAll,
   )
 
+// NOTE: a scene's first Model, and whether its init opens the Profile.
+export type Scene = Readonly<{ model: Model; isProfileOpen: boolean }>
+
+const profileTabOf = (settings: SceneSettings): Option.Option<ProfileTab> => {
+  const { config } = settings
+  const profileTab = config.profile
+  if (!config.picker && profileTab === undefined) {
+    return Option.none()
+  }
+  return Option.some(
+    profileTab === 'name'
+      ? 'Name'
+      : profileTab === 'account'
+        ? 'Account'
+        : profileTab === 'settings'
+          ? 'Settings'
+          : 'Look',
+  )
+}
+
 // NOTE: the scene's Model from the current config: seeded when it is frozen
-// or given a seed, with the Profile opened by `picker` or `profile`, and played
-// `tick` frames ahead.
+// or given a seed, with the Profile readied by `picker` or `profile`. The
+// `tick` frames it plays ahead come through the frame Subscription
+// (entry.ts), so the Commands they give run as they would frame by frame.
 export const sceneOf: {
-  (model: Model): (settings: SceneSettings) => HarnessReturn
-  (settings: SceneSettings, model: Model): HarnessReturn
-} = Function.dual(2, (settings: SceneSettings, model: Model): HarnessReturn => {
+  (model: Model): (settings: SceneSettings) => Scene
+  (settings: SceneSettings, model: Model): Scene
+} = Function.dual(2, (settings: SceneSettings, model: Model): Scene => {
   const { config, freezeAfter } = settings
   const seeded =
     config.seed !== undefined || Number.isFinite(freezeAfter)
       ? modifyFields(model, { rngState: () => config.seed ?? 1 })
       : model
-  const profileTab = config.profile
-  const opened: HarnessReturn = stepWhen(
-    (_: Model) => config.picker || profileTab !== undefined,
-    current =>
-      openProfileOn(
-        modifyFields(current, { screenMs: () => 99999 }),
-        profileTab === 'name'
-          ? 'Name'
-          : profileTab === 'account'
-            ? 'Account'
-            : profileTab === 'settings'
-              ? 'Settings'
-              : 'Look',
-      ),
-  )(seeded)
+  const maybeProfileTab = profileTabOf(settings)
+  const opened = Option.match(maybeProfileTab, {
+    onNone: () => seeded,
+    onSome: tab =>
+      preparedProfile(modifyFields(seeded, { screenMs: () => 99999 }), tab),
+  })
   const lookSection = config.looksection
-  const sectioned: HarnessReturn =
+  const sectioned =
     lookSection === undefined
       ? opened
-      : {
-          ...opened,
-          model: modifyFields(opened.model, {
-            character: picker =>
-              modifyFields(picker, { section: () => lookSection }),
-          }),
-        }
-  const holding: HarnessReturn = config.hold
-    ? {
-        ...sectioned,
-        model: modifyFields(sectioned.model, {
-          input: input =>
-            sectioned.model.lastDevice === 'Touch'
-              ? pressHoldButton(input, HOLD_POINTER_ID)
-              : pressKey(input, 'Enter'),
-        }),
-      }
+      : modifyFields(opened, {
+          character: picker =>
+            modifyFields(picker, { section: () => lookSection }),
+        })
+  const holding = config.hold
+    ? modifyFields(sectioned, {
+        input: input =>
+          sectioned.lastDevice === 'Touch'
+            ? pressHoldButton(input, HOLD_POINTER_ID)
+            : pressKey(input, 'Enter'),
+      })
     : sectioned
-  const panned: HarnessReturn = config.pan
-    ? {
-        ...holding,
-        model: modifyFocus(holding.model, {
-          player: player =>
-            modifyFields(player, {
-              melee: () =>
-                Melee.Pan({ pan: { ...freshGun('Pan'), tier: config.tier } }),
-            }),
-        }),
-      }
-    : holding
-  const knifed: HarnessReturn =
-    config.knife || config.stab
-      ? {
-          ...panned,
-          model: modifyFocus(panned.model, {
-            player: player => modifyFields(player, { wield: () => 'Melee' }),
+  const panned = config.pan
+    ? modifyFocus(holding, {
+        player: player =>
+          modifyFields(player, {
+            melee: () =>
+              Melee.Pan({ pan: { ...freshGun('Pan'), tier: config.tier } }),
           }),
-        }
+      })
+    : holding
+  const knifed =
+    config.knife || config.stab
+      ? modifyFocus(panned, {
+          player: player => modifyFields(player, { wield: () => 'Melee' }),
+        })
       : panned
-  const held: HarnessReturn = config.stab
-    ? {
-        ...knifed,
-        model: modifyFields(knifed.model, {
-          input: input =>
-            modifyFields(input, {
-              mouseButton: () =>
-                MouseButton.Held({ pointerId: STAB_POINTER_ID }),
-            }),
-        }),
-      }
+  const held = config.stab
+    ? modifyFields(knifed, {
+        input: input =>
+          modifyFields(input, {
+            mouseButton: () => MouseButton.Held({ pointerId: STAB_POINTER_ID }),
+          }),
+      })
     : knifed
-  const dried: HarnessReturn = config.dry
-    ? {
-        ...held,
-        model: modifyFocus(held.model, {
-          player: player =>
-            modifyFields(player, {
-              arsenal: arsenal =>
-                mapGuns(arsenal, gun =>
-                  modifyFields(gun, { rounds: () => 0, loaded: () => 0 }),
-                ),
-            }),
-        }),
-      }
+  const dried = config.dry
+    ? modifyFocus(held, {
+        player: player =>
+          modifyFields(player, {
+            arsenal: arsenal =>
+              mapGuns(arsenal, gun =>
+                modifyFields(gun, { rounds: () => 0, loaded: () => 0 }),
+              ),
+          }),
+      })
     : held
-  return config.tick === undefined
-    ? dried
-    : advance(settings, dried, config.tick)
+  return { model: dried, isProfileOpen: Option.isSome(maybeProfileTab) }
 })

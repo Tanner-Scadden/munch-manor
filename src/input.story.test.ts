@@ -4,11 +4,11 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS, STICK_FIRE_ZONE, STICK_RADIUS_PX } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import { type Bullet, MouseButton, Phase, Stick } from './model'
 import { FIGHTING_PHASE, playingModel, readyModel } from './model.fixture'
 import { modifyFocus } from './party'
+import { update } from './pureApp'
 import { holdingSecond, tick, touchDown, touchMove } from './testing'
 import { WEAPONS, freshGun } from './weapons'
 

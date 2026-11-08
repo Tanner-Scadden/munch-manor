@@ -10,7 +10,6 @@ import {
 } from './ammoWarning'
 import { cameraOf } from './camera'
 import { FIXED_STEP_MS } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   AmmoTip,
@@ -20,11 +19,11 @@ import {
   DifficultyCard,
   type Model,
   Phase,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
 import { SavedOnboarding } from './playerData'
+import { initialModel, update } from './pureApp'
 import { restoreSave, saveOf } from './save'
 import { maybeBubbleKind } from './stallBubble'
 import { FIRE_PRESS, FIRE_PUSH, SURFACE } from './testing'

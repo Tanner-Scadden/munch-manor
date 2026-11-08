@@ -105,7 +105,7 @@ describe('Home menu', () => {
         expectAll(all.role('button')).toHaveCount(2),
         expect(playButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
         expect(
-          role('button', { name: 'Co-op: finish the tutorial to unlock' }),
+          role('button', { name: 'Co-op: play with friends' }),
         ).toHaveAttr('aria-keyshortcuts', 'J'),
       ),
       expect(selector('.home-pick')).toBeAbsent(),

@@ -8,8 +8,8 @@
 // CALLING picks the calling (Handyman by default).
 import { Config, Effect, Option, Schema } from 'effect'
 
-import { initialModel } from '@game/model'
 import { Calling } from '@game/playerData'
+import { initialModel } from '@game/pureApp'
 import { pointsForRank } from '@game/rank'
 import { SAVE_KEY, encodeSave, saveOf } from '@game/save'
 

@@ -1,7 +1,6 @@
 import { Array, Option, pipe } from 'effect'
 import { Command, given, message, model, steps, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { DialogBlock, RadioGroup, Tabs } from '@foldkit/ui'
@@ -13,7 +12,6 @@ import {
 } from './bindings'
 import * as Character from './character'
 import { PartRadioGroupBlock } from './lookRadios'
-import { update } from './main'
 import { Message } from './message'
 import { AudioState, type Model, Phase, type ProfileTab } from './model'
 import { readyAfterRead } from './model.fixture'
@@ -31,6 +29,7 @@ import {
   rollName,
   shownName,
 } from './profile'
+import { Child, update } from './pureApp'
 import { saveOf } from './save'
 import { closeDialog, press, showDialog, writeSave } from './testing'
 import { WriteSave } from './update/save'
@@ -39,10 +38,7 @@ import { PlaySound } from './update/sound'
 const closeProfile = () =>
   steps(
     message(
-      toParentMessage(
-        ProfileDialogBinding,
-        DialogBlock.Message.RequestedClose(),
-      ),
+      Child.message(ProfileDialogBinding, DialogBlock.Message.CanceledDialog()),
     ),
     closeDialog(),
   )
@@ -56,7 +52,7 @@ const tabIndex = (tab: ProfileTab): number =>
 const selectTab = (tab: ProfileTab) =>
   steps(
     message(
-      toParentMessage(
+      Child.message(
         ProfileTabsBinding,
         ProfileTabsBlock.Message.SelectedTab({
           index: tabIndex(tab),
@@ -165,7 +161,7 @@ describe('the Profile', () => {
       update,
       given(modifyFields(openOn('Look'), { audio: () => AudioState.Ready() })),
       message(
-        toParentMessage(
+        Child.message(
           ProfileTabsBinding,
           ProfileTabsBlock.Message.SelectedTab({ index: 1, value: 'Name' }),
         ),
@@ -367,9 +363,9 @@ describe('the Look tab', () => {
       update,
       given(openOn('Look')),
       message(
-        toParentMessage(
+        Child.message(
           CharacterBinding,
-          toParentMessage(
+          Child.look(
             Character.ShirtColorBinding,
             PartRadioGroupBlock.Message.SelectedOption({
               index: 3,
@@ -389,10 +385,7 @@ describe('the Look tab', () => {
       }),
       writeSave(),
       message(
-        toParentMessage(
-          CharacterBinding,
-          Character.Message.ClickedDiceButton(),
-        ),
+        Child.message(CharacterBinding, Character.Message.ClickedDiceButton()),
       ),
       model(current => {
         expect(current.profile.fx).toBe('Spin')

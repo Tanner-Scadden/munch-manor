@@ -19,18 +19,11 @@ import {
   rollSpawns,
 } from './endlessWaves'
 import { bestsFor, withBests } from './home'
-import { update } from './main'
 import { Message } from './message'
-import {
-  DifficultyCard,
-  type Model,
-  Phase,
-  RunMode,
-  Trap,
-  initialModel,
-} from './model'
+import { DifficultyCard, type Model, Phase, RunMode, Trap } from './model'
 import { plannedSpawn } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { endlessBannerOf } from './screens'
 import { scoreOf } from './stats'
 import {

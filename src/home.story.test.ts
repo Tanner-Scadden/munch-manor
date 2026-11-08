@@ -9,7 +9,6 @@ import changelogMarkdown from '../CHANGELOG.md?raw'
 import { NEWS_DAYS, newsHeadline, parseChangelog } from './changelog'
 import { FIXED_STEP_MS } from './constants'
 import { HOME_BUTTONS, HOME_KEYS, isNewsUnseen } from './home'
-import { update } from './main'
 import { Message } from './message'
 import {
   type MenuPanel,
@@ -29,6 +28,7 @@ import {
   unopenedKinds,
 } from './munchopedia'
 import { modifyFocus } from './party'
+import { update } from './pureApp'
 import { saveOf } from './save'
 import {
   openLobbyByKey,

@@ -7,7 +7,6 @@ import { NEUTRAL_INPUT, type PlayerInput } from '@munch/netcode'
 
 import { FIXED_STEP_MS, PISTOL_MAGAZINE } from './constants'
 import { KNIFE_RULES } from './knife'
-import { update } from './main'
 import { Message } from './message'
 import {
   type CarriedGun,
@@ -16,10 +15,10 @@ import {
   Phase,
   ShopState,
   type Zombie,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN, withSeat } from './model.fixture'
 import { focusOf, focusSlotOf, maybePlayerAt, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import {
   AIM_REACH,
   DEFAULT_ROOM_SETTINGS,

@@ -33,6 +33,7 @@ import {
   SECTION_PARTS,
   SECTION_TOGGLES,
   SectionsBinding,
+  type ViewInputs,
   chooseLook,
   flipLook,
   gearOf,
@@ -58,22 +59,13 @@ import {
 import {
   type Appearance,
   type CharacterPicker,
-  type ClosetCueKind,
   type LookPart,
   LookSection,
   type LookToggle,
   type Print,
-  type ProfileFx,
 } from './model'
 import { HAT_NAMES, hatNameOf } from './names'
-import {
-  type Calling,
-  type CosmeticKind,
-  GunSkin,
-  Hat,
-  type SavedBoughtCosmetics,
-  type SavedRank,
-} from './playerData'
+import { type Calling, type CosmeticKind, GunSkin, Hat } from './playerData'
 import { GUN_HOLD_PX } from './playerView'
 import { rankOf, totalPointsOf } from './rank'
 import { type Facing, frameAt, group } from './sprite'
@@ -852,24 +844,6 @@ const togglesView = (
 
 // LOOK TAB
 
-type ViewInputs = Readonly<{
-  appearance: Appearance
-  calling: Calling
-  screenMs: number
-  fx: ProfileFx
-  fxCount: number
-  bought: SavedBoughtCosmetics
-  rank: SavedRank
-  fresh: ReadonlyArray<string>
-  maybePreview: Option.Option<Readonly<{ part: LookPart; value: string }>>
-  cue: Readonly<{
-    part: LookPart
-    value: string
-    kind: ClosetCueKind
-    count: number
-  }>
-}>
-
 const view = CharacterComposition.makeView.withInputs<ViewInputs>(
   (picker, inputs, h) =>
     h.div(
@@ -903,8 +877,8 @@ const view = CharacterComposition.makeView.withInputs<ViewInputs>(
     ),
 )
 
-// NOTE: the Look tab's Block, prepared here so the view is not exported: a
-// view is a function of three arguments with no pipeable form, and Foldkit
-// knows a view by its identity, so it cannot be wrapped in one.
-export const prepareCharacterBlock = () =>
-  CharacterComposition.prepareBlock({ init, update, view })
+// NOTE: the Look tab's implementation, gathered here so the view is not
+// exported: a view is a function of three arguments with no pipeable form,
+// and Foldkit knows a view by its identity, so it cannot be wrapped in one.
+// src/characterBlock.ts completes it as the Block's Layer.
+export const characterImplementation = { init, update, view }

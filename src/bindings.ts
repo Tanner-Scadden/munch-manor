@@ -1,8 +1,18 @@
 import { DialogBlock } from '@foldkit/ui'
 
-import { CharacterBlock } from './characterBlock'
+import { CharacterBlock } from './character'
+import {
+  HAND_DIALOG_ID,
+  HOME_SCREEN_STEPS_ID,
+  PANEL_DIALOG_ID,
+  PROFILE_DIALOG_ID,
+  PROFILE_TABS_ID,
+  SHOP_DIALOG_ID,
+  SHOP_TABS_ID,
+  UPDATE_GREETING_ID,
+} from './clientSchema'
 import { CoopBlock } from './coop'
-import { makeBinding } from './definition'
+import { makeRequiredFieldBinding } from './definition'
 import { isProfileOpen } from './menuState'
 import { focusOf } from './party'
 import { ProfileTabsBlock } from './profile'
@@ -10,70 +20,68 @@ import { isBrowsing } from './shop'
 import { ShopTabsBlock } from './shopTabs'
 
 // NOTE: every child of the root, each placed on its Model field, so its
-// generated Message is `Got<Field>Message` (GotShopDialogMessage). The
-// root's own Model fields hold their state (`init: false`): see
-// initialModel in src/model.ts. Steps and views call these Bindings'
-// operations and views; their OutMessage folds, which call Steps, are
-// chosen in src/composition.ts, so no Step imports the module that imports
-// it (FOLDKIT.md, "OutMessage policies").
+// generated Message is `Got<Field>Message` (GotShopDialogMessage). Each
+// child starts closed from its own init when the root's init runs, so the
+// root's init (src/main.ts) supplies only its own fields. Steps and views
+// call these Bindings' operations and views; their OutMessage folds, which
+// call Steps, are chosen in src/composition.ts, so no Step imports the
+// module that imports it (FOLDKIT.md, "OutMessage policies").
 
 // DIALOGS
 
-export const ShopDialogBinding = makeBinding(DialogBlock, {
+export const ShopDialogBinding = makeRequiredFieldBinding(DialogBlock, {
   field: 'shopDialog',
-  init: false,
+  init: { contextToArgs: () => [{ id: SHOP_DIALOG_ID }] },
 })
 
-export const ProfileDialogBinding = makeBinding(DialogBlock, {
+export const ProfileDialogBinding = makeRequiredFieldBinding(DialogBlock, {
   field: 'profileDialog',
-  init: false,
+  init: { contextToArgs: () => [{ id: PROFILE_DIALOG_ID }] },
 })
 
-export const PanelDialogBinding = makeBinding(DialogBlock, {
+export const PanelDialogBinding = makeRequiredFieldBinding(DialogBlock, {
   field: 'panelDialog',
-  init: false,
+  init: { contextToArgs: () => [{ id: PANEL_DIALOG_ID }] },
 })
 
-export const HandDialogBinding = makeBinding(DialogBlock, {
+export const HandDialogBinding = makeRequiredFieldBinding(DialogBlock, {
   field: 'handDialog',
-  init: false,
+  init: { contextToArgs: () => [{ id: HAND_DIALOG_ID }] },
 })
 
-export const HomeScreenStepsBinding = makeBinding(DialogBlock, {
+export const HomeScreenStepsBinding = makeRequiredFieldBinding(DialogBlock, {
   field: 'homeScreenSteps',
-  init: false,
+  init: { contextToArgs: () => [{ id: HOME_SCREEN_STEPS_ID }] },
 })
 
-export const UpdateGreetingBinding = makeBinding(DialogBlock, {
+export const UpdateGreetingBinding = makeRequiredFieldBinding(DialogBlock, {
   field: 'updateGreeting',
-  init: false,
+  init: { contextToArgs: () => [{ id: UPDATE_GREETING_ID }] },
 })
 
 // TABS
 
 // NOTE: tabs only answer while their dialog is up.
-export const ProfileTabsBinding = makeBinding(ProfileTabsBlock, {
+export const ProfileTabsBinding = makeRequiredFieldBinding(ProfileTabsBlock, {
   field: 'profileTabs',
-  init: false,
+  init: { contextToArgs: () => [{ id: PROFILE_TABS_ID }] },
   delivery: { when: isProfileOpen },
 })
 
-export const ShopTabsBinding = makeBinding(ShopTabsBlock, {
+export const ShopTabsBinding = makeRequiredFieldBinding(ShopTabsBlock, {
   field: 'shopTabs',
-  init: false,
+  init: { contextToArgs: () => [{ id: SHOP_TABS_ID }] },
   delivery: { when: model => isBrowsing(focusOf(model).shop) },
 })
 
 // THE LOOK TAB
 
-export const CharacterBinding = makeBinding(CharacterBlock, {
+export const CharacterBinding = makeRequiredFieldBinding(CharacterBlock, {
   field: 'character',
-  init: false,
 })
 
 // CO-OP
 
-export const CoopBinding = makeBinding(CoopBlock, {
+export const CoopBinding = makeRequiredFieldBinding(CoopBlock, {
   field: 'coop',
-  init: false,
 })

@@ -4,7 +4,6 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS } from './constants'
-import { update } from './main'
 import { MEDIC_RULES, isCallFresh } from './medic'
 import { type Bot, Life, type Model } from './model'
 import {
@@ -16,6 +15,7 @@ import {
   withSeatLife,
 } from './model.fixture'
 import { COOP_RULES, seatStateAt } from './party'
+import { update } from './pureApp'
 import { SeatAction, trySeatAction } from './stepWorld'
 import { botInputs } from './teammateBot'
 import { hasEvent, tap, ticks } from './testing'

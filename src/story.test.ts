@@ -18,7 +18,6 @@ import {
   ZOMBIE_KNOCKBACK_SPEED,
   ZOMBIE_MAX_HP,
 } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   GameEvent,
@@ -35,6 +34,7 @@ import {
   withZombies,
 } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
+import { update } from './pureApp'
 import { scoreOf } from './stats'
 import {
   FRAME_MS,

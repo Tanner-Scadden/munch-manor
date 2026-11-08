@@ -16,15 +16,9 @@ import { describe, test } from 'vitest'
 import { Tabs } from '@foldkit/ui'
 
 import { PREPARATION_MS } from './constants'
-import {
-  type Arsenal,
-  type Model,
-  Phase,
-  Trap,
-  TrapHint,
-  initialModel,
-} from './model'
+import { type Arsenal, type Model, Phase, Trap, TrapHint } from './model'
 import { modifyFocus } from './party'
+import { initialModel } from './pureApp'
 import { ShopTabsBlock } from './shopTabs'
 import {
   ROOT,

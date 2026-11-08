@@ -18,9 +18,10 @@ import { type DoorId, TrapHint, type Vector } from './worldSchema'
 // WAVE pulses and the tracker ticks off and fades.
 //
 // It runs once per save: it starts only in a break where the shop is open
-// while the shop lesson is still pending and no trap was ever bought, both
-// already saved, so a player who has shopped before never sees it and a
-// tutorial reset brings it back. Never in co-op. It is skippable: the
+// while the shop and open break lessons are still pending and no trap was
+// ever bought, all saved, so a player who has shopped before, or who
+// skipped the tutorial on the first-run card, never sees it and a tutorial
+// reset brings it back. Never in co-op. It is skippable: the
 // tracker's skip button, or starting the wave, ends it.
 export type QuestStep = 'Shop' | 'Buy' | 'Place'
 
@@ -38,6 +39,7 @@ const isQuestBreak = (model: Model): boolean =>
 const isQuestDue = (model: Model): boolean =>
   isQuestBreak(model) &&
   isPending(model.lessons.shop) &&
+  isPending(model.lessons.openBreak) &&
   TrapHint.isAnyOf(['Unseen'])(model.trapHint)
 
 export const questStepOf = (model: Model): Option.Option<QuestStep> => {

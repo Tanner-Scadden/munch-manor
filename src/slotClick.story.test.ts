@@ -4,17 +4,11 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { MELEE_SLOT_INDEX, gunSlotBox } from './hud'
-import { update } from './main'
 import { Message } from './message'
-import {
-  GameEvent,
-  type Model,
-  Phase,
-  type PointerDevice,
-  initialModel,
-} from './model'
+import { GameEvent, type Model, Phase, type PointerDevice } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { screenOf } from './screen'
 import { FIXED_FRAME, SURFACE, holdingFirst } from './testing'
 import { asVeteran } from './veteran'

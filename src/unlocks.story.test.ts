@@ -1,6 +1,5 @@
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
@@ -8,9 +7,9 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import { CharacterBinding } from './bindings'
 import { chooseCalling } from './callingPick'
 import * as Character from './character'
-import { update } from './main'
 import { Message } from './message'
 import { homeAfterRead } from './model.fixture'
+import { Child, update } from './pureApp'
 import { noRank, pointsForRank } from './rank'
 import { modelAfter, writeSave } from './testing'
 import { callingUnlocksAt, hasUnseenLook, lookUnlocksAt } from './unlocks'
@@ -60,7 +59,7 @@ describe('picking an unlock', () => {
       showDialog(),
       Command.resolve(WriteSave, Message.CompletedWriteSave()),
       message(
-        toParentMessage(
+        Child.message(
           CharacterBinding,
           Character.Message.ClickedGearOption({
             part: 'ShirtColor',

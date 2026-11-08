@@ -9,7 +9,6 @@ import { FIXED_STEP_MS } from './constants'
 import { PAN_RULES } from './fridgeWeapons'
 import { meleeSlotLook } from './hud'
 import { FRIDGE_RULES, PRIZE_ORDER, pickPrize, prizeWeights } from './leftovers'
-import { update } from './main'
 import { Message } from './message'
 import {
   type CarriedGun,
@@ -20,12 +19,12 @@ import {
   type Model,
   Phase,
   type Zombie,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN, atFridge, withSeat } from './model.fixture'
 import { focusOf, focusSlotOf, maybePlayerAt, modifyFocus } from './party'
 import { nextRandom } from './prng'
 import { REPLACED_KNIFE, maybeReplacedIcon } from './purchaseView'
+import { initialModel, update } from './pureApp'
 import {
   AIM_REACH,
   DEFAULT_ROOM_SETTINGS,

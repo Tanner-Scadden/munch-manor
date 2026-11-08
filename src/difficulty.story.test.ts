@@ -1,7 +1,6 @@
 import { Array, Option } from 'effect'
 import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { DialogBlock } from '@foldkit/ui'
@@ -10,7 +9,6 @@ import { PanelDialogBinding } from './bindings'
 import { FIXED_STEP_MS } from './constants'
 import { biteDamage } from './difficulty'
 import { bestsFor } from './home'
-import { update } from './main'
 import { Message } from './message'
 import {
   type Difficulty,
@@ -27,6 +25,7 @@ import {
 } from './model'
 import { newPlayerReady, readyModel } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
+import { Child, update } from './pureApp'
 import {
   closeDialog,
   openLobbyByKey,
@@ -71,7 +70,10 @@ describe('the first-time difficulty card', () => {
         expect(current.panel).toBe('Difficulty')
         expect(current.panelDialog.isOpen).toBe(true)
         expect(current.difficultyCard).toEqual(
-          DifficultyCard.Asking({ mode: RunMode.Campaign() }),
+          DifficultyCard.Asking({
+            mode: RunMode.Campaign(),
+            tutorial: 'Tutorial',
+          }),
         )
       }),
       pick('Easy'),
@@ -93,10 +95,7 @@ describe('the first-time difficulty card', () => {
       press('Enter'),
       showDialog(),
       message(
-        toParentMessage(
-          PanelDialogBinding,
-          DialogBlock.Message.RequestedClose(),
-        ),
+        Child.message(PanelDialogBinding, DialogBlock.Message.CanceledDialog()),
       ),
       closeDialog(),
       model(current => {

@@ -3,7 +3,7 @@ import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { activeBots, addBot, removeBot } from '../bots'
-import { ApplicationDefinition, makeStep } from '../definition'
+import { ApplicationBlock, makeStep } from '../definition'
 import { chooseDifficulty, isLocked } from '../difficulty'
 import { runModeOf, switchMode } from '../home'
 import { isStartKey, maybeFocusStep } from '../input'
@@ -48,7 +48,7 @@ import {
 
 // COMMAND
 
-export const FocusLobbyControl = ApplicationDefinition.makeCommand(
+export const FocusLobbyControl = ApplicationBlock.makeCommand(
   'FocusLobbyControl',
   {
     args: { control: LobbyControl },

@@ -1,7 +1,6 @@
 import { Array, Option } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
@@ -14,11 +13,11 @@ import { freshRoom, maybeRoomOf } from './coop/roomState'
 import { CODE, lobbyOf, memberOf, playingSession } from './coop/testing'
 import { FocusCoopElement, RememberRoom } from './coop/update'
 import { aimTracers } from './firing'
-import { update } from './main'
 import { Message } from './message'
-import { AudioState, Lesson, type Model, initialModel } from './model'
+import { AudioState, Lesson, type Model } from './model'
 import { withSeat } from './model.fixture'
 import { focusOf, leadSeatOf, maybePlayerAt, modifyFocus } from './party'
+import { Child, initialModel, update } from './pureApp'
 import {
   DEFAULT_ROOM_SETTINGS,
   type RoomWorld,
@@ -386,10 +385,7 @@ describe('an online co-op run', () => {
       }),
       message(Message.ClickedBuyButton({ item: 'Shotgun' })),
       message(
-        toParentMessage(
-          ShopDialogBinding,
-          DialogBlock.Message.RequestedClose(),
-        ),
+        Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
       ),
       Command.resolve(
         Dialog.test.CloseDialog,
@@ -438,7 +434,7 @@ describe('an online co-op run', () => {
       update,
       given(inRun(roomWorld)),
       message(roomFrame(100)),
-      message(toParentMessage(CoopBinding, CoopMessage.CompletedLeaveRoom())),
+      message(Child.message(CoopBinding, CoopMessage.CompletedLeaveRoom())),
       Command.resolve(RememberRoom, CoopMessage.CompletedRememberRoom()),
       Command.resolve(
         FocusCoopElement,

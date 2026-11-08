@@ -33,7 +33,6 @@ import {
   type WeaponKind,
   type Zombie,
   type ZombieKind,
-  initialModel,
 } from '@game/model'
 import { raiseDebutCard } from '@game/onboarding'
 import { advanceParticles } from '@game/particles'
@@ -45,6 +44,7 @@ import {
   playersOf,
   seatCrew,
 } from '@game/party'
+import { initialModel } from '@game/pureApp'
 import { startOrResume } from '@game/runFlow'
 import { shedParts } from '@game/simulation'
 import { SeatAction, applySeatAction } from '@game/stepWorld'

@@ -1,1 +1,2 @@
-export { CoopBlock } from './block'
+export { CoopLayer } from './block'
+export { CoopBlock } from './definition'

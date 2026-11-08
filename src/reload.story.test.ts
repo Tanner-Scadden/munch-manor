@@ -11,7 +11,6 @@ import {
   PISTOL_RELOAD_MS,
   PREPARATION_MS,
 } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   Arsenal,
@@ -21,10 +20,10 @@ import {
   Phase,
   Reload,
   ShopState,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN, withArsenal } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import {
   countdownTicks,
   holdFire,

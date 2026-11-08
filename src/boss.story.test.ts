@@ -30,7 +30,6 @@ import { cameraOf } from './camera'
 import { PACK_WARNING_MS } from './constants'
 import { DIFFICULTIES } from './difficulty'
 import { hpScaleFor, rollSpawns } from './endlessWaves'
-import { update } from './main'
 import {
   Boss,
   BossMove,
@@ -42,6 +41,7 @@ import {
   type Zombie,
 } from './model'
 import { newPlayerReady } from './model.fixture'
+import { update } from './pureApp'
 import { BOSS_ICON } from './sprites/zombies'
 import {
   FRAME_MS,

@@ -19,16 +19,11 @@ import { FIXED_STEP_MS } from './constants'
 import { EXIT_RULES, KITCHEN_EXIT } from './exits'
 import { FRIDGE_RULES, fridgeBoxOf } from './leftovers'
 import { Message } from './message'
-import {
-  FridgeDoor,
-  type InputDevice,
-  type Model,
-  Phase,
-  initialModel,
-} from './model'
+import { FridgeDoor, type InputDevice, type Model, Phase } from './model'
 import { inPortrait, midWaveAtStall, pastTimedBreaks } from './model.fixture'
 import { modifyFocus } from './party'
 import { purchaseOverlayShapes } from './purchaseView'
+import { initialModel } from './pureApp'
 import { SHOP_ITEMS } from './shop'
 import {
   HOLD_TICKS,

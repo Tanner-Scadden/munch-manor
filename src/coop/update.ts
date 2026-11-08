@@ -30,7 +30,7 @@ import { Calling, type SavedBoughtCosmetics } from '../playerData'
 import { eventsBetween } from '../roomWorld'
 import { stepWhen } from '../stepWhen'
 import { CoopComposition } from './composition'
-import { CoopDefinition } from './definition'
+import { CoopBlock } from './definition'
 import { makeEdits } from './lobbyEdits'
 import { Message, OutMessage } from './message'
 import {
@@ -84,7 +84,7 @@ import { coopWorld } from './seam'
 
 // COMMAND
 
-export const FocusCoopElement = CoopDefinition.makeCommand('FocusCoopElement', {
+export const FocusCoopElement = CoopBlock.makeCommand('FocusCoopElement', {
   args: { id: Schema.String },
   messages: [Message.CompletedFocusCoopElement],
   handler: function* () {
@@ -96,7 +96,7 @@ export const FocusCoopElement = CoopDefinition.makeCommand('FocusCoopElement', {
   },
 })
 
-export const RequestRoom = CoopDefinition.makeCommand('RequestRoom', {
+export const RequestRoom = CoopBlock.makeCommand('RequestRoom', {
   args: {
     request: RoomRequest,
     name: Schema.String,
@@ -118,7 +118,7 @@ export const RequestRoom = CoopDefinition.makeCommand('RequestRoom', {
   },
 })
 
-export const AnswerOffer = CoopDefinition.makeCommand('AnswerOffer', {
+export const AnswerOffer = CoopBlock.makeCommand('AnswerOffer', {
   args: { accept: Schema.Boolean },
   messages: [Message.CompletedAnswerOffer],
   handler: function* () {
@@ -129,7 +129,7 @@ export const AnswerOffer = CoopDefinition.makeCommand('AnswerOffer', {
   },
 })
 
-export const CancelQuickPlay = CoopDefinition.makeCommand('CancelQuickPlay', {
+export const CancelQuickPlay = CoopBlock.makeCommand('CancelQuickPlay', {
   messages: [Message.CompletedCancelQuickPlay],
   handler: function* () {
     return () =>
@@ -139,7 +139,7 @@ export const CancelQuickPlay = CoopDefinition.makeCommand('CancelQuickPlay', {
   },
 })
 
-export const ChangeLobby = CoopDefinition.makeCommand('ChangeLobby', {
+export const ChangeLobby = CoopBlock.makeCommand('ChangeLobby', {
   args: { change: LobbyChange },
   messages: [Message.CompletedChangeLobby, Message.FailedChangeLobby],
   handler: function* () {
@@ -153,7 +153,7 @@ export const ChangeLobby = CoopDefinition.makeCommand('ChangeLobby', {
   },
 })
 
-export const SendRoomFrames = CoopDefinition.makeCommand('SendRoomFrames', {
+export const SendRoomFrames = CoopBlock.makeCommand('SendRoomFrames', {
   args: { frames: Schema.Array(ClientFrame) },
   messages: [Message.CompletedSendRoomFrames],
   handler: function* () {
@@ -164,7 +164,7 @@ export const SendRoomFrames = CoopDefinition.makeCommand('SendRoomFrames', {
   },
 })
 
-export const LeaveRoom = CoopDefinition.makeCommand('LeaveRoom', {
+export const LeaveRoom = CoopBlock.makeCommand('LeaveRoom', {
   messages: [Message.CompletedLeaveRoom],
   handler: function* () {
     return () =>
@@ -176,7 +176,7 @@ export const LeaveRoom = CoopDefinition.makeCommand('LeaveRoom', {
 
 // NOTE: the session could not apply a message from the room, so it asks
 // for a new socket, whose link brings a fresh Snapshot.
-export const ResyncRoom = CoopDefinition.makeCommand('ResyncRoom', {
+export const ResyncRoom = CoopBlock.makeCommand('ResyncRoom', {
   messages: [Message.CompletedResyncRoom],
   handler: function* () {
     return () =>
@@ -188,7 +188,7 @@ export const ResyncRoom = CoopDefinition.makeCommand('ResyncRoom', {
 
 // NOTE: the phone's own share sheet where there is one, else the link on the
 // clipboard. Either way the button shows what happened with an icon.
-export const ShareRoomLink = CoopDefinition.makeCommand('ShareRoomLink', {
+export const ShareRoomLink = CoopBlock.makeCommand('ShareRoomLink', {
   args: { code: Schema.String },
   messages: [Message.CompletedShareRoomLink],
   handler: function* () {
@@ -217,7 +217,7 @@ export const ShareRoomLink = CoopDefinition.makeCommand('ShareRoomLink', {
 
 // NOTE: a tap on the lobby's room code puts the code on the clipboard, to
 // paste in a chat. A browser with no clipboard (an insecure page) fails.
-export const CopyRoomCode = CoopDefinition.makeCommand('CopyRoomCode', {
+export const CopyRoomCode = CoopBlock.makeCommand('CopyRoomCode', {
   args: { code: Schema.String },
   messages: [Message.CompletedCopyRoomCode],
   handler: function* () {
@@ -236,7 +236,7 @@ export const CopyRoomCode = CoopDefinition.makeCommand('CopyRoomCode', {
 
 // NOTE: the room's code rides in the address, so a reload rejoins the same
 // seat and the address bar is itself the invite.
-export const RememberRoom = CoopDefinition.makeCommand('RememberRoom', {
+export const RememberRoom = CoopBlock.makeCommand('RememberRoom', {
   args: { maybeCode: Schema.Option(Schema.String) },
   messages: [Message.CompletedRememberRoom],
   handler: function* () {

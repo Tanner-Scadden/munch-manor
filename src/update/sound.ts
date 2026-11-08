@@ -15,7 +15,7 @@ import {
   resumeAudio,
 } from '../audio'
 import {
-  ApplicationDefinition,
+  ApplicationBlock,
   makeManagedResources,
   makeResource,
 } from '../definition'
@@ -70,7 +70,7 @@ export const audioFailureReason = (
     ? error.reason
     : `${error.resource} is not acquired`
 
-export const ResumeAudio = ApplicationDefinition.makeCommand('ResumeAudio', {
+export const ResumeAudio = ApplicationBlock.makeCommand('ResumeAudio', {
   messages: [Message.CompletedResumeAudio, Message.FailedResumeAudio],
   handler: function* () {
     return () =>
@@ -87,7 +87,7 @@ export const ResumeAudio = ApplicationDefinition.makeCommand('ResumeAudio', {
   },
 })
 
-export const PlaySound = ApplicationDefinition.makeCommand('PlaySound', {
+export const PlaySound = ApplicationBlock.makeCommand('PlaySound', {
   args: { sound: SoundEffect, variation: Schema.Finite },
   messages: [Message.CompletedPlaySound, Message.FailedPlaySound],
   handler: function* () {

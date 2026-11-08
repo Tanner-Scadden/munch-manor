@@ -24,12 +24,12 @@ import { describe, test } from 'vitest'
 
 import { RESTART_GRACE_MS } from './constants'
 import { SHARE_COPIED_MS } from './endBeat'
-import { update } from './main'
 import { shareTextOf } from './menus'
 import { Message } from './message'
-import { type Model, Phase, initialModel } from './model'
+import { type Model, Phase } from './model'
 import { withNewerBuild } from './model.fixture'
 import { ShareFromClick } from './mount'
+import { initialModel, update } from './pureApp'
 import {
   ROOT,
   SCENE_SUBSCRIPTIONS,

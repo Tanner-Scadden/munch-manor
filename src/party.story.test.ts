@@ -13,7 +13,6 @@ import {
 } from './constants'
 import { rollSpawns } from './endlessWaves'
 import { EXIT_RULES, KITCHEN_EXIT } from './exits'
-import { update } from './main'
 import {
   Arsenal,
   type Bullet,
@@ -29,7 +28,6 @@ import {
   Reload,
   ShopState,
   Trap,
-  initialModel,
 } from './model'
 import {
   DISTANT_SPAWN,
@@ -52,6 +50,7 @@ import {
 } from './party'
 import { flowFieldsToward } from './pathing'
 import { PURCHASE_RULES } from './purchase'
+import { initialModel, update } from './pureApp'
 import { SHOP_ITEMS, STALL_BOX } from './shop'
 import { SeatAction, applySeatAction, soloInputs, stepWorld } from './stepWorld'
 import { countdownTicks, ticks, withPistol, zombieOf } from './testing'

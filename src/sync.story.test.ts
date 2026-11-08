@@ -3,9 +3,8 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { update } from './main'
 import { Message } from './message'
-import { Loading, type Model, initialModel } from './model'
+import { Loading, type Model } from './model'
 import {
   LastRunSync,
   LinkFlow,
@@ -18,6 +17,7 @@ import {
   syncStateText,
   withUnsavedChanges,
 } from './playerSync'
+import { initialModel, update } from './pureApp'
 import { type PlayerSave, saveOf } from './save'
 import {
   AwaitRunSettled,
