@@ -10,8 +10,6 @@ import {
   SyncState,
 } from '../platform/playerSync'
 import { PlayerSave } from '../platform/save'
-import { Calling } from '../shared/playerData'
-import { Modifier } from '../world/run/modifiers'
 import {
   Difficulty,
   FullscreenSetting,
@@ -19,10 +17,8 @@ import {
   HandCard,
   HelpCard,
   HomeButton,
-  HomeMode,
   InstallOffer,
   InstallOutcome,
-  LobbyControl,
   OrientationLock,
   PageVisibility,
   PointerDevice,
@@ -155,8 +151,6 @@ export const Message = defineMessageUnion({
   ClickedStayButton: {},
   ClickedDifficultyCardButton: { difficulty: Difficulty },
   ClickedTutorialChoiceButton: { choice: TutorialChoice },
-  ClickedCallingCardButton: { calling: Calling },
-  ClickedBuyCallingButton: {},
   FocusedHomeButton: { button: HomeButton },
   BlurredHomeButton: {},
   CompletedFocusHomeButton: {},
@@ -200,18 +194,6 @@ export const Message = defineMessageUnion({
   ClickedMunchopediaShopButton: {},
   ClickedMunchopediaShopSectionButton: { section: ShopGuideSection },
   ClickedNewEntryButton: { kind: ZombieKind },
-  ClickedLobbyBackButton: {},
-  ClickedLobbyStartButton: {},
-  ClickedLobbyHeroButton: {},
-  ClickedLobbyAddBotButton: {},
-  ClickedLobbyDropBotButton: { index: Schema.Finite },
-  ClickedLobbyBotHeroButton: { index: Schema.Finite },
-  ClickedLobbyModeButton: { mode: HomeMode },
-  ClickedLobbyDifficultyButton: { difficulty: Difficulty },
-  ClickedLobbyModifierButton: { modifier: Modifier },
-  FocusedLobbyControl: { control: LobbyControl },
-  BlurredLobbyControl: {},
-  CompletedFocusLobbyControl: {},
   ClickedManorButton: {},
   ClickedTurnHint: {},
   SteppedHandFocus: { card: HandCard },

@@ -16,6 +16,7 @@ import {
   playingSession,
   stagedWorld,
 } from '@game/features/coop/testing'
+import type { Model as HeroPickerModel } from '@game/features/heroes/model'
 import type { RoomWorld } from '@game/world/net/roomWorld'
 import { modifySeat, modifySeatRecord } from '@game/world/party/party'
 import { Session } from '@munch/netcode'
@@ -62,10 +63,8 @@ const coopRoom = (
     share: 'Idle',
     codeCopies: 0,
     departure: 'Staying',
-    isPickingCalling: false,
     maybeNameDraft: Option.none(),
     maybeNudge: Option.none(),
-    maybeTryingCalling: Option.none(),
     ...extra,
   }
 }
@@ -208,10 +207,8 @@ const coopScreen = (
       return Screen.InRoom({ room: coopRoom(members(2), 'Lobby') })
     case 'host':
       return Screen.InRoom({ room: coopRoom(members(4, 1), 'Lobby') })
-    case 'heroes': {
-      const room = coopRoom(members(3, 1), 'Lobby')
-      return Screen.InRoom({ room: { ...room, isPickingCalling: true } })
-    }
+    case 'heroes':
+      return Screen.InRoom({ room: coopRoom(members(3, 1), 'Lobby') })
     case 'guest':
       return Screen.InRoom({
         room: coopRoom(members(3, 1), 'Lobby', {
@@ -240,16 +237,8 @@ const coopScreen = (
       })
     }
     case 'herosale':
-    case 'heroshort': {
-      const room = coopRoom(members(3, 1), 'Lobby')
-      return Screen.InRoom({
-        room: {
-          ...room,
-          isPickingCalling: true,
-          maybeTryingCalling: Option.some('TrackStar' as const),
-        },
-      })
-    }
+    case 'heroshort':
+      return Screen.InRoom({ room: coopRoom(members(3, 1), 'Lobby') })
     case 'picks': {
       const room = coopRoom(members(2, 1), 'Lobby')
       return Screen.InRoom({
@@ -384,6 +373,18 @@ const withModifiersPicked = (
     () => screen,
   )
 
+// NOTE: the hero picker the lobby stages show open: shut, open on the cards,
+// or with the Track Star tried on (BUY lit or short of Bones).
+const pickerOf = (stage: HarnessConfig['coop']): HeroPickerModel => {
+  if (stage === 'heroes') {
+    return { status: 'Open', maybeTrying: Option.none() }
+  } else if (stage === 'herosale' || stage === 'heroshort') {
+    return { status: 'Open', maybeTrying: Option.some('TrackStar') }
+  } else {
+    return { status: 'Closed', maybeTrying: Option.none() }
+  }
+}
+
 // NOTE: a staged run draws its room's World as the game, one frame of it,
 // as an online run does (src/features/onlineRun/coopPlay.ts).
 export const withCoop: {
@@ -401,6 +402,7 @@ export const withCoop: {
         coopScreen(stage, config.seats ?? LIVE_SEATS),
         config.mods ?? 0,
       ),
+      heroPicker: pickerOf(stage),
     }),
   })
   const drawn = update(staged, Message.TickedRoomFrame({ nowMs: 0 })).model

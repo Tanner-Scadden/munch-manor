@@ -23,7 +23,9 @@ import { hasJustWon } from '../../world/run/difficulty'
 import { addKills, killTotal, killsSince } from '../../world/run/stats'
 import type { Difficulty } from '../../world/schema/worldSchema'
 import type { FocusStep } from '../../world/step/stepWorld'
+import { botSeatsFor } from '../bots/bots'
 import { IS_COOP_RELEASED } from '../coop/release'
+import type { LobbyPicks } from '../lobby/model'
 import { isDiscovered, newlyDiscovered } from '../munchopedia/munchopedia'
 import { maybeNewestNewsDay } from '../whatsNew/changelog'
 
@@ -240,6 +242,16 @@ export const isInstallTileShown = (model: Model): boolean =>
 
 export const runModeOf = (mode: HomeMode): RunMode =>
   mode === 'Campaign' ? RunMode.Campaign() : RunMode.Endless()
+
+// NOTE: what the single player lobby picks from, as the root keeps it: its
+// update context and view input (LobbyBinding in src/app/bindings.ts).
+export const lobbyPicksOf = (model: Model): LobbyPicks => ({
+  mode: model.home.mode,
+  difficulty: model.difficulty,
+  modifiers: model.modifiers,
+  bots: model.home.bots,
+  botSeats: botSeatsFor(model),
+})
 
 export const switchMode = (model: Model): Model =>
   modifyFields(model, {

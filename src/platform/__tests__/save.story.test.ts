@@ -22,6 +22,7 @@ import {
 } from '../../app/model'
 import { Child, initialModel, update } from '../../app/pureApp'
 import { WriteSave } from '../../app/update/save'
+import { Message as LobbyMessage } from '../../features/lobby/message'
 import { shownHints } from '../../features/onboarding/onboarding'
 import { Message as ProfileMessage } from '../../features/profile/message'
 import {
@@ -692,7 +693,11 @@ describe('writing the save', () => {
       given(settings),
       message(Message.ClickedPlayButton()),
       resolveFocusLobby(),
-      message(Message.ClickedLobbyDifficultyButton({ difficulty: 'Easy' })),
+      message(
+        Child.lobby(
+          LobbyMessage.ClickedDifficultyButton({ difficulty: 'Easy' }),
+        ),
+      ),
       resolveFocusLobby(),
       Command.expectExact(
         WriteSave({

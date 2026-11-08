@@ -59,13 +59,6 @@ import {
 import { InstallPrompt } from '../../platform/install'
 import { activateNewBuild } from '../../platform/serviceWorker'
 import { reloadOnto } from '../../platform/version'
-import type { Calling } from '../../shared/playerData'
-import {
-  type CallingStanding,
-  callingStandingOf,
-  canAffordCalling,
-} from '../../world/heroes/calling'
-import { rankOf, totalPointsOf } from '../../world/heroes/rank'
 import {
   chooseDifficulty,
   isLocked,
@@ -73,16 +66,8 @@ import {
   settleNightmare,
   unlockNightmare,
 } from '../../world/run/difficulty'
-import { setBotCalling } from '../bots/bots'
-import {
-  buyCalling,
-  chooseCalling,
-  tryOnCalling,
-  withoutTryOn,
-} from '../heroes/callingPick'
 import { skipTutorial } from '../onboarding/onboarding'
 import { runDifficultyOf } from '../onlineRun/onlineRun'
-import { markCallingsSeen } from '../unlocks/update'
 import { NEWS_DAYS } from '../whatsNew/changelog'
 import {
   END_MENU_BUTTON_ID,
@@ -220,46 +205,28 @@ export const ReloadPage = ApplicationBlock.makeCommand('ReloadPage', {
 // NOTE: the panel's Closed fold (src/app/composition.ts): a Difficulty panel
 // that asked before a run, closed without a pick, asks again next time.
 export const forgetAskedMode: UpdateStep = stepModel => ({
-  model: modifyFields(
-    DifficultyCard.isAnyOf(['Asking'])(stepModel.difficultyCard)
-      ? modifyFields(stepModel, {
-          difficultyCard: () => DifficultyCard.Unseen(),
-        })
-      : stepModel,
-    {
-      home: home =>
-        modifyFields(home, {
-          maybePickingBot: () => Option.none(),
-          maybeTryingCalling: () => Option.none(),
-        }),
-    },
-  ),
+  model: DifficultyCard.isAnyOf(['Asking'])(stepModel.difficultyCard)
+    ? modifyFields(stepModel, {
+        difficultyCard: () => DifficultyCard.Unseen(),
+      })
+    : stepModel,
 })
 
-// NOTE: Leave Run opens over the pause menu, the hero picker over the bare
-// home menu or the single player lobby, every other panel over the bare home
-// menu.
-const isPanelAllowed = (model: Model, panel: MenuPanel): boolean => {
-  if (panel === 'LeaveRun') {
-    return MenuState.isAnyOf(['Paused'])(menuState(model))
-  } else if (panel === 'Calling') {
-    return MenuState.isAnyOf(['Home', 'Lobby'])(menuState(model))
-  } else {
-    return MenuState.isAnyOf(['Home'])(menuState(model))
-  }
-}
+// NOTE: Leave Run opens over the pause menu, every other panel over the
+// bare home menu.
+const isPanelAllowed = (model: Model, panel: MenuPanel): boolean =>
+  panel === 'LeaveRun'
+    ? MenuState.isAnyOf(['Paused'])(menuState(model))
+    : MenuState.isAnyOf(['Home'])(menuState(model))
 
 const showPanel =
   (panel: MenuPanel): UpdateStep =>
   stepModel => ({
     model: withInput(
-      modifyFields(
-        panel === 'Calling' ? markCallingsSeen(stepModel) : stepModel,
-        {
-          panel: () => panel,
-          maybeOpenHelpCard: () => Option.none(),
-        },
-      ),
+      modifyFields(stepModel, {
+        panel: () => panel,
+        maybeOpenHelpCard: () => Option.none(),
+      }),
       releaseAll,
     ),
   })
@@ -531,76 +498,6 @@ export const pickFromCard = (difficulty: Difficulty) =>
             ]),
     }),
   )
-
-// NOTE: a calling is picked from the home menu's picker, never in a run.
-// An owned hero is the pick. One for sale (its rank is reached) is tried on
-// for the player's own pick and bought by the BUY pill (`buyHero`); a
-// teammate bot only takes a hero the player owns. A locked one shakes.
-const pickedOwned = (calling: Calling) =>
-  Update.combineSteps([
-    modelStep(stepModel =>
-      Option.match(stepModel.home.maybePickingBot, {
-        onNone: () => chooseCalling(withoutTryOn(stepModel), calling),
-        onSome: index => setBotCalling(withoutTryOn(stepModel), index, calling),
-      }),
-    ),
-    closePanel,
-  ])
-
-const deniedCard: UpdateStep = stepModel =>
-  playSounds([uiCue('Denied')])(withoutTryOn(stepModel))
-
-const CARD_TAPS = {
-  Owned: pickedOwned,
-  ForSale: (calling: Calling) =>
-    makeStep(model =>
-      Update.combineSteps([
-        Option.isSome(model.home.maybePickingBot)
-          ? deniedCard
-          : stepModel =>
-              playSounds([uiCue('Pop')])(tryOnCalling(stepModel, calling)),
-      ]),
-    ),
-  Locked: () => Update.combineSteps([deniedCard]),
-} satisfies Record<CallingStanding, unknown>
-
-export const pickCalling = (calling: Calling) =>
-  makeStep(model =>
-    isPanelOpen(model, 'Calling') && isOnHome(model.phase)
-      ? CARD_TAPS[
-          callingStandingOf(
-            calling,
-            rankOf(totalPointsOf(model.rank)),
-            model.boughtCosmetics,
-          )
-        ](calling)
-      : unchanged,
-  )
-
-// NOTE: the BUY pill: spends the Bones on the hero being tried on and makes
-// it the pick, and the picker closes. Short of Bones it shakes and stays.
-// Nothing without a try-on, or for a hero no longer for sale.
-export const buyHero = makeStep(model =>
-  Option.match(model.home.maybeTryingCalling, {
-    onNone: () => unchanged,
-    onSome: calling =>
-      !isPanelOpen(model, 'Calling') ||
-      Option.isSome(model.home.maybePickingBot) ||
-      callingStandingOf(
-        calling,
-        rankOf(totalPointsOf(model.rank)),
-        model.boughtCosmetics,
-      ) !== 'ForSale'
-        ? Update.combineSteps([modelStep(withoutTryOn)])
-        : canAffordCalling(model.rank, calling)
-          ? Update.combineSteps([
-              stepModel =>
-                playSounds([uiCue('Purchase')])(buyCalling(stepModel, calling)),
-              closePanel,
-            ])
-          : Update.combineSteps([playSounds([uiCue('Denied')])]),
-  }),
-)
 
 export const settleNightmareFrom =
   (before: Model): UpdateStep =>

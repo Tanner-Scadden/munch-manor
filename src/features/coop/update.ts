@@ -8,7 +8,7 @@ import {
   Result,
   Schema,
 } from 'effect'
-import { Dom, type Update } from 'foldkit'
+import type { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -31,7 +31,6 @@ import { eventsBetween } from '../../world/net/roomWorld'
 import { DIFFICULTY_ORDER } from '../../world/run/difficulty'
 import { CoopBlock } from './block'
 import { CoopComposition } from './composition'
-import { makeEdits } from './lobbyEdits'
 import { Message, OutMessage } from './message'
 import {
   type CoopProblem,
@@ -46,7 +45,6 @@ import {
 } from './model'
 import { CoopNet } from './net'
 import {
-  CALLING_KEY,
   CODE_INPUT_ID,
   DIFFICULTY_KEY,
   ENTER,
@@ -79,20 +77,15 @@ import {
   withScreen,
 } from './roomState'
 import { coopWorld } from './seam'
+import {
+  ChangeLobby,
+  FocusCoopElement,
+  closeStrayPicker,
+  edits,
+  togglePicker,
+} from './steps'
 
 // COMMAND
-
-export const FocusCoopElement = CoopBlock.makeCommand('FocusCoopElement', {
-  args: { id: Schema.String },
-  messages: [Message.CompletedFocusCoopElement],
-  handler: function* () {
-    return ({ id }) =>
-      Dom.focus(`#${id}`).pipe(
-        Effect.ignore,
-        Effect.as(Message.CompletedFocusCoopElement()),
-      )
-  },
-})
 
 export const RequestRoom = CoopBlock.makeCommand('RequestRoom', {
   args: {
@@ -133,20 +126,6 @@ export const CancelQuickPlay = CoopBlock.makeCommand('CancelQuickPlay', {
     return () =>
       CoopNet.use(net => net.cancelQuickPlay).pipe(
         Effect.as(Message.CompletedCancelQuickPlay()),
-      )
-  },
-})
-
-export const ChangeLobby = CoopBlock.makeCommand('ChangeLobby', {
-  args: { change: LobbyChange },
-  messages: [Message.CompletedChangeLobby, Message.FailedChangeLobby],
-  handler: function* () {
-    return ({ change }) =>
-      CoopNet.use(net => net.changeLobby(change)).pipe(
-        Effect.as(Message.CompletedChangeLobby()),
-        Effect.catch(problem =>
-          Effect.succeed(Message.FailedChangeLobby({ problem })),
-        ),
       )
   },
 })
@@ -265,13 +244,6 @@ export type UpdateReturn = Update.ReturnWithOutMessage<
   CoopHandlers
 >
 
-export const edits = makeEdits<
-  ReturnType<typeof ChangeLobby> | ReturnType<typeof FocusCoopElement>
->({
-  changeLobby: change => ChangeLobby({ change }),
-  focus: id => FocusCoopElement({ id }),
-})
-
 const enterRoom = (model: Model, code: string, slot: number): UpdateReturn => ({
   model: withScreen(model, Screen.InRoom({ room: freshRoom(code, slot) })),
   commands: [
@@ -308,9 +280,6 @@ const lobbyUpdated = (model: Model, room: Room, lobby: Lobby): UpdateReturn => {
     return {
       model: withRoom(model, {
         ...learned,
-        isPickingCalling: learned.isPickingCalling && lobby.status === 'Lobby',
-        maybeTryingCalling:
-          lobby.status === 'Lobby' ? learned.maybeTryingCalling : Option.none(),
         maybeNameDraft:
           lobby.status === 'Lobby' ? learned.maybeNameDraft : Option.none(),
       }),
@@ -569,25 +538,6 @@ const pick = (
         : { model },
   })
 
-const togglePicker = (model: Model, room: Room): UpdateReturn =>
-  isInLobby(room) && Option.isSome(meIn(room))
-    ? {
-        model: withRoom(model, {
-          ...room,
-          isPickingCalling: !room.isPickingCalling,
-          maybeTryingCalling: Option.none(),
-        }),
-      }
-    : { model }
-
-// NOTE: with the picker open the other lobby keys wait: Enter belongs to the
-// card in focus, and Escape or the pill's key closes it.
-const keyInPicker = (model: Model, room: Room, code: string): UpdateReturn =>
-  stepWhen<Model, UpdateReturn>(
-    () => code === ESCAPE || code === CALLING_KEY,
-    picked => togglePicker(picked, room),
-  )(model)
-
 const pickFromKey = (model: Model, room: Room, code: string): UpdateReturn =>
   Option.match(room.maybeLobby, {
     onNone: () => ({ model }),
@@ -653,10 +603,6 @@ const keyOnScreen = (model: Model, code: string): UpdateReturn =>
           () => code === ESCAPE,
           () => edits.stopNaming(model, room),
         )(model)
-      } else if (room.isPickingCalling) {
-        return keyInPicker(model, room, code)
-      } else if (code === CALLING_KEY) {
-        return togglePicker(model, room)
       } else if (code === ENTER) {
         return toggleReady(model, room)
       } else {
@@ -962,21 +908,9 @@ const updateMessage = (model: Model, message: Message): UpdateReturn =>
     ClickedModifierPick: ({ modifier }) =>
       inRoom(model, room => edits.pickModifier(model, room, modifier)),
 
-    ClickedCallingPill: () => inRoom(model, room => togglePicker(model, room)),
-
-    ClickedCallingPick: ({ calling }) =>
-      inRoom(model, room => edits.pickCalling(model, room, calling)),
-
-    ClickedCallingDone: () =>
-      inRoom(model, room =>
-        stepWhen<Model, UpdateReturn>(
-          () => room.isPickingCalling,
-          picked => togglePicker(picked, room),
-        )(model),
-      ),
-
-    ClickedBuyCallingButton: () =>
-      inRoom(model, room => edits.buyCalling(model, room)),
+    // NOTE: the pill opens the hero picker, a child Block, so `update`
+    // below gives it its own Step (togglePicker) and never comes here.
+    ClickedCallingPill: () => ({ model }),
 
     ClickedPickNudge: ({ reason }) =>
       inRoom(model, room => edits.nudge(model, room, reason)),
@@ -1052,7 +986,7 @@ const delivered = (model: Model, message: Message): UpdateReturn => {
     : result
 }
 
-export const update = CoopComposition.makeUpdate({
+const handlers = CoopComposition.makeUpdate({
   ClickedQuickPlayButton: delivered,
   ClickedCodeButton: delivered,
   ClickedCreateButton: delivered,
@@ -1076,10 +1010,7 @@ export const update = CoopComposition.makeUpdate({
   ClickedModePick: delivered,
   ClickedDifficultyPick: delivered,
   ClickedModifierPick: delivered,
-  ClickedCallingPill: delivered,
-  ClickedCallingPick: delivered,
-  ClickedCallingDone: delivered,
-  ClickedBuyCallingButton: delivered,
+  ClickedCallingPill: togglePicker,
   ClickedPickNudge: delivered,
   ClickedNameButton: delivered,
   UpdatedNameDraft: delivered,
@@ -1098,6 +1029,13 @@ export const update = CoopComposition.makeUpdate({
   CompletedRememberRoom: delivered,
   CompletedFocusCoopElement: delivered,
 })
+
+// NOTE: an open hero picker closes once the room leaves its lobby, on any
+// Message (src/features/coop/steps.ts, closeStrayPicker).
+export const update = CoopComposition.makeUpdate.compose(
+  handlers,
+  CoopComposition.makeUpdate.each(closeStrayPicker),
+)
 
 // HANDLERS
 

@@ -219,7 +219,6 @@ export const MenuPanel = Schema.Literals([
   'HowToPlay',
   'LeaveRun',
   'Difficulty',
-  'Calling',
   'WhatsNew',
   'Munchopedia',
 ])
@@ -286,38 +285,6 @@ export type RankGain = typeof RankGain.Type
 export const HomeMode = Schema.Literals(['Campaign', 'Endless'])
 export type HomeMode = typeof HomeMode.Type
 
-// NOTE: the single player lobby PLAY opens (src/features/lobby/lobby.ts): the settings of
-// a run before it starts. It is a screen of the home menu, so a run that
-// starts or a way home leaves it Closed.
-export const HomeLobby = Schema.Literals(['Closed', 'Open'])
-export type HomeLobby = typeof HomeLobby.Type
-
-// NOTE: every control the lobby's arrow keys walk, in order: BACK, the hero
-// card, each crew seat (a + BOT tile, or a bot's hero card with its x), the
-// two modes, the four difficulties, then START.
-export const LobbyControl = Schema.Literals([
-  'Back',
-  'Hero',
-  'Bot1',
-  'Drop1',
-  'Bot2',
-  'Drop2',
-  'Bot3',
-  'Drop3',
-  'Campaign',
-  'Endless',
-  'Easy',
-  'Normal',
-  'Hard',
-  'Nightmare',
-  'FriendlyFire',
-  'BigCrowd',
-  'Broke',
-  'Glass',
-  'Start',
-])
-export type LobbyControl = typeof LobbyControl.Type
-
 // NOTE: a teammate bot of the single player lobby (src/features/bots/bots.ts): a goofy
 // name, the hero it plays, and the look it wears. Bots are seats in the
 // run's World, driven by src/features/bots/teammateBot.ts.
@@ -349,15 +316,10 @@ export type MunchopediaPage = typeof MunchopediaPage.Type
 // the kinds unlocked by the last counted run, for the NEW ENTRY pop.
 export const HomeMenu = Schema.Struct({
   mode: HomeMode,
-  lobby: HomeLobby,
-  maybeLobbyFocus: Schema.Option(LobbyControl),
-  // NOTE: the bots the lobby seats, kept for the page session, and the one
-  // whose hero the open picker is choosing (an index into them).
+  // NOTE: the bots the lobby seats, kept for the page session: the lobby
+  // (src/features/lobby/) hands them back when it closes, and a run seats
+  // them.
   bots: Schema.Array(Bot),
-  maybePickingBot: Schema.Option(Schema.Finite),
-  // NOTE: the hero for sale being tried on in the picker (its BUY pill buys
-  // it), never saved.
-  maybeTryingCalling: Schema.Option(Calling),
   maybeSeenNewsDay: Schema.Option(Schema.String),
   newsPage: Schema.Finite,
   munchopediaPage: MunchopediaPage,
@@ -369,11 +331,7 @@ export type HomeMenu = typeof HomeMenu.Type
 
 export const freshHomeMenu: HomeMenu = {
   mode: 'Campaign',
-  lobby: 'Closed',
-  maybeLobbyFocus: Option.none(),
   bots: [],
-  maybePickingBot: Option.none(),
-  maybeTryingCalling: Option.none(),
   maybeSeenNewsDay: Option.none(),
   newsPage: 0,
   munchopediaPage: MunchopediaPage.List(),

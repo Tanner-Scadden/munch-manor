@@ -16,8 +16,9 @@ import {
   type ZombieKind,
   noKills,
 } from '../../../app/model'
-import { update } from '../../../app/pureApp'
+import { Child, update } from '../../../app/pureApp'
 import { WriteSave } from '../../../app/update/save'
+import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { saveOf } from '../../../platform/save'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN, readyModel } from '../../../test/model.fixture'
@@ -250,7 +251,9 @@ describe('the mode in the lobby', () => {
         expect(current.home.mode).toBe('Endless')
         expect(Phase.guards.Ready(current.phase)).toBe(true)
       }),
-      message(Message.ClickedLobbyModeButton({ mode: 'Campaign' })),
+      message(
+        Child.lobby(LobbyMessage.ClickedModeButton({ mode: 'Campaign' })),
+      ),
       resolveFocusLobby(),
       model(current => {
         expect(current.home.mode).toBe('Campaign')
@@ -276,9 +279,9 @@ describe('the mode in the lobby', () => {
       given(readyModel),
       message(Message.ClickedPlayButton()),
       resolveFocusLobby(),
-      message(Message.ClickedLobbyModeButton({ mode: 'Endless' })),
+      message(Child.lobby(LobbyMessage.ClickedModeButton({ mode: 'Endless' }))),
       resolveFocusLobby(),
-      message(Message.ClickedLobbyStartButton()),
+      message(Child.lobby(LobbyMessage.ClickedStartButton())),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.mode).toEqual(RunMode.Endless())
@@ -289,7 +292,7 @@ describe('the mode in the lobby', () => {
       given(readyModel),
       message(Message.ClickedPlayButton()),
       resolveFocusLobby(),
-      message(Message.ClickedLobbyStartButton()),
+      message(Child.lobby(LobbyMessage.ClickedStartButton())),
       model(current => {
         expect(current.mode).toEqual(RunMode.Campaign())
       }),
@@ -315,7 +318,7 @@ describe('the mode in the lobby', () => {
       model(current => {
         expect(Phase.guards.Ready(current.phase)).toBe(true)
         expect(current.home.mode).toBe('Endless')
-        expect(current.home.lobby).toBe('Closed')
+        expect(current.lobby.status).toBe('Closed')
       }),
     )
   })

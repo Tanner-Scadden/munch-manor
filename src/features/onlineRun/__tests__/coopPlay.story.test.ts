@@ -40,8 +40,9 @@ import { beginPreparation, startWaveEarly } from '../../../world/waves/waves'
 import { Message as CoopMessage } from '../../coop/message'
 import { Screen } from '../../coop/model'
 import { freshRoom, maybeRoomOf } from '../../coop/roomState'
+import { FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
-import { FocusCoopElement, RememberRoom } from '../../coop/update'
+import { RememberRoom } from '../../coop/update'
 
 // An online co-op run in the root (src/features/onlineRun/coopPlay.ts): the room's World drawn
 // as the game, this player's own seat as the player, presses sent to the

@@ -26,10 +26,10 @@ import {
   RoomRequest,
   Screen,
   emptyQueue,
-  initialModel,
 } from '../model'
-import { view as coopView, update } from '../pureCoop'
+import { view as coopView, initialModel, update } from '../pureCoop'
 import { freshRoom } from '../roomState'
+import { ChangeLobby, FocusCoopElement } from '../steps'
 import {
   CODE,
   lobbyOf,
@@ -40,9 +40,7 @@ import {
 import {
   AnswerOffer,
   CancelQuickPlay,
-  ChangeLobby,
   CopyRoomCode,
-  FocusCoopElement,
   LeaveRoom,
   RememberRoom,
   RequestRoom,

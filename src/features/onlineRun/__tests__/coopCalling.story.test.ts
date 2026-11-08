@@ -26,6 +26,7 @@ import { Message as CoopMessage } from '../../coop/message'
 import { Screen as CoopScreen } from '../../coop/model'
 import { freshRoom } from '../../coop/roomState'
 import { CODE, lobbyOf, memberOf } from '../../coop/testing'
+import { Message as HeroPickerMessage } from '../../heroes/message'
 
 // A co-op room seats each player as the calling they brought (the lobby's
 // member row, packages/netcode Lobby.ts): its hearts and its gun, per seat.
@@ -137,19 +138,16 @@ describe('picking a hero in the lobby', () => {
             maybeLobby: Option.some(
               lobbyOf([memberOf(0, 'Ana', false, '', false, rank)]),
             ),
-            isPickingCalling: true,
           },
         }),
+        heroPicker: { status: 'Open', maybeTrying: Option.none() },
       }),
     })
 
   test("is the player's pick at home too, and saved", () => {
     const result = update(
       pointed(4),
-      Child.message(
-        CoopBinding,
-        CoopMessage.ClickedCallingPick({ calling: 'Handyman' }),
-      ),
+      Child.coopHero(HeroPickerMessage.ClickedCard({ calling: 'Handyman' })),
     )
     expect(result.model.calling).toBe('Handyman')
     expect(focusOf(result.model).player.calling).toBe('Handyman')
@@ -161,10 +159,7 @@ describe('picking a hero in the lobby', () => {
   test('a hero the rank has not reached changes nothing at home', () => {
     const result = update(
       pointed(4),
-      Child.message(
-        CoopBinding,
-        CoopMessage.ClickedCallingPick({ calling: 'LineCook' }),
-      ),
+      Child.coopHero(HeroPickerMessage.ClickedCard({ calling: 'LineCook' })),
     )
     expect(result.model.calling).toBe(pointed(4).calling)
   })
@@ -226,17 +221,16 @@ describe('buying a hero in the lobby', () => {
           maybeLobby: Option.some(
             lobbyOf([memberOf(0, 'Ana', false, '', false, 7)]),
           ),
-          isPickingCalling: true,
-          maybeTryingCalling: Option.some('TrackStar' as const),
         },
       }),
+      heroPicker: {
+        status: 'Open',
+        maybeTrying: Option.some('TrackStar' as const),
+      },
     }),
   })
   const buy = (model: Model) =>
-    update(
-      model,
-      Child.message(CoopBinding, CoopMessage.ClickedBuyCallingButton()),
-    )
+    update(model, Child.coopHero(HeroPickerMessage.ClickedBuyButton()))
 
   test('spends the Bones once, saves, and the hero is the pick in the room', () => {
     const result = buy(trying)

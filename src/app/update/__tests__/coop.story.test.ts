@@ -6,13 +6,9 @@ import { describe, expect, test } from 'vitest'
 import { Message as CoopMessage } from '../../../features/coop/message'
 import { LobbyChange, RoomRequest, Screen } from '../../../features/coop/model'
 import { freshRoom } from '../../../features/coop/roomState'
+import { ChangeLobby, FocusCoopElement } from '../../../features/coop/steps'
 import { CODE, lobbyOf, memberOf } from '../../../features/coop/testing'
-import {
-  ChangeLobby,
-  FocusCoopElement,
-  RememberRoom,
-  RequestRoom,
-} from '../../../features/coop/update'
+import { RememberRoom, RequestRoom } from '../../../features/coop/update'
 import { FocusHomeButton } from '../../../features/home/update'
 import { type Appearance, lookCodeOf } from '../../../shared/playerData'
 import { home, newPlayerReady } from '../../../test/model.fixture'

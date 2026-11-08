@@ -7,6 +7,7 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import { Message } from '../../../app/message'
 import { Child, update } from '../../../app/pureApp'
 import { WriteSave } from '../../../app/update/save'
+import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { homeAfterRead } from '../../../test/model.fixture'
 import { modelAfter, writeSave } from '../../../test/testing'
 import { noRank, pointsForRank } from '../../../world/heroes/rank'
@@ -124,7 +125,7 @@ describe('opening the picker', () => {
   test('marks the callings reached as seen and badges them', () => {
     const { model: current } = update(
       modelAfter(reached, Message.ClickedPlayButton()),
-      Message.ClickedLobbyHeroButton(),
+      Child.lobby(LobbyMessage.ClickedHeroButton()),
     )
     expect(current.freshUnlocks).toContain('calling:LineCook')
     expect(current.freshUnlocks).not.toContain('shirt:Gold')

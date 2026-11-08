@@ -19,7 +19,6 @@ import {
   menuFromKey,
 } from '../../features/home/update'
 import { noteAmmoTip } from '../../features/hud/ammoWarning'
-import { lobbyFromKey, playFromKey } from '../../features/lobby/update'
 import { advanceQuest } from '../../features/onboarding/firstBreakQuest'
 import { advanceKitchenTour } from '../../features/onboarding/kitchenTour'
 import {
@@ -71,6 +70,7 @@ import { startWave } from '../runFlow'
 import { stepWhen } from '../stepWhen'
 import { actAsLead } from './action'
 import { coopFromKey, isCoopOpen, pressCoopKey, releaseCoopKey } from './coop'
+import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
 import {

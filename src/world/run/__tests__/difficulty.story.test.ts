@@ -22,6 +22,7 @@ import {
 } from '../../../app/model'
 import { Child, update } from '../../../app/pureApp'
 import { bestsFor } from '../../../features/home/home'
+import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { newPlayerReady, readyModel } from '../../../test/model.fixture'
 import {
@@ -145,7 +146,7 @@ describe('the first-time difficulty card', () => {
 })
 
 const lobbyDifficulty = (difficulty: Difficulty) =>
-  message(Message.ClickedLobbyDifficultyButton({ difficulty }))
+  message(Child.lobby(LobbyMessage.ClickedDifficultyButton({ difficulty })))
 
 describe('difficulty in the lobby', () => {
   test('a tile changes the difficulty without starting a run, but not Nightmare while locked', () => {
@@ -162,7 +163,7 @@ describe('difficulty in the lobby', () => {
       model(current => {
         expect(current.difficulty.chosen).toBe('Hard')
         expect(Phase.guards.Ready(current.phase)).toBe(true)
-        expect(current.home.lobby).toBe('Open')
+        expect(current.lobby.status).toBe('Open')
       }),
     )
   })
@@ -202,7 +203,7 @@ describe('difficulty in the lobby', () => {
       press('KeyX'),
       model(current => {
         expect(current.panelDialog.isOpen).toBe(false)
-        expect(current.home.lobby).toBe('Closed')
+        expect(current.lobby.status).toBe('Closed')
       }),
     )
   })

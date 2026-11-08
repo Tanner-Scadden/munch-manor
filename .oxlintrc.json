@@ -364,12 +364,15 @@
       "rules": { "foldkit/no-child-message-construction-in-root": "off" }
     },
     {
-      // NOTE: co-op, the Profile, and the Profile's Look tab are child
-      // Blocks: only their own code builds their Messages.
+      // NOTE: co-op, the Profile, the Profile's Look tab, the solo lobby,
+      // and the hero picker are child Blocks: only their own code builds
+      // their Messages.
       "files": [
         "src/features/coop/*.ts",
         "src/features/profile/*.ts",
-        "src/features/profile/blocks/look/*.ts"
+        "src/features/profile/blocks/look/*.ts",
+        "src/features/lobby/*.ts",
+        "src/features/heroes/*.ts"
       ],
       "rules": { "foldkit/no-child-message-construction-in-root": "error" }
     },

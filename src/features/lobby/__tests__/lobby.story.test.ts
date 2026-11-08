@@ -6,7 +6,9 @@ import { describe, expect, test } from 'vitest'
 import { MenuState, isLobbyOpen, menuState } from '../../../app/menuState'
 import { Message } from '../../../app/message'
 import { DifficultyCard, Lesson, Phase, RunMode } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { Child, initialModel, update } from '../../../app/pureApp'
+import { Message as HeroPickerMessage } from '../../../features/heroes/message'
+import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import {
   heroesBoughtBy,
@@ -24,7 +26,7 @@ import {
 import { pointsForRank } from '../../../world/heroes/rank'
 import { focusOf } from '../../../world/party/party'
 import { FocusHomeButton } from '../../home/update'
-import { FocusLobbyControl } from '../update'
+import { FocusLobbyControl } from '../steps'
 
 // The single player lobby (src/features/lobby/lobby.ts, src/features/lobby/update.ts): PLAY opens
 // it, START plays what it holds, and BACK and Esc go home.
@@ -37,14 +39,14 @@ describe('PLAY opens the lobby', () => {
       message(Message.ClickedPlayButton()),
       Command.resolve(
         FocusLobbyControl({ control: 'Start' }),
-        Message.CompletedFocusLobbyControl(),
+        LobbyMessage.CompletedFocusControl(),
       ),
       model(current => {
-        expect(current.home.lobby).toBe('Open')
+        expect(current.lobby.status).toBe('Open')
         expect(isLobbyOpen(current)).toBe(true)
         expect(menuState(current)._tag).toBe('Lobby')
         expect(Phase.guards.Ready(current.phase)).toBe(true)
-        expect(current.home.maybeLobbyFocus).toEqual(Option.some('Start'))
+        expect(current.lobby.maybeFocus).toEqual(Option.some('Start'))
       }),
     )
   })
@@ -80,13 +82,13 @@ describe('START plays what the lobby holds', () => {
       given(chosen),
       message(Message.ClickedPlayButton()),
       resolveFocusLobby(),
-      message(Message.ClickedLobbyStartButton()),
+      message(Child.lobby(LobbyMessage.ClickedStartButton())),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.mode).toEqual(RunMode.Endless())
         expect(current.difficulty.chosen).toBe('Hard')
         expect(focusOf(current).player.calling).toBe('Handyman')
-        expect(current.home.lobby).toBe('Closed')
+        expect(current.lobby.status).toBe('Closed')
         expect(isLobbyOpen(current)).toBe(false)
       }),
     )
@@ -97,11 +99,15 @@ describe('START plays what the lobby holds', () => {
       update,
       given(readyModel),
       openLobbyByKey,
-      message(Message.ClickedLobbyModeButton({ mode: 'Endless' })),
+      message(Child.lobby(LobbyMessage.ClickedModeButton({ mode: 'Endless' }))),
       resolveFocusLobby(),
-      message(Message.ClickedLobbyDifficultyButton({ difficulty: 'Easy' })),
+      message(
+        Child.lobby(
+          LobbyMessage.ClickedDifficultyButton({ difficulty: 'Easy' }),
+        ),
+      ),
       resolveFocusLobby(),
-      message(Message.ClickedLobbyStartButton()),
+      message(Child.lobby(LobbyMessage.ClickedStartButton())),
       model(current => {
         expect(current.mode).toEqual(RunMode.Endless())
         expect(current.difficulty.chosen).toBe('Easy')
@@ -114,7 +120,11 @@ describe('START plays what the lobby holds', () => {
       update,
       given(readyModel),
       openLobbyByKey,
-      message(Message.ClickedLobbyDifficultyButton({ difficulty: 'Hard' })),
+      message(
+        Child.lobby(
+          LobbyMessage.ClickedDifficultyButton({ difficulty: 'Hard' }),
+        ),
+      ),
       resolveFocusLobby(),
       press('Enter'),
       model(current => {
@@ -128,7 +138,7 @@ describe('START plays what the lobby holds', () => {
     story(
       update,
       given(readyModel),
-      message(Message.ClickedLobbyStartButton()),
+      message(Child.lobby(LobbyMessage.ClickedStartButton())),
       model(current => {
         expect(Phase.guards.Ready(current.phase)).toBe(true)
       }),
@@ -147,14 +157,15 @@ describe('the hero card', () => {
       update,
       given(ranked),
       openLobbyByKey,
-      message(Message.ClickedLobbyHeroButton()),
+      message(Child.lobby(LobbyMessage.ClickedHeroButton())),
       showDialog(),
       model(current => {
-        expect(menuState(current)._tag).toBe('Panel')
-        expect(current.panel).toBe('Calling')
-        expect(current.home.lobby).toBe('Open')
+        expect(menuState(current)._tag).toBe('HeroPicker')
+        expect(current.lobby.status).toBe('Open')
       }),
-      message(Message.ClickedCallingCardButton({ calling: 'Handyman' })),
+      message(
+        Child.lobbyHero(HeroPickerMessage.ClickedCard({ calling: 'Handyman' })),
+      ),
       closeDialog(),
       model(current => {
         expect(current.calling).toBe('Handyman')
@@ -171,7 +182,7 @@ describe('the hero card', () => {
       press('KeyY'),
       showDialog(),
       model(current => {
-        expect(current.panel).toBe('Calling')
+        expect(menuState(current)._tag).toBe('HeroPicker')
       }),
     )
   })
@@ -183,13 +194,13 @@ describe('BACK and Esc', () => {
       update,
       given(readyModel),
       openLobbyByKey,
-      message(Message.ClickedLobbyBackButton()),
+      message(Child.lobby(LobbyMessage.ClickedBackButton())),
       Command.resolve(
         FocusHomeButton({ button: 'Play' }),
         Message.CompletedFocusHomeButton(),
       ),
       model(current => {
-        expect(current.home.lobby).toBe('Closed')
+        expect(current.lobby.status).toBe('Closed')
         expect(Phase.guards.Ready(current.phase)).toBe(true)
         expect(menuState(current)._tag).toBe('Home')
       }),
@@ -201,7 +212,7 @@ describe('BACK and Esc', () => {
       update,
       given(readyModel),
       openLobbyByKey,
-      message(Message.ClickedLobbyModeButton({ mode: 'Endless' })),
+      message(Child.lobby(LobbyMessage.ClickedModeButton({ mode: 'Endless' }))),
       resolveFocusLobby(),
       press('Escape'),
       Command.resolve(
@@ -255,7 +266,7 @@ describe('what skips the lobby', () => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.mode).toEqual(RunMode.Endless())
         expect(current.difficulty.chosen).toBe('Hard')
-        expect(current.home.lobby).toBe('Closed')
+        expect(current.lobby.status).toBe('Closed')
       }),
     )
   })
@@ -273,7 +284,7 @@ describe('what skips the lobby', () => {
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.mode).toEqual(RunMode.Endless())
-        expect(current.home.lobby).toBe('Closed')
+        expect(current.lobby.status).toBe('Closed')
       }),
     )
   })
@@ -285,7 +296,7 @@ describe('what skips the lobby', () => {
       message(Message.ClickedPlayButton()),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.home.lobby).toBe('Closed')
+        expect(current.lobby.status).toBe('Closed')
       }),
     )
     story(
@@ -294,7 +305,7 @@ describe('what skips the lobby', () => {
       press('Enter'),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.home.lobby).toBe('Closed')
+        expect(current.lobby.status).toBe('Closed')
       }),
     )
   })
@@ -311,7 +322,7 @@ describe('what skips the lobby', () => {
       showDialog(),
       model(current => {
         expect(current.panel).toBe('Difficulty')
-        expect(current.home.lobby).toBe('Closed')
+        expect(current.lobby.status).toBe('Closed')
       }),
     )
   })

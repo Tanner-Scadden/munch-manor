@@ -99,10 +99,8 @@ export const freshRoom: {
   share: 'Idle',
   codeCopies: 0,
   departure: 'Staying',
-  isPickingCalling: false,
   maybeNameDraft: Option.none(),
   maybeNudge: Option.none(),
-  maybeTryingCalling: Option.none(),
 }))
 
 const isCodeSymbol = (symbol: string): boolean =>

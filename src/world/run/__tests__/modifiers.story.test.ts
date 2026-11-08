@@ -3,7 +3,6 @@ import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { Message } from '../../../app/message'
 import {
   type Bullet,
   Life,
@@ -13,9 +12,10 @@ import {
   RunMode,
   type Zombie,
 } from '../../../app/model'
-import { initialModel, update } from '../../../app/pureApp'
+import { Child, initialModel, update } from '../../../app/pureApp'
 import { startOrResume } from '../../../app/runFlow'
 import { addBot } from '../../../features/bots/bots'
+import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { effectiveModifiersOf } from '../../../features/onlineRun/onlineRun'
 import {
   FIXED_STEP_MS,
@@ -620,15 +620,21 @@ describe('the solo lobby', () => {
       update,
       given(readyAfterRead),
       openLobbyByKey,
-      message(Message.ClickedLobbyModifierButton({ modifier: 'Glass' })),
+      message(
+        Child.lobby(LobbyMessage.ClickedModifierButton({ modifier: 'Glass' })),
+      ),
       model(current => {
         expect(current.modifiers).toEqual(only({ glass: true }))
       }),
-      message(Message.ClickedLobbyModifierButton({ modifier: 'Broke' })),
+      message(
+        Child.lobby(LobbyMessage.ClickedModifierButton({ modifier: 'Broke' })),
+      ),
       model(current => {
         expect(current.modifiers).toEqual(only({ glass: true, broke: true }))
       }),
-      message(Message.ClickedLobbyModifierButton({ modifier: 'Glass' })),
+      message(
+        Child.lobby(LobbyMessage.ClickedModifierButton({ modifier: 'Glass' })),
+      ),
       model(current => {
         expect(current.modifiers).toEqual(only({ broke: true }))
       }),
@@ -640,7 +646,11 @@ describe('the solo lobby', () => {
       update,
       given(readyAfterRead),
       openLobbyByKey,
-      message(Message.ClickedLobbyModifierButton({ modifier: 'FriendlyFire' })),
+      message(
+        Child.lobby(
+          LobbyMessage.ClickedModifierButton({ modifier: 'FriendlyFire' }),
+        ),
+      ),
       model(current => {
         expect(current.modifiers).toEqual(noModifiers)
       }),
@@ -649,7 +659,11 @@ describe('the solo lobby', () => {
       update,
       given(crewed),
       openLobbyByKey,
-      message(Message.ClickedLobbyModifierButton({ modifier: 'FriendlyFire' })),
+      message(
+        Child.lobby(
+          LobbyMessage.ClickedModifierButton({ modifier: 'FriendlyFire' }),
+        ),
+      ),
       model(current => {
         expect(current.modifiers).toEqual(only({ friendlyFire: true }))
       }),
@@ -661,7 +675,7 @@ describe('the solo lobby', () => {
       update,
       given(withModifiers(crewed, only({ friendlyFire: true, glass: true }))),
       openLobbyByKey,
-      message(Message.ClickedLobbyDropBotButton({ index: 0 })),
+      message(Child.lobby(LobbyMessage.ClickedDropBotButton({ index: 0 }))),
       resolveFocusLobby(),
       model(current => {
         expect(current.modifiers).toEqual(only({ glass: true }))
@@ -676,7 +690,7 @@ describe('the solo lobby', () => {
         withModifiers(readyAfterRead, only({ glass: true, bigCrowd: true })),
       ),
       openLobbyByKey,
-      message(Message.ClickedLobbyStartButton()),
+      message(Child.lobby(LobbyMessage.ClickedStartButton())),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.modifiers).toEqual(only({ glass: true, bigCrowd: true }))

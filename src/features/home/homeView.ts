@@ -51,7 +51,6 @@ import {
 import { durationLabel } from '../../world/run/stats'
 import { COOP_ICON } from '../coop/icons'
 import { IS_COOP_RELEASED } from '../coop/release'
-import { callingBodyView, callingPanelText } from '../heroes/callingView'
 import { installTileView } from '../install/installView'
 import { iconView, isKeyboard, keyCapView } from '../menus/menuParts'
 import { helpLabel, howToPlayView } from '../menus/pauseHelp'
@@ -991,8 +990,6 @@ const panelText = (model: Model, panel: MenuPanel): PanelText => {
           title: 'Difficulty',
           blurb: 'Pick how tough the zombies are.',
         }
-  } else if (panel === 'Calling') {
-    return callingPanelText(model)
   } else if (panel === 'WhatsNew') {
     return whatsNewText(model)
   } else if (panel === 'Munchopedia') {
@@ -1045,13 +1042,6 @@ const panelBodyView = (
     return whatsNewBodyView(model, doneButtonView(renderInfo, h), h)
   } else if (model.panel === 'Munchopedia') {
     return munchopediaBodyView(model, doneButtonView(renderInfo, h), h)
-  } else if (model.panel === 'Calling') {
-    return callingBodyView(
-      model,
-      renderInfo,
-      doneButtonView(renderInfo, h, 'LeavesInitialFocus'),
-      h,
-    )
   } else if (model.panel === 'Difficulty') {
     return [
       ...tutorialChoicesView(model, h),

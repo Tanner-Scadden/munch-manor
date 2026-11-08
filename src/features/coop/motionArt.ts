@@ -1,12 +1,12 @@
 import { Array, Function, String } from 'effect'
-import type { Html, HtmlBuilder } from 'foldkit/html'
+import type { Html } from 'foldkit/html'
 
 import { MAX_PLAYERS } from '@munch/netcode'
 
 import { iconView } from '../menus/menuParts'
+import type { CoopViewBuilder } from './composition'
 import { DOOR_ICON, POOF_ICON, portraitOf } from './icons'
 import { seatLook } from './looks'
-import type { Message } from './message'
 import { RoomRequest } from './model'
 
 // NOTE: co-op's moving art, all of it aria-hidden pictures that move inside
@@ -14,17 +14,14 @@ import { RoomRequest } from './model'
 // QUICK PLAY queue's rolling heads, and the dust where a player lands in a
 // seat or leaves it. The motion is the stylesheet's (src/features/coop/coop.css).
 
-const headView = (
-  className: string,
-  seat: number,
-  h: HtmlBuilder<Message>,
-): Html => iconView(`coop-portrait ${className}`, portraitOf(seatLook(seat)), h)
+const headView = (className: string, seat: number, h: CoopViewBuilder): Html =>
+  iconView(`coop-portrait ${className}`, portraitOf(seatLook(seat)), h)
 
 const WALKERS = 3
 
 // NOTE: a new room: a door swings open and three heads hop to it and
 // through, one after another, and again until the room answers.
-const doorwayView = (h: HtmlBuilder<Message>): Html =>
+const doorwayView = (h: CoopViewBuilder): Html =>
   h.span(
     [h.Class('coop-doorway'), h.AriaHidden(true)],
     [
@@ -43,7 +40,7 @@ const doorwayView = (h: HtmlBuilder<Message>): Html =>
 
 // NOTE: joining by code: the typed code's tiles light one after another as
 // if being checked, over the heads hopping in turn.
-const checkingView = (code: string, h: HtmlBuilder<Message>): Html =>
+const checkingView = (code: string, h: CoopViewBuilder): Html =>
   h.span(
     [h.Class('coop-checking'), h.AriaHidden(true)],
     [
@@ -63,9 +60,9 @@ const checkingView = (code: string, h: HtmlBuilder<Message>): Html =>
   )
 
 export const askingView: {
-  (h: HtmlBuilder<Message>): (request: RoomRequest) => Html
-  (request: RoomRequest, h: HtmlBuilder<Message>): Html
-} = Function.dual(2, (request: RoomRequest, h: HtmlBuilder<Message>): Html =>
+  (h: CoopViewBuilder): (request: RoomRequest) => Html
+  (request: RoomRequest, h: CoopViewBuilder): Html
+} = Function.dual(2, (request: RoomRequest, h: CoopViewBuilder): Html =>
   RoomRequest.match(request, {
     Create: () =>
       h.keyed('div')(
@@ -95,7 +92,7 @@ export const askingView: {
 // NOTE: an empty QUICK PLAY seat rolls through the four seat looks like a
 // slot machine, dimmed, while the queue looks for someone to fill it. The
 // strip ends on the look it starts with, so the loop has no seam.
-export const queueRollView = (h: HtmlBuilder<Message>): Html =>
+export const queueRollView = (h: CoopViewBuilder): Html =>
   h.span(
     [h.Class('coop-roll'), h.AriaHidden(true)],
     [
@@ -114,9 +111,9 @@ type Poof = 'Arrive' | 'Leave'
 // (`Leave`). A seat that is empty when the lobby first shows never puffs:
 // the seats' `--coop-settled` is 0 for their first moment (src/features/coop/coop.css).
 export const poofView: {
-  (h: HtmlBuilder<Message>): (kind: Poof) => Html
-  (kind: Poof, h: HtmlBuilder<Message>): Html
-} = Function.dual(2, (kind: Poof, h: HtmlBuilder<Message>): Html =>
+  (h: CoopViewBuilder): (kind: Poof) => Html
+  (kind: Poof, h: CoopViewBuilder): Html
+} = Function.dual(2, (kind: Poof, h: CoopViewBuilder): Html =>
   h.span(
     [h.Class('coop-poof'), h.DataAttribute('poof', kind), h.AriaHidden(true)],
     [iconView('coop-poof-cloud', POOF_ICON, h)],

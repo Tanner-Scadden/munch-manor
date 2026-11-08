@@ -2,10 +2,11 @@ import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { isPanelOpen } from '../../../app/menuState'
 import { Message } from '../../../app/message'
 import { type Model } from '../../../app/model'
-import { update } from '../../../app/pureApp'
+import { Child, update } from '../../../app/pureApp'
+import { Message as HeroPickerMessage } from '../../../features/heroes/message'
+import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { advanceJuice } from '../../../render/juice'
 import { PLAYER_MAX_HP, PLAYER_SPEED } from '../../../shared/constants'
 import type { Calling } from '../../../shared/playerData'
@@ -35,6 +36,7 @@ import {
 import { priceFor, tryPurchase, verdictFor } from '../../../world/shop/shop'
 import { woundPlayer } from '../../../world/step/combat'
 import { ammoLevelOf } from '../../hud/ammoWarning'
+import { isHeroPickerUp } from '../../lobby/model'
 import {
   besideStall,
   preparing,
@@ -56,12 +58,12 @@ const inLobby = (model: Model): Model =>
   modelAfter(model, Message.ClickedPlayButton())
 
 const started = (model: Model): Model =>
-  modelAfter(inLobby(model), Message.ClickedLobbyStartButton())
+  modelAfter(inLobby(model), Child.lobby(LobbyMessage.ClickedStartButton()))
 
 const pickInPicker = (model: Model, calling: Calling): Model =>
   modelAfter(
-    modelAfter(inLobby(model), Message.ClickedLobbyHeroButton()),
-    Message.ClickedCallingCardButton({ calling }),
+    modelAfter(inLobby(model), Child.lobby(LobbyMessage.ClickedHeroButton())),
+    Child.lobbyHero(HeroPickerMessage.ClickedCard({ calling })),
   )
 
 describe('a run starts with the calling picked', () => {
@@ -105,14 +107,14 @@ describe('the picker', () => {
       inLobby(ranked(3, 'You')),
       Message.PressedKey({ code: 'KeyY' }),
     )
-    expect(isPanelOpen(opened.model, 'Calling')).toBe(true)
+    expect(isHeroPickerUp(opened.model.lobby)).toBe(true)
   })
 
   test('picks an unlocked calling, which closes it, and dresses the player', () => {
     const picked = pickInPicker(ranked(3, 'You'), 'Handyman')
     expect(picked.calling).toBe('Handyman')
     expect(focusOf(picked).player.calling).toBe('Handyman')
-    expect(isPanelOpen(picked, 'Calling')).toBe(false)
+    expect(isHeroPickerUp(picked.lobby)).toBe(false)
   })
 
   test('refuses a locked calling', () => {
@@ -124,7 +126,7 @@ describe('the picker', () => {
     const run = started(ranked(6, 'You'))
     const tried = update(
       run,
-      Message.ClickedCallingCardButton({ calling: 'TrackStar' }),
+      Child.lobbyHero(HeroPickerMessage.ClickedCard({ calling: 'TrackStar' })),
     ).model
     expect(tried.calling).toBe('You')
   })

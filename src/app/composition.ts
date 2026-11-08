@@ -4,6 +4,7 @@ import { DialogBlock } from '@foldkit/ui'
 
 import { CoopBlock } from '../features/coop'
 import { forgetAskedMode } from '../features/home/update'
+import { LobbyBlock } from '../features/lobby/block'
 import { ProfileBlock } from '../features/profile/block'
 import { isGuideEscape, reopenForGuide } from '../features/shop/guideUpdate'
 import { ShopTabsBlock } from '../features/shop/shopTabs'
@@ -12,6 +13,7 @@ import {
   CoopBinding,
   HandDialogBinding,
   HomeScreenStepsBinding,
+  LobbyBinding,
   PanelDialogBinding,
   ProfileBinding,
   ProfileDialogBinding,
@@ -34,6 +36,18 @@ import {
   leftRoom,
   neededNewerBuild,
 } from './update/coop'
+import {
+  addLobbyBot,
+  buyHero,
+  chooseLobbyDifficulty,
+  chooseMode,
+  dropLobbyBot,
+  leaveLobby,
+  openHeroPicker,
+  pickHero,
+  startFromLobby,
+  toggleModifier,
+} from './update/lobby'
 import {
   buyLook,
   chooseLook,
@@ -135,6 +149,27 @@ const ProfileBindingWithOutMessagePolicy = ProfileBinding.withOutMessagePolicy({
   }),
 })
 
+// THE LOBBY
+
+// NOTE: the lobby tells what happened; the root makes each pick on its own
+// fields and taps, starts the run or goes home, rolls a bot, and judges a
+// hero card and BUY, answering back through LobbyBinding
+// (src/app/update/lobby.ts).
+const LobbyBindingWithOutMessagePolicy = LobbyBinding.withOutMessagePolicy({
+  fold: ApplicationBlock.makeOutMessageFold(LobbyBlock, {
+    Started: () => startFromLobby,
+    Left: () => leaveLobby,
+    ChoseMode: ({ mode }) => chooseMode(mode),
+    ChoseDifficulty: ({ difficulty }) => chooseLobbyDifficulty(difficulty),
+    ToggledModifier: ({ modifier }) => toggleModifier(modifier),
+    ClickedAddBot: () => addLobbyBot,
+    DroppedBot: ({ index }) => dropLobbyBot(index),
+    OpenedHeroPicker: () => openHeroPicker,
+    PickedHero: pickHero,
+    ClickedBuyHero: ({ calling }) => buyHero(calling),
+  }),
+})
+
 // CO-OP
 
 const CoopBindingWithOutMessagePolicy = CoopBinding.withOutMessagePolicy({
@@ -158,6 +193,7 @@ export const ApplicationComposition = makeComposition({
     HomeScreenStepsBindingWithOutMessagePolicy,
     UpdateGreetingBindingWithOutMessagePolicy,
     ProfileBindingWithOutMessagePolicy,
+    LobbyBindingWithOutMessagePolicy,
     CoopBindingWithOutMessagePolicy,
   ],
   mounts,

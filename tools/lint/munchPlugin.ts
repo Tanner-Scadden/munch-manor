@@ -698,16 +698,21 @@ const keyActionOnce = defineRule({
 })
 
 // NOTE: the Model fields a child Block lives on through its Binding
-// (src/app/bindings.ts, and the Profile's own in
-// src/features/profile/composition.ts). The parent asks the child through
-// its operations and never writes the field itself. A new Binding joins
-// this list.
+// (src/app/bindings.ts, the Profile's own in
+// src/features/profile/composition.ts, the lobby's in
+// src/features/lobby/bindings.ts, and co-op's in
+// src/features/coop/bindings.ts). The parent asks the child through its
+// operations and never writes the field itself. A new Binding joins this
+// list.
 const BINDING_FIELDS: ReadonlySet<string> = new Set([
   ...DIALOG_FIELDS,
   'shopTabs',
   'profile',
   'tabs',
   'character',
+  'lobby',
+  'heroPicker',
+  'heroDialog',
   'coop',
 ])
 

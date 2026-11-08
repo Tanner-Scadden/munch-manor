@@ -1,18 +1,10 @@
-import { Array, Function, Option } from 'effect'
+import { Array, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
-import type { ApplicationViewBuilder } from '../../app/composition'
+import type { Dialog } from '@foldkit/ui'
+
+import type { Bot, HomeMode, MapId } from '../../app/clientSchema'
 import { backButtonView } from '../../app/dialogs'
-import { isLobbyUp } from '../../app/menuState'
-import { Message } from '../../app/message'
-import type {
-  Bot,
-  Difficulty,
-  HomeMode,
-  LobbyControl,
-  MapId,
-  Model,
-} from '../../app/model'
 import {
   CAMPAIGN_ICON,
   CLOSE_ICON,
@@ -23,7 +15,7 @@ import {
   SKULL_ICONS,
   SKULL_OFF_ICON,
 } from '../../art/icons'
-import { rankOf, totalPointsOf } from '../../world/heroes/rank'
+import type { Difficulty } from '../../shared/playerData'
 import { CALLING_NAMES, MAP_NAMES, MODE_NAMES } from '../../world/names'
 import {
   DIFFICULTIES,
@@ -37,24 +29,18 @@ import {
   bonusPercentOf,
   isModifierOn,
 } from '../../world/run/modifiers'
-import { botSeatsFor } from '../bots/bots'
 import { BOT_ICON, portraitOf } from '../coop/icons'
 import { PROP_ICONS } from '../heroes/callingArt'
-import { startingCallingOf } from '../heroes/callingPick'
 import {
   type Special,
   specialsNoteOf,
   specialsOf,
 } from '../heroes/callingSpecials'
-import {
-  callingPropView,
-  iconView,
-  keyCapView,
-  rankTagView,
-} from '../menus/menuParts'
+import { callingPropView, iconView, rankTagView } from '../menus/menuParts'
 import { newPipView } from '../profile/blocks/look/lookGearView'
-import { joinName } from '../profile/profile'
-import { hasUnseenCalling } from '../unlocks/unlocks'
+import { HeroDialogBinding, HeroPickerBinding } from './bindings'
+import type { ViewInputs } from './block'
+import { LobbyComposition, type LobbyViewBuilder } from './composition'
 import {
   LOBBY_KEYS,
   MAPS,
@@ -63,6 +49,13 @@ import {
   isModifierPickable,
   lobbyControlId,
 } from './lobby'
+import { Message } from './message'
+import {
+  type LobbyControl,
+  type LobbyPicks,
+  type Model,
+  isLobbyShown,
+} from './model'
 import { bonusChipView, modifierFaceView, modifierLabel } from './modifiersView'
 
 // The single player lobby (GAME_DESIGN.md, "The single player lobby"): the
@@ -76,35 +69,42 @@ const CREW_SEATS = 3
 
 // PIECES
 
+// NOTE: a key cap beside a control, on a keyboard only.
+const capView = (
+  inputs: ViewInputs,
+  cap: string,
+  h: LobbyViewBuilder,
+): ReadonlyArray<Html> =>
+  inputs.isKeyboard
+    ? [h.span([h.Class('home-key'), h.AriaHidden(true)], [cap])]
+    : []
+
 // NOTE: every control has an id for focus, and tells the root when it takes
 // or loses focus, so the arrow keys know where to step from.
-const controlAttributes = (
-  control: LobbyControl,
-  h: ApplicationViewBuilder,
-) => [
+const controlAttributes = (control: LobbyControl, h: LobbyViewBuilder) => [
   h.Id(lobbyControlId(control)),
-  h.OnFocus(Message.FocusedLobbyControl({ control })),
-  h.OnBlur(Message.BlurredLobbyControl()),
+  h.OnFocus(Message.FocusedControl({ control })),
+  h.OnBlur(Message.BlurredControl()),
 ]
 
-const lobbyBackView = (model: Model, h: ApplicationViewBuilder): Html =>
+const lobbyBackView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
   backButtonView(
     {
       attributes: [
         ...controlAttributes('Back', h),
         h.AriaKeyshortcuts(LOBBY_KEYS.Back.name),
-        h.OnClick(Message.ClickedLobbyBackButton()),
+        h.OnClick(Message.ClickedBackButton()),
       ],
       className: 'coop-back',
       label: 'Back to the menu',
-      extra: keyCapView(model, LOBBY_KEYS.Back.cap, h),
+      extra: capView(inputs, LOBBY_KEYS.Back.cap, h),
     },
     h,
   )
 
 // YOUR SEAT
 
-const specialChipView = (special: Special, h: ApplicationViewBuilder): Html =>
+const specialChipView = (special: Special, h: LobbyViewBuilder): Html =>
   h.span(
     [
       h.Class('lobby-special'),
@@ -122,12 +122,9 @@ const specialChipView = (special: Special, h: ApplicationViewBuilder): Html =>
 // NOTE: the hero card is the hero's prop, its name, and each special as a
 // picture with a plus or a minus. A tap opens the picker over the lobby,
 // with the lines (src/features/heroes/callingView.ts).
-const heroCardView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const calling = startingCallingOf(model)
-  const isNew = hasUnseenCalling(
-    rankOf(totalPointsOf(model.rank)),
-    model.seenUnlocks,
-  )
+const heroCardView = (inputs: ViewInputs, h: LobbyViewBuilder): Html => {
+  const calling = inputs.calling
+  const isNew = inputs.isHeroNew
   return h.button(
     [
       ...controlAttributes('Hero', h),
@@ -139,7 +136,7 @@ const heroCardView = (model: Model, h: ApplicationViewBuilder): Html => {
       ),
       h.AriaHasPopup('dialog'),
       h.AriaKeyshortcuts(LOBBY_KEYS.Hero.name),
-      h.OnClick(Message.ClickedLobbyHeroButton()),
+      h.OnClick(Message.ClickedHeroButton()),
     ],
     [
       iconView('lobby-hero-prop', PROP_ICONS[calling], h),
@@ -155,26 +152,26 @@ const heroCardView = (model: Model, h: ApplicationViewBuilder): Html => {
           ),
         ],
       ),
-      ...keyCapView(model, LOBBY_KEYS.Hero.cap, h),
+      ...capView(inputs, LOBBY_KEYS.Hero.cap, h),
       ...(isNew ? [newPipView(h)] : []),
     ],
   )
 }
 
-const mySeatView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const rank = rankOf(totalPointsOf(model.rank))
-  const calling = startingCallingOf(model)
+const mySeatView = (inputs: ViewInputs, h: LobbyViewBuilder): Html => {
+  const rank = inputs.rank
+  const calling = inputs.calling
   return h.li(
     [
       h.Class('coop-seat lobby-seat'),
       h.DataAttribute('state', 'Here'),
       h.DataAttribute('me', 'Me'),
-      h.AriaLabel(`${joinName(model)}, you, rank ${rank}`),
+      h.AriaLabel(`${inputs.name}, you, rank ${rank}`),
     ],
     [
       iconView(
         'coop-portrait coop-seat-head',
-        portraitOf(model.appearance, calling),
+        portraitOf(inputs.look, calling),
         h,
       ),
       h.div(
@@ -187,11 +184,11 @@ const mySeatView = (model: Model, h: ApplicationViewBuilder): Html => {
               callingPropView('coop-calling', calling, h),
               h.span(
                 [h.Class('coop-nameplate'), h.AriaHidden(true)],
-                [joinName(model)],
+                [inputs.name],
               ),
             ],
           ),
-          heroCardView(model, h),
+          heroCardView(inputs, h),
         ],
       ),
     ],
@@ -210,10 +207,10 @@ const seatControlsAt = (index: number): readonly [LobbyControl, LobbyControl] =>
 // A tap seats a bot there, with a goofy name and a hero picked from the
 // ones this player has unlocked. The first empty seat wears the key, B.
 const addBotTileView = (
-  model: Model,
+  inputs: ViewInputs,
   seat: number,
   isFirst: boolean,
-  h: ApplicationViewBuilder,
+  h: LobbyViewBuilder,
 ): Html => {
   const [control] = seatControlsAt(seat)
   return h.keyed('li')(
@@ -227,7 +224,7 @@ const addBotTileView = (
           h.Class('lobby-add-bot'),
           h.AriaLabel('Add a bot teammate'),
           h.AriaKeyshortcuts(LOBBY_KEYS.Bot.name),
-          h.OnClick(Message.ClickedLobbyAddBotButton()),
+          h.OnClick(Message.ClickedAddBotButton()),
         ],
         [
           iconView('lobby-add-bot-icon', BOT_ICON, h),
@@ -238,7 +235,7 @@ const addBotTileView = (
               h.span([], ['BOT']),
             ],
           ),
-          ...(isFirst ? keyCapView(model, LOBBY_KEYS.Bot.cap, h) : []),
+          ...(isFirst ? capView(inputs, LOBBY_KEYS.Bot.cap, h) : []),
         ],
       ),
     ],
@@ -247,7 +244,7 @@ const addBotTileView = (
 
 // NOTE: where teammates cannot sit: a dev link with players at the keyboard
 // leaves fewer seats. Faint, and pressed by nobody.
-const closedSeatView = (seat: number, h: ApplicationViewBuilder): Html =>
+const closedSeatView = (seat: number, h: LobbyViewBuilder): Html =>
   h.keyed('li')(`seat-${seat}`, [
     h.Class('coop-seat lobby-seat-empty'),
     h.DataAttribute('state', 'Empty'),
@@ -256,11 +253,7 @@ const closedSeatView = (seat: number, h: ApplicationViewBuilder): Html =>
 
 // NOTE: a bot's hero card is the same card as yours, smaller: tap it for
 // the hero picker, which then chooses for this bot.
-const botHeroView = (
-  bot: Bot,
-  index: number,
-  h: ApplicationViewBuilder,
-): Html => {
+const botHeroView = (bot: Bot, index: number, h: LobbyViewBuilder): Html => {
   const [control] = seatControlsAt(index)
   return h.button(
     [
@@ -272,7 +265,7 @@ const botHeroView = (
         `${bot.name}'s hero: ${CALLING_NAMES[bot.calling]}. ${specialsNoteOf(bot.calling)}. Change it`,
       ),
       h.AriaHasPopup('dialog'),
-      h.OnClick(Message.ClickedLobbyBotHeroButton({ index })),
+      h.OnClick(Message.ClickedBotHeroButton({ index })),
     ],
     [
       iconView('lobby-hero-prop', PROP_ICONS[bot.calling], h),
@@ -292,11 +285,7 @@ const botHeroView = (
   )
 }
 
-const dropBotView = (
-  bot: Bot,
-  index: number,
-  h: ApplicationViewBuilder,
-): Html => {
+const dropBotView = (bot: Bot, index: number, h: LobbyViewBuilder): Html => {
   const [, control] = seatControlsAt(index)
   return h.button(
     [
@@ -304,17 +293,13 @@ const dropBotView = (
       h.Type('button'),
       h.Class('lobby-drop-bot'),
       h.AriaLabel(`Remove ${bot.name}`),
-      h.OnClick(Message.ClickedLobbyDropBotButton({ index })),
+      h.OnClick(Message.ClickedDropBotButton({ index })),
     ],
     [iconView('lobby-drop-bot-icon', CLOSE_ICON, h)],
   )
 }
 
-const botSeatView = (
-  bot: Bot,
-  index: number,
-  h: ApplicationViewBuilder,
-): Html =>
+const botSeatView = (bot: Bot, index: number, h: LobbyViewBuilder): Html =>
   h.keyed('li')(
     `seat-${index}`,
     [
@@ -341,19 +326,19 @@ const botSeatView = (
     ],
   )
 
-const seatsView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const bots = model.home.bots
+const seatsView = (inputs: ViewInputs, h: LobbyViewBuilder): Html => {
+  const bots = inputs.picks.bots
   const emptyCount = CREW_SEATS - bots.length
-  const canAdd = bots.length < botSeatsFor(model)
+  const canAdd = bots.length < inputs.picks.botSeats
   return h.ol(
     [h.Class('coop-seats lobby-seats'), h.AriaLabel('Players')],
     [
-      mySeatView(model, h),
+      mySeatView(inputs, h),
       ...Array.map(bots, (bot, index) => botSeatView(bot, index, h)),
       ...(emptyCount > 0
         ? Array.makeBy(emptyCount, offset =>
             canAdd
-              ? addBotTileView(model, bots.length + offset, offset === 0, h)
+              ? addBotTileView(inputs, bots.length + offset, offset === 0, h)
               : closedSeatView(bots.length + offset, h),
           )
         : []),
@@ -371,11 +356,11 @@ const MODE_PICK_ICONS: Readonly<Record<HomeMode, string>> = {
 const MODES: ReadonlyArray<HomeMode> = ['Campaign', 'Endless']
 
 const modePickView = (
-  model: Model,
+  picks: LobbyPicks,
   mode: HomeMode,
-  h: ApplicationViewBuilder,
+  h: LobbyViewBuilder,
 ): Html => {
-  const isChosen = model.home.mode === mode
+  const isChosen = picks.mode === mode
   return h.button(
     [
       ...controlAttributes(MODE_CONTROLS[mode], h),
@@ -385,7 +370,7 @@ const modePickView = (
       h.DataAttribute('state', isChosen ? 'Chosen' : 'Other'),
       h.AriaPressed(isChosen ? 'true' : 'false'),
       h.AriaLabel(MODE_NAMES[mode]),
-      h.OnClick(Message.ClickedLobbyModeButton({ mode })),
+      h.OnClick(Message.ClickedModeButton({ mode })),
     ],
     [iconView('coop-pick-icon', MODE_PICK_ICONS[mode], h)],
   )
@@ -401,15 +386,16 @@ const skullIndexOf = (difficulty: Difficulty): number =>
 // it. Nightmare is a padlock until a Hard campaign win, and says so, with
 // its NEW pip on the run it opens.
 const skullPickView = (
-  model: Model,
+  picks: LobbyPicks,
   difficulty: Difficulty,
-  h: ApplicationViewBuilder,
+  h: LobbyViewBuilder,
 ): Html => {
-  const chosen = model.difficulty.chosen
+  const setting = picks.difficulty
+  const chosen = setting.chosen
   const isLit = skullIndexOf(difficulty) <= skullIndexOf(chosen)
-  const isLockedOut = isLocked(model.difficulty, difficulty)
+  const isLockedOut = isLocked(setting, difficulty)
   const isFresh =
-    difficulty === 'Nightmare' && model.difficulty.nightmare === 'JustUnlocked'
+    difficulty === 'Nightmare' && setting.nightmare === 'JustUnlocked'
   return h.button(
     [
       ...controlAttributes(difficulty, h),
@@ -427,7 +413,7 @@ const skullPickView = (
           : `${DIFFICULTIES[difficulty].name}: ${DIFFICULTIES[difficulty].blurb}`,
       ),
       ...(isLockedOut ? [h.AriaDisabled(true)] : []),
-      h.OnClick(Message.ClickedLobbyDifficultyButton({ difficulty })),
+      h.OnClick(Message.ClickedDifficultyButton({ difficulty })),
     ],
     [
       iconView(
@@ -447,12 +433,12 @@ const skullPickView = (
 // NOTE: a run modifier is a tile that turns on and off, lit when on. Friendly
 // Fire is dim until a bot sits in the crew, with nobody to hit before that.
 const modifierPickView = (
-  model: Model,
+  picks: LobbyPicks,
   modifier: Modifier,
-  h: ApplicationViewBuilder,
+  h: LobbyViewBuilder,
 ): Html => {
-  const isOn = isModifierOn(model.modifiers, modifier)
-  const isPickable = isModifierPickable(model, modifier)
+  const isOn = isModifierOn(picks.modifiers, modifier)
+  const isPickable = isModifierPickable(picks, modifier)
   return h.button(
     [
       ...controlAttributes(modifier, h),
@@ -468,7 +454,7 @@ const modifierPickView = (
           : `${modifierLabel(modifier, isOn)}. Add a bot teammate first`,
       ),
       ...(isPickable ? [] : [h.AriaDisabled(true)]),
-      h.OnClick(Message.ClickedLobbyModifierButton({ modifier })),
+      h.OnClick(Message.ClickedModifierButton({ modifier })),
     ],
     modifierFaceView(modifier, h),
   )
@@ -481,7 +467,7 @@ const MAP_ICONS: Readonly<Record<MapId, string>> = {
   Manor: MANOR_ICON,
 }
 
-const mapCardView = (map: MapId, h: ApplicationViewBuilder): Html =>
+const mapCardView = (map: MapId, h: LobbyViewBuilder): Html =>
   h.div(
     [
       h.Class('lobby-map'),
@@ -496,15 +482,15 @@ const mapCardView = (map: MapId, h: ApplicationViewBuilder): Html =>
     ],
   )
 
-const picksView = (model: Model, h: ApplicationViewBuilder): Html =>
+const picksView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
   h.div(
     [h.Class('coop-picks lobby-picks'), h.DataAttribute('host', 'Picking')],
     [
       h.div(
         [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Mode')],
         [
-          ...Array.map(MODES, mode => modePickView(model, mode, h)),
-          ...keyCapView(model, LOBBY_KEYS.Mode.cap, h),
+          ...Array.map(MODES, mode => modePickView(inputs.picks, mode, h)),
+          ...capView(inputs, LOBBY_KEYS.Mode.cap, h),
         ],
       ),
       h.div(
@@ -515,9 +501,9 @@ const picksView = (model: Model, h: ApplicationViewBuilder): Html =>
         ],
         [
           ...Array.map(DIFFICULTY_ORDER, difficulty =>
-            skullPickView(model, difficulty, h),
+            skullPickView(inputs.picks, difficulty, h),
           ),
-          ...keyCapView(model, LOBBY_KEYS.Difficulty.cap, h),
+          ...capView(inputs, LOBBY_KEYS.Difficulty.cap, h),
         ],
       ),
       h.div(
@@ -528,9 +514,9 @@ const picksView = (model: Model, h: ApplicationViewBuilder): Html =>
         ],
         [
           ...Array.map(MODIFIER_ORDER, modifier =>
-            modifierPickView(model, modifier, h),
+            modifierPickView(inputs.picks, modifier, h),
           ),
-          bonusChipView(bonusPercentOf(model.modifiers), h),
+          bonusChipView(bonusPercentOf(inputs.picks.modifiers), h),
         ],
       ),
       h.div(
@@ -546,7 +532,7 @@ const picksView = (model: Model, h: ApplicationViewBuilder): Html =>
 
 // START
 
-const startButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
+const startButtonView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
   h.button(
     [
       ...controlAttributes('Start', h),
@@ -555,7 +541,7 @@ const startButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
       h.DataAttribute('ready', 'NotReady'),
       h.AriaLabel('Start'),
       h.AriaKeyshortcuts(LOBBY_KEYS.Start.name),
-      h.OnClick(Message.ClickedLobbyStartButton()),
+      h.OnClick(Message.ClickedStartButton()),
     ],
     [
       h.span(
@@ -565,35 +551,137 @@ const startButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
           h.span([h.Class('coop-ready-label')], ['START']),
         ],
       ),
-      ...keyCapView(model, LOBBY_KEYS.Start.cap, h),
+      ...capView(inputs, LOBBY_KEYS.Start.cap, h),
     ],
+  )
+
+// THE HERO PICKER
+
+// NOTE: the bot whose hero the picker is choosing, when a bot's card
+// opened it.
+const maybePickingBotOf = (
+  model: Model,
+  inputs: ViewInputs,
+): Option.Option<Bot> =>
+  Option.flatMap(model.maybePickingBot, index =>
+    Array.get(inputs.picks.bots, index),
+  )
+
+// NOTE: the picker in its Dialog over the lobby, as the menu panels look:
+// the title, the line (read aloud only), then the picker's cards, Bones,
+// and actions. Its cards wear the bot's look and hero when it chooses for
+// a bot.
+const heroPanelView = (
+  model: Model,
+  inputs: ViewInputs,
+  renderInfo: Dialog.RenderInfo,
+  h: LobbyViewBuilder,
+): ReadonlyArray<Html> => {
+  const maybeBot = maybePickingBotOf(model, inputs)
+  return [
+    h.h2([...renderInfo.title, h.Class('panel-title')], ['Hero']),
+    h.p(
+      [...renderInfo.description, h.Class('panel-blurb sr-only')],
+      [
+        Option.match(maybeBot, {
+          onNone: () => 'Pick who you play.',
+          onSome: bot => `Pick for ${bot.name}.`,
+        }),
+      ],
+    ),
+    h.block(
+      HeroPickerBinding.embedView({
+        slotId: 'lobby-hero-picker',
+        model: model.heroPicker,
+        viewInputs: {
+          look: Option.match(maybeBot, {
+            onNone: () => inputs.look,
+            onSome: bot => bot.look,
+          }),
+          chosen: Option.match(maybeBot, {
+            onNone: () => inputs.calling,
+            onSome: bot => bot.calling,
+          }),
+          rank: inputs.rank,
+          bought: inputs.bought,
+          bones: inputs.bones,
+          fresh: inputs.fresh,
+          layout: 'Panel',
+        },
+      }),
+    ),
+  ]
+}
+
+const heroDialogView = (
+  model: Model,
+  inputs: ViewInputs,
+  h: LobbyViewBuilder,
+): Html =>
+  h.block(
+    HeroDialogBinding.embedView({
+      slotId: model.heroDialog.id,
+      model: model.heroDialog,
+      viewInputs: {
+        hasDescription: true,
+        toView: renderInfo =>
+          h.dialog(
+            [
+              h.Key(model.heroDialog.id),
+              ...renderInfo.dialog,
+              h.Class('panel-dialog'),
+              h.DataAttribute('panel', 'Calling'),
+            ],
+            renderInfo.isVisible
+              ? [
+                  h.div([...renderInfo.backdrop, h.Class('panel-backdrop')]),
+                  h.div(
+                    [...renderInfo.panel, h.Class('panel')],
+                    heroPanelView(model, inputs, renderInfo, h),
+                  ),
+                ]
+              : [],
+          ),
+      },
+    }),
   )
 
 // VIEW
 
-export const lobbyView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  isLobbyUp(model)
-    ? h.section(
-        [
-          h.Class('coop lobby'),
-          h.DataAttribute('screen', 'Solo'),
-          h.AriaLabel('Lobby'),
-        ],
-        [
-          h.h2([h.Class('sr-only')], ['Lobby']),
-          h.div(
-            [h.Class('coop-lobby')],
-            [
-              lobbyBackView(model, h),
-              seatsView(model, h),
-              picksView(model, h),
-              startButtonView(model, h),
-            ],
-          ),
-        ],
-      )
-    : h.empty,
+// NOTE: the lobby screen and the hero picker's Dialog over it. The root
+// draws the lobby only while it is up.
+const view = LobbyComposition.makeView.withInputs<ViewInputs>(
+  (model, inputs, h) =>
+    isLobbyShown(model)
+      ? h.div(
+          [h.Class('lobby-layer')],
+          [
+            h.section(
+              [
+                h.Class('coop lobby'),
+                h.DataAttribute('screen', 'Solo'),
+                h.AriaLabel('Lobby'),
+              ],
+              [
+                h.h2([h.Class('sr-only')], ['Lobby']),
+                h.div(
+                  [h.Class('coop-lobby')],
+                  [
+                    lobbyBackView(inputs, h),
+                    seatsView(inputs, h),
+                    picksView(inputs, h),
+                    startButtonView(inputs, h),
+                  ],
+                ),
+              ],
+            ),
+            heroDialogView(model, inputs, h),
+          ],
+        )
+      : h.empty,
 )
+
+// NOTE: the lobby's view, gathered here so it is not exported alone: a view
+// is a function of three arguments with no pipeable form, and Foldkit knows
+// a view by its identity. src/features/lobby/layer.ts completes it.
+export const lobbyImplementation = { view }

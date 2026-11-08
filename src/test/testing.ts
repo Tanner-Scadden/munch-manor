@@ -14,7 +14,6 @@ import {
   type Bullet,
   Frenzy,
   GameEvent,
-  type LobbyControl,
   type Model,
   Pierce,
   type RunStats,
@@ -36,7 +35,9 @@ import { HideSplash, ShowLoadProgress, WriteSave } from '../app/update/save'
 import { PlaySound } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
 import { endOffer } from '../features/home/home'
-import { FocusLobbyControl } from '../features/lobby/update'
+import { Message as LobbyMessage } from '../features/lobby/message'
+import type { LobbyControl } from '../features/lobby/model'
+import { FocusLobbyControl } from '../features/lobby/steps'
 import {
   type HintId,
   LESSON_MIN_SHOWN_MS,
@@ -215,7 +216,7 @@ export const showDialogInScene = () => [
 export const resolveFocusLobbyInScene = (control: LobbyControl = 'Start') =>
   Scene.Command.resolve(
     FocusLobbyControl({ control }),
-    Message.CompletedFocusLobbyControl(),
+    LobbyMessage.CompletedFocusControl(),
   )
 
 export const openLobbyInScene = () => [
@@ -352,12 +353,15 @@ export const nextFrame = (current: Model): Model =>
 
 // NOTE: the Model a Message leaves, for a test that starts from a Command's
 // result, which no Subscription emits.
+// NOTE: a root Message, a child's envelope included (`Child.lobby(...)`).
+type AnyMessage = Parameters<typeof update>[1]
+
 export const modelAfter: {
-  (message: Message): (model: Model) => Model
-  (model: Model, message: Message): Model
+  (message: AnyMessage): (model: Model) => Model
+  (model: Model, message: AnyMessage): Model
 } = Function.dual(
   2,
-  (model: Model, message: Message): Model => update(model, message).model,
+  (model: Model, message: AnyMessage): Model => update(model, message).model,
 )
 
 // NOTE: how many fixed-step frames it takes to play at least `ms`.
@@ -431,7 +435,7 @@ export const finishSplash = Story.steps(
 export const resolveFocusLobby = (control: LobbyControl = 'Start') =>
   Story.Command.resolve(
     FocusLobbyControl({ control }),
-    Message.CompletedFocusLobbyControl(),
+    LobbyMessage.CompletedFocusControl(),
   )
 
 export const openLobbyByKey = Story.steps(press('Enter'), resolveFocusLobby())

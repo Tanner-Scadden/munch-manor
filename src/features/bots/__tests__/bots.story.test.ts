@@ -5,7 +5,9 @@ import { describe, expect, test } from 'vitest'
 
 import { Message } from '../../../app/message'
 import { type Model, Phase } from '../../../app/model'
-import { update } from '../../../app/pureApp'
+import { Child, update } from '../../../app/pureApp'
+import { Message as HeroPickerMessage } from '../../../features/heroes/message'
+import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import { heroesBoughtBy, readyModel } from '../../../test/model.fixture'
 import {
@@ -18,6 +20,7 @@ import {
 import { pointsForRank } from '../../../world/heroes/rank'
 import { atSeatBy, playersOf } from '../../../world/party/party'
 import { SOLO_SLOT } from '../../../world/schema/worldSchema'
+import { isHeroPickerUp } from '../../lobby/model'
 import { earnRank } from '../../rank/rankRun'
 
 // Teammate bots in the single player lobby (src/features/bots/bots.ts, src/features/lobby/update.ts):
@@ -30,7 +33,7 @@ const ranked = modifyFields(readyModel, {
 })
 
 const addOne = [
-  message(Message.ClickedLobbyAddBotButton()),
+  message(Child.lobby(LobbyMessage.ClickedAddBotButton())),
   resolveFocusLobby(),
 ] as const
 
@@ -46,7 +49,7 @@ describe('+ BOT', () => {
         const [bot] = current.home.bots
         expect(bot?.name).not.toBe('')
         expect(bot?.calling).toBe('You')
-        expect(current.home.maybeLobbyFocus).toEqual(Option.some('Start'))
+        expect(current.lobby.maybeFocus).toEqual(Option.some('Start'))
       }),
     )
   })
@@ -99,7 +102,7 @@ describe('+ BOT', () => {
     story(
       update,
       given(readyModel),
-      message(Message.ClickedLobbyAddBotButton()),
+      message(Child.lobby(LobbyMessage.ClickedAddBotButton())),
       model(current => {
         expect(current.home.bots).toHaveLength(0)
       }),
@@ -118,7 +121,7 @@ describe('the x on a bot', () => {
       model(current => {
         expect(current.home.bots).toHaveLength(2)
       }),
-      message(Message.ClickedLobbyDropBotButton({ index: 0 })),
+      message(Child.lobby(LobbyMessage.ClickedDropBotButton({ index: 0 }))),
       resolveFocusLobby(),
       model(current => {
         expect(current.home.bots).toHaveLength(1)
@@ -134,18 +137,20 @@ describe("a bot's hero card", () => {
       given(ranked),
       openLobbyByKey,
       ...addOne,
-      message(Message.ClickedLobbyBotHeroButton({ index: 0 })),
+      message(Child.lobby(LobbyMessage.ClickedBotHeroButton({ index: 0 }))),
       showDialog(),
       model(current => {
-        expect(current.panel).toBe('Calling')
-        expect(current.home.maybePickingBot).toEqual(Option.some(0))
+        expect(isHeroPickerUp(current.lobby)).toBe(true)
+        expect(current.lobby.maybePickingBot).toEqual(Option.some(0))
       }),
-      message(Message.ClickedCallingCardButton({ calling: 'LineCook' })),
+      message(
+        Child.lobbyHero(HeroPickerMessage.ClickedCard({ calling: 'LineCook' })),
+      ),
       closeDialog(),
       model(current => {
         expect(current.home.bots[0]?.calling).toBe('LineCook')
         expect(current.calling).toBe(readyModel.calling)
-        expect(current.home.maybePickingBot).toEqual(Option.none())
+        expect(current.lobby.maybePickingBot).toEqual(Option.none())
       }),
     )
   })
@@ -156,9 +161,11 @@ describe("a bot's hero card", () => {
       given(ranked),
       openLobbyByKey,
       ...addOne,
-      message(Message.ClickedLobbyHeroButton()),
+      message(Child.lobby(LobbyMessage.ClickedHeroButton())),
       showDialog(),
-      message(Message.ClickedCallingCardButton({ calling: 'Handyman' })),
+      message(
+        Child.lobbyHero(HeroPickerMessage.ClickedCard({ calling: 'Handyman' })),
+      ),
       closeDialog(),
       model(current => {
         expect(current.calling).toBe('Handyman')
@@ -173,9 +180,11 @@ describe("a bot's hero card", () => {
       given(readyModel),
       openLobbyByKey,
       ...addOne,
-      message(Message.ClickedLobbyBotHeroButton({ index: 0 })),
+      message(Child.lobby(LobbyMessage.ClickedBotHeroButton({ index: 0 }))),
       showDialog(),
-      message(Message.ClickedCallingCardButton({ calling: 'LineCook' })),
+      message(
+        Child.lobbyHero(HeroPickerMessage.ClickedCard({ calling: 'LineCook' })),
+      ),
       model(current => {
         expect(current.home.bots[0]?.calling).toBe('You')
       }),
@@ -199,7 +208,7 @@ describe('the arrow keys with bots', () => {
       resolveFocusLobby('Campaign'),
       press('ArrowLeft'),
       resolveFocusLobby('Bot1'),
-      message(Message.ClickedLobbyAddBotButton()),
+      message(Child.lobby(LobbyMessage.ClickedAddBotButton())),
       resolveFocusLobby(),
       press('ArrowLeft'),
       resolveFocusLobby('Glass'),
@@ -238,11 +247,15 @@ describe('START with bots', () => {
       openLobbyByKey,
       ...addOne,
       ...addOne,
-      message(Message.ClickedLobbyBotHeroButton({ index: 1 })),
+      message(Child.lobby(LobbyMessage.ClickedBotHeroButton({ index: 1 }))),
       showDialog(),
-      message(Message.ClickedCallingCardButton({ calling: 'TrackStar' })),
+      message(
+        Child.lobbyHero(
+          HeroPickerMessage.ClickedCard({ calling: 'TrackStar' }),
+        ),
+      ),
       closeDialog(),
-      message(Message.ClickedLobbyStartButton()),
+      message(Child.lobby(LobbyMessage.ClickedStartButton())),
       model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.party._tag).toBe('Crew')

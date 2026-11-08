@@ -3,6 +3,7 @@ import { Option, Schema } from 'effect'
 import { DialogBlock } from '@foldkit/ui'
 
 import * as Coop from '../features/coop/model'
+import * as Lobby from '../features/lobby/model'
 import * as Profile from '../features/profile/model'
 import { ShopTabsBlock } from '../features/shop/shopTabs'
 import {
@@ -211,6 +212,7 @@ export const Model = Schema.Struct({
   maybeSupportUrl: Schema.Option(Schema.String),
   appearance: Appearance,
   profile: Profile.Model,
+  lobby: Lobby.Model,
   profileDialog: DialogBlock.Model,
   playerName: PlayerName,
   coop: Coop.Model,
@@ -303,6 +305,7 @@ type ChildField =
   | 'homeScreenSteps'
   | 'updateGreeting'
   | 'profile'
+  | 'lobby'
   | 'profileDialog'
   | 'coop'
   | 'panelDialog'

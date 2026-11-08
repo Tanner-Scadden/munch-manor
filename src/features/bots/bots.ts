@@ -15,8 +15,8 @@ import { seatLook } from '../coop/looks'
 // Teammate bots in single player (GAME_DESIGN.md, "Teammate bots"): the
 // single player lobby seats up to three, each a seat in the run's World with
 // a hero, a goofy name, and a look. The roster rules here are pure; the
-// lobby's Steps are in src/features/lobby/update.ts, the bot's brain in
-// src/features/bots/teammateBot.ts.
+// root applies them for the lobby (src/app/update/lobby.ts), and the bot's
+// brain is in src/features/bots/teammateBot.ts.
 
 const MAX_BOTS = COOP_RULES.maxPlayers - 1
 
@@ -134,7 +134,6 @@ export const removeBot: {
     home: home =>
       modifyFields(home, {
         bots: bots => Array.remove(bots, index),
-        maybePickingBot: () => Option.none(),
       }),
   }),
 )
