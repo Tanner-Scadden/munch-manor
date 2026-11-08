@@ -28,7 +28,8 @@
     "lint:oxlint": "effect-tsgo --tsrs-lint oxlint --report-unused-disable-directives-severity=error src tools/heavy tools/vite tools/balance tools/analytics tools/determinism tools/audit tools/video tools/sprites tools/mp-dev tools/lint/duplicateHelpers.ts tools/lint/fileTable.ts tools/lint/munchPlugin.ts tools/json.ts tools/node.ts vite.config.ts vitest.config.ts packages/sqlite-wasm-effect packages/sync-engine packages/netcode",
     "lint:effect": "effect-tsgo --tsrs-lint oxlint --config .oxlintrc.effect.json --deny-warnings src tools/heavy tools/vite tools/balance tools/analytics tools/determinism tools/audit tools/video tools/sprites tools/mp-dev tools/lint/duplicateHelpers.ts tools/lint/fileTable.ts tools/lint/munchPlugin.ts tools/json.ts tools/node.ts vite.config.ts vitest.config.ts packages/sqlite-wasm-effect packages/sync-engine packages/netcode",
     "lint:rest": "sh tools/lint/noEmDash.sh && bun tools/lint/duplicateHelpers.ts && bun tools/lint/fileTable.ts && knip --no-progress",
-    "lint:infra": "cd infra && bun run lint"
+    "lint:infra": "cd infra && bun run lint",
+    "foldkit:source": "sh tools/foldkitSource.sh"
   },
   "dependencies": {
     "@effect/platform-browser": "4.1.0",
