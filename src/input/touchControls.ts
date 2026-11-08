@@ -2,21 +2,14 @@ import { Array, Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../app/composition'
-import { Message, type PressedHudSlot } from '../app/message'
-import {
-  BreakClock,
-  GunSlot,
-  type Model,
-  Phase,
-  Stick,
-  TrapHint,
-} from '../app/model'
+import type { Model } from '../app/model'
 import {
   MEDIC_ICON,
   NEXT_TRAP_ICON,
   RELOAD_ICON,
   TRAP_BUTTON_ICONS,
 } from '../art/icons'
+import type { SoundMessage } from '../audio/message'
 import { isOutOfGuns } from '../features/hud/ammoWarning'
 import {
   MELEE_SLOT_INDEX,
@@ -37,6 +30,7 @@ import {
   shownGhostSticks,
 } from '../features/onboarding/onboarding'
 import { holdButtonView } from '../features/shop/purchaseHud'
+import type { DeviceMessage } from '../platform/message'
 import { type Screen, screenOf } from '../render/screen'
 import { STICK_RADIUS_PX } from '../shared/constants'
 import {
@@ -64,9 +58,17 @@ import {
   isDowned,
   leadSeatOf,
 } from '../world/party/party'
+import {
+  BreakClock,
+  GunSlot,
+  Phase,
+  TrapHint,
+} from '../world/schema/worldSchema'
 import { STALL_BOX, gunName } from '../world/shop/shop'
 import { isRoundActive } from '../world/waves/waves'
 import { thumbOffset } from './input'
+import { Stick } from './inputSchema'
+import { InputMessage, type PressedHudSlot, RunButtonMessage } from './message'
 
 // ICON BUTTONS
 
@@ -81,7 +83,7 @@ type IconButton = Readonly<{
   label: string
   icon: string
   keys?: string
-  message: Message
+  message: RunButtonMessage | SoundMessage | DeviceMessage
   maybePressed?: boolean
 }>
 
@@ -179,7 +181,7 @@ const toPressedHudSlot = (
   pointerType === 'mouse' && button !== PRIMARY_MOUSE_BUTTON
     ? Option.none()
     : Option.some(
-        Message.PressedHudSlot({
+        InputMessage.PressedHudSlot({
           pointerId,
           device: pointerType === 'mouse' ? 'Mouse' : 'Touch',
           clientX,
@@ -237,7 +239,7 @@ const gunSlotButtonView = (
         : []),
       h.Style(slotSpan(screen, SLOT_INDEX[slot])),
       h.OnPointerDown(toPressedHudSlot),
-      h.OnClick(Message.ClickedGunSlot({ slot }), {
+      h.OnClick(RunButtonMessage.ClickedGunSlot({ slot }), {
         focusSelector: '.game-surface',
       }),
     ],
@@ -275,7 +277,7 @@ const meleeSlotButtonView = (
       ...(isHeld ? [h.AriaDisabled(true)] : []),
       h.Style(slotSpan(screen, MELEE_SLOT_INDEX)),
       h.OnPointerDown(toPressedHudSlot),
-      h.OnClick(Message.ClickedMeleeSlot(), {
+      h.OnClick(RunButtonMessage.ClickedMeleeSlot(), {
         focusSelector: '.game-surface',
       }),
     ],
@@ -357,7 +359,7 @@ const reloadButtonView = (
       h.AriaKeyshortcuts('R'),
       ...(isReady || isMeleeOut ? [] : [h.AriaDisabled(true)]),
       h.Style(reloadSpot(screen)),
-      h.OnClick(Message.ClickedReloadButton(), {
+      h.OnClick(RunButtonMessage.ClickedReloadButton(), {
         focusSelector: '.game-surface',
       }),
     ],
@@ -415,7 +417,7 @@ const placeIconView = (
       ...(isBlocked
         ? [h.AriaDisabled(true), h.AriaDescribedBy(PLACE_REASON_ID)]
         : []),
-      h.OnClick(Message.ClickedPlaceTrapButton(), {
+      h.OnClick(RunButtonMessage.ClickedPlaceTrapButton(), {
         focusSelector: '.game-surface',
       }),
     ],
@@ -445,7 +447,7 @@ const nextTrapIconView = (model: Model, h: ApplicationViewBuilder): Html =>
           label: `Switch to the ${TRAPS[kind].name}`,
           icon: NEXT_TRAP_ICON,
           keys: 'G',
-          message: Message.ClickedNextTrapButton(),
+          message: RunButtonMessage.ClickedNextTrapButton(),
         },
         h,
         [keyBadgeView(model, 'G', h)],
@@ -522,7 +524,7 @@ const medicButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
           h.DataAttribute('fresh', isCallFresh(seat) ? 'true' : 'false'),
           h.AriaLabel(MEDIC_WORD),
           h.AriaKeyshortcuts('Enter'),
-          h.OnClick(Message.ClickedMedicButton(), {
+          h.OnClick(RunButtonMessage.ClickedMedicButton(), {
             focusSelector: '.game-surface',
           }),
         ],
@@ -608,7 +610,7 @@ const startWaveButtonView = (
                 isWaitingOnYou(model) ? 'true' : 'false',
               ),
               h.AriaKeyshortcuts('Enter'),
-              h.OnClick(Message.ClickedStartWaveButton(), {
+              h.OnClick(RunButtonMessage.ClickedStartWaveButton(), {
                 focusSelector: '.game-surface',
               }),
             ],

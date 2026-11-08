@@ -1,6 +1,6 @@
 import { Record } from 'effect'
 
-import type { PickupKind } from '../../app/model'
+import type { PickupKind } from '../../world/schema/entitySchema'
 import { type Palette, type Sprite, spriteShapes } from '../sprite'
 import { HEART_PALETTE, HEART_PIXELS } from './hearts'
 

@@ -4,13 +4,9 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { Message } from '../../../app/message'
-import {
-  GameEvent,
-  type Model,
-  Phase,
-  type PointerDevice,
-} from '../../../app/model'
+import { GameEvent, type Model, Phase } from '../../../app/model'
 import { initialModel, update } from '../../../app/pureApp'
+import type { PointerDevice } from '../../../input/inputSchema'
 import { screenOf } from '../../../render/screen'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import { FIXED_FRAME, SURFACE, holdingFirst } from '../../../test/testing'

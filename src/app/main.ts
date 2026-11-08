@@ -1,140 +1,24 @@
-import { Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  leaveRoomFromCard,
-  retry,
-  runItBack,
-  settleShare,
-  shareFromButton,
-  skipFromPointer,
-  toRoomLobby,
-} from '../features/end/update'
-import { isTurnHintShown, seeTurnHint } from '../features/home/home'
-import {
-  closeHand,
-  closePanel,
-  greetUpdate,
-  leaveFromMenu,
-  leaveRun,
-  newsFromGreeting,
-  openHand,
-  openMunchopedia,
-  openPanel,
-  openSettingsFromGear,
-  openWhatsNew,
-  pickFromCard,
-  pickTutorialChoice,
-  pressInstall,
-  reloadOntoNewerBuild,
-  rewrapUpdateGift,
-  settleInstallPrompt,
-  showHelpLine,
-  startOrAsk,
-  stepHandFocus,
-  turnNews,
-  unwrapUpdateGift,
-} from '../features/home/update'
-import { MunchopediaPage } from '../features/munchopedia/model'
-import { endQuest } from '../features/onboarding/firstBreakQuest'
-import { skipKitchenTour } from '../features/onboarding/kitchenTour'
-import { skipDebutCard } from '../features/onboarding/onboarding'
-import {
-  type PointerPress,
-  moveMouse,
-  movePointer,
-  pressHoldButton,
-  pressPointer,
-  releaseKeys,
-  releasePointer,
-  releaseSticks,
-} from '../input/input'
-import { noteMissedKeyDown } from '../input/keyGrab'
-import { RUNNING_BUILD, isGreetingDue } from '../platform/version'
-import { isRoundActive } from '../world/waves/waves'
+import { endHandlers } from '../features/end/update'
+import { homeHandlers } from '../features/home/update'
+import { onboardingHandlers } from '../features/onboarding/update'
 import { bootCommands } from './boot'
 import { ApplicationComposition } from './composition'
 import { makeStep } from './definition'
-import { refreshIntent } from './frame'
-import {
-  AudioState,
-  type InputDevice,
-  LOAD_STEPS,
-  Loading,
-  type Model,
-  type PointerDevice,
-  RunMode,
-  cosmeticSeedOf,
-  initialModel,
-} from './model'
-import { stepWhen } from './stepWhen'
-import { askForRoomLink, openCoop, tickRoomFrame } from './update/coop'
+import { LOAD_STEPS, Loading, cosmeticSeedOf, initialModel } from './model'
+import { coopHandlers } from './update/coop'
 import { orInRun } from './update/coopRun'
-import { toggleFullscreen } from './update/fullscreen'
-import { playFromHome } from './update/lobby'
-import {
-  asAllowedPress,
-  buyAmmoFromHoldButton,
-  clickAmmoTag,
-  clickMedic,
-  clickNextTrap,
-  clickPause,
-  clickPlaceTrap,
-  clickStartWave,
-  isDebutCardBlocking,
-  isFreshRun,
-  isSlotClickPassingThrough,
-  isSlotPressAShot,
-  notePageVisibility,
-  orientationOf,
-  pauseWhenAway,
-  pressGunSlot,
-  pressMeleeSlot,
-  pressedKey,
-  releasedKey,
-  reloadFromButton,
-  resumeFromPointer,
-  skipDebutCardWhenUp,
-  swapFromButton,
-  tickFrame,
-  useDevice,
-  withSlotClick,
-} from './update/play'
-import { openProfile } from './update/profile'
-import { keepGoingWhenAllowed, startFromButton, startsRun } from './update/run'
-import {
-  failWrite,
-  finishLoading,
-  finishWrite,
-  finishWriteWithRun,
-  forgetRunWait,
-  loadSave,
-  settleRun,
-  takeSyncedSave,
-} from './update/save'
+import { deviceHandlers } from './update/fullscreen'
+import { inputHandlers, pageHandlers, runButtonHandlers } from './update/input'
+import { lobbyHandlers } from './update/lobby'
+import { tickFrame } from './update/play'
+import { saveHandlers } from './update/save'
 import { afterMessage } from './update/settle'
-import {
-  ResumeAudio,
-  notePlayOutcome,
-  playStartSoundWhen,
-  tapSound,
-  toggleMusic,
-  toggleSound,
-  unlockAudio,
-} from './update/sound'
-import {
-  type UpdateReturn,
-  combine,
-  modelStep,
-  unchanged,
-  withInput,
-} from './update/step'
-import {
-  checkForUpdate,
-  recordRemoteBuild,
-  registerServiceWorkerAfterSplash,
-} from './update/version'
+import { soundHandlers } from './update/sound'
+import { combine } from './update/step'
+import { versionHandlers } from './update/version'
 // INIT
 
 // NOTE: every LoadStep must finish before the splash goes. A step that
@@ -148,130 +32,17 @@ export const init = ApplicationComposition.makeInit(() => ({
   commands: bootCommands(),
 }))
 
-const deviceOf = (device: PointerDevice): InputDevice =>
-  device === 'Touch' ? 'Touch' : 'KeyboardMouse'
-
-const pressedPointer = (model: Model, pointer: PointerPress): UpdateReturn => {
-  const press = asAllowedPress(model, pointer)
-  const started = resumeFromPointer(useDevice(model, deviceOf(press.device)))
-  const pressed = isRoundActive(model.phase)
-    ? withInput(skipDebutCardWhenUp(started), input =>
-        pressPointer(input, started.maybeSurface, press),
-      )
-    : refreshIntent(skipFromPointer(started))
-  return combine(pressed, [
-    unlockAudio,
-    playStartSoundWhen(startsRun(model, pressed)),
-  ])
-}
-
-// NOTE: the click after a mouse's shot through a slot (PressedHudSlot) is
-// spent, and the next click on a slot acts again.
-const passSlotClick = (model: Model): UpdateReturn => ({
-  model: withSlotClick(model, 'Acts'),
-})
-
 const { makeUpdate } = ApplicationComposition
 
-// NOTE: each handler holds only its own change; `update` below settles
-// every dispatch once after it.
+// NOTE: the one exhaustive handler record. Each group of the root's
+// Messages has its handlers beside the Steps they call (AGENTS.md
+// "Folders"), so a Message with no handler fails here. Each handler holds
+// only its own change; `update` below settles every dispatch once after it.
 const handlers = makeUpdate({
   TickedFrame: (model, message) =>
     Update.combineSteps(model, [
       makeStep(orInRun(message, tickFrame(message.deltaTime))),
     ]),
-
-  TickedRoomFrame: (model, { nowMs }) =>
-    Update.combineSteps(model, [tickRoomFrame(nowMs)]),
-
-  PressedKey: (model, message) =>
-    Update.combineSteps(model, [
-      makeStep(orInRun(message, pressedKey(message.code))),
-    ]),
-
-  ReleasedKey: (model, { code }) =>
-    Update.combineSteps(model, [releasedKey(code)]),
-
-  PressedMetaKey: model => ({ model: withInput(model, releaseKeys) }),
-
-  MissedKeyDown: model => ({ model: noteMissedKeyDown(model) }),
-
-  BlurredWindow: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, pauseWhenAway))]),
-
-  ChangedPageVisibility: (model, message) =>
-    Update.combineSteps(model, [
-      makeStep(orInRun(message, notePageVisibility(message.visibility))),
-    ]),
-
-  PressedPointer: (model, press) => pressedPointer(model, press),
-
-  PressedHudSlot: (model, press) =>
-    isSlotPressAShot(model, press.device)
-      ? pressedPointer(withSlotClick(model, 'PassesThrough'), press)
-      : {
-          model: withSlotClick(
-            useDevice(model, deviceOf(press.device)),
-            'Acts',
-          ),
-        },
-
-  MovedPointer: (model, { pointerId, clientX, clientY }) => ({
-    model: withInput(model, input =>
-      movePointer(input, model.maybeSurface, { pointerId, clientX, clientY }),
-    ),
-  }),
-
-  ReleasedPointer: (model, { pointerId }) =>
-    unlockAudio(withInput(model, input => releasePointer(input, pointerId))),
-
-  // NOTE: the finger holds the interact until it lifts, and at the ammo
-  // window its landing buys at once.
-  PressedHoldButton: (model, message) =>
-    Update.combineSteps(model, [
-      modelStep(held =>
-        withInput(useDevice(held, 'Touch'), input =>
-          pressHoldButton(input, message.pointerId),
-        ),
-      ),
-      unlockAudio,
-      makeStep(orInRun(message, buyAmmoFromHoldButton)),
-    ]),
-
-  ClickedAmmoTag: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickAmmoTag))]),
-
-  CancelledPointer: (model, { pointerId }) => ({
-    model: withInput(model, input => releasePointer(input, pointerId)),
-  }),
-
-  ReleasedEveryTouch: model => ({ model: withInput(model, releaseSticks) }),
-
-  MovedMouse: (model, { clientX, clientY }) => ({
-    model: withInput(useDevice(model, 'KeyboardMouse'), input =>
-      moveMouse(input, model.maybeSurface, { x: clientX, y: clientY }),
-    ),
-  }),
-
-  SuppressedContextMenu: model => ({ model }),
-
-  // NOTE: the touch tap listener (src/input/touchTaps.ts) reports each tap it
-  // made. The tapped button's own Message did the work.
-  TappedWithTouch: model => ({ model }),
-
-  // NOTE: turning the phone while the turn hint is up is the hint done.
-  MeasuredGameSurface: (model, { left, top, width, height }) => {
-    const measured = modifyFields(model, {
-      maybeSurface: () => Option.some({ left, top, width, height }),
-      orientation: () => orientationOf(width, height),
-    })
-    return {
-      model:
-        isTurnHintShown(model) && !isTurnHintShown(measured)
-          ? seeTurnHint(measured)
-          : measured,
-    }
-  },
 
   CompletedGenerateSeed: (model, { seed }) => ({
     model: modifyFields(model, {
@@ -280,355 +51,22 @@ const handlers = makeUpdate({
     }),
   }),
 
-  CompletedDetectInputDevice: (model, { touchControls }) => ({
-    model: useDevice(
-      modifyFields(model, { touchControls: () => touchControls }),
-      touchControls === 'Allowed' ? 'Touch' : 'KeyboardMouse',
-    ),
-  }),
-
-  ClickedMuteButton: model => unlockAudio(toggleSound(model)),
-
-  ClickedPauseButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickPause))]),
-
-  ClickedMusicButton: model => unlockAudio(toggleMusic(model)),
-
-  ClickedCampaignButton: model =>
-    Update.combineSteps(model, [startOrAsk(RunMode.Campaign())]),
-
-  ClickedEndlessButton: model =>
-    Update.combineSteps(model, [startOrAsk(RunMode.Endless())]),
-
-  ClickedKeepGoingButton: model =>
-    startFromButton(model, keepGoingWhenAllowed(model)),
-
-  ClickedRetryButton: model => startFromButton(model, retry(model)),
-
-  ClickedShareButton: model => combine(model, [unlockAudio, shareFromButton]),
-
-  ClickedRunItBackButton: model =>
-    Update.combineSteps(model, [unlockAudio, runItBack]),
-
-  ClickedRoomLobbyButton: model =>
-    Update.combineSteps(model, [unlockAudio, toRoomLobby]),
-
-  ClickedLeaveRoomButton: model =>
-    Update.combineSteps(model, [unlockAudio, leaveRoomFromCard]),
-
-  ClickedCharacterButton: model =>
-    Update.combineSteps(model, [unlockAudio, closeHand, openProfile('Look')]),
-
-  ClickedStartWaveButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickStartWave))]),
-
-  ClickedDebutCardButton: model =>
-    stepWhen(isDebutCardBlocking, stepModel =>
-      unlockAudio(skipDebutCard(stepModel)),
-    )(model),
-
-  ClickedSwapButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, swapFromButton))]),
-
-  ClickedGunSlot: (model, message) =>
-    isSlotClickPassingThrough(model)
-      ? passSlotClick(model)
-      : Update.combineSteps(model, [
-          makeStep(orInRun(message, pressGunSlot(message.slot))),
-        ]),
-
-  ClickedMeleeSlot: (model, message) =>
-    isSlotClickPassingThrough(model)
-      ? passSlotClick(model)
-      : Update.combineSteps(model, [
-          makeStep(orInRun(message, pressMeleeSlot)),
-        ]),
-
-  // NOTE: on touch the reload button is a tap like any button, made into a
-  // click by src/input/touchTaps.ts even with a thumb on the move stick.
-  ClickedReloadButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, reloadFromButton))]),
-
-  // NOTE: MEDIC! from a downed player, a tap on the red cross.
-  ClickedMedicButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickMedic))]),
-
-  ClickedFullscreenButton: model => toggleFullscreen(model),
-
-  CompletedSetFullscreen: (model, { fullscreen }) => ({
-    model: modifyFields(model, { fullscreen: () => fullscreen }),
-  }),
-
-  FailedSetFullscreen: model => ({ model }),
-
-  ChangedFullscreen: (model, { fullscreen }) => ({
-    model: modifyFields(model, { fullscreen: () => fullscreen }),
-  }),
-
-  CompletedDetectScreenFit: (model, { screenFit }) => ({
-    model: modifyFields(model, { screenFit: () => screenFit }),
-  }),
-
-  CompletedDetectOrientationLock: (model, { orientationLock }) => ({
-    model: modifyFields(model, { orientationLock: () => orientationLock }),
-  }),
-
   CompletedDetectLocalPlayers: (model, { count }) => ({
     model: modifyFields(model, { localPlayers: () => count }),
   }),
 
-  CompletedApplyRotation: model => ({ model }),
-
-  ClickedInstallButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound, pressInstall]),
-
-  ChangedInstallOffer: (model, { installOffer }) => ({
-    model: modifyFields(model, { installOffer: () => installOffer }),
-  }),
-
-  CompletedShowInstallPrompt: (model, { outcome }) => ({
-    model: settleInstallPrompt(model, outcome),
-  }),
-
-  ClickedPlaceTrapButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickPlaceTrap))]),
-
-  ClickedNextTrapButton: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickNextTrap))]),
-
-  AcquiredAudioEngine: model => ({
-    model: modifyFields(model, { audio: () => AudioState.Suspended() }),
-    commands: [ResumeAudio()],
-  }),
-
-  FailedAcquireAudioEngine: model => ({
-    model: modifyFields(model, { audio: () => AudioState.Unavailable() }),
-  }),
-
-  ReleasedAudioEngine: model => ({ model }),
-
-  CompletedResumeAudio: (model, { playback }) => {
-    if (playback === 'Running') {
-      const ready = modifyFields(model, { audio: () => AudioState.Ready() })
-      return playStartSoundWhen(isFreshRun(ready))(ready)
-    } else {
-      return {
-        model: modifyFields(model, { audio: () => AudioState.Suspended() }),
-      }
-    }
-  },
-
-  FailedResumeAudio: model => ({
-    model: modifyFields(model, { audio: () => AudioState.Suspended() }),
-  }),
-
-  CompletedPlaySound: (model, { outcome }) => notePlayOutcome(outcome)(model),
-
-  FailedPlaySound: model => ({ model }),
-
-  CompletedCueMusic: model => ({ model }),
-
-  FailedCueMusic: model => ({ model }),
-
-  FocusedWindow: model => checkForUpdate(model),
-
-  RestoredPageFromCache: model => checkForUpdate(model),
-
-  TickedUpdateCheck: model => checkForUpdate(model),
-
-  CompletedFetchBuild: (model, { build }) =>
-    recordRemoteBuild(model, RUNNING_BUILD, build),
-
-  FailedFetchBuild: model => ({ model }),
-
-  ClickedUpdateButton: model => combine(model, [unlockAudio, unwrapUpdateGift]),
-
-  CompletedWaitForUnwrap: model => reloadOntoNewerBuild(model),
-
-  CompletedReadUpdateMarker: (model, { maybeBuild }) =>
-    Update.combineSteps(model, [
-      greetUpdate(isGreetingDue(RUNNING_BUILD, maybeBuild)),
-    ]),
-
-  ClickedUpdateGreetingNewsButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound, newsFromGreeting]),
-
-  CompletedReloadPage: model => ({ model }),
-
-  FailedReloadPage: model => ({ model: rewrapUpdateGift(model) }),
-
-  CompletedRegisterServiceWorker: model => ({ model }),
-
-  FailedRegisterServiceWorker: model => ({ model }),
-
-  CompletedUpdateServiceWorker: model => ({ model }),
-
-  FailedUpdateServiceWorker: model => ({ model }),
-
-  ClickedHowToPlayButton: model =>
-    Update.combineSteps(model, [
-      unlockAudio,
-      closeHand,
-      openPanel('HowToPlay'),
-    ]),
-
-  FocusedHelpCard: (model, { card }) => ({ model: showHelpLine(model, card) }),
-
-  ClickedHelpCard: (model, { card }) => unlockAudio(showHelpLine(model, card)),
-
-  ClickedSkipQuestButton: model => unlockAudio(endQuest(model)),
-
-  ClickedSkipKitchenTourButton: model => unlockAudio(skipKitchenTour(model)),
-
-  ClickedSettingsButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound, openSettingsFromGear]),
-
-  // NOTE: the coffee is a real link, so the browser opens it; this only
-  // plays the tap.
-  ClickedSupportButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound]),
-
-  ClickedMenuButton: model =>
-    Update.combineSteps(model, [unlockAudio, leaveFromMenu]),
-
-  ClickedLeaveRunButton: model => Update.combineSteps(model, [leaveRun]),
-
-  ClickedStayButton: model => Update.combineSteps(model, [closePanel]),
-
-  ClickedDifficultyCardButton: (model, { difficulty }) =>
-    Update.combineSteps(model, [pickFromCard(difficulty)]),
-
-  ClickedTutorialChoiceButton: (model, { choice }) =>
-    Update.combineSteps(model, [pickTutorialChoice(choice)]),
-
-  FocusedHomeButton: (model, { button }) => ({
-    model: modifyFields(model, { maybeHomeFocus: () => Option.some(button) }),
-  }),
-
-  BlurredHomeButton: model => ({
-    model: modifyFields(model, { maybeHomeFocus: () => Option.none() }),
-  }),
-
-  CompletedFocusHomeButton: model => ({ model }),
-
-  CompletedFocusEndMenuButton: model => ({ model }),
-
-  CompletedClickSupportLink: model => ({ model }),
-
-  SettledShare: (model, { outcome }) => settleShare(outcome)(model),
-
-  CompletedDetectShareSheet: (model, { shareSheet }) => ({
-    model: modifyFields(model, { shareSheet: () => shareSheet }),
-  }),
-
-  CompletedLoadStyles: model => finishLoading(model, 'Styles'),
-
-  CompletedLoadFonts: model => finishLoading(model, 'Fonts'),
-
-  FailedLoadFonts: model => finishLoading(model, 'Fonts'),
-
-  CompletedAwaitFirstFrame: model => finishLoading(model, 'FirstFrame'),
-
-  CompletedDecodeSprites: model => finishLoading(model, 'Sprites'),
-
-  CompletedShowLoadProgress: model => ({ model }),
-
-  CompletedHideSplash: model =>
-    combine(model, [
-      stepModel => registerServiceWorkerAfterSplash(stepModel, RUNNING_BUILD),
-      askForRoomLink,
-    ]),
-
-  CompletedLoadSave: (model, { maybeSave }) => loadSave(model, maybeSave),
-
-  FailedLoadSave: model => loadSave(model, Option.none()),
-
-  CompletedWriteSave: model => finishWrite(model),
-
-  CompletedWriteSaveWithRun: (model, { runId }) =>
-    finishWriteWithRun(model, runId),
-
-  FailedWriteSave: (model, { changes }) => failWrite(model, changes),
-
-  CompletedGenerateVisitId: (model, { visitId }) => ({
-    model: modifyFields(model, { maybeVisitId: () => Option.some(visitId) }),
-  }),
-
-  CompletedStartSummaryQueue: model => ({ model }),
-
-  CompletedSendRunSummary: model => ({ model }),
-
-  FailedSendRunSummary: model => ({ model }),
-
-  CompletedSendShareEvent: model => ({ model }),
-
-  FailedSendShareEvent: model => ({ model }),
-
-  UpdatedSyncedSave: (model, { save }) => takeSyncedSave(model, save),
-
-  CompletedReloadSyncedSave: (model, { maybeSave }) =>
-    Option.match(maybeSave, {
-      onNone: () => ({ model }),
-      onSome: save => takeSyncedSave(model, save),
-    }),
-
-  UpdatedSyncStatus: (model, { state }) => ({
-    model: modifyFields(model, { syncState: () => state }),
-  }),
-
-  UpdatedPlayerScopeStatus: (model, { status }) => ({
-    model: modifyFields(model, { playerScopeStatus: () => status }),
-  }),
-
-  SettledRecordedRun: (model, { runId, settled }) =>
-    settleRun(model, runId, settled),
-
-  FailedAwaitRunSettled: (model, { runId }) => forgetRunWait(model, runId),
-
-  ClickedPlayButton: model => Update.combineSteps(model, [playFromHome]),
-
-  ClickedWhatsNewButton: model =>
-    Update.combineSteps(model, [unlockAudio, closeHand, openWhatsNew]),
-
-  ClickedOlderNewsButton: model => turnNews(model, 1),
-
-  ClickedNewerNewsButton: model => turnNews(model, -1),
-
-  ClickedMunchopediaButton: model =>
-    Update.combineSteps(model, [
-      unlockAudio,
-      closeHand,
-      openMunchopedia(MunchopediaPage.List()),
-    ]),
-
-  ClickedNewEntryButton: (model, { kind }) =>
-    Update.combineSteps(model, [
-      unlockAudio,
-      openMunchopedia(MunchopediaPage.Entry({ kind })),
-    ]),
-
-  ClickedTurnHint: model => ({ model: seeTurnHint(model) }),
-
-  ClickedManorButton: model =>
-    Update.combineSteps(model, [unlockAudio, tapSound, openHand]),
-
-  SteppedHandFocus: (model, { card }) => stepHandFocus(model, card),
-
-  CompletedFocusHandCard: model => ({ model }),
-
-  ClickedCoopButton: model =>
-    Update.combineSteps(model, [
-      unlockAudio,
-      tapSound,
-      openCoop(Option.none()),
-    ]),
-
-  CompletedReadRoomLink: (model, { maybeCode }) =>
-    Update.combineSteps(model, [
-      makeStep(() =>
-        Option.isSome(maybeCode) ? openCoop(maybeCode) : unchanged,
-      ),
-    ]),
+  ...inputHandlers,
+  ...runButtonHandlers,
+  ...pageHandlers,
+  ...versionHandlers,
+  ...deviceHandlers,
+  ...saveHandlers,
+  ...soundHandlers,
+  ...coopHandlers,
+  ...lobbyHandlers,
+  ...homeHandlers,
+  ...endHandlers,
+  ...onboardingHandlers,
 })
 
 // SETTLING

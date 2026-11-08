@@ -1,14 +1,7 @@
 import { Array, Function, Option } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import {
-  CounterSale,
-  type Model,
-  Phase,
-  ShopState,
-  type Vector,
-  type Zombie,
-} from '../app/model'
+import type { Model } from '../app/model'
 import { group } from '../art/sprite'
 import {
   chompShapes,
@@ -43,6 +36,12 @@ import {
 } from '../features/shop/stall'
 import { type Level, isInsideRoomAt, levelOf } from '../world/level/arena'
 import { focusOf, focusSlotOf } from '../world/party/party'
+import {
+  CounterSale,
+  type Vector,
+  type Zombie,
+} from '../world/schema/entitySchema'
+import { Phase, ShopState } from '../world/schema/worldSchema'
 import { isAtAmmoWindow, isCounterOpen } from '../world/shop/ammoCounter'
 import { isShopOpenFor, stallPrompt } from '../world/shop/shop'
 import { ZERO_VECTOR } from '../world/step/geometry'

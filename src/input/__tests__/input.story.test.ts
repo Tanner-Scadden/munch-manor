@@ -4,7 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { Message } from '../../app/message'
-import { type Bullet, MouseButton, Phase, Stick } from '../../app/model'
+import { type Bullet, Phase } from '../../app/model'
 import { update } from '../../app/pureApp'
 import {
   FIXED_STEP_MS,
@@ -19,6 +19,7 @@ import {
 import { holdingSecond, tick, touchDown, touchMove } from '../../test/testing'
 import { WEAPONS, freshGun } from '../../world/gear/weapons'
 import { modifyFocus } from '../../world/party/party'
+import { MouseButton, Stick } from '../inputSchema'
 
 const LEFT_THUMB = 11
 const RIGHT_THUMB = 12

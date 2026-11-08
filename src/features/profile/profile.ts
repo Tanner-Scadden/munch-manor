@@ -5,6 +5,8 @@ import type { Model, ProfileTab } from './model'
 
 // TABS
 
+export const PROFILE_TABS_ID = 'profile-tabs'
+
 // NOTE: the tabs as data, in the order they stand down the side (across the
 // top in portrait). Stats would be one more entry here and one
 // more literal in ProfileTab (src/features/profile/model.ts).

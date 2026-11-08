@@ -3,9 +3,8 @@ import { Array, Effect, Schema } from 'effect'
 
 import { afterEach, describe, expect, it, test, vi } from '@effect/vitest'
 
-import { GAME_URL } from '../../features/end/share'
+import { GAME_URL, type ShareOutcome } from '../../features/end/share'
 import { describeError } from '../../shared/describeError'
-import type { ShareOutcome } from '../model'
 import { SHARE_TEXT_DATA, listenForShareClicks } from '../mount'
 
 const TEXT = '💀 Got munched on wave 4 in Munch Manor. Your turn!'

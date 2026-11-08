@@ -13,11 +13,11 @@ import {
   Purchasable,
   Purchase,
   ShopState,
-  Stick,
   ZombieAction,
 } from '../../../app/model'
 import { update } from '../../../app/pureApp'
 import { freshRun } from '../../../app/runReset'
+import { Stick } from '../../../input/inputSchema'
 import { cameraFor } from '../../../render/camera'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {

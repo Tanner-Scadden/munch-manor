@@ -12,8 +12,9 @@ import {
 import { modifyFields } from 'foldkit/struct'
 import { describe, test, expect as vitestExpect } from 'vitest'
 
-import { type InputDevice, type Model } from '../../../app/model'
+import type { Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import type { InputDevice } from '../../../input/inputSchema'
 import {
   ROOT,
   measureSurface,

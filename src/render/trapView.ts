@@ -1,16 +1,7 @@
 import { Array, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
-import {
-  type DoorId,
-  type Model,
-  Phase,
-  ShopState,
-  Trap,
-  type Turret,
-  TurretGun,
-  type Vector,
-} from '../app/model'
+import type { Model } from '../app/model'
 import { type Facing, type Sprite, type Tone, group } from '../art/sprite'
 import { gunSprite } from '../art/sprites/guns'
 import {
@@ -41,6 +32,14 @@ import {
 import { WEAPONS } from '../world/gear/weapons'
 import { type Box, type Level, boxCenter, levelOf } from '../world/level/arena'
 import { focusOf, focusSlotOf } from '../world/party/party'
+import type { DoorId, Vector } from '../world/schema/entitySchema'
+import {
+  Phase,
+  ShopState,
+  Trap,
+  type Turret,
+  TurretGun,
+} from '../world/schema/worldSchema'
 import {
   AIMING_UP,
   FULL_TURN,

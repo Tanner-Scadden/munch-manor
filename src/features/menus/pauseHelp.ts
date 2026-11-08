@@ -5,21 +5,18 @@ import type {
   ApplicationAttribute,
   ApplicationViewBuilder,
 } from '../../app/composition'
-import { Message } from '../../app/message'
-import {
-  type HelpCard,
-  type InputDevice,
-  type Model,
-  Phase,
-} from '../../app/model'
+import type { Model } from '../../app/model'
 import { standaloneSource } from '../../art/sprite'
+import type { InputDevice } from '../../input/inputSchema'
 import { GUN_NAMES, KNIFE_NAME } from '../../world/names'
+import { Phase } from '../../world/schema/worldSchema'
 import {
   HELP_DEMO_SPRITES,
   HINT_ICON_SPRITES,
   type HintIconSprites,
   keyIcon,
 } from '../onboarding/hintIcons'
+import { type HelpCard, HelpMessage } from './message'
 
 // CONTROLS
 
@@ -321,8 +318,8 @@ const interactiveCardView = (
           h.DataAttribute('open', isOpen ? 'true' : 'false'),
           h.AriaExpanded(isOpen),
           h.AriaDescribedBy(helpLineElementId(card.id)),
-          h.OnFocus(Message.FocusedHelpCard({ card: card.id })),
-          h.OnClick(Message.ClickedHelpCard({ card: card.id })),
+          h.OnFocus(HelpMessage.FocusedHelpCard({ card: card.id })),
+          h.OnClick(HelpMessage.ClickedHelpCard({ card: card.id })),
         ],
         cardFaceView(card, device, h),
       ),

@@ -1,16 +1,14 @@
-// The client's own Schemas beside the World's: input devices, particles and
-// decals, the home menu, loading, the bests, hints, and the dialog ids.
+// The client's own Schemas beside the World's that no one feature owns: the
+// home menu's state, loading, the bests, hints, the tours, and the dialog
+// ids. A feature's own Schemas live in its folder (the input's in
+// src/input/inputSchema.ts, the home menu's in
+// src/features/home/homeSchema.ts, ...).
 // src/app/model.ts re-exports them; the co-op room never imports this module.
 
 import { Option, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
-import {
-  HouseSpot,
-  MapId,
-  ShopGuideSection,
-  TutorialChoice,
-} from '../shared/nameKeys'
+import { TutorialChoice } from '../shared/nameKeys'
 import { Appearance, Calling } from '../shared/playerData'
 import { MillisNumber } from '../world/schema/wireNumber'
 import {
@@ -18,128 +16,11 @@ import {
   KillCounts,
   Lesson,
   type Lessons,
-  ParticleKind,
   RunMode,
   Vector,
   WeaponKind,
   ZombieKind,
 } from '../world/schema/worldSchema'
-
-export const SurfaceRectangle = Schema.Struct({
-  left: Schema.Finite,
-  top: Schema.Finite,
-  width: Schema.Finite,
-  height: Schema.Finite,
-})
-export type SurfaceRectangle = typeof SurfaceRectangle.Type
-
-export const Stick = defineTaggedUnion({
-  Idle: {},
-  Active: {
-    pointerId: Schema.Finite,
-    originX: Schema.Finite,
-    originY: Schema.Finite,
-    currentX: Schema.Finite,
-    currentY: Schema.Finite,
-  },
-})
-export type Stick = typeof Stick.Type
-
-export const MouseButton = defineTaggedUnion({
-  Released: {},
-  Held: { pointerId: Schema.Finite },
-})
-export type MouseButton = typeof MouseButton.Type
-
-// NOTE: a finger holding the touch HUD's hold-to-buy button, by its pointer,
-// so lifting that finger lets go and no other finger does.
-export const HoldButton = defineTaggedUnion({
-  Released: {},
-  Held: { pointerId: Schema.Finite },
-})
-export type HoldButton = typeof HoldButton.Type
-
-export const PointerDevice = Schema.Literals(['Mouse', 'Touch'])
-export type PointerDevice = typeof PointerDevice.Type
-
-export const InputDevice = Schema.Literals(['KeyboardMouse', 'Touch'])
-export type InputDevice = typeof InputDevice.Type
-
-export const TouchControls = Schema.Literals(['Allowed', 'Blocked'])
-export type TouchControls = typeof TouchControls.Type
-
-export const Orientation = Schema.Literals(['Landscape', 'Portrait'])
-export type Orientation = typeof Orientation.Type
-
-// NOTE: what the click after a press on a HUD gun or knife slot does. A
-// mouse press there mid-wave is a shot at the world beneath, so its click
-// passes through; a touch, or a mouse outside a wave, acts on the slot.
-export const SlotClick = Schema.Literals(['Acts', 'PassesThrough'])
-export type SlotClick = typeof SlotClick.Type
-
-export const Input = Schema.Struct({
-  pressedKeys: Schema.Array(Schema.String),
-  maybeMouseInView: Schema.Option(Vector),
-  mouseButton: MouseButton,
-  moveStick: Stick,
-  aimStick: Stick,
-  holdButton: HoldButton,
-  slotClick: SlotClick,
-})
-export type Input = typeof Input.Type
-
-export const Particle = Schema.Struct({
-  kind: ParticleKind,
-  x: Schema.Finite,
-  y: Schema.Finite,
-  z: Schema.Finite,
-  velocityX: Schema.Finite,
-  velocityY: Schema.Finite,
-  velocityZ: Schema.Finite,
-  size: Schema.Finite,
-  remainingMs: MillisNumber,
-})
-export type Particle = typeof Particle.Type
-
-export const DecalKind = Schema.Literals([
-  'Blood',
-  'Meat',
-  'Rot',
-  'Shell',
-  'Hull',
-  'Bone',
-  'Hide',
-  'Goo',
-  'Scorch',
-  'Wood',
-  'Clip',
-  'GreenLimb',
-  'GreenScalp',
-  'HairScalp',
-  'BlueLimb',
-  'BlueChunk',
-  'BombShard',
-  'LimeLimb',
-  'RedCap',
-  'PinkLimb',
-  'PinkChunk',
-  'TealLimb',
-  'TealScalp',
-  'PaleScalp',
-  'PotLid',
-  'StopSign',
-  'Bucket',
-])
-export type DecalKind = typeof DecalKind.Type
-
-export const Decal = Schema.Struct({
-  kind: DecalKind,
-  x: Schema.Finite,
-  y: Schema.Finite,
-  width: Schema.Finite,
-  height: Schema.Finite,
-})
-export type Decal = typeof Decal.Type
 
 // NOTE: a cosmetic: a fridge weapon the player just took, flying from the
 // fridge's door (`from`, in the world) into its HUD gun slot, which then
@@ -159,70 +40,10 @@ export const AudioState = defineTaggedUnion({
 })
 export type AudioState = typeof AudioState.Type
 
-// NOTE: whether this device can lock how the page turns: a touch screen
-// whose browser has screen.orientation.lock. Desktops and iPhones cannot.
-export const OrientationLock = Schema.Literals(['Supported', 'Unsupported'])
-export type OrientationLock = typeof OrientationLock.Type
-
-export const ScreenFit = Schema.Literals([
-  'Unknown',
-  'Fullscreen',
-  'HomeScreen',
-  'Installed',
-  'Unavailable',
-])
-export type ScreenFit = typeof ScreenFit.Type
-
-// NOTE: whether the browser offered to install the game: Chrome's
-// beforeinstallprompt, held by src/platform/install.ts until the install tile asks.
-export const InstallOffer = Schema.Literals(['None', 'Ready', 'Installed'])
-export type InstallOffer = typeof InstallOffer.Type
-
-export const InstallOutcome = Schema.Literals([
-  'Accepted',
-  'Dismissed',
-  'Unavailable',
-])
-export type InstallOutcome = typeof InstallOutcome.Type
-
 // NOTE: the update gift on the home menu, wrapped until a tap unwraps it
 // and the page reloads onto the newer build.
 export const UpdateGift = Schema.Literals(['Wrapped', 'Unwrapping'])
 export type UpdateGift = typeof UpdateGift.Type
-
-export const FullscreenSetting = Schema.Literals(['Off', 'On'])
-export type FullscreenSetting = typeof FullscreenSetting.Type
-
-export const HomeButton = Schema.Literals([
-  'Play',
-  'Coop',
-  'Manor',
-  'Bests',
-  'Support',
-  'Settings',
-])
-export type HomeButton = typeof HomeButton.Type
-
-// NOTE: the cards the MANOR button deals. Code links to the game's public
-// source on GitHub. The tip jar's coffee is not a card: it stands in the
-// home menu's corner (HomeButton Support).
-export const HandCard = Schema.Literals([
-  'Character',
-  'Munchopedia',
-  'WhatsNew',
-  'HowToPlay',
-  'Code',
-])
-export type HandCard = typeof HandCard.Type
-
-export const MenuPanel = Schema.Literals([
-  'HowToPlay',
-  'LeaveRun',
-  'Difficulty',
-  'WhatsNew',
-  'Munchopedia',
-])
-export type MenuPanel = typeof MenuPanel.Type
 
 // NOTE: the bests are kept in the on-device save (src/platform/save.ts): one set for
 // each difficulty, plus the runs played and the zombies splatted in all and
@@ -350,34 +171,6 @@ export type SaveStatus = typeof SaveStatus.Type
 export const SyncedSaveState = Schema.Literals(['Current', 'Stale'])
 export type SyncedSaveState = typeof SyncedSaveState.Type
 
-export const TutorialReset = Schema.Literals(['Idle', 'Asking', 'Done'])
-export type TutorialReset = typeof TutorialReset.Type
-
-export const PageVisibility = Schema.Literals(['Visible', 'Hidden'])
-export type PageVisibility = typeof PageVisibility.Type
-
-export const LookPart = Schema.Literals([
-  'Body',
-  'HairStyle',
-  'HairColor',
-  'SkinTone',
-  'ShirtColor',
-  'Outfit',
-  'Print',
-  'Hat',
-  'GunSkin',
-])
-export type LookPart = typeof LookPart.Type
-
-// NOTE: the look's two on and off parts, each one tap.
-export const LookToggle = Schema.Literals(['Beard', 'Glasses'])
-export type LookToggle = typeof LookToggle.Type
-
-// NOTE: the Look tab's little tabs: the body, skin, beard, and glasses; the
-// hair; the outfit; and the gear, a hat and a gun skin.
-export const LookSection = Schema.Literals(['Body', 'Hair', 'Outfit', 'Gear'])
-export type LookSection = typeof LookSection.Type
-
 // NOTE: the first PLAY or ENDLESS of the session asks for a difficulty.
 // Asking holds the mode to start once one is picked, and whether to play
 // the tutorial.
@@ -431,21 +224,9 @@ export const UPDATE_GREETING_ID = 'update-greeting'
 
 export const PROFILE_DIALOG_ID = 'profile'
 
-export const PROFILE_TABS_ID = 'profile-tabs'
-
 export const PANEL_DIALOG_ID = 'menu-panel'
 
 export const HAND_DIALOG_ID = 'manor-hand'
-
-export const idleInput: Input = {
-  pressedKeys: [],
-  maybeMouseInView: Option.none(),
-  mouseButton: MouseButton.Released(),
-  moveStick: Stick.Idle(),
-  aimStick: Stick.Idle(),
-  holdButton: HoldButton.Released(),
-  slotClick: 'Acts',
-}
 
 export const freshLessons: Lessons = {
   move: Lesson.Pending(),
@@ -481,18 +262,4 @@ export const defaultAppearance: Appearance = {
   gunSkin: 'Stock',
 }
 
-// NOTE: what the hero tells (src/render/heroTells.ts) saw of the World last frame,
-// to see what changed in it: each trap's health (a rise is a repair) and
-// each seat's earnings (a rise beside a kill is a kill paid). A cosmetic of
-// the client's own, so the room's World needs nothing new for it.
-export const TellWatch = Schema.Struct({
-  traps: Schema.Array(Schema.Struct({ id: Schema.Finite, hp: Schema.Finite })),
-  earned: Schema.Array(
-    Schema.Struct({ slot: Schema.Finite, earned: Schema.Finite }),
-  ),
-})
-export type TellWatch = typeof TellWatch.Type
-
-export const noTellWatch: TellWatch = { traps: [], earned: [] }
-
-export { HouseSpot, MapId, ShopGuideSection, TutorialChoice }
+export { TutorialChoice }

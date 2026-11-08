@@ -1,7 +1,7 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 
-import type { WeaponKind } from '../../app/model'
 import type { GunSkin } from '../../shared/playerData'
+import type { WeaponKind } from '../../world/schema/entitySchema'
 import {
   type Anchor,
   type Palette,

@@ -1,10 +1,10 @@
 import { Array, Function, Result, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
-import type { Vector } from '../app/model'
 import { GLYPH_HEIGHT, type TextTone, textShapes } from '../art/font'
 import { type Facing, type Palette, placeAt, spriteRects } from '../art/sprite'
 import { SHADOW_HEIGHT } from '../shared/constants'
+import type { Vector } from '../world/schema/entitySchema'
 import { clamp } from '../world/step/geometry'
 
 // SHARED SHAPE HELPERS

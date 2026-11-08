@@ -6,7 +6,6 @@ import type { Dialog } from '@foldkit/ui'
 import { UpdateGreetingBinding } from '../app/bindings'
 import type { ApplicationViewBuilder } from '../app/composition'
 import { closeButtonView, dialogShell } from '../app/dialogs'
-import { Message } from '../app/message'
 import type { Model } from '../app/model'
 import {
   GIFT_BOX_ICON,
@@ -21,6 +20,7 @@ import {
   maybeNewestNewsDay,
   newsHeadline,
 } from '../features/whatsNew/changelog'
+import { VersionMessage } from './message'
 
 // ART
 
@@ -69,7 +69,9 @@ export const updateGiftView: {
           h.DataAttribute('state', model.updateGift),
           h.AriaLabel(UPDATE_GIFT_LABEL),
           h.AriaBusy(model.updateGift === 'Unwrapping'),
-          h.OnClick(Message.ClickedUpdateButton(), { propagation: 'Stop' }),
+          h.OnClick(VersionMessage.ClickedUpdateButton(), {
+            propagation: 'Stop',
+          }),
         ],
         [
           giftArtView(h),
@@ -155,7 +157,7 @@ const greetingPanelView = (
           ...initialFocus,
           h.Type('button'),
           h.Class('panel-button greeting-news'),
-          h.OnClick(Message.ClickedUpdateGreetingNewsButton(), {
+          h.OnClick(VersionMessage.ClickedUpdateGreetingNewsButton(), {
             propagation: 'Stop',
           }),
         ],

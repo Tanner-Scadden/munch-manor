@@ -10,6 +10,10 @@ import {
   gearTapOf,
   priceOf,
 } from '../../features/profile/blocks/look/closet'
+import type {
+  LookPart,
+  LookToggle,
+} from '../../features/profile/blocks/look/lookSchema'
 import type { LookOutcome } from '../../features/profile/inMessage'
 import type { SettingTile } from '../../features/profile/message'
 import type { ProfileTab } from '../../features/profile/model'
@@ -23,7 +27,7 @@ import { rankOf, totalPointsOf } from '../../world/heroes/rank'
 import { ProfileBinding, ProfileDialogBinding } from '../bindings'
 import { makeStep } from '../definition'
 import { MenuState, menuState } from '../menuState'
-import type { LookPart, LookToggle, Model } from '../model'
+import type { Model } from '../model'
 import { toggleFullscreen } from './fullscreen'
 import { toggleRotation } from './rotation'
 import {

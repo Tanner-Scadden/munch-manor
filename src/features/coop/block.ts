@@ -1,8 +1,7 @@
 import { Schema } from 'effect'
 import { Block } from 'foldkit'
 
-import type { Appearance } from '../../app/model'
-import type { SavedBoughtCosmetics } from '../../shared/playerData'
+import type { Appearance, SavedBoughtCosmetics } from '../../shared/playerData'
 import { InMessage } from './inMessage'
 import { Message, OutMessage } from './message'
 import { Model } from './model'

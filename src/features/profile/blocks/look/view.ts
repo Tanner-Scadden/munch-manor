@@ -5,13 +5,6 @@ import type { Html } from 'foldkit/html'
 import type { RadioGroup } from '@foldkit/ui'
 
 import {
-  type Appearance,
-  type LookPart,
-  LookSection,
-  type LookToggle,
-  type Print,
-} from '../../../../app/model'
-import {
   BODIES,
   HAIR_COLORS,
   HAIR_SHADES,
@@ -41,10 +34,12 @@ import {
   SHADOW_COLOR,
 } from '../../../../shared/constants'
 import {
+  type Appearance,
   type Calling,
   type CosmeticKind,
   GunSkin,
   Hat,
+  type Print,
 } from '../../../../shared/playerData'
 import { startingGunKind } from '../../../../world/heroes/calling'
 import { rankOf, totalPointsOf } from '../../../../world/heroes/rank'
@@ -75,6 +70,7 @@ import {
   gearTagView,
   newBadgeView,
 } from './lookGearView'
+import { type LookPart, LookSection, type LookToggle } from './lookSchema'
 import type { CharacterPicker } from './model'
 
 // PARTS

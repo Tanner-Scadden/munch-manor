@@ -3,14 +3,9 @@ import { given, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import {
-  type Bullet,
-  type Model,
-  type Particle,
-  Phase,
-  Pierce,
-} from '../../../app/model'
+import { type Bullet, type Model, Phase, Pierce } from '../../../app/model'
 import { initialModel, update } from '../../../app/pureApp'
+import type { Particle } from '../../../render/renderSchema'
 import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,

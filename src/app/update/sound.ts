@@ -33,8 +33,8 @@ import {
   makeResource,
 } from '../definition'
 import { Message } from '../message'
-import { AudioState, GameEvent, type Model, type Player } from '../model'
-import type { UpdateStep } from './step'
+import { AudioState, GameEvent, type Model, Phase, type Player } from '../model'
+import { type UpdateStep, defineHandlers } from './step'
 
 // AUDIO
 
@@ -337,7 +337,7 @@ export const playSwapSoundWhen = (isSwap: boolean): UpdateStep =>
 
 // NOTE: a sound dropped while the engine is suspended means the browser
 // suspended it under a Ready engine: the next tap resumes it.
-export const notePlayOutcome =
+const notePlayOutcome =
   (outcome: PlayOutcome): UpdateStep =>
   model =>
     outcome === 'DroppedWhileSuspended' &&
@@ -382,3 +382,51 @@ export const toggleAudioFromKey: {
 } = Function.dual(2, (model: Model, code: string): Model =>
   toggleMusicFromKey(toggleSoundFromKey(model, code), code),
 )
+
+const START_SOUND_GRACE_MS = 1000
+
+const isFreshRun = (model: Model): boolean =>
+  Phase.isAnyOf(['Preparation'])(model.phase) &&
+  model.elapsedMs < START_SOUND_GRACE_MS
+
+// NOTE: the mute and music buttons, the audio engine, and each sound and
+// tune (src/audio/message.ts).
+export const soundHandlers = defineHandlers({
+  ClickedMuteButton: model => unlockAudio(toggleSound(model)),
+
+  ClickedMusicButton: model => unlockAudio(toggleMusic(model)),
+
+  AcquiredAudioEngine: model => ({
+    model: modifyFields(model, { audio: () => AudioState.Suspended() }),
+    commands: [ResumeAudio()],
+  }),
+
+  FailedAcquireAudioEngine: model => ({
+    model: modifyFields(model, { audio: () => AudioState.Unavailable() }),
+  }),
+
+  ReleasedAudioEngine: model => ({ model }),
+
+  CompletedResumeAudio: (model, { playback }) => {
+    if (playback === 'Running') {
+      const ready = modifyFields(model, { audio: () => AudioState.Ready() })
+      return playStartSoundWhen(isFreshRun(ready))(ready)
+    } else {
+      return {
+        model: modifyFields(model, { audio: () => AudioState.Suspended() }),
+      }
+    }
+  },
+
+  FailedResumeAudio: model => ({
+    model: modifyFields(model, { audio: () => AudioState.Suspended() }),
+  }),
+
+  CompletedPlaySound: (model, { outcome }) => notePlayOutcome(outcome)(model),
+
+  FailedPlaySound: model => ({ model }),
+
+  CompletedCueMusic: model => ({ model }),
+
+  FailedCueMusic: model => ({ model }),
+})

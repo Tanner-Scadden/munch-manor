@@ -1,7 +1,6 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import type { DoorId } from '../../app/model'
 import { type Palette, pixelRuns } from '../../art/sprite'
 import {
   isFacedExit,
@@ -24,6 +23,7 @@ import {
   symbolAt,
   tilesWithSymbol,
 } from '../../world/level/arena'
+import type { DoorId } from '../../world/schema/entitySchema'
 import { pixelArt, rect } from '../drawing'
 import {
   BASEBOARD_COLOR,

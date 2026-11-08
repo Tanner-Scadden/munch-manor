@@ -19,7 +19,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test, expect as vitestExpect } from 'vitest'
 
 import { Message } from '../../../app/message'
-import { type HandCard, type Model, Phase } from '../../../app/model'
+import { type Model, Phase } from '../../../app/model'
 import { ApplyRotation } from '../../../app/update/rotation'
 import { WriteSave } from '../../../app/update/save'
 import { noSavedBests, restoreSave, saveOf } from '../../../platform/save'
@@ -53,6 +53,7 @@ import {
 } from '../../profile/profile'
 import { FocusTutorialReset } from '../../profile/update'
 import { withBests } from '../home'
+import type { HandCard } from '../homeSchema'
 import { FocusHandCard, FocusHomeButton } from '../update'
 
 const playCluster = role('group', { name: 'Play' })

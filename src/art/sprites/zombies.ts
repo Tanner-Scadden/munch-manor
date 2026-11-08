@@ -1,6 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
 
-import type { ZombieKind } from '../../app/model'
+import type { ZombieKind } from '../../world/schema/entitySchema'
 import {
   type Facing,
   type Palette,

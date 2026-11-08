@@ -18,11 +18,19 @@ import {
 } from '../../platform/save'
 import { hideSplash, showSplashProgress } from '../../platform/splash'
 import { PlayerStore } from '../../platform/store'
+import { RUNNING_BUILD } from '../../platform/version'
 import { SEEN_BASELINE } from '../../shared/playerData'
 import { ApplicationBlock } from '../definition'
 import { Message } from '../message'
 import { LOAD_STEPS, type LoadStep, Loading, type Model } from '../model'
-import type { UpdateReturn, UpdateStep } from './step'
+import { askForRoomLink } from './coop'
+import {
+  type UpdateReturn,
+  type UpdateStep,
+  combine,
+  defineHandlers,
+} from './step'
+import { registerServiceWorkerAfterSplash } from './version'
 
 // COMMAND
 
@@ -119,7 +127,7 @@ export const ReloadSyncedSave = ApplicationBlock.makeCommand(
 
 // LOADING
 
-export const finishLoading: {
+const finishLoading: {
   (step: LoadStep): (model: Model) => UpdateReturn
   (model: Model, step: LoadStep): UpdateReturn
 } = Function.dual(2, (model: Model, step: LoadStep): UpdateReturn =>
@@ -150,7 +158,7 @@ export const finishLoading: {
 
 // SAVE
 
-export const loadSave: {
+const loadSave: {
   (maybeSave: Option.Option<PlayerSave>): (model: Model) => UpdateReturn
   (model: Model, maybeSave: Option.Option<PlayerSave>): UpdateReturn
 } = Function.dual(
@@ -239,7 +247,7 @@ export const writeSaveFrom: {
 // NOTE: a save from another device, or from the server, replaces what this
 // device shows: its look, settings, difficulty, and bests. Lessons and
 // unlocks only ever move forward, as on load.
-export const takeSyncedSave: {
+const takeSyncedSave: {
   (save: PlayerSave): (model: Model) => UpdateReturn
   (model: Model, save: PlayerSave): UpdateReturn
 } = Function.dual(2, (model: Model, save: PlayerSave): UpdateReturn =>
@@ -250,7 +258,7 @@ export const takeSyncedSave: {
 
 // NOTE: once this device's own writes have landed, a save from sync that
 // was held back is read again from the store, which by then has both.
-export const finishWrite = (model: Model): UpdateReturn => {
+const finishWrite = (model: Model): UpdateReturn => {
   const next = modifyFields(model, {
     writesInFlight: count => Math.max(count - 1, 0),
   })
@@ -264,7 +272,7 @@ export const finishWrite = (model: Model): UpdateReturn => {
 
 // NOTE: a write that recorded a run, on a build with a sync server, waits
 // for the server to settle it, so the Model knows the run reached it.
-export const finishWriteWithRun: {
+const finishWriteWithRun: {
   (runId: string): (model: Model) => UpdateReturn
   (model: Model, runId: string): UpdateReturn
 } = Function.dual(2, (model: Model, runId: string): UpdateReturn => {
@@ -280,7 +288,7 @@ export const finishWriteWithRun: {
 const isWaitingFor = (model: Model, runId: string): boolean =>
   model.lastRunSync._tag === 'Waiting' && model.lastRunSync.id === runId
 
-export const settleRun: {
+const settleRun: {
   (runId: string, settled: RunSettled): (model: Model) => UpdateReturn
   (model: Model, runId: string, settled: RunSettled): UpdateReturn
 } = Function.dual(
@@ -300,7 +308,7 @@ export const settleRun: {
 )
 
 // NOTE: the store could not tell, so the Model stops claiming to know.
-export const forgetRunWait: {
+const forgetRunWait: {
   (runId: string): (model: Model) => UpdateReturn
   (model: Model, runId: string): UpdateReturn
 } = Function.dual(2, (model: Model, runId: string): UpdateReturn =>
@@ -312,7 +320,7 @@ export const forgetRunWait: {
 // NOTE: the store logged why. The changes it could not write wait in the
 // Model and go out again with the next change to the save, so a run that
 // finished during a failed write still counts once.
-export const failWrite: {
+const failWrite: {
   (changes: ReadonlyArray<PlayerChange>): (model: Model) => UpdateReturn
   (model: Model, changes: ReadonlyArray<PlayerChange>): UpdateReturn
 } = Function.dual(
@@ -324,3 +332,67 @@ export const failWrite: {
       }),
     ),
 )
+
+// NOTE: the splash's load steps, the save and sync, and the run summaries
+// (src/platform/message.ts).
+export const saveHandlers = defineHandlers({
+  CompletedLoadStyles: model => finishLoading(model, 'Styles'),
+
+  CompletedLoadFonts: model => finishLoading(model, 'Fonts'),
+
+  FailedLoadFonts: model => finishLoading(model, 'Fonts'),
+
+  CompletedAwaitFirstFrame: model => finishLoading(model, 'FirstFrame'),
+
+  CompletedDecodeSprites: model => finishLoading(model, 'Sprites'),
+
+  CompletedShowLoadProgress: model => ({ model }),
+
+  CompletedHideSplash: model =>
+    combine(model, [
+      stepModel => registerServiceWorkerAfterSplash(stepModel, RUNNING_BUILD),
+      askForRoomLink,
+    ]),
+
+  CompletedLoadSave: (model, { maybeSave }) => loadSave(model, maybeSave),
+
+  FailedLoadSave: model => loadSave(model, Option.none()),
+
+  CompletedWriteSave: model => finishWrite(model),
+
+  CompletedWriteSaveWithRun: (model, { runId }) =>
+    finishWriteWithRun(model, runId),
+
+  FailedWriteSave: (model, { changes }) => failWrite(model, changes),
+
+  UpdatedSyncedSave: (model, { save }) => takeSyncedSave(model, save),
+
+  CompletedReloadSyncedSave: (model, { maybeSave }) =>
+    Option.match(maybeSave, {
+      onNone: () => ({ model }),
+      onSome: save => takeSyncedSave(model, save),
+    }),
+
+  UpdatedSyncStatus: (model, { state }) => ({
+    model: modifyFields(model, { syncState: () => state }),
+  }),
+
+  UpdatedPlayerScopeStatus: (model, { status }) => ({
+    model: modifyFields(model, { playerScopeStatus: () => status }),
+  }),
+
+  SettledRecordedRun: (model, { runId, settled }) =>
+    settleRun(model, runId, settled),
+
+  FailedAwaitRunSettled: (model, { runId }) => forgetRunWait(model, runId),
+
+  CompletedGenerateVisitId: (model, { visitId }) => ({
+    model: modifyFields(model, { maybeVisitId: () => Option.some(visitId) }),
+  }),
+
+  CompletedStartSummaryQueue: model => ({ model }),
+
+  CompletedSendRunSummary: model => ({ model }),
+
+  FailedSendRunSummary: model => ({ model }),
+})

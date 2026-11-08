@@ -38,7 +38,14 @@ import {
   releaseAll,
   releaseKey,
 } from '../../input/input'
+import type {
+  InputDevice,
+  Orientation,
+  PointerDevice,
+  SlotClick,
+} from '../../input/inputSchema'
 import { playerKeyAction } from '../../input/keyActions'
+import type { PageVisibility } from '../../platform/deviceSchema'
 import { dropClip } from '../../render/particles/particles'
 import {
   inHandOf,
@@ -54,16 +61,7 @@ import { isRoundActive, pause } from '../../world/waves/waves'
 import { makeStep } from '../definition'
 import { advanceGame, clampFrameDelta, refreshIntent } from '../frame'
 import { isLobbyOpen } from '../menuState'
-import {
-  type GunSlot,
-  type InputDevice,
-  type Model,
-  type Orientation,
-  type PageVisibility,
-  Phase,
-  type PointerDevice,
-  type SlotClick,
-} from '../model'
+import { type GunSlot, type Model, Phase } from '../model'
 import { startWave } from '../runFlow'
 import { stepWhen } from '../stepWhen'
 import { actAsLead } from './action'
@@ -96,10 +94,9 @@ import {
 import { nextTrap, placeSelectedTrap, trapFromKey } from './traps'
 import { checkForUpdate } from './version'
 
-// The Steps the root's handlers (src/app/main.ts) are made of: the frame, the
-// keys and pointers, the guns and traps, pausing, and the build check.
-
-const START_SOUND_GRACE_MS = 1000
+// The Steps the root's handlers (src/app/update/input.ts, src/app/main.ts)
+// are made of: the frame, the keys and pointers, the guns and traps,
+// pausing, and the build check.
 
 export const useDevice: {
   (device: InputDevice): (model: Model) => Model
@@ -308,10 +305,6 @@ export const notePageVisibility = (visibility: PageVisibility) =>
       ? Update.combineSteps([toModel(noted), pauseWhenAway])
       : Update.combineSteps([toModel(noted), checkForUpdate])
   })
-
-export const isFreshRun = (model: Model): boolean =>
-  Phase.isAnyOf(['Preparation'])(model.phase) &&
-  model.elapsedMs < START_SOUND_GRACE_MS
 
 // FRAME
 

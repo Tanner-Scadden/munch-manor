@@ -1,10 +1,12 @@
 import { Array, Function, Option, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
-import type { KillCounts, Model, ZombieKind } from '../../app/model'
+import type { Model } from '../../app/model'
 import { standaloneSource } from '../../art/sprite'
 import { type WornFrames, ZOMBIE_SPRITES } from '../../art/sprites/zombies'
 import { ZOMBIE_NAMES } from '../../world/names'
+import type { ZombieKind } from '../../world/schema/entitySchema'
+import type { KillCounts } from '../../world/schema/worldSchema'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
 
 // ENTRIES

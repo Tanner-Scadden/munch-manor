@@ -1,7 +1,7 @@
 import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { type Model, Phase, ShopState } from '../../app/model'
+import type { Model } from '../../app/model'
 import {
   focusOf,
   isCoop,
@@ -12,6 +12,7 @@ import {
 } from '../../world/party/party'
 import { isPracticeGateHeld } from '../../world/run/lessons'
 import { isKitchenTourOn } from '../../world/run/tutorialRules'
+import { Phase, ShopState } from '../../world/schema/worldSchema'
 import { isBrowsing, isNearStall } from '../../world/shop/shop'
 
 // The nudge for a break that waits on the player (owner, 2026-11-01: "nudge

@@ -1,7 +1,7 @@
 import { Array, Option, Result, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
-import { type Model, Oven } from '../../app/model'
+import type { Model } from '../../app/model'
 import {
   type Palette,
   type Sprite,
@@ -27,6 +27,7 @@ import {
   tilesWithSymbol,
 } from '../../world/level/arena'
 import { maybePadlockedExit } from '../../world/level/exits'
+import { Oven } from '../../world/schema/worldSchema'
 
 // NOTE: the kitchen is drawn like the parlour: everything that never moves
 // is part of the room's one baked image, and only the ovens' glow and their

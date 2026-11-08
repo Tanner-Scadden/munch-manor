@@ -1,6 +1,6 @@
 import { Option } from 'effect'
 
-import type { Model, PantryGoodie } from '../../app/model'
+import type { Model } from '../../app/model'
 import { COIN_SPRITE } from '../../art/font'
 import {
   type Sprite,
@@ -13,6 +13,7 @@ import type { Drawable } from '../../render/depth'
 import { rect } from '../../render/drawing'
 import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
 import { levelOf } from '../../world/level/arena'
+import type { PantryGoodie } from '../../world/schema/entitySchema'
 import { isKitchenShown } from './kitchenView'
 
 // The pantry stash (src/world/kitchen/pantry.ts) in the world: its goodie bobbing on the

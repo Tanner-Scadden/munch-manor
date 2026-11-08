@@ -5,9 +5,10 @@ import { describe, expect, test } from 'vitest'
 
 import { refreshIntent } from '../../app/frame'
 import { Message } from '../../app/message'
-import { type Model, Phase, Stick } from '../../app/model'
+import { type Model, Phase } from '../../app/model'
 import { initialModel, update } from '../../app/pureApp'
 import { moveHintBand } from '../../features/onboarding/onboarding'
+import { Stick } from '../../input/inputSchema'
 import {
   CAMERA_LEAN_PX,
   FIXED_STEP_MS,

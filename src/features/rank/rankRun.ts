@@ -1,7 +1,7 @@
 import { Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { type Model, Phase, RunMode } from '../../app/model'
+import type { Model } from '../../app/model'
 import { playedDifficultyOf } from '../../platform/analyticsRun'
 import {
   type RunPayInput,
@@ -14,6 +14,7 @@ import { isCoop, leadSeatOf } from '../../world/party/party'
 import { isPending } from '../../world/run/lessons'
 import { bonusPercentOf } from '../../world/run/modifiers'
 import { killTotal } from '../../world/run/stats'
+import { Phase, RunMode } from '../../world/schema/worldSchema'
 import { roundWave } from '../../world/waves/waves'
 import { isBotCrew } from '../bots/bots'
 import { awardsOf, crewOf } from '../end/crewAwards'

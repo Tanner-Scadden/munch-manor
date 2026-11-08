@@ -1,18 +1,7 @@
 import { Array, Function, Option, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  type DifficultyBests,
-  type HandCard,
-  type HomeButton,
-  type HomeMode,
-  type KillCounts,
-  type Model,
-  Phase,
-  RunMode,
-  RunTally,
-  type ZombieKind,
-} from '../../app/model'
+import { type HomeMode, type Model, RunTally } from '../../app/model'
 import { freshRun } from '../../app/runReset'
 import { FOCUS_STEP_OFFSET } from '../../input/input'
 import { isPortrait } from '../../render/screen'
@@ -20,13 +9,21 @@ import { FEEDBACK_LINE, RESTART_GRACE_MS } from '../../shared/constants'
 import { isObjectFirst, isObjectSecond } from '../../shared/dualArgs'
 import { hasJustWon } from '../../world/run/difficulty'
 import { addKills, killTotal, killsSince } from '../../world/run/stats'
-import type { Difficulty } from '../../world/schema/worldSchema'
+import type { ZombieKind } from '../../world/schema/entitySchema'
+import {
+  type Difficulty,
+  type DifficultyBests,
+  type KillCounts,
+  Phase,
+  RunMode,
+} from '../../world/schema/worldSchema'
 import type { FocusStep } from '../../world/step/stepWorld'
 import { botSeatsFor } from '../bots/bots'
 import { IS_COOP_RELEASED } from '../coop/release'
 import type { LobbyPicks } from '../lobby/model'
 import { isDiscovered, newlyDiscovered } from '../munchopedia/munchopedia'
 import { maybeNewestNewsDay } from '../whatsNew/changelog'
+import type { HandCard, HomeButton } from './homeSchema'
 
 // BUTTONS
 

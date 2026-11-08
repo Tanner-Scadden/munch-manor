@@ -7,17 +7,18 @@
 import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { Melee, type Model, MouseButton, type Zombie } from '@game/app/model'
+import { Melee, type Model, type Zombie } from '@game/app/model'
 import { withInput } from '@game/app/update/step'
 import type { ProfileTab } from '@game/features/profile/model'
 import { markLooksSeen } from '@game/features/unlocks/update'
 import { pressHoldButton, pressKey, releaseAll } from '@game/input/input'
+import { MouseButton } from '@game/input/inputSchema'
 import { PLAYER_MAX_HP } from '@game/shared/constants'
 import { freshGun, mapGuns } from '@game/world/gear/weapons'
 import { modifyFocus } from '@game/world/party/party'
 
 import { CALM, ROAMING } from './room'
-import { type SceneSettings } from './settings'
+import type { SceneSettings } from './settings'
 
 // NOTE: `hold` holds the interact key (on touch, a finger on the hold
 // button) from the first frame, so `tick=N` shows the ring N frames in.

@@ -19,7 +19,6 @@ import {
   type Model,
   Pierce,
   type RunStats,
-  type ShareOutcome,
   type Vector,
   type Zombie,
   ZombieAction,
@@ -36,6 +35,7 @@ import { ReadRoomLink } from '../app/update/coop'
 import { HideSplash, ShowLoadProgress, WriteSave } from '../app/update/save'
 import { PlaySound } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
+import type { ShareOutcome } from '../features/end/share'
 import { Message as GuideMessage } from '../features/guide/message'
 import { FocusGuideControl } from '../features/guide/steps'
 import { endOffer } from '../features/home/home'

@@ -1,7 +1,8 @@
 import { Array, Function, Option, pipe } from 'effect'
 
-import type { HomeMode, MapId } from '../../app/clientSchema'
+import type { HomeMode } from '../../app/clientSchema'
 import { FOCUS_STEP_OFFSET } from '../../input/input'
+import type { MapId } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
 import { DIFFICULTY_ORDER, isLocked } from '../../world/run/difficulty'
 import { MODIFIER_ORDER, type Modifier } from '../../world/run/modifiers'

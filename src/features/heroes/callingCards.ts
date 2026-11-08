@@ -1,9 +1,12 @@
 import { Array, Function, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
-import type { Appearance } from '../../app/model'
 import { PADLOCK_ICON } from '../../art/icons'
-import type { Calling, SavedBoughtCosmetics } from '../../shared/playerData'
+import type {
+  Appearance,
+  Calling,
+  SavedBoughtCosmetics,
+} from '../../shared/playerData'
 import {
   CALLINGS,
   UNLOCK_RANKS,

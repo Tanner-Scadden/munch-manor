@@ -1,12 +1,7 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
-import {
-  type FridgePrize,
-  type Model,
-  PrizeFlight,
-  type Vector,
-} from '../../app/model'
+import { type Model, PrizeFlight } from '../../app/model'
 import { type BakedText, bakeText, placeBaked } from '../../art/font'
 import {
   type Sprite,
@@ -32,6 +27,7 @@ import {
 } from '../../world/fridge/leftovers'
 import { heldSlotOf } from '../../world/gear/weapons'
 import { focusOf, maybePlayerAt } from '../../world/party/party'
+import type { FridgePrize, Vector } from '../../world/schema/entitySchema'
 import { ZERO_VECTOR, clamp } from '../../world/step/geometry'
 import { HUD_STRIP_HEIGHT, gunSlotBox } from '../hud/hud'
 import {

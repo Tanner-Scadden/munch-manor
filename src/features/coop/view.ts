@@ -9,10 +9,9 @@ import {
 } from '@munch/netcode'
 
 import { backButtonView, closeButtonView } from '../../app/dialogs'
-import type { Appearance } from '../../app/model'
 import { SHARE_ICON, SKULL_ICONS, TROPHY_ICON } from '../../art/icons'
 import { seatColorOf } from '../../render/partyView'
-import type { Calling } from '../../shared/playerData'
+import type { Appearance, Calling } from '../../shared/playerData'
 import { CALLING_NAMES } from '../../world/names'
 import { type Model as HeroPickerModel, isPickerOpen } from '../heroes/model'
 import { callingPropView, iconView, rankTagView } from '../menus/menuParts'

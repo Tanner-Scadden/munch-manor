@@ -1,7 +1,6 @@
 import { Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import type { Decal, DecalKind, Particle, ParticleKind } from '../../app/model'
 import {
   BLOOD_DRAG_PER_SECOND,
   BLOOD_GRAVITY,
@@ -25,6 +24,8 @@ import {
   SPARK_GRAVITY,
 } from '../../shared/constants'
 import { type Level, isInsideRoomAt, isSolidAt } from '../../world/level/arena'
+import type { ParticleKind } from '../../world/schema/entitySchema'
+import type { Decal, DecalKind, Particle } from '../renderSchema'
 
 // PHYSICS
 

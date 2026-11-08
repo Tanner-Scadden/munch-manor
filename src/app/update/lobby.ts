@@ -42,6 +42,7 @@ import type { HomeMode, Model } from '../model'
 import { playSounds, tapSound, uiCue, unlockAudio } from './sound'
 import {
   type UpdateStep,
+  defineHandlers,
   modelStep,
   releaseInput,
   unchanged,
@@ -78,7 +79,7 @@ const openLobby = makeStep(model =>
 )
 
 // NOTE: PLAY, by tap or by Enter.
-export const playFromHome = makeStep(model => {
+const playFromHome = makeStep(model => {
   if (skipsLobby(model)) {
     return startOrAsk(runModeOf(model.home.mode))
   } else if (isOnHomeMenu(model)) {
@@ -228,3 +229,8 @@ export const buyHero = (calling: Calling) =>
       return denied(PickOutcome.Unchanged())
     }
   })
+
+// NOTE: PLAY from home opens the lobby (or starts a new player's run).
+export const lobbyHandlers = defineHandlers({
+  ClickedPlayButton: model => Update.combineSteps(model, [playFromHome]),
+})

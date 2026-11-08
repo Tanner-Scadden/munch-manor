@@ -1,14 +1,14 @@
 import { Array, Function, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import type { Model, Particle, TellWatch } from '../app/model'
+import type { Model } from '../app/model'
 import {
   DUST_SPEED_MAX,
   DUST_SPEED_MIN,
   PARTICLE_MAX,
   PLAYER_FOOT_OFFSET,
 } from '../shared/constants'
-import { type Calling } from '../shared/playerData'
+import type { Calling } from '../shared/playerData'
 import { type Seeded, generateMany, nextRandom } from '../shared/prng'
 import { trapCenter } from '../world/gear/traps'
 import { heldWeapon } from '../world/gear/weapons'
@@ -32,6 +32,7 @@ import {
   sparks,
 } from './particles/particleBursts'
 import { keepNewest } from './particles/particles'
+import type { Particle, TellWatch } from './renderSchema'
 
 // What each hero shows the whole crew while it plays (decided with the owner
 // on 2026-11-01, see "Heroes" in GAME_DESIGN.md): the Track Star kicks up

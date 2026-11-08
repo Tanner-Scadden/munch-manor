@@ -30,10 +30,11 @@ import { MenuState, menuState } from '../menuState'
 import { Message } from '../message'
 import type { Model } from '../model'
 import { stepWhen } from '../stepWhen'
-import { playSounds, uiCue } from './sound'
+import { playSounds, tapSound, uiCue, unlockAudio } from './sound'
 import {
   type UpdateStep,
   combine,
+  defineHandlers,
   modelStep,
   releaseInput,
   unchanged,
@@ -125,7 +126,7 @@ export const neededNewerBuild: UpdateStep = stepModel =>
 // NOTE: the room's frame clock is the root's (src/app/subscriptions.ts). In a
 // run the room gets this client's controls and the root draws what came
 // back (src/features/onlineRun/coopPlay.ts); in a lobby the room ticks with none.
-export const tickRoomFrame = (nowMs: number) =>
+const tickRoomFrame = (nowMs: number) =>
   makeStep(model =>
     Option.isSome(maybeRunRoom(model))
       ? playRoomFrame(nowMs)
@@ -159,7 +160,7 @@ const canOpenCoop = (model: Model): boolean =>
   IS_COOP_RELEASED &&
   MenuState.isAnyOf(['Home', 'UpdateGreeting'])(menuState(model))
 
-export const openCoop = (maybeCode: Option.Option<string>) =>
+const openCoop = (maybeCode: Option.Option<string>) =>
   makeStep(model =>
     canOpenCoop(model)
       ? Update.combineSteps([
@@ -182,3 +183,23 @@ export const coopFromKey = (code: string) =>
   makeStep(model =>
     isCoopKey(code) && !isCoopOpen(model) ? openCoop(Option.none()) : unchanged,
   )
+
+// NOTE: CO-OP from home, a room link read at start, and the room's frame.
+export const coopHandlers = defineHandlers({
+  ClickedCoopButton: model =>
+    Update.combineSteps(model, [
+      unlockAudio,
+      tapSound,
+      openCoop(Option.none()),
+    ]),
+
+  CompletedReadRoomLink: (model, { maybeCode }) =>
+    Update.combineSteps(model, [
+      makeStep(() =>
+        Option.isSome(maybeCode) ? openCoop(maybeCode) : unchanged,
+      ),
+    ]),
+
+  TickedRoomFrame: (model, { nowMs }) =>
+    Update.combineSteps(model, [tickRoomFrame(nowMs)]),
+})

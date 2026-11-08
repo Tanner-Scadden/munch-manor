@@ -2,19 +2,14 @@ import { Function, Option, String } from 'effect'
 
 import type { Lobby } from '@munch/netcode'
 
-import {
-  type Model,
-  Phase,
-  RunMode,
-  type RunStats,
-  type ScreenFit,
-} from '../app/model'
+import type { Model } from '../app/model'
 import { isBotCrew } from '../features/bots/bots'
 import { isInRun } from '../features/home/home'
 import { effectiveModifiersOf } from '../features/onlineRun/onlineRun'
 import type { Difficulty } from '../shared/playerData'
 import { isCoop, leadSeatOf, playersOf } from '../world/party/party'
 import { maskOfModifiers } from '../world/run/modifiers'
+import { Phase, RunMode, type RunStats } from '../world/schema/worldSchema'
 import { roundWave } from '../world/waves/waves'
 import {
   CREW_RUN_KEY_LENGTH,
@@ -34,6 +29,7 @@ import {
   UNKNOWN_CAUSE,
   WonRun,
 } from './analytics'
+import type { ScreenFit } from './deviceSchema'
 
 // FRAME TIME
 

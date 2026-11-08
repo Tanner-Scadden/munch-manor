@@ -4,6 +4,7 @@ import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
+import { MouseButton, Stick } from '../../input/inputSchema'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../shared/constants'
 import {
   WAVE_2_BREAK,
@@ -13,15 +14,7 @@ import {
 import { holdingFirst, tick } from '../../test/testing'
 import { modifyFocus } from '../../world/party/party'
 import { Message } from '../message'
-import {
-  Arsenal,
-  type Model,
-  MouseButton,
-  Phase,
-  RunMode,
-  ShopState,
-  Stick,
-} from '../model'
+import { Arsenal, type Model, Phase, RunMode, ShopState } from '../model'
 import { update } from '../pureApp'
 import {
   type KeyDown,

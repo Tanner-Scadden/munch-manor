@@ -2,9 +2,10 @@ import { Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../../app/composition'
-import { type Model, Phase } from '../../app/model'
+import type { Model } from '../../app/model'
 import { COFFEE_ICON } from '../../art/icons'
 import { RESTART_GRACE_MS } from '../../shared/constants'
+import { Phase } from '../../world/schema/worldSchema'
 
 // VIEW
 

@@ -214,6 +214,18 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
       code: "import { Html } from 'foldkit/html'",
       filename: '/repo/src/features/home/homeView.ts',
     },
+    {
+      code: "import { Message } from '../message'",
+      filename: '/repo/src/app/update/save.ts',
+    },
+    {
+      code: "import { HomeMessage } from './message'",
+      filename: '/repo/src/features/home/homeView.ts',
+    },
+    {
+      code: "import { Message } from '../../app/message'",
+      filename: '/repo/src/features/home/__tests__/home.story.test.ts',
+    },
   ],
   invalid: [
     {
@@ -249,6 +261,16 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
     {
       code: "import { atStall } from './__tests__/shop.fixture'",
       filename: '/repo/src/features/shop/update.ts',
+      errors: 1,
+    },
+    {
+      code: "import { Message } from '../../app/message'",
+      filename: '/repo/src/features/home/homeView.ts',
+      errors: 1,
+    },
+    {
+      code: "import type { Message } from '../app/message.ts'",
+      filename: '/repo/src/input/touchControls.ts',
       errors: 1,
     },
   ],

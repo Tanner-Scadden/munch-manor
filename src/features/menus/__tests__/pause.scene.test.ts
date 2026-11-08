@@ -16,8 +16,9 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test, expect as vitestExpect } from 'vitest'
 
 import { Message } from '../../../app/message'
-import { type Model, MouseButton, Phase } from '../../../app/model'
+import { type Model, Phase } from '../../../app/model'
 import { initialModel, update } from '../../../app/pureApp'
+import { MouseButton } from '../../../input/inputSchema'
 import { PREPARATION_MS } from '../../../shared/constants'
 import { fighting } from '../../../test/model.fixture'
 import {

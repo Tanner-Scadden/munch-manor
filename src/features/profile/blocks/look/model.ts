@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 
-import { LookPart, LookSection } from '../../../../app/clientSchema'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from './lookRadios'
+import { LookPart, LookSection } from './lookSchema'
 
 // NOTE: the Look tab: which of its little tabs is showing, and a radio
 // group per part. Not saved: it opens on Body each time.

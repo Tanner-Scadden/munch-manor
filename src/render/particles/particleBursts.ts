@@ -1,13 +1,5 @@
 import { Array, Function, Option } from 'effect'
 
-import type {
-  Particle,
-  ParticleKind,
-  TrapKind,
-  Vector,
-  WeaponKind,
-  ZombieKind,
-} from '../../app/model'
 import {
   BLOOD_LIFETIME_MS,
   BLOOD_LIFT_MAX,
@@ -87,12 +79,20 @@ import {
   nextRandom,
 } from '../../shared/prng'
 import { WEAPONS } from '../../world/gear/weapons'
+import type {
+  ParticleKind,
+  TrapKind,
+  Vector,
+  WeaponKind,
+  ZombieKind,
+} from '../../world/schema/entitySchema'
 import { ZERO_VECTOR } from '../../world/step/geometry'
 import {
   type WearStage,
   ZOMBIE_KINDS,
   isArmorPart,
 } from '../../world/zombies/zombies'
+import type { Particle } from '../renderSchema'
 import { LAUNCH_SIZE } from './particlePhysics'
 
 // SPAWNING

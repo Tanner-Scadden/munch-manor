@@ -4,7 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { Message } from '../../app/message'
-import { type Model, MouseButton, Phase, Stick } from '../../app/model'
+import { type Model, Phase } from '../../app/model'
 import { initialModel, update } from '../../app/pureApp'
 import { screenCameraOf, worldToView } from '../../render/camera'
 import { FIXED_STEP_MS, STICK_RADIUS_PX } from '../../shared/constants'
@@ -18,6 +18,7 @@ import {
 import { asVeteran } from '../../test/veteran'
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { AIM_ASSIST } from '../aimAssist'
+import { MouseButton, Stick } from '../inputSchema'
 
 const PLAYER = { x: 160, y: 100 }
 const ZOMBIE_DISTANCE_PX = 40

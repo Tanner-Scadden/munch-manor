@@ -3,7 +3,6 @@ import type { Html } from 'foldkit/html'
 
 import { Tour } from '../../app/clientSchema'
 import type { ApplicationViewBuilder } from '../../app/composition'
-import { Message } from '../../app/message'
 import type { Model } from '../../app/model'
 import {
   QUEST_BUY_ICON,
@@ -30,6 +29,7 @@ import {
   kitchenStepOf,
   maybeKitchenMark,
 } from './kitchenTour'
+import { OnboardingMessage } from './message'
 
 // NOTE: the guided tutorial's tracker, in the corner under the hearts: a
 // chapter's steps as icons, the current one lit with its one word, the done
@@ -43,7 +43,7 @@ type StepLook = Readonly<{ icon: string; word: string; spoken: string }>
 type Chapter = Readonly<{
   label: string
   skipLabel: string
-  skip: Message
+  skip: OnboardingMessage
   steps: Array.NonEmptyReadonlyArray<StepLook>
   maybeCurrent: Option.Option<number>
   isDone: boolean
@@ -76,7 +76,7 @@ const firstBreakChapter = (model: Model): Option.Option<Chapter> => {
     : Option.some({
         label: 'First break',
         skipLabel: 'Skip the first break tour',
-        skip: Message.ClickedSkipQuestButton(),
+        skip: OnboardingMessage.ClickedSkipQuestButton(),
         steps: FIRST_BREAK_STEPS,
         maybeCurrent: Option.map(maybeStep, step => QUEST_STEPS.indexOf(step)),
         isDone,
@@ -92,7 +92,7 @@ const kitchenChapter = (model: Model): Option.Option<Chapter> => {
     : Option.some({
         label: 'Kitchen tour',
         skipLabel: 'Skip the kitchen tour',
-        skip: Message.ClickedSkipKitchenTourButton(),
+        skip: OnboardingMessage.ClickedSkipKitchenTourButton(),
         steps: KITCHEN_STEPS,
         maybeCurrent: Option.map(maybeStep, step =>
           KITCHEN_STEP_ORDER.indexOf(step),

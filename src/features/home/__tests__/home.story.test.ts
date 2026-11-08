@@ -8,7 +8,6 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import changelogMarkdown from '../../../../CHANGELOG.md?raw'
 import { Message } from '../../../app/message'
 import {
-  type MenuPanel,
   type Model,
   Phase,
   RunMode,
@@ -46,6 +45,7 @@ import {
   parseChangelog,
 } from '../../whatsNew/changelog'
 import { HOME_BUTTONS, HOME_KEYS, isNewsUnseen } from '../home'
+import type { MenuPanel } from '../homeSchema'
 
 const homeAfterRead: Model = modifyFields(readyModel, {
   saveStatus: () => 'Read',

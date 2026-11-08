@@ -1,7 +1,8 @@
 import { Array, Function, Record, pipe } from 'effect'
 
-import type { Difficulty, TrapKind } from '../app/model'
+import type { Difficulty } from '../shared/playerData'
 import type { Modifier } from '../world/run/modifiers'
+import type { TrapKind } from '../world/schema/entitySchema'
 import { type Palette, pixelRuns } from './sprite'
 import { TRAP_ICON_PIXELS } from './sprites/traps'
 

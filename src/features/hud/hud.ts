@@ -1,16 +1,7 @@
 import { Array, Function, Option, String, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
-import {
-  type CarriedGun,
-  type Model,
-  Phase,
-  type Player,
-  Streak,
-  type TrapKind,
-  TrapNotice,
-  type WeaponKind,
-} from '../../app/model'
+import type { Model } from '../../app/model'
 import {
   type TextTone,
   bakeText,
@@ -77,7 +68,19 @@ import {
 } from '../../world/party/party'
 import { isPending, isPracticeGateHeld } from '../../world/run/lessons'
 import { scoreOf } from '../../world/run/stats'
-import { type GunPerk, type SeatState } from '../../world/schema/worldSchema'
+import type {
+  CarriedGun,
+  Player,
+  TrapKind,
+  WeaponKind,
+} from '../../world/schema/entitySchema'
+import {
+  type GunPerk,
+  Phase,
+  type SeatState,
+  Streak,
+  TrapNotice,
+} from '../../world/schema/worldSchema'
 import { clamp } from '../../world/step/geometry'
 import { isRoundActive, zombiesRemaining } from '../../world/waves/waves'
 import { maybeBossBar } from '../../world/zombies/boss'

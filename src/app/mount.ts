@@ -1,6 +1,11 @@
 import { Effect, Function, Queue, Stream } from 'effect'
 
-import { GAME_URL, type SharePost, copiedLineOf } from '../features/end/share'
+import {
+  GAME_URL,
+  type ShareOutcome,
+  type SharePost,
+  copiedLineOf,
+} from '../features/end/share'
 import { listenForTouchTaps } from '../input/touchTaps'
 import { ApplicationBlock } from './definition'
 import {
@@ -9,7 +14,6 @@ import {
   type SettledShare,
   type TappedWithTouch,
 } from './message'
-import type { ShareOutcome } from './model'
 
 const measure = (element: Element): MeasuredGameSurface => {
   const { left, top, width, height } = element.getBoundingClientRect()

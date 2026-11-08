@@ -2,6 +2,7 @@ import { Effect, Option, Random, pipe } from 'effect'
 
 import { spriteWarmUpSources } from '../art/appearance'
 import { generateVisitId } from '../platform/analyticsBeacon'
+import type { ScreenFit } from '../platform/deviceSchema'
 import {
   awaitFirstFrame,
   decodeImages,
@@ -15,7 +16,7 @@ import { readUpdateMarker } from '../platform/version'
 import { toBrowserError } from '../shared/describeError'
 import { ApplicationBlock } from './definition'
 import { Message } from './message'
-import { type ScreenFit, defaultAppearance } from './model'
+import { defaultAppearance } from './model'
 
 // NOTE: the Commands init starts, and only those. Every other Command sits
 // beside the update that returns it (AGENTS.md "Code shape").

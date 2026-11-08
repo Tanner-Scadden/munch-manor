@@ -14,14 +14,10 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test, expect as vitestExpect } from 'vitest'
 
 import { Message } from '../../../app/message'
-import {
-  FridgeDoor,
-  type InputDevice,
-  type Model,
-  Phase,
-} from '../../../app/model'
+import { FridgeDoor, type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { purchaseOverlayShapes } from '../../../features/shop/purchaseView'
+import type { InputDevice } from '../../../input/inputSchema'
 import { cameraOf, screenCameraOf } from '../../../render/camera'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {

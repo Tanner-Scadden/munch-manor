@@ -3,7 +3,6 @@ import type { Html } from 'foldkit/html'
 
 import { Dialog, type Tabs } from '@foldkit/ui'
 
-import type { InputDevice } from '../../app/clientSchema'
 import {
   ACCOUNT_ICON,
   AIM_ICON,
@@ -28,6 +27,7 @@ import {
   TURN_PHONE_ICON,
   ZAP_ICON,
 } from '../../art/icons'
+import type { InputDevice } from '../../input/inputSchema'
 import {
   LinkFlow,
   type PlayerScopeStatus,

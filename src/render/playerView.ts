@@ -1,14 +1,7 @@
 import { Array, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
-import {
-  Invulnerability,
-  type Model,
-  type Player,
-  Reload,
-  type Vector,
-  type WeaponKind,
-} from '../app/model'
+import type { Model } from '../app/model'
 import { PLAYER_WIDTH, playerSprites } from '../art/appearance'
 import {
   type Facing,
@@ -54,6 +47,13 @@ import {
   statsAt,
 } from '../world/gear/weapons'
 import { focusOf } from '../world/party/party'
+import {
+  Invulnerability,
+  type Player,
+  Reload,
+  type Vector,
+  type WeaponKind,
+} from '../world/schema/entitySchema'
 import { clamp, vectorLength } from '../world/step/geometry'
 import {
   AIMING_UP,
