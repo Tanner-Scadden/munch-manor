@@ -2,7 +2,7 @@ import { Option, Schema } from 'effect'
 
 import { DialogBlock } from '@foldkit/ui'
 
-import { Bot, HomeMode } from '../../app/clientSchema'
+import { Bot, HomeMode } from '../../domain/clientSchema'
 import { Modifiers } from '../../world/run/modifiers'
 import { DifficultySetting } from '../../world/schema/worldSchema'
 import { HeroPickerBlock } from '../heroes/block'

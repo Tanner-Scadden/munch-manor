@@ -3,23 +3,20 @@ import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { randomAppearance } from '../../art/appearance'
-import * as Character from '../../features/profile/blocks/look/block'
 import {
   type GearTap,
   canAfford,
   gearTapOf,
   priceOf,
-} from '../../features/profile/blocks/look/closet'
-import type {
-  LookPart,
-  LookToggle,
-} from '../../features/profile/blocks/look/lookSchema'
+} from '../../domain/closet'
+import { type LookPart, chooseLook as lookWith } from '../../domain/looks'
+import { rollName } from '../../domain/playerName'
+import { lookUnlockId, markLooksSeen, withoutFresh } from '../../domain/unlocks'
+import * as Character from '../../features/profile/blocks/look/block'
+import type { LookToggle } from '../../features/profile/blocks/look/lookSchema'
 import type { LookOutcome } from '../../features/profile/inMessage'
 import type { SettingTile } from '../../features/profile/message'
 import type { ProfileTab } from '../../features/profile/model'
-import { rollName } from '../../features/profile/profile'
-import { lookUnlockId } from '../../features/unlocks/unlocks'
-import { markLooksSeen, withoutFresh } from '../../features/unlocks/update'
 import { isCharacterKey, releaseAll } from '../../input/input'
 import { forgetTutorial } from '../../platform/save'
 import { type CosmeticKind, cosmeticIdOf } from '../../shared/playerData'
@@ -162,7 +159,7 @@ export const linkedDevice: UpdateStep = playSounds([uiCue('PowerUp')])
 
 const wearing = (model: Model, part: LookPart, value: string): Model =>
   modifyFields(model, {
-    appearance: appearance => Character.chooseLook(appearance, part, value),
+    appearance: appearance => lookWith(appearance, part, value),
   })
 
 const spentOn = (model: Model, kind: CosmeticKind, value: string): Model =>

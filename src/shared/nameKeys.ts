@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 
 // NOTE: the key sets of the names the menus read (src/world/names.ts), apart from
-// src/app/clientSchema.ts so that names.ts, which the World's modules read, takes
+// src/domain/clientSchema.ts so that names.ts, which the World's modules read, takes
 // no type from a client module. clientSchema.ts re-exports them.
 
 // NOTE: the maps a run can be played on (src/features/lobby/lobby.ts). One for now.

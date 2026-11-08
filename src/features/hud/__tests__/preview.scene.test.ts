@@ -9,8 +9,8 @@ import { initialModel } from '../../../app/pureApp'
 import { startOrResume } from '../../../app/runFlow'
 import { cameraOf } from '../../../render/camera'
 import { screenOf } from '../../../render/screen'
+import { hudStripShapes } from '../../../screens/game/hud'
 import { rollSpawns } from '../../../world/waves/endlessWaves'
-import { hudStripShapes } from '../hud'
 import { wavePreviewShapes } from '../wavePreview'
 
 const preparing = (wave: number): Model => {

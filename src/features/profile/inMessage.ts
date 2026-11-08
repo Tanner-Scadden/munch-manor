@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { defineInMessageUnion } from 'foldkit/message'
 
-import { LookPart } from './blocks/look/lookSchema'
+import { LookPart } from '../../domain/looks'
 import { ProfileTab } from './model'
 
 // NOTE: what the root made of a Look tab pick (src/app/update/profile.ts):

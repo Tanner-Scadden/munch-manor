@@ -1,17 +1,20 @@
 import { Array, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
-import { backButtonView } from '../../app/dialogs'
+import { BAR_SEGMENTS, type ShopArt } from '../../art/shopArt'
 import type { ShopGuideSection } from '../../shared/nameKeys'
+import { backButtonView } from '../../ui/cornerButtons'
 import { SHOP_GUIDE_NAME } from '../../world/names'
-import type { ShopArt } from '../shop/shopArt'
-import { BAR_SEGMENTS } from '../shop/shopStats'
 import type { ViewInputs } from './block'
 import { GuideComposition, type GuideViewBuilder } from './composition'
 import { Message } from './message'
-import { type GuidePlacement, GuideStatus, type Model } from './model'
 import {
   GUIDE_FOCUS_IDS,
+  type GuidePlacement,
+  GuideStatus,
+  type Model,
+} from './model'
+import {
   type GuideBar,
   type GuideChip,
   type GuideEntry,

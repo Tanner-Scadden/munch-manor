@@ -10,6 +10,17 @@ import { Message } from '../../../app/message'
 import { AudioState, type Model, Phase } from '../../../app/model'
 import { WriteSave } from '../../../app/update/save'
 import { PlaySound } from '../../../app/update/sound'
+import {
+  DEFAULT_NAME,
+  GOOFY_NAMES,
+  MAX_NAME_LENGTH,
+  cleanName,
+  draftName,
+  joinName,
+  nameLength,
+  rollName,
+  shownName,
+} from '../../../domain/playerName'
 import { changesBetween } from '../../../platform/playerSync'
 import { saveOf } from '../../../platform/save'
 import { readyAfterRead } from '../../../test/model.fixture'
@@ -25,18 +36,7 @@ import { PartRadioGroupBlock } from '../blocks/look/lookRadios'
 import { CharacterBinding, TabsBinding } from '../composition'
 import { Message as ProfileMessage } from '../message'
 import { type ProfileTab, ProfileTabsBlock } from '../model'
-import {
-  DEFAULT_NAME,
-  GOOFY_NAMES,
-  MAX_NAME_LENGTH,
-  PROFILE_TABS,
-  cleanName,
-  draftName,
-  joinName,
-  nameLength,
-  rollName,
-  shownName,
-} from '../profile'
+import { PROFILE_TABS } from '../profile'
 
 const closeProfile = () =>
   Story.steps(

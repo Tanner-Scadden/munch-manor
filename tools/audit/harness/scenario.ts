@@ -17,10 +17,10 @@ import {
   type Zombie,
   ZombieAction,
 } from '@game/app/model'
-import { addBot } from '@game/features/bots/bots'
+import { addBot } from '@game/domain/bots'
+import { isEndScreen, withBests } from '@game/domain/run'
+import { unlocksAt } from '@game/domain/unlocks'
 import { prizeUnlockId } from '@game/features/guide/shopGuide'
-import { isEndScreen, withBests } from '@game/features/home/home'
-import { unlocksAt } from '@game/features/unlocks/unlocks'
 import {
   LinkFlow,
   PlayerScopeStatus,

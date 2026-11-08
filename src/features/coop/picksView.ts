@@ -3,6 +3,8 @@ import type { Html } from 'foldkit/html'
 
 import type { Lobby, PickedMode, RoomDifficulty } from '@munch/netcode'
 
+import { PROP_ICONS } from '../../art/callingArt'
+import { CROWN_ICON } from '../../art/coopIcons'
 import {
   CAMPAIGN_ICON,
   ENDLESS_ICON,
@@ -11,6 +13,15 @@ import {
   SKULL_OFF_ICON,
   TROPHY_ICON,
 } from '../../art/icons'
+import { callingOfMember } from '../../art/seatLooks'
+import { specialsNoteOf } from '../../domain/callingSpecials'
+import type { NudgeReason, Room } from '../../domain/coopRoom'
+import { iconView } from '../../ui/menuParts'
+import {
+  bonusChipView,
+  modifierFaceView,
+  modifierLabel,
+} from '../../ui/modifiersView'
 import { CALLING_NAMES, MODE_NAMES } from '../../world/names'
 import {
   DIFFICULTIES,
@@ -24,19 +35,8 @@ import {
   isModifierOn,
   modifiersOfMask,
 } from '../../world/run/modifiers'
-import { PROP_ICONS } from '../heroes/callingArt'
-import { specialsNoteOf } from '../heroes/callingSpecials'
-import {
-  bonusChipView,
-  modifierFaceView,
-  modifierLabel,
-} from '../lobby/modifiersView'
-import { iconView } from '../menus/menuParts'
 import type { CoopViewBuilder } from './composition'
-import { CROWN_ICON } from './icons'
-import { callingOfMember } from './looks'
 import { Message } from './message'
-import type { NudgeReason, Room } from './model'
 import {
   CALLING_PILL_ID,
   MODE_PICKS,

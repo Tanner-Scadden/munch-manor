@@ -7,16 +7,11 @@ import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 import { Message } from '../../app/message'
 import { BreakClock, type Model, Phase } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
-import { isTurnHintShown } from '../../features/home/home'
-import { TURN_HINT_TEXT } from '../../features/home/homeView'
-import {
-  MELEE_SLOT_INDEX,
-  gunSlotBox,
-  hudShapes,
-  reloadFaceOf,
-} from '../../features/hud/hud'
 import { wavePreviewShapes } from '../../features/hud/wavePreview'
 import { restoreSave, saveOf } from '../../platform/save'
+import { hudShapes } from '../../screens/game/hud'
+import { isTurnHintShown } from '../../screens/home/home'
+import { TURN_HINT_TEXT } from '../../screens/home/homeView'
 import { DISTANT_SPAWN, inPortrait } from '../../test/model.fixture'
 import {
   APPLICATION,
@@ -29,6 +24,7 @@ import {
 import { asVeteran } from '../../test/veteran'
 import { modifyFocus } from '../../world/party/party'
 import { screenCameraOf } from '../camera'
+import { MELEE_SLOT_INDEX, gunSlotBox, reloadFaceOf } from '../hudLayout'
 import { screenOf, thumbAreaTop } from '../screen'
 
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>

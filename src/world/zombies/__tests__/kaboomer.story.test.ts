@@ -17,12 +17,12 @@ import {
 import { initialModel, update } from '../../../app/pureApp'
 import { KABOOMER_FUSE_MAX } from '../../../art/sprites/zombies'
 import { wavePreviewLabel } from '../../../features/hud/wavePreview'
-import { debutPitch } from '../../../features/menus/menus'
 import {
   kaboomerFuseLength,
   kaboomerSparkMs,
   zombieGroundShapes,
 } from '../../../render/zombieView'
+import { debutPitch } from '../../../screens/game/menus'
 import { FIXED_STEP_MS, HIT_STOP_KILL_MAX_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import { bulletInto, tick, ticks } from '../../../test/testing'

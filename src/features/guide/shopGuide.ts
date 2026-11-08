@@ -3,6 +3,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
+import { BAR_SEGMENTS } from '../../art/shopArt'
 import { TRAP_REPAIR_SHARE, TURRET_RANGE_PX } from '../../shared/constants'
 import { HouseSpot, type ShopGuideSection } from '../../shared/nameKeys'
 import {
@@ -48,8 +49,6 @@ import {
   repairItemId,
 } from '../../world/shop/shop'
 import { SHATTER_SCALE } from '../../world/step/combat'
-import { BAR_SEGMENTS } from '../shop/shopStats'
-import type { GuidePlacement } from './model'
 
 // THE SHOP GUIDE
 
@@ -59,16 +58,6 @@ import type { GuidePlacement } from './model'
 // src/world/level/exits.ts), so a bar moves when a table does. Each stat is a bar of
 // BAR_SEGMENTS, scaled against the best of its category, so the entries of a
 // section compare. Nothing here names a price or a stat by hand.
-
-// NOTE: the buttons focus moves between as a guide opens and closes, by
-// where it stands: its BACK, and the button that opened it (the shop's ?,
-// the Munchopedia's Shop tile).
-export const GUIDE_FOCUS_IDS: Readonly<
-  Record<GuidePlacement, Readonly<{ back: string; opener: string }>>
-> = {
-  Shop: { back: 'shop-guide-back', opener: 'shop-guide-open' },
-  Munchopedia: { back: 'munch-guide-back', opener: 'munch-shop-tile' },
-}
 
 export const SECTION_ORDER: Array.NonEmptyReadonlyArray<ShopGuideSection> = [
   'Guns',

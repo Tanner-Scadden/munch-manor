@@ -5,7 +5,10 @@ import { Array, Option, String } from 'effect'
 
 const LAYERS: ReadonlyArray<string> = [
   'app',
+  'screens',
   'features',
+  'ui',
+  'domain',
   'render',
   'art',
   'audio',

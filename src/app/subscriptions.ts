@@ -1,7 +1,7 @@
 import { Array, Clock, Effect, Option, Queue, Schema, Stream } from 'effect'
 import { Dom } from 'foldkit'
 
-import { maybeRoomOf } from '../features/coop/roomState'
+import { maybeRoomOf } from '../domain/coopRoom'
 import { isTrackingPointer } from '../input/input'
 import {
   KEY_WATCH_QUIET_MS,

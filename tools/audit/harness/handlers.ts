@@ -20,10 +20,10 @@ import {
   type TickedFrame,
 } from '@game/app/message'
 import { subscriptions } from '@game/app/subscriptions'
+import { WaitForUnwrap } from '@game/app/update/home'
+import { CueMusic } from '@game/app/update/music'
 import { PlaySound } from '@game/app/update/sound'
 import { FetchBuild } from '@game/app/update/version'
-import { CueMusic } from '@game/audio/musicPlan'
-import { WaitForUnwrap } from '@game/features/home/update'
 import { PlayerStore } from '@game/platform/store'
 import { RUNNING_BUILD } from '@game/platform/version'
 

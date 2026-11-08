@@ -6,16 +6,16 @@ import type {
   ApplicationViewBuilder,
 } from '../../app/composition'
 import type { Model } from '../../app/model'
-import { standaloneSource } from '../../art/sprite'
-import type { InputDevice } from '../../input/inputSchema'
-import { GUN_NAMES, KNIFE_NAME } from '../../world/names'
-import { Phase } from '../../world/schema/worldSchema'
 import {
   HELP_DEMO_SPRITES,
   HINT_ICON_SPRITES,
   type HintIconSprites,
   keyIcon,
-} from '../onboarding/hintIcons'
+} from '../../art/hintIcons'
+import { standaloneSource } from '../../art/sprite'
+import type { InputDevice } from '../../input/inputSchema'
+import { GUN_NAMES, KNIFE_NAME } from '../../world/names'
+import { Phase } from '../../world/schema/worldSchema'
 import { type HelpCard, HelpMessage } from './message'
 
 // CONTROLS

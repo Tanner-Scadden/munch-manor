@@ -12,6 +12,12 @@ import {
   textPixels,
 } from '../../art/font'
 import {
+  AWAKE_FACE,
+  BLINK_FACE,
+  RATTLES_PALETTE,
+  rattlesPixels,
+} from '../../art/rattlesArt'
+import {
   type Palette,
   type Sprite,
   TOP_LEFT,
@@ -21,16 +27,10 @@ import {
   spriteRects,
   spriteShapes,
 } from '../../art/sprite'
+import { AMMO_BOX } from '../../art/sprites/pickups'
 import { PARLOUR } from '../../world/level/arena'
 import { COUNTER_LINES } from '../../world/shop/ammoCounter'
 import { STALL_BOX, type StallPrompt } from '../../world/shop/shop'
-import {
-  AWAKE_FACE,
-  BLINK_FACE,
-  RATTLES_PALETTE,
-  rattlesPixels,
-} from './shopkeeper'
-import { AMMO_BOX } from './stallBubble'
 
 // PALETTE
 

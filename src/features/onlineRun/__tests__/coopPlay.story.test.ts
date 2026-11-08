@@ -5,13 +5,13 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, it, test } from '@effect/vitest'
 import { DialogBlock } from '@foldkit/ui'
 
-import { ShopDialogBinding } from '../../../app/bindings'
-import { CoopBinding } from '../../../app/bindings'
+import { CoopBinding, ShopDialogBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { AudioState, Lesson, type Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { PlaySound } from '../../../app/update/sound'
 import { type SoundEffect, positionVariation } from '../../../audio/audio'
+import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
 import { withShopDialogOpen } from '../../../test/model.fixture'
 import { withSeat } from '../../../test/model.fixture'
 import {
@@ -47,14 +47,13 @@ import { aimTracers } from '../../../world/step/firing'
 import { SeatAction } from '../../../world/step/stepWorld'
 import { beginPreparation, startWaveEarly } from '../../../world/waves/waves'
 import { Message as CoopMessage } from '../../coop/message'
-import { Screen } from '../../coop/model'
-import { freshRoom, maybeRoomOf } from '../../coop/roomState'
+import { freshRoom } from '../../coop/roomState'
 import { FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom, SendRoomFrames } from '../../coop/update'
 import { DialogBinding } from '../../shop/bindings'
 
-// An online co-op run in the root (src/features/onlineRun/coopPlay.ts): the room's World drawn
+// An online co-op run in the root (src/app/update/coopPlay.ts): the room's World drawn
 // as the game, this player's own seat as the player, presses sent to the
 // room as seat actions, the shop opening when the room says so, and no
 // pause. The room and its network are the co-op Block's, faked here

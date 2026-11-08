@@ -32,9 +32,12 @@ import {
   noKills,
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import { returnHome } from '../../../app/runReset'
 import { maybeKeyDownMessage } from '../../../app/subscriptions'
 import { ReadRoomLink } from '../../../app/update/coop'
 import { HideSplash, ShowLoadProgress } from '../../../app/update/save'
+import { withBests } from '../../../domain/run'
+import { bestsFor } from '../../../screens/home/home'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
@@ -51,7 +54,6 @@ import { focusOf, modifyFocus } from '../../../world/party/party'
 import { scoreOf } from '../../../world/run/stats'
 import { FINAL_WAVE } from '../../../world/waves/wavePlans'
 import { pause } from '../../../world/waves/waves'
-import { bestsFor, returnHome, withBests } from '../home'
 
 const withEndlessBest = (base: Model, wave: number): Model =>
   withBests(base, bests =>

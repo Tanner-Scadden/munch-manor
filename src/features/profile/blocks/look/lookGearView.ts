@@ -2,10 +2,10 @@ import { Function, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
 import { PADLOCK_ICON } from '../../../../art/icons'
+import { type Standing, sourceOf } from '../../../../domain/closet'
 import type { CosmeticKind } from '../../../../shared/playerData'
-import { iconView } from '../../../menus/menuParts'
-import { boneCountView, rankMarkView } from '../../../rank/rankBadgeView'
-import { type Standing, sourceOf } from './closet'
+import { iconView } from '../../../../ui/menuParts'
+import { boneCountView, rankMarkView } from '../../../../ui/rankBadgeView'
 import type { ClosetCueKind } from './model'
 
 // The earned looks in the Look tab's rows: a hat, shirt color, print, or gun
@@ -130,14 +130,6 @@ export const buyPillView: {
       ],
     ),
 )
-
-export const newBadgeView = <Message>(h: HtmlBuilder<Message>): Html =>
-  h.span([h.Class('look-new'), h.AriaHidden(true)], ['NEW'])
-
-// NOTE: a red dot on a button that holds something new, for the Profile's
-// Look tab, the hero button on the home menu, and the character pill.
-export const newPipView = <Message>(h: HtmlBuilder<Message>): Html =>
-  h.span([h.Class('new-pip'), h.AriaHidden(true)])
 
 // NOTE: the attributes that play what a pick did (src/app/model.ts, ClosetCue)
 // on the one option it was for. Only the count's parity is read, so the same

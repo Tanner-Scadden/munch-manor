@@ -108,3 +108,7 @@ export const sharePostOf = (run: SharedRun): SharePost => ({
 // then the link.
 export const copiedLineOf = ({ text, url }: SharePost): string =>
   `${text} ${url}`
+
+// NOTE: the data attribute SHARE carries its post in, for the root's
+// ShareFromClick Mount (src/app/mount.ts).
+export const SHARE_TEXT_DATA = 'share-text'

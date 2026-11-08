@@ -31,7 +31,7 @@ layer(NodeServices.layer)(
         Effect.gen(function* () {
           const found = yield* Effect.forEach(
             [
-              'src/features/home/homeView.ts',
+              'src/screens/home/homeView.ts',
               'src/app/layers.ts',
               'src/features/profile/blocks/look/view.ts',
             ],

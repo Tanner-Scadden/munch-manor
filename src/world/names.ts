@@ -226,7 +226,7 @@ export const CALLING_NAMES: Readonly<Record<Calling, string>> = {
   LineCook: 'Line Cook',
 }
 
-// NOTE: teammate bots (src/features/bots/bots.ts) take a goofy name from here, letters
+// NOTE: teammate bots (src/domain/bots.ts) take a goofy name from here, letters
 // and spaces only so the name tag's small font can draw it.
 export const BOT_NAMES: Array.NonEmptyReadonlyArray<string> = [
   'Bolts',
@@ -247,7 +247,7 @@ export const BOT_NAMES: Array.NonEmptyReadonlyArray<string> = [
   'Pixel',
 ]
 
-// NOTE: the closet's hats (src/features/profile/blocks/look/closet.ts), read on focus and aloud.
+// NOTE: the closet's hats (src/domain/closet.ts), read on focus and aloud.
 export const HAT_NAMES: Readonly<Record<Hat, string>> = {
   None: 'No hat',
   PartyHat: 'Party Hat',
@@ -294,7 +294,7 @@ export const giftName: {
 )
 
 // NOTE: the short line beside each special on a hero's card, read from
-// src/features/heroes/callingSpecials.ts with the numbers the rules hold (src/world/heroes/calling.ts), so
+// src/domain/callingSpecials.ts with the numbers the rules hold (src/world/heroes/calling.ts), so
 // a balance change moves the words too. About 24 characters each.
 export const SPECIAL_LINES = {
   planksOff: (percent: number): string => `Planks ${percent}% off`,

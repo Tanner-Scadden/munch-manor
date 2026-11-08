@@ -1,50 +1,45 @@
 import { Array, Option, Result, pipe } from 'effect'
 import { type Document, type Html, createKeyedLazy } from 'foldkit/html'
 
+import { joinName } from '../domain/playerName'
+import { hasUnseenCalling, hasUnseenLook } from '../domain/unlocks'
 import { awardsOf, crewOf } from '../features/end/crewAwards'
 import { isRunCardHeld } from '../features/end/endBeat'
 import { startingCallingOf } from '../features/heroes/callingPick'
-import { bestsFor, feedbackSentence, lobbyPicksOf } from '../features/home/home'
-import {
-  homeMenuView,
-  manorHandView,
-  menuPanelView,
-  newEntryNoticeView,
-} from '../features/home/homeView'
-import { homeScreenGuideView } from '../features/install/installView'
 import type { ViewInputs as LobbyViewInputs } from '../features/lobby/block'
-import { isKeyboard } from '../features/menus/menuParts'
-import {
-  cornerButtonsView,
-  debutCardView,
-  debutPitch,
-  modeChoiceView,
-  toSentenceCase,
-} from '../features/menus/menus'
 import { pauseHelpView } from '../features/menus/pauseHelp'
 import { isOpenBreak } from '../features/onboarding/onboarding'
 import { questTrackerView } from '../features/onboarding/questView'
 import type { ViewInputs as ProfileViewInputs } from '../features/profile/block'
-import { joinName, tabOf } from '../features/profile/profile'
-import { rankPlateView } from '../features/rank/rankBadgeView'
+import { tabOf } from '../features/profile/profile'
 import { isShopShut } from '../features/shop/model'
 import {
   ammoTagButtonView,
   purchaseAnnouncementView,
 } from '../features/shop/purchaseHud'
 import { victorySupportView } from '../features/support/supportView'
-import { hasUnseenCalling, hasUnseenLook } from '../features/unlocks/unlocks'
 import type { PointerDevice } from '../input/inputSchema'
 import { keyGrabToastView } from '../input/keyGrab'
+import { isPortrait, landscapeFrameOffset, screenOf } from '../render/screen'
+import {
+  cornerButtonsView,
+  debutCardView,
+  debutPitch,
+  modeChoiceView,
+  toSentenceCase,
+} from '../screens/game/menus'
 import {
   ghostSticksView,
   gunClusterView,
   preparationControlsView,
   stickView,
-} from '../input/touchControls'
-import { updateGreetingView } from '../platform/updateGift'
-import { isPortrait, landscapeFrameOffset, screenOf } from '../render/screen'
+} from '../screens/game/touchControls'
+import { bestsFor, feedbackSentence, lobbyPicksOf } from '../screens/home/home'
+import { homeMenuView, newEntryNoticeView } from '../screens/home/homeView'
 import { GAME_TITLE } from '../shared/constants'
+import { closeButtonView } from '../ui/cornerButtons'
+import { isKeyboard } from '../ui/menuParts'
+import { rankPlateView } from '../ui/rankBadgeView'
 import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from '../world/gear/powerups'
 import { TRAPS, TRAP_KIND_ORDER } from '../world/gear/traps'
 import {
@@ -82,15 +77,19 @@ import {
   ShopDialogBinding,
 } from './bindings'
 import {
+  type ApplicationAttribute,
   ApplicationComposition,
   type ApplicationViewBuilder,
 } from './composition'
-import { closeButtonView, dialogShell } from './dialogs'
+import { dialogShell } from './dialogs'
+import { manorHandView, menuPanelView } from './dialogs'
+import { homeScreenGuideView } from './dialogs'
+import { updateGreetingView } from './dialogs'
 import { gameStageView } from './layers'
-import { isLobbyUp } from './menuState'
+import { isLobbyUp, isProfileOpen } from './menuState'
 import { Message, type PressedPointer } from './message'
 import { DebutCard, type Model, Phase, RunMode, type RunStats } from './model'
-import { ListenForTouchTaps, MeasureGameSurface } from './mount'
+import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
 import { isCoopOpen } from './update/coop'
 
 // STATUS
@@ -412,6 +411,10 @@ const lobbyView = (model: Model, h: ApplicationViewBuilder): Html =>
 
 // VIEW
 
+// NOTE: SHARE's Mount, made only when the end card draws SHARE.
+const shareMountOf = (h: ApplicationViewBuilder): ApplicationAttribute =>
+  h.OnMount(ShareFromClick())
+
 // NOTE: Foldkit knows a view by the very function makeView returns (its view
 // inputs are registered against it), so a dual wrapper would be a view it
 // does not know; the Block and the Scene tests need this one.
@@ -464,10 +467,10 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         ammoTagButtonView(model, h),
         debutCardView(model, h),
         questTrackerView(model, h),
-        modeChoiceView(model, h),
+        modeChoiceView(model, shareMountOf, h),
         victorySupportView(model, h),
         newEntryNoticeView(model, h),
-        cornerButtonsView(model, h),
+        isProfileOpen(model) ? h.empty : cornerButtonsView(model, h),
         keyGrabToastView(model, h),
         homeScreenGuideView(model, h),
         updateGreetingView(model, h),

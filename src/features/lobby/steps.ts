@@ -2,7 +2,7 @@ import { Effect, Option } from 'effect'
 import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import type { HomeMode } from '../../app/clientSchema'
+import type { HomeMode } from '../../domain/clientSchema'
 import { maybeFocusStep } from '../../input/input'
 import type { Calling, Difficulty } from '../../shared/playerData'
 import { isLocked } from '../../world/run/difficulty'

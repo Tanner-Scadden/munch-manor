@@ -8,6 +8,7 @@ import type { LobbyMember } from '@munch/netcode'
 import { Message } from '../../../app/message'
 import { Lesson, type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import { LobbyChange, Screen, maybeRoomOf } from '../../../domain/coopRoom'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
 import {
   APPLICATION,
@@ -22,14 +23,13 @@ import {
   startRoomWorld,
 } from '../../../world/net/roomWorld'
 import { Message as CoopMessage } from '../../coop/message'
-import { LobbyChange, Screen } from '../../coop/model'
-import { freshRoom, maybeRoomOf } from '../../coop/roomState'
+import { freshRoom } from '../../coop/roomState'
 import { ChangeLobby, FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { LeaveRoom, RememberRoom } from '../../coop/update'
 import { isRunCardHeld } from '../../end/endBeat'
 
-// An online co-op run's end card (src/features/menus/menus.ts, src/features/end/update.ts): the
+// An online co-op run's end card (src/screens/game/menus.ts, src/app/update/end.ts): the
 // tally stays sharp with no co-op scrim over it, and its buttons are the
 // room's: LEAVE, RUN IT BACK (this player's READY, with the crew's heads),
 // LOBBY, and SHARE.

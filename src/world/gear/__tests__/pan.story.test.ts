@@ -18,11 +18,11 @@ import {
 } from '../../../app/model'
 import { initialModel, update } from '../../../app/pureApp'
 import { gunIcon } from '../../../art/sprites/guns'
-import { meleeSlotLook } from '../../../features/hud/hud'
 import {
   REPLACED_KNIFE,
   maybeReplacedIcon,
 } from '../../../features/shop/purchaseView'
+import { meleeSlotLook } from '../../../screens/game/hud'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { nextRandom } from '../../../shared/prng'
 import { DISTANT_SPAWN, atFridge, withSeat } from '../../../test/model.fixture'

@@ -1,16 +1,5 @@
 import { Layer } from 'effect'
 
-import { CueMusic } from '../audio/musicPlan'
-import { SendShareEvent } from '../features/end/update'
-import {
-  ClickSupportLink,
-  FocusEndMenuButton,
-  FocusHandCard,
-  FocusHomeButton,
-  ReloadPage,
-  ShowInstallPrompt,
-  WaitForUnwrap,
-} from '../features/home/update'
 import {
   AwaitFirstFrame,
   DecodeSprites,
@@ -30,7 +19,18 @@ import {
 import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
 import { subscriptions } from './subscriptions'
 import { ReadRoomLink } from './update/coop'
+import { SendShareEvent } from './update/end'
 import { SetFullscreen } from './update/fullscreen'
+import {
+  ClickSupportLink,
+  FocusEndMenuButton,
+  FocusHandCard,
+  FocusHomeButton,
+  ReloadPage,
+  ShowInstallPrompt,
+  WaitForUnwrap,
+} from './update/home'
+import { CueMusic } from './update/music'
 import { ApplyRotation } from './update/rotation'
 import {
   AwaitRunSettled,

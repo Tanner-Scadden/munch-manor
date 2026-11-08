@@ -1,7 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
 import type { Html } from 'foldkit/html'
 
-import { Tour } from '../../app/clientSchema'
 import type { ApplicationViewBuilder } from '../../app/composition'
 import type { Model } from '../../app/model'
 import {
@@ -13,6 +12,7 @@ import {
   TOUR_PAUSED_ICON,
   TOUR_PRIZE_ICON,
 } from '../../art/icons'
+import { Tour } from '../../domain/clientSchema'
 import { cameraOf, viewBoxOf, worldToView } from '../../render/camera'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { levelOf } from '../../world/level/arena'

@@ -1,6 +1,13 @@
 import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import {
+  KitchenCall,
+  PrizeFlight,
+  RunTally,
+  cosmeticSeedOf,
+  noRankPaid,
+} from '../domain/clientSchema'
 import { startingCallingOf } from '../features/heroes/callingPick'
 import { deriveIntent } from '../input/input'
 import { cameraFor } from '../render/camera'
@@ -14,6 +21,7 @@ import {
   CounterSale,
   DebutCard,
   Party,
+  Phase,
   Streak,
   TrapNotice,
   barePantry,
@@ -28,13 +36,6 @@ import {
   stillShake,
 } from '../world/schema/worldSchema'
 import { ZERO_VECTOR } from '../world/step/geometry'
-import {
-  KitchenCall,
-  PrizeFlight,
-  RunTally,
-  cosmeticSeedOf,
-  noRankPaid,
-} from './clientSchema'
 import type { Model } from './model'
 
 // NOTE: every field that belongs to one run, set as a new run starts. Starting
@@ -161,4 +162,12 @@ export const freshRun = (model: Model): RunFields => ({
     }),
   ],
   crewBots: [],
+})
+
+// NOTE: going home ends the run, so every run field goes back to a fresh start.
+export const returnHome = (model: Model): Model => ({
+  ...model,
+  ...freshRun(model),
+  phase: Phase.Ready(),
+  maybeHomeFocus: Option.none(),
 })

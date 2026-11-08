@@ -1,8 +1,8 @@
 import { Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { Tour } from '../../app/clientSchema'
 import type { Model } from '../../app/model'
+import { Tour } from '../../domain/clientSchema'
 import { fridgeBoxOf, fridgeSpot } from '../../world/fridge/leftovers'
 import { isKitchenOpen } from '../../world/kitchen/kitchen'
 import { levelOf } from '../../world/level/arena'

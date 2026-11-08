@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, it } from '@effect/vitest'
 
+import { specialsOf } from '../../../domain/callingSpecials'
 import { heroesBoughtBy, home } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -18,7 +19,6 @@ import {
   showDialogInScene,
 } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
-import { specialsOf } from '../../heroes/callingSpecials'
 
 // The single player lobby's view (src/features/lobby/lobbyView.ts): the co-op lobby's
 // look, alone, with one seat, three waiting, the picks, and START.

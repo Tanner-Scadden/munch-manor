@@ -1,13 +1,7 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { isOwned } from '../features/profile/blocks/look/closet'
-import {
-  HAT_ART,
-  HAT_COLORS,
-  MAX_HAT_ABOVE,
-  NO_HAT,
-} from '../features/profile/blocks/look/hatArt'
+import { isOwned } from '../domain/closet'
 import { isObjectFirst } from '../shared/dualArgs'
 import {
   type Appearance,
@@ -32,6 +26,7 @@ import {
   recordedSpriteSources,
   spriteFrames,
 } from './sprite'
+import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, NO_HAT } from './sprites/hatArt'
 
 // OPTIONS
 

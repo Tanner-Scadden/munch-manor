@@ -5,6 +5,8 @@ import { cleanLook } from '@munch/netcode'
 
 import { defaultAppearance } from '../../../../../app/model'
 import { initialModel } from '../../../../../app/pureApp'
+import { HAT_ART } from '../../../../../art/sprites/hatArt'
+import { unlocksAt } from '../../../../../domain/unlocks'
 import {
   SAVE_VERSION,
   decodeSave,
@@ -24,8 +26,6 @@ import {
 import { legacySave } from '../../../../../test/store.fixture'
 import { jsonOf } from '../../../../../test/testing'
 import { pointsForRank } from '../../../../../world/heroes/rank'
-import { unlocksAt } from '../../../../unlocks/unlocks'
-import { HAT_ART } from '../hatArt'
 
 // The hat, shirt color, print, and gun skin in what is kept and what is
 // sent: the save at version 16, and the look code the co-op lobby carries.

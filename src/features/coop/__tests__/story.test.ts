@@ -11,6 +11,13 @@ import {
 } from '@munch/netcode'
 import { RoomEvent } from '@munch/netcode/browser'
 
+import {
+  LobbyChange,
+  RoomRequest,
+  Screen,
+  coopWorld,
+  noPresses,
+} from '../../../domain/coopRoom'
 import { playRoom } from '../../../test/roomTesting'
 import { resolveFocusCoop } from '../../../test/testing'
 import {
@@ -23,16 +30,8 @@ import {
 import { SeatAction } from '../../../world/step/stepWorld'
 import { InMessage } from '../inMessage'
 import { Message, OutMessage } from '../message'
-import {
-  LobbyChange,
-  type Model,
-  RoomRequest,
-  Screen,
-  emptyQueue,
-  noPresses,
-} from '../model'
+import { type Model, emptyQueue } from '../model'
 import { cleanCode, freshRoom } from '../roomState'
-import { coopWorld } from '../seam'
 import { ChangeLobby } from '../steps'
 import {
   CODE,

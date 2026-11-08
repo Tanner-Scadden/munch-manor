@@ -2,11 +2,12 @@ import { Option, Result } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { isRunOn } from '../../domain/onlineRun'
 import { learnShop } from '../../features/onboarding/onboarding'
-import { isRunOn } from '../../features/onlineRun/onlineRun'
 import { isShopGuideOpen } from '../../features/shop/model'
 import { releaseAll } from '../../input/input'
 import { burstCoins } from '../../render/particles/particles'
+import { stepWhen } from '../../shared/stepWhen'
 import { focusOf, focusSlotOf, modifyFocus } from '../../world/party/party'
 import {
   ShopGood,
@@ -30,7 +31,6 @@ import {
   ShopState,
   TrapHint,
 } from '../model'
-import { stepWhen } from '../stepWhen'
 import { tryAsLead } from './action'
 import { type SoundCue, playSounds, uiCue } from './sound'
 import {

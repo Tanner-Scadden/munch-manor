@@ -8,6 +8,7 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import { Message } from '../../../../../app/message'
 import type { Model } from '../../../../../app/model'
 import { WriteSave } from '../../../../../app/update/save'
+import { unlocksAt } from '../../../../../domain/unlocks'
 import { homeAfterRead } from '../../../../../test/model.fixture'
 import {
   APPLICATION,
@@ -22,7 +23,6 @@ import {
   showDialogInScene,
 } from '../../../../../test/testing'
 import { noRank, pointsForRank } from '../../../../../world/heroes/rank'
-import { unlocksAt } from '../../../../unlocks/unlocks'
 import { FocusLookOption } from '../../../inMessageUpdate'
 import { Message as ProfileMessage } from '../../../message'
 

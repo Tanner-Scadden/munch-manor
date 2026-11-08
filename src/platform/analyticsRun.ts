@@ -3,9 +3,9 @@ import { Function, Option, String } from 'effect'
 import type { Lobby } from '@munch/netcode'
 
 import type { Model } from '../app/model'
-import { isBotCrew } from '../features/bots/bots'
-import { isInRun } from '../features/home/home'
-import { effectiveModifiersOf } from '../features/onlineRun/onlineRun'
+import { isBotCrew } from '../domain/bots'
+import { effectiveModifiersOf } from '../domain/onlineRun'
+import { isInRun } from '../domain/run'
 import type { Difficulty } from '../shared/playerData'
 import { isCoop, leadSeatOf, playersOf } from '../world/party/party'
 import { maskOfModifiers } from '../world/run/modifiers'
@@ -133,7 +133,7 @@ const hashKey = (text: string): string => {
 // and the round, which each start (RUN IT BACK and KEEP GOING too) counts
 // up. A code used again later is another room made at another time. Only
 // the hash is sent, so a summary names no room. A run is drawn only once
-// the lobby has left its Lobby status for the round (src/features/onlineRun/onlineRun.ts,
+// the lobby has left its Lobby status for the round (src/domain/onlineRun.ts,
 // maybeRunRoom), so a replica a round behind never keys it.
 export const crewRunKeyOf = (lobby: Lobby): string =>
   hashKey(`${lobby.code}:${lobby.createdMs}:${lobby.round}`)
@@ -146,7 +146,7 @@ const ownRunKey = (visitId: string, run: Model): string =>
 // NOTE: a run with teammate bots reports as Solo: it is one human's run, and
 // the crew numbers are for humans (a bot count in the summary would be a
 // RUN_SUMMARY_VERSION bump and a D1 migration, left for later). An online co-op run's own seat is the lead in the Model (the
-// client draws it as the player, src/features/onlineRun/coopPlay.ts), so its numbers are this
+// client draws it as the player, src/app/update/coopPlay.ts), so its numbers are this
 // player's. The crew's size counts every seat in the run, one who dropped
 // out too.
 const partyOf = (run: Model, visitId: string): SummaryParty => {

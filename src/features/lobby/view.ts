@@ -3,8 +3,8 @@ import type { Html } from 'foldkit/html'
 
 import type { Dialog } from '@foldkit/ui'
 
-import type { Bot, HomeMode } from '../../app/clientSchema'
-import { backButtonView } from '../../app/dialogs'
+import { PROP_ICONS } from '../../art/callingArt'
+import { BOT_ICON, portraitOf } from '../../art/coopIcons'
 import {
   CAMPAIGN_ICON,
   CLOSE_ICON,
@@ -15,8 +15,26 @@ import {
   SKULL_ICONS,
   SKULL_OFF_ICON,
 } from '../../art/icons'
+import {
+  type Special,
+  specialsNoteOf,
+  specialsOf,
+} from '../../domain/callingSpecials'
+import type { Bot, HomeMode } from '../../domain/clientSchema'
 import type { MapId } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
+import { backButtonView } from '../../ui/cornerButtons'
+import {
+  callingPropView,
+  iconView,
+  newPipView,
+  rankTagView,
+} from '../../ui/menuParts'
+import {
+  bonusChipView,
+  modifierFaceView,
+  modifierLabel,
+} from '../../ui/modifiersView'
 import { CALLING_NAMES, MAP_NAMES, MODE_NAMES } from '../../world/names'
 import {
   DIFFICULTIES,
@@ -30,15 +48,6 @@ import {
   bonusPercentOf,
   isModifierOn,
 } from '../../world/run/modifiers'
-import { BOT_ICON, portraitOf } from '../coop/icons'
-import { PROP_ICONS } from '../heroes/callingArt'
-import {
-  type Special,
-  specialsNoteOf,
-  specialsOf,
-} from '../heroes/callingSpecials'
-import { callingPropView, iconView, rankTagView } from '../menus/menuParts'
-import { newPipView } from '../profile/blocks/look/lookGearView'
 import { HeroDialogBinding, HeroPickerBinding } from './bindings'
 import type { ViewInputs } from './block'
 import { LobbyComposition, type LobbyViewBuilder } from './composition'
@@ -57,7 +66,6 @@ import {
   type Model,
   isLobbyShown,
 } from './model'
-import { bonusChipView, modifierFaceView, modifierLabel } from './modifiersView'
 
 // The single player lobby (GAME_DESIGN.md, "The single player lobby"): the
 // co-op lobby's look and layout (src/features/coop/view.ts, src/features/coop/coop.css),

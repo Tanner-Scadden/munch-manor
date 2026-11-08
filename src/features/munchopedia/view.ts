@@ -1,12 +1,11 @@
 import { Array, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
-import { backButtonView } from '../../app/dialogs'
+import { SHOP_TILE_ART } from '../../art/shopArt'
+import { backButtonView } from '../../ui/cornerButtons'
 import { SHOP_GUIDE_NAME } from '../../world/names'
 import type { KillCounts, ZombieKind } from '../../world/schema/worldSchema'
-import { isGuideOpen } from '../guide/model'
-import { GUIDE_FOCUS_IDS } from '../guide/shopGuide'
-import { SHOP_TILE_ART } from '../guide/shopGuideArt'
+import { GUIDE_FOCUS_IDS, isGuideOpen } from '../guide/model'
 import { GuideBinding } from './bindings'
 import type { ViewInputs } from './block'
 import {

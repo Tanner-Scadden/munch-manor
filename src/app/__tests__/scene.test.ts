@@ -6,7 +6,7 @@ import { describe, it, test, expect as vitestExpect } from '@effect/vitest'
 import { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
 
 import indexHtml from '../../../index.html?raw'
-import { FEEDBACK_RUNS } from '../../features/home/home'
+import { FEEDBACK_RUNS } from '../../domain/run'
 import { DEBUT_CARD_MIN_MS } from '../../features/onboarding/onboarding'
 import { Message as ShopMessage } from '../../features/shop/message'
 import { ShopTabsBlock } from '../../features/shop/shopTabs'

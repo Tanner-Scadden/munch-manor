@@ -12,8 +12,9 @@ import {
   Trap,
 } from '../../../app/model'
 import { initialModel, update } from '../../../app/pureApp'
-import { bestsFor, withBests } from '../../../features/home/home'
-import { endlessBannerOf } from '../../../features/menus/screens'
+import { withBests } from '../../../domain/run'
+import { endlessBannerOf } from '../../../screens/game/overlay'
+import { bestsFor } from '../../../screens/home/home'
 import {
   PACK_WARNING_MS,
   PREPARATION_MS,

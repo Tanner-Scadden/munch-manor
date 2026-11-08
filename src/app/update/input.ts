@@ -2,8 +2,6 @@ import { Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { skipFromPointer } from '../../features/end/update'
-import { isTurnHintShown, seeTurnHint } from '../../features/home/home'
 import {
   type PointerPress,
   moveMouse,
@@ -16,11 +14,13 @@ import {
 } from '../../input/input'
 import type { InputDevice, PointerDevice } from '../../input/inputSchema'
 import { noteMissedKeyDown } from '../../input/keyGrab'
+import { isTurnHintShown, seeTurnHint } from '../../screens/home/home'
 import { isRoundActive } from '../../world/waves/waves'
 import { makeStep } from '../definition'
 import { refreshIntent } from '../frame'
 import type { Model } from '../model'
 import { orInRun } from './coopRun'
+import { skipFromPointer } from './end'
 import {
   asAllowedPress,
   buyAmmoFromHoldButton,

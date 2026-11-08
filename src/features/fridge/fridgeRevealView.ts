@@ -1,7 +1,7 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
-import { type Model, PrizeFlight } from '../../app/model'
+import type { Model } from '../../app/model'
 import { type BakedText, bakeText, placeBaked } from '../../art/font'
 import {
   type Sprite,
@@ -12,6 +12,7 @@ import {
   spriteShapes,
 } from '../../art/sprite'
 import { gunIcon } from '../../art/sprites/guns'
+import { PrizeFlight } from '../../domain/clientSchema'
 import {
   type Camera,
   viewBoxOf,
@@ -19,6 +20,7 @@ import {
   worldToView,
 } from '../../render/camera'
 import { rect } from '../../render/drawing'
+import { HUD_STRIP_HEIGHT, gunSlotBox } from '../../render/hudLayout'
 import type { Screen } from '../../render/screen'
 import {
   DUD_REFUND,
@@ -29,7 +31,6 @@ import { heldSlotOf } from '../../world/gear/weapons'
 import { focusOf, maybePlayerAt } from '../../world/party/party'
 import type { FridgePrize, Vector } from '../../world/schema/entitySchema'
 import { ZERO_VECTOR, clamp } from '../../world/step/geometry'
-import { HUD_STRIP_HEIGHT, gunSlotBox } from '../hud/hud'
 import {
   type DoorReveal,
   REVEAL_RULES,

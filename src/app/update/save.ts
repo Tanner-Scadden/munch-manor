@@ -1,7 +1,7 @@
 import { Array, Effect, Function, Option, Schema, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { grantVeteran } from '../../features/rank/rankRun'
+import { grantVeteran } from '../../features/end/rankRun'
 import {
   LastRunSync,
   PlayerChange,

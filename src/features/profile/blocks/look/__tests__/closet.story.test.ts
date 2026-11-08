@@ -8,6 +8,22 @@ import { ProfileBinding } from '../../../../../app/bindings'
 import { type Model, Reload, defaultAppearance } from '../../../../../app/model'
 import { WriteSave } from '../../../../../app/update/save'
 import { playerPixels, randomAppearance } from '../../../../../art/appearance'
+import {
+  HAT_ART,
+  HAT_COLORS,
+  MAX_HAT_ABOVE,
+  hatRiseOf,
+} from '../../../../../art/sprites/hatArt'
+import {
+  GIFTS,
+  gearTapOf,
+  giftsOpenedBy,
+  isOwned,
+  lookInOwned,
+  sourceOf,
+  standingOf,
+} from '../../../../../domain/closet'
+import { type LookPart, PART_OF_KIND } from '../../../../../domain/looks'
 import { PlayerChange } from '../../../../../platform/playerSync'
 import { restoreSave, saveOf } from '../../../../../platform/save'
 import { reloadBarShapes } from '../../../../../render/playerView'
@@ -32,19 +48,8 @@ import { CharacterBinding } from '../../../composition'
 import { FocusLookOption } from '../../../inMessageUpdate'
 import { Message as ProfileMessage } from '../../../message'
 import * as Character from '../block'
-import {
-  GIFTS,
-  gearTapOf,
-  giftsOpenedBy,
-  isOwned,
-  lookInOwned,
-  sourceOf,
-  standingOf,
-} from '../closet'
-import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, hatRiseOf } from '../hatArt'
-import type { LookPart } from '../lookSchema'
 
-// The earned looks (src/features/profile/blocks/look/closet.ts, src/app/update/look.ts): hats, shirt
+// The earned looks (src/domain/closet.ts, src/app/update/look.ts): hats, shirt
 // colors, prints, and gun skins are worn, bought with Bones, or gifted by
 // rank, picked in the Look tab's rows (a look for sale is tried on first),
 // and a worn hat shows over a calling's prop.
@@ -307,7 +312,7 @@ describe('gifts', () => {
   it.effect.each(GIFTS)(
     '$kind $name is locked below rank $rank and shakes',
     gift => {
-      const part = Character.PART_OF_KIND[gift.kind]
+      const part = PART_OF_KIND[gift.kind]
       return Story.story(
         APPLICATION,
         Story.given(closetWith(rankPoints(gift.rank - 1))),
@@ -323,7 +328,7 @@ describe('gifts', () => {
   )
 
   it.effect.each(GIFTS)('$kind $name is free at rank $rank', gift => {
-    const part = Character.PART_OF_KIND[gift.kind]
+    const part = PART_OF_KIND[gift.kind]
     const before = closetWith(rankPoints(gift.rank))
     expect(rankOf(before.rank.earnedPoints)).toBe(gift.rank)
     return Story.story(

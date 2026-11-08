@@ -2,7 +2,7 @@ import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
-import { playedModifiersOf } from '../features/onlineRun/onlineRun'
+import { playedModifiersOf } from '../domain/onlineRun'
 import {
   BLAST_FLASH_MS,
   BLAST_MAX,

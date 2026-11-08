@@ -1,12 +1,21 @@
 import { Array, Function, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 
+import { portraitOf } from '../../art/coopIcons'
 import { PADLOCK_ICON } from '../../art/icons'
+import {
+  type Special,
+  specialsNoteOf,
+  specialsOf,
+} from '../../domain/callingSpecials'
+import { callingUnlockId } from '../../domain/unlocks'
 import type {
   Appearance,
   Calling,
   SavedBoughtCosmetics,
 } from '../../shared/playerData'
+import { iconView, newBadgeView } from '../../ui/menuParts'
+import { boneCountView, rankMarkView } from '../../ui/rankBadgeView'
 import {
   CALLINGS,
   UNLOCK_RANKS,
@@ -14,12 +23,6 @@ import {
   callingStandingOf,
 } from '../../world/heroes/calling'
 import { CALLING_NAMES, SPECIAL_LINES } from '../../world/names'
-import { portraitOf } from '../coop/icons'
-import { iconView } from '../menus/menuParts'
-import { newBadgeView } from '../profile/blocks/look/lookGearView'
-import { boneCountView, rankMarkView } from '../rank/rankBadgeView'
-import { callingUnlockId } from '../unlocks/unlocks'
-import { type Special, specialsNoteOf, specialsOf } from './callingSpecials'
 
 // The picker's cards, one per hero (GAME_DESIGN.md, "Rank and Bones"),
 // shared by the home menu's picker and co-op's lobby picker: the player's own
@@ -41,7 +44,7 @@ export type CardsInput<Message> = {
   // being tried on.
   readonly bought: SavedBoughtCosmetics
   readonly maybeTrying: Option.Option<Calling>
-  // NOTE: the unlock ids that wear a NEW badge (src/features/unlocks/unlocks.ts).
+  // NOTE: the unlock ids that wear a NEW badge (src/domain/unlocks.ts).
   readonly fresh: ReadonlyArray<string>
   // NOTE: what the caller adds to a card: its click, and the initial focus
   // on the chosen one.

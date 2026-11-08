@@ -1,7 +1,6 @@
 import { Array, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
-import type { Model } from '../app/model'
 import { type Facing, type Sprite, type Tone, group } from '../art/sprite'
 import { gunSprite } from '../art/sprites/guns'
 import {
@@ -33,6 +32,7 @@ import { WEAPONS } from '../world/gear/weapons'
 import { type Box, type Level, boxCenter, levelOf } from '../world/level/arena'
 import { focusOf, focusSlotOf } from '../world/party/party'
 import type { DoorId, Vector } from '../world/schema/entitySchema'
+import type { World } from '../world/schema/world'
 import {
   Phase,
   ShopState,
@@ -269,7 +269,7 @@ const DOORWAY_HINT_PULSE_MS = 600
 
 const ghostSprite = (
   spot: TrapSpot,
-  model: Model,
+  model: World,
 ): ReadonlyArray<Canvas.Shape> =>
   TrapSpot.match(spot, {
     Doorway: ({ door }) => {
@@ -305,7 +305,7 @@ const outlineShape = (box: Box, color: string): Canvas.Shape =>
     lineWidth: 1,
   })
 
-const openDoorwayHints = (model: Model): ReadonlyArray<Canvas.Shape> => {
+const openDoorwayHints = (model: World): ReadonlyArray<Canvas.Shape> => {
   const boarded = barricadedDoors(model.traps)
   const level = levelOf(model)
   const isLit = Math.floor(model.elapsedMs / DOORWAY_HINT_PULSE_MS) % 2 === 0
@@ -320,11 +320,11 @@ const openDoorwayHints = (model: Model): ReadonlyArray<Canvas.Shape> => {
     : []
 }
 
-const isPlacingNow = (model: Model): boolean =>
+const isPlacingNow = (model: World): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase) &&
   !ShopState.isAnyOf(['Browsing'])(focusOf(model).shop)
 
-export const ghostShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
+export const ghostShapes = (model: World): ReadonlyArray<Canvas.Shape> => {
   if (!isPlacingNow(model)) {
     return []
   }

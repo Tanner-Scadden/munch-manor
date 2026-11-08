@@ -2,6 +2,32 @@ import { Option, Schema } from 'effect'
 
 import { DialogBlock } from '@foldkit/ui'
 
+import {
+  AmmoTip,
+  AudioState,
+  Bot,
+  DifficultyCard,
+  HintBand,
+  HomeMenu,
+  KitchenCall,
+  type LoadStep,
+  Loading,
+  PlayerBests,
+  PrizeFlight,
+  RankGain,
+  RankPaid,
+  RunRecord,
+  RunTally,
+  SaveStatus,
+  SyncedSaveState,
+  Tour,
+  UpdateGift,
+  cosmeticSeedOf,
+  defaultAppearance,
+  freshHomeMenu,
+  freshLessons,
+  noRankPaid,
+} from '../domain/clientSchema'
 import * as Coop from '../features/coop/model'
 import { ShareSheet } from '../features/end/share'
 import { HomeButton, MenuPanel } from '../features/home/homeSchema'
@@ -86,39 +112,9 @@ import {
   shutValve,
   stillShake,
 } from '../world/schema/worldSchema'
-import {
-  AmmoTip,
-  AudioState,
-  Bot,
-  DifficultyCard,
-  HintBand,
-  HomeMenu,
-  KitchenCall,
-  type LoadStep,
-  Loading,
-  PlayerBests,
-  PrizeFlight,
-  RankGain,
-  RankPaid,
-  RunTally,
-  SaveStatus,
-  SyncedSaveState,
-  Tour,
-  UpdateGift,
-  cosmeticSeedOf,
-  defaultAppearance,
-  freshHomeMenu,
-  freshLessons,
-  noRankPaid,
-} from './clientSchema'
 
-export * from './clientSchema'
+export * from '../domain/clientSchema'
 export * from '../world/schema/worldSchema'
-
-// NOTE: a record the run that just ended broke, for its NEW BEST: the
-// deepest endless wave, or the fastest win (src/features/end/endBeat.ts).
-export const RunRecord = Schema.Literals(['Wave', 'Time', 'Kills'])
-export type RunRecord = typeof RunRecord.Type
 
 export const Model = Schema.Struct({
   ...World.fields,
@@ -190,7 +186,7 @@ export const Model = Schema.Struct({
   // NOTE: players sharing this keyboard, from a dev-only `?local=N` link
   // (MULTIPLAYER.md, "What Phase 1 built"). 1 in every shipped build.
   localPlayers: Schema.Finite,
-  // NOTE: the teammate bots seated in this run (src/features/bots/bots.ts), set as the run
+  // NOTE: the teammate bots seated in this run (src/domain/bots.ts), set as the run
   // starts from the lobby's bots, so RETRY seats the same ones and a LEAVE
   // clears them.
   crewBots: Schema.Array(Bot),
@@ -210,10 +206,10 @@ export const Model = Schema.Struct({
   // NOTE: the calling picked for the next run (src/features/heroes/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
-  // NOTE: the looks bought with Bones, by cosmetic id (src/features/profile/blocks/look/closet.ts). A gift
+  // NOTE: the looks bought with Bones, by cosmetic id (src/domain/closet.ts). A gift
   // is owned by rank and is never here.
   boughtCosmetics: SavedBoughtCosmetics,
-  // NOTE: the unlocks the player has seen (src/features/unlocks/unlocks.ts), saved and synced,
+  // NOTE: the unlocks the player has seen (src/domain/unlocks.ts), saved and synced,
   // and the ones that wear a NEW badge right now: those reached and unseen
   // when the Look tab or the character picker last opened.
   seenUnlocks: SavedSeenUnlocks,

@@ -1,8 +1,8 @@
 import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { KitchenCall, Tour } from '../../app/clientSchema'
 import type { Model } from '../../app/model'
+import { KitchenCall, Tour } from '../../domain/clientSchema'
 import type { SoundEffect } from '../../shared/soundEffect'
 import { isKitchenOpen } from '../../world/kitchen/kitchen'
 import { levelOf } from '../../world/level/arena'

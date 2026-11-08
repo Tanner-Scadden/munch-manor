@@ -3,21 +3,8 @@ import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { positionVariation } from '../../audio/audio'
-import { isCouchKey, pressCouchKey } from '../../features/couch/couch'
+import { isEndScreen } from '../../domain/run'
 import { skipBeat } from '../../features/end/endBeat'
-import {
-  advanceEndScreen,
-  endFromKey,
-  isBeatSkipKey,
-  isRunCardKey,
-  runCardFromKey,
-} from '../../features/end/update'
-import { isEndScreen } from '../../features/home/home'
-import {
-  homeFocusFromKey,
-  homeFromKey,
-  menuFromKey,
-} from '../../features/home/update'
 import { noteAmmoTip } from '../../features/hud/ammoWarning'
 import { advanceQuest } from '../../features/onboarding/firstBreakQuest'
 import { advanceKitchenTour } from '../../features/onboarding/kitchenTour'
@@ -30,6 +17,7 @@ import {
   moveHintBand,
   skipDebutCard,
 } from '../../features/onboarding/onboarding'
+import { isCouchKey, pressCouchKey } from '../../input/couch'
 import {
   type PointerPress,
   isPauseKey,
@@ -47,6 +35,7 @@ import type {
 import { playerKeyAction } from '../../input/keyActions'
 import type { PageVisibility } from '../../platform/deviceSchema'
 import { dropClip } from '../../render/particles/particles'
+import { stepWhen } from '../../shared/stepWhen'
 import {
   inHandOf,
   isReloading,
@@ -63,9 +52,16 @@ import { advanceGame, clampFrameDelta, refreshIntent } from '../frame'
 import { isLobbyOpen } from '../menuState'
 import { type GunSlot, type Model, Phase } from '../model'
 import { startWave } from '../runFlow'
-import { stepWhen } from '../stepWhen'
 import { actAsLead } from './action'
 import { coopFromKey, isCoopOpen, pressCoopKey, releaseCoopKey } from './coop'
+import {
+  advanceEndScreen,
+  endFromKey,
+  isBeatSkipKey,
+  isRunCardKey,
+  runCardFromKey,
+} from './end'
+import { homeFocusFromKey, homeFromKey, menuFromKey } from './home'
 import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'

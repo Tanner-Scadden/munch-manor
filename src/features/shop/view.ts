@@ -1,13 +1,29 @@
 import { Array, Match, Option, String, pipe } from 'effect'
 import type { Html } from 'foldkit/html'
 
-import type { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
-import { Button } from '@foldkit/ui'
+import { Button, type Dialog, type DialogBlock, type Tabs } from '@foldkit/ui'
 
-import { closeButtonView } from '../../app/dialogs'
 import { COIN_SYMBOL } from '../../art/font'
 import { ROUNDS_ICON } from '../../art/icons'
+import type { Mood } from '../../art/rattlesArt'
+import {
+  BAR_SEGMENTS,
+  HEART_EMPTY,
+  HEART_FULL,
+  HIT_ICON,
+  LOAD_ICON,
+  RATE_ICON,
+  RATTLES_ART,
+  SWAP_ICON,
+  type ShopArt,
+  TAB_ART,
+  TRAP_ART,
+  UPGRADE_ART,
+  gunArt,
+  itemArt,
+} from '../../art/shopArt'
 import { TILE_SIZE } from '../../shared/constants'
+import { closeButtonView } from '../../ui/cornerButtons'
 import { TRAPS, healthShare, ownedCount } from '../../world/gear/traps'
 import {
   hasEndlessRounds,
@@ -55,36 +71,15 @@ import {
   trapShelves,
   verdictFor,
 } from '../../world/shop/shop'
-import { GUIDE_FOCUS_IDS } from '../guide/shopGuide'
+import { GUIDE_FOCUS_IDS } from '../guide/model'
 import { DialogBinding, GuideBinding, TabsBinding } from './bindings'
 import type { ShopScene, ViewInputs } from './block'
 import { ShopComposition, type ShopViewBuilder } from './composition'
 import { Message } from './message'
 import { type Model, isShopGuideOpen } from './model'
-import {
-  HEART_EMPTY,
-  HEART_FULL,
-  HIT_ICON,
-  LOAD_ICON,
-  RATE_ICON,
-  RATTLES_ART,
-  SWAP_ICON,
-  type ShopArt,
-  TAB_ART,
-  TRAP_ART,
-  UPGRADE_ART,
-  gunArt,
-  itemArt,
-} from './shopArt'
-import {
-  BAR_SEGMENTS,
-  type GunBars,
-  ammoGauge,
-  gunBars,
-  ownedNote,
-} from './shopStats'
+import { type GunBars, ammoGauge, gunBars, ownedNote } from './shopStats'
 import type { ShopTabsBlock } from './shopTabs'
-import { type Mood, chatterLine, moodOf } from './shopkeeper'
+import { chatterLine, moodOf } from './shopkeeper'
 
 type TabsModel = typeof ShopTabsBlock.Model.Type
 

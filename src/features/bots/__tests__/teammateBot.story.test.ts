@@ -5,6 +5,8 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Bot, type Model, Phase } from '../../../app/model'
+import { crewBotSlots } from '../../../domain/bots'
+import { isLeftFromRoom } from '../../../domain/onlineRun'
 import { cameraFocus } from '../../../render/camera'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
 import {
@@ -32,8 +34,6 @@ import {
 import { Life, ShopState } from '../../../world/schema/worldSchema'
 import { STALL_BOX } from '../../../world/shop/shop'
 import { coopNameShapes } from '../../onlineRun/coopMarksView'
-import { isLeftFromRoom } from '../../onlineRun/onlineRun'
-import { crewBotSlots } from '../bots'
 import { botInputs } from '../teammateBot'
 
 // A teammate bot (src/features/bots/teammateBot.ts) plays its seat from the World: it

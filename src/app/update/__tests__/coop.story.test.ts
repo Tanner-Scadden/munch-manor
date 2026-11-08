@@ -4,13 +4,12 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it } from '@effect/vitest'
 
+import { LobbyChange, RoomRequest, Screen } from '../../../domain/coopRoom'
 import { Message as CoopMessage } from '../../../features/coop/message'
-import { LobbyChange, RoomRequest, Screen } from '../../../features/coop/model'
 import { freshRoom } from '../../../features/coop/roomState'
 import { ChangeLobby } from '../../../features/coop/steps'
 import { CODE, lobbyOf, memberOf } from '../../../features/coop/testing'
 import { RememberRoom, RequestRoom } from '../../../features/coop/update'
-import { FocusHomeButton } from '../../../features/home/update'
 import { type Appearance, lookCodeOf } from '../../../shared/playerData'
 import { home, newPlayerReady } from '../../../test/model.fixture'
 import { APPLICATION, resolveFocusCoop } from '../../../test/testing'
@@ -18,6 +17,7 @@ import { noRank, pointsForRank } from '../../../world/heroes/rank'
 import { CoopBinding } from '../../bindings'
 import { Message } from '../../message'
 import { Lesson } from '../../model'
+import { FocusHomeButton } from '../home'
 
 const PICKED_LOOK: Appearance = {
   body: 'Slim',

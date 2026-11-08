@@ -10,6 +10,7 @@ import { Message } from '../../../app/message'
 import { Lesson, type Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { SendRunSummary } from '../../../app/update/settle'
+import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
 import type { RunSummary } from '../../../platform/analytics'
 import { crewRunKeyOf } from '../../../platform/analyticsRun'
 import {
@@ -24,8 +25,7 @@ import { noModifiers } from '../../../world/run/modifiers'
 import { Phase, RunMode, noKills } from '../../../world/schema/worldSchema'
 import { startWaveEarly } from '../../../world/waves/waves'
 import { Message as CoopMessage } from '../../coop/message'
-import { Screen } from '../../coop/model'
-import { freshRoom, maybeRoomOf } from '../../coop/roomState'
+import { freshRoom } from '../../coop/roomState'
 import { FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom } from '../../coop/update'
@@ -344,7 +344,7 @@ describe("an online co-op run's summary", () => {
   )
 })
 
-// NOTE: rank (src/features/rank/rankRun.ts): each client pays its own seat. The crew's
+// NOTE: rank (src/features/end/rankRun.ts): each client pays its own seat. The crew's
 // waves are the run's, on the room's difficulty (Hard here); the awards and
 // revives are the player's own. Seat 1 has the most kills, the revive, and
 // the most downs, so it wins the MVP, Medic, and Most Munched awards.

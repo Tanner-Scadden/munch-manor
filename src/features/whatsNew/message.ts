@@ -1,7 +1,7 @@
 import { defineMessageUnion } from 'foldkit/message'
 
 // NOTE: What's New's page turns (src/features/whatsNew/whatsNewView.ts),
-// handled in src/features/home/update.ts with the other panels.
+// handled in src/app/update/home.ts with the other panels.
 export const whatsNewCases = {
   ClickedOlderNewsButton: {},
   ClickedNewerNewsButton: {},

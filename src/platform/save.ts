@@ -10,17 +10,17 @@ import {
 } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import type { Model } from '../app/model'
 import {
   AmmoTip,
   DifficultyCard,
-  type Model,
   type PlayerBests,
   Tour,
   freshLessons,
-} from '../app/model'
-import { lookInOwned } from '../features/profile/blocks/look/closet'
-import { cleanName } from '../features/profile/profile'
-import { unlocksAt } from '../features/unlocks/unlocks'
+} from '../domain/clientSchema'
+import { lookInOwned } from '../domain/closet'
+import { cleanName } from '../domain/playerName'
+import { unlocksAt } from '../domain/unlocks'
 import {
   Calling,
   HomeScreenTip,
@@ -540,7 +540,7 @@ const migrateV11 = (save: PlayerSaveV11): PlayerSaveV12 => ({
 
 // NOTE: a save from before rank has earned none and has not been granted
 // the veteran start yet: the first load after the update grants it from the
-// kills the save holds (grantVeteranFrom in src/features/rank/rankRun.ts), once.
+// kills the save holds (grantVeteranFrom in src/features/end/rankRun.ts), once.
 const migrateV12 = (save: PlayerSaveV12): PlayerSaveV13 => ({
   ...save,
   version: 13,

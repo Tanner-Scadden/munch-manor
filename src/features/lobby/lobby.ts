@@ -1,6 +1,6 @@
 import { Array, Function, Option, pipe } from 'effect'
 
-import type { HomeMode } from '../../app/clientSchema'
+import type { HomeMode } from '../../domain/clientSchema'
 import { FOCUS_STEP_OFFSET } from '../../input/input'
 import type { MapId } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
@@ -158,7 +158,7 @@ export const nextDifficultyOf = (setting: DifficultySetting): Difficulty => {
 // BOTS
 
 // NOTE: whether a bot sits in the crew: as many as the seats leave
-// (src/features/bots/bots.ts, botSeatsFor).
+// (src/domain/bots.ts, botSeatsFor).
 const hasSeatedBot = (picks: LobbyPicks): boolean =>
   Array.isReadonlyArrayNonEmpty(Array.take(picks.bots, picks.botSeats))
 

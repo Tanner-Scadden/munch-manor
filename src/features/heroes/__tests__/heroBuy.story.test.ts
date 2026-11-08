@@ -7,6 +7,7 @@ import { describe, expect, it, test } from '@effect/vitest'
 import { LobbyBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import type { Model } from '../../../app/model'
+import { addBot } from '../../../domain/bots'
 import { Message as HeroPickerMessage } from '../../../features/heroes/message'
 import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { restoreSave, saveOf } from '../../../platform/save'
@@ -24,12 +25,11 @@ import {
 import { callingStandingOf } from '../../../world/heroes/calling'
 import { bonesBalanceOf, pointsForRank } from '../../../world/heroes/rank'
 import { focusOf } from '../../../world/party/party'
-import { addBot } from '../../bots/bots'
 import { HeroPickerBinding } from '../../lobby/bindings'
 import { isHeroPickerUp } from '../../lobby/model'
 import { startingCallingOf } from '../callingPick'
 
-// Buying a hero with Bones (src/features/heroes/callingPick.ts, src/features/home/update.ts): a rank
+// Buying a hero with Bones (src/features/heroes/callingPick.ts, src/app/update/home.ts): a rank
 // opens a hero for sale, a tap tries it on, BUY pays, and a pick that is not
 // bought starts YOU.
 

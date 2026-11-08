@@ -11,10 +11,10 @@ import {
 import { HEART_SPRITE } from '../../art/sprites/hearts'
 import type { Drawable } from '../../render/depth'
 import { rect } from '../../render/drawing'
+import { isKitchenShown } from '../../render/room/kitchenView'
 import { maybeStash, pantrySpotOf } from '../../world/kitchen/pantry'
 import { levelOf } from '../../world/level/arena'
 import type { PantryGoodie } from '../../world/schema/entitySchema'
-import { isKitchenShown } from './kitchenView'
 
 // The pantry stash (src/world/kitchen/pantry.ts) in the world: its goodie bobbing on the
 // floor in front of the cupboard for the break, over a little shadow, with a

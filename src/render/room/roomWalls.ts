@@ -2,15 +2,6 @@ import { Array, Function, Option, Record, Result, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { type Palette, pixelRuns } from '../../art/sprite'
-import {
-  isFacedExit,
-  leakSpillShapes,
-  leakStillShapes,
-} from '../../features/kitchen/kitchenLeak'
-import {
-  backDoorShapes,
-  windowShapes,
-} from '../../features/kitchen/kitchenView'
 import { TILE_SIZE } from '../../shared/constants'
 import {
   DOOR_SYMBOLS,
@@ -25,6 +16,8 @@ import {
 } from '../../world/level/arena'
 import type { DoorId } from '../../world/schema/entitySchema'
 import { pixelArt, rect } from '../drawing'
+import { isFacedExit, leakSpillShapes, leakStillShapes } from './kitchenLeak'
+import { backDoorShapes, windowShapes } from './kitchenView'
 import {
   BASEBOARD_COLOR,
   BASEBOARD_Y,

@@ -1,7 +1,7 @@
 import { Array, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
-import { closeButtonView } from '../../app/dialogs'
+import { closeButtonView } from '../../ui/cornerButtons'
 import type { ViewInputs } from './block'
 import {
   callingBalanceView,

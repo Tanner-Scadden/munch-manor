@@ -18,8 +18,14 @@ import {
   spriteShapes,
 } from '../../art/sprite'
 import { gunIcon } from '../../art/sprites/guns'
+import { AMMO_BOX, AMMO_BOX_WIDTH } from '../../art/sprites/pickups'
 import { type Camera, worldToView } from '../../render/camera'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
+import {
+  FLAME_ICON,
+  PERK_ICONS,
+  PERK_ICON_SIZE,
+} from '../../render/kitchenGearView'
 import { FRIDGE_RULES } from '../../world/fridge/leftovers'
 import { hasPan, heldGun, maybeReplacedGun } from '../../world/gear/weapons'
 import { VALVE_RULES } from '../../world/kitchen/gasValve'
@@ -43,12 +49,6 @@ import {
 } from '../../world/shop/purchase'
 import { SHOP_ITEMS } from '../../world/shop/shop'
 import { ZERO_VECTOR } from '../../world/step/geometry'
-import {
-  FLAME_ICON,
-  PERK_ICONS,
-  PERK_ICON_SIZE,
-} from '../kitchen/kitchenGearView'
-import { AMMO_BOX, AMMO_BOX_WIDTH } from './stallBubble'
 
 // NOTE: a purchasable says what it costs without a word: a dark tag with
 // the coin and the price hangs off a nail. Walk up and it brightens, with a

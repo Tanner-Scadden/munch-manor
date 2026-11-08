@@ -9,12 +9,12 @@ import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_SCREEN,
 } from '../../../render/screen'
+import { hudShapes, hudStripShapes } from '../../../screens/game/hud'
 import { VIEW_HEIGHT } from '../../../shared/constants'
 import { rectsOf } from '../../../test/testing'
 import { BOOSTS } from '../../../world/gear/powerups'
 import { PARLOUR } from '../../../world/level/arena'
 import { focusOf, modifyFocus } from '../../../world/party/party'
-import { hudShapes, hudStripShapes } from '../hud'
 
 type Box = Readonly<{ x: number; y: number; width: number; height: number }>
 

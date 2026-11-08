@@ -1,10 +1,10 @@
 import { Array, Function, Option, Order, Result, pipe } from 'effect'
 
 import type { Model } from '../../app/model'
+import { seatNamesOf, seatRanksOf } from '../../domain/onlineRun'
 import type { CrewAward } from '../../world/names'
 import { isCoop, playersOf } from '../../world/party/party'
 import type { PlayerSlot } from '../../world/schema/worldSchema'
-import { seatNamesOf, seatRanksOf } from '../onlineRun/onlineRun'
 
 // The crew on a co-op end card (MULTIPLAYER.md, "The crew board"): each
 // player's run read off their seat in the World, so every client shows the

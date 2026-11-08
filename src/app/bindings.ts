@@ -1,18 +1,18 @@
 import { DialogBlock } from '@foldkit/ui'
 
-import { CoopBlock } from '../features/coop'
-import { lobbyPicksOf } from '../features/home/home'
-import { LobbyBlock } from '../features/lobby/block'
-import { MunchopediaBlock } from '../features/munchopedia/block'
-import { ProfileBlock } from '../features/profile/block'
-import { ShopBlock } from '../features/shop/block'
 import {
   HAND_DIALOG_ID,
   HOME_SCREEN_STEPS_ID,
   PANEL_DIALOG_ID,
   PROFILE_DIALOG_ID,
   UPDATE_GREETING_ID,
-} from './clientSchema'
+} from '../domain/clientSchema'
+import { CoopBlock } from '../features/coop'
+import { LobbyBlock } from '../features/lobby/block'
+import { MunchopediaBlock } from '../features/munchopedia/block'
+import { ProfileBlock } from '../features/profile/block'
+import { ShopBlock } from '../features/shop/block'
+import { lobbyPicksOf } from '../screens/home/home'
 import { makeRequiredFieldBinding } from './definition'
 import { isPanelOpen } from './menuState'
 

@@ -3,12 +3,11 @@ import type { Block } from 'foldkit'
 import { DialogBlock } from '@foldkit/ui'
 
 import { CoopBlock } from '../features/coop'
-import { openedEntry } from '../features/home/home'
-import { forgetAskedMode } from '../features/home/update'
 import { LobbyBlock } from '../features/lobby/block'
 import { MunchopediaBlock } from '../features/munchopedia/block'
 import { ProfileBlock } from '../features/profile/block'
 import { ShopBlock } from '../features/shop/block'
+import { openedEntry } from '../screens/home/home'
 import {
   CoopBinding,
   HandDialogBinding,
@@ -37,6 +36,7 @@ import {
   neededNewerBuild,
 } from './update/coop'
 import { orBuyInRun } from './update/coopRun'
+import { forgetAskedMode } from './update/home'
 import {
   addLobbyBot,
   buyHero,

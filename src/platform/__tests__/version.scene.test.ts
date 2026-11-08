@@ -8,7 +8,7 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import { Message } from '../../app/message'
 import { type Model, Phase } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
-import { ReloadPage, WaitForUnwrap } from '../../features/home/update'
+import { ReloadPage, WaitForUnwrap } from '../../app/update/home'
 import {
   maybeNewestNewsDay,
   newsHeadline,

@@ -32,6 +32,7 @@ import {
   playerSprites,
   randomAppearance,
 } from '../../../../../art/appearance'
+import type { LookPart } from '../../../../../domain/looks'
 import { playerShapes } from '../../../../../render/playerView'
 import { RESTART_GRACE_MS } from '../../../../../shared/constants'
 import { FreePrint, FreeShirtColor } from '../../../../../shared/playerData'
@@ -46,7 +47,7 @@ import {
 import { CharacterBinding } from '../../../composition'
 import * as Character from '../block'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from '../lookRadios'
-import type { LookPart, LookToggle } from '../lookSchema'
+import type { LookToggle } from '../lookSchema'
 
 // NOTE: a part's radio group Message, delivered down its path: the
 // Profile, the Look tab, and that part's own Binding. Only a Block-aware

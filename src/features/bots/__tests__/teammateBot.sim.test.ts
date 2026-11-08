@@ -5,12 +5,12 @@ import { describe, expect, test } from 'vitest'
 import { Message } from '../../../app/message'
 import { type Model } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import { addBot } from '../../../domain/bots'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { atSeat } from '../../../test/model.fixture'
 import { SURFACE, modelAfter, startedRunOf } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { modifyFocus, playersOf } from '../../../world/party/party'
-import { addBot } from '../bots'
 
 // Whole waves with three teammate bots (src/features/bots/teammateBot.ts): the human
 // stands at the spawn pressing READY through every break, and the bots do

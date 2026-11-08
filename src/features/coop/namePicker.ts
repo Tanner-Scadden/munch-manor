@@ -1,15 +1,15 @@
 import { Function, Option } from 'effect'
 import type { Html } from 'foldkit/html'
 
-import { closeButtonView } from '../../app/dialogs'
+import { PENCIL_ICON } from '../../art/coopIcons'
 import { DICE_ICON } from '../../art/icons'
-import { iconView } from '../menus/menuParts'
-import { DEFAULT_NAME, MAX_NAME_LENGTH } from '../profile/profile'
+import { type Room, isInLobby } from '../../domain/coopRoom'
+import { DEFAULT_NAME, MAX_NAME_LENGTH } from '../../domain/playerName'
+import { closeButtonView } from '../../ui/cornerButtons'
+import { iconView } from '../../ui/menuParts'
 import type { CoopViewBuilder } from './composition'
-import { PENCIL_ICON } from './icons'
 import { Message } from './message'
-import type { Room } from './model'
-import { NAME_BUTTON_ID, NAME_INPUT_ID, isInLobby } from './roomState'
+import { NAME_BUTTON_ID, NAME_INPUT_ID } from './roomState'
 
 // Your own name in co-op's lobby is a button with a pencil, and a tap opens
 // this small field over the lobby: the Profile's name rules and dice

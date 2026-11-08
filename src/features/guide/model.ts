@@ -10,6 +10,16 @@ import { ShopGuideSection } from '../../shared/nameKeys'
 export const GuidePlacement = Schema.Literals(['Shop', 'Munchopedia'])
 export type GuidePlacement = typeof GuidePlacement.Type
 
+// NOTE: the buttons focus moves between as a guide opens and closes, by
+// where it stands: its BACK, and the button that opened it (the shop's ?,
+// the Munchopedia's Shop tile).
+export const GUIDE_FOCUS_IDS: Readonly<
+  Record<GuidePlacement, Readonly<{ back: string; opener: string }>>
+> = {
+  Shop: { back: 'shop-guide-back', opener: 'shop-guide-open' },
+  Munchopedia: { back: 'munch-guide-back', opener: 'munch-shop-tile' },
+}
+
 // NOTE: shut, or up on one section. Its parent draws what the guide stands
 // in for while it is shut: the shop's shelves, the Munchopedia's zombies.
 export const GuideStatus = defineTaggedUnion({

@@ -19,7 +19,7 @@ export const HelpCard = Schema.Literals([
 export type HelpCard = typeof HelpCard.Type
 
 // NOTE: the How to play panel's cards (src/features/menus/pauseHelp.ts),
-// handled in src/features/home/update.ts with the other panels.
+// handled in src/app/update/home.ts with the other panels.
 export const helpCases = {
   FocusedHelpCard: { card: HelpCard },
   ClickedHelpCard: { card: HelpCard },

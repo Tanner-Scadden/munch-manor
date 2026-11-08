@@ -16,19 +16,20 @@ import {
 } from '@munch/netcode'
 import { CODE_ALPHABET } from '@munch/sync-engine'
 
-import { actionCodeOf, heldAction } from '../../world/net/roomWorld'
-import type { Bullet } from '../../world/schema/worldSchema'
-import type { SeatAction } from '../../world/step/stepWorld'
 import {
   type CoopProblem,
-  type Model,
+  type OwnPlayer,
   type Presses,
   type Room,
   Screen,
+  maybeRoomOf,
   noPresses,
   screenInRoom,
-} from './model'
-import type { OwnPlayer } from './seam'
+} from '../../domain/coopRoom'
+import { actionCodeOf, heldAction } from '../../world/net/roomWorld'
+import type { Bullet } from '../../world/schema/worldSchema'
+import type { SeatAction } from '../../world/step/stepWorld'
+import { type Model } from './model'
 
 // IDS
 
@@ -366,19 +367,3 @@ export const ENTER = 'Enter'
 export const MODE_KEY = 'KeyE'
 export const DIFFICULTY_KEY = 'KeyX'
 export const CALLING_KEY = 'KeyY'
-
-export const isInLobby = (room: Room): boolean =>
-  Option.match(room.maybeLobby, {
-    onNone: () => true,
-    onSome: lobby => lobby.status === 'Lobby',
-  })
-
-export const maybeRoomOf = (model: Model): Option.Option<Room> =>
-  Screen.match(model.screen, {
-    Closed: () => Option.none(),
-    Hub: () => Option.none(),
-    Code: () => Option.none(),
-    Asking: () => Option.none(),
-    Queue: () => Option.none(),
-    InRoom: ({ room }) => Option.some(room),
-  })

@@ -1,11 +1,10 @@
 import { Function, Option } from 'effect'
-import type { Html } from 'foldkit/html'
-import { createLazy } from 'foldkit/html'
+import { type Html, createLazy } from 'foldkit/html'
 
 import type { ApplicationViewBuilder } from '../app/composition'
 import { type Palette, spriteDataUrl } from '../art/sprite'
-import { percentOf } from '../features/menus/menuParts'
 import { type Screen, thumbAreaTop } from '../render/screen'
+import { percentOf } from '../ui/menuParts'
 
 // ART
 

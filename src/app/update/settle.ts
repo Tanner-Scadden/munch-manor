@@ -1,23 +1,23 @@
 import { Effect, Function, Option, pipe } from 'effect'
 
-import { cueMusicFrom } from '../../audio/musicPlan'
+import { runDifficultyOf } from '../../domain/onlineRun'
 import { noteRecords, reachRecords } from '../../features/end/endBeat'
+import { earnRank } from '../../features/end/rankRun'
 import { notePulledPrize } from '../../features/guide/shopGuide'
-import { countRunFrom, forgetNewEntriesFrom } from '../../features/home/home'
-import {
-  focusEndMenuFrom,
-  settleNightmareFrom,
-  unlockNightmareFrom,
-} from '../../features/home/update'
-import { runDifficultyOf } from '../../features/onlineRun/onlineRun'
-import { earnRank } from '../../features/rank/rankRun'
 import { RunSummary } from '../../platform/analytics'
 import { maybeRunOutcome, runSummaryOf } from '../../platform/analyticsRun'
 import { sendOrQueueRunSummary } from '../../platform/summaryQueue'
 import { RUNNING_BUILD } from '../../platform/version'
+import { countRunFrom, forgetNewEntriesFrom } from '../../screens/home/home'
 import { ApplicationBlock } from '../definition'
 import { Message } from '../message'
 import type { Model } from '../model'
+import {
+  focusEndMenuFrom,
+  settleNightmareFrom,
+  unlockNightmareFrom,
+} from './home'
+import { cueMusicFrom } from './music'
 import { applyRotationFrom } from './rotation'
 import { writeSaveFrom } from './save'
 import type { UpdateStep } from './step'

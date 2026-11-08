@@ -965,7 +965,7 @@ export const SavedBoughtCosmetics = Schema.Array(Schema.String)
 export type SavedBoughtCosmetics = typeof SavedBoughtCosmetics.Type
 
 // NOTE: version 16 added the unlocks the player has seen, by id (`hat:Fez`,
-// `shirt:Gold`, `skin:Slime`, `calling:Handyman`; src/features/unlocks/unlocks.ts). An unlock
+// `shirt:Gold`, `skin:Slime`, `calling:Handyman`; src/domain/unlocks.ts). An unlock
 // reached and not in here wears a NEW badge until the player opens the Look
 // tab or the character picker. Kept as a set, merged as a union across
 // linked devices, like the power-ups seen.

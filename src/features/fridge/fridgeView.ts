@@ -10,6 +10,7 @@ import {
 } from '../../art/sprite'
 import type { Drawable } from '../../render/depth'
 import { rect } from '../../render/drawing'
+import { FRIDGE_RISE_PX, isKitchenShown } from '../../render/room/kitchenView'
 import { TILE_SIZE } from '../../shared/constants'
 import {
   PAN_RULES,
@@ -32,7 +33,6 @@ import {
   type Lob,
   type Player,
 } from '../../world/schema/entitySchema'
-import { FRIDGE_RISE_PX, isKitchenShown } from '../kitchen/kitchenView'
 import { type Rarity, revealOf } from './fridgeReveal'
 import { prizeSprite } from './fridgeRevealView'
 
@@ -41,7 +41,7 @@ import { prizeSprite } from './fridgeRevealView'
 // pull (the prize's reveal is src/features/fridge/fridgeRevealView.ts), the chain
 // and padlock while it rests after a slam, the Cooker's pressure dial over
 // the player, and its lids in flight. The fridge itself is baked into the
-// kitchen (fridgeShapes in src/features/kitchen/kitchenView.ts).
+// kitchen (fridgeShapes in src/render/room/kitchenView.ts).
 
 const FRIDGE_WIDTH = TILE_SIZE * 2
 const FREEZER_PX = 11

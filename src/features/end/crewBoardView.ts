@@ -12,6 +12,7 @@ import {
   textShapes,
   textWidth,
 } from '../../art/font'
+import { badgeSprite } from '../../art/rankArt'
 import { type Sprite, group, placeAt } from '../../art/sprite'
 import { rect } from '../../render/drawing'
 import { seatColorOf, seatModelsOf } from '../../render/partyView'
@@ -20,7 +21,6 @@ import { isPortrait } from '../../render/screen'
 import { badgeTierOf } from '../../world/heroes/rank'
 import { CREW_AWARD_NAMES, type CrewAward } from '../../world/names'
 import { focusOf, leadSeatOf } from '../../world/party/party'
-import { badgeSprite } from '../rank/rankArt'
 import {
   CREW_AWARDS,
   type CrewMember,

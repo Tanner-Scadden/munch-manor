@@ -260,7 +260,7 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
     },
     {
       code: "import { Html } from 'foldkit/html'",
-      filename: '/repo/src/features/home/homeView.ts',
+      filename: '/repo/src/features/lobby/view.ts',
     },
     {
       code: "import { Message } from '../message'",
@@ -268,11 +268,51 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
     },
     {
       code: "import { HomeMessage } from './message'",
-      filename: '/repo/src/features/home/homeView.ts',
+      filename: '/repo/src/features/home/homeSchema.ts',
     },
     {
       code: "import { Message } from '../../app/message'",
       filename: '/repo/src/features/home/__tests__/home.story.test.ts',
+    },
+    {
+      code: "import type { Model } from '../app/model'",
+      filename: '/repo/src/render/camera.ts',
+    },
+    {
+      code: "import { type ApplicationViewBuilder } from '../../app/composition'",
+      filename: '/repo/src/features/hud/wavePreview.ts',
+    },
+    {
+      code: "import { iconView } from '../../ui/menuParts'\nimport { maybeRunRoom } from '../../model/onlineRun'",
+      filename: '/repo/src/features/coop/view.ts',
+    },
+    {
+      code: "import { hatRiseOf } from '../art/sprites/hatArt'\nimport { maybeRoomOf } from '../model/coopRoom'",
+      filename: '/repo/src/render/partyView.ts',
+    },
+    {
+      code: "import { HeroPickerBlock } from '../heroes/block'\nimport { isPickerOpen } from '../heroes/model'\nimport { PickOutcome } from '../heroes/inMessage'",
+      filename: '/repo/src/features/lobby/steps.ts',
+    },
+    {
+      code: "import { GuideLayer } from '../guide/layer'",
+      filename: '/repo/src/features/munchopedia/layer.ts',
+    },
+    {
+      code: "import { CharacterBlock } from './blocks/look/block'\nimport { cleanName } from '../../model/playerName'",
+      filename: '/repo/src/features/profile/composition.ts',
+    },
+    {
+      code: "import { hudShapes } from './hud'\nimport { endOverlayShapes } from '../../features/end/endView'",
+      filename: '/repo/src/screens/game/overlay.ts',
+    },
+    {
+      code: "import { isEndScreen } from '../../../model/run'",
+      filename: '/repo/src/features/end/__tests__/endBeat.story.test.ts',
+    },
+    {
+      code: "import { hudShapes } from '../../../screens/game/hud'\nimport { kitchenCall } from '../../kitchen/kitchenCall'",
+      filename: '/repo/src/features/hud/__tests__/hud.scene.test.ts',
     },
   ],
   invalid: [
@@ -303,7 +343,7 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
     },
     {
       code: "const testing = import('../../test/testing')",
-      filename: '/repo/src/features/home/update.ts',
+      filename: '/repo/src/features/home/homeSchema.ts',
       errors: 1,
     },
     {
@@ -313,12 +353,102 @@ tester.run('folder-imports', ruleOf('folder-imports'), {
     },
     {
       code: "import { Message } from '../../app/message'",
-      filename: '/repo/src/features/home/homeView.ts',
+      filename: '/repo/src/features/end/endView.ts',
       errors: 1,
     },
     {
       code: "import type { Message } from '../app/message.ts'",
-      filename: '/repo/src/input/touchControls.ts',
+      filename: '/repo/src/input/keyGrab.ts',
+      errors: 1,
+    },
+    {
+      code: "import { worldLayerShapes } from '../app/worldView'",
+      filename: '/repo/src/render/screen.ts',
+      errors: 1,
+    },
+    {
+      code: "import { maybeRoomOf } from '../features/coop/roomState'",
+      filename: '/repo/src/render/partyView.ts',
+      errors: 1,
+    },
+    {
+      code: "import { stepWhen } from '../../app/stepWhen'",
+      filename: '/repo/src/features/coop/update.ts',
+      errors: 1,
+    },
+    {
+      code: "import { type Model, DifficultyCard } from '../../app/model'",
+      filename: '/repo/src/features/end/endView.ts',
+      errors: 1,
+    },
+    {
+      code: "import type { Model, Tour } from '../app/model'",
+      filename: '/repo/src/platform/save.ts',
+      errors: 1,
+    },
+    {
+      code: "import type * as App from '../../app/model'",
+      filename: '/repo/src/features/hud/hud.ts',
+      errors: 1,
+    },
+    {
+      code: "import type { CoopBinding } from '../../app/bindings'",
+      filename: '/repo/src/features/end/endView.ts',
+      errors: 1,
+    },
+    {
+      code: "import { isAskingForFeedback } from '../features/home/home'",
+      filename: '/repo/src/domain/run.ts',
+      errors: 1,
+    },
+    {
+      code: "import { isLearned } from '../onboarding/onboarding'",
+      filename: '/repo/src/features/shop/stall.ts',
+      errors: 1,
+    },
+    {
+      code: "import type { Room } from '../coop/model'",
+      filename: '/repo/src/features/end/crewAwards.ts',
+      errors: 1,
+    },
+    {
+      code: "import { specialsNoteOf } from '../heroes/callingSpecials'",
+      filename: '/repo/src/features/lobby/view.ts',
+      errors: 1,
+    },
+    {
+      code: "import { GuideBlock } from '../guide/block'",
+      filename: '/repo/src/features/lobby/bindings.ts',
+      errors: 1,
+    },
+    {
+      code: "import { HeroPickerBlock } from '../coop/block'",
+      filename: '/repo/src/features/heroes/view.ts',
+      errors: 1,
+    },
+    {
+      code: "const view = import('../features/hud/hud')",
+      filename: '/repo/src/render/juice.ts',
+      errors: 1,
+    },
+    {
+      code: "import { worldLayerShapes } from '../game/worldView'",
+      filename: '/repo/src/screens/home/homeView.ts',
+      errors: 1,
+    },
+    {
+      code: "import { dialogShell } from '../../app/dialogs'",
+      filename: '/repo/src/screens/home/homeView.ts',
+      errors: 1,
+    },
+    {
+      code: "import { hudShapes } from '../../screens/game/hud'",
+      filename: '/repo/src/features/fridge/fridgeRevealView.ts',
+      errors: 1,
+    },
+    {
+      code: "import { overlayShapes } from '../screens/game/overlay'",
+      filename: '/repo/src/render/juice.ts',
       errors: 1,
     },
   ],

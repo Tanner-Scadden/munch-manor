@@ -24,25 +24,27 @@ import {
 } from '@munch/netcode'
 import { QuickPlayEvent, RoomEvent } from '@munch/netcode/browser'
 
-import { stepWhen } from '../../app/stepWhen'
+import {
+  type CoopProblem,
+  LobbyChange,
+  type Queue,
+  type Room,
+  RoomRequest,
+  Screen,
+  coopWorld,
+  isInLobby,
+  maybeRoomOf,
+  noPresses,
+} from '../../domain/coopRoom'
 import { toBrowserError } from '../../shared/describeError'
 import { Calling, type SavedBoughtCosmetics } from '../../shared/playerData'
+import { stepWhen } from '../../shared/stepWhen'
 import { eventsBetween } from '../../world/net/roomWorld'
 import { DIFFICULTY_ORDER } from '../../world/run/difficulty'
 import { CoopBlock } from './block'
 import { CoopComposition } from './composition'
 import { Message, OutMessage } from './message'
-import {
-  type CoopProblem,
-  LobbyChange,
-  type Model,
-  type Queue,
-  type Room,
-  RoomRequest,
-  Screen,
-  emptyQueue,
-  noPresses,
-} from './model'
+import { type Model, emptyQueue } from './model'
 import { CoopNet } from './net'
 import {
   CODE_INPUT_ID,
@@ -61,12 +63,10 @@ import {
   freshRoom,
   hub,
   isHost,
-  isInLobby,
   isKickedFrom,
   isPicking,
   learnLobby,
   linkOf,
-  maybeRoomOf,
   meIn,
   nextOf,
   pickedModeOf,
@@ -76,7 +76,6 @@ import {
   withRoom,
   withScreen,
 } from './roomState'
-import { coopWorld } from './seam'
 import {
   ChangeLobby,
   FocusCoopElement,
@@ -406,7 +405,7 @@ const hasGivenUp = (room: Room, nowMs: number): boolean =>
 // NOTE: one frame of the room: the parent's controls go in as this frame's
 // input with the held press, the session sends what it owes, and the World
 // to draw and the events it reached come out. The parent reads `maybeWorld`
-// and `frameEvents` after it (src/features/onlineRun/coopPlay.ts). While the parent holds its
+// and `frameEvents` after it (src/app/update/coopPlay.ts). While the parent holds its
 // picture still for hit-stop, the events wait in the session for it.
 export const tickRoom: {
   (

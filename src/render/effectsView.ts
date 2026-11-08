@@ -1,7 +1,6 @@
 import { Array, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
-import type { Model } from '../app/model'
 import { type TextTone, textWidth } from '../art/font'
 import { group } from '../art/sprite'
 import {
@@ -71,6 +70,7 @@ import type {
   DoorId,
   ParticleKind,
 } from '../world/schema/entitySchema'
+import type { World } from '../world/schema/world'
 import { type Blast, Phase, type Popup } from '../world/schema/worldSchema'
 import { clamp } from '../world/step/geometry'
 import { routeSpawns } from '../world/waves/doorRoute'
@@ -809,7 +809,7 @@ const rattleShapes =
     return [slat(-1), slat(1), ...(isBlinking ? [] : [eye(-1), eye(1)])]
   }
 
-export const doorRattleShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+export const doorRattleShapes = (model: World): ReadonlyArray<Canvas.Shape> =>
   Phase.isAnyOf(['Wave'])(model.phase)
     ? Array.flatMap(
         Array.dedupe([

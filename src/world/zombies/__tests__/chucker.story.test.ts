@@ -14,7 +14,7 @@ import {
   ZombieState,
 } from '../../../app/model'
 import { initialModel, update } from '../../../app/pureApp'
-import { debutPitch } from '../../../features/menus/menus'
+import { debutPitch } from '../../../screens/game/menus'
 import {
   FIXED_STEP_MS,
   HIT_STOP_HURT_MS,

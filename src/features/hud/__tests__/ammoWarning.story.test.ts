@@ -16,6 +16,7 @@ import {
 import { initialModel } from '../../../app/pureApp'
 import { restoreSave, saveOf } from '../../../platform/save'
 import { cameraOf } from '../../../render/camera'
+import { maybeBubbleKind } from '../../../screens/game/stallBubble'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { SavedOnboarding } from '../../../shared/playerData'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
@@ -30,7 +31,6 @@ import {
 } from '../../../test/testing'
 import { STARTING_PISTOL, freshGun } from '../../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../../world/party/party'
-import { maybeBubbleKind } from '../../shop/stallBubble'
 import {
   AMMO_TIP_MS,
   ammoLevelOf,
