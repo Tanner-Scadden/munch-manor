@@ -1,17 +1,9 @@
-import { Array, Function, Option, String, pipe } from 'effect'
+import { Array, Option, String, pipe } from 'effect'
 import type { Html } from 'foldkit/html'
 
-import type { Dialog, Tabs } from '@foldkit/ui'
+import { Dialog, type Tabs } from '@foldkit/ui'
 
-import {
-  CharacterBinding,
-  ProfileDialogBinding,
-  ProfileTabsBinding,
-} from '../../app/bindings'
-import type { ApplicationViewBuilder } from '../../app/composition'
-import { closeButtonView, dialogShell } from '../../app/dialogs'
-import { Message } from '../../app/message'
-import type { Model, ProfileTab } from '../../app/model'
+import type { InputDevice } from '../../app/clientSchema'
 import {
   ACCOUNT_ICON,
   AIM_ICON,
@@ -43,24 +35,27 @@ import {
   devicesStatusText,
   linkProblemText,
 } from '../../platform/playerSync'
-import { isPortrait } from '../../render/screen'
-import { rankOf, totalPointsOf } from '../../world/heroes/rank'
-import { startingCallingOf } from '../heroes/callingPick'
-import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from '../home/home'
-import { newPipView } from '../look/lookGearView'
-import { iconView, isKeyboard, keyCapView } from '../menus/menuParts'
-import { rankPlateView } from '../rank/rankBadgeView'
-import { hasUnseenLook } from '../unlocks/unlocks'
+import { iconView } from '../menus/menuParts'
+import type { ViewInputs } from './block'
+import { newPipView } from './blocks/look/lookGearView'
+import {
+  CharacterBinding,
+  ProfileComposition,
+  type ProfileViewBuilder,
+  TabsBinding,
+} from './composition'
+import { Message, type SettingTile } from './message'
+import type { Model, ProfileTab } from './model'
 import {
   DEFAULT_NAME,
+  KEEP_TUTORIAL_BUTTON_ID,
   MAX_NAME_LENGTH,
   NAME_INPUT_ID,
   PROFILE_TABS,
+  RESET_TUTORIAL_BUTTON_ID,
   nameLength,
   shownName,
 } from './profile'
-
-// SHARED
 
 // TABS
 
@@ -76,16 +71,19 @@ const TAB_LOOKS: Readonly<Record<ProfileTab, TabLook>> = {
   Settings: { word: 'Settings', icon: SETTINGS_ICON },
 }
 
+// NOTE: the open tab takes the focus when the Dialog opens: the root's
+// Dialog focuses the element with its marker.
 const tabButtonView = (
   tab: Tabs.TabInfo<ProfileTab>,
-  initialFocus: Dialog.RenderInfo['initialFocus'],
   isNew: boolean,
-  h: ApplicationViewBuilder,
+  h: ProfileViewBuilder,
 ): Html =>
   h.button(
     [
       ...tab.tab,
-      ...(tab.isActive ? initialFocus : []),
+      ...(tab.isActive
+        ? [h.DataAttribute(Dialog.initialFocusMarkerAttribute, '')]
+        : []),
       h.Class('profile-tab'),
       h.DataAttribute('tab', tab.value),
     ],
@@ -98,29 +96,28 @@ const tabButtonView = (
 
 // LOOK
 
-const lookTabView = (model: Model, h: ApplicationViewBuilder): Html =>
+const lookTabView = (
+  model: Model,
+  inputs: ViewInputs,
+  h: ProfileViewBuilder,
+): Html =>
   h.block(
     CharacterBinding.embedView({
       slotId: 'character-picker',
       model: model.character,
       viewInputs: {
-        appearance: model.appearance,
-        calling: startingCallingOf(model),
-        screenMs: model.screenMs,
-        fx: model.profile.fx,
-        fxCount: model.profile.fxCount,
-        bought: model.boughtCosmetics,
-        rank: model.rank,
-        fresh: model.freshUnlocks,
-        maybePreview: model.profile.maybePreview,
-        cue: model.profile.closetCue,
+        ...inputs.look,
+        fx: model.fx,
+        fxCount: model.fxCount,
+        maybePreview: model.maybePreview,
+        cue: model.closetCue,
       },
     }),
   )
 
 // NAME
 
-const nameLettersView = (name: string, h: ApplicationViewBuilder): Html =>
+const nameLettersView = (name: string, h: ProfileViewBuilder): Html =>
   h.span(
     [h.Class('name-stone-name'), h.AriaHidden(true)],
     Array.map(Array.fromIterable(name), (letter, index) =>
@@ -131,47 +128,39 @@ const nameLettersView = (name: string, h: ApplicationViewBuilder): Html =>
     ),
   )
 
-const stoneChildren = (model: Model, h: ApplicationViewBuilder) => [
+const stoneChildren = (model: Model, h: ProfileViewBuilder) => [
   h.span([h.Class('name-stone-rip'), h.AriaHidden(true)], ['R.I.P.']),
-  nameLettersView(shownName(model.profile.nameDraft), h),
+  nameLettersView(shownName(model.nameDraft), h),
   h.span([h.Class('name-stone-crack'), h.AriaHidden(true)]),
 ]
 
 // NOTE: the name is carved on a tombstone, live as it is typed. A dice roll
 // swaps the stone, so its letters spin in like a slot machine each time.
-const evenStoneView = (model: Model, h: ApplicationViewBuilder): Html =>
+const evenStoneView = (model: Model, h: ProfileViewBuilder): Html =>
   h.div(
     [
       h.Class('name-stone'),
-      h.DataAttribute('fx', model.profile.fx),
-      h.DataAttribute(
-        'empty',
-        model.profile.nameDraft === '' ? 'Empty' : 'Named',
-      ),
+      h.DataAttribute('fx', model.fx),
+      h.DataAttribute('empty', model.nameDraft === '' ? 'Empty' : 'Named'),
     ],
     stoneChildren(model, h),
   )
 
-const oddStoneView = (model: Model, h: ApplicationViewBuilder): Html =>
+const oddStoneView = (model: Model, h: ProfileViewBuilder): Html =>
   h.div(
     [
       h.Class('name-stone'),
-      h.DataAttribute('fx', model.profile.fx),
-      h.DataAttribute(
-        'empty',
-        model.profile.nameDraft === '' ? 'Empty' : 'Named',
-      ),
+      h.DataAttribute('fx', model.fx),
+      h.DataAttribute('empty', model.nameDraft === '' ? 'Empty' : 'Named'),
     ],
     stoneChildren(model, h),
   )
 
-const stoneView = (model: Model, h: ApplicationViewBuilder): Html =>
-  model.profile.fxCount % 2 === 0
-    ? evenStoneView(model, h)
-    : oddStoneView(model, h)
+const stoneView = (model: Model, h: ProfileViewBuilder): Html =>
+  model.fxCount % 2 === 0 ? evenStoneView(model, h) : oddStoneView(model, h)
 
-const namePipsView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const used = nameLength(model.profile.nameDraft)
+const namePipsView = (model: Model, h: ProfileViewBuilder): Html => {
+  const used = nameLength(model.nameDraft)
   const left = MAX_NAME_LENGTH - used
   return h.div(
     [
@@ -188,7 +177,7 @@ const namePipsView = (model: Model, h: ApplicationViewBuilder): Html => {
   )
 }
 
-const nameTabView = (model: Model, h: ApplicationViewBuilder): Html =>
+const nameTabView = (model: Model, h: ProfileViewBuilder): Html =>
   h.form(
     [h.Class('name-tab'), h.OnSubmit(Message.SubmittedName())],
     [
@@ -208,7 +197,7 @@ const nameTabView = (model: Model, h: ApplicationViewBuilder): Html =>
             h.Class('name-input'),
             h.Type('text'),
             h.Name('name'),
-            h.Value(model.profile.nameDraft),
+            h.Value(model.nameDraft),
             h.Placeholder(DEFAULT_NAME),
             h.Maxlength(MAX_NAME_LENGTH),
             h.Autocomplete('off'),
@@ -271,18 +260,24 @@ const syncDot = (state: SyncState, scope: PlayerScopeStatus): SyncDot => {
 
 // NOTE: this device is drawn as what it is. The others are unknown, so they
 // take turns as the other kind.
-const deviceKinds = (model: Model): ReadonlyArray<DeviceKind> => {
-  const here: DeviceKind = model.lastDevice === 'Touch' ? 'Phone' : 'Laptop'
+const hereOf = (device: InputDevice): DeviceKind =>
+  device === 'Touch' ? 'Phone' : 'Laptop'
+
+const deviceKinds = (
+  device: InputDevice,
+  state: SyncState,
+): ReadonlyArray<DeviceKind> => {
+  const here = hereOf(device)
   const other: DeviceKind = here === 'Phone' ? 'Laptop' : 'Phone'
-  return Array.makeBy(
-    Math.min(MAX_DEVICES_SHOWN, deviceCount(model.syncState)),
-    index => (index % 2 === 0 ? here : other),
+  return Array.makeBy(Math.min(MAX_DEVICES_SHOWN, deviceCount(state)), index =>
+    index % 2 === 0 ? here : other,
   )
 }
 
-const devicesView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const dot = syncDot(model.syncState, model.playerScopeStatus)
-  const count = deviceCount(model.syncState)
+const devicesView = (inputs: ViewInputs, h: ProfileViewBuilder): Html => {
+  const { state, scope, lastRun } = inputs.sync
+  const dot = syncDot(state, scope)
+  const count = deviceCount(state)
   return h.div(
     [h.Class('account-devices'), h.DataAttribute('sync', dot)],
     [
@@ -291,7 +286,7 @@ const devicesView = (model: Model, h: ApplicationViewBuilder): Html => {
           h.Class('account-device-list'),
           h.AriaLabel(count === 1 ? 'Your device' : `Your ${count} devices`),
         ],
-        Array.map(deviceKinds(model), (kind, index) =>
+        Array.map(deviceKinds(inputs.device, state), (kind, index) =>
           h.li(
             [
               h.Class('account-device'),
@@ -316,10 +311,10 @@ const devicesView = (model: Model, h: ApplicationViewBuilder): Html => {
           h.Class('account-status'),
           h.Role('status'),
           h.DataAttribute('sync', dot),
-          h.DataAttribute('scope', model.playerScopeStatus._tag),
-          h.DataAttribute('last-run', model.lastRunSync._tag),
+          h.DataAttribute('scope', scope._tag),
+          h.DataAttribute('last-run', lastRun._tag),
         ],
-        [devicesStatusText(model.syncState, model.playerScopeStatus)],
+        [devicesStatusText(state, scope)],
       ),
     ],
   )
@@ -340,7 +335,7 @@ const bigButton = (
   word: string,
   ariaLabel: string,
   message: Message,
-  h: ApplicationViewBuilder,
+  h: ProfileViewBuilder,
 ): Html =>
   h.button(
     [
@@ -359,7 +354,7 @@ const pillButton = (
   label: string,
   message: Message,
   tone: 'Go' | 'Back',
-  h: ApplicationViewBuilder,
+  h: ProfileViewBuilder,
 ): Html =>
   h.button(
     [
@@ -372,20 +367,13 @@ const pillButton = (
     [label],
   )
 
-const noteView = (
-  icon: string,
-  text: string,
-  h: ApplicationViewBuilder,
-): Html =>
+const noteView = (icon: string, text: string, h: ProfileViewBuilder): Html =>
   h.p(
     [h.Class('account-note')],
     [iconView('account-note-icon', icon, h), h.span([], [text])],
   )
 
-const portalView = (
-  spin: 'Spinning' | 'Open',
-  h: ApplicationViewBuilder,
-): Html =>
+const portalView = (spin: 'Spinning' | 'Open', h: ProfileViewBuilder): Html =>
   h.span(
     [
       h.Class('account-portal'),
@@ -398,7 +386,7 @@ const portalView = (
     ],
   )
 
-const codeView = (code: string, h: ApplicationViewBuilder): Html =>
+const codeView = (code: string, h: ProfileViewBuilder): Html =>
   h.p(
     [
       h.Class('account-code'),
@@ -418,7 +406,7 @@ const codeView = (code: string, h: ApplicationViewBuilder): Html =>
 
 const CODE_INPUT_ID = 'link-code-input'
 
-const codeEntryView = (code: string, h: ApplicationViewBuilder): Html =>
+const codeEntryView = (code: string, h: ProfileViewBuilder): Html =>
   h.form(
     [h.Class('account-entry'), h.OnSubmit(Message.SubmittedLinkCode())],
     [
@@ -466,8 +454,8 @@ const codeEntryView = (code: string, h: ApplicationViewBuilder): Html =>
     ],
   )
 
-const zapView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const here: DeviceKind = model.lastDevice === 'Touch' ? 'Phone' : 'Laptop'
+const zapView = (device: InputDevice, h: ProfileViewBuilder): Html => {
+  const here = hereOf(device)
   const other: DeviceKind = here === 'Phone' ? 'Laptop' : 'Phone'
   return h.div(
     [h.Class('account-zap'), h.AriaHidden(true)],
@@ -479,8 +467,12 @@ const zapView = (model: Model, h: ApplicationViewBuilder): Html => {
   )
 }
 
-const linkView = (model: Model, h: ApplicationViewBuilder): Html =>
-  LinkFlow.match(model.linkFlow, {
+const linkView = (
+  linkFlow: LinkFlow,
+  device: InputDevice,
+  h: ProfileViewBuilder,
+): Html =>
+  LinkFlow.match(linkFlow, {
     Idle: () =>
       h.div(
         [h.Class('account-actions')],
@@ -542,7 +534,7 @@ const linkView = (model: Model, h: ApplicationViewBuilder): Html =>
       h.div(
         [h.Class('account-link')],
         [
-          zapView(model, h),
+          zapView(device, h),
           h.p(
             [h.Class('account-hint account-linked'), h.Role('status')],
             ["Linked! This device now uses your other device's progress."],
@@ -581,7 +573,7 @@ export const SHARE_STATS_NOTE = 'Wave, kills, and run time. Nothing personal.'
 
 const SHARE_STATS_NOTE_ID = 'share-stats-note'
 
-const shareStatsView = (model: Model, h: ApplicationViewBuilder): Html =>
+const shareStatsView = (inputs: ViewInputs, h: ProfileViewBuilder): Html =>
   h.div(
     [h.Class('account-share')],
     [
@@ -590,16 +582,18 @@ const shareStatsView = (model: Model, h: ApplicationViewBuilder): Html =>
           h.Type('button'),
           h.Class('setting-tile account-share-tile'),
           h.AriaLabel('Share anonymous play stats'),
-          h.AriaPressed(model.shareStats === 'On' ? 'true' : 'false'),
+          h.AriaPressed(inputs.settings.shareStats === 'On' ? 'true' : 'false'),
           h.AriaDescribedBy(SHARE_STATS_NOTE_ID),
-          h.OnClick(Message.ClickedShareStatsButton(), { propagation: 'Stop' }),
+          h.OnClick(Message.ClickedSettingTile({ setting: 'ShareStats' }), {
+            propagation: 'Stop',
+          }),
         ],
         [
           iconView('setting-tile-icon', STATS_ICON, h),
           h.span([h.Class('setting-tile-label')], ['STATS']),
           h.span(
             [h.Class('setting-tile-state'), h.AriaHidden(true)],
-            [model.shareStats === 'On' ? 'ON' : 'OFF'],
+            [inputs.settings.shareStats === 'On' ? 'ON' : 'OFF'],
           ),
         ],
       ),
@@ -607,15 +601,19 @@ const shareStatsView = (model: Model, h: ApplicationViewBuilder): Html =>
     ],
   )
 
-const accountTabView = (model: Model, h: ApplicationViewBuilder): Html =>
+const accountTabView = (
+  model: Model,
+  inputs: ViewInputs,
+  h: ProfileViewBuilder,
+): Html =>
   h.div(
     [h.Class('account-tab')],
     [
-      devicesView(model, h),
-      ...(SyncState.isAnyOf(['LocalOnly'])(model.syncState)
+      devicesView(inputs, h),
+      ...(SyncState.isAnyOf(['LocalOnly'])(inputs.sync.state)
         ? []
-        : [linkView(model, h)]),
-      shareStatsView(model, h),
+        : [linkView(model.linkFlow, inputs.device, h)]),
+      shareStatsView(inputs, h),
     ],
   )
 
@@ -629,90 +627,98 @@ type Toggle = Readonly<{
   offIcon: string
   maybeKey: Option.Option<string>
   states?: Readonly<{ on: string; off: string }>
-  message: Message
+  setting: SettingTile
 }>
 
 const ON_OFF = { on: 'ON', off: 'OFF' } as const
+
+const shownWhen = (isShown: boolean, toggle: Toggle): ReadonlyArray<Toggle> =>
+  isShown ? [toggle] : []
 
 // NOTE: the quick toggles are icon tiles: sound, music, shake, the big
 // cursor on a mouse, full screen where the browser can do it, and, on a
 // phone that can lock how it turns, ROTATE: off keeps it sideways, on lets
 // it follow the phone.
-const settingTiles = (model: Model): ReadonlyArray<Toggle> => [
+const settingTiles = ({
+  device,
+  settings,
+}: ViewInputs): ReadonlyArray<Toggle> => [
   {
     label: 'Sound',
     shortLabel: 'SOUND',
-    isOn: model.soundSetting === 'On',
+    isOn: settings.sound === 'On',
     onIcon: SOUND_ON_ICON,
     offIcon: SOUND_OFF_ICON,
     maybeKey: Option.some('M'),
-    message: Message.ClickedMuteButton(),
+    setting: 'Sound',
   },
   {
     label: 'Music',
     shortLabel: 'MUSIC',
-    isOn: model.musicSetting === 'On',
+    isOn: settings.music === 'On',
     onIcon: MUSIC_ON_ICON,
     offIcon: MUSIC_OFF_ICON,
     maybeKey: Option.some('N'),
-    message: Message.ClickedMusicButton(),
+    setting: 'Music',
   },
   {
     label: 'Screen shake',
     shortLabel: 'SHAKE',
-    isOn: model.shakeSetting === 'On',
+    isOn: settings.shake === 'On',
     onIcon: SHAKE_ICON,
     offIcon: SHAKE_ICON,
     maybeKey: Option.none(),
-    message: Message.ClickedShakeButton(),
+    setting: 'Shake',
   },
-  ...(isKeyboard(model)
-    ? [
-        {
-          label: 'Big cursor',
-          shortLabel: 'CURSOR',
-          isOn: model.cursorSetting === 'Bold',
-          onIcon: AIM_ICON,
-          offIcon: AIM_ICON,
-          maybeKey: Option.none(),
-          states: { on: 'BIG', off: 'THIN' },
-          message: Message.ClickedCursorButton(),
-        },
-      ]
-    : []),
-  ...(model.screenFit === 'Fullscreen'
-    ? [
-        {
-          label: 'Full screen',
-          shortLabel: 'FULL',
-          isOn: model.fullscreen === 'On',
-          onIcon: FULLSCREEN_ICON,
-          offIcon: FULLSCREEN_ICON,
-          maybeKey: Option.none(),
-          message: Message.ClickedFullscreenButton(),
-        },
-      ]
-    : []),
-  ...(model.orientationLock === 'Supported'
-    ? [
-        {
-          label: 'Turn with the phone',
-          shortLabel: 'ROTATE',
-          isOn: model.rotationSetting === 'Auto',
-          onIcon: TURN_PHONE_ICON,
-          offIcon: TURN_PHONE_ICON,
-          maybeKey: Option.none(),
-          states: { on: 'AUTO', off: 'LOCKED' },
-          message: Message.ClickedRotationButton(),
-        },
-      ]
-    : []),
+  ...shownWhen(device === 'KeyboardMouse', {
+    label: 'Big cursor',
+    shortLabel: 'CURSOR',
+    isOn: settings.cursor === 'Bold',
+    onIcon: AIM_ICON,
+    offIcon: AIM_ICON,
+    maybeKey: Option.none(),
+    states: { on: 'BIG', off: 'THIN' },
+    setting: 'Cursor',
+  }),
+  ...shownWhen(settings.screenFit === 'Fullscreen', {
+    label: 'Full screen',
+    shortLabel: 'FULL',
+    isOn: settings.fullscreen === 'On',
+    onIcon: FULLSCREEN_ICON,
+    offIcon: FULLSCREEN_ICON,
+    maybeKey: Option.none(),
+    setting: 'Fullscreen',
+  }),
+  ...shownWhen(settings.orientationLock === 'Supported', {
+    label: 'Turn with the phone',
+    shortLabel: 'ROTATE',
+    isOn: settings.rotation === 'Auto',
+    onIcon: TURN_PHONE_ICON,
+    offIcon: TURN_PHONE_ICON,
+    maybeKey: Option.none(),
+    states: { on: 'AUTO', off: 'LOCKED' },
+    setting: 'Rotation',
+  }),
 ]
 
+// NOTE: the key a tile answers to, shown only to a keyboard player.
+const keyCapsOf = (
+  device: InputDevice,
+  maybeKey: Option.Option<string>,
+  h: ProfileViewBuilder,
+): ReadonlyArray<Html> =>
+  Option.match(maybeKey, {
+    onNone: () => [],
+    onSome: key =>
+      device === 'KeyboardMouse'
+        ? [h.span([h.Class('home-key'), h.AriaHidden(true)], [key])]
+        : [],
+  })
+
 const tileView = (
-  model: Model,
+  device: InputDevice,
   toggle: Toggle,
-  h: ApplicationViewBuilder,
+  h: ProfileViewBuilder,
 ): Html =>
   h.li(
     [h.Class('setting-tile-item')],
@@ -727,7 +733,9 @@ const tileView = (
             onNone: () => [],
             onSome: key => [h.AriaKeyshortcuts(key)],
           }),
-          h.OnClick(toggle.message, { propagation: 'Stop' }),
+          h.OnClick(Message.ClickedSettingTile({ setting: toggle.setting }), {
+            propagation: 'Stop',
+          }),
         ],
         [
           iconView(
@@ -744,16 +752,13 @@ const tileView = (
                 : (toggle.states ?? ON_OFF).off,
             ],
           ),
-          ...Option.match(toggle.maybeKey, {
-            onNone: () => [],
-            onSome: key => keyCapView(model, key, h),
-          }),
+          ...keyCapsOf(device, toggle.maybeKey, h),
         ],
       ),
     ],
   )
 
-const resetTutorialButtonView = (h: ApplicationViewBuilder): Html =>
+const resetTutorialButtonView = (h: ProfileViewBuilder): Html =>
   h.button(
     [
       h.Type('button'),
@@ -769,7 +774,7 @@ const resetTutorialButtonView = (h: ApplicationViewBuilder): Html =>
   )
 
 // NOTE: the confirm wobbles in, so it reads as "are you sure?" at a glance.
-const askResetTutorialView = (h: ApplicationViewBuilder): Html =>
+const askResetTutorialView = (h: ProfileViewBuilder): Html =>
   h.div(
     [
       h.Class('setting-confirm'),
@@ -810,13 +815,19 @@ const askResetTutorialView = (h: ApplicationViewBuilder): Html =>
     ],
   )
 
-const settingsTabView = (model: Model, h: ApplicationViewBuilder): Html =>
+const settingsTabView = (
+  model: Model,
+  inputs: ViewInputs,
+  h: ProfileViewBuilder,
+): Html =>
   h.div(
     [h.Class('settings-tab')],
     [
       h.ul(
         [h.Class('setting-tiles'), h.AriaLabel('Game settings')],
-        Array.map(settingTiles(model), toggle => tileView(model, toggle, h)),
+        Array.map(settingTiles(inputs), toggle =>
+          tileView(inputs.device, toggle, h),
+        ),
       ),
       model.tutorialReset === 'Asking'
         ? askResetTutorialView(h)
@@ -840,41 +851,53 @@ type PageAttributes = Tabs.TabInfo<ProfileTab>['panel']
 const pageAttributes = (
   panel: PageAttributes,
   tab: ProfileTab,
-  h: ApplicationViewBuilder,
+  h: ProfileViewBuilder,
 ) => [...panel, h.Class('profile-page'), h.DataAttribute('tab', tab)]
 
 // NOTE: each tab's page is its own view, so switching tabs swaps the page
 // element and its flip-in animation plays again.
 const lookPageView = (
   model: Model,
+  inputs: ViewInputs,
   panel: PageAttributes,
-  h: ApplicationViewBuilder,
-): Html => h.div(pageAttributes(panel, 'Look', h), [lookTabView(model, h)])
+  h: ProfileViewBuilder,
+): Html =>
+  h.div(pageAttributes(panel, 'Look', h), [lookTabView(model, inputs, h)])
 
 const namePageView = (
   model: Model,
+  _inputs: ViewInputs,
   panel: PageAttributes,
-  h: ApplicationViewBuilder,
+  h: ProfileViewBuilder,
 ): Html => h.div(pageAttributes(panel, 'Name', h), [nameTabView(model, h)])
 
 const accountPageView = (
   model: Model,
+  inputs: ViewInputs,
   panel: PageAttributes,
-  h: ApplicationViewBuilder,
+  h: ProfileViewBuilder,
 ): Html =>
-  h.div(pageAttributes(panel, 'Account', h), [accountTabView(model, h)])
+  h.div(pageAttributes(panel, 'Account', h), [accountTabView(model, inputs, h)])
 
 const settingsPageView = (
   model: Model,
+  inputs: ViewInputs,
   panel: PageAttributes,
-  h: ApplicationViewBuilder,
+  h: ProfileViewBuilder,
 ): Html =>
-  h.div(pageAttributes(panel, 'Settings', h), [settingsTabView(model, h)])
+  h.div(pageAttributes(panel, 'Settings', h), [
+    settingsTabView(model, inputs, h),
+  ])
 
 const PAGE_VIEWS: Readonly<
   Record<
     ProfileTab,
-    (model: Model, panel: PageAttributes, h: ApplicationViewBuilder) => Html
+    (
+      model: Model,
+      inputs: ViewInputs,
+      panel: PageAttributes,
+      h: ProfileViewBuilder,
+    ) => Html
   >
 > = {
   Look: lookPageView,
@@ -883,88 +906,45 @@ const PAGE_VIEWS: Readonly<
   Settings: settingsPageView,
 }
 
-const tabsView = (
-  model: Model,
-  initialFocus: Dialog.RenderInfo['initialFocus'],
-  h: ApplicationViewBuilder,
-): Html =>
-  h.block(
-    ProfileTabsBinding.embedView({
-      slotId: model.profileTabs.id,
-      model: model.profileTabs,
-      viewInputs: {
-        tabs: PROFILE_TABS,
-        selectedValue: model.profile.tab,
-        ariaLabel: 'Profile',
-        orientation: isPortrait(model) ? 'Horizontal' : 'Vertical',
-        toView: ({ tablist, tabs, activeIndex }) =>
-          h.div(
-            [h.Class('profile-body')],
-            [
-              h.div(
-                [...tablist, h.Class('profile-tabs')],
-                Array.map(tabs, tab =>
-                  tabButtonView(
-                    tab,
-                    initialFocus,
-                    hasUnseenLook(
-                      rankOf(totalPointsOf(model.rank)),
-                      model.seenUnlocks,
-                    ),
-                    h,
+// NOTE: the Profile's body inside the root's Dialog (src/app/view.ts): the
+// tab strip and the open tab's page.
+const view = ProfileComposition.makeView.withInputs<ViewInputs>(
+  (model, inputs, h) =>
+    h.block(
+      TabsBinding.embedView({
+        slotId: model.tabs.id,
+        model: model.tabs,
+        viewInputs: {
+          tabs: PROFILE_TABS,
+          selectedValue: model.tab,
+          ariaLabel: 'Profile',
+          orientation: inputs.isPortrait ? 'Horizontal' : 'Vertical',
+          toView: ({ tablist, tabs, activeIndex }) =>
+            h.div(
+              [h.Class('profile-body')],
+              [
+                h.div(
+                  [...tablist, h.Class('profile-tabs')],
+                  Array.map(tabs, tab =>
+                    tabButtonView(tab, inputs.isLookNew, h),
                   ),
                 ),
-              ),
-              ...pipe(
-                tabs,
-                Array.filter(tab => tab.index === activeIndex),
-                Array.map(tab => PAGE_VIEWS[tab.value](model, tab.panel, h)),
-              ),
-            ],
-          ),
-      },
-    }),
-  )
-
-const panelView = (
-  model: Model,
-  { title, description, closeButton, initialFocus }: Dialog.RenderInfo,
-  h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => [
-  h.h2([...title, h.Class('sr-only')], ['Profile']),
-  h.p(
-    [...description, h.Class('sr-only')],
-    ['Your look, your name, your devices, and the settings.'],
-  ),
-  closeButtonView(
-    {
-      attributes: closeButton,
-      className: 'panel-close',
-      label: 'Close',
-    },
-    h,
-  ),
-  tabsView(model, initialFocus, h),
-  rankPlateView(model, h),
-]
-
-export const profileView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
-} = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  dialogShell(
-    {
-      dialog: model.profileDialog,
-      dialogClass: 'profile-dialog',
-      backdropClass: 'profile-backdrop',
-      panelClass: 'profile',
-      dialogAttributes: [
-        h.DataAttribute('tab', model.profile.tab),
-        h.DataAttribute('device', model.lastDevice),
-      ],
-      panelView: renderInfo => panelView(model, renderInfo, h),
-      binding: ProfileDialogBinding,
-    },
-    h,
-  ),
+                ...pipe(
+                  tabs,
+                  Array.filter(tab => tab.index === activeIndex),
+                  Array.map(tab =>
+                    PAGE_VIEWS[tab.value](model, inputs, tab.panel, h),
+                  ),
+                ),
+              ],
+            ),
+        },
+      }),
+    ),
 )
+
+// NOTE: the Profile's view, gathered here so it is not exported alone: a
+// view is a function of three arguments with no pipeable form, and Foldkit
+// knows a view by its identity, so it cannot be wrapped in one.
+// src/features/profile/layer.ts completes it as the Block's Layer.
+export const profileImplementation = { view }

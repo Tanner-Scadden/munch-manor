@@ -31,7 +31,6 @@ import {
   moveHintBand,
   skipDebutCard,
 } from '../../features/onboarding/onboarding'
-import { profileFromKey } from '../../features/profile/update'
 import { shopGuideFromKey } from '../../features/shop/guideUpdate'
 import { closeShop, syncShopDialog } from '../../features/shop/update'
 import {
@@ -72,6 +71,7 @@ import { startWave } from '../runFlow'
 import { stepWhen } from '../stepWhen'
 import { actAsLead } from './action'
 import { coopFromKey, isCoopOpen, pressCoopKey, releaseCoopKey } from './coop'
+import { profileFromKey } from './profile'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
 import {
   ammoTickCues,

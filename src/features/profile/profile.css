@@ -628,7 +628,7 @@
 /* NOTE: a part with more options than fit across takes even lines, such as
    eight skin tones as two lines of four, so no option is ever left alone on
    a line of its own (--look-columns, from balancedColumns in
-   src/features/look/view.ts). */
+   src/features/profile/blocks/look/view.ts). */
 .look-options {
   display: grid;
   grid-template-columns: repeat(var(--look-columns, 6), var(--menu-tap));

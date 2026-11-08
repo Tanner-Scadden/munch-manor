@@ -13,8 +13,8 @@ import {
   memberOf,
   playingSession,
 } from '../../features/coop/testing'
-import { HAT_ART } from '../../features/look/hatArt'
 import { coopNameShapes } from '../../features/onlineRun/coopMarksView'
+import { HAT_ART } from '../../features/profile/blocks/look/hatArt'
 import type { Appearance, Calling } from '../../shared/playerData'
 import {
   FIGHTING_PHASE,

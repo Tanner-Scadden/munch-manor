@@ -20,13 +20,15 @@ import {
   noBests,
   noKills,
 } from '../../app/model'
-import { initialModel, update } from '../../app/pureApp'
-import { FocusTutorialReset, WriteSave } from '../../app/update/save'
+import { Child, initialModel, update } from '../../app/pureApp'
+import { WriteSave } from '../../app/update/save'
+import { shownHints } from '../../features/onboarding/onboarding'
+import { Message as ProfileMessage } from '../../features/profile/message'
 import {
   KEEP_TUTORIAL_BUTTON_ID,
   RESET_TUTORIAL_BUTTON_ID,
-} from '../../features/home/home'
-import { shownHints } from '../../features/onboarding/onboarding'
+} from '../../features/profile/profile'
+import { FocusTutorialReset } from '../../features/profile/update'
 // @vitest-environment happy-dom
 import { FIXED_STEP_MS } from '../../shared/constants'
 import { noSavedRunRecords } from '../../shared/playerData'
@@ -981,20 +983,22 @@ describe('reset tutorial', () => {
       given(veteranHome),
       message(Message.ClickedSettingsButton()),
       showDialog(),
-      message(Message.ClickedResetTutorialButton()),
+      message(Child.profile(ProfileMessage.ClickedResetTutorialButton())),
       Command.expectExact(FocusTutorialReset({ id: KEEP_TUTORIAL_BUTTON_ID })),
       Command.resolve(
         FocusTutorialReset,
-        Message.CompletedFocusTutorialReset(),
+        ProfileMessage.CompletedFocusTutorialReset(),
       ),
       model(current => {
-        expect(current.tutorialReset).toBe('Asking')
+        expect(current.profile.tutorialReset).toBe('Asking')
         expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
       }),
-      message(Message.ClickedConfirmResetTutorialButton()),
+      message(
+        Child.profile(ProfileMessage.ClickedConfirmResetTutorialButton()),
+      ),
       Command.expectHas(WriteSave),
       model(current => {
-        expect(current.tutorialReset).toBe('Done')
+        expect(current.profile.tutorialReset).toBe('Done')
         expect(current.lessons).toEqual(freshLessons)
         expect(current.introducedKinds).toEqual([])
         expect(current.seenPowerUps).toEqual([])
@@ -1013,7 +1017,7 @@ describe('reset tutorial', () => {
       }),
       Command.resolve(
         FocusTutorialReset({ id: RESET_TUTORIAL_BUTTON_ID }),
-        Message.CompletedFocusTutorialReset(),
+        ProfileMessage.CompletedFocusTutorialReset(),
       ),
       Command.resolve(WriteSave, Message.CompletedWriteSave()),
     )
@@ -1025,19 +1029,19 @@ describe('reset tutorial', () => {
       given(veteranHome),
       message(Message.ClickedSettingsButton()),
       showDialog(),
-      message(Message.ClickedResetTutorialButton()),
+      message(Child.profile(ProfileMessage.ClickedResetTutorialButton())),
       Command.resolve(
         FocusTutorialReset,
-        Message.CompletedFocusTutorialReset(),
+        ProfileMessage.CompletedFocusTutorialReset(),
       ),
-      message(Message.ClickedCancelResetTutorialButton()),
+      message(Child.profile(ProfileMessage.ClickedCancelResetTutorialButton())),
       Command.expectExact(FocusTutorialReset({ id: RESET_TUTORIAL_BUTTON_ID })),
       Command.resolve(
         FocusTutorialReset,
-        Message.CompletedFocusTutorialReset(),
+        ProfileMessage.CompletedFocusTutorialReset(),
       ),
       model(current => {
-        expect(current.tutorialReset).toBe('Idle')
+        expect(current.profile.tutorialReset).toBe('Idle')
         expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))
       }),
     )
@@ -1047,7 +1051,9 @@ describe('reset tutorial', () => {
     story(
       update,
       given(veteranHome),
-      message(Message.ClickedConfirmResetTutorialButton()),
+      message(
+        Child.profile(ProfileMessage.ClickedConfirmResetTutorialButton()),
+      ),
       Command.expectNone(),
       model(current => {
         expect(current.lessons.move).toEqual(Lesson.Learned({ atMs: 0 }))

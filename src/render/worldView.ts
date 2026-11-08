@@ -29,10 +29,10 @@ import {
   padlockShapes,
 } from '../features/kitchen/kitchenView'
 import { pantryDrawables } from '../features/kitchen/pantryView'
-import { hatRiseOf } from '../features/look/hatArt'
 import { maybeQuestDoor } from '../features/onboarding/firstBreakQuest'
 import { isGoodieBeckoning } from '../features/onboarding/onboarding'
 import { coopNameShapes } from '../features/onlineRun/coopMarksView'
+import { hatRiseOf } from '../features/profile/blocks/look/hatArt'
 import {
   STALL_FOOT_Y,
   type StallLook,

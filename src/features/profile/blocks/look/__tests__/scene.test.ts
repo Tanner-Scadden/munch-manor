@@ -16,9 +16,9 @@ import { describe, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { Message } from '../../../app/message'
-import { Phase } from '../../../app/model'
-import { home } from '../../../test/model.fixture'
+import { Message } from '../../../../../app/message'
+import { Phase } from '../../../../../app/model'
+import { home } from '../../../../../test/model.fixture'
 import {
   ROOT,
   SCENE_SUBSCRIPTIONS,
@@ -33,7 +33,7 @@ import {
   profileDialog,
   resolveFocusOptionInScene,
   shareMountSettles,
-} from '../../../test/testing'
+} from '../../../../../test/testing'
 
 const characterButton = role('button', {
   name: 'Your character: change how you look',

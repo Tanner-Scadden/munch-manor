@@ -1,8 +1,8 @@
 import { RadioGroup } from '@foldkit/ui'
 
-import type { LookSection } from '../../app/clientSchema'
+import type { LookSection } from '../../../../app/clientSchema'
 
-// NOTE: the Look tab's radio groups. They live apart from src/features/look/block.ts
+// NOTE: the Look tab's radio groups. They live apart from src/features/profile/blocks/look/block.ts
 // so the Model can hold their state without importing the picker.
 export const SectionRadioGroupBlock = RadioGroup.makeBlock<LookSection>()
 

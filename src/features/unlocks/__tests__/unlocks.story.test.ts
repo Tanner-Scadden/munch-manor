@@ -4,7 +4,6 @@ import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
-import { CharacterBinding } from '../../../app/bindings'
 import { Message } from '../../../app/message'
 import { Child, update } from '../../../app/pureApp'
 import { WriteSave } from '../../../app/update/save'
@@ -12,7 +11,7 @@ import { homeAfterRead } from '../../../test/model.fixture'
 import { modelAfter, writeSave } from '../../../test/testing'
 import { noRank, pointsForRank } from '../../../world/heroes/rank'
 import { chooseCalling } from '../../heroes/callingPick'
-import * as Character from '../../look/block'
+import * as Character from '../../profile/blocks/look/block'
 import { callingUnlocksAt, hasUnseenLook, lookUnlocksAt } from '../unlocks'
 
 // NEW badges (src/features/unlocks/unlocks.ts): what a rank reached and the player has not
@@ -59,8 +58,7 @@ describe('picking an unlock', () => {
       showDialog(),
       Command.resolve(WriteSave, Message.CompletedWriteSave()),
       message(
-        Child.message(
-          CharacterBinding,
+        Child.character(
           Character.Message.ClickedGearOption({
             part: 'ShirtColor',
             value: 'Gold',

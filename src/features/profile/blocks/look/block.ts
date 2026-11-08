@@ -6,8 +6,6 @@ import { modifyFields } from 'foldkit/struct'
 import {
   type Appearance,
   Body,
-  CharacterPicker,
-  type ClosetCueKind,
   HairColor,
   HairStyle,
   LookPart,
@@ -15,10 +13,9 @@ import {
   LookToggle,
   Outfit,
   Print,
-  type ProfileFx,
   ShirtColor,
   SkinTone,
-} from '../../app/model'
+} from '../../../../app/model'
 import {
   type Calling,
   type CosmeticKind,
@@ -26,8 +23,14 @@ import {
   Hat,
   type SavedBoughtCosmetics,
   type SavedRank,
-} from '../../shared/playerData'
+} from '../../../../shared/playerData'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from './lookRadios'
+import {
+  CharacterPicker,
+  type ClosetCue,
+  type LookPreview,
+  type ProfileFx,
+} from './model'
 
 // MESSAGE
 
@@ -185,12 +188,12 @@ const PARTS: Readonly<Record<LookPart, Part>> = {
   },
 }
 
-type Gear = Readonly<{
+export type Gear = Readonly<{
   kind: CosmeticKind
   worn: (appearance: Appearance) => string
 }>
 
-// NOTE: the four parts that hold earned looks (src/features/look/closet.ts), by the kind
+// NOTE: the four parts that hold earned looks (src/features/profile/blocks/look/closet.ts), by the kind
 // of look and what each wears now. Their rows pick by a click and not by
 // the radio group, so a look not owned is never the selected one. Every
 // other part is free and is simply chosen.
@@ -232,8 +235,9 @@ export const chooseLook: {
 
 // BLOCK
 
-// NOTE: what the root hands the Look tab's view each frame: the look worn,
-// what is owned and new, and the Profile's effects.
+// NOTE: what the Profile hands the Look tab's view each frame: the look
+// worn, what is owned and new (the root's, passed down), and the Profile's
+// effects.
 export type ViewInputs = Readonly<{
   appearance: Appearance
   calling: Calling
@@ -243,13 +247,8 @@ export type ViewInputs = Readonly<{
   bought: SavedBoughtCosmetics
   rank: SavedRank
   fresh: ReadonlyArray<string>
-  maybePreview: Option.Option<Readonly<{ part: LookPart; value: string }>>
-  cue: Readonly<{
-    part: LookPart
-    value: string
-    kind: ClosetCueKind
-    count: number
-  }>
+  maybePreview: Option.Option<LookPreview>
+  cue: ClosetCue
 }>
 
 const CharacterKey = Symbol('Character')
@@ -284,8 +283,8 @@ export const SectionsBinding = makeRequiredFieldBinding(
   }),
 })
 
-// NOTE: a part's choice goes up to the root as ChoseLook, which owns the
-// look and plays the poof.
+// NOTE: a part's choice goes up as ChoseLook, to the Profile and on to the
+// root, which owns the look and plays the poof.
 const forwardPart = (part: LookPart) =>
   makeOutMessageForward(PartRadioGroupBlock, {
     Selected: ({ value }) => OutMessage.ChoseLook({ part, value }),

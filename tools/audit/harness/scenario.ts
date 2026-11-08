@@ -504,18 +504,21 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   const link = config.link
   if (link !== undefined) {
     model = modifyFields(model, {
-      linkFlow: () =>
-        link === 'requesting'
-          ? LinkFlow.Requesting()
-          : link === 'showing'
-            ? LinkFlow.Showing({ code: 'KZ7QWM' })
-            : link === 'entering'
-              ? LinkFlow.Entering({ code: 'KZ7' })
-              : link === 'redeeming'
-                ? LinkFlow.Redeeming({ code: 'KZ7QWM' })
-                : link === 'linked'
-                  ? LinkFlow.Linked()
-                  : LinkFlow.Failed({ problem: 'WrongCode' }),
+      profile: profile =>
+        modifyFields(profile, {
+          linkFlow: () =>
+            link === 'requesting'
+              ? LinkFlow.Requesting()
+              : link === 'showing'
+                ? LinkFlow.Showing({ code: 'KZ7QWM' })
+                : link === 'entering'
+                  ? LinkFlow.Entering({ code: 'KZ7' })
+                  : link === 'redeeming'
+                    ? LinkFlow.Redeeming({ code: 'KZ7QWM' })
+                    : link === 'linked'
+                      ? LinkFlow.Linked()
+                      : LinkFlow.Failed({ problem: 'WrongCode' }),
+        }),
     })
   }
   const look = config.look

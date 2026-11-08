@@ -22,7 +22,7 @@ import { Tabs } from '@foldkit/ui'
 
 import { Message } from '../../../app/message'
 import { type Model } from '../../../app/model'
-import { RequestLinkCode, WriteSave } from '../../../app/update/save'
+import { WriteSave } from '../../../app/update/save'
 import { LinkFlow, SyncState } from '../../../platform/playerSync'
 import { homeAfterRead } from '../../../test/model.fixture'
 import {
@@ -36,8 +36,10 @@ import {
   settingsButton,
   showDialogInScene,
 } from '../../../test/testing'
-import { ProfileTabsBlock } from '../profile'
-import { LINK_TAKES_PROGRESS_NOTE, SHARE_STATS_NOTE } from '../profileView'
+import { Message as ProfileMessage } from '../message'
+import { ProfileTabsBlock } from '../model'
+import { RequestLinkCode } from '../update'
+import { LINK_TAKES_PROGRESS_NOTE, SHARE_STATS_NOTE } from '../view'
 
 const onTouch: Model = modifyFields(homeAfterRead, {
   lastDevice: () => 'Touch',
@@ -234,7 +236,7 @@ describe('the Account tab', () => {
       click(role('button', { name: 'Link another device' })),
       Command.resolve(
         RequestLinkCode,
-        Message.SucceededRequestLinkCode({ code: 'KZ7QWM' }),
+        ProfileMessage.SucceededRequestLinkCode({ code: 'KZ7QWM' }),
       ),
       expect(role('paragraph', { name: 'Link code K Z 7 Q W M' })).toExist(),
       expectAll(all.selector('.account-code-letter')).toHaveCount(6),
@@ -244,7 +246,12 @@ describe('the Account tab', () => {
   test('the devices zap together once linked', () => {
     scene(
       ROOT,
-      given(modifyFields(synced, { linkFlow: () => LinkFlow.Linked() })),
+      given(
+        modifyFields(synced, {
+          profile: profile =>
+            modifyFields(profile, { linkFlow: () => LinkFlow.Linked() }),
+        }),
+      ),
       measureSurface,
       click(settingsButton),
       ...showDialogInScene(),

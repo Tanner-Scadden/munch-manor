@@ -3,22 +3,22 @@ import { Effect, Option } from 'effect'
 
 import { describe, expect, it } from '@effect/vitest'
 
-import { PlayerChange } from '../../../platform/playerSync'
-import type { PlayerSave } from '../../../platform/save'
-import type { PlayerDatabase } from '../../../platform/storeSqlite'
+import { PlayerChange } from '../../../../../platform/playerSync'
+import type { PlayerSave } from '../../../../../platform/save'
+import type { PlayerDatabase } from '../../../../../platform/storeSqlite'
 import {
   type Appearance,
   COSMETIC_PRICES,
   type SoldHat,
-} from '../../../shared/playerData'
+} from '../../../../../shared/playerData'
 import {
   legacySave,
   linkedPair,
   synced,
   until,
   write,
-} from '../../../test/store.fixture'
-import { bonesBalanceOf, noRank } from '../../../world/heroes/rank'
+} from '../../../../../test/store.fixture'
+import { bonesBalanceOf, noRank } from '../../../../../world/heroes/rank'
 
 // The closet's Bones in the player scope (BoughtCosmetic in
 // src/platform/playerScope.ts): a hat is paid for once, only while the balance

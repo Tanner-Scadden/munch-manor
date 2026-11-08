@@ -33,6 +33,7 @@ import {
   type TutorialChoice,
 } from '../../app/model'
 import { stepWhen } from '../../app/stepWhen'
+import { openProfile } from '../../app/update/profile'
 import {
   isPaused,
   startFromButton,
@@ -81,7 +82,6 @@ import {
 } from '../heroes/callingPick'
 import { skipTutorial } from '../onboarding/onboarding'
 import { runDifficultyOf } from '../onlineRun/onlineRun'
-import { openProfile } from '../profile/update'
 import { markCallingsSeen } from '../unlocks/update'
 import { NEWS_DAYS } from '../whatsNew/changelog'
 import {
@@ -257,7 +257,6 @@ const showPanel =
         panel === 'Calling' ? markCallingsSeen(stepModel) : stepModel,
         {
           panel: () => panel,
-          tutorialReset: () => 'Idle',
           maybeOpenHelpCard: () => Option.none(),
         },
       ),
@@ -616,23 +615,6 @@ export const unlockNightmareFrom = (before: Model): UpdateStep =>
     model => isNightmareUnlockedBy(before, model, runDifficultyOf(model)),
     model => playSounds([uiCue('PowerUp')])(unlockNightmare(model)),
   )
-
-// SETTINGS
-
-export const toggleShake = (model: Model): Model =>
-  modifyFields(model, {
-    shakeSetting: setting => (setting === 'On' ? 'Off' : 'On'),
-  })
-
-export const toggleCursor = (model: Model): Model =>
-  modifyFields(model, {
-    cursorSetting: setting => (setting === 'Bold' ? 'Thin' : 'Bold'),
-  })
-
-export const toggleShareStats = (model: Model): Model =>
-  modifyFields(model, {
-    shareStats: setting => (setting === 'On' ? 'Off' : 'On'),
-  })
 
 // INSTALL
 

@@ -3,6 +3,7 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
+import { Message as ProfileMessage } from '../../../features/profile/message'
 import {
   decodeSave,
   encodeSave,
@@ -13,7 +14,7 @@ import { loadingSave, readyAfterRead } from '../../../test/model.fixture'
 import { finishSplash, jsonOf } from '../../../test/testing'
 import { Message } from '../../message'
 import { type Model } from '../../model'
-import { initialModel, update } from '../../pureApp'
+import { Child, initialModel, update } from '../../pureApp'
 import { ApplyRotation } from '../rotation'
 import { WriteSave } from '../save'
 import { FetchBuild } from '../version'
@@ -87,14 +88,22 @@ describe('applying the rotation', () => {
     story(
       update,
       given(onPhone(readyAfterRead)),
-      message(Message.ClickedRotationButton()),
+      message(
+        Child.profile(
+          ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
+        ),
+      ),
       applied('Auto'),
       savedWrite,
       model(current => {
         expect(current.rotationSetting).toBe('Auto')
         expect(saveOf(current).rotation).toBe('Auto')
       }),
-      message(Message.ClickedRotationButton()),
+      message(
+        Child.profile(
+          ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
+        ),
+      ),
       applied('Landscape'),
       savedWrite,
       model(current => {
@@ -126,7 +135,11 @@ describe('applying the rotation', () => {
     story(
       update,
       given(readyAfterRead),
-      message(Message.ClickedRotationButton()),
+      message(
+        Child.profile(
+          ProfileMessage.ClickedSettingTile({ setting: 'Rotation' }),
+        ),
+      ),
       message(Message.CompletedSetFullscreen({ fullscreen: 'On' })),
       Command.expectNone(),
       model(current => {

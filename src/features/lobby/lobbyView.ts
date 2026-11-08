@@ -46,13 +46,13 @@ import {
   specialsNoteOf,
   specialsOf,
 } from '../heroes/callingSpecials'
-import { newPipView } from '../look/lookGearView'
 import {
   callingPropView,
   iconView,
   keyCapView,
   rankTagView,
 } from '../menus/menuParts'
+import { newPipView } from '../profile/blocks/look/lookGearView'
 import { joinName } from '../profile/profile'
 import { hasUnseenCalling } from '../unlocks/unlocks'
 import {

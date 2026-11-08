@@ -3,15 +3,10 @@ import { Option, Schema } from 'effect'
 import { DialogBlock } from '@foldkit/ui'
 
 import * as Coop from '../features/coop/model'
-import {
-  PartRadioGroupBlock,
-  SectionRadioGroupBlock,
-} from '../features/look/lookRadios'
-import { ProfileTabsBlock } from '../features/profile/profile'
+import * as Profile from '../features/profile/model'
 import { ShopTabsBlock } from '../features/shop/shopTabs'
 import {
   LastRunSync,
-  LinkFlow,
   PlayerChange,
   PlayerScopeStatus,
   SyncState,
@@ -86,8 +81,6 @@ import {
   KitchenCall,
   type LoadStep,
   Loading,
-  LookPart,
-  LookSection,
   MenuPanel,
   Orientation,
   OrientationLock,
@@ -106,7 +99,6 @@ import {
   TellWatch,
   TouchControls,
   Tour,
-  TutorialReset,
   UpdateGift,
   cosmeticSeedOf,
   defaultAppearance,
@@ -120,61 +112,6 @@ import {
 export * from './clientSchema'
 export * from '../world/schema/worldSchema'
 
-// NOTE: the Look tab: which of its little tabs is showing, and a radio
-// group per part. Not saved: it opens on Body each time.
-export const CharacterPicker = Schema.Struct({
-  section: LookSection,
-  sections: SectionRadioGroupBlock.Model,
-  body: PartRadioGroupBlock.Model,
-  hairStyle: PartRadioGroupBlock.Model,
-  hairColor: PartRadioGroupBlock.Model,
-  skinTone: PartRadioGroupBlock.Model,
-  shirtColor: PartRadioGroupBlock.Model,
-  outfit: PartRadioGroupBlock.Model,
-  print: PartRadioGroupBlock.Model,
-  hat: PartRadioGroupBlock.Model,
-  gunSkin: PartRadioGroupBlock.Model,
-})
-export type CharacterPicker = typeof CharacterPicker.Type
-
-// NOTE: the Profile's tabs, in order. A new tab, such as Cosmetics or
-// Stats, is one more literal here and one more entry in src/features/profile/profile.ts.
-export const ProfileTab = Schema.Literals([
-  'Look',
-  'Name',
-  'Account',
-  'Settings',
-])
-export type ProfileTab = typeof ProfileTab.Type
-
-// NOTE: the last bit of juice the Profile played: a poof for a new look
-// part, a slot-machine spin for a dice roll, or nothing.
-export const ProfileFx = Schema.Literals(['Still', 'Poof', 'Spin'])
-export type ProfileFx = typeof ProfileFx.Type
-
-// NOTE: the last thing a Look tab option did, for the option to play: a look
-// bought (a poof), or wanted with too few Bones or not reached yet (the price
-// or the padlock shakes red). The count moves on every time, and the view
-// reads only its parity, so the same cue twice in a row still replays.
-export const ClosetCueKind = Schema.Literals([
-  'Still',
-  'Bought',
-  'Worn',
-  'Short',
-])
-export type ClosetCueKind = typeof ClosetCueKind.Type
-
-const ClosetCue = Schema.Struct({
-  part: LookPart,
-  value: Schema.String,
-  kind: ClosetCueKind,
-  count: Schema.Finite,
-})
-
-// NOTE: the Profile dialog: the open tab, the name as it is being typed,
-// and the last effect. The view reads fxCount only for its parity, so the
-// same effect twice in a row still replays. Its Dialog and Tabs are the
-// root's `profileDialog` and `profileTabs`, where their Bindings attach.
 // NOTE: the How to play cards (src/features/menus/pauseHelp.ts). One card at a time shows
 // its line of how to do it: the one focused or tapped last, until the
 // panel closes.
@@ -191,20 +128,6 @@ export const HelpCard = Schema.Literals([
   'Charge',
 ])
 export type HelpCard = typeof HelpCard.Type
-
-// NOTE: a look for sale being tried on in the Look tab: shown on the
-// figure and never worn, saved, or synced until it is bought.
-const LookPreview = Schema.Struct({ part: LookPart, value: Schema.String })
-
-const ProfilePanel = Schema.Struct({
-  tab: ProfileTab,
-  nameDraft: Schema.String,
-  fx: ProfileFx,
-  fxCount: Schema.Finite,
-  closetCue: ClosetCue,
-  maybePreview: Schema.Option(LookPreview),
-})
-type ProfilePanel = typeof ProfilePanel.Type
 
 // NOTE: whether the browser has a share sheet (navigator.share). SHARE
 // opens it where there is one and copies the post everywhere else; the
@@ -287,10 +210,8 @@ export const Model = Schema.Struct({
   installOffer: InstallOffer,
   maybeSupportUrl: Schema.Option(Schema.String),
   appearance: Appearance,
-  character: CharacterPicker,
-  profile: ProfilePanel,
+  profile: Profile.Model,
   profileDialog: DialogBlock.Model,
-  profileTabs: ProfileTabsBlock.Model,
   playerName: PlayerName,
   coop: Coop.Model,
   shakeSetting: ShakeSetting,
@@ -319,7 +240,7 @@ export const Model = Schema.Struct({
   // NOTE: the calling picked for the next run (src/features/heroes/callingPick.ts). A run
   // starts with it only if its rank is reached.
   calling: Calling,
-  // NOTE: the looks bought with Bones, by cosmetic id (src/features/look/closet.ts). A gift
+  // NOTE: the looks bought with Bones, by cosmetic id (src/features/profile/blocks/look/closet.ts). A gift
   // is owned by rank and is never here.
   boughtCosmetics: SavedBoughtCosmetics,
   // NOTE: the unlocks the player has seen (src/features/unlocks/unlocks.ts), saved and synced,
@@ -337,26 +258,15 @@ export const Model = Schema.Struct({
   maybeCrewRunKey: Schema.Option(Schema.String),
   loading: Loading,
   saveStatus: SaveStatus,
-  tutorialReset: TutorialReset,
   syncState: SyncState,
   playerScopeStatus: PlayerScopeStatus,
   lastRunSync: LastRunSync,
   writesInFlight: Schema.Finite,
   unsavedChanges: Schema.Array(PlayerChange),
   syncedSave: SyncedSaveState,
-  linkFlow: LinkFlow,
   home: HomeMenu,
 })
 export type Model = typeof Model.Type
-
-const closedProfile: ProfilePanel = {
-  tab: 'Look',
-  nameDraft: '',
-  fx: 'Still',
-  fxCount: 0,
-  closetCue: { part: 'Hat', value: 'None', kind: 'Still', count: 0 },
-  maybePreview: Option.none(),
-}
 
 export const LOAD_STEPS: ReadonlyArray<LoadStep> = [
   'Save',
@@ -392,9 +302,8 @@ type ChildField =
   | 'shopTabs'
   | 'homeScreenSteps'
   | 'updateGreeting'
-  | 'character'
+  | 'profile'
   | 'profileDialog'
-  | 'profileTabs'
   | 'coop'
   | 'panelDialog'
   | 'handDialog'
@@ -484,7 +393,6 @@ export const initialModel: OwnModel = {
   installOffer: 'None',
   maybeSupportUrl: maybeSupportUrlOf(SUPPORT_URL),
   appearance: defaultAppearance,
-  profile: closedProfile,
   playerName: '',
   shakeSetting: 'On',
   rotationSetting: 'Landscape',
@@ -513,13 +421,11 @@ export const initialModel: OwnModel = {
   maybeCrewRunKey: Option.none(),
   loading: Loading.Loaded(),
   saveStatus: 'Unread',
-  tutorialReset: 'Idle',
   syncState: SyncState.LocalOnly(),
   playerScopeStatus: PlayerScopeStatus.Idle(),
   lastRunSync: LastRunSync.NoRun(),
   writesInFlight: 0,
   unsavedChanges: [],
   syncedSave: 'Current',
-  linkFlow: LinkFlow.Idle(),
   home: freshHomeMenu,
 }

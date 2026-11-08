@@ -3,21 +3,18 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { CharacterBinding } from '../../../app/bindings'
-import { Message } from '../../../app/message'
 import {
   type LookPart,
   type Model,
   Reload,
   defaultAppearance,
-} from '../../../app/model'
-import { Child, update } from '../../../app/pureApp'
-import { FocusLookOption } from '../../../app/update/look'
-import { WriteSave } from '../../../app/update/save'
-import { playerPixels, randomAppearance } from '../../../art/appearance'
-import { PlayerChange } from '../../../platform/playerSync'
-import { restoreSave, saveOf } from '../../../platform/save'
-import { reloadBarShapes } from '../../../render/playerView'
+} from '../../../../../app/model'
+import { Child, update } from '../../../../../app/pureApp'
+import { WriteSave } from '../../../../../app/update/save'
+import { playerPixels, randomAppearance } from '../../../../../art/appearance'
+import { PlayerChange } from '../../../../../platform/playerSync'
+import { restoreSave, saveOf } from '../../../../../platform/save'
+import { reloadBarShapes } from '../../../../../render/playerView'
 import {
   type Appearance,
   COSMETIC_GIFT_RANKS,
@@ -25,16 +22,18 @@ import {
   GiftHat,
   type SavedRank,
   SoldHat,
-} from '../../../shared/playerData'
-import { readyAfterRead } from '../../../test/model.fixture'
-import { writeSave } from '../../../test/testing'
+} from '../../../../../shared/playerData'
+import { readyAfterRead } from '../../../../../test/model.fixture'
+import { writeSave } from '../../../../../test/testing'
 import {
   bonesBalanceOf,
   noRank,
   pointsForRank,
   rankOf,
-} from '../../../world/heroes/rank'
-import { focusOf } from '../../../world/party/party'
+} from '../../../../../world/heroes/rank'
+import { focusOf } from '../../../../../world/party/party'
+import { FocusLookOption } from '../../../inMessageUpdate'
+import { Message as ProfileMessage } from '../../../message'
 import * as Character from '../block'
 import {
   GIFTS,
@@ -47,7 +46,7 @@ import {
 } from '../closet'
 import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, hatRiseOf } from '../hatArt'
 
-// The earned looks (src/features/look/closet.ts, src/app/update/look.ts): hats, shirt
+// The earned looks (src/features/profile/blocks/look/closet.ts, src/app/update/look.ts): hats, shirt
 // colors, prints, and gun skins are worn, bought with Bones, or gifted by
 // rank, picked in the Look tab's rows (a look for sale is tried on first),
 // and a worn hat shows over a calling's prop.
@@ -72,12 +71,7 @@ const rankPoints = (rank: number): Partial<SavedRank> => ({
 })
 
 const pick = (part: LookPart, value: string) =>
-  message(
-    Child.message(
-      CharacterBinding,
-      Character.Message.ClickedGearOption({ part, value }),
-    ),
-  )
+  message(Child.character(Character.Message.ClickedGearOption({ part, value })))
 
 const withLook = (look: Partial<Appearance>): Appearance => ({
   ...defaultAppearance,
@@ -113,8 +107,7 @@ const SOLD = [
   },
 ] as const
 
-const buy = () =>
-  message(Child.message(CharacterBinding, Character.Message.ClickedBuyButton()))
+const buy = () => message(Child.character(Character.Message.ClickedBuyButton()))
 
 describe.each(SOLD)('buying $id', ({ id, part, name, field, price }) => {
   test('a pick only tries it on: nothing is spent, worn, or saved', () => {
@@ -161,7 +154,10 @@ describe.each(SOLD)('buying $id', ({ id, part, name, field, price }) => {
       }),
       Command.expectHas(FocusLookOption),
       Command.expectHas(WriteSave),
-      Command.resolve(FocusLookOption, Message.CompletedFocusLookOption()),
+      Command.resolve(
+        FocusLookOption,
+        ProfileMessage.CompletedFocusLookOption(),
+      ),
       Command.expectExact(
         WriteSave({
           save: saveOf(after),
@@ -215,9 +211,7 @@ describe.each(SOLD)('buying $id', ({ id, part, name, field, price }) => {
       update,
       given(closetWith({ earnedBones: 200 })),
       pick(part, name),
-      message(
-        Child.message(CharacterBinding, Character.Message.ClickedDiceButton()),
-      ),
+      message(Child.character(Character.Message.ClickedDiceButton())),
       model(current => {
         expect(Option.isNone(current.profile.maybePreview)).toBe(true)
         expect(current.boughtCosmetics).toEqual([])
@@ -254,7 +248,10 @@ describe('the Bones', () => {
         expect(current.boughtCosmetics).toEqual(['Fez'])
         expect(bonesBalanceOf(current.rank)).toBe(0)
       }),
-      Command.resolve(FocusLookOption, Message.CompletedFocusLookOption()),
+      Command.resolve(
+        FocusLookOption,
+        ProfileMessage.CompletedFocusLookOption(),
+      ),
       writeSave(),
     )
   })
@@ -438,9 +435,7 @@ describe('wearing', () => {
     story(
       update,
       given(onLook),
-      message(
-        Child.message(CharacterBinding, Character.Message.ClickedDiceButton()),
-      ),
+      message(Child.character(Character.Message.ClickedDiceButton())),
       model(current => {
         expect(current.appearance.hat).toBe('Fez')
         expect(current.appearance.gunSkin).toBe('Candy')

@@ -16,8 +16,8 @@ import {
   type TutorialChoice,
   freshLessons,
 } from '../../../app/model'
-import { update } from '../../../app/pureApp'
-import { FocusTutorialReset, WriteSave } from '../../../app/update/save'
+import { Child, update } from '../../../app/pureApp'
+import { WriteSave } from '../../../app/update/save'
 import {
   decodeSave,
   encodeSave,
@@ -36,6 +36,8 @@ import {
 import { isPracticeGateHeld } from '../../../world/run/lessons'
 import { isKitchenTourOn } from '../../../world/run/tutorialRules'
 import { isFirstPlankFree } from '../../../world/shop/shop'
+import { Message as ProfileMessage } from '../../profile/message'
+import { FocusTutorialReset } from '../../profile/update'
 import { isLearned } from '../onboarding'
 
 // NOTE: the first-run card's TUTORIAL or SKIP IT (owner, 2026-11-07). SKIP
@@ -232,12 +234,14 @@ describe('the first-run card', () => {
       }),
       message(Message.ClickedSettingsButton()),
       showDialog(),
-      message(Message.ClickedResetTutorialButton()),
+      message(Child.profile(ProfileMessage.ClickedResetTutorialButton())),
       Command.resolve(
         FocusTutorialReset,
-        Message.CompletedFocusTutorialReset(),
+        ProfileMessage.CompletedFocusTutorialReset(),
       ),
-      message(Message.ClickedConfirmResetTutorialButton()),
+      message(
+        Child.profile(ProfileMessage.ClickedConfirmResetTutorialButton()),
+      ),
       Command.expectHas(WriteSave),
       model(current => {
         expect(current.lessons).toEqual(freshLessons)
@@ -246,7 +250,7 @@ describe('the first-run card', () => {
       }),
       Command.resolve(
         FocusTutorialReset,
-        Message.CompletedFocusTutorialReset(),
+        ProfileMessage.CompletedFocusTutorialReset(),
       ),
       Command.resolve(WriteSave, Message.CompletedWriteSave()),
     )

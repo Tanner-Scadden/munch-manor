@@ -106,7 +106,6 @@ export const FIELD_CLASSES = {
   maybeNewerBuild: 'Client',
   maybeSupportUrl: 'Client',
   appearance: 'Client',
-  character: 'Client',
   shakeSetting: 'Client',
   shareStats: 'Client',
   maybeVisitId: 'Client',
@@ -127,14 +126,12 @@ export const FIELD_CLASSES = {
   maybeCrewRunKey: 'Client',
   loading: 'Client',
   saveStatus: 'Client',
-  tutorialReset: 'Client',
   syncState: 'Client',
   playerScopeStatus: 'Client',
   lastRunSync: 'Client',
   writesInFlight: 'Client',
   unsavedChanges: 'Client',
   syncedSave: 'Client',
-  linkFlow: 'Client',
   home: 'Client',
   seenPowerUps: 'Client',
   coop: 'Client',
@@ -144,7 +141,6 @@ export const FIELD_CLASSES = {
   playerName: 'Client',
   profile: 'Client',
   profileDialog: 'Client',
-  profileTabs: 'Client',
   rotationSetting: 'Client',
   shopChatter: 'Client',
   shopGuide: 'Client',
@@ -168,12 +164,27 @@ const LEGACY_SEAT_FIELDS = [
   'purchase',
 ] as const
 
+// NOTE: the Profile's fields at the root of a Model before the Profile was
+// a Block (src/features/profile/), now inside `profile`. A run before that
+// change hashes them as the client fields they are, so it and a run after
+// it hash alike.
+const LEGACY_PROFILE_FIELDS = [
+  'character',
+  'profileTabs',
+  'linkFlow',
+  'tutorialReset',
+] as const
+
 const CLASS_BY_FIELD: ReadonlyMap<string, FieldClass> = new Map([
   ...Record.toEntries(FIELD_CLASSES),
   ...Array.map(LEGACY_SEAT_FIELDS, (field): readonly [string, FieldClass] => [
     field,
     'World',
   ]),
+  ...Array.map(
+    LEGACY_PROFILE_FIELDS,
+    (field): readonly [string, FieldClass] => [field, 'Client'],
+  ),
 ])
 
 const classOf = (field: string): FieldClass | undefined =>

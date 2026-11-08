@@ -3,6 +3,7 @@ import type { Document, Html } from 'foldkit/html'
 
 import { awardsOf, crewOf } from '../features/end/crewAwards'
 import { isRunCardHeld } from '../features/end/endBeat'
+import { startingCallingOf } from '../features/heroes/callingPick'
 import { bestsFor, feedbackSentence } from '../features/home/home'
 import {
   homeMenuView,
@@ -22,13 +23,16 @@ import {
 import { pauseHelpView } from '../features/menus/pauseHelp'
 import { isOpenBreak } from '../features/onboarding/onboarding'
 import { questTrackerView } from '../features/onboarding/questView'
-import { profileView } from '../features/profile/profileView'
+import type { ViewInputs as ProfileViewInputs } from '../features/profile/block'
+import { tabOf } from '../features/profile/profile'
+import { rankPlateView } from '../features/rank/rankBadgeView'
 import {
   ammoTagButtonView,
   purchaseAnnouncementView,
 } from '../features/shop/purchaseHud'
 import { shopDialogView } from '../features/shop/shopView'
 import { victorySupportView } from '../features/support/supportView'
+import { hasUnseenLook } from '../features/unlocks/unlocks'
 import { keyGrabToastView } from '../input/keyGrab'
 import {
   ghostSticksView,
@@ -37,7 +41,7 @@ import {
   stickView,
 } from '../input/touchControls'
 import { updateGreetingView } from '../platform/updateGift'
-import { landscapeFrameOffset, screenOf } from '../render/screen'
+import { isPortrait, landscapeFrameOffset, screenOf } from '../render/screen'
 import { GAME_TITLE } from '../shared/constants'
 import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from '../world/gear/powerups'
 import { TRAPS, TRAP_KIND_ORDER } from '../world/gear/traps'
@@ -52,7 +56,7 @@ import {
   meleeNameOf,
   tierName,
 } from '../world/gear/weapons'
-import { bonesBalanceOf } from '../world/heroes/rank'
+import { bonesBalanceOf, rankOf, totalPointsOf } from '../world/heroes/rank'
 import { CREW_AWARD_NAMES } from '../world/names'
 import { focusOf } from '../world/party/party'
 import { DIFFICULTIES } from '../world/run/difficulty'
@@ -68,11 +72,12 @@ import { isShopOpenFor } from '../world/shop/shop'
 import { FINAL_WAVE } from '../world/waves/wavePlans'
 import { isRoundActive, roundWave } from '../world/waves/waves'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../world/zombies/zombies'
-import { CoopBinding } from './bindings'
+import { CoopBinding, ProfileBinding, ProfileDialogBinding } from './bindings'
 import {
   ApplicationComposition,
   type ApplicationViewBuilder,
 } from './composition'
+import { closeButtonView, dialogShell } from './dialogs'
 import { gameStageView } from './layers'
 import { isLobbyUp } from './menuState'
 import { Message, type PressedPointer } from './message'
@@ -265,6 +270,83 @@ const toPressedPointer = (
   }
 }
 
+// THE PROFILE
+
+// NOTE: the root's fields the Profile's tabs show, and no more.
+const profileInputs = (model: Model): ProfileViewInputs => ({
+  look: {
+    appearance: model.appearance,
+    calling: startingCallingOf(model),
+    screenMs: model.screenMs,
+    bought: model.boughtCosmetics,
+    rank: model.rank,
+    fresh: model.freshUnlocks,
+  },
+  isLookNew: hasUnseenLook(
+    rankOf(totalPointsOf(model.rank)),
+    model.seenUnlocks,
+  ),
+  isPortrait: isPortrait(model),
+  device: model.lastDevice,
+  sync: {
+    state: model.syncState,
+    scope: model.playerScopeStatus,
+    lastRun: model.lastRunSync,
+  },
+  settings: {
+    sound: model.soundSetting,
+    music: model.musicSetting,
+    shake: model.shakeSetting,
+    cursor: model.cursorSetting,
+    fullscreen: model.fullscreen,
+    rotation: model.rotationSetting,
+    shareStats: model.shareStats,
+    screenFit: model.screenFit,
+    orientationLock: model.orientationLock,
+  },
+})
+
+// NOTE: the Profile's Dialog is the root's (menuState reads it); the Profile
+// Block draws the tabs and pages inside it, and the root the rank plate.
+const profileDialogView = (model: Model, h: ApplicationViewBuilder): Html =>
+  dialogShell(
+    {
+      dialog: model.profileDialog,
+      dialogClass: 'profile-dialog',
+      backdropClass: 'profile-backdrop',
+      panelClass: 'profile',
+      dialogAttributes: [
+        h.DataAttribute('tab', tabOf(model.profile)),
+        h.DataAttribute('device', model.lastDevice),
+      ],
+      panelView: ({ title, description, closeButton }) => [
+        h.h2([...title, h.Class('sr-only')], ['Profile']),
+        h.p(
+          [...description, h.Class('sr-only')],
+          ['Your look, your name, your devices, and the settings.'],
+        ),
+        closeButtonView(
+          {
+            attributes: closeButton,
+            className: 'panel-close',
+            label: 'Close',
+          },
+          h,
+        ),
+        h.block(
+          ProfileBinding.embedView({
+            slotId: 'profile-panel',
+            model: model.profile,
+            viewInputs: profileInputs(model),
+          }),
+        ),
+        rankPlateView(model, h),
+      ],
+      binding: ProfileDialogBinding,
+    },
+    h,
+  )
+
 // VIEW
 
 // NOTE: Foldkit knows a view by the very function makeView returns (its view
@@ -329,7 +411,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         shopDialogView(model, h),
         manorHandView(model, h),
         menuPanelView(model, h),
-        profileView(model, h),
+        profileDialogView(model, h),
         lobbyView(model, h),
         h.block(
           CoopBinding.embedView({

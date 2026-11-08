@@ -21,9 +21,10 @@ import {
   freshStats,
   noKills,
 } from '../../app/model'
-import { init, initialModel, update } from '../../app/pureApp'
+import { Child, init, initialModel, update } from '../../app/pureApp'
 import { WriteSave } from '../../app/update/save'
 import { SendRunSummary } from '../../app/update/settle'
+import { Message as ProfileMessage } from '../../features/profile/message'
 import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '../../shared/constants'
 import { SURFACE, closeDialog, jsonOf, showDialog } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
@@ -422,7 +423,11 @@ describe('the sharing setting', () => {
     story(
       update,
       given(saved),
-      message(Message.ClickedShareStatsButton()),
+      message(
+        Child.profile(
+          ProfileMessage.ClickedSettingTile({ setting: 'ShareStats' }),
+        ),
+      ),
       model(({ shareStats }) => {
         expect(shareStats).toBe('Off')
       }),

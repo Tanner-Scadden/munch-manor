@@ -27,7 +27,7 @@ import {
   freshLessons,
   noPractice,
 } from '../app/model'
-import { lookInOwned } from '../features/look/closet'
+import { lookInOwned } from '../features/profile/blocks/look/closet'
 import { cleanName } from '../features/profile/profile'
 import { unlocksAt } from '../features/unlocks/unlocks'
 import {

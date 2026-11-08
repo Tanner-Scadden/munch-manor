@@ -4,20 +4,17 @@ import { DialogBlock } from '@foldkit/ui'
 
 import { CoopBlock } from '../features/coop'
 import { forgetAskedMode } from '../features/home/update'
-import { CharacterBlock } from '../features/look/block'
-import { ProfileTabsBlock } from '../features/profile/profile'
-import { keepName, switchTab } from '../features/profile/update'
+import { ProfileBlock } from '../features/profile/block'
 import { isGuideEscape, reopenForGuide } from '../features/shop/guideUpdate'
 import { ShopTabsBlock } from '../features/shop/shopTabs'
 import { leaveShop, selectCategory } from '../features/shop/update'
 import {
-  CharacterBinding,
   CoopBinding,
   HandDialogBinding,
   HomeScreenStepsBinding,
   PanelDialogBinding,
+  ProfileBinding,
   ProfileDialogBinding,
-  ProfileTabsBinding,
   ShopDialogBinding,
   ShopTabsBinding,
   UpdateGreetingBinding,
@@ -37,7 +34,21 @@ import {
   leftRoom,
   neededNewerBuild,
 } from './update/coop'
-import { buyPreview, chooseLook, flipLook, rollLook } from './update/look'
+import {
+  buyLook,
+  chooseLook,
+  clickedSetting,
+  flipLook,
+  keepName,
+  keepProfileName,
+  linkedDevice,
+  resetTutorial,
+  rollLook,
+  rollNameDice,
+  showedLinkCode,
+  submitName,
+  switchedTab,
+} from './update/profile'
 
 // NOTE: each child's OutMessage fold. The Bindings live in src/app/bindings.ts,
 // where Steps and views reach them; these folds call Steps, so they stay
@@ -63,7 +74,7 @@ const ProfileDialogBindingWithOutMessagePolicy =
   ProfileDialogBinding.withOutMessagePolicy({
     fold: ApplicationBlock.makeOutMessageFold(DialogBlock, {
       Opened: makeNoopStep,
-      Closed: () => keepName,
+      Closed: () => keepProfileName,
       CompletedClose: makeNoopStep,
     }),
   })
@@ -94,13 +105,6 @@ const UpdateGreetingBindingWithOutMessagePolicy =
 
 // TABS
 
-const ProfileTabsBindingWithOutMessagePolicy =
-  ProfileTabsBinding.withOutMessagePolicy({
-    fold: ApplicationBlock.makeOutMessageFold(ProfileTabsBlock, {
-      Selected: ({ value }) => switchTab(value),
-    }),
-  })
-
 const ShopTabsBindingWithOutMessagePolicy =
   ShopTabsBinding.withOutMessagePolicy({
     fold: ApplicationBlock.makeOutMessageFold(ShopTabsBlock, {
@@ -108,17 +112,28 @@ const ShopTabsBindingWithOutMessagePolicy =
     }),
   })
 
-// THE LOOK TAB
+// THE PROFILE
 
-const CharacterBindingWithOutMessagePolicy =
-  CharacterBinding.withOutMessagePolicy({
-    fold: ApplicationBlock.makeOutMessageFold(CharacterBlock, {
-      ChoseLook: ({ part, value }) => chooseLook(part, value),
-      FlippedLook: ({ toggle }) => flipLook(toggle),
-      RolledDice: () => rollLook,
-      ClickedBuy: () => buyPreview,
-    }),
-  })
+// NOTE: the Profile tells what happened; the root keeps the name, toggles
+// the setting, forgets the tutorial, changes the look and the Bones, and
+// plays the sound. The dice and a Look pick answer back through
+// ProfileBinding (src/app/update/profile.ts).
+const ProfileBindingWithOutMessagePolicy = ProfileBinding.withOutMessagePolicy({
+  fold: ApplicationBlock.makeOutMessageFold(ProfileBlock, {
+    SwitchedTab: switchedTab,
+    KeptName: ({ name }) => keepName(name),
+    SubmittedName: ({ name }) => submitName(name),
+    RolledNameDice: ({ current }) => rollNameDice(current),
+    ClickedSetting: ({ setting }) => clickedSetting(setting),
+    ConfirmedTutorialReset: () => resetTutorial,
+    ShowedLinkCode: () => showedLinkCode,
+    LinkedDevice: () => linkedDevice,
+    ChoseLook: chooseLook,
+    FlippedLook: ({ toggle }) => flipLook(toggle),
+    RolledLookDice: () => rollLook,
+    ClickedBuyLook: buyLook,
+  }),
+})
 
 // CO-OP
 
@@ -138,12 +153,11 @@ export const ApplicationComposition = makeComposition({
     ShopDialogBindingWithOutMessagePolicy,
     ShopTabsBindingWithOutMessagePolicy,
     ProfileDialogBindingWithOutMessagePolicy,
-    ProfileTabsBindingWithOutMessagePolicy,
     PanelDialogBindingWithOutMessagePolicy,
     HandDialogBindingWithOutMessagePolicy,
     HomeScreenStepsBindingWithOutMessagePolicy,
     UpdateGreetingBindingWithOutMessagePolicy,
-    CharacterBindingWithOutMessagePolicy,
+    ProfileBindingWithOutMessagePolicy,
     CoopBindingWithOutMessagePolicy,
   ],
   mounts,

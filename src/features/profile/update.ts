@@ -1,138 +1,219 @@
-import { Function, Option } from 'effect'
-import { Update } from 'foldkit'
+import { Effect, Schema, String, pipe } from 'effect'
+import { Dom } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { ProfileDialogBinding } from '../../app/bindings'
-import { makeStep } from '../../app/definition'
-import { MenuState, isProfileOpen, menuState } from '../../app/menuState'
-import type { Model, ProfileTab } from '../../app/model'
-import { stepWhen } from '../../app/stepWhen'
-import { playSounds, uiCue } from '../../app/update/sound'
+import { LinkFlow } from '../../platform/playerSync'
+import { PlayerStore } from '../../platform/store'
+import { ProfileBlock, makeNoopStep, makeOutMessageStep } from './block'
+import { ProfileComposition } from './composition'
+import { Message, OutMessage } from './message'
+import type { Model } from './model'
 import {
-  type UpdateReturn,
-  type UpdateStep,
-  modelStep,
-  unchanged,
-  withInput,
-} from '../../app/update/step'
-import { isCharacterKey, releaseAll } from '../../input/input'
-import { markLooksSeen } from '../unlocks/update'
-import {
+  KEEP_TUTORIAL_BUTTON_ID,
+  RESET_TUTORIAL_BUTTON_ID,
   cleanName,
   draftName,
-  rollName,
   shownName,
-  withProfileFx,
 } from './profile'
+import { keepName, submitName } from './steps'
 
-// NAME
+// COMMANDS
 
-// NOTE: the name is kept, and so saved and synced, when the player is done
-// typing: Enter, leaving the field, another tab, or closing the Profile.
-// Saving on every key would send a sync mutation per letter.
-const keepNameModel = (model: Model): Model => {
-  const name = cleanName(model.profile.nameDraft)
-  return modifyFields(model, {
-    playerName: () => name,
-    profile: profile => modifyFields(profile, { nameDraft: () => name }),
+export const RequestLinkCode = ProfileBlock.makeCommand('RequestLinkCode', {
+  messages: [Message.SucceededRequestLinkCode, Message.FailedRequestLinkCode],
+  handler: function* () {
+    return () =>
+      pipe(
+        PlayerStore.use(store => store.requestLinkCode),
+        Effect.map(code => Message.SucceededRequestLinkCode({ code })),
+        Effect.catch(error =>
+          Effect.succeed(
+            Message.FailedRequestLinkCode({ problem: error.problem }),
+          ),
+        ),
+      )
+  },
+})
+
+export const RedeemLinkCode = ProfileBlock.makeCommand('RedeemLinkCode', {
+  args: { code: Schema.String },
+  messages: [Message.SucceededRedeemLinkCode, Message.FailedRedeemLinkCode],
+  handler: function* () {
+    return ({ code }) =>
+      pipe(
+        PlayerStore.use(store => store.redeemLinkCode(code)),
+        Effect.as(Message.SucceededRedeemLinkCode()),
+        Effect.catch(error =>
+          Effect.succeed(
+            Message.FailedRedeemLinkCode({ problem: error.problem }),
+          ),
+        ),
+      )
+  },
+})
+
+export const FocusTutorialReset = ProfileBlock.makeCommand(
+  'FocusTutorialReset',
+  {
+    args: { id: Schema.String },
+    messages: [Message.CompletedFocusTutorialReset],
+    handler: function* () {
+      return ({ id }) =>
+        Dom.focus(`#${id}`).pipe(
+          Effect.ignore,
+          Effect.as(Message.CompletedFocusTutorialReset()),
+        )
+    },
+  },
+)
+
+// LINKING
+
+const requestLinkCode = (model: Model) => ({
+  model: modifyFields(model, { linkFlow: () => LinkFlow.Requesting() }),
+  commands: [RequestLinkCode()],
+})
+
+const startLinking = (model: Model) =>
+  LinkFlow.match(model.linkFlow, {
+    Requesting: () => ({ model }),
+    Redeeming: () => ({ model }),
+    Idle: () => requestLinkCode(model),
+    Showing: () => requestLinkCode(model),
+    Entering: () => requestLinkCode(model),
+    Linked: () => requestLinkCode(model),
+    Failed: () => requestLinkCode(model),
   })
-}
 
-export const keepName = modelStep(keepNameModel)
-
-export const typeName: {
-  (value: string): (model: Model) => UpdateReturn
-  (model: Model, value: string): UpdateReturn
-} = Function.dual(2, (model: Model, value: string): UpdateReturn => ({
-  model: isProfileOpen(model)
+const typeLinkCode = (model: Model, value: string) => ({
+  model: LinkFlow.isAnyOf(['Entering', 'Failed'])(model.linkFlow)
     ? modifyFields(model, {
-        profile: profile =>
-          modifyFields(profile, {
-            nameDraft: () => draftName(value),
-            fx: () => 'Still',
+        linkFlow: () =>
+          LinkFlow.Entering({
+            code: String.slice(0, 7)(String.toUpperCase(value)),
           }),
       })
     : model,
-}))
-
-export const submitName = stepWhen(isProfileOpen, model =>
-  playSounds([uiCue('Pop')])(keepNameModel(model)),
-)
-
-export const leaveNameInput = stepWhen(isProfileOpen, keepName)
-
-export const rollNameDice = stepWhen(isProfileOpen, model => {
-  const [rngState, name] = rollName(
-    model.cosmeticRngState,
-    shownName(cleanName(model.profile.nameDraft)),
-  )
-  return playSounds([uiCue('LootPop')])(
-    withProfileFx(
-      modifyFields(model, {
-        cosmeticRngState: () => rngState,
-        playerName: () => name,
-        profile: profile => modifyFields(profile, { nameDraft: () => name }),
-      }),
-      'Spin',
-    ),
-  )
 })
 
-// DIALOG
-
-// NOTE: the Profile opens from the bare home menu, and from the end screens
-// once their grace is past, as the character picker always did. Never in a
-// run, and never over co-op or another dialog.
-const canOpenProfile = (model: Model): boolean =>
-  MenuState.matchOrElse(
-    menuState(model),
-    {
-      Home: () => true,
-      EndScreen: ({ isPastGrace }) => isPastGrace,
-    },
-    () => false,
-  )
-
-const showTab = (model: Model, tab: ProfileTab): Model =>
-  modifyFields(tab === 'Look' ? markLooksSeen(model) : model, {
-    tutorialReset: () => 'Idle',
-    profile: profile =>
-      modifyFields(profile, {
-        tab: () => tab,
-        fx: () => 'Still',
-        maybePreview: () => Option.none(),
+const submitLinkCode = (model: Model) =>
+  LinkFlow.match(model.linkFlow, {
+    Entering: ({ code }) => ({
+      model: modifyFields(model, {
+        linkFlow: () => LinkFlow.Redeeming({ code }),
       }),
+      commands: [RedeemLinkCode({ code })],
+    }),
+    Idle: () => ({ model }),
+    Requesting: () => ({ model }),
+    Showing: () => ({ model }),
+    Redeeming: () => ({ model }),
+    Linked: () => ({ model }),
+    Failed: () => ({ model }),
   })
 
-const prepareProfile =
-  (tab: ProfileTab): UpdateStep =>
-  stepModel => ({
-    model: withInput(
-      modifyFields(showTab(stepModel, tab), {
-        profile: profile =>
-          modifyFields(profile, { nameDraft: () => stepModel.playerName }),
-      }),
-      releaseAll,
-    ),
-  })
+// TUTORIAL RESET
 
-export const openProfile = (tab: ProfileTab) =>
-  makeStep(model =>
-    canOpenProfile(model)
-      ? Update.combineSteps([
-          prepareProfile(tab),
-          ProfileDialogBinding.requestOpen(),
-        ])
-      : unchanged,
-  )
+// NOTE: the reset asks first, on the Settings tab only. Its answer moves
+// focus to the button left standing; RESET also tells the root, which
+// forgets the lessons.
+const askToResetTutorial = (model: Model) =>
+  model.tab === 'Settings'
+    ? {
+        model: modifyFields(model, { tutorialReset: () => 'Asking' }),
+        commands: [FocusTutorialReset({ id: KEEP_TUTORIAL_BUTTON_ID })],
+      }
+    : { model }
 
-export const profileFromKey = (code: string) =>
-  makeStep(() => (isCharacterKey(code) ? openProfile('Look') : unchanged))
+const confirmTutorialReset = (model: Model) =>
+  model.tutorialReset === 'Asking'
+    ? {
+        model: modifyFields(model, { tutorialReset: () => 'Done' }),
+        commands: [FocusTutorialReset({ id: RESET_TUTORIAL_BUTTON_ID })],
+        outMessage: OutMessage.ConfirmedTutorialReset(),
+      }
+    : { model }
 
-// TABS
+const cancelTutorialReset = (model: Model) =>
+  model.tutorialReset === 'Asking'
+    ? {
+        model: modifyFields(model, { tutorialReset: () => 'Idle' }),
+        commands: [FocusTutorialReset({ id: RESET_TUTORIAL_BUTTON_ID })],
+      }
+    : { model }
 
-export const switchTab = (tab: ProfileTab): UpdateStep =>
-  stepWhen(
-    model => tab !== model.profile.tab,
-    model => playSounds([uiCue('Whoosh')])(showTab(keepNameModel(model), tab)),
-  )
+// UPDATE
+
+export const update = ProfileComposition.makeUpdate({
+  UpdatedNameDraft: (model, { value }) => ({
+    model: modifyFields(model, {
+      nameDraft: () => draftName(value),
+      fx: () => 'Still',
+    }),
+  }),
+
+  SubmittedName: submitName,
+
+  BlurredNameInput: keepName,
+
+  // NOTE: the dice draw from the root's seeded generator: the root rolls
+  // and answers with InformedOfRolledName. The roll never lands on the name
+  // showing.
+  ClickedNameDiceButton: makeOutMessageStep(model =>
+    OutMessage.RolledNameDice({
+      current: shownName(cleanName(model.nameDraft)),
+    }),
+  ),
+
+  ClickedLinkDeviceButton: startLinking,
+
+  SucceededRequestLinkCode: (model, { code }) => ({
+    model: modifyFields(model, { linkFlow: () => LinkFlow.Showing({ code }) }),
+    outMessage: OutMessage.ShowedLinkCode(),
+  }),
+
+  FailedRequestLinkCode: (model, { problem }) => ({
+    model: modifyFields(model, {
+      linkFlow: () => LinkFlow.Failed({ problem }),
+    }),
+  }),
+
+  ClickedUseCodeButton: model => ({
+    model: modifyFields(model, {
+      linkFlow: () => LinkFlow.Entering({ code: '' }),
+    }),
+  }),
+
+  UpdatedLinkCode: (model, { value }) => typeLinkCode(model, value),
+
+  SubmittedLinkCode: submitLinkCode,
+
+  SucceededRedeemLinkCode: model => ({
+    model: modifyFields(model, { linkFlow: () => LinkFlow.Linked() }),
+    outMessage: OutMessage.LinkedDevice(),
+  }),
+
+  FailedRedeemLinkCode: (model, { problem }) => ({
+    model: modifyFields(model, {
+      linkFlow: () => LinkFlow.Failed({ problem }),
+    }),
+  }),
+
+  ClickedCancelLinkButton: model => ({
+    model: modifyFields(model, { linkFlow: () => LinkFlow.Idle() }),
+  }),
+
+  ClickedSettingTile: makeOutMessageStep.fromMessage(({ setting }) =>
+    OutMessage.ClickedSetting({ setting }),
+  ),
+
+  ClickedResetTutorialButton: askToResetTutorial,
+
+  ClickedConfirmResetTutorialButton: confirmTutorialReset,
+
+  ClickedCancelResetTutorialButton: cancelTutorialReset,
+
+  CompletedFocusTutorialReset: makeNoopStep(),
+
+  CompletedFocusLookOption: makeNoopStep(),
+})
