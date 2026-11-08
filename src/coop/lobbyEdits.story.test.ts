@@ -16,9 +16,10 @@ import { GOOFY_NAMES } from '../profile'
 import { roomSettingsOf } from '../roomWorld'
 import { Message, OutMessage } from './message'
 import { LobbyChange, type Model } from './model'
+import { update } from './pureCoop'
 import { inRoom, lobbyUpdate, picked, roomOf } from './story.fixture'
 import { lobbyOf, memberOf } from './testing'
-import { ChangeLobby, FocusCoopElement, pressKey, update } from './update'
+import { ChangeLobby, FocusCoopElement, pressKey } from './update'
 
 describe('picking a hero in the lobby', () => {
   const ANA_RANK_4 = memberOf(0, 'Ana', true, '', false, 4)

@@ -3,7 +3,7 @@ import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { ShopDialogBinding } from '../bindings'
-import { ApplicationDefinition, makeStep } from '../definition'
+import { ApplicationBlock, makeStep } from '../definition'
 import { isShopDialogOpen } from '../menuState'
 import { Message } from '../message'
 import { type Model, ShopGuide, type ShopGuideSection } from '../model'
@@ -22,19 +22,16 @@ import { type UpdateReturn, type UpdateStep, modelStep } from './step'
 
 const FocusTarget = Schema.Literals(['Back', 'Open'])
 
-export const FocusShopGuide = ApplicationDefinition.makeCommand(
-  'FocusShopGuide',
-  {
-    args: { target: FocusTarget },
-    messages: [Message.CompletedFocusShopGuide],
-    handler: function* () {
-      return ({ target }) =>
-        Dom.focus(
-          `#${target === 'Back' ? SHOP_GUIDE_BACK_ID : SHOP_GUIDE_OPEN_ID}`,
-        ).pipe(Effect.ignore, Effect.as(Message.CompletedFocusShopGuide()))
-    },
+export const FocusShopGuide = ApplicationBlock.makeCommand('FocusShopGuide', {
+  args: { target: FocusTarget },
+  messages: [Message.CompletedFocusShopGuide],
+  handler: function* () {
+    return ({ target }) =>
+      Dom.focus(
+        `#${target === 'Back' ? SHOP_GUIDE_BACK_ID : SHOP_GUIDE_OPEN_ID}`,
+      ).pipe(Effect.ignore, Effect.as(Message.CompletedFocusShopGuide()))
   },
-)
+})
 
 export const openShopGuide = (model: Model): UpdateReturn =>
   isShopDialogOpen(model)

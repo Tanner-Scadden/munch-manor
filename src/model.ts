@@ -10,7 +10,6 @@ import {
   Decal,
   DifficultyCard,
   FullscreenSetting,
-  HOME_SCREEN_STEPS_ID,
   HintBand,
   HomeButton,
   HomeMenu,
@@ -32,8 +31,6 @@ import {
   RankGain,
   RankPaid,
   RunTally,
-  SHOP_DIALOG_ID,
-  SHOP_TABS_ID,
   SaveStatus,
   ScreenFit,
   ShopGuide,
@@ -43,7 +40,6 @@ import {
   TouchControls,
   Tour,
   TutorialReset,
-  UPDATE_GREETING_ID,
   UpdateGift,
   cosmeticSeedOf,
   defaultAppearance,
@@ -350,14 +346,6 @@ export const Model = Schema.Struct({
 })
 export type Model = typeof Model.Type
 
-const PROFILE_DIALOG_ID = 'profile'
-const PROFILE_TABS_ID = 'profile-tabs'
-
-// NOTE: a closed Dialog, Tabs, or RadioGroup has no Commands to run, so
-// the Model takes each one's initial state as it is. The Bindings in
-// src/composition.ts leave these fields to the root (`init: false`).
-const closedDialog = (id: string) => DialogBlock.init({ id }).model
-
 const closedProfile: ProfilePanel = {
   tab: 'Look',
   nameDraft: '',
@@ -366,23 +354,6 @@ const closedProfile: ProfilePanel = {
   closetCue: { part: 'Hat', value: 'None', kind: 'Still', count: 0 },
   maybePreview: Option.none(),
 }
-
-const closedCharacterPicker: CharacterPicker = {
-  section: 'Body',
-  sections: SectionRadioGroupBlock.init({ id: 'look-sections' }).model,
-  body: PartRadioGroupBlock.init({ id: 'look-body' }).model,
-  hairStyle: PartRadioGroupBlock.init({ id: 'look-hair-style' }).model,
-  hairColor: PartRadioGroupBlock.init({ id: 'look-hair-color' }).model,
-  skinTone: PartRadioGroupBlock.init({ id: 'look-skin-tone' }).model,
-  shirtColor: PartRadioGroupBlock.init({ id: 'look-shirt-color' }).model,
-  outfit: PartRadioGroupBlock.init({ id: 'look-outfit' }).model,
-  print: PartRadioGroupBlock.init({ id: 'look-print' }).model,
-  hat: PartRadioGroupBlock.init({ id: 'look-hat' }).model,
-  gunSkin: PartRadioGroupBlock.init({ id: 'look-gun-skin' }).model,
-}
-
-const PANEL_DIALOG_ID = 'menu-panel'
-const HAND_DIALOG_ID = 'manor-hand'
 
 export const LOAD_STEPS: ReadonlyArray<LoadStep> = [
   'Save',
@@ -411,7 +382,25 @@ export const noBests: PlayerBests = {
   },
 }
 
-export const initialModel: Model = {
+// NOTE: the fields a child Block owns, each started by its own init through
+// its Binding (src/bindings.ts) when the root's init runs.
+type ChildField =
+  | 'shopDialog'
+  | 'shopTabs'
+  | 'homeScreenSteps'
+  | 'updateGreeting'
+  | 'character'
+  | 'profileDialog'
+  | 'profileTabs'
+  | 'coop'
+  | 'panelDialog'
+  | 'handDialog'
+
+// NOTE: the root's own fields as a fresh game starts them. The root's init
+// (src/main.ts) returns these, and the Bindings add each child's.
+export type OwnModel = Omit<Model, ChildField>
+
+export const initialModel: OwnModel = {
   phase: Phase.Ready(),
   pacing: calmPacing,
   boss: Boss.Absent(),
@@ -433,8 +422,6 @@ export const initialModel: Model = {
   pantry: barePantry,
   stove: freshStove(DEFAULT_SEED),
   gasValve: shutValve,
-  shopDialog: closedDialog(SHOP_DIALOG_ID),
-  shopTabs: ShopTabsBlock.init({ id: SHOP_TABS_ID }).model,
   shopChatter: ShopChatter.Greeting(),
   shopGuide: ShopGuide.Closed(),
   elapsedMs: 0,
@@ -487,21 +474,15 @@ export const initialModel: Model = {
   screenFit: 'Unknown',
   fullscreen: 'Off',
   homeScreenTip: 'Unseen',
-  homeScreenSteps: closedDialog(HOME_SCREEN_STEPS_ID),
   pageVisibility: 'Visible',
   missedKeyDowns: 0,
   maybeNewerBuild: Option.none(),
   updateGift: 'Wrapped',
-  updateGreeting: closedDialog(UPDATE_GREETING_ID),
   installOffer: 'None',
   maybeSupportUrl: maybeSupportUrlOf(SUPPORT_URL),
   appearance: defaultAppearance,
-  character: closedCharacterPicker,
   profile: closedProfile,
-  profileDialog: closedDialog(PROFILE_DIALOG_ID),
-  profileTabs: ProfileTabsBlock.init({ id: PROFILE_TABS_ID }).model,
   playerName: '',
-  coop: Coop.initialModel,
   shakeSetting: 'On',
   rotationSetting: 'Landscape',
   orientationLock: 'Unsupported',
@@ -515,8 +496,6 @@ export const initialModel: Model = {
   maybeHomeFocus: Option.none(),
   panel: 'HowToPlay',
   maybeOpenHelpCard: Option.none(),
-  panelDialog: closedDialog(PANEL_DIALOG_ID),
-  handDialog: closedDialog(HAND_DIALOG_ID),
   bests: noBests,
   runTally: RunTally.Uncounted(),
   rankPaid: noRankPaid,

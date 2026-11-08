@@ -17,9 +17,10 @@ import { describe, test } from 'vitest'
 
 import { PREPARATION_MS } from './constants'
 import { Message } from './message'
-import { FridgeDoor, type Model, Phase, initialModel } from './model'
+import { FridgeDoor, type Model, Phase } from './model'
 import { home } from './model.fixture'
 import { modifyFocus } from './party'
+import { initialModel } from './pureApp'
 import { prizeUnlockId } from './shopGuide'
 import {
   ROOT,

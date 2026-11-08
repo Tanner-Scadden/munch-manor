@@ -12,7 +12,6 @@ import { describe, expect, test } from 'vitest'
 import { PARLOUR } from './arena'
 import { DECAL_MAX, FIXED_STEP_MS, PARTICLE_MAX } from './constants'
 import { healthBarShapes } from './healthBarView'
-import { update } from './main'
 import { Message } from './message'
 import {
   AudioState,
@@ -26,6 +25,7 @@ import {
   ZombieKind,
 } from './model'
 import { quietWave } from './model.fixture'
+import { update } from './pureApp'
 import { frameAt } from './sprite'
 import {
   KABOOMER_FUSE_MAX,

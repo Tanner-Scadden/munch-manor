@@ -17,7 +17,6 @@ import {
   prizeOddsFor,
   pullFridge,
 } from './leftovers'
-import { update } from './main'
 import {
   type Model,
   Pantry,
@@ -36,6 +35,7 @@ import {
 import { PANTRY_RULES, maybeStash, pantrySpotOf } from './pantry'
 import { focusOf, maybePlayerAt, modifyFocus, seatCrew } from './party'
 import { offersOf } from './purchase'
+import { update } from './pureApp'
 import {
   FRIDGE_OPEN_TICKS,
   bulletInto,

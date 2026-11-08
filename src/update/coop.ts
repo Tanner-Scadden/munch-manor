@@ -11,12 +11,11 @@ import { IS_COOP_RELEASED } from '../coop/release'
 import { readRoomLink } from '../coop/roomState'
 import * as Coop from '../coop/update'
 import { playRoomFrame } from '../coopPlay'
-import { ApplicationDefinition, makeStep } from '../definition'
+import { ApplicationBlock, makeStep } from '../definition'
 import { isCoopKey } from '../home'
 import { MenuState, menuState } from '../menuState'
 import { Message } from '../message'
 import type { Model } from '../model'
-import { isLearned } from '../onboarding'
 import { isLeftFromRoom, maybeRunRoom } from '../onlineRun'
 import { type Calling, lookCodeOf } from '../playerData'
 import { cleanName, joinName } from '../profile'
@@ -37,7 +36,7 @@ import { FetchBuild } from './version'
 // COMMAND
 
 // NOTE: a `?room=CODE` link, read once the splash is gone, joins that room.
-export const ReadRoomLink = ApplicationDefinition.makeCommand('ReadRoomLink', {
+export const ReadRoomLink = ApplicationBlock.makeCommand('ReadRoomLink', {
   messages: [Message.CompletedReadRoomLink],
   handler: function* () {
     return () =>
@@ -54,12 +53,6 @@ export const askForRoomLink: UpdateStep = model => ({
   model,
   commands: [ReadRoomLink()],
 })
-
-// NOTE: co-op opens only for a player who has finished the tutorial
-// (MULTIPLAYER.md, decision 14): wave 1 cleared and wave 2 started from its
-// open break.
-export const hasFinishedTutorial = (model: Model): boolean =>
-  isLearned(model.lessons.openBreak)
 
 export const isCoopOpen = (model: Model): boolean => Coop.isOpen(model.coop)
 
@@ -151,12 +144,12 @@ export const pressCoopKey = (code: string) =>
 export const releaseCoopKey = (code: string) =>
   makeStep(() => CoopBinding.requestReleaseKey({ code }))
 
-// NOTE: co-op opens over the bare home menu. A room link read at boot may
-// land while the update greeting is up: co-op opens under it, so neither
-// the link nor the party is lost.
+// NOTE: co-op opens over the bare home menu, for every player, a new one
+// too (MULTIPLAYER.md, decision 14). A room link read at boot may land while
+// the update greeting is up: co-op opens under it, so neither the link nor
+// the party is lost.
 const canOpenCoop = (model: Model): boolean =>
   IS_COOP_RELEASED &&
-  hasFinishedTutorial(model) &&
   MenuState.isAnyOf(['Home', 'UpdateGreeting'])(menuState(model))
 
 export const openCoop = (maybeCode: Option.Option<string>) =>

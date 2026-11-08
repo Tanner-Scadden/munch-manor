@@ -4,7 +4,8 @@ import './spriteAtlasBoot'
 import { Effect } from 'effect'
 import { Program, Runtime } from 'foldkit'
 
-import { ApplicationBlock } from './block'
+import { layer } from './block'
+import { ApplicationBlock } from './definition'
 import { preventPageZoom } from './noZoom'
 import { ApplicationLayer } from './services'
 
@@ -15,6 +16,7 @@ Effect.runSync(preventPageZoom)
 
 const program = Program.make({
   block: ApplicationBlock,
+  layer,
   container: document.getElementById('root'),
   devTools: {
     excludeFromHistory: [

@@ -7,10 +7,10 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, it, test } from '@effect/vitest'
 
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from './constants'
-import { update } from './main'
 import { Message } from './message'
-import { type Model, Phase, initialModel } from './model'
+import { type Model, Phase } from './model'
 import { WAVE_3_BREAK, fighting } from './model.fixture'
+import { initialModel, update } from './pureApp'
 import { isUsingServiceWorker } from './serviceWorker'
 import {
   maybePageShowMessage,

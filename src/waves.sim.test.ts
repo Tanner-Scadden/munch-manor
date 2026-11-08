@@ -7,10 +7,10 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { PLAYER_MAX_HP } from './constants'
-import { update } from './main'
 import { type Model, Phase } from './model'
 import { readyModel } from './model.fixture'
 import { focusOf } from './party'
+import { update } from './pureApp'
 import { scoreOf } from './stats'
 import {
   holdFireToward,

@@ -10,7 +10,7 @@ import {
   pipe,
 } from 'effect'
 
-import { type ClientFrame, RoomRefusal } from '@munch/netcode'
+import type { ClientFrame, RoomRefusal } from '@munch/netcode'
 import {
   LobbyEvent,
   type QuickPlay,
@@ -79,16 +79,20 @@ export class CoopNet extends Context.Service<
 
 // LIVE
 
+const PROBLEM_OF_REFUSAL: {
+  readonly [Tag in RoomRefusal['_tag']]: CoopProblem
+} = {
+  NoRoom: 'NoRoom',
+  Full: 'Full',
+  Started: 'Started',
+  RateLimited: 'Busy',
+  Unauthorized: 'Offline',
+  BadRequest: 'Offline',
+  Unavailable: 'Offline',
+}
+
 const problemOfRefusal = (refusal: RoomRefusal): CoopProblem =>
-  RoomRefusal.match(refusal, {
-    NoRoom: () => 'NoRoom',
-    Full: () => 'Full',
-    Started: () => 'Started',
-    RateLimited: () => 'Busy',
-    Unauthorized: () => 'Offline',
-    BadRequest: () => 'Offline',
-    Unavailable: () => 'Offline',
-  })
+  PROBLEM_OF_REFUSAL[refusal._tag]
 
 type LobbyWrite = (
   change: LobbyChange | 'Left',

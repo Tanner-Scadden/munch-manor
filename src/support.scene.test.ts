@@ -15,11 +15,11 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test, expect as vitestExpect } from 'vitest'
 
 import { RESTART_GRACE_MS } from './constants'
-import { update } from './main'
 import menuCss from './menu.css?raw'
 import { Message } from './message'
 import { type Model, Phase } from './model'
 import { fighting, home, inPortrait, withNewerBuild } from './model.fixture'
+import { update, view } from './pureApp'
 import {
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
@@ -31,7 +31,6 @@ import {
   settleEndShareOf,
 } from './testing'
 import { ClickSupportLink } from './update/home'
-import { view } from './view'
 import { pause } from './waves'
 
 const TEST_LINK = 'https://buy.stripe.com/test_coffee'

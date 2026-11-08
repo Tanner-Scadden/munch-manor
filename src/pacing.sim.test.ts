@@ -8,7 +8,6 @@ import { describe, expect, test } from 'vitest'
 
 import { PARLOUR, nearestDoor } from './arena'
 import { doorCounts, rollWave } from './endlessWaves'
-import { update } from './main'
 import { Message } from './message'
 import {
   Alarm,
@@ -17,8 +16,8 @@ import {
   Phase,
   type PlannedSpawn,
   calmPacing,
-  initialModel,
 } from './model'
+import { initialModel, update } from './pureApp'
 import { asVeteran } from './veteran'
 import { FINAL_WAVE } from './wavePlans'
 

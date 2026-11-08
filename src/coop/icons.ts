@@ -72,6 +72,34 @@ export const NEW_ROOM_ICON = icon([
   'BBBBBB....',
 ])
 
+// NOTE: the door a new room opens, its leaf alone: the frame and the light
+// behind it are the stylesheet's, so the leaf can swing.
+export const DOOR_ICON = icon([
+  'BBBBBBB',
+  'BDDBDDB',
+  'BDDBDDB',
+  'BDDBDDB',
+  'BBBBBBB',
+  'BDDDDDB',
+  'BDDDDYB',
+  'BDDDDDB',
+  'BBBBBBB',
+  'BDDBDDB',
+  'BDDBDDB',
+  'BBBBBBB',
+])
+
+// NOTE: a puff of dust where a player lands in a seat or leaves it.
+export const POOF_ICON = icon([
+  '....XX.......',
+  '..XXXXX..XX..',
+  '.XXXXXXXXXXX.',
+  'XXXX..XXXXXXX',
+  '.XXXXXXX..XX.',
+  '..XX..XXXXX..',
+  '.......XX....',
+])
+
 export const CROWN_ICON = icon([
   'Y..Y..Y',
   'YY.Y.YY',

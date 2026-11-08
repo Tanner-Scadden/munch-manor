@@ -13,10 +13,10 @@ import {
   playingSession,
   stagedWorld,
 } from '@game/coop/testing'
-import { update } from '@game/main'
 import { Message } from '@game/message'
-import { Lesson, type Model, Phase } from '@game/model'
+import { type Model, Phase } from '@game/model'
 import { modifySeat, modifySeatRecord } from '@game/party'
+import { update } from '@game/pureApp'
 import type { RoomWorld } from '@game/roomWorld'
 import { Session } from '@munch/netcode'
 
@@ -395,10 +395,6 @@ export const withCoop: {
     return model
   }
   const staged = modifyFields(model, {
-    lessons: lessons => ({
-      ...lessons,
-      openBreak: Lesson.Learned({ atMs: 0 }),
-    }),
     coop: coop => ({
       ...coop,
       screen: withModifiersPicked(

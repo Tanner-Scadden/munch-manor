@@ -2,7 +2,7 @@ import { Array, Effect, Function, Option, Schema, String, pipe } from 'effect'
 import { Dom } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { ApplicationDefinition } from '../definition'
+import { ApplicationBlock } from '../definition'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from '../home'
 import { isProfileOpenOn } from '../menuState'
 import { Message } from '../message'
@@ -36,7 +36,7 @@ import type { UpdateReturn, UpdateStep } from './step'
 
 // COMMAND
 
-export const ShowLoadProgress = ApplicationDefinition.makeCommand(
+export const ShowLoadProgress = ApplicationBlock.makeCommand(
   'ShowLoadProgress',
   {
     args: { loaded: Schema.Finite, total: Schema.Finite },
@@ -52,7 +52,7 @@ export const ShowLoadProgress = ApplicationDefinition.makeCommand(
   },
 )
 
-export const HideSplash = ApplicationDefinition.makeCommand('HideSplash', {
+export const HideSplash = ApplicationBlock.makeCommand('HideSplash', {
   messages: [Message.CompletedHideSplash],
   handler: function* () {
     return () =>
@@ -63,7 +63,7 @@ export const HideSplash = ApplicationDefinition.makeCommand('HideSplash', {
 // NOTE: the whole save goes along with what changed in it: the store runs
 // the changes as player scope mutations, and keeps the whole save only
 // where it still writes the localStorage copy.
-export const WriteSave = ApplicationDefinition.makeCommand('WriteSave', {
+export const WriteSave = ApplicationBlock.makeCommand('WriteSave', {
   args: { save: PlayerSave, changes: Schema.Array(PlayerChange) },
   messages: [
     Message.CompletedWriteSave,
@@ -91,27 +91,24 @@ export const WriteSave = ApplicationDefinition.makeCommand('WriteSave', {
 
 // NOTE: waits for the server to confirm or reject a recorded run. Offline,
 // it waits until the device is back and the run goes out.
-export const AwaitRunSettled = ApplicationDefinition.makeCommand(
-  'AwaitRunSettled',
-  {
-    args: { runId: Schema.String },
-    messages: [Message.SettledRecordedRun, Message.FailedAwaitRunSettled],
-    handler: function* () {
-      return ({ runId }) =>
-        pipe(
-          PlayerStore.use(store => store.awaitSettled(runId)),
-          Effect.map(settled => Message.SettledRecordedRun({ runId, settled })),
-          Effect.catch(error =>
-            Effect.succeed(
-              Message.FailedAwaitRunSettled({ runId, reason: error.reason }),
-            ),
+export const AwaitRunSettled = ApplicationBlock.makeCommand('AwaitRunSettled', {
+  args: { runId: Schema.String },
+  messages: [Message.SettledRecordedRun, Message.FailedAwaitRunSettled],
+  handler: function* () {
+    return ({ runId }) =>
+      pipe(
+        PlayerStore.use(store => store.awaitSettled(runId)),
+        Effect.map(settled => Message.SettledRecordedRun({ runId, settled })),
+        Effect.catch(error =>
+          Effect.succeed(
+            Message.FailedAwaitRunSettled({ runId, reason: error.reason }),
           ),
-        )
-    },
+        ),
+      )
   },
-)
+})
 
-export const ReloadSyncedSave = ApplicationDefinition.makeCommand(
+export const ReloadSyncedSave = ApplicationBlock.makeCommand(
   'ReloadSyncedSave',
   {
     messages: [Message.CompletedReloadSyncedSave],
@@ -130,46 +127,40 @@ export const ReloadSyncedSave = ApplicationDefinition.makeCommand(
   },
 )
 
-export const RequestLinkCode = ApplicationDefinition.makeCommand(
-  'RequestLinkCode',
-  {
-    messages: [Message.SucceededRequestLinkCode, Message.FailedRequestLinkCode],
-    handler: function* () {
-      return () =>
-        pipe(
-          PlayerStore.use(store => store.requestLinkCode),
-          Effect.map(code => Message.SucceededRequestLinkCode({ code })),
-          Effect.catch(error =>
-            Effect.succeed(
-              Message.FailedRequestLinkCode({ problem: error.problem }),
-            ),
+export const RequestLinkCode = ApplicationBlock.makeCommand('RequestLinkCode', {
+  messages: [Message.SucceededRequestLinkCode, Message.FailedRequestLinkCode],
+  handler: function* () {
+    return () =>
+      pipe(
+        PlayerStore.use(store => store.requestLinkCode),
+        Effect.map(code => Message.SucceededRequestLinkCode({ code })),
+        Effect.catch(error =>
+          Effect.succeed(
+            Message.FailedRequestLinkCode({ problem: error.problem }),
           ),
-        )
-    },
+        ),
+      )
   },
-)
+})
 
-export const RedeemLinkCode = ApplicationDefinition.makeCommand(
-  'RedeemLinkCode',
-  {
-    args: { code: Schema.String },
-    messages: [Message.SucceededRedeemLinkCode, Message.FailedRedeemLinkCode],
-    handler: function* () {
-      return ({ code }) =>
-        pipe(
-          PlayerStore.use(store => store.redeemLinkCode(code)),
-          Effect.as(Message.SucceededRedeemLinkCode()),
-          Effect.catch(error =>
-            Effect.succeed(
-              Message.FailedRedeemLinkCode({ problem: error.problem }),
-            ),
+export const RedeemLinkCode = ApplicationBlock.makeCommand('RedeemLinkCode', {
+  args: { code: Schema.String },
+  messages: [Message.SucceededRedeemLinkCode, Message.FailedRedeemLinkCode],
+  handler: function* () {
+    return ({ code }) =>
+      pipe(
+        PlayerStore.use(store => store.redeemLinkCode(code)),
+        Effect.as(Message.SucceededRedeemLinkCode()),
+        Effect.catch(error =>
+          Effect.succeed(
+            Message.FailedRedeemLinkCode({ problem: error.problem }),
           ),
-        )
-    },
+        ),
+      )
   },
-)
+})
 
-export const FocusTutorialReset = ApplicationDefinition.makeCommand(
+export const FocusTutorialReset = ApplicationBlock.makeCommand(
   'FocusTutorialReset',
   {
     args: { id: Schema.String },

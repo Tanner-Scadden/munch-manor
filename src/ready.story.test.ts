@@ -4,7 +4,6 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   Frenzy,
@@ -24,6 +23,7 @@ import {
   shownHints,
 } from './onboarding'
 import { modifyFocus } from './party'
+import { update } from './pureApp'
 import { clientToView } from './screen'
 import { accuracyPercent, totalKills } from './stats'
 import {

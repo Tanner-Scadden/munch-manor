@@ -7,7 +7,6 @@ import { addBot } from './bots'
 import { FIXED_STEP_MS, PLAYER_MAX_HP, SHAMBLER_BOUNTY } from './constants'
 import { advanceLobs } from './fridgeWeapons'
 import { FRIDGE_RULES, pullFridge } from './leftovers'
-import { update } from './main'
 import { Message } from './message'
 import {
   type Bullet,
@@ -17,7 +16,6 @@ import {
   Pierce,
   RunMode,
   type Zombie,
-  initialModel,
 } from './model'
 import {
   DISTANT_SPAWN,
@@ -52,6 +50,7 @@ import {
 } from './party'
 import { DROP_RULES } from './powerups'
 import { offersOf } from './purchase'
+import { initialModel, update } from './pureApp'
 import { playRoom } from './roomTesting'
 import { roomSettingsOf, startRoomWorld } from './roomWorld'
 import { startOrResume } from './runFlow'

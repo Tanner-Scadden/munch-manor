@@ -9,9 +9,9 @@ import {
   isGrabbedKeyUp,
   isKeyGrabToastShown,
 } from './keyGrab'
-import { update } from './main'
 import { Message } from './message'
 import { fighting } from './model.fixture'
+import { update } from './pureApp'
 import {
   type KeyDown,
   isKeptFromBrowser,

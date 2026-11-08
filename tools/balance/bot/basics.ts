@@ -12,9 +12,12 @@ import {
   cameraFor,
   worldWindowOf,
 } from '../../../src/camera'
-import { update } from '../../../src/main'
 import { Message } from '../../../src/message'
-import type { Difficulty, ZombieKind, initialModel } from '../../../src/model'
+import type {
+  Difficulty,
+  Model as GameModel,
+  ZombieKind,
+} from '../../../src/model'
 import {
   MODIFIER_ORDER,
   type Modifiers,
@@ -22,6 +25,7 @@ import {
   toggledModifier,
 } from '../../../src/modifiers'
 import type { Calling } from '../../../src/playerData'
+import { update } from '../../../src/pureApp'
 import {
   DEFAULT_PORTRAIT_SCREEN,
   LANDSCAPE_TOUCH_SCREEN,
@@ -29,7 +33,7 @@ import {
 } from '../../../src/screen'
 import { knobText } from './knobs'
 
-export type Model = typeof initialModel
+export type Model = GameModel
 type GameMessage = Parameters<typeof update>[1]
 export type Vector = { x: number; y: number }
 export type Kind = ZombieKind

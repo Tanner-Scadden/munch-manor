@@ -28,6 +28,7 @@ import {
   emptyQueue,
   initialModel,
 } from './model'
+import { view as coopView, update } from './pureCoop'
 import { freshRoom } from './roomState'
 import { CODE, lobbyOf, memberOf, playingSession, stagedWorld } from './testing'
 import {
@@ -40,9 +41,7 @@ import {
   RememberRoom,
   RequestRoom,
   ShareRoomLink,
-  update,
 } from './update'
-import { view as coopView } from './view'
 
 const view = withViewInputs(coopView, {
   look: defaultAppearance,
@@ -92,6 +91,23 @@ describe('the hub', () => {
       { update, view },
       given(at(Screen.Hub({ maybeProblem: Option.some('Kicked') }))),
       expect(role('alert', { name: 'The host kicked you.' })).toExist(),
+    )
+  })
+
+  test('a new room in flight shows its door, and a code its tiles', () => {
+    scene(
+      { update, view },
+      given(at(Screen.Asking({ request: RoomRequest.Create() }))),
+      expect(selector('[data-request="Create"] .coop-door')).toExist(),
+      expect(selector('.coop-check-tiles')).not.toExist(),
+    )
+    scene(
+      { update, view },
+      given(at(Screen.Asking({ request: RoomRequest.Join({ code: CODE }) }))),
+      expect(role('status', { name: 'Finding the room' })).toExist(),
+      expect(selector('[data-request="Join"] .coop-check-tiles')).toHaveText(
+        CODE,
+      ),
     )
   })
 

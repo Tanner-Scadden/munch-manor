@@ -20,7 +20,6 @@ import {
   ZOMBIE_ALIVE_MAX,
 } from './constants'
 import { rollSpawns, rollWave } from './endlessWaves'
-import { update } from './main'
 import { Message } from './message'
 import {
   Alarm,
@@ -38,10 +37,10 @@ import {
   type ZombieKind,
   ZombieState,
   calmPacing,
-  initialModel,
 } from './model'
 import { NORMAL_BITE_GRACE } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { tick, ticks, ticksFor } from './testing'
 import { FINAL_WAVE, debutKinds } from './wavePlans'
 

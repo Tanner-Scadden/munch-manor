@@ -27,7 +27,6 @@ import { frameTimeBucket } from './analyticsRun'
 import { PARLOUR } from './arena'
 import { GenerateVisitId } from './boot'
 import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from './constants'
-import { init, update } from './main'
 import { Message } from './message'
 import {
   Frenzy,
@@ -40,12 +39,12 @@ import {
   ZombieKind,
   ZombieState,
   freshStats,
-  initialModel,
   noKills,
 } from './model'
 import { type Modifiers, noModifiers } from './modifiers'
 import { modifyFocus } from './party'
 import { PlayerChange } from './playerSync'
+import { init, initialModel, update } from './pureApp'
 import { saveOf } from './save'
 import { SURFACE, closeDialog, jsonOf, showDialog } from './testing'
 import { WriteSave } from './update/save'

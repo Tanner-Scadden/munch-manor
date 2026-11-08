@@ -17,8 +17,9 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import { maybeNewestNewsDay, newsHeadline } from './changelog'
 import { RESTART_GRACE_MS } from './constants'
 import { Message } from './message'
-import { type Model, Phase, initialModel } from './model'
+import { type Model, Phase } from './model'
 import { WAVE_3_BREAK, fighting, withNewerBuild } from './model.fixture'
+import { initialModel } from './pureApp'
 import {
   ROOT,
   SCENE_SUBSCRIPTIONS,

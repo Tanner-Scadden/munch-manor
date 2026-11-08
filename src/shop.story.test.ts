@@ -1,7 +1,6 @@
 import { Array, Option } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
@@ -18,7 +17,6 @@ import {
   WAVE_BONUS_PER_WAVE,
   ZOMBIE_MAX_HP,
 } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   type Bullet,
@@ -33,6 +31,7 @@ import {
 import { DISTANT_SPAWN, withArsenal, withPlayerAt } from './model.fixture'
 import { noModifiers } from './modifiers'
 import { focusOf, focusSlotOf, modifyFocus } from './party'
+import { Child, update } from './pureApp'
 import {
   LASER_SIGHT_PRICE,
   SHOP_ITEMS,
@@ -329,10 +328,7 @@ describe('the shop stall', () => {
       resolveShowShop,
       release('KeyD'),
       message(
-        toParentMessage(
-          ShopDialogBinding,
-          DialogBlock.Message.RequestedClose(),
-        ),
+        Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
       ),
       resolveCloseShop,
       model(({ seats: [{ shop }] }) => {
@@ -853,10 +849,7 @@ describe('the stall entrance', () => {
       Command.expectExact(Dialog.test.ShowDialog),
       resolveShowShop,
       message(
-        toParentMessage(
-          ShopDialogBinding,
-          DialogBlock.Message.RequestedClose(),
-        ),
+        Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
       ),
       resolveCloseShop,
       ...ticks(10, SHOP_FRAME_MS),

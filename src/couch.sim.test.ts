@@ -3,10 +3,10 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from './constants'
-import { update } from './main'
 import { Message } from './message'
-import { type Model, Phase, initialModel } from './model'
+import { type Model, Phase } from './model'
 import { focusOf, forEachSeat, modifyFocus, playersOf } from './party'
+import { initialModel, update } from './pureApp'
 import { asVeteran } from './veteran'
 import { withWorld } from './world'
 

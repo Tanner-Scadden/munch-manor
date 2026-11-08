@@ -11,7 +11,6 @@ import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
 import { PARLOUR, levelOf } from './arena'
 import type { SoundEffect } from './audio'
-import { ApplicationComposition } from './composition'
 import {
   FIXED_STEP_MS,
   RESTART_GRACE_MS,
@@ -23,7 +22,6 @@ import { KITCHEN_EXIT } from './exits'
 import { endOffer } from './home'
 import { FRIDGE_RULES } from './leftovers'
 import { PartRadioGroupBlock } from './lookRadios'
-import { update } from './main'
 import { Message } from './message'
 import {
   type Bullet,
@@ -43,13 +41,12 @@ import {
 import { ListenForTouchTaps, MeasureGameSurface, ShareFromClick } from './mount'
 import { type HintId, LESSON_MIN_SHOWN_MS, shownHints } from './onboarding'
 import { PURCHASE_RULES } from './purchase'
-import { subscriptions } from './subscriptions'
+import { subscriptions, update, view } from './pureApp'
 import { TRAPS } from './traps'
 import { ReadRoomLink } from './update/coop'
 import { FocusLobbyControl } from './update/lobby'
 import { HideSplash, ShowLoadProgress, WriteSave } from './update/save'
 import { PlaySound } from './update/sound'
-import { view } from './view'
 import { STARTING_PISTOL, gunsOf, mapGuns, maybeCarried } from './weapons'
 import { World } from './world'
 import { Arsenal, type CarriedGun, type Player, Trap } from './worldSchema'
@@ -138,11 +135,6 @@ export const FIRE_LIFT = Message.ReleasedPointer({ pointerId: FIRE_THUMB })
 
 export const releaseFire = Story.message(FIRE_LIFT)
 
-// NOTE: The Foldkit rule against building a child's Messages skips *.test.ts
-// files. These helpers resolve the Dialog's Commands for those tests, so it is
-// off here too.
-/* oxlint-disable foldkit/no-child-message-construction-in-root */
-
 export const showDialog = () =>
   Story.Command.resolve(
     Dialog.test.ShowDialog,
@@ -151,10 +143,7 @@ export const showDialog = () =>
 
 // NOTE: the root's Subscriptions, its children's included, so a Scene can
 // emit a Message from one of them (Scene.Subscription.emit).
-export const SCENE_SUBSCRIPTIONS = Scene.subscriptions(
-  ApplicationComposition,
-  subscriptions,
-)
+export const SCENE_SUBSCRIPTIONS = subscriptions
 
 // NOTE: what every root Scene runs: the root's update, view, and
 // Subscriptions.
@@ -287,8 +276,6 @@ export const resolveFocusOption = () =>
     RadioGroup.test.FocusOption,
     PartRadioGroupBlock.Message.CompletedFocusOption(),
   )
-
-/* oxlint-enable foldkit/no-child-message-construction-in-root */
 
 // STORY STEPS
 

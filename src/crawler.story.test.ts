@@ -7,7 +7,6 @@ import { PARLOUR, isSolidAt } from './arena'
 import { FIXED_STEP_MS } from './constants'
 import { CRAWLER_RULES, drawSurfacingSpot } from './crawler'
 import { doorCounts, floorCounts, rollSpawns } from './endlessWaves'
-import { update } from './main'
 import { Message } from './message'
 import {
   Frenzy,
@@ -17,9 +16,9 @@ import {
   type Zombie,
   ZombieAction,
   ZombieState,
-  initialModel,
 } from './model'
 import { focusOf } from './party'
+import { initialModel, update } from './pureApp'
 import { bulletInto, hasEvent, tick, ticks } from './testing'
 
 const FRAME_MS = FIXED_STEP_MS

@@ -1,7 +1,6 @@
 import { Array, Option, Record, String, pipe } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { playerPixels, randomAppearance } from './appearance'
@@ -17,7 +16,6 @@ import {
   standingOf,
 } from './closet'
 import { HAT_ART, HAT_COLORS, MAX_HAT_ABOVE, hatRiseOf } from './hatArt'
-import { update } from './main'
 import { Message } from './message'
 import { type LookPart, type Model, Reload, defaultAppearance } from './model'
 import { readyAfterRead } from './model.fixture'
@@ -32,6 +30,7 @@ import {
 } from './playerData'
 import { PlayerChange } from './playerSync'
 import { reloadBarShapes } from './playerView'
+import { Child, update } from './pureApp'
 import { bonesBalanceOf, noRank, pointsForRank, rankOf } from './rank'
 import { restoreSave, saveOf } from './save'
 import { writeSave } from './testing'
@@ -64,7 +63,7 @@ const rankPoints = (rank: number): Partial<SavedRank> => ({
 
 const pick = (part: LookPart, value: string) =>
   message(
-    toParentMessage(
+    Child.message(
       CharacterBinding,
       Character.Message.ClickedGearOption({ part, value }),
     ),
@@ -105,9 +104,7 @@ const SOLD = [
 ] as const
 
 const buy = () =>
-  message(
-    toParentMessage(CharacterBinding, Character.Message.ClickedBuyButton()),
-  )
+  message(Child.message(CharacterBinding, Character.Message.ClickedBuyButton()))
 
 describe.each(SOLD)('buying $id', ({ id, part, name, field, price }) => {
   test('a pick only tries it on: nothing is spent, worn, or saved', () => {
@@ -209,10 +206,7 @@ describe.each(SOLD)('buying $id', ({ id, part, name, field, price }) => {
       given(closetWith({ earnedBones: 200 })),
       pick(part, name),
       message(
-        toParentMessage(
-          CharacterBinding,
-          Character.Message.ClickedDiceButton(),
-        ),
+        Child.message(CharacterBinding, Character.Message.ClickedDiceButton()),
       ),
       model(current => {
         expect(Option.isNone(current.profile.maybePreview)).toBe(true)
@@ -435,10 +429,7 @@ describe('wearing', () => {
       update,
       given(onLook),
       message(
-        toParentMessage(
-          CharacterBinding,
-          Character.Message.ClickedDiceButton(),
-        ),
+        Child.message(CharacterBinding, Character.Message.ClickedDiceButton()),
       ),
       model(current => {
         expect(current.appearance.hat).toBe('Fez')

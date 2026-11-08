@@ -595,6 +595,17 @@ export const REWIND_ICON = icon([
   '...X...X',
 ])
 
+// NOTE: skip ahead, two arrows to a bar: the first-run card's SKIP IT.
+export const SKIP_ICON = icon([
+  'X...X...X',
+  'XX..XX..X',
+  'XXX.XXX.X',
+  'XXXXXXXXX',
+  'XXX.XXX.X',
+  'XX..XX..X',
+  'X...X...X',
+])
+
 // NOTE: GitHub's own mark (the Invertocat, from Primer's octicons), white and
 // unchanged as GitHub's logo rules ask: never pixelated, recolored, or
 // redrawn. The Code card in the MORE hand shows it.

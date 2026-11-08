@@ -6,16 +6,10 @@ import { describe, expect, test } from 'vitest'
 import { isInsideRoomAt, levelOf, openExitIn } from './arena'
 import { FIXED_STEP_MS } from './constants'
 import { KITCHEN_EXIT } from './exits'
-import { update } from './main'
-import {
-  Invulnerability,
-  type Model,
-  Phase,
-  type Zombie,
-  initialModel,
-} from './model'
+import { Invulnerability, type Model, Phase, type Zombie } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { PARLOUR_SPOT, ticks, westPlank, zombieOf } from './testing'
 import { ZOMBIE_KINDS } from './zombies'
 

@@ -34,7 +34,6 @@ import {
   STREAK_WINDOW_MS,
   ZOMBIE_MAX_HP,
 } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   type Bullet,
@@ -47,10 +46,10 @@ import {
   Pierce,
   Streak,
   type Zombie,
-  initialModel,
 } from './model'
 import { playingModel, withZombies } from './model.fixture'
 import { modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { scoreOf } from './stats'
 import {
   FRAME_MS,

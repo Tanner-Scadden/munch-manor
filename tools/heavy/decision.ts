@@ -904,7 +904,7 @@ const maybeBaseWaitReason = (snapshot: Snapshot): Option.Option<string> => {
 }
 
 const lockActionOf = (lock: LockState, what: string): LockAction =>
-  LockState.match<LockAction>(lock, {
+  LockState.match(lock, {
     Free: () => LockAction.cases.Create.make({}),
     Held: () => LockAction.cases.Create.make({}),
     Stale: ({ holder }) =>

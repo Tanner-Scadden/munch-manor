@@ -5,7 +5,6 @@ import { describe, expect, test } from 'vitest'
 
 import { cameraOf } from './camera'
 import { FIXED_STEP_MS, PREPARATION_MS } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   BreakClock,
@@ -17,7 +16,6 @@ import {
   Phase,
   Reload,
   RunMode,
-  initialModel,
 } from './model'
 import { home, onHard, pastTimedBreaks } from './model.fixture'
 import {
@@ -27,6 +25,7 @@ import {
   shownHints,
 } from './onboarding'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { maybeBubbleKind } from './stallBubble'
 import { showDialog, tap, tick, ticks } from './testing'
 import { SetFullscreen } from './update/fullscreen'

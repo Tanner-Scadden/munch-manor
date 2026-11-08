@@ -22,18 +22,11 @@ import {
   ZOMBIE_MAX_HP,
   ZOMBIE_RADIUS,
 } from './constants'
-import { update } from './main'
-import {
-  type Bullet,
-  type Model,
-  type Particle,
-  Phase,
-  Pierce,
-  initialModel,
-} from './model'
+import { type Bullet, type Model, type Particle, Phase, Pierce } from './model'
 import { DISTANT_SPAWN, quietWave, withPlayerAt } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
 import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from './pathing'
+import { initialModel, update } from './pureApp'
 import { press, tick, ticks, zombieAt } from './testing'
 
 const FRAME_MS = FIXED_STEP_MS

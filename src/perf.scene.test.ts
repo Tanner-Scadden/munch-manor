@@ -7,7 +7,6 @@ import { describe, expect, test } from 'vitest'
 
 import { DOOR_IDS, openExitIn } from './arena'
 import { BOSS_RULES } from './boss'
-import type { ApplicationViewBuilder } from './composition'
 import {
   BLAST_MAX,
   BULLET_MAX,
@@ -19,7 +18,6 @@ import {
 import { rollSpawns } from './endlessWaves'
 import { KITCHEN_EXIT } from './exits'
 import { WARM_UP_CLASS, sceneShapes } from './layers'
-import { update } from './main'
 import { Message } from './message'
 import {
   Alarm,
@@ -56,10 +54,10 @@ import {
   ZombieAction,
   type ZombieKind,
   ZombieState,
-  initialModel,
 } from './model'
 import { modifyFocus } from './party'
 import { DROP_RULES } from './powerups'
+import { initialModel, update, view } from './pureApp'
 import { startOrResume } from './runFlow'
 import {
   SCENE_SUBSCRIPTIONS,
@@ -70,7 +68,6 @@ import {
   scoring,
 } from './testing'
 import { asVeteran } from './veteran'
-import { view } from './view'
 import { FINAL_WAVE } from './wavePlans'
 import { freshGun } from './weapons'
 import { ZOMBIE_KINDS } from './zombies'
@@ -522,8 +519,8 @@ type Measured = FrameCost & Readonly<{ steadyImagesDrawn: number }>
 
 const measureFrames = (model: Model): Measured => {
   const renders: Array<ReadonlyArray<CanvasNode>> = []
-  const recordingView = (current: Model, h: ApplicationViewBuilder) => {
-    const rendered = view(current, h)
+  const recordingView = (...args: Parameters<typeof view>) => {
+    const rendered = view(...args)
     renders.push(canvasNodes(rendered.body))
     return rendered
   }

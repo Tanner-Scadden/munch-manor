@@ -37,6 +37,7 @@ import {
   emptyQueue,
   noPresses,
 } from './model'
+import { update } from './pureCoop'
 import { cleanCode, freshRoom, pressAction } from './roomState'
 import { coopWorld } from './seam'
 import { inRoom, lobbyUpdate, onHub, picked, roomOf } from './story.fixture'
@@ -58,7 +59,6 @@ import {
   ResyncRoom,
   SendRoomFrames,
   tickRoom,
-  update,
 } from './update'
 
 const resolveFocus = () =>

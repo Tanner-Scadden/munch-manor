@@ -18,7 +18,7 @@
     "@munch/sync-engine": "workspace:*"
   },
   "devDependencies": {
-    "@effect/vitest": "4.0.6",
+    "@effect/vitest": "4.1.0",
     "@munch/sqlite-wasm-effect": "workspace:*"
   },
   "peerDependencies": {

@@ -6,15 +6,10 @@ import { PARLOUR } from './arena'
 import { cameraFor, cameraOf } from './camera'
 import { VIEW_HEIGHT } from './constants'
 import { hudShapes, hudStripShapes } from './hud'
-import {
-  BoostTimer,
-  type Model,
-  Phase,
-  idleBoosts,
-  initialModel,
-} from './model'
+import { BoostTimer, type Model, Phase, idleBoosts } from './model'
 import { focusOf, modifyFocus } from './party'
 import { BOOSTS } from './powerups'
+import { initialModel } from './pureApp'
 import { DEFAULT_PORTRAIT_SCREEN, LANDSCAPE_SCREEN } from './screen'
 import { rectsOf } from './testing'
 

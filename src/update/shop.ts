@@ -3,7 +3,7 @@ import { Dom, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { CoopBinding, ShopDialogBinding } from '../bindings'
-import { ApplicationDefinition, makeStep } from '../definition'
+import { ApplicationBlock, makeStep } from '../definition'
 import { refreshIntent } from '../frame'
 import { releaseAll } from '../input'
 import { isShopDialogOpen } from '../menuState'
@@ -45,20 +45,17 @@ import {
 
 // COMMAND
 
-export const FocusShopItem = ApplicationDefinition.makeCommand(
-  'FocusShopItem',
-  {
-    args: { item: ShopItemId },
-    messages: [Message.CompletedFocusShopItem],
-    handler: function* () {
-      return ({ item }) =>
-        Dom.focus(`#${shopItemElementId(item)}`).pipe(
-          Effect.ignore,
-          Effect.as(Message.CompletedFocusShopItem()),
-        )
-    },
+export const FocusShopItem = ApplicationBlock.makeCommand('FocusShopItem', {
+  args: { item: ShopItemId },
+  messages: [Message.CompletedFocusShopItem],
+  handler: function* () {
+    return ({ item }) =>
+      Dom.focus(`#${shopItemElementId(item)}`).pipe(
+        Effect.ignore,
+        Effect.as(Message.CompletedFocusShopItem()),
+      )
   },
-)
+})
 
 // DIALOG
 

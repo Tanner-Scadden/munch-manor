@@ -1,9 +1,12 @@
-import { Block } from 'foldkit'
+import { Layer } from 'effect'
 
-import { prepareCharacterBlock } from './characterView'
-import type { CharacterPicker } from './model'
+import { RadioGroup } from '@foldkit/ui'
 
-export const CharacterBlock: Block.FromAssemblyWithViewAndOutMessage<
-  typeof CharacterPicker,
-  typeof prepareCharacterBlock
-> = Block.assemble(prepareCharacterBlock)
+import { CharacterBlock } from './character'
+import { characterImplementation } from './characterView'
+
+// NOTE: the Look tab's implementation Layer, with its radio groups' own.
+// The root's Layer (src/block.ts) provides it.
+export const CharacterLayer = CharacterBlock.makeLayer(
+  characterImplementation,
+).pipe(Layer.provide(RadioGroup.layer))

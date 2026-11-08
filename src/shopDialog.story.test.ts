@@ -1,14 +1,12 @@
 import { Array, Option } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { DialogBlock, Tabs } from '@foldkit/ui'
 
 import { ShopDialogBinding, ShopTabsBinding } from './bindings'
 import { PLAYER_MAX_HP, SHAMBLER_BOUNTY } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   type Model,
@@ -21,6 +19,7 @@ import {
 } from './model'
 import { withArsenal } from './model.fixture'
 import { focusSlotOf, modifyFocus } from './party'
+import { Child, update } from './pureApp'
 import {
   SHOP_CATEGORY_ORDER,
   SHOP_ITEMS,
@@ -63,7 +62,7 @@ describe('shop categories', () => {
 
   const selectTab = (value: ShopCategory) =>
     message(
-      toParentMessage(
+      Child.message(
         ShopTabsBinding,
         ShopTabsBlock.Message.SelectedTab({
           index: Option.getOrElse(
@@ -110,10 +109,7 @@ describe('shop categories', () => {
       selectTab('Health'),
       resolveFocusTab,
       message(
-        toParentMessage(
-          ShopDialogBinding,
-          DialogBlock.Message.RequestedClose(),
-        ),
+        Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
       ),
       // NOTE: the fixture browses with the dialog already down, which the
       // next frame takes as a dialog that failed to show.

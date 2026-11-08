@@ -9,7 +9,6 @@ import {
   PISTOL_MAGAZINE,
   PISTOL_RELOAD_MS,
 } from './constants'
-import { update } from './main'
 import {
   type CarriedGun,
   GameEvent,
@@ -31,6 +30,7 @@ import {
 import { focusOf, focusSlotOf, modifyFocus } from './party'
 import { nextRandom } from './prng'
 import { offersOf } from './purchase'
+import { update } from './pureApp'
 import { STOVE_RULES, rollStove } from './stove'
 import {
   FRIDGE_OPEN_TICKS,

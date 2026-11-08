@@ -12,51 +12,52 @@ import {
   Effect,
   Layer,
   Option,
-  Record,
   Result,
   Schema,
   Scope,
   String,
 } from 'effect'
-import { Block, Canvas, Dom, Program, Runtime } from 'foldkit'
-import type * as Command from 'foldkit/command'
+import { Canvas, Dom, Program, Runtime } from 'foldkit'
 import { type Document } from 'foldkit/html'
 import { modifyFields } from 'foldkit/struct'
 
+import { Dialog, Tabs } from '@foldkit/ui'
 import { PARLOUR } from '@game/arena'
-import { LoadSave } from '@game/boot'
+import { ProfileDialogBinding } from '@game/bindings'
+import { LoadSave, bootCommands } from '@game/boot'
+import { CharacterLayer } from '@game/characterBlock'
 import { ApplicationComposition } from '@game/composition'
+import { CoopLayer } from '@game/coop'
 import { quietCoopNet } from '@game/coop/testing'
+import { ApplicationBlock, makeNoopStep } from '@game/definition'
 import { quietLayer as quietInstallPrompt } from '@game/install'
 import { EffectsLayer } from '@game/layer'
 import { sceneShapes } from '@game/layers'
-import { init, update } from '@game/main'
-import { Message } from '@game/message'
-import { type Model } from '@game/model'
+import { update } from '@game/main'
+import type { Message } from '@game/message'
+import { type Model, initialModel as gameInitialModel } from '@game/model'
+import { update as pureUpdate } from '@game/pureApp'
 import { screenOf } from '@game/screen'
 import { STALL_BOX } from '@game/shop'
 import { layer as PlayerStoreLayer } from '@game/store'
 import { subscriptions } from '@game/subscriptions'
 import { managedResources } from '@game/update/sound'
+import { modelStep } from '@game/update/step'
 import { view } from '@game/view'
 
 import { cardShapes } from './cards'
 import { type HarnessConfig, decodeHarnessConfig } from './config'
 import * as Director from './director'
+import { type DirectorWake, sceneHandlers } from './handlers'
 import { liveCoopNet } from './liveNet'
 import { LIVE_CROWD, LIVE_SEATS } from './liveRoom'
 import { type ViewHtml, lookSheetView } from './lookSheet'
 import { nextFrame, settle } from './readiness'
 import { scenarioModel } from './scenario'
-import {
-  type HarnessReturn,
-  gameUpdate,
-  keepScene,
-  logMessage,
-  sceneOf,
-} from './sceneUpdate'
+import { type Scene, keepScene, logMessage, sceneOf } from './sceneUpdate'
 import {
   type HarnessPage,
+  type SceneSettings,
   animationFrameTime,
   emptyTimings,
   settingsOf,
@@ -77,6 +78,7 @@ const readConfig = (): HarnessConfig =>
 // settings live here, not in constants.
 const page: HarnessPage = {
   settings: settingsOf(readConfig()),
+  framesSent: 0,
   framesRun: 0,
   sceneNumber: 0,
   maybeCarriedModel: Option.none(),
@@ -103,6 +105,10 @@ window.__messages = []
 // could change the scene), and, with `freeze`, once the frozen frame is
 // reached.
 // Scripts wait for it instead of sleeping. Loading another scene clears it.
+// NOTE: the frames a scene plays before it holds: `tick`'s, or `freeze`'s.
+const framesWanted = ({ config, freezeAfter }: SceneSettings): number =>
+  config.tick ?? (Number.isFinite(freezeAfter) ? freezeAfter : 0)
+
 const clearReady = () => {
   window.__harnessReady = false
   delete document.documentElement.dataset['harnessReady']
@@ -113,8 +119,7 @@ const markReadyWhenSettled = (number: number) => {
     settle(
       () =>
         window.__model.saveStatus !== 'Unread' &&
-        (!Number.isFinite(page.settings.freezeAfter) ||
-          page.framesRun >= page.settings.freezeAfter),
+        page.framesRun >= framesWanted(page.settings),
     ).pipe(
       Effect.andThen(
         Effect.sync(() => {
@@ -147,8 +152,8 @@ const decodeScene = (query: string): HarnessConfig | undefined =>
 // init's Commands run again without LoadSave: the seed and the device,
 // screen fit, and orientation lock checks. The load steps they finish are
 // already done.
-const nextSceneOf = (model: Model): HarnessReturn => {
-  const scene = sceneOf(
+const nextSceneOf = (model: Model): Scene =>
+  sceneOf(
     page.settings,
     modifyFields(scenarioModel(page.settings), {
       maybeSurface: () => model.maybeSurface,
@@ -156,17 +161,6 @@ const nextSceneOf = (model: Model): HarnessReturn => {
       saveStatus: () => 'Read' as const,
     }),
   )
-  return {
-    model: scene.model,
-    commands: [
-      ...Array.filter(
-        init().commands ?? [],
-        command => command.name !== LoadSave.name,
-      ),
-      ...(scene.commands ?? []),
-    ],
-  }
-}
 
 // NOTE: an open dialog holds page state outside the Model: the inert,
 // hidden background, the focus trap, and the scroll lock. A dialog closed by
@@ -185,54 +179,53 @@ const releaseDialogs = Effect.suspend(() =>
   ),
 )
 
-// NOTE: a scene's Commands come from the game's update, so a Message one
-// gives back may be a child's envelope (the Profile dialog's open, from
-// `profile`). Foldkit types an init's Commands with the root's own Messages
-// only, since child Messages come through Binding Steps there; the runtime
-// routes an envelope from an init Command as it does one from update. A
-// typed harness init needs a Foldkit hook for a Composition's init that
-// takes update's Commands.
-type InitCommand = Command.Command<
-  Message,
-  never,
-  Effect.Services<Director.GameCommand['effect']>
->
-const asInitCommands = (
-  commands: ReadonlyArray<Director.GameCommand>,
-): ReadonlyArray<InitCommand> =>
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- init Commands typed with root Messages only (NOTE above)
-  commands as ReadonlyArray<InitCommand>
-
+// NOTE: the scene's init is the game's boot with the scene's Model: its
+// Commands (without LoadSave after the first scene), then the scene's Model
+// in place of the fresh one, and the Profile's Dialog opened through its
+// Binding when the scene asks for it.
 const harnessInit = ApplicationComposition.makeInit(() => {
   // NOTE: the first scene boots as a page does; each later one boots from
   // the Model the last scene left (see nextSceneOf).
+  const isFirst = Option.isNone(page.maybeCarriedModel)
   const scene = Option.match(page.maybeCarriedModel, {
-    onNone: () => {
-      const base = init()
-      const first = sceneOf(page.settings, scenarioModel(page.settings))
-      return {
-        model: first.model,
-        commands: [...(base.commands ?? []), ...(first.commands ?? [])],
-      }
-    },
+    onNone: () => sceneOf(page.settings, scenarioModel(page.settings)),
     onSome: nextSceneOf,
   })
   window.__isFrozen = page.framesRun >= page.settings.freezeAfter
   window.__model = scene.model
   markReadyWhenSettled(page.sceneNumber)
-  return { model: scene.model, commands: asInitCommands(scene.commands ?? []) }
+  return {
+    model: gameInitialModel,
+    commands: Array.filter(
+      bootCommands(),
+      command => isFirst || command.name !== LoadSave.name,
+    ),
+    steps: [
+      modelStep(() => scene.model),
+      scene.isProfileOpen ? ProfileDialogBinding.requestOpen() : makeNoopStep(),
+      modelStep(model => {
+        window.__model = model
+        return model
+      }),
+    ],
+  }
 })
 
 // THE DIRECTOR
 
 // NOTE: a director step is the game's own update, with what the scene adds.
-const directorStep = (model: Model, message: Message): HarnessReturn =>
-  keepScene(page.settings, update(model, message), message)
+// A shot plays on the game's pure update (src/pureApp.ts), so the sounds and
+// music each tick asks for are logged by tick, and the runtime takes the
+// Model it reaches. The other Commands a shot's ticks give do not run.
+const directorStep = (model: Model, message: Message): Director.Return => {
+  const result = pureUpdate(model, message)
+  return { ...result, model: keepScene(page.settings, result.model, message) }
+}
 
-const directed = (result: HarnessReturn): HarnessReturn => {
-  window.__model = result.model
+const directed = (model: Model): Model => {
+  window.__model = model
   window.__directedTick = Director.currentTick()
-  return result
+  return model
 }
 
 type DirectorRequest =
@@ -241,35 +234,25 @@ type DirectorRequest =
 
 // NOTE: the video tool's requests, waiting for the runtime to carry them in.
 // The harness has no Message of its own (the root is the game's Block), so
-// a request rides on the page-restore Subscription: the page raises a
-// `pageshow` from the cache, and the RestoredPageFromCache it becomes runs
-// the waiting requests in place of the build check it would start.
+// a request rides on the page-restore Subscription: with `director` it is
+// the harness's (handlers.ts), and the RestoredPageFromCache it raises runs
+// the waiting requests.
 const directorRequests: Array<DirectorRequest> = []
+const directorWake: DirectorWake = { raise: () => false }
 
 const raiseDirectorRequest = (request: DirectorRequest) => {
   directorRequests.push(request)
-  window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+  directorWake.raise()
 }
 
-const runDirectorRequests = (model: Model): HarnessReturn => {
-  const requests = directorRequests.splice(0)
-  const start: HarnessReturn = { model }
-  return Array.reduce(requests, start, (current, request) => {
-    const next =
+const runDirectorRequests = (model: Model): Model =>
+  Array.reduce(directorRequests.splice(0), model, (current, request) =>
+    directed(
       request._tag === 'Start'
-        ? Director.startShot(current.model, Director.decodePlan(request.plan))
-        : Director.stepShot(current.model, request.ticks, directorStep)
-    return directed({
-      model: next.model,
-      commands: [...(current.commands ?? []), ...(next.commands ?? [])],
-    })
-  })
-}
-
-const harnessStep = (model: Model, message: Message): HarnessReturn =>
-  message._tag === 'RestoredPageFromCache' && directorRequests.length > 0
-    ? runDirectorRequests(model)
-    : Director.logBetweenTicks(gameUpdate(page, model, message))
+        ? Director.startShot(current, Director.decodePlan(request.plan)).model
+        : Director.stepShot(current, request.ticks, directorStep).model,
+    ),
+  )
 
 // NOTE: the video tool's controls (tools/video, with `director` in the
 // query). `start` takes the shot's script as JSON, `step(n)` plays n fixed
@@ -285,21 +268,29 @@ window.__director = {
   seats: () => Director.seatsOnScreen(window.__model),
 }
 
-// NOTE: the harness's update is the game's, wrapped for the scene's
-// settings (gameUpdate). A Composition's update is authored as one handler
-// per local Message, so every tag gets the same wrapper. Child envelopes go
-// to their Bindings as in the game.
-// NOTE: the union's variant Schemas by tag, which Effect's TaggedUnion keeps
-// at runtime as `cases`; Foldkit's MessageUnion type leaves the field out.
-const hasCases = (
-  union: object,
-): union is Readonly<{ cases: Readonly<Record<Message['_tag'], unknown>> }> =>
-  'cases' in union && typeof union.cases === 'object' && union.cases !== null
-if (!hasCases(Message)) {
-  throw new Error('the Message union has no cases')
-}
-const harnessUpdate = ApplicationComposition.makeUpdate(
-  Record.map(Message.cases, () => harnessStep),
+// NOTE: the harness's update is the game's, then the director's requests,
+// then what the scene keeps (keepScene) after every dispatch, its children's
+// envelopes included.
+const ranDirector = ApplicationComposition.makeUpdate.on([
+  'RestoredPageFromCache',
+])(model => ({
+  model: directorRequests.length > 0 ? runDirectorRequests(model) : model,
+}))
+
+const keptScene = ApplicationComposition.makeUpdate.each((model, message) => {
+  if (message._tag === 'TickedFrame') {
+    page.framesRun++
+  }
+  window.__isFrozen = page.framesRun >= page.settings.freezeAfter
+  const kept = keepScene(page.settings, model, message)
+  window.__model = kept
+  return { model: kept }
+})
+
+const harnessUpdate = ApplicationComposition.makeUpdate.compose(
+  update,
+  ranDirector,
+  keptScene,
 )
 
 // NOTE: a director shot's card (cards.ts) on a canvas the screen's size in
@@ -351,19 +342,24 @@ const harnessView = ApplicationComposition.makeView((model, h): Document => {
   return config.director ? withDirectorCard(model, out, h) : out
 })
 
-const prepareHarness = () =>
-  ApplicationComposition.prepareBlock({
-    init: harnessInit,
-    update: harnessUpdate,
-    view: harnessView,
-    subscriptions,
-    managedResources,
+// NOTE: the game's own Block, completed with the harness's init, update,
+// and view around the game's, the game's children, and the game's handlers
+// with the scene's in front (handlers.ts).
+const harnessLayer = ApplicationBlock.makeLayer({
+  init: harnessInit,
+  update: harnessUpdate,
+  view: harnessView,
+  subscriptions,
+  managedResources,
+  EffectsLayer: Layer.mergeAll(
     EffectsLayer,
-  })
-const HarnessBlock: Block.FromAssemblyWithView<
-  typeof Model,
-  typeof prepareHarness
-> = Block.assemble(prepareHarness)
+    sceneHandlers({ page, wake: directorWake }),
+  ),
+}).pipe(
+  Layer.provide(
+    Layer.mergeAll(Dialog.layer, Tabs.layer, CharacterLayer, CoopLayer),
+  ),
+)
 
 // NOTE: the services are built once for the page and shared by every
 // scene, as one runtime shared them before scenes restarted it: the player
@@ -386,10 +382,35 @@ const harnessServices = Effect.runSync(
   ),
 )
 
+// NOTE: `instrument` records each frame's update time: TickedFrame, or in
+// an online run the room's TickedRoomFrame, which is the one that changes
+// the Model there.
+const recordUpdate = ({
+  message,
+  previousModel,
+  nextModel,
+  durationMs,
+}: Readonly<{
+  message: Readonly<{ _tag: string }>
+  previousModel: Model
+  nextModel: Model
+  durationMs: number
+}>) => {
+  if (
+    page.settings.instrument &&
+    (message._tag === 'TickedFrame' || message._tag === 'TickedRoomFrame') &&
+    nextModel !== previousModel
+  ) {
+    window.__timings.update.push(durationMs)
+    window.__timings.tickFrames.push(animationFrameTime())
+  }
+}
+
 const startScene = () =>
   Runtime.embed(
     Program.make({
-      block: HarnessBlock,
+      block: ApplicationBlock,
+      layer: harnessLayer,
       container: document.getElementById('root'),
       slow: {
         show: 'Always',
@@ -399,6 +420,7 @@ const startScene = () =>
           if (context._tag === 'Update') {
             logMessage(context.message)
             window.__model = context.nextModel
+            recordUpdate(context)
           }
         },
       },
@@ -453,10 +475,11 @@ const loadScene = (query: string) =>
     }
     window.scrollTo(0, 0)
     page.maybeCarriedModel = Option.some(window.__model)
-    running.dispose()
+    yield* Effect.promise(() => running.dispose())
     yield* containerRestored
     window.__sceneError = undefined
     page.settings = settingsOf(next)
+    page.framesSent = 0
     page.framesRun = 0
     window.__messages.length = 0
     window.__timings = emptyTimings()

@@ -1,0 +1,898 @@
+diff --git a/dist/canvas/index.d.ts b/dist/canvas/index.d.ts
+index c0804b1..d1258e6 100644
+--- a/dist/canvas/index.d.ts
++++ b/dist/canvas/index.d.ts
+@@ -1,4 +1,4 @@
+-export { BezierTo, Circle, Close, Group, LineCap, LineJoin, LineTo, MoveTo, Path, PathInstruction, Point, QuadTo, Rect, Text, TextAlign, TextBaseline, } from './shape.js';
++export { BezierTo, Circle, Close, Group, Image, ImageCrop, ImageRendering, LineCap, LineJoin, LineTo, MoveTo, Path, PathInstruction, Point, QuadTo, Rect, Text, TextAlign, TextBaseline, } from './shape.js';
+ export type { Shape } from './shape.js';
+ export { view } from './view.js';
+ export type { ViewConfig } from './view.js';
+diff --git a/dist/canvas/index.js b/dist/canvas/index.js
+index 694551d..76f0db5 100644
+--- a/dist/canvas/index.js
++++ b/dist/canvas/index.js
+@@ -1,2 +1,2 @@
+-export { BezierTo, Circle, Close, Group, LineCap, LineJoin, LineTo, MoveTo, Path, PathInstruction, Point, QuadTo, Rect, Text, TextAlign, TextBaseline, } from './shape.js';
++export { BezierTo, Circle, Close, Group, Image, ImageCrop, ImageRendering, LineCap, LineJoin, LineTo, MoveTo, Path, PathInstruction, Point, QuadTo, Rect, Text, TextAlign, TextBaseline, } from './shape.js';
+ export { view } from './view.js';
+diff --git a/dist/canvas/paint.d.ts b/dist/canvas/paint.d.ts
+index 2a47bd1..185c3a4 100644
+--- a/dist/canvas/paint.d.ts
++++ b/dist/canvas/paint.d.ts
+@@ -1,14 +1,24 @@
+ import type { Shape } from './shape.js';
++import { Option } from 'effect';
++/**
++ * Return the decoded image for `src` when it has loaded. Otherwise start
++ * loading it if no load has started, and register `onLoad` to be called once
++ * when it loads. Passing the same `onLoad` for many shapes registers it once.
++ */
++export declare const requestImage: (src: string, onLoad: () => void) => Option.Option<HTMLImageElement>;
+ /**
+  * Paint a single `Shape` to the 2D context. Each call is bracketed by
+  * `ctx.save` / `ctx.restore` so per-shape state mutations (fillStyle,
+  * lineWidth, font, transforms applied by `Group`, etc.) cannot leak to
+  * sibling shapes. Recurses into `Group` children inside the saved scope.
++ * An `Image` whose source has not loaded draws nothing and calls
++ * `onImageLoad` once the source loads.
+  */
+-export declare const paintShape: (ctx: CanvasRenderingContext2D) => (shape: Shape) => void;
++export declare const paintShape: (ctx: CanvasRenderingContext2D, onImageLoad: () => void) => (shape: Shape) => void;
+ /**
+  * Clear the canvas and paint every shape in `shapes` against the given
+- * 2D context. Called by `Canvas.view` on insert and on every postpatch.
++ * 2D context. Called by `Canvas.view` on insert, on every postpatch, and
++ * through `onImageLoad` when an `Image` source the scene uses finishes loading.
+  */
+-export declare const paintScene: (ctx: CanvasRenderingContext2D, width: number, height: number, shapes: ReadonlyArray<Shape>) => void;
++export declare const paintScene: (ctx: CanvasRenderingContext2D, width: number, height: number, shapes: ReadonlyArray<Shape>, onImageLoad: () => void) => void;
+ //# sourceMappingURL=paint.d.ts.map
+\ No newline at end of file
+diff --git a/dist/canvas/paint.js b/dist/canvas/paint.js
+index e31d0d9..7bdd634 100644
+--- a/dist/canvas/paint.js
++++ b/dist/canvas/paint.js
+@@ -1,4 +1,46 @@
+-import { Array, Match } from 'effect';
++// NOTE: Munch Manor patch: Canvas.Image from foldkit/foldkit#1846 (a9009a20).
++// Upstream keeps the image cache in its own module, canvas/imageCache.ts. It
++// lives in this file here because `bun patch` cannot add a new file to a
++// package. Drop the patch once a Foldkit release ships Canvas.Image.
++import { Array, Match, Option } from 'effect';
++/**
++ * Decoded images keyed by `src`, shared by every canvas on the page. An entry
++ * is never evicted, so a `src` loads at most once and a sprite that leaves the
++ * scene for a frame draws immediately when it returns.
++ */
++const imageLoadsBySrc = new Map();
++const startLoading = (src) => {
++    const element = document.createElement('img');
++    const onLoadCallbacks = new Set();
++    const loading = { _tag: 'Loading', onLoadCallbacks };
++    imageLoadsBySrc.set(src, loading);
++    element.addEventListener('load', () => {
++        imageLoadsBySrc.set(src, { _tag: 'Loaded', element });
++        onLoadCallbacks.forEach(onLoad => onLoad());
++    }, { once: true });
++    element.addEventListener('error', () => {
++        imageLoadsBySrc.set(src, { _tag: 'Failed' });
++    }, { once: true });
++    element.src = src;
++    // NOTE: browsers fire `load` in a later task, but happy-dom, which app
++    // tests run in, fires it synchronously while a data URL `src` is assigned.
++    // That happens before the caller can register its callback, so the caller
++    // reads the entry again here and draws the image at once.
++    return imageLoadsBySrc.get(src) ?? loading;
++};
++/**
++ * Return the decoded image for `src` when it has loaded. Otherwise start
++ * loading it if no load has started, and register `onLoad` to be called once
++ * when it loads. Passing the same `onLoad` for many shapes registers it once.
++ */
++export const requestImage = (src, onLoad) => Match.value(imageLoadsBySrc.get(src) ?? startLoading(src)).pipe(Match.tagsExhaustive({
++    Loading: ({ onLoadCallbacks }) => {
++        onLoadCallbacks.add(onLoad);
++        return Option.none();
++    },
++    Loaded: ({ element }) => Option.some(element),
++    Failed: () => Option.none(),
++}));
+ const lineCapForCanvas = {
+     Butt: 'butt',
+     Round: 'round',
+@@ -24,6 +66,10 @@ const textBaselineForCanvas = {
+     Hanging: 'hanging',
+     Ideographic: 'ideographic',
+ };
++const imageSmoothingForCanvas = {
++    Smooth: true,
++    Pixelated: false,
++};
+ const paintRect = (ctx) => (rect) => {
+     if (rect.fill !== undefined) {
+         ctx.fillStyle = rect.fill;
+@@ -102,7 +148,47 @@ const paintText = (ctx) => (text) => {
+         ctx.strokeText(text.content, text.x, text.y);
+     }
+ };
+-const paintGroup = (ctx) => (group) => {
++const paintImage = (ctx, onImageLoad) => (image) => {
++    const maybeElement = requestImage(image.src, onImageLoad);
++    if (Option.isNone(maybeElement)) {
++        return;
++    }
++    if (image.rendering !== undefined) {
++        ctx.imageSmoothingEnabled = imageSmoothingForCanvas[image.rendering];
++    }
++    const { x, y, width, height } = image.rendering === 'Pixelated'
++        ? wholePixelBox(ctx, image)
++        : image;
++    if (image.crop === undefined) {
++        ctx.drawImage(maybeElement.value, x, y, width, height);
++    }
++    else {
++        ctx.drawImage(maybeElement.value, image.crop.x, image.crop.y, image.crop.width, image.crop.height, x, y, width, height);
++    }
++};
++// NOTE: a pixelated image lands on whole canvas pixels. At a fractional
++// position or size, nearest neighbour sampling meets ties, and a cropped
++// region of an atlas breaks them differently from a whole image, so the same
++// sprite would come out shifted by a pixel in places. Rounding the box's
++// edges on the canvas keeps the art identical either way. A rotated or
++// skewed transform is left alone.
++const wholePixelBox = (ctx, image) => {
++    const { a, b, c, d, e, f } = ctx.getTransform();
++    if (b !== 0 || c !== 0 || a === 0 || d === 0) {
++        return image;
++    }
++    const left = Math.round(a * image.x + e);
++    const right = Math.round(a * (image.x + image.width) + e);
++    const top = Math.round(d * image.y + f);
++    const bottom = Math.round(d * (image.y + image.height) + f);
++    return {
++        x: (left - e) / a,
++        y: (top - f) / d,
++        width: (right - left) / a,
++        height: (bottom - top) / d,
++    };
++};
++const paintGroup = (ctx, onImageLoad) => (group) => {
+     if (group.opacity !== undefined) {
+         ctx.globalAlpha *= group.opacity;
+     }
+@@ -115,30 +201,34 @@ const paintGroup = (ctx) => (group) => {
+     if (group.scale !== undefined) {
+         ctx.scale(group.scale.x, group.scale.y);
+     }
+-    Array.forEach(group.shapes, paintShape(ctx));
++    Array.forEach(group.shapes, paintShape(ctx, onImageLoad));
+ };
+ /**
+  * Paint a single `Shape` to the 2D context. Each call is bracketed by
+  * `ctx.save` / `ctx.restore` so per-shape state mutations (fillStyle,
+  * lineWidth, font, transforms applied by `Group`, etc.) cannot leak to
+  * sibling shapes. Recurses into `Group` children inside the saved scope.
++ * An `Image` whose source has not loaded draws nothing and calls
++ * `onImageLoad` once the source loads.
+  */
+-export const paintShape = (ctx) => (shape) => {
++export const paintShape = (ctx, onImageLoad) => (shape) => {
+     ctx.save();
+     Match.value(shape).pipe(Match.tagsExhaustive({
+         Rect: paintRect(ctx),
+         Circle: paintCircle(ctx),
+         Path: paintPath(ctx),
+         Text: paintText(ctx),
+-        Group: paintGroup(ctx),
++        Image: paintImage(ctx, onImageLoad),
++        Group: paintGroup(ctx, onImageLoad),
+     }));
+     ctx.restore();
+ };
+ /**
+  * Clear the canvas and paint every shape in `shapes` against the given
+- * 2D context. Called by `Canvas.view` on insert and on every postpatch.
++ * 2D context. Called by `Canvas.view` on insert, on every postpatch, and
++ * through `onImageLoad` when an `Image` source the scene uses finishes loading.
+  */
+-export const paintScene = (ctx, width, height, shapes) => {
++export const paintScene = (ctx, width, height, shapes, onImageLoad) => {
+     ctx.clearRect(0, 0, width, height);
+-    Array.forEach(shapes, paintShape(ctx));
++    Array.forEach(shapes, paintShape(ctx, onImageLoad));
+ };
+diff --git a/dist/canvas/public.d.ts b/dist/canvas/public.d.ts
+index f7470ae..1b7d16f 100644
+--- a/dist/canvas/public.d.ts
++++ b/dist/canvas/public.d.ts
+@@ -1,3 +1,3 @@
+-export { BezierTo, Circle, Close, Group, LineCap, LineJoin, LineTo, MoveTo, Path, PathInstruction, Point, QuadTo, Rect, Text, TextAlign, TextBaseline, view, } from './index.js';
++export { BezierTo, Circle, Close, Group, Image, ImageCrop, ImageRendering, LineCap, LineJoin, LineTo, MoveTo, Path, PathInstruction, Point, QuadTo, Rect, Text, TextAlign, TextBaseline, view, } from './index.js';
+ export type { Shape, ViewConfig } from './index.js';
+ //# sourceMappingURL=public.d.ts.map
+\ No newline at end of file
+diff --git a/dist/canvas/public.js b/dist/canvas/public.js
+index 5bf857b..f19b8a2 100644
+--- a/dist/canvas/public.js
++++ b/dist/canvas/public.js
+@@ -1 +1 @@
+-export { BezierTo, Circle, Close, Group, LineCap, LineJoin, LineTo, MoveTo, Path, PathInstruction, Point, QuadTo, Rect, Text, TextAlign, TextBaseline, view, } from './index.js';
++export { BezierTo, Circle, Close, Group, Image, ImageCrop, ImageRendering, LineCap, LineJoin, LineTo, MoveTo, Path, PathInstruction, Point, QuadTo, Rect, Text, TextAlign, TextBaseline, view, } from './index.js';
+diff --git a/dist/canvas/shape.d.ts b/dist/canvas/shape.d.ts
+index 363f54c..9d059e0 100644
+--- a/dist/canvas/shape.d.ts
++++ b/dist/canvas/shape.d.ts
+@@ -148,6 +148,68 @@ export declare const Text: import("../schema/index.js").CallableTaggedStruct<"Te
+ }>;
+ /** A single line of text drawn with a font, fill, and optional stroke. */
+ export type Text = typeof Text.Type;
++/**
++ * The region of an `Image` shape's source to draw, in the source image's own
++ * pixels. Use it to draw one frame of a sprite sheet.
++ */
++export declare const ImageCrop: Schema.Struct<{
++    readonly x: Schema.Number;
++    readonly y: Schema.Number;
++    readonly width: Schema.Number;
++    readonly height: Schema.Number;
++}>;
++/**
++ * The region of an `Image` shape's source to draw, in the source image's own
++ * pixels. Use it to draw one frame of a sprite sheet.
++ */
++export type ImageCrop = typeof ImageCrop.Type;
++/**
++ * How an `Image` shape samples its source when drawn at a different size.
++ * `Smooth` interpolates between source pixels, the canvas default.
++ * `Pixelated` keeps hard pixel edges, for scaling up pixel art.
++ */
++export declare const ImageRendering: Schema.Literals<readonly ["Smooth", "Pixelated"]>;
++/**
++ * How an `Image` shape samples its source when drawn at a different size.
++ * `Smooth` interpolates between source pixels, the canvas default.
++ * `Pixelated` keeps hard pixel edges, for scaling up pixel art.
++ */
++export type ImageRendering = typeof ImageRendering.Type;
++/**
++ * A bitmap drawn from a URL into a `width` by `height` box at `x`, `y`.
++ * `src` accepts anything an `<img>` element does, including data URLs.
++ * `crop` draws one region of the source, such as a frame of a sprite sheet.
++ *
++ * The painter loads each `src` once and keeps the decoded image for the life
++ * of the page. Until it has loaded, the shape draws nothing; when it loads,
++ * every canvas that drew it repaints its latest scene. A `src` that
++ * fails to load draws nothing.
++ */
++export declare const Image: import("../schema/index.js").CallableTaggedStruct<"Image", {
++    src: Schema.String;
++    x: Schema.Number;
++    y: Schema.Number;
++    width: Schema.Number;
++    height: Schema.Number;
++    crop: Schema.optional<Schema.Struct<{
++        readonly x: Schema.Number;
++        readonly y: Schema.Number;
++        readonly width: Schema.Number;
++        readonly height: Schema.Number;
++    }>>;
++    rendering: Schema.optional<Schema.Literals<readonly ["Smooth", "Pixelated"]>>;
++}>;
++/**
++ * A bitmap drawn from a URL into a `width` by `height` box at `x`, `y`.
++ * `src` accepts anything an `<img>` element does, including data URLs.
++ * `crop` draws one region of the source, such as a frame of a sprite sheet.
++ *
++ * The painter loads each `src` once and keeps the decoded image for the life
++ * of the page. Until it has loaded, the shape draws nothing; when it loads,
++ * every canvas that drew it repaints its latest scene. A `src` that
++ * fails to load draws nothing.
++ */
++export type Image = typeof Image.Type;
+ /**
+  * A scene-graph node that applies a 2D transform and global alpha to a list of
+  * child shapes. Transforms compose multiplicatively when groups are nested.
+@@ -170,7 +232,7 @@ export interface Group extends Readonly<{
+  * the painter walks the tree depth-first, applying transforms via
+  * `ctx.save` / `ctx.restore`.
+  */
+-export type Shape = Rect | Circle | Path | Text | Group;
++export type Shape = Rect | Circle | Path | Text | Image | Group;
+ /** Construct a `Group` shape that wraps its children in a transformed scope. */
+ export declare const Group: import("../schema/index.js").CallableTaggedStruct<"Group", {
+     shapes: Schema.$Array<Schema.Schema<Shape>>;
+diff --git a/dist/canvas/shape.js b/dist/canvas/shape.js
+index cd32f90..82b0d7d 100644
+--- a/dist/canvas/shape.js
++++ b/dist/canvas/shape.js
+@@ -1,3 +1,4 @@
++// NOTE: Munch Manor patch: Canvas.Image from foldkit/foldkit#1846 (a9009a20).
+ import { Schema } from 'effect';
+ import { taggedStruct } from '../schema/index.js';
+ /** A 2D point in canvas-local coordinates. */
+@@ -99,12 +100,47 @@ export const Text = taggedStruct('Text', {
+     align: Schema.optional(TextAlign),
+     baseline: Schema.optional(TextBaseline),
+ });
++/**
++ * The region of an `Image` shape's source to draw, in the source image's own
++ * pixels. Use it to draw one frame of a sprite sheet.
++ */
++export const ImageCrop = Schema.Struct({
++    x: Schema.Number,
++    y: Schema.Number,
++    width: Schema.Number,
++    height: Schema.Number,
++});
++/**
++ * How an `Image` shape samples its source when drawn at a different size.
++ * `Smooth` interpolates between source pixels, the canvas default.
++ * `Pixelated` keeps hard pixel edges, for scaling up pixel art.
++ */
++export const ImageRendering = Schema.Literals(['Smooth', 'Pixelated']);
++/**
++ * A bitmap drawn from a URL into a `width` by `height` box at `x`, `y`.
++ * `src` accepts anything an `<img>` element does, including data URLs.
++ * `crop` draws one region of the source, such as a frame of a sprite sheet.
++ *
++ * The painter loads each `src` once and keeps the decoded image for the life
++ * of the page. Until it has loaded, the shape draws nothing; when it loads,
++ * every canvas that drew it repaints its latest scene. A `src` that
++ * fails to load draws nothing.
++ */
++export const Image = taggedStruct('Image', {
++    src: Schema.String,
++    x: Schema.Number,
++    y: Schema.Number,
++    width: Schema.Number,
++    height: Schema.Number,
++    crop: Schema.optional(ImageCrop),
++    rendering: Schema.optional(ImageRendering),
++});
+ /**
+  * Lazy reference to the full `Shape` union. Used inside `Group`'s `shapes`
+  * field so the schema can describe its own children without a forward
+  * declaration cycle.
+  */
+-const Shape = Schema.suspend(() => Schema.Union([Rect, Circle, Path, Text, Group]));
++const Shape = Schema.suspend(() => Schema.Union([Rect, Circle, Path, Text, Image, Group]));
+ /** Construct a `Group` shape that wraps its children in a transformed scope. */
+ export const Group = taggedStruct('Group', {
+     shapes: Schema.Array(Shape),
+diff --git a/dist/canvas/view.d.ts b/dist/canvas/view.d.ts
+index 1ca895e..36a06d8 100644
+--- a/dist/canvas/view.d.ts
++++ b/dist/canvas/view.d.ts
+@@ -11,6 +11,8 @@ export type ViewConfig<Message> = Readonly<{
+     height: number;
+     shapes: ReadonlyArray<Shape>;
+     className?: string | undefined;
++    /** Munch Manor patch: the snabbdom key of the `<canvas>` among its siblings. */
++    key?: string | undefined;
+     onPointerDown?: ((point: Point) => Message) | undefined;
+     onPointerMove?: ((point: Point) => Message) | undefined;
+     onPointerUp?: ((point: Point) => Message) | undefined;
+@@ -19,7 +21,9 @@ export type ViewConfig<Message> = Readonly<{
+  * A virtual DOM `<canvas>` element backed by a declarative scene description.
+  * The insert hook captures the 2D context and paints the initial scene; the
+  * postpatch hook re-paints on every render. The canvas is a pure function of
+- * `shapes`. Same shapes produce the same pixels.
++ * `shapes` and of which `Image` sources have loaded. Same shapes produce the
++ * same pixels once their images have loaded, and a canvas repaints its current
++ * scene when an image it drew finishes loading.
+  *
+  * The trailing `h` fixes `Message` to the calling view's frame; the pointer
+  * handlers dispatch through that frame at fire time, so passing the builder
+diff --git a/dist/canvas/view.js b/dist/canvas/view.js
+index f8ee487..c5830a9 100644
+--- a/dist/canvas/view.js
++++ b/dist/canvas/view.js
+@@ -1,13 +1,16 @@
++// NOTE: Munch Manor patch: Canvas.Image from foldkit/foldkit#1846 (a9009a20).
+ import { Array, Predicate, Record, String, pipe } from 'effect';
+ import { __requireDispatch, } from '../html/index.js';
+ import { h } from '../snabbdom/index.js';
+ import { paintScene } from './paint.js';
+ /**
+- * Per-element 2D context cache. Keyed by the live `<canvas>` element so the
+- * postpatch hook reads the same context the insert hook captured. `WeakMap`
+- * lets the entry be reclaimed if the element is removed.
++ * Per-element paint state. Keyed by the live `<canvas>` element so the
++ * postpatch hook reads the same context the insert hook captured, and so an
++ * `Image` that finishes loading repaints the scene the canvas last rendered.
++ * `WeakMap` lets the entry be reclaimed if the element is removed.
+  */
+-const contextStore = new WeakMap();
++const paintedCanvasStore = new WeakMap();
++const paintCanvas = ({ context, width, height, shapes, repaint, }) => paintScene(context, width, height, shapes, repaint);
+ const toCanvasPoint = (canvas, event) => {
+     const rect = canvas.getBoundingClientRect();
+     const scaleX = rect.width === 0 ? 1 : canvas.width / rect.width;
+@@ -22,7 +25,9 @@ const classesFromClassName = (className) => pipe(className, String.split(/\s+/),
+  * A virtual DOM `<canvas>` element backed by a declarative scene description.
+  * The insert hook captures the 2D context and paints the initial scene; the
+  * postpatch hook re-paints on every render. The canvas is a pure function of
+- * `shapes`. Same shapes produce the same pixels.
++ * `shapes` and of which `Image` sources have loaded. Same shapes produce the
++ * same pixels once their images have loaded, and a canvas repaints its current
++ * scene when an image it drew finishes loading.
+  *
+  * The trailing `h` fixes `Message` to the calling view's frame; the pointer
+  * handlers dispatch through that frame at fire time, so passing the builder
+@@ -46,7 +51,7 @@ const classesFromClassName = (className) => pipe(className, String.split(/\s+/),
+  */
+ export const view = (config, _h) => {
+     const dispatchSync = __requireDispatch();
+-    const { width, height, shapes, className, onPointerDown, onPointerMove, onPointerUp, } = config;
++    const { width, height, shapes, className, key, onPointerDown, onPointerMove, onPointerUp, } = config;
+     const pointerListener = (toMessage) => (event) => {
+         const target = event.currentTarget;
+         if (target instanceof HTMLCanvasElement) {
+@@ -67,6 +72,9 @@ export const view = (config, _h) => {
+     const data = {
+         props: { width, height },
+         on: listeners,
++        // NOTE: Munch Manor patch: a key, so a canvas handed back from a lazy
++        // view's cache is found by key among its siblings, not by position.
++        ...(key !== undefined && { key }),
+         ...(className !== undefined && {
+             class: classesFromClassName(className),
+         }),
+@@ -80,22 +88,31 @@ export const view = (config, _h) => {
+                 if (Predicate.isNull(context)) {
+                     return;
+                 }
+-                contextStore.set(canvas, context);
+-                paintScene(context, width, height, shapes);
++                const repaint = () => {
++                    const latestPaint = paintedCanvasStore.get(canvas);
++                    if (latestPaint !== undefined) {
++                        paintCanvas(latestPaint);
++                    }
++                };
++                const paintedCanvas = { context, width, height, shapes, repaint };
++                paintedCanvasStore.set(canvas, paintedCanvas);
++                paintCanvas(paintedCanvas);
+             },
+             postpatch: (_oldVnode, vnode) => {
+                 if (!(vnode.elm instanceof HTMLCanvasElement)) {
+                     return;
+                 }
+-                const context = contextStore.get(vnode.elm);
+-                if (context === undefined) {
++                const previousPaint = paintedCanvasStore.get(vnode.elm);
++                if (previousPaint === undefined) {
+                     return;
+                 }
+-                paintScene(context, width, height, shapes);
++                const paintedCanvas = { ...previousPaint, width, height, shapes };
++                paintedCanvasStore.set(vnode.elm, paintedCanvas);
++                paintCanvas(paintedCanvas);
+             },
+             destroy: vnode => {
+                 if (vnode.elm instanceof HTMLCanvasElement) {
+-                    contextStore.delete(vnode.elm);
++                    paintedCanvasStore.delete(vnode.elm);
+                 }
+             },
+         },
+diff --git a/dist/domReflection.js b/dist/domReflection.js
+index fa2e6d7..6cad7a2 100644
+--- a/dist/domReflection.js
++++ b/dist/domReflection.js
+@@ -456,6 +456,24 @@ const hasUnsafeStyleSyntax = (value) => {
+     }
+     return quote !== undefined || parentheses !== 0 || isComment;
+ };
++// NOTE: Munch Manor patch (see the game's patches/README.md). Every check
++// but the duplicate one depends only on one entry's name and string value,
++// so an entry that passed is remembered and skipped the next time a view
++// builds it, which is every frame for the game's inline styles. The memo is
++// cleared once it holds STYLE_ENTRY_MEMO_LIMIT entries, since values such as
++// positions keep changing. Declaration names are memoized too.
++const STYLE_ENTRY_MEMO_LIMIT = 4096;
++const representableStyleEntries = new Set();
++const declarationNameByProperty = new Map();
++const memoizedDeclarationName = (name) => {
++    const known = declarationNameByProperty.get(name);
++    if (known !== undefined) {
++        return known;
++    }
++    const declarationName = cssDeclarationName(name);
++    declarationNameByProperty.set(name, declarationName);
++    return declarationName;
++};
+ /** Refuses style entries whose property assignment and serialized declaration
+  * can describe different CSS.
+  *
+@@ -464,28 +482,18 @@ const hasUnsafeStyleSyntax = (value) => {
+ export const assertStyleIsRepresentable = (style) => {
+     const declarationOwners = new Map();
+     for (const name of Object.keys(style)) {
+-        if (STYLE_LIFECYCLE_KEYS.has(name)) {
+-            throw new Error(`[foldkit] h.Style property ${JSON.stringify(name)} is a Snabbdom ` +
+-                'lifecycle control rather than a CSS property. Foldkit h.Style ' +
+-                'accepts only declarations applied while the element exists.');
+-        }
+-        if (name === 'cssText' ||
+-            (name.startsWith('--')
+-                ? !CUSTOM_STYLE_PROPERTY_NAME.test(name)
+-                : !STYLE_PROPERTY_NAME.test(name))) {
+-            throw new Error(`[foldkit] h.Style property ${JSON.stringify(name)} cannot be ` +
+-                'represented as one inline CSS declaration. Use a CSS property ' +
+-                'name without declaration delimiters.');
+-        }
+-        const canonicalName = canonicalStylePropertyName(name);
+-        if (!name.startsWith('--') &&
+-            !CSS_STYLE_PROPERTIES.has(canonicalName) &&
+-            !CSS_DECLARATION_PROPERTIES.has(name)) {
+-            throw new Error(`[foldkit] h.Style property ${JSON.stringify(name)} is not a ` +
+-                'CSSStyleDeclaration property supported by Foldkit. Use a known ' +
+-                'camel-case or declaration name, or a custom property beginning --.');
++        const entryValue = style[name];
++        const entryKey = typeof entryValue === 'string'
++            ? `${name}\u0000${entryValue}`
++            : undefined;
++        if (entryKey === undefined || !representableStyleEntries.has(entryKey)) {
++            assertStyleEntryIsRepresentable(name, entryValue);
++            if (representableStyleEntries.size >= STYLE_ENTRY_MEMO_LIMIT) {
++                representableStyleEntries.clear();
++            }
++            representableStyleEntries.add(entryKey);
+         }
+-        const declarationName = cssDeclarationName(name);
++        const declarationName = memoizedDeclarationName(name);
+         const existingOwner = declarationOwners.get(declarationName);
+         if (existingOwner !== undefined) {
+             throw new Error(`[foldkit] h.Style properties ${JSON.stringify(existingOwner)} and ` +
+@@ -494,19 +502,41 @@ export const assertStyleIsRepresentable = (style) => {
+                 'and hydration have one owner for it.');
+         }
+         declarationOwners.set(declarationName, name);
+-        const value = style[name];
+-        if (typeof value !== 'string') {
+-            throw new Error(`[foldkit] h.Style value for ${JSON.stringify(name)} must be a ` +
+-                'string. Browser CSSOM assignment coerces other values while server ' +
+-                'serialization cannot preserve the same authored declaration.');
+-        }
+-        if (hasUnsafeStyleSyntax(value)) {
+-            throw new Error(`[foldkit] h.Style value for ${JSON.stringify(name)} contains a ` +
+-                'unsafe CSS declaration syntax. Assigning one DOM style ' +
+-                'property rejects that value, while serializing it into a style ' +
+-                'attribute could activate additional or !important declarations. ' +
+-                'Keep the value to one declaration.');
+-        }
++    }
++};
++const assertStyleEntryIsRepresentable = (name, value) => {
++    if (STYLE_LIFECYCLE_KEYS.has(name)) {
++        throw new Error(`[foldkit] h.Style property ${JSON.stringify(name)} is a Snabbdom ` +
++            'lifecycle control rather than a CSS property. Foldkit h.Style ' +
++            'accepts only declarations applied while the element exists.');
++    }
++    if (name === 'cssText' ||
++        (name.startsWith('--')
++            ? !CUSTOM_STYLE_PROPERTY_NAME.test(name)
++            : !STYLE_PROPERTY_NAME.test(name))) {
++        throw new Error(`[foldkit] h.Style property ${JSON.stringify(name)} cannot be ` +
++            'represented as one inline CSS declaration. Use a CSS property ' +
++            'name without declaration delimiters.');
++    }
++    const canonicalName = canonicalStylePropertyName(name);
++    if (!name.startsWith('--') &&
++        !CSS_STYLE_PROPERTIES.has(canonicalName) &&
++        !CSS_DECLARATION_PROPERTIES.has(name)) {
++        throw new Error(`[foldkit] h.Style property ${JSON.stringify(name)} is not a ` +
++            'CSSStyleDeclaration property supported by Foldkit. Use a known ' +
++            'camel-case or declaration name, or a custom property beginning --.');
++    }
++    if (typeof value !== 'string') {
++        throw new Error(`[foldkit] h.Style value for ${JSON.stringify(name)} must be a ` +
++            'string. Browser CSSOM assignment coerces other values while server ' +
++            'serialization cannot preserve the same authored declaration.');
++    }
++    if (hasUnsafeStyleSyntax(value)) {
++        throw new Error(`[foldkit] h.Style value for ${JSON.stringify(name)} contains a ` +
++            'unsafe CSS declaration syntax. Assigning one DOM style ' +
++            'property rejects that value, while serializing it into a style ' +
++            'attribute could activate additional or !important declarations. ' +
++            'Keep the value to one declaration.');
+     }
+ };
+ /** The CSS declaration name corresponding to a CSSStyleDeclaration property.
+diff --git a/dist/runtime/messageQueue.d.ts b/dist/runtime/messageQueue.d.ts
+index 03cb951..bdc8beb 100644
+--- a/dist/runtime/messageQueue.d.ts
++++ b/dist/runtime/messageQueue.d.ts
+@@ -6,6 +6,7 @@ export type MessageQueue<Message, Processed = void> = Readonly<{
+     enqueueMessageEffect: (message: Message, isCurrent?: () => boolean) => Effect.Effect<void>;
+     enqueueMessageReceiptEffect: (message: Message, isCurrent?: () => boolean) => Effect.Effect<Result.Result<Option.Option<Processed>, string>>;
+     drainPendingMessages: () => void;
++    drainDeferredNow: () => void;
+     resetDrainBudget: () => void;
+     isAnyMessageDeferred: () => boolean;
+     completeBoot: () => void;
+diff --git a/dist/runtime/messageQueue.js b/dist/runtime/messageQueue.js
+index 957a042..8d119b8 100644
+--- a/dist/runtime/messageQueue.js
++++ b/dist/runtime/messageQueue.js
+@@ -160,6 +160,18 @@ export const makeMessageQueue = ({ status, processMessage, crashWith, }) => Effe
+     const resetDrainBudget = () => {
+         syncWorkMsSinceYield = 0;
+     };
++    // NOTE: runs a drain deferred to the next task now, from a render frame:
++    // the browser has had control back, which is what the deferral waited
++    // for, and is about to paint. A drain that runs over the budget again
++    // defers again. The channel's message still comes and finds nothing.
++    const drainDeferredNow = () => {
++        if (!isDrainDeferredToNextTask) {
++            return;
++        }
++        isDrainDeferredToNextTask = false;
++        syncWorkMsSinceYield = 0;
++        drainPendingMessages();
++    };
+     const isAnyMessageDeferred = () => isDrainDeferredToNextTask && pendingMessages.length > 0;
+     const completeBoot = () => {
+         isBootComplete = true;
+@@ -170,6 +182,7 @@ export const makeMessageQueue = ({ status, processMessage, crashWith, }) => Effe
+         enqueueMessageEffect,
+         enqueueMessageReceiptEffect,
+         drainPendingMessages,
++        drainDeferredNow,
+         resetDrainBudget,
+         isAnyMessageDeferred,
+         completeBoot,
+diff --git a/dist/runtime/renderer.js b/dist/runtime/renderer.js
+index b180e6d..80e50c6 100644
+--- a/dist/runtime/renderer.js
++++ b/dist/runtime/renderer.js
+@@ -22,7 +22,7 @@ import { __decideViewTransition, __silenceViewTransitionRejections, } from './vi
+  * those fibers are interrupted.
+  */
+ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocument, crash, buildId, initModel, maybeHydrationRoot, maybeSlowView, maybeSlowPatch, duplicateIdScanner, maybeResolvedViewTransition, commitNotifier, mounts, runtimeContext, readLiveModel, messageQueue, devToolsIntegration, }) => Effect.gen(function* () {
+-    const { enqueueMessage, enqueueMessageEffect, drainPendingMessages, resetDrainBudget, isAnyMessageDeferred, } = messageQueue;
++    const { enqueueMessage, enqueueMessageEffect, drainPendingMessages, drainDeferredNow, resetDrainBudget, isAnyMessageDeferred, } = messageQueue;
+     const { mountTracker, mountRuntime, drainMountEvents, readViewState, setViewState, isPausedNow, resumeDevTools, attachRenderedMounts, } = devToolsIntegration;
+     const settlePendingCommit = () => {
+         if (commitNotifier.service.isCommitPending()) {
+@@ -39,6 +39,17 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+     // from an ordinary frame that was already queued when jumpTo installed
+     // the historical view.
+     let isLiveViewRestorePending = false;
++    // NOTE: whether a frame callback is already requested ahead, before
++    // anything changed (see `armNextFrame`).
++    let isFrameArmed = false;
++    let maybeArmChannel = null;
++    yield* Effect.addFinalizer(() => Effect.sync(() => {
++        if (maybeArmChannel !== null) {
++            maybeArmChannel.port1.close();
++            maybeArmChannel.port2.close();
++            maybeArmChannel = null;
++        }
++    }));
+     // NOTE: the Model behind the DOM currently on screen, which is what a
+     // View Transition animates away from. Seeded with `initModel` because
+     // the init render paints it, and advanced only where a render actually
+@@ -435,11 +446,23 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+     // would strand any `Render.afterCommit` registered against it, and
+     // the Dom helpers that gate on it would never run their DOM work.
+     const renderFramePlain = () => {
++        // NOTE: a drain deferred to a new task waits for the browser to get
++        // control back, and a frame running means it has: drain it here, so
++        // its Messages draw in this frame and not the next.
++        if (isLiveModelBehindQueue()) {
++            drainDeferredNow();
++        }
+         // NOTE: retain the scheduled frame's pending commit while the drain waits.
+         if (isLiveModelBehindQueue()) {
+             requestAnimationFrame(renderFramePlain);
+             return;
+         }
++        isFrameArmed = false;
++        // NOTE: a frame armed ahead that nothing has changed since. The
++        // runtime is idle, so it stops arming.
++        if (!isRenderFrameScheduled) {
++            return;
++        }
+         isRenderFrameScheduled = false;
+         const isRestoringLiveView = isLiveViewRestorePending;
+         isLiveViewRestorePending = false;
+@@ -476,11 +499,38 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+         // the render runs later, inside the transition's update callback.
+         if (Option.isNone(maybeResolvedViewTransition)) {
+             runRenderFrameBody();
++            armNextFrame();
+             return;
+         }
+         if (!startFrameViewTransition(maybeResolvedViewTransition.value)) {
+             runRenderFrameBody();
+         }
++        armNextFrame();
++    };
++    // NOTE: a `requestAnimationFrame` made inside an animation frame's
++    // callbacks runs in the next frame, so a Message from an animation frame
++    // Subscription (a game's tick) that scheduled its render then would draw
++    // a frame late, merged with the next tick: every other frame drawn. So
++    // after a frame renders, the next frame's callback is requested ahead,
++    // from a task after this frame, which puts it after every callback
++    // requested inside this frame's. The tick's callback then runs first,
++    // its Message dirties the Model, and this callback draws it in the same
++    // frame. A frame armed ahead that nothing dirtied stops the arming.
++    const armNextFrame = () => {
++        if (maybeArmChannel === null) {
++            maybeArmChannel = new MessageChannel();
++            maybeArmChannel.port2.onmessage = () => {
++                if (isFrameArmed ||
++                    isRenderFrameScheduled ||
++                    status.isRuntimeDisposed ||
++                    status.isCrashed) {
++                    return;
++                }
++                isFrameArmed = true;
++                requestAnimationFrame(renderFramePlain);
++            };
++        }
++        maybeArmChannel.port1.postMessage(null);
+     };
+     // NOTE: render frames run as plain JavaScript inside the
+     // requestAnimationFrame callback. Messages arriving between frames mark
+@@ -495,6 +545,9 @@ export const makeRenderer = ({ status, container, view, htmlBuilder, manageDocum
+         }
+         isRenderFrameScheduled = true;
+         commitNotifier.markCommitPending();
++        if (isFrameArmed) {
++            return;
++        }
+         requestAnimationFrame(renderFramePlain);
+     };
+     const devToolsRenderBridge = {
+diff --git a/dist/schema/index.js b/dist/schema/index.js
+index fa19443..0dce512 100644
+--- a/dist/schema/index.js
++++ b/dist/schema/index.js
+@@ -22,10 +22,10 @@ const runConstructorOperation = (operation) => {
+         });
+     }
+ };
+-const isDirectlyCopyable = (ast) => {
++const isDirectlyCopyable = (ast, isKeyContextAllowed = false) => {
+     if (ast.checks !== undefined ||
+         ast.encoding !== undefined ||
+-        ast.context !== undefined) {
++        (ast.context !== undefined && !isKeyContextAllowed)) {
+         return false;
+     }
+     return Match.value(ast).pipe(Match.withReturnType(), Match.tagsExhaustive({
+@@ -45,31 +45,54 @@ const isDirectlyCopyable = (ast) => {
+         UniqueSymbol: () => true,
+         ObjectKeyword: () => true,
+         Enum: () => true,
+-        TemplateLiteral: ({ parts }) => parts.every(isDirectlyCopyable),
++        TemplateLiteral: ({ parts }) => parts.every(part => isDirectlyCopyable(part)),
+         Arrays: () => false,
+         Objects: () => false,
+-        Union: ({ options, types }) => options?.mode !== 'oneOf' && types.every(isDirectlyCopyable),
++        Union: ({ options, types }) => options?.mode !== 'oneOf' &&
++            types.every(member => isDirectlyCopyable(member)),
+         Suspend: () => false,
+     }));
+ };
++// NOTE: Munch Manor patch (see the game's patches/README.md). An optional
++// key with no constructor default, such as a Canvas shape's `fill`, is
++// copied too, so building a `Rect` or a `Circle` every frame skips
++// `schema.make`. A key the input leaves out stays out, as `make` leaves it.
++// Upstream copies only required keys with no key context.
++const isOptionalCopyableKey = (type) => type.context !== undefined &&
++    type.context.isOptional &&
++    type.context.constructorDefault === undefined &&
++    isDirectlyCopyable(type, true);
++const acceptsUndefined = (type) => type._tag === 'Undefined' ||
++    (type._tag === 'Union' &&
++        type.types.some(member => member._tag === 'Undefined'));
+ const getDirectPropertyNames = (propertySignatures) => {
+     const names = [];
++    const optionalNames = new Map();
+     for (const { name, type } of propertySignatures) {
+-        if (name !== '_tag' && !isDirectlyCopyable(SchemaAST.toType(type))) {
++        const typeAst = SchemaAST.toType(type);
++        if (name === '_tag' || isDirectlyCopyable(typeAst)) {
++            names.push(name);
++        }
++        else if (isOptionalCopyableKey(typeAst)) {
++            names.push(name);
++            optionalNames.set(name, acceptsUndefined(typeAst));
++        }
++        else {
+             return undefined;
+         }
+-        names.push(name);
+     }
+-    return names;
++    return { names, optionalNames };
+ };
+ const callableTaggedStructs = new WeakSet();
+ /** @internal Recognizes callable tagged constructors created by Foldkit. */
+ export const isCallableTaggedStruct = (value) => Predicate.isFunction(value) && callableTaggedStructs.has(value);
+ const makeCallable = (tag, fields) => {
+     const schema = Schema.TaggedStruct(tag, fields);
+-    const propertyNames = Object.hasOwn(fields, '_tag')
++    const directProperties = Object.hasOwn(fields, '_tag')
+         ? undefined
+         : getDirectPropertyNames(schema.ast.propertySignatures);
++    const propertyNames = directProperties?.names;
++    const optionalNames = directProperties?.optionalNames;
+     const make = (value) => schema.make(
+     /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
+     (value ?? {}));
+@@ -82,12 +105,17 @@ const makeCallable = (tag, fields) => {
+             }
+             const output = {};
+             for (const name of propertyNames) {
+-                const inputValue = runConstructorOperation(() => {
+-                    const hasProperty = name === '__proto__'
+-                        ? Object.hasOwn(input, name)
+-                        : Reflect.has(input, name);
+-                    return hasProperty ? input[name] : undefined;
+-                });
++                const maybeAcceptsUndefined = optionalNames.get(name);
++                const hasProperty = runConstructorOperation(() => name === '__proto__'
++                    ? Object.hasOwn(input, name)
++                    : Reflect.has(input, name));
++                if (maybeAcceptsUndefined !== undefined && !hasProperty) {
++                    continue;
++                }
++                const inputValue = runConstructorOperation(() => hasProperty ? input[name] : undefined);
++                if (maybeAcceptsUndefined === false && inputValue === undefined) {
++                    return make(value);
++                }
+                 if (name === '_tag') {
+                     if (inputValue !== undefined && inputValue !== tag) {
+                         return make(value);
+diff --git a/dist/struct/index.js b/dist/struct/index.js
+index ba9a9ce..f23de13 100644
+--- a/dist/struct/index.js
++++ b/dist/struct/index.js
+@@ -1,15 +1,23 @@
+ import { Function } from 'effect';
++// NOTE: patched (see the game's patches/README.md). Upstream walks every key
++// of the struct with `Reflect.ownKeys` and `propertyIsEnumerable` on each
++// call, the top cost of a frame on a large Model. This runs only the given
++// transforms, on own enumerable keys the struct has, copies the struct with a
++// spread (the same own enumerable keys, in the same order) only when a field
++// changes, and returns the original struct when every transformed field is
++// unchanged according to `Object.is`, as upstream does.
+ const transformFields = (source, transforms) => {
+-    const output = {};
+-    let isChanged = false;
+-    for (const key of Reflect.ownKeys(source)) {
++    let output;
++    for (const key of Reflect.ownKeys(transforms)) {
+         if (!Object.prototype.propertyIsEnumerable.call(source, key)) {
+             continue;
+         }
+         const value = source[key];
+-        const nextValue = Object.hasOwn(transforms, key)
+-            ? transforms[key](value)
+-            : value;
++        const nextValue = transforms[key](value);
++        if (Object.is(value, nextValue)) {
++            continue;
++        }
++        output ??= { ...source };
+         if (key === '__proto__') {
+             Object.defineProperty(output, key, {
+                 value: nextValue,
+@@ -21,11 +29,8 @@ const transformFields = (source, transforms) => {
+         else {
+             output[key] = nextValue;
+         }
+-        if (!Object.is(value, nextValue)) {
+-            isChanged = true;
+-        }
+     }
+-    return isChanged ? output : source;
++    return output ?? source;
+ };
+ /**
+  * Immutably modifies fields of a struct by applying transform functions. Each

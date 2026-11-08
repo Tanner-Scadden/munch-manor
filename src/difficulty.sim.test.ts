@@ -6,10 +6,10 @@ import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { update } from './main'
 import { Message } from './message'
-import { type Difficulty, type Model, Phase, initialModel } from './model'
+import { type Difficulty, type Model, Phase } from './model'
 import { focusOf } from './party'
+import { initialModel, update } from './pureApp'
 import { SURFACE, startedRunOf } from './testing'
 import { asVeteran } from './veteran'
 

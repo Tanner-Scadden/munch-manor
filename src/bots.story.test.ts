@@ -4,11 +4,11 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { RESTART_GRACE_MS } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase } from './model'
 import { heroesBoughtBy, readyModel } from './model.fixture'
 import { atSeatBy, playersOf } from './party'
+import { update } from './pureApp'
 import { pointsForRank } from './rank'
 import { earnRank } from './rankRun'
 import {

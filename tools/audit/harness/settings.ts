@@ -37,11 +37,12 @@ export const settingsOf = (config: HarnessConfig): SceneSettings => ({
       : (config.freeze ?? Infinity),
 })
 
-// NOTE: the page's state: the current scene's settings, the frames it has
-// run, its number (for the ready signal), and the Model the last scene
-// left, which the next scene boots from.
+// NOTE: the page's state: the current scene's settings, the frames sent to
+// its update and the frames it has run, its number (for the ready signal),
+// and the Model the last scene left, which the next scene boots from.
 export type HarnessPage = {
   settings: SceneSettings
+  framesSent: number
   framesRun: number
   sceneNumber: number
   maybeCarriedModel: Option.Option<Model>

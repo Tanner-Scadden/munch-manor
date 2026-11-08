@@ -1,21 +1,21 @@
-import { Array, Function, Option } from 'effect'
-import type { Html } from 'foldkit/html'
+import { Array, Function, Option } from "effect";
+import type { Html } from "foldkit/html";
 
-import type { Dialog } from '@foldkit/ui'
+import type { Dialog } from "@foldkit/ui";
 
-import { HandDialogBinding, PanelDialogBinding } from './bindings'
-import { callingBodyView, callingPanelText } from './callingView'
-import type { ApplicationViewBuilder } from './composition'
-import { COOP_ICON } from './coop/icons'
-import { IS_COOP_RELEASED } from './coop/release'
-import { closeButtonView, dialogShell } from './dialogs'
+import { HandDialogBinding, PanelDialogBinding } from "./bindings";
+import { callingBodyView, callingPanelText } from "./callingView";
+import type { ApplicationViewBuilder } from "./composition";
+import { COOP_ICON } from "./coop/icons";
+import { IS_COOP_RELEASED } from "./coop/release";
+import { closeButtonView, dialogShell } from "./dialogs";
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
   NIGHTMARE_LOCK_NOTE,
   isLocked,
-} from './difficulty'
-import { munchopediaBodyView, munchopediaText } from './guideView'
+} from "./difficulty";
+import { munchopediaBodyView, munchopediaText } from "./guideView";
 import {
   HAND_CARDS,
   HAND_KEYS,
@@ -34,7 +34,7 @@ import {
   isOnHome,
   isTurnHintShown,
   steppedHandCard,
-} from './home'
+} from "./home";
 import {
   AIM_ICON,
   CHARACTER_ICON,
@@ -51,14 +51,15 @@ import {
   PADLOCK_ICON,
   PLAY_ICON,
   SETTINGS_ICON,
+  SKIP_ICON,
   SKULL_ICONS,
   SKULL_OFF_ICON,
   TROPHY_ICON,
   TURN_PHONE_ICON,
-} from './icons'
-import { installTileView } from './installView'
-import { iconView, isKeyboard, keyCapView } from './menuParts'
-import { Message } from './message'
+} from "./icons";
+import { installTileView } from "./installView";
+import { iconView, isKeyboard, keyCapView } from "./menuParts";
+import { Message } from "./message";
 import {
   type Difficulty,
   DifficultyCard,
@@ -67,22 +68,22 @@ import {
   type MenuPanel,
   type Model,
   Phase,
-} from './model'
+  type TutorialChoice,
+} from "./model";
 import {
   ENTRY_COUNT,
   discoveredKinds,
   entryName,
   hasUnopenedEntry,
-} from './munchopedia'
-import { MULTIPLAYER_NAME } from './names'
-import { helpLabel, howToPlayView } from './pauseHelp'
-import { rankOf, totalPointsOf } from './rank'
-import { rankChipView } from './rankBadgeView'
-import { durationLabel } from './stats'
-import { hasUnseenLook } from './unlocks'
-import { hasFinishedTutorial } from './update/coop'
-import { updateGiftView } from './updateGift'
-import { whatsNewBodyView, whatsNewText } from './whatsNewView'
+} from "./munchopedia";
+import { MULTIPLAYER_NAME, TUTORIAL_CHOICE_NAMES } from "./names";
+import { helpLabel, howToPlayView } from "./pauseHelp";
+import { rankOf, totalPointsOf } from "./rank";
+import { rankChipView } from "./rankBadgeView";
+import { durationLabel } from "./stats";
+import { hasUnseenLook } from "./unlocks";
+import { updateGiftView } from "./updateGift";
+import { whatsNewBodyView, whatsNewText } from "./whatsNewView";
 
 // KEY BADGES
 
@@ -90,7 +91,7 @@ const keyBadgeView = (
   model: Model,
   button: HomeButton,
   h: ApplicationViewBuilder,
-): ReadonlyArray<Html> => keyCapView(model, HOME_KEYS[button].cap, h)
+): ReadonlyArray<Html> => keyCapView(model, HOME_KEYS[button].cap, h);
 
 // NOTE: what every home button shares, a link like the coffee too: its id,
 // its key, and focus for the arrow keys.
@@ -99,12 +100,12 @@ const homeFocusAttributes = (button: HomeButton, h: ApplicationViewBuilder) => [
   h.AriaKeyshortcuts(HOME_KEYS[button].name),
   h.OnFocus(Message.FocusedHomeButton({ button })),
   h.OnBlur(Message.BlurredHomeButton()),
-]
+];
 
 const homeButtonAttributes = (
   button: HomeButton,
   h: ApplicationViewBuilder,
-) => [h.Type('button'), ...homeFocusAttributes(button, h)]
+) => [h.Type("button"), ...homeFocusAttributes(button, h)];
 
 // PLAY
 
@@ -113,20 +114,20 @@ const homeButtonAttributes = (
 const playButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
   h.button(
     [
-      ...homeButtonAttributes('Play', h),
-      h.Class('home-play'),
-      h.DataAttribute('mode', model.home.mode),
-      h.AriaLabel('Play'),
-      h.OnClick(Message.ClickedPlayButton(), { propagation: 'Stop' }),
+      ...homeButtonAttributes("Play", h),
+      h.Class("home-play"),
+      h.DataAttribute("mode", model.home.mode),
+      h.AriaLabel("Play"),
+      h.OnClick(Message.ClickedPlayButton(), { propagation: "Stop" }),
     ],
     [
       h.span(
-        [h.Class('home-play-face')],
-        [iconView('home-play-icon', PLAY_ICON, h)],
+        [h.Class("home-play-face")],
+        [iconView("home-play-icon", PLAY_ICON, h)],
       ),
-      ...keyBadgeView(model, 'Play', h),
+      ...keyBadgeView(model, "Play", h),
     ],
-  )
+  );
 
 // NOTE: a difficulty reads as a row of four skulls: as many lit as the
 // level, each in that level's color and face, and the fourth padlocked
@@ -138,85 +139,66 @@ const skullMeterView = (
 ): Html => {
   const lit = Array.findFirstIndex(
     DIFFICULTY_ORDER,
-    level => level === difficulty,
-  )
-  const litCount = Option.getOrElse(lit, () => 0) + 1
+    (level) => level === difficulty,
+  );
+  const litCount = Option.getOrElse(lit, () => 0) + 1;
   return h.span(
-    [h.Class('skull-meter'), h.AriaHidden(true)],
+    [h.Class("skull-meter"), h.AriaHidden(true)],
     Array.map(DIFFICULTY_ORDER, (level, index) =>
-      level === 'Nightmare' && isLocked(model.difficulty, 'Nightmare')
-        ? iconView('skull skull-locked', PADLOCK_ICON, h)
+      level === "Nightmare" && isLocked(model.difficulty, "Nightmare")
+        ? iconView("skull skull-locked", PADLOCK_ICON, h)
         : iconView(
-            index < litCount ? 'skull skull-lit' : 'skull',
+            index < litCount ? "skull skull-lit" : "skull",
             index < litCount ? SKULL_ICONS[difficulty] : SKULL_OFF_ICON,
             h,
           ),
     ),
-  )
-}
+  );
+};
 
-// NOTE: CO-OP is two heads, pink and teal, by PLAY. Until the tutorial is
-// done it is padlocked, with the aim icon of the tutorial's own lesson.
-const coopButtonView = (model: Model, h: ApplicationViewBuilder): Html => {
-  const isOpen = hasFinishedTutorial(model)
-  return h.button(
+// NOTE: CO-OP is two heads, pink and teal, by PLAY, open from the first
+// visit (MULTIPLAYER.md, decision 14).
+const coopButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
+  h.button(
     [
-      ...homeButtonAttributes('Coop', h),
-      h.Class('home-coop'),
-      h.DataAttribute('lock', isOpen ? 'Open' : 'Locked'),
-      h.AriaLabel(
-        isOpen
-          ? 'Co-op: play with friends'
-          : 'Co-op: finish the tutorial to unlock',
-      ),
-      h.AriaDisabled(!isOpen),
-      h.OnClick(Message.ClickedCoopButton(), { propagation: 'Stop' }),
+      ...homeButtonAttributes("Coop", h),
+      h.Class("home-coop"),
+      h.AriaLabel("Co-op: play with friends"),
+      h.OnClick(Message.ClickedCoopButton(), { propagation: "Stop" }),
     ],
     [
-      iconView('home-coop-icon', COOP_ICON, h),
-      h.span([h.Class('home-coop-label')], [MULTIPLAYER_NAME]),
-      ...(isOpen
-        ? []
-        : [
-            h.span(
-              [h.Class('home-coop-lock'), h.AriaHidden(true)],
-              [
-                iconView('home-coop-lock-icon', PADLOCK_ICON, h),
-                iconView('home-coop-lock-icon', AIM_ICON, h),
-              ],
-            ),
-          ]),
-      ...keyBadgeView(model, 'Coop', h),
+      iconView("home-coop-icon", COOP_ICON, h),
+      h.span([h.Class("home-coop-label")], [MULTIPLAYER_NAME]),
+      ...keyBadgeView(model, "Coop", h),
     ],
-  )
-}
+  );
 
 const playClusterView = (model: Model, h: ApplicationViewBuilder): Html =>
   h.div(
-    [h.Class('home-play-cluster'), h.Role('group'), h.AriaLabel('Play')],
+    [h.Class("home-play-cluster"), h.Role("group"), h.AriaLabel("Play")],
     [
       playButtonView(model, h),
       IS_COOP_RELEASED ? coopButtonView(model, h) : h.empty,
     ],
-  )
+  );
 
 // THE MANOR HAND
 
 type CardLook = Readonly<{
-  title: string
-  ariaLabel: string
-  icon: string
-}>
+  title: string;
+  ariaLabel: string;
+  icon: string;
+}>;
 
 const CARD_LOOKS: Readonly<Record<HandCard, CardLook>> = {
   Character: {
-    title: 'CHARACTER',
-    ariaLabel: 'Character: change how you look',
+    title: "CHARACTER",
+    ariaLabel: "Character: change how you look",
     icon: CHARACTER_ICON,
   },
   Munchopedia: {
-    title: 'MUNCHOPEDIA',
-    ariaLabel: 'Munchopedia: every zombie you have splatted',
+    title: "MUNCHOPEDIA",
+    ariaLabel: "Munchopedia: every zombie you have splatted",
     icon: MUNCHOPEDIA_ICON,
   },
   WhatsNew: {
@@ -225,70 +207,70 @@ const CARD_LOOKS: Readonly<Record<HandCard, CardLook>> = {
     icon: NEWS_ICON,
   },
   HowToPlay: {
-    title: 'HOW TO PLAY',
-    ariaLabel: 'How to play: the controls',
+    title: "HOW TO PLAY",
+    ariaLabel: "How to play: the controls",
     icon: HELP_ICON,
   },
   Code: {
-    title: 'CODE',
+    title: "CODE",
     ariaLabel: "Code: the game's source on GitHub. Opens in a new tab",
     icon: GITHUB_MARK_ICON,
   },
-}
+};
 
 // NOTE: show, don't explain. A card is its picture and its name. Only the
 // Munchopedia adds a tally, since it changes as the player finds zombies.
 const maybeCardTally = (model: Model, card: HandCard): Option.Option<string> =>
-  card === 'Munchopedia'
+  card === "Munchopedia"
     ? Option.some(
         `${discoveredKinds(model.bests.killsByKind).length}/${ENTRY_COUNT}`,
       )
-    : Option.none()
+    : Option.none();
 
 const CARD_MESSAGES: Readonly<Record<KeyedHandCard, Message>> = {
   Character: Message.ClickedCharacterButton(),
   Munchopedia: Message.ClickedMunchopediaButton(),
   WhatsNew: Message.ClickedWhatsNewButton(),
   HowToPlay: Message.ClickedHowToPlayButton(),
-}
+};
 
 const hasNews = (model: Model, card: HandCard): boolean => {
-  if (card === 'Character') {
-    return hasUnseenLook(rankOf(totalPointsOf(model.rank)), model.seenUnlocks)
-  } else if (card === 'WhatsNew') {
-    return isNewsUnseen(model)
-  } else if (card === 'Munchopedia') {
-    return hasUnopenedEntry(model)
+  if (card === "Character") {
+    return hasUnseenLook(rankOf(totalPointsOf(model.rank)), model.seenUnlocks);
+  } else if (card === "WhatsNew") {
+    return isNewsUnseen(model);
+  } else if (card === "Munchopedia") {
+    return hasUnopenedEntry(model);
   } else {
-    return false
+    return false;
   }
-}
+};
 
 const cardAriaLabel = (model: Model, card: HandCard): string =>
   hasNews(model, card)
     ? `${CARD_LOOKS[card].ariaLabel}. Something new`
-    : CARD_LOOKS[card].ariaLabel
+    : CARD_LOOKS[card].ariaLabel;
 
 const newsCards = (model: Model): ReadonlyArray<HandCard> =>
-  Array.filter(HAND_CARDS, card => hasNews(model, card))
+  Array.filter(HAND_CARDS, (card) => hasNews(model, card));
 
 const NEWS_NAMES: Readonly<Record<HandCard, string>> = {
-  Character: 'Character',
-  Munchopedia: 'the Munchopedia',
+  Character: "Character",
+  Munchopedia: "the Munchopedia",
   WhatsNew: "What's new",
-  HowToPlay: 'How to play',
-  Code: 'the code',
-}
+  HowToPlay: "How to play",
+  Code: "the code",
+};
 
 const manorAriaLabel = (model: Model): string =>
   Array.match(newsCards(model), {
-    onEmpty: () => 'More: character, Munchopedia, what is new, and how to play',
-    onNonEmpty: cards =>
+    onEmpty: () => "More: character, Munchopedia, what is new, and how to play",
+    onNonEmpty: (cards) =>
       `More: character, Munchopedia, what is new, and how to play. Something new in ${Array.join(
-        Array.map(cards, card => NEWS_NAMES[card]),
-        ' and ',
+        Array.map(cards, (card) => NEWS_NAMES[card]),
+        " and ",
       )}`,
-  })
+  });
 
 // NOTE: the badges of the cards inside bubble up to the closed MANOR button
 // as little pips, each the card's own icon with a red dot, so What's New and
@@ -296,51 +278,51 @@ const manorAriaLabel = (model: Model): string =>
 const manorPipsView = (model: Model, h: ApplicationViewBuilder): Html =>
   Array.match(newsCards(model), {
     onEmpty: () => h.empty,
-    onNonEmpty: cards =>
+    onNonEmpty: (cards) =>
       h.span(
-        [h.Class('manor-pips'), h.AriaHidden(true)],
-        Array.map(cards, card =>
+        [h.Class("manor-pips"), h.AriaHidden(true)],
+        Array.map(cards, (card) =>
           h.span(
-            [h.Class('manor-pip'), h.DataAttribute('card', card)],
-            [iconView('manor-pip-icon', CARD_LOOKS[card].icon, h)],
+            [h.Class("manor-pip"), h.DataAttribute("card", card)],
+            [iconView("manor-pip-icon", CARD_LOOKS[card].icon, h)],
           ),
         ),
       ),
-  })
+  });
 
 const manorButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
   h.button(
     [
-      ...homeButtonAttributes('Manor', h),
-      h.Class('home-manor'),
+      ...homeButtonAttributes("Manor", h),
+      h.Class("home-manor"),
       h.AriaLabel(manorAriaLabel(model)),
-      h.AriaHasPopup('dialog'),
-      h.OnClick(Message.ClickedManorButton(), { propagation: 'Stop' }),
+      h.AriaHasPopup("dialog"),
+      h.OnClick(Message.ClickedManorButton(), { propagation: "Stop" }),
     ],
     [
-      iconView('home-manor-icon', HAND_ICON, h),
-      h.span([h.Class('home-manor-label')], ['MORE']),
+      iconView("home-manor-icon", HAND_ICON, h),
+      h.span([h.Class("home-manor-label")], ["MORE"]),
       manorPipsView(model, h),
-      ...keyBadgeView(model, 'Manor', h),
+      ...keyBadgeView(model, "Manor", h),
     ],
-  )
+  );
 
 const handKeyMessage = (
   card: HandCard,
   key: string,
 ): Option.Option<Message> => {
   const step =
-    key === 'ArrowRight' || key === 'ArrowDown'
+    key === "ArrowRight" || key === "ArrowDown"
       ? 1
-      : key === 'ArrowLeft' || key === 'ArrowUp'
+      : key === "ArrowLeft" || key === "ArrowUp"
         ? -1
-        : 0
+        : 0;
   return step === 0
     ? Option.none()
-    : Option.map(steppedHandCard(HAND_CARDS, card, step), next =>
+    : Option.map(steppedHandCard(HAND_CARDS, card, step), (next) =>
         Message.SteppedHandFocus({ card: next }),
-      )
-}
+      );
+};
 
 // NOTE: the card button stays square to the screen so a tap anywhere in it
 // lands, and only its face tilts into the fan. The face takes no taps.
@@ -350,21 +332,21 @@ const cardBodyView = (
   h: ApplicationViewBuilder,
 ): ReadonlyArray<Html> => [
   h.span(
-    [h.Class('hand-card-face')],
+    [h.Class("hand-card-face")],
     [
       h.span(
-        [h.Class('hand-card-art')],
-        [iconView('hand-card-icon', CARD_LOOKS[card].icon, h)],
+        [h.Class("hand-card-art")],
+        [iconView("hand-card-icon", CARD_LOOKS[card].icon, h)],
       ),
-      h.span([h.Class('hand-card-title')], [CARD_LOOKS[card].title]),
+      h.span([h.Class("hand-card-title")], [CARD_LOOKS[card].title]),
       ...Option.match(maybeCardTally(model, card), {
         onNone: () => [],
-        onSome: tally => [
+        onSome: (tally) => [
           h.span(
             [
-              h.Class('hand-card-tally'),
+              h.Class("hand-card-tally"),
               h.Style({
-                '--found': `${discoveredKinds(model.bests.killsByKind).length / ENTRY_COUNT}`,
+                "--found": `${discoveredKinds(model.bests.killsByKind).length / ENTRY_COUNT}`,
               }),
             ],
             [tally],
@@ -372,18 +354,18 @@ const cardBodyView = (
         ],
       }),
       ...(hasNews(model, card)
-        ? [h.span([h.Class('hand-card-new'), h.AriaHidden(true)], ['NEW'])]
+        ? [h.span([h.Class("hand-card-new"), h.AriaHidden(true)], ["NEW"])]
         : []),
       ...(isLinkHandCard(card)
         ? []
         : keyCapView(model, HAND_KEYS[card].cap, h)),
     ],
   ),
-]
+];
 
 const LINK_CARD_URLS: Readonly<Record<LinkHandCard, string>> = {
   Code: SOURCE_URL,
-}
+};
 
 const handCardView = (
   model: Model,
@@ -396,55 +378,55 @@ const handCardView = (
   const shared = [
     ...(index === 0 ? renderInfo.initialFocus : []),
     h.Id(handCardId(card)),
-    h.Class('hand-card'),
-    h.DataAttribute('card', card),
-    h.Style({ '--i': `${index}`, '--n': `${count}` }),
+    h.Class("hand-card"),
+    h.DataAttribute("card", card),
+    h.Style({ "--i": `${index}`, "--n": `${count}` }),
     h.AriaLabel(cardAriaLabel(model, card)),
     ...(isLinkHandCard(card) ? [] : [h.AriaKeyshortcuts(HAND_KEYS[card].name)]),
-    h.OnKeyDownPreventDefault(key => handKeyMessage(card, key)),
-  ]
+    h.OnKeyDownPreventDefault((key) => handKeyMessage(card, key)),
+  ];
   return h.li(
-    [h.Class('hand-slot')],
+    [h.Class("hand-slot")],
     [
       isLinkHandCard(card)
         ? h.a(
             [
               ...shared,
               h.Href(LINK_CARD_URLS[card]),
-              h.Target('_blank'),
-              h.Rel('noopener noreferrer'),
+              h.Target("_blank"),
+              h.Rel("noopener noreferrer"),
             ],
             cardBodyView(model, card, h),
           )
         : h.button(
             [
               ...shared,
-              h.Type('button'),
-              h.AriaHasPopup('dialog'),
-              h.OnClick(CARD_MESSAGES[card], { propagation: 'Stop' }),
+              h.Type("button"),
+              h.AriaHasPopup("dialog"),
+              h.OnClick(CARD_MESSAGES[card], { propagation: "Stop" }),
             ],
             cardBodyView(model, card, h),
           ),
     ],
-  )
-}
+  );
+};
 
-const HAND_TITLE = 'The manor'
+const HAND_TITLE = "The manor";
 
 const handView = (
   model: Model,
   renderInfo: Dialog.RenderInfo,
   h: ApplicationViewBuilder,
 ): ReadonlyArray<Html> => {
-  const cards = HAND_CARDS
+  const cards = HAND_CARDS;
   return [
-    h.h2([...renderInfo.title, h.Class('sr-only')], [HAND_TITLE]),
+    h.h2([...renderInfo.title, h.Class("sr-only")], [HAND_TITLE]),
     h.p(
-      [...renderInfo.description, h.Class('sr-only')],
-      ['Pick a card. Arrow keys move between them.'],
+      [...renderInfo.description, h.Class("sr-only")],
+      ["Pick a card. Arrow keys move between them."],
     ),
     h.ul(
-      [h.Class('hand-cards')],
+      [h.Class("hand-cards")],
       Array.map(cards, (card, index) =>
         handCardView(model, card, index, cards.length, renderInfo, h),
       ),
@@ -452,103 +434,103 @@ const handView = (
     closeButtonView(
       {
         attributes: renderInfo.closeButton,
-        className: 'hand-close',
-        label: 'Close',
+        className: "hand-close",
+        label: "Close",
       },
       h,
     ),
-  ]
-}
+  ];
+};
 
 export const manorHandView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
+  (h: ApplicationViewBuilder): (model: Model) => Html;
+  (model: Model, h: ApplicationViewBuilder): Html;
 } = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(
     {
       dialog: model.handDialog,
-      dialogClass: 'hand-dialog',
-      backdropClass: 'hand-backdrop',
-      panelClass: 'hand',
-      dialogAttributes: [h.DataAttribute('device', model.lastDevice)],
-      panelView: renderInfo => handView(model, renderInfo, h),
+      dialogClass: "hand-dialog",
+      backdropClass: "hand-backdrop",
+      panelClass: "hand",
+      dialogAttributes: [h.DataAttribute("device", model.lastDevice)],
+      panelView: (renderInfo) => handView(model, renderInfo, h),
       binding: HandDialogBinding,
     },
     h,
   ),
-)
+);
 
 // BESTS
 
-type Best = Readonly<{ label: string; icon: string; value: string }>
+type Best = Readonly<{ label: string; icon: string; value: string }>;
 
 const shownBests = (model: Model): ReadonlyArray<Best> => [
   ...Option.match(bestsFor(model).maybeBestEndlessWave, {
     onNone: () => [],
-    onSome: wave => [
-      { label: 'Best endless wave', icon: TROPHY_ICON, value: `${wave}` },
+    onSome: (wave) => [
+      { label: "Best endless wave", icon: TROPHY_ICON, value: `${wave}` },
     ],
   }),
   ...Option.match(bestsFor(model).maybeFastestWinMs, {
     onNone: () => [],
-    onSome: runMs => [
-      { label: 'Fastest win', icon: CLOCK_ICON, value: durationLabel(runMs) },
+    onSome: (runMs) => [
+      { label: "Fastest win", icon: CLOCK_ICON, value: durationLabel(runMs) },
     ],
   }),
   ...(model.bests.totalKills > 0
     ? [
         {
-          label: 'Zombies splatted',
+          label: "Zombies splatted",
           icon: KILLS_ICON,
           value: `${model.bests.totalKills}`,
         },
       ]
     : []),
-]
+];
 
 const bestView = (best: Best, h: ApplicationViewBuilder): Html =>
   h.span(
-    [h.Class('home-best')],
+    [h.Class("home-best")],
     [
       h.span(
-        [h.Class('home-best-label')],
-        [iconView('home-best-icon', best.icon, h)],
+        [h.Class("home-best-label")],
+        [iconView("home-best-icon", best.icon, h)],
       ),
-      h.span([h.Class('home-best-value')], [best.value]),
+      h.span([h.Class("home-best-value")], [best.value]),
     ],
-  )
+  );
 
 // NOTE: a button of icons and big numbers, in the chosen level's color, that
 // opens the Munchopedia, and nothing at all until the player has a best.
 const bestsView = (model: Model, h: ApplicationViewBuilder): Html =>
   Array.match(shownBests(model), {
     onEmpty: () => h.empty,
-    onNonEmpty: bests =>
+    onNonEmpty: (bests) =>
       h.button(
         [
-          ...homeButtonAttributes('Bests', h),
-          h.Class('home-bests'),
-          h.DataAttribute('difficulty', model.difficulty.chosen),
+          ...homeButtonAttributes("Bests", h),
+          h.Class("home-bests"),
+          h.DataAttribute("difficulty", model.difficulty.chosen),
           h.AriaLabel(
             `Your bests, ${DIFFICULTIES[model.difficulty.chosen].name}: ${Array.join(
-              Array.map(bests, best => `${best.label} ${best.value}`),
-              ', ',
+              Array.map(bests, (best) => `${best.label} ${best.value}`),
+              ", ",
             )}. Opens the Munchopedia`,
           ),
-          h.AriaHasPopup('dialog'),
+          h.AriaHasPopup("dialog"),
           h.OnClick(Message.ClickedMunchopediaButton(), {
-            propagation: 'Stop',
+            propagation: "Stop",
           }),
         ],
         [
-          iconView('home-bests-level', SKULL_ICONS[model.difficulty.chosen], h),
+          iconView("home-bests-level", SKULL_ICONS[model.difficulty.chosen], h),
           h.span(
-            [h.Class('home-bests-list')],
-            Array.map(bests, best => bestView(best, h)),
+            [h.Class("home-bests-list")],
+            Array.map(bests, (best) => bestView(best, h)),
           ),
         ],
       ),
-  })
+  });
 
 // STAGE
 
@@ -559,150 +541,150 @@ const bestsView = (model: Model, h: ApplicationViewBuilder): Html =>
 const heroButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
   h.button(
     [
-      h.Type('button'),
-      h.Class('home-hero'),
+      h.Type("button"),
+      h.Class("home-hero"),
       h.Tabindex(-1),
-      h.AriaLabel('Your character: change how you look'),
-      h.AriaHasPopup('dialog'),
-      h.OnClick(Message.ClickedCharacterButton(), { propagation: 'Stop' }),
+      h.AriaLabel("Your character: change how you look"),
+      h.AriaHasPopup("dialog"),
+      h.OnClick(Message.ClickedCharacterButton(), { propagation: "Stop" }),
     ],
     [rankChipView(model, h)],
-  )
+  );
 
 // CORNER
 
 const fullscreenButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
-  model.screenFit === 'Fullscreen'
+  model.screenFit === "Fullscreen"
     ? h.button(
         [
-          h.Type('button'),
-          h.Class('home-corner-button home-fullscreen'),
-          h.AriaLabel('Full screen'),
-          h.AriaPressed(model.fullscreen === 'On' ? 'true' : 'false'),
-          h.OnClick(Message.ClickedFullscreenButton(), { propagation: 'Stop' }),
+          h.Type("button"),
+          h.Class("home-corner-button home-fullscreen"),
+          h.AriaLabel("Full screen"),
+          h.AriaPressed(model.fullscreen === "On" ? "true" : "false"),
+          h.OnClick(Message.ClickedFullscreenButton(), { propagation: "Stop" }),
         ],
-        [iconView('home-corner-icon', FULLSCREEN_ICON, h)],
+        [iconView("home-corner-icon", FULLSCREEN_ICON, h)],
       )
-    : h.empty
+    : h.empty;
 
 // NOTE: the gear sits in the corner itself, the coffee just inside it, and
 // full screen, where the browser can do it, inside that.
 const settingsButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
   h.button(
     [
-      ...homeButtonAttributes('Settings', h),
-      h.Class('home-corner-button home-settings'),
-      h.AriaLabel('Settings'),
-      h.AriaHasPopup('dialog'),
-      h.OnClick(Message.ClickedSettingsButton(), { propagation: 'Stop' }),
+      ...homeButtonAttributes("Settings", h),
+      h.Class("home-corner-button home-settings"),
+      h.AriaLabel("Settings"),
+      h.AriaHasPopup("dialog"),
+      h.OnClick(Message.ClickedSettingsButton(), { propagation: "Stop" }),
     ],
     [
-      iconView('home-corner-icon', SETTINGS_ICON, h),
-      ...keyBadgeView(model, 'Settings', h),
+      iconView("home-corner-icon", SETTINGS_ICON, h),
+      ...keyBadgeView(model, "Settings", h),
     ],
-  )
+  );
 
 // NOTE: Buy Rattles a coffee, just left of the gear: a pixel mug with
 // steam rising from it. It is a real link, so the browser opens the tip
 // jar from the tap itself and no popup blocker stops it. Its click still
 // sends ClickedSupportButton for the tap sound, and never prevents the link.
-const COFFEE_LABEL = 'Buy Rattles a coffee'
+const COFFEE_LABEL = "Buy Rattles a coffee";
 
-const STEAM_WISPS = 2
+const STEAM_WISPS = 2;
 
 const supportButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
   Option.match(model.maybeSupportUrl, {
     onNone: () => h.empty,
-    onSome: url =>
+    onSome: (url) =>
       h.a(
         [
-          ...homeFocusAttributes('Support', h),
-          h.Class('home-corner-button home-support'),
+          ...homeFocusAttributes("Support", h),
+          h.Class("home-corner-button home-support"),
           h.Href(url),
-          h.Target('_blank'),
-          h.Rel('noopener noreferrer'),
+          h.Target("_blank"),
+          h.Rel("noopener noreferrer"),
           h.AriaLabel(`${COFFEE_LABEL}. Opens in a new tab`),
           h.Title(COFFEE_LABEL),
-          h.OnClick(Message.ClickedSupportButton(), { propagation: 'Stop' }),
+          h.OnClick(Message.ClickedSupportButton(), { propagation: "Stop" }),
         ],
         [
-          ...Array.makeBy(STEAM_WISPS, wisp =>
+          ...Array.makeBy(STEAM_WISPS, (wisp) =>
             h.span([
-              h.Class('home-support-steam'),
+              h.Class("home-support-steam"),
               h.AriaHidden(true),
               h.Style({
-                '--wisp': `${wisp}`,
+                "--wisp": `${wisp}`,
                 backgroundImage: COFFEE_STEAM_ICON,
               }),
             ]),
           ),
-          iconView('home-corner-icon home-support-cup', COFFEE_CUP_ICON, h),
-          ...keyBadgeView(model, 'Support', h),
+          iconView("home-corner-icon home-support-cup", COFFEE_CUP_ICON, h),
+          ...keyBadgeView(model, "Support", h),
         ],
       ),
-  })
+  });
 
 // NEW ENTRY
 
 const newEntryText = (model: Model): Option.Option<string> =>
-  Option.map(Array.head(model.home.newEntries), kind =>
+  Option.map(Array.head(model.home.newEntries), (kind) =>
     model.home.newEntries.length > 1
       ? `${entryName(kind)} and ${model.home.newEntries.length - 1} more`
       : entryName(kind),
-  )
+  );
 
 const newEntryButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
   Option.match(Array.head(model.home.newEntries), {
     onNone: () => h.empty,
-    onSome: kind =>
+    onSome: (kind) =>
       h.button(
         [
-          h.Type('button'),
-          h.Class('new-entry'),
+          h.Type("button"),
+          h.Class("new-entry"),
           h.AriaLabel(
-            `New Munchopedia entry: ${Option.getOrElse(newEntryText(model), () => '')}. Open it`,
+            `New Munchopedia entry: ${Option.getOrElse(newEntryText(model), () => "")}. Open it`,
           ),
           h.OnClick(Message.ClickedNewEntryButton({ kind }), {
-            propagation: 'Stop',
+            propagation: "Stop",
           }),
         ],
         [
-          h.span([h.Class('new-entry-flag')], ['NEW ENTRY!']),
+          h.span([h.Class("new-entry-flag")], ["NEW ENTRY!"]),
           h.span(
-            [h.Class('new-entry-name')],
-            [Option.getOrElse(newEntryText(model), () => '')],
+            [h.Class("new-entry-name")],
+            [Option.getOrElse(newEntryText(model), () => "")],
           ),
         ],
       ),
-  })
+  });
 
 // NOTE: the end screens only tell. The entry opens from the menu.
 export const newEntryNoticeView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
+  (h: ApplicationViewBuilder): (model: Model) => Html;
+  (model: Model, h: ApplicationViewBuilder): Html;
 } = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   isEndScreen(model.phase)
     ? Option.match(newEntryText(model), {
         onNone: () => h.empty,
-        onSome: text =>
+        onSome: (text) =>
           h.div(
-            [h.Class('new-entry new-entry-notice'), h.Role('status')],
+            [h.Class("new-entry new-entry-notice"), h.Role("status")],
             [
-              h.span([h.Class('new-entry-flag')], ['NEW ENTRY!']),
-              h.span([h.Class('new-entry-name')], [text]),
+              h.span([h.Class("new-entry-flag")], ["NEW ENTRY!"]),
+              h.span([h.Class("new-entry-name")], [text]),
               h.span(
-                [h.Class('new-entry-where')],
-                ['In the Munchopedia on the menu'],
+                [h.Class("new-entry-where")],
+                ["In the Munchopedia on the menu"],
               ),
             ],
           ),
       })
     : h.empty,
-)
+);
 
 // TURN HINT
 
-export const TURN_HINT_TEXT = 'Turn sideways to see more'
+export const TURN_HINT_TEXT = "Turn sideways to see more";
 
 // NOTE: portrait zooms in on part of the room, so the first time a phone
 // held upright is on the home menu it gets a nudge to turn: the tipping
@@ -713,35 +695,35 @@ const turnHintView = (model: Model, h: ApplicationViewBuilder): Html =>
   isTurnHintShown(model)
     ? h.button(
         [
-          h.Type('button'),
-          h.Class('home-turn-hint'),
+          h.Type("button"),
+          h.Class("home-turn-hint"),
           h.Tabindex(-1),
           h.AriaLabel(TURN_HINT_TEXT),
-          h.OnClick(Message.ClickedTurnHint(), { propagation: 'Stop' }),
+          h.OnClick(Message.ClickedTurnHint(), { propagation: "Stop" }),
         ],
         [
-          iconView('home-turn-icon', TURN_PHONE_ICON, h),
-          h.span([h.Class('home-turn-text')], [TURN_HINT_TEXT]),
+          iconView("home-turn-icon", TURN_PHONE_ICON, h),
+          h.span([h.Class("home-turn-text")], [TURN_HINT_TEXT]),
         ],
       )
-    : h.empty
+    : h.empty;
 
 // HOME MENU
 
 export const homeMenuView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
+  (h: ApplicationViewBuilder): (model: Model) => Html;
+  (model: Model, h: ApplicationViewBuilder): Html;
 } = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   isOnHome(model.phase)
     ? h.div(
         [
-          h.Class('home-frame'),
-          h.DataAttribute('device', model.lastDevice),
-          h.DataAttribute('fit', model.screenFit),
+          h.Class("home-frame"),
+          h.DataAttribute("device", model.lastDevice),
+          h.DataAttribute("fit", model.screenFit),
         ],
         [
           h.div(
-            [h.Class('home-stage')],
+            [h.Class("home-stage")],
             [
               playClusterView(model, h),
               manorButtonView(model, h),
@@ -750,10 +732,10 @@ export const homeMenuView: {
               newEntryButtonView(model, h),
               turnHintView(model, h),
               h.div(
-                [h.Class('home-corner')],
+                [h.Class("home-corner")],
                 [
                   h.div(
-                    [h.Class('home-corner-row')],
+                    [h.Class("home-corner-row")],
                     [
                       fullscreenButtonView(model, h),
                       supportButtonView(model, h),
@@ -761,7 +743,7 @@ export const homeMenuView: {
                     ],
                   ),
                   h.div(
-                    [h.Class('home-corner-row')],
+                    [h.Class("home-corner-row")],
                     [updateGiftView(model, h), installTileView(model, h)],
                   ),
                 ],
@@ -771,81 +753,81 @@ export const homeMenuView: {
         ],
       )
     : h.empty,
-)
+);
 
 // PAUSE MENU BUTTON
 
 export const pauseMenuButtonView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
+  (h: ApplicationViewBuilder): (model: Model) => Html;
+  (model: Model, h: ApplicationViewBuilder): Html;
 } = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
-  Phase.isAnyOf(['Paused'])(model.phase)
+  Phase.isAnyOf(["Paused"])(model.phase)
     ? h.button(
         [
-          h.Type('button'),
-          h.Class('pause-menu-button'),
-          h.AriaLabel('Menu: leave this run'),
-          h.AriaKeyshortcuts('H'),
-          h.AriaHasPopup('dialog'),
-          h.OnClick(Message.ClickedMenuButton(), { propagation: 'Stop' }),
+          h.Type("button"),
+          h.Class("pause-menu-button"),
+          h.AriaLabel("Menu: leave this run"),
+          h.AriaKeyshortcuts("H"),
+          h.AriaHasPopup("dialog"),
+          h.OnClick(Message.ClickedMenuButton(), { propagation: "Stop" }),
         ],
         [
-          'MENU',
-          ...(model.lastDevice === 'KeyboardMouse'
-            ? [h.span([h.Class('home-button-key'), h.AriaHidden(true)], ['H'])]
+          "MENU",
+          ...(model.lastDevice === "KeyboardMouse"
+            ? [h.span([h.Class("home-button-key"), h.AriaHidden(true)], ["H"])]
             : []),
         ],
       )
     : h.empty,
-)
+);
 
 // PANELS
 
-const MENU_KEYS_TITLE_ID = 'menu-keys-title'
+const MENU_KEYS_TITLE_ID = "menu-keys-title";
 
 const MENU_KEY_ACTIONS: Readonly<Record<HomeButton, string>> = {
-  Play: 'play',
-  Coop: 'co-op',
-  Manor: 'manor',
-  Bests: 'Munchopedia',
-  Support: 'coffee',
-  Settings: 'settings',
-}
+  Play: "play",
+  Coop: "co-op",
+  Manor: "manor",
+  Bests: "Munchopedia",
+  Support: "coffee",
+  Settings: "settings",
+};
 
 const CARD_KEY_ACTIONS: Readonly<Record<KeyedHandCard, string>> = {
-  Character: 'character',
-  Munchopedia: 'Munchopedia',
+  Character: "character",
+  Munchopedia: "Munchopedia",
   WhatsNew: "what's new",
-  HowToPlay: 'how to play',
-}
+  HowToPlay: "how to play",
+};
 
 const menuKeysView = (h: ApplicationViewBuilder): Html =>
   h.section(
-    [h.Class('menu-keys'), h.AriaLabelledBy(MENU_KEYS_TITLE_ID)],
+    [h.Class("menu-keys"), h.AriaLabelledBy(MENU_KEYS_TITLE_ID)],
     [
       h.h3(
-        [h.Id(MENU_KEYS_TITLE_ID), h.Class('menu-keys-title')],
-        ['On the menu'],
+        [h.Id(MENU_KEYS_TITLE_ID), h.Class("menu-keys-title")],
+        ["On the menu"],
       ),
       h.ul(
-        [h.Class('help-extra')],
+        [h.Class("help-extra")],
         [
           ...Array.map(
-            Array.filter(HOME_BUTTONS, button => button !== 'Bests'),
-            button =>
+            Array.filter(HOME_BUTTONS, (button) => button !== "Bests"),
+            (button) =>
               h.li(
-                [h.Class('help-extra-item')],
+                [h.Class("help-extra-item")],
                 [
-                  h.kbd([h.Class('menu-key')], [HOME_KEYS[button].name]),
+                  h.kbd([h.Class("menu-key")], [HOME_KEYS[button].name]),
                   ` ${MENU_KEY_ACTIONS[button]}`,
                 ],
               ),
           ),
-          ...Array.map(KEYED_HAND_CARDS, card =>
+          ...Array.map(KEYED_HAND_CARDS, (card) =>
             h.li(
-              [h.Class('help-extra-item')],
+              [h.Class("help-extra-item")],
               [
-                h.kbd([h.Class('menu-key')], [HAND_KEYS[card].name]),
+                h.kbd([h.Class("menu-key")], [HAND_KEYS[card].name]),
                 ` ${CARD_KEY_ACTIONS[card]}`,
               ],
             ),
@@ -853,7 +835,7 @@ const menuKeysView = (h: ApplicationViewBuilder): Html =>
         ],
       ),
     ],
-  )
+  );
 
 // DIFFICULTY
 
@@ -862,17 +844,17 @@ const freshBadgeView = (
   difficulty: Difficulty,
   h: ApplicationViewBuilder,
 ): ReadonlyArray<Html> =>
-  difficulty === 'Nightmare' && model.difficulty.nightmare === 'JustUnlocked'
-    ? [h.span([h.Class('difficulty-new'), h.AriaHidden(true)], ['NEW!'])]
-    : []
+  difficulty === "Nightmare" && model.difficulty.nightmare === "JustUnlocked"
+    ? [h.span([h.Class("difficulty-new"), h.AriaHidden(true)], ["NEW!"])]
+    : [];
 
 const difficultyLabel = (model: Model, difficulty: Difficulty): string =>
   isLocked(model.difficulty, difficulty)
     ? `${DIFFICULTIES[difficulty].name}, locked. ${NIGHTMARE_LOCK_NOTE}`
-    : `${DIFFICULTIES[difficulty].name}: ${DIFFICULTIES[difficulty].blurb}`
+    : `${DIFFICULTIES[difficulty].name}: ${DIFFICULTIES[difficulty].blurb}`;
 
 const isAskingFirst = (model: Model): boolean =>
-  DifficultyCard.isAnyOf(['Asking'])(model.difficultyCard)
+  DifficultyCard.isAnyOf(["Asking"])(model.difficultyCard);
 
 const difficultyChoiceView = (
   model: Model,
@@ -880,28 +862,28 @@ const difficultyChoiceView = (
   renderInfo: Dialog.RenderInfo,
   h: ApplicationViewBuilder,
 ): Html => {
-  const locked = isLocked(model.difficulty, difficulty)
-  const isChosen = difficulty === model.difficulty.chosen
+  const locked = isLocked(model.difficulty, difficulty);
+  const isChosen = difficulty === model.difficulty.chosen;
   return h.button(
     [
       ...(isChosen ? renderInfo.initialFocus : []),
-      h.Type('button'),
-      h.Class('difficulty-choice'),
-      h.DataAttribute('difficulty', difficulty),
+      h.Type("button"),
+      h.Class("difficulty-choice"),
+      h.DataAttribute("difficulty", difficulty),
       ...(isChosen && !isAskingFirst(model)
-        ? [h.DataAttribute('chosen', 'Chosen')]
+        ? [h.DataAttribute("chosen", "Chosen")]
         : []),
       h.AriaLabel(difficultyLabel(model, difficulty)),
       ...(locked ? [h.AriaDisabled(true)] : []),
       h.OnClick(Message.ClickedDifficultyCardButton({ difficulty }), {
-        focusSelector: '.game-surface',
-        propagation: 'Stop',
+        focusSelector: ".game-surface",
+        propagation: "Stop",
       }),
     ],
     [
       skullMeterView(model, difficulty, h),
       h.span(
-        [h.Class('difficulty-name')],
+        [h.Class("difficulty-name")],
         [
           DIFFICULTIES[difficulty].name,
           ...freshBadgeView(model, difficulty, h),
@@ -910,102 +892,168 @@ const difficultyChoiceView = (
       ...(locked
         ? [
             h.span(
-              [h.Class('difficulty-unlock'), h.AriaHidden(true)],
+              [h.Class("difficulty-unlock"), h.AriaHidden(true)],
               [
-                iconView('difficulty-unlock-icon', TROPHY_ICON, h),
-                iconView('difficulty-unlock-icon', SKULL_ICONS.Hard, h),
+                iconView("difficulty-unlock-icon", TROPHY_ICON, h),
+                iconView("difficulty-unlock-icon", SKULL_ICONS.Hard, h),
               ],
             ),
           ]
         : []),
     ],
-  )
-}
+  );
+};
 
-type PanelText = Readonly<{ title: string; blurb: string }>
+// NOTE: the first-run card's TUTORIAL or SKIP IT (owner, 2026-11-07): the
+// tutorial's aim icon or a skip arrow, each one or two words. TUTORIAL is
+// lit until SKIP IT is tapped, and the pick holds until a difficulty starts
+// the run.
+const TUTORIAL_CHOICES: ReadonlyArray<TutorialChoice> = ["Tutorial", "Skip"];
+
+const TUTORIAL_CHOICE_ICONS: Readonly<Record<TutorialChoice, string>> = {
+  Tutorial: AIM_ICON,
+  Skip: SKIP_ICON,
+};
+
+const TUTORIAL_CHOICE_LABELS: Readonly<Record<TutorialChoice, string>> = {
+  Tutorial: "Play the tutorial",
+  Skip: "Skip the tutorial",
+};
+
+const tutorialChoiceView = (
+  chosen: TutorialChoice,
+  choice: TutorialChoice,
+  h: ApplicationViewBuilder,
+): Html =>
+  h.button(
+    [
+      h.Type("button"),
+      h.Class("tutorial-choice"),
+      h.DataAttribute("choice", choice),
+      h.DataAttribute("state", chosen === choice ? "Chosen" : "Other"),
+      h.AriaPressed(chosen === choice ? "true" : "false"),
+      h.AriaLabel(TUTORIAL_CHOICE_LABELS[choice]),
+      h.OnClick(Message.ClickedTutorialChoiceButton({ choice }), {
+        propagation: "Stop",
+      }),
+    ],
+    [
+      iconView("tutorial-choice-icon", TUTORIAL_CHOICE_ICONS[choice], h),
+      h.span(
+        [h.Class("tutorial-choice-name")],
+        [TUTORIAL_CHOICE_NAMES[choice]],
+      ),
+    ],
+  );
+
+const tutorialChoicesView = (
+  model: Model,
+  h: ApplicationViewBuilder,
+): ReadonlyArray<Html> =>
+  DifficultyCard.matchOrElse(
+    model.difficultyCard,
+    {
+      Asking: ({ tutorial }) => [
+        h.div(
+          [
+            h.Class("tutorial-choices"),
+            h.Role("group"),
+            h.AriaLabel("Tutorial"),
+          ],
+          Array.map(TUTORIAL_CHOICES, (choice) =>
+            tutorialChoiceView(tutorial, choice, h),
+          ),
+        ),
+      ],
+    },
+    () => [],
+  );
+
+type PanelText = Readonly<{ title: string; blurb: string }>;
 
 const panelText = (model: Model, panel: MenuPanel): PanelText => {
-  if (panel === 'HowToPlay') {
+  if (panel === "HowToPlay") {
     return {
-      title: 'How to play',
+      title: "How to play",
       blurb: `Controls for ${helpLabel(model.lastDevice)}.`,
-    }
-  } else if (panel === 'Difficulty') {
+    };
+  } else if (panel === "Difficulty") {
     return isAskingFirst(model)
       ? {
-          title: 'How tough are you?',
-          blurb: 'Pick a difficulty. You can change it in the lobby.',
+          title: "How tough are you?",
+          blurb: "Pick a difficulty. You can change it in the lobby.",
         }
       : {
-          title: 'Difficulty',
-          blurb: 'Pick how tough the zombies are.',
-        }
-  } else if (panel === 'Calling') {
-    return callingPanelText(model)
-  } else if (panel === 'WhatsNew') {
-    return whatsNewText(model)
-  } else if (panel === 'Munchopedia') {
-    return munchopediaText(model)
+          title: "Difficulty",
+          blurb: "Pick how tough the zombies are.",
+        };
+  } else if (panel === "Calling") {
+    return callingPanelText(model);
+  } else if (panel === "WhatsNew") {
+    return whatsNewText(model);
+  } else if (panel === "Munchopedia") {
+    return munchopediaText(model);
   } else {
     return {
-      title: 'Leave this run?',
+      title: "Leave this run?",
       blurb:
-        'Your guns, cash, and traps stay behind. The zombies keep the house.',
-    }
+        "Your guns, cash, and traps stay behind. The zombies keep the house.",
+    };
   }
-}
+};
 
 const doneButtonView = (
   { closeButton, initialFocus }: Dialog.RenderInfo,
   h: ApplicationViewBuilder,
-  focus: 'TakesInitialFocus' | 'LeavesInitialFocus' = 'TakesInitialFocus',
+  focus: "TakesInitialFocus" | "LeavesInitialFocus" = "TakesInitialFocus",
 ): Html =>
   closeButtonView(
     {
       attributes: [
         ...closeButton,
-        ...(focus === 'TakesInitialFocus' ? initialFocus : []),
+        ...(focus === "TakesInitialFocus" ? initialFocus : []),
       ],
-      className: 'panel-close',
-      label: 'Close',
+      className: "panel-close",
+      label: "Close",
     },
     h,
-  )
+  );
 
 const panelBodyView = (
   model: Model,
   renderInfo: Dialog.RenderInfo,
   h: ApplicationViewBuilder,
 ): ReadonlyArray<Html> => {
-  if (model.panel === 'HowToPlay') {
+  if (model.panel === "HowToPlay") {
     return [
       h.div(
-        [h.Class('panel-help'), h.DataAttribute('device', model.lastDevice)],
+        [h.Class("panel-help"), h.DataAttribute("device", model.lastDevice)],
         howToPlayView(
           model,
-          'Interactive',
+          "Interactive",
           h,
           isKeyboard(model) ? Option.some(menuKeysView(h)) : Option.none(),
         ),
       ),
-      h.div([h.Class('panel-actions')], [doneButtonView(renderInfo, h)]),
-    ]
-  } else if (model.panel === 'WhatsNew') {
-    return whatsNewBodyView(model, doneButtonView(renderInfo, h), h)
-  } else if (model.panel === 'Munchopedia') {
-    return munchopediaBodyView(model, doneButtonView(renderInfo, h), h)
-  } else if (model.panel === 'Calling') {
+      h.div([h.Class("panel-actions")], [doneButtonView(renderInfo, h)]),
+    ];
+  } else if (model.panel === "WhatsNew") {
+    return whatsNewBodyView(model, doneButtonView(renderInfo, h), h);
+  } else if (model.panel === "Munchopedia") {
+    return munchopediaBodyView(model, doneButtonView(renderInfo, h), h);
+  } else if (model.panel === "Calling") {
     return callingBodyView(
       model,
       renderInfo,
-      doneButtonView(renderInfo, h, 'LeavesInitialFocus'),
+      doneButtonView(renderInfo, h, "LeavesInitialFocus"),
       h,
-    )
-  } else if (model.panel === 'Difficulty') {
+    );
+  } else if (model.panel === "Difficulty") {
     return [
+      ...tutorialChoicesView(model, h),
       h.div(
-        [h.Class('difficulty-choices')],
-        Array.map(DIFFICULTY_ORDER, difficulty =>
+        [h.Class("difficulty-choices")],
+        Array.map(DIFFICULTY_ORDER, (difficulty) =>
           difficultyChoiceView(model, difficulty, renderInfo, h),
         ),
       ),
@@ -1013,85 +1061,85 @@ const panelBodyView = (
         ? []
         : [
             h.div(
-              [h.Class('panel-actions')],
-              [doneButtonView(renderInfo, h, 'LeavesInitialFocus')],
+              [h.Class("panel-actions")],
+              [doneButtonView(renderInfo, h, "LeavesInitialFocus")],
             ),
           ]),
-    ]
+    ];
   } else {
     return [
       h.div(
-        [h.Class('panel-actions')],
+        [h.Class("panel-actions")],
         [
           h.button(
             [
-              h.Type('button'),
-              h.Class('panel-button panel-leave'),
+              h.Type("button"),
+              h.Class("panel-button panel-leave"),
               h.OnClick(Message.ClickedLeaveRunButton(), {
-                focusSelector: '.game-surface',
-                propagation: 'Stop',
+                focusSelector: ".game-surface",
+                propagation: "Stop",
               }),
             ],
-            ['Leave'],
+            ["Leave"],
           ),
           h.button(
             [
               ...renderInfo.initialFocus,
-              h.Type('button'),
-              h.Class('panel-button panel-stay'),
-              h.AriaKeyshortcuts('Escape'),
-              h.OnClick(Message.ClickedStayButton(), { propagation: 'Stop' }),
+              h.Type("button"),
+              h.Class("panel-button panel-stay"),
+              h.AriaKeyshortcuts("Escape"),
+              h.OnClick(Message.ClickedStayButton(), { propagation: "Stop" }),
             ],
-            ['Stay'],
+            ["Stay"],
           ),
         ],
       ),
-    ]
+    ];
   }
-}
+};
 
 // NOTE: show, don't explain. How to play and the difficulty
 // picker by PLAY speak through their icons, so their blurb is only read
 // aloud.
 const isBlurbShown = (model: Model): boolean =>
-  model.panel === 'WhatsNew' ||
-  model.panel === 'Munchopedia' ||
-  model.panel === 'LeaveRun' ||
-  (model.panel === 'Difficulty' && isAskingFirst(model))
+  model.panel === "WhatsNew" ||
+  model.panel === "Munchopedia" ||
+  model.panel === "LeaveRun" ||
+  (model.panel === "Difficulty" && isAskingFirst(model));
 
 const panelView = (
   model: Model,
   renderInfo: Dialog.RenderInfo,
   h: ApplicationViewBuilder,
 ): ReadonlyArray<Html> => {
-  const text = panelText(model, model.panel)
+  const text = panelText(model, model.panel);
   return [
-    h.h2([...renderInfo.title, h.Class('panel-title')], [text.title]),
+    h.h2([...renderInfo.title, h.Class("panel-title")], [text.title]),
     h.p(
       [
         ...renderInfo.description,
-        h.Class(isBlurbShown(model) ? 'panel-blurb' : 'panel-blurb sr-only'),
+        h.Class(isBlurbShown(model) ? "panel-blurb" : "panel-blurb sr-only"),
       ],
       [text.blurb],
     ),
     ...panelBodyView(model, renderInfo, h),
-  ]
-}
+  ];
+};
 
 export const menuPanelView: {
-  (h: ApplicationViewBuilder): (model: Model) => Html
-  (model: Model, h: ApplicationViewBuilder): Html
+  (h: ApplicationViewBuilder): (model: Model) => Html;
+  (model: Model, h: ApplicationViewBuilder): Html;
 } = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   dialogShell(
     {
       dialog: model.panelDialog,
-      dialogClass: 'panel-dialog',
-      backdropClass: 'panel-backdrop',
-      panelClass: 'panel',
-      dialogAttributes: [h.DataAttribute('panel', model.panel)],
-      panelView: renderInfo => panelView(model, renderInfo, h),
+      dialogClass: "panel-dialog",
+      backdropClass: "panel-backdrop",
+      panelClass: "panel",
+      dialogAttributes: [h.DataAttribute("panel", model.panel)],
+      panelView: (renderInfo) => panelView(model, renderInfo, h),
       binding: PanelDialogBinding,
     },
     h,
   ),
-)
+);

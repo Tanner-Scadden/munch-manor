@@ -25,7 +25,6 @@ import {
   ZOMBIE_ALIVE_MAX,
 } from './constants'
 import { DIFFICULTIES } from './difficulty'
-import { update } from './main'
 import { Message } from './message'
 import {
   Boss,
@@ -37,6 +36,7 @@ import {
   type Zombie,
 } from './model'
 import { focusOf, modifyFocus } from './party'
+import { update } from './pureApp'
 import { FRAME_MS, bulletInto, tick, ticks, zombieOf } from './testing'
 import { FINAL_WAVE } from './wavePlans'
 import { ZOMBIE_KINDS, scaledHp } from './zombies'

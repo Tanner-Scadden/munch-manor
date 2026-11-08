@@ -5,7 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { randomAppearance } from '../appearance'
 import * as Character from '../character'
 import { type GearTap, canAfford, gearTapOf, priceOf } from '../closet'
-import { ApplicationDefinition } from '../definition'
+import { ApplicationBlock } from '../definition'
 import { Message } from '../message'
 import {
   type ClosetCueKind,
@@ -119,20 +119,17 @@ export const chooseLook: {
       }),
 )
 
-export const FocusLookOption = ApplicationDefinition.makeCommand(
-  'FocusLookOption',
-  {
-    args: { part: LookPart, value: Schema.String },
-    messages: [Message.CompletedFocusLookOption],
-    handler: function* () {
-      return ({ part, value }) =>
-        Dom.focus(`[data-look-option="${part}.${value}"]`).pipe(
-          Effect.ignore,
-          Effect.as(Message.CompletedFocusLookOption()),
-        )
-    },
+export const FocusLookOption = ApplicationBlock.makeCommand('FocusLookOption', {
+  args: { part: LookPart, value: Schema.String },
+  messages: [Message.CompletedFocusLookOption],
+  handler: function* () {
+    return ({ part, value }) =>
+      Dom.focus(`[data-look-option="${part}.${value}"]`).pipe(
+        Effect.ignore,
+        Effect.as(Message.CompletedFocusLookOption()),
+      )
   },
-)
+})
 
 const bought = (
   model: Model,

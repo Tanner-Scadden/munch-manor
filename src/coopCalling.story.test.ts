@@ -1,6 +1,5 @@
 import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { makeReader, makeWriter } from '@munch/netcode'
@@ -12,10 +11,10 @@ import { Message as CoopMessage } from './coop/message'
 import { Screen as CoopScreen } from './coop/model'
 import { freshRoom } from './coop/roomState'
 import { CODE, lobbyOf, memberOf } from './coop/testing'
-import { update } from './main'
 import type { Model } from './model'
 import { heroesBoughtBy, readyAfterRead } from './model.fixture'
 import { focusOf, maybePlayerAt } from './party'
+import { Child, update } from './pureApp'
 import { pointsForRank } from './rank'
 import {
   DEFAULT_ROOM_SETTINGS,
@@ -147,7 +146,7 @@ describe('picking a hero in the lobby', () => {
   test("is the player's pick at home too, and saved", () => {
     const result = update(
       pointed(4),
-      toParentMessage(
+      Child.message(
         CoopBinding,
         CoopMessage.ClickedCallingPick({ calling: 'Handyman' }),
       ),
@@ -162,7 +161,7 @@ describe('picking a hero in the lobby', () => {
   test('a hero the rank has not reached changes nothing at home', () => {
     const result = update(
       pointed(4),
-      toParentMessage(
+      Child.message(
         CoopBinding,
         CoopMessage.ClickedCallingPick({ calling: 'LineCook' }),
       ),
@@ -190,7 +189,7 @@ describe('renaming yourself in the lobby', () => {
   test("is the player's name at home too, and saved", () => {
     const result = update(
       naming,
-      toParentMessage(CoopBinding, CoopMessage.SubmittedName()),
+      Child.message(CoopBinding, CoopMessage.SubmittedName()),
     )
     expect(result.model.playerName).toBe('Gravy Dave')
     expect(Array.map(result.commands ?? [], command => command.name)).toContain(
@@ -201,7 +200,7 @@ describe('renaming yourself in the lobby', () => {
   test('a cancelled rename changes nothing at home', () => {
     const result = update(
       naming,
-      toParentMessage(CoopBinding, CoopMessage.ClickedNameCancel()),
+      Child.message(CoopBinding, CoopMessage.ClickedNameCancel()),
     )
     expect(result.model.playerName).toBe('Old')
   })
@@ -236,7 +235,7 @@ describe('buying a hero in the lobby', () => {
   const buy = (model: Model) =>
     update(
       model,
-      toParentMessage(CoopBinding, CoopMessage.ClickedBuyCallingButton()),
+      Child.message(CoopBinding, CoopMessage.ClickedBuyCallingButton()),
     )
 
   test('spends the Bones once, saves, and the hero is the pick in the room', () => {

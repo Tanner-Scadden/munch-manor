@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { cleanLook } from '@munch/netcode'
 
 import { HAT_ART } from './hatArt'
-import { defaultAppearance, initialModel } from './model'
+import { defaultAppearance } from './model'
 import {
   type Appearance,
   GunSkin,
@@ -15,6 +15,7 @@ import {
   lookCodeOf,
   lookOfCode,
 } from './playerData'
+import { initialModel } from './pureApp'
 import { pointsForRank } from './rank'
 import { SAVE_VERSION, decodeSave, restoreSave, saveOf } from './save'
 import { legacySave } from './store.fixture'

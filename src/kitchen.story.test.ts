@@ -9,7 +9,6 @@ import { FIXED_STEP_MS } from './constants'
 import { doorCounts, rollSpawns } from './endlessWaves'
 import { EXIT_RULES, KITCHEN_EXIT } from './exits'
 import { OVEN_RULES, flameBoxOf, ovenBoxesOf } from './kitchen'
-import { update } from './main'
 import { Message } from './message'
 import {
   GameEvent,
@@ -26,6 +25,7 @@ import {
 import { DISTANT_SPAWN, freshRunModel, pastTimedBreaks } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
 import { PURCHASE_RULES, holdProgress } from './purchase'
+import { update } from './pureApp'
 import { freshRun } from './runReset'
 import {
   BELOW_KITCHEN_DOOR,

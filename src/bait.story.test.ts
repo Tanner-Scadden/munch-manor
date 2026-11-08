@@ -3,7 +3,6 @@ import { given, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { update } from './main'
 import {
   Frenzy,
   Invulnerability,
@@ -11,10 +10,10 @@ import {
   Phase,
   type Vector,
   type Zombie,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { ticks, westPlank, zombieOf } from './testing'
 import { TRAPS } from './traps'
 import { ZOMBIE_KINDS } from './zombies'

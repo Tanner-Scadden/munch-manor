@@ -4,12 +4,12 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
 import { RESTART_GRACE_MS } from './constants'
-import { update } from './main'
 import { MenuState, isLobbyOpen, menuState } from './menuState'
 import { Message } from './message'
-import { DifficultyCard, Lesson, Phase, RunMode, initialModel } from './model'
+import { DifficultyCard, Lesson, Phase, RunMode } from './model'
 import { heroesBoughtBy, newPlayerCardSeen, readyModel } from './model.fixture'
 import { focusOf } from './party'
+import { initialModel, update } from './pureApp'
 import { pointsForRank } from './rank'
 import {
   closeDialog,

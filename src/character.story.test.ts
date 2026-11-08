@@ -2,7 +2,6 @@ import { Array, Match, Option, Record, Schema, pipe } from 'effect'
 import type { Canvas } from 'foldkit'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
@@ -29,7 +28,6 @@ import { CharacterBinding } from './bindings'
 import * as Character from './character'
 import { RESTART_GRACE_MS } from './constants'
 import { PartRadioGroupBlock, SectionRadioGroupBlock } from './lookRadios'
-import { update } from './main'
 import { Message } from './message'
 import {
   Appearance,
@@ -38,11 +36,11 @@ import {
   type Model,
   Phase,
   defaultAppearance,
-  initialModel,
 } from './model'
 import { home } from './model.fixture'
 import { FreePrint, FreeShirtColor } from './playerData'
 import { playerShapes } from './playerView'
+import { Child, initialModel, update } from './pureApp'
 import { imageColors } from './testPng'
 import { jsonOf, resolveFocusOption } from './testing'
 
@@ -53,29 +51,29 @@ type PartMessage = typeof PartRadioGroupBlock.Message.Type
 const partMessage = (part: LookPart, partGroupMessage: PartMessage) => {
   switch (part) {
     case 'Body':
-      return toParentMessage(Character.BodyBinding, partGroupMessage)
+      return Child.look(Character.BodyBinding, partGroupMessage)
     case 'HairStyle':
-      return toParentMessage(Character.HairStyleBinding, partGroupMessage)
+      return Child.look(Character.HairStyleBinding, partGroupMessage)
     case 'HairColor':
-      return toParentMessage(Character.HairColorBinding, partGroupMessage)
+      return Child.look(Character.HairColorBinding, partGroupMessage)
     case 'SkinTone':
-      return toParentMessage(Character.SkinToneBinding, partGroupMessage)
+      return Child.look(Character.SkinToneBinding, partGroupMessage)
     case 'ShirtColor':
-      return toParentMessage(Character.ShirtColorBinding, partGroupMessage)
+      return Child.look(Character.ShirtColorBinding, partGroupMessage)
     case 'Outfit':
-      return toParentMessage(Character.OutfitBinding, partGroupMessage)
+      return Child.look(Character.OutfitBinding, partGroupMessage)
     case 'Print':
-      return toParentMessage(Character.PrintBinding, partGroupMessage)
+      return Child.look(Character.PrintBinding, partGroupMessage)
     case 'Hat':
-      return toParentMessage(Character.HatBinding, partGroupMessage)
+      return Child.look(Character.HatBinding, partGroupMessage)
     case 'GunSkin':
-      return toParentMessage(Character.GunSkinBinding, partGroupMessage)
+      return Child.look(Character.GunSkinBinding, partGroupMessage)
   }
 }
 
 const choose = (part: LookPart, index: number, value: string) =>
   message(
-    toParentMessage(
+    Child.message(
       CharacterBinding,
       partMessage(
         part,
@@ -86,7 +84,7 @@ const choose = (part: LookPart, index: number, value: string) =>
 
 const rollDice = () =>
   message(
-    toParentMessage(CharacterBinding, Character.Message.ClickedDiceButton()),
+    Child.message(CharacterBinding, Character.Message.ClickedDiceButton()),
   )
 
 const PICKED: Appearance = {
@@ -105,7 +103,7 @@ const PICKED: Appearance = {
 
 const flip = (toggle: 'Beard' | 'Glasses') =>
   message(
-    toParentMessage(
+    Child.message(
       CharacterBinding,
       Character.Message.ClickedToggle({ toggle }),
     ),
@@ -266,9 +264,9 @@ describe('Character', () => {
         expect(character.section).toBe('Body')
       }),
       message(
-        toParentMessage(
+        Child.message(
           CharacterBinding,
-          toParentMessage(
+          Child.look(
             Character.SectionsBinding,
             SectionRadioGroupBlock.Message.SelectedOption({
               index: 2,

@@ -2,7 +2,7 @@ import { Effect, Option, Random, pipe } from 'effect'
 
 import { generateVisitId } from './analyticsBeacon'
 import { spriteWarmUpSources } from './appearance'
-import { ApplicationDefinition } from './definition'
+import { ApplicationBlock } from './definition'
 import { toBrowserError } from './describeError'
 import { Message } from './message'
 import { type ScreenFit, defaultAppearance } from './model'
@@ -24,7 +24,7 @@ import { readUpdateMarker } from './version'
 
 const UINT32_MAX = 0xffffffff
 
-export const GenerateSeed = ApplicationDefinition.makeCommand('GenerateSeed', {
+export const GenerateSeed = ApplicationBlock.makeCommand('GenerateSeed', {
   messages: [Message.CompletedGenerateSeed],
   handler: function* () {
     return () =>
@@ -44,7 +44,7 @@ const COARSE_POINTER_QUERY = '(pointer: coarse)'
 const isTouchScreen = (): boolean =>
   window.matchMedia(COARSE_POINTER_QUERY).matches
 
-export const DetectInputDevice = ApplicationDefinition.makeCommand(
+export const DetectInputDevice = ApplicationBlock.makeCommand(
   'DetectInputDevice',
   {
     messages: [Message.CompletedDetectInputDevice],
@@ -91,24 +91,21 @@ const detectScreenFit = (): ScreenFit => {
   }
 }
 
-export const DetectScreenFit = ApplicationDefinition.makeCommand(
-  'DetectScreenFit',
-  {
-    messages: [Message.CompletedDetectScreenFit],
-    handler: function* () {
-      return () =>
-        pipe(
-          Effect.try({ try: detectScreenFit, catch: toBrowserError }),
-          Effect.map(screenFit =>
-            Message.CompletedDetectScreenFit({ screenFit }),
-          ),
-          Effect.orElseSucceed(() =>
-            Message.CompletedDetectScreenFit({ screenFit: 'Unavailable' }),
-          ),
-        )
-    },
+export const DetectScreenFit = ApplicationBlock.makeCommand('DetectScreenFit', {
+  messages: [Message.CompletedDetectScreenFit],
+  handler: function* () {
+    return () =>
+      pipe(
+        Effect.try({ try: detectScreenFit, catch: toBrowserError }),
+        Effect.map(screenFit =>
+          Message.CompletedDetectScreenFit({ screenFit }),
+        ),
+        Effect.orElseSucceed(() =>
+          Message.CompletedDetectScreenFit({ screenFit: 'Unavailable' }),
+        ),
+      )
   },
-)
+})
 
 // NOTE: screen.orientation.lock exists in Chromium on every device, but only
 // a phone or tablet can turn, and iPhones have no lock at all. WebKit's
@@ -119,7 +116,7 @@ const canLockOrientation = (): boolean =>
   window.matchMedia(COARSE_POINTER_QUERY).matches &&
   !Reflect.has(navigator, 'standalone')
 
-export const DetectOrientationLock = ApplicationDefinition.makeCommand(
+export const DetectOrientationLock = ApplicationBlock.makeCommand(
   'DetectOrientationLock',
   {
     messages: [Message.CompletedDetectOrientationLock],
@@ -152,7 +149,7 @@ export const localPlayersIn = (search: string): number => {
   return Number.isInteger(count) && count >= 1 ? Math.min(4, count) : 1
 }
 
-export const DetectLocalPlayers = ApplicationDefinition.makeCommand(
+export const DetectLocalPlayers = ApplicationBlock.makeCommand(
   'DetectLocalPlayers',
   {
     messages: [Message.CompletedDetectLocalPlayers],
@@ -173,7 +170,7 @@ export const DetectLocalPlayers = ApplicationDefinition.makeCommand(
   },
 )
 
-export const ReadUpdateMarker = ApplicationDefinition.makeCommand(
+export const ReadUpdateMarker = ApplicationBlock.makeCommand(
   'ReadUpdateMarker',
   {
     messages: [Message.CompletedReadUpdateMarker],
@@ -192,7 +189,7 @@ export const ReadUpdateMarker = ApplicationDefinition.makeCommand(
   },
 )
 
-export const LoadStyles = ApplicationDefinition.makeCommand('LoadStyles', {
+export const LoadStyles = ApplicationBlock.makeCommand('LoadStyles', {
   messages: [Message.CompletedLoadStyles],
   handler: function* () {
     return () =>
@@ -205,7 +202,7 @@ export const LoadStyles = ApplicationDefinition.makeCommand('LoadStyles', {
   },
 })
 
-export const LoadFonts = ApplicationDefinition.makeCommand('LoadFonts', {
+export const LoadFonts = ApplicationBlock.makeCommand('LoadFonts', {
   messages: [Message.CompletedLoadFonts, Message.FailedLoadFonts],
   handler: function* () {
     return () =>
@@ -220,45 +217,39 @@ export const LoadFonts = ApplicationDefinition.makeCommand('LoadFonts', {
   },
 })
 
-export const AwaitFirstFrame = ApplicationDefinition.makeCommand(
-  'AwaitFirstFrame',
-  {
-    messages: [Message.CompletedAwaitFirstFrame],
-    handler: function* () {
-      return () =>
-        pipe(
-          awaitFirstFrame,
-          Effect.andThen(markLoadStep('FirstFrame')),
-          Effect.as(Message.CompletedAwaitFirstFrame()),
-        )
-    },
+export const AwaitFirstFrame = ApplicationBlock.makeCommand('AwaitFirstFrame', {
+  messages: [Message.CompletedAwaitFirstFrame],
+  handler: function* () {
+    return () =>
+      pipe(
+        awaitFirstFrame,
+        Effect.andThen(markLoadStep('FirstFrame')),
+        Effect.as(Message.CompletedAwaitFirstFrame()),
+      )
   },
-)
+})
 
 // NOTE: the warm-up canvases start Foldkit loading every sprite image on the
 // first frame. This waits for that frame, then decodes the same sources, so
 // the splash stays up until the sprites are ready to draw.
-export const DecodeSprites = ApplicationDefinition.makeCommand(
-  'DecodeSprites',
-  {
-    messages: [Message.CompletedDecodeSprites],
-    handler: function* () {
-      return () =>
-        pipe(
-          awaitFirstFrame,
-          Effect.andThen(
-            Effect.suspend(() =>
-              decodeImages(spriteWarmUpSources(defaultAppearance)),
-            ),
+export const DecodeSprites = ApplicationBlock.makeCommand('DecodeSprites', {
+  messages: [Message.CompletedDecodeSprites],
+  handler: function* () {
+    return () =>
+      pipe(
+        awaitFirstFrame,
+        Effect.andThen(
+          Effect.suspend(() =>
+            decodeImages(spriteWarmUpSources(defaultAppearance)),
           ),
-          Effect.andThen(markLoadStep('Sprites')),
-          Effect.as(Message.CompletedDecodeSprites()),
-        )
-    },
+        ),
+        Effect.andThen(markLoadStep('Sprites')),
+        Effect.as(Message.CompletedDecodeSprites()),
+      )
   },
-)
+})
 
-export const LoadSave = ApplicationDefinition.makeCommand('LoadSave', {
+export const LoadSave = ApplicationBlock.makeCommand('LoadSave', {
   messages: [Message.CompletedLoadSave, Message.FailedLoadSave],
   handler: function* () {
     return () =>
@@ -273,22 +264,19 @@ export const LoadSave = ApplicationDefinition.makeCommand('LoadSave', {
   },
 })
 
-export const GenerateVisitId = ApplicationDefinition.makeCommand(
-  'GenerateVisitId',
-  {
-    messages: [Message.CompletedGenerateVisitId],
-    handler: function* () {
-      return () =>
-        Effect.map(generateVisitId, visitId =>
-          Message.CompletedGenerateVisitId({ visitId }),
-        )
-    },
+export const GenerateVisitId = ApplicationBlock.makeCommand('GenerateVisitId', {
+  messages: [Message.CompletedGenerateVisitId],
+  handler: function* () {
+    return () =>
+      Effect.map(generateVisitId, visitId =>
+        Message.CompletedGenerateVisitId({ visitId }),
+      )
   },
-)
+})
 
 // NOTE: run summaries that ended offline on an earlier visit are sent now, in
 // the background, spaced out, so the Command is done at once.
-export const StartSummaryQueue = ApplicationDefinition.makeCommand(
+export const StartSummaryQueue = ApplicationBlock.makeCommand(
   'StartSummaryQueue',
   {
     messages: [Message.CompletedStartSummaryQueue],
@@ -306,7 +294,7 @@ export const StartSummaryQueue = ApplicationDefinition.makeCommand(
 
 // NOTE: a share sheet is there when the browser has navigator.share; only a
 // touch screen uses it (src/menus.ts).
-export const DetectShareSheet = ApplicationDefinition.makeCommand(
+export const DetectShareSheet = ApplicationBlock.makeCommand(
   'DetectShareSheet',
   {
     messages: [Message.CompletedDetectShareSheet],

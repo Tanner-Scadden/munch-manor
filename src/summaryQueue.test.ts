@@ -13,7 +13,7 @@ import {
   RunSummaryV2,
   SOLO_PARTY,
 } from './analytics'
-import { initialModel } from './model'
+import { initialModel } from './pureApp'
 import { saveOf } from './save'
 import { PlayerStore } from './store'
 import { sendOrQueueRunSummary, startSummaryQueue } from './summaryQueue'

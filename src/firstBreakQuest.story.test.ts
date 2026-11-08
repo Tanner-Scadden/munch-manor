@@ -5,7 +5,6 @@ import { describe, expect, test } from 'vitest'
 
 import { FIXED_STEP_MS, PREPARATION_MS } from './constants'
 import { type QuestStep, maybeQuestDoor, questStepOf } from './firstBreakQuest'
-import { update } from './main'
 import { Message } from './message'
 import {
   BreakClock,
@@ -17,11 +16,11 @@ import {
   ShopState,
   Tour,
   TrapHint,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { isStartWaveBeckoning } from './onboarding'
 import { focusOf, focusSlotOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import { forgetTutorial } from './save'
 import { isFirstPlankFree, priceFor } from './shop'
 import { BELOW_NORTH_DOOR, nextFrame, press } from './testing'

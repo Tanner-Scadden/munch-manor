@@ -1,7 +1,7 @@
 import { Effect, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { ApplicationDefinition } from '../definition'
+import { ApplicationBlock } from '../definition'
 import { toBrowserError } from '../describeError'
 import { Message } from '../message'
 import { type Model, RotationSetting } from '../model'
@@ -23,21 +23,18 @@ const unlockRotation = Effect.try({
 // A lock rejects in a plain browser tab, outside full screen, and wherever
 // it is unsupported, and that refusal is ignored: the game plays on as the
 // phone is held.
-export const ApplyRotation = ApplicationDefinition.makeCommand(
-  'ApplyRotation',
-  {
-    args: { rotation: RotationSetting },
-    messages: [Message.CompletedApplyRotation],
-    handler: function* () {
-      return ({ rotation }) =>
-        pipe(
-          rotation === 'Landscape' ? lockLandscape : unlockRotation,
-          Effect.ignore,
-          Effect.as(Message.CompletedApplyRotation()),
-        )
-    },
+export const ApplyRotation = ApplicationBlock.makeCommand('ApplyRotation', {
+  args: { rotation: RotationSetting },
+  messages: [Message.CompletedApplyRotation],
+  handler: function* () {
+    return ({ rotation }) =>
+      pipe(
+        rotation === 'Landscape' ? lockLandscape : unlockRotation,
+        Effect.ignore,
+        Effect.as(Message.CompletedApplyRotation()),
+      )
   },
-)
+})
 
 // ROTATION
 

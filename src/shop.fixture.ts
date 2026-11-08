@@ -17,10 +17,10 @@ import {
   Phase,
   type ShopItemId,
   ShopState,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN, pastFirstBreak, withPlayerAt } from './model.fixture'
 import { modifyFocus } from './party'
+import { initialModel } from './pureApp'
 import { holdingSecond } from './testing'
 import { FocusShopItem } from './update/shop'
 import { asVeteran } from './veteran'

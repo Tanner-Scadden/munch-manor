@@ -1,6 +1,6 @@
 import { Effect, pipe } from 'effect'
 
-import { ApplicationDefinition } from '../definition'
+import { ApplicationBlock } from '../definition'
 import { toBrowserError } from '../describeError'
 import { Message } from '../message'
 import { FullscreenSetting } from '../model'
@@ -23,25 +23,22 @@ const exitFullscreen = Effect.tryPromise({
   catch: toBrowserError,
 })
 
-export const SetFullscreen = ApplicationDefinition.makeCommand(
-  'SetFullscreen',
-  {
-    args: { fullscreen: FullscreenSetting },
-    messages: [Message.CompletedSetFullscreen, Message.FailedSetFullscreen],
-    handler: function* () {
-      return ({ fullscreen }) =>
-        pipe(
-          fullscreen === 'On' ? enterFullscreen : exitFullscreen,
-          Effect.as(Message.CompletedSetFullscreen({ fullscreen })),
-          Effect.catch(error =>
-            Effect.succeed(
-              Message.FailedSetFullscreen({ reason: String(error) }),
-            ),
+export const SetFullscreen = ApplicationBlock.makeCommand('SetFullscreen', {
+  args: { fullscreen: FullscreenSetting },
+  messages: [Message.CompletedSetFullscreen, Message.FailedSetFullscreen],
+  handler: function* () {
+    return ({ fullscreen }) =>
+      pipe(
+        fullscreen === 'On' ? enterFullscreen : exitFullscreen,
+        Effect.as(Message.CompletedSetFullscreen({ fullscreen })),
+        Effect.catch(error =>
+          Effect.succeed(
+            Message.FailedSetFullscreen({ reason: String(error) }),
           ),
-        )
-    },
+        ),
+      )
   },
-)
+})
 
 // FULL SCREEN
 

@@ -43,7 +43,6 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   // menu.css
   'play-shine': "the PLAY face's shine, a pseudo-element",
   'home-coop-bob': 'the CO-OP icon inside its button',
-  'home-coop-nope': 'the CO-OP padlock inside its button',
   'manor-pip-bob': 'the MORE badge',
   'hand-deal': "a MORE card's face, inside its button",
   'new-entry-pop': "NEW ENTRY's text, inside its button",
@@ -109,6 +108,16 @@ const MOVING_ART: Readonly<Record<string, string>> = {
   'coop-count': 'the countdown word',
   'coop-code-copied':
     "the room code's COPIED! flash, aria-hidden text over the code button",
+  'coop-door-open': "the asking screen's door leaf, aria-hidden art",
+  'coop-door-sway': "the asking screen's door leaf, aria-hidden art",
+  'coop-walk':
+    'heads walking to the door while a room is made, aria-hidden art',
+  'coop-drop': "a QUICK PLAY seat's head as a player arrives",
+  'coop-roll': "an empty QUICK PLAY seat's strip of heads, aria-hidden art",
+  'coop-flip':
+    "the room code's symbols, aria-hidden art inside the code button",
+  'coop-poof': 'a dust puff in a lobby seat, aria-hidden art',
+  'coop-poof-out': 'a dust puff in a lobby seat, aria-hidden art',
 }
 
 const MOVES = /(^|[\s;{])(transform|translate|scale|rotate)\s*:/

@@ -6,7 +6,6 @@ import { describe, expect, test } from 'vitest'
 import { levelOf } from './arena'
 import { FIXED_STEP_MS } from './constants'
 import { VALVE_RULES, flameZoneOf } from './gasValve'
-import { update } from './main'
 import { GasValve, type Model, Phase } from './model'
 import {
   DISTANT_SPAWN,
@@ -16,6 +15,7 @@ import {
 } from './model.fixture'
 import { focusOf, focusSlotOf, maybePlayerAt, seatCrew } from './party'
 import { offersOf } from './purchase'
+import { update } from './pureApp'
 import { stepWorld } from './stepWorld'
 import { HOLD_TICKS, holdEnter, ticks, zombieOf } from './testing'
 import { type World, withWorld } from './world'

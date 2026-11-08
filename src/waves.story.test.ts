@@ -12,11 +12,11 @@ import {
 } from './constants'
 import { doorCounts, rollSpawns } from './endlessWaves'
 import { frenzyPacksOf, isFrenzyPack } from './frenzy'
-import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, type PlannedSpawn, type Zombie } from './model'
 import { plannedSpawn, readyModel } from './model.fixture'
 import { modifyFocus } from './party'
+import { update } from './pureApp'
 import { scoreOf } from './stats'
 import {
   RESTART_GRACE_TICKS,

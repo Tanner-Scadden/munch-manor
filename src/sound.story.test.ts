@@ -13,7 +13,6 @@ import { describe, expect, test } from 'vitest'
 import { PARLOUR } from './arena'
 import { type SoundEffect, positionVariation } from './audio'
 import { FIXED_STEP_MS } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   AudioState,
@@ -23,9 +22,9 @@ import {
   Phase,
   Pierce,
   type Zombie,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
+import { initialModel, update } from './pureApp'
 import {
   MUZZLE_X,
   SURFACE,

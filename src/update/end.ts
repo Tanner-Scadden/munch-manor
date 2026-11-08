@@ -7,7 +7,7 @@ import { sendShareEvent } from '../analyticsBeacon'
 import { shareEventOf } from '../analyticsRun'
 import { CoopBinding } from '../bindings'
 import { isOpen as isCoopOpen } from '../coop/update'
-import { ApplicationDefinition, makeStep } from '../definition'
+import { ApplicationBlock, makeStep } from '../definition'
 import {
   TIMELINES,
   beatSounds,
@@ -200,24 +200,21 @@ export const runCardFromKey = (code: string) =>
 // SHARE
 
 // NOTE: a tap on SHARE, sent like a run summary, as an anonymous event.
-export const SendShareEvent = ApplicationDefinition.makeCommand(
-  'SendShareEvent',
-  {
-    args: { event: ShareEvent },
-    messages: [Message.CompletedSendShareEvent, Message.FailedSendShareEvent],
-    handler: function* () {
-      return ({ event }) =>
-        sendShareEvent(event).pipe(
-          Effect.as(Message.CompletedSendShareEvent()),
-          Effect.catch(error =>
-            Effect.succeed(
-              Message.FailedSendShareEvent({ reason: error.reason }),
-            ),
+export const SendShareEvent = ApplicationBlock.makeCommand('SendShareEvent', {
+  args: { event: ShareEvent },
+  messages: [Message.CompletedSendShareEvent, Message.FailedSendShareEvent],
+  handler: function* () {
+    return ({ event }) =>
+      sendShareEvent(event).pipe(
+        Effect.as(Message.CompletedSendShareEvent()),
+        Effect.catch(error =>
+          Effect.succeed(
+            Message.FailedSendShareEvent({ reason: error.reason }),
           ),
-        )
-    },
+        ),
+      )
   },
-)
+})
 
 // NOTE: a tap is counted once, as an anonymous event with the path it took,
 // only while the player shares play stats (src/analytics.ts, ShareEvent).

@@ -6,7 +6,6 @@ import { describe, expect, test } from 'vitest'
 import { PARLOUR } from './arena'
 import { CHUCKER_RULES } from './chucker'
 import { FIXED_STEP_MS, HIT_STOP_HURT_MS, PLAYER_MAX_HP } from './constants'
-import { update } from './main'
 import { debutPitch } from './menus'
 import { Message } from './message'
 import {
@@ -17,10 +16,10 @@ import {
   type Zombie,
   ZombieAction,
   ZombieState,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN } from './model.fixture'
 import { focusOf, modifyFocus } from './party'
+import { initialModel, update } from './pureApp'
 import {
   bulletInto,
   hasEvent,

@@ -1,6 +1,5 @@
 import { Array, Option, Result, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { describe, expect, test } from 'vitest'
 
 import type { Lobby } from '@munch/netcode'
@@ -12,11 +11,11 @@ import { Message as CoopMessage } from './coop/message'
 import { Screen } from './coop/model'
 import { freshRoom, maybeRoomOf } from './coop/roomState'
 import { CODE, lobbyOf, memberOf, playingSession } from './coop/testing'
-import { update } from './main'
 import { Message } from './message'
-import { Lesson, type Model, initialModel } from './model'
+import { Lesson, type Model } from './model'
 import { WAVE_3_BREAK, modifyLeadSeat, withSeat } from './model.fixture'
 import { noModifiers } from './modifiers'
+import { Child, initialModel, update } from './pureApp'
 import { type RoomWorld, startRoomWorld } from './roomWorld'
 import { SendRunSummary } from './update/settle'
 import { asVeteran } from './veteran'
@@ -196,7 +195,7 @@ describe("an online co-op run's summary", () => {
     ])
     const left = update(
       won.model,
-      toParentMessage(CoopBinding, CoopMessage.CompletedLeaveRoom()),
+      Child.message(CoopBinding, CoopMessage.CompletedLeaveRoom()),
     )
     expect(left.model.phase._tag).toBe('Ready')
     expect(summariesOf(left)).toEqual([])
@@ -205,7 +204,7 @@ describe("an online co-op run's summary", () => {
   test("leaving the room mid-run sends a Quit, with the room's difficulty", () => {
     const left = update(
       midRun(),
-      toParentMessage(CoopBinding, CoopMessage.CompletedLeaveRoom()),
+      Child.message(CoopBinding, CoopMessage.CompletedLeaveRoom()),
     )
     expect(left.model.phase._tag).toBe('Ready')
     expect(Option.isNone(maybeRoomOf(left.model.coop))).toBe(true)
@@ -235,7 +234,7 @@ describe("an online co-op run's summary", () => {
       summariesOf(
         update(
           private_,
-          toParentMessage(CoopBinding, CoopMessage.CompletedLeaveRoom()),
+          Child.message(CoopBinding, CoopMessage.CompletedLeaveRoom()),
         ),
       ),
     ).toEqual([])
@@ -276,7 +275,7 @@ describe("an online co-op run's summary", () => {
   test('leaving mid-run sends the key the run had', () => {
     const left = update(
       midRun(),
-      toParentMessage(CoopBinding, CoopMessage.CompletedLeaveRoom()),
+      Child.message(CoopBinding, CoopMessage.CompletedLeaveRoom()),
     )
     const [summary] = summariesOf(left)
     expect(summary?.party).toMatchObject({
@@ -382,7 +381,7 @@ describe("an online co-op run's rank", () => {
   test('leaving mid-run pays the revives made, and no awards', () => {
     const left = update(
       midRun(),
-      toParentMessage(CoopBinding, CoopMessage.CompletedLeaveRoom()),
+      Child.message(CoopBinding, CoopMessage.CompletedLeaveRoom()),
     ).model
     expect(left.phase._tag).toBe('Ready')
     expect(left.rank).toMatchObject({ earnedPoints: 5, earnedBones: 0 })

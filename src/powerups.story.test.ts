@@ -13,7 +13,6 @@ import {
   PREPARATION_MS,
   ZOMBIE_KNOCKBACK_SPEED,
 } from './constants'
-import { update } from './main'
 import { Message } from './message'
 import {
   Beat,
@@ -35,7 +34,6 @@ import {
   type Zombie,
   type ZombieKind,
   idleBoosts,
-  initialModel,
 } from './model'
 import { DISTANT_SPAWN, pickupAt, withPickups } from './model.fixture'
 import { isGoodieBeckoning, shownHints } from './onboarding'
@@ -52,6 +50,7 @@ import {
   TUTORIAL_DROP,
   TUTORIAL_DROP_KILL,
 } from './powerups'
+import { initialModel, update } from './pureApp'
 import {
   SURFACE,
   bulletInto,

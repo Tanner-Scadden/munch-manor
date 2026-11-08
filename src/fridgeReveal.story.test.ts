@@ -11,10 +11,10 @@ import {
   revealStageAt,
 } from './fridgeReveal'
 import { FRIDGE_RULES, PRIZE_ORDER } from './leftovers'
-import { update } from './main'
 import { Message } from './message'
 import { AudioState, FridgeDoor, type Model, PrizeFlight } from './model'
 import { atFridge, fridgeSeededFor } from './model.fixture'
+import { update } from './pureApp'
 import { FIXED_FRAME, HOLD_TICKS, press, release, ticks } from './testing'
 import { PlaySound } from './update/sound'
 import { freshGun, maybeReplacedGun, takeGun } from './weapons'

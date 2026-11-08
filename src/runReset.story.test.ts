@@ -3,11 +3,11 @@ import { given, message, model, steps, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { update } from './main'
 import { Message } from './message'
 import { type Model, Phase, TrapNotice, freshLoot } from './model'
 import { readyModel } from './model.fixture'
 import { modifyFocus } from './party'
+import { update } from './pureApp'
 import {
   closeDialog,
   press,

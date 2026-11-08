@@ -260,6 +260,16 @@ const copyHarness = (base: string) =>
       Array.filter(entries, entry => entry !== 'out'),
       entry => fs.copy(path.resolve(here, entry), path.resolve(target, entry)),
     )
+    // NOTE: the harness plays the game through src/pureApp.ts. A base from
+    // before the Foldkit 0.170 preview has none; its update was callable and
+    // its initialModel whole, so a shim there hands both out the same way.
+    const pureApp = path.resolve(base, 'src/pureApp.ts')
+    if (!(yield* fs.exists(pureApp))) {
+      yield* fs.writeFileString(
+        pureApp,
+        "export { update } from './main'\nexport { initialModel } from './model'\n",
+      )
+    }
   })
 
 // NOTE: the exact first frame the two differ on, played again hashing

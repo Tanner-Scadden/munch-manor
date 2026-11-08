@@ -1,18 +1,17 @@
 import { Array, Option } from 'effect'
 import { Command, given, message, model, steps, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
-import { toParentMessage } from 'foldkit/test'
 import { afterEach, describe, expect, test } from 'vitest'
 
 import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import { ShopDialogBinding } from './bindings'
 import { EXIT_RULES } from './exits'
-import { update } from './main'
 import { Message } from './message'
 import { FridgeDoor, MunchopediaPage, ShopGuide } from './model'
 import { home } from './model.fixture'
 import { modifyFocus } from './party'
+import { Child, update } from './pureApp'
 import { SHOP_ITEMS } from './shop'
 import {
   FRAMES_TO_STALL,
@@ -103,10 +102,7 @@ describe('the ? in Rattles shop', () => {
       message(Message.ClickedShopGuideButton()),
       resolveFocusGuide,
       message(
-        toParentMessage(
-          ShopDialogBinding,
-          DialogBlock.Message.RequestedClose(),
-        ),
+        Child.message(ShopDialogBinding, DialogBlock.Message.CanceledDialog()),
       ),
       Command.resolve(
         Dialog.test.CloseDialog,

@@ -73,7 +73,7 @@ const rootOf = Effect.gen(function* () {
 const FORBIDDEN_GAME_MODULES: ReadonlyArray<RegExp> = [
   /^src\/model\.ts$/,
   /^src\/clientSchema\.ts$/,
-  /^src\/main\.ts$/,
+  /^src\/(main|pureApp)\.ts$/,
   /^src\/entry\.ts$/,
   /^src\/view\.ts$/,
   /View\.ts$/,

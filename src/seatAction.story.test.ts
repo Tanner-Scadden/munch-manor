@@ -3,7 +3,6 @@ import { given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import { update } from './main'
 import { Message } from './message'
 import { BreakClock, DebutCard, Phase, ShopState } from './model'
 import {
@@ -14,6 +13,7 @@ import {
   withSeat,
 } from './model.fixture'
 import { focusOf, modifyFocus, seatCrew, shopOf, slotsOf } from './party'
+import { update } from './pureApp'
 import { DEFAULT_ROOM_SETTINGS, startRoomWorld } from './roomWorld'
 import { SeatAction, applySeatAction, soloInputs, stepWorld } from './stepWorld'
 import { SHOTGUN, holdingFirst } from './testing'

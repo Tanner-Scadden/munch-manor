@@ -18,8 +18,9 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import { FIXED_STEP_MS, PREPARATION_MS, RESTART_GRACE_MS } from './constants'
 import { withBests } from './home'
 import { Message } from './message'
-import { type Model, Phase, RunMode, initialModel } from './model'
+import { type Model, Phase, RunMode } from './model'
 import { modifyFocus } from './party'
+import { initialModel } from './pureApp'
 import {
   ROOT,
   SCENE_SUBSCRIPTIONS,

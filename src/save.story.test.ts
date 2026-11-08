@@ -9,7 +9,6 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 import { FIXED_STEP_MS } from './constants'
 import { KEEP_TUTORIAL_BUTTON_ID, RESET_TUTORIAL_BUTTON_ID } from './home'
 import { isPracticeGateHeld } from './lessons'
-import { update } from './main'
 import { Message } from './message'
 import {
   BreakClock,
@@ -22,7 +21,6 @@ import {
   RunTally,
   TrapHint,
   freshLessons,
-  initialModel,
   noBests,
   noKills,
 } from './model'
@@ -31,6 +29,7 @@ import { shownHints } from './onboarding'
 import { focusOf, modifyFocus } from './party'
 import { noSavedRunRecords } from './playerData'
 import { PlayerChange, changesBetween } from './playerSync'
+import { initialModel, update } from './pureApp'
 import { grantedVeteran, noRank } from './rank'
 import {
   type PlayerSave,

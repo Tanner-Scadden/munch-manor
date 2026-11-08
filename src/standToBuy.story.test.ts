@@ -5,7 +5,6 @@ import { describe, expect, test } from 'vitest'
 import { FIXED_STEP_MS } from './constants'
 import { EXIT_RULES } from './exits'
 import { FRIDGE_RULES } from './leftovers'
-import { update } from './main'
 import { FridgeDoor, type Model, Phase, Purchase, ShopState } from './model'
 import {
   DISTANT_SPAWN,
@@ -16,6 +15,7 @@ import {
 } from './model.fixture'
 import { focusOf, focusSlotOf, modifyFocus } from './party'
 import { PURCHASE_RULES, holdProgress, isStandingToBuy } from './purchase'
+import { update } from './pureApp'
 import {
   BELOW_KITCHEN_DOOR,
   HOLD_TICKS,

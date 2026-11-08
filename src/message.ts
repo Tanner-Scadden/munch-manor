@@ -22,6 +22,7 @@ import {
   ShopGuideSection,
   ShopItemId,
   TouchControls,
+  TutorialChoice,
   ZombieKind,
 } from './model'
 import { Modifier } from './modifiers'
@@ -162,6 +163,7 @@ export const Message = defineMessageUnion({
   ClickedStayButton: {},
   ClickedShakeButton: {},
   ClickedDifficultyCardButton: { difficulty: Difficulty },
+  ClickedTutorialChoiceButton: { choice: TutorialChoice },
   ClickedCallingCardButton: { calling: Calling },
   ClickedBuyCallingButton: {},
   FocusedHomeButton: { button: HomeButton },

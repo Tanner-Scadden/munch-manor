@@ -11,11 +11,11 @@ import {
   isProfileOpenOn,
   menuState,
 } from './menuState'
-import { type Model, Phase, type initialModel } from './model'
+import { type Model, Phase } from './model'
 import { home, veteranFighting } from './model.fixture'
 import { pause } from './waves'
 
-type Dialog = typeof initialModel.panelDialog
+type Dialog = Model['panelDialog']
 
 const opened = (dialog: Dialog): Dialog =>
   modifyFields(dialog, { isOpen: () => true })

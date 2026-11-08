@@ -15,7 +15,6 @@ import {
   pickPrize,
   prizeWeights,
 } from './leftovers'
-import { update } from './main'
 import { Message } from './message'
 import {
   FridgeDoor,
@@ -29,6 +28,7 @@ import {
 import { AT_FRIDGE, atFridgeOnWave, freshRunModel } from './model.fixture'
 import { focusOf, modifyFocus, soloSeat } from './party'
 import { nextRandom } from './prng'
+import { update } from './pureApp'
 import { forgetTutorial } from './save'
 import { maybeBubbleKind } from './stallBubble'
 import {
