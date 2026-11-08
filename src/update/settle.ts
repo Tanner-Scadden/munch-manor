@@ -1,10 +1,8 @@
 import { Effect, Function, Option, pipe } from 'effect'
-import { Update } from 'foldkit'
 
 import { RunSummary } from '../analytics'
 import { maybeRunOutcome, runSummaryOf } from '../analyticsRun'
 import { ApplicationBlock } from '../definition'
-import { isObjectFirst } from '../dualArgs'
 import { noteRecords, reachRecords } from '../endBeat'
 import { countRunFrom, forgetNewEntriesFrom } from '../home'
 import { Message } from '../message'
@@ -80,20 +78,23 @@ const sendRunSummaryFrom =
 
 // AFTER A MESSAGE
 
+// NOTE: a synced save is taken from the store, so writing it back would
+// echo it. Its Messages settle with `Synced`.
+type SaveWrite = 'Write' | 'Synced'
+
 // NOTE: what the root does after any change, comparing the Model from
 // before it: music for the phase, the end menu's focus, the rotation lock,
-// Nightmare, the run count and its summary, the new zombie badges, the fridge
-// prizes pulled, and the save. Each looks only at the root's own fields, so a child Message that
-// changes nothing but its child needs none of them.
+// Nightmare, the run count and its summary, the new zombie badges, the
+// fridge prizes pulled, and the save. `update` in src/main.ts runs them once
+// after every dispatch, a child's delivery and its fold included. Each looks
+// only at the root's own fields and acts on a change between the two Models,
+// so a dispatch that leaves the root as it was does nothing here.
 export const afterMessage: {
-  (saveWrite?: SaveWrite): (before: Model) => ReadonlyArray<UpdateStep>
-  (before: Model, saveWrite?: SaveWrite): ReadonlyArray<UpdateStep>
+  (saveWrite: SaveWrite): (before: Model) => ReadonlyArray<UpdateStep>
+  (before: Model, saveWrite: SaveWrite): ReadonlyArray<UpdateStep>
 } = Function.dual(
-  isObjectFirst,
-  (
-    before: Model,
-    saveWrite: SaveWrite = 'Write',
-  ): ReadonlyArray<UpdateStep> => [
+  2,
+  (before: Model, saveWrite: SaveWrite): ReadonlyArray<UpdateStep> => [
     cueMusicFrom(before),
     focusEndMenuFrom(before),
     applyRotationFrom(before),
@@ -118,27 +119,4 @@ export const afterMessage: {
     stepModel => ({ model: notePulledPrize(stepModel) }),
     writeSaveFrom(before, saveWrite),
   ],
-)
-
-// NOTE: a synced save is taken from the store, so writing it back would
-// echo it. Its Messages pass `Synced`.
-export type SaveWrite = 'Write' | 'Synced'
-
-// NOTE: one root change, then the after-message Steps. Every root handler
-// and every OutMessage fold in src/composition.ts ends with them, once. A
-// Step that uses a Binding (opening a dialog, a co-op operation) needs the
-// handler's own Model, so its handler spells the same thing out:
-// `Update.combineSteps(model, [step, ...afterMessage(model)])`. A fold
-// that runs inside a handler (a dialog the handler closes) settles again,
-// which only matters if the fold changes what the save, the music, or the
-// run count read; none does (see "Blocks and Bindings" in AGENTS.md).
-export const settled: {
-  (saveWrite?: SaveWrite): (step: UpdateStep) => UpdateStep
-  (step: UpdateStep, saveWrite?: SaveWrite): UpdateStep
-} = Function.dual(
-  // NOTE: data-first starts with the Step; data-last with the save write or nothing.
-  (args: IArguments): boolean => typeof args[0] === 'function',
-  (step: UpdateStep, saveWrite: SaveWrite = 'Write'): UpdateStep =>
-    before =>
-      Update.combineSteps(before, [step, ...afterMessage(before, saveWrite)]),
 )

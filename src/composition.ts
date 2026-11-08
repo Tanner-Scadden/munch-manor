@@ -1,4 +1,4 @@
-import { type Block, Update } from 'foldkit'
+import type { Block } from 'foldkit'
 
 import { DialogBlock } from '@foldkit/ui'
 
@@ -36,15 +36,14 @@ import {
 } from './update/coop'
 import { forgetAskedMode } from './update/home'
 import { keepName, switchTab } from './update/profile'
-import { afterMessage, settled } from './update/settle'
 import { leaveShop, selectCategory } from './update/shop'
 import { isGuideEscape, reopenForGuide } from './update/shopGuide'
 
 // NOTE: each child's OutMessage fold. The Bindings live in src/bindings.ts,
 // where Steps and views reach them; these folds call Steps, so they stay
-// here, and only the Composition registers the Bindings with them. A fold
-// changes the root, so it is `settled`: the root's after-message Steps
-// (music, save, run count) run on it as they do after a local Message.
+// here, and only the Composition registers the Bindings with them. The
+// root's after-message Steps (music, save, run count) run once after the
+// whole delivery, fold included, from `update` in src/main.ts.
 
 // DIALOGS
 
@@ -54,9 +53,7 @@ const ShopDialogBindingWithOutMessagePolicy =
       Opened: makeNoopStep,
       Closed: () =>
         makeStep(before =>
-          isGuideEscape(before)
-            ? reopenForGuide
-            : Update.combineSteps([leaveShop, ...afterMessage(before)]),
+          isGuideEscape(before) ? reopenForGuide : leaveShop,
         ),
       CompletedClose: makeNoopStep,
     }),
@@ -66,7 +63,7 @@ const ProfileDialogBindingWithOutMessagePolicy =
   ProfileDialogBinding.withOutMessagePolicy({
     fold: ApplicationBlock.makeOutMessageFold(DialogBlock, {
       Opened: makeNoopStep,
-      Closed: () => settled(keepName),
+      Closed: () => keepName,
       CompletedClose: makeNoopStep,
     }),
   })
@@ -75,7 +72,7 @@ const PanelDialogBindingWithOutMessagePolicy =
   PanelDialogBinding.withOutMessagePolicy({
     fold: ApplicationBlock.makeOutMessageFold(DialogBlock, {
       Opened: makeNoopStep,
-      Closed: () => settled(forgetAskedMode),
+      Closed: () => forgetAskedMode,
       CompletedClose: makeNoopStep,
     }),
   })
@@ -100,14 +97,14 @@ const UpdateGreetingBindingWithOutMessagePolicy =
 const ProfileTabsBindingWithOutMessagePolicy =
   ProfileTabsBinding.withOutMessagePolicy({
     fold: ApplicationBlock.makeOutMessageFold(ProfileTabsBlock, {
-      Selected: ({ value }) => settled(switchTab(value)),
+      Selected: ({ value }) => switchTab(value),
     }),
   })
 
 const ShopTabsBindingWithOutMessagePolicy =
   ShopTabsBinding.withOutMessagePolicy({
     fold: ApplicationBlock.makeOutMessageFold(ShopTabsBlock, {
-      Selected: ({ value }) => settled(selectCategory(value)),
+      Selected: ({ value }) => selectCategory(value),
     }),
   })
 
@@ -116,10 +113,10 @@ const ShopTabsBindingWithOutMessagePolicy =
 const CharacterBindingWithOutMessagePolicy =
   CharacterBinding.withOutMessagePolicy({
     fold: ApplicationBlock.makeOutMessageFold(CharacterBlock, {
-      ChoseLook: ({ part, value }) => settled(chooseLook(part, value)),
-      FlippedLook: ({ toggle }) => settled(flipLook(toggle)),
-      RolledDice: () => settled(rollLook),
-      ClickedBuy: () => settled(buyPreview),
+      ChoseLook: ({ part, value }) => chooseLook(part, value),
+      FlippedLook: ({ toggle }) => flipLook(toggle),
+      RolledDice: () => rollLook,
+      ClickedBuy: () => buyPreview,
     }),
   })
 
@@ -127,15 +124,12 @@ const CharacterBindingWithOutMessagePolicy =
 
 const CoopBindingWithOutMessagePolicy = CoopBinding.withOutMessagePolicy({
   fold: ApplicationBlock.makeOutMessageFold(CoopBlock, {
-    ClosedCoop: () => settled(closedCoop),
-    NeededNewerBuild: () => settled(neededNewerBuild),
-    LeftRoom: () => settled(leftRoom),
-    ChoseCalling: ({ calling }) => settled(choseCalling(calling)),
-    ChoseName: ({ name }) => settled(choseName(name)),
-    BoughtCalling: ({ calling }) =>
-      makeStep(before =>
-        Update.combineSteps([boughtCalling(calling), ...afterMessage(before)]),
-      ),
+    ClosedCoop: () => closedCoop,
+    NeededNewerBuild: () => neededNewerBuild,
+    LeftRoom: () => leftRoom,
+    ChoseCalling: ({ calling }) => choseCalling(calling),
+    ChoseName: ({ name }) => choseName(name),
+    BoughtCalling: ({ calling }) => boughtCalling(calling),
   }),
 })
 
