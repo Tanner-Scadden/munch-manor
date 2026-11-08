@@ -90,7 +90,8 @@
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  font: bold round(clamp(14px, 3.6 * var(--coop-unit), 22px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(14px, 3.6 * var(--coop-unit), 22px), 1px) / 1
+    var(--menu-font);
   letter-spacing: 1px;
 }
 
@@ -216,7 +217,8 @@
 .lobby-hero-name {
   max-width: 100%;
   overflow: hidden;
-  font: bold round(clamp(11px, 2.6 * var(--coop-unit), 16px), 1px) / 1.1 var(--menu-font);
+  font: bold round(clamp(11px, 2.6 * var(--coop-unit), 16px), 1px) / 1.1
+    var(--menu-font);
   letter-spacing: 1px;
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -243,7 +245,8 @@
 }
 
 .lobby-special-sign {
-  font: bold round(clamp(11px, 2.6 * var(--coop-unit), 16px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(11px, 2.6 * var(--coop-unit), 16px), 1px) / 1
+    var(--menu-font);
 }
 
 .lobby-special[data-sign='Perk'] .lobby-special-sign {
@@ -279,7 +282,8 @@
 }
 
 .lobby-map-name {
-  font: bold round(clamp(11px, 2.6 * var(--coop-unit), 15px), 1px) / 1 var(--menu-font);
+  font: bold round(clamp(11px, 2.6 * var(--coop-unit), 15px), 1px) / 1
+    var(--menu-font);
   letter-spacing: 1px;
   text-transform: uppercase;
   white-space: nowrap;

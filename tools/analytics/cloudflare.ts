@@ -123,7 +123,9 @@ const Account = Schema.Struct({ id: Schema.String, name: Schema.String })
 export const accountId = (token: Redacted.Redacted) =>
   pipe(
     Config.option(Config.String('CLOUDFLARE_ACCOUNT_ID')),
-    Effect.mapError(error => CloudflareError.make({ message: describe(error) })),
+    Effect.mapError(error =>
+      CloudflareError.make({ message: describe(error) }),
+    ),
     Effect.flatMap(
       Option.match({
         onSome: Effect.succeed,

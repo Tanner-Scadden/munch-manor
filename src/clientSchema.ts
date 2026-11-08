@@ -5,12 +5,7 @@
 import { Option, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
-import {
-  HouseSpot,
-  MapId,
-  ShopGuideSection,
-  TutorialChoice,
-} from './nameKeys'
+import { HouseSpot, MapId, ShopGuideSection, TutorialChoice } from './nameKeys'
 import { Appearance, Calling } from './playerData'
 import { MillisNumber } from './wireNumber'
 import {
