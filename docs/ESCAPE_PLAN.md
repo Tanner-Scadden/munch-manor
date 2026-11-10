@@ -197,6 +197,7 @@ Bottom to top. Each layer names its goal, what it changes, and how it is checked
 - Rewards per item (`src/world/heroes/rank.ts`, `src/features/end/rankRun.ts`).
 - Endless ("stay the night") has no list and keeps Uncle Chunk every tenth wave.
 - The difficulty dial: list length and help (sparkle on Dare, a doodled hint a break on Double Dare, a marked carrier on Triple Dare, the house hungrier from the first find on Triple Dog Dare). Rattles hollers the hints.
+- As built: hiding spots are each room's drafted marks (`roomSpotsOf`), so they follow the rooms into their slots, and a thing rolls into a spot or a case by its room's depth (1 for the dining room, 3 behind one set of boards, 6 behind two), so most of the hunt needs keys. The guest book's page is locked in a display case behind boards and falls out when the case opens; Grandma's recipe cooks out of the stove the first break a player earns the stove's feat; a thing off the list brought to a locked case opens it for that player (`src/world/dare/dareCases.ts`). Uncle Chunk never comes before wave 6 on Dare and Double Dare or wave 8 on Triple Dare and Triple Dog Dare (`FINALE_RULES.chunkFromWave`), since a first balance batch escaped most Double Dare runs at wave 3. On Triple Dog Dare the house is hungrier from the first thing found.
 
 **Checks.** Stories for each way to get a thing, the finale end to end, co-op escapes with a downed teammate carried out, `test:full`, `mp:e2e`, the co-op audit.
 

@@ -121,7 +121,8 @@ import {
 // the list) and the house's things (`dareThings`, keyed by id, each hidden,
 // marked, carried by a zombie, dropped, held, found, or delivered), and five
 // new events say what happened to them: DareFound, DareTaken, DareDropped,
-// DareListDone, and DareDelivered.
+// DareListDone, and DareDelivered. A thing may also be InCase, locked in
+// a display case by its id, or InStove, waiting in the kitchen's stove.
 // The finale: the dare holds its `finale` (hunting, Uncle Chunk summoned,
 // the front door unlocking, or open), a seat that stepped out through it
 // is Out (a new Life), with three events, FrontDoorUnlocking,

@@ -110,7 +110,7 @@ const hasCookedThisBreak = (world: World, slot: PlayerSlot): boolean =>
   seatStateAt(world, slot).cooking.lastWave === world.phase.wave
 
 // NOTE: whether the seat at `slot` has earned a cook this break.
-const hasStoveFeat: {
+export const hasStoveFeat: {
   (slot: PlayerSlot): (world: World) => boolean
   (world: World, slot: PlayerSlot): boolean
 } = Function.dual(2, (world: World, slot: PlayerSlot): boolean =>

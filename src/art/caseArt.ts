@@ -1,4 +1,4 @@
-import type { CaseLook } from '../world/feats/cases'
+import type { CaseLook } from '../world/feats/caseSpots'
 import type { Feat } from '../world/schema/worldSchema'
 import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from './sprite'
 

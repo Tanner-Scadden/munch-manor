@@ -25,10 +25,15 @@ export type DareKind = typeof DareKind.Type
 // its mark; Carried rides that zombie by id; Dropped lies where he fell. A
 // thing the dare asked for is Found the moment a standing player walks onto
 // it, by that seat's slot, for the whole crew. One it did not ask for is Held
-// by the seat that took it until it is Delivered somewhere.
+// by the seat that took it until it is Delivered to a display case. InCase
+// is locked in a display case by its id until the case opens; InStove waits
+// in the kitchen's stove until a player earns the stove's feat. Either then
+// lies Dropped in front of it (src/world/dare/dareCases.ts).
 export const DareThingState = defineTaggedUnion({
   Hidden: { x: PositionNumber, y: PositionNumber },
   Marked: {},
+  InCase: { caseId: Schema.Finite },
+  InStove: {},
   Carried: { zombieId: Schema.Finite },
   Dropped: { x: PositionNumber, y: PositionNumber },
   Held: { slot: Schema.Finite },
