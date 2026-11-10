@@ -1,7 +1,16 @@
 // What the art studio shows: the game's own sprites, built by the same
 // modules the game draws with, grouped by tab. Each entry names where its
 // pixels live, so a note about it says which file to change.
-import { Array, Function, Match, Option, Record, Schema, pipe } from 'effect'
+import {
+  Array,
+  Function,
+  Match,
+  Option,
+  Record,
+  Schema,
+  String,
+  pipe,
+} from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { playerSprites } from '../../src/art/appearance'
@@ -33,6 +42,9 @@ import {
   RATTLES_LOOKS,
   rattlesShapes,
 } from '../../src/features/rattles/rattlesSpot'
+import { CELLAR_BULB_SPRITE } from '../../src/render/room/cellarArt'
+import { CHANDELIER_SPRITES } from '../../src/render/room/diningArt'
+import { SHELF_SPRITES } from '../../src/render/room/libraryArt'
 import { Hat, Outfit } from '../../src/shared/playerData'
 import { CALLINGS } from '../../src/world/heroes/calling'
 import {
@@ -351,6 +363,33 @@ const itemsSections = (): ReadonlyArray<Section> => [
       ),
     ],
   },
+  {
+    title: 'Room pieces',
+    entries: [
+      ...Array.map(Record.toEntries(CHANDELIER_SPRITES), ([state, sprite]) =>
+        stillEntry(
+          `piece/Chandelier/${state}`,
+          `Chandelier, ${String.toLowerCase(state)}`,
+          'src/render/room/diningArt.ts',
+          sprite,
+        ),
+      ),
+      ...Array.map(Record.toEntries(SHELF_SPRITES.West), ([state, sprite]) =>
+        stillEntry(
+          `piece/SecretShelf/${state}`,
+          `Secret shelf, ${String.toLowerCase(state)}`,
+          'src/render/room/libraryArt.ts',
+          sprite,
+        ),
+      ),
+      stillEntry(
+        'piece/CellarBulb',
+        'Cellar bulb',
+        'src/render/room/cellarArt.ts',
+        CELLAR_BULB_SPRITE,
+      ),
+    ],
+  },
 ]
 
 const buildSections = (tab: Tab): ReadonlyArray<Section> =>
@@ -499,7 +538,12 @@ const HOUSE_PIXELS: ReadonlyArray<string> = [
   '.WWWWWDDW.',
 ]
 
-const HOUSE_PALETTE = { R: '#c8463c', W: '#e9dcc0', Y: '#ffd23f', D: '#6b4a32' }
+const HOUSE_PALETTE = {
+  R: '#c8463c',
+  W: '#e9dcc0',
+  Y: '#ffd23f',
+  D: '#6b4a32',
+}
 
 // NOTE: each tab's icon in the sidebar, drawn from the game's own art.
 export const tabIconOf = (tab: Tab): Sprite =>

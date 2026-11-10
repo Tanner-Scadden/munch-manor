@@ -35,7 +35,7 @@ import {
 import { inspectorView } from './inspectorView'
 import type { Tile } from './notes'
 import { areaShapes, pinAt } from './pins'
-import { ROOM_TARGET, roomFrameOf, tileOfPin } from './room'
+import { roomFrameOf, roomTargetOf, tileOfPin } from './room'
 import { sidebarView } from './sidebarView'
 import { stageView } from './stageView'
 import { pickedEntry } from './update'
@@ -211,7 +211,7 @@ const gridLines = (
 ]
 
 const roomView = (model: Model, h: StudioViewBuilder): Html => {
-  const { shapes, bounds } = roomFrameOf(model.isKitchenOpen)
+  const { shapes, bounds } = roomFrameOf(model)
   const frame = { bounds, zoom: model.zoom }
   const { width, height } = sizeOf(bounds, model.zoom)
   return h.main(
@@ -257,7 +257,7 @@ const roomView = (model: Model, h: StudioViewBuilder): Html => {
                 ),
                 ...areaShapes({
                   model,
-                  notes: notesFor(model, ROOM_TARGET),
+                  notes: notesFor(model, roomTargetOf(model.room)),
                   frame,
                 }),
               ],

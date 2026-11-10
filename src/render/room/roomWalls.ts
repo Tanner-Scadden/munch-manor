@@ -157,9 +157,11 @@ const isNorthFace =
       Array.contains(Record.values(DOOR_SYMBOLS), symbol),
     )
 
-type Span = Readonly<{ x: number; y: number; width: number }>
+// NOTE: a stretch of the north wall's face: x and width across, y the face's
+// foot (the top of the floor row under it).
+export type Span = Readonly<{ x: number; y: number; width: number }>
 
-const northFaceSpans = (level: Level): ReadonlyArray<Span> =>
+export const northFaceSpans = (level: Level): ReadonlyArray<Span> =>
   Array.map(
     pixelRuns(markedGrid(level, isNorthFace(level)), {
       [MARK]: WALLPAPER_COLOR,
