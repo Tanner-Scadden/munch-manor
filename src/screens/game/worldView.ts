@@ -22,7 +22,6 @@ import { coopNameShapes } from '../../features/onlineRun/coopMarksView'
 import {
   STALL_FOOT_Y,
   type StallLook,
-  counterSaleShapes,
   stallGroundShapes,
   stallPromptShapes,
   stallShapes,
@@ -90,13 +89,8 @@ import {
 } from '../../render/zombieView'
 import { type Level, isInsideRoomAt, levelOf } from '../../world/level/arena'
 import { focusOf, focusSlotOf } from '../../world/party/party'
-import {
-  CounterSale,
-  type Vector,
-  type Zombie,
-} from '../../world/schema/entitySchema'
+import { type Vector, type Zombie } from '../../world/schema/entitySchema'
 import { Phase, ShopState } from '../../world/schema/worldSchema'
-import { isAtAmmoWindow, isCounterOpen } from '../../world/shop/ammoCounter'
 import { isShopOpenFor, stallPrompt } from '../../world/shop/shop'
 import { ZERO_VECTOR } from '../../world/step/geometry'
 import { isRoundActive } from '../../world/waves/waves'
@@ -118,12 +112,7 @@ export const worldOffset: {
 // STALL
 
 const stallLook = (model: Model): StallLook => {
-  if (isCounterOpen(model)) {
-    return isAtAmmoWindow(model, focusSlotOf(model)) ||
-      CounterSale.isAnyOf(['Selling'])(model.counterSale)
-      ? 'CounterAwake'
-      : 'Counter'
-  } else if (!isShopOpenFor(model.phase)) {
+  if (!isShopOpenFor(model.phase)) {
     return 'Closed'
   } else if (ShopState.isAnyOf(['Away'])(focusOf(model).shop)) {
     return 'Beckoning'
@@ -294,10 +283,6 @@ const overheadShapes = (
   ...mateOverheadShapes(model, mates),
   ...coopNameShapes(model),
   ...stallPromptShapes(stallPrompt(model, focusSlotOf(model))),
-  ...CounterSale.match(model.counterSale, {
-    Quiet: () => [],
-    Selling: ({ ageMs, line }) => counterSaleShapes(ageMs, line),
-  }),
   ...padlockShapes(model),
 ]
 

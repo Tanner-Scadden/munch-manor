@@ -444,34 +444,32 @@ describe('the knife', () => {
     },
   )
 
-  it.effect('with every gun dry, the next pull draws the knife by itself', () =>
-    Effect.gen(function* () {
-      const dry = (gun: CarriedGun): CarriedGun =>
-        modifyFields(gun, { rounds: () => 0, loaded: () => 0 })
-      const allDry = modifyFocus(fightingWith([tough(900, PLAYER_X + 10)]), {
-        player: player =>
-          modifyFields(player, {
-            arsenal: () =>
-              Arsenal.HoldingSecond({
-                first: dry(freshGun('Smg')),
-                second: dry(freshGun('Shotgun')),
+  it.effect(
+    'with both magazines empty, the next pull reloads, and the knife stays put',
+    () =>
+      Effect.gen(function* () {
+        const empty = (gun: CarriedGun): CarriedGun =>
+          modifyFields(gun, { loaded: () => 0 })
+        const allEmpty = modifyFocus(
+          fightingWith([tough(900, PLAYER_X + 10)]),
+          {
+            player: player =>
+              modifyFields(player, {
+                arsenal: () =>
+                  Arsenal.HoldingSecond({
+                    first: empty(freshGun('Smg')),
+                    second: empty(freshGun('Shotgun')),
+                  }),
               }),
-          }),
-      })
-      const pulling = yield* send(allDry, FIRE_PRESS, FIRE_PUSH)
-      const seen = yield* frames(pulling, 1)
-      const pulled = lastOf(seen)
-      expect(focusOf(pulled).player.wield).toBe('Melee')
-      expect(
-        Array.some(pulled.frameEvents, GameEvent.isAnyOf(['RanDry'])),
-      ).toBe(true)
-      const stabbing = yield* frames(
-        pulled,
-        tickCountFor(KNIFE_RULES.intervalMs),
-      )
-      expect(stabsIn([...seen, ...stabbing])).toBeGreaterThan(0)
-      expect(zombieById(lastOf(stabbing), 900).hp).toBeLessThan(99)
-    }),
+          },
+        )
+        const pulling = yield* send(allEmpty, FIRE_PRESS, FIRE_PUSH)
+        const seen = yield* frames(pulling, 1)
+        const pulled = lastOf(seen)
+        expect(focusOf(pulled).player.wield).toBe('Gun')
+        expect(focusOf(pulled).player.reload._tag).toBe('Reloading')
+        expect(heldWeapon(focusOf(pulled).player.arsenal)).toBe('Shotgun')
+      }),
   )
 
   it.effect('it rests while the player browses the shop', () =>
@@ -647,40 +645,26 @@ describe('two gun slots', () => {
     ).toBe('Refused')
   })
 
-  it.effect(
-    'a gun that runs dry hands over to the other gun if it can fire',
-    () =>
-      Effect.gen(function* () {
-        const dry = modifyFields(freshGun('Smg'), {
-          rounds: () => 0,
-          loaded: () => 0,
-        })
-        const mouseDown = Message.PressedPointer({
-          pointerId: 1,
-          device: 'Mouse',
-          clientX: 600,
-          clientY: 200,
-        })
-        const toPistol = yield* send(
-          armed(holdingSecond(dry)),
-          Message.PressedKey({ code: 'KeyW' }),
-          mouseDown,
-        )
-        const after = yield* frames(toPistol, 2)
-        expect(heldWeapon(focusOf(lastOf(after)).player.arsenal)).toBe('Pistol')
-        const spentFreeze = modifyFields(freshGun('Freeze'), {
-          rounds: () => 0,
-          loaded: () => 0,
-        })
-        const stuck = yield* send(
-          armed(Arsenal.HoldingSecond({ first: spentFreeze, second: dry })),
-          mouseDown,
-        )
-        const stuckFrames = yield* frames(stuck, 2)
-        const stuckAfter = focusOf(lastOf(stuckFrames)).player
-        expect(heldWeapon(stuckAfter.arsenal)).toBe('Smg')
-        expect(stuckAfter.wield).toBe('Melee')
-      }),
+  it.effect('an empty gun reloads in hand, and never hands over', () =>
+    Effect.gen(function* () {
+      const empty = modifyFields(freshGun('Smg'), { loaded: () => 0 })
+      const mouseDown = Message.PressedPointer({
+        pointerId: 1,
+        device: 'Mouse',
+        clientX: 600,
+        clientY: 200,
+      })
+      const pulling = yield* send(
+        armed(holdingSecond(empty)),
+        Message.PressedKey({ code: 'KeyW' }),
+        mouseDown,
+      )
+      const seen = yield* frames(pulling, 2)
+      const after = focusOf(lastOf(seen)).player
+      expect(heldWeapon(after.arsenal)).toBe('Smg')
+      expect(after.wield).toBe('Gun')
+      expect(after.reload._tag).toBe('Reloading')
+    }),
   )
 
   it.effect('the pistol upgrade goes with the pistol, wherever it sits', () =>

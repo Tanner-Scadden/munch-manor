@@ -23,8 +23,6 @@ import { orInRun } from './coopRun'
 import { skipFromPointer } from './end'
 import {
   asAllowedPress,
-  buyAmmoFromHoldButton,
-  clickAmmoTag,
   clickMedic,
   clickNextTrap,
   clickPause,
@@ -159,8 +157,7 @@ export const inputHandlers = defineHandlers({
 // NOTE: the run's buttons (src/input/message.ts), each sent to the room in
 // an online run.
 export const runButtonHandlers = defineHandlers({
-  // NOTE: the finger holds the interact until it lifts, and at the ammo
-  // window its landing buys at once.
+  // NOTE: the finger holds the interact until it lifts.
   PressedHoldButton: (model, message) =>
     Update.combineSteps(model, [
       modelStep(held =>
@@ -169,11 +166,7 @@ export const runButtonHandlers = defineHandlers({
         ),
       ),
       unlockAudio,
-      makeStep(orInRun(message, buyAmmoFromHoldButton)),
     ]),
-
-  ClickedAmmoTag: (model, message) =>
-    Update.combineSteps(model, [makeStep(orInRun(message, clickAmmoTag))]),
 
   ClickedPauseButton: (model, message) =>
     Update.combineSteps(model, [makeStep(orInRun(message, clickPause))]),

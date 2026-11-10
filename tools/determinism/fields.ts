@@ -71,7 +71,6 @@ export const FIELD_CLASSES = {
   blasts: 'Cosmetic',
   callouts: 'Cosmetic',
   prizeFlight: 'Cosmetic',
-  counterSale: 'Cosmetic',
   kitchenCall: 'Cosmetic',
   breakIdleMs: 'Cosmetic',
   cosmeticRngState: 'Cosmetic',
@@ -79,7 +78,6 @@ export const FIELD_CLASSES = {
   difficultyCard: 'Client',
   shopDialog: 'Client',
   trapHint: 'Client',
-  ammoTip: 'Client',
   firstBreakQuest: 'Client',
   kitchenTour: 'Client',
   maybeOpenHelpCard: 'Client',
@@ -184,10 +182,10 @@ const CLASS_BY_FIELD: ReadonlyMap<string, FieldClass> = new Map([
     field,
     'World',
   ]),
-  ...Array.map(
-    LEGACY_CLIENT_FIELDS,
-    (field): readonly [string, FieldClass] => [field, 'Client'],
-  ),
+  ...Array.map(LEGACY_CLIENT_FIELDS, (field): readonly [string, FieldClass] => [
+    field,
+    'Client',
+  ]),
 ])
 
 const classOf = (field: string): FieldClass | undefined =>

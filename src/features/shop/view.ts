@@ -4,7 +4,6 @@ import type { Html } from 'foldkit/html'
 import { Button, type Dialog, type DialogBlock, type Tabs } from '@foldkit/ui'
 
 import { COIN_SYMBOL } from '../../art/font'
-import { ROUNDS_ICON } from '../../art/icons'
 import type { Mood } from '../../art/rattlesArt'
 import {
   BAR_SEGMENTS,
@@ -26,12 +25,9 @@ import { TILE_SIZE } from '../../shared/constants'
 import { closeButtonView } from '../../ui/cornerButtons'
 import { TRAPS, healthShare, ownedCount } from '../../world/gear/traps'
 import {
-  hasEndlessRounds,
   maxTier,
-  maybeCarried,
   maybeNextTier,
   maybeReplacedGun,
-  startingRounds,
   tierName,
   tierOf,
 } from '../../world/gear/weapons'
@@ -77,7 +73,7 @@ import type { ShopScene, ViewInputs } from './block'
 import { ShopComposition, type ShopViewBuilder } from './composition'
 import { Message } from './message'
 import { type Model, isShopGuideOpen } from './model'
-import { type GunBars, ammoGauge, gunBars, ownedNote } from './shopStats'
+import { type GunBars, gunBars, ownedNote } from './shopStats'
 import type { ShopTabsBlock } from './shopTabs'
 import { chatterLine, moodOf } from './shopkeeper'
 
@@ -287,41 +283,6 @@ const mapPipView = (scene: ShopScene, trap: Trap, h: ShopViewBuilder): Html => {
   )
 }
 
-const gaugeView = (
-  scene: ShopScene,
-  weapon: WeaponKind,
-  rounds: number,
-  h: ShopViewBuilder,
-): Html => {
-  const { have, gain, most } = ammoGauge(
-    scene,
-    focusSlotOf(scene),
-    weapon,
-    rounds,
-  )
-  const percent = (value: number): string =>
-    `${Math.round((value / most) * 100)}%`
-  return h.span(
-    [h.Class('shop-gauge'), h.AriaHidden(true)],
-    [
-      h.span(
-        [h.Class('shop-gauge-track')],
-        [
-          h.span([
-            h.Class('shop-gauge-have'),
-            h.Style({ width: percent(have) }),
-          ]),
-          h.span([
-            h.Class('shop-gauge-gain'),
-            h.Style({ width: percent(gain) }),
-          ]),
-        ],
-      ),
-      h.span([h.Class('shop-gauge-text')], [`${have}/${most}`]),
-    ],
-  )
-}
-
 const swapBadgeView = (scene: ShopScene, h: ShopViewBuilder): Html =>
   Option.match(maybeReplacedGun(focusOf(scene).player.arsenal), {
     onNone: () => h.empty,
@@ -335,40 +296,6 @@ const swapBadgeView = (scene: ShopScene, h: ShopViewBuilder): Html =>
       ),
   })
 
-// NOTE: how many rounds a gun has, beside its bars: the Pop Pistol's
-// endless ammo as an infinity sign, any other gun as a count that runs down,
-// from a playtester who traded up and never knew the new gun could run dry.
-const roundsView = (
-  maybeRounds: Option.Option<number>,
-  h: ShopViewBuilder,
-): Html =>
-  h.span(
-    [
-      h.Class(
-        Option.isNone(maybeRounds) ? 'shop-rounds is-endless' : 'shop-rounds',
-      ),
-      h.AriaHidden(true),
-    ],
-    [
-      h.span([
-        h.Class('shop-rounds-icon'),
-        h.Style({ backgroundImage: ROUNDS_ICON }),
-      ]),
-      Option.match(maybeRounds, {
-        onNone: () => '\u221e',
-        onSome: rounds => `${rounds}`,
-      }),
-    ],
-  )
-
-const carriedRounds = (
-  scene: ShopScene,
-  weapon: WeaponKind,
-): Option.Option<number> =>
-  hasEndlessRounds(weapon)
-    ? Option.none()
-    : Option.map(maybeCarried(focusOf(scene).player, weapon), gun => gun.rounds)
-
 const metaView = (
   scene: ShopScene,
   item: ShopItemId,
@@ -380,16 +307,9 @@ const metaView = (
         [h.Class('shop-meta')],
         [
           barsView(gunBars(weapon, 0), gunBars(weapon, 0), h),
-          roundsView(
-            hasEndlessRounds(weapon)
-              ? Option.none()
-              : Option.some(startingRounds(weapon)),
-            h,
-          ),
           swapBadgeView(scene, h),
         ],
       ),
-    Ammo: ({ weapon, rounds }) => gaugeView(scene, weapon, rounds, h),
     Upgrade: () => h.empty,
     Heart: () => heartsView(scene, h),
     Trap: ({ kind }) =>
@@ -529,7 +449,6 @@ const reasonView = (
 const shortName = (scene: ShopScene, item: ShopItemId): string =>
   ShopGood.match(shopItem(item).good, {
     Gun: () => itemName(scene, focusSlotOf(scene), item),
-    Ammo: () => itemName(scene, focusSlotOf(scene), item),
     Upgrade: ({ weapon }) =>
       Option.match(
         maybeNextTier(weapon, tierOf(focusOf(scene).player, weapon)),
@@ -556,7 +475,6 @@ const itemArtView = (
 ): Html =>
   ShopGood.match(shopItem(item).good, {
     Gun: () => artView(itemArt(item), 'shop-card-art', h),
-    Ammo: () => artView(itemArt(item), 'shop-card-art', h),
     Upgrade: ({ weapon }) =>
       h.span(
         [h.Class('shop-card-art shop-upgrade-art'), h.AriaHidden(true)],
@@ -774,7 +692,6 @@ const isGunJustBought = (scene: ShopScene, weapon: WeaponKind): boolean =>
     Bought: ({ item }) =>
       ShopGood.match(shopItem(item).good, {
         Gun: ({ weapon: bought }) => bought === weapon,
-        Ammo: () => false,
         Upgrade: () => false,
         Heart: () => false,
         Trap: () => false,
@@ -821,12 +738,7 @@ const ownedGunView = (
       ),
       h.div(
         [h.Class('shop-gun-stats')],
-        [
-          barsView(gunBars(weapon, tier), nextBars(weapon, tier), h),
-          weapon === 'Pan'
-            ? h.empty
-            : roundsView(carriedRounds(scene, weapon), h),
-        ],
+        [barsView(gunBars(weapon, tier), nextBars(weapon, tier), h)],
       ),
       h.span([h.Class('sr-only')], [status]),
       h.ul(

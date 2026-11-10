@@ -90,28 +90,28 @@ export const withHp: {
   }),
 )
 
-// NOTE: data first when the kind leads: a kind is a string, rounds are not.
+// NOTE: a gun with `loaded` in its magazine, at most a full one.
+// NOTE: data first when the kind leads: a kind is a string, a count is not.
 export const gun: {
-  (rounds: number, tier?: number): (kind: CarriedGun['kind']) => CarriedGun
-  (kind: CarriedGun['kind'], rounds: number, tier?: number): CarriedGun
+  (loaded: number, tier?: number): (kind: CarriedGun['kind']) => CarriedGun
+  (kind: CarriedGun['kind'], loaded: number, tier?: number): CarriedGun
 } = Function.dual(
   (args: IArguments) => typeof args[0] === 'string',
-  (kind: CarriedGun['kind'], rounds: number, tier: number = 0): CarriedGun => ({
+  (kind: CarriedGun['kind'], loaded: number, tier: number = 0): CarriedGun => ({
     kind,
-    rounds,
-    loaded: Math.min(rounds, magazineOf(kind, tier)),
+    loaded: Math.min(loaded, magazineOf(kind, tier)),
     tier,
   }),
 )
 
-// NOTE: data first when the rounds lead: rounds are a number, a kind is not.
+// NOTE: data first when the count leads: a count is a number, a kind is not.
 export const holdingSpare: {
-  (kind?: CarriedGun['kind']): (rounds: number) => Arsenal
-  (rounds: number, kind?: CarriedGun['kind']): Arsenal
+  (kind?: CarriedGun['kind']): (loaded: number) => Arsenal
+  (loaded: number, kind?: CarriedGun['kind']): Arsenal
 } = Function.dual(
   (args: IArguments) => typeof args[0] === 'number',
-  (rounds: number, kind: CarriedGun['kind'] = 'Shotgun'): Arsenal =>
-    holdingSecond(gun(kind, rounds)),
+  (loaded: number, kind: CarriedGun['kind'] = 'Shotgun'): Arsenal =>
+    holdingSecond(gun(kind, loaded)),
 )
 
 const BESIDE_STALL = { x: 241, y: 142 }

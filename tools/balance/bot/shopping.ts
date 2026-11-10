@@ -1,5 +1,5 @@
 // What the balance bot does in a break: shopping at Rattles' stall,
-// buying the kitchen, the ammo window mid-wave, the fridge, planks and
+// buying the kitchen, the fridge, planks and
 // gnomes, and the plan that picks between them.
 
 import { Array, Function, Option, Schema, String } from 'effect'
@@ -8,7 +8,6 @@ import { DialogBlock } from '@foldkit/ui'
 
 import { ShopDialogBinding } from '../../../src/app/bindings'
 import { Envelope } from '../../../src/app/pureApp'
-import { ammoLevelOf } from '../../../src/features/hud/ammoWarning'
 import { DialogBinding } from '../../../src/features/shop/bindings'
 import { Message as ShopMessage } from '../../../src/features/shop/message'
 import { isFridgeWeapon } from '../../../src/world/fridge/fridgeWeapons'
@@ -17,13 +16,7 @@ import {
   fridgeBoxOf,
   fridgePriceFor,
 } from '../../../src/world/fridge/leftovers'
-import {
-  freshGun,
-  heldGun,
-  isCarrying,
-  maxRounds,
-  maxTier,
-} from '../../../src/world/gear/weapons'
+import { freshGun, isCarrying, maxTier } from '../../../src/world/gear/weapons'
 import { maxHpOf } from '../../../src/world/heroes/calling'
 import { distanceToBox, levelOf } from '../../../src/world/level/arena'
 import {
@@ -36,10 +29,6 @@ import {
   focusSlotOf,
   leadSeatOf,
 } from '../../../src/world/party/party'
-import {
-  isCounterOpen,
-  maybeAmmoItemOf,
-} from '../../../src/world/shop/ammoCounter'
 import { maybeOfferInReach } from '../../../src/world/shop/purchase'
 import {
   STALL_BOX,
@@ -49,14 +38,7 @@ import {
   verdictFor,
 } from '../../../src/world/shop/shop'
 import { doorCounts } from '../../../src/world/waves/endlessWaves'
-import {
-  KEYS,
-  type Model,
-  type Vector,
-  distance,
-  send,
-  steerToward,
-} from './basics'
+import { KEYS, type Model, type Vector, send } from './basics'
 import {
   type FridgeSpare,
   type Gun,
@@ -64,7 +46,6 @@ import {
   fridgeSpareOf,
   gunValue,
   gunsOfBot,
-  isSpent,
   panOf,
   pistolOf,
   spareOf,
@@ -81,17 +62,11 @@ export const STALL_FRONT: Vector = {
   y: STALL_BOX.top - 3,
 }
 
-// NOTE: where the bot stands at the ammo window, just below the counter.
-export const STALL_BELOW: Vector = {
-  x: (STALL_BOX.left + STALL_BOX.right) / 2,
-  y: STALL_BOX.bottom + 6,
-}
-
 // The bot shops the way a careful player would: a heart when low, the
 // first gun it can afford (the cheap shotgun right after the tutorial, the
-// SMG once it can), ammo below half, two Plank Piles, then upgrades and a
-// Grumpy Gnome while it keeps a small reserve for a refill and a heart. It
-// takes the spare to its top tier before it upgrades the pistol.
+// SMG once it can), two Plank Piles, then upgrades and a Grumpy Gnome while
+// it keeps a small reserve for a heart. It takes the spare to its top tier
+// before it upgrades the pistol.
 // NO_GNOME=1 keeps the old bot that never buys a gnome, and NO_PLANKS=1 a
 // bot that never buys a Plank Pile, to check planks help without carrying.
 const NO_GNOME = isKnobSet('NO_GNOME')
@@ -104,14 +79,7 @@ const RESERVE = knobNumber('RESERVE', 30)
 type ItemId = Parameters<typeof priceFor>[2]
 type SpareKind = FridgeSpare['kind']
 
-// Each spare's ammo and upgrade on Rattles' shelves. The Cooker's ammo is a
-// Lid Stack; the Pan never needs any and Brain Freeze is never refilled.
-const REFILLS: Partial<Record<SpareKind, ItemId>> = {
-  Smg: 'SmgRounds',
-  Shotgun: 'ShotgunShells',
-  Cooker: 'LidStack',
-}
-
+// Each spare's upgrade on Rattles' shelves.
 const UPGRADES: Partial<Record<SpareKind, ItemId>> = {
   Smg: 'SmgUpgrade',
   Shotgun: 'ShotgunUpgrade',
@@ -125,11 +93,7 @@ export const replacedBy: {
   (model: Model, item: ItemId): Gun | undefined
 } = Function.dual(2, (model: Model, item: ItemId): Gun | undefined => {
   if (item === 'Pistol') {
-    return (
-      Option.getOrUndefined(
-        Array.findFirst(gunsOfBot(model), gun => isSpent(gun)),
-      ) ?? weakerGun(model)
-    )
+    return weakerGun(model)
   }
   if (item !== 'Smg' && item !== 'Shotgun') {
     return undefined
@@ -141,9 +105,7 @@ export const replacedBy: {
   return (
     Option.getOrUndefined(
       Array.findFirst(guns, gun => gun.kind === 'Shotgun'),
-    ) ??
-    Option.getOrUndefined(Array.findFirst(guns, gun => isSpent(gun))) ??
-    weakerGun(model)
+    ) ?? weakerGun(model)
   )
 })
 
@@ -163,25 +125,11 @@ export const wantedPurchase: {
   if (focusOf(model).player.hp <= 3 && isAvailable('Heart')) {
     return 'Heart'
   }
-  // Traded the pistol for a fridge weapon that is now spent: Rattles gives
-  // the pistol back for nothing, in place of the spent one.
-  if (
-    pistolOf(model) === undefined &&
-    fridge !== undefined &&
-    isSpent(fridge) &&
-    isAvailable('Pistol')
-  ) {
-    return 'Pistol'
-  }
-  // A spent fridge weapon is as good as no spare at all.
   // NOTE: a Line Cook starts with the Cooker and no pistol, so its first
   // buy is a firearm, as a player would make it, with the pot kept as a spare.
   const isCook =
     state.options.calling === 'LineCook' && pistolOf(model) === undefined
-  if (
-    firearm === undefined &&
-    (fridge === undefined || isCook || (isSpent(fridge) && isAvailable('Smg')))
-  ) {
+  if (firearm === undefined && (fridge === undefined || isCook)) {
     if (!IS_SHOTGUN_RUN && isAvailable('Smg')) {
       return 'Smg'
     }
@@ -200,19 +148,6 @@ export const wantedPurchase: {
     isAvailable('Smg')
   ) {
     return 'Smg'
-  }
-  const refills = Array.flatMap([firearm, fridge], gun => {
-    if (gun === undefined) {
-      return []
-    }
-    const refill = REFILLS[gun.kind]
-    const cap = maxRounds(gun.kind, gun.tier)
-    return refill !== undefined && gun.rounds < cap / 2 && isAvailable(refill)
-      ? [refill]
-      : []
-  })
-  if (refills[0] !== undefined) {
-    return refills[0]
   }
   const barricades =
     focusOf(model).trapStock.Barricade +
@@ -331,56 +266,6 @@ const wantsKitchen = (model: Model): boolean => {
   )
 }
 
-// THE AMMO WINDOW
-
-// Mid-wave, when the gun in its hands runs low and it stands near the
-// stall with the price in hand, the bot walks up to the ammo window
-// (src/world/shop/ammoCounter.ts) and holds the interact key until it buys. It keeps
-// shooting on the way, so standing alone never buys for it. AMMO=0 is the
-// bot that never uses the window.
-const NO_AMMO_WINDOW = knobText('AMMO') === '0'
-export const AMMO_WINDOW_NEAR_PX = 70
-
-const wantsAmmoWindow = (model: Model): boolean => {
-  const gun = heldGun(focusOf(model).player.arsenal)
-  return (
-    !NO_AMMO_WINDOW &&
-    isCounterOpen(model) &&
-    ammoLevelOf(gun) !== 'Plenty' &&
-    Option.exists(
-      maybeAmmoItemOf(gun.kind),
-      item =>
-        focusOf(model).wallet.balance >=
-        priceFor(model, focusSlotOf(model), item),
-    ) &&
-    distance(focusOf(model).player, STALL_FRONT) < AMMO_WINDOW_NEAR_PX
-  )
-}
-
-const isAtAmmoOffer = (model: Model): boolean =>
-  Option.exists(
-    maybeOfferInReach(model, focusSlotOf(model)),
-    offer => offer.target._tag === 'Ammo',
-  )
-
-export const holdingAtWindow: {
-  (keys: Set<string>): (model: Model) => Set<string>
-  (model: Model, keys: Set<string>): Set<string>
-} = Function.dual(2, (model: Model, keys: Set<string>): Set<string> =>
-  wantsAmmoWindow(model) && isAtAmmoOffer(model)
-    ? new Set([...keys, KEYS.interact])
-    : keys,
-)
-
-export const towardWindow: {
-  (direction: Vector): (model: Model) => Vector
-  (model: Model, direction: Vector): Vector
-} = Function.dual(2, (model: Model, direction: Vector): Vector =>
-  wantsAmmoWindow(model) && !isAtAmmoOffer(model)
-    ? steerToward(focusOf(model).player, STALL_BELOW)
-    : direction,
-)
-
 // The bot buys the room as a player does: it holds the interact key at the
 // boards until the hold fills (src/world/shop/purchase.ts), mid-wave too when it
 // happens to stand there while it wants the room.
@@ -423,8 +308,7 @@ export const isFridgeInReach = (model: Model): boolean =>
 
 // NOTE: take it or leave it: the bot takes a weapon on offer when it beats
 // the weaker of its two guns (or a slot is free), and gives that gun up for
-// it. With an upgraded Chatterbox and a plain pistol, the pistol goes, and
-// Rattles sells it back for $0 once the fridge weapon is spent.
+// it. With an upgraded Chatterbox and a plain pistol, the pistol goes.
 const FRIDGE_PRIZES = ['Cooker', 'Pan', 'Freeze'] as const
 
 // The Pan takes the knife's place, not a gun's, so it always beats what

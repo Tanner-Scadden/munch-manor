@@ -298,7 +298,7 @@ describe('the pantry stash', () => {
   )
 
   it.effect(
-    'its goodie is cash from 15 to 30, Lids, or a heart, by the World generator, which it never moves',
+    'its goodie is cash from 15 to 30 or a heart, by the World generator, which it never moves',
     () =>
       Effect.gen(function* () {
         const rolls = yield* Effect.forEach(Array.range(0, 59), index => {
@@ -314,7 +314,7 @@ describe('the pantry stash', () => {
           )
         })
         const goodies = Array.dedupe(Array.map(rolls, ({ goodie }) => goodie))
-        expect(goodies).toHaveLength(3)
+        expect(goodies).toHaveLength(2)
         Array.forEach(rolls, ({ cash }) => {
           expect(cash).toBeGreaterThanOrEqual(PANTRY_RULES.minCash)
           expect(cash).toBeLessThanOrEqual(PANTRY_RULES.maxCash)
@@ -397,30 +397,6 @@ describe('the pantry stash', () => {
       expect(focusOf(next).wallet.balance).toBe(0)
       expect(Option.isNone(maybeStash(next))).toBe(true)
     }),
-  )
-
-  it.effect(
-    'Lids fill a Cooker carrier; without a Cooker they pay the cash',
-    () =>
-      Effect.gen(function* () {
-        const cooker = modifyFields(freshGun('Cooker'), { rounds: () => 4 })
-        const carrier = modifyFocus(
-          atPantry(stocked(atFridge(0), 'Lids', 18)),
-          {
-            player: player =>
-              modifyFields(player, { arsenal: () => holdingSecond(cooker) }),
-          },
-        )
-        const filled = yield* afterFrame(carrier)
-        expect(focusOf(filled).player.arsenal).toEqual(
-          holdingSecond(modifyFields(cooker, { rounds: () => 12 })),
-        )
-        expect(focusOf(filled).wallet.balance).toBe(0)
-        const none = yield* afterFrame(
-          atPantry(stocked(atFridge(0), 'Lids', 18)),
-        )
-        expect(focusOf(none).wallet.balance).toBe(18)
-      }),
   )
 
   it.effect(

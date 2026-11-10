@@ -873,7 +873,6 @@ export const maybeSpareGun = (arsenal: Arsenal): Option.Option<CarriedGun> =>
 
 export const SHOTGUN: CarriedGun = {
   kind: 'Shotgun',
-  rounds: 16,
   loaded: 6,
   tier: 0,
 }

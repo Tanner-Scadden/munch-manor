@@ -27,7 +27,6 @@ export type WaveLog = Types.DeepMutable<Results.WaveLog>
 export type ShopVisitLog = Types.DeepMutable<Results.ShopVisit>
 
 export const emptyFridgeLog = (): FridgeLog => ({
-  counterBuys: 0,
   taken: 0,
   stabs: 0,
   stabHits: 0,

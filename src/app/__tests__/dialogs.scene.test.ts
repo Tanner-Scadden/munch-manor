@@ -118,8 +118,7 @@ const atStall: Model = modifyFocus(
         x: () => 270,
         y: () => 142,
         hp: () => 3,
-        arsenal: () =>
-          holdingSecond({ kind: 'Smg', rounds: 200, loaded: 30, tier: 1 }),
+        arsenal: () => holdingSecond({ kind: 'Smg', loaded: 30, tier: 1 }),
       }),
     wallet: () => ({ balance: 180, earned: 180, shown: 180 }),
   },
@@ -142,9 +141,9 @@ describe('the shop dialog', () => {
           Scene.expect(Scene.selector('.shop-balance')).toHaveText(
             'You have $180',
           ),
-          Scene.click(Scene.selector('#shop-item-SmgRounds')),
+          Scene.click(Scene.selector('#shop-item-SmgUpgrade')),
           Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-            'You have $160',
+            'You have $0',
           ),
         ),
       ),
@@ -167,7 +166,7 @@ const OPEN_CASES: ReadonlyArray<OpenCase> = [
         shopDialog: shop => modifyFields(shop, { dialog: opened }),
       }),
       {
-        shop: () => ShopState.Browsing({ focusedItem: 'SmgRounds' }),
+        shop: () => ShopState.Browsing({ focusedItem: 'SmgUpgrade' }),
       },
     ),
     opensDialog: true,

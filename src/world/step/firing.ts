@@ -3,7 +3,6 @@ import { modifyFields } from 'foldkit/struct'
 
 import {
   BULLET_MAX,
-  DRY_FIRE_DELAY_MS,
   FIXED_STEP_MS,
   IDLE_RELOAD_MS,
   MS_PER_SECOND,
@@ -31,7 +30,6 @@ import {
   beginReload,
   canReload,
   finishReload,
-  handOverWhenDry,
   heldGun,
   heldLoaded,
   heldWeapon,
@@ -233,26 +231,15 @@ const shoot = (
   })
 }
 
-const runDry = (model: World, slot: PlayerSlot): World => {
-  const { player } = seatStateAt(model, slot)
-  return modifyFields(model, {
-    seats: atSeat(slot, {
-      player: () =>
-        handOverWhenDry(
-          modifyFields(player, { fireCooldownMs: () => DRY_FIRE_DELAY_MS }),
-        ),
-    }),
-    frameEvents: Array.append(GameEvent.RanDry({ x: player.x, y: player.y })),
-  })
-}
-
+// NOTE: no gun runs dry: an empty magazine reloads before the trigger is
+// pulled (fire, below), so an empty one here fires nothing.
 const pullTrigger = (
   model: World,
   slot: PlayerSlot,
   deltaMs: number,
 ): World => {
   const gun = heldGun(seatStateAt(model, slot).player.arsenal)
-  return gun.loaded > 0 ? shoot(model, slot, gun, deltaMs) : runDry(model, slot)
+  return gun.loaded > 0 ? shoot(model, slot, gun, deltaMs) : model
 }
 
 const coolTrigger = (
@@ -316,7 +303,7 @@ const restTrigger = (
 }
 
 // NOTE: below Hard (src/world/run/difficulty.ts), a gun with room in its magazine
-// and rounds to load reloads by itself once the trigger has rested
+// reloads by itself once the trigger has rested
 // IDLE_RELOAD_MS (GAME_DESIGN.md, "Reloading"). Hard and Nightmare wait
 // for an empty magazine or R.
 const isIdleReloadDue = (model: World, slot: PlayerSlot): boolean => {

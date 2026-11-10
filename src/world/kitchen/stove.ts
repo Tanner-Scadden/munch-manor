@@ -9,6 +9,7 @@ import {
   isWieldingMelee,
   mapHeld,
 } from '../gear/weapons'
+import { stovePriceFor } from '../heroes/calling'
 import { type Box, levelOf } from '../level/arena'
 import { spendOn } from '../level/exits'
 import { atSeat, seatStateAt } from '../party/party'
@@ -95,11 +96,15 @@ const hasCookedThisBreak = (world: World, slot: PlayerSlot): boolean =>
   Phase.isAnyOf(['Preparation'])(world.phase) &&
   seatStateAt(world, slot).cooking.lastWave === world.phase.wave
 
+// NOTE: the Line Cook pays less (src/world/heroes/calling.ts, stovePriceFor).
 const cookPriceFor = (world: World, slot: PlayerSlot): number => {
   const { prices } = STOVE_RULES
-  return Option.getOrElse(
-    Array.get(prices, seatStateAt(world, slot).cooking.cooks),
-    () => Array.lastNonEmpty(prices),
+  const { cooking, player } = seatStateAt(world, slot)
+  return stovePriceFor(
+    player.calling,
+    Option.getOrElse(Array.get(prices, cooking.cooks), () =>
+      Array.lastNonEmpty(prices),
+    ),
   )
 }
 

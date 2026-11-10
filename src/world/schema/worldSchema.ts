@@ -98,7 +98,6 @@ export const GameEvent = defineTaggedUnion({
     source: ZombieKind,
   },
   BulletStruck: { x: PositionNumber, y: PositionNumber, direction: Heading },
-  RanDry: { x: PositionNumber, y: PositionNumber },
   DryFired: { x: PositionNumber, y: PositionNumber },
   ReloadStarted: {
     x: PositionNumber,
@@ -206,7 +205,6 @@ export const PopupKind = Schema.Literals([
   'Damage',
   'Kill',
   'Payday',
-  'Empty',
   'Horde',
   'Wipe',
   'Kaboom',
@@ -432,10 +430,8 @@ export type Blast = typeof Blast.Type
 
 export const FixedShopItemId = Schema.Literals([
   'Shotgun',
-  'ShotgunShells',
   'ShotgunUpgrade',
   'Smg',
-  'SmgRounds',
   'SmgUpgrade',
   'PistolUpgrade',
   'LaserSight',
@@ -443,7 +439,6 @@ export const FixedShopItemId = Schema.Literals([
   'Barricade',
   'Turret',
   'CookerUpgrade',
-  'LidStack',
   'PanUpgrade',
   'Pistol',
 ])
@@ -475,14 +470,12 @@ export type ShopState = typeof ShopState.Type
 // NOTE: something in the world bought by standing still or holding the
 // interact key beside it, the way a wall buy works (src/world/shop/purchase.ts): a
 // boarded exit, the Mystery Leftovers fridge (src/world/fridge/leftovers.ts) and its
-// prize, mid-wave the held gun's ammo at the stall (src/world/shop/ammoCounter.ts),
-// and in the kitchen the stove bench (src/world/kitchen/stove.ts) and the gas valve
+// prize, and in the kitchen the stove bench (src/world/kitchen/stove.ts) and the gas valve
 // (src/world/kitchen/gasValve.ts).
 export const Purchasable = defineTaggedUnion({
   Exit: { exit: ExitId },
   Fridge: {},
   Prize: {},
-  Ammo: {},
   Stove: {},
   Valve: {},
 })
@@ -493,9 +486,7 @@ export type Purchasable = typeof Purchasable.Type
 // Refused is a press the wallet could not cover, shaking for a moment;
 // Done waits for the key to be let go after a buy, so one hold buys once;
 // Spent waits for a player who bought and stands still to move before
-// standing buys again, so one buy never chains into the next. Tapped is a
-// tap at the ammo window (SeatAction.BuyAmmo), bought on the next tick with
-// no hold, so the tick's events carry its sound and Rattles' line.
+// standing buys again, so one buy never chains into the next.
 export const Purchase = defineTaggedUnion({
   Idle: {},
   Holding: { target: Purchasable, heldMs: MillisNumber },
@@ -506,7 +497,6 @@ export const Purchase = defineTaggedUnion({
   },
   Done: {},
   Spent: {},
-  Tapped: { target: Purchasable },
 })
 export type Purchase = typeof Purchase.Type
 
@@ -766,7 +756,7 @@ export const initialPlayer: Player = {
   invulnerability: Invulnerability.Vulnerable(),
   recoilRemainingMs: 0,
   arsenal: Arsenal.OneGun({
-    first: { kind: 'Pistol', rounds: 0, loaded: PISTOL_MAGAZINE, tier: 0 },
+    first: { kind: 'Pistol', loaded: PISTOL_MAGAZINE, tier: 0 },
   }),
   reload: Reload.Ready(),
   triggerRestMs: 0,

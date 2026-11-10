@@ -1,77 +1,43 @@
-import { Array, Function, pipe } from 'effect'
-import { modifyFields } from 'foldkit/struct'
+import { Array, Function } from 'effect'
 
-import type { Model } from '../../app/model'
-import { AmmoTip } from '../../domain/clientSchema'
 import { isObjectFirst } from '../../shared/dualArgs'
 import type { Calling } from '../../shared/playerData'
 import {
   carriedMagazine,
-  gunsOf,
-  hasEndlessRounds,
   heldGun,
   isReloadable,
-  startingRounds,
 } from '../../world/gear/weapons'
-import { focusOf, isCoop } from '../../world/party/party'
 import {
   type CarriedGun,
   GameEvent,
-  Phase,
   type Player,
 } from '../../world/schema/worldSchema'
 
-// NOTE: how close a gun with limited ammo is to running out, from a
-// playtest where a player traded up to the Chatterbox and died the first
-// time it ran dry. The Pop Pistol and the Clang Pan never run out, so they
-// are always Plenty. A reloadable gun is Low with about two magazines (or a
-// quarter of what it comes with) left, and Last on its last magazine. Brain
-// Freeze, never reloaded, is Low at half its charges and Last at a quarter.
-export type AmmoLevel = 'Plenty' | 'Low' | 'Last' | 'Dry'
+// NOTE: no gun runs out (docs/ESCAPE_PLAN.md, "Endless ammo"), but a
+// magazine still does, and the reload is the risky moment. The last few
+// shots of a magazine tick and blink red, so the ear and the eye hear the
+// reload coming before the click: up to five shots, or a quarter of the
+// magazine the player's own calling gives the gun (the Track Star's are
+// smaller), whichever is fewer. The Clang Pan's dents are never reloaded,
+// so it never ticks.
+const TICK_ROUNDS = 5
 
-// NOTE: the thresholds read the magazine the player's own calling gives
-// the gun (the Track Star's are smaller).
-export const ammoLevelOf: {
-  (calling?: Calling): (gun: CarriedGun) => AmmoLevel
-  (gun: CarriedGun, calling?: Calling): AmmoLevel
-} = Function.dual(
-  isObjectFirst,
-  (gun: CarriedGun, calling: Calling = 'You'): AmmoLevel => {
-    if (hasEndlessRounds(gun.kind) || gun.kind === 'Pan') {
-      return 'Plenty'
-    }
-    const magazine = carriedMagazine(calling, gun)
-    const lastAt = isReloadable(gun.kind) ? magazine : Math.ceil(magazine / 4)
-    const lowAt = isReloadable(gun.kind)
-      ? Math.max(magazine * 2, Math.ceil(startingRounds(gun.kind) / 4))
-      : Math.ceil(magazine / 2)
-    if (gun.rounds <= 0) {
-      return 'Dry'
-    } else if (gun.rounds <= lastAt) {
-      return 'Last'
-    } else if (gun.rounds <= lowAt) {
-      return 'Low'
-    } else {
-      return 'Plenty'
-    }
-  },
-)
+const lastShotsOf = (gun: CarriedGun, calling: Calling): number =>
+  Math.min(TICK_ROUNDS, Math.ceil(carriedMagazine(calling, gun) / 4))
 
-export const isRunningLow: {
+export const isOnLastShots: {
   (calling?: Calling): (gun: CarriedGun) => boolean
   (gun: CarriedGun, calling?: Calling): boolean
 } = Function.dual(
   isObjectFirst,
-  (gun: CarriedGun, calling: Calling = 'You'): boolean => {
-    const level = ammoLevelOf(gun, calling)
-    return level === 'Low' || level === 'Last'
-  },
+  (gun: CarriedGun, calling: Calling = 'You'): boolean =>
+    isReloadable(gun.kind) &&
+    gun.loaded > 0 &&
+    gun.loaded < lastShotsOf(gun, calling),
 )
 
-// NOTE: the last few shots of a gun that can run dry each tick, so the ear
-// hears it coming before the click.
-const TICK_ROUNDS = 5
-
+// NOTE: a shot that leaves the magazine on its last few rounds, or empty,
+// ticks.
 export const isTickingShot: {
   (events: ReadonlyArray<GameEvent>): (player: Player) => boolean
   (player: Player, events: ReadonlyArray<GameEvent>): boolean
@@ -79,10 +45,9 @@ export const isTickingShot: {
   2,
   (player: Player, events: ReadonlyArray<GameEvent>): boolean => {
     const gun = heldGun(player.arsenal)
-    const level = ammoLevelOf(gun, player.calling)
     return (
-      (level === 'Last' || level === 'Dry') &&
-      gun.rounds < TICK_ROUNDS &&
+      isReloadable(gun.kind) &&
+      gun.loaded < lastShotsOf(gun, player.calling) &&
       Array.some(
         events,
         event =>
@@ -90,49 +55,4 @@ export const isTickingShot: {
       )
     )
   },
-)
-
-// NOTE: no gun the player carries has anything left to fire, so the melee
-// slot (the knife or the Pan) is the way out.
-export const isOutOfGuns = (player: Player): boolean =>
-  pipe(
-    gunsOf(player.arsenal),
-    Array.every(gun => ammoLevelOf(gun, player.calling) === 'Dry'),
-  )
-
-// RATTLES' CALL
-
-export const AMMO_TIP_MS = 4500
-
-const isTipWorthy = (model: Model): boolean =>
-  Phase.isAnyOf(['Wave', 'Preparation'])(model.phase) &&
-  !isCoop(model) &&
-  isRunningLow(
-    heldGun(focusOf(model).player.arsenal),
-    focusOf(model).player.calling,
-  )
-
-// NOTE: the first time ever the held gun runs low, Rattles calls from the
-// stall for a few seconds. The frame's own time drains it, so a pause holds
-// it.
-export const noteAmmoTip: {
-  (deltaMs: number): (model: Model) => Model
-  (model: Model, deltaMs: number): Model
-} = Function.dual(2, (model: Model, deltaMs: number): Model =>
-  AmmoTip.match(model.ammoTip, {
-    Unseen: () =>
-      isTipWorthy(model)
-        ? modifyFields(model, {
-            ammoTip: () => AmmoTip.Showing({ remainingMs: AMMO_TIP_MS }),
-          })
-        : model,
-    Showing: ({ remainingMs }) =>
-      modifyFields(model, {
-        ammoTip: () =>
-          remainingMs > deltaMs
-            ? AmmoTip.Showing({ remainingMs: remainingMs - deltaMs })
-            : AmmoTip.Seen(),
-      }),
-    Seen: () => model,
-  }),
 )

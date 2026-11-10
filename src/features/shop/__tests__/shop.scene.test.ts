@@ -60,8 +60,8 @@ const atStall = (balance: number, arsenal: Arsenal): Model =>
     },
   )
 
-const holdingSmg = (rounds: number, tier: number): Arsenal =>
-  holdingSecond({ kind: 'Smg', rounds, loaded: 30, tier })
+const holdingSmg = (tier: number): Arsenal =>
+  holdingSecond({ kind: 'Smg', loaded: 30, tier })
 
 const keeper = Scene.role('img', { name: /^Rattles the skeleton/ })
 const bubble = Scene.selector('.shop-greeting')
@@ -73,7 +73,7 @@ describe('the shop at a glance', () => {
       const pistolUpgrade = Scene.selector('#shop-item-PistolUpgrade')
       return Scene.scene(
         APPLICATION,
-        Scene.given(atStall(180, holdingSmg(200, 1))),
+        Scene.given(atStall(180, holdingSmg(1))),
         measureSurface,
         ...walkIntoStallInScene(),
         Scene.expect(
@@ -107,20 +107,20 @@ describe('the shop at a glance', () => {
   it.effect(
     'a full row says so in one word on its tag and keeps the reason for screen readers',
     () => {
-      const drum = Scene.selector('#shop-item-SmgRounds')
+      const upgrade = Scene.selector('#shop-item-SmgUpgrade')
       return Scene.scene(
         APPLICATION,
-        Scene.given(atStall(180, holdingSmg(360, 1))),
+        Scene.given(atStall(180, holdingSmg(3))),
         measureSurface,
         ...walkIntoStallInScene(),
         Scene.expect(
-          Scene.selector('[data-stock="Done"] #shop-item-SmgRounds'),
+          Scene.selector('[data-stock="Done"] #shop-item-SmgUpgrade'),
         ).toExist(),
         Scene.expect(
-          Scene.within(drum, Scene.selector('.shop-tag')),
-        ).toHaveText('FULL'),
+          Scene.within(upgrade, Scene.selector('.shop-tag')),
+        ).toHaveText('MAX'),
         Scene.expect(
-          Scene.within(drum, Scene.selector('.shop-item-reason')),
+          Scene.within(upgrade, Scene.selector('.shop-item-reason')),
         ).toHaveClass('sr-only'),
       )
     },
@@ -132,7 +132,7 @@ describe('the shop at a glance', () => {
       const upgrade = Scene.selector('#shop-item-SmgUpgrade')
       return Scene.scene(
         APPLICATION,
-        Scene.given(atStall(180, holdingSmg(200, 1))),
+        Scene.given(atStall(180, holdingSmg(1))),
         measureSurface,
         ...walkIntoStallInScene(),
         Scene.expect(
@@ -162,25 +162,25 @@ describe('the shop at a glance', () => {
     () =>
       Scene.scene(
         APPLICATION,
-        Scene.given(atStall(180, holdingSmg(200, 1))),
+        Scene.given(atStall(350, holdingSmg(1))),
         measureSurface,
         ...walkIntoStallInScene(),
         Scene.expect(keeper).toHaveAttr('data-mood', 'Grinning'),
         Scene.expect(Scene.selector('.shop-stamp')).toBeAbsent(),
-        Scene.click(Scene.selector('#shop-item-SmgRounds')),
+        Scene.click(Scene.selector('#shop-item-SmgUpgrade')),
         Scene.expect(keeper).toHaveAttr('data-mood', 'Delighted'),
         Scene.expect(
           Scene.within(
-            Scene.selector('#shop-item-SmgRounds'),
+            Scene.selector('#shop-item-SmgUpgrade'),
             Scene.selector('.shop-stamp'),
           ),
         ).toExist(),
         Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-          'You have $160',
+          'You have $170',
         ),
         Scene.keydown(Scene.selector('#shop-item-PistolUpgrade'), 'Enter'),
         Scene.expect(keeper).toHaveAttr('data-mood', 'Sad'),
-        Scene.expect(bubble).toHaveText('Need $40 more. No IOUs!'),
+        Scene.expect(bubble).toHaveText('Need $30 more. No IOUs!'),
         Scene.expect(Scene.selector('.shop-stamp')).toBeAbsent(),
         Scene.expect(
           Scene.within(
@@ -189,7 +189,7 @@ describe('the shop at a glance', () => {
           ),
         ).toExist(),
         Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-          'You have $160',
+          'You have $170',
         ),
         Scene.click(Scene.role('tab', { name: /^Traps,/ })),
         Scene.Command.resolve(
@@ -203,7 +203,7 @@ describe('the shop at a glance', () => {
   it.effect('a player with nothing to buy gets a sad hello', () =>
     Scene.scene(
       APPLICATION,
-      Scene.given(atStall(5, holdingSmg(360, 1))),
+      Scene.given(atStall(5, holdingSmg(1))),
       measureSurface,
       ...walkIntoStallInScene(),
       Scene.expect(keeper).toHaveAttr('data-mood', 'Sad'),
@@ -213,7 +213,7 @@ describe('the shop at a glance', () => {
 
 describe('repairing placed traps', () => {
   const withPlanks = modifyFocus(
-    modifyFields(atStall(100, holdingSmg(200, 1)), {
+    modifyFields(atStall(100, holdingSmg(1)), {
       traps: () => [
         Trap.Barricade({
           id: 1,
@@ -276,7 +276,7 @@ describe('repairing placed traps', () => {
     Scene.scene(
       APPLICATION,
       Scene.given(
-        modifyFocus(atStall(100, holdingSmg(200, 1)), {
+        modifyFocus(atStall(100, holdingSmg(1)), {
           shopCategory: () => 'Traps',
         }),
       ),
@@ -290,8 +290,7 @@ describe('repairing placed traps', () => {
   )
 })
 
-// NOTE: from playtests: traps looked like something a button builds, and a
-// bought gun's ammo looked endless like the pistol's.
+// NOTE: from playtests: traps looked like something a button builds.
 describe('what the shop teaches', () => {
   it.effect(
     'until the first trap is bought, TRAPS wears NEW and its traps pulse',
@@ -299,7 +298,7 @@ describe('what the shop teaches', () => {
       Scene.scene(
         APPLICATION,
         Scene.given(
-          modifyFocus(atStall(100, holdingSmg(200, 0)), {
+          modifyFocus(atStall(100, holdingSmg(0)), {
             shopCategory: () => 'Traps',
           }),
         ),
@@ -315,7 +314,7 @@ describe('what the shop teaches', () => {
       APPLICATION,
       Scene.given(
         modifyFocus(
-          modifyFields(atStall(100, holdingSmg(200, 0)), {
+          modifyFields(atStall(100, holdingSmg(0)), {
             trapHint: () => TrapHint.Seen(),
           }),
           { shopCategory: () => 'Traps' },
@@ -326,20 +325,5 @@ describe('what the shop teaches', () => {
       Scene.expect(Scene.selector('.shop-tab-new')).toBeAbsent(),
       Scene.expect(Scene.selector('.shop-row[data-fresh="true"]')).toBeAbsent(),
     ),
-  )
-
-  it.effect(
-    "each gun shows its rounds: the pistol's endless, the others a count",
-    () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(atStall(100, holdingSmg(200, 0))),
-        measureSurface,
-        ...walkIntoStallInScene(),
-        Scene.expect(Scene.selector('.shop-rounds.is-endless')).toHaveText('∞'),
-        Scene.expect(
-          Scene.selector('[data-held="true"] .shop-rounds'),
-        ).toHaveText('200'),
-      ),
   )
 })

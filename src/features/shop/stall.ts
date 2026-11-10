@@ -27,9 +27,7 @@ import {
   spriteRects,
   spriteShapes,
 } from '../../art/sprite'
-import { AMMO_BOX } from '../../art/sprites/pickups'
 import { PARLOUR } from '../../world/level/arena'
-import { COUNTER_LINES } from '../../world/shop/ammoCounter'
 import { STALL_BOX, type StallPrompt } from '../../world/shop/shop'
 
 // PALETTE
@@ -47,7 +45,6 @@ const OPEN_LETTER_COLOR = '#c8343c'
 const CLOSED_BOARD_COLOR = '#2b2233'
 const CLOSED_BOARD_EDGE_COLOR = '#140f18'
 const CLOSED_LETTER_COLOR = '#8f8a99'
-const AMMO_LETTER_COLOR = '#ffd23f'
 const STALL_SHADOW_COLOR = 'rgba(0, 0, 0, 0.35)'
 
 const AWAKE_FRAME_MS = 280
@@ -248,25 +245,6 @@ const OPEN_FRONT = bakeShapes([
 
 const CLOSED_FRONT = bakeShapes([...COUNTER, ...CLOSED_SIGN, ...AWNING])
 
-// NOTE: mid-wave the CLOSED sign becomes the ammo window's (src/
-// ammoCounter.ts): Rattles dozes behind it until a player steps up, then
-// wakes with his hands on the counter.
-const AMMO_SIGN = signShapes(
-  'AMMO',
-  CLOSED_BOARD_COLOR,
-  CLOSED_BOARD_EDGE_COLOR,
-  AMMO_LETTER_COLOR,
-)
-
-const COUNTER_ASLEEP_FRONT = bakeShapes([...COUNTER, ...AMMO_SIGN, ...AWNING])
-
-const COUNTER_AWAKE_FRONT = bakeShapes([
-  ...COUNTER,
-  ...BONY_HANDS,
-  ...AMMO_SIGN,
-  ...AWNING,
-])
-
 const BECKONING_FRONTS: ReadonlyArray<ReadonlyArray<Canvas.Shape>> = Array.map(
   WAVING_HANDS,
   hands => bakeShapes([...COUNTER, ...hands, ...OPEN_SIGN, ...AWNING]),
@@ -361,12 +339,7 @@ export const stallPromptShapes = (
   prompt: StallPrompt,
 ): ReadonlyArray<Canvas.Shape> => (prompt === 'None' ? [] : [PROMPTS[prompt]])
 
-export type StallLook =
-  | 'Open'
-  | 'Beckoning'
-  | 'Closed'
-  | 'Counter'
-  | 'CounterAwake'
+export type StallLook = 'Open' | 'Beckoning' | 'Closed'
 
 export const STALL_FOOT_Y = STALL_BOX.bottom
 
@@ -393,18 +366,6 @@ export const stallShapes: {
         ...sleepingShopkeeper(elapsedMs),
         ...CLOSED_FRONT,
       ]
-    } else if (look === 'Counter') {
-      return [
-        ...STALL_BACK_IMAGE,
-        ...sleepingShopkeeper(elapsedMs),
-        ...COUNTER_ASLEEP_FRONT,
-      ]
-    } else if (look === 'CounterAwake') {
-      return [
-        ...STALL_BACK_IMAGE,
-        ...awakeShopkeeper(elapsedMs),
-        ...COUNTER_AWAKE_FRONT,
-      ]
     } else {
       const isBeckoning = look === 'Beckoning'
       return [
@@ -414,50 +375,5 @@ export const stallShapes: {
         ...(isBeckoning ? beaconShapes(elapsedMs) : []),
       ]
     }
-  },
-)
-
-// THE AMMO WINDOW'S SALE
-
-// NOTE: after a sale Rattles slides a box of rounds across the counter top
-// toward the player, and says his line over the stall.
-const SLIDE_MS = 360
-const SLIDE_FROM_X = centerX - 10
-const SLIDE_TO_X = centerX + 3
-const SLIDE_Y = top - 1
-const LINE_Y = top - 26
-const LINE_EDGE = 3
-
-const COUNTER_LINE_TEXTS: ReadonlyArray<Canvas.Shape> = Array.map(
-  COUNTER_LINES,
-  line => {
-    const baked = bakeText(line, 'Prompt')
-    return placeBaked(baked, {
-      x: Math.min(
-        centerX,
-        PARLOUR.width - LINE_EDGE - Math.ceil(baked.width / 2),
-      ),
-      y: LINE_Y,
-      align: 'Center',
-    })
-  },
-)
-
-export const counterSaleShapes: {
-  (line: number): (ageMs: number) => ReadonlyArray<Canvas.Shape>
-  (ageMs: number, line: number): ReadonlyArray<Canvas.Shape>
-} = Function.dual(
-  2,
-  (ageMs: number, line: number): ReadonlyArray<Canvas.Shape> => {
-    const share = Math.min(1, ageMs / SLIDE_MS)
-    const eased = 1 - (1 - share) * (1 - share)
-    return [
-      placeAt(
-        Math.round(SLIDE_FROM_X + (SLIDE_TO_X - SLIDE_FROM_X) * eased),
-        SLIDE_Y,
-        AMMO_BOX,
-      ),
-      ...Option.toArray(Array.get(COUNTER_LINE_TEXTS, line)),
-    ]
   },
 )

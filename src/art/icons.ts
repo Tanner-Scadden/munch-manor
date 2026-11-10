@@ -915,19 +915,6 @@ export const HOME_SCREEN_APP_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: three rounds, for the shop's ammo counts beside a gun.
-export const ROUNDS_ICON = pixelIconUrl(
-  [
-    '.B...B...B.',
-    'BBB.BBB.BBB',
-    'YYY.YYY.YYY',
-    'YYY.YYY.YYY',
-    'YYY.YYY.YYY',
-    'OOO.OOO.OOO',
-  ],
-  { B: '#c9a227', Y: '#ffe066', O: '#a87b1a' },
-)
-
 // NOTE: the guided first break's tracker (src/features/onboarding/questView.ts): Rattles' stall,
 // a coin above a Plank Pile to buy, and planks across a doorway to place.
 const QUEST_PALETTE: Palette = {

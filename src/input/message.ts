@@ -48,11 +48,10 @@ export const InputMessage = defineMessageUnion(inputCases)
 export type PressedHudSlot = typeof InputMessage.PressedHudSlot.Type
 
 // NOTE: the run's buttons: the touch HUD's slots, reload, MEDIC, traps,
-// READY, the hold-to-buy button and the ammo tag, and pause. Each goes to
+// READY, the hold-to-buy button, and pause. Each goes to
 // the room in an online run (orInRun, src/app/update/coopRun.ts).
 export const runButtonCases = {
   PressedHoldButton: { pointerId: Schema.Finite },
-  ClickedAmmoTag: {},
   ClickedPauseButton: {},
   ClickedStartWaveButton: {},
   ClickedSwapButton: {},

@@ -1,6 +1,5 @@
 import { Array, Function } from 'effect'
 
-import { isOutOfGuns } from '../../../src/features/hud/ammoWarning'
 import { PLAYER_RADIUS } from '../../../src/shared/constants'
 import {
   COOKER_RULES,
@@ -75,9 +74,6 @@ const lobHoldMs = (gap: number, tier: number): number => {
 }
 
 const cookerPlan = (model: Model, spare: FridgeSpare): FridgePlan => {
-  if (spare.rounds <= 0) {
-    return gunPlan()
-  }
   const { player } = focusOf(model)
   const seen = visibleZombies(model)
   const nearest = nearestOf(player, seen)
@@ -166,14 +162,11 @@ export const panPlan = (model: Model): FridgePlan => {
 const FREEZE_CLOSE_PX = 30
 const FREEZE_GROUP_PX = 20
 
-const freezePlan = (model: Model, spare: FridgeSpare): FridgePlan => {
+const freezePlan = (model: Model): FridgePlan => {
   const { player } = focusOf(model)
   const seen = visibleZombies(model)
   const isFrozen = (zombie: Zombie) => zombie.action._tag === 'Frozen'
   const frozen = nearestOf(player, Array.filter(seen, isFrozen))
-  if (spare.rounds <= 0) {
-    return gunPlan(frozen)
-  }
   const freezable = Array.filter(
     seen,
     zombie =>
@@ -213,7 +206,7 @@ const freezePlan = (model: Model, spare: FridgeSpare): FridgePlan => {
 }
 
 const planFor = (model: Model, spare: FridgeSpare): FridgePlan =>
-  spare.kind === 'Cooker' ? cookerPlan(model, spare) : freezePlan(model, spare)
+  spare.kind === 'Cooker' ? cookerPlan(model, spare) : freezePlan(model)
 
 // The Pan swings as the knife stabs: F draws it, fire held swings at the
 // planned zombie, and handleKnife puts it away (Q) once the plan has no
@@ -233,11 +226,10 @@ export const swingPan: {
 })
 
 // The Pan out with no target to swing at goes back to the last gun at
-// once, unless no gun can shoot.
+// once, unless it cannot shoot yet.
 export const sheathPan = (model: Model): Model =>
   isWieldingMelee(focusOf(model).player) &&
   panOf(model) !== undefined &&
-  !isOutOfGuns(focusOf(model).player) &&
   !isGunIdle(model)
     ? tapKey(model, 'KeyQ')
     : model

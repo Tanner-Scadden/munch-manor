@@ -77,7 +77,6 @@ const runWith = (
     taken: 0,
     stabs: 0,
     stabHits: 0,
-    counterBuys: 0,
   },
 })
 
@@ -87,13 +86,13 @@ const RUNS: ReadonlyArray<RunResult> = [
     ...runWith(1, [
       { wave: 2, money: 37, bought: ['Shotgun'] },
       { wave: 3, money: 104, bought: ['Smg', 'Heart'] },
-      { wave: 4, money: 170, bought: ['SmgRounds'] },
+      { wave: 4, money: 170, bought: ['SmgUpgrade'] },
     ]),
     killedBy: 'Runner',
   },
   runWith(8, [
     { wave: 2, money: 40, bought: [] },
-    { wave: 4, money: 220, bought: ['SmgRounds', 'Barricade'] },
+    { wave: 4, money: 220, bought: ['SmgUpgrade', 'Barricade'] },
   ]),
 ]
 

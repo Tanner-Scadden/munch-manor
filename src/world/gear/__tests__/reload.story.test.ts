@@ -77,12 +77,7 @@ const withPistolLoaded = (base: Model, pistolLoaded: number): Model =>
       withPistol(player, pistol => ({ ...pistol, loaded: pistolLoaded })),
   })
 
-const smg = (rounds: number, loaded: number): CarriedGun => ({
-  kind: 'Smg',
-  rounds,
-  loaded,
-  tier: 0,
-})
+const smg = (loaded: number): CarriedGun => ({ kind: 'Smg', loaded, tier: 0 })
 
 const reloadingMs = (reload: Reload): Option.Option<number> =>
   Reload.match(reload, {
@@ -90,13 +85,8 @@ const reloadingMs = (reload: Reload): Option.Option<number> =>
     Reloading: ({ remainingMs }) => Option.some(remainingMs),
   })
 
-const spareRounds = (
-  arsenal: Arsenal,
-): Option.Option<Readonly<{ rounds: number; loaded: number }>> =>
-  Option.map(maybeSpareGun(arsenal), ({ rounds, loaded }) => ({
-    rounds,
-    loaded,
-  }))
+const spareLoaded = (arsenal: Arsenal): Option.Option<number> =>
+  Option.map(maybeSpareGun(arsenal), ({ loaded }) => loaded)
 
 describe('magazines', () => {
   it.effect('the pistol fires its magazine, then stops and reloads', () =>
@@ -193,37 +183,33 @@ describe('magazines', () => {
         Story.model(({ seats: [{ player }], stats }) => {
           expect(stats.shotsFired).toBeGreaterThan(magazines * PISTOL_MAGAZINE)
           expect(player.arsenal._tag).toBe('OneGun')
-          expect(pistolOf(player).rounds).toBe(0)
           expect(pistolOf(player).loaded).toBeGreaterThan(0)
         }),
       )
     },
   )
 
-  it.effect('the SMG loads its magazine from its limited rounds', () => {
-    const magazine = WEAPONS.Smg.magazine
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        withArsenal(fighting, holdingSecond(smg(magazine + 10, magazine))),
-      ),
-      holdFire,
-      ...ticks(SMG_FIRING_TICKS, FRAME_MS),
-      releaseFire,
-      Story.model(({ seats: [{ player }] }) => {
-        expect(spareRounds(player.arsenal)).toEqual(
-          Option.some({ rounds: 10, loaded: 0 }),
-        )
-        expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
-      }),
-      ...ticks(countdownTicks(WEAPONS.Smg.reloadMs), FRAME_MS),
-      Story.model(({ seats: [{ player }] }) => {
-        expect(spareRounds(player.arsenal)).toEqual(
-          Option.some({ rounds: 10, loaded: 10 }),
-        )
-      }),
-    )
-  })
+  it.effect(
+    'a bought gun never runs out either: an empty SMG reloads a full magazine',
+    () => {
+      const magazine = WEAPONS.Smg.magazine
+      return Story.story(
+        APPLICATION,
+        Story.given(withArsenal(fighting, holdingSecond(smg(magazine)))),
+        holdFire,
+        ...ticks(SMG_FIRING_TICKS, FRAME_MS),
+        releaseFire,
+        Story.model(({ seats: [{ player }] }) => {
+          expect(spareLoaded(player.arsenal)).toEqual(Option.some(0))
+          expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
+        }),
+        ...ticks(countdownTicks(WEAPONS.Smg.reloadMs), FRAME_MS),
+        Story.model(({ seats: [{ player }] }) => {
+          expect(spareLoaded(player.arsenal)).toEqual(Option.some(magazine))
+        }),
+      )
+    },
+  )
 })
 
 describe('manual reload', () => {
@@ -251,32 +237,33 @@ describe('manual reload', () => {
     ),
   )
 
-  it.effect(
-    'R does nothing with a full magazine, mid-reload, or with no loose rounds',
-    () =>
-      Effect.gen(function* () {
-        const midReload = modifyFocus(withPistolLoaded(fighting, 3), {
-          player: player =>
-            modifyFields(player, {
-              reload: () =>
-                Reload.Reloading({
-                  remainingMs: 400,
-                  durationMs: PISTOL_RELOAD_MS,
-                }),
-            }),
-        })
-        const noLooseRounds = withArsenal(fighting, holdingSecond(smg(12, 12)))
-        yield* Effect.forEach([fighting, midReload, noLooseRounds], start =>
-          Story.story(
-            APPLICATION,
-            Story.given(start),
-            press('KeyR'),
-            Story.model(({ seats: [{ player }] }) => {
-              expect(player).toEqual(focusOf(start).player)
-            }),
-          ),
-        )
-      }),
+  it.effect('R does nothing with a full magazine or mid-reload', () =>
+    Effect.gen(function* () {
+      const midReload = modifyFocus(withPistolLoaded(fighting, 3), {
+        player: player =>
+          modifyFields(player, {
+            reload: () =>
+              Reload.Reloading({
+                remainingMs: 400,
+                durationMs: PISTOL_RELOAD_MS,
+              }),
+          }),
+      })
+      const fullSmg = withArsenal(
+        fighting,
+        holdingSecond(smg(WEAPONS.Smg.magazine)),
+      )
+      yield* Effect.forEach([fighting, midReload, fullSmg], start =>
+        Story.story(
+          APPLICATION,
+          Story.given(start),
+          press('KeyR'),
+          Story.model(({ seats: [{ player }] }) => {
+            expect(player).toEqual(focusOf(start).player)
+          }),
+        ),
+      )
+    }),
   )
 
   it.effect('the reload button reloads like R', () =>
@@ -364,7 +351,7 @@ describe('swapping', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          withPistolLoaded(withArsenal(fighting, holdingFirst(smg(90, 30))), 3),
+          withPistolLoaded(withArsenal(fighting, holdingFirst(smg(30))), 3),
         ),
         press('KeyR'),
         ...ticks(PISTOL_RELOAD_TICKS - 2, FRAME_MS),
@@ -377,9 +364,7 @@ describe('swapping', () => {
         ...ticks(PISTOL_RELOAD_TICKS, FRAME_MS),
         Story.model(({ seats: [{ player }] }) => {
           expect(pistolOf(player).loaded).toBe(3)
-          expect(spareRounds(player.arsenal)).toEqual(
-            Option.some({ rounds: 90, loaded: 30 }),
-          )
+          expect(spareLoaded(player.arsenal)).toEqual(Option.some(30))
         }),
         press('KeyQ'),
         Story.model(({ seats: [{ player }] }) => {
@@ -470,22 +455,23 @@ describe('the idle reload below Hard', () => {
       ),
   )
 
-  it.effect(
-    'a full magazine, or one with nothing left to load, stays put',
-    () =>
-      Effect.gen(function* () {
-        const noLooseRounds = withArsenal(fighting, holdingSecond(smg(8, 8)))
-        yield* Effect.forEach([fighting, noLooseRounds], start =>
-          Story.story(
-            APPLICATION,
-            Story.given(start),
-            ...ticks(IDLE_TICKS * 2, FRAME_MS),
-            Story.model(current => {
-              expect(isReloadingNow(current)).toBe(false)
-            }),
-          ),
-        )
-      }),
+  it.effect('a full magazine stays put', () =>
+    Effect.gen(function* () {
+      const fullSmg = withArsenal(
+        fighting,
+        holdingSecond(smg(WEAPONS.Smg.magazine)),
+      )
+      yield* Effect.forEach([fighting, fullSmg], start =>
+        Story.story(
+          APPLICATION,
+          Story.given(start),
+          ...ticks(IDLE_TICKS * 2, FRAME_MS),
+          Story.model(current => {
+            expect(isReloadingNow(current)).toBe(false)
+          }),
+        ),
+      )
+    }),
   )
 
   it.effect('the knife in hand keeps the rest from counting', () =>
@@ -517,7 +503,7 @@ describe('the idle reload below Hard', () => {
     Story.story(
       APPLICATION,
       Story.given(
-        withPistolLoaded(withArsenal(fighting, holdingSecond(smg(90, 30))), 3),
+        withPistolLoaded(withArsenal(fighting, holdingSecond(smg(30))), 3),
       ),
       ...ticks(IDLE_TICKS * 2, FRAME_MS),
       press('KeyQ'),

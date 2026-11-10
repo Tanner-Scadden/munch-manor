@@ -43,8 +43,8 @@ import {
 // Version 9: standing still buys as the hold does (src/world/shop/purchase.ts), and a
 // seat's purchase can be Spent, waiting for its player to move before
 // standing buys again; a version 8 client cannot read it.
-// Version 10: the ammo window mid-wave (src/world/shop/ammoCounter.ts), a seat's
-// purchase can target the stall's Ammo.
+// Version 10: the ammo window mid-wave, a seat's purchase can target the
+// stall's Ammo.
 // Version 11: the knife is a third slot. Each player holds a gun or the
 // knife (`wield`), the knife is drawn by a press (a new action code, as is
 // drawing a gun by its slot) and stabs on the fire button, and button bit
@@ -79,8 +79,16 @@ import {
 // carries `callMs`, how long ago the player last shouted, a new action code
 // (CallMedic) shouts again, and two new events: MedicCalled and
 // TeammateSaved (SAVED! or CLUTCH!).
-export const PROTOCOL_VERSION = 19
-export const MIN_PROTOCOL_VERSION = 19
+// Version 20: the escape the manor rework (docs/ESCAPE_PLAN.md), from its
+// first layer, endless ammo. A carried gun holds only its magazine
+// (`rounds` is gone), the ammo window is gone with its purchasable
+// (Ammo), its seat action (BuyAmmo, so CallMedic's code and the shop's
+// moved), and a purchase's Tapped, the shop sells no ammo (the item codes
+// after it moved), the RanDry event is gone, and the pantry holds no lids.
+// Later layers change the World again under this same version, since the
+// whole stack ships as one.
+export const PROTOCOL_VERSION = 20
+export const MIN_PROTOCOL_VERSION = 20
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

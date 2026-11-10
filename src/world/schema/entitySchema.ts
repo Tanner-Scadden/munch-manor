@@ -53,7 +53,7 @@ export type WeaponKind = typeof WeaponKind.Type
 
 // NOTE: what the kitchen's stove cooks into a gun for the rest of the run
 // (src/world/kitchen/stove.ts): Spicy hits harder, Crispy skewers one more zombie, Hearty
-// holds more rounds. Rattles never sells one.
+// holds a bigger magazine. Rattles never sells one.
 export const GunPerk = Schema.Literals(['Spicy', 'Crispy', 'Hearty'])
 export type GunPerk = typeof GunPerk.Type
 
@@ -61,7 +61,6 @@ export type GunPerk = typeof GunPerk.Type
 // most, and a new gun in its place comes plain, so the perk goes with it.
 export const CarriedGun = Schema.Struct({
   kind: WeaponKind,
-  rounds: Schema.Finite,
   loaded: Schema.Finite,
   tier: Schema.Finite,
   perk: Schema.optionalKey(GunPerk),
@@ -486,10 +485,9 @@ export type Fridge = typeof Fridge.Type
 
 // THE PANTRY
 
-// NOTE: what the pantry cupboard holds in a break (src/world/kitchen/pantry.ts): cash, a
-// free Lid Stack for a Cooker carrier, or a heart for a hurt player. A Lid
-// Stack or a heart nobody can use pays `cash` instead.
-export const PantryGoodie = Schema.Literals(['Cash', 'Lids', 'Heart'])
+// NOTE: what the pantry cupboard holds in a break (src/world/kitchen/pantry.ts): cash,
+// or a heart for a hurt player. A heart nobody can use pays `cash` instead.
+export const PantryGoodie = Schema.Literals(['Cash', 'Heart'])
 export type PantryGoodie = typeof PantryGoodie.Type
 
 // NOTE: `round` is the break it was stocked for, by its wave number, so a
@@ -554,12 +552,3 @@ export const Callout = Schema.Struct({
   ageMs: MillisNumber,
 })
 export type Callout = typeof Callout.Type
-
-// NOTE: a cosmetic: Rattles sliding a box of rounds across the ammo
-// window's counter after a sale mid-wave, with `line` picking what he says
-// (src/world/shop/ammoCounter.ts). Never part of the World.
-export const CounterSale = defineTaggedUnion({
-  Quiet: {},
-  Selling: { ageMs: Schema.Finite, line: Schema.Finite },
-})
-export type CounterSale = typeof CounterSale.Type

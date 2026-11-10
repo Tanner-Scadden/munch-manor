@@ -37,7 +37,6 @@ import {
   ShopState,
   idleIntent,
 } from '../schema/worldSchema'
-import { tapToBuy } from '../shop/purchase'
 import {
   SHOP_CATEGORY_ORDER,
   isShopOpenFor,
@@ -127,9 +126,8 @@ export const stepWorld: {
 // seat's presses between ticks; single player applies its own presses to
 // its lead seat (src/app/update/action.ts) and wraps its cues around them.
 // A purchasable in the world is no press: it is bought by holding the
-// intent's interact, in the tick (src/world/shop/purchase.ts). The ammo window is the
-// one press among them: BuyAmmo, a tap that buys there at once. CallMedic
-// is the one a downed player has: MEDIC! (src/world/party/medic.ts).
+// intent's interact, in the tick (src/world/shop/purchase.ts). CallMedic is
+// the one press a downed player has: MEDIC! (src/world/party/medic.ts).
 export const SeatAction = defineTaggedUnion({
   Swap: {},
   Melee: {},
@@ -140,7 +138,6 @@ export const SeatAction = defineTaggedUnion({
   Buy: { item: ShopItemId },
   LeaveCounter: {},
   Ready: {},
-  BuyAmmo: {},
   CallMedic: {},
 })
 export type SeatAction = typeof SeatAction.Type
@@ -239,14 +236,6 @@ const ready = (world: World, slot: PlayerSlot): ActionResult =>
       )
     : notNow
 
-// NOTE: a tap at the ammo window mid-wave buys there on the next tick, with
-// no hold (src/world/shop/purchase.ts, tapToBuy). Away from it there is nothing to tap.
-const buyAmmo = (world: World, slot: PlayerSlot): ActionResult =>
-  Option.match(tapToBuy(world, slot), {
-    onNone: () => notNow,
-    onSome: Result.succeed,
-  })
-
 // NOTE: MEDIC! from a downed player whose last shout has cooled down
 // (src/world/party/medic.ts). Standing, or too soon, there is nothing to shout.
 const callMedic = (world: World, slot: PlayerSlot): ActionResult =>
@@ -273,7 +262,6 @@ export const trySeatAction: {
       Buy: ({ item }) => buy(world, slot, item),
       LeaveCounter: () => leaveCounter(world, slot),
       Ready: () => ready(world, slot),
-      BuyAmmo: () => buyAmmo(world, slot),
       CallMedic: () => callMedic(world, slot),
     }),
 )

@@ -6,7 +6,6 @@ import {
   SHOP_GUNS,
   WEAPONS,
   isCarrying,
-  maxRounds,
   maxTier,
   maybeCarried,
   maybeReplacedGun,
@@ -30,7 +29,7 @@ import {
 } from '../../world/shop/shop'
 
 // What the shop dialog shows about a gun and about what a player holds: a
-// gun's bars, the ammo gauge, and the note under an item.
+// gun's bars and the note under an item.
 
 export type GunBars = Readonly<{
   hit: number
@@ -65,41 +64,6 @@ export const gunBars: {
   }
 })
 
-export type AmmoGauge = Readonly<{ have: number; gain: number; most: number }>
-
-export const ammoGauge: {
-  (
-    slot: PlayerSlot,
-    weapon: WeaponKind,
-    rounds: number,
-  ): (model: World) => AmmoGauge
-  (
-    model: World,
-    slot: PlayerSlot,
-    weapon: WeaponKind,
-    rounds: number,
-  ): AmmoGauge
-} = Function.dual(
-  4,
-  (
-    model: World,
-    slot: PlayerSlot,
-    weapon: WeaponKind,
-    rounds: number,
-  ): AmmoGauge =>
-    Option.match(maybeCarried(seatStateAt(model, slot).player, weapon), {
-      onNone: () => ({ have: 0, gain: 0, most: 1 }),
-      onSome: spare => {
-        const most = maxRounds(weapon, spare.tier)
-        return {
-          have: spare.rounds,
-          gain: Math.max(0, Math.min(rounds, most - spare.rounds)),
-          most,
-        }
-      },
-    }),
-)
-
 export const ownedNote: {
   (slot: PlayerSlot, id: ShopItemId): (model: World) => string
   (model: World, slot: PlayerSlot, id: ShopItemId): string
@@ -120,12 +84,6 @@ export const ownedNote: {
                   ? `Replaces your ${tierName(held.kind, held.tier)}, and its upgrades are lost`
                   : `Replaces your ${tierName(held.kind, held.tier)}`,
             }),
-        }),
-      Ammo: ({ weapon }) =>
-        Option.match(maybeCarried(player, weapon), {
-          onNone: () => `You do not carry the ${gunName(model, slot, weapon)}`,
-          onSome: spare =>
-            `You have ${spare.rounds} of ${maxRounds(weapon, spare.tier)} ${WEAPONS[weapon].roundsLabel}`,
         }),
       Upgrade: ({ weapon }) =>
         !isCarrying(player, weapon)

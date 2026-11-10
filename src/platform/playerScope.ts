@@ -196,12 +196,13 @@ const updatePlayer = (
 // so linking never overwrites the player it joined. Version 8 is the save
 // with the simple look (save version 11), and 9 the save with the run
 // records (save version 12), 10 the save with rank (save version 13), 11
-// the save with the calling (save version 14), and 12 the save with hats
-// (save version 15).
+// the save with the calling (save version 14), 12 the save with hats
+// (save version 15), 13 the save with gun skins (save version 16), and 14
+// the save with no ammo tip (save version 17).
 /** @stability unstable */
 export const SeededPlayer = defineMutation({
   name: 'SeededPlayer',
-  version: 13,
+  version: 14,
   args: Schema.Struct({ save: PlayerSave }),
   scopes: [PLAYER_SCOPE_KIND],
   writer: 'Owner',
@@ -322,10 +323,11 @@ export const UnlockedNightmare = defineMutation({
   apply: (_, context) => updatePlayer(context, { nightmare: 'Unlocked' }),
 })
 
+// NOTE: version 2 carries no ammo tip (save version 17).
 /** @stability unstable */
 export const ChangedOnboarding = defineMutation({
   name: 'ChangedOnboarding',
-  version: 1,
+  version: 2,
   args: Schema.Struct({
     onboarding: SavedOnboarding,
     homeScreenTip: HomeScreenTip,

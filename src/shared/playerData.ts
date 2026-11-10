@@ -1,6 +1,5 @@
 import {
   Array,
-  Effect,
   Function,
   Option,
   Record,
@@ -828,7 +827,7 @@ export const lookOfCode = (code: string): Option.Option<Appearance> => {
 
 // SAVED
 
-export const SAVE_VERSION = 16
+export const SAVE_VERSION = 17
 
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
@@ -848,15 +847,13 @@ export type SavedLessons = typeof SavedLessons.Type
 export const SavedTrapHint = Schema.Literals(['Unseen', 'Seen'])
 export type SavedTrapHint = typeof SavedTrapHint.Type
 
-// NOTE: ammoTip came after save version 11 as a key that reads as Unseen
-// when missing, so every older save, an older build's copy of this one, and
-// an older device's synced onboarding all still read, with no new version.
+// NOTE: save versions 11 to 16 also held ammoTip, Rattles' call about
+// running low, gone with endless ammo in version 17. A key Schema does not
+// name is dropped on decoding, so an older save and an older device's
+// synced onboarding still read.
 export const SavedOnboarding = Schema.Struct({
   lessons: SavedLessons,
   trapHint: SavedTrapHint,
-  ammoTip: SavedTrapHint.pipe(
-    Schema.withDecodingDefaultKey(Effect.succeed('Unseen')),
-  ),
   introducedKinds: Schema.Array(Schema.String),
 })
 export type SavedOnboarding = typeof SavedOnboarding.Type
@@ -1008,7 +1005,8 @@ export type PlayerName = typeof PlayerName.Type
 // 11 the simpler look the owner chose (LOOK above). Version 14 added the
 // calling picked for the next run, synced the same way. Version 15 added
 // the hat on the look and the hats bought. Version 16 added the gun skin on
-// the look and renamed the hats bought to the cosmetics bought.
+// the look and renamed the hats bought to the cosmetics bought. Version 17
+// dropped the ammo tip from the onboarding.
 export const PlayerSave = Schema.Struct({
   version: Schema.Literal(SAVE_VERSION),
   onboarding: SavedOnboarding,

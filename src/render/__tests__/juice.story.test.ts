@@ -419,8 +419,7 @@ describe('screen shake', () => {
     modifyFocus(playingModel, {
       player: player =>
         modifyFields(player, {
-          arsenal: () =>
-            holdingSecond({ kind: weapon, rounds: 999, loaded: 999, tier: 0 }),
+          arsenal: () => holdingSecond({ kind: weapon, loaded: 999, tier: 0 }),
         }),
     })
 

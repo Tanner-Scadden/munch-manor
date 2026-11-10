@@ -668,10 +668,6 @@ const PAYDAY_POPUP_BIG_SCALE = 4
 
 const HORDE_POPUP_SCALE = 2
 
-// NOTE: running dry is a big moment (a playtester died not knowing the
-// Chatterbox could), so EMPTY pops as big as HORDE!.
-const EMPTY_POPUP_SCALE = 2
-
 const popupLook = (popup: Popup): PopupLook => {
   if (popup.kind === 'Saved') {
     return {
@@ -719,14 +715,6 @@ const popupLook = (popup: Popup): PopupLook => {
       tone: 'Damage',
       scale: 1,
       hopPx: DAMAGE_POPUP_HOP_PX,
-      risePx: DAMAGE_POPUP_RISE_PX,
-    }
-  } else if (popup.kind === 'Empty') {
-    return {
-      text: 'EMPTY!',
-      tone: popup.ageMs < KILL_POPUP_FLASH_MS ? 'Damage' : 'Alert',
-      scale: popup.ageMs < KILL_POPUP_FLASH_MS ? 3 : EMPTY_POPUP_SCALE,
-      hopPx: KILL_POPUP_HOP_PX,
       risePx: DAMAGE_POPUP_RISE_PX,
     }
   } else if (popup.kind === 'Payday') {

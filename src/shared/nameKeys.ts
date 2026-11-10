@@ -22,7 +22,6 @@ export type ShopGuideSection = typeof ShopGuideSection.Type
 // NOTE: the places around the house the shop guide shows (src/features/guide/shopGuide.ts).
 export const HouseSpot = Schema.Literals([
   'Stall',
-  'Window',
   'Boards',
   'Fridge',
   'Stove',

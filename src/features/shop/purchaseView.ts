@@ -18,7 +18,6 @@ import {
   spriteShapes,
 } from '../../art/sprite'
 import { gunIcon } from '../../art/sprites/guns'
-import { AMMO_BOX, AMMO_BOX_WIDTH } from '../../art/sprites/pickups'
 import { type Camera, worldToView } from '../../render/camera'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
 import {
@@ -27,7 +26,8 @@ import {
   PERK_ICON_SIZE,
 } from '../../render/kitchenGearView'
 import { FRIDGE_RULES } from '../../world/fridge/leftovers'
-import { hasPan, heldGun, maybeReplacedGun } from '../../world/gear/weapons'
+import { hasPan, maybeReplacedGun } from '../../world/gear/weapons'
+import { stovePriceFor } from '../../world/heroes/calling'
 import { VALVE_RULES } from '../../world/kitchen/gasValve'
 import { STOVE_RULES, maybeStovePerk } from '../../world/kitchen/stove'
 import { EXIT_RULES } from '../../world/level/exits'
@@ -38,7 +38,6 @@ import {
   Purchasable,
   Purchase,
 } from '../../world/schema/worldSchema'
-import { type AmmoItemId, maybeAmmoItemOf } from '../../world/shop/ammoCounter'
 import {
   type Offer,
   PURCHASE_RULES,
@@ -47,7 +46,6 @@ import {
   maybeOfferInReach,
   offersOf,
 } from '../../world/shop/purchase'
-import { SHOP_ITEMS } from '../../world/shop/shop'
 import { ZERO_VECTOR } from '../../world/step/geometry'
 
 // NOTE: a purchasable says what it costs without a word: a dark tag with
@@ -86,7 +84,7 @@ type PriceTag = Readonly<{
 }>
 
 // NOTE: a tag can lead with a small picture of what it sells, such as the
-// ammo window's box of rounds.
+// stove's perk.
 type TagIcon = Readonly<{ sprite: Sprite; width: number }>
 
 const ICON_GAP = 2
@@ -171,42 +169,16 @@ const TAKE_TAG = bakeTag(bakeText('TAKE', 'Prompt'))
 // (src/world/run/tutorialRules.ts), so their tags say FREE.
 const FREE_TAG = bakeTag(bakeText('FREE', 'Title'))
 
-// NOTE: the ammo window's tags: the box of rounds with the price of the
-// held gun's ammo, or FULL when there is no room for more.
-const AMMO_ICON: TagIcon = { sprite: AMMO_BOX, width: AMMO_BOX_WIDTH }
-
-const AMMO_TAGS: Readonly<Record<AmmoItemId, PriceTag>> = {
-  ShotgunShells: bakeTag(
-    bakeText(`$${SHOP_ITEMS.ShotgunShells.price}`, 'Coin'),
-    Option.some(AMMO_ICON),
-  ),
-  SmgRounds: bakeTag(
-    bakeText(`$${SHOP_ITEMS.SmgRounds.price}`, 'Coin'),
-    Option.some(AMMO_ICON),
-  ),
-  LidStack: bakeTag(
-    bakeText(`$${SHOP_ITEMS.LidStack.price}`, 'Coin'),
-    Option.some(AMMO_ICON),
-  ),
-}
-
-const FULL_TAG = bakeTag(bakeText('FULL', 'Hint'), Option.some(AMMO_ICON))
-
-const ammoTagOf = (model: Model, offer: Offer): PriceTag =>
-  offer.isFull
-    ? FULL_TAG
-    : Option.match(
-        maybeAmmoItemOf(heldGun(focusOf(model).player.arsenal).kind),
-        {
-          onNone: () => FULL_TAG,
-          onSome: item => AMMO_TAGS[item],
-        },
-      )
-
 // NOTE: the stove's tag leads with the perk it offers this break, one tag
-// for each perk at each price, all baked as the module loads.
+// for each perk at each price (the Line Cook's too), all baked as the
+// module loads.
+const STOVE_PRICES: Array.NonEmptyReadonlyArray<number> = Array.union(
+  STOVE_RULES.prices,
+  Array.map(STOVE_RULES.prices, price => stovePriceFor('LineCook', price)),
+)
+
 const stoveTagsOf = (perk: GunPerk): Array.NonEmptyReadonlyArray<PriceTag> =>
-  Array.map(STOVE_RULES.prices, price =>
+  Array.map(STOVE_PRICES, price =>
     bakeTag(
       bakeText(`$${price}`, 'Coin'),
       Option.some({ sprite: PERK_ICONS[perk], width: PERK_ICON_SIZE }),
@@ -225,7 +197,7 @@ const stoveTagOf = (model: Model, offer: Offer): PriceTag => {
   const tags =
     STOVE_TAGS[Option.getOrElse(maybeStovePerk(model), (): GunPerk => 'Spicy')]
   return Option.getOrElse(
-    Array.get(tags, STOVE_RULES.prices.indexOf(offer.price)),
+    Array.get(tags, STOVE_PRICES.indexOf(offer.price)),
     () => tags[0],
   )
 }
@@ -245,7 +217,6 @@ const tagOf = (model: Model, offer: Offer): PriceTag =>
           ? FRIDGE_FIRST_TAG
           : FRIDGE_TAG,
     Prize: () => TAKE_TAG,
-    Ammo: () => ammoTagOf(model, offer),
     Stove: () => stoveTagOf(model, offer),
     Valve: () => VALVE_TAG,
   })
@@ -387,7 +358,6 @@ const placedOffer = (offer: Offer, tag: PriceTag): Offer =>
   Purchasable.match(offer.target, {
     Exit: () => offer,
     Fridge: () => offer,
-    Ammo: () => offer,
     Stove: () => offer,
     Valve: () => offer,
     Prize: () => ({
@@ -398,35 +368,6 @@ const placedOffer = (offer: Offer, tag: PriceTag): Offer =>
       },
     }),
   })
-
-// NOTE: where an offer's tag hangs in the world, for the HTML button that
-// takes a click on it (src/features/shop/purchaseHud.ts, ammoTagButtonView).
-export const tagBoxOf: {
-  (
-    offer: Offer,
-  ): (
-    model: Model,
-  ) => Readonly<{ x: number; y: number; width: number; height: number }>
-  (
-    model: Model,
-    offer: Offer,
-  ): Readonly<{ x: number; y: number; width: number; height: number }>
-} = Function.dual(
-  2,
-  (
-    model: Model,
-    offer: Offer,
-  ): Readonly<{ x: number; y: number; width: number; height: number }> => {
-    const tag = tagOf(model, offer)
-    const placed = placedOffer(offer, tag)
-    return {
-      x: tagLeft(placed, tag),
-      y: placed.spot.y,
-      width: tag.width,
-      height: tag.height,
-    }
-  },
-)
 
 // NOTE: what taking a prize gives up hangs under the TAKE tag, crossed
 // out: for the Clang Pan the knife, whose slot it takes; for a gun-slot
@@ -529,7 +470,6 @@ const offerShapes =
           : [tagShape, ...prompt],
       Done: () => [tagShape],
       Spent: () => [tagShape, ...prompt],
-      Tapped: () => [tagShape],
     })
     return [...shapes, ...replaced]
   }

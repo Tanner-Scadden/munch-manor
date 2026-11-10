@@ -1,7 +1,6 @@
 import { modifyFields } from 'foldkit/struct'
 
 import {
-  AmmoTip,
   DifficultyCard,
   Lesson,
   type Model,
@@ -28,7 +27,6 @@ export const asTutorialDone = (model: Model): Model =>
       openBreak: learned(),
     }),
     trapHint: () => TrapHint.Seen(),
-    ammoTip: () => AmmoTip.Seen(),
     firstBreakQuest: () => Tour.Over(),
     kitchenTour: () => Tour.Over(),
   })

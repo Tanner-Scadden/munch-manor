@@ -234,7 +234,6 @@ describe('keys on a focused button', () => {
                 arsenal: () =>
                   holdingFirst({
                     kind: 'Shotgun',
-                    rounds: 20,
                     loaded: 6,
                     tier: 0,
                   }),

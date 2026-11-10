@@ -33,8 +33,6 @@ import {
 
 export type MuzzleFlash = 'Flicker' | 'Pop' | 'Blast'
 
-type RoundLimit = Readonly<{ starting: number; max: number }>
-
 export type WeaponStats = Readonly<{
   name: string
   roundsLabel: string
@@ -57,7 +55,6 @@ export type WeaponStats = Readonly<{
   casing: ParticleKind
   maybeSpentClip: Option.Option<ParticleKind>
   sound: SoundEffect
-  maybeRoundLimit: Option.Option<RoundLimit>
 }>
 
 export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
@@ -83,7 +80,6 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     casing: 'Shell',
     maybeSpentClip: Option.some('Clip'),
     sound: 'Shot',
-    maybeRoundLimit: Option.none(),
   },
   Shotgun: {
     name: GUN_NAMES.Shotgun,
@@ -107,7 +103,6 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     casing: 'Hull',
     maybeSpentClip: Option.none(),
     sound: 'ShotgunBlast',
-    maybeRoundLimit: Option.some({ starting: 16, max: 48 }),
   },
   Smg: {
     name: GUN_NAMES.Smg,
@@ -131,7 +126,6 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     casing: 'Link',
     maybeSpentClip: Option.some('Clip'),
     sound: 'SmgShot',
-    maybeRoundLimit: Option.some({ starting: 150, max: 360 }),
   },
   Peashooter: {
     name: GUN_NAMES.Peashooter,
@@ -157,13 +151,12 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     casing: 'Shell',
     maybeSpentClip: Option.none(),
     sound: 'TurretShot',
-    maybeRoundLimit: Option.none(),
   },
   // NOTE: the fridge weapons (src/world/fridge/fridgeWeapons.ts) fire no bullets, so
-  // only their magazine, reload, rounds, and name are read here. The
-  // Cooker's magazine is its lids; the Pan's is its dent meter (dents left
-  // before it is fully dented, never reloaded, banged flat each break);
-  // Brain Freeze's is its charges, all of them, never refilled.
+  // only their magazine, reload, and name are read here. The Cooker's
+  // magazine is its lids; the Pan's is its dent meter (dents left before it
+  // is fully dented, never reloaded, banged flat each break); Brain
+  // Freeze's is its charges, reloaded like any magazine.
   Cooker: {
     name: GUN_NAMES.Cooker,
     roundsLabel: 'lids',
@@ -186,7 +179,6 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     casing: 'Shell',
     maybeSpentClip: Option.none(),
     sound: 'Whoosh',
-    maybeRoundLimit: Option.some({ starting: 20, max: 28 }),
   },
   Pan: {
     name: GUN_NAMES.Pan,
@@ -210,14 +202,13 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     casing: 'Shell',
     maybeSpentClip: Option.none(),
     sound: 'Clang',
-    maybeRoundLimit: Option.some({ starting: 24, max: 24 }),
   },
   Freeze: {
     name: GUN_NAMES.Freeze,
     roundsLabel: 'charges',
     fireIntervalMs: 600,
     magazine: 18,
-    reloadMs: 0,
+    reloadMs: 1800,
     damage: 0,
     pellets: 1,
     spread: 0,
@@ -234,7 +225,6 @@ export const WEAPONS: Readonly<Record<WeaponKind, WeaponStats>> = {
     casing: 'Shell',
     maybeSpentClip: Option.none(),
     sound: 'PowerDown',
-    maybeRoundLimit: Option.some({ starting: 18, max: 18 }),
   },
 }
 
@@ -250,7 +240,6 @@ type TierBoost = Readonly<{
   spread: number
   pellets: number
   knockback: number
-  maxRounds: number
 }>
 
 const noBoost: TierBoost = {
@@ -261,7 +250,6 @@ const noBoost: TierBoost = {
   spread: 0,
   pellets: 0,
   knockback: 0,
-  maxRounds: 0,
 }
 
 export type WeaponTier = Readonly<{
@@ -283,7 +271,6 @@ export const UPGRADE_TIERS: Readonly<
         spread: 0,
         pellets: 0,
         knockback: 25,
-        maxRounds: 0,
       },
     },
     {
@@ -296,7 +283,6 @@ export const UPGRADE_TIERS: Readonly<
         spread: 0,
         pellets: 0,
         knockback: 0,
-        maxRounds: 0,
       },
     },
     {
@@ -309,7 +295,6 @@ export const UPGRADE_TIERS: Readonly<
         spread: 0,
         pellets: 0,
         knockback: 15,
-        maxRounds: 0,
       },
     },
   ],
@@ -324,7 +309,6 @@ export const UPGRADE_TIERS: Readonly<
         spread: 0.1,
         pellets: 2,
         knockback: 0,
-        maxRounds: 0,
       },
     },
     {
@@ -337,7 +321,6 @@ export const UPGRADE_TIERS: Readonly<
         spread: 0,
         pellets: 0,
         knockback: 40,
-        maxRounds: 16,
       },
     },
     {
@@ -350,7 +333,6 @@ export const UPGRADE_TIERS: Readonly<
         spread: 0,
         pellets: 0,
         knockback: 0,
-        maxRounds: 16,
       },
     },
   ],
@@ -365,7 +347,6 @@ export const UPGRADE_TIERS: Readonly<
         spread: -0.08,
         pellets: 0,
         knockback: 10,
-        maxRounds: 0,
       },
     },
     {
@@ -378,7 +359,6 @@ export const UPGRADE_TIERS: Readonly<
         spread: 0,
         pellets: 0,
         knockback: 0,
-        maxRounds: 120,
       },
     },
     {
@@ -391,27 +371,26 @@ export const UPGRADE_TIERS: Readonly<
         spread: 0,
         pellets: 0,
         knockback: 0,
-        maxRounds: 0,
       },
     },
   ],
   Peashooter: [],
   // NOTE: the Cooker's and the Pan's other tier gains (a bigger blast, a
   // faster charge, a wider arc, the ground smash) are in
-  // src/world/fridge/fridgeWeapons.ts; only their magazines and rounds grow here.
+  // src/world/fridge/fridgeWeapons.ts; only their magazines grow here.
   Cooker: [
     { price: 70, boost: noBoost },
     { price: 160, boost: noBoost },
     {
       price: 300,
-      boost: { ...noBoost, magazine: 2, maxRounds: 12 },
+      boost: { ...noBoost, magazine: 2 },
     },
   ],
   Pan: [
     { price: 60, boost: noBoost },
     {
       price: 150,
-      boost: { ...noBoost, magazine: 24, maxRounds: 24 },
+      boost: { ...noBoost, magazine: 24 },
     },
     { price: 300, boost: noBoost },
   ],
@@ -439,9 +418,6 @@ const applyBoost = (stats: WeaponStats, boost: TierBoost): WeaponStats =>
     spread: spread => Math.max(0, spread + boost.spread),
     pellets: pellets => Math.max(1, pellets + boost.pellets),
     knockback: knockback => knockback + boost.knockback,
-    maybeRoundLimit: Option.map(limit =>
-      modifyFields(limit, { max: max => max + boost.maxRounds }),
-    ),
   })
 
 export const effectiveStats: {
@@ -513,26 +489,8 @@ export const perkPierce = (gun: CarriedGun): number =>
 
 // ARSENAL
 
-// NOTE: a gun with no round limit (the Pop Pistol) never runs out: only its
-// magazine counts, and a reload always fills it.
-export const hasEndlessRounds = (kind: WeaponKind): boolean =>
-  Option.isNone(WEAPONS[kind].maybeRoundLimit)
-
-export const startingRounds = (kind: WeaponKind): number =>
-  Option.match(WEAPONS[kind].maybeRoundLimit, {
-    onNone: () => 0,
-    onSome: ({ starting }) => starting,
-  })
-
-export const maxRounds: {
-  (tier: number): (kind: WeaponKind) => number
-  (kind: WeaponKind, tier: number): number
-} = Function.dual(2, (kind: WeaponKind, tier: number): number =>
-  Option.match(statsAt(kind, tier).maybeRoundLimit, {
-    onNone: () => 0,
-    onSome: ({ max }) => max,
-  }),
-)
+// NOTE: no gun ever runs out (docs/ESCAPE_PLAN.md, "Endless ammo"): only
+// its magazine counts, and a reload always fills it.
 
 export const magazineOf: {
   (tier: number): (kind: WeaponKind) => number
@@ -581,17 +539,7 @@ export const freshGun: {
     kind: WeaponKind,
     calling: Calling = 'You',
     tier: number = 0,
-  ): CarriedGun => {
-    const magazine = magazineWith(calling, kind, tier)
-    return {
-      kind,
-      rounds: startingRounds(kind),
-      loaded: hasEndlessRounds(kind)
-        ? magazine
-        : Math.min(startingRounds(kind), magazine),
-      tier,
-    }
-  },
+  ): CarriedGun => ({ kind, loaded: magazineWith(calling, kind, tier), tier }),
 )
 
 export const heldGun = (arsenal: Arsenal): CarriedGun =>
@@ -745,18 +693,12 @@ export const heldStats = (player: Player): WeaponStats =>
 export const heldLoaded = (player: Player): number =>
   heldGun(player.arsenal).loaded
 
-export const looseRounds = (gun: CarriedGun): number =>
-  hasEndlessRounds(gun.kind) ? Infinity : Math.max(0, gun.rounds - gun.loaded)
-
-// NOTE: whether a gun can still fire, now or after a reload.
-export const hasRoundsLeft = (gun: CarriedGun): boolean =>
-  hasEndlessRounds(gun.kind) || gun.rounds > 0
-
 export const isReloading = (player: Player): boolean =>
   Reload.isAnyOf(['Reloading'])(player.reload)
 
-// NOTE: the Pan's dents and Brain Freeze's charges are never reloaded.
-const UNLOADED_WEAPONS: ReadonlyArray<WeaponKind> = ['Pan', 'Freeze']
+// NOTE: the Pan's dents are never reloaded: Rattles bangs it flat each
+// break (src/world/fridge/fridgeWeapons.ts, flattenPans).
+const UNLOADED_WEAPONS: ReadonlyArray<WeaponKind> = ['Pan']
 
 export const isReloadable = (kind: WeaponKind): boolean =>
   !Array.contains(UNLOADED_WEAPONS, kind)
@@ -766,8 +708,7 @@ export const canReload = (player: Player): boolean => {
   return (
     isReloadable(gun.kind) &&
     !isReloading(player) &&
-    gun.loaded < carriedMagazine(player.calling, gun) &&
-    looseRounds(gun) > 0
+    gun.loaded < carriedMagazine(player.calling, gun)
   )
 }
 
@@ -789,12 +730,7 @@ export const putGunInHand = (player: Player): Player =>
   })
 
 const fillGun = (gun: CarriedGun, calling: Calling): CarriedGun =>
-  modifyFields(gun, {
-    loaded: () =>
-      hasEndlessRounds(gun.kind)
-        ? carriedMagazine(calling, gun)
-        : Math.min(gun.rounds, carriedMagazine(calling, gun)),
-  })
+  modifyFields(gun, { loaded: () => carriedMagazine(calling, gun) })
 
 export const finishReload = (player: Player): Player =>
   modifyFields(player, {
@@ -806,11 +742,7 @@ export const spendRound = (player: Player): Player =>
   modifyFields(player, {
     arsenal: arsenal =>
       mapHeld(arsenal, gun =>
-        modifyFields(gun, {
-          rounds: rounds =>
-            hasEndlessRounds(gun.kind) ? rounds : Math.max(0, rounds - 1),
-          loaded: loaded => Math.max(0, loaded - 1),
-        }),
+        modifyFields(gun, { loaded: loaded => Math.max(0, loaded - 1) }),
       ),
   })
 
@@ -886,7 +818,6 @@ export const takePan: {
           onSome: pan =>
             modifyFields(pan, {
               loaded: () => magazineOf(pan.kind, pan.tier),
-              rounds: () => magazineOf(pan.kind, pan.tier),
             }),
         }),
       }),
@@ -942,20 +873,6 @@ export const swapInHand = (player: Player): Player =>
   isWieldingMelee(player)
     ? modifyFields(player, { wield: () => 'Gun' })
     : drawSlot(player, heldSlotOf(swapWeapon(player.arsenal)))
-
-// NOTE: a gun that runs dry with nothing left to load hands over to the
-// other gun if that one can still fire. With every gun dry the melee
-// weapon (the knife or the Pan) comes out by itself, and Rattles' ammo is
-// what brings a gun back.
-export const handOverWhenDry = (player: Player): Player => {
-  if (Option.exists(maybeOtherGun(player.arsenal), hasRoundsLeft)) {
-    return modifyFields(player, { arsenal: swapWeapon })
-  } else if (Array.every(gunsOf(player.arsenal), gun => !hasRoundsLeft(gun))) {
-    return drawMelee(player)
-  } else {
-    return player
-  }
-}
 
 // NOTE: the Pop Pistol as a run starts with it, in the first slot.
 export const STARTING_PISTOL: CarriedGun = freshGun(SIDEARM)

@@ -135,7 +135,6 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
         : Option.none<SoundEffect>(),
     PlayerHurt: () => Option.some<SoundEffect>('PlayerHurt'),
     BulletStruck: () => Option.none<SoundEffect>(),
-    RanDry: () => Option.some<SoundEffect>('DryClick'),
     DryFired: () => Option.some<SoundEffect>('DryClick'),
     ReloadStarted: () => Option.some<SoundEffect>('MagOut'),
     Reloaded: () => Option.some<SoundEffect>('MagIn'),
@@ -297,7 +296,7 @@ export const frameSoundCues = (
     Array.dedupeWith((first, second) => first.sound === second.sound),
   )
 
-// NOTE: a low tick on each of the last few shots of a gun that can run dry.
+// NOTE: a low tick on each of the last few shots of a magazine.
 export const ammoTickCues = (model: Model): ReadonlyArray<SoundCue> =>
   isTickingShot(focusOf(model).player, model.frameEvents)
     ? [

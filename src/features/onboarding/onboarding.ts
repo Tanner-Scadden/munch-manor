@@ -243,7 +243,7 @@ const skipped = (lesson: Lesson): Lesson => learn(lesson, 0)
 // the run starts as a returning player's and stays so. What is taught at the
 // thing itself stays (GAME_DESIGN.md, "Teach where the player acts"):
 // Rattles at the stall, START WAVE, the swap and goodie pulses, the trap
-// hint, the ammo call, and the new zombie cards.
+// hint, and the new zombie cards.
 export const skipTutorial = (model: Model): Model =>
   modifyFields(model, {
     lessons: lessons =>

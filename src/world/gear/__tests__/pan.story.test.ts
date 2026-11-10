@@ -75,7 +75,7 @@ import { freshGun, heldWeapon, inHandOf, maybePanOf, takePan } from '../weapons'
 const FRAME_MS = FIXED_STEP_MS
 const ROW_Y = 104
 const PLAYER_X = 100
-const SMG: CarriedGun = { kind: 'Smg', rounds: 120, loaded: 30, tier: 0 }
+const SMG: CarriedGun = { kind: 'Smg', loaded: 30, tier: 0 }
 const BOTH_GUNS = holdingSecond(SMG)
 
 const withPan = (pan: CarriedGun = freshGun('Pan')): Melee => Melee.Pan({ pan })
@@ -207,23 +207,30 @@ describe('the Clang Pan in the melee slot', () => {
   )
 
   it.effect(
-    'with every gun dry, the next pull draws the Pan by itself, and fire swings it',
+    'with every magazine empty, the next pull reloads; the Pan comes out only when drawn, and fire swings it',
     () => {
-      const dry = (gun: CarriedGun): CarriedGun =>
-        modifyFields(gun, { rounds: () => 0, loaded: () => 0 })
-      const allDry = modifyFocus(panFight([groanerAhead(900)]), {
+      const empty = (gun: CarriedGun): CarriedGun =>
+        modifyFields(gun, { loaded: () => 0 })
+      const allEmpty = modifyFocus(panFight([groanerAhead(900)]), {
         player: player =>
           modifyFields(player, {
             arsenal: () =>
               Arsenal.HoldingSecond({
-                first: dry(freshGun('Smg')),
-                second: dry(freshGun('Shotgun')),
+                first: empty(freshGun('Smg')),
+                second: empty(freshGun('Shotgun')),
               }),
           }),
       })
       return Story.story(
         APPLICATION,
-        Story.given(allDry),
+        Story.given(allEmpty),
+        holdFire,
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(inHandOf(focusOf(current).player)).toBe('Shotgun')
+          expect(focusOf(current).player.reload._tag).toBe('Reloading')
+        }),
+        press('KeyF'),
         holdFire,
         tick(FRAME_MS),
         Story.model(current => {

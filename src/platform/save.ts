@@ -12,7 +12,6 @@ import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../app/model'
 import {
-  AmmoTip,
   DifficultyCard,
   type PlayerBests,
   Tour,
@@ -256,6 +255,14 @@ const PlayerSaveV11 = Schema.Struct({
 })
 type PlayerSaveV11 = typeof PlayerSaveV11.Type
 
+// NOTE: version 16 is the save before endless ammo: its onboarding also
+// held the ammo tip, which decoding drops.
+const PlayerSaveV16 = Schema.Struct({
+  ...PlayerSave.fields,
+  version: Schema.Literal(16),
+})
+type PlayerSaveV16 = typeof PlayerSaveV16.Type
+
 // NOTE: version 15 is the save before gun skins and the other earned looks:
 // its look has a hat and no skin, and its bought list is the hats.
 const PlayerSaveV15 = Schema.Struct({
@@ -335,6 +342,7 @@ const PlayerSaveJson = Schema.fromJsonString(PlayerSave)
 
 const PlayerSaveV14Json = Schema.fromJsonString(PlayerSaveV14)
 const PlayerSaveV15Json = Schema.fromJsonString(PlayerSaveV15)
+const PlayerSaveV16Json = Schema.fromJsonString(PlayerSaveV16)
 
 const PlayerSaveV13Json = Schema.fromJsonString(PlayerSaveV13)
 
@@ -565,16 +573,26 @@ const migrateV14 = (save: PlayerSaveV14): PlayerSaveV15 => ({
 // NOTE: a save from before gun skins has the stock guns, and its bought
 // hats are the first of the cosmetics bought. It has seen every unlock it
 // had reached, so NEW badges start fresh from here.
-const migrateV15 = ({ boughtHats, ...save }: PlayerSaveV15): PlayerSave => ({
+const migrateV15 = ({ boughtHats, ...save }: PlayerSaveV15): PlayerSaveV16 => ({
   ...save,
-  version: SAVE_VERSION,
+  version: 16,
   appearance: { ...save.appearance, gunSkin: 'Stock' },
   boughtCosmetics: boughtHats,
   seenUnlocks: unlocksAt(rankOf(totalPointsOf(save.rank))),
 })
 
+// NOTE: a save from before endless ammo loses only its ammo tip, which
+// decoding already dropped.
+const migrateV16 = (save: PlayerSaveV16): PlayerSave => ({
+  ...save,
+  version: SAVE_VERSION,
+})
+
+const fromV15 = (save: PlayerSaveV15): PlayerSave =>
+  migrateV16(migrateV15(save))
+
 const fromV13 = (save: PlayerSaveV13): PlayerSave =>
-  migrateV15(migrateV14(migrateV13(save)))
+  fromV15(migrateV14(migrateV13(save)))
 
 const fromV12 = (save: PlayerSaveV12): PlayerSave => fromV13(migrateV12(save))
 
@@ -610,15 +628,20 @@ const SAVE_VERSIONS: ReadonlyArray<
 > = [
   { version: SAVE_VERSION, read: Schema.decodeOption(PlayerSaveJson) },
   {
+    version: 16,
+    read: raw =>
+      Option.map(Schema.decodeOption(PlayerSaveV16Json)(raw), migrateV16),
+  },
+  {
     version: 15,
     read: raw =>
-      Option.map(Schema.decodeOption(PlayerSaveV15Json)(raw), migrateV15),
+      Option.map(Schema.decodeOption(PlayerSaveV15Json)(raw), fromV15),
   },
   {
     version: 14,
     read: raw =>
       Option.map(Schema.decodeOption(PlayerSaveV14Json)(raw), save =>
-        migrateV15(migrateV14(save)),
+        fromV15(migrateV14(save)),
       ),
   },
   {
@@ -746,7 +769,6 @@ const savedBests = (bests: PlayerBests): SavedBests => ({
 export const SAVED_FIELDS = [
   'lessons',
   'trapHint',
-  'ammoTip',
   'introducedKinds',
   'homeScreenTip',
   'soundSetting',
@@ -789,7 +811,6 @@ export const saveOf = (model: Model): PlayerSave => ({
       openBreak: savedLesson(model.lessons.openBreak),
     },
     trapHint: savedTrapHint(model.trapHint),
-    ammoTip: AmmoTip.isAnyOf(['Unseen'])(model.ammoTip) ? 'Unseen' : 'Seen',
     introducedKinds: model.introducedKinds,
   },
   homeScreenTip: model.homeScreenTip,
@@ -920,8 +941,6 @@ export const restoreSave: {
       lessons: lessons => restoreLessons(lessons, save.onboarding.lessons),
       trapHint: hint =>
         save.onboarding.trapHint === 'Seen' ? TrapHint.Seen() : hint,
-      ammoTip: tip =>
-        save.onboarding.ammoTip === 'Seen' ? AmmoTip.Seen() : tip,
       introducedKinds: kinds =>
         Array.union(kinds, knownKinds(save.onboarding.introducedKinds)),
       homeScreenTip: tip =>
@@ -997,7 +1016,6 @@ export const forgetTutorial = (model: Model): Model =>
     lessons: () => freshLessons,
     practice: () => noPractice,
     trapHint: () => TrapHint.Unseen(),
-    ammoTip: () => AmmoTip.Unseen(),
     firstBreakQuest: () => Tour.Waiting(),
     kitchenTour: () => Tour.Waiting(),
     introducedKinds: () => [],

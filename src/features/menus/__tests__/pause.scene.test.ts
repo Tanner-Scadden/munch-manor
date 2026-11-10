@@ -244,7 +244,7 @@ describe('Touch gun slots', () => {
                 arsenal: () =>
                   Arsenal.HoldingFirst({
                     first: { ...STARTING_PISTOL, tier: 1 },
-                    second: { kind: 'Shotgun', rounds: 16, loaded: 6, tier: 1 },
+                    second: { kind: 'Shotgun', loaded: 6, tier: 1 },
                   }),
               }),
           }),

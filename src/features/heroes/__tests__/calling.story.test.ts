@@ -24,12 +24,7 @@ import {
   writeSave,
 } from '../../../test/testing'
 import { playerSpeed } from '../../../world/gear/powerups'
-import {
-  freshGun,
-  heldGun,
-  looseRounds,
-  maybeCarried,
-} from '../../../world/gear/weapons'
+import { heldGun, maybeCarried } from '../../../world/gear/weapons'
 import { playerOfCalling } from '../../../world/heroes/callingPlayer'
 import { pointsForRank } from '../../../world/heroes/rank'
 import {
@@ -39,14 +34,12 @@ import {
   modifyFocus,
 } from '../../../world/party/party'
 import {
-  type CarriedGun,
   GameEvent,
   Invulnerability,
   idleBoosts,
 } from '../../../world/schema/worldSchema'
 import { priceFor, tryPurchase, verdictFor } from '../../../world/shop/shop'
 import { woundPlayer } from '../../../world/step/combat'
-import { ammoLevelOf } from '../../hud/ammoWarning'
 import { isHeroPickerUp } from '../../lobby/model'
 import {
   besideStall,
@@ -127,10 +120,7 @@ describe('a run starts with the calling picked', () => {
         expect(maybeCarried(focusOf(run).player, 'Pistol')).toEqual(
           Option.none(),
         )
-        expect(
-          looseRounds(heldGun(focusOf(run).player.arsenal)),
-        ).toBeGreaterThan(0)
-        expect(heldGun(focusOf(run).player.arsenal).rounds).toBe(14)
+        expect(heldGun(focusOf(run).player.arsenal).loaded).toBe(4)
       }),
   )
 
@@ -328,12 +318,6 @@ describe('what the player sees of a calling', () => {
     expect(
       Array.map(killed('PennyPincher').popups, ({ value }) => value),
     ).toEqual([16])
-  })
-
-  test('the low ammo warning reads the Track Star smaller magazine', () => {
-    const smg: CarriedGun = { ...freshGun('Smg'), rounds: 59, loaded: 20 }
-    expect(ammoLevelOf(smg, 'You')).toBe('Low')
-    expect(ammoLevelOf(smg, 'TrackStar')).toBe('Plenty')
   })
 
   test('a bite leaves the Handyman 50 percent longer to get clear', () => {

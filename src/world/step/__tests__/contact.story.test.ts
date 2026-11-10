@@ -225,7 +225,6 @@ describe('point-blank shots', () => {
               arsenal: () =>
                 holdingSecond({
                   kind: 'Shotgun',
-                  rounds: 16,
                   loaded: 6,
                   tier: 0,
                 }),

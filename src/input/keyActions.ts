@@ -2,7 +2,7 @@ import { Array, Function, Option } from 'effect'
 
 import { focusSlotOf, isDowned, seatStateAt } from '../world/party/party'
 import type { World } from '../world/schema/world'
-import { isInteractTaken, maybeTapOffer } from '../world/shop/purchase'
+import { isInteractTaken } from '../world/shop/purchase'
 import { SeatAction } from '../world/step/stepWorld'
 
 // The keys that press a seat action (src/world/step/stepWorld.ts), in one table that
@@ -10,8 +10,8 @@ import { SeatAction } from '../world/step/stepWorld'
 // its own key for each action: player 1 the usual keys, a couch player a
 // block of their own (src/input/couch.ts).
 
-// NOTE: held to buy at a purchasable (src/world/shop/purchase.ts), pressed to buy at
-// the ammo window, pressed for READY elsewhere, and while downed, MEDIC!
+// NOTE: held to buy at a purchasable (src/world/shop/purchase.ts), pressed for
+// READY elsewhere, and while downed, MEDIC!
 export const INTERACT_KEY = 'Enter'
 
 export type ActionKeys = Readonly<{
@@ -40,13 +40,11 @@ const ACTIONS: ReadonlyArray<readonly [keyof ActionKeys, SeatAction]> = [
   ['placeTrap', SeatAction.PlaceTrap()],
   ['nextTrap', SeatAction.NextTrap()],
   ['ready', SeatAction.Ready()],
-  ['ready', SeatAction.BuyAmmo()],
 ]
 
 // NOTE: at a purchasable the interact key is held to buy (src/world/shop/purchase.ts),
-// so READY's key, the same key, starts nothing there; at the ammo window a
-// press of it buys at once. While downed it shouts MEDIC! and nothing
-// else, even while the last shout cools down. `seat` is the World as the
+// so READY's key, the same key, starts nothing there. While downed it
+// shouts MEDIC! and nothing else, even while the last shout cools down. `seat` is the World as the
 // pressing seat sees it.
 const isOpenTo = (seat: World, action: SeatAction): boolean =>
   SeatAction.matchOrElse(
@@ -54,7 +52,6 @@ const isOpenTo = (seat: World, action: SeatAction): boolean =>
     {
       CallMedic: () => isDowned(seatStateAt(seat, focusSlotOf(seat)).seat),
       Ready: () => !isInteractTaken(seat, focusSlotOf(seat)),
-      BuyAmmo: () => Option.isSome(maybeTapOffer(seat, focusSlotOf(seat))),
     },
     () => true,
   )

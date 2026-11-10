@@ -71,22 +71,6 @@ const DUD_ART = artOf(
   { K: INK, W: '#e8e4d0' },
 )
 
-const WINDOW_ART = artOf(
-  [
-    'KKKKKKKKKKKKKK',
-    'KWWWWWWWWWWWWK',
-    'KWDDDDDDDDDDWK',
-    'KWDDDDDDDDDDWK',
-    'KWDDDDDDDDDDWK',
-    'KWDDDDDDDDDDWK',
-    'KKKKKKKKKKKKKK',
-    'KOOOOOOOOOOOOK',
-    'KOYYOYYOYYOYYK',
-    'KKKKKKKKKKKKKK',
-  ],
-  { K: INK, W: '#b8813f', D: '#2a1c33', O: '#8a5a2b', Y: '#ffd23f' },
-)
-
 const BOARDS_ART = artOf(
   [
     'KKKKKKKKKKKKKK',
@@ -164,7 +148,6 @@ const VALVE_ART = artOf(
 
 const HOUSE_ART: Readonly<Record<HouseSpot, ShopArt>> = {
   Stall: RATTLES_ART.Grinning,
-  Window: WINDOW_ART,
   Boards: BOARDS_ART,
   Fridge: FRIDGE_ART,
   Stove: STOVE_ART,

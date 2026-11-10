@@ -1,7 +1,7 @@
 import { Record } from 'effect'
 
 import type { PickupKind } from '../../world/schema/entitySchema'
-import { type Palette, type Sprite, TOP_LEFT, spriteShapes } from '../sprite'
+import { type Palette, type Sprite, spriteShapes } from '../sprite'
 import { HEART_PALETTE, HEART_PIXELS } from './hearts'
 
 // PICKUPS
@@ -94,24 +94,4 @@ const PICKUP_PIXELS: Readonly<
 export const PICKUP_SPRITES: Readonly<Record<PickupKind, Sprite>> = Record.map(
   PICKUP_PIXELS,
   ({ pixels, palette }) => spriteShapes(pixels, palette),
-)
-
-// AMMO
-
-// NOTE: the box of rounds Rattles sells: on his stall, in his bubble, and on
-// the ammo window's price tag.
-const AMMO_PALETTE: Palette = {
-  o: '#140c10',
-  b: '#c9a227',
-  B: '#ffe066',
-  g: '#4f7a3a',
-  G: '#6fa34f',
-}
-
-export const AMMO_BOX_WIDTH = 7
-
-export const AMMO_BOX: Sprite = spriteShapes(
-  ['.B.B.B.', '.b.b.b.', 'ooooooo', 'oGGGGGo', 'oGgggGo', 'oGGGGGo', 'ooooooo'],
-  AMMO_PALETTE,
-  TOP_LEFT,
 )

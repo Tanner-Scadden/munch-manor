@@ -88,7 +88,7 @@ const crowdedRoom = (
         ...player,
         hp: 999,
         arsenal: Arsenal.OneGun({
-          first: { ...freshGun('Smg'), rounds: UNKILLABLE_HP },
+          first: freshGun('Smg'),
         }),
       }),
     }),

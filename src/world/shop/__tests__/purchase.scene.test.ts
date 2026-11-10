@@ -11,11 +11,7 @@ import { purchaseOverlayShapes } from '../../../features/shop/purchaseView'
 import type { InputDevice } from '../../../input/inputSchema'
 import { cameraOf, screenCameraOf } from '../../../render/camera'
 import { FIXED_STEP_MS } from '../../../shared/constants'
-import {
-  inPortrait,
-  midWaveAtStall,
-  pastTimedBreaks,
-} from '../../../test/model.fixture'
+import { inPortrait, pastTimedBreaks } from '../../../test/model.fixture'
 import {
   APPLICATION,
   HOLD_TICKS,
@@ -24,11 +20,9 @@ import {
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { FRIDGE_RULES, fridgeBoxOf } from '../../fridge/leftovers'
-import { maxRounds } from '../../gear/weapons'
 import { levelOf, openExitIn } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
 import { modifyFocus } from '../../party/party'
-import { SHOP_ITEMS } from '../shop'
 
 const atBoards = (device: InputDevice, balance: number): Model =>
   modifyFocus(
@@ -192,43 +186,4 @@ describe('the price tag in a zoomed phone window', () => {
     expect(cameraOf(upright(170)).y).toBe(20)
     expect(tagsFor(upright(170))).toHaveLength(0)
   })
-})
-
-describe('the ammo tag', () => {
-  const ammoTag = Scene.selector('.ammo-tag-button')
-
-  it.effect.each(['KeyboardMouse', 'Touch'] as const)(
-    'with %s, a click on the tag at the window buys at once',
-    device =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(
-          modifyFields(midWaveAtStall('Smg', maxRounds('Smg', 0) - 1), {
-            lastDevice: () => device,
-          }),
-        ),
-        measureSurface,
-        Scene.expect(ammoTag).toExist(),
-        Scene.expect(ammoTag).toHaveAttr(
-          'aria-label',
-          `Buy ammo for ${SHOP_ITEMS.SmgRounds.price} dollars`,
-        ),
-        Scene.click(ammoTag),
-        ...frames(1),
-        Scene.expect(ammoTag).toHaveAttr('aria-label', 'Your gun is full'),
-      ),
-  )
-
-  it.effect('away from the window there is no tag to click', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFocus(midWaveAtStall('Smg', 10), {
-          player: player => modifyFields(player, { x: () => 40 }),
-        }),
-      ),
-      measureSurface,
-      Scene.expect(ammoTag).toBeAbsent(),
-    ),
-  )
 })

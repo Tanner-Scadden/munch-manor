@@ -28,7 +28,7 @@ import {
   press,
   ticks,
 } from '../../../test/testing'
-import { UPGRADE_TIERS } from '../../../world/gear/weapons'
+import { UPGRADE_TIERS, WEAPONS } from '../../../world/gear/weapons'
 import { focusSlotOf, modifyFocus } from '../../../world/party/party'
 import {
   SHOP_CATEGORY_ORDER,
@@ -196,7 +196,7 @@ describe('shop categories', () => {
     expect(totalAffordable(hurt, focusSlotOf(hurt))).toBe(2)
 
     const armed = withArsenal(withMoney(firstVisit, 50), holdingSpare(20))
-    expect(affordableCount(armed, focusSlotOf(armed), 'Guns')).toBe(2)
+    expect(affordableCount(armed, focusSlotOf(armed), 'Guns')).toBe(1)
 
     expect(
       totalAffordable(
@@ -243,7 +243,7 @@ describe('shop categories', () => {
   })
 })
 
-describe('ammo and upgrades under the gun', () => {
+describe('upgrades under the gun', () => {
   test('guns always go pistol, shotgun, machine gun, whether owned, in hand, or for sale', () => {
     const unarmed = browsing(withMoney(shopReady, 100))
     const weaponOrder = (current: Model): ReadonlyArray<WeaponKind> =>
@@ -265,7 +265,6 @@ describe('ammo and upgrades under the gun', () => {
     expect(weaponOrder(shotgunInHand)).toEqual(PISTOL_FIRST)
     expect(itemsIn(shotgunInHand, focusSlotOf(shotgunInHand), 'Guns')).toEqual([
       'PistolUpgrade',
-      'ShotgunShells',
       'ShotgunUpgrade',
       'Smg',
       'LaserSight',
@@ -282,7 +281,6 @@ describe('ammo and upgrades under the gun', () => {
     expect(itemsIn(smgInHand, focusSlotOf(smgInHand), 'Guns')).toEqual([
       'PistolUpgrade',
       'Shotgun',
-      'SmgRounds',
       'SmgUpgrade',
       'LaserSight',
     ])
@@ -293,7 +291,7 @@ describe('ammo and upgrades under the gun', () => {
   })
 
   it.effect(
-    'buying a gun moves focus to its ammo, and buying ammo leaves focus where it is',
+    'buying a gun moves focus to its upgrade, and buying the upgrade leaves focus where it is',
     () =>
       Story.story(
         APPLICATION,
@@ -302,29 +300,31 @@ describe('ammo and upgrades under the gun', () => {
           ShopDialogBinding,
           ShopMessage.PressedBuyKey({ item: 'Shotgun' }),
         ),
-        Story.Command.expectExact(FocusItem({ item: 'ShotgunShells' })),
+        Story.Command.expectExact(FocusItem({ item: 'ShotgunUpgrade' })),
         resolveFocusShopItem,
         Story.model(({ seats: [{ shop }] }) => {
           expect(shop).toEqual(
-            ShopState.Browsing({ focusedItem: 'ShotgunShells' }),
+            ShopState.Browsing({ focusedItem: 'ShotgunUpgrade' }),
           )
         }),
         Story.messageIn(
           ShopDialogBinding,
-          ShopMessage.PressedBuyKey({ item: 'ShotgunShells' }),
+          ShopMessage.PressedBuyKey({ item: 'ShotgunUpgrade' }),
         ),
         Story.Command.expectNone(),
         Story.model(({ seats: [{ shop, player }] }) => {
           expect(shop).toEqual(
-            ShopState.Browsing({ focusedItem: 'ShotgunShells' }),
+            ShopState.Browsing({ focusedItem: 'ShotgunUpgrade' }),
           )
-          expect(player.arsenal).toEqual(holdingSpare(32))
+          expect(
+            Option.map(maybeSpareGun(player.arsenal), ({ tier }) => tier),
+          ).toEqual(Option.some(1))
         }),
       ),
   )
 
   it.effect(
-    'swapping guns moves focus from the bought row to the new gun ammo',
+    'swapping guns moves focus from the bought row to the new gun upgrade',
     () =>
       Story.story(
         APPLICATION,
@@ -335,10 +335,12 @@ describe('ammo and upgrades under the gun', () => {
           ),
         ),
         buyAtCounter('Smg'),
-        Story.Command.expectExact(FocusItem({ item: 'SmgRounds' })),
+        Story.Command.expectExact(FocusItem({ item: 'SmgUpgrade' })),
         resolveFocusShopItem,
         Story.model(({ seats: [{ shop, player }] }) => {
-          expect(shop).toEqual(ShopState.Browsing({ focusedItem: 'SmgRounds' }))
+          expect(shop).toEqual(
+            ShopState.Browsing({ focusedItem: 'SmgUpgrade' }),
+          )
           expect(
             Option.map(maybeSpareGun(player.arsenal), ({ kind }) => kind),
           ).toEqual(Option.some('Smg'))
@@ -380,10 +382,10 @@ describe('the row the shop opens on', () => {
       ),
     )
 
-  const withSmg = (balance: number, rounds: number): Model =>
+  const withSmg = (balance: number): Model =>
     withArsenal(
       withMoney(besideStall(preparing(4)), balance),
-      holdingSecond(gun('Smg', rounds, 1)),
+      holdingSecond(gun('Smg', WEAPONS.Smg.magazine, 1)),
     )
 
   it.effect(
@@ -396,18 +398,10 @@ describe('the row the shop opens on', () => {
       ),
   )
 
-  it.effect('with a spare gun running low, it opens on that gun ammo', () =>
-    focusAfterWalkingUp(withSmg(200, 40)).pipe(
-      Effect.map(focused => {
-        expect(focused).toBe('SmgRounds')
-      }),
-    ),
-  )
-
   it.effect(
-    'with a full spare gun, it opens on its upgrade, never on a gun that would replace it',
+    'with a spare gun, it opens on its upgrade, never on a gun that would replace it',
     () =>
-      focusAfterWalkingUp(withSmg(200, 360)).pipe(
+      focusAfterWalkingUp(withSmg(200)).pipe(
         Effect.map(focused => {
           expect(focused).toBe('SmgUpgrade')
         }),
@@ -417,7 +411,7 @@ describe('the row the shop opens on', () => {
   it.effect(
     'with nothing affordable, it opens on something to save up for',
     () =>
-      focusAfterWalkingUp(withSmg(5, 360)).pipe(
+      focusAfterWalkingUp(withSmg(5)).pipe(
         Effect.map(focused => {
           expect(focused).toBe('SmgUpgrade')
         }),
@@ -426,48 +420,48 @@ describe('the row the shop opens on', () => {
 })
 
 describe('what Rattles says', () => {
-  it.effect('he cheers a buy and tells short money apart from a full gun', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        withHp(
-          withArsenal(
-            browsing(withMoney(shopReady, 30)),
-            holdingSecond(gun('Shotgun', 48)),
+  it.effect(
+    'he cheers a buy and tells short money apart from a gun carried',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          withHp(
+            withArsenal(
+              browsing(withMoney(shopReady, 30)),
+              holdingSecond(gun('Shotgun', 48)),
+            ),
+            3,
           ),
-          3,
         ),
+        Story.model(({ shopChatter }) => {
+          expect(shopChatter).toEqual(ShopChatter.Greeting())
+        }),
+        Story.messageIn(
+          ShopDialogBinding,
+          ShopMessage.PressedBuyKey({ item: 'Shotgun' }),
+        ),
+        Story.model(({ shopChatter }) => {
+          expect(shopChatter).toEqual(ShopChatter.Refused({ item: 'Shotgun' }))
+        }),
+        Story.messageIn(
+          ShopDialogBinding,
+          ShopMessage.PressedBuyKey({ item: 'ShotgunUpgrade' }),
+        ),
+        Story.model(({ shopChatter }) => {
+          expect(shopChatter).toEqual(
+            ShopChatter.TooPricey({ item: 'ShotgunUpgrade' }),
+          )
+        }),
+        Story.messageIn(
+          ShopDialogBinding,
+          ShopMessage.PressedBuyKey({ item: 'Heart' }),
+        ),
+        Story.model(({ shopChatter, seats: [{ wallet }] }) => {
+          expect(shopChatter).toEqual(ShopChatter.Bought({ item: 'Heart' }))
+          expect(wallet.balance).toBe(5)
+        }),
+        resolveFocusShopItem,
       ),
-      Story.model(({ shopChatter }) => {
-        expect(shopChatter).toEqual(ShopChatter.Greeting())
-      }),
-      Story.messageIn(
-        ShopDialogBinding,
-        ShopMessage.PressedBuyKey({ item: 'ShotgunShells' }),
-      ),
-      Story.model(({ shopChatter }) => {
-        expect(shopChatter).toEqual(
-          ShopChatter.Refused({ item: 'ShotgunShells' }),
-        )
-      }),
-      Story.messageIn(
-        ShopDialogBinding,
-        ShopMessage.PressedBuyKey({ item: 'ShotgunUpgrade' }),
-      ),
-      Story.model(({ shopChatter }) => {
-        expect(shopChatter).toEqual(
-          ShopChatter.TooPricey({ item: 'ShotgunUpgrade' }),
-        )
-      }),
-      Story.messageIn(
-        ShopDialogBinding,
-        ShopMessage.PressedBuyKey({ item: 'Heart' }),
-      ),
-      Story.model(({ shopChatter, seats: [{ wallet }] }) => {
-        expect(shopChatter).toEqual(ShopChatter.Bought({ item: 'Heart' }))
-        expect(wallet.balance).toBe(5)
-      }),
-      resolveFocusShopItem,
-    ),
   )
 })

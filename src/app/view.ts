@@ -13,10 +13,7 @@ import { questTrackerView } from '../features/onboarding/questView'
 import type { ViewInputs as ProfileViewInputs } from '../features/profile/block'
 import { tabOf } from '../features/profile/profile'
 import { isShopShut } from '../features/shop/model'
-import {
-  ammoTagButtonView,
-  purchaseAnnouncementView,
-} from '../features/shop/purchaseHud'
+import { purchaseAnnouncementView } from '../features/shop/purchaseHud'
 import { victorySupportView } from '../features/support/supportView'
 import type { PointerDevice } from '../input/inputSchema'
 import { keyGrabToastView } from '../input/keyGrab'
@@ -44,7 +41,6 @@ import { BOOST_KIND_ORDER, PICKUPS, isBoosted } from '../world/gear/powerups'
 import { TRAPS, TRAP_KIND_ORDER } from '../world/gear/traps'
 import {
   WEAPONS,
-  hasEndlessRounds,
   heldTier,
   heldWeapon,
   isWieldingMelee,
@@ -209,7 +205,7 @@ const gunLabel = (model: Model): string => {
   return Option.match(maybeOtherGun(player.arsenal), {
     onNone: () => `Holding the ${held}. Your second slot is empty.`,
     onSome: other =>
-      `Holding the ${held}. Other slot: ${tierName(other.kind, other.tier)}, upgrade tier ${other.tier} of ${maxTier(other.kind)}${hasEndlessRounds(other.kind) ? '' : `, with ${other.rounds} ${WEAPONS[other.kind].roundsLabel}`}.`,
+      `Holding the ${held}. Other slot: ${tierName(other.kind, other.tier)}, upgrade tier ${other.tier} of ${maxTier(other.kind)}, ${other.loaded} ${WEAPONS[other.kind].roundsLabel} loaded.`,
   })
 }
 
@@ -466,7 +462,6 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
           : homeMenuView(model, h),
         preparationControlsView(model, h),
         gunClusterView(model, h),
-        ammoTagButtonView(model, h),
         debutCardView(model, h),
         questTrackerView(model, h),
         modeChoiceView(model, shareMountOf, h),

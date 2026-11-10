@@ -1,11 +1,7 @@
 import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import {
-  DRY_FIRE_DELAY_MS,
-  PLAYER_RADIUS,
-  ZOMBIE_HIT_PULSE_MS,
-} from '../../shared/constants'
+import { PLAYER_RADIUS, ZOMBIE_HIT_PULSE_MS } from '../../shared/constants'
 import {
   type Blow,
   type Struck,
@@ -20,8 +16,6 @@ import {
 import { isAmmoFree } from '../gear/powerups'
 import {
   beginReload,
-  canReload,
-  handOverWhenDry,
   heldGun,
   heldWeapon,
   isWieldingMelee,
@@ -101,8 +95,8 @@ import { bodyRadiusOf, deathState, isGrounded } from '../zombies/zombies'
 //   shatters one for SHATTER_SCALE times the damage (src/world/step/combat.ts), its
 //   shards splashing the small zombies beside it. A Big Lug is only
 //   slowed, but sprayed again while still slowed it freezes solid for a
-//   moment; Uncle Chunk is only ever slowed. Eighteen charges, never
-//   refilled.
+//   moment; Uncle Chunk is only ever slowed. Eighteen charges a load,
+//   reloaded like a gun's magazine.
 //
 // They never hurt their own player, on any setting: a lid's blast spares
 // its thrower and a pop only shoves (the owner, 2026-11-02). Only the
@@ -251,21 +245,6 @@ const withEvents = (world: World, events: ReadonlyArray<GameEvent>): World =>
     : modifyFields(world, {
         frameEvents: frameEvents => [...frameEvents, ...events],
       })
-
-const runDry = (world: World, slot: PlayerSlot): World => {
-  const { player: held } = seatStateAt(world, slot)
-  return withEvents(
-    withPlayer(world, slot, player =>
-      handOverWhenDry(
-        modifyFields(player, {
-          fireCooldownMs: () => DRY_FIRE_DELAY_MS,
-          charge: () => Charge.Idle(),
-        }),
-      ),
-    ),
-    [GameEvent.RanDry({ x: held.x, y: held.y })],
-  )
-}
 
 const startReload = (world: World, slot: PlayerSlot): World => {
   const { player: held } = seatStateAt(world, slot)
@@ -437,10 +416,8 @@ const fireCooker = (
               Charge.Building({ heldMs: deltaMs, aim: current.facing }),
           }),
         )
-      } else if (canReload(player)) {
-        return startReload(cooled, slot)
       } else {
-        return runDry(cooled, slot)
+        return startReload(cooled, slot)
       }
     },
     Building: ({ heldMs, aim }) => {
@@ -740,7 +717,6 @@ export const flattenPans: {
             mapPan(player, pan =>
               modifyFields(pan, {
                 loaded: () => magazineOf('Pan', pan.tier),
-                rounds: () => magazineOf('Pan', pan.tier),
               }),
             ),
           ),
@@ -858,7 +834,7 @@ const fireFreeze = (
   if (intent.trigger !== 'Held' || player.fireCooldownMs > 0) {
     return cooled
   }
-  return spare.loaded > 0 ? spray(cooled, slot) : runDry(cooled, slot)
+  return spare.loaded > 0 ? spray(cooled, slot) : startReload(cooled, slot)
 }
 
 // THE TRIGGER

@@ -14,7 +14,7 @@ import type { ProfileTab } from '@game/features/profile/model'
 import { pressHoldButton, pressKey, releaseAll } from '@game/input/input'
 import { MouseButton } from '@game/input/inputSchema'
 import { PLAYER_MAX_HP } from '@game/shared/constants'
-import { freshGun, mapGuns } from '@game/world/gear/weapons'
+import { freshGun } from '@game/world/gear/weapons'
 import { modifyFocus } from '@game/world/party/party'
 
 import { CALM, ROAMING } from './room'
@@ -217,16 +217,5 @@ export const sceneOf: {
           }),
       })
     : knifed
-  const dried = config.dry
-    ? modifyFocus(held, {
-        player: player =>
-          modifyFields(player, {
-            arsenal: arsenal =>
-              mapGuns(arsenal, gun =>
-                modifyFields(gun, { rounds: () => 0, loaded: () => 0 }),
-              ),
-          }),
-      })
-    : held
-  return { model: dried, isProfileOpen: Option.isSome(maybeProfileTab) }
+  return { model: held, isProfileOpen: Option.isSome(maybeProfileTab) }
 })
