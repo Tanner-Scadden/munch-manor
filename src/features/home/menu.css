@@ -165,9 +165,11 @@
   height: var(--cluster-h);
 }
 
-/* NOTE: PLAY is the one focal point: a chunky green game button with a pixel
-   bevel. The button's box never moves, so a tap near an edge still lands;
-   only its face sinks when pressed. */
+/* NOTE: PLAY is the one focal point: the dare your friends hand you, a
+   folded napkin card with a dog-eared corner, I DARE YOU scrawled in red
+   over the play mark (LORE.md, "PLAY is the dare"). The button's box never
+   moves, so a tap near an edge still lands; only its face sinks when
+   pressed. */
 .home-stage .home-play {
   width: max(112px, 54 * var(--a));
   padding: 0;
@@ -184,14 +186,27 @@
   align-items: center;
   justify-content: center;
   gap: max(8px, 3 * var(--a));
+  flex-direction: column;
   overflow: hidden;
-  border: 3px solid var(--menu-ink-on-green);
-  border-radius: var(--menu-radius-md);
-  background: var(--menu-primary);
+  border: 3px solid #2a1d14;
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 10px,
+      rgba(150, 118, 70, 0.14) 10px 12px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 10px,
+      rgba(150, 118, 70, 0.14) 10px 12px
+    ),
+    linear-gradient(#fbf4df, #eadfbf);
+  color: #2a1d14;
   box-shadow:
-    inset 0 3px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -4px 0 rgba(0, 0, 0, 0.18),
-    0 max(5px, 1.6 * var(--a)) 0 #2f6a1a;
+    inset 0 3px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -4px 0 rgba(42, 29, 20, 0.16),
+    0 max(5px, 1.6 * var(--a)) 0 #6b5434;
   transition: translate 70ms ease-out;
   pointer-events: none;
   animation: play-breathe 2.4s ease-in-out infinite;
@@ -211,11 +226,47 @@
   animation: play-shine 4s ease-in-out 1s infinite;
 }
 
+/* NOTE: the fold: the card's top right corner turned down, a pixel
+   triangle of the card's back. */
+.home-play-face::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: max(14px, 6 * var(--a));
+  aspect-ratio: 1;
+  background: linear-gradient(
+    225deg,
+    #2a1d14 0 calc(50% - 1px),
+    #c9b88e calc(50% - 1px) calc(50% + 2px),
+    #ddd0aa calc(50% + 2px)
+  );
+}
+
+.home-play-dare {
+  color: #c8352b;
+  font: bold round(clamp(10px, 3.4 * var(--a), 18px), 1px) / 1 var(--menu-font);
+  letter-spacing: 1px;
+  white-space: nowrap;
+  rotate: -4deg;
+}
+
 .home-play[data-mode='Endless'] .home-play-face {
-  background: linear-gradient(#a6f3ea, var(--menu-teal) 55%, #3aa89c);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 10px,
+      rgba(58, 168, 156, 0.18) 10px 12px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 10px,
+      rgba(58, 168, 156, 0.18) 10px 12px
+    ),
+    linear-gradient(#eefbf6, #c9eee6);
   box-shadow:
-    inset 0 3px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -4px 0 rgba(0, 0, 0, 0.18),
+    inset 0 3px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -4px 0 rgba(42, 29, 20, 0.16),
     0 max(5px, 1.6 * var(--a)) 0 #1d6a62;
 }
 
@@ -233,12 +284,12 @@
 }
 
 .home-play-icon {
-  height: min(max(44px, 20 * var(--a)), 72%);
+  height: min(max(36px, 16 * var(--a)), 58%);
   aspect-ratio: 1;
   translate: 10% 0;
   background: center / contain no-repeat;
   image-rendering: pixelated;
-  filter: drop-shadow(0 3px 0 rgba(255, 255, 255, 0.4));
+  filter: drop-shadow(0 3px 0 rgba(255, 255, 255, 0.6));
 }
 
 @keyframes play-breathe {
@@ -2981,6 +3032,12 @@ button.help-card:focus-visible {
 .game-root[data-layout='Portrait'] .home-play {
   width: auto;
   min-height: max(52px, 24 * var(--a));
+}
+
+/* NOTE: upright, PLAY is wide and short, so the scrawl sits beside the
+   play mark. */
+.game-root[data-layout='Portrait'] .home-play-face {
+  flex-direction: row;
 }
 
 .game-root[data-layout='Portrait'] .home-stage .home-coop {

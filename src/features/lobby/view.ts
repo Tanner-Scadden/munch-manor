@@ -4,14 +4,18 @@ import type { Html } from 'foldkit/html'
 import type { Dialog } from '@foldkit/ui'
 
 import { PROP_ICONS } from '../../art/callingArt'
-import { BOT_ICON, portraitOf } from '../../art/coopIcons'
+import {
+  CHICKEN_ICON,
+  SHAKE_ICON,
+  TIN_BOT_ICON,
+  portraitOf,
+} from '../../art/coopIcons'
 import {
   CAMPAIGN_ICON,
   CLOSE_ICON,
   ENDLESS_ICON,
   MANOR_ICON,
   PADLOCK_ICON,
-  PLAY_ICON,
   SKULL_ICONS,
   SKULL_OFF_ICON,
 } from '../../art/icons'
@@ -23,7 +27,6 @@ import {
 import type { Bot, HomeMode } from '../../domain/clientSchema'
 import type { MapId } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
-import { backButtonView } from '../../ui/cornerButtons'
 import {
   callingPropView,
   iconView,
@@ -67,12 +70,16 @@ import {
   isLobbyShown,
 } from './model'
 
-// The single player lobby (GAME_DESIGN.md, "The single player lobby"): the
-// co-op lobby's look and layout (src/features/coop/view.ts, src/features/coop/coop.css),
-// alone. Your seat with your hero card, the mode, the difficulty, and the
-// map, three empty crew seats where teammates will sit, and START. Its
-// classes are co-op's wherever the part is the same, and `lobby.css` holds
-// what is only the lobby's.
+// The single player lobby (GAME_DESIGN.md, "The single player lobby"),
+// dressed as the dare card your friends hand you (LORE.md, "PLAY is the
+// dare, the lobby is the dare card"): the co-op lobby's layout
+// (src/features/coop/view.ts) on a scrawled napkin. Each part is a line of
+// the card with a word or two in pencil: who is going in (your seat), coming
+// as (your hero), who you drag along (wind-up tin robots), out or stay (the
+// mode), the stakes, extra dares, which house, then SHAKE ON IT, and CHICKEN
+// OUT in the corner. Its classes are co-op's wherever the part is the same,
+// and `lobby.css` restyles them under `.lobby` alone, so co-op keeps its
+// own look.
 
 const CREW_SEATS = 3
 
@@ -96,19 +103,42 @@ const controlAttributes = (control: LobbyControl, h: LobbyViewBuilder) => [
   h.OnBlur(Message.BlurredControl()),
 ]
 
+// NOTE: a line's word or two, scrawled in pencil on the card. Read aloud
+// through the control or group it sits on, so it is hidden here.
+const scrawlView = (
+  words: string,
+  placement: 'Corner' | 'Inline',
+  h: LobbyViewBuilder,
+): Html =>
+  h.span(
+    [
+      h.Class('dare-scrawl'),
+      h.DataAttribute('place', placement),
+      h.AriaHidden(true),
+    ],
+    [words],
+  )
+
+// NOTE: BACK is CHICKEN OUT: a hen over the words, in the corner where
+// every screen keeps its way back.
 const lobbyBackView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
-  backButtonView(
-    {
-      attributes: [
-        ...controlAttributes('Back', h),
-        h.AriaKeyshortcuts(LOBBY_KEYS.Back.name),
-        h.OnClick(Message.ClickedBackButton()),
-      ],
-      className: 'coop-back',
-      label: 'Back to the menu',
-      extra: capView(inputs, LOBBY_KEYS.Back.cap, h),
-    },
-    h,
+  h.button(
+    [
+      ...controlAttributes('Back', h),
+      h.Type('button'),
+      h.Class('coop-back lobby-chicken'),
+      h.AriaLabel('Chicken out'),
+      h.AriaKeyshortcuts(LOBBY_KEYS.Back.name),
+      h.OnClick(Message.ClickedBackButton()),
+    ],
+    [
+      iconView('lobby-chicken-icon', CHICKEN_ICON, h),
+      h.span(
+        [h.Class('lobby-chicken-label'), h.AriaHidden(true)],
+        ['CHICKEN OUT'],
+      ),
+      ...capView(inputs, LOBBY_KEYS.Back.cap, h),
+    ],
   )
 
 // YOUR SEAT
@@ -178,6 +208,7 @@ const mySeatView = (inputs: ViewInputs, h: LobbyViewBuilder): Html => {
       h.AriaLabel(`${inputs.name}, you, rank ${rank}`),
     ],
     [
+      scrawlView('GOING IN', 'Corner', h),
       iconView(
         'coop-portrait coop-seat-head',
         portraitOf(inputs.look, calling),
@@ -197,6 +228,7 @@ const mySeatView = (inputs: ViewInputs, h: LobbyViewBuilder): Html => {
               ),
             ],
           ),
+          scrawlView('COMING AS', 'Inline', h),
           heroCardView(inputs, h),
         ],
       ),
@@ -212,7 +244,14 @@ const seatControlsAt = (index: number): readonly [LobbyControl, LobbyControl] =>
     (): readonly [LobbyControl, LobbyControl] => ['Bot1', 'Drop1'],
   )
 
-// NOTE: an empty seat is a button you can see: the bot's head and + BOT.
+// NOTE: the crew's first seat carries the line's words, who you drag along.
+const dragAlongView = (
+  seat: number,
+  h: LobbyViewBuilder,
+): ReadonlyArray<Html> =>
+  seat === 0 ? [scrawlView('DRAG ALONG', 'Corner', h)] : []
+
+// NOTE: an empty seat is a button you can see: a tin robot and + BOT.
 // A tap seats a bot there, with a goofy name and a hero picked from the
 // ones this player has unlocked. The first empty seat wears the key, B.
 const addBotTileView = (
@@ -226,6 +265,7 @@ const addBotTileView = (
     `seat-${seat}`,
     [h.Class('coop-seat lobby-seat-empty'), h.DataAttribute('state', 'Empty')],
     [
+      ...dragAlongView(seat, h),
       h.button(
         [
           ...controlAttributes(control, h),
@@ -236,7 +276,7 @@ const addBotTileView = (
           h.OnClick(Message.ClickedAddBotButton()),
         ],
         [
-          iconView('lobby-add-bot-icon', BOT_ICON, h),
+          iconView('lobby-add-bot-icon', TIN_BOT_ICON, h),
           h.span(
             [h.Class('lobby-add-bot-label'), h.AriaHidden(true)],
             [
@@ -254,11 +294,15 @@ const addBotTileView = (
 // NOTE: where teammates cannot sit: a dev link with players at the keyboard
 // leaves fewer seats. Faint, and pressed by nobody.
 const closedSeatView = (seat: number, h: LobbyViewBuilder): Html =>
-  h.keyed('li')(`seat-${seat}`, [
-    h.Class('coop-seat lobby-seat-empty'),
-    h.DataAttribute('state', 'Empty'),
-    h.AriaHidden(true),
-  ])
+  h.keyed('li')(
+    `seat-${seat}`,
+    [
+      h.Class('coop-seat lobby-seat-empty'),
+      h.DataAttribute('state', 'Empty'),
+      h.AriaHidden(true),
+    ],
+    dragAlongView(seat, h),
+  )
 
 // NOTE: a bot's hero card is the same card as yours, smaller: tap it for
 // the hero picker, which then chooses for this bot.
@@ -318,6 +362,7 @@ const botSeatView = (bot: Bot, index: number, h: LobbyViewBuilder): Html =>
       h.AriaLabel(`${bot.name}, bot teammate, ${CALLING_NAMES[bot.calling]}`),
     ],
     [
+      ...dragAlongView(index, h),
       iconView(
         'coop-portrait coop-seat-head',
         portraitOf(bot.look, bot.calling),
@@ -326,7 +371,7 @@ const botSeatView = (bot: Bot, index: number, h: LobbyViewBuilder): Html =>
       h.div(
         [h.Class('coop-nameline lobby-bot-nameline')],
         [
-          iconView('lobby-bot-mark', BOT_ICON, h),
+          iconView('lobby-bot-mark', TIN_BOT_ICON, h),
           h.span([h.Class('coop-nameplate'), h.AriaHidden(true)], [bot.name]),
         ],
       ),
@@ -498,6 +543,7 @@ const picksView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
       h.div(
         [h.Class('coop-pick-group'), h.Role('group'), h.AriaLabel('Mode')],
         [
+          scrawlView('OUT OR STAY', 'Corner', h),
           ...Array.map(MODES, mode => modePickView(inputs.picks, mode, h)),
           ...capView(inputs, LOBBY_KEYS.Mode.cap, h),
         ],
@@ -509,6 +555,7 @@ const picksView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
           h.AriaLabel('Difficulty'),
         ],
         [
+          scrawlView('STAKES', 'Corner', h),
           ...Array.map(DIFFICULTY_ORDER, difficulty =>
             skullPickView(inputs.picks, difficulty, h),
           ),
@@ -522,6 +569,7 @@ const picksView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
           h.AriaLabel('Modifiers'),
         ],
         [
+          scrawlView('EXTRA DARES', 'Corner', h),
           ...Array.map(MODIFIER_ORDER, modifier =>
             modifierPickView(inputs.picks, modifier, h),
           ),
@@ -534,13 +582,17 @@ const picksView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
           h.Role('group'),
           h.AriaLabel('Map'),
         ],
-        Array.map(MAPS, map => mapCardView(map, h)),
+        [
+          scrawlView('WHICH HOUSE', 'Corner', h),
+          ...Array.map(MAPS, map => mapCardView(map, h)),
+        ],
       ),
     ],
   )
 
-// START
+// SHAKE ON IT
 
+// NOTE: START is the handshake that seals the dare.
 const startButtonView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
   h.button(
     [
@@ -548,7 +600,7 @@ const startButtonView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
       h.Type('button'),
       h.Class('coop-ready lobby-start'),
       h.DataAttribute('ready', 'NotReady'),
-      h.AriaLabel('Start'),
+      h.AriaLabel('Shake on it'),
       h.AriaKeyshortcuts(LOBBY_KEYS.Start.name),
       h.OnClick(Message.ClickedStartButton()),
     ],
@@ -556,8 +608,8 @@ const startButtonView = (inputs: ViewInputs, h: LobbyViewBuilder): Html =>
       h.span(
         [h.Class('coop-ready-face')],
         [
-          iconView('coop-ready-icon', PLAY_ICON, h),
-          h.span([h.Class('coop-ready-label')], ['START']),
+          iconView('coop-ready-icon', SHAKE_ICON, h),
+          h.span([h.Class('coop-ready-label')], ['SHAKE ON IT']),
         ],
       ),
       ...capView(inputs, LOBBY_KEYS.Start.cap, h),
@@ -674,7 +726,7 @@ const view = LobbyComposition.makeView.withInputs<ViewInputs>(
               [
                 h.h2([h.Class('sr-only')], ['Lobby']),
                 h.div(
-                  [h.Class('coop-lobby')],
+                  [h.Class('coop-lobby dare-card')],
                   [
                     lobbyBackView(inputs, h),
                     seatsView(inputs, h),

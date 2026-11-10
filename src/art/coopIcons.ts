@@ -177,18 +177,61 @@ export const AWAY_ICON = icon([
 
 export const WAIT_ICON = icon(['XXXXX', '.XXX.', '..X..', '.X.X.', 'XXXXX'])
 
-// NOTE: the teammate bot's head, for the lobby's + BOT tiles and the mark
-// beside a bot's name.
-export const BOT_ICON = icon([
-  '.....Y.....',
-  '.....X.....',
-  '.XXXXXXXXX.',
-  'XXXXXXXXXXX',
-  'XXTTXXXTTXX',
-  'XXTTXXXTTXX',
-  'XXXXXXXXXXX',
-  'XXOXOXOXOXX',
-  '.XXXXXXXXX.',
+// THE DARE CARD (the single player lobby, LORE.md "PLAY is the dare")
+
+// NOTE: who you drag along: a wind-up tin robot from the nursery, a dented
+// silver head with a gold key in its side, for the lobby's + BOT tiles and
+// the mark beside a bot's name.
+export const TIN_BOT_ICON = pixelIconUrl(
+  [
+    '......R.........',
+    '......D.........',
+    '..SSSSSSSSS.....',
+    '.SSSSSSSSSSS.Y.Y',
+    '.SSTTSSSTTSSDYYY',
+    '.SSTTSSSTTSS.Y.Y',
+    '.SSSSSSSSSSS....',
+    '.SSDODODODSS....',
+    '.SSSSSSSSSSS....',
+    '..DDDDDDDDD.....',
+  ],
+  {
+    S: '#c9d1d9',
+    D: '#5b6570',
+    O: SHADE,
+    T: '#5fd4c8',
+    R: '#ff6b5e',
+    Y: '#ffe066',
+  },
+)
+
+// NOTE: SHAKE ON IT: two hands clasped, in START's dark ink.
+export const SHAKE_ICON = icon([
+  'OO.........OO',
+  'OOO.......OOO',
+  'OOOOO.OOOOOOO',
+  'OOO.OO.O.OOOO',
+  '.OOO.OO.O.OO.',
+  '..OOO.OOOOO..',
+  '...OOOOOOO...',
+  '.....OOO.....',
+])
+
+// NOTE: CHICKEN OUT: a white hen inked in outline, with a red comb, a gold
+// beak, and gold legs, so it reads on the napkin.
+export const CHICKEN_ICON = icon([
+  '...RR.......',
+  '..RRRO......',
+  '..OXXXO.....',
+  '.OXOXXO.....',
+  'YYOXXXO..OO.',
+  '.YOXXXXOOXO.',
+  '..OXXXXXXXO.',
+  '..OXXXXXXXO.',
+  '...OXXXXXO..',
+  '....OOOOO...',
+  '....Y..Y....',
+  '...YY.YY....',
 ])
 
 export const BACK_ICON = icon([

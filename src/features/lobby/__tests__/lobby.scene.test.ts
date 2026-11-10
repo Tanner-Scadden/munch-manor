@@ -4,6 +4,8 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, it } from '@effect/vitest'
 
+import { Message } from '../../../app/message'
+import { FocusHomeButton } from '../../../app/update/home'
 import { specialsOf } from '../../../domain/callingSpecials'
 import { heroesBoughtBy, home } from '../../../test/model.fixture'
 import {
@@ -21,8 +23,9 @@ import {
 } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
 
-// The single player lobby's view (src/features/lobby/lobbyView.ts): the co-op lobby's
-// look, alone, with one seat, three waiting, the picks, and START.
+// The single player lobby's view (src/features/lobby/view.ts): the dare card,
+// the co-op lobby's layout alone on a napkin, with one seat, three waiting,
+// the picks, and SHAKE ON IT.
 
 const handyman = modifyFields(home, {
   rank: current => ({ ...current, earnedPoints: pointsForRank(3) }),
@@ -46,6 +49,47 @@ describe('the lobby', () => {
         Scene.expect(lobbyStartButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
         Scene.expect(lobbyBackButton).toHaveAttr('aria-keyshortcuts', 'Escape'),
       ),
+  )
+
+  it.effect(
+    'reads as a dare card: a word or two a line, SHAKE ON IT, and CHICKEN OUT',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(handyman),
+        measureSurface,
+        ...openLobbyInScene(),
+        Scene.inside(
+          lobbyScreen,
+          Scene.expect(Scene.text('GOING IN')).toExist(),
+          Scene.expect(Scene.text('COMING AS')).toExist(),
+          Scene.expect(Scene.text('DRAG ALONG')).toExist(),
+          Scene.expect(Scene.text('OUT OR STAY')).toExist(),
+          Scene.expect(Scene.text('STAKES')).toExist(),
+          Scene.expect(Scene.text('EXTRA DARES')).toExist(),
+          Scene.expect(Scene.text('WHICH HOUSE')).toExist(),
+          Scene.expectAll(Scene.all.selector('.dare-scrawl')).toHaveCount(7),
+        ),
+        Scene.expect(lobbyStartButton).toContainText('SHAKE ON IT'),
+        Scene.expect(lobbyBackButton).toContainText('CHICKEN OUT'),
+        Scene.expect(Scene.text('START')).toBeAbsent(),
+      ),
+  )
+
+  it.effect('CHICKEN OUT by a tap goes home to PLAY', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(home),
+      measureSurface,
+      ...openLobbyInScene(),
+      Scene.click(lobbyBackButton),
+      Scene.Command.resolve(
+        FocusHomeButton({ button: 'Play' }),
+        Message.CompletedFocusHomeButton(),
+      ),
+      Scene.expect(lobbyScreen).toBeAbsent(),
+      Scene.expect(playButton).toExist(),
+    ),
   )
 
   it.effect(

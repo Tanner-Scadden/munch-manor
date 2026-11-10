@@ -141,7 +141,7 @@ describe('the hub', () => {
         Message.CompletedFocusCoopElement(),
       ),
       Scene.expect(
-        Scene.role('button', { name: 'Share the room link' }),
+        Scene.role('button', { name: 'I dare you: share the room link' }),
       ).toExist(),
     ),
   )
@@ -717,7 +717,9 @@ describe('the lobby', () => {
       Scene.expect(
         Scene.role('button', { name: 'Room code M N C H 7, tap to copy' }),
       ).toExist(),
-      Scene.click(Scene.role('button', { name: 'Share the room link' })),
+      Scene.click(
+        Scene.role('button', { name: 'I dare you: share the room link' }),
+      ),
       Scene.Command.resolve(
         ShareRoomLink({ code: CODE }),
         Message.CompletedShareRoomLink({ share: 'Copied' }),
