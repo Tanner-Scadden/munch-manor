@@ -516,8 +516,11 @@ export type PantryStash = typeof Pantry.Stocked.Type
 export const CrateRoom = Schema.Literals(['Parlour', 'Kitchen'])
 export type CrateRoom = typeof CrateRoom.Type
 
+// NOTE: what a crate holds: a trap, a Pickled Heart (only while someone in
+// the crew is missing one), or nothing once taken.
 export const CrateStock = defineTaggedUnion({
   Stocked: { trap: TrapKind },
+  Heart: {},
   Taken: {},
 })
 export type CrateStock = typeof CrateStock.Type

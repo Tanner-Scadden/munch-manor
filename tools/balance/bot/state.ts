@@ -62,6 +62,8 @@ export type BotState = {
   kitchenWave: number
   fridgeLog: FridgeLog
   gnomeTries: number
+  // NOTE: frames spent in this break, so a break the bot is stuck in ends.
+  breakFrames: number
   gnomesPlaced: number
   // Each break it found the shop open in, and what it bought there.
   shopVisits: Array<ShopVisitLog>
@@ -83,6 +85,7 @@ export const freshState: {
   kitchenWave: 0,
   fridgeLog: emptyFridgeLog(),
   gnomeTries: 0,
+  breakFrames: 0,
   gnomesPlaced: 0,
   shopVisits: [],
 }))

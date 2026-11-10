@@ -15,14 +15,13 @@ import {
   fridgeBoxOf,
   fridgePriceFor,
 } from '../../../src/world/fridge/leftovers'
-import { crateSpotOf, maybeFindIn } from '../../../src/world/gear/crates'
 import {
-  MEND_RULES,
-  isDamaged,
-  ownedCount,
-  trapBox,
-  trapLimitOf,
-} from '../../../src/world/gear/traps'
+  type CrateFind,
+  canTakeFind,
+  crateSpotOf,
+  maybeFindIn,
+} from '../../../src/world/gear/crates'
+import { MEND_RULES, isDamaged, trapBox } from '../../../src/world/gear/traps'
 import { freshGun, isCarrying, maxTier } from '../../../src/world/gear/weapons'
 import { distanceToBox, levelOf } from '../../../src/world/level/arena'
 import {
@@ -35,7 +34,6 @@ import {
   focusSlotOf,
   leadSeatOf,
 } from '../../../src/world/party/party'
-import type { TrapKind } from '../../../src/world/schema/worldSchema'
 import { maybeOfferInReach } from '../../../src/world/shop/purchase'
 import {
   STALL_BOX,
@@ -43,7 +41,7 @@ import {
   priceFor,
 } from '../../../src/world/shop/shop'
 import { doorCounts } from '../../../src/world/waves/endlessWaves'
-import { KEYS, type Model, type Vector, send } from './basics'
+import { FRAME_MS, KEYS, type Model, type Vector, send } from './basics'
 import {
   type Gun,
   firearmOf,
@@ -317,18 +315,15 @@ export const busiestDoor = (model: Model) => {
 // first crate whose trap it wants and may carry. A damaged trap mends while
 // the bot stands still beside it, so it walks up to the most worn one and
 // waits there with no keys down.
-const wantsFind = (trap: TrapKind): boolean =>
-  trap === 'Barricade' ? !NO_PLANKS : !NO_GNOME
+const wantsFind = (find: CrateFind): boolean =>
+  find === 'Heart' || (find === 'Barricade' ? !NO_PLANKS : !NO_GNOME)
 
 export const crateTarget = (model: Model): Vector | undefined =>
   Option.getOrUndefined(
     Array.findFirst(model.crates.crates, crate =>
       Option.exists(
         maybeFindIn(model, crate),
-        trap =>
-          wantsFind(trap) &&
-          ownedCount(model, focusSlotOf(model), trap) <
-            trapLimitOf(model, trap),
+        find => wantsFind(find) && canTakeFind(model, focusSlotOf(model), find),
       ),
     ).pipe(Option.map(crate => crateSpotOf(crate.room))),
   )
@@ -391,12 +386,24 @@ export const gnomeSpot = (model: Model): Vector =>
     )
   ] ?? focusOf(model).player
 
+// NOTE: a break waits for READY below Hard, and the bot steers straight at
+// what it wants, so cover in the way (the trunk, the couch, a tea table)
+// could hold it there for good. After 30 seconds it goes, by READY's
+// button where the key is taken (at a purchasable), as a player would.
+const BREAK_FRAMES = 30_000 / FRAME_MS
+
+export const isBreakOverdue = (state: BotState): boolean =>
+  state.breakFrames > BREAK_FRAMES
+
 export const prepPlan: {
   (model: Model, shopped: boolean): (state: BotState) => PrepPlan
   (state: BotState, model: Model, shopped: boolean): PrepPlan
 } = Function.dual(
   3,
   (state: BotState, model: Model, shopped: boolean): PrepPlan => {
+    if (isBreakOverdue(state)) {
+      return 'Go'
+    }
     if (
       isShopOpenFor(model.phase) &&
       !shopped &&

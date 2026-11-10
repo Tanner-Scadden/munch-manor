@@ -3,9 +3,16 @@ import { modifyFields } from 'foldkit/struct'
 
 import { SHOP_FIRST_WAVE } from '../../shared/constants'
 import { nextRandom } from '../../shared/prng'
+import { isMissingHeart, maxHpOf } from '../heroes/calling'
 import { isKitchenOpen } from '../kitchen/kitchen'
 import { type Tile, levelOf, tileCenter } from '../level/arena'
-import { forEachSeat, isCoop, isStanding, seatStateAt } from '../party/party'
+import {
+  atSeat,
+  forEachSeat,
+  isCoop,
+  isStanding,
+  seatStateAt,
+} from '../party/party'
 import { isPending } from '../run/lessons'
 import type { World } from '../schema/world'
 import {
@@ -35,6 +42,12 @@ import { ownedCount, stockTrap, trapLimitOf } from './traps'
 // rest of the run, so it rolls again too. Crates open from the first
 // break that sold traps before (SHOP_FIRST_WAVE), and stay shut in a wave.
 //
+// Hearts: with no heart to buy, the crates are the house's mercy. While
+// someone in the crew is missing a heart when a crate rolls, it may hold a
+// Pickled Heart in place of a trap (heartChance, at most one crate a
+// break). Only a standing player missing a heart takes it, and it heals
+// one. Never in a Glass run, whose one heart stays one heart.
+//
 // The rolls come from the crates' own generator (`crates.rngState`, salted
 // from the run's seed in freshCrates), so they move no other roll. In a new
 // player's guided first break the parlour crate always holds a Plank Pile,
@@ -45,6 +58,7 @@ type CrateRules = Readonly<{
   firstWave: number
   plankWeight: number
   gnomeWeight: number
+  heartChance: number
 }>
 
 // NOTE: a Plank Pile comes up three times in five: planks are the trap a
@@ -54,6 +68,7 @@ const CRATE_RULES: CrateRules = {
   firstWave: SHOP_FIRST_WAVE,
   plankWeight: 3,
   gnomeWeight: 2,
+  heartChance: 1,
 }
 
 // WHERE
@@ -82,47 +97,92 @@ const openWaveOf = (world: World): Option.Option<number> =>
 export const areCratesOpen = (world: World): boolean =>
   Option.isSome(openWaveOf(world))
 
-// NOTE: the trap a crate holds right now: only in a break, only stocked.
+// NOTE: what a crate can hold: a trap, or a Pickled Heart.
+export type CrateFind = TrapKind | 'Heart'
+
+// NOTE: what a crate holds right now: only in a break, only stocked.
 export const maybeFindIn: {
-  (crate: Crate): (world: World) => Option.Option<TrapKind>
-  (world: World, crate: Crate): Option.Option<TrapKind>
-} = Function.dual(2, (world: World, crate: Crate): Option.Option<TrapKind> =>
+  (crate: Crate): (world: World) => Option.Option<CrateFind>
+  (world: World, crate: Crate): Option.Option<CrateFind>
+} = Function.dual(2, (world: World, crate: Crate): Option.Option<CrateFind> =>
   areCratesOpen(world)
     ? CrateStock.match(crate.stock, {
-        Stocked: ({ trap }) => Option.some(trap),
+        Stocked: ({ trap }): Option.Option<CrateFind> => Option.some(trap),
+        Heart: (): Option.Option<CrateFind> => Option.some('Heart'),
         Taken: () => Option.none(),
       })
     : Option.none(),
 )
+
+// NOTE: a crate may hold a heart while anyone in the crew is missing one,
+// never under Glass.
+const isHeartDue = (world: World): boolean =>
+  !world.modifiers.glass &&
+  Array.some(world.seats, ({ player }) => isMissingHeart(player))
 
 // STOCKING
 
 const isTutorialPlank = (world: World, room: CrateRoom): boolean =>
   room === 'Parlour' && !isCoop(world) && isPending(world.lessons.openBreak)
 
-const rollTrap = (state: number): readonly [TrapKind, number] => {
+const rollTrap = (state: number): readonly [CrateStock, number] => {
   const draw = nextRandom(state)
   const total = CRATE_RULES.plankWeight + CRATE_RULES.gnomeWeight
   return [
-    draw.value * total < CRATE_RULES.plankWeight ? 'Barricade' : 'Turret',
+    CrateStock.Stocked({
+      trap:
+        draw.value * total < CRATE_RULES.plankWeight ? 'Barricade' : 'Turret',
+    }),
     draw.nextState,
   ]
 }
 
-type Rolled = Readonly<{ crates: ReadonlyArray<Crate>; rngState: number }>
+// NOTE: a heart first, while one is due, then a trap.
+const rollStock = (
+  state: number,
+  isHeartRolled: boolean,
+): readonly [CrateStock, number] => {
+  if (!isHeartRolled) {
+    return rollTrap(state)
+  }
+  const draw = nextRandom(state)
+  return draw.value < CRATE_RULES.heartChance
+    ? [CrateStock.Heart(), draw.nextState]
+    : rollTrap(draw.nextState)
+}
 
-// NOTE: a fresh find for each of `rooms`, in order, from the crates' stream.
+type Rolled = Readonly<{
+  crates: ReadonlyArray<Crate>
+  rngState: number
+  isHeartDue: boolean
+}>
+
+// NOTE: a fresh find for each of `rooms`, in order, from the crates' stream;
+// once one holds a heart, the rest hold traps.
 const rollFor = (world: World, rooms: ReadonlyArray<CrateRoom>): Rolled => {
-  const start: Rolled = { crates: [], rngState: world.crates.rngState }
-  return Array.reduce(rooms, start, ({ crates, rngState }, room): Rolled => {
-    const [trap, nextState] = rollTrap(rngState)
-    const crate: Crate = {
-      room,
-      stock: CrateStock.Stocked({
-        trap: isTutorialPlank(world, room) ? 'Barricade' : trap,
-      }),
+  const start: Rolled = {
+    crates: [],
+    rngState: world.crates.rngState,
+    isHeartDue: isHeartDue(world),
+  }
+  return Array.reduce(rooms, start, (rolled, room): Rolled => {
+    if (isTutorialPlank(world, room)) {
+      const [, rngState] = rollTrap(rolled.rngState)
+      const crate: Crate = {
+        room,
+        stock: CrateStock.Stocked({ trap: 'Barricade' }),
+      }
+      return modifyFields(rolled, {
+        crates: Array.append(crate),
+        rngState: () => rngState,
+      })
     }
-    return { crates: Array.append(crates, crate), rngState: nextState }
+    const [stock, rngState] = rollStock(rolled.rngState, rolled.isHeartDue)
+    return {
+      crates: Array.append(rolled.crates, { room, stock }),
+      rngState,
+      isHeartDue: rolled.isHeartDue && !CrateStock.isAnyOf(['Heart'])(stock),
+    }
   })
 }
 
@@ -155,18 +215,58 @@ const addOpenedRooms = (world: World): World => {
 
 // TAKING
 
-const canCarry = (world: World, slot: PlayerSlot, trap: TrapKind): boolean =>
-  ownedCount(world, slot, trap) < trapLimitOf(world, trap)
+// NOTE: a trap within the caps, or a heart for a player missing one.
+export const canTakeFind: {
+  (slot: PlayerSlot, find: CrateFind): (world: World) => boolean
+  (world: World, slot: PlayerSlot, find: CrateFind): boolean
+} = Function.dual(
+  3,
+  (world: World, slot: PlayerSlot, find: CrateFind): boolean =>
+    find === 'Heart'
+      ? !world.modifiers.glass &&
+        isMissingHeart(seatStateAt(world, slot).player)
+      : ownedCount(world, slot, find) < trapLimitOf(world, find),
+)
+
+const heal = (world: World, slot: PlayerSlot): World =>
+  modifyFields(world, {
+    seats: atSeat(slot, {
+      player: player =>
+        modifyFields(player, {
+          hp: hp => Math.min(maxHpOf(player), hp + 1),
+        }),
+    }),
+  })
+
+// NOTE: a heart heals and says so as a grabbed heart does (its sound,
+// callout, and sparkle); a trap goes into the taker's stock.
+const giveFind = (
+  world: World,
+  slot: PlayerSlot,
+  find: CrateFind,
+  spot: Vector,
+): World =>
+  find === 'Heart'
+    ? modifyFields(heal(world, slot), {
+        frameEvents: Array.append(
+          GameEvent.PickupGrabbed({ x: spot.x, y: spot.y, kind: 'Heart' }),
+        ),
+      })
+    : modifyFields(stockTrap(world, slot, find), {
+        frameEvents: Array.append(
+          GameEvent.CrateTaken({ x: spot.x, y: spot.y, trap: find }),
+        ),
+      })
 
 const takeAt = (world: World, slot: PlayerSlot, index: number): World =>
   pipe(
     Array.get(world.crates.crates, index),
     Option.flatMap(crate =>
-      Option.map(maybeFindIn(world, crate), trap => ({ crate, trap })),
+      Option.map(maybeFindIn(world, crate), find => ({ crate, find })),
     ),
     Option.filter(
-      ({ crate, trap }) =>
-        canCarry(world, slot, trap) &&
+      ({ crate, find }) =>
+        canTakeFind(world, slot, find) &&
         distanceBetween(
           seatStateAt(world, slot).player,
           crateSpotOf(crate.room),
@@ -174,9 +274,8 @@ const takeAt = (world: World, slot: PlayerSlot, index: number): World =>
     ),
     Option.match({
       onNone: () => world,
-      onSome: ({ crate, trap }) => {
-        const spot = crateSpotOf(crate.room)
-        return modifyFields(stockTrap(world, slot, trap), {
+      onSome: ({ crate, find }) =>
+        modifyFields(giveFind(world, slot, find, crateSpotOf(crate.room)), {
           crates: crates =>
             modifyFields(crates, {
               crates: Array.map((current, at) =>
@@ -185,12 +284,7 @@ const takeAt = (world: World, slot: PlayerSlot, index: number): World =>
                   : current,
               ),
             }),
-          frameEvents: frameEvents => [
-            ...frameEvents,
-            GameEvent.CrateTaken({ x: spot.x, y: spot.y, trap }),
-          ],
-        })
-      },
+        }),
     }),
   )
 
