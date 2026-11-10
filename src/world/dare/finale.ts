@@ -61,8 +61,10 @@ export const FINALE_RULES: FinaleRules = {
 
 // READING
 
-// NOTE: the house is hungrier from the moment the list is done to the end.
-const isHouseHungry = (world: World): boolean =>
+// NOTE: the house is hungrier from the moment the list is done to the end:
+// Uncle Chunk's wave and the hold-out while the door unlocks. The music
+// stampedes then (src/app/update/music.ts).
+export const isHouseHungry = (world: World): boolean =>
   !Finale.isAnyOf(['Hunting'])(world.dare.finale)
 
 // NOTE: a wave's spawns, a quarter more of them once the house is hungrier.

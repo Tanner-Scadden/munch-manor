@@ -141,7 +141,7 @@ Retuned on 2026-10-28 after a playtest said shooting shook too much. Trauma move
 
 Original, synthesized with Web Audio, no audio files: a goofy, swung haunted-house groove in E minor. The patterns are data in `src/audio/music.ts`.
 
-- **Moods.** Creep (100 BPM) on the title and in Preparation, Romp (138 BPM) in a wave, Stampede (152 BPM) on the finale and endless. Stingers for a cleared wave, Victory, and Game Over.
+- **Moods.** Creep (100 BPM) on the title and in Preparation, Romp (138 BPM) in a wave, Stampede (152 BPM) in a wave once the list is done (Uncle Chunk and the hold-out at the front door) and in Endless from wave 10. Stingers for a cleared wave, an escape, and Game Over.
 - **Who owns what.** `update` decides only the mood and any stinger and sends `CueMusic` when it changes. The scheduler lives with the audio resource. Music never feeds back into the Model. M mutes everything, N toggles music.
 
 #### Proposed balance

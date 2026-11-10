@@ -11,6 +11,7 @@ import {
   type Model,
   Phase,
   type PlannedSpawn,
+  RunMode,
   ZombieAction,
   ZombieState,
 } from '../../app/model'
@@ -19,6 +20,7 @@ import { CueMusic } from '../../app/update/music'
 import { PlaySound, ResumeAudio } from '../../app/update/sound'
 import { FetchBuild } from '../../app/update/version'
 import { FIXED_STEP_MS, ZOMBIE_MAX_HP } from '../../shared/constants'
+import { DISTANT_SPAWN, escaping, withFinale } from '../../test/model.fixture'
 import {
   APPLICATION,
   SURFACE,
@@ -27,8 +29,8 @@ import {
   resolvePlayed,
   tick,
 } from '../../test/testing'
-import { DISTANT_SPAWN, escaping } from '../../test/model.fixture'
 import { asVeteran } from '../../test/veteran'
+import { Finale } from '../../world/dare/dareSchema'
 import { START_LEVEL } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
@@ -71,6 +73,13 @@ const fighting = (wave: number, audio: AudioState): Model =>
   modifyFields(titleScreen(audio), {
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [FAR_AWAY_SPAWN] }),
   })
+
+// NOTE: the hold-out: the list done and the front door unlocking.
+const holdingOut = (audio: AudioState): Model =>
+  withFinale(
+    fighting(4, audio),
+    Finale.Unlocking({ remainingMs: 30_000, durationMs: 45_000 }),
+  )
 
 const resolveCue = (mood: MusicMood) =>
   Story.Command.resolve(CueMusic, Message.CompletedCueMusic({ mood }))
@@ -152,27 +161,29 @@ describe('music follows the phase', () => {
       ),
   )
 
-  it.effect('the tenth wave stampedes and an escape plays its stinger', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready())),
+  it.effect(
+    'the hungrier house stampedes and an escape plays its stinger',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready())),
+        ),
+        press('Enter'),
+        Story.Command.expectExact(
+          CueMusic({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
+        ),
+        resolveCue('Stampede'),
+        tick(FRAME_MS),
+        Story.model(({ phase }) => {
+          expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
+        }),
+        Story.Command.expectHas(
+          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'Victory' }),
+        ),
+        resolveCue('Silence'),
+        resolvePlayed('RankUp'),
       ),
-      press('Enter'),
-      Story.Command.expectExact(
-        CueMusic({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
-      ),
-      resolveCue('Stampede'),
-      tick(FRAME_MS),
-      Story.model(({ phase }) => {
-        expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
-      }),
-      Story.Command.expectHas(
-        CueMusic({ mood: 'Silence', level: 'Full', stinger: 'Victory' }),
-      ),
-      resolveCue('Silence'),
-      resolvePlayed('RankUp'),
-    ),
   )
 
   it.effect('GameOver plays its stinger', () =>
@@ -336,10 +347,42 @@ describe('music only plays when it can be heard', () => {
       ),
   )
 
-  it.effect('mute silences the music, and unmuting brings it back', () =>
+  it.effect('wave 10 of a hunt still romps, with the list not done', () =>
     Story.story(
       APPLICATION,
       Story.given(fighting(FINAL_WAVE, AudioState.Ready())),
+      press('KeyM'),
+      resolveCue('Silence'),
+      press('KeyM'),
+      Story.Command.expectExact(
+        CueMusic({ mood: 'Romp', level: 'Full', stinger: 'None' }),
+      ),
+      resolveCue('Romp'),
+    ),
+  )
+
+  it.effect('Endless stampedes from wave 10, with no list', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(fighting(FINAL_WAVE, AudioState.Ready()), {
+          mode: () => RunMode.Endless(),
+        }),
+      ),
+      press('KeyM'),
+      resolveCue('Silence'),
+      press('KeyM'),
+      Story.Command.expectExact(
+        CueMusic({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
+      ),
+      resolveCue('Stampede'),
+    ),
+  )
+
+  it.effect('mute silences the music, and unmuting brings it back', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(holdingOut(AudioState.Ready())),
       press('KeyM'),
       Story.model(({ soundSetting, musicSetting }) => {
         expect(soundSetting).toBe('Muted')
