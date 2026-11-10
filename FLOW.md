@@ -202,9 +202,10 @@ flowchart LR
 
 The lore choices that most change these charts, from `LORE.md`:
 
-1. Why are you trapped? Proposed: dinner is the host's party game, on a deal with the hungry house (see `LORE.md`).
-2. Who are the zombies? Proposed: the guests who lost the game.
-3. Who is Rattles? Proposed: the first guest who lost, kept on as staff.
-4. What goes in the pool of things to leave with, and how does each one come back to you?
-5. Is the dining room the parlour redressed, or a new room?
-6. Do rooms roll, or only what is in them?
+1. Why go? Proposed: everyone has heard it is haunted and nobody believes it, and the invitation promises the Munch fortune to the last guest at the table.
+2. Why are you trapped? Proposed: dinner is the host's party game, on a deal with the hungry house (see `LORE.md`).
+3. Who are the zombies? Proposed: the guests who lost the game.
+4. Who is Rattles? Proposed: the first guest who lost, kept on as staff.
+5. What goes in the pool of things to leave with, and how does each one come back to you?
+6. Is the dining room the parlour redressed, or a new room?
+7. Do rooms roll, or only what is in them?

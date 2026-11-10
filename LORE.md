@@ -153,6 +153,24 @@ You came to a dinner party (Clue). The family (the Munches) and the other guests
 
 This ties together what the game already says: the Groaner "eats the host", Uncle Chunk is "the relative nobody invited", MUNCHED!, the soup, the fridge, the party hat.
 
+### Why anyone goes: everyone knows, nobody believes it
+
+The owner asked on 2026-11-09: what makes people go, and wouldn't everyone know the place is haunted? Proposed: yes, everyone has heard. Nobody believes it, and the invitation is too good to turn down.
+
+- **Everyone has heard the stories.** Munch Manor is the town's favourite ghost story: the dinner parties, the guests who "stayed for dessert". It is the kind of thing your uncle tells at barbecues. Nobody takes it seriously, because nobody who went has ever come back to say otherwise.
+- **The invitation is the most exclusive one in town.** Heavy card, a wax seal, your name in gold. Getting one is a brag. Turning one down is unthinkable.
+- **It promises something.** "Dinner at Munch Manor. Formal. Bring an appetite. The last guest at the table inherits the house." The Munch fortune, to whoever is still at the table at the end of the night. The joke is in the wording: the last guest at the table is the one on it.
+- **Each guest has their own reason**, which is where the heroes come from: the Penny Pincher came for the free dinner and the fortune, the Line Cook was hired to cook it, the Handyman was called in to fix the boiler, and the Track Star was jogging past and heard knocking. Your plus ones came because you asked, and the bots are Rattles' rentals.
+- **The intro shows the moment it stops being a story.** The drive is full of cars that never left, the hat is on the steps, the door knocks back. "This feels really off" is a guest realising the barbecue story was true.
+
+It also gives the game's own currency a home: a **Bone** could be the Munch fortune itself, paid out a little each night to the guests who make it furthest (open question 7).
+
+**Other ways to answer it**, if this does not land:
+
+- **Nobody knows.** The house looks lovely from the road, the Munches are just very rich and very private, and no one comes back to warn anyone. Cleaner, but the haunted reputation is half the fun.
+- **A dare.** Everyone knows and you go because of it: a night at the most haunted house in town, for the photos. Fits SHARE on the end card, but loses the invitation.
+- **You had no choice.** Your car broke down at the gate in the storm. Classic, but it drops the dinner party.
+
 ### Rattles is the coat check
 
 Every party has a coat check. Rattles ran it, and he never left: the coats of every guest who never went home still hang behind his stall. He is dead but not hungry, so he sells to the living. He wants you to get out, mostly because the dead do not tip.
@@ -318,7 +336,7 @@ Ordered from cheapest to most work, so the story can land before the systems do:
 
 The lore choices that most change the game, roughly in order.
 
-1. **Why are you in the manor, and why are you trapped?** Proposed: invited to the party, which is the host's party game (see "Why trap a guest? The party game"). Settle it or pick another bridge.
+1. **Why go, and why are you trapped?** Proposed: everyone has heard the stories and nobody believes them, and the invitation promises the Munch fortune to the last guest at the table (see "Why anyone goes"). Once inside, dinner is the host's party game (see "Why trap a guest? The party game"). Settle it or pick another bridge.
 2. **Who are the zombies?** The party guests and the family? Strangers the house ate? Does Uncle Chunk lead them, or is he just the biggest?
 3. **Who is Rattles?** The butler, a past guest who never got out, the house's first owner, or something the house made to keep you spending?
 4. **What locks you in?** Proposed: Uncle Chunk, for the game, on a deal with the hungry house. Or the house alone, a will, or Rattles (see the other bridges).
