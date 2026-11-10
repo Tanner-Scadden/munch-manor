@@ -259,10 +259,15 @@ export const RUNS_PATH = '/api/runs'
 // build cached before it.
 export const SHARE_EVENT_VERSION = 2
 
+// NOTE: a win's screen is Escaped (CoopEscaped for a crew). Victory and
+// CoopVictory were the tenth wave cleared, before the escape; a cached
+// build may still send them, and D1 keeps the rows it stored.
 export const ShareScreen = Schema.Literals([
   'Death',
-  'Victory',
+  'Escaped',
   'CoopDeath',
+  'CoopEscaped',
+  'Victory',
   'CoopVictory',
 ])
 export type ShareScreen = typeof ShareScreen.Type

@@ -329,8 +329,9 @@ export const play: {
                     : plan === 'Return'
                       ? ROOM_CENTER
                       : boxCenter(
-                          levelOf(model).thresholds[busiestDoor(model) ?? 'North']
-                            .box,
+                          levelOf(model).thresholds[
+                            busiestDoor(model) ?? 'North'
+                          ].box,
                         )
         if (plan === 'Shop') {
           const item = wantedPurchase(state, model)
@@ -733,7 +734,7 @@ export const play: {
       seed,
       cleared: model.stats.wavesCleared,
       killedBy,
-      victory: model.phase._tag === 'Escaped',
+      escaped: model.phase._tag === 'Escaped',
       runMs: model.stats.runMs,
       moneyAfterWave,
       hurtBy,

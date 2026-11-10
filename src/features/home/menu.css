@@ -784,7 +784,7 @@
   font: bold round(clamp(12px, 4 * var(--a), 24px), 1px) / 1 var(--menu-font);
 }
 
-/* SUPPORT: the coffee pill on Victory. On the home menu the coffee is a
+/* SUPPORT: the coffee pill on the escape card. On the home menu the coffee is a
    corner button by the gear (HOME CORNER COFFEE below). */
 
 .support-link {
@@ -839,7 +839,7 @@
   flex-direction: column;
 }
 
-.support-link[data-placement='Victory'] {
+.support-link[data-placement='Escaped'] {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 6px);
   left: calc(env(safe-area-inset-left, 0px) + 6px);
@@ -3125,7 +3125,7 @@ button.help-card:focus-visible {
 /* END BUTTONS
 
    NOTE: the end card's buttons, icon first and all one size: HOME, RETRY in
-   green, KEEP GOING on Victory, and SHARE. Equal columns as wide as the
+   green, and SHARE. Equal columns as wide as the
    widest, and one row as tall as the tallest. They pop in one after another
    once the card is up (src/screens/game/menus.ts). */
 .mode-choice.end-actions {

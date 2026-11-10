@@ -550,7 +550,7 @@ const shareEvent: ShareEvent = {
   version: 2,
   visitId: summary.visitId,
   build: summary.build,
-  screen: 'CoopVictory',
+  screen: 'CoopEscaped',
   mode: 'Campaign',
   difficulty: 'Hard',
   path: 'Sheet',
@@ -585,7 +585,7 @@ describe('POST /api/shares', () => {
         expect(rows).toEqual([
           {
             visit_id: shareEvent.visitId,
-            screen: 'CoopVictory',
+            screen: 'CoopEscaped',
             mode: 'Campaign',
             difficulty: 'Hard',
             event_version: 2,
@@ -616,6 +616,21 @@ describe('POST /api/shares', () => {
           'SELECT event_version, path FROM shares',
         )
         expect(value_19).toEqual([{ event_version: 1, path: 'Link' }])
+      }),
+  )
+
+  it.effect(
+    'a Victory share from a build before the escape is still taken as it is',
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp()
+        const response = yield* postShare(
+          setup,
+          toJson({ ...shareEvent, screen: 'CoopVictory' }),
+        )
+        expect(response.status).toBe(202)
+        const rows = yield* query(setup, 'SELECT screen FROM shares')
+        expect(rows).toEqual([{ screen: 'CoopVictory' }])
       }),
   )
 
@@ -839,8 +854,8 @@ describe("the report's co-op counts", () => {
         ])
         const value_33 = yield* query(setup, `${ENDS} ORDER BY party, outcome`)
         expect(value_33).toEqual([
+          { party: 'Crew', outcome: 'Escaped', runs: 1 },
           { party: 'Crew', outcome: 'GameOver', runs: 3 },
-          { party: 'Crew', outcome: 'Victory', runs: 1 },
         ])
         const value_34 = yield* query(
           setup,

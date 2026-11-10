@@ -257,7 +257,9 @@ const program = Effect.gen(function* () {
   const runsEndedOn = (screen: string): number =>
     endedAs(
       String.startsWith('Coop')(screen) ? 'Crew' : 'Solo',
-      String.endsWith('Victory')(screen) ? 'Victory' : 'GameOver',
+      String.endsWith('Escaped')(screen) || String.endsWith('Victory')(screen)
+        ? 'Escaped'
+        : 'GameOver',
     )
 
   const totalGames = Array.reduce(medians, 0, (sum, { runs }) => sum + runs)

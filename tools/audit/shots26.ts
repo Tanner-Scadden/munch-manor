@@ -65,7 +65,7 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   {
     name: 'victory',
-    query: 'wave=8&phase=victory&stats&tick=72',
+    query: 'wave=8&phase=escaped&stats&tick=72',
     hasChip: false,
   },
   {

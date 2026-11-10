@@ -793,7 +793,7 @@ describe('Menu from a run', () => {
   )
 
   it.effect(
-    'Game Over and Victory offer Menu after the grace, and it goes home',
+    'Game Over and the escape offer Menu after the grace, and it goes home',
     () =>
       Effect.forEach(
         [Phase.GameOver({ wave: 4 }), Phase.Escaped({ wave: 10 })],

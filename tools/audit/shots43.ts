@@ -59,12 +59,12 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   {
     name: 'victory',
-    query: `wave=10&phase=victory&stats&difficulty=Hard&${LEARNED}&tick=400`,
+    query: `wave=10&phase=escaped&stats&difficulty=Hard&${LEARNED}&tick=400`,
     buttons: BUTTONS,
   },
   {
     name: 'victory-confetti',
-    query: `wave=10&phase=victory&stats&difficulty=Hard&${LEARNED}&tick=90`,
+    query: `wave=10&phase=escaped&stats&difficulty=Hard&${LEARNED}&tick=90`,
   },
   // NOTE: the rank strip: a bar part way through a rank, mid fill into a new
   // rank, the finished rank up, a win into the next badge, and a crew's.
@@ -84,12 +84,12 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   {
     name: 'victory-rankup',
-    query: `wave=10&phase=victory&stats&difficulty=Hard&${LEARNED}&rank=1900&rankgain=250&tick=400`,
+    query: `wave=10&phase=escaped&stats&difficulty=Hard&${LEARNED}&rank=1900&rankgain=250&tick=400`,
     buttons: BUTTONS,
   },
   {
     name: 'coop-win-rank',
-    query: `wave=10&phase=victory&stats&party=3&${LEARNED}&rank=2400&rankgain=95&tick=400`,
+    query: `wave=10&phase=escaped&stats&party=3&${LEARNED}&rank=2400&rankgain=95&tick=400`,
     buttons: BUTTONS,
   },
   {
@@ -99,7 +99,7 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   {
     name: 'coop-win-rank-4',
-    query: `wave=10&phase=victory&stats&party=4&${LEARNED}&rank=2400&rankgain=95&tick=400`,
+    query: `wave=10&phase=escaped&stats&party=4&${LEARNED}&rank=2400&rankgain=95&tick=400`,
     buttons: BUTTONS,
   },
   {
@@ -114,7 +114,7 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   {
     name: 'coop-win',
-    query: `wave=10&phase=victory&stats&party=3&${LEARNED}&tick=400`,
+    query: `wave=10&phase=escaped&stats&party=3&${LEARNED}&tick=400`,
     buttons: BUTTONS,
   },
   { name: 'coop-ended', query: `coop=ended&${LEARNED}&tick=30` },

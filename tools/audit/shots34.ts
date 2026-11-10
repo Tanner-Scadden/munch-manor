@@ -166,7 +166,7 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   { name: 'pause', query: 'wave=3&seen=all&start=wave&phase=paused' },
   { name: 'gameover', query: 'wave=5&phase=gameover&stats' },
-  { name: 'victory', query: 'wave=8&phase=victory&stats' },
+  { name: 'victory', query: 'wave=8&phase=escaped&stats' },
   { name: 'hand', query: 'support', act: clickButton(/^more/i) },
   { name: 'whatsnew', query: '', act: fromHand(/what's new/i) },
   {

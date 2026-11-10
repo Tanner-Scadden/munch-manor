@@ -7,8 +7,8 @@ import { isBotCrew } from '../domain/bots'
 import { effectiveModifiersOf } from '../domain/onlineRun'
 import { isInRun } from '../domain/run'
 import type { Difficulty } from '../shared/playerData'
-import { isCoop, leadSeatOf, playersOf } from '../world/party/party'
 import { dareItemsFoundOf } from '../world/dare/dare'
+import { isCoop, leadSeatOf, playersOf } from '../world/party/party'
 import { maskOfModifiers } from '../world/run/modifiers'
 import { Phase, RunMode, type RunStats } from '../world/schema/worldSchema'
 import { roundWave } from '../world/waves/waves'
@@ -223,9 +223,9 @@ export const runSummaryOf: {
 
 const shareScreenOf = (isWon: boolean, isCrew: boolean): ShareScreen => {
   if (isCrew) {
-    return isWon ? 'CoopVictory' : 'CoopDeath'
+    return isWon ? 'CoopEscaped' : 'CoopDeath'
   } else {
-    return isWon ? 'Victory' : 'Death'
+    return isWon ? 'Escaped' : 'Death'
   }
 }
 

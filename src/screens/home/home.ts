@@ -375,7 +375,7 @@ const countRun = (
     : counted
 }
 
-// NOTE: a run is counted when it ends: on Game Over, on Victory, and when
+// NOTE: a run is counted when it ends: on Game Over, on an escape, and when
 // the player leaves it for the menu. Counting then and not every frame means
 // the save is written once a run.
 // NOTE: `played` is the run's difficulty, which an online co-op run takes

@@ -535,10 +535,10 @@ const reportCampaign = (
       )
     }
     const deaths = Array.map(
-      Array.filter(results, result => !result.victory),
+      Array.filter(results, result => !result.escaped),
       result => result.cleared + 1,
     )
-    const wins = Array.filter(results, result => result.victory)
+    const wins = Array.filter(results, result => result.escaped)
     yield* Console.log(
       '\nWave  died  hearts lost  pressure s  relax s  length s  peak alive  (means over runs that played the wave)',
     )
@@ -563,7 +563,7 @@ const reportCampaign = (
         )}`,
       )
     }
-    yield* Console.log(`\nVictories: ${wins.length} of ${setup.runs}`)
+    yield* Console.log(`\nEscapes: ${wins.length} of ${setup.runs}`)
     yield* Console.log(
       `Close calls: ${Array.filter(wins, r => r.minHp <= 1).length} of ${wins.length} wins reached 1 heart`,
     )
@@ -646,10 +646,10 @@ const reportCampaign = (
       `Wins by fridge weapon pulled: ${Array.join(
         Array.map(['Cooker', 'Pan', 'Freeze'], prize => {
           const pulled = fridgeWins(prize)
-          return `${prize} ${Array.filter(pulled, r => r.victory).length}/${pulled.length}`
+          return `${prize} ${Array.filter(pulled, r => r.escaped).length}/${pulled.length}`
         }),
         ', ',
-      )}, none ${Array.filter(results, r => r.fridge.pulls === 0 && r.victory).length}/${Array.filter(results, r => r.fridge.pulls === 0).length}`,
+      )}, none ${Array.filter(results, r => r.fridge.pulls === 0 && r.escaped).length}/${Array.filter(results, r => r.fridge.pulls === 0).length}`,
     )
     yield* Console.log(
       `Median run length: ${(median(Array.map(results, r => r.runMs)) / 60000).toFixed(2)} min`,
@@ -750,7 +750,7 @@ const reportCampaign = (
       const diedTo = Array.filter(atWave, fight => fight.diedToIt)
       const diedAtWave = Array.filter(
         results,
-        r => !r.victory && r.cleared + 1 === bossWave,
+        r => !r.escaped && r.cleared + 1 === bossWave,
       ).length
       const perFight = (pick: (fight: BossFight) => number) =>
         (
@@ -766,7 +766,7 @@ const reportCampaign = (
           Array.flatMap(
             Array.filter(
               results,
-              (r: RunResult) => r.victory || r.cleared >= bossWave,
+              (r: RunResult) => r.escaped || r.cleared >= bossWave,
             ),
             (r: RunResult) => r.boss,
           ),

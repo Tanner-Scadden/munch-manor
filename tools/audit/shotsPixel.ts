@@ -165,11 +165,11 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   {
     name: 'end-win',
-    query: `wave=10&phase=victory&stats&difficulty=Hard&rank=1900&rankgain=537&mods=14`,
+    query: `wave=10&phase=escaped&stats&difficulty=Hard&rank=1900&rankgain=537&mods=14`,
   },
   {
     name: 'end-crew',
-    query: `wave=10&phase=victory&stats&party=3&rank=2400&rankgain=204&mods=9`,
+    query: `wave=10&phase=escaped&stats&party=3&rank=2400&rankgain=204&mods=9`,
   },
   { name: 'coop-card', query: 'coop=card' },
   { name: 'coop-card-won', query: 'coop=cardwon' },

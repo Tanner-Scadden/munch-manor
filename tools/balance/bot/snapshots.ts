@@ -144,7 +144,7 @@ export const playSnapshot: {
     )
     const log = result.waves[snapshot.wave - 1] ?? emptyWaveLog()
     const outcome: WaveOutcome =
-      result.victory || result.cleared >= snapshot.wave
+      result.escaped || result.cleared >= snapshot.wave
         ? 'Cleared'
         : result.minHp <= 0
           ? 'Died'

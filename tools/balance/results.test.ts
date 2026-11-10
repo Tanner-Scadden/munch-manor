@@ -33,7 +33,7 @@ const runWith = (
 ): RunResult => ({
   seed,
   cleared: 4,
-  victory: false,
+  escaped: false,
   runMs: 240_000,
   moneyAfterWave: [37, 139, 305, 558],
   hurtBy: { ...noHurt, Runner: 3 },
