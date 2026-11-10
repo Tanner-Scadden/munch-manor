@@ -17,6 +17,9 @@ import {
   type DareThing,
   DareThingState,
 } from '../../world/dare/dareSchema'
+import { caseFootOf } from '../../world/feats/caseSpots'
+import { stoveBoxOf } from '../../world/kitchen/stove'
+import { levelOf } from '../../world/level/arena'
 import {
   GameEvent,
   Phase,
@@ -136,16 +139,28 @@ export const pickLine: {
 
 // NOTE: where a thing on the list lies for the bubble to point at: its spot
 // while hidden (behind the boards too, as the kitchen holler points there),
-// or where its carrier fell.
-const targetOf = (thing: DareThing): Option.Option<Vector> =>
-  DareThingState.matchOrElse(
-    thing.state,
-    {
-      Hidden: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
-      Dropped: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
-    },
-    (): Option.Option<Vector> => Option.none(),
-  )
+// where its carrier fell, the case it is locked in, or the stove.
+const targetOf =
+  (model: Model) =>
+  (thing: DareThing): Option.Option<Vector> =>
+    DareThingState.matchOrElse(
+      thing.state,
+      {
+        Hidden: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
+        Dropped: ({ x, y }): Option.Option<Vector> => Option.some({ x, y }),
+        InCase: ({ caseId }): Option.Option<Vector> =>
+          Option.map(
+            Array.findFirst(model.cases, ({ id }) => id === caseId),
+            displayCase => caseFootOf(levelOf(model), displayCase),
+          ),
+        InStove: (): Option.Option<Vector> =>
+          Option.map(stoveBoxOf(model), box => ({
+            x: (box.left + box.right) / 2,
+            y: box.bottom,
+          })),
+      },
+      (): Option.Option<Vector> => Option.none(),
+    )
 
 const thingHint = (thing: DareThing): Option.Option<Hint> =>
   DareThingState.matchOrElse(
@@ -157,6 +172,16 @@ const thingHint = (thing: DareThing): Option.Option<Hint> =>
           maybeThingId: Option.some(thing.id),
         }),
       Dropped: (): Option.Option<Hint> =>
+        Option.some({
+          lines: THING_LINES[thing.kind],
+          maybeThingId: Option.some(thing.id),
+        }),
+      InCase: (): Option.Option<Hint> =>
+        Option.some({
+          lines: THING_LINES[thing.kind],
+          maybeThingId: Option.some(thing.id),
+        }),
+      InStove: (): Option.Option<Hint> =>
         Option.some({
           lines: THING_LINES[thing.kind],
           maybeThingId: Option.some(thing.id),
@@ -270,7 +295,7 @@ const isThingGone = (model: Model, maybeThingId: Option.Option<number>) =>
       Option.isNone(
         Option.flatMap(
           Array.findFirst(model.dareThings, thing => thing.id === id),
-          targetOf,
+          targetOf(model),
         ),
       ),
   })
@@ -392,7 +417,7 @@ export const maybeHintCall = (model: Model): Option.Option<HintCall> =>
           maybeTarget: Option.flatMap(maybeThingId, id =>
             Option.flatMap(
               Array.findFirst(model.dareThings, thing => thing.id === id),
-              targetOf,
+              targetOf(model),
             ),
           ),
         }),

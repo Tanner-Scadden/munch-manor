@@ -38,7 +38,8 @@ import {
 } from '../../schema/worldSchema'
 import { offersOf } from '../../shop/purchase'
 import { stepWorld } from '../../step/stepWorld'
-import { CASE_SPOTS, rollCases, takeCase } from '../cases'
+import { CASE_SPOTS } from '../caseSpots'
+import { rollCases, takeCase } from '../cases'
 import { goalOf } from '../feats'
 
 // Display cases (src/world/feats/cases.ts): each run rolls its prizes and

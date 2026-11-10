@@ -1,23 +1,9 @@
-import { Array, Function, Option, Result, pipe } from 'effect'
+import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { TILE_SIZE } from '../../shared/constants'
 import { shuffle } from '../../shared/prng'
 import { giveWeapon } from '../fridge/leftovers'
-import {
-  type Box,
-  type Level,
-  START_LEVEL,
-  type Tile,
-  levelOf,
-  tileBox,
-} from '../level/arena'
-import {
-  type LevelSpec,
-  type RoomSpec,
-  roomSpotsOf,
-  widthOf,
-} from '../level/plan'
+import { levelOf } from '../level/arena'
 import { atSeat, forEachSeat } from '../party/party'
 import { DIFFICULTY_ORDER } from '../run/difficulty'
 import type { World } from '../schema/world'
@@ -30,9 +16,9 @@ import {
   GameEvent,
   type PlayerSlot,
   Purchasable,
-  type Vector,
 } from '../schema/worldSchema'
 import type { Offer } from '../shop/purchase'
+import { CASE_SPOTS, caseBoxOf, caseFootOf, isCaseShown } from './caseSpots'
 import { hasDone } from './feats'
 
 // Display cases (owner, 2026-11-10, "No shop" in GAME_DESIGN.md): the guns
@@ -46,129 +32,9 @@ import { hasDone } from './feats'
 // (src/world/shop/purchase.ts). A gun from a case arrives fresh, at tier 0
 // with no kills, and levels on its own kills (src/world/gear/gunLevels.ts).
 
-// THE SPOTS
-
-// NOTE: how a case looks: a gun rack on the wall, a glass display case, or
-// a trophy case. Only the drawing reads it.
-export type CaseLook = 'Rack' | 'Glass' | 'Trophy'
-
-// NOTE: `isNear` spots sit by the start and draw from the easier pool. A
-// spot is the run of tiles a room's map marks for it (`cc`), left to right.
-export type CaseSpot = Readonly<{
-  tiles: Array.NonEmptyReadonlyArray<Tile>
-  room: string
-  look: CaseLook
-  isNear: boolean
-}>
-
-const LOOKS: Array.NonEmptyReadonlyArray<CaseLook> = ['Rack', 'Glass', 'Trophy']
-
-const isStartRoom = (spec: LevelSpec, room: RoomSpec): boolean => {
-  const left = room.origin.column * TILE_SIZE
-  const top = room.origin.row * TILE_SIZE
-  return (
-    spec.start.x >= left &&
-    spec.start.x < left + widthOf(room.tiles) * TILE_SIZE &&
-    spec.start.y >= top &&
-    spec.start.y < top + room.tiles.length * TILE_SIZE
-  )
-}
-
-const spotsBySpec = new WeakMap<LevelSpec, ReadonlyArray<CaseSpot>>()
-
-// NOTE: a level's case spots, read off its rooms' maps (roomSpotsOf in
-// src/world/level/plan.ts), in room order: every `cc` of the room a run
-// starts in (the dining room's three, docs/ROOM_DRAFTS.md), then the first
-// of each other room, the kitchen and each slot's, so wherever a room
-// stands its case stands with it. The count and which are near never
-// change with the arrangement, so a run rolls its cases before its rooms
-// are placed. A level keeps its spots, so a frame only reads them.
-const caseSpotsOf = (spec: LevelSpec): ReadonlyArray<CaseSpot> => {
-  const cached = spotsBySpec.get(spec)
-  if (cached !== undefined) {
-    return cached
-  }
-  const pieces = Array.flatMap(roomSpotsOf(spec), ({ room, cases }) => {
-    const isNear = Option.exists(
-      Array.findFirst(spec.rooms, ({ id }) => id === room),
-      roomSpec => isStartRoom(spec, roomSpec),
-    )
-    return Array.filterMap(isNear ? cases : Array.take(cases, 1), tiles =>
-      Array.isReadonlyArrayNonEmpty(tiles)
-        ? Result.succeed({ tiles, room, isNear })
-        : Result.failVoid,
-    )
-  })
-  const spots = Array.map(pieces, (piece, index): CaseSpot => ({
-    ...piece,
-    look: Option.getOrElse(
-      Array.get(LOOKS, index % LOOKS.length),
-      () => LOOKS[0],
-    ),
-  }))
-  spotsBySpec.set(spec, spots)
-  return spots
-}
-
-// NOTE: the spots a run's cases are rolled for: the start level's, whose
-// count and near ones every arrangement shares.
-export const CASE_SPOTS: ReadonlyArray<CaseSpot> = caseSpotsOf(START_LEVEL.spec)
-
 type CaseRules = Readonly<{ reachPx: number; tagLiftPx: number }>
 
 const CASE_RULES: CaseRules = { reachPx: 10, tagLiftPx: 18 }
-
-const NO_SPOT: CaseSpot = {
-  tiles: [{ column: 0, row: 0 }],
-  room: '',
-  look: 'Rack',
-  isNear: false,
-}
-
-const spotOf = (level: Level, displayCase: DisplayCase): CaseSpot =>
-  Option.getOrElse(
-    Array.get(caseSpotsOf(level.spec), displayCase.spot),
-    () => NO_SPOT,
-  )
-
-export const caseBoxOf: {
-  (displayCase: DisplayCase): (level: Level) => Box
-  (level: Level, displayCase: DisplayCase): Box
-} = Function.dual(2, (level: Level, displayCase: DisplayCase): Box => {
-  const { tiles } = spotOf(level, displayCase)
-  const first = tileBox(Array.headNonEmpty(tiles))
-  const last = tileBox(Array.lastNonEmpty(tiles))
-  return { ...first, right: last.right }
-})
-
-export const caseLookOf: {
-  (displayCase: DisplayCase): (level: Level) => CaseLook
-  (level: Level, displayCase: DisplayCase): CaseLook
-} = Function.dual(
-  2,
-  (level: Level, displayCase: DisplayCase): CaseLook =>
-    spotOf(level, displayCase).look,
-)
-
-// NOTE: the floor point a case stands on, the middle of its tiles' bottom.
-export const caseFootOf: {
-  (displayCase: DisplayCase): (level: Level) => Vector
-  (level: Level, displayCase: DisplayCase): Vector
-} = Function.dual(2, (level: Level, displayCase: DisplayCase): Vector => {
-  const box = caseBoxOf(level, displayCase)
-  return { x: (box.left + box.right) / 2, y: box.bottom }
-})
-
-// NOTE: a case counts once its room is open.
-export const isCaseShown: {
-  (displayCase: DisplayCase): (level: Level) => boolean
-  (level: Level, displayCase: DisplayCase): boolean
-} = Function.dual(2, (level: Level, displayCase: DisplayCase): boolean =>
-  Array.some(
-    level.rooms,
-    ({ id, isOpen }) => id === spotOf(level, displayCase).room && isOpen,
-  ),
-)
 
 // THE ROLL
 
@@ -316,39 +182,43 @@ export const rollCases: {
 
 // OPENING
 
-const openFor = (
-  world: World,
-  displayCase: DisplayCase,
-  slot: PlayerSlot,
-): World => {
-  const foot = caseFootOf(levelOf(world), displayCase)
-  return modifyFields(world, {
-    cases: cases =>
-      Array.map(cases, current =>
-        current.id === displayCase.id
-          ? modifyFields(current, {
-              state: () => CaseState.Opened({ by: slot }),
-            })
-          : current,
-      ),
-    frameEvents: frameEvents => [
-      ...frameEvents,
-      GameEvent.CaseOpened({
-        x: foot.x,
-        y: foot.y,
-        prize: displayCase.prize,
-        opener: slot,
-      }),
-    ],
-  })
-}
+// NOTE: a case springs open for the seat at `slot`: by its feat, or for a
+// thing off the dare's list delivered to it (src/world/dare/dareCases.ts).
+export const openCaseFor: {
+  (displayCase: DisplayCase, slot: PlayerSlot): (world: World) => World
+  (world: World, displayCase: DisplayCase, slot: PlayerSlot): World
+} = Function.dual(
+  3,
+  (world: World, displayCase: DisplayCase, slot: PlayerSlot): World => {
+    const foot = caseFootOf(levelOf(world), displayCase)
+    return modifyFields(world, {
+      cases: cases =>
+        Array.map(cases, current =>
+          current.id === displayCase.id
+            ? modifyFields(current, {
+                state: () => CaseState.Opened({ by: slot }),
+              })
+            : current,
+        ),
+      frameEvents: frameEvents => [
+        ...frameEvents,
+        GameEvent.CaseOpened({
+          x: foot.x,
+          y: foot.y,
+          prize: displayCase.prize,
+          opener: slot,
+        }),
+      ],
+    })
+  },
+)
 
 const tryOpen = (world: World, slot: PlayerSlot): World =>
   Array.reduce(world.cases, world, (current, displayCase) =>
     CaseState.isAnyOf(['Locked'])(displayCase.state) &&
     isCaseShown(levelOf(current), displayCase) &&
     hasDone(current, slot, displayCase.feat)
-      ? openFor(current, displayCase, slot)
+      ? openCaseFor(current, displayCase, slot)
       : current,
   )
 

@@ -13,7 +13,11 @@ import { gunIcon } from '../../art/sprites/guns'
 import type { Drawable } from '../../render/depth'
 import { GLINT } from '../../render/drawing'
 import { featLockShapes } from '../../render/featLockView'
-import { caseFootOf, caseLookOf, isCaseShown } from '../../world/feats/cases'
+import {
+  caseFootOf,
+  caseLookOf,
+  isCaseShown,
+} from '../../world/feats/caseSpots'
 import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
 import {

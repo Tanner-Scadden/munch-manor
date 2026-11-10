@@ -2,11 +2,13 @@ import { Array, Function, Option, Result, pipe } from 'effect'
 
 import { type Difficulty } from '../../shared/playerData'
 import { type Seeded, nextRandom, shuffle } from '../../shared/prng'
+import { caseRoomOf } from '../feats/caseSpots'
 import { type Level, levelOf, tileCenter } from '../level/arena'
-import { roomSpotsOf } from '../level/plan'
+import { type LevelSpec, roomSpotsOf } from '../level/plan'
 import { focusOf, forEachSeat, isStanding, seatStateAt } from '../party/party'
 import { type World, modifyWorldFields } from '../schema/world'
 import {
+  type ExitId,
   GameEvent,
   Phase,
   type PlayerSlot,
@@ -41,9 +43,11 @@ import {
 // NOTE: how each thing comes back to you. Hidden things sit in one of a
 // few hand-picked spots; the marked zombie carries his and drops it when he
 // goes down; behind the boards is a spot in a room not open yet; the music
-// box sits in a spot and plays its tune. A case's page opens with a feat and
-// the recipe cooks at the stove, so neither rolls until the display cases
-// and the stove's recipe are built. The hat comes with the finale.
+// box sits in a spot and plays its tune. The guest book's page is locked in
+// a display case further in, and falls out in front of it when the case
+// opens (by its feat, or a thing off the list delivered to it); Grandma's
+// recipe cooks at the stove the first time a player earns the stove's feat
+// (src/world/dare/dareCases.ts). The hat comes with the finale.
 export type DareWay =
   | 'Hidden'
   | 'Marked'
@@ -68,6 +72,8 @@ const ROLLABLE_WAYS: ReadonlyArray<DareWay> = [
   'Marked',
   'BehindBoards',
   'Heard',
+  'InCase',
+  'Cooked',
 ]
 
 const isRollable = (kind: DareKind): boolean =>
@@ -93,15 +99,16 @@ export const LIST_LENGTHS: Readonly<Record<Difficulty, number>> = {
 
 type DareRules = Readonly<{
   reachPx: number
-  deliverReachPx: number
   offListCount: number
   markFromWave: number
   dropInsetPx: number
 }>
 
+// NOTE: how close to a display case's foot a thing in hand is delivered.
+export const DELIVER_REACH_PX = 14
+
 const DARE_RULES: DareRules = {
   reachPx: 10,
-  deliverReachPx: 14,
   offListCount: 2,
   markFromWave: 2,
   dropInsetPx: 8,
@@ -109,31 +116,76 @@ const DARE_RULES: DareRules = {
 
 // SPOTS
 
-type Spot = Readonly<{ point: Vector; isBehindBoards: boolean }>
+// NOTE: how deep a room is: 0 for one with no boards (the dining room), 1
+// behind one set (the kitchen, the west and east slots), 2 behind two (the
+// far slot, past the east room). A thing rolls into a spot or a case by
+// these weights, so most of the hunt is behind boards and the deepest rooms
+// the most likely: a run has to spend its keys to finish the list. Tuned
+// against the balance bot (most Double Dare escapes came at wave 3 with
+// every spot alike).
+const DEPTH_WEIGHTS: Array.NonEmptyReadonlyArray<number> = [1, 3, 6]
+
+const weightOf = (depth: number): number =>
+  Option.getOrElse(Array.get(DEPTH_WEIGHTS, depth), () =>
+    Array.lastNonEmpty(DEPTH_WEIGHTS),
+  )
+
+type Spot = Readonly<{
+  point: Vector
+  depth: number
+  isBehindBoards: boolean
+}>
+
+const exitDepthOf = (spec: LevelSpec, exit: ExitId): number =>
+  Option.match(
+    Array.findFirst(spec.exits, ({ id }) => id === exit),
+    {
+      onNone: () => 1,
+      onSome: ({ requires }) =>
+        1 +
+        Array.reduce(requires, 0, (deepest, required) =>
+          Math.max(deepest, exitDepthOf(spec, required)),
+        ),
+    },
+  )
+
+// NOTE: a room's depth by its id, from the boards on the way to it.
+export const roomDepthOf: {
+  (room: string): (spec: LevelSpec) => number
+  (spec: LevelSpec, room: string): number
+} = Function.dual(2, (spec: LevelSpec, room: string): number =>
+  Option.match(
+    Array.findFirst(spec.rooms, ({ id }) => id === room),
+    {
+      onNone: () => 0,
+      onSome: ({ maybeExit }) =>
+        Option.match(maybeExit, {
+          onNone: () => 0,
+          onSome: exit => exitDepthOf(spec, exit),
+        }),
+    },
+  ),
+)
 
 const spotsByLevel = new WeakMap<Level, ReadonlyArray<Spot>>()
 
 // NOTE: every hiding spot of the level's rooms in world pixels, read off
 // each room's drafted marks (`1` to `4`, roomSpotsOf in
 // src/world/level/plan.ts), so a spot follows its room into whichever slot
-// the run rolled; a room behind an exit is behind boards.
+// the run rolled, with its room's depth.
 export const spotsOf = (level: Level): ReadonlyArray<Spot> => {
   const cached = spotsByLevel.get(level)
   if (cached !== undefined) {
     return cached
   }
-  const boarded = Array.filterMap(level.spec.rooms, ({ id, maybeExit }) =>
-    Option.isSome(maybeExit) ? Result.succeed(id) : Result.failVoid,
-  )
-  const spots = Array.flatMap(roomSpotsOf(level.spec), ({ room, hiding }) =>
-    Array.map(
-      hiding,
-      ({ tile }): Spot => ({
-        point: tileCenter(tile),
-        isBehindBoards: Array.contains(boarded, room),
-      }),
-    ),
-  )
+  const spots = Array.flatMap(roomSpotsOf(level.spec), ({ room, hiding }) => {
+    const depth = roomDepthOf(level.spec, room)
+    return Array.map(hiding, ({ tile }): Spot => ({
+      point: tileCenter(tile),
+      depth,
+      isBehindBoards: depth > 0,
+    }))
+  })
   spotsByLevel.set(level, spots)
   return spots
 }
@@ -162,21 +214,46 @@ type Placing = Readonly<{
   free: ReadonlyArray<Spot>
 }>
 
+// NOTE: one of `items` drawn by weight, with the draw's next state.
+const drawWeighted = <A>(
+  state: number,
+  items: ReadonlyArray<A>,
+  weight: (item: A) => number,
+): Seeded<Option.Option<A>> => {
+  const draw = nextRandom(state)
+  const total = Array.reduce(items, 0, (sum, item) => sum + weight(item))
+  const target = draw.value * total
+  const [, picked] = Array.reduce(
+    items,
+    [0, Option.none<A>()] as const,
+    ([below, found], item): readonly [number, Option.Option<A>] => {
+      const above = below + weight(item)
+      return [
+        above,
+        Option.isNone(found) && target < above ? Option.some(item) : found,
+      ]
+    },
+  )
+  return [draw.nextState, Option.orElse(picked, () => Array.last(items))]
+}
+
 const drawSpot = (
   placing: Placing,
   wantsBoards: boolean,
   start: Vector,
 ): Seeded<Readonly<{ free: ReadonlyArray<Spot>; point: Vector }>> => {
-  const draw = nextRandom(placing.state)
   const fitting = Array.filter(
     placing.free,
     ({ isBehindBoards }) => !wantsBoards || isBehindBoards,
   )
   const pool = Array.isReadonlyArrayNonEmpty(fitting) ? fitting : placing.free
-  return Option.match(Array.get(pool, Math.floor(draw.value * pool.length)), {
-    onNone: () => [draw.nextState, { free: placing.free, point: start }],
+  const [nextState, picked] = drawWeighted(placing.state, pool, ({ depth }) =>
+    weightOf(depth),
+  )
+  return Option.match(picked, {
+    onNone: () => [nextState, { free: placing.free, point: start }],
     onSome: spot => [
-      draw.nextState,
+      nextState,
       {
         free: Array.filter(placing.free, other => other !== spot),
         point: spot.point,
@@ -185,10 +262,37 @@ const drawSpot = (
   })
 }
 
+// NOTE: the case the guest book's page is locked in: one in a room behind
+// boards, by the rooms' depth weights, or the first case if none is.
+const drawCase = (
+  state: number,
+  world: World,
+  level: Level,
+): Seeded<number> => {
+  const deep = Array.filter(
+    world.cases,
+    displayCase => roomDepthOf(level.spec, caseRoomOf(level, displayCase)) > 0,
+  )
+  const [nextState, picked] = drawWeighted(state, deep, displayCase =>
+    weightOf(roomDepthOf(level.spec, caseRoomOf(level, displayCase))),
+  )
+  return [
+    nextState,
+    Option.getOrElse(
+      Option.map(
+        Option.orElse(picked, () => Array.head(world.cases)),
+        ({ id }) => id,
+      ),
+      () => 0,
+    ),
+  ]
+}
+
 const placeThing = (
   placing: Placing,
   kind: DareKind,
-  start: Vector,
+  world: World,
+  level: Level,
 ): Seeded<Readonly<{ free: ReadonlyArray<Spot>; state: DareThingState }>> => {
   const way = DARE_WAYS[kind]
   if (way === 'Marked') {
@@ -197,10 +301,23 @@ const placeThing = (
       { free: placing.free, state: DareThingState.Marked() },
     ]
   }
+  if (way === 'Cooked') {
+    return [
+      placing.state,
+      { free: placing.free, state: DareThingState.InStove() },
+    ]
+  }
+  if (way === 'InCase') {
+    const [state, caseId] = drawCase(placing.state, world, level)
+    return [
+      state,
+      { free: placing.free, state: DareThingState.InCase({ caseId }) },
+    ]
+  }
   const [state, { free, point }] = drawSpot(
     placing,
     way === 'BehindBoards',
-    start,
+    level.start,
   )
   return [state, { free, state: DareThingState.Hidden(point) }]
 }
@@ -252,7 +369,7 @@ const rolledThings = (
       { kind, isAsked },
       index,
     ): readonly [Placing, DareThing] => {
-      const [state, placed] = placeThing(current, kind, level.start)
+      const [state, placed] = placeThing(current, kind, world, level)
       return [
         { state, free: placed.free },
         { id: index, kind, isAsked, state: placed.state },
@@ -431,7 +548,13 @@ const insideBounds = (level: Level, point: Vector): Vector => ({
   ),
 })
 
-const dropAt = (world: World, thing: DareThing, spot: Vector): World =>
+// NOTE: a thing falls to the floor at `spot`, for the first standing
+// player to walk onto it: where its carrier fell, or in front of the case
+// or the stove that held it (src/world/dare/dareCases.ts).
+export const dropAt: {
+  (thing: DareThing, spot: Vector): (world: World) => World
+  (world: World, thing: DareThing, spot: Vector): World
+} = Function.dual(3, (world: World, thing: DareThing, spot: Vector): World =>
   modifyWorldFields(world, {
     dareThings: things =>
       setThing(things, thing.id, DareThingState.Dropped(spot)),
@@ -439,7 +562,8 @@ const dropAt = (world: World, thing: DareThing, spot: Vector): World =>
       ...events,
       GameEvent.DareDropped({ ...spot, kind: thing.kind }),
     ],
-  })
+  }),
+)
 
 // NOTE: Uncle Chunk's party hat falls where he does, on the list, for the
 // first standing player to walk onto it. Its id follows the house's things.
@@ -572,8 +696,9 @@ export const advanceDare = (world: World): World =>
 
 // DELIVERING
 
-// NOTE: the display cases' hook: a seat standing within reach of `point`
-// with a thing off the list in hand delivers it there (the first it took),
+// NOTE: the display cases' hook (src/world/dare/dareCases.ts): a seat
+// standing within reach of `point` with a thing off the list in hand
+// delivers it there (the first it took),
 // and the DareDelivered event says what and by whom. Out of reach, or with
 // nothing in hand, nothing changes.
 export const deliverHeld: {
@@ -581,8 +706,7 @@ export const deliverHeld: {
   (world: World, slot: PlayerSlot, point: Vector): World
 } = Function.dual(3, (world: World, slot: PlayerSlot, point: Vector): World => {
   const { seat, player } = seatStateAt(world, slot)
-  return isStanding(seat) &&
-    distanceBetween(player, point) <= DARE_RULES.deliverReachPx
+  return isStanding(seat) && distanceBetween(player, point) <= DELIVER_REACH_PX
     ? Option.match(Array.head(heldBy(world, slot)), {
         onNone: () => world,
         onSome: thing =>

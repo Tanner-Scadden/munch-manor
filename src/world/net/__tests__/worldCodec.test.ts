@@ -318,11 +318,12 @@ describe("the boss's charge on the wire", () => {
 // stands in each slot (rolled rooms), then the run's `dare` and its
 // `dareThings` and the dare's events (the dare), then the dare's `finale`,
 // FrontDoorUnlocking, FrontDoorOpened, SteppedOut, and the Escaped phase
-// (the finale). The wire must not change without a protocol bump. A
+// (the finale), then a dare thing's InCase and InStove (the case's page
+// and the stove's recipe). The wire must not change without a protocol bump. A
 // change to how the room plays moves the bytes with no change to the wire,
 // as zombies coming in promptly after their warning did, and Normal's
 // eased health and speed (2026-10-31) did.
-const GOLDEN_DIGEST = '67383:fdb0056fbd4f67ed'
+const GOLDEN_DIGEST = '67391:86193398915a7a0e'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

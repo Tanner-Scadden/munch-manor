@@ -28,7 +28,8 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import { CASE_SPOTS, rollCases } from '../../feats/cases'
+import { CASE_SPOTS } from '../../feats/caseSpots'
+import { rollCases } from '../../feats/cases'
 import { focusOf, modifyFocus } from '../../party/party'
 import { WEAPONS, freshGun, gunPierce, isCarrying } from '../weapons'
 

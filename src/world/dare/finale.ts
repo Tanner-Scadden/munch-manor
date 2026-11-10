@@ -2,6 +2,7 @@ import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { MS_PER_SECOND, PLAYER_RADIUS } from '../../shared/constants'
+import type { Difficulty } from '../../shared/playerData'
 import { type Level, levelOf } from '../level/arena'
 import {
   forEachSeat,
@@ -26,7 +27,13 @@ import {
 } from '../schema/worldSchema'
 import { bossHp } from '../zombies/boss'
 import { isBoss } from '../zombies/zombies'
-import { dropHat, isDareListDone, isHatDropped, isHatFound } from './dare'
+import {
+  dareItemsFoundOf,
+  dropHat,
+  isDareListDone,
+  isHatDropped,
+  isHatFound,
+} from './dare'
 import { Finale } from './dareSchema'
 
 // The finale (docs/ESCAPE_PLAN.md, "The finale"; LORE.md, "The house gets
@@ -47,25 +54,34 @@ type FinaleRules = Readonly<{
   unlockMs: number
   hungryCountScale: number
   doorReachPx: number
+  chunkFromWave: Readonly<Record<Difficulty, number>>
 }>
 
 // NOTE: starting numbers, to tune with the balance layer. The door takes 45
 // seconds of waves to unlock. Once the list is done every wave rolled holds
 // a quarter more zombies. A player steps out within a few pixels of the
-// door's inside face, anywhere along its width.
+// door's inside face, anywhere along its width. Uncle Chunk never comes
+// before `chunkFromWave`, even with the list done: a balance batch showed
+// most Double Dare escapes at wave 3, before the run had found its feet, so
+// the hunt waits for the waves to bite (wave 6 on Dare and Double Dare, 8 on
+// Triple Dare and Triple Dog Dare), the house hungrier all the while.
 export const FINALE_RULES: FinaleRules = {
   unlockMs: 45 * MS_PER_SECOND,
   hungryCountScale: 1.25,
   doorReachPx: PLAYER_RADIUS + 4,
+  chunkFromWave: { Easy: 6, Normal: 6, Hard: 8, Nightmare: 8 },
 }
 
 // READING
 
 // NOTE: the house is hungrier from the moment the list is done to the end:
-// Uncle Chunk's wave and the hold-out while the door unlocks. The music
-// stampedes then (src/app/update/music.ts).
+// Uncle Chunk's wave and the hold-out while the door unlocks. On Triple Dog
+// Dare it is hungrier from the first thing found (docs/ESCAPE_PLAN.md,
+// layer 12, the difficulty dial). The music stampedes then
+// (src/app/update/music.ts).
 export const isHouseHungry = (world: World): boolean =>
-  !Finale.isAnyOf(['Hunting'])(world.dare.finale)
+  !Finale.isAnyOf(['Hunting'])(world.dare.finale) ||
+  (world.difficulty.chosen === 'Nightmare' && dareItemsFoundOf(world) > 0)
 
 // NOTE: a wave's spawns, a quarter more of them once the house is hungrier.
 export const hungrierSpawns: {
@@ -108,10 +124,16 @@ export const isFrontDoorOpen = (world: World): boolean =>
 const hasChunkInHouse = (world: World): boolean =>
   Array.some(world.zombies, isBoss) || !Boss.isAnyOf(['Absent'])(world.boss)
 
-// NOTE: Uncle Chunk is due at the front door once the list is done, until he
-// has come and dropped his hat.
+// NOTE: whether the wave on is late enough for Uncle Chunk.
+const isChunkWave = (world: World): boolean =>
+  Phase.isAnyOf(['Wave'])(world.phase) &&
+  world.phase.wave >= FINALE_RULES.chunkFromWave[world.difficulty.chosen]
+
+// NOTE: Uncle Chunk is due at the front door once the list is done and the
+// wave is late enough, until he has come and dropped his hat.
 const isChunkDue = (world: World): boolean =>
   Finale.isAnyOf(['Summoned'])(world.dare.finale) &&
+  isChunkWave(world) &&
   !isHatDropped(world) &&
   !hasChunkInHouse(world)
 

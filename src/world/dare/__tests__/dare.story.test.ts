@@ -28,6 +28,7 @@ import {
   checkPendingArgs,
   settleRunCommands,
   startRunFromHome,
+  tagsOf,
   tick,
   ticks,
   zombieOf,
@@ -103,9 +104,6 @@ const hiddenAt = (
   state: DareThingState.Hidden(point),
 })
 
-const eventTags = (current: Model): ReadonlyArray<string> =>
-  Array.map(current.frameEvents, ({ _tag }) => _tag)
-
 describe('the list', () => {
   it.effect('rolls at a run start, sized by difficulty, the hat last', () =>
     Effect.forEach(DIFFICULTIES, difficulty =>
@@ -125,7 +123,7 @@ describe('the list', () => {
             started.dare.list,
           )
           expect(started.dareThings.length - asked.length).toBe(
-            Math.min(2, 4 - LIST_LENGTHS[difficulty]),
+            Math.min(2, 6 - LIST_LENGTHS[difficulty]),
           )
         }),
       ),
@@ -159,9 +157,14 @@ describe('the list', () => {
             const kinds = Array.map(started.dareThings, ({ kind }) => kind)
             expect(Array.dedupe(kinds)).toHaveLength(kinds.length)
             Array.forEach(kinds, kind => {
-              expect(['Hidden', 'Marked', 'BehindBoards', 'Heard']).toContain(
-                DARE_WAYS[kind],
-              )
+              expect([
+                'Hidden',
+                'Marked',
+                'BehindBoards',
+                'Heard',
+                'InCase',
+                'Cooked',
+              ]).toContain(DARE_WAYS[kind])
             })
             const points = Array.filterMap(started.dareThings, ({ state }) =>
               DareThingState.isAnyOf(['Hidden'])(state)
@@ -231,7 +234,9 @@ describe('each way to get a thing', () => {
     'hidden in a spot: a walk onto it finds it, and the last one ends the list',
     () => {
       const far = withPlayerAt(
-        withDareThings(quietWave(3), [hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT)]),
+        withDareThings(quietWave(3), [
+          hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT),
+        ]),
         START_ROOM_SPOT.x + 40,
         START_ROOM_SPOT.y,
       )
@@ -248,15 +253,17 @@ describe('each way to get a thing', () => {
         Effect.flatMap(() =>
           Story.story(
             APPLICATION,
-            Story.given(withPlayerAt(far, START_ROOM_SPOT.x, START_ROOM_SPOT.y)),
+            Story.given(
+              withPlayerAt(far, START_ROOM_SPOT.x, START_ROOM_SPOT.y),
+            ),
             tick(FRAME_MS),
             settleRunCommands,
             Story.model(current => {
               expect(current.dareThings[0]?.state).toEqual(
                 DareThingState.Found({ slot: 0 }),
               )
-              expect(eventTags(current)).toContain('DareFound')
-              expect(eventTags(current)).toContain('DareListDone')
+              expect(tagsOf(current.frameEvents)).toContain('DareFound')
+              expect(tagsOf(current.frameEvents)).toContain('DareListDone')
               expect(isDareListDone(current)).toBe(true)
               expect(dareCardOf(current)).toEqual([
                 { kind: 'SilverSpoon', isFound: true },
@@ -266,7 +273,7 @@ describe('each way to get a thing', () => {
             tick(FRAME_MS),
             settleRunCommands,
             Story.model(current => {
-              expect(eventTags(current)).not.toContain('DareListDone')
+              expect(tagsOf(current.frameEvents)).not.toContain('DareListDone')
             }),
           ),
         ),
@@ -317,7 +324,7 @@ describe('each way to get a thing', () => {
           Story.model(current => {
             const [thing] = current.dareThings
             expect(thing?.state._tag).toBe('Dropped')
-            expect(eventTags(current)).toContain('DareDropped')
+            expect(tagsOf(current.frameEvents)).toContain('DareDropped')
           }),
         )
         const spot = Option.getOrThrow(
@@ -370,7 +377,9 @@ describe('each way to get a thing', () => {
     () =>
       Effect.gen(function* () {
         const shut = withPlayerAt(
-          withDareThings(quietWave(3), [hiddenAt(0, 'ButlersBell', KITCHEN_SPOT)]),
+          withDareThings(quietWave(3), [
+            hiddenAt(0, 'ButlersBell', KITCHEN_SPOT),
+          ]),
           KITCHEN_SPOT.x,
           KITCHEN_SPOT.y,
         )
@@ -470,7 +479,9 @@ describe('the crew', () => {
     'shares one list: a teammate finds it for everyone, and the card fills for each',
     () => {
       const crew = withWorld(
-        withDareThings(quietWave(3), [hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT)]),
+        withDareThings(quietWave(3), [
+          hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT),
+        ]),
         world =>
           withSeat(seatCrew(world, 2), 1, seat =>
             modifyFocus(seat, {
@@ -521,7 +532,7 @@ describe('the crew', () => {
           tick(FRAME_MS),
           settleRunCommands,
           Story.model(current => {
-            expect(eventTags(current)).toContain('DareTaken')
+            expect(tagsOf(current.frameEvents)).toContain('DareTaken')
             expect(Array.map(heldBy(current, 0), ({ kind }) => kind)).toEqual([
               'MusicBox',
             ])
@@ -538,7 +549,7 @@ describe('the crew', () => {
         expect(delivered.dareThings[1]?.state).toEqual(
           DareThingState.Delivered({ slot: 0 }),
         )
-        expect(eventTags(delivered)).toContain('DareDelivered')
+        expect(tagsOf(delivered.frameEvents)).toContain('DareDelivered')
         expect(heldBy(delivered, 0)).toEqual([])
       }),
   )

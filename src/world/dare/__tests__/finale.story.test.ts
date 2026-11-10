@@ -11,6 +11,7 @@ import {
   FRONT_DOOR_SILL,
   crewInWave,
   escaping,
+  onHard,
   placeSeat,
   quietWave,
   withDareThings,
@@ -39,7 +40,7 @@ import { BOSS_RULES } from '../../zombies/boss'
 import { ZOMBIE_KINDS, scaledHp } from '../../zombies/zombies'
 import { dareCardOf, isHatFound, maybeLyingAt } from '../dare'
 import { type DareThing, DareThingState, Finale } from '../dareSchema'
-import { FINALE_RULES, isAtFrontDoor } from '../finale'
+import { FINALE_RULES, isAtFrontDoor, isHouseHungry } from '../finale'
 
 // The finale (src/world/dare/finale.ts): the list done, Uncle Chunk at the
 // front door at the next wave with that wave's health, his hat on the card
@@ -79,6 +80,9 @@ const maybeWaiting = (model: Model) =>
 const spawnsOf = (model: Model) =>
   Phase.isAnyOf(['Wave', 'Preparation'])(model.phase) ? model.phase.spawns : []
 
+// NOTE: the first wave Uncle Chunk may come on, on Double Dare.
+const CHUNK_WAVE = FINALE_RULES.chunkFromWave.Normal
+
 describe('Uncle Chunk at the front door', () => {
   it.effect('never comes while the list is still being hunted', () =>
     Story.story(
@@ -96,11 +100,41 @@ describe('Uncle Chunk at the front door', () => {
   )
 
   it.effect(
-    'with the list done he comes at the next wave, through the front door only',
+    'with the list done early he waits for his wave, the house hungrier meanwhile',
     () =>
       Story.story(
         APPLICATION,
         Story.given(breakBefore(3, LIST_DONE)),
+        tick(FRAME_MS),
+        startWave,
+        Story.model(current => {
+          expect(current.dare.finale).toEqual(Finale.Summoned())
+          expect(current.boss).toEqual(Boss.Absent())
+          expect(isHouseHungry(current)).toBe(true)
+        }),
+      ),
+  )
+
+  it.effect('Triple Dare and Triple Dog Dare hold him back longer', () => {
+    expect(FINALE_RULES.chunkFromWave.Hard).toBeGreaterThan(CHUNK_WAVE)
+    expect(FINALE_RULES.chunkFromWave.Nightmare).toBeGreaterThan(CHUNK_WAVE)
+    return Story.story(
+      APPLICATION,
+      Story.given(onHard(breakBefore(CHUNK_WAVE, LIST_DONE))),
+      tick(FRAME_MS),
+      startWave,
+      Story.model(current => {
+        expect(current.boss).toEqual(Boss.Absent())
+      }),
+    )
+  })
+
+  it.effect(
+    'with the list done he comes at the next wave from his, through the front door only',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(breakBefore(CHUNK_WAVE, LIST_DONE)),
         tick(FRAME_MS),
         Story.model(current => {
           expect(current.dare.finale).toEqual(Finale.Summoned())
@@ -144,7 +178,7 @@ describe('Uncle Chunk at the front door', () => {
           ).pipe(
             Effect.map(current => Option.getOrThrow(maybeWaiting(current)).hp),
           )
-        const early = yield* hpOn(3)
+        const early = yield* hpOn(CHUNK_WAVE)
         const late = yield* hpOn(FINAL_WAVE + 4)
         const { healthScale } = DIFFICULTIES.Normal
         expect(early).toBe(scaledHp(ZOMBIE_KINDS.Boss.hp, healthScale))
@@ -155,6 +189,31 @@ describe('Uncle Chunk at the front door', () => {
           ),
         )
         expect(late).toBeGreaterThan(early)
+      }),
+  )
+
+  it.effect(
+    'on Triple Dog Dare the house is hungrier from the first thing found',
+    () =>
+      Effect.sync(() => {
+        const oneFound = breakBefore(4, [
+          found(0, 'SilverSpoon'),
+          hidden(1, 'MusicBox'),
+        ])
+        const onNightmare = modifyFields(oneFound, {
+          difficulty: setting =>
+            modifyFields(setting, { chosen: () => 'Nightmare' as const }),
+        })
+        expect(isHouseHungry(oneFound)).toBe(false)
+        expect(isHouseHungry(onNightmare)).toBe(true)
+        const noneFound = modifyFields(
+          breakBefore(4, [hidden(0, 'SilverSpoon')]),
+          {
+            difficulty: setting =>
+              modifyFields(setting, { chosen: () => 'Nightmare' as const }),
+          },
+        )
+        expect(isHouseHungry(noneFound)).toBe(false)
       }),
   )
 
