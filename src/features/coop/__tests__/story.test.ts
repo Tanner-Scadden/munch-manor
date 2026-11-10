@@ -195,6 +195,7 @@ describe('co-op hub', () => {
             look: '',
             rank: 1,
             calling: 'You',
+            introSeen: false,
           }),
           Message.FailedRequestRoom({ problem: 'NoRoom' }),
         ),
@@ -220,6 +221,7 @@ describe('co-op hub', () => {
           look: '',
           rank: 1,
           calling: 'You',
+          introSeen: false,
         }),
         Message.SucceededRequestRoom({ code: CODE, slot: 0 }),
       ),
@@ -1018,6 +1020,7 @@ describe('the network service', () => {
             look: 'Male.Curls.Black.Deep.Yellow',
             rank: 42,
             calling: 'Handyman',
+            introSeen: true,
           }).effect,
           handlers,
         )
@@ -1031,6 +1034,7 @@ describe('the network service', () => {
             look: 'Male.Curls.Black.Deep.Yellow',
             rank: 42,
             calling: 'Handyman',
+            introSeen: true,
           },
         ])
       }),

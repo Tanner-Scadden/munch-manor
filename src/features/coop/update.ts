@@ -93,12 +93,13 @@ export const RequestRoom = CoopBlock.makeCommand('RequestRoom', {
     look: Schema.String,
     rank: Schema.Finite,
     calling: Calling,
+    introSeen: Schema.Boolean,
   },
   messages: [Message.SucceededRequestRoom, Message.FailedRequestRoom],
   handler: function* () {
-    return ({ request, name, look, rank, calling }) =>
+    return ({ request, name, look, rank, calling, introSeen }) =>
       CoopNet.use(net =>
-        net.requestRoom(request, name, look, rank, calling),
+        net.requestRoom(request, name, look, rank, calling, introSeen),
       ).pipe(
         Effect.map(ticket => Message.SucceededRequestRoom(ticket)),
         Effect.catch(problem =>
@@ -260,6 +261,7 @@ const ask = (model: Model, request: RoomRequest): UpdateReturn => ({
       look: model.look,
       rank: model.rank,
       calling: model.calling,
+      introSeen: model.introSeen,
     }),
   ],
 })
@@ -676,6 +678,7 @@ export const open: {
     bought?: SavedBoughtCosmetics,
     bones?: number,
     rngState?: number,
+    introSeen?: boolean,
   ): (model: Model) => UpdateReturn
   (
     model: Model,
@@ -687,6 +690,7 @@ export const open: {
     bought?: SavedBoughtCosmetics,
     bones?: number,
     rngState?: number,
+    introSeen?: boolean,
   ): UpdateReturn
 } = Function.dual(
   // NOTE: data-first has the name, a string, second; data-last has the
@@ -702,6 +706,7 @@ export const open: {
     bought: SavedBoughtCosmetics = [],
     bones: number = 0,
     rngState: number = 0,
+    introSeen: boolean = false,
   ): UpdateReturn => {
     const named = modifyFields(model, {
       name: () => name,
@@ -709,6 +714,7 @@ export const open: {
       rank: () => rank,
       calling: () => calling,
       rngState: () => rngState,
+      introSeen: () => introSeen,
       bought: () => bought,
       bones: () => bones,
     })

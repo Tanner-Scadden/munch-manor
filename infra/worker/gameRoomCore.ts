@@ -80,6 +80,7 @@ export interface RoomHost {
     look: string,
     rank: number,
     calling: string,
+    introSeen: boolean,
     nightmare: boolean,
     code: string,
     visibility: RoomVisibility,
@@ -90,6 +91,7 @@ export interface RoomHost {
     look: string,
     rank: number,
     calling: string,
+    introSeen: boolean,
     nightmare: boolean,
     everyone: ReadonlyArray<Socket>,
   ) => Effect.Effect<Result.Result<RoomTicket, RoomRefusal>>
@@ -178,6 +180,7 @@ export const makeRoomHost: {
         look: string,
         rank: number,
         calling: string,
+        introSeen: boolean,
         nightmare: boolean,
         code: string,
         visibility: RoomVisibility,
@@ -199,6 +202,7 @@ export const makeRoomHost: {
                 hostRank: cleanRank(rank),
                 hostCalling: callingOfRequest(calling),
                 hostNightmare: nightmare,
+                hostIntroSeen: introSeen,
                 mode: DEFAULT_MODE,
                 visibility,
               },
@@ -217,6 +221,7 @@ export const makeRoomHost: {
         look: string,
         rank: number,
         calling: string,
+        introSeen: boolean,
         nightmare: boolean,
         everyone: ReadonlyArray<Socket>,
       ) =>
@@ -253,6 +258,7 @@ export const makeRoomHost: {
                 rank: cleanRank(rank),
                 calling: callingOfRequest(calling),
                 nightmare,
+                introSeen,
               },
               `joined-room-${head}-${playerId}`,
             ),
@@ -497,6 +503,7 @@ export const InternalCreate = Schema.fromJsonString(
     look: Schema.optionalKey(LookInput),
     rank: Schema.optionalKey(RankInput),
     calling: Schema.optionalKey(CallingInput),
+    introSeen: Schema.optionalKey(Schema.Boolean),
     code: Schema.String,
     visibility: RoomVisibilitySchema,
   }),
@@ -508,6 +515,7 @@ export const InternalJoin = Schema.fromJsonString(
     look: Schema.optionalKey(LookInput),
     rank: Schema.optionalKey(RankInput),
     calling: Schema.optionalKey(CallingInput),
+    introSeen: Schema.optionalKey(Schema.Boolean),
   }),
 )
 

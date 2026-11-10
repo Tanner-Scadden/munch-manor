@@ -451,7 +451,7 @@ export class GameRoom {
             lobby.members,
             lobby.modifiers,
           ),
-          intro: introForRound(lobby.round),
+          intro: introForRound(lobby.round, lobby.members),
         },
       )
       const started = Room.startRoom(
@@ -732,6 +732,7 @@ export class GameRoom {
             body.look ?? '',
             body.rank ?? 1,
             body.calling ?? DEFAULT_CALLING,
+            body.introSeen ?? false,
             nightmare,
             body.code,
             body.visibility,
@@ -761,6 +762,7 @@ export class GameRoom {
             body.look ?? '',
             body.rank ?? 1,
             body.calling ?? DEFAULT_CALLING,
+            body.introSeen ?? false,
             nightmare,
             everyone,
           ),
