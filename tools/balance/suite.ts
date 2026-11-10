@@ -233,6 +233,8 @@ const DEATH_PAIRS: ReadonlyArray<readonly [number, number]> = [
   [5, 6],
   [7, 8],
   [9, 10],
+  [11, 12],
+  [13, 14],
 ]
 
 export const campaignMetrics: {
@@ -290,6 +292,13 @@ export const campaignMetrics: {
               summary.medianWinMinutes,
               'minutes',
               'Minutes',
+            ),
+            metric(
+              `${id}.medianWinWave`,
+              `${title}: median escape wave`,
+              summary.medianWinWave,
+              'endlessWave',
+              'Wave',
             ),
             metric(
               `${id}.closeCalls`,

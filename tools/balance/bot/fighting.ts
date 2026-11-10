@@ -28,7 +28,6 @@ import { bodyRadiusOf } from '../../../src/world/zombies/zombies'
 import {
   KEYS,
   type Model,
-  ROOM_CENTER,
   type Vector,
   distance,
   maybeWindowScreen,
@@ -50,6 +49,7 @@ import {
   safePickup,
   telegraphDodge,
 } from './dodging'
+import { holdPoint, wantsStoveFeat } from './escape'
 import {
   IS_SHARP,
   humanSight,
@@ -188,8 +188,9 @@ export const kite: {
       },
     ])
   }
-  if (isInKitchen(player)) {
-    return steerToward(player, routeTo(levelOf(model), player, ROOM_CENTER))
+  const hold = holdPoint(model)
+  if (isInKitchen(player) && !wantsStoveFeat(model)) {
+    return steerToward(player, routeTo(levelOf(model), player, hold))
   }
   const boss = bossOf(model)
   if (boss !== undefined && KITES) {
@@ -203,8 +204,8 @@ export const kite: {
   if (pickup !== undefined) {
     return steerToward(player, pickup)
   }
-  return distance(player, ROOM_CENTER) > 40
-    ? steerToward(player, routeTo(levelOf(model), player, ROOM_CENTER))
+  return distance(player, hold) > 40
+    ? steerToward(player, routeTo(levelOf(model), player, hold))
     : { x: 0, y: 0 }
 })
 

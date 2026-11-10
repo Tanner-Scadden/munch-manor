@@ -77,6 +77,13 @@ const runWith = (
     stabs: 0,
     stabHits: 0,
   },
+  escape: {
+    casesOpened: 1,
+    delivered: 0,
+    found: 1,
+    listDoneWave: 0,
+    hatWave: 0,
+  },
 })
 
 // NOTE: the second run skips the shop before wave 3 and dies with no killer.

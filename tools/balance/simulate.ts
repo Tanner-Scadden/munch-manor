@@ -47,6 +47,8 @@ import { encodeJson, readJsonFile, writeJsonFile } from '../json'
 import type { BotOptions } from './bot/basics'
 import type { BossFight, NewKindLog, RunResult, WaveRun } from './bot/results'
 
+const CAMPAIGN_REPORT_WAVES = 14
+
 const browserWindow = new Window()
 Object.assign(globalThis, {
   window: browserWindow,
@@ -518,9 +520,12 @@ const reportCampaign = (
   elapsed: number,
 ) =>
   Effect.gen(function* () {
+    // NOTE: an escape runs past the ten tuned waves into the ramp, so the
+    // campaign's tables go on to CAMPAIGN_REPORT_WAVES, a fixed count so
+    // the nightly's metrics keep the same keys from run to run.
     const lastWave = setup.isEndless
       ? Math.max(...Array.map(results, result => result.cleared + 1))
-      : FINAL_WAVE
+      : Math.max(FINAL_WAVE, CAMPAIGN_REPORT_WAVES)
     yield* Console.log(
       `${setup.runs} ${setup.isEndless ? 'endless' : 'campaign'} runs on ${setup.options.difficulty} in ${elapsed.toFixed(1)} s${setup.options.noUpgrades ? ', no upgrades' : ''}${setup.options.swapsBack ? ', swaps back to the spare' : ''}${setup.kites ? ', kites the boss' : ''}`,
     )
@@ -572,6 +577,22 @@ const reportCampaign = (
       `Close calls: ${Array.filter(wins, r => r.minHp <= 1).length} of ${wins.length} wins reached 1 heart`,
     )
     yield* Console.log(`Median wave of death: ${median(deaths)}`)
+    if (!setup.isEndless) {
+      const listDone = Array.filter(
+        Array.map(results, r => r.escape.listDoneWave),
+        wave => wave > 0,
+      )
+      const hats = Array.filter(
+        Array.map(results, r => r.escape.hatWave),
+        wave => wave > 0,
+      )
+      yield* Console.log(
+        `Escape: list done in ${listDone.length} runs (median wave ${listDone.length > 0 ? median(listDone) : '-'}), hat taken in ${hats.length} (median wave ${hats.length > 0 ? median(hats) : '-'}), escaped on wave ${wins.length > 0 ? median(Array.map(wins, r => r.cleared + 1)) : '-'} (median)`,
+      )
+      yield* Console.log(
+        `Escape: things found a run median ${median(Array.map(results, r => r.escape.found))}, cases opened median ${median(Array.map(results, r => r.escape.casesOpened))}, delivered ${Array.reduce(results, 0, (sum, r) => sum + r.escape.delivered)} in all`,
+      )
+    }
     if (setup.isEndless) {
       const reached = Array.map(results, result => result.cleared + 1)
       yield* Console.log(

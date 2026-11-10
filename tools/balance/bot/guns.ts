@@ -59,6 +59,14 @@ export const gunValue = (gun: Gun): number => {
   if (gun.kind === 'Freeze') {
     return 3
   }
+  // NOTE: the case guns: Old Thunder's slow, hard hits a little under the
+  // Chatterbox, the blunderbuss's two barrels a little over the Barn Buster.
+  if (gun.kind === 'Rifle') {
+    return 2.75 + gun.tier * 1.25
+  }
+  if (gun.kind === 'Blunderbuss') {
+    return 2.5 + gun.tier
+  }
   return 4 + gun.tier
 }
 

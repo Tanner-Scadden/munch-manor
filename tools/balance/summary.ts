@@ -32,6 +32,7 @@ export const CampaignSummary = Schema.TaggedStruct('Campaign', {
   winShare: Schema.Finite,
   closeCallShare: Schema.Finite,
   medianWinMinutes: Schema.Finite,
+  medianWinWave: Schema.Finite,
   medianRunMinutes: Schema.Finite,
   medianWaveReached: Schema.Finite,
   bestWave: Schema.Finite,
@@ -163,6 +164,7 @@ export const summarizeCampaign: {
         wins.length,
       ),
       medianWinMinutes: median(Array.map(wins, ({ runMs }) => runMs)) / 60000,
+      medianWinWave: median(Array.map(wins, ({ cleared }) => cleared + 1)),
       medianRunMinutes:
         median(Array.map(results, ({ runMs }) => runMs)) / 60000,
       medianWaveReached: median(reached),
