@@ -79,8 +79,13 @@ import {
 // carries `callMs`, how long ago the player last shouted, a new action code
 // (CallMedic) shouts again, and two new events: MedicCalled and
 // TeammateSaved (SAVED! or CLUTCH!).
-export const PROTOCOL_VERSION = 19
-export const MIN_PROTOCOL_VERSION = 19
+// Version 20: Escape the Manor (docs/ESCAPE_PLAN.md). The house is rooms on
+// a grid, with the dining room the start: a door id for the front door and
+// for the west slot's two doors (WestTop, WestBottom), the level's drops
+// (`dropped`, the dining room's chandelier lying in the table's gap), and a
+// new event, ChandelierFell.
+export const PROTOCOL_VERSION = 20
+export const MIN_PROTOCOL_VERSION = 20
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

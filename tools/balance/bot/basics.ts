@@ -124,7 +124,9 @@ export const parseDifficulty = (raw: string | undefined): Difficulty => {
 export const FRAME_MS = 1000 / 30
 export const maxRunMs = (options: BotOptions) =>
   (options.mode === 'Endless' ? 90 : 20) * 60 * 1000
-export const ROOM_CENTER: Vector = { x: 160, y: 95 }
+// NOTE: where the bot holds in the dining room: the open aisle between the
+// party table and the start spot, which runs wall to wall.
+export const ROOM_CENTER: Vector = { x: 180, y: 130 }
 export const KEYS = {
   up: 'KeyW',
   down: 'KeyS',

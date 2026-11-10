@@ -47,12 +47,7 @@ import {
   ticks,
   ticksFor,
 } from '../../../test/testing'
-import {
-  PARLOUR,
-  isInsideRoomAt,
-  levelOf,
-  nearestDoor,
-} from '../../level/arena'
+import { MANOR, isInsideRoomAt, levelOf, nearestDoor } from '../../level/arena'
 import { focusOf, modifyFocus } from '../../party/party'
 import { rollSpawns, rollWave } from '../endlessWaves'
 import { FINAL_WAVE, debutKinds } from '../wavePlans'
@@ -116,7 +111,7 @@ const arrivedDoors = (current: Model): ReadonlyArray<DoorId> =>
   pipe(
     current.zombies,
     Array.filter(({ id }) => id !== LINGERER_ID),
-    Array.map(zombie => nearestDoor(PARLOUR, zombie).id),
+    Array.map(zombie => nearestDoor(MANOR, zombie).id),
   )
 
 const waveClock = (current: Model): number =>
@@ -150,6 +145,8 @@ const OPPOSITE: Readonly<Record<DoorId, DoorId>> = {
   East: 'West',
   Back: 'South',
   Window: 'East',
+  WestTop: 'East',
+  WestBottom: 'North',
   Front: 'North',
 }
 
@@ -294,8 +291,8 @@ describe('telegraphs', () => {
           Array.filter(current.frameEvents, GameEvent.guards.PackWarned),
         ).toEqual([
           GameEvent.PackWarned({
-            x: 315,
-            y: 90,
+            x: MANOR.doors.East.center.x,
+            y: MANOR.doors.East.center.y,
             door: 'East',
             formation: 'Squad',
           }),
@@ -321,7 +318,11 @@ describe('telegraphs', () => {
     () => {
       const inNorthDoorway = (base: Model): Model =>
         modifyFocus(base, {
-          player: player => modifyFields(player, { x: () => 220, y: () => 24 }),
+          player: player =>
+            modifyFields(player, {
+              x: () => MANOR.doors.North.center.x,
+              y: () => 24,
+            }),
         })
       return Story.story(
         APPLICATION,
@@ -429,7 +430,7 @@ describe('from warning to doorway', () => {
           expect(
             Array.map(
               newcomersInRoom(current),
-              zombie => nearestDoor(PARLOUR, zombie).id,
+              zombie => nearestDoor(MANOR, zombie).id,
             ),
           ).toEqual(['West'])
         }),
@@ -553,7 +554,7 @@ describe('sawtooth', () => {
 })
 
 describe('mercy', () => {
-  const biter = standingZombie(900, 162, 90)
+  const biter = standingZombie(900, MANOR.start.x + 2, MANOR.start.y)
   // NOTE: the Model one frame of a bite leaves, at `hp` hearts.
   const bittenAt = (hp: number) =>
     Story.story(
@@ -623,7 +624,7 @@ type Frame = Readonly<{
 const frameOf = (next: Model): Frame => ({
   clockMs: waveClock(next),
   beat: next.pacing.beat._tag,
-  arrived: Array.map(next.zombies, zombie => nearestDoor(PARLOUR, zombie).id),
+  arrived: Array.map(next.zombies, zombie => nearestDoor(MANOR, zombie).id),
 })
 
 // NOTE: plays `ms` of frames as a player who kills each zombie the frame

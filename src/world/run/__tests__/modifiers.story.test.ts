@@ -83,7 +83,9 @@ import {
 
 const FRAME_MS = 50
 const TICK_MS = FIXED_STEP_MS
-const ROW_Y = 104
+// NOTE: the open floor between the dining room's table and the start spot,
+// which runs the whole width of the room.
+const ROW_Y = 130
 
 const only = (change: Partial<Modifiers>): Modifiers => ({
   ...noModifiers,

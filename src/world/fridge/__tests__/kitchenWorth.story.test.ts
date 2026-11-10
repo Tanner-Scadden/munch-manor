@@ -452,7 +452,7 @@ describe('the pantry stash', () => {
 
 describe('kitchen kill pay', () => {
   const KITCHEN_SPOT = { x: 35, y: -55 }
-  const PARLOUR_SPOT = { x: 60, y: 85 }
+  const START_SPOT = { x: 60, y: 85 }
 
   const shotDown = (
     at: Readonly<{ x: number; y: number }>,
@@ -504,7 +504,7 @@ describe('kitchen kill pay', () => {
   it.effect('in the parlour a kill pays as it always has', () =>
     Story.story(
       APPLICATION,
-      Story.given(shotDown(PARLOUR_SPOT)),
+      Story.given(shotDown(START_SPOT)),
       tick(FRAME_MS),
       Story.model(current => {
         expect(focusOf(current).wallet.balance).toBe(SHAMBLER_BOUNTY)
@@ -520,7 +520,7 @@ describe('kitchen kill pay', () => {
     expect(isInKitchenAt(open, KITCHEN_SPOT)).toBe(true)
     expect(isInKitchenAt(boarded, KITCHEN_SPOT)).toBe(false)
     expect(isInKitchenAt(open, { x: 250, y: -55 })).toBe(false)
-    expect(isInKitchenAt(open, PARLOUR_SPOT)).toBe(false)
+    expect(isInKitchenAt(open, START_SPOT)).toBe(false)
     const killed = killEvent(
       zombieOf('Shambler', 1, KITCHEN_SPOT.x, KITCHEN_SPOT.y),
       { x: 1, y: 0 },

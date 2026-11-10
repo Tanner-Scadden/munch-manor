@@ -72,7 +72,11 @@ import {
   ovenGlowShapes,
   padlockShapes,
 } from '../../render/room/kitchenView'
-import { hearthFireShapes } from '../../render/room/room'
+import {
+  fallenChandelierDrawables,
+  hearthFireShapes,
+  hungChandelierShapes,
+} from '../../render/room/room'
 import { aimSightShapes } from '../../render/sightView'
 import {
   ghostShapes,
@@ -247,6 +251,7 @@ const standingDrawables = (
     ...mateDrawables(mates),
     ...fridgeDrawables(model),
     ...pantryDrawables(model),
+    ...fallenChandelierDrawables(model),
   ]
 }
 
@@ -266,6 +271,7 @@ const overheadShapes = (
   mates: ReadonlyArray<MateModel>,
 ): ReadonlyArray<Canvas.Shape> => [
   ...(isLeadArmed(model) ? playerFlashShapes(focusOf(model).player) : []),
+  ...hungChandelierShapes(model),
   ...ovenFlameShapes(model),
   ...Array.flatMap(
     model.traps,
@@ -307,6 +313,7 @@ const titleWorldShapes = (model: Model): ReadonlyArray<Canvas.Shape> => [
   ...hearthFireShapes(levelOf(model), model.screenMs),
   ...stallGroundShapes('Closed', model.screenMs),
   ...stallShapes('Closed', model.screenMs),
+  ...hungChandelierShapes(model),
 ]
 
 const playWorldShapes = (

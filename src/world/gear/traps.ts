@@ -18,10 +18,12 @@ import {
   DOOR_OUTWARD,
   type Level,
   SHOP_STALL_SYMBOL,
+  TILE_OUTSIDE,
   boxCenter,
   circleTouchesBox,
   distanceToBox,
   hasLineOfSight,
+  hasTileFlag,
   isDoorTile,
   isInsideRoomAt,
   isWalkableTile,
@@ -778,7 +780,12 @@ const floorVerdict = (
     Array.contains(trapTileIndices(level, trap), index),
   )
   return firstReason([
-    [!isWalkableTile(level, column, row), 'Something is in the way'],
+    // NOTE: the yard is walkable for zombies, never floor for a trap.
+    [
+      !isWalkableTile(level, column, row) ||
+        hasTileFlag(level, index, TILE_OUTSIDE),
+      'Something is in the way',
+    ],
     [
       isDoorTile(level, column, row),
       `Doorways are for ${TRAP_NAMES.Barricade}s`,

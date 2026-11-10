@@ -17,14 +17,18 @@ import {
 } from '../../../app/model'
 import { newPlayerReady } from '../../../test/model.fixture'
 import { zombieOf } from '../../../test/testing'
-import { PARLOUR } from '../../level/arena'
+import { START_LEVEL } from '../../level/arena'
 import { modifyFocus } from '../../party/party'
 import { FINAL_WAVE, WAVE_PLANS } from '../../waves/wavePlans'
 import { freshFight } from '../boss'
 import { ZOMBIE_KINDS, scaledHp } from '../zombies'
 
-export const CENTER_X = PARLOUR.width / 2
-export const CENTER_Y = PARLOUR.height / 2
+// NOTE: the fight's middle: in the dining room's open aisle just south of
+// the party table, rows 12 and 13, which runs wall to wall with nothing in
+// it, a tile and a half north of the start spot. inWave stands the player
+// there.
+export const CENTER_X = START_LEVEL.start.x
+export const CENTER_Y = START_LEVEL.start.y - 15
 export const BOSS_ID = 777
 export const WAVE_8_HP_SCALE = WAVE_PLANS[FINAL_WAVE - 1]?.hpScale ?? 1
 export const BOSS_HP = scaledHp(ZOMBIE_KINDS.Boss.hp, WAVE_8_HP_SCALE)
@@ -64,11 +68,17 @@ export const inWave: {
     boss: Boss,
     zombies: ReadonlyArray<Zombie> = [],
   ): Model =>
-    modifyFields(newPlayerReady, {
-      phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns }),
-      boss: () => boss,
-      zombies: () => zombies,
-    }),
+    modifyFocus(
+      modifyFields(newPlayerReady, {
+        phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns }),
+        boss: () => boss,
+        zombies: () => zombies,
+      }),
+      {
+        player: player =>
+          modifyFields(player, { x: () => CENTER_X, y: () => CENTER_Y }),
+      },
+    ),
 )
 
 // NOTE: the boss at full health, out of BOSS_HP.

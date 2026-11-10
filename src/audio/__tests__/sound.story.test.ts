@@ -32,13 +32,13 @@ import {
   tick,
   zombieAt,
 } from '../../test/testing'
-import { PARLOUR } from '../../world/level/arena'
+import { START_LEVEL } from '../../world/level/arena'
 import { type SoundEffect, positionVariation } from '../audio'
 
 const FRAME_MS = FIXED_STEP_MS
 const MID_GAME_MS = 30_000
-const SHOT_X = PARLOUR.width / 2 + 6
-const SHOT_Y = PARLOUR.height / 2
+const SHOT_X = START_LEVEL.start.x + 6
+const SHOT_Y = START_LEVEL.start.y
 
 const readyScreen: Model = modifyFields(initialModel, {
   difficultyCard: () => DifficultyCard.Seen(),
@@ -61,7 +61,7 @@ const oneHitZombieAt = (id: number, x: number, y: number): Zombie =>
 
 const withOneHitZombieInFront = (base: Model): Model =>
   modifyFields(base, {
-    zombies: () => [oneHitZombieAt(100, MUZZLE_X, PARLOUR.height / 2)],
+    zombies: () => [oneHitZombieAt(100, MUZZLE_X, START_LEVEL.start.y)],
   })
 
 const pressFire = holdFire
@@ -241,7 +241,7 @@ describe('frame sounds', () => {
       Story.given(
         modifyFields(playing(AudioState.Ready()), {
           zombies: () => [
-            zombieAt(100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
+            zombieAt(100, START_LEVEL.start.x + 2, START_LEVEL.start.y),
           ],
         }),
       ),
@@ -306,7 +306,7 @@ describe('frame sounds', () => {
         const bulletAtZombie: Bullet = {
           id: 1,
           x: MUZZLE_X,
-          y: PARLOUR.height / 2,
+          y: START_LEVEL.start.y,
           velocityX: 1,
           velocityY: 0,
           remainingMs: 900,

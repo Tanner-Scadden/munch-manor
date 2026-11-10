@@ -169,7 +169,11 @@ describe('the landscape phone screen', () => {
     expect(worldWindowOf(screen)).toEqual({ width: 240, height: 135 })
   })
 
-  test('keeps the whole room at zoom 1 on a keyboard and mouse, in any window', () => {
+  test('keeps a whole screen of the room at zoom 1 on a keyboard and mouse, in any window', () => {
+    // NOTE: the dining room is bigger than one screen, so even at zoom 1
+    // the camera follows the player from the start spot, inside the room.
+    const { bounds } = levelOf(fightingInLandscape)
+    const { player } = focusOf(fightingInLandscape)
     Array.forEach(['Landscape', 'Portrait'] as const, orientation => {
       Array.forEach([PHONE_LANDSCAPE, PHONE_PORTRAIT], surface => {
         const desktop = modifyFields(fightingInLandscape, {
@@ -179,8 +183,8 @@ describe('the landscape phone screen', () => {
         })
         expect(screenOf(desktop)).toEqual(LANDSCAPE_SCREEN)
         expect(cameraOf(desktop)).toEqual({
-          x: 0,
-          y: 0,
+          x: Math.min(player.x - 160, bounds.right - 320),
+          y: Math.min(player.y - 90, bounds.bottom - 180),
           width: 320,
           height: 180,
           scale: 1,
@@ -194,29 +198,36 @@ describe('the landscape phone screen', () => {
 
 describe('the portrait camera', () => {
   test('follows the player across the room and stops at its walls', () => {
+    const { bounds } = levelOf(fightingInPortrait)
     const cameraAt = (x: number) =>
       cameraOf(standingAt(fightingInPortrait, x, 120))
     expect(cameraAt(20)).toEqual({
       x: 0,
-      y: 20,
+      y: 40,
       width: 120,
       height: 160,
       scale: 1,
       left: 0,
       top: 0,
     })
-    expect(cameraAt(160)).toMatchObject({ x: 100, y: 20 })
-    expect(cameraAt(300)).toMatchObject({ x: 200, y: 20 })
+    expect(cameraAt(160)).toMatchObject({ x: 100, y: 40 })
+    expect(cameraAt(bounds.right - 20)).toMatchObject({
+      x: bounds.right - 120,
+      y: 40,
+    })
     expect(cameraOf(standingAt(fightingInPortrait, 160, 10))).toMatchObject({
       y: 0,
     })
-    Array.forEach([0, 40, 90, 200, 260, 320], x => {
-      Array.forEach([0, 60, 120, 180], y => {
+    expect(
+      cameraOf(standingAt(fightingInPortrait, 160, bounds.bottom - 10)),
+    ).toMatchObject({ y: bounds.bottom - 160 })
+    Array.forEach([0, 40, 90, 200, 260, 320, 360], x => {
+      Array.forEach([0, 60, 120, 180, 220], y => {
         const camera = cameraOf(standingAt(fightingInPortrait, x, y))
-        expect(camera.x).toBeGreaterThanOrEqual(0)
-        expect(camera.x + camera.width).toBeLessThanOrEqual(320)
-        expect(camera.y).toBeGreaterThanOrEqual(0)
-        expect(camera.y + camera.height).toBeLessThanOrEqual(180)
+        expect(camera.x).toBeGreaterThanOrEqual(bounds.left)
+        expect(camera.x + camera.width).toBeLessThanOrEqual(bounds.right)
+        expect(camera.y).toBeGreaterThanOrEqual(bounds.top)
+        expect(camera.y + camera.height).toBeLessThanOrEqual(bounds.bottom)
       })
     })
   })
@@ -247,7 +258,11 @@ describe('the portrait camera', () => {
       top: 0,
     })
     expect(cameraAt(160, 90)).toMatchObject({ x: 40, y: 23 })
-    expect(cameraAt(300, 170)).toMatchObject({ x: 80, y: 45 })
+    const { bounds } = levelOf(fightingInLandscape)
+    expect(cameraAt(bounds.right - 20, bounds.bottom - 10)).toMatchObject({
+      x: bounds.right - 240,
+      y: bounds.bottom - 135,
+    })
     expect(cameraAt(10, 10)).toMatchObject({ x: 0, y: 0 })
     expect(
       screenCameraOf(standingAt(fightingInLandscape, 160, 90)),
@@ -425,7 +440,7 @@ describe('aiming on a phone on its side', () => {
     const fighting = standingAt(fightingInLandscape, 200, 120)
     const screen = screenOf(fighting)
     const camera = cameraOf(fighting)
-    expect(camera).toMatchObject({ x: 80, y: 45 })
+    expect(camera).toMatchObject({ x: 80, y: 53 })
     const onScreen = Option.getOrThrow(
       clientToView(PHONE_LANDSCAPE, { x: 422, y: 195 }, screen),
     )
@@ -433,7 +448,7 @@ describe('aiming on a phone on its side', () => {
     expect(onScreen.y).toBeCloseTo(90)
     const world = viewToWorld(screenCameraOf(fighting), onScreen)
     expect(world.x).toBeCloseTo(160 * (3 / 4) + 80)
-    expect(world.y).toBeCloseTo(90 * (3 / 4) + 45)
+    expect(world.y).toBeCloseTo(90 * (3 / 4) + camera.y)
     const back = worldToView(screenCameraOf(fighting), world)
     expect(back.x).toBeCloseTo(onScreen.x)
     expect(back.y).toBeCloseTo(onScreen.y)

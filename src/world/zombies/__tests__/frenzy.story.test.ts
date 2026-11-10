@@ -22,14 +22,14 @@ import {
   ticks,
   zombieAt,
 } from '../../../test/testing'
-import { PARLOUR } from '../../level/arena'
+import { START_LEVEL } from '../../level/arena'
 import { focusOf, modifyFocus } from '../../party/party'
 import { rollSpawns } from '../../waves/endlessWaves'
 import { FRENZY_RULES, frenzyPace, frenzyPacksOf } from '../frenzy'
 
 const FRAME_MS = FIXED_STEP_MS
-const CENTER_X = PARLOUR.width / 2
-const CENTER_Y = PARLOUR.height / 2
+const CENTER_X = START_LEVEL.start.x
+const CENTER_Y = START_LEVEL.start.y
 
 const spawnOf = (
   pack: number,

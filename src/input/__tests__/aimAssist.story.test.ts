@@ -14,6 +14,7 @@ import {
   APPLICATION,
   PHONE_LANDSCAPE,
   PHONE_PORTRAIT,
+  START_SPOT,
   tick,
   zombieOf,
 } from '../../test/testing'
@@ -22,7 +23,8 @@ import { focusOf, modifyFocus } from '../../world/party/party'
 import { AIM_ASSIST } from '../aimAssist'
 import { MouseButton, Stick } from '../inputSchema'
 
-const PLAYER = { x: 160, y: 100 }
+// NOTE: the start spot, with open floor east of it to the candelabra.
+const PLAYER = START_SPOT
 const ZOMBIE_DISTANCE_PX = 40
 
 // NOTE: the right thumb holds the aim stick straight right, so the raw aim

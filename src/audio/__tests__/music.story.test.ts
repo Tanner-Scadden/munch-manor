@@ -28,7 +28,7 @@ import {
   tick,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
-import { PARLOUR } from '../../world/level/arena'
+import { START_LEVEL } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
 import type { MusicMood } from '../music'
@@ -182,8 +182,8 @@ describe('music follows the phase', () => {
               {
                 id: 100,
                 kind: 'Shambler',
-                x: PARLOUR.width / 2 + 2,
-                y: PARLOUR.height / 2,
+                x: START_LEVEL.start.x + 2,
+                y: START_LEVEL.start.y,
                 speed: 0,
                 hp: ZOMBIE_MAX_HP,
                 maxHp: ZOMBIE_MAX_HP,

@@ -49,12 +49,7 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import {
-  MANOR,
-  PARLOUR,
-  doorSpawnPoint,
-  isInsideRoomAt,
-} from '../../level/arena'
+import { MANOR, doorSpawnPoint, isInsideRoomAt } from '../../level/arena'
 import { distanceAt, flowFieldToward } from '../../level/pathing'
 import { focusOf, focusSlotOf, modifyFocus } from '../../party/party'
 import { scoreOf } from '../../run/stats'
@@ -82,6 +77,11 @@ const PLANNED_SPAWNS: ReadonlyArray<PlannedSpawn> = [
 ]
 
 const ROOM_MIDDLE: Vector = { x: 160, y: 95 }
+
+// NOTE: the dining room's doors the traps here are laid in: the North door
+// at the top right, and the West door at the top left.
+const NORTH_X = MANOR.doors.North.center.x
+const WEST_Y = MANOR.doors.West.center.y
 
 const readyModel: Model = modifyFields(pastFirstBreak(initialModel), {
   maybeSurface: () => Option.some({ left: 0, top: 0, width: 800, height: 400 }),
@@ -308,18 +308,18 @@ describe('placing a barricade', () => {
   it.effect('a player standing in the doorway is nudged into the room', () =>
     Story.story(
       APPLICATION,
-      Story.given(stocked(1, 0, { x: 5, y: 90 })),
+      Story.given(stocked(1, 0, { x: 5, y: WEST_Y })),
       press('KeyT'),
       Story.model(({ traps, seats: [{ player }] }) => {
         expect(traps).toHaveLength(1)
         expect(player.x).toBeGreaterThanOrEqual(
-          PARLOUR.thresholds.West.box.right + PLAYER_RADIUS,
+          MANOR.thresholds.West.box.right + PLAYER_RADIUS,
         )
       }),
       ...ticks(5, FRAME_MS),
       Story.model(({ seats: [{ player }] }) => {
         expect(player.x).toBeGreaterThanOrEqual(
-          PARLOUR.thresholds.West.box.right + PLAYER_RADIUS,
+          MANOR.thresholds.West.box.right + PLAYER_RADIUS,
         )
       }),
     ),
@@ -438,11 +438,11 @@ describe('placing a turret', () => {
           )
 
         yield* refusedWith(
-          stocked(0, 1, { x: 165, y: 25 }, { x: 0, y: -1 }),
+          stocked(0, 1, { x: 245, y: 25 }, { x: 0, y: -1 }),
           'Something is in the way',
         )
         yield* refusedWith(
-          stocked(0, 1, { x: 15, y: 90 }, { x: -1, y: 0 }),
+          stocked(0, 1, { x: 15, y: WEST_Y }, { x: -1, y: 0 }),
           'Doorways are for Plank Piles',
         )
         yield* refusedWith(
@@ -549,9 +549,9 @@ describe('placing a turret', () => {
 })
 
 describe('barricades and pathing', () => {
-  const northSpawn = doorSpawnPoint(PARLOUR, 'North', 0)
+  const northSpawn = doorSpawnPoint(MANOR, 'North', 0)
   const isNearNorthDoor = ({ x, y }: Vector) =>
-    y >= 0 && y < 30 && x > 205 && x < 235
+    y >= 0 && y < 30 && x > NORTH_X - 15 && x < NORTH_X + 15
 
   test('a barricade tolls its doorway in the flow field', () => {
     const start = fightingWith([barricade(1, 'North')], [], ROOM_MIDDLE)
@@ -591,7 +591,9 @@ describe('barricades and pathing', () => {
                   speed: 40,
                 }),
               ],
-              { x: 230, y: 100 },
+              // NOTE: by the West door, so the way round through the yard
+              // is shorter than chewing through the North door's planks.
+              { x: 40, y: 45 },
             ),
           ),
           ...recordTicks(240, LONG_FRAME_MS, frames),
@@ -602,7 +604,7 @@ describe('barricades and pathing', () => {
         expect(
           Array.some(
             positions,
-            zombie => isInsideRoomAt(PARLOUR, zombie) && zombie.x > 290,
+            zombie => isInsideRoomAt(MANOR, zombie) && zombie.x < 30,
           ),
         ).toBe(true)
         expect(
@@ -671,7 +673,7 @@ describe('barricades and pathing', () => {
                   speed: 40,
                 }),
               ],
-              { x: 220, y: 32 },
+              { x: NORTH_X, y: 32 },
             ),
           ),
           ...recordTicks(60, LONG_FRAME_MS, frames),
@@ -687,7 +689,7 @@ describe('barricades and pathing', () => {
 })
 
 describe('barricade damage', () => {
-  const pressedAgainstNorth: Vector = { x: 220, y: 5 }
+  const pressedAgainstNorth: Vector = { x: NORTH_X, y: 5 }
 
   it.effect(
     'a Groaner chews it through three stages, with splinters, and it breaks with a crash',
@@ -708,7 +710,7 @@ describe('barricade damage', () => {
                   { speed: 30 },
                 ),
               ],
-              { x: 220, y: 40 },
+              { x: NORTH_X, y: 40 },
             ),
           ),
           ...recordTicks(500, LONG_FRAME_MS, frames),
@@ -734,7 +736,7 @@ describe('barricade damage', () => {
           eventsOf(frames, GameEvent.guards.TrapHit).length,
         ).toBeGreaterThanOrEqual(TRAPS.Barricade.hp - 1)
         expect(eventsOf(frames, GameEvent.guards.TrapBroken)).toEqual([
-          GameEvent.TrapBroken({ x: 220, y: 15, kind: 'Barricade' }),
+          GameEvent.TrapBroken({ x: NORTH_X, y: 15, kind: 'Barricade' }),
         ])
         expect(
           Array.some(frames, ({ particles }) =>
@@ -762,8 +764,8 @@ describe('barricade damage', () => {
           Story.given(
             fightingWith(
               [barricade(1, 'North')],
-              [zombieOf(kind, 50, 220, 2, { speed: 20 })],
-              { x: 220, y: 40 },
+              [zombieOf(kind, 50, NORTH_X, 2, { speed: 20 })],
+              { x: NORTH_X, y: 40 },
             ),
           ),
           ...ticks(20, LONG_FRAME_MS),
@@ -790,7 +792,7 @@ describe('barricade damage', () => {
         APPLICATION,
         Story.given(
           modifyFocus(
-            fightingWith([barricade(1, 'West')], [], { x: 20, y: 90 }),
+            fightingWith([barricade(1, 'West')], [], { x: 20, y: WEST_Y }),
             {
               player: player =>
                 modifyFields(player, { facing: () => ({ x: -1, y: 0 }) }),
@@ -802,17 +804,14 @@ describe('barricade damage', () => {
         ...ticks(Math.ceil(FIRE_INTERVAL_MS / FRAME_MS) + 2, FRAME_MS),
         Story.model(({ seats: [{ player }], frameEvents, bullets }) => {
           expect(player.x).toBeCloseTo(
-            PARLOUR.thresholds.West.box.right + PLAYER_RADIUS,
+            MANOR.thresholds.West.box.right + PLAYER_RADIUS,
             1,
           )
           expect(frameEvents).not.toContainEqual(
             expect.objectContaining({ _tag: 'BulletStruck' }),
           )
           expect(
-            Array.some(
-              bullets,
-              ({ x }) => x < PARLOUR.thresholds.West.box.right,
-            ),
+            Array.some(bullets, ({ x }) => x < MANOR.thresholds.West.box.right),
           ).toBe(true)
         }),
       ),
@@ -824,7 +823,7 @@ describe('bursts and traps', () => {
     'a Kaboomer burst damages a barricade and a gnome in reach, but not one out of it',
     () => {
       const blast = {
-        ...zombieOf('Exploder', 60, 222, 25),
+        ...zombieOf('Exploder', 60, NORTH_X + 2, 25),
         hp: 0,
         state: ZombieState.Fusing({ remainingMs: 0 }),
       }
@@ -833,7 +832,11 @@ describe('bursts and traps', () => {
         APPLICATION,
         Story.given(
           fightingWith(
-            [barricade(1, 'North'), turret(2, 22, 3), turret(3, 5, 14)],
+            [
+              barricade(1, 'North'),
+              turret(2, NORTH_X / 10, 3),
+              turret(3, 5, 14),
+            ],
             [blast],
             ROOM_MIDDLE,
           ),
@@ -863,8 +866,8 @@ describe('bursts and traps', () => {
           Story.given(
             fightingWith(
               [barricade(1, 'North', 10)],
-              [zombieOf('Exploder', 60, 220, 1, { speed: 20 })],
-              { x: 220, y: 60 },
+              [zombieOf('Exploder', 60, NORTH_X, 1, { speed: 20 })],
+              { x: NORTH_X, y: 60 },
             ),
           ),
           ...recordTicks(60, FRAME_MS, frames),
@@ -1006,17 +1009,20 @@ describe('turrets', () => {
       yield* Story.story(
         APPLICATION,
         Story.given(
+          // NOTE: on the open floor under the dining room's north wall,
+          // east of the sideboard: the Big Lug comes up at the player
+          // across the gnome.
           fightingWith(
-            [turret(1, TURRET_TILE.column, TURRET_TILE.row)],
-            [zombieOf('Tank', 76, 165, 107, { speed: 20 })],
-            { x: 165, y: 70 },
+            [turret(1, 25, 4)],
+            [zombieOf('Tank', 76, 255, 57, { speed: 20 })],
+            { x: 255, y: 22 },
           ),
         ),
         ...recordTicks(60, LONG_FRAME_MS, frames),
       )
 
       expect(eventsOf(frames, GameEvent.guards.TrapBroken)).toEqual([
-        GameEvent.TrapBroken({ x: 165, y: 95, kind: 'Turret' }),
+        GameEvent.TrapBroken({ x: 255, y: 45, kind: 'Turret' }),
       ])
       expect(Option.getOrThrow(Array.last(frames)).traps).toEqual([])
     }),

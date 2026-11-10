@@ -39,7 +39,7 @@ import {
   waitOutFreeze,
   zombieAt,
 } from '../../test/testing'
-import { PARLOUR } from '../../world/level/arena'
+import { START_LEVEL } from '../../world/level/arena'
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { scoreOf } from '../../world/run/stats'
 import { Message } from '../message'
@@ -73,9 +73,9 @@ describe('movement', () => {
       tick(FRAME_MS),
       Story.model(({ seats: [{ player }] }) => {
         expect(player.x).toBeCloseTo(
-          PARLOUR.width / 2 + (PLAYER_SPEED * FRAME_MS) / 1000,
+          START_LEVEL.start.x + (PLAYER_SPEED * FRAME_MS) / 1000,
         )
-        expect(player.y).toBe(PARLOUR.height / 2)
+        expect(player.y).toBe(START_LEVEL.start.y)
       }),
     ),
   )
@@ -87,7 +87,7 @@ describe('movement', () => {
       Story.message(Message.PressedKey({ code: 'KeyA' })),
       tick(5000),
       Story.model(({ seats: [{ player }], elapsedMs }) => {
-        expect(player.x).toBeCloseTo(PARLOUR.width / 2 - PLAYER_SPEED * 0.05)
+        expect(player.x).toBeCloseTo(START_LEVEL.start.x - PLAYER_SPEED * 0.05)
         expect(elapsedMs).toBe(50)
       }),
     ),
@@ -100,7 +100,7 @@ describe('movement', () => {
       Story.message(Message.PressedKey({ code: 'KeyD' })),
       tick(FIXED_STEP_MS),
       Story.model(nextModel => {
-        expect(focusOf(nextModel).player.x).toBe(PARLOUR.width / 2)
+        expect(focusOf(nextModel).player.x).toBe(START_LEVEL.start.x)
         expect(nextModel.elapsedMs).toBe(0)
       }),
     ),
@@ -221,15 +221,18 @@ describe('zombies', () => {
       APPLICATION,
       Story.given(
         withZombies(playingModel, [
-          zombieAt(100, 100, PARLOUR.height / 2, { speed: 20 }),
+          // NOTE: west of the start spot, short of the candelabra.
+          zombieAt(100, START_LEVEL.start.x - 40, START_LEVEL.start.y, {
+            speed: 20,
+          }),
         ]),
       ),
       tick(50),
       Story.model(({ zombies }) => {
         expect(
           Array.map(zombies, zombie => modifyFields(zombie, { x: () => 0 })),
-        ).toEqual([zombieAt(100, 0, PARLOUR.height / 2, { speed: 20 })])
-        expect(zombies[0]?.x).toBeCloseTo(101, 9)
+        ).toEqual([zombieAt(100, 0, START_LEVEL.start.y, { speed: 20 })])
+        expect(zombies[0]?.x).toBeCloseTo(START_LEVEL.start.x - 39, 9)
       }),
     ),
   )
@@ -241,7 +244,7 @@ describe('zombies', () => {
         APPLICATION,
         Story.given(
           withZombies(playingModel, [
-            zombieAt(100, MUZZLE_X, PARLOUR.height / 2, { speed: 0 }),
+            zombieAt(100, MUZZLE_X, START_LEVEL.start.y, { speed: 0 }),
             zombieAt(101, 20, 20, { speed: 0 }),
           ]),
         ),
@@ -276,7 +279,7 @@ describe('zombies', () => {
         APPLICATION,
         Story.given(
           withZombies(playingModel, [
-            zombieAt(100, MUZZLE_X, PARLOUR.height / 2, { speed: 0 }),
+            zombieAt(100, MUZZLE_X, START_LEVEL.start.y, { speed: 0 }),
           ]),
         ),
         holdFire,
@@ -285,7 +288,7 @@ describe('zombies', () => {
         Story.model(({ zombies }) => {
           expect(zombies).toEqual([
             modifyFields(
-              zombieAt(100, MUZZLE_X, PARLOUR.height / 2, { speed: 0 }),
+              zombieAt(100, MUZZLE_X, START_LEVEL.start.y, { speed: 0 }),
               {
                 hp: () => ZOMBIE_MAX_HP - 1,
                 knockback: () => ({ x: ZOMBIE_KNOCKBACK_SPEED, y: 0 }),
@@ -320,7 +323,7 @@ describe('zombies', () => {
         APPLICATION,
         Story.given(
           withZombies(playingModel, [
-            dyingZombieAt(100, PARLOUR.width / 2 + 2, PARLOUR.height / 2),
+            dyingZombieAt(100, START_LEVEL.start.x + 2, START_LEVEL.start.y),
           ]),
         ),
         ...ticks(frameCount - 1, FRAME_MS),
@@ -343,7 +346,7 @@ describe('zombies', () => {
       APPLICATION,
       Story.given(
         withZombies(playingModel, [
-          dyingZombieAt(100, MUZZLE_X, PARLOUR.height / 2),
+          dyingZombieAt(100, MUZZLE_X, START_LEVEL.start.y),
         ]),
       ),
       holdFire,
@@ -362,7 +365,7 @@ describe('zombies', () => {
         APPLICATION,
         Story.given(
           withZombies(playingModel, [
-            zombieAt(100, PARLOUR.width / 2 + 2, PARLOUR.height / 2, {
+            zombieAt(100, START_LEVEL.start.x + 2, START_LEVEL.start.y, {
               speed: 0,
             }),
           ]),
@@ -383,7 +386,7 @@ describe('zombies', () => {
         ...waitOutFreeze(HIT_STOP_HURT_MS),
         tick(FRAME_MS),
         Story.model(({ seats: [{ player }] }) => {
-          expect(player.x).toBeLessThan(PARLOUR.width / 2)
+          expect(player.x).toBeLessThan(START_LEVEL.start.x)
         }),
       ),
   )
@@ -399,10 +402,10 @@ describe('zombies', () => {
         APPLICATION,
         Story.given(
           withZombies(playingModel, [
-            zombieAt(100, PARLOUR.width / 2 + 2, PARLOUR.height / 2, {
+            zombieAt(100, START_LEVEL.start.x + 2, START_LEVEL.start.y, {
               speed: 60,
             }),
-            zombieAt(101, PARLOUR.width / 2 - 2, PARLOUR.height / 2, {
+            zombieAt(101, START_LEVEL.start.x - 2, START_LEVEL.start.y, {
               speed: 60,
             }),
           ]),
@@ -435,7 +438,7 @@ describe('zombies', () => {
           player: player => modifyFields(player, { hp: () => 1 }),
         }),
         [
-          zombieAt(100, PARLOUR.width / 2, PARLOUR.height / 2 + 3, {
+          zombieAt(100, START_LEVEL.start.x, START_LEVEL.start.y + 3, {
             speed: 20,
           }),
         ],
@@ -471,7 +474,7 @@ describe('game events', () => {
   it.effect(
     'a frame records what happened in it and the next frame clears them',
     () => {
-      const shot = { x: PARLOUR.width / 2 + 6, y: PARLOUR.height / 2 }
+      const shot = { x: START_LEVEL.start.x + 6, y: START_LEVEL.start.y }
       const zombieX = MUZZLE_X
 
       return Story.story(
@@ -479,7 +482,7 @@ describe('game events', () => {
         Story.given(
           withZombies(playingModel, [
             modifyFields(
-              zombieAt(100, zombieX, PARLOUR.height / 2, { speed: 0 }),
+              zombieAt(100, zombieX, START_LEVEL.start.y, { speed: 0 }),
               {
                 hp: () => 1,
               },
@@ -509,7 +512,7 @@ describe('game events', () => {
             Option.some(
               GameEvent.ZombieKilled({
                 x: zombieX,
-                y: PARLOUR.height / 2,
+                y: START_LEVEL.start.y,
                 direction: RIGHT,
                 bounty: SHAMBLER_BOUNTY,
                 kind: 'Shambler',
@@ -530,7 +533,7 @@ describe('game events', () => {
       APPLICATION,
       Story.given(
         withZombies(playingModel, [
-          zombieAt(100, PARLOUR.width / 2 + 2, PARLOUR.height / 2, {
+          zombieAt(100, START_LEVEL.start.x + 2, START_LEVEL.start.y, {
             speed: 0,
           }),
         ]),
@@ -539,8 +542,8 @@ describe('game events', () => {
       Story.model(({ frameEvents }) => {
         expect(frameEvents).toEqual([
           GameEvent.PlayerHurt({
-            x: PARLOUR.width / 2,
-            y: PARLOUR.height / 2,
+            x: START_LEVEL.start.x,
+            y: START_LEVEL.start.y,
             direction: { x: -1, y: 0 },
             source: 'Shambler',
           }),

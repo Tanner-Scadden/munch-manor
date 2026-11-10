@@ -1,4 +1,4 @@
-import { Array, Function, Option, Result } from 'effect'
+import { Array, Function, Option, Record, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { KITCHEN_FIRST_WAVE } from '../../shared/constants'
@@ -22,6 +22,7 @@ import {
   openExitIn,
   tileBox,
 } from './arena'
+import { WEST_EXIT } from './plan'
 
 // THE EXIT
 
@@ -48,8 +49,13 @@ export const EXIT_RULES: ExitRules = {
   tagDropPx: 7,
 }
 
+const EXIT_NAMES: Readonly<Record<ExitId, string>> = {
+  [KITCHEN_EXIT]: 'THE KITCHEN',
+  [WEST_EXIT]: 'THE PARLOUR',
+}
+
 export const exitName = (exit: ExitId): string =>
-  exit === KITCHEN_EXIT ? 'THE KITCHEN' : exit
+  Option.getOrElse(Record.get(EXIT_NAMES, exit), () => exit)
 
 export const boxAround = (boxes: ReadonlyArray<Box>): Option.Option<Box> =>
   Array.match(boxes, {
@@ -90,9 +96,14 @@ export const isExitOfferOpenFor = (phase: Phase): boolean =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase) &&
   phase.wave >= EXIT_RULES.firstWave
 
-// NOTE: the kitchen tour gives the first exit away (src/world/run/tutorialRules.ts).
-export const exitPriceFor = (model: World): number =>
-  isKitchenTourOn(model) ? 0 : EXIT_RULES.price
+// NOTE: the kitchen tour gives the kitchen away (src/world/run/tutorialRules.ts);
+// the parlour's boards keep their price.
+export const exitPriceFor: {
+  (exit: ExitId): (model: World) => number
+  (model: World, exit: ExitId): number
+} = Function.dual(2, (model: World, exit: ExitId): number =>
+  exit === KITCHEN_EXIT && isKitchenTourOn(model) ? 0 : EXIT_RULES.price,
+)
 
 // NOTE: each boarded exit for sale, as a purchasable: walk up and hold the
 // interact key beside its boards (src/world/shop/purchase.ts).
@@ -100,7 +111,7 @@ export const exitOffers = (model: World): ReadonlyArray<Offer> =>
   isExitOfferOpenFor(model.phase)
     ? Array.map(closedExitBoxes(levelOf(model)), ({ exit, box }) => ({
         target: Purchasable.Exit({ exit }),
-        price: exitPriceFor(model),
+        price: exitPriceFor(model, exit),
         box,
         reachPx: EXIT_RULES.reachPx,
         isFull: false,

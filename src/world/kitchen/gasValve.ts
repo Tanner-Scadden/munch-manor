@@ -6,6 +6,7 @@ import {
   type Box,
   COVER_SYMBOLS,
   type Level,
+  boxCenter,
   circleTouchesBox,
   levelOf,
   tileBox,
@@ -123,15 +124,34 @@ const HEARTH_SYMBOL = pipe(
 
 const flameZones = new WeakMap<Level, Option.Option<Box>>()
 
+// NOTE: an open room holds the hearth: its room must be open for its fire
+// to burn, wherever the parlour stands on the plan.
+const isInOpenRoom = (level: Level, hearth: Box): boolean => {
+  const { x, y } = boxCenter(hearth)
+  return Array.some(
+    level.rooms,
+    ({ box, isOpen }) =>
+      isOpen &&
+      x >= box.left &&
+      x < box.right &&
+      y >= box.top &&
+      y < box.bottom,
+  )
+}
+
 // NOTE: the floor in front of the hearth, as wide as it and 24 px deep:
-// where the lit fireplace burns. A level keeps its zone.
+// where the lit fireplace burns, once the parlour it stands in is open. A
+// level keeps its zone.
 export const flameZoneOf = (level: Level): Option.Option<Box> => {
   const cached = flameZones.get(level)
   if (cached !== undefined) {
     return cached
   }
   const zone = Option.map(
-    boxAround(Array.map(tilesWithSymbol(level, HEARTH_SYMBOL), tileBox)),
+    Option.filter(
+      boxAround(Array.map(tilesWithSymbol(level, HEARTH_SYMBOL), tileBox)),
+      hearth => isInOpenRoom(level, hearth),
+    ),
     hearth => ({
       left: hearth.left,
       top: hearth.bottom,

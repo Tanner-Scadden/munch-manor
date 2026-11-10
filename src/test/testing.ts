@@ -49,10 +49,10 @@ import {
 } from '../app/mount'
 import { subscriptions, type update } from '../app/pureApp'
 import { ReadRoomLink } from '../app/update/coop'
+import { CueMusic } from '../app/update/music'
 import { HideSplash, ShowLoadProgress, WriteSave } from '../app/update/save'
 import { PlaySound } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
-import { CueMusic } from '../app/update/music'
 import { Message as CoopMessage } from '../features/coop/message'
 import { ChangeLobby, FocusCoopElement } from '../features/coop/steps'
 import { endOffer } from '../features/end/endOffer'
@@ -87,7 +87,7 @@ import {
   mapGuns,
   maybeCarried,
 } from '../world/gear/weapons'
-import { PARLOUR, levelOf } from '../world/level/arena'
+import { START_LEVEL, levelOf } from '../world/level/arena'
 import { KITCHEN_EXIT } from '../world/level/exits'
 import { World } from '../world/schema/world'
 import {
@@ -778,11 +778,9 @@ export const zombieOf: {
 } = Function.dual((args: IArguments) => typeof args[0] === 'string', makeZombie)
 
 // NOTE: a grid of up to forty spots on open floor, ten across each of four
-// rows that no furniture in the parlour touches, for tests that fill the
+// rows that no furniture in the dining room touches, for tests that fill the
 // room with zombies.
-const OPEN_FLOOR_ROWS_Y: Array.NonEmptyReadonlyArray<number> = [
-  74, 89, 104, 135,
-]
+const OPEN_FLOOR_ROWS_Y: Array.NonEmptyReadonlyArray<number> = [40, 52, 89, 129]
 
 export const openFloorSpot = (
   index: number,
@@ -881,19 +879,20 @@ export const SHOTGUN: CarriedGun = {
 // THE ROOM
 
 // NOTE: where a zombie or the player stands just inside a door.
-export const BELOW_NORTH_DOOR = { x: 220, y: 27 }
+export const BELOW_NORTH_DOOR = { x: 280, y: 27 }
 
 export const BELOW_KITCHEN_DOOR = { x: 70, y: 26 }
 
-// NOTE: a spot the player can always stand on: the parlour's middle.
-export const PARLOUR_SPOT: Vector = { x: 160, y: 90 }
+// NOTE: a spot the player can always stand on: the start spot at the
+// dining room's table, where every run starts.
+export const START_SPOT: Vector = START_LEVEL.start
 
-// NOTE: just right of the player at the parlour's center, where a shot
-// leaves the gun.
-export const MUZZLE_X = PARLOUR.width / 2 + 10
+// NOTE: just right of the player on the start spot, where a shot leaves
+// the gun.
+export const MUZZLE_X = START_SPOT.x + 10
 
 // NOTE: a zombie one shot from death in front of the gun.
-export const doomed = zombieAt(100, MUZZLE_X, PARLOUR.height / 2, { hp: 1 })
+export const doomed = zombieAt(100, MUZZLE_X, START_SPOT.y, { hp: 1 })
 
 export const westPlank = Trap.Barricade({
   id: 1,

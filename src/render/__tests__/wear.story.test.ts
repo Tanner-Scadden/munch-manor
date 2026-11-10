@@ -24,7 +24,7 @@ import {
 import { DECAL_MAX, FIXED_STEP_MS, PARTICLE_MAX } from '../../shared/constants'
 import { quietWave } from '../../test/model.fixture'
 import { APPLICATION, bulletInto, tick, zombieOf } from '../../test/testing'
-import { PARLOUR } from '../../world/level/arena'
+import { START_LEVEL } from '../../world/level/arena'
 import {
   ZOMBIE_KINDS,
   isArmorPart,
@@ -36,8 +36,10 @@ import type { Decal, Particle } from '../renderSchema'
 import { zombieHealthBarShapes } from '../zombieView'
 
 const FRAME_MS = FIXED_STEP_MS
-const FAR_X = PARLOUR.width / 2 + 60
-const ROW_Y = PARLOUR.height / 2
+// NOTE: a zombie well east of the player, on the open row north of the
+// start spot (row 12, clear wall to wall).
+const FAR_X = START_LEVEL.start.x + 60
+const ROW_Y = START_LEVEL.start.y - 20
 
 const withScene = (
   zombies: ReadonlyArray<Zombie>,

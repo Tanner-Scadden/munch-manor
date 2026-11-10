@@ -26,14 +26,14 @@ import { debutPitch } from '../../../screens/game/menus'
 import { FIXED_STEP_MS, HIT_STOP_KILL_MAX_MS } from '../../../shared/constants'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import { APPLICATION, bulletInto, tick, ticks } from '../../../test/testing'
-import { PARLOUR } from '../../level/arena'
+import { START_LEVEL } from '../../level/arena'
 import { focusOf } from '../../party/party'
 import { rollSpawns } from '../../waves/endlessWaves'
 import { Behavior, ZOMBIE_KINDS } from '../zombies'
 
 const FRAME_MS = FIXED_STEP_MS
-const CENTER_X = PARLOUR.width / 2
-const CENTER_Y = PARLOUR.height / 2
+const CENTER_X = START_LEVEL.start.x
+const CENTER_Y = START_LEVEL.start.y
 
 const BOMBER = Behavior.match(ZOMBIE_KINDS.Exploder.behavior, {
   Brawler: () => undefined,
@@ -121,7 +121,8 @@ describe('the Kaboomer', () => {
 
   it.effect('a shot Kaboomer pops a fifth of a second later', () => {
     expect(BOMBER?.shotFuseMs).toBe(200)
-    const gasbag = kaboomerAt(1, CENTER_X + 60, CENTER_Y, 3)
+    // NOTE: short of the candelabra east of the start spot.
+    const gasbag = kaboomerAt(1, CENTER_X + 40, CENTER_Y, 3)
     const shotMs = BOMBER?.shotFuseMs ?? 0
 
     return Story.story(

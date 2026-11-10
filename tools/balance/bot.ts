@@ -374,7 +374,7 @@ export const play: {
         } else {
           const direction = steerToward(
             focusOf(model).player,
-            routeTo(focusOf(model).player, target),
+            routeTo(levelOf(model), focusOf(model).player, target),
           )
           const moved = distance(focusOf(model).player, lastPosition)
           stuckFrames = moved < 0.3 ? stuckFrames + 1 : 0

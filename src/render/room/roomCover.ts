@@ -83,8 +83,27 @@ const blockAt = (level: Level, symbol: string, { column, row }: Tile): Box => ({
 export const coverShadow = ({ x, y, width, height }: Box): Canvas.Shape =>
   rect(x + 2, y + height, width - 2, 2, COVER_SHADOW_COLOR)
 
-const isWestHalf = ({ x, width }: Box, level: Level): boolean =>
-  x + width / 2 < level.left + level.width / 2
+// NOTE: west of the middle of the room the box stands in, or of the whole
+// map when it stands in none.
+const isWestHalf = ({ x, y, width, height }: Box, level: Level): boolean => {
+  const centerX = x + width / 2
+  const centerY = y + height / 2
+  const middle = pipe(
+    level.rooms,
+    Array.findFirst(
+      ({ box }) =>
+        centerX >= box.left &&
+        centerX < box.right &&
+        centerY >= box.top &&
+        centerY < box.bottom,
+    ),
+    Option.match({
+      onNone: () => level.left + level.width / 2,
+      onSome: ({ box }) => (box.left + box.right) / 2,
+    }),
+  )
+  return centerX < middle
+}
 
 // NOTE: an upright piano against the wall, its back rising up the wallpaper,
 // with a candelabra on top and one key bitten off.
@@ -151,13 +170,22 @@ const hearthShapes = ({
 }: Box): ReadonlyArray<Canvas.Shape> => {
   const centerX = x + width / 2
   const bottom = y + height
+  // NOTE: the hearth stands against its room's north wall, so its chimney
+  // breast and mantel are drawn from the top of that wall, two rows above.
+  const wallTop = y - TILE_SIZE * 2
+  const faceTop = wallTop + FACE_TOP
   const breastX = x - 6
   const breastWidth = width + 12
-  const mantelY = 9
-  const opening = { x: x + 6, y: 14, width: width - 12, height: bottom - 16 }
-  const brickRows = Array.makeBy(4, index => FACE_TOP + 1 + index * 3)
+  const mantelY = wallTop + 9
+  const opening = {
+    x: x + 6,
+    y: wallTop + 14,
+    width: width - 12,
+    height: bottom - wallTop - 16,
+  }
+  const brickRows = Array.makeBy(4, index => faceTop + 1 + index * 3)
   return [
-    rect(breastX, FACE_TOP, breastWidth, y - FACE_TOP, '#4e4552'),
+    rect(breastX, faceTop, breastWidth, y - faceTop, '#4e4552'),
     ...Array.flatMap(brickRows, (rowY, index) => [
       rect(breastX, rowY, breastWidth, 1, '#3e3644'),
       ...Array.makeBy(Math.floor(breastWidth / 8), brick =>
@@ -282,14 +310,17 @@ const bookshelfShapes = ({
   width,
   height,
 }: Box): ReadonlyArray<Canvas.Shape> => {
-  const top = 2
+  // NOTE: the bookshelf stands against its room's north wall and rises up
+  // it, so it is drawn from the top of that wall, two rows above.
+  const wallTop = y - TILE_SIZE * 2
+  const top = wallTop + 2
   const bottom = y + height
   const innerLeft = x + 3
   const innerRight = x + width - 3
   const shelves = [
-    { floorY: 10, room: 6 },
-    { floorY: 17, room: 5 },
-    { floorY: 24, room: 5 },
+    { floorY: wallTop + 10, room: 6 },
+    { floorY: wallTop + 17, room: 5 },
+    { floorY: wallTop + 24, room: 5 },
   ]
   const middle = x + Math.floor(width / 2)
   return [
@@ -303,16 +334,16 @@ const bookshelfShapes = ({
     ]),
     rect(middle - 1, top + 2, 2, 22, SHELF_WOOD_COLOR),
     // NOTE: a skull bookend, a jar with an eye in it, and a candle.
-    rect(middle + 8, 5, 5, 4, BONE_COLOR),
-    rect(middle + 9, 6, 1, 1, INK_COLOR),
-    rect(middle + 11, 6, 1, 1, INK_COLOR),
-    rect(middle + 8, 9, 5, 1, SHELF_EDGE_COLOR),
-    rect(innerLeft + 2, 13, 5, 4, 'rgba(160, 200, 160, 0.55)'),
-    rect(innerLeft + 3, 14, 2, 2, '#f4f1de'),
-    rect(innerLeft + 4, 14, 1, 1, '#3d4f7a'),
-    rect(innerLeft + 2, 12, 5, 1, '#8a8090'),
-    rect(innerRight - 4, 20, 2, 4, CANDLE_COLOR),
-    rect(innerRight - 4, 18, 2, 2, FLAME_COLOR),
+    rect(middle + 8, wallTop + 5, 5, 4, BONE_COLOR),
+    rect(middle + 9, wallTop + 6, 1, 1, INK_COLOR),
+    rect(middle + 11, wallTop + 6, 1, 1, INK_COLOR),
+    rect(middle + 8, wallTop + 9, 5, 1, SHELF_EDGE_COLOR),
+    rect(innerLeft + 2, wallTop + 13, 5, 4, 'rgba(160, 200, 160, 0.55)'),
+    rect(innerLeft + 3, wallTop + 14, 2, 2, '#f4f1de'),
+    rect(innerLeft + 4, wallTop + 14, 1, 1, '#3d4f7a'),
+    rect(innerLeft + 2, wallTop + 12, 5, 1, '#8a8090'),
+    rect(innerRight - 4, wallTop + 20, 2, 4, CANDLE_COLOR),
+    rect(innerRight - 4, wallTop + 18, 2, 2, FLAME_COLOR),
     rect(x, bottom - 4, width, 4, SHELF_WOOD_COLOR),
     rect(x, bottom - 4, width, 1, SHELF_EDGE_COLOR),
     rect(x + 2, bottom - 2, width - 4, 1, '#2a1a10'),
@@ -583,6 +614,13 @@ const COVER_DRAWINGS: Readonly<
   Pantry: pantryShapes,
   Sacks: sacksShapes,
   Fridge: fridgeShapes,
+  // NOTE: the dining room's cover is drawn by src/render/room/escapeCover.ts,
+  // nearest last, after the rest (room.ts), so here it draws nothing.
+  PartyTable: () => [],
+  Hutch: () => [],
+  Candelabra: () => [],
+  DisplayCase: () => [],
+  TrapCrate: () => [],
 }
 
 // NOTE: every block of a cover symbol on the map, each the box from its top
@@ -603,10 +641,12 @@ const coverShapes = (
   symbol: string,
   kind: CoverKind,
 ): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(coverBlocks(level, symbol), box => [
-    coverShadow(box),
-    ...COVER_DRAWINGS[kind](box, level),
-  ])
+  Array.flatMap(coverBlocks(level, symbol), box => {
+    const shapes = COVER_DRAWINGS[kind](box, level)
+    return Array.isReadonlyArrayNonEmpty(shapes)
+      ? [coverShadow(box), ...shapes]
+      : []
+  })
 
 export const allCoverShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
   Array.flatMap(Record.toEntries(COVER_SYMBOLS), ([symbol, kind]) =>

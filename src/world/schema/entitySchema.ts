@@ -344,6 +344,8 @@ export const DoorId = Schema.Literals([
   'South',
   'Back',
   'Window',
+  'WestTop',
+  'WestBottom',
   'Front',
 ])
 export type DoorId = typeof DoorId.Type
@@ -354,11 +356,13 @@ export type LevelId = typeof LevelId.Type
 export const ExitId = Schema.String
 export type ExitId = typeof ExitId.Type
 
-// NOTE: which level the run is in and which of its boarded exits are open.
-// The built Level, with its tile lookups and doors, comes from levelOf.
+// NOTE: which level the run is in, which of its boarded exits are open, and
+// which of its drops lie in their spots (the dining room's chandelier). The
+// built Level, with its tile lookups and doors, comes from levelOf.
 export const LevelState = Schema.Struct({
   id: LevelId,
   openExits: Schema.Array(ExitId),
+  dropped: Schema.Array(Schema.String),
 })
 export type LevelState = typeof LevelState.Type
 

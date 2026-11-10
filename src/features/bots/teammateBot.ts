@@ -102,6 +102,7 @@ const REVIVE_STOP_PX = PLAYER_RADIUS + COOP_RULES.reviveReachPx - 4
 const READY_DELAY_MS = 4000
 const READY_LIMIT_MS = 10_000
 const STALL_YIELD_PX = SHOP_NEAR_PX
+const STALL_KEEP_CLEAR_PX = 24
 const STALL_SPOT_PX = 8
 const THREAT_SLACK_PX = 40
 const PICKUP_SEEK_PX = 110
@@ -521,6 +522,11 @@ const stallSpot: Vector = {
   y: (STALL_BOX.top + STALL_BOX.bottom) / 2,
 }
 
+const STALL_MIDDLE: Vector = {
+  x: (STALL_BOX.left + STALL_BOX.right) / 2,
+  y: (STALL_BOX.top + STALL_BOX.bottom) / 2,
+}
+
 const distanceToStall = ({ x, y }: Vector): number =>
   Math.hypot(
     Math.max(STALL_BOX.left - x, 0, x - STALL_BOX.right),
@@ -579,6 +585,11 @@ const breakIntent = (world: World, me: SeatState): Intent => {
     !ShopState.isAnyOf(['Dismissed'])(focusOf(seatWorld).shop)
   ) {
     return { ...idleIntent, move: walkToward(world, me.player, stallSpot) }
+  }
+  // NOTE: with the human at the stall, a bot on its way to its post keeps
+  // clear of the stall's front, so walking past never opens the shop.
+  if (!stallIsFree && distanceToStall(me.player) < STALL_KEEP_CLEAR_PX) {
+    return { ...idleIntent, move: awayFrom(me.player, STALL_MIDDLE) }
   }
   return { ...idleIntent, move: withElbowRoom(world, me, toPost(world, me)) }
 }

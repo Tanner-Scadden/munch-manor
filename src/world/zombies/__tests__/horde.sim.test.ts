@@ -33,19 +33,23 @@ import {
   zombieOf,
 } from '../../../test/testing'
 import {
+  type Level,
   PARLOUR,
+  START_LEVEL,
   doorSpawnPoint,
   isSolidAt,
   nearestDoor,
+  startingLevel,
 } from '../../level/arena'
 import { modifyFocus } from '../../party/party'
+import type { LevelState } from '../../schema/entitySchema'
 import { doorCounts, floorCounts, rollSpawns } from '../../waves/endlessWaves'
 import { FINAL_WAVE } from '../../waves/wavePlans'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../zombies'
 
 const FRAME_MS = FIXED_STEP_MS
-const CENTER_X = PARLOUR.width / 2
-const CENTER_Y = PARLOUR.height / 2
+const CENTER_X = START_LEVEL.start.x
+const CENTER_Y = START_LEVEL.start.y
 
 const withScene = (zombies: ReadonlyArray<Zombie>): Model =>
   withActors(quietWave(1), zombies)
@@ -204,24 +208,54 @@ describe('spawn tables', () => {
 describe('tank pathing', () => {
   const TANK_TEST_SPEED = 40
   const TANK_REACH = ZOMBIE_KINDS.Tank.radius + PLAYER_RADIUS + 1
-  const underThePiano = { x: 20, y: 48 }
-  const roomCenter = { x: CENTER_X, y: CENTER_Y }
+  // NOTE: each room a run can be in, with a tight corner and its middle:
+  // the parlour on its own level (under the piano), and the dining room a
+  // run starts in (the north-west corner by the china cabinet, and the start
+  // spot).
+  const ROOMS: ReadonlyArray<
+    Readonly<{
+      state: LevelState
+      level: Level
+      targets: ReadonlyArray<Readonly<{ x: number; y: number }>>
+    }>
+  > = [
+    {
+      state: { id: 'Parlour', openExits: [], dropped: [] },
+      level: PARLOUR,
+      targets: [{ x: 20, y: 48 }, PARLOUR.start],
+    },
+    {
+      state: startingLevel,
+      level: START_LEVEL,
+      targets: [
+        { x: 20, y: 50 },
+        { x: CENTER_X, y: CENTER_Y },
+      ],
+    },
+  ]
 
   const tankRun = (
+    state: LevelState,
+    level: Level,
     door: DoorId,
     offset: number,
     target: Readonly<{ x: number; y: number }>,
   ) =>
     Effect.suspend(() => {
-      const start = doorSpawnPoint(PARLOUR, door, offset)
+      const start = doorSpawnPoint(level, door, offset)
       const frames: Array<Model> = []
       return Story.story(
         APPLICATION,
         Story.given(
           modifyFocus(
-            withScene([
-              zombieOf('Tank', 1, start.x, start.y, { speed: TANK_TEST_SPEED }),
-            ]),
+            modifyFields(
+              withScene([
+                zombieOf('Tank', 1, start.x, start.y, {
+                  speed: TANK_TEST_SPEED,
+                }),
+              ]),
+              { level: () => state },
+            ),
             {
               player: player =>
                 modifyFields(player, {
@@ -253,7 +287,7 @@ describe('tank pathing', () => {
       Option.getOrElse(() => Infinity),
     )
 
-  const tankHitsWall = (frames: ReadonlyArray<Model>): boolean =>
+  const tankHitsWall = (level: Level, frames: ReadonlyArray<Model>): boolean =>
     Array.some(frames, ({ zombies }) =>
       Array.some(zombies, ({ x, y }) => {
         const inset = ZOMBIE_KINDS.Tank.radius - 0.5
@@ -264,7 +298,7 @@ describe('tank pathing', () => {
             { x, y: y - inset },
             { x, y: y + inset },
           ],
-          point => isSolidAt(PARLOUR, point),
+          point => isSolidAt(level, point),
         )
       }),
     )
@@ -273,24 +307,28 @@ describe('tank pathing', () => {
     'a Tank fits through every doorway at the edge of its spawn spread and reaches the player',
     () => {
       const room = DOOR_HALF_WIDTH_PX - ZOMBIE_KINDS.Tank.radius
-      const runs = Array.flatMap(PARLOUR.doorIds, door =>
-        Array.flatMap([-room, room], offset =>
-          Array.map([underThePiano, roomCenter], target => ({
-            door,
-            offset,
-            target,
-          })),
+      const runs = Array.flatMap(ROOMS, ({ state, level, targets }) =>
+        Array.flatMap(level.doorIds, door =>
+          Array.flatMap([-room, room], offset =>
+            Array.map(targets, target => ({
+              state,
+              level,
+              door,
+              offset,
+              target,
+            })),
+          ),
         ),
       )
       return Effect.forEach(
         runs,
-        ({ door, offset, target }) =>
-          Effect.map(tankRun(door, offset, target), frames => {
-            const label = `${door} ${offset} ${target.x},${target.y}`
+        ({ state, level, door, offset, target }) =>
+          Effect.map(tankRun(state, level, door, offset, target), frames => {
+            const label = `${state.id} ${door} ${offset} ${target.x},${target.y}`
             expect(closestApproach(frames), label).toBeLessThanOrEqual(
               TANK_REACH,
             )
-            expect(tankHitsWall(frames), label).toBe(false)
+            expect(tankHitsWall(level, frames), label).toBe(false)
           }),
         { discard: true },
       )

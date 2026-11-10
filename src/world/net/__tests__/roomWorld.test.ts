@@ -463,13 +463,15 @@ describe('the lobby picks', () => {
 
 describe('the crew in the music', () => {
   test('a zombie close to any teammate, or a bitten teammate, raises the intensity', () => {
+    // NOTE: the teammate stands in the open aisle south of the party table,
+    // well east of the lead on the start spot.
     const apart = withSeat(TWO_SEAT_ROOM.world, 1, seatWorld =>
       modifyFocus(seatWorld, {
-        player: player => modifyFields(player, { x: () => 260, y: () => 135 }),
+        player: player => modifyFields(player, { x: () => 300, y: () => 130 }),
       }),
     )
     const lead = Option.getOrThrow(maybePlayerAt(apart, 0)).player
-    expect(Math.hypot(lead.x - 260, lead.y - 135)).toBeGreaterThan(100)
+    expect(Math.hypot(lead.x - 300, lead.y - 130)).toBeGreaterThan(100)
     const intensityWith = (zombieX: number, zombieY: number) =>
       stepRoomWorld(
         {
@@ -495,9 +497,9 @@ describe('the crew in the music', () => {
           },
         ],
       ).world.intensity
-    expect(intensityWith(280, 135)).toBeGreaterThan(0)
+    expect(intensityWith(320, 130)).toBeGreaterThan(0)
     expect(intensityWith(160, 30)).toBe(0)
-    expect(intensityWith(266, 135)).toBeGreaterThanOrEqual(INTENSITY_PER_HEART)
+    expect(intensityWith(306, 130)).toBeGreaterThanOrEqual(INTENSITY_PER_HEART)
   })
 })
 

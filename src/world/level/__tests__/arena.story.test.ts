@@ -51,6 +51,15 @@ const ARMCHAIR_ROW_Y = 50
 const COUCH_X = 160
 const COUCH_BOTTOM = 130
 
+// NOTE: these tests are about the parlour's own furniture and walls, so
+// they play on the parlour-only level (PARLOUR), where its map sits at the
+// origin as it always did, rather than the manor that starts in the dining
+// room.
+const parlourWave = (): Model =>
+  modifyFields(quietWave(1), {
+    level: () => ({ id: 'Parlour', openExits: [], dropped: [] }),
+  })
+
 const isCircleClear = ({ x, y }: { x: number; y: number }, radius: number) =>
   Array.every(
     [
@@ -117,7 +126,7 @@ describe('player collision', () => {
       Effect.gen(function* () {
         yield* Story.story(
           APPLICATION,
-          Story.given(withPlayerAt(quietWave(1), 125, 40)),
+          Story.given(withPlayerAt(parlourWave(), 125, 40)),
           press('KeyW'),
           ...ticks(40, MAX_FRAME_DELTA_MS),
           Story.model(({ seats: [{ player }] }) => {
@@ -128,7 +137,7 @@ describe('player collision', () => {
 
         yield* Story.story(
           APPLICATION,
-          Story.given(withPlayerAt(quietWave(1), 25, 70)),
+          Story.given(withPlayerAt(parlourWave(), 25, 70)),
           press('KeyW'),
           ...ticks(20, MAX_FRAME_DELTA_MS),
           Story.model(({ seats: [{ player }] }) => {
@@ -144,7 +153,7 @@ describe('player collision', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(withPlayerAt(quietWave(1), 20, 50)),
+        Story.given(withPlayerAt(parlourWave(), 20, 50)),
         press('KeyW'),
         press('KeyD'),
         ...ticks(5, MAX_FRAME_DELTA_MS),
@@ -168,7 +177,7 @@ describe('player collision', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          modifyFocus(withPlayerAt(quietWave(1), 100, ARMCHAIR_ROW_Y), {
+          modifyFocus(withPlayerAt(parlourWave(), 100, ARMCHAIR_ROW_Y), {
             player: player =>
               modifyFields(player, { knockback: () => ({ x: 600, y: 0 }) }),
           }),
@@ -183,7 +192,7 @@ describe('player collision', () => {
   it.effect('the player cannot leave the screen through a doorway', () =>
     Story.story(
       APPLICATION,
-      Story.given(withPlayerAt(quietWave(1), 30, PARLOUR.doors.West.center.y)),
+      Story.given(withPlayerAt(parlourWave(), 30, PARLOUR.doors.West.center.y)),
       press('KeyA'),
       ...ticks(40, MAX_FRAME_DELTA_MS),
       Story.model(({ seats: [{ player }] }) => {
@@ -215,7 +224,7 @@ describe('bullets and cover', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          modifyFields(withPlayerAt(quietWave(1), 250, 150), {
+          modifyFields(withPlayerAt(parlourWave(), 250, 150), {
             bullets: () => [upwardBullet],
             zombies: () => [hiddenZombie],
           }),
@@ -245,7 +254,7 @@ describe('bullets and cover', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          modifyFields(withPlayerAt(quietWave(1), 250, 150), {
+          modifyFields(withPlayerAt(parlourWave(), 250, 150), {
             bullets: () => [
               {
                 id: 902,
@@ -293,7 +302,7 @@ describe('particles and walls', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          modifyFields(quietWave(1), {
+          modifyFields(parlourWave(), {
             particles: () => [
               fallingDrop(5, 50),
               fallingDrop(25, 30),
@@ -334,7 +343,7 @@ describe('pathing', () => {
           APPLICATION,
           Story.given(
             modifyFields(
-              withPlayerAt(quietWave(1), behindCouch.x, behindCouch.y),
+              withPlayerAt(parlourWave(), behindCouch.x, behindCouch.y),
               {
                 phase: () =>
                   Phase.Wave({
@@ -383,7 +392,7 @@ describe('pathing', () => {
     Story.story(
       APPLICATION,
       Story.given(
-        modifyFields(withPlayerAt(quietWave(1), 280, 150), {
+        modifyFields(withPlayerAt(parlourWave(), 280, 150), {
           zombies: () => [
             zombieAt(1, 100, 100),
             zombieAt(2, 100, 100),

@@ -25,6 +25,7 @@ import { holdingSecond, showDialog } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { magazineOf } from '../../../world/gear/weapons'
 import { modifyFocus } from '../../../world/party/party'
+import { STALL_BOX } from '../../../world/shop/shop'
 import { Message as ShopMessage } from '../message'
 import { FocusItem } from '../steps'
 
@@ -114,4 +115,6 @@ export const holdingSpare: {
     holdingSecond(gun(kind, rounds)),
 )
 
-const BESIDE_STALL = { x: 241, y: 142 }
+// NOTE: a few steps west of the stall and just below its foot, clear of the
+// candelabra by its north-west corner.
+const BESIDE_STALL = { x: STALL_BOX.left - 19, y: STALL_BOX.bottom + 8 }

@@ -7,7 +7,7 @@ import type { Page } from 'playwright-core'
 import { type Readout } from '@game/features/coop/readout'
 import { TILE_SIZE } from '@game/shared/constants'
 import {
-  PARLOUR,
+  START_LEVEL,
   isWalkableTile,
   tileCoordinate,
 } from '@game/world/level/arena'
@@ -103,7 +103,7 @@ const distancesTo = (goal: Point): ReadonlyMap<string, number> => {
     for (const step of STEPS) {
       const next = { x: tile.x + step.x, y: tile.y + step.y }
       if (
-        isWalkableTile(PARLOUR, next.x, next.y) &&
+        isWalkableTile(START_LEVEL, next.x, next.y) &&
         !distances.has(tileKey(next.x, next.y))
       ) {
         distances.set(tileKey(next.x, next.y), distance + 1)
@@ -218,7 +218,8 @@ const distance = (from: Point, to: Point) =>
 // NOTE: how near a zombie comes before a guard or a reviver turns on it.
 const THREAT_PX = 28
 
-const PARLOUR_MIDDLE = { x: 160, y: 96 }
+// NOTE: the open aisle between the party table and the start spot.
+const ROOM_MIDDLE = { x: START_LEVEL.start.x, y: START_LEVEL.start.y - 15 }
 
 // NOTE: one step of one page's player, from what its own page draws.
 const drive = (page: Page, held: Held, role: Role, partner: number) =>
@@ -249,7 +250,7 @@ const drive = (page: Page, held: Held, role: Role, partner: number) =>
         held,
         routeKeys(
           own,
-          Option.getOrElse(nearestOf(inside, own), () => PARLOUR_MIDDLE),
+          Option.getOrElse(nearestOf(inside, own), () => ROOM_MIDDLE),
           2,
         ),
       )
@@ -312,12 +313,11 @@ const drive = (page: Page, held: Held, role: Role, partner: number) =>
     const drift =
       [MOVE_KEYS.right, MOVE_KEYS.down, MOVE_KEYS.left, MOVE_KEYS.up][leg] ??
       MOVE_KEYS.right
-    const home =
-      Math.hypot(own.x - PARLOUR_MIDDLE.x, own.y - PARLOUR_MIDDLE.y) > 50
+    const home = Math.hypot(own.x - ROOM_MIDDLE.x, own.y - ROOM_MIDDLE.y) > 50
     yield* holdKeys(
       page,
       held,
-      home ? routeKeys(own, PARLOUR_MIDDLE, 6) : new Set([drift]),
+      home ? routeKeys(own, ROOM_MIDDLE, 6) : new Set([drift]),
     )
     return yield* shootNearest(page, held, readout, own, anyZombie)
   })

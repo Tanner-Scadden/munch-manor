@@ -66,6 +66,7 @@ import {
   zombieOf,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
+import { MANOR } from '../../level/arena'
 import { focusOf, modifyFocus } from '../../party/party'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import {
@@ -352,7 +353,9 @@ describe('drops', () => {
   it.effect(
     'a pickup lands inside the room, never in a wall or a doorway',
     () => {
-      const atDoor = zombieOf('Tank', 100, 215, 4, { hp: 1 })
+      const atDoor = zombieOf('Tank', 100, MANOR.doors.North.center.x - 5, 4, {
+        hp: 1,
+      })
       return Story.story(
         APPLICATION,
         Story.given(
@@ -600,10 +603,15 @@ describe('effects', () => {
   )
 
   it.effect('Zoomy Socks make the player run faster', () => {
-    const startX = focusOf(fighting).player.x
+    // NOTE: a step up from the start spot, onto the open floor below the
+    // table, so the run east meets no candelabra.
+    const onOpenFloor = modifyFocus(withBoost(fighting, 'Speed', 5000), {
+      player: player => modifyFields(player, { y: () => 130 }),
+    })
+    const startX = focusOf(onOpenFloor).player.x
     return Story.story(
       APPLICATION,
-      Story.given(withBoost(fighting, 'Speed', 5000)),
+      Story.given(onOpenFloor),
       press('KeyD'),
       ...ticksFor(1000, FRAME_MS),
       Story.model(({ seats: [{ player }] }) => {

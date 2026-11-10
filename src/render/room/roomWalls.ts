@@ -305,15 +305,16 @@ export const wallShadowShapes = (level: Level): ReadonlyArray<Canvas.Shape> => [
 
 // WALL DECOR
 
-const sconce = (x: number): ReadonlyArray<Canvas.Shape> => [
-  rect(x - 4, 4, 10, 11, 'rgba(255, 200, 90, 0.08)'),
-  rect(x - 2, 5, 6, 8, 'rgba(255, 200, 90, 0.1)'),
-  rect(x, 6, 2, 2, FLAME_COLOR),
-  rect(x, 5, 1, 1, FLAME_TIP_COLOR),
-  rect(x, 8, 2, 3, CANDLE_COLOR),
-  rect(x + 1, 11, 1, 1, CANDLE_COLOR),
-  rect(x - 1, 11, 4, 1, GOLD_COLOR),
-  rect(x, 12, 2, 2, GOLD_DARK_COLOR),
+// NOTE: y is the top of the wall the sconce hangs on, the hearth's wall.
+const sconce = (x: number, y: number): ReadonlyArray<Canvas.Shape> => [
+  rect(x - 4, y + 4, 10, 11, 'rgba(255, 200, 90, 0.08)'),
+  rect(x - 2, y + 5, 6, 8, 'rgba(255, 200, 90, 0.1)'),
+  rect(x, y + 6, 2, 2, FLAME_COLOR),
+  rect(x, y + 5, 1, 1, FLAME_TIP_COLOR),
+  rect(x, y + 8, 2, 3, CANDLE_COLOR),
+  rect(x + 1, y + 11, 1, 1, CANDLE_COLOR),
+  rect(x - 1, y + 11, 4, 1, GOLD_COLOR),
+  rect(x, y + 12, 2, 2, GOLD_DARK_COLOR),
 ]
 
 const PORTRAIT_PIXELS: ReadonlyArray<string> = [
@@ -410,7 +411,7 @@ const kitchenExitShapes = (exit: Box): ReadonlyArray<Canvas.Shape> => {
   const x = exit.x
   const right = exit.x + exit.width
   const middle = x + exit.width / 2
-  const top = FACE_TOP + 2
+  const top = exit.y + FACE_TOP + 2
   const bottom = exit.y + exit.height
   const diagonal = Array.makeBy(10, index =>
     rect(x + 1 + index * 2, bottom - 4 - index, 2, 3, PLANK_COLOR),
@@ -523,8 +524,8 @@ export const sconceShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
   Option.match(boxOfKind(level, 'Hearth'), {
     onNone: () => [],
     onSome: hearth => [
-      ...sconce(hearth.x - 18),
-      ...sconce(hearth.x + hearth.width + 16),
+      ...sconce(hearth.x - 18, hearth.y - TILE_SIZE * 2),
+      ...sconce(hearth.x + hearth.width + 16, hearth.y - TILE_SIZE * 2),
     ],
   })
 
@@ -555,43 +556,34 @@ const splinters = (
     )
   })
 
-const northDoorShapes = ({ x, width }: Box): ReadonlyArray<Canvas.Shape> => {
+// NOTE: drawn from the top of the door's two wall rows, y, so a north door
+// in a room lower on the plan draws at its own wall.
+const northDoorShapes = ({ x, y, width }: Box): ReadonlyArray<Canvas.Shape> => {
   const right = x + width
+  const face = y + FACE_TOP
   return [
-    rect(x, 0, width, TILE_SIZE * 2, DOOR_DARK_COLOR),
-    rect(x, 15, width, 5, DOOR_DIM_COLOR),
-    rect(x - 3, FACE_TOP, 3, TILE_SIZE * 2 - FACE_TOP, CASING_COLOR),
-    rect(
-      x - 1,
-      FACE_TOP + 2,
-      1,
-      TILE_SIZE * 2 - FACE_TOP - 2,
-      CASING_LIGHT_COLOR,
-    ),
-    rect(right, FACE_TOP, 3, TILE_SIZE * 2 - FACE_TOP, CASING_COLOR),
-    rect(
-      right,
-      FACE_TOP + 2,
-      1,
-      TILE_SIZE * 2 - FACE_TOP - 2,
-      CASING_DARK_COLOR,
-    ),
-    rect(x - 4, FACE_TOP - 1, width + 8, 3, CASING_COLOR),
-    rect(x - 4, FACE_TOP - 1, width + 8, 1, CASING_LIGHT_COLOR),
-    rect(x + 6, FACE_TOP, 1, 2, CASING_DARK_COLOR),
-    rect(x + 7, FACE_TOP + 1, 2, 1, CASING_DARK_COLOR),
+    rect(x, y, width, TILE_SIZE * 2, DOOR_DARK_COLOR),
+    rect(x, y + 15, width, 5, DOOR_DIM_COLOR),
+    rect(x - 3, face, 3, TILE_SIZE * 2 - FACE_TOP, CASING_COLOR),
+    rect(x - 1, face + 2, 1, TILE_SIZE * 2 - FACE_TOP - 2, CASING_LIGHT_COLOR),
+    rect(right, face, 3, TILE_SIZE * 2 - FACE_TOP, CASING_COLOR),
+    rect(right, face + 2, 1, TILE_SIZE * 2 - FACE_TOP - 2, CASING_DARK_COLOR),
+    rect(x - 4, face - 1, width + 8, 3, CASING_COLOR),
+    rect(x - 4, face - 1, width + 8, 1, CASING_LIGHT_COLOR),
+    rect(x + 6, face, 1, 2, CASING_DARK_COLOR),
+    rect(x + 7, face + 1, 2, 1, CASING_DARK_COLOR),
     // NOTE: what is left of the door hangs off its top hinge.
-    rect(x, 5, 6, 11, BROKEN_LEAF_COLOR),
-    rect(x + 6, 6, 2, 7, BROKEN_LEAF_COLOR),
-    rect(x + 8, 7, 1, 3, BROKEN_LEAF_COLOR),
-    rect(x + 2, 5, 1, 10, BROKEN_LEAF_DARK_COLOR),
-    rect(x + 5, 6, 1, 9, BROKEN_LEAF_DARK_COLOR),
-    rect(x, 6, 1, 2, NAIL_COLOR),
-    rect(right - 3, 8, 3, 6, BROKEN_LEAF_COLOR),
-    rect(right - 4, 9, 1, 3, BROKEN_LEAF_COLOR),
-    rect(right + 1, 9, 1, 3, CASING_DARK_COLOR),
-    rect(right + 1, 13, 1, 2, CASING_DARK_COLOR),
-    ...splinters(x - 2, TILE_SIZE * 2 + 1, width + 4, 6, 1),
+    rect(x, y + 5, 6, 11, BROKEN_LEAF_COLOR),
+    rect(x + 6, y + 6, 2, 7, BROKEN_LEAF_COLOR),
+    rect(x + 8, y + 7, 1, 3, BROKEN_LEAF_COLOR),
+    rect(x + 2, y + 5, 1, 10, BROKEN_LEAF_DARK_COLOR),
+    rect(x + 5, y + 6, 1, 9, BROKEN_LEAF_DARK_COLOR),
+    rect(x, y + 6, 1, 2, NAIL_COLOR),
+    rect(right - 3, y + 8, 3, 6, BROKEN_LEAF_COLOR),
+    rect(right - 4, y + 9, 1, 3, BROKEN_LEAF_COLOR),
+    rect(right + 1, y + 9, 1, 3, CASING_DARK_COLOR),
+    rect(right + 1, y + 13, 1, 2, CASING_DARK_COLOR),
+    ...splinters(x - 2, y + TILE_SIZE * 2 + 1, width + 4, 6, 1),
   ]
 }
 
@@ -652,8 +644,10 @@ const DOOR_DRAWINGS: Readonly<
   South: southDoorShapes,
   Back: backDoorShapes,
   Window: windowShapes,
-  // NOTE: the front door is drawn as the south door until it has art of its
-  // own; no level has one yet.
+  WestTop: northDoorShapes,
+  WestBottom: southDoorShapes,
+  // NOTE: the front door is never a spawn door, so it never draws as a
+  // doorway: the dining room's art draws it chained shut (diningArt.ts).
   Front: southDoorShapes,
 }
 

@@ -407,12 +407,13 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
   }
   const chewers = config.chewers
   if (chewers > 0) {
+    // NOTE: just inside the dining room's West door, rows 2 and 3.
     const spots = [
-      { x: 16, y: 84 },
-      { x: 16, y: 96 },
-      { x: 30, y: 88 },
-      { x: 34, y: 100 },
-      { x: 44, y: 80 },
+      { x: 16, y: 24 },
+      { x: 16, y: 36 },
+      { x: 30, y: 28 },
+      { x: 34, y: 40 },
+      { x: 44, y: 20 },
     ]
     model = modifyFields(model, {
       zombies: zombies => [

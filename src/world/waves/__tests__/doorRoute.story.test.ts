@@ -22,7 +22,7 @@ import { PREPARATION_MS } from '../../../shared/constants'
 import { APPLICATION, ticks } from '../../../test/testing'
 import { TRAPS, trapBox } from '../../gear/traps'
 import {
-  PARLOUR,
+  MANOR,
   distanceToBox,
   isInsideRoomAt,
   nearestDoor,
@@ -79,7 +79,7 @@ const fighting = (
   })
 
 const doorsOf = (current: Model): ReadonlyArray<DoorId> =>
-  Array.map(current.zombies, zombie => nearestDoor(PARLOUR, zombie).id)
+  Array.map(current.zombies, zombie => nearestDoor(MANOR, zombie).id)
 
 const previewDoors = (current: Model): ReadonlyArray<DoorId> =>
   Phase.match(current.phase, {
@@ -177,7 +177,7 @@ describe('boarded doors are no spawn points', () => {
       const chewer: Zombie = {
         id: 500,
         kind: 'Tank',
-        x: 220,
+        x: MANOR.doors.North.center.x,
         y: 31,
         speed: 12,
         hp: 999,
@@ -227,7 +227,11 @@ const preparing: Model = modifyFocus(
   {
     trapStock: () => ({ Barricade: 1, Turret: 0 }),
     selectedTrap: () => 'Barricade',
-    player: player => modifyFields(player, { x: () => 220, y: () => 27 }),
+    player: player =>
+      modifyFields(player, {
+        x: () => MANOR.doors.North.center.x,
+        y: () => 27,
+      }),
   },
 )
 
@@ -273,14 +277,14 @@ describe('Ankle Biters and boarded doors', () => {
       Array.makeBy(60, index => index * 7919 + 1),
       state => {
         const [, spot] = drawSurfacingSpot(
-          PARLOUR,
+          MANOR,
           state,
           { x: 160, y: 95 },
           traps,
         )
-        expect(isInsideRoomAt(PARLOUR, spot)).toBe(true)
+        expect(isInsideRoomAt(MANOR, spot)).toBe(true)
         Array.forEach(traps, trap => {
-          expect(distanceToBox(spot, trapBox(PARLOUR, trap))).toBeGreaterThan(0)
+          expect(distanceToBox(spot, trapBox(MANOR, trap))).toBeGreaterThan(0)
         })
       },
     )

@@ -76,7 +76,9 @@ const TICK_MS = FIXED_STEP_MS
 const UPRIGHT_BUTTONS_TOP_PX = 203
 const LEFT_X = 60
 const RIGHT_X = 240
-const ROW_Y = 104
+// NOTE: the dining room's open aisle south of the party table, clear wall
+// to wall.
+const ROW_Y = 130
 
 const seatOf = (current: Model, slot: number): Seat =>
   Option.getOrThrow(maybePlayerAt(current, slot)).seat

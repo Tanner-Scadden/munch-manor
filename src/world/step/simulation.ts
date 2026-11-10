@@ -7,6 +7,7 @@ import {
   PLAYER_KNOCKBACK_DECAY_PER_SECOND,
   PLAYER_RADIUS,
 } from '../../shared/constants'
+import { dropChandelier, rehangAtBreak } from '../dining/chandelier'
 import {
   advanceLobs,
   fireFridgeWeapon,
@@ -432,6 +433,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
   const fought = pipe(
     recordFootfalls(advanced, deltaMs),
     footed => resolveBulletHits(footed, seconds, routed.nextEntityId),
+    dropChandelier,
     struck => advanceLobs(struck, deltaMs),
     trapped => advanceTraps(trapped, seconds, deltaMs),
     trapped => advanceKitchen(armed, trapped, deltaMs),
@@ -454,6 +456,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     blasted => feelIntensity(model, blasted, deltaMs),
     felt => advancePowerUps(felt, advanceRound(felt, deltaMs), deltaMs),
     rounded => flattenAtBreak(model, rounded),
+    rounded => rehangAtBreak(model, rounded),
     advancePantry,
     rollStove,
     rounded => shedParts(model, rounded),

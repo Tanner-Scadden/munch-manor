@@ -585,8 +585,8 @@ type PrepPlan =
 
 // Gnomes go a little off the middle of the room, where the bot fights.
 const GNOME_SPOTS: Array<Vector> = [
-  { x: 146, y: 88 },
-  { x: 176, y: 104 },
+  { x: 156, y: 132 },
+  { x: 206, y: 132 },
 ]
 
 export const gnomeSpot = (model: Model): Vector =>

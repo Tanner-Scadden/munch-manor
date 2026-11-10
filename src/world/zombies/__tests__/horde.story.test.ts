@@ -37,7 +37,7 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import { PARLOUR, doorSpawnPoint, nearestDoor } from '../../level/arena'
+import { START_LEVEL, doorSpawnPoint, nearestDoor } from '../../level/arena'
 import { focusOf, modifyFocus } from '../../party/party'
 import { vectorLength } from '../../step/geometry'
 import { rollSpawns } from '../../waves/endlessWaves'
@@ -57,8 +57,8 @@ import {
 
 const FRAME_MS = FIXED_STEP_MS
 const LONG_FRAME_MS = 50
-const CENTER_X = PARLOUR.width / 2
-const CENTER_Y = PARLOUR.height / 2
+const CENTER_X = START_LEVEL.start.x
+const CENTER_Y = START_LEVEL.start.y
 
 const pistolInto = (id: number, zombie: Zombie): Bullet => ({
   id,
@@ -122,7 +122,7 @@ describe('the kind table', () => {
           atMs: 0,
           kind,
           door: Option.getOrThrow(
-            Array.get(PARLOUR.doorIds, index % PARLOUR.doorIds.length),
+            Array.get(START_LEVEL.doorIds, index % START_LEVEL.doorIds.length),
           ),
           offset: 5,
           speedScale: 1.1,
@@ -152,14 +152,14 @@ describe('the kind table', () => {
             const spawn = Option.getOrThrow(Array.get(spawns, index))
             const room = DOOR_HALF_WIDTH_PX - stats.radius
             const nearestPoint = doorSpawnPoint(
-              PARLOUR,
+              START_LEVEL,
               spawn.door,
               Math.min(spawn.offset, room),
             )
             expect(zombie.hp).toBe(stats.hp)
             expect(zombie.speed).toBeGreaterThanOrEqual(stats.speedMin * 1.1)
             expect(zombie.speed).toBeLessThanOrEqual(stats.speedMax * 1.1)
-            expect(nearestDoor(PARLOUR, zombie).id).toBe(spawn.door)
+            expect(nearestDoor(START_LEVEL, zombie).id).toBe(spawn.door)
             expect(
               Math.hypot(zombie.x - nearestPoint.x, zombie.y - nearestPoint.y),
             ).toBeLessThan(2)
@@ -174,7 +174,8 @@ describe('the kind table', () => {
     () =>
       Effect.gen(function* () {
         const runner = zombieOf('Runner', 1, 200, 60)
-        const tank = zombieOf('Tank', 2, 100, 100)
+        // NOTE: in the open aisle south of the party table.
+        const tank = zombieOf('Tank', 2, 100, 130)
         const tankHp = ZOMBIE_KINDS.Tank.hp
 
         yield* Story.story(
@@ -294,7 +295,7 @@ describe('the kind table', () => {
       )
 
       const shambler = zombieOf('Shambler', 1, 200, 60)
-      const sameShotTank = zombieOf('Tank', 2, 100, 100)
+      const sameShotTank = zombieOf('Tank', 2, 100, 130)
       yield* Story.story(
         APPLICATION,
         Story.given(

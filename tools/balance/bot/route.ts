@@ -1,45 +1,127 @@
-import { Function } from 'effect'
+import { Array, Function, Option } from 'effect'
 
+import { PLAYER_RADIUS } from '../../../src/shared/constants'
+import {
+  type Level,
+  TILE_PLAYER_SOLID,
+  hasClearPath,
+  hasTileFlag,
+  isInsideRoom,
+  tileCenter,
+  tileIndex,
+  tileIndexAt,
+  tileOfIndex,
+} from '../../../src/world/level/arena'
 import { type Vector } from './basics'
 
-// THE KITCHEN ROUTE
+// THE WAY THERE
 
-// The bot walks straight lines, so the way between the parlour and the
-// fridge goes by waypoints: the kitchen's double door, a spot inside it,
-// the open floor east of the prep table, up the lane west of the sacks,
-// then east to the fridge.
-const KITCHEN_DOOR_X = 70
-const PARLOUR_SIDE: Vector = { x: KITCHEN_DOOR_X, y: 14 }
-const KITCHEN_SIDE: Vector = { x: KITCHEN_DOOR_X, y: -42 }
-const KITCHEN_EAST: Vector = { x: 150, y: -48 }
-// NOTE: the fridge stands in the north-east corner above a pile of sacks,
-// so the bot goes up the open lane west of the sacks, then east to it.
-const FRIDGE_LANE: Vector = { x: 150, y: -104 }
+// The bot walks straight lines where it can. Where furniture or a wall is in
+// the way (the dining room's party table, the kitchen's doorway), it walks
+// to the next tile on the shortest way over the floor a player can stand on,
+// never the yard, found by a search out from the goal. Each search is kept
+// for its level and goal tile, so a bot walking to one spot searches once.
 
 export const isInKitchen = (point: Vector) => point.y < -2
 
-const isInDoorColumn = (point: Vector) =>
-  Math.abs(point.x - KITCHEN_DOOR_X) <= 6
+const UNREACHED = -1
+const KEPT_SEARCHES = 64
+
+const searches = new Map<string, Int32Array>()
+
+const isStandable = (level: Level, column: number, row: number): boolean =>
+  isInsideRoom(level, column, row) &&
+  !hasTileFlag(level, tileIndex(level, column, row), TILE_PLAYER_SOLID)
+
+const STEPS: ReadonlyArray<readonly [number, number]> = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+]
+
+// NOTE: a diagonal step only where both tiles beside it are floor too, so
+// the bot never cuts a corner it would catch on.
+const canStep = (
+  level: Level,
+  column: number,
+  row: number,
+  stepColumn: number,
+  stepRow: number,
+): boolean =>
+  isStandable(level, column + stepColumn, row + stepRow) &&
+  (stepColumn === 0 ||
+    stepRow === 0 ||
+    (isStandable(level, column + stepColumn, row) &&
+      isStandable(level, column, row + stepRow)))
+
+const searchFrom = (level: Level, goalIndex: number): Int32Array => {
+  const key = `${level.key}:${goalIndex}`
+  const kept = searches.get(key)
+  if (kept !== undefined) {
+    return kept
+  }
+  const steps = new Int32Array(level.tileCount).fill(UNREACHED)
+  steps[goalIndex] = 0
+  const queue = [goalIndex]
+  for (let head = 0; head < queue.length; head++) {
+    const index = queue[head] ?? goalIndex
+    const { column, row } = tileOfIndex(level, index)
+    for (const [stepColumn, stepRow] of STEPS) {
+      if (canStep(level, column, row, stepColumn, stepRow)) {
+        const next = tileIndex(level, column + stepColumn, row + stepRow)
+        if (steps[next] === UNREACHED) {
+          steps[next] = (steps[index] ?? 0) + 1
+          queue.push(next)
+        }
+      }
+    }
+  }
+  if (searches.size >= KEPT_SEARCHES) {
+    searches.clear()
+  }
+  searches.set(key, steps)
+  return steps
+}
 
 // The next point to walk to on the way to goal.
 export const routeTo: {
-  (goal: Vector): (from: Vector) => Vector
-  (from: Vector, goal: Vector): Vector
-} = Function.dual(2, (from: Vector, goal: Vector): Vector => {
-  if (isInKitchen(from) === isInKitchen(goal)) {
-    if (!isInKitchen(goal) || goal.y >= -55 || Math.abs(from.x - goal.x) <= 6) {
-      return goal
-    }
-    if (from.y > -55 && Math.abs(from.x - KITCHEN_EAST.x) > 6) {
-      return KITCHEN_EAST
-    }
-    return from.y > FRIDGE_LANE.y + 2 ? FRIDGE_LANE : goal
+  (from: Vector, goal: Vector): (level: Level) => Vector
+  (level: Level, from: Vector, goal: Vector): Vector
+} = Function.dual(3, (level: Level, from: Vector, goal: Vector): Vector => {
+  if (hasClearPath(level, from, goal, PLAYER_RADIUS)) {
+    return goal
   }
-  if (!isInKitchen(from)) {
-    return isInDoorColumn(from) && from.y < 22 ? KITCHEN_SIDE : PARLOUR_SIDE
-  }
-  if (from.y < -55 && from.x > 135) {
-    return KITCHEN_EAST
-  }
-  return isInDoorColumn(from) && from.y > -48 ? PARLOUR_SIDE : KITCHEN_SIDE
+  const steps = searchFrom(level, tileIndexAt(level, goal))
+  const here = tileOfIndex(level, tileIndexAt(level, from))
+  const stepsAt = (index: number): number => steps[index] ?? UNREACHED
+  return Option.match(
+    Array.reduce(
+      STEPS,
+      Option.none<Readonly<{ index: number; count: number }>>(),
+      (best, [stepColumn, stepRow]) => {
+        if (!canStep(level, here.column, here.row, stepColumn, stepRow)) {
+          return best
+        }
+        const index = tileIndex(
+          level,
+          here.column + stepColumn,
+          here.row + stepRow,
+        )
+        const count = stepsAt(index)
+        return count === UNREACHED ||
+          Option.exists(best, current => current.count <= count)
+          ? best
+          : Option.some({ index, count })
+      },
+    ),
+    {
+      onNone: () => goal,
+      onSome: ({ index }) => tileCenter(tileOfIndex(level, index)),
+    },
+  )
 })

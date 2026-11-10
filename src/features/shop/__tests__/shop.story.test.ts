@@ -36,6 +36,7 @@ import {
 import {
   APPLICATION,
   RESTART_GRACE_TICKS,
+  START_SPOT,
   bulletInto,
   buyAtCounter,
   closeDialog,
@@ -84,12 +85,12 @@ import {
 } from './shop.fixture'
 // NOTE: one 60 Hz tick.
 const SHORT_FRAME_MS = FIXED_STEP_MS
-const PLAYER_Y = 90
+const PLAYER_Y = START_SPOT.y
 
 const fighting = (wave: number): Phase =>
   Phase.Wave({ wave, elapsedMs: 0, spawns: [DISTANT_SPAWN] })
 
-const doomed = zombieAt(100, 170, PLAYER_Y, { hp: 1 })
+const doomed = zombieAt(100, START_SPOT.x + 10, PLAYER_Y, { hp: 1 })
 
 const killShot = (base: Model): Model =>
   modifyFields(base, {
@@ -155,7 +156,7 @@ describe('money', () => {
           expect(wallet.balance).toBe(SHAMBLER_BOUNTY + 30)
           expect(wallet.earned).toBe(SHAMBLER_BOUNTY + 30)
           expect(frameEvents).toContainEqual(
-            GameEvent.WaveCleared({ x: 160, y: PLAYER_Y, bonus: 30 }),
+            GameEvent.WaveCleared({ x: START_SPOT.x, y: PLAYER_Y, bonus: 30 }),
           )
           expect(
             Array.map(popups, ({ kind, value }) => [kind, value]),
@@ -831,7 +832,9 @@ describe('the Barn Buster up close', () => {
 
 describe('zombies still need two pistol shots', () => {
   it.effect('the pistol deals one damage per bullet', () => {
-    const tough = zombieAt(100, 170, PLAYER_Y, { hp: ZOMBIE_MAX_HP })
+    const tough = zombieAt(100, START_SPOT.x + 10, PLAYER_Y, {
+      hp: ZOMBIE_MAX_HP,
+    })
     return Story.story(
       APPLICATION,
       Story.given(

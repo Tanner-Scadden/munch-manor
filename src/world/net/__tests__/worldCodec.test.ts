@@ -136,7 +136,7 @@ describe('the wire packs numbers by their Schema', () => {
     ]
     // NOTE: a new lossy field shows up here. Name it on purpose.
     expect(hintTable(numbers)).toEqual({
-      Position: { count: 173, names: ['offset', 'remainingPx', 'x', 'y'] },
+      Position: { count: 175, names: ['offset', 'remainingPx', 'x', 'y'] },
       Velocity: {
         count: 7,
         names: ['knockback', 'velocityX', 'velocityY', 'x', 'y'],
@@ -303,11 +303,12 @@ describe("the boss's charge on the wire", () => {
 // board; protocol 16 added each player's `calling`; protocol 18 added the
 // run's `modifiers`; protocol 19 added the fridge's cheap first pulls,
 // the pantry's stash, the kitchen's `stove` and `gasValve`, and each
-// seat's `cooking`. The wire must not change
+// seat's `cooking`; protocol 20 added the front door and the west slot's
+// doors, the level's `dropped`, and ChandelierFell. The wire must not change
 // without a protocol bump. A change to how the room plays moves the bytes
 // with no change to the wire, as zombies coming in promptly after their
 // warning did, and Normal's eased health and speed (2026-10-31) did.
-const GOLDEN_DIGEST = '60507:73d66348cfe06b66'
+const GOLDEN_DIGEST = '71330:0829aa1b2ca707fd'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

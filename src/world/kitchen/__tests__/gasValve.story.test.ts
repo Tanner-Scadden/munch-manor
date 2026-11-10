@@ -19,7 +19,8 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import { levelOf } from '../../level/arena'
+import { levelOf, openExitIn } from '../../level/arena'
+import { WEST_EXIT } from '../../level/plan'
 import {
   focusOf,
   focusSlotOf,
@@ -51,7 +52,14 @@ const isValveOffered = (current: Model): boolean =>
     ({ target }) => target._tag === 'Valve',
   )
 
-const zone = Option.getOrThrow(flameZoneOf(levelOf(freshRunModel())))
+// NOTE: the fireplace is in the parlour, behind the dining room's west
+// boards, so the fire burns once they are open.
+const parlourOpen = (): Model =>
+  modifyFields(freshRunModel(), {
+    level: level => openExitIn(level, WEST_EXIT),
+  })
+
+const zone = Option.getOrThrow(flameZoneOf(levelOf(parlourOpen())))
 
 const IN_THE_FIRE = {
   x: (zone.left + zone.right) / 2 + 12,
@@ -64,7 +72,7 @@ const OUT_OF_THE_FIRE = { x: IN_THE_FIRE.x, y: zone.bottom + 40 }
 // standing in the fire at its west end, and a Shambler with `hp` in the
 // fire and another out of it, neither walking.
 const litWith = (hp: number, owner = 0): Model =>
-  modifyFields(freshRunModel(), {
+  modifyFields(parlourOpen(), {
     phase: () => midWave,
     gasValve: () =>
       GasValve.Lit({ owner, nextBurnMs: VALVE_RULES.burnEveryMs }),
@@ -185,6 +193,11 @@ describe('the lit fireplace', () => {
         expect(hpOf(current, 900)).toBe(20)
       }),
     )
+  })
+
+  test('the fireplace burns only once its parlour is open, wherever it stands', () => {
+    expect(Option.isNone(flameZoneOf(levelOf(freshRunModel())))).toBe(true)
+    expect(zone.left).toBeLessThan(0)
   })
 
   test('its kills pay the player who turned the valve', () => {

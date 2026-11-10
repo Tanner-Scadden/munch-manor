@@ -42,7 +42,12 @@ import {
 } from '../../../world/fridge/leftovers'
 import { isKitchenOpen } from '../../../world/kitchen/kitchen'
 import { levelOf } from '../../../world/level/arena'
-import { EXIT_RULES, exitPriceFor } from '../../../world/level/exits'
+import {
+  EXIT_RULES,
+  KITCHEN_EXIT,
+  exitPriceFor,
+} from '../../../world/level/exits'
+import { WEST_EXIT } from '../../../world/level/plan'
 import { focusOf, modifyFocus, soloSeat } from '../../../world/party/party'
 import { isKitchenTourOn } from '../../../world/run/tutorialRules'
 import { type KitchenStep, kitchenStepOf } from '../kitchenTour'
@@ -149,7 +154,8 @@ describe('the kitchen tour', () => {
           expect(isTourRunning(started)).toBe(true)
           expect(stepOf(started)).toEqual(Option.some('Boards'))
           expect(remainingOf(started)).toBe(BREAK_MS)
-          expect(exitPriceFor(started)).toBe(0)
+          expect(exitPriceFor(started, KITCHEN_EXIT)).toBe(0)
+          expect(exitPriceFor(started, WEST_EXIT)).toBe(EXIT_RULES.price)
         }),
         holdToBuy,
         Story.model(opened => {
@@ -310,7 +316,7 @@ describe('the kitchen tour', () => {
       Story.message(Message.ClickedSkipKitchenTourButton()),
       Story.model(skipped => {
         expect(skipped.kitchenTour).toEqual(Tour.Over())
-        expect(exitPriceFor(skipped)).toBe(EXIT_RULES.price)
+        expect(exitPriceFor(skipped, KITCHEN_EXIT)).toBe(EXIT_RULES.price)
       }),
       frames(10),
       Story.model(later => {
@@ -323,7 +329,7 @@ describe('the kitchen tour', () => {
     Effect.gen(function* () {
       const done = asTutorialDone(atBoards())
       expect(isKitchenTourOn(done)).toBe(false)
-      expect(exitPriceFor(done)).toBe(EXIT_RULES.price)
+      expect(exitPriceFor(done, KITCHEN_EXIT)).toBe(EXIT_RULES.price)
       yield* Story.story(
         APPLICATION,
         Story.given(done),
@@ -354,7 +360,7 @@ describe('the kitchen tour', () => {
         party: () => Party.Crew(),
       })
       expect(isKitchenTourOn(crew)).toBe(false)
-      expect(exitPriceFor(crew)).toBe(EXIT_RULES.price)
+      expect(exitPriceFor(crew, KITCHEN_EXIT)).toBe(EXIT_RULES.price)
       expect(fridgePriceFor(crew, SOLO_SLOT)).toBe(FRIDGE_RULES.firstPrice)
       return Story.story(
         APPLICATION,

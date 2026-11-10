@@ -1,9 +1,10 @@
-import { Array, Function, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { type Palette, bakeShapes } from '../../art/sprite'
 import { TILE_SIZE } from '../../shared/constants'
-import type { Level } from '../../world/level/arena'
+import { type Level, symbolAt } from '../../world/level/arena'
+import { CHANDELIER_SYMBOL } from '../../world/level/plan'
 import { pixelArt, rect } from '../drawing'
 import {
   BONE_COLOR,
@@ -319,12 +320,24 @@ const buntingShapes = ({ x, y, width }: Span): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-// NOTE: burgundy damask over the parlour's wainscot, and the bunting.
-export const diningWallShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(northFaceSpans(level), span => [
-    ...paperShapes(span),
-    ...buntingShapes(span),
-  ])
+// NOTE: burgundy damask over the parlour's wainscot, and the bunting, on
+// the stretches of north wall inside the dining room's block.
+export const diningWallShapes: {
+  (room: Box): (level: Level) => ReadonlyArray<Canvas.Shape>
+  (level: Level, room: Box): ReadonlyArray<Canvas.Shape>
+} = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Canvas.Shape> =>
+  Array.flatMap(
+    Array.filter(
+      northFaceSpans(level),
+      ({ x, y, width }: Span) =>
+        x >= room.x &&
+        x + width <= room.x + room.width &&
+        y > room.y &&
+        y <= room.y + room.height,
+    ),
+    (span: Span) => [...paperShapes(span), ...buntingShapes(span)],
+  ),
+)
 
 // THE FAMILY ON THE WALL
 
@@ -626,7 +639,11 @@ export const partyTableShapes: {
   (box: Box, level: Level): ReadonlyArray<Canvas.Shape>
 } = Function.dual(2, (box: Box, level: Level): ReadonlyArray<Canvas.Shape> => {
   const { x, y, width } = box
-  const isWest = box.x < level.width / 2 - box.width / 2
+  // NOTE: the west half is the one whose east end meets the gap.
+  const isWest = Option.exists(
+    symbolAt(level, (x + width) / TILE_SIZE, y / TILE_SIZE),
+    symbol => symbol === CHANDELIER_SYMBOL,
+  )
   const seats = Math.floor((width - 6) / SEAT_STEP)
   const seatXs = Array.makeBy(seats, index => x + 5 + index * SEAT_STEP)
   const headX = isWest ? x - 7 : x + width

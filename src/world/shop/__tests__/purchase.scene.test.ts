@@ -27,6 +27,7 @@ import { FRIDGE_RULES, fridgeBoxOf } from '../../fridge/leftovers'
 import { maxRounds } from '../../gear/weapons'
 import { levelOf, openExitIn } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
+import { WEST_EXIT } from '../../level/plan'
 import { modifyFocus } from '../../party/party'
 import { SHOP_ITEMS } from '../shop'
 
@@ -177,11 +178,16 @@ describe('taking a fridge prize on touch', () => {
 describe('the price tag in a zoomed phone window', () => {
   const tagsFor = (model: Model) =>
     purchaseOverlayShapes(model, screenCameraOf(model))
+  // NOTE: the parlour's boards are open, so the kitchen's are the only ones
+  // with a tag.
   const upright = (y: number): Model =>
     inPortrait(
-      modifyFocus(atBoards('Touch', 85), {
-        player: player => modifyFields(player, { y: () => y }),
-      }),
+      modifyFocus(
+        modifyFields(atBoards('Touch', 85), {
+          level: level => openExitIn(level, WEST_EXIT),
+        }),
+        { player: player => modifyFields(player, { y: () => y }) },
+      ),
     )
 
   test('hangs on the boards while the window shows them', () => {
@@ -189,7 +195,7 @@ describe('the price tag in a zoomed phone window', () => {
   })
 
   test('is not drawn over the HUD band once the window has followed the player away', () => {
-    expect(cameraOf(upright(170)).y).toBe(20)
+    expect(cameraOf(upright(170)).y).toBeGreaterThan(cameraOf(upright(26)).y)
     expect(tagsFor(upright(170))).toHaveLength(0)
   })
 })
