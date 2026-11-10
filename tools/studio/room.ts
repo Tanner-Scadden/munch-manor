@@ -1,6 +1,8 @@
-// The Rooms tab's level: the manor with the kitchen shut or open, its baked
-// image, and the box it covers, shared by the view and the note's picture.
-import { Array, Option } from 'effect'
+// The Rooms tab's rooms: the manor with the kitchen shut or open, and the
+// escape's drafted rooms (./draftRooms.ts) with their twist either way; each
+// one's baked image and the box it covers, shared by the view and the note's
+// picture.
+import { Array, Option, Schema, String } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { roomShapes } from '../../src/render/room/room'
@@ -12,14 +14,46 @@ import {
   symbolAt,
 } from '../../src/world/level/arena'
 import { type Bounds, boundsOf } from './catalog'
+import { DRAFT_ROOMS, DRAFT_ROOM_SOURCE, draftRoomShapes } from './draftRooms'
 import type { Pin, Tile, TileArea } from './notes'
 
-export const ROOM_TARGET = 'room/Manor'
+export const StudioRoom = Schema.Literals([
+  'Manor',
+  'Dining',
+  'Library',
+  'Cellar',
+])
+export type StudioRoom = typeof StudioRoom.Type
 
-export const ROOM_TITLE = 'The manor'
+const ROOM_PREFIX = 'room/'
 
-export const ROOM_SOURCE =
-  'the map: src/world/level/arena.ts; the art: src/render/room/'
+// NOTE: a room note's target names its room, so the inbox and the notes
+// find the room again.
+export const roomTargetOf = (room: StudioRoom): string =>
+  `${ROOM_PREFIX}${room}`
+
+export const roomOfTarget = (targetId: string): Option.Option<StudioRoom> =>
+  Array.findFirst(StudioRoom.literals, room => roomTargetOf(room) === targetId)
+
+export const isRoomTarget = (targetId: string): boolean =>
+  String.startsWith(ROOM_PREFIX)(targetId)
+
+export const roomTitleOf = (room: StudioRoom): string =>
+  room === 'Manor' ? 'The manor' : DRAFT_ROOMS[room].title
+
+export const roomSourceOf = (room: StudioRoom): string =>
+  room === 'Manor'
+    ? 'the map: src/world/level/arena.ts; the art: src/render/room/'
+    : DRAFT_ROOM_SOURCE
+
+// NOTE: the toggle a room shows in the sidebar: the manor's kitchen, or a
+// drafted room's twist; none for a room without one.
+export type RoomToggle = Readonly<{ label: string; off: string; on: string }>
+
+export const roomToggleOf = (room: StudioRoom): Option.Option<RoomToggle> =>
+  room === 'Manor'
+    ? Option.some({ label: 'Kitchen', off: 'Boarded', on: 'Open' })
+    : DRAFT_ROOMS[room].maybeTwist
 
 const OPEN_MANOR = openExit(MANOR, 'Kitchen')
 
@@ -38,8 +72,21 @@ const wholeBounds = (bounds: Bounds): Bounds => ({
   bottom: Math.ceil(bounds.bottom),
 })
 
-export const roomFrameOf = (isKitchenOpen: boolean): RoomFrame => {
-  const shapes = roomShapes(levelFor(isKitchenOpen))
+// NOTE: what the Rooms tab shows: which room, and its toggle.
+export type RoomView = Readonly<{
+  room: StudioRoom
+  isKitchenOpen: boolean
+  isTwistOn: boolean
+}>
+
+export const isToggleOn = (view: RoomView): boolean =>
+  view.room === 'Manor' ? view.isKitchenOpen : view.isTwistOn
+
+export const roomFrameOf = (view: RoomView): RoomFrame => {
+  const shapes =
+    view.room === 'Manor'
+      ? roomShapes(levelFor(view.isKitchenOpen))
+      : draftRoomShapes(DRAFT_ROOMS[view.room], view.isTwistOn)
   return { shapes, bounds: wholeBounds(boundsOf(shapes)) }
 }
 
@@ -64,18 +111,32 @@ export const areaWidth = (area: TileArea): number => area.right - area.left + 1
 
 export const areaHeight = (area: TileArea): number => area.bottom - area.top + 1
 
+const mapLetterAt =
+  (room: StudioRoom) =>
+  (column: number, row: number): string =>
+    room === 'Manor'
+      ? Option.getOrElse(symbolAt(OPEN_MANOR, column, row), () => ' ')
+      : Option.getOrElse(
+          Option.flatMap(Array.get(DRAFT_ROOMS[room].map, row), line =>
+            String.at(column)(line),
+          ),
+          () => ' ',
+        )
+
 // NOTE: the map's letters under an area, a row of text for each row of
-// tiles, read off the manor with the kitchen open (boards or not, the map
-// letters are the same).
-export const mapRowsOf = (area: TileArea): ReadonlyArray<string> =>
-  Array.map(Array.range(area.top, area.bottom), row =>
-    Array.join(
-      Array.map(Array.range(area.left, area.right), column =>
-        Option.getOrElse(symbolAt(OPEN_MANOR, column, row), () => ' '),
+// tiles: the manor's read with the kitchen open (boards or not, the map
+// letters are the same), a drafted room's as drafted.
+export const mapRowsOf =
+  (room: StudioRoom) =>
+  (area: TileArea): ReadonlyArray<string> =>
+    Array.map(Array.range(area.top, area.bottom), row =>
+      Array.join(
+        Array.map(Array.range(area.left, area.right), column =>
+          mapLetterAt(room)(column, row),
+        ),
+        '',
       ),
-      '',
-    ),
-  )
+    )
 
 // NOTE: the room's picture for a note: the area and this many world pixels
 // around it, in the canvas's own pixels; the whole room with no area.

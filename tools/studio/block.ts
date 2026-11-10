@@ -7,6 +7,7 @@ import { defineMessageUnion } from 'foldkit/message'
 
 import { FacingChoice, Tab, Tone } from './catalog'
 import { NoteKind, Pin, StoredNote, Tile, TileArea } from './notes'
+import { StudioRoom } from './room'
 
 // MODEL
 
@@ -26,7 +27,10 @@ export const SavedView = Schema.Struct({
   facing: FacingChoice,
   tone: Tone,
   maybeSelectedId: Schema.OptionFromNullOr(Schema.String),
+  room: StudioRoom,
   isKitchenOpen: Schema.Boolean,
+  // NOTE: a drafted room's twist: the chandelier down, the shelf open.
+  isTwistOn: Schema.Boolean,
   isGridOn: Schema.Boolean,
   isOnion: Schema.Boolean,
   isCrew: Schema.Boolean,
@@ -69,7 +73,9 @@ export const DEFAULT_VIEW: SavedView = {
   facing: 'Right',
   tone: 'Normal',
   maybeSelectedId: Option.none(),
+  room: 'Manor',
   isKitchenOpen: true,
+  isTwistOn: false,
   isGridOn: true,
   isOnion: false,
   isCrew: false,
@@ -90,7 +96,8 @@ export const Message = defineMessageUnion({
   ClickedOnion: {},
   ClickedCrew: {},
   ClickedGrid: {},
-  ClickedKitchen: {},
+  ClickedRoom: { room: StudioRoom },
+  ClickedRoomToggle: {},
   TickedFrame: { deltaTime: Schema.Finite },
   ClickedEntry: { id: Schema.String },
   ClickedNote: { tab: Tab, targetId: Schema.String },
