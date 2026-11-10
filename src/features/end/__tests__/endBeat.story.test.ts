@@ -665,7 +665,31 @@ describe('sharing a run', () => {
     ),
   )
 
-  it.effect('a crew win is counted from the co-op victory screen', () => {
+  it.effect('a solo escape is counted from the escape screen', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        counted(onEndScreen(Phase.Escaped({ wave: 10 }), doneMs('Won')), 'On'),
+      ),
+      Story.message(Message.ClickedShareButton()),
+      Story.Command.expectExact(
+        SendShareEvent({
+          event: {
+            version: 2,
+            visitId: VISIT_ID,
+            build: RUNNING_BUILD,
+            screen: 'Escaped',
+            mode: 'Campaign',
+            difficulty: 'Normal',
+            path: 'Copy',
+          },
+        }),
+      ),
+      Story.Command.resolve(SendShareEvent, Message.CompletedSendShareEvent()),
+    ),
+  )
+
+  it.effect('a crew win is counted from the co-op escape screen', () => {
     const crewed = withWorld(
       counted(onEndScreen(Phase.Escaped({ wave: 10 }), doneMs('Won')), 'On'),
       world => seatCrew(world, 3),
@@ -680,7 +704,7 @@ describe('sharing a run', () => {
             version: 2,
             visitId: VISIT_ID,
             build: RUNNING_BUILD,
-            screen: 'CoopVictory',
+            screen: 'CoopEscaped',
             mode: 'Campaign',
             difficulty: 'Normal',
             path: 'Copy',

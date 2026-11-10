@@ -895,7 +895,7 @@ export const roomModel = (settings: SceneSettings): Model => {
   model = modifyFields(model, { breakIdleMs: () => config.idle })
   const phase = config.phase
   const beforeEnd = model
-  if (phase === 'victory') {
+  if (phase === 'escaped' || phase === 'victory') {
     model = modifyFields(model, {
       phase: () => Phase.Escaped({ wave: 10 }),
       stats: s => ({

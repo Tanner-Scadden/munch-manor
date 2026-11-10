@@ -192,7 +192,7 @@ describe('music follows the phase', () => {
           expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
         }),
         Story.Command.expectHas(
-          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'Victory' }),
+          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'Escaped' }),
         ),
         resolveCue('Silence'),
         resolvePlayed('RankUp'),
@@ -460,16 +460,16 @@ describe('music only plays when it can be heard', () => {
 })
 
 describe('the end stingers stop when the music goes quiet', () => {
-  const victoryScreen = (audio: AudioState): Model =>
+  const escapedScreen = (audio: AudioState): Model =>
     modifyFields(titleScreen(audio), {
       phase: () => Phase.Escaped({ wave: 10 }),
       screenMs: () => 0,
     })
 
-  it.effect('mute during the Victory stinger stops it', () =>
+  it.effect('mute during the escape stinger stops it', () =>
     Story.story(
       APPLICATION,
-      Story.given(victoryScreen(AudioState.Ready())),
+      Story.given(escapedScreen(AudioState.Ready())),
       press('KeyM'),
       Story.model(({ soundSetting }) => {
         expect(soundSetting).toBe('Muted')
@@ -485,7 +485,7 @@ describe('the end stingers stop when the music goes quiet', () => {
     Story.story(
       APPLICATION,
       Story.given(
-        modifyFields(victoryScreen(AudioState.Ready()), {
+        modifyFields(escapedScreen(AudioState.Ready()), {
           phase: () => Phase.GameOver({ wave: 4 }),
         }),
       ),
@@ -500,11 +500,11 @@ describe('the end stingers stop when the music goes quiet', () => {
     ),
   )
 
-  it.effect('unmuting on the Victory screen does not replay the stinger', () =>
+  it.effect('unmuting on the escape screen does not replay the stinger', () =>
     Story.story(
       APPLICATION,
       Story.given(
-        modifyFields(victoryScreen(AudioState.Ready()), {
+        modifyFields(escapedScreen(AudioState.Ready()), {
           soundSetting: () => 'Muted',
         }),
       ),

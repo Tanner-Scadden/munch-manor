@@ -29,7 +29,7 @@ export type MusicLevel = typeof MusicLevel.Type
 export const MusicStinger = Schema.Literals([
   'None',
   'Cleared',
-  'Victory',
+  'Escaped',
   'GameOver',
 ])
 export type MusicStinger = typeof MusicStinger.Type
@@ -43,7 +43,7 @@ export type MusicCue = Readonly<{
 const LoopMood = MusicMood.pick(['Creep', 'Romp', 'Stampede'])
 type LoopMood = typeof LoopMood.Type
 
-const Fanfare = MusicStinger.pick(['Cleared', 'Victory', 'GameOver'])
+const Fanfare = MusicStinger.pick(['Cleared', 'Escaped', 'GameOver'])
 type Fanfare = typeof Fanfare.Type
 
 // NOTATION
@@ -262,7 +262,7 @@ const CLEARED = tune(150, 0, [
   line('Snare', '. . . . x . . .'),
 ])
 
-const VICTORY = tune(140, 0, [
+const ESCAPED = tune(140, 0, [
   line('Organ', 'E4 G#4 B4 E5 D#5 E5 - - | B5 - G#5 - E5 - - -'),
   line('Bass', 'E2 . B1 . E2 . B1 . | E2 - - - E3 - - -'),
   line('Kick', 'x . . . x . . . | x . . . x . . .'),
@@ -284,7 +284,7 @@ const LOOPS: Readonly<Record<LoopMood, Tune>> = {
 
 const STINGERS: Readonly<Record<Fanfare, Tune>> = {
   Cleared: CLEARED,
-  Victory: VICTORY,
+  Escaped: ESCAPED,
   GameOver: GAME_OVER,
 }
 

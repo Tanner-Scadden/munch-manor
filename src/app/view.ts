@@ -13,7 +13,7 @@ import { questTrackerView } from '../features/onboarding/questView'
 import type { ViewInputs as ProfileViewInputs } from '../features/profile/block'
 import { tabOf } from '../features/profile/profile'
 import { purchaseAnnouncementView } from '../features/shop/purchaseHud'
-import { victorySupportView } from '../features/support/supportView'
+import { escapeSupportView } from '../features/support/supportView'
 import type { PointerDevice } from '../input/inputSchema'
 import { keyGrabToastView } from '../input/keyGrab'
 import { isPortrait, landscapeFrameOffset, screenOf } from '../render/screen'
@@ -57,9 +57,9 @@ import { isPracticeGateHeld } from '../world/run/lessons'
 import {
   accuracyPercent,
   defeatVerdict,
+  escapeVerdict,
   runTimeLabel,
   totalKills,
-  victoryVerdict,
 } from '../world/run/stats'
 import { isRoundActive, roundWave } from '../world/waves/waves'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../world/zombies/zombies'
@@ -186,7 +186,7 @@ const statusText = (model: Model): string =>
     Paused: ({ round }) =>
       `Paused during ${statusWave(model, round.wave)}. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.`,
     Escaped: ({ wave }) =>
-      `You escaped the manor on wave ${wave}. ${victoryVerdict(model.stats)}. ${statsLabel(model)} ${PLAY_AGAIN} ${BACK_HOME}${feedbackSentence(model)}`,
+      `You escaped the manor on wave ${wave}. ${escapeVerdict(model.stats)}. ${statsLabel(model)} ${PLAY_AGAIN} ${BACK_HOME}${feedbackSentence(model)}`,
     GameOver: ({ wave }) =>
       `Game over. ${defeatVerdict(wave, model.stats)}. ${statsLabel(model)} ${PLAY_AGAIN} ${BACK_HOME}${feedbackSentence(model)}`,
   })
@@ -430,7 +430,7 @@ export const view = ApplicationComposition.makeView((model, h): Document => {
         debutCardView(model, h),
         questTrackerView(model, h),
         modeChoiceView(model, shareMountOf, h),
-        victorySupportView(model, h),
+        escapeSupportView(model, h),
         newEntryNoticeView(model, h),
         isProfileOpen(model) ? h.empty : cornerButtonsView(model, h),
         keyGrabToastView(model, h),

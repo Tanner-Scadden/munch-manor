@@ -134,7 +134,7 @@ export const RunResult = Schema.Struct({
   seed: Schema.Finite,
   cleared: Schema.Finite,
   killedBy: Schema.optional(ZombieKind),
-  victory: Schema.Boolean,
+  escaped: Schema.Boolean,
   runMs: Schema.Finite,
   moneyAfterWave: Schema.Array(Schema.Finite),
   hurtBy: ByKind,

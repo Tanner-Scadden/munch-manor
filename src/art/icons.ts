@@ -281,7 +281,7 @@ const COFFEE_PALETTE: Palette = {
   S: '#b8c2b0',
 }
 
-// NOTE: a steaming mug for the coffee pill on Victory.
+// NOTE: a steaming mug for the coffee pill on the escape card.
 export const COFFEE_ICON = pixelIconUrl(
   [
     '..S..S...',

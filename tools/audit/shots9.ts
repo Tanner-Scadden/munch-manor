@@ -56,7 +56,7 @@ const scenes: ReadonlyArray<
     q: '?wave=15&mode=endless&start=wave&god&gun=smg&tier=3&fill&aim=100,120&freeze=150',
   },
   { name: 'gameover', q: '?wave=5&phase=gameover&stats&freeze=90' },
-  { name: 'victory', q: '?wave=8&phase=victory&stats&freeze=90' },
+  { name: 'victory', q: '?wave=8&phase=escaped&stats&freeze=90' },
   {
     name: 'touch',
     q: '?device=touch&wave=3&start=wave&god&fill&crowd=10&freeze=60',
