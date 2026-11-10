@@ -7,6 +7,7 @@ import {
   RunTally,
   cosmeticSeedOf,
   noRankPaid,
+  quietDareHint,
 } from '../domain/clientSchema'
 import { startingCallingOf } from '../features/heroes/callingPick'
 import { deriveIntent } from '../input/input'
@@ -78,6 +79,7 @@ export type RunFields = Pick<
   | 'prizeFlight'
   | 'counterSale'
   | 'kitchenCall'
+  | 'dareHint'
   | 'breakIdleMs'
   | 'trapNotice'
   | 'level'
@@ -136,6 +138,7 @@ export const freshRun = (model: Model): RunFields => ({
   prizeFlight: PrizeFlight.Grounded(),
   counterSale: CounterSale.Quiet(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
+  dareHint: quietDareHint,
   breakIdleMs: 0,
   trapNotice: TrapNotice.Quiet(),
   level: startingLevel,

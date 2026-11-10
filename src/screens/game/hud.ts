@@ -111,6 +111,7 @@ import { isRoundActive, zombiesRemaining } from '../../world/waves/waves'
 import { maybeBossBar } from '../../world/zombies/boss'
 import { waveLabel } from './overlay'
 import {
+  dareHintShapes,
   kitchenBubbleShapes,
   soupBubbleShapes,
   stallBubbleShapes,
@@ -867,6 +868,7 @@ const playHudShapes = (
   ...stallBubbleShapes(model, camera),
   ...kitchenBubbleShapes(model, camera),
   ...soupBubbleShapes(model, camera),
+  ...dareHintShapes(model, camera),
   ...roundHudShapes(model, layout),
   ...roomsCounterShapes(model, layout.scoreRight, layout.roomsTop),
   ...dareCardShapes(model, layout),

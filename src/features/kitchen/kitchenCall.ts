@@ -19,7 +19,7 @@ import {
   type Vector,
 } from '../../world/schema/worldSchema'
 import { distanceBetween } from '../../world/step/geometry'
-import { isRoundActive } from '../../world/waves/waves'
+import { isRoundActive, roundWaveOf } from '../../world/waves/waves'
 
 // NOTE: from the owner (2026-11-01), players were not finding the kitchen.
 // Rattles hollers about the boarded door once in each break from the one
@@ -52,9 +52,6 @@ const isCallDue = (model: Model, wave: number): boolean =>
 const quietAt = (wave: number): KitchenCall =>
   KitchenCall.Quiet({ calledWave: wave })
 
-const waveOf = (model: Model): number =>
-  Phase.isAnyOf(['Preparation', 'Wave'])(model.phase) ? model.phase.wave : 0
-
 const isOpenedThisFrame = (model: Model): boolean =>
   Array.some(model.frameEvents, GameEvent.isAnyOf(['ExitOpened']))
 
@@ -65,7 +62,7 @@ export const advanceKitchenCall: {
   if (!isRoundActive(model.phase)) {
     return model
   }
-  const wave = waveOf(model)
+  const wave = roundWaveOf(model.phase)
   if (isOpenedThisFrame(model)) {
     return modifyFields(model, {
       kitchenCall: () => KitchenCall.Opened({ ageMs: 0 }),
@@ -119,7 +116,7 @@ export const CALL_LINES: Array.NonEmptyReadonlyArray<string> = [
 ]
 
 export const callLineIndex = (model: Model): number =>
-  waveOf(model) % CALL_LINES.length
+  roundWaveOf(model.phase) % CALL_LINES.length
 
 // SMELL
 
