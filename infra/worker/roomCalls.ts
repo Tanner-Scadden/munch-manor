@@ -114,6 +114,7 @@ const createAttempt = (
   look: string,
   rank: number,
   calling: string,
+  introSeen: boolean,
   visibility: RoomVisibility,
   region: string,
   attempt: number,
@@ -121,7 +122,16 @@ const createAttempt = (
   Effect.gen(function* () {
     const code = yield* makeRoomCode
     const body = yield* Effect.orDie(
-      encodeCreate({ playerId, name, look, rank, calling, code, visibility }),
+      encodeCreate({
+        playerId,
+        name,
+        look,
+        rank,
+        calling,
+        introSeen,
+        code,
+        visibility,
+      }),
     )
     const called = yield* callRoom(
       rooms,
@@ -138,6 +148,7 @@ const createAttempt = (
           look,
           rank,
           calling,
+          introSeen,
           visibility,
           region,
           attempt + 1,
@@ -152,6 +163,7 @@ export const createRoomIn: {
     look: string,
     rank: number,
     calling: string,
+    introSeen: boolean,
     visibility: RoomVisibility,
     region: string,
   ): (rooms: DurableObjectNamespace) => Effect.Effect<Called, SyncCallFailed>
@@ -162,11 +174,12 @@ export const createRoomIn: {
     look: string,
     rank: number,
     calling: string,
+    introSeen: boolean,
     visibility: RoomVisibility,
     region: string,
   ): Effect.Effect<Called, SyncCallFailed>
 } = Function.dual(
-  8,
+  9,
   (
     rooms: DurableObjectNamespace,
     playerId: string,
@@ -174,6 +187,7 @@ export const createRoomIn: {
     look: string,
     rank: number,
     calling: string,
+    introSeen: boolean,
     visibility: RoomVisibility,
     region: string,
   ): Effect.Effect<Called, SyncCallFailed> =>
@@ -184,6 +198,7 @@ export const createRoomIn: {
       look,
       rank,
       calling,
+      introSeen,
       visibility,
       region,
       0,
@@ -198,6 +213,7 @@ export const joinRoomIn: {
     look: string,
     rank: number,
     calling: string,
+    introSeen: boolean,
   ): (rooms: DurableObjectNamespace) => Effect.Effect<Called, SyncCallFailed>
   (
     rooms: DurableObjectNamespace,
@@ -207,9 +223,10 @@ export const joinRoomIn: {
     look: string,
     rank: number,
     calling: string,
+    introSeen: boolean,
   ): Effect.Effect<Called, SyncCallFailed>
 } = Function.dual(
-  7,
+  8,
   (
     rooms: DurableObjectNamespace,
     code: string,
@@ -218,9 +235,12 @@ export const joinRoomIn: {
     look: string,
     rank: number,
     calling: string,
+    introSeen: boolean,
   ): Effect.Effect<Called, SyncCallFailed> =>
     Effect.flatMap(
-      Effect.orDie(encodeJoin({ playerId, name, look, rank, calling })),
+      Effect.orDie(
+        encodeJoin({ playerId, name, look, rank, calling, introSeen }),
+      ),
       body => callRoom(rooms, code, INTERNAL_PATHS.join, body),
     ),
 )

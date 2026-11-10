@@ -93,9 +93,17 @@ describe('the intro in a room', () => {
     expect(Array.dedupe(followed.xs).length).toBe(1)
   })
 
-  test("a room's first run plays the whole intro, a rematch the short one", () => {
-    expect(introForRound(1)).toBe('Full')
-    expect(introForRound(2)).toBe('Short')
+  test('a crew of veterans gets the short cut, one newcomer the whole intro', () => {
+    const veteran = { hasSeenIntro: true }
+    const newcomer = { hasSeenIntro: false }
+    expect(introForRound(1, [veteran, veteran, veteran])).toBe('Short')
+    expect(introForRound(1, [veteran, newcomer, veteran])).toBe('Full')
+    expect(introForRound(1, [newcomer])).toBe('Full')
+  })
+
+  test('a rematch plays the short cut, newcomers or not', () => {
+    expect(introForRound(2, [{ hasSeenIntro: false }])).toBe('Short')
+    expect(introForRound(3, [{ hasSeenIntro: true }])).toBe('Short')
   })
 })
 

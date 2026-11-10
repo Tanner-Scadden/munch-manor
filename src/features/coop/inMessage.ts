@@ -31,6 +31,7 @@ export const InMessage = defineInMessageUnion({
     look: Schema.String,
     rank: Schema.Finite,
     calling: Calling,
+    introSeen: Schema.Boolean,
     rngState: Schema.Finite,
     bought: SavedBoughtCosmetics,
     bones: Schema.Finite,

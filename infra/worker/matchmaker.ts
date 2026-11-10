@@ -55,6 +55,7 @@ const Attachment = Schema.TaggedUnion({
     look: Schema.optionalKey(Schema.String),
     rank: Schema.optionalKey(Schema.Finite),
     calling: Schema.optionalKey(Schema.String),
+    introSeen: Schema.optionalKey(Schema.Boolean),
     region: Schema.optionalKey(Schema.String),
   },
 })
@@ -120,6 +121,7 @@ export class Matchmaker {
         first.look ?? '',
         first.rank ?? 1,
         first.calling ?? DEFAULT_CALLING,
+        first.introSeen ?? false,
         'Public',
         first.region ?? '',
       )
@@ -138,6 +140,7 @@ export class Matchmaker {
             player.look ?? '',
             player.rank ?? 1,
             player.calling ?? DEFAULT_CALLING,
+            player.introSeen ?? false,
           ),
           called => ({
             socket: player.socket,
@@ -206,6 +209,7 @@ export class Matchmaker {
                     player.look ?? '',
                     player.rank ?? 1,
                     player.calling ?? DEFAULT_CALLING,
+                    player.introSeen ?? false,
                   ).pipe(
                     Effect.map(ticketOf),
                     Effect.catchTag('SyncCallFailed', () =>
@@ -341,6 +345,7 @@ export class Matchmaker {
         look: said.look ?? '',
         rank: cleanRank(said.rank ?? 1),
         calling: cleanCalling(said.calling ?? DEFAULT_CALLING),
+        introSeen: said.introSeen ?? false,
         region: attachment.region ?? '',
       })
       socket.serializeAttachment(queued)
@@ -351,6 +356,7 @@ export class Matchmaker {
         look: said.look ?? '',
         rank: cleanRank(said.rank ?? 1),
         calling: cleanCalling(said.calling ?? DEFAULT_CALLING),
+        introSeen: said.introSeen ?? false,
         region: attachment.region ?? '',
         queuedMs: nowMs,
       }
