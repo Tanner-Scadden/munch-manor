@@ -3,8 +3,10 @@ import { Effect, pipe } from 'effect'
 import { playMusic } from '../../audio/audio'
 import { SoundMessage } from '../../audio/message'
 import { MusicLevel, MusicMood, MusicStinger } from '../../audio/music'
+import { isHouseHungry } from '../../world/dare/finale'
 import { Phase, Round } from '../../world/schema/worldSchema'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
+import { isEndless } from '../../world/waves/waves'
 import { ApplicationBlock } from '../definition'
 import type { Model } from '../model'
 import {
@@ -41,27 +43,33 @@ type MusicPlan = Readonly<{ mood: MusicMood; level: MusicLevel }>
 
 const SILENT_PLAN: MusicPlan = { mood: 'Silence', level: 'Full' }
 
-const roundMood = (round: Round): MusicMood =>
+// NOTE: a wave stampedes once the house is hungrier, the list done: Uncle
+// Chunk's wave and the hold-out at the front door. Endless has no list, so
+// its waves stampede from wave 10 on, as they always have.
+const isStampede = (model: Model, wave: number): boolean =>
+  isEndless(model) ? wave >= FINAL_WAVE : isHouseHungry(model)
+
+const roundMood = (model: Model, round: Round): MusicMood =>
   Round.match(round, {
     Preparation: (): MusicMood => 'Creep',
-    Wave: ({ wave }): MusicMood => (wave >= FINAL_WAVE ? 'Stampede' : 'Romp'),
+    Wave: ({ wave }): MusicMood =>
+      isStampede(model, wave) ? 'Stampede' : 'Romp',
   })
 
-const phasePlan = (phase: Phase): MusicPlan =>
-  Phase.match(phase, {
+const phasePlan = (model: Model): MusicPlan => {
+  const moodOf = (round: Round): MusicMood => roundMood(model, round)
+  return Phase.match(model.phase, {
     Ready: (): MusicPlan => ({ mood: 'Creep', level: 'Full' }),
-    Preparation: (round): MusicPlan => ({
-      mood: roundMood(round),
-      level: 'Full',
-    }),
-    Wave: (round): MusicPlan => ({ mood: roundMood(round), level: 'Full' }),
+    Preparation: (round): MusicPlan => ({ mood: moodOf(round), level: 'Full' }),
+    Wave: (round): MusicPlan => ({ mood: moodOf(round), level: 'Full' }),
     Paused: ({ round }): MusicPlan => ({
-      mood: roundMood(round),
+      mood: moodOf(round),
       level: 'Ducked',
     }),
     Escaped: () => SILENT_PLAN,
     GameOver: () => SILENT_PLAN,
   })
+}
 
 const isMusicAudible = (model: Model): boolean =>
   isSoundAudible(model) &&
@@ -69,7 +77,7 @@ const isMusicAudible = (model: Model): boolean =>
   model.pageVisibility === 'Visible'
 
 const musicPlan = (model: Model): MusicPlan =>
-  isMusicAudible(model) ? phasePlan(model.phase) : SILENT_PLAN
+  isMusicAudible(model) ? phasePlan(model) : SILENT_PLAN
 
 const phaseStinger = (before: Phase, after: Phase): MusicStinger => {
   if (
