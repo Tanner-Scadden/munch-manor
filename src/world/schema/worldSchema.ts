@@ -8,7 +8,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { PISTOL_MAGAZINE, PLAYER_MAX_HP } from '../../shared/constants'
 import { Difficulty } from '../../shared/playerData'
 import { nextRandom } from '../../shared/prng'
-import { Dare, DareKind, DareThing } from '../dare/dareSchema'
+import { Dare, DareKind, DareThing, Finale } from '../dare/dareSchema'
 import { START_LEVEL, startingLevelFor } from '../level/arena'
 import { arrangementAt } from '../level/plan'
 import { Modifiers } from '../run/modifiers'
@@ -250,6 +250,12 @@ export const GameEvent = defineTaggedUnion({
     kind: DareKind,
     slot: Schema.Finite,
   },
+  // NOTE: the finale (src/world/dare/finale.ts): Uncle Chunk's hat taken
+  // starts the front door unlocking, the door swings open, and a player
+  // steps out through it, each at the door.
+  FrontDoorUnlocking: { x: PositionNumber, y: PositionNumber },
+  FrontDoorOpened: { x: PositionNumber, y: PositionNumber },
+  SteppedOut: { x: PositionNumber, y: PositionNumber, slot: Schema.Finite },
   // NOTE: a teammate got a downed player up, at the reviver; a clutch save
   // came with under MEDIC_RULES.clutchBleedMs of bleed left.
   TeammateSaved: {
@@ -495,10 +501,14 @@ export const Phase = defineTaggedUnion({
   Preparation: preparationFields,
   Wave: waveFields,
   Paused: { round: Round },
-  Victory: {},
+  Escaped: { wave: Schema.Finite },
   GameOver: { wave: Schema.Finite },
 })
 export type Phase = typeof Phase.Type
+
+// NOTE: the wave a break or a fight is about, 0 outside a round.
+export const roundWaveOf = (phase: Phase): number =>
+  Phase.isAnyOf(['Preparation', 'Wave'])(phase) ? phase.wave : 0
 
 // NOTE: A boss wave holds its boss outside until only waitBelow planned
 // spawns are left, then rattles its door for the entrance before it walks in.
@@ -1018,6 +1028,7 @@ const DARE_SEED_SALT = 0x0da4e5b7
 export const freshDare = (seed: number): Dare => ({
   rngState: (seed ^ DARE_SEED_SALT) >>> 0,
   list: [],
+  finale: Finale.Hunting(),
 })
 
 export const shutValve: GasValve = GasValve.Shut()

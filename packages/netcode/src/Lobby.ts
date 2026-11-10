@@ -497,15 +497,14 @@ const forgetKept = (context: ApplyContext, lobby: Lobby) =>
       )
     : touch(context, {})
 
-// NOTE: what a run's result leaves for the next one. A won campaign keeps
-// its run and offers to keep going; any other end lets a kept run go.
-const picksAfter = (
-  lobby: Lobby,
-  result: RoomResult,
-): Record<string, string | number> =>
-  result.reason === 'Won' && lobby.mode === 'Campaign'
-    ? { kept: 1, mode: 'KeepGoing' }
-    : { kept: 0, mode: lobby.mode === 'KeepGoing' ? 'Endless' : lobby.mode }
+// NOTE: what a run's result leaves for the next one: no kept run. A won
+// campaign is an escape from the house (docs/ESCAPE_PLAN.md), and nobody
+// goes back in after it: Endless is its own pick. A KeepGoing pick left
+// from an older room becomes Endless.
+const picksAfter = (lobby: Lobby): Record<string, string | number> => ({
+  kept: 0,
+  mode: lobby.mode === 'KeepGoing' ? 'Endless' : lobby.mode,
+})
 
 // MUTATIONS
 
@@ -840,7 +839,7 @@ export const RecordedRoomResult = defineMutation({
       yield* touch(context, {
         status: 'Lobby',
         result: encoded,
-        ...picksAfter(lobby, result),
+        ...picksAfter(lobby),
       })
     }),
 })

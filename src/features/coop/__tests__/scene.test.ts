@@ -392,7 +392,7 @@ describe('the lobby', () => {
         COOP_SCENE,
         Scene.given(guest('Locked')),
         Scene.expect(Scene.selector('.coop-nudge')).toHaveText(
-          'Beat Triple Dare first',
+          'Escape on Triple Dare to unlock',
         ),
         Scene.expect(Scene.selector('.coop-crown-flash-b')).not.toExist(),
       )

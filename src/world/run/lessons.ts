@@ -45,7 +45,7 @@ const isFirstPreparation = (phase: Phase): boolean =>
     Preparation: ({ wave }) => wave === 1,
     Wave: () => false,
     Paused: () => false,
-    Victory: () => false,
+    Escaped: () => false,
     GameOver: () => false,
   })
 

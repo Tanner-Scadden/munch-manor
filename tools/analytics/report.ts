@@ -124,6 +124,7 @@ const KeysRow = Schema.Struct({
   runs: Count,
   keys_spent: Schema.NullOr(Schema.Finite),
   cases_opened: Schema.NullOr(Schema.Finite),
+  dare_items_found: Schema.NullOr(Schema.Finite),
 })
 
 const DayRow = Schema.Struct({ received_day: Schema.String, runs: Count })
@@ -321,13 +322,16 @@ const program = Effect.gen(function* () {
           ]),
         ),
         section(
-          'Keys spent and cases opened a run (per player, version 5 on)',
-          ['mode', 'runs', 'keys spent', 'cases opened'],
+          'Keys spent, cases opened, and dare things found a run (per player, version 5 on)',
+          ['mode', 'runs', 'keys spent', 'cases opened', 'dare found'],
           Array.map(keys, row => [
             row.mode,
             `${row.runs}`,
             row.keys_spent === null ? '-' : row.keys_spent.toFixed(1),
             row.cases_opened === null ? '-' : row.cases_opened.toFixed(1),
+            row.dare_items_found === null
+              ? '-'
+              : row.dare_items_found.toFixed(1),
           ]),
         ),
         section(

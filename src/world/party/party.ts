@@ -1,4 +1,4 @@
-import { Array, Function, Option, Order, Result } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { makeModifyFieldsFor, modifyFields } from 'foldkit/struct'
 
 import { FIXED_STEP_MS } from '../../shared/constants'
@@ -244,12 +244,6 @@ export const focusSeat: {
         ],
       })
 })
-
-export const slotsOf = (world: World): ReadonlyArray<PlayerSlot> =>
-  Array.sort(
-    Array.map(world.seats, ({ seat }) => seat.slot),
-    Order.Number,
-  )
 
 export const playerCountOf = (world: World): number => world.seats.length
 

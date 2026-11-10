@@ -450,7 +450,7 @@ describe('the corner', () => {
         Scene.expect(fullscreenButton).toBeAbsent(),
         Scene.click(pauseButton),
         Scene.expect(Scene.role('status')).toHaveText(
-          'Paused during wave 3 of 10. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.',
+          'Paused during wave 3. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.',
         ),
         Scene.expect(pauseButton).toBeAbsent(),
       ),
@@ -473,7 +473,7 @@ describe('the corner', () => {
         Scene.click(musicButton),
         Scene.expect(musicButton).toHaveAttr('aria-pressed', 'false'),
         Scene.expect(Scene.role('status')).toHaveText(
-          'Paused during wave 3 of 10. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.',
+          'Paused during wave 3. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.',
         ),
       ),
   )

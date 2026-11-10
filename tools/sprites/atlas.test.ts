@@ -96,7 +96,9 @@ const SCENES: Readonly<Record<string, Model>> = {
   gameOver: modifyFields(measured(fighting), {
     phase: () => Phase.GameOver({ wave: 3 }),
   }),
-  victory: modifyFields(measured(fighting), { phase: () => Phase.Victory() }),
+  victory: modifyFields(measured(fighting), {
+    phase: () => Phase.Escaped({ wave: 10 }),
+  }),
   break: modifyFields(measured(initialModel), {
     phase: () =>
       Phase.Preparation({

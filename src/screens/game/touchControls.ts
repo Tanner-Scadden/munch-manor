@@ -619,7 +619,7 @@ const startWaveButtonView = (
       ),
     Wave: () => h.empty,
     Paused: () => h.empty,
-    Victory: () => h.empty,
+    Escaped: () => h.empty,
     GameOver: () => h.empty,
   })
 
@@ -744,7 +744,7 @@ export const preparationControlsView: {
       ),
     Wave: () => h.empty,
     Paused: () => h.empty,
-    Victory: () => h.empty,
+    Escaped: () => h.empty,
     GameOver: () => h.empty,
   }),
 )

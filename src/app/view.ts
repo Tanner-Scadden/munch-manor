@@ -61,7 +61,6 @@ import {
   totalKills,
   victoryVerdict,
 } from '../world/run/stats'
-import { FINAL_WAVE } from '../world/waves/wavePlans'
 import { isRoundActive, roundWave } from '../world/waves/waves'
 import { ZOMBIE_KINDS, ZOMBIE_KIND_ORDER } from '../world/zombies/zombies'
 import {
@@ -90,7 +89,7 @@ import { isCoopOpen } from './update/coop'
 
 const statusWave = (model: Model, wave: number): string =>
   RunMode.match(model.mode, {
-    Campaign: () => `wave ${wave} of ${FINAL_WAVE}`,
+    Campaign: () => `wave ${wave}`,
     Endless: () => `endless wave ${wave}`,
   })
 
@@ -110,8 +109,6 @@ const LOBBY_MENU =
 
 const BACK_HOME = 'Press H or choose Menu to go back to the main menu.'
 
-const KEEP_GOING = `Press K or choose Keep going to carry on into endless from wave ${FINAL_WAVE + 1} with your keys, guns, and traps.`
-
 const killLabel = (stats: RunStats): string =>
   pipe(
     ZOMBIE_KIND_ORDER,
@@ -121,8 +118,7 @@ const killLabel = (stats: RunStats): string =>
 
 const waveStatsLabel = (model: Model): string =>
   RunMode.match(model.mode, {
-    Campaign: () =>
-      `Waves cleared: ${model.stats.wavesCleared} of ${FINAL_WAVE}.`,
+    Campaign: () => `Waves cleared: ${model.stats.wavesCleared}.`,
     Endless: () =>
       `Wave reached: ${roundWave(model.phase)}. ${Option.match(
         bestsFor(model).maybeBestEndlessWave,
@@ -189,8 +185,8 @@ const statusText = (model: Model): string =>
       ),
     Paused: ({ round }) =>
       `Paused during ${statusWave(model, round.wave)}. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.`,
-    Victory: () =>
-      `Victory. ${victoryVerdict(model.stats)}. ${statsLabel(model)} ${KEEP_GOING} ${PLAY_AGAIN} ${BACK_HOME}${feedbackSentence(model)}`,
+    Escaped: ({ wave }) =>
+      `You escaped the manor on wave ${wave}. ${victoryVerdict(model.stats)}. ${statsLabel(model)} ${PLAY_AGAIN} ${BACK_HOME}${feedbackSentence(model)}`,
     GameOver: ({ wave }) =>
       `Game over. ${defeatVerdict(wave, model.stats)}. ${statsLabel(model)} ${PLAY_AGAIN} ${BACK_HOME}${feedbackSentence(model)}`,
   })

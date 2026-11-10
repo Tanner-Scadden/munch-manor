@@ -109,7 +109,9 @@ describe('leaving the window', () => {
           modifyFields(readyModel, {
             phase: () => Phase.GameOver({ wave: 3 }),
           }),
-          modifyFields(readyModel, { phase: () => Phase.Victory() }),
+          modifyFields(readyModel, {
+            phase: () => Phase.Escaped({ wave: 10 }),
+          }),
           pausedModel,
         ]
         yield* Effect.forEach(screens, screen =>

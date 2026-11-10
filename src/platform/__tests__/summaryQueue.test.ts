@@ -28,7 +28,7 @@ const summary: RunSummary = {
   mode: 'Campaign',
   difficulty: 'Hard',
   wave: 8,
-  outcome: { _tag: 'Victory' },
+  outcome: { _tag: 'Escaped' },
   runMs: 200_000,
   kills: {
     Shambler: 30,
@@ -49,12 +49,14 @@ const summary: RunSummary = {
   casesOpened: 1,
   party: SOLO_PARTY,
   modifiers: 0,
+  dareItemsFound: 3,
 }
 
 // NOTE: the same run as a build with a shop sent it, with its purchases.
 const {
   keysSpent: _keysSpent,
   casesOpened: _casesOpened,
+  dareItemsFound: _found,
   ...shopless
 } = summary
 const withShop = { ...shopless, purchases: 3 }
@@ -233,7 +235,7 @@ describe('run summaries sent or queued', () => {
         const { party: _party, modifiers: _modifiers, ...older } = withShop
         const olderBody = yield* Schema.encodeEffect(
           Schema.fromJsonString(RunSummaryV1),
-        )({ ...older, version: 1 })
+        )({ ...older, version: 1, outcome: { _tag: 'Victory' } })
         const fake = yield* fakeStore([olderBody], 'On')
         const sending = yield* Effect.forkChild(
           startSummaryQueue(ORIGIN).pipe(
@@ -262,6 +264,7 @@ describe('run summaries sent or queued', () => {
         )({
           ...withShop,
           version: 2,
+          outcome: { _tag: 'Victory' },
           party: {
             _tag: 'Crew',
             size: 2,

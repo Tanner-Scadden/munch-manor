@@ -16,7 +16,7 @@ describe('the names a player reads', () => {
       DIFFICULTIES.Hard.name,
       DIFFICULTIES.Nightmare.name,
     ]).toEqual(['Dare', 'Double Dare', 'Triple Dare', 'Triple Dog Dare'])
-    expect(NIGHTMARE_LOCK_NOTE).toBe('Beat Triple Dare first')
+    expect(NIGHTMARE_LOCK_NOTE).toBe('Escape on Triple Dare to unlock')
   })
 
   it('names the power-ups as the house things', () => {

@@ -67,7 +67,7 @@ export const startOrResume: {
     Preparation: () => model,
     Wave: () => model,
     Paused: ({ round }) => resume(model, round),
-    Victory: () => startRun(model, mode),
+    Escaped: () => startRun(model, mode),
     GameOver: () => startRun(model, mode),
   }),
 )

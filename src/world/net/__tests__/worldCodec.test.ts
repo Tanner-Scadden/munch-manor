@@ -136,7 +136,7 @@ describe('the wire packs numbers by their Schema', () => {
     ]
     // NOTE: a new lossy field shows up here. Name it on purpose.
     expect(hintTable(numbers)).toEqual({
-      Position: { count: 199, names: ['offset', 'remainingPx', 'x', 'y'] },
+      Position: { count: 205, names: ['offset', 'remainingPx', 'x', 'y'] },
       Velocity: {
         count: 7,
         names: ['knockback', 'velocityX', 'velocityY', 'x', 'y'],
@@ -146,7 +146,7 @@ describe('the wire packs numbers by their Schema', () => {
         names: ['hpScale', 'intensity', 'speedScale', 'x', 'y'],
       },
       Millis: {
-        count: 99,
+        count: 101,
         names: [
           'ageMs',
           'apartMs',
@@ -316,11 +316,13 @@ describe("the boss's charge on the wire", () => {
 // room), then the east and far slots' doors and ShelfSwung (the library
 // and the cellar), then the level's rolled `arrangement`, which room
 // stands in each slot (rolled rooms), then the run's `dare` and its
-// `dareThings` and the dare's events (the dare). The wire must not change without a protocol bump. A
+// `dareThings` and the dare's events (the dare), then the dare's `finale`,
+// FrontDoorUnlocking, FrontDoorOpened, SteppedOut, and the Escaped phase
+// (the finale). The wire must not change without a protocol bump. A
 // change to how the room plays moves the bytes with no change to the wire,
 // as zombies coming in promptly after their warning did, and Normal's
 // eased health and speed (2026-10-31) did.
-const GOLDEN_DIGEST = '67375:0a98a885998c7efb'
+const GOLDEN_DIGEST = '67383:fdb0056fbd4f67ed'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

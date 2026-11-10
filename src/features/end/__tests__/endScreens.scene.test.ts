@@ -44,7 +44,7 @@ const menuOnlyButtons = Scene.all.selector('.mode-choice .mode-button')
 
 const END_PHASES: ReadonlyArray<readonly [string, Phase]> = [
   ['Game Over', Phase.GameOver({ wave: 4 })],
-  ['Victory', Phase.Victory()],
+  ['An escape', Phase.Escaped({ wave: 10 })],
 ]
 
 const onEndScreen = (phase: Phase, screenMs: number): Model =>
@@ -71,19 +71,21 @@ describe('the end screens', () => {
     ),
   )
 
-  it.effect('Victory puts HOME first, then AGAIN, Keep going, and SHARE', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(onEndScreen(Phase.Victory(), RESTART_GRACE_MS)),
-      measureSurface,
-      Scene.expectAll(endButtons).toHaveCount(4),
-      Scene.expect(Scene.first(endButtons)).toHaveText('HOMEH'),
-      Scene.expect(retryButton).toHaveText('AGAINENTER'),
-      Scene.expect(keepGoingButton).toExist(),
-      Scene.expect(shareButton).toExist(),
-      Scene.expect(updateNote).toBeAbsent(),
-      shareMountSettles('Cancelled'),
-    ),
+  it.effect(
+    'an escape puts HOME first, then AGAIN and SHARE, and no Keep going',
+    () =>
+      Scene.scene(
+        APPLICATION,
+        Scene.given(onEndScreen(Phase.Escaped({ wave: 10 }), RESTART_GRACE_MS)),
+        measureSurface,
+        Scene.expectAll(endButtons).toHaveCount(3),
+        Scene.expect(Scene.first(endButtons)).toHaveText('HOMEH'),
+        Scene.expect(retryButton).toHaveText('AGAINENTER'),
+        Scene.expect(keepGoingButton).toBeAbsent(),
+        Scene.expect(shareButton).toExist(),
+        Scene.expect(updateNote).toBeAbsent(),
+        shareMountSettles('Cancelled'),
+      ),
   )
 
   it.effect(

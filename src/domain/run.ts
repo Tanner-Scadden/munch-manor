@@ -18,7 +18,7 @@ export const isOnHome = Phase.isAnyOf(['Ready'])
 
 export const isInRun = Phase.isAnyOf(['Preparation', 'Wave', 'Paused'])
 
-export const isEndScreen = Phase.isAnyOf(['Victory', 'GameOver'])
+export const isEndScreen = Phase.isAnyOf(['Escaped', 'GameOver'])
 
 // BESTS
 

@@ -12,7 +12,7 @@ import { Phase } from '../../world/schema/worldSchema'
 const SUPPORT_LABEL = 'Buy the shopkeeper a coffee: support the game'
 
 const isVictoryShown = (model: Model): boolean =>
-  Phase.isAnyOf(['Victory'])(model.phase) && model.screenMs >= RESTART_GRACE_MS
+  Phase.isAnyOf(['Escaped'])(model.phase) && model.screenMs >= RESTART_GRACE_MS
 
 const supportLinkView = (url: string, h: ApplicationViewBuilder): Html =>
   h.a(

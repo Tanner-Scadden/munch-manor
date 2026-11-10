@@ -122,6 +122,10 @@ import {
 // marked, carried by a zombie, dropped, held, found, or delivered), and five
 // new events say what happened to them: DareFound, DareTaken, DareDropped,
 // DareListDone, and DareDelivered.
+// The finale: the dare holds its `finale` (hunting, Uncle Chunk summoned,
+// the front door unlocking, or open), with three events,
+// FrontDoorUnlocking, FrontDoorOpened, and SteppedOut, and a won run ends
+// in an Escaped phase, with its wave, in place of Victory.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

@@ -252,7 +252,9 @@ describe('the update check subscriptions', () => {
     expect(updateCheckActivity(onPhase(Phase.GameOver({ wave: 3 })))).toBe(
       'Active',
     )
-    expect(updateCheckActivity(onPhase(Phase.Victory()))).toBe('Active')
+    expect(updateCheckActivity(onPhase(Phase.Escaped({ wave: 10 })))).toBe(
+      'Active',
+    )
     expect(updateCheckActivity(pause(fighting))).toBe('Active')
     expect(updateCheckActivity(fighting)).toBe('Idle')
   })
@@ -272,7 +274,7 @@ describe('the end screens with a new version waiting', () => {
 
   it.effect.each([
     { name: 'Game Over', phase: Phase.GameOver({ wave: 3 }) },
-    { name: 'Victory', phase: Phase.Victory() },
+    { name: 'An escape', phase: Phase.Escaped({ wave: 10 }) },
   ])('$name turns Enter into MENU and ignores E and K', ({ phase }) =>
     Story.story(
       APPLICATION,
@@ -280,7 +282,6 @@ describe('the end screens with a new version waiting', () => {
       Story.message(Message.PressedKey({ code: 'KeyE' })),
       Story.message(Message.PressedKey({ code: 'KeyK' })),
       Story.message(Message.ClickedCampaignButton()),
-      Story.message(Message.ClickedKeepGoingButton()),
       Story.model(current => {
         expect(current.phase).toStrictEqual(phase)
       }),

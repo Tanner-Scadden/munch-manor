@@ -10,7 +10,13 @@ import { initialModel } from '../../../app/pureApp'
 import { WriteSave } from '../../../app/update/save'
 import { type PlayerChange } from '../../../platform/playerSync'
 import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
-import { lastHeart, readyAfterRead } from '../../../test/model.fixture'
+import {
+  DISTANT_SPAWN,
+  escaping,
+  lastHeart,
+  readyAfterRead,
+  withDareThings,
+} from '../../../test/model.fixture'
 import {
   APPLICATION,
   closeDialog,
@@ -19,6 +25,7 @@ import {
   ticks,
   writeSave,
 } from '../../../test/testing'
+import { type DareThing, DareThingState } from '../../../world/dare/dareSchema'
 import { noRank } from '../../../world/heroes/rank'
 import { seatCrew } from '../../../world/party/party'
 import { type Modifiers } from '../../../world/run/modifiers'
@@ -28,7 +35,8 @@ import { noKills } from '../../../world/schema/worldSchema'
 // Rank and Bones (src/world/heroes/rank.ts, src/features/end/rankRun.ts): a run pays its points and
 // Bones into the saved rank when it ends or is left, and sets what the end
 // card's strip shows. The numbers are the design's: a Normal run that dies
-// on wave 7 pays 60 points and 6 Bones, a Normal win 250 and 25.
+// on wave 7 pays 60 points and 6 Bones; a Normal escape on wave 10 with its
+// three things and the hat 315 and 31.
 
 const frame = tick(FIXED_STEP_MS)
 
@@ -44,14 +52,39 @@ const runAt = (phase: Phase, wavesCleared: number, bosses = 0): Model =>
       }),
   })
 
+const foundBy0 = DareThingState.Found({ slot: 0 })
+
 const wave = (number: number): Phase =>
   Phase.Wave({ wave: number, elapsedMs: 4000, spawns: [] })
 
 const diesOnWave7 = lastHeart(runAt(wave(7), 6))
 
-// NOTE: the last wave of the campaign with nothing left to kill: the next
-// tick clears it and wins.
-const lastWave = runAt(wave(10), 9, 1)
+// NOTE: the dare's three things found, and Uncle Chunk's hat taken.
+const FOUND_THINGS: ReadonlyArray<DareThing> = [
+  { id: 0, kind: 'SilverSpoon', isAsked: true, state: foundBy0 },
+  { id: 1, kind: 'MusicBox', isAsked: true, state: foundBy0 },
+  { id: 2, kind: 'FamilyPortrait', isAsked: true, state: foundBy0 },
+]
+
+const HAT: DareThing = {
+  id: 3,
+  kind: 'PartyHat',
+  isAsked: true,
+  state: foundBy0,
+}
+
+// NOTE: wave 10 with the list done, the hat taken, the front door open,
+// and the player on its sill: the next tick walks out.
+const lastWave = escaping(
+  withDareThings(
+    runAt(
+      Phase.Wave({ wave: 10, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
+      9,
+      1,
+    ),
+    [...FOUND_THINGS, HAT],
+  ),
+)
 
 // NOTE: the Model one frame after `model`, its run ended and the end saved.
 const ended = (model: Model) =>
@@ -77,8 +110,6 @@ const checkSavedChanges =
 // NOTE: the end card's beat is over, so its buttons work.
 const afterBeat = (model: Model): Model =>
   modifyFields(model, { screenMs: () => 60_000 })
-
-const keepGoing = Story.message(Message.ClickedKeepGoingButton())
 
 // NOTE: pause, MENU, and leave the run for home.
 const leave = Story.steps(
@@ -245,70 +276,30 @@ describe('a death', () => {
   )
 })
 
-describe('a win', () => {
-  it.effect('pays the waves, the boss, and the campaign win', () =>
+describe('an escape', () => {
+  it.effect('pays the waves, each thing found, the hat, and the walk out', () =>
     Effect.gen(function* () {
       const won = yield* ended(lastWave)
-      expect(won.phase._tag).toBe('Victory')
-      expect(won.rank).toMatchObject({ earnedPoints: 250, earnedBones: 25 })
+      expect(won.phase._tag).toBe('Escaped')
+      expect(won.rank).toMatchObject({ earnedPoints: 315, earnedBones: 31 })
       expect(won.maybeRankGain).toEqual(
         Option.some({
           pointsBefore: 0,
-          gained: 250,
-          bonesGained: 25,
+          gained: 315,
+          bonesGained: 31,
           bonusPercent: 0,
         }),
       )
     }),
   )
 
-  it.effect('keeping going pays only the endless waves it clears after', () =>
+  it.effect('a death still pays for the things it found', () =>
     Effect.gen(function* () {
-      const won = yield* ended(lastWave)
-      const going = yield* Story.story(
-        APPLICATION,
-        Story.given(afterBeat(won)),
-        keepGoing,
-        Story.model(after => {
-          expect(after.mode._tag).toBe('Endless')
-          expect(after.rank.earnedPoints).toBe(250)
-        }),
+      const after = yield* ended(
+        lastHeart(withDareThings(runAt(wave(7), 6), FOUND_THINGS)),
       )
-      // NOTE: two more waves cleared in endless, then the last heart goes.
-      const diesInEndless = lastHeart(
-        modifyFields(going, {
-          phase: () => wave(13),
-          stats: stats =>
-            modifyFields(stats, { wavesCleared: count => count + 2 }),
-        }),
-      )
-      const after = yield* ended(diesInEndless)
       expect(after.phase._tag).toBe('GameOver')
-      expect(after.rank.earnedPoints).toBe(270)
-      expect(after.maybeRankGain).toEqual(
-        Option.some({
-          pointsBefore: 250,
-          gained: 20,
-          bonesGained: 2,
-          bonusPercent: 0,
-        }),
-      )
-    }),
-  )
-
-  it.effect('keeping going and leaving at once pays nothing more', () =>
-    Effect.gen(function* () {
-      const won = yield* ended(lastWave)
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(afterBeat(won)),
-        keepGoing,
-        leave,
-        Story.model(home => {
-          expect(home.phase._tag).toBe('Ready')
-          expect(home.rank.earnedPoints).toBe(250)
-        }),
-      )
+      expect(after.rank.earnedPoints).toBe(60 + 75)
     }),
   )
 })

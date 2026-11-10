@@ -22,7 +22,6 @@ import type { ShareOutcome } from '../../features/end/share'
 import {
   isCharacterKey,
   isEndlessKey,
-  isKeepGoingKey,
   isLobbyKey,
   isMenuKey,
   isStartKey,
@@ -34,11 +33,11 @@ import { RUNNING_BUILD } from '../../platform/version'
 import { advanceJuice } from '../../render/juice'
 import { advanceParticles } from '../../render/particles/particles'
 import { stepWhen } from '../../shared/stepWhen'
-import { Phase, RunMode } from '../../world/schema/worldSchema'
+import { RunMode } from '../../world/schema/worldSchema'
 import { CoopBinding } from '../bindings'
 import { ApplicationBlock, makeStep } from '../definition'
 import type { Model } from '../model'
-import { keepGoingWhenAllowed, startFromButton, startWhenAllowed } from './run'
+import { startFromButton, startWhenAllowed } from './run'
 import { playSounds, uiCue, unlockAudio } from './sound'
 import {
   type UpdateStep,
@@ -103,15 +102,13 @@ export const advanceEndScreen =
 // endless from wave 1.
 const retry = (model: Model): Model => startWhenAllowed(model, model.mode)
 
-// NOTE: on an end screen Enter retries, E starts endless, and K keeps a won
-// run going, once the restart grace is past.
+// NOTE: on an end screen Enter retries and E starts endless, once the
+// restart grace is past.
 export const endFromKey: {
   (code: string): (model: Model) => Model
   (model: Model, code: string): Model
 } = Function.dual(2, (model: Model, code: string): Model => {
-  if (Phase.isAnyOf(['Victory'])(model.phase) && isKeepGoingKey(code)) {
-    return keepGoingWhenAllowed(model)
-  } else if (isStartKey(code)) {
+  if (isStartKey(code)) {
     return retry(model)
   } else if (isEndlessKey(code)) {
     return startWhenAllowed(model, RunMode.Endless())
@@ -126,7 +123,6 @@ const isEndActionKey = (code: string): boolean =>
   isCharacterKey(code) ||
   isStartKey(code) ||
   isEndlessKey(code) ||
-  isKeepGoingKey(code) ||
   isMenuKey(code) ||
   Array.contains(AUDIO_KEYS, code)
 
@@ -273,9 +269,6 @@ const settleShare =
 
 // NOTE: the end card's buttons and SHARE (./message.ts).
 export const endHandlers = defineHandlers({
-  ClickedKeepGoingButton: model =>
-    startFromButton(model, keepGoingWhenAllowed(model)),
-
   ClickedRetryButton: model => startFromButton(model, retry(model)),
 
   ClickedShareButton: model => combine(model, [unlockAudio, shareFromButton]),

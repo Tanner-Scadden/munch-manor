@@ -16,9 +16,13 @@ import {
 import { holdingSecond, zombieAt } from '../../../test/testing'
 import { openExitIn } from '../../level/arena'
 import { maybePlayerAt, modifyFocus } from '../../party/party'
-import { Phase, freshLevel, idleIntent } from '../../schema/worldSchema'
+import {
+  Phase,
+  RunMode,
+  freshLevel,
+  idleIntent,
+} from '../../schema/worldSchema'
 import { SeatAction } from '../../step/stepWorld'
-import { FINAL_WAVE } from '../../waves/wavePlans'
 import { beginPreparation } from '../../waves/waves'
 import {
   AIM_REACH,
@@ -449,28 +453,23 @@ describe('the lobby picks', () => {
     expect(fresh.world.mode._tag).toBe('Campaign')
   })
 
-  test('a won campaign keeps going into endless for the crew that won it', () => {
-    const won = modifyFields(TWO_SEAT_ROOM.world, {
-      phase: () => Phase.Victory(),
+  test('an escape wins the room, and the next run starts fresh', () => {
+    const escaped = modifyFields(TWO_SEAT_ROOM.world, {
+      phase: () => Phase.Escaped({ wave: 12 }),
       elapsedMs: () => 600000,
     })
-    const rules = roomWorldFor(
-      roomSettingsOf('KeepGoing', 'Normal'),
-      Option.some(won),
-    )
-    expect(rules.isWon({ ...TWO_SEAT_ROOM, world: won })).toBe(true)
-    const kept = rules.start([0, 1], 99)
-    expect(kept.tick).toBe(0)
-    expect(kept.world.mode._tag).toBe('Endless')
-    expect(kept.world.elapsedMs).toBe(600000)
+    const rules = roomWorldFor(roomSettingsOf('KeepGoing', 'Normal'))
+    expect(rules.isWon({ ...TWO_SEAT_ROOM, world: escaped })).toBe(true)
+    expect(rules.isOver({ ...TWO_SEAT_ROOM, world: escaped })).toBe(true)
+    const next = rules.start([0, 1], 99)
+    expect(next.world.elapsedMs).toBe(0)
+    expect(next.world.mode._tag).toBe('Endless')
     expect(
-      Phase.isAnyOf(['Preparation'])(kept.world.phase)
-        ? kept.world.phase.wave
-        : 0,
-    ).toBe(FINAL_WAVE + 1)
-    const newCrew = rules.start([0, 1, 2], 99)
-    expect(newCrew.world.elapsedMs).toBe(0)
-    expect(newCrew.world.mode._tag).toBe('Endless')
+      rules.isWon({
+        ...TWO_SEAT_ROOM,
+        world: modifyFields(escaped, { mode: () => RunMode.Endless() }),
+      }),
+    ).toBe(false)
   })
 })
 

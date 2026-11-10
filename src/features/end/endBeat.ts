@@ -30,7 +30,7 @@ import type { TallyIcon } from './tallyIcons'
 // Model and never touches the World. A loss: a red flash, the player
 // topples, the camera punches in as the color drains, MUNCHED! stamps down,
 // and the card tallies the run row by row. A win: the camera eases in,
-// confetti falls, YOU SURVIVED! stamps, the trophy drops with the skulls of
+// confetti falls, YOU ESCAPED! stamps, the trophy drops with the skulls of
 // the difficulty, and the same tally. Any press skips to the finished card.
 
 export type EndKind = 'Munched' | 'Won'
@@ -41,7 +41,7 @@ export const endKindOf = (model: Model): Option.Option<EndKind> =>
     Preparation: () => Option.none(),
     Wave: () => Option.none(),
     Paused: () => Option.none(),
-    Victory: () => Option.some<EndKind>('Won'),
+    Escaped: () => Option.some<EndKind>('Won'),
     GameOver: () => Option.some<EndKind>('Munched'),
   })
 
@@ -483,7 +483,7 @@ const recordsBroken = (
     Preparation: (): ReadonlyArray<RunRecord> => [],
     Wave: (): ReadonlyArray<RunRecord> => [],
     Paused: (): ReadonlyArray<RunRecord> => [],
-    Victory: (): ReadonlyArray<RunRecord> => [
+    Escaped: (): ReadonlyArray<RunRecord> => [
       ...recordWhen(
         Option.exists(
           bests.maybeFastestWinMs,

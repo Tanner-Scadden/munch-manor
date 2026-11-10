@@ -41,7 +41,7 @@ const withoutLink = (model: Model): Model =>
 const onPhase = (phase: Phase, screenMs: number): Model =>
   modifyFields(home, { phase: () => phase, screenMs: () => screenMs })
 
-const victory = onPhase(Phase.Victory(), RESTART_GRACE_MS)
+const victory = onPhase(Phase.Escaped({ wave: 10 }), RESTART_GRACE_MS)
 
 const SHOWN_ON: ReadonlyArray<readonly [string, Model]> = [['Victory', victory]]
 
@@ -52,7 +52,7 @@ const NEVER_ON: ReadonlyArray<readonly [string, Model]> = [
     'Game Over',
     withLink(onPhase(Phase.GameOver({ wave: 4 }), RESTART_GRACE_MS)),
   ],
-  ['Victory before the restart grace', withLink(onPhase(Phase.Victory(), 0))],
+  ['Victory before the restart grace', withLink(onPhase(Phase.Escaped({ wave: 10 }), 0))],
 ]
 
 describe('the coffee button', () => {

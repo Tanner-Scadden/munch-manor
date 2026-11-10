@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import {
   MS_PER_SECOND,
   PLAYER_RADIUS,
+  TILE_SIZE,
   ZOMBIE_ALIVE_MAX,
 } from '../../shared/constants'
 import { type Seeded, nextRandom } from '../../shared/prng'
@@ -281,12 +282,27 @@ export const freshFight: {
   }),
 )
 
+// NOTE: he walks in through a spawn door from outside; the front door
+// stays shut to walkers, so at the finale he steps in just inside it.
+const entryPoint = (model: World, door: DoorId): Vector => {
+  const level = levelOf(model)
+  if (door !== 'Front') {
+    return doorSpawnPoint(level, door, 0)
+  }
+  const { center, outward } = level.doors.Front
+  const inset = TILE_SIZE / 2 + ZOMBIE_KINDS.Boss.radius + 1
+  return {
+    x: center.x - outward.x * inset,
+    y: center.y - outward.y * inset,
+  }
+}
+
 const enter = (model: World, door: DoorId, hp: number): World => {
   const speedDraw = nextRandom(model.rngState)
   const boss = arrivingZombie({
     id: model.nextEntityId,
     kind: BOSS_KIND,
-    at: doorSpawnPoint(levelOf(model), door, 0),
+    at: entryPoint(model, door),
     speedRoll: speedDraw.value,
     speedScale: difficultySpeedScale(model.difficulty.chosen),
     hp,

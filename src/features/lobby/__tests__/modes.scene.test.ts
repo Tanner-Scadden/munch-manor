@@ -5,15 +5,13 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
-import { type Model, Phase, RunMode } from '../../../app/model'
+import { Phase, RunMode } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { withBests } from '../../../domain/run'
 import { RESTART_GRACE_MS } from '../../../shared/constants'
-import { withKeys } from '../../../test/model.fixture'
 import {
   APPLICATION,
   SCENE_SUBSCRIPTIONS,
-  holdingSecond,
   keepGoingButton,
   lobbyMode,
   lobbyStartButton,
@@ -23,12 +21,10 @@ import {
   playEndlessButton,
   resolveFocusLobbyInScene,
   retryButton,
-  shareMountEnded,
   shareMountSettles,
   startRunInScene,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
-import { modifyFocus } from '../../../world/party/party'
 
 const endlessModeButton = Scene.role('button', { name: 'Endless' })
 const START_PROMPT =
@@ -60,7 +56,7 @@ describe('Mode choice', () => {
       ),
   )
 
-  it.effect('the Play button starts the 10 wave campaign', () =>
+  it.effect('the Play button starts the escape', () =>
     Scene.scene(
       APPLICATION,
       Scene.given(
@@ -71,7 +67,7 @@ describe('Mode choice', () => {
       measureSurface,
       ...startRunInScene(),
       Scene.expect(Scene.role('status')).toHaveText(
-        `Get ready for wave 1 of 10. ${START_PROMPT} Keys on the ring: 0.`,
+        `Get ready for wave 1. ${START_PROMPT} Keys on the ring: 0.`,
       ),
     ),
   )
@@ -90,59 +86,34 @@ describe('Mode choice', () => {
       ),
   )
 
-  it.effect(
-    'Victory offers Keep going after the grace, and it carries on into wave 11',
-    () => {
-      const victorious: Model = modifyFocus(
-        withKeys(
-          modifyFields(asVeteran(initialModel), {
-            phase: () => Phase.Victory(),
-          }),
-          7,
+  it.effect('an escape offers no Keep going, even after the grace', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
+        modifyFields(asVeteran(initialModel), {
+          phase: () => Phase.Escaped({ wave: 10 }),
+        }),
+      ),
+      measureSurface,
+      ...Array.makeBy(Math.ceil(RESTART_GRACE_MS / 50), () =>
+        Scene.Subscription.emit(
+          SCENE_SUBSCRIPTIONS.frame,
+          Message.TickedFrame({ deltaTime: 50 }),
         ),
-        {
-          player: player =>
-            modifyFields(player, {
-              arsenal: () =>
-                holdingSecond({ kind: 'Smg', loaded: 40, tier: 2, kills: 0 }),
-            }),
-        },
-      )
-      return Scene.scene(
-        APPLICATION,
-        Scene.given(victorious),
-        measureSurface,
-        Scene.expect(keepGoingButton).toBeAbsent(),
-        ...Array.makeBy(Math.ceil(RESTART_GRACE_MS / 50), () =>
-          Scene.Subscription.emit(
-            SCENE_SUBSCRIPTIONS.frame,
-            Message.TickedFrame({ deltaTime: 50 }),
-          ),
-        ),
-        Scene.expect(keepGoingButton).toHaveAttr('aria-keyshortcuts', 'K'),
-        Scene.expect(retryButton).toExist(),
-        shareMountSettles('Cancelled'),
-        Scene.click(keepGoingButton),
-        shareMountEnded(),
-        Scene.expect(Scene.role('status')).toHaveText(
-          `Get ready for endless wave 11. There is no timer this break. ${START_PROMPT} Keys on the ring: 7.`,
-        ),
-        Scene.expect(
-          Scene.text(
-            'Keys on the ring: 7. Holding the Chatterbox DELUXE. Other slot: Pop Pistol, upgrade tier 0 of 3, 14 rounds loaded.',
-          ),
-        ).toExist(),
-      )
-    },
+      ),
+      Scene.expect(retryButton).toExist(),
+      Scene.expect(keepGoingButton).toBeAbsent(),
+      shareMountSettles('Cancelled'),
+    ),
   )
 
   it.effect(
-    'Game Over and Victory ask the player to tell whoever sent the game what they think',
+    'Game Over and an escape ask the player to tell whoever sent the game what they think',
     () =>
       Effect.gen(function* () {
         const FEEDBACK = 'Tell whoever sent you this what you think!'
         yield* Effect.forEach(
-          [Phase.GameOver({ wave: 4 }), Phase.Victory()],
+          [Phase.GameOver({ wave: 4 }), Phase.Escaped({ wave: 10 })],
           phase =>
             Scene.scene(
               APPLICATION,

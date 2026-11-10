@@ -7,9 +7,11 @@ import {
   DARE_FOUND_SLOTS,
   DARE_SLOT_SIZE,
 } from '../../art/dareArt'
-import { placeSprite } from '../../render/drawing'
+import { placeSprite, rect } from '../../render/drawing'
 import type { HudLayout } from '../../render/hudLayout'
 import { dareCardOf } from '../../world/dare/dare'
+import { Finale } from '../../world/dare/dareSchema'
+import { unlockShareOf } from '../../world/dare/finale'
 
 // The dare card on the HUD (LORE.md, "The dare card in your pocket"): this
 // run's list as a row of small slots, each an empty outline with the
@@ -32,12 +34,43 @@ export const dareCardShapes: {
     const card = dareCardOf(model)
     const left =
       layout.dareRight - card.length * DARE_SLOT_STRIDE + DARE_SLOT_GAP
-    return Array.map(card, ({ kind, isFound }, index) =>
-      placeSprite(
-        left + index * DARE_SLOT_STRIDE,
-        layout.dareTop,
-        isFound ? DARE_FOUND_SLOTS[kind] : DARE_EMPTY_SLOTS[kind],
+    return [
+      ...Array.map(card, ({ kind, isFound }, index) =>
+        placeSprite(
+          left + index * DARE_SLOT_STRIDE,
+          layout.dareTop,
+          isFound ? DARE_FOUND_SLOTS[kind] : DARE_EMPTY_SLOTS[kind],
+        ),
       ),
-    )
+      ...unlockBarShapes(
+        model,
+        left,
+        layout.dareTop + DARE_SLOT_SIZE + DARE_SLOT_GAP,
+        layout.dareRight - left,
+      ),
+    ]
   },
 )
+
+// NOTE: under the card, once the hat is taken, the front door's unlock as a
+// bar that fills gold, full once the door is open.
+const UNLOCK_BAR_HEIGHT = 2
+
+const unlockBarShapes = (
+  model: Model,
+  left: number,
+  top: number,
+  width: number,
+): ReadonlyArray<Canvas.Shape> =>
+  Finale.isAnyOf(['Unlocking', 'Open'])(model.dare.finale)
+    ? [
+        rect(left, top, width, UNLOCK_BAR_HEIGHT, 'rgba(10, 8, 14, 0.8)'),
+        rect(
+          left,
+          top,
+          Math.round(width * unlockShareOf(model)),
+          UNLOCK_BAR_HEIGHT,
+          '#ffd23f',
+        ),
+      ]
+    : []

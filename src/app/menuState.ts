@@ -41,7 +41,7 @@ const phaseState = (model: Model): MenuState =>
     Preparation: () => MenuState.Playing(),
     Wave: () => MenuState.Playing(),
     Paused: () => MenuState.Paused(),
-    Victory: () =>
+    Escaped: () =>
       MenuState.EndScreen({ isPastGrace: isPastRestartGrace(model) }),
     GameOver: () =>
       MenuState.EndScreen({ isPastGrace: isPastRestartGrace(model) }),

@@ -10,9 +10,14 @@ import type { Difficulty, SavedRank } from '../../shared/playerData'
 
 // POINTS FOR A RUN
 
+// NOTE: the escape's pay (docs/ESCAPE_PLAN.md, "Rewards"): 10 a wave, 25
+// for each thing on the dare's list found, 50 for Uncle Chunk (his hat in
+// an escape, his fall in Endless), 100 for walking out, all times the
+// difficulty. A run that ends short still pays for what it found.
 const POINTS_PER_WAVE = 10
+const POINTS_PER_DARE_ITEM = 25
 const BOSS_POINTS = 50
-const WIN_POINTS = 100
+const ESCAPE_POINTS = 100
 const AWARD_POINTS = 10
 const REVIVE_POINTS = 5
 const POINTS_PER_BONE = 10
@@ -29,15 +34,18 @@ const MULTIPLIERS: Readonly<Record<Difficulty, Fraction>> = {
 }
 
 // NOTE: what one finished run pays for. `wavesCleared` and `bossesFelled`
-// are only the ones not paid yet, so a campaign win that keeps going into
-// endless pays the waves it clears after that, never the campaign twice.
-// `awards` and `revives` are the player's own seat in co-op, 0 alone.
+// are only the ones not paid yet, so nothing is paid twice. `dareItems` is
+// the things on the list found, the hat aside; `isHatTaken` and `isEscape`
+// the finale's. `awards` and `revives` are the player's own seat in co-op,
+// 0 alone.
 // A guided run (the player never got past the practice gate) pays nothing.
 export type RunPayInput = Readonly<{
   difficulty: Difficulty
   wavesCleared: number
   bossesFelled: number
-  isCampaignWin: boolean
+  dareItems: number
+  isHatTaken: boolean
+  isEscape: boolean
   awards: number
   revives: number
   // NOTE: the run modifiers' bonus, in percent (src/world/run/modifiers.ts): the total
@@ -53,8 +61,9 @@ export const pointsForRun = (input: RunPayInput): number => {
   const multiplier = MULTIPLIERS[input.difficulty]
   const base =
     Math.max(0, input.wavesCleared) * POINTS_PER_WAVE +
-    (input.bossesFelled > 0 ? BOSS_POINTS : 0) +
-    (input.isCampaignWin ? WIN_POINTS : 0)
+    Math.max(0, input.dareItems) * POINTS_PER_DARE_ITEM +
+    (input.bossesFelled > 0 || input.isHatTaken ? BOSS_POINTS : 0) +
+    (input.isEscape ? ESCAPE_POINTS : 0)
   const total =
     Math.floor((base * multiplier.top) / multiplier.bottom) +
     Math.max(0, input.awards) * AWARD_POINTS +

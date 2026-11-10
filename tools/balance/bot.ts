@@ -38,6 +38,7 @@ import {
   walking,
 } from './bot/basics'
 import { bossOf } from './bot/dodging'
+import { escapeTarget, escapeTargetInWave } from './bot/escape'
 import {
   AIM_EVERY_FRAMES,
   MOVE_EVERY_FRAMES,
@@ -273,7 +274,10 @@ export const play: {
       if (model.phase._tag === 'Preparation') {
         model = holdFire(model)
         const plan = prepPlan(state, model)
-        if (plan === 'Go') {
+        const escapeTo = escapeTarget(model)
+        // NOTE: with a thing of the dare's list to fetch, or the front door
+        // open, the bot walks there before it starts the wave.
+        if (plan === 'Go' && escapeTo === undefined) {
           state.gnomeTries = 0
           model = pressKeys(model, new Set())
           const other = Option.getOrUndefined(
@@ -297,12 +301,14 @@ export const play: {
           continue
         }
         const target =
-          plan === 'Room'
-            ? (roomTarget(model) ?? ROOM_CENTER)
-            : plan === 'Crate'
-              ? (crateTarget(model) ?? ROOM_CENTER)
-              : plan === 'Mend'
-                ? (mendTarget(model) ?? ROOM_CENTER)
+          plan === 'Go'
+            ? (escapeTo ?? ROOM_CENTER)
+            : plan === 'Room'
+              ? (roomTarget(model) ?? ROOM_CENTER)
+              : plan === 'Crate'
+                ? (crateTarget(model) ?? ROOM_CENTER)
+                : plan === 'Mend'
+                  ? (mendTarget(model) ?? ROOM_CENTER)
                 : plan === 'Gnome'
                   ? gnomeSpot(model)
                   : plan === 'Fridge'
@@ -376,11 +382,19 @@ export const play: {
         }
       } else {
         if (frame % MOVE_EVERY_FRAMES === 0) {
+          const escapeTo = escapeTargetInWave(model)
           model = handleKnife(
             state,
             pressKeys(
               model,
-              holdingAtBoards(model, desiredKeys(kite(state, model))),
+              escapeTo === undefined
+                ? holdingAtBoards(model, desiredKeys(kite(state, model)))
+                : desiredKeys(
+                    steerToward(
+                      focusOf(model).player,
+                      routeTo(levelOf(model), focusOf(model).player, escapeTo),
+                    ),
+                  ),
             ),
           )
         }
@@ -691,7 +705,7 @@ export const play: {
       seed,
       cleared: model.stats.wavesCleared,
       killedBy,
-      victory: model.phase._tag === 'Victory',
+      victory: model.phase._tag === 'Escaped',
       runMs: model.stats.runMs,
       moneyAfterWave,
       hurtBy,

@@ -24,12 +24,10 @@ import {
   DEFAULT_ROOM_SETTINGS,
   readRoomSnapshot,
   roomSettingsOf,
-  roomWorldFor,
   startRoomWorld,
   writeRoomSnapshot,
 } from '../../../world/net/roomWorld'
 import { focusOf, maybePlayerAt } from '../../../world/party/party'
-import { Phase } from '../../../world/schema/worldSchema'
 import { HeroPickerBinding } from '../../coop/bindings'
 import { Message as CoopMessage } from '../../coop/message'
 import { freshRoom } from '../../coop/roomState'
@@ -108,26 +106,6 @@ describe('seating the callings', () => {
           Option.getOrThrow(maybePlayerAt(read.world, slot)).player.calling,
       ),
     ).toEqual(['Handyman', 'You', 'LineCook'])
-  })
-})
-
-describe('KEEP GOING', () => {
-  test('keeps the kept crew in the callings they played', () => {
-    const won = modifyFields(room.world, { phase: () => Phase.Victory() })
-    const rules = roomWorldFor(
-      roomSettingsOf('KeepGoing', 'Normal', [
-        { slot: 0, calling: 'TrackStar' },
-        { slot: 1, calling: 'PennyPincher' },
-      ]),
-      Option.some(won),
-    )
-    const kept = rules.start(CREW, 99)
-    expect(Array.map(CREW, slot => seatOf(kept, slot).calling)).toEqual([
-      'Handyman',
-      'You',
-      'LineCook',
-    ])
-    expect(seatOf(kept, 0).hp).toBe(seatOf(room, 0).hp)
   })
 })
 

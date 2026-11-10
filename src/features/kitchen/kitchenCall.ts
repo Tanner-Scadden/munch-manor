@@ -17,9 +17,10 @@ import {
   GameEvent,
   Phase,
   type Vector,
+  roundWaveOf,
 } from '../../world/schema/worldSchema'
 import { distanceBetween } from '../../world/step/geometry'
-import { isRoundActive, roundWaveOf } from '../../world/waves/waves'
+import { isRoundActive } from '../../world/waves/waves'
 
 // NOTE: from the owner (2026-11-01), players were not finding the kitchen.
 // Rattles hollers about the boarded door once in each break from the one

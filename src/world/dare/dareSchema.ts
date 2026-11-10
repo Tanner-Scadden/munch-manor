@@ -5,7 +5,7 @@
 import { Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 
-import { PositionNumber } from '../schema/wireNumber'
+import { MillisNumber, PositionNumber } from '../schema/wireNumber'
 
 // NOTE: every thing in the house's pool, Uncle Chunk's party hat too, which
 // is never rolled: it closes every list.
@@ -45,11 +45,27 @@ export const DareThing = Schema.Struct({
 })
 export type DareThing = typeof DareThing.Type
 
+// NOTE: where the finale stands (src/world/dare/finale.ts). Hunting while
+// the list is not done (and always in Endless); Summoned once it is, while
+// Uncle Chunk comes to the front door, fights, and leaves his hat on the
+// floor; Unlocking once a player takes the hat, the front door's clock
+// running down in each wave; Open once it swings open, with the slots of
+// the players who have stepped out through it.
+export const Finale = defineTaggedUnion({
+  Hunting: {},
+  Summoned: {},
+  Unlocking: { remainingMs: MillisNumber, durationMs: MillisNumber },
+  Open: { out: Schema.Array(Schema.Finite) },
+})
+export type Finale = typeof Finale.Type
+
 // NOTE: the run's dare: its own generator, salted apart from the run's so
-// rolling the list moves nothing else, and the list in the order it was
-// rolled, without the hat, which always closes it. Empty in Endless.
+// rolling the list moves nothing else, the list in the order it was
+// rolled, without the hat, which always closes it (empty in Endless), and
+// where the finale stands.
 export const Dare = Schema.Struct({
   rngState: Schema.Finite,
   list: Schema.Array(DareKind),
+  finale: Finale,
 })
 export type Dare = typeof Dare.Type

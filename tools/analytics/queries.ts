@@ -8,6 +8,11 @@
 // game is several rows. Since RunSummary version 3 they share a crew_key,
 // so a game is one key. A crew row with no key (version 2, before it) is
 // a game of its own: those counts run high by up to the crew's size.
+//
+// NOTE: a won run is an escape: 'Escaped' since RunSummary version 5, and
+// 'Victory' (the tenth wave cleared) before it. Both count as a win.
+const IS_WON = `outcome IN ('Escaped', 'Victory')`
+
 const CREW_GAMES = `
   crew_games AS (
     SELECT coalesce(crew_key, 'row:' || id) AS game,
@@ -17,8 +22,8 @@ const CREW_GAMES = `
       max(wave) AS wave,
       max(run_ms) AS run_ms,
       min(received_day) AS received_day,
-      max(outcome = 'Victory') AS won,
-      max(outcome = 'GameOver') AND NOT max(outcome = 'Victory') AS lost
+      max(${IS_WON}) AS won,
+      max(outcome = 'GameOver') AND NOT max(${IS_WON}) AS lost
     FROM runs WHERE party = 'Crew'
     GROUP BY game
   )`
@@ -33,7 +38,7 @@ const GAMES = `
   )`
 
 // NOTE: one co-op game's outcome, from its players' rows: won if anyone's
-// summary says Victory, lost if anyone's says Game Over, else everyone
+// summary says it escaped, lost if anyone's says Game Over, else everyone
 // left. Its wave is the furthest any of them saw, its crew the largest.
 const GAME_OUTCOMES = `
     count(*) AS runs,
@@ -45,7 +50,7 @@ const GAME_OUTCOMES = `
 export const SOLO_WIN_RATE = `
   SELECT difficulty,
     count(*) AS runs,
-    sum(outcome = 'Victory') AS wins,
+    sum(${IS_WON}) AS wins,
     sum(outcome = 'GameOver') AS losses,
     sum(outcome = 'Quit') AS quits
   FROM runs WHERE mode = 'Campaign' AND party = 'Solo'
@@ -109,11 +114,13 @@ export const DEVICES = `
   SELECT device, screen_fit, count(*) AS runs FROM runs
   GROUP BY device, screen_fit ORDER BY runs DESC`
 
-// NOTE: per player, from version 5 on (the skeleton keys and display
-// cases, docs/ESCAPE_PLAN.md layer 7): keys spent and cases opened a run.
+// NOTE: per player, from version 5 on (the skeleton keys, the display
+// cases, and the dare, docs/ESCAPE_PLAN.md): keys spent, cases opened, and
+// things on the dare's list found a run.
 export const KEYS = `
   SELECT mode, count(*) AS runs, avg(keys_spent) AS keys_spent,
-    avg(cases_opened) AS cases_opened FROM runs
+    avg(cases_opened) AS cases_opened,
+    avg(dare_items_found) AS dare_items_found FROM runs
   WHERE summary_version >= 5
   GROUP BY mode ORDER BY mode`
 
@@ -129,13 +136,16 @@ export const SHARES = `
   SELECT screen, path, count(*) AS shares, count(DISTINCT visit_id) AS visits
   FROM shares GROUP BY screen, path ORDER BY shares DESC`
 
-// NOTE: the runs that ended at Game Over or Victory: solo runs by row,
-// co-op games by game, so a co-op end screen's shares read per game.
+// NOTE: the runs that ended at Game Over or a win: solo runs by row,
+// co-op games by game, so a co-op end screen's shares read per game. A win
+// reads as Victory, the share screen's name for it.
 export const ENDS = `
   WITH ${CREW_GAMES}
   SELECT party, outcome, count(*) AS runs FROM (
-    SELECT party, outcome FROM runs
-    WHERE party = 'Solo' AND outcome IN ('GameOver', 'Victory')
+    SELECT party,
+      CASE WHEN ${IS_WON} THEN 'Victory' ELSE outcome END AS outcome
+    FROM runs
+    WHERE party = 'Solo' AND outcome IN ('GameOver', 'Escaped', 'Victory')
     UNION ALL
     SELECT 'Crew', CASE WHEN won THEN 'Victory' ELSE 'GameOver' END
     FROM crew_games WHERE won OR lost

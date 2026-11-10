@@ -13,11 +13,7 @@ import { SendRunSummary } from '../../../app/update/settle'
 import { Screen, maybeRoomOf } from '../../../domain/coopRoom'
 import type { RunSummary } from '../../../platform/analytics'
 import { crewRunKeyOf } from '../../../platform/analyticsRun'
-import {
-  WAVE_3_BREAK,
-  modifyLeadSeat,
-  withSeat,
-} from '../../../test/model.fixture'
+import { modifyLeadSeat, withSeat } from '../../../test/model.fixture'
 import { APPLICATION, resolveFocusCoop } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { type RoomWorld, startRoomWorld } from '../../../world/net/roomWorld'
@@ -166,6 +162,7 @@ const crewSummary = (
   frameTime: 'Over34Ms',
   party: crewOfThree,
   modifiers: 0,
+  dareItemsFound: 0,
   ...overrides,
 })
 
@@ -209,18 +206,18 @@ describe("an online co-op run's summary", () => {
   )
 
   it.effect(
-    'Victory sends one, and leaving from the end card sends no second',
+    'an escape sends one, and leaving from the end card sends no second',
     () =>
       Effect.gen(function* () {
-        const ended = yield* endedIn(Phase.Victory())
+        const ended = yield* endedIn(Phase.Escaped({ wave: 10 }))
         yield* Story.story(
           APPLICATION,
           Story.given(ended),
           roomFrame(200),
           Story.model(current => {
-            expect(current.phase._tag).toBe('Victory')
+            expect(current.phase._tag).toBe('Escaped')
           }),
-          sent(crewSummary({ outcome: { _tag: 'Victory' }, wave: 10 })),
+          sent(crewSummary({ outcome: { _tag: 'Escaped' }, wave: 10 })),
           Story.messageIn(CoopBinding, CoopMessage.CompletedLeaveRoom()),
           Story.Command.expectExact(RememberRoom, FocusCoopElement),
           Story.model(current => {
@@ -392,56 +389,12 @@ describe("an online co-op run's rank", () => {
       }),
   )
 
-  it.effect(
-    'keeping going after a win pays the endless waves only: the revives and awards were paid at Victory',
-    () =>
-      Effect.gen(function* () {
-        const running = yield* midRun()
-        const won = yield* endWith(
-          clearedFour(running),
-          endedAs(Phase.Victory()),
-          200,
-        )
-        // NOTE: 4 waves and the win on Hard (60 + 150), 3 awards, 1 revive.
-        expect(won.rank.earnedPoints).toBe(245)
-        // NOTE: the same World goes on into endless, its seats keeping their
-        // revives, and the client's own stats start over.
-        const going: RoomWorld = {
-          ...endedAs(Phase.Victory()),
-          tick: 2,
-          world: modifyFields(endedAs(Phase.Victory()).world, {
-            mode: () => RunMode.Endless(),
-            phase: () => WAVE_3_BREAK,
-          }),
-        }
-        const kept = yield* endWith(won, going, 300)
-        expect(kept.rankPaid).toMatchObject({ awardsPaid: 3, revivesPaid: 1 })
-        const endlessEnd: RoomWorld = {
-          ...going,
-          tick: 3,
-          world: modifyFields(going.world, {
-            phase: () => Phase.GameOver({ wave: 13 }),
-          }),
-        }
-        const ended = yield* endWith(
-          modifyFields(kept, {
-            stats: stats => modifyFields(stats, { wavesCleared: () => 2 }),
-          }),
-          endlessEnd,
-          400,
-        )
-        // NOTE: 2 endless waves on Hard is 30, and nothing again for the revive
-        // and the awards: 245 + 30.
-        expect(ended.rank.earnedPoints).toBe(275)
-      }),
-  )
-
   it.effect('a new run in the room starts from nothing paid', () =>
     Effect.gen(function* () {
       const running = yield* midRun()
       const won = yield* endWith(
         clearedFour(running),
-        endedAs(Phase.Victory()),
+        endedAs(Phase.Escaped({ wave: 10 })),
         200,
       )
       const again: RoomWorld = {
