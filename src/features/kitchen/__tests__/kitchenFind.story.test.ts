@@ -19,7 +19,8 @@ import {
   FRAME_MS,
   ticks,
 } from '../../../test/testing'
-import { levelOf, openExitIn } from '../../../world/level/arena'
+import { levelFor, levelOf, openExitIn } from '../../../world/level/arena'
+import { MANOR_SPEC } from '../../../world/level/plan'
 import { modifyFocus } from '../../../world/party/party'
 import { CALL_MS, maybeKitchenSound } from '../kitchenCall'
 import { roomsCounterShapes, roomsOf } from '../roomsFound'
@@ -144,12 +145,23 @@ describe('Rattles pointing at the boards', () => {
 })
 
 describe('the rooms counter', () => {
-  test('reads 1 of 3 with the kitchen and the parlour shut, and 2 of 3 once the kitchen opens', () => {
-    expect(roomsOf(levelOf(breakAt(3)))).toEqual({ found: 1, total: 3 })
+  test('reads 1 of 5 with every room shut, and 2 of 5 once the kitchen opens', () => {
+    expect(roomsOf(levelOf(breakAt(3)))).toEqual({ found: 1, total: 5 })
     expect(roomsOf(levelOf(withKitchenOpen(breakAt(3))))).toEqual({
       found: 2,
-      total: 3,
+      total: 5,
     })
+  })
+
+  test('counts rooms, not the secret shelf between two of them', () => {
+    expect(
+      roomsOf(levelFor(MANOR_SPEC, ['Kitchen', 'West', 'East', 'Far'])),
+    ).toEqual({ found: 5, total: 5 })
+    expect(
+      roomsOf(
+        levelFor(MANOR_SPEC, ['Kitchen', 'West', 'East', 'Far', 'Secret']),
+      ),
+    ).toEqual({ found: 5, total: 5 })
   })
 
   test('shows in a break and not mid-wave', () => {

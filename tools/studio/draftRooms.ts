@@ -55,7 +55,12 @@ import {
   makeLevel,
   tilesWithSymbol,
 } from '../../src/world/level/arena'
-import { type LevelSpec, middleOf } from '../../src/world/level/plan'
+import {
+  CELLAR_MAP,
+  LIBRARY_MAP,
+  type LevelSpec,
+  middleOf,
+} from '../../src/world/level/plan'
 
 export type DraftRoomId = 'Dining' | 'Library' | 'Cellar'
 
@@ -84,48 +89,6 @@ const DINING_MAP: ReadonlyArray<string> = [
   '#HH...............................4E',
   '#HH......tt......................HH#',
   '#####SS#########MMMM################',
-]
-
-const LIBRARY_MAP: ReadonlyArray<string> = [
-  '##############nn################',
-  '##############nn################',
-  '#..............................#',
-  '#..............................#',
-  '#..BB..BB..BB......BB..BB..BB..#',
-  '#..BB..BB..BB...g..BB..BB..BB..#',
-  '#..BB..BB..BB..1...BB..BB..BB2.#',
-  '#..............................#',
-  '(..............................)',
-  '(..............................)',
-  '#...........dddddddd...........#',
-  '#..........3dddddddd...........#',
-  '#..............................#',
-  '%..............................%',
-  '%..BB..BB..BB......BB..BB..BB..%',
-  '#..BB..BB..BB......BB..BB..BB..#',
-  '#..BBccBBttBB......BB4.BBccBB..#',
-  '################ss##############',
-]
-
-const CELLAR_MAP: ReadonlyArray<string> = [
-  '#####nn#########################',
-  '#####nn#########################',
-  '#.....4........................#',
-  '#..............................#',
-  '#..]]]]]]]]..]]]]]]..]]]]]]]]..#',
-  '#...........................2..#',
-  '#..............................#',
-  '#..]]]]]]]]....tt....]]]]]]]]..#',
-  '(.............oooo.............)',
-  '(.............oooo1............)',
-  '#..]]]]]]]]...oooo...]]]]]]]]..#',
-  '#.............oooo.............#',
-  '#..............................#',
-  '?..............................?',
-  '?..]]]]]]]]..]]]]]]..]]]]]]]]..?',
-  '#..........................3...#',
-  '#cc..........................cc#',
-  '#######################ss#######',
 ]
 
 // NOTE: what each drafted symbol is drawn as. The digits, `@`, and `^` are
@@ -200,6 +163,8 @@ const specOf = (
     id: exitId,
     symbol,
     doors: [],
+    opener: 'Boards',
+    requires: [],
   })),
   drops: [],
   start: middleOf(map),
@@ -352,7 +317,7 @@ const libraryShapes = (isOpen: boolean): ReadonlyArray<Canvas.Shape> => {
     ...libraryFloorShadeShapes(room),
     ...libraryRugShapes(room),
     ...walls(level),
-    ...libraryWallShapes(level),
+    ...libraryWallShapes(level, room),
     ...libraryWallDecorShapes(room),
     ...doors(level),
     ...Option.match(westTop, {
@@ -385,7 +350,7 @@ const cellarShapes = (): ReadonlyArray<Canvas.Shape> => {
     ...coalHeapShapes(room),
     ...looseStoneShapes(room),
     ...walls(level),
-    ...cellarWallShapes(level),
+    ...cellarWallShapes(level, room),
     ...doors(level),
     ...escapeCoverShapes(level, CELLAR_COVER),
     ...oddBottleShapes(room),

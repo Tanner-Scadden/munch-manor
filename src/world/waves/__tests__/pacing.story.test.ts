@@ -147,6 +147,10 @@ const OPPOSITE: Readonly<Record<DoorId, DoorId>> = {
   Window: 'East',
   WestTop: 'East',
   WestBottom: 'North',
+  EastTop: 'South',
+  EastBottom: 'West',
+  FarTop: 'South',
+  FarBottom: 'West',
   Front: 'North',
 }
 

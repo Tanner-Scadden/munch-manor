@@ -17,6 +17,7 @@ import {
   distanceAt,
   flowFieldToward,
   flowFieldsToward,
+  isFieldTile,
 } from '../pathing'
 
 // NOTE: the search the flat one replaced, kept as the oracle: neighbors in
@@ -58,6 +59,8 @@ const neighborsOf = (
 ): ReadonlyArray<number> => {
   const { column, row } = tileOfIndex(level, index)
   return Array.filterMap(STRAIGHT, step =>
+    isFieldTile(level, column, row) &&
+    isFieldTile(level, column + step[0], row + step[1]) &&
     isOpen(level, clearance, column, row, step)
       ? Result.succeed(tileIndex(level, column + step[0], row + step[1]))
       : Result.failVoid,

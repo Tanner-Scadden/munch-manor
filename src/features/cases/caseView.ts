@@ -45,8 +45,9 @@ const caseShapes = (
   model: Model,
   displayCase: DisplayCase,
 ): ReadonlyArray<Canvas.Shape> => {
-  const foot = caseFootOf(displayCase)
-  const art = CASE_ART[caseLookOf(displayCase)]
+  const level = levelOf(model)
+  const foot = caseFootOf(level, displayCase)
+  const art = CASE_ART[caseLookOf(level, displayCase)]
   const left = Math.round(foot.x - CASE_WIDTH / 2)
   const top = foot.y - CASE_HEIGHT
   const prizeAt = { x: Math.round(foot.x), y: top + art.prizeDropPx }
@@ -82,7 +83,7 @@ export const caseDrawables = (model: Model): ReadonlyArray<Drawable> =>
       isCaseShown(levelOf(model), displayCase),
     ),
     (displayCase): Drawable => ({
-      footY: caseFootOf(displayCase).y,
+      footY: caseFootOf(levelOf(model), displayCase).y,
       rank: 'Prop',
       shapes: caseShapes(model, displayCase),
     }),

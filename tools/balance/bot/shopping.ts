@@ -1,5 +1,5 @@
 // What the balance bot does in a break: spending the crew's keys on the
-// kitchen and the fridge, taking planks and gnomes from the trap crates,
+// rooms and the fridge, taking planks and gnomes from the trap crates,
 // placing and mending them, and the plan that picks between them.
 
 import { Array, Function, Option, Schema } from 'effect'
@@ -19,17 +19,13 @@ import { MEND_RULES, isDamaged, trapBox } from '../../../src/world/gear/traps'
 import { freshGun, isCarrying } from '../../../src/world/gear/weapons'
 import { heldKeys } from '../../../src/world/keys/keys'
 import { distanceToBox, levelOf } from '../../../src/world/level/arena'
-import {
-  KITCHEN_EXIT,
-  exitPriceFor,
-  isExitOfferOpenFor,
-} from '../../../src/world/level/exits'
+import { KITCHEN_EXIT, exitOffers } from '../../../src/world/level/exits'
 import {
   focusOf,
   focusSlotOf,
   leadSeatOf,
 } from '../../../src/world/party/party'
-import { maybeOfferInReach } from '../../../src/world/shop/purchase'
+import { type Offer, maybeOfferInReach } from '../../../src/world/shop/purchase'
 import { doorCounts } from '../../../src/world/waves/endlessWaves'
 import { FRAME_MS, KEYS, type Model, type Vector } from './basics'
 import { type Gun, gunValue, weakerGun } from './guns'
@@ -42,7 +38,8 @@ import { type BotState } from './state'
 // The bot has no shop to visit (docs/ESCAPE_PLAN.md, layer 7): zombies drop
 // skeleton keys onto the crew's ring (src/world/keys/keys.ts), and the bot
 // spends them as a stub until the real bot (layer 17): it opens the kitchen
-// once it holds the keys, and pulls the fridge with what it has left. Guns
+// once it holds the keys, then each room on sale it can pay for, and pulls
+// the fridge with what it has left. Guns
 // sit in display cases (src/world/feats/cases.ts), which the bot leaves
 // alone, and traps come from the trap crates (THE CRATES below).
 // NO_GNOME=1 is the bot that never takes a gnome, and NO_PLANKS=1 one that
@@ -52,32 +49,71 @@ const NO_PLANKS = isKnobSet('NO_PLANKS')
 // NOTE: keys the bot keeps back from the fridge, 0 by default.
 const RESERVE = knobNumber('RESERVE', 0)
 
-// THE KITCHEN
+// THE ROOMS
 
 // The bot opens the kitchen once the ring holds its padlock's keys, from
-// the break its boards go on sale. It walks to the boarded door and holds
-// the interact key. KITCHEN=0 is the bot that never opens it, to see what
-// the kitchen does to a run.
+// the break its boards go on sale, and once the kitchen is open, each other
+// room on sale (the parlour, the library, then the cellar beyond it) as soon
+// as the ring holds its padlock's keys. It walks to the boards and holds the
+// interact key. KITCHEN=0 is the bot that never opens the kitchen, to see
+// what the kitchen does to a run, and ROOMS=0 the bot that opens no room
+// past it.
 const NO_KITCHEN = knobText('KITCHEN') === '0'
-export const KITCHEN_DOOR_PUSH: Vector = { x: 70, y: 16 }
+const NO_ROOMS = knobText('ROOMS') === '0'
 
 export const isKitchenOpen = (model: Model) =>
   levelOf(model).openExits.includes(KITCHEN_EXIT)
 
-const wantsKitchen = (model: Model): boolean =>
-  !NO_KITCHEN &&
-  !isKitchenOpen(model) &&
-  isExitOfferOpenFor(model.phase) &&
-  heldKeys(model) >= exitPriceFor(model, KITCHEN_EXIT)
+const isKitchenOffer = ({ target }: Offer): boolean =>
+  target._tag === 'Exit' && target.exit === KITCHEN_EXIT
+
+// NOTE: the boards the bot wants open next: the kitchen's first, then the
+// rest in the house's order, the first the ring can pay for.
+const maybeWantedRoom = (model: Model): Option.Option<Offer> =>
+  Array.findFirst(
+    exitOffers(model),
+    offer =>
+      (isKitchenOffer(offer)
+        ? !NO_KITCHEN
+        : !NO_ROOMS && (NO_KITCHEN || isKitchenOpen(model))) &&
+      heldKeys(model) >= offer.price,
+  )
+
+const wantsRoom = (model: Model): boolean =>
+  Option.isSome(maybeWantedRoom(model))
+
+// NOTE: where the bot walks to buy the room: just inside the middle of the
+// boards' face on its side, which it pushes against.
+const BOARDS_PUSH_PX = 4
+
+export const roomTarget = (model: Model): Vector | undefined =>
+  Option.getOrUndefined(
+    Option.map(maybeWantedRoom(model), ({ box }) => {
+      const { x, y } = focusOf(model).player
+      const middle = {
+        x: (box.left + box.right) / 2,
+        y: (box.top + box.bottom) / 2,
+      }
+      if (y >= box.bottom) {
+        return { x: middle.x, y: box.bottom - BOARDS_PUSH_PX }
+      }
+      if (y < box.top) {
+        return { x: middle.x, y: box.top + BOARDS_PUSH_PX }
+      }
+      return x >= box.right
+        ? { x: box.right - BOARDS_PUSH_PX, y: middle.y }
+        : { x: box.left + BOARDS_PUSH_PX, y: middle.y }
+    }),
+  )
 
 // The bot buys the room as a player does: it holds the interact key at the
 // boards until the hold fills (src/world/shop/purchase.ts), mid-wave too when it
 // happens to stand there while it wants the room.
-export const holdingAtKitchen: {
+export const holdingAtBoards: {
   (keys: Set<string>): (model: Model) => Set<string>
   (model: Model, keys: Set<string>): Set<string>
 } = Function.dual(2, (model: Model, keys: Set<string>): Set<string> =>
-  wantsKitchen(model) &&
+  wantsRoom(model) &&
   Option.isSome(maybeOfferInReach(model, focusSlotOf(model)))
     ? new Set([...keys, KEYS.interact])
     : keys,
@@ -220,7 +256,7 @@ export const crateTarget = (model: Model): Vector | undefined =>
         maybeFindIn(model, crate),
         find => wantsFind(find) && canTakeFind(model, focusSlotOf(model), find),
       ),
-    ).pipe(Option.map(crate => crateSpotOf(crate.room))),
+    ).pipe(Option.map(crate => crateSpotOf(levelOf(model), crate.room))),
   )
 
 const MEND_BELOW = 0.75
@@ -257,7 +293,7 @@ export const isAtMend = (model: Model): boolean => {
 }
 
 type PrepPlan =
-  | 'Kitchen'
+  | 'Room'
   | 'Crate'
   | 'Barricade'
   | 'Gnome'
@@ -296,8 +332,8 @@ export const prepPlan: {
   if (isBreakOverdue(state)) {
     return 'Go'
   }
-  if (wantsKitchen(model)) {
-    return 'Kitchen'
+  if (wantsRoom(model)) {
+    return 'Room'
   }
   if (crateTarget(model) !== undefined) {
     return 'Crate'

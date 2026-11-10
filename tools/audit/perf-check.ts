@@ -58,7 +58,10 @@ type Settings = Config.Success<typeof Settings>
 
 const scenarioNamesOf = (settings: Settings) =>
   String.split(',')(
-    Option.getOrElse(settings.scenarios, () => 'worst,endlessCap,coopLive'),
+    Option.getOrElse(
+      settings.scenarios,
+      () => 'worst,endlessCap,coopLive,cellar',
+    ),
   )
 
 // NOTE: `UPDATE=1` with `SCENARIOS` records only those scenarios' rows and

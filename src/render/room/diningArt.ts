@@ -25,7 +25,7 @@ import {
   pick,
   roll,
 } from './roomPalette'
-import { type Span, northFaceSpans } from './roomWalls'
+import { type Span, spansWithin } from './roomWalls'
 
 // NOTE: the dining room, where the Munches' party has been going for a
 // hundred years: a parquet floor, burgundy damask with the family on the
@@ -326,17 +326,10 @@ export const diningWallShapes: {
   (room: Box): (level: Level) => ReadonlyArray<Canvas.Shape>
   (level: Level, room: Box): ReadonlyArray<Canvas.Shape>
 } = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(
-    Array.filter(
-      northFaceSpans(level),
-      ({ x, y, width }: Span) =>
-        x >= room.x &&
-        x + width <= room.x + room.width &&
-        y > room.y &&
-        y <= room.y + room.height,
-    ),
-    (span: Span) => [...paperShapes(span), ...buntingShapes(span)],
-  ),
+  Array.flatMap(spansWithin(level, room), (span: Span) => [
+    ...paperShapes(span),
+    ...buntingShapes(span),
+  ]),
 )
 
 // THE FAMILY ON THE WALL

@@ -15,6 +15,10 @@ import { isFloorKind } from '../zombies/zombies'
 const CLOCKWISE: Array.NonEmptyReadonlyArray<DoorId> = [
   'Back',
   'North',
+  'EastTop',
+  'FarTop',
+  'FarBottom',
+  'EastBottom',
   'East',
   'South',
   'Front',
@@ -33,6 +37,10 @@ export const OPPOSITE_DOOR: Readonly<Record<DoorId, DoorId>> = {
   Window: 'East',
   WestTop: 'East',
   WestBottom: 'North',
+  EastTop: 'South',
+  EastBottom: 'West',
+  FarTop: 'South',
+  FarBottom: 'West',
   Front: 'North',
 }
 

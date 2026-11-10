@@ -51,7 +51,15 @@ const HALL: LevelSpec = {
       renames: {},
     },
   ],
-  exits: [{ id: 'Kitchen', symbol: 'K', doors: ['South'] }],
+  exits: [
+    {
+      id: 'Kitchen',
+      symbol: 'K',
+      doors: ['South'],
+      opener: 'Boards',
+      requires: [],
+    },
+  ],
   drops: [],
   start: { x: 40, y: 20 },
 }
@@ -135,13 +143,16 @@ describe('opening an exit', () => {
 })
 
 describe('the manor', () => {
-  test('is where every run starts, with the kitchen and the parlour boarded shut', () => {
+  test('is where every run starts, with every room boarded shut', () => {
     expect(initialModel.level).toEqual(startingLevel)
     expect(levelOf(initialModel)).toBe(MANOR)
     expect(freshRun(initialModel).level).toEqual(startingLevel)
     expect(Array.map(closedExits(MANOR), ({ id }) => id)).toEqual([
       'Kitchen',
       'West',
+      'East',
+      'Far',
+      'Secret',
     ])
     expect(MANOR.doorIds).toEqual(['North', 'West', 'East', 'South'])
     expect(
@@ -169,7 +180,12 @@ describe('the manor', () => {
 
   test('opens the kitchen exit into floor and adds the back door and window', () => {
     const opened = levelOf({ level: openExitIn(startingLevel, 'Kitchen') })
-    expect(Array.map(closedExits(opened), ({ id }) => id)).toEqual(['West'])
+    expect(Array.map(closedExits(opened), ({ id }) => id)).toEqual([
+      'West',
+      'East',
+      'Far',
+      'Secret',
+    ])
     expect(opened.doorIds).toEqual([
       'North',
       'West',
@@ -204,10 +220,23 @@ describe('the manor', () => {
 
   test('with every exit open, no boards are left to draw', () => {
     const opened = levelOf({
-      level: openExitIn(openExitIn(startingLevel, 'Kitchen'), 'West'),
+      level: Array.reduce(
+        ['Kitchen', 'West', 'East', 'Far', 'Secret'],
+        startingLevel,
+        openExitIn,
+      ),
     })
     expect(closedExits(opened)).toEqual([])
-    expect(drawsBoards(roomShapes(opened))).toBe(false)
+    // NOTE: the library's open shelf shows the dark gap it swung from, so
+    // only the other rooms are checked for boards.
+    expect(
+      drawsBoards(
+        Array.filter(
+          roomShapes(opened),
+          shape => !(shape._tag === 'Image' && shape.x === 360),
+        ),
+      ),
+    ).toBe(false)
   })
 
   it.effect('keeps its level through a wave', () => {

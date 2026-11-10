@@ -52,6 +52,7 @@ import {
 } from '../../shared/constants'
 import {
   APPLICATION,
+  CELLAR_SPOT,
   SCENE_SUBSCRIPTIONS,
   WIDE_SURFACE,
   holdingSecond,
@@ -65,6 +66,7 @@ import { TRAPS as TRAP_STATS } from '../../world/gear/traps'
 import { freshGun } from '../../world/gear/weapons'
 import { DOOR_IDS, openExitIn } from '../../world/level/arena'
 import { KITCHEN_EXIT } from '../../world/level/exits'
+import { EAST_EXIT, FAR_EXIT } from '../../world/level/plan'
 import { modifyFocus } from '../../world/party/party'
 import { rollSpawns } from '../../world/waves/endlessWaves'
 import { FINAL_WAVE } from '../../world/waves/wavePlans'
@@ -594,9 +596,16 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // body, its prize, its glass and padlock, and its feat's ring and icon), and
 // its count shows only to a player standing near it. The paint budgets did
 // not move.
+// The library and the cellar put two more room images on the floor canvas
+// (743 shapes at the alive cap, from 740 or under); the floor canvas paints
+// only when the level changes, so no steady paint budget moved. The dark
+// cellar fits the same budget: its mask is about a dozen shapes, cut from
+// baked light pools, and a zombie out in the dark draws only its eyes.
+// The cellar's own display case, locked in view, paints 597 steady
+// operations there, so that budget went from 590 to 600.
 const BUDGET: FrameCost = {
-  shapesBuilt: 755,
-  steadyPaintOps: 590,
+  shapesBuilt: 760,
+  steadyPaintOps: 600,
   steadyFillStyleChanges: 500,
   steadyShapesPainted: 630,
   fullRepaintPaintOps: 1200,
@@ -639,6 +648,34 @@ const kitchenRoom = (wave: number): Model => {
     }),
     {
       player: player => modifyFields(player, { x: () => 100, y: () => -40 }),
+    },
+  )
+}
+
+// NOTE: the cellar open and dark, the player down in it firing (the shot's
+// flash widens its light), and the whole crowd moved down beside it, most
+// of it out in the dark as eyes. The light mask is drawn over the part of
+// the cellar on the camera (src/render/cellarDark.ts).
+const cellarRoom = (wave: number): Model => {
+  const room = fullRoom(RunMode.Campaign(), wave, 2)
+  return modifyFocus(
+    modifyFields(room, {
+      level: level => Array.reduce([EAST_EXIT, FAR_EXIT], level, openExitIn),
+      zombies: zombies =>
+        Array.map(zombies, (zombie, index) =>
+          modifyFields(zombie, {
+            x: () => 690 + ((index * 37) % 300),
+            y: () => 25 + ((index * 23) % 145),
+          }),
+        ),
+    }),
+    {
+      player: player =>
+        modifyFields(player, {
+          x: () => CELLAR_SPOT.x,
+          y: () => CELLAR_SPOT.y,
+          recoilRemainingMs: () => 40,
+        }),
     },
   )
 }
@@ -728,6 +765,10 @@ const SCENARIOS: ReadonlyArray<Readonly<{ name: string; model: Model }>> = [
   {
     name: 'campaign wave 9 in the open kitchen with both ovens belching',
     model: kitchenRoom(9),
+  },
+  {
+    name: 'campaign wave 9 in the dark cellar at the alive cap, firing',
+    model: cellarRoom(9),
   },
   {
     name: 'campaign wave 10 at the alive cap with the boss enraged mid-charge',

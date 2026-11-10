@@ -20,9 +20,11 @@ import {
 } from '../step/geometry'
 import {
   type Level,
+  TILE_OUTSIDE,
   byDoor,
   doorSpawnPoint,
   hasClearPath,
+  hasTileFlag,
   isInYardAt,
   isInsideRoomAt,
   isOpenBlock,
@@ -126,27 +128,63 @@ const isClearanceStepOpen = (
     ? isWideStepOpen(level, column, row, stepColumn, stepRow)
     : isNarrowStepOpen(level, column, row, stepColumn, stepRow)
 
-// NOTE: the flow field covers every walkable tile on the map, the yard too,
-// so a zombie in the yard reads it on the way to the door the yard leads to.
-// The yard meets the house only at its doors, so the house's own distances
-// are the same as a field over the house alone. A zombie past the map's edge
-// has no tile, and walks around the house instead (see OUTSIDE).
+// NOTE: the flow field covers every walkable tile of the open house and the
+// yard within YARD_FIELD_TILES of it, so a zombie in the yard reads it on the
+// way to the door the yard leads to. The yard meets the house only at its
+// doors, so the house's own distances are the same as a field over the house
+// alone. A zombie past the map's edge has no tile, and one in the yard
+// farther out (round a room still boarded shut, past the house's far end)
+// has none in the field: both walk around the house instead (see OUTSIDE).
+// The whole house is 132 by 37 tiles, so a field over all of its yard with
+// only the dining room open cost twice what it did.
 //
 // A level's walks are fixed, so each is laid out once with the level, in
 // compressed rows: the tiles one step from a tile are
 // adjacent[start[tile]] up to adjacent[start[tile + 1]].
 type WalkGraph = Readonly<{ start: Int32Array; adjacent: Int32Array }>
 
+// NOTE: past the loop's line round the open house (ZOMBIE_SPAWN_MARGIN out),
+// with a tile to spare.
+const YARD_FIELD_TILES = Math.ceil(ZOMBIE_SPAWN_MARGIN / TILE_SIZE) + 2
+
+export const isFieldTile: {
+  (column: number, row: number): (level: Level) => boolean
+  (level: Level, column: number, row: number): boolean
+} = Function.dual(3, (level: Level, column: number, row: number): boolean => {
+  if (!hasTileFlag(level, tileIndex(level, column, row), TILE_OUTSIDE)) {
+    return true
+  }
+  const reach = YARD_FIELD_TILES * TILE_SIZE
+  const x = column * TILE_SIZE
+  const y = row * TILE_SIZE
+  return (
+    x + TILE_SIZE > level.bounds.left - reach &&
+    x < level.bounds.right + reach &&
+    y + TILE_SIZE > level.bounds.top - reach &&
+    y < level.bounds.bottom + reach
+  )
+})
+
 const walkGraphFor = (level: Level, clearance: Clearance): WalkGraph => {
   const start = new Int32Array(level.tileCount + 1)
   const adjacent: Array<number> = []
   for (let index = 0; index < level.tileCount; index++) {
     const { column, row } = tileOfIndex(level, index)
+    const isInField = isFieldTile(level, column, row)
     for (let step = 0; step < STRAIGHT_STEP_COUNT; step++) {
       const stepColumn = STEP_COLUMNS[step] ?? 0
       const stepRow = STEP_ROWS[step] ?? 0
       if (
-        isClearanceStepOpen(level, clearance, column, row, stepColumn, stepRow)
+        isInField &&
+        isClearanceStepOpen(
+          level,
+          clearance,
+          column,
+          row,
+          stepColumn,
+          stepRow,
+        ) &&
+        isFieldTile(level, column + stepColumn, row + stepRow)
       ) {
         adjacent.push(tileIndex(level, column + stepColumn, row + stepRow))
       }
@@ -748,6 +786,14 @@ const isWithinBounds = (level: Level, { x, y }: Vector): boolean =>
   y > level.bounds.top &&
   y < level.bounds.bottom
 
+// NOTE: the doors the yard leads to: those whose spawn point stands in the
+// yard, like the parlour's north door in the manor.
+const yardDoorsOf = perLevel((level): ReadonlyArray<DoorId> =>
+  Array.filter(level.doorIds, id =>
+    isInYardAt(level, doorSpawnPoint(level, id, 0)),
+  ),
+)
+
 // NOTE: a zombie in the yard is inside the manor's bounds, where the loop's
 // corners lie across the kitchen roof. It walks back out the way its nearest
 // door faces until it is past the bounds, then takes the loop.
@@ -800,20 +846,32 @@ const outsideSteering = (
   })
 }
 
-// NOTE: the doors the yard leads to: those whose spawn point stands in the
-// yard, like the parlour's north door in the manor.
-const yardDoorsOf = perLevel((level): ReadonlyArray<DoorId> =>
-  Array.filter(level.doorIds, id =>
-    isInYardAt(level, doorSpawnPoint(level, id, 0)),
-  ),
-)
-
 // NOTE: a zombie in the yard follows the flow field to the yard's door when
 // that is its way in: always while no door is boarded, or when its best
 // entry is a yard door. Otherwise it leaves the yard and walks around. The
 // yard used to be steered by the outside rules alone, which walk straight
 // lines and leave the yard's walls out: a zombie whose way in was the north
-// door was sent out of the yard, then back toward the door, forever.
+// door was sent out of the yard, then back toward the door, forever. One
+// already at a yard door with no planks takes the yard too: the parlour's
+// north door sits halfway down the house's bounds, where the loop's nearest
+// side, and so the best entry, flipped with every step.
+const YARD_DOOR_REACH_PX = TILE_SIZE * 2
+
+const isByOpenYardDoor = (
+  level: Level,
+  position: Vector,
+  barricaded: ReadonlyArray<DoorId>,
+): boolean =>
+  Array.some(
+    yardDoorsOf(level),
+    id =>
+      !Array.contains(barricaded, id) &&
+      Math.hypot(
+        position.x - level.doors[id].edge.x,
+        position.y - level.doors[id].edge.y,
+      ) <= YARD_DOOR_REACH_PX,
+  )
+
 const takesTheYard = (
   level: Level,
   flowField: FlowField,
@@ -824,6 +882,7 @@ const takesTheYard = (
   distanceAt(flowField.distances, tileIndexAt(level, position)) <
     UNREACHED_DISTANCE &&
   (Array.isReadonlyArrayEmpty(barricaded) ||
+    isByOpenYardDoor(level, position, barricaded) ||
     Array.contains(yardDoorsOf(level), bestEntry(level, flowField, position)))
 
 export const steerToward: {

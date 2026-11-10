@@ -253,10 +253,12 @@ describe('two keyboards on one desktop', () => {
       Effect.gen(function* () {
         const ready = yield* playedThrough(
           modifyFields(asVeteran(initialModel), {
-            // NOTE: seed 4 played until runs began in the dining room;
-            // from then on its scripted players looped in a wave forever,
-            // out of both guns' reach of the zombies left. Seed 5 stalled
-            // the same way.
+            // NOTE: seed 4 played until the library's layer opened the
+            // dining room's east door onto the yard inside the map; from
+            // then on its wave 2 ended in four zombies circling the two
+            // players' walking pattern out of both guns' reach, forever.
+            // Seed 5 stalled the same way once the cases and crates moved
+            // with the rooms.
             rngState: () => 6,
             localPlayers: () => 2,
             difficulty: () => ({ chosen: 'Normal', nightmare: 'Unlocked' }),

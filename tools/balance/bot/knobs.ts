@@ -42,6 +42,7 @@ const KNOBS = Effect.runSync(
     PICKUP_SEEK_PX: knob('PICKUP_SEEK_PX'),
     REACTION_MS: knob('REACTION_MS'),
     RESERVE: knob('RESERVE'),
+    ROOMS: knob('ROOMS'),
     SETTLE_FRAMES: knob('SETTLE_FRAMES'),
     SWITCH_RATIO: knob('SWITCH_RATIO'),
     VIEW: knob('VIEW'),

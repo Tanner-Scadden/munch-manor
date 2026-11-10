@@ -63,7 +63,15 @@ const HOUSE: LevelSpec = {
       renames: { n: 'D' },
     },
   ],
-  exits: [{ id: 'Kitchen', symbol: 'K', doors: ['Back'] }],
+  exits: [
+    {
+      id: 'Kitchen',
+      symbol: 'K',
+      doors: ['Back'],
+      opener: 'Boards',
+      requires: [],
+    },
+  ],
   drops: [],
   start: { x: 50, y: 40 },
 }

@@ -70,16 +70,27 @@ describe('the roll', () => {
     expect(Array.dedupe(rolls).length).toBeGreaterThan(5)
   })
 
-  test('every prize sits in one case, and every case starts locked', () => {
+  test('every prize sits in a case, and every case starts locked', () => {
     Array.forEach(Array.range(1, 30), seed => {
       const cases = rollCases(seed, 'Hard')
       expect(cases).toHaveLength(CASE_SPOTS.length)
       expect(
         Array.sort(
-          Array.map(cases, ({ prize }) => prize),
+          Array.dedupe(Array.map(cases, ({ prize }) => prize)),
           (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0),
         ),
       ).toEqual(['Blunderbuss', 'LaserSight', 'Rifle', 'Shotgun', 'Smg'])
+      expect(
+        Array.dedupe(
+          Array.map(
+            Array.filter(
+              cases,
+              ({ spot }) => CASE_SPOTS[spot]?.isNear === true,
+            ),
+            ({ prize }) => prize,
+          ),
+        ),
+      ).toHaveLength(3)
       expect(
         Array.every(cases, ({ state }) => CaseState.isAnyOf(['Locked'])(state)),
       ).toBe(true)
@@ -192,8 +203,8 @@ describe('one player', () => {
       modifyFields(playingModel, {
         cases: () => [
           {
-            id: 4,
-            spot: 4,
+            id: 3,
+            spot: 3,
             prize: 'Shotgun',
             feat: ONE_KILL,
             state: CaseState.Locked(),

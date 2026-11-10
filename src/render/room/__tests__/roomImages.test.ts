@@ -62,8 +62,8 @@ const HOUSE: LevelSpec = {
     },
   ],
   exits: [
-    { id: 'Study', symbol: 'K', doors: [] },
-    { id: 'Den', symbol: 'J', doors: [] },
+    { id: 'Study', symbol: 'K', doors: [], opener: 'Boards', requires: [] },
+    { id: 'Den', symbol: 'J', doors: [], opener: 'Boards', requires: [] },
   ],
   drops: [],
   start: { x: 50, y: 40 },
@@ -83,12 +83,17 @@ const imageAtX = (
   Array.findFirst(imagesOf(shapes), image => image.x === x)
 
 describe('room images', () => {
-  test('the manor is one image a room, three rooms in each state', () => {
-    expect(imagesOf(roomShapes(MANOR))).toHaveLength(3)
-    expect(imagesOf(roomShapes(openExit(MANOR, 'Kitchen')))).toHaveLength(3)
-    // NOTE: the dining room with each of its two exits open or shut, and the
-    // kitchen and the parlour each with its own.
-    expect(imagesOf(everyRoomImage(MANOR_SPEC))).toHaveLength(4 + 2 + 2)
+  test('the manor is one image a room, five rooms in each state', () => {
+    expect(imagesOf(roomShapes(MANOR))).toHaveLength(5)
+    expect(imagesOf(roomShapes(openExit(MANOR, 'Kitchen')))).toHaveLength(5)
+    // NOTE: the dining room with its four exits (the secret shelf only with
+    // the east boards open: 16 sets less the 4 with the shelf alone), the
+    // kitchen and the parlour each with its own, the library with the east
+    // boards and then the far boards and the shelf (5), and the cellar with
+    // its own.
+    expect(imagesOf(everyRoomImage(MANOR_SPEC))).toHaveLength(
+      12 + 2 + 2 + 5 + 2,
+    )
   })
 
   test("in the manor, an exit far from a room never changes the room's image", () => {

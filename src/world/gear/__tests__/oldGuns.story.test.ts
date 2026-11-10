@@ -249,11 +249,11 @@ describe('out of the display cases', () => {
       const prizes = Array.map(cases, ({ prize }) => prize)
       expect(prizes).toContain('Blunderbuss')
       expect(
-        Array.map(
+        Array.every(
           Array.filter(cases, ({ prize }) => prize === 'Rifle'),
-          ({ spot }) => CASE_SPOTS[spot]?.isNear,
+          ({ spot }) => CASE_SPOTS[spot]?.isNear === false,
         ),
-      ).toEqual([false])
+      ).toBe(true)
       expect(prizes).toContain('Rifle')
     })
   })

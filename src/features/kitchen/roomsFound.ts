@@ -10,14 +10,18 @@ import { type Level, levelOf } from '../../world/level/arena'
 import { Phase } from '../../world/schema/worldSchema'
 
 // NOTE: from the owner (2026-11-01), players were not finding the kitchen.
-// In a break, a small house and "1/3" says there is more to the map: the
-// rooms opened out of the rooms on it, read from the level's exits (the
-// start room plus one for each exit). It turns gold with a sparkle when the
-// last one opens. It is only a readout, never a button.
-export const roomsOf = (level: Level): { found: number; total: number } => ({
-  found: 1 + Array.length(Array.filter(level.exits, ({ isOpen }) => isOpen)),
-  total: 1 + level.exits.length,
-})
+// In a break, a small house and "1/5" says there is more to the map: the
+// rooms opened out of the rooms on it, read from the level's boarded exits
+// (the start room plus one for each). The library's secret shelf is a way
+// between two rooms, not a room. It turns gold with a sparkle when the last
+// one opens. It is only a readout, never a button.
+export const roomsOf = (level: Level): { found: number; total: number } => {
+  const boarded = Array.filter(level.exits, ({ opener }) => opener === 'Boards')
+  return {
+    found: 1 + Array.length(Array.filter(boarded, ({ isOpen }) => isOpen)),
+    total: 1 + boarded.length,
+  }
+}
 
 const isRoomsCounterShown = (model: Model): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase) &&

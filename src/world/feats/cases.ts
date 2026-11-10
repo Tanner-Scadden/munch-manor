@@ -1,14 +1,22 @@
-import { Array, Function, Option, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { TILE_SIZE } from '../../shared/constants'
 import { giveWeapon } from '../fridge/leftovers'
 import {
   type Box,
   type Level,
+  START_LEVEL,
   type Tile,
   levelOf,
   tileBox,
 } from '../level/arena'
+import {
+  type LevelSpec,
+  type RoomSpec,
+  roomSpotsOf,
+  widthOf,
+} from '../level/plan'
 import { atSeat, forEachSeat } from '../party/party'
 import { DIFFICULTY_ORDER } from '../run/difficulty'
 import type { World } from '../schema/world'
@@ -53,80 +61,103 @@ export type CaseSpot = Readonly<{
   isNear: boolean
 }>
 
-// NOTE: floor tiles against a wall, clear of the doors, Rattles, the fridge,
-// the pantry, and the valve: the dining room's three (docs/ROOM_DRAFTS.md),
-// where every run starts, by the North door and on the west and east walls,
-// then one in each room behind boards, the parlour's south west corner (its
-// map's first `cc`, in the west slot) and the kitchen's west wall.
-export const CASE_SPOTS: Array.NonEmptyReadonlyArray<CaseSpot> = [
-  {
-    tiles: [
-      { column: 30, row: 2 },
-      { column: 31, row: 2 },
-    ],
-    room: 'Dining',
-    look: 'Rack',
-    isNear: true,
-  },
-  {
-    tiles: [
-      { column: 1, row: 15 },
-      { column: 2, row: 15 },
-    ],
-    room: 'Dining',
-    look: 'Glass',
-    isNear: true,
-  },
-  {
-    tiles: [
-      { column: 33, row: 15 },
-      { column: 34, row: 15 },
-    ],
-    room: 'Dining',
-    look: 'Rack',
-    isNear: true,
-  },
-  {
-    tiles: [
-      { column: -31, row: 20 },
-      { column: -30, row: 20 },
-    ],
-    room: 'Parlour',
-    look: 'Glass',
-    isNear: false,
-  },
-  {
-    tiles: [{ column: 1, row: -5 }],
-    room: 'Kitchen',
-    look: 'Trophy',
-    isNear: false,
-  },
-]
+const LOOKS: Array.NonEmptyReadonlyArray<CaseLook> = ['Rack', 'Glass', 'Trophy']
+
+const isStartRoom = (spec: LevelSpec, room: RoomSpec): boolean => {
+  const left = room.origin.column * TILE_SIZE
+  const top = room.origin.row * TILE_SIZE
+  return (
+    spec.start.x >= left &&
+    spec.start.x < left + widthOf(room.tiles) * TILE_SIZE &&
+    spec.start.y >= top &&
+    spec.start.y < top + room.tiles.length * TILE_SIZE
+  )
+}
+
+const spotsBySpec = new WeakMap<LevelSpec, ReadonlyArray<CaseSpot>>()
+
+// NOTE: a level's case spots, read off its rooms' maps (roomSpotsOf in
+// src/world/level/plan.ts), in room order: every `cc` of the room a run
+// starts in (the dining room's three, docs/ROOM_DRAFTS.md), then the first
+// of each other room, the kitchen and each slot's, so wherever a room
+// stands its case stands with it. The count and which are near never
+// change with the arrangement, so a run rolls its cases before its rooms
+// are placed. A level keeps its spots, so a frame only reads them.
+const caseSpotsOf = (spec: LevelSpec): ReadonlyArray<CaseSpot> => {
+  const cached = spotsBySpec.get(spec)
+  if (cached !== undefined) {
+    return cached
+  }
+  const pieces = Array.flatMap(roomSpotsOf(spec), ({ room, cases }) => {
+    const isNear = Option.exists(
+      Array.findFirst(spec.rooms, ({ id }) => id === room),
+      roomSpec => isStartRoom(spec, roomSpec),
+    )
+    return Array.filterMap(isNear ? cases : Array.take(cases, 1), tiles =>
+      Array.isReadonlyArrayNonEmpty(tiles)
+        ? Result.succeed({ tiles, room, isNear })
+        : Result.failVoid,
+    )
+  })
+  const spots = Array.map(pieces, (piece, index): CaseSpot => ({
+    ...piece,
+    look: Option.getOrElse(
+      Array.get(LOOKS, index % LOOKS.length),
+      () => LOOKS[0],
+    ),
+  }))
+  spotsBySpec.set(spec, spots)
+  return spots
+}
+
+// NOTE: the spots a run's cases are rolled for: the start level's, whose
+// count and near ones every arrangement shares.
+export const CASE_SPOTS: ReadonlyArray<CaseSpot> = caseSpotsOf(START_LEVEL.spec)
 
 type CaseRules = Readonly<{ reachPx: number; tagLiftPx: number }>
 
 const CASE_RULES: CaseRules = { reachPx: 10, tagLiftPx: 18 }
 
-const spotOf = (displayCase: DisplayCase): CaseSpot =>
-  Option.getOrElse(Array.get(CASE_SPOTS, displayCase.spot), () =>
-    Array.headNonEmpty(CASE_SPOTS),
+const NO_SPOT: CaseSpot = {
+  tiles: [{ column: 0, row: 0 }],
+  room: '',
+  look: 'Rack',
+  isNear: false,
+}
+
+const spotOf = (level: Level, displayCase: DisplayCase): CaseSpot =>
+  Option.getOrElse(
+    Array.get(caseSpotsOf(level.spec), displayCase.spot),
+    () => NO_SPOT,
   )
 
-export const caseBoxOf = (displayCase: DisplayCase): Box => {
-  const { tiles } = spotOf(displayCase)
+export const caseBoxOf: {
+  (displayCase: DisplayCase): (level: Level) => Box
+  (level: Level, displayCase: DisplayCase): Box
+} = Function.dual(2, (level: Level, displayCase: DisplayCase): Box => {
+  const { tiles } = spotOf(level, displayCase)
   const first = tileBox(Array.headNonEmpty(tiles))
   const last = tileBox(Array.lastNonEmpty(tiles))
   return { ...first, right: last.right }
-}
+})
 
-export const caseLookOf = (displayCase: DisplayCase): CaseLook =>
-  spotOf(displayCase).look
+export const caseLookOf: {
+  (displayCase: DisplayCase): (level: Level) => CaseLook
+  (level: Level, displayCase: DisplayCase): CaseLook
+} = Function.dual(
+  2,
+  (level: Level, displayCase: DisplayCase): CaseLook =>
+    spotOf(level, displayCase).look,
+)
 
-// NOTE: the floor point a case stands on, the middle of its tile's bottom.
-export const caseFootOf = (displayCase: DisplayCase): Vector => {
-  const box = caseBoxOf(displayCase)
+// NOTE: the floor point a case stands on, the middle of its tiles' bottom.
+export const caseFootOf: {
+  (displayCase: DisplayCase): (level: Level) => Vector
+  (level: Level, displayCase: DisplayCase): Vector
+} = Function.dual(2, (level: Level, displayCase: DisplayCase): Vector => {
+  const box = caseBoxOf(level, displayCase)
   return { x: (box.left + box.right) / 2, y: box.bottom }
-}
+})
 
 // NOTE: a case counts once its room is open.
 export const isCaseShown: {
@@ -135,7 +166,7 @@ export const isCaseShown: {
 } = Function.dual(2, (level: Level, displayCase: DisplayCase): boolean =>
   Array.some(
     level.rooms,
-    ({ id, isOpen }) => id === spotOf(displayCase).room && isOpen,
+    ({ id, isOpen }) => id === spotOf(level, displayCase).room && isOpen,
   ),
 )
 
@@ -237,7 +268,9 @@ const CASES_SEED_SALT = 0xca5e5eed
 // so the roll moves no other. The near spots take the near prizes in a
 // shuffled order and the far ones the far prizes with whatever the near
 // spots left; the near spots take distinct feats from the near pool in
-// turn, the far ones from the far pool. Each prize sits in one case.
+// turn, the far ones from the far pool. Each prize sits in a case; with
+// more far cases than far prizes (a case in each room behind boards), the
+// far prizes go round again.
 export const rollCases: {
   (difficulty: Difficulty): (seed: number) => ReadonlyArray<DisplayCase>
   (seed: number, difficulty: Difficulty): ReadonlyArray<DisplayCase>
@@ -267,7 +300,10 @@ export const rollCases: {
       return {
         id: index,
         spot: index,
-        prize: Option.getOrElse(Array.get(prizes, place), () => prizes[0]),
+        prize: Option.getOrElse(
+          Array.get(prizes, place % prizes.length),
+          () => prizes[0],
+        ),
         feat: Option.getOrElse(
           Array.get(pool, place % pool.length),
           () => pool[0],
@@ -285,7 +321,7 @@ const openFor = (
   displayCase: DisplayCase,
   slot: PlayerSlot,
 ): World => {
-  const foot = caseFootOf(displayCase)
+  const foot = caseFootOf(levelOf(world), displayCase)
   return modifyFields(world, {
     cases: cases =>
       Array.map(cases, current =>
@@ -341,7 +377,7 @@ export const caseOffers: {
         isCaseShown(levelOf(world), displayCase),
     ),
     Array.map(displayCase => {
-      const box = caseBoxOf(displayCase)
+      const box = caseBoxOf(levelOf(world), displayCase)
       return {
         target: Purchasable.Case({ id: displayCase.id }),
         price: 0,
@@ -377,7 +413,7 @@ export const takeCase: {
       Array.findFirst(world.cases, displayCase => displayCase.id === id),
       Option.filter(displayCase => isOpenedFor(displayCase, slot)),
       Option.map(displayCase => {
-        const foot = caseFootOf(displayCase)
+        const foot = caseFootOf(levelOf(world), displayCase)
         return modifyFields(givePrize(world, slot, displayCase.prize), {
           cases: cases =>
             Array.map(cases, current =>

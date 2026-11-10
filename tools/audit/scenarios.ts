@@ -37,6 +37,13 @@ export const SCENARIOS: Record<string, Scenario> = {
     warm: wait(4000),
     bot: true,
   },
+  // The cellar open and dark, the player down in it with the room full, so
+  // the light mask, the eyes, and the bigger house are on screen.
+  cellar: {
+    q: '?wave=8&start=wave&god&gun=smg&openexits=East,Far&fill&crowd=30&crowdx=680&px=760&py=125',
+    warm: wait(4000),
+    bot: true,
+  },
   // The co-op arena staged with three players and a network that never
   // answers, so it measures the online run's view of a still World.
   coopArena: { q: '?coop=arena', warm: wait(1500), bot: false },

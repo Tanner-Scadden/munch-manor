@@ -25,6 +25,7 @@ import {
   MANOR,
   distanceToBox,
   isInsideRoomAt,
+  levelOf,
   nearestDoor,
 } from '../../level/arena'
 import { modifyFocus } from '../../party/party'
@@ -85,7 +86,10 @@ const previewDoors = (current: Model): ReadonlyArray<DoorId> =>
   Phase.match(current.phase, {
     Ready: () => [],
     Preparation: ({ spawns }) =>
-      Array.map(doorCounts(spawns, current.traps), ({ door }) => door),
+      Array.map(
+        doorCounts(spawns, current.traps, levelOf(current).doorIds),
+        ({ door }) => door,
+      ),
     Wave: () => [],
     Paused: () => [],
     Victory: () => [],

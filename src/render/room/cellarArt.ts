@@ -1,4 +1,4 @@
-import { Array, Result } from 'effect'
+import { Array, Function, Result } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { bakeShapes } from '../../art/sprite'
@@ -14,7 +14,7 @@ import {
   pick,
   roll,
 } from './roomPalette'
-import { type Span, northFaceSpans } from './roomWalls'
+import { type Span, spansWithin } from './roomWalls'
 
 // NOTE: the cellar: flagstones, rough stone walls, long wine racks, a
 // block of barrels with a tap, the coal heap under the chute, and one bare
@@ -252,9 +252,14 @@ const stoneFaceShapes = ({
 }
 
 // NOTE: rough stone over the whole face, from the trim down to the
-// baseboard, in place of the paper and wainscot upstairs.
-export const cellarWallShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(northFaceSpans(level), stoneFaceShapes)
+// baseboard, in place of the paper and wainscot upstairs, on the north wall
+// faces in the cellar's own block.
+export const cellarWallShapes: {
+  (room: Box): (level: Level) => ReadonlyArray<Canvas.Shape>
+  (level: Level, room: Box): ReadonlyArray<Canvas.Shape>
+} = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Canvas.Shape> =>
+  Array.flatMap(spansWithin(level, room), stoneFaceShapes),
+)
 
 // WINE RACKS
 

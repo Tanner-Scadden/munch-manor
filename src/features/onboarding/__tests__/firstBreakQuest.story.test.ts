@@ -22,6 +22,7 @@ import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import { APPLICATION, BELOW_NORTH_DOOR, press } from '../../../test/testing'
 import { asTutorialDone, asVeteran } from '../../../test/veteran'
 import { crateSpotOf } from '../../../world/gear/crates'
+import { START_LEVEL } from '../../../world/level/arena'
 import { focusOf, modifyFocus } from '../../../world/party/party'
 import { type QuestStep, maybeQuestMark, questStepOf } from '../firstBreakQuest'
 import { isStartWaveBeckoning } from '../onboarding'
@@ -64,7 +65,7 @@ const stepOf = (current: Model): Option.Option<QuestStep> =>
 
 // NOTE: the player stepped onto the parlour's trap crate.
 const onCrate = (current: Model): Model => {
-  const spot = crateSpotOf('Dining')
+  const spot = crateSpotOf(START_LEVEL, 'Dining')
   return modifyFocus(current, {
     player: player =>
       modifyFields(player, { x: () => spot.x, y: () => spot.y }),
@@ -95,7 +96,7 @@ describe('the guided first break', () => {
             expect(current.firstBreakQuest).toEqual(Tour.Running())
             expect(stepOf(current)).toEqual(Option.some('Grab'))
             expect(maybeQuestMark(current)).toEqual(
-              Option.some(crateSpotOf('Dining')),
+              Option.some(crateSpotOf(START_LEVEL, 'Dining')),
             )
           }),
         )
@@ -110,7 +111,7 @@ describe('the guided first break', () => {
         )
         const ready = offCrate(grabbed)
         expect(maybeQuestMark(ready)).not.toEqual(
-          Option.some(crateSpotOf('Dining')),
+          Option.some(crateSpotOf(START_LEVEL, 'Dining')),
         )
         expect(Option.isSome(maybeQuestMark(ready))).toBe(true)
 

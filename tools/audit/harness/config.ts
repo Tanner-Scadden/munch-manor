@@ -206,6 +206,9 @@ export const HarnessConfig = Schema.Struct({
   // The room
   fill: Flag,
   crowd: MaybeNum,
+  // How far east of the dining room the crowd stands (`crowdx=680` puts it
+  // in the cellar).
+  crowdx: Num(0),
   tough: Flag,
   gasroom: Num(0),
   lineup: Choice(['wear', 'sizes', 'armor', 'boss']),

@@ -33,6 +33,7 @@ import { advanceKitchen, soupSkid } from '../kitchen/kitchen'
 import { advancePantry } from '../kitchen/pantry'
 import { rollStove } from '../kitchen/stove'
 import { type Box, type Level, levelOf } from '../level/arena'
+import { swingShelf } from '../library/secretShelf'
 import {
   COOP_RULES,
   facingNearest,
@@ -423,6 +424,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     recordFootfalls(advanced, deltaMs),
     footed => resolveBulletHits(footed, seconds, routed.nextEntityId),
     dropChandelier,
+    swingShelf,
     struck => advanceLobs(struck, deltaMs),
     trapped => advanceTraps(trapped, seconds, deltaMs),
     trapped => advanceKitchen(armed, trapped, deltaMs),

@@ -21,20 +21,23 @@ import {
   openExitIn,
   tileBox,
 } from './arena'
-import { WEST_EXIT } from './plan'
+import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from './plan'
 
 // THE EXIT
 
 // NOTE: a boarded exit is padlocked, and opens for skeleton keys off the
 // crew's ring (src/world/keys/keys.ts), 3 to 5 by how deep its room is: the
-// kitchen 3, a room one further 4, and deeper ones 5 (docs/ESCAPE_PLAN.md,
-// "Key costs and drops"; layer 8's house grid adds the deeper rooms). The
+// kitchen 3, a room off the dining room 4 (the west and east slots), and
+// the far slot, beyond the east room, 5 (docs/ESCAPE_PLAN.md, "Key costs
+// and drops"). The
 // kitchen opens from the wave 3 break on. Starting points, not yet tuned
 // on the balance bot (layer 17).
 export const KITCHEN_EXIT: ExitId = 'Kitchen'
 
 type ExitRules = Readonly<{
   kitchenKeys: number
+  roomKeys: number
+  farKeys: number
   firstWave: number
   reachPx: number
   tagDropPx: number
@@ -45,6 +48,8 @@ type ExitRules = Readonly<{
 // hidden behind it.
 export const EXIT_RULES: ExitRules = {
   kitchenKeys: 3,
+  roomKeys: 4,
+  farKeys: 5,
   firstWave: KITCHEN_FIRST_WAVE,
   reachPx: 14,
   tagDropPx: 7,
@@ -53,6 +58,8 @@ export const EXIT_RULES: ExitRules = {
 const EXIT_NAMES: Readonly<Record<ExitId, string>> = {
   [KITCHEN_EXIT]: 'THE KITCHEN',
   [WEST_EXIT]: 'THE PARLOUR',
+  [EAST_EXIT]: 'THE LIBRARY',
+  [FAR_EXIT]: 'THE CELLAR',
 }
 
 export const exitName = (exit: ExitId): string =>
@@ -81,14 +88,26 @@ export const exitBoxOf: {
   ),
 )
 
+// NOTE: the boarded exits still shut, the ones a player can buy: a secret
+// shelf is never for sale (src/world/library/secretShelf.ts), and boards
+// behind a shut room, such as the far slot's in the east room, wait for it.
 const closedExitBoxes = (
   level: Level,
 ): ReadonlyArray<Readonly<{ exit: ExitId; box: Box }>> =>
-  Array.filterMap(level.exits, ({ id, isOpen }) =>
-    Option.match(isOpen ? Option.none() : exitBoxOf(level, id), {
-      onNone: () => Result.failVoid,
-      onSome: box => Result.succeed({ exit: id, box }),
-    }),
+  Array.filterMap(level.exits, ({ id, isOpen, opener, requires }) =>
+    Option.match(
+      isOpen ||
+        opener !== 'Boards' ||
+        !Array.every(requires, required =>
+          Array.contains(level.openExits, required),
+        )
+        ? Option.none()
+        : exitBoxOf(level, id),
+      {
+        onNone: () => Result.failVoid,
+        onSome: box => Result.succeed({ exit: id, box }),
+      },
+    ),
   )
 
 // NOTE: from the kitchen's first break on, an exit is for sale any time the
@@ -97,10 +116,21 @@ export const isExitOfferOpenFor = (phase: Phase): boolean =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase) &&
   phase.wave >= EXIT_RULES.firstWave
 
-// NOTE: the keys an exit's padlock asks, shown on the lock: the kitchen's
-// boards 3, a room one further (the parlour's) 4.
+// NOTE: the keys an exit's padlock asks, shown on the lock, by how deep
+// its room is.
+type ExitDepth = 'kitchenKeys' | 'roomKeys' | 'farKeys'
+
+const EXIT_DEPTHS: Readonly<Record<ExitId, ExitDepth>> = {
+  [KITCHEN_EXIT]: 'kitchenKeys',
+  [WEST_EXIT]: 'roomKeys',
+  [EAST_EXIT]: 'roomKeys',
+  [FAR_EXIT]: 'farKeys',
+}
+
 export const exitKeysOf = (exit: ExitId): number =>
-  exit === KITCHEN_EXIT ? EXIT_RULES.kitchenKeys : EXIT_RULES.kitchenKeys + 1
+  EXIT_RULES[
+    Option.getOrElse(Record.get(EXIT_DEPTHS, exit), (): ExitDepth => 'roomKeys')
+  ]
 
 // NOTE: the kitchen tour gives the kitchen away (src/world/run/tutorialRules.ts);
 // every other room's boards keep their padlock.
@@ -149,9 +179,9 @@ export const buyExit: {
   3,
   (model: World, exit: ExitId, price: number): Option.Option<World> => {
     const level = levelOf(model)
-    const maybeBox = Option.flatMap(
-      Option.filter(maybeExit(level, exit), ({ isOpen }) => !isOpen),
-      () => exitBoxOf(level, exit),
+    const maybeBox = Option.map(
+      Array.findFirst(closedExitBoxes(level), offer => offer.exit === exit),
+      ({ box }) => box,
     )
     if (
       Option.isNone(maybeBox) ||
