@@ -5,7 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, it } from '@effect/vitest'
 
 import { type Model, Phase, RunMode } from '../../../app/model'
-import { PREPARATION_MS } from '../../../shared/constants'
+import { PLAYER_MAX_HP, PREPARATION_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
   FRONT_DOOR_SILL,
@@ -17,6 +17,7 @@ import {
   withFinale,
   withPlayerAt,
   withSeatLife,
+  withZombies,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -27,14 +28,10 @@ import {
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { levelOf } from '../../level/arena'
+import { targetsOf } from '../../party/party'
 import { DIFFICULTIES } from '../../run/difficulty'
 import { withWorld } from '../../schema/world'
-import {
-  Boss,
-  BreakClock,
-  Life,
-  ZombieState,
-} from '../../schema/worldSchema'
+import { Boss, BreakClock, Life, ZombieState } from '../../schema/worldSchema'
 import { hpScaleFor } from '../../waves/endlessWaves'
 import { FINAL_WAVE } from '../../waves/wavePlans'
 import { beginPreparation } from '../../waves/waves'
@@ -86,7 +83,9 @@ describe('Uncle Chunk at the front door', () => {
   it.effect('never comes while the list is still being hunted', () =>
     Story.story(
       APPLICATION,
-      Story.given(breakBefore(3, [found(0, 'SilverSpoon'), hidden(1, 'MusicBox')])),
+      Story.given(
+        breakBefore(3, [found(0, 'SilverSpoon'), hidden(1, 'MusicBox')]),
+      ),
       tick(FRAME_MS),
       startWave,
       Story.model(current => {
@@ -196,7 +195,10 @@ describe('his hat', () => {
       tick(FRAME_MS),
       Story.model(current => {
         const hat = Option.getOrThrow(
-          Array.findFirst(current.dareThings, ({ kind }) => kind === 'PartyHat'),
+          Array.findFirst(
+            current.dareThings,
+            ({ kind }) => kind === 'PartyHat',
+          ),
         )
         expect(Option.isSome(maybeLyingAt(hat, levelOf(current)))).toBe(true)
         expect(isHatFound(current)).toBe(false)
@@ -278,10 +280,11 @@ describe('his hat', () => {
         ),
         tick(FRAME_MS),
         Story.model(current => {
-          expect(current.dare.finale).toEqual(Finale.Open({ out: [] }))
+          expect(current.dare.finale).toEqual(Finale.Open())
           expect(
-            Array.some(current.frameEvents, ({ _tag }) =>
-              _tag === 'FrontDoorOpened',
+            Array.some(
+              current.frameEvents,
+              ({ _tag }) => _tag === 'FrontDoorOpened',
             ),
           ).toBe(true)
         }),
@@ -297,7 +300,7 @@ describe('walking out', () => {
         phase: () =>
           Phase.Wave({ wave: 8, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
       }),
-      Finale.Open({ out: [] }),
+      Finale.Open(),
     )
 
   it.effect('the sill is inside the front door', () =>
@@ -355,7 +358,7 @@ describe('walking out', () => {
           tick(FRAME_MS),
           Story.model(current => {
             expect(Phase.guards.Wave(current.phase)).toBe(true)
-            expect(current.dare.finale).toEqual(Finale.Open({ out: [0] }))
+            expect(lifeTags(current)).toEqual(['Out', 'Standing', 'Downed'])
           }),
         )
         yield* Story.story(
@@ -366,12 +369,125 @@ describe('walking out', () => {
           tick(FRAME_MS),
           Story.model(current => {
             expect(current.phase).toEqual(Phase.Escaped({ wave: 8 }))
-            expect(current.dare.finale).toEqual(Finale.Open({ out: [0, 1] }))
+            expect(lifeTags(current)).toEqual(['Out', 'Out', 'Downed'])
           }),
         )
       }),
   )
+
+  // NOTE: a crew of three in an open-door wave, the lead stepped out where
+  // a Shambler stands on them, the other two inside.
+  const leadOut = (): Model =>
+    withZombies(
+      withSeatLife(
+        placeSeat(
+          placeSeat(
+            placeSeat(
+              openWave(crewInWave(3)),
+              0,
+              FRONT_DOOR_SILL.x,
+              FRONT_DOOR_SILL.y,
+            ),
+            1,
+            60,
+            60,
+          ),
+          2,
+          70,
+          60,
+        ),
+        0,
+        Life.Out(),
+      ),
+      [zombieOf('Shambler', 900, FRONT_DOOR_SILL.x, FRONT_DOOR_SILL.y)],
+    )
+
+  it.effect('a player who stepped out is never hunted or bitten', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(leadOut()),
+      ...ticks(30, FRAME_MS),
+      Story.model(current => {
+        const [out] = current.seats
+        expect(out.player.hp).toBe(PLAYER_MAX_HP)
+        expect(out.seat.life).toEqual(Life.Out())
+        expect(
+          Array.map(targetsOf(current), ({ x, y }) => ({ x, y })),
+        ).not.toContainEqual({ x: FRONT_DOOR_SILL.x, y: FRONT_DOOR_SILL.y })
+      }),
+    ),
+  )
+
+  it.effect('one who stepped out stays out through a break', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        withWorld(withZombies(leadOut(), []), world =>
+          beginPreparation(world, 9, PREPARATION_MS),
+        ),
+      ),
+      tick(FRAME_MS),
+      Story.model(current => {
+        expect(lifeTags(current)).toEqual(['Out', 'Standing', 'Standing'])
+      }),
+    ),
+  )
+
+  it.effect(
+    'the last ones in going down after one stepped out is still an escape',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          placeSeat(
+            withSeatLife(
+              leadOut(),
+              2,
+              Life.Downed({ bleedMs: 20_000, reviveMs: 0, callMs: 0 }),
+            ),
+            1,
+            60,
+            60,
+            0,
+          ),
+        ),
+        tick(FRAME_MS),
+        Story.model(current => {
+          expect(current.phase).toEqual(Phase.Escaped({ wave: 8 }))
+        }),
+      ),
+  )
+
+  it.effect('a crew all down with nobody out is still a game over', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        placeSeat(
+          withSeatLife(
+            withSeatLife(
+              leadOut(),
+              0,
+              Life.Downed({ bleedMs: 20_000, reviveMs: 0, callMs: 0 }),
+            ),
+            2,
+            Life.Downed({ bleedMs: 20_000, reviveMs: 0, callMs: 0 }),
+          ),
+          1,
+          60,
+          60,
+          0,
+        ),
+      ),
+      tick(FRAME_MS),
+      Story.model(current => {
+        expect(current.phase).toEqual(Phase.GameOver({ wave: 8 }))
+      }),
+    ),
+  )
 })
+
+const lifeTags = (model: Model): ReadonlyArray<string> =>
+  Array.map(model.seats, ({ seat }) => seat.life._tag)
 
 describe('Endless', () => {
   it.effect('has no list, so its finale never starts', () =>

@@ -9,6 +9,7 @@ import {
   ZOMBIE_ALIVE_MAX,
 } from '../../shared/constants'
 import { type Seeded, nextRandom } from '../../shared/prng'
+import { hungrierSpawns, isCrewOut, summonAtFrontDoor } from '../dare/finale'
 import { KEY_RULES, grantKeys } from '../keys/keys'
 import { doorSpawnPoint, levelOf } from '../level/arena'
 import {
@@ -44,7 +45,6 @@ import {
   ZombieAction,
 } from '../schema/worldSchema'
 import { clamp } from '../step/geometry'
-import { hungrierSpawns, summonAtFrontDoor } from '../dare/finale'
 import {
   advanceBossEntrance,
   isBossOutside,
@@ -621,7 +621,15 @@ const isDefeated = (model: World): boolean =>
     ? !Array.some(playersOf(model), ({ seat }) => isStanding(seat))
     : focusOf(model).player.hp <= 0
 
+// NOTE: a crew whose last ones in the house go down after a teammate has
+// stepped out through the front door escapes (src/world/dare/finale.ts,
+// isCrewOut): the downed are carried out with them.
 export const endWhenDefeated = (model: World): World => {
+  if (isCrewOut(model)) {
+    return modifyFields(model, {
+      phase: () => Phase.Escaped({ wave: roundWave(model.phase) }),
+    })
+  }
   if (!isDefeated(model)) {
     return model
   }

@@ -210,23 +210,21 @@ export const veteranFighting: Model = modifyFields(home, {
 export const withDareThings: {
   (things: ReadonlyArray<DareThing>): (model: Model) => Model
   (model: Model, things: ReadonlyArray<DareThing>): Model
-} = Function.dual(
-  2,
-  (model: Model, things: ReadonlyArray<DareThing>): Model =>
-    modifyFields(model, {
-      dare: dare =>
-        modifyFields(dare, {
-          list: () =>
-            Array.map(
-              Array.filter(
-                things,
-                ({ isAsked, kind }) => isAsked && kind !== 'PartyHat',
-              ),
-              ({ kind }) => kind,
+} = Function.dual(2, (model: Model, things: ReadonlyArray<DareThing>): Model =>
+  modifyFields(model, {
+    dare: dare =>
+      modifyFields(dare, {
+        list: () =>
+          Array.map(
+            Array.filter(
+              things,
+              ({ isAsked, kind }) => isAsked && kind !== 'PartyHat',
             ),
-        }),
-      dareThings: () => things,
-    }),
+            ({ kind }) => kind,
+          ),
+      }),
+    dareThings: () => things,
+  }),
 )
 
 // THE FINALE
@@ -250,7 +248,7 @@ export const FRONT_DOOR_SILL: Readonly<{ x: number; y: number }> =
 // walks them out.
 export const escaping = (model: Model): Model =>
   withPlayerAt(
-    withFinale(model, Finale.Open({ out: [] })),
+    withFinale(model, Finale.Open()),
     FRONT_DOOR_SILL.x,
     FRONT_DOOR_SILL.y,
   )

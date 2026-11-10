@@ -47,6 +47,7 @@ import { isBehindWall, occludersOf } from '../../render/occluders'
 import {
   type MateModel,
   isLeadArmed,
+  isLeadInHouse,
   leadBodyShapes,
   mateDrawables,
   mateModelsOf,
@@ -160,7 +161,7 @@ const groundShapes = (
   ...kitchenGearGroundShapes(model),
   ...RATTLES_GROUND_SHAPES,
   ...reviveRingGroundShapes(model),
-  playerShadow(focusOf(model).player),
+  ...(isLeadInHouse(model) ? [playerShadow(focusOf(model).player)] : []),
   ...mateShadowShapes(mates),
   ...zombieGroundShapes(zombies, model.elapsedMs),
   ...Array.filterMap(zombies, zombieShadow),

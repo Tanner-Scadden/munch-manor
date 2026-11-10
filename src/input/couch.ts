@@ -1,7 +1,13 @@
 import { Array, Function, Option, Record, Result, pipe } from 'effect'
 
 import type { Model } from '../app/model'
-import { focusSeat, leadSeatOf, playersOf } from '../world/party/party'
+import {
+  focusSeat,
+  isBledOut,
+  isOut,
+  leadSeatOf,
+  playersOf,
+} from '../world/party/party'
 import { withWorld } from '../world/schema/world'
 import {
   type Intent,
@@ -195,14 +201,14 @@ export const pressCouchKey: {
 // CAMERA
 
 // NOTE: one screen for everyone at the keyboard: the camera follows the
-// middle of every player still in the fight.
+// middle of every player still in the fight, in the house.
 export const couchFocus = (model: Model): Option.Option<Vector> => {
   if (!isCouchPlay(model)) {
     return Option.none()
   }
   const players = Array.filter(
     playersOf(model),
-    ({ seat }) => seat.life._tag !== 'BledOut',
+    ({ seat }) => !isBledOut(seat) && !isOut(seat),
   )
   return Array.match(players, {
     onEmpty: () => Option.none(),

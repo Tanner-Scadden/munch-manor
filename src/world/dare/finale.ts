@@ -3,12 +3,20 @@ import { modifyFields } from 'foldkit/struct'
 
 import { MS_PER_SECOND, PLAYER_RADIUS } from '../../shared/constants'
 import { type Level, levelOf } from '../level/arena'
-import { forEachSeat, isStanding, playersOf, seatStateAt } from '../party/party'
+import {
+  forEachSeat,
+  isOut,
+  isStanding,
+  modifySeatRecord,
+  playersOf,
+  seatStateAt,
+} from '../party/party'
 import { spreadSpawns } from '../run/difficulty'
 import { type World, modifyWorldFields } from '../schema/world'
 import {
   Boss,
   GameEvent,
+  Life,
   Phase,
   type PlannedSpawn,
   type PlayerSlot,
@@ -28,8 +36,9 @@ import { Finale } from './dareSchema'
 // tuning along the Endless health curve). He drops his party hat where he
 // falls; a player who takes it starts the front door unlocking, its clock
 // running only while a wave is on, so the crew holds the hall. Then the door
-// swings open, and the run is an escape once every standing player has
-// stepped out through it: a downed teammate is carried out with the crew.
+// swings open, and a player who steps out through it is Out: safe outside,
+// out of the fight. The run is an escape once no one stands in the house
+// and one at least is out: a downed teammate is carried out with the crew.
 // Endless has no list, so its finale never leaves Hunting.
 
 // RULES
@@ -58,11 +67,19 @@ const isHouseHungry = (world: World): boolean =>
 
 // NOTE: a wave's spawns, a quarter more of them once the house is hungrier.
 export const hungrierSpawns: {
-  (spawns: ReadonlyArray<PlannedSpawn>): (world: World) => ReadonlyArray<PlannedSpawn>
-  (world: World, spawns: ReadonlyArray<PlannedSpawn>): ReadonlyArray<PlannedSpawn>
+  (
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): (world: World) => ReadonlyArray<PlannedSpawn>
+  (
+    world: World,
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): ReadonlyArray<PlannedSpawn>
 } = Function.dual(
   2,
-  (world: World, spawns: ReadonlyArray<PlannedSpawn>): ReadonlyArray<PlannedSpawn> =>
+  (
+    world: World,
+    spawns: ReadonlyArray<PlannedSpawn>,
+  ): ReadonlyArray<PlannedSpawn> =>
     isHouseHungry(world)
       ? spreadSpawns({
           spawns,
@@ -85,10 +102,6 @@ export const unlockShareOf = (world: World): number =>
 
 export const isFrontDoorOpen = (world: World): boolean =>
   Finale.isAnyOf(['Open'])(world.dare.finale)
-
-// NOTE: the slots that have stepped out through the open front door.
-const outSlotsOf = (world: World): ReadonlyArray<PlayerSlot> =>
-  Finale.isAnyOf(['Open'])(world.dare.finale) ? world.dare.finale.out : []
 
 const hasChunkInHouse = (world: World): boolean =>
   Array.some(world.zombies, isBoss) || !Boss.isAnyOf(['Absent'])(world.boss)
@@ -175,7 +188,7 @@ const countDownUnlock = (
         Finale.Unlocking({ remainingMs: remainingMs - worldMs, durationMs }),
       )
     : withEvent(
-        setFinale(world, Finale.Open({ out: [] })),
+        setFinale(world, Finale.Open()),
         GameEvent.FrontDoorOpened(frontDoorOf(levelOf(world))),
       )
 }
@@ -205,33 +218,35 @@ export const frontDoorSillOf = (level: Level): Vector => {
   }
 }
 
+// NOTE: a standing player at the sill steps out: Out, safe and out of the
+// fight (src/world/schema/worldSchema.ts, Life), drawn as waiting outside.
 const stepOutFor = (world: World, slot: PlayerSlot): World => {
   const { seat, player } = seatStateAt(world, slot)
-  const out = outSlotsOf(world)
-  return isStanding(seat) &&
-    !Array.contains(out, slot) &&
-    isAtFrontDoor(levelOf(world), player)
+  return isStanding(seat) && isAtFrontDoor(levelOf(world), player)
     ? withEvent(
-        setFinale(world, Finale.Open({ out: Array.append(out, slot) })),
+        modifySeatRecord(world, slot, out =>
+          modifyFields(out, { life: () => Life.Out() }),
+        ),
         GameEvent.SteppedOut({ x: player.x, y: player.y, slot }),
       )
     : world
 }
 
-// NOTE: the crew is out once every standing player has stepped through,
-// with one at least; the downed ones go out with them.
-const escapeWhenOut = (world: World): World => {
-  const out = outSlotsOf(world)
-  const standing = Array.filter(playersOf(world), ({ seat }) =>
-    isStanding(seat),
-  )
-  return Array.isReadonlyArrayNonEmpty(out) &&
-    Array.every(standing, ({ seat }) => Array.contains(out, seat.slot))
+// NOTE: the walk out. The crew is out once no player still stands in the
+// house and one at least has stepped out: the downed go out with them, so a
+// crew whose last ones in go down after a teammate stepped out escapes too
+// (src/world/waves/waves.ts, endWhenDefeated, for a fall the same tick).
+export const isCrewOut = (world: World): boolean => {
+  const seats = Array.map(playersOf(world), ({ seat }) => seat)
+  return Array.some(seats, isOut) && !Array.some(seats, isStanding)
+}
+
+const escapeWhenOut = (world: World): World =>
+  isCrewOut(world)
     ? modifyFields(world, {
         phase: () => Phase.Escaped({ wave: roundWaveOf(world.phase) }),
       })
     : world
-}
 
 // NOTE: one tick of the finale, in a break or a wave of a run with a list.
 export const advanceFinale: {
