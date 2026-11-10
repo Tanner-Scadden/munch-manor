@@ -265,8 +265,8 @@ describe('two keyboards on one desktop', () => {
             // then on its wave 2 ended in four zombies circling the two
             // players' walking pattern out of both guns' reach, forever.
             // Seed 5 stalled the same way once the cases and crates moved
-            // with the rooms.
-            rngState: () => 6,
+            // with the rooms, and seed 6 once Normal's health went to x0.68.
+            rngState: () => 7,
             localPlayers: () => 2,
             difficulty: () => ({ chosen: 'Normal', nightmare: 'Unlocked' }),
           }),

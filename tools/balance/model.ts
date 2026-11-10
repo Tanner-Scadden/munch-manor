@@ -77,6 +77,7 @@ export type Assumptions = Readonly<{
   maxWaveMs: number
   upkeepPerVisit: number
   reserve: number
+  caseGunWave: number
 }>
 
 export const ASSUMPTIONS: Assumptions = {
@@ -88,6 +89,9 @@ export const ASSUMPTIONS: Assumptions = {
   maxWaveMs: 300_000,
   upkeepPerVisit: 0,
   reserve: 0,
+  // NOTE: the bot opens its first display case gun (a near case's 20 kills
+  // or 15 pistol kills) in the break before wave 3 on the median run.
+  caseGunWave: 3,
 }
 
 // THE PRICES, IN KEYS
@@ -102,9 +106,9 @@ export type Catalog = Readonly<{
 }>
 
 // NOTE: the shop is gone (docs/ESCAPE_PLAN.md, layer 7). Guns sit in display
-// cases opened by feats, which the balance bot leaves alone, so the model
-// never buys one either: their price is out of reach. The kitchen's
-// padlock asks its keys.
+// cases opened by feats, so the model never buys one: their price is out of
+// reach, and the Chatterbox comes from a case at `caseGunWave` (economy).
+// The kitchen's padlock asks its keys.
 export const CATALOG: Catalog = {
   gunPrice: {
     Shotgun: globalThis.Number.POSITIVE_INFINITY,
@@ -912,6 +916,10 @@ export const economy: {
     takes: ReadonlyArray<WaveTake>,
     assumptions: Assumptions,
   ): Economy => {
+    const withCaseGun = (loadout: Loadout, wave: number): Loadout =>
+      wave >= assumptions.caseGunWave && Option.isNone(loadout.maybeSpare)
+        ? withPurchase(loadout, 'Smg')
+        : loadout
     const visits = Array.scan(
       Array.map(
         Array.take(takes, Math.max(0, takes.length - 1)),
@@ -925,7 +933,7 @@ export const economy: {
         shopVisit(
           catalog,
           previous.moneyAfter + take.pay,
-          withKills(previous.loadout, take.kills),
+          withCaseGun(withKills(previous.loadout, take.kills), wave),
           upkeepFor(wave, assumptions),
           assumptions.reserve,
         ),

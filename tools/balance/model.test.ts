@@ -1,17 +1,20 @@
 import { Array, Number, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
+import { KITCHEN_EXIT, exitKeysOf } from '../../src/world/level/exits'
+import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from '../../src/world/level/plan'
 import { DIFFICULTY_ORDER } from '../../src/world/run/difficulty'
 import {
   ASSUMPTIONS,
+  CATALOG,
   type Catalog,
   type FlowRules,
   type Loadout,
   STARTING_LOADOUT,
   balanceModel,
   economy,
+  expectedPays,
   flowWave,
-  moneyAgainstPrices,
   shopVisit,
   withKills,
 } from './model'
@@ -119,6 +122,26 @@ describe('the shop', () => {
     expect(
       Option.map(Array.get(visits, 2), ({ moneyOnArrival }) => moneyOnArrival),
     ).toEqual(Option.some(5))
+  })
+})
+
+describe('the display cases', () => {
+  test('a case gives the Chatterbox from its wave, with no keys spent', () => {
+    const takes = Array.map([0, 0, 0, 0], pay => ({ pay, kills: 0 }))
+    const { visits } = economy(CATALOG, takes, {
+      ...ASSUMPTIONS,
+      caseGunWave: 3,
+    })
+    expect(
+      Array.map(visits, ({ loadout }) =>
+        Option.map(loadout.maybeSpare, ({ kind }) => kind),
+      ),
+    ).toEqual([
+      Option.none(),
+      Option.none(),
+      Option.some('Smg'),
+      Option.some('Smg'),
+    ])
   })
 })
 
@@ -246,19 +269,18 @@ const inPeakRange = (ratio: number) =>
   ratio >= PEAK_RATIO_TARGET.min && ratio <= PEAK_RATIO_TARGET.max
 
 // NOTE: waves 5 and 7 were Met until traps became found, not bought
-// (docs/ESCAPE_PLAN.md, layer 6): the model spends the planks' and gnomes'
-// money on guns, so its dps outgrows those waves (1.38 and 0.91). The
-// escape stack's balance pass (layer 17) retunes the waves. Wave 6 was Met
-// until the shop went (layer 7): the model buys no gun with its keys (guns
-// sit in display cases, which the bot leaves alone), so it fights on the
-// pistol and the wave peaks high against it (3.01 on Hard).
+// (docs/ESCAPE_PLAN.md, layer 6), and wave 6 until the shop went (layer 7).
+// Since the balance layer (layer 17) the model takes the Chatterbox from a
+// display case at the bot's median wave (ASSUMPTIONS.caseGunWave), and all
+// three are back in range.
 const PEAK_STANDING: Readonly<Record<number, Standing>> = {
-  5: 'NotYet',
-  6: 'NotYet',
-  7: 'NotYet',
+  5: 'Met',
+  6: 'Met',
+  7: 'Met',
   // NOTE: wave 10 was Met until the 2026-11-01 boss change (Hard boss health
   // x2.2, attacks x0.8 apart): the model counts his health as incoming, so the
-  // ratio rose past 2.5. Deliberate; the snapshots hold the real fight.
+  // ratio rose past 2.5. Deliberate; the snapshots hold the real fight. In an
+  // escape Uncle Chunk comes by the list, not wave 10.
   10: 'NotYet',
 }
 
@@ -392,19 +414,25 @@ describe('guardrails from GAME_DESIGN.md', () => {
     },
   })
 
-  const prices = moneyAgainstPrices()
-  // NOTE: the money was the shop's; since layer 7 it is the keys a campaign
-  // drops against the kitchen's padlock, and guns come from display cases,
-  // not keys. Both wait on the escape stack's balance pass (layer 17).
-  guardrail(
-    'a whole campaign pays less than a full kit, so the shop is a choice',
-    'NotYet',
-    `${prices.earned.toFixed(0)} keys a campaign, guns in cases`,
-    () => prices.earned < Math.min(prices.fullKit.Shotgun, prices.fullKit.Smg),
+  // NOTE: the money was the shop's; since layer 7 it is keys, spent on the
+  // rooms' padlocks and the fridge, and guns come from display cases. The
+  // keys of the first four waves cover every room's padlock, so the boards
+  // pace the hunt by choice (rooms or the fridge), never wall it.
+  const keysByWave4 = sumOf(expectedPays(ASSUMPTIONS, 4))
+  const everyRoom = sumOf(
+    Array.map([KITCHEN_EXIT, WEST_EXIT, EAST_EXIT, FAR_EXIT], exit =>
+      exitKeysOf(exit),
+    ),
   )
   guardrail(
-    'the money affords the SMG by the wave 4 visit',
-    'NotYet',
+    'the keys of waves 1 to 4 cover every room on the house',
+    'Met',
+    `${keysByWave4.toFixed(0)} keys against ${everyRoom}`,
+    () => keysByWave4 >= everyRoom,
+  )
+  guardrail(
+    'a display case gives a gun by the wave 4 break',
+    'Met',
     Array.join(
       Array.map(normal.slice(0, 4), row =>
         Option.match(row.loadout.maybeSpare, {
@@ -416,7 +444,7 @@ describe('guardrails from GAME_DESIGN.md', () => {
     ),
     () =>
       Array.some(normal.slice(0, 4), row =>
-        Option.exists(row.loadout.maybeSpare, ({ kind }) => kind === 'Smg'),
+        Option.isSome(row.loadout.maybeSpare),
       ),
   )
 })

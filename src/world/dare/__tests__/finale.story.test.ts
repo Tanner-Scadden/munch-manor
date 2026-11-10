@@ -34,7 +34,7 @@ import { DIFFICULTIES } from '../../run/difficulty'
 import { withWorld } from '../../schema/world'
 import { Boss, BreakClock, Life, ZombieState } from '../../schema/worldSchema'
 import { hpScaleFor } from '../../waves/endlessWaves'
-import { FINAL_WAVE } from '../../waves/wavePlans'
+import { FINAL_WAVE, WAVE_PLANS } from '../../waves/wavePlans'
 import { beginPreparation } from '../../waves/waves'
 import { BOSS_RULES } from '../../zombies/boss'
 import { ZOMBIE_KINDS, scaledHp } from '../../zombies/zombies'
@@ -181,7 +181,12 @@ describe('Uncle Chunk at the front door', () => {
         const early = yield* hpOn(CHUNK_WAVE)
         const late = yield* hpOn(FINAL_WAVE + 4)
         const { healthScale } = DIFFICULTIES.Normal
-        expect(early).toBe(scaledHp(ZOMBIE_KINDS.Boss.hp, healthScale))
+        expect(early).toBe(
+          scaledHp(
+            ZOMBIE_KINDS.Boss.hp,
+            (WAVE_PLANS[CHUNK_WAVE - 1]?.hpScale ?? 1) * healthScale,
+          ),
+        )
         expect(late).toBe(
           scaledHp(
             ZOMBIE_KINDS.Boss.hp,
