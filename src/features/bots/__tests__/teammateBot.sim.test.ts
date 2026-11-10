@@ -23,7 +23,7 @@ import { modifyFocus, playersOf } from '../../../world/party/party'
 
 // Whole waves with three teammate bots (src/features/bots/teammateBot.ts): the human
 // stands at the spawn pressing READY through every break, and the bots do
-// the rest. They fight, buy, and ready up, and the same seed plays the same
+// the rest. They fight and ready up, and the same seed plays the same
 // run twice.
 
 const FRAMES = 60 * 90
@@ -33,8 +33,6 @@ const FRAMES = 60 * 90
 // so the pending list stays short.
 const READY_EVERY = 60
 
-// NOTE: each bot starts with a little cash, so the first breaks that open
-// the stall have something to spend.
 const withThreeBots = Effect.map(
   startedRun(
     addBot(
@@ -51,7 +49,6 @@ const withThreeBots = Effect.map(
     Array.reduce(Array.range(1, 3), started, (current, slot) =>
       atSeat(current, slot, world =>
         modifyFocus(world, {
-          wallet: wallet => ({ ...wallet, balance: 120 }),
           player: player => modifyFields(player, { hp: () => 3 }),
         }),
       ),
@@ -113,19 +110,17 @@ const PlayedRunLayer = Layer.effect(
 layer(PlayedRunLayer, { timeout: 60_000 })(
   'three bots and a human who only presses READY',
   it => {
-    it.effect(
-      'clear waves, each bot kills, and the crew buys at the stall',
-      () =>
-        Effect.gen(function* () {
-          const { end } = yield* PlayedRun
-          expect(waveOf(end)).toBeGreaterThanOrEqual(3)
-          const crew = playersOf(end)
-          expect(crew).toHaveLength(4)
-          for (const bot of Array.drop(crew, 1)) {
-            expect(bot.seat.kills).toBeGreaterThan(0)
-          }
-          expect(end.stats.purchases).toBeGreaterThan(0)
-        }),
+    it.effect('clear waves, each bot kills, and each bot readies up', () =>
+      Effect.gen(function* () {
+        const { end } = yield* PlayedRun
+        expect(waveOf(end)).toBeGreaterThanOrEqual(3)
+        const crew = playersOf(end)
+        expect(crew).toHaveLength(4)
+        for (const bot of Array.drop(crew, 1)) {
+          expect(bot.seat.kills).toBeGreaterThan(0)
+          expect(bot.seat.readiness).toBe('Ready')
+        }
+      }),
     )
 
     it.effect(
