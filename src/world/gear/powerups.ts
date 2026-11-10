@@ -71,7 +71,6 @@ type BoostStats = Readonly<{
   pierce: number
   ammo: Ammo
   glaze: BulletGlaze
-  color: string
 }>
 
 export const BOOSTS: Readonly<Record<BoostKind, BoostStats>> = {
@@ -84,7 +83,6 @@ export const BOOSTS: Readonly<Record<BoostKind, BoostStats>> = {
     pierce: 0,
     ammo: 'Free',
     glaze: 'Spicy',
-    color: '#ff5a2e',
   },
   Damage: {
     durationMs: 8000,
@@ -95,7 +93,6 @@ export const BOOSTS: Readonly<Record<BoostKind, BoostStats>> = {
     pierce: 0,
     ammo: 'Spent',
     glaze: 'Mean',
-    color: '#c46bff',
   },
   Speed: {
     durationMs: 10000,
@@ -106,7 +103,6 @@ export const BOOSTS: Readonly<Record<BoostKind, BoostStats>> = {
     pierce: 0,
     ammo: 'Spent',
     glaze: 'Plain',
-    color: '#5fe0ff',
   },
   Pierce: {
     durationMs: 9000,
@@ -117,7 +113,6 @@ export const BOOSTS: Readonly<Record<BoostKind, BoostStats>> = {
     pierce: 3,
     ammo: 'Spent',
     glaze: 'Skewer',
-    color: '#9be36a',
   },
 }
 
@@ -143,7 +138,6 @@ type PickupStats = Readonly<{
   weight: number
   effect: PickupEffect
   sound: SoundEffect
-  color: string
 }>
 
 export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
@@ -153,7 +147,6 @@ export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
     weight: 24,
     effect: PickupEffect.Boost({ boost: 'RapidFire' }),
     sound: 'GrabHotSauce',
-    color: BOOSTS.RapidFire.color,
   },
   Damage: {
     name: PICKUP_NAMES.Damage,
@@ -161,7 +154,6 @@ export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
     weight: 22,
     effect: PickupEffect.Boost({ boost: 'Damage' }),
     sound: 'GrabMeanBeans',
-    color: BOOSTS.Damage.color,
   },
   Speed: {
     name: PICKUP_NAMES.Speed,
@@ -169,7 +161,6 @@ export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
     weight: 16,
     effect: PickupEffect.Boost({ boost: 'Speed' }),
     sound: 'GrabZoomySocks',
-    color: BOOSTS.Speed.color,
   },
   Pierce: {
     name: PICKUP_NAMES.Pierce,
@@ -177,7 +168,6 @@ export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
     weight: 20,
     effect: PickupEffect.Boost({ boost: 'Pierce' }),
     sound: 'GrabKebullets',
-    color: BOOSTS.Pierce.color,
   },
   Burp: {
     name: PICKUP_NAMES.Burp,
@@ -185,7 +175,6 @@ export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
     weight: 10,
     effect: PickupEffect.Burp(),
     sound: 'GrabBurp',
-    color: '#d6f25c',
   },
   Heart: {
     name: PICKUP_NAMES.Heart,
@@ -193,7 +182,6 @@ export const PICKUPS: Readonly<Record<PickupKind, PickupStats>> = {
     weight: 8,
     effect: PickupEffect.Heal({ hearts: 1 }),
     sound: 'GrabHeart',
-    color: '#ff5d6c',
   },
 }
 

@@ -28,6 +28,7 @@ import {
   type SpriteSet,
   spriteShapes,
 } from '../../src/art/sprite'
+import { AURA_FRAME_MS, AURA_SPRITES } from '../../src/art/sprites/auras'
 import { gunIcon, gunSprite, knifeSprite } from '../../src/art/sprites/guns'
 import { HEART_SPRITE } from '../../src/art/sprites/hearts'
 import { PICKUP_SPRITES } from '../../src/art/sprites/pickups'
@@ -55,7 +56,11 @@ import {
   ZOMBIE_NAMES,
   gunTierName,
 } from '../../src/world/names'
-import { WeaponKind, ZombieKind } from '../../src/world/schema/entitySchema'
+import {
+  BoostKind,
+  WeaponKind,
+  ZombieKind,
+} from '../../src/world/schema/entitySchema'
 
 // TABS AND LOOKS
 
@@ -332,6 +337,16 @@ const itemsSections = (): ReadonlyArray<Section> => [
       ),
       stillEntry('heart', 'Heart', 'src/art/sprites/hearts.ts', HEART_SPRITE),
     ],
+  },
+  {
+    title: 'Auras',
+    entries: Array.map(BoostKind.literals, kind => ({
+      id: `aura/${kind}`,
+      title: `${PICKUP_NAMES[kind]} aura`,
+      source: 'src/art/sprites/auras.ts',
+      frameMs: AURA_FRAME_MS,
+      frames: () => AURA_SPRITES[kind],
+    })),
   },
   {
     title: 'Traps',

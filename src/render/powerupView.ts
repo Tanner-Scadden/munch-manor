@@ -3,11 +3,15 @@ import { Canvas } from 'foldkit'
 
 import { type BakedText, bakeText, placeBaked } from '../art/font'
 import { TOP_LEFT, group, placeAt, spriteShapes } from '../art/sprite'
-import { PICKUP_SPRITES } from '../art/sprites/pickups'
+import {
+  AURA_FRAME_COUNT,
+  AURA_FRAME_MS,
+  AURA_SPRITES,
+} from '../art/sprites/auras'
+import { PICKUP_SPRITES, PICKUP_TINTS } from '../art/sprites/pickups'
 import type { LevelCallout } from '../domain/clientSchema'
 import { SHADOW_COLOR, SHADOW_HEIGHT } from '../shared/constants'
 import {
-  BOOSTS,
   BOOST_KIND_ORDER,
   BOOST_WARNING_MS,
   BURP_RADIUS,
@@ -64,8 +68,8 @@ const PICKUP_SHADOW_WIDTH = 6
 const PICKUP_SHADOW_DROP = 4
 
 const PICKUP_GLOWS: Readonly<Record<PickupKind, string>> = Record.map(
-  PICKUPS,
-  ({ color }) => translucent(color, 0.38),
+  PICKUP_TINTS,
+  tint => translucent(tint, 0.38),
 )
 
 const isBlinkedOut = (pickup: Pickup): boolean => {
@@ -337,8 +341,8 @@ export const levelCalloutShapes =
     })
 
 const BURP_RING_MS = 420
-const BURP_RING_COLOR = '#d6f25c'
-const BURP_RING_INNER_COLOR = 'rgba(214, 242, 92, 0.45)'
+const BURP_RING_COLOR = PICKUP_TINTS.Burp
+const BURP_RING_INNER_COLOR = translucent(PICKUP_TINTS.Burp, 0.45)
 
 export const burpRingShapes = (
   callout: Callout,
@@ -376,17 +380,11 @@ export const burpRingShapes = (
 
 // AURA
 
-const AURA_RADIUS = 8
-const AURA_PULSE_MS = 520
-const AURA_PULSE_PX = 1
+// NOTE: the aura's frames turn on the clock, and with more than one boost
+// running it cycles between them. In a boost's last two seconds it blinks.
 const AURA_CYCLE_MS = 300
-const AURA_FOOT_DROP = 2
+const AURA_FOOT_DROP = 4
 const WARNING_BLINK_MS = 250
-
-const AURA_FILLS: Readonly<Record<BoostKind, string>> = Record.map(
-  BOOSTS,
-  ({ color }) => translucent(color, 0.3),
-)
 
 const isOn = BoostTimer.isAnyOf(['On'])
 
@@ -439,23 +437,23 @@ export const auraShapes: {
       Option.match({
         onNone: () => [],
         onSome: ({ kind }) => {
-          const x = Math.round(player.x)
-          const y = Math.round(player.y) + AURA_FOOT_DROP
-          const radius =
-            AURA_RADIUS +
-            Math.round(
-              Math.sin((elapsedMs / AURA_PULSE_MS) * FULL_TURN) * AURA_PULSE_PX,
-            )
-          return [
-            Canvas.Circle({ x, y, radius, fill: AURA_FILLS[kind] }),
-            Canvas.Circle({
-              x,
-              y,
-              radius,
-              stroke: BOOSTS[kind].color,
-              lineWidth: 1,
+          const frames = AURA_SPRITES[kind]
+          return pipe(
+            Array.get(
+              frames,
+              Math.floor(elapsedMs / AURA_FRAME_MS) % AURA_FRAME_COUNT,
+            ),
+            Option.match({
+              onNone: () => [],
+              onSome: sprite => [
+                placeAt(
+                  Math.round(player.x),
+                  Math.round(player.y) + AURA_FOOT_DROP,
+                  sprite,
+                ),
+              ],
             }),
-          ]
+          )
         },
       }),
     )
@@ -491,7 +489,7 @@ const chipShapes =
             y: top,
             width: CHIP_WIDTH,
             height: CHIP_HEIGHT,
-            fill: BOOSTS[kind].color,
+            fill: PICKUP_TINTS[kind],
           }),
           Canvas.Rect({
             x: x + 1,
@@ -509,7 +507,7 @@ const chipShapes =
             y: top + CHIP_HEIGHT - 1 - CHIP_BAR_HEIGHT,
             width: Math.max(1, Math.round((CHIP_WIDTH - 2) * share)),
             height: CHIP_BAR_HEIGHT,
-            fill: BOOSTS[kind].color,
+            fill: PICKUP_TINTS[kind],
           }),
         ],
       }),

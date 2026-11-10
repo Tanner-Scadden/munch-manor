@@ -87,37 +87,46 @@ import type { Decal, DecalKind, Particle } from './renderSchema'
 const BULLET_SIZE = 2
 const BULLET_COLOR = '#ffe066'
 
+// NOTE: a boosted shot wears what the player grabbed: a brass slug that
+// rattles out of a wound-up gun (Wind-Up Key), a silver streak with a bright
+// head (Family Silver), and a long hat pin with a red pearl head (Hat Pins).
+// A look's segments run from the tail up to the head along the shot's
+// path, two squares each, as the frame's budget allows.
+type BulletSegment = Readonly<{ backPx: number; color: string }>
+
 type BulletLook = Readonly<{
   size: number
-  color: string
-  trail: string
-  trailPx: number
+  segments: ReadonlyArray<BulletSegment>
 }>
 
 const BULLET_LOOKS: Readonly<Record<BulletGlaze, BulletLook>> = {
   Plain: {
     size: BULLET_SIZE,
-    color: BULLET_COLOR,
-    trail: BULLET_TRAIL_COLOR,
-    trailPx: BULLET_TRAIL_PX,
+    segments: [
+      { backPx: BULLET_TRAIL_PX, color: BULLET_TRAIL_COLOR },
+      { backPx: 0, color: BULLET_COLOR },
+    ],
   },
   Spicy: {
     size: BULLET_SIZE,
-    color: '#ff9a3d',
-    trail: 'rgba(255, 74, 46, 0.6)',
-    trailPx: BULLET_TRAIL_PX + 1,
+    segments: [
+      { backPx: BULLET_TRAIL_PX + 1, color: 'rgba(168, 120, 42, 0.7)' },
+      { backPx: 0, color: '#f0c050' },
+    ],
   },
   Mean: {
     size: BULLET_SIZE + 1,
-    color: '#e6b3ff',
-    trail: 'rgba(156, 74, 224, 0.6)',
-    trailPx: BULLET_TRAIL_PX,
+    segments: [
+      { backPx: BULLET_TRAIL_PX + 1, color: 'rgba(200, 210, 226, 0.7)' },
+      { backPx: 0, color: '#ffffff' },
+    ],
   },
   Skewer: {
     size: BULLET_SIZE,
-    color: '#d8ff9a',
-    trail: 'rgba(127, 208, 75, 0.6)',
-    trailPx: BULLET_TRAIL_PX + 3,
+    segments: [
+      { backPx: BULLET_TRAIL_PX + 2, color: '#d8dce6' },
+      { backPx: 0, color: '#ff4a4f' },
+    ],
   },
 }
 
@@ -127,15 +136,17 @@ const BULLET_LOOKS: Readonly<Record<BulletGlaze, BulletLook>> = {
 const OLD_GUN_LOOKS: Readonly<Partial<Record<WeaponKind, BulletLook>>> = {
   Rifle: {
     size: BULLET_SIZE,
-    color: '#fff6d0',
-    trail: 'rgba(255, 224, 140, 0.7)',
-    trailPx: BULLET_TRAIL_PX + 4,
+    segments: [
+      { backPx: BULLET_TRAIL_PX + 4, color: 'rgba(255, 224, 140, 0.7)' },
+      { backPx: 0, color: '#fff6d0' },
+    ],
   },
   Blunderbuss: {
     size: BULLET_SIZE,
-    color: '#c9c3b0',
-    trail: 'rgba(120, 112, 100, 0.6)',
-    trailPx: BULLET_TRAIL_PX - 1,
+    segments: [
+      { backPx: BULLET_TRAIL_PX - 1, color: 'rgba(120, 112, 100, 0.6)' },
+      { backPx: 0, color: '#c9c3b0' },
+    ],
   },
 }
 
@@ -155,22 +166,15 @@ export const bulletShapes = ({
   const look = lookOf(glaze, weapon)
   const speed = Math.max(1, Math.hypot(velocityX, velocityY))
   const half = Math.floor(look.size / 2)
-  return [
+  return Array.map(look.segments, ({ backPx, color }) =>
     Canvas.Rect({
-      x: Math.round(x - (velocityX / speed) * look.trailPx) - half,
-      y: Math.round(y - (velocityY / speed) * look.trailPx) - half,
+      x: Math.round(x - (velocityX / speed) * backPx) - half,
+      y: Math.round(y - (velocityY / speed) * backPx) - half,
       width: look.size,
       height: look.size,
-      fill: look.trail,
+      fill: color,
     }),
-    Canvas.Rect({
-      x: Math.round(x) - half,
-      y: Math.round(y) - half,
-      width: look.size,
-      height: look.size,
-      fill: look.color,
-    }),
-  ]
+  )
 }
 
 // DECALS AND PARTICLES

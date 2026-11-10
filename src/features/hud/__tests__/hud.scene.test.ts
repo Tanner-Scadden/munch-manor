@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest'
 
 import { BoostTimer, type Model, Phase, idleBoosts } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
+import { PICKUP_TINTS } from '../../../art/sprites/pickups'
 import { cameraFor, cameraOf } from '../../../render/camera'
 import { gunSlotBox } from '../../../render/hudLayout'
 import {
@@ -15,7 +16,6 @@ import { hudShapes, hudStripShapes } from '../../../screens/game/hud'
 import { VIEW_HEIGHT } from '../../../shared/constants'
 import { holdingSecond } from '../../../test/arsenals'
 import { rectsOf } from '../../../test/testing'
-import { BOOSTS } from '../../../world/gear/powerups'
 import { PARLOUR } from '../../../world/level/arena'
 import { focusOf, modifyFocus } from '../../../world/party/party'
 
@@ -50,7 +50,7 @@ const chipFrames = (model: Model): ReadonlyArray<Box> =>
     rect =>
       rect.width === 13 &&
       rect.height === 12 &&
-      (rect.fill === BOOSTS.RapidFire.color || rect.fill === BOOSTS.Speed.color)
+      (rect.fill === PICKUP_TINTS.RapidFire || rect.fill === PICKUP_TINTS.Speed)
         ? Result.succeed(rect)
         : Result.failVoid,
   )
