@@ -104,6 +104,61 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
       },
     ],
   },
+  // NOTE: Old Thunder: a sharp crack with a long rolling boom behind it.
+  RifleShot: {
+    variationCents: 40,
+    tones: [
+      {
+        wave: 'square',
+        pitch: [at(0, 880), at(0.05, 160)],
+        envelope: envelope(0.24, 0.001, 0.06),
+      },
+      {
+        wave: 'sine',
+        pitch: [at(0, 90), at(0.35, 34)],
+        envelope: envelope(0.6, 0.003, 0.38),
+      },
+    ],
+    noises: [
+      {
+        filter: 'bandpass',
+        quality: 1.1,
+        cutoff: [at(0, 4200), at(0.04, 1400)],
+        envelope: envelope(0.7, 0.001, 0.05),
+      },
+      {
+        filter: 'lowpass',
+        quality: 0.6,
+        cutoff: [at(0, 1600), at(0.4, 180)],
+        envelope: envelope(0.4, 0.004, 0.42),
+      },
+    ],
+  },
+  // NOTE: the Big Blunder: a deep, wheezy whump, lower and longer than the
+  // Barn Buster's.
+  BlunderbussBlast: {
+    variationCents: 80,
+    tones: [
+      {
+        wave: 'sawtooth',
+        pitch: [at(0, 180), at(0.22, 30)],
+        envelope: envelope(0.3, 0.002, 0.24),
+      },
+      {
+        wave: 'sine',
+        pitch: [at(0, 80), at(0.28, 28)],
+        envelope: envelope(0.65, 0.002, 0.3),
+      },
+    ],
+    noises: [
+      {
+        filter: 'lowpass',
+        quality: 0.7,
+        cutoff: [at(0, 3000), at(0.3, 200)],
+        envelope: envelope(0.9, 0.001, 0.32),
+      },
+    ],
+  },
   DryClick: {
     variationCents: 0,
     tones: [

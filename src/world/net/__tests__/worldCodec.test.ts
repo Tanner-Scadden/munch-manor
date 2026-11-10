@@ -309,11 +309,14 @@ describe("the boss's charge on the wire", () => {
 // window's tap, and RanDry (endless ammo), then added a gun's `kills` and
 // the GunLeveled event and dropped the upgrade items (guns level up with
 // kills), then added the run's display `cases`, each seat's `feats`, and a
-// kill's killer and source (display cases and feats). The wire must not change
-// without a protocol bump. A change to how the room plays moves the bytes
+// kill's killer and source (display cases and feats), then the hunting
+// rifle and the blunderbuss joined the guns, the case prizes, and the
+// feats' armaments, with two more case spots (two new guns). The wire
+// must not change without a protocol bump. A change to how the room plays
+// moves the bytes
 // with no change to the wire, as zombies coming in promptly after their
 // warning did, and Normal's eased health and speed (2026-10-31) did.
-const GOLDEN_DIGEST = '61424:9bf0f596aa347ce8'
+const GOLDEN_DIGEST = '61582:880328d82ca05cd2'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

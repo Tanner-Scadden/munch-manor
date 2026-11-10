@@ -27,6 +27,8 @@ const GUN_PALETTE: Palette = {
   B: '#4ab8f0',
   C: '#c8f4ff',
   N: '#ff7ab8',
+  Y: '#c9962b',
+  J: '#f0cf6a',
 }
 
 type GunPixels = Readonly<{ pixels: ReadonlyArray<string>; pivot: Anchor }>
@@ -76,6 +78,17 @@ const GUN_PIXELS: Readonly<Record<WeaponKind, GunPixels>> = {
     ],
     pivot: { x: 1, y: 3 },
   },
+  // NOTE: the display cases' two. Old Thunder is a long hunting rifle, a
+  // walnut stock under a long barrel with a brass band; the Big Blunder a
+  // stubby stock and a fat brass barrel flaring to a bell.
+  Rifle: {
+    pixels: ['.....KKGGGGGGGGH', 'VWWWWWWWWYWWK...', 'VVW.K...........'],
+    pivot: { x: 4, y: 1 },
+  },
+  Blunderbuss: {
+    pixels: ['........YYJ', 'VWWWWMYYYYJ', 'VVW.K...YYJ'],
+    pivot: { x: 3, y: 1 },
+  },
 }
 
 const GUN_DIRECTIONS = 16
@@ -101,7 +114,8 @@ export const GUN_TIER_TRIMS: ReadonlyArray<Palette> = [
 
 // NOTE: a gun skin (the Look tab's gear row) swaps the guns' body colors:
 // the metal (G, H, M), the wood (W, V), the Peashooter's green (P, Q), and
-// the Pan's black (D). The outline (K) and the shotgun's red tip stay. A
+// the Pan's black (D). The outline (K), the shotgun's red tip, and the
+// old guns' brass (Y, J) stay. A
 // tier's trim lies over a skin, so a skinned gun still shows its tier.
 type SkinnedGunSkin = Exclude<GunSkin, 'Stock'>
 

@@ -71,6 +71,8 @@ export const Armament = Schema.Literals([
   'Freeze',
   'Knife',
   'Fire',
+  'Rifle',
+  'Blunderbuss',
 ])
 export type Armament = typeof Armament.Type
 
@@ -85,7 +87,13 @@ export const KillSource = Schema.Literals([
 export type KillSource = typeof KillSource.Type
 
 // NOTE: what a display case holds (src/world/feats/cases.ts).
-export const CasePrize = Schema.Literals(['Shotgun', 'Smg', 'LaserSight'])
+export const CasePrize = Schema.Literals([
+  'Shotgun',
+  'Smg',
+  'Rifle',
+  'Blunderbuss',
+  'LaserSight',
+])
 export type CasePrize = typeof CasePrize.Type
 
 // NOTE: a shot names the seat that fired it (a PlayerSlot), so a co-op
@@ -333,6 +341,8 @@ const ArmamentCounts = Schema.Struct({
   Freeze: Schema.Finite,
   Knife: Schema.Finite,
   Fire: Schema.Finite,
+  Rifle: Schema.Finite,
+  Blunderbuss: Schema.Finite,
 })
 type ArmamentCounts = typeof ArmamentCounts.Type
 
@@ -931,6 +941,8 @@ const noArmamentKills: ArmamentCounts = {
   Freeze: 0,
   Knife: 0,
   Fire: 0,
+  Rifle: 0,
+  Blunderbuss: 0,
 }
 
 export const freshTally: FeatTally = {

@@ -31,6 +31,8 @@ import {
 const PRIZE_SPRITES: Readonly<Record<CasePrize, Sprite>> = {
   Shotgun: gunIcon('Shotgun', 0),
   Smg: gunIcon('Smg', 0),
+  Rifle: gunIcon('Rifle', 0),
+  Blunderbuss: gunIcon('Blunderbuss', 0),
   LaserSight: SIGHT_PRIZE,
 }
 

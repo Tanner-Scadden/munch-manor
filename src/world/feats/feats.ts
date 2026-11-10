@@ -112,6 +112,8 @@ const ARMAMENT_OF: Readonly<Record<KillSource, Option.Option<Armament>>> = {
   Freeze: Option.some('Freeze'),
   Knife: Option.some('Knife'),
   Fire: Option.some('Fire'),
+  Rifle: Option.some('Rifle'),
+  Blunderbuss: Option.some('Blunderbuss'),
   Blast: Option.none(),
   Other: Option.none(),
 }
