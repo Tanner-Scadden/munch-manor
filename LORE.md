@@ -214,6 +214,28 @@ Once you hold everything on the list, the house knows you mean to leave (Dead by
 
 The back door in the kitchen (or a window) is an early exit: leave with part of the list (the car keys, say, but no coat), and the run ends as an escape that pays less. The full goodbye pays most. Push your luck (extraction shooters).
 
+### PLAY is the invitation, the lobby is your RSVP
+
+Proposed by the owner on 2026-11-09. The home menu's PLAY is the invitation itself, a sealed envelope with the Munch crest. Opening it opens the lobby, which is the RSVP card you fill in. Every pick the lobby has today becomes a line on the card, so the rules and the Block stay as they are and only the dress changes:
+
+| Today's pick      | On the RSVP card                                                           |
+| ----------------- | -------------------------------------------------------------------------- |
+| Your name         | Guest name, written in your own hand                                       |
+| Hero              | Coming as: the Handyman, the Track Star, the Penny Pincher, the Line Cook  |
+| + BOT seats       | Plus ones: Rattles' rentals, a robot head in each empty seat               |
+| Difficulty        | Dress code, or spice level (see below)                                     |
+| Modifiers         | Special requests: tick boxes, each with its bonus in gold                  |
+| Campaign, Endless | Leaving after dinner, or staying the night                                 |
+| Map               | The venue, once there is more than one house                               |
+| START             | A wax seal stamped on the card with a thunk, and you sit down at the table |
+| BACK              | Regretfully declines                                                       |
+
+In co-op the room is the guest list: each player's own card, filled in side by side, and the room code printed on the invitation you send a friend.
+
+**Difficulty's words.** Easy, Normal, Hard, and Nightmare are the names today, read on the end card and the bests. A food word would fit the card better (a spice level: Mild, Medium, Hot, Ghost Pepper), but renaming them is a change to "Difficulty levels" for the owner to decide. Ticking the level on the card keeps today's names either way.
+
+**What holds it in check.** Show, don't explain: a card of icons and tick boxes, a word or two a line, never a form to read. Every line still works by key, mouse, and touch, in portrait and landscape. Buttons act on click, and the envelope and the seal animate the art inside, never the buttons. The first PLAY of a new save still goes straight into the tutorial, past the card.
+
 ### Between runs
 
 Rattles remembers. A few lines that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "You left without your coat!" after an early exit. Still a few words each.

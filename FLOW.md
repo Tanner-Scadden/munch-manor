@@ -24,7 +24,7 @@ Everything a player passes through, start to finish.
 flowchart TD
   link([Open munchmanor.com or the installed app]):::built --> splash[Loading splash]:::built
   splash --> home
-  home -.- invite[The invitation as art: the home menu, the icon, the share card. No extra wait]:::proposed
+  home -.- invite[PLAY is the invitation: a sealed envelope, also the icon and the share card]:::proposed
 
   home[Home menu]:::built --> playBtn{PLAY or CO-OP?}
   home --> more[MORE: How to play, What's New, Munchopedia, Profile, tip jar]:::built
@@ -38,6 +38,9 @@ flowchart TD
   coop --> coopLobby[Co-op lobby, up to 4 players]:::built
   coopLobby --> picks
 
+  picks -.- rsvp[The lobby is your RSVP card: name, coming as, plus ones, dress code, requests]:::proposed
+  rsvp -.-> seal[START is sealing it: a wax stamp, then you sit down at the table]:::proposed
+  seal -.-> run
   picks --> run[[A run: see chart 2]]:::built
   tutorial --> run
 
