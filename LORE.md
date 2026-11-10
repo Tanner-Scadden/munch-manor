@@ -180,7 +180,7 @@ Proposed by the owner on 2026-11-09. A short cutscene between the RSVP and the r
 
 The dining room's other ways out are boarded, as the parlour's are today, and bought open the same way.
 
-Show, don't explain: pictures, sound, and the one word, HELLO?, in a speech bubble. Any key or tap skips it. It plays in full the first time, and shorter after that (the knock and the slam), so RETRY stays quick. The first PLAY of a new save goes straight into the tutorial, so the cutscene is its opening there too. It is a client cosmetic, like the end card's beat: the World starts the same. In co-op every player sees their own crew in the car; whether the room waits for the slowest skip, or starts on the slam for everyone, is open.
+Show, don't explain: pictures, sound, and the one word, HELLO?, in a speech bubble. Any key or tap skips to the slam. The slam itself is never skipped (owner, 2026-11-09): it is the moment the run starts, every time. The cutscene plays in full the first time, and shorter after that (the knock and the slam), so RETRY stays quick. The first PLAY of a new save goes straight into the tutorial, so the cutscene is its opening there too. It is a client cosmetic, like the end card's beat: the World starts the same. In co-op every player sees their own crew in the car, and the run starts on the slam for everyone at once (owner, 2026-11-09): the room sets when the doors slam, a player who skips jumps to the knock at the door and waits there, and every screen slams together.
 
 ### What you need to leave changes every run
 
