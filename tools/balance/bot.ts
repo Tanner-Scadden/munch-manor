@@ -38,7 +38,7 @@ import {
   walking,
 } from './bot/basics'
 import { bossOf } from './bot/dodging'
-import { escapeTarget, escapeTargetInWave } from './bot/escape'
+import { escapeTarget, escapeTargetInWave, wantedBoards } from './bot/escape'
 import {
   AIM_EVERY_FRAMES,
   MOVE_EVERY_FRAMES,
@@ -320,19 +320,21 @@ export const play: {
             ? (escapeTo ?? ROOM_CENTER)
             : plan === 'Shop'
               ? STALL_FRONT
-              : plan === 'Kitchen'
-                ? KITCHEN_DOOR_PUSH
-                : plan === 'Gnome'
-                  ? gnomeSpot(model)
-                  : plan === 'Fridge'
-                    ? (fridgeStand(model) ?? ROOM_CENTER)
-                    : plan === 'Return'
-                      ? ROOM_CENTER
-                      : boxCenter(
-                          levelOf(model).thresholds[
-                            busiestDoor(model) ?? 'North'
-                          ].box,
-                        )
+              : plan === 'Boards'
+                ? (wantedBoards(model)?.spot ?? ROOM_CENTER)
+                : plan === 'Kitchen'
+                  ? KITCHEN_DOOR_PUSH
+                  : plan === 'Gnome'
+                    ? gnomeSpot(model)
+                    : plan === 'Fridge'
+                      ? (fridgeStand(model) ?? ROOM_CENTER)
+                      : plan === 'Return'
+                        ? ROOM_CENTER
+                        : boxCenter(
+                            levelOf(model).thresholds[
+                              busiestDoor(model) ?? 'North'
+                            ].box,
+                          )
         if (plan === 'Shop') {
           const item = wantedPurchase(state, model)
           model = holdToReplace(

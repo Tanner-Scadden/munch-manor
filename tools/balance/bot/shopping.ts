@@ -2,7 +2,7 @@
 // buying the kitchen, the ammo window mid-wave, the fridge, planks and
 // gnomes, and the plan that picks between them.
 
-import { Array, Function, Option, Schema, String } from 'effect'
+import { Array, Equal, Function, Option, Schema, String } from 'effect'
 
 import { DialogBlock } from '@foldkit/ui'
 
@@ -57,6 +57,7 @@ import {
   send,
   steerToward,
 } from './basics'
+import { escapeTarget, wantedBoards } from './escape'
 import {
   type FridgeSpare,
   type Gun,
@@ -384,12 +385,18 @@ export const towardWindow: {
 // The bot buys the room as a player does: it holds the interact key at the
 // boards until the hold fills (src/world/shop/purchase.ts), mid-wave too when it
 // happens to stand there while it wants the room.
+// NOTE: the interact key held at boards the bot means to buy: the
+// kitchen's, or a room's with a thing on the list behind them.
 export const holdingAtKitchen: {
   (keys: Set<string>): (model: Model) => Set<string>
   (model: Model, keys: Set<string>): Set<string>
 } = Function.dual(2, (model: Model, keys: Set<string>): Set<string> =>
-  wantsKitchen(model) &&
-  Option.isSome(maybeOfferInReach(model, focusSlotOf(model)))
+  Option.exists(
+    maybeOfferInReach(model, focusSlotOf(model)),
+    offer =>
+      wantsKitchen(model) ||
+      Equal.equals(wantedBoards(model)?.target, offer.target),
+  )
     ? new Set([...keys, KEYS.interact])
     : keys,
 )
@@ -575,6 +582,7 @@ export const busiestDoor = (model: Model) => {
 }
 
 type PrepPlan =
+  | 'Boards'
   | 'Shop'
   | 'Kitchen'
   | 'Barricade'
@@ -603,6 +611,9 @@ export const prepPlan: {
 } = Function.dual(
   3,
   (state: BotState, model: Model, shopped: boolean): PrepPlan => {
+    if (wantedBoards(model) !== undefined) {
+      return 'Boards'
+    }
     if (
       isShopOpenFor(model.phase) &&
       !shopped &&
@@ -625,7 +636,10 @@ export const prepPlan: {
     if (wantsFridge(state, model)) {
       return 'Fridge'
     }
-    if (isInKitchen(focusOf(model).player)) {
+    if (
+      isInKitchen(focusOf(model).player) &&
+      escapeTarget(model) === undefined
+    ) {
       return 'Return'
     }
     return 'Go'
