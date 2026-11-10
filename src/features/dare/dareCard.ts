@@ -29,6 +29,15 @@ const DARE_SLOT_STRIDE = DARE_SLOT_SIZE + DARE_SLOT_GAP
 const cardLeftOf = (count: number, layout: HudLayout): number =>
   layout.dareRight - count * DARE_SLOT_STRIDE + DARE_SLOT_GAP
 
+// NOTE: where the card's first slot starts, for what must keep clear of
+// it (the boss's bar beside it on a portrait HUD).
+export const dareCardLeftOf: {
+  (layout: HudLayout): (model: Model) => number
+  (model: Model, layout: HudLayout): number
+} = Function.dual(2, (model: Model, layout: HudLayout): number =>
+  cardLeftOf(dareCardOf(model).length, layout),
+)
+
 // NOTE: where each slot's thing sits on the HUD, in the card's order, for
 // the dare card in your pocket to fold into (src/features/dare/pocketCardView.ts).
 // A slot's thing sits one pixel inside its outline.

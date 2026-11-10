@@ -5,6 +5,7 @@ import { type Html, createLazy } from 'foldkit/html'
 import { spriteWarmUpSources } from '../art/appearance'
 import { group } from '../art/sprite'
 import { clocheShapes } from '../features/cloche/clocheView'
+import { frontDoorMarkerShapes } from '../features/dare/frontDoorView'
 import { pocketCardShapes } from '../features/dare/pocketCardView'
 import { lensOf } from '../features/end/endBeat'
 import {
@@ -61,6 +62,7 @@ const roundOverlayShapes = (
         ...fridgeRevealShapes(model, screen, camera),
         ...clocheShapes(model, camera),
         ...purchaseOverlayShapes(model, camera),
+        ...frontDoorMarkerShapes(model, screen, camera),
       ]
     : []),
   ...hudShapes(model, screen, camera),
