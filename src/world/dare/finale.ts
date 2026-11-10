@@ -57,19 +57,22 @@ type FinaleRules = Readonly<{
   chunkFromWave: Readonly<Record<Difficulty, number>>
 }>
 
-// NOTE: starting numbers, to tune with the balance layer. The door takes 45
-// seconds of waves to unlock. Once the list is done every wave rolled holds
-// a quarter more zombies. A player steps out within a few pixels of the
-// door's inside face, anywhere along its width. Uncle Chunk never comes
-// before `chunkFromWave`, even with the list done: a balance batch showed
-// most Double Dare escapes at wave 3, before the run had found its feet, so
-// the hunt waits for the waves to bite (wave 6 on Dare and Double Dare, 8 on
-// Triple Dare and Triple Dog Dare), the house hungrier all the while.
+// NOTE: the door takes 45 seconds of waves to unlock. Once the list is
+// done every wave rolled holds a quarter more zombies. A player steps out
+// within a few pixels of the door's inside face, anywhere along its width.
+// Uncle Chunk never comes before `chunkFromWave`, even with the list done:
+// a first balance batch showed most Double Dare escapes at wave 3, before
+// the run had found its feet, so the hunt waits for the waves to bite, the
+// house hungrier all the while. Set in the balance layer (2026-11-10) from
+// the escape's length: the balance bot finishes its list by wave 4 on the
+// median run, so this wave sets when it walks out (Dare on wave 6, about 9
+// minutes; Double Dare on 8, about 12; Triple Dare and Triple Dog Dare on
+// 9, about 11 on their timed breaks).
 export const FINALE_RULES: FinaleRules = {
   unlockMs: 45 * MS_PER_SECOND,
   hungryCountScale: 1.25,
   doorReachPx: PLAYER_RADIUS + 4,
-  chunkFromWave: { Easy: 6, Normal: 6, Hard: 8, Nightmare: 8 },
+  chunkFromWave: { Easy: 6, Normal: 8, Hard: 9, Nightmare: 9 },
 }
 
 // READING

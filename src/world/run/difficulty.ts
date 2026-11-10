@@ -56,7 +56,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Normal: {
     name: 'Double Dare',
     blurb: "The way it's meant to be played",
-    healthScale: 0.75,
+    healthScale: 0.68,
     bossHealthScale: 1,
     bossAttackPace: 1,
     speedScale: 0.84,
@@ -80,7 +80,7 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyStats>> = {
   Nightmare: {
     name: 'Triple Dog Dare',
     blurb: 'No backing out. Bring snacks',
-    healthScale: 1.16,
+    healthScale: 1.12,
     bossHealthScale: 3.2,
     bossAttackPace: 0.65,
     speedScale: 1.02,

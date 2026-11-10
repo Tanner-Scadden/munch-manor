@@ -118,33 +118,91 @@ export const PORTRAIT_PAIRS: ReadonlyArray<PortraitPair> = [
 // two of those.
 export const PORTRAIT_GAP_TOLERANCE = 0.08
 
-// NOTE: Easy and Normal are held on the human bot, Hard and Nightmare on
-// AIM=sharp (decided 2026-10-31, see suite.ts's jobs).
+// NOTE: a win is an escape (docs/ESCAPE_PLAN.md, layer 17, set with the
+// owner's intent on 2026-11-10): Normal winnable by a decent person, about a
+// third of the human bot's runs; Easy escaped most runs; Hard a real step up
+// for a player who aims well; Nightmare a Halo Legendary achievement, a few
+// percent of the sharp bot's runs. Easy and Normal are held on the human
+// bot, Hard and Nightmare on AIM=sharp (decided 2026-10-31, see suite.ts's
+// jobs).
 const WIN_TARGETS: ReadonlyArray<Target> = [
   between(
     'normal.wins',
-    'Normal wins (default bot)',
-    0.2,
-    0.35,
-    TARGETS_SECTION,
-  ),
-  between(
-    'normal-swap.wins',
-    'Normal wins (SWAP=1)',
+    'Normal escapes (default bot)',
     0.3,
     0.45,
     TARGETS_SECTION,
   ),
-  between('easy.wins', 'Easy wins', 0.6, 0.75, TARGETS_SECTION),
-  between('hard.wins', 'Hard wins (AIM=sharp)', 0.05, 0.12, TARGETS_SECTION),
+  between(
+    'normal-swap.wins',
+    'Normal escapes (SWAP=1)',
+    0.3,
+    0.5,
+    TARGETS_SECTION,
+  ),
+  between('easy.wins', 'Easy escapes', 0.6, 0.8, TARGETS_SECTION),
+  between('hard.wins', 'Hard escapes (AIM=sharp)', 0.1, 0.2, TARGETS_SECTION),
   between(
     'nightmare.wins',
-    'Nightmare wins (AIM=sharp)',
+    'Nightmare escapes (AIM=sharp)',
     0.01,
-    0.04,
+    0.06,
     TARGETS_SECTION,
   ),
 ]
+
+// NOTE: how long an escape takes, the median escaped run in minutes and the
+// wave it walks out on: long enough that the hunt and the ramp both bite,
+// short enough for one sitting. Hard's breaks run on a clock, so its
+// escape a wave later than Normal's takes about as long. Uncle Chunk's
+// earliest wave
+// (FINALE_RULES.chunkFromWave in src/world/dare/finale.ts) sets most of it.
+const ESCAPE_LENGTH_TARGETS: ReadonlyArray<Target> = [
+  between(
+    'easy.medianWin',
+    'Easy median escape (minutes)',
+    8,
+    14,
+    TARGETS_SECTION,
+  ),
+  between(
+    'normal.medianWin',
+    'Normal median escape (minutes)',
+    12,
+    20,
+    TARGETS_SECTION,
+  ),
+  between(
+    'hard.medianWin',
+    'Hard median escape (minutes)',
+    10,
+    20,
+    TARGETS_SECTION,
+  ),
+  between(
+    'normal.medianWinWave',
+    'Normal median escape wave',
+    8,
+    10,
+    TARGETS_SECTION,
+  ),
+]
+
+// NOTE: past the ten tuned waves an escape (and Endless) plays the Endless
+// generator's waves, the ramp. Each is held to two minutes at most on the
+// Endless job, the campaign bot's mean length of the wave, and at least 40
+// seconds, so the ramp keeps climbing rather than thinning out.
+const RAMP_WAVES: ReadonlyArray<number> = [11, 12, 13, 14, 15]
+
+const RAMP_TARGETS: ReadonlyArray<Target> = Array.map(RAMP_WAVES, wave =>
+  between(
+    `endless.length.w${wave}`,
+    `Endless wave ${wave} mean length (seconds)`,
+    40,
+    120,
+    TARGETS_SECTION,
+  ),
+)
 
 // NOTE: portrait is judged against the same win targets as landscape.
 const portraitWinTargets: ReadonlyArray<Target> = Array.flatMap(
@@ -165,52 +223,47 @@ const portraitWinTargets: ReadonlyArray<Target> = Array.flatMap(
 export const TARGETS: ReadonlyArray<Target> = [
   ...WIN_TARGETS,
   ...portraitWinTargets,
+  ...ESCAPE_LENGTH_TARGETS,
+  ...RAMP_TARGETS,
   atMost(
     'normal.died.w1-2',
     'Normal deaths in waves 1 and 2',
     0.03,
     TARGETS_SECTION,
   ),
+  // NOTE: restated for the escape on 2026-11-10. With no shop the run
+  // fights on the pistol until its first case opens (about wave 3), so waves
+  // 3 and 4 take a little more than the old 10%, and waves 5 and 6 (the
+  // Big Lug and the Big Leaguer, the house hungrier once the list is done)
+  // are the main wall before Uncle Chunk, who comes from wave 8.
   atMost(
     'normal.died.w3-4',
     'Normal deaths in waves 3 and 4',
-    0.1,
+    0.15,
     TARGETS_SECTION,
   ),
-  // NOTE: restated for the human bot on 2026-10-31. It dies over the whole
-  // back half (waves 6, 7, 9, and 10 each take 10 to 21% of runs), not in
-  // one band the way the sharp bot did, so waves 5 and 6 hold less and the
-  // deadliest wave may be 7 as well as the finale. Of the runs that reach
-  // it, the finale still kills the most.
   between(
     'normal.died.w5-6',
     'Normal deaths in waves 5 and 6',
     0.15,
-    0.3,
+    0.35,
     TARGETS_SECTION,
   ),
   between(
     'normal.died.peakWave',
     'Normal wave with the most deaths',
-    7,
-    10,
-    TARGETS_SECTION,
-  ),
-  between(
-    'normal.medianWin',
-    'Normal median win (minutes)',
+    5,
     9,
-    12,
     TARGETS_SECTION,
   ),
-  // NOTE: restated for the human bot on 2026-10-31: it takes bites it never
-  // saw coming, so its wins scrape by more often than the sharp bot's did
-  // (30 to 50%). The ceiling keeps Normal from turning into a coin flip.
+  // NOTE: restated for the escape on 2026-11-10 from 40 to 65%: the crates'
+  // hearts while hurt and the fridge's Sandwich carry more runs out with
+  // hearts to spare. The ceiling keeps Normal from turning into a coin flip.
   between(
     'normal.closeCalls',
-    'Normal close calls (share of wins at 1 heart)',
-    0.4,
-    0.65,
+    'Normal close calls (share of escapes at 1 heart)',
+    0.25,
+    0.6,
     TARGETS_SECTION,
   ),
   ...Array.map(PEAK_RATIO_WAVES, wave =>
