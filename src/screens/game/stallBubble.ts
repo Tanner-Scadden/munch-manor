@@ -2,6 +2,7 @@ import { Array, Function, Option } from 'effect'
 import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
+import { DARE_ICONS, DARE_ICON_SIZE } from '../../art/dareArt'
 import { bakeText } from '../../art/font'
 import {
   type Palette,
@@ -11,6 +12,7 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
+import { HINT_LINES, maybeHintCall } from '../../features/dare/rattlesHint'
 import {
   CALL_LINES,
   callLineIndex,
@@ -22,8 +24,9 @@ import {
 } from '../../features/onboarding/kitchenTour'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
+import type { DareKind } from '../../world/dare/dareSchema'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
-import { levelOf } from '../../world/level/arena'
+import { RATTLES_BOX, levelOf } from '../../world/level/arena'
 import type { Vector } from '../../world/schema/worldSchema'
 
 // NOTE: Rattles hollers his hints in a speech bubble of pictures, hung
@@ -138,10 +141,12 @@ const GOODS: Readonly<Record<BubbleKind, ReadonlyArray<Good>>> = {
   Soup2: soupGoods(2),
 }
 
-const bubbleWidth = (kind: BubbleKind): number =>
+const goodsWidth = (goods: ReadonlyArray<Good>): number =>
   PAD * 2 +
-  Array.reduce(GOODS[kind], 0, (sum, good) => sum + good.width) +
-  (GOODS[kind].length - 1) * ICON_GAP
+  Array.reduce(goods, 0, (sum, good) => sum + good.width) +
+  (goods.length - 1) * ICON_GAP
+
+const bubbleWidth = (kind: BubbleKind): number => goodsWidth(GOODS[kind])
 
 const BUBBLE_INK = '#140c10'
 const BUBBLE_FILL = '#f4f1de'
@@ -206,6 +211,18 @@ const EDGE_MARGIN = 4
 const HUD_CLEARANCE = 22
 const ARROW_LENGTH = 4
 const BOB_MS = 900
+const HINT_LIFT = 4
+const RATTLES_HEAD_LIFT = 6
+
+// NOTE: Rattles' spot, where his bubble's tail tip hangs when it points at
+// nothing else: by his head, over his trunk in the dining room
+// (src/features/rattles/rattlesSpot.ts).
+const RATTLES_TIP: Vector = {
+  x: RATTLES_BOX.left + 1,
+  y: RATTLES_BOX.top - RATTLES_HEAD_LIFT,
+}
+
+export const rattlesSpot = (): Vector => RATTLES_TIP
 
 const sideOf = (
   tip: { x: number; y: number },
@@ -275,12 +292,12 @@ const arrowRects = (
 }
 
 const goodsShapes = (
-  kind: BubbleKind,
+  goods: ReadonlyArray<Good>,
   x: number,
   y: number,
 ): ReadonlyArray<Canvas.Shape> =>
   Array.reduce(
-    GOODS[kind],
+    goods,
     { left: x + PAD, shapes: Array.empty<Canvas.Shape>() },
     ({ left, shapes }, { sprite, isCentered, width }) => ({
       left: left + width + ICON_GAP,
@@ -293,15 +310,36 @@ const goodsShapes = (
     }),
   ).shapes
 
-// NOTE: a bubble whose tail tip points at a spot in the world, pinned to
-// the window's edge with an arrow when the spot is out of view.
+type Bubble = Readonly<{
+  goods: ReadonlyArray<Good>
+  frame: Sprite
+  width: number
+}>
+
+const bubbleOfKind = (kind: BubbleKind): Bubble => ({
+  goods: GOODS[kind],
+  frame: FRAMES[kind],
+  width: bubbleWidth(kind),
+})
+
 const bubbleShapes = (
   kind: BubbleKind,
   tipInWorld: Vector,
   model: Model,
   camera: Camera,
+): ReadonlyArray<Canvas.Shape> =>
+  placedBubble(bubbleOfKind(kind), tipInWorld, true, model, camera)
+
+// NOTE: a bubble whose tail tip points at a spot in the world, pinned to
+// the window's edge, with an arrow toward the spot when it is out of view
+// and the bubble points.
+const placedBubble = (
+  { goods, frame, width }: Bubble,
+  tipInWorld: Vector,
+  isPointing: boolean,
+  model: Model,
+  camera: Camera,
 ): ReadonlyArray<Canvas.Shape> => {
-  const width = bubbleWidth(kind)
   const view = viewBoxOf(camera)
   const tip = worldToView(camera, tipInWorld)
   const bob = Math.round(Math.sin((FULL_TURN * model.elapsedMs) / BOB_MS) * 1)
@@ -315,9 +353,11 @@ const bubbleShapes = (
   const y = Math.max(top, Math.min(bottom, wantedY)) + bob
   const side = sideOf({ x: wantedX, y: wantedY }, left, right, top, bottom)
   return [
-    placeSprite(x, y, FRAMES[kind]),
-    ...goodsShapes(kind, x, y),
-    ...(side === 'Inside' ? [] : arrowRects(side, x, y, width, BUBBLE_INK)),
+    placeSprite(x, y, frame),
+    ...goodsShapes(goods, x, y),
+    ...(side === 'Inside' || !isPointing
+      ? []
+      : arrowRects(side, x, y, width, BUBBLE_INK)),
   ]
 }
 
@@ -373,6 +413,64 @@ export const soupBubbleShapes: {
         Option.match(Array.get(SOUP_KINDS, callLineIndex(model)), {
           onNone: () => [],
           onSome: kind => bubbleShapes(kind, target, model, camera),
+        }),
+    }),
+)
+
+// RATTLES' HINTS
+
+const dareIconGood = (kind: DareKind): Good => ({
+  sprite: DARE_ICONS[kind],
+  isCentered: false,
+  width: DARE_ICON_SIZE,
+})
+
+// NOTE: every hint's bubble baked once: the thing it is about, and the line.
+const HINT_BUBBLES: ReadonlyMap<string, Bubble> = new Map(
+  Array.map(HINT_LINES, ({ line, maybeIcon }): readonly [string, Bubble] => {
+    const goods = [
+      ...Option.toArray(Option.map(maybeIcon, dareIconGood)),
+      lineGood(line),
+    ]
+    const width = goodsWidth(goods)
+    return [
+      line,
+      {
+        goods,
+        frame: bakeShapes(frameRects(width, BUBBLE_INK)),
+        width,
+      },
+    ]
+  }),
+)
+
+// NOTE: Rattles' hint about the dare (src/features/dare/rattlesHint.ts):
+// over the thing it is about, pinned to the window's edge with an arrow
+// toward it when it is out of view, or from his own spot, pointing nowhere.
+export const dareHintShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+    Option.match(maybeHintCall(model), {
+      onNone: () => [],
+      onSome: ({ line, maybeTarget }) =>
+        Option.match(Option.fromNullishOr(HINT_BUBBLES.get(line)), {
+          onNone: () => [],
+          onSome: bubble =>
+            Option.match(maybeTarget, {
+              onNone: () =>
+                placedBubble(bubble, rattlesSpot(), false, model, camera),
+              onSome: target =>
+                placedBubble(
+                  bubble,
+                  { x: target.x, y: target.y - HINT_LIFT },
+                  true,
+                  model,
+                  camera,
+                ),
+            }),
         }),
     }),
 )

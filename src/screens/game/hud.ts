@@ -110,7 +110,11 @@ import { clamp } from '../../world/step/geometry'
 import { isRoundActive, zombiesRemaining } from '../../world/waves/waves'
 import { maybeBossBar } from '../../world/zombies/boss'
 import { waveLabel } from './overlay'
-import { kitchenBubbleShapes, soupBubbleShapes } from './stallBubble'
+import {
+  dareHintShapes,
+  kitchenBubbleShapes,
+  soupBubbleShapes,
+} from './stallBubble'
 
 const streakShapes = (streak: Streak): ReadonlyArray<Canvas.Shape> =>
   Streak.match(streak, {
@@ -865,6 +869,7 @@ const playHudShapes = (
   ...trapNoticeShapes(model, camera),
   ...kitchenBubbleShapes(model, camera),
   ...soupBubbleShapes(model, camera),
+  ...dareHintShapes(model, camera),
   ...roundHudShapes(model, layout),
   ...roomsCounterShapes(model, layout.scoreRight, layout.roomsTop),
   ...dareCardShapes(model, layout),
