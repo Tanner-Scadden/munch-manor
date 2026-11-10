@@ -190,9 +190,9 @@ Today the four levels scale only the zombies (health, speed, bites) and the brea
 
 ```mermaid
 flowchart LR
-  easy[Easy: 2 things. Rattles points the way, spots sparkle in breaks]:::proposed --> normal[Normal: 3 things. Rattles hints once per break]:::proposed
-  normal --> hard[Hard: 3 things. No sparkle, one is always on a marked zombie]:::proposed
-  hard --> nightmare[Nightmare: 4 things. The house gets hungrier from the first find, no hints]:::proposed
+  easy[Dare: 2 things. Rattles points the way, spots sparkle in breaks]:::proposed --> normal[Double Dare: 3 things. Rattles hints once per break]:::proposed
+  normal --> hard[Triple Dare: 3 things. No sparkle, one is always on a marked zombie]:::proposed
+  hard --> nightmare[Triple Dog Dare: 4 things. The house gets hungrier from the first find, no hints]:::proposed
 
   classDef proposed fill:#3d2b1f,stroke:#ff9800,color:#fff,stroke-dasharray: 5 5
 ```
@@ -215,9 +215,8 @@ flowchart LR
 
 The lore choices that most change these charts, from `LORE.md`:
 
-1. Who writes the dare card: your friends outside, or the town?
-2. What goes in the pool of things the dare asks for, and how does each one come to you?
-3. The power-ups' new names and looks: Wind-Up Key, Family Silver, Dancing Shoes, Hat Pins, Dinner Gong, Pickled Heart?
-4. Name the difficulty levels for the stakes: Dare, Double Dare, Triple Dare, Triple Dog Dare?
-5. Is the dining room the parlour redressed, or a new room?
-6. Do rooms roll, or only what is in them?
+1. What goes in the pool of things the dare asks for, and how does each one come to you?
+2. Who is the shopkeeper now, and what do you pay with? (Rattles is being reinvented, and the coins may go.)
+3. Do rooms roll, or only what is in them?
+
+Settled on 2026-11-10: your friends write the dare card; the power-ups become the house's things; the difficulty levels are Dare, Double Dare, Triple Dare, and Triple Dog Dare; the dining room is a brand-new room.

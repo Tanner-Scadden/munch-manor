@@ -186,7 +186,7 @@ Two kinds of zombie live in the house, and that is a styling gift (owner, 2026-1
 
 ### Power-ups are what the house hides
 
-The owner, 2026-11-10: the power-ups should be things you would find in an old manor, and each one's look on you matches what it is (hot sauce gives you a fiery border, and so on). The rules stay as they are (`src/world/gear/powerups.ts`); the names, art, sounds, and auras change. Proposed:
+The owner, 2026-11-10: the power-ups should be things you would find in an old manor, and each one's look on you matches what it is (hot sauce gives you a fiery border, and so on). The rules stay as they are (`src/world/gear/powerups.ts`); the names, art, sounds, and auras change. Approved on 2026-11-10:
 
 | Today           | What it does                      | In the manor  | How it looks on you                                                                |
 | --------------- | --------------------------------- | ------------- | ---------------------------------------------------------------------------------- |
@@ -197,7 +197,7 @@ The owner, 2026-11-10: the power-ups should be things you would find in an old m
 | Big Burp        | A shove and damage all around you | Dinner Gong   | A gong appears and BONG: a ring of sound knocks everyone back                      |
 | Pickled Heart   | One heart                         | Pickled Heart | Stays: a jar from the house's cabinet of curiosities, and a pulse of red           |
 
-The rule holds for every boost: the aura says what you grabbed, with no words. Each aura is baked sprites, as today's are, so the frame stays cheap. The guns and the kitchen's prizes (the Pressure Cooker, the Clang Pan, Brain Freeze) already fit a house's kitchen, and the fridge is the manor's old icebox. Renaming the power-ups is a change to `src/world/names.ts` and the Munchopedia, for the owner to approve.
+The rule holds for every boost: the aura says what you grabbed, with no words. Each aura is baked sprites, as today's are, so the frame stays cheap. The guns and the kitchen's prizes (the Pressure Cooker, the Clang Pan, Brain Freeze) already fit a house's kitchen, and the fridge is the manor's old icebox. The owner approved the renames on 2026-11-10: a change to `src/world/names.ts`, the art, the sounds, and the Munchopedia.
 
 ### Rattles took the dare in 1924
 
@@ -223,7 +223,7 @@ The home menu's PLAY is a dare card your friends hand you, scrawled on a napkin.
 
 In co-op the room code arrives as a dare: "I dare you." Each player's own card sits side by side.
 
-**The stakes.** The difficulty levels could be named for the dare: Dare, Double Dare, Triple Dare, and Triple Dog Dare. Easy, Normal, Hard, and Nightmare are decided names, read on the end card and the bests, so renaming them is the owner's call. The card can tick today's names in the meantime.
+**The stakes (owner, 2026-11-10).** The difficulty levels are renamed for the dare: Easy becomes Dare, Normal Double Dare, Hard Triple Dare, and Nightmare Triple Dog Dare. The numbers stay as they are; the names change everywhere a player reads them (the card, the first-run question, the end card, the bests).
 
 **What holds it in check.** Show, don't explain: icons and tick boxes, a word or two a line. Every line works by key, mouse, and touch, in portrait and landscape. Buttons act on click, and the card's animations move the art inside, never the buttons. The first PLAY of a new save goes straight into the tutorial, past the card.
 
@@ -231,7 +231,7 @@ In co-op the room code arrives as a dare: "I dare you." Each player's own card s
 
 Proposed by the owner on 2026-11-09. A run starts in the dining room, at the table where the party never ended. Today every run starts in the parlour ("Every run starts in the parlour" under "Exploring the manor" in `GAME_DESIGN.md` is decided), so this changes a decision.
 
-The cheap way is to redress the parlour as the dining room: keep its tiles, doors, cover footprints, and stall where they are, so the waves and the balance stay as tuned, and swap the art. The seating group becomes a long table set for a party a hundred years old, the piano a sideboard, the hearth stays, a candelabra, a chandelier. The boarded double door with the fork and knife sign already leads to the kitchen. The other ways out are boarded, as the parlour's are today, and bought open the same way. A new room with its own layout is the costly way: new cover, new lanes, and the waves tuned again.
+**A brand-new room (owner, 2026-11-10).** The dining room is its own hand-made room, not the parlour redrawn: a long table set for a party a hundred years old as its centerpiece and cover, a sideboard, a chandelier, candelabras, and its own doors and lanes. That is more work than a redraw: new cover, new lanes, the kitchen's door moved to it, and the waves and balance tuned again for the new start. The parlour stays in the house as a room you buy your way into. Its other ways out are boarded, as the parlour's are today, and bought open the same way.
 
 ### The intro: this feels really off
 
@@ -329,7 +329,7 @@ The heroes are daredevils with their own reasons: the Handyman was paid by the t
 
 Ordered from cheapest to most work, so the story can land before the systems do:
 
-1. **Words and art only.** The parlour redressed as the dining room, the power-ups renamed and restyled as the house's things, the zombies restyled as guests and daredevils, Rattles' new lines, the Munchopedia's bios, the dare card as art (the home menu, the icon, the share card). No rule changes.
+1. **Words and art only.** The difficulty names, the power-ups renamed and restyled as the house's things, the zombies restyled as guests and daredevils, Rattles' new lines, the Munchopedia's bios, the dare card as art (the home menu, the icon, the share card). No rule changes.
 2. **One fixed list in fixed spots.** The dare as a goal over the existing ten waves. Victory becomes "you got out".
 3. **Rolled spots and a rolled list.** The things move between a few hand-picked hiding spots, and the list itself rolls from the pool, sized by difficulty, from their own seeded stream.
 4. **Rolled rooms.** Needs a second room and a pool, and a change to "Not now".
@@ -339,10 +339,8 @@ Ordered from cheapest to most work, so the story can land before the systems do:
 
 The lore choices that most change the game, roughly in order.
 
-1. **The dare.** The direction, chosen 2026-11-10. Left: who writes the dare card (your friends outside, or the town), and what you bring back for it.
+1. **The dare.** The direction, chosen 2026-11-10. Your friends write the dare card (owner, 2026-11-10). Left: exactly what you bring back for it.
 2. **What goes in the pool?** Which things the dare asks for, and how each one comes back to you (see "What the dare asks for changes every run").
-3. **The power-ups' new names and looks.** Proposed: Wind-Up Key, Family Silver, Dancing Shoes, Hat Pins, Dinner Gong, Pickled Heart (see "Power-ups are what the house hides").
-4. **The stakes as difficulty names?** Dare, Double Dare, Triple Dare, Triple Dog Dare.
-5. **What is a Bone?** Rattles' currency, scavenged from a hundred years of daredevils, or the house's own.
-6. **Do rooms roll, or only what is in them?** See "What it goes against".
-7. **Is the dining room the parlour redressed, or a new room?** See "You start at the table".
+3. **The shopkeeper and what you pay with.** Rattles is being reinvented (see "Rattles took the dare in 1924", under review), and the coins may change too.
+4. **What is a Bone?** Rattles' currency, scavenged from a hundred years of daredevils, or the house's own.
+5. **Do rooms roll, or only what is in them?** See "What it goes against".
