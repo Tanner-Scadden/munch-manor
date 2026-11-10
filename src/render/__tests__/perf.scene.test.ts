@@ -613,6 +613,8 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // The cellar's own display case, locked in view, paints 597 steady
 // operations there, so that budget went from 590 to 600, and 603 with the
 // rolled house's cloche, so 610 (and its shapes painted 638, so 640).
+// The dare card on the HUD added one baked slot per thing on the list, the
+// hat too (4 on Normal), and the house's dare things a few shapes more.
 const BUDGET: FrameCost = {
   shapesBuilt: 760,
   steadyPaintOps: 610,

@@ -9,10 +9,12 @@ import {
   SoundEffect,
   acquireAudioEngine,
   playSound,
+  playSoundAt,
   positionVariation,
   releaseAudioEngine,
   resumeAudio,
 } from '../../audio/audio'
+import { maybeTuneCue } from '../../features/dare/musicBox'
 import {
   maybeLandedBetween,
   prizeSpotOf,
@@ -104,6 +106,33 @@ export const PlaySound = ApplicationBlock.makeCommand('PlaySound', {
           Effect.succeed(
             Message.FailedPlaySound({
               sound,
+              reason: audioFailureReason(error),
+            }),
+          ),
+        ),
+      )
+  },
+})
+
+// NOTE: the music box's tune, placed by where it is from the player
+// (src/features/dare/musicBox.ts).
+export const PlayTune = ApplicationBlock.makeCommand('PlayTune', {
+  args: { volume: Schema.Finite, pan: Schema.Finite },
+  messages: [Message.CompletedPlaySound, Message.FailedPlaySound],
+  handler: function* () {
+    return ({ volume, pan }) =>
+      pipe(
+        AudioEngineResource.get,
+        Effect.flatMap(engine =>
+          playSoundAt(engine, 'MusicBox', { volume, pan }),
+        ),
+        Effect.map(outcome =>
+          Message.CompletedPlaySound({ sound: 'MusicBox', outcome }),
+        ),
+        Effect.catch(error =>
+          Effect.succeed(
+            Message.FailedPlaySound({
+              sound: 'MusicBox',
               reason: audioFailureReason(error),
             }),
           ),
@@ -212,6 +241,11 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     MedicCalled: () => Option.some<SoundEffect>('MedicCall'),
     TeammateSaved: () => Option.some<SoundEffect>('Rescue'),
     GunLeveled: () => Option.some<SoundEffect>('RankUp'),
+    DareFound: () => Option.some<SoundEffect>('PrizeJackpot'),
+    DareTaken: () => Option.some<SoundEffect>('Swap'),
+    DareDropped: () => Option.some<SoundEffect>('LootPop'),
+    DareListDone: () => Option.some<SoundEffect>('RankUp'),
+    DareDelivered: () => Option.some<SoundEffect>('Purchase'),
   })
 
 const maybeEventSoundCue = (event: GameEvent): Option.Option<SoundCue> =>
@@ -331,10 +365,24 @@ export const playSounds =
     }
   }
 
-export const uiCue = (sound: SoundEffect): SoundCue => ({
-  sound,
-  variation: 0,
-})
+// NOTE: the music box's tune between two frames, when it is due and heard.
+export const playTune: {
+  (after: Model): (before: Model) => UpdateStep
+  (before: Model, after: Model): UpdateStep
+} = Function.dual(
+  2,
+  (before: Model, after: Model): UpdateStep =>
+    stepModel =>
+      Option.match(maybeTuneCue(before, after), {
+        onNone: () => ({ model: stepModel }),
+        onSome: placement =>
+          isSoundAudible(stepModel)
+            ? { model: stepModel, commands: [PlayTune(placement)] }
+            : { model: stepModel },
+      }),
+)
+
+export const uiCue = (sound: SoundEffect): SoundCue => ({ sound, variation: 0 })
 
 // NOTE: a soft pop on the home menu's own buttons, so a tap feels pressed.
 export const tapSound: UpdateStep = playSounds([uiCue('Pop')])

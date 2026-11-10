@@ -8,6 +8,7 @@ import {
   PLAYER_RADIUS,
 } from '../../shared/constants'
 import { dropChandelier, rehangAtBreak } from '../dining/chandelier'
+import { advanceDare } from '../dare/dare'
 import { advanceCases } from '../feats/cases'
 import { tallyFeats } from '../feats/feats'
 import {
@@ -451,6 +452,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     advancePantry,
     advanceCrates,
     crated => advanceMending(crated, deltaMs),
+    advanceDare,
     rollStove,
     rounded => shedParts(model, rounded),
     shed => resolveShatters(model, shed),

@@ -42,19 +42,21 @@ export const ROOM_MAP: ReadonlyArray<string> = [
 // so they are world rows -15 to -1. The yard east of it, the commas, is
 // outside the house: the way to the parlour's north door. Zombies walk the
 // yard, the player never does, and nothing out there is drawn. `c` on the
-// west wall and `t` by the east wall mark its display case and trap crate.
+// west wall and `t` by the east wall mark its display case and trap crate,
+// and `1` to `4` its hiding spots: by the stove, by the sacks, under the
+// prep table, and by the pantry.
 const KITCHEN_MAP: ReadonlyArray<string> = [
   '############DD######,,,,,,,,,,,,',
   '############DD######,,,,,,,,,,,,',
   '#QQQ..GG..GG..IIIZZ#,,,,,,,,,,,,',
   '#QQQ..GG..GG..IIIZZ#,,,,,,,,,,,,',
-  '#..................#,,,,,,,,,,,,',
-  '#...~~.............#,,,,,,,,,,,,',
+  '#....1.............#,,,,,,,,,,,,',
+  '#...~~...........2.#,,,,,,,,,,,,',
   'Y...~~~..........RR#,,,,,,,,,,,,',
   'Y......LLLLLL......#,,,,,,,,,,,,',
   '#......LLLLLL.~~...#,,,,,,,,,,,,',
-  '#.............~~~..#,,,,,,,,,,,,',
-  '#c.................#,,,,,,,,,,,,',
+  '#........3....~~~..#,,,,,,,,,,,,',
+  '#c4................#,,,,,,,,,,,,',
   '#RR...~~...........#,,,,,,,,,,,,',
   '#....~~~...........#,,,,,,,,,,,,',
   '#...............t..#,,,,,,,,,,,,',

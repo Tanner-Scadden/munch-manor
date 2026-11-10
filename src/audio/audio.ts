@@ -3,6 +3,7 @@ import {
   Effect,
   Function,
   MutableRef,
+  Option,
   Schema,
   type Scope,
   pipe,
@@ -189,6 +190,7 @@ const applyPitch = (
 
 const toneChain = (
   engine: AudioEngine,
+  destination: AudioNode,
   startAt: number,
   detuneCents: number,
   layer: ToneLayer,
@@ -200,7 +202,7 @@ const toneChain = (
   applyPitch(oscillator.frequency, startAt, layer.pitch)
   applyEnvelope(gain.gain, startAt, layer.envelope)
   oscillator.connect(gain)
-  gain.connect(engine.output)
+  gain.connect(destination)
   return {
     source: oscillator,
     nodes: [oscillator, gain],
@@ -210,6 +212,7 @@ const toneChain = (
 
 const noiseChain = (
   engine: AudioEngine,
+  destination: AudioNode,
   startAt: number,
   detuneCents: number,
   layer: NoiseLayer,
@@ -226,7 +229,7 @@ const noiseChain = (
   applyEnvelope(gain.gain, startAt, layer.envelope)
   source.connect(filter)
   filter.connect(gain)
-  gain.connect(engine.output)
+  gain.connect(destination)
   return {
     source,
     nodes: [source, filter, gain],
@@ -234,19 +237,42 @@ const noiseChain = (
   }
 }
 
+// NOTE: where a voice plays: straight into the mix, or through its own
+// gain and stereo pan, for a sound placed in the room.
+type Placement = Readonly<{ volume: number; pan: number }>
+
+const destinationOf = (
+  engine: AudioEngine,
+  maybePlacement: Option.Option<Placement>,
+): Readonly<{ node: AudioNode; extra: ReadonlyArray<AudioNode> }> =>
+  Option.match(maybePlacement, {
+    onNone: () => ({ node: engine.output, extra: [] }),
+    onSome: ({ volume, pan }) => {
+      const gain = engine.context.createGain()
+      const panner = engine.context.createStereoPanner()
+      gain.gain.value = volume
+      panner.pan.value = pan
+      gain.connect(panner)
+      panner.connect(engine.output)
+      return { node: gain, extra: [gain, panner] }
+    },
+  })
+
 const startVoice = (
   engine: AudioEngine,
   recipe: Recipe,
   variation: number,
+  maybePlacement: Option.Option<Placement>,
 ): void => {
   const startAt = engine.context.currentTime
   const detuneCents = variation * recipe.variationCents
+  const destination = destinationOf(engine, maybePlacement)
   const chains = [
     ...Array.map(recipe.tones, layer =>
-      toneChain(engine, startAt, detuneCents, layer),
+      toneChain(engine, destination.node, startAt, detuneCents, layer),
     ),
     ...Array.map(recipe.noises, layer =>
-      noiseChain(engine, startAt, detuneCents, layer),
+      noiseChain(engine, destination.node, startAt, detuneCents, layer),
     ),
   ]
   const remainingChains = MutableRef.make(chains.length)
@@ -257,6 +283,7 @@ const startVoice = (
       source.onended = null
       if (MutableRef.decrementAndGet(remainingChains) === 0) {
         MutableRef.decrement(engine.activeVoices)
+        Array.forEach(destination.extra, node => node.disconnect())
       }
     }
     source.start(startAt)
@@ -266,6 +293,28 @@ const startVoice = (
 
 const isAtVoiceLimit = (engine: AudioEngine): boolean =>
   MutableRef.get(engine.activeVoices) >= MAX_VOICES
+
+const playVoice = (
+  engine: AudioEngine,
+  sound: SoundEffect,
+  variation: number,
+  maybePlacement: Option.Option<Placement>,
+): Effect.Effect<PlayOutcome, AudioEngineError> =>
+  Effect.suspend((): Effect.Effect<PlayOutcome, AudioEngineError> => {
+    if (currentPlayback(engine) === 'Suspended') {
+      return Effect.succeed('DroppedWhileSuspended')
+    } else if (isAtVoiceLimit(engine)) {
+      return Effect.succeed('DroppedAtVoiceLimit')
+    } else {
+      return Effect.try({
+        try: (): PlayOutcome => {
+          startVoice(engine, RECIPES[sound], variation, maybePlacement)
+          return 'Played'
+        },
+        catch: error => AudioEngineError.make({ reason: describeError(error) }),
+      })
+    }
+  })
 
 export const playSound: {
   (
@@ -284,22 +333,29 @@ export const playSound: {
     sound: SoundEffect,
     variation: number,
   ): Effect.Effect<PlayOutcome, AudioEngineError> =>
-    Effect.suspend((): Effect.Effect<PlayOutcome, AudioEngineError> => {
-      if (currentPlayback(engine) === 'Suspended') {
-        return Effect.succeed('DroppedWhileSuspended')
-      } else if (isAtVoiceLimit(engine)) {
-        return Effect.succeed('DroppedAtVoiceLimit')
-      } else {
-        return Effect.try({
-          try: (): PlayOutcome => {
-            startVoice(engine, RECIPES[sound], variation)
-            return 'Played'
-          },
-          catch: error =>
-            AudioEngineError.make({ reason: describeError(error) }),
-        })
-      }
-    }),
+    playVoice(engine, sound, variation, Option.none()),
+)
+
+// NOTE: a sound placed in the room: `volume` from 0 to 1 and `pan` from -1
+// (left) to 1 (right), by where it is from the listener.
+export const playSoundAt: {
+  (
+    sound: SoundEffect,
+    placement: Placement,
+  ): (engine: AudioEngine) => Effect.Effect<PlayOutcome, AudioEngineError>
+  (
+    engine: AudioEngine,
+    sound: SoundEffect,
+    placement: Placement,
+  ): Effect.Effect<PlayOutcome, AudioEngineError>
+} = Function.dual(
+  3,
+  (
+    engine: AudioEngine,
+    sound: SoundEffect,
+    placement: Placement,
+  ): Effect.Effect<PlayOutcome, AudioEngineError> =>
+    playVoice(engine, sound, 0, Option.some(placement)),
 )
 
 // MUSIC
