@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 
 import type { DoorId, Vector } from '../../../app/model'
 import { DOOR_HALF_WIDTH_PX, TILE_SIZE } from '../../../shared/constants'
-import { CELLAR_SPOT, START_SPOT } from '../../../test/testing'
+import { CELLAR_SPOT, CLEARANCES, START_SPOT } from '../../../test/testing'
 import { moveCircle, resolveCircle } from '../../step/collision'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import {
@@ -63,8 +63,6 @@ const CASES: ReadonlyArray<Case> = [
     players: [LIBRARY_SPOT, CELLAR_SPOT],
   },
 ]
-
-const CLEARANCES: ReadonlyArray<Clearance> = ['Narrow', 'Wide']
 
 const everyTile = (level: Level): ReadonlyArray<Tile> =>
   Array.flatMap(Array.range(level.topRow, level.topRow + level.rows - 1), row =>
