@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 import { spriteAtlas } from './tools/sprites/vitePlugin.ts'
 import { buildId, serviceWorker } from './tools/vite/buildPlugins.ts'
+import { studioNotes } from './tools/vite/studioNotes.ts'
 import { foldkitBrandingViews } from './tools/vite/viewIdentity.ts'
 
 const BUILT_STYLESHEET =
@@ -83,6 +84,7 @@ export default defineConfig({
     earlyEntry(),
     spriteAtlas(),
     serviceWorker(),
+    studioNotes(),
   ],
   // NOTE: sqlite-wasm finds sqlite3.wasm next to its own module with
   // `new URL(..., import.meta.url)`. Pre-bundling would move the module and
