@@ -167,9 +167,20 @@ The cheap way is to redress the parlour as the dining room: keep its tiles, door
 
 ### The intro: the door locks behind you
 
-Proposed by the owner on 2026-11-09. START stamps the seal, and you walk into the manor expecting dinner: the table is set, the candles are lit, nobody is there. The front door slams and locks behind you, and that is what kicks the run off. The dining room's other ways out are boarded, as the parlour's are today, and bought open the same way.
+Proposed by the owner on 2026-11-09. A short cutscene between the RSVP and the run:
 
-A few seconds at most, with no words, and skippable by any key or tap. It plays in full the first time, and shorter after that (the door slam only), so RETRY stays quick. The first PLAY of a new save goes straight into the tutorial, so the intro is its opening there too. It is a client cosmetic, like the end card's beat: the World starts the same, and co-op's room waits for no one's intro.
+1. START stamps the seal, and the RSVP card floats away.
+2. Your crew in the car (you, your plus ones, your co-op friends), driving to dinner.
+3. The car pulls up at the manor.
+4. You walk up to the front door.
+5. Knock knock.
+6. The doors creak open on their own, and you step in.
+7. "HELLO?" Nobody is there. The table is set, the candles are lit.
+8. The doors slam and lock behind you, and the run kicks off.
+
+The dining room's other ways out are boarded, as the parlour's are today, and bought open the same way.
+
+Show, don't explain: pictures, sound, and the one word, HELLO?, in a speech bubble. Any key or tap skips it. It plays in full the first time, and shorter after that (the knock and the slam), so RETRY stays quick. The first PLAY of a new save goes straight into the tutorial, so the cutscene is its opening there too. It is a client cosmetic, like the end card's beat: the World starts the same. In co-op every player sees their own crew in the car; whether the room waits for the slowest skip, or starts on the slam for everyone, is open.
 
 ### What you need to leave changes every run
 

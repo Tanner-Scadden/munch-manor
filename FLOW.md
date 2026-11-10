@@ -114,15 +114,20 @@ flowchart TD
 
 ## 3. Escape the manor (proposed)
 
-The direction in `LORE.md`: you came to dinner and you are the main course. You fill in your RSVP, you walk into the manor expecting dinner and the front door locks behind you, the run kicks off in the dining room with its exits boarded as today, and this run's list of what you need to leave is rolled from a pool, longer the harder the difficulty. The waves stay as the pressure, so a player who ignores the hunt still plays chart 2. Nothing here is decided.
+The direction in `LORE.md`: you came to dinner and you are the main course. You fill in your RSVP, a cutscene drives your crew up to the manor and the doors slam behind you, the run kicks off in the dining room with its exits boarded as today, and this run's list of what you need to leave is rolled from a pool, longer the harder the difficulty. The waves stay as the pressure, so a player who ignores the hunt still plays chart 2. Nothing here is decided.
 
 ```mermaid
 flowchart TD
   rsvp([Fill in the RSVP card: name, coming as, plus ones, requests]):::proposed --> seal
-  seal[Stamp the wax seal]:::proposed --> intro
+  seal[Stamp the wax seal: the card floats away]:::proposed --> car
 
-  subgraph Intro [The intro: a few seconds, skippable, shorter after the first]
-    intro[You walk into the manor, expecting dinner: the table is set]:::proposed --> door[The front door slams and locks behind you]:::proposed
+  subgraph Intro [The intro cutscene: skippable, shorter after the first]
+    car[Your crew in the car, on the way to dinner]:::proposed --> arrive2[Pull up at the manor]:::proposed
+    arrive2 --> walk[Walk up to the front door]:::proposed
+    walk --> knock[Knock knock]:::proposed
+    knock --> opens[The doors creak open on their own. You step in]:::proposed
+    opens --> hello[HELLO? Nobody here. The table is set]:::proposed
+    hello --> door[The doors slam and lock behind you]:::proposed
   end
 
   door --> arrive
