@@ -147,6 +147,8 @@ A proposal, built from the patterns above.
 
 The invitation says "Dinner at Munch Manor. Formal. Bring an appetite." It does not say who is eating whom.
 
+The invitation is an asset to build around, not a screen to wait on (owner, 2026-11-09: the loading splash is too quick to read one). A card on the home menu, the app icon, the store art, the share card: seen everywhere, read in a glance, never in the way.
+
 You came to a dinner party (Clue). The family (the Munches) and the other guests have already turned. Uncle Chunk is the host, still in his party hat. The house is hungry. Every run you sit down at the table in the dining room, the doors are boarded behind you, and the only way out is the front door.
 
 This ties together what the game already says: the Groaner "eats the host", Uncle Chunk is "the relative nobody invited", MUNCHED!, the soup, the fridge, the party hat.
@@ -224,7 +226,7 @@ The heroes are the other guests who never turned: the Handyman came to fix the b
 
 Ordered from cheapest to most work, so the story can land before the systems do:
 
-1. **Words and art only.** The parlour redressed as the dining room, Rattles' new lines, the Munchopedia's bios nudged toward the dinner party, the invitation on the loading splash. No rule changes.
+1. **Words and art only.** The parlour redressed as the dining room, Rattles' new lines, the Munchopedia's bios nudged toward the dinner party, the invitation as art (the home menu, the icon, the share card). No rule changes.
 2. **One fixed list in fixed spots.** The keys, the ticket, and the goodbye as a goal over the existing ten waves. Victory becomes "you got out".
 3. **Rolled spots and a rolled list.** The things move between a few hand-picked hiding spots, and the list itself rolls from the pool, sized by difficulty, from their own seeded stream.
 4. **Rolled rooms.** Needs a second room and a pool, and a change to "Not now".

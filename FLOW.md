@@ -23,9 +23,8 @@ Everything a player passes through, start to finish.
 ```mermaid
 flowchart TD
   link([Open munchmanor.com or the installed app]):::built --> splash[Loading splash]:::built
-  splash --> invite[The invitation on the splash]:::proposed
   splash --> home
-  invite -.-> home
+  home -.- invite[The invitation as art: the home menu, the icon, the share card. No extra wait]:::proposed
 
   home[Home menu]:::built --> playBtn{PLAY or CO-OP?}
   home --> more[MORE: How to play, What's New, Munchopedia, Profile, tip jar]:::built
@@ -173,7 +172,7 @@ From `LORE.md`, cheapest first, so the story lands before the systems do.
 
 ```mermaid
 flowchart LR
-  words[1. Words and art: the dining room, Rattles' lines, the invitation]:::proposed --> fixed[2. One fixed list in fixed spots]:::proposed
+  words[1. Words and art: the dining room, Rattles' lines, the invitation art]:::proposed --> fixed[2. One fixed list in fixed spots]:::proposed
   fixed --> spots[3. Rolled spots and a rolled list, sized by difficulty]:::proposed
   spots --> rooms[4. Rolled rooms: needs a second room and a change to Not now]:::proposed
   rooms --> leave[5. Early exits and the hungrier house: balance work]:::proposed

@@ -75,7 +75,7 @@ Proposed by the owner on 2026-11-09, being brainstormed, nothing here decided. T
 - **Uncle Chunk waits at the front door (owner, 2026-11-09).** In an escape run he no longer comes at wave 10: he shows up only at the front door once everything on the list is found, and the goodbye is the finale. So an escape run has no fixed wave count; the ten tuned waves become the start of one ramp. His health and the hold-out are tuned for the wave he arrives on, which depends on how fast the list goes.
 - **Leaving early (proposed).** A back way out without every piece, for less pay; the full escape pays most.
 - **Balance.** The balance bot and model assume a fixed ten waves and one layout. An escape run's length and rolled rooms mean both learn the goal before any of it ships beyond words.
-- **The order.** Words and art first (the dining room, Rattles' lines, the invitation), then the pieces in fixed spots, then rolled spots, then rolled rooms, then early exits. See "What would change in the game" in `LORE.md`.
+- **The order.** Words and art first (the dining room, Rattles' lines, the invitation as art on the home menu and share card, never a screen to wait on), then the pieces in fixed spots, then rolled spots, then rolled rooms, then early exits. See "What would change in the game" in `LORE.md`.
 
 ### The art studio
 
