@@ -7,6 +7,7 @@ import { type Sprite, bakeShapes, placeAt } from '../art/sprite'
 import { gunIcon, knifeSprite } from '../art/sprites/guns'
 import { ZOMBIE_SPRITES } from '../art/sprites/zombies'
 import { goalOf, progressOf } from '../world/feats/feats'
+import type { Level } from '../world/level/arena'
 import {
   type Armament,
   Feat,
@@ -78,13 +79,27 @@ const ringOf = (progress: number, goal: number): Sprite =>
     () => RINGS[0],
   )
 
+// NOTE: where a lock hangs, and the side its count goes: toward the middle
+// of the house, so a lock by an east wall keeps its count on the screen.
+type LockSpot = Readonly<{ x: number; y: number; countSide: 'Left' | 'Right' }>
+
+export const lockSpotIn: {
+  (at: Vector): (level: Level) => LockSpot
+  (level: Level, at: Vector): LockSpot
+} = Function.dual(2, (level: Level, at: Vector): LockSpot => ({
+  x: at.x,
+  y: at.y,
+  countSide:
+    at.x > (level.bounds.left + level.bounds.right) / 2 ? 'Left' : 'Right',
+}))
+
 // NOTE: a lock centred on `at`, filled to the player's own tally.
 export const featLockShapes: {
-  (viewer: Viewer, at: Vector): (feat: Feat) => ReadonlyArray<Canvas.Shape>
-  (feat: Feat, viewer: Viewer, at: Vector): ReadonlyArray<Canvas.Shape>
+  (viewer: Viewer, at: LockSpot): (feat: Feat) => ReadonlyArray<Canvas.Shape>
+  (feat: Feat, viewer: Viewer, at: LockSpot): ReadonlyArray<Canvas.Shape>
 } = Function.dual(
   3,
-  (feat: Feat, viewer: Viewer, at: Vector): ReadonlyArray<Canvas.Shape> => {
+  (feat: Feat, viewer: Viewer, at: LockSpot): ReadonlyArray<Canvas.Shape> => {
     const goal = goalOf(feat)
     const progress = progressOf(viewer.feats, feat)
     const isNear =
@@ -97,9 +112,11 @@ export const featLockShapes: {
         ? textShapes(
             `${progress}/${goal}`,
             progress >= goal ? 'Fresh' : 'Plain',
-            at.x + RING_RADIUS + COUNT_GAP_PX,
+            at.countSide === 'Right'
+              ? at.x + RING_RADIUS + COUNT_GAP_PX
+              : at.x - RING_RADIUS - COUNT_GAP_PX,
             at.y - 3,
-            'Left',
+            at.countSide === 'Right' ? 'Left' : 'Right',
           )
         : []),
     ]

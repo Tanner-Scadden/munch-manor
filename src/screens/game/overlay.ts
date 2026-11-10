@@ -494,6 +494,33 @@ const waveBanner = (
       )
     : alarmBanner(model)
 
+// NOTE: the rows a banner takes while one shows, in the landscape frame:
+// its title and its subtitle's line. A bubble keeps out of them
+// (src/screens/game/stallBubble.ts).
+const BANNER_BAND_PAD = 2
+
+export type BannerBand = Readonly<{ top: number; bottom: number }>
+
+export const maybeBannerBand = (model: Model): Option.Option<BannerBand> => {
+  const shapes = Phase.matchOrElse(
+    model.phase,
+    {
+      Preparation: ({ wave }): ReadonlyArray<Canvas.Shape> =>
+        preparationBanner(model, wave, msIntoPhase(model.phase)),
+      Wave: ({ wave, elapsedMs }): ReadonlyArray<Canvas.Shape> =>
+        isDebutCardUp(model) ? [] : waveBanner(model, wave, elapsedMs),
+    },
+    (): ReadonlyArray<Canvas.Shape> => [],
+  )
+  const top = BAND_TOP[model.hintBand]
+  return Array.isReadonlyArrayEmpty(shapes)
+    ? Option.none()
+    : Option.some({
+        top: top - BANNER_BAND_PAD,
+        bottom: top + SUBTITLE_OFFSET + GLYPH_HEIGHT + BANNER_BAND_PAD,
+      })
+}
+
 // DEBUT CARD
 
 const CARD_TOP = 40

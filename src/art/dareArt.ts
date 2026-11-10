@@ -97,9 +97,15 @@ const DARE_PALETTE: Palette = {
 
 const SILHOUETTE_TONE = '#6b6070'
 
-const SILHOUETTE_PALETTE: Palette = Record.map(
-  DARE_PALETTE,
-  () => SILHOUETTE_TONE,
+// NOTE: paper fills its whole square (the guest book's page, Grandma's
+// recipe), so in a silhouette it takes a darker tone: the page's lines and
+// the recipe's heart show on it in the silhouette's own, and the slot's
+// rim stays apart from the paper.
+const SILHOUETTE_PAPER_TONE = '#3e3646'
+const PAPER_KEYS: ReadonlyArray<string> = ['p', 'c', 'd']
+
+const SILHOUETTE_PALETTE: Palette = Record.map(DARE_PALETTE, (_color, key) =>
+  Array.contains(PAPER_KEYS, key) ? SILHOUETTE_PAPER_TONE : SILHOUETTE_TONE,
 )
 
 export const DARE_ICONS: Readonly<Record<DareKind, Sprite>> = Record.map(

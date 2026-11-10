@@ -25,6 +25,12 @@ export const FOLD_MS = 700
 export const isPocketCardReading = (model: Model): boolean =>
   PocketCard.isAnyOf(['Reading'])(model.pocketCard)
 
+// NOTE: out of the pocket: unfolding, being read, or folding into the HUD.
+// Rattles keeps his hints until it is put away, so no bubble sits over it
+// (the gun cluster's buttons wait only while it is read).
+export const isPocketCardOut = (model: Model): boolean =>
+  !PocketCard.isAnyOf(['Pocketed'])(model.pocketCard)
+
 // NOTE: alone the first break waits while the card is read. The fold plays
 // over the running break, so a key that folds it gives the player back at
 // once.

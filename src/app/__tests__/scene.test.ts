@@ -21,6 +21,7 @@ import {
   SCENE_SUBSCRIPTIONS,
   measureSurface,
   playButton,
+  readDareCardByTapInScene,
   startRunInScene,
   throughIntroByTapInScene,
 } from '../../test/testing'
@@ -527,9 +528,13 @@ describe('New zombie card', () => {
         measureSurface,
         Scene.click(playButton),
         ...throughIntroByTapInScene(),
+        Scene.expect(
+          Scene.role('button', { name: 'Start wave 1 now' }),
+        ).toBeAbsent(),
         Scene.expect(card).toBeAbsent(),
         Scene.expect(Scene.selector('[data-ghost="Move"]')).toExist(),
         Scene.expect(Scene.selector('[data-ghost="Aim"]')).toExist(),
+        ...readDareCardByTapInScene(),
         Scene.click(Scene.role('button', { name: 'Start wave 1 now' })),
         Scene.expect(card).toExist(),
         Scene.expect(

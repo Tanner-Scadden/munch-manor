@@ -149,7 +149,15 @@ export const MANOR_SIGN: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: the radio drifting into static: a crackle over the car.
+// NOTE: the car's radio antenna, raked back off its roof, where the
+// static crackles.
+export const ANTENNA: Sprite = spriteShapes(
+  ['S....', '.S...', '..S..', '...S.', '....S'],
+  { S: '#b8c0c8' },
+  TOP_LEFT,
+)
+
+// NOTE: the radio drifting into static: a crackle off the antenna's tip.
 const STATIC_PIXELS: ReadonlyArray<ReadonlyArray<string>> = [
   ['W.W..W', '.W.WW.', 'W..W.W'],
   ['.W..W.', 'W.WW.W', '.W..W.'],
@@ -261,12 +269,29 @@ export const FLASHLIGHT: Sprite = spriteShapes(
   TOP_LEFT,
 )
 
-// NOTE: the flashlight's beam on the stone, still on.
+// NOTE: the flashlight's beam on the stone, still on: a cone of light out
+// of the lens, widening and fading as it goes, brighter down its middle,
+// with a pool where it lands.
+const BEAM_LENGTH = 28
+const BEAM_CENTER_ROW = 1
+
+const beamAlpha = (column: number, boost: number): string =>
+  `rgba(255, 236, 160, ${(Math.max(0.04, 0.3 - column * 0.009) + boost).toFixed(3)})`
+
+const beamColumn = (column: number): ReadonlyArray<Rect> => {
+  const half = Math.min(5, 1 + Math.floor(column / 5))
+  const core = Math.max(0, half - 2)
+  return [
+    [column, BEAM_CENTER_ROW - half, 1, half * 2 + 1, beamAlpha(column, 0)],
+    [column, BEAM_CENTER_ROW - core, 1, core * 2 + 1, beamAlpha(column, 0.12)],
+  ]
+}
+
 export const BEAM: Sprite = bakeShapes(
   rects([
-    [0, 1, 6, 4, '#ffe06655'],
-    [6, 0, 8, 6, '#ffe06644'],
-    [14, -1, 10, 8, '#ffe06633'],
+    ...Array.flatMap(Array.range(0, BEAM_LENGTH - 1), beamColumn),
+    [BEAM_LENGTH - 8, BEAM_CENTER_ROW - 3, 6, 7, 'rgba(255, 240, 180, 0.16)'],
+    [BEAM_LENGTH - 9, BEAM_CENTER_ROW - 2, 8, 5, 'rgba(255, 240, 180, 0.12)'],
   ]),
 )
 
@@ -492,7 +517,7 @@ export const STEAM: Sprite = bakeShapes(
 // NOTE: the place card at your seat, with your name on it: the house's
 // joke. Its scrawl is a squiggle, not a word.
 export const PLACE_CARD: Sprite = spriteShapes(
-  ['..WWWWWWWW..', '.WWKKWKKWWW.', 'WWWWWWWWWWWW', 'SSSSSSSSSSSS'],
+  ['.WWWWWWWWWW.', 'WWKKK.KKKKWW', 'WWWWWWWWWWWW', 'SSSSSSSSSSSS'],
   { W: '#f4f1de', K: '#2a1418', S: '#c4b89c' },
   TOP_LEFT,
 )

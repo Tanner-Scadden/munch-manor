@@ -10,7 +10,8 @@
    line of the card, with its word or two in pencil. */
 
 /* THE NAPKIN: cream paper, quilted in a pixel grid, with a pencil margin
-   down the left and a ketchup ring in the corner. Inked parts sit on it. */
+   down the left and a ketchup ring in the bottom corner, where no part of
+   the card sits on it. Inked parts sit on it. */
 
 .lobby {
   --dare-paper: #efe4c6;
@@ -32,7 +33,7 @@
   border-radius: 4px;
   background:
     radial-gradient(
-      circle at 92% 12%,
+      circle at 94% 92%,
       transparent 26px,
       rgba(200, 53, 43, 0.22) 27px,
       rgba(200, 53, 43, 0.22) 31px,
@@ -60,6 +61,21 @@
     inset 0 0 0 4px rgba(255, 255, 255, 0.35),
     0 6px 0 rgba(0, 0, 0, 0.45);
   color: var(--dare-ink);
+}
+
+/* NOTE: the card never grows past the screen: its parts fit inside it,
+   and on a phone on its side its gaps and padding tighten so SHAKE ON IT
+   sits inside the bottom edge. */
+.lobby .dare-card {
+  min-width: 0;
+  min-height: 0;
+}
+
+@media (max-height: 480px) {
+  .lobby .dare-card {
+    gap: max(6px, 2 * var(--coop-unit));
+    padding: 10px;
+  }
 }
 
 /* NOTE: a gold outline is lost on cream, so the card's focus ring is ink. */
@@ -167,7 +183,7 @@
 
 .lobby .lobby-seats {
   grid-template-columns: repeat(5, 1fr);
-  width: min(94cqw, 720px);
+  width: min(100%, 720px);
 }
 
 /* NOTE: your seat takes two of five columns: your figure, then your name,
@@ -357,6 +373,18 @@
 
 .lobby-hero[data-calling='You'] {
   border-style: dashed;
+}
+
+/* NOTE: coming as yourself, the prop is a plain figure in the menus'
+   cream, lost on the napkin, so it is inked here. */
+.lobby-hero[data-calling='You'] .lobby-hero-prop {
+  filter: brightness(0.2);
+}
+
+/* NOTE: the rank's gold number is lost on cream, so it is inked too. */
+.lobby .coop-rank .rank-number {
+  color: var(--dare-ink);
+  text-shadow: none;
 }
 
 .lobby-hero-prop {
