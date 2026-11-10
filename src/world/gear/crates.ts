@@ -1,10 +1,11 @@
-import { Array, Function, Option, pipe } from 'effect'
+import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { SHOP_FIRST_WAVE } from '../../shared/constants'
 import { nextRandom } from '../../shared/prng'
 import { isMissingHeart, maxHpOf } from '../heroes/calling'
-import { type Tile, levelOf, tileCenter } from '../level/arena'
+import { type Level, type Tile, levelOf, tileCenter } from '../level/arena'
+import { type LevelSpec, roomSpotsOf } from '../level/plan'
 import {
   atSeat,
   forEachSeat,
@@ -72,39 +73,60 @@ const CRATE_RULES: CrateRules = {
 
 // WHERE
 
-// NOTE: the floor tiles each room's crate stands on, out of the doorways'
-// way: the dining room's `tt` by the South door and the parlour's by its
-// south wall (docs/ROOM_DRAFTS.md), and the kitchen's bottom-right. A crate
-// stands in the middle of its tiles.
-const CRATE_TILES: Readonly<
-  Record<CrateRoom, Array.NonEmptyReadonlyArray<Tile>>
-> = {
-  Dining: [
-    { column: 9, row: 20 },
-    { column: 10, row: 20 },
-  ],
-  Kitchen: [{ column: 16, row: -2 }],
-  Parlour: [
-    { column: -12, row: 20 },
-    { column: -11, row: 20 },
-  ],
-}
-
 const CRATE_ROOMS: ReadonlyArray<CrateRoom> = CrateRoom.literals
 
-export const crateSpotOf = (room: CrateRoom): Vector => {
-  const tiles = CRATE_TILES[room]
+const isCrateRoom = (room: string): room is CrateRoom =>
+  Array.contains<string>(CRATE_ROOMS, room)
+
+type CrateSpot = Readonly<{ room: CrateRoom; spot: Vector }>
+
+const spotsBySpec = new WeakMap<LevelSpec, ReadonlyArray<CrateSpot>>()
+
+// NOTE: the middle of a run of tiles.
+const middleOfTiles = (tiles: Array.NonEmptyReadonlyArray<Tile>): Vector => {
   const first = tileCenter(Array.headNonEmpty(tiles))
   const last = tileCenter(Array.lastNonEmpty(tiles))
   return { x: (first.x + last.x) / 2, y: first.y }
 }
 
+// NOTE: where each room's crate stands, read off its map's `t` tiles
+// (roomSpotsOf in src/world/level/plan.ts, docs/ROOM_DRAFTS.md): the middle
+// of its first, out of the doorways' way. So wherever a room stands, its
+// crate stands with it. A level keeps its spots, so a frame only reads them.
+const crateSpotsOf = (spec: LevelSpec): ReadonlyArray<CrateSpot> => {
+  const cached = spotsBySpec.get(spec)
+  if (cached !== undefined) {
+    return cached
+  }
+  const spots = Array.filterMap(roomSpotsOf(spec), ({ room, trapCrates }) => {
+    const first = Option.getOrElse(Array.head(trapCrates), () => [])
+    return isCrateRoom(room) && Array.isReadonlyArrayNonEmpty(first)
+      ? Result.succeed({ room, spot: middleOfTiles(first) })
+      : Result.failVoid
+  })
+  spotsBySpec.set(spec, spots)
+  return spots
+}
+
+export const crateSpotOf: {
+  (room: CrateRoom): (level: Level) => Vector
+  (level: Level, room: CrateRoom): Vector
+} = Function.dual(2, (level: Level, room: CrateRoom): Vector =>
+  pipe(
+    crateSpotsOf(level.spec),
+    Array.findFirst(each => each.room === room),
+    Option.match({ onNone: () => level.start, onSome: ({ spot }) => spot }),
+  ),
+)
+
 // NOTE: the rooms a crate stands in: the dining room, and each other room
-// once its boards are open, in CrateRoom's order.
+// once its boards are open, in the level's room order.
 export const crateRoomsOf = (world: World): ReadonlyArray<CrateRoom> => {
-  const { rooms } = levelOf(world)
-  return Array.filter(CRATE_ROOMS, room =>
-    Array.some(rooms, ({ id, isOpen }) => id === room && isOpen),
+  const level = levelOf(world)
+  return Array.filterMap(crateSpotsOf(level.spec), ({ room }) =>
+    Array.some(level.rooms, ({ id, isOpen }) => id === room && isOpen)
+      ? Result.succeed(room)
+      : Result.failVoid,
   )
 }
 
@@ -290,22 +312,25 @@ const takeAt = (world: World, slot: PlayerSlot, index: number): World =>
         canTakeFind(world, slot, find) &&
         distanceBetween(
           seatStateAt(world, slot).player,
-          crateSpotOf(crate.room),
+          crateSpotOf(levelOf(world), crate.room),
         ) <= CRATE_RULES.reachPx,
     ),
     Option.match({
       onNone: () => world,
       onSome: ({ crate, find }) =>
-        modifyFields(giveFind(world, slot, find, crateSpotOf(crate.room)), {
-          crates: crates =>
-            modifyFields(crates, {
-              crates: Array.map((current, at) =>
-                at === index
-                  ? modifyFields(current, { stock: () => CrateStock.Taken() })
-                  : current,
-              ),
-            }),
-        }),
+        modifyFields(
+          giveFind(world, slot, find, crateSpotOf(levelOf(world), crate.room)),
+          {
+            crates: crates =>
+              modifyFields(crates, {
+                crates: Array.map((current, at) =>
+                  at === index
+                    ? modifyFields(current, { stock: () => CrateStock.Taken() })
+                    : current,
+                ),
+              }),
+          },
+        ),
     }),
   )
 

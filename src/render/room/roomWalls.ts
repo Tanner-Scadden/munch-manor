@@ -161,7 +161,7 @@ const isNorthFace =
 // foot (the top of the floor row under it).
 export type Span = Readonly<{ x: number; y: number; width: number }>
 
-export const northFaceSpans = (level: Level): ReadonlyArray<Span> =>
+const northFaceSpans = (level: Level): ReadonlyArray<Span> =>
   Array.map(
     pixelRuns(markedGrid(level, isNorthFace(level)), {
       [MARK]: WALLPAPER_COLOR,
@@ -172,6 +172,22 @@ export const northFaceSpans = (level: Level): ReadonlyArray<Span> =>
       width: run.width * TILE_SIZE,
     }),
   )
+
+// NOTE: the north wall faces in one room's block, for the art a room lays
+// over its own walls.
+export const spansWithin: {
+  (room: Box): (level: Level) => ReadonlyArray<Span>
+  (level: Level, room: Box): ReadonlyArray<Span>
+} = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Span> =>
+  Array.filter(
+    northFaceSpans(level),
+    ({ x, y, width }) =>
+      x >= room.x &&
+      x + width <= room.x + room.width &&
+      y > room.y &&
+      y <= room.y + room.height,
+  ),
+)
 
 const WAINSCOT_PANEL_PX = 12
 
@@ -509,8 +525,13 @@ const exitShapes = (exit: Exit): ReadonlyArray<Canvas.Shape> => {
   return isFacedExit(box) ? kitchenExitShapes(box) : boardedShapes(box)
 }
 
+// NOTE: the library's secret shelf is drawn by its own art (libraryArt.ts),
+// never as boards.
 export const closedExitShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(closedExits(level), exitShapes)
+  Array.flatMap(
+    Array.filter(closedExits(level), ({ opener }) => opener === 'Boards'),
+    exitShapes,
+  )
 
 // NOTE: the portrait, the skull, and the window are placed by hand on the
 // parlour's north wall, in the gaps between its doors and furniture.
@@ -646,6 +667,10 @@ const DOOR_DRAWINGS: Readonly<
   Window: windowShapes,
   WestTop: northDoorShapes,
   WestBottom: southDoorShapes,
+  EastTop: northDoorShapes,
+  EastBottom: southDoorShapes,
+  FarTop: northDoorShapes,
+  FarBottom: southDoorShapes,
   // NOTE: the front door is never a spawn door, so it never draws as a
   // doorway: the dining room's art draws it chained shut (diningArt.ts).
   Front: southDoorShapes,

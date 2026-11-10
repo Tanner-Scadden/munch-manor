@@ -2,7 +2,7 @@
 // specs a run plays, put together from them. src/world/level/arena.ts builds
 // a Level from a spec.
 
-import { Array, Option, Result, String } from 'effect'
+import { Array, Option, Result, String, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
 import type { DoorId, ExitId, LevelId, Vector } from '../schema/entitySchema'
@@ -34,7 +34,8 @@ export const ROOM_MAP: ReadonlyArray<string> = [
 // door at the K tiles. On the house's plan its rows sit above the parlour's,
 // so they are world rows -15 to -1. The yard east of it, the commas, is
 // outside the house: the way to the parlour's north door. Zombies walk the
-// yard, the player never does, and nothing out there is drawn.
+// yard, the player never does, and nothing out there is drawn. `c` on the
+// west wall and `t` by the east wall mark its display case and trap crate.
 const KITCHEN_MAP: ReadonlyArray<string> = [
   '############DD######,,,,,,,,,,,,',
   '############DD######,,,,,,,,,,,,',
@@ -46,10 +47,10 @@ const KITCHEN_MAP: ReadonlyArray<string> = [
   'Y......LLLLLL......#,,,,,,,,,,,,',
   '#......LLLLLL.~~...#,,,,,,,,,,,,',
   '#.............~~~..#,,,,,,,,,,,,',
-  '#..................#,,,,,,,,,,,,',
+  '#c.................#,,,,,,,,,,,,',
   '#RR...~~...........#,,,,,,,,,,,,',
   '#....~~~...........#,,,,,,,,,,,,',
-  '#..................#,,,,,,,,,,,,',
+  '#...............t..#,,,,,,,,,,,,',
   '#..................#,,,,,,,,,,,,',
 ]
 
@@ -88,7 +89,7 @@ const DINING_MAP: ReadonlyArray<string> = [
   '#####SS#########MMMM################',
 ]
 
-// NOTE: the parlour fitted to the house's west slot (docs/ROOM_DRAFTS.md):
+// NOTE: the parlour fitted to a slot of the house (docs/ROOM_DRAFTS.md):
 // ROOM_MAP changed only at its edges. The kitchen hangs off the dining room
 // now, so its boards are wall; the side doors are the slot's ports, `(` and
 // `)`; `n` and `s` are the slot's two spawn doors; the stall and its crates
@@ -115,11 +116,62 @@ const PARLOUR_SLOT_MAP: ReadonlyArray<string> = [
   '########ss######################',
 ]
 
+// NOTE: the library (docs/ROOM_DRAFTS.md): stacks of double-sided shelves,
+// `B` drawn as the stacks here, with two tile aisles, above and below the
+// reading desk `d` on the cross aisle, and the globe `g`. The lower stacks
+// run into the south wall as bays, with the cases and the trap crate at
+// their backs. `%` in rows 13 and 14 of each side wall is the secret shelf;
+// only the one facing the room it is entered from swings.
+export const LIBRARY_MAP: ReadonlyArray<string> = [
+  '##############nn################',
+  '##############nn################',
+  '#..............................#',
+  '#..............................#',
+  '#..BB..BB..BB......BB..BB..BB..#',
+  '#..BB..BB..BB...g..BB..BB..BB..#',
+  '#..BB..BB..BB..1...BB..BB..BB2.#',
+  '#..............................#',
+  '(..............................)',
+  '(..............................)',
+  '#...........dddddddd...........#',
+  '#..........3dddddddd...........#',
+  '#..............................#',
+  '%..............................%',
+  '%..BB..BB..BB......BB..BB..BB..%',
+  '#..BB..BB..BB......BB..BB..BB..#',
+  '#..BBccBBttBB......BB4.BBccBB..#',
+  '################ss##############',
+]
+
+// NOTE: the cellar (docs/ROOM_DRAFTS.md): long wine racks `]` in rows,
+// broken by gaps, round a block of barrels `o` with the trap crate on top.
+// `n` is the coal chute, `s` the storm doors.
+export const CELLAR_MAP: ReadonlyArray<string> = [
+  '#####nn#########################',
+  '#####nn#########################',
+  '#.....4........................#',
+  '#..............................#',
+  '#..]]]]]]]]..]]]]]]..]]]]]]]]..#',
+  '#...........................2..#',
+  '#..............................#',
+  '#..]]]]]]]]....tt....]]]]]]]]..#',
+  '(.............oooo.............)',
+  '(.............oooo1............)',
+  '#..]]]]]]]]...oooo...]]]]]]]]..#',
+  '#.............oooo.............#',
+  '#..............................#',
+  '?..............................?',
+  '?..]]]]]]]]..]]]]]]..]]]]]]]]..?',
+  '#..........................3...#',
+  '#cc..........................cc#',
+  '#######################ss#######',
+]
+
 // NOTE: the review marks every drafted map shares: the hidden-item spots,
 // the display case and trap crate spots (`c` and `t`, where the World's
 // cases and crates stand, src/world/feats/cases.ts and
-// src/world/gear/crates.ts), and the start spot are floor, and the secret
-// shelf's wall is wall until the library's layer swings it.
+// src/world/gear/crates.ts), and the start spot are floor, and a secret
+// shelf's wall is wall unless the house swings it (secretShelfOf below).
 const REVIEW_MARKS: Readonly<Record<string, string>> = {
   c: '.',
   t: '.',
@@ -143,20 +195,31 @@ export const CHANDELIER_SYMBOL = '^'
 // lists while it lies in the gap (src/world/dining/chandelier.ts).
 export const CHANDELIER_DROP = 'Chandelier'
 
-// NOTE: the west slot's place on the plan: hung off the dining room's west
-// wall, its bottom row level with the dining room's, so the dining room
-// keeps outside wall for its West door above it (the pinwheel).
-const WEST_SLOT_ORIGIN = { column: -32, row: 4 }
+// NOTE: a drafted map's secret shelf, `%`, and the plain wall a library
+// next door can swing open, `?`. The one that swings is rewritten to
+// SECRET_SYMBOL, the secret exit's own symbol, on both sides of the wall.
+const SHELF_MARK = '%'
+const SWINGABLE_MARK = '?'
+export const SECRET_SYMBOL = '&'
 
 // SPECS
 
-// NOTE: an exit is a boarded doorway drawn on the map with its own symbol.
-// While it is closed its tiles are solid and the doors behind it stay shut.
-// Opening it makes its tiles floor and adds its doors to the spawn doors.
+// NOTE: what opens an exit: Boards are bought open with money (keys in a
+// later layer), a Shelf swings when a player pulls its book
+// (src/world/library/secretShelf.ts) and is never for sale.
+export type ExitOpener = 'Boards' | 'Shelf'
+
+// NOTE: an exit is a doorway drawn on the map with its own symbol. While it
+// is closed its tiles are solid and the doors behind it stay shut. Opening
+// it makes its tiles floor and adds its doors to the spawn doors. `requires`
+// lists the exits that must be open before it can be: the far slot's boards
+// stand in the east room, and the secret shelf in the library.
 type ExitSpec = Readonly<{
   id: ExitId
   symbol: string
   doors: ReadonlyArray<DoorId>
+  opener: ExitOpener
+  requires: ReadonlyArray<ExitId>
 }>
 
 // NOTE: a drop is a piece of the room that can fall into its floor and lie
@@ -194,6 +257,8 @@ export type LevelSpec = Readonly<{
 export const PARLOUR_ROOM_ID = 'Parlour'
 export const DINING_ROOM_ID = 'Dining'
 export const KITCHEN_ROOM_ID = 'Kitchen'
+export const LIBRARY_ROOM_ID = 'Library'
+export const CELLAR_ROOM_ID = 'Cellar'
 
 // NOTE: the parlour as it stood before the dining room was built, on its
 // own level (PARLOUR_SPEC), for tests and tools that need its shape.
@@ -205,39 +270,218 @@ const PARLOUR_ROOM: RoomSpec = {
   renames: {},
 }
 
-const DINING_ROOM: RoomSpec = {
-  id: DINING_ROOM_ID,
-  tiles: DINING_MAP,
-  origin: { column: 0, row: 0 },
-  maybeExit: Option.none(),
-  // NOTE: the east exit leads nowhere until the east slot is built (the
-  // library and the cellar's layer), so it is wall for now.
-  renames: { ...REVIEW_MARKS, '>': '#' },
-}
-
 const KITCHEN_ROOM: RoomSpec = {
   id: KITCHEN_ROOM_ID,
   tiles: KITCHEN_MAP,
   origin: { column: 0, row: KITCHEN_TOP_ROW },
   maybeExit: Option.some('Kitchen'),
-  renames: {},
+  renames: REVIEW_MARKS,
 }
 
-// NOTE: the west slot's exit, `<` in the dining room's west wall. The
-// parlour's own port behind it is floor, so the exit is one wall thick, and
-// its port that faces outside is wall.
+// THE SLOTS
+
+// NOTE: the three rooms that stand in the house's slots, each drafted to
+// the slot footprint (32 by 18 tiles, ports in rows 8 and 9, spawn doors
+// `n` and `s`, a shelf or a swingable wall in rows 13 and 14 of each side).
+// Layer 11 of docs/ESCAPE_PLAN.md rolls which stands where.
+type SlotRoomId =
+  | typeof PARLOUR_ROOM_ID
+  | typeof LIBRARY_ROOM_ID
+  | typeof CELLAR_ROOM_ID
+
+// NOTE: each room's own letters turned into the level's: the library's
+// stacks are `b`, since `B` is the parlour's bookshelf.
+const SLOT_ROOMS: Readonly<
+  Record<
+    SlotRoomId,
+    Readonly<{
+      tiles: ReadonlyArray<string>
+      renames: Readonly<Record<string, string>>
+    }>
+  >
+> = {
+  [PARLOUR_ROOM_ID]: { tiles: PARLOUR_SLOT_MAP, renames: {} },
+  [LIBRARY_ROOM_ID]: { tiles: LIBRARY_MAP, renames: { B: 'b' } },
+  [CELLAR_ROOM_ID]: { tiles: CELLAR_MAP, renames: {} },
+}
+
+export type SlotId = 'West' | 'East' | 'Far'
+
+export type Side = 'West' | 'East'
+
+// NOTE: every slot's spawn doors' symbols. The west slot's are the maps' own
+// `n` and `s`; a room in another slot has them renamed to its slot's.
+export const SLOT_DOOR_SYMBOLS = {
+  WestTop: 'n',
+  WestBottom: 's',
+  EastTop: 'u',
+  EastBottom: 'v',
+  FarTop: 'w',
+  FarBottom: 'x',
+} as const satisfies Partial<Record<DoorId, string>>
+
 export const WEST_EXIT: ExitId = 'West'
+export const EAST_EXIT: ExitId = 'East'
+export const FAR_EXIT: ExitId = 'Far'
+export const SECRET_EXIT: ExitId = 'Secret'
 
-const PARLOUR_WEST_ROOM: RoomSpec = {
-  id: PARLOUR_ROOM_ID,
-  tiles: PARLOUR_SLOT_MAP,
-  origin: WEST_SLOT_ORIGIN,
-  maybeExit: Option.some(WEST_EXIT),
-  // NOTE: the west slot's spawn doors are the map's own `n` and `s`
-  // (WestTop and WestBottom); a room in another slot renames them to that
-  // slot's.
-  renames: { ...REVIEW_MARKS, '(': '#', ')': '.' },
+// NOTE: the far slot's boards stand in the east room's east port.
+const FAR_EXIT_SYMBOL = '}'
+
+// NOTE: a slot, all slot-relative: where it sits on the plan, the exit that
+// opens it and that exit's symbol, its spawn doors, what its room's two
+// ports become (the one toward the room it is entered from is floor behind
+// the boards, one facing outside is wall, and the east slot's east port is
+// the far slot's boards), and the side wall that faces the room it is
+// entered from, where a library's shelf swings.
+type Slot = Readonly<{
+  origin: Readonly<{ column: number; row: number }>
+  exit: ExitId
+  exitSymbol: string
+  requires: ReadonlyArray<ExitId>
+  top: keyof typeof SLOT_DOOR_SYMBOLS
+  bottom: keyof typeof SLOT_DOOR_SYMBOLS
+  ports: Readonly<Record<'(' | ')', string>>
+  inward: Side
+}>
+
+// NOTE: the west slot hangs off the dining room's west wall, its bottom
+// row level with the dining room's, so the dining room keeps outside wall
+// for its West door above it; the east slots hang off the top of its east
+// wall, so it keeps outside wall for its East door below (the pinwheel).
+export const SLOTS: Readonly<Record<SlotId, Slot>> = {
+  West: {
+    origin: { column: -32, row: 4 },
+    exit: WEST_EXIT,
+    exitSymbol: '<',
+    requires: [],
+    top: 'WestTop',
+    bottom: 'WestBottom',
+    ports: { '(': '#', ')': '.' },
+    inward: 'East',
+  },
+  East: {
+    origin: { column: 36, row: 0 },
+    exit: EAST_EXIT,
+    exitSymbol: '>',
+    requires: [],
+    top: 'EastTop',
+    bottom: 'EastBottom',
+    ports: { '(': '.', ')': FAR_EXIT_SYMBOL },
+    inward: 'West',
+  },
+  Far: {
+    origin: { column: 68, row: 0 },
+    exit: FAR_EXIT,
+    exitSymbol: FAR_EXIT_SYMBOL,
+    requires: [EAST_EXIT],
+    top: 'FarTop',
+    bottom: 'FarBottom',
+    ports: { '(': '.', ')': '#' },
+    inward: 'West',
+  },
 }
+
+const SLOT_IDS: ReadonlyArray<SlotId> = ['West', 'East', 'Far']
+
+// NOTE: which room stands in each slot.
+export type Arrangement = Readonly<Record<SlotId, SlotRoomId>>
+
+const opposite = (side: Side): Side => (side === 'West' ? 'East' : 'West')
+
+// NOTE: a map with one symbol in its west or east wall column rewritten.
+const withSideMark = (
+  tiles: ReadonlyArray<string>,
+  side: Side,
+  from: string,
+  to: string,
+): ReadonlyArray<string> =>
+  Array.map(tiles, line => {
+    const column = side === 'West' ? 0 : String.length(line) - 1
+    return Option.contains(String.at(line, column), from)
+      ? `${pipe(line, String.slice(0, column))}${to}${pipe(line, String.slice(column + 1))}`
+      : line
+  })
+
+// NOTE: where the secret shelf swings in an arrangement: the library's slot,
+// the side wall it swings in, and the room on the other side of that wall
+// (the dining room, or the east room for a library in the far slot).
+type Shelf = Readonly<{
+  slot: SlotId
+  side: Side
+  neighbour: 'Dining' | SlotId
+}>
+
+const secretShelfOf = (arrangement: Arrangement): Option.Option<Shelf> =>
+  Option.map(
+    Array.findFirst(SLOT_IDS, slot => arrangement[slot] === LIBRARY_ROOM_ID),
+    slot => ({
+      slot,
+      side: SLOTS[slot].inward,
+      neighbour: slot === 'Far' ? 'East' : 'Dining',
+    }),
+  )
+
+// NOTE: a map with its swinging shelf, or its neighbour's swingable wall
+// facing it, rewritten to the secret exit's symbol; every other `%` and `?`
+// stays wall (REVIEW_MARKS).
+const withShelf = (
+  tiles: ReadonlyArray<string>,
+  room: 'Dining' | SlotId,
+  maybeShelf: Option.Option<Shelf>,
+): ReadonlyArray<string> =>
+  Option.match(maybeShelf, {
+    onNone: () => tiles,
+    onSome: shelf =>
+      shelf.slot === room
+        ? withSideMark(tiles, shelf.side, SHELF_MARK, SECRET_SYMBOL)
+        : shelf.neighbour === room
+          ? withSideMark(
+              tiles,
+              opposite(shelf.side),
+              SWINGABLE_MARK,
+              SECRET_SYMBOL,
+            )
+          : tiles,
+  })
+
+const slotRoomOf = (
+  arrangement: Arrangement,
+  slot: SlotId,
+  maybeShelf: Option.Option<Shelf>,
+): RoomSpec => {
+  const { origin, exit, top, bottom, ports } = SLOTS[slot]
+  const room = SLOT_ROOMS[arrangement[slot]]
+  return {
+    id: arrangement[slot],
+    tiles: withShelf(room.tiles, slot, maybeShelf),
+    origin,
+    maybeExit: Option.some(exit),
+    renames: {
+      ...REVIEW_MARKS,
+      ...room.renames,
+      ...ports,
+      n: SLOT_DOOR_SYMBOLS[top],
+      s: SLOT_DOOR_SYMBOLS[bottom],
+    },
+  }
+}
+
+const slotExitOf = (slot: SlotId): ExitSpec => ({
+  id: SLOTS[slot].exit,
+  symbol: SLOTS[slot].exitSymbol,
+  doors: [SLOTS[slot].top, SLOTS[slot].bottom],
+  opener: 'Boards',
+  requires: SLOTS[slot].requires,
+})
+
+const shelfExitOf = (shelf: Shelf): ExitSpec => ({
+  id: SECRET_EXIT,
+  symbol: SECRET_SYMBOL,
+  doors: [],
+  opener: 'Shelf',
+  requires: [SLOTS[shelf.slot].exit],
+})
 
 export const widthOf = (tiles: ReadonlyArray<string>): number =>
   Option.match(Array.head(tiles), { onNone: () => 0, onSome: String.length })
@@ -288,27 +532,137 @@ const spotOf = (room: RoomSpec, symbol: string): Vector => {
 export const PARLOUR_SPEC: LevelSpec = {
   id: 'Parlour',
   rooms: [PARLOUR_ROOM],
-  exits: [{ id: 'Kitchen', symbol: 'K', doors: [] }],
+  exits: [
+    { id: 'Kitchen', symbol: 'K', doors: [], opener: 'Boards', requires: [] },
+  ],
   drops: [],
   start: middleOf(ROOM_MAP),
 }
 
-// NOTE: the manor is the level a run plays: the dining room, the kitchen
-// behind its boarded double door to the north, and the parlour behind the
-// boards in its west wall. Each exit's spawn doors stay shut until the
-// player buys it open. A run starts at the table, on the start spot.
-export const MANOR_SPEC: LevelSpec = {
-  id: 'Manor',
-  rooms: [DINING_ROOM, KITCHEN_ROOM, PARLOUR_WEST_ROOM],
-  exits: [
-    { id: 'Kitchen', symbol: 'K', doors: ['Back', 'Window'] },
-    { id: WEST_EXIT, symbol: '<', doors: ['WestTop', 'WestBottom'] },
-  ],
-  drops: [{ id: CHANDELIER_DROP, symbol: CHANDELIER_SYMBOL }],
-  start: spotOf(DINING_ROOM, START_SYMBOL),
+// NOTE: the house for an arrangement of the slot rooms: the dining room,
+// the kitchen behind its boarded double door to the north, a slot room
+// behind the boards in each side wall and one more behind the east room's,
+// and the library's secret shelf. Each exit's spawn doors stay shut until
+// it opens. A run starts at the table, on the start spot.
+export const manorSpecFor = (arrangement: Arrangement): LevelSpec => {
+  const maybeShelf = secretShelfOf(arrangement)
+  const dining: RoomSpec = {
+    id: DINING_ROOM_ID,
+    tiles: withShelf(DINING_MAP, 'Dining', maybeShelf),
+    origin: { column: 0, row: 0 },
+    maybeExit: Option.none(),
+    renames: REVIEW_MARKS,
+  }
+  // NOTE: the east room's own swingable wall faces a library in the far
+  // slot, so the slot rooms are built with the shelf known.
+  const slotRooms = Array.map(SLOT_IDS, slot =>
+    slotRoomOf(arrangement, slot, maybeShelf),
+  )
+  return {
+    id: 'Manor',
+    rooms: [dining, KITCHEN_ROOM, ...slotRooms],
+    exits: [
+      {
+        id: 'Kitchen',
+        symbol: 'K',
+        doors: ['Back', 'Window'],
+        opener: 'Boards',
+        requires: [],
+      },
+      ...Array.map(SLOT_IDS, slotExitOf),
+      ...Option.match(maybeShelf, {
+        onNone: () => [],
+        onSome: shelf => [shelfExitOf(shelf)],
+      }),
+    ],
+    drops: [{ id: CHANDELIER_DROP, symbol: CHANDELIER_SYMBOL }],
+    start: spotOf(dining, START_SYMBOL),
+  }
 }
+
+// NOTE: the fixed arrangement until layer 11 rolls it: the parlour west,
+// the library east, the cellar beyond it.
+const FIXED_ARRANGEMENT: Arrangement = {
+  West: PARLOUR_ROOM_ID,
+  East: LIBRARY_ROOM_ID,
+  Far: CELLAR_ROOM_ID,
+}
+
+export const MANOR_SPEC: LevelSpec = manorSpecFor(FIXED_ARRANGEMENT)
 
 export const LEVEL_SPECS: Readonly<Record<LevelId, LevelSpec>> = {
   Parlour: PARLOUR_SPEC,
   Manor: MANOR_SPEC,
 }
+
+// HOUSE SPOTS
+
+// NOTE: the drafted maps' review marks as data, for the cases and the dare
+// (layers 12 and on of docs/ESCAPE_PLAN.md) to read: each room's hidden-item
+// spots (`1` to `4`, stand there to search what is beside you), its display
+// cases (`c`, two tiles against a wall), and its trap crate (`t`), in world
+// tiles. The marks are read off the room's own map, before its renames.
+export type SpotTile = Readonly<{ column: number; row: number }>
+
+export type RoomSpots = Readonly<{
+  room: string
+  hiding: ReadonlyArray<Readonly<{ mark: string; tile: SpotTile }>>
+  cases: ReadonlyArray<ReadonlyArray<SpotTile>>
+  trapCrates: ReadonlyArray<ReadonlyArray<SpotTile>>
+}>
+
+const HIDING_MARKS: ReadonlyArray<string> = ['1', '2', '3', '4']
+const CASE_MARK = 'c'
+const TRAP_CRATE_MARK = 't'
+
+const marksOf = (
+  room: RoomSpec,
+  isMark: (symbol: string) => boolean,
+): ReadonlyArray<Readonly<{ mark: string; tile: SpotTile }>> =>
+  Array.flatMap(room.tiles, (line, row) =>
+    Array.filterMap(String.split(line, ''), (mark, column) =>
+      isMark(mark)
+        ? Result.succeed({
+            mark,
+            tile: {
+              column: room.origin.column + column,
+              row: room.origin.row + row,
+            },
+          })
+        : Result.failVoid,
+    ),
+  )
+
+const NO_PIECES: ReadonlyArray<ReadonlyArray<SpotTile>> = []
+
+// NOTE: a mark's tiles in runs along a row, one run for each piece.
+const piecesOf = (
+  room: RoomSpec,
+  symbol: string,
+): ReadonlyArray<ReadonlyArray<SpotTile>> =>
+  Array.reduce(
+    Array.map(
+      marksOf(room, mark => mark === symbol),
+      ({ tile }) => tile,
+    ),
+    NO_PIECES,
+    (pieces, tile) =>
+      Option.match(Array.last(pieces), {
+        onNone: () => [[tile]],
+        onSome: piece =>
+          Option.exists(
+            Array.last(piece),
+            last => last.row === tile.row && last.column === tile.column - 1,
+          )
+            ? [...Array.dropRight(pieces, 1), [...piece, tile]]
+            : [...pieces, [tile]],
+      }),
+  )
+
+export const roomSpotsOf = (spec: LevelSpec): ReadonlyArray<RoomSpots> =>
+  Array.map(spec.rooms, room => ({
+    room: room.id,
+    hiding: marksOf(room, mark => Array.contains(HIDING_MARKS, mark)),
+    cases: piecesOf(room, CASE_MARK),
+    trapCrates: piecesOf(room, TRAP_CRATE_MARK),
+  }))

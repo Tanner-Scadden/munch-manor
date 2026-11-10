@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 
 import type { DoorId, Vector } from '../../../app/model'
 import { DOOR_HALF_WIDTH_PX, TILE_SIZE } from '../../../shared/constants'
-import { START_SPOT } from '../../../test/testing'
+import { CELLAR_SPOT, START_SPOT } from '../../../test/testing'
 import { moveCircle, resolveCircle } from '../../step/collision'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import {
@@ -20,6 +20,7 @@ import {
   type Clearance,
   UNREACHED_DISTANCE,
   flowFieldToward,
+  isFieldTile,
   playerDistancePx,
   steerToward,
 } from '../pathing'
@@ -30,6 +31,9 @@ import { KITCHEN_TOP_ROW, MANOR_SPEC } from '../plan'
 // it is open.
 const KITCHEN_SPOT: Vector = { x: 100, y: -80 }
 const FRIDGE_SPOT: Vector = { x: 180, y: -104 }
+const PARLOUR_SPOT: Vector = { x: -160, y: 130 }
+// NOTE: the library's top aisle, past its stacks.
+const LIBRARY_SPOT: Vector = { x: 600, y: 25 }
 
 type Case = Readonly<{
   name: string
@@ -47,6 +51,16 @@ const CASES: ReadonlyArray<Case> = [
     name: 'kitchen open',
     level: levelFor(MANOR_SPEC, ['Kitchen']),
     players: [START_SPOT, KITCHEN_SPOT, FRIDGE_SPOT],
+  },
+  {
+    name: 'every room open, the shelf shut',
+    level: levelFor(MANOR_SPEC, ['Kitchen', 'West', 'East', 'Far']),
+    players: [START_SPOT, PARLOUR_SPOT, LIBRARY_SPOT, CELLAR_SPOT],
+  },
+  {
+    name: 'every room open, the shelf swung',
+    level: levelFor(MANOR_SPEC, ['Kitchen', 'West', 'East', 'Far', 'Secret']),
+    players: [LIBRARY_SPOT, CELLAR_SPOT],
   },
 ]
 
@@ -113,9 +127,12 @@ describe('the flow field reaches every zombie', () => {
           expect(unreached).toEqual([])
         })
 
-        test(`${name}, ${clearance}, player at ${player.x},${player.y}: every tile a zombie stands on reaches the player, the yard too`, () => {
-          const standable = Array.filter(everyTile(level), tile =>
-            canStandOn(level, clearance, tile),
+        test(`${name}, ${clearance}, player at ${player.x},${player.y}: every tile a zombie stands on reaches the player, the yard by the open house too`, () => {
+          const standable = Array.filter(
+            everyTile(level),
+            tile =>
+              canStandOn(level, clearance, tile) &&
+              isFieldTile(level, tile.column, tile.row),
           )
           const unreached = Array.filter(
             standable,

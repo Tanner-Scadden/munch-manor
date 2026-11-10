@@ -81,13 +81,12 @@ import {
 import type { BossBlame, RunResult } from './bot/results'
 import { routeTo } from './bot/route'
 import {
-  KITCHEN_DOOR_PUSH,
   busiestDoor,
   crateTarget,
   fridgeKeys,
   fridgeStand,
   gnomeSpot,
-  holdingAtKitchen,
+  holdingAtBoards,
   isAtMend,
   isBreakOverdue,
   isFridgeInReach,
@@ -96,6 +95,7 @@ import {
   mendTarget,
   offeredWeapon,
   prepPlan,
+  roomTarget,
   wouldTake,
 } from './bot/shopping'
 import { GUN_PLAN, freshState } from './bot/state'
@@ -297,8 +297,8 @@ export const play: {
           continue
         }
         const target =
-          plan === 'Kitchen'
-            ? KITCHEN_DOOR_PUSH
+          plan === 'Room'
+            ? (roomTarget(model) ?? ROOM_CENTER)
             : plan === 'Crate'
               ? (crateTarget(model) ?? ROOM_CENTER)
               : plan === 'Mend'
@@ -371,7 +371,7 @@ export const play: {
               : direction
           model = pressKeys(
             model,
-            holdingAtKitchen(model, desiredKeys(sidestep)),
+            holdingAtBoards(model, desiredKeys(sidestep)),
           )
         }
       } else {
@@ -380,7 +380,7 @@ export const play: {
             state,
             pressKeys(
               model,
-              holdingAtKitchen(model, desiredKeys(kite(state, model))),
+              holdingAtBoards(model, desiredKeys(kite(state, model))),
             ),
           )
         }

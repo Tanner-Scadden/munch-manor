@@ -21,17 +21,30 @@ import {
   type Room,
   levelFor,
   levelOf,
+  maybeExit,
   tilesWithSymbol,
 } from '../../world/level/arena'
 import {
+  CELLAR_ROOM_ID,
   DINING_ROOM_ID,
+  LIBRARY_ROOM_ID,
   type LevelSpec,
   MANOR_SPEC,
   PARLOUR_ROOM_ID,
+  SECRET_EXIT,
 } from '../../world/level/plan'
+import { secretShelfOf } from '../../world/library/secretShelf'
 import type { ExitId } from '../../world/schema/entitySchema'
 import type { World } from '../../world/schema/world'
 import type { Drawable } from '../depth'
+import {
+  CELLAR_BULB_SHAPES,
+  cellarFloorShapes,
+  cellarWallShapes,
+  coalHeapShapes,
+  looseStoneShapes,
+  oddBottleShapes,
+} from './cellarArt'
 import {
   CHANDELIER_SPRITES,
   type ChandelierState,
@@ -52,6 +65,14 @@ import {
   kitchenWallShapes,
   openedExitShapes,
 } from './kitchenView'
+import {
+  SHELF_SHAPES,
+  ladderShapes,
+  libraryFloorShadeShapes,
+  libraryRugShapes,
+  libraryWallDecorShapes,
+  libraryWallShapes,
+} from './libraryArt'
 import { allCoverShapes } from './roomCover'
 import {
   type Floor,
@@ -128,13 +149,14 @@ const floorDetailShapes = (level: Level): ReadonlyArray<Canvas.Shape> => [
     : []),
 ]
 
-// DINING ROOM
+// ROOM BLOCKS
 
-// NOTE: the dining room's block of the map, where its hand-placed art goes.
-const diningBoxOf = (level: Level): Option.Option<Box> =>
+// NOTE: a room's block of the map, where its hand-placed art goes, so the
+// art moves with the room wherever the plan puts it.
+const roomBoxOf = (level: Level, roomId: string): Option.Option<Box> =>
   pipe(
     level.rooms,
-    Array.findFirst(({ id }) => id === DINING_ROOM_ID),
+    Array.findFirst(({ id }) => id === roomId),
     Option.map(({ box }) => ({
       x: box.left,
       y: box.top,
@@ -143,11 +165,24 @@ const diningBoxOf = (level: Level): Option.Option<Box> =>
     })),
   )
 
+const inRoom = (
+  level: Level,
+  roomId: string,
+  draw: (room: Box) => ReadonlyArray<Canvas.Shape>,
+): ReadonlyArray<Canvas.Shape> =>
+  Option.match(roomBoxOf(level, roomId), { onNone: () => [], onSome: draw })
+
+const floorOf = (room: Box): Floor => ({
+  ...room,
+  tileCount: (room.width * room.height) / (TILE_SIZE * TILE_SIZE),
+})
+
+// DINING ROOM
+
 const inDining = (
   level: Level,
   draw: (room: Box) => ReadonlyArray<Canvas.Shape>,
-): ReadonlyArray<Canvas.Shape> =>
-  Option.match(diningBoxOf(level), { onNone: () => [], onSome: draw })
+): ReadonlyArray<Canvas.Shape> => inRoom(level, DINING_ROOM_ID, draw)
 
 const diningFloorArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
   inDining(level, room => [
@@ -198,9 +233,80 @@ const onFloor = (
 const cobwebShapes = (level: Floor): ReadonlyArray<Canvas.Shape> =>
   roomCobwebs({ x: 0, y: 0, width: level.width, height: level.height })
 
+// LIBRARY AND CELLAR
+
+// NOTE: the library's floor, the parlour's planks under a dusk of shade,
+// and its rug. A room's floor is drawn before the dining room's, so the
+// planks' shake margin past the library's west edge is painted over.
+const libraryFloorArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+  inRoom(level, LIBRARY_ROOM_ID, room => [
+    ...onFloor(floorOf(room), boardShapes(floorOf(room))),
+    ...libraryFloorShadeShapes(room),
+    ...libraryRugShapes(room),
+  ])
+
+const cellarFloorArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+  inRoom(level, CELLAR_ROOM_ID, room => [
+    ...cellarFloorShapes(room),
+    ...coalHeapShapes(room),
+    ...looseStoneShapes(room),
+  ])
+
+const slotWallArt = (level: Level): ReadonlyArray<Canvas.Shape> => [
+  ...inRoom(level, LIBRARY_ROOM_ID, room => [
+    ...libraryWallShapes(level, room),
+    ...libraryWallDecorShapes(room),
+  ]),
+  ...inRoom(level, CELLAR_ROOM_ID, room => cellarWallShapes(level, room)),
+]
+
+// NOTE: the bare bulb hangs over the cellar's middle aisle, where the light
+// mask lights it (src/render/cellarDark.ts).
+export const CELLAR_BULB_OFFSET = { x: 160, y: 52 }
+
+const slotPropArt = (level: Level): ReadonlyArray<Canvas.Shape> => [
+  ...inRoom(level, LIBRARY_ROOM_ID, ladderShapes),
+  ...inRoom(level, CELLAR_ROOM_ID, room => [
+    ...oddBottleShapes(room),
+    placeAt(
+      room.x + CELLAR_BULB_OFFSET.x,
+      room.y + CELLAR_BULB_OFFSET.y,
+      CELLAR_BULB_SHAPES,
+    ),
+  ]),
+]
+
+const slotCobwebs = (level: Level): ReadonlyArray<Canvas.Shape> => [
+  ...inRoom(level, LIBRARY_ROOM_ID, roomCobwebs),
+  ...inRoom(level, CELLAR_ROOM_ID, room => [
+    ...roomCobwebs(room),
+    ...cobweb(room.x + 30, room.y + 31, true, true),
+    ...cobweb(room.x + 290, room.y + 61, false, true),
+  ]),
+]
+
+// NOTE: the secret shelf in the library's wall, shut with its red book
+// sticking out, or swung open across the floor.
+const secretShelfArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
+  Option.match(secretShelfOf(level), {
+    onNone: () => [],
+    onSome: ({ tile, side }) => [
+      placeAt(
+        tile.column * TILE_SIZE,
+        tile.row * TILE_SIZE,
+        SHELF_SHAPES[side][
+          Array.contains(level.openExits, SECRET_EXIT) ? 'Open' : 'Shut'
+        ],
+      ),
+    ],
+  })
+
 const openedExitArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
   Array.flatMap(
-    Array.filter(level.exits, ({ isOpen }) => isOpen),
+    Array.filter(
+      level.exits,
+      ({ isOpen, opener }) => isOpen && opener === 'Boards',
+    ),
     (exit: Exit) =>
       Array.isReadonlyArrayNonEmpty(exit.tiles)
         ? openedExitShapes(boundingBox(exit.tiles))
@@ -215,24 +321,30 @@ const roomArtOf = (level: Level): ReadonlyArray<Canvas.Shape> => {
   const floor = parlourFloorOf(level)
   return [
     ...onFloor(floor, boardShapes(floor)),
+    ...libraryFloorArt(level),
+    ...cellarFloorArt(level),
     ...diningFloorArt(level),
     ...kitchenFloorShapes(level),
     ...floorDetailShapes(level),
     ...wallShadowShapes(level),
     ...wallShapes(level),
     ...diningWallArt(level),
+    ...slotWallArt(level),
     ...kitchenWallShapes(level),
     ...inParlour(level, PARLOUR_WALL_DECOR),
     ...sconceShapes(level),
     ...closedExitShapes(level),
     ...openedExitArt(level),
     ...doorwayShapes(level),
+    ...secretShelfArt(level),
     ...frontDoorArt(level),
     ...allCoverShapes(level),
     ...escapeCoverShapes(level, ESCAPE_COVER_SYMBOLS),
     ...inDining(level, umbrellaStandShapes),
+    ...slotPropArt(level),
     ...onFloor(floor, cobwebShapes(floor)),
     ...inDining(level, roomCobwebs),
+    ...slotCobwebs(level),
   ]
 }
 
@@ -315,13 +427,30 @@ export const roomShapes = (level: Level): ReadonlyArray<Canvas.Shape> => {
 
 const NO_EXITS: ReadonlyArray<ReadonlyArray<ExitId>> = [[]]
 
+// NOTE: only the sets a run can reach: an exit that requires another near
+// the room too (the secret shelf and the east boards, both by the dining
+// room) is open only with it.
 const subsetsOf = (
+  level: Level,
   exits: ReadonlyArray<ExitId>,
 ): ReadonlyArray<ReadonlyArray<ExitId>> =>
-  Array.reduce(exits, NO_EXITS, (subsets, exit) => [
-    ...subsets,
-    ...Array.map(subsets, subset => Array.append(subset, exit)),
-  ])
+  Array.filter(
+    Array.reduce(exits, NO_EXITS, (subsets, exit) => [
+      ...subsets,
+      ...Array.map(subsets, subset => Array.append(subset, exit)),
+    ]),
+    subset =>
+      Array.every(subset, id =>
+        Option.exists(maybeExit(level, id), ({ requires }) =>
+          Array.every(
+            requires,
+            required =>
+              !Array.contains(exits, required) ||
+              Array.contains(subset, required),
+          ),
+        ),
+      ),
+  )
 
 // NOTE: every room image a level spec can show: each room with each set of
 // its own nearby exits open, for the sprite atlas.
@@ -330,7 +459,7 @@ export const everyRoomImage = (
 ): ReadonlyArray<Canvas.Shape> => {
   const level = levelFor(spec)
   return Array.flatMap(level.rooms, room =>
-    Array.flatMap(subsetsOf(exitIdsNear(level, room)), openExits =>
+    Array.flatMap(subsetsOf(level, exitIdsNear(level, room)), openExits =>
       roomImage(spec, room, openExits),
     ),
   )

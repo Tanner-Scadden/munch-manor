@@ -56,7 +56,7 @@ const findShapes = (
 // NOTE: a crate sorts with what stands around it, by the floor it sits on.
 export const crateDrawables = (model: Model): ReadonlyArray<Drawable> =>
   Array.map(crateRoomsOf(model), (room): Drawable => {
-    const spot = crateSpotOf(room)
+    const spot = crateSpotOf(levelOf(model), room)
     const maybeCrate = crateOf(model, room)
     const isOpen = areCratesOpen(model) && Option.isSome(maybeCrate)
     return {

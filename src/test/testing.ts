@@ -875,6 +875,10 @@ export const BELOW_KITCHEN_DOOR = { x: 70, y: 26 }
 // dining room's table, where every run starts.
 export const START_SPOT: Vector = START_LEVEL.start
 
+// NOTE: the cellar's middle lane by the barrels, once the library and the
+// cellar are open.
+export const CELLAR_SPOT: Vector = { x: 760, y: 125 }
+
 // NOTE: just right of the player on the start spot, where a shot leaves
 // the gun.
 export const MUZZLE_X = START_SPOT.x + 10

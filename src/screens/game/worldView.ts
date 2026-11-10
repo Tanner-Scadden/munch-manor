@@ -29,6 +29,7 @@ import {
 } from '../../features/rattles/rattlesSpot'
 import { bossGroundShapes, bossOverheadShapes } from '../../render/bossView'
 import { type Camera, sceneOffset } from '../../render/camera'
+import { cellarDarkOf } from '../../render/cellarDark'
 import { type Drawable, depthSortedShapes } from '../../render/depth'
 import {
   airborneParticleShapes,
@@ -301,13 +302,26 @@ const playWorldShapes = (
   camera: Camera,
 ): ReadonlyArray<Canvas.Shape> => {
   const look = rattlesLook(model)
-  const zombies = shownZombies(model, camera)
+  const onCamera = shownZombies(model, camera)
   const mates = mateModelsOf(model)
-  return [
-    ...groundShapes(model, zombies, mates),
-    ...depthSortedShapes(standingDrawables(model, look, zombies, mates)),
-    ...overheadShapes(model, camera, zombies, mates),
-  ]
+  // NOTE: in the cellar's dark a zombie is only its eyes, over the mask.
+  return Option.match(cellarDarkOf(model, camera), {
+    onNone: () => [
+      ...groundShapes(model, onCamera, mates),
+      ...depthSortedShapes(standingDrawables(model, look, onCamera, mates)),
+      ...overheadShapes(model, camera, onCamera, mates),
+    ],
+    onSome: dark => {
+      const zombies = Array.filter(onCamera, zombie => !dark.isHidden(zombie))
+      return [
+        ...groundShapes(model, zombies, mates),
+        ...depthSortedShapes(standingDrawables(model, look, zombies, mates)),
+        ...dark.maskShapes,
+        ...dark.eyesShapes(onCamera),
+        ...overheadShapes(model, camera, zombies, mates),
+      ]
+    },
+  })
 }
 
 const worldShapes = (

@@ -26,6 +26,7 @@ import {
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import { crateSpotOf } from '../../world/gear/crates'
+import { START_LEVEL } from '../../world/level/arena'
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { pause } from '../../world/waves/waves'
 import { Message } from '../message'
@@ -181,7 +182,7 @@ describe('A break', () => {
     'finds a Plank Pile in the crate, and the PLACE button explains it needs a doorway',
     () => {
       const placeButton = Scene.role('button', { name: 'Place a Plank Pile' })
-      const crate = crateSpotOf('Dining')
+      const crate = crateSpotOf(START_LEVEL, 'Dining')
       return Scene.scene(
         APPLICATION,
         Scene.given(

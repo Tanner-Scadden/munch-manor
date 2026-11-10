@@ -634,7 +634,7 @@ export const atValve: {
 
 // DISPLAY CASES
 
-const firstCaseBox = caseBoxOf({
+const firstCaseBox = caseBoxOf(START_LEVEL, {
   id: 0,
   spot: 0,
   prize: 'Shotgun',

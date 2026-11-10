@@ -43,6 +43,10 @@ const DOOR_PAIRS: Array.NonEmptyReadonlyArray<
   ['Window', 'North'],
   ['WestTop', 'East'],
   ['WestBottom', 'North'],
+  ['EastTop', 'South'],
+  ['EastBottom', 'West'],
+  ['FarTop', 'South'],
+  ['FarBottom', 'West'],
 ]
 
 const isPairWithin =

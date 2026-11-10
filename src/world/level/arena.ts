@@ -9,11 +9,13 @@ import {
 import type { DoorId, ExitId, LevelState, Vector } from '../schema/entitySchema'
 import { addVectors, clamp, scaleVector } from '../step/geometry'
 import {
+  type ExitOpener,
   LEVEL_SPECS,
   type LevelSpec,
   MANOR_SPEC,
   PARLOUR_SPEC,
   type RoomSpec,
+  SLOT_DOOR_SYMBOLS,
   middleOf,
   widthOf,
 } from './plan'
@@ -40,6 +42,11 @@ export type CoverKind =
   | 'PartyTable'
   | 'Hutch'
   | 'Candelabra'
+  | 'BookStack'
+  | 'Desk'
+  | 'Globe'
+  | 'WineRack'
+  | 'Barrels'
 
 export const WALL_SYMBOL = '#'
 // NOTE: Rattles' spot in the start room (docs/ESCAPE_PLAN.md, layer 7): his
@@ -69,6 +76,11 @@ export const COVER_SYMBOLS: Readonly<Record<string, CoverKind>> = {
   '=': 'PartyTable',
   H: 'Hutch',
   i: 'Candelabra',
+  b: 'BookStack',
+  d: 'Desk',
+  g: 'Globe',
+  ']': 'WineRack',
+  o: 'Barrels',
 }
 
 export const DOOR_SYMBOLS: Readonly<Record<DoorId, string>> = {
@@ -78,8 +90,7 @@ export const DOOR_SYMBOLS: Readonly<Record<DoorId, string>> = {
   South: 'S',
   Back: 'D',
   Window: 'Y',
-  WestTop: 'n',
-  WestBottom: 's',
+  ...SLOT_DOOR_SYMBOLS,
   Front: 'M',
 }
 
@@ -92,14 +103,18 @@ export const DOOR_OUTWARD: Readonly<Record<DoorId, Vector>> = {
   Window: { x: -1, y: 0 },
   WestTop: { x: 0, y: -1 },
   WestBottom: { x: 0, y: 1 },
+  EastTop: { x: 0, y: -1 },
+  EastBottom: { x: 0, y: 1 },
+  FarTop: { x: 0, y: -1 },
+  FarBottom: { x: 0, y: 1 },
   Front: { x: 0, y: 1 },
 }
 
 // NOTE: every door zombies may come through. A level's own spawn doors are
 // its `doorIds`, the ones on its map that no closed exit still holds shut.
 // The start room's four come first, so a level with every exit shut lists
-// them in the same order it always did. The west slot's two (`n` and `s` on
-// a slot room's map) come last. The front door is not here: it is the way
+// them in the same order it always did. The slots' two each (`n` and `s` on
+// a slot room's map) come last, west, east, then far. The front door is not here: it is the way
 // out of the house, and no zombie ever spawns at it.
 export const DOOR_IDS: ReadonlyArray<DoorId> = [
   'North',
@@ -110,6 +125,10 @@ export const DOOR_IDS: ReadonlyArray<DoorId> = [
   'Window',
   'WestTop',
   'WestBottom',
+  'EastTop',
+  'EastBottom',
+  'FarTop',
+  'FarBottom',
 ]
 
 export const byDoor = <A>(
@@ -123,6 +142,10 @@ export const byDoor = <A>(
   Window: make('Window'),
   WestTop: make('WestTop'),
   WestBottom: make('WestBottom'),
+  EastTop: make('EastTop'),
+  EastBottom: make('EastBottom'),
+  FarTop: make('FarTop'),
+  FarBottom: make('FarBottom'),
   Front: make('Front'),
 })
 
@@ -336,6 +359,8 @@ export type Exit = Readonly<{
   id: ExitId
   symbol: string
   doors: ReadonlyArray<DoorId>
+  opener: ExitOpener
+  requires: ReadonlyArray<ExitId>
   tiles: ReadonlyArray<Tile>
   isOpen: boolean
 }>

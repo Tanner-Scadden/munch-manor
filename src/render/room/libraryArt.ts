@@ -1,4 +1,4 @@
-import { Array, Result } from 'effect'
+import { Array, Function, Result } from 'effect'
 import type { Canvas } from 'foldkit'
 
 import { type Palette, bakeShapes } from '../../art/sprite'
@@ -27,7 +27,7 @@ import {
   pick,
   roll,
 } from './roomPalette'
-import { type Span, northFaceSpans } from './roomWalls'
+import { type Span, spansWithin } from './roomWalls'
 
 // NOTE: the library: a dark plank floor, green paper, stacks of shelves in
 // aisles, a reading desk with its lamps and chairs, a globe, a rolling
@@ -125,9 +125,14 @@ const paperShapes = ({ x, y, width }: Span): ReadonlyArray<Canvas.Shape> => {
   ]
 }
 
-// NOTE: green paper with a fine stripe over the parlour's wainscot.
-export const libraryWallShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(northFaceSpans(level), paperShapes)
+// NOTE: green paper with a fine stripe over the parlour's wainscot, on the
+// north wall faces in the library's own block.
+export const libraryWallShapes: {
+  (room: Box): (level: Level) => ReadonlyArray<Canvas.Shape>
+  (level: Level, room: Box): ReadonlyArray<Canvas.Shape>
+} = Function.dual(2, (level: Level, room: Box): ReadonlyArray<Canvas.Shape> =>
+  Array.flatMap(spansWithin(level, room), paperShapes),
+)
 
 const CLOCK_PIXELS: ReadonlyArray<string> = [
   '..WWWW..',

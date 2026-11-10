@@ -111,6 +111,10 @@ import {
 // the level's drops (`dropped`, the dining room's chandelier lying in the
 // table's gap), a new event, ChandelierFell, and a trap crate's room may
 // be the Dining room.
+// The library and the cellar join the house: door ids for the east and far
+// slots' doors (EastTop, EastBottom, FarTop, FarBottom), a new event,
+// ShelfSwung, the library's secret shelf, and a trap crate's room may be
+// the Library or the Cellar.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

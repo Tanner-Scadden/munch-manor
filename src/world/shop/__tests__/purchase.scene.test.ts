@@ -26,7 +26,7 @@ import { asVeteran } from '../../../test/veteran'
 import { FRIDGE_RULES, fridgeBoxOf } from '../../fridge/leftovers'
 import { levelOf, openExitIn } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
-import { WEST_EXIT } from '../../level/plan'
+import { EAST_EXIT, FAR_EXIT, WEST_EXIT } from '../../level/plan'
 import { modifyFocus } from '../../party/party'
 
 const atBoards = (device: InputDevice, keys: number): Model =>
@@ -175,13 +175,14 @@ describe('taking a fridge prize on touch', () => {
 describe('the price tag in a zoomed phone window', () => {
   const tagsFor = (model: Model) =>
     purchaseOverlayShapes(model, screenCameraOf(model))
-  // NOTE: the parlour's boards are open, so the kitchen's are the only ones
-  // with a tag.
+  // NOTE: the side rooms' boards are open, so the kitchen's are the only
+  // ones with a tag.
   const upright = (y: number): Model =>
     inPortrait(
       modifyFocus(
         modifyFields(atBoards('Touch', 5), {
-          level: level => openExitIn(level, WEST_EXIT),
+          level: level =>
+            Array.reduce([WEST_EXIT, EAST_EXIT, FAR_EXIT], level, openExitIn),
         }),
         { player: player => modifyFields(player, { y: () => y }) },
       ),

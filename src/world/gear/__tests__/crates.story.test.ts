@@ -29,6 +29,7 @@ import {
   tick,
   ticks,
 } from '../../../test/testing'
+import { START_LEVEL } from '../../level/arena'
 import { KITCHEN_EXIT } from '../../level/exits'
 import { focusOf, modifyFocus } from '../../party/party'
 import { crateSpotOf } from '../crates'
@@ -71,7 +72,8 @@ const stockedBreak = (
       modifyFields(current, { wave: () => wave, crates: () => crates }),
   })
 
-const onCrate = (base: Model): Model => standingAt(base, crateSpotOf('Dining'))
+const onCrate = (base: Model): Model =>
+  standingAt(base, crateSpotOf(START_LEVEL, 'Dining'))
 
 const stocksOf = (current: Model): ReadonlyArray<CrateStock> =>
   Array.map(current.crates.crates, ({ stock }) => stock)
@@ -96,7 +98,7 @@ describe('trap crates', () => {
             Array.filter(current.frameEvents, GameEvent.guards.CrateTaken),
           ).toEqual([
             GameEvent.CrateTaken({
-              ...crateSpotOf('Dining'),
+              ...crateSpotOf(START_LEVEL, 'Dining'),
               trap: 'Turret',
             }),
           ])
@@ -137,20 +139,17 @@ describe('trap crates', () => {
         APPLICATION,
         Story.given(
           modifyFocus(
-            modifyFields(
-              onCrate(stockedBreak(3, [diningCrate('Barricade')])),
-              {
-                traps: () => [
-                  Trap.Barricade({
-                    id: 1,
-                    door: 'West',
-                    hp: TRAPS.Barricade.hp,
-                    maxHp: TRAPS.Barricade.hp,
-                    hitRemainingMs: 0,
-                  }),
-                ],
-              },
-            ),
+            modifyFields(onCrate(stockedBreak(3, [diningCrate('Barricade')])), {
+              traps: () => [
+                Trap.Barricade({
+                  id: 1,
+                  door: 'West',
+                  hp: TRAPS.Barricade.hp,
+                  maxHp: TRAPS.Barricade.hp,
+                  hitRemainingMs: 0,
+                }),
+              ],
+            }),
             { trapStock: () => ({ Barricade: 1, Turret: 0 }) },
           ),
         ),
@@ -308,7 +307,10 @@ describe('a heart in a crate', () => {
         expect(
           Array.filter(current.frameEvents, GameEvent.guards.PickupGrabbed),
         ).toEqual([
-          GameEvent.PickupGrabbed({ ...crateSpotOf('Dining'), kind: 'Heart' }),
+          GameEvent.PickupGrabbed({
+            ...crateSpotOf(START_LEVEL, 'Dining'),
+            kind: 'Heart',
+          }),
         ])
       }),
     ),

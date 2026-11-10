@@ -353,6 +353,10 @@ export const DoorId = Schema.Literals([
   'Window',
   'WestTop',
   'WestBottom',
+  'EastTop',
+  'EastBottom',
+  'FarTop',
+  'FarBottom',
   'Front',
 ])
 export type DoorId = typeof DoorId.Type
@@ -514,7 +518,13 @@ export type PantryStash = typeof Pantry.Stocked.Type
 // dining room's from the start, each other room's once it is open. Each
 // holds one found trap until someone walks onto it, and a taken crate
 // restocks at the next break.
-export const CrateRoom = Schema.Literals(['Dining', 'Kitchen', 'Parlour'])
+export const CrateRoom = Schema.Literals([
+  'Dining',
+  'Kitchen',
+  'Parlour',
+  'Library',
+  'Cellar',
+])
 export type CrateRoom = typeof CrateRoom.Type
 
 // NOTE: what a crate holds: a trap, a Pickled Heart (only while someone in

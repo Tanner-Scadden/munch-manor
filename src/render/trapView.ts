@@ -56,6 +56,10 @@ const LAYS: Readonly<Record<DoorId, Lay>> = {
   Window: 'Upright',
   WestTop: 'Across',
   WestBottom: 'Across',
+  EastTop: 'Across',
+  EastBottom: 'Across',
+  FarTop: 'Across',
+  FarBottom: 'Across',
   Front: 'Across',
 }
 

@@ -106,7 +106,7 @@ export const endQuest = (model: Model): Model =>
 export const maybeQuestMark = (model: Model): Option.Option<Vector> =>
   Option.flatMap(questStepOf(model), step =>
     step === 'Grab'
-      ? Option.some(crateSpotOf('Dining'))
+      ? Option.some(crateSpotOf(levelOf(model), 'Dining'))
       : maybeQuestDoor(model),
   )
 

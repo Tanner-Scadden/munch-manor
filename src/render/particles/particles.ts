@@ -254,6 +254,7 @@ const eventParticles = (
     PurchaseRefused: () => noParticles(state),
     ExitOpened: ({ x, y }) => smashParticles(state, { x, y }),
     ChandelierFell: ({ x, y }) => smashParticles(state, { x, y }),
+    ShelfSwung: ({ x, y }) => smashParticles(state, { x, y }),
     FridgeOpened: ({ x, y }) =>
       generateMany(state, FRIDGE_FOG, fogPuff({ x, y: y + 14 })),
     FridgeSlammed: ({ x, y }) => dustRing({ x, y: y + 16 }, SLAM_DUST)(state),

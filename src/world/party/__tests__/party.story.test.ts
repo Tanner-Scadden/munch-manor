@@ -46,7 +46,7 @@ import { crateSpotOf } from '../../gear/crates'
 import { TRAPS, stockTrap } from '../../gear/traps'
 import { WEAPONS } from '../../gear/weapons'
 import { KEY_RULES } from '../../keys/keys'
-import { MANOR, levelOf } from '../../level/arena'
+import { MANOR, START_LEVEL, levelOf } from '../../level/arena'
 import { EXIT_RULES, KITCHEN_EXIT } from '../../level/exits'
 import { flowFieldsToward } from '../../level/pathing'
 import { type World, withWorld } from '../../schema/world'
@@ -481,7 +481,7 @@ describe('traps per player', () => {
           ],
         }),
     })
-  const crate = crateSpotOf('Dining')
+  const crate = crateSpotOf(START_LEVEL, 'Dining')
 
   test('a player at their limit leaves the crate to a teammate who can carry it', () => {
     const bothOnCrate = pipeline(

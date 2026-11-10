@@ -180,6 +180,7 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     PurchaseRefused: () => Option.some<SoundEffect>('Denied'),
     ExitOpened: () => Option.some<SoundEffect>('Crash'),
     ChandelierFell: () => Option.some<SoundEffect>('Crash'),
+    ShelfSwung: () => Option.some<SoundEffect>('Crash'),
     FridgeOpened: () => Option.some<SoundEffect>('FridgeSpin'),
     FridgeSlammed: () => Option.some<SoundEffect>('Rumble'),
     PrizeTaken: () => Option.some<SoundEffect>('Swap'),

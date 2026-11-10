@@ -614,11 +614,16 @@ const COVER_DRAWINGS: Readonly<
   Pantry: pantryShapes,
   Sacks: sacksShapes,
   Fridge: fridgeShapes,
-  // NOTE: the dining room's cover is drawn by src/render/room/escapeCover.ts,
+  // NOTE: the escape rooms' cover is drawn by src/render/room/escapeCover.ts,
   // nearest last, after the rest (room.ts), so here it draws nothing.
   PartyTable: () => [],
   Hutch: () => [],
   Candelabra: () => [],
+  BookStack: () => [],
+  Desk: () => [],
+  Globe: () => [],
+  WineRack: () => [],
+  Barrels: () => [],
 }
 
 // NOTE: every block of a cover symbol on the map, each the box from its top
