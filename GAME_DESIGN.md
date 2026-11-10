@@ -60,6 +60,24 @@ Decided with the owner on 2026-10-29. This replaces the first playable's one-roo
   - **Teammates are the exception.** Decided on 2026-10-29 with co-op: an off-screen teammate shows as a small avatar at the screen edge. Zombies and doors still get nothing.
 - **Still a sketch.** Rooms with one signature twist each: library (bookshelf passages, a rare-gun stash), ballroom (open floor for hordes, a chandelier to shoot down), cellar (dark, lit only near the player), a graveyard outside (floor spawns, Uncle Chunk's arena), attic (one entrance, a risky stash). A goal beyond surviving, such as restoring the power or finding the keys to Uncle Chunk's cellar. Interactive pieces such as a fireplace trap or a dumbwaiter. The mystery box is named: **Mystery Leftovers**, a grimy fridge in the kitchen; pay in-game money, open it, and grab whatever gun is growing inside (decided with the owner on 2026-10-30). Its prizes, decided the same day, are fridge-only weapons that Rattles never sells: the **Pressure Cooker** (hold to build pressure, release to launch a lid that explodes; more charge, bigger blast; holding past full pops it in your hands; 4 lids a load, any charge costs one), the **Clang Pan** (melee with huge knockback that dazes small zombies and home-runs thrown ones; no ammo, a dent meter slows it until Rattles bangs it flat for free each break), and **Brain Freeze** (freezes small zombies so any hit shatters them; charges only, no refills). Once a player has one, Rattles sells its upgrades on the shared tier ladder and its ammo (a Lid Stack for the Cooker). Each pull costs about $75 of in-game money, works through the same hold-to-buy prompt as the doors, and draws from its own seeded stream so it never changes which zombies come. Built on 2026-10-30: see "Mystery Leftovers" below. The layout stays hand-made, while secrets and loot spots shift with the seed.
 
+### Escape the manor
+
+Proposed by the owner on 2026-11-09, being brainstormed, nothing here decided. The story, the games it borrows from, and the open questions are in [`LORE.md`](./LORE.md); this section holds what it would change in the game.
+
+- **The goal.** A campaign run becomes an escape: you start boarded into the parlour, find what lets you leave, and get out the front door. The waves stay as the pressure, so a player who ignores the hunt still plays the wave game. It answers "a goal beyond surviving" in the sketch above.
+- **The premise (proposed).** A dinner party at Munch Manor where you are the main course. Uncle Chunk is the host, the zombies are the guests and the family, and Rattles ran the coat check and never left.
+- **Three things to leave a party (proposed).** Your coat check ticket, your car keys, and a goodbye to the host (Uncle Chunk at the front door, as a hold-out finale while the door unlocks). Three outlines on the HUD fill in, with no words.
+- **What is random.** Where each piece hides: one of a few hand-picked spots per run, drawn from its own salted seeded stream, as the fridge and the pantry are, so the waves and drops never shift. This fits "Not now" as written ("only secrets and loot spots may shift with the seed").
+- **Rooms that roll (would change "Not now").** The owner wants rooms to vary between runs too. Proposed as a middle way that keeps every room hand-made: the room behind a boarded exit is drawn from a small pool of hand-made rooms. Needs a second room, a pool, and the owner's sign-off to move "Procedurally generated manors" out of "Not now".
+- **Waves as courses (proposed).** Appetizers, Soup, Salad, Main Course, Dessert on the wave banners, Uncle Chunk as Dessert. Words only, no tuning change.
+- **Leaving early (proposed).** A back way out without every piece, for less pay; the full escape pays most.
+- **Balance.** The balance bot and model assume a fixed ten waves and one layout. An escape run's length and rolled rooms mean both learn the goal before any of it ships beyond words.
+- **The order.** Words first (courses, Rattles' lines, the invitation), then the pieces in fixed spots, then rolled spots, then rolled rooms, then early exits. See "What would change in the game" in `LORE.md`.
+
+### The art studio
+
+Asked for by the owner on 2026-11-09, ahead of the escape work, since the art is about to grow a lot (new rooms, the escape pieces, the party guests). A dev-only page at `/tools/studio/` under `bun dev` that draws the game's own sprites and rooms from the same modules the game uses, so an edit to a pixel map shows in the page within a second through Vite's reload. Pick something, write a note, and SEND drops it in `tools/studio/notes.jsonl` (not committed) for the agent to read and act on. Never in the build. See `tools/studio/README.md`.
+
 ### The first playable
 
 Decided on 2026-10-27: a fun one-room arena a stranger can open from a link. It is built and live. Where a line below was later changed, the change is dated.
@@ -804,10 +822,12 @@ A kind is a row in an exhaustive table (stats, a behavior tag, how it dies, its 
 The first playable (controls, feel, the room and the loop, the shop, the horde, traps, onboarding, and a public link) is built and live, with upgrade tiers, endless, music, power-ups, the boss, character looks, difficulty levels, the home menu, portrait play, the on-device save, sync, analytics, and the tip jar on top. Next, roughly in order:
 
 1. **The kitchen.** The first room bought open, and the campaign's new wave count. In progress.
-2. **More rooms** from the sketch in "Exploring the manor", each with one twist and its own Munchopedia page.
-3. **Co-op.** The phases in `MULTIPLAYER.md`, after its remaining defaults are confirmed.
-4. **Rank and Bones**, then cosmetics and the supporter pack, hats first (see "Rank and Bones" and "Making money").
-5. **Content depth.** More guns, the Spitter, and more traps.
+2. **The art studio** (owner, 2026-11-09). A local page to see and iterate on characters and rooms before the art grows. See "The art studio".
+3. **Escape the manor**, in the order under "Escape the manor": the story's words first, then the pieces, then rolled rooms. Brainstorming in `LORE.md`.
+4. **More rooms** from the sketch in "Exploring the manor", each with one twist and its own Munchopedia page, as the escape's rooms.
+5. **Co-op.** The phases in `MULTIPLAYER.md`, after its remaining defaults are confirmed.
+6. **Rank and Bones**, then cosmetics and the supporter pack, hats first (see "Rank and Bones" and "Making money").
+7. **Content depth.** More guns, the Spitter, and more traps.
 
 ### Risks
 
