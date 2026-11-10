@@ -10,7 +10,7 @@ subtree_prompted: true
 
 ## Project Notes
 
-A pixel-art zombie shooter, live at https://munchmanor.com (the old `workers.dev` address keeps serving the same build: see "Two origins" in `PLATFORM.md`). It runs on desktop and on phones. The vision, the decided choices, and the roadmap are in [`GAME_DESIGN.md`](./GAME_DESIGN.md): read its "Decided" section before changing how the game plays. Co-op is planned in [`MULTIPLAYER.md`](./MULTIPLAYER.md). The story, and the escape the manor direction being brainstormed, are in [`LORE.md`](./LORE.md). The Cloudflare side (hosting, analytics, the on-device SQLite save, and sync) is in [`PLATFORM.md`](./PLATFORM.md).
+A pixel-art zombie shooter, live at https://munchmanor.com (the old `workers.dev` address keeps serving the same build: see "Two origins" in `PLATFORM.md`). It runs on desktop and on phones. The vision, the decided choices, and the roadmap are in [`GAME_DESIGN.md`](./GAME_DESIGN.md): read its "Decided" section before changing how the game plays. Co-op is planned in [`MULTIPLAYER.md`](./MULTIPLAYER.md). The story, and the escape the manor direction being brainstormed, are in [`LORE.md`](./LORE.md). The Cloudflare side (hosting, analytics, the on-device SQLite save, and sync) is in [`PLATFORM.md`](./PLATFORM.md). Getting into the App Store and Google Play is planned in [`MOBILE.md`](./MOBILE.md).
 
 ### Commands
 
