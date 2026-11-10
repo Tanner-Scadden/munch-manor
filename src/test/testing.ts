@@ -396,7 +396,7 @@ export const openLobbyInScene = () => [
 // NOTE: START opens the run on its intro; `startRunInScene` goes on past it.
 export const startIntoIntroInScene = () => [
   ...openLobbyInScene(),
-  Scene.click(Scene.role('button', { name: 'Start' })),
+  Scene.click(Scene.role('button', { name: 'Shake on it' })),
 ]
 
 export const startRunInScene = () => [
@@ -767,10 +767,10 @@ export const profileDialog = Scene.role('dialog', { name: 'Profile' })
 
 export const lobbyScreen = Scene.role('region', { name: 'Lobby' })
 
-export const lobbyStartButton = Scene.role('button', { name: 'Start' })
+export const lobbyStartButton = Scene.role('button', { name: 'Shake on it' })
 
 export const lobbyBackButton = Scene.role('button', {
-  name: 'Back to the menu',
+  name: 'Chicken out',
 })
 
 export const lobbyMode = (name: string) => Scene.role('button', { name })

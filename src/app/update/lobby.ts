@@ -98,7 +98,11 @@ const focusHomePlay: UpdateStep = stepModel => ({
   commands: [FocusHomeButton({ button: 'Play' })],
 })
 
-export const leaveLobby = Update.combineSteps([tapSound, focusHomePlay])
+// NOTE: CHICKEN OUT clucks on the way home.
+export const leaveLobby = Update.combineSteps([
+  playSounds([uiCue('Cluck')]),
+  focusHomePlay,
+])
 
 // PICKS
 

@@ -163,8 +163,11 @@ export const ResyncRoom = CoopBlock.makeCommand('ResyncRoom', {
   },
 })
 
-// NOTE: the phone's own share sheet where there is one, else the link on the
-// clipboard. Either way the button shows what happened with an icon.
+// NOTE: the room link arrives as a dare (LORE.md, "PLAY is the dare"): the
+// phone's own share sheet where there is one, else the line and the link on
+// the clipboard. Either way the button shows what happened with an icon.
+const DARE_LINE = 'I dare you.'
+
 export const ShareRoomLink = CoopBlock.makeCommand('ShareRoomLink', {
   args: { code: Schema.String },
   messages: [Message.CompletedShareRoomLink],
@@ -174,13 +177,14 @@ export const ShareRoomLink = CoopBlock.makeCommand('ShareRoomLink', {
         const url = linkOf(code)
         if (typeof navigator.share === 'function') {
           yield* Effect.tryPromise({
-            try: () => navigator.share({ title: 'Munch Manor', url }),
+            try: () =>
+              navigator.share({ title: 'Munch Manor', text: DARE_LINE, url }),
             catch: toBrowserError,
           })
           return Message.CompletedShareRoomLink({ share: 'Shared' })
         }
         yield* Effect.tryPromise({
-          try: () => navigator.clipboard.writeText(url),
+          try: () => navigator.clipboard.writeText(`${DARE_LINE} ${url}`),
           catch: toBrowserError,
         })
         return Message.CompletedShareRoomLink({ share: 'Copied' })

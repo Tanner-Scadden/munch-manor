@@ -109,8 +109,9 @@ const homeButtonAttributes = (
 
 // PLAY
 
-// NOTE: show, don't explain. PLAY is the big play icon alone, and the lobby it
-// opens (src/features/lobby/lobbyView.ts) says which run it starts.
+// NOTE: show, don't explain. PLAY is the dare your friends hand you, a
+// folded napkin card with I DARE YOU scrawled over the play mark, and the
+// lobby it opens (src/features/lobby/view.ts) is the card you fill in.
 const playButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
   h.button(
     [
@@ -123,7 +124,13 @@ const playButtonView = (model: Model, h: ApplicationViewBuilder): Html =>
     [
       h.span(
         [h.Class('home-play-face')],
-        [iconView('home-play-icon', PLAY_ICON, h)],
+        [
+          h.span(
+            [h.Class('home-play-dare'), h.AriaHidden(true)],
+            ['I DARE YOU'],
+          ),
+          iconView('home-play-icon', PLAY_ICON, h),
+        ],
       ),
       ...keyBadgeView(model, 'Play', h),
     ],

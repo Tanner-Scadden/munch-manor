@@ -75,14 +75,14 @@ describe('Mode choice', () => {
   )
 
   it.effect(
-    'touch shows the buttons without key badges, and PLAY as its icon alone',
+    'touch shows the buttons without key badges, and PLAY as the dare card',
     () =>
       Scene.scene(
         APPLICATION,
         Scene.given(modifyFields(initialModel, { lastDevice: () => 'Touch' })),
         measureSurface,
         Scene.expect(playButton).toExist(),
-        Scene.expect(playButton).toHaveText(''),
+        Scene.expect(playButton).toHaveText('I DARE YOU'),
         Scene.expect(Scene.selector('.home-play-icon')).toExist(),
         Scene.expect(Scene.selector('.home-key')).toBeAbsent(),
       ),

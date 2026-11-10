@@ -1129,4 +1129,26 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
     ],
     noises: [],
   },
+  // NOTE: CHICKEN OUT in the lobby: three quick bawks, each a squawk that
+  // jumps up and falls, with a scratchy throat under it.
+  Cluck: {
+    variationCents: 60,
+    tones: Array.map([0, 0.11, 0.2], (start, index) => ({
+      wave: 'square' as const,
+      pitch: [
+        at(0, 520 + index * 40),
+        at(0.025, 980 + index * 60),
+        at(0.08, 430),
+      ],
+      envelope: delayedEnvelope(0.12, 0.003, 0.08, start),
+    })),
+    noises: [
+      {
+        filter: 'bandpass',
+        quality: 3,
+        cutoff: [at(0, 1800), at(0.3, 900)],
+        envelope: envelope(0.18, 0.004, 0.3),
+      },
+    ],
+  },
 }

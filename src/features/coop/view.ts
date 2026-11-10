@@ -490,7 +490,9 @@ const shareButtonView = (room: Room, h: CoopViewBuilder): Html =>
       h.Class('coop-share'),
       h.DataAttribute('share', room.share),
       h.AriaLabel(
-        room.share === 'Copied' ? 'Link copied' : 'Share the room link',
+        room.share === 'Copied'
+          ? 'Link copied'
+          : 'I dare you: share the room link',
       ),
       h.OnClick(Message.ClickedShareButton()),
     ],

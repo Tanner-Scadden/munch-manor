@@ -1,10 +1,169 @@
-/* THE SINGLE PLAYER LOBBY
+/* THE SINGLE PLAYER LOBBY: THE DARE CARD
 
-   NOTE: PLAY opens the co-op lobby's cousin, alone. It wears co-op's own
-   layer, seats, picks, and START (src/features/coop/coop.css); only what the lobby
-   adds is here: your seat is wide, with the hero card beside your figure,
-   each empty seat is a + BOT tile to tap, a seated bot shows its figure,
-   name, hero card, and an x, and the map is a card. */
+   NOTE: PLAY opens the co-op lobby's cousin, alone, dressed as the dare
+   card your friends hand you (LORE.md, "PLAY is the dare, the lobby is the
+   dare card"). It wears co-op's own layer, seats, picks, and START
+   (src/features/coop/coop.css); everything here is under `.lobby`, so co-op
+   keeps its look. Your seat is wide, with the hero card beside your figure,
+   each empty seat is a + BOT tile with a tin robot, a seated bot shows its
+   figure, name, hero card, and an x, and the map is a card. Each part is a
+   line of the card, with its word or two in pencil. */
+
+/* THE NAPKIN: cream paper, quilted in a pixel grid, with a pencil margin
+   down the left and a ketchup ring in the corner. Inked parts sit on it. */
+
+.lobby {
+  --dare-paper: #efe4c6;
+  --dare-paper-hi: #f8f0da;
+  --dare-quilt: rgba(150, 118, 70, 0.16);
+  --dare-ink: #2a1d14;
+  --dare-ink-soft: rgba(42, 29, 20, 0.55);
+  --dare-pencil: #3b4a8a;
+  --dare-red: #c8352b;
+  --dare-green: #2f7a1a;
+}
+
+.lobby .dare-card {
+  position: relative;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
+  margin: 6px;
+  border: 3px solid var(--dare-ink);
+  border-radius: 4px;
+  background:
+    radial-gradient(
+      circle at 92% 12%,
+      transparent 26px,
+      rgba(200, 53, 43, 0.22) 27px,
+      rgba(200, 53, 43, 0.22) 31px,
+      transparent 32px
+    ),
+    linear-gradient(
+      90deg,
+      transparent 18px,
+      rgba(200, 53, 43, 0.35) 18px,
+      rgba(200, 53, 43, 0.35) 20px,
+      transparent 20px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 14px,
+      var(--dare-quilt) 14px 16px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 14px,
+      var(--dare-quilt) 14px 16px
+    ),
+    linear-gradient(var(--dare-paper-hi), var(--dare-paper));
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 255, 255, 0.35),
+    0 6px 0 rgba(0, 0, 0, 0.45);
+  color: var(--dare-ink);
+}
+
+/* NOTE: a gold outline is lost on cream, so the card's focus ring is ink. */
+.coop.lobby button:focus-visible {
+  outline-color: var(--dare-red);
+}
+
+/* THE SCRAWL: a line's word or two, in pencil, tucked on the top edge of
+   what it labels. It takes no taps and no room. */
+
+.dare-scrawl {
+  color: var(--dare-pencil);
+  font: bold round(clamp(9px, 2 * var(--coop-unit), 12px), 1px) / 1
+    var(--menu-font);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.dare-scrawl[data-place='Corner'] {
+  position: absolute;
+  z-index: 1;
+  top: calc(-0.5em - 2px);
+  left: 8px;
+  padding: 0 4px;
+  background: var(--dare-paper-hi);
+  rotate: -2deg;
+}
+
+.dare-scrawl[data-place='Inline'] {
+  align-self: flex-start;
+  margin-bottom: -3px;
+}
+
+/* NOTE: the seats and pick groups are inked boxes on the napkin. */
+
+.lobby .coop-seat,
+.lobby .coop-seat:nth-child(n) {
+  border: 3px solid var(--dare-ink);
+  background:
+    radial-gradient(
+      ellipse at 50% 85%,
+      rgba(42, 29, 20, 0.12),
+      transparent 60%
+    ),
+    rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 0 rgba(42, 29, 20, 0.35);
+}
+
+.lobby .coop-seat[data-state='Empty'] {
+  border-style: dashed;
+  border-color: var(--dare-ink-soft);
+  background: transparent;
+}
+
+.lobby .coop-seat[data-me='Me'] {
+  outline: none;
+}
+
+.lobby .coop-pick-group {
+  border: 2px dashed var(--dare-ink-soft);
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+}
+
+.lobby .coop-mode-pick[data-state='Chosen'] {
+  border-color: var(--dare-ink);
+  background: rgba(42, 29, 20, 0.12);
+}
+
+.lobby .coop-pick-icon,
+.lobby .modifier-icon {
+  filter: grayscale(0.8) brightness(0.55) opacity(0.7);
+}
+
+.lobby .modifier-name {
+  color: var(--dare-ink-soft);
+}
+
+.lobby .modifier-pick[data-state='On'] {
+  border-color: var(--dare-red);
+  background: rgba(200, 53, 43, 0.14);
+}
+
+.lobby .modifier-pick[data-state='On'] .modifier-name {
+  color: var(--dare-red);
+}
+
+.lobby .modifier-bonus {
+  border-color: var(--dare-ink-soft);
+  color: var(--dare-ink-soft);
+}
+
+.lobby .modifier-bonus[data-state='On'] {
+  border-color: var(--dare-ink);
+  background: var(--menu-gold);
+  color: var(--dare-ink);
+}
+
+.lobby .home-key {
+  color: var(--dare-ink);
+  background: var(--dare-paper-hi);
+}
 
 .lobby .lobby-seats {
   grid-template-columns: repeat(5, 1fr);
@@ -45,11 +204,11 @@
 
 /* THE + BOT TILE: an empty seat that looks like the button it is. */
 
-.lobby-seat-empty:has(.lobby-add-bot) {
+.lobby .lobby-seat-empty:has(.lobby-add-bot) {
   padding: 0;
   opacity: 1;
-  border-color: var(--coop-teal);
-  background: rgba(95, 212, 200, 0.12);
+  border-color: var(--dare-ink);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .lobby-add-bot {
@@ -66,22 +225,22 @@
   border: 0;
   border-radius: var(--menu-radius-sm);
   background: transparent;
-  color: var(--coop-teal);
+  color: var(--dare-ink);
   cursor: pointer;
 }
 
 .lobby-add-bot:hover,
 .lobby-add-bot:focus-visible {
-  background: rgba(95, 212, 200, 0.22);
+  background: rgba(42, 29, 20, 0.1);
 }
 
 .lobby-add-bot:active {
-  background: rgba(95, 212, 200, 0.34);
+  background: rgba(42, 29, 20, 0.2);
 }
 
 .lobby-add-bot-icon {
-  width: clamp(34px, 9 * var(--coop-unit), 60px);
-  aspect-ratio: 11 / 9;
+  width: clamp(40px, 10.5 * var(--coop-unit), 70px);
+  aspect-ratio: 16 / 10;
   background: center / contain no-repeat;
   image-rendering: pixelated;
 }
@@ -132,8 +291,8 @@
 
 .lobby-bot-mark {
   flex: none;
-  width: clamp(13px, 3.2 * var(--coop-unit), 18px);
-  aspect-ratio: 11 / 9;
+  width: clamp(16px, 4 * var(--coop-unit), 22px);
+  aspect-ratio: 16 / 10;
   background: center / contain no-repeat;
   image-rendering: pixelated;
 }
@@ -161,15 +320,15 @@
   width: var(--menu-tap);
   height: var(--menu-tap);
   padding: 0;
-  border: 2px solid var(--menu-line-strong);
+  border: 2px solid var(--dare-ink);
   border-radius: var(--menu-radius-sm);
-  background: rgba(20, 15, 24, 0.85);
+  background: var(--dare-paper-hi);
   cursor: pointer;
 }
 
 .lobby-drop-bot:hover,
 .lobby-drop-bot:focus-visible {
-  border-color: var(--menu-red);
+  border-color: var(--dare-red);
 }
 
 .lobby-drop-bot-icon {
@@ -179,7 +338,8 @@
   image-rendering: pixelated;
 }
 
-/* THE HERO CARD: the prop, the name, and each special as a picture. */
+/* THE HERO CARD: coming as. The prop, the name, and each special as a
+   picture, on a scrap of paper pinned to the napkin. */
 
 .lobby-hero {
   display: flex;
@@ -187,15 +347,16 @@
   gap: 6px;
   min-height: var(--menu-tap);
   padding: 3px 8px;
-  border: 2px solid var(--menu-pink);
+  border: 2px solid var(--dare-ink);
   border-radius: var(--menu-radius-sm);
-  background: rgba(40, 18, 40, 0.94);
-  box-shadow: var(--menu-lift);
+  background: var(--dare-paper-hi);
+  box-shadow: 0 3px 0 rgba(42, 29, 20, 0.35);
+  color: var(--dare-ink);
   text-align: left;
 }
 
 .lobby-hero[data-calling='You'] {
-  border-color: var(--menu-line-strong);
+  border-style: dashed;
 }
 
 .lobby-hero-prop {
@@ -250,14 +411,14 @@
 }
 
 .lobby-special[data-sign='Perk'] .lobby-special-sign {
-  color: var(--menu-green);
+  color: var(--dare-green);
 }
 
 .lobby-special[data-sign='Drawback'] .lobby-special-sign {
-  color: var(--menu-red);
+  color: var(--dare-red);
 }
 
-/* THE MAP: a card with its picture and its name. */
+/* THE MAP: which house, a card with its picture and its name. */
 
 .lobby-maps {
   padding: 4px;
@@ -269,9 +430,9 @@
   gap: 8px;
   height: clamp(48px, 9 * var(--coop-unit), 56px);
   padding: 0 12px 0 8px;
-  border: 2px solid var(--menu-lilac);
+  border: 2px solid var(--dare-ink);
   border-radius: var(--menu-radius-sm);
-  background: rgba(185, 140, 255, 0.2);
+  background: rgba(185, 140, 255, 0.25);
 }
 
 .lobby-map-icon {
@@ -289,10 +450,55 @@
   white-space: nowrap;
 }
 
-/* START: PLAY's triangle is taller than READY's check. */
+/* SHAKE ON IT: START, two hands clasped and three words, a little smaller
+   than READY so the words fit a phone. */
 
 .lobby-start .coop-ready-icon {
-  aspect-ratio: 8 / 11;
+  aspect-ratio: 13 / 8;
+}
+
+.lobby-start .coop-ready-label {
+  font-size: round(clamp(18px, 5.5 * var(--coop-unit), 38px), 1px);
+  white-space: nowrap;
+}
+
+/* CHICKEN OUT: BACK, a hen over its words in the card's corner, no wider
+   than the room the seats leave it in landscape (`--menu-tap` and 24 px
+   from the screen's edge, the card's own margin and border included). */
+
+.lobby-chicken {
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: calc(var(--menu-tap) + 8px);
+  min-height: calc(var(--menu-tap) + 12px);
+  padding: 4px 2px;
+  border: 2px solid var(--dare-ink);
+  border-radius: var(--menu-radius-sm);
+  background: var(--dare-paper-hi);
+  box-shadow: 0 3px 0 rgba(42, 29, 20, 0.35);
+  color: var(--dare-red);
+}
+
+.lobby-chicken.coop-back {
+  top: 4px;
+  left: 4px;
+}
+
+.lobby-chicken-icon {
+  width: 28px;
+  aspect-ratio: 1;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+}
+
+.lobby-chicken-label {
+  font: bold 9px / 1 var(--menu-font);
+  letter-spacing: 0.5px;
+  text-align: center;
 }
 
 /* PORTRAIT: your seat takes the whole row, the crew's three sit under it. */
