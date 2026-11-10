@@ -136,6 +136,12 @@ jobs:
           # is the one to want then; otherwise this commit's.
           wanted="$GITHUB_SHA"
           live=$(build_of live)
+          # NOTE: on a pull request the build is stamped with its merge
+          # commit, which GitHub replaces on every push, so a later push's
+          # checkout lacks the live one: fetch it by id to diff against.
+          if [ -n "$live" ] && ! git cat-file -e "$live^{commit}" 2>/dev/null; then
+            git fetch --quiet --no-tags origin "$live" 2>/dev/null || true
+          fi
           if [ -n "$live" ] && [ "$live" != "$GITHUB_SHA" ] && git cat-file -e "$live^{commit}" 2>/dev/null \
             && git diff --name-only "$live" "$GITHUB_SHA" | xargs bun infra/sameSite.ts; then
             wanted="$live"
