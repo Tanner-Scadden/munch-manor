@@ -6,6 +6,7 @@ import {
   AudioState,
   Bot,
   ClocheLift,
+  DareHint,
   DifficultyCard,
   HintBand,
   HomeMenu,
@@ -28,6 +29,7 @@ import {
   freshHomeMenu,
   freshLessons,
   noRankPaid,
+  quietDareHint,
 } from '../domain/clientSchema'
 import * as Coop from '../features/coop/model'
 import { ShareSheet } from '../features/end/share'
@@ -102,8 +104,8 @@ import {
   barePantry,
   calmPacing,
   freshCrates,
-  freshKeys,
   freshDare,
+  freshKeys,
   freshLoot,
   freshStats,
   freshStove,
@@ -137,6 +139,7 @@ export const Model = Schema.Struct({
   breakIdleMs: Schema.Finite,
   trapHint: TrapHint,
   kitchenCall: KitchenCall,
+  dareHint: DareHint,
   firstBreakQuest: Tour,
   kitchenTour: Tour,
   trapNotice: TrapNotice,
@@ -322,6 +325,7 @@ export const initialModel: OwnModel = {
   breakIdleMs: 0,
   trapHint: TrapHint.Unseen(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
+  dareHint: quietDareHint,
   firstBreakQuest: Tour.Waiting(),
   kitchenTour: Tour.Waiting(),
   trapNotice: TrapNotice.Quiet(),
