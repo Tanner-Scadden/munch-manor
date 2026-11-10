@@ -15,6 +15,7 @@ import {
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { FIXED_STEP_MS, PISTOL_MAGAZINE } from '../../../shared/constants'
+import { holdingFirst, holdingSecond, pistolOnly } from '../../../test/arsenals'
 import {
   DISTANT_SPAWN,
   atOpenedCase,
@@ -29,9 +30,6 @@ import {
   SURFACE,
   holdEnter,
   holdFire,
-  holdingFirst,
-  holdingSecond,
-  pistolOnly,
   playedThrough,
   press,
   release,

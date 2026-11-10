@@ -6,6 +6,7 @@ import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Model, type WeaponKind, type Zombie } from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
+import { holdingSecond, maybeSpareGun } from '../../../test/arsenals'
 import {
   atOpenedCase,
   playingModel,
@@ -18,8 +19,6 @@ import {
   countdownTicks,
   holdEnter,
   holdFire,
-  holdingSecond,
-  maybeSpareGun,
   press,
   release,
   releaseFire,

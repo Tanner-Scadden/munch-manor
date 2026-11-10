@@ -7,17 +7,13 @@ import { describe, expect, it, test } from '@effect/vitest'
 
 import { MouseButton, Stick } from '../../input/inputSchema'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../shared/constants'
+import { holdingFirst } from '../../test/arsenals'
 import {
   WAVE_2_BREAK,
   WAVE_2_FIGHT,
   readyModel,
 } from '../../test/model.fixture'
-import {
-  APPLICATION,
-  holdingFirst,
-  throughIntro,
-  tick,
-} from '../../test/testing'
+import { APPLICATION, throughIntro, tick } from '../../test/testing'
 import { modifyFocus } from '../../world/party/party'
 import { Message } from '../message'
 import { Arsenal, type Model, Phase, RunMode } from '../model'

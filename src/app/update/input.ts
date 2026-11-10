@@ -2,6 +2,7 @@ import { Option } from 'effect'
 import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
+import { foldPocketCard } from '../../features/dare/pocketCard'
 import {
   type PointerPress,
   moveMouse,
@@ -66,7 +67,7 @@ const pressedPointer = (model: Model, pointer: PointerPress): UpdateReturn => {
   const pressed = isArriving(model.phase)
     ? skipIntro(started)
     : isRoundActive(model.phase)
-      ? withInput(skipDebutCardWhenUp(started), input =>
+      ? withInput(skipDebutCardWhenUp(foldPocketCard(started)), input =>
           pressPointer(input, started.maybeSurface, press),
         )
       : refreshIntent(skipFromPointer(started))

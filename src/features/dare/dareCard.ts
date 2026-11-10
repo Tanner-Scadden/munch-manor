@@ -12,6 +12,7 @@ import type { HudLayout } from '../../render/hudLayout'
 import { dareCardOf } from '../../world/dare/dare'
 import { Finale } from '../../world/dare/dareSchema'
 import { unlockShareOf } from '../../world/dare/finale'
+import type { Vector } from '../../world/schema/worldSchema'
 
 // The dare card on the HUD (LORE.md, "The dare card in your pocket"): this
 // run's list as a row of small slots, each an empty outline with the
@@ -23,6 +24,27 @@ import { unlockShareOf } from '../../world/dare/finale'
 const DARE_SLOT_GAP = 1
 const DARE_SLOT_STRIDE = DARE_SLOT_SIZE + DARE_SLOT_GAP
 
+const cardLeftOf = (count: number, layout: HudLayout): number =>
+  layout.dareRight - count * DARE_SLOT_STRIDE + DARE_SLOT_GAP
+
+// NOTE: where each slot's thing sits on the HUD, in the card's order, for
+// the dare card in your pocket to fold into (src/features/dare/pocketCardView.ts).
+// A slot's thing sits one pixel inside its outline.
+export const dareSlotSpotsOf: {
+  (layout: HudLayout): (model: Model) => ReadonlyArray<Vector>
+  (model: Model, layout: HudLayout): ReadonlyArray<Vector>
+} = Function.dual(
+  2,
+  (model: Model, layout: HudLayout): ReadonlyArray<Vector> => {
+    const card = dareCardOf(model)
+    const left = cardLeftOf(card.length, layout)
+    return Array.map(card, (_thing, index) => ({
+      x: left + index * DARE_SLOT_STRIDE + 1,
+      y: layout.dareTop + 1,
+    }))
+  },
+)
+
 // NOTE: laid out from the layout's right edge, the hat last. Endless has
 // no list, so no card.
 export const dareCardShapes: {
@@ -32,8 +54,7 @@ export const dareCardShapes: {
   2,
   (model: Model, layout: HudLayout): ReadonlyArray<Canvas.Shape> => {
     const card = dareCardOf(model)
-    const left =
-      layout.dareRight - card.length * DARE_SLOT_STRIDE + DARE_SLOT_GAP
+    const left = cardLeftOf(card.length, layout)
     return [
       ...Array.map(card, ({ kind, isFound }, index) =>
         placeSprite(

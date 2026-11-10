@@ -28,11 +28,7 @@ import {
   pastArrival,
   startRoomWorld,
 } from '../../../world/net/roomWorld'
-import {
-  focusOf,
-  leadSeatOf,
-  maybePlayerAt,
-} from '../../../world/party/party'
+import { focusOf, leadSeatOf, maybePlayerAt } from '../../../world/party/party'
 import { slamAtMs } from '../../../world/run/arrival'
 import {
   type Bullet,
@@ -49,6 +45,7 @@ import { freshRoom } from '../../coop/roomState'
 import { FocusCoopElement } from '../../coop/steps'
 import { CODE, lobbyOf, memberOf, playingSession } from '../../coop/testing'
 import { RememberRoom, SendRoomFrames } from '../../coop/update'
+import { UNFOLD_MS, isPocketCardBlocking } from '../../dare/pocketCard'
 import { maybeIntroFrameOf } from '../../intro/introBeat'
 
 // An online co-op run in the root (src/app/update/coopPlay.ts): the room's World drawn
@@ -179,6 +176,31 @@ describe("an online co-op run's intro", () => {
         Story.model(current => {
           expect(current.phase._tag).toBe('Preparation')
           expect(current.stats.runMs).toBeLessThan(500)
+        }),
+      ),
+  )
+
+  it.effect(
+    "the dare card comes out on the room's slam, and the room never waits for it",
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(inRun(arrivingAt(slamAtMs('Full') + 20))),
+        Story.message(roomFrame(100)),
+        changeModel(current => showing(current, pastArrival(fresh))),
+        Story.message(roomFrame(200)),
+        Story.model(current => {
+          expect(current.phase._tag).toBe('Preparation')
+          expect(current.pocketCard._tag).toBe('Reading')
+          expect(isPocketCardBlocking(current)).toBe(false)
+        }),
+        ...Array.makeBy(UNFOLD_MS / 50, index =>
+          Story.message(roomFrame(250 + index * 50)),
+        ),
+        Story.message(Message.PressedKey({ code: 'Enter' })),
+        Story.model(current => {
+          expect(current.pocketCard._tag).toBe('Folding')
+          expect(queuedOf(current)).toEqual([actionCodeOf(SeatAction.Ready())])
         }),
       ),
   )

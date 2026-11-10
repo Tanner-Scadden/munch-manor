@@ -7,13 +7,9 @@ import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import * as Coop from '../../domain/coopRoom'
 import { PREPARATION_MS } from '../../shared/constants'
+import { holdingSecond } from '../../test/arsenals'
 import { homeAfterRead } from '../../test/model.fixture'
-import {
-  APPLICATION,
-  holdingSecond,
-  measureSurface,
-  nodesOf,
-} from '../../test/testing'
+import { APPLICATION, measureSurface, nodesOf } from '../../test/testing'
 import { modifyFocus } from '../../world/party/party'
 import type { Message } from '../message'
 import { type Model, Phase } from '../model'

@@ -5,6 +5,10 @@ import { modifyFields } from 'foldkit/struct'
 import type { Room as CoopRoom } from '../../domain/coopRoom'
 import { maybeRunRoom, runDifficultyOf } from '../../domain/onlineRun'
 import { raiseCloche } from '../../features/cloche/clocheReveal'
+import {
+  agePocketCard,
+  raisePocketCardFrom,
+} from '../../features/dare/pocketCard'
 import { launchPrize } from '../../features/fridge/fridgeReveal'
 import {
   ageDebutCard,
@@ -313,6 +317,11 @@ const drawTraced = ({
       ),
       taken => stopForHits(taken, frameMs),
     )
+    const cosmetic = advanceCosmetics(
+      isArriving(world.phase) ? applied : tallyFrame(base, applied, frameMs),
+      frameMs,
+      frameMs,
+    )
     const drawn = raiseCloche(
       base,
       launchPrize(
@@ -323,13 +332,7 @@ const drawTraced = ({
             raiseDebutCardFrom(
               base,
               leanFor(
-                advanceCosmetics(
-                  isArriving(world.phase)
-                    ? applied
-                    : tallyFrame(base, applied, frameMs),
-                  frameMs,
-                  frameMs,
-                ),
+                agePocketCard(raisePocketCardFrom(base, cosmetic), frameMs),
                 frameMs,
               ),
             ),

@@ -13,17 +13,16 @@ import {
   PLAYER_MAX_HP,
   PREPARATION_MS,
 } from '../../shared/constants'
+import { holdingSecond, withPistol } from '../../test/arsenals'
 import { pastFirstBreak, withKeys } from '../../test/model.fixture'
 import {
   APPLICATION,
   BELOW_NORTH_DOOR,
   SCENE_SUBSCRIPTIONS,
-  holdingSecond,
   measureSurface,
   playButton,
   startRunInScene,
   throughIntroByTapInScene,
-  withPistol,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import { crateSpotOf } from '../../world/gear/crates'

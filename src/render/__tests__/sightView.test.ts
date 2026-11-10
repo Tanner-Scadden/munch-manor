@@ -8,12 +8,8 @@ import { Message } from '../../app/message'
 import { type Model, Phase, type Vector } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
 import { BULLET_STEP_PX, TILE_SIZE } from '../../shared/constants'
-import {
-  APPLICATION,
-  SHOTGUN,
-  holdingFirst,
-  holdingSecond,
-} from '../../test/testing'
+import { SHOTGUN, holdingFirst, holdingSecond } from '../../test/arsenals'
+import { APPLICATION } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import { isSolidAt, levelOf } from '../../world/level/arena'
 import { focusOf, modifyFocus } from '../../world/party/party'

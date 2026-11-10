@@ -3,6 +3,7 @@ import type { Document, Html } from 'foldkit/html'
 
 import { joinName } from '../domain/playerName'
 import { hasUnseenCalling, hasUnseenLook } from '../domain/unlocks'
+import { isPocketCardReading } from '../features/dare/pocketCard'
 import { awardsOf, crewOf } from '../features/end/crewAwards'
 import { isRunCardHeld } from '../features/end/endBeat'
 import { startingCallingOf } from '../features/heroes/callingPick'
@@ -172,13 +173,20 @@ const practiceGateNote = (model: Model): string =>
     ? ' The wave waits until you try moving, aiming, and firing.'
     : ''
 
+// NOTE: the dare card in your pocket, open after the slam
+// (src/features/dare/pocketCardView.ts).
+const POCKET_CARD_STATUS =
+  "Your friends' dare card: bring back the things they drew, and Uncle Chunk's hat. Press any key or tap to put it away."
+
 const statusText = (model: Model): string =>
   Phase.match(model.phase, {
     Ready: () =>
       `${GAME_TITLE}, an early alpha. ${isLobbyUp(model) ? LOBBY_MENU : HOME_MENU}`,
     Arriving: () => 'Arriving at the manor. Press any key or tap to skip.',
     Preparation: ({ wave }) =>
-      `Get ready for ${statusWave(model, wave)}. ${isOpenBreak(model) ? 'There is no timer this break. ' : ''}Press Enter, or use the Start wave button, to start it now.${practiceGateNote(model)}${keysHint(model)}`,
+      isPocketCardReading(model)
+        ? POCKET_CARD_STATUS
+        : `Get ready for ${statusWave(model, wave)}. ${isOpenBreak(model) ? 'There is no timer this break. ' : ''}Press Enter, or use the Start wave button, to start it now.${practiceGateNote(model)}${keysHint(model)}`,
     Wave: ({ wave }) =>
       Option.getOrElse(
         debutCardStatus(model),

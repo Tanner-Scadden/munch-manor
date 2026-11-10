@@ -21,6 +21,7 @@ import {
 } from '../../../shared/constants'
 import type { Calling } from '../../../shared/playerData'
 import { nextRandom } from '../../../shared/prng'
+import { holdingSecond, pistolOnly } from '../../../test/arsenals'
 import {
   DISTANT_SPAWN,
   atFridge,
@@ -37,8 +38,6 @@ import {
   HOLD_TICKS,
   holdEnter,
   holdFire,
-  holdingSecond,
-  pistolOnly,
   press,
   release,
   tick,

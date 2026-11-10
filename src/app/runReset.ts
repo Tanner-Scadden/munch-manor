@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import {
   ClocheLift,
   KitchenCall,
+  PocketCard,
   PrizeFlight,
   RunTally,
   cosmeticSeedOf,
@@ -92,6 +93,7 @@ export type RunFields = Pick<
   | 'trapNotice'
   | 'level'
   | 'introSkip'
+  | 'pocketCard'
   | 'ovens'
   | 'debutCard'
   | 'hintBand'
@@ -156,6 +158,7 @@ export const freshRun = (model: Model): RunFields => ({
   trapNotice: TrapNotice.Quiet(),
   level: freshLevel(model.rngState),
   introSkip: 'Watching',
+  pocketCard: PocketCard.Pocketed(),
   ovens: freshOvens(START_LEVEL),
   debutCard: DebutCard.Hidden(),
   hintBand: 'Top',

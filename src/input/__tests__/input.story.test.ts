@@ -12,18 +12,13 @@ import {
   STICK_FIRE_ZONE,
   STICK_RADIUS_PX,
 } from '../../shared/constants'
+import { holdingSecond } from '../../test/arsenals'
 import {
   FIGHTING_PHASE,
   playingModel,
   readyModel,
 } from '../../test/model.fixture'
-import {
-  APPLICATION,
-  holdingSecond,
-  tick,
-  touchDown,
-  touchMove,
-} from '../../test/testing'
+import { APPLICATION, tick, touchDown, touchMove } from '../../test/testing'
 import { WEAPONS, freshGun } from '../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { MouseButton, Stick } from '../inputSchema'

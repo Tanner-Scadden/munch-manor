@@ -3,6 +3,7 @@ import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { isRunOn } from '../../domain/onlineRun'
+import { foldPocketCard } from '../../features/dare/pocketCard'
 import { isPauseKey, pressKey, releaseAll } from '../../input/input'
 import { playerKeyAction } from '../../input/keyActions'
 import type { PageVisibility } from '../../platform/deviceSchema'
@@ -43,15 +44,25 @@ const holdKey =
 
 // NOTE: a press key goes to the room, and every key is held in the input
 // for walking. In the intro any key skips this player's drawing to the
-// door (src/app/update/intro.ts).
+// door (src/app/update/intro.ts). After the slam any key folds this
+// player's dare card away, and the room never waits for it.
 const keyInRun = (code: string) =>
   makeStep(model =>
     isArriving(model.phase)
       ? Update.combineSteps([holdKey(code), modelStep(skipIntro), unlockAudio])
       : Option.match(playerKeyAction(model, code), {
-          onNone: () => Update.combineSteps([holdKey(code), unlockAudio]),
+          onNone: () =>
+            Update.combineSteps([
+              modelStep(foldPocketCard),
+              holdKey(code),
+              unlockAudio,
+            ]),
           onSome: action =>
-            Update.combineSteps([holdKey(code), pressInRun(action)]),
+            Update.combineSteps([
+              modelStep(foldPocketCard),
+              holdKey(code),
+              pressInRun(action),
+            ]),
         }),
   )
 

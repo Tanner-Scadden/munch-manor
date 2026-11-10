@@ -5,6 +5,7 @@ import { type Html, createLazy } from 'foldkit/html'
 import { spriteWarmUpSources } from '../art/appearance'
 import { group } from '../art/sprite'
 import { clocheShapes } from '../features/cloche/clocheView'
+import { pocketCardShapes } from '../features/dare/pocketCardView'
 import { lensOf } from '../features/end/endBeat'
 import {
   fridgeRevealShapes,
@@ -72,6 +73,7 @@ const roundOverlayShapes = (
   ...(Phase.isAnyOf(['Wave'])(model.phase)
     ? inLandscapeFrame(screen, bossBandShapes(model))
     : []),
+  ...pocketCardShapes(model, screen),
 ]
 
 // NOTE: the intro covers the whole screen while the crew arrives, the HUD

@@ -25,13 +25,13 @@ import {
 import { meleeSlotLook } from '../../../screens/game/hud'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import { nextRandom } from '../../../shared/prng'
+import { holdingSecond } from '../../../test/arsenals'
 import { DISTANT_SPAWN, atFridge, withSeat } from '../../../test/model.fixture'
 import {
   APPLICATION,
   FRIDGE_OPEN_TICKS,
   SURFACE,
   holdFire,
-  holdingSecond,
   press,
   tick,
   tickCountFor,

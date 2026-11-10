@@ -204,6 +204,16 @@ export const DifficultyCard = defineTaggedUnion({
 })
 export type DifficultyCard = typeof DifficultyCard.Type
 
+// NOTE: the dare card in your pocket after the slam
+// (src/features/dare/pocketCard.ts): in the pocket, out and being read, or
+// folding itself into the HUD's dare card.
+export const PocketCard = defineTaggedUnion({
+  Pocketed: {},
+  Reading: { ageMs: Schema.Finite },
+  Folding: { ageMs: Schema.Finite },
+})
+export type PocketCard = typeof PocketCard.Type
+
 // NOTE: the intro's skip in this run (src/features/intro/introBeat.ts): in
 // co-op only the client's drawing skips, to the knock, and waits there for
 // the room's slam.

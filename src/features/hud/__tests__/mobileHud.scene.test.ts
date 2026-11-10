@@ -11,11 +11,11 @@ import { BreakClock, type Model, Phase } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { ShowInstallPrompt } from '../../../app/update/home'
 import { PREPARATION_MS } from '../../../shared/constants'
+import { holdingSecond } from '../../../test/arsenals'
 import {
   APPLICATION,
   SCENE_SUBSCRIPTIONS,
   closeDialog,
-  holdingSecond,
   measureSurface,
   pauseButton,
   resolveFocusLobbyInScene,

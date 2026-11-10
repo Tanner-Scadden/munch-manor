@@ -9,7 +9,7 @@
 // It imports only the game, effect, and foldkit: no DOM, no Node, no Bun, so
 // it runs the same in Bun, Node, Chrome, and workerd.
 
-import { Array, Function } from 'effect'
+import { Array, Function, Predicate } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { Message } from '../../src/app/message'
@@ -164,6 +164,13 @@ const pastTutorial = (model: Model): Model =>
       }),
   })
 
+// NOTE: the dare card that comes out on the slam
+// (src/features/dare/pocketCard.ts), read by its tag as a string where it
+// exists, since this harness also plays commits from before it.
+const isCardReading = (model: Model): boolean =>
+  Predicate.hasProperty(model, 'pocketCard') &&
+  model.pocketCard._tag === 'Reading'
+
 // NOTE: the intro (src/world/run/arrival.ts): a key skips it to the slam,
 // and the slam's frames play out until the first break. Read by its tag as a
 // string, since this harness also plays commits from before the intro.
@@ -175,7 +182,14 @@ const throughIntro = (model: Model): Model =>
           Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
         ),
       )
-    : model
+    : isCardReading(model)
+      ? throughIntro(
+          tapKey(
+            send(model, Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
+            'Escape',
+          ),
+        )
+      : model
 
 // A returning player's Model, seeded, measured, and started into a run: Enter
 // opens the lobby, E picks endless there, and Enter starts.

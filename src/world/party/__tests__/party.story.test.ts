@@ -26,6 +26,7 @@ import {
   PISTOL_MAGAZINE,
   PLAYER_MAX_HP,
 } from '../../../shared/constants'
+import { withPistol } from '../../../test/arsenals'
 import {
   atSeat,
   crewInWave,
@@ -39,7 +40,6 @@ import {
   APPLICATION,
   countdownTicks,
   ticks,
-  withPistol,
   zombieOf,
 } from '../../../test/testing'
 import { crateSpotOf } from '../../gear/crates'
