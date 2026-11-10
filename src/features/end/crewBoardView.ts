@@ -4,8 +4,8 @@ import type { Canvas } from 'foldkit'
 import type { Model } from '../../app/model'
 import {
   type BakedText,
-  COIN_SPRITE,
   GLYPH_HEIGHT,
+  KEY_SPRITE,
   type TextTone,
   bakeText,
   placeBaked,
@@ -53,7 +53,7 @@ import {
 // The crew board on a co-op end card (MULTIPLAYER.md, "The crew board"):
 // the run's line (the wave or the time, and the crew's kills), then a
 // column for each player, their own look and name over their kills,
-// revives, downs, aim, and money, counted up a row at a time like the solo
+// revives, downs, aim, and keys found, counted up a row at a time like the solo
 // tally. Then the awards stamp: the crown drops on the MVP, each winner's
 // number turns gold, and each player's best award lands as a title under
 // their column, with its badge beside them. Icons over words: each row is
@@ -153,12 +153,12 @@ const STAT_ROWS: ReadonlyArray<StatRow> = [
     maybeAward: Option.some('Sharpshooter'),
   },
   {
-    icon: COIN_SPRITE,
-    shift: ICON_SHIFT.Cash,
-    value: member => member.earned,
+    icon: KEY_SPRITE,
+    shift: ICON_SHIFT.Keys,
+    value: member => member.keysFound,
     format: plain,
     tone: 'Coin',
-    maybeAward: Option.none(),
+    maybeAward: Option.some('KeyKeeper'),
   },
 ]
 

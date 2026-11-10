@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { isCoop, maybePlayerAt, modifySeat } from '../party/party'
+import { isCoop, maybePlayerAt, modifySeat, seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
 import {
   type CarriedGun,
@@ -17,7 +17,19 @@ import {
   mapCarried,
   maxTier,
   maybeCarried,
+  tierName,
+  tierOf,
 } from './weapons'
+
+// NOTE: a gun's name as the player at `slot` reads it, with its tier word.
+export const gunName: {
+  (slot: PlayerSlot, weapon: WeaponKind): (model: World) => string
+  (model: World, slot: PlayerSlot, weapon: WeaponKind): string
+} = Function.dual(
+  3,
+  (model: World, slot: PlayerSlot, weapon: WeaponKind): string =>
+    tierName(weapon, tierOf(seatStateAt(model, slot).player, weapon)),
+)
 
 // Guns level up with kills (docs/ESCAPE_PLAN.md, "Guns level up with
 // kills"): each carried gun counts the kills it made, and its tier is the

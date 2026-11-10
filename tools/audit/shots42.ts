@@ -7,7 +7,7 @@
 // tracker shows on every step, that the Plank Pile is FREE, and that the
 // tracker's skip button is big enough to tap, and exits with 1 on a miss.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shots42.ts
-import { Console, Effect, String } from 'effect'
+import { Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { runHarnessAudit } from './harnessServer'
@@ -56,36 +56,19 @@ const hasFreeTag = (page: Page, problems: Array<string>, label: string) =>
     const current = yield* attempt(() =>
       page.evaluate(() => ({
         kitchenTour: { _tag: window.__model.kitchenTour._tag },
-        wallet: { balance: window.__model.seats[0].wallet.balance },
+        keys: { held: window.__model.keys.held },
       })),
     )
     if (current.kitchenTour._tag !== 'Running') {
       problems.push(`${label}: the kitchen tour is ${current.kitchenTour._tag}`)
     }
-    if (current.wallet.balance !== 5) {
-      problems.push(`${label}: the wallet moved to ${current.wallet.balance}`)
+    if (current.keys.held !== 5) {
+      problems.push(`${label}: the key ring moved to ${current.keys.held}`)
     }
   })
 
 const SCENES: ReadonlyArray<Scene> = [
   { name: 'go', query: `${FIRST_BREAK}&tick=2`, act: hasTracker },
-  {
-    name: 'buy',
-    query: `${FIRST_BREAK}&px=270&py=142&tick=4`,
-    act: (page, problems, label) =>
-      Effect.gen(function* () {
-        yield* hasTracker(page, problems, label)
-        const tab = page.getByRole('tab', { name: /^Traps/ }).first()
-        yield* attempt(() => tab.click())
-        yield* settleAnimations(page)
-        const price = yield* attempt(() =>
-          page.locator('#shop-item-Barricade .shop-tag').textContent(),
-        )
-        if (price === null || String.trim(price) !== 'FREE') {
-          problems.push(`${label}: the Plank Pile is "${price}", not FREE`)
-        }
-      }),
-  },
   {
     name: 'place',
     query: `${FIRST_BREAK}&quest=running&traphint=Barricade&barricades=1&px=200&py=60&tick=2`,

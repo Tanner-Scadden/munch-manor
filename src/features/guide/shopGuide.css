@@ -1,9 +1,8 @@
-/* THE SHOP GUIDE
+/* THE GUIDE TO THE HOUSE'S FINDS
 
-   What Rattles sells, as pictures and bars: the Munchopedia's Shop page and
-   the ? in his shop share these styles. The colors are the shop's own, set
-   here so the guide looks the same inside the menu panel and the shop
-   dialog. --sg-px is one art pixel; a phone draws them smaller. */
+   What the house holds, as pictures and bars, on the Munchopedia's Finds
+   page (it was the shop guide until the shop went, docs/ESCAPE_PLAN.md
+   layer 7). --sg-px is one art pixel; a phone draws them smaller. */
 
 .sg,
 .sg-shop {
@@ -97,8 +96,7 @@
   filter: brightness(1.3);
 }
 
-.sg-section:focus-visible,
-.shop-help:focus-visible {
+.sg-section:focus-visible {
   outline: var(--menu-focus);
   outline-offset: var(--menu-focus-offset);
 }
@@ -313,29 +311,6 @@
   align-self: flex-start;
 }
 
-.shop-help:active {
-  filter: brightness(1.3);
-}
-
-/* NOTE: the ? takes a column after the wallet, before the close's corner. */
-.shop-header:has(> .shop-help) {
-  grid-template-columns: auto 1fr auto auto;
-}
-
-.shop-help {
-  align-self: start;
-  box-sizing: border-box;
-  width: var(--shop-tap);
-  height: var(--shop-tap);
-  border: calc(2 * var(--shop-u)) solid var(--shop-gold);
-  border-radius: var(--menu-radius-sm);
-  background: var(--shop-card-raised);
-  color: var(--shop-gold);
-  font: bold calc(20 * var(--shop-u)) monospace;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
 .munch-shop-art {
   --px: 3px;
 }
@@ -360,16 +335,5 @@
 @media (max-width: 560px) {
   .sg-entries {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .shop-header:has(> .shop-help) {
-    grid-template-areas:
-      'keeper speech help'
-      'keeper wallet wallet';
-    grid-template-columns: auto 1fr auto;
-  }
-
-  .shop-help {
-    grid-area: help;
   }
 }

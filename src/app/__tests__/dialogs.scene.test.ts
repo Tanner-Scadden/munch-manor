@@ -13,11 +13,10 @@ import {
   holdingSecond,
   measureSurface,
   nodesOf,
-  walkIntoStallInScene,
 } from '../../test/testing'
 import { modifyFocus } from '../../world/party/party'
 import type { Message } from '../message'
-import { type Model, Phase, ShopState } from '../model'
+import { type Model, Phase } from '../model'
 import { initialModel } from '../pureApp'
 
 // NOTE: every menu dialog is in the page on every frame, and a shut one is
@@ -25,7 +24,7 @@ import { initialModel } from '../pureApp'
 // siblings by position, so when co-op opened (the home menu left the front
 // of the page's list and the co-op screen joined its end) it paired each
 // cached dialog with a new element, left the old one in the page, and the
-// shop then opened as a second `<dialog id="shop">` under an empty one that
+// shop (since gone) then opened as a second `<dialog id="shop">` under an empty one that
 // took every click. These tests hold the two things that keep it from
 // coming back: every dialog is keyed on its id, and no id is used twice.
 
@@ -74,7 +73,6 @@ const unkeyedDialogs = (root: VNodeLike): ReadonlyArray<string> =>
 const DIALOG_IDS = [
   'home-screen-steps',
   'update-greeting',
-  'shop',
   'manor-hand',
   'menu-panel',
   'profile',
@@ -89,7 +87,8 @@ const holdsDialogsApart = Scene.tap<Model, Message>(({ html }) => {
   ).toEqual(Array.sort(DIALOG_IDS, Order.String))
 })
 
-const atStall: Model = modifyFocus(
+// NOTE: a break in a run, the player in the parlour.
+const inBreak: Model = modifyFocus(
   modifyFields(initialModel, {
     maybeSurface: () =>
       Option.some({ left: 0, top: 0, width: 800, height: 400 }),
@@ -121,37 +120,8 @@ const atStall: Model = modifyFocus(
         arsenal: () =>
           holdingSecond({ kind: 'Smg', loaded: 30, tier: 1, kills: 0 }),
       }),
-    wallet: () => ({ balance: 180, earned: 180, shown: 180 }),
   },
 )
-
-describe('the shop dialog', () => {
-  it.effect(
-    'walking into the stall opens one shop, keyed on its id, with its case rows shut',
-    () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(atStall),
-        measureSurface,
-        ...walkIntoStallInScene(),
-        Scene.expectAll(Scene.all.selector('dialog#shop')).toHaveCount(1),
-        Scene.expectAll(Scene.all.selector('dialog[open]')).toHaveCount(1),
-        holdsDialogsApart,
-        Scene.inside(
-          Scene.selector('dialog#shop'),
-          Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-            'You have $180',
-          ),
-          Scene.expect(
-            Scene.selector('[data-verdict="refused"] #shop-item-LaserSight'),
-          ).toExist(),
-          Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-            'You have $180',
-          ),
-        ),
-      ),
-  )
-})
 
 const opened = (dialog: DialogModel): DialogModel => ({
   ...dialog,
@@ -162,18 +132,7 @@ type OpenCase = Readonly<{ name: string; model: Model; opensDialog: boolean }>
 
 const OPEN_CASES: ReadonlyArray<OpenCase> = [
   { name: 'nothing open', model: homeAfterRead, opensDialog: false },
-  {
-    name: 'the shop',
-    model: modifyFocus(
-      modifyFields(atStall, {
-        shopDialog: shop => modifyFields(shop, { dialog: opened }),
-      }),
-      {
-        shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
-      },
-    ),
-    opensDialog: true,
-  },
+  { name: 'a break in a run', model: inBreak, opensDialog: false },
   {
     name: 'the MORE hand',
     model: modifyFields(homeAfterRead, { handDialog: opened }),

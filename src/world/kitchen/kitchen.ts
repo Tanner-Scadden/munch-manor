@@ -15,7 +15,6 @@ import {
   tilesWithSymbol,
 } from '../level/arena'
 import { KITCHEN_EXIT, boxAround } from '../level/exits'
-import { payKillShared } from '../party/party'
 import type { World } from '../schema/world'
 import {
   GameEvent,
@@ -25,7 +24,7 @@ import {
   ZombieAction,
   type ZombieKind,
 } from '../schema/worldSchema'
-import { ZOMBIE_BLAST_TARGET, bountyOf } from '../step/combat'
+import { ZOMBIE_BLAST_TARGET } from '../step/combat'
 import { bodyRadiusOf, isFree, isGrounded, statsOf } from '../zombies/zombies'
 
 // OVENS
@@ -186,13 +185,10 @@ const scorch = (model: World, oven: Box): World => {
   const events = Array.flatMap(outcomes, outcome => outcome.events)
   return Array.isReadonlyArrayEmpty(events)
     ? model
-    : payKillShared(
-        modifyFields(model, {
-          zombies: () => Array.map(outcomes, ({ target }) => target),
-          frameEvents: frameEvents => [...frameEvents, ...events],
-        }),
-        bountyOf(levelOf(model), events),
-      )
+    : modifyFields(model, {
+        zombies: () => Array.map(outcomes, ({ target }) => target),
+        frameEvents: frameEvents => [...frameEvents, ...events],
+      })
 }
 
 type Heat = Readonly<{ oven: Oven; ticksDue: number }>

@@ -59,7 +59,7 @@ describe('wave snapshots', () => {
     const rolled = rerolled(snapshot.model, waveSeedAt(1, 0))
     const phaseOf = (seed: number) =>
       toJson(rerolled(snapshot.model, seed).phase)
-    expect(focusOf(rolled).wallet).toEqual(focusOf(snapshot.model).wallet)
+    expect(rolled.keys).toEqual(snapshot.model.keys)
     expect(focusOf(rolled).player.arsenal).toEqual(
       focusOf(snapshot.model).player.arsenal,
     )

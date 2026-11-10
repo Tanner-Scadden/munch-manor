@@ -623,7 +623,7 @@ describe('the lobby', () => {
         Scene.selector(
           '[data-calling="PennyPincher"] [data-sign="Perk"] .calling-special-line',
         ),
-      ).toHaveText('Rattles 15% off'),
+      ).toHaveText('Kills drop 50% more keys'),
       Scene.expect(
         Scene.selector('[data-calling="LineCook"][data-lock="Locked"]'),
       ).toExist(),

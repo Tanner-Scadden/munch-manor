@@ -17,9 +17,9 @@ import { heroIdOf } from '../../src/shared/playerData'
 import { asTutorialDone, asVeteran } from '../../src/test/veteran'
 import { heldGun, maybeOtherGun } from '../../src/world/gear/weapons'
 import { noRank } from '../../src/world/heroes/rank'
+import { KEY_RULES } from '../../src/world/keys/keys'
 import { boxCenter, levelOf } from '../../src/world/level/arena'
 import { focusOf } from '../../src/world/party/party'
-import { isShopOpenFor } from '../../src/world/shop/shop'
 import { SURFACE } from '../determinism/script'
 import {
   type BotOptions,
@@ -82,7 +82,6 @@ import type { BossBlame, RunResult } from './bot/results'
 import { routeTo } from './bot/route'
 import {
   KITCHEN_DOOR_PUSH,
-  STALL_FRONT,
   busiestDoor,
   crateTarget,
   fridgeKeys,
@@ -97,9 +96,6 @@ import {
   mendTarget,
   offeredWeapon,
   prepPlan,
-  replacedBy,
-  shop,
-  wantedPurchase,
   wouldTake,
 } from './bot/shopping'
 import { GUN_PLAN, freshState } from './bot/state'
@@ -241,7 +237,6 @@ export const play: {
         ? model.phase.wave
         : 0
     let preparedWave = 0
-    let shoppedWave = 0
     let stuckFrames = 0
     let lastPosition: Vector = focusOf(model).player
     let strafe = 1
@@ -275,27 +270,9 @@ export const play: {
         }
       }
       state.breakFrames += model.phase._tag === 'Preparation' ? 1 : 0
-      if (
-        model.phase._tag === 'Preparation' &&
-        isShopOpenFor(model.phase) &&
-        !Array.some(state.shopVisits, visit => visit.wave === wave)
-      ) {
-        state.shopVisits.push({
-          wave,
-          money: focusOf(model).wallet.balance,
-          bought: [],
-        })
-      }
-      if (focusOf(model).shop._tag === 'Browsing') {
-        model = shop(state, model)
-        if (focusOf(model).shop._tag !== 'Browsing') {
-          shoppedWave = wave
-        }
-        continue
-      }
       if (model.phase._tag === 'Preparation') {
         model = holdFire(model)
-        const plan = prepPlan(state, model, shoppedWave === wave)
+        const plan = prepPlan(state, model)
         if (plan === 'Go') {
           state.gnomeTries = 0
           model = pressKeys(model, new Set())
@@ -320,32 +297,23 @@ export const play: {
           continue
         }
         const target =
-          plan === 'Shop'
-            ? STALL_FRONT
-            : plan === 'Kitchen'
-              ? KITCHEN_DOOR_PUSH
-              : plan === 'Crate'
-                ? (crateTarget(model) ?? ROOM_CENTER)
-                : plan === 'Mend'
-                  ? (mendTarget(model) ?? ROOM_CENTER)
-                  : plan === 'Gnome'
-                    ? gnomeSpot(model)
-                    : plan === 'Fridge'
-                      ? (fridgeStand(model) ?? ROOM_CENTER)
-                      : plan === 'Return'
-                        ? ROOM_CENTER
-                        : boxCenter(
-                            levelOf(model).thresholds[
-                              busiestDoor(model) ?? 'North'
-                            ].box,
-                          )
-        if (plan === 'Shop') {
-          const item = wantedPurchase(state, model)
-          model = holdToReplace(
-            model,
-            item === undefined ? undefined : replacedBy(model, item),
-          )
-        }
+          plan === 'Kitchen'
+            ? KITCHEN_DOOR_PUSH
+            : plan === 'Crate'
+              ? (crateTarget(model) ?? ROOM_CENTER)
+              : plan === 'Mend'
+                ? (mendTarget(model) ?? ROOM_CENTER)
+                : plan === 'Gnome'
+                  ? gnomeSpot(model)
+                  : plan === 'Fridge'
+                    ? (fridgeStand(model) ?? ROOM_CENTER)
+                    : plan === 'Return'
+                      ? ROOM_CENTER
+                      : boxCenter(
+                          levelOf(model).thresholds[
+                            busiestDoor(model) ?? 'North'
+                          ].box,
+                        )
         if (
           plan === 'Fridge' &&
           isOfferedToBot(model) &&
@@ -460,7 +428,7 @@ export const play: {
         }
         if (event._tag === 'PackWiped') {
           newKinds.wipes += 1
-          newKinds.wipeBonus += event.bonus
+          newKinds.wipeBonus += KEY_RULES.perPackWiped
         }
         if (event._tag === 'FridgeOpened') {
           state.fridgeLog.pulls += 1
@@ -712,7 +680,9 @@ export const play: {
       if (
         Array.some(model.frameEvents, event => event._tag === 'WaveCleared')
       ) {
-        moneyAfterWave.push(focusOf(model).wallet.earned)
+        // NOTE: the keys found so far, where the money earned was before
+        // the keys (docs/ESCAPE_PLAN.md, layer 7).
+        moneyAfterWave.push(model.keys.found)
       }
     }
     const finalSpare = spareOf(model)

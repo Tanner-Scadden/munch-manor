@@ -22,11 +22,7 @@ import {
 import { rect } from '../../render/drawing'
 import { HUD_STRIP_HEIGHT, gunSlotBox } from '../../render/hudLayout'
 import type { Screen } from '../../render/screen'
-import {
-  DUD_REFUND,
-  FRIDGE_RULES,
-  refundOf,
-} from '../../world/fridge/leftovers'
+import { FRIDGE_RULES, refundOf } from '../../world/fridge/leftovers'
 import { heldSlotOf } from '../../world/gear/weapons'
 import { focusOf, maybePlayerAt } from '../../world/party/party'
 import type { FridgePrize, Vector } from '../../world/schema/entitySchema'
@@ -94,7 +90,7 @@ const PUNCH_TEXTS: Readonly<Record<FridgePrize, BakedText>> = {
   Dud: bakeText(revealOf('Dud').punchLine, PUNCH_TONES.Dud),
 }
 
-const REFUND_TEXT: BakedText = bakeText(`$${DUD_REFUND}`, 'Coin')
+const REFUND_TEXT: BakedText = bakeText(`+$${FRIDGE_RULES.dudRefund}`, 'Coin')
 
 // NOTE: a burst of rays round the landed prize, in two turns that take
 // turns so it twinkles; the dud gets a sad grey cloud instead.

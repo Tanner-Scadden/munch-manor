@@ -13,7 +13,6 @@ import {
   type PlannedSpawn,
   Purchasable,
   Purchase,
-  ShopState,
   ZombieAction,
 } from '../../../app/model'
 import { freshRun } from '../../../app/runReset'
@@ -24,6 +23,7 @@ import {
   DISTANT_SPAWN,
   freshRunModel,
   pastTimedBreaks,
+  withKeys,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -48,9 +48,9 @@ import { OVEN_RULES, flameBoxOf, ovenBoxesOf } from '../kitchen'
 const FRAME_MS = FIXED_STEP_MS
 const base: Model = pastTimedBreaks(freshRunModel())
 
-const inBreak = (wave: number, balance: number): Model =>
+const inBreak = (wave: number, keys: number): Model =>
   modifyFocus(
-    modifyFields(base, {
+    modifyFields(withKeys(base, keys), {
       phase: () =>
         Phase.Preparation({
           wave,
@@ -60,7 +60,6 @@ const inBreak = (wave: number, balance: number): Model =>
         }),
     }),
     {
-      wallet: () => ({ balance, earned: balance, shown: balance }),
       player: player =>
         modifyFields(player, {
           x: () => BELOW_KITCHEN_DOOR.x,
@@ -74,9 +73,9 @@ const [, WAVE_FOUR] = rollSpawns(41, 4)
 const midWave = (
   wave: number,
   spawns: ReadonlyArray<PlannedSpawn>,
-  balance: number,
+  keys: number,
 ): Model =>
-  modifyFields(inBreak(wave, balance), {
+  modifyFields(inBreak(wave, keys), {
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns }),
   })
 
@@ -108,7 +107,7 @@ describe('holding to buy the kitchen open', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(inBreak(3, 85)),
+        Story.given(inBreak(3, 5)),
         press('Enter'),
         ...ticks(HOLD_TICKS - 4, FRAME_MS),
         Story.model(current => {
@@ -117,15 +116,13 @@ describe('holding to buy the kitchen open', () => {
             true,
           )
           expect(holdProgress(focusOf(current).purchase)).toBeGreaterThan(0.8)
-          expect(focusOf(current).shop).toEqual(ShopState.Away())
-          expect(current.shopDialog.dialog.isOpen).toBe(false)
           expect(Phase.isAnyOf(['Preparation'])(current.phase)).toBe(true)
         }),
         ...ticks(4, FRAME_MS),
         Story.model(current => {
           expect(isKitchenOpen(current)).toBe(true)
-          expect(focusOf(current).wallet.balance).toBe(85 - EXIT_RULES.price)
-          expect(current.stats.purchases).toBe(1)
+          expect(current.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
+          expect(current.keys.spent).toBe(EXIT_RULES.kitchenKeys)
           expect(focusOf(current).purchase).toEqual(Purchase.Done())
           expect(levelOf(current).doorIds).toEqual([
             'North',
@@ -150,7 +147,7 @@ describe('holding to buy the kitchen open', () => {
 
   it.effect('the smash and the coins come from the tick that buys it', () =>
     Effect.gen(function* () {
-      const events = yield* eventsOver(inBreak(3, 85), [
+      const events = yield* eventsOver(inBreak(3, 5), [
         Message.PressedKey({ code: 'Enter' }),
         ...Array.makeBy(HOLD_TICKS, () =>
           Message.TickedFrame({ deltaTime: FRAME_MS }),
@@ -170,7 +167,7 @@ describe('holding to buy the kitchen open', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(inBreak(3, 85)),
+        Story.given(inBreak(3, 5)),
         press('Enter'),
         ...ticks(HOLD_TICKS - 6, FRAME_MS),
         press('KeyD'),
@@ -185,7 +182,7 @@ describe('holding to buy the kitchen open', () => {
         ...ticks(HOLD_TICKS - 6, FRAME_MS),
         Story.model(current => {
           expect(isKitchenOpen(current)).toBe(false)
-          expect(focusOf(current).wallet.balance).toBe(85)
+          expect(current.keys.held).toBe(5)
         }),
       ),
   )
@@ -193,7 +190,7 @@ describe('holding to buy the kitchen open', () => {
   it.effect('walking out of reach cancels the hold', () =>
     Story.story(
       APPLICATION,
-      Story.given(inBreak(3, 85)),
+      Story.given(inBreak(3, 5)),
       press('Enter'),
       ...ticks(10, FRAME_MS),
       press('KeyS'),
@@ -206,7 +203,7 @@ describe('holding to buy the kitchen open', () => {
           false,
         )
         expect(isKitchenOpen(current)).toBe(false)
-        expect(focusOf(current).wallet.balance).toBe(85)
+        expect(current.keys.held).toBe(5)
       }),
     ),
   )
@@ -215,7 +212,7 @@ describe('holding to buy the kitchen open', () => {
     'short of the price, the tag shakes red with the shortfall and nothing is bought',
     () =>
       Effect.gen(function* () {
-        const short = inBreak(3, EXIT_RULES.price - 7)
+        const short = inBreak(3, EXIT_RULES.kitchenKeys - 2)
         const events = yield* eventsOver(short, [
           Message.PressedKey({ code: 'Enter' }),
           Message.TickedFrame({ deltaTime: FRAME_MS }),
@@ -232,7 +229,7 @@ describe('holding to buy the kitchen open', () => {
             expect(focusOf(current).purchase).toEqual(
               Purchase.Refused({
                 target: KITCHEN_TARGET,
-                shortBy: 7,
+                shortBy: 2,
                 sinceMs: 0,
               }),
             )
@@ -240,7 +237,7 @@ describe('holding to buy the kitchen open', () => {
           ...ticks(HOLD_TICKS * 2, FRAME_MS),
           Story.model(current => {
             expect(isKitchenOpen(current)).toBe(false)
-            expect(focusOf(current).wallet.balance).toBe(EXIT_RULES.price - 7)
+            expect(current.keys.held).toBe(EXIT_RULES.kitchenKeys - 2)
             expect(
               Purchase.isAnyOf(['Refused'])(focusOf(current).purchase),
             ).toBe(true)
@@ -260,7 +257,7 @@ describe('holding to buy the kitchen open', () => {
       Effect.gen(function* () {
         yield* Story.story(
           APPLICATION,
-          Story.given(inBreak(3, 85)),
+          Story.given(inBreak(3, 5)),
           press('Enter'),
           tick(FRAME_MS),
           Story.model(current => {
@@ -269,7 +266,7 @@ describe('holding to buy the kitchen open', () => {
         )
         yield* Story.story(
           APPLICATION,
-          Story.given(awayFromDoor(inBreak(3, 85))),
+          Story.given(awayFromDoor(inBreak(3, 5))),
           press('Enter'),
           Story.model(current => {
             expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
@@ -281,7 +278,7 @@ describe('holding to buy the kitchen open', () => {
   it.effect(
     'mid-wave the hold buys it while the wave and the zombies keep going',
     () => {
-      const fighting = modifyFields(midWave(4, WAVE_FOUR, 85), {
+      const fighting = modifyFields(midWave(4, WAVE_FOUR, 5), {
         zombies: () => [zombieOf('Shambler', 900, 150, 104, { speed: 30 })],
       })
       return Story.story(
@@ -290,7 +287,7 @@ describe('holding to buy the kitchen open', () => {
         ...holdToBuy,
         Story.model(current => {
           expect(isKitchenOpen(current)).toBe(true)
-          expect(focusOf(current).wallet.balance).toBe(85 - EXIT_RULES.price)
+          expect(current.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
           expect(waveClockOf(current)).toBeGreaterThan(
             (HOLD_TICKS - 1) * FRAME_MS,
           )
@@ -301,7 +298,6 @@ describe('holding to buy the kitchen open', () => {
           expect(
             Option.exists(shambler, ({ x, y }) => x !== 150 || y !== 104),
           ).toBe(true)
-          expect(current.shopDialog.dialog.isOpen).toBe(false)
         }),
       )
     },
@@ -310,7 +306,7 @@ describe('holding to buy the kitchen open', () => {
   it.effect(
     'on touch, the hold button buys it and the move stick keeps its finger',
     () => {
-      const touching = modifyFields(inBreak(3, 85), {
+      const touching = modifyFields(inBreak(3, 5), {
         lastDevice: () => 'Touch' as const,
       })
       return Story.story(
@@ -328,7 +324,7 @@ describe('holding to buy the kitchen open', () => {
         ...ticks(HOLD_TICKS, FRAME_MS),
         Story.model(current => {
           expect(isKitchenOpen(current)).toBe(true)
-          expect(focusOf(current).wallet.balance).toBe(85 - EXIT_RULES.price)
+          expect(current.keys.held).toBe(5 - EXIT_RULES.kitchenKeys)
           expect(Stick.isAnyOf(['Active'])(current.input.moveStick)).toBe(true)
           expect(Stick.isAnyOf(['Idle'])(current.input.aimStick)).toBe(true)
         }),
@@ -345,7 +341,7 @@ describe('holding to buy the kitchen open', () => {
   it.effect(
     'on touch, lifting the holding finger drops to standing speed, and lifting a stick finger does not cancel',
     () => {
-      const touching = modifyFields(inBreak(3, 85), {
+      const touching = modifyFields(inBreak(3, 5), {
         lastDevice: () => 'Touch' as const,
       })
       return Story.story(

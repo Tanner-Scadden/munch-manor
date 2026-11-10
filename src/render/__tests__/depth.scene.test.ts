@@ -6,17 +6,17 @@ import { describe, expect, test } from 'vitest'
 import { sceneShapes } from '../../app/layers'
 import { type Model, Phase, type Zombie } from '../../app/model'
 import { initialModel } from '../../app/pureApp'
-import { stallShapes } from '../../features/shop/stall'
+import { rattlesShapes } from '../../features/rattles/rattlesSpot'
 import { jsonOf, zombieOf } from '../../test/testing'
 import {
   type Level,
   MANOR,
   PARLOUR,
+  RATTLES_BOX,
   levelOf,
   openExit,
 } from '../../world/level/arena'
 import { focusOf, modifyFocus } from '../../world/party/party'
-import { STALL_BOX } from '../../world/shop/shop'
 import { type Drawable, depthSortedShapes } from '../depth'
 import { isBehindWall, occludersOf } from '../occluders'
 import { playerShapes } from '../playerView'
@@ -74,10 +74,12 @@ const zombieIndex = (current: Model, zombie: Zombie): number =>
     ),
   )
 
-const stallIndex = (current: Model): number =>
+// NOTE: Rattles' trunk, the last shape of his spot, never moves; he dozes
+// through a wave.
+const trunkIndex = (current: Model): number =>
   indexOf(
     worldShapesOf(current),
-    Option.getOrThrow(Array.head(stallShapes('Closed', current.elapsedMs))),
+    Option.getOrThrow(Array.last(rattlesShapes('Dozing', current.elapsedMs))),
   )
 
 const NORTH_DOOR_X = 220
@@ -135,16 +137,16 @@ describe('Depth sort', () => {
     expect(zombieIndex(current, tank)).toBeGreaterThan(playerIndex(current))
   })
 
-  test('the player and a zombie behind the stall draw under it', () => {
-    const behindStall = zombieOf('Shambler', 1, STALL_BOX.left + 6, 140)
+  test("the player and a zombie behind Rattles' trunk draw under it", () => {
+    const behindTrunk = zombieOf('Shambler', 1, RATTLES_BOX.left + 6, 140)
     const current = fightingModel(
-      { x: STALL_BOX.right - 4, y: STALL_BOX.top - 8 },
-      [behindStall],
+      { x: RATTLES_BOX.right - 4, y: RATTLES_BOX.top - 8 },
+      [behindTrunk],
     )
-    const stall = stallIndex(current)
-    expect(stall).toBeGreaterThanOrEqual(0)
-    expect(playerIndex(current)).toBeLessThan(stall)
-    expect(zombieIndex(current, behindStall)).toBeLessThan(stall)
+    const trunk = trunkIndex(current)
+    expect(trunk).toBeGreaterThanOrEqual(0)
+    expect(playerIndex(current)).toBeLessThan(trunk)
+    expect(zombieIndex(current, behindTrunk)).toBeLessThan(trunk)
   })
 
   test('a zombie in the north doorway draws under the lintel and one inside draws over it', () => {

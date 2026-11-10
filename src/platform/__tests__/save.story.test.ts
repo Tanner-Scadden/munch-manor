@@ -33,7 +33,7 @@ import {
 import { FocusTutorialReset } from '../../features/profile/update'
 import { FIXED_STEP_MS } from '../../shared/constants'
 import { noSavedRunRecords } from '../../shared/playerData'
-import { DISTANT_SPAWN, loadingSave } from '../../test/model.fixture'
+import { DISTANT_SPAWN, loadingSave, withKeys } from '../../test/model.fixture'
 import {
   APPLICATION,
   closeDialog,
@@ -885,7 +885,7 @@ describe('writing the save', () => {
   )
 
   test('the saved fields are all the save reads', () => {
-    const played = modifyFocus(
+    const played = withKeys(
       modifyFields(restoreSave(read, learnedSave), {
         phase: () =>
           Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [DISTANT_SPAWN] }),
@@ -897,7 +897,7 @@ describe('writing the save', () => {
         panel: () => 'WhatsNew',
         orientation: () => 'Portrait',
       }),
-      { wallet: wallet => modifyFields(wallet, { balance: () => 300 }) },
+      3,
     )
     const savedFromInitial = Record.fromEntries(
       Array.map(SAVED_FIELDS, field => [field, initialModel[field]]),

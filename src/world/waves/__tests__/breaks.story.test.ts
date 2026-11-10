@@ -25,8 +25,6 @@ import {
   isCountdownBeckoning,
   shownHints,
 } from '../../../features/onboarding/onboarding'
-import { cameraOf } from '../../../render/camera'
-import { maybeBubbleKind } from '../../../screens/game/stallBubble'
 import {
   FIXED_STEP_MS,
   PREPARATION_MS,
@@ -69,7 +67,6 @@ const breakClock = (current: Model): Option.Option<BreakClock> =>
     GameOver: () => Option.none(),
   })
 
-const bubble = (current: Model) => maybeBubbleKind(current, cameraOf(current))
 const BREAK_TICKS = Math.ceil(PREPARATION_MS / TICK_MS) + 10
 
 describe('the first break waits', () => {
@@ -91,7 +88,6 @@ describe('the first break waits', () => {
           expect(isBreak(current)).toBe(true)
           expect(shownHints(current)).toEqual([])
           expect(isCountdownBeckoning(current)).toBe(false)
-          expect(bubble(current)).toEqual(Option.none())
         }),
         tap('Enter'),
         Story.model(current => {

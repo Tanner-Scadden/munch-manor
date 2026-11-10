@@ -2,12 +2,10 @@ import { Array, Function, Option, Order, Result } from 'effect'
 import { makeModifyFieldsFor, modifyFields } from 'foldkit/struct'
 
 import { FIXED_STEP_MS } from '../../shared/constants'
-import { killPayFor } from '../heroes/calling'
 import { GLASS_START_HEARTS } from '../run/modifiers'
 import { type World, modifyWorldFields } from '../schema/world'
 import {
   type Bullet,
-  FIRST_SHOP_CATEGORY,
   Life,
   Party,
   type Player,
@@ -17,11 +15,8 @@ import {
   SOLO_SLOT,
   type Seat,
   type SeatState,
-  ShopState,
   type Vector,
-  type Wallet,
   emptyTrapStock,
-  emptyWallet,
   freshTally,
   idleBoosts,
   idleIntent,
@@ -77,6 +72,7 @@ export const soloSeat: Seat = {
   downs: 0,
   shotsFired: 0,
   shotsHit: 0,
+  keysFound: 0,
   graceMs: 0,
   touchedMs: 0,
 }
@@ -86,12 +82,9 @@ export const soloState: SeatState = {
   seat: soloSeat,
   player: initialPlayer,
   intent: idleIntent,
-  wallet: emptyWallet,
   boosts: idleBoosts,
   trapStock: emptyTrapStock,
   selectedTrap: 'Barricade',
-  shop: ShopState.Away(),
-  shopCategory: FIRST_SHOP_CATEGORY,
   laserSight: 'None',
   purchase: Purchase.Idle(),
   cooking: noCooking,
@@ -436,91 +429,6 @@ export const withStartingHearts = (world: World): World =>
       )
     : world
 
-// MONEY
-
-export const earn: {
-  (amount: number): (wallet: Wallet) => Wallet
-  (wallet: Wallet, amount: number): Wallet
-} = Function.dual(2, (wallet: Wallet, amount: number): Wallet =>
-  modifyFields(wallet, {
-    balance: balance => balance + amount,
-    earned: earned => earned + amount,
-  }),
-)
-
-const earnInWorld = (world: World, slot: PlayerSlot, amount: number): World =>
-  modifySeat(world, slot, { wallet: wallet => earn(wallet, amount) })
-
-// NOTE: kill money for the player at `slot`, as their calling pays it (the
-// Penny Pincher's kills pay less). A bonus is not a kill, so it goes
-// through earnInWorld whole.
-export const earnKill: {
-  (slot: PlayerSlot, amount: number): (world: World) => World
-  (world: World, slot: PlayerSlot, amount: number): World
-} = Function.dual(3, (world: World, slot: PlayerSlot, amount: number): World =>
-  earnInWorld(
-    world,
-    slot,
-    killPayFor(
-      seatStateAt(world, slot).player.calling,
-      amount,
-      world.modifiers,
-    ),
-  ),
-)
-
-// NOTE: kill money goes to the killer (decided 5). A kill with no single
-// killer, such as a Kaboomer's chain or an oven's fire, is shared.
-export const payTo: {
-  (
-    maybeSlot: Option.Option<PlayerSlot>,
-    amount: number,
-  ): (world: World) => World
-  (world: World, maybeSlot: Option.Option<PlayerSlot>, amount: number): World
-} = Function.dual(
-  3,
-  (world: World, maybeSlot: Option.Option<PlayerSlot>, amount: number): World =>
-    Option.match(maybeSlot, {
-      onNone: () => payShared(world, amount),
-      onSome: slot => earnKill(world, isCoop(world) ? slot : SOLO_SLOT, amount),
-    }),
-)
-
-// NOTE: a bonus split evenly among the players (decided 5): whole dollars,
-// with the odd ones to the lowest seats, so the split adds up to the bonus.
-export const payShared: {
-  (amount: number): (world: World) => World
-  (world: World, amount: number): World
-} = Function.dual(2, (world: World, amount: number): World =>
-  splitAmong(world, amount, earnInWorld),
-)
-
-// NOTE: kill money with no single killer (a Kaboomer's chain, an oven's
-// fire, a trap's blast), split the same way, each player paid as their own
-// calling pays kills.
-export const payKillShared: {
-  (amount: number): (world: World) => World
-  (world: World, amount: number): World
-} = Function.dual(2, (world: World, amount: number): World =>
-  splitAmong(world, amount, earnKill),
-)
-
-const splitAmong = (
-  world: World,
-  amount: number,
-  earnWith: (current: World, slot: PlayerSlot, amount: number) => World,
-): World => {
-  if (!isCoop(world)) {
-    return earnWith(world, SOLO_SLOT, amount)
-  }
-  const slots = slotsOf(world)
-  const share = Math.floor(amount / slots.length)
-  const odd = amount - share * slots.length
-  return Array.reduce(slots, world, (current, slot, order) =>
-    earnWith(current, slot, share + (order < odd ? 1 : 0)),
-  )
-}
-
 // NOTE: a change to the seat's record at `slot`, in co-op only: single
 // player counts its own in the run stats.
 const modifyCrewSeat = (
@@ -674,16 +582,6 @@ export const trapOwnerOf: {
           ({ seat }) => seat.slot,
         )
       : Option.none(),
-)
-
-// NOTE: a seat's own stall or exit state, wherever the seat sits.
-export const shopOf: {
-  (slot: PlayerSlot): (world: World) => Option.Option<ShopState>
-  (world: World, slot: PlayerSlot): Option.Option<ShopState>
-} = Function.dual(
-  2,
-  (world: World, slot: PlayerSlot): Option.Option<ShopState> =>
-    Option.map(maybeSeatState(world, slot), ({ shop }) => shop),
 )
 
 // NOTE: the slot of the seat a screen is about.

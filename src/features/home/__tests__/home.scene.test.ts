@@ -11,6 +11,7 @@ import {
   APPLICATION,
   manorButton,
   measureSurface,
+  munchopediaDialog,
   openHandInScene,
   pickCardInScene,
   shareMountSettles,
@@ -52,7 +53,6 @@ const MUNCHOPEDIA_NEWS = `${MUNCHOPEDIA}. Something new`
 const newsPip = Scene.selector(".manor-pip[data-card='WhatsNew']")
 const munchopediaPip = Scene.selector(".manor-pip[data-card='Munchopedia']")
 const whatsNewDialog = Scene.role('dialog', { name: "What's new" })
-const munchopediaDialog = Scene.role('dialog', { name: 'Munchopedia' })
 
 describe("What's New", () => {
   it.effect(

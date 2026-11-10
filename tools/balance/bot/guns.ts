@@ -26,7 +26,7 @@ export const fridgeSpareOf = (model: Model): Gun | undefined =>
 export type FridgeSpare = Gun
 
 // The gun the bot bought from Rattles (the Barn Buster or the Chatterbox).
-export const firearmOf = (model: Model): Gun | undefined =>
+const firearmOf = (model: Model): Gun | undefined =>
   Option.getOrUndefined(
     Array.findFirst(
       gunsOfBot(model),

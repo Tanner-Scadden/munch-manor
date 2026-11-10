@@ -1,7 +1,7 @@
 // Co-op audit (tools/audit/coop.ts): the room's World and link as each page
 // draws them.
 
-import { Array, Effect, Function, Option, Schema } from 'effect'
+import { Effect, Function, Schema } from 'effect'
 import type { Page } from 'playwright-core'
 
 import { type Readout, ReadoutJson } from '@game/features/coop/readout'
@@ -79,15 +79,6 @@ export const isOnArena = (page: Page) =>
 
 export const slotOf = (page: Page) =>
   Effect.map(netOf(page), net => net?.slot ?? -1)
-
-export const ownSeatOf = (page: Page) =>
-  Effect.gen(function* () {
-    const readout = yield* readoutOf(page)
-    const slot = yield* slotOf(page)
-    return Option.getOrUndefined(
-      Array.findFirst(readout?.players ?? [], seat => seat.slot === slot),
-    )
-  })
 
 type ClientPoint = Readonly<{ x: number; y: number }>
 

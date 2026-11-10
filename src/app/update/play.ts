@@ -42,7 +42,6 @@ import {
 } from '../../world/gear/weapons'
 import { focusOf, isCoop } from '../../world/party/party'
 import { tallyFrame } from '../../world/run/stats'
-import { isAtCounter, isBrowsing } from '../../world/shop/shop'
 import { SeatAction, gunSlotAction } from '../../world/step/stepWorld'
 import { isRoundActive, pause } from '../../world/waves/waves'
 import { makeStep } from '../definition'
@@ -63,7 +62,6 @@ import { homeFocusFromKey, homeFromKey, menuFromKey } from './home'
 import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
-import { closeShop, shopFromKey, syncShopDialog } from './shop'
 import {
   ammoTickCues,
   frameSoundCues,
@@ -253,12 +251,7 @@ export const clickMedic: UpdateStep = model =>
 
 // PAUSE
 
-const pauseRound = makeStep(() =>
-  Update.combineSteps([
-    closeShop,
-    modelStep(model => withInput(pause(model), releaseAll)),
-  ]),
-)
+const pauseRound = modelStep(model => withInput(pause(model), releaseAll))
 
 // NOTE: the pause button pauses a round under way and does nothing else.
 export const clickPause = makeStep(model =>
@@ -318,7 +311,6 @@ export const tickFrame = (deltaTime: number) =>
           ...mendCues(model, advanced),
           ...kitchenCues(model, advanced),
         ]),
-        syncShopDialog(isBrowsing(focusOf(model).shop)),
       ])
     } else if (isEndScreen(model.phase)) {
       return advanceEndScreen(clampFrameDelta(deltaTime))
@@ -362,18 +354,6 @@ export const pressedKey = (code: string) =>
         toModel(keyed),
         unlockAudio,
         pressCoopKey(code),
-      ])
-    }
-
-    if (isAtCounter(focusOf(keyed).shop)) {
-      return Update.combineSteps([
-        toModel(
-          withInput(toggleAudioFromKey(keyed, code), input =>
-            pressKey(input, code),
-          ),
-        ),
-        unlockAudio,
-        shopFromKey(code),
       ])
     }
 
@@ -498,16 +478,15 @@ export const pressMeleeSlot: UpdateStep = stepWhen(
   drawFromButton(equipMelee),
 )
 
-// NOTE: the counter and the new zombie card hold the round's buttons.
-const isTrapButtonHeld = (model: Model): boolean =>
-  isAtCounter(focusOf(model).shop) || isDebutCardBlocking(model)
+// NOTE: the new zombie card holds the round's buttons.
+const isTrapButtonHeld = (model: Model): boolean => isDebutCardBlocking(model)
 
 const startWaveFromButton: UpdateStep = model => ({
   model: learnStartWaveWhen(model, startWave(model)),
 })
 
-// NOTE: START WAVE and the trap buttons wait while the counter or the new
-// zombie card holds the round's buttons.
+// NOTE: START WAVE and the trap buttons wait while the new zombie card
+// holds the round's buttons.
 export const clickStartWave = makeStep(model =>
   isTrapButtonHeld(model)
     ? unchanged

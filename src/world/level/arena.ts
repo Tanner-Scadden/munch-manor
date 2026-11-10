@@ -86,7 +86,10 @@ export type CoverKind =
   | 'Fridge'
 
 export const WALL_SYMBOL = '#'
-export const SHOP_STALL_SYMBOL = '$'
+// NOTE: Rattles' spot in the parlour, where his stall stood until the shop
+// went (docs/ESCAPE_PLAN.md, layer 7): he sits there on an old trunk,
+// solid as the stall was, and hollers his hints from it.
+export const RATTLES_SYMBOL = '$'
 const OUTSIDE_SYMBOL = ','
 export const SOUP_SYMBOL = '~'
 
@@ -541,7 +544,7 @@ const buildLevel = (
 
   const solidSymbols: ReadonlySet<string> = new Set([
     WALL_SYMBOL,
-    SHOP_STALL_SYMBOL,
+    RATTLES_SYMBOL,
     ...Record.keys(COVER_SYMBOLS),
     ...Array.map(closed, ({ symbol }) => symbol),
     ...Array.map(heldDoors, id => DOOR_SYMBOLS[id]),
@@ -763,6 +766,22 @@ export const makeLevel: {
 export const PARLOUR: Level = levelFor(PARLOUR_SPEC)
 
 export const MANOR: Level = levelFor(MANOR_SPEC)
+
+// NOTE: Rattles' trunk in the parlour, where every run starts; his
+// sprites are baked once for that spot.
+const rattlesBox = (): Box => {
+  const tiles = tilesWithSymbol(PARLOUR, RATTLES_SYMBOL)
+  const columns = Array.map(tiles, ({ column }) => column)
+  const rows = Array.map(tiles, ({ row }) => row)
+  return {
+    left: Math.min(...columns) * TILE_SIZE,
+    top: Math.min(...rows) * TILE_SIZE,
+    right: (Math.max(...columns) + 1) * TILE_SIZE,
+    bottom: (Math.max(...rows) + 1) * TILE_SIZE,
+  }
+}
+
+export const RATTLES_BOX: Box = rattlesBox()
 
 export const startingLevel: LevelState = { id: 'Manor', openExits: [] }
 

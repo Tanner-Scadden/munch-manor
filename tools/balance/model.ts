@@ -1,7 +1,7 @@
 // The analytical balance model: per wave and difficulty, straight from the
 // game's tables, with no bot and no frames. It rolls each wave's real spawn
-// list for a few seeds, buys the bot's loadout from the money those waves
-// pay, and drains the incoming health with that loadout's sustained damage
+// list for a few seeds, buys the bot's loadout from the skeleton keys those
+// waves drop (src/world/keys/keys.ts), and drains the incoming health with that loadout's sustained damage
 // a second, holds and quiet hurries included. Run it with
 // `bun tools/balance/model.ts`. It is instant, so it runs in `bun run test`.
 
@@ -36,19 +36,18 @@ import {
 import { tierForKills } from '../../src/world/gear/gunLevels'
 import { TRAPS } from '../../src/world/gear/traps'
 import { UPGRADE_TIERS, WEAPONS } from '../../src/world/gear/weapons'
-import { EXIT_RULES } from '../../src/world/level/exits'
+import { KEY_RULES, keyOddsOf } from '../../src/world/keys/keys'
+import { KITCHEN_EXIT, exitKeysOf } from '../../src/world/level/exits'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
   toughenSpawns,
 } from '../../src/world/run/difficulty'
-import { SHOP_ITEMS } from '../../src/world/shop/shop'
 import { rollWave } from '../../src/world/waves/endlessWaves'
 import { STRAGGLER_KINDS } from '../../src/world/waves/pacing'
 import { FINAL_WAVE } from '../../src/world/waves/wavePlans'
-import { waveBonus } from '../../src/world/waves/waves'
 import { BOSS_RULES, bossHp, hasBoss } from '../../src/world/zombies/boss'
-import { FRENZY_RULES, frenzyPacksOf } from '../../src/world/zombies/frenzy'
+import { frenzyPacksOf } from '../../src/world/zombies/frenzy'
 import {
   ZOMBIE_KINDS,
   ZOMBIE_KIND_ORDER,
@@ -88,10 +87,10 @@ export const ASSUMPTIONS: Assumptions = {
   peakWindowMs: 5000,
   maxWaveMs: 300_000,
   upkeepPerVisit: 0,
-  reserve: 30,
+  reserve: 0,
 }
 
-// THE SHOP
+// THE PRICES, IN KEYS
 
 export type Catalog = Readonly<{
   gunPrice: Readonly<Record<SpareGun, number>>
@@ -102,8 +101,15 @@ export type Catalog = Readonly<{
   kitchenPrice: number
 }>
 
+// NOTE: the shop is gone (docs/ESCAPE_PLAN.md, layer 7). Guns sit in display
+// cases opened by feats, which the balance bot leaves alone, so the model
+// never buys one either: their price is out of reach. The kitchen's
+// padlock asks its keys.
 export const CATALOG: Catalog = {
-  gunPrice: { Shotgun: SHOP_ITEMS.Shotgun.price, Smg: SHOP_ITEMS.Smg.price },
+  gunPrice: {
+    Shotgun: globalThis.Number.POSITIVE_INFINITY,
+    Smg: globalThis.Number.POSITIVE_INFINITY,
+  },
   // NOTE: traps are found in the trap crates (src/world/gear/crates.ts),
   // not bought, so the model gets them for nothing. It still picks them up
   // in its own order, one a visit, about as a crate gives one a break.
@@ -111,7 +117,7 @@ export const CATALOG: Catalog = {
   plankLimit: TRAPS.Barricade.limit,
   gnomePrice: 0,
   gnomeLimit: TRAPS.Turret.limit,
-  kitchenPrice: EXIT_RULES.price,
+  kitchenPrice: exitKeysOf(KITCHEN_EXIT),
 }
 
 // NOTE: a gun's tier is earned by its kills (src/world/gear/gunLevels.ts),
@@ -818,21 +824,19 @@ const incomingOf = (rolled: RolledWave): ReadonlyArray<Incoming> =>
     arrival: arrivalOf(spawn, rolled.spawns),
   }))
 
-// The money a wave pays when the bot kills everything and wipes every
-// frenzied pack: bounties, the boss's bounty, the pack bonus, and the clear.
+// The keys a wave drops on average when the bot kills everything and wipes
+// every frenzied pack: each kill's odds, the boss's, a key a wiped pack,
+// and the clear's (src/world/keys/keys.ts). The model's "money" is keys.
 export const wavePay: {
   (wave: number): (rolled: RolledWave) => number
   (rolled: RolledWave, wave: number): number
 } = Function.dual(
   2,
-  (rolled: RolledWave, wave: number): number =>
-    Number.sumAll(
-      Array.map(rolled.spawns, ({ kind }) => ZOMBIE_KINDS[kind].bounty),
-    ) +
-    (rolled.boss._tag === 'Waiting' ? ZOMBIE_KINDS.Boss.bounty : 0) +
-    Number.sumAll(Array.map(frenzyPacksOf(rolled.spawns), ({ left }) => left)) *
-      FRENZY_RULES.bonusPerZombie +
-    waveBonus(wave),
+  (rolled: RolledWave, _wave: number): number =>
+    Number.sumAll(Array.map(rolled.spawns, ({ kind }) => keyOddsOf(kind))) +
+    (rolled.boss._tag === 'Waiting' ? keyOddsOf('Boss') : 0) +
+    frenzyPacksOf(rolled.spawns).length * KEY_RULES.perPackWiped +
+    KEY_RULES.perWaveCleared,
 )
 
 // THE MODEL
@@ -1168,7 +1172,7 @@ export const formatModel = (model: BalanceModel): string => {
       'Seconds to kill one zombie on Normal, every gun at its top tier',
       formatKillTimes(killTimes('Normal', maxTierOf)),
       '',
-      `Money: a full campaign pays about $${prices.earned.toFixed(0)}. A full kit costs $${prices.fullKit.Smg} with the SMG and $${prices.fullKit.Shotgun} with the shotgun.`,
+      `Keys: a full campaign drops about ${prices.earned.toFixed(0)}. The kitchen costs ${CATALOG.kitchenPrice}; guns come from cases and traps from crates.`,
     ],
     '\n',
   )

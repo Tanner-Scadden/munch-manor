@@ -1,7 +1,7 @@
 import { Array, Function, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { isInKitchenAt } from '../kitchen/kitchenPay'
+import { isInKitchenAt } from '../kitchen/kitchenKeys'
 import { type Level, levelOf } from '../level/arena'
 import {
   forEachSeat,
@@ -121,9 +121,13 @@ const ARMAMENT_OF: Readonly<Record<KillSource, Option.Option<Armament>>> = {
 type Kill = typeof GameEvent.ZombieKilled.Type
 
 // NOTE: who a kill is credited to. A kill no player made (a trap, a
-// shatter) is single player's own, as its pay is; in co-op it is nobody's.
-const killerOf = (world: World, kill: Kill): Option.Option<PlayerSlot> =>
-  isCoop(world) ? kill.maybeKiller : Option.some(SOLO_SLOT)
+// shatter) is single player's own, as its keys are; in co-op it is nobody's.
+export const killerOf: {
+  (kill: Kill): (world: World) => Option.Option<PlayerSlot>
+  (world: World, kill: Kill): Option.Option<PlayerSlot>
+} = Function.dual(2, (world: World, kill: Kill): Option.Option<PlayerSlot> =>
+  isCoop(world) ? kill.maybeKiller : Option.some(SOLO_SLOT),
+)
 
 const countKill =
   (level: Level, isStandingInKitchen: boolean) =>

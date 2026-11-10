@@ -18,9 +18,9 @@ import {
   RESTART_GRACE_MS,
 } from '../../../shared/constants'
 import { noSavedRunRecords } from '../../../shared/playerData'
-import { lastHeart, readyModel } from '../../../test/model.fixture'
+import { lastHeart, readyModel, withKeys } from '../../../test/model.fixture'
 import { APPLICATION, press, tick } from '../../../test/testing'
-import { focusOf, modifyFocus, seatCrew } from '../../../world/party/party'
+import { focusOf, seatCrew } from '../../../world/party/party'
 import { withWorld } from '../../../world/schema/world'
 import {
   SHARE_COPIED_MS,
@@ -204,7 +204,7 @@ describe('skipping and retrying', () => {
 })
 
 describe('the tally', () => {
-  const tallied = modifyFocus(
+  const tallied = withKeys(
     modifyFields(onEndScreen(gameOver, 0), {
       bestStreak: () => 12,
       stats: stats =>
@@ -214,25 +214,25 @@ describe('the tally', () => {
           shotsHit: () => 55,
         }),
     }),
-    { wallet: wallet => modifyFields(wallet, { earned: () => 240 }) },
+    24,
   )
 
-  test('a loss counts the wave, the kills, the streak, the aim, and the cash', () => {
+  test('a loss counts the wave, the kills, the streak, the aim, and the keys found', () => {
     const rows = tallyRowsOf(tallied)
     expect(Array.map(rows, row => row.label)).toEqual([
       'WAVE',
       'SPLATTED',
       'STREAK',
       'AIM',
-      'CASH',
+      'KEYS',
     ])
-    expect(Array.map(rows, row => row.value)).toEqual([4, 40, 12, 55, 240])
+    expect(Array.map(rows, row => row.value)).toEqual([4, 40, 12, 55, 24])
     expect(Array.map(rows, row => row.format(row.value))).toEqual([
       '4/10',
       '40',
       '12',
       '55%',
-      '$240',
+      '$24',
     ])
   })
 

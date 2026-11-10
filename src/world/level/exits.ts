@@ -2,14 +2,13 @@ import { Array, Function, Option, Result } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { KITCHEN_FIRST_WAVE } from '../../shared/constants'
-import { atSeat, seatStateAt } from '../party/party'
+import { heldKeys, spendKeys } from '../keys/keys'
 import { isKitchenTourOn } from '../run/tutorialRules'
 import type { World } from '../schema/world'
 import {
   type ExitId,
   GameEvent,
   Phase,
-  type PlayerSlot,
   Purchasable,
 } from '../schema/worldSchema'
 import type { Offer } from '../shop/purchase'
@@ -25,14 +24,16 @@ import {
 
 // THE EXIT
 
-// NOTE: the kitchen costs about two thirds of the Chatterbox. At the wave 3
-// break a typical run has about $100, so it buys the gun or the kitchen and a
-// refill, not both. It opens from that break on, after the first break has
-// taught the shop.
+// NOTE: a boarded exit is padlocked, and opens for skeleton keys off the
+// crew's ring (src/world/keys/keys.ts), 3 to 5 by how deep its room is: the
+// kitchen 3, a room one further 4, and deeper ones 5 (docs/ESCAPE_PLAN.md,
+// "Key costs and drops"; layer 8's house grid adds the deeper rooms). The
+// kitchen opens from the wave 3 break on. Starting points, not yet tuned
+// on the balance bot (layer 17).
 export const KITCHEN_EXIT: ExitId = 'Kitchen'
 
 type ExitRules = Readonly<{
-  price: number
+  kitchenKeys: number
   firstWave: number
   reachPx: number
   tagDropPx: number
@@ -42,7 +43,7 @@ type ExitRules = Readonly<{
 // hangs: on the boards themselves, so a player standing at them is never
 // hidden behind it.
 export const EXIT_RULES: ExitRules = {
-  price: 60,
+  kitchenKeys: 3,
   firstWave: KITCHEN_FIRST_WAVE,
   reachPx: 14,
   tagDropPx: 7,
@@ -90,9 +91,17 @@ export const isExitOfferOpenFor = (phase: Phase): boolean =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase) &&
   phase.wave >= EXIT_RULES.firstWave
 
+// NOTE: the keys an exit's padlock asks, shown on the lock.
+export const exitKeysOf = (exit: ExitId): number =>
+  exit === KITCHEN_EXIT ? EXIT_RULES.kitchenKeys : EXIT_RULES.kitchenKeys + 1
+
 // NOTE: the kitchen tour gives the first exit away (src/world/run/tutorialRules.ts).
-export const exitPriceFor = (model: World): number =>
-  isKitchenTourOn(model) ? 0 : EXIT_RULES.price
+export const exitPriceFor: {
+  (exit: ExitId): (model: World) => number
+  (model: World, exit: ExitId): number
+} = Function.dual(2, (model: World, exit: ExitId): number =>
+  isKitchenTourOn(model) ? 0 : exitKeysOf(exit),
+)
 
 // NOTE: each boarded exit for sale, as a purchasable: walk up and hold the
 // interact key beside its boards (src/world/shop/purchase.ts).
@@ -100,7 +109,7 @@ export const exitOffers = (model: World): ReadonlyArray<Offer> =>
   isExitOfferOpenFor(model.phase)
     ? Array.map(closedExitBoxes(levelOf(model)), ({ exit, box }) => ({
         target: Purchasable.Exit({ exit }),
-        price: exitPriceFor(model),
+        price: exitPriceFor(model, exit),
         box,
         reachPx: EXIT_RULES.reachPx,
         isFull: false,
@@ -120,44 +129,17 @@ export const maybePadlockedExit = (model: World): Option.Option<Box> =>
     ? Option.map(Array.head(closedExitBoxes(levelOf(model))), ({ box }) => box)
     : Option.none()
 
-export const spendOn: {
-  (slot: PlayerSlot, price: number): (model: World) => World
-  (model: World, slot: PlayerSlot, price: number): World
-} = Function.dual(3, (model: World, slot: PlayerSlot, price: number): World =>
-  modifyFields(model, {
-    seats: atSeat(slot, {
-      wallet: wallet =>
-        modifyFields(wallet, { balance: balance => balance - price }),
-    }),
-    stats: stats =>
-      modifyFields(stats, { purchases: purchases => purchases + 1 }),
-  }),
-)
-
 // NOTE: buying the exit opens it for the rest of the run, and its spawn
 // doors join the wave shown or under way at once (joinNewDoors in
 // src/world/waves/waves.ts), drawn from the run's generator. The boards smash where
 // the doorway meets the parlour floor.
+// The keys come off the crew's one ring, whoever holds at the boards.
 export const buyExit: {
-  (
-    slot: PlayerSlot,
-    exit: ExitId,
-    price: number,
-  ): (model: World) => Option.Option<World>
-  (
-    model: World,
-    slot: PlayerSlot,
-    exit: ExitId,
-    price: number,
-  ): Option.Option<World>
+  (exit: ExitId, price: number): (model: World) => Option.Option<World>
+  (model: World, exit: ExitId, price: number): Option.Option<World>
 } = Function.dual(
-  4,
-  (
-    model: World,
-    slot: PlayerSlot,
-    exit: ExitId,
-    price: number,
-  ): Option.Option<World> => {
+  3,
+  (model: World, exit: ExitId, price: number): Option.Option<World> => {
     const level = levelOf(model)
     const maybeBox = Option.flatMap(
       Option.filter(maybeExit(level, exit), ({ isOpen }) => !isOpen),
@@ -166,12 +148,12 @@ export const buyExit: {
     if (
       Option.isNone(maybeBox) ||
       !isExitOfferOpenFor(model.phase) ||
-      seatStateAt(model, slot).wallet.balance < price
+      heldKeys(model) < price
     ) {
       return Option.none()
     }
     const box = maybeBox.value
-    const opened = modifyFields(spendOn(model, slot, price), {
+    const opened = modifyFields(spendKeys(model, price), {
       level: state => openExitIn(state, exit),
       frameEvents: frameEvents => [
         ...frameEvents,

@@ -1,4 +1,4 @@
-import { Array, Function, Option, Result, Schema } from 'effect'
+import { Function, Option, Result, Schema } from 'effect'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 
@@ -32,17 +32,8 @@ import {
   type Player,
   type PlayerSlot,
   SOLO_SLOT,
-  type ShopCategory,
-  ShopItemId,
-  ShopState,
   idleIntent,
 } from '../schema/worldSchema'
-import {
-  isShopOpenFor,
-  itemsIn,
-  suggestedItem,
-  tryPurchase,
-} from '../shop/shop'
 import { isRoundActive, startWaveEarly } from '../waves/waves'
 import { ZERO_VECTOR } from './geometry'
 import { advanceTick } from './simulation'
@@ -120,8 +111,7 @@ export const stepWorld: {
 
 // NOTE: a player's presses, as actions on their own seat (MULTIPLAYER.md,
 // Phase 1): swapping, drawing the knife or a gun by its slot, reloading,
-// traps, the shop's buys and its leaving (decided row 8), and READY
-// (decided 7). Each action's rule lives here once. The room applies a
+// traps, and READY (decided 7). Each action's rule lives here once. The room applies a
 // seat's presses between ticks; single player applies its own presses to
 // its lead seat (src/app/update/action.ts) and wraps its cues around them.
 // A purchasable in the world is no press: it is bought by holding the
@@ -134,17 +124,15 @@ export const SeatAction = defineTaggedUnion({
   Reload: {},
   PlaceTrap: {},
   NextTrap: {},
-  Buy: { item: ShopItemId },
-  LeaveCounter: {},
   Ready: {},
   CallMedic: {},
 })
 export type SeatAction = typeof SeatAction.Type
 
 // NOTE: why an action left the World as it was. NotNow is no moment for
-// it (out of the fight, away from the counter, nothing to place): the
-// client stays quiet. Refused is a try the game turns down, with the
-// reason a client can show (the trap notice, Rattles' grumble).
+// it (out of the fight, nothing to place): the client stays quiet. Refused
+// is a try the game turns down, with the reason a client can show (the
+// trap notice).
 export const ActionRefusal = defineTaggedUnion({
   NotNow: {},
   Refused: { reason: Schema.String },
@@ -158,14 +146,8 @@ const notNow: ActionResult = Result.fail(ActionRefusal.NotNow())
 const refused = (reason: string): ActionRefusal =>
   ActionRefusal.Refused({ reason })
 
-const isFighting = (world: World, slot: PlayerSlot): boolean => {
-  const { seat, shop } = seatStateAt(world, slot)
-  return (
-    isRoundActive(world.phase) &&
-    isStanding(seat) &&
-    !ShopState.isAnyOf(['Browsing'])(shop)
-  )
-}
+const isFighting = (world: World, slot: PlayerSlot): boolean =>
+  isRoundActive(world.phase) && isStanding(seatStateAt(world, slot).seat)
 
 const whenFighting =
   (act: (world: World, slot: PlayerSlot) => ActionResult) =>
@@ -212,20 +194,6 @@ const nextTrap = whenFighting((world, slot) =>
   Result.succeed(cycleTrap(world, slot)),
 )
 
-// NOTE: only at the counter, and only in a break the shop is open for.
-const buy = (world: World, slot: PlayerSlot, item: ShopItemId): ActionResult =>
-  ShopState.isAnyOf(['Browsing'])(seatStateAt(world, slot).shop) &&
-  isShopOpenFor(world.phase)
-    ? Result.mapError(tryPurchase(world, slot, item), refused)
-    : notNow
-
-const leaveCounter = (world: World, slot: PlayerSlot): ActionResult =>
-  ShopState.isAnyOf(['Browsing'])(seatStateAt(world, slot).shop)
-    ? Result.succeed(
-        modifySeat(world, slot, { shop: () => ShopState.Dismissed() }),
-      )
-    : notNow
-
 // NOTE: READY in single player starts the wave at once, as START WAVE
 // always has; in co-op it waits for everyone. Only a break has one.
 const ready = (world: World, slot: PlayerSlot): ActionResult =>
@@ -258,8 +226,6 @@ export const trySeatAction: {
       Reload: () => reload(world, slot),
       PlaceTrap: () => placeTrap(world, slot),
       NextTrap: () => nextTrap(world, slot),
-      Buy: ({ item }) => buy(world, slot, item),
-      LeaveCounter: () => leaveCounter(world, slot),
       Ready: () => ready(world, slot),
       CallMedic: () => callMedic(world, slot),
     }),
@@ -283,56 +249,4 @@ export const gunSlotAction: {
   !isWieldingMelee(player) && heldSlotOf(player.arsenal) === slot
     ? SeatAction.Reload()
     : SeatAction.Draw({ slot }),
-)
-
-// THE SHOP WITHOUT A DIALOG
-
-// NOTE: where a player's shop focus moves when they have no dialog, such as
-// player 2 on a shared keyboard: through the rows of the open category, and
-// on past either end into the next category.
-export const FocusStep = Schema.Literals(['Previous', 'Next'])
-export type FocusStep = typeof FocusStep.Type
-
-// NOTE: the shop has one category now that traps and hearts are found in
-// the house (docs/ESCAPE_PLAN.md, layer 6), so the next one is itself.
-const categoryAfter = (
-  shopCategory: ShopCategory,
-  _step: FocusStep,
-): ShopCategory => shopCategory
-
-const stepFocus = (world: World, slot: PlayerSlot, step: FocusStep): World => {
-  const { shop, shopCategory } = seatStateAt(world, slot)
-  if (!ShopState.isAnyOf(['Browsing'])(shop)) {
-    return world
-  }
-  const focused = shop.focusedItem
-  const items = itemsIn(world, slot, shopCategory)
-  const index = Option.getOrElse(
-    Array.findFirstIndex(items, item => item === focused),
-    () => -1,
-  )
-  const nextIndex = step === 'Next' ? index + 1 : index - 1
-  return Option.match(Array.get(items, nextIndex), {
-    onSome: item =>
-      modifySeat(world, slot, {
-        shop: () => ShopState.Browsing({ focusedItem: item }),
-      }),
-    onNone: () => {
-      const category = categoryAfter(shopCategory, step)
-      return modifySeat(world, slot, {
-        shopCategory: () => category,
-        shop: () =>
-          ShopState.Browsing({
-            focusedItem: suggestedItem(world, slot, category),
-          }),
-      })
-    },
-  })
-}
-
-export const stepShopFocus: {
-  (slot: PlayerSlot, step: FocusStep): (world: World) => World
-  (world: World, slot: PlayerSlot, step: FocusStep): World
-} = Function.dual(3, (world: World, slot: PlayerSlot, step: FocusStep): World =>
-  stepFocus(world, slot, step),
 )

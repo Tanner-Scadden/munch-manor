@@ -15,7 +15,7 @@ import {
 import { APPLICATION, holdingFirst, tick } from '../../test/testing'
 import { modifyFocus } from '../../world/party/party'
 import { Message } from '../message'
-import { Arsenal, type Model, Phase, RunMode, ShopState } from '../model'
+import { Arsenal, type Model, Phase, RunMode } from '../model'
 import {
   type KeyDown,
   maybeKeyDownMessage,
@@ -89,22 +89,15 @@ describe('leaving the window', () => {
       ),
   )
 
-  it.effect(
-    'a window blur in Preparation closes the shop and pauses the countdown',
-    () =>
-      Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFocus(modifyFields(readyModel, { phase: () => WAVE_2_BREAK }), {
-            shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-          }),
-        ),
-        blurWindow,
-        Story.model(({ phase, seats: [{ shop }] }) => {
-          expect(phase).toEqual(Phase.Paused({ round: WAVE_2_BREAK }))
-          expect(ShopState.guards.Browsing(shop)).toBe(false)
-        }),
-      ),
+  it.effect('a window blur in Preparation pauses the countdown', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(modifyFields(readyModel, { phase: () => WAVE_2_BREAK })),
+      blurWindow,
+      Story.model(({ phase }) => {
+        expect(phase).toEqual(Phase.Paused({ round: WAVE_2_BREAK }))
+      }),
+    ),
   )
 
   it.effect(

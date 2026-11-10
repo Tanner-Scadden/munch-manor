@@ -17,7 +17,7 @@ import {
   type Box,
   DOOR_OUTWARD,
   type Level,
-  SHOP_STALL_SYMBOL,
+  RATTLES_SYMBOL,
   boxCenter,
   circleTouchesBox,
   distanceToBox,
@@ -666,7 +666,7 @@ export const spotBox: {
 
 const stallFrontOf = (level: Level): ReadonlyArray<number> =>
   pipe(
-    tilesWithSymbol(level, SHOP_STALL_SYMBOL),
+    tilesWithSymbol(level, RATTLES_SYMBOL),
     Array.map(({ column, row }) => tileIndex(level, column, row - 1)),
   )
 

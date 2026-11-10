@@ -2,8 +2,7 @@ import { Array, Function, Option, Order, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { PLAYER_RADIUS } from '../../shared/constants'
-import { levelOf } from '../level/arena'
-import { earnKill, isCoop, modifySeatRecord } from '../party/party'
+import { isCoop, modifySeatRecord } from '../party/party'
 import type { World } from '../schema/world'
 import {
   GameEvent,
@@ -14,7 +13,7 @@ import {
   ZombieAction,
   type ZombieKind,
 } from '../schema/worldSchema'
-import { bountyOf, hitEvent, killEvent, strikeZombie } from '../step/combat'
+import { hitEvent, killEvent, strikeZombie } from '../step/combat'
 import { directionBetween } from '../step/geometry'
 import { bodyRadiusOf } from '../zombies/zombies'
 
@@ -211,20 +210,18 @@ export const countKills = (events: ReadonlyArray<GameEvent>): number =>
     GameEvent.isAnyOf(['ZombieKilled'])(event) ? sum + 1 : sum,
   )
 
-// NOTE: a seat's own strike pays that seat and credits it the kills.
-export const payStriker: {
+// NOTE: a seat's own strike credits it the kills.
+export const creditStriker: {
   (slot: PlayerSlot, events: ReadonlyArray<GameEvent>): (world: World) => World
   (world: World, slot: PlayerSlot, events: ReadonlyArray<GameEvent>): World
 } = Function.dual(
   3,
   (world: World, slot: PlayerSlot, events: ReadonlyArray<GameEvent>): World => {
-    const bounty = bountyOf(levelOf(world), events)
     const kills = countKills(events)
-    const paid = bounty > 0 ? earnKill(world, slot, bounty) : world
-    return isCoop(paid) && kills > 0
-      ? modifySeatRecord(paid, slot, seat =>
+    return isCoop(world) && kills > 0
+      ? modifySeatRecord(world, slot, seat =>
           modifyFields(seat, { kills: count => count + kills }),
         )
-      : paid
+      : world
   },
 )

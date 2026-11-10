@@ -6,7 +6,6 @@ import { CoopBlock } from '../features/coop'
 import { LobbyBlock } from '../features/lobby/block'
 import { MunchopediaBlock } from '../features/munchopedia/block'
 import { ProfileBlock } from '../features/profile/block'
-import { ShopBlock } from '../features/shop/block'
 import { openedEntry } from '../screens/home/home'
 import {
   CoopBinding,
@@ -17,15 +16,9 @@ import {
   PanelDialogBinding,
   ProfileBinding,
   ProfileDialogBinding,
-  ShopDialogBinding,
   UpdateGreetingBinding,
 } from './bindings'
-import {
-  ApplicationBlock,
-  makeComposition,
-  makeNoopStep,
-  makeStep,
-} from './definition'
+import { ApplicationBlock, makeComposition, makeNoopStep } from './definition'
 import { mounts } from './mount'
 import {
   boughtCalling,
@@ -35,7 +28,6 @@ import {
   leftRoom,
   neededNewerBuild,
 } from './update/coop'
-import { orBuyInRun } from './update/coopRun'
 import { forgetAskedMode } from './update/home'
 import {
   addLobbyBot,
@@ -64,13 +56,6 @@ import {
   submitName,
   switchedTab,
 } from './update/profile'
-import {
-  buy,
-  chooseCategory,
-  closedShop,
-  focusItem,
-  moveFocus,
-} from './update/shop'
 import { modelStep } from './update/step'
 
 // NOTE: each child's OutMessage fold. The Bindings live in src/app/bindings.ts,
@@ -113,23 +98,6 @@ const HomeScreenStepsBindingWithOutMessagePolicy =
 
 const UpdateGreetingBindingWithOutMessagePolicy =
   UpdateGreetingBinding.withOutMessagePolicy({ fold: dialogWithoutPolicy })
-
-// THE SHOP
-
-// NOTE: the shop tells what the player did at the counter; the root makes
-// each as the lead seat's action in the World (an online run's buy goes to
-// the room), and judges a close: Escape with the guide up only puts the
-// guide away (src/app/update/shop.ts).
-const ShopDialogBindingWithOutMessagePolicy =
-  ShopDialogBinding.withOutMessagePolicy({
-    fold: ApplicationBlock.makeOutMessageFold(ShopBlock, {
-      PickedItem: ({ item }) => makeStep(orBuyInRun(item, buy(item))),
-      MovedFocus: ({ item }) => moveFocus(item),
-      FocusedItem: ({ item }) => focusItem(item),
-      ChoseCategory: ({ category }) => chooseCategory(category),
-      Closed: () => closedShop,
-    }),
-  })
 
 // THE MUNCHOPEDIA
 
@@ -201,7 +169,6 @@ const CoopBindingWithOutMessagePolicy = CoopBinding.withOutMessagePolicy({
 
 export const ApplicationComposition = makeComposition({
   bindings: [
-    ShopDialogBindingWithOutMessagePolicy,
     ProfileDialogBindingWithOutMessagePolicy,
     PanelDialogBindingWithOutMessagePolicy,
     HandDialogBindingWithOutMessagePolicy,

@@ -30,6 +30,7 @@ import {
   DEATH_WAVES,
   DEVICES,
   ENDS,
+  KEYS,
   MEDIAN_LENGTH,
   RUNS_PER_DAY,
   SHARES,
@@ -116,6 +117,13 @@ const DeviceRow = Schema.Struct({
   device: Schema.String,
   screen_fit: Schema.String,
   runs: Count,
+})
+
+const KeysRow = Schema.Struct({
+  mode: Schema.String,
+  runs: Count,
+  keys_spent: Schema.NullOr(Schema.Finite),
+  cases_opened: Schema.NullOr(Schema.Finite),
 })
 
 const DayRow = Schema.Struct({ received_day: Schema.String, runs: Count })
@@ -226,6 +234,7 @@ const program = Effect.gen(function* () {
     killers,
     medians,
     devices,
+    keys,
     days,
     shares,
     ends,
@@ -239,6 +248,7 @@ const program = Effect.gen(function* () {
     run(DEADLIEST, KillerRow),
     run(MEDIAN_LENGTH, MedianRow),
     run(DEVICES, DeviceRow),
+    run(KEYS, KeysRow),
     run(RUNS_PER_DAY, DayRow),
     run(SHARES, ShareRow),
     run(ENDS, EndRow),
@@ -308,6 +318,16 @@ const program = Effect.gen(function* () {
             row.screen_fit,
             `${row.runs}`,
             percent(row.runs, totalSummaries),
+          ]),
+        ),
+        section(
+          'Keys spent and cases opened a run (per player, version 5 on)',
+          ['mode', 'runs', 'keys spent', 'cases opened'],
+          Array.map(keys, row => [
+            row.mode,
+            `${row.runs}`,
+            row.keys_spent === null ? '-' : row.keys_spent.toFixed(1),
+            row.cases_opened === null ? '-' : row.cases_opened.toFixed(1),
           ]),
         ),
         section(

@@ -42,7 +42,6 @@ import {
   SHAKE_TRAUMA_HURT,
   SHAKE_TRAUMA_KILL,
   SHAKE_TRAUMA_MAX,
-  SHAMBLER_BOUNTY,
   STREAK_WINDOW_MS,
   ZOMBIE_MAX_HP,
 } from '../../shared/constants'
@@ -61,7 +60,9 @@ import {
   ticks,
   waitOutFreeze,
   zombieAt,
+  zombieOf,
 } from '../../test/testing'
+import { keyOddsOf } from '../../world/keys/keys'
 import { PARLOUR } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
 import { scoreOf } from '../../world/run/stats'
@@ -305,6 +306,11 @@ describe('particles and decals', () => {
 
 const doomedZombieAt = (id: number, x: number, y: number): Zombie =>
   modifyFields(zombieAt(id, x, y, { speed: 0 }), { hp: () => 1 })
+
+// NOTE: a Big Lug on its last hit point always drops keys (its odds are a
+// whole number, src/world/keys/keys.ts), so its kill pops their count.
+const doomedLugAt = (id: number, x: number, y: number): Zombie =>
+  modifyFields(zombieOf('Tank', id, x, y, { speed: 0 }), { hp: () => 1 })
 
 const massacreModel = (count: number): Model => {
   const victims = Array.makeBy(count, index =>
@@ -710,7 +716,7 @@ describe('hit-stop', () => {
 
 describe('damage numbers', () => {
   it.effect(
-    'a hit pops the damage dealt and a kill pops the money it pays',
+    'a hit pops the damage dealt and a kill pops the keys it drops',
     () =>
       Effect.gen(function* () {
         yield* Story.story(
@@ -732,14 +738,14 @@ describe('damage numbers', () => {
         yield* Story.story(
           APPLICATION,
           Story.given(
-            withZombies(playingModel, [doomedZombieAt(100, MUZZLE_X, 90)]),
+            withZombies(playingModel, [doomedLugAt(100, MUZZLE_X, 90)]),
           ),
           holdFire,
           tick(FRAME_MS),
           Story.model(nextModel => {
             expect(kindsAndValues(nextModel)).toEqual([
               ['Damage', PISTOL_DAMAGE],
-              ['Kill', SHAMBLER_BOUNTY],
+              ['Kill', keyOddsOf('Tank')],
             ])
           }),
         )
@@ -755,7 +761,7 @@ describe('damage numbers', () => {
       return Story.story(
         APPLICATION,
         Story.given(
-          withZombies(playingModel, [doomedZombieAt(100, MUZZLE_X, 90)]),
+          withZombies(playingModel, [doomedLugAt(100, MUZZLE_X, 90)]),
         ),
         holdFire,
         tick(FRAME_MS),

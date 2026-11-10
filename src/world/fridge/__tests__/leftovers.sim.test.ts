@@ -16,7 +16,6 @@ import {
   HOLD_TICKS,
   playedThrough,
 } from '../../../test/testing'
-import { focusOf } from '../../party/party'
 import { FRIDGE_RULES } from '../leftovers'
 import { isFridgeOffered } from './leftovers.fixture'
 
@@ -41,7 +40,7 @@ describe('the fridge slams shut', () => {
     'it slams after its third or fourth pull, rests, and opens again luckier',
     () =>
       Effect.gen(function* () {
-        const unpulled: Array.NonEmptyReadonlyArray<Model> = [atFridge(1000)]
+        const unpulled: Array.NonEmptyReadonlyArray<Model> = [atFridge(100)]
         const pulls = yield* Effect.reduce(
           Array.makeBy(FRIDGE_RULES.maxPulls, index => index),
           () => unpulled,
@@ -63,7 +62,7 @@ describe('the fridge slams shut', () => {
         expect(slammed.fridge.luck).toBe(1)
         expect(slammed.fridge.pulls).toBe(0)
         expect(isFridgeOffered(slammed)).toBe(false)
-        expect(focusOf(slammed).wallet.balance).toBeLessThan(1000)
+        expect(slammed.keys.held).toBeLessThan(100)
         const rested = yield* playedThrough(
           slammed,
           framesOf(Math.ceil(FRIDGE_RULES.slamMs / FRAME_MS) + 1),

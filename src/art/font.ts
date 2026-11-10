@@ -1,5 +1,5 @@
 import { Array, Function, Option, Record, String, pipe } from 'effect'
-import { Canvas } from 'foldkit'
+import type { Canvas } from 'foldkit'
 
 import {
   ALERT_GLYPH_COLOR,
@@ -12,10 +12,10 @@ import {
 } from '../shared/constants'
 import {
   type Anchor,
+  type Palette,
   type Sprite,
   TOP_LEFT,
   TRANSPARENT,
-  bakeShapes,
   group,
   placeAt,
   spriteShapes,
@@ -92,38 +92,39 @@ const GLYPHS_BY_SYMBOL: Readonly<Record<string, ReadonlyArray<string>>> =
 const isGlyph = (symbol: string): symbol is Glyph =>
   Record.has(GLYPHS_BY_SYMBOL, symbol)
 
-// COIN
+// KEY
 
-export const COIN_SYMBOL = '$'
+// NOTE: `$` in any baked text draws a skeleton key, the crew's currency
+// (src/world/keys/keys.ts): a popup's `+$1`, the HUD's ring, a padlock's
+// price. It drew a coin until the keys took money's place
+// (docs/ESCAPE_PLAN.md, layer 7).
+export const KEY_SYMBOL = '$'
 
-const COIN_OUTLINE_COLOR = '#5a3510'
-const COIN_SHINE_COLOR = '#fff3b0'
-const COIN_SHADE_COLOR = '#d9962a'
-const COIN_MARK_COLOR = '#c98a1a'
+const KEY_OUTLINE_COLOR = '#5a3510'
+const KEY_SHINE_COLOR = '#fff3b0'
+const KEY_SHADE_COLOR = '#d9962a'
 
-const coinRect = (
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  fill: string,
-): Canvas.Shape => Canvas.Rect({ x, y, width, height, fill })
+const KEY_PIXELS: ReadonlyArray<string> = [
+  '.ooo...',
+  'osyyooo',
+  'oy.yyyy',
+  'oyyhoyo',
+  '.ooo.o.',
+]
 
-export const COIN_WIDTH = 7
-const COIN_LIFT = 1
+const KEY_COLORS: Palette = {
+  o: KEY_OUTLINE_COLOR,
+  y: COIN_COLOR,
+  s: KEY_SHINE_COLOR,
+  h: KEY_SHADE_COLOR,
+}
 
-export const COIN_SPRITE: Sprite = bakeShapes([
-  coinRect(0, 2, 7, 3, COIN_OUTLINE_COLOR),
-  coinRect(1, 1, 5, 5, COIN_OUTLINE_COLOR),
-  coinRect(2, 0, 3, 7, COIN_OUTLINE_COLOR),
-  coinRect(1, 2, 5, 3, COIN_COLOR),
-  coinRect(2, 1, 3, 5, COIN_COLOR),
-  coinRect(2, 1, 2, 1, COIN_SHINE_COLOR),
-  coinRect(1, 2, 1, 2, COIN_SHINE_COLOR),
-  coinRect(5, 2, 1, 3, COIN_SHADE_COLOR),
-  coinRect(2, 5, 3, 1, COIN_SHADE_COLOR),
-  coinRect(3, 2, 1, 3, COIN_MARK_COLOR),
-])
+export const KEY_WIDTH = 7
+// NOTE: the key is two rows shorter than a glyph cell, so it sits one row
+// down to center on the line.
+const KEY_LIFT = -1
+
+export const KEY_SPRITE: Sprite = spriteShapes(KEY_PIXELS, KEY_COLORS, TOP_LEFT)
 
 export const glyphPixels = (glyph: Glyph): ReadonlyArray<string> =>
   GLYPH_PIXELS[glyph]
@@ -135,16 +136,16 @@ const glyphWidth = (glyph: Glyph): number => spriteWidth(GLYPH_PIXELS[glyph])
 
 type Mark =
   | Readonly<{ kind: 'Glyph'; glyph: Glyph }>
-  | Readonly<{ kind: 'Coin' }>
+  | Readonly<{ kind: 'Key' }>
   | Readonly<{ kind: 'Space' }>
 
 type Cell = Readonly<{ mark: Mark; width: number }>
 
-const COIN_CELL: Cell = { mark: { kind: 'Coin' }, width: COIN_WIDTH }
+const KEY_CELL: Cell = { mark: { kind: 'Key' }, width: KEY_WIDTH }
 
 const cellOf = (symbol: string): Cell => {
-  if (symbol === COIN_SYMBOL) {
-    return COIN_CELL
+  if (symbol === KEY_SYMBOL) {
+    return KEY_CELL
   }
 
   return Option.match(toGlyph(symbol), {
@@ -192,13 +193,13 @@ const placeCells = (
     }),
   ).shapes
 
-const coinAt = (x: number, top: number): Canvas.Shape =>
-  placeAt(x, top - COIN_LIFT, COIN_SPRITE)
+const keyAt = (x: number, top: number): Canvas.Shape =>
+  placeAt(x, top - KEY_LIFT, KEY_SPRITE)
 
 const coinShapes = (text: string): ReadonlyArray<Canvas.Shape> =>
-  String.includes(COIN_SYMBOL)(text)
+  String.includes(KEY_SYMBOL)(text)
     ? placeCells(cellsOf(text), 0, (mark, x) =>
-        mark.kind === 'Coin' ? [coinAt(x, 0)] : [],
+        mark.kind === 'Key' ? [keyAt(x, 0)] : [],
       )
     : []
 
@@ -330,8 +331,8 @@ export const textShapes: {
       (mark, cellX) => {
         if (mark.kind === 'Glyph') {
           return [placeAt(cellX, top, GLYPH_SPRITES[tone][mark.glyph])]
-        } else if (mark.kind === 'Coin') {
-          return [coinAt(cellX, top)]
+        } else if (mark.kind === 'Key') {
+          return [keyAt(cellX, top)]
         } else {
           return []
         }

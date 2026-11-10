@@ -11,7 +11,6 @@ import { cameraFocus } from '../../../render/camera'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
-  atSeat,
   crewInWave,
   pickupAt,
   placeSeat,
@@ -26,19 +25,13 @@ import {
   ticks,
   zombieOf,
 } from '../../../test/testing'
-import {
-  maybePlayerAt,
-  modifyFocus,
-  playersOf,
-} from '../../../world/party/party'
-import { Life, ShopState } from '../../../world/schema/worldSchema'
-import { STALL_BOX } from '../../../world/shop/shop'
+import { maybePlayerAt, playersOf } from '../../../world/party/party'
+import { Life } from '../../../world/schema/worldSchema'
 import { coopNameShapes } from '../../onlineRun/coopMarksView'
 import { botInputs } from '../teammateBot'
 
 // A teammate bot (src/features/bots/teammateBot.ts) plays its seat from the World: it
-// shoots, revives, keeps out of the human's way at the stall, buys, and
-// presses READY. Each test seats one bot in a crew of two.
+// shoots, revives, and presses READY. Each test seats one bot in a crew of two.
 
 const TICK_MS = FIXED_STEP_MS
 
@@ -318,55 +311,6 @@ describe('in a break', () => {
         }),
       ),
   )
-
-  const wounded = (current: Model) =>
-    atSeat(current, 1, world =>
-      modifyFocus(world, {
-        player: player => modifyFields(player, { hp: () => 3 }),
-        wallet: wallet => ({ ...wallet, balance: 200 }),
-      }),
-    )
-
-  // NOTE: Rattles sells no hearts (docs/ESCAPE_PLAN.md, layer 6), so a
-  // wounded bot stays hurt until a Pickled Heart drops.
-  it.effect('buys no heart at the stall, since none are sold', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(placeSeat(0, 40, 40)(wounded(inBreak))),
-      ...ticks(900, TICK_MS),
-      Story.model(current => {
-        expect(seatOf(current, 1).player.hp).toBe(3)
-      }),
-    ),
-  )
-
-  it.effect('never takes the human spot at the stall', () => {
-    const humanAtStall = placeSeat(
-      0,
-      STALL_BOX.left - 6,
-      (STALL_BOX.top + STALL_BOX.bottom) / 2,
-    )(wounded(inBreak))
-    return Story.story(
-      APPLICATION,
-      Story.given(
-        atSeat(humanAtStall, 0, world =>
-          modifyFocus(world, {
-            shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
-          }),
-        ),
-      ),
-      ...ticks(600, TICK_MS),
-      Story.model(current => {
-        expect(seatOf(current, 1).player.hp).toBe(3)
-        expect(
-          Math.hypot(
-            seatOf(current, 1).player.x - STALL_BOX.left,
-            seatOf(current, 1).player.y - STALL_BOX.top,
-          ),
-        ).toBeGreaterThan(20)
-      }),
-    )
-  })
 })
 
 describe('the same World gives the same bot', () => {

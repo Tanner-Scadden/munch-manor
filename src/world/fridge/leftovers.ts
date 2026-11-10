@@ -10,6 +10,7 @@ import {
   takePan,
 } from '../gear/weapons'
 import { maxHpOf } from '../heroes/calling'
+import { grantKeys, heldKeys, spendKeys } from '../keys/keys'
 import { isKitchenOpen } from '../kitchen/kitchen'
 import {
   type Box,
@@ -41,14 +42,14 @@ import { dropCharge, isFridgeWeapon } from './fridgeWeapons'
 // Mystery Leftovers (GAME_DESIGN.md): a grimy fridge against the kitchen's
 // back wall. Once the kitchen is open it is for sale any time the round
 // runs, through the hold to buy (src/world/shop/purchase.ts): hold the interact key at
-// its door and the price is paid, the door creaks open in a puff of green
+// its door and two skeleton keys come off the crew's ring
+// (src/world/keys/keys.ts), the door creaks open in a puff of green
 // fog, and the prize pops up and flies to whoever pulled. Its prizes are
 // the fridge-only weapons (src/world/fridge/fridgeWeapons.ts), the Cooker and Brain
 // Freeze into a gun slot as a bought gun goes and the Clang Pan into the
 // melee slot in place of the knife, or a gag: a moldy Sandwich that heals a
-// heart and burps half the price back, or a Dud that burps half the price
-// back. Each seat's first pull of a round (a break and the wave after it)
-// is cheaper. A weapon that replaces a gun arrives at that gun's tier. After
+// heart, or a Dud that burps one key back. A weapon arrives fresh, at tier
+// 0, and levels on its own kills. After
 // three or four pulls it slams shut with a rumble for a while, and the rare
 // prize comes a little more often after each slam.
 //
@@ -56,8 +57,8 @@ import { dropCharge, isFridgeWeapon } from './fridgeWeapons'
 // World's loot), so it never changes the drops or which zombies come.
 
 type FridgeRules = Readonly<{
-  price: number
-  firstPrice: number
+  keys: number
+  dudRefund: number
   reachPx: number
   tagDropPx: number
   openMs: number
@@ -71,9 +72,11 @@ type FridgeRules = Readonly<{
   leavePx: number
 }>
 
+// NOTE: two keys a pull, and the Dud gives one back (docs/ESCAPE_PLAN.md,
+// "Key costs and drops"): starting points, not tuned on the balance bot yet.
 export const FRIDGE_RULES: FridgeRules = {
-  price: 75,
-  firstPrice: 50,
+  keys: 2,
+  dudRefund: 1,
   reachPx: 14,
   tagDropPx: 4,
   openMs: 1100,
@@ -108,12 +111,10 @@ export const PRIZE_ORDER: ReadonlyArray<FridgePrize> = [
   'Dud',
 ]
 
-export const DUD_REFUND = Math.round(FRIDGE_RULES.price / 2)
-
-// NOTE: the gags that burp cash back: the Dud, and since 2026-11-02 the
-// Sandwich too, on top of its heart, so a gag never feels like a loss.
+// NOTE: the gag that burps a key back: the Dud, so it never feels like a
+// total loss. The Sandwich's heart is its own reward.
 export const refundOf = (prize: FridgePrize): number =>
-  prize === 'Dud' || prize === 'Sandwich' ? DUD_REFUND : 0
+  prize === 'Dud' ? FRIDGE_RULES.dudRefund : 0
 
 const weaponOf = (prize: FridgePrize): Option.Option<WeaponKind> =>
   prize === 'Cooker' || prize === 'Pan' || prize === 'Freeze'
@@ -288,52 +289,10 @@ const isOfferedTo = (world: World, slot: PlayerSlot): boolean =>
   FridgeDoor.isAnyOf(['Offering'])(world.fridge.door) &&
   world.fridge.door.slot === slot
 
-// NOTE: a round is a break and the wave after it, by its wave number, so
-// a pull mid-wave counts as that wave's break's.
-const roundOf = (world: World): number =>
-  Phase.match(world.phase, {
-    Ready: () => 0,
-    Preparation: ({ wave }) => wave,
-    Wave: ({ wave }) => wave,
-    Paused: ({ round }) => round.wave,
-    Victory: () => 0,
-    GameOver: ({ wave }) => wave,
-  })
-
-const hasCheapPull = (world: World, slot: PlayerSlot): boolean =>
-  world.fridge.cheapRound !== roundOf(world) ||
-  !Array.contains(world.fridge.cheapSlots, slot)
-
-// NOTE: the kitchen tour's pull is free (src/world/run/tutorialRules.ts). Otherwise
-// each seat's first pull of a round costs `firstPrice` (owner, 2026-11-02),
-// and every later one `price`.
-export const fridgePriceFor: {
-  (slot: PlayerSlot): (world: World) => number
-  (world: World, slot: PlayerSlot): number
-} = Function.dual(2, (world: World, slot: PlayerSlot): number =>
-  isKitchenTourOn(world)
-    ? 0
-    : hasCheapPull(world, slot)
-      ? FRIDGE_RULES.firstPrice
-      : FRIDGE_RULES.price,
-)
-
-// NOTE: any paid pull spends the seat's cheap pull for the round; the
-// kitchen tour's free one does not.
-const spendCheapPull = (
-  fridge: Fridge,
-  round: number,
-  slot: PlayerSlot,
-): Fridge =>
-  modifyFields(fridge, {
-    cheapRound: () => round,
-    cheapSlots: slots =>
-      fridge.cheapRound !== round
-        ? [slot]
-        : Array.contains(slots, slot)
-          ? slots
-          : Array.append(slots, slot),
-  })
+// NOTE: the kitchen tour's pull is free (src/world/run/tutorialRules.ts);
+// every other costs FRIDGE_RULES.keys.
+export const fridgePriceFor = (world: World): number =>
+  isKitchenTourOn(world) ? 0 : FRIDGE_RULES.keys
 
 export const fridgeOffers: {
   (slot: PlayerSlot): (world: World) => ReadonlyArray<Offer>
@@ -346,7 +305,7 @@ export const fridgeOffers: {
         ? [
             {
               target: Purchasable.Fridge(),
-              price: fridgePriceFor(world, slot),
+              price: fridgePriceFor(world),
               box,
               reachPx: FRIDGE_RULES.reachPx,
               isFull: false,
@@ -391,37 +350,38 @@ export const giveWeapon: {
       }),
 )
 
-// NOTE: a gag resolves at once: the Sandwich heals a heart, and both
-// gags burp cash back. A weapon waits on offer in the door.
+// NOTE: a gag resolves at once: the Sandwich heals a heart, and the Dud
+// burps a key back onto the ring. A weapon waits on offer in the door.
 const givePrize = (world: World, slot: PlayerSlot, prize: FridgePrize): World =>
   Option.match(weaponOf(prize), {
     onSome: () => world,
-    onNone: () =>
-      modifyFields(world, {
-        seats: atSeat(slot, {
-          player: player =>
-            prize === 'Sandwich'
-              ? modifyFields(player, {
-                  hp: hp => Math.min(maxHpOf(player), hp + 1),
-                })
-              : player,
-          wallet: wallet =>
-            modifyFields(wallet, {
-              balance: balance => balance + refundOf(prize),
-            }),
-        }),
-        frameEvents: frameEvents => [
-          ...frameEvents,
-          GameEvent.DudBurped({
-            x: seatStateAt(world, slot).player.x,
-            y: seatStateAt(world, slot).player.y,
-            refund: refundOf(prize),
+    onNone: () => {
+      const at = {
+        x: seatStateAt(world, slot).player.x,
+        y: seatStateAt(world, slot).player.y,
+      }
+      return grantKeys(
+        modifyFields(world, {
+          seats: atSeat(slot, {
+            player: player =>
+              prize === 'Sandwich'
+                ? modifyFields(player, {
+                    hp: hp => Math.min(maxHpOf(player), hp + 1),
+                  })
+                : player,
           }),
-        ],
-      }),
+          frameEvents: frameEvents => [
+            ...frameEvents,
+            GameEvent.DudBurped({ ...at, refund: refundOf(prize) }),
+          ],
+        }),
+        refundOf(prize),
+        at,
+      )
+    },
   })
 
-// NOTE: the pull: the price is paid, the prize drawn from the fridge's own
+// NOTE: the pull: the keys come off the ring, the prize drawn from the fridge's own
 // stream and given to the seat that held, and the door swings open.
 export const pullFridge: {
   (slot: PlayerSlot, price: number): (world: World) => Option.Option<World>
@@ -429,41 +389,27 @@ export const pullFridge: {
 } = Function.dual(
   3,
   (world: World, slot: PlayerSlot, price: number): Option.Option<World> => {
-    if (
-      !isFridgeForSale(world) ||
-      seatStateAt(world, slot).wallet.balance < price
-    ) {
+    if (!isFridgeForSale(world) || heldKeys(world) < price) {
       return Option.none()
     }
     return Option.map(fridgeBoxOf(levelOf(world)), box => {
       const draw = nextRandom(world.loot.fridgeRngState)
       const prize = pickPrize(weightsFor(world, slot), draw.value)
       const spot = fridgeSpot(box)
-      const paid = modifyFields(world, {
-        seats: atSeat(slot, {
-          wallet: wallet =>
-            modifyFields(wallet, {
-              balance: balance => balance - price,
-            }),
-        }),
-        stats: stats =>
-          modifyFields(stats, { purchases: purchases => purchases + 1 }),
+      const paid = modifyFields(spendKeys(world, price), {
         loot: loot =>
           modifyFields(loot, { fridgeRngState: () => draw.nextState }),
         fridge: fridge =>
-          modifyFields(
-            price > 0 ? spendCheapPull(fridge, roundOf(world), slot) : fridge,
-            {
-              pulls: pulls => pulls + 1,
-              door: () =>
-                FridgeDoor.Open({
-                  prize,
-                  slot,
-                  remainingMs: FRIDGE_RULES.openMs,
-                  durationMs: FRIDGE_RULES.openMs,
-                }),
-            },
-          ),
+          modifyFields(fridge, {
+            pulls: pulls => pulls + 1,
+            door: () =>
+              FridgeDoor.Open({
+                prize,
+                slot,
+                remainingMs: FRIDGE_RULES.openMs,
+                durationMs: FRIDGE_RULES.openMs,
+              }),
+          }),
         frameEvents: frameEvents => [
           ...frameEvents,
           GameEvent.FridgeOpened({ x: spot.x, y: spot.y, prize }),

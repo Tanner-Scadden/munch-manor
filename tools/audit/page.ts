@@ -4,7 +4,7 @@ import type { Page } from 'playwright-core'
 import type { Model } from '@game/app/model'
 import { describeError } from '@game/shared/describeError'
 import type { Level } from '@game/world/level/arena'
-import type { STALL_BOX } from '@game/world/shop/shop'
+import type { RATTLES_BOX } from '@game/world/level/arena'
 
 import type { AudioCue, seatsOnScreen } from './harness/director'
 
@@ -52,7 +52,7 @@ declare global {
       audio: () => ReadonlyArray<AudioCue>
       seats: () => ReturnType<typeof seatsOnScreen>
     }>
-    __stall: typeof STALL_BOX
+    __stall: typeof RATTLES_BOX
     __doors: Level['doors']
     // NOTE: tools/video's audio page renders a soundtrack request to a WAV
     // data URL.

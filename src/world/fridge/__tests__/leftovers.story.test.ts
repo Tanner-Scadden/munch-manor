@@ -49,7 +49,6 @@ import { idleIntent, shutFridge } from '../../schema/worldSchema'
 import { PURCHASE_RULES, offersOf } from '../../shop/purchase'
 import { stepWorld } from '../../step/stepWorld'
 import {
-  DUD_REFUND,
   FRIDGE_RULES,
   PRIZE_ORDER,
   pickPrize,
@@ -74,13 +73,11 @@ describe('pulling from Mystery Leftovers', () => {
     () =>
       Story.story(
         APPLICATION,
-        Story.given(fridgeSeededFor(atFridge(100), 'Cooker')),
+        Story.given(fridgeSeededFor(atFridge(10), 'Cooker')),
         holdToBuy,
         Story.model(current => {
-          expect(focusOf(current).wallet.balance).toBe(
-            100 - FRIDGE_RULES.firstPrice,
-          )
-          expect(current.stats.purchases).toBe(1)
+          expect(current.keys.held).toBe(10 - FRIDGE_RULES.keys)
+          expect(current.keys.spent).toBe(FRIDGE_RULES.keys)
           expect(FridgeDoor.isAnyOf(['Open'])(current.fridge.door)).toBe(true)
           expect(current.fridge.pulls).toBe(1)
           expect(focusOf(current).player.arsenal).toEqual(pistolOnly())
@@ -107,7 +104,7 @@ describe('pulling from Mystery Leftovers', () => {
         APPLICATION,
         Story.given(
           fridgeSeededFor(
-            modifyFocus(atFridge(100), {
+            modifyFocus(atFridge(10), {
               player: player =>
                 modifyFields(player, {
                   arsenal: () => holdingSecond(freshGun('Smg')),
@@ -124,9 +121,7 @@ describe('pulling from Mystery Leftovers', () => {
             holdingSecond(freshGun('Cooker')),
           )
           expect(focusOf(current).player.melee).toEqual(Melee.Knife())
-          expect(focusOf(current).wallet.balance).toBe(
-            100 - FRIDGE_RULES.firstPrice,
-          )
+          expect(current.keys.held).toBe(10 - FRIDGE_RULES.keys)
           expect(isPrizeOffered(current)).toBe(false)
           expect(FridgeDoor.isAnyOf(['Shut'])(current.fridge.door)).toBe(true)
         }),
@@ -141,7 +136,7 @@ describe('pulling from Mystery Leftovers', () => {
         APPLICATION,
         Story.given(
           fridgeSeededFor(
-            modifyFocus(atFridge(100), {
+            modifyFocus(atFridge(10), {
               player: player => modifyFields(player, { arsenal: () => guns }),
             }),
             'Pan',
@@ -170,7 +165,7 @@ describe('pulling from Mystery Leftovers', () => {
         APPLICATION,
         Story.given(
           fridgeSeededFor(
-            modifyFocus(atFridge(100), {
+            modifyFocus(atFridge(10), {
               player: player => modifyFields(player, { arsenal: () => smg }),
             }),
             'Pan',
@@ -189,9 +184,7 @@ describe('pulling from Mystery Leftovers', () => {
           expect(FridgeDoor.isAnyOf(['Offering'])(current.fridge.door)).toBe(
             false,
           )
-          expect(focusOf(current).wallet.balance).toBe(
-            100 - FRIDGE_RULES.firstPrice,
-          )
+          expect(current.keys.held).toBe(10 - FRIDGE_RULES.keys)
         }),
       )
     },
@@ -200,7 +193,7 @@ describe('pulling from Mystery Leftovers', () => {
   it.effect('leave it: when the timer runs out the weapon sinks back', () =>
     Story.story(
       APPLICATION,
-      Story.given(fridgeSeededFor(atFridge(100), 'Cooker')),
+      Story.given(fridgeSeededFor(atFridge(10), 'Cooker')),
       holdToBuy,
       ...ticks(FRIDGE_OPEN_TICKS, FRAME_MS),
       ...ticks(Math.ceil(FRIDGE_RULES.offerMs / FRAME_MS) - 10, FRAME_MS),
@@ -222,7 +215,7 @@ describe('pulling from Mystery Leftovers', () => {
   it.effect(
     'a pull never touches the waves or the drops: only the fridge draws',
     () => {
-      const start = fridgeSeededFor(atFridge(100), 'Pan')
+      const start = fridgeSeededFor(atFridge(10), 'Pan')
       return Story.story(
         APPLICATION,
         Story.given(start),
@@ -243,7 +236,7 @@ describe('pulling from Mystery Leftovers', () => {
       APPLICATION,
       Story.given(
         fridgeSeededFor(
-          modifyFocus(atFridge(100), {
+          modifyFocus(atFridge(10), {
             player: player => modifyFields(player, { hp: () => 2 }),
           }),
           'Sandwich',
@@ -258,28 +251,26 @@ describe('pulling from Mystery Leftovers', () => {
     ),
   )
 
-  it.effect(
-    'a dud burps half the price back, without a popup to spoil the spin',
-    () =>
-      Story.story(
-        APPLICATION,
-        Story.given(fridgeSeededFor(atFridge(100), 'Dud')),
-        holdToBuy,
-        Story.model(current => {
-          expect(focusOf(current).wallet.balance).toBe(
-            100 - FRIDGE_RULES.firstPrice + DUD_REFUND,
-          )
-          expect(
-            Array.some(current.popups, ({ kind }) => kind === 'Payday'),
-          ).toBe(false)
-        }),
-      ),
+  it.effect('a dud burps a key back, without a popup to spoil the spin', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(fridgeSeededFor(atFridge(10), 'Dud')),
+      holdToBuy,
+      Story.model(current => {
+        expect(current.keys.held).toBe(
+          10 - FRIDGE_RULES.keys + FRIDGE_RULES.dudRefund,
+        )
+        expect(
+          Array.some(current.popups, ({ kind }) => kind === 'Payday'),
+        ).toBe(false)
+      }),
+    ),
   )
 
   it.effect('short of the price, the tag shakes and nothing comes out', () =>
     Story.story(
       APPLICATION,
-      Story.given(atFridge(40)),
+      Story.given(atFridge(1)),
       press('Enter'),
       ...ticks(2, FRAME_MS),
       Story.model(current => {
@@ -287,21 +278,21 @@ describe('pulling from Mystery Leftovers', () => {
           true,
         )
         expect(current.fridge).toEqual(shutFridge)
-        expect(focusOf(current).wallet.balance).toBe(40)
+        expect(current.keys.held).toBe(1)
       }),
     ),
   )
 
   test('the fridge is not for sale while the kitchen is boarded', () => {
-    const boarded = modifyFields(atFridge(500), {
+    const boarded = modifyFields(atFridge(10), {
       level: () => freshRunModel().level,
     })
     expect(isFridgeOffered(boarded)).toBe(false)
-    expect(isFridgeOffered(atFridge(500))).toBe(true)
+    expect(isFridgeOffered(atFridge(10))).toBe(true)
   })
 
   it.effect('mid-wave, the fridge is for sale too', () => {
-    const fighting = modifyFields(atFridge(100), {
+    const fighting = modifyFields(atFridge(10), {
       phase: () =>
         Phase.Wave({ wave: 5, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
     })
@@ -310,9 +301,7 @@ describe('pulling from Mystery Leftovers', () => {
       Story.given(fridgeSeededFor(fighting, 'Pan')),
       holdToBuy,
       Story.model(current => {
-        expect(focusOf(current).wallet.balance).toBe(
-          100 - FRIDGE_RULES.firstPrice,
-        )
+        expect(current.keys.held).toBe(10 - FRIDGE_RULES.keys)
         expect(Phase.isAnyOf(['Wave'])(current.phase)).toBe(true)
       }),
     )
@@ -323,7 +312,7 @@ describe('the fridge slams shut', () => {
   // NOTE: pulls until the door slams, and its rest, are in
   // leftovers.sim.test.ts.
   it.effect('the slam is heard and felt', () => {
-    const slamming = modifyFields(atFridge(100), {
+    const slamming = modifyFields(atFridge(10), {
       fridge: () => ({
         ...shutFridge,
         door: FridgeDoor.Open({
@@ -422,13 +411,12 @@ describe('the odds', () => {
 describe('the fridge in co-op', () => {
   const TICK_MS = FIXED_STEP_MS
 
-  test('the player who holds pays and gets the prize; a teammate keeps their money and gun', () => {
-    const crew = withWorld(atFridge(0), world => seatCrew(world, 2))
+  test("the player who holds pulls from the crew's ring and gets the prize; a teammate keeps their gun", () => {
+    const crew = withWorld(atFridge(10), world => seatCrew(world, 2))
     const placedCrew = withWorld(crew, world =>
       withSeat(
         withSeat(world, 1, seat =>
           modifyFocus(seat, {
-            wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
             player: player =>
               modifyFields(player, {
                 x: () => AT_FRIDGE.x,
@@ -439,7 +427,6 @@ describe('the fridge in co-op', () => {
         0,
         seat =>
           modifyFocus(seat, {
-            wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
             player: player =>
               modifyFields(player, { x: () => 60, y: () => 104 }),
           }),
@@ -455,10 +442,8 @@ describe('the fridge in co-op', () => {
     )
     const holder = Option.getOrThrow(maybePlayerAt(bought, 1))
     const teammate = Option.getOrThrow(maybePlayerAt(bought, 0))
-    expect(holder.wallet.balance).toBeLessThanOrEqual(
-      100 - FRIDGE_RULES.firstPrice + DUD_REFUND,
-    )
-    expect(teammate.wallet.balance).toBe(100)
+    expect(holder.seat.slot).toBe(1)
+    expect(bought.keys.spent).toBe(FRIDGE_RULES.keys)
     expect(teammate.player.arsenal).toEqual(pistolOnly())
     expect(bought.fridge.pulls).toBe(1)
     expect(

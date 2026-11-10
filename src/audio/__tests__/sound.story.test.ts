@@ -291,8 +291,8 @@ describe('frame sounds', () => {
           Array.filter(frameEvents, ({ _tag }) => _tag === 'ZombieKilled'),
         ).toHaveLength(floodSize)
       }),
-      expectSounds(['ZombieHit', 'ZombieDeath']),
-      resolveAllPlayed(['ZombieHit', 'ZombieDeath']),
+      expectSounds(['ZombieHit', 'ZombieDeath', 'Purchase']),
+      resolveAllPlayed(['ZombieHit', 'ZombieDeath', 'Purchase']),
     )
   })
 

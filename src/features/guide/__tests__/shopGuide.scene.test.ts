@@ -1,132 +1,100 @@
-import { Option } from 'effect'
 import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, it } from '@effect/vitest'
 
-import { FridgeDoor, type Model, Phase } from '../../../app/model'
-import { initialModel } from '../../../app/pureApp'
-import { PREPARATION_MS } from '../../../shared/constants'
+import { type Model } from '../../../app/model'
 import { home } from '../../../test/model.fixture'
 import {
   APPLICATION,
-  emitPressedKey,
   measureSurface,
+  munchopediaDialog,
   openHandInScene,
   pickCardInScene,
-  walkIntoStallInScene,
 } from '../../../test/testing'
-import { modifyFocus } from '../../../world/party/party'
+import { SHOP_GUIDE_NAME } from '../../../world/names'
 import { Message as GuideMessage } from '../message'
 import { prizeUnlockId } from '../shopGuide'
 import { FocusGuideControl } from '../steps'
 
-const atStall = (): Model =>
-  modifyFocus(
-    modifyFields(initialModel, {
-      maybeSurface: () =>
-        Option.some({ left: 0, top: 0, width: 800, height: 400 }),
-      phase: () =>
-        Phase.Preparation({
-          wave: 4,
-          remainingMs: 15_000,
-          durationMs: PREPARATION_MS,
-          spawns: [
-            {
-              atMs: 1e9,
-              kind: 'Shambler',
-              door: 'North',
-              offset: 0,
-              speedScale: 1,
-              hpScale: 1,
-              pack: 0,
-              formation: 'Squad',
-            },
-          ],
-        }),
-    }),
-    {
-      player: player =>
-        modifyFields(player, { x: () => 270, y: () => 142, hp: () => 3 }),
-      wallet: () => ({ balance: 200, earned: 200, shown: 200 }),
-    },
-  )
+// The guide to the house's finds, on the Munchopedia's Finds page. Rattles'
+// shop, and the ? that opened the guide in it, went with the shop
+// (docs/ESCAPE_PLAN.md, layer 7).
 
-const help = Scene.role('button', { name: 'Shop guide' })
-const back = Scene.role('button', { name: 'Back to the shop' })
 const guide = Scene.selector('.sg')
+const findsTile = Scene.role('button', {
+  name: new RegExp(`^${SHOP_GUIDE_NAME},`),
+})
 const resolveFocusGuide = Scene.Command.resolve(
   FocusGuideControl,
   GuideMessage.CompletedFocusControl(),
 )
 
-describe('the ? in the shop', () => {
+// NOTE: the Munchopedia open from the MANOR hand, on its Finds page.
+const openFinds = () => [
+  ...openHandInScene(),
+  ...pickCardInScene(/^Munchopedia:/),
+  Scene.inside(munchopediaDialog, Scene.click(findsTile)),
+  resolveFocusGuide,
+]
+
+describe('the Munchopedia Finds page', () => {
   it.effect(
-    'opens the guide on the tab being looked at, with bars and an upgrade ladder, and Back returns to the shelves',
+    'the Finds tile opens the guide, sections switch, and Back returns to the zombies',
     () =>
       Scene.scene(
         APPLICATION,
-        Scene.given(atStall()),
+        Scene.given(home),
         measureSurface,
-        ...walkIntoStallInScene(),
-        Scene.expect(Scene.role('tab', { name: /^Guns,/ })).toExist(),
-        Scene.expect(guide).toBeAbsent(),
-        Scene.click(help),
-        resolveFocusGuide,
-        Scene.expect(guide).toExist(),
-        Scene.expect(help).toBeAbsent(),
-        Scene.expect(Scene.role('tab', { name: /^Guns,/ })).toBeAbsent(),
-        Scene.expect(
-          Scene.role('button', { name: 'Guns', pressed: true }),
-        ).toExist(),
+        ...openFinds(),
         Scene.inside(
-          Scene.selector("[data-entry='Shotgun']"),
-          Scene.expect(Scene.selector('.sg-name')).toExist(),
-          Scene.expect(Scene.role('img', { name: /^Power \d of 5/ })).toExist(),
-          Scene.expectAll(Scene.all.selector('.sg-step')).toHaveCount(3),
+          munchopediaDialog,
+          Scene.expect(guide).toExist(),
+          Scene.expect(Scene.selector("[data-entry='Pistol']")).toExist(),
+          Scene.click(Scene.role('button', { name: 'House' })),
+          Scene.expect(Scene.selector("[data-entry='Boards']")).toExist(),
+          Scene.expect(Scene.selector("[data-entry='Rattles']")).toExist(),
+          Scene.expect(Scene.text('3 keys')).toExist(),
+          Scene.expect(Scene.selector("[data-entry='Pistol']")).toBeAbsent(),
+          Scene.click(
+            Scene.role('button', { name: 'Back to the Munchopedia' }),
+          ),
         ),
-        Scene.click(Scene.role('button', { name: 'Traps' })),
-        Scene.expect(Scene.selector("[data-entry='Turret']")).toExist(),
-        Scene.click(back),
         resolveFocusGuide,
-        Scene.expect(guide).toBeAbsent(),
-        Scene.expect(help).toExist(),
-        Scene.expect(Scene.role('tab', { name: /^Guns,/ })).toExist(),
+        Scene.inside(
+          munchopediaDialog,
+          Scene.expect(guide).toBeAbsent(),
+          Scene.expect(findsTile).toExist(),
+        ),
       ),
   )
 
-  it.effect(
-    'the ? key opens the guide with no pointer, and again puts it away',
-    () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(atStall()),
-        measureSurface,
-        ...walkIntoStallInScene(),
-        emitPressedKey('Slash'),
-        resolveFocusGuide,
-        Scene.expect(guide).toExist(),
-        emitPressedKey('Slash'),
-        resolveFocusGuide,
-        Scene.expect(guide).toBeAbsent(),
+  it.effect('a gun shows its bars and its ladder of kills', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(home),
+      measureSurface,
+      ...openFinds(),
+      Scene.inside(
+        Scene.selector("[data-entry='Shotgun']"),
+        Scene.expect(Scene.selector('.sg-name')).toExist(),
+        Scene.expect(Scene.role('img', { name: /^Power \d of 5/ })).toExist(),
+        Scene.expectAll(Scene.all.selector('.sg-step')).toHaveCount(3),
       ),
+    ),
   )
 
   it.effect(
     'the fridge shows ??? until a prize is pulled, then its card fills in',
     () => {
-      const pulled = modifyFields(atStall(), {
+      const pulled: Model = modifyFields(home, {
         seenUnlocks: () => [prizeUnlockId('Freeze')],
-        fridge: fridge =>
-          modifyFields(fridge, { door: () => FridgeDoor.Shut() }),
       })
       return Scene.scene(
         APPLICATION,
         Scene.given(pulled),
         measureSurface,
-        ...walkIntoStallInScene(),
-        Scene.click(help),
-        resolveFocusGuide,
+        ...openFinds(),
         Scene.click(Scene.role('button', { name: 'Fridge' })),
         Scene.expectAll(
           Scene.all.selector("[data-known='Unknown']"),
@@ -145,41 +113,5 @@ describe('the ? in the shop', () => {
         ),
       )
     },
-  )
-})
-
-describe('the Munchopedia Shop page', () => {
-  it.effect(
-    'the Shop tile opens the guide, sections switch, and Back returns to the zombies',
-    () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(home),
-        measureSurface,
-        ...openHandInScene(),
-        ...pickCardInScene(/^Munchopedia:/),
-        Scene.inside(
-          Scene.role('dialog', { name: 'Munchopedia' }),
-          Scene.click(Scene.role('button', { name: /^Shop,/ })),
-        ),
-        resolveFocusGuide,
-        Scene.inside(
-          Scene.role('dialog', { name: 'Munchopedia' }),
-          Scene.expect(guide).toExist(),
-          Scene.expect(Scene.selector("[data-entry='Pistol']")).toExist(),
-          Scene.click(Scene.role('button', { name: 'House' })),
-          Scene.expect(Scene.selector("[data-entry='Boards']")).toExist(),
-          Scene.expect(Scene.selector("[data-entry='Pistol']")).toBeAbsent(),
-          Scene.click(
-            Scene.role('button', { name: 'Back to the Munchopedia' }),
-          ),
-        ),
-        resolveFocusGuide,
-        Scene.inside(
-          Scene.role('dialog', { name: 'Munchopedia' }),
-          Scene.expect(guide).toBeAbsent(),
-          Scene.expect(Scene.role('button', { name: /^Shop,/ })).toExist(),
-        ),
-      ),
   )
 })

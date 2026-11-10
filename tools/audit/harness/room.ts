@@ -126,6 +126,9 @@ export const roomModel = (settings: SceneSettings): Model => {
           : { ...freshGun(FRIDGE_GUNS[firstGun]), tier: config.tier }
   let model: Model = modifyFocus(
     modifyFields(started, {
+      // NOTE: `money` is the keys on the crew's ring since the keys took
+      // money's place (docs/ESCAPE_PLAN.md, layer 7).
+      keys: keys => ({ ...keys, held: config.money, found: config.money }),
       rngState: () => rngState,
       phase: () =>
         config.start === 'wave'
@@ -143,12 +146,6 @@ export const roomModel = (settings: SceneSettings): Model => {
       decals: () => (config.fill ? makeDecals(DECAL_MAX) : []),
     }),
     {
-      wallet: w => ({
-        ...w,
-        balance: config.money,
-        shown: config.money,
-        earned: config.money,
-      }),
       trapStock: () => ({
         Barricade: config.barricades,
         Turret: config.turrets,
@@ -667,10 +664,10 @@ export const roomModel = (settings: SceneSettings): Model => {
     runMs: 371_000,
   }
   if (config.stats) {
-    model = modifyFocus(
-      modifyFields(model, { stats: s => ({ ...s, ...sampleStats }) }),
-      { wallet: w => ({ ...w, earned: 615 }) },
-    )
+    model = modifyFields(model, {
+      stats: s => ({ ...s, ...sampleStats }),
+      keys: keys => ({ ...keys, found: 21 }),
+    })
   }
   if (config.py !== undefined) {
     model = modifyFocus(

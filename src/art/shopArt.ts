@@ -1,7 +1,6 @@
 import { Array, Function, Record } from 'effect'
 
 import type { TrapKind, WeaponKind } from '../world/schema/entitySchema'
-import type { ShopCategory, ShopItemId } from '../world/schema/worldSchema'
 import { pixelIconUrl } from './icons'
 import {
   MOOD_FACES,
@@ -253,7 +252,7 @@ const GNOME_ART = artOf(
 
 // NOTE: the laser sight: a grey scope with a red lens, and the red dot it
 // throws on the floor below.
-const SIGHT_ART = artOf(
+export const SIGHT_ART = artOf(
   [
     '..KKKKKKKKKK..',
     '.KMMMMMMMMMMK.',
@@ -271,63 +270,24 @@ const SIGHT_ART = artOf(
   { K: INK, M: '#4a4f5a', R: '#ff3a3f', L: '#ffb3b6' },
 )
 
-const ITEM_ART: Readonly<Record<ShopItemId, ShopArt>> = {
-  Shotgun: gunArt('Shotgun', 0),
-  Smg: gunArt('Smg', 0),
-  Pistol: gunArt('Pistol', 0),
-  LaserSight: SIGHT_ART,
-}
-
-export const itemArt = (id: ShopItemId): ShopArt => ITEM_ART[id]
+// NOTE: a skeleton key, the crew's currency (src/world/keys/keys.ts).
+export const KEY_ART = artOf(
+  ['.ooo....', 'oyyyo...', 'oy.yyyyy', 'oyyyo.yo', '.ooo..o.'],
+  { o: '#5a3510', y: '#ffd23f' },
+)
 
 export const TRAP_ART: Readonly<Record<TrapKind, ShopArt>> = {
   Barricade: PLANK_ART,
   Turret: GNOME_ART,
 }
 
-// STATS
-
-const STAT_PALETTE: Palette = { X: '#f4f1de', O: '#8a5a2b' }
-
-export const HIT_ICON = artOf(
-  ['X..X..X', '.X.X.X.', '..XXX..', 'XXXXXXX', '..XXX..', '.X.X.X.', 'X..X..X'],
-  STAT_PALETTE,
-)
-
-export const RATE_ICON = artOf(
-  ['X..X...', '.X..X..', '..X..X.', '.X..X..', 'X..X...'],
-  STAT_PALETTE,
-)
-
-export const LOAD_ICON = artOf(
-  ['.X.', 'XXX', 'XXX', 'XXX', 'OOO', 'XXX'],
-  STAT_PALETTE,
-)
-
-export const SWAP_ICON = artOf(
-  [
-    '..X......',
-    '.XXXXXXX.',
-    '..X......',
-    '.........',
-    '......X..',
-    '.XXXXXXX.',
-    '......X..',
-  ],
-  { X: '#ff8a3d' },
-)
+// HEARTS
 
 export const HEART_FULL = artOf(HEART_PIXELS, { R: '#e8333a', W: '#ff8a8f' })
 
-// TABS
-
-export const TAB_ART: Readonly<Record<ShopCategory, ShopArt>> = {
-  Guns: gunArt('Pistol', 0),
-}
-
 // RATTLES
 
-// NOTE: his portrait is his own sprite from the stall, scaled up by the CSS
+// NOTE: his portrait is his own sprite from his trunk, scaled up by the CSS
 // and cropped at his bow tie (see src/art/rattlesArt.ts).
 export const RATTLES_ART: Readonly<Record<Mood, ShopArt>> = Record.map(
   MOOD_FACES,

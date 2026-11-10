@@ -9,19 +9,15 @@ import {
 } from '../../shared/constants'
 import { creditGunKills, killerSlotOf } from '../gear/gunLevels'
 import { TURRET_WEAPON } from '../gear/traps'
-import { kitchenBounty } from '../kitchen/kitchenPay'
-import { levelOf } from '../level/arena'
 import {
   atSeat,
   creditKills,
   creditShots,
-  earnKill,
   focusOf,
   isCoop,
   maybePlayerAt,
   maybeShooterOf,
   modifySeatRecord,
-  payTo,
   seatStateAt,
 } from '../party/party'
 import { resolveFriendlyFire } from '../party/revive'
@@ -36,7 +32,6 @@ import {
   Pierce,
   type Player,
   type PlayerSlot,
-  SOLO_SLOT,
   type Vector,
   type WeaponKind,
   type Zombie,
@@ -300,12 +295,6 @@ export const resolveBulletHits: {
     const hitZombies = Array.filter(zombies, zombie =>
       Array.contains(hitZombieIds, zombie.id),
     )
-    const bounty = Array.reduce(
-      killedZombies,
-      0,
-      (sum, zombie) =>
-        sum + kitchenBounty(levelOf(model), zombie, statsOf(zombie).bounty),
-    )
     const struck = modifyFields(model, {
       bullets: Array.filterMap(skewer(hits)),
       zombies: () => zombies,
@@ -323,8 +312,8 @@ export const resolveBulletHits: {
     return resolveFriendlyFire(
       creditGuns(
         isCoop(model)
-          ? payKillers(creditLanded(struck, hits), hits, killedZombies)
-          : earnKill(struck, SOLO_SLOT, bounty),
+          ? creditKillers(creditLanded(struck, hits), hits, killedZombies)
+          : struck,
         hits,
         killedZombies,
       ),
@@ -372,7 +361,7 @@ const creditLanded = (model: World, hits: ReadonlyArray<BulletHit>): World => {
   )
 }
 
-const payKillers = (
+const creditKillers = (
   model: World,
   hits: ReadonlyArray<BulletHit>,
   killed: ReadonlyArray<Zombie>,
@@ -382,14 +371,9 @@ const payKillers = (
       Array.last(hitsOn(hits, zombie.id)),
       ({ maybeShooter }) => maybeShooter,
     )
-    const paid = payTo(
-      current,
-      maybeKiller,
-      kitchenBounty(levelOf(current), zombie, statsOf(zombie).bounty),
-    )
     return Option.match(maybeKiller, {
-      onNone: () => paid,
-      onSome: slot => creditKills(paid, slot, 1),
+      onNone: () => current,
+      onSome: slot => creditKills(current, slot, 1),
     })
   })
 

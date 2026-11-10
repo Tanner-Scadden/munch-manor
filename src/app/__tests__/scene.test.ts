@@ -3,7 +3,6 @@ import { Scene, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, it, expect as vitestExpect } from '@effect/vitest'
-import { Dialog, DialogBlock } from '@foldkit/ui'
 
 import indexHtml from '../../../index.html?raw'
 import { FEEDBACK_RUNS } from '../../domain/run'
@@ -14,7 +13,7 @@ import {
   PLAYER_MAX_HP,
   PREPARATION_MS,
 } from '../../shared/constants'
-import { pastFirstBreak } from '../../test/model.fixture'
+import { pastFirstBreak, withKeys } from '../../test/model.fixture'
 import {
   APPLICATION,
   SCENE_SUBSCRIPTIONS,
@@ -26,9 +25,7 @@ import {
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import { crateSpotOf } from '../../world/gear/crates'
-import { STARTING_PISTOL } from '../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../world/party/party'
-import { Arsenal } from '../../world/schema/worldSchema'
 import { pause } from '../../world/waves/waves'
 import { Message } from '../message'
 import { DifficultyCard, type Model, Phase, Reload } from '../model'
@@ -38,7 +35,7 @@ const PLAY_AGAIN =
   'Press Enter or choose Retry to play again, or E for an endless run. Press X or choose Share to post your run on X.'
 
 const KEEP_GOING =
-  'Press K or choose Keep going to carry on into endless from wave 11 with your money, guns, and traps.'
+  'Press K or choose Keep going to carry on into endless from wave 11 with your keys, guns, and traps.'
 
 const BACK_HOME = 'Press H or choose Menu to go back to the main menu.'
 
@@ -55,7 +52,7 @@ const pausedRound: Model = pause(
 )
 
 const PREPARING_WAVE_ONE =
-  'Get ready for wave 1 of 10. Press Enter, or use the Start wave button, to start it now.'
+  'Get ready for wave 1 of 10. Press Enter, or use the Start wave button, to start it now. Keys on the ring: 0.'
 
 describe('Ready screen', () => {
   it.effect(
@@ -149,7 +146,7 @@ describe('Start wave button', () => {
   )
 })
 
-describe('Shop', () => {
+describe('A break', () => {
   const atStall: Model = modifyFocus(
     modifyFields(pastFirstBreak(initialModel), {
       maybeSurface: () =>
@@ -176,145 +173,7 @@ describe('Shop', () => {
     {
       player: player =>
         modifyFields(player, { x: () => 270, y: () => 142, hp: () => 3 }),
-      wallet: () => ({ balance: 100, earned: 100, shown: 100 }),
     },
-  )
-
-  const shotgunButton = Scene.role('button', {
-    name: 'Buy Barn Buster for $35',
-  })
-  const smgButton = Scene.role('button', { name: 'Buy Chatterbox for $100' })
-  const swapButton = Scene.role('button', { name: 'Switch to the Pop Pistol' })
-  const gunsTab = Scene.role('tab', { name: /^Guns,/ })
-  const openShop = () => [
-    Scene.Subscription.emit(
-      SCENE_SUBSCRIPTIONS.frame,
-      Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
-    ),
-    Scene.Command.resolve(
-      Dialog.test.ShowDialog,
-      DialogBlock.Message.SucceededShowDialog(),
-    ),
-  ]
-  const leaveShop = () => [
-    Scene.expect(Scene.role('button', { name: 'Leave shop' })).toHaveClass(
-      'menu-close',
-    ),
-    Scene.click(Scene.role('button', { name: 'Leave shop' })),
-    Scene.Command.resolve(
-      Dialog.test.CloseDialog,
-      DialogBlock.Message.CompletedCloseDialog(),
-    ),
-  ]
-
-  // NOTE: the stall with the Barn Buster from a case in hand.
-  const withShotgun = (base: Model): Model =>
-    modifyFocus(base, {
-      player: player =>
-        modifyFields(player, {
-          arsenal: () =>
-            holdingSecond({ kind: 'Shotgun', loaded: 6, tier: 0, kills: 0 }),
-        }),
-    })
-
-  it.effect('the balance shows a coin and reads as plain dollars', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFocus(atStall, {
-          wallet: () => ({ balance: 70, earned: 70, shown: 70 }),
-        }),
-      ),
-      measureSurface,
-      ...openShop(),
-      Scene.expect(Scene.selector('.shop-balance')).toHaveText('You have $70'),
-      Scene.expect(
-        Scene.within(
-          Scene.selector('.shop-balance'),
-          Scene.selector('.coin-icon'),
-        ),
-      ).toHaveAttr('aria-hidden', 'true'),
-    ),
-  )
-
-  it.effect(
-    'opens on the Guns tab with nothing for sale, and closes',
-    () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(
-          withShotgun(
-            modifyFocus(atStall, {
-              wallet: () => ({ balance: 70, earned: 70, shown: 70 }),
-            }),
-          ),
-        ),
-        measureSurface,
-        Scene.expect(
-          Scene.role('heading', { name: "Rattles' Bone Bazaar" }),
-        ).toBeAbsent(),
-        ...openShop(),
-        Scene.expect(
-          Scene.role('heading', { name: "Rattles' Bone Bazaar" }),
-        ).toExist(),
-        Scene.expect(Scene.text('You have $70')).toExist(),
-        Scene.expect(gunsTab).toHaveAttr('aria-selected', 'true'),
-        Scene.expect(shotgunButton).toBeAbsent(),
-        Scene.expect(smgButton).toBeAbsent(),
-        Scene.expect(Scene.role('heading', { name: 'Barn Buster' })).toExist(),
-        Scene.expect(
-          Scene.text(
-            '6 loaded, shells never run out. 0 kills, 40 more to Beefy Barn Buster',
-          ),
-        ).toExist(),
-        Scene.expect(Scene.role('img', { name: 'Tier 0 of 3' })).toExist(),
-        Scene.expect(
-          Scene.selector('[data-verdict="refused"] #shop-item-LaserSight'),
-        ).toExist(),
-        ...leaveShop(),
-        Scene.expect(
-          Scene.role('heading', { name: "Rattles' Bone Bazaar" }),
-        ).toBeAbsent(),
-        Scene.expect(swapButton).toHaveAttr('aria-keyshortcuts', 'Q'),
-      ),
-  )
-
-  it.effect('a leveled gun goes by its tier name everywhere in the shop', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFocus(atStall, {
-          player: player =>
-            modifyFields(player, {
-              arsenal: () =>
-                Arsenal.HoldingSecond({
-                  first: { ...STARTING_PISTOL, tier: 1, kills: 40 },
-                  second: { kind: 'Smg', loaded: 30, tier: 1, kills: 60 },
-                }),
-            }),
-        }),
-      ),
-      measureSurface,
-      ...openShop(),
-      Scene.expect(
-        Scene.role('heading', { name: 'Beefy Chatterbox' }),
-      ).toExist(),
-      Scene.expect(
-        Scene.text(
-          '30 loaded, rounds never run out. 60 kills, 60 more to Chatterbox DELUXE',
-        ),
-      ).toExist(),
-      Scene.expect(
-        Scene.text(
-          'Two guns. A new one replaces the one in your hands, levels and all.',
-        ),
-      ).toExist(),
-      Scene.expect(
-        Scene.text(
-          'Replaces your Beefy Chatterbox, and its kills and level go with it',
-        ),
-      ).toBeAbsent(),
-    ),
   )
 
   it.effect(
@@ -346,28 +205,6 @@ describe('Shop', () => {
         Scene.expect(Scene.text('Stand in a doorway to board it up')).toExist(),
       )
     },
-  )
-
-  it.effect(
-    'each tab counts what the player can buy, and the shop sums it up',
-    () =>
-      Scene.scene(
-        APPLICATION,
-        Scene.given(
-          modifyFocus(atStall, {
-            wallet: () => ({ balance: 37, earned: 37, shown: 37 }),
-          }),
-        ),
-        measureSurface,
-        ...openShop(),
-        Scene.expect(
-          Scene.role('tab', { name: 'Guns, nothing you can buy' }),
-        ).toExist(),
-        Scene.expect(
-          Scene.selector('[data-verdict="refused"] #shop-item-LaserSight'),
-        ).toExist(),
-        Scene.expect(Scene.text('Nothing you can buy right now')).toExist(),
-      ),
   )
 
   it.effect('with a second gun, a click on the other slot swaps to it', () =>
@@ -541,7 +378,7 @@ describe('Place button', () => {
 
 describe('Run stats', () => {
   const finished = (phase: Phase): Model =>
-    modifyFocus(
+    withKeys(
       modifyFields(initialModel, {
         phase: () => phase,
         stats: () => ({
@@ -559,7 +396,6 @@ describe('Run stats', () => {
           shotsHit: 532,
           heartsLost: 7,
           trapsPlaced: 3,
-          purchases: 4,
           powerUpsGrabbed: 2,
           maybeLastHurtBy: Option.some('Runner'),
           activeFrames: 22_260,
@@ -567,10 +403,10 @@ describe('Run stats', () => {
           runMs: 371_000,
         }),
       }),
-      { wallet: () => ({ balance: 40, earned: 615, shown: 40 }) },
+      14,
     )
   const STATS =
-    'Waves cleared: 3 of 10. Zombies splatted: 69 (41 Groaner, 17 Hotfoot, 9 Kaboomer, 2 Big Lug, 0 Big Leaguer, 0 Ankle Biter). Best streak 0. Run time 6:11. Accuracy 43 percent. Money earned $615.'
+    'Waves cleared: 3 of 10. Zombies splatted: 69 (41 Groaner, 17 Hotfoot, 9 Kaboomer, 2 Big Lug, 0 Big Leaguer, 0 Ankle Biter). Best streak 0. Run time 6:11. Accuracy 43 percent. Keys found 14.'
 
   it.effect('Game Over reads out the verdict and the whole run', () =>
     Scene.scene(

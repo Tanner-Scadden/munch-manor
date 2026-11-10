@@ -3,15 +3,10 @@ import { modifyFields } from 'foldkit/struct'
 
 import { atSeat, modifySeat, seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
-import {
-  GameEvent,
-  type Player,
-  type PlayerSlot,
-  ShopState,
-} from '../schema/worldSchema'
+import { GameEvent, type Player, type PlayerSlot } from '../schema/worldSchema'
 import { creditKillEvents } from '../step/combat'
 import { isGrounded } from '../zombies/zombies'
-import { isInArc, maybeNearest, payStriker, strikeInMelee } from './melee'
+import { creditStriker, isInArc, maybeNearest, strikeInMelee } from './melee'
 import { isWieldingKnife } from './weapons'
 
 // The knife (GAME_DESIGN.md, "The knife and two gun slots"): every player
@@ -106,7 +101,7 @@ const stab = (world: World, slot: PlayerSlot): World => {
     }),
     frameEvents: frameEvents => [...frameEvents, ...events],
   })
-  return payStriker(stabbed, slot, events)
+  return creditStriker(stabbed, slot, events)
 }
 
 // NOTE: one tick of the knife for the seat at `slot`: in hand, the held
@@ -118,11 +113,10 @@ export const stabWithKnife: {
   3,
   (world: World, slot: PlayerSlot, deltaMs: number): World => {
     const cooled = coolKnife(world, slot, deltaMs)
-    const { player, intent, shop } = seatStateAt(cooled, slot)
+    const { player, intent } = seatStateAt(cooled, slot)
     return isWieldingKnife(player) &&
       intent.trigger === 'Held' &&
-      player.knifeCooldownMs <= 0 &&
-      !ShopState.isAnyOf(['Browsing'])(shop)
+      player.knifeCooldownMs <= 0
       ? stab(cooled, slot)
       : cooled
   },

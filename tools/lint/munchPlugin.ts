@@ -384,7 +384,6 @@ const noWorldSpread = defineRule({
 // src/app/menuState.ts reads them; everything else reads menuState. A new
 // dialog Binding joins this list and MenuState together.
 const DIALOG_FIELDS: ReadonlySet<string> = new Set([
-  'shopDialog',
   'profileDialog',
   'panelDialog',
   'handDialog',
@@ -526,17 +525,14 @@ const SEAT_ACTION_STEPS: ReadonlySet<string> = new Set([
   'beginReload',
   'cycleTrap',
   'placeTrapIn',
-  'purchase',
-  'tryPurchase',
   'startWaveEarly',
   'markReady',
 ])
 
-const SEAT_ACTION_MODULES = /(^|\/)(weapons|traps|shop|waves|revive)$/
+const SEAT_ACTION_MODULES = /(^|\/)(weapons|traps|waves|revive)$/
 
 const SEAT_ACTION_FIELDS: ReadonlySet<string> = new Set([
   'player',
-  'wallet',
   'traps',
   'trapStock',
   'selectedTrap',
@@ -636,8 +632,7 @@ const keyActionOnce = defineRule({
 // (src/app/bindings.ts, the Profile's own in
 // src/features/profile/composition.ts, the lobby's in
 // src/features/lobby/bindings.ts, the Munchopedia's in
-// src/features/munchopedia/bindings.ts, the shop dialog's in
-// src/features/shop/bindings.ts, and co-op's in
+// src/features/munchopedia/bindings.ts, and co-op's in
 // src/features/coop/bindings.ts). The parent asks the child through its
 // operations and never writes the field itself. A new Binding joins this
 // list.
@@ -744,9 +739,8 @@ const CHILD_BLOCKS: Readonly<Record<string, ReadonlyArray<string>>> = {
   lobby: ['heroes'],
   // NOTE: co-op's lobby opens the same hero picker from its hero pill.
   coop: ['heroes'],
-  // NOTE: Rattles' shop dialog shows the shop guide behind its ?.
-  shop: ['guide'],
-  // NOTE: the Munchopedia shows the shop guide on its Shop page.
+  // NOTE: the Munchopedia shows the guide to the house's finds on its
+  // Finds page.
   munchopedia: ['guide'],
 }
 

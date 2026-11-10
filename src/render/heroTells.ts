@@ -14,11 +14,7 @@ import { maybeMendingTrap, trapCenter } from '../world/gear/traps'
 import { heldWeapon } from '../world/gear/weapons'
 import { levelOf } from '../world/level/arena'
 import { focusOf, isCoop, isStanding, playersOf } from '../world/party/party'
-import {
-  GameEvent,
-  type SeatState,
-  type Vector,
-} from '../world/schema/worldSchema'
+import { type SeatState, type Vector } from '../world/schema/worldSchema'
 import { vectorLength } from '../world/step/geometry'
 import {
   angleOf,
@@ -40,7 +36,7 @@ import type { Particle, TellWatch } from './renderSchema'
 // the Penny Pincher glints a coin when a kill pays him. YOU shows nothing.
 //
 // All of it is cosmetic. It reads the World each seat already has (position
-// and intent, the held gun, the traps' health, the money earned) and the
+// and intent, the held gun, the traps' health, the keys found) and the
 // frame's events, and spends only the client's own cosmetic stream, so the
 // room's World, its wire, and the game's determinism are untouched, and a
 // teammate's tells come from their seat like their other particles do. What
@@ -152,21 +148,19 @@ export const mendedSpots: {
   },
 )
 
-const isKillPaid = (
-  model: Model,
-  { seat: { slot }, wallet }: SeatState,
-): boolean =>
-  Array.some(model.frameEvents, GameEvent.isAnyOf(['ZombieKilled'])) &&
+// NOTE: the seat's kills found keys since the last frame
+// (src/world/keys/keys.ts).
+const isKeyFound = (model: Model, { seat }: SeatState): boolean =>
   Array.some(
-    model.tellWatch.earned,
-    seen => seen.slot === slot && seen.earned < wallet.earned,
+    model.tellWatch.keysFound,
+    seen => seen.slot === seat.slot && seen.keysFound < seat.keysFound,
   )
 
 const watchOf = (model: Model): TellWatch => ({
   traps: Array.map(model.traps, ({ id, hp }) => ({ id, hp })),
-  earned: Array.map(playersOf(model), ({ seat: { slot }, wallet }) => ({
-    slot,
-    earned: wallet.earned,
+  keysFound: Array.map(playersOf(model), ({ seat }) => ({
+    slot: seat.slot,
+    keysFound: seat.keysFound,
   })),
 })
 
@@ -186,7 +180,7 @@ const TELLS: Readonly<Record<Calling, Tell>> = {
   You: () => [],
   Handyman: () => [],
   TrackStar: (_model, seat, deltaMs) => [runDust(seat, deltaMs)],
-  PennyPincher: (model, seat) => (isKillPaid(model, seat) ? [glint(seat)] : []),
+  PennyPincher: (model, seat) => (isKeyFound(model, seat) ? [glint(seat)] : []),
   LineCook: (_model, seat, deltaMs) => [steam(seat, deltaMs)],
 }
 

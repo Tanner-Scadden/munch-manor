@@ -1,7 +1,7 @@
 import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
-import { payShared } from '../party/party'
+import { KEY_RULES, grantKeys } from '../keys/keys'
 import type { World } from '../schema/world'
 import {
   Frenzy,
@@ -20,7 +20,6 @@ type FrenzyRules = {
   togetherPx: number
   apartMs: number
   fadeMs: number
-  bonusPerZombie: number
 }
 
 export const FRENZY_RULES: FrenzyRules = {
@@ -29,7 +28,6 @@ export const FRENZY_RULES: FrenzyRules = {
   togetherPx: 40,
   apartMs: 900,
   fadeMs: 1000,
-  bonusPerZombie: 1,
 }
 
 // PLANNING
@@ -57,11 +55,7 @@ export const frenzyPacksOf = (
     Array.filterMap(pack => {
       const size = Array.filter(spawns, spawn => spawn.pack === pack).length
       return size >= FRENZY_RULES.packMin
-        ? Result.succeed({
-            pack,
-            left: size,
-            bonus: size * FRENZY_RULES.bonusPerZombie,
-          })
+        ? Result.succeed({ pack, left: size })
         : Result.failVoid
     }),
   )
@@ -178,6 +172,9 @@ export const advanceFrenzy: {
 
 // BONUS
 
+// NOTE: a frenzied pack wiped out adds keys to the crew's ring where its
+// last zombie fell (src/world/keys/keys.ts).
+
 type Kill = Readonly<{ pack: number; x: number; y: number }>
 
 const wasStanding = (before: ReadonlyArray<Zombie>, id: number): boolean =>
@@ -210,10 +207,10 @@ const wipeEvent =
   (entry: FrenzyPack): Option.Option<GameEvent> =>
     Option.map(
       Array.findLast(kills, kill => kill.pack === entry.pack),
-      ({ x, y }) => GameEvent.PackWiped({ x, y, bonus: entry.bonus }),
+      ({ x, y }) => GameEvent.PackWiped({ x, y }),
     )
 
-export const payWipedPacks: {
+export const keyWipedPacks: {
   (after: World): (before: World) => World
   (before: World, after: World): World
 } = Function.dual(2, (before: World, after: World): World => {
@@ -230,13 +227,12 @@ export const payWipedPacks: {
     Array.map(after.frenzyPacks, tallyPack(kills)),
     entry => (entry.left <= 0 ? Result.succeed(entry) : Result.fail(entry)),
   )
-  const bonus = Array.reduce(wiped, 0, (sum, entry) => sum + entry.bonus)
-  const tallied = modifyFields(after, {
+  const wipes = Array.getSomes(Array.map(wiped, wipeEvent(kills)))
+  const tallied: World = modifyFields(after, {
     frenzyPacks: () => standing,
-    frameEvents: frameEvents => [
-      ...frameEvents,
-      ...Array.getSomes(Array.map(wiped, wipeEvent(kills))),
-    ],
+    frameEvents: frameEvents => [...frameEvents, ...wipes],
   })
-  return bonus > 0 ? payShared(tallied, bonus) : tallied
+  return Array.reduce(wipes, tallied, (current: World, wipe) =>
+    grantKeys(current, KEY_RULES.perPackWiped, wipe),
+  )
 })

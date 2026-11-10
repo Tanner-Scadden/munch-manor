@@ -292,7 +292,7 @@ const KEEP_GOING_BUTTON: EndButton = {
   icon: ENDLESS_ICON,
   label: 'KEEP GOING',
   maybeKey: Option.some({ cap: 'K', name: 'K' }),
-  ariaLabel: `Keep going: carry on into endless from wave ${FINAL_WAVE + 1} with your money, guns, and traps`,
+  ariaLabel: `Keep going: carry on into endless from wave ${FINAL_WAVE + 1} with your keys, guns, and traps`,
   message: EndMessage.ClickedKeepGoingButton(),
   maybePressed: Option.none(),
   heads: [],

@@ -1,12 +1,13 @@
 import {
   HEART_FULL,
   JAR_ART,
+  KEY_ART,
   RATTLES_ART,
+  SIGHT_ART,
   type ShopArt,
   TRAP_ART,
   artOf,
   gunArt,
-  itemArt,
 } from '../../art/shopArt'
 import type { HouseSpot, ShopGuideSection } from '../../shared/nameKeys'
 import type { FridgePrize } from '../../world/schema/worldSchema'
@@ -149,7 +150,7 @@ const VALVE_ART = artOf(
 )
 
 const HOUSE_ART: Readonly<Record<HouseSpot, ShopArt>> = {
-  Stall: RATTLES_ART.Grinning,
+  Rattles: RATTLES_ART.Grinning,
   Boards: BOARDS_ART,
   Fridge: FRIDGE_ART,
   Stove: STOVE_ART,
@@ -159,12 +160,13 @@ const HOUSE_ART: Readonly<Record<HouseSpot, ShopArt>> = {
 export const guideArtOf = (art: GuideArt): ShopArt =>
   GuideArt.match(art, {
     Gun: ({ weapon, tier }) => gunArt(weapon, tier),
-    Item: ({ id }) => itemArt(id),
+    Sight: () => SIGHT_ART,
     Trap: ({ kind }) => TRAP_ART[kind],
     Jar: () => JAR_ART,
     Prize: ({ prize }) => PRIZE_ART[prize],
     House: ({ spot }) => HOUSE_ART[spot],
     Heart: () => HEART_FULL,
+    Key: () => KEY_ART,
   })
 
 const SECTION_ART: Readonly<Record<ShopGuideSection, ShopArt>> = {

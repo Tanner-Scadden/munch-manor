@@ -8,7 +8,6 @@ import {
   type SavedRank,
   heroIdOf,
 } from '../../shared/playerData'
-import { type Modifiers, brokenKillPay, noModifiers } from '../run/modifiers'
 import { bonesBalanceOf } from './rank'
 
 // NOTE: players read "hero" (plural "heroes") for what the code calls a
@@ -137,9 +136,9 @@ export const callingsOpenedBy: {
 
 type Wearer = Readonly<{ calling: Calling }>
 
-// NOTE: the Handyman has one fewer heart. Every heal, the Sandwich prize,
-// a revive, and the hearts drawn read this.
-const HANDYMAN_HEARTS_LESS = 1
+// NOTE: the Handyman and the Penny Pincher have one fewer heart. Every
+// heal, the Sandwich prize, a revive, and the hearts drawn read this.
+const HEARTS_LESS = 1
 
 // NOTE: the hard hat: a bite leaves the Handyman twice as long to get clear.
 // It pays back part of his fewer heart, which cost 8 points of wins to YOU
@@ -151,7 +150,9 @@ export const woundGraceScaleOf = ({ calling }: Wearer): number =>
   calling === 'Handyman' ? HANDYMAN_GRACE_SCALE : 1
 
 export const maxHpOf = ({ calling }: Wearer): number =>
-  calling === 'Handyman' ? PLAYER_MAX_HP - HANDYMAN_HEARTS_LESS : PLAYER_MAX_HP
+  calling === 'Handyman' || calling === 'PennyPincher'
+    ? PLAYER_MAX_HP - HEARTS_LESS
+    : PLAYER_MAX_HP
 
 export const isMissingHeart = (
   player: Wearer & Readonly<{ hp: number }>,
@@ -198,20 +199,7 @@ export const magazineFor: {
     : magazine,
 )
 
-// PRICES
-
-const PENNY_PRICE_PERCENT = 85
-
-// NOTE: Rattles charges the Penny Pincher 15% less, rounded to the nearest
-// dollar and never to nothing, except a price that was nothing already.
-export const shopPriceFor: {
-  (price: number): (calling: Calling) => number
-  (calling: Calling, price: number): number
-} = Function.dual(2, (calling: Calling, price: number): number =>
-  calling === 'PennyPincher' && price > 0
-    ? Math.max(1, Math.round((price * PENNY_PRICE_PERCENT) / 100))
-    : price,
-)
+// THE STOVE
 
 // NOTE: the stove (src/world/kitchen/stove.ts) lights for the Line Cook
 // after half the kitchen kills, rounded up: he knows his way round a
@@ -225,31 +213,16 @@ export const stoveKillsFor: {
   calling === 'LineCook' ? Math.ceil(kills / 2) : kills,
 )
 
-// KILL PAY
+// KEYS
 
-// NOTE: a kill pays the Penny Pincher 20% less, rounded to the nearest
-// dollar, and never to nothing. Kills pay only $2 to $20, so rounding does
-// the real work: a Shambler's $2 stays $2, a $3 kill pays $2, a Tank's $20
-// pays $16, about 10% less over a run (a flat 15% rounded down cost a third
-// of the income, and the Penny Pincher won 9 points fewer than YOU).
-const PENNY_KILL_PERCENT = 80
-export const killPayFor: {
-  (pay: number, modifiers?: Modifiers): (calling: Calling) => number
-  (calling: Calling, pay: number, modifiers?: Modifiers): number
-} = Function.dual(
-  // NOTE: data-first has the pay second; data-last has the modifiers there or nothing.
-  (args: IArguments): boolean => typeof args[1] === 'number',
-  (
-    calling: Calling,
-    pay: number,
-    modifiers: Modifiers = noModifiers,
-  ): number => {
-    const broken = brokenKillPay(modifiers, pay)
-    return calling === 'PennyPincher' && broken > 0
-      ? Math.max(1, Math.round((broken * PENNY_KILL_PERCENT) / 100))
-      : broken
-  },
-)
+// NOTE: zombies drop half again as many keys for the Penny Pincher's kills
+// (src/world/keys/keys.ts): she has an eye for loose change, paid for with
+// one fewer heart. Starting points from docs/ESCAPE_PLAN.md, not tuned on
+// the balance bot yet (layer 17).
+const PENNY_KEY_SCALE = 1.5
+
+export const keyScaleOf = ({ calling }: Wearer): number =>
+  calling === 'PennyPincher' ? PENNY_KEY_SCALE : 1
 
 // THE STARTING GUN
 

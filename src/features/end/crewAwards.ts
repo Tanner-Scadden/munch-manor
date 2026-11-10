@@ -20,8 +20,7 @@ export type CrewMember = Readonly<{
   kills: number
   revives: number
   downs: number
-  earned: number
-  spent: number
+  keysFound: number
   shotsFired: number
   aim: number
 }>
@@ -38,15 +37,14 @@ export const crewOf = (model: Model): ReadonlyArray<CrewMember> => {
   }
   const names = seatNamesOf(model)
   const ranks = seatRanksOf(model)
-  return Array.map(playersOf(model), ({ seat: { slot }, seat, wallet }) => ({
+  return Array.map(playersOf(model), ({ seat: { slot }, seat }) => ({
     slot,
     name: names.get(slot) ?? `P${slot + 1}`,
     rank: ranks.get(slot) ?? 1,
     kills: seat.kills,
     revives: seat.revives,
     downs: seat.downs,
-    earned: wallet.earned,
-    spent: Math.max(0, wallet.earned - wallet.balance),
+    keysFound: seat.keysFound,
     shotsFired: seat.shotsFired,
     aim: aimOf(seat.shotsFired, seat.shotsHit),
   }))
@@ -59,7 +57,7 @@ export const CREW_AWARDS: ReadonlyArray<CrewAward> = [
   'Mvp',
   'Medic',
   'Sharpshooter',
-  'BigSpender',
+  'KeyKeeper',
   'MostMunched',
 ]
 
@@ -76,7 +74,7 @@ const SCORES: Readonly<
     member.shotsFired >= SHARPSHOOTER_MIN_SHOTS
       ? Option.some(member.aim)
       : Option.none(),
-  BigSpender: member => Option.some(member.spent),
+  KeyKeeper: member => Option.some(member.keysFound),
   MostMunched: member => Option.some(member.downs),
 }
 

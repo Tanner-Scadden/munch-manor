@@ -46,10 +46,8 @@ import {
   type Model,
   Phase,
   type PickupKind,
-  ShopState,
   TrapHint,
   TrapNotice,
-  idleIntent,
 } from './model'
 
 // The client's frame: the display's time becomes whole 60 Hz ticks of the
@@ -80,21 +78,14 @@ const withAimAssist = (model: Model, intent: Intent): Intent =>
     : intent
 
 // NOTE: the client turns raw input into intent: aim goes through the
-// camera, which only this device knows. A player at the stall's counter
-// intends nothing.
+// camera, which only this device knows.
 export const refreshIntent = (model: Model): Model =>
   modifyFocus(model, {
     intent: () =>
-      ShopState.isAnyOf(['Browsing'])(focusOf(model).shop)
-        ? idleIntent
-        : withAimAssist(
-            model,
-            deriveIntent(
-              model.input,
-              focusOf(model).player,
-              screenCameraOf(model),
-            ),
-          ),
+      withAimAssist(
+        model,
+        deriveIntent(model.input, focusOf(model).player, screenCameraOf(model)),
+      ),
   })
 
 type Ticks = Readonly<{ count: number; carryMs: number }>
@@ -249,9 +240,7 @@ const advanceCallouts = (model: Model, worldMs: number): Model => {
       () => current,
     ),
   )
-  return ShopState.isAnyOf(['Browsing'])(focusOf(called).shop)
-    ? called
-    : ageLevelCallouts(ageCallouts(called, worldMs), worldMs)
+  return ageLevelCallouts(ageCallouts(called, worldMs), worldMs)
 }
 
 // NOTE: what the frame looks like once its ticks ran: the camera lean,

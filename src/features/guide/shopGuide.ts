@@ -12,10 +12,10 @@ import {
   PAN_RULES,
 } from '../../world/fridge/fridgeWeapons'
 import {
-  DUD_REFUND,
   FRIDGE_RULES,
   PRIZE_ORDER,
   PRIZE_WEIGHTS,
+  refundOf,
 } from '../../world/fridge/leftovers'
 import { MEND_RULES, TRAPS, TRAP_KIND_ORDER } from '../../world/gear/traps'
 import {
@@ -27,10 +27,16 @@ import {
 } from '../../world/gear/weapons'
 import { VALVE_RULES } from '../../world/kitchen/gasValve'
 import { STOVE_RULES } from '../../world/kitchen/stove'
-import { EXIT_RULES, KITCHEN_EXIT, exitName } from '../../world/level/exits'
+import {
+  EXIT_RULES,
+  KITCHEN_EXIT,
+  exitKeysOf,
+  exitName,
+} from '../../world/level/exits'
 import {
   FOUND_NAMES,
   HOUSE_NAMES,
+  LASER_SIGHT_NAME,
   PICKUP_NAMES,
   PRIZE_NAMES,
   SHOP_GUIDE_SECTION_NAMES,
@@ -38,11 +44,9 @@ import {
 import {
   FridgeDoor,
   FridgePrize,
-  ShopItemId,
   TrapKind,
   WeaponKind,
 } from '../../world/schema/worldSchema'
-import { SHOP_ITEMS } from '../../world/shop/shop'
 import { SHATTER_SCALE } from '../../world/step/combat'
 
 // THE SHOP GUIDE
@@ -71,12 +75,13 @@ export const sectionName = (section: ShopGuideSection): string =>
 // are in src/features/guide/shopGuideArt.ts.
 export const GuideArt = defineTaggedUnion({
   Gun: { weapon: WeaponKind, tier: Schema.Finite },
-  Item: { id: ShopItemId },
+  Sight: {},
   Trap: { kind: TrapKind },
   Jar: {},
   Prize: { prize: FridgePrize },
   House: { spot: HouseSpot },
   Heart: {},
+  Key: {},
 })
 export type GuideArt = typeof GuideArt.Type
 
@@ -205,20 +210,8 @@ const ladderOf = (weapon: WeaponKind): ReadonlyArray<LadderStep> =>
     kills: tier.kills,
   }))
 
-const gunEntry = (
-  weapon: WeaponKind,
-  item: ShopItemId,
-  line: string,
-): GuideEntry => ({
-  ...caseGunEntry(weapon, line),
-  price:
-    SHOP_ITEMS[item].price > 0
-      ? Option.some(SHOP_ITEMS[item].price)
-      : Option.none(),
-})
-
-// NOTE: a gun only a display case holds (src/world/feats/cases.ts): no
-// price.
+// NOTE: a gun: the Pop Pistol in hand from the start, every other in a
+// display case (src/world/feats/cases.ts). None wears a price.
 const caseGunEntry = (weapon: WeaponKind, line: string): GuideEntry => ({
   id: weapon,
   section: 'Guns',
@@ -233,7 +226,7 @@ const caseGunEntry = (weapon: WeaponKind, line: string): GuideEntry => ({
 })
 
 const gunEntries = (): ReadonlyArray<GuideEntry> => [
-  gunEntry('Pistol', 'Pistol', 'Always free.'),
+  caseGunEntry('Pistol', 'Always in hand.'),
   caseGunEntry('Shotgun', 'Seven pellets. Up close only.'),
   caseGunEntry('Smg', 'Fast and a little wobbly.'),
   caseGunEntry('Rifle', 'Slow. Shoots through a whole line.'),
@@ -241,9 +234,9 @@ const gunEntries = (): ReadonlyArray<GuideEntry> => [
   {
     id: 'LaserSight',
     section: 'Guns',
-    name: SHOP_ITEMS.LaserSight.name,
+    name: LASER_SIGHT_NAME,
     line: 'Shows where the shot goes.',
-    art: GuideArt.Item({ id: 'LaserSight' }),
+    art: GuideArt.Sight(),
     price: Option.none(),
     bars: [],
     ladder: [],
@@ -390,18 +383,15 @@ const PRIZE_LINES: Readonly<Record<FridgePrize, string>> = {
   Cooker: 'Hold, let go, lid goes boom.',
   Pan: 'Swings for the fences.',
   Freeze: 'Freezes small zombies solid.',
-  Sandwich: 'Heals a heart. Burps cash back.',
-  Dud: 'Fish bones. Burps cash back.',
+  Sandwich: 'Heals a heart.',
+  Dud: 'Fish bones. Burps a key back.',
 }
 
 const prizeChips = (prize: FridgePrize): ReadonlyArray<GuideChip> =>
   prize === 'Sandwich'
-    ? [
-        { art: GuideArt.Heart(), label: '+1' },
-        { art: GuideArt.House({ spot: 'Fridge' }), label: `$${DUD_REFUND}` },
-      ]
+    ? [{ art: GuideArt.Heart(), label: '+1' }]
     : prize === 'Dud'
-      ? [{ art: GuideArt.House({ spot: 'Fridge' }), label: `$${DUD_REFUND}` }]
+      ? [{ art: GuideArt.Key(), label: `+${refundOf(prize)}` }]
       : []
 
 const prizeEntry = (prize: FridgePrize): GuideEntry => {
@@ -444,16 +434,16 @@ const houseEntry = (
 })
 
 const houseEntries = (): ReadonlyArray<GuideEntry> => [
-  houseEntry('Stall', 'Open between waves. Walk up.', Option.none()),
+  houseEntry('Rattles', 'Hollers hints from his trunk.', Option.none()),
   houseEntry(
     'Boards',
     `From wave ${EXIT_RULES.firstWave}. Hold to open ${exitName(KITCHEN_EXIT)}.`,
-    Option.some(EXIT_RULES.price),
+    Option.some(exitKeysOf(KITCHEN_EXIT)),
   ),
   houseEntry(
     'Fridge',
-    `Hold to pull. First pull a break: $${FRIDGE_RULES.firstPrice}.`,
-    Option.some(FRIDGE_RULES.price),
+    'Hold to pull. A Dud gives a key back.',
+    Option.some(FRIDGE_RULES.keys),
   ),
   houseEntry(
     'Stove',

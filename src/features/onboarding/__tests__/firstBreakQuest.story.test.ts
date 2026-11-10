@@ -9,7 +9,6 @@ import {
   BreakClock,
   CrateStock,
   Invulnerability,
-  Lesson,
   type Model,
   Party,
   Phase,
@@ -33,7 +32,7 @@ import { isStartWaveBeckoning } from '../onboarding'
 const FRAME_MS = FIXED_STEP_MS
 
 // NOTE: a new save's first break: it has played wave 1, so it has moved
-// and fired, and has a little money, short of a Plank Pile.
+// and fired.
 const firstBreak = (base: Model = asVeteran(initialModel)): Model =>
   modifyFocus(
     modifyFields(base, {
@@ -49,7 +48,6 @@ const firstBreak = (base: Model = asVeteran(initialModel)): Model =>
         }),
     }),
     {
-      wallet: wallet => ({ ...wallet, balance: 12, shown: 12, earned: 12 }),
       player: player =>
         modifyFields(player, {
           x: () => BELOW_NORTH_DOOR.x,
@@ -189,14 +187,8 @@ describe('the guided first break', () => {
   )
 
   it.effect(
-    'runs once per save: a player who has shopped or bought a trap never sees it',
+    'runs once per save: a player who has placed a trap never sees it',
     () => {
-      const shopped = firstBreak(
-        modifyFields(asVeteran(initialModel), {
-          lessons: lessons =>
-            modifyFields(lessons, { shop: () => Lesson.Learned({ atMs: 0 }) }),
-        }),
-      )
       const trapper = firstBreak(
         modifyFields(asVeteran(initialModel), {
           trapHint: () => TrapHint.Seen(),
@@ -204,14 +196,6 @@ describe('the guided first break', () => {
       )
       const done = firstBreak(asTutorialDone(asVeteran(initialModel)))
       return Effect.gen(function* () {
-        yield* Story.story(
-          APPLICATION,
-          Story.given(shopped),
-          frame,
-          Story.model(current => {
-            expect(current.firstBreakQuest).toEqual(Tour.Waiting())
-          }),
-        )
         yield* Story.story(
           APPLICATION,
           Story.given(trapper),

@@ -248,10 +248,13 @@ const inPeakRange = (ratio: number) =>
 // NOTE: waves 5 and 7 were Met until traps became found, not bought
 // (docs/ESCAPE_PLAN.md, layer 6): the model spends the planks' and gnomes'
 // money on guns, so its dps outgrows those waves (1.38 and 0.91). The
-// escape stack's balance pass (layer 17) retunes the waves.
+// escape stack's balance pass (layer 17) retunes the waves. Wave 6 was Met
+// until the shop went (layer 7): the model buys no gun with its keys (guns
+// sit in display cases, which the bot leaves alone), so it fights on the
+// pistol and the wave peaks high against it (3.01 on Hard).
 const PEAK_STANDING: Readonly<Record<number, Standing>> = {
   5: 'NotYet',
-  6: 'Met',
+  6: 'NotYet',
   7: 'NotYet',
   // NOTE: wave 10 was Met until the 2026-11-01 boss change (Hard boss health
   // x2.2, attacks x0.8 apart): the model counts his health as incoming, so the
@@ -390,15 +393,18 @@ describe('guardrails from GAME_DESIGN.md', () => {
   })
 
   const prices = moneyAgainstPrices()
+  // NOTE: the money was the shop's; since layer 7 it is the keys a campaign
+  // drops against the kitchen's padlock, and guns come from display cases,
+  // not keys. Both wait on the escape stack's balance pass (layer 17).
   guardrail(
     'a whole campaign pays less than a full kit, so the shop is a choice',
     'NotYet',
-    `$${prices.earned.toFixed(0)} against $${prices.fullKit.Shotgun} to $${prices.fullKit.Smg}`,
+    `${prices.earned.toFixed(0)} keys a campaign, guns in cases`,
     () => prices.earned < Math.min(prices.fullKit.Shotgun, prices.fullKit.Smg),
   )
   guardrail(
     'the money affords the SMG by the wave 4 visit',
-    'Met',
+    'NotYet',
     Array.join(
       Array.map(normal.slice(0, 4), row =>
         Option.match(row.loadout.maybeSpare, {

@@ -58,11 +58,10 @@ import {
   Purchase,
   RunMode,
   type Seat,
-  ShopItemId,
-  ShopState,
   barePantry,
   calmPacing,
   freshCrates,
+  freshKeys,
   freshLoot,
   freshStats,
   freshStove,
@@ -246,7 +245,6 @@ export const intentOfInput = (input: PlayerInput): Intent => ({
 const ACTION_BITS = 12
 const ACTION_SPAN = 2 ** ACTION_BITS
 const PRESS_COUNTS = 15
-const BUY_BASE = 16
 
 // NOTE: the actions with no fields, in their wire codes' order (1 up).
 const SIMPLE_ACTIONS: ReadonlyArray<SeatAction> = [
@@ -254,36 +252,27 @@ const SIMPLE_ACTIONS: ReadonlyArray<SeatAction> = [
   SeatAction.Reload(),
   SeatAction.PlaceTrap(),
   SeatAction.NextTrap(),
-  SeatAction.LeaveCounter(),
   SeatAction.Ready(),
   SeatAction.Melee(),
 ]
 
 // NOTE: drawing a gun by its slot follows the simple actions' codes.
-const DRAW_BASE = 8
+const DRAW_BASE = SIMPLE_ACTIONS.length + 1
 const DRAW_SLOTS = GunSlot.literals
 
 const drawCode = (slot: GunSlot): number =>
   DRAW_BASE + (slot === 'First' ? 0 : 1)
 
 // NOTE: MEDIC! from a downed player (protocol version 19) follows the
-// draws, where the ammo window's tap was until protocol version 20.
+// draws. Protocol 20 dropped the ammo window's tap, the shop's buys, and
+// leaving its counter (docs/ESCAPE_PLAN.md, layers 2 and 7).
 const MEDIC_CODE = DRAW_BASE + DRAW_SLOTS.length
-
-const SHOP_ITEMS = ShopItemId.literals
 
 const simpleCode = (tag: SeatAction['_tag']): number =>
   Option.getOrElse(
     Array.findFirstIndex(SIMPLE_ACTIONS, simple => simple._tag === tag),
     () => -1,
   ) + 1
-
-const itemCode = (item: ShopItemId): number =>
-  BUY_BASE +
-  Option.getOrElse(
-    Array.findFirstIndex(SHOP_ITEMS, listed => listed === item),
-    () => 0,
-  )
 
 export const actionCodeOf = (action: SeatAction): number =>
   SeatAction.match(action, {
@@ -293,8 +282,6 @@ export const actionCodeOf = (action: SeatAction): number =>
     Reload: () => simpleCode('Reload'),
     PlaceTrap: () => simpleCode('PlaceTrap'),
     NextTrap: () => simpleCode('NextTrap'),
-    Buy: ({ item }) => itemCode(item),
-    LeaveCounter: () => simpleCode('LeaveCounter'),
     Ready: () => simpleCode('Ready'),
     CallMedic: () => MEDIC_CODE,
   })
@@ -316,11 +303,7 @@ export const seatActionOf: {
   2,
   (_world: World, held: number): Option.Option<SeatAction> => {
     const code = held % ACTION_SPAN
-    if (code >= BUY_BASE) {
-      return Option.map(Array.get(SHOP_ITEMS, code - BUY_BASE), item =>
-        SeatAction.Buy({ item }),
-      )
-    } else if (code === MEDIC_CODE) {
+    if (code === MEDIC_CODE) {
       return Option.some(SeatAction.CallMedic())
     } else if (code >= DRAW_BASE) {
       return Option.map(Array.get(DRAW_SLOTS, code - DRAW_BASE), slot =>
@@ -361,6 +344,7 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   pantry: barePantry,
   stove: freshStove(seed),
   crates: freshCrates(seed),
+  keys: freshKeys(seed),
   gasValve: shutValve,
   cases: rollCases(seed, settings.difficulty),
   hitStop: initialHitStop,
@@ -446,16 +430,15 @@ export const startRoomWorld: {
 // KEEP GOING
 
 // NOTE: a won campaign carried on into endless, as single player's KEEP
-// GOING does (src/app/update/run.ts, keepGoing): the same crew with their money,
-// guns, traps, and hearts, everyone out of the shop, the first endless
-// wave's break counting. The room's ticks start again from 0.
+// GOING does (src/app/update/run.ts, keepGoing): the same crew with their keys,
+// guns, traps, and hearts, nobody mid-hold, the first endless wave's break
+// counting. The room's ticks start again from 0.
 const keepGoingWorld = (world: World): World =>
   beginPreparation(
     forEachSeat(
       modifyFields(world, { mode: () => RunMode.Endless() }),
       (current, slot) =>
         modifySeat(current, slot, {
-          shop: () => ShopState.Away(),
           purchase: () => Purchase.Idle(),
         }),
     ),

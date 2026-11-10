@@ -13,7 +13,7 @@ import { crewRunKeyOf } from '../../platform/analyticsRun'
 import { TURRET_WEAPON } from '../../world/gear/traps'
 import { levelOf } from '../../world/level/arena'
 import { inputOfIntent, ownWorldOf } from '../../world/net/roomWorld'
-import { focusOf, shopOf } from '../../world/party/party'
+import { focusOf } from '../../world/party/party'
 import { tallyFrame } from '../../world/run/stats'
 import { type World, withWorld } from '../../world/schema/world'
 import {
@@ -23,10 +23,8 @@ import {
   Phase,
   RunMode,
   type SeatState,
-  ShopState,
   type Vector,
 } from '../../world/schema/worldSchema'
-import { isBrowsing } from '../../world/shop/shop'
 import { aimTracers, flyTracers } from '../../world/step/firing'
 import { stopForHits, thawTick } from '../../world/step/hitStop'
 import { isRoundActive } from '../../world/waves/waves'
@@ -42,7 +40,6 @@ import {
 } from '../frame'
 import type { Model } from '../model'
 import { freshRun } from '../runReset'
-import { syncShopDialog } from './shop'
 import {
   frameSoundCues,
   fridgeLandCues,
@@ -56,7 +53,7 @@ import {
 import { toModel, unchanged } from './step'
 
 // The root's half of an online co-op run (MULTIPLAYER.md, Phase 2): the
-// game's own scene, HUD, shop, and touch controls drawn from the room's
+// game's own scene, HUD, and touch controls drawn from the room's
 // World. Each frame the client derives its intent from its own input and
 // camera, the co-op Submodel sends it with any press and hands back the
 // World to draw (everyone else 100 ms behind, its own player predicted)
@@ -64,31 +61,18 @@ import { toModel, unchanged } from './step'
 // World's player fields (focusSeat), so every view draws it as the player,
 // then makes particles, shake, popups, and sounds from the events with its
 // own cosmetic stream, and freezes its own picture for hit-stop. The room
-// alone decides hits, money, and deaths.
+// alone decides hits, keys, and deaths.
 
 // THE ROOM'S WORLD IN THE ROOT
 
-// NOTE: while the room has this player at the counter the client keeps its
-// own Browsing (the row it focused) or its own Dismissed (LEAVE sent, the
-// room a round trip behind), so a dialog it closed stays closed.
-const heldShop = (own: ShopState, room: ShopState): ShopState =>
-  isBrowsing(room) && !ShopState.isAnyOf(['Away'])(own) ? own : room
-
 // NOTE: the room's seats, with this client's own (the first) keeping what
-// the client owns: its intent, its open tab, the money count-up, and its
-// purchase hold, and the shop it holds (heldShop).
+// the client owns: its intent and its purchase hold.
 const takeOwnSeat = (own: SeatState, seats: World['seats']): World['seats'] => {
   const [first, ...rest] = seats
   return [
     modifyFields(first, {
       intent: () => own.intent,
       purchase: () => own.purchase,
-      shopCategory: () => own.shopCategory,
-      // NOTE: the room decided the wallet; the client keeps only its own
-      // count-up, so no seat action is decided here.
-      // oxlint-disable-next-line munch/seat-action-once
-      wallet: wallet => modifyFields(wallet, { shown: () => own.wallet.shown }),
-      shop: shop => heldShop(own.shop, shop),
     }),
     ...rest,
   ]
@@ -96,10 +80,8 @@ const takeOwnSeat = (own: SeatState, seats: World['seats']): World['seats'] => {
 
 // NOTE: the fields the room owns, from the World with this client's own
 // seat in the player fields, and the room's difficulty beside the save's,
-// for the run's summary. The rest stay the client's: its intent, the run's
-// stats and the gates, the save's difficulty, the money count-up, the
-// shop's open tab, and, while the room still has the player at the
-// counter, their focused row or their own LEAVE on its way (heldShop).
+// for the run's summary. The rest stay the client's: its intent and hold,
+// the run's stats and the gates, and the save's difficulty.
 const takeRoomWorld = (
   model: Model,
   world: World,
@@ -126,6 +108,8 @@ const takeRoomWorld = (
     fridge: () => world.fridge,
     pantry: () => world.pantry,
     crates: () => world.crates,
+    keys: () => world.keys,
+    cases: () => world.cases,
     stove: () => world.stove,
     gasValve: () => world.gasValve,
     party: () => world.party,
@@ -162,11 +146,6 @@ const maybeDrawnOf = (model: Model): Option.Option<Drawn> =>
       room,
       world: ownWorldOf(roomWorld, room.slot),
     })),
-  )
-
-const ownShopOf = (model: Model): Option.Option<ShopState> =>
-  Option.flatMap(maybeDrawnOf(model), ({ room, world }) =>
-    shopOf(world, room.slot),
   )
 
 // OWN TRACERS
@@ -235,7 +214,7 @@ const keepRankPaid = (before: Model, world: World, fresh: Model): Model =>
 // tracers go to the co-op Block through `requestKeepTracers`. While the
 // client's own hit-stop holds, the picture stays, and the events wait in
 // the session.
-const drawRoom = (frameMs: number, maybeShopBefore: Option.Option<ShopState>) =>
+const drawRoom = (frameMs: number) =>
   makeStep(stepModel =>
     Option.match(maybeDrawnOf(stepModel), {
       onNone: () => unchanged,
@@ -272,7 +251,6 @@ const drawRoom = (frameMs: number, maybeShopBefore: Option.Option<ShopState>) =>
           }),
           drawTraced({
             frameMs,
-            maybeShopBefore,
             base,
             room,
             world,
@@ -287,7 +265,6 @@ const drawRoom = (frameMs: number, maybeShopBefore: Option.Option<ShopState>) =>
 
 type Traced = Readonly<{
   frameMs: number
-  maybeShopBefore: Option.Option<ShopState>
   base: Model
   room: CoopRoom
   world: World
@@ -299,7 +276,6 @@ type Traced = Readonly<{
 // NOTE: the rest of the frame, once the co-op Block keeps the tracers.
 const drawTraced = ({
   frameMs,
-  maybeShopBefore,
   base,
   room,
   world,
@@ -372,7 +348,6 @@ const drawTraced = ({
         ...kitchenCues(base, drawn),
       ]),
       playStartSoundWhen(isStart),
-      syncShopDialog(Option.exists(maybeShopBefore, isBrowsing)),
     ])
   })
 
@@ -395,6 +370,6 @@ export const playRoomFrame = (nowMs: number) =>
         nowMs,
         isPictureHeld: isFrozen(thawTick(stepModel.hitStop, frameMs).hitStop),
       }),
-      drawRoom(frameMs, ownShopOf(stepModel)),
+      drawRoom(frameMs),
     ])
   })

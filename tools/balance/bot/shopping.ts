@@ -1,15 +1,9 @@
-// What the balance bot does in a break: shopping at Rattles' stall,
-// buying the kitchen, the fridge, taking planks and gnomes from the trap
-// crates, placing and mending them, and the plan that picks between them.
+// What the balance bot does in a break: spending the crew's keys on the
+// kitchen and the fridge, taking planks and gnomes from the trap crates,
+// placing and mending them, and the plan that picks between them.
 
 import { Array, Function, Option, Schema } from 'effect'
 
-import { DialogBlock } from '@foldkit/ui'
-
-import { ShopDialogBinding } from '../../../src/app/bindings'
-import { Envelope } from '../../../src/app/pureApp'
-import { DialogBinding } from '../../../src/features/shop/bindings'
-import { Message as ShopMessage } from '../../../src/features/shop/message'
 import {
   FRIDGE_RULES,
   fridgeBoxOf,
@@ -22,11 +16,12 @@ import {
   maybeFindIn,
 } from '../../../src/world/gear/crates'
 import { MEND_RULES, isDamaged, trapBox } from '../../../src/world/gear/traps'
-import { freshGun, isCarrying, maxTier } from '../../../src/world/gear/weapons'
+import { freshGun, isCarrying } from '../../../src/world/gear/weapons'
+import { heldKeys } from '../../../src/world/keys/keys'
 import { distanceToBox, levelOf } from '../../../src/world/level/arena'
 import {
-  EXIT_RULES,
   KITCHEN_EXIT,
+  exitPriceFor,
   isExitOfferOpenFor,
 } from '../../../src/world/level/exits'
 import {
@@ -35,97 +30,45 @@ import {
   leadSeatOf,
 } from '../../../src/world/party/party'
 import { maybeOfferInReach } from '../../../src/world/shop/purchase'
-import {
-  STALL_BOX,
-  isShopOpenFor,
-  priceFor,
-} from '../../../src/world/shop/shop'
 import { doorCounts } from '../../../src/world/waves/endlessWaves'
-import { FRAME_MS, KEYS, type Model, type Vector, send } from './basics'
-import {
-  type Gun,
-  firearmOf,
-  gunValue,
-  gunsOfBot,
-  pistolOf,
-  weakerGun,
-} from './guns'
+import { FRAME_MS, KEYS, type Model, type Vector } from './basics'
+import { type Gun, gunValue, weakerGun } from './guns'
 import { isKnobSet, knobNumber, knobText } from './knobs'
 import { isInKitchen } from './route'
 import { type BotState } from './state'
 
-// SHOPPING
+// KEYS
 
-export const STALL_FRONT: Vector = {
-  x: (STALL_BOX.left + STALL_BOX.right) / 2,
-  y: STALL_BOX.top - 3,
-}
-
-// The bot shops the way a careful player would, and Rattles has nothing
-// left it wants: guns sit in display cases (src/world/feats/cases.ts),
-// which the bot leaves alone, a gun's tiers are earned by its kills
-// (src/world/gear/gunLevels.ts), traps come from the trap crates (THE
-// CRATES below), and hearts only drop. NO_GNOME=1 is the bot that never
-// takes a gnome, and NO_PLANKS=1 one that never takes a Plank Pile, to
-// check planks help without carrying.
+// The bot has no shop to visit (docs/ESCAPE_PLAN.md, layer 7): zombies drop
+// skeleton keys onto the crew's ring (src/world/keys/keys.ts), and the bot
+// spends them as a stub until the real bot (layer 17): it opens the kitchen
+// once it holds the keys, and pulls the fridge with what it has left. Guns
+// sit in display cases (src/world/feats/cases.ts), which the bot leaves
+// alone, and traps come from the trap crates (THE CRATES below).
+// NO_GNOME=1 is the bot that never takes a gnome, and NO_PLANKS=1 one that
+// never takes a Plank Pile, to check planks help without carrying.
 const NO_GNOME = isKnobSet('NO_GNOME')
 const NO_PLANKS = isKnobSet('NO_PLANKS')
-const RESERVE = knobNumber('RESERVE', 30)
-
-type ItemId = Parameters<typeof priceFor>[2]
-// The gun a purchase would replace, if it is a gun.
-export const replacedBy: {
-  (item: ItemId): (model: Model) => Gun | undefined
-  (model: Model, item: ItemId): Gun | undefined
-} = Function.dual(2, (model: Model, item: ItemId): Gun | undefined => {
-  if (item === 'Pistol') {
-    return weakerGun(model)
-  }
-  if (item !== 'Smg' && item !== 'Shotgun') {
-    return undefined
-  }
-  const guns = gunsOfBot(model)
-  if (guns.length < 2) {
-    return undefined
-  }
-  return (
-    Option.getOrUndefined(
-      Array.findFirst(guns, gun => gun.kind === 'Shotgun'),
-    ) ?? weakerGun(model)
-  )
-})
-
-export const wantedPurchase: {
-  (model: Model): (state: BotState) => ItemId | undefined
-  (state: BotState, model: Model): ItemId | undefined
-} = Function.dual(
-  2,
-  (_state: BotState, _model: Model): ItemId | undefined => undefined,
-)
+// NOTE: keys the bot keeps back from the fridge, 0 by default.
+const RESERVE = knobNumber('RESERVE', 0)
 
 // THE KITCHEN
 
-// The bot buys the kitchen open the way the analytical model does: once it
-// holds a gun at its second tier (earned by kills),
-// while it keeps its reserve. It walks to the boarded door and holds the interact key. KITCHEN=0 is the bot
-// that never opens it, to see what the kitchen does to a run.
+// The bot opens the kitchen once the ring holds its padlock's keys, from
+// the break its boards go on sale. It walks to the boarded door and holds
+// the interact key. KITCHEN=0 is the bot that never opens it, to see what
+// the kitchen does to a run.
 const NO_KITCHEN = knobText('KITCHEN') === '0'
 export const KITCHEN_DOOR_PUSH: Vector = { x: 70, y: 16 }
 
 export const isKitchenOpen = (model: Model) =>
   levelOf(model).openExits.includes(KITCHEN_EXIT)
 
-const wantsKitchen = (model: Model): boolean => {
-  const spare = firearmOf(model) ?? pistolOf(model)
-  return (
-    !NO_KITCHEN &&
-    !isKitchenOpen(model) &&
-    isExitOfferOpenFor(model.phase) &&
-    spare !== undefined &&
-    spare.tier >= Math.min(2, maxTier(spare.kind)) &&
-    focusOf(model).wallet.balance - EXIT_RULES.price >= RESERVE
-  )
-}
+const wantsKitchen = (model: Model): boolean =>
+  !NO_KITCHEN &&
+  !isKitchenOpen(model) &&
+  isExitOfferOpenFor(model.phase) &&
+  heldKeys(model) >= exitPriceFor(model, KITCHEN_EXIT)
 
 // The bot buys the room as a player does: it holds the interact key at the
 // boards until the hold fills (src/world/shop/purchase.ts), mid-wave too when it
@@ -212,15 +155,7 @@ export const isOfferedToBot = (model: Model): boolean =>
   model.fridge.door._tag === 'Offering' &&
   model.fridge.door.slot === leadSeatOf(model).slot
 
-const fridgeReserve = (state: BotState, model: Model): number => {
-  const want = wantedPurchase(state, model)
-  return (
-    RESERVE +
-    (want === undefined ? 0 : priceFor(model, focusSlotOf(model), want))
-  )
-}
-
-const wantsFridge = (state: BotState, model: Model): boolean =>
+const wantsFridge = (model: Model): boolean =>
   !NO_FRIDGE &&
   model.phase._tag === 'Preparation' &&
   isKitchenOpen(model) &&
@@ -229,9 +164,7 @@ const wantsFridge = (state: BotState, model: Model): boolean =>
     (isOfferedToBot(model) && wouldTake(model)) ||
     (model.fridge.door._tag === 'Shut' &&
       wouldTakeAnyPrize(model) &&
-      focusOf(model).wallet.balance -
-        fridgePriceFor(model, focusSlotOf(model)) >=
-        fridgeReserve(state, model)))
+      heldKeys(model) - fridgePriceFor(model) >= RESERVE))
 
 // At the fridge it holds the interact key while the door is shut, lets go
 // once a pull is done so the next hold starts fresh, and waits while the
@@ -242,44 +175,6 @@ export const fridgeKeys = (model: Model): Set<string> =>
   focusOf(model).purchase._tag !== 'Done'
     ? new Set([KEYS.interact])
     : new Set()
-
-// NOTE: what the shop dialog's close button sends: a Dialog Message inside
-// the shop's, in the root's envelope (src/app/pureApp.ts, Envelope).
-const closeShopDialog = () =>
-  Envelope.inRoot(
-    ShopDialogBinding,
-    Envelope.inShop(DialogBinding, DialogBlock.Message.ClickedCloseButton()),
-  )
-
-const buyAtCounter = (item: ItemId) =>
-  Envelope.inRoot(ShopDialogBinding, ShopMessage.ClickedBuyButton({ item }))
-
-export const shop: {
-  (model: Model): (state: BotState) => Model
-  (state: BotState, model: Model): Model
-} = Function.dual(2, (state: BotState, model: Model): Model => {
-  const item = wantedPurchase(state, model)
-  if (item === undefined) {
-    return send(model, closeShopDialog())
-  }
-  const bought = send(model, buyAtCounter(item))
-  const { phase } = model
-  if (
-    focusOf(bought).wallet.balance !== focusOf(model).wallet.balance &&
-    phase._tag === 'Preparation'
-  ) {
-    const maybeVisit = Array.findFirst(
-      state.shopVisits,
-      visit => visit.wave === phase.wave,
-    )
-    if (Option.isSome(maybeVisit)) {
-      maybeVisit.value.bought.push(item)
-    }
-  }
-  return focusOf(bought).wallet.balance === focusOf(model).wallet.balance
-    ? send(bought, closeShopDialog())
-    : bought
-})
 
 // The bot holds the parlour, so its planks go in the parlour's doorways.
 const isParlourDoor = Schema.is(
@@ -362,7 +257,6 @@ export const isAtMend = (model: Model): boolean => {
 }
 
 type PrepPlan =
-  | 'Shop'
   | 'Kitchen'
   | 'Crate'
   | 'Barricade'
@@ -396,45 +290,35 @@ export const isBreakOverdue = (state: BotState): boolean =>
   state.breakFrames > BREAK_FRAMES
 
 export const prepPlan: {
-  (model: Model, shopped: boolean): (state: BotState) => PrepPlan
-  (state: BotState, model: Model, shopped: boolean): PrepPlan
-} = Function.dual(
-  3,
-  (state: BotState, model: Model, shopped: boolean): PrepPlan => {
-    if (isBreakOverdue(state)) {
-      return 'Go'
-    }
-    if (
-      isShopOpenFor(model.phase) &&
-      !shopped &&
-      wantedPurchase(state, model) !== undefined
-    ) {
-      return 'Shop'
-    }
-    if (wantsKitchen(model)) {
-      return 'Kitchen'
-    }
-    if (crateTarget(model) !== undefined) {
-      return 'Crate'
-    }
-    if (
-      focusOf(model).trapStock.Barricade > 0 &&
-      busiestDoor(model) !== undefined
-    ) {
-      return 'Barricade'
-    }
-    if (focusOf(model).trapStock.Turret > 0 && state.gnomeTries < 90) {
-      return 'Gnome'
-    }
-    if (mendTarget(model) !== undefined) {
-      return 'Mend'
-    }
-    if (wantsFridge(state, model)) {
-      return 'Fridge'
-    }
-    if (isInKitchen(focusOf(model).player)) {
-      return 'Return'
-    }
+  (model: Model): (state: BotState) => PrepPlan
+  (state: BotState, model: Model): PrepPlan
+} = Function.dual(2, (state: BotState, model: Model): PrepPlan => {
+  if (isBreakOverdue(state)) {
     return 'Go'
-  },
-)
+  }
+  if (wantsKitchen(model)) {
+    return 'Kitchen'
+  }
+  if (crateTarget(model) !== undefined) {
+    return 'Crate'
+  }
+  if (
+    focusOf(model).trapStock.Barricade > 0 &&
+    busiestDoor(model) !== undefined
+  ) {
+    return 'Barricade'
+  }
+  if (focusOf(model).trapStock.Turret > 0 && state.gnomeTries < 90) {
+    return 'Gnome'
+  }
+  if (mendTarget(model) !== undefined) {
+    return 'Mend'
+  }
+  if (wantsFridge(model)) {
+    return 'Fridge'
+  }
+  if (isInKitchen(focusOf(model).player)) {
+    return 'Return'
+  }
+  return 'Go'
+})

@@ -1,13 +1,12 @@
 import { Array, Function, Option, pipe } from 'effect'
 
 import type { HomeMode } from '../../domain/clientSchema'
-import { FOCUS_STEP_OFFSET } from '../../input/input'
+import { FOCUS_STEP_OFFSET, type FocusStep } from '../../input/input'
 import type { MapId } from '../../shared/nameKeys'
 import type { Difficulty } from '../../shared/playerData'
 import { DIFFICULTY_ORDER, isLocked } from '../../world/run/difficulty'
 import { MODIFIER_ORDER, type Modifier } from '../../world/run/modifiers'
 import type { DifficultySetting } from '../../world/schema/worldSchema'
-import type { FocusStep } from '../../world/step/stepWorld'
 import type { LobbyControl, LobbyPicks } from './model'
 
 // The single player lobby (GAME_DESIGN.md, "The single player lobby"): PLAY

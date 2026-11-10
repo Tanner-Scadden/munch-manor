@@ -4,7 +4,7 @@ import { Schema } from 'effect'
 
 // NOTE: what the room's World holds, as one line of JSON on the arena's
 // hidden link element, for the audit harness (tools/audit/coop.ts): the
-// phase, the zombies, the stall, and each player. The page writes it and
+// phase, the zombies, Rattles' trunk, the crew's keys, and each player. The page writes it and
 // the audit reads it through this one Schema. It imports only effect, so
 // the audit can load it without the game.
 const ReadoutSeat = Schema.Struct({
@@ -15,8 +15,6 @@ const ReadoutSeat = Schema.Struct({
   life: Schema.String,
   ready: Schema.String,
   kills: Schema.Finite,
-  money: Schema.Finite,
-  shop: Schema.String,
   // NOTE: the calling the room seated, as its word, so the audit can check it.
   calling: Schema.String,
 })
@@ -32,7 +30,8 @@ export const Readout = Schema.Struct({
   mode: Schema.String,
   difficulty: Schema.String,
   wave: Schema.Finite,
-  stall: Schema.Struct({
+  keys: Schema.Finite,
+  rattles: Schema.Struct({
     left: Schema.Finite,
     top: Schema.Finite,
     right: Schema.Finite,

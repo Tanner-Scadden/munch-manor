@@ -125,7 +125,7 @@ describe('turning the gas valve', () => {
         Story.given(atValve(500, midWave)),
         ...turn,
         Story.model(current => {
-          expect(focusOf(current).wallet.balance).toBe(500)
+          expect(current.keys.held).toBe(500)
           expect(
             GasValve.isAnyOf(['Lit'])(current.gasValve) &&
               current.gasValve.owner,
@@ -236,8 +236,7 @@ describe('the lit fireplace', () => {
     const owner = Option.getOrThrow(maybePlayerAt(burned, 1))
     const teammate = Option.getOrThrow(maybePlayerAt(burned, 0))
     expect(hpOf(burned, 900)).toBe(0)
-    expect(owner.wallet.earned).toBeGreaterThan(0)
     expect(owner.seat.kills).toBe(1)
-    expect(teammate.wallet.earned).toBe(0)
+    expect(teammate.seat.kills).toBe(0)
   })
 })

@@ -13,7 +13,6 @@ import {
   Melee,
   type Model,
   Phase,
-  ShopState,
   type WeaponKind,
   type Zombie,
 } from '../../../app/model'
@@ -283,7 +282,6 @@ describe('a gun keeps its level while carried', () => {
                 lessons: () => settledLessons,
               }),
               {
-                shop: () => ShopState.Away(),
                 player: player =>
                   modifyFields(player, {
                     arsenal: () => holdingSecond(gun('Smg', 2, 130)),

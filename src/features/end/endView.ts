@@ -365,7 +365,7 @@ const VALUE_TONES: Readonly<Record<TallyIcon, TextTone>> = {
   Kills: 'Plain',
   Streak: 'Streak',
   Aim: 'Plain',
-  Cash: 'Coin',
+  Keys: 'Coin',
 }
 
 const rowShapes =

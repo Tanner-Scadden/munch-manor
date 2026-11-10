@@ -29,7 +29,10 @@ import {
 } from '../../src/art/sprites/traps'
 import { ZOMBIE_SPRITES } from '../../src/art/sprites/zombies'
 import { defaultAppearance } from '../../src/domain/clientSchema'
-import { type StallLook, stallShapes } from '../../src/features/shop/stall'
+import {
+  RATTLES_LOOKS,
+  rattlesShapes,
+} from '../../src/features/rattles/rattlesSpot'
 import { Hat, Outfit } from '../../src/shared/playerData'
 import { CALLINGS } from '../../src/world/heroes/calling'
 import {
@@ -235,12 +238,6 @@ const MOODS: Array.NonEmptyReadonlyArray<Mood> = [
   'Shrugging',
 ]
 
-const STALL_LOOKS: Array.NonEmptyReadonlyArray<StallLook> = [
-  'Open',
-  'Beckoning',
-  'Closed',
-]
-
 const rattlesSections = (): ReadonlyArray<Section> => [
   {
     title: 'Rattles',
@@ -259,14 +256,14 @@ const rattlesSections = (): ReadonlyArray<Section> => [
     }),
   },
   {
-    title: 'The stall',
-    entries: Array.map(STALL_LOOKS, stallLook => ({
-      id: `stall/${stallLook}`,
-      title: stallLook,
-      source: 'src/features/shop/stall.ts',
+    title: "Rattles' trunk",
+    entries: Array.map(RATTLES_LOOKS, rattlesLook => ({
+      id: `rattles-spot/${rattlesLook}`,
+      title: rattlesLook,
+      source: 'src/features/rattles/rattlesSpot.ts',
       frameMs: STILL_MS,
       isClockDriven: true,
-      frames: (look: Look) => still(stallShapes(stallLook, look.clockMs)),
+      frames: (look: Look) => still(rattlesShapes(rattlesLook, look.clockMs)),
     })),
   },
 ]

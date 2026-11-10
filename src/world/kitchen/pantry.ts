@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { nextRandom } from '../../shared/prng'
 import type { SoundEffect } from '../../shared/soundEffect'
 import { isMissingHeart, maxHpOf } from '../heroes/calling'
+import { grantKeys } from '../keys/keys'
 import {
   type Box,
   COVER_SYMBOLS,
@@ -13,13 +14,7 @@ import {
   tilesWithSymbol,
 } from '../level/arena'
 import { boxAround } from '../level/exits'
-import {
-  atSeat,
-  earn,
-  forEachSeat,
-  isStanding,
-  seatStateAt,
-} from '../party/party'
+import { atSeat, forEachSeat, isStanding, seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
 import {
   GameEvent,
@@ -35,9 +30,10 @@ import { distanceBetween } from '../step/geometry'
 import { isKitchenOpen } from './kitchen'
 
 // The pantry stash (owner, 2026-11-02): once the kitchen is open, each break
-// the pantry cupboard in its north-west corner holds one goodie: $15 to $30,
-// or a heart for a hurt player. A heart the taker cannot use pays the cash
-// instead. (A Lid Stack went with endless ammo.) It sits in
+// the pantry cupboard in its north-west corner holds one goodie: a skeleton
+// key for the crew's ring (it held $15 to $30 before keys, docs/ESCAPE_PLAN.md
+// layer 7), or a heart for a hurt player. A heart the taker cannot use is a
+// key instead. (A Lid Stack went with endless ammo.) It sits in
 // front of the cupboard for the break, and the first player to walk onto it
 // takes it, one a break. The walk is its price.
 //
@@ -46,26 +42,24 @@ import { isKitchenOpen } from './kitchen'
 // the fridge's pulls, and the same break always holds the same goodie.
 
 type PantryRules = Readonly<{
-  minCash: number
-  maxCash: number
+  keys: number
   frontPx: number
   reachPx: number
 }>
 
 export const PANTRY_RULES: PantryRules = {
-  minCash: 15,
-  maxCash: 30,
+  keys: 1,
   frontPx: 5,
   reachPx: 8,
 }
 
 const PANTRY_SEED_SALT = 0x9a27c4b1
 
-const GOODIES: Array.NonEmptyReadonlyArray<PantryGoodie> = ['Cash', 'Heart']
+const GOODIES: Array.NonEmptyReadonlyArray<PantryGoodie> = ['Key', 'Heart']
 
-// NOTE: the sound of a take: a coin's ching or a heart.
+// NOTE: the sound of a take: a key's ching or a heart.
 export const PANTRY_SOUNDS: Readonly<Record<PantryGoodie, SoundEffect>> = {
-  Cash: 'Purchase',
+  Key: 'Purchase',
   Heart: 'GrabHeart',
 }
 
@@ -119,55 +113,47 @@ export const maybeStash = (world: World): Option.Option<PantryStash> =>
 // break where the kitchen has just been opened.
 const stock = (world: World, wave: number): World => {
   const kindDraw = nextRandom((world.rngState ^ PANTRY_SEED_SALT) >>> 0)
-  const cashDraw = nextRandom(kindDraw.nextState)
   const goodie = Option.getOrElse(
     Array.get(GOODIES, Math.floor(kindDraw.value * GOODIES.length)),
     () => GOODIES[0],
   )
-  const cash =
-    PANTRY_RULES.minCash +
-    Math.floor(
-      cashDraw.value * (PANTRY_RULES.maxCash - PANTRY_RULES.minCash + 1),
-    )
   return modifyFields(world, {
-    pantry: () => Pantry.Stocked({ round: wave, goodie, cash }),
+    pantry: () => Pantry.Stocked({ round: wave, goodie }),
   })
 }
 
 // TAKING
 
-
 // NOTE: what the stash gives this taker: the goodie if they can use it, else
-// its cash. A Glass run's one heart stays one heart.
+// a key. A Glass run's one heart stays one heart.
 const goodieFor = (
   world: World,
   player: Player,
   goodie: PantryGoodie,
 ): PantryGoodie => {
   const isUsable = {
-    Cash: true,
+    Key: true,
     Heart: isMissingHeart(player) && !world.modifiers.glass,
   }[goodie]
-  return isUsable ? goodie : 'Cash'
+  return isUsable ? goodie : 'Key'
 }
 
 const give = (
   world: World,
   slot: PlayerSlot,
   goodie: PantryGoodie,
-  cash: number,
+  spot: Vector,
 ): World =>
-  modifyFields(world, {
-    seats: atSeat(slot, {
-      player: player =>
-        goodie === 'Heart'
-          ? modifyFields(player, {
+  goodie === 'Heart'
+    ? modifyFields(world, {
+        seats: atSeat(slot, {
+          player: player =>
+            modifyFields(player, {
               hp: hp => Math.min(maxHpOf(player), hp + 1),
-            })
-          : player,
-      wallet: wallet => (goodie === 'Cash' ? earn(wallet, cash) : wallet),
-    }),
-  })
+            }),
+        }),
+      })
+    : grantKeys(world, PANTRY_RULES.keys, spot)
 
 const takeFor = (world: World, slot: PlayerSlot): World => {
   const { seat, player } = seatStateAt(world, slot)
@@ -185,16 +171,11 @@ const takeFor = (world: World, slot: PlayerSlot): World => {
       onNone: () => world,
       onSome: ({ stash, spot }) => {
         const goodie = goodieFor(world, player, stash.goodie)
-        return modifyFields(give(world, slot, goodie, stash.cash), {
+        return modifyFields(give(world, slot, goodie, spot), {
           pantry: () => Pantry.Bare({ round: stash.round }),
           frameEvents: frameEvents => [
             ...frameEvents,
-            GameEvent.PantryTaken({
-              x: spot.x,
-              y: spot.y,
-              goodie,
-              cash: goodie === 'Cash' ? stash.cash : 0,
-            }),
+            GameEvent.PantryTaken({ x: spot.x, y: spot.y, goodie }),
           ],
         })
       },

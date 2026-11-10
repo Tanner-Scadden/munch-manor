@@ -479,30 +479,26 @@ export type FridgeDoor = typeof FridgeDoor.Type
 
 // NOTE: `pulls` counts the pulls since the fridge last slammed; `luck`
 // counts its slams, each raising the rare prize's odds a little.
-// `cheapRound` is the round (a break and the wave after it, by its wave
-// number) whose cheap first pulls `cheapSlots` have spent: each seat's
-// first pull of a round costs less (src/world/fridge/leftovers.ts).
 export const Fridge = Schema.Struct({
   door: FridgeDoor,
   pulls: Schema.Finite,
   luck: Schema.Finite,
-  cheapRound: Schema.Finite,
-  cheapSlots: Schema.Array(Schema.Finite),
 })
 export type Fridge = typeof Fridge.Type
 
 // THE PANTRY
 
-// NOTE: what the pantry cupboard holds in a break (src/world/kitchen/pantry.ts): cash,
-// or a heart for a hurt player. A heart nobody can use pays `cash` instead.
-export const PantryGoodie = Schema.Literals(['Cash', 'Heart'])
+// NOTE: what the pantry cupboard holds in a break (src/world/kitchen/pantry.ts): a
+// skeleton key for the ring, or a heart for a hurt player. A heart nobody
+// can use is a key instead.
+export const PantryGoodie = Schema.Literals(['Key', 'Heart'])
 export type PantryGoodie = typeof PantryGoodie.Type
 
 // NOTE: `round` is the break it was stocked for, by its wave number, so a
 // break stocks it once and a taken stash stays Bare until the next break.
 export const Pantry = defineTaggedUnion({
   Bare: { round: Schema.Finite },
-  Stocked: { round: Schema.Finite, goodie: PantryGoodie, cash: Schema.Finite },
+  Stocked: { round: Schema.Finite, goodie: PantryGoodie },
 })
 export type Pantry = typeof Pantry.Type
 export type PantryStash = typeof Pantry.Stocked.Type
@@ -527,6 +523,18 @@ export type CrateStock = typeof CrateStock.Type
 
 export const Crate = Schema.Struct({ room: CrateRoom, stock: CrateStock })
 export type Crate = typeof Crate.Type
+
+// NOTE: the crew's one ring of skeleton keys (src/world/keys/keys.ts), shared by
+// every seat: `held` to spend on boards and the fridge, `found` and
+// `spent` over the run for the end card and the run summary, and the key
+// drops' own generator, apart from the run's, so a drop moves no other roll.
+export const KeyRing = Schema.Struct({
+  held: Schema.Finite,
+  found: Schema.Finite,
+  spent: Schema.Finite,
+  rngState: Schema.Finite,
+})
+export type KeyRing = typeof KeyRing.Type
 
 // NOTE: the crates' own generator, apart from the run's, so a roll moves no
 // other; `wave` is the break they last restocked for, 0 before any.

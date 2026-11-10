@@ -35,7 +35,6 @@ import * as Lobby from '../features/lobby/model'
 import { HelpCard } from '../features/menus/message'
 import * as Munchopedia from '../features/munchopedia/model'
 import * as Profile from '../features/profile/model'
-import { ShopBlock } from '../features/shop/block'
 import {
   Input,
   InputDevice,
@@ -93,7 +92,6 @@ import {
   Popup,
   RunMode,
   Shake,
-  ShopChatter,
   Streak,
   TrapHint,
   TrapNotice,
@@ -103,6 +101,7 @@ import {
   barePantry,
   calmPacing,
   freshCrates,
+  freshKeys,
   freshLoot,
   freshStats,
   freshStove,
@@ -124,9 +123,6 @@ export const Model = Schema.Struct({
   decals: Schema.Array(Decal),
   dustCooldownMs: Schema.Finite,
   tellWatch: TellWatch,
-  // NOTE: Rattles' shop dialog, with its tabs and guide (src/features/shop/).
-  shopDialog: ShopBlock.Model,
-  shopChatter: ShopChatter,
   shake: Shake,
   popups: Schema.Array(Popup),
   streak: Streak,
@@ -264,7 +260,6 @@ export const noBests: PlayerBests = {
 // NOTE: the fields a child Block owns, each started by its own init through
 // its Binding (src/app/bindings.ts) when the root's init runs.
 type ChildField =
-  | 'shopDialog'
   | 'homeScreenSteps'
   | 'updateGreeting'
   | 'profile'
@@ -301,9 +296,9 @@ export const initialModel: OwnModel = {
   pantry: barePantry,
   stove: freshStove(DEFAULT_SEED),
   crates: freshCrates(DEFAULT_SEED),
+  keys: freshKeys(DEFAULT_SEED),
   gasValve: shutValve,
   cases: rollCases(DEFAULT_SEED, 'Normal'),
-  shopChatter: ShopChatter.Greeting(),
   elapsedMs: 0,
   frameEvents: [],
   hitStop: initialHitStop,

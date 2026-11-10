@@ -2,13 +2,7 @@ import { Array, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 
-import {
-  GameEvent,
-  type Model,
-  Phase,
-  Trap,
-  defaultAppearance,
-} from '../../app/model'
+import { type Model, Phase, Trap, defaultAppearance } from '../../app/model'
 import { mendCues } from '../../app/update/sound'
 import { BODIES, OUTFITS, playerPixels } from '../../art/appearance'
 import { HAT_ART } from '../../art/sprites/hatArt'
@@ -136,39 +130,33 @@ describe('the signature effects', () => {
     ).toEqual([])
   })
 
-  const paid = (calling: Calling, hasKill: boolean): Model =>
+  // NOTE: the seat's kills found keys since the last frame
+  // (src/world/keys/keys.ts), or none did.
+  const keyed = (calling: Calling, hasFound: boolean): Model =>
     modifyFocus(
       modifyFields(withCalling(calling)(playingModel), {
-        tellWatch: () => ({ traps: [], earned: [{ slot: 0, earned: 2 }] }),
-        frameEvents: () =>
-          hasKill
-            ? [
-                GameEvent.ZombieKilled({
-                  x: 10,
-                  y: 10,
-                  direction: { x: 1, y: 0 },
-                  bounty: 6,
-                  kind: 'Shambler',
-                  maybeKiller: Option.none(),
-                  source: 'Other',
-                }),
-              ]
-            : [],
+        tellWatch: () => ({
+          traps: [],
+          keysFound: [{ slot: 0, keysFound: 2 }],
+        }),
       }),
-      { wallet: wallet => modifyFields(wallet, { earned: () => 8 }) },
+      {
+        seat: seat =>
+          modifyFields(seat, { keysFound: () => (hasFound ? 3 : 2) }),
+      },
     )
 
-  test('a kill that pays the Penny Pincher glints a coin on him', () => {
-    const kinds = kindsOf(advanceTells(paid('PennyPincher', true), FRAME_MS))
+  test('keys found by the Penny Pincher glint a coin on her', () => {
+    const kinds = kindsOf(advanceTells(keyed('PennyPincher', true), FRAME_MS))
     expect(kinds).toContain('Coin')
     expect(kinds).toContain('Spark')
   })
 
-  test('no glint without a kill, or for a hero who is not the Penny Pincher', () => {
+  test('no glint without a key found, or for a hero who is not the Penny Pincher', () => {
     expect(
-      kindsOf(advanceTells(paid('PennyPincher', false), FRAME_MS)),
+      kindsOf(advanceTells(keyed('PennyPincher', false), FRAME_MS)),
     ).toEqual([])
-    expect(kindsOf(advanceTells(paid('You', true), FRAME_MS))).toEqual([])
+    expect(kindsOf(advanceTells(keyed('You', true), FRAME_MS))).toEqual([])
   })
 
   // NOTE: standing still at a Plank Pile in a break, mending it past a
@@ -192,7 +180,7 @@ describe('the signature effects', () => {
             hitRemainingMs: 0,
           }),
         ],
-        tellWatch: () => ({ traps: [{ id: 5, hp: 10 }], earned: [] }),
+        tellWatch: () => ({ traps: [{ id: 5, hp: 10 }], keysFound: [] }),
       }),
       {
         player: player =>

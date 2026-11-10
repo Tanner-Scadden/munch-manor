@@ -12,8 +12,7 @@ import {
 } from '../../world/party/party'
 import { isPracticeGateHeld } from '../../world/run/lessons'
 import { isKitchenTourOn } from '../../world/run/tutorialRules'
-import { Phase, ShopState } from '../../world/schema/worldSchema'
-import { isBrowsing, isNearStall } from '../../world/shop/shop'
+import { Phase } from '../../world/schema/worldSchema'
 
 // The nudge for a break that waits on the player (owner, 2026-11-01: "nudge
 // players when they need to ready up"). A break with no clock, or a crew's
@@ -35,15 +34,12 @@ const isActive = (model: Model): boolean => {
     maybeAim._tag === 'Some' ||
     trigger === 'Held' ||
     interact === 'Held' ||
-    isBrowsing(focusOf(model).shop) ||
-    focusOf(model).purchase._tag !== 'Idle' ||
-    (!isCoop(model) && isNearStall(focusOf(model).player))
+    focusOf(model).purchase._tag !== 'Idle'
   )
 }
 
 // NOTE: one frame of the idle clock: it counts world time in a break while
-// the player does nothing, and any move, shot, buy, or step to the stall
-// starts it over. Outside a break it rests at 0.
+// the player does nothing, and any move, shot, or buy starts it over. Outside a break it rests at 0.
 export const advanceBreakIdle: {
   (worldMs: number): (model: Model) => Model
   (model: Model, worldMs: number): Model
@@ -77,7 +73,6 @@ const isLastOneIn = (model: Model): boolean =>
 export const isWaitingOnYou = (model: Model): boolean => {
   if (
     !isWaitingOnClock(model) ||
-    ShopState.isAnyOf(['Browsing'])(focusOf(model).shop) ||
     isPracticeGateHeld(model) ||
     isKitchenTourOn(model) ||
     model.firstBreakQuest._tag === 'Running'

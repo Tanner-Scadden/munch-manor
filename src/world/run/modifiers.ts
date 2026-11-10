@@ -113,14 +113,12 @@ export const modifiersOfMask = (mask: number): Modifiers => ({
 
 // RULES
 
-// NOTE: Broke pays half of each kill, to the nearest dollar and never
-// nothing, as the Penny Pincher's cut rounds (src/world/heroes/calling.ts).
-export const brokenKillPay: {
-  (pay: number): (modifiers: Modifiers) => number
-  (modifiers: Modifiers, pay: number): number
-} = Function.dual(2, (modifiers: Modifiers, pay: number): number =>
-  modifiers.broke && pay > 0 ? Math.max(1, Math.round(pay / 2)) : pay,
-)
+// NOTE: Broke drops half the keys (src/world/keys/keys.ts), and the fridge
+// stays locked (src/world/fridge/leftovers.ts).
+const BROKE_KEY_SCALE = 0.5
+
+export const brokeKeyScaleOf = (modifiers: Modifiers): number =>
+  modifiers.broke ? BROKE_KEY_SCALE : 1
 
 // NOTE: Big Crowd brings half as many zombies again.
 export const BIG_CROWD_SCALE = 1.5

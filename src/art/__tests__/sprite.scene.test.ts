@@ -8,7 +8,7 @@ import { defaultAppearance } from '../../app/model'
 import { decodePng, hexOf } from '../../test/testPng'
 import { imagesIn } from '../../test/testing'
 import { playerSprites } from '../appearance'
-import { COIN_SPRITE, GLYPH_SPRITES } from '../font'
+import { GLYPH_SPRITES, KEY_SPRITE } from '../font'
 import {
   type Palette,
   bakeShapes,
@@ -128,7 +128,7 @@ describe('sprite images', () => {
       ...Array.flatMap(Record.values(BARRICADE_SPRITES), stages =>
         Array.flatMap(Record.values(stages), Record.values),
       ),
-      COIN_SPRITE,
+      KEY_SPRITE,
     ]
     Array.forEach(sprites, sprite => {
       expect(sprite).toHaveLength(1)

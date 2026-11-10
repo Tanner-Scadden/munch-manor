@@ -59,14 +59,7 @@ import {
   viewportName,
   viewportOf,
 } from './coop/players'
-import {
-  type Seat,
-  isOnArena,
-  netOf,
-  ownSeatOf,
-  readoutOf,
-  slotOf,
-} from './coop/readouts'
+import { type Seat, isOnArena, netOf, readoutOf, slotOf } from './coop/readouts'
 import {
   awaitGame,
   countOf,
@@ -552,69 +545,14 @@ const program = Effect.gen(function* () {
     yield* stopEveryone
     yield* shot(host, 'break')
 
-    const moneyBefore = (yield* ownSeatOf(host))?.money ?? 0
-    const atStall = yield* playFor(
-      everyone,
-      helds,
-      index => (index === 0 ? 'Shop' : 'Idle'),
-      -1,
-      Effect.map(ownSeatOf(host), seat => seat?.shop === 'Browsing'),
-      15_000,
+    // NOTE: the shop is gone (docs/ESCAPE_PLAN.md, layer 7): the cleared
+    // wave put a key on the crew's one ring, which every page reads alike.
+    const hostKeys = (yield* readoutOf(host))?.keys ?? 0
+    const guestKeys = (yield* readoutOf(firstGuest))?.keys ?? -1
+    yield* check(
+      hostKeys >= 1 && hostKeys === guestKeys,
+      `the crew shares one key ring (${hostKeys} keys)`,
     )
-    yield* check(atStall, 'the host walks into the stall')
-    yield* stopEveryone
-    const shopOpen = yield* until(
-      'one shop dialog opens, for the host only',
-      Effect.gen(function* () {
-        return (
-          (yield* countOf(host, 'dialog#shop')) === 1 &&
-          (yield* countOf(host, 'dialog[open]')) === 1 &&
-          (yield* countOf(firstGuest, '.shop-dialog[open]')) === 0
-        )
-      }),
-    )
-    if (shopOpen) {
-      yield* shot(host, 'shop')
-      const available = host.locator(
-        '.shop-dialog[open] li[data-verdict="available"] button',
-      )
-      const tabs = host.locator('.shop-dialog[open] .shop-tab')
-      const tabCount = yield* attempt(() => tabs.count())
-      for (const index of globalThis.Array.from(
-        { length: tabCount },
-        (_, i) => i,
-      )) {
-        if ((yield* attempt(() => available.count())) > 0) {
-          break
-        }
-        yield* attempt(() => tabs.nth(index).click())
-        yield* untilWithin(
-          `shop tab ${index + 1} opens`,
-          Effect.map(
-            attempt(() => tabs.nth(index).getAttribute('aria-selected')),
-            selected => selected === 'true',
-          ),
-          5000,
-        )
-      }
-      if ((yield* attempt(() => available.count())) > 0) {
-        yield* shot(host, 'shop-tab')
-        yield* attempt(() => available.first().click())
-        yield* untilWithin(
-          'a purchase goes to the room and the money comes off',
-          Effect.map(ownSeatOf(host), seat => (seat?.money ?? 0) < moneyBefore),
-          5000,
-        )
-      } else {
-        yield* Console.log(`  note nothing affordable with $${moneyBefore}`)
-      }
-      yield* attempt(() => host.keyboard.press('Escape'))
-      yield* untilWithin(
-        'closing the shop tells the room',
-        Effect.map(ownSeatOf(host), seat => seat?.shop !== 'Browsing'),
-        5000,
-      )
-    }
 
     for (const page of everyone) {
       yield* attempt(() => page.keyboard.press('Enter'))

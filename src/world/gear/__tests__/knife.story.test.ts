@@ -11,12 +11,9 @@ import {
   GameEvent,
   type Model,
   Phase,
-  ShopState,
   type Zombie,
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
-import { Message as ShopMessage } from '../../../features/shop/message'
-import { FocusItem } from '../../../features/shop/steps'
 import { FIXED_STEP_MS, PISTOL_MAGAZINE } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
@@ -30,7 +27,6 @@ import {
   FIRE_PUSH,
   HOLD_TICKS,
   SURFACE,
-  buyAtCounter,
   holdEnter,
   holdFire,
   holdingFirst,
@@ -56,14 +52,8 @@ import {
   startRoomWorld,
   stepRoomWorld,
 } from '../../net/roomWorld'
-import {
-  focusOf,
-  focusSlotOf,
-  maybePlayerAt,
-  modifyFocus,
-} from '../../party/party'
+import { focusOf, maybePlayerAt, modifyFocus } from '../../party/party'
 import { Arsenal, type Player, Reload } from '../../schema/worldSchema'
-import { SHOP_ITEMS, verdictFor } from '../../shop/shop'
 import { SeatAction } from '../../step/stepWorld'
 import { KNIFE_RULES } from '../knife'
 import {
@@ -77,8 +67,8 @@ import {
 
 // The knife (src/world/gear/knife.ts) and the two gun slots (src/world/gear/weapons.ts), played
 // through Block-aware Stories the way a player plays them: F or a tap on the knife's
-// slot to draw it, fire to stab, Q or a gun's slot to go back, and the
-// shop's GUNS tab trading one gun for another.
+// slot to draw it, fire to stab, Q or a gun's slot to go back, and a
+// display case's gun trading one gun for another.
 
 const FRAME_MS = FIXED_STEP_MS
 const ROW_Y = 104
@@ -477,26 +467,7 @@ describe('the knife', () => {
       }),
   )
 
-  it.effect('it rests while the player browses the shop', () =>
-    Effect.gen(function* () {
-      const drawn = yield* knifed([tough(900, PLAYER_X + 10)])
-      return yield* Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFocus(drawn, {
-            shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
-          }),
-        ),
-        holdFire,
-        tick(FRAME_MS),
-        Story.model(current => {
-          expect(zombieById(current, 900).hp).toBe(99)
-        }),
-      )
-    }),
-  )
-
-  it.effect('a kill with the knife pays the bounty', () =>
+  it.effect('a kill with the knife counts as a kill', () =>
     Effect.gen(function* () {
       const doomed = zombieOf('Shambler', 900, PLAYER_X + 10, ROW_Y, { hp: 1 })
       const drawn = yield* knifed([doomed])
@@ -506,7 +477,6 @@ describe('the knife', () => {
         holdFire,
         tick(FRAME_MS),
         Story.model(current => {
-          expect(focusOf(current).wallet.earned).toBeGreaterThan(0)
           expect(
             Array.some(
               current.frameEvents,
@@ -535,23 +505,6 @@ describe('the knife', () => {
 })
 
 describe('two gun slots', () => {
-  const browsing = (base: Model, balance: number): Model =>
-    modifyFocus(
-      modifyFields(base, {
-        phase: () =>
-          Phase.Preparation({
-            wave: 2,
-            remainingMs: 15_000,
-            durationMs: 20_000,
-            spawns: [DISTANT_SPAWN],
-          }),
-      }),
-      {
-        wallet: () => ({ balance, earned: balance, shown: balance }),
-        shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-      },
-    )
-
   const armed = (arsenal: Player['arsenal']): Model =>
     modifyFocus(fightingWith([]), {
       player: player => modifyFields(player, { arsenal: () => arsenal }),
@@ -590,54 +543,6 @@ describe('two gun slots', () => {
         }),
       ),
   )
-
-  it.effect(
-    'Rattles sells the pistol back for $0, even to an empty wallet',
-    () => {
-      const traded = browsing(
-        armed(
-          Arsenal.HoldingSecond({
-            first: freshGun('Smg'),
-            second: freshGun('Shotgun'),
-          }),
-        ),
-        0,
-      )
-      expect(SHOP_ITEMS.Pistol.price).toBe(0)
-      expect(verdictFor(traded, focusSlotOf(traded), 'Pistol')._tag).toBe(
-        'Available',
-      )
-      return Story.story(
-        APPLICATION,
-        Story.given(traded),
-        buyAtCounter('Pistol'),
-        Story.Command.resolve(
-          FocusItem({ item: 'LaserSight' }),
-          ShopMessage.CompletedFocusItem(),
-        ),
-        Story.model(({ seats: [{ player, wallet }] }) => {
-          expect(player.arsenal).toEqual(
-            Arsenal.HoldingSecond({
-              first: freshGun('Smg'),
-              second: STARTING_PISTOL,
-            }),
-          )
-          expect(heldGun(player.arsenal).loaded).toBe(PISTOL_MAGAZINE)
-          expect(wallet.balance).toBe(0)
-        }),
-      )
-    },
-  )
-
-  test('the pistol is not sold to a player who carries it', () => {
-    expect(
-      verdictFor(
-        browsing(armed(pistolOnly()), 50),
-        focusSlotOf(browsing(armed(pistolOnly()), 50)),
-        'Pistol',
-      )._tag,
-    ).toBe('Refused')
-  })
 
   it.effect('an empty gun reloads in hand, and never hands over', () =>
     Effect.gen(function* () {

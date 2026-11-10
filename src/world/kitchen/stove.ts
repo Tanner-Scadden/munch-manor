@@ -12,8 +12,8 @@ import {
   mapHeld,
 } from '../gear/weapons'
 import { stoveKillsFor } from '../heroes/calling'
+import { heldKeys, spendKeys } from '../keys/keys'
 import { type Box, levelOf } from '../level/arena'
-import { spendOn } from '../level/exits'
 import { atSeat, seatStateAt } from '../party/party'
 import { type World, modifyWorldFields } from '../schema/world'
 import {
@@ -192,18 +192,18 @@ export const cookGun: {
   3,
   (world: World, slot: PlayerSlot, price: number): Option.Option<World> =>
     Option.flatMap(maybeStovePerk(world), perk => {
-      const { player, wallet } = seatStateAt(world, slot)
+      const { player } = seatStateAt(world, slot)
       if (
         hasCookedThisBreak(world, slot) ||
         !hasStoveFeat(world, slot) ||
         !canCook(player) ||
-        wallet.balance < price
+        heldKeys(world) < price
       ) {
         return Option.none()
       }
       const wave = world.stove.wave
       return Option.some(
-        modifyFields(spendOn(world, slot, price), {
+        modifyFields(spendKeys(world, price), {
           seats: atSeat(slot, {
             player: current => cooked(current, perk),
             cooking: cooking =>

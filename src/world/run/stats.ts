@@ -91,9 +91,6 @@ export const countHits: {
 export const countTrapPlaced = (stats: RunStats): RunStats =>
   modifyFields(stats, { trapsPlaced: placed => placed + 1 })
 
-export const countPurchase = (stats: RunStats): RunStats =>
-  modifyFields(stats, { purchases: bought => bought + 1 })
-
 // READING
 
 export const killTotal = (kills: KillCounts): number =>

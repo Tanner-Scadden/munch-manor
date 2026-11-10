@@ -27,6 +27,7 @@ import {
   barePantry,
   calmPacing,
   freshCrates,
+  freshKeys,
   freshLoot,
   freshStats,
   freshStove,
@@ -60,6 +61,7 @@ export type RunFields = Pick<
   | 'pantry'
   | 'stove'
   | 'crates'
+  | 'keys'
   | 'gasValve'
   | 'cases'
   | 'elapsedMs'
@@ -118,6 +120,7 @@ export const freshRun = (model: Model): RunFields => ({
   pantry: barePantry,
   stove: freshStove(model.rngState),
   crates: freshCrates(model.rngState),
+  keys: freshKeys(model.rngState),
   gasValve: shutValve,
   cases: rollCases(model.rngState, model.difficulty.chosen),
   elapsedMs: 0,

@@ -201,11 +201,11 @@ describe('the kind table', () => {
           APPLICATION,
           Story.given(withScene([tank], pistolsInto(20, tankHp, tank))),
           tick(FRAME_MS),
-          Story.model(({ zombies, seats: [{ wallet }] }) => {
+          Story.model(({ zombies, keys }) => {
             expect(Array.map(zombies, ({ state }) => state._tag)).toEqual([
               'Dying',
             ])
-            expect(wallet.balance).toBe(ZOMBIE_KINDS.Tank.bounty)
+            expect(keys.held).toBe(ZOMBIE_KINDS.Tank.keys)
           }),
         )
       }),
@@ -374,11 +374,11 @@ describe('exploders', () => {
             ),
           ),
           tick(FRAME_MS),
-          Story.model(({ zombies, seats: [{ wallet }] }) => {
+          Story.model(({ zombies, keys }) => {
             expect(
               Array.map(Array.take(zombies, 2), ({ state }) => state._tag),
             ).toEqual(['Fusing', 'Fusing'])
-            expect(wallet.balance).toBe(2 * ZOMBIE_KINDS.Exploder.bounty)
+            expect(keys.held).toBe(2 * ZOMBIE_KINDS.Exploder.keys)
           }),
           ...recordTicks(40, FRAME_MS, frames),
         )
@@ -462,9 +462,9 @@ describe('exploders', () => {
         MIN_CHAIN_STAGGER_FRAMES,
       )
       expect(Option.getOrThrow(Array.last(frames)).zombies).toEqual([])
-      expect(
-        focusOf(Option.getOrThrow(Array.last(frames))).wallet.balance,
-      ).toBe(2 * ZOMBIE_KINDS.Exploder.bounty)
+      expect(Option.getOrThrow(Array.last(frames)).keys.held).toBe(
+        2 * ZOMBIE_KINDS.Exploder.keys,
+      )
     }),
   )
 
@@ -525,7 +525,7 @@ describe('exploders', () => {
           PLAYER_MAX_HP - EXPLODER.playerDamage,
         )
         expect(last.zombies).toEqual([])
-        expect(focusOf(last).wallet.balance).toBe(0)
+        expect(last.keys.held).toBe(0)
         expect(
           Array.some(
             Array.flatMap(frames, ({ frameEvents }) => frameEvents),

@@ -23,7 +23,6 @@ import {
   scaleVector,
   vectorLength,
 } from '../world/step/geometry'
-import type { FocusStep } from '../world/step/stepWorld'
 import {
   HoldButton,
   type Input,
@@ -49,6 +48,9 @@ const MENU_KEY = 'KeyH'
 const LOBBY_KEY = 'KeyL'
 const PREVIOUS_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowLeft', 'ArrowUp']
 const NEXT_BUTTON_KEYS: ReadonlyArray<string> = ['ArrowRight', 'ArrowDown']
+
+// NOTE: where an arrow key moves a menu's focus: back or on.
+export type FocusStep = 'Previous' | 'Next'
 
 export const maybeFocusStep = (code: string): Option.Option<FocusStep> => {
   if (Array.contains(PREVIOUS_BUTTON_KEYS, code)) {

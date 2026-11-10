@@ -11,13 +11,11 @@ import {
 } from '../../shared/constants'
 import { trapBlastTarget } from '../gear/traps'
 import { woundGraceScaleOf } from '../heroes/calling'
-import { kitchenBounty } from '../kitchen/kitchenPay'
-import { type Level, levelOf } from '../level/arena'
+import { levelOf } from '../level/arena'
 import {
   atSeat,
   forEachSeatWhere,
   isStanding,
-  payKillShared,
   seatStateAt,
 } from '../party/party'
 import type { World } from '../schema/world'
@@ -137,7 +135,6 @@ export const killEvent: {
     x: zombie.x,
     y: zombie.y,
     direction,
-    bounty: statsOf(zombie).bounty,
     kind: zombie.kind,
     maybeKiller: Option.none(),
     source: 'Other',
@@ -390,22 +387,9 @@ const maybeBlastOf = (zombie: Zombie): Option.Option<BlastSpec> =>
     Crawler: () => Option.none(),
   })
 
-// NOTE: what the kills among `events` pay, a kitchen kill a quarter more
-// (src/world/kitchen/kitchenPay.ts).
-export const bountyOf: {
-  (events: ReadonlyArray<GameEvent>): (level: Level) => number
-  (level: Level, events: ReadonlyArray<GameEvent>): number
-} = Function.dual(2, (level: Level, events: ReadonlyArray<GameEvent>): number =>
-  Array.reduce(events, 0, (sum, event) =>
-    GameEvent.isAnyOf(['ZombieKilled'])(event)
-      ? sum + kitchenBounty(level, event, event.bounty)
-      : sum,
-  ),
-)
-
 // NOTE: a Kaboomer's blast is credited, for the feats only, to the standing
-// player nearest it: the one who drew it in or shot it there. Its kills
-// still pay the whole crew.
+// player nearest it: the one who drew it in or shot it there, and its
+// keys drop for that player's hero (src/world/keys/keys.ts).
 const nearestStandingSlot = (
   model: World,
   at: Vector,
@@ -462,18 +446,15 @@ const detonate = (model: World, bomberId: number): World => {
         }),
         blast,
       )
-      return payKillShared(
-        modifyFields(scorched, {
-          zombies: () => zombieOutcome.targets,
-          traps: () => trapOutcome.targets,
-          frameEvents: frameEvents => [
-            ...frameEvents,
-            ...zombieEvents,
-            ...trapOutcome.events,
-          ],
-        }),
-        bountyOf(levelOf(model), zombieEvents),
-      )
+      return modifyFields(scorched, {
+        zombies: () => zombieOutcome.targets,
+        traps: () => trapOutcome.targets,
+        frameEvents: frameEvents => [
+          ...frameEvents,
+          ...zombieEvents,
+          ...trapOutcome.events,
+        ],
+      })
     },
   })
 }

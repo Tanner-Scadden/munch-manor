@@ -94,7 +94,6 @@ describe('going home', () => {
             loot: loot => modifyFields(loot, { dryMs: () => 5000 }),
           }),
           {
-            shopCategory: () => 'Guns',
             selectedTrap: () => 'Turret',
             intent: intent =>
               modifyFields(intent, { move: () => ({ x: 1, y: 0 }) }),

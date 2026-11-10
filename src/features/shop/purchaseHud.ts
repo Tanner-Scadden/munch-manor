@@ -26,8 +26,12 @@ import {
 } from '../../world/shop/purchase'
 
 // NOTE: the kitchen tour's free boards and pull are read as free.
+// NOTE: a price is in skeleton keys off the crew's ring (src/world/keys/keys.ts).
+const keyWords = (count: number): string =>
+  `${count} ${count === 1 ? 'key' : 'keys'}`
+
 const priceWords = (price: number): string =>
-  price === 0 ? 'free' : `${price} dollars`
+  price === 0 ? 'free' : keyWords(price)
 
 // The HTML half of buying in the world (src/world/shop/purchase.ts): on touch, a hold
 // button beside the guns while the player stands at a purchasable, in the
@@ -52,7 +56,7 @@ const badgeOf = (offer: Offer): string => {
   } else if (offer.isFull) {
     return Purchasable.isAnyOf(['Stove'])(offer.target) ? 'NOPE' : 'FULL'
   } else {
-    return `$${offer.price}`
+    return `${offer.price}`
   }
 }
 
@@ -133,7 +137,7 @@ const holdButtonFor = (
   offer: Offer,
   h: ApplicationViewBuilder,
 ): Html => {
-  const isShort = shortfallFor(model, focusSlotOf(model), offer) > 0
+  const isShort = shortfallFor(model, offer) > 0
   return h.button(
     [
       h.Type('button'),
@@ -182,15 +186,15 @@ const howToBuy = (model: Model): string =>
     : 'Stand still or hold Enter to buy.'
 
 const announcementOf = (model: Model, offer: Offer): string => {
-  const shortBy = shortfallFor(model, focusSlotOf(model), offer)
+  const shortBy = shortfallFor(model, offer)
   const how = howToBuy(model)
   return shortBy > 0
-    ? `${nameOf(offer.target)}, ${priceWords(offer.price)}. ${shortBy} dollars short.`
+    ? `${nameOf(offer.target)}, ${priceWords(offer.price)}. ${keyWords(shortBy)} short.`
     : `${nameOf(offer.target)}, ${priceWords(offer.price)}. ${how}`
 }
 
 // NOTE: spoken once as the player reaches a purchasable, and again when
-// the wallet's verdict changes, never while the fight goes on around it.
+// the key ring's verdict changes, never while the fight goes on around it.
 export const purchaseAnnouncementView: {
   (h: ApplicationViewBuilder): (model: Model) => Html
   (model: Model, h: ApplicationViewBuilder): Html

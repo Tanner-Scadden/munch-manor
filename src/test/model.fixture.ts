@@ -136,15 +136,15 @@ export const heroesBoughtBy = (rank: number): ReadonlyArray<string> =>
 
 // NOTE: a returning player on the home menu: the tutorial is done, so no
 // lesson or first-run card gets in the way.
-// NOTE: Rattles' shop dialog shown, as if the frame had opened it, for a
-// test that starts at the counter.
-export const withShopDialogOpen = (model: Model): Model =>
-  modifyFields(model, {
-    shopDialog: shop =>
-      modifyFields(shop, {
-        dialog: dialog => modifyFields(dialog, { isOpen: () => true }),
-      }),
-  })
+// NOTE: `keys` on the crew's ring (src/world/keys/keys.ts), to spend.
+export const withKeys: {
+  (keys: number): <M extends World>(base: M) => M
+  <M extends World>(base: M, keys: number): M
+} = Function.dual(2, <M extends World>(base: M, keys: number): M =>
+  modifyWorldFields(base, {
+    keys: ring => modifyFields(ring, { held: () => keys, found: () => keys }),
+  }),
+)
 
 export const home: Model = asVeteran(initialModel)
 
@@ -364,11 +364,11 @@ export const AT_FRIDGE = {
 
 // NOTE: at the fridge in the break before `wave`.
 export const atFridgeOnWave: {
-  (balance: number): (wave: number) => Model
-  (wave: number, balance: number): Model
-} = Function.dual(2, (wave: number, balance: number): Model =>
+  (keys: number): (wave: number) => Model
+  (wave: number, keys: number): Model
+} = Function.dual(2, (wave: number, keys: number): Model =>
   modifyFocus(
-    modifyFields(freshRunModel(), {
+    modifyFields(withKeys(freshRunModel(), keys), {
       level: level => openExitIn(level, KITCHEN_EXIT),
       phase: () =>
         Phase.Preparation({
@@ -379,14 +379,13 @@ export const atFridgeOnWave: {
         }),
     }),
     {
-      wallet: () => ({ balance, earned: balance, shown: balance }),
       player: player =>
         modifyFields(player, { x: () => AT_FRIDGE.x, y: () => AT_FRIDGE.y }),
     },
   ),
 )
 
-export const atFridge = (balance: number): Model => atFridgeOnWave(5, balance)
+export const atFridge = (keys: number): Model => atFridgeOnWave(5, keys)
 
 // NOTE: a fridge whose stream's next draw lands on `prize`, found by trying
 // seeds, so a test can ask for each prize without knowing the stream.
@@ -564,19 +563,18 @@ export const withPickups: {
 // THE STOVE AND THE GAS VALVE
 
 // NOTE: a fresh run with the kitchen open, in `phase`, and the player at
-// `spot` with `balance` to spend, for the stove's and the valve's tests.
+// `spot` with `keys` to spend, for the stove's and the valve's tests.
 const inKitchen = (
   spot: Readonly<{ x: number; y: number }>,
-  balance: number,
+  keys: number,
   phase: Phase,
 ): Model =>
   modifyFocus(
-    modifyFields(freshRunModel(), {
+    modifyFields(withKeys(freshRunModel(), keys), {
       level: level => openExitIn(level, KITCHEN_EXIT),
       phase: () => phase,
     }),
     {
-      wallet: () => ({ balance, earned: balance, shown: balance }),
       player: player =>
         modifyFields(player, { x: () => spot.x, y: () => spot.y }),
     },

@@ -3,6 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { caseOffers, takeCase } from '../feats/cases'
 import { fridgeOffers, pullFridge, takePrize } from '../fridge/leftovers'
+import { heldKeys } from '../keys/keys'
 import { buyValve, valveOffers } from '../kitchen/gasValve'
 import { STOVE_RULES, cookGun, stoveOffers } from '../kitchen/stove'
 import { type Box, distanceToBox } from '../level/arena'
@@ -15,7 +16,6 @@ import {
   type PlayerSlot,
   Purchasable,
   Purchase,
-  ShopState,
   type Vector,
 } from '../schema/worldSchema'
 
@@ -25,16 +25,16 @@ import {
 // HUD's hold button) for half a second, or just stand still there for a
 // second, the way a teammate revives (src/world/party/revive.ts); either fills the same
 // ring, and the key fills it twice as fast. Letting go, walking off, firing,
-// or stabbing cancels. A press the wallet cannot cover is refused at once;
-// standing there short of it does nothing.
+// or stabbing cancels. A press the crew's key ring cannot cover is refused
+// at once; standing there short of it does nothing.
 //
 // Standing never buys by accident: it counts only while the player neither
-// moves, fires, nor stabs, never while the shop is open or in the first
-// moments of a wave, and after any buy the player must move (or press the
+// moves, fires, nor stabs, never in the first moments of a wave, and after any buy the player must move (or press the
 // key) before standing buys again, so one buy never chains into the next.
 //
 // The hold is World state, stepped from each seat's own intent, so co-op
-// works the same: each player holds for themselves and pays alone.
+// works the same: each player holds for themselves, and the keys come off
+// the crew's one ring (src/world/keys/keys.ts).
 //
 // A new kind of purchasable (like the Mystery Leftovers fridge) adds a case
 // to `Purchasable` in src/world/schema/worldSchema.ts, its offers to `offersOf`, its buy
@@ -57,7 +57,7 @@ export const PURCHASE_RULES: PurchaseRules = {
   waveGraceMs: 1500,
 }
 
-// NOTE: a purchasable for sale right now: what it is, its price, the box a
+// NOTE: a purchasable for sale right now: what it is, its price in keys, the box a
 // player must stand within `reachPx` of, and the spot its price tag hangs
 // from (the top middle of the tag).
 // `isFull` is an offer with nothing left to sell right now, such as the
@@ -89,7 +89,7 @@ const buy = (
   offer: Offer,
 ): Option.Option<World> =>
   Purchasable.match(offer.target, {
-    Exit: ({ exit }) => buyExit(world, slot, exit, offer.price),
+    Exit: ({ exit }) => buyExit(world, exit, offer.price),
     Fridge: () => pullFridge(world, slot, offer.price),
     Prize: () => takePrize(world, slot),
     Stove: () => cookGun(world, slot, offer.price),
@@ -164,11 +164,12 @@ export const maybeOfferOf: {
     ),
 )
 
+// NOTE: the keys a buy is short of, off the crew's one ring.
 export const shortfallFor: {
-  (slot: PlayerSlot, offer: Offer): (world: World) => number
-  (world: World, slot: PlayerSlot, offer: Offer): number
-} = Function.dual(3, (world: World, slot: PlayerSlot, offer: Offer): number =>
-  Math.max(0, offer.price - seatStateAt(world, slot).wallet.balance),
+  (offer: Offer): (world: World) => number
+  (world: World, offer: Offer): number
+} = Function.dual(2, (world: World, offer: Offer): number =>
+  Math.max(0, offer.price - heldKeys(world)),
 )
 
 // NOTE: how far the hold has filled, from 0 to 1. `heldMs` counts in the
@@ -183,9 +184,8 @@ export const holdProgress = (purchase: Purchase): number =>
   })
 
 // NOTE: standing still to buy: not moving, firing, or stabbing (the
-// trigger, with the knife in hand), the shop shut, and the wave past its
-// first moments.
-export const isStandingToBuy: {
+// trigger, with the knife in hand), and the wave past its first moments.
+const isStandingToBuy: {
   (slot: PlayerSlot): (world: World) => boolean
   (world: World, slot: PlayerSlot): boolean
 } = Function.dual(
@@ -194,7 +194,6 @@ export const isStandingToBuy: {
     seatStateAt(world, slot).intent.move.x === 0 &&
     seatStateAt(world, slot).intent.move.y === 0 &&
     seatStateAt(world, slot).intent.trigger === 'Released' &&
-    !ShopState.isAnyOf(['Browsing'])(seatStateAt(world, slot).shop) &&
     !(
       Phase.isAnyOf(['Wave'])(world.phase) &&
       world.phase.elapsedMs < PURCHASE_RULES.waveGraceMs
@@ -221,7 +220,7 @@ const refuse = (world: World, slot: PlayerSlot, offer: Offer): World =>
       slot,
       Purchase.Refused({
         target: offer.target,
-        shortBy: shortfallFor(world, slot, offer),
+        shortBy: shortfallFor(world, offer),
         sinceMs: 0,
       }),
     ),
@@ -229,7 +228,7 @@ const refuse = (world: World, slot: PlayerSlot, offer: Offer): World =>
   )
 
 const press = (world: World, slot: PlayerSlot, offer: Offer): World =>
-  offer.isFull || shortfallFor(world, slot, offer) > 0
+  offer.isFull || shortfallFor(world, offer) > 0
     ? refuse(world, slot, offer)
     : withPurchase(
         world,
@@ -266,9 +265,7 @@ export const advancePurchase: {
         onSome: offer =>
           isHeld
             ? press(world, slot, offer)
-            : isStanding &&
-                !offer.isFull &&
-                shortfallFor(world, slot, offer) === 0
+            : isStanding && !offer.isFull && shortfallFor(world, offer) === 0
               ? withPurchase(
                   world,
                   slot,
