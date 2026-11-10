@@ -75,6 +75,7 @@ export const FIELD_CLASSES = {
   prizeFlight: 'Cosmetic',
   counterSale: 'Cosmetic',
   kitchenCall: 'Cosmetic',
+  dareHint: 'Cosmetic',
   breakIdleMs: 'Cosmetic',
   cosmeticRngState: 'Cosmetic',
 

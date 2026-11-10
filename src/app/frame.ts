@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { crewBotSlots, isBotCrew } from '../domain/bots'
 import { withBests } from '../domain/run'
 import { applyBotPresses, botInputs } from '../features/bots/teammateBot'
+import { advanceDareHint } from '../features/dare/rattlesHint'
 import { ageFlight, launchPrize } from '../features/fridge/fridgeReveal'
 import { advanceBreakIdle } from '../features/hud/readyNudge'
 import { advanceKitchenCall } from '../features/kitchen/kitchenCall'
@@ -259,24 +260,27 @@ const advanceFlourishes = (
   frameMs: number,
   worldMs: number,
 ): Model =>
-  advanceKitchenCall(
-    advanceCounterSale(
-      ageFlight(
-        advanceJuice(
-          advanceCallouts(
-            ageTrapNotice(
-              advanceTells(
-                worldMs > 0
-                  ? advanceParticles(model, worldMs / MS_PER_SECOND, worldMs)
-                  : model,
+  advanceDareHint(
+    advanceKitchenCall(
+      advanceCounterSale(
+        ageFlight(
+          advanceJuice(
+            advanceCallouts(
+              ageTrapNotice(
+                advanceTells(
+                  worldMs > 0
+                    ? advanceParticles(model, worldMs / MS_PER_SECOND, worldMs)
+                    : model,
+                  worldMs,
+                ),
                 worldMs,
               ),
               worldMs,
             ),
+            frameMs,
             worldMs,
           ),
           frameMs,
-          worldMs,
         ),
         frameMs,
       ),

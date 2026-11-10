@@ -6,6 +6,7 @@ import {
   AmmoTip,
   AudioState,
   Bot,
+  DareHint,
   DifficultyCard,
   HintBand,
   HomeMenu,
@@ -27,6 +28,7 @@ import {
   freshHomeMenu,
   freshLessons,
   noRankPaid,
+  quietDareHint,
 } from '../domain/clientSchema'
 import * as Coop from '../features/coop/model'
 import { ShareSheet } from '../features/end/share'
@@ -139,6 +141,7 @@ export const Model = Schema.Struct({
   trapHint: TrapHint,
   ammoTip: AmmoTip,
   kitchenCall: KitchenCall,
+  dareHint: DareHint,
   firstBreakQuest: Tour,
   kitchenTour: Tour,
   trapNotice: TrapNotice,
@@ -323,6 +326,7 @@ export const initialModel: OwnModel = {
   trapHint: TrapHint.Unseen(),
   ammoTip: AmmoTip.Unseen(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
+  dareHint: quietDareHint,
   firstBreakQuest: Tour.Waiting(),
   kitchenTour: Tour.Waiting(),
   trapNotice: TrapNotice.Quiet(),

@@ -2,6 +2,7 @@ import { Array, Function, Option } from 'effect'
 import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
+import { DARE_ICONS, DARE_ICON_SIZE } from '../../art/dareArt'
 import { COIN_SPRITE, COIN_WIDTH, bakeText } from '../../art/font'
 import {
   type Palette,
@@ -15,6 +16,11 @@ import { AMMO_BOX } from '../../art/sprites/pickups'
 import { TRAP_ICONS } from '../../art/sprites/traps'
 import { AmmoTip, KitchenCall, Tour } from '../../domain/clientSchema'
 import {
+  HINT_LINES,
+  isHintCalling,
+  maybeHintCall,
+} from '../../features/dare/rattlesHint'
+import {
   CALL_LINES,
   callLineIndex,
   maybeCallTarget,
@@ -26,6 +32,7 @@ import {
 import { isLearned } from '../../features/onboarding/onboarding'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
+import type { DareKind } from '../../world/dare/dareSchema'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { levelOf } from '../../world/level/arena'
 import { focusOf } from '../../world/party/party'
@@ -141,7 +148,11 @@ const SOUP_GOODS: ReadonlyArray<ReadonlyArray<Good>> = Array.map(
 const soupGoods = (index: number): ReadonlyArray<Good> =>
   Option.getOrElse(Array.get(SOUP_GOODS, index), () => [])
 
-const COIN: Good = { sprite: COIN_SPRITE, isCentered: false, width: COIN_WIDTH }
+const COIN: Good = {
+  sprite: COIN_SPRITE,
+  isCentered: false,
+  width: COIN_WIDTH,
+}
 
 const ICON_SIZE = 7
 const ICON_GAP = 2
@@ -164,10 +175,12 @@ const GOODS: Readonly<Record<BubbleKind, ReadonlyArray<Good>>> = {
   Soup2: soupGoods(2),
 }
 
-const bubbleWidth = (kind: BubbleKind): number =>
+const goodsWidth = (goods: ReadonlyArray<Good>): number =>
   PAD * 2 +
-  Array.reduce(GOODS[kind], 0, (sum, good) => sum + good.width) +
-  (GOODS[kind].length - 1) * ICON_GAP
+  Array.reduce(goods, 0, (sum, good) => sum + good.width) +
+  (goods.length - 1) * ICON_GAP
+
+const bubbleWidth = (kind: BubbleKind): number => goodsWidth(GOODS[kind])
 
 const BUBBLE_INK = '#140c10'
 const BUBBLE_FILL = '#f4f1de'
@@ -254,7 +267,8 @@ export const maybeBubbleKind: {
     } else if (
       !isBreakWithShop(model) ||
       Tour.isAnyOf(['Running', 'Done'])(model.kitchenTour) ||
-      KitchenCall.isAnyOf(['Calling'])(model.kitchenCall)
+      KitchenCall.isAnyOf(['Calling'])(model.kitchenCall) ||
+      isHintCalling(model)
     ) {
       return Option.none()
     } else if (
@@ -279,10 +293,14 @@ const EDGE_MARGIN = 4
 const HUD_CLEARANCE = 22
 const ARROW_LENGTH = 4
 const BOB_MS = 900
+const HINT_LIFT = 4
 
-// NOTE: the bubble's tail tip in the world: just left of the awning, by
-// Rattles' head.
-const TIP = { x: STALL_BOX.left + 1, y: STALL_BOX.top + 1 }
+// NOTE: Rattles' spot, where his bubble's tail tip hangs when it points at
+// nothing else: just left of the stall's awning, by his head. The one place
+// to move him once the stall is gone.
+const STALL_TIP: Vector = { x: STALL_BOX.left + 1, y: STALL_BOX.top + 1 }
+
+export const rattlesSpot = (): Vector => STALL_TIP
 
 const sideOf = (
   tip: { x: number; y: number },
@@ -352,12 +370,12 @@ const arrowRects = (
 }
 
 const goodsShapes = (
-  kind: BubbleKind,
+  goods: ReadonlyArray<Good>,
   x: number,
   y: number,
 ): ReadonlyArray<Canvas.Shape> =>
   Array.reduce(
-    GOODS[kind],
+    goods,
     { left: x + PAD, shapes: Array.empty<Canvas.Shape>() },
     ({ left, shapes }, { sprite, isCentered, width }) => ({
       left: left + width + ICON_GAP,
@@ -378,19 +396,42 @@ export const stallBubbleShapes: {
   (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
     Option.match(maybeBubbleKind(model, camera), {
       onNone: () => [],
-      onSome: kind => bubbleShapes(kind, TIP, model, camera),
+      onSome: kind => bubbleShapes(kind, rattlesSpot(), model, camera),
     }),
 )
 
-// NOTE: a bubble whose tail tip points at a spot in the world, pinned to
-// the window's edge with an arrow when the spot is out of view.
+type Bubble = Readonly<{
+  goods: ReadonlyArray<Good>
+  frame: Sprite
+  width: number
+  color: string
+}>
+
+const bubbleOfKind = (kind: BubbleKind): Bubble => ({
+  goods: GOODS[kind],
+  frame: FRAMES[kind],
+  width: bubbleWidth(kind),
+  color: kind === 'Ammo' ? BUBBLE_ALERT : BUBBLE_INK,
+})
+
 const bubbleShapes = (
   kind: BubbleKind,
   tipInWorld: Vector,
   model: Model,
   camera: Camera,
+): ReadonlyArray<Canvas.Shape> =>
+  placedBubble(bubbleOfKind(kind), tipInWorld, true, model, camera)
+
+// NOTE: a bubble whose tail tip points at a spot in the world, pinned to
+// the window's edge, with an arrow toward the spot when it is out of view
+// and the bubble points.
+const placedBubble = (
+  { goods, frame, width, color }: Bubble,
+  tipInWorld: Vector,
+  isPointing: boolean,
+  model: Model,
+  camera: Camera,
 ): ReadonlyArray<Canvas.Shape> => {
-  const width = bubbleWidth(kind)
   const view = viewBoxOf(camera)
   const tip = worldToView(camera, tipInWorld)
   const bob = Math.round(Math.sin((FULL_TURN * model.elapsedMs) / BOB_MS) * 1)
@@ -403,11 +444,12 @@ const bubbleShapes = (
   const x = Math.max(left, Math.min(right, wantedX))
   const y = Math.max(top, Math.min(bottom, wantedY)) + bob
   const side = sideOf({ x: wantedX, y: wantedY }, left, right, top, bottom)
-  const color = kind === 'Ammo' ? BUBBLE_ALERT : BUBBLE_INK
   return [
-    placeSprite(x, y, FRAMES[kind]),
-    ...goodsShapes(kind, x, y),
-    ...(side === 'Inside' ? [] : arrowRects(side, x, y, width, color)),
+    placeSprite(x, y, frame),
+    ...goodsShapes(goods, x, y),
+    ...(side === 'Inside' || !isPointing
+      ? []
+      : arrowRects(side, x, y, width, color)),
   ]
 }
 
@@ -464,6 +506,65 @@ export const soupBubbleShapes: {
         Option.match(Array.get(SOUP_KINDS, callLineIndex(model)), {
           onNone: () => [],
           onSome: kind => bubbleShapes(kind, target, model, camera),
+        }),
+    }),
+)
+
+// RATTLES' HINTS
+
+const dareIconGood = (kind: DareKind): Good => ({
+  sprite: DARE_ICONS[kind],
+  isCentered: false,
+  width: DARE_ICON_SIZE,
+})
+
+// NOTE: every hint's bubble baked once: the thing it is about, and the line.
+const HINT_BUBBLES: ReadonlyMap<string, Bubble> = new Map(
+  Array.map(HINT_LINES, ({ line, maybeIcon }): readonly [string, Bubble] => {
+    const goods = [
+      ...Option.toArray(Option.map(maybeIcon, dareIconGood)),
+      lineGood(line),
+    ]
+    const width = goodsWidth(goods)
+    return [
+      line,
+      {
+        goods,
+        frame: bakeShapes(frameRects(width, BUBBLE_INK)),
+        width,
+        color: BUBBLE_INK,
+      },
+    ]
+  }),
+)
+
+// NOTE: Rattles' hint about the dare (src/features/dare/rattlesHint.ts):
+// over the thing it is about, pinned to the window's edge with an arrow
+// toward it when it is out of view, or from his own spot, pointing nowhere.
+export const dareHintShapes: {
+  (camera: Camera): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
+    Option.match(maybeHintCall(model), {
+      onNone: () => [],
+      onSome: ({ line, maybeTarget }) =>
+        Option.match(Option.fromNullishOr(HINT_BUBBLES.get(line)), {
+          onNone: () => [],
+          onSome: bubble =>
+            Option.match(maybeTarget, {
+              onNone: () =>
+                placedBubble(bubble, rattlesSpot(), false, model, camera),
+              onSome: target =>
+                placedBubble(
+                  bubble,
+                  { x: target.x, y: target.y - HINT_LIFT },
+                  true,
+                  model,
+                  camera,
+                ),
+            }),
         }),
     }),
 )
