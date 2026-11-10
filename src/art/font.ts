@@ -45,7 +45,7 @@ const GLYPH_PIXELS = {
   H: ['#.#', '#.#', '###', '#.#', '#.#'],
   I: ['###', '.#.', '.#.', '.#.', '###'],
   J: ['..#', '..#', '..#', '#.#', '.#.'],
-  K: ['#.#', '#.#', '##.', '#.#', '#.#'],
+  K: ['#.#', '##.', '#..', '##.', '#.#'],
   L: ['#..', '#..', '#..', '#..', '###'],
   M: ['#...#', '##.##', '#.#.#', '#...#', '#...#'],
   N: ['#..#', '##.#', '#.##', '#..#', '#..#'],
@@ -71,7 +71,7 @@ const GLYPH_PIXELS = {
   '%': ['#.#', '..#', '.#.', '#..', '#.#'],
   '/': ['..#', '..#', '.#.', '#..', '#..'],
   '-': ['...', '...', '###', '...', '...'],
-  '?': ['##.', '..#', '.#.', '...', '.#.'],
+  '?': ['.##.', '#..#', '..#.', '....', '..#.'],
   '∞': ['.....', '##.##', '#.#.#', '##.##', '.....'],
 } satisfies Readonly<Record<string, ReadonlyArray<string>>>
 
@@ -273,9 +273,15 @@ const TONE_COLORS: Readonly<Record<TextTone, string>> = {
   Ink: '#140c10',
 }
 
+// NOTE: ink is written on paper (a bubble, the dare card, a tab), where the
+// drop shadow's near black would run into the strokes and thicken every
+// letter by a row (a K read as an H, a ? as a 7), so its shadow is the
+// faint press of the pen instead.
+const INK_SHADOW_COLOR = 'rgba(42, 29, 20, 0.22)'
+
 const tonePalette = (tone: TextTone) => ({
   [GLYPH_FILL]: TONE_COLORS[tone],
-  [GLYPH_SHADOW]: GLYPH_SHADOW_COLOR,
+  [GLYPH_SHADOW]: tone === 'Ink' ? INK_SHADOW_COLOR : GLYPH_SHADOW_COLOR,
 })
 
 const glyphSprites = (tone: TextTone): Readonly<Record<Glyph, Sprite>> =>

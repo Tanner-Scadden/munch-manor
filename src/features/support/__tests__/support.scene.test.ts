@@ -29,7 +29,7 @@ import menuCss from '../../home/menu.css?raw'
 
 const TEST_LINK = 'https://buy.stripe.com/test_coffee'
 
-const coffeeLink = Scene.role('link', { name: /buy the shopkeeper a coffee/i })
+const coffeeLink = Scene.role('link', { name: /buy rattles a coffee/i })
 const homeCoffee = Scene.role('link', { name: /^Buy Rattles a coffee/ })
 
 const withLink = (model: Model): Model =>

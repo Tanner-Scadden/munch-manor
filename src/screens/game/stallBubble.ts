@@ -2,7 +2,7 @@ import { Array, Function, Option } from 'effect'
 import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
-import { DARE_ICONS, DARE_ICON_SIZE } from '../../art/dareArt'
+import { DARE_ICONS, DARE_ICON_SIZE, DARE_SLOT_SIZE } from '../../art/dareArt'
 import { bakeText } from '../../art/font'
 import {
   type Palette,
@@ -12,6 +12,8 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
+import { dareCardLeftOf } from '../../features/dare/dareCard'
+import { isPocketCardOut } from '../../features/dare/pocketCard'
 import { HINT_LINES, maybeHintCall } from '../../features/dare/rattlesHint'
 import {
   CALL_LINES,
@@ -24,10 +26,14 @@ import {
 } from '../../features/onboarding/kitchenTour'
 import { type Camera, viewBoxOf, worldToView } from '../../render/camera'
 import { FULL_TURN, placeSprite } from '../../render/drawing'
+import { hudLayoutFor } from '../../render/hudLayout'
+import { landscapeFrameOffset, screenOf } from '../../render/screen'
+import { dareCardOf } from '../../world/dare/dare'
 import type { DareKind } from '../../world/dare/dareSchema'
 import { fridgeBoxOf } from '../../world/fridge/leftovers'
 import { RATTLES_BOX, levelOf } from '../../world/level/arena'
 import type { Vector } from '../../world/schema/worldSchema'
+import { maybeBannerBand } from './overlay'
 
 // NOTE: Rattles hollers his hints in a speech bubble of pictures, hung
 // from the spot it is about, and when that spot is out of view it waits at
@@ -330,6 +336,73 @@ const bubbleShapes = (
 ): ReadonlyArray<Canvas.Shape> =>
   placedBubble(bubbleOfKind(kind), tipInWorld, true, model, camera)
 
+// NOTE: what a bubble keeps out of, in screen pixels: the dare card on
+// the HUD with its unlock bar, and a banner's rows while one shows. A
+// bubble over one moves under it, or over it when there is no room under.
+type Keepout = Readonly<{
+  left: number
+  top: number
+  right: number
+  bottom: number
+}>
+
+const KEEPOUT_GAP = 2
+const DARE_CARD_BAR_ROWS = 4
+
+const keepoutsOf = (model: Model): ReadonlyArray<Keepout> => {
+  const screen = screenOf(model)
+  const layout = hudLayoutFor(screen)
+  const frameTop = landscapeFrameOffset(screen).y
+  const card: ReadonlyArray<Keepout> = Array.isReadonlyArrayNonEmpty(
+    dareCardOf(model),
+  )
+    ? [
+        {
+          left: dareCardLeftOf(model, layout),
+          top: layout.dareTop,
+          right: layout.dareRight,
+          bottom: layout.dareTop + DARE_SLOT_SIZE + DARE_CARD_BAR_ROWS,
+        },
+      ]
+    : []
+  const banner: ReadonlyArray<Keepout> = Option.match(maybeBannerBand(model), {
+    onNone: () => [],
+    onSome: band => [
+      {
+        left: 0,
+        top: band.top + frameTop,
+        right: screen.width,
+        bottom: band.bottom + frameTop,
+      },
+    ],
+  })
+  return [...card, ...banner]
+}
+
+const clearOfHud = (
+  model: Model,
+  x: number,
+  width: number,
+  y: number,
+  top: number,
+  bottom: number,
+): number =>
+  Array.reduce(keepoutsOf(model), y, (placed, keepout) => {
+    const height = BUBBLE_HEIGHT + TAIL
+    const isOver =
+      x < keepout.right &&
+      x + width > keepout.left &&
+      placed < keepout.bottom &&
+      placed + height > keepout.top
+    if (!isOver) {
+      return placed
+    }
+    const under = keepout.bottom + KEEPOUT_GAP
+    return under <= bottom
+      ? under
+      : Math.max(top, keepout.top - KEEPOUT_GAP - height)
+  })
+
 // NOTE: a bubble whose tail tip points at a spot in the world, pinned to
 // the window's edge, with an arrow toward the spot when it is out of view
 // and the bubble points.
@@ -350,7 +423,15 @@ const placedBubble = (
   const wantedX = Math.round(tip.x) - width + 2
   const wantedY = Math.round(tip.y) - BUBBLE_HEIGHT - TAIL
   const x = Math.max(left, Math.min(right, wantedX))
-  const y = Math.max(top, Math.min(bottom, wantedY)) + bob
+  const y =
+    clearOfHud(
+      model,
+      x,
+      width,
+      Math.max(top, Math.min(bottom, wantedY)),
+      top,
+      bottom,
+    ) + bob
   const side = sideOf({ x: wantedX, y: wantedY }, left, right, top, bottom)
   return [
     placeSprite(x, y, frame),
@@ -453,24 +534,27 @@ export const dareHintShapes: {
 } = Function.dual(
   2,
   (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
-    Option.match(maybeHintCall(model), {
-      onNone: () => [],
-      onSome: ({ line, maybeTarget }) =>
-        Option.match(Option.fromNullishOr(HINT_BUBBLES.get(line)), {
-          onNone: () => [],
-          onSome: bubble =>
-            Option.match(maybeTarget, {
-              onNone: () =>
-                placedBubble(bubble, rattlesSpot(), false, model, camera),
-              onSome: target =>
-                placedBubble(
-                  bubble,
-                  { x: target.x, y: target.y - HINT_LIFT },
-                  true,
-                  model,
-                  camera,
-                ),
-            }),
-        }),
-    }),
+    Option.match(
+      isPocketCardOut(model) ? Option.none() : maybeHintCall(model),
+      {
+        onNone: () => [],
+        onSome: ({ line, maybeTarget }) =>
+          Option.match(Option.fromNullishOr(HINT_BUBBLES.get(line)), {
+            onNone: () => [],
+            onSome: bubble =>
+              Option.match(maybeTarget, {
+                onNone: () =>
+                  placedBubble(bubble, rattlesSpot(), false, model, camera),
+                onSome: target =>
+                  placedBubble(
+                    bubble,
+                    { x: target.x, y: target.y - HINT_LIFT },
+                    true,
+                    model,
+                    camera,
+                  ),
+              }),
+          }),
+      },
+    ),
 )

@@ -9,7 +9,7 @@ import { Phase } from '../../world/schema/worldSchema'
 
 // VIEW
 
-const SUPPORT_LABEL = 'Buy the shopkeeper a coffee: support the game'
+const SUPPORT_LABEL = 'Buy Rattles a coffee: support the game'
 
 const isEscapeShown = (model: Model): boolean =>
   Phase.isAnyOf(['Escaped'])(model.phase) && model.screenMs >= RESTART_GRACE_MS
@@ -33,7 +33,7 @@ const supportLinkView = (url: string, h: ApplicationViewBuilder): Html =>
       h.span(
         [h.Class('support-link-text')],
         [
-          h.span([h.Class('support-link-line')], ['BUY THE SHOPKEEPER']),
+          h.span([h.Class('support-link-line')], ['BUY RATTLES']),
           h.span([h.Class('support-link-line')], ['A COFFEE']),
         ],
       ),

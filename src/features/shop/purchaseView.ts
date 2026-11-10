@@ -20,7 +20,7 @@ import {
 import { gunIcon } from '../../art/sprites/guns'
 import { type Camera, worldToView } from '../../render/camera'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
-import { featLockShapes } from '../../render/featLockView'
+import { featLockShapes, lockSpotIn } from '../../render/featLockView'
 import {
   FLAME_ICON,
   PERK_ICONS,
@@ -31,6 +31,7 @@ import { FRIDGE_RULES } from '../../world/fridge/leftovers'
 import { hasPan, maybeReplacedGun } from '../../world/gear/weapons'
 import { maybeValveLock } from '../../world/kitchen/gasValve'
 import { maybeStoveLock, maybeStovePerk } from '../../world/kitchen/stove'
+import { levelOf } from '../../world/level/arena'
 import { focusOf, focusSlotOf } from '../../world/party/party'
 import {
   FridgeDoor,
@@ -495,10 +496,11 @@ const lockShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
       maybeValveLock(model, focusSlotOf(model)),
     ]),
     ({ feat, spot }) =>
-      featLockShapes(feat, focusOf(model), {
-        x: spot.x,
-        y: spot.y + LOCK_DROP_PX,
-      }),
+      featLockShapes(
+        feat,
+        focusOf(model),
+        lockSpotIn(levelOf(model), { x: spot.x, y: spot.y + LOCK_DROP_PX }),
+      ),
   )
 
 const purchaseShapes = (

@@ -28,6 +28,7 @@ import {
   ZombieState,
   roundWaveOf,
 } from '../../world/schema/worldSchema'
+import { isPocketCardOut } from './pocketCard'
 
 // Rattles, the first daredevil (1924), who never got out, hollers about the
 // dare in his bubble (LORE.md, "Rattles"). A client cosmetic read off the
@@ -254,8 +255,10 @@ const isBreak = Phase.isAnyOf(['Preparation'])
 const hasList = (model: Model): boolean =>
   Array.isReadonlyArrayNonEmpty(model.dare.list)
 
-// NOTE: he keeps quiet while the kitchen holler or a tour has the bubble.
+// NOTE: he keeps quiet while the kitchen holler or a tour has the bubble,
+// and while the dare card in your pocket is out.
 const isHushed = (model: Model): boolean =>
+  isPocketCardOut(model) ||
   KitchenCall.isAnyOf(['Calling'])(model.kitchenCall) ||
   Tour.isAnyOf(['Running'])(model.kitchenTour) ||
   QuestTour.isAnyOf(['Running', 'Looking'])(model.firstBreakQuest)

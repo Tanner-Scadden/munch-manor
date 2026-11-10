@@ -12,7 +12,7 @@ import { type Sprite, placeAt } from '../../art/sprite'
 import { gunIcon } from '../../art/sprites/guns'
 import type { Drawable } from '../../render/depth'
 import { GLINT } from '../../render/drawing'
-import { featLockShapes } from '../../render/featLockView'
+import { featLockShapes, lockSpotIn } from '../../render/featLockView'
 import {
   caseFootOf,
   caseLookOf,
@@ -62,10 +62,11 @@ const caseShapes = (
       body,
       placeAt(prizeAt.x, prizeAt.y, prize),
       placeAt(left, top, art.front),
-      ...featLockShapes(displayCase.feat, focusOf(model), {
-        x: Math.round(foot.x),
-        y: top - LOCK_LIFT_PX,
-      }),
+      ...featLockShapes(
+        displayCase.feat,
+        focusOf(model),
+        lockSpotIn(level, { x: Math.round(foot.x), y: top - LOCK_LIFT_PX }),
+      ),
     ],
     Opened: () => {
       const bob = Math.floor(model.elapsedMs / BOB_MS) % 2 === 0 ? 0 : 1

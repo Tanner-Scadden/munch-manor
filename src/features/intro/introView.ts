@@ -1,9 +1,10 @@
-import { Array, Function, Option } from 'effect'
+import { Array, Function, Option, Result } from 'effect'
 import { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { bakeText, placeBaked } from '../../art/font'
 import {
+  ANTENNA,
   BEAM,
   BIKE,
   BONY_HAND,
@@ -38,6 +39,7 @@ import {
 import { type Sprite, group, placeAt } from '../../art/sprite'
 import type { Screen } from '../../render/screen'
 import { ARRIVAL_MS } from '../../world/run/arrival'
+import type { Vector } from '../../world/schema/worldSchema'
 import { lerp } from '../../world/step/geometry'
 import {
   type IntroBeat,
@@ -82,19 +84,40 @@ const nonEmpty = <A>(
 // THE DRIVE
 
 const DASH_GAP = 24
+const CAR_X = 58
+const CAR_Y = 64
+const ANTENNA_X = CAR_X + 4
+const ANTENNA_RISE = 4
+const STATIC_X = ANTENNA_X - 3
+const STATIC_WIDTH = 6
+const SIGN_WIDTH = 26
+
+// NOTE: the radio crackles off the antenna, and keeps quiet while the sign
+// goes by behind it, so the crackle never reads as part of the sign.
+const isSignBehindStatic = (signX: number): boolean =>
+  signX < STATIC_X + STATIC_WIDTH + 2 && signX + SIGN_WIDTH > STATIC_X - 2
 
 const driveShapes = ({ beatMs, progress }: IntroFrame) => {
   const roll = (beatMs / 12) % DASH_GAP
   const bob = Math.floor(beatMs / 140) % 2
   const crackle = nonEmpty(RADIO_STATIC)
-  const isCrackling = Math.floor(beatMs / 350) % 3 !== 2
+  const signX = lerp(170, -40, progress)
+  const isCrackling =
+    Math.floor(beatMs / 350) % 3 !== 2 && !isSignBehindStatic(signX)
   return [
     at(0, 0, DRIVE_BACKDROP),
     ...Array.makeBy(8, index => at(index * DASH_GAP - roll, 78, ROAD_DASH)),
-    at(lerp(170, -40, progress), 50, MANOR_SIGN),
-    at(58, 64 + bob, FRIENDS_CAR),
+    at(signX, 50, MANOR_SIGN),
+    at(ANTENNA_X, CAR_Y - ANTENNA_RISE + bob, ANTENNA),
+    at(CAR_X, CAR_Y + bob, FRIENDS_CAR),
     ...(crackle !== undefined && isCrackling
-      ? [at(68, 56 + bob, frameOf(crackle, beatMs, 90))]
+      ? [
+          at(
+            STATIC_X,
+            CAR_Y - ANTENNA_RISE - 4 + bob,
+            frameOf(crackle, beatMs, 90),
+          ),
+        ]
       : []),
   ]
 }
@@ -208,6 +231,10 @@ const HELLO = bakeText('HELLO?', 'Ink')
 const BUBBLE_PAD = 4
 const BUBBLE: Sprite = speechBubble(HELLO.width + BUBBLE_PAD * 2)
 
+// NOTE: your place card stands on the table at its gap, by the empty
+// chair at the left half's end.
+const PLACE_CARD_AT = { x: 58, y: 45 }
+
 // NOTE: the chandelier's three candles, over the table's gap.
 const CANDLES_X: ReadonlyArray<number> = [70, 79, 88]
 
@@ -224,7 +251,7 @@ const helloShapes = ({ beatMs, progress }: IntroFrame) => {
     ...Array.map([33, 38, 114, 120], (x, index) =>
       at(x, 38 - ((steamRise + index * 4) % 12), STEAM),
     ),
-    at(74, 64, PLACE_CARD),
+    at(PLACE_CARD_AT.x, PLACE_CARD_AT.y, PLACE_CARD),
     ...(progress > 0.15
       ? [
           at(10, 66, BUBBLE),
@@ -318,6 +345,45 @@ const FADE_MS = 300
 const fadeOf = ({ cut, ms }: IntroFrame): number =>
   Math.min(1, Math.max(0, (ms - (ARRIVAL_MS[cut] - FADE_MS)) / FADE_MS))
 
+const pictureOrigin = (screen: Screen, scale: number): Vector => ({
+  x: Math.floor((screen.width - PICTURE_WIDTH * scale) / 2),
+  y: Math.floor((screen.height - PICTURE_HEIGHT * scale) / 2),
+})
+
+// NOTE: the night's black over everything round the picture, so nothing
+// that rolls or shakes past its edge (the road's dashes, the slam) shows
+// in the bars.
+const letterboxShapes = (
+  screen: Screen,
+  scale: number,
+): ReadonlyArray<Canvas.Shape> => {
+  const origin = pictureOrigin(screen, scale)
+  const width = PICTURE_WIDTH * scale
+  const height = PICTURE_HEIGHT * scale
+  return Array.filterMap(
+    [
+      { x: 0, y: 0, width: screen.width, height: origin.y },
+      {
+        x: 0,
+        y: origin.y + height,
+        width: screen.width,
+        height: screen.height - origin.y - height,
+      },
+      { x: 0, y: origin.y, width: origin.x, height },
+      {
+        x: origin.x + width,
+        y: origin.y,
+        width: screen.width - origin.x - width,
+        height,
+      },
+    ],
+    bar =>
+      bar.width > 0 && bar.height > 0
+        ? Result.succeed(Canvas.Rect({ ...bar, fill: NIGHT_BLACK }))
+        : Result.failVoid,
+  )
+}
+
 // NOTE: the intro over the whole screen while the crew arrives; nothing
 // else of the run shows under it.
 export const introShapes: {
@@ -343,13 +409,11 @@ export const introShapes: {
                 fill: NIGHT_BLACK,
               }),
               group({
-                translate: {
-                  x: Math.floor((screen.width - PICTURE_WIDTH * scale) / 2),
-                  y: Math.floor((screen.height - PICTURE_HEIGHT * scale) / 2),
-                },
+                translate: pictureOrigin(screen, scale),
                 scale: scale === 1 ? undefined : { x: scale, y: scale },
                 shapes: BEAT_SHAPES[frame.beat](frame),
               }),
+              ...letterboxShapes(screen, scale),
             ],
           }),
         ]
