@@ -98,6 +98,7 @@ import {
   Trap,
 } from '../world/schema/worldSchema'
 import { PURCHASE_RULES } from '../world/shop/purchase'
+import { stepWorld } from '../world/step/stepWorld'
 import { ZOMBIE_KINDS } from '../world/zombies/zombies'
 
 // NOTE: the score is read from the kills, so a test that wants a score
@@ -1094,4 +1095,17 @@ export const eventsOver: {
       settleRunCommands,
     ).pipe(Effect.as<ReadonlyArray<GameEvent>>(events))
   }),
+)
+
+// NOTE: `count` ticks of a co-op room's step from `world`, with no input:
+// a room never stops for hits, so its ticks run on the clock.
+export const steppedWorld: {
+  (count: number): (world: World) => World
+  (world: World, count: number): World
+} = Function.dual(2, (world: World, count: number): World =>
+  Array.reduce(
+    Array.makeBy(count, () => 0),
+    world,
+    current => stepWorld(current, new Map()).world,
+  ),
 )

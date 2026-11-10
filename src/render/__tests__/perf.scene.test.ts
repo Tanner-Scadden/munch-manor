@@ -581,8 +581,13 @@ const measureFrames = Effect.fnUntraced(function* (model: Model) {
 // paint operations, and 2986 on a full repaint to 687, 543, and 1120,
 // with 458 fill changes and 581 shapes painted. What is left is mostly
 // particles, decals, bars, and shadows, which change every frame.
+// The display cases (November 2026) added 10 shapes to the worst rooms, 748
+// and 746 against 738 before: each locked case in view is five images (its
+// body, its prize, its glass and padlock, and its feat's ring and icon), and
+// its count shows only to a player standing near it. The paint budgets did
+// not move.
 const BUDGET: FrameCost = {
-  shapesBuilt: 740,
+  shapesBuilt: 755,
   steadyPaintOps: 590,
   steadyFillStyleChanges: 500,
   steadyShapesPainted: 630,
@@ -624,7 +629,9 @@ const kitchenRoom = (wave: number): Model => {
             : zombie,
         ),
     }),
-    { player: player => modifyFields(player, { x: () => 100, y: () => -40 }) },
+    {
+      player: player => modifyFields(player, { x: () => 100, y: () => -40 }),
+    },
   )
 }
 

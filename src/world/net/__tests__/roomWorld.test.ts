@@ -141,7 +141,10 @@ describe('inputs and presses', () => {
           }),
       ),
     }
-    const buy = heldAction(actionCodeOf(SeatAction.Buy({ item: 'Shotgun' })), 1)
+    const buy = heldAction(
+      actionCodeOf(SeatAction.Buy({ item: 'Barricade' })),
+      1,
+    )
     const holdFor = (ticks: number) =>
       Array.reduce(
         Array.makeBy(ticks, () => 0),
@@ -185,7 +188,7 @@ describe('inputs and presses', () => {
         input: {
           ...NEUTRAL_INPUT,
           action: heldAction(
-            actionCodeOf(SeatAction.Buy({ item: 'Barricade' })),
+            actionCodeOf(SeatAction.Buy({ item: 'Turret' })),
             2,
           ),
         },

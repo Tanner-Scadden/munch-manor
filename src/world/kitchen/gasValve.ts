@@ -1,6 +1,7 @@
 import { Array, Function, Option, Record, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { type FeatLock, hasDone } from '../feats/feats'
 import { countKills } from '../gear/melee'
 import {
   type Box,
@@ -16,26 +17,31 @@ import { boxAround, spendOn } from '../level/exits'
 import { creditKills, payTo, seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
 import {
+  Feat,
   GasValve,
   Phase,
   type PlayerSlot,
   Purchasable,
+  type Vector,
   type Zombie,
 } from '../schema/worldSchema'
 import type { Offer } from '../shop/purchase'
-import { ZOMBIE_BLAST_TARGET, bountyOf } from '../step/combat'
+import { ZOMBIE_BLAST_TARGET, bountyOf, creditKillEvents } from '../step/combat'
 import { bodyRadiusOf, isGrounded } from '../zombies/zombies'
 import { SCORCH_DIRECTION, isKitchenOpen } from './kitchen'
 
 // The kitchen's gas valve (owner, 2026-11-02): a wheel on the kitchen's
-// east wall. Turned on, bought by the same stand or hold to buy as the
-// boards (src/world/shop/purchase.ts), it lights the parlour's fireplace as a trap for
-// the rest of the run: a roaring fire that burns every zombie standing on
-// the hearth's floor in front of it. It never hurts a player, and its kills
-// pay the player who turned it, as a gnome's pay its owner.
+// east wall. Turned on, it lights the parlour's fireplace as a trap for the
+// rest of the run: a roaring fire that burns every zombie standing on the
+// hearth's floor in front of it. It never hurts a player, and its kills pay
+// the player who turned it, as a gnome's pay its owner. It is never bought
+// (owner, 2026-11-10): it frees up for a player by a feat
+// (src/world/feats/feats.ts), 10 kills made standing in the kitchen, and
+// they turn it by the same stand or hold as the boards
+// (src/world/shop/purchase.ts).
 
 type ValveRules = Readonly<{
-  price: number
+  standKills: number
   reachPx: number
   tagDropPx: number
   burnEveryMs: number
@@ -44,13 +50,17 @@ type ValveRules = Readonly<{
 }>
 
 export const VALVE_RULES: ValveRules = {
-  price: 80,
+  standKills: 10,
   reachPx: 14,
   tagDropPx: 3,
   burnEveryMs: 300,
   damage: 2,
   zoneDepthPx: 24,
 }
+
+const VALVE_FEAT: Feat = Feat.KitchenStandKills({
+  count: VALVE_RULES.standKills,
+})
 
 // NOTE: the valve's wall tile, on the kitchen's east wall beside the open
 // floor at its south end, away from the stoves, the fridge, and the doors.
@@ -68,28 +78,56 @@ export const isValveLit = (world: World): boolean =>
 
 // THE OFFER
 
+// NOTE: the valve waits in the kitchen until lit: its lock shows while a
+// player has not done its feat, its tag once they have.
 const isValveForSale = (world: World): boolean =>
   !isValveLit(world) && Phase.isAnyOf(['Preparation', 'Wave'])(world.phase)
 
-export const valveOffers = (world: World): ReadonlyArray<Offer> =>
-  isValveForSale(world)
+const isValveOpenTo = (world: World, slot: PlayerSlot): boolean =>
+  isValveForSale(world) && hasDone(world, slot, VALVE_FEAT)
+
+// NOTE: the valve a seat has not earned yet: its feat, and the spot its
+// lock hangs from.
+export const maybeValveLock: {
+  (slot: PlayerSlot): (world: World) => Option.Option<FeatLock>
+  (world: World, slot: PlayerSlot): Option.Option<FeatLock>
+} = Function.dual(
+  2,
+  (world: World, slot: PlayerSlot): Option.Option<FeatLock> =>
+    isValveForSale(world) && !hasDone(world, slot, VALVE_FEAT)
+      ? Option.map(valveBoxOf(levelOf(world)), box => ({
+          feat: VALVE_FEAT,
+          spot: valveTagSpotOf(box),
+        }))
+      : Option.none(),
+)
+
+export const valveOffers: {
+  (slot: PlayerSlot): (world: World) => ReadonlyArray<Offer>
+  (world: World, slot: PlayerSlot): ReadonlyArray<Offer>
+} = Function.dual(2, (world: World, slot: PlayerSlot): ReadonlyArray<Offer> =>
+  isValveOpenTo(world, slot)
     ? Option.match(valveBoxOf(levelOf(world)), {
         onNone: () => [],
         onSome: box => [
           {
             target: Purchasable.Valve(),
-            price: VALVE_RULES.price,
+            price: 0,
             box,
             reachPx: VALVE_RULES.reachPx,
             isFull: false,
-            spot: {
-              x: box.left - TAG_INSET_PX,
-              y: box.top + VALVE_RULES.tagDropPx,
-            },
+            spot: valveTagSpotOf(box),
           },
         ],
       })
-    : []
+    : [],
+)
+
+// NOTE: where the valve's tag (or its lock) hangs, off the wall's inner face.
+const valveTagSpotOf = (box: Box): Vector => ({
+  x: box.left - TAG_INSET_PX,
+  y: box.top + VALVE_RULES.tagDropPx,
+})
 
 export const buyValve: {
   (slot: PlayerSlot, price: number): (world: World) => Option.Option<World>
@@ -97,7 +135,7 @@ export const buyValve: {
 } = Function.dual(
   3,
   (world: World, slot: PlayerSlot, price: number): Option.Option<World> =>
-    isValveForSale(world) &&
+    isValveOpenTo(world, slot) &&
     Option.isSome(valveBoxOf(levelOf(world))) &&
     seatStateAt(world, slot).wallet.balance >= price
       ? Option.some(
@@ -158,7 +196,11 @@ const burn = (world: World, owner: PlayerSlot, zone: Box): World => {
         })
       : { target: zombie, events: [] },
   )
-  const events = Array.flatMap(outcomes, outcome => outcome.events)
+  const events = creditKillEvents(
+    Array.flatMap(outcomes, outcome => outcome.events),
+    Option.some(owner),
+    'Fire',
+  )
   if (Array.isReadonlyArrayEmpty(events)) {
     return world
   }

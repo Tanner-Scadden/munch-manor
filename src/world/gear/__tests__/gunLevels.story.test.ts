@@ -5,7 +5,6 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, it, test } from '@effect/vitest'
 import { NEUTRAL_INPUT } from '@munch/netcode'
 
-import { ShopDialogBinding } from '../../../app/bindings'
 import {
   Arsenal,
   type Bullet,
@@ -14,25 +13,25 @@ import {
   Melee,
   type Model,
   Phase,
-  type ShopItemId,
   ShopState,
   type WeaponKind,
   type Zombie,
 } from '../../../app/model'
-import { Message as ShopMessage } from '../../../features/shop/message'
-import { FocusItem } from '../../../features/shop/steps'
-import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
+import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
+  atOpenedCase,
   newPlayerReady,
   quietWave,
   withSeat,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
+  HOLD_TICKS,
   RESTART_GRACE_TICKS,
   bulletInto,
   doomed,
+  holdEnter,
   holdFire,
   holdingSecond,
   maybeSpareGun,
@@ -49,6 +48,7 @@ import {
   stepRoomWorld,
 } from '../../net/roomWorld'
 import { focusOf, maybePlayerAt, modifyFocus } from '../../party/party'
+import { settledLessons } from '../../run/lessons'
 import { maybeLevelProgress, tierForKills } from '../gunLevels'
 import {
   STARTING_PISTOL,
@@ -240,42 +240,35 @@ describe('a gun keeps its level while carried', () => {
   )
 
   it.effect(
-    'a gun replaced by a new one takes its kills and level with it',
-    () => {
-      const browsing = modifyFocus(
-        modifyFields(newPlayerReady, {
-          phase: () =>
-            Phase.Preparation({
-              wave: 3,
-              remainingMs: 15_000,
-              durationMs: PREPARATION_MS,
-              spawns: [DISTANT_SPAWN],
-            }),
-        }),
-        {
-          shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
-          wallet: () => ({ balance: 1000, earned: 1000, shown: 1000 }),
-          player: player =>
-            modifyFields(player, {
-              arsenal: () => holdingSecond(gun('Smg', 2, 130)),
-            }),
-        },
-      )
-      const buy = (item: ShopItemId) =>
-        Story.messageIn(ShopDialogBinding, ShopMessage.PressedBuyKey({ item }))
-      return Story.story(
+    'a gun from a case replaces the gun in hand, which takes its kills and level with it, and arrives fresh',
+    () =>
+      Story.story(
         APPLICATION,
-        Story.given(browsing),
-        buy('Shotgun'),
-        Story.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
-        buy('Smg'),
-        Story.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
+        Story.given(
+          atOpenedCase(
+            modifyFocus(
+              modifyFields(newPlayerReady, {
+                lessons: () => settledLessons,
+              }),
+              {
+                shop: () => ShopState.Away(),
+                player: player =>
+                  modifyFields(player, {
+                    arsenal: () => holdingSecond(gun('Smg', 2, 130)),
+                  }),
+              },
+            ),
+            'Shotgun',
+          ),
+        ),
+        ...holdEnter(HOLD_TICKS),
         Story.model(current => {
-          expect(smgOf(current)).toEqual(freshGun('Smg'))
-          expect(tierOf(focusOf(current).player, 'Shotgun')).toBe(0)
+          expect(maybeSpareGun(focusOf(current).player.arsenal)).toEqual(
+            Option.some(freshGun('Shotgun')),
+          )
+          expect(tierOf(focusOf(current).player, 'Smg')).toBe(0)
         }),
-      )
-    },
+      ),
   )
 
   it.effect('a new run starts every gun at its base tier with no kills', () =>

@@ -282,6 +282,7 @@ describe('frame sounds', () => {
         modifyFields(playingWave(AudioState.Ready(), 2), {
           zombies: () => victims,
           bullets: () => killingBullets,
+          cases: () => [],
         }),
       ),
       tick(FRAME_MS),

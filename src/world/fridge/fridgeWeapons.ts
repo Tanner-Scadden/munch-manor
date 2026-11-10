@@ -58,6 +58,7 @@ import {
   blastAll,
   blastTeammates,
   bountyOf,
+  creditKillEvents,
   hitEvent,
   isIcedSolid,
   killEvent,
@@ -483,27 +484,32 @@ const lidBlast = (world: World, lob: Lob, at: Vector): World => {
   }
   const zombieOutcome = blastAll(blast, world.zombies, ZOMBIE_BLAST_TARGET)
   const maybeShooter = Option.fromNullishOr(lob.shooter)
+  const zombieEvents = creditKillEvents(
+    zombieOutcome.events,
+    maybeShooter,
+    'Cooker',
+  )
   const struck = modifyFields(world, {
     zombies: () => zombieOutcome.targets,
     frameEvents: frameEvents => [
       ...frameEvents,
       GameEvent.LidBlasted({ x: at.x, y: at.y, radius: blast.radius }),
-      ...zombieOutcome.events,
+      ...zombieEvents,
     ],
   })
   const paid = payTo(
     struck,
     maybeShooter,
-    bountyOf(levelOf(world), zombieOutcome.events),
+    bountyOf(levelOf(world), zombieEvents),
   )
   const credited = creditGunKills(
     Option.match(maybeShooter, {
       onNone: () => paid,
-      onSome: slot => creditKills(paid, slot, countKills(zombieOutcome.events)),
+      onSome: slot => creditKills(paid, slot, countKills(zombieEvents)),
     }),
     killerSlotOf(paid, maybeShooter),
     'Cooker',
-    countKills(zombieOutcome.events),
+    countKills(zombieEvents),
   )
   return scorchPlayers(credited, maybeShooter, blast)
 }
@@ -701,11 +707,12 @@ const firePan = (
         ),
     }),
   })
+  const events = creditKillEvents(swing.events, Option.some(slot), 'Pan')
   return creditGunKills(
-    payStriker(withEvents(struck, swing.events), slot, swing.events),
+    payStriker(withEvents(struck, events), slot, events),
     slot,
     'Pan',
-    countKills(swing.events),
+    countKills(events),
   )
 }
 
@@ -808,7 +815,11 @@ const spray = (world: World, slot: PlayerSlot): World => {
       ? sprayOne(zombie, player.facing)
       : { zombie, events: [] },
   )
-  const stings = Array.flatMap(sprayed, ({ events }) => events)
+  const stings = creditKillEvents(
+    Array.flatMap(sprayed, ({ events }) => events),
+    Option.some(slot),
+    'Freeze',
+  )
   const iced = withEvents(
     modifyFields(world, {
       zombies: () => Array.map(sprayed, ({ zombie }) => zombie),

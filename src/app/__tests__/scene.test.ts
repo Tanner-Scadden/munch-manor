@@ -8,9 +8,7 @@ import { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
 import indexHtml from '../../../index.html?raw'
 import { FEEDBACK_RUNS } from '../../domain/run'
 import { DEBUT_CARD_MIN_MS } from '../../features/onboarding/onboarding'
-import { Message as ShopMessage } from '../../features/shop/message'
 import { ShopTabsBlock } from '../../features/shop/shopTabs'
-import { FocusItem } from '../../features/shop/steps'
 import {
   FIXED_STEP_MS,
   GAME_TITLE,
@@ -129,7 +127,9 @@ describe('Start wave button', () => {
   it.effect(
     'appears during preparation, starts the wave on a click, then goes away',
     () => {
-      const startWaveButton = Scene.role('button', { name: 'Start wave 1 now' })
+      const startWaveButton = Scene.role('button', {
+        name: 'Start wave 1 now',
+      })
       return Scene.scene(
         APPLICATION,
         Scene.given(asVeteran(initialModel)),
@@ -215,15 +215,25 @@ describe('Shop', () => {
     ),
   ]
 
+  // NOTE: the stall with the Barn Buster from a case in hand.
+  const withShotgun = (base: Model): Model =>
+    modifyFocus(base, {
+      player: player =>
+        modifyFields(player, {
+          arsenal: () =>
+            holdingSecond({ kind: 'Shotgun', loaded: 6, tier: 0, kills: 0 }),
+        }),
+    })
+
   it.effect(
     'prices and the balance show a coin and read as plain dollars',
     () => {
-      const shotgunPrice = Scene.within(
-        shotgunButton,
+      const heartPrice = Scene.within(
+        heartButton,
         Scene.selector('.shop-item-price'),
       )
-      const smgReason = Scene.within(
-        smgButton,
+      const plankReason = Scene.within(
+        Scene.role('button', { name: 'Buy Plank Pile for $95' }),
         Scene.selector('.shop-item-reason'),
       )
       return Scene.scene(
@@ -244,30 +254,36 @@ describe('Shop', () => {
             Scene.selector('.coin-icon'),
           ),
         ).toHaveAttr('aria-hidden', 'true'),
-        Scene.expect(shotgunPrice).toHaveText('$35'),
+        Scene.keydown(gunsTab, 'ArrowRight'),
+        resolveFocusTab,
+        Scene.expect(heartPrice).toHaveText('$25'),
         Scene.expect(
-          Scene.within(shotgunPrice, Scene.selector('.coin-icon')),
+          Scene.within(heartPrice, Scene.selector('.coin-icon')),
         ).toHaveAttr('aria-hidden', 'true'),
         Scene.expect(
-          Scene.within(shotgunPrice, Scene.selector('.sr-only')),
+          Scene.within(heartPrice, Scene.selector('.sr-only')),
         ).toHaveText('$'),
-        Scene.expect(smgReason).toHaveText('Need $30 more'),
+        Scene.click(trapsTab),
+        resolveFocusTab,
+        Scene.expect(plankReason).toHaveText('Need $25 more'),
         Scene.expect(
-          Scene.within(smgReason, Scene.selector('.coin-icon')),
+          Scene.within(plankReason, Scene.selector('.coin-icon')),
         ).toExist(),
       )
     },
   )
 
   it.effect(
-    'opens on the Guns tab, buys with the keyboard and a click, switches tabs, and closes',
+    'opens on the Guns tab with no gun for sale, buys a heart, switches tabs, and closes',
     () =>
       Scene.scene(
         APPLICATION,
         Scene.given(
-          modifyFocus(atStall, {
-            wallet: () => ({ balance: 70, earned: 70, shown: 70 }),
-          }),
+          withShotgun(
+            modifyFocus(atStall, {
+              wallet: () => ({ balance: 70, earned: 70, shown: 70 }),
+            }),
+          ),
         ),
         measureSurface,
         Scene.expect(
@@ -279,34 +295,23 @@ describe('Shop', () => {
         ).toExist(),
         Scene.expect(Scene.text('You have $70')).toExist(),
         Scene.expect(gunsTab).toHaveAttr('aria-selected', 'true'),
-        Scene.expect(smgButton).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(Scene.text('Need $30 more')).toExist(),
-        Scene.keydown(shotgunButton, 'ArrowDown'),
-        Scene.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
-        Scene.keydown(smgButton, 'Enter'),
-        Scene.expect(Scene.text('You have $70')).toExist(),
-        Scene.keydown(smgButton, 'ArrowUp'),
-        Scene.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
-        Scene.keydown(shotgunButton, 'Enter'),
-        Scene.Command.resolve(
-          FocusItem({ item: 'Smg' }),
-          ShopMessage.CompletedFocusItem(),
-        ),
-        Scene.expect(Scene.text('You have $35')).toExist(),
         Scene.expect(shotgunButton).toBeAbsent(),
+        Scene.expect(smgButton).toBeAbsent(),
         Scene.expect(Scene.role('heading', { name: 'Barn Buster' })).toExist(),
-        Scene.expect(Scene.text('OWNED')).toExist(),
         Scene.expect(
           Scene.text(
             '6 loaded, shells never run out. 0 kills, 40 more to Beefy Barn Buster',
           ),
         ).toExist(),
         Scene.expect(Scene.role('img', { name: 'Tier 0 of 3' })).toExist(),
+        Scene.expect(
+          Scene.selector('[data-verdict="refused"] #shop-item-LaserSight'),
+        ).toExist(),
         Scene.keydown(gunsTab, 'ArrowRight'),
         resolveFocusTab,
         Scene.expect(healthTab).toHaveAttr('aria-selected', 'true'),
         Scene.click(heartButton),
-        Scene.expect(Scene.text('You have $10')).toExist(),
+        Scene.expect(Scene.text('You have $45')).toExist(),
         Scene.expect(Scene.text('Hearts 4 of 5')).toExist(),
         ...leaveShop(),
         Scene.expect(
@@ -350,7 +355,7 @@ describe('Shop', () => {
         Scene.text(
           'Replaces your Beefy Chatterbox, and its kills and level go with it',
         ),
-      ).toExist(),
+      ).toBeAbsent(),
     ),
   )
 
@@ -398,7 +403,7 @@ describe('Shop', () => {
         measureSurface,
         ...openShop(),
         Scene.expect(
-          Scene.role('tab', { name: 'Guns, 1 you can buy' }),
+          Scene.role('tab', { name: 'Guns, nothing you can buy' }),
         ).toExist(),
         Scene.expect(
           Scene.role('tab', { name: 'Health, 1 you can buy' }),
@@ -406,18 +411,13 @@ describe('Shop', () => {
         Scene.expect(
           Scene.role('tab', { name: 'Traps, nothing you can buy' }),
         ).toExist(),
-        Scene.expect(Scene.text('2 things you can buy now')).toExist(),
+        Scene.expect(Scene.text('1 thing you can buy now')).toExist(),
         Scene.expect(
-          Scene.selector('[data-verdict="available"] #shop-item-Shotgun'),
+          Scene.selector('[data-verdict="refused"] #shop-item-LaserSight'),
         ).toExist(),
-        Scene.expect(
-          Scene.selector('[data-verdict="refused"] #shop-item-Smg'),
-        ).toExist(),
-        Scene.click(shotgunButton),
-        Scene.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
-        Scene.expect(
-          Scene.role('tab', { name: 'Guns, nothing you can buy' }),
-        ).toExist(),
+        Scene.keydown(gunsTab, 'ArrowRight'),
+        resolveFocusTab,
+        Scene.click(heartButton),
         Scene.expect(
           Scene.role('tab', { name: 'Health, nothing you can buy' }),
         ).toExist(),
@@ -531,7 +531,9 @@ describe('Place button', () => {
     'places the selected trap on a tap, and NEXT switches the kind',
     () => {
       const plankButton = Scene.role('button', { name: 'Place a Plank Pile' })
-      const gnomeButton = Scene.role('button', { name: 'Place a Grumpy Gnome' })
+      const gnomeButton = Scene.role('button', {
+        name: 'Place a Grumpy Gnome',
+      })
       return Scene.scene(
         APPLICATION,
         Scene.given(atNorthDoor),

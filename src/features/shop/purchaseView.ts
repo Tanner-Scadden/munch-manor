@@ -20,6 +20,7 @@ import {
 import { gunIcon } from '../../art/sprites/guns'
 import { type Camera, worldToView } from '../../render/camera'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
+import { featLockShapes } from '../../render/featLockView'
 import {
   FLAME_ICON,
   PERK_ICONS,
@@ -27,9 +28,8 @@ import {
 } from '../../render/kitchenGearView'
 import { FRIDGE_RULES } from '../../world/fridge/leftovers'
 import { hasPan, maybeReplacedGun } from '../../world/gear/weapons'
-import { stovePriceFor } from '../../world/heroes/calling'
-import { VALVE_RULES } from '../../world/kitchen/gasValve'
-import { STOVE_RULES, maybeStovePerk } from '../../world/kitchen/stove'
+import { maybeValveLock } from '../../world/kitchen/gasValve'
+import { maybeStoveLock, maybeStovePerk } from '../../world/kitchen/stove'
 import { EXIT_RULES } from '../../world/level/exits'
 import { focusOf, focusSlotOf } from '../../world/party/party'
 import {
@@ -169,43 +169,25 @@ const TAKE_TAG = bakeTag(bakeText('TAKE', 'Prompt'))
 // (src/world/run/tutorialRules.ts), so their tags say FREE.
 const FREE_TAG = bakeTag(bakeText('FREE', 'Title'))
 
-// NOTE: the stove's tag leads with the perk it offers this break, one tag
-// for each perk at each price (the Line Cook's too), all baked as the
-// module loads.
-const STOVE_PRICES: Array.NonEmptyReadonlyArray<number> = Array.union(
-  STOVE_RULES.prices,
-  Array.map(STOVE_RULES.prices, price => stovePriceFor('LineCook', price)),
-)
-
-const stoveTagsOf = (perk: GunPerk): Array.NonEmptyReadonlyArray<PriceTag> =>
-  Array.map(STOVE_PRICES, price =>
-    bakeTag(
-      bakeText(`$${price}`, 'Coin'),
-      Option.some({ sprite: PERK_ICONS[perk], width: PERK_ICON_SIZE }),
-    ),
+// NOTE: the stove and the valve are earned by feats, not bought
+// (src/world/feats/feats.ts), so their tags say GO beside what they give:
+// the stove's perk this break, or the valve's flame.
+const goTag = (icon: Sprite): PriceTag =>
+  bakeTag(
+    bakeText('GO', 'Prompt'),
+    Option.some({ sprite: icon, width: PERK_ICON_SIZE }),
   )
 
-const STOVE_TAGS: Readonly<
-  Record<GunPerk, Array.NonEmptyReadonlyArray<PriceTag>>
-> = {
-  Spicy: stoveTagsOf('Spicy'),
-  Crispy: stoveTagsOf('Crispy'),
-  Hearty: stoveTagsOf('Hearty'),
+const STOVE_TAGS: Readonly<Record<GunPerk, PriceTag>> = {
+  Spicy: goTag(PERK_ICONS.Spicy),
+  Crispy: goTag(PERK_ICONS.Crispy),
+  Hearty: goTag(PERK_ICONS.Hearty),
 }
 
-const stoveTagOf = (model: Model, offer: Offer): PriceTag => {
-  const tags =
-    STOVE_TAGS[Option.getOrElse(maybeStovePerk(model), (): GunPerk => 'Spicy')]
-  return Option.getOrElse(
-    Array.get(tags, STOVE_PRICES.indexOf(offer.price)),
-    () => tags[0],
-  )
-}
+const stoveTagOf = (model: Model): PriceTag =>
+  STOVE_TAGS[Option.getOrElse(maybeStovePerk(model), (): GunPerk => 'Spicy')]
 
-const VALVE_TAG = bakeTag(
-  bakeText(`$${VALVE_RULES.price}`, 'Coin'),
-  Option.some({ sprite: FLAME_ICON, width: PERK_ICON_SIZE }),
-)
+const VALVE_TAG = goTag(FLAME_ICON)
 
 const tagOf = (model: Model, offer: Offer): PriceTag =>
   Purchasable.match(offer.target, {
@@ -217,8 +199,9 @@ const tagOf = (model: Model, offer: Offer): PriceTag =>
           ? FRIDGE_FIRST_TAG
           : FRIDGE_TAG,
     Prize: () => TAKE_TAG,
-    Stove: () => stoveTagOf(model, offer),
+    Stove: () => stoveTagOf(model),
     Valve: () => VALVE_TAG,
+    Case: () => TAKE_TAG,
   })
 
 // THE PROMPT
@@ -360,6 +343,7 @@ const placedOffer = (offer: Offer, tag: PriceTag): Offer =>
     Fridge: () => offer,
     Stove: () => offer,
     Valve: () => offer,
+    Case: () => offer,
     Prize: () => ({
       ...offer,
       spot: {
@@ -487,17 +471,36 @@ const isTagInView =
     )
   }
 
+// NOTE: the stove and the valve, until the player has done their feats,
+// hang a feat's lock (src/render/featLockView.ts) where their tag will.
+const LOCK_DROP_PX = 6
+
+const lockShapes = (model: Model): ReadonlyArray<Canvas.Shape> =>
+  Array.flatMap(
+    Array.getSomes([
+      maybeStoveLock(model, focusSlotOf(model)),
+      maybeValveLock(model, focusSlotOf(model)),
+    ]),
+    ({ feat, spot }) =>
+      featLockShapes(feat, focusOf(model), {
+        x: spot.x,
+        y: spot.y + LOCK_DROP_PX,
+      }),
+  )
+
 const purchaseShapes = (
   model: Model,
   camera: Camera,
-): ReadonlyArray<Canvas.Shape> =>
-  Array.flatMap(
+): ReadonlyArray<Canvas.Shape> => [
+  ...lockShapes(model),
+  ...Array.flatMap(
     Array.filter(
       offersOf(model, focusSlotOf(model)),
       isTagInView(model, camera),
     ),
     offerShapes(model, maybeOfferInReach(model, focusSlotOf(model))),
-  )
+  ),
+]
 
 // NOTE: drawn on the overlay, over the actors and the HUD strip, placed
 // in the world by the screen camera, so a tag is never lost behind a

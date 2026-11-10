@@ -3,7 +3,6 @@
 // src/features/shop/__tests__/shopDialog.story.test.ts start from it.
 
 import { Function, Option } from 'effect'
-import { Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import {
@@ -11,7 +10,6 @@ import {
   type CarriedGun,
   type Model,
   Phase,
-  type ShopItemId,
   ShopState,
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
@@ -25,8 +23,6 @@ import { holdingSecond, showDialog } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { magazineOf } from '../../../world/gear/weapons'
 import { modifyFocus } from '../../../world/party/party'
-import { Message as ShopMessage } from '../message'
-import { FocusItem } from '../steps'
 
 export const SHOP_FRAME_MS = 50
 export const FRAMES_TO_STALL = 3
@@ -66,20 +62,8 @@ export const withMoney: {
 
 export const browsing = (base: Model): Model =>
   modifyFocus(modifyFields(base, { phase: () => preparing(2) }), {
-    shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+    shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
   })
-
-export const resolveFocusShopItem = Story.Command.resolve(
-  FocusItem,
-  ShopMessage.CompletedFocusItem(),
-)
-
-export const focusedOn: {
-  (item: ShopItemId): (base: Model) => Model
-  (base: Model, item: ShopItemId): Model
-} = Function.dual(2, (base: Model, item: ShopItemId): Model =>
-  modifyFocus(base, { shop: () => ShopState.Browsing({ focusedItem: item }) }),
-)
 
 export const withHp: {
   (hp: number): (base: Model) => Model

@@ -76,6 +76,7 @@ import {
   ShareStatsSetting,
   SoundSetting,
 } from '../shared/playerData'
+import { rollCases } from '../world/feats/cases'
 import { noRank } from '../world/heroes/rank'
 import { startingLevel } from '../world/level/arena'
 import { soloState } from '../world/party/party'
@@ -299,6 +300,7 @@ export const initialModel: OwnModel = {
   pantry: barePantry,
   stove: freshStove(DEFAULT_SEED),
   gasValve: shutValve,
+  cases: rollCases(DEFAULT_SEED, 'Normal'),
   shopChatter: ShopChatter.Greeting(),
   elapsedMs: 0,
   frameEvents: [],

@@ -1,6 +1,7 @@
 import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
+import { caseOffers, takeCase } from '../feats/cases'
 import { fridgeOffers, pullFridge, takePrize } from '../fridge/leftovers'
 import { buyValve, valveOffers } from '../kitchen/gasValve'
 import { STOVE_RULES, cookGun, stoveOffers } from '../kitchen/stove'
@@ -78,7 +79,8 @@ export const offersOf: {
   ...exitOffers(world),
   ...fridgeOffers(world, slot),
   ...stoveOffers(world, slot),
-  ...valveOffers(world),
+  ...valveOffers(world, slot),
+  ...caseOffers(world, slot),
 ])
 
 const buy = (
@@ -92,6 +94,7 @@ const buy = (
     Prize: () => takePrize(world, slot),
     Stove: () => cookGun(world, slot, offer.price),
     Valve: () => buyValve(world, slot, offer.price),
+    Case: ({ id }) => takeCase(world, slot, id),
   })
 
 export const isSamePurchasable: {
@@ -104,6 +107,7 @@ export const isSamePurchasable: {
     Prize: () => second._tag === 'Prize',
     Stove: () => second._tag === 'Stove',
     Valve: () => second._tag === 'Valve',
+    Case: ({ id }) => second._tag === 'Case' && second.id === id,
   }),
 )
 

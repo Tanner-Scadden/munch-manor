@@ -132,6 +132,7 @@ const eventTrauma = (event: GameEvent): number =>
     FridgeOpened: () => FRIDGE_OPEN_TRAUMA,
     FridgeSlammed: () => FRIDGE_SLAM_TRAUMA,
     PrizeTaken: () => 0,
+    CaseOpened: () => SHAKE_TRAUMA_GRAB,
     PrizeLeft: () => 0,
     DudBurped: () => 0,
     PantryTaken: () => 0,
@@ -330,6 +331,7 @@ const eventPopups =
       FridgeOpened: () => noPopups(state),
       FridgeSlammed: () => noPopups(state),
       PrizeTaken: () => noPopups(state),
+      CaseOpened: () => noPopups(state),
       PrizeLeft: () => noPopups(state),
       DudBurped: () => noPopups(state),
       PantryTaken: ({ x, y, cash }) =>

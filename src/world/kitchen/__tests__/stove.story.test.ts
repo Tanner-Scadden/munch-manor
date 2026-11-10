@@ -19,6 +19,7 @@ import {
   PISTOL_MAGAZINE,
   PISTOL_RELOAD_MS,
 } from '../../../shared/constants'
+import type { Calling } from '../../../shared/playerData'
 import { nextRandom } from '../../../shared/prng'
 import {
   DISTANT_SPAWN,
@@ -28,6 +29,7 @@ import {
   freshRunModel,
   fridgeSeededFor,
   kitchenBreak,
+  withFeatsOf,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -52,10 +54,11 @@ import {
 import { focusOf, focusSlotOf, modifyFocus } from '../../party/party'
 import { Arsenal } from '../../schema/worldSchema'
 import { offersOf } from '../../shop/purchase'
-import { STOVE_RULES, rollStove } from '../stove'
+import { STOVE_RULES, maybeStoveLock, rollStove } from '../stove'
 
 // The kitchen's stove bench (src/world/kitchen/stove.ts): a perk cooked into the gun in
-// hand, one a break, at a price that climbs, and what each perk does.
+// hand, one a break, free once its feat (kitchen kills) is done, and what
+// each perk does.
 
 const FRAME_MS = FIXED_STEP_MS
 
@@ -156,7 +159,7 @@ describe('the stove rolls its perk', () => {
 
 describe('cooking a gun', () => {
   it.effect(
-    'holding Enter at the stove for a second pays and cooks the perk into the gun in hand',
+    'holding Enter at the stove for a second cooks the perk into the gun in hand, free',
     () =>
       Story.story(
         APPLICATION,
@@ -173,24 +176,59 @@ describe('cooking a gun', () => {
         release('Enter'),
         Story.model(current => {
           expect(heldPerk(current)).toEqual(Option.some('Crispy'))
-          expect(focusOf(current).wallet.balance).toBe(
-            500 - STOVE_RULES.prices[0],
-          )
+          expect(focusOf(current).wallet.balance).toBe(500)
           expect(focusOf(current).cooking).toEqual({ cooks: 1, lastWave: 5 })
           expect(current.stats.purchases).toBe(1)
         }),
       ),
   )
 
-  test('the price climbs with each cook: $90, $180, then $300 for good', () => {
-    const priceAt = (cooks: number): number =>
-      Option.getOrThrow(
-        stoveOffer(withCooking(rollStove(atStove(1000)), cooks)),
-      ).price
-    expect(Array.map([0, 1, 2, 3, 6], priceAt)).toEqual([
-      90, 180, 300, 300, 300,
-    ])
+  test('the stove waits for its feat: 15 kitchen kills, half for the Line Cook', () => {
+    const killsOf = (kills: number, calling: Calling): Model =>
+      modifyFocus(
+        withFeatsOf(rollStove(atStove(0)), tally =>
+          modifyFields(tally, { kitchenKills: () => kills }),
+        ),
+        {
+          player: player => modifyFields(player, { calling: () => calling }),
+        },
+      )
+    const isOffered = (model: Model): boolean =>
+      Option.isSome(stoveOffer(model))
+    const isLocked = (model: Model): boolean =>
+      Option.isSome(maybeStoveLock(model, focusSlotOf(model)))
+    expect(isOffered(killsOf(STOVE_RULES.kitchenKills - 1, 'You'))).toBe(false)
+    expect(isLocked(killsOf(STOVE_RULES.kitchenKills - 1, 'You'))).toBe(true)
+    expect(isOffered(killsOf(STOVE_RULES.kitchenKills, 'You'))).toBe(true)
+    expect(isLocked(killsOf(STOVE_RULES.kitchenKills, 'You'))).toBe(false)
+    expect(isOffered(killsOf(8, 'LineCook'))).toBe(true)
+    expect(isOffered(killsOf(7, 'LineCook'))).toBe(false)
+    expect(
+      Option.map(stoveOffer(killsOf(15, 'You')), ({ price }) => price),
+    ).toEqual(Option.some(0))
   })
+
+  it.effect('a wave beginning starts the kitchen kills again', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(atStove(0), {
+          phase: () =>
+            Phase.Preparation({
+              wave: 5,
+              remainingMs: FRAME_MS,
+              durationMs: 120_000,
+              spawns: [DISTANT_SPAWN],
+            }),
+        }),
+      ),
+      ...ticks(3, FRAME_MS),
+      Story.model(current => {
+        expect(current.phase._tag).toBe('Wave')
+        expect(focusOf(current).feats.kitchenKills).toBe(0)
+      }),
+    ),
+  )
 
   it.effect(
     'one cook a break: once cooked the stove offers nothing more until the next break',
@@ -206,9 +244,6 @@ describe('cooking a gun', () => {
           }),
           ...cook,
           Story.model(current => {
-            expect(focusOf(current).wallet.balance).toBe(
-              1000 - STOVE_RULES.prices[0],
-            )
             expect(focusOf(current).cooking.cooks).toBe(1)
           }),
         )
@@ -219,9 +254,7 @@ describe('cooking a gun', () => {
             5,
           ),
         )
-        expect(Option.map(stoveOffer(nextBreak), ({ price }) => price)).toEqual(
-          Option.some(STOVE_RULES.prices[1]),
-        )
+        expect(Option.isSome(stoveOffer(nextBreak))).toBe(true)
       }),
   )
 

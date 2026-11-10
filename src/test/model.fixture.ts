@@ -22,11 +22,12 @@ import { freshRun } from '../app/runReset'
 import { PLAYER_MAX_HP, PREPARATION_MS } from '../shared/constants'
 import { heroIdOf } from '../shared/playerData'
 import { nextRandom } from '../shared/prng'
+import { caseBoxOf } from '../world/feats/cases'
 import { fridgeBoxOf, pickPrize, prizeWeights } from '../world/fridge/leftovers'
 import { CALLINGS, isCallingUnlocked } from '../world/heroes/calling'
 import { grantedVeteran } from '../world/heroes/rank'
-import { valveBoxOf } from '../world/kitchen/gasValve'
-import { stoveBoxOf } from '../world/kitchen/stove'
+import { VALVE_RULES, valveBoxOf } from '../world/kitchen/gasValve'
+import { STOVE_RULES, stoveBoxOf } from '../world/kitchen/stove'
 import {
   LEVEL_SPECS,
   type Level,
@@ -50,6 +51,10 @@ import { biteGraceScale } from '../world/run/difficulty'
 import { type World, modifyWorldFields, withWorld } from '../world/schema/world'
 import {
   type Arsenal,
+  type CasePrize,
+  CaseState,
+  Feat,
+  type FeatTally,
   Invulnerability,
   type Life,
   type Pickup,
@@ -578,8 +583,22 @@ const AT_STOVE = {
   y: stoveBox.bottom + 8,
 }
 
+// NOTE: a player whose tally has done `feat`'s count already, so what it
+// opens (src/world/feats/feats.ts) is theirs.
+export const withFeatsOf: {
+  (change: (tally: FeatTally) => FeatTally): (model: Model) => Model
+  (model: Model, change: (tally: FeatTally) => FeatTally): Model
+} = Function.dual(
+  2,
+  (model: Model, change: (tally: FeatTally) => FeatTally): Model =>
+    modifyFocus(model, { feats: change }),
+)
+
+// NOTE: at the stove in a break, its feat (kitchen kills last wave) done.
 export const atStove = (balance: number): Model =>
-  inKitchen(AT_STOVE, balance, kitchenBreak(5))
+  withFeatsOf(inKitchen(AT_STOVE, balance, kitchenBreak(5)), tally =>
+    modifyFields(tally, { kitchenKills: () => STOVE_RULES.kitchenKills }),
+  )
 
 const valveBox = Option.getOrThrow(
   valveBoxOf(levelOf({ level: openExitIn(startingLevel, KITCHEN_EXIT) })),
@@ -594,5 +613,61 @@ export const atValve: {
   (phase: Phase): (balance: number) => Model
   (balance: number, phase: Phase): Model
 } = Function.dual(2, (balance: number, phase: Phase): Model =>
-  inKitchen(AT_VALVE, balance, phase),
+  withFeatsOf(inKitchen(AT_VALVE, balance, phase), tally =>
+    modifyFields(tally, { kitchenStandKills: () => VALVE_RULES.standKills }),
+  ),
+)
+
+// DISPLAY CASES
+
+const firstCaseBox = caseBoxOf({
+  id: 0,
+  spot: 0,
+  prize: 'Shotgun',
+  feat: Feat.Kills({ count: 1 }),
+  state: CaseState.Locked(),
+})
+
+// NOTE: on the floor just below the first case spot, within its reach.
+export const AT_CASE = {
+  x: (firstCaseBox.left + firstCaseBox.right) / 2,
+  y: firstCaseBox.bottom + 8,
+}
+
+// NOTE: one case at the first spot holding `prize`, its feat `feat`, in
+// `state`, with the player standing at it; the run's other cases gone.
+export const atCase: {
+  (prize: CasePrize, state: CaseState, feat?: Feat): (model: Model) => Model
+  (model: Model, prize: CasePrize, state: CaseState, feat?: Feat): Model
+} = Function.dual(
+  // NOTE: data-first starts with the Model; data-last with the prize, a string.
+  (args: IArguments) => typeof args[0] !== 'string',
+  (
+    model: Model,
+    prize: CasePrize,
+    state: CaseState,
+    feat: Feat = Feat.Kills({ count: 1 }),
+  ): Model =>
+    modifyFocus(
+      modifyFields(model, {
+        cases: () => [{ id: 0, spot: 0, prize, feat, state }],
+      }),
+      {
+        player: player =>
+          modifyFields(player, { x: () => AT_CASE.x, y: () => AT_CASE.y }),
+      },
+    ),
+)
+
+// NOTE: at the first case in a break, opened for the player, holding
+// `prize`.
+export const atOpenedCase: {
+  (prize: CasePrize): (model: Model) => Model
+  (model: Model, prize: CasePrize): Model
+} = Function.dual(2, (model: Model, prize: CasePrize): Model =>
+  atCase(
+    modifyFields(model, { phase: () => kitchenBreak(2) }),
+    prize,
+    CaseState.Opened({ by: focusSlotOf(model) }),
+  ),
 )

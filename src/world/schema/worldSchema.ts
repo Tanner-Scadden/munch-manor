@@ -58,6 +58,36 @@ export {
 } from '../../shared/playerData'
 export * from './entitySchema'
 
+// NOTE: what a kill was made with, for the feats (src/world/feats/feats.ts):
+// every gun (the Peashooter is a gnome's), the knife, and the parlour's fire
+// the gas valve lights.
+export const Armament = Schema.Literals([
+  'Pistol',
+  'Shotgun',
+  'Smg',
+  'Peashooter',
+  'Cooker',
+  'Pan',
+  'Freeze',
+  'Knife',
+  'Fire',
+])
+export type Armament = typeof Armament.Type
+
+// NOTE: what made a kill, as its ZombieKilled event says: one of the
+// armaments a player holds, a Kaboomer's blast, or something no player
+// aimed (a trap, an oven, a shatter).
+export const KillSource = Schema.Literals([
+  ...Armament.literals,
+  'Blast',
+  'Other',
+])
+export type KillSource = typeof KillSource.Type
+
+// NOTE: what a display case holds (src/world/feats/cases.ts).
+export const CasePrize = Schema.Literals(['Shotgun', 'Smg', 'LaserSight'])
+export type CasePrize = typeof CasePrize.Type
+
 // NOTE: a shot names the seat that fired it (a PlayerSlot), so a co-op
 // client can tell its own shots, which it predicts, from the room's; a
 // trap's shot names none.
@@ -83,6 +113,8 @@ export const GameEvent = defineTaggedUnion({
     direction: Heading,
     bounty: Schema.Finite,
     kind: ZombieKind,
+    maybeKiller: Schema.Option(Schema.Finite),
+    source: KillSource,
   },
   Exploded: { x: PositionNumber, y: PositionNumber, radius: Schema.Finite },
   Footfall: {
@@ -197,6 +229,14 @@ export const GameEvent = defineTaggedUnion({
     weapon: WeaponKind,
     tier: Schema.Finite,
   },
+  // NOTE: a display case sprang open for the seat that finished its feat
+  // (src/world/feats/cases.ts), at the case.
+  CaseOpened: {
+    x: PositionNumber,
+    y: PositionNumber,
+    prize: CasePrize,
+    opener: Schema.Finite,
+  },
 })
 export type GameEvent = typeof GameEvent.Type
 export type GunLeveled = typeof GameEvent.GunLeveled.Type
@@ -280,6 +320,85 @@ export const KillCounts = Schema.Struct({
   Boss: Schema.Finite,
 })
 export type KillCounts = typeof KillCounts.Type
+
+// FEATS
+
+const ArmamentCounts = Schema.Struct({
+  Pistol: Schema.Finite,
+  Shotgun: Schema.Finite,
+  Smg: Schema.Finite,
+  Peashooter: Schema.Finite,
+  Cooker: Schema.Finite,
+  Pan: Schema.Finite,
+  Freeze: Schema.Finite,
+  Knife: Schema.Finite,
+  Fire: Schema.Finite,
+})
+type ArmamentCounts = typeof ArmamentCounts.Type
+
+// NOTE: a feat, something one player does this run that opens a display
+// case, the stove, or the gas valve (src/world/feats/feats.ts). Kill counts,
+// skill (a wave with no hit taken, a streak of kills with no hit between,
+// zombies a Kaboomer's blast takes with it), exploring (rooms opened, the
+// fireplace lit, keys from marked zombies), and a thing delivered to a case.
+// KitchenKills counts since the last wave began, the rest the whole run.
+export const Feat = defineTaggedUnion({
+  Kills: { count: Schema.Finite },
+  KillsWith: { armament: Armament, count: Schema.Finite },
+  KillsOf: { kind: ZombieKind, count: Schema.Finite },
+  NoHitWave: { count: Schema.Finite },
+  Streak: { count: Schema.Finite },
+  OwnBlast: { count: Schema.Finite },
+  OpenedRoom: { count: Schema.Finite },
+  LitFire: {},
+  KeyFromMarked: { count: Schema.Finite },
+  Delivered: { count: Schema.Finite },
+  KitchenKills: { count: Schema.Finite },
+  KitchenStandKills: { count: Schema.Finite },
+})
+export type Feat = typeof Feat.Type
+
+// NOTE: one player's counts toward every feat, kept on their seat so a
+// co-op room and its players agree. `hurtThisWave` and `kitchenKills` start
+// again as each wave begins; `streak` as the player is hurt.
+export const FeatTally = Schema.Struct({
+  kills: Schema.Finite,
+  killsWith: ArmamentCounts,
+  killsOf: KillCounts,
+  cleanWaves: Schema.Finite,
+  streak: Schema.Finite,
+  bestStreak: Schema.Finite,
+  blastKills: Schema.Finite,
+  roomsOpened: Schema.Finite,
+  firesLit: Schema.Finite,
+  markedKeys: Schema.Finite,
+  delivered: Schema.Finite,
+  kitchenKills: Schema.Finite,
+  kitchenStandKills: Schema.Finite,
+  hurtThisWave: Schema.Boolean,
+})
+export type FeatTally = typeof FeatTally.Type
+
+// NOTE: a Locked case's progress is each seat's own tally toward its feat;
+// Opened waits for the seat that finished it to take the prize; Emptied is
+// taken.
+export const CaseState = defineTaggedUnion({
+  Locked: {},
+  Opened: { by: Schema.Finite },
+  Emptied: { by: Schema.Finite },
+})
+export type CaseState = typeof CaseState.Type
+
+// NOTE: `spot` indexes the hand-picked case spots (CASE_SPOTS in
+// src/world/feats/cases.ts); `id` keys it on the co-op wire.
+export const DisplayCase = Schema.Struct({
+  id: Schema.Finite,
+  spot: Schema.Finite,
+  prize: CasePrize,
+  feat: Feat,
+  state: CaseState,
+})
+export type DisplayCase = typeof DisplayCase.Type
 
 export const PlannedSpawn = Schema.Struct({
   atMs: MillisNumber,
@@ -483,6 +602,7 @@ export const Purchasable = defineTaggedUnion({
   Prize: {},
   Stove: {},
   Valve: {},
+  Case: { id: Schema.Finite },
 })
 export type Purchasable = typeof Purchasable.Type
 
@@ -698,6 +818,7 @@ export const SeatState = Schema.Struct({
   laserSight: LaserSight,
   purchase: Purchase,
   cooking: Cooking,
+  feats: FeatTally,
 })
 export type SeatState = typeof SeatState.Type
 
@@ -740,6 +861,7 @@ export const World = Schema.Struct({
   pantry: Pantry,
   stove: Stove,
   gasValve: GasValve,
+  cases: Schema.Array(DisplayCase),
   rngState: Schema.Finite,
   hitStop: HitStop,
   lessons: Lessons,
@@ -797,6 +919,35 @@ export const noKills: KillCounts = {
   Thrower: 0,
   Crawler: 0,
   Boss: 0,
+}
+
+const noArmamentKills: ArmamentCounts = {
+  Pistol: 0,
+  Shotgun: 0,
+  Smg: 0,
+  Peashooter: 0,
+  Cooker: 0,
+  Pan: 0,
+  Freeze: 0,
+  Knife: 0,
+  Fire: 0,
+}
+
+export const freshTally: FeatTally = {
+  kills: 0,
+  killsWith: noArmamentKills,
+  killsOf: noKills,
+  cleanWaves: 0,
+  streak: 0,
+  bestStreak: 0,
+  blastKills: 0,
+  roomsOpened: 0,
+  firesLit: 0,
+  markedKeys: 0,
+  delivered: 0,
+  kitchenKills: 0,
+  kitchenStandKills: 0,
+  hurtThisWave: false,
 }
 
 export const freshStats: RunStats = {

@@ -4,6 +4,7 @@ import type { Canvas } from 'foldkit'
 import type { Model } from '../../app/model'
 import { group } from '../../art/sprite'
 import { hatRiseOf } from '../../art/sprites/hatArt'
+import { caseDrawables } from '../../features/cases/caseView'
 import {
   chompShapes,
   fallenOf,
@@ -236,6 +237,7 @@ const standingDrawables = (
     ...mateDrawables(mates),
     ...fridgeDrawables(model),
     ...pantryDrawables(model),
+    ...caseDrawables(model),
   ]
 }
 

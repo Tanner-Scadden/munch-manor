@@ -11,11 +11,14 @@ import {
   atValve,
   freshRunModel,
   kitchenBreak,
+  withFeatsOf,
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
   HOLD_TICKS,
   holdEnter,
+  holdFireToward,
+  steppedWorld,
   ticks,
   zombieOf,
 } from '../../../test/testing'
@@ -27,11 +30,12 @@ import {
   seatCrew,
 } from '../../party/party'
 import { type World, withWorld } from '../../schema/world'
+import { freshTally } from '../../schema/worldSchema'
 import { offersOf } from '../../shop/purchase'
-import { stepWorld } from '../../step/stepWorld'
-import { VALVE_RULES, flameZoneOf } from '../gasValve'
+import { VALVE_RULES, flameZoneOf, maybeValveLock } from '../gasValve'
 
-// The kitchen's gas valve (src/world/kitchen/gasValve.ts): bought once with the hold to
+// The kitchen's gas valve (src/world/kitchen/gasValve.ts): freed by a feat
+// (kills made standing in the kitchen) and turned once with the hold to
 // buy, it lights the parlour's fireplace, which burns zombies on the floor
 // in front of it and never a player, and pays the player who turned it.
 
@@ -93,15 +97,15 @@ const hpOf = (world: World, id: number): number =>
     () => 0,
   )
 
-// NOTE: a co-op room never stops for hits, so its ticks burn on the clock.
-const stepped = (world: World, count: number): World =>
-  Array.reduce(
-    Array.makeBy(count, () => 0),
-    world,
-    current => stepWorld(current, new Map()).world,
-  )
-
 const BURN_TICKS = Math.ceil(VALVE_RULES.burnEveryMs / FRAME_MS)
+
+// NOTE: a spot in the kitchen a little west of the player at the valve.
+const AT_VALVE_SHOT = {
+  x: focusOf(atValve(0, midWave)).player.x - 30,
+  y: focusOf(atValve(0, midWave)).player.y,
+}
+
+const holdFireLeft = holdFireToward({ x: -1, y: 0 })
 
 describe('turning the gas valve', () => {
   test('the valve is in the kitchen: boarded up, nobody reaches it', () => {
@@ -114,36 +118,73 @@ describe('turning the gas valve', () => {
   })
 
   it.effect(
-    'holding Enter at the valve pays, lights the fireplace for good, and it is never sold again',
+    'holding Enter at the valve, its feat done, costs nothing and lights the fireplace for good',
     () =>
       Story.story(
         APPLICATION,
         Story.given(atValve(500, midWave)),
         ...turn,
         Story.model(current => {
-          expect(focusOf(current).wallet.balance).toBe(500 - VALVE_RULES.price)
+          expect(focusOf(current).wallet.balance).toBe(500)
           expect(
             GasValve.isAnyOf(['Lit'])(current.gasValve) &&
               current.gasValve.owner,
           ).toBe(focusSlotOf(current))
           expect(isValveOffered(current)).toBe(false)
-        }),
-        ...turn,
-        Story.model(current => {
-          expect(focusOf(current).wallet.balance).toBe(500 - VALVE_RULES.price)
-          expect(current.stats.purchases).toBe(1)
+          expect(focusOf(current).feats.firesLit).toBe(1)
         }),
       ),
   )
 
-  it.effect('short of the price, a press buys nothing', () =>
+  it.effect(
+    'short of its feat, the valve is locked and a press turns nothing',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          withFeatsOf(atValve(500, midWave), tally =>
+            modifyFields(tally, {
+              kitchenStandKills: () => VALVE_RULES.standKills - 1,
+            }),
+          ),
+        ),
+        Story.model(current => {
+          expect(isValveOffered(current)).toBe(false)
+          expect(
+            Option.isSome(maybeValveLock(current, focusSlotOf(current))),
+          ).toBe(true)
+        }),
+        ...turn,
+        Story.model(current => {
+          expect(GasValve.isAnyOf(['Shut'])(current.gasValve)).toBe(true)
+        }),
+      ),
+  )
+
+  it.effect('a kill made standing in the kitchen counts toward the valve', () =>
     Story.story(
       APPLICATION,
-      Story.given(atValve(VALVE_RULES.price - 1, midWave)),
-      ...turn,
+      Story.given(
+        withFeatsOf(
+          modifyFields(atValve(0, midWave), {
+            zombies: () => [
+              zombieOf('Shambler', 900, AT_VALVE_SHOT.x, AT_VALVE_SHOT.y, {
+                hp: 1,
+                speed: 0,
+              }),
+            ],
+          }),
+          () => freshTally,
+        ),
+      ),
       Story.model(current => {
-        expect(GasValve.isAnyOf(['Shut'])(current.gasValve)).toBe(true)
-        expect(focusOf(current).wallet.balance).toBe(VALVE_RULES.price - 1)
+        expect(focusOf(current).feats.kitchenStandKills).toBe(0)
+      }),
+      holdFireLeft,
+      ...ticks(20, FRAME_MS),
+      Story.model(current => {
+        expect(focusOf(current).feats.kitchenStandKills).toBe(1)
+        expect(focusOf(current).feats.kitchenKills).toBe(1)
       }),
     ),
   )
@@ -152,10 +193,10 @@ describe('turning the gas valve', () => {
 describe('the lit fireplace', () => {
   test('burns a zombie in front of the hearth 2 every 0.3 s, and not one outside', () => {
     const crew = withWorld(litWith(20), world => seatCrew(world, 2))
-    const once = withWorld(crew, world => stepped(world, BURN_TICKS + 1))
+    const once = withWorld(crew, world => steppedWorld(world, BURN_TICKS + 1))
     expect(hpOf(once, 900)).toBe(20 - VALVE_RULES.damage)
     expect(hpOf(once, 901)).toBe(20)
-    const later = withWorld(once, world => stepped(world, BURN_TICKS * 2))
+    const later = withWorld(once, world => steppedWorld(world, BURN_TICKS * 2))
     expect(hpOf(later, 900)).toBe(20 - VALVE_RULES.damage * 3)
     expect(hpOf(later, 901)).toBe(20)
   })
@@ -191,7 +232,7 @@ describe('the lit fireplace', () => {
     const crew = withWorld(litWith(VALVE_RULES.damage, 1), world =>
       seatCrew(world, 2),
     )
-    const burned = withWorld(crew, world => stepped(world, BURN_TICKS + 1))
+    const burned = withWorld(crew, world => steppedWorld(world, BURN_TICKS + 1))
     const owner = Option.getOrThrow(maybePlayerAt(burned, 1))
     const teammate = Option.getOrThrow(maybePlayerAt(burned, 0))
     expect(hpOf(burned, 900)).toBe(0)

@@ -295,7 +295,8 @@ export const SPECIAL_LINES = {
   shopOff: (percent: number): string => `Rattles ${percent}% off`,
   lessKillPay: (percent: number): string => `Kills pay ${percent}% less`,
   startsWithCooker: `Starts with ${GUN_NAMES.Cooker}`,
-  stoveOff: (percent: number): string => `Stove ${percent}% off`,
+  stoveFewerKills: (percent: number): string =>
+    `Stove at ${percent}% fewer kills`,
   noPistol: `No ${GUN_NAMES.Pistol}`,
   noSpecials: 'No specials',
 } as const

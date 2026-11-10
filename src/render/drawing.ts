@@ -2,7 +2,14 @@ import { Array, Function, Result, pipe } from 'effect'
 import { Canvas } from 'foldkit'
 
 import { GLYPH_HEIGHT, type TextTone, textShapes } from '../art/font'
-import { type Facing, type Palette, placeAt, spriteRects } from '../art/sprite'
+import {
+  type Facing,
+  type Palette,
+  type Sprite,
+  bakeShapes,
+  placeAt,
+  spriteRects,
+} from '../art/sprite'
 import { SHADOW_HEIGHT } from '../shared/constants'
 import type { Vector } from '../world/schema/entitySchema'
 import { clamp } from '../world/step/geometry'
@@ -57,6 +64,13 @@ export const rect: {
     fill: string,
   ): Canvas.Shape => Canvas.Rect({ x, y, width, height, fill }),
 )
+
+// NOTE: a small four-pointed glint that winks on something worth taking:
+// the pantry's goodie, a display case's prize.
+export const GLINT: Sprite = bakeShapes([
+  rect(0, -2, 1, 5, '#fff7d0'),
+  rect(-2, 0, 5, 1, '#fff7d0'),
+])
 
 export const centeredRect: {
   (

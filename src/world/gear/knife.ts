@@ -9,6 +9,7 @@ import {
   type PlayerSlot,
   ShopState,
 } from '../schema/worldSchema'
+import { creditKillEvents } from '../step/combat'
 import { isGrounded } from '../zombies/zombies'
 import { isInArc, maybeNearest, payStriker, strikeInMelee } from './melee'
 import { isWieldingKnife } from './weapons'
@@ -83,7 +84,10 @@ const stab = (world: World, slot: PlayerSlot): World => {
       y: player.y,
       direction: player.facing,
     }),
-    ...Option.match(outcome, { onNone: () => [], onSome: hit => hit.events }),
+    ...Option.match(outcome, {
+      onNone: () => [],
+      onSome: hit => creditKillEvents(hit.events, Option.some(slot), 'Knife'),
+    }),
   ]
   const stabbed = modifyFields(world, {
     zombies: zombies =>

@@ -136,7 +136,7 @@ describe('the wire packs numbers by their Schema', () => {
     ]
     // NOTE: a new lossy field shows up here. Name it on purpose.
     expect(hintTable(numbers)).toEqual({
-      Position: { count: 173, names: ['offset', 'remainingPx', 'x', 'y'] },
+      Position: { count: 175, names: ['offset', 'remainingPx', 'x', 'y'] },
       Velocity: {
         count: 7,
         names: ['knockback', 'velocityX', 'velocityY', 'x', 'y'],
@@ -186,6 +186,8 @@ describe('the wire packs numbers by their Schema', () => {
       direction: { x: 1, y: 0 },
       bounty: 2 ** 50 + 0.5,
       kind: 'Shambler',
+      maybeKiller: Option.none(),
+      source: 'Other',
     })
     const writer = makeWriter()
     writeEvent(writer, killed)
@@ -306,11 +308,12 @@ describe("the boss's charge on the wire", () => {
 // seat's `cooking`; protocol 20 dropped a gun's `rounds`, the ammo
 // window's tap, and RanDry (endless ammo), then added a gun's `kills` and
 // the GunLeveled event and dropped the upgrade items (guns level up with
-// kills). The wire must not change
+// kills), then added the run's display `cases`, each seat's `feats`, and a
+// kill's killer and source (display cases and feats). The wire must not change
 // without a protocol bump. A change to how the room plays moves the bytes
 // with no change to the wire, as zombies coming in promptly after their
 // warning did, and Normal's eased health and speed (2026-10-31) did.
-const GOLDEN_DIGEST = '60531:2927cde28bf6f6e8'
+const GOLDEN_DIGEST = '61424:9bf0f596aa347ce8'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

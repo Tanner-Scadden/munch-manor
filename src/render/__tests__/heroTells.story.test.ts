@@ -148,6 +148,8 @@ describe('the signature effects', () => {
                   direction: { x: 1, y: 0 },
                   bounty: 6,
                   kind: 'Shambler',
+                  maybeKiller: Option.none(),
+                  source: 'Other',
                 }),
               ]
             : [],

@@ -3,11 +3,10 @@ import { Scene } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect as expectValue, it } from '@effect/vitest'
-import { Dialog, DialogBlock } from '@foldkit/ui'
+import { Dialog, DialogBlock, Tabs } from '@foldkit/ui'
 
 import * as Coop from '../../domain/coopRoom'
-import { Message as ShopMessage } from '../../features/shop/message'
-import { FocusItem } from '../../features/shop/steps'
+import { ShopTabsBlock } from '../../features/shop/shopTabs'
 import { PREPARATION_MS } from '../../shared/constants'
 import { homeAfterRead } from '../../test/model.fixture'
 import {
@@ -144,10 +143,14 @@ describe('the shop dialog', () => {
           Scene.expect(Scene.selector('.shop-balance')).toHaveText(
             'You have $180',
           ),
-          Scene.click(Scene.selector('#shop-item-Shotgun')),
-          Scene.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
+          Scene.click(Scene.role('tab', { name: /^Health,/ })),
+          Scene.Command.resolve(
+            Tabs.test.FocusTab,
+            ShopTabsBlock.Message.CompletedFocusTab(),
+          ),
+          Scene.click(Scene.selector('#shop-item-Heart')),
           Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-            'You have $145',
+            'You have $155',
           ),
         ),
       ),
@@ -170,7 +173,7 @@ const OPEN_CASES: ReadonlyArray<OpenCase> = [
         shopDialog: shop => modifyFields(shop, { dialog: opened }),
       }),
       {
-        shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+        shop: () => ShopState.Browsing({ focusedItem: 'LaserSight' }),
       },
     ),
     opensDialog: true,

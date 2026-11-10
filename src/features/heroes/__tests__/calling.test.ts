@@ -24,7 +24,7 @@ import {
   speedScaleOf,
   startingGunKind,
   startsWithCooker,
-  stovePriceFor,
+  stoveKillsFor,
   woundGraceScaleOf,
 } from '../../../world/heroes/calling'
 import { playerOfCalling } from '../../../world/heroes/callingPlayer'
@@ -131,12 +131,11 @@ describe('the Line Cook', () => {
     expect(isPistolBarred('Handyman')).toBe(false)
   })
 
-  test('cooks at the stove for 25% less, to the nearest dollar', () => {
-    expect(stovePriceFor('LineCook', 90)).toBe(68)
-    expect(stovePriceFor('LineCook', 180)).toBe(135)
-    expect(stovePriceFor('LineCook', 300)).toBe(225)
-    expect(stovePriceFor('You', 90)).toBe(90)
-    expect(stovePriceFor('PennyPincher', 180)).toBe(180)
+  test('lights the stove after half the kitchen kills, rounded up', () => {
+    expect(stoveKillsFor('LineCook', 15)).toBe(8)
+    expect(stoveKillsFor('LineCook', 10)).toBe(5)
+    expect(stoveKillsFor('You', 15)).toBe(15)
+    expect(stoveKillsFor('PennyPincher', 15)).toBe(15)
   })
 })
 
@@ -191,12 +190,12 @@ describe('the specials as short lines', () => {
     ])
   })
 
-  test('the Line Cook starts with the Cooker, cooks for less, and has no Pop Pistol', () => {
+  test('the Line Cook starts with the Cooker, lights the stove sooner, and has no Pop Pistol', () => {
     expect(
       Array.map(specialsOf('LineCook'), ({ isPerk, line }) => [isPerk, line]),
     ).toEqual([
       [true, 'Starts with Pressure Cooker'],
-      [true, 'Stove 25% off'],
+      [true, 'Stove at 50% fewer kills'],
       [false, 'No Pop Pistol'],
     ])
   })

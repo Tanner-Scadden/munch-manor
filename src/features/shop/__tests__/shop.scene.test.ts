@@ -66,7 +66,7 @@ const holdingSmg = (tier: number, kills: number = 0): Arsenal =>
 
 const keeper = Scene.role('img', { name: /^Rattles the skeleton/ })
 const bubble = Scene.selector('.shop-greeting')
-const laserSight = Scene.selector('#shop-item-LaserSight')
+const gnome = Scene.selector('#shop-item-Turret')
 const heart = Scene.selector('#shop-item-Heart')
 
 describe('the shop at a glance', () => {
@@ -75,30 +75,34 @@ describe('the shop at a glance', () => {
     () =>
       Scene.scene(
         APPLICATION,
-        Scene.given(atStall(180, holdingSmg(1))),
+        Scene.given(
+          modifyFocus(atStall(100, holdingSmg(1)), {
+            shopCategory: () => 'Traps',
+          }),
+        ),
         measureSurface,
         ...walkIntoStallInScene(),
         Scene.expect(
-          Scene.selector('[data-stock="Short"] #shop-item-LaserSight'),
+          Scene.selector('[data-stock="Short"] #shop-item-Turret'),
         ).toExist(),
         Scene.expect(
-          Scene.within(laserSight, Scene.selector('.shop-tag')),
+          Scene.within(gnome, Scene.selector('.shop-tag')),
         ).toHaveClass('is-short'),
         Scene.expect(
-          Scene.within(laserSight, Scene.selector('.shop-tag')),
-        ).toHaveText('$400'),
+          Scene.within(gnome, Scene.selector('.shop-tag')),
+        ).toHaveText(`$${TRAPS.Turret.price}`),
         Scene.expect(
-          Scene.within(laserSight, Scene.selector('.shop-need')),
-        ).toHaveText('Need $220 more'),
+          Scene.within(gnome, Scene.selector('.shop-need')),
+        ).toHaveText(`Need $${TRAPS.Turret.price - 100} more`),
         Scene.expect(
-          Scene.within(laserSight, Scene.selector('.shop-need')),
+          Scene.within(gnome, Scene.selector('.shop-need')),
         ).not.toHaveClass('sr-only'),
         Scene.expect(
-          Scene.selector('[data-stock="Price"] #shop-item-Shotgun'),
+          Scene.selector('[data-stock="Price"] #shop-item-Barricade'),
         ).toExist(),
         Scene.expect(
           Scene.within(
-            Scene.selector('#shop-item-Shotgun'),
+            Scene.selector('#shop-item-Barricade'),
             Scene.selector('.shop-need'),
           ),
         ).toBeAbsent(),
@@ -154,20 +158,26 @@ describe('the shop at a glance', () => {
     () =>
       Scene.scene(
         APPLICATION,
-        Scene.given(atStall(350, holdingSmg(1))),
+        Scene.given(
+          modifyFocus(atStall(100, holdingSmg(1)), {
+            shopCategory: () => 'Traps',
+          }),
+        ),
         measureSurface,
         ...walkIntoStallInScene(),
         Scene.expect(keeper).toHaveAttr('data-mood', 'Grinning'),
         Scene.expect(Scene.selector('.shop-stamp')).toBeAbsent(),
-        Scene.keydown(laserSight, 'Enter'),
+        Scene.keydown(gnome, 'Enter'),
         Scene.expect(keeper).toHaveAttr('data-mood', 'Sad'),
-        Scene.expect(bubble).toHaveText('Need $50 more. No IOUs!'),
+        Scene.expect(bubble).toHaveText(
+          `Need $${TRAPS.Turret.price - 100} more. No IOUs!`,
+        ),
         Scene.expect(Scene.selector('.shop-stamp')).toBeAbsent(),
         Scene.expect(
-          Scene.within(laserSight, Scene.selector('.shop-nope')),
+          Scene.within(gnome, Scene.selector('.shop-nope')),
         ).toExist(),
         Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-          'You have $350',
+          'You have $100',
         ),
         Scene.click(Scene.role('tab', { name: /^Health,/ })),
         Scene.Command.resolve(
@@ -181,7 +191,7 @@ describe('the shop at a glance', () => {
           Scene.within(heart, Scene.selector('.shop-stamp')),
         ).toExist(),
         Scene.expect(Scene.selector('.shop-balance')).toHaveText(
-          'You have $325',
+          'You have $75',
         ),
       ),
   )

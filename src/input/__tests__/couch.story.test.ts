@@ -161,7 +161,7 @@ describe('player 2 on IJKL', () => {
       const shopping = atSeat(inBreak(run), 1, world =>
         modifyFocus(world, {
           wallet: wallet => modifyFields(wallet, { balance: () => 200 }),
-          shop: () => ShopState.Browsing({ focusedItem: 'Shotgun' }),
+          shop: () => ShopState.Browsing({ focusedItem: 'Barricade' }),
         }),
       )
       return yield* Story.story(
@@ -170,7 +170,7 @@ describe('player 2 on IJKL', () => {
         press('KeyU'),
         release('KeyU'),
         Story.model(current => {
-          expect(mateAt(current, 1).player.arsenal._tag).toBe('HoldingSecond')
+          expect(mateAt(current, 1).trapStock.Barricade).toBe(1)
           expect(mateAt(current, 1).wallet.balance).toBeLessThan(200)
           expect(focusOf(current).wallet.balance).toBe(0)
         }),

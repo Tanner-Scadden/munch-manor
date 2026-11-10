@@ -513,6 +513,8 @@ describe('game events', () => {
                 direction: RIGHT,
                 bounty: SHAMBLER_BOUNTY,
                 kind: 'Shambler',
+                maybeKiller: Option.none(),
+                source: 'Pistol',
               }),
             ),
           )
