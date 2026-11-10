@@ -71,6 +71,9 @@ const preparationOf = (current: Model) =>
     Option.liftPredicate(current.phase, Phase.guards.Preparation),
   )
 
+const inEndless = (model: Model): Model =>
+  modifyFields(model, { mode: () => RunMode.Endless() })
+
 describe('planning the boss', () => {
   test('only every tenth wave has a boss', () => {
     expect(FINAL_WAVE).toBe(BOSS_RULES.everyWaves)
@@ -82,12 +85,24 @@ describe('planning the boss', () => {
     ).toEqual([10, 20, 30])
   })
 
+  it.effect('an escape run never plans him by wave number', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(clearing(FINAL_WAVE - 1)),
+      tick(FRAME_MS),
+      Story.model(current => {
+        expect(preparationOf(current).wave).toBe(FINAL_WAVE)
+        expect(current.boss).toEqual(Boss.Absent())
+      }),
+    ),
+  )
+
   it.effect(
-    'clearing wave 9 plans a boss at a door that waits out two thirds of wave 10',
+    'in endless, clearing wave 9 plans a boss at a door that waits out two thirds of wave 10',
     () =>
       Story.story(
         APPLICATION,
-        Story.given(clearing(FINAL_WAVE - 1)),
+        Story.given(inEndless(clearing(FINAL_WAVE - 1))),
         tick(FRAME_MS),
         Story.model(current => {
           const preparation = preparationOf(current)
@@ -116,7 +131,7 @@ describe('planning the boss', () => {
       Story.story(
         APPLICATION,
         Story.given(
-          modifyFields(clearing(FINAL_WAVE - 1), {
+          modifyFields(inEndless(clearing(FINAL_WAVE - 1)), {
             difficulty: setting =>
               modifyFields(setting, { chosen: () => level }),
           }),
@@ -378,9 +393,9 @@ describe('the health bar', () => {
   )
 })
 
-describe('victory', () => {
+describe('a boss wave', () => {
   it.effect(
-    'waits while the boss is outside or standing, then comes once it falls',
+    'waits while the boss is outside or standing, then clears once it falls',
     () =>
       Effect.gen(function* () {
         const waiting = Boss.Waiting({
@@ -433,7 +448,7 @@ describe('victory', () => {
           }),
           ...ticks(frames, FRAME_MS),
           Story.model(current => {
-            expect(current.phase).toEqual(Phase.Victory())
+            expect(preparationOf(current).wave).toBe(FINAL_WAVE + 1)
             expect(current.boss).toEqual(Boss.Absent())
           }),
         )

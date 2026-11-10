@@ -122,7 +122,7 @@ const maybeNewKindIn = (model: Model): Option.Option<ZombieKind> =>
           Array.some(spawns, spawn => spawn.kind === kind),
       ),
     Paused: () => Option.none(),
-    Victory: () => Option.none(),
+    Escaped: () => Option.none(),
     GameOver: () => Option.none(),
   })
 
@@ -350,7 +350,7 @@ export const msIntoPhase = (phase: Phase): number =>
       }),
     Wave: ({ elapsedMs }) => elapsedMs,
     Paused: () => 0,
-    Victory: () => 0,
+    Escaped: () => 0,
     GameOver: () => 0,
   })
 
@@ -360,7 +360,7 @@ const isFirstWave = (phase: Phase): boolean =>
     Preparation: ({ wave }) => wave === 1,
     Wave: ({ wave }) => wave === 1,
     Paused: () => false,
-    Victory: () => false,
+    Escaped: () => false,
     GameOver: () => false,
   })
 
@@ -381,7 +381,7 @@ const isBreakWith = (
     Preparation: ({ wave, clock }) => isWanted(wave, clock),
     Wave: () => false,
     Paused: () => false,
-    Victory: () => false,
+    Escaped: () => false,
     GameOver: () => false,
   })
 

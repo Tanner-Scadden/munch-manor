@@ -41,6 +41,7 @@ import { bestsFor } from '../../../screens/home/home'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
+  escaping,
   home,
   veteranFighting,
 } from '../../../test/model.fixture'
@@ -173,15 +174,21 @@ describe('the bests', () => {
   )
 
   it.effect(
-    'a win records the fastest campaign time and keeps the faster one',
+    'an escape records the fastest escape and keeps the faster one',
     () =>
       Effect.gen(function* () {
         const winning = (runMs: number): Model =>
           withKills(
-            modifyFields(veteranFighting, {
-              phase: () =>
-                Phase.Wave({ wave: FINAL_WAVE, elapsedMs: 90_000, spawns: [] }),
-            }),
+            escaping(
+              modifyFields(veteranFighting, {
+                phase: () =>
+                  Phase.Wave({
+                    wave: FINAL_WAVE,
+                    elapsedMs: 90_000,
+                    spawns: [DISTANT_SPAWN],
+                  }),
+              }),
+            ),
             0,
             runMs,
           )
@@ -190,7 +197,7 @@ describe('the bests', () => {
           Story.given(winning(500_000)),
           Story.message(Message.TickedFrame({ deltaTime: FIXED_STEP_MS })),
           Story.model(({ phase, bests }) => {
-            expect(Phase.guards.Victory(phase)).toBe(true)
+            expect(Phase.guards.Escaped(phase)).toBe(true)
             expect(bests.byDifficulty.Normal.maybeFastestWinMs).toEqual(
               Option.some(500_000 + FIXED_STEP_MS),
             )

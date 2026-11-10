@@ -92,7 +92,7 @@ const previewDoors = (current: Model): ReadonlyArray<DoorId> =>
       ),
     Wave: () => [],
     Paused: () => [],
-    Victory: () => [],
+    Escaped: () => [],
     GameOver: () => [],
   })
 

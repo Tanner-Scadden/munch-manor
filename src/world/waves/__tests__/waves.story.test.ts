@@ -19,7 +19,6 @@ import {
 import { plannedSpawn, readyModel } from '../../../test/model.fixture'
 import {
   APPLICATION,
-  RESTART_GRACE_TICKS,
   bulletInto,
   doomed,
   holdFire,
@@ -40,9 +39,9 @@ import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import { doorCounts, rollSpawns } from '../endlessWaves'
 import { CHUCKER_ESCORT_SIZE } from '../wavePacks'
 import { FINAL_WAVE, type SpawnGroup, WAVE_PLANS } from '../wavePlans'
+import { roundWave } from '../waves'
 
 const FRAME_MS = 50
-const GRACE_TICK_MS = 50
 const inWave = (
   wave: number,
   spawns: ReadonlyArray<PlannedSpawn>,
@@ -237,31 +236,23 @@ describe('waves', () => {
       }),
   )
 
-  it.effect('clearing the final wave gives Victory with the score', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(killShot(inWave(FINAL_WAVE, [], [doomed]), doomed), {
-          stats: scoring(990),
+  it.effect(
+    'clearing the last tuned wave keeps the escape going, score and all',
+    () =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(killShot(inWave(FINAL_WAVE, [], [doomed]), doomed), {
+            stats: scoring(990),
+          }),
+        ),
+        tick(FIXED_STEP_MS),
+        Story.model(({ phase, stats }) => {
+          expect(Phase.guards.Preparation(phase)).toBe(true)
+          expect(roundWave(phase)).toBe(FINAL_WAVE + 1)
+          expect(scoreOf(stats)).toBe(1000)
         }),
       ),
-      // NOTE: one 60 Hz tick lands the kill; the world stops with it.
-      tick(FIXED_STEP_MS),
-      Story.model(({ phase, stats }) => {
-        expect(phase).toEqual(Phase.Victory())
-        expect(scoreOf(stats)).toBe(1000)
-      }),
-      ...ticks(5, FRAME_MS),
-      Story.model(({ elapsedMs }) => {
-        expect(elapsedMs).toBe(FIXED_STEP_MS)
-      }),
-      ...ticks(RESTART_GRACE_TICKS, GRACE_TICK_MS),
-      press('Enter'),
-      Story.model(({ phase, stats }) => {
-        expect(Phase.guards.Preparation(phase)).toBe(true)
-        expect(scoreOf(stats)).toBe(0)
-      }),
-    ),
   )
 
   it.effect(

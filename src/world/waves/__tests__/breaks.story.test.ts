@@ -25,11 +25,7 @@ import {
   isCountdownBeckoning,
   shownHints,
 } from '../../../features/onboarding/onboarding'
-import {
-  FIXED_STEP_MS,
-  PREPARATION_MS,
-  RESTART_GRACE_MS,
-} from '../../../shared/constants'
+import { FIXED_STEP_MS, PREPARATION_MS } from '../../../shared/constants'
 import { home, onHard, pastTimedBreaks } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -63,7 +59,7 @@ const breakClock = (current: Model): Option.Option<BreakClock> =>
     Preparation: ({ clock }) => Option.some(clock),
     Wave: () => Option.none(),
     Paused: () => Option.none(),
-    Victory: () => Option.none(),
+    Escaped: () => Option.none(),
     GameOver: () => Option.none(),
   })
 
@@ -141,40 +137,21 @@ describe('the first break waits', () => {
       }),
   )
 
-  it.effect('endless keeps the same rule, and Keep going is timed', () =>
-    Effect.gen(function* () {
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          modifyFields(clearingWave(1), {
-            mode: () => RunMode.Endless(),
-          }),
-        ),
-        tick(FIXED_STEP_MS),
-        Story.model(current => {
-          expect(breakClock(current)).toEqual(
-            Option.some(BreakClock.Waiting({ elapsedMs: 0 })),
-          )
+  it.effect('endless keeps the same rule', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        modifyFields(clearingWave(1), {
+          mode: () => RunMode.Endless(),
         }),
-      )
-      yield* Story.story(
-        APPLICATION,
-        Story.given(
-          onHard(
-            modifyFields(home, {
-              phase: () => Phase.Victory(),
-              screenMs: () => RESTART_GRACE_MS,
-            }),
-          ),
-        ),
-        Story.message(Message.ClickedKeepGoingButton()),
-        Story.model(keptGoing => {
-          expect(breakClock(keptGoing)).toEqual(
-            Option.some(BreakClock.Counting()),
-          )
-        }),
-      )
-    }),
+      ),
+      tick(FIXED_STEP_MS),
+      Story.model(current => {
+        expect(breakClock(current)).toEqual(
+          Option.some(BreakClock.Waiting({ elapsedMs: 0 })),
+        )
+      }),
+    ),
   )
 })
 

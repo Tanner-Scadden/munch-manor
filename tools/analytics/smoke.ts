@@ -36,6 +36,7 @@ const smokeSummary = (visitId: string): RunSummary => ({
   difficulty: 'Normal',
   wave: 3,
   outcome: { _tag: 'GameOver', killedBy: 'Runner' },
+  dareItemsFound: 1,
   runMs: 181_000,
   kills: {
     Shambler: 22,

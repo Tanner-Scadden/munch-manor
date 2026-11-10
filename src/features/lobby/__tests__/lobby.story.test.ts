@@ -288,24 +288,6 @@ describe('what skips the lobby', () => {
     ),
   )
 
-  it.effect('KEEP GOING from Victory skips it too', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(readyModel, {
-          phase: () => Phase.Victory(),
-          screenMs: () => RESTART_GRACE_MS,
-        }),
-      ),
-      Story.message(Message.ClickedKeepGoingButton()),
-      Story.model(current => {
-        expect(Phase.guards.Preparation(current.phase)).toBe(true)
-        expect(current.mode).toEqual(RunMode.Endless())
-        expect(current.lobby.status).toBe('Closed')
-      }),
-    ),
-  )
-
   it.effect(
     'a brand new player in the practice gate starts the tutorial with PLAY',
     () =>

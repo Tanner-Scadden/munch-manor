@@ -158,6 +158,9 @@ const eventTrauma = (event: GameEvent): number =>
     DareDropped: () => 0,
     DareListDone: () => SHAKE_TRAUMA_GRAB,
     DareDelivered: () => 0,
+    FrontDoorUnlocking: () => SHAKE_TRAUMA_GRAB,
+    FrontDoorOpened: () => EXIT_SMASH_TRAUMA,
+    SteppedOut: () => 0,
   })
 
 const shakeAxis = (roll: number, trauma: number): number => {
@@ -349,6 +352,9 @@ const eventPopups = (
     DareDropped: () => noPopups(state),
     DareListDone: () => noPopups(state),
     DareDelivered: () => noPopups(state),
+    FrontDoorUnlocking: () => noPopups(state),
+    FrontDoorOpened: () => noPopups(state),
+    SteppedOut: () => noPopups(state),
   })
 
 const agePopups = (

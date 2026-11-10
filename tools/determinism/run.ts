@@ -42,7 +42,8 @@ export type RunReport = Readonly<{
 const waveOf = (model: Model): number =>
   model.phase._tag === 'Preparation' ||
   model.phase._tag === 'Wave' ||
-  model.phase._tag === 'GameOver'
+  model.phase._tag === 'GameOver' ||
+  model.phase._tag === 'Escaped'
     ? model.phase.wave
     : 0
 
@@ -52,8 +53,9 @@ export const runScript = (options: RunOptions & RunHooks): RunReport => {
   const hasher = makeGameplayHasher({ cached: options.cached })
   const start = startedRun(options.seed, options.mode)
   const checkpoints: Array<Checkpoint> = [[-1, hasher.hashModel(start)]]
-  // NOTE: a loop with an early exit, since a run ends at Victory or Game
-  // Over before the frame budget runs out.
+  // NOTE: a loop with an early exit, since a run can end at Game Over (or
+  // an escape) before the frame budget runs out. A campaign has no last
+  // wave, so a run that lives stops at the budget.
   let model = start
   let frame = 0
   for (; frame < options.frames && isPlaying(model); frame++) {

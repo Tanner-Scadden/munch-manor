@@ -31,7 +31,6 @@ import {
   bulletInto,
   doomed,
   openLobbyByKey,
-  pistolOf,
   pistolOnly,
   press,
   resolveFocusLobby,
@@ -45,9 +44,8 @@ import { asVeteran } from '../../../test/veteran'
 import { TRAPS } from '../../gear/traps'
 import { STARTING_PISTOL } from '../../gear/weapons'
 import { START_LEVEL } from '../../level/arena'
-import { focusOf, modifyFocus } from '../../party/party'
+import { modifyFocus } from '../../party/party'
 import { DIFFICULTIES } from '../../run/difficulty'
-import { scoreOf } from '../../run/stats'
 import { Arsenal } from '../../schema/worldSchema'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
 import {
@@ -86,7 +84,7 @@ const PLANK_PILE: Trap = Trap.Barricade({
 
 const victorious: Model = modifyFocus(
   modifyFields(withKeys(readyModel, 4), {
-    phase: () => Phase.Victory(),
+    phase: () => Phase.Escaped({ wave: 10 }),
     traps: () => [PLANK_PILE],
     stats: scoring(4200),
   }),
@@ -191,14 +189,14 @@ describe('choosing a mode', () => {
   )
 })
 
-describe('campaign and endless after wave 8', () => {
-  it.effect('the campaign still ends in Victory after wave 8', () =>
+describe('campaign and endless after the tuned waves', () => {
+  it.effect('the campaign carries on past its tuned waves, from the ramp', () =>
     Story.story(
       APPLICATION,
       Story.given(clearingFinalWave(RunMode.Campaign())),
       tick(FRAME_MS),
       Story.model(({ phase }) => {
-        expect(phase).toEqual(Phase.Victory())
+        expect(preparationWave(phase)).toEqual(Option.some(FINAL_WAVE + 1))
       }),
     ),
   )
@@ -388,53 +386,16 @@ describe('campaign and endless after wave 8', () => {
   })
 })
 
-describe('keep going from Victory', () => {
-  it.effect(
-    'K continues the same run into endless wave 9 with money, guns, and traps',
-    () =>
-      Story.story(
-        APPLICATION,
-        Story.given(victorious),
-        press('KeyK'),
-        Story.model(({ phase }) => {
-          expect(phase).toEqual(Phase.Victory())
-        }),
-        ...waitOutGrace(),
-        press('KeyK'),
-        Story.model(
-          ({
-            mode,
-            phase,
-            seats: [{ player, trapStock }],
-            keys,
-            traps,
-            stats,
-          }) => {
-            expect(mode).toEqual(RunMode.Endless())
-            expect(preparationWave(phase)).toEqual(Option.some(FINAL_WAVE + 1))
-            expect(keys).toEqual(victorious.keys)
-            expect(player.arsenal).toEqual(focusOf(victorious).player.arsenal)
-            expect(pistolOf(player).tier).toBe(1)
-            expect(player.hp).toBe(3)
-            expect(traps).toEqual([PLANK_PILE])
-            expect(trapStock).toEqual({ Barricade: 1, Turret: 1 })
-            expect(scoreOf(stats)).toBe(4200)
-          },
-        ),
-      ),
-  )
-
-  it.effect('the Keep going button does the same', () =>
+describe('after an escape', () => {
+  it.effect('K keeps nothing going: an escape is the end of the run', () =>
     Story.story(
       APPLICATION,
       Story.given(victorious),
       ...waitOutGrace(),
-      Story.message(Message.ClickedKeepGoingButton()),
-      Story.model(({ mode, phase, keys, traps }) => {
-        expect(mode).toEqual(RunMode.Endless())
-        expect(preparationWave(phase)).toEqual(Option.some(FINAL_WAVE + 1))
-        expect(keys.held).toBe(4)
-        expect(traps).toEqual([PLANK_PILE])
+      press('KeyK'),
+      Story.model(({ phase, mode }) => {
+        expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
+        expect(mode).toEqual(RunMode.Campaign())
       }),
     ),
   )
@@ -445,9 +406,8 @@ describe('keep going from Victory', () => {
       Effect.gen(function* () {
         yield* Story.story(
           APPLICATION,
-          Story.given(victorious),
-          ...waitOutGrace(),
-          Story.message(Message.ClickedKeepGoingButton()),
+          Story.given(clearingFinalWave(RunMode.Endless())),
+          tick(FRAME_MS),
           Story.model(({ phase }) => {
             expect(Option.map(preparationWave(phase), endlessBannerOf)).toEqual(
               Option.some('Explained'),
@@ -460,7 +420,7 @@ describe('keep going from Victory', () => {
       }),
   )
 
-  it.effect('Enter on Victory still starts a fresh campaign', () =>
+  it.effect('Enter on an escape starts a fresh campaign', () =>
     Story.story(
       APPLICATION,
       Story.given(victorious),
@@ -476,7 +436,7 @@ describe('keep going from Victory', () => {
   )
 
   it.effect(
-    'a stray tap, click, or other key on Victory keeps the run waiting for a choice',
+    'a stray tap, click, or other key on an escape keeps the run waiting for a choice',
     () =>
       Story.story(
         APPLICATION,
@@ -503,14 +463,9 @@ describe('keep going from Victory', () => {
         press('KeyW'),
         press('KeyQ'),
         Story.model(({ phase, keys, traps }) => {
-          expect(phase).toEqual(Phase.Victory())
+          expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
           expect(keys).toEqual(victorious.keys)
           expect(traps).toEqual([PLANK_PILE])
-        }),
-        press('KeyK'),
-        Story.model(({ phase, mode }) => {
-          expect(preparationWave(phase)).toEqual(Option.some(FINAL_WAVE + 1))
-          expect(mode).toEqual(RunMode.Endless())
         }),
       ),
   )
@@ -532,20 +487,6 @@ describe('keep going from Victory', () => {
       ),
       Story.model(({ phase }) => {
         expect(Phase.guards.GameOver(phase)).toBe(true)
-      }),
-    ),
-  )
-
-  it.effect('K does nothing outside Victory', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        modifyFields(readyModel, { phase: () => Phase.GameOver({ wave: 4 }) }),
-      ),
-      ...waitOutGrace(),
-      press('KeyK'),
-      Story.model(({ phase }) => {
-        expect(phase).toEqual(Phase.GameOver({ wave: 4 }))
       }),
     ),
   )

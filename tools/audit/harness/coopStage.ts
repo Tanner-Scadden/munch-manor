@@ -320,7 +320,7 @@ const coopScreen = (
       })
     case 'cardwon':
       return Screen.InRoom({
-        room: endedRoom(members(3, 2), Phase.Victory()),
+        room: endedRoom(members(3, 2), Phase.Escaped({ wave: 10 })),
       })
     case 'cardduo':
       return Screen.InRoom({

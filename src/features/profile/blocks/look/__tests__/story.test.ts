@@ -456,11 +456,11 @@ describe('Character', () => {
           APPLICATION,
           Story.given(
             modifyFields(withLook(home, PICKED), {
-              phase: () => Phase.Victory(),
+              phase: () => Phase.Escaped({ wave: 10 }),
               screenMs: () => RESTART_GRACE_MS,
             }),
           ),
-          Story.message(Message.ClickedKeepGoingButton()),
+          Story.message(Message.ClickedRetryButton()),
           Story.model(({ appearance }) => {
             expect(appearance).toEqual(PICKED)
           }),

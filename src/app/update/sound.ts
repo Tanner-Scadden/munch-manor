@@ -246,6 +246,9 @@ const maybeEventSound = (event: GameEvent): Option.Option<SoundEffect> =>
     DareDropped: () => Option.some<SoundEffect>('LootPop'),
     DareListDone: () => Option.some<SoundEffect>('RankUp'),
     DareDelivered: () => Option.some<SoundEffect>('Purchase'),
+    FrontDoorUnlocking: () => Option.some<SoundEffect>('Purchase'),
+    FrontDoorOpened: () => Option.some<SoundEffect>('Crash'),
+    SteppedOut: () => Option.some<SoundEffect>('RankUp'),
   })
 
 const maybeEventSoundCue = (event: GameEvent): Option.Option<SoundCue> =>

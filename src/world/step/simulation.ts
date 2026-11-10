@@ -11,6 +11,7 @@ import { dropChandelier, rehangAtBreak } from '../dining/chandelier'
 import { advanceDare } from '../dare/dare'
 import { advanceCases } from '../feats/cases'
 import { tallyFeats } from '../feats/feats'
+import { advanceFinale } from '../dare/finale'
 import {
   advanceLobs,
   fireFridgeWeapon,
@@ -453,6 +454,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     advanceCrates,
     crated => advanceMending(crated, deltaMs),
     advanceDare,
+    dared => advanceFinale(dared, deltaMs),
     rollStove,
     rounded => shedParts(model, rounded),
     shed => resolveShatters(model, shed),

@@ -33,7 +33,7 @@ const skipBreak = (started: Model): Model =>
           modifyFields(preparation, { remainingMs: () => 0 }),
         Wave: () => phase,
         Paused: () => phase,
-        Victory: () => phase,
+        Escaped: () => phase,
         GameOver: () => phase,
       }),
   })

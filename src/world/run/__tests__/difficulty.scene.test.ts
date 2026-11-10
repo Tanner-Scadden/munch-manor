@@ -49,7 +49,9 @@ describe('the difficulty card', () => {
           Scene.expect(normal).toContainText('Double Dare'),
           Scene.expect(hard).toContainText('Triple Dare'),
           Scene.expect(lockedNightmare).toContainText('Triple Dog Dare'),
-          Scene.expect(Scene.text('Beat Triple Dare first')).toBeAbsent(),
+          Scene.expect(
+            Scene.text('Escape on Triple Dare to unlock'),
+          ).toBeAbsent(),
           Scene.expect(
             Scene.selector("[data-difficulty='Nightmare'] .difficulty-unlock"),
           ).toExist(),
@@ -181,7 +183,7 @@ describe('the end screens', () => {
       APPLICATION,
       Scene.given(
         ended(
-          Phase.Victory(),
+          Phase.Escaped({ wave: 10 }),
           modifyFields(initialModel, {
             difficulty: () => ({ chosen: 'Hard', nightmare: 'JustUnlocked' }),
             maybeSurface: () => Option.none(),

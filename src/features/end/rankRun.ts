@@ -6,6 +6,7 @@ import { isBotCrew } from '../../domain/bots'
 import { effectiveModifiersOf } from '../../domain/onlineRun'
 import { isEndScreen, isInRun, isOnHome } from '../../domain/run'
 import { playedDifficultyOf } from '../../platform/analyticsRun'
+import { dareItemsFoundOf, isHatFound } from '../../world/dare/dare'
 import {
   type RunPayInput,
   bonesForPoints,
@@ -17,12 +18,12 @@ import { isCoop, leadSeatOf } from '../../world/party/party'
 import { isPending } from '../../world/run/lessons'
 import { bonusPercentOf } from '../../world/run/modifiers'
 import { killTotal } from '../../world/run/stats'
-import { Phase, RunMode } from '../../world/schema/worldSchema'
+import { Phase } from '../../world/schema/worldSchema'
 import { roundWave } from '../../world/waves/waves'
 import { awardsOf, crewOf } from './crewAwards'
 
 // Reading a run into the rank it pays (src/world/heroes/rank.ts has the numbers). A run
-// pays when it ends, at Game Over or Victory, and when the player leaves it
+// pays when it ends, at Game Over or an escape, and when the player leaves it
 // for the menu, once each way: the same moments the run is counted in the
 // bests (countRunFrom in src/screens/home/home.ts).
 
@@ -52,9 +53,9 @@ const payInputOf = (run: Model, isEnded: boolean): RunPayInput => {
     difficulty: playedDifficultyOf(run),
     wavesCleared: Math.max(0, run.stats.wavesCleared - run.rankPaid.wavesPaid),
     bossesFelled: Math.max(0, run.stats.kills.Boss - run.rankPaid.bossesPaid),
-    isCampaignWin:
-      Phase.isAnyOf(['Victory'])(run.phase) &&
-      RunMode.isAnyOf(['Campaign'])(run.mode),
+    dareItems: dareItemsFoundOf(run),
+    isHatTaken: isHatFound(run),
+    isEscape: Phase.isAnyOf(['Escaped'])(run.phase),
     awards: Math.max(0, awards - run.rankPaid.awardsPaid),
     revives: isHumanCrew(run)
       ? Math.max(0, seat.revives - run.rankPaid.revivesPaid)

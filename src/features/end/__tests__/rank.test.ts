@@ -20,7 +20,9 @@ const run = (change: Partial<RunPayInput>): RunPayInput => ({
   difficulty: 'Normal',
   wavesCleared: 0,
   bossesFelled: 0,
-  isCampaignWin: false,
+  dareItems: 0,
+  isHatTaken: false,
+  isEscape: false,
   awards: 0,
   revives: 0,
   bonusPercent: 0,
@@ -35,12 +37,30 @@ describe('points for a run', () => {
     expect(bonesForPoints(points)).toBe(6)
   })
 
-  it('pays 250 points and 25 Bones for a Normal campaign win', () => {
+  it('pays 295 points and 29 Bones for a Normal escape on wave 8', () => {
     const points = pointsForRun(
-      run({ wavesCleared: 10, bossesFelled: 1, isCampaignWin: true }),
+      run({
+        wavesCleared: 7,
+        bossesFelled: 1,
+        dareItems: 3,
+        isHatTaken: true,
+        isEscape: true,
+      }),
     )
-    expect(points).toBe(250)
-    expect(bonesForPoints(points)).toBe(25)
+    expect(points).toBe(70 + 75 + 50 + 100)
+    expect(bonesForPoints(points)).toBe(29)
+  })
+
+  it('pays 25 a thing found even when the run ends short', () => {
+    expect(pointsForRun(run({ wavesCleared: 4, dareItems: 2 }))).toBe(90)
+    expect(
+      pointsForRun(run({ wavesCleared: 4, dareItems: 2, difficulty: 'Hard' })),
+    ).toBe(135)
+  })
+
+  it('pays Uncle Chunk once, his hat or his fall', () => {
+    expect(pointsForRun(run({ bossesFelled: 1, isHatTaken: true }))).toBe(50)
+    expect(pointsForRun(run({ bossesFelled: 1 }))).toBe(50)
   })
 
   it('multiplies by the difficulty and rounds down', () => {

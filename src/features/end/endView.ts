@@ -101,7 +101,7 @@ const MODIFIER_SPRITES = Record.map(MODIFIER_PIXELS, pixels =>
 
 const TITLES: Readonly<Record<EndKind, BakedText>> = {
   Munched: bakeText('MUNCHED!', 'Defeat'),
-  Won: bakeText('YOU SURVIVED!', 'Victory'),
+  Won: bakeText('YOU ESCAPED!', 'Victory'),
 }
 
 const LABELS: Readonly<Record<string, BakedText>> = {

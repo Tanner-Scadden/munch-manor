@@ -18,9 +18,12 @@ import { Difficulty } from '../shared/playerData'
 // a report counts a game once. The Worker still takes version 1 from a
 // build cached before co-op, as Solo, and version 2 with no key. Version 4
 // adds `modifiers`, the run modifiers that bit, as a mask; the Worker still
-// takes version 3 with none. Version 5 (docs/ESCAPE_PLAN.md, layer 7: keys
-// and no shop) has `keysSpent` and `casesOpened` in place of `purchases`;
-// the Worker still takes version 4 and older with their purchases.
+// takes version 3 with none. Version 5 is the escape (docs/ESCAPE_PLAN.md):
+// `keysSpent` and `casesOpened` in place of `purchases` (keys and no
+// shop), a won run ends `Escaped` in place of `Victory`, and
+// `dareItemsFound` counts the things on the dare's list the run found. The
+// Worker still takes version 4 and older, with their purchases, their wins
+// as Victory, and none found.
 export const RUN_SUMMARY_VERSION = 5
 
 export const MAX_SUMMARY_BYTES = 8 * 1024
@@ -71,7 +74,10 @@ export type CauseOfDeath = typeof CauseOfDeath.Type
 
 export const UNKNOWN_CAUSE: CauseOfDeath = 'Unknown'
 
-export const WonRun = Schema.TaggedStruct('Victory', {})
+export const EscapedRun = Schema.TaggedStruct('Escaped', {})
+
+// NOTE: a won campaign before the escape, from version 4 and older.
+const WonRun = Schema.TaggedStruct('Victory', {})
 
 export const LostRun = Schema.TaggedStruct('GameOver', {
   killedBy: CauseOfDeath,
@@ -79,8 +85,10 @@ export const LostRun = Schema.TaggedStruct('GameOver', {
 
 export const QuitRun = Schema.TaggedStruct('Quit', {})
 
-export const RunOutcome = Schema.Union([WonRun, LostRun, QuitRun])
+export const RunOutcome = Schema.Union([EscapedRun, LostRun, QuitRun])
 export type RunOutcome = typeof RunOutcome.Type
+
+const RunOutcomeV4 = Schema.Union([WonRun, LostRun, QuitRun])
 
 const MAX_COUNT = 1_000_000
 const MAX_WAVE = 10_000
@@ -163,7 +171,7 @@ const baseFields = {
   mode: SummaryMode,
   difficulty: Difficulty,
   wave: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: MAX_WAVE })),
-  outcome: RunOutcome,
+  outcome: RunOutcomeV4,
   runMs: Schema.Int.check(
     Schema.isBetween({ minimum: 0, maximum: MAX_RUN_MS }),
   ),
@@ -188,18 +196,22 @@ const ModifierMask = Schema.Int.check(
 )
 
 // NOTE: the skeleton keys the crew spent on boards and fridge pulls
-// (src/world/keys/keys.ts), and the display cases the run opened.
+// (src/world/keys/keys.ts), the display cases the run opened, and the
+// things on the dare's list it found (src/world/dare/dare.ts).
 export const RunSummary = Schema.Struct({
   version: Schema.Literal(RUN_SUMMARY_VERSION),
   ...baseFields,
+  outcome: RunOutcome,
   keysSpent: Count,
   casesOpened: Count,
+  dareItemsFound: Count,
   party: SummaryParty,
   modifiers: ModifierMask,
 })
 export type RunSummary = typeof RunSummary.Type
 
-// NOTE: a summary from a build before the keys, with its shop purchases.
+// NOTE: a summary from a build before the escape: its shop purchases, and
+// a won run as Victory.
 const RunSummaryV4 = Schema.Struct({
   version: Schema.Literal(4),
   ...runFields,

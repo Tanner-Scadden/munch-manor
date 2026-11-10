@@ -42,7 +42,7 @@ describe('menuState', () => {
     expect(
       menuState(
         modifyFields(home, {
-          phase: () => Phase.Victory(),
+          phase: () => Phase.Escaped({ wave: 10 }),
           screenMs: () => RESTART_GRACE_MS,
         }),
       ),

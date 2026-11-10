@@ -22,6 +22,8 @@ import { freshRun } from '../app/runReset'
 import { PLAYER_MAX_HP, PREPARATION_MS } from '../shared/constants'
 import { heroIdOf } from '../shared/playerData'
 import { nextRandom } from '../shared/prng'
+import { type DareThing, Finale } from '../world/dare/dareSchema'
+import { frontDoorSillOf } from '../world/dare/finale'
 import { caseBoxOf } from '../world/feats/cases'
 import { fridgeBoxOf, pickPrize, prizeWeights } from '../world/fridge/leftovers'
 import { CALLINGS, isCallingUnlocked } from '../world/heroes/calling'
@@ -200,6 +202,58 @@ export const fighting: Model = modifyFields(initialModel, {
 export const veteranFighting: Model = modifyFields(home, {
   phase: () => Phase.Wave({ wave: 3, elapsedMs: 4000, spawns: [] }),
 })
+
+// THE DARE
+
+// NOTE: a run with these things in the house (src/world/dare/dare.ts), the
+// asked ones its list, Uncle Chunk's hat aside.
+export const withDareThings: {
+  (things: ReadonlyArray<DareThing>): (model: Model) => Model
+  (model: Model, things: ReadonlyArray<DareThing>): Model
+} = Function.dual(
+  2,
+  (model: Model, things: ReadonlyArray<DareThing>): Model =>
+    modifyFields(model, {
+      dare: dare =>
+        modifyFields(dare, {
+          list: () =>
+            Array.map(
+              Array.filter(
+                things,
+                ({ isAsked, kind }) => isAsked && kind !== 'PartyHat',
+              ),
+              ({ kind }) => kind,
+            ),
+        }),
+      dareThings: () => things,
+    }),
+)
+
+// THE FINALE
+
+// NOTE: a run's finale where it stands (src/world/dare/finale.ts).
+export const withFinale: {
+  (finale: Finale): (model: Model) => Model
+  (model: Model, finale: Finale): Model
+} = Function.dual(2, (model: Model, finale: Finale): Model =>
+  modifyFields(model, {
+    dare: dare => modifyFields(dare, { finale: () => finale }),
+  }),
+)
+
+// NOTE: just inside the start room's front door, where a player steps out
+// once it is open.
+export const FRONT_DOOR_SILL: Readonly<{ x: number; y: number }> =
+  frontDoorSillOf(levelOf(initialModel))
+
+// NOTE: the front door open and the lead player on its sill: the next frame
+// walks them out.
+export const escaping = (model: Model): Model =>
+  withPlayerAt(
+    withFinale(model, Finale.Open({ out: [] })),
+    FRONT_DOOR_SILL.x,
+    FRONT_DOOR_SILL.y,
+  )
 
 // A wave in progress on a measured surface, with nothing coming in.
 export const quietWave = (wave: number): Model =>

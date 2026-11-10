@@ -79,6 +79,7 @@ const summary: RunSummary = {
   frameTime: 'Under17Ms',
   party: SOLO_PARTY,
   modifiers: 0,
+  dareItemsFound: 2,
 }
 
 // NOTE: a co-op crew as a build before the run key sent it.
@@ -99,10 +100,12 @@ const crewSummary: RunSummary = {
   party: { ...crewPartyV2, runKey: CREW_KEY },
 }
 
-// NOTE: the shop's purchases, in a summary from a build before the keys.
+// NOTE: the shop's purchases, in a summary from a build before the keys
+// and the escape.
 const {
   keysSpent: _keysSpent,
   casesOpened: _casesOpened,
+  dareItemsFound: _dareItemsFound,
   ...withoutKeys
 } = crewSummary
 const shopFields = { ...withoutKeys, purchases: 4 }
@@ -127,6 +130,7 @@ const {
   modifiers: _soloModifiers,
   keysSpent: _soloKeysSpent,
   casesOpened: _soloCasesOpened,
+  dareItemsFound: _soloDareItemsFound,
   ...olderFields
 } = summary
 const olderSummaryJson = toJson({ ...olderFields, purchases: 4, version: 1 })
@@ -372,6 +376,32 @@ describe('POST /api/runs', () => {
       )
       expect(value_7).toEqual([{ summary_version: 5, modifiers: 12 }])
     }),
+  )
+
+  it.effect(
+    'an escape stores its outcome and the things it found, and a version 4 win still goes in',
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp()
+        const escaped = yield* post(
+          setup,
+          encodeSummary({ ...summary, outcome: { _tag: 'Escaped' } }),
+        )
+        expect(escaped.status).toBe(202)
+        const won = yield* post(
+          setup,
+          toJson({ ...olderFields, purchases: 4, party: summary.party, modifiers: 0, version: 4, outcome: { _tag: 'Victory' } }),
+        )
+        expect(won.status).toBe(202)
+        const stored = yield* query(
+          setup,
+          'SELECT summary_version, outcome, dare_items_found FROM runs ORDER BY id',
+        )
+        expect(stored).toEqual([
+          { summary_version: 5, outcome: 'Escaped', dare_items_found: 2 },
+          { summary_version: 4, outcome: 'Victory', dare_items_found: 0 },
+        ])
+      }),
   )
 
   it.effect('a mask no modifier has is refused', () =>
@@ -824,7 +854,7 @@ describe("the report's co-op counts", () => {
           crewRowJson(CREW_KEY, BITTEN, 5, 10),
           crewRowJson(CREW_KEY, BITTEN, 5, 20),
           crewRowJson(CREW_KEY, { _tag: 'Quit' }, 3, 3),
-          crewRowJson('aaaaaaaaaaaaaaaa', { _tag: 'Victory' }, 10, 40),
+          crewRowJson('aaaaaaaaaaaaaaaa', { _tag: 'Escaped' }, 10, 40),
           crewRowJson('aaaaaaaaaaaaaaaa', { _tag: 'Quit' }, 6, 7),
           crewRowJson(null, BITTEN, 4, 5),
           crewRowJson(null, BITTEN, 4, 15),

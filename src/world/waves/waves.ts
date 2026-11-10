@@ -32,6 +32,7 @@ import { type World, modifyWorldFields } from '../schema/world'
 import {
   Alarm,
   Beat,
+  Boss,
   BreakClock,
   type DoorId,
   GameEvent,
@@ -43,6 +44,7 @@ import {
   ZombieAction,
 } from '../schema/worldSchema'
 import { clamp } from '../step/geometry'
+import { hungrierSpawns, summonAtFrontDoor } from '../dare/finale'
 import {
   advanceBossEntrance,
   isBossOutside,
@@ -223,10 +225,6 @@ export const joinNewDoors: {
 export const isRoundActive = (phase: Phase): boolean =>
   Phase.isAnyOf(['Preparation', 'Wave'])(phase)
 
-// NOTE: the wave a break or a fight is about, 0 outside a round.
-export const roundWaveOf = (phase: Phase): number =>
-  Phase.isAnyOf(['Preparation', 'Wave'])(phase) ? phase.wave : 0
-
 export const isBreak = (model: World): boolean =>
   Phase.isAnyOf(['Preparation'])(model.phase)
 
@@ -261,18 +259,26 @@ export const beginPreparation: {
       levelOf(model).doorIds,
     )
     const { holds } = rolled
-    const spawns = crowdSpawns(
-      playerCountOf(model),
-      toughenSpawns(model.difficulty.chosen, rolled.spawns),
-      model.modifiers,
+    const spawns = hungrierSpawns(
+      model,
+      crowdSpawns(
+        playerCountOf(model),
+        toughenSpawns(model.difficulty.chosen, rolled.spawns),
+        model.modifiers,
+      ),
     )
-    const [rngState, boss] = planBoss(
-      levelOf(model).doorIds,
-      waveState,
-      wave,
-      spawns,
-      model.difficulty.chosen,
-    )
+    // NOTE: Uncle Chunk comes every tenth wave only in Endless; an escape
+    // run sends him to the front door once its list is done
+    // (src/world/dare/finale.ts).
+    const [rngState, boss] = isEndless(model)
+      ? planBoss(
+          levelOf(model).doorIds,
+          waveState,
+          wave,
+          spawns,
+          model.difficulty.chosen,
+        )
+      : [waveState, Boss.Absent()]
     return modifyFields(returnFallen(model), {
       boss: () => boss,
       frenzyPacks: () => frenzyPacksOf(spawns),
@@ -310,7 +316,7 @@ export const pause = <M extends World>(model: M): M =>
     Wave: wave =>
       modifyWorldFields(model, { phase: () => Phase.Paused({ round: wave }) }),
     Paused: () => model,
-    Victory: () => model,
+    Escaped: () => model,
     GameOver: () => model,
   })
 
@@ -325,12 +331,15 @@ export const startWaveEarly = (model: World): World =>
   Phase.match(model.phase, {
     Ready: () => model,
     Preparation: ({ wave, spawns, clock }) =>
-      modifyFields(learnFromBreak(model, wave, clock), {
-        phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns }),
-      }),
+      summonAtFrontDoor(
+        modifyFields(learnFromBreak(model, wave, clock), {
+          phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns }),
+        }),
+        spawns,
+      ),
     Wave: () => model,
     Paused: () => model,
-    Victory: () => model,
+    Escaped: () => model,
     GameOver: () => model,
   })
 
@@ -424,14 +433,11 @@ const keyForClear = (model: World): World => {
   )
 }
 
-const clearWave = (model: World, wave: number): World => {
-  const paid = keyForClear(model)
-  if (wave >= FINAL_WAVE && !isEndless(model)) {
-    return modifyFields(paid, { phase: () => Phase.Victory() })
-  } else {
-    return beginPreparation(paid, wave + 1, PREPARATION_MS)
-  }
-}
+// NOTE: a run never ends by its wave count: past the tuned waves the
+// Endless generator rolls them (src/world/waves/endlessWaves.ts), and an
+// escape ends at the front door (src/world/dare/finale.ts).
+const clearWave = (model: World, wave: number): World =>
+  beginPreparation(keyForClear(model), wave + 1, PREPARATION_MS)
 
 // NOTE: spawns stay with their planned doors, so a door whose plank breaks
 // is a spawn point again. routed is the same list with each door rerouted
@@ -594,7 +600,7 @@ export const advanceRound: {
     },
     Wave: round => advanceWave(model, round, worldMs),
     Paused: () => model,
-    Victory: () => model,
+    Escaped: () => model,
     GameOver: () => model,
   }),
 )
@@ -605,7 +611,7 @@ export const roundWave = (phase: Phase): number =>
     Preparation: ({ wave }) => wave,
     Wave: ({ wave }) => wave,
     Paused: ({ round }) => round.wave,
-    Victory: () => FINAL_WAVE,
+    Escaped: ({ wave }) => wave,
     GameOver: ({ wave }) => wave,
   })
 

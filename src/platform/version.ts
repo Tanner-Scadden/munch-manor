@@ -37,7 +37,7 @@ export const isUpdateCheckWindow = Phase.isAnyOf([
   'Ready',
   'Preparation',
   'Paused',
-  'Victory',
+  'Escaped',
   'GameOver',
 ])
 

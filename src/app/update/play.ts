@@ -204,7 +204,7 @@ const phaseFromKey = (model: Model, code: string): Model =>
     Preparation: () => preparationFromKey(model, code),
     Wave: () => (isPauseKey(code) ? pause(model) : model),
     Paused: () => resumeFromKey(model, code),
-    Victory: () => endFromKey(model, code),
+    Escaped: () => endFromKey(model, code),
     GameOver: () => endFromKey(model, code),
   })
 
