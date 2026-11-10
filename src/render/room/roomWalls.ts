@@ -85,8 +85,9 @@ const isWall = (level: Level, column: number, row: number): boolean =>
 const MARK = 'M'
 const BLANK = '.'
 
-// NOTE: the grid's lines are the map's lines, so a run's y counts from the
-// map's first row. runTop turns it back into a world y.
+// NOTE: the grid's lines are the map's lines, so a run's x and y count from
+// the map's first column and row. runLeft and runTop turn them back into a
+// world x and y.
 const markedGrid = (
   level: Level,
   isMarked: (column: number, row: number) => boolean,
@@ -94,7 +95,9 @@ const markedGrid = (
   Array.map(level.tiles, (line, index) =>
     pipe(
       Array.makeBy(line.length, column =>
-        isMarked(column, index + level.topRow) ? MARK : BLANK,
+        isMarked(column + level.leftColumn, index + level.topRow)
+          ? MARK
+          : BLANK,
       ),
       Array.join(''),
     ),
@@ -102,6 +105,9 @@ const markedGrid = (
 
 const runTop = (level: Level, runY: number): number =>
   (runY + level.topRow) * TILE_SIZE
+
+const runLeft = (level: Level, runX: number): number =>
+  (runX + level.leftColumn) * TILE_SIZE
 
 type Inset = Readonly<{
   dx: number
@@ -118,7 +124,7 @@ const runShapes = (
 ): ReadonlyArray<Canvas.Shape> =>
   Array.map(pixelRuns(grid, { [MARK]: fill }), run =>
     rect(
-      run.x * TILE_SIZE + inset.dx,
+      runLeft(level, run.x) + inset.dx,
       runTop(level, run.y) + inset.dy,
       inset.width(run.width * TILE_SIZE),
       inset.height(run.height * TILE_SIZE),
@@ -159,7 +165,7 @@ const northFaceSpans = (level: Level): ReadonlyArray<Span> =>
       [MARK]: WALLPAPER_COLOR,
     }),
     run => ({
-      x: run.x * TILE_SIZE,
+      x: runLeft(level, run.x),
       y: runTop(level, run.y + 1),
       width: run.width * TILE_SIZE,
     }),
@@ -644,6 +650,9 @@ const DOOR_DRAWINGS: Readonly<
   South: southDoorShapes,
   Back: backDoorShapes,
   Window: windowShapes,
+  // NOTE: the front door is drawn as the south door until it has art of its
+  // own; no level has one yet.
+  Front: southDoorShapes,
 }
 
 export const doorwayShapes = (level: Level): ReadonlyArray<Canvas.Shape> =>

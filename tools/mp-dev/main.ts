@@ -80,6 +80,7 @@ declare const __MP_API_ORIGIN__: string
 const ARENA_WIDTH = MANOR.width
 const ARENA_HEIGHT = MANOR.height
 const ARENA_TOP = MANOR.top
+const ARENA_LEFT = MANOR.left
 const DOT_RADIUS = 6
 const WALKER_RADIUS = 5
 
@@ -390,7 +391,7 @@ const listenToControls = (): Controls => {
   const toArena = (event: PointerEvent) => {
     const box = ui.canvas.getBoundingClientRect()
     return {
-      x: ((event.clientX - box.left) / box.width) * ARENA_WIDTH,
+      x: ((event.clientX - box.left) / box.width) * ARENA_WIDTH + ARENA_LEFT,
       y: ((event.clientY - box.top) / box.height) * ARENA_HEIGHT + ARENA_TOP,
     }
   }
@@ -503,7 +504,7 @@ const draw = (
     onSome: drawn => {
       const level = levelOf(drawn.world)
       context.save()
-      context.translate(0, -ARENA_TOP)
+      context.translate(-ARENA_LEFT, -ARENA_TOP)
       context.strokeStyle = '#3b3350'
       context.strokeRect(
         level.bounds.left,

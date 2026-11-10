@@ -13,7 +13,7 @@ import {
   PINCER_LAG_MAX_MS,
 } from '../../shared/constants'
 import { type Seeded, nextRandom } from '../../shared/prng'
-import { DOOR_IDS, PARLOUR } from '../level/arena'
+import { DOOR_IDS } from '../level/arena'
 import type {
   DoorId,
   Hold,
@@ -35,7 +35,7 @@ import {
   type DoorPattern,
   FINAL_WAVE,
   type KindWeight,
-  PARLOUR_DOORS,
+  START_DOORS,
   type SpawnGroup,
   WAVE_PLANS,
   type WavePlan,
@@ -347,10 +347,10 @@ export const rollWave: {
   (
     state: number,
     wave: number,
-    doors: ReadonlyArray<DoorId> = PARLOUR.doorIds,
+    doors: ReadonlyArray<DoorId> = START_DOORS,
   ): Seeded<RolledWave> => {
     const levelDoors = Array.match(doors, {
-      onEmpty: () => PARLOUR_DOORS,
+      onEmpty: () => START_DOORS,
       onNonEmpty: nonEmpty => nonEmpty,
     })
     const [planState, plan] = rollPlan(state, wave, levelDoors)
@@ -385,7 +385,7 @@ export const rollSpawns: {
   (
     state: number,
     wave: number,
-    doors: ReadonlyArray<DoorId> = PARLOUR.doorIds,
+    doors: ReadonlyArray<DoorId> = START_DOORS,
   ): Seeded<ReadonlyArray<PlannedSpawn>> => {
     const [nextState, rolled] = rollWave(state, wave, doors)
     return [nextState, rolled.spawns]

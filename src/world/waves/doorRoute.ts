@@ -10,11 +10,14 @@ import { isFloorKind } from '../zombies/zombies'
 
 // NOTE: the doors in order around the manor, starting at the top of the
 // kitchen. A level that has only some of them goes around the ones it has.
+// The front door is never a spawn door, so no pack is ever routed to it: it
+// sits after the south door only so the order names every door.
 const CLOCKWISE: Array.NonEmptyReadonlyArray<DoorId> = [
   'Back',
   'North',
   'East',
   'South',
+  'Front',
   'West',
   'Window',
 ]
@@ -26,6 +29,7 @@ export const OPPOSITE_DOOR: Readonly<Record<DoorId, DoorId>> = {
   West: 'East',
   Back: 'South',
   Window: 'East',
+  Front: 'North',
 }
 
 const clockwiseAfter = (

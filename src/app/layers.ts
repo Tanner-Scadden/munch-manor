@@ -83,7 +83,8 @@ export const sceneShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
 const NO_DECALS: ReadonlyArray<Decal> = []
 
 // NOTE: a floor canvas covers the whole map, whose first row can sit above
-// the parlour's top wall, so its shapes are moved down by the map's top.
+// the parlour's top wall and whose first column west of it, so its shapes
+// are moved by the map's left and top.
 const layerCanvasView = (
   key: string,
   level: Level,
@@ -96,9 +97,14 @@ const layerCanvasView = (
       width: level.width,
       height: level.height,
       shapes:
-        level.top === 0
+        level.top === 0 && level.left === 0
           ? shapes
-          : [group({ translate: { x: 0, y: -level.top }, shapes })],
+          : [
+              group({
+                translate: { x: -level.left, y: -level.top },
+                shapes,
+              }),
+            ],
       className: 'floor-layer-canvas',
     },
     h,
@@ -148,7 +154,7 @@ const floorLayersView = (
       h.Style({
         width: percentOf(level.width, camera.width),
         height: percentOf(level.height, camera.height),
-        transform: `translate(${percentOf(offset.x, level.width)}, ${percentOf(offset.y + level.top, level.height)})`,
+        transform: `translate(${percentOf(offset.x + level.left, level.width)}, ${percentOf(offset.y + level.top, level.height)})`,
       }),
     ],
     [

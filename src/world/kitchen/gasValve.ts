@@ -7,7 +7,6 @@ import { heldKeys, spendKeys } from '../keys/keys'
 import {
   type Box,
   COVER_SYMBOLS,
-  KITCHEN_TOP_ROW,
   type Level,
   circleTouchesBox,
   levelOf,
@@ -15,6 +14,7 @@ import {
   tilesWithSymbol,
 } from '../level/arena'
 import { boxAround } from '../level/exits'
+import { KITCHEN_TOP_ROW } from '../level/plan'
 import { creditKills } from '../party/party'
 import type { World } from '../schema/world'
 import {
