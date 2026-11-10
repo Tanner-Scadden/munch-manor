@@ -20,6 +20,9 @@
         "tools/determinism/{beforeAfter,build,cli,crossEngine,page,worker,worldWorker}.ts",
         "tools/mp-dev/{build,e2e,local,main,serve}.ts",
         "tools/sprites/build.ts",
+        // NOTE: tools/studio/index.html loads entry.ts on the dev server; the
+        // agent runs inbox.ts and resolve.ts.
+        "tools/studio/{entry,inbox,resolve}.ts",
         "tools/video/{audioPage,video}.ts",
       ],
       "project": [
@@ -72,5 +75,5 @@
       ],
       "project": ["**/*.ts"],
     },
-  }
+  },
 }

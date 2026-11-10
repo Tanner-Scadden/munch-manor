@@ -41,3 +41,7 @@ repos/
 
 # itch.io upload zips (bun run build:itch)
 tools/itch/out/
+
+# The art studio's notes to the agent (tools/studio/README.md)
+tools/studio/notes.jsonl
+tools/studio/before/
