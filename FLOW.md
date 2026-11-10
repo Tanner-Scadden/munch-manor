@@ -1,6 +1,6 @@
 # Flow
 
-The game's vision as flow charts, to plan and talk through with collaborators. It draws from [`GAME_DESIGN.md`](./GAME_DESIGN.md) (what is decided and built) and [`LORE.md`](./LORE.md) (the escape the manor direction, still a proposal). When a chart and those docs disagree, the docs win: fix the chart.
+The game's vision as flow charts, to plan and talk through with collaborators. It draws from [`GAME_DESIGN.md`](./GAME_DESIGN.md) (what is decided and built) and [`LORE.md`](./LORE.md) (the story). The escape the manor update was built on 2026-11-10 (see "Escape the manor" in `GAME_DESIGN.md`), so most of chart 3 is built now; what is left proposed is marked. When a chart and those docs disagree, the docs win: fix the chart.
 
 The charts are Mermaid, so GitHub draws them. Every chart uses the same key:
 
@@ -24,13 +24,13 @@ Everything a player passes through, start to finish.
 flowchart TD
   link([Open munchmanor.com or the installed app]):::built --> splash[Loading splash]:::built
   splash --> home
-  home -.- dareArt[PLAY is the dare: a card your friends hand you, also the icon and the share card]:::proposed
+  home --- dareArt[PLAY is the dare: a folded card reading I DARE YOU]:::built
 
   home[Home menu]:::built --> playBtn{PLAY or CO-OP?}
   home --> more[MORE: How to play, What's New, Munchopedia, Profile, tip jar]:::built
   more --> home
 
-  playBtn -->|PLAY, first time| tutorial[Straight into a run: wave 1 is the tutorial]:::built
+  playBtn -->|PLAY, first time| tutorial[Straight into a run: wave 1 is practice, then the first break teaches a key, a crate, a case, and the dare card]:::built
   playBtn -->|PLAY| lobby[Single player lobby]:::built
   playBtn -->|CO-OP| coop[Co-op hub: code or QUICK PLAY]:::built
 
@@ -38,26 +38,21 @@ flowchart TD
   coop --> coopLobby[Co-op lobby, up to 4 players]:::built
   coopLobby --> picks
 
-  picks -.- dareCard[The lobby is the dare card: who goes in, coming as, who you drag along, the stakes, extra dares]:::proposed
-  dareCard -.-> shake[START is shaking on it. BACK is chickening out]:::proposed
-  shake -.-> run
-  picks --> run[[A run: see chart 2]]:::built
-  tutorial --> run
+  picks --- dareCard[The lobby is the dare card: going in, coming as, drag along, out or stay, the stakes, extra dares]:::built
+  dareCard --> shake[SHAKE ON IT starts the run. CHICKEN OUT goes home]:::built
+  shake --> intro[The intro, from the car to the slam: see chart 3]:::built
+  intro --> run[[A run: see chart 2]]:::built
+  tutorial --> intro
 
   run --> ended{How did it end?}
   ended -->|Munched| gameOver[Game Over card]:::built
-  ended -->|Beat wave 10| victory[Victory card]:::built
-  ended -.->|Got out| escaped[Escaped card: your proof to share]:::proposed
-
-  victory -->|KEEP GOING| endless[Same run carries into Endless]:::built
-  endless --> run
+  ended -->|Walked out the front door| escaped[Escaped card: your proof to share]:::built
 
   gameOver --> reward[Rank bar fills, Bones paid, NEW BEST]:::built
-  victory --> reward
-  escaped -.-> reward
+  escaped --> reward
 
   reward --> spend[Spend Bones: heroes, looks, hats, gun skins]:::built
-  reward --> rattlesMemory[Your friends in the car remember how the last run ended]:::proposed
+  reward -.-> rattlesMemory[Your friends in the car remember how the last run ended]:::proposed
   spend --> home
   rattlesMemory -.-> home
   reward -->|RETRY| picks
@@ -68,33 +63,33 @@ flowchart TD
 
 ## 2. A run: breaks and waves
 
-The core loop: Preparation, then a wave, then Preparation again, until the player dies or wins.
+The core loop: Preparation, then a wave, then Preparation again, until the crew walks out the front door or is munched. Since 2026-11-10 there is no shop and no fixed wave count.
 
 ```mermaid
 flowchart TD
-  start([Run starts in the parlour, exits boarded]):::built --> prep
+  start([After the slam: the run starts at the dining room's table, exits padlocked]):::built --> prep
 
   subgraph Break [Preparation: the break]
-    prep[Walk the manor, read the door preview]:::built --> shop[Rattles' stall: guns, ammo, hearts, traps, upgrades]:::built
-    prep --> fridge[Mystery Leftovers: the fridge pull]:::built
-    prep --> boards[Buy a boarded exit open: the kitchen first]:::built
-    prep --> traps[Place Plank Piles and Grumpy Gnomes]:::built
-    prep --> stand[Pick a room to make a stand in]:::built
-    shop --> ready
+    prep[Walk the manor, read the door preview, hunt the dare's list]:::built --> crates[Trap crates: a Plank Pile, a Grumpy Gnome, or a heart for the hurt]:::built
+    prep --> cases[Display cases: finish a feat, take the gun]:::built
+    prep --> fridge[Mystery Leftovers: spend keys on a pull]:::built
+    prep --> boards[Spend skeleton keys on padlocked boards: a room opens]:::built
+    prep --> traps[Place traps, stand by one to mend it]:::built
+    crates --> ready
+    cases --> ready
     fridge --> ready
     boards --> ready
     traps --> ready
-    stand --> ready
     ready{READY?}
   end
 
-  ready -->|Easy, Normal: waits for READY| wave
-  ready -->|Hard, Nightmare: clock runs out| wave
+  ready -->|Dare, Double Dare: waits for READY| wave
+  ready -->|Triple Dare, Triple Dog Dare: clock runs out| wave
 
   subgraph Fight [The wave]
-    wave[Zombies through the doors and up through the floor]:::built --> fight[Shoot, stab, swap guns, grab drops]:::built
-    fight --> ammo[Ammo window at the stall]:::built
-    fight --> midBuy[Buy a room open mid-wave]:::built
+    wave[Zombies through the doors and up through the floor]:::built --> fight[Shoot, stab, swap guns, grab drops and skeleton keys]:::built
+    fight --> level[Kills level the gun up: Beefy, DELUXE, 3000]:::built
+    fight --> midBuy[Open a room mid-wave]:::built
     fight --> downed{Hearts gone?}
     downed -->|Co-op: a teammate is up| revive[Downed, wait for a revive]:::built
     revive --> fight
@@ -102,70 +97,71 @@ flowchart TD
     downed -->|Still standing| cleared{Wave cleared}
   end
 
-  cleared -->|Waves 1 to 9| prep
-  cleared -->|Wave 10| boss[Uncle Chunk, the finale]:::built
-  boss --> won([Victory]):::built
-  won -->|KEEP GOING| endless[Endless: waves keep getting beefier]:::built
-  endless --> prep
+  cleared -->|The list is not done| prep
+  cleared -->|The list is done| finale[[The finale: see chart 3]]:::built
+  cleared -->|Endless: stay the night| prep
 
   classDef built fill:#1f3d2b,stroke:#4caf50,color:#fff
   classDef proposed fill:#3d2b1f,stroke:#ff9800,color:#fff,stroke-dasharray: 5 5
 ```
 
-## 3. Escape the manor (proposed)
+## 3. Escape the manor
 
-The direction in `LORE.md`, chosen 2026-11-10: the Munch Manor dare. A hundred years ago the Munches threw a dinner party, the doors shut, and nobody came out. You are dared to go in, bring back proof, and get out. The party never ended: Uncle Chunk is still the host, the zombies are his guests and every daredevil who failed, and Rattles took the dare in 1924. The waves stay as the pressure, so a player who ignores the hunt still plays chart 2.
+The direction in `LORE.md`, chosen 2026-11-10 and built the same week: the Munch Manor dare. A hundred years ago the Munches threw a dinner party, the doors shut, and nobody came out. You are dared to go in, bring back proof, and get out. The party never ended: Uncle Chunk is still the host, the zombies are his guests and every daredevil who failed, and Rattles took the dare in 1924. The waves stay as the pressure, so a player who ignores the hunt still plays chart 2.
 
 ```mermaid
 flowchart TD
-  dare([Fill in the dare card: who goes in, coming as, who you drag along, the stakes]):::proposed --> shake
-  shake[Shake on it: the card goes in your pocket]:::proposed --> car
+  dare([Fill in the dare card: going in, coming as, drag along, the stakes]):::built --> shake
+  shake[Shake on it]:::built --> car
 
   subgraph Intro [The intro: this feels really off. Skippable up to the slam]
-    car[Your friends drive you up at night: the radio drifts into static, the sign is chewed]:::proposed --> arrive2[The drive is full of daredevils' cars from every decade]:::proposed
-    arrive2 --> walk[A trampled party hat and a dropped flashlight on the steps. Footprints go in, none come out]:::proposed
-    walk --> knock[Knock knock. Silence. One knock back]:::proposed
-    knock --> opens[The doors creak open on their own. A hundred years of coats at the coat check, a bony hand waves]:::proposed
-    opens --> hello[HELLO? A feast a hundred years old, still steaming. A place card with your name on it]:::proposed
-    hello --> door[The doors slam and lock behind you. Never skipped: the run starts here, for everyone at once]:::proposed
+    car[Your friends drive you up at night: the radio drifts into static, the sign is chewed]:::built --> arrive2[The drive is full of daredevils' cars from every decade]:::built
+    arrive2 --> walk[A trampled party hat and a dropped flashlight on the steps]:::built
+    walk --> knock[Knock knock. Silence. One knock back]:::built
+    knock --> opens[The doors creak open. A hundred years of coats at the coat check, a bony hand waves]:::built
+    opens --> hello[HELLO? A feast a hundred years old. A place card with your name on it]:::built
+    hello --> door[The doors slam and lock behind you. Never skipped: the run starts here, for everyone at once]:::built
   end
 
   door --> arrive
-  arrive([The run kicks off in the dining room, its exits boarded]):::proposed --> list
+  arrive([The run kicks off at the dining room's table, its exits padlocked]):::built --> list
 
-  list[Roll this run's dare from the pool: 2 to 4 things, by difficulty]:::proposed --> card
-  card[The dare card opens: your friends' scrawl, this run's list in pictures]:::proposed --> fold
-  fold[The card folds into the HUD: empty outlines to fill. The first wave starts]:::proposed --> waves
-  waves[Waves count up, each harder than the last: the number is how far you got]:::proposed --> explore
+  list[Roll this run's dare from the pool: 2 to 4 things, by difficulty]:::built --> pocket
+  pocket[The dare card opens from your pocket: your friends' scrawl]:::built --> fold
+  fold[The dare card on the HUD: empty outlines to fill]:::built --> waves
+  waves[Waves count up, each harder than the last: the number is how far you got]:::built --> explore
 
-  explore[Spend skeleton keys on the padlocked boards, room by room]:::proposed --> roomRoll{Which room is behind the boards?}
-  roomRoll -->|Today| fixedRoom[The kitchen, always]:::built
-  roomRoll -.->|Rolled rooms| dish[A cloche lifts: one of a few hand-made rooms]:::proposed
+  explore[Spend skeleton keys on the padlocked boards, room by room]:::built --> roomRoll{Which room is behind the boards?}
+  roomRoll -->|North| fixedRoom[The kitchen, always]:::built
+  roomRoll -->|The other three slots| dish[A cloche lifts: the parlour, the library, or the cellar, rolled each run]:::built
 
   fixedRoom --> hunt
-  dish -.-> hunt
+  dish --> hunt
 
-  hunt{How does this thing come to you?}:::proposed
-  hunt --> hidden[Hidden in one of a few spots: the silver spoon in a sofa]:::proposed
-  hunt --> carried[A daredevil zombie carries it: drop him, grab the portrait]:::proposed
-  hunt --> bought[Locked in a display case, opened by a feat: a page of the guest book]:::proposed
-  hunt --> cooked[Made at the stove: Grandma Munch's recipe]:::proposed
-  hunt --> heard[Follow the sound: the music box playing]:::proposed
+  hunt{How does this thing come to you?}:::built
+  hunt --> hidden[Hidden in one of a few spots: the silver spoon]:::built
+  hunt --> carried[A marked zombie wears it: drop him, grab the portrait]:::built
+  hunt --> heard[Follow the sound: the music box playing]:::built
+  hunt --> behind[Behind the boards of a room: the butler's bell]:::built
+  hunt --> bought[Locked in a display case: a page of the guest book]:::built
+  hunt --> cooked[Made at the stove: Grandma Munch's recipe]:::built
 
   hidden --> all
   carried --> all
+  heard --> all
+  behind --> all
   bought --> all
   cooked --> all
-  heard --> all
   all{Everything but the hat?}
 
   all -.->|Leave early with part of the dare| early([Early escape: pays less, and you are a chicken]):::proposed
-  all -->|Yes| hungry[The house gets hungrier: waves press harder]:::proposed
-  hungry --> goodbye[Uncle Chunk appears at the front door, only now, in his party hat]:::proposed
-  goodbye --> holdout[Take his hat, then hold the hall while the front door unlocks]:::proposed
-  holdout --> escaped([Escaped with the whole dare: pays most, and the proof to share]):::proposed
+  all -->|Yes| hungry[The house gets hungrier: more zombies]:::built
+  hungry --> goodbye[Uncle Chunk comes through the front door, in his party hat, at the next wave: never before wave 6 to 9 by difficulty]:::built
+  goodbye --> holdout[Take his hat, then hold the hall while the front door unlocks]:::built
+  holdout --> doorMark[A door out of view gets a marker at the screen's edge]:::built
+  doorMark --> escaped([Walk out together: Escaped, and the proof to share]):::built
 
-  hungry -->|Munched| lost([Game Over: you join the party. Your friends remember]):::built
+  hungry -->|Munched| lost([Game Over: you join the party]):::built
 
   classDef built fill:#1f3d2b,stroke:#4caf50,color:#fff
   classDef proposed fill:#3d2b1f,stroke:#ff9800,color:#fff,stroke-dasharray: 5 5
@@ -177,24 +173,25 @@ There is no shopkeeper. You get stronger from the house itself, and zombies drop
 
 ```mermaid
 flowchart LR
-  kill[Drop zombies]:::proposed --> keys[Skeleton keys]:::proposed
-  keys --> boards[Padlocked boards: spend the number on the lock, a room opens]:::proposed
-  keys --> fridge[The fridge's padlock: spend keys for a pull]:::proposed
-  kill --> feats[Feats this run: kill counts, skill, exploring]:::proposed
-  feats --> cases[Display cases spring open: a gun]:::proposed
-  find[Things the dare did not ask for]:::proposed --> cases
-  kill --> use[Kills with a gun level it up: Beefy, DELUXE, 3000]:::proposed
-  rooms[Rooms and drops]:::proposed --> found[Hearts and traps found where they lie]:::proposed
-  ammo2[Ammo never runs out. Reloads stay]:::proposed
+  kill[Drop zombies]:::built --> keys[Skeleton keys: one shared ring in co-op]:::built
+  keys --> boards[Padlocked boards: spend the number on the lock, a room opens]:::built
+  keys --> fridge[The fridge's padlock: spend keys for a pull]:::built
+  kill --> feats[Feats this run: kill counts, skill, exploring]:::built
+  feats --> cases[Display cases spring open: a gun or the Laser Sight]:::built
+  feats --> stove[The stove and the gas valve]:::built
+  find[Things the dare did not ask for]:::built --> cases
+  kill --> use[Kills with a gun level it up: Beefy, DELUXE, 3000]:::built
+  crates[Trap crates each break]:::built --> found[Traps, and a heart when someone is hurt]:::built
+  ammo2[Ammo never runs out. Reloads stay]:::built
 
-  classDef proposed fill:#3d2b1f,stroke:#ff9800,color:#fff,stroke-dasharray: 5 5
+  classDef built fill:#1f3d2b,stroke:#4caf50,color:#fff
 ```
 
 ### Power-ups are the house's things
 
-Each power-up becomes something you would find in an old manor, and its look on you matches it. Same rules as today; the zombies drop them because the daredevils pocketed them as proof.
+Built on 2026-11-10. Each power-up is something you would find in an old manor, and its look on you matches it. Same rules as before; the zombies drop them because the daredevils pocketed them as proof.
 
-| Today           | In the manor  | What it does                     | How it looks on you                           |
+| Before          | In the manor  | What it does                     | How it looks on you                           |
 | --------------- | ------------- | -------------------------------- | --------------------------------------------- |
 | Hot Sauce       | Wind-Up Key   | Rapid fire, never reloads        | A brass key turns in your back, gears tick    |
 | Mean Beans      | Family Silver | Twice the damage, more knockback | A silver gleam, shots fly as silver streaks   |
@@ -205,39 +202,41 @@ Each power-up becomes something you would find in an old manor, and its look on 
 
 ### Difficulty sets the list
 
-Today the four levels scale only the zombies (health, speed, bites) and the break clock. The escape adds a second dial: how much you have to find, and how hard the house hides it. Uncle Chunk's party hat is always the last thing on every list: he shows up at the front door wearing it only once the rest is found, never at a set wave.
+The four levels scale the zombies (health, speed, bites) and the break clock, and since 2026-11-10 they also set how much you have to find and how much Rattles helps. Uncle Chunk's party hat is always the last thing on every list: he comes through the front door wearing it only once the rest is found, at the next wave, but never before wave 6 on Dare, 8 on Double Dare, or 9 on Triple Dare and Triple Dog Dare.
 
 ```mermaid
 flowchart LR
-  easy[Dare: 2 things. The card's doodles point the way, spots sparkle]:::proposed --> normal[Double Dare: 3 things. One doodled hint a break]:::proposed
-  normal --> hard[Triple Dare: 3 things. No sparkle, one is always on a marked zombie]:::proposed
-  hard --> nightmare[Triple Dog Dare: 4 things. The house gets hungrier from the first find, no hints]:::proposed
+  easy[Dare: 2 things. Rattles points every break, hidden things sparkle]:::built --> normal[Double Dare: 3 things. One hint a break]:::built
+  normal --> hard[Triple Dare: 3 things. No sparkle, the portrait is always on a marked zombie]:::built
+  hard --> nightmare[Triple Dog Dare: 4 things. No hints, Rattles heckles]:::built
+  nightmare --> hungrier[The house hungrier from the first find]:::built
 
-  classDef proposed fill:#3d2b1f,stroke:#ff9800,color:#fff,stroke-dasharray: 5 5
+  classDef built fill:#1f3d2b,stroke:#4caf50,color:#fff
 ```
 
-### The order it would land in
+### The order it landed in
 
-From `LORE.md`, cheapest first, so the story lands before the systems do.
+From `LORE.md`, cheapest first. Everything but early exits landed in one update (see `docs/ESCAPE_PLAN.md`).
 
 ```mermaid
 flowchart LR
-  words[1. Words and art: the dining room, the power-ups and zombies restyled, the dare card art]:::proposed --> noShop[No shop: feats, finds, and skeleton keys]:::proposed
-  noShop --> fixed[2. One fixed dare in fixed spots]:::proposed
-  fixed --> spots[3. Rolled spots and a rolled list, sized by difficulty]:::proposed
-  spots --> rooms[4. Rolled rooms: needs a second room and a change to Not now]:::proposed
-  rooms --> leave[5. Early exits and the hungrier house: balance work]:::proposed
+  words[1. Words and art: the dining room, the power-ups and zombies restyled, the dare card]:::built --> noShop[2. No shop: feats, finds, and skeleton keys]:::built
+  noShop --> fixed[3. The dare as the goal, and the finale]:::built
+  fixed --> spots[4. Rolled spots and a rolled list, sized by difficulty]:::built
+  spots --> rooms[5. Rolled rooms: the parlour, library, and cellar]:::built
+  rooms -.-> leave[6. Early exits: balance work]:::proposed
 
+  classDef built fill:#1f3d2b,stroke:#4caf50,color:#fff
   classDef proposed fill:#3d2b1f,stroke:#ff9800,color:#fff,stroke-dasharray: 5 5
 ```
 
 ## Open questions to settle together
 
-The lore choices that most change these charts, from `LORE.md`:
+The lore choices still open, from `LORE.md`:
 
-1. What goes in the pool of things the dare asks for, and how does each one come to you?
-2. What does Rattles say now? He stays as the 1924 daredevil who gives hints.
-3. Which feats open which display cases, and how many skeleton keys a room and a fridge pull cost?
-4. Do rooms roll, or only what is in them?
+1. Which more things join the dare's pool, and whether the guest book page (a case) and Grandma Munch's recipe (the stove) roll.
+2. Rattles' lines and his 1924 look.
+3. The feat pools per difficulty and the key costs, tuned in the balance pass.
+4. Leaving early, and what your friends in the car say between runs.
 
-The build is planned in [`docs/ESCAPE_PLAN.md`](./docs/ESCAPE_PLAN.md). Settled on 2026-11-10: no shop (feats open display cases, guns level up with use, zombies drop skeleton keys for rooms and the fridge); endless ammo with reloads kept; your friends write the dare card; the power-ups become the house's things; the difficulty levels are Dare, Double Dare, Triple Dare, and Triple Dog Dare; the dining room is a brand-new room.
+The build is in [`docs/ESCAPE_PLAN.md`](./docs/ESCAPE_PLAN.md). Settled and built on 2026-11-10: no shop (feats open display cases, guns level up with kills, zombies drop skeleton keys for rooms and the fridge); endless ammo with reloads kept; your friends write the dare card; the power-ups are the house's things; the difficulty levels are Dare, Double Dare, Triple Dare, and Triple Dog Dare; the dining room is a brand-new room; the parlour, the library, and the cellar roll into the house's slots.

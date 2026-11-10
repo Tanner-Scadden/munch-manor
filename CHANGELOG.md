@@ -2,10 +2,15 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
-## November 10, 2026: Learn the dare by doing it
+## November 10, 2026: I dare you
 
-- 🗝️ New to the manor? Your first break walks you through the dare: grab a key, take a trap, pop open a case, peek at your dare card.
-- 🚪 The front door stays in sight for the big escape, and a little door sign points the way out when it isn't.
+Your friends dared you to go in. Heads up: a co-op run going when the update lands ends, so start a fresh one.
+
+- 🎩 Your friends dared you into Munch Manor: find what's on the dare card, snatch Uncle Chunk's party hat, hold the hall while the front door unlocks, then walk out together. ESCAPED! New here? Your first break walks you through it.
+- 🗝️ Rattles closed his shop: zombies drop skeleton keys for padlocked boards and the fridge, guns wait in display cases you crack open with feats, guns level up as you splat, and ammo never runs out (reloads still do).
+- 🕯️ Runs start at the dining room's table: shoot the chandelier onto the crowd, then find the parlour, a library with a secret shelf, and a pitch-black cellar, shuffled into new spots every run.
+- 🚗 A spooky intro opens every run: the drive up the hill, a knock, a knock back, and SLAM. Tap to skip, but never the slam. Then the dare card pops out of your pocket.
+- 🧟 The house got dressed up: zombies are party guests and old daredevils, power-ups are the Wind-Up Key, Family Silver, Dancing Shoes, Hat Pins, and Dinner Gong, and the stakes are Dare, Double Dare, Triple Dare, and Triple Dog Dare.
 
 ## November 8, 2026: Fat fingers welcome
 
