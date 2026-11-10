@@ -445,9 +445,9 @@ export const bossBarShapes: {
 
 // ENTRANCE BAND
 
-// NOTE: the top band starts below the hearts, the money, and the round text,
-// so it never covers the HUD.
-const BAND_TOPS: Readonly<Record<HintBand, number>> = { Top: 31, Bottom: 100 }
+// NOTE: the top band starts below the hearts, the keys, the round text,
+// and the dare card with its unlock bar, so it never covers the HUD.
+const BAND_TOPS: Readonly<Record<HintBand, number>> = { Top: 39, Bottom: 100 }
 const BAND_HEIGHT = 30
 const BAND_LIFT = 3
 const BAND_FILL = 'rgba(24, 6, 10, 0.82)'

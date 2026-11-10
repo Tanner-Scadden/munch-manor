@@ -24,6 +24,7 @@ import {
 } from '../../art/sprites/hearts'
 import { TRAP_ICONS } from '../../art/sprites/traps'
 import {
+  dareCardLeftOf,
   dareCardPointShapes,
   dareCardShapes,
 } from '../../features/dare/dareCard'
@@ -296,7 +297,7 @@ const roundHudShapes = (
           ),
           ...bossBarShapes(
             bar,
-            layout.centerX,
+            bossBarCenterOf(model, layout),
             layout.subtitleY + 1,
             model.elapsedMs,
           ),
@@ -306,6 +307,21 @@ const roundHudShapes = (
     Escaped: () => [],
     GameOver: () => [],
   })
+
+// NOTE: a portrait HUD puts the dare card on the boss bar's row, at its
+// right end, so the bar centers on what the card leaves of the row.
+const BOSS_BAR_HEIGHT = 8
+const BOSS_BAR_CARD_GAP = 3
+
+const bossBarCenterOf = (model: Model, layout: HudLayout): number =>
+  layout.dareTop < layout.subtitleY + 1 + BOSS_BAR_HEIGHT
+    ? Math.min(
+        layout.centerX,
+        Math.round(
+          (HUD_MARGIN + dareCardLeftOf(model, layout) - BOSS_BAR_CARD_GAP) / 2,
+        ),
+      )
+    : layout.centerX
 
 const KEYS_Y = HUD_MARGIN + 9
 

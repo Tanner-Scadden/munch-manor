@@ -3,10 +3,12 @@ import { Function, Option } from 'effect'
 import type { Model } from '../app/model'
 import { couchFocus } from '../input/couch'
 import { CAMERA_LEAN_EASE_MS, CAMERA_LEAN_PX } from '../shared/constants'
+import { Finale } from '../world/dare/dareSchema'
 import { type Level, levelOf } from '../world/level/arena'
 import { focusOf } from '../world/party/party'
 import type { Vector } from '../world/schema/entitySchema'
 import { ZERO_VECTOR, clamp, scaleVector } from '../world/step/geometry'
+import { hudLayoutFor } from './hudLayout'
 import { type Box, LANDSCAPE_SIZE, type Screen, screenOf } from './screen'
 
 // CAMERA
@@ -94,11 +96,52 @@ export const worldWindowOf = (screen: Screen): WindowSize => ({
   height: Math.round(screen.world.height / screen.zoom),
 })
 
+// NOTE: the gun slots' key caps stand this far over the slots.
+const KEY_CAP_RISE_PX = 3
+
+// NOTE: how many world pixels at the bottom of the window the gun cluster
+// covers: in landscape it sits over the world, in portrait under it, in the
+// thumb area, where it covers none.
+const clusterReserveOf = (screen: Screen): number =>
+  Math.max(
+    0,
+    Math.ceil(
+      (screen.world.y +
+        screen.world.height -
+        (hudLayoutFor(screen).slotTop - KEY_CAP_RISE_PX)) /
+        screen.zoom,
+    ),
+  )
+
+// NOTE: the finale plays at the front door, in the dining room's bottom
+// wall, right where the gun cluster sits over the world in landscape. Once
+// Uncle Chunk is summoned, the camera may follow on past the bottom of the
+// house by what the cluster covers, onto the night outside, so the door,
+// its padlock and bar, and the walk out stay above the slots. Before the
+// finale and in portrait the camera keeps to the house.
+const isFinaleOn = (model: Model): boolean =>
+  !Finale.isAnyOf(['Hunting'])(model.dare.finale)
+
+const finaleLevelOf = (model: Model, screen: Screen): Level => {
+  const level = levelOf(model)
+  const reserve = isFinaleOn(model) ? clusterReserveOf(screen) : 0
+  return reserve === 0
+    ? level
+    : {
+        ...level,
+        bounds: { ...level.bounds, bottom: level.bounds.bottom + reserve },
+      }
+}
+
 export const worldCameraFor: {
   (screen: Screen): (model: Model) => Camera
   (model: Model, screen: Screen): Camera
 } = Function.dual(2, (model: Model, screen: Screen): Camera =>
-  cameraFor(levelOf(model), cameraFocus(model), worldWindowOf(screen)),
+  cameraFor(
+    finaleLevelOf(model, screen),
+    cameraFocus(model),
+    worldWindowOf(screen),
+  ),
 )
 
 export const toScreenCamera: {

@@ -5,6 +5,7 @@ One entry per day, newest first. Only things a player would notice, a handful of
 ## November 10, 2026: Learn the dare by doing it
 
 - 🗝️ New to the manor? Your first break walks you through the dare: grab a key, take a trap, pop open a case, peek at your dare card.
+- 🚪 The front door stays in sight for the big escape, and a little door sign points the way out when it isn't.
 
 ## November 8, 2026: Fat fingers welcome
 
