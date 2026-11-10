@@ -6,6 +6,7 @@ import { describe, expect, it } from '@effect/vitest'
 
 import { Message } from '../../../app/message'
 import {
+  BreakClock,
   FridgeDoor,
   type FridgePrize,
   type Model,
@@ -14,10 +15,11 @@ import {
   Tour,
 } from '../../../app/model'
 import { forgetTutorial } from '../../../platform/save'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { FIXED_STEP_MS, KITCHEN_FIRST_WAVE } from '../../../shared/constants'
 import { nextRandom } from '../../../shared/prng'
 import {
   AT_FRIDGE,
+  DISTANT_SPAWN,
   atFridgeOnWave,
   freshRunModel,
   withKeys,
@@ -48,6 +50,7 @@ import {
 } from '../../../world/level/exits'
 import { WEST_EXIT } from '../../../world/level/plan'
 import { focusOf, modifyFocus, soloSeat } from '../../../world/party/party'
+import { isPending } from '../../../world/run/lessons'
 import { isKitchenTourOn } from '../../../world/run/tutorialRules'
 import { type KitchenStep, kitchenStepOf } from '../kitchenTour'
 
@@ -310,6 +313,41 @@ describe('the kitchen tour', () => {
         expect(remainingOf(later)).toBeLessThan(BREAK_MS)
       }),
     ),
+  )
+
+  // NOTE: below Hard the break before wave 3 waits for READY, with no
+  // clock to run out, so the wave started is what ends the tour for good.
+  it.effect(
+    'in a break that waits, starting the wave learns it for the next run',
+    () => {
+      const waiting = modifyFields(atBoards(), {
+        phase: () =>
+          Phase.Preparation({
+            wave: KITCHEN_FIRST_WAVE,
+            remainingMs: BREAK_MS,
+            durationMs: BREAK_MS,
+            spawns: [DISTANT_SPAWN],
+            clock: BreakClock.Waiting({ elapsedMs: 0 }),
+          }),
+      })
+      return Story.story(
+        APPLICATION,
+        Story.given(waiting),
+        frames(2),
+        Story.model(started => {
+          expect(isTourRunning(started)).toBe(true)
+          expect(isPending(started.lessons.timedBreaks)).toBe(true)
+        }),
+        Story.message(Message.ClickedStartWaveButton()),
+        frames(1),
+        Story.model(waved => {
+          expect(Phase.isAnyOf(['Wave'])(waved.phase)).toBe(true)
+          expect(isPending(waved.lessons.timedBreaks)).toBe(false)
+          expect(waved.kitchenTour).toEqual(Tour.Over())
+        }),
+        Story.Command.resolveAll(),
+      )
+    },
   )
 
   it.effect('runs once per save, and a tutorial reset plays it again', () =>

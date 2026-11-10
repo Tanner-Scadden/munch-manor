@@ -239,6 +239,7 @@ Bottom to top. Each layer names its goal, what it changes, and how it is checked
 
 - Wave 1 stays the practice wave; the guided first break becomes: grab a skeleton key, open a case with an easy feat, read the dare card (`src/features/onboarding/`).
 - New lessons in the save (version 17, with layer 2's change).
+- Built: four steps, KEY (the tour's own key on the dining room floor), TRAP (the dining room crate's Plank Pile), CASE (the case nearest the start, its feat rigged to 5 kills at a new save's run start, so it opens in the practice wave), and DARE (the HUD card glows with an arrow). The `dareTour` and `dareKey` lessons are optional keys in version 17 that read as Pending when missing, and the shop's lesson is gone. Leaving the kitchen tour's break learns the timed breaks lesson even when it waits for READY, so the tour plays once per save below Hard too.
 
 **Checks.** Onboarding Stories from a new save, an audit of a first run on a phone.
 

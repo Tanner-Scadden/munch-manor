@@ -3,6 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import {
   DOOR_HALF_WIDTH_PX,
+  KITCHEN_FIRST_WAVE,
   OPEN_BREAK_WAVE,
   PACK_WARNING_MS,
   PREPARATION_MS,
@@ -321,9 +322,15 @@ export const pause = <M extends World>(model: M): M =>
     GameOver: () => model,
   })
 
+// NOTE: below Hard the kitchen tour's break waits for READY too, so leaving
+// it, timed or not, learns the timed breaks lesson that holds the tour
+// (src/world/run/tutorialRules.ts): it plays once per save.
 const learnFromBreak = (model: World, wave: number, clock: BreakClock) =>
   BreakClock.match(clock, {
-    Waiting: () => learnOpenBreak(model),
+    Waiting: () =>
+      wave === KITCHEN_FIRST_WAVE
+        ? learnTimedBreaks(learnOpenBreak(model))
+        : learnOpenBreak(model),
     Counting: () =>
       isTimedBreak(wave, clock) ? learnTimedBreaks(model) : model,
   })

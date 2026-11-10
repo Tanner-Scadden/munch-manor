@@ -27,11 +27,12 @@ export const settledLessons: Lessons = {
   move: learned,
   fire: learned,
   startWave: learned,
-  shop: learned,
   swap: learned,
   pickup: learned,
   timedBreaks: learned,
   openBreak: learned,
+  dareTour: learned,
+  dareKey: learned,
 }
 
 export const isPending = (lesson: Lesson): boolean =>

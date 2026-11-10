@@ -33,7 +33,7 @@ const VIEWPORTS = pickViewports([
 ])
 
 const LEARNED =
-  'seen=all&learned=move,fire,startWave,shop,swap,pickup,timedBreaks,openBreak'
+  'seen=all&learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey'
 const BREAK = `wave=3&prep=40000&money=90&${LEARNED}`
 
 type Scene = Readonly<{ name: string; query: string; hold?: string }>

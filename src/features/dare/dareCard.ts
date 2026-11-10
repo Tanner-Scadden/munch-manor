@@ -7,6 +7,8 @@ import {
   DARE_FOUND_SLOTS,
   DARE_SLOT_SIZE,
 } from '../../art/dareArt'
+import { bakeText, placeBaked } from '../../art/font'
+import { TOP_LEFT, spriteShapes } from '../../art/sprite'
 import { placeSprite, rect } from '../../render/drawing'
 import type { HudLayout } from '../../render/hudLayout'
 import { dareCardOf } from '../../world/dare/dare'
@@ -95,3 +97,74 @@ const unlockBarShapes = (
         ),
       ]
     : []
+
+// POINTED AT
+
+// NOTE: the guided first break's last step (src/features/onboarding/firstBreakQuest.ts)
+// points at the card: a gold rim round it that blinks, an arrow under it
+// bobbing up, and its one word.
+const POINT_BLINK_MS = 300
+const POINT_BOB_MS = 260
+const POINT_GAP = 2
+const RIM_LIT = '#ffe066'
+const RIM_DIM = 'rgba(255, 224, 102, 0.45)'
+
+const UP_ARROW = spriteShapes(
+  ['...o...', '..owo..', '.owwwo.', 'owwwwwo', 'ooooooo'],
+  { o: '#140c10', w: '#f4f1de' },
+  TOP_LEFT,
+)
+const UP_ARROW_HALF_WIDTH = 3
+const UP_ARROW_HEIGHT = 5
+
+const DARE_WORD = bakeText('DARE', 'Prompt')
+
+const rimShapes = (
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  fill: string,
+): ReadonlyArray<Canvas.Shape> => [
+  rect(left - 1, top - 1, width + 2, 1, fill),
+  rect(left - 1, top + height, width + 2, 1, fill),
+  rect(left - 1, top, 1, height, fill),
+  rect(left + width, top, 1, height, fill),
+]
+
+export const dareCardPointShapes: {
+  (layout: HudLayout): (model: Model) => ReadonlyArray<Canvas.Shape>
+  (model: Model, layout: HudLayout): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (model: Model, layout: HudLayout): ReadonlyArray<Canvas.Shape> => {
+    const count = dareCardOf(model).length
+    if (count === 0) {
+      return []
+    }
+    const left = cardLeftOf(count, layout)
+    const width = layout.dareRight - left
+    const centerX = Math.round(left + width / 2)
+    const arrowTop =
+      layout.dareTop +
+      DARE_SLOT_SIZE +
+      POINT_GAP +
+      (Math.floor(model.elapsedMs / POINT_BOB_MS) % 2)
+    const isLit = Math.floor(model.elapsedMs / POINT_BLINK_MS) % 2 === 0
+    return [
+      ...rimShapes(
+        left,
+        layout.dareTop,
+        width,
+        DARE_SLOT_SIZE,
+        isLit ? RIM_LIT : RIM_DIM,
+      ),
+      placeSprite(centerX - UP_ARROW_HALF_WIDTH, arrowTop, UP_ARROW),
+      placeBaked(DARE_WORD, {
+        x: centerX,
+        y: arrowTop + UP_ARROW_HEIGHT + 1,
+        align: 'Center',
+      }),
+    ]
+  },
+)

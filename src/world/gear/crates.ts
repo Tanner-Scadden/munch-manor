@@ -49,9 +49,10 @@ import { ownedCount, stockTrap, trapLimitOf } from './traps'
 // one. Never in a Glass run, whose one heart stays one heart.
 //
 // The rolls come from the crates' own generator (`crates.rngState`, salted
-// from the run's seed in freshCrates), so they move no other roll. In a new
-// player's guided first break the dining room's crate always holds a Plank Pile,
-// the trap the tutorial teaches (src/features/onboarding/firstBreakQuest.ts).
+// from the run's seed in freshCrates), so they move no other roll. While a
+// new player's guided first break is still to come, the dining room's crate
+// always holds a Plank Pile, the trap the tutorial hands them
+// (src/features/onboarding/firstBreakQuest.ts).
 
 type CrateRules = Readonly<{
   reachPx: number
@@ -166,7 +167,7 @@ const isHeartDue = (world: World): boolean =>
 // STOCKING
 
 const isTutorialPlank = (world: World, room: CrateRoom): boolean =>
-  room === 'Dining' && !isCoop(world) && isPending(world.lessons.openBreak)
+  room === 'Dining' && !isCoop(world) && isPending(world.lessons.dareTour)
 
 const rollTrap = (state: number): readonly [CrateStock, number] => {
   const draw = nextRandom(state)

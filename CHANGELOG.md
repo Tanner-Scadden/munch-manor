@@ -2,6 +2,10 @@
 
 One entry per day, newest first. Only things a player would notice, a handful of bullets at most, written for players and not for us.
 
+## November 10, 2026: Learn the dare by doing it
+
+- 🗝️ New to the manor? Your first break walks you through the dare: grab a key, take a trap, pop open a case, peek at your dare card.
+
 ## November 8, 2026: Fat fingers welcome
 
 - 👆 Taps land where you aim: the Profile's close button no longer steals taps from its tabs, and the shop guide's BACK is full size on phones.

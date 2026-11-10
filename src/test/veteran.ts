@@ -4,6 +4,7 @@ import {
   DifficultyCard,
   Lesson,
   type Model,
+  QuestTour,
   Tour,
   TrapHint,
 } from '../app/model'
@@ -20,15 +21,16 @@ export const asTutorialDone = (model: Model): Model =>
       move: learned(),
       fire: learned(),
       startWave: learned(),
-      shop: learned(),
       swap: learned(),
       pickup: learned(),
       timedBreaks: learned(),
       openBreak: learned(),
+      dareTour: learned(),
+      dareKey: learned(),
     }),
     trapHint: () => TrapHint.Seen(),
     introSeen: () => 'Seen',
-    firstBreakQuest: () => Tour.Over(),
+    firstBreakQuest: () => QuestTour.Over(),
     kitchenTour: () => Tour.Over(),
   })
 
@@ -38,6 +40,8 @@ export const asVeteran = (model: Model): Model =>
       modifyFields(lessons, {
         move: () => Lesson.Learned({ atMs: 0 }),
         fire: () => Lesson.Learned({ atMs: 0 }),
+        dareTour: () => Lesson.Learned({ atMs: 0 }),
+        dareKey: () => Lesson.Learned({ atMs: 0 }),
       }),
     introducedKinds: () => ZOMBIE_KIND_ORDER,
     difficultyCard: () => DifficultyCard.Seen(),

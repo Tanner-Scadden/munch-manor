@@ -3,7 +3,14 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, it } from '@effect/vitest'
 
-import { BreakClock, type Model, Phase, Tour } from '../../../app/model'
+import {
+  BreakClock,
+  Lesson,
+  type Model,
+  Phase,
+  QuestTour,
+  Tour,
+} from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { PREPARATION_MS } from '../../../shared/constants'
 import { APPLICATION, measureSurface } from '../../../test/testing'
@@ -18,7 +25,12 @@ const questBreak: Model = modifyFields(asVeteran(initialModel), {
       spawns: [],
       clock: BreakClock.Waiting({ elapsedMs: 0 }),
     }),
-  firstBreakQuest: () => Tour.Running(),
+  lessons: lessons =>
+    modifyFields(lessons, {
+      dareTour: () => Lesson.Pending(),
+      dareKey: () => Lesson.Pending(),
+    }),
+  firstBreakQuest: () => QuestTour.Running(),
 })
 
 const tracker = Scene.role('region', { name: 'First break' })
@@ -31,13 +43,33 @@ describe('the first break tracker', () => {
       measureSurface,
       Scene.expect(tracker).toExist(),
       Scene.expect(
-        Scene.role('listitem', { name: 'Grab the Plank Pile, now' }),
+        Scene.role('listitem', { name: 'Grab the key, now' }),
       ).toExist(),
+      Scene.expect(Scene.role('listitem', { name: 'Take the trap' })).toExist(),
+      Scene.expect(Scene.role('listitem', { name: 'Open the case' })).toExist(),
       Scene.expect(
-        Scene.role('listitem', { name: 'Put it in a doorway' }),
+        Scene.role('listitem', { name: 'Look at the dare card' }),
       ).toExist(),
       Scene.click(Scene.role('button', { name: 'Skip the first break tour' })),
       Scene.expect(tracker).toBeAbsent(),
+    ),
+  )
+
+  it.effect('on the last step it lights the dare card word', () =>
+    Scene.scene(
+      APPLICATION,
+      Scene.given(
+        modifyFields(questBreak, {
+          firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
+        }),
+      ),
+      measureSurface,
+      Scene.expect(
+        Scene.role('listitem', { name: 'Open the case, done' }),
+      ).toExist(),
+      Scene.expect(
+        Scene.role('listitem', { name: 'Look at the dare card, now' }),
+      ).toExist(),
     ),
   )
 
@@ -46,12 +78,12 @@ describe('the first break tracker', () => {
       APPLICATION,
       Scene.given(
         modifyFields(questBreak, {
-          firstBreakQuest: () => Tour.Done({ ageMs: 0 }),
+          firstBreakQuest: () => QuestTour.Done({ ageMs: 0 }),
         }),
       ),
       measureSurface,
       Scene.expect(
-        Scene.role('listitem', { name: 'Put it in a doorway, done' }),
+        Scene.role('listitem', { name: 'Look at the dare card, done' }),
       ).toExist(),
       Scene.expect(
         Scene.role('button', { name: 'Skip the first break tour' }),

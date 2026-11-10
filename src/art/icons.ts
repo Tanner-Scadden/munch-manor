@@ -915,8 +915,9 @@ export const HOME_SCREEN_APP_ICON = pixelIconUrl(
   PROFILE_PALETTE,
 )
 
-// NOTE: the guided first break's tracker (src/features/onboarding/questView.ts): a trap crate
-// with planks in it to grab, and planks across a doorway to place.
+// NOTE: the guided first break's tracker (src/features/onboarding/questView.ts):
+// a skeleton key, a trap crate with planks poking out, a display case with
+// a gun behind its glass, and the dare card with its row of things.
 const QUEST_PALETTE: Palette = {
   o: SHADE,
   r: '#ff4a4f',
@@ -928,10 +929,26 @@ const QUEST_PALETTE: Palette = {
   y: '#ffe066',
   P: '#c98a4a',
   L: '#8a5a2b',
+  g: '#9fd8e6',
+  G: '#5b8fa3',
+  m: '#b8c0cc',
+  n: '#f4ead2',
+  k: '#3a3340',
 }
 
-// NOTE: the first break's GRAB step: a trap crate with planks poking out.
-export const QUEST_GRAB_ICON = pixelIconUrl(
+export const QUEST_KEY_ICON = pixelIconUrl(
+  [
+    '.ooo.......',
+    'oyyyo......',
+    'oy.Yooooooo',
+    'oy.Yyyyyyyo',
+    'oyyyooyoyoo',
+    '.ooo..o.o..',
+  ],
+  QUEST_PALETTE,
+)
+
+export const QUEST_TRAP_ICON = pixelIconUrl(
   [
     '..PL...PL..',
     '..PL...PL..',
@@ -946,18 +963,33 @@ export const QUEST_GRAB_ICON = pixelIconUrl(
   QUEST_PALETTE,
 )
 
-export const QUEST_PLACE_ICON = pixelIconUrl(
+export const QUEST_CASE_ICON = pixelIconUrl(
   [
     'fffffffffff',
+    'fgggggggggf',
+    'fgGgggggggf',
+    'fgkkkkkmggf',
+    'fggkkgggggf',
+    'fgggkggggGf',
+    'fgggggggggf',
+    'fffffffffff',
     'fdddddddddf',
-    'oooooooooo.',
-    'oPPPLPPPPPo',
-    'oooooooooo.',
-    'fdddddddddf',
-    '.oooooooooo',
-    'oPPPPPLPPPo',
-    '.oooooooooo',
-    'fdddddddddf',
+    'ff.......ff',
+  ],
+  QUEST_PALETTE,
+)
+
+export const QUEST_CARD_ICON = pixelIconUrl(
+  [
+    'ooooooooooo',
+    'onnnnnnnnno',
+    'onkkn.nrrno',
+    'onkkn.nrrno',
+    'onnnnnnnnno',
+    'onYYnyynLLo',
+    'onYYnyynLLo',
+    'onnnnnnnnno',
+    'ooooooooooo',
   ],
   QUEST_PALETTE,
 )

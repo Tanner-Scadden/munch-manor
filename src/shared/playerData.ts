@@ -833,15 +833,25 @@ export const SAVE_VERSION = 17
 export const SavedLesson = Schema.Literals(['Pending', 'Learned'])
 export type SavedLesson = typeof SavedLesson.Type
 
+// NOTE: a lesson added after a save was written reads as Pending when its
+// key is missing, so an older save and an older device's synced onboarding
+// still read: the dare tour and its key (docs/ESCAPE_PLAN.md, layer 16).
+// Versions up to 16 also held `shop`, the shop's lesson, gone with the shop
+// and dropped on decoding.
+const LaterLesson = SavedLesson.pipe(
+  Schema.withDecodingDefaultKey(Effect.succeed('Pending')),
+)
+
 export const SavedLessons = Schema.Struct({
   move: SavedLesson,
   fire: SavedLesson,
   startWave: SavedLesson,
-  shop: SavedLesson,
   swap: SavedLesson,
   pickup: SavedLesson,
   timedBreaks: SavedLesson,
   openBreak: SavedLesson,
+  dareTour: LaterLesson,
+  dareKey: LaterLesson,
 })
 export type SavedLessons = typeof SavedLessons.Type
 

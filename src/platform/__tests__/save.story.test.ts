@@ -143,6 +143,29 @@ describe('the schema', () => {
     expect(decodeSave(json)).toEqual(Option.some(learnedSave))
   })
 
+  // NOTE: a save from before the dare tour has no key for it and still
+  // holds the shop's lesson: it reads, the shop dropped and the tour to
+  // come.
+  test('a save from before the dare tour reads with the tour still to come', () => {
+    const {
+      dareTour: _dareTour,
+      dareKey: _dareKey,
+      ...lessons
+    } = learnedSave.onboarding.lessons
+    const older = jsonOf({
+      ...learnedSave,
+      onboarding: {
+        ...learnedSave.onboarding,
+        lessons: { ...lessons, shop: 'Learned' },
+      },
+    })
+    expect(
+      Option.map(decodeSave(older), save => save.onboarding.lessons),
+    ).toEqual(
+      Option.some({ ...lessons, dareTour: 'Pending', dareKey: 'Pending' }),
+    )
+  })
+
   test('the difficulty round trips through the model', () => {
     expect(saveOf(restoreSave(initialModel, learnedSave)).difficulty).toEqual(
       learnedSave.difficulty,

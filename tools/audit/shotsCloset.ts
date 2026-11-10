@@ -38,7 +38,7 @@ import {
 import { attempt } from './page'
 
 const LEARNED =
-  'learned=move,fire,startWave,shop,swap,pickup,timedBreaks,openBreak'
+  'learned=move,fire,startWave,swap,pickup,timedBreaks,openBreak,dareTour,dareKey'
 
 // NOTE: rank 4 (the points for it) holds two hat gifts; 140 Bones earned
 // and 50 spent leave 90, enough for a hat, a color, a print, or a skin.

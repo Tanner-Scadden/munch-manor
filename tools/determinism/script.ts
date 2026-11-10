@@ -156,11 +156,12 @@ const pastTutorial = (model: Model): Model =>
         move: () => Lesson.Learned({ atMs: 0 }),
         fire: () => Lesson.Learned({ atMs: 0 }),
         startWave: () => Lesson.Learned({ atMs: 0 }),
-        shop: () => Lesson.Learned({ atMs: 0 }),
         swap: () => Lesson.Learned({ atMs: 0 }),
         pickup: () => Lesson.Learned({ atMs: 0 }),
         timedBreaks: () => Lesson.Learned({ atMs: 0 }),
         openBreak: () => Lesson.Learned({ atMs: 0 }),
+        dareTour: () => Lesson.Learned({ atMs: 0 }),
+        dareKey: () => Lesson.Learned({ atMs: 0 }),
       }),
   })
 

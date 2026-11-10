@@ -2,134 +2,184 @@ import { Array, Function, Option, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
-import { Tour } from '../../domain/clientSchema'
-import { areCratesOpen, crateSpotOf } from '../../world/gear/crates'
-import { barricadedDoors } from '../../world/gear/traps'
+import { QuestTour } from '../../domain/clientSchema'
+import { caseBoxOf } from '../../world/feats/caseSpots'
+import { crateSpotOf } from '../../world/gear/crates'
 import { levelOf } from '../../world/level/arena'
-import { focusOf, isCoop } from '../../world/party/party'
-import { isPending } from '../../world/run/lessons'
+import { isCoop } from '../../world/party/party'
+import { isPending, learn } from '../../world/run/lessons'
 import {
-  type DoorId,
-  TrapHint,
+  isDareTourBreak,
+  maybeTutorialCase,
+  tutorialKeySpotOf,
+} from '../../world/run/tutorialRules'
+import {
+  CaseState,
+  CrateStock,
+  Phase,
   type Vector,
 } from '../../world/schema/worldSchema'
 
-// NOTE: the guided first break, from playtesters who wanted the game to walk
-// them through the first break, as other games do. One step at a time, each
-// taught at the spot where it happens, with a little tracker in a corner:
-// grab the Plank Pile from the dining room's trap crate (in this break it
-// always holds one, see src/world/gear/crates.ts), and place it in a doorway. Then
-// START WAVE pulses and the tracker ticks off and fades. A later layer of
-// docs/ESCAPE_PLAN.md rewrites the tutorial.
+// NOTE: the guided first break (docs/ESCAPE_PLAN.md, layer 16): a new
+// player learns the dare by doing it, one step at a time, each taught at
+// the spot where it happens, with a little tracker in a corner and an arrow
+// bobbing over the spot. Grab the skeleton key lying in the middle of the
+// dining room, take the Plank Pile from the dining room's crate (in this
+// break it always holds one, src/world/gear/crates.ts), take the prize from
+// the nearest display case (its feat was rigged to a few kills, so it sprang
+// open in the practice wave, src/world/run/tutorialRules.ts), and look at
+// the dare card on the HUD, which glows with an arrow and its one word.
+// Then START WAVE pulses and the tracker ticks off and fades.
 //
-// It runs once per save: it starts only in the first break with a trap
-// crate open while the open break lesson is still pending and no trap was
-// ever placed, all saved, so a player who has played past it, or who
-// skipped the tutorial on the first-run card, never sees it and a tutorial
-// reset brings it back. (The saved shop lesson gated it too, until the shop
-// went in docs/ESCAPE_PLAN.md layer 7; it is kept in the save, unread.) Never in co-op. It is skippable: the
-// tracker's skip button, or starting the wave, ends it.
-export type QuestStep = 'Grab' | 'Place'
+// It runs once per save: it starts in the open break before wave 2 while
+// the dare tour lesson is pending, and ending it in any way (done, the
+// tracker's skip button, or starting the wave) learns the lesson, saved.
+// SKIP IT on the first-run card learns it too, and a tutorial reset brings
+// it back. Never in co-op.
+export type QuestStep = 'Key' | 'Trap' | 'Case' | 'Card'
 
 export const QUEST_STEPS: Array.NonEmptyReadonlyArray<QuestStep> = [
-  'Grab',
-  'Place',
+  'Key',
+  'Trap',
+  'Case',
+  'Card',
 ]
 
+const QUEST_LOOK_MS = 2600
 const QUEST_DONE_MS = 2600
 
 const isQuestBreak = (model: Model): boolean =>
-  areCratesOpen(model) && !isCoop(model)
+  Phase.isAnyOf(['Preparation'])(model.phase) && !isCoop(model)
 
-const isQuestDue = (model: Model): boolean =>
-  isQuestBreak(model) &&
-  isPending(model.lessons.openBreak) &&
-  TrapHint.isAnyOf(['Unseen'])(model.trapHint)
+const isKeyTaken = (model: Model): boolean => !isPending(model.lessons.dareKey)
 
-export const questStepOf = (model: Model): Option.Option<QuestStep> => {
-  if (!Tour.isAnyOf(['Running'])(model.firstBreakQuest)) {
-    return Option.none()
-  } else if (TrapHint.isAnyOf(['Showing'])(model.trapHint)) {
-    return Option.some('Place')
-  } else {
-    return Option.some('Grab')
-  }
-}
+const isTrapTaken = (model: Model): boolean =>
+  Array.some(
+    model.crates.crates,
+    ({ room, stock }) =>
+      room === 'Dining' && CrateStock.isAnyOf(['Taken'])(stock),
+  )
+
+// NOTE: with no case to open (a house with none), the step counts as done.
+const isCaseTaken = (model: Model): boolean =>
+  Option.match(maybeTutorialCase(model), {
+    onNone: () => true,
+    onSome: ({ state }) => CaseState.isAnyOf(['Emptied'])(state),
+  })
+
+const STEP_CHECKS: ReadonlyArray<
+  readonly [QuestStep, (model: Model) => boolean]
+> = [
+  ['Key', isKeyTaken],
+  ['Trap', isTrapTaken],
+  ['Case', isCaseTaken],
+]
+
+// NOTE: the first step not done yet, in order; the card once all are.
+const maybeOpenStep = (model: Model): Option.Option<QuestStep> =>
+  pipe(
+    STEP_CHECKS,
+    Array.findFirst(([, isDone]) => !isDone(model)),
+    Option.map(([step]) => step),
+  )
+
+export const questStepOf = (model: Model): Option.Option<QuestStep> =>
+  QuestTour.match(model.firstBreakQuest, {
+    Waiting: () => Option.none(),
+    Running: () =>
+      Option.orElse(maybeOpenStep(model), () => Option.some<QuestStep>('Card')),
+    Looking: () => Option.some<QuestStep>('Card'),
+    Done: () => Option.none(),
+    Over: () => Option.none(),
+  })
 
 export const isQuestDone = (model: Model): boolean =>
-  Tour.isAnyOf(['Done'])(model.firstBreakQuest)
+  QuestTour.isAnyOf(['Done'])(model.firstBreakQuest)
 
-// NOTE: one frame of the quest: it starts once its break comes, finishes
-// once the Plank Pile is placed, ends if the wave starts first, and its
-// tick fades after a moment.
+// NOTE: the last step points at the HUD's dare card.
+export const isQuestOnCard = (model: Model): boolean =>
+  Option.contains(questStepOf(model), 'Card')
+
+const learnDareTour = (model: Model): Model =>
+  modifyFields(model, {
+    lessons: lessons =>
+      modifyFields(lessons, {
+        dareTour: lesson => learn(lesson, model.elapsedMs),
+      }),
+  })
+
+// NOTE: one frame of the quest: it starts once its break comes, points at
+// the card once the key, the trap, and the case are done, ticks off after a
+// moment on the card, ends if the wave starts first, and its tick fades.
 export const advanceQuest: {
   (deltaMs: number): (model: Model) => Model
   (model: Model, deltaMs: number): Model
 } = Function.dual(2, (model: Model, deltaMs: number): Model =>
-  Tour.match(model.firstBreakQuest, {
+  QuestTour.match(model.firstBreakQuest, {
     Waiting: () =>
-      isQuestDue(model)
-        ? modifyFields(model, {
-            firstBreakQuest: () => Tour.Running(),
-          })
+      isDareTourBreak(model)
+        ? modifyFields(model, { firstBreakQuest: () => QuestTour.Running() })
         : model,
     Running: () => {
-      if (TrapHint.isAnyOf(['Seen'])(model.trapHint)) {
-        return modifyFields(model, {
-          firstBreakQuest: () => Tour.Done({ ageMs: 0 }),
-        })
-      } else if (!isQuestBreak(model)) {
+      if (!isQuestBreak(model)) {
         return endQuest(model)
+      } else if (Option.isNone(maybeOpenStep(model))) {
+        return modifyFields(model, {
+          firstBreakQuest: () => QuestTour.Looking({ ageMs: 0 }),
+        })
       } else {
         return model
+      }
+    },
+    Looking: ({ ageMs }) => {
+      if (!isQuestBreak(model)) {
+        return endQuest(model)
+      } else if (ageMs + deltaMs >= QUEST_LOOK_MS) {
+        return modifyFields(learnDareTour(model), {
+          firstBreakQuest: () => QuestTour.Done({ ageMs: 0 }),
+        })
+      } else {
+        return modifyFields(model, {
+          firstBreakQuest: () => QuestTour.Looking({ ageMs: ageMs + deltaMs }),
+        })
       }
     },
     Done: ({ ageMs }) =>
       modifyFields(model, {
         firstBreakQuest: () =>
           ageMs + deltaMs >= QUEST_DONE_MS
-            ? Tour.Over()
-            : Tour.Done({ ageMs: ageMs + deltaMs }),
+            ? QuestTour.Over()
+            : QuestTour.Done({ ageMs: ageMs + deltaMs }),
       }),
     Over: () => model,
   }),
 )
 
+// NOTE: the skip button, or the wave starting first: the tour is over for
+// this save.
 export const endQuest = (model: Model): Model =>
-  Tour.isAnyOf(['Over'])(model.firstBreakQuest)
+  QuestTour.isAnyOf(['Over'])(model.firstBreakQuest)
     ? model
-    : modifyFields(model, { firstBreakQuest: () => Tour.Over() })
+    : modifyFields(learnDareTour(model), {
+        firstBreakQuest: () => QuestTour.Over(),
+      })
 
-// NOTE: an arrow bobs over where the step happens: the dining room's crate to
-// grab from, then the nearest open doorway, the sensible spot for the Plank
-// Pile.
+// NOTE: an arrow bobs over where the step happens: the key on the floor,
+// the dining room's crate, and the case's top. The card's arrow is the
+// HUD's (src/features/dare/dareCard.ts).
 export const maybeQuestMark = (model: Model): Option.Option<Vector> =>
-  Option.flatMap(questStepOf(model), step =>
-    step === 'Grab'
-      ? Option.some(crateSpotOf(levelOf(model), 'Dining'))
-      : maybeQuestDoor(model),
-  )
-
-const maybeQuestDoor = (model: Model): Option.Option<Vector> => {
-  const level = levelOf(model)
-  const boarded = barricadedDoors(model.traps)
-  return pipe(
-    level.doorIds,
-    Array.filter((door: DoorId) => !Array.contains(boarded, door)),
-    Array.map(door => level.doors[door].center),
-    Array.sort((first: Vector, second: Vector) =>
-      Math.hypot(
-        first.x - focusOf(model).player.x,
-        first.y - focusOf(model).player.y,
-      ) -
-        Math.hypot(
-          second.x - focusOf(model).player.x,
-          second.y - focusOf(model).player.y,
-        ) <
-      0
-        ? -1
-        : 1,
-    ),
-    Array.head,
-  )
-}
+  Option.flatMap(questStepOf(model), step => {
+    const level = levelOf(model)
+    if (step === 'Key') {
+      return Option.some(tutorialKeySpotOf(model))
+    } else if (step === 'Trap') {
+      return Option.some(crateSpotOf(level, 'Dining'))
+    } else if (step === 'Case') {
+      return Option.map(maybeTutorialCase(model), displayCase => {
+        const box = caseBoxOf(level, displayCase)
+        return { x: Math.round((box.left + box.right) / 2), y: box.top }
+      })
+    } else {
+      return Option.none()
+    }
+  })

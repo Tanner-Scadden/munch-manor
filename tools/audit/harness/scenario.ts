@@ -11,6 +11,7 @@ import {
   Lesson,
   type Model,
   Oven,
+  QuestTour,
   Tour,
   Trap,
   TrapHint,
@@ -195,7 +196,9 @@ const scenarioModelOf = (settings: SceneSettings): Model => {
         ? modifyFields(model, { kitchenTour: () => Tour.Done({ ageMs: 0 }) })
         : modifyFields(model, {
             firstBreakQuest: () =>
-              quest === 'done' ? Tour.Done({ ageMs: 0 }) : Tour.Running(),
+              quest === 'done'
+                ? QuestTour.Done({ ageMs: 0 })
+                : QuestTour.Running(),
           })
   }
   const newer = config.newer

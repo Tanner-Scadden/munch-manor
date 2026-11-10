@@ -2,6 +2,7 @@ import { Array, Function } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import type { Model } from '../../app/model'
+import { QuestTour } from '../../domain/clientSchema'
 import {
   focusOf,
   isCoop,
@@ -75,7 +76,7 @@ export const isWaitingOnYou = (model: Model): boolean => {
     !isWaitingOnClock(model) ||
     isPracticeGateHeld(model) ||
     isKitchenTourOn(model) ||
-    model.firstBreakQuest._tag === 'Running'
+    QuestTour.isAnyOf(['Running', 'Looking'])(model.firstBreakQuest)
   ) {
     return false
   }

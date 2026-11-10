@@ -22,6 +22,7 @@ import {
 import { pantryDrawables } from '../../features/kitchen/pantryView'
 import { maybeQuestMark } from '../../features/onboarding/firstBreakQuest'
 import { isGoodieBeckoning } from '../../features/onboarding/onboarding'
+import { questKeyDrawables } from '../../features/onboarding/questKeyView'
 import { coopNameShapes } from '../../features/onlineRun/coopMarksView'
 import {
   RATTLES_FOOT_Y,
@@ -237,6 +238,7 @@ const standingDrawables = (
     ...mateDrawables(mates),
     ...fridgeDrawables(model),
     ...pantryDrawables(model),
+    ...questKeyDrawables(model),
     ...caseDrawables(model),
     ...crateDrawables(model),
     ...fallenChandelierDrawables(model),

@@ -14,6 +14,7 @@ import type { Model } from '../app/model'
 import {
   DifficultyCard,
   type PlayerBests,
+  QuestTour,
   Tour,
   freshLessons,
 } from '../domain/clientSchema'
@@ -805,11 +806,12 @@ export const saveOf = (model: Model): PlayerSave => ({
       move: savedLesson(model.lessons.move),
       fire: savedLesson(model.lessons.fire),
       startWave: savedLesson(model.lessons.startWave),
-      shop: savedLesson(model.lessons.shop),
       swap: savedLesson(model.lessons.swap),
       pickup: savedLesson(model.lessons.pickup),
       timedBreaks: savedLesson(model.lessons.timedBreaks),
       openBreak: savedLesson(model.lessons.openBreak),
+      dareTour: savedLesson(model.lessons.dareTour),
+      dareKey: savedLesson(model.lessons.dareKey),
     },
     trapHint: savedTrapHint(model.trapHint),
     introducedKinds: model.introducedKinds,
@@ -859,11 +861,12 @@ const restoreLessons = (lessons: Lessons, saved: SavedLessons): Lessons =>
     move: restoreLesson(saved.move),
     fire: restoreLesson(saved.fire),
     startWave: restoreLesson(saved.startWave),
-    shop: restoreLesson(saved.shop),
     swap: restoreLesson(saved.swap),
     pickup: restoreLesson(saved.pickup),
     timedBreaks: restoreLesson(saved.timedBreaks),
     openBreak: restoreLesson(saved.openBreak),
+    dareTour: restoreLesson(saved.dareTour),
+    dareKey: restoreLesson(saved.dareKey),
   })
 
 const isZombieKind = Schema.is(ZombieKind)
@@ -1020,7 +1023,7 @@ export const forgetTutorial = (model: Model): Model =>
     practice: () => noPractice,
     trapHint: () => TrapHint.Unseen(),
     introSeen: () => 'Unseen',
-    firstBreakQuest: () => Tour.Waiting(),
+    firstBreakQuest: () => QuestTour.Waiting(),
     kitchenTour: () => Tour.Waiting(),
     introducedKinds: () => [],
     debutCard: () => DebutCard.Hidden(),

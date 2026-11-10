@@ -52,6 +52,7 @@ import {
 } from '../party/party'
 import { advanceParty } from '../party/revive'
 import { advanceArrival, isArriving } from '../run/arrival'
+import { advanceTutorialKey } from '../run/tutorialRules'
 import type { World } from '../schema/world'
 import {
   GameEvent,
@@ -455,6 +456,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     rounded => rehangAtBreak(model, rounded),
     advancePantry,
     advanceCrates,
+    advanceTutorialKey,
     crated => advanceMending(crated, deltaMs),
     advanceDare,
     dared => advanceFinale(dared, deltaMs),

@@ -260,13 +260,17 @@ export const quietWave = (wave: number): Model =>
     phase: () => Phase.Wave({ wave, elapsedMs: 0, spawns: [DISTANT_SPAWN] }),
   })
 
-// NOTE: past the first break's lesson, so the parlour's trap crate rolls
-// its find (a new save's first break always holds a Plank Pile, see
-// src/world/gear/crates.ts).
+// NOTE: past the first break's lessons, so the dining room's trap crate
+// rolls its find (a new save's guided first break always holds a Plank
+// Pile, see src/world/gear/crates.ts) and no tour key lies on the floor.
 export const pastFirstBreak = (model: Model): Model =>
   modifyFields(model, {
     lessons: lessons =>
-      modifyFields(lessons, { openBreak: () => Lesson.Learned({ atMs: 0 }) }),
+      modifyFields(lessons, {
+        openBreak: () => Lesson.Learned({ atMs: 0 }),
+        dareTour: () => Lesson.Learned({ atMs: 0 }),
+        dareKey: () => Lesson.Learned({ atMs: 0 }),
+      }),
   })
 
 // NOTE: a break before `wave` with nothing coming in for a long while.
