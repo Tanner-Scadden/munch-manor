@@ -2,6 +2,7 @@ import { Array, Function, Option, Result, pipe } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { TILE_SIZE } from '../../shared/constants'
+import { shuffle } from '../../shared/prng'
 import { giveWeapon } from '../fridge/leftovers'
 import {
   type Box,
@@ -32,7 +33,6 @@ import {
   type Vector,
 } from '../schema/worldSchema'
 import type { Offer } from '../shop/purchase'
-import { shuffle } from '../waves/wavePacks'
 import { hasDone } from './feats'
 
 // Display cases (owner, 2026-11-10, "No shop" in GAME_DESIGN.md): the guns

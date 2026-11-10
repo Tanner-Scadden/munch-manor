@@ -1,4 +1,4 @@
-import { Array, Function } from 'effect'
+import { Array, Function, Order } from 'effect'
 
 const MULBERRY_INCREMENT = 0x6d2b79f5
 const UINT32_RANGE = 4294967296
@@ -49,4 +49,39 @@ export const between: {
 } = Function.dual(
   3,
   (roll: number, min: number, max: number): number => min + (max - min) * roll,
+)
+
+type Keyed<A> = Readonly<{ key: number; item: A }>
+
+const byKey = <A>(): Order.Order<Keyed<A>> =>
+  Order.mapInput(Order.Number, ({ key }: Keyed<A>) => key)
+
+// NOTE: the items in an order drawn from the generator, one draw each.
+export const shuffle: {
+  <A>(
+    items: Array.NonEmptyReadonlyArray<A>,
+  ): (state: number) => Seeded<Array.NonEmptyReadonlyArray<A>>
+  <A>(
+    state: number,
+    items: Array.NonEmptyReadonlyArray<A>,
+  ): Seeded<Array.NonEmptyReadonlyArray<A>>
+} = Function.dual(
+  2,
+  <A>(
+    state: number,
+    items: Array.NonEmptyReadonlyArray<A>,
+  ): Seeded<Array.NonEmptyReadonlyArray<A>> => {
+    const [nextState, keyed] = Array.mapAccum(
+      items,
+      state,
+      (drawState, item): Seeded<Keyed<A>> => {
+        const draw = nextRandom(drawState)
+        return [draw.nextState, { key: draw.value, item }]
+      },
+    )
+    return [
+      nextState,
+      Array.map(Array.sort(keyed, byKey<A>()), ({ item }) => item),
+    ]
+  },
 )
