@@ -8,6 +8,7 @@ import {
   SHOP_STALL_SYMBOL,
   tilesWithSymbol,
 } from '../../world/level/arena'
+import { PARLOUR_ROOM_ID } from '../../world/level/plan'
 import { pixelArt, rect } from '../drawing'
 import {
   BLOOD_COLOR,
@@ -34,8 +35,12 @@ import {
 // FLOOR
 
 // NOTE: the parlour's plank floor covers the parlour's own block of the
-// map, which is the whole map when the level is the parlour alone.
+// map, which is the whole map when the level is the parlour alone. x and y
+// are where that block starts in the world; the floor's own shapes are drawn
+// from 0 and moved there.
 export type Floor = Readonly<{
+  x: number
+  y: number
   width: number
   height: number
   tileCount: number
@@ -44,14 +49,18 @@ export type Floor = Readonly<{
 export const parlourFloorOf = (level: Level): Floor =>
   pipe(
     level.rooms,
-    Array.findFirst(({ id }) => id === 'Parlour'),
+    Array.findFirst(({ id }) => id === PARLOUR_ROOM_ID),
     Option.match({
       onNone: () => ({
+        x: level.left,
+        y: level.top,
         width: level.width,
         height: level.height,
         tileCount: level.tileCount,
       }),
       onSome: ({ box }) => ({
+        x: box.left,
+        y: box.top,
         width: box.right - box.left,
         height: box.bottom - box.top,
         tileCount:

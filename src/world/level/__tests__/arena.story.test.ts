@@ -31,7 +31,6 @@ import {
 import { focusOf, modifyFocus } from '../../party/party'
 import {
   PARLOUR,
-  ROOM_MAP,
   isInsideRoomAt,
   isSolidAt,
   isWalkableTile,
@@ -40,6 +39,7 @@ import {
   tileOfIndex,
 } from '../arena'
 import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
+import { ROOM_MAP } from '../plan'
 
 const FRAME_MS = FIXED_STEP_MS
 

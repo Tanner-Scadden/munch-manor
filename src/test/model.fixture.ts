@@ -29,7 +29,6 @@ import { grantedVeteran } from '../world/heroes/rank'
 import { valveBoxOf } from '../world/kitchen/gasValve'
 import { stoveBoxOf } from '../world/kitchen/stove'
 import {
-  LEVEL_SPECS,
   type Level,
   PARLOUR,
   levelFor,
@@ -38,6 +37,7 @@ import {
   startingLevel,
 } from '../world/level/arena'
 import { KITCHEN_EXIT } from '../world/level/exits'
+import { LEVEL_SPECS } from '../world/level/plan'
 import {
   atSeatBy,
   focusOf,

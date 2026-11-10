@@ -57,7 +57,14 @@ import {
   plankPriceFor,
   shopPriceFor,
 } from '../heroes/calling'
-import { PARLOUR, SHOP_STALL_SYMBOL, tilesWithSymbol } from '../level/arena'
+import {
+  type Box,
+  SHOP_STALL_SYMBOL,
+  START_LEVEL,
+  boxCenter,
+  roomAt,
+  tilesWithSymbol,
+} from '../level/arena'
 import { SHOP_GOOD_NAMES } from '../names'
 import { atSeat, isCoop, modifySeat, seatStateAt } from '../party/party'
 import { countPurchase } from '../run/stats'
@@ -1078,18 +1085,11 @@ export const purchase: {
 
 // STALL
 
-type StallBox = Readonly<{
-  left: number
-  top: number
-  right: number
-  bottom: number
-}>
-
-// NOTE: the stall stands in the parlour, where every run starts, and its
+// NOTE: the stall stands where the level a run starts on marks it, and its
 // sprites are baked once for that spot. Opening an exit adds rooms around
-// the parlour without moving it.
-const stallBox = (): StallBox => {
-  const tiles = tilesWithSymbol(PARLOUR, SHOP_STALL_SYMBOL)
+// it without moving it.
+const stallBox = (): Box => {
+  const tiles = tilesWithSymbol(START_LEVEL, SHOP_STALL_SYMBOL)
   const columns = Array.map(tiles, ({ column }) => column)
   const rows = Array.map(tiles, ({ row }) => row)
   return {
@@ -1100,7 +1100,10 @@ const stallBox = (): StallBox => {
   }
 }
 
-export const STALL_BOX: StallBox = stallBox()
+export const STALL_BOX: Box = stallBox()
+
+// NOTE: the room the stall stands in, whose walls its lines stay inside.
+export const STALL_ROOM: Box = roomAt(START_LEVEL, boxCenter(STALL_BOX)).box
 
 const distanceToStall = ({ x, y }: Vector): number =>
   Math.hypot(

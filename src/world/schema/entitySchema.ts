@@ -344,6 +344,7 @@ export const DoorId = Schema.Literals([
   'South',
   'Back',
   'Window',
+  'Front',
 ])
 export type DoorId = typeof DoorId.Type
 

@@ -21,7 +21,7 @@ import { type Calling, callingOfCode } from '../../shared/playerData'
 import { TURRET_WEAPON } from '../gear/traps'
 import { seatedAs } from '../heroes/callingPlayer'
 import { freshOvens } from '../kitchen/kitchen'
-import { MANOR, startingLevel } from '../level/arena'
+import { START_LEVEL, startingLevel } from '../level/arena'
 import {
   biteGraceFor,
   focusSeat,
@@ -379,7 +379,7 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   pickups: [],
   loot: freshLoot(seed),
   level: startingLevel,
-  ovens: freshOvens(MANOR),
+  ovens: freshOvens(START_LEVEL),
   rngState: seed,
   fridge: shutFridge,
   pantry: barePantry,

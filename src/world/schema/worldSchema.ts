@@ -7,7 +7,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import { PISTOL_MAGAZINE, PLAYER_MAX_HP } from '../../shared/constants'
 import { Difficulty } from '../../shared/playerData'
-import { PARLOUR } from '../level/arena'
+import { START_LEVEL } from '../level/arena'
 import { Modifiers } from '../run/modifiers'
 import {
   Arsenal,
@@ -756,9 +756,10 @@ export const World = Schema.Struct({
 })
 export type World = typeof World.Type
 
+// NOTE: a run starts on its level's start spot.
 export const initialPlayer: Player = {
-  x: PARLOUR.width / 2,
-  y: PARLOUR.height / 2,
+  x: START_LEVEL.start.x,
+  y: START_LEVEL.start.y,
   hp: PLAYER_MAX_HP,
   facing: { x: 1, y: 0 },
   fireCooldownMs: 0,

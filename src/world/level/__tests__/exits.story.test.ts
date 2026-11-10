@@ -12,7 +12,6 @@ import { MAX_FRAME_DELTA_MS } from '../../../shared/constants'
 import { imageColors } from '../../../test/testPng'
 import { APPLICATION, ticks } from '../../../test/testing'
 import {
-  type LevelSpec,
   MANOR,
   PARLOUR,
   closedExits,
@@ -27,35 +26,34 @@ import {
   tileIndex,
 } from '../arena'
 import { UNREACHED_DISTANCE, distanceAt, flowFieldToward } from '../pathing'
+import { type LevelSpec } from '../plan'
 
 // NOTE: a made-up map with one boarded exit that holds a door shut, since
 // the parlour's exit has no room behind it yet. The kitchen below the boards
 // has its own door, shut until the exit opens.
 const HALL: LevelSpec = {
   id: 'TestHall',
-  tiles: [
-    '###NN###',
-    '#......#',
-    '#......#',
-    'W......#',
-    'W......#',
-    '###KK###',
-    '#......#',
-    '#......#',
-    '###SS###',
-  ],
-  topRow: 0,
-  exits: [{ id: 'Kitchen', symbol: 'K', doors: ['South'] }],
   rooms: [
     {
       id: 'TestHall',
-      firstColumn: 0,
-      lastColumn: 7,
-      firstRow: 0,
-      lastRow: 8,
+      tiles: [
+        '###NN###',
+        '#......#',
+        '#......#',
+        'W......#',
+        'W......#',
+        '###KK###',
+        '#......#',
+        '#......#',
+        '###SS###',
+      ],
+      origin: { column: 0, row: 0 },
       maybeExit: Option.none(),
+      renames: {},
     },
   ],
+  exits: [{ id: 'Kitchen', symbol: 'K', doors: ['South'] }],
+  start: { x: 40, y: 20 },
 }
 
 const BOARDS = { column: 3, row: 5 }

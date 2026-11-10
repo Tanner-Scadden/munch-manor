@@ -389,7 +389,7 @@ export const spriteShapes: {
   },
 )
 
-type Box = Readonly<{
+export type Box = Readonly<{
   left: number
   top: number
   right: number
@@ -464,18 +464,10 @@ const boxOf = (runs: Array.NonEmptyReadonlyArray<PixelRun>): Box =>
     }),
   )
 
-// NOTE: bakes a fixed list of whole pixel rectangles, such as a stall part
-// drawn with Rect shapes, into one sprite image that paints the same pixels
-// in the same order. Anything else, such as a circle or a scaled group, keeps
-// its shapes as they are.
-export const bakeShapes = (
-  shapes: ReadonlyArray<Canvas.Shape>,
+const bakeRuns = (
+  runs: Array.NonEmptyReadonlyArray<PixelRun>,
+  fallback: () => ReadonlyArray<Canvas.Shape>,
 ): ReadonlyArray<Canvas.Shape> => {
-  const runs = Option.getOrElse(flattenRects(shapes, 0, 0), () => [])
-  if (!Array.isReadonlyArrayNonEmpty(runs)) {
-    return shapes
-  }
-
   const box = boxOf(runs)
   const width = box.right - box.left
   const height = box.bottom - box.top
@@ -490,7 +482,7 @@ export const bakeShapes = (
   return Option.match(atlasLookup(key), {
     onNone: () =>
       Option.match(builtSource(key, width, height, shifted), {
-        onNone: () => shapes,
+        onNone: fallback,
         onSome: src => [imageAt(src, box.left, box.top, width, height)],
       }),
     onSome: maybeHit =>
@@ -504,6 +496,62 @@ export const bakeShapes = (
       }),
   })
 }
+
+// NOTE: bakes a fixed list of whole pixel rectangles, such as a stall part
+// drawn with Rect shapes, into one sprite image that paints the same pixels
+// in the same order. Anything else, such as a circle or a scaled group, keeps
+// its shapes as they are.
+export const bakeShapes = (
+  shapes: ReadonlyArray<Canvas.Shape>,
+): ReadonlyArray<Canvas.Shape> => {
+  const runs = Option.getOrElse(flattenRects(shapes, 0, 0), () => [])
+  return Array.isReadonlyArrayNonEmpty(runs)
+    ? bakeRuns(runs, () => shapes)
+    : shapes
+}
+
+const clipRun = (run: PixelRun, box: Box): Option.Option<PixelRun> => {
+  const left = Math.max(run.x, box.left)
+  const top = Math.max(run.y, box.top)
+  const right = Math.min(run.x + run.width, box.right)
+  const bottom = Math.min(run.y + run.height, box.bottom)
+  return right > left && bottom > top
+    ? Option.some({
+        x: left,
+        y: top,
+        width: right - left,
+        height: bottom - top,
+        color: run.color,
+      })
+    : Option.none()
+}
+
+// NOTE: bakes only the part of the rectangles inside box. Each pixel inside
+// is painted by the same rectangles in the same order as in bakeShapes, so
+// images baked from one list for boxes that do not overlap paint exactly the
+// pixels of the whole list's image within them. A list that is not whole
+// rectangles keeps its shapes, uncut.
+export const bakeShapesWithin: {
+  (
+    box: Box,
+  ): (shapes: ReadonlyArray<Canvas.Shape>) => ReadonlyArray<Canvas.Shape>
+  (shapes: ReadonlyArray<Canvas.Shape>, box: Box): ReadonlyArray<Canvas.Shape>
+} = Function.dual(
+  2,
+  (
+    shapes: ReadonlyArray<Canvas.Shape>,
+    box: Box,
+  ): ReadonlyArray<Canvas.Shape> =>
+    Option.match(flattenRects(shapes, 0, 0), {
+      onNone: () => shapes,
+      onSome: runs => {
+        const inside = Array.getSomes(Array.map(runs, run => clipRun(run, box)))
+        return Array.isReadonlyArrayNonEmpty(inside)
+          ? bakeRuns(inside, () => shapes)
+          : []
+      },
+    }),
+)
 
 // NOTE: draws a sprite at a whole pixel offset. A one image sprite moves the
 // image itself, which saves the painter a Group's save, restore, and

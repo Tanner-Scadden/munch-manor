@@ -7,7 +7,7 @@ import {
   SPAWN_JITTER_MS,
   STRAGGLER_JITTER_MS,
 } from '../../shared/constants'
-import { DOOR_IDS } from '../level/arena'
+import { DOOR_IDS, START_LEVEL } from '../level/arena'
 import type { DoorId, Hold, ZombieKind } from '../schema/worldSchema'
 import { ZOMBIE_KIND_ORDER } from '../zombies/zombies'
 
@@ -45,14 +45,16 @@ export type WavePlan = Readonly<{
   holds: ReadonlyArray<Hold>
 }>
 
-// NOTE: the parlour's doors, which every run has. A wave rolled while the
-// kitchen is shut uses exactly these.
-export const PARLOUR_DOORS: Array.NonEmptyReadonlyArray<DoorId> = [
-  'North',
-  'West',
-  'East',
-  'South',
-]
+// NOTE: the spawn doors of the level a run starts on, before any exit is
+// open, which every run has. A wave rolled while the exits are shut uses
+// exactly these; in the manor they are the parlour's four.
+export const START_DOORS: Array.NonEmptyReadonlyArray<DoorId> = Array.match(
+  START_LEVEL.doorIds,
+  {
+    onEmpty: (): Array.NonEmptyReadonlyArray<DoorId> => ['North'],
+    onNonEmpty: doors => doors,
+  },
+)
 
 export const only = (
   kind: ZombieKind,
@@ -99,7 +101,7 @@ const through = (...doors: Array.NonEmptyReadonlyArray<DoorId>): DoorChoice =>
   fromDoors(doors)
 
 export const anyDoors = (draw: number): DoorChoice => ({
-  doors: PARLOUR_DOORS,
+  doors: START_DOORS,
   isAnyDoor: true,
   draw,
 })

@@ -28,9 +28,8 @@ import {
   spriteShapes,
 } from '../../art/sprite'
 import { AMMO_BOX } from '../../art/sprites/pickups'
-import { PARLOUR } from '../../world/level/arena'
 import { COUNTER_LINES } from '../../world/shop/ammoCounter'
-import { STALL_BOX, type StallPrompt } from '../../world/shop/shop'
+import { STALL_BOX, STALL_ROOM, type StallPrompt } from '../../world/shop/shop'
 
 // PALETTE
 
@@ -345,7 +344,7 @@ const bakePrompt = (text: string, tone: TextTone) => {
   return placeBaked(baked, {
     x: Math.min(
       centerX,
-      PARLOUR.width - PROMPT_EDGE - Math.ceil(baked.width / 2),
+      STALL_ROOM.right - PROMPT_EDGE - Math.ceil(baked.width / 2),
     ),
     y: PROMPT_Y,
     align: 'Center',
@@ -435,7 +434,7 @@ const COUNTER_LINE_TEXTS: ReadonlyArray<Canvas.Shape> = Array.map(
     return placeBaked(baked, {
       x: Math.min(
         centerX,
-        PARLOUR.width - LINE_EDGE - Math.ceil(baked.width / 2),
+        STALL_ROOM.right - LINE_EDGE - Math.ceil(baked.width / 2),
       ),
       y: LINE_Y,
       align: 'Center',

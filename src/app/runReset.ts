@@ -14,7 +14,7 @@ import { cameraFor } from '../render/camera'
 import { noTellWatch } from '../render/renderSchema'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
 import { freshOvens } from '../world/kitchen/kitchen'
-import { MANOR, startingLevel } from '../world/level/arena'
+import { START_LEVEL, startingLevel } from '../world/level/arena'
 import { soloState } from '../world/party/party'
 import {
   Boss,
@@ -134,7 +134,7 @@ export const freshRun = (model: Model): RunFields => ({
   breakIdleMs: 0,
   trapNotice: TrapNotice.Quiet(),
   level: startingLevel,
-  ovens: freshOvens(MANOR),
+  ovens: freshOvens(START_LEVEL),
   debutCard: DebutCard.Hidden(),
   hintBand: 'Top',
   stats: freshStats,
@@ -157,7 +157,7 @@ export const freshRun = (model: Model): RunFields => ({
         deriveIntent(
           model.input,
           initialPlayer,
-          cameraFor(MANOR, initialPlayer),
+          cameraFor(START_LEVEL, initialPlayer),
         ),
     }),
   ],

@@ -5,7 +5,6 @@ import { countKills } from '../gear/melee'
 import {
   type Box,
   COVER_SYMBOLS,
-  KITCHEN_TOP_ROW,
   type Level,
   circleTouchesBox,
   levelOf,
@@ -13,6 +12,7 @@ import {
   tilesWithSymbol,
 } from '../level/arena'
 import { boxAround, spendOn } from '../level/exits'
+import { KITCHEN_TOP_ROW } from '../level/plan'
 import { creditKills, payTo, seatStateAt } from '../party/party'
 import type { World } from '../schema/world'
 import {
