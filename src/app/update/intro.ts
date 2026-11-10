@@ -2,6 +2,7 @@ import { Array } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import { isRunOn } from '../../domain/onlineRun'
+import { raisePocketCardFrom } from '../../features/dare/pocketCard'
 import { introSounds, isSkippable } from '../../features/intro/introBeat'
 import { skipArrival } from '../../world/run/arrival'
 import { advanceGame } from '../frame'
@@ -33,8 +34,10 @@ export const playIntroSounds =
 
 // NOTE: one frame of single player's intro: the World's ticks run only the
 // arrival clock (src/world/step/simulation.ts), and the slam begins the
-// first break.
+// first break with the dare card out of your pocket.
 export const advanceIntro =
   (deltaTime: number): UpdateStep =>
   model =>
-    combine(advanceGame(model, deltaTime), [playIntroSounds(model)])
+    combine(raisePocketCardFrom(model, advanceGame(model, deltaTime)), [
+      playIntroSounds(model),
+    ])

@@ -16,6 +16,7 @@ import {
   type LoadStep,
   Loading,
   PlayerBests,
+  PocketCard,
   PrizeFlight,
   RankGain,
   RankPaid,
@@ -144,6 +145,7 @@ export const Model = Schema.Struct({
   // runs open on the knock (src/world/run/arrival.ts).
   introSeen: SavedTrapHint,
   introSkip: IntroSkip,
+  pocketCard: PocketCard,
   kitchenCall: KitchenCall,
   dareHint: DareHint,
   firstBreakQuest: Tour,
@@ -332,6 +334,7 @@ export const initialModel: OwnModel = {
   trapHint: TrapHint.Unseen(),
   introSeen: 'Unseen',
   introSkip: 'Watching',
+  pocketCard: PocketCard.Pocketed(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   dareHint: quietDareHint,
   firstBreakQuest: Tour.Waiting(),

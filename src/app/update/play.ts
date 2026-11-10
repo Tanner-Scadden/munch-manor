@@ -4,6 +4,11 @@ import { modifyFields } from 'foldkit/struct'
 
 import { positionVariation } from '../../audio/audio'
 import { isEndScreen } from '../../domain/run'
+import {
+  agePocketCard,
+  foldPocketCard,
+  isPocketCardBlocking,
+} from '../../features/dare/pocketCard'
 import { skipBeat } from '../../features/end/endBeat'
 import { advanceQuest } from '../../features/onboarding/firstBreakQuest'
 import { advanceKitchenTour } from '../../features/onboarding/kitchenTour'
@@ -286,6 +291,8 @@ export const tickFrame = (deltaTime: number) =>
   makeStep(model => {
     if (isDebutCardBlocking(model)) {
       return toModel(ageDebutCard(model, clampFrameDelta(deltaTime)))
+    } else if (isPocketCardBlocking(model)) {
+      return toModel(agePocketCard(model, clampFrameDelta(deltaTime)))
     } else if (isArriving(model.phase)) {
       return advanceIntro(deltaTime)
     } else if (isRoundActive(model.phase)) {
@@ -305,9 +312,12 @@ export const tickFrame = (deltaTime: number) =>
           clampFrameDelta(deltaTime),
         ),
       )
-      const advanced = isCoop(framed)
-        ? ageDebutCard(framed, clampFrameDelta(deltaTime))
-        : framed
+      const advanced = agePocketCard(
+        isCoop(framed)
+          ? ageDebutCard(framed, clampFrameDelta(deltaTime))
+          : framed,
+        clampFrameDelta(deltaTime),
+      )
       return Update.combineSteps([
         toModel(advanced),
         playSounds([
@@ -370,6 +380,17 @@ export const pressedKey = (code: string) =>
           withInput(
             toggleAudioFromKey(debutCardFromKey(keyed, code), code),
             input => pressKey(input, code),
+          ),
+        ),
+        unlockAudio,
+      ])
+    }
+
+    if (isPocketCardBlocking(keyed)) {
+      return Update.combineSteps([
+        toModel(
+          withInput(toggleAudioFromKey(foldPocketCard(keyed), code), input =>
+            pressKey(input, code),
           ),
         ),
         unlockAudio,

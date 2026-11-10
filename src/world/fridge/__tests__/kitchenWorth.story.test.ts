@@ -15,6 +15,7 @@ import {
 } from '../../../app/model'
 import { oddsPips } from '../../../features/fridge/fridgeView'
 import { FIXED_STEP_MS } from '../../../shared/constants'
+import { holdingSecond } from '../../../test/arsenals'
 import {
   DISTANT_SPAWN,
   atFridge,
@@ -28,7 +29,6 @@ import {
   FRIDGE_OPEN_TICKS,
   bulletInto,
   holdToBuy,
-  holdingSecond,
   playedThrough,
   tick,
   ticks,

@@ -27,6 +27,7 @@ import {
   openLobbyInScene,
   pickCardInScene,
   playButton,
+  readDareCardInScene,
   resolveFocusLobbyInScene,
   settingsButton,
   shareMountEnded,
@@ -438,6 +439,7 @@ describe('Home menu', () => {
           Scene.expect(manorButton).toBeAbsent(),
           emitPressedKey('Enter'),
           ...throughIntroInScene(),
+          ...readDareCardInScene(),
           Scene.expect(Scene.role('status')).toContainText(PREPARING),
           Scene.expect(lobbyScreen).toBeAbsent(),
         )

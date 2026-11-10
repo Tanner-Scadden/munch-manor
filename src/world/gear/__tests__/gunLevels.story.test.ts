@@ -18,6 +18,12 @@ import {
 } from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
 import {
+  holdingSecond,
+  maybeSpareGun,
+  pistolOf,
+  pistolOnly,
+} from '../../../test/arsenals'
+import {
   DISTANT_SPAWN,
   atOpenedCase,
   newPlayerReady,
@@ -32,10 +38,6 @@ import {
   doomed,
   holdEnter,
   holdFire,
-  holdingSecond,
-  maybeSpareGun,
-  pistolOf,
-  pistolOnly,
   press,
   throughIntro,
   tick,

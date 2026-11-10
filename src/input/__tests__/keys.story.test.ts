@@ -8,6 +8,7 @@ import { Message } from '../../app/message'
 import { DebutCard, type Model, Phase, Reload, RunMode } from '../../app/model'
 import { DEBUT_CARD_MIN_MS } from '../../features/onboarding/onboarding'
 import { RESTART_GRACE_MS } from '../../shared/constants'
+import { SHOTGUN } from '../../test/arsenals'
 import {
   WAVE_2_BREAK,
   WAVE_2_FIGHT,
@@ -15,7 +16,6 @@ import {
 } from '../../test/model.fixture'
 import {
   APPLICATION,
-  SHOTGUN,
   openLobbyByKey,
   press,
   resolveFocusLobby,

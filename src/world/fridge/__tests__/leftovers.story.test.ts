@@ -16,6 +16,7 @@ import {
 } from '../../../app/model'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
 import { nextRandom } from '../../../shared/prng'
+import { holdingFirst, holdingSecond, pistolOnly } from '../../../test/arsenals'
 import {
   AT_FRIDGE,
   DISTANT_SPAWN,
@@ -28,9 +29,6 @@ import {
   APPLICATION,
   FRIDGE_OPEN_TICKS,
   holdToBuy,
-  holdingFirst,
-  holdingSecond,
-  pistolOnly,
   press,
   settleRunCommands,
   tick,

@@ -3,8 +3,9 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it } from '@effect/vitest'
 
+import { SHOTGUN, holdingFirst } from '../../../test/arsenals'
 import { quietWave, withArsenal } from '../../../test/model.fixture'
-import { APPLICATION, SHOTGUN, holdingFirst } from '../../../test/testing'
+import { APPLICATION } from '../../../test/testing'
 import { inHandOf } from '../../../world/gear/weapons'
 import { focusOf, seatCrew } from '../../../world/party/party'
 import { withWorld } from '../../../world/schema/world'

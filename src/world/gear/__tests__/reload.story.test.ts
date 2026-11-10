@@ -22,22 +22,24 @@ import {
   PISTOL_RELOAD_MS,
   PREPARATION_MS,
 } from '../../../shared/constants'
+import {
+  holdingFirst,
+  holdingSecond,
+  maybeSpareGun,
+  pistolOf,
+  withPistol,
+} from '../../../test/arsenals'
 import { DISTANT_SPAWN, withArsenal } from '../../../test/model.fixture'
 import {
   APPLICATION,
   countdownTicks,
   holdFire,
-  holdingFirst,
-  holdingSecond,
-  maybeSpareGun,
-  pistolOf,
   press,
   release,
   releaseFire,
   tagsOf,
   tick,
   ticks,
-  withPistol,
 } from '../../../test/testing'
 import { focusOf, modifyFocus } from '../../party/party'
 import { WEAPONS } from '../weapons'

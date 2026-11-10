@@ -23,6 +23,7 @@ import {
   ZOMBIE_DYING_MS,
   ZOMBIE_MAX_HP,
 } from '../../../shared/constants'
+import { pistolOnly } from '../../../test/arsenals'
 import { plannedSpawn, withKeys } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -31,7 +32,6 @@ import {
   bulletInto,
   doomed,
   openLobbyByKey,
-  pistolOnly,
   press,
   resolveFocusLobby,
   scoring,

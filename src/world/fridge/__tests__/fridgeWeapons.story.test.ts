@@ -18,6 +18,11 @@ import {
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
 import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
+import {
+  holdingFirst,
+  holdingSecond,
+  maybeSpareGun,
+} from '../../../test/arsenals'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
 import {
   APPLICATION,
@@ -26,9 +31,6 @@ import {
   FIRE_PUSH,
   eventsOver,
   holdFire,
-  holdingFirst,
-  holdingSecond,
-  maybeSpareGun,
   playedThrough,
   releaseFire,
   settleRunCommands,

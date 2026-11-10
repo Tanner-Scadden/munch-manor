@@ -10,13 +10,9 @@ import { initialModel } from '../../../app/pureApp'
 import type { PointerDevice } from '../../../input/inputSchema'
 import { MELEE_SLOT_INDEX, gunSlotBox } from '../../../render/hudLayout'
 import { screenOf } from '../../../render/screen'
+import { holdingFirst } from '../../../test/arsenals'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
-import {
-  APPLICATION,
-  FIXED_FRAME,
-  SURFACE,
-  holdingFirst,
-} from '../../../test/testing'
+import { APPLICATION, FIXED_FRAME, SURFACE } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
 import { freshGun, heldWeapon } from '../../../world/gear/weapons'
 import { modifyFocus } from '../../../world/party/party'

@@ -5,7 +5,6 @@
 
 import { Array, Effect, Function, Match, Option, Schema, Struct } from 'effect'
 import { Canvas, Scene, Story } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
 
 import { Dialog, DialogBlock, RadioGroup } from '@foldkit/ui'
 
@@ -55,6 +54,7 @@ import { PlaySound, PlayTune } from '../app/update/sound'
 import type { SoundEffect } from '../audio/audio'
 import { Message as CoopMessage } from '../features/coop/message'
 import { ChangeLobby, FocusCoopElement } from '../features/coop/steps'
+import { UNFOLD_MS, isPocketCardReading } from '../features/dare/pocketCard'
 import { endOffer } from '../features/end/endOffer'
 import type { ShareOutcome } from '../features/end/share'
 import { Message as GuideMessage } from '../features/guide/message'
@@ -81,23 +81,12 @@ import {
 import type { Calling } from '../shared/playerData'
 import { FRIDGE_RULES } from '../world/fridge/leftovers'
 import { TRAPS } from '../world/gear/traps'
-import {
-  STARTING_PISTOL,
-  gunsOf,
-  mapGuns,
-  maybeCarried,
-} from '../world/gear/weapons'
 import { START_LEVEL, levelOf } from '../world/level/arena'
 import { KITCHEN_EXIT } from '../world/level/exits'
 import type { Clearance } from '../world/level/pathing'
 import { SLAM_MS } from '../world/run/arrival'
 import { World } from '../world/schema/world'
-import {
-  Arsenal,
-  type CarriedGun,
-  type Player,
-  Trap,
-} from '../world/schema/worldSchema'
+import { Trap } from '../world/schema/worldSchema'
 import { PURCHASE_RULES } from '../world/shop/purchase'
 import { stepWorld } from '../world/step/stepWorld'
 import { ZOMBIE_KINDS } from '../world/zombies/zombies'
@@ -250,9 +239,45 @@ export const emitPressedKey = (code: string) =>
 // which starts on the last of them.
 const SLAM_FRAMES = SLAM_MS / MAX_FRAME_DELTA_MS
 
+// NOTE: the dare card that comes out on the slam
+// (src/features/dare/pocketCard.ts), read: its frames until it has opened,
+// then a key folds it. A run with no list (Endless) has no card, and these
+// send nothing.
+const UNFOLD_FRAMES = Math.ceil(UNFOLD_MS / MAX_FRAME_DELTA_MS)
+
+const whileCardReads = (message: Message) =>
+  Story.messageWith((current: Model) =>
+    isPocketCardReading(current) ? message : Message.SuppressedContextMenu(),
+  )
+
+const cardOpenFrames = () =>
+  Array.makeBy(UNFOLD_FRAMES, () =>
+    whileCardReads(Message.TickedFrame({ deltaTime: MAX_FRAME_DELTA_MS })),
+  )
+
+const readDareCard = Story.steps(
+  ...cardOpenFrames(),
+  whileCardReads(Message.PressedKey({ code: 'Escape' })),
+)
+
+// NOTE: the same by a tap, so a touch player stays on touch.
+const readDareCardByTap = Story.steps(
+  ...cardOpenFrames(),
+  whileCardReads(
+    Message.PressedPointer({
+      pointerId: 9,
+      device: 'Touch',
+      clientX: 0,
+      clientY: 0,
+    }),
+  ),
+  Story.message(Message.ReleasedPointer({ pointerId: 9 })),
+)
+
 export const throughIntro = Story.steps(
   press('Escape'),
   ...ticks(SLAM_FRAMES, MAX_FRAME_DELTA_MS),
+  readDareCard,
 )
 
 // NOTE: the same by a tap, so a touch player stays on touch.
@@ -267,6 +292,7 @@ export const throughIntroByTap = Story.steps(
   ),
   Story.message(Message.ReleasedPointer({ pointerId: 9 })),
   ...ticks(SLAM_FRAMES, MAX_FRAME_DELTA_MS),
+  readDareCardByTap,
 )
 
 const slamFramesInScene = () =>
@@ -280,6 +306,31 @@ const slamFramesInScene = () =>
 export const throughIntroInScene = () => [
   emitPressedKey('Escape'),
   ...slamFramesInScene(),
+]
+
+const cardOpenFramesInScene = () =>
+  Array.makeBy(UNFOLD_FRAMES, () =>
+    Scene.Subscription.emit(
+      SCENE_SUBSCRIPTIONS.frame,
+      Message.TickedFrame({ deltaTime: MAX_FRAME_DELTA_MS }),
+    ),
+  )
+
+// NOTE: the dare card read in a Scene, by its frames and a key. A Scene
+// cannot look first, so only a run with a list (not Endless) takes it.
+export const readDareCardInScene = () => [
+  ...cardOpenFramesInScene(),
+  emitPressedKey('Escape'),
+]
+
+export const readDareCardByTapInScene = () => [
+  ...cardOpenFramesInScene(),
+  Scene.pointerDown(Scene.role('application', { name: 'Game surface' }), {
+    pointerType: 'touch',
+    pointerId: 9,
+    clientX: 100,
+    clientY: 100,
+  }),
 ]
 
 export const throughIntroByTapInScene = () => [
@@ -351,11 +402,14 @@ export const startIntoIntroInScene = () => [
 export const startRunInScene = () => [
   ...startIntoIntroInScene(),
   ...throughIntroInScene(),
+  ...readDareCardInScene(),
 ]
 
 export const manorButton = Scene.role('button', { name: /^More:/ })
 
 export const pauseButton = Scene.role('button', { name: 'Pause' })
+
+export const statusLine = Scene.role('status')
 
 export const munchopediaDialog = Scene.role('dialog', { name: 'Munchopedia' })
 
@@ -888,49 +942,6 @@ export const bulletInto: {
     pierce: Pierce.Stops(),
   }),
 )
-
-// ARSENALS
-
-// NOTE: the arsenals tests reach for most: the pistol alone, or the pistol
-// in the first slot and another gun in the second, held either way.
-export const pistolOnly = (pistol: CarriedGun = STARTING_PISTOL): Arsenal =>
-  Arsenal.OneGun({ first: pistol })
-
-// NOTE: with the Pop Pistol in the first slot; a test with another gun
-// there builds the Arsenal itself.
-export const holdingSecond = (second: CarriedGun): Arsenal =>
-  Arsenal.HoldingSecond({ first: STARTING_PISTOL, second })
-
-export const holdingFirst = (second: CarriedGun): Arsenal =>
-  Arsenal.HoldingFirst({ first: STARTING_PISTOL, second })
-
-// NOTE: changes the carried Pop Pistol, wherever it sits.
-export const withPistol: {
-  (change: (pistol: CarriedGun) => CarriedGun): (player: Player) => Player
-  (player: Player, change: (pistol: CarriedGun) => CarriedGun): Player
-} = Function.dual(
-  2,
-  (player: Player, change: (pistol: CarriedGun) => CarriedGun): Player =>
-    modifyFields(player, {
-      arsenal: arsenal =>
-        mapGuns(arsenal, gun => (gun.kind === 'Pistol' ? change(gun) : gun)),
-    }),
-)
-
-export const pistolOf = (player: Player): CarriedGun =>
-  Option.getOrThrow(maybeCarried(player, 'Pistol'))
-
-// NOTE: the carried gun that is not the Pop Pistol, if any: what the old
-// spare slot held.
-export const maybeSpareGun = (arsenal: Arsenal): Option.Option<CarriedGun> =>
-  Array.findFirst(gunsOf(arsenal), gun => gun.kind !== 'Pistol')
-
-export const SHOTGUN: CarriedGun = {
-  kind: 'Shotgun',
-  loaded: 6,
-  tier: 0,
-  kills: 0,
-}
 
 // THE ROOM
 

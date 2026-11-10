@@ -19,14 +19,9 @@ import {
   FIXED_STEP_MS,
   PLAYER_RADIUS,
 } from '../../../shared/constants'
+import { holdingSecond } from '../../../test/arsenals'
 import { DISTANT_SPAWN } from '../../../test/model.fixture'
-import {
-  APPLICATION,
-  holdFire,
-  holdingSecond,
-  ticks,
-  zombieOf,
-} from '../../../test/testing'
+import { APPLICATION, holdFire, ticks, zombieOf } from '../../../test/testing'
 import { WEAPONS } from '../../gear/weapons'
 import { focusOf, modifyFocus } from '../../party/party'
 import { ZOMBIE_KINDS, bodyRadiusOf } from '../../zombies/zombies'

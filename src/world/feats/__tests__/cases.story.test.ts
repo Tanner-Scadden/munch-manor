@@ -6,6 +6,7 @@ import { describe, expect, it, test } from '@effect/vitest'
 
 import { type Bullet, type Model, Pierce } from '../../../app/model'
 import { FIXED_STEP_MS } from '../../../shared/constants'
+import { maybeSpareGun } from '../../../test/arsenals'
 import {
   AT_CASE,
   atCase,
@@ -20,7 +21,6 @@ import {
   HOLD_TICKS,
   holdEnter,
   holdFire,
-  maybeSpareGun,
   releaseFire,
   tick,
   zombieOf,

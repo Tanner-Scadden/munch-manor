@@ -13,6 +13,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { Message } from '../../src/app/message'
 import { initialModel } from '../../src/app/pureApp'
+import { isPocketCardReading } from '../../src/features/dare/pocketCard'
 import { heroIdOf } from '../../src/shared/playerData'
 import { asTutorialDone, asVeteran } from '../../src/test/veteran'
 import { heldGun, maybeOtherGun } from '../../src/world/gear/weapons'
@@ -170,7 +171,9 @@ const blame = (
 const BOT_RANK_POINTS = 100_000
 
 // NOTE: a run opens on its intro (src/world/run/arrival.ts): the bot skips
-// it with a key, and the slam's frames play out to the first break.
+// it with a key, the slam's frames play out to the first break, and a key
+// puts the dare card that comes out on the slam away
+// (src/features/dare/pocketCard.ts) once it has opened.
 const pastIntro = (model: Model): Model =>
   model.phase._tag === 'Arriving'
     ? pastIntro(
@@ -179,7 +182,14 @@ const pastIntro = (model: Model): Model =>
           Message.TickedFrame({ deltaTime: FRAME_MS }),
         ),
       )
-    : model
+    : isPocketCardReading(model)
+      ? pastIntro(
+          tapKey(
+            send(model, Message.TickedFrame({ deltaTime: FRAME_MS })),
+            'Escape',
+          ),
+        )
+      : model
 
 // The model of a fresh run on the title, already started and past its
 // intro: Enter opens the lobby, E picks endless there, and Enter starts.

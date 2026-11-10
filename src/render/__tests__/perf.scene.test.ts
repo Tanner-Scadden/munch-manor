@@ -51,12 +51,12 @@ import {
   POPUP_MAX,
   ZOMBIE_ALIVE_MAX,
 } from '../../shared/constants'
+import { holdingSecond } from '../../test/arsenals'
 import {
   APPLICATION,
   CELLAR_SPOT,
   SCENE_SUBSCRIPTIONS,
   WIDE_SURFACE,
-  holdingSecond,
   jsonOf,
   measureSurfaceAs,
   scoring,

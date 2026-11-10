@@ -45,6 +45,7 @@ import {
   STREAK_WINDOW_MS,
   ZOMBIE_MAX_HP,
 } from '../../shared/constants'
+import { holdingSecond } from '../../test/arsenals'
 import {
   playingModel,
   withPlayerAt,
@@ -57,7 +58,6 @@ import {
   bulletInto,
   freezeTicks,
   holdFire,
-  holdingSecond,
   openFloorSpot,
   releaseFire,
   throughIntro,

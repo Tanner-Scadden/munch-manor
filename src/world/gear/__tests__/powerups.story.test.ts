@@ -41,6 +41,7 @@ import {
   PREPARATION_MS,
   ZOMBIE_KNOCKBACK_SPEED,
 } from '../../../shared/constants'
+import { pistolOf, withPistol } from '../../../test/arsenals'
 import {
   DISTANT_SPAWN,
   pickupAt,
@@ -52,7 +53,6 @@ import {
   bulletInto,
   holdFire,
   jsonOf,
-  pistolOf,
   press,
   release,
   releaseFire,
@@ -60,7 +60,6 @@ import {
   tick,
   ticks,
   ticksFor,
-  withPistol,
   zombieOf,
 } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'

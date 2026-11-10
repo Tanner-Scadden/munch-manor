@@ -7,13 +7,14 @@ import { NEUTRAL_INPUT, makeReader, makeWriter } from '@munch/netcode'
 import { initialModel } from '../../../app/pureApp'
 import { freshRun } from '../../../app/runReset'
 import { INTENSITY_PER_HEART } from '../../../shared/constants'
+import { holdingSecond } from '../../../test/arsenals'
 import { withSeat } from '../../../test/model.fixture'
 import {
   TWO_SEAT_ROOM,
   playRoom,
   scriptedTicks,
 } from '../../../test/roomTesting'
-import { holdingSecond, zombieAt } from '../../../test/testing'
+import { zombieAt } from '../../../test/testing'
 import { openExitIn } from '../../level/arena'
 import { maybePlayerAt, modifyFocus } from '../../party/party'
 import {

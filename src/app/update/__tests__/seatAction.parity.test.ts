@@ -4,6 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { describe, expect, it, test } from '@effect/vitest'
 
+import { SHOTGUN, holdingFirst, withPistol } from '../../../test/arsenals'
 import {
   DISTANT_SPAWN,
   crewInWave,
@@ -16,10 +17,7 @@ import {
   APPLICATION,
   BELOW_NORTH_DOOR,
   type RootSteps,
-  SHOTGUN,
   WORLD_KEYS,
-  holdingFirst,
-  withPistol,
 } from '../../../test/testing'
 import {
   actionCodeOf,
