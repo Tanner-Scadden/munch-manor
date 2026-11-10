@@ -17,6 +17,7 @@ import {
   playButton,
   resolveFocusLobbyInScene,
   showDialogInScene,
+  throughIntroInScene,
 } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
 
@@ -203,6 +204,7 @@ describe('the lobby', () => {
       Scene.expect(lobbyScreen).toExist(),
       Scene.click(lobbyStartButton),
       Scene.expect(lobbyScreen).toBeAbsent(),
+      ...throughIntroInScene(),
       Scene.expect(Scene.role('status')).toContainText(
         'Get ready for endless wave 1.',
       ),

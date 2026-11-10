@@ -12,7 +12,12 @@ import {
   WAVE_2_FIGHT,
   readyModel,
 } from '../../test/model.fixture'
-import { APPLICATION, holdingFirst, tick } from '../../test/testing'
+import {
+  APPLICATION,
+  holdingFirst,
+  throughIntro,
+  tick,
+} from '../../test/testing'
 import { modifyFocus } from '../../world/party/party'
 import { Message } from '../message'
 import { Arsenal, type Model, Phase, RunMode, ShopState } from '../model'
@@ -266,6 +271,7 @@ describe('keys on a focused button', () => {
         ),
         ...keyDownOn(endlessButton, 'Enter'),
         Story.message(Message.ClickedEndlessButton()),
+        throughIntro,
         Story.model(({ mode, phase }) => {
           expect(mode).toEqual(RunMode.Endless())
           expect(Phase.guards.Preparation(phase)).toBe(true)

@@ -7,6 +7,7 @@ import { isPauseKey, pressKey, releaseAll } from '../../input/input'
 import { playerKeyAction } from '../../input/keyActions'
 import type { PageVisibility } from '../../platform/deviceSchema'
 import { focusOf, focusSlotOf } from '../../world/party/party'
+import { isArriving } from '../../world/run/arrival'
 import { maybeTapOffer } from '../../world/shop/purchase'
 import { isAtCounter } from '../../world/shop/shop'
 import {
@@ -18,6 +19,7 @@ import { makeStep } from '../definition'
 import { Message } from '../message'
 import type { Model, ShopItemId } from '../model'
 import { pressInRoom } from './coop'
+import { skipIntro } from './intro'
 import { playSounds, toggleAudioFromKey, uiCue, unlockAudio } from './sound'
 import { type UpdateStep, modelStep, unchanged, withInput } from './step'
 
@@ -66,16 +68,20 @@ const holdKey =
   })
 
 // NOTE: at the counter the dialog has the keys; in the fight a press key
-// goes to the room, and every key is held in the input for walking.
+// goes to the room, and every key is held in the input for walking. In the
+// intro any key skips this player's drawing to the door
+// (src/app/update/intro.ts).
 const keyInRun = (code: string) =>
   makeStep(model =>
-    isAtCounter(focusOf(model).shop)
-      ? Update.combineSteps([holdKey(code), unlockAudio])
-      : Option.match(playerKeyAction(model, code), {
-          onNone: () => Update.combineSteps([holdKey(code), unlockAudio]),
-          onSome: action =>
-            Update.combineSteps([holdKey(code), pressInRun(action)]),
-        }),
+    isArriving(model.phase)
+      ? Update.combineSteps([holdKey(code), modelStep(skipIntro), unlockAudio])
+      : isAtCounter(focusOf(model).shop)
+        ? Update.combineSteps([holdKey(code), unlockAudio])
+        : Option.match(playerKeyAction(model, code), {
+            onNone: () => Update.combineSteps([holdKey(code), unlockAudio]),
+            onSome: action =>
+              Update.combineSteps([holdKey(code), pressInRun(action)]),
+          }),
   )
 
 // NOTE: a tap at the ammo window goes to the room as BuyAmmo, which buys

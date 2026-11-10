@@ -27,6 +27,7 @@ import {
   release,
   scoring,
   startRunFromHome,
+  throughIntro,
   tick,
   ticks,
   zombieAt,
@@ -257,6 +258,7 @@ describe('waves', () => {
       }),
       ...ticks(RESTART_GRACE_TICKS, GRACE_TICK_MS),
       press('Enter'),
+      throughIntro,
       Story.model(({ phase, stats }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(scoreOf(stats)).toBe(0)

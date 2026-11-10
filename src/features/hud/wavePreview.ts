@@ -513,6 +513,7 @@ export const wavePreviewShapes: {
   (model: Model, camera: Camera): ReadonlyArray<Canvas.Shape> =>
     Phase.match(model.phase, {
       Ready: () => [],
+      Arriving: () => [],
       Preparation: ({ wave, spawns }) => {
         const level = levelOf(model)
         const counts = doorCounts(spawns, model.traps, level.doorIds)

@@ -15,12 +15,14 @@ import {
 import type { InputDevice, PointerDevice } from '../../input/inputSchema'
 import { noteMissedKeyDown } from '../../input/keyGrab'
 import { isTurnHintShown, seeTurnHint } from '../../screens/home/home'
+import { isArriving } from '../../world/run/arrival'
 import { isRoundActive } from '../../world/waves/waves'
 import { makeStep } from '../definition'
 import { refreshIntent } from '../frame'
 import type { Model } from '../model'
 import { orInRun } from './coopRun'
 import { skipFromPointer } from './end'
+import { skipIntro } from './intro'
 import {
   asAllowedPress,
   buyAmmoFromHoldButton,
@@ -63,11 +65,13 @@ const deviceOf = (device: PointerDevice): InputDevice =>
 const pressedPointer = (model: Model, pointer: PointerPress): UpdateReturn => {
   const press = asAllowedPress(model, pointer)
   const started = resumeFromPointer(useDevice(model, deviceOf(press.device)))
-  const pressed = isRoundActive(model.phase)
-    ? withInput(skipDebutCardWhenUp(started), input =>
-        pressPointer(input, started.maybeSurface, press),
-      )
-    : refreshIntent(skipFromPointer(started))
+  const pressed = isArriving(model.phase)
+    ? skipIntro(started)
+    : isRoundActive(model.phase)
+      ? withInput(skipDebutCardWhenUp(started), input =>
+          pressPointer(input, started.maybeSurface, press),
+        )
+      : refreshIntent(skipFromPointer(started))
   return combine(pressed, [
     unlockAudio,
     playStartSoundWhen(startsRun(model, pressed)),

@@ -113,6 +113,7 @@ export const DEBUT_CARD_MS = 5500
 const maybeNewKindIn = (model: Model): Option.Option<ZombieKind> =>
   Phase.match(model.phase, {
     Ready: () => Option.none(),
+    Arriving: () => Option.none(),
     Preparation: () => Option.none(),
     Wave: ({ spawns }) =>
       Array.findFirst(
@@ -351,6 +352,7 @@ const MAX_HINTS = 2
 export const msIntoPhase = (phase: Phase): number =>
   Phase.match(phase, {
     Ready: () => 0,
+    Arriving: () => 0,
     Preparation: ({ remainingMs, durationMs, clock }) =>
       BreakClock.match(clock, {
         Counting: () => durationMs - remainingMs,
@@ -365,6 +367,7 @@ export const msIntoPhase = (phase: Phase): number =>
 const isFirstWave = (phase: Phase): boolean =>
   Phase.match(phase, {
     Ready: () => false,
+    Arriving: () => false,
     Preparation: ({ wave }) => wave === 1,
     Wave: ({ wave }) => wave === 1,
     Paused: () => false,
@@ -386,6 +389,7 @@ const isBreakWith = (
 ): boolean =>
   Phase.match(model.phase, {
     Ready: () => false,
+    Arriving: () => false,
     Preparation: ({ wave, clock }) => isWanted(wave, clock),
     Wave: () => false,
     Paused: () => false,

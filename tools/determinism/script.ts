@@ -164,6 +164,19 @@ const pastTutorial = (model: Model): Model =>
       }),
   })
 
+// NOTE: the intro (src/world/run/arrival.ts): a key skips it to the slam,
+// and the slam's frames play out until the first break. Read by its tag as a
+// string, since this harness also plays commits from before the intro.
+const throughIntro = (model: Model): Model =>
+  model.phase._tag === 'Arriving'
+    ? throughIntro(
+        send(
+          model.introSkip === 'Watching' ? tapKey(model, 'Escape') : model,
+          Message.TickedFrame({ deltaTime: FIXED_STEP_MS }),
+        ),
+      )
+    : model
+
 // A returning player's Model, seeded, measured, and started into a run: Enter
 // opens the lobby, E picks endless there, and Enter starts.
 export const startedRun: {
@@ -178,7 +191,9 @@ export const startedRun: {
     Message.MeasuredGameSurface(SURFACE),
   )
   const inLobby = tapKey(ready, 'Enter')
-  return tapKey(mode === 'Endless' ? tapKey(inLobby, 'KeyE') : inLobby, 'Enter')
+  return throughIntro(
+    tapKey(mode === 'Endless' ? tapKey(inLobby, 'KeyE') : inLobby, 'Enter'),
+  )
 })
 
 const godMode = (model: Model): Model =>

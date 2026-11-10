@@ -26,6 +26,7 @@ import {
   holdingSecond,
   maybeSpareGun,
   press,
+  throughIntro,
   ticks,
 } from '../../../test/testing'
 import { UPGRADE_TIERS } from '../../../world/gear/weapons'
@@ -155,6 +156,7 @@ describe('shop categories', () => {
           ),
           ...ticks(RESTART_GRACE_TICKS, GRACE_TICK_MS),
           press('Enter'),
+          throughIntro,
           Story.model(({ phase, seats: [{ shopCategory }] }) => {
             expect(Phase.guards.Preparation(phase)).toBe(true)
             expect(shopCategory).toBe('Guns')

@@ -29,7 +29,7 @@ import {
 } from '../../app/update/version'
 import { FIXED_STEP_MS, RESTART_GRACE_MS } from '../../shared/constants'
 import { WAVE_3_BREAK, fighting } from '../../test/model.fixture'
-import { APPLICATION, showDialog } from '../../test/testing'
+import { APPLICATION, showDialog, throughIntro } from '../../test/testing'
 import { pause } from '../../world/waves/waves'
 import { isUsingServiceWorker } from '../serviceWorker'
 import {
@@ -325,6 +325,7 @@ describe('the end screens with a new version waiting', () => {
           }),
         ),
         Story.message(Message.PressedKey({ code: 'Enter' })),
+        throughIntro,
         Story.model(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
         }),

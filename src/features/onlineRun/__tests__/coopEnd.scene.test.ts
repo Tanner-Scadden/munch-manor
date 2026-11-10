@@ -325,7 +325,7 @@ describe("an online room's next run", () => {
       Story.given(playing),
       Story.message(Message.TickedRoomFrame({ nowMs: 100 })),
       Story.model(current => {
-        expectValue(current.phase._tag).toBe('Preparation')
+        expectValue(current.phase._tag).toBe('Arriving')
         expectValue(current.isRunCardDropped).toBe(false)
       }),
     )

@@ -78,6 +78,7 @@ export type RunFields = Pick<
   | 'breakIdleMs'
   | 'trapNotice'
   | 'level'
+  | 'introSkip'
   | 'ovens'
   | 'debutCard'
   | 'hintBand'
@@ -134,6 +135,7 @@ export const freshRun = (model: Model): RunFields => ({
   breakIdleMs: 0,
   trapNotice: TrapNotice.Quiet(),
   level: startingLevel,
+  introSkip: 'Watching',
   ovens: freshOvens(MANOR),
   debutCard: DebutCard.Hidden(),
   hintBand: 'Top',

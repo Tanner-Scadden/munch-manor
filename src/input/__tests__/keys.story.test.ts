@@ -20,6 +20,7 @@ import {
   press,
   resolveFocusLobby,
   tap,
+  throughIntro,
   tick,
 } from '../../test/testing'
 import { STARTING_PISTOL } from '../../world/gear/weapons'
@@ -264,6 +265,7 @@ describe('one key per action: the kept keys work', () => {
           Story.given(readyModel),
           openLobbyByKey,
           tap('Enter'),
+          throughIntro,
           Story.model(({ phase, mode }) => {
             expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
             expect(mode).toEqual(RunMode.Campaign())
@@ -300,6 +302,7 @@ describe('one key per action: the kept keys work', () => {
         expect(home.mode).toBe('Endless')
       }),
       tap('Enter'),
+      throughIntro,
       Story.model(({ phase, mode }) => {
         expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
         expect(mode).toEqual(RunMode.Endless())

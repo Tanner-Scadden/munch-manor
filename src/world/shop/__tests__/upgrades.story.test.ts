@@ -26,6 +26,7 @@ import {
   pistolOf,
   pistolOnly,
   press,
+  throughIntro,
   tick,
   withPistol,
 } from '../../../test/testing'
@@ -333,6 +334,7 @@ describe('tier resets', () => {
       ),
       ...Array.makeBy(RESTART_GRACE_TICKS, () => tick(GRACE_TICK_MS)),
       press('Enter'),
+      throughIntro,
       Story.model(({ phase, seats: [{ player }] }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(pistolOf(player).tier).toBe(0)

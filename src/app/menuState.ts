@@ -41,6 +41,7 @@ export const isPastRestartGrace = (model: Model): boolean =>
 const phaseState = (model: Model): MenuState =>
   Phase.match(model.phase, {
     Ready: () => MenuState.Home(),
+    Arriving: () => MenuState.Playing(),
     Preparation: () => MenuState.Playing(),
     Wave: () => MenuState.Playing(),
     Paused: () => MenuState.Paused(),

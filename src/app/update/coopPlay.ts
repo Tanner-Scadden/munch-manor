@@ -14,6 +14,7 @@ import { TURRET_WEAPON } from '../../world/gear/traps'
 import { levelOf } from '../../world/level/arena'
 import { inputOfIntent, ownWorldOf } from '../../world/net/roomWorld'
 import { focusOf, shopOf } from '../../world/party/party'
+import { isArriving, isRunUnderway } from '../../world/run/arrival'
 import { tallyFrame } from '../../world/run/stats'
 import { type World, withWorld } from '../../world/schema/world'
 import {
@@ -29,7 +30,6 @@ import {
 import { isBrowsing } from '../../world/shop/shop'
 import { aimTracers, flyTracers } from '../../world/step/firing'
 import { stopForHits, thawTick } from '../../world/step/hitStop'
-import { isRoundActive } from '../../world/waves/waves'
 import { footfallNearness } from '../../world/zombies/zombies'
 import { CoopBinding } from '../bindings'
 import { makeStep } from '../definition'
@@ -42,6 +42,7 @@ import {
 } from '../frame'
 import type { Model } from '../model'
 import { freshRun } from '../runReset'
+import { playIntroSounds } from './intro'
 import { syncShopDialog } from './shop'
 import {
   frameSoundCues,
@@ -240,7 +241,7 @@ const drawRoom = (frameMs: number, maybeShopBefore: Option.Option<ShopState>) =>
       onNone: () => unchanged,
       onSome: ({ room, world }) => {
         const isStart =
-          !isRoundActive(stepModel.phase) && isRoundActive(world.phase)
+          !isRunUnderway(stepModel.phase) && isRunUnderway(world.phase)
         const base = isStart
           ? keepRankPaid(stepModel, world, {
               ...stepModel,
@@ -345,7 +346,9 @@ const drawTraced = ({
             base,
             leanFor(
               advanceCosmetics(
-                tallyFrame(base, applied, frameMs),
+                isArriving(world.phase)
+                  ? applied
+                  : tallyFrame(base, applied, frameMs),
                 frameMs,
                 frameMs,
               ),
@@ -370,6 +373,7 @@ const drawTraced = ({
         ...mendCues(base, drawn),
         ...kitchenCues(base, drawn),
       ]),
+      playIntroSounds(base),
       playStartSoundWhen(isStart),
       syncShopDialog(Option.exists(maybeShopBefore, isBrowsing)),
     ])

@@ -1026,6 +1026,7 @@ export const overlayShapes: {
   (model: Model, screen: Screen): ReadonlyArray<Canvas.Shape> =>
     Phase.match(model.phase, {
       Ready: () => readyShapes(model),
+      Arriving: () => readyShapes(model),
       Preparation: ({ wave }) => [
         ...preparationBanner(model, wave, msIntoPhase(model.phase)),
         ...hintShapes(model),

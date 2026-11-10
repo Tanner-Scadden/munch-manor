@@ -36,6 +36,7 @@ import {
   seatStateAt,
 } from '../party/party'
 import { advanceParty } from '../party/revive'
+import { advanceArrival, isArriving } from '../run/arrival'
 import type { World } from '../schema/world'
 import {
   GameEvent,
@@ -469,7 +470,18 @@ const advanceWorld = (model: World, deltaMs: number): World => {
 // hit-stop.
 export type Tick = Readonly<{ world: World; worldMs: number }>
 
+// NOTE: while the crew arrives (src/world/run/arrival.ts) nothing moves:
+// only the intro's clock runs, and the slam begins the first break.
 export const advanceTick = (world: World): Tick => {
+  if (isArriving(world.phase)) {
+    return {
+      world: advanceArrival(
+        modifyFields(world, { frameEvents: () => [] }),
+        FIXED_STEP_MS,
+      ),
+      worldMs: FIXED_STEP_MS,
+    }
+  }
   const thaw = thawTick(world.hitStop, FIXED_STEP_MS)
   const thawed = modifyFields(world, {
     hitStop: () => thaw.hitStop,

@@ -295,6 +295,7 @@ const isOfferedTo = (world: World, slot: PlayerSlot): boolean =>
 const roundOf = (world: World): number =>
   Phase.match(world.phase, {
     Ready: () => 0,
+    Arriving: () => 0,
     Preparation: ({ wave }) => wave,
     Wave: ({ wave }) => wave,
     Paused: ({ round }) => round.wave,

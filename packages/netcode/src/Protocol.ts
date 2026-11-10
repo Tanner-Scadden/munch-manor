@@ -79,8 +79,12 @@ import {
 // carries `callMs`, how long ago the player last shouted, a new action code
 // (CallMedic) shouts again, and two new events: MedicCalled and
 // TeammateSaved (SAVED! or CLUTCH!).
-export const PROTOCOL_VERSION = 19
-export const MIN_PROTOCOL_VERSION = 19
+// Version 20: the intro. A run starts Arriving, a new phase that holds the
+// intro's clock (`elapsedMs`) and its cut (`cut`, Full or Short), before
+// the first break; the room's clock sets the slam for every player. The
+// phase's tags moved, so a version 19 client cannot read it.
+export const PROTOCOL_VERSION = 20
+export const MIN_PROTOCOL_VERSION = 20
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

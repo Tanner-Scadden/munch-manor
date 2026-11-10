@@ -34,6 +34,7 @@ import {
   releaseFire,
   resolveFocusLobby,
   scoring,
+  throughIntro,
   tick,
   ticks,
   waitOutFreeze,
@@ -152,6 +153,7 @@ describe('keyboard intent', () => {
         Story.given(readyModel),
         openLobbyByKey,
         Story.message(Message.PressedKey({ code: 'Enter' })),
+        throughIntro,
         Story.model(({ phase }) => {
           expect(Phase.guards.Preparation(phase)).toBe(true)
         }),
@@ -456,6 +458,7 @@ describe('zombies', () => {
         }),
         ...ticks(RESTART_GRACE_TICKS, GRACE_TICK_MS),
         Story.message(Message.PressedKey({ code: 'Enter' })),
+        throughIntro,
         Story.model(({ phase, seats: [{ player }], stats, zombies }) => {
           expect(Phase.guards.Preparation(phase)).toBe(true)
           expect(player.hp).toBe(PLAYER_MAX_HP)
@@ -563,6 +566,7 @@ describe('determinism', () => {
       resolveFocusLobby(),
       Story.message(Message.PressedKey({ code: 'Enter' })),
       Story.message(Message.ReleasedKey({ code: 'Enter' })),
+      throughIntro,
       Story.message(Message.PressedKey({ code: 'Enter' })),
       holdFire,
       Story.message(Message.PressedKey({ code: 'KeyW' })),

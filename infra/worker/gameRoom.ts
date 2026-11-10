@@ -45,6 +45,7 @@ import {
 import {
   type OwnSeat,
   type RoomWorld,
+  introForRound,
   roomSettingsOf,
   roomWorldFor,
 } from '../../src/world/net/roomWorld.ts'
@@ -455,14 +456,17 @@ export class GameRoom {
       )
       yield* this.forgetKept
       const world = roomWorldFor(
-        roomSettingsOf(
-          lobby.mode,
-          lobby.difficulty === 'Nightmare' && !isNightmareOpen
-            ? 'Hard'
-            : lobby.difficulty,
-          lobby.members,
-          lobby.modifiers,
-        ),
+        {
+          ...roomSettingsOf(
+            lobby.mode,
+            lobby.difficulty === 'Nightmare' && !isNightmareOpen
+              ? 'Hard'
+              : lobby.difficulty,
+            lobby.members,
+            lobby.modifiers,
+          ),
+          intro: introForRound(lobby.round),
+        },
         maybeKept,
       )
       const started = Room.startRoom(

@@ -27,6 +27,8 @@ import {
   press,
   release,
   releaseFire,
+  throughIntro,
+  throughIntroByTap,
   ticks,
   touchDown,
 } from '../../../test/testing'
@@ -103,6 +105,7 @@ describe('input device', () => {
         expect(lastDevice).toBe('KeyboardMouse')
       }),
       Story.message(Message.ClickedCampaignButton()),
+      throughIntro,
       touchDown(3, 100, 200),
       Story.model(({ lastDevice, input }) => {
         expect(lastDevice).toBe('KeyboardMouse')
@@ -137,6 +140,7 @@ describe('onboarding hints', () => {
         APPLICATION,
         Story.given(newPlayerCardSeen),
         press('Enter'),
+        throughIntro,
         release('Enter'),
         Story.model(current => {
           expect(hintIds(current)).toEqual(['Move', 'Fire'])
@@ -175,6 +179,7 @@ describe('onboarding hints', () => {
         touchDown(1, 700, 200),
         Story.message(Message.ReleasedPointer({ pointerId: 1 })),
         Story.message(Message.ClickedCampaignButton()),
+        throughIntroByTap,
         Story.model(current => {
           expect(current.lastDevice).toBe('Touch')
           expect(shownGhostSticks(current)).toEqual(['Move', 'Aim'])
@@ -294,6 +299,7 @@ describe('run stats', () => {
         }),
       ),
       press('Enter'),
+      throughIntro,
       Story.model(({ stats, phase }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(stats.shotsFired).toBe(0)
@@ -316,6 +322,7 @@ describe('run stats', () => {
       }),
       ...ticks(Math.ceil(RESTART_GRACE_MS / 50), 50),
       press('Enter'),
+      throughIntro,
       Story.model(({ phase }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
       }),

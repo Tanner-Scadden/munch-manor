@@ -585,6 +585,7 @@ const startWaveButtonView = (
 ): Html =>
   Phase.match(model.phase, {
     Ready: () => h.empty,
+    Arriving: () => h.empty,
     Preparation: ({ wave }) =>
       h.div(
         [
@@ -739,6 +740,7 @@ export const preparationControlsView: {
 } = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   Phase.match(model.phase, {
     Ready: () => h.empty,
+    Arriving: () => h.empty,
     Preparation: ({ wave, remainingMs, spawns, clock }) =>
       h.div(
         [],

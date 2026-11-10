@@ -738,6 +738,7 @@ const settleLoot = (model: World): World =>
 const dropLoot = (before: World, model: World, worldMs: number): World =>
   Phase.match(before.phase, {
     Ready: () => settleLoot(model),
+    Arriving: () => settleLoot(model),
     Preparation: () => settleLoot(model),
     Wave: ({ wave }) =>
       wave === TUTORIAL_WAVE

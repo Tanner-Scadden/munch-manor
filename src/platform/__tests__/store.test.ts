@@ -887,6 +887,7 @@ const LIVE_VERSION_4_SAVE = jsonOf({
     },
     trapHint: 'Seen',
     introducedKinds: ['Shambler', 'Runner', 'Tank'],
+    intro: 'Unseen',
   },
   homeScreenTip: 'Dismissed',
   settings: { sound: 'On', music: 'Off', shake: 'Off' },
@@ -931,6 +932,7 @@ const migratedLiveSave: PlayerSave = {
     trapHint: 'Seen',
     ammoTip: 'Unseen',
     introducedKinds: ['Shambler', 'Runner', 'Tank'],
+    intro: 'Unseen',
   },
   homeScreenTip: 'Dismissed',
   settings: {

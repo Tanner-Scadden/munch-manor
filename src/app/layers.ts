@@ -10,6 +10,7 @@ import {
   prizeFlightShapes,
 } from '../features/fridge/fridgeRevealView'
 import { wavePreviewShapes } from '../features/hud/wavePreview'
+import { introShapes } from '../features/intro/introView'
 import { coopEdgeShapes } from '../features/onlineRun/coopMarksView'
 import { purchaseOverlayShapes } from '../features/shop/purchaseView'
 import { thumbAreaView } from '../input/thumbArea'
@@ -27,6 +28,7 @@ import { worldLayerShapes, worldOffset } from '../screens/game/worldView'
 import { percentOf } from '../ui/menuParts'
 import { type Level, levelOf } from '../world/level/arena'
 import { focusOf } from '../world/party/party'
+import { isArriving } from '../world/run/arrival'
 import { isRoundActive } from '../world/waves/waves'
 import type { ApplicationViewBuilder } from './composition'
 import { type Model, Phase, type Vector, defaultAppearance } from './model'
@@ -41,7 +43,7 @@ const calloutLayerShapes = (
     ? Array.flatMap(model.callouts, calloutShapes(camera))
     : []
 
-const overlayLayerShapes = (
+const roundOverlayShapes = (
   model: Model,
   screen: Screen,
   camera: Camera,
@@ -65,6 +67,17 @@ const overlayLayerShapes = (
     ? inLandscapeFrame(screen, bossBandShapes(model))
     : []),
 ]
+
+// NOTE: the intro covers the whole screen while the crew arrives, the HUD
+// too (src/features/intro/introView.ts).
+const overlayLayerShapes = (
+  model: Model,
+  screen: Screen,
+  camera: Camera,
+): ReadonlyArray<Canvas.Shape> =>
+  isArriving(model.phase)
+    ? introShapes(model, screen)
+    : roundOverlayShapes(model, screen, camera)
 
 export const sceneShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
   const screen = screenOf(model)

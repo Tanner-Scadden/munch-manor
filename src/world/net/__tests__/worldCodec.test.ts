@@ -146,7 +146,7 @@ describe('the wire packs numbers by their Schema', () => {
         names: ['hpScale', 'intensity', 'speedScale', 'x', 'y'],
       },
       Millis: {
-        count: 99,
+        count: 100,
         names: [
           'ageMs',
           'apartMs',
@@ -303,11 +303,14 @@ describe("the boss's charge on the wire", () => {
 // board; protocol 16 added each player's `calling`; protocol 18 added the
 // run's `modifiers`; protocol 19 added the fridge's cheap first pulls,
 // the pantry's stash, the kitchen's `stove` and `gasValve`, and each
-// seat's `cooking`. The wire must not change
+// seat's `cooking`; protocol 20 added the Arriving phase, the intro's
+// clock and cut, before the first break (the room's first wave is now rolled
+// on the slam, so the scripted wave 4 rolls from another seed state too).
+// The wire must not change
 // without a protocol bump. A change to how the room plays moves the bytes
 // with no change to the wire, as zombies coming in promptly after their
 // warning did, and Normal's eased health and speed (2026-10-31) did.
-const GOLDEN_DIGEST = '60507:73d66348cfe06b66'
+const GOLDEN_DIGEST = '70735:2cff855052206632'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

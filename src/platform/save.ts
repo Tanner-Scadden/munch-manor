@@ -747,6 +747,7 @@ export const SAVED_FIELDS = [
   'lessons',
   'trapHint',
   'ammoTip',
+  'introSeen',
   'introducedKinds',
   'homeScreenTip',
   'soundSetting',
@@ -791,6 +792,7 @@ export const saveOf = (model: Model): PlayerSave => ({
     trapHint: savedTrapHint(model.trapHint),
     ammoTip: AmmoTip.isAnyOf(['Unseen'])(model.ammoTip) ? 'Unseen' : 'Seen',
     introducedKinds: model.introducedKinds,
+    intro: model.introSeen,
   },
   homeScreenTip: model.homeScreenTip,
   settings: {
@@ -922,6 +924,7 @@ export const restoreSave: {
         save.onboarding.trapHint === 'Seen' ? TrapHint.Seen() : hint,
       ammoTip: tip =>
         save.onboarding.ammoTip === 'Seen' ? AmmoTip.Seen() : tip,
+      introSeen: seen => (save.onboarding.intro === 'Seen' ? 'Seen' : seen),
       introducedKinds: kinds =>
         Array.union(kinds, knownKinds(save.onboarding.introducedKinds)),
       homeScreenTip: tip =>
@@ -998,6 +1001,7 @@ export const forgetTutorial = (model: Model): Model =>
     practice: () => noPractice,
     trapHint: () => TrapHint.Unseen(),
     ammoTip: () => AmmoTip.Unseen(),
+    introSeen: () => 'Unseen',
     firstBreakQuest: () => Tour.Waiting(),
     kitchenTour: () => Tour.Waiting(),
     introducedKinds: () => [],

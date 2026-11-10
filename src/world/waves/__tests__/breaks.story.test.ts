@@ -62,6 +62,7 @@ const isFighting = (current: Model): boolean =>
 const breakClock = (current: Model): Option.Option<BreakClock> =>
   Phase.match(current.phase, {
     Ready: () => Option.none(),
+    Arriving: () => Option.none(),
     Preparation: ({ clock }) => Option.some(clock),
     Wave: () => Option.none(),
     Paused: () => Option.none(),

@@ -858,6 +858,11 @@ export const SavedOnboarding = Schema.Struct({
     Schema.withDecodingDefaultKey(Effect.succeed('Unseen')),
   ),
   introducedKinds: Schema.Array(Schema.String),
+  // NOTE: the intro watched whole, a key that reads as Unseen when missing,
+  // as ammoTip does, so it came with no new version.
+  intro: SavedTrapHint.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed('Unseen')),
+  ),
 })
 export type SavedOnboarding = typeof SavedOnboarding.Type
 

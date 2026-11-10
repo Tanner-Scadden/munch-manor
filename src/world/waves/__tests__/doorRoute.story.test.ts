@@ -84,6 +84,7 @@ const doorsOf = (current: Model): ReadonlyArray<DoorId> =>
 const previewDoors = (current: Model): ReadonlyArray<DoorId> =>
   Phase.match(current.phase, {
     Ready: () => [],
+    Arriving: () => [],
     Preparation: ({ spawns }) =>
       Array.map(doorCounts(spawns, current.traps), ({ door }) => door),
     Wave: () => [],

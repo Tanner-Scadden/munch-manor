@@ -172,8 +172,20 @@ const blame = (
 // bought, so the bot starts it.
 const BOT_RANK_POINTS = 100_000
 
-// The model of a fresh run on the title, already started: Enter opens the
-// lobby, E picks endless there, and Enter starts.
+// NOTE: a run opens on its intro (src/world/run/arrival.ts): the bot skips
+// it with a key, and the slam's frames play out to the first break.
+const pastIntro = (model: Model): Model =>
+  model.phase._tag === 'Arriving'
+    ? pastIntro(
+        send(
+          model.introSkip === 'Watching' ? tapKey(model, 'Escape') : model,
+          Message.TickedFrame({ deltaTime: FRAME_MS }),
+        ),
+      )
+    : model
+
+// The model of a fresh run on the title, already started and past its
+// intro: Enter opens the lobby, E picks endless there, and Enter starts.
 export const startedRun: {
   (options: BotOptions): (seed: number) => Model
   (seed: number, options: BotOptions): Model
@@ -191,9 +203,11 @@ export const startedRun: {
     Message.MeasuredGameSurface(SURFACE),
   )
   const inLobby = tapKey(ready, 'Enter')
-  return tapKey(
-    options.mode === 'Endless' ? tapKey(inLobby, 'KeyE') : inLobby,
-    'Enter',
+  return pastIntro(
+    tapKey(
+      options.mode === 'Endless' ? tapKey(inLobby, 'KeyE') : inLobby,
+      'Enter',
+    ),
   )
 })
 

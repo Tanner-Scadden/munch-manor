@@ -42,6 +42,7 @@ import {
   isWieldingMelee,
 } from '../../world/gear/weapons'
 import { focusOf, focusSlotOf, isCoop } from '../../world/party/party'
+import { isArriving } from '../../world/run/arrival'
 import { tallyFrame } from '../../world/run/stats'
 import { maybeTapOffer } from '../../world/shop/purchase'
 import { isAtCounter, isBrowsing } from '../../world/shop/shop'
@@ -62,6 +63,7 @@ import {
   runCardFromKey,
 } from './end'
 import { homeFocusFromKey, homeFromKey, menuFromKey } from './home'
+import { advanceIntro, skipIntro } from './intro'
 import { lobbyFromKey, playFromKey } from './lobby'
 import { profileFromKey } from './profile'
 import { isPaused, isScreenAnimated, startWhenAllowed, startsRun } from './run'
@@ -204,6 +206,7 @@ const debutCardFromKey = (model: Model, code: string): Model => {
 const phaseFromKey = (model: Model, code: string): Model =>
   Phase.match(model.phase, {
     Ready: () => model,
+    Arriving: () => model,
     Preparation: () => preparationFromKey(model, code),
     Wave: () => (isPauseKey(code) ? pause(model) : model),
     Paused: () => resumeFromKey(model, code),
@@ -310,6 +313,8 @@ export const tickFrame = (deltaTime: number) =>
   makeStep(model => {
     if (isDebutCardBlocking(model)) {
       return toModel(ageDebutCard(model, clampFrameDelta(deltaTime)))
+    } else if (isArriving(model.phase)) {
+      return advanceIntro(deltaTime)
     } else if (isRoundActive(model.phase)) {
       const framed = moveHintBand(
         advanceKitchenTour(
@@ -409,6 +414,13 @@ export const pressedKey = (code: string) =>
             input => pressKey(input, code),
           ),
         ),
+        unlockAudio,
+      ])
+    }
+
+    if (isArriving(keyed.phase)) {
+      return Update.combineSteps([
+        toModel(toggleAudioFromKey(skipIntro(keyed), code)),
         unlockAudio,
       ])
     }

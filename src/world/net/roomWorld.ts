@@ -12,11 +12,7 @@ import type {
   Writer,
 } from '@munch/netcode'
 
-import {
-  FIRST_PREPARATION_MS,
-  FIXED_STEP_MS,
-  PREPARATION_MS,
-} from '../../shared/constants'
+import { FIXED_STEP_MS, PREPARATION_MS } from '../../shared/constants'
 import { type Calling, callingOfCode } from '../../shared/playerData'
 import { TURRET_WEAPON } from '../gear/traps'
 import { seatedAs } from '../heroes/callingPlayer'
@@ -39,6 +35,7 @@ import {
   soloState,
   withStartingHearts,
 } from '../party/party'
+import { beginArrival, endArrival, isArriving } from '../run/arrival'
 import { settledLessons } from '../run/lessons'
 import { type Modifiers, modifiersOfMask, noModifiers } from '../run/modifiers'
 import { type World, modifyWorldFields } from '../schema/world'
@@ -51,6 +48,7 @@ import {
   type GameEvent,
   GunSlot,
   type Intent,
+  type IntroCut,
   Party,
   Phase,
   type Player,
@@ -71,7 +69,7 @@ import {
   shutValve,
 } from '../schema/worldSchema'
 import { type ZombieAt, catchUpShots, zombiesAt } from '../step/firing'
-import { normalize } from '../step/geometry'
+import { lerp, normalize } from '../step/geometry'
 import { predictSeat } from '../step/simulation'
 import { SeatAction, applySeatAction, stepWorld } from '../step/stepWorld'
 import { FINAL_WAVE } from '../waves/wavePlans'
@@ -129,12 +127,13 @@ export type OwnSeat = Readonly<{ slot: PlayerSlot; player: Player }>
 
 // NOTE: `modifiers` is the host's pick (src/world/run/modifiers.ts). `callings` is what
 // each seat brings, by slot (the lobby's members, Lobby.ts); a slot with none
-// plays YOU.
+// plays YOU. `intro` is the cut the run opens on (introForRound).
 export type RoomSettings = Readonly<{
   difficulty: Difficulty
   modifiers: Modifiers
   mode: RunMode
   callings: ReadonlyArray<Readonly<{ slot: PlayerSlot; calling: Calling }>>
+  intro: IntroCut
 }>
 
 // NOTE: what the lobby picked (packages/netcode, Lobby.ts) as the run's
@@ -173,8 +172,16 @@ export const roomSettingsOf: {
         onSome: known => Result.succeed({ slot, calling: known }),
       }),
     ),
+    intro: 'Short',
   }),
 )
+
+// NOTE: the intro a room plays (src/world/run/arrival.ts): the whole drive
+// up on a room's first run, the knock and the slam on every run after it
+// (RUN IT BACK), so a crew's rematch stays quick. A room does not know who
+// has watched it before, so its first run plays it whole for everyone.
+export const introForRound = (round: number): IntroCut =>
+  round <= 1 ? 'Full' : 'Short'
 
 // NOTE: the furthest back a shot is checked, 250 ms; the room caps each
 // player's view lag at the same (packages/netcode, World.ts), which this
@@ -447,21 +454,27 @@ export const startRoomWorld: {
     settings: RoomSettings,
   ): RoomWorld => ({
     tick: 0,
-    world: beginPreparation(
+    world: beginArrival(
       withStartingHearts(
         seatCallings(
           seatSlots(freshWorld(seed, settings), slots),
           settings.callings,
         ),
       ),
-      1,
-      FIRST_PREPARATION_MS,
+      settings.intro,
     ),
     events: [],
     pressed: [],
     history: [],
   }),
 )
+
+// NOTE: a room past its intro, in its first break, as the slam leaves it,
+// for a tool or a test that starts a room already playing.
+export const pastArrival = (room: RoomWorld): RoomWorld => ({
+  ...room,
+  world: endArrival(room.world),
+})
 
 // KEEP GOING
 
@@ -701,9 +714,6 @@ export const readRoomDiff: {
 // thrown, respawned, or swapped, so it is shown where it is.
 const TELEPORT_PX = 64
 
-const lerp = (from: number, to: number, t: number): number =>
-  from + (to - from) * t
-
 type Placed = Readonly<{ x: number; y: number }>
 
 const lerpPlaced = <A extends Placed>(from: A, to: A, t: number): A =>
@@ -769,20 +779,23 @@ export const predictOwn: {
   (own: OwnSeat, input: PlayerInput, room: RoomWorld): OwnSeat
 } = Function.dual(
   3,
-  (own: OwnSeat, input: PlayerInput, room: RoomWorld): OwnSeat => ({
-    ...own,
-    player: playerAt(
-      predictSeat(
-        modifySeat(room.world, own.slot, {
-          player: () => own.player,
-          intent: () => intentOfInput(input),
-        }),
-        own.slot,
-        FIXED_STEP_MS,
-      ),
-      own.slot,
-    ),
-  }),
+  (own: OwnSeat, input: PlayerInput, room: RoomWorld): OwnSeat =>
+    isArriving(room.world.phase)
+      ? own
+      : {
+          ...own,
+          player: playerAt(
+            predictSeat(
+              modifySeat(room.world, own.slot, {
+                player: () => own.player,
+                intent: () => intentOfInput(input),
+              }),
+              own.slot,
+              FIXED_STEP_MS,
+            ),
+            own.slot,
+          ),
+        },
 )
 
 const gapOf = (a: OwnSeat, b: OwnSeat): number =>
@@ -813,6 +826,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   modifiers: noModifiers,
   mode: RunMode.Campaign(),
   callings: [],
+  intro: 'Short',
 }
 
 // NOTE: the room's World for one run: a fresh run with the lobby's

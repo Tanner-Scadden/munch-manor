@@ -57,6 +57,7 @@ import {
   holdingSecond,
   openFloorSpot,
   releaseFire,
+  throughIntro,
   tick,
   ticks,
   waitOutFreeze,
@@ -251,6 +252,7 @@ describe('particles and decals', () => {
       APPLICATION,
       Story.given(messyModel),
       Story.message(Message.PressedKey({ code: 'Enter' })),
+      throughIntro,
       Story.model(({ phase, particles, decals, dustCooldownMs }) => {
         expect(Phase.guards.Preparation(phase)).toBe(true)
         expect(particles).toEqual([])

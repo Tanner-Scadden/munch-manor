@@ -28,6 +28,8 @@ import {
   release,
   releaseFire,
   tap,
+  throughIntro,
+  throughIntroByTap,
   tick,
   ticks,
   touchDown,
@@ -59,6 +61,7 @@ const cardKind = (current: Model): Option.Option<ZombieKind> =>
 const remainingMs = (current: Model): number =>
   Phase.match(current.phase, {
     Ready: () => -1,
+    Arriving: () => -1,
     Preparation: preparation => preparation.remainingMs,
     Wave: () => -1,
     Paused: () => -1,
@@ -69,6 +72,7 @@ const remainingMs = (current: Model): number =>
 const waveClockMs = (current: Model): number =>
   Phase.match(current.phase, {
     Ready: () => -1,
+    Arriving: () => -1,
     Preparation: () => -1,
     Wave: wave => wave.elapsedMs,
     Paused: () => -1,
@@ -146,6 +150,7 @@ describe('new zombie card', () => {
       APPLICATION,
       Story.given(newPlayerCardSeen),
       tap('Enter'),
+      throughIntro,
       Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(cardKind(current)).toStrictEqual(Option.none())
@@ -226,6 +231,7 @@ describe('new zombie card', () => {
           ),
         ),
         tap('Enter'),
+        throughIntro,
         Story.message(Message.ClickedStartWaveButton()),
         Story.model(current => {
           expect(Phase.guards.Wave(current.phase)).toBe(true)
@@ -415,6 +421,7 @@ describe('touch first play', () => {
         touchDown(1, 400, 200),
         touchUp(1),
         Story.message(Message.ClickedCampaignButton()),
+        throughIntroByTap,
         Story.model(current => {
           expect(shownGhostSticks(current)).toEqual(['Move', 'Aim'])
         }),
@@ -454,6 +461,7 @@ describe('touch first play', () => {
       APPLICATION,
       Story.given(newPlayerCardSeen),
       tap('Enter'),
+      throughIntro,
       Story.model(current => {
         expect(hintIds(current)).toEqual(['Move', 'Fire'])
         expect(shownGhostSticks(current)).toEqual([])
@@ -495,6 +503,7 @@ describe('tutorial hints', () => {
         APPLICATION,
         Story.given(newPlayerCardSeen),
         tap('Enter'),
+        throughIntro,
         press('KeyD'),
         ...ticks(10, TICK_MS),
         release('KeyD'),
@@ -535,6 +544,7 @@ describe('wave 1 practice gate', () => {
       APPLICATION,
       Story.given(newPlayerCardSeen),
       tap('Enter'),
+      throughIntro,
       press('KeyD'),
       ...ticks(10, TICK_MS),
       release('KeyD'),

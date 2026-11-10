@@ -19,7 +19,11 @@ import {
   coopWorld,
 } from '../../domain/coopRoom'
 import type { Calling } from '../../shared/playerData'
-import { roomSettingsOf, roomWorldFor } from '../../world/net/roomWorld'
+import {
+  pastArrival,
+  roomSettingsOf,
+  roomWorldFor,
+} from '../../world/net/roomWorld'
 import { CoopNet } from './net'
 
 // NOTE: co-op without a network, for tests and the audit harness. The fake
@@ -208,9 +212,11 @@ export const stagedWorld: {
   ): WorldState =>
     Array.reduce(
       Array.range(1, STAGED_TICKS),
-      roomWorldFor(roomSettingsOf('Campaign', 'Normal', members)).start(
-        slots,
-        7,
+      pastArrival(
+        roomWorldFor(roomSettingsOf('Campaign', 'Normal', members)).start(
+          slots,
+          7,
+        ),
       ),
       world =>
         coopWorld.step(
