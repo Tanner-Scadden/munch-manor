@@ -84,7 +84,7 @@ const phaseStinger = (before: Phase, after: Phase): MusicStinger => {
     Phase.isAnyOf(['Escaped'])(after) &&
     !Phase.isAnyOf(['Escaped'])(before)
   ) {
-    return 'Victory'
+    return 'Escaped'
   } else if (
     Phase.isAnyOf(['GameOver'])(after) &&
     !Phase.isAnyOf(['GameOver'])(before)

@@ -138,16 +138,16 @@ export const SHARES = `
 
 // NOTE: the runs that ended at Game Over or a win: solo runs by row,
 // co-op games by game, so a co-op end screen's shares read per game. A win
-// reads as Victory, the share screen's name for it.
+// reads as Escaped, the share screen's name for it.
 export const ENDS = `
   WITH ${CREW_GAMES}
   SELECT party, outcome, count(*) AS runs FROM (
     SELECT party,
-      CASE WHEN ${IS_WON} THEN 'Victory' ELSE outcome END AS outcome
+      CASE WHEN ${IS_WON} THEN 'Escaped' ELSE outcome END AS outcome
     FROM runs
     WHERE party = 'Solo' AND outcome IN ('GameOver', 'Escaped', 'Victory')
     UNION ALL
-    SELECT 'Crew', CASE WHEN won THEN 'Victory' ELSE 'GameOver' END
+    SELECT 'Crew', CASE WHEN won THEN 'Escaped' ELSE 'GameOver' END
     FROM crew_games WHERE won OR lost
   )
   GROUP BY party, outcome`

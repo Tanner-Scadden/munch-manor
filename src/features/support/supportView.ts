@@ -11,14 +11,14 @@ import { Phase } from '../../world/schema/worldSchema'
 
 const SUPPORT_LABEL = 'Buy the shopkeeper a coffee: support the game'
 
-const isVictoryShown = (model: Model): boolean =>
+const isEscapeShown = (model: Model): boolean =>
   Phase.isAnyOf(['Escaped'])(model.phase) && model.screenMs >= RESTART_GRACE_MS
 
 const supportLinkView = (url: string, h: ApplicationViewBuilder): Html =>
   h.a(
     [
       h.Class('support-link'),
-      h.DataAttribute('placement', 'Victory'),
+      h.DataAttribute('placement', 'Escaped'),
       h.Href(url),
       h.Target('_blank'),
       h.Rel('noopener noreferrer'),
@@ -40,14 +40,14 @@ const supportLinkView = (url: string, h: ApplicationViewBuilder): Html =>
     ],
   )
 
-// NOTE: on Victory it waits out the restart grace like the end buttons, so a
+// NOTE: on the escape's card it waits out the restart grace like the end buttons, so a
 // tap meant for the last zombie never lands on it.
-export const victorySupportView: {
+export const escapeSupportView: {
   (h: ApplicationViewBuilder): (model: Model) => Html
   (model: Model, h: ApplicationViewBuilder): Html
 } = Function.dual(2, (model: Model, h: ApplicationViewBuilder): Html =>
   Option.match(model.maybeSupportUrl, {
     onNone: () => h.empty,
-    onSome: url => (isVictoryShown(model) ? supportLinkView(url, h) : h.empty),
+    onSome: url => (isEscapeShown(model) ? supportLinkView(url, h) : h.empty),
   }),
 )

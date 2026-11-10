@@ -198,7 +198,7 @@ export const defeatQuip: {
   }
 })
 
-export const victoryVerdict = (stats: RunStats): string =>
+export const escapeVerdict = (stats: RunStats): string =>
   stats.heartsLost === 0
     ? 'Not a single bite. Show-off'
     : 'Out the front door, hat and all'

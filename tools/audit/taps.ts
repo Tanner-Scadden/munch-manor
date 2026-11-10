@@ -201,7 +201,7 @@ const SCENES: ReadonlyArray<Scene> = [
     opensDialog: true,
   },
   { name: 'gameover', query: `wave=4&phase=gameover&stats&${PAST_GRACE}` },
-  { name: 'victory', query: `wave=8&phase=victory&stats&${PAST_GRACE}` },
+  { name: 'victory', query: `wave=8&phase=escaped&stats&${PAST_GRACE}` },
 ]
 
 type Point = Readonly<{ x: number; y: number }>

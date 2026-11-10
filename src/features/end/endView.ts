@@ -31,7 +31,7 @@ import type { Difficulty } from '../../shared/playerData'
 import { focusOf, isCoop, modifyFocus } from '../../world/party/party'
 import { DIFFICULTIES } from '../../world/run/difficulty'
 import { modifiersOn } from '../../world/run/modifiers'
-import { defeatQuip, victoryVerdict } from '../../world/run/stats'
+import { defeatQuip, escapeVerdict } from '../../world/run/stats'
 import { Invulnerability, type Zombie } from '../../world/schema/entitySchema'
 import { Phase } from '../../world/schema/worldSchema'
 import { roundWave } from '../../world/waves/waves'
@@ -442,7 +442,7 @@ const kindShapes = (model: Model, y: number): ReadonlyArray<Canvas.Shape> => {
 const quipOf = (model: Model, kind: EndKind): string =>
   String.toUpperCase(
     kind === 'Won'
-      ? victoryVerdict(model.stats)
+      ? escapeVerdict(model.stats)
       : defeatQuip(roundWave(model.phase), model.stats),
   )
 

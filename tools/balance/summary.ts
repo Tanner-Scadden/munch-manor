@@ -139,11 +139,11 @@ export const summarizeCampaign: {
   2,
   (results: ReadonlyArray<RunResult>, meta: CampaignMeta): CampaignSummary => {
     const runs = results.length
-    const wins = Array.filter(results, ({ victory }) => victory)
+    const wins = Array.filter(results, ({ escaped }) => escaped)
     const reached = Array.map(results, ({ cleared }) => cleared + 1)
     const deaths = pipe(
       results,
-      Array.filter(({ victory }) => !victory),
+      Array.filter(({ escaped }) => !escaped),
       Array.map(({ cleared }) => cleared + 1),
     )
     const waveLogs = (wave: number) =>

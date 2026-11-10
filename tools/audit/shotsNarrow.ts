@@ -134,7 +134,7 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   {
     name: 'end-crew',
-    query: `wave=10&phase=victory&stats&party=3&${LEARNED}&rank=2400&rankgain=204&mods=9&tick=400`,
+    query: `wave=10&phase=escaped&stats&party=3&${LEARNED}&rank=2400&rankgain=204&mods=9&tick=400`,
   },
 ]
 
