@@ -117,6 +117,11 @@ import {
 // the Library or the Cellar.
 // Rolled rooms: the level carries its `arrangement`, which of the parlour,
 // library, and cellar the run's seed rolled into each slot.
+// The dare: the World holds the run's dare (`dare`: its own generator and
+// the list) and the house's things (`dareThings`, keyed by id, each hidden,
+// marked, carried by a zombie, dropped, held, found, or delivered), and five
+// new events say what happened to them: DareFound, DareTaken, DareDropped,
+// DareListDone, and DareDelivered.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

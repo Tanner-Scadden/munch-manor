@@ -40,7 +40,12 @@ import {
   WriteSave,
 } from './update/save'
 import { SendRunSummary } from './update/settle'
-import { PlaySound, ResumeAudio, managedResources } from './update/sound'
+import {
+  PlaySound,
+  PlayTune,
+  ResumeAudio,
+  managedResources,
+} from './update/sound'
 import {
   FetchBuild,
   RegisterServiceWorker,
@@ -62,6 +67,7 @@ export const CommandsLayer = Layer.mergeAll(
   SetFullscreen.layer,
   ResumeAudio.layer,
   PlaySound.layer,
+  PlayTune.layer,
   CueMusic.layer,
   FetchBuild.layer,
   WaitForUnwrap.layer,

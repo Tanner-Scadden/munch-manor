@@ -71,6 +71,7 @@ import {
   playSounds,
   playStartSoundWhen,
   playSwapSoundWhen,
+  playTune,
   toggleAudioFromKey,
   unlockAudio,
 } from './sound'
@@ -311,6 +312,7 @@ export const tickFrame = (deltaTime: number) =>
           ...mendCues(model, advanced),
           ...kitchenCues(model, advanced),
         ]),
+        playTune(model, advanced),
       ])
     } else if (isEndScreen(model.phase)) {
       return advanceEndScreen(clampFrameDelta(deltaTime))

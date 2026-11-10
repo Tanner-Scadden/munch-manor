@@ -18,6 +18,7 @@ import {
   PREPARATION_MS,
 } from '../../shared/constants'
 import { type Calling, callingOfCode } from '../../shared/playerData'
+import { rollDare } from '../dare/dare'
 import { rollCases } from '../feats/cases'
 import { TURRET_WEAPON } from '../gear/traps'
 import { seatedAs } from '../heroes/callingPlayer'
@@ -63,6 +64,7 @@ import {
   freshCrates,
   freshKeys,
   freshLevel,
+  freshDare,
   freshLoot,
   freshStats,
   freshStove,
@@ -346,6 +348,8 @@ const freshWorld = (seed: number, settings: RoomSettings): World => ({
   stove: freshStove(seed),
   crates: freshCrates(seed),
   keys: freshKeys(seed),
+  dare: freshDare(seed),
+  dareThings: [],
   gasValve: shutValve,
   cases: rollCases(seed, settings.difficulty),
   hitStop: initialHitStop,
@@ -415,7 +419,7 @@ export const startRoomWorld: {
     world: beginPreparation(
       withStartingHearts(
         seatCallings(
-          seatSlots(freshWorld(seed, settings), slots),
+          seatSlots(rollDare(freshWorld(seed, settings)), slots),
           settings.callings,
         ),
       ),

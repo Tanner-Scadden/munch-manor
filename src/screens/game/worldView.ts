@@ -6,6 +6,7 @@ import { group } from '../../art/sprite'
 import { hatRiseOf } from '../../art/sprites/hatArt'
 import { caseDrawables } from '../../features/cases/caseView'
 import { crateDrawables, mendRingsOf } from '../../features/crates/crateView'
+import { dareDrawables, dareOverheadShapes } from '../../features/dare/dareView'
 import {
   chompShapes,
   fallenOf,
@@ -237,6 +238,7 @@ const standingDrawables = (
     ...caseDrawables(model),
     ...crateDrawables(model),
     ...fallenChandelierDrawables(model),
+    ...dareDrawables(model),
   ]
 }
 
@@ -283,6 +285,7 @@ const overheadShapes = (
     ? reloadBarShapes(focusOf(model).player, hatRiseOf(model.appearance))
     : []),
   ...fridgeOverheadShapes(model),
+  ...dareOverheadShapes(model),
   ...mateOverheadShapes(model, mates),
   ...coopNameShapes(model),
   ...padlockShapes(model),

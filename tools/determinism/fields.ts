@@ -48,6 +48,8 @@ export const FIELD_CLASSES = {
   crates: 'World',
   keys: 'World',
   stove: 'World',
+  dare: 'World',
+  dareThings: 'World',
   gasValve: 'World',
   cases: 'World',
   hitStop: 'World',
