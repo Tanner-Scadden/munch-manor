@@ -340,6 +340,10 @@ export const isDowned = (seat: Seat): boolean => seat.life._tag === 'Downed'
 
 export const isBledOut = (seat: Seat): boolean => seat.life._tag === 'BledOut'
 
+// NOTE: stepped out through the open front door: hidden, never hunted,
+// bitten, or blocking, and counted toward the walk out.
+export const isOut = (seat: Seat): boolean => seat.life._tag === 'Out'
+
 export const isHere = (seat: Seat): boolean => seat.presence === 'Here'
 
 // NOTE: who the zombies hunt: every standing player, here or away. Single

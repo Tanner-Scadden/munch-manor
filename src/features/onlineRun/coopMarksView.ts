@@ -20,6 +20,7 @@ import {
   isBledOut,
   isCoop,
   isDowned,
+  isOut,
   leadSeatOf,
   playersOf,
 } from '../../world/party/party'
@@ -28,7 +29,7 @@ import { isBreak } from '../../world/waves/waves'
 
 // What an online co-op run adds over the players (MULTIPLAYER.md, Phase
 // 2): each teammate's name over their head, READY over everyone who is
-// ready in a break, and a teammate off screen as a small badge of their
+// ready in a break, OUT at the front door over everyone who stepped out, and a teammate off screen as a small badge of their
 // seat's color at the screen's edge, toward them (decided 4, the one
 // exception to "No off-screen hints"). Zombies and doors get nothing.
 
@@ -243,8 +244,12 @@ const nameTagShapes = (
 const NAME_BOTTOM_LIFT_PX = 8
 const READY_LIFT_PX = 21
 
-// NOTE: over the head, the revive icon, or a MEDIC! bubble.
+// NOTE: over the head, the revive icon, or a MEDIC! bubble. One who stepped
+// out has no body: their tag sits low at the front door's sill.
 const nameLiftOf = (model: Model, slot: number, seat: Seat): number => {
+  if (isOut(seat)) {
+    return NAME_BOTTOM_LIFT_PX
+  }
   if (isCallFresh(seat)) {
     return NAME_LIFT_CALLING_PX
   }
@@ -274,9 +279,9 @@ export const coopNameShapes = (model: Model): ReadonlyArray<Canvas.Shape> => {
                 player.calling,
                 Option.isSome(maybeCrewBotAt(model, slot)),
               )),
-          ...(isBreak(model) && seat.readiness === 'Ready'
+          ...(isOut(seat) || (isBreak(model) && seat.readiness === 'Ready')
             ? textShapes(
-                'READY',
+                isOut(seat) ? 'OUT' : 'READY',
                 'Title',
                 player.x,
                 player.y - READY_LIFT_PX - seatHatRiseOf(model, slot),

@@ -667,7 +667,9 @@ export const SOLO_SLOT: PlayerSlot = 0
 // still beside them fills reviveMs first. A BledOut player is out of the
 // fight until the next break (MULTIPLAYER.md, decided row 4). `callMs` is
 // how long ago they last shouted MEDIC! (src/world/party/medic.ts): 0 is a shout the
-// next tick sounds.
+// next tick sounds. An Out player stepped out through the open front door
+// (src/world/dare/finale.ts): safe outside, out of the fight for good,
+// waiting for the crew.
 export const Life = defineTaggedUnion({
   Standing: {},
   Downed: {
@@ -676,6 +678,7 @@ export const Life = defineTaggedUnion({
     callMs: MillisNumber,
   },
   BledOut: {},
+  Out: {},
 })
 export type Life = typeof Life.Type
 export type DownedLife = typeof Life.Downed.Type

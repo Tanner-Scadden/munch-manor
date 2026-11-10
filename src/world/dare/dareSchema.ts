@@ -49,13 +49,13 @@ export type DareThing = typeof DareThing.Type
 // the list is not done (and always in Endless); Summoned once it is, while
 // Uncle Chunk comes to the front door, fights, and leaves his hat on the
 // floor; Unlocking once a player takes the hat, the front door's clock
-// running down in each wave; Open once it swings open, with the slots of
-// the players who have stepped out through it.
+// running down in each wave; Open once it swings open. Who has stepped out
+// through it is each seat's own Life.Out.
 export const Finale = defineTaggedUnion({
   Hunting: {},
   Summoned: {},
   Unlocking: { remainingMs: MillisNumber, durationMs: MillisNumber },
-  Open: { out: Schema.Array(Schema.Finite) },
+  Open: {},
 })
 export type Finale = typeof Finale.Type
 
