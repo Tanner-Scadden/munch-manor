@@ -382,7 +382,6 @@ const program = Effect.gen(function* () {
         ),
     ),
   )
-  const startedMs = yield* Clock.currentTimeMillis
   yield* Effect.forEach(
     players,
     (player, index) => Effect.forkScoped(drive(player, index)),
@@ -390,6 +389,24 @@ const program = Effect.gen(function* () {
       discard: true,
     },
   )
+  // NOTE: the room's first run opens on the whole intro
+  // (src/world/run/arrival.ts); the room's slam starts the first break for
+  // everyone.
+  yield* eventually(
+    "the room's slam starts the run for everyone",
+    Effect.map(
+      Effect.forEach(players, player => Ref.get(player.seen)),
+      seens =>
+        Array.every(seens, seen =>
+          Option.exists(
+            Array.last(seen),
+            room => room.world.phase._tag !== 'Arriving',
+          ),
+        ),
+    ),
+    '25 seconds',
+  )
+  const startedMs = yield* Clock.currentTimeMillis
   const slots = yield* Effect.forEach(players, slotOf)
   yield* eventually(
     'each player sees the other two move',
