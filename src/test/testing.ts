@@ -72,6 +72,7 @@ import {
 import { PartRadioGroupBlock } from '../features/profile/blocks/look/lookRadios'
 import {
   FIXED_STEP_MS,
+  MAX_FRAME_DELTA_MS,
   RESTART_GRACE_MS,
   SCORE_PER_ZOMBIE,
   STICK_RADIUS_PX,
@@ -89,6 +90,7 @@ import {
 import { START_LEVEL, levelOf } from '../world/level/arena'
 import { KITCHEN_EXIT } from '../world/level/exits'
 import type { Clearance } from '../world/level/pathing'
+import { SLAM_MS } from '../world/run/arrival'
 import { World } from '../world/schema/world'
 import {
   Arsenal,
@@ -241,6 +243,55 @@ export const emitPressedKey = (code: string) =>
     Message.PressedKey({ code }),
   )
 
+// THE INTRO
+
+// NOTE: past the intro a run opens on (src/world/run/arrival.ts): a key
+// skips it to the slam, and the slam's frames play out to the first break,
+// which starts on the last of them.
+const SLAM_FRAMES = SLAM_MS / MAX_FRAME_DELTA_MS
+
+export const throughIntro = Story.steps(
+  press('Escape'),
+  ...ticks(SLAM_FRAMES, MAX_FRAME_DELTA_MS),
+)
+
+// NOTE: the same by a tap, so a touch player stays on touch.
+export const throughIntroByTap = Story.steps(
+  Story.message(
+    Message.PressedPointer({
+      pointerId: 9,
+      device: 'Touch',
+      clientX: 0,
+      clientY: 0,
+    }),
+  ),
+  Story.message(Message.ReleasedPointer({ pointerId: 9 })),
+  ...ticks(SLAM_FRAMES, MAX_FRAME_DELTA_MS),
+)
+
+const slamFramesInScene = () =>
+  Array.makeBy(SLAM_FRAMES, () =>
+    Scene.Subscription.emit(
+      SCENE_SUBSCRIPTIONS.frame,
+      Message.TickedFrame({ deltaTime: MAX_FRAME_DELTA_MS }),
+    ),
+  )
+
+export const throughIntroInScene = () => [
+  emitPressedKey('Escape'),
+  ...slamFramesInScene(),
+]
+
+export const throughIntroByTapInScene = () => [
+  Scene.pointerDown(Scene.role('application', { name: 'Game surface' }), {
+    pointerType: 'touch',
+    pointerId: 9,
+    clientX: 100,
+    clientY: 100,
+  }),
+  ...slamFramesInScene(),
+]
+
 // NOTE: the root's two Mounts: the surface's size, and the touch tap
 // listener, whose tap Message changes nothing.
 export const measureSurfaceAs = (
@@ -291,12 +342,20 @@ export const openLobbyInScene = () => [
   resolveFocusLobbyInScene(),
 ]
 
-export const startRunInScene = () => [
+// NOTE: START opens the run on its intro; `startRunInScene` goes on past it.
+export const startIntoIntroInScene = () => [
   ...openLobbyInScene(),
   Scene.click(Scene.role('button', { name: 'Start' })),
 ]
 
+export const startRunInScene = () => [
+  ...startIntoIntroInScene(),
+  ...throughIntroInScene(),
+]
+
 export const manorButton = Scene.role('button', { name: /^More:/ })
+
+export const pauseButton = Scene.role('button', { name: 'Pause' })
 
 export const munchopediaDialog = Scene.role('dialog', { name: 'Munchopedia' })
 
@@ -529,7 +588,11 @@ export const resolveFocusLobby = (control: LobbyControl = 'Start') =>
 
 export const openLobbyByKey = Story.steps(press('Enter'), resolveFocusLobby())
 
-export const startRunFromHome = Story.steps(openLobbyByKey, press('Enter'))
+export const startRunFromHome = Story.steps(
+  openLobbyByKey,
+  press('Enter'),
+  throughIntro,
+)
 
 // READING A MODEL
 

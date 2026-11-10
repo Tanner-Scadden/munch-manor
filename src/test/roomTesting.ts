@@ -24,6 +24,7 @@ import {
   type RoomWorld,
   actionCodeOf,
   heldAction,
+  pastArrival,
   startRoomWorld,
   stepRoomWorld,
 } from '../world/net/roomWorld'
@@ -36,8 +37,10 @@ import { SeatAction } from '../world/step/stepWorld'
 // the room stepped tick by tick, and a room with clients over a fake
 // network, every frame through the real codecs.
 
-// NOTE: a room of two players from seed 7.
-export const TWO_SEAT_ROOM = startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS)
+// NOTE: a room of two players from seed 7, in its first break.
+export const TWO_SEAT_ROOM = pastArrival(
+  startRoomWorld([0, 1], 7, DEFAULT_ROOM_SETTINGS),
+)
 
 // NOTE: each scripted player walks a square of its own, out of step with
 // the others, aims at the nearest walking zombie and holds the trigger

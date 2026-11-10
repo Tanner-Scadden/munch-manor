@@ -16,7 +16,11 @@ import { crewRunKeyOf } from '../../../platform/analyticsRun'
 import { modifyLeadSeat, withSeat } from '../../../test/model.fixture'
 import { APPLICATION, resolveFocusCoop } from '../../../test/testing'
 import { asVeteran } from '../../../test/veteran'
-import { type RoomWorld, startRoomWorld } from '../../../world/net/roomWorld'
+import {
+  type RoomWorld,
+  pastArrival,
+  startRoomWorld,
+} from '../../../world/net/roomWorld'
 import { noModifiers } from '../../../world/run/modifiers'
 import { Phase, RunMode, noKills } from '../../../world/schema/worldSchema'
 import { startWaveEarly } from '../../../world/waves/waves'
@@ -35,12 +39,15 @@ const VISIT_ID = '0123456789abcdef'
 
 const OWN_SLOT = 1
 
-const started = startRoomWorld([0, OWN_SLOT, 2], 7, {
-  difficulty: 'Hard',
-  modifiers: noModifiers,
-  mode: RunMode.Campaign(),
-  callings: [],
-})
+const started = pastArrival(
+  startRoomWorld([0, OWN_SLOT, 2], 7, {
+    difficulty: 'Hard',
+    modifiers: noModifiers,
+    mode: RunMode.Campaign(),
+    callings: [],
+    intro: 'Short',
+  }),
+)
 
 const fighting: RoomWorld = {
   ...started,

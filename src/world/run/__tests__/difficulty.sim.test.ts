@@ -29,6 +29,7 @@ const skipBreak = (started: Model): Model =>
     phase: phase =>
       Phase.match(phase, {
         Ready: () => phase,
+        Arriving: () => phase,
         Preparation: preparation =>
           modifyFields(preparation, { remainingMs: () => 0 }),
         Wave: () => phase,

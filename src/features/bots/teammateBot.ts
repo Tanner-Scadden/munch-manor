@@ -270,6 +270,7 @@ const toPost = (world: World, me: SeatState): Vector => {
 const clockMsOf = (world: World): number =>
   Phase.match(world.phase, {
     Ready: () => 0,
+    Arriving: () => 0,
     Preparation: ({ clock, durationMs, remainingMs }) =>
       BreakClock.match(clock, {
         Counting: () => durationMs - remainingMs,
@@ -554,6 +555,7 @@ const intentFor = (world: World, slot: PlayerSlot): Intent =>
         }
         return Phase.match(world.phase, {
           Ready: () => idleIntent,
+          Arriving: () => idleIntent,
           Preparation: () =>
             outThroughFrontDoor(world, me, breakIntent(world, me)),
           Wave: () => outThroughFrontDoor(world, me, fightIntent(world, me)),
@@ -611,6 +613,7 @@ const pressFor = (world: World, slot: PlayerSlot): Option.Option<SeatAction> =>
       }
       return Phase.match(world.phase, {
         Ready: () => Option.none(),
+        Arriving: () => Option.none(),
         Preparation: () => breakPress(world, me),
         Wave: () => fightPress(world, me),
         Paused: () => Option.none(),

@@ -22,6 +22,7 @@ import {
   measureSurface,
   playButton,
   startRunInScene,
+  throughIntroByTapInScene,
   withPistol,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
@@ -526,6 +527,7 @@ describe('New zombie card', () => {
         ),
         measureSurface,
         Scene.click(playButton),
+        ...throughIntroByTapInScene(),
         Scene.expect(card).toBeAbsent(),
         Scene.expect(Scene.selector('[data-ghost="Move"]')).toExist(),
         Scene.expect(Scene.selector('[data-ghost="Aim"]')).toExist(),

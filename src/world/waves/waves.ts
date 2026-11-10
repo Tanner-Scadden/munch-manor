@@ -309,6 +309,7 @@ export const isEndless = (model: World): boolean =>
 export const pause = <M extends World>(model: M): M =>
   Phase.match(model.phase, {
     Ready: () => model,
+    Arriving: () => model,
     Preparation: preparation =>
       modifyWorldFields(model, {
         phase: () => Phase.Paused({ round: preparation }),
@@ -330,6 +331,7 @@ const learnFromBreak = (model: World, wave: number, clock: BreakClock) =>
 export const startWaveEarly = (model: World): World =>
   Phase.match(model.phase, {
     Ready: () => model,
+    Arriving: () => model,
     Preparation: ({ wave, spawns, clock }) =>
       summonAtFrontDoor(
         modifyFields(learnFromBreak(model, wave, clock), {
@@ -588,6 +590,7 @@ export const advanceRound: {
 } = Function.dual(2, (model: World, worldMs: number): World =>
   Phase.match(model.phase, {
     Ready: () => model,
+    Arriving: () => model,
     Preparation: preparation => {
       if (isCoop(model)) {
         return isEveryoneReady(model)
@@ -608,6 +611,7 @@ export const advanceRound: {
 export const roundWave = (phase: Phase): number =>
   Phase.match(phase, {
     Ready: () => 1,
+    Arriving: () => 1,
     Preparation: ({ wave }) => wave,
     Wave: ({ wave }) => wave,
     Paused: ({ round }) => round.wave,

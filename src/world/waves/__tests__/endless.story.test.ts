@@ -36,6 +36,7 @@ import {
   resolveFocusLobby,
   scoring,
   startRunFromHome,
+  throughIntro,
   tick,
   ticksFor,
   zombieAt,
@@ -131,6 +132,7 @@ describe('choosing a mode', () => {
           expect(Phase.guards.Ready(phase)).toBe(true)
         }),
         press('Enter'),
+        throughIntro,
         Story.model(({ mode, phase, seats: [{ player }] }) => {
           expect(mode).toEqual(RunMode.Endless())
           expect(preparationWave(phase)).toEqual(Option.some(1))
@@ -146,6 +148,7 @@ describe('choosing a mode', () => {
         APPLICATION,
         Story.given(readyModel),
         Story.message(Message.ClickedEndlessButton()),
+        throughIntro,
         Story.model(({ mode, phase }) => {
           expect(mode).toEqual(RunMode.Endless())
           expect(preparationWave(phase)).toEqual(Option.some(1))
@@ -180,6 +183,7 @@ describe('choosing a mode', () => {
         }),
         ...waitOutGrace(),
         press('KeyE'),
+        throughIntro,
         Story.model(({ mode, phase, keys }) => {
           expect(mode).toEqual(RunMode.Endless())
           expect(preparationWave(phase)).toEqual(Option.some(1))
@@ -426,6 +430,7 @@ describe('after an escape', () => {
       Story.given(victorious),
       ...waitOutGrace(),
       press('Enter'),
+      throughIntro,
       Story.model(({ mode, phase, keys, traps }) => {
         expect(mode).toEqual(RunMode.Campaign())
         expect(preparationWave(phase)).toEqual(Option.some(1))

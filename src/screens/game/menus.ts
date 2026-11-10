@@ -148,6 +148,7 @@ const cornerButtons = (
   const pause = isCoopOpen(model.coop) ? [] : [pauseButtonView(h)]
   return Phase.match(model.phase, {
     Ready: () => [],
+    Arriving: () => [],
     Preparation: () => pause,
     Wave: () => pause,
     Paused: () => [

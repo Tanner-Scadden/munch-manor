@@ -42,6 +42,7 @@ export const isPending = (lesson: Lesson): boolean =>
 const isFirstPreparation = (phase: Phase): boolean =>
   Phase.match(phase, {
     Ready: () => false,
+    Arriving: () => false,
     Preparation: ({ wave }) => wave === 1,
     Wave: () => false,
     Paused: () => false,

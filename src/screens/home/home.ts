@@ -416,7 +416,8 @@ export const forgetNewEntriesFrom: {
   (before: Model, after: Model): Model
 } = Function.dual(2, (before: Model, after: Model): Model =>
   !isInRun(before.phase) &&
-  Phase.isAnyOf(['Preparation'])(after.phase) &&
+  !Phase.isAnyOf(['Arriving'])(before.phase) &&
+  Phase.isAnyOf(['Arriving', 'Preparation'])(after.phase) &&
   Array.isReadonlyArrayNonEmpty(after.home.newEntries)
     ? modifyFields(after, {
         home: home => modifyFields(home, { newEntries: () => [] }),

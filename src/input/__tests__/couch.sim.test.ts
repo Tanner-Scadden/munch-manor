@@ -16,6 +16,7 @@ import {
   playedThrough,
   resolveFocusLobby,
   settleRunCommands,
+  throughIntro,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
 import {
@@ -277,6 +278,7 @@ describe('two keyboards on one desktop', () => {
           ...Array.map(tap('Enter'), Story.message),
           resolveFocusLobby(),
           ...Array.map(tap('Enter'), Story.message),
+          throughIntro,
           settleRunCommands,
         )
         expect(playersOf(started)).toHaveLength(2)

@@ -26,6 +26,7 @@ import {
   resolveFocusLobby,
   showDialog,
   startRunFromHome,
+  throughIntro,
 } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
 import { focusOf } from '../../../world/party/party'
@@ -91,6 +92,7 @@ describe('START plays what the lobby holds', () => {
         Story.message(Message.ClickedPlayButton()),
         resolveFocusLobby(),
         Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
+        throughIntro,
         Story.model(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
           expect(current.mode).toEqual(RunMode.Endless())
@@ -138,6 +140,7 @@ describe('START plays what the lobby holds', () => {
         ),
         resolveFocusLobby(),
         press('Enter'),
+        throughIntro,
         Story.model(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
           expect(current.difficulty.chosen).toBe('Hard')
@@ -279,6 +282,7 @@ describe('what skips the lobby', () => {
       APPLICATION,
       Story.given(ended),
       Story.message(Message.ClickedRetryButton()),
+      throughIntro,
       Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.mode).toEqual(RunMode.Endless())
@@ -296,6 +300,7 @@ describe('what skips the lobby', () => {
           APPLICATION,
           Story.given(newPlayerCardSeen),
           Story.message(Message.ClickedPlayButton()),
+          throughIntro,
           Story.model(current => {
             expect(Phase.guards.Preparation(current.phase)).toBe(true)
             expect(current.lobby.status).toBe('Closed')
@@ -305,6 +310,7 @@ describe('what skips the lobby', () => {
           APPLICATION,
           Story.given(newPlayerCardSeen),
           press('Enter'),
+          throughIntro,
           Story.model(current => {
             expect(Phase.guards.Preparation(current.phase)).toBe(true)
             expect(current.lobby.status).toBe('Closed')

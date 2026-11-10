@@ -7,11 +7,13 @@ import { isPauseKey, pressKey, releaseAll } from '../../input/input'
 import { playerKeyAction } from '../../input/keyActions'
 import type { PageVisibility } from '../../platform/deviceSchema'
 import { focusOf } from '../../world/party/party'
+import { isArriving } from '../../world/run/arrival'
 import { SeatAction, gunSlotAction } from '../../world/step/stepWorld'
 import { makeStep } from '../definition'
 import { Message } from '../message'
 import type { Model } from '../model'
 import { pressInRoom } from './coop'
+import { skipIntro } from './intro'
 import { toggleAudioFromKey, unlockAudio } from './sound'
 import { type UpdateStep, modelStep, unchanged, withInput } from './step'
 
@@ -40,14 +42,17 @@ const holdKey =
   })
 
 // NOTE: a press key goes to the room, and every key is held in the input
-// for walking.
+// for walking. In the intro any key skips this player's drawing to the
+// door (src/app/update/intro.ts).
 const keyInRun = (code: string) =>
   makeStep(model =>
-    Option.match(playerKeyAction(model, code), {
-      onNone: () => Update.combineSteps([holdKey(code), unlockAudio]),
-      onSome: action =>
-        Update.combineSteps([holdKey(code), pressInRun(action)]),
-    }),
+    isArriving(model.phase)
+      ? Update.combineSteps([holdKey(code), modelStep(skipIntro), unlockAudio])
+      : Option.match(playerKeyAction(model, code), {
+          onNone: () => Update.combineSteps([holdKey(code), unlockAudio]),
+          onSome: action =>
+            Update.combineSteps([holdKey(code), pressInRun(action)]),
+        }),
   )
 
 const blurInRun = modelStep(model => withInput(model, releaseAll))

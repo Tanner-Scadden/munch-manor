@@ -17,6 +17,7 @@ import {
   isCheckingForUpdates,
   isUpdateCheckWindow,
 } from '../platform/version'
+import { isRunUnderway } from '../world/run/arrival'
 import { isRoundActive } from '../world/waves/waves'
 import { makeSubscriptions } from './definition'
 import {
@@ -37,7 +38,7 @@ import type { Model } from './model'
 import { isScreenAnimated } from './update/run'
 
 const isFrameActive = (model: Model): boolean =>
-  isRoundActive(model.phase) || isScreenAnimated(model.phase)
+  isRunUnderway(model.phase) || isScreenAnimated(model.phase)
 
 const Activity = Schema.Literals(['Idle', 'Active'])
 type Activity = typeof Activity.Type

@@ -27,6 +27,7 @@ import {
   press,
   resolveFocusLobby,
   resolvePlayed,
+  throughIntro,
   tick,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
@@ -99,7 +100,7 @@ const resolvePaydayAndKey = Story.Command.resolveAll(
 
 describe('music follows the phase', () => {
   it.effect(
-    'the title and Preparation share the creep loop, cued once audio is ready',
+    'the title creeps, START goes quiet for the intro, cued once audio is ready',
     () =>
       Story.story(
         APPLICATION,
@@ -114,17 +115,13 @@ describe('music follows the phase', () => {
           ResumeAudio,
           Message.CompletedResumeAudio({ playback: 'Running' }),
         ),
-        Story.Command.expectExact(
-          PlaySound({ sound: 'Start', variation: 0 }),
-          CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
-        ),
+        Story.Command.expectExact(PlaySound({ sound: 'Start', variation: 0 })),
         resolvePlayed('Start'),
-        resolveCue('Creep'),
       ),
   )
 
   it.effect(
-    'a title that is already audible keeps the creep loop into Preparation',
+    'an audible title goes quiet for the intro, and the creep loop comes back on the slam',
     () =>
       Story.story(
         APPLICATION,
@@ -134,10 +131,24 @@ describe('music follows the phase', () => {
         resolvePlayed('Pop'),
         press('Enter'),
         Story.model(({ phase }) => {
+          expect(phase._tag).toBe('Arriving')
+        }),
+        Story.Command.expectExact(
+          PlaySound({ sound: 'Start', variation: 0 }),
+          CueMusic({ mood: 'Silence', level: 'Full', stinger: 'None' }),
+        ),
+        resolvePlayed('Start'),
+        resolveCue('Silence'),
+        throughIntro,
+        Story.model(({ phase }) => {
           expect(phase._tag).toBe('Preparation')
         }),
-        Story.Command.expectExact(PlaySound({ sound: 'Start', variation: 0 })),
-        resolvePlayed('Start'),
+        Story.Command.expectExact(
+          PlaySound({ sound: 'DoorSlam', variation: 0 }),
+          CueMusic({ mood: 'Creep', level: 'Full', stinger: 'None' }),
+        ),
+        resolvePlayed('DoorSlam'),
+        resolveCue('Creep'),
       ),
   )
 

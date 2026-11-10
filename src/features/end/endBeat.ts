@@ -38,6 +38,7 @@ export type EndKind = 'Munched' | 'Won'
 export const endKindOf = (model: Model): Option.Option<EndKind> =>
   Phase.match(model.phase, {
     Ready: () => Option.none(),
+    Arriving: () => Option.none(),
     Preparation: () => Option.none(),
     Wave: () => Option.none(),
     Paused: () => Option.none(),
@@ -480,6 +481,7 @@ const recordsBroken = (
   const bests = before.bests.byDifficulty[played]
   return Phase.match(after.phase, {
     Ready: (): ReadonlyArray<RunRecord> => [],
+    Arriving: (): ReadonlyArray<RunRecord> => [],
     Preparation: (): ReadonlyArray<RunRecord> => [],
     Wave: (): ReadonlyArray<RunRecord> => [],
     Paused: (): ReadonlyArray<RunRecord> => [],

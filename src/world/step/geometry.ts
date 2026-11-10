@@ -61,6 +61,15 @@ export const distanceBetween: {
   Math.hypot(to.x - from.x, to.y - from.y),
 )
 
+// NOTE: the point `t` of the way from `from` to `to`.
+export const lerp: {
+  (to: number, t: number): (from: number) => number
+  (from: number, to: number, t: number): number
+} = Function.dual(
+  3,
+  (from: number, to: number, t: number): number => from + (to - from) * t,
+)
+
 export const clamp: {
   (min: number, max: number): (value: number) => number
   (value: number, min: number, max: number): number

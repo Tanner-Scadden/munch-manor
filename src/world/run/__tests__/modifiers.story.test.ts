@@ -39,6 +39,7 @@ import {
   press,
   release,
   resolveFocusLobby,
+  throughIntro,
   tick,
   ticks,
   zombieOf,
@@ -61,6 +62,7 @@ import { type Lob, type PlannedSpawn } from '../../schema/worldSchema'
 import { offersOf } from '../../shop/purchase'
 import { beginPreparation } from '../../waves/waves'
 import { ZOMBIE_KINDS } from '../../zombies/zombies'
+import { endArrival } from '../arrival'
 import {
   MODIFIER_ORDER,
   type Modifiers,
@@ -374,6 +376,7 @@ describe('Broke', () => {
         press('Enter'),
         ...ticks(HOLD_TICKS, FRAME_MS),
         release('Enter'),
+        throughIntro,
         Story.model(current => {
           expect(current.keys.held).toBe(100)
           expect(current.fridge.pulls).toBe(0)
@@ -392,7 +395,7 @@ describe('Glass', () => {
       withModifiers(readyAfterRead, glass),
       RunMode.Campaign(),
     )
-    expect(Phase.guards.Preparation(started.phase)).toBe(true)
+    expect(Phase.guards.Arriving(started.phase)).toBe(true)
     expect(focusOf(started).player.hp).toBe(1)
     const plain = startOrResume(readyAfterRead, RunMode.Campaign())
     expect(focusOf(plain).player.hp).toBe(PLAYER_MAX_HP)
@@ -614,7 +617,9 @@ describe('the modifiers in a room', () => {
 
   test('Big Crowd fills the room’s first wave', () => {
     const spawnsIn = (modifiers: Modifiers): number => {
-      const { phase } = startRoomWorld([0, 1], 7, settingsWith(modifiers)).world
+      const { phase } = endArrival(
+        startRoomWorld([0, 1], 7, settingsWith(modifiers)).world,
+      )
       return phase._tag === 'Preparation' ? phase.spawns.length : 0
     }
     expect(spawnsIn(only({ bigCrowd: true }))).toBeGreaterThan(
@@ -710,6 +715,7 @@ describe('the solo lobby', () => {
       ),
       openLobbyByKey,
       Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
+      throughIntro,
       Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.modifiers).toEqual(only({ glass: true, bigCrowd: true }))

@@ -769,6 +769,7 @@ const savedBests = (bests: PlayerBests): SavedBests => ({
 export const SAVED_FIELDS = [
   'lessons',
   'trapHint',
+  'introSeen',
   'introducedKinds',
   'homeScreenTip',
   'soundSetting',
@@ -812,6 +813,7 @@ export const saveOf = (model: Model): PlayerSave => ({
     },
     trapHint: savedTrapHint(model.trapHint),
     introducedKinds: model.introducedKinds,
+    intro: model.introSeen,
   },
   homeScreenTip: model.homeScreenTip,
   settings: {
@@ -941,6 +943,7 @@ export const restoreSave: {
       lessons: lessons => restoreLessons(lessons, save.onboarding.lessons),
       trapHint: hint =>
         save.onboarding.trapHint === 'Seen' ? TrapHint.Seen() : hint,
+      introSeen: seen => (save.onboarding.intro === 'Seen' ? 'Seen' : seen),
       introducedKinds: kinds =>
         Array.union(kinds, knownKinds(save.onboarding.introducedKinds)),
       homeScreenTip: tip =>
@@ -1016,6 +1019,7 @@ export const forgetTutorial = (model: Model): Model =>
     lessons: () => freshLessons,
     practice: () => noPractice,
     trapHint: () => TrapHint.Unseen(),
+    introSeen: () => 'Unseen',
     firstBreakQuest: () => Tour.Waiting(),
     kitchenTour: () => Tour.Waiting(),
     introducedKinds: () => [],

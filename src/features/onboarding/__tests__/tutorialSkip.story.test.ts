@@ -35,6 +35,7 @@ import {
   closeDialog,
   hintIds,
   showDialog,
+  throughIntro,
   tick,
   writeSave,
 } from '../../../test/testing'
@@ -191,6 +192,7 @@ describe('the first-run card', () => {
           writeSave(),
           tick(50),
           tick(3000),
+          throughIntro,
           Story.model(later => {
             expect(Phase.guards.Preparation(later.phase)).toBe(true)
             expect(later.difficulty.chosen).toBe('Normal')
@@ -224,6 +226,7 @@ describe('the first-run card', () => {
         writeSave(),
         tick(50),
         tick(3000),
+        throughIntro,
         Story.model(later => {
           expect(Phase.guards.Preparation(later.phase)).toBe(true)
           expect(isPracticeGateHeld(later)).toBe(true)

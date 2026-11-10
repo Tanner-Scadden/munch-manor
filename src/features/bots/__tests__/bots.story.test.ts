@@ -19,6 +19,7 @@ import {
   resolveFocusLobby,
   showDialog,
   startedRun,
+  throughIntro,
 } from '../../../test/testing'
 import { pointsForRank } from '../../../world/heroes/rank'
 import { atSeatBy, playersOf } from '../../../world/party/party'
@@ -284,6 +285,7 @@ describe('START with bots', () => {
         ),
         closeDialog(),
         Story.messageIn(LobbyBinding, LobbyMessage.ClickedStartButton()),
+        throughIntro,
         Story.model(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
           expect(current.party._tag).toBe('Crew')
@@ -309,6 +311,7 @@ describe('START with bots', () => {
       Story.given(readyModel),
       openLobbyByKey,
       press('Enter'),
+      throughIntro,
       Story.model(current => {
         expect(Phase.guards.Preparation(current.phase)).toBe(true)
         expect(current.party._tag).toBe('Solo')
@@ -370,6 +373,7 @@ describe('START with bots', () => {
           }),
         ),
         Story.message(Message.ClickedRetryButton()),
+        throughIntro,
         Story.model(current => {
           expect(Phase.guards.Preparation(current.phase)).toBe(true)
           expect(playersOf(current)).toHaveLength(2)

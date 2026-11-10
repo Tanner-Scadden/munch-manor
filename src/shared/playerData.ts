@@ -1,5 +1,6 @@
 import {
   Array,
+  Effect,
   Function,
   Option,
   Record,
@@ -855,6 +856,11 @@ export const SavedOnboarding = Schema.Struct({
   lessons: SavedLessons,
   trapHint: SavedTrapHint,
   introducedKinds: Schema.Array(Schema.String),
+  // NOTE: the intro watched whole, a key that reads as Unseen when missing,
+  // so a save from before the intro still reads.
+  intro: SavedTrapHint.pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed('Unseen')),
+  ),
 })
 export type SavedOnboarding = typeof SavedOnboarding.Type
 

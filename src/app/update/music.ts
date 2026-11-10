@@ -60,6 +60,10 @@ const phasePlan = (model: Model): MusicPlan => {
   const moodOf = (round: Round): MusicMood => roundMood(model, round)
   return Phase.match(model.phase, {
     Ready: (): MusicPlan => ({ mood: 'Creep', level: 'Full' }),
+    // NOTE: the intro has no tune: the car's radio, the house's creaks, and
+    // silence on HELLO? are its own sounds (src/features/intro/introBeat.ts),
+    // and the run's music comes in on the slam.
+    Arriving: () => SILENT_PLAN,
     Preparation: (round): MusicPlan => ({ mood: moodOf(round), level: 'Full' }),
     Wave: (round): MusicPlan => ({ mood: moodOf(round), level: 'Full' }),
     Paused: ({ round }): MusicPlan => ({

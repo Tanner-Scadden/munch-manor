@@ -446,9 +446,17 @@ export const toggleAudioFromKey: {
 
 const START_SOUND_GRACE_MS = 1000
 
+// NOTE: a run is fresh in its intro's first moment, or its first break's
+// when it had none.
 const isFreshRun = (model: Model): boolean =>
-  Phase.isAnyOf(['Preparation'])(model.phase) &&
-  model.elapsedMs < START_SOUND_GRACE_MS
+  Phase.matchOrElse(
+    model.phase,
+    {
+      Arriving: ({ elapsedMs }) => elapsedMs < START_SOUND_GRACE_MS,
+      Preparation: () => model.elapsedMs < START_SOUND_GRACE_MS,
+    },
+    () => false,
+  )
 
 // NOTE: the mute and music buttons, the audio engine, and each sound and
 // tune (src/audio/message.ts).

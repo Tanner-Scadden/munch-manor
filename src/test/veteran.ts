@@ -27,6 +27,7 @@ export const asTutorialDone = (model: Model): Model =>
       openBreak: learned(),
     }),
     trapHint: () => TrapHint.Seen(),
+    introSeen: () => 'Seen',
     firstBreakQuest: () => Tour.Over(),
     kitchenTour: () => Tour.Over(),
   })
@@ -40,4 +41,5 @@ export const asVeteran = (model: Model): Model =>
       }),
     introducedKinds: () => ZOMBIE_KIND_ORDER,
     difficultyCard: () => DifficultyCard.Seen(),
+    introSeen: () => 'Seen',
   })

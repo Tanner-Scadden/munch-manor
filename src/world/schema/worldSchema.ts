@@ -496,8 +496,16 @@ export const RunMode = defineTaggedUnion({
 })
 export type RunMode = typeof RunMode.Type
 
+// NOTE: the intro's two lengths (src/world/run/arrival.ts): the whole drive
+// up to the house the first time, the knock and the slam after.
+export const IntroCut = Schema.Literals(['Full', 'Short'])
+export type IntroCut = typeof IntroCut.Type
+
+// NOTE: Arriving is the intro before the first break: only its clock runs,
+// counting up to the slam, which starts the run (src/world/run/arrival.ts).
 export const Phase = defineTaggedUnion({
   Ready: {},
+  Arriving: { elapsedMs: MillisNumber, cut: IntroCut },
   Preparation: preparationFields,
   Wave: waveFields,
   Paused: { round: Round },

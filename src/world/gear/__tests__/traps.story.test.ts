@@ -42,6 +42,7 @@ import {
   press,
   recordTicks,
   release,
+  throughIntro,
   tick,
   ticks,
   zombieOf,
@@ -980,6 +981,7 @@ describe('between waves', () => {
         ),
       ),
       press('Enter'),
+      throughIntro,
       Story.model(({ phase, traps, seats: [{ trapStock, selectedTrap }] }) => {
         expect(Phase.guards.Preparation(phase) && phase.wave).toBe(1)
         expect(traps).toEqual([])

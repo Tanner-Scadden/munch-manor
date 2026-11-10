@@ -63,6 +63,7 @@ export const legacySave: PlayerSave = {
     },
     trapHint: 'Seen',
     introducedKinds: ['Shambler'],
+    intro: 'Unseen',
   },
   homeScreenTip: 'Dismissed',
   settings: {

@@ -85,6 +85,8 @@ export const FIELD_CLASSES = {
 
   difficultyCard: 'Client',
   trapHint: 'Client',
+  introSeen: 'Client',
+  introSkip: 'Client',
   firstBreakQuest: 'Client',
   kitchenTour: 'Client',
   maybeOpenHelpCard: 'Client',

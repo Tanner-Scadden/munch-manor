@@ -262,6 +262,7 @@ const roundHudShapes = (
 ): ReadonlyArray<Canvas.Shape> =>
   Phase.match(model.phase, {
     Ready: () => [],
+    Arriving: () => [],
     Preparation: ({ wave, remainingMs }) => [
       ...hudText(layout, layout.titleY, waveLabel(model.mode, wave), 'Plain'),
       ...breakSubtitleShapes(model, layout, remainingMs),

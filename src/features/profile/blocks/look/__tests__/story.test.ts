@@ -43,6 +43,7 @@ import {
   jsonOf,
   resolveFocusOption,
   showDialog,
+  throughIntro,
 } from '../../../../../test/testing'
 import { CharacterBinding } from '../../../composition'
 import * as Character from '../block'
@@ -433,6 +434,7 @@ describe('Character', () => {
           APPLICATION,
           Story.given(withLook(home, PICKED)),
           Story.message(Message.ClickedCampaignButton()),
+          throughIntro,
           Story.model(({ phase, appearance }) => {
             expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
             expect(appearance).toEqual(PICKED)
@@ -447,6 +449,7 @@ describe('Character', () => {
             }),
           ),
           Story.message(Message.ClickedEndlessButton()),
+          throughIntro,
           Story.model(({ phase, appearance }) => {
             expect(Phase.isAnyOf(['Preparation'])(phase)).toBe(true)
             expect(appearance).toEqual(PICKED)
