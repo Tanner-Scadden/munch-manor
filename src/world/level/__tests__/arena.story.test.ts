@@ -57,7 +57,7 @@ const COUCH_BOTTOM = 130
 // room.
 const parlourWave = (): Model =>
   modifyFields(quietWave(1), {
-    level: () => ({ id: 'Parlour', openExits: [], dropped: [] }),
+    level: level => ({ ...level, id: 'Parlour' }),
   })
 
 const isCircleClear = ({ x, y }: { x: number; y: number }, radius: number) =>

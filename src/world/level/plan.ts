@@ -5,7 +5,14 @@
 import { Array, Option, Result, String, pipe } from 'effect'
 
 import { TILE_SIZE } from '../../shared/constants'
-import type { DoorId, ExitId, LevelId, Vector } from '../schema/entitySchema'
+import type {
+  Arrangement,
+  DoorId,
+  ExitId,
+  LevelState,
+  SlotRoomId,
+  Vector,
+} from '../schema/entitySchema'
 
 // MAP
 
@@ -280,15 +287,10 @@ const KITCHEN_ROOM: RoomSpec = {
 
 // THE SLOTS
 
-// NOTE: the three rooms that stand in the house's slots, each drafted to
-// the slot footprint (32 by 18 tiles, ports in rows 8 and 9, spawn doors
-// `n` and `s`, a shelf or a swingable wall in rows 13 and 14 of each side).
-// Layer 11 of docs/ESCAPE_PLAN.md rolls which stands where.
-type SlotRoomId =
-  | typeof PARLOUR_ROOM_ID
-  | typeof LIBRARY_ROOM_ID
-  | typeof CELLAR_ROOM_ID
-
+// NOTE: the three rooms that stand in the house's slots (SlotRoomId), each
+// drafted to the slot footprint (32 by 18 tiles, ports in rows 8 and 9,
+// spawn doors `n` and `s`, a shelf or a swingable wall in rows 13 and 14 of
+// each side). Each run rolls which stands where (rollArrangement).
 // NOTE: each room's own letters turned into the level's: the library's
 // stacks are `b`, since `B` is the parlour's bookshelf.
 const SLOT_ROOMS: Readonly<
@@ -382,10 +384,12 @@ export const SLOTS: Readonly<Record<SlotId, Slot>> = {
   },
 }
 
-const SLOT_IDS: ReadonlyArray<SlotId> = ['West', 'East', 'Far']
+export const SLOT_IDS: ReadonlyArray<SlotId> = ['West', 'East', 'Far']
 
-// NOTE: which room stands in each slot.
-export type Arrangement = Readonly<Record<SlotId, SlotRoomId>>
+// NOTE: the slot an exit's boards open, if they open one (the kitchen's and
+// the secret shelf's do not).
+export const slotOfExit = (exit: ExitId): Option.Option<SlotId> =>
+  Array.findFirst(SLOT_IDS, slot => SLOTS[slot].exit === exit)
 
 const opposite = (side: Side): Side => (side === 'West' ? 'East' : 'West')
 
@@ -544,7 +548,7 @@ export const PARLOUR_SPEC: LevelSpec = {
 // behind the boards in each side wall and one more behind the east room's,
 // and the library's secret shelf. Each exit's spawn doors stay shut until
 // it opens. A run starts at the table, on the start spot.
-export const manorSpecFor = (arrangement: Arrangement): LevelSpec => {
+const buildManorSpec = (arrangement: Arrangement): LevelSpec => {
   const maybeShelf = secretShelfOf(arrangement)
   const dining: RoomSpec = {
     id: DINING_ROOM_ID,
@@ -559,7 +563,7 @@ export const manorSpecFor = (arrangement: Arrangement): LevelSpec => {
     slotRoomOf(arrangement, slot, maybeShelf),
   )
   return {
-    id: 'Manor',
+    id: `Manor:${arrangementKeyOf(arrangement)}`,
     rooms: [dining, KITCHEN_ROOM, ...slotRooms],
     exits: [
       {
@@ -580,20 +584,64 @@ export const manorSpecFor = (arrangement: Arrangement): LevelSpec => {
   }
 }
 
-// NOTE: the fixed arrangement until layer 11 rolls it: the parlour west,
-// the library east, the cellar beyond it.
-const FIXED_ARRANGEMENT: Arrangement = {
-  West: PARLOUR_ROOM_ID,
-  East: LIBRARY_ROOM_ID,
-  Far: CELLAR_ROOM_ID,
-}
+// THE ROLL
 
-export const MANOR_SPEC: LevelSpec = manorSpecFor(FIXED_ARRANGEMENT)
+const arrangementKeyOf = (arrangement: Arrangement): string =>
+  `${arrangement.West}-${arrangement.East}-${arrangement.Far}`
 
-export const LEVEL_SPECS: Readonly<Record<LevelId, LevelSpec>> = {
-  Parlour: PARLOUR_SPEC,
-  Manor: MANOR_SPEC,
-}
+// NOTE: every way the three rooms stand in the three slots, in a fixed
+// order, so a roll picks the same one in every engine.
+export const ARRANGEMENTS: Array.NonEmptyReadonlyArray<Arrangement> = [
+  { West: PARLOUR_ROOM_ID, East: LIBRARY_ROOM_ID, Far: CELLAR_ROOM_ID },
+  { West: PARLOUR_ROOM_ID, East: CELLAR_ROOM_ID, Far: LIBRARY_ROOM_ID },
+  { West: LIBRARY_ROOM_ID, East: PARLOUR_ROOM_ID, Far: CELLAR_ROOM_ID },
+  { West: LIBRARY_ROOM_ID, East: CELLAR_ROOM_ID, Far: PARLOUR_ROOM_ID },
+  { West: CELLAR_ROOM_ID, East: PARLOUR_ROOM_ID, Far: LIBRARY_ROOM_ID },
+  { West: CELLAR_ROOM_ID, East: LIBRARY_ROOM_ID, Far: PARLOUR_ROOM_ID },
+]
+
+// NOTE: the house the tests, tools, and the home screen's World stand in:
+// the parlour west, the library east, the cellar beyond it.
+export const DEFAULT_ARRANGEMENT: Arrangement = Array.headNonEmpty(ARRANGEMENTS)
+
+// NOTE: the arrangement a roll in [0, 1) picks, one of the six alike.
+export const arrangementAt = (roll: number): Arrangement =>
+  Option.getOrElse(
+    Array.get(
+      ARRANGEMENTS,
+      Math.min(
+        ARRANGEMENTS.length - 1,
+        Math.max(0, Math.floor(roll * ARRANGEMENTS.length)),
+      ),
+    ),
+    () => DEFAULT_ARRANGEMENT,
+  )
+
+// NOTE: one spec for each arrangement, built once, so a level, its flow
+// field, and its room images are kept per arrangement and never rebuilt.
+const MANOR_SPECS: ReadonlyMap<string, LevelSpec> = new Map(
+  Array.map(ARRANGEMENTS, arrangement => [
+    arrangementKeyOf(arrangement),
+    buildManorSpec(arrangement),
+  ]),
+)
+
+export const manorSpecFor = (arrangement: Arrangement): LevelSpec =>
+  MANOR_SPECS.get(arrangementKeyOf(arrangement)) ?? buildManorSpec(arrangement)
+
+export const MANOR_SPEC: LevelSpec = manorSpecFor(DEFAULT_ARRANGEMENT)
+
+// NOTE: every level a run or a test can stand in: the parlour alone and
+// the manor in each arrangement, for the sprite atlas and the tests.
+export const EVERY_LEVEL_SPEC: ReadonlyArray<LevelSpec> = [
+  PARLOUR_SPEC,
+  ...Array.map(ARRANGEMENTS, arrangement => manorSpecFor(arrangement)),
+]
+
+// NOTE: the spec a level state names: the manor as its slots stand, or
+// the parlour on its own.
+export const specOfState = (state: LevelState): LevelSpec =>
+  state.id === 'Manor' ? manorSpecFor(state.arrangement) : PARLOUR_SPEC
 
 // HOUSE SPOTS
 

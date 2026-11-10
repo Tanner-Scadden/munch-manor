@@ -116,12 +116,15 @@ const floorMark = (level: Floor, index: number): Canvas.Shape => {
       )
 }
 
-export const boardShapes = (level: Floor): ReadonlyArray<Canvas.Shape> => [
+const planksOf = (
+  level: Floor,
+  marginPx: number,
+): ReadonlyArray<Canvas.Shape> => [
   rect(
-    -SHAKE_MAX_PX,
-    -SHAKE_MAX_PX,
-    level.width + SHAKE_MAX_PX * 2,
-    level.height + SHAKE_MAX_PX * 2,
+    -marginPx,
+    -marginPx,
+    level.width + marginPx * 2,
+    level.height + marginPx * 2,
     FLOOR_COLOR,
   ),
   ...Array.flatMap(
@@ -132,6 +135,16 @@ export const boardShapes = (level: Floor): ReadonlyArray<Canvas.Shape> => [
     floorMark(level, index),
   ),
 ]
+
+// NOTE: a room alone on its level reaches past its edges by the shake.
+export const boardShapes = (level: Floor): ReadonlyArray<Canvas.Shape> =>
+  planksOf(level, SHAKE_MAX_PX)
+
+// NOTE: a slot room's planks stop at its own block, so nothing of it shows
+// in a neighbour's picture and a neighbour's image is the same whichever
+// room rolls in beside it.
+export const slotBoardShapes = (level: Floor): ReadonlyArray<Canvas.Shape> =>
+  planksOf(level, 0)
 
 // RUG
 

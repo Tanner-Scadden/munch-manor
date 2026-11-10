@@ -55,11 +55,13 @@ export const EXIT_RULES: ExitRules = {
   tagDropPx: 7,
 }
 
+// NOTE: the room behind a slot's boards rolls each run, so its boards keep
+// it a secret until they come down and the cloche lifts.
 const EXIT_NAMES: Readonly<Record<ExitId, string>> = {
   [KITCHEN_EXIT]: 'THE KITCHEN',
-  [WEST_EXIT]: 'THE PARLOUR',
-  [EAST_EXIT]: 'THE LIBRARY',
-  [FAR_EXIT]: 'THE CELLAR',
+  [WEST_EXIT]: 'THE BOARDS',
+  [EAST_EXIT]: 'THE BOARDS',
+  [FAR_EXIT]: 'THE BOARDS',
 }
 
 export const exitName = (exit: ExitId): string =>

@@ -17,6 +17,7 @@ import {
   Lesson,
   type Lessons,
   RunMode,
+  SlotRoomId,
   Vector,
   WeaponKind,
   ZombieKind,
@@ -42,6 +43,16 @@ export const LevelCallout = Schema.Struct({
   ageMs: MillisNumber,
 })
 export type LevelCallout = typeof LevelCallout.Type
+
+// NOTE: a cosmetic: the cloche over a slot's doorway lifting as its boards
+// come down, showing which room rolled in behind it (`at`, the doorway's
+// middle in the world; src/features/cloche/clocheReveal.ts). Never part of
+// the World.
+export const ClocheLift = defineTaggedUnion({
+  Resting: {},
+  Lifting: { room: SlotRoomId, at: Vector, ageMs: Schema.Finite },
+})
+export type ClocheLift = typeof ClocheLift.Type
 
 export const AudioState = defineTaggedUnion({
   Locked: {},

@@ -115,6 +115,8 @@ import {
 // slots' doors (EastTop, EastBottom, FarTop, FarBottom), a new event,
 // ShelfSwung, the library's secret shelf, and a trap crate's room may be
 // the Library or the Cellar.
+// Rolled rooms: the level carries its `arrangement`, which of the parlour,
+// library, and cellar the run's seed rolled into each slot.
 // Later layers change the World again under this same version, since the
 // whole stack ships as one.
 export const PROTOCOL_VERSION = 20

@@ -286,6 +286,10 @@ export const HarnessConfig = Schema.Struct({
   chewers: Num(0),
   doorway: Flag,
   openexits: Schema.optionalKey(ListOf(Schema.String)),
+  // Which rolled house the run stands in, by its place in ARRANGEMENTS
+  // (src/world/level/plan.ts): the first, the parlour west, the library
+  // east, and the cellar beyond, unless given.
+  house: Num(0),
   ask: Flag,
   difficulty: Schema.optionalKey(Difficulty),
   // The calling picked and worn, whatever the rank

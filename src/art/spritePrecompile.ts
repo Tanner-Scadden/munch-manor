@@ -1,9 +1,9 @@
-import { Array, Record } from 'effect'
+import { Array } from 'effect'
 
 import { defaultAppearance } from '../domain/clientSchema'
 import { everyRoomImage } from '../render/room/room'
 import { CALLINGS } from '../world/heroes/calling'
-import { LEVEL_SPECS } from '../world/level/plan'
+import { EVERY_LEVEL_SPEC } from '../world/level/plan'
 import { playerSprites } from './appearance'
 import { SEAT_LOOKS } from './seatLooks'
 
@@ -21,7 +21,7 @@ export const precompileSprites = (): void => {
   Array.forEach(SEAT_LOOKS, look =>
     Array.forEach(CALLINGS, calling => playerSprites(look, calling)),
   )
-  Array.forEach(Record.values(LEVEL_SPECS), spec => {
+  Array.forEach(EVERY_LEVEL_SPEC, spec => {
     everyRoomImage(spec)
   })
 }

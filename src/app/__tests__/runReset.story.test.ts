@@ -16,7 +16,7 @@ import {
 } from '../../test/testing'
 import { modifyFocus } from '../../world/party/party'
 import { Message } from '../message'
-import { type Model, Phase, TrapNotice, freshLoot } from '../model'
+import { type Model, Phase, TrapNotice, freshLevel, freshLoot } from '../model'
 
 // NOTE: listed here by hand, not read from the reset itself, so a field the
 // reset forgets shows up as a difference.
@@ -108,7 +108,11 @@ describe('going home', () => {
           Story.model(current => {
             expect(Phase.guards.Ready(current.phase)).toBe(true)
             expect(runState(current)).toEqual(
-              runState({ ...readyModel, loot: freshLoot(current.rngState) }),
+              runState({
+                ...readyModel,
+                loot: freshLoot(current.rngState),
+                level: freshLevel(current.rngState),
+              }),
             )
             atHome.push(current)
           }),

@@ -6,17 +6,24 @@ import {
   TILE_SIZE,
   ZOMBIE_SPAWN_MARGIN,
 } from '../../shared/constants'
-import type { DoorId, ExitId, LevelState, Vector } from '../schema/entitySchema'
+import type {
+  Arrangement,
+  DoorId,
+  ExitId,
+  LevelState,
+  Vector,
+} from '../schema/entitySchema'
 import { addVectors, clamp, scaleVector } from '../step/geometry'
 import {
+  DEFAULT_ARRANGEMENT,
   type ExitOpener,
-  LEVEL_SPECS,
   type LevelSpec,
   MANOR_SPEC,
   PARLOUR_SPEC,
   type RoomSpec,
   SLOT_DOOR_SYMBOLS,
   middleOf,
+  specOfState,
   widthOf,
 } from './plan'
 
@@ -805,16 +812,24 @@ export const PARLOUR: Level = levelFor(PARLOUR_SPEC)
 
 export const MANOR: Level = levelFor(MANOR_SPEC)
 
-export const startingLevel: LevelState = {
+// NOTE: the manor with its slots as a roll stands them, no exit open.
+export const startingLevelFor = (arrangement: Arrangement): LevelState => ({
   id: 'Manor',
+  arrangement,
   openExits: [],
   dropped: [],
-}
+})
 
-// NOTE: the level every run starts on, with no exit open yet. What is baked
-// once for the start, such as Rattles' sprites, reads it.
+// NOTE: the house the home screen's World and the tests stand in, before a
+// run rolls its own (freshLevel in src/world/schema/worldSchema.ts).
+export const startingLevel: LevelState = startingLevelFor(DEFAULT_ARRANGEMENT)
+
+// NOTE: the level every run starts on, with no exit open yet. Every
+// arrangement's start is the same: the dining room and the kitchen are
+// fixed, and the slot rooms stand behind shut boards. What is baked once for
+// the start, such as Rattles' sprites, reads it.
 export const START_LEVEL: Level = levelFor(
-  LEVEL_SPECS[startingLevel.id],
+  specOfState(startingLevel),
   startingLevel.openExits,
 )
 
@@ -870,7 +885,7 @@ export const levelOf = ({ level }: Readonly<{ level: LevelState }>): Level => {
   if (cached !== undefined) {
     return cached
   }
-  const found = levelFor(LEVEL_SPECS[level.id], level.openExits, level.dropped)
+  const found = levelFor(specOfState(level), level.openExits, level.dropped)
   levelsByState.set(level, found)
   return found
 }
@@ -906,6 +921,7 @@ export const openExitIn: {
   isClosedExit(levelOf({ level: state }), id)
     ? {
         id: state.id,
+        arrangement: state.arrangement,
         openExits: Array.append(state.openExits, id),
         dropped: state.dropped,
       }

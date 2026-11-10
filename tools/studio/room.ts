@@ -9,10 +9,10 @@ import { roomShapes } from '../../src/render/room/room'
 import { TILE_SIZE } from '../../src/shared/constants'
 import {
   type Level,
-  MANOR,
-  openExit,
+  levelFor as levelOfSpec,
   symbolAt,
 } from '../../src/world/level/arena'
+import { ARRANGEMENTS, manorSpecFor } from '../../src/world/level/plan'
 import { type Bounds, boundsOf } from './catalog'
 import { DRAFT_ROOMS, DRAFT_ROOM_SOURCE, draftRoomShapes } from './draftRooms'
 import type { Pin, Tile, TileArea } from './notes'
@@ -55,10 +55,29 @@ export const roomToggleOf = (room: StudioRoom): Option.Option<RoomToggle> =>
     ? Option.some({ label: 'Kitchen', off: 'Boarded', on: 'Open' })
     : DRAFT_ROOMS[room].maybeTwist
 
-const OPEN_MANOR = openExit(MANOR, 'Kitchen')
+// NOTE: the manor in one of its rolled arrangements, its kitchen shut or
+// open. Notes read the map letters off the first, the default house.
+const manorOf = (house: number, isKitchenOpen: boolean): Level =>
+  levelOfSpec(
+    manorSpecFor(
+      Option.getOrElse(Array.get(ARRANGEMENTS, house), () =>
+        Array.headNonEmpty(ARRANGEMENTS),
+      ),
+    ),
+    isKitchenOpen ? ['Kitchen'] : [],
+  )
 
-const levelFor = (isKitchenOpen: boolean): Level =>
-  isKitchenOpen ? OPEN_MANOR : MANOR
+const OPEN_MANOR = manorOf(0, true)
+
+const initialOf = (room: string): string => String.slice(0, 1)(room)
+
+// NOTE: the House picker's choices: the slot rooms west, east, and far by
+// their first letters.
+export const HOUSES: ReadonlyArray<Readonly<{ house: number; label: string }>> =
+  Array.map(ARRANGEMENTS, ({ West, East, Far }, house) => ({
+    house,
+    label: `${initialOf(West)}${initialOf(East)}${initialOf(Far)}`,
+  }))
 
 export type RoomFrame = Readonly<{
   shapes: ReadonlyArray<Canvas.Shape>
@@ -76,6 +95,7 @@ const wholeBounds = (bounds: Bounds): Bounds => ({
 export type RoomView = Readonly<{
   room: StudioRoom
   isKitchenOpen: boolean
+  house: number
   isTwistOn: boolean
 }>
 
@@ -85,7 +105,7 @@ export const isToggleOn = (view: RoomView): boolean =>
 export const roomFrameOf = (view: RoomView): RoomFrame => {
   const shapes =
     view.room === 'Manor'
-      ? roomShapes(levelFor(view.isKitchenOpen))
+      ? roomShapes(manorOf(view.house, view.isKitchenOpen))
       : draftRoomShapes(DRAFT_ROOMS[view.room], view.isTwistOn)
   return { shapes, bounds: wholeBounds(boundsOf(shapes)) }
 }

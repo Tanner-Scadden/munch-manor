@@ -76,7 +76,7 @@ Proposed by the owner on 2026-11-09, shaped with Demi, and set as the direction 
 - **The dare changes every run (owner, 2026-11-09).** What you must bring out rolls from a pool of the house's things (the silver spoon, the family portrait, a page of the guest book, Grandma Munch's recipe, the music box, ...), each got its own way (hidden, on a marked zombie, from Rattles, at the stove, by its sound), with Uncle Chunk's party hat always last. Outlines on the HUD fill in, with no words.
 - **Difficulty sets the list (proposed).** Dare (Easy) 2 things with the dare card's doodles pointing the way, Double Dare 3, Triple Dare 3 with no sparkle and one on a marked zombie, Triple Dog Dare 4 with no hints and the house hungrier from the first find. A second dial beside the zombie scales in "Difficulty levels".
 - **What is random.** Which things are on the list and where each hides: one of a few hand-picked spots per run, drawn from its own salted seeded stream, as the fridge and the pantry are, so the waves and drops never shift. This fits "Not now" as written ("only secrets and loot spots may shift with the seed").
-- **Rooms that roll (would change "Not now").** The owner wants rooms to vary between runs too. Proposed as a middle way that keeps every room hand-made: the room behind a boarded exit is drawn from a small pool of hand-made rooms. Needs a second room, a pool, and the owner's sign-off to move "Procedurally generated manors" out of "Not now".
+- **Rooms that roll (would change "Not now").** The owner wants rooms to vary between runs too. Proposed as a middle way that keeps every room hand-made: the room behind a boarded exit is drawn from a small pool of hand-made rooms. Signed off on 2026-11-10 as rolled rooms: hand-made rooms roll into fixed slots (see "Not now").
 - **Waves keep count (owner, 2026-11-09).** The wave number marks how far you are, and each wave is harder than the last for as long as you stay, as Endless ramps today.
 - **Uncle Chunk waits at the front door (owner, 2026-11-09).** In an escape run he no longer comes at wave 10: he shows up only at the front door once everything else on the list is found, and taking his hat is the finale. So an escape run has no fixed wave count; the ten tuned waves become the start of one ramp. His health and the hold-out are tuned for the wave he arrives on.
 - **Made to be talked about.** SHARE is your proof ("I got Uncle Chunk's hat"), and a co-op room link is "I dare you".
@@ -867,7 +867,7 @@ From the fan-written [Zombie Estate Wiki](https://zombie-estate.fandom.com/wiki/
 
 ## Not now
 
-- **Procedurally generated manors.** The layout is hand-made; only secrets and loot spots may shift with the seed.
+- **Procedurally generated manors.** Every room is hand-made. The parlour, library, and cellar roll into the house's three fixed slots each run (owner, 2026-11-10); nothing is generated, and beyond that only secrets and loot spots may shift with the seed.
 - **Accounts and leaderboards.** Progress is saved on the device and shared between linked devices without accounts (see `PLATFORM.md`). A leaderboard comes only with the daily challenge, which `PLATFORM.md` plans after the player scope.
 - **Saving a run in progress.** A run lives in the page session.
 - **Versus play.** Co-op only (see `MULTIPLAYER.md`).

@@ -26,7 +26,7 @@ import { FRIDGE_RULES, refundOf } from '../../world/fridge/leftovers'
 import { heldSlotOf } from '../../world/gear/weapons'
 import { focusOf, maybePlayerAt } from '../../world/party/party'
 import type { FridgePrize, Vector } from '../../world/schema/entitySchema'
-import { ZERO_VECTOR, clamp } from '../../world/step/geometry'
+import { ZERO_VECTOR, clamp, easeOut } from '../../world/step/geometry'
 import {
   type DoorReveal,
   REVEAL_RULES,
@@ -524,8 +524,6 @@ export const fridgeRevealShapes: {
 const PULSE_COLOR = '#ffffff'
 const PULSE_FLASH = 'rgba(255, 255, 255, 0.55)'
 const PULSE_GROW_PX = 5
-
-const easeOut = (share: number): number => 1 - (1 - share) * (1 - share)
 
 const pulseShapes = (
   box: Readonly<{ x: number; y: number; width: number; height: number }>,

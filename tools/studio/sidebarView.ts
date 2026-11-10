@@ -22,6 +22,7 @@ import {
   zoomed,
 } from './drawing'
 import {
+  HOUSES,
   type RoomView,
   StudioRoom,
   isRoomTarget,
@@ -249,6 +250,22 @@ const sidebarBody = (
                 ),
               ],
             }),
+            ...(roomView.room === 'Manor'
+              ? [
+                  field(
+                    'House',
+                    segmented(
+                      Array.map(HOUSES, ({ house, label }) => ({
+                        label,
+                        isOn: house === roomView.house,
+                        message: Message.ClickedHouse({ house }),
+                      })),
+                      h,
+                    ),
+                    h,
+                  ),
+                ]
+              : []),
             switchRow('Tile grid', isGridOn, Message.ClickedGrid(), h),
           ]
         : [
@@ -326,7 +343,7 @@ const freshTabsOf = (model: Model): string =>
 const roomViews = new Map<string, RoomView>()
 
 const roomViewOf = (model: Model): RoomView => {
-  const key = `${model.room}:${model.isKitchenOpen}:${model.isTwistOn}`
+  const key = `${model.room}:${model.isKitchenOpen}:${model.house}:${model.isTwistOn}`
   const kept = roomViews.get(key)
   if (kept !== undefined) {
     return kept
@@ -334,6 +351,7 @@ const roomViewOf = (model: Model): RoomView => {
   const view: RoomView = {
     room: model.room,
     isKitchenOpen: model.isKitchenOpen,
+    house: model.house,
     isTwistOn: model.isTwistOn,
   }
   roomViews.set(key, view)

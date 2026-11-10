@@ -4,6 +4,7 @@ import { type Html, createLazy } from 'foldkit/html'
 
 import { spriteWarmUpSources } from '../art/appearance'
 import { group } from '../art/sprite'
+import { clocheShapes } from '../features/cloche/clocheView'
 import { lensOf } from '../features/end/endBeat'
 import {
   fridgeRevealShapes,
@@ -18,7 +19,7 @@ import { type Camera, toScreenCamera, worldCameraFor } from '../render/camera'
 import { decalShapes } from '../render/effectsView'
 import { calloutShapes, levelCalloutShapes } from '../render/powerupView'
 import type { Decal } from '../render/renderSchema'
-import { manorRoomImages, roomShapes } from '../render/room/room'
+import { everyRoomImage, roomShapes } from '../render/room/room'
 import { FLOOR_COLOR } from '../render/room/roomPalette'
 import { type Screen, inLandscapeFrame, screenOf } from '../render/screen'
 import { hudShapes, hudStripShapes } from '../screens/game/hud'
@@ -26,6 +27,7 @@ import { overlayShapes } from '../screens/game/overlay'
 import { worldLayerShapes, worldOffset } from '../screens/game/worldView'
 import { percentOf } from '../ui/menuParts'
 import { type Level, levelOf } from '../world/level/arena'
+import type { LevelSpec } from '../world/level/plan'
 import { focusOf } from '../world/party/party'
 import { isRoundActive } from '../world/waves/waves'
 import type { ApplicationViewBuilder } from './composition'
@@ -54,6 +56,7 @@ const overlayLayerShapes = (
   ...(isRoundActive(model.phase)
     ? [
         ...fridgeRevealShapes(model, screen, camera),
+        ...clocheShapes(model, camera),
         ...purchaseOverlayShapes(model, camera),
       ]
     : []),
@@ -216,17 +219,20 @@ const WARM_UP_CHUNK = 64
 // this module loads, so it includes the sprites of modules loaded after it.
 export const WARM_UP_CLASS = 'sprite-warm-up'
 
-const roomSources = (): ReadonlyArray<string> =>
-  Array.filterMap(manorRoomImages(), shape =>
+// NOTE: the room images of the house the run stands in, every set of its
+// exits, so opening a room never shows a bare floor for a frame. The warm-up
+// draws again when a run rolls another house, never mid-run.
+const roomSources = (spec: LevelSpec): ReadonlyArray<string> =>
+  Array.filterMap(everyRoomImage(spec), shape =>
     shape._tag === 'Image' ? Result.succeed(shape.src) : Result.failVoid,
   )
 
-const warmUpView = (h: ApplicationViewBuilder): Html =>
+const warmUpView = (h: ApplicationViewBuilder, spec: LevelSpec): Html =>
   h.div(
     [h.Key(WARM_UP_CLASS), h.AriaHidden(true), h.Style({ display: 'none' })],
     Array.map(
       Array.chunksOf(
-        [...roomSources(), ...spriteWarmUpSources(defaultAppearance)],
+        [...roomSources(spec), ...spriteWarmUpSources(defaultAppearance)],
         WARM_UP_CHUNK,
       ),
       sources =>
@@ -338,7 +344,7 @@ export const gameStageView: {
           ]),
         ],
       ),
-      lazyWarmUp(warmUpView, [h]),
+      lazyWarmUp(warmUpView, [h, levelOf(model).spec]),
     ],
   )
 })

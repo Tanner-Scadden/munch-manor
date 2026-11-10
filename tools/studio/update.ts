@@ -57,6 +57,7 @@ const savedViewOf = (model: Model): SavedView => ({
   maybeSelectedId: model.maybeSelectedId,
   room: model.room,
   isKitchenOpen: model.isKitchenOpen,
+  house: model.house,
   isTwistOn: model.isTwistOn,
   isGridOn: model.isGridOn,
   isOnion: model.isOnion,
@@ -218,6 +219,14 @@ export const update = StudioComposition.makeUpdate({
       modifyFields(model, {
         isKitchenOpen: isOpen => (model.room === 'Manor' ? !isOpen : isOpen),
         isTwistOn: isOn => (model.room === 'Manor' ? isOn : !isOn),
+        maybeDraftPin: () => Option.none(),
+        maybeDraftArea: () => Option.none(),
+      }),
+    ),
+  ClickedHouse: (model, { house }) =>
+    saved(
+      modifyFields(model, {
+        house: () => house,
         maybeDraftPin: () => Option.none(),
         maybeDraftArea: () => Option.none(),
       }),

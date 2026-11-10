@@ -5,6 +5,7 @@ import { DialogBlock } from '@foldkit/ui'
 import {
   AudioState,
   Bot,
+  ClocheLift,
   DifficultyCard,
   HintBand,
   HomeMenu,
@@ -131,6 +132,7 @@ export const Model = Schema.Struct({
   callouts: Schema.Array(Callout),
   levelCallouts: Schema.Array(LevelCallout),
   prizeFlight: PrizeFlight,
+  clocheLift: ClocheLift,
   breakIdleMs: Schema.Finite,
   trapHint: TrapHint,
   kitchenCall: KitchenCall,
@@ -313,6 +315,7 @@ export const initialModel: OwnModel = {
   callouts: [],
   levelCallouts: [],
   prizeFlight: PrizeFlight.Grounded(),
+  clocheLift: ClocheLift.Resting(),
   breakIdleMs: 0,
   trapHint: TrapHint.Unseen(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),

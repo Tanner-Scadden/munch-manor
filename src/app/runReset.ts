@@ -2,6 +2,7 @@ import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 
 import {
+  ClocheLift,
   KitchenCall,
   PrizeFlight,
   RunTally,
@@ -15,7 +16,7 @@ import { noTellWatch } from '../render/renderSchema'
 import { rollCases } from '../world/feats/cases'
 import { playerOfCalling } from '../world/heroes/callingPlayer'
 import { freshOvens } from '../world/kitchen/kitchen'
-import { START_LEVEL, startingLevel } from '../world/level/arena'
+import { START_LEVEL } from '../world/level/arena'
 import { soloState } from '../world/party/party'
 import {
   Boss,
@@ -28,6 +29,7 @@ import {
   calmPacing,
   freshCrates,
   freshKeys,
+  freshLevel,
   freshLoot,
   freshStats,
   freshStove,
@@ -79,6 +81,7 @@ export type RunFields = Pick<
   | 'callouts'
   | 'levelCallouts'
   | 'prizeFlight'
+  | 'clocheLift'
   | 'kitchenCall'
   | 'breakIdleMs'
   | 'trapNotice'
@@ -138,10 +141,11 @@ export const freshRun = (model: Model): RunFields => ({
   callouts: [],
   levelCallouts: [],
   prizeFlight: PrizeFlight.Grounded(),
+  clocheLift: ClocheLift.Resting(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   breakIdleMs: 0,
   trapNotice: TrapNotice.Quiet(),
-  level: startingLevel,
+  level: freshLevel(model.rngState),
   ovens: freshOvens(START_LEVEL),
   debutCard: DebutCard.Hidden(),
   hintBand: 'Top',

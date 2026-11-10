@@ -2,8 +2,19 @@ import { Array } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { START_SPOT } from '../../../src/test/testing'
-import { type Level, levelFor, roomAt } from '../../../src/world/level/arena'
-import { MANOR_SPEC } from '../../../src/world/level/plan'
+import {
+  type Level,
+  levelFor,
+  roomAt,
+  tileCenter,
+} from '../../../src/world/level/arena'
+import {
+  ARRANGEMENTS,
+  MANOR_SPEC,
+  SLOTS,
+  SLOT_IDS,
+  manorSpecFor,
+} from '../../../src/world/level/plan'
 import type { Vector } from './basics'
 import { routeTo } from './route'
 
@@ -49,6 +60,26 @@ describe('the bot finds its way', () => {
   test('into the parlour', () => {
     const level = levelFor(MANOR_SPEC, ['West'])
     expect(lastOf(walk(level, START_SPOT, PARLOUR))).toEqual(PARLOUR)
+  })
+
+  // NOTE: by the level alone, in every house a run can roll: from the
+  // table onto each slot room's top aisle.
+  test.each(ARRANGEMENTS)('into every slot room of %o', arrangement => {
+    const level = levelFor(manorSpecFor(arrangement), [
+      'Kitchen',
+      'West',
+      'East',
+      'Far',
+    ])
+    Array.forEach(SLOT_IDS, slot => {
+      const goal = tileCenter({
+        column: SLOTS[slot].origin.column + 6,
+        row: SLOTS[slot].origin.row + 3,
+      })
+      const path = walk(level, START_SPOT, goal)
+      expect(lastOf(path)).toEqual(goal)
+      expect(roomAt(level, goal).id).toBe(arrangement[slot])
+    })
   })
 
   test('through the swung shelf, a shorter way into the library', () => {

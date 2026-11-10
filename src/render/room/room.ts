@@ -29,7 +29,6 @@ import {
   DINING_ROOM_ID,
   LIBRARY_ROOM_ID,
   type LevelSpec,
-  MANOR_SPEC,
   PARLOUR_ROOM_ID,
   SECRET_EXIT,
 } from '../../world/level/plan'
@@ -84,6 +83,7 @@ import {
   parlourFloorOf,
   rugShapes,
   slimePrints,
+  slotBoardShapes,
   stallBox,
   stallMatShapes,
 } from './roomFloor'
@@ -240,7 +240,7 @@ const cobwebShapes = (level: Floor): ReadonlyArray<Canvas.Shape> =>
 // planks' shake margin past the library's west edge is painted over.
 const libraryFloorArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
   inRoom(level, LIBRARY_ROOM_ID, room => [
-    ...onFloor(floorOf(room), boardShapes(floorOf(room))),
+    ...onFloor(floorOf(room), slotBoardShapes(floorOf(room))),
     ...libraryFloorShadeShapes(room),
     ...libraryRugShapes(room),
   ])
@@ -320,7 +320,10 @@ const openedExitArt = (level: Level): ReadonlyArray<Canvas.Shape> =>
 const roomArtOf = (level: Level): ReadonlyArray<Canvas.Shape> => {
   const floor = parlourFloorOf(level)
   return [
-    ...onFloor(floor, boardShapes(floor)),
+    ...onFloor(
+      floor,
+      level.rooms.length > 1 ? slotBoardShapes(floor) : boardShapes(floor),
+    ),
     ...libraryFloorArt(level),
     ...cellarFloorArt(level),
     ...diningFloorArt(level),
@@ -464,13 +467,6 @@ export const everyRoomImage = (
     ),
   )
 }
-
-// NOTE: the manor's room images, with the kitchen shut and open. The sprite
-// warm-up asks for them before it lists the images to decode, so the open
-// kitchen's images are decoded behind the loading splash and opening the
-// kitchen never shows a bare floor for a frame.
-export const manorRoomImages = (): ReadonlyArray<Canvas.Shape> =>
-  everyRoomImage(MANOR_SPEC)
 
 // HEARTH FIRE
 
