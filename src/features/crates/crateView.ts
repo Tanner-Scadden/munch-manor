@@ -3,6 +3,7 @@ import type { Canvas } from 'foldkit'
 
 import type { Model } from '../../app/model'
 import { type Sprite, bakeShapes, placeAt } from '../../art/sprite'
+import { PICKUP_SPRITES } from '../../art/sprites/pickups'
 import {
   CRATE_FIND_RISE,
   CRATE_SPRITES,
@@ -11,6 +12,7 @@ import {
 import type { Drawable } from '../../render/depth'
 import { type RingPixel, rect, ringPixels } from '../../render/drawing'
 import {
+  type CrateFind,
   areCratesOpen,
   crateRoomsOf,
   crateSpotOf,
@@ -26,11 +28,14 @@ import type { Crate, CrateRoom, Trap } from '../../world/schema/worldSchema'
 
 // The trap crates (src/world/gear/crates.ts) in the world, and the ring a
 // trap wears while someone mends it. Show, don't explain: a shut crate in a
-// wave, an open one in a break with its find bobbing in it, an open empty
+// wave, an open one in a break with its find (a trap or a heart) bobbing in it, an open empty
 // one once it is taken, and a green ring filling round a trap as it mends.
 
 const BOB_MS = 320
 const BOB_PX = 1
+
+const findIcon = (find: CrateFind): Sprite =>
+  find === 'Heart' ? PICKUP_SPRITES.Heart : TRAP_ICONS[find]
 
 const crateOf = (model: Model, room: CrateRoom): Option.Option<Crate> =>
   Array.findFirst(model.crates.crates, crate => crate.room === room)
@@ -42,9 +47,9 @@ const findShapes = (
 ): ReadonlyArray<Canvas.Shape> =>
   Option.match(maybeFindIn(model, crate), {
     onNone: () => [],
-    onSome: trap => {
+    onSome: find => {
       const bob = Math.floor(model.elapsedMs / BOB_MS) % 2 === 0 ? 0 : BOB_PX
-      return [placeAt(spot.x, spot.y - CRATE_FIND_RISE - bob, TRAP_ICONS[trap])]
+      return [placeAt(spot.x, spot.y - CRATE_FIND_RISE - bob, findIcon(find))]
     },
   })
 

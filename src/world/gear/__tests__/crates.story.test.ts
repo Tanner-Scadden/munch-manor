@@ -16,7 +16,7 @@ import {
   type TrapKind,
   type Vector,
 } from '../../../app/model'
-import { FIXED_STEP_MS } from '../../../shared/constants'
+import { FIXED_STEP_MS, PLAYER_MAX_HP } from '../../../shared/constants'
 import {
   DISTANT_SPAWN,
   breakBefore,
@@ -216,6 +216,7 @@ describe('trap crates', () => {
             Array.flatMap(current.crates.crates, ({ stock }) =>
               CrateStock.match(stock, {
                 Stocked: ({ trap }) => [trap],
+                Heart: () => [],
                 Taken: () => [],
               }),
             ),
@@ -230,6 +231,103 @@ describe('trap crates', () => {
           ])
         }),
       ),
+  )
+})
+
+describe('a heart in a crate', () => {
+  const hurt = (base: Model): Model =>
+    modifyFocus(base, {
+      player: player => modifyFields(player, { hp: () => PLAYER_MAX_HP - 2 }),
+    })
+
+  const glass = (base: Model): Model =>
+    modifyFields(base, {
+      modifiers: modifiers => modifyFields(modifiers, { glass: () => true }),
+    })
+
+  // NOTE: the break before wave 3, its crates not yet rolled, from each of
+  // `seeds` as the crates' stream.
+  const rolledFrom = (start: Model, seeds: ReadonlyArray<number>) =>
+    Effect.forEach(seeds, seed =>
+      Story.story(
+        APPLICATION,
+        Story.given(
+          modifyFields(start, {
+            phase: () => breakBefore(3),
+            crates: current =>
+              modifyFields(current, { rngState: () => seed * 104_729 }),
+          }),
+        ),
+        tick(FRAME_MS),
+      ).pipe(Effect.map(current => stocksOf(current))),
+    )
+
+  const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8]
+
+  it.effect(
+    'a crate holds a heart in most breaks while someone is hurt, and never when nobody is',
+    () =>
+      Effect.gen(function* () {
+        const whenHurt = yield* rolledFrom(hurt(readyModel), SEEDS)
+        const whenWhole = yield* rolledFrom(readyModel, SEEDS)
+        const hearts = Array.filter(
+          Array.flatten(whenHurt),
+          CrateStock.isAnyOf(['Heart']),
+        )
+        expect(hearts.length).toBeGreaterThanOrEqual(SEEDS.length / 2)
+        expect(
+          Array.some(Array.flatten(whenWhole), CrateStock.isAnyOf(['Heart'])),
+        ).toBe(false)
+      }),
+  )
+
+  it.effect('a crate never holds a heart in a Glass run', () =>
+    rolledFrom(glass(hurt(readyModel)), SEEDS).pipe(
+      Effect.map(stocks => {
+        expect(
+          Array.some(Array.flatten(stocks), CrateStock.isAnyOf(['Heart'])),
+        ).toBe(false)
+      }),
+    ),
+  )
+
+  it.effect('walking onto it heals a hurt player one heart', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        hurt(
+          onCrate(
+            stockedBreak(3, [{ room: 'Parlour', stock: CrateStock.Heart() }]),
+          ),
+        ),
+      ),
+      tick(FRAME_MS),
+      Story.model(current => {
+        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP - 1)
+        expect(stocksOf(current)).toEqual([CrateStock.Taken()])
+        expect(
+          Array.filter(current.frameEvents, GameEvent.guards.PickupGrabbed),
+        ).toEqual([
+          GameEvent.PickupGrabbed({ ...crateSpotOf('Parlour'), kind: 'Heart' }),
+        ])
+      }),
+    ),
+  )
+
+  it.effect('a player with every heart leaves it for someone hurt', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        onCrate(
+          stockedBreak(3, [{ room: 'Parlour', stock: CrateStock.Heart() }]),
+        ),
+      ),
+      tick(FRAME_MS),
+      Story.model(current => {
+        expect(focusOf(current).player.hp).toBe(PLAYER_MAX_HP)
+        expect(stocksOf(current)).toEqual([CrateStock.Heart()])
+      }),
+    ),
   )
 })
 

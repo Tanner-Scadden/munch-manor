@@ -153,6 +153,10 @@ export const woundGraceScaleOf = ({ calling }: Wearer): number =>
 export const maxHpOf = ({ calling }: Wearer): number =>
   calling === 'Handyman' ? PLAYER_MAX_HP - HANDYMAN_HEARTS_LESS : PLAYER_MAX_HP
 
+export const isMissingHeart = (
+  player: Wearer & Readonly<{ hp: number }>,
+): boolean => player.hp < maxHpOf(player)
+
 // TRAPS
 
 // NOTE: traps are found, not bought, and mend for free (src/world/gear/

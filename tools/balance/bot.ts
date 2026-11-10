@@ -90,6 +90,7 @@ import {
   gnomeSpot,
   holdingAtKitchen,
   isAtMend,
+  isBreakOverdue,
   isFridgeInReach,
   isKitchenOpen,
   isOfferedToBot,
@@ -267,11 +268,13 @@ export const play: {
       const wave = model.phase.wave
       if (model.phase._tag === 'Preparation' && preparedWave !== wave) {
         preparedWave = wave
+        state.breakFrames = 0
         onPreparation(wave, model)
         if (stop._tag === 'WaveStart' && wave >= stop.wave) {
           break
         }
       }
+      state.breakFrames += model.phase._tag === 'Preparation' ? 1 : 0
       if (
         model.phase._tag === 'Preparation' &&
         isShopOpenFor(model.phase) &&
@@ -307,6 +310,13 @@ export const play: {
             model = tapKey(model, 'KeyQ')
           }
           model = tapKey(topOff(model), 'Enter')
+          if (model.phase._tag === 'Preparation' && isBreakOverdue(state)) {
+            model = send(model, Message.ClickedStartWaveButton())
+          }
+          if (model.phase._tag !== 'Preparation') {
+            continue
+          }
+          model = send(model, Message.TickedFrame({ deltaTime: FRAME_MS }))
           continue
         }
         const target =

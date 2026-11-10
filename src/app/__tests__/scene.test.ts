@@ -11,6 +11,7 @@ import { DEBUT_CARD_MIN_MS } from '../../features/onboarding/onboarding'
 import {
   FIXED_STEP_MS,
   GAME_TITLE,
+  PLAYER_MAX_HP,
   PREPARATION_MS,
 } from '../../shared/constants'
 import { pastFirstBreak } from '../../test/model.fixture'
@@ -324,9 +325,14 @@ describe('Shop', () => {
       return Scene.scene(
         APPLICATION,
         Scene.given(
+          // NOTE: every heart, so the crate rolls a trap, not a heart.
           modifyFocus(atStall, {
             player: player =>
-              modifyFields(player, { x: () => crate.x, y: () => crate.y }),
+              modifyFields(player, {
+                x: () => crate.x,
+                y: () => crate.y,
+                hp: () => PLAYER_MAX_HP,
+              }),
           }),
         ),
         measureSurface,

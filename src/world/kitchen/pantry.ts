@@ -3,7 +3,7 @@ import { modifyFields } from 'foldkit/struct'
 
 import { nextRandom } from '../../shared/prng'
 import type { SoundEffect } from '../../shared/soundEffect'
-import { maxHpOf } from '../heroes/calling'
+import { isMissingHeart, maxHpOf } from '../heroes/calling'
 import {
   type Box,
   COVER_SYMBOLS,
@@ -136,7 +136,6 @@ const stock = (world: World, wave: number): World => {
 
 // TAKING
 
-const isHurt = (player: Player): boolean => player.hp < maxHpOf(player)
 
 // NOTE: what the stash gives this taker: the goodie if they can use it, else
 // its cash. A Glass run's one heart stays one heart.
@@ -147,7 +146,7 @@ const goodieFor = (
 ): PantryGoodie => {
   const isUsable = {
     Cash: true,
-    Heart: isHurt(player) && !world.modifiers.glass,
+    Heart: isMissingHeart(player) && !world.modifiers.glass,
   }[goodie]
   return isUsable ? goodie : 'Cash'
 }
