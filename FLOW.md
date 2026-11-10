@@ -24,7 +24,7 @@ Everything a player passes through, start to finish.
 flowchart TD
   link([Open munchmanor.com or the installed app]):::built --> splash[Loading splash]:::built
   splash --> home
-  home -.- invite[PLAY is the invitation: a sealed envelope, also the icon and the share card]:::proposed
+  home -.- dareArt[PLAY is the dare: a card your friends hand you, also the icon and the share card]:::proposed
 
   home[Home menu]:::built --> playBtn{PLAY or CO-OP?}
   home --> more[MORE: How to play, What's New, Munchopedia, Profile, tip jar]:::built
@@ -38,16 +38,16 @@ flowchart TD
   coop --> coopLobby[Co-op lobby, up to 4 players]:::built
   coopLobby --> picks
 
-  picks -.- rsvp[The lobby is your RSVP card: name, coming as, plus ones, dress code, requests]:::proposed
-  rsvp -.-> seal[START is sealing it: a wax stamp, then you sit down at the table]:::proposed
-  seal -.-> run
+  picks -.- dareCard[The lobby is the dare card: who goes in, coming as, who you drag along, the stakes, extra dares]:::proposed
+  dareCard -.-> shake[START is shaking on it. BACK is chickening out]:::proposed
+  shake -.-> run
   picks --> run[[A run: see chart 2]]:::built
   tutorial --> run
 
   run --> ended{How did it end?}
   ended -->|Munched| gameOver[Game Over card]:::built
   ended -->|Beat wave 10| victory[Victory card]:::built
-  ended -.->|Got out| escaped[Escaped card]:::proposed
+  ended -.->|Got out| escaped[Escaped card: your proof to share]:::proposed
 
   victory -->|KEEP GOING| endless[Same run carries into Endless]:::built
   endless --> run
@@ -114,28 +114,28 @@ flowchart TD
 
 ## 3. Escape the manor (proposed)
 
-The direction in `LORE.md`: you signed up for a private tasting by Munch Foods at the family manor. The lab under it made the zombies, and now it tests its power-ups on you. You fill in your RSVP, a cutscene drives your crew up to the manor and the doors slam behind you, the run kicks off in the dining room with its exits boarded as today, and this run's list of what you need to leave is rolled from a pool, longer the harder the difficulty. The waves stay as the pressure, so a player who ignores the hunt still plays chart 2. Nothing here is decided.
+The direction in `LORE.md`, chosen 2026-11-10: the Munch Manor dare. A hundred years ago the Munches threw a dinner party, the doors shut, and nobody came out. You are dared to go in, bring back proof, and get out. The party never ended: Uncle Chunk is still the host, the zombies are his guests and every daredevil who failed, and Rattles took the dare in 1924. The waves stay as the pressure, so a player who ignores the hunt still plays chart 2.
 
 ```mermaid
 flowchart TD
-  rsvp([Fill in the RSVP card: name, coming as, plus ones, requests]):::proposed --> seal
-  seal[Stamp the wax seal: the card floats away]:::proposed --> car
+  dare([Fill in the dare card: who goes in, coming as, who you drag along, the stakes]):::proposed --> shake
+  shake[Shake on it: the card goes in your pocket]:::proposed --> car
 
   subgraph Intro [The intro: this feels really off. Skippable up to the slam]
-    car[The car at night: the radio drifts into static, the sign is chewed]:::proposed --> arrive2[The drive is full of other tasters' cars, one with its door hanging open]:::proposed
-    arrive2 --> walk[A trampled party hat and a tasting wristband on the steps. Footprints go in, none come out]:::proposed
+    car[Your friends drive you up at night: the radio drifts into static, the sign is chewed]:::proposed --> arrive2[The drive is full of daredevils' cars from every decade]:::proposed
+    arrive2 --> walk[A trampled party hat and a dropped flashlight on the steps. Footprints go in, none come out]:::proposed
     walk --> knock[Knock knock. Silence. One knock back]:::proposed
-    knock --> opens[The doors creak open on their own. The check-in desk: phones and keys nobody came back for, a bony hand waves]:::proposed
-    opens --> hello[HELLO? Sample cups half eaten, chairs knocked back. Your participant number on a place card, on a plate]:::proposed
-    hello --> door[The doors slam and lock behind you: lockdown. Never skipped: the run starts here, for everyone at once]:::proposed
+    knock --> opens[The doors creak open on their own. A hundred years of coats at the coat check, a bony hand waves]:::proposed
+    opens --> hello[HELLO? A feast a hundred years old, still steaming. A place card with your name on it]:::proposed
+    hello --> door[The doors slam and lock behind you. Never skipped: the run starts here, for everyone at once]:::proposed
   end
 
   door --> arrive
   arrive([The run kicks off in the dining room, its exits boarded]):::proposed --> list
 
-  list[Roll this run's list from the pool: 2 to 4 things, by difficulty]:::proposed --> letter
-  letter[Pick up the letter at your place: Munch Foods' check-out instructions, and this run's list]:::proposed --> fold
-  fold[The letter folds into the HUD: empty outlines to fill. The first wave starts]:::proposed --> waves
+  list[Roll this run's dare from the pool: 2 to 4 things, by difficulty]:::proposed --> card
+  card[The dare card opens: your friends' scrawl, this run's list in pictures]:::proposed --> fold
+  fold[The card folds into the HUD: empty outlines to fill. The first wave starts]:::proposed --> waves
   waves[Waves count up, each harder than the last: the number is how far you got]:::proposed --> explore
 
   explore[Buy boards open, room by room]:::built --> roomRoll{Which room is behind the boards?}
@@ -145,35 +145,48 @@ flowchart TD
   fixedRoom --> hunt
   dish -.-> hunt
 
-  hunt{How does this thing come back to you?}:::proposed
-  hunt --> hidden[Hidden in one of a few spots: car keys in a sofa]:::proposed
-  hunt --> carried[A marked zombie carries it: kill it, grab the drop]:::proposed
-  hunt --> bought[Rattles has it, for a price: your signed release]:::proposed
-  hunt --> cooked[Made at the stove: your take-home sample]:::proposed
-  hunt --> heard[Follow the sound: your phone ringing]:::proposed
+  hunt{How does this thing come to you?}:::proposed
+  hunt --> hidden[Hidden in one of a few spots: the silver spoon in a sofa]:::proposed
+  hunt --> carried[A daredevil zombie carries it: drop him, grab the portrait]:::proposed
+  hunt --> bought[Rattles has it, for a price: a page of the guest book]:::proposed
+  hunt --> cooked[Made at the stove: Grandma Munch's recipe]:::proposed
+  hunt --> heard[Follow the sound: the music box playing]:::proposed
 
   hidden --> all
   carried --> all
   bought --> all
   cooked --> all
   heard --> all
-  all{Everything on the list?}
+  all{Everything but the hat?}
 
-  all -.->|Leave early with part of the list| early([Early escape: pays less]):::proposed
-  all -->|Yes| hungry[The study ramps up: worse batches, waves press harder]:::proposed
-  hungry --> goodbye[Uncle Chunk, Patient Zero, appears at the front door, only now: get past him]:::proposed
-  goodbye --> holdout[Hold the hall while the front door unlocks]:::proposed
-  holdout --> escaped([Escaped: the full goodbye pays most]):::proposed
+  all -.->|Leave early with part of the dare| early([Early escape: pays less, and you are a chicken]):::proposed
+  all -->|Yes| hungry[The house gets hungrier: waves press harder]:::proposed
+  hungry --> goodbye[Uncle Chunk appears at the front door, only now, in his party hat]:::proposed
+  goodbye --> holdout[Take his hat, then hold the hall while the front door unlocks]:::proposed
+  holdout --> escaped([Escaped with the whole dare: pays most, and the proof to share]):::proposed
 
-  hungry -->|Munched| lost([Game Over: Rattles remembers]):::built
+  hungry -->|Munched| lost([Game Over: you join the party. Rattles remembers]):::built
 
   classDef built fill:#1f3d2b,stroke:#4caf50,color:#fff
   classDef proposed fill:#3d2b1f,stroke:#ff9800,color:#fff,stroke-dasharray: 5 5
 ```
 
+### Power-ups are the house's things
+
+Each power-up becomes something you would find in an old manor, and its look on you matches it. Same rules as today; the zombies drop them because the daredevils pocketed them as proof.
+
+| Today           | In the manor  | What it does                     | How it looks on you                           |
+| --------------- | ------------- | -------------------------------- | --------------------------------------------- |
+| Hot Sauce       | Wind-Up Key   | Rapid fire, never reloads        | A brass key turns in your back, gears tick    |
+| Mean Beans      | Family Silver | Twice the damage, more knockback | A silver gleam, shots fly as silver streaks   |
+| Zoomy Socks     | Dancing Shoes | Runs 1.4 times as fast           | Music notes and sparkly footprints            |
+| Shish Kebullets | Hat Pins      | Shots go through 3 zombies       | A ring of pins circles you, shots fly as pins |
+| Big Burp        | Dinner Gong   | A shove all around you           | A gong appears and BONG: a ring of sound      |
+| Pickled Heart   | Pickled Heart | One heart                        | Stays: a jar from the curiosity cabinet       |
+
 ### Difficulty sets the list
 
-Today the four levels scale only the zombies (health, speed, bites) and the break clock. The escape adds a second dial: how much you have to find, and how hard the house hides it. Uncle Chunk's goodbye is always the last thing on every list: he shows up at the front door only once the rest is found, never at a set wave.
+Today the four levels scale only the zombies (health, speed, bites) and the break clock. The escape adds a second dial: how much you have to find, and how hard the house hides it. Uncle Chunk's party hat is always the last thing on every list: he shows up at the front door wearing it only once the rest is found, never at a set wave.
 
 ```mermaid
 flowchart LR
@@ -190,7 +203,7 @@ From `LORE.md`, cheapest first, so the story lands before the systems do.
 
 ```mermaid
 flowchart LR
-  words[1. Words and art: the dining room, Rattles' lines, the invitation art]:::proposed --> fixed[2. One fixed list in fixed spots]:::proposed
+  words[1. Words and art: the dining room, the power-ups and zombies restyled, Rattles' lines, the dare card art]:::proposed --> fixed[2. One fixed dare in fixed spots]:::proposed
   fixed --> spots[3. Rolled spots and a rolled list, sized by difficulty]:::proposed
   spots --> rooms[4. Rolled rooms: needs a second room and a change to Not now]:::proposed
   rooms --> leave[5. Early exits and the hungrier house: balance work]:::proposed
@@ -202,9 +215,9 @@ flowchart LR
 
 The lore choices that most change these charts, from `LORE.md`:
 
-1. The tasting (settled in direction): a private tasting by Munch Foods at the family manor, the lab under it made the zombies, and it tests its power-ups on you. Left: what the product was, and how much haunted house stays.
-2. Who is Rattles now? Proposed: the lab's anatomy skeleton, woken by a spilled sample, running check-in and the supply cart.
-3. Who is Uncle Chunk? Proposed: Patient Zero, the founder who tasted the first batch.
-4. What goes in the pool of things to check out with, and how does each one come back to you?
+1. Who writes the dare card: your friends outside, or the town?
+2. What goes in the pool of things the dare asks for, and how does each one come to you?
+3. The power-ups' new names and looks: Wind-Up Key, Family Silver, Dancing Shoes, Hat Pins, Dinner Gong, Pickled Heart?
+4. Name the difficulty levels for the stakes: Dare, Double Dare, Triple Dare, Triple Dog Dare?
 5. Is the dining room the parlour redressed, or a new room?
 6. Do rooms roll, or only what is in them?

@@ -141,134 +141,142 @@ Games that already proved parts of this idea. We borrow the shape of what worked
 
 ## The Munch Manor twist
 
-A proposal, built from the patterns above.
+The direction the owner chose on 2026-11-10, built from the patterns above: the Munch Manor dare.
 
-### The premise: a private tasting
+### The premise: the Munch Manor dare
 
-Settled in direction with the owner on 2026-11-09, replacing "invited to dinner" as the reason you are there. Munch Foods, the Munch family's food company, holds a **private tasting** of its next product at the old family manor. You signed up: it pays, there is a free dinner, and you had to sign a waiver and an NDA to get in. A private tasting is why it is at a house and not a lab: the family's manor is the company's test kitchen, and the lab is underneath it.
+Everyone in town knows the legend. A hundred years ago the Munches threw a dinner party. The doors shut, and nobody came out. Kids have dared each other ever since: go in, bring back proof, get out. Nobody ever has.
 
-The acceptance letter says "Munch Foods thanks you for joining our private tasting. Formal. Bring an appetite." It does not say who is tasting whom.
+It asks almost nothing of a new player, which is the point (owner, 2026-11-10: "little friction to get into it, but still a cohesive story that will make people want to talk about it"):
 
-The invitation is an asset to build around, not a screen to wait on (owner, 2026-11-09: the loading splash is too quick to read one). A card on the home menu, the app icon, the store art, the share card: seen everywhere, read in a glance, never in the way.
+- **Why you go.** It is a dare. No invitation, no paperwork: your friends drive you up the hill and you walk in.
+- **Why nobody stopped it.** Everyone already knows. That is what makes it a dare.
+- **Why it gets talked about.** You come out with proof, or you don't come out. Either way there is a story to tell, and the game hands you the post (see "Made to be talked about").
 
-### Why nobody caught on
+### Why the door locks: the party never ended
 
-The owner, 2026-11-09: a haunted house that keeps eating guests is hard to believe nobody noticed. A study has the cover built in:
+The Munches made a deal with the house long ago: it gets fed, and the family gets to live forever. Mostly. The party they threw a hundred years ago is still going. Uncle Chunk is still the host, in the same party hat, and the house does not let guests leave. Anyone who walks in is a guest, and the door shuts behind them.
 
-- **Everyone signs an NDA.** Nobody who comes back may talk about it, and nobody comes back.
-- **Missing tasters "withdrew from the study."** That is what the families are told, on letterhead.
-- **It pays.** Even people who have heard the rumours sign up for the money. The rumours are why it is called haunted: locals see lights in the cellar at night and hear groaning.
-- **The tasting is private.** Invitation only, no press, no phones (they are taken at check-in).
+- **Why it gets harder the longer you stay.** The night goes on, the house wakes more guests, and they get hungrier.
+- **Why Uncle Chunk waits at the front door.** A good host always sees his guests out. He just does not want you to go.
+- **What happens when you are munched.** You join the party. Next time, someone new takes the dare (you again, Rattles notes, which is odd).
 
-### The lab messed up
+### The dare's terms are the list
 
-The owner, 2026-11-09: the lab made the zombies. Munch Foods was cooking up the next big snack, and the batch went wrong: the tasters who ate it are the zombies, still wearing their tasting bibs and wristbands. Rather than shut down, the lab kept going. It is now testing its new products on whoever is left: the power-ups.
+A dare needs proof, so the things you must bring out are the dare's terms, and they change every time, because every dare is new. Your friends wrote them on a card: "Bring back the silver spoon, the family portrait, and Uncle Chunk's party hat." The party hat is always last, and he is wearing it at the front door.
 
-So the game's stuff becomes the lab's stuff:
+### The zombies: the guests, and every daredevil who failed
 
-- **Power-ups are test batches.** HOT SAUCE, MEAN BEANS, ZOOMY SOCKS, SHISH KEBULLETS, BIG BURP, and the PICKLED HEART are experimental products, dropped by zombies (who ate them first) and sold at the stall. Each one could wear a batch label.
-- **The fridge is the sample fridge.** Mystery Leftovers are unlabeled samples: you never know what a pull gives you, and neither does the lab.
-- **The stove is the test kitchen.** Cooking a gun Spicy, Crispy, or Hearty is a recipe trial.
-- **The waves are the study going on.** Each wave is the lab sending the next batch of failed tasters through the doors. The longer you stay, the further the study gets, and the worse the batches.
+Two kinds of zombie live in the house, and that is a styling gift (owner, 2026-11-09: the story styles the zombies):
 
-### The zombies as failed batches
+- **The party guests.** A hundred years in formal wear: tailcoats, gowns, pearls, monocles, all gone to rot.
+- **The daredevils.** Every kid who took the dare and never came out, from every decade: a letterman jacket, an 80s headband, a 90s windbreaker, a phone still held up for the video.
 
-The owner, 2026-11-09: the lab is a styling direction for the zombies. Every zombie wears the tasting's marks (a numbered tasting bib, a hospital-style wristband, a lanyard, sample cups stuck to them), and each kind is a product line gone wrong. Their bios already fit; the art gains the lab:
+| Zombie      | Who they were                                            | Styling                                                  |
+| ----------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| Groaner     | A party guest. Shows up to every party.                  | Tattered tailcoat or gown, a napkin still tucked in      |
+| Hotfoot     | The fastest kid in school, dared to run straight through | Track shorts, tube socks, an 80s headband                |
+| Big Lug     | A party guest who ate everything                         | Burst waistcoat, still wearing a whole kitchen for armor |
+| Kaboomer    | The kid who brought fireworks to scare everyone          | A backpack of fireworks, a lit fuse                      |
+| Big Leaguer | The jock who took the dare to prove a point              | Letterman jacket, a cap on backwards                     |
+| Ankle Biter | The house's own pet. Lives under the floorboards.        | Unchanged: a zombie spider                               |
+| Uncle Chunk | The host                                                 | The party hat, a tuxedo far too small, a napkin bib      |
 
-| Zombie      | The batch it ate                                            | Lab styling                                                 |
-| ----------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
-| Groaner     | The control group's snack (the placebo, which still did it) | Tasting bib, wristband, a PLACEBO sticker                   |
-| Hotfoot     | The energy drink trial                                      | A runner's number for a participant number, a can in hand   |
-| Big Lug     | The protein shake trial, far too much of it                 | Bulked out of his lab coat, still wearing the kitchen       |
-| Kaboomer    | The fizzy beans trial                                       | Bloated, a bib stained with beans, the bomb as a gas tank   |
-| Big Leaguer | The strength formula                                        | A cut-off lab coat as a jersey, a tray of throwable tasters |
-| Ankle Biter | Not a taster: an escaped lab specimen                       | A specimen tag on one leg, a broken jar lid                 |
-| Uncle Chunk | Patient Zero: the founder, who tasted it first              | The launch party hat, a VIP lanyard, the first wristband    |
+**Why zombies drop power-ups.** The daredevils were grabbing proof when they were caught. Drop one and out falls whatever they pocketed from the house.
 
-Uncle Chunk is still "the relative nobody invited": the Munch who started the company, ate the first batch at the launch party, and has been the host ever since.
+### Power-ups are what the house hides
 
-### Rattles, reinvented
+The owner, 2026-11-10: the power-ups should be things you would find in an old manor, and each one's look on you matches what it is (hot sauce gives you a fiery border, and so on). The rules stay as they are (`src/world/gear/powerups.ts`); the names, art, sounds, and auras change. Proposed:
 
-The owner, 2026-11-09: Rattles needs a new story for the lab. His look stays (a skeleton in a purple top hat, navy suit, and red bow tie): that is what players know. Proposed:
+| Today           | What it does                      | In the manor  | How it looks on you                                                                |
+| --------------- | --------------------------------- | ------------- | ---------------------------------------------------------------------------------- |
+| Hot Sauce       | Rapid fire, never reloads         | Wind-Up Key   | A big brass key turns in your back like a toy; gears tick around you; shots rattle |
+| Mean Beans      | Twice the damage, more knockback  | Family Silver | A silver gleam around you; shots fly as silver streaks that ring on a hit          |
+| Zoomy Socks     | Runs 1.4 times as fast            | Dancing Shoes | Shiny shoes, music notes and sparkly footprints where you step                     |
+| Shish Kebullets | Shots go through 3 zombies        | Hat Pins      | A ring of hat pins circles you; shots fly as long pins that skewer a row           |
+| Big Burp        | A shove and damage all around you | Dinner Gong   | A gong appears and BONG: a ring of sound knocks everyone back                      |
+| Pickled Heart   | One heart                         | Pickled Heart | Stays: a jar from the house's cabinet of curiosities, and a pulse of red           |
 
-**The lab's anatomy skeleton.** He was the teaching skeleton on a stand in the lab, until a sample spilled on him. With no flesh, there was nothing for the batch to turn, so he woke up dead but not hungry. He dressed up for the tasting as the maître d', and now runs the check-in desk and the supply cart: he checked everyone in, holds the phones and keys they handed over, and sells the lab's stock (the guns, ammo, planks, the test batches) to anyone still breathing. He wants you out because he wants out too, and you are the only one who can open the front door. Also, he works on commission.
+The rule holds for every boost: the aura says what you grabbed, with no words. Each aura is baked sprites, as today's are, so the frame stays cheap. The guns and the kitchen's prizes (the Pressure Cooker, the Clang Pan, Brain Freeze) already fit a house's kitchen, and the fridge is the manor's old icebox. Renaming the power-ups is a change to `src/world/names.ts` and the Munchopedia, for the owner to approve.
 
-His lines already fit: "Fresh meat! Er, customer." "Bones half off. Not mine." "Freshly pickled! Don't ask whose." "Everything is a bit haunted" becomes a cover story he half believes.
+### Rattles took the dare in 1924
 
-Other ways to reinvent him:
+Rattles was the first kid who ever took the dare, and the first who never came out. The house kept him as staff instead of a guest (too bony), and he has run the coat check ever since: the coats behind his stall belong to a hundred years of daredevils. He sells what he has scavenged from the house to anyone still breathing, because he wants somebody, finally, to win the dare he lost. Also, the dead do not tip.
 
-- **The last lab tech.** He tasted every batch to check it was safe, until there was nothing left of him but bones and a good attitude.
-- **The study coordinator.** He runs the participant store, as the study's own staff, and the waiver says he is not liable.
+His look stays (the skeleton in a purple top hat, navy suit, and red bow tie: his 1924 best, for the party). His lines already fit: "Fresh meat! Er, customer." "Everything is a bit haunted." "Bones half off. Not mine."
 
-### Why the door locks: lockdown
+### PLAY is the dare, the lobby is the dare card
 
-Once you are in, the lab locks the house down: the slam is the containment protocol. The lab will not let anyone leave who might talk, so the only way out is to check out properly, with everything you came in with and your release signed, past Patient Zero at the front door.
+The home menu's PLAY is a dare card your friends hand you, scrawled on a napkin. Opening it opens the lobby, which is the card you fill in. Every pick the lobby has today becomes a line on it, so the rules and the Block stay as they are and only the dress changes:
 
-- **Why the list changes every run.** Check-in takes your things and the lab files them wherever it likes. A new session, a new mess.
-- **Why it gets harder the longer you stay.** The study goes on, and each batch is worse than the last.
-- **Why Uncle Chunk waits at the front door.** Patient Zero guards the exit, and a host always sees his guests out.
-- **What happens when you are munched.** You have been "re-enrolled". Next session, a new participant arrives (you again, Rattles notes, which is odd).
-- **What a Bone is.** Your stipend: paid for every session you survive, more for the ones that get further.
+| Today's pick      | On the dare card                                                          |
+| ----------------- | ------------------------------------------------------------------------- |
+| Your name         | Who is going in                                                           |
+| Hero              | Coming as: the Handyman, the Track Star, the Penny Pincher, the Line Cook |
+| + BOT seats       | Who you drag along: Rattles' wind-up tin robots from the nursery          |
+| Difficulty        | The stakes (see below)                                                    |
+| Modifiers         | Extra dares: tick boxes, each with its bonus in gold                      |
+| Campaign, Endless | Get out, or stay the night                                                |
+| Map               | Which house, once there is more than one                                  |
+| START             | Shake on it                                                               |
+| BACK              | Chicken out (a cluck)                                                     |
 
-**The party game, kept as the alternative.** Before the tasting, the bridge was a dinner party that is the host's party game, on a deal with the hungry house: he hides your things, locks the door, and lets you try to leave before dinner is served. It keeps the house haunted rather than scientific, and needs no lab.
+In co-op the room code arrives as a dare: "I dare you." Each player's own card sits side by side.
 
-### The letter at your place
+**The stakes.** The difficulty levels could be named for the dare: Dare, Double Dare, Triple Dare, and Triple Dog Dare. Easy, Normal, Hard, and Nightmare are decided names, read on the end card and the bests, so renaming them is the owner's call. The card can tick today's names in the meantime.
 
-Proposed by the owner on 2026-11-09. Once the doors slam, the first thing in the run is a letter on the dining table at your place setting, on Munch Foods letterhead. Walking onto it picks it up, and it opens: the session's instructions, which are this run's list.
-
-Show, don't explain, so it is mostly pictures, with the fine print as the joke:
-
-> Thank you for tasting with us! The house is now in lockdown.
-> To check out, bring: (the icons of this run's things)
-> Then see the host at the front door.
-> (a fork and knife logo) Munch Foods. (fine print: we are not liable)
-
-Then the letter folds itself into the HUD, and its icons become the empty outlines that fill in as you find things. It is how a new player learns the goal without being told: they picked it up themselves. In co-op the table has one letter at every seat, each with the crew's shared list. The first wave starts once the letter is read (or after a few seconds if no one picks it up), the way READY starts a wave today.
+**What holds it in check.** Show, don't explain: icons and tick boxes, a word or two a line. Every line works by key, mouse, and touch, in portrait and landscape. Buttons act on click, and the card's animations move the art inside, never the buttons. The first PLAY of a new save goes straight into the tutorial, past the card.
 
 ### You start at the table
 
-Proposed by the owner on 2026-11-09. A run starts in the dining room, at your place setting, since you came for the tasting. Today every run starts in the parlour ("Every run starts in the parlour" under "Exploring the manor" in `GAME_DESIGN.md` is decided), so this changes a decision.
+Proposed by the owner on 2026-11-09. A run starts in the dining room, at the table where the party never ended. Today every run starts in the parlour ("Every run starts in the parlour" under "Exploring the manor" in `GAME_DESIGN.md` is decided), so this changes a decision.
 
-The cheap way is to redress the parlour as the dining room: keep its tiles, doors, cover footprints, and stall where they are, so the waves and the balance stay as tuned, and swap the art. The seating group becomes a long tasting table set for a session that never finished, the piano a sideboard, the hearth stays (dining rooms have them too), a candelabra, a chandelier. The boarded double door with the fork and knife sign already leads to the kitchen, which fits a dining room better than a parlour. A new room with its own layout is the costly way: new cover, new lanes, and the waves tuned again.
+The cheap way is to redress the parlour as the dining room: keep its tiles, doors, cover footprints, and stall where they are, so the waves and the balance stay as tuned, and swap the art. The seating group becomes a long table set for a party a hundred years old, the piano a sideboard, the hearth stays, a candelabra, a chandelier. The boarded double door with the fork and knife sign already leads to the kitchen. The other ways out are boarded, as the parlour's are today, and bought open the same way. A new room with its own layout is the costly way: new cover, new lanes, and the waves tuned again.
 
 ### The intro: this feels really off
 
-Proposed by the owner on 2026-11-09. A short cutscene between the RSVP and the run, with one feeling: this feels really off. It stays focused: a handful of beats, each with one wrong detail and nothing else on screen, and every wrong detail is a piece of the lore that the run, the Munchopedia, and Rattles pay off later. The player should walk into the dining room already uneasy, and leave the game knowing why.
+Proposed by the owner on 2026-11-09. A short cutscene between the dare card and the run, with one feeling: this feels really off. It stays focused: a handful of beats, each with one wrong detail and nothing else on screen, and every wrong detail is a piece of the lore the run pays off later.
 
-| Beat                                                                    | What is off                                                                                            | What it sets up                                                      |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| START stamps the seal; the RSVP card floats away                        | The seal is the Munch Foods fork and knife. Below your signature, a lot of fine print.                 | You signed a waiver, and you may be the meal                         |
-| Your crew in the car at night (you, your plus ones, your co-op friends) | The radio drifts into static. The road sign says MUNCH MANOR, and something has chewed its corner.     | The house is hungry                                                  |
-| You pull up at the manor                                                | The drive is full of the other tasters' cars. One still has its headlights on and a door hanging open. | The other tasters came and never left: they are the zombies          |
-| You walk up to the front door                                           | A trampled launch party hat and a tasting wristband on the steps. Footprints go in. None come out.     | The launch went wrong, and the host is still here                    |
-| Knock knock                                                             | A beat of silence. Then, from somewhere inside, one knock back.                                        | Something in the house answers                                       |
-| The doors creak open on their own; you step in                          | The check-in desk: phones and keys in trays nobody came back for, and a bony hand that waves.          | Rattles, the check-in, and the things you need to leave              |
-| "HELLO?" The dining room: the table set, the candles lit, nobody there  | Sample cups half eaten, chairs knocked back. Your participant number on a place card, on a plate.      | You are the next tasting                                             |
-| The doors slam and lock behind you                                      | A red light flashes once: lockdown. The run starts.                                                    | The front door is the way out, and Uncle Chunk will be waiting at it |
+| Beat                                                          | What is off                                                                                            | What it sets up                                                      |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| START: you shake on it, and the dare card goes in your pocket | Your friends grin a little too wide.                                                                   | Nobody expects you back                                              |
+| Your crew in the car at night, egging you on                  | The radio drifts into static. The road sign says MUNCH MANOR, and something has chewed its corner.     | The house is hungry                                                  |
+| You pull up at the manor                                      | The drive is full of other daredevils' cars, from every decade: a 50s coupe, a 90s minivan, a bike.    | Everyone who took the dare is still here: they are the zombies       |
+| You walk up to the front door                                 | A trampled party hat on the steps, and a dropped flashlight still on. Footprints go in. None come out. | The party is still going, and the host is still here                 |
+| Knock knock                                                   | A beat of silence. Then, from somewhere inside, one knock back.                                        | Something in the house answers                                       |
+| The doors creak open on their own; you step in                | The coat check: a hundred years of coats nobody came back for, and a bony hand that waves.             | Rattles, the first daredevil                                         |
+| "HELLO?" The dining room: the table set, the candles lit      | A feast a hundred years old, still steaming. And a place card with your name on it.                    | You were expected                                                    |
+| The doors slam and lock behind you                            | The run starts.                                                                                        | The front door is the way out, and Uncle Chunk will be waiting at it |
 
-The tone stays the game's: goofy first, scary second (Luigi's Mansion, not a horror film). Each wrong detail is half a joke (the chewed sign, the knock back, the waving hand), so the unease lands with a smile and the slam is the punchline. Music thins out as it goes: a cheery tune in the car, then only footsteps and the house creaking by the door, then silence on HELLO?, then the slam and the run's music.
-
-The dining room's other ways out are boarded, as the parlour's are today, and bought open the same way.
+The tone stays the game's: goofy first, scary second (Luigi's Mansion, not a horror film). Each wrong detail is half a joke (the chewed sign, the knock back, the waving hand), so the unease lands with a smile and the slam is the punchline. Music thins out as it goes: the radio in the car, then only footsteps and the house creaking by the door, then silence on HELLO?, then the slam and the run's music.
 
 Show, don't explain: pictures, sound, and the one word, HELLO?, in a speech bubble. Any key or tap skips to the slam. The slam itself is never skipped (owner, 2026-11-09): it is the moment the run starts, every time. The cutscene plays in full the first time, and shorter after that (the knock and the slam), so RETRY stays quick. The first PLAY of a new save goes straight into the tutorial, so the cutscene is its opening there too. It is a client cosmetic, like the end card's beat: the World starts the same. In co-op every player sees their own crew in the car, and the run starts on the slam for everyone at once (owner, 2026-11-09): the room sets when the doors slam, a player who skips jumps to the knock at the door and waits there, and every screen slams together.
 
-**Paying it off.** Each detail comes back, so the intro is the first page of the story rather than a one-off: the party hat is Uncle Chunk's, the trays are the check-in desk's, the wristbands are on every zombie, the place card is the joke Rattles makes ("Fresh meat! Er, customer."), and the cars in the drive are where the car keys on the list belong. A Munchopedia entry can unlock for each one once the player finds it in a run.
+**Paying it off.** Each detail comes back: the party hat is Uncle Chunk's, the coats are Rattles' coat check, the cars in the drive belong to the zombies you fight, and the place card is the house's joke. A Munchopedia entry can unlock for each one once the player finds it in a run.
 
-### What you need to leave changes every run
+### The dare card in your pocket
 
-Proposed by the owner on 2026-11-09, replacing one fixed set of three. Each run rolls its list from a pool of ordinary things a taster needs to check out, from its own salted seeded stream (TranZit, Last Night on Earth). Getting past the host at the front door is always last.
+Proposed by the owner on 2026-11-09. Once the doors slam, the first thing in the run is the dare card: you pull it from your pocket (or it waits on the table at your place, beside the place card). It opens to your friends' scrawl, which is this run's list, mostly pictures:
 
-What makes the list fun is less which object it is than how each one comes back to you, so each thing in the pool has its own way:
+> I DARE YOU to bring back: (the icons of this run's things)
+> AND Uncle Chunk's hat!!
+> (a doodle of a chicken) no chickening out
 
-| Thing                  | How you get it back                                                       |
-| ---------------------- | ------------------------------------------------------------------------- |
-| Your car keys          | Hidden in one of a few spots: a sofa cushion, the fridge, under the table |
-| Your signed release    | Rattles has it, for a price (he works on commission)                      |
-| Your wristband scanner | A marked zombie wears it: kill it and grab the drop (CoD style)           |
-| Your take-home sample  | Cooked at the kitchen's stove, as a perk is                               |
-| Your phone             | Taken at check-in, now ringing somewhere in the house: follow the sound   |
-| Your coat              | Behind the boards of a room you have not opened yet                       |
-| A goodbye to the host  | Always last: Uncle Chunk at the front door. Politely. With a shotgun.     |
+Then the card folds itself into the HUD, and its icons become the empty outlines that fill in as you find things. It is how a new player learns the goal without being told. In co-op every player holds a card with the crew's shared list. The first wave starts once the card is read (or after a few seconds), the way READY starts a wave today.
+
+### What the dare asks for changes every run
+
+Each run rolls its list from a pool of things in the house, from its own salted seeded stream (TranZit, Last Night on Earth). Uncle Chunk's party hat is always last. What makes the list fun is less which object it is than how each one comes back to you, so each thing in the pool has its own way:
+
+| Thing                    | How you get it                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| The silver spoon         | Hidden in one of a few spots: a sofa cushion, the sideboard, under the table      |
+| The family portrait      | A marked zombie, a daredevil who tried to steal it, carries it: drop him, grab it |
+| A page of the guest book | Rattles has the book, and sells you the page, for a price                         |
+| Grandma Munch's recipe   | Cooked at the kitchen's stove, as a perk is                                       |
+| The music box            | It plays somewhere in the house: follow the tune                                  |
+| The butler's bell        | Behind the boards of a room you have not opened yet                               |
+| Uncle Chunk's party hat  | Always last: he is wearing it at the front door                                   |
 
 Objects, no reading needed. The HUD shows this run's list as empty outlines that fill in.
 
@@ -276,12 +284,12 @@ Objects, no reading needed. The HUD shows this run's list as empty outlines that
 
 Today the four levels scale only the zombies and the break clock ("Difficulty levels" in `GAME_DESIGN.md`). The list is a second dial on the same curve:
 
-| Level     | Things before the goodbye | Help finding them                                      |
-| --------- | ------------------------- | ------------------------------------------------------ |
-| Easy      | 2                         | Rattles points the way; hiding spots sparkle in breaks |
-| Normal    | 3                         | Rattles hints once a break                             |
-| Hard      | 3                         | No sparkle; one is always on a marked zombie           |
-| Nightmare | 4                         | No hints; the house gets hungrier from the first find  |
+| Level     | Things before the hat | Help finding them                                      |
+| --------- | --------------------- | ------------------------------------------------------ |
+| Easy      | 2                     | Rattles points the way; hiding spots sparkle in breaks |
+| Normal    | 3                     | Rattles hints once a break                             |
+| Hard      | 3                     | No sparkle; one is always on a marked zombie           |
+| Nightmare | 4                     | No hints; the house gets hungrier from the first find  |
 
 A longer list makes a longer run, so the balance model and bot learn the list before the counts are tuned.
 
@@ -297,48 +305,32 @@ When boards come down, the room behind them is one of a few hand-made rooms (Blu
 
 ### The house gets hungrier
 
-Once you hold everything on the list, the lab knows you mean to leave (Dead by Daylight's collapse). The waves press harder until you say goodbye to Uncle Chunk at the front door. That finale is a hold-out (Left 4 Dead): the front door is unlocking, and you hold the hall until it swings open.
+Once you hold everything on the list, the house knows you mean to leave (Dead by Daylight's collapse). The waves press harder until you take Uncle Chunk's hat at the front door. That finale is a hold-out (Left 4 Dead): the front door is unlocking, and you hold the hall until it swings open.
 
 ### Leaving early
 
-The back door in the kitchen (or a window) is an early exit: leave with part of the list (the car keys, say, but no release), and the run ends as an escape that pays less. The full goodbye pays most. Push your luck (extraction shooters).
+The back door in the kitchen (or a window) is an early exit: leave with part of the dare, and the run ends as an escape that pays less, and your friends call you chicken. The whole dare, hat and all, pays most. Push your luck (extraction shooters).
 
-### PLAY is the invitation, the lobby is your RSVP
+### Made to be talked about
 
-Proposed by the owner on 2026-11-09. The home menu's PLAY is the invitation itself, a sealed envelope with the Munch crest. Opening it opens the lobby, which is the RSVP card you fill in for the tasting, waiver and all. Every pick the lobby has today becomes a line on the card, so the rules and the Block stay as they are and only the dress changes:
-
-| Today's pick      | On the RSVP card                                                          |
-| ----------------- | ------------------------------------------------------------------------- |
-| Your name         | Guest name, written in your own hand                                      |
-| Hero              | Coming as: the Handyman, the Track Star, the Penny Pincher, the Line Cook |
-| + BOT seats       | Plus ones: Rattles' rentals, a robot head in each empty seat              |
-| Difficulty        | Dress code, or spice level (see below)                                    |
-| Modifiers         | Special requests: tick boxes, each with its bonus in gold                 |
-| Campaign, Endless | Leaving after dinner, or staying the night                                |
-| Map               | The venue, once there is more than one house                              |
-| START             | A wax seal stamped on the card with a thunk: you have signed the waiver   |
-| BACK              | Regretfully declines                                                      |
-
-In co-op the room is the guest list: each player's own card, filled in side by side, and the room code printed on the invitation you send a friend.
-
-**Difficulty's words.** Easy, Normal, Hard, and Nightmare are the names today, read on the end card and the bests. A food word would fit the card better (a spice level: Mild, Medium, Hot, Ghost Pepper), but renaming them is a change to "Difficulty levels" for the owner to decide. Ticking the level on the card keeps today's names either way.
-
-**What holds it in check.** Show, don't explain: a card of icons and tick boxes, a word or two a line, never a form to read. Every line still works by key, mouse, and touch, in portrait and landscape. Buttons act on click, and the envelope and the seal animate the art inside, never the buttons. The first PLAY of a new save still goes straight into the tutorial, past the card.
+- **SHARE is your proof.** The end card becomes the photo you show your friends: "I got Uncle Chunk's hat", or "I made it to wave 7 and took the silver spoon".
+- **Co-op is daring a friend.** A room link is "I dare you".
+- **Every escape is different.** The list, the hiding spots, and the rooms roll, so there is always a new story to compare.
 
 ### Between runs
 
-Rattles remembers. A few lines that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Re-enrolled already?" after a quick one, "You left without your release!" after an early exit. Still a few words each.
+Rattles remembers. A few lines that move on with how far you got last time, like Hades: "Back for seconds?" after a death, "Brave or dumb?" after a quick one, "Chicken!" after an early exit. Still a few words each.
 
 ### Heroes and bots
 
-The heroes are the tasters who never turned, each with their own reason to sign up: the Penny Pincher came for the stipend and the free dinner, the Line Cook was hired to cook the tasting, the Handyman was called in to fix the lab's freezer, and the Track Star signed up for the energy drink trial and skipped the drink. The bots are the lab's helpers, rented out by Rattles.
+The heroes are daredevils with their own reasons: the Handyman was paid by the town to board the place up, the Track Star is the fastest kid in school and was dared to run straight through, the Penny Pincher heard about the Munch silver, and the Line Cook wants Grandma Munch's recipe. The bots are Rattles' wind-up tin robots from the nursery.
 
 ### What would change in the game
 
 Ordered from cheapest to most work, so the story can land before the systems do:
 
-1. **Words and art only.** The parlour redressed as the dining room, Rattles' new lines, the Munchopedia's bios nudged toward the tasting, the zombies restyled with the lab's bibs and wristbands, the invitation as art (the home menu, the icon, the share card). No rule changes.
-2. **One fixed list in fixed spots.** The keys, the ticket, and the goodbye as a goal over the existing ten waves. Victory becomes "you got out".
+1. **Words and art only.** The parlour redressed as the dining room, the power-ups renamed and restyled as the house's things, the zombies restyled as guests and daredevils, Rattles' new lines, the Munchopedia's bios, the dare card as art (the home menu, the icon, the share card). No rule changes.
+2. **One fixed list in fixed spots.** The dare as a goal over the existing ten waves. Victory becomes "you got out".
 3. **Rolled spots and a rolled list.** The things move between a few hand-picked hiding spots, and the list itself rolls from the pool, sized by difficulty, from their own seeded stream.
 4. **Rolled rooms.** Needs a second room and a pool, and a change to "Not now".
 5. **Early exits and the hungrier house.** Needs balance work and the bot to learn the goal.
@@ -347,11 +339,10 @@ Ordered from cheapest to most work, so the story can land before the systems do:
 
 The lore choices that most change the game, roughly in order.
 
-1. **The tasting.** Settled in direction on 2026-11-09: a private tasting by Munch Foods at the family manor, the lab under it made the zombies, and it now tests its power-ups on you. Left: what the product was, and how much of the haunted house stays.
-2. **Who is Rattles now?** Proposed: the lab's anatomy skeleton, woken by a spilled sample (see "Rattles, reinvented").
-3. **Who is Uncle Chunk?** Proposed: Patient Zero, the founder who tasted the first batch.
-4. **What goes in the pool?** Which things a taster needs to check out, and how each one comes back to you (see "What you need to leave changes every run").
-5. **What do the heroes and bots mean in the story?** Proposed: tasters with their own reasons, and the lab's helper robots.
-6. **What is a Bone?** Proposed: your stipend for each session you survive.
-7. **Do rooms roll, or only what is in them?** See "What it goes against".
-8. **Is the dining room the parlour redressed, or a new room?** See "You start at the table".
+1. **The dare.** The direction, chosen 2026-11-10. Left: who writes the dare card (your friends outside, or the town), and what you bring back for it.
+2. **What goes in the pool?** Which things the dare asks for, and how each one comes back to you (see "What the dare asks for changes every run").
+3. **The power-ups' new names and looks.** Proposed: Wind-Up Key, Family Silver, Dancing Shoes, Hat Pins, Dinner Gong, Pickled Heart (see "Power-ups are what the house hides").
+4. **The stakes as difficulty names?** Dare, Double Dare, Triple Dare, Triple Dog Dare.
+5. **What is a Bone?** Rattles' currency, scavenged from a hundred years of daredevils, or the house's own.
+6. **Do rooms roll, or only what is in them?** See "What it goes against".
+7. **Is the dining room the parlour redressed, or a new room?** See "You start at the table".
