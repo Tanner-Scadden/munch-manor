@@ -43,7 +43,7 @@ describe('the difficulty card', () => {
         Scene.expect(normal).toExist(),
         Scene.expect(hard).toExist(),
         Scene.expect(lockedNightmare).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(Scene.text('Beat Hard to unlock')).toBeAbsent(),
+        Scene.expect(Scene.text('Escape on Hard to unlock')).toBeAbsent(),
         Scene.expect(
           Scene.selector("[data-difficulty='Nightmare'] .difficulty-unlock"),
         ).toExist(),
@@ -170,7 +170,7 @@ describe('the end screens', () => {
       APPLICATION,
       Scene.given(
         ended(
-          Phase.Victory(),
+          Phase.Escaped({ wave: 10 }),
           modifyFields(initialModel, {
             difficulty: () => ({ chosen: 'Hard', nightmare: 'JustUnlocked' }),
             maybeSurface: () => Option.none(),

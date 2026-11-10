@@ -175,7 +175,7 @@ describe('skipping and retrying', () => {
   it.effect('a tap on the game skips the beat but never starts a run', () =>
     Story.story(
       APPLICATION,
-      Story.given(onEndScreen(Phase.Victory(), 200)),
+      Story.given(onEndScreen(Phase.Escaped({ wave: 10 }), 200)),
       Story.message(
         Message.PressedPointer({
           pointerId: 1,
@@ -186,7 +186,7 @@ describe('skipping and retrying', () => {
       ),
       Story.model(after => {
         expect(after.screenMs).toBe(doneMs('Won'))
-        expect(after.phase).toEqual(Phase.Victory())
+        expect(after.phase).toEqual(Phase.Escaped({ wave: 10 }))
       }),
     ),
   )
@@ -253,7 +253,7 @@ describe('the tally', () => {
 
   test('a win counts the time first', () => {
     const won = modifyFields(tallied, {
-      phase: () => Phase.Victory(),
+      phase: () => Phase.Escaped({ wave: 10 }),
       stats: stats => modifyFields(stats, { runMs: () => 371_000 }),
     })
     const [first] = tallyRowsOf(won)
@@ -467,7 +467,7 @@ describe('sharing a run', () => {
     )
   })
 
-  test('a win says the difficulty, with a zombie', () => {
+  test('an escape says the difficulty, the hat, and the wave', () => {
     expect(
       shareText({
         ...base,
@@ -476,13 +476,13 @@ describe('sharing a run', () => {
         kills: 612,
       }),
     ).toBe(
-      '🧟 I beat Munch Manor on NIGHTMARE! 612 zombies splatted. The house is mine.',
+      "🎩 I escaped Munch Manor on NIGHTMARE with Uncle Chunk's hat! Out on wave 4, 612 zombies splatted.",
     )
   })
 
   test('a crew says how many played', () => {
     expect(shareText({ ...base, outcome: 'Won', crew: 3, kills: 900 })).toBe(
-      '🧟 Our crew of 3 beat Munch Manor on Normal! 900 zombies splatted together.',
+      "🎩 Our crew of 3 escaped Munch Manor on Normal with Uncle Chunk's hat! Out on wave 4, 900 zombies splatted together.",
     )
     expect(shareText({ ...base, outcome: 'Munched', crew: 2 })).toBe(
       '💀 Our crew of 2 got munched on wave 4 in Munch Manor. 87 zombies splatted together. Bring snacks.',
@@ -500,7 +500,7 @@ describe('sharing a run', () => {
         maybeOwnAward: Option.some('Medic'),
       }),
     ).toBe(
-      '🧟 Our crew of 3 beat Munch Manor on Normal! 900 zombies splatted together. 👑 MVP: ANA with 412. I was the Medic 🩹.',
+      "🎩 Our crew of 3 escaped Munch Manor on Normal with Uncle Chunk's hat! Out on wave 4, 900 zombies splatted together. 👑 MVP: ANA with 412. I was the Medic 🩹.",
     )
     expect(
       shareText({
@@ -667,7 +667,7 @@ describe('sharing a run', () => {
 
   it.effect('a crew win is counted from the co-op victory screen', () => {
     const crewed = withWorld(
-      counted(onEndScreen(Phase.Victory(), doneMs('Won')), 'On'),
+      counted(onEndScreen(Phase.Escaped({ wave: 10 }), doneMs('Won')), 'On'),
       world => seatCrew(world, 3),
     )
     return Story.story(

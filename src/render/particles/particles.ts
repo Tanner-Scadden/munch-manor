@@ -348,6 +348,10 @@ const eventParticles = (
     DareListDone: ({ x, y }) =>
       generateMany(state, CONFETTI_PER_CLUTCH, confettiBit(playerGround(x, y))),
     DareDelivered: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
+    FrontDoorUnlocking: ({ x, y }) => sparks({ x, y }, LID_SPARKS)(state),
+    FrontDoorOpened: ({ x, y }) => smashParticles(state, { x, y }),
+    SteppedOut: ({ x, y }) =>
+      generateMany(state, CONFETTI_PER_SAVE, confettiBit(playerGround(x, y))),
   })
 
 type Spawn = Readonly<{

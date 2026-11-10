@@ -298,7 +298,7 @@ const roundOf = (world: World): number =>
     Preparation: ({ wave }) => wave,
     Wave: ({ wave }) => wave,
     Paused: ({ round }) => round.wave,
-    Victory: () => 0,
+    Escaped: () => 0,
     GameOver: ({ wave }) => wave,
   })
 

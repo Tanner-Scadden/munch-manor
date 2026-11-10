@@ -98,7 +98,7 @@ export const DIFFICULTY_ORDER: Array.NonEmptyReadonlyArray<Difficulty> = [
   'Nightmare',
 ]
 
-export const NIGHTMARE_LOCK_NOTE = 'Beat Hard to unlock'
+export const NIGHTMARE_LOCK_NOTE = 'Escape on Hard to unlock'
 
 export const isLocked: {
   (difficulty: Difficulty): (setting: DifficultySetting) => boolean
@@ -174,25 +174,42 @@ export const crowdSpawns: {
     const countScale =
       scaleAt(COOP_RULES.waveCountScale, players) *
       (modifiers.bigCrowd ? BIG_CROWD_SCALE : 1)
-    const healthScale = scaleAt(COOP_RULES.healthScale, players)
-    return Array.flatMap(spawns, (spawn, index) => {
-      const copies =
-        Math.floor((index + 1) * countScale) - Math.floor(index * countScale)
-      const tougher = modifyFields(spawn, {
-        hpScale: scale => scale * healthScale,
-      })
-      return Array.makeBy(copies, copy =>
-        copy === 0
-          ? tougher
-          : modifyFields(tougher, {
-              atMs: atMs => atMs + copy * CROWD_GAP_MS,
-              offset: offset =>
-                offset + (copy % 2 === 1 ? 1 : -1) * CROWD_OFFSET_PX,
-            }),
-      )
+    return spreadSpawns({
+      spawns,
+      countScale,
+      healthScale: scaleAt(COOP_RULES.healthScale, players),
     })
   },
 )
+
+// NOTE: each spawn copied so the wave holds countScale times as many, each
+// copy a little after the one it copies, every one tougher by healthScale.
+// The crowd above and the hungrier house (src/world/dare/finale.ts) share it.
+export const spreadSpawns = ({
+  spawns,
+  countScale,
+  healthScale,
+}: Readonly<{
+  spawns: ReadonlyArray<PlannedSpawn>
+  countScale: number
+  healthScale: number
+}>): ReadonlyArray<PlannedSpawn> =>
+  Array.flatMap(spawns, (spawn, index) => {
+    const copies =
+      Math.floor((index + 1) * countScale) - Math.floor(index * countScale)
+    const tougher = modifyFields(spawn, {
+      hpScale: scale => scale * healthScale,
+    })
+    return Array.makeBy(copies, copy =>
+      copy === 0
+        ? tougher
+        : modifyFields(tougher, {
+            atMs: atMs => atMs + copy * CROWD_GAP_MS,
+            offset: offset =>
+              offset + (copy % 2 === 1 ? 1 : -1) * CROWD_OFFSET_PX,
+          }),
+    )
+  })
 
 export const reloadsWhenIdle = (difficulty: Difficulty): boolean =>
   DIFFICULTIES[difficulty].reloadsWhenIdle
@@ -251,8 +268,8 @@ export const hasJustWon: {
 } = Function.dual(
   2,
   (before: World, after: World): boolean =>
-    !Phase.isAnyOf(['Victory'])(before.phase) &&
-    Phase.isAnyOf(['Victory'])(after.phase),
+    !Phase.isAnyOf(['Escaped'])(before.phase) &&
+    Phase.isAnyOf(['Escaped'])(after.phase),
 )
 
 // NOTE: `played` is the run's difficulty: the player's own pick, or in an

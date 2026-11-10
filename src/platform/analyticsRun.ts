@@ -8,11 +8,13 @@ import { effectiveModifiersOf } from '../domain/onlineRun'
 import { isInRun } from '../domain/run'
 import type { Difficulty } from '../shared/playerData'
 import { isCoop, leadSeatOf, playersOf } from '../world/party/party'
+import { dareItemsFoundOf } from '../world/dare/dare'
 import { maskOfModifiers } from '../world/run/modifiers'
 import { Phase, RunMode, type RunStats } from '../world/schema/worldSchema'
 import { roundWave } from '../world/waves/waves'
 import {
   CREW_RUN_KEY_LENGTH,
+  EscapedRun,
   type FrameTimeBucket,
   LostRun,
   QuitRun,
@@ -27,7 +29,6 @@ import {
   type SummaryParty,
   type SummaryScreenFit,
   UNKNOWN_CAUSE,
-  WonRun,
 } from './analytics'
 import type { ScreenFit } from './deviceSchema'
 
@@ -65,11 +66,9 @@ const summaryScreenFit = (screenFit: ScreenFit): SummaryScreenFit =>
 
 // RUN END
 
-// NOTE: a run ends at Game Over, at Victory, or when the player leaves it:
-// from the pause MENU, or, online, by leaving the room or losing it, which
-// goes home (src/app/update/coop.ts, leftRoom). Keeping going after a win
-// starts no new run: when that run ends it reports again, as Endless, with
-// the whole run's stats.
+// NOTE: a run ends at Game Over, at an escape, or when the player leaves
+// it: from the pause MENU, or, online, by leaving the room or losing it,
+// which goes home (src/app/update/coop.ts, leftRoom).
 export const maybeRunOutcome: {
   (after: Model): (before: Model) => Option.Option<RunOutcome>
   (before: Model, after: Model): Option.Option<RunOutcome>
@@ -85,7 +84,7 @@ export const maybeRunOutcome: {
       Preparation: () => Option.none(),
       Wave: () => Option.none(),
       Paused: () => Option.none(),
-      Victory: () => Option.some(WonRun.make({})),
+      Escaped: () => Option.some(EscapedRun.make({})),
       GameOver: () =>
         Option.some(
           LostRun.make({
@@ -100,7 +99,7 @@ export const maybeRunOutcome: {
 )
 
 // NOTE: leaving a run resets the Model's run, so a Quit is read from the
-// Model just before it. Game Over and Victory keep the run until the next.
+// Model just before it. Game Over and an escape keep the run until the next.
 const finalRun = (before: Model, after: Model, outcome: RunOutcome): Model =>
   outcome._tag === 'Quit' ? before : after
 
@@ -215,6 +214,7 @@ export const runSummaryOf: {
       frameTime: frameTimeBucket(stats),
       party: partyOf(run, visitId),
       modifiers: maskOfModifiers(effectiveModifiersOf(run)),
+      dareItemsFound: dareItemsFoundOf(run),
     }
   },
 )
@@ -259,7 +259,7 @@ export const shareEventOf: {
     visitId,
     build,
     screen: shareScreenOf(
-      Phase.isAnyOf(['Victory'])(model.phase),
+      Phase.isAnyOf(['Escaped'])(model.phase),
       isCoop(model) && !isBotCrew(model),
     ),
     mode: RunMode.isAnyOf(['Endless'])(model.mode) ? 'Endless' : 'Campaign',

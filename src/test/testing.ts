@@ -144,6 +144,9 @@ export const ticks: {
     Array.makeBy(count, () => tick(deltaTime)),
 )
 
+// NOTE: START WAVE, the break's button that starts the wave now.
+export const startWave = Story.message(Message.ClickedStartWaveButton())
+
 export const press = (code: string) =>
   Story.message(Message.PressedKey({ code }))
 
@@ -667,19 +670,20 @@ export const lobbyBackButton = Scene.role('button', {
 export const lobbyMode = (name: string) => Scene.role('button', { name })
 
 export const lockedNightmare = Scene.role('button', {
-  name: 'Nightmare, locked. Beat Hard to unlock',
+  name: 'Nightmare, locked. Escape on Hard to unlock',
 })
 
 export const playEndlessButton = Scene.selector(
   ".home-play[data-mode='Endless']",
 )
 
-export const keepGoingButton = Scene.role('button', {
-  name: 'Keep going: carry on into endless from wave 11 with your money, guns, and traps',
-})
+// NOTE: KEEP GOING is gone (an escape ends the run); tests check it stays so.
+export const keepGoingButton = Scene.selector(
+  ".end-button[data-look='KeepGoing']",
+)
 
 export const retryButton = Scene.role('button', {
-  name: 'Retry: a new campaign of 10 waves',
+  name: 'Retry: a new dare',
 })
 
 export const endButtons = Scene.all.selector('.end-actions .end-button')

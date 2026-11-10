@@ -59,7 +59,7 @@ const phasePlan = (phase: Phase): MusicPlan =>
       mood: roundMood(round),
       level: 'Ducked',
     }),
-    Victory: () => SILENT_PLAN,
+    Escaped: () => SILENT_PLAN,
     GameOver: () => SILENT_PLAN,
   })
 
@@ -73,8 +73,8 @@ const musicPlan = (model: Model): MusicPlan =>
 
 const phaseStinger = (before: Phase, after: Phase): MusicStinger => {
   if (
-    Phase.isAnyOf(['Victory'])(after) &&
-    !Phase.isAnyOf(['Victory'])(before)
+    Phase.isAnyOf(['Escaped'])(after) &&
+    !Phase.isAnyOf(['Escaped'])(before)
   ) {
     return 'Victory'
   } else if (

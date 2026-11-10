@@ -35,7 +35,6 @@ import {
 } from '../../../test/model.fixture'
 import {
   APPLICATION,
-  RESTART_GRACE_TICKS,
   START_SPOT,
   bulletInto,
   buyAtCounter,
@@ -69,7 +68,6 @@ import { DialogBinding } from '../bindings'
 import { Message as ShopMessage } from '../message'
 import {
   FRAMES_TO_STALL,
-  GRACE_TICK_MS,
   SHOP_FRAME_MS,
   besideStall,
   browsing,
@@ -167,7 +165,7 @@ describe('money', () => {
   )
 
   it.effect(
-    'the final wave pays too, and Victory keeps what was earned after spending',
+    'the last tuned wave pays too, and the run goes on with what was earned',
     () =>
       Story.story(
         APPLICATION,
@@ -184,19 +182,13 @@ describe('money', () => {
         ),
         tick(SHORT_FRAME_MS),
         Story.model(({ phase, seats: [{ wallet }] }) => {
-          expect(phase).toEqual(Phase.Victory())
+          expect(Phase.guards.Preparation(phase)).toBe(true)
           expect(wallet.balance).toBe(
             10 + SHAMBLER_BOUNTY + waveBonus(FINAL_WAVE),
           )
           expect(wallet.earned).toBe(
             200 + SHAMBLER_BOUNTY + waveBonus(FINAL_WAVE),
           )
-        }),
-        ...ticks(RESTART_GRACE_TICKS, GRACE_TICK_MS),
-        press('Enter'),
-        Story.model(({ seats: [{ wallet, player }] }) => {
-          expect(wallet).toEqual({ balance: 0, earned: 0, shown: 0 })
-          expect(player.arsenal).toEqual(pistolOnly())
         }),
       ),
   )

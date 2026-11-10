@@ -53,7 +53,7 @@ const SCREENS_WITHOUT_THE_CHIP: ReadonlyArray<readonly [string, Model]> = [
       screenMs: () => RESTART_GRACE_MS,
     }),
   ],
-  ['Victory', onPhase(Phase.Victory())],
+  ['Victory', onPhase(Phase.Escaped({ wave: 10 }))],
   ['the break between waves', onPhase(WAVE_3_BREAK)],
   ['a wave', withNewerBuild(fighting)],
 ]

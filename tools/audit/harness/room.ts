@@ -902,7 +902,7 @@ export const roomModel = (settings: SceneSettings): Model => {
   const beforeEnd = model
   if (phase === 'victory') {
     model = modifyFields(model, {
-      phase: () => Phase.Victory(),
+      phase: () => Phase.Escaped({ wave: 10 }),
       stats: s => ({
         ...s,
         wavesCleared: 8,

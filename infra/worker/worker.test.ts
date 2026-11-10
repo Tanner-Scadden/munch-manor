@@ -78,6 +78,7 @@ const summary: RunSummary = {
   frameTime: 'Under17Ms',
   party: SOLO_PARTY,
   modifiers: 0,
+  dareItemsFound: 2,
 }
 
 // NOTE: a co-op crew as a build before the run key sent it.
@@ -327,7 +328,7 @@ describe('POST /api/runs', () => {
         )
         expect(value_6).toEqual([
           {
-            summary_version: 4,
+            summary_version: 5,
             difficulty: 'Hard',
             party: 'Crew',
             crew_size: 3,
@@ -352,8 +353,35 @@ describe('POST /api/runs', () => {
         setup,
         'SELECT summary_version, modifiers FROM runs',
       )
-      expect(value_7).toEqual([{ summary_version: 4, modifiers: 12 }])
+      expect(value_7).toEqual([{ summary_version: 5, modifiers: 12 }])
     }),
+  )
+
+  it.effect(
+    'an escape stores its outcome and the things it found, and a version 4 win still goes in',
+    () =>
+      Effect.gen(function* () {
+        const setup = yield* setUp()
+        const escaped = yield* post(
+          setup,
+          encodeSummary({ ...summary, outcome: { _tag: 'Escaped' } }),
+        )
+        expect(escaped.status).toBe(202)
+        const { dareItemsFound: _found, ...older } = summary
+        const won = yield* post(
+          setup,
+          toJson({ ...older, version: 4, outcome: { _tag: 'Victory' } }),
+        )
+        expect(won.status).toBe(202)
+        const value_7b = yield* query(
+          setup,
+          'SELECT summary_version, outcome, dare_items_found FROM runs ORDER BY id',
+        )
+        expect(value_7b).toEqual([
+          { summary_version: 5, outcome: 'Escaped', dare_items_found: 2 },
+          { summary_version: 4, outcome: 'Victory', dare_items_found: 0 },
+        ])
+      }),
   )
 
   it.effect('a mask no modifier has is refused', () =>
@@ -435,7 +463,7 @@ describe('POST /api/runs', () => {
         )
         expect(value_12).toEqual([
           {
-            summary_version: 4,
+            summary_version: 5,
             party: 'Solo',
             crew_size: 1,
             seat_kills: null,
@@ -778,7 +806,7 @@ describe("the report's co-op counts", () => {
           crewRowJson(CREW_KEY, BITTEN, 5, 10),
           crewRowJson(CREW_KEY, BITTEN, 5, 20),
           crewRowJson(CREW_KEY, { _tag: 'Quit' }, 3, 3),
-          crewRowJson('aaaaaaaaaaaaaaaa', { _tag: 'Victory' }, 10, 40),
+          crewRowJson('aaaaaaaaaaaaaaaa', { _tag: 'Escaped' }, 10, 40),
           crewRowJson('aaaaaaaaaaaaaaaa', { _tag: 'Quit' }, 6, 7),
           crewRowJson(null, BITTEN, 4, 5),
           crewRowJson(null, BITTEN, 4, 15),

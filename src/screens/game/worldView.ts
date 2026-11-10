@@ -5,6 +5,7 @@ import type { Model } from '../../app/model'
 import { group } from '../../art/sprite'
 import { hatRiseOf } from '../../art/sprites/hatArt'
 import { dareDrawables, dareOverheadShapes } from '../../features/dare/dareView'
+import { frontDoorShapes } from '../../features/dare/frontDoorView'
 import {
   chompShapes,
   fallenOf,
@@ -300,6 +301,7 @@ const overheadShapes = (
     : []),
   ...fridgeOverheadShapes(model),
   ...dareOverheadShapes(model),
+  ...frontDoorShapes(model),
   ...mateOverheadShapes(model, mates),
   ...coopNameShapes(model),
   ...stallPromptShapes(stallPrompt(model, focusSlotOf(model))),

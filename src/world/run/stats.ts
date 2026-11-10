@@ -204,4 +204,4 @@ export const defeatQuip: {
 export const victoryVerdict = (stats: RunStats): string =>
   stats.heartsLost === 0
     ? 'Not a single bite. Show-off'
-    : 'The house is yours. For now'
+    : 'Out the front door, hat and all'

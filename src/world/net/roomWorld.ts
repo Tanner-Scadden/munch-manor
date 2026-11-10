@@ -12,11 +12,7 @@ import type {
   Writer,
 } from '@munch/netcode'
 
-import {
-  FIRST_PREPARATION_MS,
-  FIXED_STEP_MS,
-  PREPARATION_MS,
-} from '../../shared/constants'
+import { FIRST_PREPARATION_MS, FIXED_STEP_MS } from '../../shared/constants'
 import { type Calling, callingOfCode } from '../../shared/playerData'
 import { rollDare } from '../dare/dare'
 import { TURRET_WEAPON } from '../gear/traps'
@@ -26,7 +22,6 @@ import { START_LEVEL, startingLevel } from '../level/arena'
 import {
   biteGraceFor,
   focusSeat,
-  forEachSeat,
   maybePlayerAt,
   modifySeat,
   modifySeatRecord,
@@ -35,7 +30,6 @@ import {
   presenceOf,
   seatCrew,
   setPresence,
-  slotsOf,
   soloSeat,
   soloState,
   withStartingHearts,
@@ -56,10 +50,8 @@ import {
   Phase,
   type Player,
   type PlayerSlot,
-  Purchase,
   RunMode,
   type Seat,
-  ShopState,
   type Trap,
   barePantry,
   calmPacing,
@@ -76,7 +68,6 @@ import { type ZombieAt, catchUpShots, zombiesAt } from '../step/firing'
 import { normalize } from '../step/geometry'
 import { predictSeat } from '../step/simulation'
 import { SeatAction, applySeatAction, stepWorld } from '../step/stepWorld'
-import { FINAL_WAVE } from '../waves/wavePlans'
 import { beginPreparation } from '../waves/waves'
 import {
   readEvent,
@@ -140,8 +131,7 @@ export type RoomSettings = Readonly<{
 }>
 
 // NOTE: what the lobby picked (packages/netcode, Lobby.ts) as the run's
-// settings. KeepGoing plays endless, carrying on a kept run when the room
-// has one.
+// settings. KeepGoing, left from rooms before the escape, plays endless.
 export const roomSettingsOf: {
   (
     difficulty: RoomDifficulty,
@@ -467,53 +457,13 @@ export const startRoomWorld: {
   }),
 )
 
-// KEEP GOING
+// THE ESCAPE
 
-// NOTE: a won campaign carried on into endless, as single player's KEEP
-// GOING does (src/app/update/run.ts, keepGoing): the same crew with their money,
-// guns, traps, and hearts, everyone out of the shop, the first endless
-// wave's break counting. The room's ticks start again from 0.
-const keepGoingWorld = (world: World): World =>
-  beginPreparation(
-    forEachSeat(
-      modifyFields(world, { mode: () => RunMode.Endless() }),
-      (current, slot) =>
-        modifySeat(current, slot, {
-          shop: () => ShopState.Away(),
-          purchase: () => Purchase.Idle(),
-        }),
-    ),
-    FINAL_WAVE + 1,
-    PREPARATION_MS,
-  )
-
+// NOTE: a won run is an escape: the crew out through the front door. Nobody
+// goes back in after it (docs/ESCAPE_PLAN.md): Endless is its own pick.
 const isWonRun = (world: World): boolean =>
-  Phase.isAnyOf(['Victory'])(world.phase) &&
+  Phase.isAnyOf(['Escaped'])(world.phase) &&
   RunMode.isAnyOf(['Campaign'])(world.mode)
-
-// NOTE: a kept run plays on only for the crew that won it, seat for seat.
-const canKeepGoingWith = (
-  world: World,
-  slots: ReadonlyArray<PlayerSlot>,
-): boolean => {
-  const kept = slotsOf(world)
-  const sorted = Array.sort(Array.dedupe(slots), (a: number, b: number) =>
-    a < b ? -1 : a > b ? 1 : 0,
-  )
-  return (
-    isWonRun(world) &&
-    kept.length === sorted.length &&
-    Array.every(kept, (slot, index) => sorted[index] === slot)
-  )
-}
-
-const keepGoingRoomWorld = (world: World): RoomWorld => ({
-  tick: 0,
-  world: keepGoingWorld(world),
-  events: [],
-  pressed: [],
-  history: [],
-})
 
 // STEP
 
@@ -804,7 +754,7 @@ const blendOwn = (from: OwnSeat, to: OwnSeat, t: number): OwnSeat => ({
 // THE ROOM'S WORLD
 
 const isRunOver = (world: World): boolean =>
-  Phase.isAnyOf(['GameOver', 'Victory'])(world.phase)
+  Phase.isAnyOf(['GameOver', 'Escaped'])(world.phase)
 
 const scoresOf = (world: World): ReadonlyArray<Score> =>
   Array.map(playersOf(world), ({ seat }) => ({
@@ -820,57 +770,36 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
 }
 
 // NOTE: the room's World for one run: a fresh run with the lobby's
-// settings, or a kept run carried on when the crew is the one that won it.
-export const roomWorldFor: {
-  (
-    maybeKept?: Option.Option<World>,
-  ): (settings: RoomSettings) => RoomWorldOf<RoomWorld, OwnSeat>
-  (
-    settings: RoomSettings,
-    maybeKept?: Option.Option<World>,
-  ): RoomWorldOf<RoomWorld, OwnSeat>
-} = Function.dual(
-  // NOTE: data-first starts with the settings; data-last with the kept run or nothing.
-  (args: IArguments): boolean =>
-    args[0] !== undefined && !Option.isOption(args[0]),
-  (
-    settings: RoomSettings,
-    maybeKept: Option.Option<World> = Option.none(),
-  ): RoomWorldOf<RoomWorld, OwnSeat> => ({
-    name: 'MunchManor',
-    start: (slots, seed) =>
-      Option.match(
-        Option.filter(maybeKept, kept => canKeepGoingWith(kept, slots)),
-        {
-          onNone: () => startRoomWorld(slots, seed, settings),
-          onSome: keepGoingRoomWorld,
-        },
-      ),
-    step: stepRoomWorld,
-    removePlayer: (room, slot) => ({
-      ...room,
-      world: setPresence(room.world, slot, 'Away'),
-    }),
-    isOver: room => isRunOver(room.world),
-    isWon: room => isWonRun(room.world),
-    scores: room => scoresOf(room.world),
-    snapshot: writeRoomSnapshot,
-    readSnapshot: readRoomSnapshot,
-    diff: writeRoomDiff,
-    applyDiff: readRoomDiff,
-    interpolate: (from, to, t) => ({
-      ...to,
-      world: interpolateWorld(from.world, to.world, t),
-    }),
-    own: {
-      of: ownOf,
-      put: putOwn,
-      step: predictOwn,
-      gap: gapOf,
-      blend: blendOwn,
-    },
+// settings.
+export const roomWorldFor = (
+  settings: RoomSettings,
+): RoomWorldOf<RoomWorld, OwnSeat> => ({
+  name: 'MunchManor',
+  start: (slots, seed) => startRoomWorld(slots, seed, settings),
+  step: stepRoomWorld,
+  removePlayer: (room, slot) => ({
+    ...room,
+    world: setPresence(room.world, slot, 'Away'),
   }),
-)
+  isOver: room => isRunOver(room.world),
+  isWon: room => isWonRun(room.world),
+  scores: room => scoresOf(room.world),
+  snapshot: writeRoomSnapshot,
+  readSnapshot: readRoomSnapshot,
+  diff: writeRoomDiff,
+  applyDiff: readRoomDiff,
+  interpolate: (from, to, t) => ({
+    ...to,
+    world: interpolateWorld(from.world, to.world, t),
+  }),
+  own: {
+    of: ownOf,
+    put: putOwn,
+    step: predictOwn,
+    gap: gapOf,
+    blend: blendOwn,
+  },
+})
 
 // NOTE: the room's World with the lobby's first settings, as the client
 // names it (src/domain/coopRoom.ts), the dev page plays it, and tests step it.

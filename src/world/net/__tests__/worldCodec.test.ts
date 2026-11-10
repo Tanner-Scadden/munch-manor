@@ -136,7 +136,7 @@ describe('the wire packs numbers by their Schema', () => {
     ]
     // NOTE: a new lossy field shows up here. Name it on purpose.
     expect(hintTable(numbers)).toEqual({
-      Position: { count: 189, names: ['offset', 'remainingPx', 'x', 'y'] },
+      Position: { count: 195, names: ['offset', 'remainingPx', 'x', 'y'] },
       Velocity: {
         count: 7,
         names: ['knockback', 'velocityX', 'velocityY', 'x', 'y'],
@@ -146,7 +146,7 @@ describe('the wire packs numbers by their Schema', () => {
         names: ['hpScale', 'intensity', 'speedScale', 'x', 'y'],
       },
       Millis: {
-        count: 99,
+        count: 101,
         names: [
           'ageMs',
           'apartMs',
@@ -304,12 +304,13 @@ describe("the boss's charge on the wire", () => {
 // run's `modifiers`; protocol 19 added the fridge's cheap first pulls,
 // the pantry's stash, the kitchen's `stove` and `gasValve`, and each
 // seat's `cooking`; protocol 20 added the front door and the west slot's
-// doors, the level's `dropped`, ChandelierFell, and the dare's list and its
-// things. The wire must not change without a protocol bump. A change to how
+// doors, the level's `dropped`, ChandelierFell, the dare's list and its
+// things, and the finale (the dare's `finale`, FrontDoorUnlocking,
+// FrontDoorOpened, SteppedOut, and the Escaped phase). The wire must not change without a protocol bump. A change to how
 // the room plays moves the bytes with no change to the wire, as zombies
 // coming in promptly after their warning did, and Normal's eased health and
 // speed (2026-10-31) did.
-const GOLDEN_DIGEST = '71676:bdfe114663c41bd8'
+const GOLDEN_DIGEST = '71684:f390a7aa180cdac4'
 const WIRE_TICKS = 360
 
 const bytesOf = (write: (writer: Writer) => void): Uint8Array => {

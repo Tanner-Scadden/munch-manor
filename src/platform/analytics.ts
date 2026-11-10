@@ -18,8 +18,11 @@ import { Difficulty } from '../shared/playerData'
 // a report counts a game once. The Worker still takes version 1 from a
 // build cached before co-op, as Solo, and version 2 with no key. Version 4
 // adds `modifiers`, the run modifiers that bit, as a mask; the Worker still
-// takes version 3 with none.
-export const RUN_SUMMARY_VERSION = 4
+// takes version 3 with none. Version 5 is the escape (docs/ESCAPE_PLAN.md):
+// a won run ends `Escaped` in place of `Victory`, and `dareItemsFound`
+// counts the things on the dare's list the run found; the Worker still
+// takes version 4, its wins as Victory and none found.
+export const RUN_SUMMARY_VERSION = 5
 
 export const MAX_SUMMARY_BYTES = 8 * 1024
 
@@ -69,7 +72,10 @@ export type CauseOfDeath = typeof CauseOfDeath.Type
 
 export const UNKNOWN_CAUSE: CauseOfDeath = 'Unknown'
 
-export const WonRun = Schema.TaggedStruct('Victory', {})
+export const EscapedRun = Schema.TaggedStruct('Escaped', {})
+
+// NOTE: a won campaign before the escape, from version 4 and older.
+const WonRun = Schema.TaggedStruct('Victory', {})
 
 export const LostRun = Schema.TaggedStruct('GameOver', {
   killedBy: CauseOfDeath,
@@ -77,8 +83,10 @@ export const LostRun = Schema.TaggedStruct('GameOver', {
 
 export const QuitRun = Schema.TaggedStruct('Quit', {})
 
-export const RunOutcome = Schema.Union([WonRun, LostRun, QuitRun])
+export const RunOutcome = Schema.Union([EscapedRun, LostRun, QuitRun])
 export type RunOutcome = typeof RunOutcome.Type
+
+const RunOutcomeV4 = Schema.Union([WonRun, LostRun, QuitRun])
 
 const MAX_COUNT = 1_000_000
 const MAX_WAVE = 10_000
@@ -155,13 +163,13 @@ export const SOLO_PARTY: SummaryParty = SoloParty.make({})
 // NOTE: nothing in a summary identifies a person. visitId is random per page
 // visit, made in a Command, and only groups one visit's runs. A co-op
 // summary names no teammate and no room: its run key is a hash.
-const runFields = {
+const runFieldsV4 = {
   visitId: VisitId,
   build: BuildId,
   mode: SummaryMode,
   difficulty: Difficulty,
   wave: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: MAX_WAVE })),
-  outcome: RunOutcome,
+  outcome: RunOutcomeV4,
   runMs: Schema.Int.check(
     Schema.isBetween({ minimum: 0, maximum: MAX_RUN_MS }),
   ),
@@ -184,16 +192,26 @@ const ModifierMask = Schema.Int.check(
 
 export const RunSummary = Schema.Struct({
   version: Schema.Literal(RUN_SUMMARY_VERSION),
-  ...runFields,
+  ...runFieldsV4,
+  outcome: RunOutcome,
+  party: SummaryParty,
+  modifiers: ModifierMask,
+  dareItemsFound: Count,
+})
+export type RunSummary = typeof RunSummary.Type
+
+// NOTE: a summary from a build before the escape.
+const RunSummaryV4 = Schema.Struct({
+  version: Schema.Literal(4),
+  ...runFieldsV4,
   party: SummaryParty,
   modifiers: ModifierMask,
 })
-export type RunSummary = typeof RunSummary.Type
 
 // NOTE: a summary from a build before the run modifiers.
 const RunSummaryV3 = Schema.Struct({
   version: Schema.Literal(3),
-  ...runFields,
+  ...runFieldsV4,
   party: SummaryParty,
 })
 type RunSummaryV3 = typeof RunSummaryV3.Type
@@ -201,7 +219,7 @@ type RunSummaryV3 = typeof RunSummaryV3.Type
 // NOTE: a summary from a build before the crew's run key.
 export const RunSummaryV2 = Schema.Struct({
   version: Schema.Literal(2),
-  ...runFields,
+  ...runFieldsV4,
   party: SummaryPartyV2,
 })
 export type RunSummaryV2 = typeof RunSummaryV2.Type
@@ -209,14 +227,15 @@ export type RunSummaryV2 = typeof RunSummaryV2.Type
 // NOTE: a summary from a build before co-op sent them: every one was solo.
 export const RunSummaryV1 = Schema.Struct({
   version: Schema.Literal(1),
-  ...runFields,
+  ...runFieldsV4,
 })
 export type RunSummaryV1 = typeof RunSummaryV1.Type
 
 // NOTE: what the Worker takes, and what the offline queue may hold: this
-// version, or version 3, 2, or 1 from a build cached before it.
+// version, or version 4, 3, 2, or 1 from a build cached before it.
 export const PostedRunSummary = Schema.Union([
   RunSummary,
+  RunSummaryV4,
   RunSummaryV3,
   RunSummaryV2,
   RunSummaryV1,

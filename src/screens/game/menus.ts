@@ -57,7 +57,6 @@ import { RunButtonMessage } from '../../input/message'
 import { DeviceMessage } from '../../platform/message'
 import type { ZombieKind } from '../../world/schema/entitySchema'
 import { DebutCard, Phase, RunMode } from '../../world/schema/worldSchema'
-import { FINAL_WAVE } from '../../world/waves/wavePlans'
 import { ZOMBIE_KINDS } from '../../world/zombies/zombies'
 import { iconButtonView } from './touchControls'
 
@@ -156,7 +155,7 @@ const cornerButtons = (
       fullscreenButtonView(model, h),
       ...audioButtons,
     ],
-    Victory: () => audioButtons,
+    Escaped: () => audioButtons,
     GameOver: () => audioButtons,
   })
 }
@@ -240,7 +239,8 @@ const menuOnlyView = (model: Model, h: ApplicationViewBuilder): Html =>
   )
 
 // NOTE: the end card's buttons, icon first and all one size: HOME, then
-// RETRY (on Victory AGAIN, with KEEP GOING beside it), then SHARE. Each
+// RETRY (AGAIN after an escape), then SHARE. Nobody goes back in after an
+// escape: Endless is its own mode. Each
 // pops in a beat after the one before it. SHARE has no key: the share
 // sheet and the clipboard want a tap or a click.
 //
@@ -275,28 +275,16 @@ const retryButton = (model: Model): EndButton => ({
   id: END_RETRY_BUTTON_ID,
   look: 'Retry',
   icon: RETRY_ICON,
-  label: Phase.isAnyOf(['Victory'])(model.phase) ? 'AGAIN' : 'RETRY',
+  label: Phase.isAnyOf(['Escaped'])(model.phase) ? 'AGAIN' : 'RETRY',
   maybeKey: Option.some({ cap: 'ENTER', name: 'Enter' }),
   ariaLabel: RunMode.match(model.mode, {
-    Campaign: () => `Retry: a new campaign of ${FINAL_WAVE} waves`,
+    Campaign: () => 'Retry: a new dare',
     Endless: () => 'Retry: a new endless run',
   }),
   message: EndMessage.ClickedRetryButton(),
   maybePressed: Option.none(),
   heads: [],
 })
-
-const KEEP_GOING_BUTTON: EndButton = {
-  id: 'end-keep-going-button',
-  look: 'KeepGoing',
-  icon: ENDLESS_ICON,
-  label: 'KEEP GOING',
-  maybeKey: Option.some({ cap: 'K', name: 'K' }),
-  ariaLabel: `Keep going: carry on into endless from wave ${FINAL_WAVE + 1} with your money, guns, and traps`,
-  message: EndMessage.ClickedKeepGoingButton(),
-  maybePressed: Option.none(),
-  heads: [],
-}
 
 // NOTE: a post that went to the clipboard flashes COPIED! with a tick.
 const shareButton = (model: Model): EndButton => {
@@ -482,13 +470,6 @@ const endButtonsOf = (model: Model): ReadonlyArray<EndButton> => {
       LEAVE_ROOM_BUTTON,
       runItBackButton(model, maybeRoom.value),
       ROOM_LOBBY_BUTTON,
-      shareButton(model),
-    ]
-  } else if (Phase.isAnyOf(['Victory'])(model.phase)) {
-    return [
-      HOME_BUTTON,
-      retryButton(model),
-      KEEP_GOING_BUTTON,
       shareButton(model),
     ]
   } else {

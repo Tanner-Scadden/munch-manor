@@ -20,8 +20,6 @@ import {
   type Bullet,
   GameEvent,
   HitStop,
-  Phase,
-  RunMode,
   type SeatState,
   ShopState,
   type Vector,
@@ -216,22 +214,6 @@ const traceOwnShots = (
   }
 }
 
-// NOTE: KEEP GOING after a win starts the next round in the same World: the
-// seats keep their revives and the crew its awards, though the client's own
-// stats start over. So the revives and awards already paid at Victory stay
-// paid; a new run (RUN IT BACK builds a new World) starts from zero.
-const keepRankPaid = (before: Model, world: World, fresh: Model): Model =>
-  Phase.isAnyOf(['Victory'])(before.phase) &&
-  RunMode.isAnyOf(['Endless'])(world.mode)
-    ? modifyFields(fresh, {
-        rankPaid: paid =>
-          modifyFields(paid, {
-            awardsPaid: () => before.rankPaid.awardsPaid,
-            revivesPaid: () => before.rankPaid.revivesPaid,
-          }),
-      })
-    : fresh
-
 // NOTE: the drawing of one frame. A run starting (or the next one after the
 // end screen) resets the client's run fields first. This frame's own
 // tracers go to the co-op Block through `requestKeepTracers`. While the
@@ -245,10 +227,7 @@ const drawRoom = (frameMs: number, maybeShopBefore: Option.Option<ShopState>) =>
         const isStart =
           !isRoundActive(stepModel.phase) && isRoundActive(world.phase)
         const base = isStart
-          ? keepRankPaid(stepModel, world, {
-              ...stepModel,
-              ...freshRun(stepModel),
-            })
+          ? { ...stepModel, ...freshRun(stepModel) }
           : stepModel
         const events = heardBy(focusOf(world).player, room.frameEvents)
         const shot = traceOwnShots(base, room, world, frameMs)

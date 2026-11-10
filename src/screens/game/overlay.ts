@@ -104,7 +104,7 @@ export const waveLabel: {
   (mode: RunMode, wave: number): string
 } = Function.dual(2, (mode: RunMode, wave: number): string =>
   RunMode.match(mode, {
-    Campaign: () => `WAVE ${wave} / ${FINAL_WAVE}`,
+    Campaign: () => `WAVE ${wave}`,
     Endless: () => `WAVE ${wave}`,
   }),
 )
@@ -1036,7 +1036,7 @@ export const overlayShapes: {
           : [...waveBanner(model, wave, elapsedMs), ...hintShapes(model)],
       Paused: ({ round }) =>
         pausedShapes(model, round.wave, resumeYFor(screen)),
-      Victory: () => endOverlayShapes(model),
+      Escaped: () => endOverlayShapes(model),
       GameOver: () => endOverlayShapes(model),
     }),
 )

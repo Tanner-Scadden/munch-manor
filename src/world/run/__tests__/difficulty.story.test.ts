@@ -23,7 +23,12 @@ import {
 import { Message as LobbyMessage } from '../../../features/lobby/message'
 import { bestsFor } from '../../../screens/home/home'
 import { FIXED_STEP_MS } from '../../../shared/constants'
-import { newPlayerReady, readyModel } from '../../../test/model.fixture'
+import {
+  DISTANT_SPAWN,
+  escaping,
+  newPlayerReady,
+  readyModel,
+} from '../../../test/model.fixture'
 import {
   APPLICATION,
   closeDialog,
@@ -50,7 +55,7 @@ const preparationSpawns = (current: Model) =>
     Preparation: ({ spawns }) => spawns,
     Wave: ({ spawns }) => spawns,
     Paused: () => [],
-    Victory: () => [],
+    Escaped: () => [],
     GameOver: () => [],
   })
 
@@ -237,15 +242,23 @@ describe('difficulty in the lobby', () => {
   )
 })
 
+// NOTE: a wave with the front door open and the player on its sill: the
+// next frame is an escape.
 const winning = (base: Model): Model =>
-  modifyFields(base, {
-    phase: () =>
-      Phase.Wave({ wave: FINAL_WAVE, elapsedMs: 90_000, spawns: [] }),
-  })
+  escaping(
+    modifyFields(base, {
+      phase: () =>
+        Phase.Wave({
+          wave: FINAL_WAVE,
+          elapsedMs: 90_000,
+          spawns: [DISTANT_SPAWN],
+        }),
+    }),
+  )
 
 describe('unlocking Nightmare', () => {
   it.effect(
-    'a Hard campaign win unlocks it, the next run settles it, and the picker can pick it',
+    'a Hard escape unlocks it, the next run settles it, and the picker can pick it',
     () =>
       Effect.gen(function* () {
         yield* Story.story(
@@ -253,7 +266,7 @@ describe('unlocking Nightmare', () => {
           Story.given(winning(withDifficulty(readyModel, 'Hard'))),
           tick(FIXED_STEP_MS),
           Story.model(current => {
-            expect(Phase.guards.Victory(current.phase)).toBe(true)
+            expect(Phase.guards.Escaped(current.phase)).toBe(true)
             expect(current.difficulty.nightmare).toBe('JustUnlocked')
             expect(bestsFor(current).maybeFastestWinMs).toEqual(
               Option.some(FIXED_STEP_MS),
@@ -287,13 +300,13 @@ describe('unlocking Nightmare', () => {
       }),
   )
 
-  it.effect('a Normal win leaves it locked', () =>
+  it.effect('a Normal escape leaves it locked', () =>
     Story.story(
       APPLICATION,
       Story.given(winning(readyModel)),
       tick(FIXED_STEP_MS),
       Story.model(current => {
-        expect(Phase.guards.Victory(current.phase)).toBe(true)
+        expect(Phase.guards.Escaped(current.phase)).toBe(true)
         expect(current.difficulty.nightmare).toBe('Locked')
       }),
     ),

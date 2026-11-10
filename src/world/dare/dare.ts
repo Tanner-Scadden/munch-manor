@@ -20,6 +20,7 @@ import {
   DareKind,
   type DareThing,
   DareThingState,
+  Finale,
 } from './dareSchema'
 
 // The dare (LORE.md, "What the dare asks for changes every run"): your
@@ -284,7 +285,10 @@ const rolledThings = (
       ]
     },
   )
-  return { dare: { rngState: placing.state, list: asked }, things }
+  return {
+    dare: { rngState: placing.state, list: asked, finale: Finale.Hunting() },
+    things,
+  }
 }
 
 // NOTE: rolls the run's list and puts its things in the house, as a run
@@ -312,15 +316,36 @@ const isFound = (thing: DareThing): boolean =>
 const hasDare = (world: World): boolean =>
   Array.isReadonlyArrayNonEmpty(world.dare.list)
 
+// NOTE: the things the list asked for, the hat aside: the hat is in the
+// house only once Uncle Chunk drops it (src/world/dare/finale.ts).
 const askedThings = (world: World): ReadonlyArray<DareThing> =>
-  Array.filter(world.dareThings, ({ isAsked }) => isAsked)
+  Array.filter(
+    world.dareThings,
+    ({ isAsked, kind }) => isAsked && kind !== LAST_THING,
+  )
+
+const maybeHat = (world: World): Option.Option<DareThing> =>
+  Array.findFirst(world.dareThings, ({ kind }) => kind === LAST_THING)
 
 // NOTE: every thing on the list found, the hat aside: the finale's cue.
 export const isDareListDone = (world: World): boolean =>
   hasDare(world) && Array.every(askedThings(world), isFound)
 
-// NOTE: the list in order with whether each is found yet, the hat last and
-// never found here (the finale gives it). What the dare card draws.
+// NOTE: how many things on the list the crew has found, the hat aside:
+// each pays rank (src/world/heroes/rank.ts) and rides the run's summary.
+export const dareItemsFoundOf = (world: World): number =>
+  Array.filter(askedThings(world), isFound).length
+
+// NOTE: whether Uncle Chunk has dropped his hat yet, and whether a player
+// has taken it.
+export const isHatDropped = (world: World): boolean =>
+  Option.isSome(maybeHat(world))
+
+export const isHatFound = (world: World): boolean =>
+  Option.exists(maybeHat(world), isFound)
+
+// NOTE: the list in order with whether each is found yet, the hat last,
+// found once a player takes it from Uncle Chunk. What the dare card draws.
 export const dareCardOf = (
   world: World,
 ): ReadonlyArray<Readonly<{ kind: DareKind; isFound: boolean }>> =>
@@ -333,7 +358,7 @@ export const dareCardOf = (
             thing => thing.kind === kind && isFound(thing),
           ),
         })),
-        { kind: LAST_THING, isFound: false },
+        { kind: LAST_THING, isFound: isHatFound(world) },
       ]
     : []
 
@@ -441,6 +466,28 @@ const dropAt = (world: World, thing: DareThing, spot: Vector): World =>
       GameEvent.DareDropped({ ...spot, kind: thing.kind }),
     ],
   })
+
+// NOTE: Uncle Chunk's party hat falls where he does, on the list, for the
+// first standing player to walk onto it. Its id follows the house's things.
+export const dropHat: {
+  (at: Vector): (world: World) => World
+  (world: World, at: Vector): World
+} = Function.dual(2, (world: World, at: Vector): World => {
+  const hat: DareThing = {
+    id:
+      Array.reduce(world.dareThings, -1, (largest, { id }) =>
+        Math.max(largest, id),
+      ) + 1,
+    kind: LAST_THING,
+    isAsked: true,
+    state: DareThingState.Marked(),
+  }
+  return dropAt(
+    modifyWorldFields(world, { dareThings: Array.append(hat) }),
+    hat,
+    insideBounds(levelOf(world), at),
+  )
+})
 
 // NOTE: the marked thing finds a carrier once a wave from the second is on
 // and a zombie that can wear it walks in a room; he drops it where he falls,

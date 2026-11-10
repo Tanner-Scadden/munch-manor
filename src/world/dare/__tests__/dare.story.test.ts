@@ -18,6 +18,7 @@ import {
   quietWave,
   readyModel,
   withActors,
+  withDareThings,
   withPlayerAt,
   withSeat,
 } from '../../../test/model.fixture'
@@ -101,21 +102,6 @@ const hiddenAt = (
   isAsked,
   state: DareThingState.Hidden(point),
 })
-
-// NOTE: a run in its wave with these things in the house, the asked ones
-// its list.
-const withThings = (model: Model, things: ReadonlyArray<DareThing>): Model =>
-  modifyFields(model, {
-    dare: dare =>
-      modifyFields(dare, {
-        list: () =>
-          Array.map(
-            Array.filter(things, ({ isAsked }) => isAsked),
-            ({ kind }) => kind,
-          ),
-      }),
-    dareThings: () => things,
-  })
 
 const eventTags = (current: Model): ReadonlyArray<string> =>
   Array.map(current.frameEvents, ({ _tag }) => _tag)
@@ -245,7 +231,7 @@ describe('each way to get a thing', () => {
     'hidden in a spot: a walk onto it finds it, and the last one ends the list',
     () => {
       const far = withPlayerAt(
-        withThings(quietWave(3), [hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT)]),
+        withDareThings(quietWave(3), [hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT)]),
         START_ROOM_SPOT.x + 40,
         START_ROOM_SPOT.y,
       )
@@ -297,7 +283,7 @@ describe('each way to get a thing', () => {
           APPLICATION,
           Story.given(
             withActors(
-              withThings(quietWave(2), [
+              withDareThings(quietWave(2), [
                 {
                   id: 0,
                   kind: 'FamilyPortrait',
@@ -360,7 +346,7 @@ describe('each way to get a thing', () => {
       APPLICATION,
       Story.given(
         withActors(
-          withThings(quietWave(1), [
+          withDareThings(quietWave(1), [
             {
               id: 0,
               kind: 'FamilyPortrait',
@@ -384,7 +370,7 @@ describe('each way to get a thing', () => {
     () =>
       Effect.gen(function* () {
         const shut = withPlayerAt(
-          withThings(quietWave(3), [hiddenAt(0, 'ButlersBell', KITCHEN_SPOT)]),
+          withDareThings(quietWave(3), [hiddenAt(0, 'ButlersBell', KITCHEN_SPOT)]),
           KITCHEN_SPOT.x,
           KITCHEN_SPOT.y,
         )
@@ -430,7 +416,7 @@ describe('each way to get a thing', () => {
       ): Model =>
         withPlayerAt(
           modifyFields(
-            withThings(quietWave(3), [hiddenAt(0, 'MusicBox', box)]),
+            withDareThings(quietWave(3), [hiddenAt(0, 'MusicBox', box)]),
             {
               audio: () => AudioState.Ready(),
               musicSetting: () => 'Off',
@@ -484,7 +470,7 @@ describe('the crew', () => {
     'shares one list: a teammate finds it for everyone, and the card fills for each',
     () => {
       const crew = withWorld(
-        withThings(quietWave(3), [hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT)]),
+        withDareThings(quietWave(3), [hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT)]),
         world =>
           withSeat(seatCrew(world, 2), 1, seat =>
             modifyFocus(seat, {
@@ -524,7 +510,7 @@ describe('the crew', () => {
           APPLICATION,
           Story.given(
             withPlayerAt(
-              withThings(quietWave(3), [
+              withDareThings(quietWave(3), [
                 hiddenAt(0, 'SilverSpoon', { x: 40, y: 40 }),
                 hiddenAt(1, 'MusicBox', START_ROOM_SPOT, false),
               ]),
@@ -565,7 +551,7 @@ describe('a run between waves', () => {
       Story.given(
         withPlayerAt(
           modifyFields(
-            withThings(quietWave(3), [
+            withDareThings(quietWave(3), [
               hiddenAt(0, 'SilverSpoon', START_ROOM_SPOT),
             ]),
             {

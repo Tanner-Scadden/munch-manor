@@ -533,7 +533,7 @@ describe('placing a turret', () => {
       APPLICATION,
       Story.given(
         modifyFields(stocked(1, 1), {
-          phase: () => Phase.Victory(),
+          phase: () => Phase.Escaped({ wave: 10 }),
         }),
       ),
       press('KeyG'),

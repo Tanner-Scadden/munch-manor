@@ -9,6 +9,7 @@ import {
   DebutCard,
   type Model,
   Phase,
+  RunMode,
   type ZombieKind,
 } from '../../../app/model'
 import { initialModel } from '../../../app/pureApp'
@@ -27,6 +28,7 @@ import {
   press,
   release,
   releaseFire,
+  startWave,
   tap,
   tick,
   ticks,
@@ -62,7 +64,7 @@ const remainingMs = (current: Model): number =>
     Preparation: preparation => preparation.remainingMs,
     Wave: () => -1,
     Paused: () => -1,
-    Victory: () => -1,
+    Escaped: () => -1,
     GameOver: () => -1,
   })
 
@@ -72,7 +74,7 @@ const waveClockMs = (current: Model): number =>
     Preparation: () => -1,
     Wave: wave => wave.elapsedMs,
     Paused: () => -1,
-    Victory: () => -1,
+    Escaped: () => -1,
     GameOver: () => -1,
   })
 
@@ -98,8 +100,6 @@ const beforeWave2 = (kinds: ReadonlyArray<ZombieKind>): Model => {
       }),
   })
 }
-
-const startWave = Story.message(Message.ClickedStartWaveButton())
 
 describe('new zombie card', () => {
   it.effect(
@@ -239,12 +239,16 @@ describe('new zombie card', () => {
     'in endless, only kinds not yet introduced this session get a card',
     () =>
       Effect.gen(function* () {
+        // NOTE: an endless run's tenth wave cleared: the next tick is the
+        // break before wave 11.
         const victorious = (kinds: ReadonlyArray<ZombieKind>): Model =>
           introduced(
-            modifyFields(asVeteran(newPlayerCardSeen), {
-              phase: () => Phase.Victory(),
-              screenMs: () => 1e6,
-            }),
+            clearingWave(
+              10,
+              modifyFields(asVeteran(newPlayerCardSeen), {
+                mode: () => RunMode.Endless(),
+              }),
+            ),
             kinds,
           )
 
@@ -260,7 +264,7 @@ describe('new zombie card', () => {
               'Crawler',
             ]),
           ),
-          tap('KeyK'),
+          tick(TICK_MS),
           Story.message(Message.ClickedStartWaveButton()),
           Story.model(current => {
             expect(Phase.guards.Wave(current.phase)).toBe(true)
@@ -279,7 +283,7 @@ describe('new zombie card', () => {
               'Crawler',
             ]),
           ),
-          tap('KeyK'),
+          tick(TICK_MS),
           Story.model(current => {
             expect(cardKind(current)).toStrictEqual(Option.none())
           }),

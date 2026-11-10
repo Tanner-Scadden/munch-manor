@@ -36,7 +36,13 @@ import {
   showDialog,
   writeSave,
 } from '../../test/testing'
+import {
+  DISTANT_SPAWN,
+  escaping,
+  withDareThings,
+} from '../../test/model.fixture'
 import { asVeteran } from '../../test/veteran'
+import { DareThingState } from '../../world/dare/dareSchema'
 import { START_LEVEL } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
 import { type Modifiers, noModifiers } from '../../world/run/modifiers'
@@ -111,16 +117,25 @@ const lastHeart: Model = modifyFocus(
   { player: player => modifyFields(player, { hp: () => 1 }) },
 )
 
-const finalWave: Model = modifyFields(midRun, {
-  phase: () => Phase.Wave({ wave: FINAL_WAVE, elapsedMs: 90_000, spawns: [] }),
-})
+// NOTE: the tenth wave with the front door open and the player on its
+// sill: the next frame walks out.
+const finalWave: Model = escaping(
+  modifyFields(midRun, {
+    phase: () =>
+      Phase.Wave({
+        wave: FINAL_WAVE,
+        elapsedMs: 90_000,
+        spawns: [DISTANT_SPAWN],
+      }),
+  }),
+)
 
 const FRAME_MS = FIXED_STEP_MS
 
 const expectedSummary = (
   overrides: Partial<RunSummary> & Pick<RunSummary, 'outcome' | 'wave'>,
 ): RunSummary => ({
-  version: 4,
+  version: 5,
   visitId: VISIT_ID,
   build: 'test',
   mode: 'Campaign',
@@ -136,6 +151,7 @@ const expectedSummary = (
   frameTime: 'Under17Ms',
   party: SOLO_PARTY,
   modifiers: 0,
+  dareItemsFound: 0,
   ...overrides,
 })
 
@@ -176,7 +192,12 @@ describe('the run summary schema', () => {
     expect(
       decode(withField('outcome', { _tag: 'GameOver', killedBy: 'Ghost' })),
     ).toEqual(Option.none())
-    expect(decode(withField('version', 5))).toEqual(Option.none())
+    expect(decode(withField('version', 6))).toEqual(Option.none())
+    expect(decode(withField('version', 4))).toEqual(Option.none())
+    expect(decode(withField('outcome', { _tag: 'Victory' }))).toEqual(
+      Option.none(),
+    )
+    expect(decode(withField('dareItemsFound', -1))).toEqual(Option.none())
     expect(decode(withField('modifiers', 16))).toEqual(Option.none())
     expect(decode(withField('modifiers', -1))).toEqual(Option.none())
     expect(decode(withField('modifiers', 1.5))).toEqual(Option.none())
@@ -205,8 +226,21 @@ describe('the run summary schema', () => {
     expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.some(crew))
   })
 
+  test('a version 4 summary from a cached build still decodes, its win a Victory', () => {
+    const { dareItemsFound: _found, ...older } = summary
+    const json = jsonOf({ ...older, version: 4, outcome: { _tag: 'Victory' } })
+    expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
+      Option.some({ ...older, version: 4, outcome: { _tag: 'Victory' } }),
+    )
+    expect(Schema.decodeOption(RunSummaryJson)(json)).toEqual(Option.none())
+  })
+
   test('a version 3 summary from a cached build still decodes, with no modifiers', () => {
-    const { modifiers: _modifiers, ...older } = summary
+    const {
+      modifiers: _modifiers,
+      dareItemsFound: _found,
+      ...older
+    } = summary
     const json = jsonOf({ ...older, version: 3 })
     expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
       Option.some({
@@ -218,7 +252,11 @@ describe('the run summary schema', () => {
   })
 
   test('a version 2 crew summary from a cached build still decodes, with no key', () => {
-    const { modifiers: _modifiers, ...older } = summary
+    const {
+      modifiers: _modifiers,
+      dareItemsFound: _found,
+      ...older
+    } = summary
     const json = jsonOf({ ...older, version: 2, party: CREW_V2 })
     expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
       Option.some({
@@ -231,7 +269,12 @@ describe('the run summary schema', () => {
   })
 
   test('a version 1 summary from a cached build still decodes, with no party', () => {
-    const { party: _party, modifiers: _modifiers, ...older } = summary
+    const {
+      party: _party,
+      modifiers: _modifiers,
+      dareItemsFound: _found,
+      ...older
+    } = summary
     const json = jsonOf({ ...older, version: 1 })
     expect(Schema.decodeOption(PostedRunJson)(json)).toEqual(
       Option.some({
@@ -335,19 +378,58 @@ describe('sending at the end of a run', () => {
     ),
   )
 
-  it.effect('Victory sends the won run at the final wave', () =>
+  it.effect('an escape sends the won run at its wave', () =>
     Story.story(
       APPLICATION,
       Story.given(finalWave),
       Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
       Story.model(({ phase }) => {
-        expect(phase).toEqual(Phase.Victory())
+        expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
       }),
       Story.Command.expectHas(
         SendRunSummary({
           summary: expectedSummary({
-            outcome: { _tag: 'Victory' },
+            outcome: { _tag: 'Escaped' },
             wave: FINAL_WAVE,
+          }),
+        }),
+      ),
+      Story.Command.resolve(SendRunSummary, Message.CompletedSendRunSummary()),
+    ),
+  )
+
+  it.effect('an escape counts the things on the list it found', () =>
+    Story.story(
+      APPLICATION,
+      Story.given(
+        withDareThings(finalWave, [
+          {
+            id: 0,
+            kind: 'SilverSpoon',
+            isAsked: true,
+            state: DareThingState.Found({ slot: 0 }),
+          },
+          {
+            id: 1,
+            kind: 'MusicBox',
+            isAsked: true,
+            state: DareThingState.Found({ slot: 0 }),
+          },
+          {
+            id: 2,
+            kind: 'ButlersBell',
+            isAsked: false,
+            state: DareThingState.Held({ slot: 0 }),
+          },
+        ]),
+      ),
+      Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
+      Story.Command.expectHas(
+        SendRunSummary({
+          summary: expectedSummary({
+            outcome: { _tag: 'Escaped' },
+            wave: FINAL_WAVE,
+            dareItemsFound: 2,
           }),
         }),
       ),
@@ -421,7 +503,7 @@ describe('sending at the end of a run', () => {
           ),
           Story.message(Message.TickedFrame({ deltaTime: FRAME_MS })),
           Story.model(({ phase }) => {
-            expect(phase).toEqual(Phase.Victory())
+            expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
           }),
           Story.Command.expectNone(),
         )
@@ -486,7 +568,7 @@ describe('the sharing setting', () => {
 
 describe('the beacon', () => {
   const summary = expectedSummary({
-    outcome: { _tag: 'Victory' },
+    outcome: { _tag: 'Escaped' },
     wave: FINAL_WAVE,
   })
 

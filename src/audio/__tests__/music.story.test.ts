@@ -27,6 +27,7 @@ import {
   resolvePlayed,
   tick,
 } from '../../test/testing'
+import { DISTANT_SPAWN, escaping } from '../../test/model.fixture'
 import { asVeteran } from '../../test/veteran'
 import { START_LEVEL } from '../../world/level/arena'
 import { modifyFocus } from '../../world/party/party'
@@ -151,10 +152,12 @@ describe('music follows the phase', () => {
       ),
   )
 
-  it.effect('the finale wave stampedes and Victory plays its stinger', () =>
+  it.effect('the tenth wave stampedes and an escape plays its stinger', () =>
     Story.story(
       APPLICATION,
-      Story.given(preparing(FINAL_WAVE, [], AudioState.Ready())),
+      Story.given(
+        escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready())),
+      ),
       press('Enter'),
       Story.Command.expectExact(
         CueMusic({ mood: 'Stampede', level: 'Full', stinger: 'None' }),
@@ -162,13 +165,13 @@ describe('music follows the phase', () => {
       resolveCue('Stampede'),
       tick(FRAME_MS),
       Story.model(({ phase }) => {
-        expect(phase).toEqual(Phase.Victory())
+        expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
       }),
       Story.Command.expectHas(
         CueMusic({ mood: 'Silence', level: 'Full', stinger: 'Victory' }),
       ),
       resolveCue('Silence'),
-      resolvePlayed('Payday'),
+      resolvePlayed('RankUp'),
     ),
   )
 
@@ -385,14 +388,15 @@ describe('music only plays when it can be heard', () => {
     Story.story(
       APPLICATION,
       Story.given(
-        modifyFields(preparing(FINAL_WAVE, [], AudioState.Ready()), {
-          soundSetting: () => 'Muted',
-        }),
+        modifyFields(
+          escaping(preparing(FINAL_WAVE, [DISTANT_SPAWN], AudioState.Ready())),
+          { soundSetting: () => 'Muted' },
+        ),
       ),
       press('Enter'),
       tick(FRAME_MS),
       Story.model(({ phase }) => {
-        expect(phase).toEqual(Phase.Victory())
+        expect(phase).toEqual(Phase.Escaped({ wave: 10 }))
       }),
       Story.Command.expectNone(),
     ),
@@ -402,7 +406,7 @@ describe('music only plays when it can be heard', () => {
 describe('the end stingers stop when the music goes quiet', () => {
   const victoryScreen = (audio: AudioState): Model =>
     modifyFields(titleScreen(audio), {
-      phase: () => Phase.Victory(),
+      phase: () => Phase.Escaped({ wave: 10 }),
       screenMs: () => 0,
     })
 

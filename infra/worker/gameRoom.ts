@@ -48,8 +48,6 @@ import {
   roomSettingsOf,
   roomWorldFor,
 } from '../../src/world/net/roomWorld.ts'
-import { worldFromJson, worldToJson } from '../../src/world/net/worldWire.ts'
-import type { World as GameState } from '../../src/world/schema/world.ts'
 import {
   INTERNAL_PATHS,
   InternalCreate,
@@ -89,9 +87,9 @@ import {
 // whenever its lobby changes. See MULTIPLAYER.md, Phase 2 and 3.
 //
 // The world is the game's own (src/world/net/roomWorld.ts): `stepWorld` over the
-// lobby's seats, with the mode and difficulty the host picked. A won
-// campaign's last World is kept in storage, so the next run can keep going
-// into endless (Lobby.ts, KeepGoing) even after the object hibernates.
+// lobby's seats, with the mode and difficulty the host picked. A won run is
+// an escape and is never kept: a kept World a room stored before the escape
+// is forgotten as the next run starts.
 
 export type GameRoomBindings = SyncBindings
 
@@ -359,10 +357,6 @@ export class GameRoom {
       onNone: () => [],
       onSome: game => Room.rttsOf(game.room),
     })
-    const maybeWon = Option.filter(
-      Option.map(this.game, game => game.room.world.world),
-      () => ended.reason === 'Won',
-    )
     this.game = Option.none()
     const stopLoop = Option.match(this.loop, {
       onNone: () => Effect.void,
@@ -375,10 +369,6 @@ export class GameRoom {
         `Room game ${round} ended (${ended.reason}) at tick ${ended.tick}; round trips`,
         rtts,
       )
-      yield* Option.match(maybeWon, {
-        onNone: () => Effect.void,
-        onSome: world => this.keep(world),
-      })
       yield* this.lock.withPermit(
         host.recordResult(
           {
@@ -449,10 +439,6 @@ export class GameRoom {
       const nowMs = yield* Clock.currentTimeMillis
       const seed = crypto.getRandomValues(new Uint32Array(1))[0] ?? nowMs
       const isNightmareOpen = yield* this.nightmareOf(lobby.host)
-      const maybeKept = Option.filter(
-        lobby.mode === 'KeepGoing' ? yield* this.kept : Option.none(),
-        kept => kept.difficulty.chosen !== 'Nightmare' || isNightmareOpen,
-      )
       yield* this.forgetKept
       const world = roomWorldFor(
         roomSettingsOf(
@@ -463,7 +449,6 @@ export class GameRoom {
           lobby.members,
           lobby.modifiers,
         ),
-        maybeKept,
       )
       const started = Room.startRoom(
         world,
@@ -680,25 +665,6 @@ export class GameRoom {
   }
 
   // KEPT RUN
-
-  private keep(world: GameState): Effect.Effect<void> {
-    return Effect.flatMap(worldToJson(world), text =>
-      tryCall('keep the won run', () => this.ctx.storage.put(KEPT_KEY, text)),
-    ).pipe(Effect.ignore)
-  }
-
-  private get kept(): Effect.Effect<Option.Option<GameState>> {
-    return tryCall('read the kept run', () =>
-      this.ctx.storage.get<string>(KEPT_KEY),
-    ).pipe(
-      Effect.flatMap(text =>
-        typeof text === 'string'
-          ? Effect.asSome(worldFromJson(text))
-          : Effect.succeedNone,
-      ),
-      Effect.catch(() => Effect.succeedNone),
-    )
-  }
 
   private get forgetKept(): Effect.Effect<void> {
     return tryCall('forget the kept run', () =>

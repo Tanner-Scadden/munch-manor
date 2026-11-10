@@ -30,8 +30,8 @@ const keyboardHelp = Scene.role('region', {
 })
 const touchHelp = Scene.role('region', { name: 'How to play with touch' })
 const PAUSED_STATUS =
-  'Paused during wave 3 of 10. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.'
-const FIGHTING_STATUS = 'Fighting wave 3 of 10.'
+  'Paused during wave 3. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.'
+const FIGHTING_STATUS = 'Fighting wave 3.'
 
 const card = (action: string, input: string) =>
   Scene.role('listitem', { name: `${action}: ${input}` })

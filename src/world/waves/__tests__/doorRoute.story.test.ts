@@ -88,7 +88,7 @@ const previewDoors = (current: Model): ReadonlyArray<DoorId> =>
       Array.map(doorCounts(spawns, current.traps), ({ door }) => door),
     Wave: () => [],
     Paused: () => [],
-    Victory: () => [],
+    Escaped: () => [],
     GameOver: () => [],
   })
 

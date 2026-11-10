@@ -23,8 +23,8 @@ import {
   Phase,
   type Vector,
   ZombieState,
+  roundWaveOf,
 } from '../../world/schema/worldSchema'
-import { roundWaveOf } from '../../world/waves/waves'
 
 // Rattles, the first daredevil (1924), who never got out, hollers about the
 // dare in his bubble (LORE.md, "Rattles"). A client cosmetic read off the

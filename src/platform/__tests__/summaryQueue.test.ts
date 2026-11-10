@@ -28,7 +28,7 @@ const summary: RunSummary = {
   mode: 'Campaign',
   difficulty: 'Hard',
   wave: 8,
-  outcome: { _tag: 'Victory' },
+  outcome: { _tag: 'Escaped' },
   runMs: 200_000,
   kills: {
     Shambler: 30,
@@ -48,6 +48,7 @@ const summary: RunSummary = {
   frameTime: 'Under17Ms',
   party: SOLO_PARTY,
   modifiers: 0,
+  dareItemsFound: 3,
 }
 
 const bodyOf = (wave: number): string =>
@@ -221,10 +222,15 @@ describe('run summaries sent or queued', () => {
     () =>
       Effect.gen(function* () {
         const sendBeacon = stubNavigator(true)
-        const { party: _party, ...older } = summary
+        const {
+          party: _party,
+          modifiers: _modifiers,
+          dareItemsFound: _found,
+          ...older
+        } = summary
         const olderBody = yield* Schema.encodeEffect(
           Schema.fromJsonString(RunSummaryV1),
-        )({ ...older, version: 1 })
+        )({ ...older, version: 1, outcome: { _tag: 'Victory' } })
         const fake = yield* fakeStore([olderBody], 'On')
         const sending = yield* Effect.forkChild(
           startSummaryQueue(ORIGIN).pipe(
@@ -253,6 +259,7 @@ describe('run summaries sent or queued', () => {
         )({
           ...summary,
           version: 2,
+          outcome: { _tag: 'Victory' },
           party: {
             _tag: 'Crew',
             size: 2,

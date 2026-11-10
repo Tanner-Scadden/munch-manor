@@ -141,6 +141,7 @@ export type RunRow = Readonly<{
   seat_revives: number | null
   crew_key: string | null
   modifiers: number
+  dare_items_found: number
 }>
 
 type PartyColumns = Pick<
@@ -211,6 +212,8 @@ export const rowOf: {
       kills,
       ...summaryPartyColumns(summary),
       modifiers: 'modifiers' in summary ? summary.modifiers : 0,
+      dare_items_found:
+        'dareItemsFound' in summary ? summary.dareItemsFound : 0,
     })),
 )
 

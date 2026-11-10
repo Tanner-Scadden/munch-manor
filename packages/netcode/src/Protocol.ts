@@ -87,7 +87,11 @@ import {
 // generator and the list) and the house's things (`dareThings`, keyed by
 // id, each hidden, marked, carried by a zombie, dropped, held, found, or
 // delivered), and five new events say what happened to them: DareFound,
-// DareTaken, DareDropped, DareListDone, and DareDelivered.
+// DareTaken, DareDropped, DareListDone, and DareDelivered. The dare also
+// holds its finale (`finale`: hunting, Uncle Chunk summoned, the front door
+// unlocking, or open with who has stepped out), with three events,
+// FrontDoorUnlocking, FrontDoorOpened, and SteppedOut, and a won run ends
+// in an Escaped phase, with its wave, in place of Victory.
 export const PROTOCOL_VERSION = 20
 export const MIN_PROTOCOL_VERSION = 20
 

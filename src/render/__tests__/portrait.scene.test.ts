@@ -218,7 +218,7 @@ describe('turning the phone', () => {
         measure(PHONE_LANDSCAPE),
         Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
         Scene.expect(root).toHaveStyle('--screen-w', '320'),
-        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3 of 10.'),
+        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3.'),
       )
       const wide = yield* remeasured(fighting, [PHONE_LANDSCAPE])
       yield* Scene.scene(
@@ -228,7 +228,7 @@ describe('turning the phone', () => {
         Scene.expect(root).toHaveAttr('data-layout', 'Portrait'),
         Scene.expect(root).toHaveStyle('--screen-w', '180'),
         Scene.expect(root).toHaveStyle('--screen-h', '390'),
-        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3 of 10.'),
+        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3.'),
         Scene.expect(
           Scene.role('dialog', { name: 'Turn your phone sideways' }),
         ).toBeAbsent(),
@@ -247,7 +247,7 @@ describe('turning the phone', () => {
         Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
         Scene.expect(root).toHaveStyle('--frame-top', '0'),
         Scene.expect(Scene.selector('.thumb-area')).toBeAbsent(),
-        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3 of 10.'),
+        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3.'),
       )
     }),
   )
@@ -262,7 +262,7 @@ describe('turning the phone', () => {
         ),
         measure(PHONE_PORTRAIT),
         Scene.expect(root).toHaveAttr('data-layout', 'Landscape'),
-        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3 of 10.'),
+        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 3.'),
       ),
   )
 })

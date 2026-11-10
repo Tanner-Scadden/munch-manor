@@ -25,12 +25,16 @@ import {
   playersOf,
 } from '../../world/party/party'
 import { withWorld } from '../../world/schema/world'
+import { FINAL_WAVE } from '../../world/waves/wavePlans'
 
-// Phase 1's exit check (MULTIPLAYER.md): two players at one keyboard play a
-// whole campaign to Victory. Player 1 walks a pattern on WASD and aims the
-// mouse at the nearest zombie; player 2 walks a pattern on IJKL holding U.
-// Both press READY through every break and walk off from the stall. Their
-// hearts refill each frame, so the run always reaches the boss.
+// Phase 1's exit check (MULTIPLAYER.md): two players at one keyboard play
+// the ten tuned waves of an escape run together. Player 1 walks a pattern
+// on WASD and aims the mouse at the nearest zombie; player 2 walks a
+// pattern on IJKL holding U. Both press READY through every break and walk
+// off from the stall. Their hearts refill each frame, so the run always
+// gets through. A run has no last wave now (the escape ends at the front
+// door, which fixed patterns never hunt for), so the check stops at the
+// break after the tenth.
 // NOTE: the bots walk fixed patterns, so on some seeds they fall into a
 // loop with a zombie neither ever hits: of seeds 1 to 7, 1 and 4 did before
 // zombies came in promptly after their warning, and 2, 3, 5, and 7 did
@@ -218,7 +222,9 @@ const waveStretch = (start: Model, first: number, length: number) =>
 type Played = Readonly<{ end: Model; frames: number }>
 
 const playFrom = (played: Played): Effect.Effect<Played> =>
-  played.frames >= MAX_FRAMES || !isPlaying(played.end)
+  played.frames >= MAX_FRAMES ||
+  !isPlaying(played.end) ||
+  played.end.stats.wavesCleared >= FINAL_WAVE
     ? Effect.succeed(played)
     : Effect.flatMap(
         Phase.guards.Preparation(played.end.phase)
@@ -249,7 +255,7 @@ const playFrom = (played: Played): Effect.Effect<Played> =>
 
 describe('two keyboards on one desktop', () => {
   it.effect(
-    'play a whole campaign to Victory',
+    'play the ten tuned waves together',
     () =>
       Effect.gen(function* () {
         const ready = yield* playedThrough(
@@ -270,7 +276,8 @@ describe('two keyboards on one desktop', () => {
         )
         expect(playersOf(started)).toHaveLength(2)
         const { end, frames } = yield* playFrom({ end: started, frames: 0 })
-        expect(end.phase._tag).toBe('Victory')
+        expect(end.phase._tag).toBe('Preparation')
+        expect(end.stats.wavesCleared).toBe(FINAL_WAVE)
         const [lead, mate] = playersOf(end)
         expect(lead?.wallet.earned).toBeGreaterThan(0)
         expect(mate?.wallet.earned).toBeGreaterThan(0)

@@ -749,7 +749,7 @@ const dropLoot = (before: World, model: World, worldMs: number): World =>
             before.pacing.beat,
           ),
     Paused: () => model,
-    Victory: () => model,
+    Escaped: () => model,
     GameOver: () => model,
   })
 

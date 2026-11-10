@@ -9,6 +9,7 @@ import {
 } from '../../shared/constants'
 import { dropChandelier, rehangAtBreak } from '../dining/chandelier'
 import { advanceDare } from '../dare/dare'
+import { advanceFinale } from '../dare/finale'
 import {
   advanceLobs,
   fireFridgeWeapon,
@@ -460,6 +461,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     rounded => rehangAtBreak(model, rounded),
     advancePantry,
     advanceDare,
+    dared => advanceFinale(dared, deltaMs),
     rollStove,
     rounded => shedParts(model, rounded),
     shed => resolveShatters(model, shed),

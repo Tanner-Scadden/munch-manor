@@ -39,16 +39,13 @@ import { initialModel } from '../pureApp'
 const PLAY_AGAIN =
   'Press Enter or choose Retry to play again, or E for an endless run. Press X or choose Share to post your run on X.'
 
-const KEEP_GOING =
-  'Press K or choose Keep going to carry on into endless from wave 11 with your money, guns, and traps.'
-
 const BACK_HOME = 'Press H or choose Menu to go back to the main menu.'
 
 const FEEDBACK = 'Tell whoever sent you this what you think!'
 const READY_STATUS = `${GAME_TITLE}, an early alpha. Main menu. Press Enter or choose Play. Press V or choose Manor for your character, the Munchopedia, what is new, and how to play. Press O or choose the gear for settings. Arrow keys move between the buttons.`
 
 const PAUSED_STATUS =
-  'Paused during wave 3 of 10. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.'
+  'Paused during wave 3. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.'
 
 const pausedRound: Model = pause(
   modifyFields(asVeteran(initialModel), {
@@ -57,7 +54,7 @@ const pausedRound: Model = pause(
 )
 
 const PREPARING_WAVE_ONE =
-  'Get ready for wave 1 of 10. Press Enter, or use the Start wave button, to start it now.'
+  'Get ready for wave 1. Press Enter, or use the Start wave button, to start it now.'
 
 describe('Ready screen', () => {
   it.effect(
@@ -141,7 +138,7 @@ describe('Start wave button', () => {
         Scene.expect(Scene.role('timer')).toHaveText('6 seconds until wave 1.'),
         Scene.expect(startWaveButton).toHaveAttr('aria-keyshortcuts', 'Enter'),
         Scene.click(startWaveButton),
-        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 1 of 10.'),
+        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 1.'),
         Scene.expect(startWaveButton).toBeAbsent(),
         Scene.expect(Scene.role('timer')).toBeAbsent(),
       )
@@ -718,7 +715,7 @@ describe('Run stats', () => {
       { wallet: () => ({ balance: 40, earned: 615, shown: 40 }) },
     )
   const STATS =
-    'Waves cleared: 3 of 10. Zombies splatted: 69 (41 Groaner, 17 Hotfoot, 9 Kaboomer, 2 Big Lug, 0 Big Leaguer, 0 Ankle Biter). Best streak 0. Run time 6:11. Accuracy 43 percent. Money earned $615.'
+    'Waves cleared: 3. Zombies splatted: 69 (41 Groaner, 17 Hotfoot, 9 Kaboomer, 2 Big Lug, 0 Big Leaguer, 0 Ankle Biter). Best streak 0. Run time 6:11. Accuracy 43 percent. Money earned $615.'
 
   it.effect('Game Over reads out the verdict and the whole run', () =>
     Scene.scene(
@@ -731,13 +728,13 @@ describe('Run stats', () => {
     ),
   )
 
-  it.effect('Victory reads out the verdict and the whole run', () =>
+  it.effect('an escape reads out the verdict and the whole run', () =>
     Scene.scene(
       APPLICATION,
-      Scene.given(finished(Phase.Victory())),
+      Scene.given(finished(Phase.Escaped({ wave: 10 }))),
       measureSurface,
       Scene.expect(Scene.role('status')).toHaveText(
-        `Victory. The house is yours. For now. Difficulty: Normal. ${STATS} ${KEEP_GOING} ${PLAY_AGAIN} ${BACK_HOME} ${FEEDBACK}`,
+        `You escaped the manor on wave 10. Out the front door, hat and all. Difficulty: Normal. ${STATS} ${PLAY_AGAIN} ${BACK_HOME} ${FEEDBACK}`,
       ),
     ),
   )
@@ -773,10 +770,10 @@ describe('Run stats', () => {
         )
         yield* Scene.scene(
           APPLICATION,
-          Scene.given(afterRuns(FEEDBACK_RUNS + 1, Phase.Victory())),
+          Scene.given(afterRuns(FEEDBACK_RUNS + 1, Phase.Escaped({ wave: 10 }))),
           measureSurface,
           Scene.expect(Scene.role('status')).toHaveText(
-            `Victory. The house is yours. For now. Difficulty: Normal. ${STATS} ${KEEP_GOING} ${PLAY_AGAIN} ${BACK_HOME}`,
+            `You escaped the manor on wave 10. Out the front door, hat and all. Difficulty: Normal. ${STATS} ${PLAY_AGAIN} ${BACK_HOME}`,
           ),
         )
       }),
@@ -859,7 +856,7 @@ describe('New zombie card', () => {
         Scene.expect(tapToContinue).toHaveAttr('aria-keyshortcuts', 'Enter'),
         Scene.click(tapToContinue),
         Scene.expect(card).toBeAbsent(),
-        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 1 of 10.'),
+        Scene.expect(Scene.role('status')).toHaveText('Fighting wave 1.'),
       )
     },
   )

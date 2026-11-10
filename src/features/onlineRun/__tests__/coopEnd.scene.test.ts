@@ -143,7 +143,7 @@ describe("an online room's end card", () => {
       APPLICATION,
       Scene.given(
         onRoomCard(
-          Phase.Victory(),
+          Phase.Escaped({ wave: 10 }),
           RESTART_GRACE_MS,
           [memberOf(0, 'Ana'), memberOf(OWN_SLOT, 'Bo')],
           'KeepGoing',

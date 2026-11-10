@@ -5,6 +5,7 @@ import {
   PLAYER_SPEED,
   SHOP_NEAR_PX,
 } from '../../shared/constants'
+import { frontDoorSillOf, isFrontDoorOpen } from '../../world/dare/finale'
 import { PAN_RULES } from '../../world/fridge/fridgeWeapons'
 import { KNIFE_RULES } from '../../world/gear/knife'
 import { PICKUP_LIFETIME_MS } from '../../world/gear/powerups'
@@ -307,7 +308,7 @@ const clockMsOf = (world: World): number =>
       }),
     Wave: wave => wave.elapsedMs,
     Paused: () => 0,
-    Victory: () => 0,
+    Escaped: () => 0,
     GameOver: () => 0,
   })
 
@@ -619,6 +620,20 @@ const downIntent = (world: World, me: SeatState): Intent =>
     },
   )
 
+// NOTE: once the front door is open, a bot heads out through it, still
+// aiming and shooting as it would (src/world/dare/finale.ts).
+const outThroughFrontDoor = (
+  world: World,
+  me: SeatState,
+  intent: Intent,
+): Intent =>
+  isFrontDoorOpen(world)
+    ? {
+        ...intent,
+        move: walkToward(world, me.player, frontDoorSillOf(levelOf(world))),
+      }
+    : intent
+
 const intentFor = (world: World, slot: PlayerSlot): Intent =>
   Option.match(
     Array.findFirst(playersOf(world), player => player.seat.slot === slot),
@@ -630,10 +645,11 @@ const intentFor = (world: World, slot: PlayerSlot): Intent =>
         }
         return Phase.match(world.phase, {
           Ready: () => idleIntent,
-          Preparation: () => breakIntent(world, me),
-          Wave: () => fightIntent(world, me),
+          Preparation: () =>
+            outThroughFrontDoor(world, me, breakIntent(world, me)),
+          Wave: () => outThroughFrontDoor(world, me, fightIntent(world, me)),
           Paused: () => idleIntent,
-          Victory: () => idleIntent,
+          Escaped: () => idleIntent,
           GameOver: () => idleIntent,
         })
       },
@@ -704,7 +720,7 @@ const pressFor = (world: World, slot: PlayerSlot): Option.Option<SeatAction> =>
         Preparation: () => breakPress(world, me),
         Wave: () => fightPress(world, me),
         Paused: () => Option.none(),
-        Victory: () => Option.none(),
+        Escaped: () => Option.none(),
         GameOver: () => Option.none(),
       })
     },

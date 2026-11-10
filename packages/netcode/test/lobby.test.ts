@@ -613,72 +613,40 @@ describe('the room scope', () => {
         'recorded-result-won',
       )
       const won = yield* lobbyOf(unlocked)
-      expect([won.mode, won.difficulty]).toEqual(['KeepGoing', 'Nightmare'])
+      expect([won.mode, won.difficulty]).toEqual(['Campaign', 'Nightmare'])
       yield* push(unlocked, BO, ChangedReady, { by: BO, ready: true })
       yield* push(unlocked, ANA, LeftRoom, { by: ANA })
       const handed = yield* lobbyOf(unlocked)
       expect(handed.host).toBe(BO)
       expect([handed.mode, handed.difficulty, handed.canKeepGoing]).toEqual([
-        'Endless',
+        'Campaign',
         'Hard',
         false,
       ])
-      expect(Array.map(handed.members, member => member.ready)).toEqual([false])
       const value_25 = yield* nightmare(unlocked, BO)
       expect(value_25).toMatch(/Nightmare is locked/)
     }),
   )
 
-  it.effect('a won campaign offers to keep going until the crew changes', () =>
+  it.effect('a won campaign is an escape, with no run kept to go on', () =>
     Effect.gen(function* () {
       const server = yield* created
       yield* seat(server, BO)
-      const record = (round: number, reason: 'Won' | 'GameOver') =>
-        server.runServer(
-          RecordedRoomResult,
-          { result: { round, reason, ticks: 900, scores: [] } },
-          `recorded-result-${round}`,
-        )
-      const playRound = Effect.gen(function* () {
-        yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
-        yield* push(server, BO, ChangedReady, { by: BO, ready: true })
-      })
-      yield* playRound
-      yield* record(1, 'Won')
+      yield* push(server, ANA, ChangedReady, { by: ANA, ready: true })
+      yield* push(server, BO, ChangedReady, { by: BO, ready: true })
+      yield* server.runServer(
+        RecordedRoomResult,
+        { result: { round: 1, reason: 'Won', ticks: 900, scores: [] } },
+        'recorded-result-1',
+      )
       const won = yield* lobbyOf(server)
-      expect([won.mode, won.canKeepGoing]).toEqual(['KeepGoing', true])
-      yield* push(server, ANA, ChangedPicks, {
-        by: ANA,
-        mode: 'Campaign',
-        difficulty: 'Normal',
-      })
+      expect([won.mode, won.canKeepGoing]).toEqual(['Campaign', false])
       const value_26 = yield* push(server, ANA, ChangedPicks, {
         by: ANA,
         mode: 'KeepGoing',
         difficulty: 'Normal',
       })
-      expect(value_26).toBe('Acked')
-      yield* playRound
-      expect((yield* lobbyOf(server)).mode).toBe('KeepGoing')
-      yield* record(2, 'GameOver')
-      const lost = yield* lobbyOf(server)
-      expect([lost.mode, lost.canKeepGoing]).toEqual(['Endless', false])
-      yield* push(server, ANA, ChangedPicks, {
-        by: ANA,
-        mode: 'Campaign',
-        difficulty: 'Normal',
-      })
-      yield* playRound
-      yield* record(3, 'Won')
-      yield* push(server, BO, ChangedReady, { by: BO, ready: true })
-      yield* seat(server, CY)
-      const joined = yield* lobbyOf(server)
-      expect([joined.mode, joined.canKeepGoing]).toEqual(['Endless', false])
-      expect(Array.map(joined.members, member => member.ready)).toEqual([
-        false,
-        false,
-        false,
-      ])
+      expect(value_26).toMatch(/No run to keep going/)
     }),
   )
 

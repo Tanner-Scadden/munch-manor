@@ -77,9 +77,9 @@ const expectNoPointerdownPath = <A, E>(exit: Exit.Exit<A, E>): void => {
   ).toMatch(NO_POINTERDOWN_PATH)
 }
 
-const PREPARING = 'Get ready for wave 1 of 10.'
+const PREPARING = 'Get ready for wave 1.'
 const PAUSED =
-  'Paused during wave 3 of 10. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.'
+  'Paused during wave 3. Tap, click, or press Escape to resume. Press H or choose Menu to leave the run.'
 
 const pausedRound: Model = pause(
   modifyFields(home, {
@@ -796,7 +796,7 @@ describe('Menu from a run', () => {
     'Game Over and Victory offer Menu after the grace, and it goes home',
     () =>
       Effect.forEach(
-        [Phase.GameOver({ wave: 4 }), Phase.Victory()],
+        [Phase.GameOver({ wave: 4 }), Phase.Escaped({ wave: 10 })],
         phase =>
           Effect.gen(function* () {
             yield* Scene.scene(

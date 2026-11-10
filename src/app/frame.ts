@@ -344,7 +344,7 @@ export const endRoundOnClient: {
   ): Model => {
     if (
       !isRoundActive(before.phase) ||
-      !Phase.isAnyOf(['Victory', 'GameOver'])(after.phase)
+      !Phase.isAnyOf(['Escaped', 'GameOver'])(after.phase)
     ) {
       return after
     }
