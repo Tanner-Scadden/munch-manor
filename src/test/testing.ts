@@ -88,6 +88,7 @@ import {
 } from '../world/gear/weapons'
 import { START_LEVEL, levelOf } from '../world/level/arena'
 import { KITCHEN_EXIT } from '../world/level/exits'
+import type { Clearance } from '../world/level/pathing'
 import { World } from '../world/schema/world'
 import {
   Arsenal,
@@ -874,6 +875,9 @@ export const BELOW_KITCHEN_DOOR = { x: 70, y: 26 }
 // NOTE: a spot the player can always stand on: the start spot at the
 // dining room's table, where every run starts.
 export const START_SPOT: Vector = START_LEVEL.start
+
+// NOTE: both widths a zombie paths at (src/world/level/pathing.ts).
+export const CLEARANCES: ReadonlyArray<Clearance> = ['Narrow', 'Wide']
 
 // NOTE: the cellar's middle lane by the barrels, once the library and the
 // cellar are open.

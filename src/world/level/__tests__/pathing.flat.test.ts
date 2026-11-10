@@ -1,131 +1,33 @@
-import { Array, Option, Result } from 'effect'
+import { Array, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 
 import { EVERY_LEVEL } from '../../../test/model.fixture'
-import type { Toll } from '../../schema/worldSchema'
+import { CLEARANCES } from '../../../test/testing'
+import { type Level, tileCenter, tileOfIndex } from '../arena'
+import { flowFieldsToward } from '../pathing'
 import {
-  type Level,
-  isOpenBlock,
-  isWalkableTile,
-  tileCenter,
-  tileIndex,
-  tileOfIndex,
-} from '../arena'
-import {
-  type Clearance,
-  UNREACHED_DISTANCE,
-  distanceAt,
-  flowFieldToward,
-  flowFieldsToward,
-  isFieldTile,
-} from '../pathing'
+  TOLLS,
+  TOLL_SETS,
+  mismatchedOrigins,
+  oracleSpread,
+  readAll,
+} from './pathing.flat.fixture'
 
-// NOTE: the search the flat one replaced, kept as the oracle: neighbors in
-// arrays of arrays, buckets in a Map, one ring settled after another.
-const STRAIGHT = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-] as const
-
-const isOpen = (
-  level: Level,
-  clearance: Clearance,
-  column: number,
-  row: number,
-  [stepColumn, stepRow]: readonly [number, number],
-): boolean => {
-  if (clearance === 'Narrow') {
-    return (
-      isWalkableTile(level, column + stepColumn, row + stepRow) &&
-      (stepColumn === 0 ||
-        stepRow === 0 ||
-        (isWalkableTile(level, column + stepColumn, row) &&
-          isWalkableTile(level, column, row + stepRow)))
-    )
-  }
-  const left = Math.min(column, column + stepColumn)
-  const top = Math.min(row, row + stepRow)
-  return stepRow === 0
-    ? isOpenBlock(level, left, row - 1) || isOpenBlock(level, left, row)
-    : isOpenBlock(level, column - 1, top) || isOpenBlock(level, column, top)
-}
-
-const neighborsOf = (
-  level: Level,
-  index: number,
-  clearance: Clearance,
-): ReadonlyArray<number> => {
-  const { column, row } = tileOfIndex(level, index)
-  return Array.filterMap(STRAIGHT, step =>
-    isFieldTile(level, column, row) &&
-    isFieldTile(level, column + step[0], row + step[1]) &&
-    isOpen(level, clearance, column, row, step)
-      ? Result.succeed(tileIndex(level, column + step[0], row + step[1]))
-      : Result.failVoid,
-  )
-}
-
-const oracleSpread = (
-  level: Level,
-  origins: ReadonlyArray<number>,
-  clearance: Clearance,
-  tolls: ReadonlyArray<Toll>,
-): ReadonlyArray<number> => {
-  const tollMap = new Map(Array.map(tolls, ({ index, cost }) => [index, cost]))
-  const distances = Array.makeBy(level.tileCount, () => UNREACHED_DISTANCE)
-  const buckets = new Map<number, Array<number>>([[0, [...origins]]])
-  let depth = 0
-  while (buckets.size > 0) {
-    depth = Math.min(...buckets.keys())
-    const ring = buckets.get(depth) ?? []
-    buckets.delete(depth)
-    for (const index of ring) {
-      if (distances[index] !== UNREACHED_DISTANCE) {
-        continue
-      }
-      distances[index] = depth
-      for (const neighbor of neighborsOf(
-        level,
-        index,
-        depth === 0 ? 'Narrow' : clearance,
-      )) {
-        if (distances[neighbor] === UNREACHED_DISTANCE) {
-          const at = depth + 1 + (tollMap.get(neighbor) ?? 0)
-          buckets.set(at, [...(buckets.get(at) ?? []), neighbor])
-        }
-      }
-    }
-  }
-  return distances
-}
-
-const readAll = (level: Level, distances: Int32Array): ReadonlyArray<number> =>
-  Array.makeBy(level.tileCount, index => distanceAt(distances, index))
-
-const TOLLS: ReadonlyArray<Toll> = [
-  { index: 300, cost: 25 },
-  { index: 301, cost: 25 },
-  { index: 410, cost: 6 },
-  { index: 410, cost: 9 },
-  { index: -4, cost: 6 },
+// NOTE: the fast tier's sample: the parlour shut and open, and the
+// manor with every exit open, from every 241st tile.
+// pathing.flat.sim.test.ts checks every level from every seventh tile.
+const SAMPLED: ReadonlyArray<Level> = [
+  ...Array.take(EVERY_LEVEL, 2),
+  ...Array.take(Array.drop(EVERY_LEVEL, 3), 1),
 ]
 
 describe('the flat flow field answers as the search it replaced did', () => {
-  test.each(Array.map(EVERY_LEVEL, level => [level.key, level] as const))(
-    '%s: from every seventh tile, both clearances, with and without tolls',
+  test.each(Array.map(SAMPLED, level => [level.key, level] as const))(
+    '%s: from every 241st tile, both clearances, with and without tolls',
     (_, level) => {
-      for (const clearance of ['Narrow', 'Wide'] as const) {
-        for (let origin = 0; origin < level.tileCount; origin += 7) {
-          const target = tileCenter(tileOfIndex(level, origin))
-          for (const tolls of [[], TOLLS]) {
-            const field = flowFieldToward(level, target, clearance, tolls)
-            expect(field.originIndex).toBe(origin)
-            expect(readAll(level, field.distances)).toEqual(
-              oracleSpread(level, [origin], clearance, tolls),
-            )
-          }
+      for (const clearance of CLEARANCES) {
+        for (const [, tolls] of TOLL_SETS) {
+          expect(mismatchedOrigins(level, 241, clearance, tolls)).toEqual([])
         }
       }
     },
@@ -155,7 +57,7 @@ describe('the flat flow field answers as the search it replaced did', () => {
         ),
       )
       expect(fields.Narrow.moreOrigins).toEqual(origins.slice(1))
-      for (const clearance of ['Narrow', 'Wide'] as const) {
+      for (const clearance of CLEARANCES) {
         expect(readAll(level, fields[clearance].distances)).toEqual(
           oracleSpread(level, origins, clearance, TOLLS),
         )
