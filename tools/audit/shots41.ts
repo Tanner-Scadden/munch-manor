@@ -1,12 +1,12 @@
 // The playtest clarity pass: the first break's trap hint and the trap slot
 // that sends players to Rattles, the place-it hint once a trap is owned,
 // How to play with a card's line open, the pause screen, the spare gun's
-// ammo running low (amber, then red), EMPTY with the knife drawn, Rattles
-// calling about ammo, and the shop's gun cards with their rounds, on a
+// magazine and its last shots in red, the knife drawn, and the shop's gun
+// cards, on a
 // 1280x720 desktop, an 844x390 phone on its side, and a 390x844 phone held
 // upright, as `s41-<TAG>-<viewport>-<scene>.png`.
 //   TAG=after bun run heavy -- --shared bun tools/audit/shots41.ts
-// ONLY picks scenes, such as `ONLY=lowammo`, and VIEWPORTS picks screens.
+// ONLY picks scenes, such as `ONLY=lastammo`, and VIEWPORTS picks screens.
 import { Console, Effect } from 'effect'
 import type { Page } from 'playwright-core'
 
@@ -101,25 +101,16 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   { name: 'howto-charge', query: '', act: openCardLine('charge') },
   { name: 'pause', query: 'wave=3&seen=all&start=wave&phase=paused' },
-  { name: 'ammo', query: `${FIGHTING}&gun=smg&rounds=150&loaded=30&tick=2` },
-  { name: 'lowammo', query: `${FIGHTING}&gun=smg&rounds=55&loaded=25&tick=2` },
-  { name: 'lastammo', query: `${FIGHTING}&gun=smg&rounds=4&loaded=4&tick=2` },
-  {
-    name: 'empty',
-    query: `${FIGHTING}&gun=smg&rounds=1&loaded=1&aim=160,40&tick=12`,
-  },
+  { name: 'ammo', query: `${FIGHTING}&gun=smg&loaded=30&tick=2` },
+  { name: 'lastammo', query: `${FIGHTING}&gun=smg&loaded=4&tick=2` },
   {
     name: 'knife',
-    query: `${FIGHTING}&first=shotgun&gun=smg&dry&aim=160,40&tick=6`,
-  },
-  {
-    name: 'rattles',
-    query: `${FIGHTING}&gun=smg&rounds=25&loaded=25&aim=160,40&tick=40`,
+    query: `${FIGHTING}&first=shotgun&gun=smg&knife&aim=160,40&tick=6`,
   },
   { name: 'shopguns', query: `wave=5&money=180&px=270&py=142&${LEARNED}` },
   {
     name: 'shopowned',
-    query: `wave=5&money=180&gun=smg&rounds=48&loaded=18&px=270&py=142&${LEARNED}`,
+    query: `wave=5&money=180&gun=smg&loaded=18&px=270&py=142&${LEARNED}`,
   },
 ]
 

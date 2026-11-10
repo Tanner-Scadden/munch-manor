@@ -19,7 +19,6 @@ import {
   FIXED_STEP_MS,
   MAX_FRAME_DELTA_MS,
   MS_PER_SECOND,
-  SHOP_NEAR_PX,
   STEP_EPSILON_MS,
 } from '../shared/constants'
 import { isObjectSecond } from '../shared/dualArgs'
@@ -27,8 +26,6 @@ import { CALLOUT_LIFETIME_MS } from '../world/gear/powerups'
 import { levelOf } from '../world/level/arena'
 import { focusOf, modifyFocus } from '../world/party/party'
 import { withWorld } from '../world/schema/world'
-import { COUNTER_LINES, isCounterOpen } from '../world/shop/ammoCounter'
-import { STALL_BOX } from '../world/shop/shop'
 import { clamp } from '../world/step/geometry'
 import {
   type InputsByPlayer,
@@ -38,7 +35,6 @@ import {
 import { isEndless, isRoundActive, roundWave } from '../world/waves/waves'
 import {
   type Callout,
-  CounterSale,
   type Difficulty,
   GameEvent,
   type Intent,
@@ -47,7 +43,6 @@ import {
   type PickupKind,
   ShopState,
   TrapNotice,
-  type Vector,
   idleIntent,
 } from './model'
 
@@ -212,45 +207,6 @@ const advanceCallouts = (model: Model, worldMs: number): Model => {
     : ageCallouts(called, worldMs)
 }
 
-const COUNTER_SALE_MS = 1400
-
-const isBesideStall = ({ x, y }: Vector): boolean =>
-  Math.hypot(
-    Math.max(STALL_BOX.left - x, 0, x - STALL_BOX.right),
-    Math.max(STALL_BOX.top - y, 0, y - STALL_BOX.bottom),
-  ) <= SHOP_NEAR_PX
-
-// NOTE: a cosmetic, made after the step from the frame's events: a buy
-// beside the stall mid-wave is a sale at the window, so Rattles wakes, slides
-// the rounds across, and says a line, a different one each sale.
-const advanceCounterSale = (model: Model, frameMs: number): Model => {
-  const isSale =
-    isCounterOpen(model) &&
-    Array.some(
-      model.frameEvents,
-      event => GameEvent.isAnyOf(['Purchased'])(event) && isBesideStall(event),
-    )
-  if (isSale) {
-    return modifyFields(model, {
-      counterSale: () =>
-        CounterSale.Selling({
-          ageMs: 0,
-          line: model.stats.purchases % COUNTER_LINES.length,
-        }),
-    })
-  }
-  return CounterSale.match(model.counterSale, {
-    Quiet: () => model,
-    Selling: sale =>
-      modifyFields(model, {
-        counterSale: () =>
-          sale.ageMs + frameMs >= COUNTER_SALE_MS
-            ? CounterSale.Quiet()
-            : CounterSale.Selling({ ...sale, ageMs: sale.ageMs + frameMs }),
-      }),
-  })
-}
-
 // NOTE: what the frame looks like once its ticks ran: the camera lean,
 // particles, the walking dust, callouts, and the juice, all from the
 // frame's events and the cosmetic stream, so they never touch the World.
@@ -260,25 +216,22 @@ const advanceFlourishes = (
   worldMs: number,
 ): Model =>
   advanceKitchenCall(
-    advanceCounterSale(
-      ageFlight(
-        advanceJuice(
-          advanceCallouts(
-            ageTrapNotice(
-              advanceTells(
-                worldMs > 0
-                  ? advanceParticles(model, worldMs / MS_PER_SECOND, worldMs)
-                  : model,
-                worldMs,
-              ),
+    ageFlight(
+      advanceJuice(
+        advanceCallouts(
+          ageTrapNotice(
+            advanceTells(
+              worldMs > 0
+                ? advanceParticles(model, worldMs / MS_PER_SECOND, worldMs)
+                : model,
               worldMs,
             ),
             worldMs,
           ),
-          frameMs,
           worldMs,
         ),
         frameMs,
+        worldMs,
       ),
       frameMs,
     ),

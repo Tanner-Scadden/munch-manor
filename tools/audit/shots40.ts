@@ -310,7 +310,7 @@ const SCENES: ReadonlyArray<Scene> = [
   },
   {
     name: 'stall',
-    query: `${FIGHTING}&gun=smg&loaded=9&rounds=40&money=85&px=240&py=146&tick=2`,
+    query: `${FIGHTING}&gun=smg&loaded=9&money=85&px=240&py=146&tick=2`,
     act: rowCheck,
   },
   {

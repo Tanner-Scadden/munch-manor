@@ -1,7 +1,7 @@
 import { Array, Function, Option, pipe } from 'effect'
 
 import { MS_PER_SECOND } from '../../shared/constants'
-import { WEAPONS, maxRounds, statsAt } from '../gear/weapons'
+import { WEAPONS, statsAt } from '../gear/weapons'
 import type { WeaponKind } from '../schema/worldSchema'
 
 // What an upgrade changes, in a few words for the shop dialog: a gun's
@@ -78,11 +78,6 @@ const gunUpgradeChanges = (weapon: WeaponKind, tier: number): string => {
           `Reloads in ${to / MS_PER_SECOND} s instead of ${from / MS_PER_SECOND}`,
       ),
       ...changeText(before.knockback, after.knockback, () => 'A bigger shove'),
-      ...changeText(
-        maxRounds(weapon, tier),
-        maxRounds(weapon, tier + 1),
-        (from, to) => `Holds ${to} ${roundsLabel} instead of ${from}`,
-      ),
     ],
     Array.join('. '),
     text => `${text}.`,

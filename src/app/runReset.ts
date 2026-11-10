@@ -18,7 +18,6 @@ import { MANOR, startingLevel } from '../world/level/arena'
 import { soloState } from '../world/party/party'
 import {
   Boss,
-  CounterSale,
   DebutCard,
   Party,
   Phase,
@@ -73,7 +72,6 @@ export type RunFields = Pick<
   | 'stepCarryMs'
   | 'callouts'
   | 'prizeFlight'
-  | 'counterSale'
   | 'kitchenCall'
   | 'breakIdleMs'
   | 'trapNotice'
@@ -129,7 +127,6 @@ export const freshRun = (model: Model): RunFields => ({
   stepCarryMs: 0,
   callouts: [],
   prizeFlight: PrizeFlight.Grounded(),
-  counterSale: CounterSale.Quiet(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   breakIdleMs: 0,
   trapNotice: TrapNotice.Quiet(),

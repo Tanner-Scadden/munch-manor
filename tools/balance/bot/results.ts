@@ -33,8 +33,6 @@ export const FridgeLog = Schema.Struct({
   taken: Schema.Finite,
   stabs: Schema.Finite,
   stabHits: Schema.Finite,
-  // Refills bought at the ammo window mid-wave.
-  counterBuys: Schema.Finite,
 })
 export type FridgeLog = typeof FridgeLog.Type
 

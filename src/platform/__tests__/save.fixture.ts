@@ -17,7 +17,6 @@ export const learnedSave: PlayerSave = {
       openBreak: 'Learned',
     },
     trapHint: 'Seen',
-    ammoTip: 'Seen',
     introducedKinds: ZOMBIE_KIND_ORDER,
   },
   homeScreenTip: 'Dismissed',

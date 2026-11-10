@@ -282,7 +282,6 @@ export const COIN_RESTITUTION = 0.5
 export const COIN_LIFETIME_MS = 900
 export const COIN_COLOR = '#ffd23f'
 
-export const DRY_FIRE_DELAY_MS = 260
 export const CLIP_SIZE_PX = 3
 export const CLIP_DROP_SPEED = 24
 export const CLIP_LIFT = 40
@@ -301,8 +300,6 @@ export const HULL_DECAL_FADED_COLOR = '#4f2624'
 
 export const PAYDAY_POPUP_LIFETIME_MS = 1300
 export const PAYDAY_POPUP_LIFT_PX = 16
-export const EMPTY_POPUP_LIFETIME_MS = 1100
-export const EMPTY_POPUP_LIFT_PX = 16
 export const ALERT_GLYPH_COLOR = '#ff6b5e'
 export const COIN_GLYPH_COLOR = '#ffe066'
 

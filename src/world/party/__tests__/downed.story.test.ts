@@ -2,10 +2,10 @@ import { Array, Effect, Option } from 'effect'
 import { type Canvas, Story } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 
-import { describe, expect, it, test } from '@effect/vitest'
+import { describe, expect, it } from '@effect/vitest'
 
 import { sceneShapes } from '../../../app/layers'
-import { Arsenal, Life, type Model, Reload } from '../../../app/model'
+import { Life, type Model, Reload } from '../../../app/model'
 import { QUARTER_TURN } from '../../../render/drawing'
 import { healthBarShapes } from '../../../render/healthBarView'
 import {
@@ -22,17 +22,8 @@ import {
   withSeatLife,
 } from '../../../test/model.fixture'
 import { APPLICATION, jsonOf, ticks } from '../../../test/testing'
-import { freshGun } from '../../gear/weapons'
-import { maybeOfferInReach } from '../../shop/purchase'
-import { STALL_BOX } from '../../shop/shop'
 import { MEDIC_RULES } from '../medic'
-import {
-  COOP_RULES,
-  focusOf,
-  focusSlotOf,
-  maybePlayerAt,
-  modifyFocus,
-} from '../party'
+import { COOP_RULES, focusOf, maybePlayerAt, modifyFocus } from '../party'
 
 // A co-op player out of the fight, as everyone sees them (MULTIPLAYER.md,
 // "Life"): downed, they lie on the floor with a bleed bar, a revive icon,
@@ -225,39 +216,6 @@ describe('your own downed player', () => {
       }),
     ),
   )
-
-  test('is offered nothing to buy at the ammo window', () => {
-    const stallX = (STALL_BOX.left + STALL_BOX.right) / 2
-    const armed = (current: Model): Model =>
-      atSeat(current, 0, world =>
-        modifyFocus(world, {
-          player: player =>
-            modifyFields(player, {
-              arsenal: () =>
-                Arsenal.HoldingSecond({
-                  first: freshGun('Pistol'),
-                  second: freshGun('Smg'),
-                }),
-            }),
-        }),
-      )
-    const atStall = pipeline(
-      armed,
-      placeSeat(0, stallX, STALL_BOX.bottom + 6),
-      placeSeat(1, LEFT_X, ROW_Y),
-    )(crewInWave(2))
-    expect(
-      Option.isSome(maybeOfferInReach(atStall, focusSlotOf(atStall))),
-    ).toBe(true)
-    expect(
-      Option.isNone(
-        maybeOfferInReach(
-          downedAt(0)(atStall),
-          focusSlotOf(downedAt(0)(atStall)),
-        ),
-      ),
-    ).toBe(true)
-  })
 })
 
 describe('the MEDIC bubble', () => {

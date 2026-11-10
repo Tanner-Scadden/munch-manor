@@ -45,7 +45,6 @@ import {
 import {
   LASER_SIGHT_PRICE,
   SHOP_ITEMS,
-  ShopGood,
   repairItemId,
 } from '../../world/shop/shop'
 import { SHATTER_SCALE } from '../../world/step/combat'
@@ -201,27 +200,6 @@ const ladderOf = (weapon: WeaponKind): ReadonlyArray<LadderStep> =>
     price: tier.price,
   }))
 
-// NOTE: the shop's own ammo for a gun, as the guide's chips: the sack, the
-// drum, or the stack, with the rounds it adds.
-const ammoChips = (weapon: WeaponKind): ReadonlyArray<GuideChip> =>
-  Array.flatMap(Record.values(SHOP_ITEMS), item =>
-    ShopGood.matchOrElse(
-      item.good,
-      {
-        Ammo: (good): ReadonlyArray<GuideChip> =>
-          good.weapon === weapon
-            ? [
-                {
-                  art: GuideArt.Item({ id: item.id }),
-                  label: `+${good.rounds} $${item.price}`,
-                },
-              ]
-            : [],
-      },
-      () => [],
-    ),
-  )
-
 const gunEntry = (
   weapon: WeaponKind,
   item: FixedShopItemId,
@@ -238,12 +216,12 @@ const gunEntry = (
       : Option.none(),
   bars: gunBars(weapon),
   ladder: ladderOf(weapon),
-  chips: ammoChips(weapon),
+  chips: [],
   prize: Option.none(),
 })
 
 const gunEntries = (): ReadonlyArray<GuideEntry> => [
-  gunEntry('Pistol', 'Pistol', 'Never runs dry. Always free.'),
+  gunEntry('Pistol', 'Pistol', 'Always free.'),
   gunEntry('Shotgun', 'Shotgun', 'Seven pellets. Up close only.'),
   gunEntry('Smg', 'Smg', 'Fast and a little wobbly.'),
   {
@@ -453,12 +431,6 @@ const houseEntry = (
 
 const houseEntries = (): ReadonlyArray<GuideEntry> => [
   houseEntry('Stall', 'Open between waves. Walk up.', Option.none()),
-  houseEntry(
-    'Window',
-    'Mid-wave. Tap for more ammo.',
-    Option.none(),
-    Array.appendAll(Array.flatMap(SHOP_GUNS, ammoChips), ammoChips('Cooker')),
-  ),
   houseEntry(
     'Boards',
     `From wave ${EXIT_RULES.firstWave}. Hold to open ${exitName(KITCHEN_EXIT)}.`,

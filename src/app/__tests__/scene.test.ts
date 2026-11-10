@@ -27,7 +27,7 @@ import {
   withPistol,
 } from '../../test/testing'
 import { asVeteran } from '../../test/veteran'
-import { STARTING_PISTOL, maxRounds } from '../../world/gear/weapons'
+import { STARTING_PISTOL } from '../../world/gear/weapons'
 import { focusOf, modifyFocus } from '../../world/party/party'
 import { Arsenal } from '../../world/schema/worldSchema'
 import { pause } from '../../world/waves/waves'
@@ -183,9 +183,6 @@ describe('Shop', () => {
     name: 'Buy Barn Buster for $35',
   })
   const smgButton = Scene.role('button', { name: 'Buy Chatterbox for $100' })
-  const shellsButton = Scene.role('button', {
-    name: 'Shell Sack, ammo for Barn Buster, $10, adds 16 shells',
-  })
   const shotgunUpgradeButton = Scene.role('button', {
     name: 'Beefy Barn Buster, upgrade for Barn Buster, $40',
   })
@@ -285,7 +282,6 @@ describe('Shop', () => {
         ).toExist(),
         Scene.expect(Scene.text('You have $70')).toExist(),
         Scene.expect(gunsTab).toHaveAttr('aria-selected', 'true'),
-        Scene.expect(shellsButton).toBeAbsent(),
         Scene.expect(smgButton).toHaveAttr('aria-disabled', 'true'),
         Scene.expect(Scene.text('Need $30 more')).toExist(),
         Scene.keydown(shotgunButton, 'ArrowDown'),
@@ -296,33 +292,20 @@ describe('Shop', () => {
         Scene.Command.resolve(FocusItem, ShopMessage.CompletedFocusItem()),
         Scene.keydown(shotgunButton, 'Enter'),
         Scene.Command.resolve(
-          FocusItem({ item: 'ShotgunShells' }),
+          FocusItem({ item: 'ShotgunUpgrade' }),
           ShopMessage.CompletedFocusItem(),
         ),
         Scene.expect(Scene.text('You have $35')).toExist(),
         Scene.expect(shotgunButton).toBeAbsent(),
         Scene.expect(Scene.role('heading', { name: 'Barn Buster' })).toExist(),
         Scene.expect(Scene.text('OWNED')).toExist(),
-        Scene.expect(Scene.text('6 loaded, 10 spare')).toExist(),
+        Scene.expect(Scene.text('6 loaded, shells never run out')).toExist(),
         Scene.expect(Scene.role('img', { name: 'Tier 0 of 3' })).toExist(),
         Scene.expect(
           Scene.role('list', { name: 'For your Barn Buster' }),
         ).toExist(),
-        Scene.expect(
-          Scene.text('Adds 16 shells. You have 16 of 48.'),
-        ).toExist(),
         Scene.expect(shotgunUpgradeButton).toHaveAttr('aria-disabled', 'true'),
         Scene.expect(Scene.text('Need $5 more')).toExist(),
-        Scene.keydown(shellsButton, 'Enter'),
-        Scene.expect(Scene.text('You have $25')).toExist(),
-        Scene.expect(Scene.text('6 loaded, 26 spare')).toExist(),
-        Scene.expect(shellsButton).not.toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(Scene.text('Need $15 more')).toExist(),
-        Scene.keydown(shellsButton, 'ArrowDown'),
-        Scene.Command.resolve(
-          FocusItem({ item: 'ShotgunUpgrade' }),
-          ShopMessage.CompletedFocusItem(),
-        ),
         Scene.keydown(shotgunUpgradeButton, 'ArrowDown'),
         Scene.Command.resolve(
           FocusItem({ item: 'Smg' }),
@@ -341,9 +324,8 @@ describe('Shop', () => {
         Scene.keydown(gunsTab, 'ArrowRight'),
         resolveFocusTab,
         Scene.expect(healthTab).toHaveAttr('aria-selected', 'true'),
-        Scene.expect(shellsButton).toBeAbsent(),
         Scene.click(heartButton),
-        Scene.expect(Scene.text('You have $0')).toExist(),
+        Scene.expect(Scene.text('You have $10')).toExist(),
         Scene.expect(Scene.text('Hearts 4 of 5')).toExist(),
         ...leaveShop(),
         Scene.expect(
@@ -353,52 +335,10 @@ describe('Shop', () => {
       ),
   )
 
-  it.effect('a full gun cannot take more ammo, and says why', () =>
-    Scene.scene(
-      APPLICATION,
-      Scene.given(
-        modifyFocus(atStall, {
-          player: player =>
-            modifyFields(player, {
-              arsenal: () =>
-                holdingSecond({
-                  kind: 'Shotgun',
-                  rounds: 44,
-                  loaded: 6,
-                  tier: 0,
-                }),
-            }),
-        }),
-      ),
-      measureSurface,
-      ...openShop(),
-      Scene.expect(
-        Scene.role('button', {
-          name: 'Shell Sack, ammo for Barn Buster, $10, adds 4 shells and fills it',
-        }),
-      ).not.toHaveAttr('aria-disabled', 'true'),
-      Scene.click(
-        Scene.role('button', {
-          name: 'Shell Sack, ammo for Barn Buster, $10, adds 4 shells and fills it',
-        }),
-      ),
-      Scene.expect(
-        Scene.role('button', {
-          name: 'Shell Sack, ammo for Barn Buster, $10, adds up to 16 shells',
-        }),
-      ).toHaveAttr('aria-disabled', 'true'),
-      Scene.expect(Scene.text('Your Barn Buster is full')).toExist(),
-      Scene.expect(Scene.text('6 loaded, 42 spare')).toExist(),
-    ),
-  )
-
   it.effect(
     'an upgraded gun goes by its tier name everywhere in the shop',
-    () => {
-      const fullDrum = Scene.role('button', {
-        name: 'Chatter Drum, ammo for Beefy Chatterbox, $20, adds up to 120 rounds',
-      })
-      return Scene.scene(
+    () =>
+      Scene.scene(
         APPLICATION,
         Scene.given(
           modifyFocus(atStall, {
@@ -407,12 +347,7 @@ describe('Shop', () => {
                 arsenal: () =>
                   Arsenal.HoldingSecond({
                     first: { ...STARTING_PISTOL, tier: 1 },
-                    second: {
-                      kind: 'Smg',
-                      rounds: maxRounds('Smg', 1),
-                      loaded: 30,
-                      tier: 1,
-                    },
+                    second: { kind: 'Smg', loaded: 30, tier: 1 },
                   }),
               }),
           }),
@@ -425,11 +360,6 @@ describe('Shop', () => {
         Scene.expect(
           Scene.role('list', { name: 'For your Beefy Chatterbox' }),
         ).toExist(),
-        Scene.expect(fullDrum).toHaveAttr('aria-disabled', 'true'),
-        Scene.expect(
-          Scene.within(fullDrum, Scene.text('Your Beefy Chatterbox is full')),
-        ).toExist(),
-        Scene.expect(Scene.text('Your Chatterbox is full')).toBeAbsent(),
         Scene.expect(
           Scene.text(
             'Two guns. A new one replaces the one in your hands, upgrades and all.',
@@ -440,8 +370,7 @@ describe('Shop', () => {
             'Replaces your Beefy Chatterbox, and its upgrades are lost',
           ),
         ).toExist(),
-      )
-    },
+      ),
   )
 
   it.effect(
@@ -523,7 +452,7 @@ describe('Shop', () => {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
-                holdingSecond({ kind: 'Smg', rounds: 30, loaded: 30, tier: 0 }),
+                holdingSecond({ kind: 'Smg', loaded: 30, tier: 0 }),
             }),
         }),
       ),

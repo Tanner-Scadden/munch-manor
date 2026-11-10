@@ -206,6 +206,21 @@ export const plankPriceFor: {
   calling === 'Handyman' ? Math.round(price / 2) : price,
 )
 
+// NOTE: the stove (src/world/kitchen/stove.ts) cooks for the Line Cook at 25%
+// off, rounded to the nearest dollar. It took the place of his smaller
+// starting lid stack when ammo went endless (docs/ESCAPE_PLAN.md, "Endless
+// ammo"); not tuned on the balance bot yet.
+const COOK_STOVE_PERCENT = 75
+
+export const stovePriceFor: {
+  (price: number): (calling: Calling) => number
+  (calling: Calling, price: number): number
+} = Function.dual(2, (calling: Calling, price: number): number =>
+  calling === 'LineCook'
+    ? Math.round((price * COOK_STOVE_PERCENT) / 100)
+    : price,
+)
+
 // KILL PAY
 
 // NOTE: a kill pays the Penny Pincher 20% less, rounded to the nearest
@@ -233,13 +248,6 @@ export const killPayFor: {
 )
 
 // THE STARTING GUN
-
-// NOTE: the lids the Line Cook starts with, fewer than a fridge's Cooker
-// brings (20), set by the balance bot: with all 20 the bot won 42 of 100
-// Normal campaigns, 12 points over YOU. 8 lids with $20 and 10 with $15
-// died on waves 2 to 4 more (45% of runs) with no fewer wins; 14 died less
-// (39%).
-export const COOK_STARTING_LIDS = 14
 
 export const startsWithCooker = (calling: Calling): boolean =>
   calling === 'LineCook'

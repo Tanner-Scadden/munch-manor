@@ -10,7 +10,6 @@ import { withShopDialogOpen } from '../../../test/model.fixture'
 import {
   DISTANT_SPAWN,
   crewInWave,
-  midWaveAtStall,
   quietWave,
   readyModel,
   withArsenal,
@@ -183,11 +182,6 @@ const ROWS: { readonly [Tag in SeatAction['_tag']]: Row } = {
     from: inBreak,
     action: SeatAction.Ready(),
     presses: Story.steps(Story.message(Message.ClickedStartWaveButton())),
-  },
-  BuyAmmo: {
-    from: midWaveAtStall('Smg', 10),
-    action: SeatAction.BuyAmmo(),
-    presses: Story.steps(Story.message(Message.ClickedAmmoTag())),
   },
   CallMedic: {
     from: downedLead,

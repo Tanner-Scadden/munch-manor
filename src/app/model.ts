@@ -3,7 +3,6 @@ import { Option, Schema } from 'effect'
 import { DialogBlock } from '@foldkit/ui'
 
 import {
-  AmmoTip,
   AudioState,
   Bot,
   DifficultyCard,
@@ -84,7 +83,6 @@ import {
   Blast,
   Boss,
   Callout,
-  CounterSale,
   DebutCard,
   type DifficultyBests,
   Party,
@@ -133,10 +131,8 @@ export const Model = Schema.Struct({
   blasts: Schema.Array(Blast),
   callouts: Schema.Array(Callout),
   prizeFlight: PrizeFlight,
-  counterSale: CounterSale,
   breakIdleMs: Schema.Finite,
   trapHint: TrapHint,
-  ammoTip: AmmoTip,
   kitchenCall: KitchenCall,
   firstBreakQuest: Tour,
   kitchenTour: Tour,
@@ -315,10 +311,8 @@ export const initialModel: OwnModel = {
   loot: freshLoot(DEFAULT_SEED),
   callouts: [],
   prizeFlight: PrizeFlight.Grounded(),
-  counterSale: CounterSale.Quiet(),
   breakIdleMs: 0,
   trapHint: TrapHint.Unseen(),
-  ammoTip: AmmoTip.Unseen(),
   kitchenCall: KitchenCall.Quiet({ calledWave: 0 }),
   firstBreakQuest: Tour.Waiting(),
   kitchenTour: Tour.Waiting(),

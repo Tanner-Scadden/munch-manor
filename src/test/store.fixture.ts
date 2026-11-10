@@ -62,7 +62,6 @@ export const legacySave: PlayerSave = {
       openBreak: 'Pending',
     },
     trapHint: 'Seen',
-    ammoTip: 'Unseen',
     introducedKinds: ['Shambler'],
   },
   homeScreenTip: 'Dismissed',

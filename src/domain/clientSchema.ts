@@ -181,16 +181,6 @@ export const DifficultyCard = defineTaggedUnion({
 })
 export type DifficultyCard = typeof DifficultyCard.Type
 
-// NOTE: Rattles' call about ammo: the first time a gun that can run dry
-// runs low, a bubble from the stall shows a coin and a box of rounds for a
-// few seconds. Once seen it never shows again, saved on the device.
-export const AmmoTip = defineTaggedUnion({
-  Unseen: {},
-  Showing: { remainingMs: MillisNumber },
-  Seen: {},
-})
-export type AmmoTip = typeof AmmoTip.Type
-
 // NOTE: Rattles' holler about the boarded kitchen (src/features/kitchen/kitchenCall.ts):
 // once a break, until the boards are open, a bubble points at them for a
 // few seconds. `Quiet` remembers the last break it called in, so a break is

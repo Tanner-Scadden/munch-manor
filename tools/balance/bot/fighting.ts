@@ -5,7 +5,6 @@ import { Array, Function, Option } from 'effect'
 
 import { Message } from '../../../src/app/message'
 import { escapeHeading } from '../../../src/features/bots/escape'
-import { isOutOfGuns } from '../../../src/features/hud/ammoWarning'
 import { assistAim } from '../../../src/input/aimAssist'
 import {
   screenCameraOf,
@@ -17,7 +16,6 @@ import { isSmallKind } from '../../../src/world/fridge/fridgeWeapons'
 import { KNIFE_RULES } from '../../../src/world/gear/knife'
 import {
   canReload,
-  heldGun,
   heldLoaded,
   heldStats,
   isReloading,
@@ -52,7 +50,6 @@ import {
   safePickup,
   telegraphDodge,
 } from './dodging'
-import { isSpent } from './guns'
 import {
   IS_SHARP,
   humanSight,
@@ -112,20 +109,14 @@ const panStance = (state: BotState, model: Model): Vector | undefined => {
 
 // The knife is the third slot: F draws it and the trigger then stabs. The
 // bot draws it while a zombie is within the knife's reach and its gun
-// cannot shoot (mid-reload, empty with nothing to load, or a spent fridge
-// weapon); with every gun dry the game draws it by itself. A reload carries
-// on while the knife is out, so it goes back to its last gun (Q) as soon
-// as that gun can shoot again and a gun has rounds.
+// cannot shoot (mid-reload, or empty). A reload carries on while the knife
+// is out, so it goes back to its last gun (Q) as soon as that gun can shoot
+// again.
 const STAB_SLACK_PX = 1
 
 export const isGunIdle = (model: Model): boolean => {
   const { player } = focusOf(model)
-  const held = heldGun(player.arsenal)
-  return (
-    isReloading(player) ||
-    isSpent(held) ||
-    (heldLoaded(player) <= 0 && !canReload(player))
-  )
+  return isReloading(player) || (heldLoaded(player) <= 0 && !canReload(player))
 }
 
 const isWithinKnife = (model: Model): boolean =>
@@ -149,9 +140,7 @@ export const handleKnife: {
       ? tapKey(model, KEYS.knife)
       : model
   }
-  return !state.panPlanNow.useSpare &&
-    !isOutOfGuns(focusOf(model).player) &&
-    !isGunIdle(model)
+  return !state.panPlanNow.useSpare && !isGunIdle(model)
     ? tapKey(model, 'KeyQ')
     : model
 })

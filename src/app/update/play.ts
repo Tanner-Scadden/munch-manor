@@ -5,7 +5,6 @@ import { modifyFields } from 'foldkit/struct'
 import { positionVariation } from '../../audio/audio'
 import { isEndScreen } from '../../domain/run'
 import { skipBeat } from '../../features/end/endBeat'
-import { noteAmmoTip } from '../../features/hud/ammoWarning'
 import { advanceQuest } from '../../features/onboarding/firstBreakQuest'
 import { advanceKitchenTour } from '../../features/onboarding/kitchenTour'
 import {
@@ -41,9 +40,8 @@ import {
   isReloading,
   isWieldingMelee,
 } from '../../world/gear/weapons'
-import { focusOf, focusSlotOf, isCoop } from '../../world/party/party'
+import { focusOf, isCoop } from '../../world/party/party'
 import { tallyFrame } from '../../world/run/stats'
-import { maybeTapOffer } from '../../world/shop/purchase'
 import { isAtCounter, isBrowsing } from '../../world/shop/shop'
 import { SeatAction, gunSlotAction } from '../../world/step/stepWorld'
 import { isRoundActive, pause } from '../../world/waves/waves'
@@ -241,25 +239,6 @@ const reloadHeldGun: UpdateStep = model => {
 const reloadFromKey = (code: string): UpdateStep =>
   stepWhen(model => isKeyFor(model, code, ['Reload']), reloadHeldGun)
 
-// TAP TO BUY
-
-// NOTE: a tap at the ammo window buys there at once (src/world/shop/purchase.ts,
-// tapToBuy): Enter, the touch hold button, or a click on the tag. The tick
-// after it makes the sale's sound, coins, and Rattles' line, or the
-// refusal's shake.
-const buyAmmo = modelStep(actInHand(SeatAction.BuyAmmo()))
-
-const buyAmmoFromKey = (code: string): UpdateStep =>
-  stepWhen(model => isKeyFor(model, code, ['BuyAmmo']), buyAmmo)
-
-export const buyAmmoFromHoldButton: UpdateStep = stepWhen(
-  model => Option.isSome(maybeTapOffer(model, focusSlotOf(model))),
-  buyAmmo,
-)
-
-export const clickAmmoTag: UpdateStep = model =>
-  combine(model, [unlockAudio, buyAmmo])
-
 // MEDIC
 
 // NOTE: MEDIC! from a downed player (src/world/party/medic.ts): the interact key or a
@@ -314,16 +293,13 @@ export const tickFrame = (deltaTime: number) =>
       const framed = moveHintBand(
         advanceKitchenTour(
           advanceQuest(
-            noteAmmoTip(
-              learnFromFrame(
+            learnFromFrame(
+              model,
+              tallyFrame(
                 model,
-                tallyFrame(
-                  model,
-                  advanceGame(model, deltaTime),
-                  clampFrameDelta(deltaTime),
-                ),
+                advanceGame(model, deltaTime),
+                clampFrameDelta(deltaTime),
               ),
-              clampFrameDelta(deltaTime),
             ),
             clampFrameDelta(deltaTime),
           ),
@@ -441,7 +417,6 @@ export const pressedKey = (code: string) =>
       homeFromKey(code),
       trapFromKey(code),
       reloadFromKey(code),
-      buyAmmoFromKey(code),
       callMedicFromKey(code),
       playStartSoundWhen(startsRun(model, pressed)),
       playSwapSoundWhen(changedWeapon(model, pressed)),

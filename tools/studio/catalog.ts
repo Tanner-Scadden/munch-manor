@@ -21,7 +21,7 @@ import {
 } from '../../src/art/sprite'
 import { gunIcon, gunSprite, knifeSprite } from '../../src/art/sprites/guns'
 import { HEART_SPRITE } from '../../src/art/sprites/hearts'
-import { AMMO_BOX, PICKUP_SPRITES } from '../../src/art/sprites/pickups'
+import { PICKUP_SPRITES } from '../../src/art/sprites/pickups'
 import {
   BARRICADE_SPRITES,
   GNOME_SPRITES,
@@ -239,8 +239,6 @@ const STALL_LOOKS: Array.NonEmptyReadonlyArray<StallLook> = [
   'Open',
   'Beckoning',
   'Closed',
-  'Counter',
-  'CounterAwake',
 ]
 
 const rattlesSections = (): ReadonlyArray<Section> => [
@@ -322,12 +320,6 @@ const itemsSections = (): ReadonlyArray<Section> => [
           'src/art/sprites/pickups.ts',
           sprite,
         ),
-      ),
-      stillEntry(
-        'pickup/AmmoBox',
-        'Ammo box',
-        'src/art/sprites/pickups.ts',
-        AMMO_BOX,
       ),
       stillEntry('heart', 'Heart', 'src/art/sprites/hearts.ts', HEART_SPRITE),
     ],

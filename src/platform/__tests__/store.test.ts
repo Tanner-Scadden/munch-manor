@@ -929,7 +929,6 @@ const migratedLiveSave: PlayerSave = {
       openBreak: 'Pending',
     },
     trapHint: 'Seen',
-    ammoTip: 'Unseen',
     introducedKinds: ['Shambler', 'Runner', 'Tank'],
   },
   homeScreenTip: 'Dismissed',

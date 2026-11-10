@@ -104,7 +104,7 @@ describe('Mode choice', () => {
           player: player =>
             modifyFields(player, {
               arsenal: () =>
-                holdingSecond({ kind: 'Smg', rounds: 99, loaded: 40, tier: 2 }),
+                holdingSecond({ kind: 'Smg', loaded: 40, tier: 2 }),
             }),
         },
       )
@@ -129,7 +129,7 @@ describe('Mode choice', () => {
         ),
         Scene.expect(
           Scene.text(
-            'You have $321. Holding the Chatterbox DELUXE. Other slot: Pop Pistol, upgrade tier 0 of 3.',
+            'You have $321. Holding the Chatterbox DELUXE. Other slot: Pop Pistol, upgrade tier 0 of 3, 14 rounds loaded.',
           ),
         ).toExist(),
       )
@@ -216,8 +216,7 @@ describe('Upgrades in the shop', () => {
         modifyFields(player, {
           x: () => 270,
           y: () => 142,
-          arsenal: () =>
-            holdingSecond({ kind: 'Shotgun', rounds: 16, loaded: 6, tier: 2 }),
+          arsenal: () => holdingSecond({ kind: 'Shotgun', loaded: 6, tier: 2 }),
         }),
       wallet: () => ({ balance: 400, earned: 400, shown: 400 }),
     },
@@ -250,7 +249,7 @@ describe('Upgrades in the shop', () => {
         ).toExist(),
         Scene.expect(
           Scene.text(
-            'Hits for 2 instead of 1. Reloads in 0.75 s instead of 0.9. Holds 80 shells instead of 64.',
+            'Hits for 2 instead of 1. Reloads in 0.75 s instead of 0.9.',
           ),
         ).toExist(),
         Scene.expect(Scene.role('img', { name: 'Tier 2 of 3' })).toExist(),

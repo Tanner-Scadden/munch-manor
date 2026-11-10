@@ -23,7 +23,7 @@ import {
   HEART_SPRITE,
 } from '../../art/sprites/hearts'
 import { TRAP_ICONS } from '../../art/sprites/traps'
-import { ammoLevelOf, isOutOfGuns } from '../../features/hud/ammoWarning'
+import { isOnLastShots } from '../../features/hud/ammoWarning'
 import { isWaitingOnYou } from '../../features/hud/readyNudge'
 import { roomsCounterShapes } from '../../features/kitchen/roomsFound'
 import {
@@ -73,12 +73,9 @@ import {
 import { TRAP_KIND_ORDER, maybeSelectedKind } from '../../world/gear/traps'
 import {
   gunsOf,
-  hasEndlessRounds,
   heldSlotOf,
-  isReloadable,
   isReloading,
   isWieldingMelee,
-  looseRounds,
   magazineOf,
   maxTier,
   maybePanOf,
@@ -320,7 +317,7 @@ const SLOT_FILL = 'rgba(8, 10, 12, 0.6)'
 const SLOT_BORDER = 'rgba(244, 241, 222, 0.25)'
 const SLOT_HELD_BORDER = '#ffe066'
 const SLOT_TEXT_TOP = 3
-const ENDLESS_ROUNDS = '\u221e'
+const KNIFE_ROUNDS = '\u221e'
 
 const PIP_WIDTH = 2
 const PIP_GAP = 1
@@ -339,7 +336,7 @@ const PIP_OFF_COLOR = 'rgba(244, 241, 222, 0.25)'
 
 type SlotGun = Readonly<{ weapon: WeaponKind; tier: number }>
 
-type AmmoLook = 'Loaded' | 'Low' | 'Last' | 'Reloading' | 'Empty'
+type AmmoLook = 'Loaded' | 'Last' | 'Reloading' | 'Empty'
 
 // NOTE: `maybeMeter` is the Clang Pan's dent meter in the melee slot, from
 // 1 (flat) to 0 (fully dented), drawn as a bar in place of a count. `isBeckoning` pulses
@@ -352,7 +349,6 @@ type SlotLook = Readonly<{
   maybeMeter?: Option.Option<number>
   isBeckoning?: boolean
   maybeIcon?: Option.Option<Sprite>
-  isPulsing?: boolean
   maybePerk?: Option.Option<GunPerk>
 }>
 
@@ -392,44 +388,29 @@ const meterShapes = (
 
 const AMMO_TONES: Readonly<Record<AmmoLook, TextTone>> = {
   Loaded: 'Plain',
-  Low: 'Fresh',
   Last: 'Alert',
   Reloading: 'Prompt',
   Empty: 'Alert',
 }
 
-// NOTE: running low blinks the count, amber slowly and then red quickly, so
-// limited ammo is hard to miss. The blink reads the game's clock, so a
-// paused game holds still.
-const LOW_BLINK_MS = 420
+// NOTE: a magazine's last few shots blink the count red, so the reload is
+// hard to miss. The blink reads the game's clock, so a paused game holds
+// still.
 const LAST_BLINK_MS = 180
 const SLOT_LAST_BORDER = '#ff4a4f'
 const SLOT_BECKON_MS = 520
 
-const isBlinkOff = (look: AmmoLook, elapsedMs: number): boolean => {
-  if (look === 'Low') {
-    return Math.floor(elapsedMs / LOW_BLINK_MS) % 3 === 2
-  } else if (look === 'Last') {
-    return Math.floor(elapsedMs / LAST_BLINK_MS) % 2 === 1
-  } else {
-    return false
-  }
-}
+const isBlinkOff = (look: AmmoLook, elapsedMs: number): boolean =>
+  look === 'Last' && Math.floor(elapsedMs / LAST_BLINK_MS) % 2 === 1
 
 const ammoTone = (look: AmmoLook, elapsedMs: number): TextTone =>
   isBlinkOff(look, elapsedMs) ? 'Plain' : AMMO_TONES[look]
 
-const KNIFE_PULSE_MS = 260
-
 const slotBorder = (
-  { isHeld, ammoLook: look, isBeckoning = false, isPulsing = false }: SlotLook,
+  { isHeld, ammoLook: look, isBeckoning = false }: SlotLook,
   elapsedMs: number,
 ): string => {
-  if (isPulsing) {
-    return Math.floor(elapsedMs / KNIFE_PULSE_MS) % 2 === 0
-      ? SLOT_LAST_BORDER
-      : SLOT_HELD_BORDER
-  } else if (look === 'Last' && !isBlinkOff(look, elapsedMs)) {
+  if (look === 'Last' && !isBlinkOff(look, elapsedMs)) {
     return SLOT_LAST_BORDER
   } else if (isHeld) {
     return SLOT_HELD_BORDER
@@ -590,29 +571,19 @@ const ammoLook = (
   isHeld: boolean,
   gun: CarriedGun,
 ): AmmoLook => {
-  const level = ammoLevelOf(gun, player.calling)
   if (isHeld && isReloading(player)) {
     return 'Reloading'
   } else if (gun.loaded <= 0) {
     return 'Empty'
-  } else if (level === 'Last') {
+  } else if (isOnLastShots(gun, player.calling)) {
     return 'Last'
-  } else if (level === 'Low') {
-    return 'Low'
   } else {
     return 'Loaded'
   }
 }
 
-const ammoText = (gun: CarriedGun): string => {
-  if (hasEndlessRounds(gun.kind)) {
-    return `${gun.loaded}/${ENDLESS_ROUNDS}`
-  } else if (isReloadable(gun.kind)) {
-    return `${gun.loaded}/${looseRounds(gun)}`
-  } else {
-    return `${gun.loaded}`
-  }
-}
+// NOTE: no gun runs out, so a slot shows its magazine alone.
+const ammoText = (gun: CarriedGun): string => `${gun.loaded}`
 
 const gunSlotLook = (
   player: Player,
@@ -637,8 +608,7 @@ const EMPTY_SLOT: SlotLook = {
 
 // NOTE: the melee slot, right of the guns: the knife's icon and ∞, or once
 // the fridge has given one, the Clang Pan's icon, tier pips, and dent
-// meter. Held when it is in hand. With every gun dry it pulses red, as the
-// melee weapon comes out by itself.
+// meter. Held when it is in hand.
 const KNIFE_PALETTE: Palette = { X: '#e9e3cf', R: '#a8302a', o: '#140c10' }
 
 const KNIFE_SPRITE = spriteShapes(
@@ -668,10 +638,9 @@ export const meleeSlotLook = (player: Player): SlotLook => ({
       maybeMeter: Option.some(pan.loaded / magazineOf(pan.kind, pan.tier)),
     }),
   }),
-  ammo: ENDLESS_ROUNDS,
+  ammo: KNIFE_ROUNDS,
   isHeld: isWieldingMelee(player),
   ammoLook: 'Loaded',
-  isPulsing: isOutOfGuns(player),
 })
 
 // NOTE: until the player has swapped once, the gun they are not holding

@@ -33,7 +33,6 @@ const TEN_A_SECOND: GunStats = {
 
 const TOY_CATALOG: Catalog = {
   gunPrice: { Shotgun: 35, Smg: 100 },
-  refillPrice: { Shotgun: 10, Smg: 15 },
   upgradePrices: { Pistol: [200], Shotgun: [40, 140], Smg: [60, 180] },
   plankPrice: 20,
   plankLimit: 2,
@@ -76,27 +75,21 @@ describe('the shop', () => {
       'Shotgun',
     ])
     expect(shopVisit(TOY_CATALOG, 120, STARTING_LOADOUT, 0, 30).bought).toEqual(
-      ['Smg', 'Refill'],
+      ['Smg', 'Plank'],
     )
     expect(shopVisit(TOY_CATALOG, 20, STARTING_LOADOUT, 0, 30).bought).toEqual(
       [],
     )
   })
 
-  test('a richer visit refills, boards up, and upgrades over the reserve', () => {
+  test('a richer visit boards up and upgrades over the reserve', () => {
     const armed: Loadout = {
       ...STARTING_LOADOUT,
       maybeSpare: Option.some({ kind: 'Smg', tier: 0 }),
     }
     const visit = shopVisit(TOY_CATALOG, 200, armed, 10, 30)
-    expect(visit.bought).toEqual([
-      'Refill',
-      'Plank',
-      'Plank',
-      'Upkeep',
-      'SpareUpgrade',
-    ])
-    expect(visit.moneyAfter).toBe(200 - 15 - 40 - 10 - 60)
+    expect(visit.bought).toEqual(['Plank', 'Plank', 'Upkeep', 'SpareUpgrade'])
+    expect(visit.moneyAfter).toBe(200 - 40 - 10 - 60)
     expect(visit.loadout.planks).toBe(2)
     expect(Option.map(visit.loadout.maybeSpare, ({ tier }) => tier)).toEqual(
       Option.some(1),

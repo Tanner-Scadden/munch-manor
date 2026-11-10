@@ -185,7 +185,6 @@ const eventParticles = (
           ),
       ])
     },
-    RanDry: () => noParticles(state),
     DryFired: () => noParticles(state),
     ReloadStarted: ({ x, y, direction, weapon }) =>
       withState(state, clipParticles(x, y, direction, weapon)),

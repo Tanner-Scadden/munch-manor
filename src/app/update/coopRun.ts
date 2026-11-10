@@ -7,7 +7,6 @@ import { isPauseKey, pressKey, releaseAll } from '../../input/input'
 import { playerKeyAction } from '../../input/keyActions'
 import type { PageVisibility } from '../../platform/deviceSchema'
 import { focusOf, focusSlotOf } from '../../world/party/party'
-import { maybeTapOffer } from '../../world/shop/purchase'
 import { isAtCounter } from '../../world/shop/shop'
 import {
   SeatAction,
@@ -78,14 +77,6 @@ const keyInRun = (code: string) =>
         }),
   )
 
-// NOTE: a tap at the ammo window goes to the room as BuyAmmo, which buys
-// there at once (src/world/shop/purchase.ts); the room's tick makes its sound.
-const tapInRun = makeStep(model =>
-  Option.isSome(maybeTapOffer(model, focusSlotOf(model)))
-    ? pressInRun(SeatAction.BuyAmmo())
-    : unchanged,
-)
-
 const blurInRun = modelStep(model => withInput(model, releaseAll))
 
 const pageVisibilityInRun = (visibility: PageVisibility) =>
@@ -111,8 +102,6 @@ const RunMessage = Schema.Union([
   Message.ClickedReloadButton,
   Message.ClickedPlaceTrapButton,
   Message.ClickedNextTrapButton,
-  Message.PressedHoldButton,
-  Message.ClickedAmmoTag,
   Message.ClickedMedicButton,
 ])
 type RunMessage = typeof RunMessage.Type
@@ -135,8 +124,6 @@ const inRun = (model: Model, message: RunMessage) =>
     ClickedReloadButton: () => pressInRun(SeatAction.Reload()),
     ClickedPlaceTrapButton: () => pressInRun(SeatAction.PlaceTrap()),
     ClickedNextTrapButton: () => pressInRun(SeatAction.NextTrap()),
-    PressedHoldButton: () => tapInRun,
-    ClickedAmmoTag: () => tapInRun,
     ClickedMedicButton: () => pressInRun(SeatAction.CallMedic()),
   })
 

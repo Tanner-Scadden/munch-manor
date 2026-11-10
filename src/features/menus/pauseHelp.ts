@@ -92,11 +92,11 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     id: 'Swap',
     action: 'Swap',
     keyboard: input(
-      `Q switches guns. Only the ${GUN_NAMES.Pistol} never runs dry.`,
+      'Q switches guns. Ammo never runs out.',
       HINT_ICON_SPRITES.KeyQ,
     ),
     touch: input(
-      `Tap your other gun. Only the ${GUN_NAMES.Pistol} never runs dry.`,
+      'Tap your other gun. Ammo never runs out.',
       HINT_ICON_SPRITES.Guns,
     ),
   },
@@ -116,7 +116,7 @@ export const CONTROL_CARDS: Array.NonEmptyReadonlyArray<ControlCard> = [
     id: 'Shop',
     action: 'Shop',
     ...onBoth(
-      "Between waves, walk into Rattles' stall for ammo, guns, and hearts.",
+      "Between waves, walk into Rattles' stall for guns and hearts.",
       HINT_ICON_SPRITES.Stall,
     ),
   },

@@ -115,16 +115,14 @@ export const roomModel = (settings: SceneSettings): Model => {
     levelOf(started).doorIds,
   )
   const gun = config.gun
-  const smgRounds = config.rounds ?? 360
-  const shotgunRounds = config.rounds ?? 48
   const firstGun = config.first
   const first =
     firstGun === undefined
       ? STARTING_PISTOL
       : firstGun === 'smg'
-        ? { ...freshGun('Smg'), rounds: smgRounds, tier: config.tier }
+        ? { ...freshGun('Smg'), tier: config.tier }
         : firstGun === 'shotgun'
-          ? { ...freshGun('Shotgun'), rounds: shotgunRounds, tier: config.tier }
+          ? { ...freshGun('Shotgun'), tier: config.tier }
           : { ...freshGun(FRIDGE_GUNS[firstGun]), tier: config.tier }
   let model: Model = modifyFocus(
     modifyFields(started, {
@@ -163,8 +161,7 @@ export const roomModel = (settings: SceneSettings): Model => {
                 first,
                 second: {
                   kind: 'Smg',
-                  rounds: smgRounds,
-                  loaded: Math.min(config.loaded, smgRounds),
+                  loaded: config.loaded,
                   tier: config.tier,
                 },
               }),
@@ -196,8 +193,7 @@ export const roomModel = (settings: SceneSettings): Model => {
                       first,
                       second: {
                         kind: 'Shotgun',
-                        rounds: shotgunRounds,
-                        loaded: Math.min(6, shotgunRounds),
+                        loaded: 6,
                         tier: config.tier,
                       },
                     }),

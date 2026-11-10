@@ -488,33 +488,6 @@
   gap: calc(3 * var(--shop-u));
 }
 
-/* A gun's rounds: an infinity sign on the Pop Pistol, a count on the rest. */
-.shop-rounds {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(4 * var(--shop-u));
-  padding: calc(1 * var(--shop-u)) calc(6 * var(--shop-u));
-  border-radius: var(--menu-radius-sm);
-  background: rgba(255, 138, 61, 0.18);
-  color: #ff8a3d;
-  font-weight: bold;
-  font-size: var(--shop-small);
-  line-height: calc(16 * var(--shop-u));
-}
-
-.shop-rounds.is-endless {
-  background: rgba(155, 227, 106, 0.16);
-  color: var(--menu-green);
-  font-size: round(calc(var(--shop-small) * 1.4), 1px);
-}
-
-.shop-rounds-icon {
-  width: calc(11 * var(--shop-u));
-  height: calc(6 * var(--shop-u));
-  background: center / contain no-repeat;
-  image-rendering: pixelated;
-}
-
 .shop-bar {
   display: flex;
   align-items: center;
@@ -612,20 +585,6 @@
   border-radius: 0;
   background: rgba(244, 241, 222, 0.14);
   overflow: hidden;
-}
-
-.shop-gauge-have {
-  background: var(--shop-good);
-}
-
-.shop-gauge-gain {
-  background: var(--shop-gold);
-  animation: shop-blink 0.9s steps(2) infinite;
-}
-
-.shop-gauge-text {
-  color: var(--shop-muted);
-  font-size: var(--shop-small);
 }
 
 /* OWNED GUNS */

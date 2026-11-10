@@ -15,12 +15,12 @@ import {
   type Model,
   Phase,
   Pierce,
+  Reload,
   ShopState,
 } from '../../../app/model'
 import {
   BULLET_MAX,
   COINS_PER_PURCHASE,
-  DRY_FIRE_DELAY_MS,
   FIXED_STEP_MS,
   PLAYER_MAX_HP,
   SHAMBLER_BOUNTY,
@@ -51,7 +51,7 @@ import {
   zombieAt,
   zombieById,
 } from '../../../test/testing'
-import { WEAPONS, startingRounds } from '../../../world/gear/weapons'
+import { WEAPONS, heldGun } from '../../../world/gear/weapons'
 import { focusOf, focusSlotOf, modifyFocus } from '../../../world/party/party'
 import { noModifiers } from '../../../world/run/modifiers'
 import {
@@ -65,14 +65,12 @@ import {
 import { FINAL_WAVE } from '../../../world/waves/wavePlans'
 import { waveBonus } from '../../../world/waves/waves'
 import { DialogBinding } from '../bindings'
-import { Message as ShopMessage } from '../message'
 import {
   FRAMES_TO_STALL,
   GRACE_TICK_MS,
   SHOP_FRAME_MS,
   besideStall,
   browsing,
-  focusedOn,
   gun,
   holdingSpare,
   preparing,
@@ -426,16 +424,6 @@ describe('buying', () => {
             Array.filter(particles, ({ kind }) => kind === 'Coin'),
           ).toHaveLength(COINS_PER_PURCHASE)
         }),
-        Story.messageIn(
-          ShopDialogBinding,
-          ShopMessage.PressedBuyKey({ item: 'ShotgunShells' }),
-        ),
-        Story.model(({ seats: [{ wallet, player }] }) => {
-          expect(wallet.balance).toBe(
-            100 - SHOP_ITEMS.Shotgun.price - SHOP_ITEMS.ShotgunShells.price,
-          )
-          expect(player.arsenal).toEqual(holdingSpare(32))
-        }),
       ),
   )
 
@@ -451,7 +439,7 @@ describe('buying', () => {
       buyAtCounter('Smg'),
       Story.model(({ seats: [{ player, wallet }] }) => {
         expect(player.arsenal).toEqual(
-          holdingSecond(gun('Smg', startingRounds('Smg'))),
+          holdingSecond(gun('Smg', WEAPONS.Smg.magazine)),
         )
         expect(wallet.balance).toBe(200 - SHOP_ITEMS.Smg.price)
       }),
@@ -507,34 +495,27 @@ describe('buying', () => {
       }),
   )
 
-  it.effect(
-    'purchases are refused when broke, without the gun, when full, or already owned',
-    () =>
-      Effect.gen(function* () {
-        const refused = (start: Model, item: typeof SHOP_ITEMS.Heart.id) =>
-          Story.story(
-            APPLICATION,
-            Story.given(start),
-            buyAtCounter(item),
-            Story.model(current => {
-              expect(focusOf(current).wallet).toEqual(focusOf(start).wallet)
-              expect(focusOf(current).player).toEqual(focusOf(start).player)
-              expect(current.particles).toEqual([])
-            }),
-          )
+  it.effect('purchases are refused when broke or already owned', () =>
+    Effect.gen(function* () {
+      const refused = (start: Model, item: typeof SHOP_ITEMS.Heart.id) =>
+        Story.story(
+          APPLICATION,
+          Story.given(start),
+          buyAtCounter(item),
+          Story.model(current => {
+            expect(focusOf(current).wallet).toEqual(focusOf(start).wallet)
+            expect(focusOf(current).player).toEqual(focusOf(start).player)
+            expect(current.particles).toEqual([])
+          }),
+        )
 
-        yield* refused(withHp(browsing(withMoney(shopReady, 24)), 2), 'Heart')
-        yield* refused(browsing(withMoney(shopReady, 500)), 'ShotgunShells')
-        yield* refused(
-          withArsenal(browsing(withMoney(shopReady, 500)), holdingSpare(48)),
-          'ShotgunShells',
-        )
-        yield* refused(
-          withArsenal(browsing(withMoney(shopReady, 500)), holdingSpare(5)),
-          'Shotgun',
-        )
-        yield* refused(withMoney(shopReady, 500), 'Shotgun')
-      }),
+      yield* refused(withHp(browsing(withMoney(shopReady, 24)), 2), 'Heart')
+      yield* refused(
+        withArsenal(browsing(withMoney(shopReady, 500)), holdingSpare(5)),
+        'Shotgun',
+      )
+      yield* refused(withMoney(shopReady, 500), 'Shotgun')
+    }),
   )
 
   it.effect(
@@ -569,22 +550,6 @@ describe('buying', () => {
           }),
         )
       }),
-  )
-
-  it.effect('ammo tops up to the cap', () =>
-    Story.story(
-      APPLICATION,
-      Story.given(
-        focusedOn(
-          withArsenal(browsing(withMoney(shopReady, 100)), holdingSpare(40)),
-          'ShotgunShells',
-        ),
-      ),
-      buyAtCounter('ShotgunShells'),
-      Story.model(({ seats: [{ player }] }) => {
-        expect(player.arsenal).toEqual(holdingSpare(48))
-      }),
-    ),
   )
 })
 
@@ -640,13 +605,8 @@ describe('carrying two guns', () => {
           true,
         )
         expect(
-          Option.map(maybeSpareGun(player.arsenal), ({ rounds, loaded }) => ({
-            rounds,
-            loaded,
-          })),
-        ).toEqual(
-          Option.some({ rounds: 15, loaded: WEAPONS.Shotgun.magazine - 1 }),
-        )
+          Option.map(maybeSpareGun(player.arsenal), ({ loaded }) => loaded),
+        ).toEqual(Option.some(WEAPONS.Shotgun.magazine - 1))
         expect(Array.filter(frameEvents, GameEvent.guards.Fired)).toHaveLength(
           1,
         )
@@ -655,7 +615,7 @@ describe('carrying two guns', () => {
   )
 
   it.effect(
-    'a gun that runs dry clicks, pops EMPTY, and swaps to the pistol',
+    'a gun never runs dry: its last shot reloads it, in hand, and it fires again',
     () =>
       Story.story(
         APPLICATION,
@@ -671,17 +631,23 @@ describe('carrying two guns', () => {
           SHORT_FRAME_MS,
         ),
         Story.model(({ seats: [{ player }], frameEvents, popups }) => {
-          expect(player.arsenal).toEqual(holdingFirst(gun('Smg', 0)))
-          expect(Array.map(frameEvents, ({ _tag }) => _tag)).toContain('RanDry')
-          expect(Array.map(popups, ({ kind }) => kind)).toContain('Empty')
-          expect(player.fireCooldownMs).toBe(DRY_FIRE_DELAY_MS)
+          expect(player.arsenal).toEqual(holdingSpare(0, 'Smg'))
+          expect(Reload.isAnyOf(['Reloading'])(player.reload)).toBe(true)
+          expect(Array.map(frameEvents, ({ _tag }) => _tag)).toContain(
+            'ReloadStarted',
+          )
+          expect(popups).toEqual([])
         }),
         ...ticks(
-          Math.ceil(DRY_FIRE_DELAY_MS / SHORT_FRAME_MS) + 1,
+          Math.ceil(WEAPONS.Smg.reloadMs / SHORT_FRAME_MS) + 1,
           SHORT_FRAME_MS,
         ),
-        Story.model(({ bullets }) => {
-          expect(Array.some(bullets, ({ weapon }) => weapon === 'Pistol')).toBe(
+        Story.model(({ seats: [{ player }], bullets }) => {
+          expect(heldGun(player.arsenal).kind).toBe('Smg')
+          expect(heldGun(player.arsenal).loaded).toBeLessThan(
+            WEAPONS.Smg.magazine,
+          )
+          expect(Array.some(bullets, ({ weapon }) => weapon === 'Smg')).toBe(
             true,
           )
         }),

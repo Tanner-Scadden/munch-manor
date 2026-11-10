@@ -34,7 +34,6 @@ import {
   UPGRADE_TIERS,
   WEAPONS,
   magazineOf,
-  maxRounds,
   maxTier,
   statsAt,
   tierName,
@@ -64,10 +63,10 @@ const browsing = (balance: number, arsenal: Arsenal): Model =>
     },
   )
 
-const spare = (kind: WeaponKind, rounds: number, tier = 0): CarriedGun => ({
+// NOTE: a gun with `loaded` in its magazine, at most a full one.
+const spare = (kind: WeaponKind, loaded: number, tier = 0): CarriedGun => ({
   kind,
-  rounds,
-  loaded: Math.min(rounds, magazineOf(kind, tier)),
+  loaded: Math.min(loaded, magazineOf(kind, tier)),
   tier,
 })
 
@@ -246,26 +245,6 @@ describe('upgrade tiers', () => {
       )
     })
   })
-
-  it.effect(
-    'a tier that raises the ammo cap lets a refill go past the old cap',
-    () => {
-      const baseCap = maxRounds('Smg', 0)
-      const raisedCap = maxRounds('Smg', 2)
-      expect(raisedCap).toBeGreaterThan(baseCap)
-
-      return Story.story(
-        APPLICATION,
-        Story.given(browsing(1000, holdingSecond(spare('Smg', baseCap, 2)))),
-        buy('SmgRounds'),
-        Story.model(({ seats: [{ player }] }) => {
-          expect(
-            Option.map(maybeSpareGun(player.arsenal), ({ rounds }) => rounds),
-          ).toEqual(Option.some(Math.min(raisedCap, baseCap + 120)))
-        }),
-      )
-    },
-  )
 })
 
 describe('tier resets', () => {

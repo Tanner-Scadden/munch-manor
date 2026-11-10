@@ -269,11 +269,9 @@ const DRAW_SLOTS = GunSlot.literals
 const drawCode = (slot: GunSlot): number =>
   DRAW_BASE + (slot === 'First' ? 0 : 1)
 
-// NOTE: a tap at the ammo window (protocol version 14) follows the draws.
-const BUY_AMMO_CODE = DRAW_BASE + DRAW_SLOTS.length
-
-// NOTE: MEDIC! from a downed player (protocol version 19) follows it.
-const MEDIC_CODE = BUY_AMMO_CODE + 1
+// NOTE: MEDIC! from a downed player (protocol version 19) follows the
+// draws, where the ammo window's tap was until protocol version 20.
+const MEDIC_CODE = DRAW_BASE + DRAW_SLOTS.length
 
 const FIXED_ITEMS = FixedShopItemId.literals
 
@@ -305,7 +303,6 @@ export const actionCodeOf = (action: SeatAction): number =>
     Buy: ({ item }) => itemCode(item),
     LeaveCounter: () => simpleCode('LeaveCounter'),
     Ready: () => simpleCode('Ready'),
-    BuyAmmo: () => BUY_AMMO_CODE,
     CallMedic: () => MEDIC_CODE,
   })
 
@@ -342,8 +339,6 @@ export const seatActionOf: {
       return Option.map(Array.get(FIXED_ITEMS, code - BUY_BASE), item =>
         SeatAction.Buy({ item }),
       )
-    } else if (code === BUY_AMMO_CODE) {
-      return Option.some(SeatAction.BuyAmmo())
     } else if (code === MEDIC_CODE) {
       return Option.some(SeatAction.CallMedic())
     } else if (code >= DRAW_BASE) {

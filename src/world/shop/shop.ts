@@ -36,16 +36,12 @@ import {
   freshGun,
   isCarrying,
   isHolding,
-  looseRounds,
   mapCarried,
-  mapGuns,
-  maxRounds,
   maxTier,
   maybeCarried,
   maybeNextTier,
   maybeReplacedGun,
   putGunInHand,
-  startingRounds,
   takeGun,
   tierName,
   tierOf,
@@ -63,7 +59,6 @@ import { atSeat, isCoop, modifySeat, seatStateAt } from '../party/party'
 import { countPurchase } from '../run/stats'
 import type { World } from '../schema/world'
 import {
-  type Arsenal,
   type CarriedGun,
   type FixedShopItemId,
   Lesson,
@@ -114,7 +109,6 @@ export const tickShownMoney: {
 
 export const ShopGood = defineTaggedUnion({
   Gun: { weapon: WeaponKind },
-  Ammo: { weapon: WeaponKind, rounds: Schema.Finite },
   Upgrade: { weapon: WeaponKind },
   Heart: {},
   Trap: { kind: TrapKind },
@@ -158,42 +152,31 @@ type ShopItem = Readonly<{
   good: ShopGood
 }>
 
-const SHOTGUN_SHELLS = 16
-const SMG_ROUNDS = 120
-export const LID_STACK = 8
-
 // NOTE: the sight is a luxury: it costs about as much as a gun's top
 // upgrade, so it is a late-run buy, and it is gone with the run.
 export const LASER_SIGHT_PRICE = 400
 
 export const SHOP_ITEMS: Readonly<Record<FixedShopItemId, ShopItem>> = {
   // NOTE: Rattles always sells the pistol back for nothing, so a player
-  // who traded it away is never stuck without a gun that never runs dry.
+  // who traded it away always has it to come back to.
   Pistol: {
     id: 'Pistol',
     name: WEAPONS.Pistol.name,
-    blurb: 'Never runs dry. Rattles gives it back for free.',
+    blurb: 'Rattles gives it back for free.',
     price: 0,
     good: ShopGood.Gun({ weapon: 'Pistol' }),
   },
   Shotgun: {
     id: 'Shotgun',
     name: WEAPONS.Shotgun.name,
-    blurb: `Sprays seven pellets and shoves hard, but only up close. Comes with ${startingRounds('Shotgun')} shells.`,
+    blurb: 'Sprays seven pellets and shoves hard, but only up close.',
     price: 35,
     good: ShopGood.Gun({ weapon: 'Shotgun' }),
-  },
-  ShotgunShells: {
-    id: 'ShotgunShells',
-    name: SHOP_GOOD_NAMES.ShotgunShells,
-    blurb: `${SHOTGUN_SHELLS} more shells for the ${WEAPONS.Shotgun.name}.`,
-    price: 10,
-    good: ShopGood.Ammo({ weapon: 'Shotgun', rounds: SHOTGUN_SHELLS }),
   },
   Smg: {
     id: 'Smg',
     name: WEAPONS.Smg.name,
-    blurb: `Fast and a little wobbly. Comes with ${startingRounds('Smg')} rounds.`,
+    blurb: 'Fast and a little wobbly.',
     price: 100,
     good: ShopGood.Gun({ weapon: 'Smg' }),
   },
@@ -203,13 +186,6 @@ export const SHOP_ITEMS: Readonly<Record<FixedShopItemId, ShopItem>> = {
     blurb: `Bolts something louder onto your ${WEAPONS.Shotgun.name}.`,
     price: 0,
     good: ShopGood.Upgrade({ weapon: 'Shotgun' }),
-  },
-  SmgRounds: {
-    id: 'SmgRounds',
-    name: SHOP_GOOD_NAMES.SmgRounds,
-    blurb: `${SMG_ROUNDS} more rounds for the ${WEAPONS.Smg.name}.`,
-    price: 20,
-    good: ShopGood.Ammo({ weapon: 'Smg', rounds: SMG_ROUNDS }),
   },
   SmgUpgrade: {
     id: 'SmgUpgrade',
@@ -254,21 +230,14 @@ export const SHOP_ITEMS: Readonly<Record<FixedShopItemId, ShopItem>> = {
     price: TRAPS.Turret.price,
     good: ShopGood.Trap({ kind: 'Turret' }),
   },
-  // NOTE: the fridge weapons are never for sale, only their upgrades and
-  // the Cooker's lids, and only once a player has pulled one.
+  // NOTE: the fridge weapons are never for sale, only their upgrades, and
+  // only once a player has pulled one.
   CookerUpgrade: {
     id: 'CookerUpgrade',
     name: `${WEAPONS.Cooker.name} upgrade`,
     blurb: `Tightens the clamps on your ${WEAPONS.Cooker.name}.`,
     price: 0,
     good: ShopGood.Upgrade({ weapon: 'Cooker' }),
-  },
-  LidStack: {
-    id: 'LidStack',
-    name: SHOP_GOOD_NAMES.LidStack,
-    blurb: `${LID_STACK} more lids for the ${WEAPONS.Cooker.name}.`,
-    price: 30,
-    good: ShopGood.Ammo({ weapon: 'Cooker', rounds: LID_STACK }),
   },
   PanUpgrade: {
     id: 'PanUpgrade',
@@ -361,7 +330,6 @@ export const maybeRepairTrap: {
 } = Function.dual(2, (model: World, id: ShopItemId): Option.Option<Trap> =>
   ShopGood.match(shopItem(id).good, {
     Gun: () => Option.none(),
-    Ammo: () => Option.none(),
     Upgrade: () => Option.none(),
     Heart: () => Option.none(),
     Trap: () => Option.none(),
@@ -387,7 +355,7 @@ type GunLine = Readonly<{
 }>
 
 const roundsStatus = (gun: CarriedGun): string =>
-  `${gun.loaded} loaded, ${looseRounds(gun)} spare`
+  `${gun.loaded} loaded, ${WEAPONS[gun.kind].roundsLabel} never run out`
 
 // NOTE: the guns Rattles sells, always in this order, pistol first.
 const GUN_LINES: Array.NonEmptyReadonlyArray<GunLine> = [
@@ -395,25 +363,24 @@ const GUN_LINES: Array.NonEmptyReadonlyArray<GunLine> = [
     weapon: 'Pistol',
     gun: 'Pistol',
     items: ['PistolUpgrade'],
-    status: gun => `${gun.loaded} loaded, never runs dry`,
+    status: roundsStatus,
   },
   {
     weapon: 'Shotgun',
     gun: 'Shotgun',
-    items: ['ShotgunShells', 'ShotgunUpgrade'],
+    items: ['ShotgunUpgrade'],
     status: roundsStatus,
   },
   {
     weapon: 'Smg',
     gun: 'Smg',
-    items: ['SmgRounds', 'SmgUpgrade'],
+    items: ['SmgUpgrade'],
     status: roundsStatus,
   },
 ]
 
 // NOTE: a fridge weapon has a card only while a player carries it, with
-// what Rattles sells for it. Brain Freeze has no tiers and no refills, so
-// it has none.
+// what Rattles sells for it. Brain Freeze has no tiers, so it has none.
 type FridgeLine = Readonly<{
   weapon: WeaponKind
   items: Array.NonEmptyReadonlyArray<ShopItemId>
@@ -423,7 +390,7 @@ type FridgeLine = Readonly<{
 const FRIDGE_LINES: ReadonlyArray<FridgeLine> = [
   {
     weapon: 'Cooker',
-    items: ['LidStack', 'CookerUpgrade'],
+    items: ['CookerUpgrade'],
     status: roundsStatus,
   },
   {
@@ -531,7 +498,6 @@ export const itemsIn: {
 const maybeGunOf = (item: ShopItemId): Option.Option<WeaponKind> =>
   ShopGood.match(shopItem(item).good, {
     Gun: ({ weapon }) => Option.some(weapon),
-    Ammo: ({ weapon }) => Option.some(weapon),
     Upgrade: ({ weapon }) => Option.some(weapon),
     Heart: () => Option.none(),
     Trap: () => Option.none(),
@@ -616,7 +582,6 @@ export const priceFor: {
     const { calling } = seatStateAt(model, slot).player
     return ShopGood.match(shopItem(id).good, {
       Gun: () => shopPriceFor(calling, shopItem(id).price),
-      Ammo: () => shopPriceFor(calling, shopItem(id).price),
       Upgrade: ({ weapon }) =>
         Option.match(nextTierFor(model, slot, weapon), {
           onNone: () => 0,
@@ -651,7 +616,6 @@ export const itemName: {
 } = Function.dual(3, (model: World, slot: PlayerSlot, id: ShopItemId): string =>
   ShopGood.match(shopItem(id).good, {
     Gun: () => shopItem(id).name,
-    Ammo: () => shopItem(id).name,
     Upgrade: ({ weapon }) =>
       Option.match(nextTierFor(model, slot, weapon), {
         onNone: () => `${tierName(weapon, maxTier(weapon))}, fully upgraded`,
@@ -668,29 +632,6 @@ export const itemName: {
   }),
 )
 
-const ammoGain = (
-  model: World,
-  slot: PlayerSlot,
-  weapon: WeaponKind,
-  rounds: number,
-): string => {
-  const roundsLabel = WEAPONS[weapon].roundsLabel
-  const room = Option.match(
-    maybeCarried(seatStateAt(model, slot).player, weapon),
-    {
-      onNone: () => rounds,
-      onSome: spare => maxRounds(weapon, spare.tier) - spare.rounds,
-    },
-  )
-  if (room <= 0) {
-    return `adds up to ${rounds} ${roundsLabel}`
-  } else if (room < rounds) {
-    return `adds ${room} ${roundsLabel} and fills it`
-  } else {
-    return `adds ${rounds} ${roundsLabel}`
-  }
-}
-
 export const itemAriaLabel: {
   (slot: PlayerSlot, id: ShopItemId): (model: World) => string
   (model: World, slot: PlayerSlot, id: ShopItemId): string
@@ -700,8 +641,6 @@ export const itemAriaLabel: {
     const price = `$${priceFor(model, slot, id)}`
     return ShopGood.match(shopItem(id).good, {
       Gun: () => `Buy ${itemName(model, slot, id)} for ${price}`,
-      Ammo: ({ weapon, rounds }) =>
-        `${itemName(model, slot, id)}, ammo for ${gunName(model, slot, weapon)}, ${price}, ${ammoGain(model, slot, weapon, rounds)}`,
       Upgrade: ({ weapon }) =>
         Option.match(nextTierFor(model, slot, weapon), {
           onNone: () => itemName(model, slot, id),
@@ -727,12 +666,6 @@ export const itemBlurb: {
 } = Function.dual(3, (model: World, slot: PlayerSlot, id: ShopItemId): string =>
   ShopGood.match(shopItem(id).good, {
     Gun: () => shopItem(id).blurb,
-    Ammo: ({ weapon, rounds }) =>
-      Option.match(maybeCarried(seatStateAt(model, slot).player, weapon), {
-        onNone: () => shopItem(id).blurb,
-        onSome: spare =>
-          `${String.capitalize(ammoGain(model, slot, weapon, rounds))}. You have ${spare.rounds} of ${maxRounds(weapon, spare.tier)}.`,
-      }),
     Upgrade: ({ weapon }) => {
       const tier = tierOf(seatStateAt(model, slot).player, weapon)
       return Option.match(nextTierFor(model, slot, weapon), {
@@ -779,15 +712,6 @@ const blockedBy = (
         return Option.none()
       }
     },
-    Ammo: ({ weapon }) =>
-      Option.match(maybeCarried(player, weapon), {
-        onNone: () =>
-          block(`Needs the ${gunName(model, slot, weapon)}`, 'NO GUN'),
-        onSome: spare =>
-          spare.rounds >= maxRounds(weapon, spare.tier)
-            ? block(`Your ${tierName(weapon, spare.tier)} is full`, 'FULL')
-            : Option.none(),
-      }),
     Upgrade: ({ weapon }) => {
       if (!isCarrying(player, weapon)) {
         return block(`Needs the ${gunName(model, slot, weapon)}`, 'NO GUN')
@@ -916,23 +840,12 @@ export const stockTag: {
 
 // SUGGESTION
 
-const isRunningLow = (
-  model: World,
-  slot: PlayerSlot,
-  weapon: WeaponKind,
-): boolean =>
-  Option.match(maybeCarried(seatStateAt(model, slot).player, weapon), {
-    onNone: () => false,
-    onSome: spare => spare.rounds * 2 < maxRounds(weapon, spare.tier),
-  })
-
 const suggestionRank = (
   model: World,
   slot: PlayerSlot,
   id: ShopItemId,
 ): number =>
   ShopGood.match(shopItem(id).good, {
-    Ammo: ({ weapon }) => (isRunningLow(model, slot, weapon) ? 0 : 3),
     Upgrade: ({ weapon }) => (weapon === SIDEARM ? 2 : 1),
     Gun: () =>
       Option.isNone(maybeReplacedGun(seatStateAt(model, slot).player.arsenal))
@@ -977,22 +890,6 @@ export { isHolding }
 
 // PURCHASE
 
-export const refill: {
-  (weapon: WeaponKind, rounds: number): (arsenal: Arsenal) => Arsenal
-  (arsenal: Arsenal, weapon: WeaponKind, rounds: number): Arsenal
-} = Function.dual(
-  3,
-  (arsenal: Arsenal, weapon: WeaponKind, rounds: number): Arsenal =>
-    mapGuns(arsenal, gun =>
-      gun.kind === weapon
-        ? modifyFields(gun, {
-            rounds: current =>
-              Math.min(maxRounds(weapon, gun.tier), current + rounds),
-          })
-        : gun,
-    ),
-)
-
 // NOTE: an upgrade finds its gun in a gun slot or, for the Pan, in the
 // melee slot.
 const upgrade = (player: Player, weapon: WeaponKind): Player =>
@@ -1014,12 +911,6 @@ const grant = (model: World, slot: PlayerSlot, good: ShopGood): World =>
           arsenal: arsenal =>
             takeGun(arsenal, freshGun(weapon, player.calling)),
           wield: () => 'Gun',
-        }),
-      ),
-    Ammo: ({ weapon, rounds }) =>
-      equip(model, slot, player =>
-        modifyFields(player, {
-          arsenal: arsenal => refill(arsenal, weapon, rounds),
         }),
       ),
     Upgrade: ({ weapon }) =>
@@ -1165,8 +1056,8 @@ export const refreshShopPresence: {
 
 export type StallPrompt = 'None' | 'WalkUp' | 'ClosedUntilFirstClear'
 
-// NOTE: mid-wave the stall is the ammo window (src/world/shop/ammoCounter.ts), whose
-// own sign and tag say what it sells, so it needs no words.
+// NOTE: mid-wave the stall is shut, its CLOSED sign says so, and the
+// wave is no time for words.
 const closedPrompt = (phase: Phase): StallPrompt =>
   Phase.isAnyOf(['Wave'])(phase) ? 'None' : 'ClosedUntilFirstClear'
 

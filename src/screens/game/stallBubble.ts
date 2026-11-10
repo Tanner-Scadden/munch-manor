@@ -11,9 +11,8 @@ import {
   placeAt,
   spriteShapes,
 } from '../../art/sprite'
-import { AMMO_BOX } from '../../art/sprites/pickups'
 import { TRAP_ICONS } from '../../art/sprites/traps'
-import { AmmoTip, KitchenCall, Tour } from '../../domain/clientSchema'
+import { KitchenCall, Tour } from '../../domain/clientSchema'
 import {
   CALL_LINES,
   callLineIndex,
@@ -35,8 +34,7 @@ import { STALL_BOX, isBrowsing, isShopOpenFor } from '../../world/shop/shop'
 // NOTE: Rattles calls from his stall with a speech bubble of pictures: a
 // coin and what he sells that the player needs now. Traps, in the breaks
 // until the first one is bought, since a playtester took the trap hint for
-// a button that builds them. Ammo, once, the first time a gun that can run
-// dry runs low. A bare coin, between waves, when the stall is out of the
+// a button that builds them. A bare coin, between waves, when the stall is out of the
 // window and the shop has never been opened. The bubble hangs beside the
 // stall, and when the stall is out of view it waits at the window's edge
 // with an arrow toward it. It never points at a zombie.
@@ -46,7 +44,6 @@ import { STALL_BOX, isBrowsing, isShopOpenFor } from '../../world/shop/shop'
 // the prize's TAKE tag and its ring (which teach taking), footprints and a
 // cross for leaving it by walking away.
 export type BubbleKind =
-  | 'Ammo'
   | 'Traps'
   | 'Shop'
   | 'Gift'
@@ -150,7 +147,6 @@ const BUBBLE_HEIGHT = ICON_SIZE + PAD * 2
 const TAIL = 3
 
 const GOODS: Readonly<Record<BubbleKind, ReadonlyArray<Good>>> = {
-  Ammo: [COIN, { sprite: AMMO_BOX, isCentered: false, width: ICON_SIZE }],
   Traps: [
     COIN,
     { sprite: TRAP_ICONS.Barricade, isCentered: true, width: ICON_SIZE },
@@ -171,7 +167,6 @@ const bubbleWidth = (kind: BubbleKind): number =>
 
 const BUBBLE_INK = '#140c10'
 const BUBBLE_FILL = '#f4f1de'
-const BUBBLE_ALERT = '#ff4a4f'
 
 // NOTE: the frame and its tail, a fixed set of whole pixel rectangles,
 // baked once per kind. The tail sits at the bottom right, toward Rattles.
@@ -218,7 +213,6 @@ const frameRects = (
 ]
 
 const FRAMES: Readonly<Record<BubbleKind, Sprite>> = {
-  Ammo: bakeShapes(frameRects(bubbleWidth('Ammo'), BUBBLE_ALERT)),
   Traps: bakeShapes(frameRects(bubbleWidth('Traps'), BUBBLE_INK)),
   Shop: bakeShapes(frameRects(bubbleWidth('Shop'), BUBBLE_INK)),
   Gift: bakeShapes(frameRects(bubbleWidth('Gift'), BUBBLE_INK)),
@@ -249,9 +243,7 @@ export const maybeBubbleKind: {
 } = Function.dual(
   2,
   (model: Model, camera: Camera): Option.Option<BubbleKind> => {
-    if (AmmoTip.isAnyOf(['Showing'])(model.ammoTip)) {
-      return Option.some('Ammo')
-    } else if (
+    if (
       !isBreakWithShop(model) ||
       Tour.isAnyOf(['Running', 'Done'])(model.kitchenTour) ||
       KitchenCall.isAnyOf(['Calling'])(model.kitchenCall)
@@ -403,11 +395,10 @@ const bubbleShapes = (
   const x = Math.max(left, Math.min(right, wantedX))
   const y = Math.max(top, Math.min(bottom, wantedY)) + bob
   const side = sideOf({ x: wantedX, y: wantedY }, left, right, top, bottom)
-  const color = kind === 'Ammo' ? BUBBLE_ALERT : BUBBLE_INK
   return [
     placeSprite(x, y, FRAMES[kind]),
     ...goodsShapes(kind, x, y),
-    ...(side === 'Inside' ? [] : arrowRects(side, x, y, width, color)),
+    ...(side === 'Inside' ? [] : arrowRects(side, x, y, width, BUBBLE_INK)),
   ]
 }
 

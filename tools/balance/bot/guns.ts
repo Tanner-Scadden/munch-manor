@@ -44,17 +44,9 @@ export const pistolOf = (model: Model): Gun | undefined =>
 export const spareOf = (model: Model): Gun | undefined =>
   firearmOf(model) ?? fridgeSpareOf(model)
 
-// A fridge weapon with nothing left to throw or spray.
-export const isSpent = (gun: Gun): boolean =>
-  (gun.kind === 'Freeze' || gun.kind === 'Cooker') && gun.rounds <= 0
-
 // How much the bot values a gun in a slot, to choose which one a new gun
-// replaces: a spent fridge weapon is worth nothing, the pistol little, and
-// an upgraded Chatterbox the most.
+// replaces: the pistol little, and an upgraded Chatterbox the most.
 export const gunValue = (gun: Gun): number => {
-  if (isSpent(gun)) {
-    return 0
-  }
   if (gun.kind === 'Pistol') {
     return 1 + gun.tier
   }

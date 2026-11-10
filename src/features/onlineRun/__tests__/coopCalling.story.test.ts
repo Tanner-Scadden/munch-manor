@@ -19,7 +19,6 @@ import {
   writeSave,
 } from '../../../test/testing'
 import { heldGun } from '../../../world/gear/weapons'
-import { COOK_STARTING_LIDS } from '../../../world/heroes/calling'
 import { pointsForRank } from '../../../world/heroes/rank'
 import {
   DEFAULT_ROOM_SETTINGS,
@@ -61,13 +60,13 @@ describe('seating the callings', () => {
     expect(heldGun(lead.arsenal).kind).toBe('Pistol')
   })
 
-  test('a Line Cook at slot 2 holds the Pressure Cooker with fewer lids', () => {
+  test('a Line Cook at slot 2 holds the Pressure Cooker, fully loaded', () => {
     const cook = seatOf(room, 2)
     expect(cook.calling).toBe('LineCook')
     expect(cook.hp).toBe(PLAYER_MAX_HP)
     const gun = heldGun(cook.arsenal)
     expect(gun.kind).toBe('Cooker')
-    expect(gun.rounds).toBe(COOK_STARTING_LIDS)
+    expect(gun.loaded).toBe(4)
   })
 
   test('a slot with no calling plays YOU, as do all when none came', () => {

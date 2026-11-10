@@ -23,7 +23,6 @@ import { PLAYER_MAX_HP, PREPARATION_MS } from '../shared/constants'
 import { heroIdOf } from '../shared/playerData'
 import { nextRandom } from '../shared/prng'
 import { fridgeBoxOf, pickPrize, prizeWeights } from '../world/fridge/leftovers'
-import { freshGun } from '../world/gear/weapons'
 import { CALLINGS, isCallingUnlocked } from '../world/heroes/calling'
 import { grantedVeteran } from '../world/heroes/rank'
 import { valveBoxOf } from '../world/kitchen/gasValve'
@@ -50,16 +49,14 @@ import {
 import { biteGraceScale } from '../world/run/difficulty'
 import { type World, modifyWorldFields, withWorld } from '../world/schema/world'
 import {
-  Arsenal,
+  type Arsenal,
   Invulnerability,
   type Life,
   type Pickup,
   type PickupKind,
   type Seat,
   type SeatState,
-  type WeaponKind,
 } from '../world/schema/worldSchema'
-import { STALL_BOX } from '../world/shop/shop'
 import { PHONE_PORTRAIT, SURFACE, zombieOf } from './testing'
 import { asVeteran } from './veteran'
 
@@ -369,49 +366,6 @@ export const atFridgeOnWave: {
 )
 
 export const atFridge = (balance: number): Model => atFridgeOnWave(5, balance)
-
-// THE AMMO WINDOW
-
-const BELOW_STALL = {
-  x: (STALL_BOX.left + STALL_BOX.right) / 2,
-  y: STALL_BOX.bottom + 6,
-}
-
-// NOTE: the Pop Pistol first and `kind` in the hands with `rounds` left.
-const holdingSecond = (kind: WeaponKind, rounds: number): Arsenal =>
-  Arsenal.HoldingSecond({
-    first: freshGun('Pistol'),
-    second: modifyFields(freshGun(kind), { rounds: () => rounds }),
-  })
-
-// NOTE: mid-wave at the stall's ammo window (src/world/shop/ammoCounter.ts).
-// NOTE: data first when the kind leads: a kind is a string, rounds are not.
-export const midWaveAtStall: {
-  (rounds: number, balance?: number): (kind: WeaponKind) => Model
-  (kind: WeaponKind, rounds: number, balance?: number): Model
-} = Function.dual(
-  (args: IArguments) => typeof args[0] === 'string',
-  (kind: WeaponKind, rounds: number, balance: number = 100): Model =>
-    modifyFocus(
-      modifyFields(freshRunModel(), {
-        phase: () =>
-          Phase.Wave({
-            wave: 5,
-            elapsedMs: 20_000,
-            spawns: [DISTANT_SPAWN],
-          }),
-      }),
-      {
-        wallet: () => ({ balance, earned: balance, shown: balance }),
-        player: player =>
-          modifyFields(player, {
-            x: () => BELOW_STALL.x,
-            y: () => BELOW_STALL.y,
-            arsenal: () => holdingSecond(kind, rounds),
-          }),
-      },
-    ),
-)
 
 // NOTE: a fridge whose stream's next draw lands on `prize`, found by trying
 // seeds, so a test can ask for each prize without knowing the stream.

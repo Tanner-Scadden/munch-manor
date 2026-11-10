@@ -81,16 +81,13 @@ import {
 import type { BossBlame, RunResult } from './bot/results'
 import { routeTo } from './bot/route'
 import {
-  AMMO_WINDOW_NEAR_PX,
   KITCHEN_DOOR_PUSH,
-  STALL_BELOW,
   STALL_FRONT,
   busiestDoor,
   fridgeKeys,
   fridgeStand,
   gnomeSpot,
   holdingAtKitchen,
-  holdingAtWindow,
   isFridgeInReach,
   isKitchenOpen,
   isOfferedToBot,
@@ -98,7 +95,6 @@ import {
   prepPlan,
   replacedBy,
   shop,
-  towardWindow,
   wantedPurchase,
   wouldTake,
 } from './bot/shopping'
@@ -303,8 +299,7 @@ export const play: {
           if (
             state.options.swapsBack &&
             heldGun(focusOf(model).player.arsenal).kind === 'Pistol' &&
-            other !== undefined &&
-            other.rounds > 0
+            other !== undefined
           ) {
             model = tapKey(model, 'KeyQ')
           }
@@ -397,13 +392,7 @@ export const play: {
             state,
             pressKeys(
               model,
-              holdingAtWindow(
-                model,
-                holdingAtKitchen(
-                  model,
-                  desiredKeys(towardWindow(model, kite(state, model))),
-                ),
-              ),
+              holdingAtKitchen(model, desiredKeys(kite(state, model))),
             ),
           )
         }
@@ -479,13 +468,6 @@ export const play: {
         }
         if (event._tag === 'PrizeTaken') {
           state.fridgeLog.taken += 1
-        }
-        if (
-          event._tag === 'Purchased' &&
-          model.phase._tag === 'Wave' &&
-          distance(event, STALL_BELOW) < AMMO_WINDOW_NEAR_PX
-        ) {
-          state.fridgeLog.counterBuys += 1
         }
         if (event._tag === 'FreezeSprayed') {
           state.fridgeLog.sprays += 1

@@ -17,7 +17,6 @@ import {
   ShopState,
   type Vector,
 } from '../schema/worldSchema'
-import { ammoCounterOffers, sellAmmo } from './ammoCounter'
 
 // Buying things in the world by standing still or holding the interact key
 // beside them, the way a wall buy works: no dialog, nothing paused or
@@ -26,8 +25,7 @@ import { ammoCounterOffers, sellAmmo } from './ammoCounter'
 // second, the way a teammate revives (src/world/party/revive.ts); either fills the same
 // ring, and the key fills it twice as fast. Letting go, walking off, firing,
 // or stabbing cancels. A press the wallet cannot cover is refused at once;
-// standing there short of it does nothing. The ammo window alone buys on a
-// tap, with no ring (TAP TO BUY below).
+// standing there short of it does nothing.
 //
 // Standing never buys by accident: it counts only while the player neither
 // moves, fires, nor stabs, never while the shop is open or in the first
@@ -62,7 +60,8 @@ export const PURCHASE_RULES: PurchaseRules = {
 // player must stand within `reachPx` of, and the spot its price tag hangs
 // from (the top middle of the tag).
 // `isFull` is an offer with nothing left to sell right now, such as the
-// ammo window for a full gun: a press shakes it, and standing never buys.
+// stove with no gun it cooks in hand: a press shakes it, and standing never
+// buys.
 export type Offer = Readonly<{
   target: Purchasable
   price: number
@@ -78,7 +77,6 @@ export const offersOf: {
 } = Function.dual(2, (world: World, slot: PlayerSlot): ReadonlyArray<Offer> => [
   ...exitOffers(world),
   ...fridgeOffers(world, slot),
-  ...ammoCounterOffers(world, slot),
   ...stoveOffers(world, slot),
   ...valveOffers(world),
 ])
@@ -92,7 +90,6 @@ const buy = (
     Exit: ({ exit }) => buyExit(world, slot, exit, offer.price),
     Fridge: () => pullFridge(world, slot, offer.price),
     Prize: () => takePrize(world, slot),
-    Ammo: () => sellAmmo(world, slot),
     Stove: () => cookGun(world, slot, offer.price),
     Valve: () => buyValve(world, slot, offer.price),
   })
@@ -105,7 +102,6 @@ export const isSamePurchasable: {
     Exit: ({ exit }) => second._tag === 'Exit' && second.exit === exit,
     Fridge: () => second._tag === 'Fridge',
     Prize: () => second._tag === 'Prize',
-    Ammo: () => second._tag === 'Ammo',
     Stove: () => second._tag === 'Stove',
     Valve: () => second._tag === 'Valve',
   }),
@@ -180,7 +176,6 @@ export const holdProgress = (purchase: Purchase): number =>
     Refused: () => 0,
     Done: () => 1,
     Spent: () => 0,
-    Tapped: () => 1,
   })
 
 // NOTE: standing still to buy: not moving, firing, or stabbing (the
@@ -322,52 +317,8 @@ export const advancePurchase: {
           : isStanding
             ? world
             : withPurchase(world, slot, Purchase.Idle()),
-      Tapped: ({ target }) =>
-        Option.match(
-          Option.filter(maybeOfferInReach(world, slot), offer =>
-            isSamePurchasable(offer.target, target),
-          ),
-          {
-            onNone: () => withPurchase(world, slot, Purchase.Idle()),
-            onSome: offer =>
-              offer.isFull || shortfallFor(world, slot, offer) > 0
-                ? refuse(world, slot, offer)
-                : complete(world, slot, offer),
-          },
-        ),
     })
   },
-)
-
-// TAP TO BUY
-
-// NOTE: decided with the owner on 2026-10-31 ("make it so you can tap to
-// buy ammo mid round instead of waiting for the timer"): at the ammo
-// window a tap buys at once, with no ring to fill. A press of the interact
-// key, a tap of the touch hold button, or a click on the tag is the seat
-// action BuyAmmo (src/world/step/stepWorld.ts), which marks the purchase Tapped; the
-// next tick buys it, or refuses it as any press is refused, so its events
-// reach the sounds and Rattles. Standing still at the window still fills
-// the ring, so walking past never buys. Only the ammo window is tapped:
-// the boards and the fridge still hold, as a big buy should be a choice.
-const isTappable = (offer: Offer): boolean =>
-  Purchasable.isAnyOf(['Ammo'])(offer.target)
-
-// NOTE: the offer in reach a tap buys at once, if any.
-export const maybeTapOffer: {
-  (slot: PlayerSlot): (world: World) => Option.Option<Offer>
-  (world: World, slot: PlayerSlot): Option.Option<Offer>
-} = Function.dual(2, (world: World, slot: PlayerSlot): Option.Option<Offer> =>
-  Option.filter(maybeOfferInReach(world, slot), isTappable),
-)
-
-export const tapToBuy: {
-  (slot: PlayerSlot): (world: World) => Option.Option<World>
-  (world: World, slot: PlayerSlot): Option.Option<World>
-} = Function.dual(2, (world: World, slot: PlayerSlot): Option.Option<World> =>
-  Option.map(maybeTapOffer(world, slot), offer =>
-    withPurchase(world, slot, Purchase.Tapped({ target: offer.target })),
-  ),
 )
 
 // NOTE: whether the interact key belongs to a purchasable right now, so a

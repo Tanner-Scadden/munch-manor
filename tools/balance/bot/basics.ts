@@ -41,9 +41,8 @@ export type Kind = ZombieKind
 type BotMode = 'Campaign' | 'Endless'
 
 // What the bot plays: the level, the mode, and how it shops and swaps.
-// swapsBack is SWAP=1: it re-arms the spare gun before each wave while it
-// has rounds, the way a player swaps back after a refill. The default bot
-// never swaps, so once its spare runs dry it fights on with the pistol.
+// swapsBack is SWAP=1: it re-arms the spare gun before each wave, the way a
+// player swaps back. The default bot never swaps.
 export type BotOptions = {
   difficulty: Difficulty
   mode: BotMode

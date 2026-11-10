@@ -82,7 +82,7 @@ import { type Threat, escapeHeading } from './escape'
 // door (a different one for each seat, moving on now and then), hunts the
 // zombies it hears but cannot see, shoots the nearest one it can, keeps
 // some distance from it and some room from its teammates, revives anyone who
-// is down (a fresh MEDIC! call first, over any power-up), grabs the power-ups nobody nearer wants, buys ammo and hearts at the stall in a break (never while the
+// is down (a fresh MEDIC! call first, over any power-up), grabs the power-ups nobody nearer wants, buys hearts and upgrades at the stall in a break (never while the
 // human is at it), and presses READY when the human does or after a short
 // wait. It
 // carries nothing between ticks and rolls no dice, so the same World gives
@@ -122,9 +122,6 @@ const FLEE_PX: Readonly<Record<Zombie['kind'], number>> = {
 }
 
 const WISHES: ReadonlyArray<ShopItemId> = [
-  'LidStack',
-  'ShotgunShells',
-  'SmgRounds',
   'Heart',
   'PistolUpgrade',
   'ShotgunUpgrade',

@@ -3,7 +3,6 @@ import { modifyFields } from 'foldkit/struct'
 
 import { nextRandom } from '../../shared/prng'
 import type { SoundEffect } from '../../shared/soundEffect'
-import { maxRounds, maybeCarried } from '../gear/weapons'
 import { maxHpOf } from '../heroes/calling'
 import {
   type Box,
@@ -32,14 +31,13 @@ import {
   type PlayerSlot,
   type Vector,
 } from '../schema/worldSchema'
-import { LID_STACK, refill } from '../shop/shop'
 import { distanceBetween } from '../step/geometry'
 import { isKitchenOpen } from './kitchen'
 
 // The pantry stash (owner, 2026-11-02): once the kitchen is open, each break
 // the pantry cupboard in its north-west corner holds one goodie: $15 to $30,
-// a free Lid Stack for a Cooker carrier, or a heart for a hurt player. A Lid
-// Stack or a heart the taker cannot use pays the cash instead. It sits in
+// or a heart for a hurt player. A heart the taker cannot use pays the cash
+// instead. (A Lid Stack went with endless ammo.) It sits in
 // front of the cupboard for the break, and the first player to walk onto it
 // takes it, one a break. The walk is its price.
 //
@@ -63,16 +61,11 @@ export const PANTRY_RULES: PantryRules = {
 
 const PANTRY_SEED_SALT = 0x9a27c4b1
 
-const GOODIES: Array.NonEmptyReadonlyArray<PantryGoodie> = [
-  'Cash',
-  'Lids',
-  'Heart',
-]
+const GOODIES: Array.NonEmptyReadonlyArray<PantryGoodie> = ['Cash', 'Heart']
 
-// NOTE: the sound of a take: a coin's ching, a lid's tink, or a heart.
+// NOTE: the sound of a take: a coin's ching or a heart.
 export const PANTRY_SOUNDS: Readonly<Record<PantryGoodie, SoundEffect>> = {
   Cash: 'Purchase',
-  Lids: 'Tink',
   Heart: 'GrabHeart',
 }
 
@@ -145,12 +138,6 @@ const stock = (world: World, wave: number): World => {
 
 const isHurt = (player: Player): boolean => player.hp < maxHpOf(player)
 
-const hasRoomForLids = (player: Player): boolean =>
-  Option.exists(
-    maybeCarried(player, 'Cooker'),
-    gun => gun.rounds < maxRounds('Cooker', gun.tier),
-  )
-
 // NOTE: what the stash gives this taker: the goodie if they can use it, else
 // its cash. A Glass run's one heart stays one heart.
 const goodieFor = (
@@ -160,7 +147,6 @@ const goodieFor = (
 ): PantryGoodie => {
   const isUsable = {
     Cash: true,
-    Lids: hasRoomForLids(player),
     Heart: isHurt(player) && !world.modifiers.glass,
   }[goodie]
   return isUsable ? goodie : 'Cash'
@@ -179,11 +165,7 @@ const give = (
           ? modifyFields(player, {
               hp: hp => Math.min(maxHpOf(player), hp + 1),
             })
-          : goodie === 'Lids'
-            ? modifyFields(player, {
-                arsenal: arsenal => refill(arsenal, 'Cooker', LID_STACK),
-              })
-            : player,
+          : player,
       wallet: wallet => (goodie === 'Cash' ? earn(wallet, cash) : wallet),
     }),
   })

@@ -10,7 +10,6 @@ import {
   TRAP_BUTTON_ICONS,
 } from '../../art/icons'
 import type { SoundMessage } from '../../audio/message'
-import { isOutOfGuns } from '../../features/hud/ammoWarning'
 import { isWaitingOnYou } from '../../features/hud/readyNudge'
 import { wavePreviewView } from '../../features/hud/wavePreview'
 import {
@@ -272,10 +271,6 @@ const meleeSlotButtonView = (
       h.Class('gun-slot-button'),
       h.DataAttribute('slot', 'Melee'),
       h.DataAttribute('held', isHeld ? 'true' : 'false'),
-      h.DataAttribute(
-        'out',
-        isOutOfGuns(focusOf(model).player) ? 'true' : 'false',
-      ),
       h.AriaLabel(isHeld ? `The ${name} is in hand` : `Switch to the ${name}`),
       h.AriaKeyshortcuts('F'),
       ...(isHeld ? [h.AriaDisabled(true)] : []),
@@ -320,8 +315,8 @@ const gunSlotsView = (
 // row stacks to fit four on a phone held upright (SLOT_SIZES in src/screens/game/hud.ts).
 // Its target is at least a thumb wide. It reloads the held gun, or with the
 // knife or the Pan out puts the last gun back and reloads it, as R does. It
-// dims when a reload would load nothing: a full magazine, no rounds left to
-// load, or a reload going.
+// dims when a reload would load nothing: a full magazine, the Pan, or a
+// reload going.
 const hudPixels = (count: number): string => `calc(${count} * var(--hud-px))`
 
 const reloadWidth = (screen: Screen): string =>
@@ -475,8 +470,7 @@ const trapIconsView = (
 // NOTE: the hold-to-buy and trap buttons sit over the row, right-aligned,
 // and wrap upward, so they never cover a slot, the reload button, or the
 // start wave button centered over the guns. Mid-wave (only hold-to-buy) they
-// end over the melee slot, left of a player buying at the stall's ammo
-// window. In a landscape break they run from the start wave button to short
+// end over the melee slot. In a landscape break they run from the start wave button to short
 // of the stall. In portrait they end over the reload button, and in a break,
 // when the start wave button takes the band over the row, one band higher.
 const START_WAVE_HALF_PX = 64

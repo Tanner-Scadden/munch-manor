@@ -2,12 +2,7 @@ import { Option } from 'effect'
 
 import type { Model } from '../../app/model'
 import { COIN_SPRITE } from '../../art/font'
-import {
-  type Sprite,
-  bakeShapes,
-  placeAt,
-  spriteShapes,
-} from '../../art/sprite'
+import { type Sprite, bakeShapes, placeAt } from '../../art/sprite'
 import { HEART_SPRITE } from '../../art/sprites/hearts'
 import type { Drawable } from '../../render/depth'
 import { rect } from '../../render/drawing'
@@ -18,7 +13,7 @@ import type { PantryGoodie } from '../../world/schema/entitySchema'
 
 // The pantry stash (src/world/kitchen/pantry.ts) in the world: its goodie bobbing on the
 // floor in front of the cupboard for the break, over a little shadow, with a
-// glint that winks now and then. Show, don't explain: a coin, a pot lid, or a
+// glint that winks now and then. Show, don't explain: a coin or a
 // heart says what it is, and walking onto it takes it.
 
 const BOB_MS = 280
@@ -27,19 +22,12 @@ const LIFT_PX = 4
 const GLINT_MS = 1400
 const GLINT_ON_MS = 160
 
-const LID: Sprite = spriteShapes(['..kHk..', '.kGHGk.', 'kGGGGGk', '.kkkkk.'], {
-  k: '#140c10',
-  G: '#8d96a3',
-  H: '#d9dde3',
-})
-
 // NOTE: the coin is drawn from its top left corner, the rest from their
 // middles, so each sits by its own offset.
 type GoodieLook = Readonly<{ sprite: Sprite; dx: number; dy: number }>
 
 const GOODIE_LOOKS: Readonly<Record<PantryGoodie, GoodieLook>> = {
   Cash: { sprite: COIN_SPRITE, dx: -3, dy: -3 },
-  Lids: { sprite: LID, dx: 0, dy: 0 },
   Heart: { sprite: HEART_SPRITE, dx: 0, dy: 0 },
 }
 

@@ -160,41 +160,6 @@ export const gunArt: {
 
 // GOODS
 
-const SACK_ART = artOf(
-  [
-    '....RR.RR.....',
-    '....RY.RY.RR..',
-    '...KKKKKKKKRY.',
-    '..KbBBBBBBBKK.',
-    '.KbBBBBBBBBBK.',
-    '.KbBBbBBbBBBK.',
-    '.KbBBBBBBBBBK.',
-    '.KbBBBBBBbBBK.',
-    '.KbbBBBBBBBBK.',
-    '..KbbbbbbbbK..',
-    '...KKKKKKKK...',
-  ],
-  { K: INK, R: '#d8423a', Y: '#e0a92e', B: '#c9a26a', b: '#8a6a3c' },
-)
-
-const DRUM_ART = artOf(
-  [
-    '....KKKK....',
-    '..KKGGGGKK..',
-    '.KGGHHHHGGK.',
-    '.KGHGGGGHGK.',
-    'KGHGKKKKGHGK',
-    'KGHGKYYKGHGK',
-    'KGHGKYYKGHGK',
-    'KGHGKKKKGHGK',
-    '.KGHGGGGHGK.',
-    '.KGGHHHHGGK.',
-    '..KKGGGGKK..',
-    '....KKKK....',
-  ],
-  { K: INK, G: '#5a6170', H: '#a9b2bf', Y: '#e0a92e' },
-)
-
 const JAR_ART = artOf(
   [
     '..KKKKKKKK..',
@@ -316,27 +281,10 @@ const SIGHT_ART = artOf(
   { K: INK, M: '#4a4f5a', R: '#ff3a3f', L: '#ffb3b6' },
 )
 
-// NOTE: a stack of pot lids, knobs up, for the Cooker's ammo row.
-const LID_STACK_ART = artOf(
-  [
-    '.....KKKK.....',
-    '..KKKKHHKKKK..',
-    '.KGHHHHHHHHGK.',
-    'KKKKKKKKKKKKKK',
-    '.KGHHHHHHHHGK.',
-    'KKKKKKKKKKKKKK',
-    '.KGHHHHHHHHGK.',
-    'KKKKKKKKKKKKKK',
-  ],
-  GUN_BASE,
-)
-
 const ITEM_ART: Readonly<Record<FixedShopItemId, ShopArt>> = {
   Shotgun: gunArt('Shotgun', 0),
-  ShotgunShells: SACK_ART,
   ShotgunUpgrade: gunArt('Shotgun', 1),
   Smg: gunArt('Smg', 0),
-  SmgRounds: DRUM_ART,
   SmgUpgrade: gunArt('Smg', 1),
   Pistol: gunArt('Pistol', 0),
   PistolUpgrade: gunArt('Pistol', 1),
@@ -345,7 +293,6 @@ const ITEM_ART: Readonly<Record<FixedShopItemId, ShopArt>> = {
   Barricade: PLANK_ART,
   Turret: GNOME_ART,
   CookerUpgrade: gunArt('Cooker', 1),
-  LidStack: LID_STACK_ART,
   PanUpgrade: gunArt('Pan', 1),
 }
 

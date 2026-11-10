@@ -519,25 +519,27 @@ describe('Brain Freeze', () => {
   )
 
   it.effect(
-    'eighteen charges, never refilled: empty, it clicks and swaps to the pistol',
+    'eighteen charges a load: empty, it reloads in hand and never runs dry',
     () =>
       Effect.gen(function* () {
-        const empty = modifyFields(freshGun('Freeze'), {
-          loaded: () => 0,
-          rounds: () => 0,
-        })
+        const empty = modifyFields(freshGun('Freeze'), { loaded: () => 0 })
         yield* Story.story(
           APPLICATION,
           Story.given(holding(empty)),
           holdFire,
           tick(FRAME_MS),
           Story.model(current => {
-            expect(focusOf(current).player.reload._tag).toBe('Ready')
+            expect(focusOf(current).player.reload._tag).toBe('Reloading')
             expect(
-              Arsenal.isAnyOf(['HoldingFirst'])(
+              Arsenal.isAnyOf(['HoldingSecond'])(
                 focusOf(current).player.arsenal,
               ),
             ).toBe(true)
+          }),
+          ...ticks(Math.ceil(WEAPONS.Freeze.reloadMs / FRAME_MS) + 1, FRAME_MS),
+          Story.model(current => {
+            expect(spareOf(current).kind).toBe('Freeze')
+            expect(spareOf(current).loaded).toBeGreaterThan(0)
           }),
         )
         expect(magazineOf('Freeze', 0)).toBe(18)

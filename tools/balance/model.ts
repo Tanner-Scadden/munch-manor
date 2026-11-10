@@ -96,7 +96,6 @@ export const ASSUMPTIONS: Assumptions = {
 
 export type Catalog = Readonly<{
   gunPrice: Readonly<Record<SpareGun, number>>
-  refillPrice: Readonly<Record<SpareGun, number>>
   upgradePrices: Readonly<Record<Gun, ReadonlyArray<number>>>
   plankPrice: number
   plankLimit: number
@@ -107,10 +106,6 @@ export type Catalog = Readonly<{
 
 export const CATALOG: Catalog = {
   gunPrice: { Shotgun: SHOP_ITEMS.Shotgun.price, Smg: SHOP_ITEMS.Smg.price },
-  refillPrice: {
-    Shotgun: SHOP_ITEMS.ShotgunShells.price,
-    Smg: SHOP_ITEMS.SmgRounds.price,
-  },
   upgradePrices: {
     Pistol: Array.map(UPGRADE_TIERS.Pistol, ({ price }) => price),
     Shotgun: Array.map(UPGRADE_TIERS.Shotgun, ({ price }) => price),
@@ -144,7 +139,6 @@ export const STARTING_LOADOUT: Loadout = {
 export type Purchase =
   | 'Shotgun'
   | 'Smg'
-  | 'Refill'
   | 'Plank'
   | 'Upkeep'
   | 'Gnome'
@@ -171,8 +165,6 @@ const priceOf = (
   })
   if (purchase === 'Shotgun' || purchase === 'Smg') {
     return Option.some(catalog.gunPrice[purchase])
-  } else if (purchase === 'Refill') {
-    return Option.map(spareKind, kind => catalog.refillPrice[kind])
   } else if (purchase === 'Plank') {
     return Option.some(catalog.plankPrice)
   } else if (purchase === 'Upkeep') {
@@ -215,7 +207,7 @@ const withPurchase = (loadout: Loadout, purchase: Purchase): Loadout => {
 }
 
 // NOTE: the bot's shopping list in tools/balance/bot.ts, without hearts:
-// the SMG once it can, else the shotgun; one refill a visit; two planks;
+// the SMG once it can, else the shotgun; two planks;
 // upkeep for repairs; the first spare upgrade and a gnome; the kitchen;
 // then more upgrades and gnomes while a reserve stays, the spare to its top
 // tier before the pistol.
@@ -246,7 +238,6 @@ const wantedNext = (
           'Smg',
           spare.kind === 'Shotgun' && spare.tier === 0 && affords('Smg', 0),
         ],
-        ['Refill', once('Refill') && affords('Refill', 0)],
         ['Plank', loadout.planks < catalog.plankLimit && affords('Plank', 0)],
         [
           'Upkeep',
@@ -364,8 +355,8 @@ export const heldGun = (
     onSome: ({ kind, tier }) => ({ gun: kind, tier }),
   })
 
-// NOTE: the default bot fights with its spare gun and refills it every
-// visit, so the held gun is the spare once it has one.
+// NOTE: the default bot fights with its spare gun, whose ammo never runs
+// out, so the held gun is the spare once it has one.
 export const loadoutDps: {
   (assumptions: Assumptions): (loadout: Loadout) => number
   (loadout: Loadout, assumptions: Assumptions): number

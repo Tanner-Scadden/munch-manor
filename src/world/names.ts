@@ -186,9 +186,6 @@ type OwnShopGood = Exclude<
 
 export const SHOP_GOOD_NAMES: Readonly<Record<OwnShopGood | 'Repair', string>> =
   {
-    ShotgunShells: 'Shell Sack',
-    SmgRounds: 'Chatter Drum',
-    LidStack: 'Lid Stack',
     LaserSight: 'Laser Sight',
     Heart: 'Pickled Heart',
     Repair: 'Glue and Nails',
@@ -306,6 +303,7 @@ export const SPECIAL_LINES = {
   shopOff: (percent: number): string => `Rattles ${percent}% off`,
   lessKillPay: (percent: number): string => `Kills pay ${percent}% less`,
   startsWithCooker: `Starts with ${GUN_NAMES.Cooker}`,
+  stoveOff: (percent: number): string => `Stove ${percent}% off`,
   noPistol: `No ${GUN_NAMES.Pistol}`,
   noSpecials: 'No specials',
 } as const
@@ -327,7 +325,6 @@ export const SHOP_GUIDE_SECTION_NAMES: Readonly<
 
 export const HOUSE_NAMES: Readonly<Record<HouseSpot, string>> = {
   Stall: "Rattles' Stall",
-  Window: 'Ammo Window',
   Boards: 'Boarded Doors',
   Fridge: FRIDGE_NAME,
   Stove: STOVE_NAME,

@@ -181,10 +181,6 @@ export const HarnessConfig = Schema.Struct({
   pan: Flag,
   knife: Flag,
   stab: Flag,
-  // NOTE: `dry` empties every gun the player carries, so the knife's slot
-  // pulses.
-  dry: Flag,
-  rounds: MaybeNum,
   loaded: Num(30),
   tier: Num(0),
   pistol: MaybeNum,

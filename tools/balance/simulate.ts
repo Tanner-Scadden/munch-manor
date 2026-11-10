@@ -604,7 +604,6 @@ const reportCampaign = (
         taken: 0,
         stabs: 0,
         stabHits: 0,
-        counterBuys: 0,
       },
       (totals, { fridge }) => {
         Array.forEach(Record.toEntries(fridge.prizes), ([prize, count]) => {
@@ -621,7 +620,6 @@ const reportCampaign = (
         totals.taken += fridge.taken
         totals.stabs += fridge.stabs
         totals.stabHits += fridge.stabHits
-        totals.counterBuys += fridge.counterBuys
         return totals
       },
     )
@@ -635,9 +633,6 @@ const reportCampaign = (
     )
     yield* Console.log(
       `Fridge weapons taken: ${fridgeTotals.taken}. Knife: ${fridgeTotals.stabs} stabs, ${fridgeTotals.stabHits} hits (${(fridgeTotals.stabs / Math.max(1, results.length)).toFixed(1)} stabs a run).`,
-    )
-    yield* Console.log(
-      `Ammo window: ${fridgeTotals.counterBuys} refills mid-wave (${(fridgeTotals.counterBuys / Math.max(1, results.length)).toFixed(1)} a run)`,
     )
     yield* Console.log(
       `Fridge weapons: ${fridgeTotals.lids} lids, ${fridgeTotals.pops} pops, ${fridgeTotals.swings} swings (${fridgeTotals.clangs} clangs), ${fridgeTotals.sprays} sprays, ${fridgeTotals.shatters} shatters`,
