@@ -309,17 +309,17 @@ export const play: {
                 ? (crateTarget(model) ?? ROOM_CENTER)
                 : plan === 'Mend'
                   ? (mendTarget(model) ?? ROOM_CENTER)
-                : plan === 'Gnome'
-                  ? gnomeSpot(model)
-                  : plan === 'Fridge'
-                    ? (fridgeStand(model) ?? ROOM_CENTER)
-                    : plan === 'Return'
-                      ? ROOM_CENTER
-                      : boxCenter(
-                          levelOf(model).thresholds[
-                            busiestDoor(model) ?? 'North'
-                          ].box,
-                        )
+                  : plan === 'Gnome'
+                    ? gnomeSpot(model)
+                    : plan === 'Fridge'
+                      ? (fridgeStand(model) ?? ROOM_CENTER)
+                      : plan === 'Return'
+                        ? ROOM_CENTER
+                        : boxCenter(
+                            levelOf(model).thresholds[
+                              busiestDoor(model) ?? 'North'
+                            ].box,
+                          )
         if (
           plan === 'Fridge' &&
           isOfferedToBot(model) &&

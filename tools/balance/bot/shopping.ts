@@ -28,6 +28,7 @@ import {
 import { type Offer, maybeOfferInReach } from '../../../src/world/shop/purchase'
 import { doorCounts } from '../../../src/world/waves/endlessWaves'
 import { FRAME_MS, KEYS, type Model, type Vector } from './basics'
+import { escapeTarget, wantedBoards } from './escape'
 import { type Gun, gunValue, weakerGun } from './guns'
 import { isKnobSet, knobNumber, knobText } from './knobs'
 import { isInKitchen } from './route'
@@ -67,16 +68,20 @@ export const isKitchenOpen = (model: Model) =>
 const isKitchenOffer = ({ target }: Offer): boolean =>
   target._tag === 'Exit' && target.exit === KITCHEN_EXIT
 
-// NOTE: the boards the bot wants open next: the kitchen's first, then the
-// rest in the house's order, the first the ring can pay for.
+// NOTE: the boards the bot wants open next: a room's with a thing on the
+// dare's list behind them first (wantedBoards in ./escape.ts), then the
+// kitchen's, then the rest in the house's order, the first the ring can
+// pay for.
 const maybeWantedRoom = (model: Model): Option.Option<Offer> =>
-  Array.findFirst(
-    exitOffers(model),
-    offer =>
-      (isKitchenOffer(offer)
-        ? !NO_KITCHEN
-        : !NO_ROOMS && (NO_KITCHEN || isKitchenOpen(model))) &&
-      heldKeys(model) >= offer.price,
+  Option.orElse(Option.fromUndefinedOr(wantedBoards(model)), () =>
+    Array.findFirst(
+      exitOffers(model),
+      offer =>
+        (isKitchenOffer(offer)
+          ? !NO_KITCHEN
+          : !NO_ROOMS && (NO_KITCHEN || isKitchenOpen(model))) &&
+        heldKeys(model) >= offer.price,
+    ),
   )
 
 const wantsRoom = (model: Model): boolean =>
@@ -353,7 +358,7 @@ export const prepPlan: {
   if (wantsFridge(model)) {
     return 'Fridge'
   }
-  if (isInKitchen(focusOf(model).player)) {
+  if (isInKitchen(focusOf(model).player) && escapeTarget(model) === undefined) {
     return 'Return'
   }
   return 'Go'
