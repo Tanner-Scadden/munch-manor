@@ -133,7 +133,9 @@ flowchart TD
   door --> arrive
   arrive([The run kicks off in the dining room, its exits boarded]):::proposed --> list
 
-  list[Roll this run's list from the pool: 2 to 4 things, by difficulty]:::proposed --> waves
+  list[Roll this run's list from the pool: 2 to 4 things, by difficulty]:::proposed --> letter
+  letter[Pick up the letter at your place: the host's party game, and this run's list]:::proposed --> fold
+  fold[The letter folds into the HUD: empty outlines to fill. The first wave starts]:::proposed --> waves
   waves[Waves count up, each harder than the last: the number is how far you got]:::proposed --> explore
 
   explore[Buy boards open, room by room]:::built --> roomRoll{Which room is behind the boards?}
@@ -200,10 +202,9 @@ flowchart LR
 
 The lore choices that most change these charts, from `LORE.md`:
 
-1. Why are you in the manor: invited, broke in, inherited it, or woke up there?
-2. Who are the zombies, and does Uncle Chunk lead them?
-3. Who is Rattles: the butler, a past guest, the first owner, or the house's own salesman?
-4. What locks you in: Uncle Chunk, the house, a curse, or Rattles?
-5. What goes in the pool of things to leave with, and how does each one come back to you?
-6. Is the dining room the parlour redressed, or a new room?
-7. Do rooms roll, or only what is in them?
+1. Why are you trapped? Proposed: dinner is the host's party game, on a deal with the hungry house (see `LORE.md`).
+2. Who are the zombies? Proposed: the guests who lost the game.
+3. Who is Rattles? Proposed: the first guest who lost, kept on as staff.
+4. What goes in the pool of things to leave with, and how does each one come back to you?
+5. Is the dining room the parlour redressed, or a new room?
+6. Do rooms roll, or only what is in them?

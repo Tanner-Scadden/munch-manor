@@ -159,6 +159,43 @@ Every party has a coat check. Rattles ran it, and he never left: the coats of ev
 
 "Fresh meat! Er, customer." now reads as a joke about the dinner.
 
+### Why trap a guest? The party game
+
+The owner asked on 2026-11-09: why would anyone lock dinner guests in a haunted house full of zombies? This is the bridge, proposed for the owner and Demi to settle.
+
+**The proposal: dinner is a party game, and you are the prize.** The Munches have thrown the same dinner party every night for a hundred years. The house is hungry (it always was: that is why they called it Munch Manor), and it has to be fed, so the family made a deal with it long ago: the house gets dinner, and the family gets to live forever. Mostly. Uncle Chunk, the host, has made it sporting, because he loves a party game and the house likes its food to run first: he hides each guest's things around the house, locks the door, and lets the guests try to leave before dinner is served.
+
+That one idea answers the questions the game keeps raising:
+
+- **Why you are locked in.** It is the game. The door locks on the slam, and it opens for anyone who finds their things and says a proper goodbye to the host.
+- **Why the list changes every run.** It is a new party every night, and Uncle Chunk never hides things in the same place twice. He would find that boring.
+- **Who the zombies are.** Every guest who lost. They are still at the party, and they are very hungry, and they would like you to stay.
+- **Why it gets harder the longer you stay.** Dinner is coming. The house gets hungrier as the night goes on.
+- **Why Uncle Chunk waits at the front door.** A good host always sees his guests out. He just does not want you to go.
+- **Who Rattles is.** The first guest who ever lost, back when the coat check was a real job. The house kept him as staff instead of dinner (too bony). He sells to the guests because every one who gets out is one more who beat Uncle Chunk, and he has a grudge. And the dead do not tip.
+- **What happens when you are munched.** You join the party. Next night, a new guest arrives (you again, Rattles notes, which is odd).
+
+**Other ways to bridge it**, if the party game does not land:
+
+- **The house alone.** No one planned it: the house is cursed and eats whoever comes in, and the family are just its first meal. Simple, but nothing explains the list or the goodbye.
+- **A will.** The late Munch left the manor to whoever can spend one night and walk out the front door. The family disagrees. Explains the list less well.
+- **Rattles set it up.** He sends the invitations, because a locked house full of zombies is the best shop in the world. Funny, but turns the friendly shopkeeper into the villain.
+
+### The letter at your place
+
+Proposed by the owner on 2026-11-09. Once the doors slam, the first thing in the run is a letter on the dining table at your place setting, sealed in party hat green. Walking onto it picks it up, and it opens: the host's welcome and the rules of the game, which are this run's list.
+
+Show, don't explain, so it is mostly pictures in a fancy hand:
+
+> Welcome to dinner! You are it.
+> Leaving early? Find: (the icons of this run's things)
+> Then say goodbye to the host.
+> (a doodle of a party hat) Uncle C.
+
+Then the letter folds itself into the HUD, and its icons become the empty outlines that fill in as you find things. It is how a new player learns the goal without being told: they picked it up themselves. In co-op the table has one letter at every seat, each with the crew's shared list. The first wave starts once the letter is read (or after a few seconds if no one picks it up), the way READY starts a wave today.
+
+The table and the letter are in the dining room, where the run starts. A living room or parlour could hold it instead if the start room changes.
+
 ### You start at the table
 
 Proposed by the owner on 2026-11-09. A run starts in the dining room, at your place setting, since you came for dinner. Today every run starts in the parlour ("Every run starts in the parlour" under "Exploring the manor" in `GAME_DESIGN.md` is decided), so this changes a decision.
@@ -281,10 +318,10 @@ Ordered from cheapest to most work, so the story can land before the systems do:
 
 The lore choices that most change the game, roughly in order.
 
-1. **Why are you in the manor?** Invited to the party (you are the last guest standing)? Broke in (a burglar, a ghost hunter, a dare)? Inherited it (the will said "spend one night")? Woke up there with no memory?
+1. **Why are you in the manor, and why are you trapped?** Proposed: invited to the party, which is the host's party game (see "Why trap a guest? The party game"). Settle it or pick another bridge.
 2. **Who are the zombies?** The party guests and the family? Strangers the house ate? Does Uncle Chunk lead them, or is he just the biggest?
 3. **Who is Rattles?** The butler, a past guest who never got out, the house's first owner, or something the house made to keep you spending?
-4. **What locks you in?** Uncle Chunk, the house itself, a curse, or Rattles (who would lose his customers)?
+4. **What locks you in?** Proposed: Uncle Chunk, for the game, on a deal with the hungry house. Or the house alone, a will, or Rattles (see the other bridges).
 5. **What goes in the pool?** Which things a guest needs to leave, and how each one comes back to you (see "What you need to leave changes every run").
 6. **What do the heroes and bots mean in the story?** Other guests who came for the party? The robots are Rattles' rentals?
 7. **What is a Bone?** Rattles' currency, the bones of the munched, or both?
