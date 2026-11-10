@@ -7,6 +7,7 @@ import {
   PLAYER_KNOCKBACK_DECAY_PER_SECOND,
   PLAYER_RADIUS,
 } from '../../shared/constants'
+import { advanceDare } from '../dare/dare'
 import {
   advanceLobs,
   fireFridgeWeapon,
@@ -455,6 +456,7 @@ const advanceWorld = (model: World, deltaMs: number): World => {
     felt => advancePowerUps(felt, advanceRound(felt, deltaMs), deltaMs),
     rounded => flattenAtBreak(model, rounded),
     advancePantry,
+    advanceDare,
     rollStove,
     rounded => shedParts(model, rounded),
     shed => resolveShatters(model, shed),

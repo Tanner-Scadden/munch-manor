@@ -79,8 +79,13 @@ import {
 // carries `callMs`, how long ago the player last shouted, a new action code
 // (CallMedic) shouts again, and two new events: MedicCalled and
 // TeammateSaved (SAVED! or CLUTCH!).
-export const PROTOCOL_VERSION = 19
-export const MIN_PROTOCOL_VERSION = 19
+// Version 20: the dare. The World holds the run's dare (`dare`: its own
+// generator and the list) and the house's things (`dareThings`, keyed by
+// id, each hidden, marked, carried by a zombie, dropped, held, found, or
+// delivered), and five new events say what happened to them: DareFound,
+// DareTaken, DareDropped, DareListDone, and DareDelivered.
+export const PROTOCOL_VERSION = 20
+export const MIN_PROTOCOL_VERSION = 20
 
 // NOTE: a round trip as the wire carries it, in whole ms.
 export const MAX_RTT_MS = 60_000

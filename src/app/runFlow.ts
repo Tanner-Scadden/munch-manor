@@ -7,6 +7,7 @@ import {
   settleLessons,
 } from '../features/onboarding/onboarding'
 import { FIRST_PREPARATION_MS } from '../shared/constants'
+import { rollDare } from '../world/dare/dare'
 import { seatCrew, withStartingHearts } from '../world/party/party'
 import { withWorld } from '../world/schema/world'
 import { SeatAction } from '../world/step/stepWorld'
@@ -37,7 +38,7 @@ const startRun = (model: Model, mode: RunMode): Model => {
       beginPreparation(
         withStartingHearts(
           seatCallings(
-            seatCrew(world, model.localPlayers + bots.length),
+            seatCrew(rollDare(world), model.localPlayers + bots.length),
             model.localPlayers,
             Array.map(bots, ({ calling }) => calling),
           ),

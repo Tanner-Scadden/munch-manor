@@ -7,6 +7,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 
 import { PISTOL_MAGAZINE, PLAYER_MAX_HP } from '../../shared/constants'
 import { Difficulty } from '../../shared/playerData'
+import { Dare, DareKind, DareThing } from '../dare/dareSchema'
 import { START_LEVEL } from '../level/arena'
 import { Modifiers } from '../run/modifiers'
 import {
@@ -182,6 +183,20 @@ export const GameEvent = defineTaggedUnion({
   FriendlyFire: { x: PositionNumber, y: PositionNumber, direction: Heading },
   // NOTE: a downed player shouts MEDIC! (src/world/party/medic.ts), where they lie.
   MedicCalled: { x: PositionNumber, y: PositionNumber },
+  // NOTE: the dare's things (src/world/dare/dare.ts): one the dare asked
+  // for found by a walk onto it, one it did not taken in hand, the family
+  // portrait's carrier going down with it, the last thing on the list
+  // found (the finale's cue), and a thing in hand delivered to a point.
+  DareFound: { x: PositionNumber, y: PositionNumber, kind: DareKind },
+  DareTaken: { x: PositionNumber, y: PositionNumber, kind: DareKind },
+  DareDropped: { x: PositionNumber, y: PositionNumber, kind: DareKind },
+  DareListDone: { x: PositionNumber, y: PositionNumber },
+  DareDelivered: {
+    x: PositionNumber,
+    y: PositionNumber,
+    kind: DareKind,
+    slot: Schema.Finite,
+  },
   // NOTE: a teammate got a downed player up, at the reviver; a clutch save
   // came with under MEDIC_RULES.clutchBleedMs of bleed left.
   TeammateSaved: {
@@ -744,6 +759,8 @@ export const World = Schema.Struct({
   fridge: Fridge,
   pantry: Pantry,
   stove: Stove,
+  dare: Dare,
+  dareThings: Schema.Array(DareThing),
   gasValve: GasValve,
   rngState: Schema.Finite,
   hitStop: HitStop,
@@ -854,6 +871,15 @@ export const freshStove = (seed: number): Stove => ({
   rngState: (seed ^ STOVE_SEED_SALT) >>> 0,
   perk: 'Spicy',
   wave: 0,
+})
+
+const DARE_SEED_SALT = 0x0da4e5b7
+
+// NOTE: the dare's own generator, apart from the run's, so rolling the list
+// and its spots moves no other; the list is rolled as the run starts.
+export const freshDare = (seed: number): Dare => ({
+  rngState: (seed ^ DARE_SEED_SALT) >>> 0,
+  list: [],
 })
 
 export const shutValve: GasValve = GasValve.Shut()

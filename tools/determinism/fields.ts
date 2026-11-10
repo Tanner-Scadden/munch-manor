@@ -46,6 +46,8 @@ export const FIELD_CLASSES = {
   fridge: 'World',
   pantry: 'World',
   stove: 'World',
+  dare: 'World',
+  dareThings: 'World',
   gasValve: 'World',
   hitStop: 'World',
   lessons: 'World',
@@ -184,10 +186,10 @@ const CLASS_BY_FIELD: ReadonlyMap<string, FieldClass> = new Map([
     field,
     'World',
   ]),
-  ...Array.map(
-    LEGACY_CLIENT_FIELDS,
-    (field): readonly [string, FieldClass] => [field, 'Client'],
-  ),
+  ...Array.map(LEGACY_CLIENT_FIELDS, (field): readonly [string, FieldClass] => [
+    field,
+    'Client',
+  ]),
 ])
 
 const classOf = (field: string): FieldClass | undefined =>

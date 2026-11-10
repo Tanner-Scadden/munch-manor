@@ -965,6 +965,28 @@ export const RECIPES: Readonly<Record<SoundEffect, Recipe>> = {
     ],
     noises: [],
   },
+  // NOTE: the dare's music box (src/features/dare/musicBox.ts): a few plinked
+  // notes of a wind-up tune, sine over triangle for the comb's ring, played
+  // again and again from its spot, louder and panned as a player nears.
+  MusicBox: {
+    variationCents: 0,
+    tones: Array.flatMap(
+      [1319, 1568, 1976, 1568, 1760, 1319],
+      (frequency, index) => [
+        {
+          wave: 'sine' as const,
+          pitch: [at(0, frequency), at(0.4, frequency)],
+          envelope: delayedEnvelope(0.14, 0.002, 0.4, index * 0.22),
+        },
+        {
+          wave: 'triangle' as const,
+          pitch: [at(0, frequency * 2), at(0.15, frequency * 2)],
+          envelope: delayedEnvelope(0.04, 0.001, 0.15, index * 0.22),
+        },
+      ],
+    ),
+    noises: [],
+  },
   // NOTE: the kitchen behind the boards, heard when the player is near and
   // the exit is still shut (src/features/kitchen/kitchenCall.ts). Both are quiet: a lid
   // rattling on a pot, and a slow bubble.

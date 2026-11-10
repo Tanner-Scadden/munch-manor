@@ -76,7 +76,16 @@ export type HudLayout = Readonly<{
   slotLeft: number
   slotTop: number
   trapTop: number
+  dareRight: number
+  dareTop: number
 }>
+
+// NOTE: the dare card (src/features/dare/dareCard.ts): this run's list as
+// a row of small slots, laid out from its right edge. In landscape it hangs
+// under the top strip on the right; in portrait it sits at the bottom right
+// of the HUD band, over the world window.
+const DARE_CARD_LANDSCAPE_GAP = 2
+const DARE_CARD_PORTRAIT_LIFT = 11
 
 // NOTE: the two guns sit centered at the bottom, with the melee slot on
 // their right (and on touch the reload button past it, src/screens/game/touchControls.ts).
@@ -100,6 +109,8 @@ export const hudLayoutFor = (screen: Screen): HudLayout => {
       slotLeft,
       slotTop,
       trapTop: slotTop,
+      dareRight: screen.width - HUD_MARGIN - PAUSE_BUTTON_CLEARANCE,
+      dareTop: HUD_STRIP_HEIGHT + DARE_CARD_LANDSCAPE_GAP,
     }
   } else {
     const scoreRight = screen.width - HUD_MARGIN - PORTRAIT_PAUSE_CLEARANCE
@@ -119,6 +130,8 @@ export const hudLayoutFor = (screen: Screen): HudLayout => {
         thumbAreaTop(screen) + HUD_MARGIN,
         slotTop - SLOT_HEIGHT - SLOT_GAP * 2,
       ),
+      dareRight: screen.width - HUD_MARGIN,
+      dareTop: screen.world.y - DARE_CARD_PORTRAIT_LIFT,
     }
   }
 }

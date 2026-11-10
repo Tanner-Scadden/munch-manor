@@ -4,6 +4,7 @@ import type { Canvas } from 'foldkit'
 import type { Model } from '../../app/model'
 import { group } from '../../art/sprite'
 import { hatRiseOf } from '../../art/sprites/hatArt'
+import { dareDrawables, dareOverheadShapes } from '../../features/dare/dareView'
 import {
   chompShapes,
   fallenOf,
@@ -247,6 +248,7 @@ const standingDrawables = (
     ...mateDrawables(mates),
     ...fridgeDrawables(model),
     ...pantryDrawables(model),
+    ...dareDrawables(model),
   ]
 }
 
@@ -291,6 +293,7 @@ const overheadShapes = (
     ? reloadBarShapes(focusOf(model).player, hatRiseOf(model.appearance))
     : []),
   ...fridgeOverheadShapes(model),
+  ...dareOverheadShapes(model),
   ...mateOverheadShapes(model, mates),
   ...coopNameShapes(model),
   ...stallPromptShapes(stallPrompt(model, focusSlotOf(model))),
