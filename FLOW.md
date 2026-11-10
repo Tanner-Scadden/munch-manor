@@ -121,12 +121,12 @@ flowchart TD
   rsvp([Fill in the RSVP card: name, coming as, plus ones, requests]):::proposed --> seal
   seal[Stamp the wax seal: the card floats away]:::proposed --> car
 
-  subgraph Intro [The intro cutscene: skippable up to the slam, shorter after the first]
-    car[Your crew in the car, on the way to dinner]:::proposed --> arrive2[Pull up at the manor]:::proposed
-    arrive2 --> walk[Walk up to the front door]:::proposed
-    walk --> knock[Knock knock]:::proposed
-    knock --> opens[The doors creak open on their own. You step in]:::proposed
-    opens --> hello[HELLO? Nobody here. The table is set]:::proposed
+  subgraph Intro [The intro: this feels really off. Skippable up to the slam]
+    car[The car at night: the radio drifts into static, the sign is chewed]:::proposed --> arrive2[The drive is full of guests' cars, one with its door hanging open]:::proposed
+    arrive2 --> walk[A trampled party hat on the steps. Footprints go in, none come out]:::proposed
+    walk --> knock[Knock knock. Silence. One knock back]:::proposed
+    knock --> opens[The doors creak open on their own. Coats nobody came back for, a bony hand waves]:::proposed
+    opens --> hello[HELLO? Plates half eaten, chairs knocked back. Your name on a place card, on a plate]:::proposed
     hello --> door[The doors slam and lock behind you. Never skipped: the run starts here, for everyone at once]:::proposed
   end
 

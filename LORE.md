@@ -165,22 +165,28 @@ Proposed by the owner on 2026-11-09. A run starts in the dining room, at your pl
 
 The cheap way is to redress the parlour as the dining room: keep its tiles, doors, cover footprints, and stall where they are, so the waves and the balance stay as tuned, and swap the art. The seating group becomes a long dining table set for a party that never finished, the piano a sideboard, the hearth stays (dining rooms have them too), a candelabra, a chandelier. The boarded double door with the fork and knife sign already leads to the kitchen, which fits a dining room better than a parlour. A new room with its own layout is the costly way: new cover, new lanes, and the waves tuned again.
 
-### The intro: the door locks behind you
+### The intro: this feels really off
 
-Proposed by the owner on 2026-11-09. A short cutscene between the RSVP and the run:
+Proposed by the owner on 2026-11-09. A short cutscene between the RSVP and the run, with one feeling: this feels really off. It stays focused: a handful of beats, each with one wrong detail and nothing else on screen, and every wrong detail is a piece of the lore that the run, the Munchopedia, and Rattles pay off later. The player should walk into the dining room already uneasy, and leave the game knowing why.
 
-1. START stamps the seal, and the RSVP card floats away.
-2. Your crew in the car (you, your plus ones, your co-op friends), driving to dinner.
-3. The car pulls up at the manor.
-4. You walk up to the front door.
-5. Knock knock.
-6. The doors creak open on their own, and you step in.
-7. "HELLO?" Nobody is there. The table is set, the candles are lit.
-8. The doors slam and lock behind you, and the run kicks off.
+| Beat                                                                    | What is off                                                                                             | What it sets up                                                      |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| START stamps the seal; the RSVP card floats away                        | The seal is a fork and knife. The card's last line: Bring an appetite.                                  | Munch is about eating, and you may be the meal                       |
+| Your crew in the car at night (you, your plus ones, your co-op friends) | The radio drifts into static. The road sign says MUNCH MANOR, and something has chewed its corner.      | The house is hungry                                                  |
+| You pull up at the manor                                                | The drive is full of the other guests' cars. One still has its headlights on and a door hanging open.   | The other guests came and never left: they are the zombies           |
+| You walk up to the front door                                           | A trampled party hat on the steps, the same green as Uncle Chunk's. Footprints go in. None come out.    | The party went wrong, and the host is still here                     |
+| Knock knock                                                             | A beat of silence. Then, from somewhere inside, one knock back.                                         | Something in the house answers                                       |
+| The doors creak open on their own; you step in                          | The coat check in the hall: rows of coats nobody came back for, and a bony hand that waves from behind. | Rattles, the coat check, and the coat ticket you need to leave       |
+| "HELLO?" The dining room: the table set, the candles lit, nobody there  | Plates half eaten, chairs knocked back. And your name, on a place card, on a plate.                     | You are the main course                                              |
+| The doors slam and lock behind you                                      | The run starts.                                                                                         | The front door is the way out, and Uncle Chunk will be waiting at it |
+
+The tone stays the game's: goofy first, scary second (Luigi's Mansion, not a horror film). Each wrong detail is half a joke (the chewed sign, the knock back, the waving hand), so the unease lands with a smile and the slam is the punchline. Music thins out as it goes: a cheery tune in the car, then only footsteps and the house creaking by the door, then silence on HELLO?, then the slam and the run's music.
 
 The dining room's other ways out are boarded, as the parlour's are today, and bought open the same way.
 
 Show, don't explain: pictures, sound, and the one word, HELLO?, in a speech bubble. Any key or tap skips to the slam. The slam itself is never skipped (owner, 2026-11-09): it is the moment the run starts, every time. The cutscene plays in full the first time, and shorter after that (the knock and the slam), so RETRY stays quick. The first PLAY of a new save goes straight into the tutorial, so the cutscene is its opening there too. It is a client cosmetic, like the end card's beat: the World starts the same. In co-op every player sees their own crew in the car, and the run starts on the slam for everyone at once (owner, 2026-11-09): the room sets when the doors slam, a player who skips jumps to the knock at the door and waits there, and every screen slams together.
+
+**Paying it off.** Each detail comes back, so the intro is the first page of the story rather than a one-off: the party hat is Uncle Chunk's, the coats are the coat check's, the place card is the joke Rattles makes ("Fresh meat! Er, customer."), and the cars in the drive are where the car keys on the list belong. A Munchopedia entry can unlock for each one once the player finds it in a run.
 
 ### What you need to leave changes every run
 
